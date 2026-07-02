@@ -72,7 +72,7 @@ format_and_aesthetics_specifications:
     
     # [视觉细节：排版与色彩] - *此处已修复溢出问题*
     visual_details:
-      - "排版安全: 所有文本容器强制添加 'word-wrap: break-word; white-space: pre-wrap;' 以确保文本自动换行，严禁溢出。"
+      - "排版安全: 长文本段落需使用 'overflow-wrap:anywhere; word-break:break-word; line-height:1.6;' 等安全写法防止溢出。仅在需要保留换行的叙事段落、信件、诗歌、日志、转录文本中使用 'white-space:pre-wrap;'；短标签、按钮、标题、状态栏不强制使用 pre-wrap。"
        - "垂直排版安全: 凡使用 'vertical-rl'，必须添加 'overflow-x: auto; max-width: 100%;' 和固定 'height'，允许内部横向滑动，严禁撑破屏幕。"
       - "层级: 建立清晰字重层级。所有 <p> 标签强制设定 'line-height: 1.6; margin: 0 0 12px 0;'。"
       - "色彩: 采用高对比度文本。使用语义化色彩（Semantic Color）。背景色需柔和。"
@@ -81,7 +81,7 @@ format_and_aesthetics_specifications:
     # [资源与适配：图片与手机] - *此处强化了宽度限制*
     resources_and_mobile:
       - "图片: 允许使用 <img> (真实公共URL)，必须添加 style='max-width:100%; height:auto; display:block;'。"
-      - "手机适配: 严格遵从 Mobile-First。主容器和所有子容器必须设置 'max-width: 100%;'。"
+      - "自适配容器: 需同时适配手机与电脑。主容器和关键子容器应使用 'box-sizing:border-box; max-width:100%; width:100%;' 或 'width:min(100%,500px);' 等自适配写法，避免横向溢出。"
       - "Flex布局: 使用 'display: flex; flex-wrap: wrap;' 时，必须确保子元素具备 'min-width: 0;' 或 'flex-shrink: 1;' 以允许收缩。"
 
     # [禁令：红线]

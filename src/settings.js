@@ -24,6 +24,12 @@ export const defaultSettings = Object.freeze({
     // 勾选后，最后一条用户消息里的“兔子洞：xxx / 兔子洞主题：xxx / 兔子洞格式：xxx”等会优先生效。
     userDirectivePriority: true,
 
+    // 勾选后，每轮强制把 10.2.2 Visual Scenery 纳入本轮展现形式。
+    forceVisualScenery: false,
+
+    // 勾选后，每轮额外注入 UI 自查与去模板化要求，减少相似黑框/记录卡。
+    uiAudit: true,
+
     // 原规则要求 1-3 个主题、1-2 个展现形式，作为固定协议，不再拆成 UI 设置。
     themesMin: 1,
     themesMax: 3,

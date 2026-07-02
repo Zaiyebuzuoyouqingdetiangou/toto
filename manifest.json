@@ -4,8 +4,8 @@
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "1.4.0",
-  "homePage": "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
+  "version": "0.15.0",
+  "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitHoleGenerateInterceptor",
   "minimum_client_version": "1.13.0",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "Rabbit Hole Theater auto injection with ID-to-raw segment lookup, COT summary option, and UI Toto watermark."
+  "description": "Rabbit Hole Theater auto injection with ID-to-raw lookup, Visual Scenery mode, UI audit, user directive priority, and Toto settings watermark."
 }

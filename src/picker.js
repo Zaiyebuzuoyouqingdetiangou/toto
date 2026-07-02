@@ -122,20 +122,22 @@ function extractAfterPatterns(message, patterns) {
 }
 
 function parseUserDirective(message) {
-    if (!message || !/兔子洞/.test(message)) return null;
+    if (!message || !/(兔子洞|小剧场)/.test(message)) return null;
 
-    if (/(兔子洞\s*(关闭|关掉|不要|禁用|停止|off)|不要\s*兔子洞|关闭\s*兔子洞|本轮不(?:要|用)\s*兔子洞)/i.test(message)) {
+    if (/((?:兔子洞|小剧场)\s*(关闭|关掉|不要|禁用|停止|off)|不要\s*(?:兔子洞|小剧场)|关闭\s*(?:兔子洞|小剧场)|本轮不(?:要|用)\s*(?:兔子洞|小剧场))/i.test(message)) {
         return { disabled: true, reason: '用户正文指令关闭本轮兔子洞' };
     }
 
     const themeTexts = extractAfterPatterns(message, [
-        '兔子洞(?:主题|元素|题材|theme)\s*[:：]\s*([^\n。；;]+)',
+        '(?:兔子洞|小剧场)(?:主题|元素|题材|theme)\s*[:：]\s*([^\n。；;]+)',
     ]);
     const formatTexts = extractAfterPatterns(message, [
-        '兔子洞(?:展现形式|展示形式|表现形式|格式|形式|format|ui|UI)\s*[:：]\s*([^\n。；;]+)',
+        '(?:兔子洞|小剧场)(?:展现形式|展示形式|表现形式|格式|形式|format|ui|UI)\s*[:：]\s*([^\n。；;]+)',
     ]);
     const generalTexts = extractAfterPatterns(message, [
-        '兔子洞\s*[:：]\s*([^\n。；;]+)',
+        '(?:兔子洞|小剧场)\s*[:：]\s*([^\n。；;]+)',
+        '(?:兔子洞|小剧场)\s*(?:想看|想要|来|要|指定|换成)\s*([^\n。；;]+)',
+        '(?:下一个|下次|这次|本轮)?\s*(?:兔子洞|小剧场)\s*(?:想看|想要|来|要|指定|换成)\s*([^\n。；;]+)',
     ]).filter(x => !/^(主题|元素|题材|展现形式|展示形式|表现形式|格式|形式)\s*[:：]/.test(x));
 
     const themeQueries = splitDirectiveText(themeTexts.join('、'));
@@ -174,6 +176,10 @@ function parseUserDirective(message) {
     };
 }
 
+function getVisualSceneryFormat() {
+    return PRESENTATION_FORMATS.find(item => item.id === '10.2.2' || normalizeText(item.title) === normalizeText('Visual Scenery')) || null;
+}
+
 function applyDirectiveOrRandom({ settings, themePool, formatPool, themeCount, formatCount, last }) {
     const directive = settings.userDirectivePriority ? parseUserDirective(getLastUserMessage()) : null;
     if (directive?.disabled) {
@@ -182,11 +188,12 @@ function applyDirectiveOrRandom({ settings, themePool, formatPool, themeCount, f
 
     const pickedThemes = pickMany(themePool, themeCount, last.themeIds, settings.avoidRepeat);
     const pickedFormats = pickMany(formatPool, formatCount, last.formatIds, settings.avoidRepeat);
+    const forcedFormats = settings.forceVisualScenery ? [getVisualSceneryFormat()].filter(Boolean) : [];
 
     const themes = uniqueById([...(directive?.themes || []), ...pickedThemes]).slice(0, Math.max(themeCount, directive?.themes?.length || 0));
-    const formats = uniqueById([...(directive?.formats || []), ...pickedFormats]).slice(0, Math.max(formatCount, directive?.formats?.length || 0));
+    const formats = uniqueById([...(directive?.formats || []), ...forcedFormats, ...pickedFormats]).slice(0, Math.max(formatCount, (directive?.formats?.length || 0) + forcedFormats.length));
 
-    return { themes, formats, directive };
+    return { themes, formats, directive, forcedFormats };
 }
 
 export function pickCombination(settings) {
@@ -212,6 +219,7 @@ export function pickCombination(settings) {
         formatIds: result.formats.map(x => x.id),
         mode: settings.mode,
         directive: result.directive || null,
+        forcedVisualScenery: !!settings.forceVisualScenery,
     };
 
     setLastCombo(combo);
