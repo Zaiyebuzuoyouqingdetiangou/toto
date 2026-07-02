@@ -17,10 +17,11 @@ function shuffle(array) {
     return result;
 }
 
-function allowByMode(item, mode) {
-    const tags = item.tags || [];
-    if (mode === 'canon') return true;
-    return !tags.includes('canon');
+function allowByMode(_item, mode) {
+    // 一体化模式不再拆分 Independent / Canon。
+    // 所有条目都进入候选池；是否允许正文衍生由 promptBuilder 根据抽中条目的 tags 自动声明。
+    if (mode === 'off') return false;
+    return true;
 }
 
 function pickMany(pool, count, lastIds = [], avoidRepeat = true) {
