@@ -3,8 +3,8 @@
   "loading_order": 99,
   "js": "index.js",
   "css": "style.css",
-  "author": "Generated for user",
-  "version": "3.0.0",
+  "author": "Toto",
+  "version": "1.4.0",
   "homePage": "https://github.com/your-name/Extension-RabbitHole",
   "auto_update": true,
   "generate_interceptor": "rabbitHoleGenerateInterceptor",
@@ -12,5 +12,6 @@
   "hooks": {
     "disable": "onDisable",
     "clean": "onClean"
-  }
+  },
+  "description": "Rabbit Hole Theater auto injection with ID-to-raw segment lookup and Toto watermark."
 }
