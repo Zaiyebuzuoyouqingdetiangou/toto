@@ -188,10 +188,23 @@ function applyDirectiveOrRandom({ settings, themePool, formatPool, themeCount, f
 
     const pickedThemes = pickMany(themePool, themeCount, last.themeIds, settings.avoidRepeat);
     const pickedFormats = pickMany(formatPool, formatCount, last.formatIds, settings.avoidRepeat);
-    const forcedFormats = settings.forceVisualScenery ? [getVisualSceneryFormat()].filter(Boolean) : [];
+    const visualSceneryFormat = getVisualSceneryFormat();
+    const forcedFormats = settings.forceVisualScenery && visualSceneryFormat ? [visualSceneryFormat] : [];
+    const directiveFormats = directive?.formats || [];
+    const directiveWantsVisualScenery = directiveFormats.some(item => item?.id === '10.2.2');
 
     const themes = uniqueById([...(directive?.themes || []), ...pickedThemes]).slice(0, Math.max(themeCount, directive?.themes?.length || 0));
-    const formats = uniqueById([...(directive?.formats || []), ...forcedFormats, ...pickedFormats]).slice(0, Math.max(formatCount, (directive?.formats?.length || 0) + forcedFormats.length));
+
+    let formats;
+    if (forcedFormats.length) {
+        // Visual Scenery 动态模式开启时，展现形式锁定为 10.2.2；主题仍可随机或由正文指令指定。
+        formats = forcedFormats;
+    } else if (directiveWantsVisualScenery) {
+        // 用户正文明确指定 Visual Scenery 时，也让它成为本轮核心展现形式，避免被随机格式稀释。
+        formats = uniqueById(directiveFormats);
+    } else {
+        formats = uniqueById([...directiveFormats, ...pickedFormats]).slice(0, Math.max(formatCount, directiveFormats.length));
+    }
 
     return { themes, formats, directive, forcedFormats };
 }

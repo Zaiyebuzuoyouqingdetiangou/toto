@@ -14,9 +14,19 @@ const UI_AUDIT_PROTOCOL = String.raw`
 `;
 
 const VISUAL_SCENERY_PROTOCOL = String.raw`
-【Visual Scenery 动态渐变专用协议】
-1. 本轮必须将「10.2.2 Visual Scenery」作为核心展现形式，并以纯视觉氛围场景为核心。
-2. 可在 details 内使用紧凑 <style> 标签与唯一 class 名实现动态效果；容器需保持自适配，避免横向溢出。
+【Visual Scenery 专用执行协议】
+本轮展现形式锁定为：
+
+【10.2 可视化小剧场】
+打破纯文本叙事，重度依赖 CSS 构建纯视觉面板。
+用图形、色块和排版作为主要叙事载体。
+
+【10.2.2 Visual Scenery】
+纯粹利用 CSS 色块、渐变和动画，在屏幕上绘制出一幅极具氛围感的风景。
+用纯粹的视觉传递情绪。
+
+本轮生成时必须同时遵循 10.2 父级规则与 10.2.2 子项规则。
+可在 details 内使用紧凑 <style> 标签与唯一 class 名实现动态效果；容器需保持自适配，避免横向溢出。
 `;
 
 const UNIVERSAL_EXECUTION_CORE = String.raw`
