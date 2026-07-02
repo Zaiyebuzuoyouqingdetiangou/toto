@@ -78,7 +78,7 @@ ${thinkingBlock(combo, last, settings)}
 2. 如果主回复使用 HTML / Markdown 容器，兔子洞必须位于所有正文容器、段落、列表、代码块、引用块的最后一个闭合内容之后；不得插入正文中途、不得出现在正文之前、不得包裹正文。
 3. 兔子洞内所有文字必须且只能使用简体中文；外语/术语出现时必须立即用 [] 给出简体中文翻译。
 4. 使用 <details><summary>【兔子洞：本次标题】</summary>...</details> 包裹。
-5. 允许使用 <yinuomeme> 作为模块边界标签。
+5. 兔子洞模块直接以 <details> 开始，并以 </details> 结束。
 6. 所有 HTML 样式使用 inline style；主容器和子容器必须 max-width:100%; box-sizing:border-box; word-wrap:break-word; white-space:pre-wrap。
 7. UI 必须做成高完成度视觉组件，至少使用三种视觉手段：多层 box-shadow、linear-gradient、Grid/Flex 分区、主题色标题、标签/状态栏/进度条/票据/卡片/时间轴等拟物 UI、半透明背景或装饰性边框。
 8. 严禁只输出普通报告、普通列表、普通资料卡或单调黑框文本。

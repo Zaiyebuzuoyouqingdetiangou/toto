@@ -20,13 +20,6 @@ export function initRabbitHoleUI() {
     <div class="inline-drawer-content">
       <label class="checkbox_label"><input id="rh_enabled" type="checkbox"> 启用兔子洞自动注入</label>
 
-      <div class="rabbit-hole-status-card">
-        <div class="rabbit-hole-status-title">当前模式：一体化自动协议</div>
-        <div class="rabbit-hole-status-line">完整原始四大模块保存在 <code>data/raw/</code>。</div>
-        <div class="rabbit-hole-status-line">结构化索引只作为目录；每轮抽到 ID 后，会到 data/raw/ 母本中检索对应完整描述。</div>
-        <div class="rabbit-hole-status-line">抽到正文衍生类条目时自动使用正文衍生分支；其他情况自动按独立兔子洞执行。</div>
-      </div>
-
       <label class="checkbox_label"><input id="rh_show_cot" type="checkbox"> 输出 &lt;thinking&gt; 执行摘要</label>
       <label class="checkbox_label"><input id="rh_avoid_repeat" type="checkbox"> 避免连续重复主题/展现形式</label>
       <label class="checkbox_label"><input id="rh_skip_quiet" type="checkbox"> 跳过 quiet 后台生成</label>
@@ -37,10 +30,6 @@ export function initRabbitHoleUI() {
         <button id="rh_clear_last" class="menu_button">清除上轮组合记录</button>
         <button id="rh_clear_injection" class="menu_button">清空当前注入</button>
         <button id="rh_reset" class="menu_button">恢复默认设置</button>
-      </div>
-
-      <div class="notes">
-        这版不会把兔子洞拆成多个手动模式；兔子洞按一个整体协议自动运行，并采用 ID → 母本片段检索。Toto 仅作为本设置界面水印，不会要求生成进小剧场。
       </div>
     </div>
   </div>
