@@ -21,6 +21,7 @@ export function initRabbitHoleUI() {
       <label class="checkbox_label"><input id="rh_enabled" type="checkbox"> 启用兔子洞自动注入</label>
 
       <label class="checkbox_label"><input id="rh_show_cot" type="checkbox"> 输出 &lt;thinking&gt; 执行摘要</label>
+      <label class="checkbox_label"><input id="rh_user_directive" type="checkbox"> 正文指令优先</label>
       <label class="checkbox_label"><input id="rh_avoid_repeat" type="checkbox"> 避免连续重复主题/展现形式</label>
       <label class="checkbox_label"><input id="rh_skip_quiet" type="checkbox"> 跳过 quiet 后台生成</label>
       <label class="checkbox_label"><input id="rh_skip_impersonate" type="checkbox"> 跳过 impersonate 生成</label>
@@ -39,6 +40,7 @@ export function initRabbitHoleUI() {
 
     checked('#rh_enabled', settings.enabled);
     checked('#rh_show_cot', settings.showCot);
+    checked('#rh_user_directive', settings.userDirectivePriority);
     checked('#rh_avoid_repeat', settings.avoidRepeat);
     checked('#rh_skip_quiet', settings.skipQuiet);
     checked('#rh_skip_impersonate', settings.skipImpersonate);
@@ -46,6 +48,7 @@ export function initRabbitHoleUI() {
 
     $('#rh_enabled').on('change', e => updateSettings({ enabled: e.target.checked, mode: e.target.checked ? 'integrated' : 'off' }));
     $('#rh_show_cot').on('change', e => updateSettings({ showCot: e.target.checked }));
+    $('#rh_user_directive').on('change', e => updateSettings({ userDirectivePriority: e.target.checked }));
     $('#rh_avoid_repeat').on('change', e => updateSettings({ avoidRepeat: e.target.checked }));
     $('#rh_skip_quiet').on('change', e => updateSettings({ skipQuiet: e.target.checked }));
     $('#rh_skip_impersonate').on('change', e => updateSettings({ skipImpersonate: e.target.checked }));

@@ -24,6 +24,10 @@ export async function rabbitHoleGenerateInterceptor(_chat, _contextSize, _abort,
     }
 
     const prompt = buildRabbitHolePrompt(settings, type);
+    if (!prompt) {
+        clearRabbitHolePrompt();
+        return;
+    }
     const role = settings.role === 'user' ? extension_prompt_roles.USER : settings.role === 'assistant' ? extension_prompt_roles.ASSISTANT : extension_prompt_roles.SYSTEM;
 
     setExtensionPrompt(

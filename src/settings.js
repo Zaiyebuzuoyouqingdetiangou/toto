@@ -21,6 +21,8 @@ export const defaultSettings = Object.freeze({
     // 安全补丁不再默认启用；用户原预设/主提示自行处理边界。
     includeSafetyPatch: false,
     avoidRepeat: true,
+    // 勾选后，最后一条用户消息里的“兔子洞：xxx / 兔子洞主题：xxx / 兔子洞格式：xxx”等会优先生效。
+    userDirectivePriority: true,
 
     // 原规则要求 1-3 个主题、1-2 个展现形式，作为固定协议，不再拆成 UI 设置。
     themesMin: 1,
