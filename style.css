@@ -21,6 +21,3 @@
     line-height: 1.5;
     margin-top: 10px;
 }
-.rabbit-hole-status-card{border:1px solid var(--SmartThemeBorderColor);border-radius:8px;padding:10px 12px;margin:8px 0 12px 0;background:rgba(127,127,127,.08);box-sizing:border-box;max-width:100%;}
-.rabbit-hole-status-title{font-weight:700;margin-bottom:6px;}
-.rabbit-hole-status-line{font-size:.9em;line-height:1.5;margin:2px 0;}

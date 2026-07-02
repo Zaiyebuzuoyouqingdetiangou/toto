@@ -5,33 +5,17 @@ export const MODULE_NAME = 'rabbit_hole_theater';
 
 export const defaultSettings = Object.freeze({
     enabled: true,
-
-    // 一体化模式：不再把 Independent / Canon 拆成用户可选项。
-    // 插件内部会根据本轮抽到的主题/展现形式自动判断：
-    // - 抽到 canon 相关条目时，允许正文衍生；
-    // - 否则按独立兔子洞执行。
-    mode: 'integrated',
-
-    // 默认不每轮塞完整大库，避免 token 爆炸；完整原文仍保存在 data/raw/。
-    // 这个选项不再暴露在 UI 里，除非你自己改代码。
-    rawPolicy: 'balanced',
-
-    // 原规则是“每轮自动生成”，所以这些保持默认打开。
-    showWonderland: false,
-    // 安全补丁不再默认启用；用户原预设/主提示自行处理边界。
-    includeSafetyPatch: false,
+    mode: 'independent', // independent / canon / off
+    rawPolicy: 'balanced', // balanced / full / minimal
+    showWonderland: true,
+    includeSafetyPatch: true,
     avoidRepeat: true,
-
-    // 原规则要求 1-3 个主题、1-2 个展现形式，作为固定协议，不再拆成 UI 设置。
     themesMin: 1,
     themesMax: 3,
     formatsMin: 1,
     formatsMax: 2,
-
-    // 注入位置固定为 system / depth 0，减少用户误改导致失效。
     depth: 0,
     role: 'system',
-
     skipQuiet: true,
     skipImpersonate: true,
     debug: false,
@@ -47,12 +31,6 @@ export function getSettings() {
             settings[key] = value;
         }
     }
-
-    // 旧版用户设置迁移：如果之前选过 independent / canon，也统一归并为 integrated。
-    if (settings.mode === 'independent' || settings.mode === 'canon' || settings.mode === 'off') {
-        settings.mode = settings.mode === 'off' ? 'off' : 'integrated';
-    }
-
     settings.themesMin = Number(settings.themesMin) || defaultSettings.themesMin;
     settings.themesMax = Number(settings.themesMax) || defaultSettings.themesMax;
     settings.formatsMin = Number(settings.formatsMin) || defaultSettings.formatsMin;
