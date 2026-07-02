@@ -17,20 +17,20 @@ function formatLast(last) {
     return `上轮主题：${(last.themeIds || []).join(' + ') || '无'}；上轮展现形式：${(last.formatIds || []).join(' + ') || '无'}`;
 }
 
-function wonderlandBlock(combo, last, settings) {
-    if (!settings.showWonderland) return '';
+function cotBlock(combo, last, settings) {
+    if (!settings.showCot) return '';
     const themeText = combo.themes.map(x => `【${x.id} ${x.title}】`).join(' + ');
     const formatText = combo.formats.map(x => `【${x.id} ${x.title}】`).join(' + ');
     return String.raw`
-<wonderland>
+<thinking>
 A. 上轮组合：${formatLast(last)}
 B. 本轮主题：${themeText}
 C. 本轮展现形式：${formatText}
 D. 冷却校验：已由插件排除上一轮具体子项；若候选池不足，则允许回退。[pass]
 E. 语言：简体中文。[pass]
-F. 模式：一体化自动协议；若本轮抽到正文衍生类条目则允许 Canon 分支，否则按独立兔子洞执行。
+F. 模式：一体化自动协议；若本轮抽到正文衍生类条目则自动使用正文衍生分支，否则自动使用独立分支。
 G. UI构思：根据本轮展现形式自行设计，不复用单一模板。
-</wonderland>
+</thinking>
 `;
 }
 
@@ -62,9 +62,9 @@ ${RAW_UNIVERSAL_EXECUTION_RULES}
 
 【核心执行协议】
 - 每轮必须在主回复正文全部结束后，于本轮 assistant 消息最底部追加一个【兔子洞】折叠小剧场。
-- 兔子洞是一个整体模块，不拆分成 Independent / Canon / Raw Policy 供模型选择。
+- 兔子洞是一个整体模块，不拆分成手动模式供模型选择。
 - 每轮必须融合插件抽取的 1-3 个主题元素与 1-2 个展现形式，产生创意、不重复的小剧场。
-- 若本轮抽到正文衍生类条目，则允许作为 Canon 分支进行幕后、插曲、弹幕、演员回看、后日谈或心理补完；否则按独立兔子洞执行，不引用正文。
+- 若本轮抽到正文衍生类条目，则自动作为正文衍生分支进行幕后、插曲、弹幕、演员回看、后日谈或心理补完；否则按独立兔子洞执行，不引用正文。
 - 严禁连续复用上一轮完全相同的主题具体子项或展现形式具体子项。
 - 输出语言必须为简体中文；外语或术语出现时必须立即用 [] 给出简体中文翻译。
 - 输出必须使用 HTML <details> 折叠模块，并遵守移动端安全排版：max-width:100%; box-sizing:border-box; word-wrap:break-word; white-space:pre-wrap。
@@ -80,12 +80,12 @@ export function buildRabbitHolePrompt(settings, generationType = 'normal') {
 
     const selectedHasCanon = [...combo.themes, ...combo.formats].some(item => (item.tags || []).includes('canon'));
     const boundary = selectedHasCanon
-        ? '当前为一体化自动协议：本轮抽到了正文衍生类主题/展现形式，因此允许作为 Canon 分支基于当前篇章、角色状态、已发生剧情进行幕后/插曲/弹幕/后日谈/心理补完；但必须保持兔子洞作为独立折叠模块，不得破坏主回复。'
+        ? '当前为一体化自动协议：本轮抽到了正文衍生类主题/展现形式，因此自动使用正文衍生分支，可基于当前篇章、角色状态、已发生剧情进行幕后/插曲/弹幕/后日谈/心理补完；但必须保持兔子洞作为独立折叠模块，不得破坏主回复。'
         : '当前为一体化自动协议：本轮未抽到正文衍生类条目，因此兔子洞必须按独立分支执行，不得引用、复述、评价或暗示主线正文内容；只允许使用 {{char}}、{{user}} 与已出现 NPC 作为虚构元素。';
 
     const prompt = String.raw`
 <RabbitHoleTheaterAutoInjection>
-你必须在本轮主回复完成后，额外输出一个【兔子洞】小剧场模块。此模块由 SillyTavern 第三方扩展自动注入，不需要用户在预设里放任何内容。插件按【一体化自动协议】运行，不再把 Independent / Canon / Raw Policy 拆成用户手动选择项。
+你必须在本轮主回复完成后，额外输出一个【兔子洞】小剧场模块。此模块由 SillyTavern 第三方扩展自动注入，不需要用户在预设里放任何内容。插件按【一体化自动协议】运行，不再拆成用户手动选择项。
 
 ${rawPolicyBlock(settings)}
 
@@ -98,7 +98,7 @@ ${selectedThemes}
 【本轮随机展现形式：必须使用 1-2 个并融合；以下为按 ID 从母本提取的对应完整描述】
 ${selectedFormats}
 
-${wonderlandBlock(combo, last, settings)}
+${cotBlock(combo, last, settings)}
 
 【最终输出硬性要求】
 1. 【输出位置最高优先级】必须先完整生成主回复正文，正文全部结束后，才能追加兔子洞模块。兔子洞必须是本轮 assistant 消息的最后一个可见内容。
@@ -110,8 +110,9 @@ ${wonderlandBlock(combo, last, settings)}
 7. 严禁用 <br> 制造间距，段落使用 p 标签和 margin/line-height。
 8. 严禁连续复用上一轮完全相同的主题具体子项或展现形式具体子项。
 9. 若选择塔罗牌，图片地址遵守 rawExecutionRules 中 tarot.com Rider deck ID 计算规则。
-10. 不要在兔子洞小剧场正文或 <details> 模块内生成 Toto 水印；Toto 只作为插件设置界面的界面水印显示。
-11. 不要解释你正在遵守规则，不要输出代码块，直接输出最终可渲染 HTML。
+10. 【Toto 水印】Toto 仅作为插件设置界面的界面水印存在；不得在主回复正文或兔子洞 <details> 小剧场内部生成 Toto 水印。
+11. 如启用 <thinking>，其中只输出可见的执行摘要，不输出隐藏思维链或详细推理过程。
+12. 不要解释你正在遵守规则，不要输出代码块，直接输出最终可渲染 HTML。
 </RabbitHoleTheaterAutoInjection>
 `;
 

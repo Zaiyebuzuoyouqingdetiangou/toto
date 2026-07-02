@@ -17,7 +17,7 @@ export const defaultSettings = Object.freeze({
     rawPolicy: 'balanced',
 
     // 原规则是“每轮自动生成”，所以这些保持默认打开。
-    showWonderland: false,
+    showCot: false,
     // 安全补丁不再默认启用；用户原预设/主提示自行处理边界。
     includeSafetyPatch: false,
     avoidRepeat: true,
@@ -51,6 +51,15 @@ export function getSettings() {
     // 旧版用户设置迁移：如果之前选过 independent / canon，也统一归并为 integrated。
     if (settings.mode === 'independent' || settings.mode === 'canon' || settings.mode === 'off') {
         settings.mode = settings.mode === 'off' ? 'off' : 'integrated';
+    }
+
+
+    // 旧版 showWonderland 迁移为 showCot，并删除旧字段以免 UI 混乱。
+    if (settings.showCot === undefined && settings.showWonderland !== undefined) {
+        settings.showCot = !!settings.showWonderland;
+    }
+    if (settings.showWonderland !== undefined) {
+        delete settings.showWonderland;
     }
 
     settings.themesMin = Number(settings.themesMin) || defaultSettings.themesMin;

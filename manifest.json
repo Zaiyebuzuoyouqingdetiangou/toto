@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "Rabbit Hole Theater auto injection with ID-to-raw segment lookup and Toto watermark."
+  "description": "Rabbit Hole Theater auto injection with ID-to-raw segment lookup, COT summary option, and UI Toto watermark."
 }
