@@ -1,0 +1,16 @@
+{
+  "display_name": "兔子洞小剧场 / Rabbit Hole Theater",
+  "loading_order": 99,
+  "js": "index.js",
+  "css": "style.css",
+  "author": "Generated for user",
+  "version": "3.0.0",
+  "homePage": "https://github.com/your-name/Extension-RabbitHole",
+  "auto_update": true,
+  "generate_interceptor": "rabbitHoleGenerateInterceptor",
+  "minimum_client_version": "1.13.0",
+  "hooks": {
+    "disable": "onDisable",
+    "clean": "onClean"
+  }
+}

@@ -1,0 +1,23 @@
+.rabbit-hole-settings .inline-drawer-content {
+    padding: 10px;
+}
+.rabbit-hole-settings label {
+    display: block;
+    margin-top: 8px;
+}
+.rabbit-hole-settings .rh-num {
+    width: 64px;
+    min-width: 64px;
+}
+.rabbit-hole-settings .rabbit-hole-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+}
+.rabbit-hole-settings .notes {
+    opacity: 0.85;
+    font-size: 12px;
+    line-height: 1.5;
+    margin-top: 10px;
+}
