@@ -56,19 +56,33 @@ const DESIGN_ANCHORS = [
     '分隔线', '徽章', '时间码', '小地图', '仪表盘', '标签云'
 ];
 
-function pickDesignSignature(recentDesignIds = []) {
-    const used = new Set(recentDesignIds || []);
+function pickDesignSignature(recent = {}) {
+    const usedIds = new Set(recent?.designIds || []);
+    const usedConstructs = new Set(recent?.designConstructs || []);
+    const usedPalettes = new Set(recent?.designPalettes || []);
+    const usedAnchors = new Set(recent?.designAnchors || []);
+
+    const constructs = DESIGN_CONSTRUCTS.filter(x => !usedConstructs.has(x));
+    const palettes = DESIGN_PALETTES.filter(x => !usedPalettes.has(x));
+    const anchors = DESIGN_ANCHORS.filter(x => !usedAnchors.has(x));
+
+    const constructPool = constructs.length ? constructs : DESIGN_CONSTRUCTS;
+    const palettePool = palettes.length ? palettes : DESIGN_PALETTES;
+    const anchorPool = anchors.length ? anchors : DESIGN_ANCHORS;
+
     const attempts = [];
-    for (const construct of shuffle(DESIGN_CONSTRUCTS)) {
-        for (const palette of shuffle(DESIGN_PALETTES)) {
-            for (const anchor of shuffle(DESIGN_ANCHORS)) {
+    for (const construct of shuffle(constructPool)) {
+        for (const palette of shuffle(palettePool)) {
+            for (const anchor of shuffle(anchorPool)) {
                 const id = `${construct}|${palette}|${anchor}`;
-                attempts.push({ id, construct, palette, anchor });
-                if (!used.has(id)) return { id, construct, palette, anchor };
+                const concept = `${construct}；${palette}；${anchor}；根据本轮展现形式调整文本密度与阅读节奏`;
+                attempts.push({ id, construct, palette, anchor, concept });
+                if (!usedIds.has(id)) return { id, construct, palette, anchor, concept };
             }
         }
     }
-    return attempts[0] || { id: 'fallback', construct: '分区卡片', palette: '柔和中性色', anchor: '标题牌' };
+    const fallback = attempts[0] || { id: 'fallback', construct: '自适应分区界面', palette: '柔和中性色', anchor: '标题牌' };
+    return { ...fallback, concept: fallback.concept || `${fallback.construct}；${fallback.palette}；${fallback.anchor}；根据本轮展现形式调整文本密度与阅读节奏` };
 }
 
 function isRichPresentation(item) {
@@ -339,7 +353,8 @@ export function pickCombination(settings) {
         directive: result.directive || null,
         forcedVisualScenery: !!settings.forceVisualScenery,
         cooldownRounds: settings.cooldownRounds || 10,
-        design: pickDesignSignature(recent.designIds),
+        design: pickDesignSignature(recent),
+        recentUiBeautyConcepts: recent.designConcepts || [],
     };
 
     setLastCombo(combo);

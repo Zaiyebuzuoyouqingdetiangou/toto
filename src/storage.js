@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'rabbit_hole_theater:last_combo:v5';
+const STORAGE_KEY = 'rabbit_hole_theater:last_combo:v6';
 const MAX_STORED = 20;
 
 function readHistory() {
@@ -27,10 +27,18 @@ export function getRecentIds(limit = 10) {
     const themeIds = new Set();
     const formatIds = new Set();
     const designIds = new Set();
+    const designConstructs = new Set();
+    const designPalettes = new Set();
+    const designAnchors = new Set();
+    const designConcepts = [];
     for (const combo of history) {
         for (const id of combo?.themeIds || []) themeIds.add(id);
         for (const id of combo?.formatIds || []) formatIds.add(id);
         if (combo?.design?.id) designIds.add(combo.design.id);
+        if (combo?.design?.construct) designConstructs.add(combo.design.construct);
+        if (combo?.design?.palette) designPalettes.add(combo.design.palette);
+        if (combo?.design?.anchor) designAnchors.add(combo.design.anchor);
+        if (combo?.design?.concept) designConcepts.push(combo.design.concept);
     }
     const themeGroups = new Set();
     const formatGroups = new Set();
@@ -42,6 +50,10 @@ export function getRecentIds(limit = 10) {
         themeIds: [...themeIds],
         formatIds: [...formatIds],
         designIds: [...designIds],
+        designConstructs: [...designConstructs],
+        designPalettes: [...designPalettes],
+        designAnchors: [...designAnchors],
+        designConcepts: designConcepts.slice(-limit),
         themeGroups: [...themeGroups],
         formatGroups: [...formatGroups],
     };
@@ -63,5 +75,6 @@ export function clearLastCombo() {
         // 清理旧版 key，防止旧记录混淆。
         localStorage.removeItem('rabbit_hole_theater:last_combo:v3');
         localStorage.removeItem('rabbit_hole_theater:last_combo:v4');
+        localStorage.removeItem('rabbit_hole_theater:last_combo:v5');
     } catch {}
 }

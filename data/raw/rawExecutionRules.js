@@ -46,8 +46,8 @@ execution_and_boundaries:
       - "时间线一致性 (Timeline Consistency)"
 
   cooldown_mechanism:
-    rule: "严禁在最近 10 轮内重复使用完全相同的【展现形式】子项目；同时避免沿用高度相似的版式结构、视觉重心或阅读节奏。"
-    scope: "Applies to theme item, presentation_format item, and perceived UI similarity."
+    rule: "严禁在最近 10 轮内重复使用完全相同的【展现形式】子项目；同时避免沿用高度相似的 UI美化构思、版式结构、视觉重心或阅读节奏。"
+    scope: "Applies to theme item, presentation_format item, UI美化构思, and perceived UI similarity."
 
 # II. 格式与美感规范 [强制执行]
 format_and_aesthetics_specifications:
@@ -84,7 +84,7 @@ format_and_aesthetics_specifications:
     language_lock:
       status: "MANDATORY"
       rule: "【兔子洞】内所有可见文字，必须且只能使用【简体中文】。标题、按钮、状态栏、表头、标签、系统提示、菜单项、角标、弹窗、注释、占位文本都必须中文化。"
-    term_translation_protocol: "任何外语或专业术语，必须在出现时立即附加一个使用中括号 [] 包裹的简体中文翻译。不得整块输出英文 UI。"
+    term_translation_protocol: "任何外语或专业术语，必须在出现时立即附加一个使用中括号 [] 包裹的简体中文翻译。不得整块输出英文 UI，禁止英文承担主要界面标签。"
 {{setvar::兔子洞执行规则::兔子洞主语言输出必须为简体中文，任何外语或专业术语，必须在出现时立即附加一个使用中括号 [] 包裹的简体中文翻译。}}
 
 # 塔罗牌小剧场配置 (Tarot Theater Configuration)
@@ -136,7 +136,17 @@ Page=10，Knight=11，Queen=12，King=13。
 - **伪差异无效**: 仅更换主题文字、颜色、图标、边框或装饰，不足以构成新 UI。
 - **模板排除**: 本协议优先级高于任何输出示例。输出示例仅用于说明外层结构，不得固化为固定模板。
 
-### 3. 指标使用方式 (Metric Usage Protocol)
+### 3. UI美化构思冷却协议 (UI Beauty Concept Cooldown)
+此处的“UI美化构思”指本轮小剧场的整体视觉方案，包含版式结构、主视觉锚点、色彩策略、空间层级、材质质感、装饰方式、文本密度、阅读节奏与整体观感。
+
+最近 10 轮内已经使用过的 UI美化构思，不得复用、近似复用或换词复用。
+判定重复时，不以主题、标题、角色名或台词为准，而以实际观感为准。
+
+仅更换标题、数值、颜色、图标、边框或装饰，不构成新的 UI美化构思。
+
+若近期出现过相似 UI美化构思，本轮必须主动改换视觉方向、版式结构、信息排列方式、主视觉锚点或阅读节奏。
+
+### 4. 指标使用方式 (Metric Usage Protocol)
 - 上述 7 项是质量审计指标，不是固定模板或固定审美配方。
 - 每轮不得机械选择同一组指标完成任务；应根据本轮【展现形式】决定最适合的 4 项以上指标。
 - 最近 10 轮内，不得连续依赖相同的核心技术组合。
