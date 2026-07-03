@@ -37,52 +37,43 @@ function weightedFormatCount(settings) {
 }
 
 
-const DESIGN_CONSTRUCTS = [
-    '分屏双栏', '纵向时间轴', '横向票根', '手机界面', '网格相册', '舞台分镜',
-    '圆形仪表', '文件夹标签', '播放器界面', '地图坐标', '桌面小组件', '信纸便签',
-    '棋盘格', '牌阵星图', '弹幕浮层', '购物票据', '直播面板', '游戏结算',
-    '报刊版面', '霓虹招牌', '折叠抽屉', '层叠卡片'
+const UI_REVIEW_FOCUS = [
+    '展现形式载体感',
+    '媒介语法准确度',
+    '非通用卡片化',
+    '高级质感',
+    '空间层级与视觉深度',
+    '主视觉锚点明确',
+    '文字密度服从载体',
+    '文本长短错落',
+    '阅读路径有节奏',
+    '装饰方式与氛围契合',
+    '配色服务本轮氛围',
+    '避免状态栏化',
+    '避免报告卡化',
+    '避免普通信息面板化',
+    '近期10轮观感去重'
 ];
 
-const DESIGN_PALETTES = [
-    '暖灯琥珀', '雾蓝银灰', '樱桃奶油', '雨夜霓虹', '旧纸焦糖', '月白墨黑',
-    '薄荷玻璃', '玫瑰铜金', '深海孔雀', '黄昏橙紫', '森绿苔藓', '雪夜淡青',
-    '莓果酒红', '鸢尾紫灰', '沙丘米金', '电光蓝粉', '烟熏茶色', '黑金剧院'
-];
+function pickUiReviewFocus(count = 4) {
+    const n = Math.max(3, Math.min(Number(count) || 4, UI_REVIEW_FOCUS.length));
+    const mustHave = ['展现形式载体感', '媒介语法准确度', '近期10轮观感去重'];
+    const rest = UI_REVIEW_FOCUS.filter(x => !mustHave.includes(x));
+    return [...mustHave, ...shuffle(rest).slice(0, Math.max(0, n - mustHave.length))];
+}
 
-const DESIGN_ANCHORS = [
-    '标题牌', '状态栏', '印章', '进度条', '牌面', '缩略图', '弹幕层', '票根',
-    '便签', '相册格', '坐标轴', '菜单栏', '播放器', '章节条', '光斑', '剪影',
-    '分隔线', '徽章', '时间码', '小地图', '仪表盘', '标签云'
-];
+let cachedPick = null;
 
-function pickDesignSignature(recent = {}) {
-    const usedIds = new Set(recent?.designIds || []);
-    const usedConstructs = new Set(recent?.designConstructs || []);
-    const usedPalettes = new Set(recent?.designPalettes || []);
-    const usedAnchors = new Set(recent?.designAnchors || []);
-
-    const constructs = DESIGN_CONSTRUCTS.filter(x => !usedConstructs.has(x));
-    const palettes = DESIGN_PALETTES.filter(x => !usedPalettes.has(x));
-    const anchors = DESIGN_ANCHORS.filter(x => !usedAnchors.has(x));
-
-    const constructPool = constructs.length ? constructs : DESIGN_CONSTRUCTS;
-    const palettePool = palettes.length ? palettes : DESIGN_PALETTES;
-    const anchorPool = anchors.length ? anchors : DESIGN_ANCHORS;
-
-    const attempts = [];
-    for (const construct of shuffle(constructPool)) {
-        for (const palette of shuffle(palettePool)) {
-            for (const anchor of shuffle(anchorPool)) {
-                const id = `${construct}|${palette}|${anchor}`;
-                const concept = `${construct}；${palette}；${anchor}；根据本轮展现形式调整文本密度与阅读节奏`;
-                attempts.push({ id, construct, palette, anchor, concept });
-                if (!usedIds.has(id)) return { id, construct, palette, anchor, concept };
-            }
-        }
+function getChatTurnKey() {
+    try {
+        const context = SillyTavern?.getContext?.();
+        const chat = context?.chat || [];
+        const lastUserIndex = [...chat].map((m, i) => ({ m, i })).reverse().find(x => x.m?.is_user)?.i ?? -1;
+        const lastUserMessage = lastUserIndex >= 0 ? String(chat[lastUserIndex]?.mes || '') : '';
+        return `${chat.length}|${lastUserIndex}|${lastUserMessage.slice(0, 500)}`;
+    } catch (_error) {
+        return `fallback|${getLastUserMessage().slice(0, 500)}`;
     }
-    const fallback = attempts[0] || { id: 'fallback', construct: '自适应分区界面', palette: '柔和中性色', anchor: '标题牌' };
-    return { ...fallback, concept: fallback.concept || `${fallback.construct}；${fallback.palette}；${fallback.anchor}；根据本轮展现形式调整文本密度与阅读节奏` };
 }
 
 function isRichPresentation(item) {
@@ -329,6 +320,11 @@ function applyDirectiveOrRandom({ settings, themePool, formatPool, themeCount, f
 }
 
 export function pickCombination(settings) {
+    const turnKey = getChatTurnKey();
+    if (cachedPick?.turnKey === turnKey) {
+        return cachedPick.payload;
+    }
+
     const last = getLastCombo();
     const recent = getRecentIds(settings.cooldownRounds || 10);
     const themeCount = weightedThemeCount(settings);
@@ -342,7 +338,9 @@ export function pickCombination(settings) {
 
     const result = applyDirectiveOrRandom({ settings, themePool, formatPool, themeCount, formatCount, last, recent });
     if (result.disabled) {
-        return { disabled: true, directive: result.directive, combo: null, last };
+        const payload = { disabled: true, directive: result.directive, combo: null, last };
+        cachedPick = { turnKey, payload };
+        return payload;
     }
 
     const combo = {
@@ -357,10 +355,12 @@ export function pickCombination(settings) {
         directive: result.directive || null,
         forcedVisualScenery: !!settings.forceVisualScenery,
         cooldownRounds: settings.cooldownRounds || 10,
-        design: pickDesignSignature(recent),
-        recentUiBeautyConcepts: recent.designConcepts || [],
+        uiReviewFocus: pickUiReviewFocus(5),
+        recentUiReviewFocus: recent.uiReviewFocus || [],
     };
 
     setLastCombo(combo);
-    return { combo, last, directive: result.directive || null };
+    const payload = { combo, last, directive: result.directive || null };
+    cachedPick = { turnKey, payload };
+    return payload;
 }

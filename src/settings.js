@@ -24,7 +24,7 @@ export const defaultSettings = Object.freeze({
     // 安全补丁不再默认启用；用户原预设/主提示自行处理边界。
     includeSafetyPatch: false,
     avoidRepeat: true,
-    // 冷却扩大到 10 轮：避免同一主题、展现形式、UI美化构思在短时间内反复出现。
+    // 冷却扩大到 10 轮：避免同一主题、展现形式或近似视觉观感在短时间内反复出现。
     cooldownRounds: 10,
     // 增强版式多样性：随机时更偏向带界面结构/视觉锚点的展现形式，减少纯文字类连续出现。
     richFormatBias: true,
