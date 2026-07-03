@@ -12,6 +12,9 @@ export const defaultSettings = Object.freeze({
     // - 否则按独立兔子洞执行。
     mode: 'integrated',
 
+    // 抽取模式：classic=主题元素+展现形式；format_only=仅展现形式。
+    samplingMode: 'classic',
+
     // 默认不每轮塞完整大库，避免 token 爆炸；完整原文仍保存在 data/raw/。
     // 这个选项不再暴露在 UI 里，除非你自己改代码。
     rawPolicy: 'balanced',
@@ -83,6 +86,7 @@ export function getSettings() {
     settings.formatsMin = Number(settings.formatsMin) || defaultSettings.formatsMin;
     settings.formatsMax = Number(settings.formatsMax) || defaultSettings.formatsMax;
     settings.cooldownRounds = Math.max(1, Number(settings.cooldownRounds) || defaultSettings.cooldownRounds);
+    if (!['classic', 'format_only'].includes(settings.samplingMode)) settings.samplingMode = defaultSettings.samplingMode;
     settings.depth = Number(settings.depth) || 0;
     return settings;
 }

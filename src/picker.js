@@ -309,11 +309,14 @@ function applyDirectiveOrRandom({ settings, themePool, formatPool, themeCount, f
     const directiveFormats = directive?.formats || [];
     const directiveWantsVisualScenery = directiveFormats.some(item => item?.id === '10.2.2');
 
-    const themes = uniqueById([...(directive?.themes || []), ...pickedThemes]).slice(0, Math.max(themeCount, directive?.themes?.length || 0));
+    const formatOnly = settings.samplingMode === 'format_only';
+    const themes = formatOnly
+        ? []
+        : uniqueById([...(directive?.themes || []), ...pickedThemes]).slice(0, Math.max(themeCount, directive?.themes?.length || 0));
 
     let formats;
     if (forcedFormats.length) {
-        // Visual Scenery 动态模式开启时，展现形式锁定为 10.2.2；主题仍可随机或由正文指令指定。
+        // Visual Scenery 动态模式开启时，展现形式锁定为 10.2.2；是否抽主题由抽取模式决定。
         formats = forcedFormats;
     } else if (directiveWantsVisualScenery) {
         // 用户正文明确指定 Visual Scenery 时，也让它成为本轮核心展现形式，避免被随机格式稀释。
@@ -350,6 +353,7 @@ export function pickCombination(settings) {
         themeGroups: result.themes.map(x => x.group).filter(Boolean),
         formatGroups: result.formats.map(x => x.group).filter(Boolean),
         mode: settings.mode,
+        samplingMode: settings.samplingMode || 'classic',
         directive: result.directive || null,
         forcedVisualScenery: !!settings.forceVisualScenery,
         cooldownRounds: settings.cooldownRounds || 10,

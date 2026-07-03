@@ -14,11 +14,19 @@ export function initRabbitHoleUI() {
 <div id="rabbit_hole_theater_settings" class="rabbit-hole-settings">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子洞小剧场 / Rabbit Hole Theater</b><span class="rabbit-hole-toto-watermark">Toto v0.20.0</span>
+      <b>兔子洞小剧场 / Rabbit Hole Theater</b><span class="rabbit-hole-toto-watermark">Toto v0.21.0</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
       <label class="checkbox_label"><input id="rh_enabled" type="checkbox"> 启用兔子洞自动注入</label>
+
+      <label for="rh_sampling_mode" class="flex-container alignitemscenter" style="gap:8px;flex-wrap:wrap;margin:8px 0;">
+        <span>抽取模式</span>
+        <select id="rh_sampling_mode" class="text_pole" style="max-width:260px;">
+          <option value="classic">主题元素 + 展现形式（经典模式）</option>
+          <option value="format_only">仅展现形式</option>
+        </select>
+      </label>
 
       <label class="checkbox_label"><input id="rh_show_cot" type="checkbox"> 输出 &lt;thinking&gt; 执行摘要</label>
       <label class="checkbox_label"><input id="rh_user_directive" type="checkbox"> 正文指令优先</label>
@@ -41,6 +49,7 @@ export function initRabbitHoleUI() {
     $('#extensions_settings2').append(html);
 
     checked('#rh_enabled', settings.enabled);
+    $('#rh_sampling_mode').val(settings.samplingMode || 'classic');
     checked('#rh_show_cot', settings.showCot);
     checked('#rh_user_directive', settings.userDirectivePriority);
     checked('#rh_force_visual_scenery', settings.forceVisualScenery);
@@ -51,6 +60,7 @@ export function initRabbitHoleUI() {
     checked('#rh_debug', settings.debug);
 
     $('#rh_enabled').on('change', e => updateSettings({ enabled: e.target.checked, mode: e.target.checked ? 'integrated' : 'off' }));
+    $('#rh_sampling_mode').on('change', e => updateSettings({ samplingMode: e.target.value }));
     $('#rh_show_cot').on('change', e => updateSettings({ showCot: e.target.checked }));
     $('#rh_user_directive').on('change', e => updateSettings({ userDirectivePriority: e.target.checked }));
     $('#rh_force_visual_scenery').on('change', e => updateSettings({ forceVisualScenery: e.target.checked }));
