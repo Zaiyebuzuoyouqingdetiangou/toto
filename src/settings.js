@@ -21,6 +21,14 @@ export const defaultSettings = Object.freeze({
     // 安全补丁不再默认启用；用户原预设/主提示自行处理边界。
     includeSafetyPatch: false,
     avoidRepeat: true,
+    // 冷却扩大到 10 轮：避免同一主题、展现形式、UI 构图在短时间内反复出现。
+    cooldownRounds: 10,
+    // 增强版式多样性：随机时更偏向带界面结构/视觉锚点的展现形式，减少纯文字类连续出现。
+    richFormatBias: true,
+    // 强制启动增强：将小剧场作为本轮输出格式的一部分，而不是可选附加项。
+    hardStartup: true,
+    // 语言锁定增强：所有可见 UI 文案也必须为简体中文，避免全英文界面。
+    hardChineseLock: true,
     // 勾选后，最后一条用户消息里的“兔子洞：xxx / 兔子洞主题：xxx / 兔子洞格式：xxx”等会优先生效。
     userDirectivePriority: true,
 
@@ -74,6 +82,7 @@ export function getSettings() {
     settings.themesMax = Number(settings.themesMax) || defaultSettings.themesMax;
     settings.formatsMin = Number(settings.formatsMin) || defaultSettings.formatsMin;
     settings.formatsMax = Number(settings.formatsMax) || defaultSettings.formatsMax;
+    settings.cooldownRounds = Math.max(1, Number(settings.cooldownRounds) || defaultSettings.cooldownRounds);
     settings.depth = Number(settings.depth) || 0;
     return settings;
 }

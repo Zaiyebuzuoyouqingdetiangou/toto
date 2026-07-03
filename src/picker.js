@@ -1,6 +1,6 @@
 import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js';
 import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js';
-import { getLastCombo, setLastCombo } from './storage.js';
+import { getLastCombo, getRecentIds, setLastCombo } from './storage.js';
 
 function randomInt(min, max) {
     const low = Math.min(min, max);
@@ -17,19 +17,120 @@ function shuffle(array) {
     return result;
 }
 
+function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+}
+
+function weightedThemeCount(settings) {
+    const min = Number(settings.themesMin) || 1;
+    const max = Number(settings.themesMax) || 3;
+    const r = Math.random();
+    const count = r < 0.75 ? 1 : r < 0.97 ? 2 : 3;
+    return clamp(count, min, max);
+}
+
+function weightedFormatCount(settings) {
+    const min = Number(settings.formatsMin) || 1;
+    const max = Number(settings.formatsMax) || 2;
+    const count = Math.random() < 0.85 ? 1 : 2;
+    return clamp(count, min, max);
+}
+
+
+const DESIGN_CONSTRUCTS = [
+    '分屏双栏', '纵向时间轴', '横向票根', '手机界面', '网格相册', '舞台分镜',
+    '圆形仪表', '文件夹标签', '播放器界面', '地图坐标', '桌面小组件', '信纸便签',
+    '棋盘格', '牌阵星图', '弹幕浮层', '购物票据', '直播面板', '游戏结算',
+    '报刊版面', '霓虹招牌', '折叠抽屉', '层叠卡片'
+];
+
+const DESIGN_PALETTES = [
+    '暖灯琥珀', '雾蓝银灰', '樱桃奶油', '雨夜霓虹', '旧纸焦糖', '月白墨黑',
+    '薄荷玻璃', '玫瑰铜金', '深海孔雀', '黄昏橙紫', '森绿苔藓', '雪夜淡青',
+    '莓果酒红', '鸢尾紫灰', '沙丘米金', '电光蓝粉', '烟熏茶色', '黑金剧院'
+];
+
+const DESIGN_ANCHORS = [
+    '标题牌', '状态栏', '印章', '进度条', '牌面', '缩略图', '弹幕层', '票根',
+    '便签', '相册格', '坐标轴', '菜单栏', '播放器', '章节条', '光斑', '剪影',
+    '分隔线', '徽章', '时间码', '小地图', '仪表盘', '标签云'
+];
+
+function pickDesignSignature(recentDesignIds = []) {
+    const used = new Set(recentDesignIds || []);
+    const attempts = [];
+    for (const construct of shuffle(DESIGN_CONSTRUCTS)) {
+        for (const palette of shuffle(DESIGN_PALETTES)) {
+            for (const anchor of shuffle(DESIGN_ANCHORS)) {
+                const id = `${construct}|${palette}|${anchor}`;
+                attempts.push({ id, construct, palette, anchor });
+                if (!used.has(id)) return { id, construct, palette, anchor };
+            }
+        }
+    }
+    return attempts[0] || { id: 'fallback', construct: '分区卡片', palette: '柔和中性色', anchor: '标题牌' };
+}
+
+function isRichPresentation(item) {
+    const tags = new Set(item?.tags || []);
+    const text = `${item?.id || ''} ${item?.title || ''} ${item?.summary || ''} ${item?.raw || ''}`;
+    if ([...tags].some(tag => ['visual', 'digital', 'interactive', 'game', 'mysticism', 'media'].includes(tag))) return true;
+    return /(界面|接口|面板|图|图表|时间轴|票据|相册|壁纸|直播|弹幕|游戏|抽卡|牌阵|星盘|命盘|黄历|符咒|视觉|可视化|Scenery|播放器|排行榜|审批|日历|Bingo|四格|分镜|海报|菜单|小组件|票根|坐标)/i.test(text);
+}
+
+function enrichFormatPool(pool, settings, count) {
+    if (!settings?.richFormatBias) return pool;
+    const rich = pool.filter(isRichPresentation);
+    if (rich.length >= Math.min(count, 1)) {
+        // 重复几次富版式候选，提高抽中概率，但不完全排除文学/信件等文本美学格式。
+        return [...rich, ...rich, ...pool];
+    }
+    return pool;
+}
+
 function allowByMode(_item, mode) {
     if (mode === 'off') return false;
     return true;
 }
 
-function pickMany(pool, count, lastIds = [], avoidRepeat = true) {
-    const last = new Set(lastIds || []);
-    let candidates = pool;
+function weightedSample(pool, count, recentIds = [], recentGroups = [], avoidRepeat = true) {
+    const recent = new Set(recentIds || []);
+    const groups = new Set(recentGroups || []);
+    let candidates = [...pool];
+
+    // 完全相同子项优先从候选池中移除；候选不足时才回退。
     if (avoidRepeat) {
-        const filtered = candidates.filter(x => !last.has(x.id));
+        const filtered = candidates.filter(x => !recent.has(x.id));
         if (filtered.length >= count) candidates = filtered;
     }
-    return shuffle(candidates).slice(0, Math.max(1, Math.min(count, candidates.length)));
+
+    const selected = [];
+    const used = new Set();
+    while (selected.length < count && used.size < candidates.length) {
+        const weighted = candidates
+            .filter(item => !used.has(item.id))
+            .map(item => {
+                let weight = 1;
+                // 最近 10 轮同父类不绝对禁止，只降权，让随机更丰富但不容易疲劳。
+                if (avoidRepeat && groups.has(item.group)) weight *= 0.35;
+                // 很久没出现的项目保留基础权重，避免总是抽到熟悉格式。
+                return { item, weight };
+            });
+        const total = weighted.reduce((sum, x) => sum + x.weight, 0);
+        let roll = Math.random() * total;
+        let chosen = weighted[weighted.length - 1]?.item;
+        for (const entry of weighted) {
+            roll -= entry.weight;
+            if (roll <= 0) {
+                chosen = entry.item;
+                break;
+            }
+        }
+        if (!chosen) break;
+        selected.push(chosen);
+        used.add(chosen.id);
+    }
+    return selected.length ? selected : shuffle(candidates).slice(0, Math.max(1, Math.min(count, candidates.length)));
 }
 
 function getLastUserMessage() {
@@ -180,14 +281,15 @@ function getVisualSceneryFormat() {
     return PRESENTATION_FORMATS.find(item => item.id === '10.2.2' || normalizeText(item.title) === normalizeText('Visual Scenery')) || null;
 }
 
-function applyDirectiveOrRandom({ settings, themePool, formatPool, themeCount, formatCount, last }) {
+function applyDirectiveOrRandom({ settings, themePool, formatPool, themeCount, formatCount, last, recent }) {
     const directive = settings.userDirectivePriority ? parseUserDirective(getLastUserMessage()) : null;
     if (directive?.disabled) {
         return { disabled: true, directive };
     }
 
-    const pickedThemes = pickMany(themePool, themeCount, last.themeIds, settings.avoidRepeat);
-    const pickedFormats = pickMany(formatPool, formatCount, last.formatIds, settings.avoidRepeat);
+    const pickedThemes = weightedSample(themePool, themeCount, recent.themeIds, recent.themeGroups, settings.avoidRepeat);
+    const weightedFormatPool = enrichFormatPool(formatPool, settings, formatCount);
+    const pickedFormats = weightedSample(weightedFormatPool, formatCount, recent.formatIds, recent.formatGroups, settings.avoidRepeat);
     const visualSceneryFormat = getVisualSceneryFormat();
     const forcedFormats = settings.forceVisualScenery && visualSceneryFormat ? [visualSceneryFormat] : [];
     const directiveFormats = directive?.formats || [];
@@ -211,8 +313,9 @@ function applyDirectiveOrRandom({ settings, themePool, formatPool, themeCount, f
 
 export function pickCombination(settings) {
     const last = getLastCombo();
-    const themeCount = randomInt(settings.themesMin, settings.themesMax);
-    const formatCount = randomInt(settings.formatsMin, settings.formatsMax);
+    const recent = getRecentIds(settings.cooldownRounds || 10);
+    const themeCount = weightedThemeCount(settings);
+    const formatCount = weightedFormatCount(settings);
 
     let themePool = THEMATIC_CATEGORIES.filter(item => allowByMode(item, settings.mode));
     let formatPool = PRESENTATION_FORMATS.filter(item => allowByMode(item, settings.mode));
@@ -220,7 +323,7 @@ export function pickCombination(settings) {
     if (!themePool.length) themePool = THEMATIC_CATEGORIES;
     if (!formatPool.length) formatPool = PRESENTATION_FORMATS;
 
-    const result = applyDirectiveOrRandom({ settings, themePool, formatPool, themeCount, formatCount, last });
+    const result = applyDirectiveOrRandom({ settings, themePool, formatPool, themeCount, formatCount, last, recent });
     if (result.disabled) {
         return { disabled: true, directive: result.directive, combo: null, last };
     }
@@ -230,9 +333,13 @@ export function pickCombination(settings) {
         formats: result.formats,
         themeIds: result.themes.map(x => x.id),
         formatIds: result.formats.map(x => x.id),
+        themeGroups: result.themes.map(x => x.group).filter(Boolean),
+        formatGroups: result.formats.map(x => x.group).filter(Boolean),
         mode: settings.mode,
         directive: result.directive || null,
         forcedVisualScenery: !!settings.forceVisualScenery,
+        cooldownRounds: settings.cooldownRounds || 10,
+        design: pickDesignSignature(recent.designIds),
     };
 
     setLastCombo(combo);
