@@ -4,7 +4,7 @@
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.19.3",
+  "version": "0.20.0",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitHoleGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "Rabbit Hole Theater auto injection with template-free output structure, 10-round cooldown including UI美化构思, controlled random fusion, stronger Chinese UI-label language lock, Visual Scenery canvas mode, and Toto settings watermark."
+  "description": "Rabbit Hole Theater auto injection with lightweight runtime rules, separate Chinese language lock, conditional tarot image rules, 10-round cooldown including UI美化构思, controlled random fusion, Visual Scenery canvas mode, and Toto settings watermark."
 }
