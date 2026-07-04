@@ -15,6 +15,8 @@ Toto v0.22
 /<toto\b[^>]*>[\s\S]*?<\/toto>\s*/gi
 ```
 
+推荐设置：替换留空／勾选 AI输出／勾选 仅格式提示词。
+
 ## 安装
 
 将本仓库放入 SillyTavern 的第三方扩展目录，或通过 Extensions 安装 GitHub 仓库地址。

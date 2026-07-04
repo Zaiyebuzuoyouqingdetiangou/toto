@@ -38,8 +38,9 @@ export function initRabbitHoleUI() {
       <label class="checkbox_label"><input id="rh_skip_impersonate" type="checkbox"> 跳过 impersonate 生成</label>
       <label class="checkbox_label"><input id="rh_debug" type="checkbox"> 控制台调试日志</label>
 
-      <div class="rabbit-hole-regex-helper" style="margin:10px 0;padding:10px;border:1px solid var(--SmartThemeBorderColor);border-radius:8px;">
+      <div class="rabbit-hole-regex-helper" style="margin:10px 0;padding:10px;border:1px solid var(--SmartThemeBorderColor);border-radius:8px;line-height:1.55;">
         <div style="font-weight:600;margin-bottom:6px;">不发送小剧场正则</div>
+        <div style="opacity:.82;font-size:12px;margin-bottom:8px;">设置：替换留空／勾选 AI输出／勾选 仅格式提示词</div>
         <button id="rh_copy_regex" class="menu_button" type="button">复制推荐正则</button>
       </div>
 

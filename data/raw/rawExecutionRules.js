@@ -6,7 +6,7 @@ export const RAW_EXECUTION_RULES = String.raw`
 
 执行边界:
   enforcement_level: "mandatory"
-  trigger: "主回复完成后，回复最后必须追加完整 <toto data-rabbit-hole=\"true\" style=\"display:block;\"> 包裹的 <details> 小剧场"
+  trigger: "主回复完成后，回复最后必须追加完整 <toto data-rabbit-hole="true" style="display:block;"> 包裹的 <details> 小剧场"
   summary: "标题写入 <summary>，格式为【兔子洞：本次小剧场标题】"
   narrative_boundary:
     - "不得以任何形式干预或改写主线叙事内容"
@@ -22,14 +22,14 @@ export const RAW_EXECUTION_RULES = String.raw`
 
 输出结构:
   enforcement_level: "mandatory"
-  wrapper: "<toto data-rabbit-hole=\"true\" style=\"display:block;\"><details>...</details></toto>"
+  wrapper: "<toto data-rabbit-hole="true" style="display:block;"><details>...</details></toto>"
   rule:
-    - "小剧场最外层必须使用 <toto data-rabbit-hole=\"true\" style=\"display:block;\"> 作为插件识别边界，内部再使用 <details> 折叠模块，并在 <summary> 中显示标题"
+    - "小剧场最外层必须使用 <toto data-rabbit-hole="true" style="display:block;"> 作为插件识别边界，内部再使用 <details> 折叠模块，并在 <summary> 中显示标题"
     - "<toto> 只作为插件与正则识别边界，不得作为可见标题、标签、栏目名、水印或 UI 元素"
     - "内部 HTML 结构、版式、色彩、层级、视觉锚点必须根据本轮展现形式重新设计"
     - "不提供固定 HTML 模板；任何示例不得固化为固定卡片模板"
     - "最终输出为可直接渲染的 HTML 压缩代码，不输出代码块，不解释规则"
-    - "兔子洞模块必须以 <toto 开始，并以 </toto> 结束；不得在 </toto> 后追加任何可见内容"
+    - "小剧场最外层必须完整包裹在 <toto data-rabbit-hole="true" style="display:block;"> 与 </toto> 之间，禁止遗漏闭合标签；不得在 </toto> 后追加任何可见内容"
 
 去模板化冷却:
   enforcement_level: "mandatory"
