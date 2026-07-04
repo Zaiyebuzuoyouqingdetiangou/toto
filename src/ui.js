@@ -1,9 +1,19 @@
-import { getSettings, updateSettings, resetSettings } from './settings.js';
+import { getSettings, updateSettings, updateSubApiSettings, resetSettings } from './settings.js';
 import { clearLastCombo } from './storage.js';
 import { clearRabbitHolePrompt } from './injector.js';
+import { fetchSubApiModels, saveFetchedModel } from './subApi.js';
 
 function checked(id, value) {
     $(id).prop('checked', !!value);
+}
+
+function value(id, value) {
+    $(id).val(value ?? '');
+}
+
+function toggleSubApiPanel() {
+    const settings = getSettings();
+    $('#rh_sub_api_panel').toggle(settings.generationMode === 'sub_api');
 }
 
 export function initRabbitHoleUI() {
@@ -20,6 +30,68 @@ export function initRabbitHoleUI() {
     </div>
     <div class="inline-drawer-content">
       <label class="checkbox_label"><input id="rh_enabled" type="checkbox"> 启用兔子洞自动注入</label>
+
+      <label for="rh_generation_mode" class="flex-container alignitemscenter" style="gap:8px;flex-wrap:wrap;margin:8px 0;">
+        <span>兔子洞生成模式</span>
+        <select id="rh_generation_mode" class="text_pole" style="max-width:260px;">
+          <option value="main">跟随主模型生成</option>
+          <option value="sub_api">使用副 API 独立生成</option>
+        </select>
+      </label>
+
+      <div id="rh_sub_api_panel" style="margin:10px 0;padding:10px;border:1px solid var(--SmartThemeBorderColor);border-radius:8px;">
+        <div style="font-weight:600;margin-bottom:8px;">副 API 设置</div>
+
+        <label for="rh_sub_api_type" class="flex-container alignitemscenter" style="gap:8px;flex-wrap:wrap;margin:6px 0;">
+          <span>API 类型</span>
+          <select id="rh_sub_api_type" class="text_pole" style="max-width:220px;">
+            <option value="openai">OpenAI 兼容</option>
+            <option value="gemini">Gemini 兼容</option>
+            <option value="anthropic">Claude / Anthropic 兼容</option>
+            <option value="custom">自定义 / 手动填写模型</option>
+          </select>
+        </label>
+
+        <label style="display:block;margin:6px 0;">API 地址
+          <input id="rh_sub_api_endpoint" class="text_pole" type="text" placeholder="例如：https://api.example.com/v1" style="width:100%;box-sizing:border-box;">
+        </label>
+
+        <label style="display:block;margin:6px 0;">API Key
+          <input id="rh_sub_api_key" class="text_pole" type="password" placeholder="保存在本地设置中" style="width:100%;box-sizing:border-box;">
+        </label>
+
+        <label style="display:block;margin:6px 0;">模型名
+          <input id="rh_sub_api_model" class="text_pole" type="text" list="rh_sub_api_models" placeholder="可手动填写，也可点击拉取模型列表" style="width:100%;box-sizing:border-box;">
+          <datalist id="rh_sub_api_models"></datalist>
+        </label>
+
+        <div class="flex-container alignitemscenter" style="gap:8px;flex-wrap:wrap;margin:6px 0;">
+          <button id="rh_fetch_models" class="menu_button" type="button">拉取模型列表</button>
+          <span id="rh_fetch_models_status" style="opacity:.75;font-size:12px;"></span>
+        </div>
+
+        <label for="rh_sub_api_temperature" class="flex-container alignitemscenter" style="gap:8px;flex-wrap:wrap;margin:6px 0;">
+          <span>温度</span>
+          <input id="rh_sub_api_temperature" class="text_pole" type="number" min="0" max="2" step="0.05" style="max-width:100px;">
+        </label>
+
+        <label for="rh_sub_api_max_tokens" class="flex-container alignitemscenter" style="gap:8px;flex-wrap:wrap;margin:6px 0;">
+          <span>最大输出 token</span>
+          <input id="rh_sub_api_max_tokens" class="text_pole" type="number" min="512" max="32768" step="512" style="max-width:130px;">
+        </label>
+        <div style="opacity:.72;font-size:12px;line-height:1.45;margin-top:-2px;margin-bottom:6px;">默认 16000，适合复杂 HTML 小剧场。实际上限取决于副 API 和模型。</div>
+
+        <label for="rh_sub_api_context" class="flex-container alignitemscenter" style="gap:8px;flex-wrap:wrap;margin:6px 0;">
+          <span>副 API 参考上下文</span>
+          <select id="rh_sub_api_context" class="text_pole" style="max-width:240px;">
+            <option value="current">仅本轮正文</option>
+            <option value="current_plus_1">本轮正文 + 最近1轮聊天</option>
+            <option value="current_plus_3">本轮正文 + 最近3轮聊天</option>
+            <option value="current_plus_5">本轮正文 + 最近5轮聊天</option>
+          </select>
+        </label>
+        <div style="opacity:.72;font-size:12px;line-height:1.45;">默认推荐最近5轮。</div>
+      </div>
 
       <label for="rh_sampling_mode" class="flex-container alignitemscenter" style="gap:8px;flex-wrap:wrap;margin:8px 0;">
         <span>抽取模式</span>
@@ -56,6 +128,14 @@ export function initRabbitHoleUI() {
     $('#extensions_settings2').append(html);
 
     checked('#rh_enabled', settings.enabled);
+    value('#rh_generation_mode', settings.generationMode || 'main');
+    value('#rh_sub_api_type', settings.subApi?.apiType || 'openai');
+    value('#rh_sub_api_endpoint', settings.subApi?.endpoint || '');
+    value('#rh_sub_api_key', settings.subApi?.apiKey || '');
+    value('#rh_sub_api_model', settings.subApi?.model || '');
+    value('#rh_sub_api_temperature', settings.subApi?.temperature ?? 0.95);
+    value('#rh_sub_api_max_tokens', settings.subApi?.maxTokens ?? 16000);
+    value('#rh_sub_api_context', settings.subApi?.contextMode || 'current_plus_5');
     $('#rh_sampling_mode').val(settings.samplingMode || 'classic');
     checked('#rh_show_cot', settings.showCot);
     checked('#rh_user_directive', settings.userDirectivePriority);
@@ -65,8 +145,18 @@ export function initRabbitHoleUI() {
     checked('#rh_skip_quiet', settings.skipQuiet);
     checked('#rh_skip_impersonate', settings.skipImpersonate);
     checked('#rh_debug', settings.debug);
+    toggleSubApiPanel();
 
     $('#rh_enabled').on('change', e => updateSettings({ enabled: e.target.checked, mode: e.target.checked ? 'integrated' : 'off' }));
+    $('#rh_generation_mode').on('change', e => { updateSettings({ generationMode: e.target.value }); toggleSubApiPanel(); });
+    $('#rh_sub_api_type').on('change', e => updateSubApiSettings({ apiType: e.target.value }));
+    $('#rh_sub_api_endpoint').on('input', e => updateSubApiSettings({ endpoint: e.target.value }));
+    $('#rh_sub_api_key').on('input', e => updateSubApiSettings({ apiKey: e.target.value }));
+    $('#rh_sub_api_model').on('input', e => updateSubApiSettings({ model: e.target.value }));
+    $('#rh_sub_api_temperature').on('input', e => updateSubApiSettings({ temperature: Number(e.target.value) }));
+    $('#rh_sub_api_max_tokens').on('input', e => updateSubApiSettings({ maxTokens: Number(e.target.value) }));
+    $('#rh_sub_api_context').on('change', e => updateSubApiSettings({ contextMode: e.target.value }));
+
     $('#rh_sampling_mode').on('change', e => updateSettings({ samplingMode: e.target.value }));
     $('#rh_show_cot').on('change', e => updateSettings({ showCot: e.target.checked }));
     $('#rh_user_directive').on('change', e => updateSettings({ userDirectivePriority: e.target.checked }));
@@ -76,6 +166,32 @@ export function initRabbitHoleUI() {
     $('#rh_skip_quiet').on('change', e => updateSettings({ skipQuiet: e.target.checked }));
     $('#rh_skip_impersonate').on('change', e => updateSettings({ skipImpersonate: e.target.checked }));
     $('#rh_debug').on('change', e => updateSettings({ debug: e.target.checked }));
+
+    $('#rh_fetch_models').on('click', async () => {
+        $('#rh_fetch_models_status').text('拉取中...');
+        try {
+            const models = await fetchSubApiModels(getSettings());
+            const uniqueModels = [...new Set(models)].filter(Boolean).slice(0, 300);
+            $('#rh_sub_api_models').empty();
+            for (const model of uniqueModels) {
+                $('#rh_sub_api_models').append($('<option>').attr('value', model));
+            }
+            if (uniqueModels.length) {
+                $('#rh_fetch_models_status').text(`已拉取 ${uniqueModels.length} 个模型，可在模型名输入框选择`);
+                toastr?.success?.('已拉取模型列表');
+                if (!$('#rh_sub_api_model').val()) {
+                    $('#rh_sub_api_model').val(uniqueModels[0]);
+                    saveFetchedModel(uniqueModels[0]);
+                }
+            } else {
+                $('#rh_fetch_models_status').text('未找到模型，请手动填写模型名');
+                toastr?.warning?.('未找到模型，请手动填写模型名');
+            }
+        } catch (error) {
+            $('#rh_fetch_models_status').text('拉取失败，请手动填写模型名');
+            toastr?.error?.(`拉取模型失败：${error.message || error}`);
+        }
+    });
 
     $('#rh_copy_regex').on('click', async () => {
         try {

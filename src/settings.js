@@ -12,6 +12,20 @@ export const defaultSettings = Object.freeze({
     // - 否则按独立兔子洞执行。
     mode: 'integrated',
 
+    // 兔子洞生成模式：main=跟随主模型生成；sub_api=使用副 API 独立生成。
+    generationMode: 'main',
+
+    // 副 API 设置。默认复杂优先，maxTokens 给高一点；实际可用上限以上游 API / 模型为准。
+    subApi: {
+        apiType: 'openai', // openai | gemini | anthropic | custom
+        endpoint: '',
+        apiKey: '',
+        model: '',
+        temperature: 0.95,
+        maxTokens: 16000,
+        contextMode: 'current_plus_5', // current | current_plus_1 | current_plus_3 | current_plus_5
+    },
+
     // 抽取模式：classic=主题元素+展现形式；format_only=仅展现形式。
     samplingMode: 'classic',
 
@@ -56,6 +70,27 @@ export const defaultSettings = Object.freeze({
     debug: false,
 });
 
+function mergeSubApiSettings(settings) {
+    if (!settings.subApi || typeof settings.subApi !== 'object') {
+        settings.subApi = structuredClone(defaultSettings.subApi);
+    }
+    for (const [key, value] of Object.entries(defaultSettings.subApi)) {
+        if (settings.subApi[key] === undefined) settings.subApi[key] = value;
+    }
+    if (!['openai', 'gemini', 'anthropic', 'custom'].includes(settings.subApi.apiType)) {
+        settings.subApi.apiType = defaultSettings.subApi.apiType;
+    }
+    if (!['current', 'current_plus_1', 'current_plus_3', 'current_plus_5'].includes(settings.subApi.contextMode)) {
+        settings.subApi.contextMode = defaultSettings.subApi.contextMode;
+    }
+    settings.subApi.temperature = Number(settings.subApi.temperature);
+    if (!Number.isFinite(settings.subApi.temperature)) settings.subApi.temperature = defaultSettings.subApi.temperature;
+    settings.subApi.temperature = Math.max(0, Math.min(2, settings.subApi.temperature));
+
+    settings.subApi.maxTokens = Math.floor(Number(settings.subApi.maxTokens) || defaultSettings.subApi.maxTokens);
+    settings.subApi.maxTokens = Math.max(512, Math.min(32768, settings.subApi.maxTokens));
+}
+
 export function getSettings() {
     if (!extension_settings[MODULE_NAME] || typeof extension_settings[MODULE_NAME] !== 'object') {
         extension_settings[MODULE_NAME] = structuredClone(defaultSettings);
@@ -63,7 +98,7 @@ export function getSettings() {
     const settings = extension_settings[MODULE_NAME];
     for (const [key, value] of Object.entries(defaultSettings)) {
         if (settings[key] === undefined) {
-            settings[key] = value;
+            settings[key] = structuredClone(value);
         }
     }
 
@@ -72,6 +107,8 @@ export function getSettings() {
         settings.mode = settings.mode === 'off' ? 'off' : 'integrated';
     }
 
+    if (!['main', 'sub_api'].includes(settings.generationMode)) settings.generationMode = defaultSettings.generationMode;
+    mergeSubApiSettings(settings);
 
     // 旧版 showWonderland 迁移为 showCot，并删除旧字段以免 UI 混乱。
     if (settings.showCot === undefined && settings.showWonderland !== undefined) {
@@ -93,6 +130,13 @@ export function getSettings() {
 
 export function updateSettings(patch) {
     Object.assign(getSettings(), patch);
+    saveSettingsDebounced();
+}
+
+export function updateSubApiSettings(patch) {
+    const settings = getSettings();
+    settings.subApi = { ...settings.subApi, ...patch };
+    mergeSubApiSettings(settings);
     saveSettingsDebounced();
 }
 
