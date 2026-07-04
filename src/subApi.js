@@ -69,16 +69,24 @@ function stripKnownOpenAiPath(endpoint) {
     return url;
 }
 
-function buildOpenAiChatUrl(endpoint) {
-    const raw = normalizeEndpoint(endpoint);
-    if (/\/chat\/completions$/i.test(raw)) return raw;
-    const base = stripKnownOpenAiPath(raw);
-    return `${base}/chat/completions`;
+function uniqueList(items) {
+    return [...new Set(items.filter(Boolean))];
 }
 
-function buildOpenAiModelsUrl(endpoint) {
+function buildOpenAiChatUrls(endpoint) {
+    const raw = normalizeEndpoint(endpoint);
+    if (/\/chat\/completions$/i.test(raw)) return [raw];
+    const base = stripKnownOpenAiPath(raw);
+    const urls = [`${base}/chat/completions`];
+    if (!/\/v1$/i.test(base)) urls.push(`${base}/v1/chat/completions`);
+    return uniqueList(urls);
+}
+
+function buildOpenAiModelsUrls(endpoint) {
     const base = stripKnownOpenAiPath(endpoint);
-    return `${base}/models`;
+    const urls = [`${base}/models`];
+    if (!/\/v1$/i.test(base)) urls.push(`${base}/v1/models`);
+    return uniqueList(urls);
 }
 
 function buildAnthropicMessagesUrl(endpoint) {
@@ -149,6 +157,19 @@ async function fetchJson(url, options) {
     return data ?? text;
 }
 
+async function fetchJsonCandidates(urls, options) {
+    let lastError = null;
+    for (const url of urls) {
+        try {
+            return await fetchJson(url, options);
+        } catch (error) {
+            lastError = error;
+            if (getSettings().debug) console.debug('[RabbitHole] endpoint candidate failed:', url, error);
+        }
+    }
+    throw lastError || new Error('请求失败');
+}
+
 export async function fetchSubApiModels(settings = getSettings()) {
     const sub = settings.subApi || {};
     const apiType = sub.apiType || 'openai';
@@ -173,7 +194,7 @@ export async function fetchSubApiModels(settings = getSettings()) {
         return (data.data || data.models || []).map(m => m.id || m.name).filter(Boolean);
     }
 
-    const data = await fetchJson(buildOpenAiModelsUrl(endpoint), {
+    const data = await fetchJsonCandidates(buildOpenAiModelsUrls(endpoint), {
         method: 'GET',
         headers: {
             'Authorization': apiKey ? `Bearer ${apiKey}` : '',
@@ -225,7 +246,7 @@ export async function callSubApi(prompt, settings = getSettings()) {
         return normalizeTotoOutput(extractTextFromResponse(apiType, data));
     }
 
-    const data = await fetchJson(buildOpenAiChatUrl(endpoint), {
+    const data = await fetchJsonCandidates(buildOpenAiChatUrls(endpoint), {
         method: 'POST',
         headers: {
             'content-type': 'application/json',
@@ -254,19 +275,45 @@ function refreshChatView(index) {
     try { context?.reloadCurrentChat?.(); } catch {}
 }
 
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function waitForStableAssistantText(index, { checks = 3, interval = 700 } = {}) {
+    let stable = 0;
+    let previous = '';
+    while (stable < checks) {
+        const message = getChat()[index];
+        if (!message || message.is_user) return '';
+        const current = stripTotoBlocks(message.mes || '').trim();
+        if (!current || /<toto\b/i.test(message.mes || '') || /rabbit-hole-subapi-done/.test(message.mes || '')) return '';
+        if (current === previous) {
+            stable += 1;
+        } else {
+            previous = current;
+            stable = 1;
+        }
+        await sleep(interval);
+    }
+    return previous;
+}
+
 export async function generateRabbitHoleForLatestMessage() {
     const settings = getSettings();
     if (!settings.enabled || settings.mode === 'off' || settings.generationMode !== 'sub_api') return;
     if (processing) return;
 
-    const chat = getChat();
     const index = getLatestAssistantIndex();
     if (index < 0) return;
 
+    const assistantText = await waitForStableAssistantText(index);
+    if (!assistantText) return;
+
+    const chat = getChat();
     const message = chat[index];
     if (!message?.mes || /<toto\b/i.test(message.mes) || /rabbit-hole-subapi-done/.test(message.mes)) return;
 
-    const assistantText = stripTotoBlocks(message.mes);
     const signature = `${index}|${assistantText.slice(-500)}`;
     if (signature === initialLatestSignature) return;
     if (lastProcessedSignature === signature) return;
@@ -280,7 +327,13 @@ export async function generateRabbitHoleForLatestMessage() {
     try {
         const toto = await callSubApi(prompt, settings);
         if (!toto) throw new Error('副 API 未返回内容');
-        message.mes = `${assistantText}\n\n<!-- rabbit-hole-subapi-done -->\n${toto}`;
+        const latest = getChat()[index];
+        if (!latest?.mes || /<toto\b/i.test(latest.mes) || /rabbit-hole-subapi-done/.test(latest.mes)) return;
+        const latestText = stripTotoBlocks(latest.mes).trim() || assistantText;
+        latest.mes = `${latestText}
+
+<!-- rabbit-hole-subapi-done -->
+${toto}`;
         markMessageSaved();
         refreshChatView(index);
         if (settings.debug) console.debug('[RabbitHole] sub API appended toto to message', index);
@@ -306,7 +359,11 @@ export function initSubApiGenerator() {
     const eventSource = context?.eventSource;
     const eventTypes = context?.event_types || {};
 
-    const handler = () => setTimeout(() => generateRabbitHoleForLatestMessage(), 250);
+    let pendingTimer = null;
+    const handler = () => {
+        clearTimeout(pendingTimer);
+        pendingTimer = setTimeout(() => generateRabbitHoleForLatestMessage(), 1500);
+    };
     const candidates = [
         eventTypes.MESSAGE_RECEIVED,
         eventTypes.MESSAGE_UPDATED,

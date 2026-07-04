@@ -16,6 +16,58 @@ function toggleSubApiPanel() {
     $('#rh_sub_api_panel').toggle(settings.generationMode === 'sub_api');
 }
 
+
+function closeModelPicker() {
+    $('#rh_model_picker_overlay').remove();
+}
+
+function openModelPicker(models) {
+    const uniqueModels = [...new Set(models)].filter(Boolean);
+    if (!uniqueModels.length) return;
+    closeModelPicker();
+
+    const current = $('#rh_sub_api_model').val() || uniqueModels[0];
+    const options = uniqueModels.map(model => `<option value="${String(model).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')}" ${model === current ? 'selected' : ''}>${String(model).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</option>`).join('');
+    const html = `
+<div id="rh_model_picker_overlay" style="position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;">
+  <div style="width:min(92vw,560px);max-height:82vh;overflow:auto;background:var(--SmartThemeBlurTintColor, var(--SmartThemeBodyColor, #222));color:var(--SmartThemeTextColor, #fff);border:1px solid var(--SmartThemeBorderColor,#777);border-radius:12px;padding:14px;box-shadow:0 16px 48px rgba(0,0,0,.35);box-sizing:border-box;">
+    <div style="font-weight:700;font-size:16px;margin-bottom:8px;">选择副 API 模型</div>
+    <div style="opacity:.75;font-size:12px;line-height:1.45;margin-bottom:10px;">已拉取 ${uniqueModels.length} 个模型。选择后点击“保存模型”。</div>
+    <input id="rh_model_picker_filter" class="text_pole" type="text" placeholder="筛选模型名" style="width:100%;box-sizing:border-box;margin-bottom:8px;">
+    <select id="rh_model_picker_select" class="text_pole" size="12" style="width:100%;box-sizing:border-box;min-height:220px;">${options}</select>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap;">
+      <button id="rh_model_picker_save" class="menu_button" type="button">保存模型</button>
+      <button id="rh_model_picker_cancel" class="menu_button" type="button">取消</button>
+    </div>
+  </div>
+</div>`;
+    $('body').append(html);
+
+    $('#rh_model_picker_cancel').on('click', closeModelPicker);
+    $('#rh_model_picker_overlay').on('click', (event) => {
+        if (event.target?.id === 'rh_model_picker_overlay') closeModelPicker();
+    });
+    $('#rh_model_picker_filter').on('input', e => {
+        const q = String(e.target.value || '').toLowerCase();
+        const filtered = uniqueModels.filter(model => String(model).toLowerCase().includes(q));
+        $('#rh_model_picker_select').empty();
+        for (const model of filtered) $('#rh_model_picker_select').append($('<option>').attr('value', model).text(model));
+    });
+    $('#rh_model_picker_select').on('dblclick', () => $('#rh_model_picker_save').trigger('click'));
+    $('#rh_model_picker_save').on('click', () => {
+        const model = $('#rh_model_picker_select').val();
+        if (!model) {
+            toastr?.warning?.('请选择模型');
+            return;
+        }
+        $('#rh_sub_api_model').val(model);
+        saveFetchedModel(model);
+        $('#rh_fetch_models_status').text(`已保存模型：${model}`);
+        toastr?.success?.('已保存副 API 模型');
+        closeModelPicker();
+    });
+}
+
 export function initRabbitHoleUI() {
     const settings = getSettings();
     const noSendRegex = String.raw`/<toto\b[^>]*>[\s\S]*?<\/toto>\s*/gi`;
@@ -171,18 +223,15 @@ export function initRabbitHoleUI() {
         $('#rh_fetch_models_status').text('拉取中...');
         try {
             const models = await fetchSubApiModels(getSettings());
-            const uniqueModels = [...new Set(models)].filter(Boolean).slice(0, 300);
+            const uniqueModels = [...new Set(models)].filter(Boolean).slice(0, 500);
             $('#rh_sub_api_models').empty();
             for (const model of uniqueModels) {
                 $('#rh_sub_api_models').append($('<option>').attr('value', model));
             }
             if (uniqueModels.length) {
-                $('#rh_fetch_models_status').text(`已拉取 ${uniqueModels.length} 个模型，可在模型名输入框选择`);
+                $('#rh_fetch_models_status').text(`已拉取 ${uniqueModels.length} 个模型，请在弹窗中选择并保存`);
                 toastr?.success?.('已拉取模型列表');
-                if (!$('#rh_sub_api_model').val()) {
-                    $('#rh_sub_api_model').val(uniqueModels[0]);
-                    saveFetchedModel(uniqueModels[0]);
-                }
+                openModelPicker(uniqueModels);
             } else {
                 $('#rh_fetch_models_status').text('未找到模型，请手动填写模型名');
                 toastr?.warning?.('未找到模型，请手动填写模型名');
