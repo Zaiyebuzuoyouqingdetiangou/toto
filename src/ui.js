@@ -70,7 +70,7 @@ function openModelPicker(models) {
 
 export function initRabbitHoleUI() {
     const settings = getSettings();
-    const noSendRegex = String.raw`/<toto\b[^>]*>[\s\S]*?<\/toto>\s*/gi`;
+    const noSendRegex = String.raw`/<!--\s*TOTO_START\s*-->[\s\S]*?<!--\s*TOTO_END\s*-->\s*/gi`;
     if ($('#rabbit_hole_theater_settings').length) return;
 
     const html = `

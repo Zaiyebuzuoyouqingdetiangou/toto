@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "Rabbit Hole Theater auto injection with lightweight runtime rules, sampling mode switch, Visual Scenery free framing, separate Chinese language lock, conditional tarot image rules, 10-round cooldown for themes, formats, and visual similarity, Toto settings watermark, and <toto> boundary for optional no-send regex filtering."
+  "description": "Rabbit Hole Theater auto injection with lightweight runtime rules, sampling mode switch, Visual Scenery free framing, separate Chinese language lock, conditional tarot image rules, 10-round cooldown for themes, formats, and visual similarity, Toto settings watermark, and TOTO_START/TOTO_END boundary for optional no-send regex filtering."
 }

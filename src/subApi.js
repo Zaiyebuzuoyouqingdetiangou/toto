@@ -3,8 +3,19 @@ import { buildStandaloneRabbitHolePrompt } from './promptBuilder.js';
 
 let subApiInitialized = false;
 let processing = false;
-let lastProcessedSignature = '';
+const processedSignatures = new Set();
+const pendingSignatures = new Set();
 let initialLatestSignature = '';
+
+const TOTO_BLOCK_REGEX = /<!--\s*TOTO_START\s*-->[\s\S]*?<!--\s*TOTO_END\s*-->/gi;
+const TOTO_BLOCK_REGEX_ONCE = /<!--\s*TOTO_START\s*-->[\s\S]*?<!--\s*TOTO_END\s*-->/i;
+const LEGACY_TOTO_BLOCK_REGEX = /<toto\b[^>]*>[\s\S]*?<\/toto>/gi;
+const LEGACY_TOTO_BLOCK_REGEX_ONCE = /<toto\b[^>]*>[\s\S]*?<\/toto>/i;
+function hasTotoBlock(text) {
+    const value = String(text || '');
+    return TOTO_BLOCK_REGEX_ONCE.test(value) || LEGACY_TOTO_BLOCK_REGEX_ONCE.test(value);
+}
+function wrapTotoDetails(details) { return `<!-- TOTO_START -->\n${String(details || '').trim()}\n<!-- TOTO_END -->`; }
 
 function getContext() {
     try {
@@ -25,7 +36,41 @@ function getRoleName(message) {
 }
 
 function stripTotoBlocks(text) {
-    return String(text || '').replace(/<toto\b[^>]*>[\s\S]*?<\/toto>\s*/gi, '').trim();
+    return String(text || '').replace(TOTO_BLOCK_REGEX, '').replace(LEGACY_TOTO_BLOCK_REGEX, '').trim();
+}
+
+function stripInternalMarkers(text) {
+    return String(text || '')
+        .replace(/<!--\s*rabbit-hole-subapi-done\s*-->/gi, '')
+        .trim();
+}
+
+function cleanAssistantText(text) {
+    return stripInternalMarkers(stripTotoBlocks(text)).trim();
+}
+
+function hashString(input) {
+    const text = String(input || '');
+    let hash = 2166136261;
+    for (let i = 0; i < text.length; i++) {
+        hash ^= text.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0).toString(36);
+}
+
+function buildMessageSignature(index, text) {
+    const clean = cleanAssistantText(text);
+    return `${index}|${hashString(clean)}|${clean.length}`;
+}
+
+function rememberProcessedSignature(signature) {
+    if (!signature) return;
+    processedSignatures.add(signature);
+    if (processedSignatures.size > 80) {
+        const first = processedSignatures.values().next().value;
+        processedSignatures.delete(first);
+    }
 }
 
 function getContextMessageCount(mode) {
@@ -139,11 +184,17 @@ function extractTextFromResponse(apiType, data) {
 function normalizeTotoOutput(text) {
     let output = String(text || '').trim();
     output = output.replace(/^```(?:html)?\s*/i, '').replace(/```$/i, '').trim();
-    const toto = output.match(/<toto\b[^>]*>[\s\S]*?<\/toto>/i)?.[0];
-    if (toto) return toto.trim();
+    const block = output.match(TOTO_BLOCK_REGEX_ONCE)?.[0];
+    if (block) return block.trim();
+    // 兼容旧版 <toto> 输出，将其转换为注释边界，避免自定义标签影响 <details> 交互。
+    const legacyToto = output.match(/<toto\b[^>]*>([\s\S]*?)<\/toto>/i)?.[1];
+    if (legacyToto) {
+        const legacyDetails = legacyToto.match(/<details\b[^>]*>[\s\S]*?<\/details>/i)?.[0];
+        if (legacyDetails) return wrapTotoDetails(legacyDetails);
+    }
     const details = output.match(/<details\b[^>]*>[\s\S]*?<\/details>/i)?.[0];
-    if (details) return `<toto data-rabbit-hole="true" style="display:block;">\n${details.trim()}\n</toto>`;
-    return `<toto data-rabbit-hole="true" style="display:block;">\n<details><summary>【兔子洞：副 API 小剧场】</summary>${output}</details>\n</toto>`;
+    if (details) return wrapTotoDetails(details);
+    return wrapTotoDetails(`<details><summary>【兔子洞：副 API 小剧场】</summary>${output}</details>`);
 }
 
 async function fetchJson(url, options) {
@@ -286,8 +337,8 @@ async function waitForStableAssistantText(index, { checks = 3, interval = 700 } 
     while (stable < checks) {
         const message = getChat()[index];
         if (!message || message.is_user) return '';
-        const current = stripTotoBlocks(message.mes || '').trim();
-        if (!current || /<toto\b/i.test(message.mes || '') || /rabbit-hole-subapi-done/.test(message.mes || '')) return '';
+        const current = cleanAssistantText(message.mes || '');
+        if (!current || hasTotoBlock(message.mes || '')) return '';
         if (current === previous) {
             stable += 1;
         } else {
@@ -312,36 +363,43 @@ export async function generateRabbitHoleForLatestMessage() {
 
     const chat = getChat();
     const message = chat[index];
-    if (!message?.mes || /<toto\b/i.test(message.mes) || /rabbit-hole-subapi-done/.test(message.mes)) return;
+    if (!message?.mes || hasTotoBlock(message.mes)) return;
 
-    const signature = `${index}|${assistantText.slice(-500)}`;
+    const signature = buildMessageSignature(index, assistantText);
     if (signature === initialLatestSignature) return;
-    if (lastProcessedSignature === signature) return;
+    if (processedSignatures.has(signature) || pendingSignatures.has(signature)) return;
 
     const contextText = buildReferenceContext(chat, index, settings.subApi?.contextMode || 'current_plus_5');
     const prompt = buildStandaloneRabbitHolePrompt(settings, { assistantText, contextText }, 'sub_api');
     if (!prompt) return;
 
     processing = true;
-    lastProcessedSignature = signature;
+    pendingSignatures.add(signature);
     try {
         const toto = await callSubApi(prompt, settings);
         if (!toto) throw new Error('副 API 未返回内容');
-        const latest = getChat()[index];
-        if (!latest?.mes || /<toto\b/i.test(latest.mes) || /rabbit-hole-subapi-done/.test(latest.mes)) return;
-        const latestText = stripTotoBlocks(latest.mes).trim() || assistantText;
-        latest.mes = `${latestText}
 
-<!-- rabbit-hole-subapi-done -->
-${toto}`;
+        const latest = getChat()[index];
+        if (!latest?.mes || hasTotoBlock(latest.mes)) return;
+
+        const latestText = cleanAssistantText(latest.mes);
+        const latestSignature = buildMessageSignature(index, latestText);
+        if (latestSignature !== signature) {
+            if (settings.debug) console.debug('[RabbitHole] message changed while sub API was generating; skip stale append', { signature, latestSignature });
+            setTimeout(() => generateRabbitHoleForLatestMessage(), 800);
+            return;
+        }
+
+        latest.mes = `${latestText}\n\n${toto}`;
+        rememberProcessedSignature(signature);
         markMessageSaved();
         refreshChatView(index);
-        if (settings.debug) console.debug('[RabbitHole] sub API appended toto to message', index);
+        if (settings.debug) console.debug('[RabbitHole] sub API appended rabbit hole block to message', index);
     } catch (error) {
         console.warn('[RabbitHole] sub API generation failed:', error);
         toastr?.error?.(`兔子洞副 API 生成失败：${error.message || error}`);
-        lastProcessedSignature = '';
     } finally {
+        pendingSignatures.delete(signature);
         processing = false;
     }
 }
@@ -354,7 +412,7 @@ export function initSubApiGenerator() {
     const initialIndex = getLatestAssistantIndex();
     if (initialIndex >= 0) {
         const initialMessage = getChat()[initialIndex];
-        initialLatestSignature = `${initialIndex}|${stripTotoBlocks(initialMessage?.mes || '').slice(-500)}`;
+        initialLatestSignature = buildMessageSignature(initialIndex, initialMessage?.mes || '');
     }
     const eventSource = context?.eventSource;
     const eventTypes = context?.event_types || {};
