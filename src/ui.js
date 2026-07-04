@@ -8,13 +8,14 @@ function checked(id, value) {
 
 export function initRabbitHoleUI() {
     const settings = getSettings();
+    const noSendRegex = String.raw`/<toto\b[^>]*>[\s\S]*?<\/toto>\s*/gi`;
     if ($('#rabbit_hole_theater_settings').length) return;
 
     const html = `
 <div id="rabbit_hole_theater_settings" class="rabbit-hole-settings">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子洞小剧场 / Rabbit Hole Theater</b><span class="rabbit-hole-toto-watermark">Toto v0.21.0</span>
+      <b>兔子洞小剧场 / Rabbit Hole Theater</b><span class="rabbit-hole-toto-watermark">Toto v0.22</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -36,6 +37,11 @@ export function initRabbitHoleUI() {
       <label class="checkbox_label"><input id="rh_skip_quiet" type="checkbox"> 跳过 quiet 后台生成</label>
       <label class="checkbox_label"><input id="rh_skip_impersonate" type="checkbox"> 跳过 impersonate 生成</label>
       <label class="checkbox_label"><input id="rh_debug" type="checkbox"> 控制台调试日志</label>
+
+      <div class="rabbit-hole-regex-helper" style="margin:10px 0;padding:10px;border:1px solid var(--SmartThemeBorderColor);border-radius:8px;">
+        <div style="font-weight:600;margin-bottom:6px;">不发送小剧场正则</div>
+        <button id="rh_copy_regex" class="menu_button" type="button">复制推荐正则</button>
+      </div>
 
       <div class="rabbit-hole-actions">
         <button id="rh_clear_last" class="menu_button">清除上轮组合记录</button>
@@ -69,6 +75,24 @@ export function initRabbitHoleUI() {
     $('#rh_skip_quiet').on('change', e => updateSettings({ skipQuiet: e.target.checked }));
     $('#rh_skip_impersonate').on('change', e => updateSettings({ skipImpersonate: e.target.checked }));
     $('#rh_debug').on('change', e => updateSettings({ debug: e.target.checked }));
+
+    $('#rh_copy_regex').on('click', async () => {
+        try {
+            await navigator.clipboard.writeText(noSendRegex);
+            toastr?.success?.('已复制推荐正则');
+        } catch (error) {
+            const textarea = document.createElement('textarea');
+            textarea.value = noSendRegex;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            document.execCommand('copy');
+            textarea.remove();
+            toastr?.success?.('已复制推荐正则');
+        }
+    });
 
     $('#rh_clear_last').on('click', () => {
         clearLastCombo();
