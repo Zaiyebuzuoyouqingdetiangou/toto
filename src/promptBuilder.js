@@ -5,6 +5,7 @@ import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js';
 import { FORMAT_PRIORITY_RULES } from '../data/raw/formatPriorityRules.js';
 import { STATE_BAR_ISOLATION_RULES } from '../data/raw/stateBarIsolationRules.js';
 import { VISUAL_FAMILY_COOLDOWN_RULES } from '../data/raw/visualFamilyCooldownRules.js';
+import { ITEM_INTERPRETATION_RULES } from '../data/raw/itemInterpretationRules.js';
 import { resolveThemeRaw, resolvePresentationRaw } from '../data/raw/rawSegmentLookup.js';
 import { pickCombination } from './picker.js';
 
@@ -167,6 +168,9 @@ ${RAW_EXECUTION_RULES}
 
 【固定注入：通用执行规则核心版】
 ${UNIVERSAL_EXECUTION_CORE}
+
+【固定注入：抽取条目解释】
+${ITEM_INTERPRETATION_RULES}
 
 【固定注入：展现形式优先】
 ${FORMAT_PRIORITY_RULES}
