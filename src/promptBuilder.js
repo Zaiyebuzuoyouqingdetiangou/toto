@@ -8,6 +8,9 @@ import { VISUAL_FAMILY_COOLDOWN_RULES } from '../data/raw/visualFamilyCooldownRu
 import { ITEM_INTERPRETATION_RULES } from '../data/raw/itemInterpretationRules.js';
 import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js';
 import { DYNAMIC_COMMITMENT_RULES } from '../data/raw/dynamicCommitmentRules.js';
+import { MEDIA_SELF_JUDGMENT_RULES } from '../data/raw/mediaSelfJudgmentRules.js';
+import { MODULAR_DEGRADATION_RULES } from '../data/raw/modularDegradationRules.js';
+import { CSS_SCOPE_RULES } from '../data/raw/cssScopeRules.js';
 import { resolveThemeRaw, resolvePresentationRaw } from '../data/raw/rawSegmentLookup.js';
 import { pickCombination } from './picker.js';
 import { getComboHistory } from './storage.js';
@@ -22,16 +25,16 @@ const HARD_STARTUP_PROTOCOL = String.raw`
 `;
 
 const UI_AUDIT_PROTOCOL = String.raw`
-UI自查与去模板化:
+UI自查与媒介本体验收:
   enforcement_level: "mandatory"
   core_concept: "UI审查重点只用于检查完成度，不得决定 UI 长相，不得变成可见标题、标签、栏目名、固定组件或固定版式"
   rule:
-    - "生成前必须回看并执行《格式与美感规范》《展现形式优先原则》《状态栏隔离》与《视觉家族与模块化骨架红线》"
+    - "生成前必须回看并执行《格式与美感规范》《展现形式优先原则》《媒介本体强制成立》《状态栏隔离》与《视觉观感冷却》"
     - "具体 UI 形态必须从本轮展现形式自然生成，而不是从审查重点或通用模板生成"
-    - "本轮小剧场必须像一个独立完成的微型 HTML 作品，而不是正文附录、普通说明卡、状态栏、报告页或通用系统面板"
+    - "本轮小剧场必须像一个独立完成的微型 HTML 媒介作品，而不是正文附录、普通说明卡、状态栏、报告页或通用内容页"
     - "审查重点应检查展现形式载体感、媒介语法准确度、高级质感、空间层级、文字密度、阅读节奏、装饰契合度与近期观感去重"
     - "UI审查时必须检查视觉家族是否与最近数轮近似；若只是更换组件、颜色、标题或字段名，但整体观感仍然近似，则视为不合格，必须重写"
-    - "若通过审查重点后仍像普通信息卡、状态栏、报告页、通用系统面板、模块化卡片堆叠或最近10轮近似 UI，则视为不合格，必须重写"
+    - "若通过审查重点后仍无法靠 DOM/CSS 本体判断本轮展现形式，或与最近视觉签名摘要中的结构明显近似，则视为不合格，必须重写"
 `;
 
 const UNIVERSAL_EXECUTION_CORE = String.raw`
@@ -66,6 +69,27 @@ HTML渲染安全:
     - "最终输出目标是渲染后的 UI，不是展示源码；若输出后出现‘显示代码块/隐藏代码块’，即视为失败，必须重写。"
 `;
 
+function compactRuleText(text = '') {
+    return String(text)
+        .replace(/
+/g, '
+')
+        .split('
+')
+        .map(line => line.replace(/[ 	]+$/g, ''))
+        .filter(line => line.trim() !== '')
+        .join('
+')
+        .replace(/
+{3,}/g, '
+
+');
+}
+
+function pushRule(chunks, text) {
+    if (text) chunks.push(compactRuleText(text));
+}
+
 function formatItems(items, kind) {
     return items.map(item => {
         const fullRaw = kind === 'theme' ? resolveThemeRaw(item) : resolvePresentationRaw(item);
@@ -97,7 +121,8 @@ function formatRecentHistory(combo, limit = 10) {
         const themes = (item.themeIds || []).join(' + ') || '未抽取';
         const formats = (item.formatIds || []).join(' + ') || '无';
         const focus = Array.isArray(item.uiReviewFocus) && item.uiReviewFocus.length ? `；UI审查：${item.uiReviewFocus.join('；')}` : '';
-        return `${index + 1}. 抽取模式：${item.samplingMode || 'classic'}；主题：${themes}；展现形式：${formats}${focus}`;
+        const visual = item.visualSignature ? `；视觉签名：${item.visualSignature}` : '';
+        return `${index + 1}. 抽取模式：${item.samplingMode || 'classic'}；主题：${themes}；展现形式：${formats}${focus}${visual}`;
     }).join('\n');
 }
 
@@ -255,14 +280,26 @@ export function buildRabbitHolePrompt(settings, generationType = 'normal') {
     chunks.push('<RabbitHoleTheaterAutoInjection>');
     chunks.push('你必须在本轮主回复完成后，额外输出一个【兔子洞】小剧场模块。此模块由 SillyTavern 第三方扩展自动注入，不需要用户在预设里放任何内容。');
     chunks.push(runtimeVariables(combo, settings, { visualSceneryMode, cooldownWindow, renderSafeHtml }));
-    chunks.push(RAW_EXECUTION_RULES);
-    chunks.push(UNIVERSAL_EXECUTION_CORE);
-    chunks.push(ITEM_INTERPRETATION_RULES);
-    chunks.push(FORMAT_PRIORITY_RULES);
-    if (settings.hardChineseLock) chunks.push(RUNTIME_LANGUAGE_RULES);
-    chunks.push(STATE_BAR_ISOLATION_RULES);
-    if (settings.hardStartup) chunks.push(HARD_STARTUP_PROTOCOL);
-    chunks.push(FINAL_GUARD_PROTOCOL);
+    pushRule(chunks, RAW_EXECUTION_RULES);
+    pushRule(chunks, UNIVERSAL_EXECUTION_CORE);
+    pushRule(chunks, ITEM_INTERPRETATION_RULES);
+    pushRule(chunks, FORMAT_PRIORITY_RULES);
+    if (settings.uiAudit || settings.avoidRepeat) {
+        chunks.push(String.raw`
+最近 ${cooldownWindow || 10} 轮视觉签名摘要【避让对象，不得模仿】:      
+${recentHistory}
+  rule:
+    - "以上历史只用于避开近期结构、材质、阅读路径与信息组织方式，不得当作模板仿写。"
+    - "若历史中出现负面签名，如卡片化倾向、纵向文本流、媒介轮廓弱、summary 冗长或全局 CSS 风险，本轮必须主动避开对应问题。"
+`);
+    }
+    pushRule(chunks, MEDIA_SELF_JUDGMENT_RULES);
+    pushRule(chunks, MODULAR_DEGRADATION_RULES);
+    if (settings.uiAudit || settings.avoidRepeat) pushRule(chunks, VISUAL_FAMILY_COOLDOWN_RULES);
+    if (settings.hardChineseLock) pushRule(chunks, RUNTIME_LANGUAGE_RULES);
+    pushRule(chunks, STATE_BAR_ISOLATION_RULES);
+    if (settings.hardStartup) pushRule(chunks, HARD_STARTUP_PROTOCOL);
+    pushRule(chunks, FINAL_GUARD_PROTOCOL);
 
     if (settings.userDirectivePriority) {
         chunks.push(String.raw`
@@ -282,14 +319,7 @@ export function buildRabbitHolePrompt(settings, generationType = 'normal') {
   展现形式: "${combo.formats.map(x => `【${x.id} ${x.title}】`).join(' + ') || '无'}"
 `);
 
-    if (settings.uiAudit) chunks.push(UI_AUDIT_PROTOCOL);
-    if (settings.uiAudit || settings.avoidRepeat) {
-        chunks.push(VISUAL_FAMILY_COOLDOWN_RULES);
-        chunks.push(String.raw`
-最近 ${cooldownWindow || 10} 轮视觉历史:
-${recentHistory}
-`);
-    }
+    if (settings.uiAudit) pushRule(chunks, UI_AUDIT_PROTOCOL);
 
     chunks.push(String.raw`
 本轮 UI审查重点:
@@ -304,7 +334,7 @@ Visual Scenery 动态渐变模式:
   rule:
     - "本轮已启用或抽到 Visual Scenery，输出必须按视觉画布优先执行。"
 `);
-        chunks.push(VISUAL_SCENERY_RULES);
+        pushRule(chunks, VISUAL_SCENERY_RULES);
     } else {
         chunks.push(String.raw`
 Visual Scenery 动态渐变模式:
@@ -314,10 +344,11 @@ Visual Scenery 动态渐变模式:
 `);
     }
 
-    if (tarotRulesText) chunks.push(TAROT_IMAGE_RULES);
-    chunks.push(RENDER_SAFE_HTML_RULE);
-    chunks.push(DYNAMIC_VISUAL_RULES);
-    chunks.push(DYNAMIC_COMMITMENT_RULES);
+    if (tarotRulesText) pushRule(chunks, TAROT_IMAGE_RULES);
+    pushRule(chunks, RENDER_SAFE_HTML_RULE);
+    pushRule(chunks, CSS_SCOPE_RULES);
+    pushRule(chunks, DYNAMIC_VISUAL_RULES);
+    pushRule(chunks, DYNAMIC_COMMITMENT_RULES);
 
     chunks.push(String.raw`
 本轮边界:

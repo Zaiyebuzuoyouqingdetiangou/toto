@@ -40,9 +40,6 @@ export const defaultSettings = Object.freeze({
 
     // 勾选后，每轮额外注入 UI 自查与去模板化要求，减少相似黑框/记录卡。
     uiAudit: true,
-    // 渲染安全：防止 <details> 内部缩进 HTML 被 Markdown 解析成代码块。
-    renderSafeHtml: true,
-
     // 原规则要求 1-3 个主题、1-2 个展现形式，作为固定协议，不再拆成 UI 设置。
     themesMin: 1,
     themesMax: 3,

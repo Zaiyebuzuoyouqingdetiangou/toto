@@ -85,3 +85,17 @@ export function clearLastCombo() {
         localStorage.removeItem('rabbit_hole_theater:last_combo:v6');
     } catch {}
 }
+
+export function updateLatestVisualSignature(visualSignature) {
+    if (!visualSignature) return;
+    try {
+        const history = readHistory();
+        if (!history.length) return;
+        const last = history[history.length - 1];
+        last.visualSignature = String(visualSignature).slice(0, 280);
+        last.visualSignatureTs = Date.now();
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(-MAX_STORED)));
+    } catch (error) {
+        console.warn('[RabbitHole] Failed to store visual signature:', error);
+    }
+}
