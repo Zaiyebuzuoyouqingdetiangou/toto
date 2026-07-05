@@ -11,6 +11,7 @@ import { DYNAMIC_COMMITMENT_RULES } from '../data/raw/dynamicCommitmentRules.js'
 import { MEDIA_SELF_JUDGMENT_RULES } from '../data/raw/mediaSelfJudgmentRules.js';
 import { MODULAR_DEGRADATION_RULES } from '../data/raw/modularDegradationRules.js';
 import { CSS_SCOPE_RULES } from '../data/raw/cssScopeRules.js';
+import { USER_REQUEST_OVERRIDE_RULES } from '../data/raw/userRequestOverrideRules.js';
 import { resolveThemeRaw, resolvePresentationRaw } from '../data/raw/rawSegmentLookup.js';
 import { pickCombination } from './picker.js';
 import { getComboHistory } from './storage.js';
@@ -143,6 +144,7 @@ function runtimeVariables(combo, settings, options = {}) {
   cooldownWindow: ${options.cooldownWindow}
   renderSafeHtml: ${options.renderSafeHtml}
   mainInstructionPriority: ${!!settings.userDirectivePriority}
+  userRequestOverride: ${!!settings.userDirectivePriority}
   thinkingSummary: ${!!settings.showCot}
   skipQuiet: ${!!settings.skipQuiet}
   skipImpersonate: ${!!settings.skipImpersonate}
@@ -199,8 +201,8 @@ function thinkingBlock(combo, last, settings, directive = null) {
         ? '展现形式/视觉观感'
         : '主题元素/展现形式/视觉观感';
     const directiveLine = directive
-        ? `H. 正文指令优先：已识别用户指定并优先采用；未指定的部分由插件随机补足。`
-        : `H. 正文指令优先：本轮未识别到有效指定，使用插件随机组合。`;
+        ? `H. 用户指令优先：已识别用户指定并优先采用；未指定的部分由插件随机补足。`
+        : `H. 用户指令优先：本轮未识别到有效指定，使用插件随机组合。`;
     return String.raw`
 预生成 <thinking> 执行摘要:
 <thinking>
@@ -271,8 +273,9 @@ export function buildRabbitHolePrompt(settings, generationType = 'normal') {
     chunks.push(FINAL_GUARD_PROTOCOL);
 
     if (settings.userDirectivePriority) {
+        chunks.push(USER_REQUEST_OVERRIDE_RULES);
         chunks.push(String.raw`
-正文指令优先:
+正文/兔子洞点播指令优先:
   enforcement_level: "mandatory"
   rule:
     - "正文叙事、剧情推进与角色表现为最高优先级。"
@@ -292,7 +295,7 @@ export function buildRabbitHolePrompt(settings, generationType = 'normal') {
     if (settings.uiAudit || settings.avoidRepeat) {
         chunks.push(VISUAL_FAMILY_COOLDOWN_RULES);
         chunks.push(String.raw`
-最近 ${cooldownWindow || 10} 轮视觉历史:
+最近 ${cooldownWindow || 10} 轮视觉签名摘要【避让对象，不得模仿】:
 ${recentHistory}
 `);
     }
@@ -344,8 +347,8 @@ ${selectedFormats}
 
     chunks.push(thinkingBlock(combo, last, settings, directive));
     chunks.push(String.raw`
-正文指令状态:
-  value: "${directive ? '本轮已检测到用户正文中的兔子洞指定指令。必须优先使用上方本轮指定结果；不要因为随机习惯改成别的主题或格式。未被用户指定的部分已由插件随机补足。' : '本轮未检测到有效兔子洞指定指令，按插件随机抽取结果执行。'}"
+用户指令状态:
+  value: "${directive ? '本轮已检测到用户对兔子洞/小剧场的指定指令。必须优先执行用户点播；不要因为随机抽取习惯改成别的主题或格式。未被用户指定的部分可由插件随机补足。' : '本轮未检测到有效兔子洞点播指令，按插件随机抽取结果执行。'}"
 `);
     chunks.push(thinkingPipeline(settings));
 

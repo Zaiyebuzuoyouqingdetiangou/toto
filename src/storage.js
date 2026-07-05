@@ -92,7 +92,7 @@ export function updateLatestVisualSignature(visualSignature) {
         const history = readHistory();
         if (!history.length) return;
         const last = history[history.length - 1];
-        last.visualSignature = String(visualSignature).slice(0, 220);
+        last.visualSignature = String(visualSignature).slice(0, 280);
         last.visualSignatureTs = Date.now();
         localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(-MAX_STORED)));
     } catch (error) {
