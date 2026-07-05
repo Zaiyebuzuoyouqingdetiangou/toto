@@ -6,6 +6,7 @@ import { FORMAT_PRIORITY_RULES } from '../data/raw/formatPriorityRules.js';
 import { STATE_BAR_ISOLATION_RULES } from '../data/raw/stateBarIsolationRules.js';
 import { VISUAL_FAMILY_COOLDOWN_RULES } from '../data/raw/visualFamilyCooldownRules.js';
 import { ITEM_INTERPRETATION_RULES } from '../data/raw/itemInterpretationRules.js';
+import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js';
 import { resolveThemeRaw, resolvePresentationRaw } from '../data/raw/rawSegmentLookup.js';
 import { pickCombination } from './picker.js';
 import { getComboHistory } from './storage.js';
@@ -308,6 +309,7 @@ Visual Scenery 动态渐变模式:
 
     if (tarotRulesText) chunks.push(TAROT_IMAGE_RULES);
     if (renderSafeHtml) chunks.push(RENDER_SAFE_HTML_RULE);
+    chunks.push(DYNAMIC_VISUAL_RULES);
 
     chunks.push(String.raw`
 本轮边界:
