@@ -15,7 +15,7 @@ export function initRabbitHoleUI() {
 <div id="rabbit_hole_theater_settings" class="rabbit-hole-settings">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子洞小剧场 / Rabbit Hole Theater</b><span class="rabbit-hole-toto-watermark">Toto v0.30</span>
+      <b>兔子洞小剧场 / Rabbit Hole Theater</b><span class="rabbit-hole-toto-watermark">Toto v0.22</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -34,8 +34,6 @@ export function initRabbitHoleUI() {
       <label class="checkbox_label"><input id="rh_force_visual_scenery" type="checkbox"> Visual Scenery 动态渐变模式</label>
       <label class="checkbox_label"><input id="rh_ui_audit" type="checkbox"> UI 自查优化 / 丰富版式</label>
       <label class="checkbox_label"><input id="rh_avoid_repeat" type="checkbox"> 10轮冷却：避免重复主题/展现形式/近似视觉观感</label>
-      <label class="checkbox_label"><input id="rh_skip_quiet" type="checkbox"> 跳过 quiet 后台生成</label>
-      <label class="checkbox_label"><input id="rh_skip_impersonate" type="checkbox"> 跳过 impersonate 生成</label>
       <label class="checkbox_label"><input id="rh_debug" type="checkbox"> 控制台调试日志</label>
 
       <div class="rabbit-hole-regex-helper" style="margin:10px 0;padding:10px;border:1px solid var(--SmartThemeBorderColor);border-radius:8px;line-height:1.55;">
@@ -62,8 +60,6 @@ export function initRabbitHoleUI() {
     checked('#rh_force_visual_scenery', settings.forceVisualScenery);
     checked('#rh_ui_audit', settings.uiAudit);
     checked('#rh_avoid_repeat', settings.avoidRepeat);
-    checked('#rh_skip_quiet', settings.skipQuiet);
-    checked('#rh_skip_impersonate', settings.skipImpersonate);
     checked('#rh_debug', settings.debug);
 
     $('#rh_enabled').on('change', e => updateSettings({ enabled: e.target.checked, mode: e.target.checked ? 'integrated' : 'off' }));
@@ -73,8 +69,6 @@ export function initRabbitHoleUI() {
     $('#rh_force_visual_scenery').on('change', e => updateSettings({ forceVisualScenery: e.target.checked }));
     $('#rh_ui_audit').on('change', e => updateSettings({ uiAudit: e.target.checked }));
     $('#rh_avoid_repeat').on('change', e => updateSettings({ avoidRepeat: e.target.checked }));
-    $('#rh_skip_quiet').on('change', e => updateSettings({ skipQuiet: e.target.checked }));
-    $('#rh_skip_impersonate').on('change', e => updateSettings({ skipImpersonate: e.target.checked }));
     $('#rh_debug').on('change', e => updateSettings({ debug: e.target.checked }));
 
     $('#rh_copy_regex').on('click', async () => {
