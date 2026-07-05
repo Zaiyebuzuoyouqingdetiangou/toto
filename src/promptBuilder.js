@@ -57,8 +57,13 @@ const FINAL_GUARD_PROTOCOL = String.raw`
 const RENDER_SAFE_HTML_RULE = String.raw`
 HTML渲染安全:
   enforcement_level: "mandatory"
+  core_concept: "兔子洞最终输出必须是可直接渲染的紧凑 HTML，而不是源码展示、代码文件或 Markdown 内容"
   rule:
-    - "最终输出必须为紧凑 HTML，禁止在 <details> 内使用 4 个及以上空格开头的缩进排版，禁止 HTML 注释，禁止 Markdown 代码块。"
+    - "禁止输出 Markdown 代码块，禁止使用 \`\`\`html、\`\`\`、<pre>、<code> 或任何会触发‘显示代码块/隐藏代码块’按钮的结构。"
+    - "禁止在兔子洞内部使用 HTML 注释，例如 <!-- Header -->、<!-- Timeline -->、<!-- Node -->。"
+    - "禁止在 <details> 内部使用源码式缩进排版；所有主要 HTML 标签必须行首无空格，或直接压缩为连续 HTML。"
+    - "<details>、<summary> 与主内容容器之间不得插入多余空行、缩进代码块或注释。"
+    - "最终输出目标是渲染后的 UI，不是展示源码；若输出后出现‘显示代码块/隐藏代码块’，即视为失败，必须重写。"
 `;
 
 function formatItems(items, kind) {
