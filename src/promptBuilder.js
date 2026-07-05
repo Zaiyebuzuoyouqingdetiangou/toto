@@ -7,6 +7,7 @@ import { STATE_BAR_ISOLATION_RULES } from '../data/raw/stateBarIsolationRules.js
 import { VISUAL_FAMILY_COOLDOWN_RULES } from '../data/raw/visualFamilyCooldownRules.js';
 import { ITEM_INTERPRETATION_RULES } from '../data/raw/itemInterpretationRules.js';
 import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js';
+import { DYNAMIC_COMMITMENT_RULES } from '../data/raw/dynamicCommitmentRules.js';
 import { resolveThemeRaw, resolvePresentationRaw } from '../data/raw/rawSegmentLookup.js';
 import { pickCombination } from './picker.js';
 import { getComboHistory } from './storage.js';
@@ -238,7 +239,8 @@ export function buildRabbitHolePrompt(settings, generationType = 'normal') {
     const selectedFormats = formatItems(combo.formats, 'presentation');
     const visualSceneryMode = !!(settings.forceVisualScenery || hasVisualScenery(combo));
     const cooldownWindow = settings.avoidRepeat ? Math.max(1, Number(settings.cooldownRounds) || 10) : 0;
-    const renderSafeHtml = settings.renderSafeHtml !== false;
+    // 渲染安全当前不做 UI 开关，常驻注入，避免 <details> 内部 HTML 被解析成代码块。
+    const renderSafeHtml = true;
     const tarotRulesText = isTarotRelated(combo) ? TAROT_IMAGE_RULES : '';
     const tarotRequirement = tarotRulesText ? '如本轮使用塔罗牌图片，必须遵守已注入的【塔罗牌图片规则】计算图片地址。' : '本轮未注入塔罗图片规则；不要自行扩展塔罗图片编号规则。';
     const uiReviewFocus = formatUiReviewFocus(combo);
@@ -308,8 +310,9 @@ Visual Scenery 动态渐变模式:
     }
 
     if (tarotRulesText) chunks.push(TAROT_IMAGE_RULES);
-    if (renderSafeHtml) chunks.push(RENDER_SAFE_HTML_RULE);
+    chunks.push(RENDER_SAFE_HTML_RULE);
     chunks.push(DYNAMIC_VISUAL_RULES);
+    chunks.push(DYNAMIC_COMMITMENT_RULES);
 
     chunks.push(String.raw`
 本轮边界:
