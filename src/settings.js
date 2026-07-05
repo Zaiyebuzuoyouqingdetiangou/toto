@@ -26,8 +26,8 @@ export const defaultSettings = Object.freeze({
     avoidRepeat: true,
     // 冷却扩大到 10 轮：避免同一主题、展现形式或近似视觉观感在短时间内反复出现。
     cooldownRounds: 10,
-    // 关闭富版式关键词加权，避免抽取被“界面/面板/直播”等列举词推向通用系统面板。
-    richFormatBias: false,
+    // 增强版式多样性：随机时更偏向带界面结构/视觉锚点的展现形式，减少纯文字类连续出现。
+    richFormatBias: true,
     // 强制启动增强：将小剧场作为本轮输出格式的一部分，而不是可选附加项。
     hardStartup: true,
     // 语言锁定增强：所有可见 UI 文案也必须为简体中文，禁止英文承担主要界面标签。
@@ -40,6 +40,8 @@ export const defaultSettings = Object.freeze({
 
     // 勾选后，每轮额外注入 UI 自查与去模板化要求，减少相似黑框/记录卡。
     uiAudit: true,
+    // 渲染安全：防止 <details> 内部缩进 HTML 被 Markdown 解析成代码块。
+    renderSafeHtml: true,
 
     // 原规则要求 1-3 个主题、1-2 个展现形式，作为固定协议，不再拆成 UI 设置。
     themesMin: 1,

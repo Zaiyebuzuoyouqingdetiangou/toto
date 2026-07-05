@@ -1,22 +1,26 @@
-# Extension-RabbitHole
+# 兔子洞小剧场 / Rabbit Hole Theater
 
-SillyTavern 第三方扩展：每轮在主回复末尾追加一个 `<toto><details>` 兔子洞小剧场。
+Toto v0.22
 
-## 本版说明
+## v0.22 更新
 
-- 无副 API：兔子洞跟随主模型生成。
-- 正则边界：`<toto data-rabbit-hole="true" style="display:block;">...</toto>`。
-- 已关闭富版式关键词加权，避免抽取被“界面/面板/直播”等列举词推向通用系统面板。
-- 已整理规则职责，减少重复与互相抢权：
-  - `rawExecutionRules.js`：只管工程底座、边界、闭合、自适应、不代码块。
-  - `formatPriorityRules.js`：管展现形式优先，决定 UI 像什么与怎么读。
-  - `uiAuditRules.js`：管美感与完成度审查，不提供固定模板。
-  - `visualFamilyCooldownRules.js`：管视觉家族冷却、通用面板骨架否决、技术指标反劫持。
+- 兔子洞外层统一使用 `<toto data-rabbit-hole="true" style="display:block;">...</toto>` 作为插件/正则识别边界。
+- 设置面板新增「不发送小剧场正则」与「复制推荐正则」按钮，方便手动导入 SillyTavern 正则。
+- 继续保留展现形式优先、状态栏隔离、UI审查重点、视觉家族冷却与 10 轮冷却。
+- 版本号更新为 v0.22。
 
-## 推荐正则
+推荐正则：
 
 ```regex
 /<toto\b[^>]*>[\s\S]*?<\/toto>\s*/gi
 ```
 
-设置：替换留空／勾选 AI输出／勾选 仅格式提示词。
+推荐设置：替换留空／勾选 AI输出／勾选 仅格式提示词。
+
+## 安装
+
+将本仓库放入 SillyTavern 的第三方扩展目录，或通过 Extensions 安装 GitHub 仓库地址。
+
+## 说明
+
+完整主题库与展现形式库仍保存在 `data/raw/` 与 `data/structured/` 中。插件每轮只注入运行必要规则、本轮抽到的主题/展现形式片段、UI审查重点，以及必要的条件规则。

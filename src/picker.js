@@ -76,11 +76,20 @@ function getChatTurnKey() {
     }
 }
 
-function isRichPresentation(_item) {
-    return false;
+function isRichPresentation(item) {
+    const tags = new Set(item?.tags || []);
+    const text = `${item?.id || ''} ${item?.title || ''} ${item?.summary || ''} ${item?.raw || ''}`;
+    if ([...tags].some(tag => ['visual', 'digital', 'interactive', 'game', 'mysticism', 'media'].includes(tag))) return true;
+    return /(界面|接口|面板|图|图表|时间轴|票据|相册|壁纸|直播|弹幕|游戏|抽卡|牌阵|星盘|命盘|黄历|符咒|视觉|可视化|Scenery|播放器|排行榜|审批|日历|Bingo|四格|分镜|海报|菜单|小组件|票根|坐标)/i.test(text);
 }
 
-function enrichFormatPool(pool, _settings, _count) {
+function enrichFormatPool(pool, settings, count) {
+    if (!settings?.richFormatBias) return pool;
+    const rich = pool.filter(isRichPresentation);
+    if (rich.length >= Math.min(count, 1)) {
+        // 重复几次富版式候选，提高抽中概率，但不完全排除文学/信件等文本美学格式。
+        return [...rich, ...rich, ...pool];
+    }
     return pool;
 }
 
