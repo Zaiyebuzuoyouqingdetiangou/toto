@@ -144,7 +144,7 @@ function runtimeVariables(combo, settings, options = {}) {
   cooldownWindow: ${options.cooldownWindow}
   renderSafeHtml: ${options.renderSafeHtml}
   mainInstructionPriority: ${!!settings.userDirectivePriority}
-  userRequestOverride: ${!!settings.userDirectivePriority}
+  userRequestOverrideMode: "${settings.userDirectivePriority ? 'enabled' : 'disabled'}"
   thinkingSummary: ${!!settings.showCot}
   skipQuiet: ${!!settings.skipQuiet}
   skipImpersonate: ${!!settings.skipImpersonate}
@@ -201,8 +201,8 @@ function thinkingBlock(combo, last, settings, directive = null) {
         ? '展现形式/视觉观感'
         : '主题元素/展现形式/视觉观感';
     const directiveLine = directive
-        ? `H. 用户指令优先：已识别用户指定并优先采用；未指定的部分由插件随机补足。`
-        : `H. 用户指令优先：本轮未识别到有效指定，使用插件随机组合。`;
+        ? `H. 用户指令优先：插件已在最后一条用户输入中匹配到抽取池内点播条目；点播优先，未指定部分由插件随机补足。`
+        : `H. 用户指令优先：插件未匹配到抽取池内点播条目；若最后一条用户输入本身明确点播，仍按点播状态机执行，否则使用插件随机组合。`;
     return String.raw`
 预生成 <thinking> 执行摘要:
 <thinking>
@@ -348,7 +348,7 @@ ${selectedFormats}
     chunks.push(thinkingBlock(combo, last, settings, directive));
     chunks.push(String.raw`
 用户指令状态:
-  value: "${directive ? '本轮已检测到用户对兔子洞/小剧场的指定指令。必须优先执行用户点播；不要因为随机抽取习惯改成别的主题或格式。未被用户指定的部分可由插件随机补足。' : '本轮未检测到有效兔子洞点播指令，按插件随机抽取结果执行。'}"
+  value: "${directive ? '插件已在最后一条用户输入中匹配到抽取池内点播条目，必须优先执行用户点播；未被用户指定的部分可由插件随机补足。' : '插件未匹配到抽取池内点播条目；若最后一条用户输入本身明确点播，仍按点播状态机执行；若没有本轮点播，则按插件随机抽取结果执行，历史点播不得继承。'}"
 `);
     chunks.push(thinkingPipeline(settings));
 
