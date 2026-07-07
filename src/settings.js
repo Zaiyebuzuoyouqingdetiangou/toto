@@ -35,6 +35,9 @@ export const defaultSettings = Object.freeze({
     // 勾选后，最后一条用户消息里的“兔子洞：xxx / 兔子洞主题：xxx / 兔子洞格式：xxx”等会优先生效。
     userDirectivePriority: true,
 
+    // 发散孵化模式（测试版）：开启后把抽取结果作为灵感基底，允许在核心气味内扩展库外媒介和细节。
+    creativeExpansionMode: false,
+
     // 勾选后，每轮强制把 10.2.2 Visual Scenery 纳入本轮展现形式。
     forceVisualScenery: false,
 

@@ -12,6 +12,7 @@ import { MEDIA_SELF_JUDGMENT_RULES } from '../data/raw/mediaSelfJudgmentRules.js
 import { MODULAR_DEGRADATION_RULES } from '../data/raw/modularDegradationRules.js';
 import { CSS_SCOPE_RULES } from '../data/raw/cssScopeRules.js';
 import { USER_REQUEST_OVERRIDE_RULES } from '../data/raw/userRequestOverrideRules.js';
+import { CREATIVE_EXPANSION_RULES } from '../data/raw/creativeExpansionRules.js';
 import { resolveThemeRaw, resolvePresentationRaw } from '../data/raw/rawSegmentLookup.js';
 import { pickCombination } from './picker.js';
 import { getComboHistory } from './storage.js';
@@ -68,6 +69,19 @@ HTML渲染安全:
     - "禁止在 <details> 内部使用源码式缩进排版；所有主要 HTML 标签必须行首无空格，或直接压缩为连续 HTML。"
     - "<details>、<summary> 与主内容容器之间不得插入多余空行、缩进代码块或注释。"
     - "最终输出目标是渲染后的 UI，不是展示源码；若输出后出现‘显示代码块/隐藏代码块’，即视为失败，必须重写。"
+`;
+
+
+const CLASSIC_CONVERGENCE_RULES = String.raw`
+经典收敛模式:
+  enforcement_level: "mandatory"
+  core_concept: "关闭发散孵化时，本轮应以当前随机抽取结果或用户点播为主要锚点，避免历史惯性和过度魔改，但不禁止必要的自然补足。"
+
+  rule:
+    - "本轮必须优先围绕当前抽取词或最后一条用户点播生成，不得延续前几轮已经出现过的主题、媒介外观、视觉结构或过度发散方向。"
+    - "抽取结果应保持清晰可识别的核心气味、关系逻辑或媒介特征，禁止完全抛弃当前抽取结果另起炉灶。"
+    - "允许根据正文氛围、角色关系和当前剧情补足必要细节，但不得进行大范围库外魔改、跨媒介跳跃或喧宾夺主的夸张扩写。"
+    - "展现形式应保持经典、稳定、可识别；可以有质感和细节，但不得为了追求新奇而生成复杂失控的前端结构。"
 `;
 
 function formatItems(items, kind) {
@@ -145,6 +159,7 @@ function runtimeVariables(combo, settings, options = {}) {
   renderSafeHtml: ${options.renderSafeHtml}
   mainInstructionPriority: ${!!settings.userDirectivePriority}
   userRequestOverrideMode: "${settings.userDirectivePriority ? 'enabled' : 'disabled'}"
+  creativeExpansionMode: "${settings.creativeExpansionMode ? 'experimental_enabled' : 'disabled'}"
   thinkingSummary: ${!!settings.showCot}
   skipQuiet: ${!!settings.skipQuiet}
   skipImpersonate: ${!!settings.skipImpersonate}
@@ -264,6 +279,11 @@ export function buildRabbitHolePrompt(settings, generationType = 'normal') {
     chunks.push(RAW_EXECUTION_RULES);
     chunks.push(UNIVERSAL_EXECUTION_CORE);
     chunks.push(ITEM_INTERPRETATION_RULES);
+    if (settings.creativeExpansionMode) {
+        chunks.push(CREATIVE_EXPANSION_RULES);
+    } else {
+        chunks.push(CLASSIC_CONVERGENCE_RULES);
+    }
     chunks.push(FORMAT_PRIORITY_RULES);
     chunks.push(MEDIA_SELF_JUDGMENT_RULES);
     chunks.push(MODULAR_DEGRADATION_RULES);
