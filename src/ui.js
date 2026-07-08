@@ -16,7 +16,7 @@ export function initRabbitHoleUI() {
 <div id="rabbit_hole_theater_settings" class="rabbit-hole-settings">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子洞小剧场 / Rabbit Hole Theater</b><span class="rabbit-hole-toto-watermark">Toto v0.31.19</span>
+      <b>兔子洞小剧场 / Rabbit Hole Theater</b><span class="rabbit-hole-toto-watermark">Toto v0.31.20</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -39,6 +39,11 @@ export function initRabbitHoleUI() {
       <label class="checkbox_label"><input id="rh_avoid_repeat" type="checkbox"> 10轮冷却：避免重复主题/展现形式/近似视觉观感</label>
       <label class="checkbox_label"><input id="rh_show_cot" type="checkbox"> 输出 &lt;thinking&gt; 执行摘要</label>
 
+      <div class="rabbit-hole-emergency rabbit-hole-emergency-prominent" style="margin:12px 0 10px 0;padding:10px;border:1px solid var(--SmartThemeBorderColor);border-radius:8px;line-height:1.55;">
+        <label class="checkbox_label" style="font-weight:600;"><input id="rh_codeblock_rescue" type="checkbox"> 代码块急救模式</label>
+        <div class="rabbit-hole-subnote" style="margin:-2px 0 0 26px;opacity:.78;font-size:12px;line-height:1.45;">兔子洞变成代码块时临时开启，查看渲染效果后请关闭；平时开启可能让 UI 变普通。</div>
+      </div>
+
       <div class="rabbit-hole-regex-helper" style="margin:10px 0;padding:10px;border:1px solid var(--SmartThemeBorderColor);border-radius:8px;line-height:1.55;">
         <div style="font-weight:600;margin-bottom:6px;">不发送小剧场正则</div>
         <div style="opacity:.82;font-size:12px;margin-bottom:8px;">设置：替换留空／勾选 AI输出／勾选 仅格式提示词</div>
@@ -49,11 +54,6 @@ export function initRabbitHoleUI() {
         <button id="rh_clear_last" class="menu_button">清除上轮组合记录</button>
         <button id="rh_clear_injection" class="menu_button">清空当前注入</button>
         <button id="rh_reset" class="menu_button">恢复默认设置</button>
-      </div>
-
-      <div class="rabbit-hole-emergency" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--SmartThemeBorderColor);">
-        <label class="checkbox_label"><input id="rh_codeblock_rescue" type="checkbox"> 代码块急救模式</label>
-        <div class="rabbit-hole-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">兔子洞变成代码块时临时开启，查看渲染效果后请关闭；平时开启可能让 UI 变普通。</div>
       </div>
     </div>
   </div>
