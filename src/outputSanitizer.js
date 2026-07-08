@@ -8,11 +8,21 @@ const HTML_COMMENT_RE = /<!--[\s\S]*?-->/g;
 const CODE_FENCE_OPEN_RE = /```(?:html|xml|javascript|js|css)?\s*/gi;
 const TILDE_FENCE_OPEN_RE = /~~~(?:html|xml|javascript|js|css)?\s*/gi;
 const CODE_LIKE_TAG_RE = /<\/?(?:pre|code|kbd|samp)\b[^>]*>/gi;
-const HIGHLIGHT_CLASS_RE = /\sclass=(["'])(?=[^"']*(?:language-|hljs|prism|prettyprint))[^"']*\1/gi;
+const CLASS_ATTR_RE = /\sclass=(["'])([^"']*)\1/gi;
+const HIGHLIGHT_CLASS_TOKEN_RE = /^(?:language-(?:html|xml|js|javascript|css)|hljs|prism|prettyprint)$/i;
 const MULTI_BLANK_LINE_RE = /\n\s*\n/g;
 
 function stripHtmlComments(text) {
     return String(text || '').replace(HTML_COMMENT_RE, '');
+}
+
+function stripSyntaxHighlightClasses(text) {
+    return String(text || '').replace(CLASS_ATTR_RE, (match, quote, classValue) => {
+        const kept = String(classValue || '')
+            .split(/\s+/)
+            .filter(token => token && !HIGHLIGHT_CLASS_TOKEN_RE.test(token));
+        return kept.length ? ` class=${quote}${kept.join(' ')}${quote}` : '';
+    });
 }
 
 function stripCodeBlockTriggers(text) {
@@ -23,7 +33,12 @@ function stripCodeBlockTriggers(text) {
         .replace(TILDE_FENCE_OPEN_RE, '')
         .replace(/~~~/g, '')
         .replace(CODE_LIKE_TAG_RE, '')
-        .replace(HIGHLIGHT_CLASS_RE, '')
+        .replace(CLASS_ATTR_RE, (match, quote, classValue) => {
+            const kept = String(classValue || '')
+                .split(/\s+/)
+                .filter(token => token && !HIGHLIGHT_CLASS_TOKEN_RE.test(token));
+            return kept.length ? ` class=${quote}${kept.join(' ')}${quote}` : '';
+        })
         .replace(MULTI_BLANK_LINE_RE, '\n')
         .trim();
 }
@@ -169,7 +184,12 @@ export function compactTotoBlock(block) {
     });
 
     return html
-        .replace(HIGHLIGHT_CLASS_RE, '')
+        .replace(CLASS_ATTR_RE, (match, quote, classValue) => {
+            const kept = String(classValue || '')
+                .split(/\s+/)
+                .filter(token => token && !HIGHLIGHT_CLASS_TOKEN_RE.test(token));
+            return kept.length ? ` class=${quote}${kept.join(' ')}${quote}` : '';
+        })
         .replace(MULTI_BLANK_LINE_RE, '\n')
         .trim();
 }

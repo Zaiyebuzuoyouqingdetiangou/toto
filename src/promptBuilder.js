@@ -47,7 +47,7 @@ const UNIVERSAL_EXECUTION_CORE = String.raw`
     - "若本轮为“仅展现形式”模式，不得自行补造主题元素；内容可由展现形式、正文氛围、角色关系与自由联想自然生成。"
     - "若本轮为“主题元素 + 展现形式（经典模式）”，必须自然融合本轮主题元素与展现形式，而不是随机词拼贴。"
     - "兔子洞是主回复最底部的高完成度 HTML 小剧场，必须根据本轮展现形式重新设计版式与视觉层级。"
-    - "输出前必须自查 HTML 标签闭合、inline style、自适配容器、文本不溢出、段落间距、max-width 与 box-sizing。"
+    - "输出前必须自查 HTML 标签闭合、inline style、主 div 显式背景与文字色、自适配容器、文本不溢出、段落间距、max-width 与 box-sizing。"
     - "如启用 <thinking>，只输出简短可见执行摘要，不输出隐藏思维链或详细推理过程。"
 `;
 
@@ -67,6 +67,20 @@ HTML渲染安全:
     - "禁止使用 <script>、iframe、object、embed、form 或任何会破坏宿主页面稳定性的结构。"
     - "禁止使用 onclick、onload、onerror 等事件处理属性；交互只能使用 details/summary、CSS hover/active 或纯 CSS/SVG 效果。"
     - "<toto>、<details>、<summary> 与所有内部标签必须完整闭合，不得遗漏 </details> 或 </toto>。"
+    - "兔子洞正文的第一个主 div 必须显式声明 background 或 background-color、color、padding 与 box-sizing，严禁依赖系统默认背景色、酒馆主题背景或代码块背景。若漏写背景与文字颜色，视为格式合规失败，必须在输出前重写。"
+`;
+
+const STRUCTURE_INTEGRITY_RULES = String.raw`
+结构完整性规则:
+  enforcement_level: "mandatory"
+  core_concept: "兔子洞必须输出完整、闭合、可直接渲染的 HTML 结构，禁止把未闭合结构交给渲染器兜底。"
+
+  rule:
+    - "生成任何 <div>、<span>、<details>、<summary> 标签时，必须遵循‘即开即闭’原则。"
+    - "所有嵌套结构必须完整闭合，不得遗漏 </div>、</span>、</details>、</toto> 等闭合标签。"
+    - "输出前必须内部自检 HTML 闭合情况；若发现结构嵌套不完整，必须在输出前自行修正。"
+    - "内部自检不得写入最终回复，不得输出检查过程、说明文字或修正声明。"
+    - "若 HTML 结构未闭合、嵌套错位或导致正文退回代码块显示，视为格式合规失败，必须在输出前重写。"
 `;
 
 
@@ -377,6 +391,7 @@ Visual Scenery 动态渐变模式:
 
     if (tarotRulesText) chunks.push(TAROT_IMAGE_RULES);
     chunks.push(RENDER_SAFE_HTML_RULE);
+    chunks.push(STRUCTURE_INTEGRITY_RULES);
     chunks.push(OUTPUT_FORMAT_LIMIT);
     chunks.push(CSS_SCOPE_RULES);
     chunks.push(DYNAMIC_VISUAL_RULES);
@@ -414,6 +429,7 @@ ${selectedFormats}
     - "兔子洞内所有可见文字必须使用简体中文；禁止英文承担主要界面标签。如必须使用外语或专业术语，必须采用“外语【简体中文翻译】”格式。"
     - "内部 HTML 不提供固定模板；必须首先落实本轮展现形式，并通过 UI审查重点。经典模式还必须自然融合本轮主题元素；仅展现形式模式不得自行补造主题元素。"
     - "所有 HTML 样式使用 inline style；必须执行自适配、文字安全、复杂度硬指标、展现形式优先与状态栏隔离。"
+    - "兔子洞正文第一个主 div 必须显式声明 background 或 background-color、color、padding、box-sizing；不得依赖代码块白底、浏览器默认白底或酒馆暗色主题。"
     - "${cooldownWindow ? `严禁复用最近 ${cooldownWindow} 轮内已经使用过的完全相同主题、展现形式或近似视觉观感；不得自行回到近期模板。` : `本轮未启用冷却窗口，但仍不得生成通用模板或与本轮展现形式无关的偷懒 UI。`}"
     - "${tarotRequirement}"
     - "<toto> 只作为插件识别边界，不得作为可见 UI；Toto 仅作为插件设置界面的界面水印存在，不得在主回复正文或兔子洞小剧场内部生成 Toto 水印。"
