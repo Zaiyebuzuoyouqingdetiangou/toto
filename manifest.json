@@ -4,7 +4,7 @@
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.31.7",
+  "version": "0.31.12",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitHoleGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "Rabbit Hole Theater auto injection with safe raw-message-only sanitizer. Fixes copied regex string escaping that blocked third-party extension loading."
+  "description": "Rabbit Hole Theater auto injection with safe raw-message-only sanitizer. Adds rabbit-hole-only cleanup for comments, Markdown fences, pre/code wrappers, syntax-highlight classes, and excess blank lines without touching extension settings UI."
 }

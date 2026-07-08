@@ -75,7 +75,10 @@ const OUTPUT_FORMAT_LIMIT = String.raw`
 输出格式断路器:
   rule:
     - "兔子洞部分必须以裸露的 <toto>...</toto> HTML 直接输出，严禁任何形式的 Markdown 代码块（\`\`\`）、<pre>、<code> 或 HTML 注释包裹。"
+    - "禁止输出任何 HTML 注释（<!-- ... -->）；不要用注释标记分层，分层说明必须转为可见小标题或 data-* 属性。"
     - "禁止直接以 <div>、<section>、<article>、<details> 作为兔子洞最外层；无论内部结构多复杂，最外层必须先输出 <toto data-rabbit-hole=\"true\" style=\"display:block;\">。"
+    - "兔子洞正文必须直接渲染，禁止源码说明、自动渲染说明、代码块标记、语法高亮标记；不得出现 language-html、hljs、prism、prettyprint、‘代码如下’、‘HTML如下’或‘示例代码’。"
+    - "</summary> 后必须直接紧贴第一个主 <div style=...>，中间禁止空行、缩进、注释或说明文字。"
     - "兔子洞 HTML 必须保持紧凑，严禁行首缩进，确保直接渲染。"
 `;
 

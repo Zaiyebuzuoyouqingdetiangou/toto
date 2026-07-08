@@ -1,8 +1,12 @@
 # 兔子洞小剧场 / Rabbit Hole Theater
 
-Toto v0.31.7
+Toto v0.31.12
 
-## v0.31.7 更新
+## v0.31.12 更新
+
+- 增加 HTML 注释清理与零宽字符清理，降低 SillyTavern/Markdown 将兔子洞正文误判为代码块的概率。
+
+- 增加 summary 锚点修复：当兔子洞标题已经被渲染、但正文 HTML 被代码块插件显示为源码时，只在聊天消息内把正文拆回真实 HTML，不触碰扩展设置页。
 
 - 兔子洞外层统一使用 `<toto data-rabbit-hole="true" style="display:block;">...</toto>` 作为插件/正则识别边界。
 - 设置面板新增「不发送小剧场正则」与「复制推荐正则」按钮，方便手动导入 SillyTavern 正则。
