@@ -62,15 +62,21 @@ const FINAL_GUARD_PROTOCOL = String.raw`
 const RENDER_SAFE_HTML_RULE = String.raw`
 HTML渲染安全:
   enforcement_level: "mandatory"
-  core_concept: "兔子洞最终输出必须是可直接渲染的紧凑 HTML，而不是源码展示、代码文件或 Markdown 内容"
+  core_concept: "兔子洞最终输出必须是可直接渲染的 HTML UI，而不是源码文件、规则解释或调试文本"
   rule:
-    - "禁止输出 Markdown 代码块，禁止使用 \`\`\`html、\`\`\`、<pre>、<code> 或任何会触发‘显示代码块/隐藏代码块’按钮的结构。"
-    - "禁止在兔子洞内部使用 HTML 注释，例如 <!-- Header -->、<!-- Timeline -->、<!-- Node -->。"
-    - "禁止在 <details> 内部使用源码式缩进排版；所有主要 HTML 标签必须行首无空格，或直接压缩为连续 HTML。"
-    - "<details>、<summary> 与主内容容器之间不得插入多余空行、缩进代码块或注释。"
-    - "最终输出目标是渲染后的 UI，不是展示源码；若输出后出现‘显示代码块/隐藏代码块’，即视为失败，必须重写。"
+    - "禁止使用 <script>、iframe、object、embed、form 或任何会破坏宿主页面稳定性的结构。"
+    - "禁止使用 onclick、onload、onerror 等事件处理属性；交互只能使用 details/summary、CSS hover/active 或纯 CSS/SVG 效果。"
+    - "<toto>、<details>、<summary> 与所有内部标签必须完整闭合，不得遗漏 </details> 或 </toto>。"
 `;
 
+
+
+const OUTPUT_FORMAT_LIMIT = String.raw`
+输出格式断路器:
+  rule:
+    - "兔子洞部分必须以裸露的 <toto>...</toto> HTML 直接输出，严禁任何形式的 Markdown 代码块（\`\`\`）、<pre>、<code> 或 HTML 注释包裹。"
+    - "兔子洞 HTML 必须保持紧凑，严禁行首缩进，确保直接渲染。"
+`;
 
 const CLASSIC_CONVERGENCE_RULES = String.raw`
 经典收敛模式:
@@ -265,7 +271,7 @@ export function buildRabbitHolePrompt(settings, generationType = 'normal') {
     const selectedFormats = formatItems(combo.formats, 'presentation');
     const visualSceneryMode = !!(settings.forceVisualScenery || hasVisualScenery(combo));
     const cooldownWindow = settings.avoidRepeat ? Math.max(1, Number(settings.cooldownRounds) || 10) : 0;
-    // 渲染安全当前不做 UI 开关，常驻注入，避免 <details> 内部 HTML 被解析成代码块。
+    // 渲染安全与短版输出断路器常驻注入；真正的代码块兜底由 outputSanitizer.js 处理。
     const renderSafeHtml = true;
     const tarotRulesText = isTarotRelated(combo) ? TAROT_IMAGE_RULES : '';
     const tarotRequirement = tarotRulesText ? '如本轮使用塔罗牌图片，必须遵守已注入的【塔罗牌图片规则】计算图片地址。' : '本轮未注入塔罗图片规则；不要自行扩展塔罗图片编号规则。';
@@ -345,6 +351,7 @@ Visual Scenery 动态渐变模式:
 
     if (tarotRulesText) chunks.push(TAROT_IMAGE_RULES);
     chunks.push(RENDER_SAFE_HTML_RULE);
+    chunks.push(OUTPUT_FORMAT_LIMIT);
     chunks.push(CSS_SCOPE_RULES);
     chunks.push(DYNAMIC_VISUAL_RULES);
     chunks.push(DYNAMIC_COMMITMENT_RULES);
@@ -385,7 +392,7 @@ ${selectedFormats}
     - "${tarotRequirement}"
     - "<toto> 只作为插件识别边界，不得作为可见 UI；Toto 仅作为插件设置界面的界面水印存在，不得在主回复正文或兔子洞小剧场内部生成 Toto 水印。"
     - "如启用 <thinking>，其中只输出可见的执行摘要，不输出隐藏思维链或详细推理过程。"
-    - "不要解释你正在遵守规则，不要输出代码块，直接输出最终可渲染 HTML。"
+    - "不要解释你正在遵守规则，直接输出最终可渲染 HTML。"
     - '最终必须输出完整 <toto data-rabbit-hole="true" style="display:block;">...</toto>。'
     - "<toto> 内部必须包含一个完整 <details> 折叠模块。"
     - "<summary> 必须包含【兔子洞：标题】。"
