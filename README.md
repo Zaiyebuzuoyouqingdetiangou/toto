@@ -1,8 +1,8 @@
 # 兔子洞小剧场 / Rabbit Hole Theater
 
-Toto v0.31.5
+Toto v0.31.6
 
-## v0.31.5 更新
+## v0.31.6 更新
 
 - 兔子洞外层统一使用 `<toto data-rabbit-hole="true" style="display:block;">...</toto>` 作为插件/正则识别边界。
 - 设置面板新增「不发送小剧场正则」与「复制推荐正则」按钮，方便手动导入 SillyTavern 正则。
