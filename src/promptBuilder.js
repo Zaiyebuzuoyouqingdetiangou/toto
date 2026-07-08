@@ -75,6 +75,7 @@ const OUTPUT_FORMAT_LIMIT = String.raw`
 输出格式断路器:
   rule:
     - "兔子洞部分必须以裸露的 <toto>...</toto> HTML 直接输出，严禁任何形式的 Markdown 代码块（\`\`\`）、<pre>、<code> 或 HTML 注释包裹。"
+    - "禁止直接以 <div>、<section>、<article>、<details> 作为兔子洞最外层；无论内部结构多复杂，最外层必须先输出 <toto data-rabbit-hole=\"true\" style=\"display:block;\">。"
     - "兔子洞 HTML 必须保持紧凑，严禁行首缩进，确保直接渲染。"
 `;
 
@@ -394,6 +395,7 @@ ${selectedFormats}
     - "如启用 <thinking>，其中只输出可见的执行摘要，不输出隐藏思维链或详细推理过程。"
     - "不要解释你正在遵守规则，直接输出最终可渲染 HTML。"
     - '最终必须输出完整 <toto data-rabbit-hole="true" style="display:block;">...</toto>。'
+    - "禁止把兔子洞最外层写成裸 <div>；如果已写出 <div> 主容器，必须把它整体放进 <toto data-rabbit-hole=\"true\" style=\"display:block;\"><details>...</details></toto> 内部。"
     - "<toto> 内部必须包含一个完整 <details> 折叠模块。"
     - "<summary> 必须包含【兔子洞：标题】。"
     - "禁止遗漏 </details> 或 </toto>。"

@@ -8,14 +8,14 @@ function checked(id, value) {
 
 export function initRabbitHoleUI() {
     const settings = getSettings();
-    const noSendRegex = String.raw`/<toto\b[^>]*>[\s\S]*?<\/toto>\s*/gi`;
+    const noSendRegex = String.raw`/```(?:html|xml|HTML|XML)?\s*<toto\b[^>]*>[\s\S]*?<\/toto>\s*```|<toto\b[^>]*>[\s\S]*?<\/toto>\s*/gi`;
     if ($('#rabbit_hole_theater_settings').length) return;
 
     const html = `
 <div id="rabbit_hole_theater_settings" class="rabbit-hole-settings">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子洞小剧场 / Rabbit Hole Theater</b><span class="rabbit-hole-toto-watermark">Toto v0.31.3</span>
+      <b>兔子洞小剧场 / Rabbit Hole Theater</b><span class="rabbit-hole-toto-watermark">Toto v0.31.5</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
