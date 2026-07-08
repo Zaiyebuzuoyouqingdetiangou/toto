@@ -3,6 +3,12 @@ import { saveSettingsDebounced } from '../../../../../script.js';
 
 export const MODULE_NAME = 'rabbit_hole_theater';
 
+function cloneDefaultSettings() {
+    return typeof structuredClone === 'function'
+        ? structuredClone(defaultSettings)
+        : JSON.parse(JSON.stringify(defaultSettings));
+}
+
 export const defaultSettings = Object.freeze({
     enabled: true,
 
@@ -60,7 +66,7 @@ export const defaultSettings = Object.freeze({
 
 export function getSettings() {
     if (!extension_settings[MODULE_NAME] || typeof extension_settings[MODULE_NAME] !== 'object') {
-        extension_settings[MODULE_NAME] = structuredClone(defaultSettings);
+        extension_settings[MODULE_NAME] = cloneDefaultSettings();
     }
     const settings = extension_settings[MODULE_NAME];
     for (const [key, value] of Object.entries(defaultSettings)) {
@@ -99,6 +105,6 @@ export function updateSettings(patch) {
 }
 
 export function resetSettings() {
-    extension_settings[MODULE_NAME] = structuredClone(defaultSettings);
+    extension_settings[MODULE_NAME] = cloneDefaultSettings();
     saveSettingsDebounced();
 }

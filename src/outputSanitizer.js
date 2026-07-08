@@ -305,8 +305,9 @@ function sanitizeCodeBlocksInDom() {
 
 function scheduleSanitize(mod) {
     const run = () => {
+        // Safe mode: only clean the raw assistant message data.
+        // Do not mutate rendered DOM globally, so other extensions' settings/checkboxes/code blocks are untouched.
         sanitizeLatestRawMessages(mod);
-        sanitizeCodeBlocksInDom();
     };
     setTimeout(run, 80);
     setTimeout(run, 350);
@@ -331,15 +332,8 @@ export async function initOutputSanitizer() {
             for (const eventName of events) eventSource.on(eventName, () => scheduleSanitize(mod));
         }
 
-        if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined') {
-            let timer = null;
-            const observer = new MutationObserver(() => {
-                clearTimeout(timer);
-                timer = setTimeout(() => sanitizeCodeBlocksInDom(), 120);
-            });
-            const root = document.body || document.documentElement;
-            if (root) observer.observe(root, { childList: true, subtree: true });
-        }
+        // Safe mode deliberately does not install a document-wide MutationObserver.
+        // The previous DOM fixer was useful for already-rendered code blocks, but could interfere with other extensions' UI.
 
         scheduleSanitize(mod);
         console.debug('[RabbitHole] output sanitizer initialized');
