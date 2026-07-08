@@ -130,6 +130,23 @@ function formatRecentHistory(combo, limit = 10) {
     }).join('\n');
 }
 
+
+function formatRecentVisualSignatures(combo, limit = 6) {
+    const history = getComboHistory(limit + 1);
+    const currentSig = signatureOf(combo);
+    const trimmed = history[history.length - 1]?.signature === currentSig ? history.slice(0, -1) : history;
+    const recent = trimmed
+        .filter(item => item?.visualSignature || item?.visualSkeleton)
+        .slice(-Math.max(1, Number(limit) || 6));
+    if (!recent.length) return '无记录或首次运行';
+    return recent.map((item, index) => {
+        const formats = (item.formatIds || []).join(' + ') || '无';
+        const skeleton = item.visualSkeleton ? `；UI骨架标签：${item.visualSkeleton}` : '';
+        const visual = item.visualSignature ? `；视觉签名：${item.visualSignature}` : '';
+        return `${index + 1}. 展现形式：${formats}${skeleton}${visual}`;
+    }).join('\n');
+}
+
 function formatUiReviewFocus(combo) {
     const focus = combo?.uiReviewFocus || [];
     if (!focus.length) return '展现形式载体感；媒介语法准确度；高级质感；近期10轮观感去重';
@@ -281,6 +298,7 @@ export function buildRabbitHolePrompt(settings, generationType = 'normal') {
     const tarotRequirement = tarotRulesText ? '如本轮使用塔罗牌图片，必须遵守已注入的【塔罗牌图片规则】计算图片地址。' : '本轮未注入塔罗图片规则；不要自行扩展塔罗图片编号规则。';
     const uiReviewFocus = formatUiReviewFocus(combo);
     const recentHistory = formatRecentHistory(combo, cooldownWindow || 10);
+    const recentVisualSignatures = formatRecentVisualSignatures(combo, Math.min(6, cooldownWindow || 6));
     const chunks = [];
 
     chunks.push('<RabbitHoleTheaterAutoInjection>');
@@ -323,9 +341,13 @@ export function buildRabbitHolePrompt(settings, generationType = 'normal') {
 
     if (settings.uiAudit) chunks.push(UI_AUDIT_PROTOCOL);
     if (settings.uiAudit || settings.avoidRepeat) {
+        chunks.push(String.raw`
+最近视觉签名摘要【避让对象，不得模仿，不得复用其 UI 骨架】:
+${recentVisualSignatures}
+`);
         chunks.push(VISUAL_FAMILY_COOLDOWN_RULES);
         chunks.push(String.raw`
-最近 ${cooldownWindow || 10} 轮视觉签名摘要【避让对象，不得模仿】:
+最近 ${cooldownWindow || 10} 轮抽取历史【仅用于冷却校验，不得继承模板】:
 ${recentHistory}
 `);
     }

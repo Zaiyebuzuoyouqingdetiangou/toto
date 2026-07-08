@@ -86,13 +86,14 @@ export function clearLastCombo() {
     } catch {}
 }
 
-export function updateLatestVisualSignature(visualSignature) {
-    if (!visualSignature) return;
+export function updateLatestVisualSignature(visualSignature, visualSkeleton = '') {
+    if (!visualSignature && !visualSkeleton) return;
     try {
         const history = readHistory();
         if (!history.length) return;
         const last = history[history.length - 1];
-        last.visualSignature = String(visualSignature).slice(0, 280);
+        if (visualSignature) last.visualSignature = String(visualSignature).slice(0, 280);
+        if (visualSkeleton) last.visualSkeleton = String(visualSkeleton).slice(0, 360);
         last.visualSignatureTs = Date.now();
         localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(-MAX_STORED)));
     } catch (error) {

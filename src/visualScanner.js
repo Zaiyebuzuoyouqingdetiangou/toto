@@ -111,6 +111,74 @@ function analyzeDomStructure(html) {
     return { maxSimilarRun, summaryLength, summaryFlags };
 }
 
+
+function detectBaseColor(html) {
+    const text = String(html || '').toLowerCase();
+    const darkHits = count(/background(?:-color)?\s*:\s*(?:#(?:000|111|121212|1[0-9a-f]{5}|2[0-9a-f]{5})|black|rgba?\(\s*0\s*,\s*0\s*,\s*0|linear-gradient\([^;"']*(?:#000|#111|#1|black))/gi, text);
+    const lightHits = count(/background(?:-color)?\s*:\s*(?:#(?:fff|f[0-9a-f]{5}|e[0-9a-f]{5})|white|rgba?\(\s*255\s*,\s*255\s*,\s*255)/gi, text);
+    if (darkHits >= Math.max(2, lightHits + 1)) return '暗色高对比底盘';
+    if (lightHits >= Math.max(2, darkHits + 1)) return '浅色纸面/白底底盘';
+    if (/gradient|radial-gradient|conic-gradient|linear-gradient/i.test(html)) return '渐变/混合色底盘';
+    return '中性或混合底盘';
+}
+
+function detectLayout(html, dom, spatialSignalCount) {
+    const text = String(html || '');
+    const grid = /display\s*:\s*grid|grid-template|grid-area/i.test(text);
+    const flexColumn = /display\s*:\s*flex;[^"']*flex-direction\s*:\s*column/i.test(text);
+    const flexRow = /display\s*:\s*flex/i.test(text) && !flexColumn;
+    const absolute = /position\s*:\s*absolute/i.test(text);
+    const summary = /<summary\b/i.test(text);
+    if (absolute && spatialSignalCount >= 4) return '空间锚点/浮层式布局';
+    if (grid) return '网格分区布局';
+    if (summary && (dom?.maxSimilarRun || 0) >= 2) return '顶部折叠标题栏 + 多区块堆叠布局';
+    if (flexColumn || count(/<div\b/gi, text) >= 10) return '纵向分组堆叠布局';
+    if (flexRow) return '横向并列/分栏布局';
+    return '自由排版布局';
+}
+
+function detectReadingPath(html, spatialSignalCount) {
+    const text = String(html || '');
+    if (/timeline|left\s*:\s*\d+%|top\s*:\s*\d+%|position\s*:\s*absolute/i.test(text) && spatialSignalCount >= 3) return '按视觉锚点跳读';
+    if (/display\s*:\s*grid|grid-template/i.test(text)) return '按网格分区扫描';
+    if (/flex-direction\s*:\s*column|<ul\b|<li\b/i.test(text)) return '自上而下分段扫描';
+    return '中心内容向外扩散阅读';
+}
+
+function detectInfoUnit(html, dom, repeated) {
+    const text = String(html || '');
+    if (/<table\b|display\s*:\s*table/i.test(text)) return '表格/清单单元';
+    if (/position\s*:\s*absolute/i.test(text) && count(/<span\b/gi, text) >= 5) return '浮动碎片/弹幕单元';
+    if ((dom?.maxSimilarRun || 0) >= 2 || (repeated?.maxRepeat || 0) >= 3) return '矩形信息块/卡片化条目';
+    if (/<li\b/i.test(text)) return '列表条目单元';
+    return '段落与装饰节点混合单元';
+}
+
+function detectMood(html, plain) {
+    const text = `${html || ''}\n${plain || ''}`.toLowerCase();
+    const hasArchive = /档案|记录|备忘|日志|检索|搜索|警告|通报|报告|情报|archive|log|memo|record|warning/i.test(text);
+    const hasControl = /监控|后台|控制台|直播|弹幕|播放|录像|screen|console|control|live|video/i.test(text);
+    const hasPaper = /报纸|新闻|信笺|便签|票据|菜单|说明书|纸|paper|newspaper|menu|ticket|manual/i.test(text);
+    const hasNeon = /neon|霓虹|glow|发光|box-shadow|filter\s*:\s*drop-shadow|高饱和/i.test(text);
+    if (hasArchive && hasControl) return '档案/后台/监控混合气质';
+    if (hasArchive) return '档案/记录/警告气质';
+    if (hasControl) return '监控/直播/控制台气质';
+    if (hasPaper) return '纸面/印刷物气质';
+    if (hasNeon) return '霓虹/发光/电子气质';
+    if (/wood|木|铜|金属|玻璃|磨砂|羊皮纸|陶瓷|织物|布/i.test(text)) return '明确材质化媒介气质';
+    return '综合情绪化 UI 气质';
+}
+
+function buildVisualSkeleton(html, plain, metrics) {
+    return [
+        `base_color: ${detectBaseColor(html)}`,
+        `layout: ${detectLayout(html, metrics.dom, metrics.spatialSignalCount)}`,
+        `reading_path: ${detectReadingPath(html, metrics.spatialSignalCount)}`,
+        `info_unit: ${detectInfoUnit(html, metrics.dom, metrics.repeated)}`,
+        `mood: ${detectMood(html, plain)}`,
+    ].join('；');
+}
+
 function detectGlobalCssRisk(html) {
     const styles = [...String(html || '').matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map(m => m[1]).join('\n');
     if (!styles) return false;
@@ -119,7 +187,7 @@ function detectGlobalCssRisk(html) {
 
 export function scanRabbitHoleHtml(messageHtml) {
     const match = String(messageHtml || '').match(TOTO_RE);
-    if (!match) return '';
+    if (!match) return { signature: '', skeleton: '' };
     const html = match[0];
     const plain = stripTags(html);
     const tagCount = count(/<\w+\b/g, html);
@@ -157,7 +225,8 @@ export function scanRabbitHoleHtml(messageHtml) {
     const summary = [mediaStrength, ...structural.slice(0, 6), textDensity, ...effects]
         .filter(Boolean)
         .join('；');
-    return summary.slice(0, 280);
+    const skeleton = buildVisualSkeleton(html, plain, { dom, repeated, spatialSignalCount });
+    return { signature: summary.slice(0, 280), skeleton: skeleton.slice(0, 360) };
 }
 
 async function scanLatestAssistantMessage(mod) {
@@ -169,10 +238,12 @@ async function scanLatestAssistantMessage(mod) {
     const sigHash = hashText(message.mes);
     if (sigHash === lastScannedHash) return;
     lastScannedHash = sigHash;
-    const signature = scanRabbitHoleHtml(message.mes);
-    if (signature) {
-        updateLatestVisualSignature(signature);
-        console.debug('[RabbitHole] visual signature:', signature);
+    const result = scanRabbitHoleHtml(message.mes);
+    const signature = result?.signature || '';
+    const skeleton = result?.skeleton || '';
+    if (signature || skeleton) {
+        updateLatestVisualSignature(signature, skeleton);
+        console.debug('[RabbitHole] visual signature:', signature, skeleton);
     }
 }
 

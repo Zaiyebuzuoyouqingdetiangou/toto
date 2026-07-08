@@ -1,8 +1,11 @@
 # 兔子洞小剧场 / Rabbit Hole Theater
 
-Toto v0.31.12
+Toto v0.31.13
 
-## v0.31.12 更新
+## v0.31.13 更新
+
+本版在 v0.31.12 的代码块触发源清理基础上，增强了视觉观感冷却：插件会记录最近兔子洞的 UI 视觉签名，并在下一轮注入为避让对象；模型需要先按 `base_color / layout / reading_path / info_unit / mood` 做内部骨架自检，避免短时间内继续生成相似 UI 骨架。
+
 
 - 增加 HTML 注释清理与零宽字符清理，降低 SillyTavern/Markdown 将兔子洞正文误判为代码块的概率。
 
