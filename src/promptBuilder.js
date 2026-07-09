@@ -321,6 +321,15 @@ function compactMediaRule() {
 `;
 }
 
+
+function visualColorTruthRule() {
+    return String.raw`
+视觉明暗一致性:
+  - 若兔子洞自述、标题、UI自查或视觉签名声称白底、浅色、纸面、明亮呈现，实际主容器必须写入对应浅色 background/background-color。
+  - 禁止一边声称白底/浅色/纸面，一边使用 #000～#2f2f2f、black、深灰、rgba 黑色或红黑警告底作为主背景。
+  - 若实际 CSS 使用暗色主背景，不得把它描述为白底、浅色或纸面；不得用文字声明替代真实 CSS。`;
+}
+
 function compactSafetyRule() {
     return String.raw`
 HTML 安全:
@@ -341,6 +350,7 @@ ${selectedFormats || '- 无'}
 `);
     chunks.push(compactCreativeRule(!!settings.creativeExpansionMode));
     chunks.push(compactMediaRule());
+    chunks.push(visualColorTruthRule());
     if (settings.userDirectivePriority && directive) {
         chunks.push(String.raw`
 用户点播优先:
@@ -384,6 +394,7 @@ function buildFullPrompt({ combo, settings, selectedThemes, selectedFormats, vis
     chunks.push(FORMAT_PRIORITY_RULES);
     chunks.push(MEDIA_SELF_JUDGMENT_RULES);
     chunks.push(MODULAR_DEGRADATION_RULES);
+    chunks.push(visualColorTruthRule());
     if (settings.hardChineseLock) chunks.push(RUNTIME_LANGUAGE_RULES);
     chunks.push(STATE_BAR_ISOLATION_RULES);
     if (settings.hardStartup) chunks.push(HARD_STARTUP_PROTOCOL);

@@ -1,5 +1,5 @@
-const STORAGE_KEY = 'rabbit_hole_theater:last_combo:v8';
-const PENDING_KEY = 'rabbit_hole_theater:pending_combo:v8';
+const STORAGE_KEY = 'rabbit_hole_theater:last_combo:v9';
+const PENDING_KEY = 'rabbit_hole_theater:pending_combo:v9';
 const MAX_STORED = 20;
 
 function readHistory() {
@@ -119,6 +119,8 @@ export function clearLastCombo() {
         localStorage.removeItem('rabbit_hole_theater:last_combo:v5');
         localStorage.removeItem('rabbit_hole_theater:last_combo:v6');
         localStorage.removeItem('rabbit_hole_theater:last_combo:v7');
+        localStorage.removeItem('rabbit_hole_theater:last_combo:v8');
+        localStorage.removeItem('rabbit_hole_theater:pending_combo:v8');
     } catch {}
 }
 
