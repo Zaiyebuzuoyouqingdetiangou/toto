@@ -15,7 +15,7 @@ import { USER_REQUEST_OVERRIDE_RULES } from '../data/raw/userRequestOverrideRule
 import { CREATIVE_EXPANSION_RULES } from '../data/raw/creativeExpansionRules.js';
 import { resolveThemeRaw, resolvePresentationRaw } from '../data/raw/rawSegmentLookup.js';
 import { pickCombination } from './picker.js';
-import { getComboHistory } from './storage.js';
+import { getComboHistory, getLastCombo } from './storage.js';
 
 const HARD_STARTUP_PROTOCOL = String.raw`
 强制启动增强协议:
@@ -189,23 +189,6 @@ function themeAuditText(combo, settings) {
     return combo.themes.map(x => `【${x.id} ${x.title}】`).join(' + ') || '无';
 }
 
-function runtimeVariables(combo, settings, options = {}) {
-    return String.raw`
-本轮兔子洞运行变量:
-  samplingMode: "${combo?.samplingMode || settings?.samplingMode || 'classic'}"
-  visualSceneryMode: ${!!options.visualSceneryMode}
-  uiAuditMode: ${!!settings.uiAudit}
-  cooldownWindow: ${options.cooldownWindow}
-  renderSafeHtml: ${options.renderSafeHtml}
-  mainInstructionPriority: ${!!settings.userDirectivePriority}
-  userRequestOverrideMode: "${settings.userDirectivePriority ? 'enabled' : 'disabled'}"
-  creativeExpansionMode: "${settings.creativeExpansionMode ? 'experimental_enabled' : 'disabled'}"
-  thinkingSummary: ${!!settings.showCot}
-  skipQuiet: ${!!settings.skipQuiet}
-  skipImpersonate: ${!!settings.skipImpersonate}
-`;
-}
-
 function modeInstruction(combo, settings) {
     const mode = combo?.samplingMode || settings?.samplingMode || 'classic';
     if (mode === 'format_only') {
@@ -294,38 +277,110 @@ function thinkingPipeline(settings) {
 `;
 }
 
-export function buildRabbitHolePrompt(settings, generationType = 'normal') {
-    if (!settings?.enabled || !settings?.autoRabbitHoleInjection || settings?.mode === 'off') return '';
-    const { combo, last, directive, disabled } = pickCombination(settings);
-    if (disabled) {
-        if (settings.debug) console.debug('[RabbitHole] skipped by user directive');
-        return '';
+function shortVisualAvoidance(combo, limit = 3) {
+    const raw = formatRecentVisualSignatures(combo, limit);
+    if (!raw || raw === '无记录或首次运行') {
+        return '暂无实际历史，本轮自由生成；但仍禁止退化为普通信息卡、状态栏、报告页或多块同构卡片。';
     }
+    return raw
+        .split('\n')
+        .slice(0, limit)
+        .map(line => line.replace(/；视觉签名：/g, '；避让特征：').slice(0, 260))
+        .join('\n');
+}
 
-    const selectedThemes = formatItems(combo.themes, 'theme');
-    const selectedFormats = formatItems(combo.formats, 'presentation');
-    const visualSceneryMode = !!(settings.forceVisualScenery || hasVisualScenery(combo));
-    const cooldownWindow = settings.avoidRepeat ? Math.max(1, Number(settings.cooldownRounds) || 10) : 0;
-    // 渲染安全与短版输出断路器常驻注入；真正的代码块兜底由 outputSanitizer.js 处理。
-    const renderSafeHtml = true;
-    const tarotRulesText = isTarotRelated(combo) ? TAROT_IMAGE_RULES : '';
-    const tarotRequirement = tarotRulesText ? '如本轮使用塔罗牌图片，必须遵守已注入的【塔罗牌图片规则】计算图片地址。' : '本轮未注入塔罗图片规则；不要自行扩展塔罗图片编号规则。';
-    const uiReviewFocus = formatUiReviewFocus(combo);
-    const recentHistory = formatRecentHistory(combo, cooldownWindow || 10);
-    const recentVisualSignatures = formatRecentVisualSignatures(combo, Math.min(6, cooldownWindow || 6));
+function coreOutputProtocol() {
+    return String.raw`
+强制输出协议:
+  - 主回复正文完成后，必须在消息最底部追加一个完整兔子洞小剧场。
+  - 固定结构：<toto data-rabbit-hole="true" style="display:block;"><details><summary>【兔子洞：标题】</summary>内部 HTML</details></toto>
+  - 兔子洞必须是本轮最后一个可见模块，禁止省略，禁止解释规则。
+  - 禁止 Markdown 代码块、<pre>、<code>、HTML 注释、script、iframe、事件属性。
+  - 所有标签必须完整闭合，最终必须以 </toto> 结束。
+`;
+}
+
+function compactCreativeRule(enabled) {
+    if (enabled) {
+        return String.raw`
+发散孵化:
+  抽取结果是灵感种子，不是封闭题库。必须保留本轮主题/展现形式的核心气味、媒介痕迹或关系逻辑，同时允许自然扩展元素库外的同族媒介、材质、空间结构、交互痕迹、角色反应与外延剧情；发散必须能追溯回本轮抽取结果，禁止跑题。`;
+    }
+    return String.raw`
+经典收敛:
+  本轮必须优先围绕当前抽取结果生成，不得延续历史模板或另起炉灶；允许必要的自然补足，但禁止过度魔改、关键词拼贴或平均堆叠。`;
+}
+
+function compactMediaRule() {
+    return String.raw`
+媒介本体与 UI 要求:
+  - 展现形式必须决定 DOM/CSS 骨架、视觉轮廓、阅读路径和文字寄生方式，不能只写进标题。
+  - 兔子洞必须像独立完成的微型 HTML 媒介作品，不得退化成普通信息卡、报告页、档案页、状态栏、系统面板或多块同构卡片。
+  - 必须有明确视觉锚点、空间层级、专属媒介质感、文本长短错落、自适配布局与中文界面。
+  - 禁止仅靠换标题、颜色、图标、边框、阴影伪装新 UI。
+`;
+}
+
+function compactSafetyRule() {
+    return String.raw`
+HTML 安全:
+  只使用可直接渲染的 HTML/CSS/SVG/details/summary；优先 inline style。禁止 script、iframe、object、embed、form、onclick/onload/onerror 等事件属性。长文本必须自适配屏幕宽度，防止溢出。`;
+}
+
+function buildLitePrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive }) {
     const chunks = [];
+    chunks.push('<RabbitHoleTheaterAutoInjection>');
+    chunks.push(coreOutputProtocol());
+    chunks.push(String.raw`
+本轮抽取模式: ${samplingModeLabel(combo, settings)}
+本轮主题元素:
+${(combo?.samplingMode || settings?.samplingMode) === 'format_only' ? '- 未抽取；不得自行补造主题元素。' : (selectedThemes || '- 无')}
 
+本轮展现形式:
+${selectedFormats || '- 无'}
+`);
+    chunks.push(compactCreativeRule(!!settings.creativeExpansionMode));
+    chunks.push(compactMediaRule());
+    if (settings.userDirectivePriority && directive) {
+        chunks.push(String.raw`
+用户点播优先:
+  最后一条用户输入已匹配到兔子洞点播条目；点播优先，未指定部分由插件随机补足。兔子洞不得抢占、稀释或改写主回复正文。`);
+    }
+    if (settings.uiAudit) {
+        chunks.push(String.raw`
+UI 自查:
+  输出前检查：展现形式载体感、媒介语法、高级质感、空间层级、文字密度、阅读节奏、装饰契合度、是否像普通报告/卡片/状态栏。失败则重写。`);
+    }
+    if (settings.avoidRepeat) {
+        chunks.push(String.raw`
+近期视觉避让:
+${shortVisualAvoidance(combo, 3)}
+`);
+    }
+    if (visualSceneryMode) {
+        chunks.push(String.raw`
+动态渐变模式:
+  允许使用纯 CSS/SVG 构建风景化、光影化、流动渐变或环境动态效果；必须服务本轮展现形式，不得为了动而动。`);
+        chunks.push(VISUAL_SCENERY_RULES);
+    }
+    if (tarotRulesText) chunks.push(tarotRulesText);
+    chunks.push(compactSafetyRule());
+    chunks.push(String.raw`
+最终保底:
+  先完整生成主回复正文；正文结束后必须继续生成兔子洞。先保证 <toto> 出现，再追求复杂度。不要解释规则，直接输出最终内容。`);
+    chunks.push('</RabbitHoleTheaterAutoInjection>');
+    return chunks.filter(Boolean).join('\n\n').trim();
+}
+
+function buildFullPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, tarotRequirement, uiReviewFocus, cooldownWindow, directive }) {
+    const chunks = [];
     chunks.push('<RabbitHoleTheaterAutoInjection>');
     chunks.push('你必须在本轮主回复完成后，额外输出一个【兔子洞】小剧场模块。此模块由 SillyTavern 第三方扩展自动注入，不需要用户在预设里放任何内容。');
-    chunks.push(runtimeVariables(combo, settings, { visualSceneryMode, cooldownWindow, renderSafeHtml }));
     chunks.push(RAW_EXECUTION_RULES);
     chunks.push(UNIVERSAL_EXECUTION_CORE);
     chunks.push(ITEM_INTERPRETATION_RULES);
-    if (settings.creativeExpansionMode) {
-        chunks.push(CREATIVE_EXPANSION_RULES);
-    } else {
-        chunks.push(CLASSIC_CONVERGENCE_RULES);
-    }
+    if (settings.creativeExpansionMode) chunks.push(CREATIVE_EXPANSION_RULES);
+    else chunks.push(CLASSIC_CONVERGENCE_RULES);
     chunks.push(FORMAT_PRIORITY_RULES);
     chunks.push(MEDIA_SELF_JUDGMENT_RULES);
     chunks.push(MODULAR_DEGRADATION_RULES);
@@ -354,39 +409,30 @@ export function buildRabbitHolePrompt(settings, generationType = 'normal') {
 `);
 
     if (settings.uiAudit) chunks.push(UI_AUDIT_PROTOCOL);
-    if (settings.uiAudit || settings.avoidRepeat) {
+    if (settings.avoidRepeat) {
         chunks.push(String.raw`
-最近视觉签名摘要【避让对象，不得模仿，不得复用其 UI 骨架】:
-${recentVisualSignatures}
+最近视觉签名摘要【避让对象，不得模仿，不得复用其 UI 骨架；只来自已经实际生成成功的历史，不预抽未来轮次】:
+${shortVisualAvoidance(combo, 3)}
 `);
         chunks.push(VISUAL_FAMILY_COOLDOWN_RULES);
-        chunks.push(String.raw`
-最近 ${cooldownWindow || 10} 轮抽取历史【仅用于冷却校验，不得继承模板】:
-${recentHistory}
-`);
     }
 
-    chunks.push(String.raw`
+    if (settings.uiAudit) {
+        chunks.push(String.raw`
 本轮 UI审查重点:
   note: "只用于自检，不得变成可见标题、标签、固定组件或固定版式。"
   value: "${uiReviewFocus}"
 `);
+    }
 
     if (visualSceneryMode) {
         chunks.push(String.raw`
 Visual Scenery 动态渐变模式:
   value: true
   rule:
-    - "本轮已启用或抽到 Visual Scenery，输出必须按视觉画布优先执行。"
+    - "本轮已启用或抽到 Visual Scenery，允许纯 CSS 风景、流动渐变、光影与环境动态；必须按视觉画布优先执行。"
 `);
         chunks.push(VISUAL_SCENERY_RULES);
-    } else {
-        chunks.push(String.raw`
-Visual Scenery 动态渐变模式:
-  value: false
-  rule:
-    - "本轮未启用强制 Visual Scenery；如正文指令指定 Visual Scenery，也必须执行其专用协议。"
-`);
     }
 
     if (tarotRulesText) chunks.push(TAROT_IMAGE_RULES);
@@ -413,12 +459,22 @@ Visual Scenery 动态渐变模式:
 ${selectedFormats}
 `);
 
-    chunks.push(thinkingBlock(combo, last, settings, directive));
-    chunks.push(String.raw`
+    chunks.push(thinkingBlock(combo, getLastCombo(), settings, directive));
+    if (settings.userDirectivePriority && directive) {
+        chunks.push(String.raw`
 用户指令状态:
-  value: "${directive ? '插件已在最后一条用户输入中匹配到抽取池内点播条目，必须优先执行用户点播；未被用户指定的部分可由插件随机补足。' : '插件未匹配到抽取池内点播条目；若最后一条用户输入本身明确点播，仍按点播状态机执行；若没有本轮点播，则按插件随机抽取结果执行，历史点播不得继承。'}"
+  value: "插件已在最后一条用户输入中匹配到抽取池内点播条目，必须优先执行用户点播；未被用户指定的部分可由插件随机补足。"
 `);
-    chunks.push(thinkingPipeline(settings));
+    }
+    if (settings.showCot) chunks.push(thinkingPipeline(settings));
+    else chunks.push(String.raw`
+执行管线:
+  enforcement_level: "mandatory"
+  rule:
+    - "严禁输出 <thinking> 块。"
+    - "严禁输出 Markdown 代码块、自然语言解释、规则说明或调试信息。"
+    - "直接输出完整闭合的 HTML。"
+`);
 
     chunks.push(String.raw`
 最终输出硬性要求:
@@ -426,13 +482,10 @@ ${selectedFormats}
   rule:
     - "【输出位置最高优先级】必须先完整生成主回复正文；正文全部结束后，才能追加兔子洞模块。兔子洞必须是本轮 assistant 消息的最后一个可见内容。"
     - '小剧场最外层必须完整包裹在 <toto data-rabbit-hole="true" style="display:block;"> 与 </toto> 之间，禁止遗漏闭合标签；<toto> 内部必须使用 <details> 折叠模块，并用 <summary> 显示【兔子洞：本次标题】。'
-    - "兔子洞内所有可见文字必须使用简体中文；禁止英文承担主要界面标签。如必须使用外语或专业术语，必须采用“外语【简体中文翻译】”格式。"
     - "内部 HTML 不提供固定模板；必须首先落实本轮展现形式，并通过 UI审查重点。经典模式还必须自然融合本轮主题元素；仅展现形式模式不得自行补造主题元素。"
     - "所有 HTML 样式使用 inline style；必须执行自适配、文字安全、复杂度硬指标、展现形式优先与状态栏隔离。"
-    - "${cooldownWindow ? `严禁复用最近 ${cooldownWindow} 轮内已经使用过的完全相同主题、展现形式或近似视觉观感；不得自行回到近期模板。` : `本轮未启用冷却窗口，但仍不得生成通用模板或与本轮展现形式无关的偷懒 UI。`}"
+    - "${cooldownWindow ? `严禁复用最近 ${cooldownWindow} 轮内已经实际出现过的完全相同主题、展现形式或近似视觉观感；不得自行回到近期模板。` : `本轮未启用冷却窗口，但仍不得生成通用模板或与本轮展现形式无关的偷懒 UI。`}"
     - "${tarotRequirement}"
-    - "<toto> 只作为插件识别边界，不得作为可见 UI；Toto 仅作为插件设置界面的界面水印存在，不得在主回复正文或兔子洞小剧场内部生成 Toto 水印。"
-    - "如启用 <thinking>，其中只输出可见的执行摘要，不输出隐藏思维链或详细推理过程。"
     - "不要解释你正在遵守规则，直接输出最终可渲染 HTML。"
     - '最终必须输出完整 <toto data-rabbit-hole="true" style="display:block;">...</toto>。'
     - "禁止把兔子洞最外层写成裸 <div>；如果已写出 <div> 主容器，必须把它整体放进 <toto data-rabbit-hole=\"true\" style=\"display:block;\"><details>...</details></toto> 内部。"
@@ -441,11 +494,29 @@ ${selectedFormats}
     - "禁止遗漏 </details> 或 </toto>。"
 `);
     chunks.push('</RabbitHoleTheaterAutoInjection>');
+    return chunks.filter(Boolean).join('\n\n').trim();
+}
 
-    const prompt = chunks.filter(Boolean).join('\n\n').trim();
+export function buildRabbitHolePrompt(settings, generationType = 'normal') {
+    if (!settings?.enabled || !settings?.autoRabbitHoleInjection || settings?.mode === 'off') return '';
+    const { combo, directive, disabled } = pickCombination(settings);
+    if (disabled) {
+        if (settings.debug) console.debug('[RabbitHole] skipped by user directive');
+        return '';
+    }
+
+    const selectedThemes = formatItems(combo.themes, 'theme');
+    const selectedFormats = formatItems(combo.formats, 'presentation');
+    const visualSceneryMode = !!(settings.forceVisualScenery || hasVisualScenery(combo));
+    const cooldownWindow = settings.avoidRepeat ? Math.max(1, Number(settings.cooldownRounds) || 10) : 0;
+    const tarotRulesText = isTarotRelated(combo) ? TAROT_IMAGE_RULES : '';
+    const tarotRequirement = tarotRulesText ? '如本轮使用塔罗牌图片，必须遵守已注入的【塔罗牌图片规则】计算图片地址。' : '本轮未注入塔罗图片规则；不要自行扩展塔罗图片编号规则。';
+    const uiReviewFocus = formatUiReviewFocus(combo);
+    const payload = { combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, tarotRequirement, uiReviewFocus, cooldownWindow, directive };
+    const prompt = settings.injectionMode === 'full' ? buildFullPrompt(payload) : buildLitePrompt(payload);
 
     if (settings.debug) {
-        console.debug('[RabbitHole] generationType:', generationType, 'combo:', combo, 'prompt chars:', prompt.length);
+        console.debug('[RabbitHole] generationType:', generationType, 'mode:', settings.injectionMode || 'lite', 'combo:', combo, 'prompt chars:', prompt.length);
     }
     return prompt;
 }

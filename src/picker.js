@@ -83,6 +83,20 @@ function isRichPresentation(item) {
     return /(界面|接口|面板|图|图表|时间轴|票据|相册|壁纸|直播|弹幕|游戏|抽卡|牌阵|星盘|命盘|黄历|符咒|视觉|可视化|Scenery|播放器|排行榜|审批|日历|Bingo|四格|分镜|海报|菜单|小组件|票根|坐标)/i.test(text);
 }
 
+
+function isReportLikePresentation(item) {
+    const text = `${item?.id || ''} ${item?.title || ''} ${item?.summary || ''}`;
+    // 随机抽取时默认排除容易把 UI 拉回“报告页 / 信息面板 / 档案卡”的高风险形式。
+    // 用户明确点播时不受此限制。
+    return /(报告|报表|诊断书|诊断|审查表|检查表|观察记录|记录卡|分析报告|身体状态报告|状态栏|角色面板|属性页|任务日志|系统面板|控制台|后台|监控台|档案)/i.test(text);
+}
+
+function filterReportLikePresentations(pool, settings) {
+    if (settings?.allowReportLikeRandom) return pool;
+    const filtered = pool.filter(item => !isReportLikePresentation(item));
+    return filtered.length >= Math.max(12, Math.floor(pool.length * 0.45)) ? filtered : pool;
+}
+
 function enrichFormatPool(pool, settings, count) {
     if (!settings?.richFormatBias) return pool;
     const rich = pool.filter(isRichPresentation);
@@ -332,9 +346,10 @@ export function pickCombination(settings) {
 
     let themePool = THEMATIC_CATEGORIES.filter(item => allowByMode(item, settings.mode));
     let formatPool = PRESENTATION_FORMATS.filter(item => allowByMode(item, settings.mode));
+    formatPool = filterReportLikePresentations(formatPool, settings);
 
     if (!themePool.length) themePool = THEMATIC_CATEGORIES;
-    if (!formatPool.length) formatPool = PRESENTATION_FORMATS;
+    if (!formatPool.length) formatPool = filterReportLikePresentations(PRESENTATION_FORMATS, settings);
 
     const result = applyDirectiveOrRandom({ settings, themePool, formatPool, themeCount, formatCount, last, recent });
     if (result.disabled) {
