@@ -112,6 +112,88 @@ function analyzeDomStructure(html) {
 }
 
 
+function textLengthBucket(len) {
+    if (len < 60) return 'short';
+    if (len < 180) return 'medium';
+    return 'long';
+}
+
+function blockFeature(el) {
+    const style = (el?.getAttribute?.('style') || '').toLowerCase();
+    const text = (el?.textContent || '').replace(/\s+/g, '').trim();
+    return {
+        tag: el?.tagName || '',
+        hasBg: /background(?:-color)?\s*:/.test(style),
+        hasBorder: /border\s*:/.test(style) || /border-left\s*:/.test(style),
+        hasRadius: /border-radius\s*:/.test(style),
+        hasShadow: /box-shadow\s*:/.test(style),
+        hasPadding: /padding\s*:/.test(style),
+        hasHeading: !!el?.querySelector?.('h1,h2,h3,h4,strong,b'),
+        childBucket: Math.min(4, el?.children?.length || 0),
+        textBucket: textLengthBucket(text.length),
+    };
+}
+
+function featureSimilarity(a, b) {
+    const keys = ['tag', 'hasBg', 'hasBorder', 'hasRadius', 'hasShadow', 'hasPadding', 'hasHeading', 'childBucket', 'textBucket'];
+    let same = 0;
+    for (const key of keys) {
+        if (a?.[key] === b?.[key]) same += 1;
+    }
+    return same / keys.length;
+}
+
+function getBlockCandidates(root) {
+    if (!root?.querySelectorAll) return [];
+    return [...root.querySelectorAll('div, section, article, li')]
+        .filter(el => {
+            const text = (el.textContent || '').replace(/\s+/g, '').trim();
+            if (text.length < 24) return false;
+            const style = (el.getAttribute('style') || '').toLowerCase();
+            const hasBoxSignal = /border\s*:|border-left\s*:|border-radius\s*:|background(?:-color)?\s*:|box-shadow\s*:|padding\s*:/.test(style);
+            return hasBoxSignal;
+        })
+        .slice(0, 80);
+}
+
+function detectSameBlockStack(root, html = '') {
+    const candidates = getBlockCandidates(root);
+    if (candidates.length < 3) return false;
+    const features = candidates.map(blockFeature);
+    let similarPairs = 0;
+    let totalPairs = 0;
+    for (let i = 0; i < features.length; i += 1) {
+        for (let j = i + 1; j < features.length; j += 1) {
+            totalPairs += 1;
+            if (featureSimilarity(features[i], features[j]) >= 0.72) similarPairs += 1;
+        }
+    }
+    const similarRatio = totalPairs ? similarPairs / totalPairs : 0;
+    const htmlText = String(html || '').toLowerCase();
+    const verticalStackSignal = /flex-direction\s*:\s*column|gap\s*:|margin-bottom\s*:|<h[1-4]\b/i.test(htmlText);
+    const repeatedBoxSignal = count(/border-radius\s*:/gi, htmlText) >= 3 || count(/border\s*:/gi, htmlText) >= 3 || count(/background(?:-color)?\s*:/gi, htmlText) >= 4;
+    return candidates.length >= 4 && repeatedBoxSignal && (verticalStackSignal || similarRatio >= 0.55) && similarRatio >= 0.38;
+}
+
+function detectVisualPromiseWithoutMechanism(html = '', plain = '') {
+    const text = `${html || ''}\n${plain || ''}`;
+    const promisesMotion = /运动|变化|推进|实时|动态|连续|滚动|轮播|闪烁|流动|播放|抽取中|倒计时|漂浮|旋转|震动|呼吸|脉冲|弹幕/i.test(text);
+    if (!promisesMotion) return false;
+    const hasMechanism = /animation\s*:|@keyframes|transition\s*:|transform\s*:|<svg\b|<animate\b|<marquee\b|stroke-dasharray|offset-path/i.test(String(html || ''));
+    return !hasMechanism;
+}
+
+function detectRiskFlags({ root, html, plain, dom, repeated, spatialSignalCount }) {
+    const flags = [];
+    const sameBlockStack = detectSameBlockStack(root, html);
+    if (sameBlockStack) flags.push('same_block_stack');
+    if (sameBlockStack || (dom?.maxSimilarRun || 0) >= 3 || (repeated?.maxRepeat || 0) >= 4) flags.push('info_page_degrade');
+    if (spatialSignalCount < 2 && String(plain || '').length > 520 && (sameBlockStack || (repeated?.maxRepeat || 0) >= 3)) flags.push('weak_media_body');
+    if (detectVisualPromiseWithoutMechanism(html, plain)) flags.push('visual_promise_unfulfilled');
+    return [...new Set(flags)];
+}
+
+
 
 function expandHexColor(hex) {
     const raw = String(hex || '').replace('#', '').trim();
@@ -301,6 +383,7 @@ export function scanRabbitHoleHtml(messageHtml) {
     const divCount = count(/<div\b/gi, html);
     const repeated = extractStyleFingerprints(html);
     const dom = analyzeDomStructure(html);
+    const root = parseToto(html);
     const textDensity = plain.length > 900 && tagCount < 65 ? '文本密度过高' : plain.length > 520 ? '文本密度中高' : '文本密度适中';
 
     const spatialSignalCount = count(/position\s*:\s*absolute|grid-area\s*:|grid-template|display\s*:\s*grid|transform\s*:|clip-path\s*:|mask\s*:|z-index\s*:|<svg\b|<path\b|radial-gradient|conic-gradient|repeating-gradient|aspect-ratio/gi, html);
@@ -324,6 +407,11 @@ export function scanRabbitHoleHtml(messageHtml) {
     if (count(/<!--/g, html) > 0) structural.push('HTML注释残留');
     if (/<pre\b|<code\b|```/i.test(html)) structural.push('代码块风险');
     if (detectGlobalCssRisk(html)) structural.push('全局CSS污染风险');
+    const riskFlags = detectRiskFlags({ root, html, plain, dom, repeated, spatialSignalCount });
+    if (riskFlags.includes('same_block_stack')) structural.push('同构信息块堆叠风险');
+    if (riskFlags.includes('info_page_degrade')) structural.push('信息页降级风险');
+    if (riskFlags.includes('weak_media_body')) structural.push('媒介本体偏弱风险');
+    if (riskFlags.includes('visual_promise_unfulfilled')) structural.push('视觉承诺未兑现风险');
     structural.push(...dom.summaryFlags);
 
     const mediaStrength = (/clip-path|mask|<svg\b|<path\b|position\s*:\s*absolute|transform\s*:|border-radius\s*:\s*50%|aspect-ratio|radial-gradient|conic-gradient/i.test(html) && tagCount >= 35)
@@ -333,7 +421,7 @@ export function scanRabbitHoleHtml(messageHtml) {
         .filter(Boolean)
         .join('；');
     const skeleton = buildVisualSkeleton(html, plain, { dom, repeated, spatialSignalCount });
-    return { signature: summary.slice(0, 280), skeleton: skeleton.slice(0, 360) };
+    return { signature: summary.slice(0, 280), skeleton: skeleton.slice(0, 360), riskFlags };
 }
 
 async function scanLatestAssistantMessage(mod) {
@@ -348,9 +436,10 @@ async function scanLatestAssistantMessage(mod) {
     const result = scanRabbitHoleHtml(message.mes);
     const signature = result?.signature || '';
     const skeleton = result?.skeleton || '';
-    if (signature || skeleton) {
-        updateLatestVisualSignature(signature, skeleton);
-        console.debug('[RabbitHole] visual signature:', signature, skeleton);
+    const riskFlags = Array.isArray(result?.riskFlags) ? result.riskFlags : [];
+    if (signature || skeleton || riskFlags.length) {
+        updateLatestVisualSignature(signature, skeleton, riskFlags);
+        console.debug('[RabbitHole] visual signature:', signature, skeleton, riskFlags);
     }
 }
 

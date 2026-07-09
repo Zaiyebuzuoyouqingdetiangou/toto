@@ -1,6 +1,12 @@
-# Rabbit Hole Theater v0.31.24
+# Rabbit Hole Theater v0.31.25
 
 - Removed the old full/lite injection selector; this build uses one standard rule path.
 - Kept regional/Hong Kong/Cantonese-prone entries removed.
 - Replaced color-specific cooldown with real visual-family cooldown.
 - Codeblock rescue remains a temporary local repair mode: keep it off unless a rabbit hole renders as code.
+
+
+## v0.31.25
+- 增加插件侧同构信息块堆叠检测：不在 Prompt 中列举模板，生成后根据真实 HTML/CSS 记录风险。
+- 下一轮只在检测到风险时注入短纠偏，并鼓励使用 CSS/SVG 承担媒介本体、视觉轮廓、空间层级、材质质感或轻量动态。
+- 视觉冷却继续以真实输出历史为准，不预抽未来轮次。

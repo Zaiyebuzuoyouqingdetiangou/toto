@@ -15,7 +15,7 @@ import { USER_REQUEST_OVERRIDE_RULES } from '../data/raw/userRequestOverrideRule
 import { CREATIVE_EXPANSION_RULES } from '../data/raw/creativeExpansionRules.js';
 import { resolveThemeRaw, resolvePresentationRaw } from '../data/raw/rawSegmentLookup.js';
 import { pickCombination } from './picker.js';
-import { getComboHistory, getLastCombo } from './storage.js';
+import { getComboHistory, getLastCombo, getRecentRiskFlags } from './storage.js';
 
 const HARD_STARTUP_PROTOCOL = String.raw`
 强制启动增强协议:
@@ -289,6 +289,24 @@ function shortVisualAvoidance(combo, limit = 3) {
         .join('\n');
 }
 
+
+function recentRiskCorrection() {
+    const flags = getRecentRiskFlags(3);
+    if (!flags.length) return '';
+    const lines = [];
+    if (flags.includes('same_block_stack') || flags.includes('info_page_degrade')) {
+        lines.push('近期真实输出存在同构信息块堆叠。本轮必须改变主要内容承载方式、阅读路径和空间结构，并优先让 CSS/SVG 承担媒介本体、视觉轮廓、空间层级、材质质感或轻量动态，而不是只承担装饰；不得只用多个相似内容块承载主要内容，不得通过换色、换标题或换边框复用近期视觉骨架。');
+    }
+    if (flags.includes('weak_media_body')) {
+        lines.push('近期真实输出存在媒介本体偏弱。本轮必须让展现形式直接决定 DOM/CSS 轮廓、空间组织与文字寄生方式，不得把主要内容放回普通内容页。');
+    }
+    if (flags.includes('visual_promise_unfulfilled')) {
+        lines.push('近期真实输出存在视觉承诺未兑现。本轮若暗示运动、变化、时间推进、交互反馈或非静态观看方式，必须用可渲染 CSS/SVG/HTML 机制表现；否则不得只用文字宣称。');
+    }
+    if (!lines.length) return '';
+    return `\n真实视觉纠偏【由插件扫描实际 HTML/CSS 后触发，不是模板要求】:\n${lines.map(x => `  - "${x}"`).join('\n')}`;
+}
+
 function coreOutputProtocol() {
     return String.raw`
 强制输出协议:
@@ -364,7 +382,7 @@ UI 自查:
     if (settings.avoidRepeat) {
         chunks.push(String.raw`
 近期视觉避让:
-${shortVisualAvoidance(combo, 3)}
+${shortVisualAvoidance(combo, 3)}${recentRiskCorrection()}
 `);
     }
     if (visualSceneryMode) {
@@ -423,7 +441,7 @@ function buildStandardPrompt({ combo, settings, selectedThemes, selectedFormats,
     if (settings.avoidRepeat) {
         chunks.push(String.raw`
 最近视觉签名摘要【避让对象，不得模仿，不得复用其 UI 骨架；只来自已经实际生成成功的历史，不预抽未来轮次】:
-${shortVisualAvoidance(combo, 3)}
+${shortVisualAvoidance(combo, 3)}${recentRiskCorrection()}
 `);
         chunks.push(VISUAL_FAMILY_COOLDOWN_RULES);
     }
