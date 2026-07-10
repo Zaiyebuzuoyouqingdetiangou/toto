@@ -3,12 +3,12 @@ export const PRESENTATION_FORMATS = [
     "id": "10.1",
     "group": "10",
     "title": "可交互小剧场",
-    "summary": "嵌套 details/summary 点击推进。",
+    "summary": "主动操作推进；内部交互必须改变可见层级、阅读路径或界面状态，外层折叠本身不计。",
     "tags": [
       "independent",
       "interactive"
     ],
-    "raw": "* **10.1 可交互小剧场**：深度利用 <details> 和 <summary> 的嵌套折叠特性。"
+    "raw": "* **10.1 可交互小剧场**：制作需要 {{user}} 主动操作才能推进。内部至少一处交互必须改变可见层级、阅读路径或界面状态，外层折叠本身不计；文字、台词或线索必须嵌入交互结构；禁止 JS。"
   },
   {
     "id": "10.2",
@@ -130,6 +130,18 @@ export const PRESENTATION_FORMATS = [
       "digital"
     ],
     "raw": "* **1.2.1 在线购物接口**：购物车/快递/外带订单/亲密付等。"
+  },
+  {
+    "id": "1.3.2.4.1",
+    "group": "1",
+    "title": "外语学习APP",
+    "summary": "语言学习软件课程界面、发音练习、例句卡、错题本或学习进度条。",
+    "tags": [
+      "independent",
+      "digital",
+      "language"
+    ],
+    "raw": "* **1.3.2.4.1 外语学习APP**：模仿语言学习软件的课程界面、发音练习、例句卡、错题本或学习进度条。可让 {{char}} 用外语短句、语音包文字稿或双语例句暗示情绪，并在出现外语时附简体中文释义。"
   },
   {
     "id": "1.3.2.4.2",
@@ -1044,3 +1056,4 @@ export const PRESENTATION_FORMATS = [
     "raw": "* **直白翻译机**：体面话/伪装话与真实含义双栏翻译。"
   }
 ];
+

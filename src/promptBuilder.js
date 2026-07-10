@@ -63,7 +63,7 @@ function shortVisualAvoidance(combo, limit = 3) {
     const recent = trimmed
         .filter(item => item?.visualSignature || item?.visualSkeleton || (Array.isArray(item?.riskFlags) && item.riskFlags.length))
         .slice(-limit);
-    if (!recent.length) return '暂无实际历史；本轮仍需避免普通信息页、单列内容块和换皮复用。';
+    if (!recent.length) return '暂无实际历史；本轮仍需避免浅层复用与仅换皮的视觉骨架。';
     return recent.map((item, index) => {
         const formats = (item.formatIds || []).join(' + ') || '未记录';
         const riskCount = Array.isArray(item.riskFlags) ? item.riskFlags.length : 0;
@@ -87,7 +87,7 @@ function recentRiskCorrection() {
         'repeated_unit_shape',
     ].includes(flag));
     if (hasRepeatedStructure) {
-        lines.push('近期真实输出的内容承载骨架或阅读路径过于相似。本轮必须改变主视觉结构、空间组织与内容寄生方式，不得继续用多个相似信息块自上而下堆叠。');
+        lines.push('近期真实输出的内容承载骨架或阅读路径过于相似。本轮必须改变主视觉结构、空间组织与内容寄生方式，不得继续复用同质内容单元与单向阅读结构。');
     }
 
     const hasWeakMedia = flags.some(flag => ['weak_media_body', 'weak_spatial_complexity'].includes(flag));
@@ -111,9 +111,9 @@ function recentRiskCorrection() {
 function coreOutputProtocol() {
     return String.raw`
 强制输出:
-  - 主回复正文完成后，必须在消息最底部追加一个完整兔子洞小剧场。
-  - 固定外壳：<toto data-rabbit-hole="true" style="display:block;"><details><summary>【兔子洞：标题】</summary>内部 HTML</details></toto>
-  - 兔子洞必须是最后一个可见模块；禁止解释规则、禁止省略、禁止 Markdown 代码块、禁止 <pre>/<code>/HTML 注释。
+  - 主回复正文完成后，必须在消息最底部追加一个完整兔子镜小剧场。
+  - 固定外壳：<toto data-rabbit-hole="true" style="display:block;"><details><summary>【兔子镜：标题】</summary>内部 HTML</details></toto>
+  - 兔子镜必须是最后一个可见模块；禁止解释规则、禁止省略、禁止 Markdown 代码块、禁止 <pre>/<code>/HTML 注释。
   - 禁止 script、iframe、object、embed、form、事件属性；所有标签必须闭合，最终必须以 </toto> 结束。`;
 }
 
@@ -131,12 +131,12 @@ function compactCreativeRule(enabled) {
 function complexInteractiveCore() {
     return String.raw`
 复杂交互视觉核心:
-  - 兔子洞必须像复杂精美的微型交互 HTML 媒介作品，而不是普通信息页、单列内容块、简单表单或文字摘要。
+  - 兔子镜必须形成复杂精美的微型交互 HTML 媒介作品，具备独立完整的媒介结构，而不是仅用浅层排版承载文字。
   - 展现形式必须决定 DOM/CSS 的整体轮廓、空间结构、阅读路径、交互方式和文字寄生位置，不能只写进标题。
   - 必须具备主视觉结构、前中后景层级、视觉锚点、材质质感、排版呼吸感与非单调阅读路径。
-  - 除最外层折叠外，内部至少包含一个可操作/可探索入口，例如内部 details/summary、checkbox+label 控制、局部展开、隐藏线索、分层视窗、状态切换或 hover/active 反馈。
+  - 除最外层折叠外，内部至少存在一处真实交互；操作后必须改变可见层级、阅读路径或界面状态，并让文字、台词或线索嵌入该交互结构。
   - 鼓励使用 Flex/Grid、absolute 定位、SVG、linear-gradient、box-shadow、filter、clip-path、mask、transform、transition 或轻量 CSS 动效构建空间与质感。
-  - 不得只靠换标题、换色、换边框或换装饰复用同一种视觉骨架。`;
+  - 每轮形成 layout/material/color/type/interaction/hierarchy 六项视觉指纹；与上一轮至少四项变化，并真实体现在 DOM/CSS 中。若整体骨架、阅读路径或内容承载方式仍近似，必须重写。`;
 }
 
 function htmlSafetyCore() {
@@ -170,13 +170,13 @@ ${selectedFormats}`);
     if (settings.userDirectivePriority && directive) {
         chunks.push(String.raw`
 用户点播优先:
-  最后一条用户输入已匹配到兔子洞点播条目；点播优先，未指定部分由插件随机补足。兔子洞不得抢占、稀释或改写主回复正文。`);
+  最后一条用户输入已匹配到兔子镜点播条目；点播优先，未指定部分由插件随机补足。兔子镜不得抢占、稀释或改写主回复正文。`);
     }
 
     if (settings.uiAudit) {
         chunks.push(String.raw`
 UI 自查短版:
-  输出前检查：媒介本体是否靠 DOM/CSS 成立、是否有空间层级/视觉锚点/质感、是否有内部交互入口、是否退化为普通纵向内容流。失败则重写。`);
+  输出前检查：媒介本体是否靠 DOM/CSS 成立、是否有空间层级/视觉锚点/质感、是否有内部交互入口、是否退化为浅层或单向内容承载。失败则重写。`);
     }
 
     if (settings.avoidRepeat) {
@@ -196,7 +196,7 @@ ${shortVisualAvoidance(combo, 3)}${recentRiskCorrection()}`);
     chunks.push(htmlSafetyCore());
     chunks.push(String.raw`
 最终保底:
-  先完整生成主回复正文；正文结束后必须继续生成兔子洞。先保证 <toto> 出现，再追求复杂度。不要解释规则，直接输出最终内容。`);
+  先完整生成主回复正文；正文结束后必须继续生成兔子镜。先保证 <toto> 出现，再追求复杂度。不要解释规则，直接输出最终内容。`);
     chunks.push('</RabbitHoleTheaterAutoInjection>');
     return chunks.filter(Boolean).join('\n\n').trim();
 }

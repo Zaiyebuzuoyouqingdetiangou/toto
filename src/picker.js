@@ -40,18 +40,16 @@ function weightedFormatCount(settings) {
 const UI_REVIEW_FOCUS = [
     '展现形式载体感',
     '媒介语法准确度',
-    '非通用卡片化',
     '高级质感',
     '空间层级与视觉深度',
     '主视觉锚点明确',
+    '内容单元具有差异',
     '文字密度服从载体',
     '文本长短错落',
     '阅读路径有节奏',
     '装饰方式与氛围契合',
     '配色服务本轮氛围',
-    '避免状态栏化',
-    '避免报告卡化',
-    '避免普通信息面板化',
+    '整体骨架避免浅层复用',
     '近期10轮观感去重'
 ];
 
@@ -84,11 +82,9 @@ function isRichPresentation(item) {
 }
 
 
-function isReportLikePresentation(item) {
-    const text = `${item?.id || ''} ${item?.title || ''} ${item?.summary || ''}`;
-    // 随机抽取时默认排除容易把 UI 拉回“报告页 / 信息面板 / 档案卡”的高风险形式。
-    // 用户明确点播时不受此限制。
-    return /(报告|报表|诊断书|诊断|审查表|检查表|观察记录|记录卡|分析报告|身体状态报告|状态栏|角色面板|属性页|任务日志|系统面板|控制台|后台|监控台|档案)/i.test(text);
+function isReportLikePresentation(_item) {
+    // 不按具体媒介名称预先禁用；生成后由真实 DOM/CSS 骨架审查负责判断完成度与重复度。
+    return false;
 }
 
 
@@ -252,22 +248,22 @@ function extractAfterPatterns(message, patterns) {
 }
 
 function parseUserDirective(message) {
-    if (!message || !/(兔子洞|小剧场)/.test(message)) return null;
+    if (!message || !/(兔子镜|兔子镜|小剧场)/.test(message)) return null;
 
-    if (/((?:兔子洞|小剧场)\s*(关闭|关掉|不要|禁用|停止|off)|不要\s*(?:兔子洞|小剧场)|关闭\s*(?:兔子洞|小剧场)|本轮不(?:要|用)\s*(?:兔子洞|小剧场))/i.test(message)) {
-        return { disabled: true, reason: '用户正文指令关闭本轮兔子洞' };
+    if (/((?:兔子镜|兔子镜|小剧场)\s*(关闭|关掉|不要|禁用|停止|off)|不要\s*(?:兔子镜|兔子镜|小剧场)|关闭\s*(?:兔子镜|兔子镜|小剧场)|本轮不(?:要|用)\s*(?:兔子镜|兔子镜|小剧场))/i.test(message)) {
+        return { disabled: true, reason: '用户正文指令关闭本轮兔子镜' };
     }
 
     const themeTexts = extractAfterPatterns(message, [
-        '(?:兔子洞|小剧场)(?:主题|元素|题材|theme)\s*[:：]\s*([^\n。；;]+)',
+        '(?:兔子镜|兔子镜|小剧场)(?:主题|元素|题材|theme)\s*[:：]\s*([^\n。；;]+)',
     ]);
     const formatTexts = extractAfterPatterns(message, [
-        '(?:兔子洞|小剧场)(?:展现形式|展示形式|表现形式|格式|形式|format|ui|UI)\s*[:：]\s*([^\n。；;]+)',
+        '(?:兔子镜|兔子镜|小剧场)(?:展现形式|展示形式|表现形式|格式|形式|format|ui|UI)\s*[:：]\s*([^\n。；;]+)',
     ]);
     const generalTexts = extractAfterPatterns(message, [
-        '(?:兔子洞|小剧场)\s*[:：]\s*([^\n。；;]+)',
-        '(?:兔子洞|小剧场)\s*(?:想看|想要|来|要|指定|换成)\s*([^\n。；;]+)',
-        '(?:下一个|下次|这次|本轮)?\s*(?:兔子洞|小剧场)\s*(?:想看|想要|来|要|指定|换成)\s*([^\n。；;]+)',
+        '(?:兔子镜|兔子镜|小剧场)\s*[:：]\s*([^\n。；;]+)',
+        '(?:兔子镜|兔子镜|小剧场)\s*(?:想看|想要|来|要|指定|换成)\s*([^\n。；;]+)',
+        '(?:下一个|下次|这次|本轮)?\s*(?:兔子镜|兔子镜|小剧场)\s*(?:想看|想要|来|要|指定|换成)\s*([^\n。；;]+)',
     ]).filter(x => !/^(主题|元素|题材|展现形式|展示形式|表现形式|格式|形式)\s*[:：]/.test(x));
 
     const themeQueries = splitDirectiveText(themeTexts.join('、'));
@@ -288,7 +284,7 @@ function parseUserDirective(message) {
     for (const query of generalQueries) {
         const format = matchOne(PRESENTATION_FORMATS, query);
         const theme = matchOne(THEMATIC_CATEGORIES, query);
-        // 一般“兔子洞：xxx”里，像法甜剖面图/短信体更常是展现形式；两边都能匹配时都保留。
+        // 一般“兔子镜：xxx”里，像法甜剖面图/短信体更常是展现形式；两边都能匹配时都保留。
         if (format) formats.push(format);
         if (theme) themes.push(theme);
     }
@@ -301,7 +297,7 @@ function parseUserDirective(message) {
         disabled: false,
         themes: uniqueThemes,
         formats: uniqueFormats,
-        source: '最后一条用户消息中的兔子洞正文指令',
+        source: '最后一条用户消息中的兔子镜正文指令',
         raw: message,
     };
 }

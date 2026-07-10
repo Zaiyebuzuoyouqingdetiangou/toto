@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子洞小剧场 / Rabbit Hole Theater",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater",
   "loading_order": 99,
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.31.25",
+  "version": "0.31.25-710-mirror-r2",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitHoleGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "Rabbit Hole Theater: standard injection with code-side visual family guard, same-block risk detection, no regional elements, color guard, codeblock rescue toggle."
+  "description": "Rabbit Mirror Theater: 7.10 favorite base with abstract anti-repetition rules, H.6 truth reconstruction, and optimized free-form interaction."
 }
