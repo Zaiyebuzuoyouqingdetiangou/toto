@@ -69,6 +69,17 @@ export function getRecentRiskFlags(limit = 3) {
     return [...new Set(flags)];
 }
 
+export function getRecentRiskFlagCounts(limit = 3) {
+    const history = getComboHistory(limit);
+    const counts = {};
+    for (const item of history) {
+        for (const flag of item?.riskFlags || []) {
+            counts[flag] = (counts[flag] || 0) + 1;
+        }
+    }
+    return counts;
+}
+
 export function setPendingCombo(combo) {
     try {
         if (!combo) return;

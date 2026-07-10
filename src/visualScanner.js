@@ -175,6 +175,40 @@ function detectSameBlockStack(root, html = '') {
     return candidates.length >= 4 && repeatedBoxSignal && (verticalStackSignal || similarRatio >= 0.55) && similarRatio >= 0.38;
 }
 
+function candidateSimilarityRatio(candidates = []) {
+    if (!Array.isArray(candidates) || candidates.length < 2) return 0;
+    const features = candidates.map(blockFeature);
+    let similarPairs = 0;
+    let totalPairs = 0;
+    for (let i = 0; i < features.length; i += 1) {
+        for (let j = i + 1; j < features.length; j += 1) {
+            totalPairs += 1;
+            if (featureSimilarity(features[i], features[j]) >= 0.68) similarPairs += 1;
+        }
+    }
+    return totalPairs ? similarPairs / totalPairs : 0;
+}
+
+function detectSameGridCardRisk(root, html = '') {
+    const text = String(html || '').toLowerCase();
+    const gridSignal = /display\s*:\s*grid|grid-template|grid-template-columns|repeat\s*\(/i.test(text);
+    if (!gridSignal) return false;
+    const candidates = getBlockCandidates(root);
+    if (candidates.length < 4) return false;
+    const ratio = candidateSimilarityRatio(candidates);
+    const boxSignals = count(/border\s*:/gi, text) + count(/border-radius\s*:/gi, text) + count(/background(?:-color)?\s*:/gi, text);
+    return ratio >= 0.30 && boxSignals >= 8;
+}
+
+function detectCatalogPageRisk(root, html = '', plain = '') {
+    const text = `${html || ''}\n${plain || ''}`;
+    const catalogSignal = /图鉴|目录|标本|物件|编号|条目|清单|列表|收藏|catalog|index|specimen|item|collection/i.test(text);
+    if (!catalogSignal) return false;
+    const candidates = getBlockCandidates(root);
+    const gridSignal = /display\s*:\s*grid|grid-template|grid-template-columns|repeat\s*\(/i.test(String(html || ''));
+    return candidates.length >= 4 && (gridSignal || candidateSimilarityRatio(candidates) >= 0.30);
+}
+
 function detectVisualPromiseWithoutMechanism(html = '', plain = '') {
     const text = `${html || ''}\n${plain || ''}`;
     const promisesMotion = /运动|变化|推进|实时|动态|连续|滚动|轮播|闪烁|流动|播放|抽取中|倒计时|漂浮|旋转|震动|呼吸|脉冲|弹幕/i.test(text);
@@ -183,12 +217,66 @@ function detectVisualPromiseWithoutMechanism(html = '', plain = '') {
     return !hasMechanism;
 }
 
+
+function detectInteractionMissing(html = '', plain = '') {
+    const text = String(html || '');
+    const innerDetails = count(/<details\b/gi, text) >= 2; // outer details + at least one internal details
+    const checkboxControl = /<input\b[^>]*type=["']?checkbox|<label\b[^>]*for=/i.test(text);
+    const cssFeedback = /:hover|:active|:checked|transition\s*:|cursor\s*:\s*pointer/i.test(text);
+    const stateWords = /展开|切换|隐藏|点击|选择|滑动|开关|tab|toggle|解锁|探索|查看/i.test(`${html || ''}\n${plain || ''}`);
+    const longEnoughToNeedInteraction = String(plain || '').length > 420;
+    return longEnoughToNeedInteraction && !(innerDetails || checkboxControl || cssFeedback || stateWords);
+}
+
+function detectWeakSpatialComplexity(html = '', plain = '') {
+    const text = String(html || '');
+    const spatialSignals = count(/position\s*:\s*absolute|display\s*:\s*grid|grid-template|grid-area|transform\s*:|clip-path\s*:|mask\s*:|z-index\s*:|<svg\b|<path\b|radial-gradient|conic-gradient|repeating-gradient|aspect-ratio/gi, text);
+    const visualSignals = count(/box-shadow\s*:|linear-gradient|radial-gradient|filter\s*:|backdrop-filter|clip-path|mask\s*:|transform\s*:|<svg\b/gi, text);
+    const textHeavy = String(plain || '').length > 520;
+    return textHeavy && spatialSignals < 2 && visualSignals < 3;
+}
+
+function detectFlatVerticalFlow(html = '', root = null) {
+    const text = String(html || '');
+    const columnSignals = count(/flex-direction\s*:\s*column|margin-bottom\s*:|<br\s*\/?>(?![^<]*<svg)|<li\b/gi, text);
+    const divs = count(/<div\b/gi, text);
+    const absolute = /position\s*:\s*absolute|display\s*:\s*grid|grid-template|clip-path\s*:|mask\s*:|<svg\b/i.test(text);
+    const candidates = root ? getBlockCandidates(root) : [];
+    const ratio = candidateSimilarityRatio(candidates);
+    return divs >= 8 && columnSignals >= 2 && !absolute && (candidates.length >= 3 || ratio >= 0.25);
+}
+
+function detectRepeatedUnitShape(root, html = '') {
+    const candidates = root ? getBlockCandidates(root) : [];
+    if (candidates.length < 3) return false;
+    const ratio = candidateSimilarityRatio(candidates);
+    const text = String(html || '');
+    const repeatedVisualProps = count(/border-radius\s*:|padding\s*:|background(?:-color)?\s*:|border\s*:/gi, text);
+    return ratio >= 0.42 && repeatedVisualProps >= 8;
+}
+
+
 function detectRiskFlags({ root, html, plain, dom, repeated, spatialSignalCount }) {
     const flags = [];
     const sameBlockStack = detectSameBlockStack(root, html);
+    const sameGridCard = detectSameGridCardRisk(root, html);
+    const catalogPage = detectCatalogPageRisk(root, html, plain);
+
+    const flatVerticalFlow = detectFlatVerticalFlow(html, root);
+    const repeatedUnitShape = detectRepeatedUnitShape(root, html);
+    const weakSpatialComplexity = detectWeakSpatialComplexity(html, plain);
+    const interactionMissing = detectInteractionMissing(html, plain);
+
     if (sameBlockStack) flags.push('same_block_stack');
-    if (sameBlockStack || (dom?.maxSimilarRun || 0) >= 3 || (repeated?.maxRepeat || 0) >= 4) flags.push('info_page_degrade');
-    if (spatialSignalCount < 2 && String(plain || '').length > 520 && (sameBlockStack || (repeated?.maxRepeat || 0) >= 3)) flags.push('weak_media_body');
+    if (sameGridCard) flags.push('same_grid_card_risk');
+    if (catalogPage) flags.push('catalog_page_risk');
+    if (flatVerticalFlow) flags.push('flat_vertical_flow');
+    if (repeatedUnitShape) flags.push('repeated_unit_shape');
+
+    if (sameBlockStack || sameGridCard || catalogPage || flatVerticalFlow || repeatedUnitShape || (dom?.maxSimilarRun || 0) >= 3 || (repeated?.maxRepeat || 0) >= 4) flags.push('info_page_degrade');
+    if (spatialSignalCount < 2 && String(plain || '').length > 520 && (sameBlockStack || sameGridCard || catalogPage || repeatedUnitShape || (repeated?.maxRepeat || 0) >= 3)) flags.push('weak_media_body');
+    if (weakSpatialComplexity) flags.push('weak_spatial_complexity');
+    if (interactionMissing) flags.push('missing_interaction');
     if (detectVisualPromiseWithoutMechanism(html, plain)) flags.push('visual_promise_unfulfilled');
     return [...new Set(flags)];
 }
@@ -409,8 +497,14 @@ export function scanRabbitHoleHtml(messageHtml) {
     if (detectGlobalCssRisk(html)) structural.push('全局CSS污染风险');
     const riskFlags = detectRiskFlags({ root, html, plain, dom, repeated, spatialSignalCount });
     if (riskFlags.includes('same_block_stack')) structural.push('同构信息块堆叠风险');
+    if (riskFlags.includes('same_grid_card_risk')) structural.push('同构网格信息块风险');
+    if (riskFlags.includes('catalog_page_risk')) structural.push('图鉴/目录式承载风险');
+    if (riskFlags.includes('flat_vertical_flow')) structural.push('单向纵向阅读路径风险');
+    if (riskFlags.includes('repeated_unit_shape')) structural.push('重复内容单元形状风险');
     if (riskFlags.includes('info_page_degrade')) structural.push('信息页降级风险');
     if (riskFlags.includes('weak_media_body')) structural.push('媒介本体偏弱风险');
+    if (riskFlags.includes('weak_spatial_complexity')) structural.push('空间复杂度偏弱风险');
+    if (riskFlags.includes('missing_interaction')) structural.push('内部交互入口偏弱风险');
     if (riskFlags.includes('visual_promise_unfulfilled')) structural.push('视觉承诺未兑现风险');
     structural.push(...dom.summaryFlags);
 
