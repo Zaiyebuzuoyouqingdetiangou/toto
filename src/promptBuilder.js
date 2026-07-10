@@ -14,19 +14,16 @@ function truncate(text, max = 220) {
     return `${raw.slice(0, Math.max(20, max - 1)).trim()}…`;
 }
 
-function compactItemLine(item, kind) {
+function compactItemLine(item) {
     const id = item?.id || '?';
     const title = item?.title || '未命名';
     const summary = item?.summary || item?.raw || '';
-    const note = kind === 'presentation'
-        ? '；执行：让该展现形式决定 DOM/CSS 轮廓、空间结构、交互方式和文字寄生位置。'
-        : '；执行：自然融入本轮剧情气味，不要关键词拼贴。';
-    return `- 【${id} ${title}】${summary ? `：${truncate(summary, 170)}` : ''}${note}`;
+    return `- 【${id} ${title}】${summary ? `：${truncate(summary, 170)}` : ''}`;
 }
 
-function formatItemsCompact(items, kind) {
+function formatItemsCompact(items) {
     if (!Array.isArray(items) || !items.length) return '- 无';
-    return items.map(item => compactItemLine(item, kind)).join('\n');
+    return items.map(item => compactItemLine(item)).join('\n');
 }
 
 function signatureOf(combo) {
@@ -36,11 +33,6 @@ function signatureOf(combo) {
         samplingMode: combo?.samplingMode || 'classic',
         forcedVisualScenery: !!combo?.forcedVisualScenery,
     });
-}
-
-function samplingModeLabel(combo, settings) {
-    const mode = combo?.samplingMode || settings?.samplingMode || 'classic';
-    return mode === 'format_only' ? '仅展现形式' : '主题元素 + 展现形式';
 }
 
 function hasVisualScenery(combo) {
@@ -63,7 +55,7 @@ function shortVisualAvoidance(combo, limit = 3) {
     const recent = trimmed
         .filter(item => item?.visualSignature || item?.visualSkeleton || (Array.isArray(item?.riskFlags) && item.riskFlags.length))
         .slice(-limit);
-    if (!recent.length) return '暂无实际历史；本轮仍需避免浅层复用与仅换皮的视觉骨架。';
+    if (!recent.length) return '';
     return recent.map((item, index) => {
         const formats = (item.formatIds || []).join(' + ') || '未记录';
         const riskCount = Array.isArray(item.riskFlags) ? item.riskFlags.length : 0;
@@ -158,7 +150,6 @@ function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualS
     chunks.push(coreOutputProtocol());
     chunks.push(RUNTIME_LANGUAGE_RULES);
     chunks.push(String.raw`
-本轮抽取模式: ${samplingModeLabel(combo, settings)}
 本轮主题元素:
 ${mode === 'format_only' ? '- 未抽取；不得自行补造主题元素。' : selectedThemes}
 
@@ -181,9 +172,12 @@ UI 自查短版:
     }
 
     if (settings.avoidRepeat) {
-        chunks.push(String.raw`
-近期视觉避让:
-${shortVisualAvoidance(combo, 3)}${recentRiskCorrection()}`);
+        const avoidance = shortVisualAvoidance(combo, 3);
+        const correction = recentRiskCorrection();
+        if (avoidance || correction) {
+            chunks.push(`${avoidance ? `近期视觉避让:
+${avoidance}` : ''}${correction}`.trim());
+        }
     }
 
     if (visualSceneryMode) {
@@ -195,9 +189,6 @@ ${shortVisualAvoidance(combo, 3)}${recentRiskCorrection()}`);
 
     if (tarotRulesText) chunks.push(tarotRulesText);
     chunks.push(htmlSafetyCore());
-    chunks.push(String.raw`
-最终保底:
-  先完整生成主回复正文；正文结束后必须继续生成兔子镜。先保证 <toto> 出现，再追求复杂度。不要解释规则，直接输出最终内容。`);
     chunks.push('</RabbitHoleTheaterAutoInjection>');
     return chunks.filter(Boolean).join('\n\n').trim();
 }
@@ -210,8 +201,8 @@ export function buildRabbitHolePrompt(settings, generationType = 'normal') {
         return '';
     }
 
-    const selectedThemes = formatItemsCompact(combo.themes, 'theme');
-    const selectedFormats = formatItemsCompact(combo.formats, 'presentation');
+    const selectedThemes = formatItemsCompact(combo.themes);
+    const selectedFormats = formatItemsCompact(combo.formats);
     const visualSceneryMode = !!(settings.forceVisualScenery || hasVisualScenery(combo));
     const tarotRulesText = isTarotRelated(combo) ? TAROT_IMAGE_RULES : '';
     const prompt = buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive });
