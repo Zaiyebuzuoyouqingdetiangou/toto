@@ -4,7 +4,7 @@
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.31.25-710-mirror-r4-pure-dedupe",
+  "version": "0.31.32",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitHoleGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "Rabbit Mirror Theater: r3 language-lock base with pure duplicate prompt lines removed; visual, interaction, language, and safety requirements unchanged."
+  "description": "Rabbit Mirror Theater: 7.10 stable base with rabbit-mirror rename, interaction format rewrite, H-category restore, foreign-language app, and prompt cleanup."
 }
