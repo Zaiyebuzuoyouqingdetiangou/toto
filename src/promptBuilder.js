@@ -1,5 +1,6 @@
 import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js';
 import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js';
+import { RUNTIME_LANGUAGE_RULES } from '../data/raw/runtimeLanguageRules.js';
 import { pickCombination } from './picker.js';
 import { getComboHistory, getLastCombo, getRecentRiskFlags, getRecentRiskFlagCounts } from './storage.js';
 
@@ -16,12 +17,11 @@ function truncate(text, max = 220) {
 function compactItemLine(item, kind) {
     const id = item?.id || '?';
     const title = item?.title || '未命名';
-    const tags = Array.isArray(item?.tags) && item.tags.length ? `；tags: ${item.tags.slice(0, 4).join(',')}` : '';
     const summary = item?.summary || item?.raw || '';
     const note = kind === 'presentation'
         ? '；执行：让该展现形式决定 DOM/CSS 轮廓、空间结构、交互方式和文字寄生位置。'
         : '；执行：自然融入本轮剧情气味，不要关键词拼贴。';
-    return `- 【${id} ${title}】${summary ? `：${truncate(summary, 170)}` : ''}${tags}${note}`;
+    return `- 【${id} ${title}】${summary ? `：${truncate(summary, 170)}` : ''}${note}`;
 }
 
 function formatItemsCompact(items, kind) {
@@ -156,6 +156,7 @@ function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualS
     const mode = combo?.samplingMode || settings?.samplingMode || 'classic';
     chunks.push('<RabbitHoleTheaterAutoInjection>');
     chunks.push(coreOutputProtocol());
+    chunks.push(RUNTIME_LANGUAGE_RULES);
     chunks.push(String.raw`
 本轮抽取模式: ${samplingModeLabel(combo, settings)}
 本轮主题元素:
