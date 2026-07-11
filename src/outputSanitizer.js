@@ -80,7 +80,7 @@ function looksLikeCompleteHtmlBlock(text) {
 
     // 只接管“像兔子镜 UI 作品”的整段 HTML，避免误伤普通聊天里的 HTML 教程代码。
     const htmlSignal = /\bstyle\s*=|display\s*:\s*(?:grid|flex|block)|box-sizing\s*:|max-width\s*:|linear-gradient\(|box-shadow\s*:|filter\s*:|border-radius\s*:/i.test(html);
-    const theaterSignal = /兔子镜|兔子镜|小剧场|互动区|海龟汤|剖面图|Layer|视觉|展现形式|summary|details/i.test(html);
+    const theaterSignal = /兔子镜|小剧场|互动区|海龟汤|剖面图|Layer|视觉|展现形式|summary|details/i.test(html);
     const enoughTags = (html.match(/<\/(?:div|p|span|h[1-6]|section|article)>/gi) || []).length >= 3;
     return htmlSignal && (theaterSignal || enoughTags);
 }
@@ -394,7 +394,7 @@ function isRabbitHoleDetails(details) {
     if (!details?.querySelector) return false;
     const summary = details.querySelector(':scope > summary') || details.querySelector('summary');
     const title = (summary?.textContent || '').replace(/\s+/g, ' ').trim();
-    return /^【(?:兔子镜|兔子镜)[:：]/.test(title) || /兔子镜|兔子镜/.test(title);
+    return /^【兔子镜[:：]/.test(title) || /兔子镜/.test(title);
 }
 
 function sanitizeRenderedRabbitHoleDetailsDom() {

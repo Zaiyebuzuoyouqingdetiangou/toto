@@ -1,6 +1,5 @@
 import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js';
 import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js';
-import { RUNTIME_LANGUAGE_RULES } from '../data/raw/runtimeLanguageRules.js';
 import { pickCombination } from './picker.js';
 import { getComboHistory, getLastCombo, getRecentRiskFlags, getRecentRiskFlagCounts } from './storage.js';
 
@@ -14,16 +13,20 @@ function truncate(text, max = 220) {
     return `${raw.slice(0, Math.max(20, max - 1)).trim()}…`;
 }
 
-function compactItemLine(item) {
+function compactItemLine(item, kind) {
     const id = item?.id || '?';
     const title = item?.title || '未命名';
+    const tags = Array.isArray(item?.tags) && item.tags.length ? `；tags: ${item.tags.slice(0, 4).join(',')}` : '';
     const summary = item?.summary || item?.raw || '';
-    return `- 【${id} ${title}】${summary ? `：${truncate(summary, 170)}` : ''}`;
+    const note = kind === 'presentation'
+        ? '；执行：让该展现形式决定 DOM/CSS 轮廓、空间结构、交互方式和文字寄生位置。'
+        : '；执行：自然融入本轮剧情气味，不要关键词拼贴。';
+    return `- 【${id} ${title}】${summary ? `：${truncate(summary, 170)}` : ''}${tags}${note}`;
 }
 
-function formatItemsCompact(items) {
+function formatItemsCompact(items, kind) {
     if (!Array.isArray(items) || !items.length) return '- 无';
-    return items.map(item => compactItemLine(item)).join('\n');
+    return items.map(item => compactItemLine(item, kind)).join('\n');
 }
 
 function signatureOf(combo) {
@@ -33,6 +36,11 @@ function signatureOf(combo) {
         samplingMode: combo?.samplingMode || 'classic',
         forcedVisualScenery: !!combo?.forcedVisualScenery,
     });
+}
+
+function samplingModeLabel(combo, settings) {
+    const mode = combo?.samplingMode || settings?.samplingMode || 'classic';
+    return mode === 'format_only' ? '仅展现形式' : '主题元素 + 展现形式';
 }
 
 function hasVisualScenery(combo) {
@@ -55,7 +63,7 @@ function shortVisualAvoidance(combo, limit = 3) {
     const recent = trimmed
         .filter(item => item?.visualSignature || item?.visualSkeleton || (Array.isArray(item?.riskFlags) && item.riskFlags.length))
         .slice(-limit);
-    if (!recent.length) return '';
+    if (!recent.length) return '暂无实际历史；本轮仍需避免低完成度内容流和换皮复用。';
     return recent.map((item, index) => {
         const formats = (item.formatIds || []).join(' + ') || '未记录';
         const riskCount = Array.isArray(item.riskFlags) ? item.riskFlags.length : 0;
@@ -79,7 +87,7 @@ function recentRiskCorrection() {
         'repeated_unit_shape',
     ].includes(flag));
     if (hasRepeatedStructure) {
-        lines.push('近期真实输出的内容承载骨架或阅读路径过于相似。本轮必须改变主视觉结构、空间组织与内容寄生方式，不得继续复用同质内容单元与单向阅读结构。');
+        lines.push('近期真实输出的内容承载骨架或阅读路径过于相似。本轮必须改变主视觉结构、空间组织与内容寄生方式，不得复用相似内容区域的顺序排列。');
     }
 
     const hasWeakMedia = flags.some(flag => ['weak_media_body', 'weak_spatial_complexity'].includes(flag));
@@ -123,12 +131,12 @@ function compactCreativeRule(enabled) {
 function complexInteractiveCore() {
     return String.raw`
 复杂交互视觉核心:
-  - 兔子镜必须形成复杂精美的微型交互 HTML 媒介作品，具备独立完整的媒介结构，而不是仅用浅层排版承载文字。
+  - 兔子镜必须像复杂精美的微型交互 HTML 媒介作品，而不是低完成度的普通内容摘要。
   - 展现形式必须决定 DOM/CSS 的整体轮廓、空间结构、阅读路径、交互方式和文字寄生位置，不能只写进标题。
   - 必须具备主视觉结构、前中后景层级、视觉锚点、材质质感、排版呼吸感与非单调阅读路径。
-  - 除最外层折叠外，内部至少存在一处真实交互；操作后必须改变可见层级、阅读路径或界面状态，并让文字、台词或线索嵌入该交互结构。
+  - 除最外层折叠外，内部必须存在至少一处会改变可见层级、阅读路径或界面状态的真实交互机关；文字、台词或线索必须贴附、嵌入或隐藏在交互结构中，不得只是普通展开说明。
   - 鼓励使用 Flex/Grid、absolute 定位、SVG、linear-gradient、box-shadow、filter、clip-path、mask、transform、transition 或轻量 CSS 动效构建空间与质感。
-  - 每轮形成 layout/material/color/type/interaction/hierarchy 六项视觉指纹；与上一轮至少四项变化，并真实体现在 DOM/CSS 中。若整体骨架、阅读路径或内容承载方式仍近似，必须重写。`;
+  - 每轮必须形成真实视觉指纹：layout / material / color / type / interaction / hierarchy；与上一轮相比至少四项变化，并真实体现在 DOM/CSS 的结构、材质、配色、字体层级、交互入口与内容组织中。不得只换标题、颜色或局部装饰；若整体骨架、阅读路径或内容承载方式仍近似上一轮，必须重写。`;
 }
 
 function htmlSafetyCore() {
@@ -148,8 +156,8 @@ function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualS
     const mode = combo?.samplingMode || settings?.samplingMode || 'classic';
     chunks.push('<RabbitHoleTheaterAutoInjection>');
     chunks.push(coreOutputProtocol());
-    chunks.push(RUNTIME_LANGUAGE_RULES);
     chunks.push(String.raw`
+本轮抽取模式: ${samplingModeLabel(combo, settings)}
 本轮主题元素:
 ${mode === 'format_only' ? '- 未抽取；不得自行补造主题元素。' : selectedThemes}
 
@@ -168,16 +176,13 @@ ${selectedFormats}`);
     if (settings.uiAudit) {
         chunks.push(String.raw`
 UI 自查短版:
-  输出前检查：媒介本体是否靠 DOM/CSS 成立、是否有空间层级/视觉锚点/质感、是否有内部交互入口、是否退化为浅层或单向内容承载。失败则重写。`);
+  输出前检查：媒介本体是否靠 DOM/CSS 成立、是否有空间层级/视觉锚点/质感、是否有内部交互入口、是否退化为普通纵向内容流。失败则重写。`);
     }
 
     if (settings.avoidRepeat) {
-        const avoidance = shortVisualAvoidance(combo, 3);
-        const correction = recentRiskCorrection();
-        if (avoidance || correction) {
-            chunks.push(`${avoidance ? `近期视觉避让:
-${avoidance}` : ''}${correction}`.trim());
-        }
+        chunks.push(String.raw`
+近期视觉避让:
+${shortVisualAvoidance(combo, 3)}${recentRiskCorrection()}`);
     }
 
     if (visualSceneryMode) {
@@ -189,6 +194,9 @@ ${avoidance}` : ''}${correction}`.trim());
 
     if (tarotRulesText) chunks.push(tarotRulesText);
     chunks.push(htmlSafetyCore());
+    chunks.push(String.raw`
+最终保底:
+  先完整生成主回复正文；正文结束后必须继续生成兔子镜。先保证 <toto> 出现，再追求复杂度。不要解释规则，直接输出最终内容。`);
     chunks.push('</RabbitHoleTheaterAutoInjection>');
     return chunks.filter(Boolean).join('\n\n').trim();
 }
@@ -201,8 +209,8 @@ export function buildRabbitHolePrompt(settings, generationType = 'normal') {
         return '';
     }
 
-    const selectedThemes = formatItemsCompact(combo.themes);
-    const selectedFormats = formatItemsCompact(combo.formats);
+    const selectedThemes = formatItemsCompact(combo.themes, 'theme');
+    const selectedFormats = formatItemsCompact(combo.formats, 'presentation');
     const visualSceneryMode = !!(settings.forceVisualScenery || hasVisualScenery(combo));
     const tarotRulesText = isTarotRelated(combo) ? TAROT_IMAGE_RULES : '';
     const prompt = buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive });

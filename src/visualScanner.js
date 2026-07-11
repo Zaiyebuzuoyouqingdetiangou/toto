@@ -424,7 +424,7 @@ function detectInfoUnit(html, dom, repeated) {
     const text = String(html || '');
     if (/<table\b|display\s*:\s*table/i.test(text)) return '表格/清单单元';
     if (/position\s*:\s*absolute/i.test(text) && count(/<span\b/gi, text) >= 5) return '浮动碎片/弹幕单元';
-    if ((dom?.maxSimilarRun || 0) >= 2 || (repeated?.maxRepeat || 0) >= 3) return '重复同构内容单元';
+    if ((dom?.maxSimilarRun || 0) >= 2 || (repeated?.maxRepeat || 0) >= 3) return '矩形信息块/卡片化条目';
     if (/<li\b/i.test(text)) return '列表条目单元';
     return '段落与装饰节点混合单元';
 }
@@ -485,9 +485,9 @@ export function scanRabbitHoleHtml(messageHtml) {
     else effects.push('空间构造信号弱');
 
     const structural = [];
-    if (dom.maxSimilarRun >= 3) structural.push('连续同构兄弟区块明显');
+    if (dom.maxSimilarRun >= 3) structural.push('连续同构兄弟区块明显/卡片化倾向高');
     else if (dom.maxSimilarRun >= 2) structural.push('存在连续同构兄弟区块');
-    if (repeated.maxRepeat >= 4 || repeated.repeated >= 2) structural.push('存在高密度重复同构内容块');
+    if (repeated.maxRepeat >= 4 || repeated.repeated >= 2) structural.push('存在重复同构内容块/卡片化倾向高');
     else if (repeated.maxRepeat >= 3) structural.push('存在重复同构内容块');
     if (/display\s*:\s*flex;[^"']*flex-direction\s*:\s*column/i.test(html) && divCount >= 10) structural.push('纵向分组结构明显');
     if (spatialSignalCount < 2 && plain.length > 520 && (dom.maxSimilarRun >= 2 || repeated.maxRepeat >= 3 || divCount >= 10)) structural.push('主要依赖纵向文本流/媒介轮廓偏弱');
@@ -497,11 +497,11 @@ export function scanRabbitHoleHtml(messageHtml) {
     if (detectGlobalCssRisk(html)) structural.push('全局CSS污染风险');
     const riskFlags = detectRiskFlags({ root, html, plain, dom, repeated, spatialSignalCount });
     if (riskFlags.includes('same_block_stack')) structural.push('同构信息块堆叠风险');
-    if (riskFlags.includes('same_grid_card_risk')) structural.push('同构内容分区风险');
-    if (riskFlags.includes('catalog_page_risk')) structural.push('固定索引式承载风险');
+    if (riskFlags.includes('same_grid_card_risk')) structural.push('同构网格信息块风险');
+    if (riskFlags.includes('catalog_page_risk')) structural.push('图鉴/目录式承载风险');
     if (riskFlags.includes('flat_vertical_flow')) structural.push('单向纵向阅读路径风险');
     if (riskFlags.includes('repeated_unit_shape')) structural.push('重复内容单元形状风险');
-    if (riskFlags.includes('info_page_degrade')) structural.push('媒介结构降级风险');
+    if (riskFlags.includes('info_page_degrade')) structural.push('信息页降级风险');
     if (riskFlags.includes('weak_media_body')) structural.push('媒介本体偏弱风险');
     if (riskFlags.includes('weak_spatial_complexity')) structural.push('空间复杂度偏弱风险');
     if (riskFlags.includes('missing_interaction')) structural.push('内部交互入口偏弱风险');
@@ -533,7 +533,7 @@ async function scanLatestAssistantMessage(mod) {
     const riskFlags = Array.isArray(result?.riskFlags) ? result.riskFlags : [];
     if (signature || skeleton || riskFlags.length) {
         updateLatestVisualSignature(signature, skeleton, riskFlags);
-        console.debug('[RabbitMirror] visual signature:', signature, skeleton, riskFlags);
+        console.debug('[RabbitHole] visual signature:', signature, skeleton, riskFlags);
     }
 }
 
