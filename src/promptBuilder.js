@@ -83,7 +83,7 @@ function recentRiskCorrection() {
     const recentDarkMood = recentSkeletons.slice(-2).length === 2 && recentSkeletons.slice(-2).every(text => /霓虹|发光|监控|控制台|档案\/后台|digital_dark_surface/.test(text));
 
     if (recentTwoDark || recentDarkMood) {
-        lines.push('近期输出的明暗关系与主底盘光源重复度过高。本轮必须切换主背景气质、光源结构、材质层次与视觉锚点，不得继续复用同类暗色发光骨架。');
+        lines.push('近期输出的明暗关系与主底盘光源重复度过高。本轮优先切换为浅色、中明度或混合材质主底盘，并确保文字与背景高对比可读；不得继续复用整页暗底或同类暗色发光骨架。');
     }
 
     const hasRepeatedStructure = flags.some(flag => [
@@ -103,9 +103,13 @@ function recentRiskCorrection() {
         lines.push('近期真实输出的媒介本体偏弱。本轮必须让 DOM/CSS 直接呈现可辨认的媒介轮廓、前中后景层级与视觉锚点，而不是把媒介名只写在标题里。');
     }
 
+    if (flags.includes('low_text_contrast')) {
+        lines.push('近期真实输出出现文字对比不足。本轮必须优先保证可读性：深底浅字、浅底深字，复杂背景上的文字必须有承托层、阴影、描边或纯色底。');
+    }
+
     const hasWeakInteraction = flags.some(flag => ['details_overused', 'visual_promise_unfulfilled'].includes(flag));
     if (hasWeakInteraction) {
-        lines.push('近期真实输出曾出现视觉承诺未兑现或折叠堆叠。本轮让动态反馈从当前媒介材质中产生；若使用交互，必须真实可用且不被装饰层遮挡。');
+        lines.push('近期真实输出曾出现视觉承诺未兑现或内部折叠堆叠。本轮让动态反馈从当前媒介材质中产生；除外层折叠壳外，内部若使用交互必须真实可用且不被装饰层遮挡。');
     }
 
     if ((counts.same_block_stack || 0) >= 2 || (counts.info_page_degrade || 0) >= 2 || (counts.flat_vertical_flow || 0) >= 2) {
@@ -120,13 +124,21 @@ function coreOutputProtocol() {
     return String.raw`
 强制输出:
   - 主回复正文完成后，必须在消息最底部追加一个完整兔子镜小剧场。
-  - 固定外壳：<toto data-rabbit-mirror="true" style="display:block;">内部 HTML</toto>。
-  - 内部主体优先使用 <div> 作为主容器；仅当本轮展现形式确实需要翻面、揭示或分段探索时，才使用 <details>/<summary>。
+  - 固定外壳：<toto data-rabbit-mirror="true" style="display:block;"><details><summary>兔子镜</summary><div>内部 HTML</div></details></toto>。
+  - 外层 <details>/<summary> 只负责把整段兔子镜折叠起来，summary 只写短标题，不承载正文；外层折叠壳不算本轮交互玩法。
+  - summary 后的主体优先使用 <div> 作为主容器；除非本轮展现形式确实需要翻面、揭示或分段探索，否则不要在内部继续堆叠 <details>/<summary>。
   - 兔子镜必须是最后一个可见模块；禁止解释规则、禁止省略、禁止 Markdown 代码块、禁止 <pre>/<code>/HTML 注释。
   - 禁止 script、iframe、object、embed、form、事件属性；所有标签必须闭合，最终必须以 </toto> 结束。`;
 }
 
-function compactCreativeRule(enabled) {
+function compactCreativeRule(enabled, formatOnly = false) {
+    if (formatOnly) {
+        return enabled ? String.raw`
+仅展现形式发散:
+  本轮只把展现形式当作媒介、阅读路径和视觉结构的灵感种子；可以发散材质、空间、动态反馈与细节，但不得额外调用或补造独立题材分类。内容素材只取自当前对话语境。` : String.raw`
+仅展现形式收敛:
+  本轮只围绕展现形式生成媒介结构与视觉读法，不另起题材分类，不在标题、summary 或正文中标注额外类别；内容素材只取自当前对话语境。`;
+    }
     if (enabled) {
         return String.raw`
 发散孵化:
@@ -143,11 +155,13 @@ function complexInteractiveCore() {
   - 兔子镜必须像复杂精美的微型 HTML 媒介作品，而不是普通信息页、单列内容块、简单表单或文字摘要。
   - 展现形式必须决定 DOM/CSS 的整体轮廓、空间结构、阅读路径、反馈方式和文字寄生位置，不能只写进标题。
   - 必须具备主视觉结构、前中后景层级、视觉锚点、材质质感、排版呼吸感与非单调阅读路径。
-  - 动态反馈必须从本轮展现形式的媒介材质和场景逻辑中产生，不得脱离本轮媒介另起一套通用操作面板。
-  - 每轮可以具备可感知的动态反馈或交互感，但不强制每轮都使用可点击结构；只有本轮确实需要选择、探索或分段推进时，才使用可点击/可切换结构。
-  - 不得为了满足交互而机械堆叠 <details>/<summary>；折叠结构不能连续成为默认解法。
-  - 若使用可点击或可切换结构，必须无需 JS 即可生效：禁止 onclick、button 伪交互；summary 需 cursor:pointer 与 list-style:none；checkbox/radio 必须配唯一 id 与 label for；装饰遮罩不得覆盖交互，必要时 pointer-events:none，交互层使用更高 z-index。
+  - 动态反馈必须从本轮展现形式的媒介材质和场景逻辑中产生，不得脱离本轮媒介材质另起一套无关界面语法。
+  - 每轮可以具备可感知的动态反馈或交互感，但外层折叠壳之外不强制每轮都使用额外可点击结构；只有本轮确实需要选择、探索或分段推进时，才使用内部可点击/可切换结构。
+  - 不得为了满足交互而在外层折叠壳内部继续机械堆叠 <details>/<summary>；内部折叠结构不能连续成为默认解法。
+  - 若使用可点击或可切换结构，必须无需 JS 即可生效：禁止 onclick、button 伪交互；外层 summary 与内部 summary 均需 cursor:pointer 与 list-style:none；checkbox/radio 必须配唯一 id 与 label for；装饰遮罩不得覆盖交互，必要时 pointer-events:none，交互层使用更高 z-index。
   - 鼓励使用 Flex/Grid、absolute 定位、SVG、linear-gradient、box-shadow、filter、clip-path、mask、transform、transition 或轻量 CSS 动效构建空间与质感。
+  - 可读性优先：所有主要文字必须与所在背景高对比，深底浅字、浅底深字；禁止黑底灰字、暗底暗字、低透明文字压在复杂纹理上。
+  - 本轮不得默认整页暗底或黑色发光底盘；若主题需要暗色，只能作为局部层次或必须确保全部文字清晰可读。
   - 不得只靠换标题、换色、换边框或换装饰复用同一种视觉骨架；若整体骨架、阅读路径或内容承载方式仍近似上一轮，必须重写。`;
 }
 
@@ -160,7 +174,7 @@ HTML 直接渲染:
 function visualColorTruthRule() {
     return String.raw`
 视觉真实:
-  明暗、纸面、屏幕、材质等描述必须与实际 CSS background/background-color 一致；不得用文字声明替代真实 CSS。`;
+  明暗、纸面、屏幕、材质等描述必须与实际 CSS background/background-color 一致；不得用文字声明替代真实 CSS。文字色必须与所在背景形成清晰对比，复杂背景上的文字必须有承托层、阴影、描边或纯色底。`;
 }
 
 function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive }) {
@@ -168,14 +182,22 @@ function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualS
     const mode = combo?.samplingMode || settings?.samplingMode || 'classic';
     chunks.push('<RabbitMirrorTheaterAutoInjection>');
     chunks.push(coreOutputProtocol());
-    chunks.push(String.raw`
+    if (mode === 'format_only') {
+        chunks.push(String.raw`
+本轮抽取模式: 仅展现形式
+本轮内容来源: 当前对话语境；不使用题材抽取池，不额外补造独立类别。
+本轮展现形式:
+${selectedFormats}`);
+    } else {
+        chunks.push(String.raw`
 本轮抽取模式: ${samplingModeLabel(combo, settings)}
 本轮主题元素:
-${mode === 'format_only' ? '- 未抽取；不得自行补造主题元素。' : selectedThemes}
+${selectedThemes}
 
 本轮展现形式:
 ${selectedFormats}`);
-    chunks.push(compactCreativeRule(!!settings.creativeExpansionMode));
+    }
+    chunks.push(compactCreativeRule(!!settings.creativeExpansionMode, mode === 'format_only'));
     chunks.push(complexInteractiveCore());
     chunks.push(visualColorTruthRule());
 

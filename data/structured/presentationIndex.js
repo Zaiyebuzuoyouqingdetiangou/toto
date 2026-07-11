@@ -291,13 +291,13 @@ export const PRESENTATION_FORMATS = [
     "id": "2.1.8",
     "group": "2",
     "title": "恋爱日记",
-    "summary": "精美恋爱纪念手账，以时间为轴记录关键节点；必须结合 details 嵌套翻页机制。",
+    "summary": "精美恋爱纪念手账，以时间为轴记录关键节点；必须结合可交互或动态反馈式翻页机制，避免连续 details 嵌套。",
     "tags": [
       "independent",
       "paper",
       "interactive"
     ],
-    "raw": "* **2.1.8 恋爱日记 (Love Chronicle / Flip-book)**: 模仿一本精美的恋爱纪念手账。以时间为轴，记录关系中的关键节点。必须结合可交互的翻页机制（<details> 嵌套），让 {{user}} 手动点击翻到下一页；每一页的视觉风格可随情绪变化。"
+    "raw": "* **2.1.8 恋爱日记 (Love Chronicle / Flip-book)**: 模仿一本精美的恋爱纪念手账。以时间为轴，记录关系中的关键节点。必须结合可交互或动态反馈式翻页机制，可用横向滑动、checkbox/radio+label、CSS 状态变化或少量必要折叠；不得依赖连续 details 嵌套。每一页的视觉风格可随情绪变化。"
   },
   {
     "id": "2.2.2",
@@ -848,13 +848,13 @@ export const PRESENTATION_FORMATS = [
     "id": "11.2.1",
     "group": "11",
     "title": "九宫格/十六宫格相册",
-    "summary": "以 CSS Grid 构建 3x3 或 4x4 网格，每格是独立 details；展开前显示日期/Emoji/关键词，展开后显示事件描述。",
+    "summary": "以 CSS Grid 构建 3x3 或 4x4 网格；用局部显隐、状态切换、横向滑动或少量必要折叠解锁内容，避免每格都是独立 details。",
     "tags": [
       "canon",
       "interactive",
       "visual"
     ],
-    "raw": "* **11.2.1 九宫格/十六宫格相册 (Memory Grid)**: 以 CSS Grid 构建一个 3x3 或 4x4 的网格。每一格都是一个独立的 <details> 标签；展开前仅显示日期、Emoji 或模糊关键词，展开后弹出对应事件的详细文字描述（或图片描述占位符），记录两人共同经历的某个瞬间。整体类似需要手动解锁的“回忆拼图”。"
+    "raw": "* **11.2.1 九宫格/十六宫格相册 (Memory Grid)**: 以 CSS Grid 构建一个 3x3 或 4x4 的回忆拼图；每格可用局部显隐、状态切换、横向滑动或少量必要折叠解锁内容，不得每格都机械套用 details。展开前显示日期、Emoji 或模糊关键词，展开后显示事件描述，记录两人共同经历的某个瞬间。"
   },
   {
     "id": "7.1.2",

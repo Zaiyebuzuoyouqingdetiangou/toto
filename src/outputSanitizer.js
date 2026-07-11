@@ -87,13 +87,18 @@ function looksLikeCompleteHtmlBlock(text) {
     return htmlSignal && (theaterSignal || enoughTags);
 }
 
+function hasOuterRabbitMirrorDetails(html) {
+    const input = String(html || '').trim();
+    return /^<details\b[\s\S]*?<summary\b[\s\S]*?<\/summary>[\s\S]*?<\/details>$/i.test(input);
+}
+
 function wrapNakedHtmlAsToto(html) {
     const body = compactTotoBlock(html);
     if (TOTO_BLOCK_SINGLE_RE.test(body)) return body;
-    if (/<details\b/i.test(body) && /<summary\b/i.test(body)) {
-        return `<toto data-rabbit-mirror="true" style="display:block;">${body}</toto>`;
-    }
-    return `<toto data-rabbit-mirror="true" style="display:block;"><div style="display:block;box-sizing:border-box;max-width:100%;width:100%;">${body}</div></toto>`;
+    const content = hasOuterRabbitMirrorDetails(body)
+        ? body
+        : `<details><summary style="cursor:pointer;list-style:none;box-sizing:border-box;">兔子镜</summary><div style="display:block;box-sizing:border-box;max-width:100%;width:100%;">${body}</div></details>`;
+    return `<toto data-rabbit-mirror="true" style="display:block;">${content}</toto>`;
 }
 
 function cleanCodeFencePayload(payload) {
@@ -477,12 +482,130 @@ function sanitizeCodeBlocksInChatDom() {
     }
 }
 
+
+let rabbitMirrorDomScopeCounter = 0;
+
+function escapeRegExp(value) {
+    return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function makeSafeIdPart(value) {
+    return String(value || 'x').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 48) || 'x';
+}
+
+function getOrCreateTotoScope(toto) {
+    if (!toto?.dataset) return `rm_${Date.now().toString(36)}_${++rabbitMirrorDomScopeCounter}`;
+    if (!toto.dataset.rmScope) {
+        const mes = toto.closest?.('.mes, [mesid], [data-message-id], [data-messageid]');
+        const mesId = mes?.getAttribute?.('mesid') || mes?.dataset?.messageId || mes?.dataset?.messageid || '';
+        toto.dataset.rmScope = `rm_${makeSafeIdPart(mesId || Date.now().toString(36))}_${++rabbitMirrorDomScopeCounter}`;
+    }
+    return toto.dataset.rmScope;
+}
+
+function normalizeLegacyRabbitMirrorMarker(toto) {
+    if (!toto?.setAttribute) return;
+    if (toto.getAttribute('data-rabbit-hole') === 'true') {
+        toto.setAttribute('data-rabbit-mirror', 'true');
+        toto.removeAttribute('data-rabbit-hole');
+    }
+    if (!toto.hasAttribute('data-rabbit-mirror')) toto.setAttribute('data-rabbit-mirror', 'true');
+    if (!toto.getAttribute('style')) toto.setAttribute('style', 'display:block;');
+}
+
+function ensureOuterRabbitMirrorShell(toto) {
+    if (!toto?.querySelector) return;
+    normalizeLegacyRabbitMirrorMarker(toto);
+
+    let outerDetails = toto.querySelector(':scope > details');
+    if (!outerDetails) {
+        const details = document.createElement('details');
+        const summary = document.createElement('summary');
+        summary.textContent = '兔子镜';
+        summary.setAttribute('style', 'cursor:pointer;list-style:none;box-sizing:border-box;');
+        const body = document.createElement('div');
+        body.setAttribute('style', 'display:block;box-sizing:border-box;max-width:100%;width:100%;');
+        while (toto.firstChild) body.appendChild(toto.firstChild);
+        details.appendChild(summary);
+        details.appendChild(body);
+        toto.appendChild(details);
+        outerDetails = details;
+    }
+
+    if (!outerDetails.dataset.rmShellNormalized) {
+        outerDetails.removeAttribute('open');
+        outerDetails.dataset.rmShellNormalized = 'true';
+    }
+
+    let summary = outerDetails.querySelector(':scope > summary');
+    if (!summary) {
+        summary = document.createElement('summary');
+        summary.textContent = '兔子镜';
+        outerDetails.insertBefore(summary, outerDetails.firstChild);
+    }
+    const oldStyle = summary.getAttribute('style') || '';
+    const needCursor = !/cursor\s*:/i.test(oldStyle) ? 'cursor:pointer;' : '';
+    const needList = !/list-style\s*:/i.test(oldStyle) ? 'list-style:none;' : '';
+    const needBox = !/box-sizing\s*:/i.test(oldStyle) ? 'box-sizing:border-box;' : '';
+    if (needCursor || needList || needBox) summary.setAttribute('style', `${oldStyle}${oldStyle && !oldStyle.trim().endsWith(';') ? ';' : ''}${needCursor}${needList}${needBox}`);
+}
+
+function replaceIdSelectorInStyles(toto, oldId, newId) {
+    if (!oldId || !newId || oldId === newId) return;
+    const selectorRe = new RegExp(`#${escapeRegExp(oldId)}(?=\\b|[:.\\s#\\[,>+~{])`, 'g');
+    for (const styleEl of [...toto.querySelectorAll('style')]) {
+        styleEl.textContent = String(styleEl.textContent || '').replace(selectorRe, `#${newId}`);
+    }
+}
+
+function scopeInteractiveIdsInToto(toto) {
+    if (!toto?.querySelectorAll) return;
+    const inputs = [...toto.querySelectorAll('input[type="checkbox"][id], input[type="radio"][id]')];
+    if (!inputs.length) return;
+    const scope = getOrCreateTotoScope(toto);
+
+    for (const input of inputs) {
+        const oldId = input.getAttribute('id');
+        if (!oldId || input.dataset.rmScoped === scope) continue;
+        if (oldId.startsWith(`${scope}__`)) {
+            input.dataset.rmScoped = scope;
+            continue;
+        }
+        const newId = `${scope}__${makeSafeIdPart(oldId)}`;
+        input.setAttribute('id', newId);
+        input.dataset.rmOriginalId = oldId;
+        input.dataset.rmScoped = scope;
+
+        for (const label of [...toto.querySelectorAll('label[for]')]) {
+            if (label.getAttribute('for') === oldId) label.setAttribute('for', newId);
+        }
+        for (const el of [...toto.querySelectorAll('[aria-controls], [href]')]) {
+            if (el.getAttribute('aria-controls') === oldId) el.setAttribute('aria-controls', newId);
+            if (el.getAttribute('href') === `#${oldId}`) el.setAttribute('href', `#${newId}`);
+        }
+        replaceIdSelectorInStyles(toto, oldId, newId);
+    }
+}
+
+function normalizeRenderedRabbitMirrorDom() {
+    const root = getChatRoot();
+    if (!root) return;
+    const totos = [...root.querySelectorAll('toto[data-rabbit-mirror="true"], toto[data-rabbit-hole="true"], toto')]
+        .filter(toto => isInsideChatMessage(toto));
+    for (const toto of totos) {
+        ensureOuterRabbitMirrorShell(toto);
+        scopeInteractiveIdsInToto(toto);
+    }
+}
+
 export function triggerCodeBlockRescue(mod = null) {
-    if (!isCodeBlockRescueModeEnabled()) return;
     try {
+        normalizeRenderedRabbitMirrorDom();
+        if (!isCodeBlockRescueModeEnabled()) return;
         sanitizeLatestRawMessages(mod || globalThis);
         sanitizeCodeBlocksInChatDom();
         sanitizeRenderedRabbitMirrorDetailsDom();
+        normalizeRenderedRabbitMirrorDom();
     } catch (error) {
         console.debug('[RabbitMirror] code block rescue trigger failed:', error);
     }
@@ -490,12 +613,15 @@ export function triggerCodeBlockRescue(mod = null) {
 
 function scheduleSanitize(mod) {
     const run = () => {
+        // 轻量 DOM 修复始终启用：只处理聊天区内的兔子镜外壳、旧 data 名称和 input/label 作用域，不拆代码块、不改 UI 样式。
+        normalizeRenderedRabbitMirrorDom();
         if (!isCodeBlockRescueModeEnabled()) return;
         // 先修原始消息，避免保存后继续携带代码块壳。
         sanitizeLatestRawMessages(mod);
         // 再只修聊天区内已经渲染出来的代码块，不扫描设置页，避免误伤其他插件 UI。
         sanitizeCodeBlocksInChatDom();
         sanitizeRenderedRabbitMirrorDetailsDom();
+        normalizeRenderedRabbitMirrorDom();
     };
     setTimeout(run, 80);
     setTimeout(run, 350);

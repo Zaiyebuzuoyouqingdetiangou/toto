@@ -311,6 +311,7 @@ function detectRiskFlags({ root, html, plain, dom, repeated, spatialSignalCount 
     if (spatialSignalCount < 2 && String(plain || '').length > 520 && (sameBlockStack || sameGridCard || catalogPage || repeatedUnitShape || (repeated?.maxRepeat || 0) >= 3)) flags.push('weak_media_body');
     if (weakSpatialComplexity) flags.push('weak_spatial_complexity');
     if (detectVisualPromiseWithoutMechanism(html, plain)) flags.push('visual_promise_unfulfilled');
+    if (detectUnreadableContrastRisk(root, html)) flags.push('low_text_contrast');
     return [...new Set(flags)];
 }
 
@@ -366,6 +367,46 @@ function extractBackgroundValues(html) {
         if (value) values.push(value);
     }
     return values;
+}
+
+
+function extractStyleColor(styleText, prop) {
+    const re = new RegExp(`${prop}\\s*:\\s*([^;\"']+)`, 'i');
+    const match = String(styleText || '').match(re);
+    return match ? String(match[1] || '').trim() : '';
+}
+
+function isPoorContrast(bgLum, fgLum) {
+    if (typeof bgLum !== 'number' || typeof fgLum !== 'number') return false;
+    const diff = Math.abs(bgLum - fgLum);
+    if (diff < 72) return true;
+    if (bgLum < 90 && fgLum < 145) return true;
+    if (bgLum > 190 && fgLum > 170) return true;
+    return false;
+}
+
+function detectUnreadableContrastRisk(root, html = '') {
+    const baseValues = extractBackgroundValues(html);
+    const baseLum = baseValues.length ? colorValueLuminance(baseValues[0]) : null;
+    let riskyPairs = 0;
+    let checkedPairs = 0;
+    const nodes = root?.querySelectorAll ? [...root.querySelectorAll('*')].slice(0, 120) : [];
+    for (const el of nodes) {
+        const text = (el.textContent || '').replace(/\s+/g, '').trim();
+        if (text.length < 3) continue;
+        const style = el.getAttribute?.('style') || '';
+        const bgValue = extractStyleColor(style, 'background(?:-color)?') || '';
+        const fgValue = extractStyleColor(style, 'color') || '';
+        const bgLum = bgValue ? colorValueLuminance(bgValue) : baseLum;
+        const fgLum = fgValue ? colorValueLuminance(fgValue) : null;
+        if (typeof bgLum !== 'number' || typeof fgLum !== 'number') continue;
+        checkedPairs += 1;
+        if (isPoorContrast(bgLum, fgLum)) riskyPairs += 1;
+    }
+    if (checkedPairs >= 2 && riskyPairs / checkedPairs >= 0.35) return true;
+    const darkBase = typeof baseLum === 'number' && baseLum < 80;
+    const weakTextOnDark = darkBase && /color\s*:\s*(?:#(?:[0-6][0-9a-f]){3}|rgba?\([^)]*(?:[0-9]{1,2}|1[01][0-9])\s*,\s*(?:[0-9]{1,2}|1[01][0-9])\s*,\s*(?:[0-9]{1,2}|1[01][0-9])|(?:#777|#666|#555|#444)|gray|grey)/i.test(String(html || ''));
+    return !!weakTextOnDark;
 }
 
 function detectBaseColor(html) {
@@ -544,6 +585,7 @@ export function scanRabbitMirrorHtml(messageHtml) {
     if (riskFlags.includes('weak_media_body')) structural.push('媒介本体偏弱风险');
     if (riskFlags.includes('weak_spatial_complexity')) structural.push('空间复杂度偏弱风险');
     if (riskFlags.includes('visual_promise_unfulfilled')) structural.push('视觉承诺未兑现风险');
+    if (riskFlags.includes('low_text_contrast')) structural.push('文字对比不足/可读性风险');
     structural.push(...dom.summaryFlags);
 
     const mediaStrength = (/clip-path|mask|<svg\b|<path\b|position\s*:\s*absolute|transform\s*:|border-radius\s*:\s*50%|aspect-ratio|radial-gradient|conic-gradient/i.test(html) && tagCount >= 35)

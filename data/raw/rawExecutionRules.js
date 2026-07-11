@@ -1,10 +1,10 @@
 export const RAW_EXECUTION_RULES = String.raw`
-<兔子镜执行规则 v2.2>
+<兔子镜执行规则 v2.3>
 
 执行边界:
   enforcement_level: "mandatory"
-  trigger: "主回复完成后，回复最后必须追加完整 <toto data-rabbit-mirror="true" style="display:block;">...</toto> 兔子镜内容"
-  summary: "标题可写入主视觉标题区；仅在确实使用 details 时写入 <summary>"
+  trigger: "主回复完成后，回复最后必须追加完整 <toto data-rabbit-mirror="true" style="display:block;"><details>...</details></toto> 兔子镜内容"
+  summary: "必须使用外层 <summary> 作为整段兔子镜的折叠标题；summary 只写短标题，不承载正文"
   narrative_boundary:
     - "不得以任何形式干预或改写主线叙事内容"
     - "主线叙事与兔子镜必须保持模块边界，不得互相包裹或破坏"
@@ -19,11 +19,11 @@ export const RAW_EXECUTION_RULES = String.raw`
 
 输出结构:
   enforcement_level: "mandatory"
-  wrapper: "<toto data-rabbit-mirror="true" style="display:block;"><div>...</div></toto>"
+  wrapper: "<toto data-rabbit-mirror="true" style="display:block;"><details><summary>兔子镜</summary><div>...</div></details></toto>"
   rule:
-    - "小剧场最外层必须使用 <toto data-rabbit-mirror="true" style="display:block;"> 作为插件识别边界；内部主体优先使用 <div> 作为主容器，仅当本轮展现形式确实需要翻面、揭示或分段探索时才使用 <details>/<summary>"
+    - "小剧场最外层必须使用 <toto data-rabbit-mirror="true" style="display:block;"> 作为插件识别边界；<toto> 内部必须先放一个外层 <details> 折叠壳，外层 <summary> 只写短标题，summary 后的主体优先使用 <div> 主容器"
     - "<toto> 只作为插件与正则识别边界，不得作为可见标题、标签、栏目名、水印或 UI 元素"
-    - "内部 HTML 结构、版式、色彩、层级、视觉锚点必须根据本轮展现形式重新设计"
+    - "外层 <details>/<summary> 只负责把整段兔子镜折叠起来，不算本轮交互玩法；内部 HTML 结构、版式、色彩、层级、视觉锚点必须根据本轮展现形式重新设计"
     - "不提供固定 HTML 模板；任何示例不得固化为固定视觉骨架"
     - "最终输出为可直接渲染的紧凑 HTML，不输出代码块，不解释规则"
     - "小剧场最外层必须完整包裹在 <toto data-rabbit-mirror="true" style="display:block;"> 与 </toto> 之间，禁止遗漏闭合标签；不得在 </toto> 后追加任何可见内容"
@@ -47,7 +47,7 @@ export const RAW_EXECUTION_RULES = String.raw`
 
   visual_details:
     - "建立清晰字重层级，段落需具备合适 line-height 与 margin，避免均等密度长段堆叠"
-    - "采用高对比度文本与语义化色彩，背景色需服务本轮氛围"
+    - "采用高对比度文本与语义化色彩，背景色需服务本轮氛围；所有主要文字必须清晰可读，深底必须配浅字，浅底必须配深字，禁止黑底灰字、暗底暗字、低透明文字压在复杂纹理上"
     - "根据氛围选择衬线或无衬线字体，允许用字号、字重、字距、留白形成节奏"
     - "不得单一套用同一种底盘、同一种色光组合、同一种内容排列或同一种浅层装饰逻辑"
     - "若使用图片，必须使用真实公共 URL，并添加 max-width:100%;height:auto;display:block"
@@ -84,7 +84,7 @@ UI审查重点:
 交互可用性:
   enforcement_level: "mandatory"
   rule:
-    - "不强制每轮都使用可点击结构；若使用交互，必须使用无 JS 的原生可操作结构，例如 details/summary、横向滚动区、锚点跳转或 checkbox/radio + label 状态切换"
+    - "除外层折叠壳之外，不强制每轮都使用额外可点击结构；若使用内部交互，必须使用无 JS 的原生可操作结构，例如横向滚动区、锚点跳转、checkbox/radio + label 状态切换，或少量必要 details/summary"
     - "禁止依赖 onclick、button 或需要脚本才能生效的伪交互；若看起来可点击，必须真的能改变可见层级、阅读路径或界面状态"
     - "可点击元素必须具备 cursor:pointer；summary 使用 list-style:none；label 与 input 必须使用唯一 id/for 绑定"
     - "absolute 背景、遮罩、光效、装饰层不得覆盖交互，必要时使用 pointer-events:none；交互层使用 position:relative 与更高 z-index"
@@ -104,18 +104,25 @@ UI审查重点:
 动态反馈与交互:
   enforcement_level: "mandatory"
   rule:
-    - "每轮可以具备可感知的动态反馈或交互感，但不强制每轮都使用可点击结构"
-    - "动态反馈必须从本轮展现形式的媒介材质和场景逻辑中产生，不得脱离本轮媒介另起一套通用操作面板"
+    - "每轮可以具备可感知的动态反馈或交互感，但外层折叠壳之外不强制每轮都使用额外可点击结构"
+    - "动态反馈必须从本轮展现形式的媒介材质和场景逻辑中产生，不得脱离本轮媒介材质另起一套无关的界面语法"
     - "反馈可表现为媒介本体内部的翻动、揭示、滑动、显隐、光影变化、状态反馈或阅读路径变化；只有本轮确实需要选择、探索或分段推进时，才使用可点击/可切换结构"
-    - "不得为了满足交互而机械堆叠 <details>/<summary>；折叠结构不能连续成为默认解法"
-    - "若使用可点击或可切换结构，必须无需 JS 即可生效，且交互区域不得被装饰层遮挡；summary 需 cursor:pointer 与 list-style:none；checkbox/radio 必须配唯一 id 与 label for；装饰层必要时 pointer-events:none"
+    - "不得为了满足交互而在外层折叠壳内部继续机械堆叠 <details>/<summary>；内部折叠结构不能连续成为默认解法"
+    - "若使用可点击或可切换结构，必须无需 JS 即可生效，且交互区域不得被装饰层遮挡；外层 summary 和内部 summary 均需 cursor:pointer 与 list-style:none；checkbox/radio 必须配唯一 id 与 label for；装饰层必要时 pointer-events:none"
 
 明暗关系冷却:
   enforcement_level: "mandatory"
   rule:
     - "不以具体颜色判断好坏，只判断主底盘光源、明暗关系和材质气质是否连续重复"
-    - "若近期输出连续偏暗，本轮必须切换主背景气质、光源结构、材质层次与视觉锚点，避免继续复用同类暗色发光骨架"
-    - "即使本轮主题偏悬疑、怪谈或神秘，也不得自动退回整页暗底；可以通过留白、纸质、雾面、褪色、微光、局部阴影或高反差局部表达气氛"
+    - "若近期输出连续偏暗，本轮必须切换主背景气质、光源结构、材质层次与视觉锚点，优先使用浅色/中明度/混合材质主底盘，避免继续复用同类暗色发光骨架"
+    - "即使本轮主题偏悬疑、怪谈或神秘，也不得自动退回整页暗底；可以通过留白、纸质、雾面、褪色、微光、局部阴影或高反差局部表达气氛；若使用深色背景，必须只作为局部层次或确保全部文字高对比可读"
+
+文字可读性底线:
+  enforcement_level: "mandatory"
+  rule:
+    - "兔子镜不能牺牲可读性换取氛围；所有正文、标签、角标、按钮、summary 都必须与其所在背景形成明确明暗对比"
+    - "深色背景上禁止使用深灰、低透明、暗红、暗紫等难读文字；浅色背景上禁止使用低透明浅字"
+    - "若背景含渐变、纹理、噪点、图片或复杂光影，文字下方必须增加半透明承托层、描边、阴影或纯色底，以保证可读"
 
 </兔子镜执行规则>
 `;

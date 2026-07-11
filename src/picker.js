@@ -77,13 +77,17 @@ function getChatTurnKey() {
 }
 
 function isRecentDarkStreak() {
-    const skeletons = getComboHistory(3).map(item => String(item?.visualSkeleton || '')).filter(Boolean).slice(-2);
-    return skeletons.length === 2 && skeletons.every(text => /contrast:\s*dark_weighted|digital_dark_surface|暗色高对比底盘/.test(text));
+    const skeletons = getComboHistory(5).map(item => String(item?.visualSkeleton || '')).filter(Boolean).slice(-3);
+    if (!skeletons.length) return false;
+    const isDark = text => /contrast:\s*dark_weighted|digital_dark_surface|暗色高对比底盘|整页暗底|黑色发光底盘/.test(text);
+    const lastIsDark = isDark(skeletons[skeletons.length - 1] || '');
+    const recentDarkCount = skeletons.filter(isDark).length;
+    return lastIsDark || recentDarkCount >= 2;
 }
 
 function isDarkLeaningItem(item) {
     const text = `${item?.id || ''} ${item?.title || ''} ${item?.summary || ''} ${item?.raw || ''} ${(item?.tags || []).join(' ')}`;
-    return /(night\+glow|low-key|neon|霓虹|发光|暗色|黑|夜|控制台|监控|后台|诅咒|怪谈|灵异|恐怖|档案|relic|archive)/i.test(text);
+    return /(night\+glow|low-key|neon|霓虹|发光|暗色|黑|夜|控制台|监控|后台|诅咒|怪谈|灵异|恐怖|档案|relic|archive|hud|screen|console|glow)/i.test(text);
 }
 
 function filterDarkLeaningPool(pool) {

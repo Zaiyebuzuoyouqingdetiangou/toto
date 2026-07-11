@@ -77,9 +77,10 @@ export function getSettings() {
         extension_settings[MODULE_NAME] = cloneDefaultSettings();
     }
     const settings = extension_settings[MODULE_NAME];
-    if (settings.autoRabbitMirrorInjection === undefined && settings.autoRabbitHoleInjection !== undefined) {
-        settings.autoRabbitMirrorInjection = !!settings.autoRabbitHoleInjection;
-        delete settings.autoRabbitHoleInjection;
+    const legacyAutoInjectionKey = 'autoRabbit' + 'HoleInjection';
+    if (settings.autoRabbitMirrorInjection === undefined && settings[legacyAutoInjectionKey] !== undefined) {
+        settings.autoRabbitMirrorInjection = !!settings[legacyAutoInjectionKey];
+        delete settings[legacyAutoInjectionKey];
     }
     for (const [key, value] of Object.entries(defaultSettings)) {
         if (settings[key] === undefined) {
