@@ -87,6 +87,7 @@ UI审查重点:
     - "除外层折叠壳之外，不强制每轮都使用额外可点击结构；若使用内部交互，必须使用无 JS 的原生可操作结构，例如横向滚动区、锚点跳转、checkbox/radio + label 状态切换，或少量必要 details/summary"
     - "禁止依赖 onclick、button 或需要脚本才能生效的伪交互；若看起来可点击，必须真的能改变可见层级、阅读路径或界面状态"
     - "可点击元素必须具备 cursor:pointer；summary 使用 list-style:none；label 与 input 必须使用唯一 id/for 绑定"
+    - "若使用 checkbox/radio 状态切换，input 必须放在 label 和被控制内容之前；被控制内容必须与 input 位于同一父级或后续同级位置；选择器使用 input:checked + label + .panel 或 input:checked ~ .panel，禁止把反馈内容藏在无法被 + 或 ~ 命中的嵌套容器里，禁止把反馈父容器设置为 opacity:0，禁止只用 CSS content 伪元素作为唯一反馈"
     - "absolute 背景、遮罩、光效、装饰层不得覆盖交互，必要时使用 pointer-events:none；交互层使用 position:relative 与更高 z-index"
 
 自适配与文字安全:
@@ -109,6 +110,7 @@ UI审查重点:
     - "反馈可表现为媒介本体内部的翻动、揭示、滑动、显隐、光影变化、状态反馈或阅读路径变化；只有本轮确实需要选择、探索或分段推进时，才使用可点击/可切换结构"
     - "不得为了满足交互而在外层折叠壳内部继续机械堆叠 <details>/<summary>；内部折叠结构不能连续成为默认解法"
     - "若使用可点击或可切换结构，必须无需 JS 即可生效，且交互区域不得被装饰层遮挡；外层 summary 和内部 summary 均需 cursor:pointer 与 list-style:none；checkbox/radio 必须配唯一 id 与 label for；装饰层必要时 pointer-events:none"
+    - "若使用 checkbox/radio 状态切换，input 必须先于 label 与反馈内容出现，反馈内容必须与 input 同级或后续同级可被 :checked 选择器命中；禁止 label 在前、input 在后、反馈内容另嵌一层导致选择器失效"
 
 明暗关系冷却:
   enforcement_level: "mandatory"

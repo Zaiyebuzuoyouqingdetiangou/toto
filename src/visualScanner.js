@@ -120,6 +120,62 @@ function getEffectiveDetails(root) {
     return directWrapper ? allDetails.filter(d => d !== directWrapper) : allDetails;
 }
 
+
+function localCssEscape(value) {
+    if (globalThis.CSS?.escape) return globalThis.CSS.escape(String(value));
+    return String(value || '').replace(/[^a-zA-Z0-9_-]/g, '\\$&');
+}
+
+function isElementBefore(a, b) {
+    try {
+        return !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    } catch {
+        return false;
+    }
+}
+
+function detectBrokenCssStateInteraction(root, html = '') {
+    if (!root?.querySelectorAll) return false;
+    const text = String(html || '');
+    const inputs = [...root.querySelectorAll('input[type="checkbox"][id], input[type="radio"][id]')];
+    if (!inputs.length || !/:checked/i.test(text)) return false;
+
+    for (const input of inputs) {
+        const id = input.getAttribute('id');
+        if (!id) continue;
+        let label = null;
+        try {
+            label = root.querySelector(`label[for="${localCssEscape(id)}"]`);
+        } catch {
+            label = null;
+        }
+        const idSelector = new RegExp(`#${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*:\\s*checked`, 'i');
+        if (!idSelector.test(text)) continue;
+
+        // If the trigger label is before the input, common +/~ CSS-state patterns cannot reveal the label/panel after it correctly.
+        if (label && isElementBefore(label, input)) return true;
+
+        // Check simple sibling selectors like #id:checked ~ .panel or #id:checked + label + .panel.
+        const targetMatches = [...text.matchAll(new RegExp(`#${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*:\\s*checked[^,{]*[+~]\\s*\\.([a-zA-Z0-9_-]+)`, 'g'))];
+        for (const match of targetMatches) {
+            const cls = match[1];
+            let target = null;
+            try {
+                target = root.querySelector(`.${localCssEscape(cls)}`);
+            } catch {
+                target = null;
+            }
+            if (!target) return true;
+            if (target.parentElement !== input.parentElement) return true;
+            if (!isElementBefore(input, target)) return true;
+        }
+    }
+
+    // Feedback hidden at parent level plus pseudo content is a common non-visible state pattern.
+    if (/opacity\s*:\s*0/i.test(text) && /:checked[\s\S]{0,220}content\s*:/i.test(text)) return true;
+    return false;
+}
+
 function analyzeInteractionAffordance(root, html = '') {
     const text = String(html || '');
     const effectiveDetails = getEffectiveDetails(root);
@@ -139,7 +195,7 @@ function analyzeInteractionAffordance(root, html = '') {
     if (hasTransition) score += 20;
     if (hasScrollFeedback) score += 15;
     if (hasSvgMotion) score += 15;
-    return { detailsCount, isDetailsOverused, score: Math.min(100, score), hasTransition, hasScrollFeedback, hasSvgMotion, hasCheckbox, hasLabelFor, hasStateSelector };
+    return { detailsCount, isDetailsOverused, score: Math.min(100, score), hasTransition, hasScrollFeedback, hasSvgMotion, hasCheckbox, hasLabelFor, hasStateSelector, brokenCssState: detectBrokenCssStateInteraction(root, html) };
 }
 
 
@@ -299,6 +355,7 @@ function detectRiskFlags({ root, html, plain, dom, repeated, spatialSignalCount 
     const interactionAudit = analyzeInteractionAffordance(root, html);
 
     if (interactionAudit.isDetailsOverused) flags.push('details_overused');
+    if (interactionAudit.brokenCssState) flags.push('broken_css_state_interaction');
     if (interactionAudit.score >= 45) flags.push('dynamic_feedback_present');
 
     if (sameBlockStack) flags.push('same_block_stack');

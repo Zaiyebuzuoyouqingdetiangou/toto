@@ -68,14 +68,8 @@ toto[data-rabbit-mirror="true"] .bg-layer {
     pointer-events: none;
 }
 
-/* Legacy data marker compatibility before DOM normalization runs. */
-toto[data-rabbit-hole="true"] { display:block; max-width:100%; box-sizing:border-box; }
-toto[data-rabbit-hole="true"] > details { display:block; max-width:100%; box-sizing:border-box; }
-toto[data-rabbit-hole="true"] label,
-toto[data-rabbit-hole="true"] summary { cursor:pointer; }
-toto[data-rabbit-hole="true"] > details > summary { list-style:none; box-sizing:border-box; user-select:none; }
-toto[data-rabbit-hole="true"] > details > summary::-webkit-details-marker { display:none; }
-toto[data-rabbit-hole="true"] [data-decorative="true"],
-toto[data-rabbit-hole="true"] .decorative,
-toto[data-rabbit-hole="true"] .ornament,
-toto[data-rabbit-hole="true"] .bg-layer { pointer-events:none; }
+
+toto[data-rabbit-mirror="true"] label[data-rm-active="true"] {
+    outline: 1px solid currentColor;
+    filter: brightness(1.18);
+}

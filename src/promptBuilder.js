@@ -107,9 +107,9 @@ function recentRiskCorrection() {
         lines.push('近期真实输出出现文字对比不足。本轮必须优先保证可读性：深底浅字、浅底深字，复杂背景上的文字必须有承托层、阴影、描边或纯色底。');
     }
 
-    const hasWeakInteraction = flags.some(flag => ['details_overused', 'visual_promise_unfulfilled'].includes(flag));
+    const hasWeakInteraction = flags.some(flag => ['details_overused', 'visual_promise_unfulfilled', 'broken_css_state_interaction'].includes(flag));
     if (hasWeakInteraction) {
-        lines.push('近期真实输出曾出现视觉承诺未兑现或内部折叠堆叠。本轮让动态反馈从当前媒介材质中产生；除外层折叠壳外，内部若使用交互必须真实可用且不被装饰层遮挡。');
+        lines.push('近期真实输出曾出现视觉承诺未兑现或内部折叠堆叠。本轮让动态反馈从当前媒介材质中产生；除外层折叠壳外，内部若使用交互必须采用可生效的 CSS 状态结构，input 位于触发标签和反馈内容之前，且反馈内容与 input 同级可被 :checked 选择器命中。');
     }
 
     if ((counts.same_block_stack || 0) >= 2 || (counts.info_page_degrade || 0) >= 2 || (counts.flat_vertical_flow || 0) >= 2) {
@@ -158,7 +158,9 @@ function complexInteractiveCore() {
   - 动态反馈必须从本轮展现形式的媒介材质和场景逻辑中产生，不得脱离本轮媒介材质另起一套无关界面语法。
   - 每轮可以具备可感知的动态反馈或交互感，但外层折叠壳之外不强制每轮都使用额外可点击结构；只有本轮确实需要选择、探索或分段推进时，才使用内部可点击/可切换结构。
   - 不得为了满足交互而在外层折叠壳内部继续机械堆叠 <details>/<summary>；内部折叠结构不能连续成为默认解法。
-  - 若使用可点击或可切换结构，必须无需 JS 即可生效：禁止 onclick、button 伪交互；外层 summary 与内部 summary 均需 cursor:pointer 与 list-style:none；checkbox/radio 必须配唯一 id 与 label for；装饰遮罩不得覆盖交互，必要时 pointer-events:none，交互层使用更高 z-index。
+  - 若使用可点击或可切换结构，必须无需 JS 即可生效：禁止 onclick、button 伪交互；外层 summary 与内部 summary 均需 cursor:pointer 与 list-style:none；装饰遮罩不得覆盖交互，必要时 pointer-events:none，交互层使用更高 z-index。
+  - 若使用 checkbox/radio 状态切换，必须采用可生效的 CSS 结构：input 必须出现在 label 和被控制内容之前；被控制内容必须与 input 位于同一父级或后续同级位置；选择器使用 input:checked + label + .panel 或 input:checked ~ .panel。禁止把反馈内容藏在无法被 + 或 ~ 命中的嵌套容器里，禁止把反馈父容器设置为 opacity:0，禁止只用 CSS content 伪元素作为唯一反馈。
+  - 内部可点击按钮、状态文字、反馈文案必须使用简体中文；不要生成英文系统词、英文注入按钮或英文警告提示。
   - 鼓励使用 Flex/Grid、absolute 定位、SVG、linear-gradient、box-shadow、filter、clip-path、mask、transform、transition 或轻量 CSS 动效构建空间与质感。
   - 可读性优先：所有主要文字必须与所在背景高对比，深底浅字、浅底深字；禁止黑底灰字、暗底暗字、低透明文字压在复杂纹理上。
   - 本轮不得默认整页暗底或黑色发光底盘；若主题需要暗色，只能作为局部层次或必须确保全部文字清晰可读。
