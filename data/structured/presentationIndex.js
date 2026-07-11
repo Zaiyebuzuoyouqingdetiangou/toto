@@ -3,18 +3,18 @@ export const PRESENTATION_FORMATS = [
     "id": "10.1",
     "group": "10",
     "title": "可交互小剧场",
-    "summary": "通过点击、展开、滑动或切换推进，并真实改变可见层级、阅读路径或界面状态。",
+    "summary": "点击、展开、滑动或切换推进；交互必须真实改变界面状态。",
     "tags": [
       "independent",
       "interactive"
     ],
-    "raw": "* **10.1 可交互小剧场**：制作需要 {{user}} 主动点击、展开、滑动或切换才能推进的互动型小剧场；交互必须真实改变可见层级、阅读路径或界面状态，不得只是普通折叠说明；禁止 JS。"
+    "raw": "* **10.1 可交互小剧场**：通过点击、展开、滑动或切换推进；必须真实改变可见层级、阅读路径或界面状态，禁止 JS，避免装饰层遮挡可点击区域。"
   },
   {
     "id": "10.2",
     "group": "10",
     "title": "可视化小剧场",
-    "summary": "CSS 图形、分层、光影、排版为叙事载体。",
+    "summary": "CSS 图形、色块、排版为叙事载体。",
     "tags": [
       "independent",
       "visual"
@@ -130,19 +130,6 @@ export const PRESENTATION_FORMATS = [
       "digital"
     ],
     "raw": "* **1.2.1 在线购物接口**：购物车/快递/外带订单/亲密付等。"
-  },
-
-  {
-    "id": "1.3.2.4.1",
-    "group": "1",
-    "title": "外语学习APP",
-    "summary": "语言学习软件界面、单词卡、例句、录音波形、错题本或打卡进度。",
-    "tags": [
-      "independent",
-      "digital",
-      "learning"
-    ],
-    "raw": "* **1.3.2.4.1 外语学习APP**：模仿语言学习软件界面，以单词卡、例句、录音波形、错题本或打卡进度等形式，呈现角色的口音、暗语、误会或亲密表达。"
   },
   {
     "id": "1.3.2.4.2",
@@ -1049,7 +1036,7 @@ export const PRESENTATION_FORMATS = [
     "id": "8.translation",
     "group": "8",
     "title": "直白翻译机",
-    "summary": "体面话与真实含义并排对照。",
+    "summary": "体面话与真实含义双栏并列。",
     "tags": [
       "independent",
       "meta"

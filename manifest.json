@@ -4,7 +4,7 @@
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.31.32",
+  "version": "0.31.36",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitHoleGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "Rabbit Mirror Theater: 7.10 stable base with rabbit-mirror rename, interaction format rewrite, H-category restore, foreign-language app, and prompt cleanup."
+  "description": "Rabbit Mirror Theater: 7.10 stable base with H0-H6 suspense categories restored and H6 truth assembly."
 }

@@ -63,7 +63,7 @@ function shortVisualAvoidance(combo, limit = 3) {
     const recent = trimmed
         .filter(item => item?.visualSignature || item?.visualSkeleton || (Array.isArray(item?.riskFlags) && item.riskFlags.length))
         .slice(-limit);
-    if (!recent.length) return '暂无实际历史；本轮仍需避免低完成度内容流和换皮复用。';
+    if (!recent.length) return '暂无实际历史；本轮仍需避免普通信息页、单列内容块和换皮复用。';
     return recent.map((item, index) => {
         const formats = (item.formatIds || []).join(' + ') || '未记录';
         const riskCount = Array.isArray(item.riskFlags) ? item.riskFlags.length : 0;
@@ -87,7 +87,7 @@ function recentRiskCorrection() {
         'repeated_unit_shape',
     ].includes(flag));
     if (hasRepeatedStructure) {
-        lines.push('近期真实输出的内容承载骨架或阅读路径过于相似。本轮必须改变主视觉结构、空间组织与内容寄生方式，不得复用相似内容区域的顺序排列。');
+        lines.push('近期真实输出的内容承载骨架或阅读路径过于相似。本轮必须改变主视觉结构、空间组织与内容寄生方式，不得继续用多个相似信息块自上而下堆叠。');
     }
 
     const hasWeakMedia = flags.some(flag => ['weak_media_body', 'weak_spatial_complexity'].includes(flag));
@@ -131,12 +131,13 @@ function compactCreativeRule(enabled) {
 function complexInteractiveCore() {
     return String.raw`
 复杂交互视觉核心:
-  - 兔子镜必须像复杂精美的微型交互 HTML 媒介作品，而不是低完成度的普通内容摘要。
+  - 兔子镜必须像复杂精美的微型交互 HTML 媒介作品，而不是普通信息页、单列内容块、简单表单或文字摘要。
   - 展现形式必须决定 DOM/CSS 的整体轮廓、空间结构、阅读路径、交互方式和文字寄生位置，不能只写进标题。
   - 必须具备主视觉结构、前中后景层级、视觉锚点、材质质感、排版呼吸感与非单调阅读路径。
-  - 除最外层折叠外，内部必须存在至少一处会改变可见层级、阅读路径或界面状态的真实交互机关；文字、台词或线索必须贴附、嵌入或隐藏在交互结构中，不得只是普通展开说明。
+  - 除最外层折叠外，内部至少包含一个真实可操作/可探索入口；它必须改变可见层级、阅读路径或界面状态，而不是普通折叠说明。可用内部 details/summary、checkbox/radio+label、横向滚动、局部揭示、分层视窗、状态切换或 hover/active 反馈。
+  - 可点击结构必须真实可用：禁止依赖 onclick、button 或 JS；summary 需 cursor:pointer 与 list-style:none；checkbox/radio 必须配唯一 id 与 label for；装饰遮罩不得覆盖交互，必要时 pointer-events:none，交互层使用更高 z-index。
   - 鼓励使用 Flex/Grid、absolute 定位、SVG、linear-gradient、box-shadow、filter、clip-path、mask、transform、transition 或轻量 CSS 动效构建空间与质感。
-  - 每轮必须形成真实视觉指纹：layout / material / color / type / interaction / hierarchy；与上一轮相比至少四项变化，并真实体现在 DOM/CSS 的结构、材质、配色、字体层级、交互入口与内容组织中。不得只换标题、颜色或局部装饰；若整体骨架、阅读路径或内容承载方式仍近似上一轮，必须重写。`;
+  - 不得只靠换标题、换色、换边框或换装饰复用同一种视觉骨架；若整体骨架、阅读路径或内容承载方式仍近似上一轮，必须重写。`;
 }
 
 function htmlSafetyCore() {
