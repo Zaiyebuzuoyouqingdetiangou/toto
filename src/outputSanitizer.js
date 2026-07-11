@@ -2,17 +2,18 @@ import { getSettings } from './settings.js';
 
 const TOTO_BLOCK_RE = /<toto\b[\s\S]*?<\/toto>/gi;
 const TOTO_BLOCK_SINGLE_RE = /<toto\b[\s\S]*?<\/toto>/i;
-const FENCED_BLOCK_RE = /```(?:html|HTML|xml|XML)?\s*\n?([\s\S]*?)\n?```/gi;
-const WHOLE_FENCED_BLOCK_RE = /^\s*```(?:html|HTML|xml|XML)?\s*\n?([\s\S]*?)\n?```\s*$/i;
+const FENCED_BLOCK_RE = /```[a-zA-Z0-9_-]*\s*\n?([\s\S]*?)\n?```/gi;
+const WHOLE_FENCED_BLOCK_RE = /^\s*```[a-zA-Z0-9_-]*\s*\n?([\s\S]*?)\n?```\s*$/i;
 const TRAILING_HTML_START_RE = /(?:^|\n)(<(?:div|section|article|details)\b[\s\S]*)$/i;
 const PRE_CODE_RE = /<pre\b[^>]*>\s*<code\b[^>]*>([\s\S]*?)<\/code>\s*<\/pre>/gi;
 const HTML_COMMENT_RE = /<!--[\s\S]*?-->/g;
-const CODE_FENCE_OPEN_RE = /```(?:html|xml|javascript|js|css)?\s*/gi;
-const TILDE_FENCE_OPEN_RE = /~~~(?:html|xml|javascript|js|css)?\s*/gi;
+const CODE_FENCE_OPEN_RE = /```[a-zA-Z0-9_-]*\s*/gi;
+const TILDE_FENCE_OPEN_RE = /~~~[a-zA-Z0-9_-]*\s*/gi;
 const CODE_LIKE_TAG_RE = /<\/?(?:pre|code|kbd|samp)\b[^>]*>/gi;
 const CLASS_ATTR_RE = /\sclass=(["'])([^"']*)\1/gi;
 const HIGHLIGHT_CLASS_TOKEN_RE = /^(?:language-(?:html|xml|js|javascript|css)|hljs|prism|prettyprint)$/i;
 const MULTI_BLANK_LINE_RE = /\n\s*\n/g;
+const RESIDUE_FRAGMENT_RE = /(?:['\"\\])?\s*\);\s*(?:[\"'])?\s*>/gi;
 
 function isCodeBlockRescueModeEnabled() {
     try {
@@ -37,6 +38,7 @@ function stripSyntaxHighlightClasses(text) {
 
 function stripCodeBlockTriggers(text) {
     return stripHtmlComments(String(text || ''))
+        .replace(RESIDUE_FRAGMENT_RE, '>')
         .replace(/[\u200B\u200C\u200D\uFEFF]/g, '')
         .replace(CODE_FENCE_OPEN_RE, '')
         .replace(/```/g, '')
@@ -78,9 +80,9 @@ function looksLikeCompleteHtmlBlock(text) {
     if (TOTO_BLOCK_SINGLE_RE.test(html)) return true;
     if (!/^<(?:div|section|article|details)\b[\s\S]*<\/(?:div|section|article|details)>\s*$/i.test(html)) return false;
 
-    // 只接管“像兔子洞 UI 作品”的整段 HTML，避免误伤普通聊天里的 HTML 教程代码。
+    // 只接管“像兔子镜 UI 作品”的整段 HTML，避免误伤普通聊天里的 HTML 教程代码。
     const htmlSignal = /\bstyle\s*=|display\s*:\s*(?:grid|flex|block)|box-sizing\s*:|max-width\s*:|linear-gradient\(|box-shadow\s*:|filter\s*:|border-radius\s*:/i.test(html);
-    const theaterSignal = /兔子洞|兔子镜|小剧场|互动区|海龟汤|剖面图|Layer|视觉|展现形式|summary|details/i.test(html);
+    const theaterSignal = /兔子镜|兔子镜|小剧场|互动区|海龟汤|剖面图|Layer|视觉|展现形式|summary|details/i.test(html);
     const enoughTags = (html.match(/<\/(?:div|p|span|h[1-6]|section|article)>/gi) || []).length >= 3;
     return htmlSignal && (theaterSignal || enoughTags);
 }
@@ -89,15 +91,15 @@ function wrapNakedHtmlAsToto(html) {
     const body = compactTotoBlock(html);
     if (TOTO_BLOCK_SINGLE_RE.test(body)) return body;
     if (/<details\b/i.test(body) && /<summary\b/i.test(body)) {
-        return `<toto data-rabbit-hole="true" style="display:block;">${body}</toto>`;
+        return `<toto data-rabbit-mirror="true" style="display:block;">${body}</toto>`;
     }
-    return `<toto data-rabbit-hole="true" style="display:block;"><details style="display:block;box-sizing:border-box;"><summary style="cursor:pointer;list-style:none;font-weight:700;margin:0 0 8px 0;">【兔子镜：小剧场】</summary>${body}</details></toto>`;
+    return `<toto data-rabbit-mirror="true" style="display:block;"><div style="display:block;box-sizing:border-box;max-width:100%;width:100%;">${body}</div></toto>`;
 }
 
 function cleanCodeFencePayload(payload) {
     const raw = stripHtmlComments(stripOneCodeFence(decodeHtmlEntities(payload)));
     if (!raw) return raw;
-    if (TOTO_BLOCK_SINGLE_RE.test(raw)) return cleanRabbitHoleOutput(raw);
+    if (TOTO_BLOCK_SINGLE_RE.test(raw)) return cleanRabbitMirrorOutput(raw);
     if (looksLikeCompleteHtmlBlock(raw)) return wrapNakedHtmlAsToto(raw);
     return null;
 }
@@ -140,7 +142,7 @@ function wrapTrailingNakedHtml(text) {
 }
 
 export function compactTotoBlock(block) {
-    let html = stripCodeBlockTriggers(block);
+    let html = stripCodeBlockTriggers(block).replace(RESIDUE_FRAGMENT_RE, '>');
     const styleSlots = [];
 
     // 1. 保护 <style>...</style>，避免 CSS 文本被误插入 <br>。
@@ -204,12 +206,13 @@ export function compactTotoBlock(block) {
         .trim();
 }
 
-export function cleanRabbitHoleOutput(responseText = '') {
+export function cleanRabbitMirrorOutput(responseText = '') {
     // 代码块急救模式关闭时，严格不干预原始输出。
     // 开启后才拆代码块外壳、pre/code、语法高亮 class 等。
     if (!isCodeBlockRescueModeEnabled()) return String(responseText || '');
 
     let text = stripHtmlComments(String(responseText || ''))
+        .replace(RESIDUE_FRAGMENT_RE, '>')
         .replace(/[\u200B\u200C\u200D\uFEFF]/g, '')
         .replace(/\r\n?/g, '\n')
         .trim();
@@ -224,7 +227,7 @@ export function cleanRabbitHoleOutput(responseText = '') {
     // 2. 先处理已经有 <toto> 外壳的块：拆掉内部 ```html / <pre><code>，再压缩。
     text = text.replace(TOTO_BLOCK_RE, (block) => compactTotoBlock(unwrapCodeBlocksInsideToto(block)));
 
-    // 3. 再处理外层裸露的代码块：如果整块是兔子洞或裸 HTML，则补边界。
+    // 3. 再处理外层裸露的代码块：如果整块是兔子镜或裸 HTML，则补边界。
     text = text.replace(FENCED_BLOCK_RE, (match, payload) => {
         const cleaned = cleanCodeFencePayload(payload);
         return cleaned || match;
@@ -232,7 +235,7 @@ export function cleanRabbitHoleOutput(responseText = '') {
 
     // 4. 兜底：残留的首尾三反引号。
     text = text
-        .replace(/^\s*```(?:html|HTML|xml|XML)?\s*\n?/i, '')
+        .replace(/^\s*```[a-zA-Z0-9_-]*\s*\n?/i, '')
         .replace(/\n?\s*```\s*$/i, '')
         .trim();
 
@@ -249,7 +252,7 @@ function needsSanitize(text) {
     if (!isCodeBlockRescueModeEnabled()) return false;
     const decoded = decodeHtmlEntities(String(text || ''));
     if (TOTO_BLOCK_SINGLE_RE.test(decoded)) return true;
-    if (/```(?:html|HTML|xml|XML)?[\s\S]*?<toto\b/i.test(decoded)) return true;
+    if (/```[a-zA-Z0-9_-]*[\s\S]*?<toto\b/i.test(decoded)) return true;
     if (FENCED_BLOCK_RE.test(decoded)) {
         FENCED_BLOCK_RE.lastIndex = 0;
         let match;
@@ -277,7 +280,7 @@ function sanitizeLatestRawMessages(mod) {
     for (const message of findRecentAssistantMessages(mod)) {
         const decoded = decodeHtmlEntities(message.mes);
         if (!needsSanitize(decoded)) continue;
-        const cleaned = cleanRabbitHoleOutput(decoded);
+        const cleaned = cleanRabbitMirrorOutput(decoded);
         if (cleaned && cleaned !== message.mes) {
             message.mes = cleaned;
             if (Array.isArray(message.swipes)) {
@@ -292,7 +295,7 @@ function sanitizeLatestRawMessages(mod) {
             const saver = mod?.saveChatConditional || globalThis.saveChatConditional;
             if (typeof saver === 'function') saver();
         } catch (error) {
-            console.debug('[RabbitHole] save after sanitizer failed:', error);
+            console.debug('[RabbitMirror] save after sanitizer failed:', error);
         }
     }
     return changed;
@@ -312,7 +315,7 @@ function parseTotoFragment(html) {
     try {
         const template = document.createElement('template');
         template.innerHTML = html;
-        const toto = template.content.querySelector('toto[data-rabbit-hole="true"], toto');
+        const toto = template.content.querySelector('toto[data-rabbit-mirror="true"], toto');
         return toto ? toto.cloneNode(true) : null;
     } catch {
         return null;
@@ -390,23 +393,23 @@ function extractLikelyHtmlFromText(text) {
     return raw;
 }
 
-function isRabbitHoleDetails(details) {
+function isRabbitMirrorDetails(details) {
     if (!details?.querySelector) return false;
     const summary = details.querySelector(':scope > summary') || details.querySelector('summary');
     const title = (summary?.textContent || '').replace(/\s+/g, ' ').trim();
-    return /^【兔子(?:洞|镜)[:：]/.test(title) || /兔子(?:洞|镜)/.test(title);
+    return /^【兔子镜[:：]/.test(title) || /兔子镜/.test(title);
 }
 
-function sanitizeRenderedRabbitHoleDetailsDom() {
+function sanitizeRenderedRabbitMirrorDetailsDom() {
     if (!isCodeBlockRescueModeEnabled()) return;
     const root = getChatRoot();
     if (!root) return;
-    const detailsList = [...root.querySelectorAll('toto details, details')].filter(isRabbitHoleDetails);
+    const detailsList = [...root.querySelectorAll('toto details, details')].filter(isRabbitMirrorDetails);
 
     for (const details of detailsList) {
         if (!isInsideChatMessage(details)) continue;
 
-        // 以 summary 为锚点修复：标题已经被渲染成功时，说明外层兔子洞成立；
+        // 以 summary 为锚点修复：标题已经被渲染成功时，说明外层兔子镜成立；
         // 这时只要把 summary 后面被当成源码显示的 HTML 正文拆回真实 DOM。
         const candidates = [...details.querySelectorAll('pre, code, .hljs, .code_block, .code-block, .codeblock, [class*="codeblock"], [class*="code-block"], div, section, article')]
             .filter(node => node !== details && !node.closest('summary'))
@@ -421,7 +424,7 @@ function sanitizeRenderedRabbitHoleDetailsDom() {
 
             let replacement = null;
             if (TOTO_BLOCK_SINGLE_RE.test(raw)) {
-                const cleaned = cleanRabbitHoleOutput(raw);
+                const cleaned = cleanRabbitMirrorOutput(raw);
                 const inner = cleaned
                     .replace(/^\s*<toto\b[^>]*>/i, '')
                     .replace(/<\/toto>\s*$/i, '')
@@ -455,15 +458,15 @@ function sanitizeCodeBlocksInChatDom() {
         if (!raw) continue;
 
         let replacement = null;
-        const insideRabbitHole = !!node.closest('toto, details');
+        const insideRabbitMirror = !!node.closest('toto, details');
 
         if (TOTO_BLOCK_SINGLE_RE.test(raw)) {
-            const cleaned = cleanRabbitHoleOutput(raw);
+            const cleaned = cleanRabbitMirrorOutput(raw);
             const match = cleaned.match(TOTO_BLOCK_SINGLE_RE);
             replacement = match ? parseTotoFragment(match[0]) : null;
         } else if (looksLikeCompleteHtmlBlock(raw)) {
-            // 已经在兔子洞 details 里面时，只把代码块内容变成真实 HTML，避免再套一层小剧场。
-            replacement = insideRabbitHole
+            // 已经在兔子镜 details 里面时，只把代码块内容变成真实 HTML，避免再套一层小剧场。
+            replacement = insideRabbitMirror
                 ? parseHtmlFragment(compactTotoBlock(raw))
                 : parseTotoFragment(wrapNakedHtmlAsToto(raw));
         }
@@ -479,9 +482,9 @@ export function triggerCodeBlockRescue(mod = null) {
     try {
         sanitizeLatestRawMessages(mod || globalThis);
         sanitizeCodeBlocksInChatDom();
-        sanitizeRenderedRabbitHoleDetailsDom();
+        sanitizeRenderedRabbitMirrorDetailsDom();
     } catch (error) {
-        console.debug('[RabbitHole] code block rescue trigger failed:', error);
+        console.debug('[RabbitMirror] code block rescue trigger failed:', error);
     }
 }
 
@@ -492,7 +495,7 @@ function scheduleSanitize(mod) {
         sanitizeLatestRawMessages(mod);
         // 再只修聊天区内已经渲染出来的代码块，不扫描设置页，避免误伤其他插件 UI。
         sanitizeCodeBlocksInChatDom();
-        sanitizeRenderedRabbitHoleDetailsDom();
+        sanitizeRenderedRabbitMirrorDetailsDom();
     };
     setTimeout(run, 80);
     setTimeout(run, 350);
@@ -534,8 +537,8 @@ export async function initOutputSanitizer() {
         }
 
         scheduleSanitize(mod);
-        console.debug('[RabbitHole] output sanitizer initialized');
+        console.debug('[RabbitMirror] output sanitizer initialized');
     } catch (error) {
-        console.debug('[RabbitHole] output sanitizer disabled:', error);
+        console.debug('[RabbitMirror] output sanitizer disabled:', error);
     }
 }

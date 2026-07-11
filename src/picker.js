@@ -1,6 +1,6 @@
 import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js';
 import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js';
-import { getLastCombo, getRecentIds, setLastCombo } from './storage.js';
+import { getLastCombo, getRecentIds, getComboHistory, setLastCombo } from './storage.js';
 
 function randomInt(min, max) {
     const low = Math.min(min, max);
@@ -74,6 +74,21 @@ function getChatTurnKey() {
     } catch (_error) {
         return `fallback|${getLastUserMessage().slice(0, 500)}`;
     }
+}
+
+function isRecentDarkStreak() {
+    const skeletons = getComboHistory(3).map(item => String(item?.visualSkeleton || '')).filter(Boolean).slice(-2);
+    return skeletons.length === 2 && skeletons.every(text => /contrast:\s*dark_weighted|digital_dark_surface|暗色高对比底盘/.test(text));
+}
+
+function isDarkLeaningItem(item) {
+    const text = `${item?.id || ''} ${item?.title || ''} ${item?.summary || ''} ${item?.raw || ''} ${(item?.tags || []).join(' ')}`;
+    return /(night\+glow|low-key|neon|霓虹|发光|暗色|黑|夜|控制台|监控|后台|诅咒|怪谈|灵异|恐怖|档案|relic|archive)/i.test(text);
+}
+
+function filterDarkLeaningPool(pool) {
+    const filtered = pool.filter(item => !isDarkLeaningItem(item));
+    return filtered.length >= Math.max(8, Math.floor(pool.length * 0.35)) ? filtered : pool;
 }
 
 function isRichPresentation(item) {
@@ -252,22 +267,22 @@ function extractAfterPatterns(message, patterns) {
 }
 
 function parseUserDirective(message) {
-    if (!message || !/(兔子洞|兔子镜|小剧场)/.test(message)) return null;
+    if (!message || !/(兔子镜|兔子镜|小剧场)/.test(message)) return null;
 
-    if (/((?:兔子洞|兔子镜|小剧场)\s*(关闭|关掉|不要|禁用|停止|off)|不要\s*(?:兔子洞|兔子镜|小剧场)|关闭\s*(?:兔子洞|兔子镜|小剧场)|本轮不(?:要|用)\s*(?:兔子洞|兔子镜|小剧场))/i.test(message)) {
+    if (/((?:兔子镜|兔子镜|小剧场)\s*(关闭|关掉|不要|禁用|停止|off)|不要\s*(?:兔子镜|兔子镜|小剧场)|关闭\s*(?:兔子镜|兔子镜|小剧场)|本轮不(?:要|用)\s*(?:兔子镜|兔子镜|小剧场))/i.test(message)) {
         return { disabled: true, reason: '用户正文指令关闭本轮兔子镜' };
     }
 
     const themeTexts = extractAfterPatterns(message, [
-        '(?:兔子洞|兔子镜|小剧场)(?:主题|元素|题材|theme)\s*[:：]\s*([^\n。；;]+)',
+        '(?:兔子镜|兔子镜|小剧场)(?:主题|元素|题材|theme)\s*[:：]\s*([^\n。；;]+)',
     ]);
     const formatTexts = extractAfterPatterns(message, [
-        '(?:兔子洞|兔子镜|小剧场)(?:展现形式|展示形式|表现形式|格式|形式|format|ui|UI)\s*[:：]\s*([^\n。；;]+)',
+        '(?:兔子镜|兔子镜|小剧场)(?:展现形式|展示形式|表现形式|格式|形式|format|ui|UI)\s*[:：]\s*([^\n。；;]+)',
     ]);
     const generalTexts = extractAfterPatterns(message, [
-        '(?:兔子洞|兔子镜|小剧场)\s*[:：]\s*([^\n。；;]+)',
-        '(?:兔子洞|兔子镜|小剧场)\s*(?:想看|想要|来|要|指定|换成)\s*([^\n。；;]+)',
-        '(?:下一个|下次|这次|本轮)?\s*(?:兔子洞|兔子镜|小剧场)\s*(?:想看|想要|来|要|指定|换成)\s*([^\n。；;]+)',
+        '(?:兔子镜|兔子镜|小剧场)\s*[:：]\s*([^\n。；;]+)',
+        '(?:兔子镜|兔子镜|小剧场)\s*(?:想看|想要|来|要|指定|换成)\s*([^\n。；;]+)',
+        '(?:下一个|下次|这次|本轮)?\s*(?:兔子镜|兔子镜|小剧场)\s*(?:想看|想要|来|要|指定|换成)\s*([^\n。；;]+)',
     ]).filter(x => !/^(主题|元素|题材|展现形式|展示形式|表现形式|格式|形式)\s*[:：]/.test(x));
 
     const themeQueries = splitDirectiveText(themeTexts.join('、'));
@@ -288,7 +303,7 @@ function parseUserDirective(message) {
     for (const query of generalQueries) {
         const format = matchOne(PRESENTATION_FORMATS, query);
         const theme = matchOne(THEMATIC_CATEGORIES, query);
-        // 一般“兔子镜/兔子洞：xxx”里，像法甜剖面图/短信体更常是展现形式；两边都能匹配时都保留。
+        // 一般“兔子镜/兔子镜：xxx”里，像法甜剖面图/短信体更常是展现形式；两边都能匹配时都保留。
         if (format) formats.push(format);
         if (theme) themes.push(theme);
     }
@@ -357,6 +372,11 @@ export function pickCombination(settings) {
     let themePool = filterRemovedRegionalThemes(THEMATIC_CATEGORIES).filter(item => allowByMode(item, settings.mode));
     let formatPool = PRESENTATION_FORMATS.filter(item => allowByMode(item, settings.mode));
     formatPool = filterReportLikePresentations(formatPool, settings);
+
+    if (isRecentDarkStreak()) {
+        themePool = filterDarkLeaningPool(themePool);
+        formatPool = filterDarkLeaningPool(formatPool);
+    }
 
     if (!themePool.length) themePool = filterRemovedRegionalThemes(THEMATIC_CATEGORIES);
     if (!formatPool.length) formatPool = filterReportLikePresentations(PRESENTATION_FORMATS, settings);

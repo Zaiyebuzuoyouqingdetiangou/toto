@@ -1,6 +1,6 @@
 import { updateLatestVisualSignature } from './storage.js';
 
-const TOTO_RE = /<toto\b[^>]*data-rabbit-hole=["']true["'][^>]*>[\s\S]*?<\/toto>/i;
+const TOTO_RE = /<toto\b[^>]*>[\s\S]*?<\/toto>/i;
 let lastScannedHash = '';
 
 function hashText(text) {
@@ -49,7 +49,7 @@ function parseToto(html) {
     try {
         if (typeof DOMParser === 'undefined') return null;
         const doc = new DOMParser().parseFromString(String(html || ''), 'text/html');
-        return doc.querySelector('toto[data-rabbit-hole="true"]') || doc.querySelector('toto');
+        return doc.querySelector('toto[data-rabbit-mirror="true"]') || doc.querySelector('toto');
     } catch {
         return null;
     }
@@ -109,6 +109,37 @@ function analyzeDomStructure(html) {
         }
     }
     return { maxSimilarRun, summaryLength, summaryFlags };
+}
+
+function getEffectiveDetails(root) {
+    if (!root?.querySelectorAll) return [];
+    const allDetails = [...root.querySelectorAll('details')];
+    const directWrapper = root.children?.length === 1 && root.firstElementChild?.tagName?.toLowerCase() === 'details'
+        ? root.firstElementChild
+        : null;
+    return directWrapper ? allDetails.filter(d => d !== directWrapper) : allDetails;
+}
+
+function analyzeInteractionAffordance(root, html = '') {
+    const text = String(html || '');
+    const effectiveDetails = getEffectiveDetails(root);
+    const detailsCount = effectiveDetails.length;
+    const isDetailsOverused = detailsCount >= 3;
+    const hasCheckbox = /<input\b[^>]*type=["']?(?:checkbox|radio)/i.test(text);
+    const hasLabelFor = /<label\b[^>]*for=["'][^"']+["']/i.test(text);
+    const hasStateSelector = /:hover|:active|:checked|:focus|:target/i.test(text);
+    const hasTransition = /transition\s*:|animation\s*:|@keyframes/i.test(text);
+    const hasScrollFeedback = /overflow-x\s*:\s*auto|scroll-snap-type/i.test(text);
+    const hasSvgMotion = /<animate\b|<animateTransform\b|stroke-dasharray|offset-path/i.test(text);
+    let score = 0;
+    if (detailsCount > 0 && !isDetailsOverused) score += 20;
+    if (detailsCount > 0 && isDetailsOverused) score += 6;
+    if (hasCheckbox && hasLabelFor) score += 25;
+    if (hasStateSelector) score += 15;
+    if (hasTransition) score += 20;
+    if (hasScrollFeedback) score += 15;
+    if (hasSvgMotion) score += 15;
+    return { detailsCount, isDetailsOverused, score: Math.min(100, score), hasTransition, hasScrollFeedback, hasSvgMotion, hasCheckbox, hasLabelFor, hasStateSelector };
 }
 
 
@@ -265,7 +296,10 @@ function detectRiskFlags({ root, html, plain, dom, repeated, spatialSignalCount 
     const flatVerticalFlow = detectFlatVerticalFlow(html, root);
     const repeatedUnitShape = detectRepeatedUnitShape(root, html);
     const weakSpatialComplexity = detectWeakSpatialComplexity(html, plain);
-    const interactionMissing = detectInteractionMissing(html, plain);
+    const interactionAudit = analyzeInteractionAffordance(root, html);
+
+    if (interactionAudit.isDetailsOverused) flags.push('details_overused');
+    if (interactionAudit.score >= 45) flags.push('dynamic_feedback_present');
 
     if (sameBlockStack) flags.push('same_block_stack');
     if (sameGridCard) flags.push('same_grid_card_risk');
@@ -276,7 +310,6 @@ function detectRiskFlags({ root, html, plain, dom, repeated, spatialSignalCount 
     if (sameBlockStack || sameGridCard || catalogPage || flatVerticalFlow || repeatedUnitShape || (dom?.maxSimilarRun || 0) >= 3 || (repeated?.maxRepeat || 0) >= 4) flags.push('info_page_degrade');
     if (spatialSignalCount < 2 && String(plain || '').length > 520 && (sameBlockStack || sameGridCard || catalogPage || repeatedUnitShape || (repeated?.maxRepeat || 0) >= 3)) flags.push('weak_media_body');
     if (weakSpatialComplexity) flags.push('weak_spatial_complexity');
-    if (interactionMissing) flags.push('missing_interaction');
     if (detectVisualPromiseWithoutMechanism(html, plain)) flags.push('visual_promise_unfulfilled');
     return [...new Set(flags)];
 }
@@ -462,7 +495,7 @@ function detectGlobalCssRisk(html) {
     return /(^|[}\s,])(html|body|:root|\*|\.mes|\.message|\.chat|\.content|\.ts-message-container|#chat|#send_form)\s*[{,]/i.test(styles);
 }
 
-export function scanRabbitHoleHtml(messageHtml) {
+export function scanRabbitMirrorHtml(messageHtml) {
     const match = String(messageHtml || '').match(TOTO_RE);
     if (!match) return { signature: '', skeleton: '' };
     const html = match[0];
@@ -484,6 +517,11 @@ export function scanRabbitHoleHtml(messageHtml) {
     else if (spatialSignalCount >= 2) effects.push('空间构造信号中');
     else effects.push('空间构造信号弱');
 
+    const interactionAudit = analyzeInteractionAffordance(root, html);
+    if (interactionAudit.score >= 45) effects.push('动态/交互反馈有');
+    else if (interactionAudit.hasTransition || interactionAudit.hasScrollFeedback || interactionAudit.hasSvgMotion) effects.push('动态反馈轻量');
+    else effects.push('动态/交互反馈不强制');
+
     const structural = [];
     if (dom.maxSimilarRun >= 3) structural.push('连续同构兄弟区块明显/卡片化倾向高');
     else if (dom.maxSimilarRun >= 2) structural.push('存在连续同构兄弟区块');
@@ -496,6 +534,7 @@ export function scanRabbitHoleHtml(messageHtml) {
     if (/<pre\b|<code\b|```/i.test(html)) structural.push('代码块风险');
     if (detectGlobalCssRisk(html)) structural.push('全局CSS污染风险');
     const riskFlags = detectRiskFlags({ root, html, plain, dom, repeated, spatialSignalCount });
+    if (riskFlags.includes('details_overused')) structural.push('机械折叠堆叠风险');
     if (riskFlags.includes('same_block_stack')) structural.push('同构信息块堆叠风险');
     if (riskFlags.includes('same_grid_card_risk')) structural.push('同构网格信息块风险');
     if (riskFlags.includes('catalog_page_risk')) structural.push('图鉴/目录式承载风险');
@@ -504,7 +543,6 @@ export function scanRabbitHoleHtml(messageHtml) {
     if (riskFlags.includes('info_page_degrade')) structural.push('信息页降级风险');
     if (riskFlags.includes('weak_media_body')) structural.push('媒介本体偏弱风险');
     if (riskFlags.includes('weak_spatial_complexity')) structural.push('空间复杂度偏弱风险');
-    if (riskFlags.includes('missing_interaction')) structural.push('内部交互入口偏弱风险');
     if (riskFlags.includes('visual_promise_unfulfilled')) structural.push('视觉承诺未兑现风险');
     structural.push(...dom.summaryFlags);
 
@@ -527,13 +565,13 @@ async function scanLatestAssistantMessage(mod) {
     const sigHash = hashText(message.mes);
     if (sigHash === lastScannedHash) return;
     lastScannedHash = sigHash;
-    const result = scanRabbitHoleHtml(message.mes);
+    const result = scanRabbitMirrorHtml(message.mes);
     const signature = result?.signature || '';
     const skeleton = result?.skeleton || '';
     const riskFlags = Array.isArray(result?.riskFlags) ? result.riskFlags : [];
     if (signature || skeleton || riskFlags.length) {
         updateLatestVisualSignature(signature, skeleton, riskFlags);
-        console.debug('[RabbitHole] visual signature:', signature, skeleton, riskFlags);
+        console.debug('[RabbitMirror] visual signature:', signature, skeleton, riskFlags);
     }
 }
 
@@ -549,8 +587,8 @@ export async function initVisualScanner() {
         };
         const events = [eventTypes.MESSAGE_RECEIVED, eventTypes.GENERATION_ENDED, eventTypes.CHAT_CHANGED].filter(Boolean);
         for (const eventName of events) eventSource.on(eventName, scheduleScan);
-        console.debug('[RabbitHole] visual scanner initialized');
+        console.debug('[RabbitMirror] visual scanner initialized');
     } catch (error) {
-        console.debug('[RabbitHole] visual scanner disabled:', error);
+        console.debug('[RabbitMirror] visual scanner disabled:', error);
     }
 }

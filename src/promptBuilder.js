@@ -77,6 +77,14 @@ function recentRiskCorrection() {
     const counts = getRecentRiskFlagCounts(4);
     if (!flags.length) return '';
     const lines = [];
+    const recent = getComboHistory(3);
+    const recentSkeletons = recent.map(item => String(item?.visualSkeleton || '')).filter(Boolean);
+    const recentTwoDark = recentSkeletons.slice(-2).length === 2 && recentSkeletons.slice(-2).every(text => /contrast:\s*dark_weighted|digital_dark_surface|暗色高对比底盘/.test(text));
+    const recentDarkMood = recentSkeletons.slice(-2).length === 2 && recentSkeletons.slice(-2).every(text => /霓虹|发光|监控|控制台|档案\/后台|digital_dark_surface/.test(text));
+
+    if (recentTwoDark || recentDarkMood) {
+        lines.push('近期输出的明暗关系与主底盘光源重复度过高。本轮必须切换主背景气质、光源结构、材质层次与视觉锚点，不得继续复用同类暗色发光骨架。');
+    }
 
     const hasRepeatedStructure = flags.some(flag => [
         'same_block_stack',
@@ -95,9 +103,9 @@ function recentRiskCorrection() {
         lines.push('近期真实输出的媒介本体偏弱。本轮必须让 DOM/CSS 直接呈现可辨认的媒介轮廓、前中后景层级与视觉锚点，而不是把媒介名只写在标题里。');
     }
 
-    const hasWeakInteraction = flags.some(flag => ['missing_interaction', 'visual_promise_unfulfilled'].includes(flag));
+    const hasWeakInteraction = flags.some(flag => ['details_overused', 'visual_promise_unfulfilled'].includes(flag));
     if (hasWeakInteraction) {
-        lines.push('近期真实输出的交互或动态实现偏弱。本轮至少加入一个内部可探索入口或状态变化结构，并让 CSS/SVG/HTML 机制真实承担效果。');
+        lines.push('近期真实输出曾出现视觉承诺未兑现或折叠堆叠。本轮让动态反馈从当前媒介材质中产生；若使用交互，必须真实可用且不被装饰层遮挡。');
     }
 
     if ((counts.same_block_stack || 0) >= 2 || (counts.info_page_degrade || 0) >= 2 || (counts.flat_vertical_flow || 0) >= 2) {
@@ -112,7 +120,8 @@ function coreOutputProtocol() {
     return String.raw`
 强制输出:
   - 主回复正文完成后，必须在消息最底部追加一个完整兔子镜小剧场。
-  - 固定外壳：<toto data-rabbit-hole="true" style="display:block;"><details><summary>【兔子镜：标题】</summary>内部 HTML</details></toto>
+  - 固定外壳：<toto data-rabbit-mirror="true" style="display:block;">内部 HTML</toto>。
+  - 内部主体优先使用 <div> 作为主容器；仅当本轮展现形式确实需要翻面、揭示或分段探索时，才使用 <details>/<summary>。
   - 兔子镜必须是最后一个可见模块；禁止解释规则、禁止省略、禁止 Markdown 代码块、禁止 <pre>/<code>/HTML 注释。
   - 禁止 script、iframe、object、embed、form、事件属性；所有标签必须闭合，最终必须以 </toto> 结束。`;
 }
@@ -130,12 +139,14 @@ function compactCreativeRule(enabled) {
 
 function complexInteractiveCore() {
     return String.raw`
-复杂交互视觉核心:
-  - 兔子镜必须像复杂精美的微型交互 HTML 媒介作品，而不是普通信息页、单列内容块、简单表单或文字摘要。
-  - 展现形式必须决定 DOM/CSS 的整体轮廓、空间结构、阅读路径、交互方式和文字寄生位置，不能只写进标题。
+复杂视觉核心:
+  - 兔子镜必须像复杂精美的微型 HTML 媒介作品，而不是普通信息页、单列内容块、简单表单或文字摘要。
+  - 展现形式必须决定 DOM/CSS 的整体轮廓、空间结构、阅读路径、反馈方式和文字寄生位置，不能只写进标题。
   - 必须具备主视觉结构、前中后景层级、视觉锚点、材质质感、排版呼吸感与非单调阅读路径。
-  - 除最外层折叠外，内部至少包含一个真实可操作/可探索入口；它必须改变可见层级、阅读路径或界面状态，而不是普通折叠说明。可用内部 details/summary、checkbox/radio+label、横向滚动、局部揭示、分层视窗、状态切换或 hover/active 反馈。
-  - 可点击结构必须真实可用：禁止依赖 onclick、button 或 JS；summary 需 cursor:pointer 与 list-style:none；checkbox/radio 必须配唯一 id 与 label for；装饰遮罩不得覆盖交互，必要时 pointer-events:none，交互层使用更高 z-index。
+  - 动态反馈必须从本轮展现形式的媒介材质和场景逻辑中产生，不得脱离本轮媒介另起一套通用操作面板。
+  - 每轮可以具备可感知的动态反馈或交互感，但不强制每轮都使用可点击结构；只有本轮确实需要选择、探索或分段推进时，才使用可点击/可切换结构。
+  - 不得为了满足交互而机械堆叠 <details>/<summary>；折叠结构不能连续成为默认解法。
+  - 若使用可点击或可切换结构，必须无需 JS 即可生效：禁止 onclick、button 伪交互；summary 需 cursor:pointer 与 list-style:none；checkbox/radio 必须配唯一 id 与 label for；装饰遮罩不得覆盖交互，必要时 pointer-events:none，交互层使用更高 z-index。
   - 鼓励使用 Flex/Grid、absolute 定位、SVG、linear-gradient、box-shadow、filter、clip-path、mask、transform、transition 或轻量 CSS 动效构建空间与质感。
   - 不得只靠换标题、换色、换边框或换装饰复用同一种视觉骨架；若整体骨架、阅读路径或内容承载方式仍近似上一轮，必须重写。`;
 }
@@ -155,7 +166,7 @@ function visualColorTruthRule() {
 function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive }) {
     const chunks = [];
     const mode = combo?.samplingMode || settings?.samplingMode || 'classic';
-    chunks.push('<RabbitHoleTheaterAutoInjection>');
+    chunks.push('<RabbitMirrorTheaterAutoInjection>');
     chunks.push(coreOutputProtocol());
     chunks.push(String.raw`
 本轮抽取模式: ${samplingModeLabel(combo, settings)}
@@ -177,7 +188,7 @@ ${selectedFormats}`);
     if (settings.uiAudit) {
         chunks.push(String.raw`
 UI 自查短版:
-  输出前检查：媒介本体是否靠 DOM/CSS 成立、是否有空间层级/视觉锚点/质感、是否有内部交互入口、是否退化为普通纵向内容流。失败则重写。`);
+  输出前检查：媒介本体是否靠 DOM/CSS 成立、是否有空间层级/视觉锚点/质感、是否有动态反馈或媒介内反馈、是否退化为普通纵向内容流。失败则重写。`);
     }
 
     if (settings.avoidRepeat) {
@@ -198,15 +209,15 @@ ${shortVisualAvoidance(combo, 3)}${recentRiskCorrection()}`);
     chunks.push(String.raw`
 最终保底:
   先完整生成主回复正文；正文结束后必须继续生成兔子镜。先保证 <toto> 出现，再追求复杂度。不要解释规则，直接输出最终内容。`);
-    chunks.push('</RabbitHoleTheaterAutoInjection>');
+    chunks.push('</RabbitMirrorTheaterAutoInjection>');
     return chunks.filter(Boolean).join('\n\n').trim();
 }
 
-export function buildRabbitHolePrompt(settings, generationType = 'normal') {
-    if (!settings?.enabled || !settings?.autoRabbitHoleInjection || settings?.mode === 'off') return '';
+export function buildRabbitMirrorPrompt(settings, generationType = 'normal') {
+    if (!settings?.enabled || !settings?.autoRabbitMirrorInjection || settings?.mode === 'off') return '';
     const { combo, directive, disabled } = pickCombination(settings);
     if (disabled) {
-        if (settings.debug) console.debug('[RabbitHole] skipped by user directive');
+        if (settings.debug) console.debug('[RabbitMirror] skipped by user directive');
         return '';
     }
 
@@ -217,7 +228,7 @@ export function buildRabbitHolePrompt(settings, generationType = 'normal') {
     const prompt = buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive });
 
     if (settings.debug) {
-        console.debug('[RabbitHole] generationType:', generationType, 'combo:', combo, 'prompt chars:', prompt.length);
+        console.debug('[RabbitMirror] generationType:', generationType, 'combo:', combo, 'prompt chars:', prompt.length);
     }
     return prompt;
 }

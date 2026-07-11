@@ -3,8 +3,8 @@ export const RAW_EXECUTION_RULES = String.raw`
 
 执行边界:
   enforcement_level: "mandatory"
-  trigger: "主回复完成后，回复最后必须追加完整 <toto data-rabbit-hole="true" style="display:block;"> 包裹的 <details> 小剧场"
-  summary: "标题写入 <summary>，格式为【兔子镜：本次小剧场标题】"
+  trigger: "主回复完成后，回复最后必须追加完整 <toto data-rabbit-mirror="true" style="display:block;">...</toto> 兔子镜内容"
+  summary: "标题可写入主视觉标题区；仅在确实使用 details 时写入 <summary>"
   narrative_boundary:
     - "不得以任何形式干预或改写主线叙事内容"
     - "主线叙事与兔子镜必须保持模块边界，不得互相包裹或破坏"
@@ -19,14 +19,14 @@ export const RAW_EXECUTION_RULES = String.raw`
 
 输出结构:
   enforcement_level: "mandatory"
-  wrapper: "<toto data-rabbit-hole="true" style="display:block;"><details>...</details></toto>"
+  wrapper: "<toto data-rabbit-mirror="true" style="display:block;"><div>...</div></toto>"
   rule:
-    - "小剧场最外层必须使用 <toto data-rabbit-hole="true" style="display:block;"> 作为插件识别边界，内部再使用 <details> 折叠模块，并在 <summary> 中显示标题"
+    - "小剧场最外层必须使用 <toto data-rabbit-mirror="true" style="display:block;"> 作为插件识别边界；内部主体优先使用 <div> 作为主容器，仅当本轮展现形式确实需要翻面、揭示或分段探索时才使用 <details>/<summary>"
     - "<toto> 只作为插件与正则识别边界，不得作为可见标题、标签、栏目名、水印或 UI 元素"
     - "内部 HTML 结构、版式、色彩、层级、视觉锚点必须根据本轮展现形式重新设计"
     - "不提供固定 HTML 模板；任何示例不得固化为固定视觉骨架"
     - "最终输出为可直接渲染的紧凑 HTML，不输出代码块，不解释规则"
-    - "小剧场最外层必须完整包裹在 <toto data-rabbit-hole="true" style="display:block;"> 与 </toto> 之间，禁止遗漏闭合标签；不得在 </toto> 后追加任何可见内容"
+    - "小剧场最外层必须完整包裹在 <toto data-rabbit-mirror="true" style="display:block;"> 与 </toto> 之间，禁止遗漏闭合标签；不得在 </toto> 后追加任何可见内容"
 
 去模板化冷却:
   enforcement_level: "mandatory"
@@ -84,7 +84,7 @@ UI审查重点:
 交互可用性:
   enforcement_level: "mandatory"
   rule:
-    - "交互必须使用无 JS 的原生可操作结构，例如内部 details/summary、横向滚动区、锚点跳转或 checkbox/radio + label 状态切换"
+    - "不强制每轮都使用可点击结构；若使用交互，必须使用无 JS 的原生可操作结构，例如 details/summary、横向滚动区、锚点跳转或 checkbox/radio + label 状态切换"
     - "禁止依赖 onclick、button 或需要脚本才能生效的伪交互；若看起来可点击，必须真的能改变可见层级、阅读路径或界面状态"
     - "可点击元素必须具备 cursor:pointer；summary 使用 list-style:none；label 与 input 必须使用唯一 id/for 绑定"
     - "absolute 背景、遮罩、光效、装饰层不得覆盖交互，必要时使用 pointer-events:none；交互层使用 position:relative 与更高 z-index"
@@ -100,6 +100,22 @@ UI审查重点:
     - "使用 vertical-rl 时，必须添加 overflow-x:auto;max-width:100%; 和固定 height，允许内部横向滑动"
     - "使用 display:flex;flex-wrap:wrap 时，子元素必须具备 min-width:0 或 flex-shrink:1"
     - "禁用 <br> 制造间距，禁用 <p> 固定宽度，禁止长文本 white-space:nowrap"
+
+动态反馈与交互:
+  enforcement_level: "mandatory"
+  rule:
+    - "每轮可以具备可感知的动态反馈或交互感，但不强制每轮都使用可点击结构"
+    - "动态反馈必须从本轮展现形式的媒介材质和场景逻辑中产生，不得脱离本轮媒介另起一套通用操作面板"
+    - "反馈可表现为媒介本体内部的翻动、揭示、滑动、显隐、光影变化、状态反馈或阅读路径变化；只有本轮确实需要选择、探索或分段推进时，才使用可点击/可切换结构"
+    - "不得为了满足交互而机械堆叠 <details>/<summary>；折叠结构不能连续成为默认解法"
+    - "若使用可点击或可切换结构，必须无需 JS 即可生效，且交互区域不得被装饰层遮挡；summary 需 cursor:pointer 与 list-style:none；checkbox/radio 必须配唯一 id 与 label for；装饰层必要时 pointer-events:none"
+
+明暗关系冷却:
+  enforcement_level: "mandatory"
+  rule:
+    - "不以具体颜色判断好坏，只判断主底盘光源、明暗关系和材质气质是否连续重复"
+    - "若近期输出连续偏暗，本轮必须切换主背景气质、光源结构、材质层次与视觉锚点，避免继续复用同类暗色发光骨架"
+    - "即使本轮主题偏悬疑、怪谈或神秘，也不得自动退回整页暗底；可以通过留白、纸质、雾面、褪色、微光、局部阴影或高反差局部表达气氛"
 
 </兔子镜执行规则>
 `;

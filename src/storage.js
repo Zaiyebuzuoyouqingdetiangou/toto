@@ -1,10 +1,19 @@
-const STORAGE_KEY = 'rabbit_hole_theater:last_combo:v11';
-const PENDING_KEY = 'rabbit_hole_theater:pending_combo:v11';
+const STORAGE_KEY = 'rabbit_mirror_theater:last_combo:v12';
+const LEGACY_STORAGE_KEYS = ['rabbit_hole_theater:last_combo:v11'];
+const PENDING_KEY = 'rabbit_mirror_theater:pending_combo:v12';
+const LEGACY_PENDING_KEYS = ['rabbit_hole_theater:pending_combo:v11'];
 const MAX_STORED = 20;
 
 function readHistory() {
     try {
-        const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        let stored = localStorage.getItem(STORAGE_KEY);
+        if (!stored) {
+            for (const key of LEGACY_STORAGE_KEYS) {
+                stored = localStorage.getItem(key);
+                if (stored) break;
+            }
+        }
+        const raw = JSON.parse(stored || '[]');
         if (Array.isArray(raw)) return raw;
         if (raw && typeof raw === 'object') return [raw];
         return [];
@@ -86,13 +95,19 @@ export function setPendingCombo(combo) {
         const pending = { ...combo, signature: signatureOf(combo), pendingTs: Date.now() };
         localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
     } catch (error) {
-        console.warn('[RabbitHole] Failed to store pending combo:', error);
+        console.warn('[RabbitMirror] Failed to store pending combo:', error);
     }
 }
 
 export function commitPendingCombo(visualSignature = '', visualSkeleton = '', riskFlags = []) {
     try {
-        const raw = localStorage.getItem(PENDING_KEY);
+        let raw = localStorage.getItem(PENDING_KEY);
+        if (!raw) {
+            for (const key of LEGACY_PENDING_KEYS) {
+                raw = localStorage.getItem(key);
+                if (raw) break;
+            }
+        }
         if (!raw) return;
         const pending = JSON.parse(raw);
         if (!pending || typeof pending !== 'object') return;
@@ -123,7 +138,7 @@ export function commitPendingCombo(visualSignature = '', visualSkeleton = '', ri
         localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(-MAX_STORED)));
         localStorage.removeItem(PENDING_KEY);
     } catch (error) {
-        console.warn('[RabbitHole] Failed to commit pending combo:', error);
+        console.warn('[RabbitMirror] Failed to commit pending combo:', error);
     }
 }
 
@@ -148,6 +163,8 @@ export function clearLastCombo() {
         localStorage.removeItem('rabbit_hole_theater:pending_combo:v9');
         localStorage.removeItem('rabbit_hole_theater:last_combo:v10');
         localStorage.removeItem('rabbit_hole_theater:pending_combo:v10');
+        localStorage.removeItem('rabbit_hole_theater:last_combo:v11');
+        localStorage.removeItem('rabbit_hole_theater:pending_combo:v11');
     } catch {}
 }
 
@@ -164,6 +181,6 @@ export function updateLatestVisualSignature(visualSignature, visualSkeleton = ''
         last.visualSignatureTs = Date.now();
         localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(-MAX_STORED)));
     } catch (error) {
-        console.warn('[RabbitHole] Failed to store visual signature:', error);
+        console.warn('[RabbitMirror] Failed to store visual signature:', error);
     }
 }
