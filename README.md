@@ -1,3 +1,12 @@
+# 兔子镜小剧场 / Rabbit Mirror Theater
+
+## v0.31.42
+- 强化 summary 标题格式：外层折叠标题必须统一为「【兔子镜：中文短标题】」，避免只写“兔子镜”或只写标题。
+- 加强可见中文锁定：summary、正文、按钮、状态文字、反馈文案、CSS content 均不得生成纯英文。
+- prompt 注入会清理抽取条目里的英文括注和英文平台词，减少模型把英文抄进界面。
+- visualScanner 新增 english_visible_text 与 summary_title_format 风险，触发下一轮纠偏。
+- 渲染后轻量规范外层 summary 标题，不改正文 UI。
+
 ## v0.31.25
 - 增加插件侧同构信息块堆叠检测：不在 Prompt 中列举模板，生成后根据真实 HTML/CSS 记录风险。
 - 下一轮只在检测到风险时注入短纠偏，并鼓励使用 CSS/SVG 承担媒介本体、视觉轮廓、空间层级、材质质感或轻量动态。

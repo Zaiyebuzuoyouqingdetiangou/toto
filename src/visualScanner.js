@@ -343,6 +343,41 @@ function detectRepeatedUnitShape(root, html = '') {
 }
 
 
+function extractCssContentText(html = '') {
+    const texts = [];
+    const re = /content\s*:\s*(["'])([\s\S]*?)\1/gi;
+    let match;
+    while ((match = re.exec(String(html || '')))) {
+        const value = String(match[2] || '').trim();
+        if (value && value !== '"' && value !== "'") texts.push(value);
+    }
+    return texts.join(' ');
+}
+
+function detectEnglishVisibleTextRisk(root, html = '', plain = '') {
+    const visible = `${plain || ''} ${extractCssContentText(html)}`.replace(/\s+/g, ' ').trim();
+    if (!visible) return false;
+    const englishWords = visible.match(/\b[A-Za-z][A-Za-z0-9_-]{2,}\b/g) || [];
+    if (!englishWords.length) return false;
+    const chineseCount = (visible.match(/[\u4e00-\u9fff]/g) || []).length;
+    const englishChars = englishWords.join('').length;
+    const upperOrSystem = /\b(?:SYSTEM|WARNING|ERROR|INJECT|OVERRIDE|ENGAGED|LOADING|ACCESS|SIGNAL|INPUT|OUTPUT|STATUS|ALERT|CONTROL|CONFIRM|CANCEL|YES|NO)\b/i.test(visible);
+    if (upperOrSystem && englishWords.length >= 2) return true;
+    if (englishWords.length >= 5 && englishChars > chineseCount * 0.45) return true;
+    if (chineseCount < 12 && englishWords.length >= 2) return true;
+    return false;
+}
+
+function detectSummaryTitleFormatRisk(root) {
+    const summary = root?.querySelector?.(':scope > details > summary') || root?.querySelector?.('summary');
+    const title = (summary?.textContent || '').replace(/\s+/g, '').trim();
+    if (!title) return true;
+    if (/^[【\[]?兔子镜[】\]]?$/.test(title)) return true;
+    if (!/^【兔子镜[:：][^】]{2,24}】$/.test(title)) return true;
+    if (/[A-Za-z]{2,}/.test(title)) return true;
+    return false;
+}
+
 function detectRiskFlags({ root, html, plain, dom, repeated, spatialSignalCount }) {
     const flags = [];
     const sameBlockStack = detectSameBlockStack(root, html);
@@ -369,6 +404,8 @@ function detectRiskFlags({ root, html, plain, dom, repeated, spatialSignalCount 
     if (weakSpatialComplexity) flags.push('weak_spatial_complexity');
     if (detectVisualPromiseWithoutMechanism(html, plain)) flags.push('visual_promise_unfulfilled');
     if (detectUnreadableContrastRisk(root, html)) flags.push('low_text_contrast');
+    if (detectEnglishVisibleTextRisk(root, html, plain)) flags.push('english_visible_text');
+    if (detectSummaryTitleFormatRisk(root)) flags.push('summary_title_format');
     return [...new Set(flags)];
 }
 
@@ -643,6 +680,8 @@ export function scanRabbitMirrorHtml(messageHtml) {
     if (riskFlags.includes('weak_spatial_complexity')) structural.push('空间复杂度偏弱风险');
     if (riskFlags.includes('visual_promise_unfulfilled')) structural.push('视觉承诺未兑现风险');
     if (riskFlags.includes('low_text_contrast')) structural.push('文字对比不足/可读性风险');
+    if (riskFlags.includes('english_visible_text')) structural.push('可见英文过多/中文锁定失败');
+    if (riskFlags.includes('summary_title_format')) structural.push('外层标题格式不合格');
     structural.push(...dom.summaryFlags);
 
     const mediaStrength = (/clip-path|mask|<svg\b|<path\b|position\s*:\s*absolute|transform\s*:|border-radius\s*:\s*50%|aspect-ratio|radial-gradient|conic-gradient/i.test(html) && tagCount >= 35)

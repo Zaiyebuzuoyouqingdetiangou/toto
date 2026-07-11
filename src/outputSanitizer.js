@@ -106,7 +106,7 @@ function wrapNakedHtmlAsToto(html) {
     if (TOTO_BLOCK_SINGLE_RE.test(body)) return body;
     const content = hasOuterRabbitMirrorDetails(body)
         ? body
-        : `<details><summary style="cursor:pointer;list-style:none;box-sizing:border-box;">兔子镜</summary><div style="display:block;box-sizing:border-box;max-width:100%;width:100%;">${body}</div></details>`;
+        : `<details><summary style="cursor:pointer;list-style:none;box-sizing:border-box;">【兔子镜：本轮镜面】</summary><div style="display:block;box-sizing:border-box;max-width:100%;width:100%;">${body}</div></details>`;
     return `<toto data-rabbit-mirror="true" style="display:block;">${content}</toto>`;
 }
 
@@ -555,6 +555,32 @@ function normalizeLegacyRabbitMirrorMarker(toto) {
     if (!toto.getAttribute('style')) toto.setAttribute('style', 'display:block;');
 }
 
+function normalizeRabbitMirrorSummaryText(summary) {
+    if (!summary) return;
+    const raw = String(summary.textContent || '').replace(/\s+/g, ' ').trim();
+    const compact = raw.replace(/\s+/g, '');
+    let title = raw;
+
+    if (!title || /^[【\[]?兔子镜[】\]]?$/.test(compact)) {
+        title = '本轮镜面';
+    } else {
+        title = title
+            .replace(/^【?兔子镜[:：]?/i, '')
+            .replace(/[】\]]$/g, '')
+            .replace(/^[:：]/, '')
+            .trim();
+        if (!title) title = '本轮镜面';
+    }
+
+    // 外层折叠标题必须中文可读；若模型给了纯英文标题，不尝试翻译，改成兜底中文短标题。
+    const chineseCount = (title.match(/[\u4e00-\u9fff]/g) || []).length;
+    const englishCount = (title.match(/[A-Za-z]/g) || []).length;
+    if (englishCount >= 2 && chineseCount < 2) title = '本轮镜面';
+
+    title = title.replace(/[<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 18) || '本轮镜面';
+    summary.textContent = `【兔子镜：${title}】`;
+}
+
 function ensureOuterRabbitMirrorShell(toto) {
     if (!toto?.querySelector) return;
     normalizeLegacyRabbitMirrorMarker(toto);
@@ -563,7 +589,7 @@ function ensureOuterRabbitMirrorShell(toto) {
     if (!outerDetails) {
         const details = document.createElement('details');
         const summary = document.createElement('summary');
-        summary.textContent = '兔子镜';
+        summary.textContent = '【兔子镜：本轮镜面】';
         summary.setAttribute('style', 'cursor:pointer;list-style:none;box-sizing:border-box;');
         const body = document.createElement('div');
         body.setAttribute('style', 'display:block;box-sizing:border-box;max-width:100%;width:100%;');
@@ -582,9 +608,10 @@ function ensureOuterRabbitMirrorShell(toto) {
     let summary = outerDetails.querySelector(':scope > summary');
     if (!summary) {
         summary = document.createElement('summary');
-        summary.textContent = '兔子镜';
+        summary.textContent = '【兔子镜：本轮镜面】';
         outerDetails.insertBefore(summary, outerDetails.firstChild);
     }
+    normalizeRabbitMirrorSummaryText(summary);
     const oldStyle = summary.getAttribute('style') || '';
     const needCursor = !/cursor\s*:/i.test(oldStyle) ? 'cursor:pointer;' : '';
     const needList = !/list-style\s*:/i.test(oldStyle) ? 'list-style:none;' : '';

@@ -13,15 +13,44 @@ function truncate(text, max = 220) {
     return `${raw.slice(0, Math.max(20, max - 1)).trim()}…`;
 }
 
+function stripEnglishPromptNoise(text) {
+    let out = asText(text);
+    if (!out) return out;
+    const replacements = [
+        [/Visual\s+Scenery/gi, '纯CSS风景画布'],
+        [/AI\s+Chatbot/gi, '人工智能对话界面'],
+        [/AI\s+Persona\s+Parody/gi, '人工智能人格戏仿'],
+        [/To-Do\s+List/gi, '待办清单'],
+        [/Love\s+Chronicle\s*\/\s*Flip-book/gi, '恋爱纪念翻页手账'],
+        [/Memory\s+Grid/gi, '回忆拼图'],
+        [/Intimate\s+Q&A/gi, '尺度递进访谈'],
+        [/Shared\s+Memory\s+Replay/gi, '共同回忆重放'],
+        [/General\s+NSFW/gi, '综合尺度题材'],
+        [/Happy\s+Ending\s+IF/gi, '圆满结局假想'],
+        [/NSFW\s*\/\s*SFW/gi, '尺度分级'],
+        [/ChatGPT|Claude|Siri|YouTube|TikTok|Twitter|Twitch|OnlyFans|Patreon|Fansly|ManyVids|Pornhub|Xvideos|Chaturbate|WeChat|Instagram|IG/gi, '平台语感'],
+        [/APP\b/gi, '应用界面'],
+        [/Char\b/gi, '角色'],
+        [/CSS\b/gi, '样式'],
+        [/HTML\b/gi, '网页结构'],
+        [/SVG\b/gi, '矢量图形'],
+    ];
+    for (const [re, repl] of replacements) out = out.replace(re, repl);
+    // 删掉剩余英文括注，避免模型复制成可见 UI。
+    out = out.replace(/[（(]\s*[A-Za-z][A-Za-z0-9&/ .:+_-]{1,80}\s*[）)]/g, '');
+    // 剩余连续英文词只保留为“外文风格词”，防止直接灌入界面。
+    out = out.replace(/\b[A-Za-z][A-Za-z0-9_-]{2,}\b/g, '外文风格词');
+    return out.replace(/\s+/g, ' ').trim();
+}
+
 function compactItemLine(item, kind) {
     const id = item?.id || '?';
-    const title = item?.title || '未命名';
-    const tags = Array.isArray(item?.tags) && item.tags.length ? `；tags: ${item.tags.slice(0, 4).join(',')}` : '';
-    const summary = item?.summary || item?.raw || '';
+    const title = stripEnglishPromptNoise(item?.title || '未命名');
+    const summary = stripEnglishPromptNoise(item?.summary || item?.raw || '');
     const note = kind === 'presentation'
-        ? '；执行：让该展现形式决定 DOM/CSS 轮廓、空间结构、交互方式和文字寄生位置。'
+        ? '；执行：让该展现形式决定网页结构轮廓、空间结构、反馈方式和文字寄生位置。'
         : '；执行：自然融入本轮剧情气味，不要关键词拼贴。';
-    return `- 【${id} ${title}】${summary ? `：${truncate(summary, 170)}` : ''}${tags}${note}`;
+    return `- 【${id} ${title}】${summary ? `：${truncate(summary, 150)}` : ''}${note}`;
 }
 
 function formatItemsCompact(items, kind) {
@@ -67,7 +96,7 @@ function shortVisualAvoidance(combo, limit = 3) {
     return recent.map((item, index) => {
         const formats = (item.formatIds || []).join(' + ') || '未记录';
         const riskCount = Array.isArray(item.riskFlags) ? item.riskFlags.length : 0;
-        const signature = item.visualSignature ? truncate(item.visualSignature, 110) : '已记录视觉骨架';
+        const signature = item.visualSignature ? truncate(stripEnglishPromptNoise(item.visualSignature), 110) : '已记录视觉骨架';
         return `${index + 1}. 近期展现形式：${formats}；避让摘要：${signature}${riskCount ? `；结构风险 ${riskCount} 项` : ''}`;
     }).join('\n');
 }
@@ -107,6 +136,14 @@ function recentRiskCorrection() {
         lines.push('近期真实输出出现文字对比不足。本轮必须优先保证可读性：深底浅字、浅底深字，复杂背景上的文字必须有承托层、阴影、描边或纯色底。');
     }
 
+    if (flags.includes('english_visible_text')) {
+        lines.push('近期真实输出出现可见英文过多。本轮所有 summary、标题、正文、按钮、状态、警告、提示、反馈文案与 样式 content 必须使用简体中文；禁止纯英文界面、英文按钮、英文大写系统词和英文状态句。');
+    }
+
+    if (flags.includes('summary_title_format')) {
+        lines.push('近期真实输出的外层折叠标题格式不稳定。本轮 summary 必须严格写成「【兔子镜：6到14字简体中文标题】」，禁止只写“兔子镜”，也禁止只写标题不带“兔子镜：”前缀。');
+    }
+
     const hasWeakInteraction = flags.some(flag => ['details_overused', 'visual_promise_unfulfilled', 'broken_css_state_interaction'].includes(flag));
     if (hasWeakInteraction) {
         lines.push('近期真实输出曾出现视觉承诺未兑现或内部折叠堆叠。本轮让动态反馈从当前媒介材质中产生；除外层折叠壳外，内部若使用交互必须采用可生效的 CSS 状态结构，input 位于触发标签和反馈内容之前，且反馈内容与 input 同级可被 :checked 选择器命中。');
@@ -124,8 +161,9 @@ function coreOutputProtocol() {
     return String.raw`
 强制输出:
   - 主回复正文完成后，必须在消息最底部追加一个完整兔子镜小剧场。
-  - 固定外壳：<toto data-rabbit-mirror="true" style="display:block;"><details><summary>兔子镜</summary><div>内部 HTML</div></details></toto>。
-  - 外层 <details>/<summary> 只负责把整段兔子镜折叠起来，summary 只写短标题，不承载正文；外层折叠壳不算本轮交互玩法。
+  - 固定外壳：<toto data-rabbit-mirror="true" style="display:block;"><details><summary>【兔子镜：中文短标题】</summary><div>内部网页结构</div></details></toto>。
+  - 外层 <details>/<summary> 只负责把整段兔子镜折叠起来；summary 必须使用「【兔子镜：6到14字简体中文标题】」格式。
+  - summary 禁止只写“兔子镜”，也禁止只写标题而不带“兔子镜：”前缀；summary 不承载正文，且不得出现纯英文。
   - summary 后的主体优先使用 <div> 作为主容器；除非本轮展现形式确实需要翻面、揭示或分段探索，否则不要在内部继续堆叠 <details>/<summary>。
   - 兔子镜必须是最后一个可见模块；禁止解释规则、禁止省略、禁止 Markdown 代码块、禁止 <pre>/<code>/HTML 注释。
   - 禁止 script、iframe、object、embed、form、事件属性；所有标签必须闭合，最终必须以 </toto> 结束。`;
@@ -149,6 +187,15 @@ function compactCreativeRule(enabled, formatOnly = false) {
   优先围绕当前抽取结果生成，不延续历史模板，不另起炉灶；允许自然补足，但禁止关键词拼贴、平均堆叠和过度魔改。`;
 }
 
+function visibleChineseHardLock() {
+    return String.raw`
+可见中文硬锁:
+  - 兔子镜内所有用户能看见的文字必须是简体中文，包括 summary、标题、正文、按钮、标签、状态、警告、提示、角标、反馈文案和 样式 content 生成的文字。
+  - 禁止纯英文界面，禁止英文大写系统词，禁止英文按钮，禁止英文状态句，禁止把抽取条目里的英文名、平台名或英文缩写复制到可见界面。
+  - 只有网页标签、样式属性、class/id/data、选择器和 URL 可以使用英文；这些英文不得出现在屏幕文字里。
+  - 若确实需要出现外语学习内容，必须采用「外语 [简体中文释义]」格式，且不能让外语成为按钮、标题或主界面的唯一文字。`;
+}
+
 function complexInteractiveCore() {
     return String.raw`
 复杂视觉核心:
@@ -159,9 +206,9 @@ function complexInteractiveCore() {
   - 每轮可以具备可感知的动态反馈或交互感，但外层折叠壳之外不强制每轮都使用额外可点击结构；只有本轮确实需要选择、探索或分段推进时，才使用内部可点击/可切换结构。
   - 不得为了满足交互而在外层折叠壳内部继续机械堆叠 <details>/<summary>；内部折叠结构不能连续成为默认解法。
   - 若使用可点击或可切换结构，必须无需 JS 即可生效：禁止 onclick、button 伪交互；外层 summary 与内部 summary 均需 cursor:pointer 与 list-style:none；装饰遮罩不得覆盖交互，必要时 pointer-events:none，交互层使用更高 z-index。
-  - 若使用 checkbox/radio 状态切换，必须采用可生效的 CSS 结构：input 必须出现在 label 和被控制内容之前；被控制内容必须与 input 位于同一父级或后续同级位置；选择器使用 input:checked + label + .panel 或 input:checked ~ .panel。禁止把反馈内容藏在无法被 + 或 ~ 命中的嵌套容器里，禁止把反馈父容器设置为 opacity:0，禁止只用 CSS content 伪元素作为唯一反馈。
-  - 内部可点击按钮、状态文字、反馈文案必须使用简体中文；不要生成英文系统词、英文注入按钮或英文警告提示。
-  - 鼓励使用 Flex/Grid、absolute 定位、SVG、linear-gradient、box-shadow、filter、clip-path、mask、transform、transition 或轻量 CSS 动效构建空间与质感。
+  - 若使用 checkbox/radio 状态切换，必须采用可生效的 CSS 结构：input 必须出现在 label 和被控制内容之前；被控制内容必须与 input 位于同一父级或后续同级位置；选择器使用 input:checked + label + .panel 或 input:checked ~ .panel。禁止把反馈内容藏在无法被 + 或 ~ 命中的嵌套容器里，禁止把反馈父容器设置为 opacity:0，禁止只用 样式 content 伪元素作为唯一反馈。
+  - 内部可点击按钮、状态文字、反馈文案和 样式 content 文字必须使用简体中文；不要生成英文系统词、英文注入按钮、英文状态句或英文警告提示。
+  - 鼓励使用 弹性/网格布局、绝对定位分层、矢量图形、渐变、阴影、滤镜、裁切、遮罩、变形、过渡或轻量样式动效构建空间与质感。
   - 可读性优先：所有主要文字必须与所在背景高对比，深底浅字、浅底深字；禁止黑底灰字、暗底暗字、低透明文字压在复杂纹理上。
   - 本轮不得默认整页暗底或黑色发光底盘；若主题需要暗色，只能作为局部层次或必须确保全部文字清晰可读。
   - 不得只靠换标题、换色、换边框或换装饰复用同一种视觉骨架；若整体骨架、阅读路径或内容承载方式仍近似上一轮，必须重写。`;
@@ -169,8 +216,8 @@ function complexInteractiveCore() {
 
 function htmlSafetyCore() {
     return String.raw`
-HTML 直接渲染:
-  只输出可直接渲染的 HTML/CSS/SVG/details/summary；优先 inline style；主容器与关键子容器使用 box-sizing:border-box；长文本需自适配屏幕宽度并避免溢出。`;
+网页结构直接渲染:
+  只输出可直接渲染的 网页结构、样式、矢量图形、details/summary；优先 inline style；主容器与关键子容器使用 box-sizing:border-box；长文本需自适配屏幕宽度并避免溢出。`;
 }
 
 function visualColorTruthRule() {
@@ -182,8 +229,9 @@ function visualColorTruthRule() {
 function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive }) {
     const chunks = [];
     const mode = combo?.samplingMode || settings?.samplingMode || 'classic';
-    chunks.push('<RabbitMirrorTheaterAutoInjection>');
+    chunks.push('<兔子镜自动注入>');
     chunks.push(coreOutputProtocol());
+    chunks.push(visibleChineseHardLock());
     if (mode === 'format_only') {
         chunks.push(String.raw`
 本轮抽取模式: 仅展现形式
@@ -224,7 +272,7 @@ ${shortVisualAvoidance(combo, 3)}${recentRiskCorrection()}`);
     if (visualSceneryMode) {
         chunks.push(String.raw`
 动态渐变模式:
-  允许使用纯 CSS/SVG 构建风景化、光影化、流动渐变或环境动态效果；必须服务本轮展现形式，不得为了动而动。`);
+  允许使用纯 样式/矢量图形 构建风景化、光影化、流动渐变或环境动态效果；必须服务本轮展现形式，不得为了动而动。`);
         chunks.push(VISUAL_SCENERY_RULES);
     }
 
@@ -233,7 +281,7 @@ ${shortVisualAvoidance(combo, 3)}${recentRiskCorrection()}`);
     chunks.push(String.raw`
 最终保底:
   先完整生成主回复正文；正文结束后必须继续生成兔子镜。先保证 <toto> 出现，再追求复杂度。不要解释规则，直接输出最终内容。`);
-    chunks.push('</RabbitMirrorTheaterAutoInjection>');
+    chunks.push('</兔子镜自动注入>');
     return chunks.filter(Boolean).join('\n\n').trim();
 }
 

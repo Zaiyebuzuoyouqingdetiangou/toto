@@ -4,7 +4,7 @@ export const RAW_EXECUTION_RULES = String.raw`
 执行边界:
   enforcement_level: "mandatory"
   trigger: "主回复完成后，回复最后必须追加完整 <toto data-rabbit-mirror="true" style="display:block;"><details>...</details></toto> 兔子镜内容"
-  summary: "必须使用外层 <summary> 作为整段兔子镜的折叠标题；summary 只写短标题，不承载正文"
+  summary: "必须使用外层 <summary> 作为整段兔子镜的折叠标题；summary 必须为「【兔子镜：6到14字简体中文标题】」，不承载正文"
   narrative_boundary:
     - "不得以任何形式干预或改写主线叙事内容"
     - "主线叙事与兔子镜必须保持模块边界，不得互相包裹或破坏"
@@ -19,9 +19,9 @@ export const RAW_EXECUTION_RULES = String.raw`
 
 输出结构:
   enforcement_level: "mandatory"
-  wrapper: "<toto data-rabbit-mirror="true" style="display:block;"><details><summary>兔子镜</summary><div>...</div></details></toto>"
+  wrapper: "<toto data-rabbit-mirror="true" style="display:block;"><details><summary>【兔子镜：中文短标题】</summary><div>...</div></details></toto>"
   rule:
-    - "小剧场最外层必须使用 <toto data-rabbit-mirror="true" style="display:block;"> 作为插件识别边界；<toto> 内部必须先放一个外层 <details> 折叠壳，外层 <summary> 只写短标题，summary 后的主体优先使用 <div> 主容器"
+    - "小剧场最外层必须使用 <toto data-rabbit-mirror="true" style="display:block;"> 作为插件识别边界；<toto> 内部必须先放一个外层 <details> 折叠壳，外层 <summary> 必须写成「【兔子镜：6到14字简体中文标题】」，禁止只写“兔子镜”或只写标题不带“兔子镜：”前缀；summary 后的主体优先使用 <div> 主容器"
     - "<toto> 只作为插件与正则识别边界，不得作为可见标题、标签、栏目名、水印或 UI 元素"
     - "外层 <details>/<summary> 只负责把整段兔子镜折叠起来，不算本轮交互玩法；内部 HTML 结构、版式、色彩、层级、视觉锚点必须根据本轮展现形式重新设计"
     - "不提供固定 HTML 模板；任何示例不得固化为固定视觉骨架"
@@ -39,7 +39,7 @@ export const RAW_EXECUTION_RULES = String.raw`
 格式与美感规范:
   enforcement_level: "mandatory"
   design_principles:
-    - "像素级完美: 必须使用 Flexbox/Grid 精确对齐，界面需要明确视觉秩序"
+    - "像素级完美: 必须使用 弹性/网格布局 精确对齐，界面需要明确视觉秩序"
     - "盒模型安全: 主容器与关键子容器必须 box-sizing:border-box"
     - "高级质感: 根据本轮展现形式使用 box-shadow、linear-gradient、filter、半透明、光晕、遮罩、纹理、线条、噪点、层叠背景等"
     - "媒介定制: 风格必须从本轮展现形式自然生成，不能退化为常规内容区域或分块说明"
@@ -54,7 +54,7 @@ export const RAW_EXECUTION_RULES = String.raw`
 
 复杂度硬指标:
   enforcement_level: "mandatory"
-  rule: "每轮 DOM 与 CSS 必须同时满足以下 7 项中的至少 4 项；该指标只判断完成度，不规定固定审美风格"
+  rule: "每轮 网页结构与样式 必须同时满足以下 7 项中的至少 4 项；该指标只判断完成度，不规定固定审美风格"
   checklist:
     - "明确的主视觉核心区或视觉锚点"
     - "与本轮主题或氛围契合的专属色系"
@@ -87,7 +87,7 @@ UI审查重点:
     - "除外层折叠壳之外，不强制每轮都使用额外可点击结构；若使用内部交互，必须使用无 JS 的原生可操作结构，例如横向滚动区、锚点跳转、checkbox/radio + label 状态切换，或少量必要 details/summary"
     - "禁止依赖 onclick、button 或需要脚本才能生效的伪交互；若看起来可点击，必须真的能改变可见层级、阅读路径或界面状态"
     - "可点击元素必须具备 cursor:pointer；summary 使用 list-style:none；label 与 input 必须使用唯一 id/for 绑定"
-    - "若使用 checkbox/radio 状态切换，input 必须放在 label 和被控制内容之前；被控制内容必须与 input 位于同一父级或后续同级位置；选择器使用 input:checked + label + .panel 或 input:checked ~ .panel，禁止把反馈内容藏在无法被 + 或 ~ 命中的嵌套容器里，禁止把反馈父容器设置为 opacity:0，禁止只用 CSS content 伪元素作为唯一反馈"
+    - "若使用 checkbox/radio 状态切换，input 必须放在 label 和被控制内容之前；被控制内容必须与 input 位于同一父级或后续同级位置；选择器使用 input:checked + label + .panel 或 input:checked ~ .panel，禁止把反馈内容藏在无法被 + 或 ~ 命中的嵌套容器里，禁止把反馈父容器设置为 opacity:0，禁止只用 样式 content 伪元素作为唯一反馈"
     - "absolute 背景、遮罩、光效、装饰层不得覆盖交互，必要时使用 pointer-events:none；交互层使用 position:relative 与更高 z-index"
 
 自适配与文字安全:
@@ -101,6 +101,13 @@ UI审查重点:
     - "使用 vertical-rl 时，必须添加 overflow-x:auto;max-width:100%; 和固定 height，允许内部横向滑动"
     - "使用 display:flex;flex-wrap:wrap 时，子元素必须具备 min-width:0 或 flex-shrink:1"
     - "禁用 <br> 制造间距，禁用 <p> 固定宽度，禁止长文本 white-space:nowrap"
+
+可见中文硬锁:
+  enforcement_level: "mandatory"
+  rule:
+    - "所有用户可见文字必须使用简体中文，包括 summary、标题、正文、按钮、标签、状态、警告、提示、角标、反馈文案与 样式 content 生成的文字"
+    - "禁止纯英文界面，禁止英文大写系统词，禁止英文按钮，禁止英文状态句，禁止把抽取条目里的英文名、平台名或英文缩写复制到可见界面"
+    - "只有 网页结构/样式 标签、属性、class/id/data、选择器和 URL 可以使用英文；这些英文不得出现在屏幕文字里"
 
 动态反馈与交互:
   enforcement_level: "mandatory"
