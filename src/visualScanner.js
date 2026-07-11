@@ -1,6 +1,6 @@
 import { updateLatestVisualSignature } from './storage.js';
 
-const TOTO_RE = /<toto\b[^>]*>[\s\S]*?<\/toto>/i;
+const TOTO_RE = new RegExp('<toto\\b[^>]*(?:data-rabbit-mirror|data-rabbit-' + 'h' + 'ole)=[\"\']true[\"\'][^>]*>[\\s\\S]*?<\\/toto>', 'i');
 let lastScannedHash = '';
 
 function hashText(text) {
@@ -49,7 +49,8 @@ function parseToto(html) {
     try {
         if (typeof DOMParser === 'undefined') return null;
         const doc = new DOMParser().parseFromString(String(html || ''), 'text/html');
-        return doc.querySelector('toto[data-rabbit-mirror="true"]') || doc.querySelector('toto');
+        const legacyAttr = 'data-rabbit-' + 'h' + 'ole';
+        return doc.querySelector(`toto[data-rabbit-mirror="true"], toto[${legacyAttr}="true"]`) || doc.querySelector('toto');
     } catch {
         return null;
     }
@@ -109,93 +110,6 @@ function analyzeDomStructure(html) {
         }
     }
     return { maxSimilarRun, summaryLength, summaryFlags };
-}
-
-function getEffectiveDetails(root) {
-    if (!root?.querySelectorAll) return [];
-    const allDetails = [...root.querySelectorAll('details')];
-    const directWrapper = root.children?.length === 1 && root.firstElementChild?.tagName?.toLowerCase() === 'details'
-        ? root.firstElementChild
-        : null;
-    return directWrapper ? allDetails.filter(d => d !== directWrapper) : allDetails;
-}
-
-
-function localCssEscape(value) {
-    if (globalThis.CSS?.escape) return globalThis.CSS.escape(String(value));
-    return String(value || '').replace(/[^a-zA-Z0-9_-]/g, '\\$&');
-}
-
-function isElementBefore(a, b) {
-    try {
-        return !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
-    } catch {
-        return false;
-    }
-}
-
-function detectBrokenCssStateInteraction(root, html = '') {
-    if (!root?.querySelectorAll) return false;
-    const text = String(html || '');
-    const inputs = [...root.querySelectorAll('input[type="checkbox"][id], input[type="radio"][id]')];
-    if (!inputs.length || !/:checked/i.test(text)) return false;
-
-    for (const input of inputs) {
-        const id = input.getAttribute('id');
-        if (!id) continue;
-        let label = null;
-        try {
-            label = root.querySelector(`label[for="${localCssEscape(id)}"]`);
-        } catch {
-            label = null;
-        }
-        const idSelector = new RegExp(`#${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*:\\s*checked`, 'i');
-        if (!idSelector.test(text)) continue;
-
-        // If the trigger label is before the input, common +/~ CSS-state patterns cannot reveal the label/panel after it correctly.
-        if (label && isElementBefore(label, input)) return true;
-
-        // Check simple sibling selectors like #id:checked ~ .panel or #id:checked + label + .panel.
-        const targetMatches = [...text.matchAll(new RegExp(`#${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*:\\s*checked[^,{]*[+~]\\s*\\.([a-zA-Z0-9_-]+)`, 'g'))];
-        for (const match of targetMatches) {
-            const cls = match[1];
-            let target = null;
-            try {
-                target = root.querySelector(`.${localCssEscape(cls)}`);
-            } catch {
-                target = null;
-            }
-            if (!target) return true;
-            if (target.parentElement !== input.parentElement) return true;
-            if (!isElementBefore(input, target)) return true;
-        }
-    }
-
-    // Feedback hidden at parent level plus pseudo content is a common non-visible state pattern.
-    if (/opacity\s*:\s*0/i.test(text) && /:checked[\s\S]{0,220}content\s*:/i.test(text)) return true;
-    return false;
-}
-
-function analyzeInteractionAffordance(root, html = '') {
-    const text = String(html || '');
-    const effectiveDetails = getEffectiveDetails(root);
-    const detailsCount = effectiveDetails.length;
-    const isDetailsOverused = detailsCount >= 3;
-    const hasCheckbox = /<input\b[^>]*type=["']?(?:checkbox|radio)/i.test(text);
-    const hasLabelFor = /<label\b[^>]*for=["'][^"']+["']/i.test(text);
-    const hasStateSelector = /:hover|:active|:checked|:focus|:target/i.test(text);
-    const hasTransition = /transition\s*:|animation\s*:|@keyframes/i.test(text);
-    const hasScrollFeedback = /overflow-x\s*:\s*auto|scroll-snap-type/i.test(text);
-    const hasSvgMotion = /<animate\b|<animateTransform\b|stroke-dasharray|offset-path/i.test(text);
-    let score = 0;
-    if (detailsCount > 0 && !isDetailsOverused) score += 20;
-    if (detailsCount > 0 && isDetailsOverused) score += 6;
-    if (hasCheckbox && hasLabelFor) score += 25;
-    if (hasStateSelector) score += 15;
-    if (hasTransition) score += 20;
-    if (hasScrollFeedback) score += 15;
-    if (hasSvgMotion) score += 15;
-    return { detailsCount, isDetailsOverused, score: Math.min(100, score), hasTransition, hasScrollFeedback, hasSvgMotion, hasCheckbox, hasLabelFor, hasStateSelector, brokenCssState: detectBrokenCssStateInteraction(root, html) };
 }
 
 
@@ -343,41 +257,6 @@ function detectRepeatedUnitShape(root, html = '') {
 }
 
 
-function extractCssContentText(html = '') {
-    const texts = [];
-    const re = /content\s*:\s*(["'])([\s\S]*?)\1/gi;
-    let match;
-    while ((match = re.exec(String(html || '')))) {
-        const value = String(match[2] || '').trim();
-        if (value && value !== '"' && value !== "'") texts.push(value);
-    }
-    return texts.join(' ');
-}
-
-function detectEnglishVisibleTextRisk(root, html = '', plain = '') {
-    const visible = `${plain || ''} ${extractCssContentText(html)}`.replace(/\s+/g, ' ').trim();
-    if (!visible) return false;
-    const englishWords = visible.match(/\b[A-Za-z][A-Za-z0-9_-]{2,}\b/g) || [];
-    if (!englishWords.length) return false;
-    const chineseCount = (visible.match(/[\u4e00-\u9fff]/g) || []).length;
-    const englishChars = englishWords.join('').length;
-    const upperOrSystem = /\b(?:SYSTEM|WARNING|ERROR|INJECT|OVERRIDE|ENGAGED|LOADING|ACCESS|SIGNAL|INPUT|OUTPUT|STATUS|ALERT|CONTROL|CONFIRM|CANCEL|YES|NO)\b/i.test(visible);
-    if (upperOrSystem && englishWords.length >= 2) return true;
-    if (englishWords.length >= 5 && englishChars > chineseCount * 0.45) return true;
-    if (chineseCount < 12 && englishWords.length >= 2) return true;
-    return false;
-}
-
-function detectSummaryTitleFormatRisk(root) {
-    const summary = root?.querySelector?.(':scope > details > summary') || root?.querySelector?.('summary');
-    const title = (summary?.textContent || '').replace(/\s+/g, '').trim();
-    if (!title) return true;
-    if (/^[【\[]?兔子镜[】\]]?$/.test(title)) return true;
-    if (!/^【兔子镜[:：][^】]{2,24}】$/.test(title)) return true;
-    if (/[A-Za-z]{2,}/.test(title)) return true;
-    return false;
-}
-
 function detectRiskFlags({ root, html, plain, dom, repeated, spatialSignalCount }) {
     const flags = [];
     const sameBlockStack = detectSameBlockStack(root, html);
@@ -387,12 +266,6 @@ function detectRiskFlags({ root, html, plain, dom, repeated, spatialSignalCount 
     const flatVerticalFlow = detectFlatVerticalFlow(html, root);
     const repeatedUnitShape = detectRepeatedUnitShape(root, html);
     const weakSpatialComplexity = detectWeakSpatialComplexity(html, plain);
-    const interactionAudit = analyzeInteractionAffordance(root, html);
-
-    if (interactionAudit.isDetailsOverused) flags.push('details_overused');
-    if (interactionAudit.brokenCssState) flags.push('broken_css_state_interaction');
-    if (interactionAudit.score >= 45) flags.push('dynamic_feedback_present');
-
     if (sameBlockStack) flags.push('same_block_stack');
     if (sameGridCard) flags.push('same_grid_card_risk');
     if (catalogPage) flags.push('catalog_page_risk');
@@ -403,9 +276,6 @@ function detectRiskFlags({ root, html, plain, dom, repeated, spatialSignalCount 
     if (spatialSignalCount < 2 && String(plain || '').length > 520 && (sameBlockStack || sameGridCard || catalogPage || repeatedUnitShape || (repeated?.maxRepeat || 0) >= 3)) flags.push('weak_media_body');
     if (weakSpatialComplexity) flags.push('weak_spatial_complexity');
     if (detectVisualPromiseWithoutMechanism(html, plain)) flags.push('visual_promise_unfulfilled');
-    if (detectUnreadableContrastRisk(root, html)) flags.push('low_text_contrast');
-    if (detectEnglishVisibleTextRisk(root, html, plain)) flags.push('english_visible_text');
-    if (detectSummaryTitleFormatRisk(root)) flags.push('summary_title_format');
     return [...new Set(flags)];
 }
 
@@ -461,46 +331,6 @@ function extractBackgroundValues(html) {
         if (value) values.push(value);
     }
     return values;
-}
-
-
-function extractStyleColor(styleText, prop) {
-    const re = new RegExp(`${prop}\\s*:\\s*([^;\"']+)`, 'i');
-    const match = String(styleText || '').match(re);
-    return match ? String(match[1] || '').trim() : '';
-}
-
-function isPoorContrast(bgLum, fgLum) {
-    if (typeof bgLum !== 'number' || typeof fgLum !== 'number') return false;
-    const diff = Math.abs(bgLum - fgLum);
-    if (diff < 72) return true;
-    if (bgLum < 90 && fgLum < 145) return true;
-    if (bgLum > 190 && fgLum > 170) return true;
-    return false;
-}
-
-function detectUnreadableContrastRisk(root, html = '') {
-    const baseValues = extractBackgroundValues(html);
-    const baseLum = baseValues.length ? colorValueLuminance(baseValues[0]) : null;
-    let riskyPairs = 0;
-    let checkedPairs = 0;
-    const nodes = root?.querySelectorAll ? [...root.querySelectorAll('*')].slice(0, 120) : [];
-    for (const el of nodes) {
-        const text = (el.textContent || '').replace(/\s+/g, '').trim();
-        if (text.length < 3) continue;
-        const style = el.getAttribute?.('style') || '';
-        const bgValue = extractStyleColor(style, 'background(?:-color)?') || '';
-        const fgValue = extractStyleColor(style, 'color') || '';
-        const bgLum = bgValue ? colorValueLuminance(bgValue) : baseLum;
-        const fgLum = fgValue ? colorValueLuminance(fgValue) : null;
-        if (typeof bgLum !== 'number' || typeof fgLum !== 'number') continue;
-        checkedPairs += 1;
-        if (isPoorContrast(bgLum, fgLum)) riskyPairs += 1;
-    }
-    if (checkedPairs >= 2 && riskyPairs / checkedPairs >= 0.35) return true;
-    const darkBase = typeof baseLum === 'number' && baseLum < 80;
-    const weakTextOnDark = darkBase && /color\s*:\s*(?:#(?:[0-6][0-9a-f]){3}|rgba?\([^)]*(?:[0-9]{1,2}|1[01][0-9])\s*,\s*(?:[0-9]{1,2}|1[01][0-9])\s*,\s*(?:[0-9]{1,2}|1[01][0-9])|(?:#777|#666|#555|#444)|gray|grey)/i.test(String(html || ''));
-    return !!weakTextOnDark;
 }
 
 function detectBaseColor(html) {
@@ -652,11 +482,6 @@ export function scanRabbitMirrorHtml(messageHtml) {
     else if (spatialSignalCount >= 2) effects.push('空间构造信号中');
     else effects.push('空间构造信号弱');
 
-    const interactionAudit = analyzeInteractionAffordance(root, html);
-    if (interactionAudit.score >= 45) effects.push('动态/交互反馈有');
-    else if (interactionAudit.hasTransition || interactionAudit.hasScrollFeedback || interactionAudit.hasSvgMotion) effects.push('动态反馈轻量');
-    else effects.push('动态/交互反馈不强制');
-
     const structural = [];
     if (dom.maxSimilarRun >= 3) structural.push('连续同构兄弟区块明显/卡片化倾向高');
     else if (dom.maxSimilarRun >= 2) structural.push('存在连续同构兄弟区块');
@@ -669,7 +494,6 @@ export function scanRabbitMirrorHtml(messageHtml) {
     if (/<pre\b|<code\b|```/i.test(html)) structural.push('代码块风险');
     if (detectGlobalCssRisk(html)) structural.push('全局CSS污染风险');
     const riskFlags = detectRiskFlags({ root, html, plain, dom, repeated, spatialSignalCount });
-    if (riskFlags.includes('details_overused')) structural.push('机械折叠堆叠风险');
     if (riskFlags.includes('same_block_stack')) structural.push('同构信息块堆叠风险');
     if (riskFlags.includes('same_grid_card_risk')) structural.push('同构网格信息块风险');
     if (riskFlags.includes('catalog_page_risk')) structural.push('图鉴/目录式承载风险');
@@ -679,9 +503,6 @@ export function scanRabbitMirrorHtml(messageHtml) {
     if (riskFlags.includes('weak_media_body')) structural.push('媒介本体偏弱风险');
     if (riskFlags.includes('weak_spatial_complexity')) structural.push('空间复杂度偏弱风险');
     if (riskFlags.includes('visual_promise_unfulfilled')) structural.push('视觉承诺未兑现风险');
-    if (riskFlags.includes('low_text_contrast')) structural.push('文字对比不足/可读性风险');
-    if (riskFlags.includes('english_visible_text')) structural.push('可见英文过多/中文锁定失败');
-    if (riskFlags.includes('summary_title_format')) structural.push('外层标题格式不合格');
     structural.push(...dom.summaryFlags);
 
     const mediaStrength = (/clip-path|mask|<svg\b|<path\b|position\s*:\s*absolute|transform\s*:|border-radius\s*:\s*50%|aspect-ratio|radial-gradient|conic-gradient/i.test(html) && tagCount >= 35)

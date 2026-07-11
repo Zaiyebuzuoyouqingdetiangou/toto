@@ -2,27 +2,17 @@ import { getSettings } from './settings.js';
 
 const TOTO_BLOCK_RE = /<toto\b[\s\S]*?<\/toto>/gi;
 const TOTO_BLOCK_SINGLE_RE = /<toto\b[\s\S]*?<\/toto>/i;
-const FENCED_BLOCK_RE = /```[a-zA-Z0-9_-]*\s*\n?([\s\S]*?)\n?```/gi;
-const WHOLE_FENCED_BLOCK_RE = /^\s*```[a-zA-Z0-9_-]*\s*\n?([\s\S]*?)\n?```\s*$/i;
+const FENCED_BLOCK_RE = /```(?:html|HTML|xml|XML)?\s*\n?([\s\S]*?)\n?```/gi;
+const WHOLE_FENCED_BLOCK_RE = /^\s*```(?:html|HTML|xml|XML)?\s*\n?([\s\S]*?)\n?```\s*$/i;
 const TRAILING_HTML_START_RE = /(?:^|\n)(<(?:div|section|article|details)\b[\s\S]*)$/i;
 const PRE_CODE_RE = /<pre\b[^>]*>\s*<code\b[^>]*>([\s\S]*?)<\/code>\s*<\/pre>/gi;
 const HTML_COMMENT_RE = /<!--[\s\S]*?-->/g;
-const CODE_FENCE_OPEN_RE = /```[a-zA-Z0-9_-]*\s*/gi;
-const TILDE_FENCE_OPEN_RE = /~~~[a-zA-Z0-9_-]*\s*/gi;
+const CODE_FENCE_OPEN_RE = /```(?:html|xml|javascript|js|css)?\s*/gi;
+const TILDE_FENCE_OPEN_RE = /~~~(?:html|xml|javascript|js|css)?\s*/gi;
 const CODE_LIKE_TAG_RE = /<\/?(?:pre|code|kbd|samp)\b[^>]*>/gi;
 const CLASS_ATTR_RE = /\sclass=(["'])([^"']*)\1/gi;
 const HIGHLIGHT_CLASS_TOKEN_RE = /^(?:language-(?:html|xml|js|javascript|css)|hljs|prism|prettyprint)$/i;
 const MULTI_BLANK_LINE_RE = /\n\s*\n/g;
-const RESIDUE_FRAGMENT_RE = /(?:['\"\\])?\s*\);\s*(?:[\"'])?\s*>/gi;
-const LEGACY_ATTR_NAME = ['data', 'rabbit', 'hole'].join('-');
-const MIRROR_ATTR_NAME = ['data', 'rabbit', 'mirror'].join('-');
-let rabbitMirrorInteractionDelegateInstalled = false;
-
-function cssEscape(value) {
-    if (globalThis.CSS?.escape) return globalThis.CSS.escape(String(value));
-    return String(value).replace(/[^a-zA-Z0-9_-]/g, '\\$&');
-}
-
 
 function isCodeBlockRescueModeEnabled() {
     try {
@@ -36,6 +26,10 @@ function stripHtmlComments(text) {
     return String(text || '').replace(HTML_COMMENT_RE, '');
 }
 
+function normalizeMirrorAttribute(text) {
+    return String(text || '').replace(new RegExp('data-rabbit-' + 'h' + 'ole', 'gi'), 'data-rabbit-mirror');
+}
+
 function stripSyntaxHighlightClasses(text) {
     return String(text || '').replace(CLASS_ATTR_RE, (match, quote, classValue) => {
         const kept = String(classValue || '')
@@ -46,8 +40,7 @@ function stripSyntaxHighlightClasses(text) {
 }
 
 function stripCodeBlockTriggers(text) {
-    return stripHtmlComments(String(text || ''))
-        .replace(RESIDUE_FRAGMENT_RE, '>')
+    return normalizeMirrorAttribute(stripHtmlComments(String(text || '')))
         .replace(/[\u200B\u200C\u200D\uFEFF]/g, '')
         .replace(CODE_FENCE_OPEN_RE, '')
         .replace(/```/g, '')
@@ -91,23 +84,18 @@ function looksLikeCompleteHtmlBlock(text) {
 
     // 只接管“像兔子镜 UI 作品”的整段 HTML，避免误伤普通聊天里的 HTML 教程代码。
     const htmlSignal = /\bstyle\s*=|display\s*:\s*(?:grid|flex|block)|box-sizing\s*:|max-width\s*:|linear-gradient\(|box-shadow\s*:|filter\s*:|border-radius\s*:/i.test(html);
-    const theaterSignal = /兔子镜|兔子镜|小剧场|互动区|海龟汤|剖面图|Layer|视觉|展现形式|summary|details/i.test(html);
+    const theaterSignal = /兔子镜|小剧场|互动区|海龟汤|剖面图|Layer|视觉|展现形式|summary|details/i.test(html);
     const enoughTags = (html.match(/<\/(?:div|p|span|h[1-6]|section|article)>/gi) || []).length >= 3;
     return htmlSignal && (theaterSignal || enoughTags);
-}
-
-function hasOuterRabbitMirrorDetails(html) {
-    const input = String(html || '').trim();
-    return /^<details\b[\s\S]*?<summary\b[\s\S]*?<\/summary>[\s\S]*?<\/details>$/i.test(input);
 }
 
 function wrapNakedHtmlAsToto(html) {
     const body = compactTotoBlock(html);
     if (TOTO_BLOCK_SINGLE_RE.test(body)) return body;
-    const content = hasOuterRabbitMirrorDetails(body)
-        ? body
-        : `<details><summary style="cursor:pointer;list-style:none;box-sizing:border-box;">【兔子镜：本轮镜面】</summary><div style="display:block;box-sizing:border-box;max-width:100%;width:100%;">${body}</div></details>`;
-    return `<toto data-rabbit-mirror="true" style="display:block;">${content}</toto>`;
+    if (/<details\b/i.test(body) && /<summary\b/i.test(body)) {
+        return `<toto data-rabbit-mirror="true" style="display:block;">${body}</toto>`;
+    }
+    return `<toto data-rabbit-mirror="true" style="display:block;"><details style="display:block;box-sizing:border-box;"><summary style="cursor:pointer;list-style:none;font-weight:700;margin:0 0 8px 0;">【兔子镜：小剧场】</summary>${body}</details></toto>`;
 }
 
 function cleanCodeFencePayload(payload) {
@@ -156,7 +144,7 @@ function wrapTrailingNakedHtml(text) {
 }
 
 export function compactTotoBlock(block) {
-    let html = stripCodeBlockTriggers(block).replace(RESIDUE_FRAGMENT_RE, '>');
+    let html = normalizeMirrorAttribute(stripCodeBlockTriggers(block));
     const styleSlots = [];
 
     // 1. 保护 <style>...</style>，避免 CSS 文本被误插入 <br>。
@@ -225,8 +213,7 @@ export function cleanRabbitMirrorOutput(responseText = '') {
     // 开启后才拆代码块外壳、pre/code、语法高亮 class 等。
     if (!isCodeBlockRescueModeEnabled()) return String(responseText || '');
 
-    let text = stripHtmlComments(String(responseText || ''))
-        .replace(RESIDUE_FRAGMENT_RE, '>')
+    let text = normalizeMirrorAttribute(stripHtmlComments(String(responseText || '')))
         .replace(/[\u200B\u200C\u200D\uFEFF]/g, '')
         .replace(/\r\n?/g, '\n')
         .trim();
@@ -249,7 +236,7 @@ export function cleanRabbitMirrorOutput(responseText = '') {
 
     // 4. 兜底：残留的首尾三反引号。
     text = text
-        .replace(/^\s*```[a-zA-Z0-9_-]*\s*\n?/i, '')
+        .replace(/^\s*```(?:html|HTML|xml|XML)?\s*\n?/i, '')
         .replace(/\n?\s*```\s*$/i, '')
         .trim();
 
@@ -266,7 +253,7 @@ function needsSanitize(text) {
     if (!isCodeBlockRescueModeEnabled()) return false;
     const decoded = decodeHtmlEntities(String(text || ''));
     if (TOTO_BLOCK_SINGLE_RE.test(decoded)) return true;
-    if (/```[a-zA-Z0-9_-]*[\s\S]*?<toto\b/i.test(decoded)) return true;
+    if (/```(?:html|HTML|xml|XML)?[\s\S]*?<toto\b/i.test(decoded)) return true;
     if (FENCED_BLOCK_RE.test(decoded)) {
         FENCED_BLOCK_RE.lastIndex = 0;
         let match;
@@ -286,39 +273,6 @@ function findRecentAssistantMessages(mod) {
     const chat = mod?.chat || globalThis.chat;
     if (!Array.isArray(chat) || !chat.length) return [];
     return chat.slice(-8).filter(item => !item?.is_user && typeof item?.mes === 'string');
-}
-
-
-function normalizeLegacyMarkersInRawText(text) {
-    const input = String(text || '');
-    if (!input.includes('<toto')) return input;
-    const legacyAttrRe = new RegExp(`${LEGACY_ATTR_NAME}\\s*=\\s*(["'])true\\1`, 'gi');
-    return input.replace(legacyAttrRe, `${MIRROR_ATTR_NAME}=$1true$1`);
-}
-
-function normalizeLatestRawRabbitMirrorMarkers(mod) {
-    let changed = false;
-    for (const message of findRecentAssistantMessages(mod)) {
-        const normalized = normalizeLegacyMarkersInRawText(message.mes);
-        if (normalized && normalized !== message.mes) {
-            message.mes = normalized;
-            if (Array.isArray(message.swipes)) {
-                for (let i = 0; i < message.swipes.length; i += 1) {
-                    if (typeof message.swipes[i] === 'string') message.swipes[i] = normalizeLegacyMarkersInRawText(message.swipes[i]);
-                }
-            }
-            changed = true;
-        }
-    }
-    if (changed) {
-        try {
-            const saver = mod?.saveChatConditional || globalThis.saveChatConditional;
-            if (typeof saver === 'function') saver();
-        } catch (error) {
-            console.debug('[RabbitMirror] save after marker normalization failed:', error);
-        }
-    }
-    return changed;
 }
 
 function sanitizeLatestRawMessages(mod) {
@@ -524,232 +478,12 @@ function sanitizeCodeBlocksInChatDom() {
     }
 }
 
-
-let rabbitMirrorDomScopeCounter = 0;
-
-function escapeRegExp(value) {
-    return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function makeSafeIdPart(value) {
-    return String(value || 'x').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 48) || 'x';
-}
-
-function getOrCreateTotoScope(toto) {
-    if (!toto?.dataset) return `rm_${Date.now().toString(36)}_${++rabbitMirrorDomScopeCounter}`;
-    if (!toto.dataset.rmScope) {
-        const mes = toto.closest?.('.mes, [mesid], [data-message-id], [data-messageid]');
-        const mesId = mes?.getAttribute?.('mesid') || mes?.dataset?.messageId || mes?.dataset?.messageid || '';
-        toto.dataset.rmScope = `rm_${makeSafeIdPart(mesId || Date.now().toString(36))}_${++rabbitMirrorDomScopeCounter}`;
-    }
-    return toto.dataset.rmScope;
-}
-
-function normalizeLegacyRabbitMirrorMarker(toto) {
-    if (!toto?.setAttribute) return;
-    if (toto.getAttribute(LEGACY_ATTR_NAME) === 'true') {
-        toto.setAttribute(MIRROR_ATTR_NAME, 'true');
-        toto.removeAttribute(LEGACY_ATTR_NAME);
-    }
-    if (!toto.hasAttribute(MIRROR_ATTR_NAME)) toto.setAttribute(MIRROR_ATTR_NAME, 'true');
-    if (!toto.getAttribute('style')) toto.setAttribute('style', 'display:block;');
-}
-
-function normalizeRabbitMirrorSummaryText(summary) {
-    if (!summary) return;
-    const raw = String(summary.textContent || '').replace(/\s+/g, ' ').trim();
-    const compact = raw.replace(/\s+/g, '');
-    let title = raw;
-
-    if (!title || /^[【\[]?兔子镜[】\]]?$/.test(compact)) {
-        title = '本轮镜面';
-    } else {
-        title = title
-            .replace(/^【?兔子镜[:：]?/i, '')
-            .replace(/[】\]]$/g, '')
-            .replace(/^[:：]/, '')
-            .trim();
-        if (!title) title = '本轮镜面';
-    }
-
-    // 外层折叠标题必须中文可读；若模型给了纯英文标题，不尝试翻译，改成兜底中文短标题。
-    const chineseCount = (title.match(/[\u4e00-\u9fff]/g) || []).length;
-    const englishCount = (title.match(/[A-Za-z]/g) || []).length;
-    if (englishCount >= 2 && chineseCount < 2) title = '本轮镜面';
-
-    title = title.replace(/[<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 18) || '本轮镜面';
-    summary.textContent = `【兔子镜：${title}】`;
-}
-
-function ensureOuterRabbitMirrorShell(toto) {
-    if (!toto?.querySelector) return;
-    normalizeLegacyRabbitMirrorMarker(toto);
-
-    let outerDetails = toto.querySelector(':scope > details');
-    if (!outerDetails) {
-        const details = document.createElement('details');
-        const summary = document.createElement('summary');
-        summary.textContent = '【兔子镜：本轮镜面】';
-        summary.setAttribute('style', 'cursor:pointer;list-style:none;box-sizing:border-box;');
-        const body = document.createElement('div');
-        body.setAttribute('style', 'display:block;box-sizing:border-box;max-width:100%;width:100%;');
-        while (toto.firstChild) body.appendChild(toto.firstChild);
-        details.appendChild(summary);
-        details.appendChild(body);
-        toto.appendChild(details);
-        outerDetails = details;
-    }
-
-    if (!outerDetails.dataset.rmShellNormalized) {
-        outerDetails.removeAttribute('open');
-        outerDetails.dataset.rmShellNormalized = 'true';
-    }
-
-    let summary = outerDetails.querySelector(':scope > summary');
-    if (!summary) {
-        summary = document.createElement('summary');
-        summary.textContent = '【兔子镜：本轮镜面】';
-        outerDetails.insertBefore(summary, outerDetails.firstChild);
-    }
-    normalizeRabbitMirrorSummaryText(summary);
-    const oldStyle = summary.getAttribute('style') || '';
-    const needCursor = !/cursor\s*:/i.test(oldStyle) ? 'cursor:pointer;' : '';
-    const needList = !/list-style\s*:/i.test(oldStyle) ? 'list-style:none;' : '';
-    const needBox = !/box-sizing\s*:/i.test(oldStyle) ? 'box-sizing:border-box;' : '';
-    if (needCursor || needList || needBox) summary.setAttribute('style', `${oldStyle}${oldStyle && !oldStyle.trim().endsWith(';') ? ';' : ''}${needCursor}${needList}${needBox}`);
-}
-
-function replaceIdSelectorInStyles(toto, oldId, newId) {
-    if (!oldId || !newId || oldId === newId) return;
-    const selectorRe = new RegExp(`#${escapeRegExp(oldId)}(?=\\b|[:.\\s#\\[,>+~{])`, 'g');
-    for (const styleEl of [...toto.querySelectorAll('style')]) {
-        styleEl.textContent = String(styleEl.textContent || '').replace(selectorRe, `#${newId}`);
-    }
-}
-
-function syncScopedInteractionReferences(toto, oldId, newId) {
-    if (!oldId || !newId || oldId === newId) return;
-    for (const label of [...toto.querySelectorAll('label[for]')]) {
-        if (label.getAttribute('for') === oldId) label.setAttribute('for', newId);
-    }
-    for (const el of [...toto.querySelectorAll('[aria-controls], [href]')]) {
-        if (el.getAttribute('aria-controls') === oldId) el.setAttribute('aria-controls', newId);
-        if (el.getAttribute('href') === `#${oldId}`) el.setAttribute('href', `#${newId}`);
-    }
-    replaceIdSelectorInStyles(toto, oldId, newId);
-}
-
-function scopeInteractiveIdsInToto(toto) {
-    if (!toto?.querySelectorAll) return;
-    const inputs = [...toto.querySelectorAll('input[type="checkbox"], input[type="radio"]')];
-    if (!inputs.length) return;
-    const scope = getOrCreateTotoScope(toto);
-
-    for (const input of inputs) {
-        const oldId = input.getAttribute('id');
-        if (oldId && input.dataset.rmScoped !== scope) {
-            if (oldId.startsWith(`${scope}__`)) {
-                input.dataset.rmScoped = scope;
-            } else {
-                const newId = `${scope}__${makeSafeIdPart(oldId)}`;
-                input.setAttribute('id', newId);
-                input.dataset.rmOriginalId = oldId;
-                input.dataset.rmScoped = scope;
-                syncScopedInteractionReferences(toto, oldId, newId);
-            }
-        }
-
-        // Radio name is page-global in HTML. Scope it per rabbit mirror so old/simple names like "signal"
-        // cannot steal selection state from another message.
-        if (input.type === 'radio') {
-            const oldName = input.getAttribute('name');
-            if (oldName && !oldName.startsWith(`${scope}__`)) {
-                input.setAttribute('name', `${scope}__${makeSafeIdPart(oldName)}`);
-            }
-        }
-    }
-}
-
-function updateRabbitMirrorActiveLabels(toto) {
-    if (!toto?.querySelectorAll) return;
-    for (const label of [...toto.querySelectorAll('label[for]')]) {
-        const id = label.getAttribute('for');
-        let input = null;
-        try {
-            input = id ? toto.querySelector(`#${cssEscape(id)}`) : null;
-        } catch {
-            input = null;
-        }
-        if (!input && id && typeof document !== 'undefined') input = document.getElementById(id);
-        if (input?.checked) label.dataset.rmActive = 'true';
-        else label.removeAttribute('data-rm-active');
-    }
-}
-
-function normalizeInteractionActiveStates(toto) {
-    if (!toto?.querySelectorAll) return;
-    updateRabbitMirrorActiveLabels(toto);
-}
-
-function installRabbitMirrorInteractionDelegate() {
-    if (rabbitMirrorInteractionDelegateInstalled || typeof document === 'undefined') return;
-    rabbitMirrorInteractionDelegateInstalled = true;
-
-    document.addEventListener('click', (event) => {
-        const label = event.target?.closest?.('toto label[for]');
-        if (!label) return;
-        const toto = label.closest('toto');
-        if (!toto) return;
-        normalizeLegacyRabbitMirrorMarker(toto);
-        scopeInteractiveIdsInToto(toto);
-
-        const targetId = label.getAttribute('for');
-        if (!targetId) return;
-        let input = null;
-        try {
-            input = toto.querySelector(`#${cssEscape(targetId)}`);
-        } catch {
-            input = null;
-        }
-        if (!input || !/^(checkbox|radio)$/i.test(input.type) || input.disabled) return;
-
-        // Some rendered/hidden inputs in chat UIs do not reliably receive native label activation.
-        // Toggle/check inside the current toto as a scoped fallback.
-        event.preventDefault();
-        if (input.type === 'radio') input.checked = true;
-        else input.checked = !input.checked;
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        input.dispatchEvent(new Event('change', { bubbles: true }));
-        updateRabbitMirrorActiveLabels(toto);
-    }, true);
-
-    document.addEventListener('change', (event) => {
-        const toto = event.target?.closest?.('toto');
-        if (toto) updateRabbitMirrorActiveLabels(toto);
-    }, true);
-}
-
-function normalizeRenderedRabbitMirrorDom() {
-    const root = getChatRoot();
-    if (!root) return;
-    const totos = [...root.querySelectorAll('toto')]
-        .filter(toto => isInsideChatMessage(toto));
-    for (const toto of totos) {
-        ensureOuterRabbitMirrorShell(toto);
-        scopeInteractiveIdsInToto(toto);
-        normalizeInteractionActiveStates(toto);
-    }
-}
-
 export function triggerCodeBlockRescue(mod = null) {
+    if (!isCodeBlockRescueModeEnabled()) return;
     try {
-        normalizeRenderedRabbitMirrorDom();
-        normalizeLatestRawRabbitMirrorMarkers(mod);
-        if (!isCodeBlockRescueModeEnabled()) return;
         sanitizeLatestRawMessages(mod || globalThis);
         sanitizeCodeBlocksInChatDom();
         sanitizeRenderedRabbitMirrorDetailsDom();
-        normalizeRenderedRabbitMirrorDom();
     } catch (error) {
         console.debug('[RabbitMirror] code block rescue trigger failed:', error);
     }
@@ -757,16 +491,12 @@ export function triggerCodeBlockRescue(mod = null) {
 
 function scheduleSanitize(mod) {
     const run = () => {
-        // 轻量 DOM 修复始终启用：只处理聊天区内的兔子镜外壳、旧 data 名称和 input/label 作用域，不拆代码块、不改 UI 样式。
-        normalizeRenderedRabbitMirrorDom();
-        normalizeLatestRawRabbitMirrorMarkers(mod);
         if (!isCodeBlockRescueModeEnabled()) return;
         // 先修原始消息，避免保存后继续携带代码块壳。
         sanitizeLatestRawMessages(mod);
         // 再只修聊天区内已经渲染出来的代码块，不扫描设置页，避免误伤其他插件 UI。
         sanitizeCodeBlocksInChatDom();
         sanitizeRenderedRabbitMirrorDetailsDom();
-        normalizeRenderedRabbitMirrorDom();
     };
     setTimeout(run, 80);
     setTimeout(run, 350);
@@ -777,7 +507,6 @@ function scheduleSanitize(mod) {
 
 export async function initOutputSanitizer() {
     try {
-        installRabbitMirrorInteractionDelegate();
         const mod = await import('../../../../../script.js');
         const eventSource = mod?.eventSource;
         const eventTypes = mod?.event_types || {};

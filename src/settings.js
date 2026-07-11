@@ -2,7 +2,6 @@ import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
 
 export const MODULE_NAME = 'rabbit_mirror_theater';
-const LEGACY_MODULE_NAME = 'rabbit_hole_theater';
 
 function cloneDefaultSettings() {
     return typeof structuredClone === 'function'
@@ -52,6 +51,9 @@ export const defaultSettings = Object.freeze({
     // 勾选后，每轮强制把 10.2.2 Visual Scenery 纳入本轮展现形式。
     forceVisualScenery: false,
 
+    // 勾选后，每轮强制内部包含真实可交互结构；关闭时不强制内部点击，仅保留外层折叠。
+    forceInteractiveMode: false,
+
     // 勾选后，每轮额外注入 UI 自查与去模板化要求，减少相似黑框/记录卡。
     uiAudit: true,
     // 原规则要求 1-3 个主题、1-2 个展现形式，作为固定协议，不再拆成 UI 设置。
@@ -70,18 +72,10 @@ export const defaultSettings = Object.freeze({
 });
 
 export function getSettings() {
-    if ((!extension_settings[MODULE_NAME] || typeof extension_settings[MODULE_NAME] !== 'object') && extension_settings[LEGACY_MODULE_NAME]) {
-        extension_settings[MODULE_NAME] = { ...cloneDefaultSettings(), ...extension_settings[LEGACY_MODULE_NAME] };
-    }
     if (!extension_settings[MODULE_NAME] || typeof extension_settings[MODULE_NAME] !== 'object') {
         extension_settings[MODULE_NAME] = cloneDefaultSettings();
     }
     const settings = extension_settings[MODULE_NAME];
-    const legacyAutoInjectionKey = 'autoRabbit' + 'HoleInjection';
-    if (settings.autoRabbitMirrorInjection === undefined && settings[legacyAutoInjectionKey] !== undefined) {
-        settings.autoRabbitMirrorInjection = !!settings[legacyAutoInjectionKey];
-        delete settings[legacyAutoInjectionKey];
-    }
     for (const [key, value] of Object.entries(defaultSettings)) {
         if (settings[key] === undefined) {
             settings[key] = value;
@@ -110,6 +104,7 @@ export function getSettings() {
     if (settings.autoRabbitMirrorInjection === undefined) settings.autoRabbitMirrorInjection = settings.enabled !== false;
     if (settings.codeBlockRescueMode === undefined) settings.codeBlockRescueMode = defaultSettings.codeBlockRescueMode;
     if (!['classic', 'format_only'].includes(settings.samplingMode)) settings.samplingMode = defaultSettings.samplingMode;
+    if (settings.forceInteractiveMode === undefined) settings.forceInteractiveMode = defaultSettings.forceInteractiveMode;
     settings.depth = Number(settings.depth) || 0;
     return settings;
 }

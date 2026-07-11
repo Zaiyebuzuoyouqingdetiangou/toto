@@ -16,7 +16,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场 / Rabbit Mirror Theater</b><span class="rabbit-mirror-toto-watermark">Toto v0.31.42</span>
+      <b>兔子镜小剧场 / Rabbit Mirror Theater</b><span class="rabbit-mirror-toto-watermark">Toto v0.31.45</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -36,6 +36,9 @@ export function initRabbitMirrorUI() {
 
       <label class="checkbox_label"><input id="rh_force_visual_scenery" type="checkbox"> 动态渐变模式</label>
       <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后允许生成纯 CSS 风景与流动渐变效果。</div>
+
+      <label class="checkbox_label"><input id="rh_force_interactive" type="checkbox"> 每轮可交互模式</label>
+      <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后内部每轮必须包含无需 JS 即可生效的真实交互；关闭时不强制内部交互，只保留外层折叠。</div>
 
       <label class="checkbox_label"><input id="rh_user_directive" type="checkbox"> 用户指令优先（正文/兔子镜点播）</label>
 
@@ -71,6 +74,7 @@ export function initRabbitMirrorUI() {
     checked('#rh_user_directive', settings.userDirectivePriority);
     checked('#rh_creative_expansion', settings.creativeExpansionMode);
     checked('#rh_force_visual_scenery', settings.forceVisualScenery);
+    checked('#rh_force_interactive', settings.forceInteractiveMode);
     checked('#rh_ui_audit', settings.uiAudit);
     checked('#rh_avoid_repeat', settings.avoidRepeat);
 
@@ -90,6 +94,7 @@ export function initRabbitMirrorUI() {
     $('#rh_user_directive').on('change', e => updateSettings({ userDirectivePriority: e.target.checked }));
     $('#rh_creative_expansion').on('change', e => updateSettings({ creativeExpansionMode: e.target.checked }));
     $('#rh_force_visual_scenery').on('change', e => updateSettings({ forceVisualScenery: e.target.checked }));
+    $('#rh_force_interactive').on('change', e => updateSettings({ forceInteractiveMode: e.target.checked }));
     $('#rh_ui_audit').on('change', e => updateSettings({ uiAudit: e.target.checked }));
     $('#rh_avoid_repeat').on('change', e => updateSettings({ avoidRepeat: e.target.checked }));
 

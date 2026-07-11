@@ -1,4 +1,9 @@
 export const RAW_THEMATIC_CATEGORIES = String.raw`
+## [small_theater]
+
+[主题元素]
+必须要生动有趣地随机挑选以下不同的元素，生成极具创意的兔子镜小剧场！！！请严格遵循以下分类库进行随机或指定的元素组合。
+
 <ThematicCategories>
 
 ### 🟥 A. 色情与感官 (Erotica & Sensuality)

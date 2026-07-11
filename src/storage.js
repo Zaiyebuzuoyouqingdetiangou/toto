@@ -1,19 +1,10 @@
-const STORAGE_KEY = 'rabbit_mirror_theater:last_combo:v12';
-const LEGACY_STORAGE_KEYS = ['rabbit_hole_theater:last_combo:v11'];
-const PENDING_KEY = 'rabbit_mirror_theater:pending_combo:v12';
-const LEGACY_PENDING_KEYS = ['rabbit_hole_theater:pending_combo:v11'];
+const STORAGE_KEY = 'rabbit_mirror_theater:last_combo:v11';
+const PENDING_KEY = 'rabbit_mirror_theater:pending_combo:v11';
 const MAX_STORED = 20;
 
 function readHistory() {
     try {
-        let stored = localStorage.getItem(STORAGE_KEY);
-        if (!stored) {
-            for (const key of LEGACY_STORAGE_KEYS) {
-                stored = localStorage.getItem(key);
-                if (stored) break;
-            }
-        }
-        const raw = JSON.parse(stored || '[]');
+        const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
         if (Array.isArray(raw)) return raw;
         if (raw && typeof raw === 'object') return [raw];
         return [];
@@ -101,13 +92,7 @@ export function setPendingCombo(combo) {
 
 export function commitPendingCombo(visualSignature = '', visualSkeleton = '', riskFlags = []) {
     try {
-        let raw = localStorage.getItem(PENDING_KEY);
-        if (!raw) {
-            for (const key of LEGACY_PENDING_KEYS) {
-                raw = localStorage.getItem(key);
-                if (raw) break;
-            }
-        }
+        const raw = localStorage.getItem(PENDING_KEY);
         if (!raw) return;
         const pending = JSON.parse(raw);
         if (!pending || typeof pending !== 'object') return;
@@ -152,19 +137,17 @@ export function clearLastCombo() {
         localStorage.removeItem(STORAGE_KEY);
         localStorage.removeItem(PENDING_KEY);
         // 清理旧版 key，防止旧记录混淆。
-        localStorage.removeItem('rabbit_hole_theater:last_combo:v3');
-        localStorage.removeItem('rabbit_hole_theater:last_combo:v4');
-        localStorage.removeItem('rabbit_hole_theater:last_combo:v5');
-        localStorage.removeItem('rabbit_hole_theater:last_combo:v6');
-        localStorage.removeItem('rabbit_hole_theater:last_combo:v7');
-        localStorage.removeItem('rabbit_hole_theater:last_combo:v8');
-        localStorage.removeItem('rabbit_hole_theater:pending_combo:v8');
-        localStorage.removeItem('rabbit_hole_theater:last_combo:v9');
-        localStorage.removeItem('rabbit_hole_theater:pending_combo:v9');
-        localStorage.removeItem('rabbit_hole_theater:last_combo:v10');
-        localStorage.removeItem('rabbit_hole_theater:pending_combo:v10');
-        localStorage.removeItem('rabbit_hole_theater:last_combo:v11');
-        localStorage.removeItem('rabbit_hole_theater:pending_combo:v11');
+        localStorage.removeItem('rabbit_mirror_theater:last_combo:v3');
+        localStorage.removeItem('rabbit_mirror_theater:last_combo:v4');
+        localStorage.removeItem('rabbit_mirror_theater:last_combo:v5');
+        localStorage.removeItem('rabbit_mirror_theater:last_combo:v6');
+        localStorage.removeItem('rabbit_mirror_theater:last_combo:v7');
+        localStorage.removeItem('rabbit_mirror_theater:last_combo:v8');
+        localStorage.removeItem('rabbit_mirror_theater:pending_combo:v8');
+        localStorage.removeItem('rabbit_mirror_theater:last_combo:v9');
+        localStorage.removeItem('rabbit_mirror_theater:pending_combo:v9');
+        localStorage.removeItem('rabbit_mirror_theater:last_combo:v10');
+        localStorage.removeItem('rabbit_mirror_theater:pending_combo:v10');
     } catch {}
 }
 
