@@ -4,7 +4,7 @@
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.31.54",
+  "version": "0.31.55",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "Rabbit Mirror Theater: 7.10 stable base with stable interaction fixes and guaranteed automatic motion in Dynamic Visual mode."
+  "description": "Rabbit Mirror Theater: 7.10 stable base with stable interaction fixes and CSS keyframe motion restored for Dynamic Visual mode."
 }
