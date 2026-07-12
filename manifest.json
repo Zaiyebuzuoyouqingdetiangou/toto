@@ -4,7 +4,7 @@
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.31.49",
+  "version": "0.31.50",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "Rabbit Mirror Theater: 7.10 stable base with H.0-H.6 suspense themes, Chinese visible-text lock, optional per-turn interaction mode, and minimal codeblock rescue, plus main visual container wrapping guidance."
+  "description": "Rabbit Mirror Theater: 7.10 stable base with optional per-turn interaction mode, original shell-preserving codeblock rescue, and scoped interaction IDs for reliable controls."
 }

@@ -22,6 +22,151 @@ function isCodeBlockRescueModeEnabled() {
     }
 }
 
+
+let interactionScopeCounter = 0;
+
+function createInteractionScopePrefix() {
+    interactionScopeCounter += 1;
+    const timePart = Date.now().toString(36);
+    const countPart = interactionScopeCounter.toString(36);
+    const randomPart = Math.random().toString(36).slice(2, 7);
+    return `rm-${timePart}-${countPart}-${randomPart}-`;
+}
+
+function escapeRegExp(text) {
+    return String(text || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function replaceIdReferenceTokens(value, idMap) {
+    return String(value || '')
+        .split(/\s+/)
+        .map(token => idMap.get(token) || token)
+        .join(' ');
+}
+
+function rewriteCssIdReferences(cssText, idMap) {
+    let css = String(cssText || '');
+    for (const [oldId, newId] of idMap.entries()) {
+        const escaped = escapeRegExp(oldId);
+        // 常规 #id 选择器与 SVG/CSS url(#id) 引用。
+        css = css
+            .replace(new RegExp(`#${escaped}(?![\\w-])`, 'g'), `#${newId}`)
+            .replace(new RegExp(`url\\(\\s*(["']?)#${escaped}\\1\\s*\\)`, 'g'), `url(#${newId})`);
+    }
+    return css;
+}
+
+function installInteractionLabelFallback(toto) {
+    if (!toto || toto.dataset.rabbitMirrorInteractionFallback === 'true') return;
+
+    toto.addEventListener('click', (event) => {
+        const label = event.target?.closest?.('label[for]');
+        if (!label || !toto.contains(label)) return;
+
+        const targetId = label.getAttribute('for');
+        if (!targetId) return;
+        const input = [...toto.querySelectorAll('input[id]')].find(el => el.id === targetId);
+        if (!input || !/^(?:checkbox|radio)$/i.test(input.type || '')) return;
+
+        // 浏览器/主题层有时不会可靠触发隐藏 input；在当前兔子镜内部手动完成一次。
+        event.preventDefault();
+        if (input.type === 'radio') {
+            input.checked = true;
+        } else {
+            input.checked = !input.checked;
+        }
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    toto.dataset.rabbitMirrorInteractionFallback = 'true';
+}
+
+function scopeRabbitMirrorInteractionIds(toto) {
+    if (!toto?.querySelector || toto.dataset.rabbitMirrorInteractionScoped === 'true') {
+        if (toto) installInteractionLabelFallback(toto);
+        return;
+    }
+
+    const controls = toto.querySelectorAll('input[type="checkbox"], input[type="radio"]');
+    const referencedIds = new Set();
+    toto.querySelectorAll('label[for], [href^="#"], [xlink\\:href^="#"], [aria-controls], [aria-labelledby], [aria-describedby]').forEach(el => {
+        const forValue = el.getAttribute('for');
+        if (forValue) referencedIds.add(forValue);
+        for (const attr of ['href', 'xlink:href']) {
+            const value = el.getAttribute(attr);
+            if (value?.startsWith('#')) referencedIds.add(value.slice(1));
+        }
+        for (const attr of ['aria-controls', 'aria-labelledby', 'aria-describedby']) {
+            const value = el.getAttribute(attr);
+            if (value) value.split(/\s+/).filter(Boolean).forEach(id => referencedIds.add(id));
+        }
+    });
+
+    // 没有交互控件/内部引用时，不改普通展示 ID，避免无意义地扰动 SVG 或视觉结构。
+    if (!controls.length && !referencedIds.size) {
+        toto.dataset.rabbitMirrorInteractionScoped = 'true';
+        return;
+    }
+
+    const prefix = createInteractionScopePrefix();
+    const idMap = new Map();
+
+    toto.querySelectorAll('[id]').forEach(el => {
+        const oldId = String(el.id || '').trim();
+        if (!oldId) return;
+        const newId = `${prefix}${oldId}`;
+        idMap.set(oldId, newId);
+        el.id = newId;
+    });
+
+    toto.querySelectorAll('label[for]').forEach(label => {
+        const oldFor = label.getAttribute('for');
+        if (idMap.has(oldFor)) label.setAttribute('for', idMap.get(oldFor));
+    });
+
+    toto.querySelectorAll('input[type="radio"][name]').forEach(input => {
+        input.name = `${prefix}${input.getAttribute('name')}`;
+    });
+
+    toto.querySelectorAll('[href^="#"], [xlink\\:href^="#"]').forEach(el => {
+        for (const attr of ['href', 'xlink:href']) {
+            const value = el.getAttribute(attr);
+            if (!value?.startsWith('#')) continue;
+            const oldId = value.slice(1);
+            if (idMap.has(oldId)) el.setAttribute(attr, `#${idMap.get(oldId)}`);
+        }
+    });
+
+    for (const attr of ['aria-controls', 'aria-labelledby', 'aria-describedby']) {
+        toto.querySelectorAll(`[${attr}]`).forEach(el => {
+            el.setAttribute(attr, replaceIdReferenceTokens(el.getAttribute(attr), idMap));
+        });
+    }
+
+    toto.querySelectorAll('style').forEach(styleEl => {
+        styleEl.textContent = rewriteCssIdReferences(styleEl.textContent, idMap);
+    });
+
+    toto.querySelectorAll('[style]').forEach(el => {
+        const styleText = el.getAttribute('style');
+        if (styleText && /url\(\s*["']?#/i.test(styleText)) {
+            el.setAttribute('style', rewriteCssIdReferences(styleText, idMap));
+        }
+    });
+
+    toto.dataset.rabbitMirrorInteractionScoped = 'true';
+    installInteractionLabelFallback(toto);
+}
+
+function scopeRabbitMirrorInteractionsInChatDom() {
+    const root = getChatRoot();
+    if (!root) return;
+    root.querySelectorAll('toto[data-rabbit-mirror="true"], toto').forEach(toto => {
+        if (isInsideChatMessage(toto)) scopeRabbitMirrorInteractionIds(toto);
+    });
+}
+
 function stripHtmlComments(text) {
     return String(text || '').replace(HTML_COMMENT_RE, '');
 }
@@ -482,11 +627,13 @@ function sanitizeCodeBlocksInChatDom() {
 }
 
 export function triggerCodeBlockRescue(mod = null) {
-    if (!isCodeBlockRescueModeEnabled()) return;
     try {
+        scopeRabbitMirrorInteractionsInChatDom();
+        if (!isCodeBlockRescueModeEnabled()) return;
         sanitizeLatestRawMessages(mod || globalThis);
         sanitizeCodeBlocksInChatDom();
         sanitizeRenderedRabbitMirrorDetailsDom();
+        scopeRabbitMirrorInteractionsInChatDom();
     } catch (error) {
         console.debug('[RabbitMirror] code block rescue trigger failed:', error);
     }
@@ -494,12 +641,16 @@ export function triggerCodeBlockRescue(mod = null) {
 
 function scheduleSanitize(mod) {
     const run = () => {
+        // 交互作用域修复与代码块急救解耦：无论急救是否开启，都只在当前兔子镜内部
+        // 同步处理 id / for / radio name / CSS 引用，不改背景、布局或普通 class。
+        scopeRabbitMirrorInteractionsInChatDom();
         if (!isCodeBlockRescueModeEnabled()) return;
         // 先修原始消息，避免保存后继续携带代码块壳。
         sanitizeLatestRawMessages(mod);
         // 再只修聊天区内已经渲染出来的代码块，不扫描设置页，避免误伤其他插件 UI。
         sanitizeCodeBlocksInChatDom();
         sanitizeRenderedRabbitMirrorDetailsDom();
+        scopeRabbitMirrorInteractionsInChatDom();
     };
     setTimeout(run, 80);
     setTimeout(run, 350);
