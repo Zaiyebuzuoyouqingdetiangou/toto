@@ -1,6 +1,6 @@
-# RabbitMirror v0.31.57
+# RabbitMirror v0.31.60
 
-基于 v0.31.55。修复交互 ID 同步阶段无条件重写 `<style>` 导致 MutationObserver 循环、CSS `@keyframes` 动画持续重启而表现为静止的问题。
+基于 v0.31.60。修复交互 ID 同步阶段无条件重写 `<style>` 导致 MutationObserver 循环、CSS `@keyframes` 动画持续重启而表现为静止的问题。
 
 - 不修改 Prompt
 - 不修改动态视觉规则
