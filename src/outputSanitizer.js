@@ -323,22 +323,23 @@ function parseTotoFragment(html) {
     }
 }
 
+function isProtectedMirrorVisualContainer(node) {
+    if (!node?.matches) return false;
+    if (node.matches('toto, details, summary')) return true;
+
+    // 主视觉容器常直接承载背景、边框、圆角、留白和布局。
+    // 急救只能替换代码块壳，绝不能把这些容器一起替换掉。
+    const style = String(node.getAttribute?.('style') || '');
+    const carriesVisualShell = /(?:^|;)\s*(?:background(?:-color|-image)?|border(?:-radius)?|box-shadow|padding|display|width|max-width|min-height|overflow)\s*:/i.test(style);
+    const isDirectMirrorBody = !!node.parentElement?.matches?.('details, toto');
+    return carriesVisualShell || isDirectMirrorBody;
+}
+
 function findCodeReplaceTarget(node) {
-    let target = node.closest?.('pre') || node;
-    // SillyTavern/代码块插件常会在 pre 外面包一层带“隐藏代码块/复制”的容器。
-    // 如果父层除了按钮文案之外几乎只包含这个代码块，就连按钮一起替换掉。
-    for (let i = 0; i < 3; i += 1) {
-        const parent = target?.parentElement;
-        if (!parent || parent === document.body) break;
-        const targetText = target.textContent || '';
-        const parentText = parent.textContent || '';
-        const extra = parentText.replace(targetText, '').replace(/\s+/g, ' ').trim();
-        const extraLooksLikeCodeToolbar = !extra || /^(隐藏代码块|显示代码块|Hide code|Show code|Copy|Copied|复制|复制代码|代码块|Code)$/i.test(extra);
-        const hasSingleCodeArea = parent.querySelectorAll('pre, code').length <= 2;
-        if (extraLooksLikeCodeToolbar && hasSingleCodeArea) target = parent;
-        else break;
-    }
-    return target;
+    // 恢复原始急救原则：只拆真正的代码块节点，不向上替换任何普通父容器。
+    // 这样可完整保留主视觉容器的 background / border / padding / radius / shadow / layout。
+    if (!node?.closest) return node;
+    return node.closest('pre') || node;
 }
 
 function getChatRoot() {
@@ -412,7 +413,7 @@ function sanitizeRenderedRabbitMirrorDetailsDom() {
 
         // 以 summary 为锚点修复：标题已经被渲染成功时，说明外层兔子镜成立；
         // 这时只要把 summary 后面被当成源码显示的 HTML 正文拆回真实 DOM。
-        const candidates = [...details.querySelectorAll('pre, code, .hljs, .code_block, .code-block, .codeblock, [class*="codeblock"], [class*="code-block"], div, section, article')]
+        const candidates = [...details.querySelectorAll('pre, code, .hljs, .code_block, .code-block, .codeblock, [class*="codeblock"], [class*="code-block"]')]
             .filter(node => node !== details && !node.closest('summary'))
             .sort((a, b) => (b.querySelectorAll('*').length - a.querySelectorAll('*').length));
 
@@ -437,7 +438,7 @@ function sanitizeRenderedRabbitMirrorDetailsDom() {
 
             if (!replacement) continue;
             const target = findCodeReplaceTarget(node);
-            if (target?.isConnected && details.contains(target) && isInsideChatMessage(target)) {
+            if (target?.isConnected && details.contains(target) && isInsideChatMessage(target) && !isProtectedMirrorVisualContainer(target)) {
                 target.replaceWith(replacement);
                 break;
             }
@@ -474,7 +475,9 @@ function sanitizeCodeBlocksInChatDom() {
 
         if (!replacement) continue;
         const target = findCodeReplaceTarget(node);
-        if (target?.isConnected && isInsideChatMessage(target)) target.replaceWith(replacement);
+        if (target?.isConnected && isInsideChatMessage(target) && !isProtectedMirrorVisualContainer(target)) {
+            target.replaceWith(replacement);
+        }
     }
 }
 

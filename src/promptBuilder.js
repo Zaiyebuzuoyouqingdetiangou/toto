@@ -162,7 +162,8 @@ function complexInteractiveCore() {
   - 兔子镜必须像复杂精美的微型 网页媒介作品，而不是普通信息页、单列内容块、简单表单或文字摘要。
   - 展现形式必须决定 结构与样式 的整体轮廓、空间结构、阅读路径、视觉反馈方式和文字寄生位置，不能只写进标题。
   - 必须具备主视觉结构、前中后景层级、视觉锚点、材质质感、排版呼吸感与非单调阅读路径。
-  - 默认不强制内部可点击结构；外层折叠之外，内部是否需要点击、滑动或切换，应服从本轮展现形式。
+  - 主视觉容器必须完整包裹所有可见内容；正文、列表、提示区、角标、底部信息和装饰层不得掉到背景容器之外。背景、圆角、边框、padding 必须作用于承载全部内容的同一个主体容器。
+  - 默认关闭内部强交互；每轮可交互模式未开启时，不主动生成内部 checkbox/radio、伪按钮、点击查看、切换标签或依赖状态选择器的控件。需要表现详情时，用静态分层、焦点变化、视觉节奏、局部强调或动效反馈完成。
   - 鼓励使用 弹性/网格布局、绝对定位分层、矢量图形、渐变、阴影、滤镜、裁切、遮罩、变形、过渡或轻量样式动效构建空间与质感。
   - 不得只靠换标题、换色、换边框或换装饰复用同一种视觉骨架。`;
 }
@@ -180,16 +181,17 @@ function forcedInteractiveRule(enabled) {
     return String.raw`
 每轮可交互模式已开启:
   - 兔子镜内部必须包含至少一处无需 JS 即可生效的真实交互。
-  - 可使用 details/summary、checkbox/radio+label、:target、hover/active/focus、横向滚动或 样式状态变化；不得只用普通外层折叠冒充内部交互。
-  - 若使用 checkbox/radio，input 必须放在 label 与反馈区域之前；反馈区域必须与 input 位于 样式选择器可命中的结构中。
-  - 不得只用 样式 content 伪元素作为唯一反馈，必须存在真实网页反馈区域。
+  - 优先使用结构简单、命中稳定的原生交互，例如单个内部 details/summary、横向滚动、hover/active/focus 或简单 checkbox/radio+label；不得只用普通外层折叠冒充内部交互。
+  - 若使用 checkbox/radio，id 与 name 必须带本轮唯一前缀，不得使用 tag1、tab1、option1 等通用 id；input 必须放在 label 与反馈区域之前，反馈区域必须与 input 位于 样式选择器可命中的同级结构中。
+  - 不得只用 样式 content 伪元素作为唯一反馈，必须存在真实网页反馈区域；不要把反馈父容器整体设为 opacity:0。
   - 装饰层不得遮挡交互区域；不得机械堆叠多个内部 details。`;
 }
 
 function htmlSafetyCore() {
     return String.raw`
 网页结构直接渲染:
-  只输出可直接渲染的 网页结构/样式/矢量图形/details/summary；优先 inline style；主容器与关键子容器使用 box-sizing:border-box；长文本需自适配屏幕宽度并避免溢出。`;
+  只输出可直接渲染的 网页结构/样式/矢量图形/details/summary；优先 inline style；主容器与关键子容器使用 box-sizing:border-box；长文本需自适配屏幕宽度并避免溢出。
+  所有 style 属性必须使用成对引号完整包裹，CSS 函数括号必须闭合，尤其 rgba()/hsla()/linear-gradient()/box-shadow 不得漏写右括号或引号；不得让下一个 HTML 标签被吞进 style 属性值。`;
 }
 
 function visualColorTruthRule() {
