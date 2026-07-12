@@ -68,6 +68,56 @@ function rewriteSmilIdReferences(value, idMap) {
     return output;
 }
 
+
+function addImportantToDeclarationBlock(blockText) {
+    return String(blockText || '').replace(
+        /(^|;)\s*([a-z-]+)\s*:\s*([^;{}]+?)(\s*!important\s*)?(?=;|$)/gi,
+        (match, separator, property, value) => {
+            const cleanValue = String(value || '').trim().replace(/\s*!important\s*$/i, '');
+            if (!cleanValue) return match;
+            return `${separator}${property}: ${cleanValue} !important`;
+        },
+    );
+}
+
+function strengthenCheckedCssText(cssText) {
+    // 生成内容经常把初始隐藏状态写成内联 style（display:none / height:0 / opacity:0）。
+    // 普通 :checked 规则无法覆盖内联样式，因此只对交互状态规则追加 !important。
+    return String(cssText || '').replace(/([^{}]*:checked[^{}]*)\{([^{}]*)\}/gi, (match, selector, declarations) => {
+        return `${selector}{${addImportantToDeclarationBlock(declarations)}}`;
+    });
+}
+
+function strengthenRabbitMirrorCheckedStateCss(toto) {
+    if (!toto?.querySelectorAll) return;
+
+    toto.querySelectorAll('style').forEach(styleEl => {
+        const currentText = String(styleEl.textContent || '');
+        if (!/:checked\b/i.test(currentText)) return;
+
+        // 文本级处理可覆盖流式晚到的 style，也不依赖 CSSStyleSheet 是否已挂载。
+        const strengthened = strengthenCheckedCssText(currentText);
+        if (strengthened !== currentText) styleEl.textContent = strengthened;
+
+        // CSSOM 再兜底一次，支持 @media/@supports 内的状态规则。
+        try {
+            const visitRules = (rules) => {
+                for (const rule of [...(rules || [])]) {
+                    if (rule?.cssRules) visitRules(rule.cssRules);
+                    if (!rule?.selectorText || !/:checked\b/i.test(rule.selectorText) || !rule.style) continue;
+                    for (const property of [...rule.style]) {
+                        const value = rule.style.getPropertyValue(property);
+                        if (value) rule.style.setProperty(property, value, 'important');
+                    }
+                }
+            };
+            visitRules(styleEl.sheet?.cssRules);
+        } catch {
+            // 某些宿主会暂时禁止读取 CSSOM；文本级修复仍然有效。
+        }
+    });
+}
+
 function installInteractionLabelFallback(toto) {
     if (!toto || toto.dataset.rabbitMirrorInteractionFallback === 'true') return;
 
@@ -265,6 +315,7 @@ function scopeRabbitMirrorInteractionIds(toto) {
     });
 
     synchronizeInteractionReferences(toto, state.idMap);
+    strengthenRabbitMirrorCheckedStateCss(toto);
     toto.dataset.rabbitMirrorInteractionScoped = 'true';
     installInteractionLabelFallback(toto);
 }

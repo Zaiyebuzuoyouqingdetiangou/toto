@@ -1,7 +1,8 @@
 # 兔子镜小剧场 / Rabbit Mirror Theater
 
-v0.31.52：基于 v0.31.51 的流式交互同步修复。
+v0.31.53：基于 v0.31.52，修复 checkbox/radio 状态 CSS 无法覆盖内联隐藏样式的问题。
 本版定点修复：
+- 修复模型将初始隐藏状态写在内联 style 后，`:checked` CSS 因优先级不足而完全失效的问题；仅对兔子镜内部的交互状态规则自动追加 `!important`。
 - 修复流式输出时 input/label 先出现、末尾 `<style>` 后出现，导致 CSS 仍引用旧 ID、点击后内容不展开的问题。
 - 为每个兔子镜保留稳定的 ID 映射，后到的 style、label、ARIA、SVG 引用会继续同步。
 - 已处理过的 ID 不会重复加前缀；不修改 Prompt、背景、边框、布局和既有 UI。
