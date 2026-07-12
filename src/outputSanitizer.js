@@ -23,7 +23,10 @@ function isCodeBlockRescueModeEnabled() {
 }
 
 
+const MIRROR_TOTO_SELECTOR = 'toto[data-rabbit-mirror="true"], toto[data-rabbit-hole="true"]';
 let interactionScopeCounter = 0;
+const interactionScopeStates = new WeakMap();
+const SCOPED_INTERACTION_ID_RE = /^(rm-[a-z0-9]+-[a-z0-9]+-[a-z0-9]{5}-)(.+)$/i;
 
 function createInteractionScopePrefix() {
     interactionScopeCounter += 1;
@@ -48,7 +51,7 @@ function rewriteCssIdReferences(cssText, idMap) {
     let css = String(cssText || '');
     for (const [oldId, newId] of idMap.entries()) {
         const escaped = escapeRegExp(oldId);
-        // 常规 #id 选择器与 SVG/CSS url(#id) 引用。
+        // 常规 #id 选择器与 CSS/SVG url(#id) 引用。
         css = css
             .replace(new RegExp(`#${escaped}(?![\\w-])`, 'g'), `#${newId}`)
             .replace(new RegExp(`url\\(\\s*(["']?)#${escaped}\\1\\s*\\)`, 'g'), `url(#${newId})`);
@@ -56,77 +59,129 @@ function rewriteCssIdReferences(cssText, idMap) {
     return css;
 }
 
+function rewriteSmilIdReferences(value, idMap) {
+    let output = String(value || '');
+    for (const [oldId, newId] of idMap.entries()) {
+        const escaped = escapeRegExp(oldId);
+        output = output.replace(new RegExp(`(^|[;\\s])${escaped}(?=\\.)`, 'g'), `$1${newId}`);
+    }
+    return output;
+}
+
 function installInteractionLabelFallback(toto) {
     if (!toto || toto.dataset.rabbitMirrorInteractionFallback === 'true') return;
 
+    // 使用捕获阶段，避免主题或其他插件在内部 stopPropagation 后导致 label 完全点不开。
     toto.addEventListener('click', (event) => {
-        const label = event.target?.closest?.('label[for]');
+        const label = event.target?.closest?.('label');
         if (!label || !toto.contains(label)) return;
 
         const targetId = label.getAttribute('for');
-        if (!targetId) return;
-        const input = [...toto.querySelectorAll('input[id]')].find(el => el.id === targetId);
-        if (!input || !/^(?:checkbox|radio)$/i.test(input.type || '')) return;
+        const input = targetId
+            ? [...toto.querySelectorAll('input[id]')].find(el => el.id === targetId)
+            : label.querySelector('input[type="checkbox"], input[type="radio"]');
+        if (!input || !/^(?:checkbox|radio)$/i.test(input.type || '') || input.disabled) return;
 
-        // 浏览器/主题层有时不会可靠触发隐藏 input；在当前兔子镜内部手动完成一次。
+        // 浏览器/主题层有时不会可靠触发隐藏 input；只在当前兔子镜内手动完成一次。
         event.preventDefault();
+        const previous = !!input.checked;
         if (input.type === 'radio') {
             input.checked = true;
         } else {
             input.checked = !input.checked;
         }
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        input.dispatchEvent(new Event('change', { bubbles: true }));
-    });
+
+        if (previous !== input.checked) {
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    }, true);
 
     toto.dataset.rabbitMirrorInteractionFallback = 'true';
 }
 
-function scopeRabbitMirrorInteractionIds(toto) {
-    if (!toto?.querySelector || toto.dataset.rabbitMirrorInteractionScoped === 'true') {
-        if (toto) installInteractionLabelFallback(toto);
-        return;
+function collectExistingIdReferences(text, existingIds, output) {
+    const value = String(text || '');
+    // 按 DOM 中真实存在的 ID 精确匹配，避免把 :checked / :hover 等伪类误当成 ID 的一部分。
+    for (const id of existingIds) {
+        const escaped = escapeRegExp(id);
+        if (new RegExp(`#${escaped}(?![\\w-])`).test(value)
+            || new RegExp(`url\\(\\s*["']?#${escaped}(?:["']?\\s*)\\)`, 'i').test(value)) {
+            output.add(id);
+        }
     }
+}
 
-    const controls = toto.querySelectorAll('input[type="checkbox"], input[type="radio"]');
-    const referencedIds = new Set();
+function collectUrlIdReferences(text, existingIds, output) {
+    const pattern = /url\(\s*["']?#([^\s)"']+)/gi;
+    let match;
+    while ((match = pattern.exec(String(text || '')))) {
+        const id = match[1];
+        if (existingIds.has(id)) output.add(id);
+    }
+}
+
+function buildElementsById(toto) {
+    const elementsById = new Map();
+    toto.querySelectorAll('[id]').forEach(el => {
+        const id = String(el.id || '').trim();
+        if (!id) return;
+        if (!elementsById.has(id)) elementsById.set(id, []);
+        elementsById.get(id).push(el);
+    });
+    return elementsById;
+}
+
+function collectCurrentIdsToScope(toto, elementsById, mappedValues = new Set()) {
+    const existingIds = new Set(elementsById.keys());
+    const idsToScope = new Set();
+    const controls = [...toto.querySelectorAll('input[type="checkbox"], input[type="radio"]')];
+
+    controls.forEach(input => {
+        const id = String(input.id || '').trim();
+        if (id && !mappedValues.has(id)) idsToScope.add(id);
+    });
+
     toto.querySelectorAll('label[for], [href^="#"], [xlink\\:href^="#"], [aria-controls], [aria-labelledby], [aria-describedby]').forEach(el => {
         const forValue = el.getAttribute('for');
-        if (forValue) referencedIds.add(forValue);
+        if (forValue && existingIds.has(forValue) && !mappedValues.has(forValue)) idsToScope.add(forValue);
         for (const attr of ['href', 'xlink:href']) {
             const value = el.getAttribute(attr);
-            if (value?.startsWith('#')) referencedIds.add(value.slice(1));
+            const id = value?.startsWith('#') ? value.slice(1) : '';
+            if (id && existingIds.has(id) && !mappedValues.has(id)) idsToScope.add(id);
         }
         for (const attr of ['aria-controls', 'aria-labelledby', 'aria-describedby']) {
             const value = el.getAttribute(attr);
-            if (value) value.split(/\s+/).filter(Boolean).forEach(id => referencedIds.add(id));
+            if (value) value.split(/\s+/).filter(Boolean).forEach(id => {
+                if (existingIds.has(id) && !mappedValues.has(id)) idsToScope.add(id);
+            });
         }
     });
 
-    // 没有交互控件/内部引用时，不改普通展示 ID，避免无意义地扰动 SVG 或视觉结构。
-    if (!controls.length && !referencedIds.size) {
-        toto.dataset.rabbitMirrorInteractionScoped = 'true';
-        return;
-    }
-
-    const prefix = createInteractionScopePrefix();
-    const idMap = new Map();
-
-    toto.querySelectorAll('[id]').forEach(el => {
-        const oldId = String(el.id || '').trim();
-        if (!oldId) return;
-        const newId = `${prefix}${oldId}`;
-        idMap.set(oldId, newId);
-        el.id = newId;
+    toto.querySelectorAll('style').forEach(styleEl => {
+        collectExistingIdReferences(styleEl.textContent, existingIds, idsToScope);
     });
+    toto.querySelectorAll('*').forEach(el => {
+        for (const attr of [...(el.attributes || [])]) {
+            if (!attr?.value || /^(?:id|class)$/i.test(attr.name)) continue;
+            collectUrlIdReferences(attr.value, existingIds, idsToScope);
+            if (/^(?:begin|end)$/i.test(attr.name) && attr.value.includes('.')) {
+                for (const id of existingIds) {
+                    if (!mappedValues.has(id) && new RegExp(`(^|[;\\s])${escapeRegExp(id)}(?=\\.)`).test(attr.value)) idsToScope.add(id);
+                }
+            }
+        }
+    });
+
+    return { controls, idsToScope };
+}
+
+function synchronizeInteractionReferences(toto, idMap) {
+    if (!idMap?.size) return;
 
     toto.querySelectorAll('label[for]').forEach(label => {
         const oldFor = label.getAttribute('for');
         if (idMap.has(oldFor)) label.setAttribute('for', idMap.get(oldFor));
-    });
-
-    toto.querySelectorAll('input[type="radio"][name]').forEach(input => {
-        input.name = `${prefix}${input.getAttribute('name')}`;
     });
 
     toto.querySelectorAll('[href^="#"], [xlink\\:href^="#"]').forEach(el => {
@@ -144,17 +199,72 @@ function scopeRabbitMirrorInteractionIds(toto) {
         });
     }
 
+    // 流式生成时 <style> 往往最后才到达。每次扫描都重新同步，避免旧 ID 留在晚到的 CSS 中。
     toto.querySelectorAll('style').forEach(styleEl => {
         styleEl.textContent = rewriteCssIdReferences(styleEl.textContent, idMap);
     });
 
-    toto.querySelectorAll('[style]').forEach(el => {
-        const styleText = el.getAttribute('style');
-        if (styleText && /url\(\s*["']?#/i.test(styleText)) {
-            el.setAttribute('style', rewriteCssIdReferences(styleText, idMap));
+    // 同步所有属性中的 url(#id)，覆盖 SVG 的 fill/stroke/filter/clip-path/mask/marker 等。
+    toto.querySelectorAll('*').forEach(el => {
+        for (const attr of [...(el.attributes || [])]) {
+            if (!attr?.value) continue;
+            if (/url\(\s*["']?#/i.test(attr.value)) {
+                el.setAttribute(attr.name, rewriteCssIdReferences(attr.value, idMap));
+            } else if (/^(?:begin|end)$/i.test(attr.name) && attr.value.includes('.')) {
+                el.setAttribute(attr.name, rewriteSmilIdReferences(attr.value, idMap));
+            }
         }
     });
+}
 
+function recoverInteractionScopeState(toto) {
+    const idMap = new Map();
+    let prefix = '';
+    toto.querySelectorAll('[id]').forEach(el => {
+        const currentId = String(el.id || '').trim();
+        const match = currentId.match(SCOPED_INTERACTION_ID_RE);
+        if (!match) return;
+        prefix ||= match[1];
+        if (match[1] === prefix && match[2]) idMap.set(match[2], currentId);
+    });
+    return idMap.size ? { prefix, idMap } : null;
+}
+
+function scopeRabbitMirrorInteractionIds(toto) {
+    if (!toto?.querySelector) return;
+
+    // WeakMap 记录同一 DOM 在流式生成期间的映射；旧版本留下的 data 标记则从已加前缀的 ID 中恢复。
+    let state = interactionScopeStates.get(toto);
+    if (!state && toto.dataset.rabbitMirrorInteractionScoped === 'true') {
+        state = recoverInteractionScopeState(toto);
+        if (state) interactionScopeStates.set(toto, state);
+        else delete toto.dataset.rabbitMirrorInteractionScoped;
+    }
+
+    if (!state) {
+        state = { prefix: createInteractionScopePrefix(), idMap: new Map() };
+        interactionScopeStates.set(toto, state);
+    }
+
+    const mappedValues = new Set(state.idMap.values());
+    const elementsById = buildElementsById(toto);
+    const { controls, idsToScope } = collectCurrentIdsToScope(toto, elementsById, mappedValues);
+
+    // 新到达的交互控件或 SVG/CSS 引用只追加到原映射，不会给已有 ID 再套第二层前缀。
+    for (const oldId of idsToScope) {
+        if (state.idMap.has(oldId) || mappedValues.has(oldId) || !elementsById.has(oldId)) continue;
+        const newId = `${state.prefix}${oldId}`;
+        state.idMap.set(oldId, newId);
+        mappedValues.add(newId);
+        for (const el of elementsById.get(oldId) || []) el.id = newId;
+    }
+
+    controls.filter(input => input.type === 'radio' && input.hasAttribute('name')).forEach(input => {
+        const name = input.getAttribute('name') || '';
+        if (name && !name.startsWith(state.prefix)) input.name = `${state.prefix}${name}`;
+    });
+
+    synchronizeInteractionReferences(toto, state.idMap);
     toto.dataset.rabbitMirrorInteractionScoped = 'true';
     installInteractionLabelFallback(toto);
 }
@@ -162,7 +272,7 @@ function scopeRabbitMirrorInteractionIds(toto) {
 function scopeRabbitMirrorInteractionsInChatDom() {
     const root = getChatRoot();
     if (!root) return;
-    root.querySelectorAll('toto[data-rabbit-mirror="true"], toto').forEach(toto => {
+    root.querySelectorAll(MIRROR_TOTO_SELECTOR).forEach(toto => {
         if (isInsideChatMessage(toto)) scopeRabbitMirrorInteractionIds(toto);
     });
 }
@@ -468,23 +578,19 @@ function parseTotoFragment(html) {
     }
 }
 
-function isProtectedMirrorVisualContainer(node) {
-    if (!node?.matches) return false;
-    if (node.matches('toto, details, summary')) return true;
+const CODE_SHELL_SELECTOR = 'pre, code, .hljs, .code_block, .code-block, .codeblock, [class*="codeblock"], [class*="code-block"]';
 
-    // 主视觉容器常直接承载背景、边框、圆角、留白和布局。
-    // 急救只能替换代码块壳，绝不能把这些容器一起替换掉。
-    const style = String(node.getAttribute?.('style') || '');
-    const carriesVisualShell = /(?:^|;)\s*(?:background(?:-color|-image)?|border(?:-radius)?|box-shadow|padding|display|width|max-width|min-height|overflow)\s*:/i.test(style);
-    const isDirectMirrorBody = !!node.parentElement?.matches?.('details, toto');
-    return carriesVisualShell || isDirectMirrorBody;
+function isCodeShellNode(node) {
+    return !!node?.matches?.(CODE_SHELL_SELECTOR);
 }
 
 function findCodeReplaceTarget(node) {
-    // 恢复原始急救原则：只拆真正的代码块节点，不向上替换任何普通父容器。
-    // 这样可完整保留主视觉容器的 background / border / padding / radius / shadow / layout。
-    if (!node?.closest) return node;
-    return node.closest('pre') || node;
+    // 只替换真正的代码块节点；绝不根据父层文字或样式向上吞掉普通容器。
+    // 因而主容器的 background / border / padding / radius / shadow / layout 会原样保留。
+    if (!node?.closest) return null;
+    const pre = node.closest('pre');
+    if (pre) return pre;
+    return isCodeShellNode(node) ? node : null;
 }
 
 function getChatRoot() {
@@ -583,7 +689,7 @@ function sanitizeRenderedRabbitMirrorDetailsDom() {
 
             if (!replacement) continue;
             const target = findCodeReplaceTarget(node);
-            if (target?.isConnected && details.contains(target) && isInsideChatMessage(target) && !isProtectedMirrorVisualContainer(target)) {
+            if (target?.isConnected && details.contains(target) && isInsideChatMessage(target) && isCodeShellNode(target)) {
                 target.replaceWith(replacement);
                 break;
             }
@@ -595,8 +701,7 @@ function sanitizeCodeBlocksInChatDom() {
     if (!isCodeBlockRescueModeEnabled()) return;
     const root = getChatRoot();
     if (!root) return;
-    const selector = 'pre, code, .hljs, .code_block, .code-block, .codeblock, [class*="codeblock"], [class*="code-block"]';
-    const candidates = [...new Set([...root.querySelectorAll(selector)])]
+    const candidates = [...new Set([...root.querySelectorAll(CODE_SHELL_SELECTOR)])]
         .filter(node => !node.querySelector?.('pre, code') || node.matches('pre, code, .hljs'));
 
     for (const node of candidates) {
@@ -605,7 +710,8 @@ function sanitizeCodeBlocksInChatDom() {
         if (!raw) continue;
 
         let replacement = null;
-        const insideRabbitMirror = !!node.closest('toto, details');
+        const ownerDetails = node.closest('details');
+        const insideRabbitMirror = !!node.closest(MIRROR_TOTO_SELECTOR) || !!(ownerDetails && isRabbitMirrorDetails(ownerDetails));
 
         if (TOTO_BLOCK_SINGLE_RE.test(raw)) {
             const cleaned = cleanRabbitMirrorOutput(raw);
@@ -620,7 +726,7 @@ function sanitizeCodeBlocksInChatDom() {
 
         if (!replacement) continue;
         const target = findCodeReplaceTarget(node);
-        if (target?.isConnected && isInsideChatMessage(target) && !isProtectedMirrorVisualContainer(target)) {
+        if (target?.isConnected && isInsideChatMessage(target) && isCodeShellNode(target)) {
             target.replaceWith(replacement);
         }
     }
