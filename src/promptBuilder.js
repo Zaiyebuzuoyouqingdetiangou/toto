@@ -83,22 +83,16 @@ function shortVisualAvoidance(combo, limit = 3) {
     return recent.map((item, index) => {
         const formats = (item.formatIds || []).join(' + ') || '未记录';
         const riskCount = Array.isArray(item.riskFlags) ? item.riskFlags.length : 0;
-        const signature = item.visualSignature ? truncate(item.visualSignature, 72) : '已记录视觉骨架';
-        return `${index + 1}. 形式：${formats}；避让：${signature}${riskCount ? `；风险${riskCount}` : ''}`;
+        const signature = item.visualSignature ? truncate(item.visualSignature, 110) : '已记录视觉骨架';
+        return `${index + 1}. 近期展现形式：${formats}；避让摘要：${signature}${riskCount ? `；结构风险 ${riskCount} 项` : ''}`;
     }).join('\n');
 }
 
 function recentRiskCorrection(forceInteractiveMode = false) {
     const flags = getRecentRiskFlags(4);
-    const recentHistory = getComboHistory(3).slice(-2);
-    const recentDarkCount = recentHistory.filter(item => /contrast_family:\s*contrast:\s*dark_weighted|暗色高对比底盘|digital_dark_surface/i.test(String(item?.visualSignature || ''))).length;
     const counts = getRecentRiskFlagCounts(4);
-    if (!flags.length && recentDarkCount < 2) return '';
+    if (!flags.length) return '';
     const lines = [];
-
-    if (recentDarkCount >= 2) {
-        lines.push('最近两轮均为暗色底盘。本轮主容器必须改用浅色、纸面色或明亮中性色；不得继续使用黑色、深灰、深蓝或暗色渐变作主底盘。');
-    }
 
     const hasRepeatedStructure = flags.some(flag => [
         'same_block_stack',
@@ -206,6 +200,22 @@ function visualColorTruthRule() {
   明暗、纸面、屏幕、材质等描述必须与实际 样式 background/background-color 一致；不得用文字声明替代真实样式。`;
 }
 
+
+function uiAuditRule(combo) {
+    const current = Array.isArray(combo?.uiReviewFocus)
+        ? combo.uiReviewFocus.map(asText).filter(Boolean).slice(0, 5)
+        : [];
+    const recent = Array.isArray(combo?.recentUiReviewFocus)
+        ? combo.recentUiReviewFocus.map(asText).filter(Boolean).slice(-3)
+        : [];
+    const focusText = current.length ? current.join('、') : '媒介本体、空间层级、视觉锚点、近期观感去重';
+    const recentText = recent.length ? `\n  近期已用审查组合：${recent.join('｜')}。本轮不得把这些重点机械变成同一套可见版式。` : '';
+    return `
+UI 自查优化:
+  本轮内部审查重点：${focusText}。
+  输出前逐项检查；任一失败必须在输出前重写：展现形式是否由 DOM/CSS 本体成立；是否退化为通用卡片、报告页、状态栏或单列堆叠；空间、阅读路径、文字密度、材质和配色是否服从本轮媒介；与近期成品是否一眼近似。审查词不得成为可见标题、栏目或固定组件。${recentText}`;
+}
+
 function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive }) {
     const chunks = [];
     const mode = combo?.samplingMode || settings?.samplingMode || 'classic';
@@ -239,9 +249,7 @@ ${selectedFormats}`);
     }
 
     if (settings.uiAudit) {
-        chunks.push(String.raw`
-UI 自查短版:
-  输出前检查：媒介本体是否靠 结构与样式 成立、是否有空间层级/视觉锚点/质感、是否有清晰视觉反馈/空间层级、是否退化为普通纵向内容流。失败则重写。`);
+        chunks.push(uiAuditRule(combo));
     }
 
     if (settings.avoidRepeat) {
