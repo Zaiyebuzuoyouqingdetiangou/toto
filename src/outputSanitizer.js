@@ -251,7 +251,11 @@ function synchronizeInteractionReferences(toto, idMap) {
 
     // 流式生成时 <style> 往往最后才到达。每次扫描都重新同步，避免旧 ID 留在晚到的 CSS 中。
     toto.querySelectorAll('style').forEach(styleEl => {
-        styleEl.textContent = rewriteCssIdReferences(styleEl.textContent, idMap);
+        const currentText = String(styleEl.textContent || '');
+        const rewrittenText = rewriteCssIdReferences(currentText, idMap);
+        // 仅在内容确实变化时重建样式表。无条件写回会触发 MutationObserver，
+        // 让 @keyframes 动画不断从 0 秒重启，视觉上表现为完全静止。
+        if (rewrittenText !== currentText) styleEl.textContent = rewrittenText;
     });
 
     // 同步所有属性中的 url(#id)，覆盖 SVG 的 fill/stroke/filter/clip-path/mask/marker 等。

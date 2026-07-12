@@ -83,16 +83,22 @@ function shortVisualAvoidance(combo, limit = 3) {
     return recent.map((item, index) => {
         const formats = (item.formatIds || []).join(' + ') || '未记录';
         const riskCount = Array.isArray(item.riskFlags) ? item.riskFlags.length : 0;
-        const signature = item.visualSignature ? truncate(item.visualSignature, 110) : '已记录视觉骨架';
-        return `${index + 1}. 近期展现形式：${formats}；避让摘要：${signature}${riskCount ? `；结构风险 ${riskCount} 项` : ''}`;
+        const signature = item.visualSignature ? truncate(item.visualSignature, 72) : '已记录视觉骨架';
+        return `${index + 1}. 形式：${formats}；避让：${signature}${riskCount ? `；风险${riskCount}` : ''}`;
     }).join('\n');
 }
 
 function recentRiskCorrection(forceInteractiveMode = false) {
     const flags = getRecentRiskFlags(4);
+    const recentHistory = getComboHistory(3).slice(-2);
+    const recentDarkCount = recentHistory.filter(item => /contrast_family:\s*contrast:\s*dark_weighted|暗色高对比底盘|digital_dark_surface/i.test(String(item?.visualSignature || ''))).length;
     const counts = getRecentRiskFlagCounts(4);
-    if (!flags.length) return '';
+    if (!flags.length && recentDarkCount < 2) return '';
     const lines = [];
+
+    if (recentDarkCount >= 2) {
+        lines.push('最近两轮均为暗色底盘。本轮主容器必须改用浅色、纸面色或明亮中性色；不得继续使用黑色、深灰、深蓝或暗色渐变作主底盘。');
+    }
 
     const hasRepeatedStructure = flags.some(flag => [
         'same_block_stack',
