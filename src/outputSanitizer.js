@@ -315,6 +315,216 @@ function applyCheckedRuleInlineFallback(toto, input) {
     if (records.length) interactionInlineOverrideStates.set(input, records);
 }
 
+
+
+
+const TARGET_ACTIVE_ATTR = 'data-rm-target-active';
+const TARGET_RESCUE_STYLE_ATTR = 'data-rabbit-mirror-target-rescue';
+const interactionCapabilityStates = new WeakMap();
+
+function detectInteractionCapabilities(root) {
+    if (!root?.querySelectorAll) return { checked: false, hover: false, details: false, target: false };
+    const cssText = [...root.querySelectorAll('style')].map(style => style.textContent || '').join('\n');
+    const outerDetails = root.matches?.('details') ? root : root.querySelector(':scope > details');
+    const nestedDetails = [...root.querySelectorAll('details')].filter(item => item !== outerDetails);
+    const capabilities = {
+        checked: !!root.querySelector('input[type="checkbox"], input[type="radio"]') || /:checked\b/i.test(cssText),
+        hover: /:hover\b/i.test(cssText),
+        details: nestedDetails.length > 0,
+        target: /:target\b/i.test(cssText) || !!root.querySelector('a[href^="#"]'),
+    };
+    interactionCapabilityStates.set(root, capabilities);
+    root.dataset.rabbitMirrorInteractionRoutes = Object.entries(capabilities)
+        .filter(([, enabled]) => enabled)
+        .map(([name]) => name)
+        .join(',') || 'none';
+    return capabilities;
+}
+
+function collectTargetRulesFromCss(cssText) {
+    const rules = [];
+    const blockRe = /([^{}]+)\{([^{}]*)\}/g;
+    let match;
+    while ((match = blockRe.exec(String(cssText || '')))) {
+        const selectorText = String(match[1] || '').trim();
+        if (!selectorText || selectorText.startsWith('@') || !/:target\b/i.test(selectorText)) continue;
+        const declarations = addImportantToDeclarationBlock(String(match[2] || ''));
+        if (!declarations.trim()) continue;
+        const selectors = selectorText.split(',')
+            .map(value => value.trim())
+            .filter(Boolean)
+            .map(selector => selector.replace(/:target\b/gi, `[${TARGET_ACTIVE_ATTR}="true"]`));
+        if (selectors.length) rules.push(`${selectors.join(', ')} {${declarations}}`);
+    }
+    return rules.join('\n');
+}
+
+function refreshTargetRescue(root) {
+    if (!root?.querySelectorAll) return;
+    let combinedCss = '';
+    root.querySelectorAll(`style:not([${TARGET_RESCUE_STYLE_ATTR}])`).forEach(styleEl => {
+        const parsed = collectTargetRulesFromCss(styleEl.textContent || '');
+        if (parsed) combinedCss += `${parsed}\n`;
+    });
+    let rescueStyle = root.querySelector(`style[${TARGET_RESCUE_STYLE_ATTR}]`);
+    if (combinedCss.trim()) {
+        if (!rescueStyle) {
+            rescueStyle = document.createElement('style');
+            rescueStyle.setAttribute(TARGET_RESCUE_STYLE_ATTR, 'true');
+            root.appendChild(rescueStyle);
+        }
+        const nextCss = combinedCss.trim();
+        if (rescueStyle.textContent !== nextCss) rescueStyle.textContent = nextCss;
+    } else if (rescueStyle) {
+        rescueStyle.remove();
+    }
+
+    if (root.dataset.rabbitMirrorTargetFallback === 'true') return;
+    root.addEventListener('click', event => {
+        const anchor = event.target?.closest?.('a[href^="#"]');
+        if (!anchor || !root.contains(anchor)) return;
+        const rawId = String(anchor.getAttribute('href') || '').slice(1);
+        if (!rawId) return;
+        let target = null;
+        try {
+            target = [...root.querySelectorAll('[id]')].find(el => el.id === decodeURIComponent(rawId));
+        } catch {
+            target = [...root.querySelectorAll('[id]')].find(el => el.id === rawId);
+        }
+        if (!target) return;
+        event.preventDefault();
+        root.querySelectorAll(`[${TARGET_ACTIVE_ATTR}="true"]`).forEach(el => {
+            if (el !== target) el.removeAttribute(TARGET_ACTIVE_ATTR);
+        });
+        const active = target.getAttribute(TARGET_ACTIVE_ATTR) === 'true';
+        if (active) target.removeAttribute(TARGET_ACTIVE_ATTR);
+        else target.setAttribute(TARGET_ACTIVE_ATTR, 'true');
+    }, true);
+    root.dataset.rabbitMirrorTargetFallback = 'true';
+}
+
+function installNestedDetailsFallback(root) {
+    if (!root?.querySelectorAll || root.dataset.rabbitMirrorDetailsFallback === 'true') return;
+    const outerDetails = root.matches?.('details') ? root : root.querySelector(':scope > details');
+    root.addEventListener('click', event => {
+        const summary = event.target?.closest?.('summary');
+        const details = summary?.parentElement;
+        if (!summary || !details || details.tagName !== 'DETAILS' || details === outerDetails || !root.contains(details)) return;
+        // 仅当宿主没有在本次点击中改变 open 状态时才兜底，避免双重切换。
+        const before = details.open;
+        setTimeout(() => {
+            if (details.isConnected && details.open === before) details.open = !before;
+        }, 0);
+    }, true);
+    root.dataset.rabbitMirrorDetailsFallback = 'true';
+}
+
+function installIntelligentInteractionRescue(root) {
+    const capabilities = detectInteractionCapabilities(root);
+    if (capabilities.checked) {
+        strengthenRabbitMirrorCheckedStateCss(root);
+        installInteractionLabelFallback(root);
+    }
+    if (capabilities.hover) refreshTouchHoverRescue(root);
+    if (capabilities.target) refreshTargetRescue(root);
+    if (capabilities.details) installNestedDetailsFallback(root);
+}
+
+const touchHoverRescueStates = new WeakMap();
+const TOUCH_HOVER_ATTR = 'data-rm-touch-hover';
+const TOUCH_HOVER_STYLE_ATTR = 'data-rabbit-mirror-touch-hover-rescue';
+
+function collectTouchHoverRulesFromCss(cssText) {
+    const rules = [];
+    const subjects = new Set();
+    const blockRe = /([^{}]+)\{([^{}]*)\}/g;
+    let match;
+
+    while ((match = blockRe.exec(String(cssText || '')))) {
+        const selectorText = String(match[1] || '').trim();
+        if (!selectorText || selectorText.startsWith('@') || !/:hover\b/i.test(selectorText)) continue;
+
+        const declarations = addImportantToDeclarationBlock(String(match[2] || ''));
+        if (!declarations.trim()) continue;
+
+        const transformedSelectors = [];
+        for (const selector of selectorText.split(',').map(value => value.trim()).filter(Boolean)) {
+            if (!/:hover\b/i.test(selector)) continue;
+
+            // 手机端以一个持久属性模拟当前元素的 :hover 状态。
+            transformedSelectors.push(selector.replace(/:hover\b/gi, `[${TOUCH_HOVER_ATTR}="true"]`));
+
+            // 只提取紧邻 :hover 的简单主体（class / id / tag / attribute compound）。
+            // 这覆盖模型最常生成的 .area:hover、#panel:hover、label:hover 等结构。
+            const subjectRe = /((?:[a-zA-Z][\w-]*)?(?:[#.][\w-]+|\[[^\]]+\])*)\s*:hover\b/gi;
+            let subjectMatch;
+            while ((subjectMatch = subjectRe.exec(selector))) {
+                const subject = String(subjectMatch[1] || '').trim();
+                if (subject) subjects.add(subject);
+            }
+        }
+
+        if (transformedSelectors.length) {
+            rules.push(`${transformedSelectors.join(', ')} {${declarations}}`);
+        }
+    }
+
+    return { cssText: rules.join('\n'), subjects: [...subjects] };
+}
+
+function refreshTouchHoverRescue(toto) {
+    if (!toto?.querySelectorAll) return;
+
+    let combinedCss = '';
+    const subjects = new Set();
+    toto.querySelectorAll(`style:not([${TOUCH_HOVER_STYLE_ATTR}])`).forEach(styleEl => {
+        const parsed = collectTouchHoverRulesFromCss(styleEl.textContent || '');
+        if (parsed.cssText) combinedCss += `${parsed.cssText}\n`;
+        parsed.subjects.forEach(subject => subjects.add(subject));
+    });
+
+    let rescueStyle = toto.querySelector(`style[${TOUCH_HOVER_STYLE_ATTR}]`);
+    if (combinedCss.trim()) {
+        if (!rescueStyle) {
+            rescueStyle = document.createElement('style');
+            rescueStyle.setAttribute(TOUCH_HOVER_STYLE_ATTR, 'true');
+            toto.appendChild(rescueStyle);
+        }
+        const nextCss = combinedCss.trim();
+        if (rescueStyle.textContent !== nextCss) rescueStyle.textContent = nextCss;
+    } else if (rescueStyle) {
+        rescueStyle.remove();
+    }
+
+    touchHoverRescueStates.set(toto, { subjects: [...subjects] });
+
+    if (toto.dataset.rabbitMirrorTouchHoverFallback === 'true') return;
+    toto.addEventListener('click', (event) => {
+        const state = touchHoverRescueStates.get(toto);
+        if (!state?.subjects?.length) return;
+
+        let hoverTarget = null;
+        for (const subject of state.subjects) {
+            try {
+                const candidate = event.target?.closest?.(subject);
+                if (candidate && toto.contains(candidate)) {
+                    hoverTarget = candidate;
+                    break;
+                }
+            } catch {
+                // Ignore malformed model-generated selectors.
+            }
+        }
+        if (!hoverTarget) return;
+
+        const isActive = hoverTarget.getAttribute(TOUCH_HOVER_ATTR) === 'true';
+        if (isActive) hoverTarget.removeAttribute(TOUCH_HOVER_ATTR);
+        else hoverTarget.setAttribute(TOUCH_HOVER_ATTR, 'true');
+    }, false);
+
+    toto.dataset.rabbitMirrorTouchHoverFallback = 'true';
+}
+
 function installInteractionLabelFallback(toto) {
     if (!toto || toto.dataset.rabbitMirrorInteractionFallback === 'true') return;
 
@@ -525,9 +735,8 @@ function scopeRabbitMirrorInteractionIds(toto) {
     });
 
     synchronizeInteractionReferences(toto, state.idMap);
-    strengthenRabbitMirrorCheckedStateCss(toto);
+    installIntelligentInteractionRescue(toto);
     toto.dataset.rabbitMirrorInteractionScoped = 'true';
-    installInteractionLabelFallback(toto);
 }
 
 function getRenderedRabbitMirrorInteractionRoots(root) {
