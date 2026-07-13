@@ -36,6 +36,56 @@ let interactionScopeCounter = 0;
 const interactionScopeStates = new WeakMap();
 const SCOPED_INTERACTION_ID_RE = /^(rm-[a-z0-9]+-[a-z0-9]+-[a-z0-9]{5}-)(.+)$/i;
 
+const INTERACTION_RESCUE_MEMORY_KEY = 'rabbitMirrorInteractionRescueMemoryV1';
+const rememberedInteractionRescueKeys = new Set();
+
+function hashInteractionSignature(text) {
+    let hash = 2166136261;
+    for (const char of String(text || '')) {
+        hash ^= char.charCodeAt(0);
+        hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0).toString(36);
+}
+
+function getInteractionRescueKey(toto) {
+    if (!toto?.querySelectorAll) return '';
+    const summary = (toto.querySelector('summary')?.textContent || '').replace(/\s+/g, ' ').trim();
+    const bodyText = (toto.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 1200);
+    const inputs = toto.querySelectorAll('input[type="checkbox"], input[type="radio"]').length;
+    const labels = toto.querySelectorAll('label').length;
+    return hashInteractionSignature(`${summary}|${inputs}|${labels}|${bodyText}`);
+}
+
+function loadRememberedInteractionRescues() {
+    if (rememberedInteractionRescueKeys.size) return;
+    try {
+        const values = JSON.parse(sessionStorage.getItem(INTERACTION_RESCUE_MEMORY_KEY) || '[]');
+        if (Array.isArray(values)) values.forEach(value => value && rememberedInteractionRescueKeys.add(String(value)));
+    } catch {
+        // sessionStorage unavailable; in-memory memory still works.
+    }
+}
+
+function rememberInteractionRescue(toto) {
+    const key = getInteractionRescueKey(toto);
+    if (!key) return;
+    loadRememberedInteractionRescues();
+    rememberedInteractionRescueKeys.add(key);
+    try {
+        sessionStorage.setItem(INTERACTION_RESCUE_MEMORY_KEY, JSON.stringify([...rememberedInteractionRescueKeys].slice(-300)));
+    } catch {
+        // Ignore storage failures.
+    }
+}
+
+function wasInteractionRescued(toto) {
+    const key = getInteractionRescueKey(toto);
+    if (!key) return false;
+    loadRememberedInteractionRescues();
+    return rememberedInteractionRescueKeys.has(key);
+}
+
 function createInteractionScopePrefix() {
     interactionScopeCounter += 1;
     const timePart = Date.now().toString(36);
@@ -126,6 +176,74 @@ function strengthenRabbitMirrorCheckedStateCss(toto) {
     });
 }
 
+
+
+const interactionInlineOverrideStates = new WeakMap();
+
+function restoreInteractionInlineOverrides(input) {
+    const records = interactionInlineOverrideStates.get(input);
+    if (!records) return;
+    for (const record of records) {
+        const { element, property, value, priority } = record;
+        if (!element?.style) continue;
+        if (value) element.style.setProperty(property, value, priority || '');
+        else element.style.removeProperty(property);
+    }
+    interactionInlineOverrideStates.delete(input);
+}
+
+function applyCheckedRuleInlineFallback(toto, input) {
+    if (!toto?.querySelectorAll || !input?.id) return;
+
+    restoreInteractionInlineOverrides(input);
+    if (!input.checked) return;
+
+    const escapedId = typeof CSS !== 'undefined' && CSS.escape
+        ? CSS.escape(input.id)
+        : String(input.id).replace(/([^a-zA-Z0-9_-])/g, '\\$1');
+    const idNeedle = `#${escapedId}:checked`;
+    const records = [];
+
+    const applyRule = (selectorText, style) => {
+        if (!selectorText || !style || !selectorText.includes(idNeedle)) return;
+        let targets = [];
+        try {
+            targets = [...toto.querySelectorAll(selectorText)];
+        } catch {
+            return;
+        }
+        for (const target of targets) {
+            for (const property of [...style]) {
+                const value = style.getPropertyValue(property);
+                if (!value) continue;
+                records.push({
+                    element: target,
+                    property,
+                    value: target.style.getPropertyValue(property),
+                    priority: target.style.getPropertyPriority(property),
+                });
+                target.style.setProperty(property, value, 'important');
+            }
+        }
+    };
+
+    for (const styleEl of toto.querySelectorAll('style')) {
+        try {
+            const visitRules = (rules) => {
+                for (const rule of [...(rules || [])]) {
+                    if (rule?.cssRules) visitRules(rule.cssRules);
+                    if (rule?.selectorText && rule?.style) applyRule(rule.selectorText, rule.style);
+                }
+            };
+            visitRules(styleEl.sheet?.cssRules);
+        } catch {
+            // CSSOM 不可读时，文本级 !important 修复仍然保留。
+        }
+    }
+
+    if (records.length) interactionInlineOverrideStates.set(input, records);
+}
+
 function installInteractionLabelFallback(toto) {
     if (!toto || toto.dataset.rabbitMirrorInteractionFallback === 'true') return;
 
@@ -148,6 +266,11 @@ function installInteractionLabelFallback(toto) {
         } else {
             input.checked = !input.checked;
         }
+
+        // 在部分移动端 WebView 中，晚到的 <style> 即使被补上 !important，
+        // 也可能未稳定覆盖元素原有的内联 display:none。这里直接按真实 :checked
+        // 规则把状态声明落到匹配目标上，取消勾选时再恢复，作为最终兜底。
+        applyCheckedRuleInlineFallback(toto, input);
 
         if (previous !== input.checked) {
             input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -335,8 +458,14 @@ function scopeRabbitMirrorInteractionIds(toto) {
 function scopeRabbitMirrorInteractionsInChatDom() {
     const root = getChatRoot();
     if (!root) return;
+    const enabled = isInteractionRescueModeEnabled();
     root.querySelectorAll(MIRROR_TOTO_SELECTOR).forEach(toto => {
-        if (isInsideChatMessage(toto)) scopeRabbitMirrorInteractionIds(toto);
+        if (!isInsideChatMessage(toto)) return;
+        const remembered = wasInteractionRescued(toto);
+        if (!enabled && !remembered) return;
+        if (enabled && !remembered) rememberInteractionRescue(toto);
+        scopeRabbitMirrorInteractionIds(toto);
+        toto.dataset.rabbitMirrorInteractionRescued = 'true';
     });
 }
 
@@ -797,7 +926,7 @@ function sanitizeCodeBlocksInChatDom() {
 
 export function triggerInteractionRescue() {
     try {
-        if (!isInteractionRescueModeEnabled()) return;
+        // 已经修复过的兔子镜会被会话记忆继续维护；关闭开关只停止处理新消息。
         scopeRabbitMirrorInteractionsInChatDom();
     } catch (error) {
         console.debug('[RabbitMirror] interaction rescue trigger failed:', error);
