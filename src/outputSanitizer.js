@@ -229,9 +229,9 @@ function getSiblingTargetsForCheckedRule(input, relation, targetSelector) {
 }
 
 function applyCheckedRuleTextFallback(toto, input) {
-    if (!toto || !input) return;
+    if (!toto || !input) return 0;
     restoreInteractionInlineOverrides(input);
-    if (!input.checked) return;
+    if (!input.checked) return 0;
 
     const records = [];
     for (const rule of parseCheckedRulesFromText(toto, input)) {
@@ -248,6 +248,7 @@ function applyCheckedRuleTextFallback(toto, input) {
         }
     }
     if (records.length) interactionInlineOverrideStates.set(input, records);
+    return records.length;
 }
 
 function restoreInteractionInlineOverrides(input) {
@@ -341,9 +342,10 @@ function installInteractionLabelFallback(toto) {
         // 也可能未稳定覆盖元素原有的内联 display:none。这里直接按真实 :checked
         // 规则把状态声明落到匹配目标上，取消勾选时再恢复，作为最终兜底。
         // 先走不依赖 CSSOM 的文本解析兜底；酒馆/WebView 即使不给 style.sheet，仍能修复。
-        applyCheckedRuleTextFallback(toto, input);
-        // CSSOM 可用时再补充复杂规则（例如 @media 内规则）。
-        applyCheckedRuleInlineFallback(toto, input);
+        // 文本规则命中后不要再运行 CSSOM 兜底，否则后者开头的恢复动作会撤销刚应用的状态。
+        const textRuleCount = applyCheckedRuleTextFallback(toto, input);
+        // 仅在文本解析没有命中时再尝试 CSSOM（例如规则位于复杂 @media 内）。
+        if (!textRuleCount) applyCheckedRuleInlineFallback(toto, input);
 
         if (previous !== input.checked) {
             input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -528,17 +530,32 @@ function scopeRabbitMirrorInteractionIds(toto) {
     installInteractionLabelFallback(toto);
 }
 
+function getRenderedRabbitMirrorInteractionRoots(root) {
+    if (!root?.querySelectorAll) return [];
+    const candidates = new Set(root.querySelectorAll(MIRROR_TOTO_SELECTOR));
+
+    // 部分酒馆渲染/净化链会移除未知的 <toto> 外壳，但保留带“兔子镜”标题的 <details>。
+    // 代码块急救原本已有该兼容路径；交互急救也必须识别同一类实际渲染结果。
+    root.querySelectorAll('details').forEach(details => {
+        if (!isRabbitMirrorDetails(details)) return;
+        if (details.closest(MIRROR_TOTO_SELECTOR)) return;
+        candidates.add(details);
+    });
+
+    return [...candidates];
+}
+
 function scopeRabbitMirrorInteractionsInChatDom() {
     const root = getChatRoot();
     if (!root) return;
     const enabled = isInteractionRescueModeEnabled();
-    root.querySelectorAll(MIRROR_TOTO_SELECTOR).forEach(toto => {
-        if (!isInsideChatMessage(toto)) return;
-        const remembered = wasInteractionRescued(toto);
+    getRenderedRabbitMirrorInteractionRoots(root).forEach(mirrorRoot => {
+        if (!isInsideChatMessage(mirrorRoot)) return;
+        const remembered = wasInteractionRescued(mirrorRoot);
         if (!enabled && !remembered) return;
-        if (enabled && !remembered) rememberInteractionRescue(toto);
-        scopeRabbitMirrorInteractionIds(toto);
-        toto.dataset.rabbitMirrorInteractionRescued = 'true';
+        if (enabled && !remembered) rememberInteractionRescue(mirrorRoot);
+        scopeRabbitMirrorInteractionIds(mirrorRoot);
+        mirrorRoot.dataset.rabbitMirrorInteractionRescued = 'true';
     });
 }
 
