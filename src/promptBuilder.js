@@ -108,7 +108,7 @@ function recentRiskCorrection(forceInteractiveMode = false) {
 
     const hasWeakMedia = flags.some(flag => ['weak_media_body', 'weak_spatial_complexity'].includes(flag));
     if (hasWeakMedia) {
-        lines.push('近期真实输出的媒介本体偏弱。本轮必须让 结构与样式 直接呈现可辨认的媒介轮廓、前中后景层级与视觉锚点，而不是把媒介名只写在标题里。');
+        lines.push('近期真实输出的媒介本体偏弱。本轮必须让结构与样式直接呈现可辨认的媒介轮廓、空间关系与视觉锚点，而不是把媒介名只写在标题里；具体层级须服从本轮媒介。');
     }
 
     const hasWeakInteraction = flags.some(flag => ['visual_promise_unfulfilled'].includes(flag));
@@ -121,7 +121,7 @@ function recentRiskCorrection(forceInteractiveMode = false) {
     }
 
     if ((counts.same_block_stack || 0) >= 2 || (counts.info_page_degrade || 0) >= 2 || (counts.flat_vertical_flow || 0) >= 2) {
-        lines.push('连续重复风险偏高。本轮必须显著改变阅读路径，例如改为分层视窗、横向/环形/地图式空间、局部展开、遮罩探索或多焦点跳读。');
+        lines.push('连续重复风险偏高。本轮必须显著改变空间组织、视觉重心、内容寄生方式与阅读顺序，不得从固定版式菜单中机械换壳。');
     }
 
     if (!lines.length) return '';
@@ -159,12 +159,12 @@ function compactCreativeRule(enabled, formatOnly = false) {
 function complexInteractiveCore() {
     return String.raw`
 复杂视觉核心:
-  - 兔子镜必须像复杂精美的微型 网页媒介作品，而不是普通信息页、单列内容块、简单表单或文字摘要。
-  - 展现形式必须决定 结构与样式 的整体轮廓、空间结构、阅读路径、视觉反馈方式和文字寄生位置，不能只写进标题。
-  - 必须具备主视觉结构、前中后景层级、视觉锚点、材质质感、排版呼吸感与非单调阅读路径。
+  - 兔子镜必须成为具有完整视觉完成度的媒介作品，而不是普通信息页、单列内容块、简单表单或文字摘要。
+  - 展现形式必须决定结构与样式的整体轮廓、空间组织、阅读路径、视觉反馈方式和文字寄生位置，不能只写进标题。
+  - 必须形成明确主视觉、清晰空间关系、视觉锚点、材质差异、排版节奏与非单调阅读路径；具体层级和结构须服从本轮媒介，不得机械套用固定景深或卡片骨架。
   - 主视觉容器必须完整包裹所有可见内容；正文、列表、提示区、角标、底部信息和装饰层不得掉到背景容器之外。背景、圆角、边框、padding 必须作用于承载全部内容的同一个主体容器。
   - 默认关闭内部强交互；每轮可交互模式未开启时，不主动生成内部 checkbox/radio、伪按钮、点击查看、切换标签或依赖状态选择器的控件。需要表现详情时，用静态分层、焦点变化、视觉节奏、局部强调或动效反馈完成。
-  - 鼓励使用 弹性/网格布局、绝对定位分层、矢量图形、渐变、阴影、滤镜、裁切、遮罩、变形、过渡或轻量样式动效构建空间与质感。
+  - 布局、层叠、材质与动态手段必须按本轮媒介需要选择，不得为了显得复杂而堆砌技术效果。
   - 不得只靠换标题、换色、换边框或换装饰复用同一种视觉骨架。`;
 }
 
