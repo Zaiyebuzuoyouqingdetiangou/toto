@@ -22,6 +22,14 @@ function isCodeBlockRescueModeEnabled() {
     }
 }
 
+function isInteractionRescueModeEnabled() {
+    try {
+        return !!getSettings().interactionRescueMode;
+    } catch {
+        return false;
+    }
+}
+
 
 const MIRROR_TOTO_SELECTOR = 'toto[data-rabbit-mirror="true"], toto[data-rabbit-hole="true"]';
 let interactionScopeCounter = 0;
@@ -787,14 +795,24 @@ function sanitizeCodeBlocksInChatDom() {
     }
 }
 
+export function triggerInteractionRescue() {
+    try {
+        if (!isInteractionRescueModeEnabled()) return;
+        scopeRabbitMirrorInteractionsInChatDom();
+    } catch (error) {
+        console.debug('[RabbitMirror] interaction rescue trigger failed:', error);
+    }
+}
+
 export function triggerCodeBlockRescue(mod = null) {
     try {
-        scopeRabbitMirrorInteractionsInChatDom();
-        if (!isCodeBlockRescueModeEnabled()) return;
-        sanitizeLatestRawMessages(mod || globalThis);
-        sanitizeCodeBlocksInChatDom();
-        sanitizeRenderedRabbitMirrorDetailsDom();
-        scopeRabbitMirrorInteractionsInChatDom();
+        if (isCodeBlockRescueModeEnabled()) {
+            sanitizeLatestRawMessages(mod || globalThis);
+            sanitizeCodeBlocksInChatDom();
+            sanitizeRenderedRabbitMirrorDetailsDom();
+        }
+        // 两项同时开启时固定为：先恢复真实 DOM，再修交互。
+        triggerInteractionRescue();
     } catch (error) {
         console.debug('[RabbitMirror] code block rescue trigger failed:', error);
     }
@@ -802,16 +820,15 @@ export function triggerCodeBlockRescue(mod = null) {
 
 function scheduleSanitize(mod) {
     const run = () => {
-        // 交互作用域修复与代码块急救解耦：无论急救是否开启，都只在当前兔子镜内部
-        // 同步处理 id / for / radio name / CSS 引用，不改背景、布局或普通 class。
-        scopeRabbitMirrorInteractionsInChatDom();
-        if (!isCodeBlockRescueModeEnabled()) return;
-        // 先修原始消息，避免保存后继续携带代码块壳。
-        sanitizeLatestRawMessages(mod);
-        // 再只修聊天区内已经渲染出来的代码块，不扫描设置页，避免误伤其他插件 UI。
-        sanitizeCodeBlocksInChatDom();
-        sanitizeRenderedRabbitMirrorDetailsDom();
-        scopeRabbitMirrorInteractionsInChatDom();
+        if (isCodeBlockRescueModeEnabled()) {
+            // 先修原始消息，避免保存后继续携带代码块壳。
+            sanitizeLatestRawMessages(mod);
+            // 再只修聊天区内已经渲染出来的代码块，不扫描设置页，避免误伤其他插件 UI。
+            sanitizeCodeBlocksInChatDom();
+            sanitizeRenderedRabbitMirrorDetailsDom();
+        }
+        // 交互急救独立受控；若代码块急救也开启，此时 DOM 已恢复完成。
+        triggerInteractionRescue();
     };
     setTimeout(run, 80);
     setTimeout(run, 350);

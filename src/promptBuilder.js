@@ -181,10 +181,8 @@ function forcedInteractiveRule(enabled) {
     return String.raw`
 每轮可交互模式已开启:
   - 兔子镜内部必须包含至少一处无需 JS 即可生效的真实交互。
-  - 优先使用结构简单、命中稳定的原生交互，例如单个内部 details/summary、横向滚动、hover/active/focus 或简单 checkbox/radio+label；不得只用普通外层折叠冒充内部交互。
-  - 若使用 checkbox/radio，id 与 name 必须带本轮唯一前缀，不得使用 tag1、tab1、option1 等通用 id；input 必须放在 label 与反馈区域之前，反馈区域必须与 input 位于 样式选择器可命中的同级结构中。
-  - 不得只用 样式 content 伪元素作为唯一反馈，必须存在真实网页反馈区域；不要把反馈父容器整体设为 opacity:0。
-  - 装饰层不得遮挡交互区域；不得机械堆叠多个内部 details。`;
+  - 交互必须属于本轮媒介本体，并服务探索、揭示、翻阅、切换或阅读路径变化；不得附加通用按钮、控制面板或机械堆叠折叠结构。
+  - 交互前后必须产生清晰可见的内容、视觉或状态差异，并统一采用无需 JS 的 HTML/CSS 结构实现。`;
 }
 
 function htmlSafetyCore() {
