@@ -4,13 +4,14 @@
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.31.80",
+  "version": "0.31.72",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
+  "minimum_client_version": "1.13.0",
   "hooks": {
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "RabbitMirror formal build with native settings panel and 0.31.74 interaction rescue library."
+  "description": "Rabbit Mirror Theater: 7.10-based stable RabbitMirror with code-block rescue and intelligent multi-route interaction rescue."
 }
