@@ -228,6 +228,18 @@ function getSiblingTargetsForCheckedRule(input, relation, targetSelector) {
     return targets;
 }
 
+function getCrossContainerTargetsForCheckedRule(root, targetSelector) {
+    if (!root?.querySelectorAll || !targetSelector) return [];
+    try {
+        const targets = [...root.querySelectorAll(targetSelector)];
+        // 跨容器急救只接受当前兔子镜内明确且数量可控的目标，避免宽泛选择器误伤整页。
+        if (!targets.length || targets.length > 12) return [];
+        return targets;
+    } catch {
+        return [];
+    }
+}
+
 function applyCheckedRuleTextFallback(toto, input) {
     if (!toto || !input) return 0;
     restoreInteractionInlineOverrides(input);
@@ -235,7 +247,11 @@ function applyCheckedRuleTextFallback(toto, input) {
 
     const records = [];
     for (const rule of parseCheckedRulesFromText(toto, input)) {
-        for (const target of getSiblingTargetsForCheckedRule(input, rule.relation, rule.targetSelector)) {
+        let targets = getSiblingTargetsForCheckedRule(input, rule.relation, rule.targetSelector);
+        // 模型常把 input 放在按钮容器、反馈放在相邻内容容器，导致 +/~ 永远跨不出父级。
+        // 原结构无匹配时，降级为当前兔子镜根内的受控目标查找，直接实现规则最终状态。
+        if (!targets.length) targets = getCrossContainerTargetsForCheckedRule(toto, rule.targetSelector);
+        for (const target of targets) {
             for (const [property, value] of rule.styleMap) {
                 records.push({
                     element: target,
@@ -543,6 +559,11 @@ function installInteractionLabelFallback(toto) {
         event.preventDefault();
         const previous = !!input.checked;
         if (input.type === 'radio') {
+            // 先恢复同组上一分支由急救器写入的内联状态，再切换到当前分支。
+            const radioName = String(input.name || '');
+            [...toto.querySelectorAll('input[type="radio"]')]
+                .filter(item => item !== input && (!radioName || item.name === radioName))
+                .forEach(item => restoreInteractionInlineOverrides(item));
             input.checked = true;
         } else {
             input.checked = !input.checked;
