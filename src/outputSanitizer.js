@@ -180,6 +180,76 @@ function strengthenRabbitMirrorCheckedStateCss(toto) {
 
 const interactionInlineOverrideStates = new WeakMap();
 
+
+function parseCheckedRulesFromText(toto, input) {
+    if (!toto?.querySelectorAll || !input?.id) return [];
+    const escapedId = escapeRegExp(input.id);
+    const selectorNeedle = new RegExp(`#${escapedId}:checked\\s*([+~])\\s*([^,{]+)`, 'i');
+    const results = [];
+
+    for (const styleEl of toto.querySelectorAll('style')) {
+        const css = String(styleEl.textContent || '');
+        const blockRe = /([^{}]+)\{([^{}]*)\}/g;
+        let match;
+        while ((match = blockRe.exec(css))) {
+            const selectors = String(match[1] || '').split(',').map(v => v.trim()).filter(Boolean);
+            const declarations = String(match[2] || '');
+            for (const selector of selectors) {
+                const selectorMatch = selector.match(selectorNeedle);
+                if (!selectorMatch) continue;
+                const relation = selectorMatch[1];
+                const targetSelector = selectorMatch[2].trim();
+                const styleMap = [];
+                declarations.replace(/(^|;)\s*([a-z-]+)\s*:\s*([^;{}]+?)(\s*!important\s*)?(?=;|$)/gi,
+                    (_m, _sep, property, value) => {
+                        const cleanValue = String(value || '').trim().replace(/\s*!important\s*$/i, '');
+                        if (property && cleanValue) styleMap.push([property, cleanValue]);
+                        return _m;
+                    });
+                if (styleMap.length) results.push({ relation, targetSelector, styleMap });
+            }
+        }
+    }
+    return results;
+}
+
+function getSiblingTargetsForCheckedRule(input, relation, targetSelector) {
+    const targets = [];
+    if (!input?.parentElement || !targetSelector) return targets;
+    let node = input.nextElementSibling;
+    if (relation === '+') {
+        if (node?.matches?.(targetSelector)) targets.push(node);
+        return targets;
+    }
+    while (node) {
+        if (node.matches?.(targetSelector)) targets.push(node);
+        node = node.nextElementSibling;
+    }
+    return targets;
+}
+
+function applyCheckedRuleTextFallback(toto, input) {
+    if (!toto || !input) return;
+    restoreInteractionInlineOverrides(input);
+    if (!input.checked) return;
+
+    const records = [];
+    for (const rule of parseCheckedRulesFromText(toto, input)) {
+        for (const target of getSiblingTargetsForCheckedRule(input, rule.relation, rule.targetSelector)) {
+            for (const [property, value] of rule.styleMap) {
+                records.push({
+                    element: target,
+                    property,
+                    value: target.style.getPropertyValue(property),
+                    priority: target.style.getPropertyPriority(property),
+                });
+                target.style.setProperty(property, value, 'important');
+            }
+        }
+    }
+    if (records.length) interactionInlineOverrideStates.set(input, records);
+}
+
 function restoreInteractionInlineOverrides(input) {
     const records = interactionInlineOverrideStates.get(input);
     if (!records) return;
@@ -270,6 +340,9 @@ function installInteractionLabelFallback(toto) {
         // 在部分移动端 WebView 中，晚到的 <style> 即使被补上 !important，
         // 也可能未稳定覆盖元素原有的内联 display:none。这里直接按真实 :checked
         // 规则把状态声明落到匹配目标上，取消勾选时再恢复，作为最终兜底。
+        // 先走不依赖 CSSOM 的文本解析兜底；酒馆/WebView 即使不给 style.sheet，仍能修复。
+        applyCheckedRuleTextFallback(toto, input);
+        // CSSOM 可用时再补充复杂规则（例如 @media 内规则）。
         applyCheckedRuleInlineFallback(toto, input);
 
         if (previous !== input.checked) {
