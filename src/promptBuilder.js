@@ -138,7 +138,7 @@ function coreOutputProtocol() {
   - 禁止 script、iframe、object、embed、form、事件属性；所有标签必须闭合，最终必须以 </toto> 结束。`;
 }
 
-function compactCreativeRule(enabled, formatOnly = false) {
+function compactCreativeRule(enabled, formatOnly = false, visualSceneryMode = false) {
     if (formatOnly) {
         return enabled ? String.raw`
 仅展现形式发散:
@@ -147,9 +147,12 @@ function compactCreativeRule(enabled, formatOnly = false) {
   本轮只围绕展现形式生成媒介结构与视觉读法，不另起题材分类，不在标题、summary 或正文中标注额外类别；内容素材只取自当前对话语境。`;
     }
     if (enabled) {
+        const dynamicJointRule = visualSceneryMode
+            ? ' 动态视觉与孵化必须同时成立；孵化不得以 hover、点击反馈或静态效果替代每轮自动运行的 CSS 动画。'
+            : '';
         return String.raw`
 发散孵化:
-  抽取结果是灵感种子，不是封闭模板；保留核心气味/媒介痕迹/关系逻辑，同时允许扩展库外媒介、材质、空间结构、交互痕迹与外延剧情。发散必须能追溯回本轮抽取结果，禁止跑题。`;
+  抽取结果是灵感种子，不是封闭模板；保留核心气味/媒介痕迹/关系逻辑，同时允许扩展库外媒介、材质、空间结构、交互痕迹与外延剧情。发散必须能追溯回本轮抽取结果，禁止跑题。${dynamicJointRule}`;
     }
     return String.raw`
 经典收敛:
@@ -235,7 +238,7 @@ ${selectedThemes}
 本轮展现形式:
 ${selectedFormats}`);
     }
-    chunks.push(compactCreativeRule(!!settings.creativeExpansionMode, mode === 'format_only'));
+    chunks.push(compactCreativeRule(!!settings.creativeExpansionMode, mode === 'format_only', visualSceneryMode));
     chunks.push(complexInteractiveCore());
     chunks.push(forcedInteractiveRule(!!settings.forceInteractiveMode));
     chunks.push(visualColorTruthRule());
