@@ -4,7 +4,7 @@
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.31.91",
+  "version": "0.31.92",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "Rabbit Mirror Theater: restores the original Visual Scenery canvas semantics and extends intelligent interaction rescue for scoped getElementById style/text click programs."
+  "description": "Rabbit Mirror Theater: restores the original Visual Scenery canvas semantics and restores stripped getElementById click programs from the raw chat message and safely binds them inside the current Rabbit Mirror."
 }

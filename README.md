@@ -1,13 +1,11 @@
-# RabbitMirror 0.31.91
+# RabbitMirror 0.31.92
 
-本版以 **0.31.90 Visual Scenery 原义恢复版**为底座，仅扩展智能交互急救。
+本版以 0.31.91 为底座，仅增强智能交互急救。
 
-新增支持在当前兔子镜范围内安全转换以下伪交互：
+- 修复宿主在 DOM 渲染前删除 `onclick` 后，0.31.91 无法再读取伪交互程序的问题。
+- 急救器会从当前聊天消息的原始 HTML 中回读安全可解析的 `document.getElementById(...)` 样式与文字赋值。
+- 通过兔子镜标题与元素子路径映射回当前渲染节点，目标仍严格限制在当前兔子镜内部。
+- 不执行原 JavaScript，不使用 `eval`；包含未知语句时仍然拒绝。
+- Prompt、Visual Scenery、主题库、设置键、代码块急救均未修改。
 
-- `document.getElementById(...).style.xxx = ...`
-- `document.getElementById(...).innerText = ...`
-- `document.getElementById(...).textContent = ...`
-
-急救器不会执行模型生成的 JavaScript，也不使用 `eval`；只有整段脚本均由可确认的目标样式/文字赋值组成时才会接管。Visual Scenery、Prompt、完整主题库、代码块急救和设置逻辑均未修改。
-
-详细变更见 `README-0.31.91.md`。
+详细变更见 `README-0.31.92.md`。
