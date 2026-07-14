@@ -142,7 +142,11 @@ function complexInteractiveCore() {
   - 兔子镜必须像复杂精美的微型交互 HTML 媒介作品，而不是普通信息页、单列内容块、简单表单或文字摘要。
   - 展现形式必须决定 DOM/CSS 的整体轮廓、空间结构、阅读路径、交互方式和文字寄生位置，不能只写进标题。
   - 必须具备主视觉结构、前中后景层级、视觉锚点、材质质感、排版呼吸感与非单调阅读路径。
-  - 除最外层折叠外，内部至少包含一个可操作/可探索入口，例如内部 details/summary、checkbox+label 控制、局部展开、隐藏线索、分层视窗、状态切换或 hover/active 反馈。
+  - 除最外层兔子镜折叠外，每轮内部必须至少包含一个真实可操作或可探索的交互入口；最外层 details/summary 不计入内部交互。
+  - 内部交互必须从本轮展现形式自身的结构、阅读方式、空间关系或叙事逻辑中推导，严禁直接套用固定模板。设计时，应先判断当前媒介中什么内容或意象天然适合被触发、改变或探索，再决定触发对象、变化路径与阅读结果。
+  - 交互触发后，必须使作品本体产生清晰、肉眼可见且具有叙事意义的变化；仅改变边框、颜色、阴影，或只做出“看起来可点”的外观，不算有效交互。
+  - 交互实现方案每轮必须重新设计，不得照搬前轮方案或长期重复同一种交互骨架；不得默认连续使用 details/summary，也不得机械堆叠折叠组件。只有本轮展现形式天然需要分段展开或层层阅读时，才允许使用内部 details。
+  - 必须采用安全、可稳定渲染的纯 HTML/CSS 结构；严禁使用内联 JavaScript 事件，不得把 hover 作为移动端唯一触发方式，交互区域不得被装饰层遮挡。
   - 鼓励使用 Flex/Grid、absolute 定位、SVG、linear-gradient、box-shadow、filter、clip-path、mask、transform、transition 或轻量 CSS 动效构建空间与质感。
   - 不得只靠换标题、换色、换边框或换装饰复用同一种视觉骨架。`;
 }
@@ -177,7 +181,7 @@ function stateBarIsolationRule() {
 function uiAuditRule() {
     return String.raw`
 UI 自查短版:
-  输出前检查：媒介本体是否靠 DOM/CSS 成立、是否有空间层级/视觉锚点/质感、是否有内部交互入口、是否退化为普通纵向内容流。失败则重写。`;
+  输出前检查：媒介本体是否靠 DOM/CSS 成立、是否有空间层级/视觉锚点/质感、是否存在真实可触发且触发后产生明显内容变化的内部交互、是否退化为普通纵向内容流。失败则重写。`;
 }
 
 function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive }) {
