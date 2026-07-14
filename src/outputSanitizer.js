@@ -358,6 +358,7 @@ const interactionCapabilityStates = new WeakMap();
 const INLINE_PSEUDO_RESCUE_ATTR = 'data-rabbit-mirror-inline-pseudo-rescue';
 const HINTED_PSEUDO_RESCUE_ATTR = 'data-rabbit-mirror-hinted-pseudo-rescue';
 const CHANGE_PSEUDO_RESCUE_ATTR = 'data-rabbit-mirror-change-pseudo-rescue';
+const DIRECT_ID_CLICK_RESCUE_ATTR = 'data-rabbit-mirror-direct-id-click-rescue';
 const PSEUDO_ACTIVE_ATTR = 'data-rm-pseudo-active';
 const pseudoInteractionStates = new WeakMap();
 const PSEUDO_INTERACTION_HINT_RE = /(?:鼠标\s*)?(?:悬停|划过|移入)|\bhover\b|(?:点击|轻触|触摸).{0,16}(?:显示|查看|展开|播放|切换)/i;
@@ -719,6 +720,110 @@ function hasPseudoInteractionCandidates(root) {
     return findHintedHiddenLayerPairs(root).length > 0;
 }
 
+
+function decodeSafeInlineString(value) {
+    return String(value || '')
+        .replace(/\\n/g, '\n')
+        .replace(/\\r/g, '\r')
+        .replace(/\\t/g, '\t')
+        .replace(/\\(['"\\])/g, '$1');
+}
+
+function collectDirectIdClickAssignments(scriptText, root) {
+    const source = String(scriptText || '');
+    if (!source || !/document\s*\.\s*getElementById\s*\(/i.test(source)) return null;
+
+    const matches = [];
+    const addMatch = (match, action) => {
+        matches.push({ start: match.index, end: match.index + match[0].length, action });
+    };
+
+    // document.getElementById('id').style.left = '70%';
+    const styleDotRe = /document\s*\.\s*getElementById\s*\(\s*(['"])([a-zA-Z_][\w:.-]*)\1\s*\)\s*\.\s*style\s*\.\s*([a-zA-Z][\w]*)\s*=\s*(['"])((?:\\.|(?!\4)[\s\S])*)\4\s*;?/g;
+    let match;
+    while ((match = styleDotRe.exec(source))) {
+        const target = resolveScopedPseudoId(root, match[2]);
+        const property = normalizeStylePropertyName(match[3]);
+        const value = decodeSafeInlineString(match[5]);
+        if (!target || !property || !value) return null;
+        addMatch(match, { type: 'style', target, property, value });
+    }
+
+    // document.getElementById('id').style['left'] = '70%';
+    const styleBracketRe = /document\s*\.\s*getElementById\s*\(\s*(['"])([a-zA-Z_][\w:.-]*)\1\s*\)\s*\.\s*style\s*\[\s*(['"])([a-zA-Z-]+)\3\s*\]\s*=\s*(['"])((?:\\.|(?!\5)[\s\S])*)\5\s*;?/g;
+    while ((match = styleBracketRe.exec(source))) {
+        const target = resolveScopedPseudoId(root, match[2]);
+        const property = normalizeStylePropertyName(match[4]);
+        const value = decodeSafeInlineString(match[6]);
+        if (!target || !property || !value) return null;
+        addMatch(match, { type: 'style', target, property, value });
+    }
+
+    // document.getElementById('id').innerText/textContent = '...';
+    const textRe = /document\s*\.\s*getElementById\s*\(\s*(['"])([a-zA-Z_][\w:.-]*)\1\s*\)\s*\.\s*(innerText|textContent)\s*=\s*(['"])((?:\\.|(?!\4)[\s\S])*)\4\s*;?/g;
+    while ((match = textRe.exec(source))) {
+        const target = resolveScopedPseudoId(root, match[2]);
+        const value = decodeSafeInlineString(match[5]);
+        if (!target) return null;
+        addMatch(match, { type: 'text', target, value });
+    }
+
+    if (!matches.length) return null;
+    matches.sort((a, b) => a.start - b.start);
+
+    // 只接受由上述明确赋值与空白/分号组成的脚本。任何未知语句都会放弃，绝不部分执行。
+    let cursor = 0;
+    let remainder = '';
+    for (const item of matches) {
+        if (item.start < cursor) continue;
+        remainder += source.slice(cursor, item.start);
+        cursor = item.end;
+    }
+    remainder += source.slice(cursor);
+    if (remainder.replace(/[\s;]+/g, '') !== '') return null;
+
+    return matches.map(item => item.action);
+}
+
+function applyDirectIdClickAssignments(actions) {
+    for (const action of actions || []) {
+        if (!action?.target) continue;
+        if (action.type === 'style') {
+            action.target.style?.setProperty?.(action.property, action.value, 'important');
+        } else if (action.type === 'text') {
+            action.target.textContent = action.value;
+        }
+    }
+}
+
+function installDirectIdClickProgramRescue(root) {
+    if (!root?.querySelectorAll) return;
+    const candidates = [...root.querySelectorAll('[onclick]')];
+
+    for (const trigger of candidates) {
+        if (trigger.hasAttribute(DIRECT_ID_CLICK_RESCUE_ATTR)) continue;
+        const source = trigger.getAttribute('onclick');
+        const actions = collectDirectIdClickAssignments(source, root);
+        if (!actions?.length) continue;
+
+        preparePseudoTrigger(trigger);
+        const activate = event => {
+            if (event?.type === 'click' && shouldIgnorePseudoToggleEvent(event, trigger)) return;
+            if (event?.type === 'keydown') {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+            }
+            applyDirectIdClickAssignments(actions);
+        };
+
+        trigger.addEventListener('click', activate, false);
+        trigger.addEventListener('keydown', activate, false);
+        trigger.removeAttribute('onclick');
+        trigger.removeAttribute('aria-pressed');
+        trigger.setAttribute(DIRECT_ID_CLICK_RESCUE_ATTR, 'true');
+    }
+}
+
 function installInlineEventPseudoInteractionRescue(root) {
     if (!root?.querySelectorAll) return;
     const candidates = [...root.querySelectorAll('[onmouseover], [onmouseenter], [onmouseout], [onmouseleave], [onclick]')];
@@ -792,6 +897,7 @@ function installHintedHiddenLayerRescue(root) {
 
 function installPseudoInteractionRescue(root) {
     installCheckedChangePseudoInteractionRescue(root);
+    installDirectIdClickProgramRescue(root);
     installInlineEventPseudoInteractionRescue(root);
     // 某些宿主会在渲染前移除 onmouseover/onclick。此路径只在“悬停/点击提示 + 隐藏全覆盖层”同时存在时启用。
     installHintedHiddenLayerRescue(root);
