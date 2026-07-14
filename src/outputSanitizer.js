@@ -1,5 +1,8 @@
 import { getSettings } from './settings.js';
 
+// Cached SillyTavern script module. In module builds, chat is not guaranteed to be exposed on globalThis.
+let hostScriptModule = null;
+
 const TOTO_BLOCK_RE = /<toto\b[\s\S]*?<\/toto>/gi;
 const TOTO_BLOCK_SINGLE_RE = /<toto\b[\s\S]*?<\/toto>/i;
 const FENCED_BLOCK_RE = /```(?:html|HTML|xml|XML)?\s*\n?([\s\S]*?)\n?```/gi;
@@ -831,9 +834,22 @@ function getRabbitMirrorSummaryText(root) {
         .trim();
 }
 
+function getAvailableHostChat() {
+    try {
+        const contextChat = globalThis.SillyTavern?.getContext?.()?.chat;
+        if (Array.isArray(contextChat)) return contextChat;
+    } catch {
+        // Fall through to the imported script module.
+    }
+
+    if (Array.isArray(hostScriptModule?.chat)) return hostScriptModule.chat;
+    if (Array.isArray(globalThis.chat)) return globalThis.chat;
+    return [];
+}
+
 function getRawAssistantMessageForRenderedRoot(root) {
-    const chat = globalThis.chat;
-    if (!Array.isArray(chat) || !chat.length || !root?.closest) return '';
+    const chat = getAvailableHostChat();
+    if (!chat.length || !root?.closest) return '';
 
     const messageElement = root.closest('.mes, [mesid], [data-message-id], [data-messageid]');
     const rawMessageId = messageElement?.getAttribute?.('mesid')
@@ -1996,6 +2012,7 @@ function scheduleSanitize(mod) {
 export async function initOutputSanitizer() {
     try {
         const mod = await import('../../../../../script.js');
+        hostScriptModule = mod;
         const eventSource = mod?.eventSource;
         const eventTypes = mod?.event_types || {};
         if (eventSource?.on) {
