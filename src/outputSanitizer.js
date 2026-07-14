@@ -824,6 +824,142 @@ function installDirectIdClickProgramRescue(root) {
     }
 }
 
+
+function getRabbitMirrorSummaryText(root) {
+    return String(root?.querySelector?.('summary')?.textContent || '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function getRawAssistantMessageForRenderedRoot(root) {
+    const chat = globalThis.chat;
+    if (!Array.isArray(chat) || !chat.length || !root?.closest) return '';
+
+    const messageElement = root.closest('.mes, [mesid], [data-message-id], [data-messageid]');
+    const rawMessageId = messageElement?.getAttribute?.('mesid')
+        ?? messageElement?.getAttribute?.('data-message-id')
+        ?? messageElement?.getAttribute?.('data-messageid')
+        ?? messageElement?.dataset?.messageId
+        ?? messageElement?.dataset?.messageid;
+
+    const numericId = Number.parseInt(String(rawMessageId ?? ''), 10);
+    if (Number.isInteger(numericId) && typeof chat[numericId]?.mes === 'string') {
+        return chat[numericId].mes;
+    }
+
+    // 某些主题不保留 mesid。此时仅在近期助手消息里按兔子镜标题精确回查。
+    const summary = getRabbitMirrorSummaryText(root);
+    if (!summary) return '';
+    for (let index = chat.length - 1; index >= Math.max(0, chat.length - 12); index -= 1) {
+        const item = chat[index];
+        if (item?.is_user || typeof item?.mes !== 'string') continue;
+        if (item.mes.includes(summary)) return item.mes;
+    }
+    return '';
+}
+
+function collectRawRabbitMirrorRoots(rawHtml) {
+    if (!rawHtml || typeof document === 'undefined') return [];
+    try {
+        const template = document.createElement('template');
+        template.innerHTML = normalizeMirrorAttribute(String(rawHtml));
+        const roots = [...template.content.querySelectorAll(MIRROR_TOTO_SELECTOR)];
+        if (roots.length) return roots;
+
+        return [...template.content.querySelectorAll('details')]
+            .filter(details => isRabbitMirrorDetails(details));
+    } catch {
+        return [];
+    }
+}
+
+function chooseMatchingRawRabbitMirrorRoot(rawHtml, renderedRoot) {
+    const candidates = collectRawRabbitMirrorRoots(rawHtml);
+    if (!candidates.length) return null;
+
+    const renderedSummary = getRabbitMirrorSummaryText(renderedRoot);
+    const matched = candidates.find(candidate => getRabbitMirrorSummaryText(candidate) === renderedSummary)
+        || candidates.find(candidate => renderedSummary && getRabbitMirrorSummaryText(candidate).includes(renderedSummary))
+        || candidates[0];
+
+    if (!matched) return null;
+    const renderedTag = String(renderedRoot?.tagName || '').toLowerCase();
+    const matchedTag = String(matched.tagName || '').toLowerCase();
+    if (renderedTag === matchedTag) return matched;
+
+    if (renderedTag === 'details') {
+        return matched.querySelector?.(':scope > details') || matched.querySelector?.('details') || matched;
+    }
+    if (renderedTag === 'toto' && matchedTag === 'details') return matched;
+    return matched;
+}
+
+function getElementChildIndexPath(root, element) {
+    if (!root || !element || root === element) return [];
+    const path = [];
+    let current = element;
+    while (current && current !== root) {
+        const parent = current.parentElement;
+        if (!parent) return null;
+        const index = [...parent.children].indexOf(current);
+        if (index < 0) return null;
+        path.unshift(index);
+        current = parent;
+    }
+    return current === root ? path : null;
+}
+
+function resolveElementChildIndexPath(root, path) {
+    let current = root;
+    for (const index of path || []) {
+        current = current?.children?.[index] || null;
+        if (!current) return null;
+    }
+    return current;
+}
+
+function bindDirectIdClickActions(trigger, actions) {
+    if (!trigger || !actions?.length || trigger.hasAttribute(DIRECT_ID_CLICK_RESCUE_ATTR)) return false;
+
+    preparePseudoTrigger(trigger);
+    const activate = event => {
+        if (event?.type === 'click' && shouldIgnorePseudoToggleEvent(event, trigger)) return;
+        if (event?.type === 'keydown') {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+        }
+        applyDirectIdClickAssignments(actions);
+    };
+
+    trigger.addEventListener('click', activate, false);
+    trigger.addEventListener('keydown', activate, false);
+    trigger.removeAttribute('onclick');
+    trigger.removeAttribute('aria-pressed');
+    trigger.setAttribute(DIRECT_ID_CLICK_RESCUE_ATTR, 'true');
+    return true;
+}
+
+function installRawMessageDirectIdClickProgramRescue(root) {
+    if (!root?.querySelectorAll) return 0;
+    const rawMessage = getRawAssistantMessageForRenderedRoot(root);
+    const rawRoot = chooseMatchingRawRabbitMirrorRoot(rawMessage, root);
+    if (!rawRoot?.querySelectorAll) return 0;
+
+    let installed = 0;
+    for (const rawTrigger of rawRoot.querySelectorAll('[onclick]')) {
+        const path = getElementChildIndexPath(rawRoot, rawTrigger);
+        if (!path) continue;
+        const renderedTrigger = resolveElementChildIndexPath(root, path);
+        if (!renderedTrigger || renderedTrigger.hasAttribute(DIRECT_ID_CLICK_RESCUE_ATTR)) continue;
+
+        const source = rawTrigger.getAttribute('onclick');
+        const actions = collectDirectIdClickAssignments(source, root);
+        if (!actions?.length) continue;
+        if (bindDirectIdClickActions(renderedTrigger, actions)) installed += 1;
+    }
+    return installed;
+}
+
 function installInlineEventPseudoInteractionRescue(root) {
     if (!root?.querySelectorAll) return;
     const candidates = [...root.querySelectorAll('[onmouseover], [onmouseenter], [onmouseout], [onmouseleave], [onclick]')];
@@ -1002,6 +1138,10 @@ function installNestedDetailsFallback(root) {
 }
 
 function installIntelligentInteractionRescue(root) {
+    // SillyTavern/DOMPurify 可能在渲染前移除 onclick。此时从当前消息的原始 HTML
+    // 回读安全可解析的 getElementById 样式/文字赋值，并按同一 DOM 路径绑定到渲染节点。
+    installRawMessageDirectIdClickProgramRescue(root);
+
     const capabilities = detectInteractionCapabilities(root);
     if (capabilities.checked) {
         strengthenRabbitMirrorCheckedStateCss(root);
