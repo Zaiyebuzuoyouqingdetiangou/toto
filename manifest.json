@@ -4,7 +4,7 @@
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.31.88",
+  "version": "0.31.89",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "Rabbit Mirror Theater: 7.10 aesthetic, complete libraries, mature dual rescue, plus refined format-derived interaction rules and conservative pseudo-interaction rescue."
+  "description": "Rabbit Mirror Theater: 7.10 aesthetic, complete libraries, mature dual rescue, plus hard dynamic-visual fulfillment and conservative multi-target onchange pseudo-interaction rescue."
 }

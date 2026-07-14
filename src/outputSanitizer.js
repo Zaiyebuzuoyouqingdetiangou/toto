@@ -357,6 +357,7 @@ const interactionCapabilityStates = new WeakMap();
 
 const INLINE_PSEUDO_RESCUE_ATTR = 'data-rabbit-mirror-inline-pseudo-rescue';
 const HINTED_PSEUDO_RESCUE_ATTR = 'data-rabbit-mirror-hinted-pseudo-rescue';
+const CHANGE_PSEUDO_RESCUE_ATTR = 'data-rabbit-mirror-change-pseudo-rescue';
 const PSEUDO_ACTIVE_ATTR = 'data-rm-pseudo-active';
 const pseudoInteractionStates = new WeakMap();
 const PSEUDO_INTERACTION_HINT_RE = /(?:鼠标\s*)?(?:悬停|划过|移入)|\bhover\b|(?:点击|轻触|触摸).{0,16}(?:显示|查看|展开|播放|切换)/i;
@@ -400,6 +401,197 @@ function collectInlineAssignments(element, attributeNames) {
         }
     }
     return [...combined.entries()].map(([property, value]) => ({ property, value }));
+}
+
+function resolveScopedPseudoId(root, rawId) {
+    const id = String(rawId || '').trim();
+    if (!root?.querySelectorAll || !id) return null;
+
+    const direct = [...root.querySelectorAll('[id]')].find(element => element.id === id);
+    if (direct) return direct;
+
+    const mappedId = interactionScopeStates.get(root)?.idMap?.get?.(id);
+    if (mappedId) {
+        const mapped = [...root.querySelectorAll('[id]')].find(element => element.id === mappedId);
+        if (mapped) return mapped;
+    }
+
+    return null;
+}
+
+function resolveParentElementExpression(element, expression) {
+    const source = String(expression || '').replace(/\s+/g, '');
+    if (!/^this(?:\.parentElement)+$/.test(source)) return null;
+    const depth = (source.match(/\.parentElement/g) || []).length;
+    let current = element;
+    for (let index = 0; index < depth; index += 1) {
+        current = current?.parentElement || null;
+        if (!current) return null;
+    }
+    return current;
+}
+
+function findMatchingScriptBrace(sourceText, openIndex) {
+    const source = String(sourceText || '');
+    if (source[openIndex] !== '{') return -1;
+    let depth = 0;
+    let quote = '';
+    let escaped = false;
+
+    for (let index = openIndex; index < source.length; index += 1) {
+        const char = source[index];
+        if (quote) {
+            if (escaped) escaped = false;
+            else if (char === '\\') escaped = true;
+            else if (char === quote) quote = '';
+            continue;
+        }
+        if (char === '"' || char === "'" || char === '`') {
+            quote = char;
+            continue;
+        }
+        if (char === '{') depth += 1;
+        else if (char === '}') {
+            depth -= 1;
+            if (depth === 0) return index;
+        }
+    }
+    return -1;
+}
+
+function extractCheckedConditionalBranches(scriptText) {
+    const source = String(scriptText || '');
+    const conditionMatch = /if\s*\(\s*this\.checked\s*\)/i.exec(source);
+    if (!conditionMatch) return null;
+
+    const activeOpen = source.indexOf('{', conditionMatch.index + conditionMatch[0].length);
+    if (activeOpen < 0) return null;
+    const activeClose = findMatchingScriptBrace(source, activeOpen);
+    if (activeClose < 0) return null;
+
+    const tail = source.slice(activeClose + 1);
+    const elseMatch = /^\s*else\s*/i.exec(tail);
+    if (!elseMatch) return null;
+    const inactiveOpen = source.indexOf('{', activeClose + 1 + elseMatch[0].length);
+    if (inactiveOpen < 0) return null;
+    const inactiveClose = findMatchingScriptBrace(source, inactiveOpen);
+    if (inactiveClose < 0) return null;
+
+    return {
+        active: source.slice(activeOpen + 1, activeClose),
+        inactive: source.slice(inactiveOpen + 1, inactiveClose),
+    };
+}
+
+function parseNamedStyleAssignments(scriptText, targetMap) {
+    const assignmentsByTarget = new Map();
+    const source = String(scriptText || '');
+
+    const remember = (targetName, property, value) => {
+        const target = targetMap.get(targetName);
+        const normalizedProperty = normalizeStylePropertyName(property);
+        const normalizedValue = String(value || '').trim();
+        if (!target || !normalizedProperty || !normalizedValue) return;
+        if (!assignmentsByTarget.has(target)) assignmentsByTarget.set(target, new Map());
+        assignmentsByTarget.get(target).set(normalizedProperty, normalizedValue);
+    };
+
+    const dotAssignmentRe = /([a-zA-Z_$][\w$]*)\.style\.([a-zA-Z][\w]*)\s*=\s*(['"])([\s\S]*?)\3\s*;?/g;
+    let match;
+    while ((match = dotAssignmentRe.exec(source))) remember(match[1], match[2], match[4]);
+
+    const bracketAssignmentRe = /([a-zA-Z_$][\w$]*)\.style\[\s*(['"])([a-zA-Z-]+)\2\s*\]\s*=\s*(['"])([\s\S]*?)\4\s*;?/g;
+    while ((match = bracketAssignmentRe.exec(source))) remember(match[1], match[3], match[5]);
+
+    return new Map(
+        [...assignmentsByTarget.entries()].map(([target, assignments]) => [
+            target,
+            [...assignments.entries()].map(([property, value]) => ({ property, value })),
+        ]),
+    );
+}
+
+function parseCheckedChangeStyleProgram(input, root) {
+    const source = String(input?.getAttribute?.('onchange') || '');
+    if (!source || !/if\s*\(\s*this\.checked\s*\)/i.test(source)) return null;
+
+    // 只接受结构清晰的 if(this.checked){...} else {...}，绝不执行模型输出的 JavaScript。
+    const branches = extractCheckedConditionalBranches(source);
+    if (!branches) return null;
+
+    const targetMap = new Map([['this', input]]);
+
+    // 支持：const wrapper = this.parentElement.parentElement;
+    const parentAliasRe = /(?:const|let|var)\s+([a-zA-Z_$][\w$]*)\s*=\s*(this(?:\s*\.\s*parentElement)+)\s*;?/g;
+    let match;
+    while ((match = parentAliasRe.exec(source))) {
+        const resolved = resolveParentElementExpression(input, match[2]);
+        if (resolved && root.contains(resolved)) targetMap.set(match[1], resolved);
+    }
+
+    // 支持：const target = wrapper.querySelector('#target-id');
+    // 为避免宽泛选择器误伤，只解析单一 ID 选择器。
+    const queryAliasRe = /(?:const|let|var)\s+([a-zA-Z_$][\w$]*)\s*=\s*([a-zA-Z_$][\w$]*)\.querySelector\(\s*(['"])#([a-zA-Z_][\w:.-]*)\3\s*\)\s*;?/g;
+    while ((match = queryAliasRe.exec(source))) {
+        const scope = targetMap.get(match[2]);
+        if (!scope?.querySelectorAll || !root.contains(scope)) continue;
+        const target = resolveScopedPseudoId(scope, match[4]) || resolveScopedPseudoId(root, match[4]);
+        if (target && root.contains(target)) targetMap.set(match[1], target);
+    }
+
+    const activeByTarget = parseNamedStyleAssignments(branches.active, targetMap);
+    const inactiveByTarget = parseNamedStyleAssignments(branches.inactive, targetMap);
+    const targets = new Set([...activeByTarget.keys(), ...inactiveByTarget.keys()]);
+    if (!targets.size || !activeByTarget.size) return null;
+
+    const states = [];
+    for (const target of targets) {
+        const activeAssignments = activeByTarget.get(target) || [];
+        const inactiveAssignments = inactiveByTarget.get(target) || [];
+        const properties = new Set([...activeAssignments, ...inactiveAssignments].map(item => item.property));
+        if (!properties.size) continue;
+        states.push({
+            target,
+            activeAssignments,
+            inactiveAssignments,
+            originalStyles: capturePseudoStyleState(target, properties),
+        });
+    }
+
+    return states.length ? states : null;
+}
+
+function applyCheckedChangeProgram(input, states) {
+    const active = !!input?.checked;
+    for (const state of states || []) {
+        if (!state?.target) continue;
+        if (active) {
+            applyPseudoStyleAssignments(state.target, state.activeAssignments);
+            state.target.setAttribute(PSEUDO_ACTIVE_ATTR, 'true');
+        } else {
+            restorePseudoStyleState(state.target, state.originalStyles);
+            applyPseudoStyleAssignments(state.target, state.inactiveAssignments);
+            state.target.removeAttribute(PSEUDO_ACTIVE_ATTR);
+        }
+    }
+    input?.setAttribute?.('aria-pressed', active ? 'true' : 'false');
+}
+
+function installCheckedChangePseudoInteractionRescue(root) {
+    if (!root?.querySelectorAll) return;
+    const candidates = [...root.querySelectorAll('input[type="checkbox"][onchange], input[type="radio"][onchange]')];
+
+    for (const input of candidates) {
+        if (input.hasAttribute(CHANGE_PSEUDO_RESCUE_ATTR)) continue;
+        const states = parseCheckedChangeStyleProgram(input, root);
+        if (!states?.length) continue;
+
+        input.addEventListener('change', () => applyCheckedChangeProgram(input, states), false);
+        input.addEventListener('input', () => applyCheckedChangeProgram(input, states), false);
+        input.removeAttribute('onchange');
+        input.setAttribute(CHANGE_PSEUDO_RESCUE_ATTR, 'true');
+        applyCheckedChangeProgram(input, states);
+    }
 }
 
 function capturePseudoStyleState(element, properties) {
@@ -523,7 +715,7 @@ function findHintedHiddenLayerPairs(root) {
 
 function hasPseudoInteractionCandidates(root) {
     if (!root?.querySelectorAll) return false;
-    if (root.querySelector('[onmouseover], [onmouseenter], [onmouseout], [onmouseleave], [onclick]')) return true;
+    if (root.querySelector('[onmouseover], [onmouseenter], [onmouseout], [onmouseleave], [onclick], [onchange]')) return true;
     return findHintedHiddenLayerPairs(root).length > 0;
 }
 
@@ -599,6 +791,7 @@ function installHintedHiddenLayerRescue(root) {
 }
 
 function installPseudoInteractionRescue(root) {
+    installCheckedChangePseudoInteractionRescue(root);
     installInlineEventPseudoInteractionRescue(root);
     // 某些宿主会在渲染前移除 onmouseover/onclick。此路径只在“悬停/点击提示 + 隐藏全覆盖层”同时存在时启用。
     installHintedHiddenLayerRescue(root);

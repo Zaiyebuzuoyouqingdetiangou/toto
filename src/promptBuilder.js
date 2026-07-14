@@ -229,7 +229,9 @@ ${shortVisualAvoidance(combo, 3)}${recentRiskCorrection()}`);
     if (visualSceneryMode) {
         chunks.push(String.raw`
 动态渐变模式:
-  允许使用纯 CSS/SVG 构建风景化、光影化、流动渐变或环境动态效果；必须服务本轮展现形式，不得为了动而动。`);
+  允许使用纯 CSS/SVG 构建风景化、光影化、流动渐变或环境动态效果；必须服务本轮展现形式，不得为了动而动。
+  本轮除交互过渡外，必须包含至少一个无需用户触发即可自动开始、持续运行且肉眼可见的动态机制，并作用于画面、物件或场景本体。
+  仅有 transition、静态 transform、hover/active 反馈或点击后的一次性过渡，不算自动动态；必须实际生成可运行的 @keyframes + animation，或同等稳定的持续视觉变化。`);
         chunks.push(VISUAL_SCENERY_RULES);
     }
 
