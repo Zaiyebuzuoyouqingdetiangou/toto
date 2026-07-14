@@ -266,6 +266,7 @@ function detectRiskFlags({ root, html, plain, dom, repeated, spatialSignalCount 
     const flatVerticalFlow = detectFlatVerticalFlow(html, root);
     const repeatedUnitShape = detectRepeatedUnitShape(root, html);
     const weakSpatialComplexity = detectWeakSpatialComplexity(html, plain);
+    const interactionMissing = detectInteractionMissing(html, plain);
     if (sameBlockStack) flags.push('same_block_stack');
     if (sameGridCard) flags.push('same_grid_card_risk');
     if (catalogPage) flags.push('catalog_page_risk');
@@ -275,6 +276,7 @@ function detectRiskFlags({ root, html, plain, dom, repeated, spatialSignalCount 
     if (sameBlockStack || sameGridCard || catalogPage || flatVerticalFlow || repeatedUnitShape || (dom?.maxSimilarRun || 0) >= 3 || (repeated?.maxRepeat || 0) >= 4) flags.push('info_page_degrade');
     if (spatialSignalCount < 2 && String(plain || '').length > 520 && (sameBlockStack || sameGridCard || catalogPage || repeatedUnitShape || (repeated?.maxRepeat || 0) >= 3)) flags.push('weak_media_body');
     if (weakSpatialComplexity) flags.push('weak_spatial_complexity');
+    if (interactionMissing) flags.push('missing_interaction');
     if (detectVisualPromiseWithoutMechanism(html, plain)) flags.push('visual_promise_unfulfilled');
     return [...new Set(flags)];
 }
@@ -502,6 +504,7 @@ export function scanRabbitMirrorHtml(messageHtml) {
     if (riskFlags.includes('info_page_degrade')) structural.push('信息页降级风险');
     if (riskFlags.includes('weak_media_body')) structural.push('媒介本体偏弱风险');
     if (riskFlags.includes('weak_spatial_complexity')) structural.push('空间复杂度偏弱风险');
+    if (riskFlags.includes('missing_interaction')) structural.push('内部交互入口偏弱风险');
     if (riskFlags.includes('visual_promise_unfulfilled')) structural.push('视觉承诺未兑现风险');
     structural.push(...dom.summaryFlags);
 

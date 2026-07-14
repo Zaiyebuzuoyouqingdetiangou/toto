@@ -355,8 +355,257 @@ const TARGET_ACTIVE_ATTR = 'data-rm-target-active';
 const TARGET_RESCUE_STYLE_ATTR = 'data-rabbit-mirror-target-rescue';
 const interactionCapabilityStates = new WeakMap();
 
+const INLINE_PSEUDO_RESCUE_ATTR = 'data-rabbit-mirror-inline-pseudo-rescue';
+const HINTED_PSEUDO_RESCUE_ATTR = 'data-rabbit-mirror-hinted-pseudo-rescue';
+const PSEUDO_ACTIVE_ATTR = 'data-rm-pseudo-active';
+const pseudoInteractionStates = new WeakMap();
+const PSEUDO_INTERACTION_HINT_RE = /(?:鼠标\s*)?(?:悬停|划过|移入)|\bhover\b|(?:点击|轻触|触摸).{0,16}(?:显示|查看|展开|播放|切换)/i;
+const EXISTING_INTERACTIVE_SELECTOR = 'a, button, input, label, summary, select, textarea, [role="button"], [contenteditable="true"]';
+
+function normalizeStylePropertyName(property) {
+    return String(property || '')
+        .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+        .toLowerCase();
+}
+
+function parseInlineStyleAssignments(scriptText) {
+    const assignments = new Map();
+    const source = String(scriptText || '');
+    if (!source || !/this\.style/i.test(source)) return [];
+
+    const remember = (property, value) => {
+        const normalizedProperty = normalizeStylePropertyName(property);
+        const normalizedValue = String(value || '').trim();
+        if (!normalizedProperty || !normalizedValue) return;
+        assignments.set(normalizedProperty, normalizedValue);
+    };
+
+    // 只解析安全且意图明确的 this.style.xxx='value'，绝不执行模型输出的 JavaScript。
+    const dotAssignmentRe = /this\.style\.([a-zA-Z][\w]*)\s*=\s*(['"])([\s\S]*?)\2\s*;?/g;
+    let match;
+    while ((match = dotAssignmentRe.exec(source))) remember(match[1], match[3]);
+
+    const bracketAssignmentRe = /this\.style\[\s*(['"])([a-zA-Z-]+)\1\s*\]\s*=\s*(['"])([\s\S]*?)\3\s*;?/g;
+    while ((match = bracketAssignmentRe.exec(source))) remember(match[2], match[4]);
+
+    return [...assignments.entries()].map(([property, value]) => ({ property, value }));
+}
+
+function collectInlineAssignments(element, attributeNames) {
+    const combined = new Map();
+    for (const attributeName of attributeNames) {
+        const value = element?.getAttribute?.(attributeName);
+        for (const assignment of parseInlineStyleAssignments(value)) {
+            combined.set(assignment.property, assignment.value);
+        }
+    }
+    return [...combined.entries()].map(([property, value]) => ({ property, value }));
+}
+
+function capturePseudoStyleState(element, properties) {
+    const captured = new Map();
+    for (const property of properties) {
+        captured.set(property, {
+            value: element.style?.getPropertyValue?.(property) || '',
+            priority: element.style?.getPropertyPriority?.(property) || '',
+        });
+    }
+    return captured;
+}
+
+function applyPseudoStyleAssignments(element, assignments) {
+    for (const { property, value } of assignments || []) {
+        if (!property || !value) continue;
+        element.style?.setProperty?.(property, value, 'important');
+    }
+}
+
+function restorePseudoStyleState(element, captured) {
+    for (const [property, previous] of captured || []) {
+        if (previous?.value) element.style?.setProperty?.(property, previous.value, previous.priority || '');
+        else element.style?.removeProperty?.(property);
+    }
+}
+
+function setPseudoInteractionState(state, active) {
+    if (!state?.target) return;
+    state.active = !!active;
+    if (state.active) {
+        applyPseudoStyleAssignments(state.target, state.activeAssignments);
+        state.target.setAttribute(PSEUDO_ACTIVE_ATTR, 'true');
+    } else {
+        restorePseudoStyleState(state.target, state.originalStyles);
+        applyPseudoStyleAssignments(state.target, state.inactiveAssignments);
+        state.target.removeAttribute(PSEUDO_ACTIVE_ATTR);
+    }
+    state.trigger?.setAttribute?.('aria-pressed', state.active ? 'true' : 'false');
+}
+
+function isPseudoTriggerUsable(element) {
+    if (!element?.style) return false;
+    const display = String(element.style.getPropertyValue('display') || '').trim().toLowerCase();
+    const visibility = String(element.style.getPropertyValue('visibility') || '').trim().toLowerCase();
+    const pointerEvents = String(element.style.getPropertyValue('pointer-events') || '').trim().toLowerCase();
+    return display !== 'none' && visibility !== 'hidden' && pointerEvents !== 'none';
+}
+
+function preparePseudoTrigger(trigger) {
+    if (!trigger?.setAttribute) return;
+    const tagName = String(trigger.tagName || '').toLowerCase();
+    const alreadyInteractive = /^(?:a|button|input|label|summary|select|textarea)$/.test(tagName)
+        || trigger.hasAttribute('tabindex')
+        || trigger.hasAttribute('role');
+    if (!alreadyInteractive) {
+        trigger.setAttribute('role', 'button');
+        trigger.setAttribute('tabindex', '0');
+    }
+    trigger.setAttribute('aria-pressed', 'false');
+    if (!trigger.style?.getPropertyValue?.('cursor')) trigger.style?.setProperty?.('cursor', 'pointer');
+}
+
+function shouldIgnorePseudoToggleEvent(event, trigger) {
+    const interactive = event.target?.closest?.(EXISTING_INTERACTIVE_SELECTOR);
+    return !!(interactive && interactive !== trigger && trigger?.contains?.(interactive));
+}
+
+function bindPseudoToggle(trigger, state) {
+    if (!trigger?.addEventListener || !state) return;
+    preparePseudoTrigger(trigger);
+
+    trigger.addEventListener('click', event => {
+        if (shouldIgnorePseudoToggleEvent(event, trigger)) return;
+        setPseudoInteractionState(state, !state.active);
+    }, false);
+
+    trigger.addEventListener('keydown', event => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        setPseudoInteractionState(state, !state.active);
+    }, false);
+}
+
+function findHintedHiddenLayerPairs(root) {
+    if (!root?.querySelectorAll) return [];
+    const pairs = [];
+    const hints = [...root.querySelectorAll('div, p, span, small, em, strong')]
+        .filter(element => {
+            const text = String(element.textContent || '').replace(/\s+/g, ' ').trim();
+            return text && text.length <= 100 && PSEUDO_INTERACTION_HINT_RE.test(text);
+        });
+
+    for (const hint of hints) {
+        const host = hint.parentElement;
+        if (!host || !root.contains(host)) continue;
+        const candidates = [...host.children].filter(candidate => {
+            if (candidate === hint || candidate.contains(hint) || candidate.hasAttribute(HINTED_PSEUDO_RESCUE_ATTR) || candidate.hasAttribute(INLINE_PSEUDO_RESCUE_ATTR)) return false;
+            const opacity = Number.parseFloat(candidate.style?.getPropertyValue?.('opacity') || '');
+            const visibility = String(candidate.style?.getPropertyValue?.('visibility') || '').trim().toLowerCase();
+            const hidden = (Number.isFinite(opacity) && opacity <= 0.05) || visibility === 'hidden';
+            if (!hidden) return false;
+
+            const position = String(candidate.style?.getPropertyValue?.('position') || '').trim().toLowerCase();
+            const width = String(candidate.style?.getPropertyValue?.('width') || '').trim();
+            const height = String(candidate.style?.getPropertyValue?.('height') || '').trim();
+            const inset = String(candidate.style?.getPropertyValue?.('inset') || '').trim();
+            const looksLikeLayer = /^(?:absolute|fixed)$/.test(position)
+                && (width === '100%' || height === '100%' || inset === '0' || inset === '0px');
+            if (!looksLikeLayer) return false;
+
+            const animatedDescendant = candidate.querySelector?.('[style*="animation"], animate, animateTransform');
+            const meaningfulContent = String(candidate.textContent || '').replace(/\s+/g, ' ').trim().length >= 12;
+            return !!animatedDescendant || meaningfulContent;
+        });
+        if (!candidates.length) continue;
+        pairs.push({ hint, host, target: candidates[0] });
+    }
+    return pairs;
+}
+
+function hasPseudoInteractionCandidates(root) {
+    if (!root?.querySelectorAll) return false;
+    if (root.querySelector('[onmouseover], [onmouseenter], [onmouseout], [onmouseleave], [onclick]')) return true;
+    return findHintedHiddenLayerPairs(root).length > 0;
+}
+
+function installInlineEventPseudoInteractionRescue(root) {
+    if (!root?.querySelectorAll) return;
+    const candidates = [...root.querySelectorAll('[onmouseover], [onmouseenter], [onmouseout], [onmouseleave], [onclick]')];
+
+    for (const target of candidates) {
+        if (target.hasAttribute(INLINE_PSEUDO_RESCUE_ATTR)) continue;
+        const hoverOn = collectInlineAssignments(target, ['onmouseover', 'onmouseenter']);
+        const hoverOff = collectInlineAssignments(target, ['onmouseout', 'onmouseleave']);
+        const clickOn = collectInlineAssignments(target, ['onclick']);
+        const activeAssignments = hoverOn.length ? hoverOn : clickOn;
+        if (!activeAssignments.length) continue;
+
+        const properties = new Set([...activeAssignments, ...hoverOff].map(item => item.property));
+        const originalStyles = capturePseudoStyleState(target, properties);
+        const trigger = isPseudoTriggerUsable(target) ? target : target.parentElement;
+        if (!trigger || !root.contains(trigger)) continue;
+
+        const state = {
+            target,
+            trigger,
+            active: false,
+            activeAssignments,
+            inactiveAssignments: hoverOff,
+            originalStyles,
+        };
+        pseudoInteractionStates.set(target, state);
+        bindPseudoToggle(trigger, state);
+
+        // 桌面鼠标继续保留原本的进入/离开语义；触屏则通过点击切换。
+        if (hoverOn.length) {
+            trigger.addEventListener('pointerenter', event => {
+                if (event.pointerType === 'mouse') setPseudoInteractionState(state, true);
+            }, false);
+            trigger.addEventListener('pointerleave', event => {
+                if (event.pointerType === 'mouse') setPseudoInteractionState(state, false);
+            }, false);
+        }
+
+        // 识别成功后移除对应内联事件，避免 CSP 报错或浏览器与急救器双重执行。
+        for (const attributeName of ['onmouseover', 'onmouseenter', 'onmouseout', 'onmouseleave', 'onclick']) {
+            const eventCode = target.getAttribute(attributeName);
+            if (parseInlineStyleAssignments(eventCode).length) target.removeAttribute(attributeName);
+        }
+        target.setAttribute(INLINE_PSEUDO_RESCUE_ATTR, 'true');
+    }
+}
+
+function installHintedHiddenLayerRescue(root) {
+    for (const { host, target } of findHintedHiddenLayerPairs(root)) {
+        if (target.hasAttribute(HINTED_PSEUDO_RESCUE_ATTR)) continue;
+        const properties = new Set(['opacity', 'visibility', 'pointer-events']);
+        const originalStyles = capturePseudoStyleState(target, properties);
+        const activeAssignments = [
+            { property: 'opacity', value: '1' },
+            { property: 'visibility', value: 'visible' },
+            { property: 'pointer-events', value: 'auto' },
+        ];
+        const state = {
+            target,
+            trigger: host,
+            active: false,
+            activeAssignments,
+            inactiveAssignments: [],
+            originalStyles,
+        };
+        pseudoInteractionStates.set(target, state);
+        bindPseudoToggle(host, state);
+        target.setAttribute(HINTED_PSEUDO_RESCUE_ATTR, 'true');
+    }
+}
+
+function installPseudoInteractionRescue(root) {
+    installInlineEventPseudoInteractionRescue(root);
+    // 某些宿主会在渲染前移除 onmouseover/onclick。此路径只在“悬停/点击提示 + 隐藏全覆盖层”同时存在时启用。
+    installHintedHiddenLayerRescue(root);
+}
+
 function detectInteractionCapabilities(root) {
-    if (!root?.querySelectorAll) return { checked: false, hover: false, details: false, target: false };
+    if (!root?.querySelectorAll) return { checked: false, hover: false, details: false, target: false, pseudo: false };
     const cssText = [...root.querySelectorAll('style')].map(style => style.textContent || '').join('\n');
     const outerDetails = root.matches?.('details') ? root : root.querySelector(':scope > details');
     const nestedDetails = [...root.querySelectorAll('details')].filter(item => item !== outerDetails);
@@ -365,6 +614,7 @@ function detectInteractionCapabilities(root) {
         hover: /:hover\b/i.test(cssText),
         details: nestedDetails.length > 0,
         target: /:target\b/i.test(cssText) || !!root.querySelector('a[href^="#"]'),
+        pseudo: hasPseudoInteractionCandidates(root),
     };
     interactionCapabilityStates.set(root, capabilities);
     root.dataset.rabbitMirrorInteractionRoutes = Object.entries(capabilities)
@@ -461,6 +711,7 @@ function installIntelligentInteractionRescue(root) {
     if (capabilities.hover) refreshTouchHoverRescue(root);
     if (capabilities.target) refreshTargetRescue(root);
     if (capabilities.details) installNestedDetailsFallback(root);
+    if (capabilities.pseudo) installPseudoInteractionRescue(root);
 }
 
 const touchHoverRescueStates = new WeakMap();

@@ -16,7 +16,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场 / Rabbit Mirror Theater</b><span class="rabbit-mirror-toto-watermark">Toto v0.31.82</span>
+      <b>兔子镜小剧场 / Rabbit Mirror Theater</b><span class="rabbit-mirror-toto-watermark">Toto v0.31.87</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -37,9 +37,6 @@ export function initRabbitMirrorUI() {
       <label class="checkbox_label"><input id="rh_force_visual_scenery" type="checkbox"> 动态视觉模式</label>
       <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后画面主体必须包含打开即自动持续运行、肉眼可见的 CSS 动画；点击或悬停变化不能代替。</div>
 
-      <label class="checkbox_label"><input id="rh_force_interactive" type="checkbox"> 每轮可交互模式（测试版）</label>
-      <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后内部每轮必须包含无需 JS 即可生效的真实交互；关闭时不强制内部交互，只保留外层折叠。</div>
-
       <label class="checkbox_label"><input id="rh_user_directive" type="checkbox"> 用户指令优先（正文/兔子镜点播）</label>
 
       <label class="checkbox_label"><input id="rh_ui_audit" type="checkbox"> UI 自查优化 / 丰富版式</label>
@@ -50,7 +47,7 @@ export function initRabbitMirrorUI() {
         <label class="checkbox_label" style="font-weight:600;"><input id="rh_codeblock_rescue" type="checkbox"> 代码块急救模式</label>
         <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.78;font-size:12px;line-height:1.45;">兔子镜变成代码块时临时开启；先恢复为真实 DOM，不改已有主容器 UI。</div>
         <label class="checkbox_label" style="font-weight:600;"><input id="rh_interaction_rescue" type="checkbox"> 智能交互急救（实验版）</label>
-        <div class="rabbit-mirror-subnote" style="margin:-2px 0 0 26px;opacity:.78;font-size:12px;line-height:1.45;">自动识别 checked、hover、嵌套 details 与 :target 交互并选择对应修复路径；可与代码块急救同时开启，固定先恢复代码、再修交互。</div>
+        <div class="rabbit-mirror-subnote" style="margin:-2px 0 0 26px;opacity:.78;font-size:12px;line-height:1.45;">自动识别 checked、hover、嵌套 details、:target，以及简单的 onclick/onmouseover 显隐伪交互；触屏会转换为点击切换。可与代码块急救同时开启，固定先恢复代码、再修交互。</div>
       </div>
 
       <div class="rabbit-mirror-regex-helper" style="margin:10px 0;padding:10px;border:1px solid var(--SmartThemeBorderColor);border-radius:8px;line-height:1.55;">
@@ -77,7 +74,6 @@ export function initRabbitMirrorUI() {
     checked('#rh_user_directive', settings.userDirectivePriority);
     checked('#rh_creative_expansion', settings.creativeExpansionMode);
     checked('#rh_force_visual_scenery', settings.forceVisualScenery);
-    checked('#rh_force_interactive', settings.forceInteractiveMode);
     checked('#rh_ui_audit', settings.uiAudit);
     checked('#rh_avoid_repeat', settings.avoidRepeat);
 
@@ -111,7 +107,6 @@ export function initRabbitMirrorUI() {
     $('#rh_user_directive').on('change', e => updateSettings({ userDirectivePriority: e.target.checked }));
     $('#rh_creative_expansion').on('change', e => updateSettings({ creativeExpansionMode: e.target.checked }));
     $('#rh_force_visual_scenery').on('change', e => updateSettings({ forceVisualScenery: e.target.checked }));
-    $('#rh_force_interactive').on('change', e => updateSettings({ forceInteractiveMode: e.target.checked }));
     $('#rh_ui_audit').on('change', e => updateSettings({ uiAudit: e.target.checked }));
     $('#rh_avoid_repeat').on('change', e => updateSettings({ avoidRepeat: e.target.checked }));
 
