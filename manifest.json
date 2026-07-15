@@ -4,7 +4,7 @@
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.31.96",
+  "version": "0.31.97",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "Rabbit Mirror Theater: fixes raw-timing and structural fallback for safe relative-node pseudo-interaction rescue, and copies the simplified no-send toto regex."
+  "description": "Rabbit Mirror Theater: preserves the 0.31.94 Visual Scenery interaction-link prompt and fixes hidden checkbox/radio interactions whose safe inline actions use this.parentElement / nextElementSibling chains."
 }

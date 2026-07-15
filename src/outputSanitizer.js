@@ -362,12 +362,9 @@ const INLINE_PSEUDO_RESCUE_ATTR = 'data-rabbit-mirror-inline-pseudo-rescue';
 const HINTED_PSEUDO_RESCUE_ATTR = 'data-rabbit-mirror-hinted-pseudo-rescue';
 const CHANGE_PSEUDO_RESCUE_ATTR = 'data-rabbit-mirror-change-pseudo-rescue';
 const DIRECT_ID_CLICK_RESCUE_ATTR = 'data-rabbit-mirror-direct-id-click-rescue';
-const RELATIVE_CHAIN_CLICK_RESCUE_ATTR = 'data-rabbit-mirror-relative-chain-click-rescue';
-const LAYER_REVEAL_RESCUE_ATTR = 'data-rabbit-mirror-layer-reveal-rescue';
+const RELATIVE_NODE_PROGRAM_RESCUE_ATTR = 'data-rabbit-mirror-relative-node-program-rescue';
 const PSEUDO_ACTIVE_ATTR = 'data-rm-pseudo-active';
 const pseudoInteractionStates = new WeakMap();
-const rawInteractionProgramCache = [];
-const RAW_INTERACTION_PROGRAM_CACHE_LIMIT = 120;
 const PSEUDO_INTERACTION_HINT_RE = /(?:鼠标\s*)?(?:悬停|划过|移入)|\bhover\b|(?:点击|轻触|触摸).{0,16}(?:显示|查看|展开|播放|切换)/i;
 const EXISTING_INTERACTIVE_SELECTOR = 'a, button, input, label, summary, select, textarea, [role="button"], [contenteditable="true"]';
 
@@ -736,6 +733,127 @@ function decodeSafeInlineString(value) {
         .replace(/\\(['"\\])/g, '$1');
 }
 
+function resolveRelativeNodeExpression(trigger, expression, root) {
+    const source = String(expression || '').replace(/\s+/g, '');
+    if (!/^this(?:\.(?:parentElement|nextElementSibling|previousElementSibling|firstElementChild|lastElementChild))*$/.test(source)) return null;
+
+    let current = trigger;
+    const steps = source.match(/\.(?:parentElement|nextElementSibling|previousElementSibling|firstElementChild|lastElementChild)/g) || [];
+    for (const rawStep of steps) {
+        current = current?.[rawStep.slice(1)] || null;
+        if (!current) return null;
+    }
+
+    if (!root || (current !== root && !root.contains?.(current))) return null;
+    return current;
+}
+
+function collectRelativeNodeProgramAssignments(scriptText, trigger, root) {
+    const source = String(scriptText || '');
+    if (!source || !/\bthis\b/i.test(source)) return null;
+
+    const matches = [];
+    const addMatch = (match, action) => {
+        matches.push({ start: match.index, end: match.index + match[0].length, action });
+    };
+    const relativeExpression = String.raw`\b(this(?:\s*\.\s*(?:parentElement|nextElementSibling|previousElementSibling|firstElementChild|lastElementChild))*)`;
+
+    const styleDotRe = new RegExp(`${relativeExpression}\\s*\\.\\s*style\\s*\\.\\s*([a-zA-Z][\\w]*)\\s*=\\s*(['"])((?:\\\\.|(?!\\3)[\\s\\S])*)\\3\\s*;?`, 'g');
+    let match;
+    while ((match = styleDotRe.exec(source))) {
+        const target = resolveRelativeNodeExpression(trigger, match[1], root);
+        const property = normalizeStylePropertyName(match[2]);
+        const value = decodeSafeInlineString(match[4]);
+        if (!target || !property || !value) return null;
+        addMatch(match, { type: 'style', target, property, value });
+    }
+
+    const styleBracketRe = new RegExp(`${relativeExpression}\\s*\\.\\s*style\\s*\\[\\s*(['"])([a-zA-Z-]+)\\2\\s*\\]\\s*=\\s*(['"])((?:\\\\.|(?!\\4)[\\s\\S])*)\\4\\s*;?`, 'g');
+    while ((match = styleBracketRe.exec(source))) {
+        const target = resolveRelativeNodeExpression(trigger, match[1], root);
+        const property = normalizeStylePropertyName(match[3]);
+        const value = decodeSafeInlineString(match[5]);
+        if (!target || !property || !value) return null;
+        addMatch(match, { type: 'style', target, property, value });
+    }
+
+    const textRe = new RegExp(`${relativeExpression}\\s*\\.\\s*(innerText|textContent)\\s*=\\s*(['"])((?:\\\\.|(?!\\3)[\\s\\S])*)\\3\\s*;?`, 'g');
+    while ((match = textRe.exec(source))) {
+        const target = resolveRelativeNodeExpression(trigger, match[1], root);
+        const value = decodeSafeInlineString(match[4]);
+        if (!target) return null;
+        addMatch(match, { type: 'text', target, value });
+    }
+
+    if (!matches.length) return null;
+    matches.sort((a, b) => a.start - b.start);
+
+    let cursor = 0;
+    let remainder = '';
+    for (const item of matches) {
+        if (item.start < cursor) return null;
+        remainder += source.slice(cursor, item.start);
+        cursor = item.end;
+    }
+    remainder += source.slice(cursor);
+    if (remainder.replace(/[\s;]+/g, '') !== '') return null;
+
+    return matches.map(item => item.action);
+}
+
+function bindRelativeNodeProgram(trigger, actions) {
+    if (!trigger || !actions?.length || trigger.hasAttribute(RELATIVE_NODE_PROGRAM_RESCUE_ATTR)) return false;
+
+    const tagName = String(trigger.tagName || '').toLowerCase();
+    const inputType = String(trigger.type || '').toLowerCase();
+    const isStateInput = tagName === 'input' && /^(?:checkbox|radio)$/.test(inputType);
+
+    if (isStateInput) {
+        // RabbitMirror 的 label fallback 会 preventDefault 后手动切换 checked，
+        // 再派发 input/change；因此这里必须监听状态事件，不能只绑 click。
+        let lastAppliedState = null;
+        const activateFromState = () => {
+            const currentState = !!trigger.checked;
+            if (lastAppliedState === currentState) return;
+            lastAppliedState = currentState;
+            applyDirectIdClickAssignments(actions);
+            trigger.setAttribute('aria-pressed', currentState ? 'true' : 'false');
+        };
+        trigger.addEventListener('input', activateFromState, false);
+        trigger.addEventListener('change', activateFromState, false);
+        if (trigger.checked) activateFromState();
+    } else {
+        preparePseudoTrigger(trigger);
+        const activate = event => {
+            if (event?.type === 'click' && shouldIgnorePseudoToggleEvent(event, trigger)) return;
+            if (event?.type === 'keydown') {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+            }
+            applyDirectIdClickAssignments(actions);
+            trigger.setAttribute('aria-pressed', 'true');
+        };
+        trigger.addEventListener('click', activate, false);
+        trigger.addEventListener('keydown', activate, false);
+    }
+
+    trigger.removeAttribute('onclick');
+    trigger.setAttribute(RELATIVE_NODE_PROGRAM_RESCUE_ATTR, 'true');
+    return true;
+}
+
+function installRelativeNodeProgramRescue(root) {
+    if (!root?.querySelectorAll) return 0;
+    let installed = 0;
+    for (const trigger of root.querySelectorAll('[onclick]')) {
+        if (trigger.hasAttribute(RELATIVE_NODE_PROGRAM_RESCUE_ATTR)) continue;
+        const actions = collectRelativeNodeProgramAssignments(trigger.getAttribute('onclick'), trigger, root);
+        if (!actions?.length) continue;
+        if (bindRelativeNodeProgram(trigger, actions)) installed += 1;
+    }
+    return installed;
+}
+
 function collectDirectIdClickAssignments(scriptText, root) {
     const source = String(scriptText || '');
     if (!source || !/document\s*\.\s*getElementById\s*\(/i.test(source)) return null;
@@ -803,113 +921,6 @@ function applyDirectIdClickAssignments(actions) {
     }
 }
 
-function resolveRelativePseudoTarget(trigger, expression, root) {
-    const source = String(expression || '').replace(/\s+/g, '');
-    if (!/^this(?:\.(?:parentElement|nextElementSibling|previousElementSibling)){0,6}$/.test(source)) return null;
-
-    let current = trigger;
-    const steps = source.split('.').slice(1);
-    for (const step of steps) {
-        if (!current) return null;
-        if (step === 'parentElement') current = current.parentElement;
-        else if (step === 'nextElementSibling') current = current.nextElementSibling;
-        else if (step === 'previousElementSibling') current = current.previousElementSibling;
-        else return null;
-    }
-
-    return current && root?.contains?.(current) ? current : null;
-}
-
-function collectRelativeChainClickAssignments(scriptText, trigger, root) {
-    const source = String(scriptText || '');
-    if (!source || !/\bthis(?:\s*\.\s*(?:parentElement|nextElementSibling|previousElementSibling))*/i.test(source)) return null;
-
-    const matches = [];
-    const addMatch = (match, action) => {
-        matches.push({ start: match.index, end: match.index + match[0].length, action });
-    };
-
-    // this.parentElement.style.background = '...';
-    // this.nextElementSibling.nextElementSibling.style.opacity = '1';
-    const styleDotRe = /(this(?:\s*\.\s*(?:parentElement|nextElementSibling|previousElementSibling)){0,6})\s*\.\s*style\s*\.\s*([a-zA-Z][\w]*)\s*=\s*(['"])((?:\\.|(?!\3)[\s\S])*)\3\s*;?/g;
-    let match;
-    while ((match = styleDotRe.exec(source))) {
-        const target = resolveRelativePseudoTarget(trigger, match[1], root);
-        const property = normalizeStylePropertyName(match[2]);
-        const value = decodeSafeInlineString(match[4]);
-        if (!target || !property || !value) return null;
-        addMatch(match, { type: 'style', target, property, value });
-    }
-
-    // this.parentElement.style['background-color'] = '...';
-    const styleBracketRe = /(this(?:\s*\.\s*(?:parentElement|nextElementSibling|previousElementSibling)){0,6})\s*\.\s*style\s*\[\s*(['"])([a-zA-Z-]+)\2\s*\]\s*=\s*(['"])((?:\\.|(?!\4)[\s\S])*)\4\s*;?/g;
-    while ((match = styleBracketRe.exec(source))) {
-        const target = resolveRelativePseudoTarget(trigger, match[1], root);
-        const property = normalizeStylePropertyName(match[3]);
-        const value = decodeSafeInlineString(match[5]);
-        if (!target || !property || !value) return null;
-        addMatch(match, { type: 'style', target, property, value });
-    }
-
-    // this.nextElementSibling.innerText/textContent = '...';
-    const textRe = /(this(?:\s*\.\s*(?:parentElement|nextElementSibling|previousElementSibling)){0,6})\s*\.\s*(innerText|textContent)\s*=\s*(['"])((?:\\.|(?!\3)[\s\S])*)\3\s*;?/g;
-    while ((match = textRe.exec(source))) {
-        const target = resolveRelativePseudoTarget(trigger, match[1], root);
-        const value = decodeSafeInlineString(match[4]);
-        if (!target) return null;
-        addMatch(match, { type: 'text', target, value });
-    }
-
-    if (!matches.length) return null;
-    matches.sort((a, b) => a.start - b.start);
-
-    // 只接受上述链式赋值与空白/分号。出现函数调用、表达式、DOM 增删等未知语句时整段拒绝。
-    let cursor = 0;
-    let remainder = '';
-    for (const item of matches) {
-        if (item.start < cursor) continue;
-        remainder += source.slice(cursor, item.start);
-        cursor = item.end;
-    }
-    remainder += source.slice(cursor);
-    if (remainder.replace(/[\s;]+/g, '') !== '') return null;
-
-    return matches.map(item => item.action);
-}
-
-function bindRelativeChainClickActions(trigger, actions) {
-    if (!trigger || !actions?.length || trigger.hasAttribute(RELATIVE_CHAIN_CLICK_RESCUE_ATTR)) return false;
-
-    preparePseudoTrigger(trigger);
-    const activate = event => {
-        if (event?.type === 'click' && shouldIgnorePseudoToggleEvent(event, trigger)) return;
-        if (event?.type === 'keydown') {
-            if (event.key !== 'Enter' && event.key !== ' ') return;
-            event.preventDefault();
-        }
-        applyDirectIdClickAssignments(actions);
-    };
-
-    trigger.addEventListener('click', activate, false);
-    trigger.addEventListener('keydown', activate, false);
-    trigger.removeAttribute('onclick');
-    trigger.removeAttribute('aria-pressed');
-    trigger.setAttribute(RELATIVE_CHAIN_CLICK_RESCUE_ATTR, 'true');
-    return true;
-}
-
-function installRelativeChainClickProgramRescue(root) {
-    if (!root?.querySelectorAll) return 0;
-    let installed = 0;
-    for (const trigger of root.querySelectorAll('[onclick]')) {
-        if (trigger.hasAttribute(RELATIVE_CHAIN_CLICK_RESCUE_ATTR)) continue;
-        const actions = collectRelativeChainClickAssignments(trigger.getAttribute('onclick'), trigger, root);
-        if (!actions?.length) continue;
-        if (bindRelativeChainClickActions(trigger, actions)) installed += 1;
-    }
-    return installed;
-}
-
 function installDirectIdClickProgramRescue(root) {
     if (!root?.querySelectorAll) return;
     const candidates = [...root.querySelectorAll('[onclick]')];
@@ -943,100 +954,6 @@ function getRabbitMirrorSummaryText(root) {
     return String(root?.querySelector?.('summary')?.textContent || '')
         .replace(/\s+/g, ' ')
         .trim();
-}
-
-function normalizeInteractionCacheText(value, limit = 900) {
-    return String(value || '').replace(/\s+/g, ' ').trim().slice(0, limit);
-}
-
-function cacheRawInteractionProgramText(rawText) {
-    const source = String(rawText || '');
-    if (!source || !/(?:onclick|onchange)\s*=|this\s*\.\s*(?:parentElement|nextElementSibling|previousElementSibling)|document\s*\.\s*getElementById/i.test(source)) return 0;
-
-    let cached = 0;
-    for (const root of collectRawRabbitMirrorRoots(source)) {
-        if (!root?.querySelector?.('[onclick], [onchange]')) continue;
-        const html = String(root.outerHTML || '');
-        if (!html) continue;
-        const key = hashInteractionSignature(html);
-        if (rawInteractionProgramCache.some(item => item.key === key)) continue;
-        rawInteractionProgramCache.unshift({
-            key,
-            summary: getRabbitMirrorSummaryText(root),
-            bodyText: normalizeInteractionCacheText(root.textContent),
-            html,
-            capturedAt: Date.now(),
-        });
-        cached += 1;
-    }
-
-    if (rawInteractionProgramCache.length > RAW_INTERACTION_PROGRAM_CACHE_LIMIT) {
-        rawInteractionProgramCache.length = RAW_INTERACTION_PROGRAM_CACHE_LIMIT;
-    }
-    return cached;
-}
-
-function collectRawInteractionTextCandidates(value, output, seen = new Set(), depth = 0) {
-    if (depth > 4 || value == null) return;
-    if (typeof value === 'string') {
-        if (value.includes('<') && /(?:兔子镜|<toto\b|onclick\s*=|onchange\s*=)/i.test(value)) output.add(value);
-        return;
-    }
-    if (typeof value !== 'object' || seen.has(value)) return;
-    seen.add(value);
-
-    if (Array.isArray(value)) {
-        for (const item of value.slice(-12)) collectRawInteractionTextCandidates(item, output, seen, depth + 1);
-        return;
-    }
-
-    for (const key of ['mes', 'message', 'text', 'content', 'data', 'swipes', 'response', 'result']) {
-        if (key in value) collectRawInteractionTextCandidates(value[key], output, seen, depth + 1);
-    }
-}
-
-function captureRawInteractionPrograms(mod, eventArgs = []) {
-    if (!isInteractionRescueModeEnabled()) return 0;
-    const candidates = new Set();
-    collectRawInteractionTextCandidates(eventArgs, candidates);
-    for (const message of findRecentAssistantMessages(mod)) {
-        collectRawInteractionTextCandidates(message, candidates);
-    }
-
-    let cached = 0;
-    for (const text of candidates) cached += cacheRawInteractionProgramText(text);
-    return cached;
-}
-
-function getCachedRawRabbitMirrorRoot(renderedRoot) {
-    if (!renderedRoot || typeof document === 'undefined' || !rawInteractionProgramCache.length) return null;
-    const renderedSummary = getRabbitMirrorSummaryText(renderedRoot);
-    const renderedBody = normalizeInteractionCacheText(renderedRoot.textContent);
-    const renderedTokens = new Set(renderedBody.split(/[^\p{L}\p{N}_]+/u).filter(token => token.length >= 2).slice(0, 80));
-
-    let best = null;
-    let bestScore = -1;
-    for (const entry of rawInteractionProgramCache) {
-        let score = 0;
-        if (renderedSummary && entry.summary === renderedSummary) score += 100;
-        else if (renderedSummary && entry.summary && (entry.summary.includes(renderedSummary) || renderedSummary.includes(entry.summary))) score += 60;
-        if (!renderedSummary && !entry.summary) score += 5;
-
-        if (renderedTokens.size) {
-            const entryTokens = new Set(String(entry.bodyText || '').split(/[^\p{L}\p{N}_]+/u).filter(token => token.length >= 2).slice(0, 80));
-            let overlap = 0;
-            for (const token of renderedTokens) if (entryTokens.has(token)) overlap += 1;
-            score += Math.min(30, overlap);
-        }
-
-        if (score > bestScore) {
-            bestScore = score;
-            best = entry;
-        }
-    }
-
-    if (!best || bestScore < 20) return null;
-    return collectRawRabbitMirrorRoots(best.html)[0] || null;
 }
 
 function getAvailableHostChat() {
@@ -1139,56 +1056,6 @@ function resolveElementChildIndexPath(root, path) {
     return current;
 }
 
-function isSamePseudoTriggerKind(rawTrigger, renderedTrigger) {
-    if (!rawTrigger || !renderedTrigger) return false;
-    const rawTag = String(rawTrigger.tagName || '').toLowerCase();
-    const renderedTag = String(renderedTrigger.tagName || '').toLowerCase();
-    if (!rawTag || rawTag !== renderedTag) return false;
-    if (rawTag === 'input') {
-        const rawType = String(rawTrigger.getAttribute?.('type') || 'text').toLowerCase();
-        const renderedType = String(renderedTrigger.getAttribute?.('type') || 'text').toLowerCase();
-        if (rawType !== renderedType) return false;
-    }
-    return true;
-}
-
-function findRenderedTriggerForRaw(rawRoot, renderedRoot, rawTrigger) {
-    if (!rawRoot?.querySelectorAll || !renderedRoot?.querySelectorAll || !rawTrigger) return null;
-
-    const path = getElementChildIndexPath(rawRoot, rawTrigger);
-    if (path) {
-        const exact = resolveElementChildIndexPath(renderedRoot, path);
-        if (isSamePseudoTriggerKind(rawTrigger, exact)) return exact;
-    }
-
-    const rawTag = String(rawTrigger.tagName || '').toLowerCase();
-    const rawId = String(rawTrigger.id || '').trim();
-    if (rawId) {
-        const byId = [...renderedRoot.querySelectorAll('[id]')].find(element => (
-            element.id === rawId || element.id.endsWith(rawId)
-        ));
-        if (isSamePseudoTriggerKind(rawTrigger, byId)) return byId;
-    }
-
-    if (rawTag === 'input') {
-        const rawType = String(rawTrigger.getAttribute?.('type') || 'text').toLowerCase();
-        const selector = `input[type="${rawType.replace(/[^a-z0-9_-]/g, '')}"]`;
-        const rawPeers = [...rawRoot.querySelectorAll(selector)];
-        const renderedPeers = [...renderedRoot.querySelectorAll(selector)];
-        const peerIndex = rawPeers.indexOf(rawTrigger);
-        if (peerIndex >= 0 && isSamePseudoTriggerKind(rawTrigger, renderedPeers[peerIndex])) return renderedPeers[peerIndex];
-    }
-
-    if (rawTag) {
-        const rawPeers = [...rawRoot.querySelectorAll(rawTag)];
-        const renderedPeers = [...renderedRoot.querySelectorAll(rawTag)];
-        const peerIndex = rawPeers.indexOf(rawTrigger);
-        if (peerIndex >= 0 && isSamePseudoTriggerKind(rawTrigger, renderedPeers[peerIndex])) return renderedPeers[peerIndex];
-    }
-
-    return null;
-}
-
 function bindDirectIdClickActions(trigger, actions) {
     if (!trigger || !actions?.length || trigger.hasAttribute(DIRECT_ID_CLICK_RESCUE_ATTR)) return false;
 
@@ -1210,15 +1077,37 @@ function bindDirectIdClickActions(trigger, actions) {
     return true;
 }
 
-function installRawMessageDirectIdClickProgramRescue(root) {
+function installRawMessageRelativeNodeProgramRescue(root) {
     if (!root?.querySelectorAll) return 0;
     const rawMessage = getRawAssistantMessageForRenderedRoot(root);
-    const rawRoot = chooseMatchingRawRabbitMirrorRoot(rawMessage, root) || getCachedRawRabbitMirrorRoot(root);
+    const rawRoot = chooseMatchingRawRabbitMirrorRoot(rawMessage, root);
     if (!rawRoot?.querySelectorAll) return 0;
 
     let installed = 0;
     for (const rawTrigger of rawRoot.querySelectorAll('[onclick]')) {
-        const renderedTrigger = findRenderedTriggerForRaw(rawRoot, root, rawTrigger);
+        const path = getElementChildIndexPath(rawRoot, rawTrigger);
+        if (!path) continue;
+        const renderedTrigger = resolveElementChildIndexPath(root, path);
+        if (!renderedTrigger || renderedTrigger.hasAttribute(RELATIVE_NODE_PROGRAM_RESCUE_ATTR)) continue;
+
+        const actions = collectRelativeNodeProgramAssignments(rawTrigger.getAttribute('onclick'), renderedTrigger, root);
+        if (!actions?.length) continue;
+        if (bindRelativeNodeProgram(renderedTrigger, actions)) installed += 1;
+    }
+    return installed;
+}
+
+function installRawMessageDirectIdClickProgramRescue(root) {
+    if (!root?.querySelectorAll) return 0;
+    const rawMessage = getRawAssistantMessageForRenderedRoot(root);
+    const rawRoot = chooseMatchingRawRabbitMirrorRoot(rawMessage, root);
+    if (!rawRoot?.querySelectorAll) return 0;
+
+    let installed = 0;
+    for (const rawTrigger of rawRoot.querySelectorAll('[onclick]')) {
+        const path = getElementChildIndexPath(rawRoot, rawTrigger);
+        if (!path) continue;
+        const renderedTrigger = resolveElementChildIndexPath(root, path);
         if (!renderedTrigger || renderedTrigger.hasAttribute(DIRECT_ID_CLICK_RESCUE_ATTR)) continue;
 
         const source = rawTrigger.getAttribute('onclick');
@@ -1226,85 +1115,6 @@ function installRawMessageDirectIdClickProgramRescue(root) {
         if (!actions?.length) continue;
         if (bindDirectIdClickActions(renderedTrigger, actions)) installed += 1;
     }
-    return installed;
-}
-
-function installRawMessageRelativeChainClickProgramRescue(root) {
-    if (!root?.querySelectorAll) return 0;
-    const rawMessage = getRawAssistantMessageForRenderedRoot(root);
-    const rawRoot = chooseMatchingRawRabbitMirrorRoot(rawMessage, root) || getCachedRawRabbitMirrorRoot(root);
-    if (!rawRoot?.querySelectorAll) return 0;
-
-    let installed = 0;
-    for (const rawTrigger of rawRoot.querySelectorAll('[onclick]')) {
-        const renderedTrigger = findRenderedTriggerForRaw(rawRoot, root, rawTrigger);
-        if (!renderedTrigger || renderedTrigger.hasAttribute(RELATIVE_CHAIN_CLICK_RESCUE_ATTR)) continue;
-
-        const source = rawTrigger.getAttribute('onclick');
-        const actions = collectRelativeChainClickAssignments(source, renderedTrigger, root);
-        if (!actions?.length) continue;
-        if (bindRelativeChainClickActions(renderedTrigger, actions)) installed += 1;
-    }
-    return installed;
-}
-
-function getInlineStyleToken(element, property) {
-    return String(element?.style?.getPropertyValue?.(property) || '').trim().toLowerCase();
-}
-
-function installLayerRevealCheckboxFallback(root) {
-    if (!root?.querySelectorAll) return 0;
-    let installed = 0;
-
-    for (const input of root.querySelectorAll('input[type="checkbox"], input[type="radio"]')) {
-        if (input.hasAttribute(RELATIVE_CHAIN_CLICK_RESCUE_ATTR) || input.hasAttribute(LAYER_REVEAL_RESCUE_ATTR)) continue;
-        const label = input.parentElement;
-        const frontLayer = input.nextElementSibling;
-        const backLayer = frontLayer?.nextElementSibling;
-        if (!label || String(label.tagName || '').toLowerCase() !== 'label' || !frontLayer || !backLayer) continue;
-        if (!label.contains(frontLayer) || !label.contains(backLayer)) continue;
-
-        const frontPosition = getInlineStyleToken(frontLayer, 'position');
-        const backPosition = getInlineStyleToken(backLayer, 'position');
-        if (frontPosition !== 'absolute' || backPosition !== 'absolute') continue;
-
-        const frontOpacity = getInlineStyleToken(frontLayer, 'opacity');
-        const frontDisplay = getInlineStyleToken(frontLayer, 'display');
-        const frontVisibility = getInlineStyleToken(frontLayer, 'visibility');
-        const backOpacity = getInlineStyleToken(backLayer, 'opacity');
-        const backDisplay = getInlineStyleToken(backLayer, 'display');
-        const backVisibility = getInlineStyleToken(backLayer, 'visibility');
-        const frontVisible = frontOpacity !== '0' && frontDisplay !== 'none' && frontVisibility !== 'hidden';
-        const backHidden = backOpacity === '0' || backDisplay === 'none' || backVisibility === 'hidden';
-        if (!frontVisible || !backHidden) continue;
-
-        const frontState = capturePseudoStyleState(frontLayer, new Set(['opacity', 'visibility', 'pointer-events']));
-        const backState = capturePseudoStyleState(backLayer, new Set(['opacity', 'visibility', 'transform', 'display', 'pointer-events']));
-        const apply = () => {
-            const active = !!input.checked;
-            if (active) {
-                frontLayer.style?.setProperty?.('opacity', '0', 'important');
-                frontLayer.style?.setProperty?.('visibility', 'hidden', 'important');
-                frontLayer.style?.setProperty?.('pointer-events', 'none', 'important');
-                if (backDisplay === 'none') backLayer.style?.setProperty?.('display', 'block', 'important');
-                backLayer.style?.setProperty?.('opacity', '1', 'important');
-                backLayer.style?.setProperty?.('visibility', 'visible', 'important');
-                backLayer.style?.setProperty?.('transform', 'translateY(0)', 'important');
-                backLayer.style?.setProperty?.('pointer-events', 'auto', 'important');
-            } else {
-                restorePseudoStyleState(frontLayer, frontState);
-                restorePseudoStyleState(backLayer, backState);
-            }
-            input.setAttribute('aria-pressed', active ? 'true' : 'false');
-        };
-
-        input.addEventListener('change', apply, false);
-        input.addEventListener('input', apply, false);
-        label.addEventListener('click', () => setTimeout(apply, 0), false);
-        input.setAttribute(LAYER_REVEAL_RESCUE_ATTR, 'true');
-        installed += 1;
-    }
-
     return installed;
 }
 
@@ -1382,7 +1192,6 @@ function installHintedHiddenLayerRescue(root) {
 function installPseudoInteractionRescue(root) {
     installCheckedChangePseudoInteractionRescue(root);
     installDirectIdClickProgramRescue(root);
-    installRelativeChainClickProgramRescue(root);
     installInlineEventPseudoInteractionRescue(root);
     // 某些宿主会在渲染前移除 onmouseover/onclick。此路径只在“悬停/点击提示 + 隐藏全覆盖层”同时存在时启用。
     installHintedHiddenLayerRescue(root);
@@ -1487,13 +1296,11 @@ function installNestedDetailsFallback(root) {
 }
 
 function installIntelligentInteractionRescue(root) {
-    // SillyTavern/DOMPurify 可能在渲染前移除 onclick。此时从当前消息的原始 HTML
-    // 回读安全可解析的 getElementById 或 this/parentElement/nextElementSibling 链式赋值，
-    // 再按同一 DOM 路径绑定到渲染节点；绝不执行模型输出的 JavaScript。
+    // SillyTavern/DOMPurify 可能在渲染前移除 onclick。先从原始消息回读，
+    // 再处理仍保留在渲染 DOM 中的安全相对节点/ID 赋值程序。
+    installRawMessageRelativeNodeProgramRescue(root);
+    installRelativeNodeProgramRescue(root);
     installRawMessageDirectIdClickProgramRescue(root);
-    installRawMessageRelativeChainClickProgramRescue(root);
-    installRelativeChainClickProgramRescue(root);
-    installLayerRevealCheckboxFallback(root);
 
     const capabilities = detectInteractionCapabilities(root);
     if (capabilities.checked) {
@@ -2306,8 +2113,6 @@ function sanitizeCodeBlocksInChatDom() {
 
 export function triggerInteractionRescue() {
     try {
-        // 手动开启急救时也先从现有聊天记录补抓原始 onclick/onchange，再处理已经渲染的 DOM。
-        captureRawInteractionPrograms(hostScriptModule || globalThis);
         // 已经修复过的兔子镜会被会话记忆继续维护；关闭开关只停止处理新消息。
         scopeRabbitMirrorInteractionsInChatDom();
     } catch (error) {
@@ -2329,8 +2134,7 @@ export function triggerCodeBlockRescue(mod = null) {
     }
 }
 
-function scheduleSanitize(mod, eventArgs = []) {
-    captureRawInteractionPrograms(mod, eventArgs);
+function scheduleSanitize(mod) {
     const run = () => {
         if (isCodeBlockRescueModeEnabled()) {
             // 先修原始消息，避免保存后继续携带代码块壳。
@@ -2363,13 +2167,7 @@ export async function initOutputSanitizer() {
                 eventTypes.MESSAGE_SWIPED,
                 eventTypes.MESSAGE_UPDATED,
             ].filter(Boolean);
-            for (const eventName of events) {
-                eventSource.on(eventName, (...args) => {
-                    // 事件触发时立即缓存原始交互程序，避免宿主在渲染阶段移除 onclick/onchange 后再也无法恢复。
-                    captureRawInteractionPrograms(mod, args);
-                    scheduleSanitize(mod, args);
-                });
-            }
+            for (const eventName of events) eventSource.on(eventName, () => scheduleSanitize(mod));
         }
 
         // 只修聊天消息，但监听要更稳：如果初始化时 #chat 还没挂载，就监听 body 等它出现。
