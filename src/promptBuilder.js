@@ -1,7 +1,7 @@
 import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js';
 import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js';
 import { pickCombination } from './picker.js';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts } from './storage.js';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentPaletteFingerprints } from './storage.js';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -70,6 +70,48 @@ function shortVisualAvoidance(combo, limit = 3) {
         const signature = item.visualSignature ? truncate(item.visualSignature, 110) : '已记录视觉骨架';
         return `${index + 1}. 近期展现形式：${formats}；避让摘要：${signature}${riskCount ? `；结构风险 ${riskCount} 项` : ''}`;
     }).join('\n');
+}
+
+function paletteRhythmCorrection() {
+    const recent = getRecentPaletteFingerprints(3);
+    if (!recent.length) return '';
+    const last = recent[recent.length - 1];
+    const confidence = Number(last?.confidence || 0);
+    if (confidence < 0.35) return '';
+
+    const hueLabels = {
+        red: '红色系',
+        orange: '橙棕色系',
+        yellow: '黄色系',
+        green: '绿色系',
+        cyan: '青绿色系',
+        blue: '蓝色系',
+        purple: '紫色系',
+        pink: '粉红色系',
+        neutral: '灰阶中性色系',
+    };
+    const lines = [
+        '本轮主背景的明度、主色相、冷暖与饱和度中，至少两项必须与上一轮明显不同；不得只换局部点缀而沿用同一配色底盘。',
+    ];
+
+    if (last.brightness === 'dark') {
+        lines.push('上一轮已是大面积低明度画面，本轮必须改用中高明度主底；暗色只作局部层次，不得继续以黑、深灰或深色冷调承载大部分画面。');
+    } else if (last.brightness === 'light') {
+        lines.push('上一轮已是浅色主底，本轮不要继续复用相近的浅白、浅米或纸面式底盘；应优先改变综合色相、冷暖或饱和度，而不是机械反转成黑底。');
+    }
+
+    const hueLabel = hueLabels[last.hueFamily];
+    if (hueLabel) lines.push(`同时避开上一轮的${hueLabel}主调。`);
+
+    const sameHueCount = recent.filter(item => item?.hueFamily && item.hueFamily === last.hueFamily).length;
+    const sameTemperatureCount = recent.filter(item => item?.temperature && item.temperature === last.temperature).length;
+    if (recent.length >= 2 && (sameHueCount >= 2 || sameTemperatureCount >= 3)) {
+        lines.push('近期多轮综合色倾向重复，本轮需换到明显不同的综合色族与冷暖关系。');
+    }
+
+    return `
+配色节奏纠偏【由插件读取实际渲染颜色后本地计算】:
+${lines.map(line => `  - "${line}"`).join('\n')}`;
 }
 
 function recentRiskCorrection() {
@@ -232,7 +274,7 @@ ${selectedFormats}`);
     if (settings.avoidRepeat) {
         chunks.push(String.raw`
 近期视觉避让:
-${shortVisualAvoidance(combo, 3)}${recentRiskCorrection()}`);
+${shortVisualAvoidance(combo, 3)}${recentRiskCorrection()}${paletteRhythmCorrection()}`);
     }
 
     if (visualSceneryMode) {

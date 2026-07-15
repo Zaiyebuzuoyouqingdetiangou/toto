@@ -2,6 +2,8 @@ import { updateLatestVisualSignature } from './storage.js';
 
 const TOTO_RE = new RegExp('<toto\\b[^>]*(?:data-rabbit-mirror|data-rabbit-' + 'h' + 'ole)=[\"\']true[\"\'][^>]*>[\\s\\S]*?<\\/toto>', 'i');
 let lastScannedHash = '';
+let lastScanUsedRenderedPalette = false;
+let lastScanAttempts = 0;
 
 function hashText(text) {
     let hash = 0;
@@ -365,6 +367,266 @@ function detectContrastFamily(html) {
     return 'contrast: mid_tone_or_mixed';
 }
 
+
+const NAMED_PALETTE_COLORS = Object.freeze({
+    black: [0, 0, 0], white: [255, 255, 255], gray: [128, 128, 128], grey: [128, 128, 128],
+    red: [255, 0, 0], orange: [255, 165, 0], yellow: [255, 255, 0], green: [0, 128, 0],
+    cyan: [0, 255, 255], aqua: [0, 255, 255], blue: [0, 0, 255], navy: [0, 0, 128],
+    purple: [128, 0, 128], violet: [238, 130, 238], magenta: [255, 0, 255], pink: [255, 192, 203],
+    brown: [165, 42, 42], beige: [245, 245, 220], ivory: [255, 255, 240], teal: [0, 128, 128],
+});
+
+function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+}
+
+function hslToRgb(h, s, l) {
+    const hue = ((Number(h) % 360) + 360) % 360 / 360;
+    const sat = clamp(Number(s), 0, 1);
+    const light = clamp(Number(l), 0, 1);
+    if (sat === 0) {
+        const gray = Math.round(light * 255);
+        return [gray, gray, gray];
+    }
+    const q = light < 0.5 ? light * (1 + sat) : light + sat - light * sat;
+    const p = 2 * light - q;
+    const hue2rgb = (t) => {
+        let x = t;
+        if (x < 0) x += 1;
+        if (x > 1) x -= 1;
+        if (x < 1 / 6) return p + (q - p) * 6 * x;
+        if (x < 1 / 2) return q;
+        if (x < 2 / 3) return p + (q - p) * (2 / 3 - x) * 6;
+        return p;
+    };
+    return [hue2rgb(hue + 1 / 3), hue2rgb(hue), hue2rgb(hue - 1 / 3)].map(x => Math.round(x * 255));
+}
+
+function rgbToHsl(r, g, b) {
+    const rr = clamp(Number(r), 0, 255) / 255;
+    const gg = clamp(Number(g), 0, 255) / 255;
+    const bb = clamp(Number(b), 0, 255) / 255;
+    const max = Math.max(rr, gg, bb);
+    const min = Math.min(rr, gg, bb);
+    const delta = max - min;
+    let h = 0;
+    if (delta) {
+        if (max === rr) h = 60 * (((gg - bb) / delta) % 6);
+        else if (max === gg) h = 60 * (((bb - rr) / delta) + 2);
+        else h = 60 * (((rr - gg) / delta) + 4);
+    }
+    if (h < 0) h += 360;
+    const l = (max + min) / 2;
+    const s = delta === 0 ? 0 : delta / (1 - Math.abs(2 * l - 1));
+    return { h, s, l };
+}
+
+function parseCssColorToken(token) {
+    const value = String(token || '').trim().toLowerCase();
+    if (!value || value === 'transparent') return null;
+
+    const hex = value.match(/^#([0-9a-f]{3,8})$/i);
+    if (hex) {
+        let raw = hex[1];
+        if (raw.length === 3 || raw.length === 4) raw = raw.split('').map(char => char + char).join('');
+        if (raw.length !== 6 && raw.length !== 8) return null;
+        const r = parseInt(raw.slice(0, 2), 16);
+        const g = parseInt(raw.slice(2, 4), 16);
+        const b = parseInt(raw.slice(4, 6), 16);
+        const a = raw.length === 8 ? parseInt(raw.slice(6, 8), 16) / 255 : 1;
+        return { r, g, b, a };
+    }
+
+    const rgb = value.match(/^rgba?\(\s*([+-]?[0-9.]+)%?\s*[, ]\s*([+-]?[0-9.]+)%?\s*[, ]\s*([+-]?[0-9.]+)%?(?:\s*[,/]\s*([0-9.]+)%?)?\s*\)$/i);
+    if (rgb) {
+        const isPercent = /%/.test(value.split(/[,)\/]/).slice(0, 3).join(''));
+        const factor = isPercent ? 2.55 : 1;
+        const alphaRaw = rgb[4] === undefined ? 1 : Number(rgb[4]);
+        const alpha = rgb[4] !== undefined && value.includes(`${rgb[4]}%`) ? alphaRaw / 100 : alphaRaw;
+        return {
+            r: clamp(Number(rgb[1]) * factor, 0, 255),
+            g: clamp(Number(rgb[2]) * factor, 0, 255),
+            b: clamp(Number(rgb[3]) * factor, 0, 255),
+            a: clamp(Number.isFinite(alpha) ? alpha : 1, 0, 1),
+        };
+    }
+
+    const hsl = value.match(/^hsla?\(\s*([+-]?[0-9.]+)(?:deg)?\s*[, ]\s*([0-9.]+)%\s*[, ]\s*([0-9.]+)%(?:\s*[,/]\s*([0-9.]+)%?)?\s*\)$/i);
+    if (hsl) {
+        const [r, g, b] = hslToRgb(Number(hsl[1]), Number(hsl[2]) / 100, Number(hsl[3]) / 100);
+        const alphaRaw = hsl[4] === undefined ? 1 : Number(hsl[4]);
+        const alpha = hsl[4] !== undefined && value.includes(`${hsl[4]}%`) ? alphaRaw / 100 : alphaRaw;
+        return { r, g, b, a: clamp(Number.isFinite(alpha) ? alpha : 1, 0, 1) };
+    }
+
+    if (NAMED_PALETTE_COLORS[value]) {
+        const [r, g, b] = NAMED_PALETTE_COLORS[value];
+        return { r, g, b, a: 1 };
+    }
+    return null;
+}
+
+function extractCssColors(value) {
+    const input = String(value || '').toLowerCase();
+    if (!input || input === 'none' || input === 'transparent') return [];
+    const tokenRe = /#[0-9a-f]{3,8}\b|rgba?\([^)]*\)|hsla?\([^)]*\)|\b(?:black|white|gray|grey|red|orange|yellow|green|cyan|aqua|blue|navy|purple|violet|magenta|pink|brown|beige|ivory|teal)\b/gi;
+    return [...input.matchAll(tokenRe)]
+        .map(match => parseCssColorToken(match[0]))
+        .filter(color => color && color.a >= 0.08);
+}
+
+function hueFamilyOf(hue) {
+    const h = ((Number(hue) % 360) + 360) % 360;
+    if (h < 15 || h >= 345) return 'red';
+    if (h < 45) return 'orange';
+    if (h < 70) return 'yellow';
+    if (h < 165) return 'green';
+    if (h < 200) return 'cyan';
+    if (h < 250) return 'blue';
+    if (h < 290) return 'purple';
+    return 'pink';
+}
+
+function classifyPaletteSamples(samples, source = 'raw', mainBackgroundFound = false) {
+    const usable = (samples || []).filter(sample => sample?.color && Number(sample.weight) > 0);
+    if (!usable.length) return null;
+    let totalWeight = 0;
+    let luminanceSum = 0;
+    let saturationSum = 0;
+    let darkWeight = 0;
+    let lightWeight = 0;
+    let chromaticWeight = 0;
+    let warmWeight = 0;
+    let coolWeight = 0;
+    const hueWeights = new Map();
+
+    for (const sample of usable) {
+        const color = sample.color;
+        const alpha = clamp(Number(color.a ?? 1), 0, 1);
+        const weight = Number(sample.weight) * Math.max(0.12, alpha);
+        if (!Number.isFinite(weight) || weight <= 0) continue;
+        const lum = luminanceFromRgb(color.r, color.g, color.b);
+        const hsl = rgbToHsl(color.r, color.g, color.b);
+        totalWeight += weight;
+        luminanceSum += lum * weight;
+        saturationSum += hsl.s * weight;
+        if (lum < 105) darkWeight += weight;
+        if (lum > 185) lightWeight += weight;
+        if (hsl.s >= 0.12) {
+            const chroma = weight * Math.max(0.25, hsl.s);
+            const family = hueFamilyOf(hsl.h);
+            chromaticWeight += chroma;
+            hueWeights.set(family, (hueWeights.get(family) || 0) + chroma);
+            if (['red', 'orange', 'yellow', 'pink'].includes(family)) warmWeight += chroma;
+            else if (['green', 'cyan', 'blue', 'purple'].includes(family)) coolWeight += chroma;
+        }
+    }
+    if (!totalWeight) return null;
+
+    const averageLuminance = luminanceSum / totalWeight;
+    const darkAreaRatio = darkWeight / totalWeight;
+    const lightAreaRatio = lightWeight / totalWeight;
+    const averageSaturation = saturationSum / totalWeight;
+    const brightness = darkAreaRatio >= 0.55 || averageLuminance < 102
+        ? 'dark'
+        : (lightAreaRatio >= 0.55 || averageLuminance > 184 ? 'light' : 'mid');
+
+    let hueFamily = 'neutral';
+    if (chromaticWeight >= totalWeight * 0.12 && hueWeights.size) {
+        hueFamily = [...hueWeights.entries()].sort((a, b) => b[1] - a[1])[0][0];
+    }
+    const saturation = averageSaturation < 0.26 ? 'low' : (averageSaturation < 0.56 ? 'medium' : 'high');
+    const temperature = warmWeight > coolWeight * 1.2
+        ? 'warm'
+        : (coolWeight > warmWeight * 1.2 ? 'cool' : 'neutral');
+    const baseConfidence = source === 'rendered' ? 0.58 : 0.38;
+    const confidence = clamp(baseConfidence + Math.min(0.22, usable.length * 0.025) + (mainBackgroundFound ? 0.14 : 0), 0, 0.96);
+
+    return {
+        brightness,
+        hueFamily,
+        saturation,
+        temperature,
+        darkAreaRatio: Number(darkAreaRatio.toFixed(2)),
+        lightAreaRatio: Number(lightAreaRatio.toFixed(2)),
+        averageLuminance: Math.round(averageLuminance),
+        confidence: Number(confidence.toFixed(2)),
+        source,
+    };
+}
+
+function findRenderedPaletteRoot(toto) {
+    if (!toto?.querySelector) return toto || null;
+    const outerDetails = [...(toto.children || [])].find(child => child?.tagName === 'DETAILS') || toto.querySelector('details');
+    if (!outerDetails) return toto;
+    const directBody = [...(outerDetails.children || [])].find(child => !['SUMMARY', 'STYLE', 'SCRIPT'].includes(child?.tagName));
+    return directBody || outerDetails;
+}
+
+function elementArea(element) {
+    try {
+        const rect = element?.getBoundingClientRect?.();
+        if (!rect) return 0;
+        return Math.max(0, Number(rect.width) || 0) * Math.max(0, Number(rect.height) || 0);
+    } catch {
+        return 0;
+    }
+}
+
+function renderedPaletteFingerprint(toto) {
+    const root = findRenderedPaletteRoot(toto);
+    if (!root?.querySelectorAll) return null;
+    const view = root.ownerDocument?.defaultView || globalThis;
+    const getStyle = view?.getComputedStyle?.bind(view) || globalThis.getComputedStyle?.bind(globalThis);
+    if (typeof getStyle !== 'function') return null;
+
+    const rootArea = Math.max(1, elementArea(root));
+    const candidates = [root, ...root.querySelectorAll('div,section,article,main,aside,label,li,figure,svg')]
+        .map((element, index) => ({ element, index, area: elementArea(element) }))
+        .filter(item => item.index === 0 || item.area >= Math.max(64, rootArea * 0.015))
+        .sort((a, b) => b.area - a.area)
+        .slice(0, 28);
+
+    const samples = [];
+    let mainBackgroundFound = false;
+    for (const item of candidates) {
+        let style;
+        try {
+            style = getStyle(item.element);
+        } catch {
+            continue;
+        }
+        if (!style || style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity || 1) < 0.05) continue;
+        const colors = [
+            ...extractCssColors(style.backgroundColor),
+            ...extractCssColors(style.backgroundImage),
+        ];
+        if (!colors.length) continue;
+        const isRoot = item.element === root;
+        if (isRoot) mainBackgroundFound = true;
+        const area = item.area || rootArea * 0.08;
+        const baseWeight = isRoot ? rootArea * 2.2 : Math.min(area, rootArea * 0.48);
+        const colorWeight = baseWeight / colors.length;
+        colors.forEach(color => samples.push({ color, weight: colorWeight }));
+    }
+    return classifyPaletteSamples(samples, 'rendered', mainBackgroundFound);
+}
+
+function rawPaletteFingerprint(html) {
+    const values = extractBackgroundValues(html);
+    const samples = [];
+    values.slice(0, 24).forEach((value, index) => {
+        const colors = extractCssColors(value);
+        const baseWeight = index === 0 ? 5 : (index < 5 ? 1.5 : 0.7);
+        colors.forEach(color => samples.push({ color, weight: baseWeight / Math.max(1, colors.length) }));
+    });
+    return classifyPaletteSamples(samples, 'raw', values.length > 0);
+}
+
+function detectPaletteFingerprint(html, renderedToto = null) {
+    return renderedPaletteFingerprint(renderedToto) || rawPaletteFingerprint(html);
+}
+
 function detectSurfaceFamily(html, plain = '') {
     const text = `${html || ''}\n${plain || ''}`.toLowerCase();
     const base = detectBaseColor(html);
@@ -462,9 +724,9 @@ function detectGlobalCssRisk(html) {
     return /(^|[}\s,])(html|body|:root|\*|\.mes|\.message|\.chat|\.content|\.ts-message-container|#chat|#send_form)\s*[{,]/i.test(styles);
 }
 
-export function scanRabbitMirrorHtml(messageHtml) {
+export function scanRabbitMirrorHtml(messageHtml, renderedToto = null) {
     const match = String(messageHtml || '').match(TOTO_RE);
-    if (!match) return { signature: '', skeleton: '' };
+    if (!match) return { signature: '', skeleton: '', paletteFingerprint: null };
     const html = match[0];
     const plain = stripTags(html);
     const tagCount = count(/<\w+\b/g, html);
@@ -515,7 +777,50 @@ export function scanRabbitMirrorHtml(messageHtml) {
         .filter(Boolean)
         .join('；');
     const skeleton = buildVisualSkeleton(html, plain, { dom, repeated, spatialSignalCount });
-    return { signature: summary.slice(0, 280), skeleton: skeleton.slice(0, 360), riskFlags };
+    const paletteFingerprint = detectPaletteFingerprint(html, renderedToto);
+    return { signature: summary.slice(0, 280), skeleton: skeleton.slice(0, 360), riskFlags, paletteFingerprint };
+}
+
+function normalizedText(value) {
+    return String(value || '').replace(/\s+/g, ' ').trim();
+}
+
+function rawSummaryText(messageHtml) {
+    const match = String(messageHtml || '').match(/<summary\b[^>]*>([\s\S]*?)<\/summary>/i);
+    return match ? normalizedText(stripTags(match[1])) : '';
+}
+
+function findRenderedToto(message, chat, messageHtml) {
+    if (typeof document === 'undefined') return null;
+    const mirrorSelector = 'toto[data-rabbit-mirror="true"], toto[data-rabbit-hole="true"]';
+    const messageIndex = Array.isArray(chat) ? chat.lastIndexOf(message) : -1;
+    const scopes = [];
+    if (messageIndex >= 0) {
+        for (const selector of [
+            `.mes[mesid="${messageIndex}"]`,
+            `.mes[data-message-id="${messageIndex}"]`,
+            `.mes[data-messageid="${messageIndex}"]`,
+        ]) {
+            try {
+                const scope = document.querySelector(selector);
+                if (scope) scopes.push(scope);
+            } catch {
+                // Ignore host selector differences.
+            }
+        }
+    }
+    for (const scope of scopes) {
+        const found = scope.querySelector?.(mirrorSelector);
+        if (found) return found;
+    }
+
+    const expectedSummary = rawSummaryText(messageHtml);
+    const all = [...document.querySelectorAll(mirrorSelector)];
+    if (expectedSummary) {
+        const matched = all.filter(toto => normalizedText(toto.querySelector?.('summary')?.textContent) === expectedSummary);
+        if (matched.length) return matched[matched.length - 1];
+    }
+    return all[all.length - 1] || null;
 }
 
 async function scanLatestAssistantMessage(mod) {
@@ -525,15 +830,25 @@ async function scanLatestAssistantMessage(mod) {
     const message = recent.find(item => !item?.is_user && typeof item?.mes === 'string' && TOTO_RE.test(item.mes));
     if (!message) return;
     const sigHash = hashText(message.mes);
-    if (sigHash === lastScannedHash) return;
-    lastScannedHash = sigHash;
-    const result = scanRabbitMirrorHtml(message.mes);
+    if (sigHash !== lastScannedHash) {
+        lastScannedHash = sigHash;
+        lastScanUsedRenderedPalette = false;
+        lastScanAttempts = 0;
+    } else if (lastScanUsedRenderedPalette || lastScanAttempts >= 3) {
+        return;
+    }
+    lastScanAttempts += 1;
+
+    const renderedToto = findRenderedToto(message, chat, message.mes);
+    const result = scanRabbitMirrorHtml(message.mes, renderedToto);
     const signature = result?.signature || '';
     const skeleton = result?.skeleton || '';
     const riskFlags = Array.isArray(result?.riskFlags) ? result.riskFlags : [];
-    if (signature || skeleton || riskFlags.length) {
-        updateLatestVisualSignature(signature, skeleton, riskFlags);
-        console.debug('[RabbitMirror] visual signature:', signature, skeleton, riskFlags);
+    const paletteFingerprint = result?.paletteFingerprint || null;
+    if (paletteFingerprint?.source === 'rendered') lastScanUsedRenderedPalette = true;
+    if (signature || skeleton || riskFlags.length || paletteFingerprint) {
+        updateLatestVisualSignature(signature, skeleton, riskFlags, paletteFingerprint);
+        console.debug('[RabbitMirror] visual signature:', signature, skeleton, riskFlags, paletteFingerprint);
     }
 }
 

@@ -4,7 +4,7 @@
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.31.99",
+  "version": "0.32.0",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "Rabbit Mirror Theater: preserves the Visual Scenery interaction-link prompt and adds rendered-DOM list-item-to-detail-view rescue without relying on stripped inline event handlers."
+  "description": "Rabbit Mirror Theater: keeps the full interaction rescue library and adds local rendered-palette fingerprinting with next-round color-rhythm correction."
 }
