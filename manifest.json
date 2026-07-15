@@ -4,7 +4,7 @@
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.31.97",
+  "version": "0.31.98",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "Rabbit Mirror Theater: preserves the 0.31.94 Visual Scenery interaction-link prompt and fixes hidden checkbox/radio interactions whose safe inline actions use this.parentElement / nextElementSibling chains."
+  "description": "Rabbit Mirror Theater: preserves the Visual Scenery interaction-link prompt and adds rendered-DOM state-layer rescue for hidden checkbox/radio interactions without relying on stripped inline event handlers."
 }

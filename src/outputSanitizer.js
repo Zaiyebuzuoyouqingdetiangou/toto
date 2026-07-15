@@ -362,9 +362,205 @@ const INLINE_PSEUDO_RESCUE_ATTR = 'data-rabbit-mirror-inline-pseudo-rescue';
 const HINTED_PSEUDO_RESCUE_ATTR = 'data-rabbit-mirror-hinted-pseudo-rescue';
 const CHANGE_PSEUDO_RESCUE_ATTR = 'data-rabbit-mirror-change-pseudo-rescue';
 const DIRECT_ID_CLICK_RESCUE_ATTR = 'data-rabbit-mirror-direct-id-click-rescue';
-const RELATIVE_NODE_PROGRAM_RESCUE_ATTR = 'data-rabbit-mirror-relative-node-program-rescue';
 const PSEUDO_ACTIVE_ATTR = 'data-rm-pseudo-active';
 const pseudoInteractionStates = new WeakMap();
+
+// 渲染后结构型状态层急救：不依赖可能已被宿主删除的 onclick/onchange。
+// 仅处理非常明确的结构：label 直属隐藏 checkbox/radio + 两层几何重合的前景/隐藏层。
+const RENDERED_STATE_LAYER_RESCUE_ATTR = 'data-rabbit-mirror-rendered-state-layer-rescue';
+const RENDERED_STATE_LAYER_ROLE_ATTR = 'data-rm-rendered-state-layer-role';
+const renderedStateLayerRescueStates = new WeakMap();
+
+function getInlineStyleValue(element, property) {
+    return String(element?.style?.getPropertyValue?.(property) || '').trim();
+}
+
+function isExplicitlyHiddenStateLayer(element) {
+    const display = getInlineStyleValue(element, 'display').toLowerCase();
+    const visibility = getInlineStyleValue(element, 'visibility').toLowerCase();
+    const opacityText = getInlineStyleValue(element, 'opacity');
+    const opacity = Number.parseFloat(opacityText);
+    return display === 'none'
+        || visibility === 'hidden'
+        || (opacityText !== '' && Number.isFinite(opacity) && opacity <= 0.05);
+}
+
+function isOverlayLikeStateLayer(element) {
+    const position = getInlineStyleValue(element, 'position').toLowerCase();
+    if (position === 'absolute' || position === 'fixed') return true;
+
+    const inset = getInlineStyleValue(element, 'inset');
+    if (inset) return true;
+
+    const edges = ['top', 'right', 'bottom', 'left']
+        .map(property => getInlineStyleValue(element, property))
+        .filter(Boolean).length;
+    if (edges >= 3) return true;
+
+    const width = getInlineStyleValue(element, 'width').replace(/\s+/g, '');
+    const height = getInlineStyleValue(element, 'height').replace(/\s+/g, '');
+    return width === '100%' && height === '100%';
+}
+
+function getStateLayerGeometryScore(first, second) {
+    if (!first || !second) return 0;
+    let score = 0;
+    for (const property of ['position', 'inset', 'top', 'right', 'bottom', 'left', 'width', 'height']) {
+        const firstValue = getInlineStyleValue(first, property).replace(/\s+/g, '').toLowerCase();
+        const secondValue = getInlineStyleValue(second, property).replace(/\s+/g, '').toLowerCase();
+        if (firstValue && secondValue && firstValue === secondValue) score += 1;
+    }
+    return score;
+}
+
+function neutralizeStateLayerTransform(transformText) {
+    let transform = String(transformText || '').trim();
+    if (!transform || transform.toLowerCase() === 'none') return '';
+
+    let changed = false;
+    transform = transform
+        .replace(/translate3d\([^)]*\)/gi, () => {
+            changed = true;
+            return 'translate3d(0, 0, 0)';
+        })
+        .replace(/translate(?:x|y|z)?\([^)]*\)/gi, match => {
+            changed = true;
+            const name = match.slice(0, match.indexOf('('));
+            if (/^translate$/i.test(name)) return 'translate(0, 0)';
+            return `${name}(0)`;
+        })
+        .replace(/scale3d\([^)]*\)/gi, () => {
+            changed = true;
+            return 'scale3d(1, 1, 1)';
+        })
+        .replace(/scale(?:x|y|z)?\([^)]*\)/gi, match => {
+            changed = true;
+            const name = match.slice(0, match.indexOf('('));
+            if (/^scale$/i.test(name)) return 'scale(1)';
+            return `${name}(1)`;
+        });
+
+    return changed ? transform : '';
+}
+
+function buildRenderedStateLayerEntry(label, input) {
+    if (!label?.children || !input || input.parentElement !== label) return null;
+
+    const children = [...label.children];
+    const inputIndex = children.indexOf(input);
+    if (inputIndex < 0) return null;
+
+    // 只看 input 后面的直属元素，避免把 label 里的说明文字或嵌套控件误当成状态层。
+    const candidates = children.slice(inputIndex + 1)
+        .filter(element => element?.nodeType === 1 && !/^(?:style|script|input)$/i.test(element.tagName || ''))
+        .filter(isOverlayLikeStateLayer)
+        .slice(0, 6);
+    if (candidates.length < 2) return null;
+
+    const hiddenCandidates = candidates.filter(isExplicitlyHiddenStateLayer);
+    const visibleCandidates = candidates.filter(element => !isExplicitlyHiddenStateLayer(element));
+    if (!hiddenCandidates.length || !visibleCandidates.length) return null;
+
+    // 至少需要一组几何高度重合的前后层。冰柜示例为 position/top/right/bottom/left 全部一致。
+    const hiddenLayers = hiddenCandidates.filter(hidden => (
+        visibleCandidates.some(visible => getStateLayerGeometryScore(visible, hidden) >= 3)
+    ));
+    const visibleLayers = visibleCandidates.filter(visible => (
+        hiddenLayers.some(hidden => getStateLayerGeometryScore(visible, hidden) >= 3)
+    ));
+    if (!hiddenLayers.length || !visibleLayers.length) return null;
+
+    const visibleStates = visibleLayers.map(target => ({
+        target,
+        originalStyles: capturePseudoStyleState(target, ['opacity', 'pointer-events']),
+    }));
+    const hiddenStates = hiddenLayers.map(target => ({
+        target,
+        originalStyles: capturePseudoStyleState(target, ['display', 'visibility', 'opacity', 'pointer-events', 'transform']),
+        activeTransform: neutralizeStateLayerTransform(getInlineStyleValue(target, 'transform')),
+        wasDisplayNone: getInlineStyleValue(target, 'display').toLowerCase() === 'none',
+        wasVisibilityHidden: getInlineStyleValue(target, 'visibility').toLowerCase() === 'hidden',
+    }));
+
+    visibleLayers.forEach(target => target.setAttribute(RENDERED_STATE_LAYER_ROLE_ATTR, 'front'));
+    hiddenLayers.forEach(target => target.setAttribute(RENDERED_STATE_LAYER_ROLE_ATTR, 'reveal'));
+
+    return { label, input, visibleStates, hiddenStates };
+}
+
+function applyRenderedStateLayerEntry(entry) {
+    if (!entry?.input) return;
+    const active = !!entry.input.checked;
+
+    for (const state of entry.visibleStates || []) {
+        restorePseudoStyleState(state.target, state.originalStyles);
+        if (active) {
+            applyPseudoStyleAssignments(state.target, [
+                { property: 'opacity', value: '0' },
+                { property: 'pointer-events', value: 'none' },
+            ]);
+        }
+    }
+
+    for (const state of entry.hiddenStates || []) {
+        restorePseudoStyleState(state.target, state.originalStyles);
+        if (!active) continue;
+
+        const assignments = [
+            { property: 'opacity', value: '1' },
+            { property: 'pointer-events', value: 'auto' },
+        ];
+        if (state.wasDisplayNone) assignments.push({ property: 'display', value: 'block' });
+        if (state.wasVisibilityHidden) assignments.push({ property: 'visibility', value: 'visible' });
+        if (state.activeTransform) assignments.push({ property: 'transform', value: state.activeTransform });
+        applyPseudoStyleAssignments(state.target, assignments);
+    }
+
+    entry.label?.setAttribute?.('aria-pressed', active ? 'true' : 'false');
+    entry.input?.setAttribute?.('aria-pressed', active ? 'true' : 'false');
+}
+
+function applyRenderedStateLayerEntries(root) {
+    const state = renderedStateLayerRescueStates.get(root);
+    if (!state?.entries?.size) return;
+    for (const entry of state.entries.values()) applyRenderedStateLayerEntry(entry);
+}
+
+function installRenderedStateLayerRescue(root) {
+    if (!root?.querySelectorAll) return;
+
+    let state = renderedStateLayerRescueStates.get(root);
+    if (!state) {
+        state = { entries: new Map() };
+        renderedStateLayerRescueStates.set(root, state);
+    }
+
+    for (const label of root.querySelectorAll('label')) {
+        const input = label.querySelector(':scope > input[type="checkbox"], :scope > input[type="radio"]');
+        if (!input || state.entries.has(input)) continue;
+        const entry = buildRenderedStateLayerEntry(label, input);
+        if (!entry) continue;
+        state.entries.set(input, entry);
+        input.setAttribute(RENDERED_STATE_LAYER_RESCUE_ATTR, 'true');
+    }
+
+    if (!state.entries.size) return;
+
+    if (root.dataset.rabbitMirrorRenderedStateLayerFallback !== 'true') {
+        const refresh = event => {
+            const input = event.target;
+            if (!input || !state.entries.has(input)) return;
+            // radio 切换会同步取消同组旧项，因此统一刷新当前兔子镜内全部结构状态。
+            applyRenderedStateLayerEntries(root);
+        };
+        root.addEventListener('input', refresh, false);
+        root.addEventListener('change', refresh, false);
+        root.dataset.rabbitMirrorRenderedStateLayerFallback = 'true';
+    }
+
+    applyRenderedStateLayerEntries(root);
+}
+
 const PSEUDO_INTERACTION_HINT_RE = /(?:鼠标\s*)?(?:悬停|划过|移入)|\bhover\b|(?:点击|轻触|触摸).{0,16}(?:显示|查看|展开|播放|切换)/i;
 const EXISTING_INTERACTIVE_SELECTOR = 'a, button, input, label, summary, select, textarea, [role="button"], [contenteditable="true"]';
 
@@ -733,127 +929,6 @@ function decodeSafeInlineString(value) {
         .replace(/\\(['"\\])/g, '$1');
 }
 
-function resolveRelativeNodeExpression(trigger, expression, root) {
-    const source = String(expression || '').replace(/\s+/g, '');
-    if (!/^this(?:\.(?:parentElement|nextElementSibling|previousElementSibling|firstElementChild|lastElementChild))*$/.test(source)) return null;
-
-    let current = trigger;
-    const steps = source.match(/\.(?:parentElement|nextElementSibling|previousElementSibling|firstElementChild|lastElementChild)/g) || [];
-    for (const rawStep of steps) {
-        current = current?.[rawStep.slice(1)] || null;
-        if (!current) return null;
-    }
-
-    if (!root || (current !== root && !root.contains?.(current))) return null;
-    return current;
-}
-
-function collectRelativeNodeProgramAssignments(scriptText, trigger, root) {
-    const source = String(scriptText || '');
-    if (!source || !/\bthis\b/i.test(source)) return null;
-
-    const matches = [];
-    const addMatch = (match, action) => {
-        matches.push({ start: match.index, end: match.index + match[0].length, action });
-    };
-    const relativeExpression = String.raw`\b(this(?:\s*\.\s*(?:parentElement|nextElementSibling|previousElementSibling|firstElementChild|lastElementChild))*)`;
-
-    const styleDotRe = new RegExp(`${relativeExpression}\\s*\\.\\s*style\\s*\\.\\s*([a-zA-Z][\\w]*)\\s*=\\s*(['"])((?:\\\\.|(?!\\3)[\\s\\S])*)\\3\\s*;?`, 'g');
-    let match;
-    while ((match = styleDotRe.exec(source))) {
-        const target = resolveRelativeNodeExpression(trigger, match[1], root);
-        const property = normalizeStylePropertyName(match[2]);
-        const value = decodeSafeInlineString(match[4]);
-        if (!target || !property || !value) return null;
-        addMatch(match, { type: 'style', target, property, value });
-    }
-
-    const styleBracketRe = new RegExp(`${relativeExpression}\\s*\\.\\s*style\\s*\\[\\s*(['"])([a-zA-Z-]+)\\2\\s*\\]\\s*=\\s*(['"])((?:\\\\.|(?!\\4)[\\s\\S])*)\\4\\s*;?`, 'g');
-    while ((match = styleBracketRe.exec(source))) {
-        const target = resolveRelativeNodeExpression(trigger, match[1], root);
-        const property = normalizeStylePropertyName(match[3]);
-        const value = decodeSafeInlineString(match[5]);
-        if (!target || !property || !value) return null;
-        addMatch(match, { type: 'style', target, property, value });
-    }
-
-    const textRe = new RegExp(`${relativeExpression}\\s*\\.\\s*(innerText|textContent)\\s*=\\s*(['"])((?:\\\\.|(?!\\3)[\\s\\S])*)\\3\\s*;?`, 'g');
-    while ((match = textRe.exec(source))) {
-        const target = resolveRelativeNodeExpression(trigger, match[1], root);
-        const value = decodeSafeInlineString(match[4]);
-        if (!target) return null;
-        addMatch(match, { type: 'text', target, value });
-    }
-
-    if (!matches.length) return null;
-    matches.sort((a, b) => a.start - b.start);
-
-    let cursor = 0;
-    let remainder = '';
-    for (const item of matches) {
-        if (item.start < cursor) return null;
-        remainder += source.slice(cursor, item.start);
-        cursor = item.end;
-    }
-    remainder += source.slice(cursor);
-    if (remainder.replace(/[\s;]+/g, '') !== '') return null;
-
-    return matches.map(item => item.action);
-}
-
-function bindRelativeNodeProgram(trigger, actions) {
-    if (!trigger || !actions?.length || trigger.hasAttribute(RELATIVE_NODE_PROGRAM_RESCUE_ATTR)) return false;
-
-    const tagName = String(trigger.tagName || '').toLowerCase();
-    const inputType = String(trigger.type || '').toLowerCase();
-    const isStateInput = tagName === 'input' && /^(?:checkbox|radio)$/.test(inputType);
-
-    if (isStateInput) {
-        // RabbitMirror 的 label fallback 会 preventDefault 后手动切换 checked，
-        // 再派发 input/change；因此这里必须监听状态事件，不能只绑 click。
-        let lastAppliedState = null;
-        const activateFromState = () => {
-            const currentState = !!trigger.checked;
-            if (lastAppliedState === currentState) return;
-            lastAppliedState = currentState;
-            applyDirectIdClickAssignments(actions);
-            trigger.setAttribute('aria-pressed', currentState ? 'true' : 'false');
-        };
-        trigger.addEventListener('input', activateFromState, false);
-        trigger.addEventListener('change', activateFromState, false);
-        if (trigger.checked) activateFromState();
-    } else {
-        preparePseudoTrigger(trigger);
-        const activate = event => {
-            if (event?.type === 'click' && shouldIgnorePseudoToggleEvent(event, trigger)) return;
-            if (event?.type === 'keydown') {
-                if (event.key !== 'Enter' && event.key !== ' ') return;
-                event.preventDefault();
-            }
-            applyDirectIdClickAssignments(actions);
-            trigger.setAttribute('aria-pressed', 'true');
-        };
-        trigger.addEventListener('click', activate, false);
-        trigger.addEventListener('keydown', activate, false);
-    }
-
-    trigger.removeAttribute('onclick');
-    trigger.setAttribute(RELATIVE_NODE_PROGRAM_RESCUE_ATTR, 'true');
-    return true;
-}
-
-function installRelativeNodeProgramRescue(root) {
-    if (!root?.querySelectorAll) return 0;
-    let installed = 0;
-    for (const trigger of root.querySelectorAll('[onclick]')) {
-        if (trigger.hasAttribute(RELATIVE_NODE_PROGRAM_RESCUE_ATTR)) continue;
-        const actions = collectRelativeNodeProgramAssignments(trigger.getAttribute('onclick'), trigger, root);
-        if (!actions?.length) continue;
-        if (bindRelativeNodeProgram(trigger, actions)) installed += 1;
-    }
-    return installed;
-}
-
 function collectDirectIdClickAssignments(scriptText, root) {
     const source = String(scriptText || '');
     if (!source || !/document\s*\.\s*getElementById\s*\(/i.test(source)) return null;
@@ -1077,26 +1152,6 @@ function bindDirectIdClickActions(trigger, actions) {
     return true;
 }
 
-function installRawMessageRelativeNodeProgramRescue(root) {
-    if (!root?.querySelectorAll) return 0;
-    const rawMessage = getRawAssistantMessageForRenderedRoot(root);
-    const rawRoot = chooseMatchingRawRabbitMirrorRoot(rawMessage, root);
-    if (!rawRoot?.querySelectorAll) return 0;
-
-    let installed = 0;
-    for (const rawTrigger of rawRoot.querySelectorAll('[onclick]')) {
-        const path = getElementChildIndexPath(rawRoot, rawTrigger);
-        if (!path) continue;
-        const renderedTrigger = resolveElementChildIndexPath(root, path);
-        if (!renderedTrigger || renderedTrigger.hasAttribute(RELATIVE_NODE_PROGRAM_RESCUE_ATTR)) continue;
-
-        const actions = collectRelativeNodeProgramAssignments(rawTrigger.getAttribute('onclick'), renderedTrigger, root);
-        if (!actions?.length) continue;
-        if (bindRelativeNodeProgram(renderedTrigger, actions)) installed += 1;
-    }
-    return installed;
-}
-
 function installRawMessageDirectIdClickProgramRescue(root) {
     if (!root?.querySelectorAll) return 0;
     const rawMessage = getRawAssistantMessageForRenderedRoot(root);
@@ -1296,15 +1351,16 @@ function installNestedDetailsFallback(root) {
 }
 
 function installIntelligentInteractionRescue(root) {
-    // SillyTavern/DOMPurify 可能在渲染前移除 onclick。先从原始消息回读，
-    // 再处理仍保留在渲染 DOM 中的安全相对节点/ID 赋值程序。
-    installRawMessageRelativeNodeProgramRescue(root);
-    installRelativeNodeProgramRescue(root);
+    // SillyTavern/DOMPurify 可能在渲染前移除 onclick。此时从当前消息的原始 HTML
+    // 回读安全可解析的 getElementById 样式/文字赋值，并按同一 DOM 路径绑定到渲染节点。
     installRawMessageDirectIdClickProgramRescue(root);
 
     const capabilities = detectInteractionCapabilities(root);
     if (capabilities.checked) {
         strengthenRabbitMirrorCheckedStateCss(root);
+        // 先从已渲染的安全 DOM 识别前景/隐藏层，再由 label 兜底触发 input/change。
+        // 此路径完全不依赖已被宿主删除的 onclick/onchange。
+        installRenderedStateLayerRescue(root);
         installInteractionLabelFallback(root);
     }
     if (capabilities.hover) refreshTouchHoverRescue(root);
