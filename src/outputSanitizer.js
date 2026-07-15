@@ -561,6 +561,203 @@ function installRenderedStateLayerRescue(root) {
     applyRenderedStateLayerEntries(root);
 }
 
+
+// 渲染后“列表项目 → 详情视图”急救：不依赖已被宿主删除的 onclick。
+// 仅处理严格结构：同一布局中，前置区域存在 N 个明确可点击候选项，后置详情容器直属包含 N 个隐藏详情层。
+const RENDERED_LIST_DETAIL_RESCUE_ATTR = 'data-rabbit-mirror-rendered-list-detail-rescue';
+const RENDERED_LIST_DETAIL_TRIGGER_ATTR = 'data-rm-list-detail-trigger';
+const RENDERED_LIST_DETAIL_PANEL_ATTR = 'data-rm-list-detail-panel';
+const RENDERED_LIST_DETAIL_ACTIVE_ATTR = 'data-rm-list-detail-active';
+const renderedListDetailRescueStates = new WeakMap();
+const LIST_DETAIL_DEFAULT_HINT_RE = /(?:等待|请选择|选择|选取|点击|轻触|触摸|查看|展开).{0,24}(?:目标|项目|条目|内容|详情|证物|报告|视图|对象|选项)?|\b(?:waiting|select|choose|pick|tap|click)\b/i;
+
+function isMeaningfulListDetailPanel(element) {
+    if (!element?.id || !isExplicitlyHiddenStateLayer(element)) return false;
+    const text = String(element.textContent || '').replace(/\s+/g, ' ').trim();
+    if (text.length < 24) return false;
+    const tagName = String(element.tagName || '').toLowerCase();
+    if (!/^(?:div|section|article|aside|li)$/.test(tagName)) return false;
+    return !!element.querySelector?.('h1, h2, h3, h4, h5, h6, p, ul, ol, dl, table, [style*="border"], [style*="background"]')
+        || text.length >= 80;
+}
+
+function isLikelyListDetailTrigger(element) {
+    if (!element?.style || !element?.textContent) return false;
+    const text = String(element.textContent || '').replace(/\s+/g, ' ').trim();
+    if (!text || text.length > 120) return false;
+
+    const tagName = String(element.tagName || '').toLowerCase();
+    if (/^(?:input|textarea|select|option|details|summary)$/.test(tagName)) return false;
+
+    const cursor = getInlineStyleValue(element, 'cursor').toLowerCase();
+    const decoration = `${getInlineStyleValue(element, 'text-decoration')} ${getInlineStyleValue(element, 'text-decoration-line')}`.toLowerCase();
+    const role = String(element.getAttribute?.('role') || '').toLowerCase();
+    const explicitlyClickable = cursor === 'pointer'
+        || decoration.includes('underline')
+        || role === 'button'
+        || element.hasAttribute?.('onclick');
+    if (!explicitlyClickable) return false;
+
+    // 选择最内层的明确触发项，避免同时把 li 与内部 span 都计入。
+    const nestedClickable = [...(element.querySelectorAll?.('[style*="cursor"], [style*="text-decoration"], [role="button"], [onclick]') || [])]
+        .some(child => child !== element && isLikelyListDetailTrigger(child));
+    return !nestedClickable;
+}
+
+function collectListDetailTriggersBeforeHost(host, expectedCount) {
+    const parent = host?.parentElement;
+    if (!parent || expectedCount < 2 || expectedCount > 8) return [];
+    const siblings = [...parent.children];
+    const hostIndex = siblings.indexOf(host);
+    if (hostIndex <= 0) return [];
+
+    const searchRoots = siblings.slice(0, hostIndex);
+    const candidates = [];
+    for (const searchRoot of searchRoots) {
+        if (isLikelyListDetailTrigger(searchRoot)) candidates.push(searchRoot);
+        for (const element of searchRoot.querySelectorAll?.('*') || []) {
+            if (isLikelyListDetailTrigger(element)) candidates.push(element);
+        }
+    }
+
+    const unique = [...new Set(candidates)]
+        .filter(candidate => !candidates.some(other => other !== candidate && candidate.contains?.(other)));
+    return unique.length === expectedCount ? unique : [];
+}
+
+function getListDetailDefaultViews(host, panels) {
+    const panelSet = new Set(panels);
+    return [...host.children].filter(element => {
+        if (panelSet.has(element) || isExplicitlyHiddenStateLayer(element)) return false;
+        const text = String(element.textContent || '').replace(/\s+/g, ' ').trim();
+        const id = String(element.id || '').toLowerCase();
+        if (!text || text.length > 180) return false;
+        return /(?:default|empty|placeholder|waiting|select|choose)/i.test(id)
+            || LIST_DETAIL_DEFAULT_HINT_RE.test(text);
+    }).slice(0, 3);
+}
+
+function buildRenderedListDetailEntry(host) {
+    if (!host?.children) return null;
+    const panels = [...host.children].filter(isMeaningfulListDetailPanel);
+    if (panels.length < 2 || panels.length > 8) return null;
+
+    const triggers = collectListDetailTriggersBeforeHost(host, panels.length);
+    if (triggers.length !== panels.length) return null;
+
+    const defaultViews = getListDetailDefaultViews(host, panels);
+    const panelStates = panels.map(panel => ({
+        panel,
+        originalStyles: capturePseudoStyleState(panel, ['display', 'visibility', 'opacity', 'pointer-events']),
+        wasDisplayNone: getInlineStyleValue(panel, 'display').toLowerCase() === 'none',
+        wasVisibilityHidden: getInlineStyleValue(panel, 'visibility').toLowerCase() === 'hidden',
+    }));
+    const defaultStates = defaultViews.map(view => ({
+        view,
+        originalStyles: capturePseudoStyleState(view, ['display', 'visibility', 'opacity', 'pointer-events']),
+    }));
+
+    panels.forEach((panel, index) => {
+        panel.setAttribute(RENDERED_LIST_DETAIL_PANEL_ATTR, String(index));
+        panel.setAttribute('aria-hidden', 'true');
+    });
+    triggers.forEach((trigger, index) => {
+        trigger.setAttribute(RENDERED_LIST_DETAIL_TRIGGER_ATTR, String(index));
+        trigger.setAttribute('aria-controls', panels[index].id);
+        trigger.setAttribute('aria-pressed', 'false');
+    });
+
+    return { host, triggers, panelStates, defaultStates, activeIndex: -1 };
+}
+
+function applyRenderedListDetailEntry(entry, activeIndex) {
+    if (!entry) return;
+    entry.activeIndex = Number.isInteger(activeIndex) ? activeIndex : -1;
+
+    for (const [index, state] of entry.panelStates.entries()) {
+        restorePseudoStyleState(state.panel, state.originalStyles);
+        const active = index === entry.activeIndex;
+        if (active) {
+            const assignments = [
+                { property: 'visibility', value: 'visible' },
+                { property: 'opacity', value: '1' },
+                { property: 'pointer-events', value: 'auto' },
+            ];
+            if (state.wasDisplayNone) assignments.push({ property: 'display', value: 'block' });
+            applyPseudoStyleAssignments(state.panel, assignments);
+            state.panel.setAttribute('aria-hidden', 'false');
+            state.panel.setAttribute(RENDERED_LIST_DETAIL_ACTIVE_ATTR, 'true');
+        } else {
+            state.panel.setAttribute('aria-hidden', 'true');
+            state.panel.removeAttribute(RENDERED_LIST_DETAIL_ACTIVE_ATTR);
+        }
+    }
+
+    for (const state of entry.defaultStates) {
+        restorePseudoStyleState(state.view, state.originalStyles);
+        if (entry.activeIndex >= 0) {
+            applyPseudoStyleAssignments(state.view, [
+                { property: 'display', value: 'none' },
+                { property: 'opacity', value: '0' },
+                { property: 'pointer-events', value: 'none' },
+            ]);
+            state.view.setAttribute('aria-hidden', 'true');
+        } else {
+            state.view.removeAttribute('aria-hidden');
+        }
+    }
+
+    entry.triggers.forEach((trigger, index) => {
+        const active = index === entry.activeIndex;
+        trigger.setAttribute('aria-pressed', active ? 'true' : 'false');
+        if (active) trigger.setAttribute(RENDERED_LIST_DETAIL_ACTIVE_ATTR, 'true');
+        else trigger.removeAttribute(RENDERED_LIST_DETAIL_ACTIVE_ATTR);
+    });
+}
+
+function findRenderedListDetailEntries(root) {
+    if (!root?.querySelectorAll) return [];
+    const entries = [];
+    for (const host of root.querySelectorAll('div, section, article, aside')) {
+        const entry = buildRenderedListDetailEntry(host);
+        if (entry) entries.push(entry);
+    }
+    return entries;
+}
+
+function hasRenderedListDetailCandidates(root) {
+    return findRenderedListDetailEntries(root).length > 0;
+}
+
+function installRenderedListDetailRescue(root) {
+    if (!root?.querySelectorAll) return;
+    let state = renderedListDetailRescueStates.get(root);
+    if (!state) {
+        state = { hosts: new Map() };
+        renderedListDetailRescueStates.set(root, state);
+    }
+
+    for (const entry of findRenderedListDetailEntries(root)) {
+        if (state.hosts.has(entry.host)) continue;
+        state.hosts.set(entry.host, entry);
+        entry.host.setAttribute(RENDERED_LIST_DETAIL_RESCUE_ATTR, 'true');
+
+        entry.triggers.forEach((trigger, index) => {
+            preparePseudoTrigger(trigger);
+            const activate = event => {
+                if (event?.type === 'keydown') {
+                    if (event.key !== 'Enter' && event.key !== ' ') return;
+                    event.preventDefault();
+                }
+                applyRenderedListDetailEntry(entry, index);
+            };
+            trigger.addEventListener('click', activate, false);
+            trigger.addEventListener('keydown', activate, false);
+        });
+        applyRenderedListDetailEntry(entry, -1);
+    }
+}
+
 const PSEUDO_INTERACTION_HINT_RE = /(?:鼠标\s*)?(?:悬停|划过|移入)|\bhover\b|(?:点击|轻触|触摸).{0,16}(?:显示|查看|展开|播放|切换)/i;
 const EXISTING_INTERACTIVE_SELECTOR = 'a, button, input, label, summary, select, textarea, [role="button"], [contenteditable="true"]';
 
@@ -1253,7 +1450,7 @@ function installPseudoInteractionRescue(root) {
 }
 
 function detectInteractionCapabilities(root) {
-    if (!root?.querySelectorAll) return { checked: false, hover: false, details: false, target: false, pseudo: false };
+    if (!root?.querySelectorAll) return { checked: false, hover: false, details: false, target: false, pseudo: false, listDetail: false };
     const cssText = [...root.querySelectorAll('style')].map(style => style.textContent || '').join('\n');
     const outerDetails = root.matches?.('details') ? root : root.querySelector(':scope > details');
     const nestedDetails = [...root.querySelectorAll('details')].filter(item => item !== outerDetails);
@@ -1263,6 +1460,7 @@ function detectInteractionCapabilities(root) {
         details: nestedDetails.length > 0,
         target: /:target\b/i.test(cssText) || !!root.querySelector('a[href^="#"]'),
         pseudo: hasPseudoInteractionCandidates(root),
+        listDetail: hasRenderedListDetailCandidates(root),
     };
     interactionCapabilityStates.set(root, capabilities);
     root.dataset.rabbitMirrorInteractionRoutes = Object.entries(capabilities)
@@ -1367,6 +1565,7 @@ function installIntelligentInteractionRescue(root) {
     if (capabilities.target) refreshTargetRescue(root);
     if (capabilities.details) installNestedDetailsFallback(root);
     if (capabilities.pseudo) installPseudoInteractionRescue(root);
+    if (capabilities.listDetail) installRenderedListDetailRescue(root);
 }
 
 const touchHoverRescueStates = new WeakMap();
