@@ -1,11 +1,6 @@
-# RabbitMirror 0.31.92
+# RabbitMirror 0.31.96
 
-本版以 0.31.91 为底座，仅增强智能交互急救。
-
-- 修复宿主在 DOM 渲染前删除 `onclick` 后，0.31.91 无法再读取伪交互程序的问题。
-- 急救器会从当前聊天消息的原始 HTML 中回读安全可解析的 `document.getElementById(...)` 样式与文字赋值。
-- 通过兔子镜标题与元素子路径映射回当前渲染节点，目标仍严格限制在当前兔子镜内部。
-- 不执行原 JavaScript，不使用 `eval`；包含未知语句时仍然拒绝。
-- Prompt、Visual Scenery、主题库、设置键、代码块急救均未修改。
-
-详细变更见 `README-0.31.92.md`。
+- 修复 `this.parentElement`、`this.nextElementSibling` 等链式伪交互：在消息事件到达时立即缓存原始交互程序，并在渲染后安全重绑。
+- 增加严格的双层揭示兜底：隐藏 checkbox 位于 label 内、前后两个绝对定位层分别为可见／隐藏时，可恢复“擦开／揭示”类交互。
+- “不发送小剧场正则”复制内容改为：`/<toto\b[^>]*>[\s\S]*?<\/toto>\s*/gi`。
+- 不修改 Prompt、Visual Scenery、主题库及现有设置结构。
