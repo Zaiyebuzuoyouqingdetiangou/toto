@@ -159,6 +159,15 @@ function visibleChineseHardLock() {
   - 若确实需要出现外语学习内容，必须采用「外语 [简体中文释义]」格式，且不能让外语成为按钮、标题或主界面的唯一文字。`;
 }
 
+function visualSceneryInteractionLinkRule() {
+    return String.raw`
+Visual Scenery 交互联动:
+  - 本轮既有的内部交互要求必须直接落实在同一 Visual Scenery 视觉画布中；交互入口、受控对象与变化结果必须属于同一画面，并由本轮展现形式自身的结构、空间关系或叙事逻辑自然产生。
+  - 触发后，画面主体、核心物件、空间层级、构图关系或内容显隐必须发生清晰且具有意义的变化。
+  - 不得把交互另行拼接成画面之外的独立按钮区、状态反馈区或说明组件；仅改变边框、颜色、阴影，或只浮现提示文字，不算完成交互。
+  - 具体实现继续遵守常驻交互规范与安全 HTML/CSS 规则。`;
+}
+
 function htmlSafetyCore() {
     return String.raw`
 HTML 直接渲染:
@@ -231,6 +240,7 @@ ${shortVisualAvoidance(combo, 3)}${recentRiskCorrection()}`);
 Visual Scenery 模式:
   允许使用纯 CSS/SVG 构建风景化、光影化、流动渐变或环境动态效果；必须服务本轮展现形式，不得为了动而动。`);
         chunks.push(VISUAL_SCENERY_RULES);
+        chunks.push(visualSceneryInteractionLinkRule());
     }
 
     if (tarotRulesText) chunks.push(tarotRulesText);
