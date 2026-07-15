@@ -362,6 +362,7 @@ const INLINE_PSEUDO_RESCUE_ATTR = 'data-rabbit-mirror-inline-pseudo-rescue';
 const HINTED_PSEUDO_RESCUE_ATTR = 'data-rabbit-mirror-hinted-pseudo-rescue';
 const CHANGE_PSEUDO_RESCUE_ATTR = 'data-rabbit-mirror-change-pseudo-rescue';
 const DIRECT_ID_CLICK_RESCUE_ATTR = 'data-rabbit-mirror-direct-id-click-rescue';
+const RELATIVE_CHAIN_CLICK_RESCUE_ATTR = 'data-rabbit-mirror-relative-chain-click-rescue';
 const PSEUDO_ACTIVE_ATTR = 'data-rm-pseudo-active';
 const pseudoInteractionStates = new WeakMap();
 const PSEUDO_INTERACTION_HINT_RE = /(?:鼠标\s*)?(?:悬停|划过|移入)|\bhover\b|(?:点击|轻触|触摸).{0,16}(?:显示|查看|展开|播放|切换)/i;
@@ -799,6 +800,113 @@ function applyDirectIdClickAssignments(actions) {
     }
 }
 
+function resolveRelativePseudoTarget(trigger, expression, root) {
+    const source = String(expression || '').replace(/\s+/g, '');
+    if (!/^this(?:\.(?:parentElement|nextElementSibling|previousElementSibling)){0,6}$/.test(source)) return null;
+
+    let current = trigger;
+    const steps = source.split('.').slice(1);
+    for (const step of steps) {
+        if (!current) return null;
+        if (step === 'parentElement') current = current.parentElement;
+        else if (step === 'nextElementSibling') current = current.nextElementSibling;
+        else if (step === 'previousElementSibling') current = current.previousElementSibling;
+        else return null;
+    }
+
+    return current && root?.contains?.(current) ? current : null;
+}
+
+function collectRelativeChainClickAssignments(scriptText, trigger, root) {
+    const source = String(scriptText || '');
+    if (!source || !/\bthis(?:\s*\.\s*(?:parentElement|nextElementSibling|previousElementSibling))*/i.test(source)) return null;
+
+    const matches = [];
+    const addMatch = (match, action) => {
+        matches.push({ start: match.index, end: match.index + match[0].length, action });
+    };
+
+    // this.parentElement.style.background = '...';
+    // this.nextElementSibling.nextElementSibling.style.opacity = '1';
+    const styleDotRe = /(this(?:\s*\.\s*(?:parentElement|nextElementSibling|previousElementSibling)){0,6})\s*\.\s*style\s*\.\s*([a-zA-Z][\w]*)\s*=\s*(['"])((?:\\.|(?!\3)[\s\S])*)\3\s*;?/g;
+    let match;
+    while ((match = styleDotRe.exec(source))) {
+        const target = resolveRelativePseudoTarget(trigger, match[1], root);
+        const property = normalizeStylePropertyName(match[2]);
+        const value = decodeSafeInlineString(match[4]);
+        if (!target || !property || !value) return null;
+        addMatch(match, { type: 'style', target, property, value });
+    }
+
+    // this.parentElement.style['background-color'] = '...';
+    const styleBracketRe = /(this(?:\s*\.\s*(?:parentElement|nextElementSibling|previousElementSibling)){0,6})\s*\.\s*style\s*\[\s*(['"])([a-zA-Z-]+)\2\s*\]\s*=\s*(['"])((?:\\.|(?!\4)[\s\S])*)\4\s*;?/g;
+    while ((match = styleBracketRe.exec(source))) {
+        const target = resolveRelativePseudoTarget(trigger, match[1], root);
+        const property = normalizeStylePropertyName(match[3]);
+        const value = decodeSafeInlineString(match[5]);
+        if (!target || !property || !value) return null;
+        addMatch(match, { type: 'style', target, property, value });
+    }
+
+    // this.nextElementSibling.innerText/textContent = '...';
+    const textRe = /(this(?:\s*\.\s*(?:parentElement|nextElementSibling|previousElementSibling)){0,6})\s*\.\s*(innerText|textContent)\s*=\s*(['"])((?:\\.|(?!\3)[\s\S])*)\3\s*;?/g;
+    while ((match = textRe.exec(source))) {
+        const target = resolveRelativePseudoTarget(trigger, match[1], root);
+        const value = decodeSafeInlineString(match[4]);
+        if (!target) return null;
+        addMatch(match, { type: 'text', target, value });
+    }
+
+    if (!matches.length) return null;
+    matches.sort((a, b) => a.start - b.start);
+
+    // 只接受上述链式赋值与空白/分号。出现函数调用、表达式、DOM 增删等未知语句时整段拒绝。
+    let cursor = 0;
+    let remainder = '';
+    for (const item of matches) {
+        if (item.start < cursor) continue;
+        remainder += source.slice(cursor, item.start);
+        cursor = item.end;
+    }
+    remainder += source.slice(cursor);
+    if (remainder.replace(/[\s;]+/g, '') !== '') return null;
+
+    return matches.map(item => item.action);
+}
+
+function bindRelativeChainClickActions(trigger, actions) {
+    if (!trigger || !actions?.length || trigger.hasAttribute(RELATIVE_CHAIN_CLICK_RESCUE_ATTR)) return false;
+
+    preparePseudoTrigger(trigger);
+    const activate = event => {
+        if (event?.type === 'click' && shouldIgnorePseudoToggleEvent(event, trigger)) return;
+        if (event?.type === 'keydown') {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+        }
+        applyDirectIdClickAssignments(actions);
+    };
+
+    trigger.addEventListener('click', activate, false);
+    trigger.addEventListener('keydown', activate, false);
+    trigger.removeAttribute('onclick');
+    trigger.removeAttribute('aria-pressed');
+    trigger.setAttribute(RELATIVE_CHAIN_CLICK_RESCUE_ATTR, 'true');
+    return true;
+}
+
+function installRelativeChainClickProgramRescue(root) {
+    if (!root?.querySelectorAll) return 0;
+    let installed = 0;
+    for (const trigger of root.querySelectorAll('[onclick]')) {
+        if (trigger.hasAttribute(RELATIVE_CHAIN_CLICK_RESCUE_ATTR)) continue;
+        const actions = collectRelativeChainClickAssignments(trigger.getAttribute('onclick'), trigger, root);
+        if (!actions?.length) continue;
+        if (bindRelativeChainClickActions(trigger, actions)) installed += 1;
+    }
+    return installed;
+}
+
 function installDirectIdClickProgramRescue(root) {
     if (!root?.querySelectorAll) return;
     const candidates = [...root.querySelectorAll('[onclick]')];
@@ -976,6 +1084,27 @@ function installRawMessageDirectIdClickProgramRescue(root) {
     return installed;
 }
 
+function installRawMessageRelativeChainClickProgramRescue(root) {
+    if (!root?.querySelectorAll) return 0;
+    const rawMessage = getRawAssistantMessageForRenderedRoot(root);
+    const rawRoot = chooseMatchingRawRabbitMirrorRoot(rawMessage, root);
+    if (!rawRoot?.querySelectorAll) return 0;
+
+    let installed = 0;
+    for (const rawTrigger of rawRoot.querySelectorAll('[onclick]')) {
+        const path = getElementChildIndexPath(rawRoot, rawTrigger);
+        if (!path) continue;
+        const renderedTrigger = resolveElementChildIndexPath(root, path);
+        if (!renderedTrigger || renderedTrigger.hasAttribute(RELATIVE_CHAIN_CLICK_RESCUE_ATTR)) continue;
+
+        const source = rawTrigger.getAttribute('onclick');
+        const actions = collectRelativeChainClickAssignments(source, renderedTrigger, root);
+        if (!actions?.length) continue;
+        if (bindRelativeChainClickActions(renderedTrigger, actions)) installed += 1;
+    }
+    return installed;
+}
+
 function installInlineEventPseudoInteractionRescue(root) {
     if (!root?.querySelectorAll) return;
     const candidates = [...root.querySelectorAll('[onmouseover], [onmouseenter], [onmouseout], [onmouseleave], [onclick]')];
@@ -1050,6 +1179,7 @@ function installHintedHiddenLayerRescue(root) {
 function installPseudoInteractionRescue(root) {
     installCheckedChangePseudoInteractionRescue(root);
     installDirectIdClickProgramRescue(root);
+    installRelativeChainClickProgramRescue(root);
     installInlineEventPseudoInteractionRescue(root);
     // 某些宿主会在渲染前移除 onmouseover/onclick。此路径只在“悬停/点击提示 + 隐藏全覆盖层”同时存在时启用。
     installHintedHiddenLayerRescue(root);
@@ -1155,8 +1285,11 @@ function installNestedDetailsFallback(root) {
 
 function installIntelligentInteractionRescue(root) {
     // SillyTavern/DOMPurify 可能在渲染前移除 onclick。此时从当前消息的原始 HTML
-    // 回读安全可解析的 getElementById 样式/文字赋值，并按同一 DOM 路径绑定到渲染节点。
+    // 回读安全可解析的 getElementById 或 this/parentElement/nextElementSibling 链式赋值，
+    // 再按同一 DOM 路径绑定到渲染节点；绝不执行模型输出的 JavaScript。
     installRawMessageDirectIdClickProgramRescue(root);
+    installRawMessageRelativeChainClickProgramRescue(root);
+    installRelativeChainClickProgramRescue(root);
 
     const capabilities = detectInteractionCapabilities(root);
     if (capabilities.checked) {
