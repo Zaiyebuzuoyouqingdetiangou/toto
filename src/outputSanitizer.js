@@ -1372,6 +1372,181 @@ function installRenderedButtonAdjacentHiddenRescue(root) {
 }
 
 
+// 渲染后“可点击画面 + 相邻弹层”急救：用于宿主删除 onclick 后，
+// 只剩带 cursor:pointer 的画面、紧邻隐藏弹层以及弹层内关闭按钮的结构。
+// 点击画面打开，点击关闭入口恢复；不依赖原始事件代码，并保持完整可逆。
+const RENDERED_CLICKABLE_ADJACENT_POPUP_RESCUE_ATTR = 'data-rabbit-mirror-clickable-adjacent-popup-rescue';
+const RENDERED_CLICKABLE_ADJACENT_POPUP_ITEM_ATTR = 'data-rm-clickable-adjacent-popup-item';
+const RENDERED_CLICKABLE_ADJACENT_POPUP_CLOSE_ATTR = 'data-rm-clickable-adjacent-popup-close';
+const renderedClickableAdjacentPopupRescueStates = new WeakMap();
+const CLICKABLE_ADJACENT_POPUP_TRIGGER_HINT_RE = /(?:点击|轻触|触摸|查看|检视|检查|打开|开启|进入|解锁|翻阅|读取|回忆|相簿|底片)|\b(?:click|tap|touch|open|inspect|view|enter|unlock|album|memory)\b/i;
+const CLICKABLE_ADJACENT_POPUP_CLOSE_HINT_RE = /(?:关闭|合上|收起|返回|退出|结束|完成)|\b(?:close|back|exit|dismiss|done|cancel)\b/i;
+const CLICKABLE_ADJACENT_POPUP_TARGET_HINT_RE = /(?:popup|modal|dialog|overlay|album|memory|detail|secret|hidden|弹层|弹窗|浮层|相簿|回忆|详情|秘密|隐藏)/i;
+
+function isRenderedClickableAdjacentPopupTrigger(element) {
+    if (!element || element.hasAttribute?.(RENDERED_CLICKABLE_ADJACENT_POPUP_RESCUE_ATTR)) return !!element;
+    const tagName = String(element.tagName || '').toLowerCase();
+    if (!/^(?:div|section|article|figure|aside|span)$/.test(tagName)) return false;
+    if (isExplicitlyHiddenStateLayer(element)) return false;
+    if (getInlineStyleValue(element, 'cursor').toLowerCase() !== 'pointer') return false;
+    const text = String(element.textContent || '').replace(/\s+/g, ' ').trim();
+    return text.length >= 2 && text.length <= 420;
+}
+
+function findRenderedClickableAdjacentPopupCloseButtons(target) {
+    if (!target?.querySelectorAll) return [];
+    const buttons = [...target.querySelectorAll('button, [role="button"]')];
+    const hinted = buttons.filter(button => CLICKABLE_ADJACENT_POPUP_CLOSE_HINT_RE.test(
+        String(button.textContent || button.getAttribute?.('aria-label') || '').replace(/\s+/g, ' ').trim(),
+    ));
+    return hinted.length ? hinted : (buttons.length === 1 ? buttons : []);
+}
+
+function isRenderedClickableAdjacentPopupTarget(element, trigger) {
+    if (!element || !trigger || element === trigger) return false;
+    const tagName = String(element.tagName || '').toLowerCase();
+    if (!/^(?:div|section|article|aside|dialog)$/.test(tagName)) return false;
+
+    const previouslyManaged = element.hasAttribute?.(RENDERED_CLICKABLE_ADJACENT_POPUP_ITEM_ATTR);
+    if (!previouslyManaged && !isExplicitlyHiddenStateLayer(element)) return false;
+
+    const text = String(element.textContent || '').replace(/\s+/g, ' ').trim();
+    if (text.length < 8 || text.length > 5000) return false;
+
+    const position = getInlineStyleValue(element, 'position').toLowerCase();
+    const semantic = `${element.id || ''} ${getClassTokens(element).join(' ')}`;
+    const closeButtons = findRenderedClickableAdjacentPopupCloseButtons(element);
+    const triggerText = String(trigger.textContent || '').replace(/\s+/g, ' ').trim();
+    const triggerHint = CLICKABLE_ADJACENT_POPUP_TRIGGER_HINT_RE.test(triggerText);
+    const popupHint = /^(?:absolute|fixed)$/.test(position)
+        || CLICKABLE_ADJACENT_POPUP_TARGET_HINT_RE.test(semantic)
+        || closeButtons.length > 0;
+
+    return previouslyManaged || (triggerHint && popupHint && closeButtons.length > 0);
+}
+
+function findRenderedClickableAdjacentPopupTarget(trigger) {
+    let node = trigger?.nextElementSibling || null;
+    for (let step = 0; node && step < 2; step += 1, node = node.nextElementSibling) {
+        if (/^(?:style|script|template)$/i.test(node.tagName || '')) continue;
+        if (isRenderedClickableAdjacentPopupTarget(node, trigger)) return node;
+        break;
+    }
+    return null;
+}
+
+function hasRenderedClickableAdjacentPopupCandidates(root) {
+    if (!root?.querySelectorAll) return false;
+    return [...root.querySelectorAll('div, section, article, figure, aside, span')]
+        .some(trigger => isRenderedClickableAdjacentPopupTrigger(trigger)
+            && !!findRenderedClickableAdjacentPopupTarget(trigger));
+}
+
+function buildRenderedClickableAdjacentPopupEntry(trigger, target) {
+    if (!trigger || !target) return null;
+    const targetOriginalStyles = capturePseudoStyleState(target, [
+        'display', 'visibility', 'opacity', 'pointer-events', 'transform',
+        'height', 'min-height', 'max-height', 'overflow', 'overflow-x', 'overflow-y',
+        'position', 'inset', 'top', 'right', 'bottom', 'left', 'width', 'max-width',
+        'margin', 'margin-top', 'z-index',
+    ]);
+    const triggerOriginalStyles = capturePseudoStyleState(trigger, ['filter', 'opacity', 'transform']);
+    const closeButtons = findRenderedClickableAdjacentPopupCloseButtons(target);
+    if (!closeButtons.length) return null;
+
+    trigger.setAttribute(RENDERED_CLICKABLE_ADJACENT_POPUP_RESCUE_ATTR, 'true');
+    target.setAttribute(RENDERED_CLICKABLE_ADJACENT_POPUP_ITEM_ATTR, 'true');
+    closeButtons.forEach(button => button.setAttribute(RENDERED_CLICKABLE_ADJACENT_POPUP_CLOSE_ATTR, 'true'));
+
+    return {
+        trigger,
+        target,
+        closeButtons,
+        active: false,
+        targetOriginalStyles,
+        triggerOriginalStyles,
+        activeTransform: neutralizeStateLayerTransform(getCapturedStyleValue(targetOriginalStyles, 'transform')),
+        wasDisplayNone: getCapturedStyleValue(targetOriginalStyles, 'display').toLowerCase() === 'none',
+        hadCollapsedHeight: isCollapsedDimensionValue(getCapturedStyleValue(targetOriginalStyles, 'height')),
+        hadCollapsedMaxHeight: isCollapsedDimensionValue(getCapturedStyleValue(targetOriginalStyles, 'max-height')),
+    };
+}
+
+function applyRenderedClickableAdjacentPopupEntry(entry, active = entry?.active) {
+    if (!entry?.trigger || !entry?.target) return;
+    entry.active = !!active;
+    restorePseudoStyleState(entry.target, entry.targetOriginalStyles);
+    restorePseudoStyleState(entry.trigger, entry.triggerOriginalStyles);
+
+    if (entry.active) {
+        const assignments = [
+            { property: 'opacity', value: '1' },
+            { property: 'visibility', value: 'visible' },
+            { property: 'pointer-events', value: 'auto' },
+        ];
+        if (entry.wasDisplayNone) assignments.push({ property: 'display', value: 'block' });
+        if (entry.activeTransform) assignments.push({ property: 'transform', value: entry.activeTransform });
+        if (entry.hadCollapsedHeight) assignments.push({ property: 'height', value: 'auto' });
+        if (entry.hadCollapsedMaxHeight) assignments.push({ property: 'max-height', value: '1200px' });
+        applyPseudoStyleAssignments(entry.target, assignments);
+    }
+
+    entry.trigger.setAttribute('aria-expanded', entry.active ? 'true' : 'false');
+    entry.trigger.setAttribute('aria-pressed', entry.active ? 'true' : 'false');
+    entry.target.setAttribute('aria-hidden', entry.active ? 'false' : 'true');
+}
+
+function installRenderedClickableAdjacentPopupRescue(root) {
+    if (!root?.querySelectorAll) return;
+    let state = renderedClickableAdjacentPopupRescueStates.get(root);
+    if (!state) {
+        state = { entries: new Map() };
+        renderedClickableAdjacentPopupRescueStates.set(root, state);
+    }
+
+    for (const trigger of root.querySelectorAll('div, section, article, figure, aside, span')) {
+        if (trigger.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`) || state.entries.has(trigger)) continue;
+        if (!isRenderedClickableAdjacentPopupTrigger(trigger)) continue;
+        const target = findRenderedClickableAdjacentPopupTarget(trigger);
+        if (!target) continue;
+        const entry = buildRenderedClickableAdjacentPopupEntry(trigger, target);
+        if (!entry) continue;
+        state.entries.set(trigger, entry);
+        preparePseudoTrigger(trigger);
+
+        const toggle = event => {
+            if (event && shouldIgnorePseudoToggleEvent(event, trigger)) return;
+            event?.preventDefault?.();
+            applyRenderedClickableAdjacentPopupEntry(entry, !entry.active);
+            for (const delay of [0, 80, 260]) {
+                setTimeout(() => {
+                    if (root.isConnected && entry.trigger.isConnected && entry.target.isConnected) {
+                        applyRenderedClickableAdjacentPopupEntry(entry, entry.active);
+                    }
+                }, delay);
+            }
+        };
+
+        trigger.addEventListener('click', toggle, false);
+        trigger.addEventListener('keydown', event => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            toggle(event);
+        }, false);
+
+        for (const closeButton of entry.closeButtons) {
+            closeButton.addEventListener('click', event => {
+                event.preventDefault();
+                event.stopPropagation();
+                applyRenderedClickableAdjacentPopupEntry(entry, false);
+            }, false);
+        }
+        applyRenderedClickableAdjacentPopupEntry(entry, false);
+    }
+
+    if (state.entries.size) root.dataset.rabbitMirrorClickableAdjacentPopupFallback = 'true';
+}
+
+
 // 渲染后“遮罩—隐藏层揭示”急救：用于宿主已删除 onmouseover/onmouseout，且没有表单控件的画面揭层。
 // 只识别同一容器内语义明确的遮罩层与隐藏正文层，点击/轻触一次显示，再次点击恢复。
 const RENDERED_MASK_REVEAL_RESCUE_ATTR = 'data-rabbit-mirror-mask-reveal-rescue';
@@ -2633,7 +2808,7 @@ function installPseudoInteractionRescue(root) {
 }
 
 function detectInteractionCapabilities(root) {
-    if (!root?.querySelectorAll) return { checked: false, hover: false, details: false, target: false, pseudo: false, listDetail: false, maskReveal: false, buttonAdjacent: false };
+    if (!root?.querySelectorAll) return { checked: false, hover: false, details: false, target: false, pseudo: false, listDetail: false, maskReveal: false, buttonAdjacent: false, clickablePopup: false };
     const cssText = [...root.querySelectorAll('style')].map(style => style.textContent || '').join('\n');
     const outerDetails = root.matches?.('details') ? root : root.querySelector(':scope > details');
     const nestedDetails = [...root.querySelectorAll('details')].filter(item => item !== outerDetails);
@@ -2646,6 +2821,7 @@ function detectInteractionCapabilities(root) {
         listDetail: hasRenderedListDetailCandidates(root),
         maskReveal: hasRenderedMaskRevealCandidates(root),
         buttonAdjacent: hasRenderedButtonAdjacentHiddenCandidates(root),
+        clickablePopup: hasRenderedClickableAdjacentPopupCandidates(root),
     };
     interactionCapabilityStates.set(root, capabilities);
     root.dataset.rabbitMirrorInteractionRoutes = Object.entries(capabilities)
@@ -2756,6 +2932,7 @@ function installIntelligentInteractionRescue(root) {
     }
     // 普通 button 后紧邻隐藏内容时，先建立真实揭示路线，避免只被归类为 hover 颜色反馈。
     if (capabilities.buttonAdjacent) installRenderedButtonAdjacentHiddenRescue(root);
+    if (capabilities.clickablePopup) installRenderedClickableAdjacentPopupRescue(root);
     if (capabilities.hover) refreshTouchHoverRescue(root);
     if (capabilities.target) refreshTargetRescue(root);
     if (capabilities.details) installNestedDetailsFallback(root);
@@ -2851,7 +3028,8 @@ function refreshTouchHoverRescue(toto) {
         }
         if (!hoverTarget) return;
         // 按钮后置隐藏内容已经由可逆揭示路线接管；不要再叠加持久 hover 状态。
-        if (hoverTarget.hasAttribute?.(RENDERED_BUTTON_ADJACENT_HIDDEN_RESCUE_ATTR)) return;
+        if (hoverTarget.hasAttribute?.(RENDERED_BUTTON_ADJACENT_HIDDEN_RESCUE_ATTR)
+            || hoverTarget.hasAttribute?.(RENDERED_CLICKABLE_ADJACENT_POPUP_RESCUE_ATTR)) return;
 
         const isActive = hoverTarget.getAttribute(TOUCH_HOVER_ATTR) === 'true';
         if (isActive) hoverTarget.removeAttribute(TOUCH_HOVER_ATTR);
@@ -3108,7 +3286,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 一次性交互诊断：仅在用户按下“开始一次交互诊断”后，临时监听聊天区的下一次交互。
 // 捕获一个兔子镜后只读取该条内容，并在约 650ms 后自动停止全部诊断监听。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.10-ONESHOT';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.11-ONESHOT';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -3202,12 +3380,13 @@ function diagnosticRouteSummary(root) {
         maskReveal: renderedMaskRevealRescueStates.get(root)?.hosts?.size || 0,
         listDetail: renderedListDetailRescueStates.get(root)?.entries?.size || 0,
         buttonAdjacent: renderedButtonAdjacentHiddenRescueStates.get(root)?.entries?.size || 0,
+        clickablePopup: renderedClickableAdjacentPopupRescueStates.get(root)?.entries?.size || 0,
     };
 }
 
 function diagnosticInferReason(root, inputs, targets) {
     const routes = diagnosticRouteSummary(root);
-    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.buttonAdjacent;
+    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.buttonAdjacent + routes.clickablePopup;
     const checkedInputs = inputs.filter(input => input.checked);
     const visibleTargets = targets.filter(target => {
         const style = diagnosticComputedStyle(target);
@@ -3216,6 +3395,8 @@ function diagnosticInferReason(root, inputs, targets) {
         return style?.display !== 'none' && style?.visibility !== 'hidden' && opacity > 0.05 && rect.height > 0;
     });
 
+    if (!inputs.length && routeCount && visibleTargets.length) return '非表单交互急救路线已建立，候选内容在计算样式中已有可见项。';
+    if (!inputs.length && routeCount) return '非表单交互急救路线已建立，但候选内容最终仍不可见：样式可能被覆盖或被布局裁切。';
     if (!inputs.length) return '未找到 checkbox/radio：渲染后控件可能被删除，或当前交互并非表单状态结构。';
     if (!checkedInputs.length) return '捕获结束时没有勾选控件；可能发生了重复切换，或当前交互使用了其他状态机制。';
     if (!routeCount && targets.length) return 'checkbox 已切换，但没有任何渲染后急救路线建立：当前结构识别条件未命中。';
@@ -3259,6 +3440,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `遮罩揭示 entries=${routes.maskReveal} listener=${routes.maskReveal ? 'true' : 'false'}`,
         `列表详情 entries=${routes.listDetail} listener=${root.dataset.rabbitMirrorRenderedListDetailFallback || 'false'}`,
         `按钮后置内容 entries=${routes.buttonAdjacent} listener=${root.dataset.rabbitMirrorButtonAdjacentHiddenFallback || 'false'}`,
+        `可点击画面弹层 entries=${routes.clickablePopup} listener=${root.dataset.rabbitMirrorClickableAdjacentPopupFallback || 'false'}`,
         `label fallback=${root.dataset.rabbitMirrorLabelFallback || root.dataset.rabbitMirrorCheckedFallback || 'unknown'}`,
         '',
         '[捕获事件]',
