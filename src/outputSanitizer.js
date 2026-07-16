@@ -33,14 +33,6 @@ function isInteractionRescueModeEnabled() {
     }
 }
 
-function isInteractionDiagnosticModeEnabled() {
-    try {
-        return !!getSettings().interactionDiagnosticMode;
-    } catch {
-        return false;
-    }
-}
-
 
 const MIRROR_TOTO_SELECTOR = 'toto[data-rabbit-mirror="true"], toto[data-rabbit-hole="true"]';
 let interactionScopeCounter = 0;
@@ -2446,11 +2438,14 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 
 
 
-// 正式内置交互诊断：默认关闭。开启后只读取当前聊天中已渲染的 DOM，
-// 显示可复制的结构、事件、样式与裁切信息；不修改 Prompt，也不上传任何内容。
+// 一次性交互诊断：仅在用户按下“开始一次交互诊断”后，临时监听聊天区的下一次交互。
+// 捕获一个兔子镜后只读取该条内容，并在约 650ms 后自动停止全部诊断监听。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.6-DIAG';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.7-ONESHOT';
+const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
+const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
+let oneShotInteractionDiagnosticSession = null;
 
 function diagnosticCompactText(value, maxLength = 80) {
     const text = String(value || '').replace(/\s+/g, ' ').trim();
@@ -2551,15 +2546,29 @@ function diagnosticInferReason(root, inputs, targets) {
         return style?.display !== 'none' && style?.visibility !== 'hidden' && opacity > 0.05 && rect.height > 0;
     });
 
-    if (!inputs.length) return '未找到 checkbox/radio：渲染后控件可能被删除，或急救扫描范围没有命中。';
-    if (!checkedInputs.length) return '尚未检测到勾选状态；请点击原交互入口一次，再复制诊断文字。';
+    if (!inputs.length) return '未找到 checkbox/radio：渲染后控件可能被删除，或当前交互并非表单状态结构。';
+    if (!checkedInputs.length) return '捕获结束时没有勾选控件；可能发生了重复切换，或当前交互使用了其他状态机制。';
     if (!routeCount && targets.length) return 'checkbox 已切换，但没有任何渲染后急救路线建立：当前结构识别条件未命中。';
     if (routeCount && !visibleTargets.length) return '急救路线已建立，但候选内容最终仍不可见：样式可能未执行、被宿主覆盖，或被布局裁切。';
-    if (visibleTargets.length) return '候选内容在计算样式中已有可见项；若屏幕仍看不到，请重点查看高度与裁切信息。';
-    return '尚无法自动归因，请复制完整诊断文字。';
+    if (visibleTargets.length) return '候选内容在计算样式中已有可见项；若屏幕仍看不到，请重点查看高度、裁切和时间快照。';
+    return '尚无法自动归因，请连同源码与实际渲染代码一起反馈。';
 }
 
-function buildInteractionDiagnosticText(root, state, phase = 'initial') {
+function captureInteractionDiagnosticSnapshot(root, state, label) {
+    if (!root || !state) return;
+    const targets = diagnosticCollectTargets(root).slice(0, 6);
+    const inputs = [...root.querySelectorAll('input[type="checkbox"], input[type="radio"]')].slice(0, 6);
+    const targetSummary = targets.map((target, index) => {
+        const computed = diagnosticComputedStyle(target);
+        const rect = diagnosticRect(target);
+        return `${index}:${diagnosticElementName(target)} opacity=${computed?.opacity || '?'} display=${computed?.display || '?'} height=${rect.height}px`;
+    }).join(' | ');
+    const inputSummary = inputs.map((input, index) => `${index}:${diagnosticElementName(input)}=${!!input.checked}`).join(' | ');
+    state.snapshots.push(`${label} inputs[${inputSummary || 'none'}] targets[${targetSummary || 'none'}]`);
+    if (state.snapshots.length > 6) state.snapshots.splice(0, state.snapshots.length - 6);
+}
+
+function buildInteractionDiagnosticText(root, state, phase = 'capture complete') {
     const inputs = [...root.querySelectorAll('input[type="checkbox"], input[type="radio"]')].slice(0, 8);
     const labels = [...root.querySelectorAll('label')].filter(label => !label.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`));
     const targets = diagnosticCollectTargets(root);
@@ -2569,8 +2578,8 @@ function buildInteractionDiagnosticText(root, state, phase = 'initial') {
         `RabbitMirror Interaction Diagnostic ${INTERACTION_DIAGNOSTIC_VERSION}`,
         `标题: ${title || '(未找到 summary)'}`,
         `阶段: ${phase}`,
+        `诊断模式: 一次性捕获（已自动停止）`,
         `智能交互急救开关: ${isInteractionRescueModeEnabled() ? 'ON' : 'OFF'}`,
-        `交互诊断开关: ${isInteractionDiagnosticModeEnabled() ? 'ON' : 'OFF'}`,
         `根节点: ${diagnosticElementName(root)} / connected=${!!root.isConnected}`,
         `labels=${labels.length} inputs=${inputs.length} hiddenCandidates=${targets.length}`,
         `相邻隐藏组 entries=${routes.adjacent} listener=${root.dataset.rabbitMirrorAdjacentHiddenGroupFallback || 'false'}`,
@@ -2579,11 +2588,15 @@ function buildInteractionDiagnosticText(root, state, phase = 'initial') {
         `列表详情 entries=${routes.listDetail} listener=${root.dataset.rabbitMirrorRenderedListDetailFallback || 'false'}`,
         `label fallback=${root.dataset.rabbitMirrorLabelFallback || root.dataset.rabbitMirrorCheckedFallback || 'unknown'}`,
         '',
-        '[最近事件]',
+        '[捕获事件]',
     ];
 
-    if (!state.events.length) lines.push('（尚未捕获 click / input / change）');
-    else state.events.slice(-12).forEach(item => lines.push(item));
+    if (!state.events.length) lines.push('（未捕获 click / input / change）');
+    else state.events.slice(-16).forEach(item => lines.push(item));
+
+    lines.push('', '[时间快照]');
+    if (!state.snapshots.length) lines.push('（无）');
+    else state.snapshots.forEach(item => lines.push(item));
 
     lines.push('', '[输入控件]');
     if (!inputs.length) lines.push('（无）');
@@ -2615,46 +2628,84 @@ function buildInteractionDiagnosticText(root, state, phase = 'initial') {
     return lines.join('\n');
 }
 
-function updateInteractionDiagnosticPanel(root, phase) {
-    const state = interactionDiagnosticStates.get(root);
-    if (!state?.pre?.isConnected) return;
-    const nextText = buildInteractionDiagnosticText(root, state, phase);
-    if (state.pre.textContent !== nextText) state.pre.textContent = nextText;
+function diagnosticLimitSource(text, maxLength = DIAGNOSTIC_SOURCE_LIMIT) {
+    let source = String(text || '');
+    source = source
+        .replace(/data:[^"'<>\s]{240,}/gi, match => `${match.slice(0, 72)}…[资源内容已省略]`)
+        .replace(/[A-Za-z0-9+/]{600,}={0,2}/g, '[超长编码内容已省略]');
+    if (source.length <= maxLength) return source;
+    return `${source.slice(0, maxLength)}\n<!-- 已截断：原长度 ${source.length} 字符 -->`;
 }
 
-function recordInteractionDiagnosticEvent(root, event, stage) {
-    const state = interactionDiagnosticStates.get(root);
-    if (!state) return;
-    const target = event?.target;
-    if (target?.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`)) return;
-    const checked = target?.matches?.('input[type="checkbox"], input[type="radio"]') ? ` checked=${!!target.checked}` : '';
-    state.events.push(`${event.type}:${stage} target=${diagnosticElementName(target)}${checked}`);
-    if (state.events.length > 20) state.events.splice(0, state.events.length - 20);
-    for (const delay of [0, 100, 500]) {
-        setTimeout(() => updateInteractionDiagnosticPanel(root, `${event.type} +${delay}ms`), delay);
+function getDiagnosticRawSource(root) {
+    const rawMessage = getRawAssistantMessageForRenderedRoot(root);
+    const rawRoot = chooseMatchingRawRabbitMirrorRoot(rawMessage, root);
+    if (rawRoot?.outerHTML) return diagnosticLimitSource(rawRoot.outerHTML);
+    const match = String(rawMessage || '').match(TOTO_BLOCK_SINGLE_RE);
+    return diagnosticLimitSource(match?.[0] || rawMessage || '（未能从宿主聊天数据中取得原始兔子镜源码）');
+}
+
+function getDiagnosticRenderedSource(root) {
+    try {
+        const clone = root.cloneNode(true);
+        if (clone.matches?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`)) return '（当前根节点为诊断面板，无法复制兔子镜）';
+        clone.querySelectorAll?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`).forEach(panel => panel.remove());
+        return diagnosticLimitSource(clone.outerHTML || '（无法序列化实际渲染代码）');
+    } catch {
+        return '（无法序列化实际渲染代码）';
+    }
+}
+
+function buildInteractionDiagnosticClipboardText(root, state) {
+    const report = state.report || buildInteractionDiagnosticText(root, state, 'capture complete');
+    return [
+        report,
+        '',
+        '[隐私提醒] 以下源码包含当前这一条兔子镜中的文字内容；请确认后再发送给他人。超长资源与编码内容会自动省略。',
+        '',
+        '[原始兔子镜源码]',
+        getDiagnosticRawSource(root),
+        '',
+        '[实际渲染代码]',
+        getDiagnosticRenderedSource(root),
+    ].join('\n');
+}
+
+async function copyDiagnosticText(text) {
+    try {
+        await navigator.clipboard.writeText(text);
+        return true;
+    } catch {
+        try {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;';
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            const ok = document.execCommand('copy');
+            textarea.remove();
+            return !!ok;
+        } catch {
+            return false;
+        }
     }
 }
 
 function removeInteractionDiagnostic(root) {
     const state = interactionDiagnosticStates.get(root);
-    if (state) {
-        for (const [type, handler] of Object.entries(state.handlers || {})) {
-            root.removeEventListener(type, handler, true);
-        }
-        state.panel?.remove?.();
-        interactionDiagnosticStates.delete(root);
-    }
+    state?.panel?.remove?.();
+    interactionDiagnosticStates.delete(root);
     root?.querySelectorAll?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`).forEach(panel => panel.remove());
 }
 
-function installInteractionDiagnostic(root) {
-    if (!root?.querySelectorAll || !isInteractionDiagnosticModeEnabled()) return;
-    let state = interactionDiagnosticStates.get(root);
-    if (state?.panel?.isConnected) {
-        updateInteractionDiagnosticPanel(root, 'rescan');
-        return;
-    }
+function removeAllInteractionDiagnosticPanels() {
+    const chatRoot = getChatRoot();
+    chatRoot?.querySelectorAll?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`).forEach(panel => panel.remove());
+}
 
+function createOneShotInteractionDiagnosticPanel(root, state) {
+    if (!root?.isConnected || state.panel?.isConnected) return;
     const panel = document.createElement('div');
     panel.setAttribute(INTERACTION_DIAGNOSTIC_PANEL_ATTR, 'true');
     panel.style.cssText = [
@@ -2666,68 +2717,127 @@ function installInteractionDiagnostic(root) {
     ].join(';');
 
     const heading = document.createElement('div');
-    heading.textContent = '【交互诊断面板｜点击原交互后复制】';
+    heading.textContent = '【一次性交互诊断｜捕获完成后自动停止】';
     heading.style.cssText = 'font-weight:800;color:#fde047;margin-bottom:8px;';
 
     const privacy = document.createElement('div');
-    privacy.textContent = '仅本地读取当前兔子镜；不会上传数据。正文只显示截断片段。';
+    privacy.textContent = '仅诊断当前点击的这一条兔子镜。复制时会附带该条源码与实际渲染代码；不会自动上传。';
     privacy.style.cssText = 'color:#cbd5e1;margin-bottom:8px;font-size:10px;';
 
+    const actions = document.createElement('div');
+    actions.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;';
     const copyButton = document.createElement('button');
     copyButton.type = 'button';
-    copyButton.textContent = '复制诊断文字';
-    copyButton.style.cssText = 'cursor:pointer;margin:0 0 8px;padding:5px 10px;border:1px solid #fde047;border-radius:5px;background:#1f2937;color:#fff;';
+    copyButton.textContent = '复制诊断＋代码';
+    const closeButton = document.createElement('button');
+    closeButton.type = 'button';
+    closeButton.textContent = '关闭报告';
+    const retryButton = document.createElement('button');
+    retryButton.type = 'button';
+    retryButton.textContent = '重新诊断';
+    for (const button of [copyButton, closeButton, retryButton]) {
+        button.style.cssText = 'cursor:pointer;padding:5px 10px;border:1px solid #fde047;border-radius:5px;background:#1f2937;color:#fff;';
+    }
+    actions.append(copyButton, closeButton, retryButton);
 
     const pre = document.createElement('pre');
+    pre.textContent = '正在捕获本次交互，请稍候约半秒……';
     pre.style.cssText = 'margin:0;white-space:pre-wrap;word-break:break-word;color:#f3f4f6;background:transparent;border:0;padding:0;';
-    panel.append(heading, privacy, copyButton, pre);
+    panel.append(heading, privacy, actions, pre);
 
     const outerDetails = root.matches?.('details') ? root : root.querySelector(':scope > details');
     (outerDetails || root).appendChild(panel);
-
-    const handlers = {};
-    state = { panel, pre, events: [], handlers };
-    interactionDiagnosticStates.set(root, state);
+    Object.assign(state, { panel, pre, copyButton, closeButton, retryButton });
 
     copyButton.addEventListener('click', async event => {
         event.preventDefault();
         event.stopPropagation();
-        try {
-            await navigator.clipboard.writeText(pre.textContent || '');
-            copyButton.textContent = '已复制';
-        } catch {
-            copyButton.textContent = '复制失败，请截图';
-        }
-        setTimeout(() => { if (copyButton.isConnected) copyButton.textContent = '复制诊断文字'; }, 1200);
+        const original = copyButton.textContent;
+        copyButton.textContent = '正在整理源码…';
+        const ok = await copyDiagnosticText(buildInteractionDiagnosticClipboardText(root, state));
+        copyButton.textContent = ok ? '已复制' : '复制失败，请截图';
+        setTimeout(() => { if (copyButton.isConnected) copyButton.textContent = original; }, 1400);
     });
+    closeButton.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        removeInteractionDiagnostic(root);
+    });
+    retryButton.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        removeInteractionDiagnostic(root);
+        triggerInteractionDiagnosticOnce();
+    });
+}
 
-    for (const type of ['click', 'input', 'change']) {
-        const handler = event => recordInteractionDiagnosticEvent(root, event, 'capture');
-        handlers[type] = handler;
-        root.addEventListener(type, handler, true);
+function getDiagnosticRootFromTarget(target) {
+    if (!target?.closest) return null;
+    if (target.closest(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`)) return null;
+    const toto = target.closest(MIRROR_TOTO_SELECTOR);
+    if (toto && isInsideChatMessage(toto)) return toto;
+    const details = target.closest('details');
+    if (details && isRabbitMirrorDetails(details) && isInsideChatMessage(details)) return details;
+    return null;
+}
+
+function stopOneShotInteractionDiagnosticSession() {
+    const session = oneShotInteractionDiagnosticSession;
+    if (!session) return;
+    for (const [type, handler] of Object.entries(session.handlers || {})) {
+        session.chatRoot?.removeEventListener?.(type, handler, true);
+    }
+    for (const timer of session.timers || []) clearTimeout(timer);
+    oneShotInteractionDiagnosticSession = null;
+}
+
+function finalizeOneShotInteractionDiagnostic(root, state) {
+    captureInteractionDiagnosticSnapshot(root, state, '+650ms');
+    state.report = buildInteractionDiagnosticText(root, state, 'interaction +650ms');
+    if (state.pre?.isConnected) state.pre.textContent = state.report;
+    stopOneShotInteractionDiagnosticSession();
+}
+
+function handleOneShotInteractionDiagnosticEvent(session, event) {
+    const root = getDiagnosticRootFromTarget(event?.target);
+    if (!root) return;
+    if (session.root && session.root !== root) return;
+
+    if (!session.root) {
+        session.root = root;
+        removeInteractionDiagnostic(root);
+        const state = { events: [], snapshots: [], panel: null, pre: null, report: '' };
+        session.state = state;
+        interactionDiagnosticStates.set(root, state);
+        createOneShotInteractionDiagnosticPanel(root, state);
+        captureInteractionDiagnosticSnapshot(root, state, '捕获前');
+        for (const [label, delay] of [['+0ms', 0], ['+100ms', 100], ['+500ms', 500]]) {
+            session.timers.push(setTimeout(() => captureInteractionDiagnosticSnapshot(root, state, label), delay));
+        }
+        session.timers.push(setTimeout(() => finalizeOneShotInteractionDiagnostic(root, state), 650));
     }
 
-    updateInteractionDiagnosticPanel(root, 'initial scan');
+    const state = session.state;
+    const target = event?.target;
+    const checked = target?.matches?.('input[type="checkbox"], input[type="radio"]') ? ` checked=${!!target.checked}` : '';
+    state.events.push(`${event.type}:capture target=${diagnosticElementName(target)}${checked}`);
+    if (state.events.length > 24) state.events.splice(0, state.events.length - 24);
 }
 
 function scopeRabbitMirrorInteractionsInChatDom() {
     const root = getChatRoot();
     if (!root) return;
     const enabled = isInteractionRescueModeEnabled();
-    const diagnosticEnabled = isInteractionDiagnosticModeEnabled();
     getRenderedRabbitMirrorInteractionRoots(root).forEach(mirrorRoot => {
         if (!isInsideChatMessage(mirrorRoot)) return;
         const remembered = wasInteractionRescued(mirrorRoot);
-
-        if (!diagnosticEnabled) removeInteractionDiagnostic(mirrorRoot);
-        if (!enabled && !remembered && !diagnosticEnabled) return;
+        if (!enabled && !remembered) return;
 
         if (enabled && !remembered) rememberInteractionRescue(mirrorRoot);
         if (enabled || remembered) {
             scopeRabbitMirrorInteractionIds(mirrorRoot);
             mirrorRoot.dataset.rabbitMirrorInteractionRescued = 'true';
         }
-        if (diagnosticEnabled) installInteractionDiagnostic(mirrorRoot);
     });
 }
 
@@ -3195,11 +3305,26 @@ export function triggerInteractionRescue() {
     }
 }
 
-export function triggerInteractionDiagnostic() {
+export function triggerInteractionDiagnosticOnce() {
     try {
-        scopeRabbitMirrorInteractionsInChatDom();
+        const chatRoot = getChatRoot();
+        if (!chatRoot) return false;
+        stopOneShotInteractionDiagnosticSession();
+        removeAllInteractionDiagnosticPanels();
+
+        const session = { chatRoot, root: null, state: null, handlers: {}, timers: [] };
+        for (const type of ['click', 'input', 'change']) {
+            const handler = event => handleOneShotInteractionDiagnosticEvent(session, event);
+            session.handlers[type] = handler;
+            chatRoot.addEventListener(type, handler, true);
+        }
+        session.timers.push(setTimeout(() => stopOneShotInteractionDiagnosticSession(), DIAGNOSTIC_WAIT_TIMEOUT_MS));
+        oneShotInteractionDiagnosticSession = session;
+        return true;
     } catch (error) {
-        console.debug('[RabbitMirror] interaction diagnostic trigger failed:', error);
+        console.debug('[RabbitMirror] one-shot interaction diagnostic failed:', error);
+        stopOneShotInteractionDiagnosticSession();
+        return false;
     }
 }
 

@@ -40,8 +40,6 @@ export const defaultSettings = Object.freeze({
     codeBlockRescueMode: false,
     // 智能交互急救：识别 checked、hover、嵌套 details、:target 等交互类型并选择对应兜底路径。可与代码块急救串联。
     interactionRescueMode: false,
-    // 交互诊断面板：默认关闭；开启后仅在浏览器本地显示可复制的结构/事件/样式诊断，不注入 Prompt。
-    interactionDiagnosticMode: false,
     // 强制启动增强：将小剧场作为本轮输出格式的一部分，而不是可选附加项。
     hardStartup: true,
     // 语言锁定增强：所有可见 UI 文案也必须为简体中文，禁止英文承担主要界面标签。
@@ -108,7 +106,6 @@ export function getSettings() {
     if (settings.autoRabbitMirrorInjection === undefined) settings.autoRabbitMirrorInjection = settings.enabled !== false;
     if (settings.codeBlockRescueMode === undefined) settings.codeBlockRescueMode = defaultSettings.codeBlockRescueMode;
     if (settings.interactionRescueMode === undefined) settings.interactionRescueMode = defaultSettings.interactionRescueMode;
-    if (settings.interactionDiagnosticMode === undefined) settings.interactionDiagnosticMode = defaultSettings.interactionDiagnosticMode;
     if (!['classic', 'format_only'].includes(settings.samplingMode)) settings.samplingMode = defaultSettings.samplingMode;
     if (settings.forceInteractiveMode === undefined) settings.forceInteractiveMode = defaultSettings.forceInteractiveMode;
     settings.depth = Number(settings.depth) || 0;
