@@ -2222,6 +2222,235 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
     return [...candidates];
 }
 
+
+// 0.32.4 临时可视化诊断：仅显示交互急救在真实酒馆 DOM 中看到了什么、事件是否触发、
+// 以及隐藏内容最终是否仍被 opacity / 高度 / overflow 裁切。此模块不修改 Prompt。
+const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.4-DIAG';
+const interactionDiagnosticStates = new WeakMap();
+
+function diagnosticCompactText(value, maxLength = 80) {
+    const text = String(value || '').replace(/\s+/g, ' ').trim();
+    return text.length > maxLength ? `${text.slice(0, maxLength - 1)}…` : text;
+}
+
+function diagnosticComputedStyle(element) {
+    try {
+        return typeof getComputedStyle === 'function' ? getComputedStyle(element) : null;
+    } catch {
+        return null;
+    }
+}
+
+function diagnosticRect(element) {
+    try {
+        const rect = element?.getBoundingClientRect?.();
+        if (!rect) return { width: 0, height: 0 };
+        return {
+            width: Math.round(rect.width * 10) / 10,
+            height: Math.round(rect.height * 10) / 10,
+        };
+    } catch {
+        return { width: 0, height: 0 };
+    }
+}
+
+function diagnosticElementName(element) {
+    if (!element) return '(none)';
+    const tag = String(element.tagName || 'node').toLowerCase();
+    const id = element.id ? `#${element.id}` : '';
+    const classes = getClassTokens(element).slice(0, 3).map(token => `.${token}`).join('');
+    return `${tag}${id}${classes}`;
+}
+
+function diagnosticFindClippingAncestor(element, root) {
+    let current = element?.parentElement || null;
+    for (let depth = 0; current && depth < 7; depth += 1, current = current.parentElement) {
+        if (current.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`)) return null;
+        const style = diagnosticComputedStyle(current);
+        const overflow = `${style?.overflow || ''}/${style?.overflowX || ''}/${style?.overflowY || ''}`.toLowerCase();
+        const rect = diagnosticRect(current);
+        if (/(?:hidden|clip)/.test(overflow) || rect.height <= 1) {
+            return `${diagnosticElementName(current)} height=${rect.height}px overflow=${overflow}`;
+        }
+        if (current === root) break;
+    }
+    return null;
+}
+
+function diagnosticCollectTargets(root) {
+    if (!root?.querySelectorAll) return [];
+    const selectors = [
+        '.hidden-thought',
+        '[class*="hidden"]',
+        '[class*="reveal"]',
+        '[class*="secret"]',
+        '[style*="opacity: 0"]',
+        '[style*="opacity:0"]',
+        '[style*="display: none"]',
+        '[style*="display:none"]',
+        '[style*="max-height: 0"]',
+        '[style*="max-height:0"]',
+    ];
+    const seen = new Set();
+    const result = [];
+    for (const element of root.querySelectorAll(selectors.join(','))) {
+        if (element.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`)) continue;
+        if (seen.has(element)) continue;
+        seen.add(element);
+        result.push(element);
+        if (result.length >= 12) break;
+    }
+    return result;
+}
+
+function diagnosticInferReason(root, inputs, targets) {
+    const adjacentState = renderedAdjacentHiddenGroupRescueStates.get(root);
+    const adjacentEntries = adjacentState?.entries?.size || 0;
+    const checkedInputs = inputs.filter(input => input.checked);
+    const visibleTargets = targets.filter(target => {
+        const style = diagnosticComputedStyle(target);
+        const rect = diagnosticRect(target);
+        const opacity = Number.parseFloat(style?.opacity || '1');
+        return style?.display !== 'none' && style?.visibility !== 'hidden' && opacity > 0.05 && rect.height > 0;
+    });
+
+    if (!inputs.length) return '未找到 checkbox/radio：渲染后控件可能被删除，或急救扫描范围没有命中该兔子镜。';
+    if (checkedInputs.length && !adjacentEntries && targets.length) return 'checkbox 已切换，但“相邻隐藏内容组”没有建立：结构识别条件未命中。';
+    if (checkedInputs.length && adjacentEntries && !visibleTargets.length) return '急救条目已建立，但隐藏内容最终仍不可见：样式可能未执行、被宿主覆盖，或被布局裁切。';
+    if (checkedInputs.length && visibleTargets.length) return '目标内容在计算样式中已可见；若屏幕仍看不到，请重点查看尺寸与裁切信息。';
+    if (!checkedInputs.length) return '尚未检测到勾选状态；请点击原交互入口一次，再截图本面板。';
+    return '尚无法自动归因，请把完整面板截图发回。';
+}
+
+function buildInteractionDiagnosticText(root, state, phase = 'initial') {
+    const inputs = [...root.querySelectorAll('input[type="checkbox"], input[type="radio"]')].slice(0, 8);
+    const labels = [...root.querySelectorAll('label')].filter(label => !label.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`));
+    const targets = diagnosticCollectTargets(root);
+    const adjacentState = renderedAdjacentHiddenGroupRescueStates.get(root);
+    const renderedLayerState = renderedStateLayerRescueStates.get(root);
+    const title = diagnosticCompactText(root.querySelector('summary')?.textContent, 64);
+    const lines = [
+        `RabbitMirror Interaction Diagnostic ${INTERACTION_DIAGNOSTIC_VERSION}`,
+        `标题: ${title || '(未找到 summary)'}`,
+        `阶段: ${phase}`,
+        `智能交互急救开关: ${isInteractionRescueModeEnabled() ? 'ON' : 'OFF'}`,
+        `根节点: ${diagnosticElementName(root)} / connected=${!!root.isConnected}`,
+        `labels=${labels.length} inputs=${inputs.length} hiddenCandidates=${targets.length}`,
+        `相邻隐藏组 entries=${adjacentState?.entries?.size || 0} listener=${root.dataset.rabbitMirrorAdjacentHiddenGroupFallback || 'false'}`,
+        `双层状态 entries=${renderedLayerState?.entries?.size || 0} listener=${root.dataset.rabbitMirrorRenderedStateLayerFallback || 'false'}`,
+        `label fallback=${root.dataset.rabbitMirrorLabelFallback || root.dataset.rabbitMirrorCheckedFallback || 'unknown'}`,
+        '',
+        '[最近事件]',
+    ];
+
+    if (!state.events.length) lines.push('（尚未捕获 click / input / change）');
+    else state.events.slice(-10).forEach(item => lines.push(item));
+
+    lines.push('', '[输入控件]');
+    if (!inputs.length) lines.push('（无）');
+    inputs.forEach((input, index) => {
+        const label = input.closest('label');
+        lines.push(
+            `${index}: ${diagnosticElementName(input)} type=${input.type} checked=${!!input.checked}`,
+            `   label=${!!label} text="${diagnosticCompactText(label?.textContent, 68)}"`,
+            `   attrs: adjacent=${input.getAttribute(RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR) || 'false'} layer=${input.getAttribute(RENDERED_STATE_LAYER_RESCUE_ATTR) || 'false'} change=${input.getAttribute(CHANGE_PSEUDO_RESCUE_ATTR) || 'false'}`,
+        );
+    });
+
+    lines.push('', '[疑似隐藏内容]');
+    if (!targets.length) lines.push('（无）');
+    targets.forEach((target, index) => {
+        const computed = diagnosticComputedStyle(target);
+        const rect = diagnosticRect(target);
+        const parentRect = diagnosticRect(target.parentElement);
+        const clipping = diagnosticFindClippingAncestor(target, root);
+        lines.push(
+            `${index}: ${diagnosticElementName(target)} text="${diagnosticCompactText(target.textContent, 70)}"`,
+            `   inline: opacity=${getInlineStyleValue(target, 'opacity') || '(empty)'} display=${getInlineStyleValue(target, 'display') || '(empty)'} visibility=${getInlineStyleValue(target, 'visibility') || '(empty)'} transform=${getInlineStyleValue(target, 'transform') || '(empty)'}`,
+            `   computed: opacity=${computed?.opacity || '?'} display=${computed?.display || '?'} visibility=${computed?.visibility || '?'} height=${rect.height}px parentHeight=${parentRect.height}px`,
+            `   clipping: ${clipping || '未发现明显裁切祖先'}`,
+        );
+    });
+
+    lines.push('', `[初步判断] ${diagnosticInferReason(root, inputs, targets)}`);
+    return lines.join('\n');
+}
+
+function updateInteractionDiagnosticPanel(root, phase) {
+    const state = interactionDiagnosticStates.get(root);
+    if (!state?.pre?.isConnected) return;
+    const nextText = buildInteractionDiagnosticText(root, state, phase);
+    if (state.pre.textContent !== nextText) state.pre.textContent = nextText;
+}
+
+function recordInteractionDiagnosticEvent(root, event, stage) {
+    const state = interactionDiagnosticStates.get(root);
+    if (!state) return;
+    const target = event?.target;
+    if (target?.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`)) return;
+    const checked = target?.matches?.('input[type="checkbox"], input[type="radio"]') ? ` checked=${!!target.checked}` : '';
+    state.events.push(`${event.type}:${stage} target=${diagnosticElementName(target)}${checked}`);
+    if (state.events.length > 18) state.events.splice(0, state.events.length - 18);
+
+    for (const delay of [0, 100, 500]) {
+        setTimeout(() => updateInteractionDiagnosticPanel(root, `${event.type} +${delay}ms`), delay);
+    }
+}
+
+function installInteractionDiagnostic(root) {
+    if (!root?.querySelectorAll) return;
+    let state = interactionDiagnosticStates.get(root);
+    if (state?.panel?.isConnected) return;
+
+    const panel = document.createElement('div');
+    panel.setAttribute(INTERACTION_DIAGNOSTIC_PANEL_ATTR, 'true');
+    panel.style.cssText = [
+        'position:relative', 'z-index:2147483000', 'display:block', 'box-sizing:border-box',
+        'margin:16px 8px 8px', 'padding:12px', 'border:3px solid #facc15', 'border-radius:8px',
+        'background:#111827', 'color:#f9fafb', 'box-shadow:0 0 0 2px #ef4444 inset',
+        'font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace', 'font-size:11px', 'line-height:1.45',
+        'white-space:normal', 'overflow:auto', 'max-height:520px',
+    ].join(';');
+
+    const heading = document.createElement('div');
+    heading.textContent = '【临时诊断面板｜点击原交互后截图】';
+    heading.style.cssText = 'font-weight:800;color:#fde047;margin-bottom:8px;';
+
+    const copyButton = document.createElement('button');
+    copyButton.type = 'button';
+    copyButton.textContent = '复制诊断文字';
+    copyButton.style.cssText = 'cursor:pointer;margin:0 0 8px;padding:5px 10px;border:1px solid #fde047;border-radius:5px;background:#1f2937;color:#fff;';
+
+    const pre = document.createElement('pre');
+    pre.style.cssText = 'margin:0;white-space:pre-wrap;word-break:break-word;color:#f3f4f6;background:transparent;border:0;padding:0;';
+    panel.append(heading, copyButton, pre);
+
+    const outerDetails = root.matches?.('details') ? root : root.querySelector(':scope > details');
+    (outerDetails || root).appendChild(panel);
+
+    state = { panel, pre, events: [] };
+    interactionDiagnosticStates.set(root, state);
+
+    copyButton.addEventListener('click', async event => {
+        event.preventDefault();
+        event.stopPropagation();
+        try {
+            await navigator.clipboard.writeText(pre.textContent || '');
+            copyButton.textContent = '已复制';
+        } catch {
+            copyButton.textContent = '复制失败，请截图';
+        }
+        setTimeout(() => { if (copyButton.isConnected) copyButton.textContent = '复制诊断文字'; }, 1200);
+    });
+
+    for (const type of ['click', 'input', 'change']) {
+        root.addEventListener(type, event => recordInteractionDiagnosticEvent(root, event, 'capture'), true);
+    }
+
+    updateInteractionDiagnosticPanel(root, 'initial scan');
+}
+
 function scopeRabbitMirrorInteractionsInChatDom() {
     const root = getChatRoot();
     if (!root) return;
@@ -2232,6 +2461,7 @@ function scopeRabbitMirrorInteractionsInChatDom() {
         if (!enabled && !remembered) return;
         if (enabled && !remembered) rememberInteractionRescue(mirrorRoot);
         scopeRabbitMirrorInteractionIds(mirrorRoot);
+        installInteractionDiagnostic(mirrorRoot);
         mirrorRoot.dataset.rabbitMirrorInteractionRescued = 'true';
     });
 }
