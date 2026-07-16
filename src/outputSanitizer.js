@@ -830,7 +830,9 @@ function resolveParentElementExpression(element, expression) {
 }
 
 function isSafeLocalQuerySelector(selector) {
-    return /^(?:#[a-zA-Z_][\w:.-]*|\.[a-zA-Z_][\w-]*)$/.test(String(selector || '').trim());
+    const source = String(selector || '').trim();
+    // 仅允许一个简单的 ID、class 或标签选择器；禁止组合器、属性、伪类与通配符。
+    return /^(?:#[a-zA-Z_][\w:.-]*|\.[a-zA-Z_][\w-]*|[a-zA-Z][\w-]*)$/.test(source);
 }
 
 function resolveSafeScopedQuery(scope, selector, root) {
@@ -844,6 +846,20 @@ function resolveSafeScopedQuery(scope, selector, root) {
         return target && root.contains(target) ? target : null;
     } catch {
         return null;
+    }
+}
+
+function resolveSafeScopedQueryAll(scope, selector, root) {
+    const safeSelector = String(selector || '').trim();
+    if (!scope?.querySelectorAll || !root?.contains || !root.contains(scope) || !isSafeLocalQuerySelector(safeSelector)) return [];
+    if (safeSelector.startsWith('#')) {
+        const target = resolveScopedPseudoId(scope, safeSelector.slice(1)) || resolveScopedPseudoId(root, safeSelector.slice(1));
+        return target ? [target] : [];
+    }
+    try {
+        return [...scope.querySelectorAll(safeSelector)].filter(target => target && root.contains(target)).slice(0, 64);
+    } catch {
+        return [];
     }
 }
 
@@ -907,17 +923,23 @@ function extractCheckedConditionalBranches(scriptText) {
     };
 }
 
-function parseNamedStyleAssignments(scriptText, targetMap) {
+function parseNamedStyleAssignments(scriptText, targetMap, targetCollections = new Map()) {
     const assignmentsByTarget = new Map();
     const source = String(scriptText || '');
 
-    const remember = (targetName, property, value) => {
-        const target = targetMap.get(targetName);
+    const rememberTarget = (target, property, value) => {
         const normalizedProperty = normalizeStylePropertyName(property);
         const normalizedValue = String(value || '').trim();
         if (!target || !normalizedProperty || !normalizedValue) return;
         if (!assignmentsByTarget.has(target)) assignmentsByTarget.set(target, new Map());
         assignmentsByTarget.get(target).set(normalizedProperty, normalizedValue);
+    };
+    const remember = (targetName, property, value) => rememberTarget(targetMap.get(targetName), property, value);
+    const rememberIndexed = (collectionName, rawIndex, property, value) => {
+        const index = Number(rawIndex);
+        const collection = targetCollections.get(collectionName);
+        if (!Number.isSafeInteger(index) || index < 0 || index > 63 || !collection) return;
+        rememberTarget(collection[index], property, value);
     };
 
     const dotAssignmentRe = /([a-zA-Z_$][\w$]*)\.style\.([a-zA-Z][\w]*)\s*=\s*(['"])([\s\S]*?)\3\s*;?/g;
@@ -927,6 +949,12 @@ function parseNamedStyleAssignments(scriptText, targetMap) {
     const bracketAssignmentRe = /([a-zA-Z_$][\w$]*)\.style\[\s*(['"])([a-zA-Z-]+)\2\s*\]\s*=\s*(['"])([\s\S]*?)\4\s*;?/g;
     while ((match = bracketAssignmentRe.exec(source))) remember(match[1], match[3], match[5]);
 
+    const indexedDotAssignmentRe = /([a-zA-Z_$][\w$]*)\s*\[\s*(\d{1,2})\s*\]\s*\.style\.([a-zA-Z][\w]*)\s*=\s*(['"])([\s\S]*?)\4\s*;?/g;
+    while ((match = indexedDotAssignmentRe.exec(source))) rememberIndexed(match[1], match[2], match[3], match[5]);
+
+    const indexedBracketAssignmentRe = /([a-zA-Z_$][\w$]*)\s*\[\s*(\d{1,2})\s*\]\s*\.style\[\s*(['"])([a-zA-Z-]+)\3\s*\]\s*=\s*(['"])([\s\S]*?)\5\s*;?/g;
+    while ((match = indexedBracketAssignmentRe.exec(source))) rememberIndexed(match[1], match[2], match[4], match[6]);
+
     return new Map(
         [...assignmentsByTarget.entries()].map(([target, assignments]) => [
             target,
@@ -935,18 +963,27 @@ function parseNamedStyleAssignments(scriptText, targetMap) {
     );
 }
 
-function parseNamedTextAssignments(scriptText, targetMap) {
+function parseNamedTextAssignments(scriptText, targetMap, targetCollections = new Map()) {
     const textByTarget = new Map();
     const source = String(scriptText || '');
+    const rememberText = (target, mode, rawValue) => {
+        if (!target) return;
+        const value = decodeSafeInlineString(rawValue);
+        // innerHTML 只接受纯文本；任何标签形态都放弃该条文字赋值。
+        if (mode === 'innerHTML' && /<[^>]*>/.test(value)) return;
+        textByTarget.set(target, value);
+    };
+
     const textAssignmentRe = /([a-zA-Z_$][\w$]*)\.(innerHTML|innerText|textContent)\s*=\s*(['"])((?:\\.|(?!\3)[\s\S])*)\3\s*;?/g;
     let match;
-    while ((match = textAssignmentRe.exec(source))) {
-        const target = targetMap.get(match[1]);
-        if (!target) continue;
-        const value = decodeSafeInlineString(match[4]);
-        // innerHTML 只接受纯文本；任何标签形态都放弃该条文字赋值。
-        if (match[2] === 'innerHTML' && /<[^>]*>/.test(value)) continue;
-        textByTarget.set(target, value);
+    while ((match = textAssignmentRe.exec(source))) rememberText(targetMap.get(match[1]), match[2], match[4]);
+
+    const indexedTextAssignmentRe = /([a-zA-Z_$][\w$]*)\s*\[\s*(\d{1,2})\s*\]\s*\.(innerHTML|innerText|textContent)\s*=\s*(['"])((?:\\.|(?!\4)[\s\S])*)\4\s*;?/g;
+    while ((match = indexedTextAssignmentRe.exec(source))) {
+        const index = Number(match[2]);
+        const collection = targetCollections.get(match[1]);
+        if (!Number.isSafeInteger(index) || index < 0 || index > 63 || !collection) continue;
+        rememberText(collection[index], match[3], match[5]);
     }
     return textByTarget;
 }
@@ -960,6 +997,7 @@ function parseCheckedChangeStyleProgramFromSource(input, root, scriptText) {
     if (!branches) return null;
 
     const targetMap = new Map([['this', input]]);
+    const targetCollections = new Map();
 
     // 支持：const wrapper = this.parentElement.parentElement;
     const parentAliasRe = /(?:const|let|var)\s+([a-zA-Z_$][\w$]*)\s*=\s*(this(?:\s*\.\s*parentElement)+)\s*;?/g;
@@ -978,17 +1016,46 @@ function parseCheckedChangeStyleProgramFromSource(input, root, scriptText) {
         if (target) targetMap.set(match[1], target);
     }
 
-    const queryAliasRe = /(?:const|let|var)\s+([a-zA-Z_$][\w$]*)\s*=\s*([a-zA-Z_$][\w$]*)\.querySelector\(\s*(['"])([.#][a-zA-Z_][\w:.-]*)\3\s*\)\s*;?/g;
+    const queryAliasRe = /(?:const|let|var)\s+([a-zA-Z_$][\w$]*)\s*=\s*([a-zA-Z_$][\w$]*)\.querySelector\(\s*(['"])([.#]?[a-zA-Z_][\w:.-]*)\3\s*\)\s*;?/g;
     while ((match = queryAliasRe.exec(source))) {
         const scope = targetMap.get(match[2]);
         const target = resolveSafeScopedQuery(scope, match[4], root);
         if (target) targetMap.set(match[1], target);
     }
 
-    const activeByTarget = parseNamedStyleAssignments(branches.active, targetMap);
-    const inactiveByTarget = parseNamedStyleAssignments(branches.inactive, targetMap);
-    const activeTextByTarget = parseNamedTextAssignments(branches.active, targetMap);
-    const inactiveTextByTarget = parseNamedTextAssignments(branches.inactive, targetMap);
+    // 模型常用 document.querySelector；急救器不会访问整页，而是强制收敛到当前兔子镜。
+    const documentQueryAliasRe = /(?:const|let|var)\s+([a-zA-Z_$][\w$]*)\s*=\s*document\s*\.\s*querySelector\(\s*(['"])([.#]?[a-zA-Z_][\w:.-]*)\2\s*\)\s*;?/g;
+    while ((match = documentQueryAliasRe.exec(source))) {
+        const target = resolveSafeScopedQuery(root, match[3], root);
+        if (target) targetMap.set(match[1], target);
+    }
+
+    // document 作用域别名建立后，再解析依赖它的二级查询，例如 core = cluster.querySelector('div')。
+    queryAliasRe.lastIndex = 0;
+    while ((match = queryAliasRe.exec(source))) {
+        const scope = targetMap.get(match[2]);
+        const target = resolveSafeScopedQuery(scope, match[4], root);
+        if (target) targetMap.set(match[1], target);
+    }
+
+    // 支持固定索引的安全集合访问：const nodes = document/queryScope.querySelectorAll('.item'); nodes[0].style...
+    const documentQueryAllAliasRe = /(?:const|let|var)\s+([a-zA-Z_$][\w$]*)\s*=\s*document\s*\.\s*querySelectorAll\(\s*(['"])([.#]?[a-zA-Z_][\w:.-]*)\2\s*\)\s*;?/g;
+    while ((match = documentQueryAllAliasRe.exec(source))) {
+        const targets = resolveSafeScopedQueryAll(root, match[3], root);
+        if (targets.length) targetCollections.set(match[1], targets);
+    }
+
+    const scopedQueryAllAliasRe = /(?:const|let|var)\s+([a-zA-Z_$][\w$]*)\s*=\s*([a-zA-Z_$][\w$]*)\.querySelectorAll\(\s*(['"])([.#]?[a-zA-Z_][\w:.-]*)\3\s*\)\s*;?/g;
+    while ((match = scopedQueryAllAliasRe.exec(source))) {
+        const scope = targetMap.get(match[2]);
+        const targets = resolveSafeScopedQueryAll(scope, match[4], root);
+        if (targets.length) targetCollections.set(match[1], targets);
+    }
+
+    const activeByTarget = parseNamedStyleAssignments(branches.active, targetMap, targetCollections);
+    const inactiveByTarget = parseNamedStyleAssignments(branches.inactive, targetMap, targetCollections);
+    const activeTextByTarget = parseNamedTextAssignments(branches.active, targetMap, targetCollections);
+    const inactiveTextByTarget = parseNamedTextAssignments(branches.inactive, targetMap, targetCollections);
     const targets = new Set([
         ...activeByTarget.keys(),
         ...inactiveByTarget.keys(),
