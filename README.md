@@ -1,3 +1,17 @@
+## 0.32.20 Visual Scenery 持续动画硬约束
+
+- 修复 Visual Scenery 仍受“动态可选”规则影响、模型可能只输出静态画面的冲突。
+- Visual Scenery 每轮必须包含至少一组自动运行、持续可见的 `CSS animation + @keyframes`，并使用 `infinite`；仅 transition、hover、checkbox 切换、SVG animate 或 JS 均不能代替。
+- 保留 0.32.19 全部交互急救、0.32.17 外壳变量修复，以及 0.32.18 取消暗色审查的基线。
+- 通过压缩原有 Visual Scenery 文案抵消新增约束，相关 Prompt 总字符数不增加。
+
+## 0.32.19 `getElementById` 安全状态程序急救
+
+- 修复 `onchange` 被宿主删除后，`const x = document.getElementById('...')` + `if(this.checked){...}else{...}` 无法恢复的问题。
+- 仅在当前兔子镜内部解析固定 ID 与样式赋值，不执行模型 JavaScript，也不访问整页 DOM。
+- 覆盖多目标同步变化：`transform`、`background`、`boxShadow`、`opacity` 等可随 checkbox/radio 切换并可逆恢复。
+- 保留 0.32.18 的“取消暗色/配色审查”基线与 0.32.17+ 全部急救库；Prompt 文件未改。
+
 ## 0.32.18 取消暗色/配色审查，保留 0.32.17 急救库
 
 - 取消读取上一轮实际颜色并注入“明度、综合色相、冷暖、饱和度必须变化”的配色节奏纠偏。

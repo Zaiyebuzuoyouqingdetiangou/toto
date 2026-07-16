@@ -1,0 +1,50 @@
+.rabbit-mirror-settings .inline-drawer-content {
+    padding: 10px;
+}
+.rabbit-mirror-settings label {
+    display: block;
+    margin-top: 8px;
+}
+.rabbit-mirror-settings .rh-num {
+    width: 64px;
+    min-width: 64px;
+}
+.rabbit-mirror-settings .rabbit-mirror-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+}
+.rabbit-mirror-toto-watermark{margin-left:8px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;opacity:.45;border:1px solid var(--SmartThemeBorderColor);border-radius:999px;padding:1px 6px;vertical-align:middle;}
+
+toto[data-rabbit-mirror="true"] details {
+    display: block;
+    box-sizing: border-box;
+    max-width: 100%;
+}
+
+toto[data-rabbit-mirror="true"] summary {
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+/* 手机与桌面端设置按钮统一横排，避免全局主题把长按钮压成逐字竖排。 */
+.rabbit-mirror-settings button.menu_button {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    writing-mode: horizontal-tb !important;
+    text-orientation: mixed !important;
+    white-space: nowrap !important;
+    word-break: keep-all !important;
+    overflow-wrap: normal !important;
+    line-height: 1.35 !important;
+}
+.rabbit-mirror-settings .rabbit-mirror-emergency,
+.rabbit-mirror-settings .rabbit-mirror-regex-helper,
+.rabbit-mirror-settings .rabbit-mirror-actions {
+    min-width: 0;
+}
