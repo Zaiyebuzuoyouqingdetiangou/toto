@@ -4,7 +4,7 @@
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.32.13",
+  "version": "0.32.16",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "Formal build with rendered-palette dark visual identity cooldown, reversible checked-ID target rescue, existing interaction repairs, and one-shot diagnostics."
+  "description": "Adds a reversible rescue for cursor-pointer containers followed by hidden content, while preserving the CSS ERROR rerender fix and leaving Prompt injection unchanged."
 }
