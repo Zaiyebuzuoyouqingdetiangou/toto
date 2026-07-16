@@ -33,6 +33,14 @@ function isInteractionRescueModeEnabled() {
     }
 }
 
+function isInteractionDiagnosticModeEnabled() {
+    try {
+        return !!getSettings().interactionDiagnosticMode;
+    } catch {
+        return false;
+    }
+}
+
 
 const MIRROR_TOTO_SELECTOR = 'toto[data-rabbit-mirror="true"], toto[data-rabbit-hole="true"]';
 let interactionScopeCounter = 0;
@@ -719,6 +727,218 @@ function installRenderedAdjacentHiddenGroupRescue(root) {
         root.dataset.rabbitMirrorAdjacentHiddenGroupFallback = 'true';
     }
     applyRenderedAdjacentHiddenGroupEntries(root);
+}
+
+
+// 渲染后“label 内单块隐藏内容”急救：用于 checkbox/radio 与隐藏内容同处一个 label 的结构。
+// 不依赖宿主可能已经删除的 onclick/onchange，只根据当前安全 DOM 建立状态切换。
+const RENDERED_LABEL_INTERNAL_HIDDEN_RESCUE_ATTR = 'data-rabbit-mirror-label-internal-hidden-rescue';
+const RENDERED_LABEL_INTERNAL_HIDDEN_ITEM_ATTR = 'data-rm-label-internal-hidden-item';
+const renderedLabelInternalHiddenRescueStates = new WeakMap();
+
+function isLabelInternalHiddenCandidate(element, input, label) {
+    if (!element || element === input || element === label || !label?.contains?.(element)) return false;
+    const tagName = String(element.tagName || '').toLowerCase();
+    // 隐藏 input 是交互载体，不得误判为待显示内容。
+    if (/^(?:input|select|textarea|option|button|label|style|script|template|svg|path)$/.test(tagName)) return false;
+    if (element.hasAttribute?.(RENDERED_STATE_LAYER_ROLE_ATTR)
+        || element.hasAttribute?.(RENDERED_ADJACENT_HIDDEN_ITEM_ATTR)
+        || element.hasAttribute?.(RENDERED_LIST_DETAIL_PANEL_ATTR)) return false;
+    if (!isExplicitlyHiddenStateLayer(element)) return false;
+
+    const text = String(element.textContent || '').replace(/\s+/g, ' ').trim();
+    if (text.length < 4 || text.length > 1800) return false;
+
+    const classText = getClassTokens(element).join(' ');
+    const semanticHint = ADJACENT_HIDDEN_CLASS_HINT_RE.test(classText);
+    const inlineMaxHeight = getInlineStyleValue(element, 'max-height').replace(/\s+/g, '').toLowerCase();
+    const inlineHeight = getInlineStyleValue(element, 'height').replace(/\s+/g, '').toLowerCase();
+    const collapsedBox = /^(?:0|0px|0em|0rem|0%)$/.test(inlineMaxHeight)
+        || /^(?:0|0px|0em|0rem|0%)$/.test(inlineHeight);
+
+    // 同一 label 内的单块急救只接受“语义隐藏类”或明确折叠尺寸，避免把装饰透明层误当正文。
+    return semanticHint || collapsedBox;
+}
+
+function collectLabelInternalHiddenTargets(label, input) {
+    if (!label?.querySelectorAll) return [];
+    const raw = [...label.querySelectorAll('*')]
+        .filter(element => isLabelInternalHiddenCandidate(element, input, label));
+    if (!raw.length) return [];
+
+    // 如果父级隐藏容器已被选中，不再同时选择其内部子节点，避免重复写样式。
+    const topLevel = raw.filter(element => !raw.some(other => other !== element && other.contains?.(element)));
+    return topLevel.slice(0, 4);
+}
+
+function getComputedOverflowValue(element) {
+    try {
+        const style = typeof getComputedStyle === 'function' ? getComputedStyle(element) : null;
+        return `${style?.overflow || ''} ${style?.overflowX || ''} ${style?.overflowY || ''}`.toLowerCase();
+    } catch {
+        return '';
+    }
+}
+
+function getRenderedElementHeight(element) {
+    try {
+        return Number(element?.getBoundingClientRect?.().height || 0);
+    } catch {
+        return 0;
+    }
+}
+
+function captureLabelInternalAncestorStates(target, label) {
+    const states = [];
+    let current = target?.parentElement || null;
+    for (let depth = 0; current && depth < 5; depth += 1, current = current.parentElement) {
+        if (!label.contains(current) && current !== label) break;
+        const overflow = getComputedOverflowValue(current);
+        const inlineHeight = getInlineStyleValue(current, 'height').replace(/\s+/g, '').toLowerCase();
+        const inlineMaxHeight = getInlineStyleValue(current, 'max-height').replace(/\s+/g, '').toLowerCase();
+        const collapsed = /^(?:0|0px|0em|0rem|0%)$/.test(inlineHeight)
+            || /^(?:0|0px|0em|0rem|0%)$/.test(inlineMaxHeight)
+            || getRenderedElementHeight(current) <= 1;
+        const clips = /(?:hidden|clip)/.test(overflow);
+        if (collapsed || clips || current === label) {
+            states.push({
+                target: current,
+                originalStyles: capturePseudoStyleState(current, [
+                    'display', 'height', 'min-height', 'max-height', 'overflow', 'overflow-x', 'overflow-y',
+                ]),
+                collapsed,
+                clips,
+            });
+        }
+        if (current === label) break;
+    }
+    return states;
+}
+
+function buildRenderedLabelInternalHiddenEntry(label, input) {
+    if (!label || !input || input.closest?.('label') !== label) return null;
+    const targets = collectLabelInternalHiddenTargets(label, input);
+    if (!targets.length) return null;
+
+    const targetStates = targets.map(target => ({
+        target,
+        originalStyles: capturePseudoStyleState(target, [
+            'display', 'visibility', 'opacity', 'pointer-events', 'transform',
+            'height', 'min-height', 'max-height', 'overflow', 'overflow-x', 'overflow-y',
+        ]),
+        activeTransform: neutralizeStateLayerTransform(getInlineStyleValue(target, 'transform')),
+        wasDisplayNone: getInlineStyleValue(target, 'display').toLowerCase() === 'none',
+        wasVisibilityHidden: getInlineStyleValue(target, 'visibility').toLowerCase() === 'hidden',
+        hadCollapsedHeight: /^(?:0|0px|0em|0rem|0%)$/i.test(getInlineStyleValue(target, 'height').replace(/\s+/g, '')),
+        hadCollapsedMaxHeight: /^(?:0|0px|0em|0rem|0%)$/i.test(getInlineStyleValue(target, 'max-height').replace(/\s+/g, '')),
+        ancestorStates: captureLabelInternalAncestorStates(target, label),
+    }));
+
+    targets.forEach((target, index) => target.setAttribute(RENDERED_LABEL_INTERNAL_HIDDEN_ITEM_ATTR, String(index)));
+    input.setAttribute(RENDERED_LABEL_INTERNAL_HIDDEN_RESCUE_ATTR, 'true');
+    return { label, input, targetStates };
+}
+
+function restoreLabelInternalAncestorStates(entry) {
+    const restored = new Set();
+    for (const state of entry?.targetStates || []) {
+        for (const ancestor of state.ancestorStates || []) {
+            if (!ancestor?.target || restored.has(ancestor.target)) continue;
+            restorePseudoStyleState(ancestor.target, ancestor.originalStyles);
+            restored.add(ancestor.target);
+        }
+    }
+}
+
+function applyRenderedLabelInternalHiddenEntry(entry) {
+    if (!entry?.input) return;
+    const active = !!entry.input.checked;
+    restoreLabelInternalAncestorStates(entry);
+
+    for (const state of entry.targetStates || []) {
+        restorePseudoStyleState(state.target, state.originalStyles);
+        if (!active) continue;
+
+        const naturalHeight = Math.max(80, Number(state.target?.scrollHeight || 0) + 24);
+        const assignments = [
+            { property: 'opacity', value: '1' },
+            { property: 'visibility', value: 'visible' },
+            { property: 'pointer-events', value: 'auto' },
+            { property: 'overflow', value: 'visible' },
+        ];
+        if (state.wasDisplayNone) assignments.push({ property: 'display', value: 'block' });
+        if (state.activeTransform) assignments.push({ property: 'transform', value: state.activeTransform });
+        if (state.hadCollapsedHeight || getRenderedElementHeight(state.target) <= 1) {
+            assignments.push({ property: 'height', value: 'auto' });
+            assignments.push({ property: 'min-height', value: `${naturalHeight}px` });
+        }
+        if (state.hadCollapsedMaxHeight || getRenderedElementHeight(state.target) <= 1) {
+            assignments.push({ property: 'max-height', value: `${Math.max(320, naturalHeight * 2)}px` });
+        }
+        applyPseudoStyleAssignments(state.target, assignments);
+
+        for (const ancestor of state.ancestorStates || []) {
+            const ancestorAssignments = [];
+            if (ancestor.clips) {
+                ancestorAssignments.push({ property: 'overflow', value: 'visible' });
+                ancestorAssignments.push({ property: 'overflow-x', value: 'visible' });
+                ancestorAssignments.push({ property: 'overflow-y', value: 'visible' });
+            }
+            if (ancestor.collapsed || ancestor.target === entry.label) {
+                const contentHeight = Math.max(
+                    Number(ancestor.target?.scrollHeight || 0),
+                    naturalHeight + 48,
+                );
+                ancestorAssignments.push({ property: 'height', value: 'auto' });
+                ancestorAssignments.push({ property: 'max-height', value: `${Math.max(480, contentHeight + 80)}px` });
+                ancestorAssignments.push({ property: 'min-height', value: `${Math.min(1200, contentHeight)}px` });
+            }
+            applyPseudoStyleAssignments(ancestor.target, ancestorAssignments);
+        }
+    }
+
+    entry.label?.setAttribute?.('aria-pressed', active ? 'true' : 'false');
+    entry.input?.setAttribute?.('aria-pressed', active ? 'true' : 'false');
+}
+
+function applyRenderedLabelInternalHiddenEntries(root) {
+    const state = renderedLabelInternalHiddenRescueStates.get(root);
+    if (!state?.entries?.size) return;
+    for (const entry of state.entries.values()) applyRenderedLabelInternalHiddenEntry(entry);
+}
+
+function installRenderedLabelInternalHiddenRescue(root) {
+    if (!root?.querySelectorAll) return;
+    let state = renderedLabelInternalHiddenRescueStates.get(root);
+    if (!state) {
+        state = { entries: new Map() };
+        renderedLabelInternalHiddenRescueStates.set(root, state);
+    }
+
+    for (const label of root.querySelectorAll('label')) {
+        const input = label.querySelector('input[type="checkbox"], input[type="radio"]');
+        if (!input || state.entries.has(input)) continue;
+        const entry = buildRenderedLabelInternalHiddenEntry(label, input);
+        if (entry) state.entries.set(input, entry);
+    }
+    if (!state.entries.size) return;
+
+    if (root.dataset.rabbitMirrorLabelInternalHiddenFallback !== 'true') {
+        const refresh = event => {
+            if (!state.entries.has(event.target)) return;
+            applyRenderedLabelInternalHiddenEntries(root);
+            // 某些主题会在 change 后一帧重新写布局；短延迟复核能避免刚显示又被压回 0 高度。
+            for (const delay of [0, 80, 260]) {
+                setTimeout(() => {
+                    if (root.isConnected) applyRenderedLabelInternalHiddenEntries(root);
+                }, delay);
+            }
+        };
+        root.addEventListener('input', refresh, false);
+        root.addEventListener('change', refresh, false);
+        root.dataset.rabbitMirrorLabelInternalHiddenFallback = 'true';
+    }
+    applyRenderedLabelInternalHiddenEntries(root);
 }
 
 
@@ -1884,6 +2104,8 @@ function installIntelligentInteractionRescue(root) {
         installRenderedStateLayerRescue(root);
         // 补救 label 后方的多段隐藏内容（如 querySelectorAll(...)[0/1]），不依赖事件原文。
         installRenderedAdjacentHiddenGroupRescue(root);
+        // 补救 checkbox/radio 与单块隐藏正文同处 label 内的结构。
+        installRenderedLabelInternalHiddenRescue(root);
         installInteractionLabelFallback(root);
     }
     if (capabilities.hover) refreshTouchHoverRescue(root);
@@ -2223,10 +2445,11 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 }
 
 
-// 0.32.4 临时可视化诊断：仅显示交互急救在真实酒馆 DOM 中看到了什么、事件是否触发、
-// 以及隐藏内容最终是否仍被 opacity / 高度 / overflow 裁切。此模块不修改 Prompt。
+
+// 正式内置交互诊断：默认关闭。开启后只读取当前聊天中已渲染的 DOM，
+// 显示可复制的结构、事件、样式与裁切信息；不修改 Prompt，也不上传任何内容。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.4-DIAG';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.6-DIAG';
 const interactionDiagnosticStates = new WeakMap();
 
 function diagnosticCompactText(value, maxLength = 80) {
@@ -2291,11 +2514,15 @@ function diagnosticCollectTargets(root) {
         '[style*="display:none"]',
         '[style*="max-height: 0"]',
         '[style*="max-height:0"]',
+        '[style*="height: 0"]',
+        '[style*="height:0"]',
     ];
     const seen = new Set();
     const result = [];
     for (const element of root.querySelectorAll(selectors.join(','))) {
         if (element.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`)) continue;
+        const tagName = String(element.tagName || '').toLowerCase();
+        if (/^(?:input|select|textarea|option|button|label|style|script|template)$/.test(tagName)) continue;
         if (seen.has(element)) continue;
         seen.add(element);
         result.push(element);
@@ -2304,9 +2531,18 @@ function diagnosticCollectTargets(root) {
     return result;
 }
 
+function diagnosticRouteSummary(root) {
+    return {
+        adjacent: renderedAdjacentHiddenGroupRescueStates.get(root)?.entries?.size || 0,
+        layers: renderedStateLayerRescueStates.get(root)?.entries?.size || 0,
+        labelInternal: renderedLabelInternalHiddenRescueStates.get(root)?.entries?.size || 0,
+        listDetail: renderedListDetailRescueStates.get(root)?.entries?.size || 0,
+    };
+}
+
 function diagnosticInferReason(root, inputs, targets) {
-    const adjacentState = renderedAdjacentHiddenGroupRescueStates.get(root);
-    const adjacentEntries = adjacentState?.entries?.size || 0;
+    const routes = diagnosticRouteSummary(root);
+    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.listDetail;
     const checkedInputs = inputs.filter(input => input.checked);
     const visibleTargets = targets.filter(target => {
         const style = diagnosticComputedStyle(target);
@@ -2315,37 +2551,39 @@ function diagnosticInferReason(root, inputs, targets) {
         return style?.display !== 'none' && style?.visibility !== 'hidden' && opacity > 0.05 && rect.height > 0;
     });
 
-    if (!inputs.length) return '未找到 checkbox/radio：渲染后控件可能被删除，或急救扫描范围没有命中该兔子镜。';
-    if (checkedInputs.length && !adjacentEntries && targets.length) return 'checkbox 已切换，但“相邻隐藏内容组”没有建立：结构识别条件未命中。';
-    if (checkedInputs.length && adjacentEntries && !visibleTargets.length) return '急救条目已建立，但隐藏内容最终仍不可见：样式可能未执行、被宿主覆盖，或被布局裁切。';
-    if (checkedInputs.length && visibleTargets.length) return '目标内容在计算样式中已可见；若屏幕仍看不到，请重点查看尺寸与裁切信息。';
-    if (!checkedInputs.length) return '尚未检测到勾选状态；请点击原交互入口一次，再截图本面板。';
-    return '尚无法自动归因，请把完整面板截图发回。';
+    if (!inputs.length) return '未找到 checkbox/radio：渲染后控件可能被删除，或急救扫描范围没有命中。';
+    if (!checkedInputs.length) return '尚未检测到勾选状态；请点击原交互入口一次，再复制诊断文字。';
+    if (!routeCount && targets.length) return 'checkbox 已切换，但没有任何渲染后急救路线建立：当前结构识别条件未命中。';
+    if (routeCount && !visibleTargets.length) return '急救路线已建立，但候选内容最终仍不可见：样式可能未执行、被宿主覆盖，或被布局裁切。';
+    if (visibleTargets.length) return '候选内容在计算样式中已有可见项；若屏幕仍看不到，请重点查看高度与裁切信息。';
+    return '尚无法自动归因，请复制完整诊断文字。';
 }
 
 function buildInteractionDiagnosticText(root, state, phase = 'initial') {
     const inputs = [...root.querySelectorAll('input[type="checkbox"], input[type="radio"]')].slice(0, 8);
     const labels = [...root.querySelectorAll('label')].filter(label => !label.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`));
     const targets = diagnosticCollectTargets(root);
-    const adjacentState = renderedAdjacentHiddenGroupRescueStates.get(root);
-    const renderedLayerState = renderedStateLayerRescueStates.get(root);
+    const routes = diagnosticRouteSummary(root);
     const title = diagnosticCompactText(root.querySelector('summary')?.textContent, 64);
     const lines = [
         `RabbitMirror Interaction Diagnostic ${INTERACTION_DIAGNOSTIC_VERSION}`,
         `标题: ${title || '(未找到 summary)'}`,
         `阶段: ${phase}`,
         `智能交互急救开关: ${isInteractionRescueModeEnabled() ? 'ON' : 'OFF'}`,
+        `交互诊断开关: ${isInteractionDiagnosticModeEnabled() ? 'ON' : 'OFF'}`,
         `根节点: ${diagnosticElementName(root)} / connected=${!!root.isConnected}`,
         `labels=${labels.length} inputs=${inputs.length} hiddenCandidates=${targets.length}`,
-        `相邻隐藏组 entries=${adjacentState?.entries?.size || 0} listener=${root.dataset.rabbitMirrorAdjacentHiddenGroupFallback || 'false'}`,
-        `双层状态 entries=${renderedLayerState?.entries?.size || 0} listener=${root.dataset.rabbitMirrorRenderedStateLayerFallback || 'false'}`,
+        `相邻隐藏组 entries=${routes.adjacent} listener=${root.dataset.rabbitMirrorAdjacentHiddenGroupFallback || 'false'}`,
+        `双层状态 entries=${routes.layers} listener=${root.dataset.rabbitMirrorRenderedStateLayerFallback || 'false'}`,
+        `label内隐藏 entries=${routes.labelInternal} listener=${root.dataset.rabbitMirrorLabelInternalHiddenFallback || 'false'}`,
+        `列表详情 entries=${routes.listDetail} listener=${root.dataset.rabbitMirrorRenderedListDetailFallback || 'false'}`,
         `label fallback=${root.dataset.rabbitMirrorLabelFallback || root.dataset.rabbitMirrorCheckedFallback || 'unknown'}`,
         '',
         '[最近事件]',
     ];
 
     if (!state.events.length) lines.push('（尚未捕获 click / input / change）');
-    else state.events.slice(-10).forEach(item => lines.push(item));
+    else state.events.slice(-12).forEach(item => lines.push(item));
 
     lines.push('', '[输入控件]');
     if (!inputs.length) lines.push('（无）');
@@ -2354,7 +2592,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'initial') {
         lines.push(
             `${index}: ${diagnosticElementName(input)} type=${input.type} checked=${!!input.checked}`,
             `   label=${!!label} text="${diagnosticCompactText(label?.textContent, 68)}"`,
-            `   attrs: adjacent=${input.getAttribute(RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR) || 'false'} layer=${input.getAttribute(RENDERED_STATE_LAYER_RESCUE_ATTR) || 'false'} change=${input.getAttribute(CHANGE_PSEUDO_RESCUE_ATTR) || 'false'}`,
+            `   attrs: adjacent=${input.getAttribute(RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR) || 'false'} layer=${input.getAttribute(RENDERED_STATE_LAYER_RESCUE_ATTR) || 'false'} labelInternal=${input.getAttribute(RENDERED_LABEL_INTERNAL_HIDDEN_RESCUE_ATTR) || 'false'} change=${input.getAttribute(CHANGE_PSEUDO_RESCUE_ATTR) || 'false'}`,
         );
     });
 
@@ -2367,7 +2605,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'initial') {
         const clipping = diagnosticFindClippingAncestor(target, root);
         lines.push(
             `${index}: ${diagnosticElementName(target)} text="${diagnosticCompactText(target.textContent, 70)}"`,
-            `   inline: opacity=${getInlineStyleValue(target, 'opacity') || '(empty)'} display=${getInlineStyleValue(target, 'display') || '(empty)'} visibility=${getInlineStyleValue(target, 'visibility') || '(empty)'} transform=${getInlineStyleValue(target, 'transform') || '(empty)'}`,
+            `   inline: opacity=${getInlineStyleValue(target, 'opacity') || '(empty)'} display=${getInlineStyleValue(target, 'display') || '(empty)'} visibility=${getInlineStyleValue(target, 'visibility') || '(empty)'} transform=${getInlineStyleValue(target, 'transform') || '(empty)'} height=${getInlineStyleValue(target, 'height') || '(empty)'} maxHeight=${getInlineStyleValue(target, 'max-height') || '(empty)'}`,
             `   computed: opacity=${computed?.opacity || '?'} display=${computed?.display || '?'} visibility=${computed?.visibility || '?'} height=${rect.height}px parentHeight=${parentRect.height}px`,
             `   clipping: ${clipping || '未发现明显裁切祖先'}`,
         );
@@ -2391,17 +2629,31 @@ function recordInteractionDiagnosticEvent(root, event, stage) {
     if (target?.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`)) return;
     const checked = target?.matches?.('input[type="checkbox"], input[type="radio"]') ? ` checked=${!!target.checked}` : '';
     state.events.push(`${event.type}:${stage} target=${diagnosticElementName(target)}${checked}`);
-    if (state.events.length > 18) state.events.splice(0, state.events.length - 18);
-
+    if (state.events.length > 20) state.events.splice(0, state.events.length - 20);
     for (const delay of [0, 100, 500]) {
         setTimeout(() => updateInteractionDiagnosticPanel(root, `${event.type} +${delay}ms`), delay);
     }
 }
 
+function removeInteractionDiagnostic(root) {
+    const state = interactionDiagnosticStates.get(root);
+    if (state) {
+        for (const [type, handler] of Object.entries(state.handlers || {})) {
+            root.removeEventListener(type, handler, true);
+        }
+        state.panel?.remove?.();
+        interactionDiagnosticStates.delete(root);
+    }
+    root?.querySelectorAll?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`).forEach(panel => panel.remove());
+}
+
 function installInteractionDiagnostic(root) {
-    if (!root?.querySelectorAll) return;
+    if (!root?.querySelectorAll || !isInteractionDiagnosticModeEnabled()) return;
     let state = interactionDiagnosticStates.get(root);
-    if (state?.panel?.isConnected) return;
+    if (state?.panel?.isConnected) {
+        updateInteractionDiagnosticPanel(root, 'rescan');
+        return;
+    }
 
     const panel = document.createElement('div');
     panel.setAttribute(INTERACTION_DIAGNOSTIC_PANEL_ATTR, 'true');
@@ -2414,8 +2666,12 @@ function installInteractionDiagnostic(root) {
     ].join(';');
 
     const heading = document.createElement('div');
-    heading.textContent = '【临时诊断面板｜点击原交互后截图】';
+    heading.textContent = '【交互诊断面板｜点击原交互后复制】';
     heading.style.cssText = 'font-weight:800;color:#fde047;margin-bottom:8px;';
+
+    const privacy = document.createElement('div');
+    privacy.textContent = '仅本地读取当前兔子镜；不会上传数据。正文只显示截断片段。';
+    privacy.style.cssText = 'color:#cbd5e1;margin-bottom:8px;font-size:10px;';
 
     const copyButton = document.createElement('button');
     copyButton.type = 'button';
@@ -2424,12 +2680,13 @@ function installInteractionDiagnostic(root) {
 
     const pre = document.createElement('pre');
     pre.style.cssText = 'margin:0;white-space:pre-wrap;word-break:break-word;color:#f3f4f6;background:transparent;border:0;padding:0;';
-    panel.append(heading, copyButton, pre);
+    panel.append(heading, privacy, copyButton, pre);
 
     const outerDetails = root.matches?.('details') ? root : root.querySelector(':scope > details');
     (outerDetails || root).appendChild(panel);
 
-    state = { panel, pre, events: [] };
+    const handlers = {};
+    state = { panel, pre, events: [], handlers };
     interactionDiagnosticStates.set(root, state);
 
     copyButton.addEventListener('click', async event => {
@@ -2445,7 +2702,9 @@ function installInteractionDiagnostic(root) {
     });
 
     for (const type of ['click', 'input', 'change']) {
-        root.addEventListener(type, event => recordInteractionDiagnosticEvent(root, event, 'capture'), true);
+        const handler = event => recordInteractionDiagnosticEvent(root, event, 'capture');
+        handlers[type] = handler;
+        root.addEventListener(type, handler, true);
     }
 
     updateInteractionDiagnosticPanel(root, 'initial scan');
@@ -2455,14 +2714,20 @@ function scopeRabbitMirrorInteractionsInChatDom() {
     const root = getChatRoot();
     if (!root) return;
     const enabled = isInteractionRescueModeEnabled();
+    const diagnosticEnabled = isInteractionDiagnosticModeEnabled();
     getRenderedRabbitMirrorInteractionRoots(root).forEach(mirrorRoot => {
         if (!isInsideChatMessage(mirrorRoot)) return;
         const remembered = wasInteractionRescued(mirrorRoot);
-        if (!enabled && !remembered) return;
+
+        if (!diagnosticEnabled) removeInteractionDiagnostic(mirrorRoot);
+        if (!enabled && !remembered && !diagnosticEnabled) return;
+
         if (enabled && !remembered) rememberInteractionRescue(mirrorRoot);
-        scopeRabbitMirrorInteractionIds(mirrorRoot);
-        installInteractionDiagnostic(mirrorRoot);
-        mirrorRoot.dataset.rabbitMirrorInteractionRescued = 'true';
+        if (enabled || remembered) {
+            scopeRabbitMirrorInteractionIds(mirrorRoot);
+            mirrorRoot.dataset.rabbitMirrorInteractionRescued = 'true';
+        }
+        if (diagnosticEnabled) installInteractionDiagnostic(mirrorRoot);
     });
 }
 
@@ -2927,6 +3192,14 @@ export function triggerInteractionRescue() {
         scopeRabbitMirrorInteractionsInChatDom();
     } catch (error) {
         console.debug('[RabbitMirror] interaction rescue trigger failed:', error);
+    }
+}
+
+export function triggerInteractionDiagnostic() {
+    try {
+        scopeRabbitMirrorInteractionsInChatDom();
+    } catch (error) {
+        console.debug('[RabbitMirror] interaction diagnostic trigger failed:', error);
     }
 }
 
