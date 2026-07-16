@@ -562,6 +562,166 @@ function installRenderedStateLayerRescue(root) {
 }
 
 
+// 渲染后“相邻隐藏内容组”急救：用于 label/checkbox 后方紧邻的多段隐藏内容。
+// 不依赖 onchange 原文，专门覆盖 querySelectorAll(...)[n] 在宿主净化后无法回读的情况。
+const RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR = 'data-rabbit-mirror-adjacent-hidden-group-rescue';
+const RENDERED_ADJACENT_HIDDEN_ITEM_ATTR = 'data-rm-adjacent-hidden-item';
+const renderedAdjacentHiddenGroupRescueStates = new WeakMap();
+const ADJACENT_HIDDEN_TRIGGER_HINT_RE = /(?:点击|轻触|触摸|按下|查看|读取|提取|感知|共振|唤醒|揭示|显示|开启|切换|进入)|\b(?:click|tap|touch|open|reveal|show|inspect|sense)\b/i;
+const ADJACENT_HIDDEN_CLASS_HINT_RE = /(?:hidden|reveal|secret|thought|detail|info|result|message|dialog|caption|note|content|text)/i;
+
+function getClassTokens(element) {
+    return String(element?.getAttribute?.('class') || '')
+        .split(/\s+/)
+        .map(token => token.trim())
+        .filter(Boolean);
+}
+
+function isAdjacentHiddenTextCandidate(element) {
+    if (!element || !isExplicitlyHiddenStateLayer(element)) return false;
+    if (element.hasAttribute?.(RENDERED_STATE_LAYER_ROLE_ATTR)
+        || element.hasAttribute?.(RENDERED_LIST_DETAIL_PANEL_ATTR)) return false;
+    const tagName = String(element.tagName || '').toLowerCase();
+    if (!/^(?:p|div|span|section|article|aside|blockquote|small|em|strong)$/.test(tagName)) return false;
+    const text = String(element.textContent || '').replace(/\s+/g, ' ').trim();
+    return text.length >= 6 && text.length <= 1200;
+}
+
+function findAdjacentHiddenGroupHost(label) {
+    let node = label?.nextElementSibling || null;
+    for (let step = 0; node && step < 3; step += 1, node = node.nextElementSibling) {
+        if (/^(?:style|script|input|label)$/i.test(node.tagName || '')) continue;
+        const candidates = [node, ...(node.querySelectorAll?.('*') || [])].filter(isAdjacentHiddenTextCandidate);
+        if (candidates.length) return node;
+        // 遇到新的明确交互块后停止跨越，避免误抓更远处的隐藏内容。
+        if (node.querySelector?.('input, label, button, details, summary')) break;
+    }
+    return null;
+}
+
+function collectAdjacentHiddenGroupTargets(host) {
+    if (!host?.querySelectorAll) return [];
+    const candidates = [host, ...host.querySelectorAll('*')]
+        .filter(isAdjacentHiddenTextCandidate)
+        .slice(0, 24);
+    if (!candidates.length) return [];
+
+    // 优先选择共享的语义 class 组，例如两个 .hidden-thought，避免把同一容器内无关隐藏层一起揭开。
+    const groups = new Map();
+    for (const element of candidates) {
+        for (const token of getClassTokens(element)) {
+            if (!ADJACENT_HIDDEN_CLASS_HINT_RE.test(token)) continue;
+            if (!groups.has(token)) groups.set(token, []);
+            groups.get(token).push(element);
+        }
+    }
+    const best = [...groups.values()]
+        .map(group => [...new Set(group)])
+        .filter(group => group.length >= 1 && group.length <= 8)
+        .sort((a, b) => b.length - a.length)[0];
+    if (best?.length) return best;
+
+    // 没有语义 class 时，只接受数量很少、且直属于同一个紧邻容器的隐藏文本。
+    const direct = [...(host.children || [])].filter(isAdjacentHiddenTextCandidate);
+    return direct.length >= 1 && direct.length <= 4 ? direct : [];
+}
+
+function buildRenderedAdjacentHiddenGroupEntry(label, input) {
+    if (!label || !input || !ADJACENT_HIDDEN_TRIGGER_HINT_RE.test(String(label.textContent || ''))) return null;
+    const host = findAdjacentHiddenGroupHost(label);
+    if (!host) return null;
+    const targets = collectAdjacentHiddenGroupTargets(host);
+    if (!targets.length) return null;
+
+    const targetStates = targets.map(target => ({
+        target,
+        originalStyles: capturePseudoStyleState(target, [
+            'display', 'visibility', 'opacity', 'pointer-events', 'transform', 'max-height',
+        ]),
+        activeTransform: neutralizeStateLayerTransform(getInlineStyleValue(target, 'transform')),
+        wasDisplayNone: getInlineStyleValue(target, 'display').toLowerCase() === 'none',
+        wasVisibilityHidden: getInlineStyleValue(target, 'visibility').toLowerCase() === 'hidden',
+        hadCollapsedMaxHeight: /^(?:0|0px|0em|0rem|0%)$/i.test(getInlineStyleValue(target, 'max-height').replace(/\s+/g, '')),
+    }));
+
+    const hostState = {
+        target: host,
+        originalStyles: capturePseudoStyleState(host, ['min-height', 'overflow']),
+        needsHeight: targets.some(target => ['absolute', 'fixed'].includes(getInlineStyleValue(target, 'position').toLowerCase())),
+    };
+
+    targets.forEach((target, index) => target.setAttribute(RENDERED_ADJACENT_HIDDEN_ITEM_ATTR, String(index)));
+    input.setAttribute(RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR, 'true');
+    return { label, input, hostState, targetStates };
+}
+
+function applyRenderedAdjacentHiddenGroupEntry(entry) {
+    if (!entry?.input) return;
+    const active = !!entry.input.checked;
+    restorePseudoStyleState(entry.hostState.target, entry.hostState.originalStyles);
+
+    for (const state of entry.targetStates || []) {
+        restorePseudoStyleState(state.target, state.originalStyles);
+        if (!active) continue;
+        const assignments = [
+            { property: 'opacity', value: '1' },
+            { property: 'visibility', value: 'visible' },
+            { property: 'pointer-events', value: 'auto' },
+        ];
+        if (state.wasDisplayNone) assignments.push({ property: 'display', value: 'block' });
+        if (state.activeTransform) assignments.push({ property: 'transform', value: state.activeTransform });
+        if (state.hadCollapsedMaxHeight) assignments.push({ property: 'max-height', value: '1000px' });
+        applyPseudoStyleAssignments(state.target, assignments);
+    }
+
+    if (active && entry.hostState.needsHeight) {
+        // 绝对定位文本不会撑开父容器；给相邻内容区保留可见高度，避免内容虽已 opacity:1 仍被外层裁切。
+        const estimatedHeight = Math.min(240, Math.max(56, (entry.targetStates?.length || 1) * 42));
+        applyPseudoStyleAssignments(entry.hostState.target, [
+            { property: 'min-height', value: `${estimatedHeight}px` },
+            { property: 'overflow', value: 'visible' },
+        ]);
+    }
+
+    entry.label?.setAttribute?.('aria-pressed', active ? 'true' : 'false');
+    entry.input?.setAttribute?.('aria-pressed', active ? 'true' : 'false');
+}
+
+function applyRenderedAdjacentHiddenGroupEntries(root) {
+    const state = renderedAdjacentHiddenGroupRescueStates.get(root);
+    if (!state?.entries?.size) return;
+    for (const entry of state.entries.values()) applyRenderedAdjacentHiddenGroupEntry(entry);
+}
+
+function installRenderedAdjacentHiddenGroupRescue(root) {
+    if (!root?.querySelectorAll) return;
+    let state = renderedAdjacentHiddenGroupRescueStates.get(root);
+    if (!state) {
+        state = { entries: new Map() };
+        renderedAdjacentHiddenGroupRescueStates.set(root, state);
+    }
+
+    for (const label of root.querySelectorAll('label')) {
+        const input = label.querySelector('input[type="checkbox"], input[type="radio"]');
+        if (!input || state.entries.has(input)) continue;
+        const entry = buildRenderedAdjacentHiddenGroupEntry(label, input);
+        if (entry) state.entries.set(input, entry);
+    }
+    if (!state.entries.size) return;
+
+    if (root.dataset.rabbitMirrorAdjacentHiddenGroupFallback !== 'true') {
+        const refresh = event => {
+            if (!state.entries.has(event.target)) return;
+            applyRenderedAdjacentHiddenGroupEntries(root);
+        };
+        root.addEventListener('input', refresh, false);
+        root.addEventListener('change', refresh, false);
+        root.dataset.rabbitMirrorAdjacentHiddenGroupFallback = 'true';
+    }
+    applyRenderedAdjacentHiddenGroupEntries(root);
+}
+
+
 // 渲染后“列表项目 → 详情视图”急救：不依赖已被宿主删除的 onclick。
 // 仅处理严格结构：同一布局中，前置区域存在 N 个明确可点击候选项，后置详情容器直属包含 N 个隐藏详情层。
 const RENDERED_LIST_DETAIL_RESCUE_ATTR = 'data-rabbit-mirror-rendered-list-detail-rescue';
@@ -1722,6 +1882,8 @@ function installIntelligentInteractionRescue(root) {
         // 先从已渲染的安全 DOM 识别前景/隐藏层，再由 label 兜底触发 input/change。
         // 此路径完全不依赖已被宿主删除的 onclick/onchange。
         installRenderedStateLayerRescue(root);
+        // 补救 label 后方的多段隐藏内容（如 querySelectorAll(...)[0/1]），不依赖事件原文。
+        installRenderedAdjacentHiddenGroupRescue(root);
         installInteractionLabelFallback(root);
     }
     if (capabilities.hover) refreshTouchHoverRescue(root);
