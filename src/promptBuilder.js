@@ -188,9 +188,20 @@ function complexInteractiveCore() {
   - 内部交互必须从本轮展现形式自身的结构、阅读方式、空间关系或叙事逻辑中推导，严禁直接套用固定模板。设计时，应先判断当前媒介中什么内容或意象天然适合被触发、改变或探索，再决定触发对象、变化路径与阅读结果。
   - 交互触发后，必须使作品本体产生清晰、肉眼可见且具有叙事意义的变化；仅改变边框、颜色、阴影，或只做出“看起来可点”的外观，不算有效交互。
   - 交互实现方案每轮必须重新设计，不得照搬前轮方案或长期重复同一种交互骨架；不得默认连续使用 details/summary，也不得机械堆叠折叠组件。只有本轮展现形式天然需要分段展开或层层阅读时，才允许使用内部 details。
-  - 必须采用安全、可稳定渲染的纯 HTML/CSS 结构；严禁使用内联 JavaScript 事件，不得把 hover 作为移动端唯一触发方式，交互区域不得被装饰层遮挡。
+  - 必须采用安全、可稳定渲染的纯 HTML/CSS 结构；严禁使用内联 JavaScript 事件。交互必须兼容触屏与桌面端；hover 可以作为补充反馈，但不得作为唯一触发方式，核心交互须能通过点击或轻触完成；交互区域不得被装饰层遮挡。
   - 鼓励使用 Flex/Grid、absolute 定位、SVG、linear-gradient、box-shadow、filter、clip-path、mask、transform、transition 或轻量 CSS 动效构建空间与质感。
   - 不得只靠换标题、换色、换边框或换装饰复用同一种视觉骨架。`;
+}
+
+
+function innerDetailsCooldownRule() {
+    const recentFlags = getRecentRiskFlags(5);
+    if (!recentFlags.includes('inner_details_used')) return '';
+    return String.raw`
+内部折叠交互冷却【由插件扫描最近五轮实际输出后触发】:
+  - 最近五轮内已经使用过内部 details/summary；本轮禁止在最外层兔子镜内部再次使用任何 details/summary。
+  - 最外层固定折叠不受影响。内部交互仍由当前作品本体自由设计，不指定固定替代模板。
+  - 交互必须兼容触屏与桌面端；hover 可以作为补充反馈，但不得作为唯一触发方式，核心交互须能通过点击或轻触完成。`;
 }
 
 function visibleChineseHardLock() {
@@ -258,6 +269,7 @@ ${selectedFormats}`);
     }
     chunks.push(compactCreativeRule(!!settings.creativeExpansionMode, mode === 'format_only'));
     chunks.push(complexInteractiveCore());
+    chunks.push(innerDetailsCooldownRule());
     chunks.push(visualColorTruthRule());
     chunks.push(stateBarIsolationRule());
 

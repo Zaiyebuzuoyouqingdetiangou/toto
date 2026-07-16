@@ -724,6 +724,17 @@ function detectGlobalCssRisk(html) {
     return /(^|[}\s,])(html|body|:root|\*|\.mes|\.message|\.chat|\.content|\.ts-message-container|#chat|#send_form)\s*[{,]/i.test(styles);
 }
 
+
+function detectInnerDetailsUsed(root, html = '') {
+    if (root?.querySelectorAll) {
+        const outerDetails = root.matches?.('details')
+            ? root
+            : root.querySelector?.(':scope > details') || root.querySelector?.('details');
+        return [...root.querySelectorAll('details')].some(details => details !== outerDetails);
+    }
+    return (String(html || '').match(/<details\b/gi) || []).length >= 2;
+}
+
 export function scanRabbitMirrorHtml(messageHtml, renderedToto = null) {
     const match = String(messageHtml || '').match(TOTO_RE);
     if (!match) return { signature: '', skeleton: '', paletteFingerprint: null };
@@ -758,6 +769,7 @@ export function scanRabbitMirrorHtml(messageHtml, renderedToto = null) {
     if (/<pre\b|<code\b|```/i.test(html)) structural.push('代码块风险');
     if (detectGlobalCssRisk(html)) structural.push('全局CSS污染风险');
     const riskFlags = detectRiskFlags({ root, html, plain, dom, repeated, spatialSignalCount });
+    if (detectInnerDetailsUsed(root, html)) riskFlags.unshift('inner_details_used');
     if (riskFlags.includes('same_block_stack')) structural.push('同构信息块堆叠风险');
     if (riskFlags.includes('same_grid_card_risk')) structural.push('同构网格信息块风险');
     if (riskFlags.includes('catalog_page_risk')) structural.push('图鉴/目录式承载风险');

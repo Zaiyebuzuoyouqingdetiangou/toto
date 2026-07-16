@@ -829,6 +829,32 @@ function resolveParentElementExpression(element, expression) {
     return current;
 }
 
+function isSafeLocalQuerySelector(selector) {
+    return /^(?:#[a-zA-Z_][\w:.-]*|\.[a-zA-Z_][\w-]*)$/.test(String(selector || '').trim());
+}
+
+function resolveSafeScopedQuery(scope, selector, root) {
+    const safeSelector = String(selector || '').trim();
+    if (!scope?.querySelector || !root?.contains || !root.contains(scope) || !isSafeLocalQuerySelector(safeSelector)) return null;
+    if (safeSelector.startsWith('#')) {
+        return resolveScopedPseudoId(scope, safeSelector.slice(1)) || resolveScopedPseudoId(root, safeSelector.slice(1));
+    }
+    try {
+        const target = scope.querySelector(safeSelector);
+        return target && root.contains(target) ? target : null;
+    } catch {
+        return null;
+    }
+}
+
+function resolveRelativeQueryExpression(input, expression, root) {
+    const source = String(expression || '').replace(/\s+/g, '');
+    const match = /^(this(?:\.parentElement)*)\.querySelector\((['"])([.#][\w:.-]+)\2\)$/.exec(source);
+    if (!match) return null;
+    const scope = match[1] === 'this' ? input : resolveParentElementExpression(input, match[1]);
+    return resolveSafeScopedQuery(scope, match[3], root);
+}
+
 function findMatchingScriptBrace(sourceText, openIndex) {
     const source = String(sourceText || '');
     if (source[openIndex] !== '{') return -1;
@@ -909,8 +935,24 @@ function parseNamedStyleAssignments(scriptText, targetMap) {
     );
 }
 
-function parseCheckedChangeStyleProgram(input, root) {
-    const source = String(input?.getAttribute?.('onchange') || '');
+function parseNamedTextAssignments(scriptText, targetMap) {
+    const textByTarget = new Map();
+    const source = String(scriptText || '');
+    const textAssignmentRe = /([a-zA-Z_$][\w$]*)\.(innerHTML|innerText|textContent)\s*=\s*(['"])((?:\\.|(?!\3)[\s\S])*)\3\s*;?/g;
+    let match;
+    while ((match = textAssignmentRe.exec(source))) {
+        const target = targetMap.get(match[1]);
+        if (!target) continue;
+        const value = decodeSafeInlineString(match[4]);
+        // innerHTML 只接受纯文本；任何标签形态都放弃该条文字赋值。
+        if (match[2] === 'innerHTML' && /<[^>]*>/.test(value)) continue;
+        textByTarget.set(target, value);
+    }
+    return textByTarget;
+}
+
+function parseCheckedChangeStyleProgramFromSource(input, root, scriptText) {
+    const source = String(scriptText || '');
     if (!source || !/if\s*\(\s*this\.checked\s*\)/i.test(source)) return null;
 
     // 只接受结构清晰的 if(this.checked){...} else {...}，绝不执行模型输出的 JavaScript。
@@ -927,31 +969,49 @@ function parseCheckedChangeStyleProgram(input, root) {
         if (resolved && root.contains(resolved)) targetMap.set(match[1], resolved);
     }
 
-    // 支持：const target = wrapper.querySelector('#target-id');
-    // 为避免宽泛选择器误伤，只解析单一 ID 选择器。
-    const queryAliasRe = /(?:const|let|var)\s+([a-zA-Z_$][\w$]*)\s*=\s*([a-zA-Z_$][\w$]*)\.querySelector\(\s*(['"])#([a-zA-Z_][\w:.-]*)\3\s*\)\s*;?/g;
+    // 支持：const target = this.parentElement.parentElement.querySelector('.target-class');
+    // 以及 const target = wrapper.querySelector('#target-id')。只允许单一 class / ID 选择器。
+    const relativeQueryAliasRe = /(?:const|let|var)\s+([a-zA-Z_$][\w$]*)\s*=\s*(this(?:\s*\.\s*parentElement)*)\s*\.\s*querySelector\(\s*(['"])([.#][a-zA-Z_][\w:.-]*)\3\s*\)\s*;?/g;
+    while ((match = relativeQueryAliasRe.exec(source))) {
+        const expression = `${match[2]}.querySelector('${match[4]}')`;
+        const target = resolveRelativeQueryExpression(input, expression, root);
+        if (target) targetMap.set(match[1], target);
+    }
+
+    const queryAliasRe = /(?:const|let|var)\s+([a-zA-Z_$][\w$]*)\s*=\s*([a-zA-Z_$][\w$]*)\.querySelector\(\s*(['"])([.#][a-zA-Z_][\w:.-]*)\3\s*\)\s*;?/g;
     while ((match = queryAliasRe.exec(source))) {
         const scope = targetMap.get(match[2]);
-        if (!scope?.querySelectorAll || !root.contains(scope)) continue;
-        const target = resolveScopedPseudoId(scope, match[4]) || resolveScopedPseudoId(root, match[4]);
-        if (target && root.contains(target)) targetMap.set(match[1], target);
+        const target = resolveSafeScopedQuery(scope, match[4], root);
+        if (target) targetMap.set(match[1], target);
     }
 
     const activeByTarget = parseNamedStyleAssignments(branches.active, targetMap);
     const inactiveByTarget = parseNamedStyleAssignments(branches.inactive, targetMap);
-    const targets = new Set([...activeByTarget.keys(), ...inactiveByTarget.keys()]);
-    if (!targets.size || !activeByTarget.size) return null;
+    const activeTextByTarget = parseNamedTextAssignments(branches.active, targetMap);
+    const inactiveTextByTarget = parseNamedTextAssignments(branches.inactive, targetMap);
+    const targets = new Set([
+        ...activeByTarget.keys(),
+        ...inactiveByTarget.keys(),
+        ...activeTextByTarget.keys(),
+        ...inactiveTextByTarget.keys(),
+    ]);
+    if (!targets.size || (!activeByTarget.size && !activeTextByTarget.size)) return null;
 
     const states = [];
     for (const target of targets) {
         const activeAssignments = activeByTarget.get(target) || [];
         const inactiveAssignments = inactiveByTarget.get(target) || [];
         const properties = new Set([...activeAssignments, ...inactiveAssignments].map(item => item.property));
-        if (!properties.size) continue;
+        const hasActiveText = activeTextByTarget.has(target);
+        const hasInactiveText = inactiveTextByTarget.has(target);
+        if (!properties.size && !hasActiveText && !hasInactiveText) continue;
         states.push({
             target,
             activeAssignments,
             inactiveAssignments,
+            activeText: hasActiveText ? activeTextByTarget.get(target) : undefined,
+            inactiveText: hasInactiveText ? inactiveTextByTarget.get(target) : undefined,
+            originalText: target.textContent,
             originalStyles: capturePseudoStyleState(target, properties),
         });
     }
@@ -959,20 +1019,37 @@ function parseCheckedChangeStyleProgram(input, root) {
     return states.length ? states : null;
 }
 
+function parseCheckedChangeStyleProgram(input, root) {
+    return parseCheckedChangeStyleProgramFromSource(input, root, input?.getAttribute?.('onchange') || '');
+}
+
 function applyCheckedChangeProgram(input, states) {
     const active = !!input?.checked;
     for (const state of states || []) {
         if (!state?.target) continue;
         if (active) {
+            if (state.activeText !== undefined) state.target.textContent = state.activeText;
             applyPseudoStyleAssignments(state.target, state.activeAssignments);
             state.target.setAttribute(PSEUDO_ACTIVE_ATTR, 'true');
         } else {
             restorePseudoStyleState(state.target, state.originalStyles);
+            if (state.inactiveText !== undefined) state.target.textContent = state.inactiveText;
+            else if (state.originalText !== undefined) state.target.textContent = state.originalText;
             applyPseudoStyleAssignments(state.target, state.inactiveAssignments);
             state.target.removeAttribute(PSEUDO_ACTIVE_ATTR);
         }
     }
     input?.setAttribute?.('aria-pressed', active ? 'true' : 'false');
+}
+
+function bindCheckedChangeProgram(input, states) {
+    if (!input || !states?.length || input.hasAttribute(CHANGE_PSEUDO_RESCUE_ATTR)) return false;
+    input.addEventListener('change', () => applyCheckedChangeProgram(input, states), false);
+    input.addEventListener('input', () => applyCheckedChangeProgram(input, states), false);
+    input.removeAttribute('onchange');
+    input.setAttribute(CHANGE_PSEUDO_RESCUE_ATTR, 'true');
+    applyCheckedChangeProgram(input, states);
+    return true;
 }
 
 function installCheckedChangePseudoInteractionRescue(root) {
@@ -983,12 +1060,7 @@ function installCheckedChangePseudoInteractionRescue(root) {
         if (input.hasAttribute(CHANGE_PSEUDO_RESCUE_ATTR)) continue;
         const states = parseCheckedChangeStyleProgram(input, root);
         if (!states?.length) continue;
-
-        input.addEventListener('change', () => applyCheckedChangeProgram(input, states), false);
-        input.addEventListener('input', () => applyCheckedChangeProgram(input, states), false);
-        input.removeAttribute('onchange');
-        input.setAttribute(CHANGE_PSEUDO_RESCUE_ATTR, 'true');
-        applyCheckedChangeProgram(input, states);
+        bindCheckedChangeProgram(input, states);
     }
 }
 
@@ -1370,6 +1442,28 @@ function installRawMessageDirectIdClickProgramRescue(root) {
     return installed;
 }
 
+function installRawMessageCheckedChangeProgramRescue(root) {
+    if (!root?.querySelectorAll) return 0;
+    const rawMessage = getRawAssistantMessageForRenderedRoot(root);
+    const rawRoot = chooseMatchingRawRabbitMirrorRoot(rawMessage, root);
+    if (!rawRoot?.querySelectorAll) return 0;
+
+    let installed = 0;
+    for (const rawInput of rawRoot.querySelectorAll('input[type="checkbox"][onchange], input[type="radio"][onchange]')) {
+        const path = getElementChildIndexPath(rawRoot, rawInput);
+        if (!path) continue;
+        const renderedInput = resolveElementChildIndexPath(root, path);
+        if (!renderedInput?.matches?.('input[type="checkbox"], input[type="radio"]')) continue;
+        if (renderedInput.hasAttribute(CHANGE_PSEUDO_RESCUE_ATTR)) continue;
+
+        const source = rawInput.getAttribute('onchange') || '';
+        const states = parseCheckedChangeStyleProgramFromSource(renderedInput, root, source);
+        if (!states?.length) continue;
+        if (bindCheckedChangeProgram(renderedInput, states)) installed += 1;
+    }
+    return installed;
+}
+
 function installInlineEventPseudoInteractionRescue(root) {
     if (!root?.querySelectorAll) return;
     const candidates = [...root.querySelectorAll('[onmouseover], [onmouseenter], [onmouseout], [onmouseleave], [onclick]')];
@@ -1552,6 +1646,8 @@ function installIntelligentInteractionRescue(root) {
     // SillyTavern/DOMPurify 可能在渲染前移除 onclick。此时从当前消息的原始 HTML
     // 回读安全可解析的 getElementById 样式/文字赋值，并按同一 DOM 路径绑定到渲染节点。
     installRawMessageDirectIdClickProgramRescue(root);
+    // 同样从原始消息回读受限的 onchange 状态程序，覆盖宿主已删除事件属性的情况。
+    installRawMessageCheckedChangeProgramRescue(root);
 
     const capabilities = detectInteractionCapabilities(root);
     if (capabilities.checked) {
