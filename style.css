@@ -27,3 +27,24 @@ toto[data-rabbit-mirror="true"] summary {
     cursor: pointer;
     box-sizing: border-box;
 }
+
+/* 手机与桌面端设置按钮统一横排，避免全局主题把长按钮压成逐字竖排。 */
+.rabbit-mirror-settings button.menu_button {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    writing-mode: horizontal-tb !important;
+    text-orientation: mixed !important;
+    white-space: nowrap !important;
+    word-break: keep-all !important;
+    overflow-wrap: normal !important;
+    line-height: 1.35 !important;
+}
+.rabbit-mirror-settings .rabbit-mirror-emergency,
+.rabbit-mirror-settings .rabbit-mirror-regex-helper,
+.rabbit-mirror-settings .rabbit-mirror-actions {
+    min-width: 0;
+}

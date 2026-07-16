@@ -4,7 +4,7 @@
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.32.7",
+  "version": "0.32.8",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "Formal build with lightweight one-shot interaction diagnostics: captures only the next clicked Rabbit Mirror, auto-stops after one interaction, and copies diagnostic text plus raw/rendered code without changing Prompt injection."
+  "description": "Formal build with one-shot diagnostics, horizontal settings buttons, rendered mask-reveal rescue, and label-adjacent result rescue without changing Prompt injection."
 }
