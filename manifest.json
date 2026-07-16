@@ -4,7 +4,7 @@
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.32.8",
+  "version": "0.32.9",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "Formal build with one-shot diagnostics, horizontal settings buttons, rendered mask-reveal rescue, and label-adjacent result rescue without changing Prompt injection."
+  "description": "Formal build with reversible interaction baselines, clone-safe event rebinding, label-internal popup rescue, one-shot diagnostics, and unchanged Prompt injection."
 }

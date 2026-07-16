@@ -365,6 +365,52 @@ const DIRECT_ID_CLICK_RESCUE_ATTR = 'data-rabbit-mirror-direct-id-click-rescue';
 const PSEUDO_ACTIVE_ATTR = 'data-rm-pseudo-active';
 const pseudoInteractionStates = new WeakMap();
 
+// 统一可逆状态底座：第一次接管某个元素时，把原始内联样式写入 data 属性并保存在 WeakMap。
+// 即使宿主随后克隆当前 DOM 或急救器再次扫描，也不会把“交互后状态”误记为新的初始状态。
+const REVERSIBLE_STYLE_BASELINE_ATTR = 'data-rm-reversible-style-baseline';
+const REVERSIBLE_TEXT_BASELINE_ATTR = 'data-rm-reversible-text-baseline';
+const reversibleStyleBaselineStates = new WeakMap();
+const reversibleTextBaselineStates = new WeakMap();
+
+// 同一个 checkbox/radio 只允许一条“渲染后结构型”急救路线接管，避免多个兜底互相覆盖。
+const RENDERED_INPUT_ROUTE_ATTR = 'data-rm-rendered-input-route';
+const REVERSIBLE_TARGET_CLOSE_ATTR = 'data-rm-click-to-restore';
+const interactionLabelFallbackRoots = new WeakSet();
+
+function getRenderedInputRoute(input) {
+    return String(input?.getAttribute?.(RENDERED_INPUT_ROUTE_ATTR) || '');
+}
+
+function claimRenderedInputRoute(input, routeName) {
+    if (!input || !routeName) return false;
+    const existing = getRenderedInputRoute(input);
+    if (existing && existing !== routeName) return false;
+    if (!existing) input.setAttribute(RENDERED_INPUT_ROUTE_ATTR, routeName);
+    return true;
+}
+
+function dispatchRescuedInputState(input) {
+    if (!input?.dispatchEvent) return;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+function installReversibleTargetClose(target, input, root) {
+    if (!target?.addEventListener || !input || !root?.contains?.(target)
+        || target.hasAttribute(REVERSIBLE_TARGET_CLOSE_ATTR)) return;
+
+    target.addEventListener('click', event => {
+        if (!input.checked) return;
+        const nestedInteractive = event.target?.closest?.(EXISTING_INTERACTIVE_SELECTOR);
+        if (nestedInteractive && nestedInteractive !== target && target.contains?.(nestedInteractive)) return;
+        event.preventDefault();
+        input.checked = false;
+        restoreInteractionInlineOverrides(input);
+        dispatchRescuedInputState(input);
+    }, false);
+    target.setAttribute(REVERSIBLE_TARGET_CLOSE_ATTR, 'true');
+}
+
 // 渲染后结构型状态层急救：不依赖可能已被宿主删除的 onclick/onchange。
 // 仅处理非常明确的结构：label 直属隐藏 checkbox/radio + 两层几何重合的前景/隐藏层。
 const RENDERED_STATE_LAYER_RESCUE_ATTR = 'data-rabbit-mirror-rendered-state-layer-rescue';
@@ -457,15 +503,17 @@ function buildRenderedStateLayerEntry(label, input) {
         .slice(0, 6);
     if (candidates.length < 2) return null;
 
+    const rememberedFront = candidates.filter(element => element.getAttribute?.(RENDERED_STATE_LAYER_ROLE_ATTR) === 'front');
+    const rememberedReveal = candidates.filter(element => element.getAttribute?.(RENDERED_STATE_LAYER_ROLE_ATTR) === 'reveal');
     const hiddenCandidates = candidates.filter(isExplicitlyHiddenStateLayer);
     const visibleCandidates = candidates.filter(element => !isExplicitlyHiddenStateLayer(element));
-    if (!hiddenCandidates.length || !visibleCandidates.length) return null;
+    if ((!hiddenCandidates.length || !visibleCandidates.length) && (!rememberedFront.length || !rememberedReveal.length)) return null;
 
-    // 至少需要一组几何高度重合的前后层。冰柜示例为 position/top/right/bottom/left 全部一致。
-    const hiddenLayers = hiddenCandidates.filter(hidden => (
+    // DOM 被宿主克隆时，优先沿用上次写入的 front/reveal 角色，避免把交互后状态反向识别。
+    const hiddenLayers = rememberedReveal.length ? rememberedReveal : hiddenCandidates.filter(hidden => (
         visibleCandidates.some(visible => getStateLayerGeometryScore(visible, hidden) >= 3)
     ));
-    const visibleLayers = visibleCandidates.filter(visible => (
+    const visibleLayers = rememberedFront.length ? rememberedFront : visibleCandidates.filter(visible => (
         hiddenLayers.some(hidden => getStateLayerGeometryScore(visible, hidden) >= 3)
     ));
     if (!hiddenLayers.length || !visibleLayers.length) return null;
@@ -474,13 +522,16 @@ function buildRenderedStateLayerEntry(label, input) {
         target,
         originalStyles: capturePseudoStyleState(target, ['opacity', 'pointer-events']),
     }));
-    const hiddenStates = hiddenLayers.map(target => ({
-        target,
-        originalStyles: capturePseudoStyleState(target, ['display', 'visibility', 'opacity', 'pointer-events', 'transform']),
-        activeTransform: neutralizeStateLayerTransform(getInlineStyleValue(target, 'transform')),
-        wasDisplayNone: getInlineStyleValue(target, 'display').toLowerCase() === 'none',
-        wasVisibilityHidden: getInlineStyleValue(target, 'visibility').toLowerCase() === 'hidden',
-    }));
+    const hiddenStates = hiddenLayers.map(target => {
+        const originalStyles = capturePseudoStyleState(target, ['display', 'visibility', 'opacity', 'pointer-events', 'transform']);
+        return {
+            target,
+            originalStyles,
+            activeTransform: neutralizeStateLayerTransform(getCapturedStyleValue(originalStyles, 'transform')),
+            wasDisplayNone: getCapturedStyleValue(originalStyles, 'display').toLowerCase() === 'none',
+            wasVisibilityHidden: getCapturedStyleValue(originalStyles, 'visibility').toLowerCase() === 'hidden',
+        };
+    });
 
     visibleLayers.forEach(target => target.setAttribute(RENDERED_STATE_LAYER_ROLE_ATTR, 'front'));
     hiddenLayers.forEach(target => target.setAttribute(RENDERED_STATE_LAYER_ROLE_ATTR, 'reveal'));
@@ -531,22 +582,24 @@ function installRenderedStateLayerRescue(root) {
 
     let state = renderedStateLayerRescueStates.get(root);
     if (!state) {
-        state = { entries: new Map() };
+        state = { entries: new Map(), listenerInstalled: false };
         renderedStateLayerRescueStates.set(root, state);
     }
 
     for (const label of root.querySelectorAll('label')) {
         const input = label.querySelector(':scope > input[type="checkbox"], :scope > input[type="radio"]');
         if (!input || state.entries.has(input)) continue;
+        const existingRoute = getRenderedInputRoute(input);
+        if (existingRoute && existingRoute !== 'state-layer') continue;
         const entry = buildRenderedStateLayerEntry(label, input);
-        if (!entry) continue;
+        if (!entry || !claimRenderedInputRoute(input, 'state-layer')) continue;
         state.entries.set(input, entry);
         input.setAttribute(RENDERED_STATE_LAYER_RESCUE_ATTR, 'true');
     }
 
     if (!state.entries.size) return;
 
-    if (root.dataset.rabbitMirrorRenderedStateLayerFallback !== 'true') {
+    if (!state.listenerInstalled) {
         const refresh = event => {
             const input = event.target;
             if (!input || !state.entries.has(input)) return;
@@ -555,6 +608,7 @@ function installRenderedStateLayerRescue(root) {
         };
         root.addEventListener('input', refresh, false);
         root.addEventListener('change', refresh, false);
+        state.listenerInstalled = true;
         root.dataset.rabbitMirrorRenderedStateLayerFallback = 'true';
     }
 
@@ -578,7 +632,9 @@ function getClassTokens(element) {
 }
 
 function isAdjacentHiddenTextCandidate(element) {
-    if (!element || !isExplicitlyHiddenStateLayer(element)) return false;
+    if (!element) return false;
+    const previouslyManaged = element.hasAttribute?.(RENDERED_ADJACENT_HIDDEN_ITEM_ATTR);
+    if (!previouslyManaged && !isExplicitlyHiddenStateLayer(element)) return false;
     if (element.hasAttribute?.(RENDERED_STATE_LAYER_ROLE_ATTR)
         || element.hasAttribute?.(RENDERED_LIST_DETAIL_PANEL_ATTR)) return false;
     const tagName = String(element.tagName || '').toLowerCase();
@@ -633,16 +689,20 @@ function buildRenderedAdjacentHiddenGroupEntry(label, input) {
     const targets = collectAdjacentHiddenGroupTargets(host);
     if (!targets.length) return null;
 
-    const targetStates = targets.map(target => ({
-        target,
-        originalStyles: capturePseudoStyleState(target, [
+    const targetStates = targets.map(target => {
+        const originalStyles = capturePseudoStyleState(target, [
             'display', 'visibility', 'opacity', 'pointer-events', 'transform', 'max-height',
-        ]),
-        activeTransform: neutralizeStateLayerTransform(getInlineStyleValue(target, 'transform')),
-        wasDisplayNone: getInlineStyleValue(target, 'display').toLowerCase() === 'none',
-        wasVisibilityHidden: getInlineStyleValue(target, 'visibility').toLowerCase() === 'hidden',
-        hadCollapsedMaxHeight: /^(?:0|0px|0em|0rem|0%)$/i.test(getInlineStyleValue(target, 'max-height').replace(/\s+/g, '')),
-    }));
+        ]);
+        const originalTransform = getCapturedStyleValue(originalStyles, 'transform');
+        return {
+            target,
+            originalStyles,
+            activeTransform: neutralizeStateLayerTransform(originalTransform),
+            wasDisplayNone: getCapturedStyleValue(originalStyles, 'display').toLowerCase() === 'none',
+            wasVisibilityHidden: getCapturedStyleValue(originalStyles, 'visibility').toLowerCase() === 'hidden',
+            hadCollapsedMaxHeight: /^(?:0|0px|0em|0rem|0%)$/i.test(getCapturedStyleValue(originalStyles, 'max-height').replace(/\s+/g, '')),
+        };
+    });
 
     const hostState = {
         target: host,
@@ -697,25 +757,30 @@ function installRenderedAdjacentHiddenGroupRescue(root) {
     if (!root?.querySelectorAll) return;
     let state = renderedAdjacentHiddenGroupRescueStates.get(root);
     if (!state) {
-        state = { entries: new Map() };
+        state = { entries: new Map(), listenerInstalled: false };
         renderedAdjacentHiddenGroupRescueStates.set(root, state);
     }
 
     for (const label of root.querySelectorAll('label')) {
         const input = label.querySelector('input[type="checkbox"], input[type="radio"]');
         if (!input || state.entries.has(input)) continue;
+        const existingRoute = getRenderedInputRoute(input);
+        if (existingRoute && existingRoute !== 'adjacent-hidden') continue;
         const entry = buildRenderedAdjacentHiddenGroupEntry(label, input);
-        if (entry) state.entries.set(input, entry);
+        if (!entry || !claimRenderedInputRoute(input, 'adjacent-hidden')) continue;
+        state.entries.set(input, entry);
+        for (const targetState of entry.targetStates || []) installReversibleTargetClose(targetState.target, input, root);
     }
     if (!state.entries.size) return;
 
-    if (root.dataset.rabbitMirrorAdjacentHiddenGroupFallback !== 'true') {
+    if (!state.listenerInstalled) {
         const refresh = event => {
             if (!state.entries.has(event.target)) return;
             applyRenderedAdjacentHiddenGroupEntries(root);
         };
         root.addEventListener('input', refresh, false);
         root.addEventListener('change', refresh, false);
+        state.listenerInstalled = true;
         root.dataset.rabbitMirrorAdjacentHiddenGroupFallback = 'true';
     }
     applyRenderedAdjacentHiddenGroupEntries(root);
@@ -736,20 +801,37 @@ function isLabelInternalHiddenCandidate(element, input, label) {
     if (element.hasAttribute?.(RENDERED_STATE_LAYER_ROLE_ATTR)
         || element.hasAttribute?.(RENDERED_ADJACENT_HIDDEN_ITEM_ATTR)
         || element.hasAttribute?.(RENDERED_LIST_DETAIL_PANEL_ATTR)) return false;
-    if (!isExplicitlyHiddenStateLayer(element)) return false;
+    const previouslyManaged = element.hasAttribute?.(RENDERED_LABEL_INTERNAL_HIDDEN_ITEM_ATTR);
+    if (!previouslyManaged && !isExplicitlyHiddenStateLayer(element)) return false;
 
     const text = String(element.textContent || '').replace(/\s+/g, ' ').trim();
     if (text.length < 4 || text.length > 1800) return false;
 
-    const classText = getClassTokens(element).join(' ');
+    const classText = `${element.id || ''} ${getClassTokens(element).join(' ')}`;
     const semanticHint = ADJACENT_HIDDEN_CLASS_HINT_RE.test(classText);
     const inlineMaxHeight = getInlineStyleValue(element, 'max-height').replace(/\s+/g, '').toLowerCase();
     const inlineHeight = getInlineStyleValue(element, 'height').replace(/\s+/g, '').toLowerCase();
     const collapsedBox = /^(?:0|0px|0em|0rem|0%)$/.test(inlineMaxHeight)
         || /^(?:0|0px|0em|0rem|0%)$/.test(inlineHeight);
 
-    // 同一 label 内的单块急救只接受“语义隐藏类”或明确折叠尺寸，避免把装饰透明层误当正文。
-    return semanticHint || collapsedBox;
+    // 严格补充“label 内弹层”结构：input 后隔着一段可见触发文字，再跟一块 display:none/opacity:0 内容。
+    // 这覆盖模型常写错的 this.nextElementSibling（实际目标是下下个兄弟节点），但不会扫描 label 外部。
+    const children = [...(label.children || [])];
+    const inputIndex = children.indexOf(input);
+    const elementIndex = children.indexOf(element);
+    const directAfterInput = element.parentElement === label && inputIndex >= 0 && elementIndex > inputIndex;
+    const leadingText = directAfterInput
+        ? children.slice(inputIndex + 1, elementIndex)
+            .filter(node => !isExplicitlyHiddenStateLayer(node))
+            .map(node => String(node.textContent || '').replace(/\s+/g, ' ').trim())
+            .join(' ')
+        : '';
+    const triggerHint = ADJACENT_HIDDEN_TRIGGER_HINT_RE.test(leadingText);
+    const displayNone = getInlineStyleValue(element, 'display').toLowerCase() === 'none';
+    const position = getInlineStyleValue(element, 'position').toLowerCase();
+    const positionedPopup = position === 'absolute' || position === 'fixed';
+
+    return previouslyManaged || semanticHint || collapsedBox || (directAfterInput && triggerHint && (displayNone || positionedPopup));
 }
 
 function collectLabelInternalHiddenTargets(label, input) {
@@ -807,24 +889,32 @@ function captureLabelInternalAncestorStates(target, label) {
     return states;
 }
 
-function buildRenderedLabelInternalHiddenEntry(label, input) {
+function buildRenderedLabelInternalHiddenEntry(label, input, root) {
     if (!label || !input || input.closest?.('label') !== label) return null;
     const targets = collectLabelInternalHiddenTargets(label, input);
     if (!targets.length) return null;
 
-    const targetStates = targets.map(target => ({
-        target,
-        originalStyles: capturePseudoStyleState(target, [
+    const targetStates = targets.map(target => {
+        const originalStyles = capturePseudoStyleState(target, [
             'display', 'visibility', 'opacity', 'pointer-events', 'transform',
             'height', 'min-height', 'max-height', 'overflow', 'overflow-x', 'overflow-y',
-        ]),
-        activeTransform: neutralizeStateLayerTransform(getInlineStyleValue(target, 'transform')),
-        wasDisplayNone: getInlineStyleValue(target, 'display').toLowerCase() === 'none',
-        wasVisibilityHidden: getInlineStyleValue(target, 'visibility').toLowerCase() === 'hidden',
-        hadCollapsedHeight: /^(?:0|0px|0em|0rem|0%)$/i.test(getInlineStyleValue(target, 'height').replace(/\s+/g, '')),
-        hadCollapsedMaxHeight: /^(?:0|0px|0em|0rem|0%)$/i.test(getInlineStyleValue(target, 'max-height').replace(/\s+/g, '')),
-        ancestorStates: captureLabelInternalAncestorStates(target, label),
-    }));
+            'position', 'inset', 'top', 'right', 'bottom', 'left', 'width', 'max-width',
+            'box-sizing', 'margin', 'margin-top',
+        ]);
+        const originalTransform = getCapturedStyleValue(originalStyles, 'transform');
+        const originalPosition = getCapturedStyleValue(originalStyles, 'position').toLowerCase();
+        return {
+            target,
+            originalStyles,
+            activeTransform: neutralizeStateLayerTransform(originalTransform),
+            wasDisplayNone: getCapturedStyleValue(originalStyles, 'display').toLowerCase() === 'none',
+            wasVisibilityHidden: getCapturedStyleValue(originalStyles, 'visibility').toLowerCase() === 'hidden',
+            hadCollapsedHeight: /^(?:0|0px|0em|0rem|0%)$/i.test(getCapturedStyleValue(originalStyles, 'height').replace(/\s+/g, '')),
+            hadCollapsedMaxHeight: /^(?:0|0px|0em|0rem|0%)$/i.test(getCapturedStyleValue(originalStyles, 'max-height').replace(/\s+/g, '')),
+            isPositionedPopup: ['absolute', 'fixed'].includes(originalPosition),
+            ancestorStates: captureLabelInternalAncestorStates(target, label),
+        };
+    });
 
     targets.forEach((target, index) => target.setAttribute(RENDERED_LABEL_INTERNAL_HIDDEN_ITEM_ATTR, String(index)));
     input.setAttribute(RENDERED_LABEL_INTERNAL_HIDDEN_RESCUE_ATTR, 'true');
@@ -860,6 +950,22 @@ function applyRenderedLabelInternalHiddenEntry(entry) {
         ];
         if (state.wasDisplayNone) assignments.push({ property: 'display', value: 'block' });
         if (state.activeTransform) assignments.push({ property: 'transform', value: state.activeTransform });
+        if (state.isPositionedPopup) {
+            // 绝对定位弹层经常被外层 overflow:hidden 裁掉，也会盖住原触发区，导致无法再次关闭。
+            // 急救时暂时改为同一 label 内的流式展开；取消勾选后由统一基线精确恢复。
+            assignments.push(
+                { property: 'position', value: 'relative' },
+                { property: 'inset', value: 'auto' },
+                { property: 'top', value: 'auto' },
+                { property: 'right', value: 'auto' },
+                { property: 'bottom', value: 'auto' },
+                { property: 'left', value: 'auto' },
+                { property: 'width', value: '100%' },
+                { property: 'max-width', value: '100%' },
+                { property: 'box-sizing', value: 'border-box' },
+                { property: 'margin', value: '10px 0 0 0' },
+            );
+        }
         if (state.hadCollapsedHeight || getRenderedElementHeight(state.target) <= 1) {
             assignments.push({ property: 'height', value: 'auto' });
             assignments.push({ property: 'min-height', value: `${naturalHeight}px` });
@@ -903,19 +1009,22 @@ function installRenderedLabelInternalHiddenRescue(root) {
     if (!root?.querySelectorAll) return;
     let state = renderedLabelInternalHiddenRescueStates.get(root);
     if (!state) {
-        state = { entries: new Map() };
+        state = { entries: new Map(), listenerInstalled: false };
         renderedLabelInternalHiddenRescueStates.set(root, state);
     }
 
     for (const label of root.querySelectorAll('label')) {
         const input = label.querySelector('input[type="checkbox"], input[type="radio"]');
         if (!input || state.entries.has(input)) continue;
-        const entry = buildRenderedLabelInternalHiddenEntry(label, input);
-        if (entry) state.entries.set(input, entry);
+        const existingRoute = getRenderedInputRoute(input);
+        if (existingRoute && existingRoute !== 'label-internal') continue;
+        const entry = buildRenderedLabelInternalHiddenEntry(label, input, root);
+        if (!entry || !claimRenderedInputRoute(input, 'label-internal')) continue;
+        state.entries.set(input, entry);
     }
     if (!state.entries.size) return;
 
-    if (root.dataset.rabbitMirrorLabelInternalHiddenFallback !== 'true') {
+    if (!state.listenerInstalled) {
         const refresh = event => {
             if (!state.entries.has(event.target)) return;
             applyRenderedLabelInternalHiddenEntries(root);
@@ -928,6 +1037,7 @@ function installRenderedLabelInternalHiddenRescue(root) {
         };
         root.addEventListener('input', refresh, false);
         root.addEventListener('change', refresh, false);
+        state.listenerInstalled = true;
         root.dataset.rabbitMirrorLabelInternalHiddenFallback = 'true';
     }
     applyRenderedLabelInternalHiddenEntries(root);
@@ -953,10 +1063,11 @@ function isLabelAdjacentResultCandidate(element) {
     const text = String(element.textContent || '').replace(/\s+/g, ' ').trim();
     if (text.length < 8 || text.length > 2400) return false;
 
+    const previouslyManaged = element.hasAttribute?.(RENDERED_LABEL_ADJACENT_RESULT_ITEM_ATTR);
     const hidden = isExplicitlyHiddenStateLayer(element)
         || isCollapsedDimensionValue(getInlineStyleValue(element, 'height'))
         || isCollapsedDimensionValue(getInlineStyleValue(element, 'max-height'));
-    if (!hidden) return false;
+    if (!previouslyManaged && !hidden) return false;
 
     const semantic = `${element.id || ''} ${getClassTokens(element).join(' ')}`;
     const hasStructure = !!element.querySelector?.('p, div, span, section, article, ul, ol, dl, table, [style*="background"], [style*="border"]');
@@ -989,6 +1100,7 @@ function collectLabelAdjacentVisualTargets(label) {
             .filter(element => {
                 const semantic = `${element.id || ''} ${getClassTokens(element).join(' ')}`;
                 if (!LABEL_ADJACENT_VISUAL_HINT_RE.test(semantic)) return false;
+                if (element.hasAttribute?.(RENDERED_LABEL_ADJACENT_VISUAL_ITEM_ATTR)) return true;
                 const width = getInlineStyleValue(element, 'width');
                 const height = getInlineStyleValue(element, 'height');
                 if (!isCollapsedDimensionValue(width) || !isCollapsedDimensionValue(height)) return false;
@@ -1005,16 +1117,17 @@ function buildRenderedLabelAdjacentResultEntry(label, input) {
     const target = findLabelAdjacentResultTarget(label);
     if (!target) return null;
 
+    const originalStyles = capturePseudoStyleState(target, [
+        'display', 'visibility', 'opacity', 'pointer-events', 'transform',
+        'height', 'min-height', 'max-height', 'overflow', 'overflow-x', 'overflow-y',
+    ]);
     const targetState = {
         target,
-        originalStyles: capturePseudoStyleState(target, [
-            'display', 'visibility', 'opacity', 'pointer-events', 'transform',
-            'height', 'min-height', 'max-height', 'overflow', 'overflow-x', 'overflow-y',
-        ]),
-        activeTransform: neutralizeStateLayerTransform(getInlineStyleValue(target, 'transform')),
-        wasDisplayNone: getInlineStyleValue(target, 'display').toLowerCase() === 'none',
-        hadCollapsedHeight: isCollapsedDimensionValue(getInlineStyleValue(target, 'height')),
-        hadCollapsedMaxHeight: isCollapsedDimensionValue(getInlineStyleValue(target, 'max-height')),
+        originalStyles,
+        activeTransform: neutralizeStateLayerTransform(getCapturedStyleValue(originalStyles, 'transform')),
+        wasDisplayNone: getCapturedStyleValue(originalStyles, 'display').toLowerCase() === 'none',
+        hadCollapsedHeight: isCollapsedDimensionValue(getCapturedStyleValue(originalStyles, 'height')),
+        hadCollapsedMaxHeight: isCollapsedDimensionValue(getCapturedStyleValue(originalStyles, 'max-height')),
     };
 
     const visualStates = collectLabelAdjacentVisualTargets(label).map(visual => ({
@@ -1083,19 +1196,23 @@ function installRenderedLabelAdjacentResultRescue(root) {
     if (!root?.querySelectorAll) return;
     let state = renderedLabelAdjacentResultRescueStates.get(root);
     if (!state) {
-        state = { entries: new Map() };
+        state = { entries: new Map(), listenerInstalled: false };
         renderedLabelAdjacentResultRescueStates.set(root, state);
     }
 
     for (const label of root.querySelectorAll('label')) {
         const input = label.querySelector('input[type="checkbox"], input[type="radio"]');
         if (!input || state.entries.has(input)) continue;
+        const existingRoute = getRenderedInputRoute(input);
+        if (existingRoute && existingRoute !== 'label-adjacent') continue;
         const entry = buildRenderedLabelAdjacentResultEntry(label, input);
-        if (entry) state.entries.set(input, entry);
+        if (!entry || !claimRenderedInputRoute(input, 'label-adjacent')) continue;
+        state.entries.set(input, entry);
+        installReversibleTargetClose(entry.targetState?.target, input, root);
     }
     if (!state.entries.size) return;
 
-    if (root.dataset.rabbitMirrorLabelAdjacentResultFallback !== 'true') {
+    if (!state.listenerInstalled) {
         const refresh = event => {
             if (!state.entries.has(event.target)) return;
             applyRenderedLabelAdjacentResultEntries(root);
@@ -1107,6 +1224,7 @@ function installRenderedLabelAdjacentResultRescue(root) {
         };
         root.addEventListener('input', refresh, false);
         root.addEventListener('change', refresh, false);
+        state.listenerInstalled = true;
         root.dataset.rabbitMirrorLabelAdjacentResultFallback = 'true';
     }
     applyRenderedLabelAdjacentResultEntries(root);
@@ -1123,7 +1241,9 @@ const MASK_REVEAL_HIDDEN_HINT_RE = /(?:hidden|reveal|secret|message|msg|detail|c
 const MASK_REVEAL_TRIGGER_HINT_RE = /(?:长按|按住|点击|轻触|触摸|擦拭|擦去|揭开|查看|显露|解锁|开启)|\b(?:click|tap|touch|hold|wipe|reveal|open|inspect)\b/i;
 
 function isRenderedMaskRevealHiddenTarget(element) {
-    if (!element || !isExplicitlyHiddenStateLayer(element)) return false;
+    if (!element) return false;
+    const previouslyManaged = element.hasAttribute?.(RENDERED_MASK_REVEAL_TARGET_ATTR);
+    if (!previouslyManaged && !isExplicitlyHiddenStateLayer(element)) return false;
     const tagName = String(element.tagName || '').toLowerCase();
     if (!/^(?:div|section|article|aside|p|span)$/.test(tagName)) return false;
     const text = String(element.textContent || '').replace(/\s+/g, ' ').trim();
@@ -1159,18 +1279,25 @@ function findRenderedMaskRevealEntries(root) {
         if (cursor !== 'pointer' && !MASK_REVEAL_TRIGGER_HINT_RE.test(hostText)) continue;
 
         const mask = masks[0];
+        const hiddenOriginalStyles = capturePseudoStyleState(hidden, ['display', 'visibility', 'opacity', 'pointer-events', 'transform']);
+        const maskOriginalStyles = capturePseudoStyleState(mask, ['opacity', 'clip-path', 'pointer-events', 'filter']);
         const hiddenState = {
             target: hidden,
-            originalStyles: capturePseudoStyleState(hidden, ['display', 'visibility', 'opacity', 'pointer-events', 'transform']),
-            activeTransform: neutralizeStateLayerTransform(getInlineStyleValue(hidden, 'transform')),
-            wasDisplayNone: getInlineStyleValue(hidden, 'display').toLowerCase() === 'none',
+            originalStyles: hiddenOriginalStyles,
+            activeTransform: neutralizeStateLayerTransform(getCapturedStyleValue(hiddenOriginalStyles, 'transform')),
+            wasDisplayNone: getCapturedStyleValue(hiddenOriginalStyles, 'display').toLowerCase() === 'none',
         };
         const maskState = {
             target: mask,
-            originalStyles: capturePseudoStyleState(mask, ['opacity', 'clip-path', 'pointer-events', 'filter']),
-            originalClipPath: getInlineStyleValue(mask, 'clip-path'),
+            originalStyles: maskOriginalStyles,
+            originalClipPath: getCapturedStyleValue(maskOriginalStyles, 'clip-path'),
         };
-        entries.push({ host, hiddenState, maskState, active: false });
+        entries.push({
+            host,
+            hiddenState,
+            maskState,
+            active: host.getAttribute?.('aria-pressed') === 'true',
+        });
         seenHosts.add(host);
     }
     return entries;
@@ -1234,7 +1361,7 @@ function installRenderedMaskRevealRescue(root) {
         };
         entry.host.addEventListener('click', activate, false);
         entry.host.addEventListener('keydown', activate, false);
-        applyRenderedMaskRevealEntry(entry, false);
+        applyRenderedMaskRevealEntry(entry, entry.active);
     }
 }
 
@@ -1754,7 +1881,7 @@ function parseCheckedChangeStyleProgramFromSource(input, root, scriptText) {
             inactiveAssignments,
             activeText: hasActiveText ? activeTextByTarget.get(target) : undefined,
             inactiveText: hasInactiveText ? inactiveTextByTarget.get(target) : undefined,
-            originalText: target.textContent,
+            originalText: captureStableTextState(target),
             originalStyles: capturePseudoStyleState(target, properties),
         });
     }
@@ -1807,15 +1934,93 @@ function installCheckedChangePseudoInteractionRescue(root) {
     }
 }
 
+function readReversibleStyleBaseline(element) {
+    if (!element?.style) return new Map();
+    const remembered = reversibleStyleBaselineStates.get(element);
+    if (remembered) return remembered;
+
+    const baseline = new Map();
+    const encoded = element.getAttribute?.(REVERSIBLE_STYLE_BASELINE_ATTR) || '';
+    if (encoded) {
+        try {
+            const parsed = JSON.parse(decodeURIComponent(encoded));
+            if (parsed && typeof parsed === 'object') {
+                for (const [property, state] of Object.entries(parsed)) {
+                    baseline.set(property, {
+                        value: String(state?.value || ''),
+                        priority: String(state?.priority || ''),
+                    });
+                }
+            }
+        } catch {
+            // 损坏或旧格式的本地标记直接忽略，并从当前原始 DOM 重新建立。
+        }
+    }
+    reversibleStyleBaselineStates.set(element, baseline);
+    return baseline;
+}
+
+function persistReversibleStyleBaseline(element, baseline) {
+    if (!element?.setAttribute || !baseline?.size) return;
+    try {
+        const serializable = Object.fromEntries([...baseline.entries()].map(([property, state]) => [property, {
+            value: String(state?.value || ''),
+            priority: String(state?.priority || ''),
+        }]));
+        element.setAttribute(REVERSIBLE_STYLE_BASELINE_ATTR, encodeURIComponent(JSON.stringify(serializable)));
+    } catch {
+        // data 属性写入失败时，WeakMap 中的当前会话基线仍可使用。
+    }
+}
+
 function capturePseudoStyleState(element, properties) {
     const captured = new Map();
+    if (!element?.style) return captured;
+    const baseline = readReversibleStyleBaseline(element);
+    let changed = false;
+
     for (const property of properties) {
-        captured.set(property, {
-            value: element.style?.getPropertyValue?.(property) || '',
-            priority: element.style?.getPropertyPriority?.(property) || '',
-        });
+        if (!baseline.has(property)) {
+            baseline.set(property, {
+                value: element.style.getPropertyValue(property) || '',
+                priority: element.style.getPropertyPriority(property) || '',
+            });
+            changed = true;
+        }
+        const state = baseline.get(property) || { value: '', priority: '' };
+        captured.set(property, { value: state.value, priority: state.priority });
     }
+    if (changed) persistReversibleStyleBaseline(element, baseline);
     return captured;
+}
+
+function getCapturedStyleValue(captured, property) {
+    return String(captured?.get?.(property)?.value || '').trim();
+}
+
+function captureStableTextState(element) {
+    if (!element) return '';
+    if (reversibleTextBaselineStates.has(element)) return reversibleTextBaselineStates.get(element);
+
+    let value = '';
+    const encoded = element.getAttribute?.(REVERSIBLE_TEXT_BASELINE_ATTR) || '';
+    if (encoded) {
+        try {
+            value = decodeURIComponent(encoded);
+        } catch {
+            value = '';
+        }
+    }
+    if (!encoded) {
+        value = String(element.textContent || '');
+        try {
+            if (value.length <= 4000) element.setAttribute(REVERSIBLE_TEXT_BASELINE_ATTR, encodeURIComponent(value));
+        } catch {
+            // WeakMap fallback remains available.
+        }
+    }
+    reversibleTextBaselineStates.set(element, value);
+    return value;
 }
 
 function applyPseudoStyleAssignments(element, assignments) {
@@ -2511,7 +2716,7 @@ function refreshTouchHoverRescue(toto) {
 }
 
 function installInteractionLabelFallback(toto) {
-    if (!toto || toto.dataset.rabbitMirrorInteractionFallback === 'true') return;
+    if (!toto || interactionLabelFallbackRoots.has(toto)) return;
 
     // 使用捕获阶段，避免主题或其他插件在内部 stopPropagation 后导致 label 完全点不开。
     toto.addEventListener('click', (event) => {
@@ -2543,9 +2748,16 @@ function installInteractionLabelFallback(toto) {
         // 规则把状态声明落到匹配目标上，取消勾选时再恢复，作为最终兜底。
         // 先走不依赖 CSSOM 的文本解析兜底；酒馆/WebView 即使不给 style.sheet，仍能修复。
         // 文本规则命中后不要再运行 CSSOM 兜底，否则后者开头的恢复动作会撤销刚应用的状态。
-        const textRuleCount = applyCheckedRuleTextFallback(toto, input);
-        // 仅在文本解析没有命中时再尝试 CSSOM（例如规则位于复杂 @media 内）。
-        if (!textRuleCount) applyCheckedRuleInlineFallback(toto, input);
+        const renderedRoute = getRenderedInputRoute(input);
+        if (renderedRoute) {
+            // 结构型急救已经保存了不可变原始基线；不要再让通用 :checked 内联兜底重复写同一目标。
+            // 多路线叠加是“打开后无法恢复”的主要来源之一。
+            restoreInteractionInlineOverrides(input);
+        } else {
+            const textRuleCount = applyCheckedRuleTextFallback(toto, input);
+            // 仅在文本解析没有命中时再尝试 CSSOM（例如规则位于复杂 @media 内）。
+            if (!textRuleCount) applyCheckedRuleInlineFallback(toto, input);
+        }
 
         if (previous !== input.checked) {
             input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -2553,6 +2765,7 @@ function installInteractionLabelFallback(toto) {
         }
     }, true);
 
+    interactionLabelFallbackRoots.add(toto);
     toto.dataset.rabbitMirrorInteractionFallback = 'true';
 }
 
@@ -2749,7 +2962,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 一次性交互诊断：仅在用户按下“开始一次交互诊断”后，临时监听聊天区的下一次交互。
 // 捕获一个兔子镜后只读取该条内容，并在约 650ms 后自动停止全部诊断监听。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.8-ONESHOT';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.9-ONESHOT';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -2917,7 +3130,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         lines.push(
             `${index}: ${diagnosticElementName(input)} type=${input.type} checked=${!!input.checked}`,
             `   label=${!!label} text="${diagnosticCompactText(label?.textContent, 68)}"`,
-            `   attrs: adjacent=${input.getAttribute(RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR) || 'false'} layer=${input.getAttribute(RENDERED_STATE_LAYER_RESCUE_ATTR) || 'false'} labelInternal=${input.getAttribute(RENDERED_LABEL_INTERNAL_HIDDEN_RESCUE_ATTR) || 'false'} labelAdjacent=${input.getAttribute(RENDERED_LABEL_ADJACENT_RESULT_RESCUE_ATTR) || 'false'} change=${input.getAttribute(CHANGE_PSEUDO_RESCUE_ATTR) || 'false'}`,
+            `   attrs: route=${getRenderedInputRoute(input) || 'none'} adjacent=${input.getAttribute(RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR) || 'false'} layer=${input.getAttribute(RENDERED_STATE_LAYER_RESCUE_ATTR) || 'false'} labelInternal=${input.getAttribute(RENDERED_LABEL_INTERNAL_HIDDEN_RESCUE_ATTR) || 'false'} labelAdjacent=${input.getAttribute(RENDERED_LABEL_ADJACENT_RESULT_RESCUE_ATTR) || 'false'} change=${input.getAttribute(CHANGE_PSEUDO_RESCUE_ATTR) || 'false'}`,
         );
     });
 
