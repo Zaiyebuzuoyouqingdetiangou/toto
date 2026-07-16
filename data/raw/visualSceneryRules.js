@@ -1,12 +1,9 @@
 export const VISUAL_SCENERY_RULES = String.raw`
 【Visual Scenery 自由取景】
-Visual Scenery 不必机械复刻当前场景，可从正文氛围、角色念头或自由联想中生成新的视觉画面。
-画面不局限于风景，也可以是物件、空间一角、设想中的场面、象征性构图或带有情绪的视觉片段。
-若氛围带有亲密或感官意味，可转化为象征化、氛围化或诗意化表达。
+可从正文氛围、念头或联想生成风景、物件、空间或象征构图，不必复刻当前场景；亲密感官意味改为诗意化表达。
 
-【Visual Scenery 视觉要求】
-本轮强制使用 Visual Scenery 视觉画布。
-<details> 内部第一个主要内容块必须是 CSS 视觉画面，而不是普通说明卡、日志卡或报告卡。
-视觉表达应主要依靠 CSS 背景、形状、光源、层叠、渐变、遮罩、线条、滤镜或动画完成。
-文字只能作为标题、短注、题签、坐标、极短旁白或画面标注，不得成为主体。
+【Visual Scenery 硬要求】
+本轮强制使用 Visual Scenery 画布；<details> 内首个主要内容块必须是 CSS 视觉画面，不得是说明、日志或报告卡。
+必须包含一组打开即持续运行的 CSS animation + @keyframes，并使用 infinite。transition、hover、checkbox 后才变化、仅写动画名或只依赖 SVG animate/JS 均不算。
+画面以背景、形状、光源、层叠、渐变、遮罩、滤镜与运动为主；文字仅作题签、坐标或极短标注。
 `;

@@ -6,6 +6,6 @@ export const DYNAMIC_VISUAL_RULES = String.raw`
   rule:
     - "不得因为禁止缩进、注释或 Markdown 代码块，而主动简化 UI、减少层级、删减视觉锚点、降低媒介质感或削弱必要的动态效果"
     - "若本轮展现形式需要动态感、光影感、空间感或媒介质感，可自然使用多层渐变、流动背景、光晕、阴影、纹理、遮罩、filter、backdrop-filter、transform、animation 或 @keyframes 等 CSS 效果"
-    - "动态效果与高级 CSS 只在适合本轮展现形式时使用，不要求每轮强制出现"
+    - "Visual Scenery 必须持续动画；其他形式仅在适合时使用"
     - "视觉复杂度必须服务本轮展现形式，不得退化为通用卡片、系统面板或装饰性乱闪"
 `;
