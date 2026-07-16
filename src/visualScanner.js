@@ -2,7 +2,6 @@ import { updateLatestVisualSignature } from './storage.js';
 
 const TOTO_RE = new RegExp('<toto\\b[^>]*(?:data-rabbit-mirror|data-rabbit-' + 'h' + 'ole)=[\"\']true[\"\'][^>]*>[\\s\\S]*?<\\/toto>', 'i');
 let lastScannedHash = '';
-let lastScanUsedRenderedPalette = false;
 let lastScanAttempts = 0;
 
 function hashText(text) {
@@ -789,8 +788,7 @@ export function scanRabbitMirrorHtml(messageHtml, renderedToto = null) {
         .filter(Boolean)
         .join('；');
     const skeleton = buildVisualSkeleton(html, plain, { dom, repeated, spatialSignalCount });
-    const paletteFingerprint = detectPaletteFingerprint(html, renderedToto);
-    return { signature: summary.slice(0, 280), skeleton: skeleton.slice(0, 360), riskFlags, paletteFingerprint };
+    return { signature: summary.slice(0, 280), skeleton: skeleton.slice(0, 360), riskFlags };
 }
 
 function normalizedText(value) {
@@ -844,9 +842,8 @@ async function scanLatestAssistantMessage(mod) {
     const sigHash = hashText(message.mes);
     if (sigHash !== lastScannedHash) {
         lastScannedHash = sigHash;
-        lastScanUsedRenderedPalette = false;
         lastScanAttempts = 0;
-    } else if (lastScanUsedRenderedPalette || lastScanAttempts >= 3) {
+    } else if (lastScanAttempts >= 3) {
         return;
     }
     lastScanAttempts += 1;
@@ -856,11 +853,9 @@ async function scanLatestAssistantMessage(mod) {
     const signature = result?.signature || '';
     const skeleton = result?.skeleton || '';
     const riskFlags = Array.isArray(result?.riskFlags) ? result.riskFlags : [];
-    const paletteFingerprint = result?.paletteFingerprint || null;
-    if (paletteFingerprint?.source === 'rendered') lastScanUsedRenderedPalette = true;
-    if (signature || skeleton || riskFlags.length || paletteFingerprint) {
-        updateLatestVisualSignature(signature, skeleton, riskFlags, paletteFingerprint);
-        console.debug('[RabbitMirror] visual signature:', signature, skeleton, riskFlags, paletteFingerprint);
+    if (signature || skeleton || riskFlags.length) {
+        updateLatestVisualSignature(signature, skeleton, riskFlags);
+        console.debug('[RabbitMirror] visual signature:', signature, skeleton, riskFlags);
     }
 }
 

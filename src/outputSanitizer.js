@@ -4064,7 +4064,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 一次性交互诊断：仅在用户按下“开始一次交互诊断”后，临时监听聊天区的下一次交互。
 // 捕获一个兔子镜后只读取该条内容，并在约 650ms 后自动停止全部诊断监听。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.16-ONESHOT';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.18-ONESHOT';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -4605,8 +4605,41 @@ function wrapTrailingNakedHtml(text) {
     return `${prefix}${prefix ? '\n' : ''}${wrapNakedHtmlAsToto(tail)}`.trim();
 }
 
+const RABBIT_MIRROR_CSS_SCOPE_ATTR = 'data-rabbit-mirror-css-scope';
+
+function localizeRabbitMirrorRootSelector(html) {
+    const source = String(html || '');
+    if (!/<style\b[^>]*>[\s\S]*?:root(?=\s*(?:\{|,))/i.test(source)) return source;
+
+    // 酒馆会隔离/净化消息内 CSS，`:root` 不再可靠地指向当前兔子镜。
+    // 每条作品使用由原文生成的稳定局部作用域，既恢复变量继承，也避免不同消息互相串色。
+    const scopeToken = `rmcss-${hashInteractionSignature(source).slice(0, 10)}`;
+    const scopeSelector = `[${RABBIT_MIRROR_CSS_SCOPE_ATTR}="${scopeToken}"]`;
+    let foundRootSelector = false;
+
+    let localized = source.replace(/<style\b([^>]*)>([\s\S]*?)<\/style>/gi, (full, attrs = '', css = '') => {
+        if (!/:root(?=\s*(?:\{|,))/i.test(css)) return full;
+        foundRootSelector = true;
+        const localizedCss = css.replace(/:root(?=\s*(?:\{|,))/gi, scopeSelector);
+        return `<style${attrs}>${localizedCss}</style>`;
+    });
+
+    if (!foundRootSelector) return localized;
+
+    const markTag = (tag) => {
+        const attrRe = new RegExp(`\\s${RABBIT_MIRROR_CSS_SCOPE_ATTR}\\s*=\\s*(["']).*?\\1`, 'i');
+        if (attrRe.test(tag)) return tag.replace(attrRe, ` ${RABBIT_MIRROR_CSS_SCOPE_ATTR}="${scopeToken}"`);
+        return tag.replace(/^<([a-z][\w:-]*)\b/i, `<$1 ${RABBIT_MIRROR_CSS_SCOPE_ATTR}="${scopeToken}"`);
+    };
+
+    // 同时标记未知外壳 <toto> 与首个真实内容根；宿主删除 <toto> 后，details/div 仍可承接变量。
+    localized = localized.replace(/<toto\b[^>]*>/i, markTag);
+    localized = localized.replace(/<(details|div|section|article)\b[^>]*>/i, markTag);
+    return localized;
+}
+
 export function compactTotoBlock(block) {
-    let html = normalizeMirrorAttribute(stripCodeBlockTriggers(block));
+    let html = localizeRabbitMirrorRootSelector(normalizeMirrorAttribute(stripCodeBlockTriggers(block)));
     const styleSlots = [];
 
     // 1. 保护 <style>...</style>，避免 CSS 文本被误插入 <br>。
