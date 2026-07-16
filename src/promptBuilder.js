@@ -250,7 +250,7 @@ ${shortVisualAvoidance(combo, 3)}${recentRiskCorrection()}`);
     if (visualSceneryMode) {
         chunks.push(String.raw`
 Visual Scenery 模式:
-  允许使用纯 CSS/SVG 构建风景化、光影化、流动渐变或环境动态效果；必须服务本轮展现形式，不得为了动而动。`);
+  持续动画是硬条件；必须用自动运行的 CSS animation + @keyframes 表现风景、光影或环境变化，服务画面且不得乱闪。`);
         chunks.push(VISUAL_SCENERY_RULES);
         chunks.push(visualSceneryInteractionLinkRule());
     }

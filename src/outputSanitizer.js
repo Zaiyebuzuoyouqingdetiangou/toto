@@ -2761,6 +2761,14 @@ function parseCheckedChangeStyleProgramFromSource(input, root, scriptText) {
         if (target) targetMap.set(match[1], target);
     }
 
+    // 模型常用 document.getElementById；宿主会删除 onchange，且 ID 可能已被兔子镜作用域化。
+    // 这里只在当前兔子镜内解析安全的固定 ID，不访问整页，也不执行模型 JavaScript。
+    const documentIdAliasRe = /(?:const|let|var)\s+([a-zA-Z_$][\w$]*)\s*=\s*document\s*\.\s*getElementById\(\s*(['"])([a-zA-Z_][\w:.-]*)\2\s*\)\s*;?/g;
+    while ((match = documentIdAliasRe.exec(source))) {
+        const target = resolveScopedPseudoId(root, match[3]);
+        if (target) targetMap.set(match[1], target);
+    }
+
     // 模型常用 document.querySelector；急救器不会访问整页，而是强制收敛到当前兔子镜。
     const documentQueryAliasRe = /(?:const|let|var)\s+([a-zA-Z_$][\w$]*)\s*=\s*document\s*\.\s*querySelector\(\s*(['"])([.#]?[a-zA-Z_][\w:.-]*)\2\s*\)\s*;?/g;
     while ((match = documentQueryAliasRe.exec(source))) {
@@ -4064,7 +4072,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 一次性交互诊断：仅在用户按下“开始一次交互诊断”后，临时监听聊天区的下一次交互。
 // 捕获一个兔子镜后只读取该条内容，并在约 650ms 后自动停止全部诊断监听。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.18-ONESHOT';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.20-ONESHOT';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
