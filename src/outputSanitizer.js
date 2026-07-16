@@ -934,6 +934,310 @@ function installRenderedLabelInternalHiddenRescue(root) {
 }
 
 
+
+// 渲染后“label 后置结果层”急救：用于 checkbox/radio 位于 label 内，结果层紧跟在 label 后方的结构。
+// 不依赖已被宿主删除的 onchange；优先保证隐藏结果能够显示，并可选增强同画布内的零尺寸视觉主体。
+const RENDERED_LABEL_ADJACENT_RESULT_RESCUE_ATTR = 'data-rabbit-mirror-label-adjacent-result-rescue';
+const RENDERED_LABEL_ADJACENT_RESULT_ITEM_ATTR = 'data-rm-label-adjacent-result-item';
+const RENDERED_LABEL_ADJACENT_VISUAL_ITEM_ATTR = 'data-rm-label-adjacent-visual-item';
+const renderedLabelAdjacentResultRescueStates = new WeakMap();
+const LABEL_ADJACENT_RESULT_HINT_RE = /(?:detail|result|reaction|response|info|content|reveal|hidden|message|panel|output|详情|结果|反应|状态|信息|揭示)/i;
+const LABEL_ADJACENT_VISUAL_HINT_RE = /(?:zone|radar|meter|gauge|ring|circle|field|area|territory|dominance|progress|pulse|wave|领域|雷达|区域|环|范围|进度)/i;
+
+function isCollapsedDimensionValue(value) {
+    return /^(?:0|0px|0em|0rem|0%)$/i.test(String(value || '').replace(/\s+/g, ''));
+}
+
+function isLabelAdjacentResultCandidate(element) {
+    if (!element || /^(?:input|label|button|style|script|template)$/i.test(element.tagName || '')) return false;
+    const text = String(element.textContent || '').replace(/\s+/g, ' ').trim();
+    if (text.length < 8 || text.length > 2400) return false;
+
+    const hidden = isExplicitlyHiddenStateLayer(element)
+        || isCollapsedDimensionValue(getInlineStyleValue(element, 'height'))
+        || isCollapsedDimensionValue(getInlineStyleValue(element, 'max-height'));
+    if (!hidden) return false;
+
+    const semantic = `${element.id || ''} ${getClassTokens(element).join(' ')}`;
+    const hasStructure = !!element.querySelector?.('p, div, span, section, article, ul, ol, dl, table, [style*="background"], [style*="border"]');
+    return LABEL_ADJACENT_RESULT_HINT_RE.test(semantic) || hasStructure || text.length >= 40;
+}
+
+function findLabelAdjacentResultTarget(label) {
+    let node = label?.nextElementSibling || null;
+    for (let step = 0; node && step < 3; step += 1, node = node.nextElementSibling) {
+        if (/^(?:style|script)$/i.test(node.tagName || '')) continue;
+        if (isLabelAdjacentResultCandidate(node)) return node;
+        // 只允许跨过很短的空白装饰层；遇到新的交互结构即停止。
+        if (node.querySelector?.('input, label, button, details, summary')) break;
+        const text = String(node.textContent || '').replace(/\s+/g, ' ').trim();
+        if (text.length > 24) break;
+    }
+    return null;
+}
+
+function collectLabelAdjacentVisualTargets(label) {
+    const parent = label?.parentElement;
+    if (!parent?.children) return [];
+    const siblings = [...parent.children];
+    const labelIndex = siblings.indexOf(label);
+    if (labelIndex <= 0) return [];
+
+    const searchRoots = siblings.slice(Math.max(0, labelIndex - 5), labelIndex).reverse();
+    for (const searchRoot of searchRoots) {
+        const candidates = [searchRoot, ...(searchRoot.querySelectorAll?.('[class], [id]') || [])]
+            .filter(element => {
+                const semantic = `${element.id || ''} ${getClassTokens(element).join(' ')}`;
+                if (!LABEL_ADJACENT_VISUAL_HINT_RE.test(semantic)) return false;
+                const width = getInlineStyleValue(element, 'width');
+                const height = getInlineStyleValue(element, 'height');
+                if (!isCollapsedDimensionValue(width) || !isCollapsedDimensionValue(height)) return false;
+                const radius = getInlineStyleValue(element, 'border-radius');
+                return /(?:50%|999px|9999px)/i.test(radius) || /circle|ring|zone|radar/i.test(semantic);
+            });
+        if (candidates.length) return candidates.slice(0, 2);
+    }
+    return [];
+}
+
+function buildRenderedLabelAdjacentResultEntry(label, input) {
+    if (!label || !input || input.closest?.('label') !== label) return null;
+    const target = findLabelAdjacentResultTarget(label);
+    if (!target) return null;
+
+    const targetState = {
+        target,
+        originalStyles: capturePseudoStyleState(target, [
+            'display', 'visibility', 'opacity', 'pointer-events', 'transform',
+            'height', 'min-height', 'max-height', 'overflow', 'overflow-x', 'overflow-y',
+        ]),
+        activeTransform: neutralizeStateLayerTransform(getInlineStyleValue(target, 'transform')),
+        wasDisplayNone: getInlineStyleValue(target, 'display').toLowerCase() === 'none',
+        hadCollapsedHeight: isCollapsedDimensionValue(getInlineStyleValue(target, 'height')),
+        hadCollapsedMaxHeight: isCollapsedDimensionValue(getInlineStyleValue(target, 'max-height')),
+    };
+
+    const visualStates = collectLabelAdjacentVisualTargets(label).map(visual => ({
+        target: visual,
+        originalStyles: capturePseudoStyleState(visual, ['width', 'height', 'opacity', 'transform']),
+    }));
+
+    target.setAttribute(RENDERED_LABEL_ADJACENT_RESULT_ITEM_ATTR, 'true');
+    visualStates.forEach((state, index) => state.target.setAttribute(RENDERED_LABEL_ADJACENT_VISUAL_ITEM_ATTR, String(index)));
+    input.setAttribute(RENDERED_LABEL_ADJACENT_RESULT_RESCUE_ATTR, 'true');
+    return { label, input, targetState, visualStates };
+}
+
+function applyRenderedLabelAdjacentResultEntry(entry) {
+    if (!entry?.input || !entry?.targetState?.target) return;
+    const active = !!entry.input.checked;
+    const state = entry.targetState;
+    restorePseudoStyleState(state.target, state.originalStyles);
+    for (const visualState of entry.visualStates || []) restorePseudoStyleState(visualState.target, visualState.originalStyles);
+
+    if (active) {
+        const naturalHeight = Math.max(72, Number(state.target.scrollHeight || 0) + 20);
+        const assignments = [
+            { property: 'opacity', value: '1' },
+            { property: 'visibility', value: 'visible' },
+            { property: 'pointer-events', value: 'auto' },
+            { property: 'overflow', value: 'visible' },
+        ];
+        if (state.wasDisplayNone) assignments.push({ property: 'display', value: 'block' });
+        if (state.activeTransform) assignments.push({ property: 'transform', value: state.activeTransform });
+        if (state.hadCollapsedHeight) assignments.push({ property: 'height', value: 'auto' });
+        if (state.hadCollapsedMaxHeight || getRenderedElementHeight(state.target) <= 1) {
+            assignments.push({ property: 'max-height', value: `${Math.max(360, naturalHeight * 2)}px` });
+            assignments.push({ property: 'min-height', value: `${Math.min(1200, naturalHeight)}px` });
+        }
+        applyPseudoStyleAssignments(state.target, assignments);
+
+        for (const visualState of entry.visualStates || []) {
+            let size = 130;
+            try {
+                const rect = visualState.target.parentElement?.getBoundingClientRect?.();
+                const candidate = Math.min(Number(rect?.width || 0), Number(rect?.height || 0)) * 0.72;
+                if (Number.isFinite(candidate) && candidate >= 56) size = Math.max(72, Math.min(160, Math.round(candidate)));
+            } catch {
+                // Fallback size remains 130px.
+            }
+            applyPseudoStyleAssignments(visualState.target, [
+                { property: 'width', value: `${size}px` },
+                { property: 'height', value: `${size}px` },
+                { property: 'opacity', value: '1' },
+            ]);
+        }
+    }
+
+    entry.label?.setAttribute?.('aria-pressed', active ? 'true' : 'false');
+    entry.input?.setAttribute?.('aria-pressed', active ? 'true' : 'false');
+}
+
+function applyRenderedLabelAdjacentResultEntries(root) {
+    const state = renderedLabelAdjacentResultRescueStates.get(root);
+    if (!state?.entries?.size) return;
+    for (const entry of state.entries.values()) applyRenderedLabelAdjacentResultEntry(entry);
+}
+
+function installRenderedLabelAdjacentResultRescue(root) {
+    if (!root?.querySelectorAll) return;
+    let state = renderedLabelAdjacentResultRescueStates.get(root);
+    if (!state) {
+        state = { entries: new Map() };
+        renderedLabelAdjacentResultRescueStates.set(root, state);
+    }
+
+    for (const label of root.querySelectorAll('label')) {
+        const input = label.querySelector('input[type="checkbox"], input[type="radio"]');
+        if (!input || state.entries.has(input)) continue;
+        const entry = buildRenderedLabelAdjacentResultEntry(label, input);
+        if (entry) state.entries.set(input, entry);
+    }
+    if (!state.entries.size) return;
+
+    if (root.dataset.rabbitMirrorLabelAdjacentResultFallback !== 'true') {
+        const refresh = event => {
+            if (!state.entries.has(event.target)) return;
+            applyRenderedLabelAdjacentResultEntries(root);
+            for (const delay of [0, 80, 260]) {
+                setTimeout(() => {
+                    if (root.isConnected) applyRenderedLabelAdjacentResultEntries(root);
+                }, delay);
+            }
+        };
+        root.addEventListener('input', refresh, false);
+        root.addEventListener('change', refresh, false);
+        root.dataset.rabbitMirrorLabelAdjacentResultFallback = 'true';
+    }
+    applyRenderedLabelAdjacentResultEntries(root);
+}
+
+
+// 渲染后“遮罩—隐藏层揭示”急救：用于宿主已删除 onmouseover/onmouseout，且没有表单控件的画面揭层。
+// 只识别同一容器内语义明确的遮罩层与隐藏正文层，点击/轻触一次显示，再次点击恢复。
+const RENDERED_MASK_REVEAL_RESCUE_ATTR = 'data-rabbit-mirror-mask-reveal-rescue';
+const RENDERED_MASK_REVEAL_TARGET_ATTR = 'data-rm-mask-reveal-target';
+const renderedMaskRevealRescueStates = new WeakMap();
+const MASK_REVEAL_MASK_HINT_RE = /(?:frost|fog|mist|mask|cover|veil|curtain|overlay|blur|霜|雾|遮罩|覆盖|幕)/i;
+const MASK_REVEAL_HIDDEN_HINT_RE = /(?:hidden|reveal|secret|message|msg|detail|content|note|memo|thought|隐藏|揭示|秘密|信息|备忘|内容)/i;
+const MASK_REVEAL_TRIGGER_HINT_RE = /(?:长按|按住|点击|轻触|触摸|擦拭|擦去|揭开|查看|显露|解锁|开启)|\b(?:click|tap|touch|hold|wipe|reveal|open|inspect)\b/i;
+
+function isRenderedMaskRevealHiddenTarget(element) {
+    if (!element || !isExplicitlyHiddenStateLayer(element)) return false;
+    const tagName = String(element.tagName || '').toLowerCase();
+    if (!/^(?:div|section|article|aside|p|span)$/.test(tagName)) return false;
+    const text = String(element.textContent || '').replace(/\s+/g, ' ').trim();
+    if (text.length < 8 || text.length > 1800) return false;
+    const semantic = `${element.id || ''} ${getClassTokens(element).join(' ')}`;
+    return MASK_REVEAL_HIDDEN_HINT_RE.test(semantic) || text.length >= 30;
+}
+
+function isRenderedMaskRevealMask(element) {
+    if (!element || isExplicitlyHiddenStateLayer(element)) return false;
+    const semantic = `${element.id || ''} ${getClassTokens(element).join(' ')}`;
+    const clipPath = getInlineStyleValue(element, 'clip-path');
+    const backdrop = getInlineStyleValue(element, 'backdrop-filter');
+    const looksLikeMask = MASK_REVEAL_MASK_HINT_RE.test(semantic) || !!clipPath || !!backdrop;
+    return looksLikeMask && isOverlayLikeStateLayer(element);
+}
+
+function findRenderedMaskRevealEntries(root) {
+    if (!root?.querySelectorAll) return [];
+    const entries = [];
+    const seenHosts = new Set();
+
+    for (const hidden of root.querySelectorAll('div, section, article, aside, p, span')) {
+        if (!isRenderedMaskRevealHiddenTarget(hidden)) continue;
+        const host = hidden.parentElement;
+        if (!host || seenHosts.has(host) || host.querySelector?.('input, label, button, select, textarea')) continue;
+        const siblings = [...(host.children || [])];
+        const masks = siblings.filter(item => item !== hidden && isRenderedMaskRevealMask(item));
+        if (!masks.length) continue;
+
+        const hostText = String(host.textContent || '').replace(/\s+/g, ' ').trim();
+        const cursor = getInlineStyleValue(host, 'cursor').toLowerCase();
+        if (cursor !== 'pointer' && !MASK_REVEAL_TRIGGER_HINT_RE.test(hostText)) continue;
+
+        const mask = masks[0];
+        const hiddenState = {
+            target: hidden,
+            originalStyles: capturePseudoStyleState(hidden, ['display', 'visibility', 'opacity', 'pointer-events', 'transform']),
+            activeTransform: neutralizeStateLayerTransform(getInlineStyleValue(hidden, 'transform')),
+            wasDisplayNone: getInlineStyleValue(hidden, 'display').toLowerCase() === 'none',
+        };
+        const maskState = {
+            target: mask,
+            originalStyles: capturePseudoStyleState(mask, ['opacity', 'clip-path', 'pointer-events', 'filter']),
+            originalClipPath: getInlineStyleValue(mask, 'clip-path'),
+        };
+        entries.push({ host, hiddenState, maskState, active: false });
+        seenHosts.add(host);
+    }
+    return entries;
+}
+
+function hasRenderedMaskRevealCandidates(root) {
+    return findRenderedMaskRevealEntries(root).length > 0;
+}
+
+function applyRenderedMaskRevealEntry(entry, active) {
+    if (!entry?.host) return;
+    entry.active = !!active;
+    restorePseudoStyleState(entry.hiddenState.target, entry.hiddenState.originalStyles);
+    restorePseudoStyleState(entry.maskState.target, entry.maskState.originalStyles);
+
+    if (entry.active) {
+        const revealAssignments = [
+            { property: 'opacity', value: '1' },
+            { property: 'visibility', value: 'visible' },
+            { property: 'pointer-events', value: 'auto' },
+        ];
+        if (entry.hiddenState.wasDisplayNone) revealAssignments.push({ property: 'display', value: 'flex' });
+        if (entry.hiddenState.activeTransform) revealAssignments.push({ property: 'transform', value: entry.hiddenState.activeTransform });
+        applyPseudoStyleAssignments(entry.hiddenState.target, revealAssignments);
+
+        const maskAssignments = [
+            { property: 'opacity', value: '0.18' },
+            { property: 'pointer-events', value: 'none' },
+        ];
+        if (/circle\(/i.test(entry.maskState.originalClipPath)) {
+            maskAssignments.push({ property: 'clip-path', value: 'circle(85% at 50% 50%)' });
+        }
+        applyPseudoStyleAssignments(entry.maskState.target, maskAssignments);
+    }
+
+    entry.host.setAttribute('aria-pressed', entry.active ? 'true' : 'false');
+}
+
+function installRenderedMaskRevealRescue(root) {
+    if (!root?.querySelectorAll) return;
+    let state = renderedMaskRevealRescueStates.get(root);
+    if (!state) {
+        state = { hosts: new Map() };
+        renderedMaskRevealRescueStates.set(root, state);
+    }
+
+    for (const entry of findRenderedMaskRevealEntries(root)) {
+        if (state.hosts.has(entry.host)) continue;
+        state.hosts.set(entry.host, entry);
+        entry.host.setAttribute(RENDERED_MASK_REVEAL_RESCUE_ATTR, 'true');
+        entry.hiddenState.target.setAttribute(RENDERED_MASK_REVEAL_TARGET_ATTR, 'true');
+        preparePseudoTrigger(entry.host);
+
+        const activate = event => {
+            if (event?.type === 'click' && shouldIgnorePseudoToggleEvent(event, entry.host)) return;
+            if (event?.type === 'keydown') {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+            }
+            applyRenderedMaskRevealEntry(entry, !entry.active);
+        };
+        entry.host.addEventListener('click', activate, false);
+        entry.host.addEventListener('keydown', activate, false);
+        applyRenderedMaskRevealEntry(entry, false);
+    }
+}
+
 // 渲染后“列表项目 → 详情视图”急救：不依赖已被宿主删除的 onclick。
 // 仅处理严格结构：同一布局中，前置区域存在 N 个明确可点击候选项，后置详情容器直属包含 N 个隐藏详情层。
 const RENDERED_LIST_DETAIL_RESCUE_ATTR = 'data-rabbit-mirror-rendered-list-detail-rescue';
@@ -1983,7 +2287,7 @@ function installPseudoInteractionRescue(root) {
 }
 
 function detectInteractionCapabilities(root) {
-    if (!root?.querySelectorAll) return { checked: false, hover: false, details: false, target: false, pseudo: false, listDetail: false };
+    if (!root?.querySelectorAll) return { checked: false, hover: false, details: false, target: false, pseudo: false, listDetail: false, maskReveal: false };
     const cssText = [...root.querySelectorAll('style')].map(style => style.textContent || '').join('\n');
     const outerDetails = root.matches?.('details') ? root : root.querySelector(':scope > details');
     const nestedDetails = [...root.querySelectorAll('details')].filter(item => item !== outerDetails);
@@ -1994,6 +2298,7 @@ function detectInteractionCapabilities(root) {
         target: /:target\b/i.test(cssText) || !!root.querySelector('a[href^="#"]'),
         pseudo: hasPseudoInteractionCandidates(root),
         listDetail: hasRenderedListDetailCandidates(root),
+        maskReveal: hasRenderedMaskRevealCandidates(root),
     };
     interactionCapabilityStates.set(root, capabilities);
     root.dataset.rabbitMirrorInteractionRoutes = Object.entries(capabilities)
@@ -2098,12 +2403,15 @@ function installIntelligentInteractionRescue(root) {
         installRenderedAdjacentHiddenGroupRescue(root);
         // 补救 checkbox/radio 与单块隐藏正文同处 label 内的结构。
         installRenderedLabelInternalHiddenRescue(root);
+        // 补救 label 后方紧邻的单块结果层，并可选增强同画布内的零尺寸视觉主体。
+        installRenderedLabelAdjacentResultRescue(root);
         installInteractionLabelFallback(root);
     }
     if (capabilities.hover) refreshTouchHoverRescue(root);
     if (capabilities.target) refreshTargetRescue(root);
     if (capabilities.details) installNestedDetailsFallback(root);
     if (capabilities.pseudo) installPseudoInteractionRescue(root);
+    if (capabilities.maskReveal) installRenderedMaskRevealRescue(root);
     if (capabilities.listDetail) installRenderedListDetailRescue(root);
 }
 
@@ -2441,7 +2749,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 一次性交互诊断：仅在用户按下“开始一次交互诊断”后，临时监听聊天区的下一次交互。
 // 捕获一个兔子镜后只读取该条内容，并在约 650ms 后自动停止全部诊断监听。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.7-ONESHOT';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.8-ONESHOT';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -2531,13 +2839,15 @@ function diagnosticRouteSummary(root) {
         adjacent: renderedAdjacentHiddenGroupRescueStates.get(root)?.entries?.size || 0,
         layers: renderedStateLayerRescueStates.get(root)?.entries?.size || 0,
         labelInternal: renderedLabelInternalHiddenRescueStates.get(root)?.entries?.size || 0,
+        labelAdjacent: renderedLabelAdjacentResultRescueStates.get(root)?.entries?.size || 0,
+        maskReveal: renderedMaskRevealRescueStates.get(root)?.hosts?.size || 0,
         listDetail: renderedListDetailRescueStates.get(root)?.entries?.size || 0,
     };
 }
 
 function diagnosticInferReason(root, inputs, targets) {
     const routes = diagnosticRouteSummary(root);
-    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.listDetail;
+    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail;
     const checkedInputs = inputs.filter(input => input.checked);
     const visibleTargets = targets.filter(target => {
         const style = diagnosticComputedStyle(target);
@@ -2585,6 +2895,8 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `相邻隐藏组 entries=${routes.adjacent} listener=${root.dataset.rabbitMirrorAdjacentHiddenGroupFallback || 'false'}`,
         `双层状态 entries=${routes.layers} listener=${root.dataset.rabbitMirrorRenderedStateLayerFallback || 'false'}`,
         `label内隐藏 entries=${routes.labelInternal} listener=${root.dataset.rabbitMirrorLabelInternalHiddenFallback || 'false'}`,
+        `label后置结果 entries=${routes.labelAdjacent} listener=${root.dataset.rabbitMirrorLabelAdjacentResultFallback || 'false'}`,
+        `遮罩揭示 entries=${routes.maskReveal} listener=${routes.maskReveal ? 'true' : 'false'}`,
         `列表详情 entries=${routes.listDetail} listener=${root.dataset.rabbitMirrorRenderedListDetailFallback || 'false'}`,
         `label fallback=${root.dataset.rabbitMirrorLabelFallback || root.dataset.rabbitMirrorCheckedFallback || 'unknown'}`,
         '',
@@ -2605,7 +2917,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         lines.push(
             `${index}: ${diagnosticElementName(input)} type=${input.type} checked=${!!input.checked}`,
             `   label=${!!label} text="${diagnosticCompactText(label?.textContent, 68)}"`,
-            `   attrs: adjacent=${input.getAttribute(RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR) || 'false'} layer=${input.getAttribute(RENDERED_STATE_LAYER_RESCUE_ATTR) || 'false'} labelInternal=${input.getAttribute(RENDERED_LABEL_INTERNAL_HIDDEN_RESCUE_ATTR) || 'false'} change=${input.getAttribute(CHANGE_PSEUDO_RESCUE_ATTR) || 'false'}`,
+            `   attrs: adjacent=${input.getAttribute(RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR) || 'false'} layer=${input.getAttribute(RENDERED_STATE_LAYER_RESCUE_ATTR) || 'false'} labelInternal=${input.getAttribute(RENDERED_LABEL_INTERNAL_HIDDEN_RESCUE_ATTR) || 'false'} labelAdjacent=${input.getAttribute(RENDERED_LABEL_ADJACENT_RESULT_RESCUE_ATTR) || 'false'} change=${input.getAttribute(CHANGE_PSEUDO_RESCUE_ATTR) || 'false'}`,
         );
     });
 
