@@ -1231,6 +1231,177 @@ function installRenderedLabelAdjacentResultRescue(root) {
 }
 
 
+// checkbox/radio → ID目标显隐急救：专门解析安全的
+// document.getElementById('id').style.xxx = this.checked ? 'A' : 'B'
+// 不执行模型 JavaScript；将状态绑定到 input/change，因此 label 兜底手动切换时也能生效。
+const RENDERED_CHECKED_ID_TARGET_RESCUE_ATTR = 'data-rabbit-mirror-checked-id-target-rescue';
+const RENDERED_CHECKED_ID_TARGET_ITEM_ATTR = 'data-rm-checked-id-target-item';
+const renderedCheckedIdTargetRescueStates = new WeakMap();
+const CHECKED_ID_TARGET_ALLOWED_PROPERTIES = new Set([
+    'display', 'visibility', 'opacity', 'pointer-events', 'transform',
+    'height', 'min-height', 'max-height', 'width', 'min-width', 'max-width',
+    'overflow', 'overflow-x', 'overflow-y', 'background', 'background-color', 'color',
+]);
+
+function collectCheckedIdTargetAssignments(scriptText, root) {
+    const source = String(scriptText || '');
+    if (!source || !/document\s*\.\s*getElementById\s*\(/i.test(source)
+        || !/this\s*\.\s*checked/i.test(source)) return null;
+
+    const matches = [];
+    const remember = (match, rawId, rawProperty, checkedValue, uncheckedValue) => {
+        const target = resolveScopedPseudoId(root, rawId);
+        const property = normalizeStylePropertyName(rawProperty);
+        const activeValue = decodeSafeInlineString(checkedValue).trim();
+        const inactiveValue = decodeSafeInlineString(uncheckedValue).trim();
+        if (!target || !property || !CHECKED_ID_TARGET_ALLOWED_PROPERTIES.has(property)
+            || !activeValue || !inactiveValue) return false;
+        matches.push({
+            start: match.index,
+            end: match.index + match[0].length,
+            target,
+            property,
+            checkedValue: activeValue,
+            uncheckedValue: inactiveValue,
+        });
+        return true;
+    };
+
+    // document.getElementById('id').style.display = this.checked ? 'block' : 'none';
+    const dotRe = /document\s*\.\s*getElementById\s*\(\s*(['"])([a-zA-Z_][\w:.-]*)\1\s*\)\s*\.\s*style\s*\.\s*([a-zA-Z][\w]*)\s*=\s*this\s*\.\s*checked\s*\?\s*(['"])([\s\S]*?)\4\s*:\s*(['"])([\s\S]*?)\6\s*;?/g;
+    let match;
+    while ((match = dotRe.exec(source))) {
+        if (!remember(match, match[2], match[3], match[5], match[7])) return null;
+    }
+
+    // document.getElementById('id').style['display'] = this.checked ? 'block' : 'none';
+    const bracketRe = /document\s*\.\s*getElementById\s*\(\s*(['"])([a-zA-Z_][\w:.-]*)\1\s*\)\s*\.\s*style\s*\[\s*(['"])([a-zA-Z-]+)\3\s*\]\s*=\s*this\s*\.\s*checked\s*\?\s*(['"])([\s\S]*?)\5\s*:\s*(['"])([\s\S]*?)\7\s*;?/g;
+    while ((match = bracketRe.exec(source))) {
+        if (!remember(match, match[2], match[4], match[6], match[8])) return null;
+    }
+
+    if (!matches.length) return null;
+    matches.sort((a, b) => a.start - b.start);
+
+    // 仅接受上述条件赋值与空白、分号、注释。出现其他语句时整段放弃。
+    let cursor = 0;
+    let remainder = '';
+    for (const item of matches) {
+        if (item.start < cursor) continue;
+        remainder += source.slice(cursor, item.start);
+        cursor = item.end;
+    }
+    remainder += source.slice(cursor);
+    remainder = remainder
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/\/\/[^\r\n]*/g, '')
+        .replace(/[\s;]+/g, '');
+    if (remainder !== '') return null;
+
+    return matches.map(item => ({
+        target: item.target,
+        property: item.property,
+        checkedValue: item.checkedValue,
+        uncheckedValue: item.uncheckedValue,
+    }));
+}
+
+function collectRenderedCheckedIdTargetSources(root) {
+    const sources = new Map();
+    if (!root?.querySelectorAll) return sources;
+
+    for (const input of root.querySelectorAll('input[type="checkbox"][onclick], input[type="radio"][onclick]')) {
+        const source = String(input.getAttribute('onclick') || '');
+        if (source) sources.set(input, source);
+    }
+
+    // 宿主若已删除 onclick，则从同一条消息的原始兔子镜按子节点路径回读。
+    const rawMessage = getRawAssistantMessageForRenderedRoot(root);
+    const rawRoot = chooseMatchingRawRabbitMirrorRoot(rawMessage, root);
+    if (!rawRoot?.querySelectorAll) return sources;
+
+    for (const rawInput of rawRoot.querySelectorAll('input[type="checkbox"][onclick], input[type="radio"][onclick]')) {
+        const path = getElementChildIndexPath(rawRoot, rawInput);
+        if (!path) continue;
+        const renderedInput = resolveElementChildIndexPath(root, path);
+        if (!renderedInput?.matches?.('input[type="checkbox"], input[type="radio"]') || sources.has(renderedInput)) continue;
+        const source = String(rawInput.getAttribute('onclick') || '');
+        if (source) sources.set(renderedInput, source);
+    }
+    return sources;
+}
+
+function buildRenderedCheckedIdTargetEntry(input, assignments) {
+    if (!input || !assignments?.length) return null;
+    const targetStates = assignments.map(action => {
+        const originalStyles = capturePseudoStyleState(action.target, [action.property]);
+        action.target.setAttribute(RENDERED_CHECKED_ID_TARGET_ITEM_ATTR, 'true');
+        return { ...action, originalStyles };
+    });
+    input.setAttribute(RENDERED_CHECKED_ID_TARGET_RESCUE_ATTR, 'true');
+    return { input, targetStates };
+}
+
+function applyRenderedCheckedIdTargetEntry(entry) {
+    if (!entry?.input || !entry?.targetStates?.length) return;
+    const active = !!entry.input.checked;
+    for (const state of entry.targetStates) {
+        restorePseudoStyleState(state.target, state.originalStyles);
+        const value = active ? state.checkedValue : state.uncheckedValue;
+        applyPseudoStyleAssignments(state.target, [{ property: state.property, value }]);
+        if (state.property === 'display' || state.property === 'visibility' || state.property === 'opacity') {
+            const hidden = (state.property === 'display' && value.toLowerCase() === 'none')
+                || (state.property === 'visibility' && value.toLowerCase() === 'hidden')
+                || (state.property === 'opacity' && Number.parseFloat(value) <= 0.05);
+            state.target.setAttribute('aria-hidden', hidden ? 'true' : 'false');
+        }
+    }
+    entry.input.setAttribute('aria-pressed', active ? 'true' : 'false');
+}
+
+function installRenderedCheckedIdTargetRescue(root) {
+    if (!root?.querySelectorAll) return;
+    let state = renderedCheckedIdTargetRescueStates.get(root);
+    if (!state) {
+        state = { entries: new Map(), listenerInstalled: false };
+        renderedCheckedIdTargetRescueStates.set(root, state);
+    }
+
+    for (const [input, source] of collectRenderedCheckedIdTargetSources(root)) {
+        if (state.entries.has(input)) continue;
+        const existingRoute = getRenderedInputRoute(input);
+        if (existingRoute && existingRoute !== 'checked-id-target') continue;
+        const assignments = collectCheckedIdTargetAssignments(source, root);
+        if (!assignments?.length || !claimRenderedInputRoute(input, 'checked-id-target')) continue;
+        const entry = buildRenderedCheckedIdTargetEntry(input, assignments);
+        if (!entry) continue;
+        state.entries.set(input, entry);
+        // 避免浏览器原生 click 与本地 input/change 急救重复执行。
+        input.removeAttribute('onclick');
+    }
+    if (!state.entries.size) return;
+
+    if (!state.listenerInstalled) {
+        const refresh = event => {
+            const entry = state.entries.get(event.target);
+            if (!entry) return;
+            applyRenderedCheckedIdTargetEntry(entry);
+            for (const delay of [0, 80, 260]) {
+                setTimeout(() => {
+                    if (root.isConnected && entry.input.isConnected) applyRenderedCheckedIdTargetEntry(entry);
+                }, delay);
+            }
+        };
+        root.addEventListener('input', refresh, false);
+        root.addEventListener('change', refresh, false);
+        state.listenerInstalled = true;
+        root.dataset.rabbitMirrorCheckedIdTargetFallback = 'true';
+    }
+
+    for (const entry of state.entries.values()) applyRenderedCheckedIdTargetEntry(entry);
+}
+
+
 // 渲染后“按钮 + 后置隐藏内容”急救：用于宿主删除 onclick 后，只剩普通 button 与紧邻隐藏内容的结构。
 // 该路线优先于触屏 hover 兜底；点击一次显示，第二次点击精确恢复最初状态。
 const RENDERED_BUTTON_ADJACENT_HIDDEN_RESCUE_ATTR = 'data-rabbit-mirror-button-adjacent-hidden-rescue';
@@ -2919,6 +3090,9 @@ function installIntelligentInteractionRescue(root) {
     const capabilities = detectInteractionCapabilities(root);
     if (capabilities.checked) {
         strengthenRabbitMirrorCheckedStateCss(root);
+        // 优先解析 checkbox/radio 中安全的 ID 目标条件显隐；绑定到 input/change，
+        // 避免 label 兜底只切换 checked、却不触发原 onclick 的情况。
+        installRenderedCheckedIdTargetRescue(root);
         // 先从已渲染的安全 DOM 识别前景/隐藏层，再由 label 兜底触发 input/change。
         // 此路径完全不依赖已被宿主删除的 onclick/onchange。
         installRenderedStateLayerRescue(root);
@@ -3286,7 +3460,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 一次性交互诊断：仅在用户按下“开始一次交互诊断”后，临时监听聊天区的下一次交互。
 // 捕获一个兔子镜后只读取该条内容，并在约 650ms 后自动停止全部诊断监听。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.11-ONESHOT';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.12-ONESHOT';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -3381,12 +3555,13 @@ function diagnosticRouteSummary(root) {
         listDetail: renderedListDetailRescueStates.get(root)?.entries?.size || 0,
         buttonAdjacent: renderedButtonAdjacentHiddenRescueStates.get(root)?.entries?.size || 0,
         clickablePopup: renderedClickableAdjacentPopupRescueStates.get(root)?.entries?.size || 0,
+        checkedIdTarget: renderedCheckedIdTargetRescueStates.get(root)?.entries?.size || 0,
     };
 }
 
 function diagnosticInferReason(root, inputs, targets) {
     const routes = diagnosticRouteSummary(root);
-    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.buttonAdjacent + routes.clickablePopup;
+    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.buttonAdjacent + routes.clickablePopup + routes.checkedIdTarget;
     const checkedInputs = inputs.filter(input => input.checked);
     const visibleTargets = targets.filter(target => {
         const style = diagnosticComputedStyle(target);
@@ -3441,6 +3616,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `列表详情 entries=${routes.listDetail} listener=${root.dataset.rabbitMirrorRenderedListDetailFallback || 'false'}`,
         `按钮后置内容 entries=${routes.buttonAdjacent} listener=${root.dataset.rabbitMirrorButtonAdjacentHiddenFallback || 'false'}`,
         `可点击画面弹层 entries=${routes.clickablePopup} listener=${root.dataset.rabbitMirrorClickableAdjacentPopupFallback || 'false'}`,
+        `ID目标显隐 entries=${routes.checkedIdTarget} listener=${root.dataset.rabbitMirrorCheckedIdTargetFallback || 'false'}`,
         `label fallback=${root.dataset.rabbitMirrorLabelFallback || root.dataset.rabbitMirrorCheckedFallback || 'unknown'}`,
         '',
         '[捕获事件]',
@@ -3460,7 +3636,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         lines.push(
             `${index}: ${diagnosticElementName(input)} type=${input.type} checked=${!!input.checked}`,
             `   label=${!!label} text="${diagnosticCompactText(label?.textContent, 68)}"`,
-            `   attrs: route=${getRenderedInputRoute(input) || 'none'} adjacent=${input.getAttribute(RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR) || 'false'} layer=${input.getAttribute(RENDERED_STATE_LAYER_RESCUE_ATTR) || 'false'} labelInternal=${input.getAttribute(RENDERED_LABEL_INTERNAL_HIDDEN_RESCUE_ATTR) || 'false'} labelAdjacent=${input.getAttribute(RENDERED_LABEL_ADJACENT_RESULT_RESCUE_ATTR) || 'false'} change=${input.getAttribute(CHANGE_PSEUDO_RESCUE_ATTR) || 'false'}`,
+            `   attrs: route=${getRenderedInputRoute(input) || 'none'} adjacent=${input.getAttribute(RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR) || 'false'} layer=${input.getAttribute(RENDERED_STATE_LAYER_RESCUE_ATTR) || 'false'} labelInternal=${input.getAttribute(RENDERED_LABEL_INTERNAL_HIDDEN_RESCUE_ATTR) || 'false'} labelAdjacent=${input.getAttribute(RENDERED_LABEL_ADJACENT_RESULT_RESCUE_ATTR) || 'false'} idTarget=${input.getAttribute(RENDERED_CHECKED_ID_TARGET_RESCUE_ATTR) || 'false'} change=${input.getAttribute(CHANGE_PSEUDO_RESCUE_ATTR) || 'false'}`,
         );
     });
 

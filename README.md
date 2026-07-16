@@ -1,3 +1,12 @@
+## 0.32.12 checkbox / radio → ID目标显隐急救
+
+- 新增安全解析：`document.getElementById('id').style.xxx = this.checked ? 'A' : 'B'`。
+- 动作绑定到 `input/change`，兼容隐藏 input 的 label 手动切换，不依赖原始 `click` 事件。
+- 每个控件只操作当前兔子镜内对应 ID，多个控件与多个目标可独立开关。
+- 交互完全可逆；不执行模型生成的 JavaScript。
+- 一次性诊断新增“ID目标显隐”命中信息。
+- Prompt 相关文件未修改。
+
 ## 0.32.11 可点击画面—相邻弹层可逆急救
 
 - 新增“带 cursor:pointer 的画面 + 紧邻隐藏弹层 + 弹层内关闭按钮”结构识别。
