@@ -88,6 +88,62 @@ export function getRecentPaletteFingerprints(limit = 3) {
         .slice(-Math.max(0, Number(limit) || 3));
 }
 
+const DARK_VISUAL_COOLDOWN_ROUNDS = 5;
+
+function isReliablePaletteFingerprint(fingerprint) {
+    return !!fingerprint
+        && typeof fingerprint === 'object'
+        && Number(fingerprint.confidence || 0) >= 0.45;
+}
+
+function isDarkMonotonousPalette(fingerprint) {
+    if (!isReliablePaletteFingerprint(fingerprint)) return false;
+    const darkRatio = Number(fingerprint.darkAreaRatio || 0);
+    const averageLuminance = Number(fingerprint.averageLuminance || 255);
+    const darkBase = fingerprint.brightness === 'dark' || darkRatio >= 0.58 || averageLuminance < 100;
+    const notVivid = fingerprint.saturation !== 'high';
+    return darkBase && notVivid;
+}
+
+// 根据已经实际渲染成功的配色记录推导冷却，不额外依赖模型自报，也不需要单独维护计数器。
+// 两次连续的深色低饱和主画面触发五轮；冷却中再次命中则重置为五轮。
+export function getDarkVisualCooldownState(limit = MAX_STORED) {
+    const history = getComboHistory(limit);
+    let remaining = 0;
+    let consecutiveDark = 0;
+    let lastReliable = null;
+
+    for (const item of history) {
+        const fingerprint = item?.paletteFingerprint;
+        if (!isReliablePaletteFingerprint(fingerprint)) continue;
+        const dark = isDarkMonotonousPalette(fingerprint);
+        lastReliable = { dark, fingerprint };
+
+        if (dark) {
+            if (remaining > 0) {
+                remaining = DARK_VISUAL_COOLDOWN_ROUNDS;
+                consecutiveDark = Math.max(2, consecutiveDark + 1);
+            } else {
+                consecutiveDark += 1;
+                if (consecutiveDark >= 2) remaining = DARK_VISUAL_COOLDOWN_ROUNDS;
+            }
+            continue;
+        }
+
+        consecutiveDark = 0;
+        if (remaining > 0) remaining = Math.max(0, remaining - 1);
+    }
+
+    return {
+        active: remaining > 0,
+        remaining,
+        rounds: DARK_VISUAL_COOLDOWN_ROUNDS,
+        consecutiveDark,
+        lastWasDark: !!lastReliable?.dark,
+        lastFingerprint: lastReliable?.fingerprint || null,
+    };
+}
+
 export function setPendingCombo(combo) {
     try {
         if (!combo) return;

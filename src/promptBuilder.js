@@ -1,7 +1,7 @@
 import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js';
 import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js';
 import { pickCombination } from './picker.js';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentPaletteFingerprints } from './storage.js';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentPaletteFingerprints, getDarkVisualCooldownState } from './storage.js';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -70,6 +70,16 @@ function shortVisualAvoidance(combo, limit = 3) {
         const signature = item.visualSignature ? truncate(item.visualSignature, 110) : '已记录视觉骨架';
         return `${index + 1}. 近期展现形式：${formats}；避让摘要：${signature}${riskCount ? `；结构风险 ${riskCount} 项` : ''}`;
     }).join('\n');
+}
+
+function darkVisualIdentityCooldownRule() {
+    const state = getDarkVisualCooldownState();
+    if (!state.active) return '';
+    return `
+连续暗色视觉冷却【由插件读取实际渲染颜色后本地触发；剩余${state.remaining}轮】:
+  - "本轮禁止继续以黑、深灰、深蓝或近似低明度低饱和基底承载主体。"
+  - "必须重新建立整体视觉身份，使画面骨架、空间组织、材质语言与综合色彩脱离近期结果；不得用白底普通信息页替代。"
+  - "仅更换标题、文案、图标、强调色或局部装饰不算变化；不阅读文字时，第一眼也必须明显是不同的展现形式。"`;
 }
 
 function paletteRhythmCorrection() {
@@ -284,9 +294,10 @@ ${selectedFormats}`);
     }
 
     if (settings.avoidRepeat) {
+        const darkVisualCooldown = darkVisualIdentityCooldownRule();
         chunks.push(String.raw`
 近期视觉避让:
-${shortVisualAvoidance(combo, 3)}${recentRiskCorrection()}${paletteRhythmCorrection()}`);
+${shortVisualAvoidance(combo, 3)}${recentRiskCorrection()}${darkVisualCooldown || paletteRhythmCorrection()}`);
     }
 
     if (visualSceneryMode) {
