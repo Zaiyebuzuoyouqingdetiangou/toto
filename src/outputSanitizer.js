@@ -1543,6 +1543,169 @@ function installRenderedButtonAdjacentHiddenRescue(root) {
 }
 
 
+// 渲染后“可点击容器 + 后置隐藏内容”急救：用于 onclick 被删除后，
+// 只剩 cursor:pointer 的普通 div/span 与紧邻 display:none 正文的结构。
+// 与“可点击画面 + 弹层”不同，本路线不要求关闭按钮，点击一次显示，第二次恢复。
+const RENDERED_CLICKABLE_ADJACENT_HIDDEN_RESCUE_ATTR = 'data-rabbit-mirror-clickable-adjacent-hidden-rescue';
+const RENDERED_CLICKABLE_ADJACENT_HIDDEN_ITEM_ATTR = 'data-rm-clickable-adjacent-hidden-item';
+const renderedClickableAdjacentHiddenRescueStates = new WeakMap();
+const CLICKABLE_ADJACENT_HIDDEN_TRIGGER_HINT_RE = /(?:点击|轻触|触摸|确认|查看|检视|检查|展开|打开|开启|读取|揭示|解锁|封存|归档|提交|播放)|\b(?:click|tap|touch|confirm|view|inspect|check|expand|open|read|reveal|unlock|archive|submit|play)\b/i;
+const CLICKABLE_ADJACENT_HIDDEN_TRIGGER_CLASS_RE = /(?:trigger|button|action|click|tap|confirm|toggle|reveal|open|操作|按钮|触发)/i;
+const CLICKABLE_ADJACENT_HIDDEN_TARGET_CLASS_RE = /(?:hidden|secret|detail|result|message|content|text|archive|record|system|隐藏|秘密|详情|结果|信息|内容|正文|档案|记录|判定)/i;
+
+function isRenderedClickableAdjacentHiddenTrigger(element) {
+    if (!element) return false;
+    if (element.hasAttribute?.(RENDERED_CLICKABLE_ADJACENT_HIDDEN_RESCUE_ATTR)) return true;
+    const tagName = String(element.tagName || '').toLowerCase();
+    if (!/^(?:div|section|article|figure|aside|span|p)$/.test(tagName)) return false;
+    if (isExplicitlyHiddenStateLayer(element)) return false;
+    if (getInlineStyleValue(element, 'cursor').toLowerCase() !== 'pointer') return false;
+    if (element.querySelector?.('button, input, label, summary, details, select, textarea, a[href]')) return false;
+
+    const text = normalizeInteractionMatchText(element.textContent);
+    if (text.length < 2 || text.length > 420) return false;
+    const semantic = `${element.id || ''} ${getClassTokens(element).join(' ')}`;
+    return CLICKABLE_ADJACENT_HIDDEN_TRIGGER_HINT_RE.test(text)
+        || CLICKABLE_ADJACENT_HIDDEN_TRIGGER_CLASS_RE.test(semantic);
+}
+
+function isRenderedClickableAdjacentHiddenTarget(element, trigger) {
+    if (!element || !trigger || element === trigger) return false;
+    const tagName = String(element.tagName || '').toLowerCase();
+    if (!/^(?:div|section|article|aside|p|ul|ol|dl|blockquote|pre)$/.test(tagName)) return false;
+
+    const previouslyManaged = element.hasAttribute?.(RENDERED_CLICKABLE_ADJACENT_HIDDEN_ITEM_ATTR);
+    const hidden = isExplicitlyHiddenStateLayer(element)
+        || isCollapsedDimensionValue(getInlineStyleValue(element, 'height'))
+        || isCollapsedDimensionValue(getInlineStyleValue(element, 'max-height'));
+    if (!previouslyManaged && !hidden) return false;
+
+    // 带独立关闭按钮或绝对/固定定位的结构继续交给“可点击画面弹层”路线，避免双重接管。
+    const position = getInlineStyleValue(element, 'position').toLowerCase();
+    if (!previouslyManaged && (/^(?:absolute|fixed)$/.test(position) || findRenderedClickableAdjacentPopupCloseButtons(element).length)) return false;
+
+    const text = normalizeInteractionMatchText(element.textContent);
+    if (text.length < 4 || text.length > 5000) return false;
+    const semantic = `${element.id || ''} ${getClassTokens(element).join(' ')}`;
+    return previouslyManaged
+        || CLICKABLE_ADJACENT_HIDDEN_TARGET_CLASS_RE.test(semantic)
+        || text.length >= 12;
+}
+
+function findRenderedClickableAdjacentHiddenTarget(trigger) {
+    let node = trigger?.nextElementSibling || null;
+    for (let step = 0; node && step < 3; step += 1, node = node.nextElementSibling) {
+        if (/^(?:style|script|template)$/i.test(node.tagName || '')) continue;
+        if (isRenderedClickableAdjacentHiddenTarget(node, trigger)) return node;
+
+        // 允许跨过一个纯装饰短节点；遇到真实内容或另一交互区立即停止。
+        if (node.querySelector?.('button, input, label, details, summary, select, textarea, a[href]')) break;
+        const text = normalizeInteractionMatchText(node.textContent);
+        if (text.length > 12) break;
+    }
+    return null;
+}
+
+function hasRenderedClickableAdjacentHiddenCandidates(root) {
+    if (!root?.querySelectorAll) return false;
+    return [...root.querySelectorAll('div, section, article, figure, aside, span, p')]
+        .some(trigger => isRenderedClickableAdjacentHiddenTrigger(trigger)
+            && !!findRenderedClickableAdjacentHiddenTarget(trigger));
+}
+
+function buildRenderedClickableAdjacentHiddenEntry(trigger, target) {
+    if (!trigger || !target) return null;
+    const targetOriginalStyles = capturePseudoStyleState(target, [
+        'display', 'visibility', 'opacity', 'pointer-events', 'transform',
+        'height', 'min-height', 'max-height', 'overflow', 'overflow-x', 'overflow-y',
+        'position', 'inset', 'top', 'right', 'bottom', 'left', 'width', 'max-width',
+        'margin', 'margin-top',
+    ]);
+    trigger.setAttribute(RENDERED_CLICKABLE_ADJACENT_HIDDEN_RESCUE_ATTR, 'true');
+    target.setAttribute(RENDERED_CLICKABLE_ADJACENT_HIDDEN_ITEM_ATTR, 'true');
+    return {
+        trigger,
+        target,
+        active: false,
+        targetOriginalStyles,
+        activeTransform: neutralizeStateLayerTransform(getCapturedStyleValue(targetOriginalStyles, 'transform')),
+        wasDisplayNone: getCapturedStyleValue(targetOriginalStyles, 'display').toLowerCase() === 'none',
+        hadCollapsedHeight: isCollapsedDimensionValue(getCapturedStyleValue(targetOriginalStyles, 'height')),
+        hadCollapsedMaxHeight: isCollapsedDimensionValue(getCapturedStyleValue(targetOriginalStyles, 'max-height')),
+    };
+}
+
+function applyRenderedClickableAdjacentHiddenEntry(entry, active = entry?.active) {
+    if (!entry?.trigger || !entry?.target) return;
+    entry.active = !!active;
+    restorePseudoStyleState(entry.target, entry.targetOriginalStyles);
+
+    if (entry.active) {
+        const naturalHeight = Math.max(48, Number(entry.target.scrollHeight || 0) + 20);
+        const assignments = [
+            { property: 'opacity', value: '1' },
+            { property: 'visibility', value: 'visible' },
+            { property: 'pointer-events', value: 'auto' },
+        ];
+        if (entry.wasDisplayNone) assignments.push({ property: 'display', value: 'block' });
+        if (entry.activeTransform) assignments.push({ property: 'transform', value: entry.activeTransform });
+        if (entry.hadCollapsedHeight) assignments.push({ property: 'height', value: 'auto' });
+        if (entry.hadCollapsedMaxHeight || getRenderedElementHeight(entry.target) <= 1) {
+            assignments.push({ property: 'max-height', value: `${Math.max(320, naturalHeight * 2)}px` });
+            assignments.push({ property: 'min-height', value: `${Math.min(1200, naturalHeight)}px` });
+        }
+        applyPseudoStyleAssignments(entry.target, assignments);
+    }
+
+    entry.trigger.setAttribute('aria-expanded', entry.active ? 'true' : 'false');
+    entry.trigger.setAttribute('aria-pressed', entry.active ? 'true' : 'false');
+    entry.target.setAttribute('aria-hidden', entry.active ? 'false' : 'true');
+}
+
+function installRenderedClickableAdjacentHiddenRescue(root) {
+    if (!root?.querySelectorAll) return;
+    let state = renderedClickableAdjacentHiddenRescueStates.get(root);
+    if (!state) {
+        state = { entries: new Map() };
+        renderedClickableAdjacentHiddenRescueStates.set(root, state);
+    }
+
+    for (const trigger of root.querySelectorAll('div, section, article, figure, aside, span, p')) {
+        if (trigger.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`) || state.entries.has(trigger)) continue;
+        if (!isRenderedClickableAdjacentHiddenTrigger(trigger)) continue;
+        const target = findRenderedClickableAdjacentHiddenTarget(trigger);
+        if (!target) continue;
+        const entry = buildRenderedClickableAdjacentHiddenEntry(trigger, target);
+        if (!entry) continue;
+        state.entries.set(trigger, entry);
+        preparePseudoTrigger(trigger);
+
+        const toggle = event => {
+            if (event?.type === 'click' && shouldIgnorePseudoToggleEvent(event, trigger)) return;
+            if (event?.type === 'keydown') {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+            }
+            event?.preventDefault?.();
+            applyRenderedClickableAdjacentHiddenEntry(entry, !entry.active);
+            for (const delay of [0, 80, 260]) {
+                setTimeout(() => {
+                    if (root.isConnected && entry.trigger.isConnected && entry.target.isConnected) {
+                        applyRenderedClickableAdjacentHiddenEntry(entry, entry.active);
+                    }
+                }, delay);
+            }
+        };
+
+        trigger.addEventListener('click', toggle, false);
+        trigger.addEventListener('keydown', toggle, false);
+        applyRenderedClickableAdjacentHiddenEntry(entry, false);
+    }
+
+    if (state.entries.size) root.dataset.rabbitMirrorClickableAdjacentHiddenFallback = 'true';
+}
+
+
 // 渲染后“可点击画面 + 相邻弹层”急救：用于宿主删除 onclick 后，
 // 只剩带 cursor:pointer 的画面、紧邻隐藏弹层以及弹层内关闭按钮的结构。
 // 点击画面打开，点击关闭入口恢复；不依赖原始事件代码，并保持完整可逆。
@@ -1717,6 +1880,155 @@ function installRenderedClickableAdjacentPopupRescue(root) {
     if (state.entries.size) root.dataset.rabbitMirrorClickableAdjacentPopupFallback = 'true';
 }
 
+
+
+// 渲染后“可点击容器内部揭示”急救：用于 onclick 被删除后，
+// 容器内部仍保留点击提示与 display:none / opacity:0 正文的结构。
+// 每个容器独立、可逆，不依赖 class 原名或原始事件代码。
+const RENDERED_CONTAINER_INTERNAL_REVEAL_ATTR = 'data-rabbit-mirror-container-internal-reveal';
+const RENDERED_CONTAINER_INTERNAL_REVEAL_ITEM_ATTR = 'data-rm-container-internal-reveal-item';
+const renderedContainerInternalRevealStates = new WeakMap();
+const CONTAINER_INTERNAL_REVEAL_HINT_RE = /(?:点击|轻触|触摸|恢复|曝光|播放|读取|查看|展开|解锁|揭示)|\b(?:click|tap|touch|restore|expose|play|read|view|open|reveal)\b/i;
+const CONTAINER_INTERNAL_REVEAL_CLASS_RE = /(?:hidden|secret|reveal|detail|content|text|message|msg|fragment|track|scene)/i;
+
+function isRenderedContainerInternalRevealTarget(element, host) {
+    if (!element || !host || element.parentElement !== host) return false;
+    const tagName = String(element.tagName || '').toLowerCase();
+    if (!/^(?:div|section|article|aside|p|blockquote|pre)$/.test(tagName)) return false;
+    const previouslyManaged = element.hasAttribute?.(RENDERED_CONTAINER_INTERNAL_REVEAL_ITEM_ATTR);
+    const hidden = isExplicitlyHiddenStateLayer(element)
+        || isCollapsedDimensionValue(getInlineStyleValue(element, 'height'))
+        || isCollapsedDimensionValue(getInlineStyleValue(element, 'max-height'));
+    if (!previouslyManaged && !hidden) return false;
+    const text = normalizeInteractionMatchText(element.textContent);
+    return text.length >= 4 && text.length <= 6000;
+}
+
+function collectRenderedContainerInternalRevealHints(host, targets) {
+    const targetSet = new Set(targets || []);
+    return [...(host?.children || [])].filter(element => {
+        if (targetSet.has(element) || isExplicitlyHiddenStateLayer(element)) return false;
+        const text = normalizeInteractionMatchText(element.textContent);
+        const semantic = `${element.id || ''} ${getClassTokens(element).join(' ')}`;
+        return text.length > 0 && text.length <= 260
+            && (CONTAINER_INTERNAL_REVEAL_HINT_RE.test(text) || /(?:hint|instruction|prompt|提示|操作)/i.test(semantic));
+    }).slice(0, 4);
+}
+
+function buildRenderedContainerInternalRevealEntry(host) {
+    if (!host?.children || host.hasAttribute?.(RENDERED_MASK_REVEAL_RESCUE_ATTR)
+        || getInlineStyleValue(host, 'cursor').toLowerCase() !== 'pointer') return null;
+    if (host.querySelector?.('input, label, button, summary, details, select, textarea')) return null;
+
+    const targets = [...host.children].filter(element => isRenderedContainerInternalRevealTarget(element, host)).slice(0, 4);
+    if (!targets.length) return null;
+    const hints = collectRenderedContainerInternalRevealHints(host, targets);
+    const semantic = `${host.id || ''} ${getClassTokens(host).join(' ')} ${normalizeInteractionMatchText(host.textContent).slice(0, 300)}`;
+    if (!hints.length && !CONTAINER_INTERNAL_REVEAL_CLASS_RE.test(semantic)) return null;
+
+    const targetStates = targets.map(target => ({
+        target,
+        originalStyles: capturePseudoStyleState(target, [
+            'display', 'visibility', 'opacity', 'pointer-events', 'transform',
+            'height', 'min-height', 'max-height', 'overflow', 'overflow-x', 'overflow-y',
+        ]),
+        activeTransform: neutralizeStateLayerTransform(getInlineStyleValue(target, 'transform')),
+        wasDisplayNone: getInlineStyleValue(target, 'display').toLowerCase() === 'none',
+        wasVisibilityHidden: getInlineStyleValue(target, 'visibility').toLowerCase() === 'hidden',
+        hadCollapsedHeight: isCollapsedDimensionValue(getInlineStyleValue(target, 'height')),
+        hadCollapsedMaxHeight: isCollapsedDimensionValue(getInlineStyleValue(target, 'max-height')),
+    }));
+    const hintStates = hints.map(target => ({
+        target,
+        originalStyles: capturePseudoStyleState(target, ['display', 'visibility', 'opacity', 'pointer-events']),
+    }));
+
+    host.setAttribute(RENDERED_CONTAINER_INTERNAL_REVEAL_ATTR, 'true');
+    targets.forEach((target, index) => target.setAttribute(RENDERED_CONTAINER_INTERNAL_REVEAL_ITEM_ATTR, String(index)));
+    return { host, targetStates, hintStates, active: false };
+}
+
+function applyRenderedContainerInternalRevealEntry(entry, active = entry?.active) {
+    if (!entry?.host) return;
+    entry.active = !!active;
+    for (const state of entry.targetStates || []) {
+        restorePseudoStyleState(state.target, state.originalStyles);
+        if (!entry.active) continue;
+        const assignments = [
+            { property: 'opacity', value: '1' },
+            { property: 'visibility', value: 'visible' },
+            { property: 'pointer-events', value: 'auto' },
+            { property: 'overflow', value: 'visible' },
+        ];
+        if (state.wasDisplayNone) assignments.push({ property: 'display', value: 'block' });
+        if (state.wasVisibilityHidden) assignments.push({ property: 'visibility', value: 'visible' });
+        if (state.activeTransform) assignments.push({ property: 'transform', value: state.activeTransform });
+        if (state.hadCollapsedHeight) assignments.push({ property: 'height', value: 'auto' });
+        if (state.hadCollapsedMaxHeight) assignments.push({ property: 'max-height', value: '1600px' });
+        applyPseudoStyleAssignments(state.target, assignments);
+    }
+    for (const state of entry.hintStates || []) {
+        restorePseudoStyleState(state.target, state.originalStyles);
+        if (entry.active) applyPseudoStyleAssignments(state.target, [
+            { property: 'display', value: 'none' },
+            { property: 'opacity', value: '0' },
+            { property: 'pointer-events', value: 'none' },
+        ]);
+    }
+    entry.host.setAttribute('aria-expanded', entry.active ? 'true' : 'false');
+    entry.host.setAttribute('aria-pressed', entry.active ? 'true' : 'false');
+}
+
+function findRenderedContainerInternalRevealEntries(root) {
+    if (!root?.querySelectorAll) return [];
+    const entries = [];
+    for (const host of root.querySelectorAll('div, section, article, aside, figure')) {
+        if (host.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`)) continue;
+        const entry = buildRenderedContainerInternalRevealEntry(host);
+        if (entry) entries.push(entry);
+    }
+    return entries;
+}
+
+function hasRenderedContainerInternalRevealCandidates(root) {
+    if (!root?.querySelectorAll) return false;
+    return [...root.querySelectorAll('div, section, article, aside, figure')].some(host => {
+        if (getInlineStyleValue(host, 'cursor').toLowerCase() !== 'pointer') return false;
+        if (host.querySelector?.('input, label, button, summary, details, select, textarea')) return false;
+        const targets = [...(host.children || [])].filter(element => isRenderedContainerInternalRevealTarget(element, host));
+        if (!targets.length) return false;
+        return collectRenderedContainerInternalRevealHints(host, targets).length > 0
+            || CONTAINER_INTERNAL_REVEAL_CLASS_RE.test(`${host.id || ''} ${getClassTokens(host).join(' ')}`);
+    });
+}
+
+function installRenderedContainerInternalRevealRescue(root) {
+    if (!root?.querySelectorAll) return;
+    let state = renderedContainerInternalRevealStates.get(root);
+    if (!state) {
+        state = { entries: new Map() };
+        renderedContainerInternalRevealStates.set(root, state);
+    }
+
+    for (const entry of findRenderedContainerInternalRevealEntries(root)) {
+        if (state.entries.has(entry.host)) continue;
+        state.entries.set(entry.host, entry);
+        preparePseudoTrigger(entry.host);
+        const toggle = event => {
+            if (event?.type === 'click' && shouldIgnorePseudoToggleEvent(event, entry.host)) return;
+            if (event?.type === 'keydown') {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+            }
+            event?.preventDefault?.();
+            applyRenderedContainerInternalRevealEntry(entry, !entry.active);
+        };
+        entry.host.addEventListener('click', toggle, false);
+        entry.host.addEventListener('keydown', toggle, false);
+        applyRenderedContainerInternalRevealEntry(entry, false);
+    }
+    if (state.entries.size) root.dataset.rabbitMirrorContainerInternalRevealFallback = 'true';
+}
 
 // 渲染后“遮罩—隐藏层揭示”急救：用于宿主已删除 onmouseover/onmouseout，且没有表单控件的画面揭层。
 // 只识别同一容器内语义明确的遮罩层与隐藏正文层，点击/轻触一次显示，再次点击恢复。
@@ -2132,7 +2444,13 @@ function resolveSafeScopedQuery(scope, selector, root) {
         return resolveScopedPseudoId(scope, safeSelector.slice(1)) || resolveScopedPseudoId(root, safeSelector.slice(1));
     }
     try {
-        const target = scope.querySelector(safeSelector);
+        let target = scope.querySelector(safeSelector);
+        // 酒馆净化器会把模型 class 改写为 custom-xxx。原始 onchange 仍引用旧 class，
+        // 急救时仅在同一兔子镜范围内补查该安全前缀，不访问整页。
+        if (!target && safeSelector.startsWith('.')) {
+            const className = safeSelector.slice(1);
+            target = scope.querySelector(`.custom-${className}`);
+        }
         return target && root.contains(target) ? target : null;
     } catch {
         return null;
@@ -2147,7 +2465,12 @@ function resolveSafeScopedQueryAll(scope, selector, root) {
         return target ? [target] : [];
     }
     try {
-        return [...scope.querySelectorAll(safeSelector)].filter(target => target && root.contains(target)).slice(0, 64);
+        let targets = [...scope.querySelectorAll(safeSelector)].filter(target => target && root.contains(target));
+        if (!targets.length && safeSelector.startsWith('.')) {
+            const className = safeSelector.slice(1);
+            targets = [...scope.querySelectorAll(`.custom-${className}`)].filter(target => target && root.contains(target));
+        }
+        return targets.slice(0, 64);
     } catch {
         return [];
     }
@@ -2278,9 +2601,134 @@ function parseNamedTextAssignments(scriptText, targetMap, targetCollections = ne
     return textByTarget;
 }
 
+
+function resolveAncestorQueryExpression(input, expression, root) {
+    const source = String(expression || '').trim();
+    const match = /^(this(?:(?:\s*\.\s*(?:parentNode|parentElement))*))\s*\.\s*querySelector\(\s*(['"])([.#]?[a-zA-Z_][\w:.-]*)\2\s*\)$/.exec(source);
+    if (!match) return null;
+
+    const chain = match[1];
+    const depth = (chain.match(/\.\s*(?:parentNode|parentElement)/g) || []).length;
+    let scope = input;
+    for (let index = 0; index < depth; index += 1) {
+        scope = scope?.parentElement || null;
+        if (!scope || !root?.contains?.(scope)) return null;
+    }
+    return resolveSafeScopedQuery(scope, match[3], root);
+}
+
+function parseSafeCssTextAssignments(cssText) {
+    const assignments = [];
+    const source = String(cssText || '').trim();
+    if (!source || /[{}<>]/.test(source)) return assignments;
+    for (const declaration of source.split(';')) {
+        const index = declaration.indexOf(':');
+        if (index <= 0) continue;
+        const property = normalizeStylePropertyName(declaration.slice(0, index).trim());
+        const value = declaration.slice(index + 1).trim();
+        if (!/^[a-z][a-z0-9-]*$/i.test(property) || !value) continue;
+        assignments.push({ property, value });
+    }
+    return assignments;
+}
+
+function parseCheckedTernaryStyleProgramFromSource(input, root, scriptText) {
+    const source = String(scriptText || '');
+    if (!source || !/this\s*\.\s*checked\s*\?/i.test(source)) return null;
+
+    const stateValues = new Map();
+    const ternaryRe = /(?:const|let|var)\s+([a-zA-Z_$][\w$]*)\s*=\s*this\s*\.\s*checked\s*\?\s*(['"])((?:\\.|(?!\2)[\s\S])*)\2\s*:\s*(['"])((?:\\.|(?!\4)[\s\S])*)\4\s*;?/g;
+    let match;
+    while ((match = ternaryRe.exec(source))) {
+        stateValues.set(match[1], {
+            active: decodeSafeInlineString(match[3]),
+            inactive: decodeSafeInlineString(match[5]),
+        });
+    }
+    if (!stateValues.size) return null;
+
+    const statesByTarget = new Map();
+    const ensureTargetState = target => {
+        if (!target) return null;
+        if (!statesByTarget.has(target)) {
+            statesByTarget.set(target, {
+                target,
+                activeAssignments: [],
+                inactiveAssignments: [],
+                activeText: undefined,
+                inactiveText: undefined,
+            });
+        }
+        return statesByTarget.get(target);
+    };
+
+    const queryExpressionPattern = String.raw`(this(?:(?:\s*\.\s*(?:parentNode|parentElement))*)\s*\.\s*querySelector\(\s*(['"])([.#]?[a-zA-Z_][\w:.-]*)\2\s*\))`;
+
+    // 逐行解析，避免 cssText 的字符串内部包含分号时被错误截断。
+    for (const rawLine of source.split(/\r?\n/)) {
+        const line = rawLine.trim();
+        if (!line || /^(?:const|let|var)\b/.test(line)) continue;
+
+        let lineMatch = new RegExp(`^${queryExpressionPattern}\\s*\\.\\s*style\\s*\\.\\s*([a-zA-Z][\\w]*)\\s*=\\s*([a-zA-Z_$][\\w$]*)\\s*;?$`).exec(line);
+        if (lineMatch) {
+            const target = resolveAncestorQueryExpression(input, lineMatch[1], root);
+            const values = stateValues.get(lineMatch[5]);
+            const state = ensureTargetState(target);
+            if (state && values) {
+                const property = normalizeStylePropertyName(lineMatch[4]);
+                state.activeAssignments.push({ property, value: values.active });
+                state.inactiveAssignments.push({ property, value: values.inactive });
+            }
+            continue;
+        }
+
+        lineMatch = new RegExp(`^${queryExpressionPattern}\\s*\\.\\s*(innerText|textContent)\\s*=\\s*([a-zA-Z_$][\\w$]*)\\s*;?$`).exec(line);
+        if (lineMatch) {
+            const target = resolveAncestorQueryExpression(input, lineMatch[1], root);
+            const values = stateValues.get(lineMatch[5]);
+            const state = ensureTargetState(target);
+            if (state && values) {
+                state.activeText = values.active;
+                state.inactiveText = values.inactive;
+            }
+            continue;
+        }
+
+        lineMatch = new RegExp(`^${queryExpressionPattern}\\s*\\.\\s*style\\s*\\.\\s*cssText\\s*=\\s*([a-zA-Z_$][\\w$]*)\\s*\\+\\s*(['"])((?:\\\\.|(?!\\5)[\\s\\S])*)\\5\\s*;?$`).exec(line);
+        if (lineMatch) {
+            const target = resolveAncestorQueryExpression(input, lineMatch[1], root);
+            const values = stateValues.get(lineMatch[4]);
+            const suffix = decodeSafeInlineString(lineMatch[6]);
+            const state = ensureTargetState(target);
+            if (state && values) {
+                state.activeAssignments.push(...parseSafeCssTextAssignments(`${values.active}${suffix}`));
+                state.inactiveAssignments.push(...parseSafeCssTextAssignments(`${values.inactive}${suffix}`));
+            }
+        }
+    }
+
+    const states = [];
+    for (const state of statesByTarget.values()) {
+        const properties = new Set([
+            ...state.activeAssignments.map(item => item.property),
+            ...state.inactiveAssignments.map(item => item.property),
+        ]);
+        if (!properties.size && state.activeText === undefined && state.inactiveText === undefined) continue;
+        states.push({
+            ...state,
+            originalText: captureStableTextState(state.target),
+            originalStyles: capturePseudoStyleState(state.target, properties),
+        });
+    }
+    return states.length ? states : null;
+}
+
 function parseCheckedChangeStyleProgramFromSource(input, root, scriptText) {
     const source = String(scriptText || '');
-    if (!source || !/if\s*\(\s*this\.checked\s*\)/i.test(source)) return null;
+    if (!source) return null;
+    if (!/if\s*\(\s*this\.checked\s*\)/i.test(source)) {
+        return parseCheckedTernaryStyleProgramFromSource(input, root, source);
+    }
 
     // 只接受结构清晰的 if(this.checked){...} else {...}，绝不执行模型输出的 JavaScript。
     const branches = extractCheckedConditionalBranches(source);
@@ -2835,6 +3283,145 @@ function resolveElementChildIndexPath(root, path) {
     return current;
 }
 
+
+function normalizeInteractionMatchText(value) {
+    return String(value || '').replace(/\s+/g, ' ').trim();
+}
+
+function resolveRenderedCounterpart(rawRoot, renderedRoot, rawElement, selector = '*') {
+    if (!rawRoot || !renderedRoot || !rawElement) return null;
+    const rawTag = String(rawElement.tagName || '').toLowerCase();
+
+    if (rawElement.matches?.('input[type="checkbox"], input[type="radio"]')) {
+        const rawInputs = [...rawRoot.querySelectorAll('input[type="checkbox"], input[type="radio"]')];
+        const renderedInputs = [...renderedRoot.querySelectorAll('input[type="checkbox"], input[type="radio"]')];
+        const index = rawInputs.indexOf(rawElement);
+        return index >= 0 ? (renderedInputs[index] || null) : null;
+    }
+
+    const path = getElementChildIndexPath(rawRoot, rawElement);
+    const pathCandidate = path ? resolveElementChildIndexPath(renderedRoot, path) : null;
+    if (pathCandidate && String(pathCandidate.tagName || '').toLowerCase() === rawTag) return pathCandidate;
+
+    const rawText = normalizeInteractionMatchText(rawElement.textContent);
+    const candidates = [...renderedRoot.querySelectorAll(selector)]
+        .filter(candidate => String(candidate.tagName || '').toLowerCase() === rawTag);
+    if (!candidates.length) return null;
+    if (rawText) {
+        const exact = candidates.find(candidate => normalizeInteractionMatchText(candidate.textContent) === rawText);
+        if (exact) return exact;
+        const prefix = rawText.slice(0, Math.min(64, rawText.length));
+        const near = candidates.find(candidate => normalizeInteractionMatchText(candidate.textContent).includes(prefix));
+        if (near) return near;
+    }
+
+    const rawPeers = [...rawRoot.querySelectorAll(rawTag || '*')];
+    const index = rawPeers.indexOf(rawElement);
+    return index >= 0 ? (candidates[index] || null) : null;
+}
+
+const RAW_SELF_MUTATION_RESCUE_ATTR = 'data-rabbit-mirror-self-mutation-rescue';
+const RAW_SELF_MUTATION_HTML_BASELINE_ATTR = 'data-rm-self-mutation-html-baseline';
+const RAW_SELF_MUTATION_ACTIVE_ATTR = 'data-rm-self-mutation-active';
+const rawSelfMutationRescueStates = new WeakMap();
+
+function parseSafeSelfMutationText(mode, rawValue) {
+    const decoded = decodeSafeInlineString(rawValue);
+    if (mode !== 'innerHTML') return decoded;
+    if (typeof document === 'undefined') return decoded.replace(/<[^>]*>/g, '');
+    try {
+        const template = document.createElement('template');
+        template.innerHTML = decoded;
+        if (template.content.querySelector('script, style, iframe, object, embed, form, input, button, a')) return null;
+        return String(template.content.textContent || '').replace(/\s+/g, ' ').trim();
+    } catch {
+        return null;
+    }
+}
+
+function parseSelfMutationProgram(source, trigger) {
+    const script = String(source || '');
+    if (!script || !/this\s*\.(?:innerHTML|innerText|textContent|style)/i.test(script)) return null;
+
+    const activeAssignments = parseInlineStyleAssignments(script);
+    let activeText;
+    const textMatch = /this\s*\.\s*(innerHTML|innerText|textContent)\s*=\s*(['"])((?:\\.|(?!\2)[\s\S])*)\2\s*;?/i.exec(script);
+    if (textMatch) activeText = parseSafeSelfMutationText(textMatch[1], textMatch[3]);
+    if (!activeAssignments.length && activeText == null) return null;
+
+    const properties = new Set(activeAssignments.map(item => item.property));
+    let originalHtml = trigger.innerHTML;
+    const encodedBaseline = trigger.getAttribute?.(RAW_SELF_MUTATION_HTML_BASELINE_ATTR) || '';
+    if (encodedBaseline) {
+        try { originalHtml = decodeURIComponent(encodedBaseline); } catch { originalHtml = trigger.innerHTML; }
+    } else {
+        try { trigger.setAttribute(RAW_SELF_MUTATION_HTML_BASELINE_ATTR, encodeURIComponent(originalHtml)); } catch {}
+    }
+    return {
+        trigger,
+        active: trigger.getAttribute?.(RAW_SELF_MUTATION_ACTIVE_ATTR) === 'true',
+        activeAssignments,
+        activeText,
+        originalHtml,
+        originalStyles: capturePseudoStyleState(trigger, properties),
+    };
+}
+
+function applyRawSelfMutationEntry(entry, active) {
+    if (!entry?.trigger) return;
+    entry.active = !!active;
+    restorePseudoStyleState(entry.trigger, entry.originalStyles);
+    if (entry.active) {
+        if (entry.activeText != null) entry.trigger.textContent = entry.activeText;
+        applyPseudoStyleAssignments(entry.trigger, entry.activeAssignments);
+    } else {
+        entry.trigger.innerHTML = entry.originalHtml;
+    }
+    entry.trigger.setAttribute('aria-pressed', entry.active ? 'true' : 'false');
+    entry.trigger.setAttribute(RAW_SELF_MUTATION_ACTIVE_ATTR, entry.active ? 'true' : 'false');
+}
+
+function installRawMessageSelfMutationRescue(root) {
+    if (!root?.querySelectorAll) return 0;
+    const rawMessage = getRawAssistantMessageForRenderedRoot(root);
+    const rawRoot = chooseMatchingRawRabbitMirrorRoot(rawMessage, root);
+    if (!rawRoot?.querySelectorAll) return 0;
+
+    let state = rawSelfMutationRescueStates.get(root);
+    if (!state) {
+        state = { entries: new Map() };
+        rawSelfMutationRescueStates.set(root, state);
+    }
+
+    let installed = 0;
+    for (const rawTrigger of rawRoot.querySelectorAll('[onclick]')) {
+        const source = rawTrigger.getAttribute('onclick') || '';
+        if (!/this\s*\.(?:innerHTML|innerText|textContent|style)/i.test(source)) continue;
+        const renderedTrigger = resolveRenderedCounterpart(rawRoot, root, rawTrigger, 'div, span, section, article, figure, aside, button');
+        if (!renderedTrigger || state.entries.has(renderedTrigger)) continue;
+        const entry = parseSelfMutationProgram(source, renderedTrigger);
+        if (!entry) continue;
+
+        state.entries.set(renderedTrigger, entry);
+        preparePseudoTrigger(renderedTrigger);
+        const toggle = event => {
+            if (event?.type === 'click' && shouldIgnorePseudoToggleEvent(event, renderedTrigger)) return;
+            if (event?.type === 'keydown') {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+            }
+            event?.preventDefault?.();
+            applyRawSelfMutationEntry(entry, !entry.active);
+        };
+        renderedTrigger.addEventListener('click', toggle, false);
+        renderedTrigger.addEventListener('keydown', toggle, false);
+        renderedTrigger.setAttribute(RAW_SELF_MUTATION_RESCUE_ATTR, 'true');
+        installed += 1;
+    }
+    if (installed || state.entries.size) root.dataset.rabbitMirrorSelfMutationFallback = 'true';
+    return installed;
+}
+
 function bindDirectIdClickActions(trigger, actions) {
     if (!trigger || !actions?.length || trigger.hasAttribute(DIRECT_ID_CLICK_RESCUE_ATTR)) return false;
 
@@ -2864,9 +3451,7 @@ function installRawMessageDirectIdClickProgramRescue(root) {
 
     let installed = 0;
     for (const rawTrigger of rawRoot.querySelectorAll('[onclick]')) {
-        const path = getElementChildIndexPath(rawRoot, rawTrigger);
-        if (!path) continue;
-        const renderedTrigger = resolveElementChildIndexPath(root, path);
+        const renderedTrigger = resolveRenderedCounterpart(rawRoot, root, rawTrigger, '*');
         if (!renderedTrigger || renderedTrigger.hasAttribute(DIRECT_ID_CLICK_RESCUE_ATTR)) continue;
 
         const source = rawTrigger.getAttribute('onclick');
@@ -2885,9 +3470,7 @@ function installRawMessageCheckedChangeProgramRescue(root) {
 
     let installed = 0;
     for (const rawInput of rawRoot.querySelectorAll('input[type="checkbox"][onchange], input[type="radio"][onchange]')) {
-        const path = getElementChildIndexPath(rawRoot, rawInput);
-        if (!path) continue;
-        const renderedInput = resolveElementChildIndexPath(root, path);
+        const renderedInput = resolveRenderedCounterpart(rawRoot, root, rawInput, 'input[type="checkbox"], input[type="radio"]');
         if (!renderedInput?.matches?.('input[type="checkbox"], input[type="radio"]')) continue;
         if (renderedInput.hasAttribute(CHANGE_PSEUDO_RESCUE_ATTR)) continue;
 
@@ -2979,7 +3562,7 @@ function installPseudoInteractionRescue(root) {
 }
 
 function detectInteractionCapabilities(root) {
-    if (!root?.querySelectorAll) return { checked: false, hover: false, details: false, target: false, pseudo: false, listDetail: false, maskReveal: false, buttonAdjacent: false, clickablePopup: false };
+    if (!root?.querySelectorAll) return { checked: false, hover: false, details: false, target: false, pseudo: false, listDetail: false, maskReveal: false, buttonAdjacent: false, clickableAdjacent: false, clickablePopup: false, containerReveal: false, selfMutation: false };
     const cssText = [...root.querySelectorAll('style')].map(style => style.textContent || '').join('\n');
     const outerDetails = root.matches?.('details') ? root : root.querySelector(':scope > details');
     const nestedDetails = [...root.querySelectorAll('details')].filter(item => item !== outerDetails);
@@ -2992,7 +3575,10 @@ function detectInteractionCapabilities(root) {
         listDetail: hasRenderedListDetailCandidates(root),
         maskReveal: hasRenderedMaskRevealCandidates(root),
         buttonAdjacent: hasRenderedButtonAdjacentHiddenCandidates(root),
+        clickableAdjacent: hasRenderedClickableAdjacentHiddenCandidates(root),
         clickablePopup: hasRenderedClickableAdjacentPopupCandidates(root),
+        containerReveal: hasRenderedContainerInternalRevealCandidates(root),
+        selfMutation: (rawSelfMutationRescueStates.get(root)?.entries?.size || 0) > 0,
     };
     interactionCapabilityStates.set(root, capabilities);
     root.dataset.rabbitMirrorInteractionRoutes = Object.entries(capabilities)
@@ -3084,6 +3670,8 @@ function installIntelligentInteractionRescue(root) {
     // SillyTavern/DOMPurify 可能在渲染前移除 onclick。此时从当前消息的原始 HTML
     // 回读安全可解析的 getElementById 样式/文字赋值，并按同一 DOM 路径绑定到渲染节点。
     installRawMessageDirectIdClickProgramRescue(root);
+    // 回读只改写触发元素自身的安全 onclick（文字/样式），并改造成可逆点击。
+    installRawMessageSelfMutationRescue(root);
     // 同样从原始消息回读受限的 onchange 状态程序，覆盖宿主已删除事件属性的情况。
     installRawMessageCheckedChangeProgramRescue(root);
 
@@ -3106,12 +3694,16 @@ function installIntelligentInteractionRescue(root) {
     }
     // 普通 button 后紧邻隐藏内容时，先建立真实揭示路线，避免只被归类为 hover 颜色反馈。
     if (capabilities.buttonAdjacent) installRenderedButtonAdjacentHiddenRescue(root);
+    // 普通 cursor:pointer 容器后紧邻 display:none 正文时，不再错误要求弹层必须带关闭按钮。
+    if (capabilities.clickableAdjacent) installRenderedClickableAdjacentHiddenRescue(root);
     if (capabilities.clickablePopup) installRenderedClickableAdjacentPopupRescue(root);
     if (capabilities.hover) refreshTouchHoverRescue(root);
     if (capabilities.target) refreshTargetRescue(root);
     if (capabilities.details) installNestedDetailsFallback(root);
     if (capabilities.pseudo) installPseudoInteractionRescue(root);
+    // 遮罩类优先于普通容器内揭示，避免同一画面被两条路线重复接管。
     if (capabilities.maskReveal) installRenderedMaskRevealRescue(root);
+    if (capabilities.containerReveal) installRenderedContainerInternalRevealRescue(root);
     if (capabilities.listDetail) installRenderedListDetailRescue(root);
 }
 
@@ -3230,6 +3822,7 @@ function installInteractionLabelFallback(toto) {
         // 浏览器/主题层有时不会可靠触发隐藏 input；只在当前兔子镜内手动完成一次。
         event.preventDefault();
         const previous = !!input.checked;
+        const intendedChecked = input.type === 'radio' ? true : !previous;
         if (input.type === 'radio') {
             // 先恢复同组上一分支由急救器写入的内联状态，再切换到当前分支。
             const radioName = String(input.name || '');
@@ -3261,6 +3854,17 @@ function installInteractionLabelFallback(toto) {
             input.dispatchEvent(new Event('input', { bubbles: true }));
             input.dispatchEvent(new Event('change', { bubbles: true }));
         }
+
+        // 某些移动 WebView 会在捕获阶段 preventDefault 后仍执行一次迟到的原生 label 切换，
+        // 使 checkbox 刚被急救器设为 true 又立刻回到 false。下一任务强制确认本次意图，
+        // 仅在状态被回滚时补发一次 input/change，不造成正常环境的双重切换。
+        setTimeout(() => {
+            if (!input.isConnected || input.checked === intendedChecked) return;
+            input.checked = intendedChecked;
+            restoreInteractionInlineOverrides(input);
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        }, 0);
     }, true);
 
     interactionLabelFallbackRoots.add(toto);
@@ -3460,7 +4064,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 一次性交互诊断：仅在用户按下“开始一次交互诊断”后，临时监听聊天区的下一次交互。
 // 捕获一个兔子镜后只读取该条内容，并在约 650ms 后自动停止全部诊断监听。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.12-ONESHOT';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.16-ONESHOT';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -3554,14 +4158,18 @@ function diagnosticRouteSummary(root) {
         maskReveal: renderedMaskRevealRescueStates.get(root)?.hosts?.size || 0,
         listDetail: renderedListDetailRescueStates.get(root)?.entries?.size || 0,
         buttonAdjacent: renderedButtonAdjacentHiddenRescueStates.get(root)?.entries?.size || 0,
+        clickableAdjacent: renderedClickableAdjacentHiddenRescueStates.get(root)?.entries?.size || 0,
         clickablePopup: renderedClickableAdjacentPopupRescueStates.get(root)?.entries?.size || 0,
         checkedIdTarget: renderedCheckedIdTargetRescueStates.get(root)?.entries?.size || 0,
+        containerReveal: renderedContainerInternalRevealStates.get(root)?.entries?.size || 0,
+        selfMutation: rawSelfMutationRescueStates.get(root)?.entries?.size || 0,
+        changeProgram: root?.querySelectorAll?.(`[${CHANGE_PSEUDO_RESCUE_ATTR}]`)?.length || 0,
     };
 }
 
 function diagnosticInferReason(root, inputs, targets) {
     const routes = diagnosticRouteSummary(root);
-    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.buttonAdjacent + routes.clickablePopup + routes.checkedIdTarget;
+    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.containerReveal + routes.selfMutation + routes.changeProgram;
     const checkedInputs = inputs.filter(input => input.checked);
     const visibleTargets = targets.filter(target => {
         const style = diagnosticComputedStyle(target);
@@ -3615,8 +4223,12 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `遮罩揭示 entries=${routes.maskReveal} listener=${routes.maskReveal ? 'true' : 'false'}`,
         `列表详情 entries=${routes.listDetail} listener=${root.dataset.rabbitMirrorRenderedListDetailFallback || 'false'}`,
         `按钮后置内容 entries=${routes.buttonAdjacent} listener=${root.dataset.rabbitMirrorButtonAdjacentHiddenFallback || 'false'}`,
+        `可点击后置内容 entries=${routes.clickableAdjacent} listener=${root.dataset.rabbitMirrorClickableAdjacentHiddenFallback || 'false'}`,
         `可点击画面弹层 entries=${routes.clickablePopup} listener=${root.dataset.rabbitMirrorClickableAdjacentPopupFallback || 'false'}`,
         `ID目标显隐 entries=${routes.checkedIdTarget} listener=${root.dataset.rabbitMirrorCheckedIdTargetFallback || 'false'}`,
+        `容器内揭示 entries=${routes.containerReveal} listener=${root.dataset.rabbitMirrorContainerInternalRevealFallback || 'false'}`,
+        `元素自变化 entries=${routes.selfMutation} listener=${root.dataset.rabbitMirrorSelfMutationFallback || 'false'}`,
+        `安全状态程序 entries=${routes.changeProgram} listener=${routes.changeProgram ? 'true' : 'false'}`,
         `label fallback=${root.dataset.rabbitMirrorLabelFallback || root.dataset.rabbitMirrorCheckedFallback || 'unknown'}`,
         '',
         '[捕获事件]',
@@ -4002,6 +4614,9 @@ export function compactTotoBlock(block) {
         const key = `%%RHT_STYLE_${styleSlots.length}%%`;
         styleSlots.push(
             match
+                // Showdown/simpleLineBreaks 可能已把 CSS 换行写成 <br>、<br/> 或 <br />。
+                // 这些标签一旦落在“:root {”之后，酒馆 CSS 解析器会在第 2 行第 8 列报 missing '}'。
+                .replace(/<br\s*\/?>/gi, '')
                 .replace(/\r\n?/g, '\n')
                 .replace(/^[ \t]+/gm, '')
                 .replace(/[ \t]+$/gm, '')
@@ -4122,26 +4737,103 @@ function needsSanitize(text) {
 function findRecentAssistantMessages(mod) {
     const chat = mod?.chat || globalThis.chat;
     if (!Array.isArray(chat) || !chat.length) return [];
-    return chat.slice(-8).filter(item => !item?.is_user && typeof item?.mes === 'string');
+    const start = Math.max(0, chat.length - 8);
+    return chat
+        .slice(start)
+        .map((message, offset) => ({ message, index: start + offset }))
+        .filter(({ message }) => !message?.is_user && typeof message?.mes === 'string');
+}
+
+function getRenderedMessageElement(index) {
+    if (typeof document === 'undefined') return null;
+    // SillyTavern 的 mesid 是聊天数组下标，只会是非负整数。
+    const safeIndex = Number.isInteger(Number(index)) ? String(Number(index)) : '';
+    return safeIndex ? document.querySelector(`#chat [mesid="${safeIndex}"]`) : null;
+}
+
+function renderedMessageHasCssError(index) {
+    const messageElement = getRenderedMessageElement(index);
+    if (!messageElement) return false;
+    const text = messageElement.querySelector('.mes_text')?.textContent || messageElement.textContent || '';
+    return /CSS\s+ERROR\s*:/i.test(text) && !!messageElement.querySelector('details, toto');
+}
+
+function preserveAndRerenderSanitizedMessage(mod, index, message) {
+    try {
+        const updater = mod?.updateMessageBlock || globalThis.updateMessageBlock;
+        if (typeof updater !== 'function' || typeof document === 'undefined') return false;
+
+        const messageElement = getRenderedMessageElement(index);
+        const detailsOpenStates = messageElement
+            ? [...messageElement.querySelectorAll('details')].map(details => details.open)
+            : [];
+
+        updater(index, message);
+
+        // updateMessageBlock 会重建消息正文。恢复用户当时已展开的兔子镜，避免急救时突然收起。
+        const restoredElement = getRenderedMessageElement(index);
+        if (restoredElement && detailsOpenStates.length) {
+            [...restoredElement.querySelectorAll('details')].forEach((details, detailsIndex) => {
+                if (detailsOpenStates[detailsIndex]) details.open = true;
+            });
+        }
+        return true;
+    } catch (error) {
+        console.debug('[RabbitMirror] rerender after sanitizer failed:', error);
+        return false;
+    }
 }
 
 function sanitizeLatestRawMessages(mod) {
     if (!isCodeBlockRescueModeEnabled()) return false;
-    let changed = false;
-    for (const message of findRecentAssistantMessages(mod)) {
+    let rawChanged = false;
+    let rerendered = false;
+    const rerenderEntries = [];
+
+    for (const { message, index } of findRecentAssistantMessages(mod)) {
+        let messageChanged = false;
         const decoded = decodeHtmlEntities(message.mes);
-        if (!needsSanitize(decoded)) continue;
-        const cleaned = cleanRabbitMirrorOutput(decoded);
-        if (cleaned && cleaned !== message.mes) {
-            message.mes = cleaned;
-            if (Array.isArray(message.swipes)) {
-                const swipeIndex = Number.isInteger(message.swipe_id) ? message.swipe_id : message.swipes.length - 1;
-                if (typeof message.swipes[swipeIndex] === 'string') message.swipes[swipeIndex] = cleaned;
+        if (needsSanitize(decoded)) {
+            const cleaned = cleanRabbitMirrorOutput(decoded);
+            if (cleaned && cleaned !== message.mes) {
+                message.mes = cleaned;
+                if (Array.isArray(message.swipes)) {
+                    const swipeIndex = Number.isInteger(message.swipe_id) ? message.swipe_id : message.swipes.length - 1;
+                    if (typeof message.swipes[swipeIndex] === 'string') message.swipes[swipeIndex] = cleaned;
+                }
+                messageChanged = true;
             }
-            changed = true;
+        }
+
+        // 部分消息以 extra.display_text 作为实际显示源；只清 mes 会导致重绘后仍使用旧文本。
+        if (typeof message?.extra?.display_text === 'string') {
+            const decodedDisplayText = decodeHtmlEntities(message.extra.display_text);
+            if (needsSanitize(decodedDisplayText)) {
+                const cleanedDisplayText = cleanRabbitMirrorOutput(decodedDisplayText);
+                if (cleanedDisplayText && cleanedDisplayText !== message.extra.display_text) {
+                    message.extra.display_text = cleanedDisplayText;
+                    messageChanged = true;
+                }
+            }
+        }
+
+        if (messageChanged) rawChanged = true;
+
+        // 兼容 0.32.14 已经把原文保存为单行、但当前 DOM 仍停留在 CSS ERROR 的旧画面。
+        if (messageChanged || renderedMessageHasCssError(index)) {
+            rerenderEntries.push({ index, message });
         }
     }
-    if (changed) {
+
+    if (rerenderEntries.length) {
+        // 旧版这里只改 chat[].mes 并保存，当前画面已经产生的 CSS ERROR 不会自动重绘。
+        // 用酒馆原生 updateMessageBlock 立即重建正文，让压成单行的 <style> 重新进入解析链。
+        for (const { index, message } of rerenderEntries) {
+            rerendered = preserveAndRerenderSanitizedMessage(mod, index, message) || rerendered;
+        }
+    }
+
+    if (rawChanged) {
         try {
             const saver = mod?.saveChatConditional || globalThis.saveChatConditional;
             if (typeof saver === 'function') saver();
@@ -4149,7 +4841,7 @@ function sanitizeLatestRawMessages(mod) {
             console.debug('[RabbitMirror] save after sanitizer failed:', error);
         }
     }
-    return changed;
+    return rawChanged || rerendered;
 }
 
 function parseHtmlFragment(html) {
