@@ -3406,15 +3406,52 @@ function parseSafeSelfMutationText(mode, rawValue) {
     }
 }
 
-function parseSelfMutationProgram(source, trigger) {
+function parseRelativeSelfMutationAssignments(scriptText, trigger, root) {
+    const source = String(scriptText || '');
+    const grouped = new Map();
+    if (!source || !trigger || !root?.contains?.(trigger)) return [];
+
+    const remember = (expression, property, value) => {
+        const target = resolveCheckedRelativeElementExpression(trigger, expression, root);
+        const normalizedProperty = normalizeStylePropertyName(property);
+        const normalizedValue = String(value || '').trim();
+        if (!target?.style || !normalizedProperty || !normalizedValue) return;
+        let entry = grouped.get(target);
+        if (!entry) {
+            entry = { target, assignments: new Map() };
+            grouped.set(target, entry);
+        }
+        // 同一目标、同一属性只保留脚本中的最后一次赋值，兼容 setTimeout 内的最终状态。
+        entry.assignments.set(normalizedProperty, normalizedValue);
+    };
+
+    let match;
+    const dotAssignmentRe = /(this(?:\s*\.\s*(?:nextElementSibling|previousElementSibling|parentElement|parentNode)){1,6})\s*\.\s*style\s*\.\s*([a-zA-Z][\w]*)\s*=\s*(['"])((?:\\.|(?!\3)[\s\S])*)\3\s*;?/g;
+    while ((match = dotAssignmentRe.exec(source))) remember(match[1], match[2], match[4]);
+
+    const bracketAssignmentRe = /(this(?:\s*\.\s*(?:nextElementSibling|previousElementSibling|parentElement|parentNode)){1,6})\s*\.\s*style\s*\[\s*(['"])([a-zA-Z-]+)\2\s*\]\s*=\s*(['"])((?:\\.|(?!\4)[\s\S])*)\4\s*;?/g;
+    while ((match = bracketAssignmentRe.exec(source))) remember(match[1], match[3], match[5]);
+
+    return [...grouped.values()].map(item => {
+        const assignments = [...item.assignments.entries()].map(([property, value]) => ({ property, value }));
+        return {
+            target: item.target,
+            assignments,
+            originalStyles: capturePseudoStyleState(item.target, new Set(assignments.map(assignment => assignment.property))),
+        };
+    });
+}
+
+function parseSelfMutationProgram(source, trigger, root) {
     const script = String(source || '');
-    if (!script || !/this\s*\.(?:innerHTML|innerText|textContent|style)/i.test(script)) return null;
+    if (!script || !/this\s*\.(?:innerHTML|innerText|textContent|style|nextElementSibling|previousElementSibling|parentElement|parentNode)/i.test(script)) return null;
 
     const activeAssignments = parseInlineStyleAssignments(script);
+    const relatedMutations = parseRelativeSelfMutationAssignments(script, trigger, root);
     let activeText;
     const textMatch = /this\s*\.\s*(innerHTML|innerText|textContent)\s*=\s*(['"])((?:\\.|(?!\2)[\s\S])*)\2\s*;?/i.exec(script);
     if (textMatch) activeText = parseSafeSelfMutationText(textMatch[1], textMatch[3]);
-    if (!activeAssignments.length && activeText == null) return null;
+    if (!activeAssignments.length && activeText == null && !relatedMutations.length) return null;
 
     const properties = new Set(activeAssignments.map(item => item.property));
     let originalHtml = trigger.innerHTML;
@@ -3429,6 +3466,7 @@ function parseSelfMutationProgram(source, trigger) {
         active: trigger.getAttribute?.(RAW_SELF_MUTATION_ACTIVE_ATTR) === 'true',
         activeAssignments,
         activeText,
+        relatedMutations,
         originalHtml,
         originalStyles: capturePseudoStyleState(trigger, properties),
     };
@@ -3438,9 +3476,15 @@ function applyRawSelfMutationEntry(entry, active) {
     if (!entry?.trigger) return;
     entry.active = !!active;
     restorePseudoStyleState(entry.trigger, entry.originalStyles);
+    for (const mutation of entry.relatedMutations || []) {
+        restorePseudoStyleState(mutation.target, mutation.originalStyles);
+    }
     if (entry.active) {
         if (entry.activeText != null) entry.trigger.textContent = entry.activeText;
         applyPseudoStyleAssignments(entry.trigger, entry.activeAssignments);
+        for (const mutation of entry.relatedMutations || []) {
+            applyPseudoStyleAssignments(mutation.target, mutation.assignments);
+        }
     } else {
         entry.trigger.innerHTML = entry.originalHtml;
     }
@@ -3466,7 +3510,7 @@ function installRawMessageSelfMutationRescue(root) {
         if (!/this\s*\.(?:innerHTML|innerText|textContent|style)/i.test(source)) continue;
         const renderedTrigger = resolveRenderedCounterpart(rawRoot, root, rawTrigger, 'div, span, section, article, figure, aside, button');
         if (!renderedTrigger || state.entries.has(renderedTrigger)) continue;
-        const entry = parseSelfMutationProgram(source, renderedTrigger);
+        const entry = parseSelfMutationProgram(source, renderedTrigger, root);
         if (!entry) continue;
 
         state.entries.set(renderedTrigger, entry);
@@ -4131,7 +4175,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 一次性交互诊断：仅在用户按下“开始一次交互诊断”后，临时监听聊天区的下一次交互。
 // 捕获一个兔子镜后只读取该条内容，并在约 650ms 后自动停止全部诊断监听。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.27-ONESHOT';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.28-ONESHOT';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
