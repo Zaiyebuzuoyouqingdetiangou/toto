@@ -4228,7 +4228,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 一次性交互诊断：仅在用户按下“开始一次交互诊断”后，临时监听聊天区的下一次交互。
 // 捕获一个兔子镜后只读取该条内容，并在约 650ms 后自动停止全部诊断监听。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.33-ONESHOT';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.34-ONESHOT';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -5408,6 +5408,216 @@ function isRabbitMirrorDetails(details) {
     return /^【兔子镜[:：]/.test(title) || /兔子镜/.test(title);
 }
 
+
+const RENDERED_LOCAL_CSS_SCOPE_ATTR = 'data-rabbit-mirror-local-css-scope';
+const RENDERED_LOCAL_CSS_STYLE_ATTR = 'data-rabbit-mirror-local-css-isolated';
+
+function splitCssSelectorList(selectorText) {
+    const source = String(selectorText || '');
+    const result = [];
+    let start = 0;
+    let round = 0;
+    let square = 0;
+    let quote = '';
+
+    for (let index = 0; index < source.length; index += 1) {
+        const char = source[index];
+        if (quote) {
+            if (char === '\\') index += 1;
+            else if (char === quote) quote = '';
+            continue;
+        }
+        if (char === '"' || char === "'") {
+            quote = char;
+            continue;
+        }
+        if (char === '(') round += 1;
+        else if (char === ')') round = Math.max(0, round - 1);
+        else if (char === '[') square += 1;
+        else if (char === ']') square = Math.max(0, square - 1);
+        else if (char === ',' && round === 0 && square === 0) {
+            result.push(source.slice(start, index).trim());
+            start = index + 1;
+        }
+    }
+    result.push(source.slice(start).trim());
+    return result.filter(Boolean);
+}
+
+function buildRenderedLocalCssScopeToken(details) {
+    const existing = details?.getAttribute?.(RENDERED_LOCAL_CSS_SCOPE_ATTR);
+    if (existing) return existing;
+
+    const message = details?.closest?.('.mes, [mesid]');
+    const mesid = String(message?.getAttribute?.('mesid') || 'x').replace(/[^a-z0-9_-]/gi, '').slice(0, 24) || 'x';
+    const mirrors = message
+        ? [...message.querySelectorAll('details')].filter(isRabbitMirrorDetails)
+        : [details];
+    const mirrorIndex = Math.max(0, mirrors.indexOf(details));
+    const summary = (details?.querySelector?.(':scope > summary')?.textContent || '').replace(/\s+/g, ' ').trim();
+    const token = `rm-local-${mesid}-${mirrorIndex}-${hashInteractionSignature(summary).slice(0, 7)}`;
+    details?.setAttribute?.(RENDERED_LOCAL_CSS_SCOPE_ATTR, token);
+    return token;
+}
+
+function scopeOneRenderedCssSelector(selector, scopeSelector) {
+    const source = String(selector || '').trim();
+    if (!source || source.includes(scopeSelector)) return source;
+
+    // 变量宿主与页面级选择器改为当前兔子镜根，避免 :root/html/body 把样式泄漏到整页。
+    if (/^:root\b/i.test(source)) return source.replace(/^:root\b/i, scopeSelector);
+    if (/^(?:html|body)\b/i.test(source)) return source.replace(/^(?:html|body)\b/i, scopeSelector);
+    if (/^:scope\b/i.test(source)) return source.replace(/^:scope\b/i, scopeSelector);
+    if (/^toto\b/i.test(source)) return source.replace(/^toto\b/i, scopeSelector);
+
+    // details 规则可能正是针对当前外层 details；同时保留其对内部 details 的含义。
+    if (/^details(?=$|[.#[:\s>+~])/i.test(source)) {
+        const sameRoot = source.replace(/^details\b/i, scopeSelector);
+        return `:is(${sameRoot}, ${scopeSelector} ${source})`;
+    }
+    return `${scopeSelector} ${source}`;
+}
+
+function rewriteRenderedCssRuleSelectors(ruleList, scopeSelector) {
+    let changed = false;
+    for (const rule of [...(ruleList || [])]) {
+        const type = Number(rule?.type);
+        const name = String(rule?.constructor?.name || '');
+        const isKeyframes = type === 7 || /KeyframesRule/i.test(name);
+        if (isKeyframes) continue;
+
+        if (type === 1 && typeof rule.selectorText === 'string') {
+            const nextSelector = splitCssSelectorList(rule.selectorText)
+                .map(selector => scopeOneRenderedCssSelector(selector, scopeSelector))
+                .join(', ');
+            if (nextSelector && nextSelector !== rule.selectorText) {
+                try {
+                    rule.selectorText = nextSelector;
+                    changed = true;
+                } catch {
+                    // Unsupported selector syntax: leave this one untouched rather than damaging the sheet.
+                }
+            }
+            continue;
+        }
+
+        if (rule?.cssRules) {
+            changed = rewriteRenderedCssRuleSelectors(rule.cssRules, scopeSelector) || changed;
+        }
+    }
+    return changed;
+}
+
+function collectRenderedKeyframeRules(ruleList, result = []) {
+    for (const rule of [...(ruleList || [])]) {
+        const type = Number(rule?.type);
+        const name = String(rule?.constructor?.name || '');
+        const isKeyframes = type === 7 || /KeyframesRule/i.test(name);
+        if (isKeyframes) {
+            result.push(rule);
+            continue;
+        }
+        if (rule?.cssRules) collectRenderedKeyframeRules(rule.cssRules, result);
+    }
+    return result;
+}
+
+function replaceAnimationNameToken(value, oldName, newName) {
+    const source = String(value || '');
+    if (!source || !oldName || oldName === newName) return source;
+    const escaped = escapeRegExp(oldName);
+    return source.replace(new RegExp(`(^|[\\s,(])${escaped}(?=$|[\\s,)])`, 'g'), (full, boundary) => `${boundary}${newName}`);
+}
+
+function rewriteAnimationNamesInStyleDeclaration(style, renameMap) {
+    if (!style?.getPropertyValue) return false;
+    let changed = false;
+    for (const property of ['animation', 'animation-name', '-webkit-animation', '-webkit-animation-name']) {
+        let value = style.getPropertyValue(property);
+        if (!value) continue;
+        let next = value;
+        for (const [oldName, newName] of renameMap) next = replaceAnimationNameToken(next, oldName, newName);
+        if (next !== value) {
+            style.setProperty(property, next, style.getPropertyPriority(property) || '');
+            changed = true;
+        }
+    }
+    return changed;
+}
+
+function rewriteRenderedAnimationReferences(ruleList, renameMap) {
+    let changed = false;
+    for (const rule of [...(ruleList || [])]) {
+        const type = Number(rule?.type);
+        const name = String(rule?.constructor?.name || '');
+        const isKeyframes = type === 7 || /KeyframesRule/i.test(name);
+        if (isKeyframes) continue;
+        if (type === 1 && rule?.style) changed = rewriteAnimationNamesInStyleDeclaration(rule.style, renameMap) || changed;
+        if (rule?.cssRules) changed = rewriteRenderedAnimationReferences(rule.cssRules, renameMap) || changed;
+    }
+    return changed;
+}
+
+function isolateRenderedRabbitMirrorCss(details) {
+    if (!details?.querySelectorAll || !isInsideChatMessage(details)) return false;
+    const token = buildRenderedLocalCssScopeToken(details);
+    if (!token) return false;
+    const scopeSelector = `[${RENDERED_LOCAL_CSS_SCOPE_ATTR}="${token}"]`;
+    const styleElements = [...details.querySelectorAll('style')];
+    if (!styleElements.length) return false;
+
+    const readySheets = [];
+    for (const styleEl of styleElements) {
+        if (styleEl.getAttribute(RENDERED_LOCAL_CSS_STYLE_ATTR) === token) continue;
+        try {
+            if (styleEl.sheet?.cssRules) readySheets.push({ styleEl, sheet: styleEl.sheet });
+        } catch {
+            // Some WebViews expose the sheet one frame later. Leave it unmarked so scheduled retries can process it.
+        }
+    }
+    if (!readySheets.length) return false;
+
+    // Keyframe names are global too. Rename them per mirror before selector scoping, then update local references.
+    const renameMap = new Map();
+    for (const { sheet } of readySheets) {
+        for (const keyframesRule of collectRenderedKeyframeRules(sheet.cssRules)) {
+            const oldName = String(keyframesRule?.name || '').trim();
+            if (!oldName) continue;
+            const newName = renameMap.get(oldName) || `${oldName}__${token}`;
+            try {
+                keyframesRule.name = newName;
+                renameMap.set(oldName, newName);
+            } catch {
+                // If the engine does not permit renaming, keep the original animation intact.
+            }
+        }
+    }
+
+    let changed = false;
+    for (const { styleEl, sheet } of readySheets) {
+        changed = rewriteRenderedCssRuleSelectors(sheet.cssRules, scopeSelector) || changed;
+        if (renameMap.size) changed = rewriteRenderedAnimationReferences(sheet.cssRules, renameMap) || changed;
+        styleEl.setAttribute(RENDERED_LOCAL_CSS_STYLE_ATTR, token);
+    }
+
+    if (renameMap.size) {
+        for (const element of details.querySelectorAll('[style]')) {
+            changed = rewriteAnimationNamesInStyleDeclaration(element.style, renameMap) || changed;
+        }
+    }
+    details.dataset.rabbitMirrorCssIsolated = 'true';
+    return changed;
+}
+
+function isolateRenderedRabbitMirrorCssInChatDom() {
+    const root = getChatRoot();
+    if (!root) return false;
+    let changed = false;
+    const detailsList = [...root.querySelectorAll('toto details, details')].filter(isRabbitMirrorDetails);
+    for (const details of detailsList) changed = isolateRenderedRabbitMirrorCss(details) || changed;
+    return changed;
+}
+
 function sanitizeRenderedRabbitMirrorDetailsDom() {
     if (!isCodeBlockRescueModeEnabled()) return;
     const root = getChatRoot();
@@ -5528,6 +5738,7 @@ function runEnabledRescueChain(mod = null) {
         sanitizeCodeBlocksInChatDom();
         sanitizeRenderedRabbitMirrorDetailsDom();
     }
+    isolateRenderedRabbitMirrorCssInChatDom();
     triggerInteractionRescue();
 }
 
@@ -5556,6 +5767,7 @@ function scheduleSanitize(mod) {
             sanitizeCodeBlocksInChatDom();
             sanitizeRenderedRabbitMirrorDetailsDom();
         }
+        isolateRenderedRabbitMirrorCssInChatDom();
         triggerInteractionRescue();
     };
     setTimeout(run, 80);
