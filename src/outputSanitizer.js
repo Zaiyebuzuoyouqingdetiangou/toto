@@ -17,6 +17,14 @@ const CLASS_ATTR_RE = /\sclass=(["'])([^"']*)\1/gi;
 const HIGHLIGHT_CLASS_TOKEN_RE = /^(?:language-(?:html|xml|js|javascript|css)|hljs|prism|prettyprint)$/i;
 const MULTI_BLANK_LINE_RE = /\n\s*\n/g;
 
+function isPlainTextRescueModeEnabled() {
+    try {
+        return !!getSettings().plainTextRescueMode;
+    } catch {
+        return false;
+    }
+}
+
 function isCodeBlockRescueModeEnabled() {
     try {
         return !!getSettings().codeBlockRescueMode;
@@ -4664,50 +4672,181 @@ function wrapTrailingNakedHtml(text) {
     return `${prefix}${prefix ? '\n' : ''}${wrapNakedHtmlAsToto(tail)}`.trim();
 }
 
-const RABBIT_MIRROR_CSS_SCOPE_ATTR = 'data-rabbit-mirror-css-scope';
-const CSS_CUSTOM_PROPERTY_TOKEN_RE = /--(?:[A-Za-z0-9_-]|[^\x00-\x7F])+/g;
+const plainTextRerenderedSignatures = new Set();
 
-function normalizeNonAsciiCssCustomProperties(html) {
-    const source = String(html || '');
-    const cssFragments = [];
-
-    source.replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gi, (_full, css = '') => {
-        cssFragments.push(String(css || ''));
-        return _full;
-    });
-    source.replace(/\sstyle\s*=\s*(["'])([\s\S]*?)\1/gi, (_full, _quote, css = '') => {
-        cssFragments.push(String(css || ''));
-        return _full;
-    });
-
-    if (!cssFragments.length) return source;
-
-    const allCss = cssFragments.join('\n');
-    const existingNames = new Set(allCss.match(CSS_CUSTOM_PROPERTY_TOKEN_RE) || []);
-    const replacements = new Map();
-    const usedAliases = new Set(existingNames);
-
-    for (const name of existingNames) {
-        if (!/[^\x00-\x7F]/.test(name)) continue;
-
-        const base = `--rmv-${hashInteractionSignature(name).slice(0, 8)}`;
-        let alias = base;
-        let suffix = 1;
-        while (usedAliases.has(alias) && alias !== name) {
-            alias = `${base}-${suffix}`;
-            suffix += 1;
+function splitCssVarArguments(value) {
+    const source = String(value || '');
+    let depth = 0;
+    let quote = '';
+    for (let index = 0; index < source.length; index += 1) {
+        const char = source[index];
+        if (quote) {
+            if (char === '\\') index += 1;
+            else if (char === quote) quote = '';
+            continue;
         }
-        replacements.set(name, alias);
-        usedAliases.add(alias);
+        if (char === '"' || char === "'") {
+            quote = char;
+            continue;
+        }
+        if (char === '(') depth += 1;
+        else if (char === ')') depth = Math.max(0, depth - 1);
+        else if (char === ',' && depth === 0) {
+            return [source.slice(0, index).trim(), source.slice(index + 1).trim()];
+        }
+    }
+    return [source.trim(), ''];
+}
+
+function replaceCssVarFunctions(value, resolver) {
+    const source = String(value || '');
+    let output = '';
+    let cursor = 0;
+
+    while (cursor < source.length) {
+        const match = /var\s*\(/ig.exec(source.slice(cursor));
+        if (!match) {
+            output += source.slice(cursor);
+            break;
+        }
+
+        const start = cursor + match.index;
+        const open = start + match[0].lastIndexOf('(');
+        output += source.slice(cursor, start);
+
+        let depth = 1;
+        let quote = '';
+        let end = open + 1;
+        for (; end < source.length; end += 1) {
+            const char = source[end];
+            if (quote) {
+                if (char === '\\') end += 1;
+                else if (char === quote) quote = '';
+                continue;
+            }
+            if (char === '"' || char === "'") {
+                quote = char;
+                continue;
+            }
+            if (char === '(') depth += 1;
+            else if (char === ')') {
+                depth -= 1;
+                if (depth === 0) break;
+            }
+        }
+
+        if (depth !== 0) {
+            output += source.slice(start);
+            break;
+        }
+
+        const [name, fallback] = splitCssVarArguments(source.slice(open + 1, end));
+        const resolved = resolver(name, fallback);
+        output += resolved;
+        cursor = end + 1;
     }
 
-    if (!replacements.size) return source;
-
-    // SillyTavern 当前使用的 CSS 解析链会把合法的 Unicode 自定义属性名
-    // （如 --沉暗车厢）误判为 property missing ':'。在进入宿主解析器前，
-    // 将声明与 var(...) 引用同步改写为稳定 ASCII 名称；不改变任何视觉值。
-    return source.replace(CSS_CUSTOM_PROPERTY_TOKEN_RE, token => replacements.get(token) || token);
+    return output;
 }
+
+function expandUnsupportedCssCustomProperties(cssText) {
+    const source = String(cssText || '');
+    if (!/(?:^|[;{])\s*--[^\s:;{}]+\s*:|var\s*\(/i.test(source)) return source;
+
+    const values = new Map();
+    const declarationRe = /(^|[;{])\s*(--[^\s:;{}]+)\s*:\s*([^;{}]*?)(?=;|})/g;
+    let match;
+    while ((match = declarationRe.exec(source))) {
+        const name = String(match[2] || '').trim();
+        const value = String(match[3] || '').trim();
+        if (name && value) values.set(name, value);
+    }
+
+    const resolvedCache = new Map();
+    const resolveName = (name, stack = new Set()) => {
+        const key = String(name || '').trim();
+        if (!key.startsWith('--')) return '';
+        if (resolvedCache.has(key)) return resolvedCache.get(key);
+        if (stack.has(key)) return '';
+        const raw = values.get(key);
+        if (raw === undefined) return '';
+
+        const nextStack = new Set(stack);
+        nextStack.add(key);
+        const resolved = replaceCssVarFunctions(raw, (nestedName, fallback) => {
+            const nested = resolveName(nestedName, nextStack);
+            if (nested) return nested;
+            return fallback ? replaceCssVarFunctions(fallback, (fallbackName, nestedFallback) => resolveName(fallbackName, nextStack) || nestedFallback || 'initial') : 'initial';
+        }).trim();
+        resolvedCache.set(key, resolved);
+        return resolved;
+    };
+
+    // 删除宿主旧 CSS 解析器不识别的 --自定义属性声明，保留前导 { / ; 作为声明边界。
+    let repaired = source.replace(declarationRe, (full, boundary) => boundary || '');
+    repaired = repaired.replace(/\{\s*(?:;\s*)+/g, '{');
+    repaired = replaceCssVarFunctions(repaired, (name, fallback) => {
+        const resolved = resolveName(name);
+        if (resolved) return resolved;
+        if (fallback) return replaceCssVarFunctions(fallback, (fallbackName, nestedFallback) => resolveName(fallbackName) || nestedFallback || 'initial');
+        return 'initial';
+    });
+
+    return repaired;
+}
+
+function repairLikelyBareRootSelector(cssText, htmlText) {
+    let css = String(cssText || '');
+    const html = String(htmlText || '');
+    const classTokens = [];
+    const classRe = /\sclass\s*=\s*(["'])([^"']+)\1/gi;
+    let classMatch;
+    while ((classMatch = classRe.exec(html))) {
+        String(classMatch[2] || '').split(/\s+/).forEach(token => {
+            if (/^rabbit-scenery-[a-z0-9_-]+$/i.test(token)) classTokens.push(token);
+        });
+    }
+
+    for (const className of classTokens) {
+        if (new RegExp(`\\.${escapeRegExp(className)}\\s*\\{`, 'i').test(css)) continue;
+        const suffix = className.replace(/^rabbit-scenery-/i, '');
+        const candidates = [className, suffix].filter(Boolean);
+        for (const candidate of candidates) {
+            const bareRe = new RegExp(`(^|})\\s*${escapeRegExp(candidate)}\\s*\\{`, 'i');
+            if (!bareRe.test(css)) continue;
+            css = css.replace(bareRe, (full, boundary) => `${boundary || ''}.${className}{`);
+            break;
+        }
+    }
+    return css;
+}
+
+function repairPlainTextCssInHtml(htmlText) {
+    const html = String(htmlText || '');
+    return html.replace(/<style\b([^>]*)>([\s\S]*?)<\/style>/gi, (full, attrs = '', css = '') => {
+        const normalized = String(css || '')
+            .replace(/<br\s*\/?>/gi, '')
+            .replace(/\r\n?/g, '\n');
+        const expanded = expandUnsupportedCssCustomProperties(normalized);
+        const repaired = repairLikelyBareRootSelector(expanded, html);
+        return `<style${attrs}>${repaired}</style>`;
+    });
+}
+
+function needsPlainTextCssRescue(text) {
+    const source = decodeHtmlEntities(String(text || ''));
+    if (!/<(?:toto|details)\b[\s\S]*?<style\b/i.test(source)) return false;
+    return /(?:^|[;{])\s*--[^\s:;{}]+\s*:|var\s*\(/i.test(source);
+}
+
+export function rescuePlainTextRabbitMirrorOutput(responseText = '') {
+    let text = normalizeMirrorAttribute(String(responseText || ''));
+    text = repairPlainTextCssInHtml(text);
+    text = text.replace(TOTO_BLOCK_RE, block => compactTotoBlock(block));
+    return text.trim();
+}
+
+const RABBIT_MIRROR_CSS_SCOPE_ATTR = 'data-rabbit-mirror-css-scope';
 
 function localizeRabbitMirrorRootSelector(html) {
     const source = String(html || '');
@@ -4741,9 +4880,7 @@ function localizeRabbitMirrorRootSelector(html) {
 }
 
 export function compactTotoBlock(block) {
-    let html = normalizeNonAsciiCssCustomProperties(
-        localizeRabbitMirrorRootSelector(normalizeMirrorAttribute(stripCodeBlockTriggers(block))),
-    );
+    let html = localizeRabbitMirrorRootSelector(normalizeMirrorAttribute(stripCodeBlockTriggers(block)));
     const styleSlots = [];
 
     // 1. 保护 <style>...</style>，避免 CSS 文本被误插入 <br>。
@@ -4981,6 +5118,62 @@ function sanitizeLatestRawMessages(mod) {
     return rawChanged || rerendered;
 }
 
+function sanitizePlainTextRawMessages(mod) {
+    if (!isPlainTextRescueModeEnabled()) return false;
+    let rawChanged = false;
+    let rerendered = false;
+    const rerenderEntries = [];
+
+    for (const { message, index } of findRecentAssistantMessages(mod)) {
+        let messageChanged = false;
+        const renderedHasError = renderedMessageHasCssError(index);
+        const decoded = decodeHtmlEntities(message.mes);
+        if (renderedHasError || needsPlainTextCssRescue(decoded)) {
+            const cleaned = rescuePlainTextRabbitMirrorOutput(decoded);
+            if (cleaned && cleaned !== message.mes) {
+                message.mes = cleaned;
+                if (Array.isArray(message.swipes)) {
+                    const swipeIndex = Number.isInteger(message.swipe_id) ? message.swipe_id : message.swipes.length - 1;
+                    if (typeof message.swipes[swipeIndex] === 'string') message.swipes[swipeIndex] = cleaned;
+                }
+                messageChanged = true;
+            }
+        }
+
+        if (typeof message?.extra?.display_text === 'string') {
+            const decodedDisplayText = decodeHtmlEntities(message.extra.display_text);
+            if (renderedHasError || needsPlainTextCssRescue(decodedDisplayText)) {
+                const cleanedDisplayText = rescuePlainTextRabbitMirrorOutput(decodedDisplayText);
+                if (cleanedDisplayText && cleanedDisplayText !== message.extra.display_text) {
+                    message.extra.display_text = cleanedDisplayText;
+                    messageChanged = true;
+                }
+            }
+        }
+
+        if (messageChanged) rawChanged = true;
+        const signature = `${index}:${hashInteractionSignature(message.mes)}`;
+        if (messageChanged || (renderedHasError && !plainTextRerenderedSignatures.has(signature))) {
+            plainTextRerenderedSignatures.add(signature);
+            rerenderEntries.push({ index, message });
+        }
+    }
+
+    for (const { index, message } of rerenderEntries) {
+        rerendered = preserveAndRerenderSanitizedMessage(mod, index, message) || rerendered;
+    }
+
+    if (rawChanged) {
+        try {
+            const saver = mod?.saveChatConditional || globalThis.saveChatConditional;
+            if (typeof saver === 'function') saver();
+        } catch (error) {
+            console.debug('[RabbitMirror] save after plain text rescue failed:', error);
+        }
+    }
+    return rawChanged || rerendered;
+}
+
 function parseHtmlFragment(html) {
     try {
         const template = document.createElement('template');
@@ -5188,15 +5381,29 @@ export function triggerInteractionDiagnosticOnce() {
     }
 }
 
+function runEnabledRescueChain(mod = null) {
+    const host = mod || globalThis;
+    // 纯文字急救先把旧解析器不接受的 CSS 变量展开，再交给代码块急救压缩/还原 DOM。
+    if (isPlainTextRescueModeEnabled()) sanitizePlainTextRawMessages(host);
+    if (isCodeBlockRescueModeEnabled()) {
+        sanitizeLatestRawMessages(host);
+        sanitizeCodeBlocksInChatDom();
+        sanitizeRenderedRabbitMirrorDetailsDom();
+    }
+    triggerInteractionRescue();
+}
+
+export function triggerPlainTextRescue(mod = null) {
+    try {
+        runEnabledRescueChain(mod);
+    } catch (error) {
+        console.debug('[RabbitMirror] plain text rescue trigger failed:', error);
+    }
+}
+
 export function triggerCodeBlockRescue(mod = null) {
     try {
-        if (isCodeBlockRescueModeEnabled()) {
-            sanitizeLatestRawMessages(mod || globalThis);
-            sanitizeCodeBlocksInChatDom();
-            sanitizeRenderedRabbitMirrorDetailsDom();
-        }
-        // 两项同时开启时固定为：先恢复真实 DOM，再修交互。
-        triggerInteractionRescue();
+        runEnabledRescueChain(mod);
     } catch (error) {
         console.debug('[RabbitMirror] code block rescue trigger failed:', error);
     }
@@ -5204,14 +5411,13 @@ export function triggerCodeBlockRescue(mod = null) {
 
 function scheduleSanitize(mod) {
     const run = () => {
+        // 顺序固定：先修 CSS 纯文字，再拆代码块，最后修交互。
+        if (isPlainTextRescueModeEnabled()) sanitizePlainTextRawMessages(mod);
         if (isCodeBlockRescueModeEnabled()) {
-            // 先修原始消息，避免保存后继续携带代码块壳。
             sanitizeLatestRawMessages(mod);
-            // 再只修聊天区内已经渲染出来的代码块，不扫描设置页，避免误伤其他插件 UI。
             sanitizeCodeBlocksInChatDom();
             sanitizeRenderedRabbitMirrorDetailsDom();
         }
-        // 交互急救独立受控；若代码块急救也开启，此时 DOM 已恢复完成。
         triggerInteractionRescue();
     };
     setTimeout(run, 80);

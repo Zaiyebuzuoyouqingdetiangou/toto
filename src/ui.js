@@ -1,7 +1,7 @@
 import { getSettings, updateSettings, resetSettings } from './settings.js';
 import { clearLastCombo } from './storage.js';
 import { clearRabbitMirrorPrompt } from './injector.js';
-import { triggerCodeBlockRescue, triggerInteractionRescue, triggerInteractionDiagnosticOnce } from './outputSanitizer.js';
+import { triggerPlainTextRescue, triggerCodeBlockRescue, triggerInteractionRescue, triggerInteractionDiagnosticOnce } from './outputSanitizer.js';
 
 function checked(id, value) {
     $(id).prop('checked', !!value);
@@ -44,6 +44,8 @@ export function initRabbitMirrorUI() {
       <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">仅记录已经实际生成成功的兔子镜；用于避免连续复用相近的结构骨架与整体视觉家族。</div>
 
       <div class="rabbit-mirror-emergency rabbit-mirror-emergency-prominent" style="margin:12px 0 10px 0;padding:10px;border:1px solid var(--SmartThemeBorderColor);border-radius:8px;line-height:1.55;">
+        <label class="checkbox_label" style="font-weight:600;"><input id="rh_plaintext_rescue" type="checkbox"> 纯文字急救</label>
+        <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.78;font-size:12px;line-height:1.45;">兔子镜出现 CSS ERROR 或只剩文字时开启；自动把不兼容的 CSS 变量展开为直接值、清除变量声明并即时重绘。不会改 Prompt。</div>
         <label class="checkbox_label" style="font-weight:600;"><input id="rh_codeblock_rescue" type="checkbox"> 代码块急救模式</label>
         <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.78;font-size:12px;line-height:1.45;">兔子镜变成代码块时临时开启；先恢复为真实 DOM，不改已有主容器 UI。</div>
         <label class="checkbox_label" style="font-weight:600;"><input id="rh_interaction_rescue" type="checkbox"> 智能交互急救（实验版）</label>
@@ -70,6 +72,7 @@ export function initRabbitMirrorUI() {
     $('#extensions_settings2').append(html);
 
     checked('#rh_enabled', settings.autoRabbitMirrorInjection !== false && settings.enabled !== false);
+    checked('#rh_plaintext_rescue', settings.plainTextRescueMode);
     checked('#rh_codeblock_rescue', settings.codeBlockRescueMode);
     checked('#rh_interaction_rescue', settings.interactionRescueMode);
     $('#rh_sampling_mode').val(settings.samplingMode || 'classic');
@@ -80,6 +83,17 @@ export function initRabbitMirrorUI() {
     checked('#rh_avoid_repeat', settings.avoidRepeat);
 
     $('#rh_enabled').on('change', e => updateSettings({ enabled: e.target.checked, autoRabbitMirrorInjection: e.target.checked, mode: e.target.checked ? 'integrated' : 'off' }));
+    $('#rh_plaintext_rescue').on('change', e => {
+        updateSettings({ plainTextRescueMode: e.target.checked });
+        if (e.target.checked) {
+            toastr?.info?.('已开启纯文字急救：正在展开不兼容 CSS 变量并重绘当前兔子镜；可与代码块、交互急救同时使用。');
+            setTimeout(() => triggerPlainTextRescue(), 80);
+            setTimeout(() => triggerPlainTextRescue(), 350);
+            setTimeout(() => triggerPlainTextRescue(), 900);
+        } else {
+            toastr?.success?.('已关闭纯文字急救：后续不再改写新生成的 CSS；已修复消息保持现状。');
+        }
+    });
     $('#rh_codeblock_rescue').on('change', e => {
         updateSettings({ codeBlockRescueMode: e.target.checked });
         if (e.target.checked) {
@@ -95,7 +109,7 @@ export function initRabbitMirrorUI() {
         updateSettings({ interactionRescueMode: e.target.checked });
         if (e.target.checked) {
             toastr?.info?.('已开启智能交互急救：正在识别当前兔子镜的交互类型并选择修复路径；与代码块急救同时开启时，会先恢复代码再修交互。');
-            const runRescueChain = () => getSettings().codeBlockRescueMode
+            const runRescueChain = () => (getSettings().plainTextRescueMode || getSettings().codeBlockRescueMode)
                 ? triggerCodeBlockRescue()
                 : triggerInteractionRescue();
             setTimeout(runRescueChain, 80);

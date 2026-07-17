@@ -36,6 +36,8 @@ export const defaultSettings = Object.freeze({
     cooldownRounds: 10,
     // 增强版式多样性：随机时更偏向带界面结构/视觉锚点的展现形式，减少纯文字类连续出现。
     richFormatBias: true,
+    // 纯文字急救：当 CSS 解析失败导致兔子镜退化成 CSS ERROR / 纯文字时，展开不兼容的 CSS 变量并即时重绘。
+    plainTextRescueMode: false,
     // 代码块急救模式：仅在兔子镜显示成代码块时临时开启。默认关闭，避免平时影响 UI 发挥。
     codeBlockRescueMode: false,
     // 智能交互急救：识别 checked、hover、嵌套 details、:target 等交互类型并选择对应兜底路径。可与代码块急救串联。
@@ -104,6 +106,7 @@ export function getSettings() {
     settings.formatsMax = Number(settings.formatsMax) || defaultSettings.formatsMax;
     settings.cooldownRounds = Math.max(1, Number(settings.cooldownRounds) || defaultSettings.cooldownRounds);
     if (settings.autoRabbitMirrorInjection === undefined) settings.autoRabbitMirrorInjection = settings.enabled !== false;
+    if (settings.plainTextRescueMode === undefined) settings.plainTextRescueMode = defaultSettings.plainTextRescueMode;
     if (settings.codeBlockRescueMode === undefined) settings.codeBlockRescueMode = defaultSettings.codeBlockRescueMode;
     if (settings.interactionRescueMode === undefined) settings.interactionRescueMode = defaultSettings.interactionRescueMode;
     if (!['classic', 'format_only'].includes(settings.samplingMode)) settings.samplingMode = defaultSettings.samplingMode;
