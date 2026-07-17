@@ -4123,7 +4123,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 一次性交互诊断：仅在用户按下“开始一次交互诊断”后，临时监听聊天区的下一次交互。
 // 捕获一个兔子镜后只读取该条内容，并在约 650ms 后自动停止全部诊断监听。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.22-ONESHOT';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.24-ONESHOT';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -4665,6 +4665,49 @@ function wrapTrailingNakedHtml(text) {
 }
 
 const RABBIT_MIRROR_CSS_SCOPE_ATTR = 'data-rabbit-mirror-css-scope';
+const CSS_CUSTOM_PROPERTY_TOKEN_RE = /--(?:[A-Za-z0-9_-]|[^\x00-\x7F])+/g;
+
+function normalizeNonAsciiCssCustomProperties(html) {
+    const source = String(html || '');
+    const cssFragments = [];
+
+    source.replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gi, (_full, css = '') => {
+        cssFragments.push(String(css || ''));
+        return _full;
+    });
+    source.replace(/\sstyle\s*=\s*(["'])([\s\S]*?)\1/gi, (_full, _quote, css = '') => {
+        cssFragments.push(String(css || ''));
+        return _full;
+    });
+
+    if (!cssFragments.length) return source;
+
+    const allCss = cssFragments.join('\n');
+    const existingNames = new Set(allCss.match(CSS_CUSTOM_PROPERTY_TOKEN_RE) || []);
+    const replacements = new Map();
+    const usedAliases = new Set(existingNames);
+
+    for (const name of existingNames) {
+        if (!/[^\x00-\x7F]/.test(name)) continue;
+
+        const base = `--rmv-${hashInteractionSignature(name).slice(0, 8)}`;
+        let alias = base;
+        let suffix = 1;
+        while (usedAliases.has(alias) && alias !== name) {
+            alias = `${base}-${suffix}`;
+            suffix += 1;
+        }
+        replacements.set(name, alias);
+        usedAliases.add(alias);
+    }
+
+    if (!replacements.size) return source;
+
+    // SillyTavern 当前使用的 CSS 解析链会把合法的 Unicode 自定义属性名
+    // （如 --沉暗车厢）误判为 property missing ':'。在进入宿主解析器前，
+    // 将声明与 var(...) 引用同步改写为稳定 ASCII 名称；不改变任何视觉值。
+    return source.replace(CSS_CUSTOM_PROPERTY_TOKEN_RE, token => replacements.get(token) || token);
+}
 
 function localizeRabbitMirrorRootSelector(html) {
     const source = String(html || '');
@@ -4698,7 +4741,9 @@ function localizeRabbitMirrorRootSelector(html) {
 }
 
 export function compactTotoBlock(block) {
-    let html = localizeRabbitMirrorRootSelector(normalizeMirrorAttribute(stripCodeBlockTriggers(block)));
+    let html = normalizeNonAsciiCssCustomProperties(
+        localizeRabbitMirrorRootSelector(normalizeMirrorAttribute(stripCodeBlockTriggers(block))),
+    );
     const styleSlots = [];
 
     // 1. 保护 <style>...</style>，避免 CSS 文本被误插入 <br>。

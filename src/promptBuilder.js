@@ -250,7 +250,7 @@ ${shortVisualAvoidance(combo, 3)}${recentRiskCorrection()}`);
     if (visualSceneryMode) {
         chunks.push(String.raw`
 Visual Scenery 模式:
-  持续动画是硬条件；必须用自动运行的 CSS animation + @keyframes 表现风景、光影或环境变化，服务画面且不得乱闪。`);
+  动画必须打开即运行且肉眼可见；微尘、同色弱光和极慢小幅漂移不算。`);
         chunks.push(VISUAL_SCENERY_RULES);
         chunks.push(visualSceneryInteractionLinkRule());
     }
