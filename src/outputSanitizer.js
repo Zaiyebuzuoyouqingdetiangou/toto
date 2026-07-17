@@ -2632,6 +2632,22 @@ function parseSafeCssTextAssignments(cssText) {
     return assignments;
 }
 
+function resolveCheckedRelativeElementExpression(input, expression, root) {
+    const source = String(expression || '').replace(/\s+/g, '');
+    if (!/^this(?:\.(?:nextElementSibling|previousElementSibling|parentElement|parentNode)){0,6}$/.test(source)) return null;
+
+    let target = input;
+    const steps = source.match(/\.(?:nextElementSibling|previousElementSibling|parentElement|parentNode)/g) || [];
+    for (const rawStep of steps) {
+        const step = rawStep.slice(1);
+        if (step === 'nextElementSibling') target = target?.nextElementSibling || null;
+        else if (step === 'previousElementSibling') target = target?.previousElementSibling || null;
+        else target = target?.parentElement || null;
+        if (!target || !root?.contains?.(target)) return null;
+    }
+    return target && root?.contains?.(target) ? target : null;
+}
+
 function parseCheckedTernaryStyleProgramFromSource(input, root, scriptText) {
     const source = String(scriptText || '');
     if (!source || !/this\s*\.\s*checked\s*\?/i.test(source)) return null;
@@ -2661,6 +2677,38 @@ function parseCheckedTernaryStyleProgramFromSource(input, root, scriptText) {
         }
         return statesByTarget.get(target);
     };
+
+    // 支持模型最常见的直接相邻目标写法：
+    // this.nextElementSibling.style.opacity = this.checked ? '1' : '0';
+    // 仅沿当前 input 的有限亲属/兄弟链解析，不执行任意 JavaScript，也不会越出当前兔子镜。
+    const rememberDirectStyle = (expression, property, rawActive, rawInactive) => {
+        const target = resolveCheckedRelativeElementExpression(input, expression, root);
+        const state = ensureTargetState(target);
+        const normalizedProperty = normalizeStylePropertyName(property);
+        if (!state || !/^[a-z][a-z0-9-]*$/i.test(normalizedProperty)) return;
+        state.activeAssignments.push({ property: normalizedProperty, value: decodeSafeInlineString(rawActive) });
+        state.inactiveAssignments.push({ property: normalizedProperty, value: decodeSafeInlineString(rawInactive) });
+    };
+
+    const directDotTernaryRe = /(this(?:\s*\.\s*(?:nextElementSibling|previousElementSibling|parentElement|parentNode)){0,6})\s*\.\s*style\s*\.\s*([a-zA-Z][\w]*)\s*=\s*this\s*\.\s*checked\s*\?\s*(['"])((?:\\.|(?!\3)[\s\S])*)\3\s*:\s*(['"])((?:\\.|(?!\5)[\s\S])*)\5\s*;?/g;
+    let directMatch;
+    while ((directMatch = directDotTernaryRe.exec(source))) {
+        rememberDirectStyle(directMatch[1], directMatch[2], directMatch[4], directMatch[6]);
+    }
+
+    const directBracketTernaryRe = /(this(?:\s*\.\s*(?:nextElementSibling|previousElementSibling|parentElement|parentNode)){0,6})\s*\.\s*style\s*\[\s*(['"])([a-zA-Z-]+)\2\s*\]\s*=\s*this\s*\.\s*checked\s*\?\s*(['"])((?:\\.|(?!\4)[\s\S])*)\4\s*:\s*(['"])((?:\\.|(?!\6)[\s\S])*)\6\s*;?/g;
+    while ((directMatch = directBracketTernaryRe.exec(source))) {
+        rememberDirectStyle(directMatch[1], directMatch[3], directMatch[5], directMatch[7]);
+    }
+
+    const directTextTernaryRe = /(this(?:\s*\.\s*(?:nextElementSibling|previousElementSibling|parentElement|parentNode)){0,6})\s*\.\s*(innerText|textContent)\s*=\s*this\s*\.\s*checked\s*\?\s*(['"])((?:\\.|(?!\3)[\s\S])*)\3\s*:\s*(['"])((?:\\.|(?!\5)[\s\S])*)\5\s*;?/g;
+    while ((directMatch = directTextTernaryRe.exec(source))) {
+        const target = resolveCheckedRelativeElementExpression(input, directMatch[1], root);
+        const state = ensureTargetState(target);
+        if (!state) continue;
+        state.activeText = decodeSafeInlineString(directMatch[4]);
+        state.inactiveText = decodeSafeInlineString(directMatch[6]);
+    }
 
     const queryExpressionPattern = String.raw`(this(?:(?:\s*\.\s*(?:parentNode|parentElement))*)\s*\.\s*querySelector\(\s*(['"])([.#]?[a-zA-Z_][\w:.-]*)\2\s*\))`;
 
@@ -4072,7 +4120,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 一次性交互诊断：仅在用户按下“开始一次交互诊断”后，临时监听聊天区的下一次交互。
 // 捕获一个兔子镜后只读取该条内容，并在约 650ms 后自动停止全部诊断监听。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.20-ONESHOT';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.21-ONESHOT';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
