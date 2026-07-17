@@ -1,3 +1,10 @@
+## 0.32.22 直接三元状态提前退出修复
+
+- 修复安全状态程序在没有 `const x = this.checked ? ...` 变量声明时过早返回的问题。
+- 现在可正确接管 `this.nextElementSibling.style.opacity = this.checked ? '1' : '0'` 及同类 `transform`、括号属性、文字赋值。
+- 仍只解析当前兔子镜内的有限 DOM 亲属链与安全样式，不执行模型生成的 JavaScript。
+- 保留 0.32.21 全部急救库与 0.32.20 Visual Scenery 持续动画硬约束；Prompt 不变。
+
 ## 0.32.21 相邻元素三元状态急救
 
 - 新增对 `this.nextElementSibling.style.xxx = this.checked ? ... : ...` 的安全回读与重建。
