@@ -108,14 +108,24 @@ function recentRiskCorrection() {
     return `\n真实视觉纠偏【由插件扫描实际 HTML/CSS 后触发，只给抽象方向】:\n${lines.map(x => `  - "${x}"`).join('\n')}`;
 }
 
+
+function hardStartupLock() {
+    return String.raw`
+兔子镜启动锁【本轮输出结构已锁定】:
+  - 本轮必须完成“主回复正文 + 末尾完整兔子镜”两部分；兔子镜是主回复的必需组成，不是可选附加项。
+  - 开始正文前先为完整 <toto>...</toto> 预留输出长度；若篇幅冲突，优先缩短正文或兔子镜内部文案，禁止省略整个兔子镜。
+  - 在完整输出 </toto> 之前，本轮回复不得结束。`;
+}
+
 function coreOutputProtocol() {
     return String.raw`
 最终输出契约【每轮强制】:
-  - 无论正文长短或本轮内容为何，必须先完整生成主回复正文，再在消息最底部继续生成一个完整兔子镜，不得省略或中途结束。
+  - 主回复正文完成后，必须在消息最底部继续输出一个完整兔子镜；未出现完整 <toto>...</toto> 即代表本轮尚未完成。
   - 固定外壳：<toto data-rabbit-mirror="true" style="display:block;"><details><summary>【兔子镜：中文短标题】</summary>内部 HTML</details></toto>
   - 外层 <details>/<summary> 只负责折叠整段兔子镜，summary 必须使用「【兔子镜：6到14字简体中文标题】」格式。
-  - 兔子镜必须是最后一个可见模块；禁止解释规则、Markdown 代码块、<pre>/<code> 与 HTML 注释。
-  - 禁止 script、iframe、object、embed、form、事件属性；所有标签必须闭合，最终必须以 </toto> 结束。`;
+  - 兔子镜必须是最后一个可见模块；若剩余输出长度不足，应缩短正文或内部文案，但仍须完整输出并闭合兔子镜。
+  - 禁止解释规则、Markdown 代码块、<pre>/<code> 与 HTML 注释；禁止 script、iframe、object、embed、form、事件属性。
+  - 只有完整输出 </toto> 后才允许结束本轮回复。`;
 }
 
 function compactCreativeRule(enabled, formatOnly = false) {
@@ -181,6 +191,18 @@ HTML 直接渲染:
   所有 style 属性必须由成对引号完整包裹，CSS 函数括号必须闭合，不得让后续 HTML 标签被吞入 style 属性值。`;
 }
 
+function presentationFirstColorRule() {
+    return String.raw`
+展现形式优先配色:
+  - 必须先确定媒介本体、材质、时代、环境与光线，再由这些条件自然推导配色。
+  - 配色必须体现当前媒介真实存在的材质色、环境光色与使用痕迹，不得脱离本体单独设计。
+  - 主色、结构色、文字色与强调色应形成清晰层级，并共同服务于当前展现形式。
+  - 视觉高级感应通过构图、材质、空间、光影、细节与色彩关系建立，不得依赖固定底色套路。
+  - 不得将不同媒介统一套成同一种科技界面、终端界面、玻璃面板或低照度模板。
+  - 场景具有特殊光线或材质需求时，应按其真实视觉条件处理，同时保证主体、层次与材质清晰可辨。
+  - 每轮应依据本轮展现形式重新组织色彩关系，不得机械复用近期的主色结构与配色套路。`;
+}
+
 function visualColorTruthRule() {
     return String.raw`
 视觉真实:
@@ -197,6 +219,7 @@ function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualS
     const chunks = [];
     const mode = combo?.samplingMode || settings?.samplingMode || 'classic';
     chunks.push('<兔子镜自动注入>');
+    if (settings.hardStartup !== false) chunks.push(hardStartupLock());
     chunks.push(visibleChineseHardLock());
     if (mode === 'format_only') {
         chunks.push(String.raw`
@@ -216,6 +239,7 @@ ${selectedFormats}`);
     chunks.push(compactCreativeRule(!!settings.creativeExpansionMode, mode === 'format_only'));
     chunks.push(complexInteractiveCore());
     chunks.push(innerDetailsCooldownRule());
+    chunks.push(presentationFirstColorRule());
     chunks.push(visualColorTruthRule());
     chunks.push(stateBarIsolationRule());
 
