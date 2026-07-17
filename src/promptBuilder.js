@@ -109,21 +109,21 @@ function recentRiskCorrection() {
 }
 
 
-function hardStartupLock() {
+function hardStartupAnchor() {
     return String.raw`
-兔子镜启动锁【本轮输出结构已锁定】:
-  - 本轮必须完成“主回复正文 + 末尾完整兔子镜”两部分；兔子镜是主回复的必需组成，不是可选附加项。
-  - 开始正文前先为完整 <toto>...</toto> 预留输出长度；若篇幅冲突，优先缩短正文或兔子镜内部文案，禁止省略整个兔子镜。
-  - 在完整输出 </toto> 之前，本轮回复不得结束。`;
+兔子镜启动锚点:
+  - 本轮只在主回复正文结束后生成一次兔子镜；此处仅负责预留输出长度，不得在正文前提前输出、预演、复制或占位。
+  - 若篇幅冲突，缩短正文或兔子镜内部文案，并在末尾执行唯一输出契约。`;
 }
 
 function coreOutputProtocol() {
     return String.raw`
-最终输出契约【每轮强制】:
-  - 主回复正文完成后，必须在消息最底部继续输出一个完整兔子镜；未出现完整 <toto>...</toto> 即代表本轮尚未完成。
+最终输出契约【每轮强制且仅一次】:
+  - 全回复只能出现一个兔子镜、一个 <toto>...</toto>；不得在正文前输出副本、草稿、预览或占位。
+  - 主回复正文完成后，必须在消息最底部继续输出这唯一一个完整兔子镜；未出现完整 <toto>...</toto> 即代表本轮尚未完成。
   - 固定外壳：<toto data-rabbit-mirror="true" style="display:block;"><details><summary>【兔子镜：中文短标题】</summary>内部 HTML</details></toto>
   - 外层 <details>/<summary> 只负责折叠整段兔子镜，summary 必须使用「【兔子镜：6到14字简体中文标题】」格式。
-  - 兔子镜必须是最后一个可见模块；若剩余输出长度不足，应缩短正文或内部文案，但仍须完整输出并闭合兔子镜。
+  - 兔子镜必须是最后一个可见模块；若先前已构思过兔子镜，只保留末尾最终版本，不得再次复制。若剩余输出长度不足，应缩短正文或内部文案，但仍须完整输出并闭合。
   - 禁止解释规则、Markdown 代码块、<pre>/<code> 与 HTML 注释；禁止 script、iframe、object、embed、form、事件属性。
   - 只有完整输出 </toto> 后才允许结束本轮回复。`;
 }
@@ -219,7 +219,7 @@ function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualS
     const chunks = [];
     const mode = combo?.samplingMode || settings?.samplingMode || 'classic';
     chunks.push('<兔子镜自动注入>');
-    if (settings.hardStartup !== false) chunks.push(hardStartupLock());
+    if (settings.hardStartup !== false) chunks.push(hardStartupAnchor());
     chunks.push(visibleChineseHardLock());
     if (mode === 'format_only') {
         chunks.push(String.raw`
