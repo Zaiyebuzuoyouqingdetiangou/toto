@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "Adds Unicode CSS custom-property compatibility while retaining the no-dark-audit baseline, visible Visual Scenery animation rules, and the complete rescue library."
+  "description": "Adds an optional plain-text rescue that expands unsupported CSS custom properties and rerenders CSS ERROR Rabbit Mirrors, while preserving the 0.32.23 rescue library and Visual Scenery rules."
 }
