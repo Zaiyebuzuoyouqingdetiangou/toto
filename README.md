@@ -1,3 +1,10 @@
+## 0.32.21 相邻元素三元状态急救
+
+- 新增对 `this.nextElementSibling.style.xxx = this.checked ? ... : ...` 的安全回读与重建。
+- 同时支持有限的 `previousElementSibling`、`parentElement` / `parentNode` 链及点号、方括号样式写法。
+- 不执行模型输出的 JavaScript，目标始终限制在当前兔子镜内部。
+- 保留 0.32.20 Visual Scenery 持续动画硬约束及 0.32.19 全部急救库。
+
 ## 0.32.20 Visual Scenery 持续动画硬约束
 
 - 修复 Visual Scenery 仍受“动态可选”规则影响、模型可能只输出静态画面的冲突。
