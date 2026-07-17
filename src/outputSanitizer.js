@@ -2661,7 +2661,10 @@ function parseCheckedTernaryStyleProgramFromSource(input, root, scriptText) {
             inactive: decodeSafeInlineString(match[5]),
         });
     }
-    if (!stateValues.size) return null;
+    // 直接写在赋值右侧的三元表达式不需要先声明状态变量。
+    // 不能在 stateValues 为空时提前退出，否则
+    // this.nextElementSibling.style.opacity = this.checked ? '1' : '0'
+    // 这类最常见结构会在真正解析前被误判为无程序。
 
     const statesByTarget = new Map();
     const ensureTargetState = target => {
@@ -4120,7 +4123,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 一次性交互诊断：仅在用户按下“开始一次交互诊断”后，临时监听聊天区的下一次交互。
 // 捕获一个兔子镜后只读取该条内容，并在约 650ms 后自动停止全部诊断监听。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.21-ONESHOT';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.22-ONESHOT';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
