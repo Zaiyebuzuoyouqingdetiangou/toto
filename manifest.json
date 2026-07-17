@@ -4,7 +4,7 @@
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.32.24",
+  "version": "0.32.26",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "Adds an optional plain-text rescue that expands unsupported CSS custom properties and rerenders CSS ERROR Rabbit Mirrors, while preserving the 0.32.23 rescue library and Visual Scenery rules."
+  "description": "Streamlines duplicated prompt rules while preserving the complex visual core and real-output scanner, removes obsolete interaction/UI-audit settings, and replaces Visual Scenery with an integrated dynamic-illustration specification."
 }
