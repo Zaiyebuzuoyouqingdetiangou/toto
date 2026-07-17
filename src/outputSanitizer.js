@@ -2076,7 +2076,7 @@ function findRenderedMaskRevealEntries(root) {
     for (const hidden of root.querySelectorAll('div, section, article, aside, p, span')) {
         if (!isRenderedMaskRevealHiddenTarget(hidden)) continue;
         const host = hidden.parentElement;
-        if (!host || seenHosts.has(host) || host.querySelector?.('input, label, button, select, textarea')) continue;
+        if (!host || seenHosts.has(host) || host.hasAttribute?.(RAW_SELF_MUTATION_RESCUE_ATTR) || host.querySelector?.('input, label, button, select, textarea')) continue;
         const siblings = [...(host.children || [])];
         const masks = siblings.filter(item => item !== hidden && isRenderedMaskRevealMask(item));
         if (!masks.length) continue;
@@ -3442,12 +3442,65 @@ function parseRelativeSelfMutationAssignments(scriptText, trigger, root) {
     });
 }
 
-function parseSelfMutationProgram(source, trigger, root) {
+
+// 从原始消息安全回读 this.querySelector('固定选择器').style.xxx = '固定值'。
+// 先在原始兔子镜内定位目标，再按 DOM 路径映射到已渲染节点，兼容宿主给 class 自动加前缀。
+function parseRawDescendantSelfMutationAssignments(scriptText, rawTrigger, rawRoot, renderedRoot) {
+    const source = String(scriptText || '');
+    const grouped = new Map();
+    if (!source || !rawTrigger?.querySelector || !rawRoot || !renderedRoot) return [];
+
+    const remember = (selector, property, value) => {
+        const safeSelector = String(selector || '').trim();
+        if (!safeSelector || safeSelector.length > 240 || /[{};]/.test(safeSelector)) return;
+        let rawTarget = null;
+        try { rawTarget = rawTrigger.querySelector(safeSelector); } catch { return; }
+        if (!rawTarget || rawTarget === rawTrigger) return;
+        const target = resolveRenderedCounterpart(rawRoot, renderedRoot, rawTarget, '*');
+        const normalizedProperty = normalizeStylePropertyName(property);
+        const normalizedValue = decodeSafeInlineString(value).trim();
+        if (!target?.style || !renderedRoot.contains?.(target) || !normalizedProperty || !normalizedValue) return;
+        let entry = grouped.get(target);
+        if (!entry) {
+            entry = { target, assignments: new Map() };
+            grouped.set(target, entry);
+        }
+        entry.assignments.set(normalizedProperty, normalizedValue);
+    };
+
+    let match;
+    const dotAssignmentRe = /this\s*\.\s*querySelector\s*\(\s*(['"])((?:\\.|(?!\1)[\s\S]){1,240})\1\s*\)\s*\.\s*style\s*\.\s*([a-zA-Z][\w]*)\s*=\s*(['"])((?:\\.|(?!\4)[\s\S])*)\4\s*;?/g;
+    while ((match = dotAssignmentRe.exec(source))) remember(decodeSafeInlineString(match[2]), match[3], match[5]);
+
+    const bracketAssignmentRe = /this\s*\.\s*querySelector\s*\(\s*(['"])((?:\\.|(?!\1)[\s\S]){1,240})\1\s*\)\s*\.\s*style\s*\[\s*(['"])([a-zA-Z-]+)\3\s*\]\s*=\s*(['"])((?:\\.|(?!\5)[\s\S])*)\5\s*;?/g;
+    while ((match = bracketAssignmentRe.exec(source))) remember(decodeSafeInlineString(match[2]), match[4], match[6]);
+
+
+    // opacity=1 / zIndex=10 等不带引号的有限数字赋值。
+    const dotNumericAssignmentRe = /this\s*\.\s*querySelector\s*\(\s*(['"])((?:\\.|(?!\1)[\s\S]){1,240})\1\s*\)\s*\.\s*style\s*\.\s*([a-zA-Z][\w]*)\s*=\s*(-?(?:\d+(?:\.\d+)?|\.\d+))\s*;?/g;
+    while ((match = dotNumericAssignmentRe.exec(source))) remember(decodeSafeInlineString(match[2]), match[3], match[4]);
+
+    const bracketNumericAssignmentRe = /this\s*\.\s*querySelector\s*\(\s*(['"])((?:\\.|(?!\1)[\s\S]){1,240})\1\s*\)\s*\.\s*style\s*\[\s*(['"])([a-zA-Z-]+)\3\s*\]\s*=\s*(-?(?:\d+(?:\.\d+)?|\.\d+))\s*;?/g;
+    while ((match = bracketNumericAssignmentRe.exec(source))) remember(decodeSafeInlineString(match[2]), match[4], match[5]);
+
+    return [...grouped.values()].map(item => {
+        const assignments = [...item.assignments.entries()].map(([property, value]) => ({ property, value }));
+        return {
+            target: item.target,
+            assignments,
+            originalStyles: capturePseudoStyleState(item.target, new Set(assignments.map(assignment => assignment.property))),
+        };
+    });
+}
+
+function parseSelfMutationProgram(source, trigger, root, rawTrigger = null, rawRoot = null) {
     const script = String(source || '');
-    if (!script || !/this\s*\.(?:innerHTML|innerText|textContent|style|nextElementSibling|previousElementSibling|parentElement|parentNode)/i.test(script)) return null;
+    if (!script || !/this\s*\.(?:innerHTML|innerText|textContent|style|nextElementSibling|previousElementSibling|parentElement|parentNode|querySelector)/i.test(script)) return null;
 
     const activeAssignments = parseInlineStyleAssignments(script);
-    const relatedMutations = parseRelativeSelfMutationAssignments(script, trigger, root);
+    const relativeMutations = parseRelativeSelfMutationAssignments(script, trigger, root);
+    const descendantMutations = parseRawDescendantSelfMutationAssignments(script, rawTrigger, rawRoot, root);
+    const relatedMutations = [...relativeMutations, ...descendantMutations];
     let activeText;
     const textMatch = /this\s*\.\s*(innerHTML|innerText|textContent)\s*=\s*(['"])((?:\\.|(?!\2)[\s\S])*)\2\s*;?/i.exec(script);
     if (textMatch) activeText = parseSafeSelfMutationText(textMatch[1], textMatch[3]);
@@ -3485,7 +3538,7 @@ function applyRawSelfMutationEntry(entry, active) {
         for (const mutation of entry.relatedMutations || []) {
             applyPseudoStyleAssignments(mutation.target, mutation.assignments);
         }
-    } else {
+    } else if (entry.activeText != null) {
         entry.trigger.innerHTML = entry.originalHtml;
     }
     entry.trigger.setAttribute('aria-pressed', entry.active ? 'true' : 'false');
@@ -3507,10 +3560,10 @@ function installRawMessageSelfMutationRescue(root) {
     let installed = 0;
     for (const rawTrigger of rawRoot.querySelectorAll('[onclick]')) {
         const source = rawTrigger.getAttribute('onclick') || '';
-        if (!/this\s*\.(?:innerHTML|innerText|textContent|style)/i.test(source)) continue;
+        if (!/this\s*\.(?:innerHTML|innerText|textContent|style|nextElementSibling|previousElementSibling|parentElement|parentNode|querySelector)/i.test(source)) continue;
         const renderedTrigger = resolveRenderedCounterpart(rawRoot, root, rawTrigger, 'div, span, section, article, figure, aside, button');
         if (!renderedTrigger || state.entries.has(renderedTrigger)) continue;
-        const entry = parseSelfMutationProgram(source, renderedTrigger, root);
+        const entry = parseSelfMutationProgram(source, renderedTrigger, root, rawTrigger, rawRoot);
         if (!entry) continue;
 
         state.entries.set(renderedTrigger, entry);
@@ -4175,7 +4228,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 一次性交互诊断：仅在用户按下“开始一次交互诊断”后，临时监听聊天区的下一次交互。
 // 捕获一个兔子镜后只读取该条内容，并在约 650ms 后自动停止全部诊断监听。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.29-ONESHOT';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.30-ONESHOT';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
