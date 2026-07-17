@@ -4131,7 +4131,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 一次性交互诊断：仅在用户按下“开始一次交互诊断”后，临时监听聊天区的下一次交互。
 // 捕获一个兔子镜后只读取该条内容，并在约 650ms 后自动停止全部诊断监听。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.24-ONESHOT';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.26-ONESHOT';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -4888,8 +4888,7 @@ export function compactTotoBlock(block) {
         const key = `%%RHT_STYLE_${styleSlots.length}%%`;
         styleSlots.push(
             match
-                // Showdown/simpleLineBreaks 可能已把 CSS 换行写成 <br>、<br/> 或 <br />。
-                // 这些标签一旦落在“:root {”之后，酒馆 CSS 解析器会在第 2 行第 8 列报 missing '}'。
+                // 清理宿主换行转换残留；这是代码块与纯文字急救共用的样式整理底层。
                 .replace(/<br\s*\/?>/gi, '')
                 .replace(/\r\n?/g, '\n')
                 .replace(/^[ \t]+/gm, '')
@@ -5093,8 +5092,9 @@ function sanitizeLatestRawMessages(mod) {
 
         if (messageChanged) rawChanged = true;
 
-        // 兼容 0.32.14 已经把原文保存为单行、但当前 DOM 仍停留在 CSS ERROR 的旧画面。
-        if (messageChanged || renderedMessageHasCssError(index)) {
+        // 代码块急救只在代码块/裸 HTML 整理实际改动原文时重绘。
+        // CSS ERROR 检测、无变化强制重绘与对应去重，统一由“纯文字急救”开关负责。
+        if (messageChanged) {
             rerenderEntries.push({ index, message });
         }
     }

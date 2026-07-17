@@ -111,10 +111,10 @@ function recentRiskCorrection() {
 function coreOutputProtocol() {
     return String.raw`
 强制输出:
-  - 主回复正文完成后，必须在消息最底部追加一个完整兔子镜小剧场。
+  - 无论正文长短或本轮内容为何，必须先完整生成主回复正文，再在消息最底部继续生成一个完整兔子镜，不得省略或中途结束。
   - 固定外壳：<toto data-rabbit-mirror="true" style="display:block;"><details><summary>【兔子镜：中文短标题】</summary>内部 HTML</details></toto>
   - 外层 <details>/<summary> 只负责折叠整段兔子镜，summary 必须使用「【兔子镜：6到14字简体中文标题】」格式。
-  - 兔子镜必须是最后一个可见模块；禁止解释规则、禁止省略、禁止 Markdown 代码块、禁止 <pre>/<code>/HTML 注释。
+  - 兔子镜必须是最后一个可见模块；禁止解释规则、Markdown 代码块、<pre>/<code> 与 HTML 注释。
   - 禁止 script、iframe、object、embed、form、事件属性；所有标签必须闭合，最终必须以 </toto> 结束。`;
 }
 
@@ -139,16 +139,12 @@ function compactCreativeRule(enabled, formatOnly = false) {
 function complexInteractiveCore() {
     return String.raw`
 复杂交互视觉核心:
-  - 兔子镜必须像复杂精美的微型交互 HTML 媒介作品，而不是普通信息页、单列内容块、简单表单或文字摘要。
-  - 展现形式必须决定 DOM/CSS 的整体轮廓、空间结构、阅读路径、交互方式和文字寄生位置，不能只写进标题。
-  - 必须具备主视觉结构、前中后景层级、视觉锚点、材质质感、排版呼吸感与非单调阅读路径。
-  - 除最外层兔子镜折叠外，每轮内部必须至少包含一个真实可操作或可探索的交互入口；最外层 details/summary 不计入内部交互。
-  - 内部交互必须从本轮展现形式自身的结构、阅读方式、空间关系或叙事逻辑中推导，严禁直接套用固定模板。设计时，应先判断当前媒介中什么内容或意象天然适合被触发、改变或探索，再决定触发对象、变化路径与阅读结果。
-  - 交互触发后，必须使作品本体产生清晰、肉眼可见且具有叙事意义的变化；仅改变边框、颜色、阴影，或只做出“看起来可点”的外观，不算有效交互。
-  - 交互实现方案每轮必须重新设计，不得照搬前轮方案或长期重复同一种交互骨架；不得默认连续使用 details/summary，也不得机械堆叠折叠组件。只有本轮展现形式天然需要分段展开或层层阅读时，才允许使用内部 details。
-  - 必须采用安全、可稳定渲染的纯 HTML/CSS 结构；严禁使用内联 JavaScript 事件。交互必须兼容触屏与桌面端；hover 可以作为补充反馈，但不得作为唯一触发方式，核心交互须能通过点击或轻触完成；交互区域不得被装饰层遮挡。
-  - 鼓励使用 Flex/Grid、absolute 定位、SVG、linear-gradient、box-shadow、filter、clip-path、mask、transform、transition 或轻量 CSS 动效构建空间与质感。
-  - 不得只靠换标题、换色、换边框或换装饰复用同一种视觉骨架。`;
+  - 兔子镜必须是复杂精美的微型交互媒介作品，不能退化为普通信息页、单列内容块、简单表单或文字摘要。
+  - 展现形式必须直接决定 DOM/CSS 轮廓、空间结构、阅读路径、交互方式与文字寄生位置；画面须有主视觉、前中后景、视觉锚点、材质与呼吸感，不能只在标题中成立。
+  - 除最外层折叠外，每轮至少有一个从本轮媒介或叙事逻辑自然生长出的点击/轻触探索入口；触发后作品本体须发生清晰且有意义的内容、空间、构图或状态变化，仅换颜色、边框、阴影不算。
+  - 交互与视觉骨架每轮重新设计，不得换皮复用或机械堆叠内部 details；仅当媒介天然需要分层阅读时才可使用内部 details。
+  - 使用安全、可稳定渲染的 HTML/CSS；禁止内联 JavaScript。核心交互须兼容触屏，hover 只能辅助，装饰层不得遮挡热区。
+  - 可用 Flex/Grid、定位、SVG、渐变、阴影、滤镜、clip-path、mask、transform、transition 与 CSS 动画构成空间和质感。`;
 }
 
 
@@ -156,11 +152,11 @@ function innerDetailsCooldownRule() {
     const recentFlags = getRecentRiskFlags(5);
     if (!recentFlags.includes('inner_details_used')) return '';
     return String.raw`
-内部折叠交互冷却【由插件扫描最近五轮实际输出后触发】:
-  - 最近五轮内已经使用过内部 details/summary；本轮禁止在最外层兔子镜内部再次使用任何 details/summary。
-  - 最外层固定折叠不受影响。内部交互仍由当前作品本体自由设计，不指定固定替代模板。
-  - 交互必须兼容触屏与桌面端；hover 可以作为补充反馈，但不得作为唯一触发方式，核心交互须能通过点击或轻触完成。`;
+内部折叠冷却【最近五轮实际输出已使用内部 details】:
+  - 本轮禁止在最外层兔子镜内部再次使用 details/summary；最外层固定折叠不受影响。
+  - 改用当前媒介自然产生的点击或轻触交互，hover 仅作辅助。`;
 }
+
 
 function visibleChineseHardLock() {
     return String.raw`
@@ -173,17 +169,16 @@ function visibleChineseHardLock() {
 function visualSceneryInteractionLinkRule() {
     return String.raw`
 Visual Scenery 交互联动:
-  - 本轮既有的内部交互要求必须直接落实在同一 Visual Scenery 视觉画布中；交互入口、受控对象与变化结果必须属于同一画面，并由本轮展现形式自身的结构、空间关系或叙事逻辑自然产生。
-  - 触发后，画面主体、核心物件、空间层级、构图关系或内容显隐必须发生清晰且具有意义的变化。
-  - 不得把交互另行拼接成画面之外的独立按钮区、状态反馈区或说明组件；仅改变边框、颜色、阴影，或只浮现提示文字，不算完成交互。
-  - 具体实现继续遵守常驻交互规范与安全 HTML/CSS 规则。`;
+  - 交互可由整幅画面、局部景物或透明热区承担，入口、受控对象与结果必须同属这一画面，并从场景空间或叙事逻辑自然产生。
+  - 触发后须改变主体景物、空间层级、构图关系或内容显隐；不得为了提示可点击而增加独立按钮、操作面板、状态反馈区或说明组件，仅浮现提示文字不算完成。`;
 }
+
 
 function htmlSafetyCore() {
     return String.raw`
 HTML 直接渲染:
-  只输出可直接渲染的 HTML/CSS/SVG/details/summary；优先 inline style；主容器与关键子容器使用 box-sizing:border-box；长文本需自适配屏幕宽度并避免溢出。
-  所有 style 属性必须使用成对引号完整包裹，CSS 函数括号必须闭合，尤其 rgba()/hsla()/linear-gradient()/box-shadow 不得漏写右括号或引号；不得让下一个 HTML 标签被吞进 style 属性值。`;
+  只输出可直接渲染的 HTML/CSS/SVG/details/summary；普通静态局部可用 inline style，动画、响应式结构与状态联动可使用兔子镜内部的局部 <style> 和专属类名；主容器与关键子容器使用 box-sizing:border-box，长文本须自适配且不溢出。
+  所有 style 属性必须由成对引号完整包裹，CSS 函数括号必须闭合，不得让后续 HTML 标签被吞入 style 属性值。`;
 }
 
 function visualColorTruthRule() {
@@ -196,12 +191,6 @@ function stateBarIsolationRule() {
     return String.raw`
 状态栏隔离:
   正文已有的状态栏、属性栏或数据栏只用于理解剧情信息，不得复刻其字段、顺序、标签、配色、卡片结构与信息组织；兔子镜必须按本轮展现形式重新构成。`;
-}
-
-function uiAuditRule() {
-    return String.raw`
-UI 自查短版:
-  输出前检查：媒介本体是否靠 DOM/CSS 成立、是否有空间层级/视觉锚点/质感、是否存在真实可触发且触发后产生明显内容变化的内部交互、是否退化为普通纵向内容流。失败则重写。`;
 }
 
 function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive }) {
@@ -237,10 +226,6 @@ ${selectedFormats}`);
   最后一条用户输入已匹配到兔子镜点播条目；点播优先，未指定部分由插件随机补足。兔子镜不得抢占、稀释或改写主回复正文。`);
     }
 
-    if (settings.uiAudit) {
-        chunks.push(uiAuditRule());
-    }
-
     if (settings.avoidRepeat) {
         chunks.push(String.raw`
 近期视觉避让:
@@ -248,18 +233,12 @@ ${shortVisualAvoidance(combo, 3)}${recentRiskCorrection()}`);
     }
 
     if (visualSceneryMode) {
-        chunks.push(String.raw`
-Visual Scenery 模式:
-  动画必须打开即运行且肉眼可见；微尘、同色弱光和极慢小幅漂移不算。`);
         chunks.push(VISUAL_SCENERY_RULES);
         chunks.push(visualSceneryInteractionLinkRule());
     }
 
     if (tarotRulesText) chunks.push(tarotRulesText);
     chunks.push(htmlSafetyCore());
-    chunks.push(String.raw`
-最终保底:
-  先完整生成主回复正文；正文结束后必须继续生成兔子镜。先保证 <toto> 出现，再追求复杂度。不要解释规则，直接输出最终内容。`);
     chunks.push('</兔子镜自动注入>');
     return chunks.filter(Boolean).join('\n\n').trim();
 }

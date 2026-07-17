@@ -55,11 +55,6 @@ export const defaultSettings = Object.freeze({
     // 勾选后，每轮强制把 10.2.2 Visual Scenery 纳入本轮展现形式。
     forceVisualScenery: false,
 
-    // 勾选后，每轮强制内部包含真实可交互结构；关闭时不强制内部点击，仅保留外层折叠。
-    forceInteractiveMode: false,
-
-    // 勾选后，每轮额外注入 UI 自查与去模板化要求，减少相似黑框/记录卡。
-    uiAudit: true,
     // 原规则要求 1-3 个主题、1-2 个展现形式，作为固定协议，不再拆成 UI 设置。
     themesMin: 1,
     themesMax: 3,
@@ -100,6 +95,10 @@ export function getSettings() {
         delete settings.showWonderland;
     }
 
+    // 0.32.26：移除无效的强制交互开关与重复 UI 自查设置；核心交互规则仍作为常驻质量规则。
+    if (settings.forceInteractiveMode !== undefined) delete settings.forceInteractiveMode;
+    if (settings.uiAudit !== undefined) delete settings.uiAudit;
+
     settings.themesMin = Number(settings.themesMin) || defaultSettings.themesMin;
     settings.themesMax = Number(settings.themesMax) || defaultSettings.themesMax;
     settings.formatsMin = Number(settings.formatsMin) || defaultSettings.formatsMin;
@@ -110,7 +109,6 @@ export function getSettings() {
     if (settings.codeBlockRescueMode === undefined) settings.codeBlockRescueMode = defaultSettings.codeBlockRescueMode;
     if (settings.interactionRescueMode === undefined) settings.interactionRescueMode = defaultSettings.interactionRescueMode;
     if (!['classic', 'format_only'].includes(settings.samplingMode)) settings.samplingMode = defaultSettings.samplingMode;
-    if (settings.forceInteractiveMode === undefined) settings.forceInteractiveMode = defaultSettings.forceInteractiveMode;
     settings.depth = Number(settings.depth) || 0;
     return settings;
 }
