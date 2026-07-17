@@ -110,7 +110,7 @@ function recentRiskCorrection() {
 
 function coreOutputProtocol() {
     return String.raw`
-强制输出:
+最终输出契约【每轮强制】:
   - 无论正文长短或本轮内容为何，必须先完整生成主回复正文，再在消息最底部继续生成一个完整兔子镜，不得省略或中途结束。
   - 固定外壳：<toto data-rabbit-mirror="true" style="display:block;"><details><summary>【兔子镜：中文短标题】</summary>内部 HTML</details></toto>
   - 外层 <details>/<summary> 只负责折叠整段兔子镜，summary 必须使用「【兔子镜：6到14字简体中文标题】」格式。
@@ -197,7 +197,6 @@ function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualS
     const chunks = [];
     const mode = combo?.samplingMode || settings?.samplingMode || 'classic';
     chunks.push('<兔子镜自动注入>');
-    chunks.push(coreOutputProtocol());
     chunks.push(visibleChineseHardLock());
     if (mode === 'format_only') {
         chunks.push(String.raw`
@@ -239,6 +238,8 @@ ${shortVisualAvoidance(combo, 3)}${recentRiskCorrection()}`);
 
     if (tarotRulesText) chunks.push(tarotRulesText);
     chunks.push(htmlSafetyCore());
+    // 唯一的强制输出契约放在注入末尾，利用指令近因保证每轮正文后继续生成兔子镜。
+    chunks.push(coreOutputProtocol());
     chunks.push('</兔子镜自动注入>');
     return chunks.filter(Boolean).join('\n\n').trim();
 }
