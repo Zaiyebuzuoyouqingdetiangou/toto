@@ -4175,7 +4175,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 一次性交互诊断：仅在用户按下“开始一次交互诊断”后，临时监听聊天区的下一次交互。
 // 捕获一个兔子镜后只读取该条内容，并在约 650ms 后自动停止全部诊断监听。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.28-ONESHOT';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.29-ONESHOT';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -4793,11 +4793,35 @@ function replaceCssVarFunctions(value, resolver) {
     return output;
 }
 
-function expandUnsupportedCssCustomProperties(cssText) {
+function collectCssCustomPropertyValuesFromHtml(htmlText) {
+    const html = String(htmlText || '');
+    const values = new Map();
+    const collect = (cssSource) => {
+        const declarationRe = /(?:^|[;{])\s*(--[^\s:;{}]+)\s*:\s*([^;{}]*?)(?=;|})/g;
+        let match;
+        while ((match = declarationRe.exec(String(cssSource || '')))) {
+            const name = String(match[1] || '').trim();
+            const value = String(match[2] || '').trim();
+            if (name && value) values.set(name, value);
+        }
+    };
+
+    html.replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gi, (full, css = '') => {
+        collect(css);
+        return full;
+    });
+    html.replace(/\sstyle\s*=\s*(["'])([\s\S]*?)\1/gi, (full, quote, css = '') => {
+        collect(`{${css}}`);
+        return full;
+    });
+    return values;
+}
+
+function expandUnsupportedCssCustomProperties(cssText, inheritedValues = null) {
     const source = String(cssText || '');
     if (!/(?:^|[;{])\s*--[^\s:;{}]+\s*:|var\s*\(/i.test(source)) return source;
 
-    const values = new Map();
+    const values = new Map(inheritedValues instanceof Map ? inheritedValues : []);
     const declarationRe = /(^|[;{])\s*(--[^\s:;{}]+)\s*:\s*([^;{}]*?)(?=;|})/g;
     let match;
     while ((match = declarationRe.exec(source))) {
@@ -4820,7 +4844,13 @@ function expandUnsupportedCssCustomProperties(cssText) {
         const resolved = replaceCssVarFunctions(raw, (nestedName, fallback) => {
             const nested = resolveName(nestedName, nextStack);
             if (nested) return nested;
-            return fallback ? replaceCssVarFunctions(fallback, (fallbackName, nestedFallback) => resolveName(fallbackName, nextStack) || nestedFallback || 'initial') : 'initial';
+            if (fallback) {
+                return replaceCssVarFunctions(fallback, (fallbackName, nestedFallback) => {
+                    const fallbackResolved = resolveName(fallbackName, nextStack);
+                    return fallbackResolved || nestedFallback || `var(${fallbackName})`;
+                });
+            }
+            return `var(${nestedName})`;
         }).trim();
         resolvedCache.set(key, resolved);
         return resolved;
@@ -4832,8 +4862,14 @@ function expandUnsupportedCssCustomProperties(cssText) {
     repaired = replaceCssVarFunctions(repaired, (name, fallback) => {
         const resolved = resolveName(name);
         if (resolved) return resolved;
-        if (fallback) return replaceCssVarFunctions(fallback, (fallbackName, nestedFallback) => resolveName(fallbackName) || nestedFallback || 'initial');
-        return 'initial';
+        if (fallback) {
+            return replaceCssVarFunctions(fallback, (fallbackName, nestedFallback) => {
+                const fallbackResolved = resolveName(fallbackName);
+                return fallbackResolved || nestedFallback || `var(${fallbackName})`;
+            });
+        }
+        // 无法可靠解析时保留原 var()，绝不再用 initial 覆盖健康 UI 的颜色与背景。
+        return `var(${name})`;
     });
 
     return repaired;
@@ -4867,11 +4903,14 @@ function repairLikelyBareRootSelector(cssText, htmlText) {
 
 function repairPlainTextCssInHtml(htmlText) {
     const html = String(htmlText || '');
+    // CSS 变量可能定义在主容器的 inline style 中、却在局部 <style> 中被引用。
+    // 先从整条兔子镜收集变量，避免把原本可用的配色错误替换成 initial。
+    const inheritedValues = collectCssCustomPropertyValuesFromHtml(html);
     return html.replace(/<style\b([^>]*)>([\s\S]*?)<\/style>/gi, (full, attrs = '', css = '') => {
         const normalized = String(css || '')
             .replace(/<br\s*\/?>/gi, '')
             .replace(/\r\n?/g, '\n');
-        const expanded = expandUnsupportedCssCustomProperties(normalized);
+        const expanded = expandUnsupportedCssCustomProperties(normalized, inheritedValues);
         const repaired = repairLikelyBareRootSelector(expanded, html);
         return `<style${attrs}>${repaired}</style>`;
     });
@@ -5172,7 +5211,9 @@ function sanitizePlainTextRawMessages(mod) {
         let messageChanged = false;
         const renderedHasError = renderedMessageHasCssError(index);
         const decoded = decodeHtmlEntities(message.mes);
-        if (renderedHasError || needsPlainTextCssRescue(decoded)) {
+        // 纯文字急救只处理已经实际显示 CSS ERROR 的消息。
+        // 仅仅包含 CSS 变量不代表损坏；健康 UI 不得被预防性改写。
+        if (renderedHasError) {
             const cleaned = rescuePlainTextRabbitMirrorOutput(decoded);
             if (cleaned && cleaned !== message.mes) {
                 message.mes = cleaned;
@@ -5186,7 +5227,7 @@ function sanitizePlainTextRawMessages(mod) {
 
         if (typeof message?.extra?.display_text === 'string') {
             const decodedDisplayText = decodeHtmlEntities(message.extra.display_text);
-            if (renderedHasError || needsPlainTextCssRescue(decodedDisplayText)) {
+            if (renderedHasError) {
                 const cleanedDisplayText = rescuePlainTextRabbitMirrorOutput(decodedDisplayText);
                 if (cleanedDisplayText && cleanedDisplayText !== message.extra.display_text) {
                     message.extra.display_text = cleanedDisplayText;
