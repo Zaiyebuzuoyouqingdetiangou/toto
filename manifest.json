@@ -4,7 +4,7 @@
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.32.32",
+  "version": "0.32.33",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "Adds presentation-first color derivation so palette follows the selected medium, material, era, environment and light without preset color boards or dark-theme auditing."
+  "description": "Prevents duplicate RabbitMirror output by turning the startup lock into a non-output anchor and enforcing exactly one final mirror at the end of each response."
 }
