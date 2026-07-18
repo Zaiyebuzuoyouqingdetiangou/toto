@@ -1,7 +1,7 @@
 import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js';
 import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js';
 import { pickCombination } from './picker.js';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts } from './storage.js';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown } from './storage.js';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -95,9 +95,9 @@ function recentRiskCorrection() {
         lines.push('近期真实输出的媒介本体偏弱。本轮必须让 DOM/CSS 直接呈现可辨认的媒介轮廓、前中后景层级与视觉锚点，而不是把媒介名只写在标题里。');
     }
 
-    const hasWeakInteraction = flags.some(flag => ['missing_interaction', 'visual_promise_unfulfilled'].includes(flag));
+    const hasWeakInteraction = flags.some(flag => ['missing_interaction', 'fake_interaction', 'visual_promise_unfulfilled'].includes(flag));
     if (hasWeakInteraction) {
-        lines.push('近期真实输出的交互或动态实现偏弱。本轮至少加入一个内部可探索入口或状态变化结构，并让 CSS/SVG/HTML 机制真实承担效果。');
+        lines.push('近期真实输出缺少有效交互，或只有悬停、位移、变色和装饰性操作入口。本轮必须先建立可保持的状态机制，再写触发入口与受控对象；触发前后须出现不同的内容、空间、构图或状态。');
     }
 
     if ((counts.same_block_stack || 0) >= 2 || (counts.info_page_degrade || 0) >= 2 || (counts.flat_vertical_flow || 0) >= 2) {
@@ -108,6 +108,16 @@ function recentRiskCorrection() {
     return `\n真实视觉纠偏【由插件扫描实际 HTML/CSS 后触发，只给抽象方向】:\n${lines.map(x => `  - "${x}"`).join('\n')}`;
 }
 
+
+function paletteCooldownRule() {
+    const cooldown = getActivePaletteCooldown(5);
+    if (!cooldown?.active) return '';
+    return String.raw`
+配色冷却【由近期实际输出触发，剩余 ${cooldown.remaining} 轮】:
+  - 本轮主要承载面的整体明度必须改为中明度或高明度，不得延续近期的低明度底盘。
+  - 色彩仍须从本轮展现形式的材质、环境、光线与空间关系中产生，不得只把旧方案机械反相或更换强调色。
+  - 局部低明度细节可以保留，但其面积与视觉权重不得主导整体；文字、边界、阴影与强调色须随新的承载关系重新组织。`;
+}
 
 function hardStartupReserve() {
     return String.raw`
@@ -205,8 +215,8 @@ function presentationEmbodimentRule() {
   - DOM 中必须实际出现能够构成该形式的形态、比例、空间关系、层叠方式、材质结构或排版结构；不得只用标题、标签、图标和说明文字宣称它是什么。
   - 不得以通用圆角面板、卡片列表、数据仪表盘或信息框作为默认主体，再向其中填入本轮内容。
   - 当展现形式本身属于平面媒介时，其纸面、印刷面、画布、版式、纹理、边缘与承载内容可以直接构成主要视觉本体，不视为通用面板。
-  - 主背景、主要承载面、文字、边界、阴影、发光和强调色，必须配合该形式实际采用的材质、环境和光线；不得把黑灰底、浅色文字和发光标签当作默认方案。
-  - 标题和情绪词只能影响已经成立的画面本体，不能单独触发深色面板、警报界面或科技仪表盘。
+  - 主背景、主要承载面、文字、边界、阴影、发光和强调色，必须配合该形式实际采用的材质、环境和光线；不得预设固定的界面配色组合。
+  - 标题和情绪词只能影响已经成立的画面本体，不能单独触发预设的界面底盘、警报结构或科技仪表盘。
   - 动画必须让该展现形式中的主体、空间、材质或关系发生变化；交互必须作用于该形式内部真实存在的对象或结构。
   - 文字的数量、密度和排版由展现形式决定；文字媒介可以以正文和版式作为主要视觉本体。
   - 仅替换标题和正文就能直接用于其他题材的通用界面，属于不合格输出。
@@ -257,6 +267,7 @@ ${selectedFormats}`);
     chunks.push(complexInteractiveCore());
     chunks.push(innerDetailsCooldownRule());
     chunks.push(presentationEmbodimentRule());
+    chunks.push(paletteCooldownRule());
     chunks.push(visualColorTruthRule());
     chunks.push(stateBarIsolationRule());
 

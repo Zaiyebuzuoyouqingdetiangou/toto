@@ -220,14 +220,56 @@ function detectVisualPromiseWithoutMechanism(html = '', plain = '') {
 }
 
 
-function detectInteractionMissing(html = '', plain = '') {
+function hasMeaningfulStateRule(html = '', statePseudo = ':checked') {
+    const styles = [...String(html || '').matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)]
+        .map(match => match[1])
+        .join('\n');
+    if (!styles || !styles.toLowerCase().includes(statePseudo.toLowerCase())) return false;
+    const ruleRe = /([^{}]+)\{([^{}]*)\}/g;
+    let match;
+    while ((match = ruleRe.exec(styles))) {
+        const selector = String(match[1] || '');
+        if (!selector.toLowerCase().includes(statePseudo.toLowerCase())) continue;
+        const declarations = String(match[2] || '')
+            .split(';')
+            .map(part => part.trim())
+            .filter(Boolean)
+            .map(part => part.split(':')[0]?.trim().toLowerCase())
+            .filter(Boolean);
+        if (!declarations.length) continue;
+        const cosmeticOnly = declarations.every(prop => [
+            'color', 'background', 'background-color', 'background-image',
+            'border', 'border-color', 'border-width', 'border-style',
+            'box-shadow', 'text-shadow', 'outline', 'outline-color',
+            'fill', 'stroke', 'cursor', 'transition', 'transition-property',
+            'transition-duration', 'transition-timing-function',
+        ].includes(prop) || prop.startsWith('--'));
+        if (!cosmeticOnly) return true;
+    }
+    return false;
+}
+
+function detectEffectiveInteraction(html = '') {
     const text = String(html || '');
-    const innerDetails = count(/<details\b/gi, text) >= 2; // outer details + at least one internal details
-    const checkboxControl = /<input\b[^>]*type=["']?checkbox|<label\b[^>]*for=/i.test(text);
-    const cssFeedback = /:hover|:active|:checked|transition\s*:|cursor\s*:\s*pointer/i.test(text);
-    const stateWords = /展开|切换|隐藏|点击|选择|滑动|开关|tab|toggle|解锁|探索|查看/i.test(`${html || ''}\n${plain || ''}`);
-    const longEnoughToNeedInteraction = String(plain || '').length > 420;
-    return longEnoughToNeedInteraction && !(innerDetails || checkboxControl || cssFeedback || stateWords);
+    const innerDetails = count(/<details\b/gi, text) >= 2 && /<summary\b/i.test(text);
+    const hasCheckInput = /<input\b[^>]*type\s*=\s*["']?(?:checkbox|radio)\b/i.test(text);
+    const checkedRoute = hasCheckInput && hasMeaningfulStateRule(text, ':checked');
+    const targetRoute = /href\s*=\s*["']#[^"']+["']/i.test(text) && hasMeaningfulStateRule(text, ':target');
+    const popoverRoute = /\bpopovertarget\s*=|\bcommandfor\s*=/i.test(text) && /\bpopover(?:\s|=|>)/i.test(text);
+    return innerDetails || checkedRoute || targetRoute || popoverRoute;
+}
+
+function detectInteractionSignals(html = '', plain = '') {
+    const text = `${html || ''}\n${plain || ''}`;
+    return /:hover|:active|:focus|transition\s*:|cursor\s*:\s*pointer|<button\b|<label\b|点击|选择|切换|开关|解锁|探索|查看|操作|按钮/i.test(text);
+}
+
+function detectInteractionMissing(html = '') {
+    return !detectEffectiveInteraction(html);
+}
+
+function detectFakeInteraction(html = '', plain = '') {
+    return !detectEffectiveInteraction(html) && detectInteractionSignals(html, plain);
 }
 
 function detectWeakSpatialComplexity(html = '', plain = '') {
@@ -267,7 +309,8 @@ function detectRiskFlags({ root, html, plain, dom, repeated, spatialSignalCount 
     const flatVerticalFlow = detectFlatVerticalFlow(html, root);
     const repeatedUnitShape = detectRepeatedUnitShape(root, html);
     const weakSpatialComplexity = detectWeakSpatialComplexity(html, plain);
-    const interactionMissing = detectInteractionMissing(html, plain);
+    const interactionMissing = detectInteractionMissing(html);
+    const fakeInteraction = detectFakeInteraction(html, plain);
     if (sameBlockStack) flags.push('same_block_stack');
     if (sameGridCard) flags.push('same_grid_card_risk');
     if (catalogPage) flags.push('catalog_page_risk');
@@ -278,6 +321,7 @@ function detectRiskFlags({ root, html, plain, dom, repeated, spatialSignalCount 
     if (spatialSignalCount < 2 && String(plain || '').length > 520 && (sameBlockStack || sameGridCard || catalogPage || repeatedUnitShape || (repeated?.maxRepeat || 0) >= 3)) flags.push('weak_media_body');
     if (weakSpatialComplexity) flags.push('weak_spatial_complexity');
     if (interactionMissing) flags.push('missing_interaction');
+    if (fakeInteraction) flags.push('fake_interaction');
     if (detectVisualPromiseWithoutMechanism(html, plain)) flags.push('visual_promise_unfulfilled');
     return [...new Set(flags)];
 }
@@ -777,7 +821,8 @@ export function scanRabbitMirrorHtml(messageHtml, renderedToto = null) {
     if (riskFlags.includes('info_page_degrade')) structural.push('信息页降级风险');
     if (riskFlags.includes('weak_media_body')) structural.push('媒介本体偏弱风险');
     if (riskFlags.includes('weak_spatial_complexity')) structural.push('空间复杂度偏弱风险');
-    if (riskFlags.includes('missing_interaction')) structural.push('内部交互入口偏弱风险');
+    if (riskFlags.includes('missing_interaction')) structural.push('缺少有效内部交互');
+    if (riskFlags.includes('fake_interaction')) structural.push('伪交互/仅悬停装饰风险');
     if (riskFlags.includes('visual_promise_unfulfilled')) structural.push('视觉承诺未兑现风险');
     structural.push(...dom.summaryFlags);
 
@@ -788,7 +833,8 @@ export function scanRabbitMirrorHtml(messageHtml, renderedToto = null) {
         .filter(Boolean)
         .join('；');
     const skeleton = buildVisualSkeleton(html, plain, { dom, repeated, spatialSignalCount });
-    return { signature: summary.slice(0, 280), skeleton: skeleton.slice(0, 360), riskFlags };
+    const paletteFingerprint = detectPaletteFingerprint(html, renderedToto);
+    return { signature: summary.slice(0, 280), skeleton: skeleton.slice(0, 360), riskFlags, paletteFingerprint };
 }
 
 function normalizedText(value) {
@@ -853,9 +899,12 @@ async function scanLatestAssistantMessage(mod) {
     const signature = result?.signature || '';
     const skeleton = result?.skeleton || '';
     const riskFlags = Array.isArray(result?.riskFlags) ? result.riskFlags : [];
-    if (signature || skeleton || riskFlags.length) {
-        updateLatestVisualSignature(signature, skeleton, riskFlags);
-        console.debug('[RabbitMirror] visual signature:', signature, skeleton, riskFlags);
+    const paletteFingerprint = result?.paletteFingerprint && typeof result.paletteFingerprint === 'object'
+        ? result.paletteFingerprint
+        : null;
+    if (signature || skeleton || riskFlags.length || paletteFingerprint) {
+        updateLatestVisualSignature(signature, skeleton, riskFlags, paletteFingerprint);
+        console.debug('[RabbitMirror] visual signature:', signature, skeleton, riskFlags, paletteFingerprint);
     }
 }
 

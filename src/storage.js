@@ -88,6 +88,35 @@ export function getRecentPaletteFingerprints(limit = 3) {
         .slice(-Math.max(0, Number(limit) || 3));
 }
 
+function isDarkPaletteTrigger(fingerprint) {
+    if (!fingerprint || typeof fingerprint !== 'object') return false;
+    const confidence = Number(fingerprint.confidence || 0);
+    const darkAreaRatio = Number(fingerprint.darkAreaRatio || 0);
+    const averageLuminance = Number(fingerprint.averageLuminance || 255);
+    return confidence >= 0.5
+        && fingerprint.brightness === 'dark'
+        && (darkAreaRatio >= 0.55 || averageLuminance <= 105);
+}
+
+// 一次低明度主承载输出触发后续五轮冷却；冷却期内若再次命中则重新从五轮开始。
+export function getActivePaletteCooldown(rounds = 5) {
+    const cooldownRounds = Math.max(1, Number(rounds) || 5);
+    const history = readHistory();
+    for (let index = history.length - 1; index >= 0; index -= 1) {
+        const fingerprint = history[index]?.paletteFingerprint;
+        if (!isDarkPaletteTrigger(fingerprint)) continue;
+        const completedSinceTrigger = history.length - 1 - index;
+        if (completedSinceTrigger >= cooldownRounds) return { active: false, remaining: 0 };
+        return {
+            active: true,
+            remaining: cooldownRounds - completedSinceTrigger,
+            completedSinceTrigger,
+            fingerprint,
+        };
+    }
+    return { active: false, remaining: 0 };
+}
+
 export function setPendingCombo(combo) {
     try {
         if (!combo) return;
