@@ -116,7 +116,11 @@ export function getSettings() {
     if (settings.interactionRescueMode === undefined) settings.interactionRescueMode = defaultSettings.interactionRescueMode;
     if (!['classic', 'format_only'].includes(settings.samplingMode)) settings.samplingMode = defaultSettings.samplingMode;
     if (!Array.isArray(settings.memoryProviderIds)) settings.memoryProviderIds = [];
-    settings.memoryProviderIds = [...new Set(settings.memoryProviderIds.map(String).filter(Boolean))].slice(0, 12);
+    settings.memoryProviderIds = settings.memoryProviderIds.map(value => {
+        const id = String(value || '');
+        return id === 'baibai-book' ? 'global:STBaiBaiBook' : id;
+    });
+    settings.memoryProviderIds = [...new Set(settings.memoryProviderIds.filter(Boolean))].slice(0, 12);
     settings.memoryScanEnabled = !!settings.memoryScanEnabled;
     settings.memoryMaxChars = Math.max(600, Math.min(6000, Number(settings.memoryMaxChars) || defaultSettings.memoryMaxChars));
     // 0.32.43：旧用户设置也统一关闭富版式三倍加权，确保完整池等权参与随机。

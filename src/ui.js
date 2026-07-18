@@ -22,29 +22,46 @@ function renderMemoryScanResults(results) {
     const selected = new Set(settings.memoryProviderIds || []);
     const container = $('#rh_memory_scan_results');
     if (!container.length) return;
-    if (!Array.isArray(results) || !results.length) {
-        container.html('<div style="opacity:.75;font-size:12px;line-height:1.5;">未扫描到可识别的记忆插件或公开接口。未知插件可能需要单独适配。</div>');
-        return;
-    }
 
-    const rows = results.map(item => {
+    const list = Array.isArray(results) ? results : [];
+    const readable = list.filter(item => item?.readable && item?.selectedAllowed);
+    const pending = list.filter(item => !item?.readable);
+
+    const readableRows = readable.map(item => {
         const checkedAttr = selected.has(item.id) ? ' checked' : '';
-        const disabledAttr = item.selectedAllowed ? '' : ' disabled';
-        const badge = item.readable ? '可读取' : '待适配';
-        const badgeOpacity = item.readable ? '1' : '.62';
-        const testButton = item.readable
-            ? `<button class="menu_button rh-memory-test" type="button" data-provider-id="${escapeHtml(item.id)}" style="margin:6px 0 0 26px;padding:3px 8px;min-height:unset;font-size:12px;">测试读取</button>`
-            : '';
         return `<div class="rh-memory-provider" style="padding:8px 0;border-top:1px solid color-mix(in srgb, var(--SmartThemeBorderColor) 65%, transparent);">
           <label class="checkbox_label" style="align-items:flex-start;">
-            <input class="rh-memory-provider-check" type="checkbox" data-provider-id="${escapeHtml(item.id)}"${checkedAttr}${disabledAttr}>
-            <span><b>${escapeHtml(item.name)}</b> <span style="opacity:${badgeOpacity};font-size:11px;">[${badge}]</span><br><span style="opacity:.72;font-size:11px;line-height:1.45;">${escapeHtml(item.status)} · ${escapeHtml(item.source)}</span></span>
+            <input class="rh-memory-provider-check" type="checkbox" data-provider-id="${escapeHtml(item.id)}"${checkedAttr}>
+            <span><b>${escapeHtml(item.name)}</b> <span style="font-size:11px;opacity:.82;">[可读取]</span><br><span style="opacity:.7;font-size:11px;line-height:1.45;">识别来源：公开接口</span></span>
           </label>
           ${item.details ? `<div style="margin:3px 0 0 26px;opacity:.62;font-size:11px;line-height:1.4;word-break:break-word;">${escapeHtml(item.details)}</div>` : ''}
-          ${testButton}
+          <button class="menu_button rh-memory-test" type="button" data-provider-id="${escapeHtml(item.id)}" style="margin:6px 0 0 26px;padding:3px 8px;min-height:unset;font-size:12px;">测试读取</button>
         </div>`;
     }).join('');
-    container.html(rows);
+
+    const readableBlock = readableRows || '<div style="opacity:.75;font-size:12px;line-height:1.5;padding:6px 0;">未检测到当前可读取的记忆来源。</div>';
+
+    let pendingBlock = '';
+    if (pending.length) {
+        const visiblePending = pending.slice(0, 10);
+        const pendingRows = visiblePending.map(item => `<div style="padding:5px 0;border-top:1px solid color-mix(in srgb, var(--SmartThemeBorderColor) 45%, transparent);">
+          <div style="font-size:12px;"><b>${escapeHtml(item.name)}</b> <span style="opacity:.58;font-size:11px;">[待适配]</span></div>
+          <div style="opacity:.6;font-size:11px;line-height:1.4;word-break:break-word;">${escapeHtml(item.source || item.status || '')}</div>
+        </div>`).join('');
+        const omitted = pending.length > visiblePending.length
+            ? `<div style="padding-top:5px;opacity:.58;font-size:11px;">另有 ${pending.length - visiblePending.length} 个候选未展开显示。</div>`
+            : '';
+        pendingBlock = `<details class="rh-memory-pending" style="margin-top:8px;border-top:1px dashed color-mix(in srgb, var(--SmartThemeBorderColor) 60%, transparent);padding-top:7px;">
+          <summary style="cursor:pointer;font-size:12px;opacity:.72;">待适配候选（${pending.length}）</summary>
+          <div style="padding:4px 0 0 10px;">${pendingRows}${omitted}</div>
+        </details>`;
+    }
+
+    if (!readable.length && !pending.length) {
+        container.html('<div style="opacity:.75;font-size:12px;line-height:1.5;">未扫描到可识别的记忆来源。</div>');
+        return;
+    }
+    container.html(`${readableBlock}${pendingBlock}`);
 }
 
 function memoryTestMessage(result) {
@@ -69,7 +86,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[记忆扫描测试版]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.32.48 TEST</span>
+      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[记忆扫描测试版]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.32.49 TEST</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -101,7 +118,7 @@ export function initRabbitMirrorUI() {
         <label class="checkbox_label"><input id="rh_memory_scan_enabled" type="checkbox"> 启用外部记忆读取（测试）</label>
         <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.76;font-size:12px;line-height:1.45;">只有抽中 I.1「共同回忆」时才读取已勾选来源；普通轮次不追加记忆正文。读取对象始终以当前打开的聊天为准。</div>
         <button id="rh_memory_scan_now" class="menu_button" type="button">扫描记忆插件</button>
-        <div style="margin-top:6px;opacity:.68;font-size:11px;line-height:1.45;">扫描会发现公开 API、扩展设置和已加载脚本。只有已适配或公开提供 <code>getInjectedHistory</code> 的来源可勾选；未知插件只标记，不强行读取内部数据。</div>
+        <div style="margin-top:6px;opacity:.68;font-size:11px;line-height:1.45;">仅列出检测到的可读取记忆来源；请勾选需要读取的项目。待适配候选默认收起。</div>
         <div id="rh_memory_scan_results" style="margin-top:8px;"></div>
       </div>
 
@@ -196,7 +213,8 @@ export function initRabbitMirrorUI() {
         const results = scanMemoryPlugins();
         renderMemoryScanResults(results);
         const readableCount = results.filter(item => item.readable).length;
-        toastr?.info?.(`扫描完成：发现 ${results.length} 个候选，其中 ${readableCount} 个可读取。`);
+        const pendingCount = results.length - readableCount;
+        toastr?.info?.(`扫描完成：${readableCount} 个可读取${pendingCount ? `，${pendingCount} 个待适配候选已收起` : ''}。`);
     });
     $('#rh_memory_scan_results').on('change', '.rh-memory-provider-check', function () {
         const id = String($(this).data('provider-id') || '');

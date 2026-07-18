@@ -1,10 +1,16 @@
 import { extension_settings } from '../../../../extensions.js';
 
-const MEMORY_NAME_RE = /(memory|memories|memo|recall|remember|summary|summar|history|context|lore|book|horae|vector|记忆|回忆|忆|摘要|总结|往事|历史)/i;
-const MEMORY_METHOD_RE = /^(getInjectedHistory|getHistory|getMemor(?:y|ies)|readMemor(?:y|ies)|queryMemor(?:y|ies)|searchMemor(?:y|ies)|recall(?:Memory|Memories)?|getSummar(?:y|ies)|readSummar(?:y|ies))$/i;
-const EXCLUDED_GLOBAL_KEYS = new Set(['history', 'window', 'self', 'globalThis', 'document', 'location', 'navigator', 'performance', 'localStorage', 'sessionStorage', 'caches', 'frames', 'parent', 'top', 'opener', 'SillyTavern', '$', 'jQuery', 'toastr']);
-const KNOWN_BAIBAI_KEYS = ['STBaiBaiBook'];
-const MAX_SCAN_RESULTS = 40;
+const MEMORY_TRACE_RE = /(memory|memories|memo|recall|remember|summary|summar|history|lore|book|horae|vector|记忆|回忆|忆|摘要|总结|往事|历史)/i;
+const EXCLUDED_GLOBAL_KEYS = new Set([
+    'history', 'window', 'self', 'globalThis', 'document', 'location', 'navigator', 'performance',
+    'localStorage', 'sessionStorage', 'caches', 'frames', 'parent', 'top', 'opener', 'SillyTavern',
+    '$', 'jQuery', 'toastr',
+]);
+const LEGACY_PROVIDER_ALIASES = new Map([
+    ['baibai-book', 'global:STBaiBaiBook'],
+]);
+const MAX_READABLE_RESULTS = 12;
+const MAX_PENDING_RESULTS = 20;
 
 function safeGlobalValue(key) {
     try {
@@ -14,26 +20,6 @@ function safeGlobalValue(key) {
     }
 }
 
-function safeFunctionNames(value) {
-    if (!value || (typeof value !== 'object' && typeof value !== 'function')) return [];
-    const names = new Set();
-    let cursor = value;
-    let depth = 0;
-    while (cursor && depth < 3) {
-        try {
-            for (const name of Object.getOwnPropertyNames(cursor)) {
-                if (name === 'constructor') continue;
-                let member;
-                try { member = value[name]; } catch { continue; }
-                if (typeof member === 'function') names.add(name);
-            }
-        } catch {}
-        try { cursor = Object.getPrototypeOf(cursor); } catch { cursor = null; }
-        depth += 1;
-    }
-    return [...names].slice(0, 80);
-}
-
 function titleFromToken(token) {
     return String(token || '')
         .replace(/^global:/, '')
@@ -41,96 +27,158 @@ function titleFromToken(token) {
         .replace(/^script:/, '')
         .replace(/[_-]+/g, ' ')
         .replace(/\s+/g, ' ')
-        .trim() || '未命名插件';
+        .trim() || '未命名来源';
+}
+
+function normalizedToken(value) {
+    return String(value || '').toLowerCase().replace(/[^a-z0-9\u3400-\u9fff]+/g, '');
+}
+
+function safeText(value) {
+    return typeof value === 'string' && value.trim() ? value.trim() : '';
+}
+
+function readDeclaredName(api) {
+    if (!api || (typeof api !== 'object' && typeof api !== 'function')) return '';
+    const direct = [
+        api.displayName,
+        api.pluginName,
+        api.extensionName,
+        api.name,
+    ];
+    const nested = [
+        api.meta?.displayName,
+        api.meta?.name,
+        api.metadata?.displayName,
+        api.metadata?.name,
+        api.manifest?.display_name,
+        api.manifest?.displayName,
+        api.manifest?.name,
+    ];
+    for (const value of [...direct, ...nested]) {
+        const name = safeText(value);
+        if (name && !/^(object|function|api)$/i.test(name)) return name.slice(0, 100);
+    }
+    return '';
 }
 
 function collectExtensionTraces() {
     const traces = new Map();
     const add = (token, source, detail = '') => {
         const raw = String(token || '').trim();
-        if (!raw || !MEMORY_NAME_RE.test(`${raw} ${detail}`)) return;
-        const normalized = raw.toLowerCase();
-        const existing = traces.get(normalized) || { token: raw, sources: new Set(), details: new Set() };
+        const context = `${raw} ${detail}`;
+        if (!raw || !MEMORY_TRACE_RE.test(context)) return;
+        const normalized = normalizedToken(raw) || raw.toLowerCase();
+        const existing = traces.get(normalized) || {
+            id: normalized,
+            token: raw,
+            sources: new Set(),
+            details: new Set(),
+        };
         existing.sources.add(source);
-        if (detail) existing.details.add(String(detail).slice(0, 180));
+        if (detail) existing.details.add(String(detail).slice(0, 220));
         traces.set(normalized, existing);
     };
 
     try {
-        for (const key of Object.keys(extension_settings || {})) add(key, '设置记录');
+        for (const key of Object.keys(extension_settings || {})) add(key, '扩展设置');
     } catch {}
 
     try {
         for (const script of document.querySelectorAll('script[src]')) {
             const src = String(script.getAttribute('src') || '');
-            if (!MEMORY_NAME_RE.test(src)) continue;
+            if (!MEMORY_TRACE_RE.test(src)) continue;
             const parts = src.split(/[/?#]/).filter(Boolean);
             const thirdPartyIndex = parts.findIndex(x => x === 'third-party');
-            const token = thirdPartyIndex >= 0 ? parts[thirdPartyIndex + 1] : parts.at(-2) || parts.at(-1) || src;
-            add(token, '已加载脚本', src);
-        }
-    } catch {}
-
-    try {
-        for (const node of document.querySelectorAll('#extensions_settings2 [id], #extensions_settings2 [class]')) {
-            if (node.closest?.('#rabbit_mirror_theater_settings')) continue;
-            const id = String(node.id || '');
-            const cls = String(node.className || '');
-            const text = String(node.textContent || '').trim().slice(0, 120);
-            if (MEMORY_NAME_RE.test(`${id} ${cls} ${text}`)) add(id || cls || text, '扩展设置界面', text);
+            const token = thirdPartyIndex >= 0
+                ? parts[thirdPartyIndex + 1]
+                : parts.at(-2) || parts.at(-1) || src;
+            add(token, '已加载扩展', src);
         }
     } catch {}
 
     return [...traces.values()].map(item => ({
+        id: item.id,
         token: item.token,
         sources: [...item.sources],
         details: [...item.details],
     }));
 }
 
-function detectBaiBaiBook(traceTokens = []) {
-    const api = KNOWN_BAIBAI_KEYS.map(safeGlobalValue).find(Boolean);
-    const installedTrace = traceTokens.some(x => /baibai|柏宝书|st[-_ ]?baibai[-_ ]?book/i.test(x));
-    if (!api && !installedTrace) return null;
-    const readable = !!api && typeof api.getInjectedHistory === 'function';
-    return {
-        id: 'baibai-book',
-        name: '柏宝书',
-        kind: 'known-adapter',
-        readable,
-        selectedAllowed: readable,
-        status: readable ? '可读取（已适配）' : '已检测到安装痕迹，公开 API 尚未就绪',
-        source: api ? 'globalThis.STBaiBaiBook' : '扩展安装痕迹',
-        details: api ? `API v${api.apiVersion ?? '?'} · 插件 ${api.pluginVersion ?? '未知版本'}` : '请确认柏宝书已启用并完成加载',
-    };
+function findMatchingTrace(globalKey, traces) {
+    const keyNorm = normalizedToken(globalKey);
+    if (!keyNorm) return null;
+    let best = null;
+    for (const trace of traces) {
+        const tokenNorm = normalizedToken(trace.token);
+        const detailNorm = normalizedToken(trace.details.join(' '));
+        const exact = tokenNorm === keyNorm;
+        const contains = tokenNorm && (tokenNorm.includes(keyNorm) || keyNorm.includes(tokenNorm));
+        const detailHit = detailNorm.includes(keyNorm);
+        if (!exact && !contains && !detailHit) continue;
+        const score = exact ? 3 : contains ? 2 : 1;
+        if (!best || score > best.score) best = { trace, score };
+    }
+    return best?.trace || null;
 }
 
-function detectGlobalCandidates() {
+function providerDisplayName(api, globalKey, trace = null) {
+    return readDeclaredName(api)
+        || safeText(trace?.token)
+        || titleFromToken(globalKey)
+        || '已检测到的记忆来源';
+}
+
+function providerDetails(api) {
+    const parts = ['公开接口：getInjectedHistory'];
+    const apiVersion = api?.apiVersion ?? api?.version;
+    const pluginVersion = api?.pluginVersion ?? api?.extensionVersion;
+    if (apiVersion !== undefined && apiVersion !== null && String(apiVersion).trim()) {
+        parts.push(`API v${String(apiVersion).trim()}`);
+    }
+    if (pluginVersion !== undefined && pluginVersion !== null && String(pluginVersion).trim()) {
+        parts.push(`版本 ${String(pluginVersion).trim()}`);
+    }
+    return parts.join(' · ');
+}
+
+function detectReadablePublicApis(traces) {
     const results = [];
     let keys = [];
-    try { keys = Object.getOwnPropertyNames(globalThis); } catch { return results; }
-    for (const key of keys) {
-        if (KNOWN_BAIBAI_KEYS.includes(key) || EXCLUDED_GLOBAL_KEYS.has(key)) continue;
-        const value = safeGlobalValue(key);
-        if (!value || (typeof value !== 'object' && typeof value !== 'function')) continue;
-        const methods = safeFunctionNames(value);
-        const nameHit = MEMORY_NAME_RE.test(key);
-        const methodHit = methods.some(name => MEMORY_METHOD_RE.test(name));
-        if (!nameHit && !methodHit) continue;
+    try {
+        keys = Object.getOwnPropertyNames(globalThis);
+    } catch {
+        return results;
+    }
 
-        const hasInjectedHistory = typeof value.getInjectedHistory === 'function';
+    for (const key of keys) {
+        if (EXCLUDED_GLOBAL_KEYS.has(key)) continue;
+        const api = safeGlobalValue(key);
+        if (!api || (typeof api !== 'object' && typeof api !== 'function')) continue;
+
+        let reader;
+        try {
+            reader = api.getInjectedHistory;
+        } catch {
+            continue;
+        }
+        if (typeof reader !== 'function') continue;
+
+        const trace = findMatchingTrace(key, traces);
         results.push({
             id: `global:${encodeURIComponent(key)}`,
-            name: titleFromToken(key),
-            kind: hasInjectedHistory ? 'generic-public-api' : 'unknown-global',
-            readable: hasInjectedHistory,
-            selectedAllowed: hasInjectedHistory,
-            status: hasInjectedHistory ? '可试读（检测到 getInjectedHistory）' : '已检测到疑似记忆 API，暂无读取适配器',
+            name: providerDisplayName(api, key, trace),
+            kind: 'public-api',
+            readable: true,
+            selectedAllowed: true,
+            status: '可读取',
             source: `globalThis.${key}`,
-            details: methods.length ? `公开方法：${methods.filter(x => MEMORY_METHOD_RE.test(x)).slice(0, 8).join('、') || methods.slice(0, 5).join('、')}` : '未发现可识别的公开读取方法',
+            details: providerDetails(api),
+            matchedTraceId: trace?.id || '',
         });
-        if (results.length >= MAX_SCAN_RESULTS) break;
+        if (results.length >= MAX_READABLE_RESULTS) break;
     }
+
     return results;
 }
 
@@ -142,39 +190,35 @@ function dedupeScanResults(results) {
         const existing = map.get(key);
         if (!existing || (!existing.readable && item.readable)) map.set(key, item);
     }
-    return [...map.values()].slice(0, MAX_SCAN_RESULTS);
+    return [...map.values()];
 }
 
 export function scanMemoryPlugins() {
     const traces = collectExtensionTraces();
-    const traceTokens = traces.flatMap(item => [item.token, ...item.details]);
-    const results = [];
+    const readable = detectReadablePublicApis(traces);
+    const matchedTraceIds = new Set(readable.map(item => item.matchedTraceId).filter(Boolean));
+    const readableNames = readable.map(item => normalizedToken(`${item.name} ${item.source}`));
 
-    const baibai = detectBaiBaiBook(traceTokens);
-    if (baibai) results.push(baibai);
-    results.push(...detectGlobalCandidates());
-
-    const knownText = results.map(x => `${x.name} ${x.source}`).join(' ').toLowerCase();
+    const pending = [];
     for (const trace of traces) {
-        const token = trace.token;
-        if (baibai && /baibai|柏宝书|st[-_ ]?baibai[-_ ]?book/i.test(`${token} ${trace.details.join(' ')}`)) continue;
-        if (!token || knownText.includes(token.toLowerCase())) continue;
-        results.push({
-            id: `trace:${encodeURIComponent(token)}`,
-            name: titleFromToken(token),
+        if (matchedTraceIds.has(trace.id)) continue;
+        const traceNorm = normalizedToken(`${trace.token} ${trace.details.join(' ')}`);
+        if (readableNames.some(name => name && traceNorm && (name.includes(traceNorm) || traceNorm.includes(name)))) continue;
+        pending.push({
+            id: `trace:${encodeURIComponent(trace.token)}`,
+            name: titleFromToken(trace.token),
             kind: 'installation-trace',
             readable: false,
             selectedAllowed: false,
-            status: '疑似记忆插件，已发现但暂无读取适配器',
+            status: '待适配',
             source: trace.sources.join('、') || '扩展痕迹',
-            details: trace.details[0] || '扫描只确认存在，不会读取内部变量或数据库',
+            details: trace.details[0] || '未检测到可直接调用的公开读取接口',
         });
+        if (pending.length >= MAX_PENDING_RESULTS) break;
     }
 
-    return dedupeScanResults(results).sort((a, b) => {
+    return dedupeScanResults([...readable, ...pending]).sort((a, b) => {
         if (a.readable !== b.readable) return a.readable ? -1 : 1;
-        if (a.kind === 'known-adapter' && b.kind !== 'known-adapter') return -1;
-        if (b.kind === 'known-adapter' && a.kind !== 'known-adapter') return 1;
         return a.name.localeCompare(b.name, 'zh-CN');
     });
 }
@@ -192,7 +236,10 @@ function normalizeMemoryText(result) {
         if (typeof result[key] === 'string' && result[key].trim()) return result[key].trim();
     }
     if (Array.isArray(result.nodes)) {
-        const nodeText = result.nodes.map(node => node?.relativeText || node?.text || node?.summary || '').filter(Boolean).join('\n');
+        const nodeText = result.nodes
+            .map(node => node?.relativeText || node?.text || node?.summary || '')
+            .filter(Boolean)
+            .join('\n');
         if (nodeText.trim()) return nodeText.trim();
     }
     return '';
@@ -207,46 +254,48 @@ function balancedLimit(text, maxChars) {
     return `${raw.slice(0, headSize).trim()}\n……[中段为控制长度已省略]……\n${raw.slice(-tailSize).trim()}`;
 }
 
-function readBaiBaiBook() {
-    const api = safeGlobalValue('STBaiBaiBook');
-    if (!api || typeof api.getInjectedHistory !== 'function') throw new Error('柏宝书公开 API 未就绪');
-    const result = api.getInjectedHistory();
-    if (result && typeof result.then === 'function') throw new Error('当前测试版暂不支持异步 getInjectedHistory 接口');
-    let snapshot = null;
-    if (typeof api.getSnapshot === 'function') {
-        try { snapshot = api.getSnapshot(); } catch {}
-    }
-    return {
-        providerId: 'baibai-book',
-        providerName: '柏宝书',
-        text: normalizeMemoryText(result),
-        coverage: result?.coverage || snapshot?.coverage || null,
-        chat: snapshot?.chat || null,
-        revision: snapshot?.revision ?? null,
-    };
+function resolveProviderId(providerId) {
+    const raw = String(providerId || '');
+    return LEGACY_PROVIDER_ALIASES.get(raw) || raw;
 }
 
-function readGenericGlobal(providerId) {
-    const encoded = String(providerId || '').slice('global:'.length);
+function readGlobalProvider(providerId) {
+    const resolvedId = resolveProviderId(providerId);
+    const encoded = resolvedId.slice('global:'.length);
     const key = decodeURIComponent(encoded);
     const api = safeGlobalValue(key);
-    if (!api || typeof api.getInjectedHistory !== 'function') throw new Error(`${key} 的 getInjectedHistory 已不可用`);
+    if (!api || typeof api.getInjectedHistory !== 'function') {
+        throw new Error(`${titleFromToken(key)} 的公开读取接口当前不可用`);
+    }
+
     const result = api.getInjectedHistory();
-    if (result && typeof result.then === 'function') throw new Error('当前测试版暂不支持异步 getInjectedHistory 接口');
+    if (result && typeof result.then === 'function') {
+        throw new Error('当前测试版暂不支持异步 getInjectedHistory 接口');
+    }
+
+    let snapshot = null;
+    if (typeof api.getSnapshot === 'function') {
+        try {
+            snapshot = api.getSnapshot();
+        } catch {}
+    }
+
+    const traces = collectExtensionTraces();
+    const trace = findMatchingTrace(key, traces);
     return {
-        providerId,
-        providerName: titleFromToken(key),
+        providerId: resolvedId,
+        providerName: providerDisplayName(api, key, trace),
         text: normalizeMemoryText(result),
-        coverage: result?.coverage || null,
-        chat: result?.chat || null,
-        revision: result?.revision ?? null,
+        coverage: result?.coverage || snapshot?.coverage || null,
+        chat: result?.chat || snapshot?.chat || null,
+        revision: result?.revision ?? snapshot?.revision ?? null,
     };
 }
 
 export function readMemoryProvider(providerId) {
-    if (providerId === 'baibai-book') return readBaiBaiBook();
-    if (String(providerId || '').startsWith('global:')) return readGenericGlobal(providerId);
-    throw new Error('当前来源只有扫描结果，尚无可用读取适配器');
+    const resolvedId = resolveProviderId(providerId);
+    if (resolvedId.startsWith('global:')) return readGlobalProvider(resolvedId);
+    throw new Error('当前来源只有扫描记录，尚无可用读取接口');
 }
 
 export function testMemoryProvider(providerId) {
@@ -257,7 +306,7 @@ export function testMemoryProvider(providerId) {
         const text = String(result.text || '').trim();
         return {
             ok: true,
-            providerId,
+            providerId: result.providerId || providerId,
             providerName: result.providerName,
             chars: text.length,
             hasContent: !!text,
@@ -291,7 +340,8 @@ export function readSelectedMemoryForPrompt(settings, maxChars = 2200) {
     const errors = [];
     const sources = [];
 
-    for (const providerId of selected.slice(0, 6)) {
+    for (const rawProviderId of selected.slice(0, 6)) {
+        const providerId = resolveProviderId(rawProviderId);
         try {
             const result = readMemoryProvider(providerId);
             const text = String(result.text || '').trim();
