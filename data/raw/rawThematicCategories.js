@@ -120,7 +120,7 @@ export const RAW_THEMATIC_CATEGORIES = String.raw`
 
 ### ⬜ I. 本世界观/当前篇章 (Current Canon / In-Universe)
 - **I.0 本世界观/当前篇章 (Current Canon / In-Universe)**: 严格基于正文当前的时间线、人设、关系状态和已发生剧情进行拓展，不进行任何 IF 线或平行时空的跳跃。
-- **I.1 共同回忆 (Shared Memory Replay)**: 当此标签被调用时，AI 必须主动检索【世界书】、【往事书摘要】、【近期对话历史】中记录的关键事件，并以某种展现形式将其重新呈现。禁止编造未发生过的“共同经历”，所有引用必须有据可查。
+- **I.1 共同回忆 (Shared Memory Replay)**: 当此标签被调用时，优先依据当前可见对话、已启用世界书及本轮附带的【共同回忆资料】，选取一段确实发生过的共同经历并以某种展现形式重新呈现。允许改变观察角度与媒介，但不得改变事件事实、人物关系和既有结果；资料不足时不得补造过去。
 
 </ThematicCategories>
 
