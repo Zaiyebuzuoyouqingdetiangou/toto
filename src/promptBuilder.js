@@ -1,7 +1,7 @@
 import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js';
 import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js';
 import { pickCombination } from './picker.js';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown } from './storage.js';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts } from './storage.js';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -19,7 +19,7 @@ function compactItemLine(item, kind) {
     const tags = Array.isArray(item?.tags) && item.tags.length ? `；tags: ${item.tags.slice(0, 4).join(',')}` : '';
     const summary = item?.summary || item?.raw || '';
     const note = kind === 'presentation'
-        ? '；执行：让该展现形式成为首个主要内容块的视觉本体。'
+        ? '；执行：让该展现形式决定 DOM/CSS 轮廓、空间结构、交互方式和文字寄生位置。'
         : '；执行：自然融入本轮剧情气味，不要关键词拼贴。';
     return `- 【${id} ${title}】${summary ? `：${truncate(summary, 170)}` : ''}${tags}${note}`;
 }
@@ -95,9 +95,9 @@ function recentRiskCorrection() {
         lines.push('近期真实输出的媒介本体偏弱。本轮必须让 DOM/CSS 直接呈现可辨认的媒介轮廓、前中后景层级与视觉锚点，而不是把媒介名只写在标题里。');
     }
 
-    const hasWeakInteraction = flags.some(flag => ['missing_interaction', 'fake_interaction', 'visual_promise_unfulfilled'].includes(flag));
+    const hasWeakInteraction = flags.some(flag => ['missing_interaction', 'visual_promise_unfulfilled'].includes(flag));
     if (hasWeakInteraction) {
-        lines.push('近期真实输出缺少有效交互，或只有悬停、位移、变色和装饰性操作入口。本轮必须先建立可保持的状态机制，再写触发入口与受控对象；触发前后须出现不同的内容、空间、构图或状态。');
+        lines.push('近期真实输出的交互或动态实现偏弱。本轮至少加入一个内部可探索入口或状态变化结构，并让 CSS/SVG/HTML 机制真实承担效果。');
     }
 
     if ((counts.same_block_stack || 0) >= 2 || (counts.info_page_degrade || 0) >= 2 || (counts.flat_vertical_flow || 0) >= 2) {
@@ -109,35 +109,23 @@ function recentRiskCorrection() {
 }
 
 
-function paletteCooldownRule() {
-    const cooldown = getActivePaletteCooldown(5);
-    if (!cooldown?.active) return '';
+function hardStartupAnchor() {
     return String.raw`
-配色冷却【由近期实际输出触发，剩余 ${cooldown.remaining} 轮】:
-  - 本轮主要承载面的整体明度必须改为中明度或高明度，不得延续近期的低明度底盘。
-  - 色彩仍须从本轮展现形式的材质、环境、光线与空间关系中产生，不得只把旧方案机械反相或更换强调色。
-  - 局部低明度细节可以保留，但其面积与视觉权重不得主导整体；文字、边界、阴影与强调色须随新的承载关系重新组织。`;
-}
-
-function hardStartupReserve() {
-    return String.raw`
-兔子镜输出预留:
-  - 本轮必须完成“主回复正文 + 完整兔子镜”；兔子镜是本轮输出的必需组成，不是可省略的附加项。
-  - 开始正文前先为固定外壳与完整内部画面预留足够输出长度，正文不得耗尽全部可用篇幅。
-  - 若篇幅冲突，先收束正文，再减少兔子镜内部文字与次要装饰；不得省略整段兔子镜、改成纯文字占位或留下未闭合结构。`;
+兔子镜启动锚点:
+  - 本轮只在主回复正文结束后生成一次兔子镜；此处仅负责预留输出长度，不得在正文前提前输出、预演、复制或占位。
+  - 若篇幅冲突，缩短正文或兔子镜内部文案，并在末尾执行唯一输出契约。`;
 }
 
 function coreOutputProtocol() {
     return String.raw`
-兔子镜输出顺序与强制输出【每轮必需】:
-  - 先完成本轮主回复正文，以及其他规则要求输出的状态栏、变量栏、附加记录或固定模块。
-  - 上述内容全部结束后，立即继续输出完整兔子镜；兔子镜必须位于整条回复最底部，并作为最后一个可见模块。
-  - 若其他规则要求状态栏位于正文末尾，状态栏仍须放在兔子镜之前。
+最终输出契约【每轮强制且仅一次】:
+  - 全回复只能出现一个兔子镜、一个 <toto>...</toto>；不得在正文前输出副本、草稿、预览或占位。
+  - 主回复正文完成后，必须在消息最底部继续输出这唯一一个完整兔子镜；未出现完整 <toto>...</toto> 即代表本轮尚未完成。
   - 固定外壳：<toto data-rabbit-mirror="true" style="display:block;"><details><summary>【兔子镜：中文短标题】</summary>内部 HTML</details></toto>
   - 外层 <details>/<summary> 只负责折叠整段兔子镜，summary 必须使用「【兔子镜：6到14字简体中文标题】」格式。
-  - 若剩余输出长度不足，应立即收束正文并精简内部次要文字与装饰，但仍须完整输出并闭合。
+  - 兔子镜必须是最后一个可见模块；若先前已构思过兔子镜，只保留末尾最终版本，不得再次复制。若剩余输出长度不足，应缩短正文或内部文案，但仍须完整输出并闭合。
   - 禁止解释规则、Markdown 代码块、<pre>/<code> 与 HTML 注释；禁止 script、iframe、object、embed、form、事件属性。
-  - 完整输出 </toto> 后立即结束本轮回复，不得再追加状态栏、文字、标签或其他可见内容。`;
+  - 只有完整输出 </toto> 后才允许结束本轮回复。`;
 }
 
 function compactCreativeRule(enabled, formatOnly = false) {
@@ -162,8 +150,8 @@ function complexInteractiveCore() {
     return String.raw`
 复杂交互视觉核心:
   - 兔子镜必须是复杂精美的微型交互媒介作品，不能退化为普通信息页、单列内容块、简单表单或文字摘要。
-  - 画面须有主视觉、前中后景、视觉锚点、材质与呼吸感，不能退化为普通内容页、单列内容块或只靠标题成立的换皮结构。
-  - 除最外层折叠外，每轮至少有一个从本轮叙事核心、媒介本体或画面内部关系自然生长的交互变化；触发对象、操作方式与反馈结果须随内容重新设计，触发后作品本体须发生清晰且有意义的内容、空间、构图或状态变化，仅换颜色、边框、阴影不算。
+  - 展现形式必须直接决定 DOM/CSS 轮廓、空间结构、阅读路径、交互方式与文字寄生位置；画面须有主视觉、前中后景、视觉锚点、材质与呼吸感，不能只在标题中成立。
+  - 除最外层折叠外，每轮至少有一个从本轮媒介或叙事逻辑自然生长出的点击/轻触探索入口；触发后作品本体须发生清晰且有意义的内容、空间、构图或状态变化，仅换颜色、边框、阴影不算。
   - 交互与视觉骨架每轮重新设计，不得换皮复用或机械堆叠内部 details；仅当媒介天然需要分层阅读时才可使用内部 details。
   - 使用安全、可稳定渲染的 HTML/CSS；禁止内联 JavaScript。核心交互须兼容触屏，hover 只能辅助，装饰层不得遮挡热区。
   - 可用 Flex/Grid、定位、SVG、渐变、阴影、滤镜、clip-path、mask、transform、transition 与 CSS 动画构成空间和质感。`;
@@ -190,13 +178,9 @@ function visibleChineseHardLock() {
 
 function visualSceneryInteractionLinkRule() {
     return String.raw`
-Visual Scenery 动态与交互:
-  - 画面打开后必须通过持续动画完整成立，核心内容不得依赖用户操作才能出现。
-  - 每轮保留至少一个由本轮叙事核心、媒介本体或画面内部关系自然产生的交互变化，用于呈现具有意义的第二状态。
-  - 触发对象、操作方式与反馈结果应随本轮内容重新设计，不得连续复用整幅画面点击、长按、按钮、开关或其他固定交互骨架。
-  - 交互应发生在画面本体内部，不得为了提示操作增加独立按钮、操作面板或大段说明。
-  - 触发后须改变内容显隐、关系结构、空间层级、构图、材质状态或观察方式，仅改变颜色、边框或阴影不算完成。
-  - 用户未操作时，画面仍须具有完整构图、清晰主体与持续生命感。`;
+Visual Scenery 交互联动:
+  - 交互可由整幅画面、局部景物或透明热区承担，入口、受控对象与结果必须同属这一画面，并从场景空间或叙事逻辑自然产生。
+  - 触发后须改变主体景物、空间层级、构图关系或内容显隐；不得为了提示可点击而增加独立按钮、操作面板、状态反馈区或说明组件，仅浮现提示文字不算完成。`;
 }
 
 
@@ -207,27 +191,16 @@ HTML 直接渲染:
   所有 style 属性必须由成对引号完整包裹，CSS 函数括号必须闭合，不得让后续 HTML 标签被吞入 style 属性值。`;
 }
 
-function presentationEmbodimentRule() {
+function presentationFirstColorRule() {
     return String.raw`
-展现形式落地:
-  - 先确定本轮采用的具体展现形式，再编写 HTML/CSS。
-  - <details> 内首个主要内容块必须直接呈现该展现形式本体；外层容器只能负责显示边界，不能成为主要视觉。
-  - DOM 中必须实际出现能够构成该形式的形态、比例、空间关系、层叠方式、材质结构或排版结构；不得只用标题、标签、图标和说明文字宣称它是什么。
-  - 不得以通用圆角面板、卡片列表、数据仪表盘或信息框作为默认主体，再向其中填入本轮内容。
-  - 当展现形式本身属于平面媒介时，其纸面、印刷面、画布、版式、纹理、边缘与承载内容可以直接构成主要视觉本体，不视为通用面板。
-  - 主背景、主要承载面、文字、边界、阴影、发光和强调色，必须配合该形式实际采用的材质、环境和光线；不得预设固定的界面配色组合。
-  - 标题和情绪词只能影响已经成立的画面本体，不能单独触发预设的界面底盘、警报结构或科技仪表盘。
-  - 动画必须让该展现形式中的主体、空间、材质或关系发生变化；交互必须作用于该形式内部真实存在的对象或结构。
-  - 文字的数量、密度和排版由展现形式决定；文字媒介可以以正文和版式作为主要视觉本体。
-  - 仅替换标题和正文就能直接用于其他题材的通用界面，属于不合格输出。
-
-色彩组织:
-  - 配色必须形成明确的主次关系，由主要色彩关系统领画面，再用有限的辅助色与局部强调色建立层次；不得让所有颜色平均分布或同时抢眼。
-  - 主背景、承载面、正文、装饰与交互状态须通过明度、饱和度、冷暖、透明度和材质差异清晰分层，并保持相互呼应。
-  - 强调色只用于真正需要聚焦的主体、关系节点或状态变化，数量与面积必须克制。
-  - 材质色、环境光与阴影必须共同作用，不能只给不同区域机械填充不同色块。
-  - 视觉质感应由比例、留白、层次、材质、光影与色彩关系共同成立，不得依靠堆叠渐变、发光、阴影或高饱和色制造表面效果。
-  - 当展现形式适合单色、低彩度或有限色域时，可以保持克制，但仍须依靠明度、纹理、材质与空间层次形成完整视觉。`;
+展现形式优先配色:
+  - 必须先确定媒介本体、材质、时代、环境与光线，再由这些条件自然推导配色。
+  - 配色必须体现当前媒介真实存在的材质色、环境光色与使用痕迹，不得脱离本体单独设计。
+  - 主色、结构色、文字色与强调色应形成清晰层级，并共同服务于当前展现形式。
+  - 视觉高级感应通过构图、材质、空间、光影、细节与色彩关系建立，不得依赖固定底色套路。
+  - 不得将不同媒介统一套成同一种科技界面、终端界面、玻璃面板或低照度模板。
+  - 场景具有特殊光线或材质需求时，应按其真实视觉条件处理，同时保证主体、层次与材质清晰可辨。
+  - 每轮应依据本轮展现形式重新组织色彩关系，不得机械复用近期的主色结构与配色套路。`;
 }
 
 function visualColorTruthRule() {
@@ -246,7 +219,7 @@ function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualS
     const chunks = [];
     const mode = combo?.samplingMode || settings?.samplingMode || 'classic';
     chunks.push('<兔子镜自动注入>');
-    if (settings.hardStartup !== false) chunks.push(hardStartupReserve());
+    if (settings.hardStartup !== false) chunks.push(hardStartupAnchor());
     chunks.push(visibleChineseHardLock());
     if (mode === 'format_only') {
         chunks.push(String.raw`
@@ -266,8 +239,7 @@ ${selectedFormats}`);
     chunks.push(compactCreativeRule(!!settings.creativeExpansionMode, mode === 'format_only'));
     chunks.push(complexInteractiveCore());
     chunks.push(innerDetailsCooldownRule());
-    chunks.push(presentationEmbodimentRule());
-    chunks.push(paletteCooldownRule());
+    chunks.push(presentationFirstColorRule());
     chunks.push(visualColorTruthRule());
     chunks.push(stateBarIsolationRule());
 
@@ -290,7 +262,7 @@ ${shortVisualAvoidance(combo, 3)}${recentRiskCorrection()}`);
 
     if (tarotRulesText) chunks.push(tarotRulesText);
     chunks.push(htmlSafetyCore());
-    // 强制输出契约放在注入末尾，利用指令近因保证每轮正文后继续生成完整兔子镜。
+    // 唯一的强制输出契约放在注入末尾，利用指令近因保证每轮正文后继续生成兔子镜。
     chunks.push(coreOutputProtocol());
     chunks.push('</兔子镜自动注入>');
     return chunks.filter(Boolean).join('\n\n').trim();
