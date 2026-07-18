@@ -16,7 +16,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场 / Rabbit Mirror Theater</b><span class="rabbit-mirror-toto-watermark">Toto v0.32.37</span>
+      <b>兔子镜小剧场 / Rabbit Mirror Theater</b><span class="rabbit-mirror-toto-watermark">Toto v0.32.38</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -47,8 +47,8 @@ export function initRabbitMirrorUI() {
         <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.78;font-size:12px;line-height:1.45;">兔子镜变成代码块时临时开启；不建议长期勾选</div>
         <label class="checkbox_label" style="font-weight:600;"><input id="rh_interaction_rescue" type="checkbox"> 智能交互急救（实验版）</label>
         <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.78;font-size:12px;line-height:1.45;">出现无法交互时开启，可长期勾选</div>
-        <label class="checkbox_label" style="font-weight:600;"><input id="rh_plaintext_rescue" type="checkbox"> 纯文字急救</label>
-        <div class="rabbit-mirror-subnote" style="margin:-2px 0 0 26px;opacity:.78;font-size:12px;line-height:1.45;">出现无法渲染的纯文字时临时开启；不建议长期勾选</div>
+        <button id="rh_plaintext_rescue_once" class="menu_button" type="button" style="margin-top:2px;">修复单条纯文字兔子镜</button>
+        <div class="rabbit-mirror-subnote" style="margin:4px 0 0 0;opacity:.78;font-size:12px;line-height:1.45;">先点击按钮，再点击出现无法渲染或 CSS ERROR 的那一条；仅处理选中的兔子镜，不影响其他消息。</div>
         <button id="rh_interaction_diagnostic_once" class="menu_button" type="button" style="margin-top:8px;">开始一次交互诊断</button>
         <div class="rabbit-mirror-subnote" style="margin:4px 0 0 0;opacity:.78;font-size:12px;line-height:1.45;">点击后只等待你在聊天区操作一次出错的交互；捕获完成即自动停止，不持续扫描。报告可复制诊断文字、原始源码与实际渲染代码。</div>
       </div>
@@ -71,7 +71,6 @@ export function initRabbitMirrorUI() {
     $('#extensions_settings2').append(html);
 
     checked('#rh_enabled', settings.autoRabbitMirrorInjection !== false && settings.enabled !== false);
-    checked('#rh_plaintext_rescue', settings.plainTextRescueMode);
     checked('#rh_codeblock_rescue', settings.codeBlockRescueMode);
     checked('#rh_interaction_rescue', settings.interactionRescueMode);
     $('#rh_sampling_mode').val(settings.samplingMode || 'classic');
@@ -81,15 +80,12 @@ export function initRabbitMirrorUI() {
     checked('#rh_avoid_repeat', settings.avoidRepeat);
 
     $('#rh_enabled').on('change', e => updateSettings({ enabled: e.target.checked, autoRabbitMirrorInjection: e.target.checked, mode: e.target.checked ? 'integrated' : 'off' }));
-    $('#rh_plaintext_rescue').on('change', e => {
-        updateSettings({ plainTextRescueMode: e.target.checked });
-        if (e.target.checked) {
-            toastr?.info?.('已开启纯文字急救：仅对已显示 CSS ERROR 的兔子镜安全展开变量并重绘；健康 UI 不会被改写。');
-            setTimeout(() => triggerPlainTextRescue(), 80);
-            setTimeout(() => triggerPlainTextRescue(), 350);
-            setTimeout(() => triggerPlainTextRescue(), 900);
+    $('#rh_plaintext_rescue_once').on('click', () => {
+        const started = triggerPlainTextRescue();
+        if (started) {
+            toastr?.info?.('单条纯文字急救已就绪：请点击聊天中需要修复的那一条兔子镜。再次点击按钮可取消。');
         } else {
-            toastr?.success?.('已关闭纯文字急救：后续不再执行 CSS ERROR 检测、变量展开或纯文字强制重绘；已修复消息保持现状。');
+            toastr?.info?.('已取消单条纯文字急救，或当前尚未进入具体聊天。');
         }
     });
     $('#rh_codeblock_rescue').on('change', e => {
@@ -107,7 +103,7 @@ export function initRabbitMirrorUI() {
         updateSettings({ interactionRescueMode: e.target.checked });
         if (e.target.checked) {
             toastr?.info?.('已开启智能交互急救：正在识别当前兔子镜的交互类型并选择修复路径；与代码块急救同时开启时，会先恢复代码再修交互。');
-            const runRescueChain = () => (getSettings().plainTextRescueMode || getSettings().codeBlockRescueMode)
+            const runRescueChain = () => getSettings().codeBlockRescueMode
                 ? triggerCodeBlockRescue()
                 : triggerInteractionRescue();
             setTimeout(runRescueChain, 80);

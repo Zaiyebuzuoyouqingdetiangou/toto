@@ -4228,7 +4228,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 一次性交互诊断：仅在用户按下“开始一次交互诊断”后，临时监听聊天区的下一次交互。
 // 捕获一个兔子镜后只读取该条内容，并在约 650ms 后自动停止全部诊断监听。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.37-ONESHOT';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.38-ONESHOT';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -5521,8 +5521,7 @@ export function triggerInteractionDiagnosticOnce() {
 
 function runEnabledRescueChain(mod = null) {
     const host = mod || globalThis;
-    // 纯文字急救先把旧解析器不接受的 CSS 变量展开，再交给代码块急救压缩/还原 DOM。
-    if (isPlainTextRescueModeEnabled()) sanitizePlainTextRawMessages(host);
+    // 纯文字急救自 0.32.38 起为单条一次性选择，不再加入全局急救链。
     if (isCodeBlockRescueModeEnabled()) {
         sanitizeLatestRawMessages(host);
         sanitizeCodeBlocksInChatDom();
@@ -5531,11 +5530,191 @@ function runEnabledRescueChain(mod = null) {
     triggerInteractionRescue();
 }
 
-export function triggerPlainTextRescue(mod = null) {
+const PLAIN_TEXT_ONE_SHOT_TIMEOUT_MS = 30000;
+let plainTextOneShotSelectionSession = null;
+
+function notifyPlainTextRescue(message, level = 'info') {
     try {
-        runEnabledRescueChain(mod);
+        const toast = globalThis.toastr || globalThis.parent?.toastr;
+        toast?.[level]?.(message);
+    } catch {
+        // 通知失败不影响急救本身。
+    }
+}
+
+function removePlainTextSelectionStyle() {
+    try {
+        document.getElementById('rabbit-mirror-plain-text-selection-style')?.remove();
+    } catch {
+        // ignore
+    }
+}
+
+function stopPlainTextOneShotSelection() {
+    const session = plainTextOneShotSelectionSession;
+    if (!session) return false;
+    plainTextOneShotSelectionSession = null;
+    try {
+        session.chatRoot?.removeEventListener('click', session.clickHandler, true);
+        document.removeEventListener('keydown', session.keyHandler, true);
+        if (session.timer) clearTimeout(session.timer);
+        session.chatRoot?.removeAttribute('data-rabbit-mirror-plain-text-pick');
+    } catch {
+        // ignore
+    }
+    removePlainTextSelectionStyle();
+    return true;
+}
+
+function getMessageIndexFromMirrorNode(node) {
+    const messageNode = node?.closest?.('.mes, [mesid], [data-message-id], [data-messageid]');
+    if (!messageNode) return -1;
+    const raw = messageNode.getAttribute('mesid')
+        ?? messageNode.dataset?.messageId
+        ?? messageNode.dataset?.messageid;
+    const index = Number(raw);
+    return Number.isInteger(index) && index >= 0 ? index : -1;
+}
+
+function cloneMessageForTransientRerender(message) {
+    try {
+        if (typeof structuredClone === 'function') return structuredClone(message);
+    } catch {
+        // fallback below
+    }
+    try {
+        return JSON.parse(JSON.stringify(message));
+    } catch {
+        return { ...message };
+    }
+}
+
+function getSelectedMessageSource(message) {
+    const candidates = [];
+    const swipeIndex = Number.isInteger(message?.swipe_id) ? message.swipe_id : -1;
+    if (swipeIndex >= 0 && typeof message?.swipes?.[swipeIndex] === 'string') {
+        candidates.push(message.swipes[swipeIndex]);
+    }
+    if (typeof message?.mes === 'string') candidates.push(message.mes);
+    if (typeof message?.extra?.display_text === 'string') candidates.push(message.extra.display_text);
+
+    const scored = candidates
+        .map(source => {
+            const decoded = decodeHtmlEntities(source);
+            let score = decoded.length;
+            if (/<toto\b/i.test(decoded)) score += 100000;
+            if (/<style\b/i.test(decoded)) score += 50000;
+            if (/<details\b/i.test(decoded)) score += 20000;
+            return { source: decoded, score };
+        })
+        .sort((a, b) => b.score - a.score);
+    return scored[0]?.source || '';
+}
+
+function rescueSelectedPlainTextMirror(index) {
+    const mod = hostScriptModule || globalThis;
+    const chat = mod?.chat || globalThis.chat;
+    const message = Array.isArray(chat) ? chat[index] : null;
+    if (!message || message?.is_user) return false;
+
+    const source = getSelectedMessageSource(message);
+    if (!source || !/<(?:toto|details)\b/i.test(source)) return false;
+
+    const repaired = rescuePlainTextRabbitMirrorOutput(source) || source;
+    const transientMessage = cloneMessageForTransientRerender(message);
+    transientMessage.mes = repaired;
+
+    if (Array.isArray(transientMessage.swipes)) {
+        const swipeIndex = Number.isInteger(transientMessage.swipe_id)
+            ? transientMessage.swipe_id
+            : transientMessage.swipes.length - 1;
+        if (typeof transientMessage.swipes[swipeIndex] === 'string') {
+            transientMessage.swipes[swipeIndex] = repaired;
+        }
+    }
+    if (typeof transientMessage?.extra?.display_text === 'string') {
+        transientMessage.extra.display_text = repaired;
+    }
+
+    // 只用临时副本重建当前 DOM：不改 chat[].mes、不改 swipe、不调用保存。
+    const rerendered = preserveAndRerenderSanitizedMessage(mod, index, transientMessage);
+    if (rerendered) {
+        setTimeout(() => triggerInteractionRescue(), 80);
+    }
+    return rerendered;
+}
+
+function startPlainTextOneShotSelection() {
+    const chatRoot = getChatRoot();
+    if (!chatRoot) return false;
+
+    stopPlainTextOneShotSelection();
+    removePlainTextSelectionStyle();
+
+    const style = document.createElement('style');
+    style.id = 'rabbit-mirror-plain-text-selection-style';
+    style.textContent = `
+      [data-rabbit-mirror-plain-text-pick="true"] details,
+      [data-rabbit-mirror-plain-text-pick="true"] toto { cursor: crosshair !important; }
+      [data-rabbit-mirror-plain-text-pick="true"] details:hover {
+        outline: 2px solid currentColor !important;
+        outline-offset: 3px !important;
+      }
+    `;
+    document.head?.appendChild(style);
+    chatRoot.setAttribute('data-rabbit-mirror-plain-text-pick', 'true');
+
+    const session = { chatRoot, timer: null, clickHandler: null, keyHandler: null };
+    session.clickHandler = event => {
+        const mirror = event.target?.closest?.('toto[data-rabbit-mirror="true"], toto, details');
+        if (!mirror || !isInsideChatMessage(mirror)) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation?.();
+
+        const index = getMessageIndexFromMirrorNode(mirror);
+        stopPlainTextOneShotSelection();
+        if (index < 0) {
+            notifyPlainTextRescue('没有识别到这条兔子镜所属的消息，未进行修改。', 'warning');
+            return;
+        }
+
+        const repaired = rescueSelectedPlainTextMirror(index);
+        if (repaired) {
+            notifyPlainTextRescue('已仅修复选中的这一条兔子镜；其他消息与聊天原文均未改动。', 'success');
+        } else {
+            notifyPlainTextRescue('这条兔子镜没有找到可恢复的完整源码，未进行修改。', 'warning');
+        }
+    };
+    session.keyHandler = event => {
+        if (event.key !== 'Escape') return;
+        stopPlainTextOneShotSelection();
+        notifyPlainTextRescue('已取消单条纯文字急救。', 'info');
+    };
+    session.timer = setTimeout(() => {
+        if (plainTextOneShotSelectionSession !== session) return;
+        stopPlainTextOneShotSelection();
+        notifyPlainTextRescue('单条纯文字急救已超时取消。', 'info');
+    }, PLAIN_TEXT_ONE_SHOT_TIMEOUT_MS);
+
+    chatRoot.addEventListener('click', session.clickHandler, true);
+    document.addEventListener('keydown', session.keyHandler, true);
+    plainTextOneShotSelectionSession = session;
+    return true;
+}
+
+export function triggerPlainTextRescue() {
+    try {
+        if (plainTextOneShotSelectionSession) {
+            stopPlainTextOneShotSelection();
+            return false;
+        }
+        return startPlainTextOneShotSelection();
     } catch (error) {
-        console.debug('[RabbitMirror] plain text rescue trigger failed:', error);
+        console.debug('[RabbitMirror] one-shot plain text rescue failed:', error);
+        stopPlainTextOneShotSelection();
+        return false;
     }
 }
 
@@ -5549,8 +5728,7 @@ export function triggerCodeBlockRescue(mod = null) {
 
 function scheduleSanitize(mod) {
     const run = () => {
-        // 顺序固定：先修 CSS 纯文字，再拆代码块，最后修交互。
-        if (isPlainTextRescueModeEnabled()) sanitizePlainTextRawMessages(mod);
+        // 自动链只处理代码块与交互；纯文字急救必须由用户点选单条消息。
         if (isCodeBlockRescueModeEnabled()) {
             sanitizeLatestRawMessages(mod);
             sanitizeCodeBlocksInChatDom();

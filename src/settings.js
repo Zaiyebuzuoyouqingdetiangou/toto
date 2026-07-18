@@ -36,7 +36,7 @@ export const defaultSettings = Object.freeze({
     cooldownRounds: 10,
     // 增强版式多样性：随机时更偏向带界面结构/视觉锚点的展现形式，减少纯文字类连续出现。
     richFormatBias: true,
-    // 纯文字急救：当 CSS 解析失败导致兔子镜退化成 CSS ERROR / 纯文字时，展开不兼容的 CSS 变量并即时重绘。
+    // 旧版纯文字急救全局开关仅用于迁移；0.32.38 起改为单条一次性按钮，不再持续启用。
     plainTextRescueMode: false,
     // 代码块急救模式：仅在兔子镜显示成代码块时临时开启。默认关闭，避免平时影响 UI 发挥。
     codeBlockRescueMode: false,
@@ -105,7 +105,8 @@ export function getSettings() {
     settings.formatsMax = Number(settings.formatsMax) || defaultSettings.formatsMax;
     settings.cooldownRounds = Math.max(1, Number(settings.cooldownRounds) || defaultSettings.cooldownRounds);
     if (settings.autoRabbitMirrorInjection === undefined) settings.autoRabbitMirrorInjection = settings.enabled !== false;
-    if (settings.plainTextRescueMode === undefined) settings.plainTextRescueMode = defaultSettings.plainTextRescueMode;
+    // 0.32.38：纯文字急救改为单条一次性选择，不允许旧版全局开关继续扫描。
+    settings.plainTextRescueMode = false;
     if (settings.codeBlockRescueMode === undefined) settings.codeBlockRescueMode = defaultSettings.codeBlockRescueMode;
     if (settings.interactionRescueMode === undefined) settings.interactionRescueMode = defaultSettings.interactionRescueMode;
     if (!['classic', 'format_only'].includes(settings.samplingMode)) settings.samplingMode = defaultSettings.samplingMode;
