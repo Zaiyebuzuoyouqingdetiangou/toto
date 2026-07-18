@@ -1,3 +1,13 @@
+## 0.32.56 TEST 智能交互生成时序隔离
+
+- 基于 0.32.55 TEST，完整保留原版推荐正则、CSS 注释剥离、类名状态程序、CSS 声明保全、折叠设置页、共同回忆资料来源试作及全部既有功能。
+- 智能交互急救新增生成状态边界：从 `GENERATION_AFTER_COMMANDS / GENERATION_STARTED / STREAM_TOKEN_RECEIVED` 起暂停自动交互处理，只在 `GENERATION_STOPPED / GENERATION_ENDED` 后对已稳定渲染的兔子镜执行。
+- `MESSAGE_RECEIVED` 阶段不再启动智能交互急救；等待 `CHARACTER_MESSAGE_RENDERED` 或生成结束事件，避免与 Reasoning、显示正则及消息最终渲染发生时序竞争。
+- 移除对聊天正文的常驻 `MutationObserver` 扫描；若初始化时聊天根节点尚未挂载，仅用一次性观察器等待 `#chat` 出现，随后立即断开。RabbitMirror 自己追加 style、改写 ID 或节点的动作不再反向触发新一轮自动急救。
+- 生成结束后保留多次有界延迟扫描，以兼容宿主较晚挂载的样式和交互节点；新调度会取消旧批次，不形成无限扫描回路。
+- 损坏 SVG data URI 保全也被限制到生成结束后的稳定阶段。
+- 不修改 Prompt、不增加生成 token、不改配色、审美、抽选池、共同回忆逻辑、聊天原文或推荐正则。
+
 ## 0.32.55 TEST 推荐正则原版恢复
 
 - 基于 0.32.54 TEST，完整保留 CSS 注释剥离急救、类名状态程序、CSS 声明级保全、折叠设置页、共同回忆资料来源试作及全部既有功能。

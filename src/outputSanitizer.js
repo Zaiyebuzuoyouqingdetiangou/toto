@@ -3,6 +3,14 @@ import { getSettings } from './settings.js';
 // Cached SillyTavern script module. In module builds, chat is not guaranteed to be exposed on globalThis.
 let hostScriptModule = null;
 
+// 0.32.56: 智能交互急救只在生成结束后的稳定阶段运行。
+// 生成中绝不修改当前消息 DOM，避免与 SillyTavern 的 Reasoning/显示正则刷新产生时序竞争。
+const INTERACTION_POST_GENERATION_DELAYS = Object.freeze([160, 700, 1600]);
+const INTERACTION_STABLE_EVENT_DELAYS = Object.freeze([180, 760, 1700]);
+let interactionGenerationActive = false;
+let interactionScheduleToken = 0;
+const interactionScheduleTimers = new Set();
+
 const TOTO_BLOCK_RE = /<toto\b[\s\S]*?<\/toto>/gi;
 const TOTO_BLOCK_SINGLE_RE = /<toto\b[\s\S]*?<\/toto>/i;
 const FENCED_BLOCK_RE = /```(?:html|HTML|xml|XML)?\s*\n?([\s\S]*?)\n?```/gi;
@@ -4601,7 +4609,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 一次性交互诊断：仅在用户按下“开始一次交互诊断”后，临时监听聊天区的下一次交互。
 // 捕获一个兔子镜后只读取该条内容，并在约 650ms 后自动停止全部诊断监听。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.55-TEST-ONESHOT';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.56-TEST-ONESHOT';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -6242,16 +6250,89 @@ function sanitizeCodeBlocksInChatDom() {
     }
 }
 
-export function triggerInteractionRescue() {
+function readGenerationBoolean(source) {
+    if (!source) return false;
+    for (const key of ['is_send_press', 'isGenerating', 'is_generation_active']) {
+        try {
+            if (source[key] === true) return true;
+        } catch {
+            // Ignore inaccessible host flags.
+        }
+    }
+    return false;
+}
+
+function isInteractionGenerationInProgress(mod = null) {
+    if (interactionGenerationActive) return true;
+    if (readGenerationBoolean(mod || hostScriptModule)) return true;
+    try {
+        if (readGenerationBoolean(globalThis.SillyTavern?.getContext?.())) return true;
+    } catch {
+        // Context is optional; event tracking remains the primary source of truth.
+    }
+    return readGenerationBoolean(globalThis);
+}
+
+function clearScheduledInteractionRescue() {
+    interactionScheduleToken += 1;
+    for (const timer of interactionScheduleTimers) clearTimeout(timer);
+    interactionScheduleTimers.clear();
+}
+
+function runInteractionRescueWhenStable(mod = null) {
+    if (isInteractionGenerationInProgress(mod)) {
+        return false;
+    }
+
     try {
         // data URI 保全急救使用临时消息副本重建当前 DOM，不改写或保存聊天原文。
-        // 只在智能交互急救开启时处理明确会截断 inline style 的损坏 SVG data URI。
-        rescueRecentDamagedDataUriMessages(hostScriptModule || globalThis);
+        // 只在智能交互急救开启且生成已结束时处理明确会截断 inline style 的损坏 SVG data URI。
+        rescueRecentDamagedDataUriMessages(mod || hostScriptModule || globalThis);
         // 已经修复过的兔子镜会被会话记忆继续维护；关闭开关只停止处理新消息。
         scopeRabbitMirrorInteractionsInChatDom();
+        return true;
     } catch (error) {
         console.debug('[RabbitMirror] interaction rescue trigger failed:', error);
+        return false;
     }
+}
+
+function scheduleStableInteractionRescue(mod = null, delays = INTERACTION_STABLE_EVENT_DELAYS) {
+    if (isInteractionGenerationInProgress(mod)) {
+        clearScheduledInteractionRescue();
+        return false;
+    }
+
+    clearScheduledInteractionRescue();
+    const token = interactionScheduleToken;
+    for (const rawDelay of delays) {
+        const delay = Math.max(0, Number(rawDelay) || 0);
+        const timer = setTimeout(() => {
+            interactionScheduleTimers.delete(timer);
+            if (token !== interactionScheduleToken) return;
+            if (isInteractionGenerationInProgress(mod)) {
+                clearScheduledInteractionRescue();
+                return;
+            }
+            runInteractionRescueWhenStable(mod);
+        }, delay);
+        interactionScheduleTimers.add(timer);
+    }
+    return true;
+}
+
+function markInteractionGenerationStarted() {
+    interactionGenerationActive = true;
+    clearScheduledInteractionRescue();
+}
+
+function markInteractionGenerationEnded(mod = null) {
+    interactionGenerationActive = false;
+    scheduleStableInteractionRescue(mod, INTERACTION_POST_GENERATION_DELAYS);
+}
+
+export function triggerInteractionRescue() {
+    return runInteractionRescueWhenStable(hostScriptModule || globalThis);
 }
 
 export function triggerInteractionDiagnosticOnce() {
@@ -6484,21 +6565,41 @@ export function triggerCodeBlockRescue(mod = null) {
     }
 }
 
-function scheduleSanitize(mod) {
-    const run = () => {
-        // 自动链只处理代码块与交互；纯文字急救必须由用户点选单条消息。
-        if (isCodeBlockRescueModeEnabled()) {
-            sanitizeLatestRawMessages(mod);
-            sanitizeCodeBlocksInChatDom();
-            sanitizeRenderedRabbitMirrorDetailsDom();
-        }
-        triggerInteractionRescue();
-    };
+function runCodeBlockRescuePass(mod) {
+    if (!isCodeBlockRescueModeEnabled()) return;
+    sanitizeLatestRawMessages(mod);
+    sanitizeCodeBlocksInChatDom();
+    sanitizeRenderedRabbitMirrorDetailsDom();
+}
+
+function scheduleCodeBlockRescue(mod) {
+    if (!isCodeBlockRescueModeEnabled()) return;
+    const run = () => runCodeBlockRescuePass(mod);
     setTimeout(run, 80);
     setTimeout(run, 350);
     setTimeout(run, 900);
     setTimeout(run, 1800);
     setTimeout(run, 3200);
+}
+
+function scheduleStableRescueChain(mod, interactionDelays = INTERACTION_STABLE_EVENT_DELAYS) {
+    // 代码块急救沿用原有按开关多轮整理；智能交互急救改为独立的生成后稳定调度。
+    scheduleCodeBlockRescue(mod);
+    scheduleStableInteractionRescue(mod, interactionDelays);
+}
+
+function installChatRootReadyObserver(mod) {
+    if (typeof MutationObserver === 'undefined' || typeof document === 'undefined' || !document.body) return;
+    if (getChatRoot()) return;
+
+    // 只负责等待聊天根节点首次挂载；找到后立即断开。
+    // 不再持续监听聊天正文，避免流式 token 与 RabbitMirror 自身 style/节点修改反复触发急救。
+    const observer = new MutationObserver(() => {
+        if (!getChatRoot()) return;
+        observer.disconnect();
+        scheduleStableRescueChain(mod);
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
 }
 
 export async function initOutputSanitizer() {
@@ -6508,33 +6609,46 @@ export async function initOutputSanitizer() {
         const eventSource = mod?.eventSource;
         const eventTypes = mod?.event_types || {};
         if (eventSource?.on) {
-            const events = [
-                eventTypes.MESSAGE_RECEIVED,
+            const generationStartEvents = [
+                eventTypes.GENERATION_AFTER_COMMANDS,
+                eventTypes.GENERATION_STARTED,
+                eventTypes.STREAM_TOKEN_RECEIVED,
+            ].filter(Boolean);
+            for (const eventName of generationStartEvents) {
+                eventSource.on(eventName, () => markInteractionGenerationStarted());
+            }
+
+            const generationEndEvents = [
+                eventTypes.GENERATION_STOPPED,
                 eventTypes.GENERATION_ENDED,
+            ].filter(Boolean);
+            for (const eventName of generationEndEvents) {
+                eventSource.on(eventName, () => {
+                    scheduleCodeBlockRescue(mod);
+                    markInteractionGenerationEnded(mod);
+                });
+            }
+
+            // MESSAGE_RECEIVED 发生在消息入库但尚未完成渲染时，只允许代码块急救排队；
+            // 智能交互急救等待 CHARACTER_MESSAGE_RENDERED / GENERATION_ENDED。
+            if (eventTypes.MESSAGE_RECEIVED) {
+                eventSource.on(eventTypes.MESSAGE_RECEIVED, () => scheduleCodeBlockRescue(mod));
+            }
+
+            const stableEvents = [
+                eventTypes.CHARACTER_MESSAGE_RENDERED,
                 eventTypes.CHAT_CHANGED,
                 eventTypes.MESSAGE_SWIPED,
                 eventTypes.MESSAGE_UPDATED,
+                eventTypes.MESSAGE_EDITED,
             ].filter(Boolean);
-            for (const eventName of events) eventSource.on(eventName, () => scheduleSanitize(mod));
-        }
-
-        // 只修聊天消息，但监听要更稳：如果初始化时 #chat 还没挂载，就监听 body 等它出现。
-        if (typeof MutationObserver !== 'undefined') {
-            const chatRoot = getChatRoot();
-            if (chatRoot) {
-                const observer = new MutationObserver(() => scheduleSanitize(mod));
-                observer.observe(chatRoot, { childList: true, subtree: true });
-            } else if (typeof document !== 'undefined' && document.body) {
-                const observer = new MutationObserver((mutations) => {
-                    if (getChatRoot() || mutations.some(m => [...m.addedNodes].some(n => n?.querySelector?.('#chat, #chat_block, .mes, .mes_text')))) {
-                        scheduleSanitize(mod);
-                    }
-                });
-                observer.observe(document.body, { childList: true, subtree: true });
+            for (const eventName of stableEvents) {
+                eventSource.on(eventName, () => scheduleStableRescueChain(mod));
             }
         }
 
-        scheduleSanitize(mod);
+        installChatRootReadyObserver(mod);
+        scheduleStableRescueChain(mod);
         console.debug('[RabbitMirror] output sanitizer initialized');
     } catch (error) {
         console.debug('[RabbitMirror] output sanitizer disabled:', error);
