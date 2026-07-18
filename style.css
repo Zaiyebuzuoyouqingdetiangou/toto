@@ -49,7 +49,7 @@ toto[data-rabbit-mirror="true"] summary {
     min-width: 0;
 }
 
-/* 0.32.51 TEST：设置项分组折叠，减少手机端纵向占用。 */
+/* 0.32.52 TEST：沿用设置项分组折叠；新增 CSS 声明级保全急救。 */
 .rabbit-mirror-settings .rabbit-mirror-primary-toggle {
     padding: 2px 2px 8px;
 }

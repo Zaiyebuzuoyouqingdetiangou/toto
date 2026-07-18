@@ -5420,6 +5420,121 @@ function repairLikelyBareRootSelector(cssText, htmlText) {
     return css;
 }
 
+// CSS 声明级保全：模型偶尔把 filter() 错塞进 transform 值中，
+// 例如 transform: scale(1.1) filter(blur(4px));。
+// 某些宿主 CSS 处理器会因此放弃整份样式。这里只修复这一种可明确还原的误写；
+// 若 filter( 外层括号本身无法闭合，则仅丢弃该条 transform 声明，保住其余 CSS/HTML。
+function splitWrappedFilterFromTransformValue(rawValue) {
+    const source = String(rawValue || '');
+    const pieces = [];
+    const filters = [];
+    let cursor = 0;
+    let index = 0;
+    let depth = 0;
+    let quote = '';
+    let escaped = false;
+    let malformed = false;
+
+    while (index < source.length) {
+        const char = source[index];
+        if (quote) {
+            if (escaped) escaped = false;
+            else if (char === '\\') escaped = true;
+            else if (char === quote) quote = '';
+            index += 1;
+            continue;
+        }
+        if (char === '"' || char === "'") {
+            quote = char;
+            index += 1;
+            continue;
+        }
+        if (char === '(') {
+            depth += 1;
+            index += 1;
+            continue;
+        }
+        if (char === ')') {
+            depth = Math.max(0, depth - 1);
+            index += 1;
+            continue;
+        }
+
+        if (depth === 0 && /[a-zA-Z_-]/.test(char)) {
+            const tokenMatch = /^filter\s*\(/i.exec(source.slice(index));
+            const previous = index > 0 ? source[index - 1] : '';
+            if (tokenMatch && !/[a-zA-Z0-9_-]/.test(previous)) {
+                const openIndex = index + tokenMatch[0].lastIndexOf('(');
+                let scan = openIndex + 1;
+                let filterDepth = 1;
+                let filterQuote = '';
+                let filterEscaped = false;
+                while (scan < source.length && filterDepth > 0) {
+                    const scanChar = source[scan];
+                    if (filterQuote) {
+                        if (filterEscaped) filterEscaped = false;
+                        else if (scanChar === '\\') filterEscaped = true;
+                        else if (scanChar === filterQuote) filterQuote = '';
+                    } else if (scanChar === '"' || scanChar === "'") {
+                        filterQuote = scanChar;
+                    } else if (scanChar === '(') {
+                        filterDepth += 1;
+                    } else if (scanChar === ')') {
+                        filterDepth -= 1;
+                    }
+                    scan += 1;
+                }
+
+                if (filterDepth !== 0) {
+                    malformed = true;
+                    break;
+                }
+
+                const closeIndex = scan - 1;
+                const filterValue = source.slice(openIndex + 1, closeIndex).trim();
+                if (!filterValue || /[;{}]/.test(filterValue)) {
+                    malformed = true;
+                    break;
+                }
+
+                pieces.push(source.slice(cursor, index));
+                filters.push(filterValue);
+                cursor = closeIndex + 1;
+                index = cursor;
+                continue;
+            }
+        }
+        index += 1;
+    }
+
+    if (malformed) return { changed: true, malformed: true, transformValue: '', filterValue: '' };
+    if (!filters.length) return { changed: false, malformed: false, transformValue: source, filterValue: '' };
+
+    pieces.push(source.slice(cursor));
+    const transformValue = pieces.join(' ').replace(/\s{2,}/g, ' ').trim();
+    const filterValue = filters.join(' ').replace(/\s{2,}/g, ' ').trim();
+    return { changed: true, malformed: false, transformValue, filterValue };
+}
+
+function repairMalformedCssDeclarations(cssText) {
+    return String(cssText || '').replace(
+        /(^|[;{])(\s*)transform\s*:\s*([^;{}]+)(;|(?=}))/gi,
+        (full, boundary, spacing, rawValue, terminator) => {
+            const important = /\s*!important\s*$/i.test(rawValue);
+            const value = String(rawValue || '').replace(/\s*!important\s*$/i, '').trim();
+            const split = splitWrappedFilterFromTransformValue(value);
+            if (!split.changed) return full;
+            if (split.malformed) return `${boundary}${spacing}`;
+
+            const priority = important ? ' !important' : '';
+            const declarations = [];
+            if (split.transformValue) declarations.push(`transform: ${split.transformValue}${priority}`);
+            if (split.filterValue) declarations.push(`filter: ${split.filterValue}${priority}`);
+            return `${boundary}${spacing}${declarations.join(';')}${terminator === ';' ? ';' : ''}`;
+        },
+    );
+}
+
 function repairPlainTextCssInHtml(htmlText) {
     const html = String(htmlText || '');
     // CSS 变量可能定义在主容器的 inline style 中、却在局部 <style> 中被引用。
@@ -5429,7 +5544,8 @@ function repairPlainTextCssInHtml(htmlText) {
         const normalized = String(css || '')
             .replace(/<br\s*\/?>/gi, '')
             .replace(/\r\n?/g, '\n');
-        const expanded = expandUnsupportedCssCustomProperties(normalized, inheritedValues);
+        const declarationRepaired = repairMalformedCssDeclarations(normalized);
+        const expanded = expandUnsupportedCssCustomProperties(declarationRepaired, inheritedValues);
         const repaired = repairLikelyBareRootSelector(expanded, html);
         return `<style${attrs}>${repaired}</style>`;
     });
@@ -5488,17 +5604,19 @@ export function compactTotoBlock(block) {
     // 1. 保护 <style>...</style>，避免 CSS 文本被误插入 <br>。
     html = html.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, (match) => {
         const key = `%%RHT_STYLE_${styleSlots.length}%%`;
-        styleSlots.push(
-            match
-                // 清理宿主换行转换残留；这是代码块与纯文字急救共用的样式整理底层。
-                .replace(/<br\s*\/?>/gi, '')
-                .replace(/\r\n?/g, '\n')
-                .replace(/^[ \t]+/gm, '')
-                .replace(/[ \t]+$/gm, '')
-                .replace(/\n+/g, '')
-                .replace(/>\s+</g, '><')
-                .trim(),
-        );
+        const compactedStyle = match
+            // 清理宿主换行转换残留；这是代码块与纯文字急救共用的样式整理底层。
+            .replace(/<br\s*\/?>/gi, '')
+            .replace(/\r\n?/g, '\n')
+            .replace(/^[ \t]+/gm, '')
+            .replace(/[ \t]+$/gm, '')
+            .replace(/\n+/g, '')
+            .replace(/>\s+</g, '><')
+            .trim();
+        styleSlots.push(compactedStyle.replace(
+            /(<style\b[^>]*>)([\s\S]*?)(<\/style>)/i,
+            (full, openTag, css, closeTag) => `${openTag}${repairMalformedCssDeclarations(css)}${closeTag}`,
+        ));
         return key;
     });
 
