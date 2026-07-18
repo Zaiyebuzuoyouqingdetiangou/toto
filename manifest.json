@@ -4,7 +4,7 @@
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.32.48-test.1",
+  "version": "0.32.49-test.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "TEST build: scans loaded memory extensions and public APIs, allows selecting readable providers, and injects memory only when I.1 Shared Memory Replay is selected. Retains all 0.32.47 behavior."
+  "description": "TEST build: narrows memory-source scanning to callable public readers, keeps pending candidates collapsed, and injects selected memory only when I.1 Shared Memory Replay is selected. Retains all 0.32.47 behavior."
 }
