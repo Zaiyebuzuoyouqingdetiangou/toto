@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（CSS 声明保全测试版）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（类名状态与 CSS 注释保全测试版）",
   "loading_order": 99,
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.32.52-test.1",
+  "version": "0.32.53-test.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "TEST build: adds a declaration-level CSS preservation rescue for malformed transform values containing filter(...), while preserving the 0.32.51 collapsible settings UI, shared-memory-source preview, prompt rules, and all existing rescues."
+  "description": "TEST build: restores safe document.getElementById(...).className state interactions after onclick removal and repairs Markdown-corrupted CSS comment boundaries in the current rendered DOM, while preserving the 0.32.52 CSS declaration rescue, prompt rules, source pools, and all existing features."
 }

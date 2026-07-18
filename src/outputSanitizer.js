@@ -623,8 +623,11 @@ const INLINE_PSEUDO_RESCUE_ATTR = 'data-rabbit-mirror-inline-pseudo-rescue';
 const HINTED_PSEUDO_RESCUE_ATTR = 'data-rabbit-mirror-hinted-pseudo-rescue';
 const CHANGE_PSEUDO_RESCUE_ATTR = 'data-rabbit-mirror-change-pseudo-rescue';
 const DIRECT_ID_CLICK_RESCUE_ATTR = 'data-rabbit-mirror-direct-id-click-rescue';
+const DIRECT_ID_CLASS_STATE_RESCUE_ATTR = 'data-rabbit-mirror-direct-id-class-state-rescue';
+const MARKDOWN_CSS_COMMENT_RESCUE_ATTR = 'data-rabbit-mirror-markdown-css-comment-rescue';
 const PSEUDO_ACTIVE_ATTR = 'data-rm-pseudo-active';
 const pseudoInteractionStates = new WeakMap();
+const directIdClassStateStates = new WeakMap();
 
 // 统一可逆状态底座：第一次接管某个元素时，把原始内联样式写入 data 属性并保存在 WeakMap。
 // 即使宿主随后克隆当前 DOM 或急救器再次扫描，也不会把“交互后状态”误记为新的初始状态。
@@ -3401,6 +3404,72 @@ function decodeSafeInlineString(value) {
         .replace(/\\(['"\\])/g, '$1');
 }
 
+function getSafeClassTokens(value) {
+    return String(value || '')
+        .split(/\s+/)
+        .map(token => token.trim())
+        .filter(token => /^[a-zA-Z_][\w-]*$/.test(token));
+}
+
+function inferRenderedClassPrefix(target, rawTokens, root) {
+    const currentTokens = [...(target?.classList || [])];
+    const scores = new Map();
+    for (const rawToken of rawTokens || []) {
+        for (const currentToken of currentTokens) {
+            if (currentToken === rawToken) scores.set('', (scores.get('') || 0) + 3);
+            else if (currentToken.endsWith(rawToken)) {
+                const prefix = currentToken.slice(0, -rawToken.length);
+                if (/^[a-zA-Z0-9_-]+$/.test(prefix)) scores.set(prefix, (scores.get(prefix) || 0) + 2);
+            }
+        }
+    }
+
+    const ranked = [...scores.entries()].sort((a, b) => b[1] - a[1]);
+    if (ranked.length) return ranked[0][0];
+
+    const cssText = [...(root?.querySelectorAll?.('style') || [])]
+        .map(style => style.textContent || '')
+        .join('\n');
+    if ((rawTokens || []).some(token => new RegExp(`\\.custom-${escapeRegExp(token)}(?![\\w-])`).test(cssText))) {
+        return 'custom-';
+    }
+    return '';
+}
+
+function buildDirectIdClassStateAction(target, rawClassValue, root) {
+    const rawTokens = getSafeClassTokens(decodeSafeInlineString(rawClassValue));
+    if (!target?.classList || !rawTokens.length) return null;
+    const prefix = inferRenderedClassPrefix(target, rawTokens, root);
+    const classes = [...new Set(rawTokens.map(token => {
+        if (target.classList.contains(token)) return token;
+        if (prefix && target.classList.contains(`${prefix}${token}`)) return `${prefix}${token}`;
+        return `${prefix}${token}`;
+    }))];
+    return classes.length ? { type: 'class-state', target, classes } : null;
+}
+
+function applyDirectIdClassState(action) {
+    const target = action?.target;
+    if (!target?.classList || !Array.isArray(action.classes)) return;
+
+    let state = directIdClassStateStates.get(target);
+    if (!state) {
+        state = {
+            baseline: new Set([...target.classList]),
+            applied: new Set(),
+        };
+        directIdClassStateStates.set(target, state);
+    }
+
+    for (const className of state.applied) {
+        if (!state.baseline.has(className)) target.classList.remove(className);
+    }
+    for (const className of state.baseline) target.classList.add(className);
+    for (const className of action.classes) target.classList.add(className);
+
+    state.applied = new Set(action.classes.filter(className => !state.baseline.has(className)));
+}
+
 function collectDirectIdClickAssignments(scriptText, root) {
     const source = String(scriptText || '');
     if (!source || !/document\s*\.\s*getElementById\s*\(/i.test(source)) return null;
@@ -3440,6 +3509,16 @@ function collectDirectIdClickAssignments(scriptText, root) {
         addMatch(match, { type: 'text', target, value });
     }
 
+    // document.getElementById('id').className = 'base active';
+    // 只接受固定字符串，并把酒馆自动加入的 custom- 前缀映射回当前安全 DOM。
+    const classNameRe = /document\s*\.\s*getElementById\s*\(\s*(['"])([a-zA-Z_][\w:.-]*)\1\s*\)\s*\.\s*className\s*=\s*(['"])((?:\\.|(?!\3)[\s\S])*)\3\s*;?/g;
+    while ((match = classNameRe.exec(source))) {
+        const target = resolveScopedPseudoId(root, match[2]);
+        const action = buildDirectIdClassStateAction(target, match[4], root);
+        if (!action) return null;
+        addMatch(match, action);
+    }
+
     if (!matches.length) return null;
     matches.sort((a, b) => a.start - b.start);
 
@@ -3464,6 +3543,8 @@ function applyDirectIdClickAssignments(actions) {
             action.target.style?.setProperty?.(action.property, action.value, 'important');
         } else if (action.type === 'text') {
             action.target.textContent = action.value;
+        } else if (action.type === 'class-state') {
+            applyDirectIdClassState(action);
         }
     }
 }
@@ -3857,6 +3938,9 @@ function bindDirectIdClickActions(trigger, actions) {
     trigger.removeAttribute('onclick');
     trigger.removeAttribute('aria-pressed');
     trigger.setAttribute(DIRECT_ID_CLICK_RESCUE_ATTR, 'true');
+    if (actions.some(action => action?.type === 'class-state')) {
+        trigger.setAttribute(DIRECT_ID_CLASS_STATE_RESCUE_ATTR, 'true');
+    }
     return true;
 }
 
@@ -4083,7 +4167,40 @@ function installNestedDetailsFallback(root) {
     root.dataset.rabbitMirrorDetailsFallback = 'true';
 }
 
+function repairMarkdownEmphasisInsideCssComments(cssText) {
+    let changed = false;
+    const repaired = String(cssText || '').replace(
+        /\/\*([\s\S]*?)<(em|i)>\s*\/([\s\S]*?)\/\s*<\/\2>([\s\S]*?)\*\//gi,
+        (full, before, tagName, rules, after) => {
+            if (!/[{}]/.test(rules) || !/[.#:@\[]/.test(rules)) return full;
+            changed = true;
+            return `/*${before}*/${rules}/*${after}*/`;
+        },
+    );
+    return { changed, repaired };
+}
+
+function repairMarkdownCorruptedCssComments(root) {
+    if (!root?.querySelectorAll) return 0;
+    let repairedCount = 0;
+    for (const style of root.querySelectorAll('style')) {
+        const current = String(style.textContent || '');
+        if (!/<(?:em|i)>\s*\//i.test(current) || !/\/\s*<\/(?:em|i)>/i.test(current)) continue;
+        const result = repairMarkdownEmphasisInsideCssComments(current);
+        if (!result.changed || result.repaired === current) continue;
+        style.textContent = result.repaired;
+        style.setAttribute(MARKDOWN_CSS_COMMENT_RESCUE_ATTR, 'true');
+        repairedCount += 1;
+    }
+    if (repairedCount) root.dataset.rabbitMirrorMarkdownCssCommentRescue = String(repairedCount);
+    return repairedCount;
+}
+
 function installIntelligentInteractionRescue(root) {
+    // Markdown 可能把相邻的 CSS 注释边界 */ ... /* 解析成 <em>/ ... /</em>，
+    // 导致两段注释之间的状态规则被整段吞入注释。只在急救开启后修复当前 DOM 的明确损坏形态。
+    repairMarkdownCorruptedCssComments(root);
+
     // SillyTavern/DOMPurify 可能在渲染前移除 onclick。此时从当前消息的原始 HTML
     // 回读安全可解析的 getElementById 样式/文字赋值，并按同一 DOM 路径绑定到渲染节点。
     installRawMessageDirectIdClickProgramRescue(root);
@@ -4484,7 +4601,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 一次性交互诊断：仅在用户按下“开始一次交互诊断”后，临时监听聊天区的下一次交互。
 // 捕获一个兔子镜后只读取该条内容，并在约 650ms 后自动停止全部诊断监听。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.49-TEST-ONESHOT';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.53-TEST-ONESHOT';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -4586,13 +4703,15 @@ function diagnosticRouteSummary(root) {
         expandedOpacity: root?.querySelectorAll?.(`[${EXPANDED_OPACITY_RESCUE_ATTR}]`)?.length || 0,
         containerReveal: renderedContainerInternalRevealStates.get(root)?.entries?.size || 0,
         selfMutation: rawSelfMutationRescueStates.get(root)?.entries?.size || 0,
+        classStateProgram: root?.querySelectorAll?.(`[${DIRECT_ID_CLASS_STATE_RESCUE_ATTR}]`)?.length || 0,
+        cssCommentRepair: root?.querySelectorAll?.(`[${MARKDOWN_CSS_COMMENT_RESCUE_ATTR}]`)?.length || 0,
         changeProgram: root?.querySelectorAll?.(`[${CHANGE_PSEUDO_RESCUE_ATTR}]`)?.length || 0,
     };
 }
 
 function diagnosticInferReason(root, inputs, targets) {
     const routes = diagnosticRouteSummary(root);
-    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.focusToChecked + routes.checkedTextRule + routes.expandedOpacity + routes.containerReveal + routes.selfMutation + routes.changeProgram;
+    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.focusToChecked + routes.checkedTextRule + routes.expandedOpacity + routes.containerReveal + routes.selfMutation + routes.classStateProgram + routes.cssCommentRepair + routes.changeProgram;
     const checkedInputs = inputs.filter(input => input.checked);
     const visibleTargets = targets.filter(target => {
         const style = diagnosticComputedStyle(target);
@@ -4654,6 +4773,8 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `展开透明保全 entries=${routes.expandedOpacity} listener=${routes.expandedOpacity ? 'true' : 'false'}`,
         `容器内揭示 entries=${routes.containerReveal} listener=${root.dataset.rabbitMirrorContainerInternalRevealFallback || 'false'}`,
         `元素自变化 entries=${routes.selfMutation} listener=${root.dataset.rabbitMirrorSelfMutationFallback || 'false'}`,
+        `类名状态程序 entries=${routes.classStateProgram} listener=${routes.classStateProgram ? 'true' : 'false'}`,
+        `CSS注释保全 entries=${routes.cssCommentRepair} listener=${routes.cssCommentRepair ? 'true' : 'false'}`,
         `安全状态程序 entries=${routes.changeProgram} listener=${routes.changeProgram ? 'true' : 'false'}`,
         `label fallback=${root.dataset.rabbitMirrorLabelFallback || root.dataset.rabbitMirrorCheckedFallback || 'unknown'}`,
         '',
