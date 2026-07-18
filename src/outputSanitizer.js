@@ -4601,7 +4601,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 一次性交互诊断：仅在用户按下“开始一次交互诊断”后，临时监听聊天区的下一次交互。
 // 捕获一个兔子镜后只读取该条内容，并在约 650ms 后自动停止全部诊断监听。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.53-TEST-ONESHOT';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.54-TEST-ONESHOT';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -5637,6 +5637,55 @@ function splitWrappedFilterFromTransformValue(rawValue) {
     return { changed: true, malformed: false, transformValue, filterValue };
 }
 
+// CSS 注释剥离急救：SillyTavern/Markdown 的换行与强调解析偶尔会破坏
+// <style> 内的 /* ... */ 边界，继而让宿主 CSS 解析器误报 missing '}'。
+// 注释不参与最终视觉，因此在代码块急救或单条纯文字急救实际整理样式时，
+// 仅删除引号外的 CSS 注释并以一个空格占位；不开对应急救时不会调用。
+function stripCssComments(cssText) {
+    const source = String(cssText || '');
+    let output = '';
+    let index = 0;
+    let quote = '';
+    let escaped = false;
+
+    while (index < source.length) {
+        const char = source[index];
+        const next = source[index + 1] || '';
+
+        if (quote) {
+            output += char;
+            if (escaped) escaped = false;
+            else if (char === '\\') escaped = true;
+            else if (char === quote) quote = '';
+            index += 1;
+            continue;
+        }
+
+        if (char === '"' || char === "'") {
+            quote = char;
+            output += char;
+            index += 1;
+            continue;
+        }
+
+        if (char === '/' && next === '*') {
+            const closeIndex = source.indexOf('*/', index + 2);
+            // 未闭合注释已经会吞掉后续全部 CSS；急救时直接丢弃其余注释内容，
+            // 至少保住注释之前已经完整的规则，而不是把损坏边界继续交给宿主解析器。
+            if (closeIndex < 0) break;
+            if (output && !/\s$/.test(output)) output += ' ';
+            index = closeIndex + 2;
+            while (index < source.length && /[ \t]/.test(source[index])) index += 1;
+            continue;
+        }
+
+        output += char;
+        index += 1;
+    }
+
+    return output;
+}
+
 function repairMalformedCssDeclarations(cssText) {
     return String(cssText || '').replace(
         /(^|[;{])(\s*)transform\s*:\s*([^;{}]+)(;|(?=}))/gi,
@@ -5665,7 +5714,8 @@ function repairPlainTextCssInHtml(htmlText) {
         const normalized = String(css || '')
             .replace(/<br\s*\/?>/gi, '')
             .replace(/\r\n?/g, '\n');
-        const declarationRepaired = repairMalformedCssDeclarations(normalized);
+        const commentStripped = stripCssComments(normalized);
+        const declarationRepaired = repairMalformedCssDeclarations(commentStripped);
         const expanded = expandUnsupportedCssCustomProperties(declarationRepaired, inheritedValues);
         const repaired = repairLikelyBareRootSelector(expanded, html);
         return `<style${attrs}>${repaired}</style>`;
@@ -5736,7 +5786,7 @@ export function compactTotoBlock(block) {
             .trim();
         styleSlots.push(compactedStyle.replace(
             /(<style\b[^>]*>)([\s\S]*?)(<\/style>)/i,
-            (full, openTag, css, closeTag) => `${openTag}${repairMalformedCssDeclarations(css)}${closeTag}`,
+            (full, openTag, css, closeTag) => `${openTag}${repairMalformedCssDeclarations(stripCssComments(css))}${closeTag}`,
         ));
         return key;
     });
