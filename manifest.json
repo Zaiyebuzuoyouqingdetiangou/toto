@@ -4,7 +4,7 @@
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.32.36",
+  "version": "0.32.37",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "Rehydrates incomplete RabbitMirror DOM from the current chat source across devices, chat-root remounts, page restores and swipe changes, while preserving healthy rendered mirrors and existing prompt behavior."
+  "description": "Rolls back to the 0.32.33 safe baseline, makes Visual Scenery an independent narrative-core dynamic visual mode, updates its hard rules, and clarifies rescue toggle usage."
 }

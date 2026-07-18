@@ -4228,7 +4228,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 一次性交互诊断：仅在用户按下“开始一次交互诊断”后，临时监听聊天区的下一次交互。
 // 捕获一个兔子镜后只读取该条内容，并在约 650ms 后自动停止全部诊断监听。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.36-ONESHOT';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.37-ONESHOT';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -5408,536 +5408,6 @@ function isRabbitMirrorDetails(details) {
     return /^【兔子镜[:：]/.test(title) || /兔子镜/.test(title);
 }
 
-
-const CROSS_DEVICE_REHYDRATED_ATTR = 'data-rabbit-mirror-cross-device-rehydrated';
-let crossDeviceRehydrateRunning = false;
-
-function getActiveAssistantMessageSources(message) {
-    const result = [];
-    const push = (value, priority) => {
-        if (typeof value !== 'string' || !value.trim()) return;
-        if (result.some(item => item.value === value)) return;
-        result.push({ value, priority });
-    };
-
-    if (Array.isArray(message?.swipes) && Number.isInteger(message?.swipe_id)) {
-        push(message.swipes[message.swipe_id], 30);
-    }
-    push(message?.mes, 20);
-    push(message?.extra?.display_text, 10);
-    return result;
-}
-
-function scoreCanonicalRabbitMirrorBlock(block, priority = 0) {
-    const source = String(block || '');
-    if (!source) return -Infinity;
-    let score = Number(priority) || 0;
-    if (/<toto\b/i.test(source)) score += 500;
-    if (/<details\b/i.test(source)) score += 240;
-    if (/<style\b/i.test(source)) score += 260;
-    if (/@keyframes\b/i.test(source)) score += 120;
-    if (/animation\s*:/i.test(source)) score += 80;
-    score += Math.min(240, (source.match(/<[^/!][^>]*>/g) || []).length * 4);
-    score += Math.min(260, Math.floor(source.length / 25));
-    if (/CSS\s+ERROR\s*:/i.test(source)) score -= 400;
-    return score;
-}
-
-function hardenCrossDeviceFragment(root) {
-    if (!root?.querySelectorAll) return root;
-    root.querySelectorAll('script, iframe, object, embed, base, meta[http-equiv], link[rel="import"]').forEach(node => node.remove());
-    for (const element of root.querySelectorAll('[href], [src], [xlink\:href]')) {
-        for (const attr of ['href', 'src', 'xlink:href']) {
-            const value = element.getAttribute?.(attr);
-            if (value && /^\s*javascript:/i.test(value)) element.removeAttribute(attr);
-        }
-    }
-    return root;
-}
-
-function parseCanonicalRabbitMirrorBlock(block) {
-    if (typeof document === 'undefined') return null;
-    try {
-        const compacted = compactTotoBlock(String(block || ''));
-        const template = document.createElement('template');
-        template.innerHTML = compacted;
-        const toto = template.content.querySelector(MIRROR_TOTO_SELECTOR) || template.content.querySelector('toto');
-        const details = toto?.querySelector?.('details') || template.content.querySelector('details');
-        if (!details || !isRabbitMirrorDetails(details)) return null;
-        const summary = getRabbitMirrorSummaryText(details);
-        if (!summary) return null;
-        const root = hardenCrossDeviceFragment((toto || details).cloneNode(true));
-        return {
-            block: compacted,
-            summary,
-            root,
-            details: root.matches?.('details') ? root : root.querySelector?.('details'),
-        };
-    } catch {
-        return null;
-    }
-}
-
-function extractCanonicalRabbitMirrorEntries(message) {
-    const bestBySummary = new Map();
-    for (const source of getActiveAssistantMessageSources(message)) {
-        const decoded = normalizeMirrorAttribute(decodeHtmlEntities(source.value));
-        const blocks = decoded.match(new RegExp(TOTO_BLOCK_RE.source, 'gi')) || [];
-
-        // A few older messages lost only the unknown <toto> shell while retaining a complete RabbitMirror details block.
-        if (!blocks.length && typeof document !== 'undefined') {
-            try {
-                const template = document.createElement('template');
-                template.innerHTML = decoded;
-                for (const details of template.content.querySelectorAll('details')) {
-                    if (!isRabbitMirrorDetails(details)) continue;
-                    blocks.push(`<toto data-rabbit-mirror="true" style="display:block;">${details.outerHTML}</toto>`);
-                }
-            } catch {
-                // Leave this source unused when its HTML cannot be parsed safely.
-            }
-        }
-
-        for (const block of blocks) {
-            const parsed = parseCanonicalRabbitMirrorBlock(block);
-            if (!parsed) continue;
-            const score = scoreCanonicalRabbitMirrorBlock(parsed.block, source.priority);
-            const previous = bestBySummary.get(parsed.summary);
-            if (!previous || score > previous.score) bestBySummary.set(parsed.summary, { ...parsed, score });
-        }
-    }
-    return [...bestBySummary.values()].sort((a, b) => b.score - a.score);
-}
-
-function getRabbitMirrorDomStats(details) {
-    if (!details?.querySelectorAll) return { elements: 0, textLength: 0, cssLength: 0, inlineStyled: 0, bodyChildren: 0 };
-    const clone = details.cloneNode(true);
-    clone.querySelectorAll?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`).forEach(node => node.remove());
-    const cssLength = [...clone.querySelectorAll?.('style') || []]
-        .reduce((sum, style) => sum + String(style.textContent || '').length, 0);
-    clone.querySelectorAll?.('style, script').forEach(node => node.remove());
-    const summary = clone.querySelector?.(':scope > summary') || clone.querySelector?.('summary');
-    summary?.remove?.();
-    const textLength = String(clone.textContent || '').replace(/\s+/g, ' ').trim().length;
-    const elements = clone.querySelectorAll?.('*').length || 0;
-    const inlineStyled = clone.querySelectorAll?.('[style]').length || 0;
-    const bodyChildren = [...(clone.children || [])].filter(node => !/^(?:summary|style)$/i.test(node.tagName || '')).length;
-    return { elements, textLength, cssLength, inlineStyled, bodyChildren };
-}
-
-function renderedRabbitMirrorIsIncomplete(canonicalDetails, renderedDetails) {
-    if (!renderedDetails?.querySelectorAll) return true;
-    const renderedText = String(renderedDetails.textContent || '');
-    if (/CSS\s+ERROR\s*:/i.test(renderedText)) return true;
-    if ([...renderedDetails.querySelectorAll(CODE_SHELL_SELECTOR)].some(node => /<(?:toto|details|style|div|section)\b/i.test(node.textContent || ''))) return true;
-
-    const canonical = getRabbitMirrorDomStats(canonicalDetails);
-    const rendered = getRabbitMirrorDomStats(renderedDetails);
-    if (rendered.bodyChildren === 0 && canonical.bodyChildren > 0) return true;
-    if (canonical.elements >= 8 && rendered.elements < canonical.elements * 0.55) return true;
-    if (canonical.textLength >= 40 && rendered.textLength < canonical.textLength * 0.45) return true;
-    if (canonical.cssLength >= 120 && rendered.cssLength === 0 && rendered.inlineStyled < Math.max(1, canonical.inlineStyled * 0.5)) return true;
-    return false;
-}
-
-function findRenderedRabbitMirrorDetails(messageTextRoot, summary) {
-    const detailsList = [...messageTextRoot.querySelectorAll('details')].filter(isRabbitMirrorDetails);
-    return detailsList.find(details => getRabbitMirrorSummaryText(details) === summary)
-        || detailsList.find(details => {
-            const title = getRabbitMirrorSummaryText(details);
-            return title && (title.includes(summary) || summary.includes(title));
-        })
-        || null;
-}
-
-function findTopLevelMessageNodeContainingText(messageTextRoot, needle) {
-    if (!messageTextRoot || !needle || typeof document === 'undefined') return null;
-    const normalizedNeedle = String(needle).replace(/\s+/g, ' ').trim();
-    if (!normalizedNeedle) return null;
-    const walker = document.createTreeWalker(messageTextRoot, globalThis.NodeFilter?.SHOW_TEXT || 4);
-    let node;
-    while ((node = walker.nextNode())) {
-        const text = String(node.nodeValue || '').replace(/\s+/g, ' ').trim();
-        if (!text || (!text.includes(normalizedNeedle) && !normalizedNeedle.includes(text))) continue;
-        let top = node;
-        while (top.parentNode && top.parentNode !== messageTextRoot) top = top.parentNode;
-        return top;
-    }
-    return null;
-}
-
-function removeDegradedRabbitMirrorTail(messageTextRoot, summary) {
-    const anchor = findTopLevelMessageNodeContainingText(messageTextRoot, summary);
-    if (!anchor) return false;
-    let current = anchor;
-    while (current) {
-        const next = current.nextSibling;
-        current.remove?.();
-        current = next;
-    }
-    return true;
-}
-
-function markCrossDeviceRehydrated(root, signature) {
-    if (!root?.setAttribute) return;
-    root.setAttribute(CROSS_DEVICE_REHYDRATED_ATTR, signature);
-    root.querySelectorAll?.('details').forEach(details => details.setAttribute(CROSS_DEVICE_REHYDRATED_ATTR, signature));
-}
-
-function replaceRenderedRabbitMirror(messageTextRoot, canonical, renderedDetails) {
-    if (!messageTextRoot || !canonical?.root || !canonical?.details) return false;
-    const signature = hashInteractionSignature(canonical.block);
-    const replacement = canonical.root.cloneNode(true);
-    markCrossDeviceRehydrated(replacement, signature);
-    const replacementDetails = replacement.matches?.('details') ? replacement : replacement.querySelector?.('details');
-
-    if (renderedDetails) {
-        const wasOpen = !!renderedDetails.open;
-        if (replacementDetails) replacementDetails.open = wasOpen;
-        const renderedShell = renderedDetails.closest?.(MIRROR_TOTO_SELECTOR);
-        const replaceTarget = renderedShell && messageTextRoot.contains(renderedShell) ? renderedShell : renderedDetails;
-        replaceTarget.replaceWith(replacement);
-        return true;
-    }
-
-    const hadVisibleExpandedMarker = /▼|▽/.test(messageTextRoot.textContent || '');
-    removeDegradedRabbitMirrorTail(messageTextRoot, canonical.summary);
-    if (replacementDetails && hadVisibleExpandedMarker) replacementDetails.open = true;
-    messageTextRoot.append(replacement);
-    return true;
-}
-
-function rehydrateRenderedRabbitMirrorsAcrossDevices(mod = null) {
-    if (crossDeviceRehydrateRunning || typeof document === 'undefined') return false;
-    const chat = mod?.chat || getAvailableHostChat();
-    if (!Array.isArray(chat) || !chat.length) return false;
-
-    crossDeviceRehydrateRunning = true;
-    let changed = false;
-    try {
-        for (let index = 0; index < chat.length; index += 1) {
-            const message = chat[index];
-            if (message?.is_user) continue;
-            const messageElement = getRenderedMessageElement(index);
-            const messageTextRoot = messageElement?.querySelector?.('.mes_text') || messageElement;
-            if (!messageTextRoot || !isInsideChatMessage(messageTextRoot)) continue;
-
-            const canonicalEntries = extractCanonicalRabbitMirrorEntries(message);
-            if (!canonicalEntries.length) continue;
-
-            for (const canonical of canonicalEntries) {
-                const renderedDetails = findRenderedRabbitMirrorDetails(messageTextRoot, canonical.summary);
-                const currentSignature = renderedDetails?.getAttribute?.(CROSS_DEVICE_REHYDRATED_ATTR);
-                const expectedSignature = hashInteractionSignature(canonical.block);
-                if (currentSignature === expectedSignature && !renderedRabbitMirrorIsIncomplete(canonical.details, renderedDetails)) continue;
-                if (renderedDetails && !renderedRabbitMirrorIsIncomplete(canonical.details, renderedDetails)) continue;
-                changed = replaceRenderedRabbitMirror(messageTextRoot, canonical, renderedDetails) || changed;
-            }
-        }
-    } catch (error) {
-        console.debug('[RabbitMirror] cross-device rehydration failed:', error);
-    } finally {
-        crossDeviceRehydrateRunning = false;
-    }
-    return changed;
-}
-
-
-const RENDERED_LOCAL_CSS_SCOPE_ATTR = 'data-rabbit-mirror-local-css-scope';
-const RENDERED_LOCAL_CSS_STYLE_ATTR = 'data-rabbit-mirror-local-css-isolated';
-
-function splitCssSelectorList(selectorText) {
-    const source = String(selectorText || '');
-    const result = [];
-    let start = 0;
-    let round = 0;
-    let square = 0;
-    let quote = '';
-
-    for (let index = 0; index < source.length; index += 1) {
-        const char = source[index];
-        if (quote) {
-            if (char === '\\') index += 1;
-            else if (char === quote) quote = '';
-            continue;
-        }
-        if (char === '"' || char === "'") {
-            quote = char;
-            continue;
-        }
-        if (char === '(') round += 1;
-        else if (char === ')') round = Math.max(0, round - 1);
-        else if (char === '[') square += 1;
-        else if (char === ']') square = Math.max(0, square - 1);
-        else if (char === ',' && round === 0 && square === 0) {
-            result.push(source.slice(start, index).trim());
-            start = index + 1;
-        }
-    }
-    result.push(source.slice(start).trim());
-    return result.filter(Boolean);
-}
-
-function buildRenderedLocalCssScopeToken(details) {
-    const existing = details?.getAttribute?.(RENDERED_LOCAL_CSS_SCOPE_ATTR);
-    if (existing) return existing;
-
-    const message = details?.closest?.('.mes, [mesid]');
-    const mesid = String(message?.getAttribute?.('mesid') || 'x').replace(/[^a-z0-9_-]/gi, '').slice(0, 24) || 'x';
-    const mirrors = message
-        ? [...message.querySelectorAll('details')].filter(isRabbitMirrorDetails)
-        : [details];
-    const mirrorIndex = Math.max(0, mirrors.indexOf(details));
-    const summary = (details?.querySelector?.(':scope > summary')?.textContent || '').replace(/\s+/g, ' ').trim();
-    const token = `rm-local-${mesid}-${mirrorIndex}-${hashInteractionSignature(summary).slice(0, 7)}`;
-    details?.setAttribute?.(RENDERED_LOCAL_CSS_SCOPE_ATTR, token);
-    return token;
-}
-
-function escapeRenderedCssClassName(className) {
-    const value = String(className || '');
-    try {
-        if (globalThis.CSS?.escape) return globalThis.CSS.escape(value);
-    } catch {
-        // Fall through to the conservative escape below.
-    }
-    return value.replace(/[^a-zA-Z0-9_-]/g, char => `\\${char}`);
-}
-
-function bridgeRenderedHostClassNames(selector, details) {
-    let source = String(selector || '').trim();
-    if (!source || !details?.querySelector) return source;
-
-    // SillyTavern may rewrite generated class names to custom-xxx while leaving a
-    // reconstructed <style> sheet with the original selector text. Add a local
-    // :is() bridge only when that custom class really exists inside this mirror.
-    const classNames = [...new Set([...source.matchAll(/\.(-?[_a-zA-Z][\w-]*)/g)].map(match => match[1]))];
-    for (const className of classNames) {
-        if (!className || className.startsWith('custom-')) continue;
-        const customClass = `custom-${className}`;
-        const escapedCustom = escapeRenderedCssClassName(customClass);
-        let hasCustomClass = false;
-        try {
-            hasCustomClass = !!details.querySelector(`.${escapedCustom}`);
-        } catch {
-            hasCustomClass = false;
-        }
-        if (!hasCustomClass) continue;
-
-        // Already bridged or already written against the host-prefixed class.
-        const customNeedle = new RegExp(`\\.${escapeRegExp(customClass)}(?![\\w-])`);
-        if (customNeedle.test(source)) continue;
-
-        const originalRe = new RegExp(`\\.${escapeRegExp(className)}(?![\\w-])`, 'g');
-        source = source.replace(originalRe, `:is(.${className}, .${customClass})`);
-    }
-    return source;
-}
-
-function renderedSelectorNeedsHostClassBridge(selector, details) {
-    const source = String(selector || '').trim();
-    if (!source || !details?.querySelector) return false;
-    const classNames = [...new Set([...source.matchAll(/\.(-?[_a-zA-Z][\w-]*)/g)].map(match => match[1]))];
-    for (const className of classNames) {
-        if (!className || className.startsWith('custom-')) continue;
-        const customClass = `custom-${className}`;
-        if (new RegExp(`\\.${escapeRegExp(customClass)}(?![\\w-])`).test(source)) continue;
-        try {
-            if (details.querySelector(`.${escapeRenderedCssClassName(customClass)}`)) return true;
-        } catch {
-            // Ignore malformed/unsupported generated class names.
-        }
-    }
-    return false;
-}
-
-function scopeOneRenderedCssSelector(selector, scopeSelector, details) {
-    const original = String(selector || '').trim();
-    if (!original) return original;
-    const source = bridgeRenderedHostClassNames(original, details);
-    if (source.includes(scopeSelector)) return source;
-
-    // 变量宿主与页面级选择器改为当前兔子镜根，避免 :root/html/body 把样式泄漏到整页。
-    if (/^:root\b/i.test(source)) return source.replace(/^:root\b/i, scopeSelector);
-    if (/^(?:html|body)\b/i.test(source)) return source.replace(/^(?:html|body)\b/i, scopeSelector);
-    if (/^:scope\b/i.test(source)) return source.replace(/^:scope\b/i, scopeSelector);
-    if (/^toto\b/i.test(source)) return source.replace(/^toto\b/i, scopeSelector);
-
-    // details 规则可能正是针对当前外层 details；同时保留其对内部 details 的含义。
-    if (/^details(?=$|[.#[:\s>+~])/i.test(source)) {
-        const sameRoot = source.replace(/^details\b/i, scopeSelector);
-        return `:is(${sameRoot}, ${scopeSelector} ${source})`;
-    }
-    return `${scopeSelector} ${source}`;
-}
-
-function rewriteRenderedCssRuleSelectors(ruleList, scopeSelector, details) {
-    let changed = false;
-    for (const rule of [...(ruleList || [])]) {
-        const type = Number(rule?.type);
-        const name = String(rule?.constructor?.name || '');
-        const isKeyframes = type === 7 || /KeyframesRule/i.test(name);
-        if (isKeyframes) continue;
-
-        if (type === 1 && typeof rule.selectorText === 'string') {
-            const nextSelector = splitCssSelectorList(rule.selectorText)
-                .map(selector => scopeOneRenderedCssSelector(selector, scopeSelector, details))
-                .join(', ');
-            if (nextSelector && nextSelector !== rule.selectorText) {
-                try {
-                    rule.selectorText = nextSelector;
-                    changed = true;
-                } catch {
-                    // Unsupported selector syntax: leave this one untouched rather than damaging the sheet.
-                }
-            }
-            continue;
-        }
-
-        if (rule?.cssRules) {
-            changed = rewriteRenderedCssRuleSelectors(rule.cssRules, scopeSelector, details) || changed;
-        }
-    }
-    return changed;
-}
-
-function renderedStyleSheetNeedsIsolation(ruleList, scopeSelector, details, token) {
-    const keyframeSuffix = `__${token}`;
-    for (const rule of [...(ruleList || [])]) {
-        const type = Number(rule?.type);
-        const name = String(rule?.constructor?.name || '');
-        const isKeyframes = type === 7 || /KeyframesRule/i.test(name);
-        if (isKeyframes) {
-            const keyframeName = String(rule?.name || '').trim();
-            if (keyframeName && !keyframeName.endsWith(keyframeSuffix)) return true;
-            continue;
-        }
-        if (type === 1 && typeof rule.selectorText === 'string') {
-            if (!rule.selectorText.includes(scopeSelector)) return true;
-            if (renderedSelectorNeedsHostClassBridge(rule.selectorText, details)) return true;
-        }
-        if (rule?.cssRules && renderedStyleSheetNeedsIsolation(rule.cssRules, scopeSelector, details, token)) return true;
-    }
-    return false;
-}
-
-function collectRenderedKeyframeRules(ruleList, result = []) {
-    for (const rule of [...(ruleList || [])]) {
-        const type = Number(rule?.type);
-        const name = String(rule?.constructor?.name || '');
-        const isKeyframes = type === 7 || /KeyframesRule/i.test(name);
-        if (isKeyframes) {
-            result.push(rule);
-            continue;
-        }
-        if (rule?.cssRules) collectRenderedKeyframeRules(rule.cssRules, result);
-    }
-    return result;
-}
-
-function replaceAnimationNameToken(value, oldName, newName) {
-    const source = String(value || '');
-    if (!source || !oldName || oldName === newName) return source;
-    const escaped = escapeRegExp(oldName);
-    return source.replace(new RegExp(`(^|[\\s,(])${escaped}(?=$|[\\s,)])`, 'g'), (full, boundary) => `${boundary}${newName}`);
-}
-
-function rewriteAnimationNamesInStyleDeclaration(style, renameMap) {
-    if (!style?.getPropertyValue) return false;
-    let changed = false;
-    for (const property of ['animation', 'animation-name', '-webkit-animation', '-webkit-animation-name']) {
-        let value = style.getPropertyValue(property);
-        if (!value) continue;
-        let next = value;
-        for (const [oldName, newName] of renameMap) next = replaceAnimationNameToken(next, oldName, newName);
-        if (next !== value) {
-            style.setProperty(property, next, style.getPropertyPriority(property) || '');
-            changed = true;
-        }
-    }
-    return changed;
-}
-
-function rewriteRenderedAnimationReferences(ruleList, renameMap) {
-    let changed = false;
-    for (const rule of [...(ruleList || [])]) {
-        const type = Number(rule?.type);
-        const name = String(rule?.constructor?.name || '');
-        const isKeyframes = type === 7 || /KeyframesRule/i.test(name);
-        if (isKeyframes) continue;
-        if (type === 1 && rule?.style) changed = rewriteAnimationNamesInStyleDeclaration(rule.style, renameMap) || changed;
-        if (rule?.cssRules) changed = rewriteRenderedAnimationReferences(rule.cssRules, renameMap) || changed;
-    }
-    return changed;
-}
-
-function isolateRenderedRabbitMirrorCss(details) {
-    if (!details?.querySelectorAll || !isInsideChatMessage(details)) return false;
-    const token = buildRenderedLocalCssScopeToken(details);
-    if (!token) return false;
-    const scopeSelector = `[${RENDERED_LOCAL_CSS_SCOPE_ATTR}="${token}"]`;
-    const styleElements = [...details.querySelectorAll('style')];
-    if (!styleElements.length) return false;
-
-    const readySheets = [];
-    for (const styleEl of styleElements) {
-        try {
-            const sheet = styleEl.sheet;
-            if (!sheet?.cssRules) continue;
-            const alreadyMarked = styleEl.getAttribute(RENDERED_LOCAL_CSS_STYLE_ATTR) === token;
-            // CSSOM edits do not alter styleEl.textContent. Some mobile WebViews rebuild the
-            // sheet when details is toggled or a message is rehydrated, while preserving the
-            // marker attribute. Verify the live sheet instead of trusting the marker alone.
-            if (!alreadyMarked || renderedStyleSheetNeedsIsolation(sheet.cssRules, scopeSelector, details, token)) {
-                readySheets.push({ styleEl, sheet });
-            }
-        } catch {
-            // Some WebViews expose the sheet one frame later. Leave it available for scheduled retries.
-        }
-    }
-    if (!readySheets.length) return false;
-
-    // Keyframe names are global too. Rename them per mirror before selector scoping, then update local references.
-    const renameMap = new Map();
-    for (const { sheet } of readySheets) {
-        for (const keyframesRule of collectRenderedKeyframeRules(sheet.cssRules)) {
-            const oldName = String(keyframesRule?.name || '').trim();
-            if (!oldName || oldName.endsWith(`__${token}`)) continue;
-            const newName = renameMap.get(oldName) || `${oldName}__${token}`;
-            try {
-                keyframesRule.name = newName;
-                renameMap.set(oldName, newName);
-            } catch {
-                // If the engine does not permit renaming, keep the original animation intact.
-            }
-        }
-    }
-
-    let changed = false;
-    for (const { styleEl, sheet } of readySheets) {
-        changed = rewriteRenderedCssRuleSelectors(sheet.cssRules, scopeSelector, details) || changed;
-        if (renameMap.size) changed = rewriteRenderedAnimationReferences(sheet.cssRules, renameMap) || changed;
-        styleEl.setAttribute(RENDERED_LOCAL_CSS_STYLE_ATTR, token);
-    }
-
-    if (renameMap.size) {
-        for (const element of details.querySelectorAll('[style]')) {
-            changed = rewriteAnimationNamesInStyleDeclaration(element.style, renameMap) || changed;
-        }
-    }
-    details.dataset.rabbitMirrorCssIsolated = 'true';
-    return changed;
-}
-
-function isolateRenderedRabbitMirrorCssInChatDom() {
-    const root = getChatRoot();
-    if (!root) return false;
-    let changed = false;
-    const detailsList = [...root.querySelectorAll('toto details, details')].filter(isRabbitMirrorDetails);
-    for (const details of detailsList) changed = isolateRenderedRabbitMirrorCss(details) || changed;
-    return changed;
-}
-
 function sanitizeRenderedRabbitMirrorDetailsDom() {
     if (!isCodeBlockRescueModeEnabled()) return;
     const root = getChatRoot();
@@ -6017,18 +5487,6 @@ function sanitizeCodeBlocksInChatDom() {
     }
 }
 
-export function triggerCrossDeviceRehydrate(mod = null) {
-    try {
-        const changed = rehydrateRenderedRabbitMirrorsAcrossDevices(mod || hostScriptModule || globalThis);
-        isolateRenderedRabbitMirrorCssInChatDom();
-        triggerInteractionRescue();
-        return changed;
-    } catch (error) {
-        console.debug('[RabbitMirror] cross-device rehydration trigger failed:', error);
-        return false;
-    }
-}
-
 export function triggerInteractionRescue() {
     try {
         // 已经修复过的兔子镜会被会话记忆继续维护；关闭开关只停止处理新消息。
@@ -6063,8 +5521,6 @@ export function triggerInteractionDiagnosticOnce() {
 
 function runEnabledRescueChain(mod = null) {
     const host = mod || globalThis;
-    // 跨设备重新挂载先从当前聊天原文恢复缺失的兔子镜 DOM；仅在实际渲染明显残缺时替换。
-    rehydrateRenderedRabbitMirrorsAcrossDevices(host);
     // 纯文字急救先把旧解析器不接受的 CSS 变量展开，再交给代码块急救压缩/还原 DOM。
     if (isPlainTextRescueModeEnabled()) sanitizePlainTextRawMessages(host);
     if (isCodeBlockRescueModeEnabled()) {
@@ -6072,7 +5528,6 @@ function runEnabledRescueChain(mod = null) {
         sanitizeCodeBlocksInChatDom();
         sanitizeRenderedRabbitMirrorDetailsDom();
     }
-    isolateRenderedRabbitMirrorCssInChatDom();
     triggerInteractionRescue();
 }
 
@@ -6092,105 +5547,22 @@ export function triggerCodeBlockRescue(mod = null) {
     }
 }
 
-let sanitizeDebounceTimer = 0;
-let sanitizeRetryTimers = [];
-let observedRabbitMirrorChatRoot = null;
-let rabbitMirrorChatObserver = null;
-let rabbitMirrorBodyObserver = null;
-let rabbitMirrorToggleHandler = null;
-let rabbitMirrorLifecycleListenersInstalled = false;
-
-function clearScheduledSanitizeRetries() {
-    if (sanitizeDebounceTimer) clearTimeout(sanitizeDebounceTimer);
-    sanitizeDebounceTimer = 0;
-    for (const timer of sanitizeRetryTimers) clearTimeout(timer);
-    sanitizeRetryTimers = [];
-}
-
 function scheduleSanitize(mod) {
     const run = () => {
-        // 顺序固定：先恢复跨设备缺失 DOM，再修 CSS 纯文字、代码块、局部样式与交互。
-        const rehydrated = rehydrateRenderedRabbitMirrorsAcrossDevices(mod);
+        // 顺序固定：先修 CSS 纯文字，再拆代码块，最后修交互。
         if (isPlainTextRescueModeEnabled()) sanitizePlainTextRawMessages(mod);
         if (isCodeBlockRescueModeEnabled()) {
             sanitizeLatestRawMessages(mod);
             sanitizeCodeBlocksInChatDom();
             sanitizeRenderedRabbitMirrorDetailsDom();
         }
-        isolateRenderedRabbitMirrorCssInChatDom();
         triggerInteractionRescue();
-
-        // 直接重挂载会创建新的 style/CSSStyleSheet；再给浏览器一个短帧完成表挂载。
-        if (rehydrated) setTimeout(() => {
-            isolateRenderedRabbitMirrorCssInChatDom();
-            triggerInteractionRescue();
-        }, 120);
     };
-
-    clearScheduledSanitizeRetries();
-    sanitizeDebounceTimer = setTimeout(run, 60);
-    sanitizeRetryTimers = [320, 900, 1800, 3600].map(delay => setTimeout(run, delay));
-}
-
-function bindRabbitMirrorChatObserver(mod) {
-    if (typeof MutationObserver === 'undefined') return;
-    const chatRoot = getChatRoot();
-    if (chatRoot === observedRabbitMirrorChatRoot) return;
-
-    rabbitMirrorChatObserver?.disconnect?.();
-    if (observedRabbitMirrorChatRoot && rabbitMirrorToggleHandler) {
-        observedRabbitMirrorChatRoot.removeEventListener?.('toggle', rabbitMirrorToggleHandler, true);
-    }
-
-    observedRabbitMirrorChatRoot = chatRoot || null;
-    if (!chatRoot) return;
-
-    rabbitMirrorToggleHandler = event => {
-        if (event?.target?.matches?.('details') && isInsideChatMessage(event.target)) scheduleSanitize(mod);
-    };
-    chatRoot.addEventListener?.('toggle', rabbitMirrorToggleHandler, true);
-
-    rabbitMirrorChatObserver = new MutationObserver((mutations) => {
-        const relevant = mutations.some(mutation => {
-            if (mutation.type === 'attributes') return mutation.attributeName === 'open';
-            if (mutation.type !== 'childList') return false;
-            return mutation.addedNodes.length > 0 || mutation.removedNodes.length > 0;
-        });
-        if (relevant) scheduleSanitize(mod);
-    });
-    rabbitMirrorChatObserver.observe(chatRoot, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        attributeFilter: ['open'],
-    });
-    scheduleSanitize(mod);
-}
-
-function installRabbitMirrorRemountWatchers(mod) {
-    if (typeof document === 'undefined') return;
-    bindRabbitMirrorChatObserver(mod);
-
-    if (typeof MutationObserver !== 'undefined' && document.body && !rabbitMirrorBodyObserver) {
-        rabbitMirrorBodyObserver = new MutationObserver(() => {
-            const currentRoot = getChatRoot();
-            if (currentRoot !== observedRabbitMirrorChatRoot) bindRabbitMirrorChatObserver(mod);
-        });
-        rabbitMirrorBodyObserver.observe(document.body, { childList: true, subtree: true });
-    }
-
-    if (!rabbitMirrorLifecycleListenersInstalled) {
-        const wake = () => {
-            bindRabbitMirrorChatObserver(mod);
-            scheduleSanitize(mod);
-        };
-        globalThis.addEventListener?.('pageshow', wake, true);
-        globalThis.addEventListener?.('focus', wake, true);
-        document.addEventListener?.('visibilitychange', () => {
-            if (document.visibilityState === 'visible') wake();
-        }, true);
-        rabbitMirrorLifecycleListenersInstalled = true;
-    }
+    setTimeout(run, 80);
+    setTimeout(run, 350);
+    setTimeout(run, 900);
+    setTimeout(run, 1800);
+    setTimeout(run, 3200);
 }
 
 export async function initOutputSanitizer() {
@@ -6210,8 +5582,22 @@ export async function initOutputSanitizer() {
             for (const eventName of events) eventSource.on(eventName, () => scheduleSanitize(mod));
         }
 
-        // 跨设备与 SPA 场景下聊天根节点可能被整体替换；动态重绑观察器，并在页面恢复可见时重新挂载。
-        installRabbitMirrorRemountWatchers(mod);
+        // 只修聊天消息，但监听要更稳：如果初始化时 #chat 还没挂载，就监听 body 等它出现。
+        if (typeof MutationObserver !== 'undefined') {
+            const chatRoot = getChatRoot();
+            if (chatRoot) {
+                const observer = new MutationObserver(() => scheduleSanitize(mod));
+                observer.observe(chatRoot, { childList: true, subtree: true });
+            } else if (typeof document !== 'undefined' && document.body) {
+                const observer = new MutationObserver((mutations) => {
+                    if (getChatRoot() || mutations.some(m => [...m.addedNodes].some(n => n?.querySelector?.('#chat, #chat_block, .mes, .mes_text')))) {
+                        scheduleSanitize(mod);
+                    }
+                });
+                observer.observe(document.body, { childList: true, subtree: true });
+            }
+        }
+
         scheduleSanitize(mod);
         console.debug('[RabbitMirror] output sanitizer initialized');
     } catch (error) {

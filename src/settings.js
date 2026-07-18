@@ -52,7 +52,7 @@ export const defaultSettings = Object.freeze({
     // 发散孵化模式（测试版）：开启后把抽取结果作为灵感基底，允许在核心气味内扩展库外媒介和细节。
     creativeExpansionMode: false,
 
-    // 勾选后，每轮强制把 10.2.2 Visual Scenery 纳入本轮展现形式。
+    // 勾选后进入独立动态视觉模式：每轮启用 Visual Scenery，暂停主题元素、展现形式与发散孵化的抽取注入。
     forceVisualScenery: false,
 
     // 原规则要求 1-3 个主题、1-2 个展现形式，作为固定协议，不再拆成 UI 设置。

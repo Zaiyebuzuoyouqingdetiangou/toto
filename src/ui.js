@@ -7,6 +7,12 @@ function checked(id, value) {
     $(id).prop('checked', !!value);
 }
 
+function syncVisualSceneryControls(enabled) {
+    $('#rh_sampling_mode, #rh_creative_expansion').prop('disabled', !!enabled);
+    $('#rh_sampling_mode').closest('label').css('opacity', enabled ? 0.5 : '');
+    $('#rh_creative_expansion').closest('label').css('opacity', enabled ? 0.5 : '');
+}
+
 export function initRabbitMirrorUI() {
     const settings = getSettings();
     const noSendRegex = '/```(?:html|xml|HTML|XML)?\\s*<toto\\b[^>]*>[\\s\\S]*?<\\/toto>\\s*```|<toto\\b[^>]*>[\\s\\S]*?<\\/toto>\\s*/gi';
@@ -16,7 +22,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场 / Rabbit Mirror Theater</b><span class="rabbit-mirror-toto-watermark">Toto v0.32.36</span>
+      <b>兔子镜小剧场 / Rabbit Mirror Theater</b><span class="rabbit-mirror-toto-watermark">Toto v0.32.37</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -34,8 +40,8 @@ export function initRabbitMirrorUI() {
       <label class="checkbox_label"><input id="rh_creative_expansion" type="checkbox"> 发散孵化模式（测试版）</label>
       <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后，主题元素与展现形式只作为灵感基底，允许根据正文氛围发散出元素库之外的新内容、新媒介、新细节与新结构。</div>
 
-      <label class="checkbox_label"><input id="rh_force_visual_scenery" type="checkbox"> Visual Scenery</label>
-      <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后强制生成一幅完整、统一、会持续变化的 CSS 动态插画；主场景承担动画，文字仅作画内题签，交互融入景物或透明热区。</div>
+      <label class="checkbox_label"><input id="rh_force_visual_scenery" type="checkbox"> Visual Scenery（动态视觉）</label>
+      <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后每轮生成一幅持续变化的 CSS 动态视觉画面，并暂停主题元素、展现形式与发散孵化的抽取注入；画面直接从本轮正文的叙事核心建立。</div>
 
       <label class="checkbox_label"><input id="rh_user_directive" type="checkbox"> 用户指令优先（正文/兔子镜点播）</label>
 
@@ -43,12 +49,12 @@ export function initRabbitMirrorUI() {
       <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">仅记录已经实际生成成功的兔子镜；用于避免连续复用相近的结构骨架与整体视觉家族。</div>
 
       <div class="rabbit-mirror-emergency rabbit-mirror-emergency-prominent" style="margin:12px 0 10px 0;padding:10px;border:1px solid var(--SmartThemeBorderColor);border-radius:8px;line-height:1.55;">
-        <label class="checkbox_label" style="font-weight:600;"><input id="rh_plaintext_rescue" type="checkbox"> 纯文字急救</label>
-        <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.78;font-size:12px;line-height:1.45;">仅在画面已经出现 CSS ERROR 时处理：读取整条兔子镜中的变量并安全展开、即时重绘。健康 UI 即使使用 var(...) 也不会被预防性改写。关闭后，代码块急救不会代替它触发 CSS ERROR 重绘。不会改 Prompt。</div>
         <label class="checkbox_label" style="font-weight:600;"><input id="rh_codeblock_rescue" type="checkbox"> 代码块急救模式</label>
-        <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.78;font-size:12px;line-height:1.45;">兔子镜变成代码块时临时开启；先恢复为真实 DOM，不改已有主容器 UI。</div>
+        <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.78;font-size:12px;line-height:1.45;">兔子镜变成代码块时临时开启；不建议长期勾选。</div>
         <label class="checkbox_label" style="font-weight:600;"><input id="rh_interaction_rescue" type="checkbox"> 智能交互急救（实验版）</label>
-        <div class="rabbit-mirror-subnote" style="margin:-2px 0 0 26px;opacity:.78;font-size:12px;line-height:1.45;">自动识别 checked、hover、嵌套 details、:target，以及简单的 onclick/onmouseover/onchange 伪交互；触屏会转换为安全点击或状态切换。可与代码块急救同时开启，固定先恢复代码、再修交互。</div>
+        <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.78;font-size:12px;line-height:1.45;">出现无法交互时开启；可长期勾选。</div>
+        <label class="checkbox_label" style="font-weight:600;"><input id="rh_plaintext_rescue" type="checkbox"> 纯文字急救</label>
+        <div class="rabbit-mirror-subnote" style="margin:-2px 0 0 26px;opacity:.78;font-size:12px;line-height:1.45;">出现无法渲染的纯文字时临时开启；不建议长期勾选。</div>
         <button id="rh_interaction_diagnostic_once" class="menu_button" type="button" style="margin-top:8px;">开始一次交互诊断</button>
         <div class="rabbit-mirror-subnote" style="margin:4px 0 0 0;opacity:.78;font-size:12px;line-height:1.45;">点击后只等待你在聊天区操作一次出错的交互；捕获完成即自动停止，不持续扫描。报告可复制诊断文字、原始源码与实际渲染代码。</div>
       </div>
@@ -79,6 +85,7 @@ export function initRabbitMirrorUI() {
     checked('#rh_creative_expansion', settings.creativeExpansionMode);
     checked('#rh_force_visual_scenery', settings.forceVisualScenery);
     checked('#rh_avoid_repeat', settings.avoidRepeat);
+    syncVisualSceneryControls(settings.forceVisualScenery);
 
     $('#rh_enabled').on('change', e => updateSettings({ enabled: e.target.checked, autoRabbitMirrorInjection: e.target.checked, mode: e.target.checked ? 'integrated' : 'off' }));
     $('#rh_plaintext_rescue').on('change', e => {
@@ -128,7 +135,10 @@ export function initRabbitMirrorUI() {
     $('#rh_sampling_mode').on('change', e => updateSettings({ samplingMode: e.target.value }));
     $('#rh_user_directive').on('change', e => updateSettings({ userDirectivePriority: e.target.checked }));
     $('#rh_creative_expansion').on('change', e => updateSettings({ creativeExpansionMode: e.target.checked }));
-    $('#rh_force_visual_scenery').on('change', e => updateSettings({ forceVisualScenery: e.target.checked }));
+    $('#rh_force_visual_scenery').on('change', e => {
+        updateSettings({ forceVisualScenery: e.target.checked });
+        syncVisualSceneryControls(e.target.checked);
+    });
     $('#rh_avoid_repeat').on('change', e => updateSettings({ avoidRepeat: e.target.checked }));
 
     $('#rh_copy_regex').on('click', async () => {
