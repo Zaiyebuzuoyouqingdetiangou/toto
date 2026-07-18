@@ -76,47 +76,6 @@ function getChatTurnKey() {
     }
 }
 
-function isRichPresentation(item) {
-    const tags = new Set(item?.tags || []);
-    const text = `${item?.id || ''} ${item?.title || ''} ${item?.summary || ''} ${item?.raw || ''}`;
-    if ([...tags].some(tag => ['visual', 'digital', 'interactive', 'game', 'mysticism', 'media'].includes(tag))) return true;
-    return /(界面|接口|面板|图|图表|时间轴|票据|相册|壁纸|直播|弹幕|游戏|抽卡|牌阵|星盘|命盘|黄历|符咒|视觉|可视化|Scenery|播放器|排行榜|审批|日历|Bingo|四格|分镜|海报|菜单|小组件|票根|坐标)/i.test(text);
-}
-
-
-function isReportLikePresentation(item) {
-    const text = `${item?.id || ''} ${item?.title || ''} ${item?.summary || ''}`;
-    // 随机抽取时默认排除容易把 UI 拉回“报告页 / 信息面板 / 档案卡”的高风险形式。
-    // 用户明确点播时不受此限制。
-    return /(报告|报表|诊断书|诊断|审查表|检查表|观察记录|记录卡|分析报告|身体状态报告|状态栏|角色面板|属性页|任务日志|系统面板|控制台|后台|监控台|档案)/i.test(text);
-}
-
-
-function isRemovedRegionalTheme(item) {
-    // Removed from random and directive pools by ID. Text keywords are intentionally not kept here.
-    return item?.id === 'G.3.5' || item?.id === 'G.3.11';
-}
-
-function filterRemovedRegionalThemes(pool) {
-    return pool.filter(item => !isRemovedRegionalTheme(item));
-}
-
-function filterReportLikePresentations(pool, settings) {
-    if (settings?.allowReportLikeRandom) return pool;
-    const filtered = pool.filter(item => !isReportLikePresentation(item));
-    return filtered.length >= Math.max(12, Math.floor(pool.length * 0.45)) ? filtered : pool;
-}
-
-function enrichFormatPool(pool, settings, count) {
-    if (!settings?.richFormatBias) return pool;
-    const rich = pool.filter(isRichPresentation);
-    if (rich.length >= Math.min(count, 1)) {
-        // 重复几次富版式候选，提高抽中概率，但不完全排除文学/信件等文本美学格式。
-        return [...rich, ...rich, ...pool];
-    }
-    return pool;
-}
-
 function allowByMode(_item, mode) {
     if (mode === 'off') return false;
     return true;
@@ -317,8 +276,7 @@ function applyDirectiveOrRandom({ settings, themePool, formatPool, themeCount, f
     }
 
     const pickedThemes = weightedSample(themePool, themeCount, recent.themeIds, recent.themeGroups, settings.avoidRepeat);
-    const weightedFormatPool = enrichFormatPool(formatPool, settings, formatCount);
-    const pickedFormats = weightedSample(weightedFormatPool, formatCount, recent.formatIds, recent.formatGroups, settings.avoidRepeat);
+    const pickedFormats = weightedSample(formatPool, formatCount, recent.formatIds, recent.formatGroups, settings.avoidRepeat);
     const visualSceneryFormat = getVisualSceneryFormat();
     const forcedFormats = settings.forceVisualScenery && visualSceneryFormat ? [visualSceneryFormat] : [];
     const directiveFormats = directive?.formats || [];
@@ -354,12 +312,11 @@ export function pickCombination(settings) {
     const themeCount = weightedThemeCount(settings);
     const formatCount = weightedFormatCount(settings);
 
-    let themePool = filterRemovedRegionalThemes(THEMATIC_CATEGORIES).filter(item => allowByMode(item, settings.mode));
+    let themePool = THEMATIC_CATEGORIES.filter(item => allowByMode(item, settings.mode));
     let formatPool = PRESENTATION_FORMATS.filter(item => allowByMode(item, settings.mode));
-    formatPool = filterReportLikePresentations(formatPool, settings);
 
-    if (!themePool.length) themePool = filterRemovedRegionalThemes(THEMATIC_CATEGORIES);
-    if (!formatPool.length) formatPool = filterReportLikePresentations(PRESENTATION_FORMATS, settings);
+    if (!themePool.length) themePool = THEMATIC_CATEGORIES;
+    if (!formatPool.length) formatPool = PRESENTATION_FORMATS;
 
     const result = applyDirectiveOrRandom({ settings, themePool, formatPool, themeCount, formatCount, last, recent });
     if (result.disabled) {

@@ -34,8 +34,8 @@ export const defaultSettings = Object.freeze({
     avoidRepeat: true,
     // 冷却扩大到 10 轮：避免同一主题、展现形式或近似视觉观感在短时间内反复出现。
     cooldownRounds: 10,
-    // 增强版式多样性：随机时更偏向带界面结构/视觉锚点的展现形式，减少纯文字类连续出现。
-    richFormatBias: true,
+    // 0.32.43：所有展现形式等权进入随机池，不再对“富版式”候选做三倍加权。
+    richFormatBias: false,
     // 旧版纯文字急救全局开关仅用于迁移；0.32.38 起改为单条一次性按钮，不再持续启用。
     plainTextRescueMode: false,
     // 代码块急救模式：仅在兔子镜显示成代码块时临时开启。默认关闭，避免平时影响 UI 发挥。
@@ -110,6 +110,8 @@ export function getSettings() {
     if (settings.codeBlockRescueMode === undefined) settings.codeBlockRescueMode = defaultSettings.codeBlockRescueMode;
     if (settings.interactionRescueMode === undefined) settings.interactionRescueMode = defaultSettings.interactionRescueMode;
     if (!['classic', 'format_only'].includes(settings.samplingMode)) settings.samplingMode = defaultSettings.samplingMode;
+    // 0.32.43：旧用户设置也统一关闭富版式三倍加权，确保完整池等权参与随机。
+    settings.richFormatBias = false;
     settings.depth = Number(settings.depth) || 0;
     return settings;
 }
