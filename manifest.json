@@ -4,7 +4,7 @@
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.32.40",
+  "version": "0.32.42",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "Retracts the 0.32.33 exactly-one-mirror prompt lock, strengthens output-length reservation so the mirror is not omitted, and rescues class-based checked interactions whose target is nested inside the same label."
+  "description": "Keeps Rabbit Mirror as the final visible module, replaces the old abstract presentation-color guidance with one concrete presentation embodiment rule, and adds structured color hierarchy without runtime recoloring."
 }
