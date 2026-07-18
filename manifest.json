@@ -1,17 +1,17 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（记忆扫描测试版）",
   "loading_order": 99,
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.32.35",
+  "version": "0.32.48-test.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
-  "auto_update": true,
+  "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
   "minimum_client_version": "1.13.0",
   "hooks": {
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "Repairs local CSS isolation after details toggles or message rehydration, including host-prefixed custom classes, while preserving existing prompt and rescue behavior."
+  "description": "TEST build: scans loaded memory extensions and public APIs, allows selecting readable providers, and injects memory only when I.1 Shared Memory Replay is selected. Retains all 0.32.47 behavior."
 }
