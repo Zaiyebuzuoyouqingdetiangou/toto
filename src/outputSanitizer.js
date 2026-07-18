@@ -209,6 +209,94 @@ function strengthenRabbitMirrorCheckedStateCss(toto) {
 const interactionInlineOverrideStates = new WeakMap();
 
 
+const FOCUS_TO_CHECKED_STYLE_ATTR = 'data-rabbit-mirror-focus-to-checked-rescue';
+const FOCUS_TO_CHECKED_ROOT_ATTR = 'data-rabbit-mirror-focus-to-checked-rules';
+
+function escapeCssIdentifier(value) {
+    const text = String(value || '');
+    try {
+        if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') return CSS.escape(text);
+    } catch {
+        // Fall through to a conservative identifier escape.
+    }
+    return text.replace(/(^-?\d)|[^a-zA-Z0-9_-]/g, match => `\\${match}`);
+}
+
+function replaceCheckableFocusSubject(selector, input) {
+    if (!selector || !input?.id || !/:focus\b\s*[+~]/i.test(selector)) return '';
+
+    // 只接管“checkbox/radio 自身的 :focus 作为持久状态触发器”的明确误写。
+    // 目标必须位于后续兄弟链；普通按钮/链接/文本输入的 focus 视觉完全不碰。
+    const subjectRe = /((?:input\b)?(?:[#.][a-zA-Z0-9_-]+|\[[^\]]+\])*)\s*:focus\b(?=\s*[+~])/gi;
+    let matched = false;
+    const rewritten = String(selector).replace(subjectRe, (full, subject) => {
+        const candidate = String(subject || '').trim();
+        if (!candidate) return full;
+        try {
+            if (!input.matches(candidate)) return full;
+        } catch {
+            return full;
+        }
+        matched = true;
+        return `#${escapeCssIdentifier(input.id)}:checked`;
+    });
+    return matched ? rewritten : '';
+}
+
+function collectFocusToCheckedRules(root) {
+    if (!root?.querySelectorAll) return [];
+    const inputs = [...root.querySelectorAll('input[type="checkbox"], input[type="radio"]')]
+        .filter(input => input.id && !input.disabled);
+    if (!inputs.length) return [];
+
+    const rules = [];
+    const seen = new Set();
+    root.querySelectorAll(`style:not([${FOCUS_TO_CHECKED_STYLE_ATTR}])`).forEach(styleEl => {
+        const css = String(styleEl.textContent || '');
+        const blockRe = /([^{}]+)\{([^{}]*)\}/g;
+        let match;
+        while ((match = blockRe.exec(css))) {
+            const selectorText = String(match[1] || '').trim();
+            if (!selectorText || selectorText.startsWith('@') || !/:focus\b\s*[+~]/i.test(selectorText)) continue;
+            const declarations = addImportantToDeclarationBlock(String(match[2] || ''));
+            if (!declarations.trim()) continue;
+
+            for (const selector of selectorText.split(',').map(value => value.trim()).filter(Boolean)) {
+                for (const input of inputs) {
+                    const rewritten = replaceCheckableFocusSubject(selector, input);
+                    if (!rewritten) continue;
+                    const key = `${rewritten}|${declarations}`;
+                    if (seen.has(key)) continue;
+                    seen.add(key);
+                    rules.push(`${rewritten} {${declarations}}`);
+                }
+            }
+        }
+    });
+    return rules;
+}
+
+function refreshFocusToCheckedRescue(root) {
+    if (!root?.querySelectorAll) return;
+    const rules = collectFocusToCheckedRules(root);
+    let rescueStyle = root.querySelector(`style[${FOCUS_TO_CHECKED_STYLE_ATTR}]`);
+
+    if (rules.length) {
+        if (!rescueStyle) {
+            rescueStyle = document.createElement('style');
+            rescueStyle.setAttribute(FOCUS_TO_CHECKED_STYLE_ATTR, 'true');
+            root.appendChild(rescueStyle);
+        }
+        const nextCss = rules.join('\n');
+        if (rescueStyle.textContent !== nextCss) rescueStyle.textContent = nextCss;
+        root.setAttribute(FOCUS_TO_CHECKED_ROOT_ATTR, String(rules.length));
+    } else {
+        rescueStyle?.remove();
+        root.removeAttribute(FOCUS_TO_CHECKED_ROOT_ATTR);
+    }
+}
+
+
 const CHECKED_TEXT_RULE_RESCUE_ATTR = 'data-rabbit-mirror-checked-text-rule-rescue';
 
 function buildCheckedSelectorNeedles(input) {
@@ -3898,6 +3986,9 @@ function installIntelligentInteractionRescue(root) {
 
     const capabilities = detectInteractionCapabilities(root);
     if (capabilities.checked) {
+        // 模型常把 checkbox/radio 的可保持状态误写成 :focus ~ ...。
+        // 仅在当前兔子镜内复制为唯一 input ID 的 :checked 规则；普通 focus 视觉不受影响。
+        refreshFocusToCheckedRescue(root);
         strengthenRabbitMirrorCheckedStateCss(root);
         // 优先解析 checkbox/radio 中安全的 ID 目标条件显隐；绑定到 input/change，
         // 避免 label 兜底只切换 checked、却不触发原 onclick 的情况。
@@ -4285,7 +4376,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 一次性交互诊断：仅在用户按下“开始一次交互诊断”后，临时监听聊天区的下一次交互。
 // 捕获一个兔子镜后只读取该条内容，并在约 650ms 后自动停止全部诊断监听。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.43-ONESHOT';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.44-ONESHOT';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -4382,6 +4473,7 @@ function diagnosticRouteSummary(root) {
         clickableAdjacent: renderedClickableAdjacentHiddenRescueStates.get(root)?.entries?.size || 0,
         clickablePopup: renderedClickableAdjacentPopupRescueStates.get(root)?.entries?.size || 0,
         checkedIdTarget: renderedCheckedIdTargetRescueStates.get(root)?.entries?.size || 0,
+        focusToChecked: Number.parseInt(root?.getAttribute?.(FOCUS_TO_CHECKED_ROOT_ATTR) || '0', 10) || 0,
         checkedTextRule: root?.querySelectorAll?.(`[${CHECKED_TEXT_RULE_RESCUE_ATTR}]`)?.length || 0,
         containerReveal: renderedContainerInternalRevealStates.get(root)?.entries?.size || 0,
         selfMutation: rawSelfMutationRescueStates.get(root)?.entries?.size || 0,
@@ -4391,7 +4483,7 @@ function diagnosticRouteSummary(root) {
 
 function diagnosticInferReason(root, inputs, targets) {
     const routes = diagnosticRouteSummary(root);
-    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.checkedTextRule + routes.containerReveal + routes.selfMutation + routes.changeProgram;
+    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.focusToChecked + routes.checkedTextRule + routes.containerReveal + routes.selfMutation + routes.changeProgram;
     const checkedInputs = inputs.filter(input => input.checked);
     const visibleTargets = targets.filter(target => {
         const style = diagnosticComputedStyle(target);
@@ -4448,6 +4540,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `可点击后置内容 entries=${routes.clickableAdjacent} listener=${root.dataset.rabbitMirrorClickableAdjacentHiddenFallback || 'false'}`,
         `可点击画面弹层 entries=${routes.clickablePopup} listener=${root.dataset.rabbitMirrorClickableAdjacentPopupFallback || 'false'}`,
         `ID目标显隐 entries=${routes.checkedIdTarget} listener=${root.dataset.rabbitMirrorCheckedIdTargetFallback || 'false'}`,
+        `focus→checked entries=${routes.focusToChecked} listener=${routes.focusToChecked ? 'true' : 'false'}`,
         `CSS状态规则 entries=${routes.checkedTextRule} listener=${routes.checkedTextRule ? 'true' : 'false'}`,
         `容器内揭示 entries=${routes.containerReveal} listener=${root.dataset.rabbitMirrorContainerInternalRevealFallback || 'false'}`,
         `元素自变化 entries=${routes.selfMutation} listener=${root.dataset.rabbitMirrorSelfMutationFallback || 'false'}`,
