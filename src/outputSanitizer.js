@@ -4376,7 +4376,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 一次性交互诊断：仅在用户按下“开始一次交互诊断”后，临时监听聊天区的下一次交互。
 // 捕获一个兔子镜后只读取该条内容，并在约 650ms 后自动停止全部诊断监听。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.44-ONESHOT';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.45-ONESHOT';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -4798,6 +4798,210 @@ function scopeRabbitMirrorInteractionsInChatDom() {
             mirrorRoot.dataset.rabbitMirrorInteractionRescued = 'true';
         }
     });
+}
+
+
+const DAMAGED_DATA_URI_MESSAGE_ATTR = 'data-rabbit-mirror-damaged-data-uri-rescued';
+const DAMAGED_DATA_URI_ROOT_ATTR = 'data-rabbit-mirror-data-uri-rescued';
+const INLINE_SVG_DATA_URI_RE = /data:image\/svg\+xml(?:;[^,)]*)?,/i;
+const UI_TAG_AFTER_DATA_URI_RE = /<(?:div|section|article|label|input|button|p|span|h[1-6]|ul|ol|li|table|thead|tbody|tfoot|tr|td|th|form|details|summary|figure|figcaption|main|header|footer|nav)\b/i;
+const SVG_LEAK_TAGS = new Set([
+    'svg', 'defs', 'g', 'path', 'rect', 'circle', 'ellipse', 'line', 'polyline', 'polygon',
+    'filter', 'feturbulence', 'fecolormatrix', 'fegaussianblur', 'feoffset', 'feblend',
+    'fedisplacementmap', 'femerge', 'femergenode', 'mask', 'clippath', 'pattern', 'lineargradient',
+    'radialgradient', 'stop', 'text', 'tspan', 'use', 'symbol',
+]);
+
+function findLastInlineStyleMatch(tagPrefix) {
+    let last = null;
+    const re = /\bstyle\s*=\s*(["'])/gi;
+    let match;
+    while ((match = re.exec(String(tagPrefix || '')))) last = match;
+    return last;
+}
+
+function findLastBackgroundDeclarationStart(stylePrefix, absoluteStart) {
+    let found = -1;
+    const re = /(?:^|;)\s*background(?:-image)?\s*:/gi;
+    let match;
+    while ((match = re.exec(String(stylePrefix || '')))) {
+        const declarationOffset = match.index + (match[0].startsWith(';') ? 1 : 0);
+        found = absoluteStart + declarationOffset;
+    }
+    return found;
+}
+
+function findNextUiTagStart(text, fromIndex) {
+    const source = String(text || '');
+    const tail = source.slice(Math.max(0, fromIndex));
+    const match = UI_TAG_AFTER_DATA_URI_RE.exec(tail);
+    return match ? Math.max(0, fromIndex) + match.index : -1;
+}
+
+function countRawUiTags(text) {
+    return (String(text || '').match(/<(?:div|section|article|label|input|button|p|span|h[1-6]|ul|ol|li|table|form|details|summary|figure|main|header|footer|nav)\b/gi) || []).length;
+}
+
+function parsedElementCount(text) {
+    try {
+        if (typeof document === 'undefined') return -1;
+        const template = document.createElement('template');
+        template.innerHTML = String(text || '');
+        return template.content.querySelectorAll('*').length;
+    } catch {
+        return -1;
+    }
+}
+
+function isLikelyDamagedInlineSvgDataUri(text, candidate) {
+    const source = String(text || '');
+    const { styleQuote, styleValueStart, uriIndex, nextUiTagIndex } = candidate;
+    if (!styleQuote || nextUiTagIndex <= uriIndex) return false;
+
+    const span = source.slice(uriIndex, nextUiTagIndex);
+    if (!INLINE_SVG_DATA_URI_RE.test(span)) return false;
+    INLINE_SVG_DATA_URI_RE.lastIndex = 0;
+
+    // 只有“inline style 属性中的原始 SVG 文本”才会被接管。
+    // 百分号编码或 base64 的健康资源不会匹配 <svg / &lt;svg，因此保持原样。
+    if (!/(?:<|&lt;)svg\b/i.test(span)) return false;
+
+    // HTML 属性引号在 data URI 尚未结束前再次出现，说明 SVG 内部引号会提前截断 style 属性。
+    // 反斜杠不能转义 HTML 属性引号，因此 \" 同样属于损坏信号。
+    const lastParen = span.lastIndexOf(')');
+    const quoteIndex = source.indexOf(styleQuote, uriIndex);
+    const quoteInsideDataUri = quoteIndex >= 0 && quoteIndex < nextUiTagIndex
+        && (lastParen < 0 || quoteIndex <= uriIndex + lastParen);
+    const explicitDamageSignal = /\\["']|\\&quot;|&quot;|["']{2}|["']\s*&gt;/i.test(span);
+
+    if (quoteInsideDataUri || explicitDamageSignal) return true;
+
+    // 浏览器可用时再做一次保守判定：原文标签很多，但解析后主体被吞掉。
+    const rawCount = countRawUiTags(source);
+    const parsedCount = parsedElementCount(source);
+    return rawCount >= 6 && parsedCount >= 0 && parsedCount + 4 < rawCount;
+}
+
+function removeSurplusSvgClosingTags(text, removedFragment) {
+    let output = String(text || '');
+    const removedNames = new Set();
+    String(removedFragment || '').replace(/<\/?([a-z][\w:-]*)\b/gi, (_full, rawName) => {
+        const name = String(rawName || '').toLowerCase();
+        if (SVG_LEAK_TAGS.has(name)) removedNames.add(name);
+        return _full;
+    });
+
+    for (const name of removedNames) {
+        const escaped = escapeRegExp(name);
+        const openRe = new RegExp(`<${escaped}\\b(?![^>]*\\/>)`, 'gi');
+        const closeRe = new RegExp(`</${escaped}\\s*>`, 'gi');
+        const opens = (output.match(openRe) || []).length;
+        const closes = (output.match(closeRe) || []).length;
+        let surplus = Math.max(0, closes - opens);
+        if (!surplus) continue;
+
+        output = output.replace(closeRe, match => {
+            if (surplus <= 0) return match;
+            surplus -= 1;
+            return '';
+        });
+    }
+    return output;
+}
+
+/**
+ * 保全型 data URI 急救：只移除会截断 inline style 属性的损坏 SVG data URI 声明。
+ * 不改色、不重写其余 DOM/CSS，也不处理健康的 percent-encoded/base64 资源。
+ */
+export function rescueDamagedDataUriRabbitMirrorOutput(responseText = '') {
+    let text = String(responseText || '');
+    if (!/(?:<toto\b|<details\b)/i.test(text) || !/data:image\/svg\+xml/i.test(text)) return text;
+
+    let cursor = 0;
+    let repairs = 0;
+    while (repairs < 8) {
+        const lower = text.toLowerCase();
+        const uriIndex = lower.indexOf('data:image/svg+xml', cursor);
+        if (uriIndex < 0) break;
+
+        const tagStart = text.lastIndexOf('<', uriIndex);
+        const tagEndBeforeUri = text.lastIndexOf('>', uriIndex);
+        if (tagStart < 0 || tagEndBeforeUri > tagStart) {
+            cursor = uriIndex + 18;
+            continue;
+        }
+
+        const tagPrefix = text.slice(tagStart, uriIndex);
+        const styleMatch = findLastInlineStyleMatch(tagPrefix);
+        if (!styleMatch) {
+            cursor = uriIndex + 18;
+            continue;
+        }
+
+        const styleQuote = styleMatch[1];
+        const styleValueStart = tagStart + styleMatch.index + styleMatch[0].length;
+        const stylePrefix = text.slice(styleValueStart, uriIndex);
+        const propertyStart = findLastBackgroundDeclarationStart(stylePrefix, styleValueStart);
+        const nextUiTagIndex = findNextUiTagStart(text, uriIndex + 18);
+        const candidate = { styleQuote, styleValueStart, uriIndex, nextUiTagIndex };
+
+        if (propertyStart < styleValueStart || nextUiTagIndex < 0 || !isLikelyDamagedInlineSvgDataUri(text, candidate)) {
+            cursor = uriIndex + 18;
+            continue;
+        }
+
+        const removedFragment = text.slice(propertyStart, nextUiTagIndex);
+        const safePrefix = text.slice(0, propertyStart).replace(/[ \t]+$/g, '');
+        const safeSuffix = text.slice(nextUiTagIndex);
+        text = `${safePrefix}${styleQuote}>\n${safeSuffix}`;
+        text = removeSurplusSvgClosingTags(text, removedFragment);
+        repairs += 1;
+        cursor = Math.max(0, propertyStart + 2);
+    }
+
+    return text;
+}
+
+function setTransientMessageSource(message, repaired) {
+    const transientMessage = cloneMessageForTransientRerender(message);
+    transientMessage.mes = repaired;
+
+    if (Array.isArray(transientMessage.swipes)) {
+        const swipeIndex = Number.isInteger(transientMessage.swipe_id)
+            ? transientMessage.swipe_id
+            : transientMessage.swipes.length - 1;
+        if (typeof transientMessage.swipes[swipeIndex] === 'string') transientMessage.swipes[swipeIndex] = repaired;
+    }
+    if (typeof transientMessage?.extra?.display_text === 'string') transientMessage.extra.display_text = repaired;
+    return transientMessage;
+}
+
+function rescueRecentDamagedDataUriMessages(mod = null) {
+    if (!isInteractionRescueModeEnabled()) return false;
+    const host = mod || hostScriptModule || globalThis;
+    let rerendered = false;
+
+    for (const { message, index } of findRecentAssistantMessages(host)) {
+        const source = getSelectedMessageSource(message);
+        if (!source || !/data:image\/svg\+xml/i.test(source)) continue;
+        const repaired = rescueDamagedDataUriRabbitMirrorOutput(source);
+        if (!repaired || repaired === source) continue;
+
+        const signature = hashInteractionSignature(`${source}|${repaired}`);
+        const currentElement = getRenderedMessageElement(index);
+        if (currentElement?.getAttribute(DAMAGED_DATA_URI_MESSAGE_ATTR) === signature) continue;
+
+        const transientMessage = setTransientMessageSource(message, repaired);
+        if (!preserveAndRerenderSanitizedMessage(host, index, transientMessage)) continue;
+
+        const restoredElement = getRenderedMessageElement(index);
+        restoredElement?.setAttribute(DAMAGED_DATA_URI_MESSAGE_ATTR, signature);
+        restoredElement?.querySelectorAll?.('details, toto').forEach(root => {
+            root.setAttribute(DAMAGED_DATA_URI_ROOT_ATTR, 'true');
+        });
+        rerendered = true;
+    }
+    return rerendered;
 }
 
 function stripHtmlComments(text) {
@@ -5641,6 +5845,9 @@ function sanitizeCodeBlocksInChatDom() {
 
 export function triggerInteractionRescue() {
     try {
+        // data URI 保全急救使用临时消息副本重建当前 DOM，不改写或保存聊天原文。
+        // 只在智能交互急救开启时处理明确会截断 inline style 的损坏 SVG data URI。
+        rescueRecentDamagedDataUriMessages(hostScriptModule || globalThis);
         // 已经修复过的兔子镜会被会话记忆继续维护；关闭开关只停止处理新消息。
         scopeRabbitMirrorInteractionsInChatDom();
     } catch (error) {

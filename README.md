@@ -1,3 +1,12 @@
+## 0.32.45 损坏 data URI 保全急救
+
+- 基于 0.32.44，保留 169 条展现形式、98 条主题元素、ADV/Adv Event、展现形式落地、色彩组织、最底部位置锁与全部既有急救。
+- 新增保全型 data URI 急救：仅在智能交互急救开启时，识别会提前截断 inline style 属性的损坏 SVG data URI。
+- 命中后只移除损坏的 `background`／`background-image` data URI 声明，保留该条兔子镜其余 HTML、CSS、文字与交互结构。
+- 健康的百分号编码或 base64 data URI 不处理；普通背景、渐变、配色与其他资源不修改。
+- 使用临时消息副本重建当前 DOM，不改写 `chat[].mes`、swipe 或 `extra.display_text`，也不保存聊天原文。
+- 本次未修改 `src/promptBuilder.js` 或任何 Prompt 数据文件，不增加 Prompt，也没有新增禁止规则。
+
 ## 0.32.44 checkbox/radio focus→checked 精准急救
 
 - 基于 0.32.43，完整保留 169 条展现形式、98 条主题元素、ADV/Adv Event、展现形式落地、色彩组织与最底部位置锁。
