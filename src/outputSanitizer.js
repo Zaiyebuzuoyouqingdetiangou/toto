@@ -209,12 +209,36 @@ function strengthenRabbitMirrorCheckedStateCss(toto) {
 const interactionInlineOverrideStates = new WeakMap();
 
 
-function parseCheckedRulesFromText(toto, input) {
-    if (!toto?.querySelectorAll || !input?.id) return [];
-    const escapedId = escapeRegExp(input.id);
-    const selectorNeedle = new RegExp(`#${escapedId}:checked\\s*([+~])\\s*([^,{]+)`, 'i');
-    const results = [];
+const CHECKED_TEXT_RULE_RESCUE_ATTR = 'data-rabbit-mirror-checked-text-rule-rescue';
 
+function buildCheckedSelectorNeedles(input) {
+    const needles = [];
+    if (input?.id) {
+        const escapedId = escapeRegExp(input.id);
+        needles.push({
+            source: 'id',
+            pattern: new RegExp(`#${escapedId}:checked\\s*([+~])\\s*([^,{]+)`, 'i'),
+        });
+    }
+
+    for (const className of getClassTokens(input).slice(0, 8)) {
+        if (!className || className.length > 120) continue;
+        const escapedClass = escapeRegExp(className);
+        needles.push({
+            source: 'class-local',
+            pattern: new RegExp(`\\.${escapedClass}:checked\\s*([+~])\\s*([^,{]+)`, 'i'),
+        });
+    }
+    return needles;
+}
+
+function parseCheckedRulesFromText(toto, input) {
+    if (!toto?.querySelectorAll || !input) return [];
+    const selectorNeedles = buildCheckedSelectorNeedles(input);
+    if (!selectorNeedles.length) return [];
+
+    const results = [];
+    const seen = new Set();
     for (const styleEl of toto.querySelectorAll('style')) {
         const css = String(styleEl.textContent || '');
         const blockRe = /([^{}]+)\{([^{}]*)\}/g;
@@ -223,18 +247,24 @@ function parseCheckedRulesFromText(toto, input) {
             const selectors = String(match[1] || '').split(',').map(v => v.trim()).filter(Boolean);
             const declarations = String(match[2] || '');
             for (const selector of selectors) {
-                const selectorMatch = selector.match(selectorNeedle);
-                if (!selectorMatch) continue;
-                const relation = selectorMatch[1];
-                const targetSelector = selectorMatch[2].trim();
-                const styleMap = [];
-                declarations.replace(/(^|;)\s*([a-z-]+)\s*:\s*([^;{}]+?)(\s*!important\s*)?(?=;|$)/gi,
-                    (_m, _sep, property, value) => {
-                        const cleanValue = String(value || '').trim().replace(/\s*!important\s*$/i, '');
-                        if (property && cleanValue) styleMap.push([property, cleanValue]);
-                        return _m;
-                    });
-                if (styleMap.length) results.push({ relation, targetSelector, styleMap });
+                for (const needle of selectorNeedles) {
+                    const selectorMatch = selector.match(needle.pattern);
+                    if (!selectorMatch) continue;
+                    const relation = selectorMatch[1];
+                    const targetSelector = selectorMatch[2].trim();
+                    const styleMap = [];
+                    declarations.replace(/(^|;)\s*([a-z-]+)\s*:\s*([^;{}]+?)(\s*!important\s*)?(?=;|$)/gi,
+                        (_m, _sep, property, value) => {
+                            const cleanValue = String(value || '').trim().replace(/\s*!important\s*$/i, '');
+                            if (property && cleanValue) styleMap.push([property, cleanValue]);
+                            return _m;
+                        });
+                    if (!styleMap.length) continue;
+                    const key = `${needle.source}|${relation}|${targetSelector}|${JSON.stringify(styleMap)}`;
+                    if (seen.has(key)) continue;
+                    seen.add(key);
+                    results.push({ source: needle.source, relation, targetSelector, styleMap });
+                }
             }
         }
     }
@@ -268,18 +298,42 @@ function getCrossContainerTargetsForCheckedRule(root, targetSelector) {
     }
 }
 
+function getLocalContainerTargetsForCheckedRule(input, targetSelector) {
+    if (!input || !targetSelector) return [];
+    const scope = input.closest?.('label') || input.parentElement;
+    if (!scope?.querySelectorAll) return [];
+    try {
+        const targets = [...scope.querySelectorAll(targetSelector)].filter(target => target !== input);
+        // class 型 :checked 规则若结构写错，只允许在当前 label/局部容器内补救，
+        // 绝不把同类目标扩散到其他事件节点。
+        if (!targets.length || targets.length > 8) return [];
+        return targets;
+    } catch {
+        return [];
+    }
+}
+
 function applyCheckedRuleTextFallback(toto, input) {
     if (!toto || !input) return 0;
     restoreInteractionInlineOverrides(input);
     if (!input.checked) return 0;
 
     const records = [];
+    const routeKinds = new Set();
     for (const rule of parseCheckedRulesFromText(toto, input)) {
         let targets = getSiblingTargetsForCheckedRule(input, rule.relation, rule.targetSelector);
-        // 模型常把 input 放在按钮容器、反馈放在相邻内容容器，导致 +/~ 永远跨不出父级。
-        // 原结构无匹配时，降级为当前兔子镜根内的受控目标查找，直接实现规则最终状态。
-        if (!targets.length) targets = getCrossContainerTargetsForCheckedRule(toto, rule.targetSelector);
+        if (!targets.length) {
+            if (rule.source === 'class-local') {
+                // 典型错误：.trigger:checked ~ .panel，但 .panel 实际嵌套在同一 label 的后代容器中。
+                // 按当前 label 局部查找并落实规则状态，不影响其他同 class 节点。
+                targets = getLocalContainerTargetsForCheckedRule(input, rule.targetSelector);
+            } else {
+                // 带唯一 ID 的规则允许在当前兔子镜根内寻找受控目标。
+                targets = getCrossContainerTargetsForCheckedRule(toto, rule.targetSelector);
+            }
+        }
         for (const target of targets) {
+            routeKinds.add(rule.source);
             for (const [property, value] of rule.styleMap) {
                 records.push({
                     element: target,
@@ -291,7 +345,10 @@ function applyCheckedRuleTextFallback(toto, input) {
             }
         }
     }
-    if (records.length) interactionInlineOverrideStates.set(input, records);
+    if (records.length) {
+        interactionInlineOverrideStates.set(input, records);
+        input.setAttribute(CHECKED_TEXT_RULE_RESCUE_ATTR, [...routeKinds].join(','));
+    }
     return records.length;
 }
 
@@ -4228,7 +4285,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 一次性交互诊断：仅在用户按下“开始一次交互诊断”后，临时监听聊天区的下一次交互。
 // 捕获一个兔子镜后只读取该条内容，并在约 650ms 后自动停止全部诊断监听。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.38-ONESHOT';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.40-ONESHOT';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -4325,6 +4382,7 @@ function diagnosticRouteSummary(root) {
         clickableAdjacent: renderedClickableAdjacentHiddenRescueStates.get(root)?.entries?.size || 0,
         clickablePopup: renderedClickableAdjacentPopupRescueStates.get(root)?.entries?.size || 0,
         checkedIdTarget: renderedCheckedIdTargetRescueStates.get(root)?.entries?.size || 0,
+        checkedTextRule: root?.querySelectorAll?.(`[${CHECKED_TEXT_RULE_RESCUE_ATTR}]`)?.length || 0,
         containerReveal: renderedContainerInternalRevealStates.get(root)?.entries?.size || 0,
         selfMutation: rawSelfMutationRescueStates.get(root)?.entries?.size || 0,
         changeProgram: root?.querySelectorAll?.(`[${CHANGE_PSEUDO_RESCUE_ATTR}]`)?.length || 0,
@@ -4333,7 +4391,7 @@ function diagnosticRouteSummary(root) {
 
 function diagnosticInferReason(root, inputs, targets) {
     const routes = diagnosticRouteSummary(root);
-    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.containerReveal + routes.selfMutation + routes.changeProgram;
+    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.checkedTextRule + routes.containerReveal + routes.selfMutation + routes.changeProgram;
     const checkedInputs = inputs.filter(input => input.checked);
     const visibleTargets = targets.filter(target => {
         const style = diagnosticComputedStyle(target);
@@ -4390,6 +4448,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `可点击后置内容 entries=${routes.clickableAdjacent} listener=${root.dataset.rabbitMirrorClickableAdjacentHiddenFallback || 'false'}`,
         `可点击画面弹层 entries=${routes.clickablePopup} listener=${root.dataset.rabbitMirrorClickableAdjacentPopupFallback || 'false'}`,
         `ID目标显隐 entries=${routes.checkedIdTarget} listener=${root.dataset.rabbitMirrorCheckedIdTargetFallback || 'false'}`,
+        `CSS状态规则 entries=${routes.checkedTextRule} listener=${routes.checkedTextRule ? 'true' : 'false'}`,
         `容器内揭示 entries=${routes.containerReveal} listener=${root.dataset.rabbitMirrorContainerInternalRevealFallback || 'false'}`,
         `元素自变化 entries=${routes.selfMutation} listener=${root.dataset.rabbitMirrorSelfMutationFallback || 'false'}`,
         `安全状态程序 entries=${routes.changeProgram} listener=${routes.changeProgram ? 'true' : 'false'}`,
@@ -4412,7 +4471,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         lines.push(
             `${index}: ${diagnosticElementName(input)} type=${input.type} checked=${!!input.checked}`,
             `   label=${!!label} text="${diagnosticCompactText(label?.textContent, 68)}"`,
-            `   attrs: route=${getRenderedInputRoute(input) || 'none'} adjacent=${input.getAttribute(RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR) || 'false'} layer=${input.getAttribute(RENDERED_STATE_LAYER_RESCUE_ATTR) || 'false'} labelInternal=${input.getAttribute(RENDERED_LABEL_INTERNAL_HIDDEN_RESCUE_ATTR) || 'false'} labelAdjacent=${input.getAttribute(RENDERED_LABEL_ADJACENT_RESULT_RESCUE_ATTR) || 'false'} idTarget=${input.getAttribute(RENDERED_CHECKED_ID_TARGET_RESCUE_ATTR) || 'false'} change=${input.getAttribute(CHANGE_PSEUDO_RESCUE_ATTR) || 'false'}`,
+            `   attrs: route=${getRenderedInputRoute(input) || 'none'} adjacent=${input.getAttribute(RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR) || 'false'} layer=${input.getAttribute(RENDERED_STATE_LAYER_RESCUE_ATTR) || 'false'} labelInternal=${input.getAttribute(RENDERED_LABEL_INTERNAL_HIDDEN_RESCUE_ATTR) || 'false'} labelAdjacent=${input.getAttribute(RENDERED_LABEL_ADJACENT_RESULT_RESCUE_ATTR) || 'false'} idTarget=${input.getAttribute(RENDERED_CHECKED_ID_TARGET_RESCUE_ATTR) || 'false'} cssChecked=${input.getAttribute(CHECKED_TEXT_RULE_RESCUE_ATTR) || 'false'} change=${input.getAttribute(CHANGE_PSEUDO_RESCUE_ATTR) || 'false'}`,
         );
     });
 

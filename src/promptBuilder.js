@@ -109,21 +109,21 @@ function recentRiskCorrection() {
 }
 
 
-function hardStartupAnchor() {
+function hardStartupReserve() {
     return String.raw`
-兔子镜启动锚点:
-  - 本轮只在主回复正文结束后生成一次兔子镜；此处仅负责预留输出长度，不得在正文前提前输出、预演、复制或占位。
-  - 若篇幅冲突，缩短正文或兔子镜内部文案，并在末尾执行唯一输出契约。`;
+兔子镜输出预留:
+  - 本轮必须完成“主回复正文 + 完整兔子镜”；兔子镜是本轮输出的必需组成，不是可省略的附加项。
+  - 开始正文前先为固定外壳与完整内部画面预留足够输出长度，正文不得耗尽全部可用篇幅。
+  - 若篇幅冲突，先收束正文，再减少兔子镜内部文字与次要装饰；不得省略整段兔子镜、改成纯文字占位或留下未闭合结构。`;
 }
 
 function coreOutputProtocol() {
     return String.raw`
-最终输出契约【每轮强制且仅一次】:
-  - 全回复只能出现一个兔子镜、一个 <toto>...</toto>；不得在正文前输出副本、草稿、预览或占位。
-  - 主回复正文完成后，必须在消息最底部继续输出这唯一一个完整兔子镜；未出现完整 <toto>...</toto> 即代表本轮尚未完成。
+兔子镜强制输出【每轮必需】:
+  - 主回复正文结束后，立即继续输出一个完整兔子镜；未出现完整 <toto>...</toto> 即代表本轮尚未完成。
   - 固定外壳：<toto data-rabbit-mirror="true" style="display:block;"><details><summary>【兔子镜：中文短标题】</summary>内部 HTML</details></toto>
   - 外层 <details>/<summary> 只负责折叠整段兔子镜，summary 必须使用「【兔子镜：6到14字简体中文标题】」格式。
-  - 兔子镜必须是最后一个可见模块；若先前已构思过兔子镜，只保留末尾最终版本，不得再次复制。若剩余输出长度不足，应缩短正文或内部文案，但仍须完整输出并闭合。
+  - 兔子镜须位于主回复正文之后；若剩余输出长度不足，应立即收束正文并精简内部次要文字与装饰，但仍须完整输出并闭合。
   - 禁止解释规则、Markdown 代码块、<pre>/<code> 与 HTML 注释；禁止 script、iframe、object、embed、form、事件属性。
   - 只有完整输出 </toto> 后才允许结束本轮回复。`;
 }
@@ -151,7 +151,7 @@ function complexInteractiveCore() {
 复杂交互视觉核心:
   - 兔子镜必须是复杂精美的微型交互媒介作品，不能退化为普通信息页、单列内容块、简单表单或文字摘要。
   - 展现形式必须直接决定 DOM/CSS 轮廓、空间结构、阅读路径、交互方式与文字寄生位置；画面须有主视觉、前中后景、视觉锚点、材质与呼吸感，不能只在标题中成立。
-  - 除最外层折叠外，每轮至少有一个从本轮媒介或叙事逻辑自然生长出的点击/轻触探索入口；触发后作品本体须发生清晰且有意义的内容、空间、构图或状态变化，仅换颜色、边框、阴影不算。
+  - 除最外层折叠外，每轮至少有一个从本轮叙事核心、媒介本体或画面内部关系自然生长的交互变化；触发对象、操作方式与反馈结果须随内容重新设计，触发后作品本体须发生清晰且有意义的内容、空间、构图或状态变化，仅换颜色、边框、阴影不算。
   - 交互与视觉骨架每轮重新设计，不得换皮复用或机械堆叠内部 details；仅当媒介天然需要分层阅读时才可使用内部 details。
   - 使用安全、可稳定渲染的 HTML/CSS；禁止内联 JavaScript。核心交互须兼容触屏，hover 只能辅助，装饰层不得遮挡热区。
   - 可用 Flex/Grid、定位、SVG、渐变、阴影、滤镜、clip-path、mask、transform、transition 与 CSS 动画构成空间和质感。`;
@@ -178,9 +178,13 @@ function visibleChineseHardLock() {
 
 function visualSceneryInteractionLinkRule() {
     return String.raw`
-Visual Scenery 交互联动:
-  - 交互可由整幅画面、局部景物或透明热区承担，入口、受控对象与结果必须同属这一画面，并从场景空间或叙事逻辑自然产生。
-  - 触发后须改变主体景物、空间层级、构图关系或内容显隐；不得为了提示可点击而增加独立按钮、操作面板、状态反馈区或说明组件，仅浮现提示文字不算完成。`;
+Visual Scenery 动态与交互:
+  - 画面打开后必须通过持续动画完整成立，核心内容不得依赖用户操作才能出现。
+  - 每轮保留至少一个由本轮叙事核心、媒介本体或画面内部关系自然产生的交互变化，用于呈现具有意义的第二状态。
+  - 触发对象、操作方式与反馈结果应随本轮内容重新设计，不得连续复用整幅画面点击、长按、按钮、开关或其他固定交互骨架。
+  - 交互应发生在画面本体内部，不得为了提示操作增加独立按钮、操作面板或大段说明。
+  - 触发后须改变内容显隐、关系结构、空间层级、构图、材质状态或观察方式，仅改变颜色、边框或阴影不算完成。
+  - 用户未操作时，画面仍须具有完整构图、清晰主体与持续生命感。`;
 }
 
 
@@ -219,7 +223,7 @@ function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualS
     const chunks = [];
     const mode = combo?.samplingMode || settings?.samplingMode || 'classic';
     chunks.push('<兔子镜自动注入>');
-    if (settings.hardStartup !== false) chunks.push(hardStartupAnchor());
+    if (settings.hardStartup !== false) chunks.push(hardStartupReserve());
     chunks.push(visibleChineseHardLock());
     if (mode === 'format_only') {
         chunks.push(String.raw`
@@ -262,7 +266,7 @@ ${shortVisualAvoidance(combo, 3)}${recentRiskCorrection()}`);
 
     if (tarotRulesText) chunks.push(tarotRulesText);
     chunks.push(htmlSafetyCore());
-    // 唯一的强制输出契约放在注入末尾，利用指令近因保证每轮正文后继续生成兔子镜。
+    // 强制输出契约放在注入末尾，利用指令近因保证每轮正文后继续生成完整兔子镜。
     chunks.push(coreOutputProtocol());
     chunks.push('</兔子镜自动注入>');
     return chunks.filter(Boolean).join('\n\n').trim();

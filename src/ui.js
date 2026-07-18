@@ -16,7 +16,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场 / Rabbit Mirror Theater</b><span class="rabbit-mirror-toto-watermark">Toto v0.32.38</span>
+      <b>兔子镜小剧场 / Rabbit Mirror Theater</b><span class="rabbit-mirror-toto-watermark">Toto v0.32.40</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -35,7 +35,7 @@ export function initRabbitMirrorUI() {
       <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后，主题元素与展现形式只作为灵感基底，允许根据正文氛围发散出元素库之外的新内容、新媒介、新细节与新结构。</div>
 
       <label class="checkbox_label"><input id="rh_force_visual_scenery" type="checkbox"> Visual Scenery</label>
-      <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后强制生成一幅完整、统一、会持续变化的 CSS 动态插画；主场景承担动画，文字仅作画内题签，交互融入景物或透明热区。</div>
+      <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后强制生成一幅完整、统一、会持续变化的 CSS 动态视觉画面；画面本体承担持续动画，并保留由本轮内容自然产生的交互变化。</div>
 
       <label class="checkbox_label"><input id="rh_user_directive" type="checkbox"> 用户指令优先（正文/兔子镜点播）</label>
 

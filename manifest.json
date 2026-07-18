@@ -4,7 +4,7 @@
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.32.38",
+  "version": "0.32.40",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "Keeps the stable 0.32.33-based narrative visual baseline and changes plain-text rescue into a single-message, one-shot selection that never scans or saves other messages."
+  "description": "Retracts the 0.32.33 exactly-one-mirror prompt lock, strengthens output-length reservation so the mirror is not omitted, and rescues class-based checked interactions whose target is nested inside the same label."
 }
