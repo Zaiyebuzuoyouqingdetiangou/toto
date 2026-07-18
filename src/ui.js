@@ -91,64 +91,80 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[资料来源测试版]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.32.50 TEST</span>
+      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[折叠设置测试版]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.32.51 TEST</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
-      <label class="checkbox_label"><input id="rh_enabled" type="checkbox"> 兔子镜自动注入</label>
-      <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后每轮自动追加兔子镜规则。</div>
-
-      <label for="rh_sampling_mode" class="flex-container alignitemscenter" style="gap:8px;flex-wrap:wrap;margin:8px 0;">
-        <span>抽取模式</span>
-        <select id="rh_sampling_mode" class="text_pole" style="max-width:260px;">
-          <option value="classic">主题元素 + 展现形式（经典模式）</option>
-          <option value="format_only">仅展现形式</option>
-        </select>
-      </label>
-
-      <label class="checkbox_label"><input id="rh_creative_expansion" type="checkbox"> 发散孵化模式（测试版）</label>
-      <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后，主题元素与展现形式只作为灵感基底，允许根据正文氛围发散出元素库之外的新内容、新媒介、新细节与新结构。</div>
-
-      <label class="checkbox_label"><input id="rh_force_visual_scenery" type="checkbox"> Visual Scenery</label>
-      <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后强制生成一幅完整、统一、会持续变化的 CSS 动态视觉画面；画面本体承担持续动画，并保留由本轮内容自然产生的交互变化。</div>
-
-      <label class="checkbox_label"><input id="rh_user_directive" type="checkbox"> 用户指令优先（正文/兔子镜点播）</label>
-
-      <label class="checkbox_label"><input id="rh_avoid_repeat" type="checkbox"> 10轮冷却：避免重复主题/展现形式/整体观感</label>
-      <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">仅记录已经实际生成成功的兔子镜；用于避免连续复用相近的结构骨架与整体视觉家族。</div>
-
-
-      <div class="rabbit-mirror-memory-test" style="margin:12px 0 10px 0;padding:10px;border:1px dashed var(--SmartThemeBorderColor);border-radius:8px;line-height:1.55;">
-        <div style="font-weight:700;margin-bottom:6px;">共同回忆资料来源 <span style="font-size:11px;opacity:.7;">TEST / 测试版</span></div>
-        <label class="checkbox_label"><input id="rh_memory_scan_enabled" type="checkbox"> 启用额外资料来源（测试）</label>
-        <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.76;font-size:12px;line-height:1.45;">只有抽中 I.1「共同回忆」时才读取已勾选的额外资料；普通轮次不追加资料正文。当前对话与已注入世界书由模型直接使用，不会重复读取。</div>
-        <button id="rh_memory_scan_now" class="menu_button" type="button">扫描可用资料来源</button>
-        <div style="margin-top:6px;opacity:.68;font-size:11px;line-height:1.45;">列出模型已可见资料与检测到的额外资料来源；请勾选需要额外读取的项目。其他候选默认收起。</div>
-        <div id="rh_memory_scan_results" style="margin-top:8px;"></div>
+      <div class="rabbit-mirror-primary-toggle">
+        <label class="checkbox_label"><input id="rh_enabled" type="checkbox"> 兔子镜自动注入</label>
+        <div class="rabbit-mirror-subnote" style="margin:-2px 0 0 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后每轮自动追加兔子镜规则。</div>
       </div>
 
-      <div class="rabbit-mirror-emergency rabbit-mirror-emergency-prominent" style="margin:12px 0 10px 0;padding:10px;border:1px solid var(--SmartThemeBorderColor);border-radius:8px;line-height:1.55;">
-        <label class="checkbox_label" style="font-weight:600;"><input id="rh_codeblock_rescue" type="checkbox"> 代码块急救模式</label>
-        <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.78;font-size:12px;line-height:1.45;">兔子镜变成代码块时临时开启；不建议长期勾选</div>
-        <label class="checkbox_label" style="font-weight:600;"><input id="rh_interaction_rescue" type="checkbox"> 智能交互急救（实验版）</label>
-        <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.78;font-size:12px;line-height:1.45;">出现无法交互时开启，可长期勾选</div>
-        <button id="rh_plaintext_rescue_once" class="menu_button" type="button" style="margin-top:2px;">修复单条纯文字兔子镜</button>
-        <div class="rabbit-mirror-subnote" style="margin:4px 0 0 0;opacity:.78;font-size:12px;line-height:1.45;">先点击按钮，再点击出现无法渲染或 CSS ERROR 的那一条；仅处理选中的兔子镜，不影响其他消息。</div>
-        <button id="rh_interaction_diagnostic_once" class="menu_button" type="button" style="margin-top:8px;">开始一次交互诊断</button>
-        <div class="rabbit-mirror-subnote" style="margin:4px 0 0 0;opacity:.78;font-size:12px;line-height:1.45;">点击后只等待你在聊天区操作一次出错的交互；捕获完成即自动停止，不持续扫描。报告可复制诊断文字、原始源码与实际渲染代码。</div>
-      </div>
+      <details class="rabbit-mirror-section">
+        <summary><span>生成设置</span><span class="rabbit-mirror-section-note">抽取・视觉・冷却</span></summary>
+        <div class="rabbit-mirror-section-content">
+          <label for="rh_sampling_mode" class="flex-container alignitemscenter" style="gap:8px;flex-wrap:wrap;margin:8px 0;">
+            <span>抽取模式</span>
+            <select id="rh_sampling_mode" class="text_pole" style="max-width:260px;">
+              <option value="classic">主题元素 + 展现形式（经典模式）</option>
+              <option value="format_only">仅展现形式</option>
+            </select>
+          </label>
 
-      <div class="rabbit-mirror-regex-helper" style="margin:10px 0;padding:10px;border:1px solid var(--SmartThemeBorderColor);border-radius:8px;line-height:1.55;">
-        <div style="font-weight:600;margin-bottom:6px;">不发送小剧场正则</div>
-        <div style="opacity:.82;font-size:12px;margin-bottom:8px;">设置：替换留空／勾选 AI输出／勾选 仅格式提示词</div>
-        <button id="rh_copy_regex" class="menu_button" type="button">复制推荐正则</button>
-      </div>
+          <label class="checkbox_label"><input id="rh_creative_expansion" type="checkbox"> 发散孵化模式（测试版）</label>
+          <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后，主题元素与展现形式只作为灵感基底，允许根据正文氛围发散出元素库之外的新内容、新媒介、新细节与新结构。</div>
 
-      <div class="rabbit-mirror-actions">
-        <button id="rh_clear_last" class="menu_button">清除历史与冷却记录</button>
-        <button id="rh_clear_injection" class="menu_button">清空当前注入</button>
-        <button id="rh_reset" class="menu_button">恢复默认设置</button>
-      </div>
+          <label class="checkbox_label"><input id="rh_force_visual_scenery" type="checkbox"> Visual Scenery</label>
+          <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后强制生成一幅完整、统一、会持续变化的 CSS 动态视觉画面；画面本体承担持续动画，并保留由本轮内容自然产生的交互变化。</div>
+
+          <label class="checkbox_label"><input id="rh_user_directive" type="checkbox"> 用户指令优先（正文/兔子镜点播）</label>
+
+          <label class="checkbox_label"><input id="rh_avoid_repeat" type="checkbox"> 10轮冷却：避免重复主题/展现形式/整体观感</label>
+          <div class="rabbit-mirror-subnote" style="margin:-2px 0 2px 26px;opacity:.72;font-size:12px;line-height:1.45;">仅记录已经实际生成成功的兔子镜；用于避免连续复用相近的结构骨架与整体视觉家族。</div>
+        </div>
+      </details>
+
+      <details class="rabbit-mirror-section rabbit-mirror-memory-test">
+        <summary><span>共同回忆资料来源</span><span class="rabbit-mirror-section-note">TEST</span></summary>
+        <div class="rabbit-mirror-section-content">
+          <label class="checkbox_label"><input id="rh_memory_scan_enabled" type="checkbox"> 启用额外资料来源（测试）</label>
+          <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.76;font-size:12px;line-height:1.45;">只有抽中 I.1「共同回忆」时才读取已勾选的额外资料；普通轮次不追加资料正文。当前对话与已注入世界书由模型直接使用，不会重复读取。</div>
+          <button id="rh_memory_scan_now" class="menu_button" type="button">扫描可用资料来源</button>
+          <div style="margin-top:6px;opacity:.68;font-size:11px;line-height:1.45;">列出模型已可见资料与检测到的额外资料来源；请勾选需要额外读取的项目。其他候选默认收起。</div>
+          <div id="rh_memory_scan_results" style="margin-top:8px;"></div>
+        </div>
+      </details>
+
+      <details class="rabbit-mirror-section rabbit-mirror-emergency rabbit-mirror-emergency-prominent">
+        <summary><span>急救与诊断</span><span class="rabbit-mirror-section-note">故障时展开</span></summary>
+        <div class="rabbit-mirror-section-content">
+          <label class="checkbox_label" style="font-weight:600;"><input id="rh_codeblock_rescue" type="checkbox"> 代码块急救模式</label>
+          <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.78;font-size:12px;line-height:1.45;">兔子镜变成代码块时临时开启；不建议长期勾选</div>
+          <label class="checkbox_label" style="font-weight:600;"><input id="rh_interaction_rescue" type="checkbox"> 智能交互急救（实验版）</label>
+          <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.78;font-size:12px;line-height:1.45;">出现无法交互时开启，可长期勾选</div>
+          <button id="rh_plaintext_rescue_once" class="menu_button" type="button" style="margin-top:2px;">修复单条纯文字兔子镜</button>
+          <div class="rabbit-mirror-subnote" style="margin:4px 0 0 0;opacity:.78;font-size:12px;line-height:1.45;">先点击按钮，再点击出现无法渲染或 CSS ERROR 的那一条；仅处理选中的兔子镜，不影响其他消息。</div>
+          <button id="rh_interaction_diagnostic_once" class="menu_button" type="button" style="margin-top:8px;">开始一次交互诊断</button>
+          <div class="rabbit-mirror-subnote" style="margin:4px 0 0 0;opacity:.78;font-size:12px;line-height:1.45;">点击后只等待你在聊天区操作一次出错的交互；捕获完成即自动停止，不持续扫描。报告可复制诊断文字、原始源码与实际渲染代码。</div>
+        </div>
+      </details>
+
+      <details class="rabbit-mirror-section rabbit-mirror-tools">
+        <summary><span>工具与维护</span><span class="rabbit-mirror-section-note">正则・清理・重置</span></summary>
+        <div class="rabbit-mirror-section-content">
+          <div class="rabbit-mirror-regex-helper">
+            <div style="font-weight:600;margin-bottom:6px;">不发送小剧场正则</div>
+            <div style="opacity:.82;font-size:12px;margin-bottom:8px;">设置：替换留空／勾选 AI输出／勾选 仅格式提示词</div>
+            <button id="rh_copy_regex" class="menu_button" type="button">复制推荐正则</button>
+          </div>
+
+          <div class="rabbit-mirror-actions">
+            <button id="rh_clear_last" class="menu_button">清除历史与冷却记录</button>
+            <button id="rh_clear_injection" class="menu_button">清空当前注入</button>
+            <button id="rh_reset" class="menu_button">恢复默认设置</button>
+          </div>
+        </div>
+      </details>
     </div>
   </div>
 </div>`;

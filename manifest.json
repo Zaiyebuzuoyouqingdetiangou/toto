@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（资料来源测试版）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（折叠设置测试版）",
   "loading_order": 99,
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.32.50-test.1",
+  "version": "0.32.51-test.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "TEST build: renames the memory-plugin area to Shared Memory Sources, separates model-visible context from extra readable sources, and keeps the 0.32.49 filtered scanner and all 0.32.47 rescue behavior."
+  "description": "TEST build: groups the growing settings UI into compact collapsible sections while preserving the 0.32.50 shared-memory-source preview, all runtime behavior, prompt rules, rescue logic, strict interaction scan, and five-round palette cooldown."
 }
