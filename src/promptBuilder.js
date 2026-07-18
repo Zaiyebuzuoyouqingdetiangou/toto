@@ -56,21 +56,6 @@ function isTarotRelated(combo) {
     return keywords.some(keyword => text.includes(keyword.toLowerCase()));
 }
 
-function shortDynamicVisualAvoidance(combo, limit = 3) {
-    const history = getComboHistory(limit + 1);
-    const currentSig = signatureOf(combo);
-    const trimmed = history[history.length - 1]?.signature === currentSig ? history.slice(0, -1) : history;
-    const recent = trimmed
-        .filter(item => item?.visualSignature || item?.visualSkeleton || (Array.isArray(item?.riskFlags) && item.riskFlags.length))
-        .slice(-limit);
-    if (!recent.length) return '暂无实际历史；本轮仍须重新选择叙事核心、画面主体、空间关系与动态方式。';
-    return recent.map((item, index) => {
-        const riskCount = Array.isArray(item.riskFlags) ? item.riskFlags.length : 0;
-        const signature = item.visualSignature ? truncate(item.visualSignature, 120) : '已记录动态画面骨架';
-        return `${index + 1}. 避让摘要：${signature}${riskCount ? `；结构风险 ${riskCount} 项` : ''}`;
-    }).join('\n');
-}
-
 function shortVisualAvoidance(combo, limit = 3) {
     const history = getComboHistory(limit + 1);
     const currentSig = signatureOf(combo);
@@ -230,56 +215,44 @@ function stateBarIsolationRule() {
   正文已有的状态栏、属性栏或数据栏只用于理解剧情信息，不得复刻其字段、顺序、标签、配色、卡片结构与信息组织；兔子镜必须按本轮展现形式重新构成。`;
 }
 
-function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, forcedVisualSceneryMode, tarotRulesText, directive }) {
+function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive }) {
     const chunks = [];
     const mode = combo?.samplingMode || settings?.samplingMode || 'classic';
     chunks.push('<兔子镜自动注入>');
     if (settings.hardStartup !== false) chunks.push(hardStartupAnchor());
     chunks.push(visibleChineseHardLock());
-
-    // 勾选 Visual Scenery 时进入独立动态视觉模式：不注入随机主题、展现形式或发散孵化规则，
-    // 让画面直接从本轮正文的叙事核心生长，避免与抽取模式互相拉扯。
-    if (!forcedVisualSceneryMode) {
-        if (mode === 'format_only') {
-            chunks.push(String.raw`
+    if (mode === 'format_only') {
+        chunks.push(String.raw`
 本轮抽取模式: 仅展现形式
 本轮内容来源: 当前对话语境；不使用题材抽取池，不额外补造独立类别。
 本轮展现形式:
 ${selectedFormats}`);
-        } else {
-            chunks.push(String.raw`
+    } else {
+        chunks.push(String.raw`
 本轮抽取模式: ${samplingModeLabel(combo, settings)}
 本轮主题元素:
 ${selectedThemes}
 
 本轮展现形式:
 ${selectedFormats}`);
-        }
-        chunks.push(compactCreativeRule(!!settings.creativeExpansionMode, mode === 'format_only'));
     }
-
+    chunks.push(compactCreativeRule(!!settings.creativeExpansionMode, mode === 'format_only'));
     chunks.push(complexInteractiveCore());
     chunks.push(innerDetailsCooldownRule());
     chunks.push(presentationFirstColorRule());
     chunks.push(visualColorTruthRule());
     chunks.push(stateBarIsolationRule());
 
-    if (!forcedVisualSceneryMode && settings.userDirectivePriority && directive) {
+    if (settings.userDirectivePriority && directive) {
         chunks.push(String.raw`
 用户点播优先:
   最后一条用户输入已匹配到兔子镜点播条目；点播优先，未指定部分由插件随机补足。兔子镜不得抢占、稀释或改写主回复正文。`);
     }
 
     if (settings.avoidRepeat) {
-        if (forcedVisualSceneryMode) {
-            chunks.push(String.raw`
-近期动态画面避让:
-${shortDynamicVisualAvoidance(combo, 3)}${recentRiskCorrection()}`);
-        } else {
-            chunks.push(String.raw`
+        chunks.push(String.raw`
 近期视觉避让:
 ${shortVisualAvoidance(combo, 3)}${recentRiskCorrection()}`);
-        }
     }
 
     if (visualSceneryMode) {
@@ -287,7 +260,7 @@ ${shortVisualAvoidance(combo, 3)}${recentRiskCorrection()}`);
         chunks.push(visualSceneryInteractionLinkRule());
     }
 
-    if (!forcedVisualSceneryMode && tarotRulesText) chunks.push(tarotRulesText);
+    if (tarotRulesText) chunks.push(tarotRulesText);
     chunks.push(htmlSafetyCore());
     // 唯一的强制输出契约放在注入末尾，利用指令近因保证每轮正文后继续生成兔子镜。
     chunks.push(coreOutputProtocol());
@@ -305,10 +278,9 @@ export function buildRabbitMirrorPrompt(settings, generationType = 'normal') {
 
     const selectedThemes = formatItemsCompact(combo.themes, 'theme');
     const selectedFormats = formatItemsCompact(combo.formats, 'presentation');
-    const forcedVisualSceneryMode = !!settings.forceVisualScenery;
-    const visualSceneryMode = !!(forcedVisualSceneryMode || hasVisualScenery(combo));
-    const tarotRulesText = !forcedVisualSceneryMode && isTarotRelated(combo) ? TAROT_IMAGE_RULES : '';
-    const prompt = buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, forcedVisualSceneryMode, tarotRulesText, directive });
+    const visualSceneryMode = !!(settings.forceVisualScenery || hasVisualScenery(combo));
+    const tarotRulesText = isTarotRelated(combo) ? TAROT_IMAGE_RULES : '';
+    const prompt = buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive });
 
     if (settings.debug) {
         console.debug('[RabbitMirror] generationType:', generationType, 'combo:', combo, 'prompt chars:', prompt.length);

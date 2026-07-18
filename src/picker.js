@@ -325,13 +325,13 @@ function applyDirectiveOrRandom({ settings, themePool, formatPool, themeCount, f
     const directiveWantsVisualScenery = directiveFormats.some(item => item?.id === '10.2.2');
 
     const formatOnly = settings.samplingMode === 'format_only';
-    const themes = (formatOnly || settings.forceVisualScenery)
+    const themes = formatOnly
         ? []
         : uniqueById([...(directive?.themes || []), ...pickedThemes]).slice(0, Math.max(themeCount, directive?.themes?.length || 0));
 
     let formats;
     if (forcedFormats.length) {
-        // Visual Scenery 动态视觉模式开启时，展现形式锁定为 10.2.2，主题抽取暂停。
+        // Visual Scenery 动态模式开启时，展现形式锁定为 10.2.2；是否抽主题由抽取模式决定。
         formats = forcedFormats;
     } else if (directiveWantsVisualScenery) {
         // 用户正文明确指定 Visual Scenery 时，也让它成为本轮核心展现形式，避免被随机格式稀释。

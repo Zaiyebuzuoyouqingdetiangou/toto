@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "Rolls back to the 0.32.33 safe baseline, makes Visual Scenery an independent narrative-core dynamic visual mode, updates its hard rules, and clarifies rescue toggle usage."
+  "description": "Returns to the stable 0.32.33 baseline, replaces Visual Scenery with narrative-core dynamic visual rules, and reorders the three rescue toggles with concise usage guidance."
 }
