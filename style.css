@@ -49,7 +49,7 @@ toto[data-rabbit-mirror="true"] summary {
     min-width: 0;
 }
 
-/* 0.32.54 TEST：沿用设置项分组折叠；新增仅在急救整理链运行时生效的 CSS 注释剥离。 */
+/* 0.32.55 TEST：沿用设置项分组折叠与全部急救；复制推荐正则恢复为仅匹配 <toto>...</toto> 的原版。 */
 .rabbit-mirror-settings .rabbit-mirror-primary-toggle {
     padding: 2px 2px 8px;
 }

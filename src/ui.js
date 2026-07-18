@@ -84,14 +84,14 @@ function memoryTestMessage(result) {
 
 export function initRabbitMirrorUI() {
     const settings = getSettings();
-    const noSendRegex = '/```(?:html|xml|HTML|XML)?\\s*<toto\\b[^>]*>[\\s\\S]*?<\\/toto>\\s*```|<toto\\b[^>]*>[\\s\\S]*?<\\/toto>\\s*/gi';
+    const noSendRegex = '/<toto\\b[^>]*>[\\s\\S]*?<\\/toto>\\s*/gi';
     if ($('#rabbit_mirror_theater_settings').length) return;
 
     const html = `
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[CSS 注释剥离急救测试版]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.32.54 TEST</span>
+      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[推荐正则原版恢复测试版]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.32.55 TEST</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">

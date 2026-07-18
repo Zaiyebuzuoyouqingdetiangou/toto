@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（CSS 注释剥离急救测试版）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（推荐正则原版恢复测试版）",
   "loading_order": 99,
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.32.54-test.1",
+  "version": "0.32.55-test.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "TEST build: strips CSS comments inside <style> only when code-block rescue or one-shot plain-text rescue actually runs, preventing SillyTavern/Markdown comment corruption from causing missing-brace CSS errors, while preserving prompts, source pools, visual styling, and all existing features."
+  "description": "TEST build: restores the Copy Recommended Regex helper to the original <toto>...</toto>-only pattern, while preserving the 0.32.54 CSS comment-strip rescue, prompts, source pools, visual styling, and all existing features."
 }
