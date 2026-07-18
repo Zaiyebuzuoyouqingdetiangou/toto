@@ -55,6 +55,11 @@ export const defaultSettings = Object.freeze({
     // 勾选后，每轮强制把 10.2.2 Visual Scenery 纳入本轮展现形式。
     forceVisualScenery: false,
 
+    // 共同回忆插件扫描（测试版）：只在抽中 I.1 时读取已勾选且拥有公开读取接口的来源。
+    memoryScanEnabled: false,
+    memoryProviderIds: [],
+    memoryMaxChars: 2200,
+
     // 原规则要求 1-3 个主题、1-2 个展现形式，作为固定协议，不再拆成 UI 设置。
     themesMin: 1,
     themesMax: 3,
@@ -110,6 +115,10 @@ export function getSettings() {
     if (settings.codeBlockRescueMode === undefined) settings.codeBlockRescueMode = defaultSettings.codeBlockRescueMode;
     if (settings.interactionRescueMode === undefined) settings.interactionRescueMode = defaultSettings.interactionRescueMode;
     if (!['classic', 'format_only'].includes(settings.samplingMode)) settings.samplingMode = defaultSettings.samplingMode;
+    if (!Array.isArray(settings.memoryProviderIds)) settings.memoryProviderIds = [];
+    settings.memoryProviderIds = [...new Set(settings.memoryProviderIds.map(String).filter(Boolean))].slice(0, 12);
+    settings.memoryScanEnabled = !!settings.memoryScanEnabled;
+    settings.memoryMaxChars = Math.max(600, Math.min(6000, Number(settings.memoryMaxChars) || defaultSettings.memoryMaxChars));
     // 0.32.43：旧用户设置也统一关闭富版式三倍加权，确保完整池等权参与随机。
     settings.richFormatBias = false;
     settings.depth = Number(settings.depth) || 0;

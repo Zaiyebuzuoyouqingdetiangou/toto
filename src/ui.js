@@ -2,9 +2,62 @@ import { getSettings, updateSettings, resetSettings } from './settings.js';
 import { clearLastCombo } from './storage.js';
 import { clearRabbitMirrorPrompt } from './injector.js';
 import { triggerPlainTextRescue, triggerCodeBlockRescue, triggerInteractionRescue, triggerInteractionDiagnosticOnce } from './outputSanitizer.js';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js';
 
 function checked(id, value) {
     $(id).prop('checked', !!value);
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function renderMemoryScanResults(results) {
+    const settings = getSettings();
+    const selected = new Set(settings.memoryProviderIds || []);
+    const container = $('#rh_memory_scan_results');
+    if (!container.length) return;
+    if (!Array.isArray(results) || !results.length) {
+        container.html('<div style="opacity:.75;font-size:12px;line-height:1.5;">未扫描到可识别的记忆插件或公开接口。未知插件可能需要单独适配。</div>');
+        return;
+    }
+
+    const rows = results.map(item => {
+        const checkedAttr = selected.has(item.id) ? ' checked' : '';
+        const disabledAttr = item.selectedAllowed ? '' : ' disabled';
+        const badge = item.readable ? '可读取' : '待适配';
+        const badgeOpacity = item.readable ? '1' : '.62';
+        const testButton = item.readable
+            ? `<button class="menu_button rh-memory-test" type="button" data-provider-id="${escapeHtml(item.id)}" style="margin:6px 0 0 26px;padding:3px 8px;min-height:unset;font-size:12px;">测试读取</button>`
+            : '';
+        return `<div class="rh-memory-provider" style="padding:8px 0;border-top:1px solid color-mix(in srgb, var(--SmartThemeBorderColor) 65%, transparent);">
+          <label class="checkbox_label" style="align-items:flex-start;">
+            <input class="rh-memory-provider-check" type="checkbox" data-provider-id="${escapeHtml(item.id)}"${checkedAttr}${disabledAttr}>
+            <span><b>${escapeHtml(item.name)}</b> <span style="opacity:${badgeOpacity};font-size:11px;">[${badge}]</span><br><span style="opacity:.72;font-size:11px;line-height:1.45;">${escapeHtml(item.status)} · ${escapeHtml(item.source)}</span></span>
+          </label>
+          ${item.details ? `<div style="margin:3px 0 0 26px;opacity:.62;font-size:11px;line-height:1.4;word-break:break-word;">${escapeHtml(item.details)}</div>` : ''}
+          ${testButton}
+        </div>`;
+    }).join('');
+    container.html(rows);
+}
+
+function memoryTestMessage(result) {
+    if (!result?.ok) return `读取失败：${result?.error || '未知错误'}`;
+    const parts = [
+        `${result.providerName || '记忆来源'}读取成功`,
+        `记忆正文 ${result.chars} 字符`,
+        result.characterName ? `角色：${result.characterName}` : '',
+        result.chatId ? `聊天：${result.chatId}` : '',
+        result.coverageComplete === false ? `覆盖不完整（缺失 ${result.missingFloors || 0} 个 AI 楼层）` : '',
+        `耗时 ${result.elapsed || 0}ms`,
+    ].filter(Boolean);
+    return parts.join('；');
 }
 
 export function initRabbitMirrorUI() {
@@ -16,7 +69,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场 / Rabbit Mirror Theater</b><span class="rabbit-mirror-toto-watermark">Toto v0.32.35</span>
+      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[记忆扫描测试版]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.32.48 TEST</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -35,20 +88,30 @@ export function initRabbitMirrorUI() {
       <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后，主题元素与展现形式只作为灵感基底，允许根据正文氛围发散出元素库之外的新内容、新媒介、新细节与新结构。</div>
 
       <label class="checkbox_label"><input id="rh_force_visual_scenery" type="checkbox"> Visual Scenery</label>
-      <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后强制生成一幅完整、统一、会持续变化的 CSS 动态插画；主场景承担动画，文字仅作画内题签，交互融入景物或透明热区。</div>
+      <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后强制生成一幅完整、统一、会持续变化的 CSS 动态视觉画面；画面本体承担持续动画，并保留由本轮内容自然产生的交互变化。</div>
 
       <label class="checkbox_label"><input id="rh_user_directive" type="checkbox"> 用户指令优先（正文/兔子镜点播）</label>
 
       <label class="checkbox_label"><input id="rh_avoid_repeat" type="checkbox"> 10轮冷却：避免重复主题/展现形式/整体观感</label>
       <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">仅记录已经实际生成成功的兔子镜；用于避免连续复用相近的结构骨架与整体视觉家族。</div>
 
+
+      <div class="rabbit-mirror-memory-test" style="margin:12px 0 10px 0;padding:10px;border:1px dashed var(--SmartThemeBorderColor);border-radius:8px;line-height:1.55;">
+        <div style="font-weight:700;margin-bottom:6px;">共同回忆插件扫描 <span style="font-size:11px;opacity:.7;">TEST / 测试版</span></div>
+        <label class="checkbox_label"><input id="rh_memory_scan_enabled" type="checkbox"> 启用外部记忆读取（测试）</label>
+        <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.76;font-size:12px;line-height:1.45;">只有抽中 I.1「共同回忆」时才读取已勾选来源；普通轮次不追加记忆正文。读取对象始终以当前打开的聊天为准。</div>
+        <button id="rh_memory_scan_now" class="menu_button" type="button">扫描记忆插件</button>
+        <div style="margin-top:6px;opacity:.68;font-size:11px;line-height:1.45;">扫描会发现公开 API、扩展设置和已加载脚本。只有已适配或公开提供 <code>getInjectedHistory</code> 的来源可勾选；未知插件只标记，不强行读取内部数据。</div>
+        <div id="rh_memory_scan_results" style="margin-top:8px;"></div>
+      </div>
+
       <div class="rabbit-mirror-emergency rabbit-mirror-emergency-prominent" style="margin:12px 0 10px 0;padding:10px;border:1px solid var(--SmartThemeBorderColor);border-radius:8px;line-height:1.55;">
-        <label class="checkbox_label" style="font-weight:600;"><input id="rh_plaintext_rescue" type="checkbox"> 纯文字急救</label>
-        <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.78;font-size:12px;line-height:1.45;">仅在画面已经出现 CSS ERROR 时处理：读取整条兔子镜中的变量并安全展开、即时重绘。健康 UI 即使使用 var(...) 也不会被预防性改写。关闭后，代码块急救不会代替它触发 CSS ERROR 重绘。不会改 Prompt。</div>
         <label class="checkbox_label" style="font-weight:600;"><input id="rh_codeblock_rescue" type="checkbox"> 代码块急救模式</label>
-        <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.78;font-size:12px;line-height:1.45;">兔子镜变成代码块时临时开启；先恢复为真实 DOM，不改已有主容器 UI。</div>
+        <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.78;font-size:12px;line-height:1.45;">兔子镜变成代码块时临时开启；不建议长期勾选</div>
         <label class="checkbox_label" style="font-weight:600;"><input id="rh_interaction_rescue" type="checkbox"> 智能交互急救（实验版）</label>
-        <div class="rabbit-mirror-subnote" style="margin:-2px 0 0 26px;opacity:.78;font-size:12px;line-height:1.45;">自动识别 checked、hover、嵌套 details、:target，以及简单的 onclick/onmouseover/onchange 伪交互；触屏会转换为安全点击或状态切换。可与代码块急救同时开启，固定先恢复代码、再修交互。</div>
+        <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.78;font-size:12px;line-height:1.45;">出现无法交互时开启，可长期勾选</div>
+        <button id="rh_plaintext_rescue_once" class="menu_button" type="button" style="margin-top:2px;">修复单条纯文字兔子镜</button>
+        <div class="rabbit-mirror-subnote" style="margin:4px 0 0 0;opacity:.78;font-size:12px;line-height:1.45;">先点击按钮，再点击出现无法渲染或 CSS ERROR 的那一条；仅处理选中的兔子镜，不影响其他消息。</div>
         <button id="rh_interaction_diagnostic_once" class="menu_button" type="button" style="margin-top:8px;">开始一次交互诊断</button>
         <div class="rabbit-mirror-subnote" style="margin:4px 0 0 0;opacity:.78;font-size:12px;line-height:1.45;">点击后只等待你在聊天区操作一次出错的交互；捕获完成即自动停止，不持续扫描。报告可复制诊断文字、原始源码与实际渲染代码。</div>
       </div>
@@ -71,7 +134,6 @@ export function initRabbitMirrorUI() {
     $('#extensions_settings2').append(html);
 
     checked('#rh_enabled', settings.autoRabbitMirrorInjection !== false && settings.enabled !== false);
-    checked('#rh_plaintext_rescue', settings.plainTextRescueMode);
     checked('#rh_codeblock_rescue', settings.codeBlockRescueMode);
     checked('#rh_interaction_rescue', settings.interactionRescueMode);
     $('#rh_sampling_mode').val(settings.samplingMode || 'classic');
@@ -79,17 +141,15 @@ export function initRabbitMirrorUI() {
     checked('#rh_creative_expansion', settings.creativeExpansionMode);
     checked('#rh_force_visual_scenery', settings.forceVisualScenery);
     checked('#rh_avoid_repeat', settings.avoidRepeat);
+    checked('#rh_memory_scan_enabled', settings.memoryScanEnabled);
 
     $('#rh_enabled').on('change', e => updateSettings({ enabled: e.target.checked, autoRabbitMirrorInjection: e.target.checked, mode: e.target.checked ? 'integrated' : 'off' }));
-    $('#rh_plaintext_rescue').on('change', e => {
-        updateSettings({ plainTextRescueMode: e.target.checked });
-        if (e.target.checked) {
-            toastr?.info?.('已开启纯文字急救：仅对已显示 CSS ERROR 的兔子镜安全展开变量并重绘；健康 UI 不会被改写。');
-            setTimeout(() => triggerPlainTextRescue(), 80);
-            setTimeout(() => triggerPlainTextRescue(), 350);
-            setTimeout(() => triggerPlainTextRescue(), 900);
+    $('#rh_plaintext_rescue_once').on('click', () => {
+        const started = triggerPlainTextRescue();
+        if (started) {
+            toastr?.info?.('单条纯文字急救已就绪：请点击聊天中需要修复的那一条兔子镜。再次点击按钮可取消。');
         } else {
-            toastr?.success?.('已关闭纯文字急救：后续不再执行 CSS ERROR 检测、变量展开或纯文字强制重绘；已修复消息保持现状。');
+            toastr?.info?.('已取消单条纯文字急救，或当前尚未进入具体聊天。');
         }
     });
     $('#rh_codeblock_rescue').on('change', e => {
@@ -107,7 +167,7 @@ export function initRabbitMirrorUI() {
         updateSettings({ interactionRescueMode: e.target.checked });
         if (e.target.checked) {
             toastr?.info?.('已开启智能交互急救：正在识别当前兔子镜的交互类型并选择修复路径；与代码块急救同时开启时，会先恢复代码再修交互。');
-            const runRescueChain = () => (getSettings().plainTextRescueMode || getSettings().codeBlockRescueMode)
+            const runRescueChain = () => getSettings().codeBlockRescueMode
                 ? triggerCodeBlockRescue()
                 : triggerInteractionRescue();
             setTimeout(runRescueChain, 80);
@@ -125,6 +185,32 @@ export function initRabbitMirrorUI() {
             toastr?.warning?.('未找到聊天区域，暂时无法开始诊断。请进入具体聊天后重试。');
         }
     });
+
+    $('#rh_memory_scan_enabled').on('change', e => {
+        updateSettings({ memoryScanEnabled: e.target.checked });
+        toastr?.[e.target.checked ? 'info' : 'success']?.(e.target.checked
+            ? '已开启共同回忆插件读取测试：只有抽中 I.1 时才会读取已勾选来源。'
+            : '已关闭外部记忆读取；扫描结果和勾选记录会保留。');
+    });
+    $('#rh_memory_scan_now').on('click', () => {
+        const results = scanMemoryPlugins();
+        renderMemoryScanResults(results);
+        const readableCount = results.filter(item => item.readable).length;
+        toastr?.info?.(`扫描完成：发现 ${results.length} 个候选，其中 ${readableCount} 个可读取。`);
+    });
+    $('#rh_memory_scan_results').on('change', '.rh-memory-provider-check', function () {
+        const id = String($(this).data('provider-id') || '');
+        const current = new Set(getSettings().memoryProviderIds || []);
+        if (this.checked) current.add(id); else current.delete(id);
+        updateSettings({ memoryProviderIds: [...current] });
+    });
+    $('#rh_memory_scan_results').on('click', '.rh-memory-test', function () {
+        const id = String($(this).data('provider-id') || '');
+        const result = testMemoryProvider(id);
+        if (result.ok) toastr?.success?.(memoryTestMessage(result));
+        else toastr?.error?.(memoryTestMessage(result));
+    });
+
     $('#rh_sampling_mode').on('change', e => updateSettings({ samplingMode: e.target.value }));
     $('#rh_user_directive').on('change', e => updateSettings({ userDirectivePriority: e.target.checked }));
     $('#rh_creative_expansion').on('change', e => updateSettings({ creativeExpansionMode: e.target.checked }));
@@ -157,6 +243,10 @@ export function initRabbitMirrorUI() {
         clearRabbitMirrorPrompt();
         toastr?.success?.('已清空当前兔子镜注入');
     });
+    if (settings.memoryScanEnabled || (settings.memoryProviderIds || []).length) {
+        setTimeout(() => renderMemoryScanResults(scanMemoryPlugins()), 180);
+    }
+
     $('#rh_reset').on('click', () => {
         resetSettings();
         location.reload();

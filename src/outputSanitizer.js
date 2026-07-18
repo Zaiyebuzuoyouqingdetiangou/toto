@@ -209,12 +209,215 @@ function strengthenRabbitMirrorCheckedStateCss(toto) {
 const interactionInlineOverrideStates = new WeakMap();
 
 
-function parseCheckedRulesFromText(toto, input) {
-    if (!toto?.querySelectorAll || !input?.id) return [];
-    const escapedId = escapeRegExp(input.id);
-    const selectorNeedle = new RegExp(`#${escapedId}:checked\\s*([+~])\\s*([^,{]+)`, 'i');
-    const results = [];
+const FOCUS_TO_CHECKED_STYLE_ATTR = 'data-rabbit-mirror-focus-to-checked-rescue';
+const FOCUS_TO_CHECKED_ROOT_ATTR = 'data-rabbit-mirror-focus-to-checked-rules';
 
+function escapeCssIdentifier(value) {
+    const text = String(value || '');
+    try {
+        if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') return CSS.escape(text);
+    } catch {
+        // Fall through to a conservative identifier escape.
+    }
+    return text.replace(/(^-?\d)|[^a-zA-Z0-9_-]/g, match => `\\${match}`);
+}
+
+function replaceCheckableFocusSubject(selector, input) {
+    if (!selector || !input?.id || !/:focus\b\s*[+~]/i.test(selector)) return '';
+
+    // 只接管“checkbox/radio 自身的 :focus 作为持久状态触发器”的明确误写。
+    // 目标必须位于后续兄弟链；普通按钮/链接/文本输入的 focus 视觉完全不碰。
+    const subjectRe = /((?:input\b)?(?:[#.][a-zA-Z0-9_-]+|\[[^\]]+\])*)\s*:focus\b(?=\s*[+~])/gi;
+    let matched = false;
+    const rewritten = String(selector).replace(subjectRe, (full, subject) => {
+        const candidate = String(subject || '').trim();
+        if (!candidate) return full;
+        try {
+            if (!input.matches(candidate)) return full;
+        } catch {
+            return full;
+        }
+        matched = true;
+        return `#${escapeCssIdentifier(input.id)}:checked`;
+    });
+    return matched ? rewritten : '';
+}
+
+function collectFocusToCheckedRules(root) {
+    if (!root?.querySelectorAll) return [];
+    const inputs = [...root.querySelectorAll('input[type="checkbox"], input[type="radio"]')]
+        .filter(input => input.id && !input.disabled);
+    if (!inputs.length) return [];
+
+    const rules = [];
+    const seen = new Set();
+    root.querySelectorAll(`style:not([${FOCUS_TO_CHECKED_STYLE_ATTR}])`).forEach(styleEl => {
+        const css = String(styleEl.textContent || '');
+        const blockRe = /([^{}]+)\{([^{}]*)\}/g;
+        let match;
+        while ((match = blockRe.exec(css))) {
+            const selectorText = String(match[1] || '').trim();
+            if (!selectorText || selectorText.startsWith('@') || !/:focus\b\s*[+~]/i.test(selectorText)) continue;
+            const declarations = addImportantToDeclarationBlock(String(match[2] || ''));
+            if (!declarations.trim()) continue;
+
+            for (const selector of selectorText.split(',').map(value => value.trim()).filter(Boolean)) {
+                for (const input of inputs) {
+                    const rewritten = replaceCheckableFocusSubject(selector, input);
+                    if (!rewritten) continue;
+                    const key = `${rewritten}|${declarations}`;
+                    if (seen.has(key)) continue;
+                    seen.add(key);
+                    rules.push(`${rewritten} {${declarations}}`);
+                }
+            }
+        }
+    });
+    return rules;
+}
+
+function refreshFocusToCheckedRescue(root) {
+    if (!root?.querySelectorAll) return;
+    const rules = collectFocusToCheckedRules(root);
+    let rescueStyle = root.querySelector(`style[${FOCUS_TO_CHECKED_STYLE_ATTR}]`);
+
+    if (rules.length) {
+        if (!rescueStyle) {
+            rescueStyle = document.createElement('style');
+            rescueStyle.setAttribute(FOCUS_TO_CHECKED_STYLE_ATTR, 'true');
+            root.appendChild(rescueStyle);
+        }
+        const nextCss = rules.join('\n');
+        if (rescueStyle.textContent !== nextCss) rescueStyle.textContent = nextCss;
+        root.setAttribute(FOCUS_TO_CHECKED_ROOT_ATTR, String(rules.length));
+    } else {
+        rescueStyle?.remove();
+        root.removeAttribute(FOCUS_TO_CHECKED_ROOT_ATTR);
+    }
+}
+
+
+const CHECKED_TEXT_RULE_RESCUE_ATTR = 'data-rabbit-mirror-checked-text-rule-rescue';
+const EXPANDED_OPACITY_RESCUE_ATTR = 'data-rabbit-mirror-expanded-opacity-rescue';
+
+function collectCheckedRevealSignal(candidate, property, value) {
+    if (!candidate) return;
+    const name = String(property || '').trim().toLowerCase();
+    const cleanValue = String(value || '').trim().toLowerCase();
+    if (!name || !cleanValue) return;
+
+    if (name === 'opacity') {
+        // 激活规则明确声明透明度时尊重原规则，不进行残留透明度保全。
+        candidate.explicitOpacity = true;
+        return;
+    }
+
+    if (name === 'display' && cleanValue !== 'none') candidate.expands = true;
+    else if (name === 'visibility' && cleanValue !== 'hidden' && cleanValue !== 'collapse') candidate.expands = true;
+    else if (name === 'height' || name === 'min-height' || name === 'max-height') {
+        if (!isCollapsedDimensionValue(cleanValue)) candidate.expands = true;
+    }
+}
+
+function rememberCheckedRevealCandidate(candidates, target, styleMap) {
+    if (!target || !styleMap?.length) return;
+    let candidate = candidates.get(target);
+    if (!candidate) {
+        candidate = { target, expands: false, explicitOpacity: false };
+        candidates.set(target, candidate);
+    }
+    for (const [property, value] of styleMap) collectCheckedRevealSignal(candidate, property, value);
+}
+
+function applyExpandedOpacityResidualRescue(input, candidates, records) {
+    if (!input?.checked || !candidates?.size || !records) return 0;
+
+    for (const candidate of candidates.values()) {
+        const target = candidate?.target;
+        if (!target?.isConnected || !candidate.expands || candidate.explicitOpacity) continue;
+        if (records.some(record => record.element === target
+            && record.property === 'opacity'
+            && record.rescueKind === 'expanded-opacity')) continue;
+
+        let computed = null;
+        try {
+            computed = typeof getComputedStyle === 'function' ? getComputedStyle(target) : null;
+        } catch {
+            computed = null;
+        }
+        const opacity = Number.parseFloat(computed?.opacity || '1');
+        const display = String(computed?.display || '').toLowerCase();
+        const visibility = String(computed?.visibility || '').toLowerCase();
+        if (!Number.isFinite(opacity) || opacity > 0.05
+            || display === 'none' || visibility === 'hidden' || visibility === 'collapse') continue;
+
+        let rectHeight = 0;
+        try {
+            rectHeight = Number(target.getBoundingClientRect?.().height || 0);
+        } catch {
+            rectHeight = 0;
+        }
+        const naturalHeight = Math.max(rectHeight, Number(target.scrollHeight || 0));
+        const hasContent = String(target.textContent || '').replace(/\s+/g, '').length >= 2
+            || Number(target.childElementCount || 0) > 0;
+        if (!hasContent || naturalHeight <= 4) continue;
+
+        records.push({
+            element: target,
+            property: 'opacity',
+            value: target.style.getPropertyValue('opacity'),
+            priority: target.style.getPropertyPriority('opacity'),
+            rescueKind: 'expanded-opacity',
+        });
+        target.style.setProperty('opacity', '1', 'important');
+    }
+
+    const rescuedCount = new Set(records
+        .filter(record => record.rescueKind === 'expanded-opacity')
+        .map(record => record.element)).size;
+    if (rescuedCount) input.setAttribute(EXPANDED_OPACITY_RESCUE_ATTR, String(rescuedCount));
+    return rescuedCount;
+}
+
+function scheduleExpandedOpacityResidualRescue(input, candidates, records) {
+    if (!input || !candidates?.size || !records) return;
+    for (const delay of [0, 80, 260, 650]) {
+        setTimeout(() => {
+            if (!input.isConnected || !input.checked
+                || interactionInlineOverrideStates.get(input) !== records) return;
+            applyExpandedOpacityResidualRescue(input, candidates, records);
+        }, delay);
+    }
+}
+
+function buildCheckedSelectorNeedles(input) {
+    const needles = [];
+    if (input?.id) {
+        const escapedId = escapeRegExp(input.id);
+        needles.push({
+            source: 'id',
+            pattern: new RegExp(`#${escapedId}:checked\\s*([+~])\\s*([^,{]+)`, 'i'),
+        });
+    }
+
+    for (const className of getClassTokens(input).slice(0, 8)) {
+        if (!className || className.length > 120) continue;
+        const escapedClass = escapeRegExp(className);
+        needles.push({
+            source: 'class-local',
+            pattern: new RegExp(`\\.${escapedClass}:checked\\s*([+~])\\s*([^,{]+)`, 'i'),
+        });
+    }
+    return needles;
+}
+
+function parseCheckedRulesFromText(toto, input) {
+    if (!toto?.querySelectorAll || !input) return [];
+    const selectorNeedles = buildCheckedSelectorNeedles(input);
+    if (!selectorNeedles.length) return [];
+
+    const results = [];
+    const seen = new Set();
     for (const styleEl of toto.querySelectorAll('style')) {
         const css = String(styleEl.textContent || '');
         const blockRe = /([^{}]+)\{([^{}]*)\}/g;
@@ -223,18 +426,24 @@ function parseCheckedRulesFromText(toto, input) {
             const selectors = String(match[1] || '').split(',').map(v => v.trim()).filter(Boolean);
             const declarations = String(match[2] || '');
             for (const selector of selectors) {
-                const selectorMatch = selector.match(selectorNeedle);
-                if (!selectorMatch) continue;
-                const relation = selectorMatch[1];
-                const targetSelector = selectorMatch[2].trim();
-                const styleMap = [];
-                declarations.replace(/(^|;)\s*([a-z-]+)\s*:\s*([^;{}]+?)(\s*!important\s*)?(?=;|$)/gi,
-                    (_m, _sep, property, value) => {
-                        const cleanValue = String(value || '').trim().replace(/\s*!important\s*$/i, '');
-                        if (property && cleanValue) styleMap.push([property, cleanValue]);
-                        return _m;
-                    });
-                if (styleMap.length) results.push({ relation, targetSelector, styleMap });
+                for (const needle of selectorNeedles) {
+                    const selectorMatch = selector.match(needle.pattern);
+                    if (!selectorMatch) continue;
+                    const relation = selectorMatch[1];
+                    const targetSelector = selectorMatch[2].trim();
+                    const styleMap = [];
+                    declarations.replace(/(^|;)\s*([a-z-]+)\s*:\s*([^;{}]+?)(\s*!important\s*)?(?=;|$)/gi,
+                        (_m, _sep, property, value) => {
+                            const cleanValue = String(value || '').trim().replace(/\s*!important\s*$/i, '');
+                            if (property && cleanValue) styleMap.push([property, cleanValue]);
+                            return _m;
+                        });
+                    if (!styleMap.length) continue;
+                    const key = `${needle.source}|${relation}|${targetSelector}|${JSON.stringify(styleMap)}`;
+                    if (seen.has(key)) continue;
+                    seen.add(key);
+                    results.push({ source: needle.source, relation, targetSelector, styleMap });
+                }
             }
         }
     }
@@ -268,18 +477,44 @@ function getCrossContainerTargetsForCheckedRule(root, targetSelector) {
     }
 }
 
+function getLocalContainerTargetsForCheckedRule(input, targetSelector) {
+    if (!input || !targetSelector) return [];
+    const scope = input.closest?.('label') || input.parentElement;
+    if (!scope?.querySelectorAll) return [];
+    try {
+        const targets = [...scope.querySelectorAll(targetSelector)].filter(target => target !== input);
+        // class 型 :checked 规则若结构写错，只允许在当前 label/局部容器内补救，
+        // 绝不把同类目标扩散到其他事件节点。
+        if (!targets.length || targets.length > 8) return [];
+        return targets;
+    } catch {
+        return [];
+    }
+}
+
 function applyCheckedRuleTextFallback(toto, input) {
     if (!toto || !input) return 0;
     restoreInteractionInlineOverrides(input);
     if (!input.checked) return 0;
 
     const records = [];
+    const routeKinds = new Set();
+    const revealCandidates = new Map();
     for (const rule of parseCheckedRulesFromText(toto, input)) {
         let targets = getSiblingTargetsForCheckedRule(input, rule.relation, rule.targetSelector);
-        // 模型常把 input 放在按钮容器、反馈放在相邻内容容器，导致 +/~ 永远跨不出父级。
-        // 原结构无匹配时，降级为当前兔子镜根内的受控目标查找，直接实现规则最终状态。
-        if (!targets.length) targets = getCrossContainerTargetsForCheckedRule(toto, rule.targetSelector);
+        if (!targets.length) {
+            if (rule.source === 'class-local') {
+                // 典型错误：.trigger:checked ~ .panel，但 .panel 实际嵌套在同一 label 的后代容器中。
+                // 按当前 label 局部查找并落实规则状态，不影响其他同 class 节点。
+                targets = getLocalContainerTargetsForCheckedRule(input, rule.targetSelector);
+            } else {
+                // 带唯一 ID 的规则允许在当前兔子镜根内寻找受控目标。
+                targets = getCrossContainerTargetsForCheckedRule(toto, rule.targetSelector);
+            }
+        }
         for (const target of targets) {
+            routeKinds.add(rule.source);
+            rememberCheckedRevealCandidate(revealCandidates, target, rule.styleMap);
             for (const [property, value] of rule.styleMap) {
                 records.push({
                     element: target,
@@ -291,13 +526,21 @@ function applyCheckedRuleTextFallback(toto, input) {
             }
         }
     }
-    if (records.length) interactionInlineOverrideStates.set(input, records);
+    if (records.length) {
+        interactionInlineOverrideStates.set(input, records);
+        input.setAttribute(CHECKED_TEXT_RULE_RESCUE_ATTR, [...routeKinds].join(','));
+        applyExpandedOpacityResidualRescue(input, revealCandidates, records);
+        scheduleExpandedOpacityResidualRescue(input, revealCandidates, records);
+    }
     return records.length;
 }
 
 function restoreInteractionInlineOverrides(input) {
     const records = interactionInlineOverrideStates.get(input);
-    if (!records) return;
+    if (!records) {
+        input?.removeAttribute?.(EXPANDED_OPACITY_RESCUE_ATTR);
+        return;
+    }
     for (const record of records) {
         const { element, property, value, priority } = record;
         if (!element?.style) continue;
@@ -305,6 +548,7 @@ function restoreInteractionInlineOverrides(input) {
         else element.style.removeProperty(property);
     }
     interactionInlineOverrideStates.delete(input);
+    input?.removeAttribute?.(EXPANDED_OPACITY_RESCUE_ATTR);
 }
 
 function applyCheckedRuleInlineFallback(toto, input) {
@@ -318,6 +562,7 @@ function applyCheckedRuleInlineFallback(toto, input) {
         : String(input.id).replace(/([^a-zA-Z0-9_-])/g, '\\$1');
     const idNeedle = `#${escapedId}:checked`;
     const records = [];
+    const revealCandidates = new Map();
 
     const applyRule = (selectorText, style) => {
         if (!selectorText || !style || !selectorText.includes(idNeedle)) return;
@@ -327,10 +572,14 @@ function applyCheckedRuleInlineFallback(toto, input) {
         } catch {
             return;
         }
+        const styleMap = [];
+        for (const property of [...style]) {
+            const value = style.getPropertyValue(property);
+            if (value) styleMap.push([property, value]);
+        }
         for (const target of targets) {
-            for (const property of [...style]) {
-                const value = style.getPropertyValue(property);
-                if (!value) continue;
+            rememberCheckedRevealCandidate(revealCandidates, target, styleMap);
+            for (const [property, value] of styleMap) {
                 records.push({
                     element: target,
                     property,
@@ -356,7 +605,11 @@ function applyCheckedRuleInlineFallback(toto, input) {
         }
     }
 
-    if (records.length) interactionInlineOverrideStates.set(input, records);
+    if (records.length) {
+        interactionInlineOverrideStates.set(input, records);
+        applyExpandedOpacityResidualRescue(input, revealCandidates, records);
+        scheduleExpandedOpacityResidualRescue(input, revealCandidates, records);
+    }
 }
 
 
@@ -3841,6 +4094,9 @@ function installIntelligentInteractionRescue(root) {
 
     const capabilities = detectInteractionCapabilities(root);
     if (capabilities.checked) {
+        // 模型常把 checkbox/radio 的可保持状态误写成 :focus ~ ...。
+        // 仅在当前兔子镜内复制为唯一 input ID 的 :checked 规则；普通 focus 视觉不受影响。
+        refreshFocusToCheckedRescue(root);
         strengthenRabbitMirrorCheckedStateCss(root);
         // 优先解析 checkbox/radio 中安全的 ID 目标条件显隐；绑定到 input/change，
         // 避免 label 兜底只切换 checked、却不触发原 onclick 的情况。
@@ -4228,7 +4484,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 一次性交互诊断：仅在用户按下“开始一次交互诊断”后，临时监听聊天区的下一次交互。
 // 捕获一个兔子镜后只读取该条内容，并在约 650ms 后自动停止全部诊断监听。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.35-ONESHOT';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.48-TEST-ONESHOT';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -4325,6 +4581,9 @@ function diagnosticRouteSummary(root) {
         clickableAdjacent: renderedClickableAdjacentHiddenRescueStates.get(root)?.entries?.size || 0,
         clickablePopup: renderedClickableAdjacentPopupRescueStates.get(root)?.entries?.size || 0,
         checkedIdTarget: renderedCheckedIdTargetRescueStates.get(root)?.entries?.size || 0,
+        focusToChecked: Number.parseInt(root?.getAttribute?.(FOCUS_TO_CHECKED_ROOT_ATTR) || '0', 10) || 0,
+        checkedTextRule: root?.querySelectorAll?.(`[${CHECKED_TEXT_RULE_RESCUE_ATTR}]`)?.length || 0,
+        expandedOpacity: root?.querySelectorAll?.(`[${EXPANDED_OPACITY_RESCUE_ATTR}]`)?.length || 0,
         containerReveal: renderedContainerInternalRevealStates.get(root)?.entries?.size || 0,
         selfMutation: rawSelfMutationRescueStates.get(root)?.entries?.size || 0,
         changeProgram: root?.querySelectorAll?.(`[${CHANGE_PSEUDO_RESCUE_ATTR}]`)?.length || 0,
@@ -4333,7 +4592,7 @@ function diagnosticRouteSummary(root) {
 
 function diagnosticInferReason(root, inputs, targets) {
     const routes = diagnosticRouteSummary(root);
-    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.containerReveal + routes.selfMutation + routes.changeProgram;
+    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.focusToChecked + routes.checkedTextRule + routes.expandedOpacity + routes.containerReveal + routes.selfMutation + routes.changeProgram;
     const checkedInputs = inputs.filter(input => input.checked);
     const visibleTargets = targets.filter(target => {
         const style = diagnosticComputedStyle(target);
@@ -4390,6 +4649,9 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `可点击后置内容 entries=${routes.clickableAdjacent} listener=${root.dataset.rabbitMirrorClickableAdjacentHiddenFallback || 'false'}`,
         `可点击画面弹层 entries=${routes.clickablePopup} listener=${root.dataset.rabbitMirrorClickableAdjacentPopupFallback || 'false'}`,
         `ID目标显隐 entries=${routes.checkedIdTarget} listener=${root.dataset.rabbitMirrorCheckedIdTargetFallback || 'false'}`,
+        `focus→checked entries=${routes.focusToChecked} listener=${routes.focusToChecked ? 'true' : 'false'}`,
+        `CSS状态规则 entries=${routes.checkedTextRule} listener=${routes.checkedTextRule ? 'true' : 'false'}`,
+        `展开透明保全 entries=${routes.expandedOpacity} listener=${routes.expandedOpacity ? 'true' : 'false'}`,
         `容器内揭示 entries=${routes.containerReveal} listener=${root.dataset.rabbitMirrorContainerInternalRevealFallback || 'false'}`,
         `元素自变化 entries=${routes.selfMutation} listener=${root.dataset.rabbitMirrorSelfMutationFallback || 'false'}`,
         `安全状态程序 entries=${routes.changeProgram} listener=${routes.changeProgram ? 'true' : 'false'}`,
@@ -4412,7 +4674,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         lines.push(
             `${index}: ${diagnosticElementName(input)} type=${input.type} checked=${!!input.checked}`,
             `   label=${!!label} text="${diagnosticCompactText(label?.textContent, 68)}"`,
-            `   attrs: route=${getRenderedInputRoute(input) || 'none'} adjacent=${input.getAttribute(RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR) || 'false'} layer=${input.getAttribute(RENDERED_STATE_LAYER_RESCUE_ATTR) || 'false'} labelInternal=${input.getAttribute(RENDERED_LABEL_INTERNAL_HIDDEN_RESCUE_ATTR) || 'false'} labelAdjacent=${input.getAttribute(RENDERED_LABEL_ADJACENT_RESULT_RESCUE_ATTR) || 'false'} idTarget=${input.getAttribute(RENDERED_CHECKED_ID_TARGET_RESCUE_ATTR) || 'false'} change=${input.getAttribute(CHANGE_PSEUDO_RESCUE_ATTR) || 'false'}`,
+            `   attrs: route=${getRenderedInputRoute(input) || 'none'} adjacent=${input.getAttribute(RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR) || 'false'} layer=${input.getAttribute(RENDERED_STATE_LAYER_RESCUE_ATTR) || 'false'} labelInternal=${input.getAttribute(RENDERED_LABEL_INTERNAL_HIDDEN_RESCUE_ATTR) || 'false'} labelAdjacent=${input.getAttribute(RENDERED_LABEL_ADJACENT_RESULT_RESCUE_ATTR) || 'false'} idTarget=${input.getAttribute(RENDERED_CHECKED_ID_TARGET_RESCUE_ATTR) || 'false'} cssChecked=${input.getAttribute(CHECKED_TEXT_RULE_RESCUE_ATTR) || 'false'} expandedOpacity=${input.getAttribute(EXPANDED_OPACITY_RESCUE_ATTR) || 'false'} change=${input.getAttribute(CHANGE_PSEUDO_RESCUE_ATTR) || 'false'}`,
         );
     });
 
@@ -4646,6 +4908,210 @@ function scopeRabbitMirrorInteractionsInChatDom() {
             mirrorRoot.dataset.rabbitMirrorInteractionRescued = 'true';
         }
     });
+}
+
+
+const DAMAGED_DATA_URI_MESSAGE_ATTR = 'data-rabbit-mirror-damaged-data-uri-rescued';
+const DAMAGED_DATA_URI_ROOT_ATTR = 'data-rabbit-mirror-data-uri-rescued';
+const INLINE_SVG_DATA_URI_RE = /data:image\/svg\+xml(?:;[^,)]*)?,/i;
+const UI_TAG_AFTER_DATA_URI_RE = /<(?:div|section|article|label|input|button|p|span|h[1-6]|ul|ol|li|table|thead|tbody|tfoot|tr|td|th|form|details|summary|figure|figcaption|main|header|footer|nav)\b/i;
+const SVG_LEAK_TAGS = new Set([
+    'svg', 'defs', 'g', 'path', 'rect', 'circle', 'ellipse', 'line', 'polyline', 'polygon',
+    'filter', 'feturbulence', 'fecolormatrix', 'fegaussianblur', 'feoffset', 'feblend',
+    'fedisplacementmap', 'femerge', 'femergenode', 'mask', 'clippath', 'pattern', 'lineargradient',
+    'radialgradient', 'stop', 'text', 'tspan', 'use', 'symbol',
+]);
+
+function findLastInlineStyleMatch(tagPrefix) {
+    let last = null;
+    const re = /\bstyle\s*=\s*(["'])/gi;
+    let match;
+    while ((match = re.exec(String(tagPrefix || '')))) last = match;
+    return last;
+}
+
+function findLastBackgroundDeclarationStart(stylePrefix, absoluteStart) {
+    let found = -1;
+    const re = /(?:^|;)\s*background(?:-image)?\s*:/gi;
+    let match;
+    while ((match = re.exec(String(stylePrefix || '')))) {
+        const declarationOffset = match.index + (match[0].startsWith(';') ? 1 : 0);
+        found = absoluteStart + declarationOffset;
+    }
+    return found;
+}
+
+function findNextUiTagStart(text, fromIndex) {
+    const source = String(text || '');
+    const tail = source.slice(Math.max(0, fromIndex));
+    const match = UI_TAG_AFTER_DATA_URI_RE.exec(tail);
+    return match ? Math.max(0, fromIndex) + match.index : -1;
+}
+
+function countRawUiTags(text) {
+    return (String(text || '').match(/<(?:div|section|article|label|input|button|p|span|h[1-6]|ul|ol|li|table|form|details|summary|figure|main|header|footer|nav)\b/gi) || []).length;
+}
+
+function parsedElementCount(text) {
+    try {
+        if (typeof document === 'undefined') return -1;
+        const template = document.createElement('template');
+        template.innerHTML = String(text || '');
+        return template.content.querySelectorAll('*').length;
+    } catch {
+        return -1;
+    }
+}
+
+function isLikelyDamagedInlineSvgDataUri(text, candidate) {
+    const source = String(text || '');
+    const { styleQuote, styleValueStart, uriIndex, nextUiTagIndex } = candidate;
+    if (!styleQuote || nextUiTagIndex <= uriIndex) return false;
+
+    const span = source.slice(uriIndex, nextUiTagIndex);
+    if (!INLINE_SVG_DATA_URI_RE.test(span)) return false;
+    INLINE_SVG_DATA_URI_RE.lastIndex = 0;
+
+    // 只有“inline style 属性中的原始 SVG 文本”才会被接管。
+    // 百分号编码或 base64 的健康资源不会匹配 <svg / &lt;svg，因此保持原样。
+    if (!/(?:<|&lt;)svg\b/i.test(span)) return false;
+
+    // HTML 属性引号在 data URI 尚未结束前再次出现，说明 SVG 内部引号会提前截断 style 属性。
+    // 反斜杠不能转义 HTML 属性引号，因此 \" 同样属于损坏信号。
+    const lastParen = span.lastIndexOf(')');
+    const quoteIndex = source.indexOf(styleQuote, uriIndex);
+    const quoteInsideDataUri = quoteIndex >= 0 && quoteIndex < nextUiTagIndex
+        && (lastParen < 0 || quoteIndex <= uriIndex + lastParen);
+    const explicitDamageSignal = /\\["']|\\&quot;|&quot;|["']{2}|["']\s*&gt;/i.test(span);
+
+    if (quoteInsideDataUri || explicitDamageSignal) return true;
+
+    // 浏览器可用时再做一次保守判定：原文标签很多，但解析后主体被吞掉。
+    const rawCount = countRawUiTags(source);
+    const parsedCount = parsedElementCount(source);
+    return rawCount >= 6 && parsedCount >= 0 && parsedCount + 4 < rawCount;
+}
+
+function removeSurplusSvgClosingTags(text, removedFragment) {
+    let output = String(text || '');
+    const removedNames = new Set();
+    String(removedFragment || '').replace(/<\/?([a-z][\w:-]*)\b/gi, (_full, rawName) => {
+        const name = String(rawName || '').toLowerCase();
+        if (SVG_LEAK_TAGS.has(name)) removedNames.add(name);
+        return _full;
+    });
+
+    for (const name of removedNames) {
+        const escaped = escapeRegExp(name);
+        const openRe = new RegExp(`<${escaped}\\b(?![^>]*\\/>)`, 'gi');
+        const closeRe = new RegExp(`</${escaped}\\s*>`, 'gi');
+        const opens = (output.match(openRe) || []).length;
+        const closes = (output.match(closeRe) || []).length;
+        let surplus = Math.max(0, closes - opens);
+        if (!surplus) continue;
+
+        output = output.replace(closeRe, match => {
+            if (surplus <= 0) return match;
+            surplus -= 1;
+            return '';
+        });
+    }
+    return output;
+}
+
+/**
+ * 保全型 data URI 急救：只移除会截断 inline style 属性的损坏 SVG data URI 声明。
+ * 不改色、不重写其余 DOM/CSS，也不处理健康的 percent-encoded/base64 资源。
+ */
+export function rescueDamagedDataUriRabbitMirrorOutput(responseText = '') {
+    let text = String(responseText || '');
+    if (!/(?:<toto\b|<details\b)/i.test(text) || !/data:image\/svg\+xml/i.test(text)) return text;
+
+    let cursor = 0;
+    let repairs = 0;
+    while (repairs < 8) {
+        const lower = text.toLowerCase();
+        const uriIndex = lower.indexOf('data:image/svg+xml', cursor);
+        if (uriIndex < 0) break;
+
+        const tagStart = text.lastIndexOf('<', uriIndex);
+        const tagEndBeforeUri = text.lastIndexOf('>', uriIndex);
+        if (tagStart < 0 || tagEndBeforeUri > tagStart) {
+            cursor = uriIndex + 18;
+            continue;
+        }
+
+        const tagPrefix = text.slice(tagStart, uriIndex);
+        const styleMatch = findLastInlineStyleMatch(tagPrefix);
+        if (!styleMatch) {
+            cursor = uriIndex + 18;
+            continue;
+        }
+
+        const styleQuote = styleMatch[1];
+        const styleValueStart = tagStart + styleMatch.index + styleMatch[0].length;
+        const stylePrefix = text.slice(styleValueStart, uriIndex);
+        const propertyStart = findLastBackgroundDeclarationStart(stylePrefix, styleValueStart);
+        const nextUiTagIndex = findNextUiTagStart(text, uriIndex + 18);
+        const candidate = { styleQuote, styleValueStart, uriIndex, nextUiTagIndex };
+
+        if (propertyStart < styleValueStart || nextUiTagIndex < 0 || !isLikelyDamagedInlineSvgDataUri(text, candidate)) {
+            cursor = uriIndex + 18;
+            continue;
+        }
+
+        const removedFragment = text.slice(propertyStart, nextUiTagIndex);
+        const safePrefix = text.slice(0, propertyStart).replace(/[ \t]+$/g, '');
+        const safeSuffix = text.slice(nextUiTagIndex);
+        text = `${safePrefix}${styleQuote}>\n${safeSuffix}`;
+        text = removeSurplusSvgClosingTags(text, removedFragment);
+        repairs += 1;
+        cursor = Math.max(0, propertyStart + 2);
+    }
+
+    return text;
+}
+
+function setTransientMessageSource(message, repaired) {
+    const transientMessage = cloneMessageForTransientRerender(message);
+    transientMessage.mes = repaired;
+
+    if (Array.isArray(transientMessage.swipes)) {
+        const swipeIndex = Number.isInteger(transientMessage.swipe_id)
+            ? transientMessage.swipe_id
+            : transientMessage.swipes.length - 1;
+        if (typeof transientMessage.swipes[swipeIndex] === 'string') transientMessage.swipes[swipeIndex] = repaired;
+    }
+    if (typeof transientMessage?.extra?.display_text === 'string') transientMessage.extra.display_text = repaired;
+    return transientMessage;
+}
+
+function rescueRecentDamagedDataUriMessages(mod = null) {
+    if (!isInteractionRescueModeEnabled()) return false;
+    const host = mod || hostScriptModule || globalThis;
+    let rerendered = false;
+
+    for (const { message, index } of findRecentAssistantMessages(host)) {
+        const source = getSelectedMessageSource(message);
+        if (!source || !/data:image\/svg\+xml/i.test(source)) continue;
+        const repaired = rescueDamagedDataUriRabbitMirrorOutput(source);
+        if (!repaired || repaired === source) continue;
+
+        const signature = hashInteractionSignature(`${source}|${repaired}`);
+        const currentElement = getRenderedMessageElement(index);
+        if (currentElement?.getAttribute(DAMAGED_DATA_URI_MESSAGE_ATTR) === signature) continue;
+
+        const transientMessage = setTransientMessageSource(message, repaired);
+        if (!preserveAndRerenderSanitizedMessage(host, index, transientMessage)) continue;
+
+        const restoredElement = getRenderedMessageElement(index);
+        restoredElement?.setAttribute(DAMAGED_DATA_URI_MESSAGE_ATTR, signature);
+        restoredElement?.querySelectorAll?.('details, toto').forEach(root => {
+            root.setAttribute(DAMAGED_DATA_URI_ROOT_ATTR, 'true');
+        });
+        rerendered = true;
+    }
+    return rerendered;
 }
 
 function stripHtmlComments(text) {
@@ -5408,302 +5874,6 @@ function isRabbitMirrorDetails(details) {
     return /^【兔子镜[:：]/.test(title) || /兔子镜/.test(title);
 }
 
-
-const RENDERED_LOCAL_CSS_SCOPE_ATTR = 'data-rabbit-mirror-local-css-scope';
-const RENDERED_LOCAL_CSS_STYLE_ATTR = 'data-rabbit-mirror-local-css-isolated';
-
-function splitCssSelectorList(selectorText) {
-    const source = String(selectorText || '');
-    const result = [];
-    let start = 0;
-    let round = 0;
-    let square = 0;
-    let quote = '';
-
-    for (let index = 0; index < source.length; index += 1) {
-        const char = source[index];
-        if (quote) {
-            if (char === '\\') index += 1;
-            else if (char === quote) quote = '';
-            continue;
-        }
-        if (char === '"' || char === "'") {
-            quote = char;
-            continue;
-        }
-        if (char === '(') round += 1;
-        else if (char === ')') round = Math.max(0, round - 1);
-        else if (char === '[') square += 1;
-        else if (char === ']') square = Math.max(0, square - 1);
-        else if (char === ',' && round === 0 && square === 0) {
-            result.push(source.slice(start, index).trim());
-            start = index + 1;
-        }
-    }
-    result.push(source.slice(start).trim());
-    return result.filter(Boolean);
-}
-
-function buildRenderedLocalCssScopeToken(details) {
-    const existing = details?.getAttribute?.(RENDERED_LOCAL_CSS_SCOPE_ATTR);
-    if (existing) return existing;
-
-    const message = details?.closest?.('.mes, [mesid]');
-    const mesid = String(message?.getAttribute?.('mesid') || 'x').replace(/[^a-z0-9_-]/gi, '').slice(0, 24) || 'x';
-    const mirrors = message
-        ? [...message.querySelectorAll('details')].filter(isRabbitMirrorDetails)
-        : [details];
-    const mirrorIndex = Math.max(0, mirrors.indexOf(details));
-    const summary = (details?.querySelector?.(':scope > summary')?.textContent || '').replace(/\s+/g, ' ').trim();
-    const token = `rm-local-${mesid}-${mirrorIndex}-${hashInteractionSignature(summary).slice(0, 7)}`;
-    details?.setAttribute?.(RENDERED_LOCAL_CSS_SCOPE_ATTR, token);
-    return token;
-}
-
-function escapeRenderedCssClassName(className) {
-    const value = String(className || '');
-    try {
-        if (globalThis.CSS?.escape) return globalThis.CSS.escape(value);
-    } catch {
-        // Fall through to the conservative escape below.
-    }
-    return value.replace(/[^a-zA-Z0-9_-]/g, char => `\\${char}`);
-}
-
-function bridgeRenderedHostClassNames(selector, details) {
-    let source = String(selector || '').trim();
-    if (!source || !details?.querySelector) return source;
-
-    // SillyTavern may rewrite generated class names to custom-xxx while leaving a
-    // reconstructed <style> sheet with the original selector text. Add a local
-    // :is() bridge only when that custom class really exists inside this mirror.
-    const classNames = [...new Set([...source.matchAll(/\.(-?[_a-zA-Z][\w-]*)/g)].map(match => match[1]))];
-    for (const className of classNames) {
-        if (!className || className.startsWith('custom-')) continue;
-        const customClass = `custom-${className}`;
-        const escapedCustom = escapeRenderedCssClassName(customClass);
-        let hasCustomClass = false;
-        try {
-            hasCustomClass = !!details.querySelector(`.${escapedCustom}`);
-        } catch {
-            hasCustomClass = false;
-        }
-        if (!hasCustomClass) continue;
-
-        // Already bridged or already written against the host-prefixed class.
-        const customNeedle = new RegExp(`\\.${escapeRegExp(customClass)}(?![\\w-])`);
-        if (customNeedle.test(source)) continue;
-
-        const originalRe = new RegExp(`\\.${escapeRegExp(className)}(?![\\w-])`, 'g');
-        source = source.replace(originalRe, `:is(.${className}, .${customClass})`);
-    }
-    return source;
-}
-
-function renderedSelectorNeedsHostClassBridge(selector, details) {
-    const source = String(selector || '').trim();
-    if (!source || !details?.querySelector) return false;
-    const classNames = [...new Set([...source.matchAll(/\.(-?[_a-zA-Z][\w-]*)/g)].map(match => match[1]))];
-    for (const className of classNames) {
-        if (!className || className.startsWith('custom-')) continue;
-        const customClass = `custom-${className}`;
-        if (new RegExp(`\\.${escapeRegExp(customClass)}(?![\\w-])`).test(source)) continue;
-        try {
-            if (details.querySelector(`.${escapeRenderedCssClassName(customClass)}`)) return true;
-        } catch {
-            // Ignore malformed/unsupported generated class names.
-        }
-    }
-    return false;
-}
-
-function scopeOneRenderedCssSelector(selector, scopeSelector, details) {
-    const original = String(selector || '').trim();
-    if (!original) return original;
-    const source = bridgeRenderedHostClassNames(original, details);
-    if (source.includes(scopeSelector)) return source;
-
-    // 变量宿主与页面级选择器改为当前兔子镜根，避免 :root/html/body 把样式泄漏到整页。
-    if (/^:root\b/i.test(source)) return source.replace(/^:root\b/i, scopeSelector);
-    if (/^(?:html|body)\b/i.test(source)) return source.replace(/^(?:html|body)\b/i, scopeSelector);
-    if (/^:scope\b/i.test(source)) return source.replace(/^:scope\b/i, scopeSelector);
-    if (/^toto\b/i.test(source)) return source.replace(/^toto\b/i, scopeSelector);
-
-    // details 规则可能正是针对当前外层 details；同时保留其对内部 details 的含义。
-    if (/^details(?=$|[.#[:\s>+~])/i.test(source)) {
-        const sameRoot = source.replace(/^details\b/i, scopeSelector);
-        return `:is(${sameRoot}, ${scopeSelector} ${source})`;
-    }
-    return `${scopeSelector} ${source}`;
-}
-
-function rewriteRenderedCssRuleSelectors(ruleList, scopeSelector, details) {
-    let changed = false;
-    for (const rule of [...(ruleList || [])]) {
-        const type = Number(rule?.type);
-        const name = String(rule?.constructor?.name || '');
-        const isKeyframes = type === 7 || /KeyframesRule/i.test(name);
-        if (isKeyframes) continue;
-
-        if (type === 1 && typeof rule.selectorText === 'string') {
-            const nextSelector = splitCssSelectorList(rule.selectorText)
-                .map(selector => scopeOneRenderedCssSelector(selector, scopeSelector, details))
-                .join(', ');
-            if (nextSelector && nextSelector !== rule.selectorText) {
-                try {
-                    rule.selectorText = nextSelector;
-                    changed = true;
-                } catch {
-                    // Unsupported selector syntax: leave this one untouched rather than damaging the sheet.
-                }
-            }
-            continue;
-        }
-
-        if (rule?.cssRules) {
-            changed = rewriteRenderedCssRuleSelectors(rule.cssRules, scopeSelector, details) || changed;
-        }
-    }
-    return changed;
-}
-
-function renderedStyleSheetNeedsIsolation(ruleList, scopeSelector, details, token) {
-    const keyframeSuffix = `__${token}`;
-    for (const rule of [...(ruleList || [])]) {
-        const type = Number(rule?.type);
-        const name = String(rule?.constructor?.name || '');
-        const isKeyframes = type === 7 || /KeyframesRule/i.test(name);
-        if (isKeyframes) {
-            const keyframeName = String(rule?.name || '').trim();
-            if (keyframeName && !keyframeName.endsWith(keyframeSuffix)) return true;
-            continue;
-        }
-        if (type === 1 && typeof rule.selectorText === 'string') {
-            if (!rule.selectorText.includes(scopeSelector)) return true;
-            if (renderedSelectorNeedsHostClassBridge(rule.selectorText, details)) return true;
-        }
-        if (rule?.cssRules && renderedStyleSheetNeedsIsolation(rule.cssRules, scopeSelector, details, token)) return true;
-    }
-    return false;
-}
-
-function collectRenderedKeyframeRules(ruleList, result = []) {
-    for (const rule of [...(ruleList || [])]) {
-        const type = Number(rule?.type);
-        const name = String(rule?.constructor?.name || '');
-        const isKeyframes = type === 7 || /KeyframesRule/i.test(name);
-        if (isKeyframes) {
-            result.push(rule);
-            continue;
-        }
-        if (rule?.cssRules) collectRenderedKeyframeRules(rule.cssRules, result);
-    }
-    return result;
-}
-
-function replaceAnimationNameToken(value, oldName, newName) {
-    const source = String(value || '');
-    if (!source || !oldName || oldName === newName) return source;
-    const escaped = escapeRegExp(oldName);
-    return source.replace(new RegExp(`(^|[\\s,(])${escaped}(?=$|[\\s,)])`, 'g'), (full, boundary) => `${boundary}${newName}`);
-}
-
-function rewriteAnimationNamesInStyleDeclaration(style, renameMap) {
-    if (!style?.getPropertyValue) return false;
-    let changed = false;
-    for (const property of ['animation', 'animation-name', '-webkit-animation', '-webkit-animation-name']) {
-        let value = style.getPropertyValue(property);
-        if (!value) continue;
-        let next = value;
-        for (const [oldName, newName] of renameMap) next = replaceAnimationNameToken(next, oldName, newName);
-        if (next !== value) {
-            style.setProperty(property, next, style.getPropertyPriority(property) || '');
-            changed = true;
-        }
-    }
-    return changed;
-}
-
-function rewriteRenderedAnimationReferences(ruleList, renameMap) {
-    let changed = false;
-    for (const rule of [...(ruleList || [])]) {
-        const type = Number(rule?.type);
-        const name = String(rule?.constructor?.name || '');
-        const isKeyframes = type === 7 || /KeyframesRule/i.test(name);
-        if (isKeyframes) continue;
-        if (type === 1 && rule?.style) changed = rewriteAnimationNamesInStyleDeclaration(rule.style, renameMap) || changed;
-        if (rule?.cssRules) changed = rewriteRenderedAnimationReferences(rule.cssRules, renameMap) || changed;
-    }
-    return changed;
-}
-
-function isolateRenderedRabbitMirrorCss(details) {
-    if (!details?.querySelectorAll || !isInsideChatMessage(details)) return false;
-    const token = buildRenderedLocalCssScopeToken(details);
-    if (!token) return false;
-    const scopeSelector = `[${RENDERED_LOCAL_CSS_SCOPE_ATTR}="${token}"]`;
-    const styleElements = [...details.querySelectorAll('style')];
-    if (!styleElements.length) return false;
-
-    const readySheets = [];
-    for (const styleEl of styleElements) {
-        try {
-            const sheet = styleEl.sheet;
-            if (!sheet?.cssRules) continue;
-            const alreadyMarked = styleEl.getAttribute(RENDERED_LOCAL_CSS_STYLE_ATTR) === token;
-            // CSSOM edits do not alter styleEl.textContent. Some mobile WebViews rebuild the
-            // sheet when details is toggled or a message is rehydrated, while preserving the
-            // marker attribute. Verify the live sheet instead of trusting the marker alone.
-            if (!alreadyMarked || renderedStyleSheetNeedsIsolation(sheet.cssRules, scopeSelector, details, token)) {
-                readySheets.push({ styleEl, sheet });
-            }
-        } catch {
-            // Some WebViews expose the sheet one frame later. Leave it available for scheduled retries.
-        }
-    }
-    if (!readySheets.length) return false;
-
-    // Keyframe names are global too. Rename them per mirror before selector scoping, then update local references.
-    const renameMap = new Map();
-    for (const { sheet } of readySheets) {
-        for (const keyframesRule of collectRenderedKeyframeRules(sheet.cssRules)) {
-            const oldName = String(keyframesRule?.name || '').trim();
-            if (!oldName || oldName.endsWith(`__${token}`)) continue;
-            const newName = renameMap.get(oldName) || `${oldName}__${token}`;
-            try {
-                keyframesRule.name = newName;
-                renameMap.set(oldName, newName);
-            } catch {
-                // If the engine does not permit renaming, keep the original animation intact.
-            }
-        }
-    }
-
-    let changed = false;
-    for (const { styleEl, sheet } of readySheets) {
-        changed = rewriteRenderedCssRuleSelectors(sheet.cssRules, scopeSelector, details) || changed;
-        if (renameMap.size) changed = rewriteRenderedAnimationReferences(sheet.cssRules, renameMap) || changed;
-        styleEl.setAttribute(RENDERED_LOCAL_CSS_STYLE_ATTR, token);
-    }
-
-    if (renameMap.size) {
-        for (const element of details.querySelectorAll('[style]')) {
-            changed = rewriteAnimationNamesInStyleDeclaration(element.style, renameMap) || changed;
-        }
-    }
-    details.dataset.rabbitMirrorCssIsolated = 'true';
-    return changed;
-}
-
-function isolateRenderedRabbitMirrorCssInChatDom() {
-    const root = getChatRoot();
-    if (!root) return false;
-    let changed = false;
-    const detailsList = [...root.querySelectorAll('toto details, details')].filter(isRabbitMirrorDetails);
-    for (const details of detailsList) changed = isolateRenderedRabbitMirrorCss(details) || changed;
-    return changed;
-}
-
 function sanitizeRenderedRabbitMirrorDetailsDom() {
     if (!isCodeBlockRescueModeEnabled()) return;
     const root = getChatRoot();
@@ -5785,6 +5955,9 @@ function sanitizeCodeBlocksInChatDom() {
 
 export function triggerInteractionRescue() {
     try {
+        // data URI 保全急救使用临时消息副本重建当前 DOM，不改写或保存聊天原文。
+        // 只在智能交互急救开启时处理明确会截断 inline style 的损坏 SVG data URI。
+        rescueRecentDamagedDataUriMessages(hostScriptModule || globalThis);
         // 已经修复过的兔子镜会被会话记忆继续维护；关闭开关只停止处理新消息。
         scopeRabbitMirrorInteractionsInChatDom();
     } catch (error) {
@@ -5817,22 +5990,200 @@ export function triggerInteractionDiagnosticOnce() {
 
 function runEnabledRescueChain(mod = null) {
     const host = mod || globalThis;
-    // 纯文字急救先把旧解析器不接受的 CSS 变量展开，再交给代码块急救压缩/还原 DOM。
-    if (isPlainTextRescueModeEnabled()) sanitizePlainTextRawMessages(host);
+    // 纯文字急救自 0.32.38 起为单条一次性选择，不再加入全局急救链。
     if (isCodeBlockRescueModeEnabled()) {
         sanitizeLatestRawMessages(host);
         sanitizeCodeBlocksInChatDom();
         sanitizeRenderedRabbitMirrorDetailsDom();
     }
-    isolateRenderedRabbitMirrorCssInChatDom();
     triggerInteractionRescue();
 }
 
-export function triggerPlainTextRescue(mod = null) {
+const PLAIN_TEXT_ONE_SHOT_TIMEOUT_MS = 30000;
+let plainTextOneShotSelectionSession = null;
+
+function notifyPlainTextRescue(message, level = 'info') {
     try {
-        runEnabledRescueChain(mod);
+        const toast = globalThis.toastr || globalThis.parent?.toastr;
+        toast?.[level]?.(message);
+    } catch {
+        // 通知失败不影响急救本身。
+    }
+}
+
+function removePlainTextSelectionStyle() {
+    try {
+        document.getElementById('rabbit-mirror-plain-text-selection-style')?.remove();
+    } catch {
+        // ignore
+    }
+}
+
+function stopPlainTextOneShotSelection() {
+    const session = plainTextOneShotSelectionSession;
+    if (!session) return false;
+    plainTextOneShotSelectionSession = null;
+    try {
+        session.chatRoot?.removeEventListener('click', session.clickHandler, true);
+        document.removeEventListener('keydown', session.keyHandler, true);
+        if (session.timer) clearTimeout(session.timer);
+        session.chatRoot?.removeAttribute('data-rabbit-mirror-plain-text-pick');
+    } catch {
+        // ignore
+    }
+    removePlainTextSelectionStyle();
+    return true;
+}
+
+function getMessageIndexFromMirrorNode(node) {
+    const messageNode = node?.closest?.('.mes, [mesid], [data-message-id], [data-messageid]');
+    if (!messageNode) return -1;
+    const raw = messageNode.getAttribute('mesid')
+        ?? messageNode.dataset?.messageId
+        ?? messageNode.dataset?.messageid;
+    const index = Number(raw);
+    return Number.isInteger(index) && index >= 0 ? index : -1;
+}
+
+function cloneMessageForTransientRerender(message) {
+    try {
+        if (typeof structuredClone === 'function') return structuredClone(message);
+    } catch {
+        // fallback below
+    }
+    try {
+        return JSON.parse(JSON.stringify(message));
+    } catch {
+        return { ...message };
+    }
+}
+
+function getSelectedMessageSource(message) {
+    const candidates = [];
+    const swipeIndex = Number.isInteger(message?.swipe_id) ? message.swipe_id : -1;
+    if (swipeIndex >= 0 && typeof message?.swipes?.[swipeIndex] === 'string') {
+        candidates.push(message.swipes[swipeIndex]);
+    }
+    if (typeof message?.mes === 'string') candidates.push(message.mes);
+    if (typeof message?.extra?.display_text === 'string') candidates.push(message.extra.display_text);
+
+    const scored = candidates
+        .map(source => {
+            const decoded = decodeHtmlEntities(source);
+            let score = decoded.length;
+            if (/<toto\b/i.test(decoded)) score += 100000;
+            if (/<style\b/i.test(decoded)) score += 50000;
+            if (/<details\b/i.test(decoded)) score += 20000;
+            return { source: decoded, score };
+        })
+        .sort((a, b) => b.score - a.score);
+    return scored[0]?.source || '';
+}
+
+function rescueSelectedPlainTextMirror(index) {
+    const mod = hostScriptModule || globalThis;
+    const chat = mod?.chat || globalThis.chat;
+    const message = Array.isArray(chat) ? chat[index] : null;
+    if (!message || message?.is_user) return false;
+
+    const source = getSelectedMessageSource(message);
+    if (!source || !/<(?:toto|details)\b/i.test(source)) return false;
+
+    const repaired = rescuePlainTextRabbitMirrorOutput(source) || source;
+    const transientMessage = cloneMessageForTransientRerender(message);
+    transientMessage.mes = repaired;
+
+    if (Array.isArray(transientMessage.swipes)) {
+        const swipeIndex = Number.isInteger(transientMessage.swipe_id)
+            ? transientMessage.swipe_id
+            : transientMessage.swipes.length - 1;
+        if (typeof transientMessage.swipes[swipeIndex] === 'string') {
+            transientMessage.swipes[swipeIndex] = repaired;
+        }
+    }
+    if (typeof transientMessage?.extra?.display_text === 'string') {
+        transientMessage.extra.display_text = repaired;
+    }
+
+    // 只用临时副本重建当前 DOM：不改 chat[].mes、不改 swipe、不调用保存。
+    const rerendered = preserveAndRerenderSanitizedMessage(mod, index, transientMessage);
+    if (rerendered) {
+        setTimeout(() => triggerInteractionRescue(), 80);
+    }
+    return rerendered;
+}
+
+function startPlainTextOneShotSelection() {
+    const chatRoot = getChatRoot();
+    if (!chatRoot) return false;
+
+    stopPlainTextOneShotSelection();
+    removePlainTextSelectionStyle();
+
+    const style = document.createElement('style');
+    style.id = 'rabbit-mirror-plain-text-selection-style';
+    style.textContent = `
+      [data-rabbit-mirror-plain-text-pick="true"] details,
+      [data-rabbit-mirror-plain-text-pick="true"] toto { cursor: crosshair !important; }
+      [data-rabbit-mirror-plain-text-pick="true"] details:hover {
+        outline: 2px solid currentColor !important;
+        outline-offset: 3px !important;
+      }
+    `;
+    document.head?.appendChild(style);
+    chatRoot.setAttribute('data-rabbit-mirror-plain-text-pick', 'true');
+
+    const session = { chatRoot, timer: null, clickHandler: null, keyHandler: null };
+    session.clickHandler = event => {
+        const mirror = event.target?.closest?.('toto[data-rabbit-mirror="true"], toto, details');
+        if (!mirror || !isInsideChatMessage(mirror)) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation?.();
+
+        const index = getMessageIndexFromMirrorNode(mirror);
+        stopPlainTextOneShotSelection();
+        if (index < 0) {
+            notifyPlainTextRescue('没有识别到这条兔子镜所属的消息，未进行修改。', 'warning');
+            return;
+        }
+
+        const repaired = rescueSelectedPlainTextMirror(index);
+        if (repaired) {
+            notifyPlainTextRescue('已仅修复选中的这一条兔子镜；其他消息与聊天原文均未改动。', 'success');
+        } else {
+            notifyPlainTextRescue('这条兔子镜没有找到可恢复的完整源码，未进行修改。', 'warning');
+        }
+    };
+    session.keyHandler = event => {
+        if (event.key !== 'Escape') return;
+        stopPlainTextOneShotSelection();
+        notifyPlainTextRescue('已取消单条纯文字急救。', 'info');
+    };
+    session.timer = setTimeout(() => {
+        if (plainTextOneShotSelectionSession !== session) return;
+        stopPlainTextOneShotSelection();
+        notifyPlainTextRescue('单条纯文字急救已超时取消。', 'info');
+    }, PLAIN_TEXT_ONE_SHOT_TIMEOUT_MS);
+
+    chatRoot.addEventListener('click', session.clickHandler, true);
+    document.addEventListener('keydown', session.keyHandler, true);
+    plainTextOneShotSelectionSession = session;
+    return true;
+}
+
+export function triggerPlainTextRescue() {
+    try {
+        if (plainTextOneShotSelectionSession) {
+            stopPlainTextOneShotSelection();
+            return false;
+        }
+        return startPlainTextOneShotSelection();
     } catch (error) {
-        console.debug('[RabbitMirror] plain text rescue trigger failed:', error);
+        console.debug('[RabbitMirror] one-shot plain text rescue failed:', error);
+        stopPlainTextOneShotSelection();
+        return false;
     }
 }
 
@@ -5846,14 +6197,12 @@ export function triggerCodeBlockRescue(mod = null) {
 
 function scheduleSanitize(mod) {
     const run = () => {
-        // 顺序固定：先修 CSS 纯文字，再拆代码块，最后修交互。
-        if (isPlainTextRescueModeEnabled()) sanitizePlainTextRawMessages(mod);
+        // 自动链只处理代码块与交互；纯文字急救必须由用户点选单条消息。
         if (isCodeBlockRescueModeEnabled()) {
             sanitizeLatestRawMessages(mod);
             sanitizeCodeBlocksInChatDom();
             sanitizeRenderedRabbitMirrorDetailsDom();
         }
-        isolateRenderedRabbitMirrorCssInChatDom();
         triggerInteractionRescue();
     };
     setTimeout(run, 80);
