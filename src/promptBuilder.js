@@ -57,9 +57,9 @@ function sharedMemoryMaterialRule(memoryMaterial) {
     if (!memoryMaterial?.text) return '';
     const sourceNames = Array.isArray(memoryMaterial.sources) && memoryMaterial.sources.length
         ? memoryMaterial.sources.join('、')
-        : '已勾选的外部记忆来源';
+        : '已勾选的额外资料来源';
     return String.raw`
-共同回忆资料【记忆扫描测试版；来源：${sourceNames}】:
+共同回忆资料【资料来源测试版；来源：${sourceNames}】:
 ${memoryMaterial.text}
 
 使用边界:

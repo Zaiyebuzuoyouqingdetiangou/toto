@@ -27,19 +27,24 @@ function renderMemoryScanResults(results) {
     const readable = list.filter(item => item?.readable && item?.selectedAllowed);
     const pending = list.filter(item => !item?.readable);
 
+    const contextBlock = `<div class="rh-memory-context" style="padding:8px 0 9px 0;">
+      <div style="font-size:12px;"><b>当前模型上下文</b> <span style="font-size:11px;opacity:.82;">[已可用]</span></div>
+      <div style="margin-top:3px;opacity:.68;font-size:11px;line-height:1.45;">近期对话、已注入世界书，以及模型当前已经获得的摘要或总结；无需由兔子镜重复读取。</div>
+    </div>`;
+
     const readableRows = readable.map(item => {
         const checkedAttr = selected.has(item.id) ? ' checked' : '';
         return `<div class="rh-memory-provider" style="padding:8px 0;border-top:1px solid color-mix(in srgb, var(--SmartThemeBorderColor) 65%, transparent);">
           <label class="checkbox_label" style="align-items:flex-start;">
             <input class="rh-memory-provider-check" type="checkbox" data-provider-id="${escapeHtml(item.id)}"${checkedAttr}>
-            <span><b>${escapeHtml(item.name)}</b> <span style="font-size:11px;opacity:.82;">[可读取]</span><br><span style="opacity:.7;font-size:11px;line-height:1.45;">识别来源：公开接口</span></span>
+            <span><b>${escapeHtml(item.name)}</b> <span style="font-size:11px;opacity:.82;">[可读取]</span><br><span style="opacity:.7;font-size:11px;line-height:1.45;">来源类型：公开资料接口</span></span>
           </label>
           ${item.details ? `<div style="margin:3px 0 0 26px;opacity:.62;font-size:11px;line-height:1.4;word-break:break-word;">${escapeHtml(item.details)}</div>` : ''}
           <button class="menu_button rh-memory-test" type="button" data-provider-id="${escapeHtml(item.id)}" style="margin:6px 0 0 26px;padding:3px 8px;min-height:unset;font-size:12px;">测试读取</button>
         </div>`;
     }).join('');
 
-    const readableBlock = readableRows || '<div style="opacity:.75;font-size:12px;line-height:1.5;padding:6px 0;">未检测到当前可读取的记忆来源。</div>';
+    const readableBlock = readableRows || '<div style="opacity:.75;font-size:12px;line-height:1.5;padding:6px 0;">未检测到可额外读取的资料来源。</div>';
 
     let pendingBlock = '';
     if (pending.length) {
@@ -52,23 +57,23 @@ function renderMemoryScanResults(results) {
             ? `<div style="padding-top:5px;opacity:.58;font-size:11px;">另有 ${pending.length - visiblePending.length} 个候选未展开显示。</div>`
             : '';
         pendingBlock = `<details class="rh-memory-pending" style="margin-top:8px;border-top:1px dashed color-mix(in srgb, var(--SmartThemeBorderColor) 60%, transparent);padding-top:7px;">
-          <summary style="cursor:pointer;font-size:12px;opacity:.72;">待适配候选（${pending.length}）</summary>
+          <summary style="cursor:pointer;font-size:12px;opacity:.72;">其他候选（${pending.length}）</summary>
           <div style="padding:4px 0 0 10px;">${pendingRows}${omitted}</div>
         </details>`;
     }
 
     if (!readable.length && !pending.length) {
-        container.html('<div style="opacity:.75;font-size:12px;line-height:1.5;">未扫描到可识别的记忆来源。</div>');
+        container.html(`${contextBlock}<div style="opacity:.75;font-size:12px;line-height:1.5;padding:6px 0;">未扫描到可额外读取的资料来源。</div>`);
         return;
     }
-    container.html(`${readableBlock}${pendingBlock}`);
+    container.html(`${contextBlock}${readableBlock}${pendingBlock}`);
 }
 
 function memoryTestMessage(result) {
     if (!result?.ok) return `读取失败：${result?.error || '未知错误'}`;
     const parts = [
-        `${result.providerName || '记忆来源'}读取成功`,
-        `记忆正文 ${result.chars} 字符`,
+        `${result.providerName || '资料来源'}读取成功`,
+        `资料正文 ${result.chars} 字符`,
         result.characterName ? `角色：${result.characterName}` : '',
         result.chatId ? `聊天：${result.chatId}` : '',
         result.coverageComplete === false ? `覆盖不完整（缺失 ${result.missingFloors || 0} 个 AI 楼层）` : '',
@@ -86,7 +91,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[记忆扫描测试版]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.32.49 TEST</span>
+      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[资料来源测试版]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.32.50 TEST</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -114,11 +119,11 @@ export function initRabbitMirrorUI() {
 
 
       <div class="rabbit-mirror-memory-test" style="margin:12px 0 10px 0;padding:10px;border:1px dashed var(--SmartThemeBorderColor);border-radius:8px;line-height:1.55;">
-        <div style="font-weight:700;margin-bottom:6px;">共同回忆插件扫描 <span style="font-size:11px;opacity:.7;">TEST / 测试版</span></div>
-        <label class="checkbox_label"><input id="rh_memory_scan_enabled" type="checkbox"> 启用外部记忆读取（测试）</label>
-        <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.76;font-size:12px;line-height:1.45;">只有抽中 I.1「共同回忆」时才读取已勾选来源；普通轮次不追加记忆正文。读取对象始终以当前打开的聊天为准。</div>
-        <button id="rh_memory_scan_now" class="menu_button" type="button">扫描记忆插件</button>
-        <div style="margin-top:6px;opacity:.68;font-size:11px;line-height:1.45;">仅列出检测到的可读取记忆来源；请勾选需要读取的项目。待适配候选默认收起。</div>
+        <div style="font-weight:700;margin-bottom:6px;">共同回忆资料来源 <span style="font-size:11px;opacity:.7;">TEST / 测试版</span></div>
+        <label class="checkbox_label"><input id="rh_memory_scan_enabled" type="checkbox"> 启用额外资料来源（测试）</label>
+        <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.76;font-size:12px;line-height:1.45;">只有抽中 I.1「共同回忆」时才读取已勾选的额外资料；普通轮次不追加资料正文。当前对话与已注入世界书由模型直接使用，不会重复读取。</div>
+        <button id="rh_memory_scan_now" class="menu_button" type="button">扫描可用资料来源</button>
+        <div style="margin-top:6px;opacity:.68;font-size:11px;line-height:1.45;">列出模型已可见资料与检测到的额外资料来源；请勾选需要额外读取的项目。其他候选默认收起。</div>
         <div id="rh_memory_scan_results" style="margin-top:8px;"></div>
       </div>
 
@@ -206,15 +211,15 @@ export function initRabbitMirrorUI() {
     $('#rh_memory_scan_enabled').on('change', e => {
         updateSettings({ memoryScanEnabled: e.target.checked });
         toastr?.[e.target.checked ? 'info' : 'success']?.(e.target.checked
-            ? '已开启共同回忆插件读取测试：只有抽中 I.1 时才会读取已勾选来源。'
-            : '已关闭外部记忆读取；扫描结果和勾选记录会保留。');
+            ? '已开启共同回忆额外资料读取：只有抽中 I.1 时才会读取已勾选来源。'
+            : '已关闭额外资料读取；扫描结果和勾选记录会保留。');
     });
     $('#rh_memory_scan_now').on('click', () => {
         const results = scanMemoryPlugins();
         renderMemoryScanResults(results);
         const readableCount = results.filter(item => item.readable).length;
         const pendingCount = results.length - readableCount;
-        toastr?.info?.(`扫描完成：${readableCount} 个可读取${pendingCount ? `，${pendingCount} 个待适配候选已收起` : ''}。`);
+        toastr?.info?.(`扫描完成：${readableCount} 个可读取${pendingCount ? `，${pendingCount} 个其他候选已收起` : ''}。`);
     });
     $('#rh_memory_scan_results').on('change', '.rh-memory-provider-check', function () {
         const id = String($(this).data('provider-id') || '');

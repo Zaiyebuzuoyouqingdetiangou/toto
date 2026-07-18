@@ -55,7 +55,7 @@ export const defaultSettings = Object.freeze({
     // 勾选后，每轮强制把 10.2.2 Visual Scenery 纳入本轮展现形式。
     forceVisualScenery: false,
 
-    // 共同回忆插件扫描（测试版）：只在抽中 I.1 时读取已勾选且拥有公开读取接口的来源。
+    // 共同回忆资料来源（测试版）：只在抽中 I.1 时读取已勾选且拥有公开读取接口的额外资料来源。
     memoryScanEnabled: false,
     memoryProviderIds: [],
     memoryMaxChars: 2200,
