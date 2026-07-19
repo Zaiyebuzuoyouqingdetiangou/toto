@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（小小维修兔 v1.6 全急救库合一版）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（小小维修兔 v1.7 全急救库完整迁移版）",
   "loading_order": 99,
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.33.7-test.1",
+  "version": "0.33.8-test.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "TEST build: adds Maintenance Rabbit v1.6 now dispatches the complete existing rescue library per mirror: code-block/plain-text recovery, source and damaged SVG recovery, CSS/comment and ID scope repair, touch-hover and all validated interaction routes, followed by re-inspection. Prompt, pools, Menu QR v2.1, and all existing features remain unchanged."
+  "description": "TEST build: Maintenance Rabbit v1.7 registers and dispatches the complete existing rescue library per mirror, with separate code and plain-text recovery actions, source/damaged SVG recovery, CSS/comment and scope repair, and all validated interaction routes. Prompt, pools, and Menu QR v2.1 remain unchanged."
 }

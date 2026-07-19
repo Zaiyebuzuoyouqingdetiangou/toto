@@ -5956,6 +5956,13 @@ function repairMaintenanceMessageSource(root, inspection) {
 
     const source = getSelectedMessageSource(message);
     if (!source) return { changed: false, index, reason: '没有可恢复的消息源' };
+
+    // 接入旧源码恢复路线，但强制限定当前消息且继续遵守思维链/独立显示源隔离。
+    if (inspection?.full?.sourceCandidate || inspection?.code?.strictWhole || inspection?.code?.needsSanitize) {
+        const directRecovered = recoverMessageSourceToDisplay(host, index, message, { force: true });
+        if (directRecovered) return { changed: true, index, reason: '已调用旧源码恢复模块重建当前消息显示层' };
+    }
+
     let repaired = source;
     if (inspection?.full?.damagedDataUriCandidate || inspection?.full?.structureTruncated) {
         repaired = rescueDamagedDataUriRabbitMirrorOutput(repaired);
@@ -6039,7 +6046,7 @@ function closeMaintenanceRabbitMenu() {
 
 function maintenanceUserRepairInspection(root, mode) {
     const inspection = inspectMaintenanceRabbit(root);
-    if (mode === 'code' || mode === 'all') {
+    if (mode === 'code' || mode === 'plainText' || mode === 'all') {
         inspection.full = { ...inspection.full, sourceCandidate: true };
         inspection.code = { ...inspection.code, needsSanitize: true, strictWhole: true };
     }
@@ -6053,34 +6060,73 @@ function maintenanceUserRepairInspection(root, mode) {
 }
 
 
-function runMaintenanceLegacyRescueLibrary(root, mode = 'all') {
-    if (!root?.isConnected) return { code: 0, interaction: 0, style: 0 };
-    const result = { code: 0, interaction: 0, style: 0 };
-    const messageScope = root.closest?.('.mes, [mesid], [data-message-id], [data-messageid]') || root;
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.7';
 
-    if (mode === 'code' || mode === 'all') {
-        try { result.code += sanitizeCodeBlocksInScope(messageScope, true); } catch (error) { console.debug('[RabbitMirror] maintenance code-block module skipped:', error); }
-        try { result.code += sanitizeWholePlainTextRabbitMirrorsInScope(messageScope, true); } catch (error) { console.debug('[RabbitMirror] maintenance plain-text module skipped:', error); }
-        try { result.code += sanitizeRenderedRabbitMirrorDetailsInScope(messageScope, true); } catch (error) { console.debug('[RabbitMirror] maintenance rendered-details module skipped:', error); }
+// 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
+// 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
+const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
+    { id: 'code-block-dom', modes: ['code', 'all'], bucket: 'code', run: ({ messageScope }) => sanitizeCodeBlocksInScope(messageScope, true) },
+    { id: 'plain-text-dom', modes: ['plainText', 'code', 'all'], bucket: 'plainText', run: ({ messageScope }) => sanitizeWholePlainTextRabbitMirrorsInScope(messageScope, true) },
+    { id: 'rendered-details-dom', modes: ['plainText', 'code', 'all'], bucket: 'plainText', run: ({ messageScope }) => sanitizeRenderedRabbitMirrorDetailsInScope(messageScope, true) },
+    { id: 'css-comment-boundary', modes: ['style', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => repairMarkdownCorruptedCssComments(target) },
+    { id: 'interaction-id-scope', modes: ['interaction', 'style', 'all'], bucket: 'scope', perTarget: true, run: ({ target }) => { scopeRabbitMirrorInteractionIds(target); return 1; } },
+    { id: 'complete-interaction-library', modes: ['interaction', 'all'], bucket: 'interaction', perTarget: true, run: ({ target }) => {
+        // installIntelligentInteractionRescue 内部包含旧库全部已验证路线：
+        // 原始安全状态程序、自变化、checked/change、focus→checked、状态层、相邻隐藏组、
+        // label 内隐藏、label 后置结果、CSS 状态兄弟、按钮/可点击后置内容、弹层、遮罩、
+        // 列表详情、ID 目标显隐、data-active/class 状态程序、Touch Hover 与 label fallback。
+        scopeRabbitMirrorInteractionIds(target);
+        installIntelligentInteractionRescue(target);
+        target.dataset.rabbitMirrorInteractionRescued = 'true';
+        return 1;
+    } },
+]);
+
+function createMaintenanceLibraryResult(mode) {
+    return {
+        version: MAINTENANCE_RESCUE_MODULE_VERSION,
+        mode,
+        code: 0,
+        plainText: 0,
+        interaction: 0,
+        style: 0,
+        scope: 0,
+        executed: [],
+        skipped: [],
+        failed: [],
+    };
+}
+
+function runMaintenanceRescueModule(module, context, result) {
+    try {
+        const count = Number(module.run(context)) || 0;
+        result[module.bucket] = (Number(result[module.bucket]) || 0) + count;
+        result.executed.push({ id: module.id, count });
+    } catch (error) {
+        result.failed.push({ id: module.id, message: String(error?.message || error || 'unknown error') });
+        console.debug(`[RabbitMirror] maintenance module ${module.id} skipped:`, error);
     }
+}
 
+function runMaintenanceLegacyRescueLibrary(root, mode = 'all') {
+    const result = createMaintenanceLibraryResult(mode);
+    if (!root?.isConnected) return result;
+    const messageScope = root.closest?.('.mes, [mesid], [data-message-id], [data-messageid]') || root;
     const liveRoots = getRenderedRabbitMirrorInteractionRoots(messageScope);
     const targets = liveRoots.length ? liveRoots : [root];
-    for (const target of targets) {
-        if (!target?.isConnected) continue;
-        if (mode === 'style' || mode === 'all') {
-            try { result.style += repairMarkdownCorruptedCssComments(target); } catch (error) { console.debug('[RabbitMirror] maintenance CSS-comment module skipped:', error); }
-            try { scopeRabbitMirrorInteractionIds(target); result.style += 1; } catch (error) { console.debug('[RabbitMirror] maintenance scope module skipped:', error); }
+
+    for (const module of MAINTENANCE_RESCUE_LIBRARY) {
+        if (!module.modes.includes(mode)) {
+            result.skipped.push(module.id);
+            continue;
         }
-        if (mode === 'interaction' || mode === 'all') {
-            try {
-                scopeRabbitMirrorInteractionIds(target);
-                installIntelligentInteractionRescue(target);
-                target.dataset.rabbitMirrorInteractionRescued = 'true';
-                result.interaction += 1;
-            } catch (error) {
-                console.debug('[RabbitMirror] maintenance interaction library skipped:', error);
+        if (module.perTarget) {
+            for (const target of targets) {
+                if (!target?.isConnected) continue;
+                runMaintenanceRescueModule(module, { root, target, messageScope, mode }, result);
             }
+        } else {
+            runMaintenanceRescueModule(module, { root, messageScope, mode }, result);
         }
     }
     return result;
@@ -6091,6 +6137,7 @@ function runMaintenanceUserRepair(root, button, mode) {
     const labels = {
         interaction: '正在尝试修复当前兔子镜的交互',
         code: '正在尝试恢复当前兔子镜的代码显示',
+        plainText: '正在尝试恢复当前兔子镜的纯文字显示',
         style: '正在尝试修复当前兔子镜的显示样式',
         all: '正在对当前兔子镜执行强制维修',
     };
@@ -6099,7 +6146,7 @@ function runMaintenanceUserRepair(root, button, mode) {
     const originalIndex = getMessageIndexFromMirrorNode(root);
     try {
         const inspection = maintenanceUserRepairInspection(root, mode);
-        const sourceResult = (mode === 'code' || mode === 'style' || mode === 'all')
+        const sourceResult = (mode === 'code' || mode === 'plainText' || mode === 'style' || mode === 'all')
             ? repairMaintenanceMessageSource(root, inspection)
             : { changed: false, index: originalIndex, reason: '' };
         const continueRepair = () => {
@@ -6152,6 +6199,7 @@ function showMaintenanceRabbitMenu(root, button) {
       <button type="button" data-rm-maintenance-action="patrol">🔍 先让维修兔巡逻</button>
       <button type="button" data-rm-maintenance-action="interaction">🖱️ 点了没有反应</button>
       <button type="button" data-rm-maintenance-action="code">📄 显示了一堆代码</button>
+      <button type="button" data-rm-maintenance-action="plainText">📃 显示了一堆纯文字</button>
       <button type="button" data-rm-maintenance-action="style">🎨 样子不对</button>
       <button type="button" data-rm-maintenance-action="all">🔧 全部试试（强制维修）</button>
       <button type="button" data-rm-maintenance-action="diagnostic">📋 生成全链路诊断</button>
@@ -7456,7 +7504,7 @@ function getSourceRecoveryCandidate(message) {
 }
 
 function recoverMessageSourceToDisplay(mod, index, message, { force = false } = {}) {
-    if (!isCodeBlockRescueModeEnabled() || !message || message?.is_user) return false;
+    if ((!force && !isCodeBlockRescueModeEnabled()) || !message || message?.is_user) return false;
     const source = getSourceRecoveryCandidate(message);
     if (!source) return false;
 
@@ -7488,7 +7536,7 @@ function recoverMessageSourceToDisplay(mod, index, message, { force = false } = 
 }
 
 function runSourceRecoveryPass(mod, indexes = null, options = {}) {
-    if (!isCodeBlockRescueModeEnabled()) return false;
+    if (!options?.force && !isCodeBlockRescueModeEnabled()) return false;
     const chat = mod?.chat || globalThis.chat;
     if (!Array.isArray(chat) || !chat.length) return false;
 
