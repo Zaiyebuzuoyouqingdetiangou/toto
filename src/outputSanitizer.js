@@ -5135,14 +5135,14 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 既可捕获已渲染兔子镜交互，也可捕获尚未恢复的代码块/纯文字兔子镜消息；约 650ms 后自动停止。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
 
-// 0.33.4: 小小维修兔 v1.4。识别仅有选中变色、没有第二层体验的伪交互，避免错误亮绿灯。
+// 0.33.5: 小小维修兔 v1.4。识别仅有选中变色、没有第二层体验的伪交互，避免错误亮绿灯。
 // 设计底线：没有高置信证据就不修改；黄灯才允许调用已有修复路线，红灯只生成诊断。
 const MAINTENANCE_RABBIT_ATTR = 'data-rabbit-mirror-maintenance-rabbit';
 const MAINTENANCE_STATE_ATTR = 'data-rabbit-mirror-maintenance-state';
 const MAINTENANCE_REASON_ATTR = 'data-rabbit-mirror-maintenance-reason';
 const MAINTENANCE_REPAIR_ATTR = 'data-rabbit-mirror-maintenance-repaired';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '0.33.4-TEST-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.33.5-TEST-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -5808,19 +5808,18 @@ function maintenanceCheckedInteractionDepth(root) {
     const controls = [...(root?.querySelectorAll?.('input[type="checkbox"], input[type="radio"]') || [])];
     if (!controls.length) return { checkedSelectionOnly: false, checkedRuleCount: 0, meaningfulCheckedRuleCount: 0 };
 
-    const cssText = [...(root?.querySelectorAll?.('style') || [])].map(style => String(style.textContent || '')).join('
-');
+    const cssText = [...(root?.querySelectorAll?.('style') || [])].map(style => String(style.textContent || '')).join('\n');
     const blockRe = /([^{}]+)\{([^{}]*)\}/g;
     let checkedRuleCount = 0;
     let meaningfulCheckedRuleCount = 0;
     let match;
     while ((match = blockRe.exec(cssText))) {
         const selectorText = String(match[1] || '');
-        if (!/:checked/i.test(selectorText)) continue;
+        if (!/:checked\b/i.test(selectorText)) continue;
         for (const selector of selectorText.split(',').map(value => value.trim()).filter(Boolean)) {
-            if (!/:checked/i.test(selector)) continue;
+            if (!/:checked\b/i.test(selector)) continue;
             checkedRuleCount += 1;
-            const afterChecked = selector.replace(/^.*?:checked/i, '').trim();
+            const afterChecked = selector.replace(/^.*?:checked\b/i, '').trim();
             const labelOnly = /^\+\s*label(?:\s*(?:::[a-z-]+|:[a-z-]+|\.[\w-]+|\[[^\]]+\]))*\s*$/i.test(afterChecked);
             if (!labelOnly) meaningfulCheckedRuleCount += 1;
         }
@@ -5832,7 +5831,7 @@ function maintenanceCheckedInteractionDepth(root) {
 
 function maintenanceKnownInteractionEvidence(root, full, code) {
     const raw = decodeHtmlEntitiesForRescue(getRawAssistantMessageForRenderedRoot(root) || '');
-    const stateProgram = /on(?:click|change|input)\s*=|setAttribute\s*\(\s*['"]data-|classList\.(?:add|remove|toggle)|\.checked\s*=|:checked/i.test(raw);
+    const stateProgram = /\bon(?:click|change|input)\s*=|setAttribute\s*\(\s*['"]data-|classList\.(?:add|remove|toggle)|\.checked\s*=|:checked\b/i.test(raw);
     const checkedControlsLost = full.controlsLost && full.checkedCount > 0;
     const strippedStateProgram = full.rawInlineEvents > full.renderedInlineEvents && stateProgram;
     const touchHoverMissing = isLikelyTouchDevice() && full.hoverCount > 0
