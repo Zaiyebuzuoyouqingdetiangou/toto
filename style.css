@@ -49,7 +49,7 @@ toto[data-rabbit-mirror="true"] summary {
     min-width: 0;
 }
 
-/* 0.32.66 TEST：新增文字可读性底线，并补充完整转义兔子镜普通文本的代码块急救兜底。 */
+/* 0.32.67 TEST：一次性交互诊断升级为兔子镜总诊断；急救行为保持不变。 */
 .rabbit-mirror-settings .rabbit-mirror-primary-toggle {
     padding: 2px 2px 8px;
 }

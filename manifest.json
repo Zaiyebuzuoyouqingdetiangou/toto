@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（可读性与代码块急救测试版）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（兔子镜总诊断测试版）",
   "loading_order": 99,
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.32.66-test.1",
+  "version": "0.32.67-test.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "TEST build: adds a text-readability baseline and a strict display-only fallback for complete escaped RabbitMirror toto blocks outside standard code shells; preserves all existing interaction and reasoning isolation behavior."
+  "description": "TEST build: upgrades the one-shot interaction diagnostic into a full RabbitMirror diagnostic covering interaction, code shells, plain-text toto candidates, display-source differences, parsing viability, and likely trigger failures; rescue behavior remains unchanged."
 }

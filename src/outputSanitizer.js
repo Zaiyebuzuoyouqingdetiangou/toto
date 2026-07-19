@@ -3,6 +3,7 @@ import { getSettings } from './settings.js';
 // Cached SillyTavern script module. In module builds, chat is not guaranteed to be exposed on globalThis.
 let hostScriptModule = null;
 
+// 0.32.67: 一次性交互诊断升级为兔子镜总诊断，可检查交互、代码块、纯文字源码、显示源与触发链；急救逻辑保持不变；
 // 0.32.66: 新增文字可读性底线；代码块急救补充完整转义兔子镜普通文本 DOM 兜底；其余行为保持不变；
 // 本版仅撤回 promptBuilder 中 0.32.60 新增的常驻色彩关系测试规则。
 // 对含有 thinking/reasoning 包裹的消息仍禁止交互急救触发任何临时整条重绘。
@@ -5058,10 +5059,10 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 
 
 
-// 一次性交互诊断：仅在用户按下“开始一次交互诊断”后，临时监听聊天区的下一次交互。
-// 捕获一个兔子镜后只读取该条内容，并在约 650ms 后自动停止全部诊断监听。
+// 一次性兔子镜总诊断：用户启动后点击一条异常消息。
+// 既可捕获已渲染兔子镜交互，也可捕获尚未恢复的代码块/纯文字兔子镜消息；约 650ms 后自动停止。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.65-TEST-ONESHOT';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.67-TEST-ONESHOT';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -5218,19 +5219,93 @@ function captureInteractionDiagnosticSnapshot(root, state, label) {
     if (state.snapshots.length > 6) state.snapshots.splice(0, state.snapshots.length - 6);
 }
 
+
+function diagnosticMessageBody(root) {
+    if (!root?.closest) return root || null;
+    if (root.matches?.('.mes_text')) return root;
+    return root.closest('.mes_text') || root.querySelector?.('.mes_text') || root;
+}
+
+function diagnosticCodeRescueSummary(root) {
+    const body = diagnosticMessageBody(root);
+    const renderedText = String(body?.textContent || '');
+    const decodedRendered = decodeHtmlEntities(renderedText)
+        .replace(/\u00a0/g, ' ')
+        .replace(/[\u200B\u200C\u200D\uFEFF]/g, '')
+        .trim();
+    const rawMessage = String(getRawAssistantMessageForRenderedRoot(root) || '');
+    const decodedRaw = decodeHtmlEntities(rawMessage);
+    const codeShells = body?.querySelectorAll?.(CODE_SHELL_SELECTOR)?.length || 0;
+    const renderedMirrors = body?.querySelectorAll?.('toto[data-rabbit-mirror="true"], toto, details')?.length || 0;
+    const strictWhole = extractStrictWholeRabbitMirrorText(body);
+    const rawHasToto = /<toto\b/i.test(decodedRaw);
+    const renderedHasTotoText = /<toto\b/i.test(decodedRendered);
+    const renderedHasEscapedToto = /&lt;\s*toto\b/i.test(renderedText) || renderedHasTotoText;
+    const renderedHasFence = /```(?:html|xml)?/i.test(decodedRendered);
+    const rawNeeds = rawMessage ? needsSanitize(decodedRaw) : false;
+    const renderedNeeds = decodedRendered ? needsSanitize(decodedRendered) : false;
+    const rawCleaned = rawNeeds ? cleanRabbitMirrorOutput(decodedRaw) : decodedRaw;
+    const rawWouldChange = !!rawMessage && rawCleaned !== rawMessage && rawCleaned !== decodedRaw;
+    const strictParseOk = strictWhole ? !!parseTotoFragment(cleanRabbitMirrorOutput(strictWhole)) : false;
+    const messageElement = body?.closest?.('.mes, [mesid], [data-message-id], [data-messageid]');
+    const mesid = messageElement?.getAttribute?.('mesid') || '(unknown)';
+    const displayTextDiff = (() => {
+        try {
+            const index = Number.parseInt(mesid, 10);
+            const chat = hostScriptModule?.chat || globalThis.chat;
+            const message = Number.isInteger(index) && Array.isArray(chat) ? chat[index] : null;
+            return typeof message?.extra?.display_text === 'string' && message.extra.display_text !== message?.mes;
+        } catch { return false; }
+    })();
+
+    let reason = '未发现明显的代码块或纯文字兔子镜候选。';
+    if (!isCodeBlockRescueModeEnabled()) reason = '代码块急救开关为 OFF；所有代码块/纯文字自动恢复路线均不会运行。';
+    else if (renderedMirrors && !renderedHasTotoText && !codeShells) reason = '当前消息中已存在真实兔子镜 DOM；若仍异常，重点查看交互或 CSS，而非代码块恢复。';
+    else if (strictWhole && strictParseOk) reason = '当前显示层是完整纯文字兔子镜，且解析测试成功，但仍未替换：优先怀疑扫描触发时机、消息 DOM 选择器或后续插件再次重绘。';
+    else if (strictWhole && !strictParseOk) reason = '已命中完整纯文字兔子镜，但解析测试失败：源码边界、标签结构或清洗结果仍有问题。';
+    else if (codeShells && (renderedHasTotoText || renderedNeeds)) reason = '发现代码块外壳与兔子镜源码候选；若未恢复，优先检查替换目标识别或后续重绘覆盖。';
+    else if (rawNeeds && !renderedNeeds && !strictWhole && !codeShells) reason = '聊天原始源需要急救，但当前显示层不再呈现相同源码：可能由 display_text、显示正则或其他美化插件接管。';
+    else if (renderedHasEscapedToto && !strictWhole) reason = '显示层含兔子镜标签文字，但并非“整条消息仅一个完整 toto”结构，因此严格纯文字兜底不会接管。';
+    else if (renderedHasFence && !codeShells) reason = '看到三反引号文本，但宿主没有生成标准代码块节点；当前严格纯文字兜底又未命中完整 toto。';
+
+    return {
+        body, mesid, codeShells, renderedMirrors, strictWhole: !!strictWhole, strictParseOk,
+        renderedHasTotoText, renderedHasEscapedToto, renderedHasFence,
+        rawHasToto, rawNeeds, renderedNeeds, rawWouldChange, displayTextDiff,
+        renderedLength: decodedRendered.length, rawLength: decodedRaw.length, reason,
+    };
+}
+
 function buildInteractionDiagnosticText(root, state, phase = 'capture complete') {
     const inputs = [...root.querySelectorAll('input[type="checkbox"], input[type="radio"]')].slice(0, 8);
     const labels = [...root.querySelectorAll('label')].filter(label => !label.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`));
     const targets = diagnosticCollectTargets(root);
     const routes = diagnosticRouteSummary(root);
     const title = diagnosticCompactText(root.querySelector('summary')?.textContent, 64);
+    const code = diagnosticCodeRescueSummary(root);
     const lines = [
-        `RabbitMirror Interaction Diagnostic ${INTERACTION_DIAGNOSTIC_VERSION}`,
-        `标题: ${title || '(未找到 summary)'}`,
+        `RabbitMirror Full Diagnostic ${INTERACTION_DIAGNOSTIC_VERSION}`,
+        `标题: ${title || '(未渲染 summary／可能仍是代码块或纯文字)'}`,
         `阶段: ${phase}`,
-        `诊断模式: 一次性捕获（已自动停止）`,
+        `诊断模式: 一次性总诊断（已自动停止）`,
+        `代码块急救开关: ${isCodeBlockRescueModeEnabled() ? 'ON' : 'OFF'}`,
         `智能交互急救开关: ${isInteractionRescueModeEnabled() ? 'ON' : 'OFF'}`,
+        `消息 mesid: ${code.mesid}`,
         `根节点: ${diagnosticElementName(root)} / connected=${!!root.isConnected}`,
+        '',
+        '[代码块／纯文字恢复链]',
+        `标准代码外壳 codeShells=${code.codeShells}`,
+        `已渲染兔子镜节点 renderedMirrors=${code.renderedMirrors}`,
+        `显示层含 toto 标签文字=${code.renderedHasTotoText}`,
+        `显示层含转义/可见 toto=${code.renderedHasEscapedToto}`,
+        `显示层含三反引号=${code.renderedHasFence}`,
+        `完整纯文字 toto 候选=${code.strictWhole} parseOk=${code.strictParseOk}`,
+        `原始消息含 toto=${code.rawHasToto} needsSanitize=${code.rawNeeds} wouldChange=${code.rawWouldChange}`,
+        `显示层 needsSanitize=${code.renderedNeeds} display_text与mes不同=${code.displayTextDiff}`,
+        `长度 raw=${code.rawLength} renderedText=${code.renderedLength}`,
+        `[代码块初步判断] ${code.reason}`,
+        '',
+        '[交互恢复链]',
         `labels=${labels.length} inputs=${inputs.length} hiddenCandidates=${targets.length}`,
         `相邻隐藏组 entries=${routes.adjacent} listener=${root.dataset.rabbitMirrorAdjacentHiddenGroupFallback || 'false'}`,
         `双层状态 entries=${routes.layers} listener=${root.dataset.rabbitMirrorRenderedStateLayerFallback || 'false'}`,
@@ -5382,11 +5457,11 @@ function createOneShotInteractionDiagnosticPanel(root, state) {
     ].join(';');
 
     const heading = document.createElement('div');
-    heading.textContent = '【一次性交互诊断｜捕获完成后自动停止】';
+    heading.textContent = '【一次性兔子镜总诊断｜捕获完成后自动停止】';
     heading.style.cssText = 'font-weight:800;color:#fde047;margin-bottom:8px;';
 
     const privacy = document.createElement('div');
-    privacy.textContent = '仅诊断当前点击的这一条兔子镜。复制时会附带该条源码与实际渲染代码；不会自动上传。';
+    privacy.textContent = '点击异常消息即可诊断：支持交互失效、代码块、纯文字源码与显示源冲突。复制时会附带该条源码与实际渲染代码；不会自动上传。';
     privacy.style.cssText = 'color:#cbd5e1;margin-bottom:8px;font-size:10px;';
 
     const actions = document.createElement('div');
@@ -5406,7 +5481,7 @@ function createOneShotInteractionDiagnosticPanel(root, state) {
     actions.append(copyButton, closeButton, retryButton);
 
     const pre = document.createElement('pre');
-    pre.textContent = '正在捕获本次交互，请稍候约半秒……';
+    pre.textContent = '正在检查当前消息的代码恢复链与交互状态，请稍候约半秒……';
     pre.style.cssText = 'margin:0;white-space:pre-wrap;word-break:break-word;color:#f3f4f6;background:transparent;border:0;padding:0;';
     panel.append(heading, privacy, actions, pre);
 
@@ -5443,6 +5518,12 @@ function getDiagnosticRootFromTarget(target) {
     if (toto && isInsideChatMessage(toto)) return toto;
     const details = target.closest('details');
     if (details && isRabbitMirrorDetails(details) && isInsideChatMessage(details)) return details;
+    // 总诊断必须允许点击尚未恢复成 DOM 的代码块或纯文字源码。
+    const body = target.closest('.mes_text');
+    if (body && isInsideChatMessage(body)) return body;
+    const message = target.closest('.mes, [mesid], [data-message-id], [data-messageid]');
+    const messageBody = message?.querySelector?.('.mes_text');
+    if (messageBody && isInsideChatMessage(messageBody)) return messageBody;
     return null;
 }
 
@@ -5458,7 +5539,7 @@ function stopOneShotInteractionDiagnosticSession() {
 
 function finalizeOneShotInteractionDiagnostic(root, state) {
     captureInteractionDiagnosticSnapshot(root, state, '+650ms');
-    state.report = buildInteractionDiagnosticText(root, state, 'interaction +650ms');
+    state.report = buildInteractionDiagnosticText(root, state, 'full check +650ms');
     if (state.pre?.isConnected) state.pre.textContent = state.report;
     stopOneShotInteractionDiagnosticSession();
 }
@@ -7108,7 +7189,7 @@ export function triggerInteractionDiagnosticOnce() {
         oneShotInteractionDiagnosticSession = session;
         return true;
     } catch (error) {
-        console.debug('[RabbitMirror] one-shot interaction diagnostic failed:', error);
+        console.debug('[RabbitMirror] one-shot full diagnostic failed:', error);
         stopOneShotInteractionDiagnosticSession();
         return false;
     }
