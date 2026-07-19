@@ -5313,9 +5313,8 @@ function diagnosticCodeRescueSummary(root) {
         } catch { return false; }
     })();
 
-    let reason = '未发现明显的代码块或纯文字兔子镜候选。';
-    reason = '旧全局急救调度已移除；当前兔子镜仅由逐条维修兔按用户操作处理。';
-    else if (renderedMirrors && !renderedHasTotoText && !codeShells) reason = '当前消息中已存在真实兔子镜 DOM；若仍异常，重点查看交互或 CSS，而非代码块恢复。';
+    let reason = '旧全局急救调度已移除；当前兔子镜仅由逐条维修兔按用户操作处理。';
+    if (renderedMirrors && !renderedHasTotoText && !codeShells) reason = '当前消息中已存在真实兔子镜 DOM；若仍异常，重点查看交互或 CSS，而非代码块恢复。';
     else if (strictWhole && strictParseOk) reason = '当前显示层是完整纯文字兔子镜，且解析测试成功，但仍未替换：优先怀疑扫描触发时机、消息 DOM 选择器或后续插件再次重绘。';
     else if (strictWhole && !strictParseOk) reason = '已命中完整纯文字兔子镜，但解析测试失败：源码边界、标签结构或清洗结果仍有问题。';
     else if (codeShells && (renderedHasTotoText || renderedNeeds)) reason = '发现代码块外壳与兔子镜源码候选；若未恢复，优先检查替换目标识别或后续重绘覆盖。';
@@ -7452,26 +7451,6 @@ function recoverMessageSourceToDisplay(mod, index, message, { force = false } = 
     const rerendered = preserveAndRerenderSanitizedMessage(mod, index, transientMessage);
     return rerendered;
 }
-
-) {
-    if (!options?.force) return false;
-    const chat = mod?.chat || globalThis.chat;
-    if (!Array.isArray(chat) || !chat.length) return false;
-
-    const targets = Array.isArray(indexes) && indexes.length
-        ? [...new Set(indexes.filter(index => Number.isInteger(index) && index >= 0))]
-        : findRecentAssistantMessages(mod).map(({ index }) => index);
-
-    let recovered = false;
-    for (const index of targets) {
-        const message = chat[index];
-        if (!message || message?.is_user) continue;
-        recovered = recoverMessageSourceToDisplay(mod, index, message, options) || recovered;
-    }
-    return recovered;
-}
-
-
 
 
 function parseHtmlFragment(html) {
