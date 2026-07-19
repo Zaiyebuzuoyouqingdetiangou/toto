@@ -39,10 +39,6 @@ export const defaultSettings = Object.freeze({
     // 小小维修兔：统一承接原代码块、纯文字与智能交互急救入口。
     // 默认只在每条兔子镜标题后安装待巡逻按钮，不自动检查或修改。
     maintenanceRabbitEnabled: true,
-    // 以下旧键仅保留用于一次性迁移；不再独立控制，也不再显示在 UI。
-    plainTextRescueMode: false,
-    codeBlockRescueMode: false,
-    interactionRescueMode: false,
     // 强制启动增强：将小剧场作为本轮输出格式的一部分，而不是可选附加项。
     hardStartup: true,
     // 语言锁定增强：所有可见 UI 文案也必须为简体中文，禁止英文承担主要界面标签。
@@ -81,6 +77,8 @@ export function getSettings() {
         extension_settings[MODULE_NAME] = cloneDefaultSettings();
     }
     const settings = extension_settings[MODULE_NAME];
+    // 0.33.9：在补默认值前读取一次旧键，只用于升级迁移；迁移后立即删除。
+    const legacyRescueWasEnabled = !!(settings.plainTextRescueMode || settings.codeBlockRescueMode || settings.interactionRescueMode);
     for (const [key, value] of Object.entries(defaultSettings)) {
         if (settings[key] === undefined) {
             settings[key] = value;
@@ -111,16 +109,14 @@ export function getSettings() {
     settings.formatsMax = Number(settings.formatsMax) || defaultSettings.formatsMax;
     settings.cooldownRounds = Math.max(1, Number(settings.cooldownRounds) || defaultSettings.cooldownRounds);
     if (settings.autoRabbitMirrorInjection === undefined) settings.autoRabbitMirrorInjection = settings.enabled !== false;
-    // 0.33.2：旧急救开关合并进小小维修兔。旧用户只要曾开启任一急救，就自动启用维修兔；
-    // 随后强制关闭旧全局扫描，避免与逐条维修兔重复介入。
-    const legacyRescueWasEnabled = !!(settings.plainTextRescueMode || settings.codeBlockRescueMode || settings.interactionRescueMode);
+    // 0.33.9：旧急救开关只负责一次性迁移；运行时不再保留旧设置或旧全局调度。
     if (settings.maintenanceRabbitEnabled === undefined) {
         settings.maintenanceRabbitEnabled = legacyRescueWasEnabled || defaultSettings.maintenanceRabbitEnabled;
     }
     settings.maintenanceRabbitEnabled = !!settings.maintenanceRabbitEnabled;
-    settings.plainTextRescueMode = false;
-    settings.codeBlockRescueMode = false;
-    settings.interactionRescueMode = false;
+    delete settings.plainTextRescueMode;
+    delete settings.codeBlockRescueMode;
+    delete settings.interactionRescueMode;
     if (!['classic', 'format_only'].includes(settings.samplingMode)) settings.samplingMode = defaultSettings.samplingMode;
     if (!Array.isArray(settings.memoryProviderIds)) settings.memoryProviderIds = [];
     settings.memoryProviderIds = settings.memoryProviderIds.map(value => {

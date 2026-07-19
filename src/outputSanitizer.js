@@ -8,11 +8,6 @@ let hostScriptModule = null;
 // 0.32.66: 新增文字可读性底线；代码块急救补充完整转义兔子镜普通文本 DOM 兜底；其余行为保持不变；
 // 本版仅撤回 promptBuilder 中 0.32.60 新增的常驻色彩关系测试规则。
 // 对含有 thinking/reasoning 包裹的消息仍禁止交互急救触发任何临时整条重绘。
-const INTERACTION_POST_GENERATION_DELAYS = Object.freeze([160, 700, 1600]);
-const INTERACTION_STABLE_EVENT_DELAYS = Object.freeze([180, 760, 1700]);
-let interactionGenerationActive = false;
-let interactionScheduleToken = 0;
-const interactionScheduleTimers = new Set();
 
 const TOTO_BLOCK_RE = /<toto\b[\s\S]*?<\/toto>/gi;
 const TOTO_BLOCK_SINGLE_RE = /<toto\b[\s\S]*?<\/toto>/i;
@@ -28,29 +23,8 @@ const CLASS_ATTR_RE = /\sclass=(["'])([^"']*)\1/gi;
 const HIGHLIGHT_CLASS_TOKEN_RE = /^(?:language-(?:html|xml|js|javascript|css)|hljs|prism|prettyprint)$/i;
 const MULTI_BLANK_LINE_RE = /\n\s*\n/g;
 
-function isPlainTextRescueModeEnabled() {
-    try {
-        return !!getSettings().plainTextRescueMode;
-    } catch {
-        return false;
-    }
-}
 
-function isCodeBlockRescueModeEnabled() {
-    try {
-        return !!getSettings().codeBlockRescueMode;
-    } catch {
-        return false;
-    }
-}
 
-function isInteractionRescueModeEnabled() {
-    try {
-        return !!getSettings().interactionRescueMode;
-    } catch {
-        return false;
-    }
-}
 
 function isMaintenanceRabbitEnabled() {
     try {
@@ -5340,7 +5314,7 @@ function diagnosticCodeRescueSummary(root) {
     })();
 
     let reason = '未发现明显的代码块或纯文字兔子镜候选。';
-    if (!isCodeBlockRescueModeEnabled()) reason = '旧代码块全局急救已停用；已渲染兔子镜由逐条维修兔处理，未渲染源码可使用全链路诊断。';
+    reason = '旧全局急救调度已移除；当前兔子镜仅由逐条维修兔按用户操作处理。';
     else if (renderedMirrors && !renderedHasTotoText && !codeShells) reason = '当前消息中已存在真实兔子镜 DOM；若仍异常，重点查看交互或 CSS，而非代码块恢复。';
     else if (strictWhole && strictParseOk) reason = '当前显示层是完整纯文字兔子镜，且解析测试成功，但仍未替换：优先怀疑扫描触发时机、消息 DOM 选择器或后续插件再次重绘。';
     else if (strictWhole && !strictParseOk) reason = '已命中完整纯文字兔子镜，但解析测试失败：源码边界、标签结构或清洗结果仍有问题。';
@@ -5407,7 +5381,7 @@ function diagnosticFullChainSummary(root, code) {
     let verdict = '当前链路未发现单一高置信故障点。';
     if (structureTruncated) verdict = '高置信：损坏的 SVG Data URI 破坏了 inline style 属性边界，导致后续 DOM 被截断；应移除该背景声明并用原始源码临时重绘显示层。';
     else if (damagedDataUriCandidate) verdict = '检测到疑似损坏的 SVG Data URI；当前结构尚未达到高置信截断阈值，但建议优先执行保主体清洗。';
-    else if (!isCodeBlockRescueModeEnabled() && sourceCandidate) verdict = '原始源需要恢复；旧全局急救已停用，请使用当前条目的维修兔或全链路诊断。';
+    else if (sourceCandidate) verdict = '原始源需要恢复；请使用当前条目的维修兔，无法恢复时生成全链路诊断。';
     else if (sourceCandidate && thRenderCount) verdict = '原始兔子镜源码被 TH-render 代码壳接管；应检查源码恢复是否在其重绘后再次执行。';
     else if (sourceCandidate && highlightedCount) verdict = '原始兔子镜源码进入语法高亮代码壳；应检查源码恢复触发时机或后续重绘覆盖。';
     else if (code?.strictWhole && code?.strictParseOk) verdict = '显示层是可解析的完整纯文字兔子镜，但替换未发生；重点检查消息选择器与观察器触发。';
@@ -6060,7 +6034,7 @@ function maintenanceUserRepairInspection(root, mode) {
 }
 
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.7';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.8';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -6293,22 +6267,6 @@ export function refreshMaintenanceRabbits() {
     else removeMaintenanceRabbitsInChatDom();
 }
 
-function scopeRabbitMirrorInteractionsInChatDom() {
-    const root = getChatRoot();
-    if (!root) return;
-    const enabled = isInteractionRescueModeEnabled();
-    getRenderedRabbitMirrorInteractionRoots(root).forEach(mirrorRoot => {
-        if (!isInsideChatMessage(mirrorRoot)) return;
-        const remembered = wasInteractionRescued(mirrorRoot);
-        if (!enabled && !remembered) return;
-
-        if (enabled && !remembered) rememberInteractionRescue(mirrorRoot);
-        if (enabled || remembered) {
-            scopeRabbitMirrorInteractionIds(mirrorRoot);
-            mirrorRoot.dataset.rabbitMirrorInteractionRescued = 'true';
-        }
-    });
-}
 
 
 const DAMAGED_DATA_URI_MESSAGE_ATTR = 'data-rabbit-mirror-damaged-data-uri-rescued';
@@ -6486,40 +6444,6 @@ function setTransientMessageSource(message, repaired) {
     return transientMessage;
 }
 
-function rescueRecentDamagedDataUriMessages(mod = null) {
-    if (!isInteractionRescueModeEnabled()) return false;
-    const host = mod || hostScriptModule || globalThis;
-    let rerendered = false;
-
-    for (const { message, index } of findRecentAssistantMessages(host)) {
-        // 交互急救的 data URI 保全是唯一会临时整条重绘消息的自动路线。
-        // 当原消息仍含 <thinking>/<analysis>/<reasoning> 等包裹时，显示正则可能只作用于
-        // 当前渲染结果；若这里拿原始 mes 重新绘制，就会绕过该显示结果并暴露思维内容。
-        // 因此含思维包裹，或 extra.display_text 与原始消息源不同（说明存在显示变换）的消息，
-        // 一律跳过整条临时重绘；其他纯 DOM 交互急救仍照常执行。
-        if (messageContainsReasoningEnvelope(message) || messageUsesDistinctDisplaySource(message)) continue;
-
-        const source = getSelectedMessageSource(message);
-        if (!source || !/data:image\/svg\+xml/i.test(source)) continue;
-        const repaired = rescueDamagedDataUriRabbitMirrorOutput(source);
-        if (!repaired || repaired === source) continue;
-
-        const signature = hashInteractionSignature(`${source}|${repaired}`);
-        const currentElement = getRenderedMessageElement(index);
-        if (currentElement?.getAttribute(DAMAGED_DATA_URI_MESSAGE_ATTR) === signature) continue;
-
-        const transientMessage = setTransientMessageSource(message, repaired);
-        if (!preserveAndRerenderSanitizedMessage(host, index, transientMessage)) continue;
-
-        const restoredElement = getRenderedMessageElement(index);
-        restoredElement?.setAttribute(DAMAGED_DATA_URI_MESSAGE_ATTR, signature);
-        restoredElement?.querySelectorAll?.('details, toto').forEach(root => {
-            root.setAttribute(DAMAGED_DATA_URI_ROOT_ATTR, 'true');
-        });
-        rerendered = true;
-    }
-    return rerendered;
-}
 
 function stripHtmlComments(text) {
     return String(text || '').replace(HTML_COMMENT_RE, '');
@@ -7367,10 +7291,6 @@ export function compactTotoBlock(block) {
 }
 
 export function cleanRabbitMirrorOutput(responseText = '') {
-    // 代码块急救模式关闭时，严格不干预原始输出。
-    // 开启后才拆代码块外壳、pre/code、语法高亮 class 等。
-    if (!isCodeBlockRescueModeEnabled()) return String(responseText || '');
-
     let text = normalizeMirrorAttribute(stripHtmlComments(String(responseText || '')))
         .replace(/[\u200B\u200C\u200D\uFEFF]/g, '')
         .replace(/\r\n?/g, '\n')
@@ -7408,7 +7328,6 @@ export function cleanRabbitMirrorOutput(responseText = '') {
 }
 
 function needsSanitize(text) {
-    if (!isCodeBlockRescueModeEnabled()) return false;
     const decoded = decodeHtmlEntities(String(text || ''));
     if (TOTO_BLOCK_SINGLE_RE.test(decoded)) return true;
     if (/```(?:html|HTML|xml|XML)?[\s\S]*?<toto\b/i.test(decoded)) return true;
@@ -7504,7 +7423,7 @@ function getSourceRecoveryCandidate(message) {
 }
 
 function recoverMessageSourceToDisplay(mod, index, message, { force = false } = {}) {
-    if ((!force && !isCodeBlockRescueModeEnabled()) || !message || message?.is_user) return false;
+    if (!force || !message || message?.is_user) return false;
     const source = getSourceRecoveryCandidate(message);
     if (!source) return false;
 
@@ -7531,12 +7450,11 @@ function recoverMessageSourceToDisplay(mod, index, message, { force = false } = 
     if (typeof transientMessage?.extra?.display_text === 'string') transientMessage.extra.display_text = cleaned;
 
     const rerendered = preserveAndRerenderSanitizedMessage(mod, index, transientMessage);
-    if (rerendered) setTimeout(() => triggerInteractionRescue(), 80);
     return rerendered;
 }
 
-function runSourceRecoveryPass(mod, indexes = null, options = {}) {
-    if (!options?.force && !isCodeBlockRescueModeEnabled()) return false;
+) {
+    if (!options?.force) return false;
     const chat = mod?.chat || globalThis.chat;
     if (!Array.isArray(chat) || !chat.length) return false;
 
@@ -7553,149 +7471,8 @@ function runSourceRecoveryPass(mod, indexes = null, options = {}) {
     return recovered;
 }
 
-function installCodeShellRecoveryObserver(mod) {
-    if (typeof MutationObserver === 'undefined' || typeof document === 'undefined') return;
-    const root = getChatRoot();
-    if (!root || codeShellRecoveryObserver) return;
 
-    codeShellRecoveryObserver = new MutationObserver(records => {
-        if (!isCodeBlockRescueModeEnabled()) return;
-        const indexes = new Set();
-        for (const record of records) {
-            for (const added of record.addedNodes || []) {
-                if (!(added instanceof Element)) continue;
-                const hit = added.matches?.('.TH-render, pre, code, .hljs, .code_block, .code-block, .codeblock')
-                    || added.querySelector?.('.TH-render, pre, code, .hljs, .code_block, .code-block, .codeblock');
-                if (!hit) continue;
-                const index = getMessageIndexFromElement(added);
-                if (index >= 0) indexes.add(index);
-            }
-        }
-        if (!indexes.size) return;
-        setTimeout(() => runSourceRecoveryPass(mod, [...indexes]), 0);
-        setTimeout(() => runSourceRecoveryPass(mod, [...indexes]), 120);
-    });
-    codeShellRecoveryObserver.observe(root, { childList: true, subtree: true });
-}
 
-function sanitizeLatestRawMessages(mod) {
-    if (!isCodeBlockRescueModeEnabled()) return false;
-    let rawChanged = false;
-    let rerendered = false;
-    const rerenderEntries = [];
-
-    for (const { message, index } of findRecentAssistantMessages(mod)) {
-        let messageChanged = false;
-        const decoded = decodeHtmlEntities(message.mes);
-        if (needsSanitize(decoded)) {
-            const cleaned = cleanRabbitMirrorOutput(decoded);
-            if (cleaned && cleaned !== message.mes) {
-                message.mes = cleaned;
-                if (Array.isArray(message.swipes)) {
-                    const swipeIndex = Number.isInteger(message.swipe_id) ? message.swipe_id : message.swipes.length - 1;
-                    if (typeof message.swipes[swipeIndex] === 'string') message.swipes[swipeIndex] = cleaned;
-                }
-                messageChanged = true;
-            }
-        }
-
-        // 部分消息以 extra.display_text 作为实际显示源；只清 mes 会导致重绘后仍使用旧文本。
-        if (typeof message?.extra?.display_text === 'string') {
-            const decodedDisplayText = decodeHtmlEntities(message.extra.display_text);
-            if (needsSanitize(decodedDisplayText)) {
-                const cleanedDisplayText = cleanRabbitMirrorOutput(decodedDisplayText);
-                if (cleanedDisplayText && cleanedDisplayText !== message.extra.display_text) {
-                    message.extra.display_text = cleanedDisplayText;
-                    messageChanged = true;
-                }
-            }
-        }
-
-        if (messageChanged) rawChanged = true;
-
-        // 代码块急救只在代码块/裸 HTML 整理实际改动原文时重绘。
-        // CSS ERROR 检测、无变化强制重绘与对应去重，统一由“纯文字急救”开关负责。
-        if (messageChanged) {
-            rerenderEntries.push({ index, message });
-        }
-    }
-
-    if (rerenderEntries.length) {
-        // 旧版这里只改 chat[].mes 并保存，当前画面已经产生的 CSS ERROR 不会自动重绘。
-        // 用酒馆原生 updateMessageBlock 立即重建正文，让压成单行的 <style> 重新进入解析链。
-        for (const { index, message } of rerenderEntries) {
-            rerendered = preserveAndRerenderSanitizedMessage(mod, index, message) || rerendered;
-        }
-    }
-
-    if (rawChanged) {
-        try {
-            const saver = mod?.saveChatConditional || globalThis.saveChatConditional;
-            if (typeof saver === 'function') saver();
-        } catch (error) {
-            console.debug('[RabbitMirror] save after sanitizer failed:', error);
-        }
-    }
-    return rawChanged || rerendered;
-}
-
-function sanitizePlainTextRawMessages(mod) {
-    if (!isPlainTextRescueModeEnabled()) return false;
-    let rawChanged = false;
-    let rerendered = false;
-    const rerenderEntries = [];
-
-    for (const { message, index } of findRecentAssistantMessages(mod)) {
-        let messageChanged = false;
-        const renderedHasError = renderedMessageHasCssError(index);
-        const decoded = decodeHtmlEntities(message.mes);
-        // 纯文字急救只处理已经实际显示 CSS ERROR 的消息。
-        // 仅仅包含 CSS 变量不代表损坏；健康 UI 不得被预防性改写。
-        if (renderedHasError) {
-            const cleaned = rescuePlainTextRabbitMirrorOutput(decoded);
-            if (cleaned && cleaned !== message.mes) {
-                message.mes = cleaned;
-                if (Array.isArray(message.swipes)) {
-                    const swipeIndex = Number.isInteger(message.swipe_id) ? message.swipe_id : message.swipes.length - 1;
-                    if (typeof message.swipes[swipeIndex] === 'string') message.swipes[swipeIndex] = cleaned;
-                }
-                messageChanged = true;
-            }
-        }
-
-        if (typeof message?.extra?.display_text === 'string') {
-            const decodedDisplayText = decodeHtmlEntities(message.extra.display_text);
-            if (renderedHasError) {
-                const cleanedDisplayText = rescuePlainTextRabbitMirrorOutput(decodedDisplayText);
-                if (cleanedDisplayText && cleanedDisplayText !== message.extra.display_text) {
-                    message.extra.display_text = cleanedDisplayText;
-                    messageChanged = true;
-                }
-            }
-        }
-
-        if (messageChanged) rawChanged = true;
-        const signature = `${index}:${hashInteractionSignature(message.mes)}`;
-        if (messageChanged || (renderedHasError && !plainTextRerenderedSignatures.has(signature))) {
-            plainTextRerenderedSignatures.add(signature);
-            rerenderEntries.push({ index, message });
-        }
-    }
-
-    for (const { index, message } of rerenderEntries) {
-        rerendered = preserveAndRerenderSanitizedMessage(mod, index, message) || rerendered;
-    }
-
-    if (rawChanged) {
-        try {
-            const saver = mod?.saveChatConditional || globalThis.saveChatConditional;
-            if (typeof saver === 'function') saver();
-        } catch (error) {
-            console.debug('[RabbitMirror] save after plain text rescue failed:', error);
-        }
-    }
-    return rawChanged || rerendered;
-}
 
 function parseHtmlFragment(html) {
     try {
@@ -7794,7 +7571,7 @@ function isRabbitMirrorDetails(details) {
 }
 
 function sanitizeRenderedRabbitMirrorDetailsInScope(root, force = false) {
-    if (!force && !isCodeBlockRescueModeEnabled()) return 0;
+    if (!force) return 0;
     if (!root?.querySelectorAll) return 0;
     let repairedCount = 0;
     const detailsList = [...root.querySelectorAll('toto details, details')].filter(isRabbitMirrorDetails);
@@ -7839,11 +7616,6 @@ function sanitizeRenderedRabbitMirrorDetailsInScope(root, force = false) {
     return repairedCount;
 }
 
-function sanitizeRenderedRabbitMirrorDetailsDom() {
-    const root = getChatRoot();
-    if (!root) return 0;
-    return sanitizeRenderedRabbitMirrorDetailsInScope(root, false);
-}
 
 function extractStrictWholeRabbitMirrorText(node) {
     if (!node) return '';
@@ -7862,7 +7634,7 @@ function extractStrictWholeRabbitMirrorText(node) {
 }
 
 function sanitizeWholePlainTextRabbitMirrorsInScope(root, force = false) {
-    if (!force && !isCodeBlockRescueModeEnabled()) return 0;
+    if (!force) return 0;
     if (!root?.querySelectorAll) return 0;
     let repairedCount = 0;
     const messageBodies = root.matches?.('.mes_text') ? [root] : [...root.querySelectorAll('.mes_text')];
@@ -7884,14 +7656,9 @@ function sanitizeWholePlainTextRabbitMirrorsInScope(root, force = false) {
     return repairedCount;
 }
 
-function sanitizeWholePlainTextRabbitMirrorsInChatDom() {
-    const root = getChatRoot();
-    if (!root) return 0;
-    return sanitizeWholePlainTextRabbitMirrorsInScope(root, false);
-}
 
 function sanitizeCodeBlocksInScope(root, force = false) {
-    if (!force && !isCodeBlockRescueModeEnabled()) return 0;
+    if (!force) return 0;
     if (!root?.querySelectorAll) return 0;
     let repairedCount = 0;
     const candidates = [...new Set([...root.querySelectorAll(CODE_SHELL_SELECTOR)])]
@@ -7927,96 +7694,14 @@ function sanitizeCodeBlocksInScope(root, force = false) {
     return repairedCount;
 }
 
-function sanitizeCodeBlocksInChatDom() {
-    const root = getChatRoot();
-    if (!root) return 0;
-    return sanitizeCodeBlocksInScope(root, false);
-}
 
-function readGenerationBoolean(source) {
-    if (!source) return false;
-    for (const key of ['is_send_press', 'isGenerating', 'is_generation_active']) {
-        try {
-            if (source[key] === true) return true;
-        } catch {
-            // Ignore inaccessible host flags.
-        }
-    }
-    return false;
-}
 
-function isInteractionGenerationInProgress(mod = null) {
-    if (interactionGenerationActive) return true;
-    if (readGenerationBoolean(mod || hostScriptModule)) return true;
-    try {
-        if (readGenerationBoolean(globalThis.SillyTavern?.getContext?.())) return true;
-    } catch {
-        // Context is optional; event tracking remains the primary source of truth.
-    }
-    return readGenerationBoolean(globalThis);
-}
 
-function clearScheduledInteractionRescue() {
-    interactionScheduleToken += 1;
-    for (const timer of interactionScheduleTimers) clearTimeout(timer);
-    interactionScheduleTimers.clear();
-}
 
-function runInteractionRescueWhenStable(mod = null) {
-    if (isInteractionGenerationInProgress(mod)) {
-        return false;
-    }
 
-    try {
-        // data URI 保全急救使用临时消息副本重建当前 DOM，不改写或保存聊天原文。
-        // 只在智能交互急救开启且生成已结束时处理明确会截断 inline style 的损坏 SVG data URI。
-        rescueRecentDamagedDataUriMessages(mod || hostScriptModule || globalThis);
-        // 已经修复过的兔子镜会被会话记忆继续维护；关闭开关只停止处理新消息。
-        scopeRabbitMirrorInteractionsInChatDom();
-        return true;
-    } catch (error) {
-        console.debug('[RabbitMirror] interaction rescue trigger failed:', error);
-        return false;
-    }
-}
 
-function scheduleStableInteractionRescue(mod = null, delays = INTERACTION_STABLE_EVENT_DELAYS) {
-    if (isInteractionGenerationInProgress(mod)) {
-        clearScheduledInteractionRescue();
-        return false;
-    }
 
-    clearScheduledInteractionRescue();
-    const token = interactionScheduleToken;
-    for (const rawDelay of delays) {
-        const delay = Math.max(0, Number(rawDelay) || 0);
-        const timer = setTimeout(() => {
-            interactionScheduleTimers.delete(timer);
-            if (token !== interactionScheduleToken) return;
-            if (isInteractionGenerationInProgress(mod)) {
-                clearScheduledInteractionRescue();
-                return;
-            }
-            runInteractionRescueWhenStable(mod);
-        }, delay);
-        interactionScheduleTimers.add(timer);
-    }
-    return true;
-}
 
-function markInteractionGenerationStarted() {
-    interactionGenerationActive = true;
-    clearScheduledInteractionRescue();
-}
-
-function markInteractionGenerationEnded(mod = null) {
-    interactionGenerationActive = false;
-    scheduleStableInteractionRescue(mod, INTERACTION_POST_GENERATION_DELAYS);
-}
-
-export function triggerInteractionRescue() {
-    return runInteractionRescueWhenStable(hostScriptModule || globalThis);
-}
 
 export function triggerInteractionDiagnosticOnce() {
     try {
@@ -8041,53 +7726,10 @@ export function triggerInteractionDiagnosticOnce() {
     }
 }
 
-function runEnabledRescueChain(mod = null) {
-    const host = mod || globalThis;
-    // 纯文字急救自 0.32.38 起为单条一次性选择，不再加入全局急救链。
-    if (isCodeBlockRescueModeEnabled()) {
-        sanitizeLatestRawMessages(host);
-        sanitizeCodeBlocksInChatDom();
-        sanitizeWholePlainTextRabbitMirrorsInChatDom();
-        sanitizeRenderedRabbitMirrorDetailsDom();
-    }
-    triggerInteractionRescue();
-}
 
-const PLAIN_TEXT_ONE_SHOT_TIMEOUT_MS = 30000;
-let plainTextOneShotSelectionSession = null;
 
-function notifyPlainTextRescue(message, level = 'info') {
-    try {
-        const toast = globalThis.toastr || globalThis.parent?.toastr;
-        toast?.[level]?.(message);
-    } catch {
-        // 通知失败不影响急救本身。
-    }
-}
 
-function removePlainTextSelectionStyle() {
-    try {
-        document.getElementById('rabbit-mirror-plain-text-selection-style')?.remove();
-    } catch {
-        // ignore
-    }
-}
 
-function stopPlainTextOneShotSelection() {
-    const session = plainTextOneShotSelectionSession;
-    if (!session) return false;
-    plainTextOneShotSelectionSession = null;
-    try {
-        session.chatRoot?.removeEventListener('click', session.clickHandler, true);
-        document.removeEventListener('keydown', session.keyHandler, true);
-        if (session.timer) clearTimeout(session.timer);
-        session.chatRoot?.removeAttribute('data-rabbit-mirror-plain-text-pick');
-    } catch {
-        // ignore
-    }
-    removePlainTextSelectionStyle();
-    return true;
-}
 
 function getMessageIndexFromMirrorNode(node) {
     const messageNode = node?.closest?.('.mes, [mesid], [data-message-id], [data-messageid]');
@@ -8136,185 +7778,27 @@ function messageUsesDistinctDisplaySource(message) {
     return displayText !== decodeHtmlEntities(rawSource).trim();
 }
 
-function getSelectedMessageSource(message) {
-    const candidates = [];
-    const swipeIndex = Number.isInteger(message?.swipe_id) ? message.swipe_id : -1;
-    if (swipeIndex >= 0 && typeof message?.swipes?.[swipeIndex] === 'string') {
-        candidates.push(message.swipes[swipeIndex]);
-    }
-    if (typeof message?.mes === 'string') candidates.push(message.mes);
-    if (typeof message?.extra?.display_text === 'string') candidates.push(message.extra.display_text);
 
-    const scored = candidates
-        .map(source => {
-            const decoded = decodeHtmlEntities(source);
-            let score = decoded.length;
-            if (/<toto\b/i.test(decoded)) score += 100000;
-            if (/<style\b/i.test(decoded)) score += 50000;
-            if (/<details\b/i.test(decoded)) score += 20000;
-            return { source: decoded, score };
-        })
-        .sort((a, b) => b.score - a.score);
-    return scored[0]?.source || '';
-}
 
-function rescueSelectedPlainTextMirror(index) {
-    const mod = hostScriptModule || globalThis;
-    const chat = mod?.chat || globalThis.chat;
-    const message = Array.isArray(chat) ? chat[index] : null;
-    if (!message || message?.is_user) return false;
 
-    const source = getSelectedMessageSource(message);
-    if (!source || !/<(?:toto|details)\b/i.test(source)) return false;
 
-    const repaired = rescuePlainTextRabbitMirrorOutput(source) || source;
-    const transientMessage = cloneMessageForTransientRerender(message);
-    transientMessage.mes = repaired;
 
-    if (Array.isArray(transientMessage.swipes)) {
-        const swipeIndex = Number.isInteger(transientMessage.swipe_id)
-            ? transientMessage.swipe_id
-            : transientMessage.swipes.length - 1;
-        if (typeof transientMessage.swipes[swipeIndex] === 'string') {
-            transientMessage.swipes[swipeIndex] = repaired;
-        }
-    }
-    if (typeof transientMessage?.extra?.display_text === 'string') {
-        transientMessage.extra.display_text = repaired;
-    }
 
-    // 只用临时副本重建当前 DOM：不改 chat[].mes、不改 swipe、不调用保存。
-    const rerendered = preserveAndRerenderSanitizedMessage(mod, index, transientMessage);
-    if (rerendered) {
-        setTimeout(() => triggerInteractionRescue(), 80);
-    }
-    return rerendered;
-}
 
-function startPlainTextOneShotSelection() {
-    const chatRoot = getChatRoot();
-    if (!chatRoot) return false;
 
-    stopPlainTextOneShotSelection();
-    removePlainTextSelectionStyle();
 
-    const style = document.createElement('style');
-    style.id = 'rabbit-mirror-plain-text-selection-style';
-    style.textContent = `
-      [data-rabbit-mirror-plain-text-pick="true"] details,
-      [data-rabbit-mirror-plain-text-pick="true"] toto { cursor: crosshair !important; }
-      [data-rabbit-mirror-plain-text-pick="true"] details:hover {
-        outline: 2px solid currentColor !important;
-        outline-offset: 3px !important;
-      }
-    `;
-    document.head?.appendChild(style);
-    chatRoot.setAttribute('data-rabbit-mirror-plain-text-pick', 'true');
-
-    const session = { chatRoot, timer: null, clickHandler: null, keyHandler: null };
-    session.clickHandler = event => {
-        const mirror = event.target?.closest?.('toto[data-rabbit-mirror="true"], toto, details');
-        if (!mirror || !isInsideChatMessage(mirror)) return;
-
-        event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation?.();
-
-        const index = getMessageIndexFromMirrorNode(mirror);
-        stopPlainTextOneShotSelection();
-        if (index < 0) {
-            notifyPlainTextRescue('没有识别到这条兔子镜所属的消息，未进行修改。', 'warning');
-            return;
-        }
-
-        const repaired = rescueSelectedPlainTextMirror(index);
-        if (repaired) {
-            notifyPlainTextRescue('已仅修复选中的这一条兔子镜；其他消息与聊天原文均未改动。', 'success');
-        } else {
-            notifyPlainTextRescue('这条兔子镜没有找到可恢复的完整源码，未进行修改。', 'warning');
-        }
-    };
-    session.keyHandler = event => {
-        if (event.key !== 'Escape') return;
-        stopPlainTextOneShotSelection();
-        notifyPlainTextRescue('已取消单条纯文字急救。', 'info');
-    };
-    session.timer = setTimeout(() => {
-        if (plainTextOneShotSelectionSession !== session) return;
-        stopPlainTextOneShotSelection();
-        notifyPlainTextRescue('单条纯文字急救已超时取消。', 'info');
-    }, PLAIN_TEXT_ONE_SHOT_TIMEOUT_MS);
-
-    chatRoot.addEventListener('click', session.clickHandler, true);
-    document.addEventListener('keydown', session.keyHandler, true);
-    plainTextOneShotSelectionSession = session;
-    return true;
-}
-
-export function triggerPlainTextRescue() {
-    try {
-        if (plainTextOneShotSelectionSession) {
-            stopPlainTextOneShotSelection();
-            return false;
-        }
-        return startPlainTextOneShotSelection();
-    } catch (error) {
-        console.debug('[RabbitMirror] one-shot plain text rescue failed:', error);
-        stopPlainTextOneShotSelection();
-        return false;
-    }
-}
-
-export function triggerCodeBlockRescue(mod = null) {
-    try {
-        runEnabledRescueChain(mod);
-    } catch (error) {
-        console.debug('[RabbitMirror] code block rescue trigger failed:', error);
-    }
-}
-
-function runCodeBlockRescuePass(mod) {
-    if (!isCodeBlockRescueModeEnabled()) return;
-    runSourceRecoveryPass(mod);
-    sanitizeLatestRawMessages(mod);
-    sanitizeCodeBlocksInChatDom();
-    sanitizeWholePlainTextRabbitMirrorsInChatDom();
-    sanitizeRenderedRabbitMirrorDetailsDom();
-}
-
-function scheduleCodeBlockRescue(mod) {
-    if (!isCodeBlockRescueModeEnabled()) return;
-    // 先尝试源码层瞬时恢复，再进入原有多轮 DOM/原文急救。
-    runSourceRecoveryPass(mod);
-    const run = () => runCodeBlockRescuePass(mod);
-    setTimeout(run, 0);
-    setTimeout(run, 80);
-    setTimeout(run, 350);
-    setTimeout(run, 900);
-    setTimeout(run, 1800);
-    setTimeout(run, 3200);
-}
-
-function scheduleStableRescueChain(mod, interactionDelays = INTERACTION_STABLE_EVENT_DELAYS) {
-    // 代码块急救沿用原有按开关多轮整理；智能交互急救改为独立的生成后稳定调度。
-    scheduleCodeBlockRescue(mod);
-    scheduleStableInteractionRescue(mod, interactionDelays);
-    // 小小维修兔只安装标题入口，不自动巡逻、不自动修改。
+function scheduleMaintenanceRabbitInstall() {
     setTimeout(() => installMaintenanceRabbitsInChatDom(), 120);
     setTimeout(() => installMaintenanceRabbitsInChatDom(), 900);
 }
 
-function installChatRootReadyObserver(mod) {
+function installChatRootReadyObserver() {
     if (typeof MutationObserver === 'undefined' || typeof document === 'undefined' || !document.body) return;
     if (getChatRoot()) return;
-
-    // 只负责等待聊天根节点首次挂载；找到后立即断开。
-    // 不再持续监听聊天正文，避免流式 token 与 RabbitMirror 自身 style/节点修改反复触发急救。
     const observer = new MutationObserver(() => {
         if (!getChatRoot()) return;
         observer.disconnect();
-        installCodeShellRecoveryObserver(mod);
-        scheduleStableRescueChain(mod);
+        scheduleMaintenanceRabbitInstall();
     });
     observer.observe(document.body, { childList: true, subtree: true });
 }
@@ -8326,49 +7810,24 @@ export async function initOutputSanitizer() {
         const eventSource = mod?.eventSource;
         const eventTypes = mod?.event_types || {};
         if (eventSource?.on) {
-            const generationStartEvents = [
-                eventTypes.GENERATION_AFTER_COMMANDS,
-                eventTypes.GENERATION_STARTED,
-                eventTypes.STREAM_TOKEN_RECEIVED,
-            ].filter(Boolean);
-            for (const eventName of generationStartEvents) {
-                eventSource.on(eventName, () => markInteractionGenerationStarted());
-            }
-
-            const generationEndEvents = [
+            const installEvents = [
                 eventTypes.GENERATION_STOPPED,
                 eventTypes.GENERATION_ENDED,
-            ].filter(Boolean);
-            for (const eventName of generationEndEvents) {
-                eventSource.on(eventName, () => {
-                    scheduleCodeBlockRescue(mod);
-                    markInteractionGenerationEnded(mod);
-                });
-            }
-
-            // MESSAGE_RECEIVED 发生在消息入库但尚未完成渲染时，只允许代码块急救排队；
-            // 智能交互急救等待 CHARACTER_MESSAGE_RENDERED / GENERATION_ENDED。
-            if (eventTypes.MESSAGE_RECEIVED) {
-                eventSource.on(eventTypes.MESSAGE_RECEIVED, () => scheduleCodeBlockRescue(mod));
-            }
-
-            const stableEvents = [
                 eventTypes.CHARACTER_MESSAGE_RENDERED,
                 eventTypes.CHAT_CHANGED,
                 eventTypes.MESSAGE_SWIPED,
                 eventTypes.MESSAGE_UPDATED,
                 eventTypes.MESSAGE_EDITED,
             ].filter(Boolean);
-            for (const eventName of stableEvents) {
-                eventSource.on(eventName, () => scheduleStableRescueChain(mod));
+            for (const eventName of [...new Set(installEvents)]) {
+                eventSource.on(eventName, () => scheduleMaintenanceRabbitInstall());
             }
         }
 
-        installChatRootReadyObserver(mod);
-        installCodeShellRecoveryObserver(mod);
-        scheduleStableRescueChain(mod);
+        installChatRootReadyObserver();
+        scheduleMaintenanceRabbitInstall();
         installMaintenanceRabbitsInChatDom();
-        console.debug('[RabbitMirror] output sanitizer initialized');
+        console.debug('[RabbitMirror] output sanitizer initialized (maintenance-rabbit only)');
     } catch (error) {
         console.debug('[RabbitMirror] output sanitizer disabled:', error);
     }
