@@ -5125,7 +5125,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 一次性兔子镜总诊断：用户启动后点击一条异常消息。
 // 既可捕获已渲染兔子镜交互，也可捕获尚未恢复的代码块/纯文字兔子镜消息；约 650ms 后自动停止。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.73-TEST-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.74-TEST-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
