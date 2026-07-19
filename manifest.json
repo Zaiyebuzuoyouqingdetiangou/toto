@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（小小维修兔 v1.3 交互隔离修正版）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（小小维修兔 v1.4 伪交互识别修正版）",
   "loading_order": 99,
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.33.3-test.1",
+  "version": "0.33.4-test.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "TEST build: fixes Maintenance Rabbit false-green results for radio/checkbox interactions by detecting duplicate control IDs and broken local label bindings, then mirror-scoping id/for/radio-name and CSS #id/[id=...] references before reinstalling existing safe interaction rescue. Each repair remains mirror-scoped. Retains 101 thematic elements, 177 presentation formats, Menu QR v2.1, full-chain diagnostics, thinking isolation, and all existing generation features."
+  "description": "TEST build: fixes Maintenance Rabbit false-green results when radio/checkbox controls only change selected styling but provide no second-layer content or experience. Such incomplete interaction is now marked unknown/red rather than healthy; Maintenance Rabbit will not invent missing content. Retains mirror-scoped ID/for/name/CSS repair, 101 thematic elements, 177 presentation formats, Menu QR v2.1, full-chain diagnostics, thinking isolation, and all existing generation features."
 }

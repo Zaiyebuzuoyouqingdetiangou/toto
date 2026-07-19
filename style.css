@@ -1,4 +1,4 @@
-/* 0.33.3 TEST：小小维修兔 v1.1 合并旧急救入口，并严格按单条兔子镜维护。 */
+/* 0.33.4 TEST：小小维修兔 v1.1 合并旧急救入口，并严格按单条兔子镜维护。 */
 .rabbit-mirror-settings .inline-drawer-content {
     padding: 10px;
 }
@@ -129,7 +129,7 @@ toto[data-rabbit-mirror="true"] summary {
     line-height: 1.45;
 }
 
-/* 0.33.3 小小维修兔 v1.3：每条标题后独立四状态入口。默认仅显示，不巡逻、不修改。 */
+/* 0.33.4 小小维修兔 v1.4：每条标题后独立四状态入口。默认仅显示，不巡逻、不修改。 */
 .rabbit-mirror-maintenance-rabbit {
   display: inline-flex !important;
   align-items: center !important;

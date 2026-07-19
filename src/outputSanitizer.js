@@ -5135,14 +5135,14 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 既可捕获已渲染兔子镜交互，也可捕获尚未恢复的代码块/纯文字兔子镜消息；约 650ms 后自动停止。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
 
-// 0.33.3: 小小维修兔 v1.3。补充每面兔子镜的 ID/for/name/CSS 属性选择器隔离，并识别重复 ID 导致的假交互。
+// 0.33.4: 小小维修兔 v1.4。识别仅有选中变色、没有第二层体验的伪交互，避免错误亮绿灯。
 // 设计底线：没有高置信证据就不修改；黄灯才允许调用已有修复路线，红灯只生成诊断。
 const MAINTENANCE_RABBIT_ATTR = 'data-rabbit-mirror-maintenance-rabbit';
 const MAINTENANCE_STATE_ATTR = 'data-rabbit-mirror-maintenance-state';
 const MAINTENANCE_REASON_ATTR = 'data-rabbit-mirror-maintenance-reason';
 const MAINTENANCE_REPAIR_ATTR = 'data-rabbit-mirror-maintenance-repaired';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '0.33.3-TEST-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.33.4-TEST-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -5804,9 +5804,35 @@ function maintenanceInteractionScopeEvidence(root) {
     return { duplicateIds, brokenLocalLabels, checkedCssIdSelectors, needsScopeRepair: controls.length > 0 && (duplicateIds > 0 || brokenLocalLabels > 0) };
 }
 
+function maintenanceCheckedInteractionDepth(root) {
+    const controls = [...(root?.querySelectorAll?.('input[type="checkbox"], input[type="radio"]') || [])];
+    if (!controls.length) return { checkedSelectionOnly: false, checkedRuleCount: 0, meaningfulCheckedRuleCount: 0 };
+
+    const cssText = [...(root?.querySelectorAll?.('style') || [])].map(style => String(style.textContent || '')).join('
+');
+    const blockRe = /([^{}]+)\{([^{}]*)\}/g;
+    let checkedRuleCount = 0;
+    let meaningfulCheckedRuleCount = 0;
+    let match;
+    while ((match = blockRe.exec(cssText))) {
+        const selectorText = String(match[1] || '');
+        if (!/:checked/i.test(selectorText)) continue;
+        for (const selector of selectorText.split(',').map(value => value.trim()).filter(Boolean)) {
+            if (!/:checked/i.test(selector)) continue;
+            checkedRuleCount += 1;
+            const afterChecked = selector.replace(/^.*?:checked/i, '').trim();
+            const labelOnly = /^\+\s*label(?:\s*(?:::[a-z-]+|:[a-z-]+|\.[\w-]+|\[[^\]]+\]))*\s*$/i.test(afterChecked);
+            if (!labelOnly) meaningfulCheckedRuleCount += 1;
+        }
+    }
+
+    const checkedSelectionOnly = checkedRuleCount > 0 && meaningfulCheckedRuleCount === 0 && controls.length > 1;
+    return { checkedSelectionOnly, checkedRuleCount, meaningfulCheckedRuleCount };
+}
+
 function maintenanceKnownInteractionEvidence(root, full, code) {
     const raw = decodeHtmlEntitiesForRescue(getRawAssistantMessageForRenderedRoot(root) || '');
-    const stateProgram = /\bon(?:click|change|input)\s*=|setAttribute\s*\(\s*['\"]data-|classList\.(?:add|remove|toggle)|\.checked\s*=|:checked\b/i.test(raw);
+    const stateProgram = /on(?:click|change|input)\s*=|setAttribute\s*\(\s*['"]data-|classList\.(?:add|remove|toggle)|\.checked\s*=|:checked/i.test(raw);
     const checkedControlsLost = full.controlsLost && full.checkedCount > 0;
     const strippedStateProgram = full.rawInlineEvents > full.renderedInlineEvents && stateProgram;
     const touchHoverMissing = isLikelyTouchDevice() && full.hoverCount > 0
@@ -5815,7 +5841,8 @@ function maintenanceKnownInteractionEvidence(root, full, code) {
     const unscopedControls = (full.inputCount > 0 || full.buttonCount > 0)
         && root.dataset?.rabbitMirrorInteractionScoped !== 'true';
     const scopeEvidence = maintenanceInteractionScopeEvidence(root);
-    return { checkedControlsLost, strippedStateProgram, touchHoverMissing, unscopedControls, raw, ...scopeEvidence };
+    const checkedDepth = maintenanceCheckedInteractionDepth(root);
+    return { checkedControlsLost, strippedStateProgram, touchHoverMissing, unscopedControls, raw, ...scopeEvidence, ...checkedDepth };
 }
 
 function maintenanceFallbackFullSummary(root) {
@@ -5862,7 +5889,7 @@ function inspectMaintenanceRabbit(root) {
     } catch (error) {
         partialInspection = true;
         console.debug('[RabbitMirror] maintenance interaction inspection skipped:', error);
-        interaction = { checkedControlsLost: false, strippedStateProgram: false, touchHoverMissing: false, unscopedControls: false, duplicateIds: 0, brokenLocalLabels: 0, checkedCssIdSelectors: 0, needsScopeRepair: false, raw: '' };
+        interaction = { checkedControlsLost: false, strippedStateProgram: false, touchHoverMissing: false, unscopedControls: false, duplicateIds: 0, brokenLocalLabels: 0, checkedCssIdSelectors: 0, needsScopeRepair: false, checkedSelectionOnly: false, checkedRuleCount: 0, meaningfulCheckedRuleCount: 0, raw: '' };
     }
     const reasons = [];
 
@@ -5881,6 +5908,7 @@ function inspectMaintenanceRabbit(root) {
     if (full.severeStructureLoss) unknownReasons.push('渲染结构明显缺失，但未命中安全修复类型');
     if (full.controlsLost && full.checkedCount === 0 && full.rawInlineEvents === 0) unknownReasons.push('交互控件丢失，无法确认原始状态逻辑');
     if (full.renderedEscapedTags && !code.strictParseOk && !full.sourceCandidate) unknownReasons.push('显示层仍有源码标签，但没有可安全恢复的完整候选');
+    if (interaction.checkedSelectionOnly) unknownReasons.push('选择控件只能改变选中样式，没有可识别的第二层内容；维修兔不能安全代写缺失体验');
     if (unknownReasons.length) {
         return { state: MAINTENANCE_STATES.unknown, reason: unknownReasons.join('；'), code, full, interaction };
     }
