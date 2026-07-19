@@ -91,7 +91,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[Menu QR v2.1 动态菜单＋SVG Data URI 保主体急救测试版]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.32.76 TEST</span>
+      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[小小维修兔 v1＋Menu QR v2.1 测试版]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.33.0 TEST</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -150,6 +150,11 @@ export function initRabbitMirrorUI() {
           <div class="rabbit-mirror-subnote" style="margin:4px 0 0 0;opacity:.78;font-size:12px;line-height:1.45;">先点击按钮，再点击出现无法渲染或 CSS ERROR 的那一条；仅处理选中的兔子镜，不影响其他消息。</div>
           <button id="rh_interaction_diagnostic_once" class="menu_button" type="button" style="margin-top:8px;">开始一次 RabbitMirror 全链路诊断</button>
           <div class="rabbit-mirror-subnote" style="margin:4px 0 0 0;opacity:.78;font-size:12px;line-height:1.45;">点击后在聊天区点一下异常消息；按 HTML/Markdown、DOM、CSS、净化器、宿主重绘、源码恢复与交互链逐层检查。捕获完成即自动停止，报告可复制诊断文字、原始源码与实际渲染代码。</div>
+          <div class="rabbit-mirror-maintenance-help" style="margin-top:12px;padding-top:10px;border-top:1px dashed color-mix(in srgb, var(--SmartThemeBorderColor) 62%, transparent);">
+            <div style="font-weight:700;margin-bottom:5px;">🐇 小小维修兔 v1</div>
+            <div class="rabbit-mirror-subnote" style="opacity:.8;font-size:12px;line-height:1.55;">维修兔跟在每条兔子镜标题后：🐇⚪ 待巡逻；🐇🟢 正常；🐇🟡 发现已有能力可安全尝试修复；🐇🔴 无法安全判断。点击白灯开始巡逻，点击黄灯维修，点击红灯直接生成该条全链路诊断。</div>
+            <div class="rabbit-mirror-subnote" style="margin-top:5px;opacity:.72;font-size:12px;line-height:1.5;">维修兔遵循「没有证据证明它坏了，就不要碰它」：默认不巡逻、不自动修改正常兔子镜。</div>
+          </div>
         </div>
       </details>
 

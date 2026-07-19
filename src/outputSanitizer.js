@@ -5125,6 +5125,14 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 一次性兔子镜总诊断：用户启动后点击一条异常消息。
 // 既可捕获已渲染兔子镜交互，也可捕获尚未恢复的代码块/纯文字兔子镜消息；约 650ms 后自动停止。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
+
+// 0.33.0: 小小维修兔 v1。默认只在标题后显示待巡逻入口；用户点击后才检查。
+// 设计底线：没有高置信证据就不修改；黄灯才允许调用已有修复路线，红灯只生成诊断。
+const MAINTENANCE_RABBIT_ATTR = 'data-rabbit-mirror-maintenance-rabbit';
+const MAINTENANCE_STATE_ATTR = 'data-rabbit-mirror-maintenance-state';
+const MAINTENANCE_REASON_ATTR = 'data-rabbit-mirror-maintenance-reason';
+const MAINTENANCE_REPAIR_ATTR = 'data-rabbit-mirror-maintenance-repaired';
+const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
 const INTERACTION_DIAGNOSTIC_VERSION = '0.32.76-TEST-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
@@ -5730,6 +5738,187 @@ function handleOneShotInteractionDiagnosticEvent(session, event) {
     const checked = target?.matches?.('input[type="checkbox"], input[type="radio"]') ? ` checked=${!!target.checked}` : '';
     state.events.push(`${event.type}:capture target=${diagnosticElementName(target)}${checked}`);
     if (state.events.length > 24) state.events.splice(0, state.events.length - 24);
+}
+
+
+function maintenanceRabbitTitle(state, reason = '') {
+    const details = reason ? `：${reason}` : '';
+    if (state === MAINTENANCE_STATES.checking) return `维修兔正在巡逻${details}`;
+    if (state === MAINTENANCE_STATES.healthy) return `维修兔：未发现需要维修的问题。点击可重新巡逻${details}`;
+    if (state === MAINTENANCE_STATES.repairable) return `维修兔：发现可安全尝试修复的问题。点击开始维修${details}`;
+    if (state === MAINTENANCE_STATES.unknown) return `维修兔：无法安全判断。点击生成全链路诊断${details}`;
+    return '维修兔：点击巡逻';
+}
+
+function setMaintenanceRabbitState(button, state, reason = '') {
+    if (!button) return;
+    button.setAttribute(MAINTENANCE_STATE_ATTR, state);
+    button.setAttribute(MAINTENANCE_REASON_ATTR, reason);
+    button.title = maintenanceRabbitTitle(state, reason);
+    button.setAttribute('aria-label', button.title);
+}
+
+function isLikelyTouchDevice() {
+    try {
+        return (navigator.maxTouchPoints || 0) > 0 || globalThis.matchMedia?.('(hover: none)')?.matches === true;
+    } catch {
+        return false;
+    }
+}
+
+function maintenanceKnownInteractionEvidence(root, full, code) {
+    const raw = decodeHtmlEntitiesForRescue(getRawAssistantMessageForRenderedRoot(root) || '');
+    const stateProgram = /\bon(?:click|change|input)\s*=|setAttribute\s*\(\s*['\"]data-|classList\.(?:add|remove|toggle)|\.checked\s*=|:checked\b/i.test(raw);
+    const checkedControlsLost = full.controlsLost && full.checkedCount > 0;
+    const strippedStateProgram = full.rawInlineEvents > full.renderedInlineEvents && stateProgram;
+    const touchHoverMissing = isLikelyTouchDevice() && full.hoverCount > 0
+        && !root.querySelector?.(`[${TOUCH_HOVER_STYLE_ATTR}]`)
+        && root.getAttribute?.('data-rabbit-mirror-touch-hover-fallback') !== 'true';
+    const unscopedControls = (full.inputCount > 0 || full.buttonCount > 0)
+        && root.dataset?.rabbitMirrorInteractionScoped !== 'true';
+    return { checkedControlsLost, strippedStateProgram, touchHoverMissing, unscopedControls, raw };
+}
+
+function inspectMaintenanceRabbit(root) {
+    const code = diagnosticCodeRescueSummary(root);
+    const full = diagnosticFullChainSummary(root, code);
+    const interaction = maintenanceKnownInteractionEvidence(root, full, code);
+    const reasons = [];
+
+    if (full.structureTruncated || full.damagedDataUriCandidate) reasons.push('损坏的 SVG Data URI／结构截断');
+    if (full.sourceCandidate || (code.strictWhole && code.strictParseOk)) reasons.push('存在可恢复的兔子镜源码');
+    if (interaction.checkedControlsLost) reasons.push('CSS 仍依赖 checked，但控件已丢失');
+    if (interaction.strippedStateProgram) reasons.push('宿主删除了可识别的状态事件');
+    if (interaction.touchHoverMissing) reasons.push('触屏环境缺少 Hover 兜底');
+    if (interaction.unscopedControls) reasons.push('交互控件尚未建立兔子镜隔离');
+
+    if (reasons.length) {
+        return { state: MAINTENANCE_STATES.repairable, reason: reasons.slice(0, 3).join('；'), code, full, interaction };
+    }
+
+    const unknownReasons = [];
+    if (full.severeStructureLoss) unknownReasons.push('渲染结构明显缺失，但未命中安全修复类型');
+    if (full.controlsLost && full.checkedCount === 0 && full.rawInlineEvents === 0) unknownReasons.push('交互控件丢失，无法确认原始状态逻辑');
+    if (full.renderedEscapedTags && !code.strictParseOk && !full.sourceCandidate) unknownReasons.push('显示层仍有源码标签，但没有可安全恢复的完整候选');
+    if (unknownReasons.length) {
+        return { state: MAINTENANCE_STATES.unknown, reason: unknownReasons.join('；'), code, full, interaction };
+    }
+    return { state: MAINTENANCE_STATES.healthy, reason: '未发现高置信异常', code, full, interaction };
+}
+
+function patrolMaintenanceRabbit(root, button) {
+    if (!root?.isConnected || !button?.isConnected) return null;
+    setMaintenanceRabbitState(button, MAINTENANCE_STATES.checking, '正在检查 HTML、CSS、源码与交互链');
+    let result;
+    try {
+        result = inspectMaintenanceRabbit(root);
+    } catch (error) {
+        console.debug('[RabbitMirror] maintenance rabbit patrol failed:', error);
+        result = { state: MAINTENANCE_STATES.unknown, reason: '巡逻过程发生异常' };
+    }
+    setTimeout(() => {
+        if (button.isConnected) setMaintenanceRabbitState(button, result.state, result.reason);
+    }, 120);
+    return result;
+}
+
+function runMaintenanceRabbitRepair(root, button) {
+    if (!root?.isConnected || !button?.isConnected) return false;
+    const before = inspectMaintenanceRabbit(root);
+    if (before.state !== MAINTENANCE_STATES.repairable) {
+        setMaintenanceRabbitState(button, before.state, before.reason);
+        return false;
+    }
+    setMaintenanceRabbitState(button, MAINTENANCE_STATES.checking, '正在调用已有安全修复路线');
+    try {
+        const host = hostScriptModule || globalThis;
+        if (before.full?.damagedDataUriCandidate || before.full?.structureTruncated) {
+            rescueRecentDamagedDataUriMessages(host);
+        }
+        if (before.full?.sourceCandidate || before.code?.strictWhole) {
+            runSourceRecoveryPass(host);
+            sanitizeCodeBlocksInChatDom();
+            sanitizeWholePlainTextRabbitMirrorsInChatDom();
+            sanitizeRenderedRabbitMirrorDetailsDom();
+        }
+        if (root.isConnected && (before.interaction?.checkedControlsLost || before.interaction?.strippedStateProgram || before.interaction?.touchHoverMissing || before.interaction?.unscopedControls)) {
+            scopeRabbitMirrorInteractionIds(root);
+            root.dataset.rabbitMirrorInteractionRescued = 'true';
+        }
+        button.setAttribute(MAINTENANCE_REPAIR_ATTR, 'true');
+    } catch (error) {
+        console.debug('[RabbitMirror] maintenance rabbit repair failed:', error);
+        setMaintenanceRabbitState(button, MAINTENANCE_STATES.unknown, '修复执行失败，请生成全链路诊断');
+        return false;
+    }
+
+    setTimeout(() => {
+        const liveRoot = button.closest?.(MIRROR_TOTO_SELECTOR) || button.closest?.('details') || root;
+        const after = inspectMaintenanceRabbit(liveRoot);
+        if (after.state === MAINTENANCE_STATES.repairable) {
+            setMaintenanceRabbitState(button, MAINTENANCE_STATES.unknown, `已有修复未能消除异常：${after.reason}`);
+        } else {
+            setMaintenanceRabbitState(button, after.state, after.reason);
+        }
+    }, 420);
+    return true;
+}
+
+function triggerDiagnosticForMaintenanceRoot(root) {
+    if (!root?.isConnected) return false;
+    removeInteractionDiagnostic(root);
+    const state = { events: ['maintenance-rabbit:direct'], snapshots: [], panel: null, pre: null, report: '' };
+    interactionDiagnosticStates.set(root, state);
+    createOneShotInteractionDiagnosticPanel(root, state);
+    captureInteractionDiagnosticSnapshot(root, state, '维修兔触发前');
+    setTimeout(() => captureInteractionDiagnosticSnapshot(root, state, '+100ms'), 100);
+    setTimeout(() => captureInteractionDiagnosticSnapshot(root, state, '+500ms'), 500);
+    setTimeout(() => finalizeOneShotInteractionDiagnostic(root, state), 650);
+    return true;
+}
+
+function handleMaintenanceRabbitClick(event, root, button) {
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation?.();
+    const state = button.getAttribute(MAINTENANCE_STATE_ATTR) || MAINTENANCE_STATES.idle;
+    if (state === MAINTENANCE_STATES.repairable) {
+        runMaintenanceRabbitRepair(root, button);
+        return;
+    }
+    if (state === MAINTENANCE_STATES.unknown) {
+        triggerDiagnosticForMaintenanceRoot(root);
+        return;
+    }
+    patrolMaintenanceRabbit(root, button);
+}
+
+function installMaintenanceRabbitForRoot(root) {
+    if (!root?.querySelector) return false;
+    const details = root.matches?.('details') ? root : root.querySelector(':scope > details') || root.querySelector('details');
+    const summary = details?.querySelector?.(':scope > summary') || details?.querySelector?.('summary');
+    if (!summary || summary.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`)) return false;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'rabbit-mirror-maintenance-rabbit';
+    button.setAttribute(MAINTENANCE_RABBIT_ATTR, 'true');
+    button.setAttribute(MAINTENANCE_STATE_ATTR, MAINTENANCE_STATES.idle);
+    button.title = maintenanceRabbitTitle(MAINTENANCE_STATES.idle);
+    button.setAttribute('aria-label', button.title);
+    button.addEventListener('click', event => handleMaintenanceRabbitClick(event, root, button), true);
+    button.addEventListener('pointerdown', event => {
+        event.stopPropagation();
+    }, true);
+    summary.appendChild(button);
+    return true;
+}
+
+function installMaintenanceRabbitsInChatDom() {
+    const chatRoot = getChatRoot();
+    if (!chatRoot) return;
+    getRenderedRabbitMirrorInteractionRoots(chatRoot).forEach(root => {
+        if (isInsideChatMessage(root)) installMaintenanceRabbitForRoot(root);
+    });
 }
 
 function scopeRabbitMirrorInteractionsInChatDom() {
@@ -7716,6 +7905,9 @@ function scheduleStableRescueChain(mod, interactionDelays = INTERACTION_STABLE_E
     // 代码块急救沿用原有按开关多轮整理；智能交互急救改为独立的生成后稳定调度。
     scheduleCodeBlockRescue(mod);
     scheduleStableInteractionRescue(mod, interactionDelays);
+    // 小小维修兔只安装标题入口，不自动巡逻、不自动修改。
+    setTimeout(() => installMaintenanceRabbitsInChatDom(), 120);
+    setTimeout(() => installMaintenanceRabbitsInChatDom(), 900);
 }
 
 function installChatRootReadyObserver(mod) {
@@ -7781,6 +7973,7 @@ export async function initOutputSanitizer() {
         installChatRootReadyObserver(mod);
         installCodeShellRecoveryObserver(mod);
         scheduleStableRescueChain(mod);
+        installMaintenanceRabbitsInChatDom();
         console.debug('[RabbitMirror] output sanitizer initialized');
     } catch (error) {
         console.debug('[RabbitMirror] output sanitizer disabled:', error);

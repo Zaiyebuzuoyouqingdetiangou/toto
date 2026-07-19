@@ -1,4 +1,4 @@
-/* 0.32.76 TEST：Menu QR v2.1 动态菜单版（7 个 QR 节点）；保留 SVG Data URI 保主体急救、全链路诊断及既有功能。 */
+/* 0.33.0 TEST：新增小小维修兔 v1 四状态标题入口；保留 Menu QR v2.1、SVG Data URI 保主体急救、全链路诊断及既有功能。 */
 .rabbit-mirror-settings .inline-drawer-content {
     padding: 10px;
 }
@@ -128,3 +128,32 @@ toto[data-rabbit-mirror="true"] summary {
     font-size: 12px;
     line-height: 1.45;
 }
+
+/* 0.33.0 小小维修兔 v1：标题后四状态入口。默认仅显示，不巡逻、不修改。 */
+.rabbit-mirror-maintenance-rabbit {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 0 0 6px !important;
+  padding: 1px 3px !important;
+  border: 0 !important;
+  border-radius: 5px !important;
+  background: transparent !important;
+  color: inherit !important;
+  font: inherit !important;
+  line-height: 1 !important;
+  vertical-align: middle !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+  opacity: .92 !important;
+}
+.rabbit-mirror-maintenance-rabbit::before { content: '🐇⚪'; }
+.rabbit-mirror-maintenance-rabbit[data-rabbit-mirror-maintenance-state="checking"]::before { content: '🐇⚪'; filter: saturate(.5); }
+.rabbit-mirror-maintenance-rabbit[data-rabbit-mirror-maintenance-state="healthy"]::before { content: '🐇🟢'; }
+.rabbit-mirror-maintenance-rabbit[data-rabbit-mirror-maintenance-state="repairable"]::before { content: '🐇🟡'; }
+.rabbit-mirror-maintenance-rabbit[data-rabbit-mirror-maintenance-state="unknown"]::before { content: '🐇🔴'; }
+.rabbit-mirror-maintenance-rabbit:hover { background: color-mix(in srgb, currentColor 10%, transparent) !important; }
+.rabbit-mirror-maintenance-rabbit:focus-visible { outline: 2px solid currentColor !important; outline-offset: 2px !important; }
