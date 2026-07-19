@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（同容器交互与思维链隔离测试版）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（媒介环境测试版）",
   "loading_order": 99,
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.32.61-test.1",
+  "version": "0.32.64-test.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "TEST build: restores hint-driven hidden content inside the same container even when hover handlers are stripped and the host lacks cursor:pointer, while blocking interaction-rescue transient full-message rerenders for sources that still contain thinking, analysis, reasoning, or thought envelopes."
+  "description": "TEST build: adds only the media-environment prompt rule on top of 0.32.63, while preserving the restored prompt baseline, dark-background cooldown, interaction rescues, and thinking-rerender isolation."
 }

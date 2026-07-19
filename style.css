@@ -49,7 +49,7 @@ toto[data-rabbit-mirror="true"] summary {
     min-width: 0;
 }
 
-/* 0.32.61 TEST：新增同容器提示揭示急救，并隔离含思维标签消息的自动整条重绘。 */
+/* 0.32.64 TEST：仅新增媒介环境提示规则；保留 0.32.62 CSS 状态兄弟映射急救与 0.32.63 其余行为。 */
 .rabbit-mirror-settings .rabbit-mirror-primary-toggle {
     padding: 2px 2px 8px;
 }

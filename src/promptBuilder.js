@@ -244,13 +244,18 @@ function presentationEmbodimentRule() {
   - 仅替换标题和正文就能直接用于其他题材的通用界面，属于不合格输出。
 
 色彩组织:
-  - 色彩须与本轮媒介、材质、环境光线及叙事气氛共同成立，不预设固定配色公式；主要视觉承载面应体现本轮独有的色彩与光感，近期整体观感重复时，应在不损害媒介真实性与高级质感的前提下主动改变色彩关系。整体明度仍服从现有配色冷却与重复限制。
   - 配色必须形成明确的主次关系，由主要色彩关系统领画面，再用有限的辅助色与局部强调色建立层次；不得让所有颜色平均分布或同时抢眼。
   - 主背景、承载面、正文、装饰与交互状态须通过明度、饱和度、冷暖、透明度和材质差异清晰分层，并保持相互呼应。
   - 强调色只用于真正需要聚焦的主体、关系节点或状态变化，数量与面积必须克制。
   - 材质色、环境光与阴影必须共同作用，不能只给不同区域机械填充不同色块。
   - 视觉质感应由比例、留白、层次、材质、光影与色彩关系共同成立，不得依靠堆叠渐变、发光、阴影或高饱和色制造表面效果。
   - 当展现形式适合单色、低彩度或有限色域时，可以保持克制，但仍须依靠明度、纹理、材质与空间层次形成完整视觉。`;
+}
+
+function mediaEnvironmentRule() {
+    return String.raw`
+媒介环境成立:
+  展现形式成立后，应自然形成对应的媒介环境，包括时代、光线、空气、天气、空间、介质、材质、屏幕或印刷等因素。整体视觉应由媒介环境自然推导，环境变化会自然影响光感、层次、材质与综合色相，不得先决定颜色再寻找理由。`;
 }
 
 function visualColorTruthRule() {
@@ -291,6 +296,7 @@ ${selectedFormats}`);
     chunks.push(complexInteractiveCore());
     chunks.push(innerDetailsCooldownRule());
     chunks.push(presentationEmbodimentRule());
+    chunks.push(mediaEnvironmentRule());
     chunks.push(paletteCooldownRule());
     chunks.push(visualColorTruthRule());
     chunks.push(stateBarIsolationRule());

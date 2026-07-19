@@ -3,9 +3,9 @@ import { getSettings } from './settings.js';
 // Cached SillyTavern script module. In module builds, chat is not guaranteed to be exposed on globalThis.
 let hostScriptModule = null;
 
-// 0.32.61: 智能交互急救只在生成结束后的稳定阶段运行；
-// 对含有 thinking/reasoning 包裹的消息禁止交互急救触发任何临时整条重绘，
-// 避免原始消息源越过 SillyTavern 的显示正则而重新暴露隐藏思维内容。
+// 0.32.64: 在 0.32.63 基线上仅新增媒介环境提示规则；保留生成时序、思维链重绘隔离与 CSS 状态兄弟映射急救；
+// 本版仅撤回 promptBuilder 中 0.32.60 新增的常驻色彩关系测试规则。
+// 对含有 thinking/reasoning 包裹的消息仍禁止交互急救触发任何临时整条重绘。
 const INTERACTION_POST_GENERATION_DELAYS = Object.freeze([160, 700, 1600]);
 const INTERACTION_STABLE_EVENT_DELAYS = Object.freeze([180, 760, 1700]);
 let interactionGenerationActive = false;
@@ -1849,7 +1849,9 @@ function installRenderedButtonAdjacentHiddenRescue(root) {
     }
 
     for (const button of root.querySelectorAll('button')) {
-        if (button.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`) || state.entries.has(button)) continue;
+        if (button.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`)
+            || button.hasAttribute?.(RENDERED_CSS_STATE_SIBLING_RESCUE_ATTR)
+            || state.entries.has(button)) continue;
         const target = findRenderedButtonAdjacentHiddenTarget(button);
         if (!target) continue;
         const entry = buildRenderedButtonAdjacentHiddenEntry(button, target);
@@ -1883,6 +1885,345 @@ function installRenderedButtonAdjacentHiddenRescue(root) {
     }
 
     if (state.entries.size) root.dataset.rabbitMirrorButtonAdjacentHiddenFallback = 'true';
+}
+
+
+// 渲染后“CSS 状态兄弟映射”急救：精准读取模型已写出的
+// A:active + B、A:focus ~ B、A:nth-child(n):focus ~ B 等规则。
+// 在移动端把瞬时 active/focus 变成可逆点击状态，并按原 CSS 声明显示对应后置内容。
+const RENDERED_CSS_STATE_SIBLING_RESCUE_ATTR = 'data-rabbit-mirror-css-state-sibling-rescue';
+const RENDERED_CSS_STATE_SIBLING_ITEM_ATTR = 'data-rm-css-state-sibling-item';
+const renderedCssStateSiblingRescueStates = new WeakMap();
+const CSS_STATE_SIBLING_SAFE_PROPERTIES = new Set([
+    'display', 'visibility', 'opacity', 'pointer-events', 'transform', 'filter',
+    'height', 'min-height', 'max-height', 'width', 'min-width', 'max-width',
+    'overflow', 'overflow-x', 'overflow-y', 'position', 'inset', 'top', 'right', 'bottom', 'left',
+    'margin', 'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
+    'padding', 'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
+    'z-index', 'clip-path', 'background', 'background-color', 'color',
+    'border', 'border-color', 'border-top', 'border-right', 'border-bottom', 'border-left',
+    'box-shadow', 'text-shadow', 'font-weight', 'font-style', 'letter-spacing',
+]);
+
+function parseCssStateSiblingAssignments(blockText) {
+    const assignments = new Map();
+    const declarationRe = /(^|;)\s*([a-z-]+)\s*:\s*([^;{}]+?)(?=;|$)/gi;
+    let match;
+    while ((match = declarationRe.exec(String(blockText || '')))) {
+        const property = normalizeStylePropertyName(match[2]);
+        const value = String(match[3] || '').trim().replace(/\s*!important\s*$/i, '');
+        if (!CSS_STATE_SIBLING_SAFE_PROPERTIES.has(property) || !value) continue;
+        assignments.set(property, value);
+    }
+    return [...assignments.entries()].map(([property, value]) => ({ property, value }));
+}
+
+function normalizeCssStateSiblingSelector(selector) {
+    return String(selector || '')
+        .trim()
+        .replace(/^(?:\.mes_text\s+)+/i, '')
+        .replace(/^:scope\s+/, '')
+        .trim();
+}
+
+function parseCssStateSiblingSelector(selectorText) {
+    const selector = String(selectorText || '').trim();
+    if (!selector || !/:(?:active|focus-within|focus|hover)\b/i.test(selector)) return null;
+    const match = /^([\s\S]*?):(active|focus-within|focus|hover)\b\s*([+~])\s*([\s\S]+)$/i.exec(selector);
+    if (!match) return null;
+    const triggerSelector = normalizeCssStateSiblingSelector(match[1]);
+    const targetSelector = normalizeCssStateSiblingSelector(match[4]);
+    if (!triggerSelector || !targetSelector) return null;
+    return {
+        triggerSelector,
+        stateType: String(match[2] || '').toLowerCase(),
+        combinator: match[3],
+        targetSelector,
+    };
+}
+
+function parseCssDirectStateSelector(selectorText) {
+    const selector = String(selectorText || '').trim();
+    const match = /^([\s\S]*?):(active|focus-within|focus|hover)\b\s*$/i.exec(selector);
+    if (!match) return null;
+    const triggerSelector = normalizeCssStateSiblingSelector(match[1]);
+    return triggerSelector ? { triggerSelector, stateType: String(match[2] || '').toLowerCase() } : null;
+}
+
+function queryCssStateSiblingTriggers(root, selector) {
+    if (!root?.querySelectorAll || !selector) return [];
+    try {
+        return [...root.querySelectorAll(selector)];
+    } catch {
+        return [];
+    }
+}
+
+function elementMatchesCssStateSiblingSelector(element, selector) {
+    if (!element?.matches || !selector) return false;
+    try {
+        return element.matches(selector);
+    } catch {
+        return false;
+    }
+}
+
+function collectCssStateSiblingTargets(trigger, combinator, targetSelector) {
+    if (!trigger || !targetSelector) return [];
+    if (combinator === '+') {
+        const target = trigger.nextElementSibling;
+        return target && elementMatchesCssStateSiblingSelector(target, targetSelector) ? [target] : [];
+    }
+    const targets = [];
+    for (let node = trigger.nextElementSibling; node; node = node.nextElementSibling) {
+        if (elementMatchesCssStateSiblingSelector(node, targetSelector)) targets.push(node);
+    }
+    return targets;
+}
+
+function cssStateSiblingAssignmentsReveal(assignments) {
+    for (const { property, value } of assignments || []) {
+        const normalized = String(value || '').trim().toLowerCase();
+        if (property === 'opacity' && Number.parseFloat(normalized) > 0.05) return true;
+        if (property === 'display' && normalized !== 'none') return true;
+        if (property === 'visibility' && !/(?:hidden|collapse)/.test(normalized)) return true;
+        if ((property === 'height' || property === 'max-height' || property === 'min-height')
+            && !isCollapsedDimensionValue(normalized)) return true;
+        if (property === 'pointer-events' && normalized !== 'none') return true;
+    }
+    return false;
+}
+
+function collectRenderedCssStateSiblingRuleData(root) {
+    if (!root?.querySelectorAll) return { mappings: [], directRules: [] };
+    const mappings = [];
+    const directRules = [];
+    const blockRe = /([^{}]+)\{([^{}]*)\}/g;
+
+    for (const style of root.querySelectorAll('style')) {
+        if (style.hasAttribute?.(TOUCH_HOVER_STYLE_ATTR)) continue;
+        const cssText = String(style.textContent || '');
+        blockRe.lastIndex = 0;
+        let match;
+        while ((match = blockRe.exec(cssText))) {
+            const selectorText = String(match[1] || '').replace(/\/\*[\s\S]*?\*\//g, ' ').trim();
+            if (!selectorText || selectorText.startsWith('@')) continue;
+            const assignments = parseCssStateSiblingAssignments(match[2]);
+            if (!assignments.length) continue;
+            for (const rawSelector of splitCssSelectorList(selectorText)) {
+                const sibling = parseCssStateSiblingSelector(rawSelector);
+                if (sibling) {
+                    mappings.push({ ...sibling, assignments });
+                    continue;
+                }
+                const direct = parseCssDirectStateSelector(rawSelector);
+                if (direct) directRules.push({ ...direct, assignments });
+            }
+        }
+    }
+    return { mappings, directRules };
+}
+
+function buildRenderedCssStateSiblingEntries(root) {
+    const { mappings, directRules } = collectRenderedCssStateSiblingRuleData(root);
+    if (!mappings.length) return [];
+    const grouped = new Map();
+
+    for (const mapping of mappings) {
+        for (const trigger of queryCssStateSiblingTriggers(root, mapping.triggerSelector)) {
+            if (trigger.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`)) continue;
+            const targets = collectCssStateSiblingTargets(trigger, mapping.combinator, mapping.targetSelector);
+            for (const target of targets) {
+                if (!target || target === trigger || target.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`)) continue;
+                const text = normalizeInteractionMatchText(target.textContent);
+                const rendered = getRenderedStyleSnapshot(target);
+                const hidden = rendered.hidden || rendered.rectHeight <= 1
+                    || isCollapsedDimensionValue(getInlineStyleValue(target, 'height'))
+                    || isCollapsedDimensionValue(getInlineStyleValue(target, 'max-height'));
+                if (!hidden && !cssStateSiblingAssignmentsReveal(mapping.assignments)) continue;
+                if (!text && !target.children?.length) continue;
+
+                let entry = grouped.get(trigger);
+                if (!entry) {
+                    entry = {
+                        trigger,
+                        targetAssignments: new Map(),
+                        triggerAssignments: [],
+                        active: false,
+                        group: trigger.parentElement || root,
+                    };
+                    grouped.set(trigger, entry);
+                }
+                let targetMap = entry.targetAssignments.get(target);
+                if (!targetMap) {
+                    targetMap = new Map();
+                    entry.targetAssignments.set(target, targetMap);
+                }
+                for (const assignment of mapping.assignments) targetMap.set(assignment.property, assignment.value);
+            }
+        }
+    }
+
+    const entries = [];
+    for (const entry of grouped.values()) {
+        for (const rule of directRules) {
+            if (elementMatchesCssStateSiblingSelector(entry.trigger, rule.triggerSelector)) {
+                const merged = new Map(entry.triggerAssignments.map(item => [item.property, item.value]));
+                for (const assignment of rule.assignments) merged.set(assignment.property, assignment.value);
+                entry.triggerAssignments = [...merged.entries()].map(([property, value]) => ({ property, value }));
+            }
+        }
+
+        const triggerProperties = new Set(entry.triggerAssignments.map(item => item.property));
+        entry.triggerOriginalStyles = capturePseudoStyleState(entry.trigger, triggerProperties);
+        entry.targetStates = [...entry.targetAssignments.entries()].map(([target, assignmentMap]) => {
+            const assignments = [...assignmentMap.entries()].map(([property, value]) => ({ property, value }));
+            const rendered = getRenderedStyleSnapshot(target);
+            let computedPosition = '';
+            try { computedPosition = String(getComputedStyle(target)?.position || '').toLowerCase(); } catch { computedPosition = ''; }
+            const position = getInlineStyleValue(target, 'position').toLowerCase() || computedPosition;
+            const properties = new Set([
+                ...assignments.map(item => item.property),
+                'display', 'visibility', 'opacity', 'pointer-events', 'transform',
+                'height', 'min-height', 'max-height', 'overflow', 'overflow-x', 'overflow-y',
+                'position', 'inset', 'top', 'right', 'bottom', 'left', 'width', 'max-width',
+            ]);
+            const parent = target.parentElement;
+            return {
+                target,
+                assignments,
+                rendered,
+                positionedOverlay: position === 'absolute' || position === 'fixed',
+                originalStyles: capturePseudoStyleState(target, properties),
+                parent,
+                parentOriginalStyles: parent ? capturePseudoStyleState(parent, ['height', 'min-height', 'max-height', 'overflow', 'overflow-x', 'overflow-y']) : new Map(),
+            };
+        });
+        if (!entry.targetStates.length) continue;
+        entry.trigger.setAttribute(RENDERED_CSS_STATE_SIBLING_RESCUE_ATTR, 'true');
+        entry.targetStates.forEach((state, index) => state.target.setAttribute(RENDERED_CSS_STATE_SIBLING_ITEM_ATTR, String(index)));
+        entries.push(entry);
+    }
+    return entries;
+}
+
+function applyRenderedCssStateSiblingEntry(entry, active = entry?.active) {
+    if (!entry?.trigger) return;
+    entry.active = !!active;
+    restorePseudoStyleState(entry.trigger, entry.triggerOriginalStyles);
+    if (entry.active) applyPseudoStyleAssignments(entry.trigger, entry.triggerAssignments);
+
+    for (const state of entry.targetStates || []) {
+        restorePseudoStyleState(state.target, state.originalStyles);
+        if (state.parent) restorePseudoStyleState(state.parent, state.parentOriginalStyles);
+        if (!entry.active) continue;
+
+        const assignments = [...state.assignments];
+        const propertyMap = new Map(assignments.map(item => [item.property, item.value]));
+        if (state.rendered.displayHidden && !propertyMap.has('display')) assignments.push({ property: 'display', value: 'block' });
+        if (!propertyMap.has('visibility')) assignments.push({ property: 'visibility', value: 'visible' });
+        if (!propertyMap.has('opacity')) assignments.push({ property: 'opacity', value: '1' });
+        if (!propertyMap.has('pointer-events')) assignments.push({ property: 'pointer-events', value: 'auto' });
+
+        let computedLineHeight = 20;
+        let availableWidth = 320;
+        try {
+            const computed = typeof getComputedStyle === 'function' ? getComputedStyle(state.target) : null;
+            computedLineHeight = Number.parseFloat(computed?.lineHeight || '') || 20;
+            availableWidth = Number(state.parent?.getBoundingClientRect?.().width || state.target.getBoundingClientRect?.().width || 320);
+        } catch {
+            computedLineHeight = 20;
+            availableWidth = 320;
+        }
+        const textLength = normalizeInteractionMatchText(state.target.textContent).length;
+        const explicitBreaks = state.target.querySelectorAll?.('br')?.length || 0;
+        const charsPerLine = Math.max(16, Math.floor(Math.max(160, availableWidth - 24) / 7));
+        const estimatedLines = Math.max(1, Math.ceil(textLength / charsPerLine) + explicitBreaks);
+        const naturalHeight = Math.max(
+            64,
+            Number(state.target.scrollHeight || 0) + 20,
+            Math.ceil(estimatedLines * computedLineHeight + 28),
+        );
+        const collapsed = state.rendered.rectHeight <= 1
+            || isCollapsedDimensionValue(getCapturedStyleValue(state.originalStyles, 'height'))
+            || isCollapsedDimensionValue(getCapturedStyleValue(state.originalStyles, 'max-height'));
+        if (collapsed) {
+            if (!propertyMap.has('height')) assignments.push({ property: 'height', value: 'auto' });
+            if (!propertyMap.has('max-height')) assignments.push({ property: 'max-height', value: `${Math.max(640, naturalHeight * 2)}px` });
+            assignments.push({ property: 'overflow', value: 'visible' });
+        }
+
+        if (state.positionedOverlay && state.parent) {
+            assignments.push(
+                { property: 'height', value: 'auto' },
+                { property: 'min-height', value: `${Math.min(2400, naturalHeight)}px` },
+                { property: 'max-height', value: 'none' },
+                { property: 'overflow', value: 'visible' },
+            );
+            applyPseudoStyleAssignments(state.parent, [
+                { property: 'min-height', value: `${Math.min(2400, naturalHeight)}px` },
+            ]);
+        }
+        applyPseudoStyleAssignments(state.target, assignments);
+    }
+
+    entry.trigger.setAttribute('aria-expanded', entry.active ? 'true' : 'false');
+    entry.trigger.setAttribute('aria-pressed', entry.active ? 'true' : 'false');
+}
+
+function hasRenderedCssStateSiblingCandidates(root) {
+    if (!root?.querySelectorAll) return false;
+    return buildRenderedCssStateSiblingEntries(root).length > 0;
+}
+
+function installRenderedCssStateSiblingRescue(root) {
+    if (!root?.querySelectorAll) return;
+    let state = renderedCssStateSiblingRescueStates.get(root);
+    if (!state) {
+        state = { entries: new Map() };
+        renderedCssStateSiblingRescueStates.set(root, state);
+    }
+
+    for (const entry of buildRenderedCssStateSiblingEntries(root)) {
+        if (state.entries.has(entry.trigger)) continue;
+        state.entries.set(entry.trigger, entry);
+        preparePseudoTrigger(entry.trigger);
+
+        const toggle = event => {
+            if (event?.type === 'keydown') {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+            } else {
+                event?.preventDefault?.();
+            }
+            const nextActive = !entry.active;
+            if (nextActive) {
+                for (const other of state.entries.values()) {
+                    if (other !== entry && other.group === entry.group && other.active) {
+                        applyRenderedCssStateSiblingEntry(other, false);
+                        try { other.trigger.blur?.(); } catch {}
+                    }
+                }
+            }
+            applyRenderedCssStateSiblingEntry(entry, nextActive);
+            if (!nextActive) {
+                setTimeout(() => {
+                    try { if (document?.activeElement === entry.trigger) entry.trigger.blur?.(); } catch {}
+                }, 0);
+            }
+            for (const delay of [0, 80, 260]) {
+                setTimeout(() => {
+                    if (root.isConnected && entry.trigger.isConnected) applyRenderedCssStateSiblingEntry(entry, entry.active);
+                }, delay);
+            }
+        };
+
+        entry.trigger.addEventListener('click', toggle, false);
+        entry.trigger.addEventListener('keydown', toggle, false);
+        applyRenderedCssStateSiblingEntry(entry, false);
+    }
+
+    if (state.entries.size) root.dataset.rabbitMirrorCssStateSiblingFallback = 'true';
 }
 
 
@@ -4177,7 +4518,7 @@ function installPseudoInteractionRescue(root) {
 }
 
 function detectInteractionCapabilities(root) {
-    if (!root?.querySelectorAll) return { checked: false, hover: false, details: false, target: false, pseudo: false, listDetail: false, maskReveal: false, buttonAdjacent: false, clickableAdjacent: false, clickablePopup: false, containerReveal: false, selfMutation: false };
+    if (!root?.querySelectorAll) return { checked: false, hover: false, details: false, target: false, pseudo: false, listDetail: false, maskReveal: false, stateSibling: false, buttonAdjacent: false, clickableAdjacent: false, clickablePopup: false, containerReveal: false, selfMutation: false };
     const cssText = [...root.querySelectorAll('style')].map(style => style.textContent || '').join('\n');
     const outerDetails = root.matches?.('details') ? root : root.querySelector(':scope > details');
     const nestedDetails = [...root.querySelectorAll('details')].filter(item => item !== outerDetails);
@@ -4189,6 +4530,7 @@ function detectInteractionCapabilities(root) {
         pseudo: hasPseudoInteractionCandidates(root),
         listDetail: hasRenderedListDetailCandidates(root),
         maskReveal: hasRenderedMaskRevealCandidates(root),
+        stateSibling: hasRenderedCssStateSiblingCandidates(root),
         buttonAdjacent: hasRenderedButtonAdjacentHiddenCandidates(root),
         clickableAdjacent: hasRenderedClickableAdjacentHiddenCandidates(root),
         clickablePopup: hasRenderedClickableAdjacentPopupCandidates(root),
@@ -4343,6 +4685,9 @@ function installIntelligentInteractionRescue(root) {
         installRenderedLabelAdjacentResultRescue(root);
         installInteractionLabelFallback(root);
     }
+    // 精准读取 :active/:focus/:focus-within/:hover 与 +/~ 的后置状态映射；
+    // 先于启发式按钮路线安装，避免同一按钮被两套可逆状态重复接管。
+    if (capabilities.stateSibling) installRenderedCssStateSiblingRescue(root);
     // 普通 button 后紧邻隐藏内容时，先建立真实揭示路线，避免只被归类为 hover 颜色反馈。
     if (capabilities.buttonAdjacent) installRenderedButtonAdjacentHiddenRescue(root);
     // 普通 cursor:pointer 容器后紧邻 display:none 正文时，不再错误要求弹层必须带关闭按钮。
@@ -4445,7 +4790,8 @@ function refreshTouchHoverRescue(toto) {
         }
         if (!hoverTarget) return;
         // 按钮后置隐藏内容已经由可逆揭示路线接管；不要再叠加持久 hover 状态。
-        if (hoverTarget.hasAttribute?.(RENDERED_BUTTON_ADJACENT_HIDDEN_RESCUE_ATTR)
+        if (hoverTarget.hasAttribute?.(RENDERED_CSS_STATE_SIBLING_RESCUE_ATTR)
+            || hoverTarget.hasAttribute?.(RENDERED_BUTTON_ADJACENT_HIDDEN_RESCUE_ATTR)
             || hoverTarget.hasAttribute?.(RENDERED_CLICKABLE_ADJACENT_POPUP_RESCUE_ATTR)) return;
 
         const isActive = hoverTarget.getAttribute(TOUCH_HOVER_ATTR) === 'true';
@@ -4715,7 +5061,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 一次性交互诊断：仅在用户按下“开始一次交互诊断”后，临时监听聊天区的下一次交互。
 // 捕获一个兔子镜后只读取该条内容，并在约 650ms 后自动停止全部诊断监听。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.61-TEST-ONESHOT';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.64-TEST-ONESHOT';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -4786,6 +5132,7 @@ function diagnosticCollectTargets(root) {
         '[style*="height: 0"]',
         '[style*="height:0"]',
         `[${RENDERED_BUTTON_ADJACENT_HIDDEN_ITEM_ATTR}]`,
+        `[${RENDERED_CSS_STATE_SIBLING_ITEM_ATTR}]`,
     ];
     const seen = new Set();
     const result = [];
@@ -4820,6 +5167,7 @@ function diagnosticRouteSummary(root) {
         labelAdjacent: renderedLabelAdjacentResultRescueStates.get(root)?.entries?.size || 0,
         maskReveal: renderedMaskRevealRescueStates.get(root)?.hosts?.size || 0,
         listDetail: renderedListDetailRescueStates.get(root)?.entries?.size || 0,
+        stateSibling: renderedCssStateSiblingRescueStates.get(root)?.entries?.size || 0,
         buttonAdjacent: renderedButtonAdjacentHiddenRescueStates.get(root)?.entries?.size || 0,
         clickableAdjacent: renderedClickableAdjacentHiddenRescueStates.get(root)?.entries?.size || 0,
         clickablePopup: renderedClickableAdjacentPopupRescueStates.get(root)?.entries?.size || 0,
@@ -4837,7 +5185,7 @@ function diagnosticRouteSummary(root) {
 
 function diagnosticInferReason(root, inputs, targets) {
     const routes = diagnosticRouteSummary(root);
-    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.focusToChecked + routes.checkedTextRule + routes.expandedOpacity + routes.containerReveal + routes.selfMutation + routes.classStateProgram + routes.cssCommentRepair + routes.changeProgram;
+    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.stateSibling + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.focusToChecked + routes.checkedTextRule + routes.expandedOpacity + routes.containerReveal + routes.selfMutation + routes.classStateProgram + routes.cssCommentRepair + routes.changeProgram;
     const checkedInputs = inputs.filter(input => input.checked);
     const visibleTargets = targets.filter(target => {
         const style = diagnosticComputedStyle(target);
@@ -4890,6 +5238,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `label后置结果 entries=${routes.labelAdjacent} listener=${root.dataset.rabbitMirrorLabelAdjacentResultFallback || 'false'}`,
         `遮罩揭示 entries=${routes.maskReveal} listener=${routes.maskReveal ? 'true' : 'false'}`,
         `列表详情 entries=${routes.listDetail} listener=${root.dataset.rabbitMirrorRenderedListDetailFallback || 'false'}`,
+        `状态兄弟映射 entries=${routes.stateSibling} listener=${root.dataset.rabbitMirrorCssStateSiblingFallback || 'false'}`,
         `按钮后置内容 entries=${routes.buttonAdjacent} listener=${root.dataset.rabbitMirrorButtonAdjacentHiddenFallback || 'false'}`,
         `可点击后置内容 entries=${routes.clickableAdjacent} listener=${root.dataset.rabbitMirrorClickableAdjacentHiddenFallback || 'false'}`,
         `可点击画面弹层 entries=${routes.clickablePopup} listener=${root.dataset.rabbitMirrorClickableAdjacentPopupFallback || 'false'}`,
