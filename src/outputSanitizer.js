@@ -703,6 +703,49 @@ function isExplicitlyHiddenStateLayer(element) {
         || (opacityText !== '' && Number.isFinite(opacity) && opacity <= 0.05);
 }
 
+// 某些模型把隐藏态只写在 <style> 中，实际节点没有 inline style。
+// 这类目标必须读取计算样式，否则“按钮 + 后置内容”会被误判为完全没有交互。
+function getRenderedStyleSnapshot(element) {
+    let computed = null;
+    try {
+        computed = typeof getComputedStyle === 'function' ? getComputedStyle(element) : null;
+    } catch {
+        computed = null;
+    }
+
+    const display = String(computed?.display || getInlineStyleValue(element, 'display') || '').trim().toLowerCase();
+    const visibility = String(computed?.visibility || getInlineStyleValue(element, 'visibility') || '').trim().toLowerCase();
+    const opacityText = String(computed?.opacity || getInlineStyleValue(element, 'opacity') || '').trim();
+    const opacity = Number.parseFloat(opacityText);
+    const height = String(computed?.height || getInlineStyleValue(element, 'height') || '').trim().toLowerCase();
+    const maxHeight = String(computed?.maxHeight || getInlineStyleValue(element, 'max-height') || '').trim().toLowerCase();
+    const transform = String(computed?.transform || getInlineStyleValue(element, 'transform') || '').trim();
+    const rectHeight = getRenderedElementHeight(element);
+
+    const displayHidden = display === 'none';
+    const visibilityHidden = visibility === 'hidden' || visibility === 'collapse';
+    const opacityHidden = opacityText !== '' && Number.isFinite(opacity) && opacity <= 0.05;
+    const heightCollapsed = isCollapsedDimensionValue(height) && rectHeight <= 1;
+    const maxHeightCollapsed = isCollapsedDimensionValue(maxHeight) && rectHeight <= 1;
+
+    return {
+        display,
+        visibility,
+        opacityText,
+        opacity,
+        height,
+        maxHeight,
+        transform,
+        rectHeight,
+        displayHidden,
+        visibilityHidden,
+        opacityHidden,
+        heightCollapsed,
+        maxHeightCollapsed,
+        hidden: displayHidden || visibilityHidden || opacityHidden || heightCollapsed || maxHeightCollapsed,
+    };
+}
+
 function isOverlayLikeStateLayer(element) {
     const position = getInlineStyleValue(element, 'position').toLowerCase();
     if (position === 'absolute' || position === 'fixed') return true;
@@ -1679,7 +1722,7 @@ function installRenderedCheckedIdTargetRescue(root) {
 const RENDERED_BUTTON_ADJACENT_HIDDEN_RESCUE_ATTR = 'data-rabbit-mirror-button-adjacent-hidden-rescue';
 const RENDERED_BUTTON_ADJACENT_HIDDEN_ITEM_ATTR = 'data-rm-button-adjacent-hidden-item';
 const renderedButtonAdjacentHiddenRescueStates = new WeakMap();
-const BUTTON_ADJACENT_HIDDEN_HINT_RE = /(?:hidden|secret|detail|data|log|result|message|content|reveal|decode|机密|隐藏|秘密|详情|日志|结果|信息|内容|解码)/i;
+const BUTTON_ADJACENT_HIDDEN_HINT_RE = /(?:hidden|secret|detail|data|log|result|reaction|response|message|content|reveal|decode|机密|隐藏|秘密|详情|日志|结果|反应|反馈|信息|内容|解码)/i;
 
 function isRenderedButtonAdjacentHiddenTarget(element, button) {
     if (!element || !button || element === button) return false;
@@ -1687,7 +1730,9 @@ function isRenderedButtonAdjacentHiddenTarget(element, button) {
     if (!/^(?:div|section|article|aside|p|ul|ol|dl)$/.test(tagName)) return false;
 
     const previouslyManaged = element.hasAttribute?.(RENDERED_BUTTON_ADJACENT_HIDDEN_ITEM_ATTR);
+    const renderedStyle = getRenderedStyleSnapshot(element);
     const hidden = isExplicitlyHiddenStateLayer(element)
+        || renderedStyle.hidden
         || isCollapsedDimensionValue(getInlineStyleValue(element, 'height'))
         || isCollapsedDimensionValue(getInlineStyleValue(element, 'max-height'));
     if (!previouslyManaged && !hidden) return false;
@@ -1719,13 +1764,25 @@ function hasRenderedButtonAdjacentHiddenCandidates(root) {
 
 function buildRenderedButtonAdjacentHiddenEntry(button, target) {
     if (!button || !target) return null;
+    const renderedStyle = getRenderedStyleSnapshot(target);
     const originalStyles = capturePseudoStyleState(target, [
         'display', 'visibility', 'opacity', 'pointer-events', 'transform',
         'height', 'min-height', 'max-height', 'overflow', 'overflow-x', 'overflow-y',
         'position', 'inset', 'top', 'right', 'bottom', 'left', 'width', 'max-width',
         'margin', 'margin-top',
     ]);
-    const position = getCapturedStyleValue(originalStyles, 'position').toLowerCase();
+    const inlinePosition = getCapturedStyleValue(originalStyles, 'position').toLowerCase();
+    let computedPosition = '';
+    try {
+        computedPosition = String(typeof getComputedStyle === 'function' ? getComputedStyle(target)?.position || '' : '').toLowerCase();
+    } catch {
+        computedPosition = '';
+    }
+    const position = inlinePosition || computedPosition;
+    const originalTransform = getCapturedStyleValue(originalStyles, 'transform') || renderedStyle.transform;
+    const activeTransform = neutralizeStateLayerTransform(originalTransform)
+        || (originalTransform && originalTransform.toLowerCase() !== 'none' ? 'none' : '');
+
     target.setAttribute(RENDERED_BUTTON_ADJACENT_HIDDEN_ITEM_ATTR, 'true');
     button.setAttribute(RENDERED_BUTTON_ADJACENT_HIDDEN_RESCUE_ATTR, 'true');
     return {
@@ -1733,10 +1790,12 @@ function buildRenderedButtonAdjacentHiddenEntry(button, target) {
         target,
         active: false,
         originalStyles,
-        activeTransform: neutralizeStateLayerTransform(getCapturedStyleValue(originalStyles, 'transform')),
-        wasDisplayNone: getCapturedStyleValue(originalStyles, 'display').toLowerCase() === 'none',
-        hadCollapsedHeight: isCollapsedDimensionValue(getCapturedStyleValue(originalStyles, 'height')),
-        hadCollapsedMaxHeight: isCollapsedDimensionValue(getCapturedStyleValue(originalStyles, 'max-height')),
+        activeTransform,
+        wasDisplayNone: getCapturedStyleValue(originalStyles, 'display').toLowerCase() === 'none' || renderedStyle.displayHidden,
+        wasVisibilityHidden: getCapturedStyleValue(originalStyles, 'visibility').toLowerCase() === 'hidden' || renderedStyle.visibilityHidden,
+        wasOpacityHidden: renderedStyle.opacityHidden,
+        hadCollapsedHeight: isCollapsedDimensionValue(getCapturedStyleValue(originalStyles, 'height')) || renderedStyle.heightCollapsed,
+        hadCollapsedMaxHeight: isCollapsedDimensionValue(getCapturedStyleValue(originalStyles, 'max-height')) || renderedStyle.maxHeightCollapsed,
         isPositionedPopup: position === 'absolute' || position === 'fixed',
     };
 }
@@ -1798,7 +1857,18 @@ function installRenderedButtonAdjacentHiddenRescue(root) {
 
         button.addEventListener('click', event => {
             event.preventDefault();
-            applyRenderedButtonAdjacentHiddenEntry(entry, !entry.active);
+            const nextActive = !entry.active;
+            applyRenderedButtonAdjacentHiddenEntry(entry, nextActive);
+            // 第二次点击恢复隐藏时，移除按钮焦点，避免原始 :focus + 后置内容规则继续把目标显示出来。
+            if (!nextActive) {
+                setTimeout(() => {
+                    try {
+                        if (document?.activeElement === entry.button) entry.button.blur?.();
+                    } catch {
+                        // 无 document 或 blur 不可用时，后续内联状态恢复仍继续执行。
+                    }
+                }, 0);
+            }
             // 某些主题会在点击后一帧重写 display；短延迟复核只重放当前可逆状态。
             for (const delay of [0, 80, 260]) {
                 setTimeout(() => {
@@ -2722,6 +2792,11 @@ function resolveSafeScopedQuery(scope, selector, root) {
         if (!target && safeSelector.startsWith('.')) {
             const className = safeSelector.slice(1);
             target = scope.querySelector(`.custom-${className}`);
+            if (!target) {
+                target = [...scope.querySelectorAll('[class]')].find(element =>
+                    [...(element.classList || [])].some(token => token === className || token.endsWith(`-${className}`)),
+                ) || null;
+            }
         }
         return target && root.contains(target) ? target : null;
     } catch {
@@ -2741,6 +2816,12 @@ function resolveSafeScopedQueryAll(scope, selector, root) {
         if (!targets.length && safeSelector.startsWith('.')) {
             const className = safeSelector.slice(1);
             targets = [...scope.querySelectorAll(`.custom-${className}`)].filter(target => target && root.contains(target));
+            if (!targets.length) {
+                targets = [...scope.querySelectorAll('[class]')].filter(element =>
+                    root.contains(element)
+                    && [...(element.classList || [])].some(token => token === className || token.endsWith(`-${className}`)),
+                );
+            }
         }
         return targets.slice(0, 64);
     } catch {
@@ -4609,7 +4690,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 一次性交互诊断：仅在用户按下“开始一次交互诊断”后，临时监听聊天区的下一次交互。
 // 捕获一个兔子镜后只读取该条内容，并在约 650ms 后自动停止全部诊断监听。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.56-TEST-ONESHOT';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.59-TEST-ONESHOT';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -4679,6 +4760,7 @@ function diagnosticCollectTargets(root) {
         '[style*="max-height:0"]',
         '[style*="height: 0"]',
         '[style*="height:0"]',
+        `[${RENDERED_BUTTON_ADJACENT_HIDDEN_ITEM_ATTR}]`,
     ];
     const seen = new Set();
     const result = [];
@@ -4690,6 +4772,17 @@ function diagnosticCollectTargets(root) {
         seen.add(element);
         result.push(element);
         if (result.length >= 12) break;
+    }
+
+    // 诊断模式也读取计算样式，覆盖隐藏态仅存在于 <style> 的按钮后置结果。
+    if (result.length < 12) {
+        for (const button of root.querySelectorAll('button')) {
+            const target = findRenderedButtonAdjacentHiddenTarget(button);
+            if (!target || seen.has(target)) continue;
+            seen.add(target);
+            result.push(target);
+            if (result.length >= 12) break;
+        }
     }
     return result;
 }
@@ -5744,25 +5837,23 @@ export function rescuePlainTextRabbitMirrorOutput(responseText = '') {
 }
 
 const RABBIT_MIRROR_CSS_SCOPE_ATTR = 'data-rabbit-mirror-css-scope';
+let rabbitMirrorCssScopeCounter = 0;
 
-function localizeRabbitMirrorRootSelector(html) {
+function createRabbitMirrorCssScopeToken(sourceText) {
+    rabbitMirrorCssScopeCounter += 1;
+    const signature = hashInteractionSignature(sourceText).slice(0, 7);
+    const timePart = Date.now().toString(36);
+    const countPart = rabbitMirrorCssScopeCounter.toString(36);
+    const randomPart = Math.random().toString(36).slice(2, 6);
+    return `rmcss-${signature}-${timePart}-${countPart}-${randomPart}`;
+}
+
+function prepareRabbitMirrorCssScope(html) {
     const source = String(html || '');
-    if (!/<style\b[^>]*>[\s\S]*?:root(?=\s*(?:\{|,))/i.test(source)) return source;
-
-    // 酒馆会隔离/净化消息内 CSS，`:root` 不再可靠地指向当前兔子镜。
-    // 每条作品使用由原文生成的稳定局部作用域，既恢复变量继承，也避免不同消息互相串色。
-    const scopeToken = `rmcss-${hashInteractionSignature(source).slice(0, 10)}`;
+    const existing = new RegExp(`${RABBIT_MIRROR_CSS_SCOPE_ATTR}\\s*=\\s*(["'])([^"']+)\\1`, 'i').exec(source);
+    const scopeToken = existing?.[2] || createRabbitMirrorCssScopeToken(source);
     const scopeSelector = `[${RABBIT_MIRROR_CSS_SCOPE_ATTR}="${scopeToken}"]`;
-    let foundRootSelector = false;
-
-    let localized = source.replace(/<style\b([^>]*)>([\s\S]*?)<\/style>/gi, (full, attrs = '', css = '') => {
-        if (!/:root(?=\s*(?:\{|,))/i.test(css)) return full;
-        foundRootSelector = true;
-        const localizedCss = css.replace(/:root(?=\s*(?:\{|,))/gi, scopeSelector);
-        return `<style${attrs}>${localizedCss}</style>`;
-    });
-
-    if (!foundRootSelector) return localized;
+    const classPrefix = `rmc-${scopeToken.replace(/^rmcss-/i, '')}-`;
 
     const markTag = (tag) => {
         const attrRe = new RegExp(`\\s${RABBIT_MIRROR_CSS_SCOPE_ATTR}\\s*=\\s*(["']).*?\\1`, 'i');
@@ -5770,14 +5861,252 @@ function localizeRabbitMirrorRootSelector(html) {
         return tag.replace(/^<([a-z][\w:-]*)\b/i, `<$1 ${RABBIT_MIRROR_CSS_SCOPE_ATTR}="${scopeToken}"`);
     };
 
-    // 同时标记未知外壳 <toto> 与首个真实内容根；宿主删除 <toto> 后，details/div 仍可承接变量。
-    localized = localized.replace(/<toto\b[^>]*>/i, markTag);
-    localized = localized.replace(/<(details|div|section|article)\b[^>]*>/i, markTag);
-    return localized;
+    let prepared = source.replace(/<toto\b[^>]*>/i, markTag);
+    prepared = prepared.replace(/<(details|div|section|article)\b[^>]*>/i, markTag);
+    return { html: prepared, scopeToken, scopeSelector, classPrefix };
+}
+
+function findCssTopLevelDelimiter(sourceText, startIndex = 0) {
+    const source = String(sourceText || '');
+    let quote = '';
+    let escaped = false;
+    let parentheses = 0;
+    let brackets = 0;
+
+    for (let index = startIndex; index < source.length; index += 1) {
+        const char = source[index];
+        const next = source[index + 1] || '';
+        if (quote) {
+            if (escaped) escaped = false;
+            else if (char === '\\') escaped = true;
+            else if (char === quote) quote = '';
+            continue;
+        }
+        if (char === '"' || char === "'") {
+            quote = char;
+            continue;
+        }
+        if (char === '/' && next === '*') {
+            const close = source.indexOf('*/', index + 2);
+            if (close < 0) return { index: source.length, char: '' };
+            index = close + 1;
+            continue;
+        }
+        if (char === '(') parentheses += 1;
+        else if (char === ')') parentheses = Math.max(0, parentheses - 1);
+        else if (char === '[') brackets += 1;
+        else if (char === ']') brackets = Math.max(0, brackets - 1);
+        else if (!parentheses && !brackets && (char === '{' || char === ';')) return { index, char };
+    }
+    return { index: -1, char: '' };
+}
+
+function findCssMatchingBrace(sourceText, openIndex) {
+    const source = String(sourceText || '');
+    if (source[openIndex] !== '{') return -1;
+    let depth = 1;
+    let quote = '';
+    let escaped = false;
+
+    for (let index = openIndex + 1; index < source.length; index += 1) {
+        const char = source[index];
+        const next = source[index + 1] || '';
+        if (quote) {
+            if (escaped) escaped = false;
+            else if (char === '\\') escaped = true;
+            else if (char === quote) quote = '';
+            continue;
+        }
+        if (char === '"' || char === "'") {
+            quote = char;
+            continue;
+        }
+        if (char === '/' && next === '*') {
+            const close = source.indexOf('*/', index + 2);
+            if (close < 0) return -1;
+            index = close + 1;
+            continue;
+        }
+        if (char === '{') depth += 1;
+        else if (char === '}') {
+            depth -= 1;
+            if (!depth) return index;
+        }
+    }
+    return -1;
+}
+
+function transformCssRuleList(cssText, selectorTransform) {
+    const source = String(cssText || '');
+    const recursiveAtRules = new Set(['media', 'supports', 'container', 'layer', 'document', 'starting-style', 'scope']);
+    let output = '';
+    let cursor = 0;
+
+    while (cursor < source.length) {
+        const delimiter = findCssTopLevelDelimiter(source, cursor);
+        if (delimiter.index < 0) {
+            output += source.slice(cursor);
+            break;
+        }
+        if (delimiter.char === ';') {
+            output += source.slice(cursor, delimiter.index + 1);
+            cursor = delimiter.index + 1;
+            continue;
+        }
+
+        const closeIndex = findCssMatchingBrace(source, delimiter.index);
+        if (closeIndex < 0) {
+            output += source.slice(cursor);
+            break;
+        }
+
+        const rawPrelude = source.slice(cursor, delimiter.index);
+        const leading = rawPrelude.match(/^\s*/)?.[0] || '';
+        const trailing = rawPrelude.match(/\s*$/)?.[0] || '';
+        const prelude = rawPrelude.trim();
+        const body = source.slice(delimiter.index + 1, closeIndex);
+
+        if (prelude.startsWith('@')) {
+            const atName = /^@([\w-]+)/.exec(prelude)?.[1]?.toLowerCase() || '';
+            const isKeyframes = atName.endsWith('keyframes');
+            const transformedBody = !isKeyframes && recursiveAtRules.has(atName)
+                ? transformCssRuleList(body, selectorTransform)
+                : body;
+            output += `${leading}${prelude}${trailing}{${transformedBody}}`;
+        } else {
+            const transformedPrelude = typeof selectorTransform === 'function'
+                ? selectorTransform(prelude)
+                : prelude;
+            output += `${leading}${transformedPrelude}${trailing}{${body}}`;
+        }
+        cursor = closeIndex + 1;
+    }
+    return output;
+}
+
+function splitCssSelectorList(selectorText) {
+    const source = String(selectorText || '');
+    const parts = [];
+    let start = 0;
+    let quote = '';
+    let escaped = false;
+    let parentheses = 0;
+    let brackets = 0;
+
+    for (let index = 0; index < source.length; index += 1) {
+        const char = source[index];
+        if (quote) {
+            if (escaped) escaped = false;
+            else if (char === '\\') escaped = true;
+            else if (char === quote) quote = '';
+            continue;
+        }
+        if (char === '"' || char === "'") {
+            quote = char;
+            continue;
+        }
+        if (char === '(') parentheses += 1;
+        else if (char === ')') parentheses = Math.max(0, parentheses - 1);
+        else if (char === '[') brackets += 1;
+        else if (char === ']') brackets = Math.max(0, brackets - 1);
+        else if (char === ',' && !parentheses && !brackets) {
+            parts.push(source.slice(start, index));
+            start = index + 1;
+        }
+    }
+    parts.push(source.slice(start));
+    return parts;
+}
+
+function visitSimpleCssClassTokens(selectorText, visitor) {
+    const source = String(selectorText || '');
+    let output = '';
+    let quote = '';
+    let escaped = false;
+
+    for (let index = 0; index < source.length; index += 1) {
+        const char = source[index];
+        if (quote) {
+            output += char;
+            if (escaped) escaped = false;
+            else if (char === '\\') escaped = true;
+            else if (char === quote) quote = '';
+            continue;
+        }
+        if (char === '"' || char === "'") {
+            quote = char;
+            output += char;
+            continue;
+        }
+        if (char === '.' && /[A-Za-z_]/.test(source[index + 1] || '')) {
+            let end = index + 2;
+            while (end < source.length && /[\w-]/.test(source[end])) end += 1;
+            const className = source.slice(index + 1, end);
+            const replacement = typeof visitor === 'function' ? visitor(className) : className;
+            output += `.${replacement || className}`;
+            index = end - 1;
+            continue;
+        }
+        output += char;
+    }
+    return output;
+}
+
+function collectRabbitMirrorCssClasses(cssTexts) {
+    const names = new Set();
+    for (const cssText of cssTexts || []) {
+        transformCssRuleList(cssText, (prelude) => {
+            visitSimpleCssClassTokens(prelude, (className) => {
+                names.add(className);
+                return className;
+            });
+            return prelude;
+        });
+    }
+    return names;
+}
+
+function buildRabbitMirrorClassMap(cssTexts, classPrefix) {
+    const map = new Map();
+    for (const className of collectRabbitMirrorCssClasses(cssTexts)) {
+        if (!className || className.startsWith(classPrefix)) map.set(className, className);
+        else map.set(className, `${classPrefix}${className}`);
+    }
+    return map;
+}
+
+function scopeRabbitMirrorSelectorList(selectorText, scopeSelector, classMap) {
+    return splitCssSelectorList(selectorText).map((rawSelector) => {
+        let selector = visitSimpleCssClassTokens(rawSelector.trim(), className => classMap.get(className) || className);
+        selector = selector
+            .replace(/:root\b/gi, scopeSelector)
+            .replace(/:host\b/gi, scopeSelector)
+            .replace(/^html(?:\s+body)?(?=\s|[.#[:])/i, scopeSelector)
+            .replace(/^body(?=\s|[.#[:])/i, scopeSelector);
+        if (!selector || selector.includes(RABBIT_MIRROR_CSS_SCOPE_ATTR)) return selector;
+        return `${scopeSelector} ${selector}`;
+    }).join(',');
+}
+
+function scopeRabbitMirrorCssText(cssText, scopeSelector, classMap) {
+    return transformCssRuleList(cssText, prelude => scopeRabbitMirrorSelectorList(prelude, scopeSelector, classMap));
+}
+
+function rewriteRabbitMirrorClassAttributes(htmlText, classMap) {
+    if (!classMap?.size) return String(htmlText || '');
+    return String(htmlText || '').replace(CLASS_ATTR_RE, (match, quote, classValue) => {
+        const tokens = String(classValue || '').split(/\s+/).filter(Boolean);
+        const rewritten = tokens.map(token => classMap.get(token) || token);
+        return rewritten.length ? ` class=${quote}${rewritten.join(' ')}${quote}` : '';
+    });
 }
 
 export function compactTotoBlock(block) {
-    let html = localizeRabbitMirrorRootSelector(normalizeMirrorAttribute(stripCodeBlockTriggers(block)));
+    const preparedScope = prepareRabbitMirrorCssScope(normalizeMirrorAttribute(stripCodeBlockTriggers(block)));
+    let html = preparedScope.html;
+    const rawStyleTexts = [...html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)]
+        .map(match => stripCssComments(String(match[1] || '').replace(/<br\s*\/?>/gi, '')));
+    const classMap = buildRabbitMirrorClassMap(rawStyleTexts, preparedScope.classPrefix);
     const styleSlots = [];
 
     // 1. 保护 <style>...</style>，避免 CSS 文本被误插入 <br>。
@@ -5794,7 +6123,11 @@ export function compactTotoBlock(block) {
             .trim();
         styleSlots.push(compactedStyle.replace(
             /(<style\b[^>]*>)([\s\S]*?)(<\/style>)/i,
-            (full, openTag, css, closeTag) => `${openTag}${repairMalformedCssDeclarations(stripCssComments(css))}${closeTag}`,
+            (full, openTag, css, closeTag) => {
+                const repairedCss = repairMalformedCssDeclarations(stripCssComments(css));
+                const scopedCss = scopeRabbitMirrorCssText(repairedCss, preparedScope.scopeSelector, classMap);
+                return `${openTag}${scopedCss}${closeTag}`;
+            },
         ));
         return key;
     });
@@ -5829,7 +6162,10 @@ export function compactTotoBlock(block) {
         .join('')
         .trim();
 
-    // 5. 还原 <style>。
+    // 5. 将当前兔子镜本地 CSS 使用的 class 改成逐镜唯一名称，阻断旧消息同名样式串入。
+    html = rewriteRabbitMirrorClassAttributes(html, classMap);
+
+    // 6. 还原 <style>。
     styleSlots.forEach((style, index) => {
         html = html.replace(`%%RHT_STYLE_${index}%%`, style);
     });
