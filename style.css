@@ -1,4 +1,4 @@
-/* 0.32.70 TEST：扩容主题元素与展现形式母本，保留 RabbitMirror 全链路诊断及既有急救链。 */
+/* 0.32.71 TEST：补充 data-active 同组状态切换急救，保留母本扩容、全链路诊断及既有急救链。 */
 .rabbit-mirror-settings .inline-drawer-content {
     padding: 10px;
 }

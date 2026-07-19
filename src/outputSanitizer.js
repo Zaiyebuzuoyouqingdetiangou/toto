@@ -4284,9 +4284,57 @@ function parseRawDescendantSelfMutationAssignments(scriptText, rawTrigger, rawRo
     });
 }
 
+function parseSafeAttributeGroupToggleProgram(source, trigger, root, rawTrigger = null, rawRoot = null) {
+    const script = String(source || '');
+    if (!script || !trigger || !rawTrigger || !rawRoot || !root) return null;
+
+    // 仅接受明确的 this.setAttribute('data-*', this.getAttribute(...) === active ? inactive : active)
+    // 加同一父容器兄弟项设为 inactive 的有限状态程序；不执行模型 JavaScript。
+    const toggleMatch = /this\s*\.\s*setAttribute\(\s*(['"])(data-[a-zA-Z0-9_-]+)\1\s*,\s*this\s*\.\s*getAttribute\(\s*(['"])\2\3\s*\)\s*={2,3}\s*(['"])([^'"]+)\4\s*\?\s*(['"])([^'"]+)\6\s*:\s*(['"])([^'"]+)\8\s*\)/i.exec(script);
+    if (!toggleMatch) return null;
+
+    const attributeName = toggleMatch[2];
+    const comparedValue = String(toggleMatch[5] || '');
+    const whenEqual = String(toggleMatch[7] || '');
+    const whenDifferent = String(toggleMatch[9] || '');
+    if (!attributeName.startsWith('data-') || !comparedValue || !whenEqual || !whenDifferent) return null;
+
+    // 严格提取并验证同组兄弟关闭意图。
+    const strictPeerMatch = /Array\s*\.\s*from\(\s*this\s*\.\s*parent(?:Node|Element)\s*\.\s*children\s*\)\s*\.\s*forEach\s*\(\s*([a-zA-Z_$][\w$]*)\s*=>[\s\S]{0,600}?\1\s*!={1,2}\s*this[\s\S]{0,600}?\1\s*\.\s*classList\s*\.\s*contains\(\s*(['"])([a-zA-Z_][\w-]*)\2\s*\)[\s\S]{0,600}?\1\s*\.\s*setAttribute\(\s*(['"])(data-[a-zA-Z0-9_-]+)\4\s*,\s*(['"])([^'"]+)\6\s*\)/i.exec(script);
+    if (!strictPeerMatch) return null;
+
+    const peerClass = strictPeerMatch[3];
+    const peerAttribute = strictPeerMatch[5];
+    const peerInactiveValue = strictPeerMatch[7];
+    if (peerAttribute !== attributeName || peerInactiveValue !== whenEqual) return null;
+
+    const rawParent = rawTrigger.parentElement;
+    if (!rawParent) return null;
+    const rawPeers = [...rawParent.children].filter(node => node !== rawTrigger && node.classList?.contains?.(peerClass));
+    const peers = rawPeers
+        .map(rawPeer => resolveRenderedCounterpart(rawRoot, root, rawPeer, '*'))
+        .filter(peer => peer && peer !== trigger && root.contains?.(peer));
+
+    return {
+        kind: 'attribute-group-toggle',
+        trigger,
+        attributeName,
+        comparedValue,
+        activeValue: whenDifferent,
+        inactiveValue: whenEqual,
+        peers,
+        active: trigger.getAttribute(attributeName) === whenDifferent,
+    };
+}
+
 function parseSelfMutationProgram(source, trigger, root, rawTrigger = null, rawRoot = null) {
     const script = String(source || '');
-    if (!script || !/this\s*\.(?:innerHTML|innerText|textContent|style|nextElementSibling|previousElementSibling|parentElement|parentNode|querySelector)/i.test(script)) return null;
+    if (!script) return null;
+
+    const attributeProgram = parseSafeAttributeGroupToggleProgram(script, trigger, root, rawTrigger, rawRoot);
+    if (attributeProgram) return attributeProgram;
+
+    if (!/this\s*\.(?:innerHTML|innerText|textContent|style|nextElementSibling|previousElementSibling|parentElement|parentNode|querySelector)/i.test(script)) return null;
 
     const activeAssignments = parseInlineStyleAssignments(script);
     const relativeMutations = parseRelativeSelfMutationAssignments(script, trigger, root);
@@ -4319,6 +4367,20 @@ function parseSelfMutationProgram(source, trigger, root, rawTrigger = null, rawR
 function applyRawSelfMutationEntry(entry, active) {
     if (!entry?.trigger) return;
     entry.active = !!active;
+
+    if (entry.kind === 'attribute-group-toggle') {
+        for (const peer of entry.peers || []) {
+            peer?.setAttribute?.(entry.attributeName, entry.inactiveValue);
+            peer?.setAttribute?.('aria-pressed', 'false');
+            const peerEntry = rawSelfMutationRescueStates.get(entry.trigger.closest?.('details'))?.entries?.get?.(peer);
+            if (peerEntry) peerEntry.active = false;
+        }
+        entry.trigger.setAttribute(entry.attributeName, entry.active ? entry.activeValue : entry.inactiveValue);
+        entry.trigger.setAttribute('aria-pressed', entry.active ? 'true' : 'false');
+        entry.trigger.setAttribute(RAW_SELF_MUTATION_ACTIVE_ATTR, entry.active ? 'true' : 'false');
+        return;
+    }
+
     restorePseudoStyleState(entry.trigger, entry.originalStyles);
     for (const mutation of entry.relatedMutations || []) {
         restorePseudoStyleState(mutation.target, mutation.originalStyles);
@@ -4351,7 +4413,7 @@ function installRawMessageSelfMutationRescue(root) {
     let installed = 0;
     for (const rawTrigger of rawRoot.querySelectorAll('[onclick]')) {
         const source = rawTrigger.getAttribute('onclick') || '';
-        if (!/this\s*\.(?:innerHTML|innerText|textContent|style|nextElementSibling|previousElementSibling|parentElement|parentNode|querySelector)/i.test(source)) continue;
+        if (!/this\s*\.(?:innerHTML|innerText|textContent|style|nextElementSibling|previousElementSibling|parentElement|parentNode|querySelector|setAttribute|getAttribute)/i.test(source)) continue;
         const renderedTrigger = resolveRenderedCounterpart(rawRoot, root, rawTrigger, 'div, span, section, article, figure, aside, button');
         if (!renderedTrigger || state.entries.has(renderedTrigger)) continue;
         const entry = parseSelfMutationProgram(source, renderedTrigger, root, rawTrigger, rawRoot);
@@ -5063,7 +5125,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 一次性兔子镜总诊断：用户启动后点击一条异常消息。
 // 既可捕获已渲染兔子镜交互，也可捕获尚未恢复的代码块/纯文字兔子镜消息；约 650ms 后自动停止。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.70-TEST-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.71-TEST-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
