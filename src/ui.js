@@ -1,7 +1,7 @@
 import { getSettings, updateSettings, resetSettings } from './settings.js';
 import { clearLastCombo } from './storage.js';
 import { clearRabbitMirrorPrompt } from './injector.js';
-import { triggerPlainTextRescue, triggerCodeBlockRescue, triggerInteractionRescue, triggerInteractionDiagnosticOnce } from './outputSanitizer.js';
+import { refreshMaintenanceRabbits, triggerInteractionDiagnosticOnce } from './outputSanitizer.js';
 import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js';
 
 function checked(id, value) {
@@ -91,7 +91,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[小小维修兔 v1＋Menu QR v2.1 测试版]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.33.0 TEST</span>
+      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[小小维修兔 v1.1＋Menu QR v2.1 测试版]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.33.1 TEST</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -119,7 +119,7 @@ export function initRabbitMirrorUI() {
 
           <label class="checkbox_label"><input id="rh_user_directive" type="checkbox"> 用户指令优先（正文/兔子镜点播）</label>
           <div class="rabbit-mirror-qr-download">
-            <button id="rh_download_order_qr" class="menu_button" type="button">下载 RabbitMirror 点菜 QR（v2.0）</button>
+            <button id="rh_download_order_qr" class="menu_button" type="button">下载 RabbitMirror 点菜 QR（v2.1）</button>
             <div class="rabbit-mirror-subnote">下载后请在快捷回复中手动导入。</div>
           </div>
 
@@ -142,19 +142,15 @@ export function initRabbitMirrorUI() {
       <details class="rabbit-mirror-section rabbit-mirror-emergency rabbit-mirror-emergency-prominent">
         <summary><span>急救与诊断</span><span class="rabbit-mirror-section-note">故障时展开</span></summary>
         <div class="rabbit-mirror-section-content">
-          <label class="checkbox_label" style="font-weight:600;"><input id="rh_codeblock_rescue" type="checkbox"> 代码块急救模式</label>
-          <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.78;font-size:12px;line-height:1.45;">兔子镜变成代码块时临时开启；不建议长期勾选</div>
-          <label class="checkbox_label" style="font-weight:600;"><input id="rh_interaction_rescue" type="checkbox"> 智能交互急救（实验版）</label>
-          <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.78;font-size:12px;line-height:1.45;">出现无法交互时开启，可长期勾选</div>
-          <button id="rh_plaintext_rescue_once" class="menu_button" type="button" style="margin-top:2px;">修复单条纯文字兔子镜</button>
-          <div class="rabbit-mirror-subnote" style="margin:4px 0 0 0;opacity:.78;font-size:12px;line-height:1.45;">先点击按钮，再点击出现无法渲染或 CSS ERROR 的那一条；仅处理选中的兔子镜，不影响其他消息。</div>
-          <button id="rh_interaction_diagnostic_once" class="menu_button" type="button" style="margin-top:8px;">开始一次 RabbitMirror 全链路诊断</button>
-          <div class="rabbit-mirror-subnote" style="margin:4px 0 0 0;opacity:.78;font-size:12px;line-height:1.45;">点击后在聊天区点一下异常消息；按 HTML/Markdown、DOM、CSS、净化器、宿主重绘、源码恢复与交互链逐层检查。捕获完成即自动停止，报告可复制诊断文字、原始源码与实际渲染代码。</div>
-          <div class="rabbit-mirror-maintenance-help" style="margin-top:12px;padding-top:10px;border-top:1px dashed color-mix(in srgb, var(--SmartThemeBorderColor) 62%, transparent);">
-            <div style="font-weight:700;margin-bottom:5px;">🐇 小小维修兔 v1</div>
-            <div class="rabbit-mirror-subnote" style="opacity:.8;font-size:12px;line-height:1.55;">维修兔跟在每条兔子镜标题后：🐇⚪ 待巡逻；🐇🟢 正常；🐇🟡 发现已有能力可安全尝试修复；🐇🔴 无法安全判断。点击白灯开始巡逻，点击黄灯维修，点击红灯直接生成该条全链路诊断。</div>
-            <div class="rabbit-mirror-subnote" style="margin-top:5px;opacity:.72;font-size:12px;line-height:1.5;">维修兔遵循「没有证据证明它坏了，就不要碰它」：默认不巡逻、不自动修改正常兔子镜。</div>
+          <label class="checkbox_label" style="font-weight:700;"><input id="rh_maintenance_rabbit" type="checkbox"> 🐇 启用小小维修兔</label>
+          <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.78;font-size:12px;line-height:1.5;">在每条已渲染兔子镜标题后安装独立维修入口；一只维修兔只负责当前这一条，不扫描或修改其他兔子镜。</div>
+          <div class="rabbit-mirror-maintenance-help" style="margin-top:8px;padding:10px 0;border-top:1px dashed color-mix(in srgb, var(--SmartThemeBorderColor) 62%, transparent);border-bottom:1px dashed color-mix(in srgb, var(--SmartThemeBorderColor) 62%, transparent);">
+            <div style="font-weight:700;margin-bottom:5px;">🐇 小小维修兔 v1.1</div>
+            <div class="rabbit-mirror-subnote" style="opacity:.8;font-size:12px;line-height:1.55;">🐇⚪ 点击巡逻；🐇🟢 当前条目正常；🐇🟡 再点一次，仅维修当前条目；🐇🔴 点击后直接生成当前条目的全链路诊断。</div>
+            <div class="rabbit-mirror-subnote" style="margin-top:5px;opacity:.72;font-size:12px;line-height:1.5;">代码块／纯文字恢复、交互恢复、源码与 SVG 保主体能力已归入维修兔内部，不再提供互相重叠的旧急救开关。没有证据证明它损坏，就不会修改。</div>
           </div>
+          <button id="rh_interaction_diagnostic_once" class="menu_button" type="button" style="margin-top:10px;">开始一次 RabbitMirror 全链路诊断</button>
+          <div class="rabbit-mirror-subnote" style="margin:4px 0 0 0;opacity:.78;font-size:12px;line-height:1.45;">用于没有维修兔入口的代码块／纯文字源码，或维修兔显示红灯时的维护报告。点击后再选择异常消息，捕获完成即自动停止。</div>
         </div>
       </details>
 
@@ -181,8 +177,7 @@ export function initRabbitMirrorUI() {
     $('#extensions_settings2').append(html);
 
     checked('#rh_enabled', settings.autoRabbitMirrorInjection !== false && settings.enabled !== false);
-    checked('#rh_codeblock_rescue', settings.codeBlockRescueMode);
-    checked('#rh_interaction_rescue', settings.interactionRescueMode);
+    checked('#rh_maintenance_rabbit', settings.maintenanceRabbitEnabled);
     $('#rh_sampling_mode').val(settings.samplingMode || 'classic');
     checked('#rh_user_directive', settings.userDirectivePriority);
     checked('#rh_creative_expansion', settings.creativeExpansionMode);
@@ -191,38 +186,12 @@ export function initRabbitMirrorUI() {
     checked('#rh_memory_scan_enabled', settings.memoryScanEnabled);
 
     $('#rh_enabled').on('change', e => updateSettings({ enabled: e.target.checked, autoRabbitMirrorInjection: e.target.checked, mode: e.target.checked ? 'integrated' : 'off' }));
-    $('#rh_plaintext_rescue_once').on('click', () => {
-        const started = triggerPlainTextRescue();
-        if (started) {
-            toastr?.info?.('单条纯文字急救已就绪：请点击聊天中需要修复的那一条兔子镜。再次点击按钮可取消。');
-        } else {
-            toastr?.info?.('已取消单条纯文字急救，或当前尚未进入具体聊天。');
-        }
-    });
-    $('#rh_codeblock_rescue').on('change', e => {
-        updateSettings({ codeBlockRescueMode: e.target.checked });
-        if (e.target.checked) {
-            toastr?.info?.('已开启代码块急救模式：正在尝试修复当前聊天中的代码块兔子镜。查看完成后建议关闭，以免影响后续 UI 发挥。');
-            setTimeout(() => triggerCodeBlockRescue(), 80);
-            setTimeout(() => triggerCodeBlockRescue(), 350);
-            setTimeout(() => triggerCodeBlockRescue(), 900);
-        } else {
-            toastr?.success?.('已关闭代码块急救模式：后续兔子镜将恢复自由渲染。');
-        }
-    });
-    $('#rh_interaction_rescue').on('change', e => {
-        updateSettings({ interactionRescueMode: e.target.checked });
-        if (e.target.checked) {
-            toastr?.info?.('已开启智能交互急救：正在识别当前兔子镜的交互类型并选择修复路径；与代码块急救同时开启时，会先恢复代码再修交互。');
-            const runRescueChain = () => getSettings().codeBlockRescueMode
-                ? triggerCodeBlockRescue()
-                : triggerInteractionRescue();
-            setTimeout(runRescueChain, 80);
-            setTimeout(runRescueChain, 350);
-            setTimeout(runRescueChain, 900);
-        } else {
-            toastr?.success?.('已关闭智能交互急救：后续不再处理尚未急救的新兔子镜；已救过的旧消息仍会保持修复。');
-        }
+    $('#rh_maintenance_rabbit').on('change', e => {
+        updateSettings({ maintenanceRabbitEnabled: e.target.checked });
+        refreshMaintenanceRabbits();
+        toastr?.[e.target.checked ? 'info' : 'success']?.(e.target.checked
+            ? '小小维修兔已启用：每条兔子镜会显示独立的 🐇⚪，只有点击后才巡逻。'
+            : '小小维修兔已关闭：标题入口已移除，不会影响兔子镜内容。');
     });
     $('#rh_interaction_diagnostic_once').on('click', () => {
         const started = triggerInteractionDiagnosticOnce();

@@ -52,6 +52,14 @@ function isInteractionRescueModeEnabled() {
     }
 }
 
+function isMaintenanceRabbitEnabled() {
+    try {
+        return getSettings().maintenanceRabbitEnabled !== false;
+    } catch {
+        return true;
+    }
+}
+
 
 const MIRROR_TOTO_SELECTOR = 'toto[data-rabbit-mirror="true"], toto[data-rabbit-hole="true"]';
 let interactionScopeCounter = 0;
@@ -5126,14 +5134,14 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 既可捕获已渲染兔子镜交互，也可捕获尚未恢复的代码块/纯文字兔子镜消息；约 650ms 后自动停止。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
 
-// 0.33.0: 小小维修兔 v1。默认只在标题后显示待巡逻入口；用户点击后才检查。
+// 0.33.1: 小小维修兔 v1.1。旧急救入口已合并；每只维修兔只维护当前这一条。
 // 设计底线：没有高置信证据就不修改；黄灯才允许调用已有修复路线，红灯只生成诊断。
 const MAINTENANCE_RABBIT_ATTR = 'data-rabbit-mirror-maintenance-rabbit';
 const MAINTENANCE_STATE_ATTR = 'data-rabbit-mirror-maintenance-state';
 const MAINTENANCE_REASON_ATTR = 'data-rabbit-mirror-maintenance-reason';
 const MAINTENANCE_REPAIR_ATTR = 'data-rabbit-mirror-maintenance-repaired';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.76-TEST-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.33.1-TEST-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -5330,7 +5338,7 @@ function diagnosticCodeRescueSummary(root) {
     })();
 
     let reason = '未发现明显的代码块或纯文字兔子镜候选。';
-    if (!isCodeBlockRescueModeEnabled()) reason = '代码块急救开关为 OFF；所有代码块/纯文字自动恢复路线均不会运行。';
+    if (!isCodeBlockRescueModeEnabled()) reason = '旧代码块全局急救已停用；已渲染兔子镜由逐条维修兔处理，未渲染源码可使用全链路诊断。';
     else if (renderedMirrors && !renderedHasTotoText && !codeShells) reason = '当前消息中已存在真实兔子镜 DOM；若仍异常，重点查看交互或 CSS，而非代码块恢复。';
     else if (strictWhole && strictParseOk) reason = '当前显示层是完整纯文字兔子镜，且解析测试成功，但仍未替换：优先怀疑扫描触发时机、消息 DOM 选择器或后续插件再次重绘。';
     else if (strictWhole && !strictParseOk) reason = '已命中完整纯文字兔子镜，但解析测试失败：源码边界、标签结构或清洗结果仍有问题。';
@@ -5397,7 +5405,7 @@ function diagnosticFullChainSummary(root, code) {
     let verdict = '当前链路未发现单一高置信故障点。';
     if (structureTruncated) verdict = '高置信：损坏的 SVG Data URI 破坏了 inline style 属性边界，导致后续 DOM 被截断；应移除该背景声明并用原始源码临时重绘显示层。';
     else if (damagedDataUriCandidate) verdict = '检测到疑似损坏的 SVG Data URI；当前结构尚未达到高置信截断阈值，但建议优先执行保主体清洗。';
-    else if (!isCodeBlockRescueModeEnabled() && sourceCandidate) verdict = '原始源需要恢复，但代码块急救关闭。';
+    else if (!isCodeBlockRescueModeEnabled() && sourceCandidate) verdict = '原始源需要恢复；旧全局急救已停用，请使用当前条目的维修兔或全链路诊断。';
     else if (sourceCandidate && thRenderCount) verdict = '原始兔子镜源码被 TH-render 代码壳接管；应检查源码恢复是否在其重绘后再次执行。';
     else if (sourceCandidate && highlightedCount) verdict = '原始兔子镜源码进入语法高亮代码壳；应检查源码恢复触发时机或后续重绘覆盖。';
     else if (code?.strictWhole && code?.strictParseOk) verdict = '显示层是可解析的完整纯文字兔子镜，但替换未发生；重点检查消息选择器与观察器触发。';
@@ -5430,8 +5438,8 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `标题: ${title || '(未渲染 summary／可能仍是代码块或纯文字)'}`,
         `阶段: ${phase}`,
         `诊断模式: 一次性全链路诊断（已自动停止）`,
-        `代码块急救开关: ${isCodeBlockRescueModeEnabled() ? 'ON' : 'OFF'}`,
-        `智能交互急救开关: ${isInteractionRescueModeEnabled() ? 'ON' : 'OFF'}`,
+        `小小维修兔: ${isMaintenanceRabbitEnabled() ? 'ON（逐条手动巡逻）' : 'OFF'}`,
+        `旧全局急救链: 已合并停用`,
         `消息 mesid: ${code.mesid}`,
         `根节点: ${diagnosticElementName(root)} / connected=${!!root.isConnected}`,
         '',
@@ -5790,7 +5798,6 @@ function inspectMaintenanceRabbit(root) {
     if (interaction.checkedControlsLost) reasons.push('CSS 仍依赖 checked，但控件已丢失');
     if (interaction.strippedStateProgram) reasons.push('宿主删除了可识别的状态事件');
     if (interaction.touchHoverMissing) reasons.push('触屏环境缺少 Hover 兜底');
-    if (interaction.unscopedControls) reasons.push('交互控件尚未建立兔子镜隔离');
 
     if (reasons.length) {
         return { state: MAINTENANCE_STATES.repairable, reason: reasons.slice(0, 3).join('；'), code, full, interaction };
@@ -5822,6 +5829,42 @@ function patrolMaintenanceRabbit(root, button) {
     return result;
 }
 
+function findLiveMaintenanceRoot(root, summaryText = '', messageIndex = -1) {
+    if (root?.isConnected) return root;
+    const messageElement = messageIndex >= 0 ? getRenderedMessageElement(messageIndex) : null;
+    if (!messageElement) return null;
+    const candidates = getRenderedRabbitMirrorInteractionRoots(messageElement);
+    if (!summaryText) return candidates[0] || null;
+    return candidates.find(candidate => getRabbitMirrorSummaryText(candidate).includes(summaryText)) || candidates[0] || null;
+}
+
+function repairMaintenanceMessageSource(root, inspection) {
+    const index = getMessageIndexFromMirrorNode(root);
+    if (index < 0) return { changed: false, index, reason: '无法识别所属消息' };
+    const host = hostScriptModule || globalThis;
+    const chat = host?.chat || globalThis.chat;
+    const message = Array.isArray(chat) ? chat[index] : null;
+    if (!message || message?.is_user) return { changed: false, index, reason: '未找到可维护的助手消息' };
+    if (messageContainsReasoningEnvelope(message) || messageUsesDistinctDisplaySource(message)) {
+        return { changed: false, index, reason: '存在思维包裹或独立显示源，为避免绕过显示正则已停止整条重绘' };
+    }
+
+    const source = getSelectedMessageSource(message);
+    if (!source) return { changed: false, index, reason: '没有可恢复的消息源' };
+    let repaired = source;
+    if (inspection?.full?.damagedDataUriCandidate || inspection?.full?.structureTruncated) {
+        repaired = rescueDamagedDataUriRabbitMirrorOutput(repaired);
+    }
+    if (inspection?.full?.sourceCandidate || inspection?.code?.strictWhole || inspection?.code?.needsSanitize) {
+        repaired = rescuePlainTextRabbitMirrorOutput(repaired) || repaired;
+    }
+    if (!repaired || repaired === source) return { changed: false, index, reason: '消息源无需重绘' };
+
+    const transientMessage = setTransientMessageSource(message, repaired);
+    const changed = preserveAndRerenderSanitizedMessage(host, index, transientMessage);
+    return { changed, index, reason: changed ? '已用临时副本恢复当前消息显示层' : '当前消息重绘失败' };
+}
+
 function runMaintenanceRabbitRepair(root, button) {
     if (!root?.isConnected || !button?.isConnected) return false;
     const before = inspectMaintenanceRabbit(root);
@@ -5829,38 +5872,46 @@ function runMaintenanceRabbitRepair(root, button) {
         setMaintenanceRabbitState(button, before.state, before.reason);
         return false;
     }
-    setMaintenanceRabbitState(button, MAINTENANCE_STATES.checking, '正在调用已有安全修复路线');
+    const summaryText = getRabbitMirrorSummaryText(root).replace(/🐇[⚪🟢🟡🔴]?/g, '').trim();
+    const originalIndex = getMessageIndexFromMirrorNode(root);
+    setMaintenanceRabbitState(button, MAINTENANCE_STATES.checking, '正在维修当前这一条兔子镜');
+
     try {
-        const host = hostScriptModule || globalThis;
-        if (before.full?.damagedDataUriCandidate || before.full?.structureTruncated) {
-            rescueRecentDamagedDataUriMessages(host);
-        }
-        if (before.full?.sourceCandidate || before.code?.strictWhole) {
-            runSourceRecoveryPass(host);
-            sanitizeCodeBlocksInChatDom();
-            sanitizeWholePlainTextRabbitMirrorsInChatDom();
-            sanitizeRenderedRabbitMirrorDetailsDom();
-        }
-        if (root.isConnected && (before.interaction?.checkedControlsLost || before.interaction?.strippedStateProgram || before.interaction?.touchHoverMissing || before.interaction?.unscopedControls)) {
-            scopeRabbitMirrorInteractionIds(root);
-            root.dataset.rabbitMirrorInteractionRescued = 'true';
-        }
-        button.setAttribute(MAINTENANCE_REPAIR_ATTR, 'true');
+        const sourceResult = repairMaintenanceMessageSource(root, before);
+        const continueRepair = () => {
+            const liveRoot = findLiveMaintenanceRoot(root, summaryText, sourceResult.index >= 0 ? sourceResult.index : originalIndex);
+            if (!liveRoot) {
+                setMaintenanceRabbitState(button, MAINTENANCE_STATES.unknown, sourceResult.reason || '维修后未找到当前兔子镜');
+                return;
+            }
+            const liveButton = liveRoot.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || button;
+            if (before.interaction?.checkedControlsLost || before.interaction?.strippedStateProgram || before.interaction?.touchHoverMissing) {
+                scopeRabbitMirrorInteractionIds(liveRoot);
+                liveRoot.dataset.rabbitMirrorInteractionRescued = 'true';
+            }
+            liveButton.setAttribute(MAINTENANCE_REPAIR_ATTR, 'true');
+            setTimeout(() => {
+                const afterRoot = findLiveMaintenanceRoot(liveRoot, summaryText, sourceResult.index >= 0 ? sourceResult.index : originalIndex);
+                const afterButton = afterRoot?.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || liveButton;
+                if (!afterRoot) {
+                    setMaintenanceRabbitState(afterButton, MAINTENANCE_STATES.unknown, '维修后无法重新定位当前兔子镜');
+                    return;
+                }
+                const after = inspectMaintenanceRabbit(afterRoot);
+                if (after.state === MAINTENANCE_STATES.repairable) {
+                    setMaintenanceRabbitState(afterButton, MAINTENANCE_STATES.unknown, `已有修复未能消除异常：${after.reason}`);
+                } else {
+                    setMaintenanceRabbitState(afterButton, after.state, after.reason);
+                }
+            }, 320);
+        };
+        if (sourceResult.changed) setTimeout(continueRepair, 180);
+        else continueRepair();
     } catch (error) {
         console.debug('[RabbitMirror] maintenance rabbit repair failed:', error);
         setMaintenanceRabbitState(button, MAINTENANCE_STATES.unknown, '修复执行失败，请生成全链路诊断');
         return false;
     }
-
-    setTimeout(() => {
-        const liveRoot = button.closest?.(MIRROR_TOTO_SELECTOR) || button.closest?.('details') || root;
-        const after = inspectMaintenanceRabbit(liveRoot);
-        if (after.state === MAINTENANCE_STATES.repairable) {
-            setMaintenanceRabbitState(button, MAINTENANCE_STATES.unknown, `已有修复未能消除异常：${after.reason}`);
-        } else {
-            setMaintenanceRabbitState(button, after.state, after.reason);
-        }
-    }, 420);
     return true;
 }
 
@@ -5913,12 +5964,26 @@ function installMaintenanceRabbitForRoot(root) {
     return true;
 }
 
+function removeMaintenanceRabbitsInChatDom() {
+    const chatRoot = getChatRoot();
+    chatRoot?.querySelectorAll?.(`[${MAINTENANCE_RABBIT_ATTR}]`)?.forEach(button => button.remove());
+}
+
 function installMaintenanceRabbitsInChatDom() {
     const chatRoot = getChatRoot();
     if (!chatRoot) return;
+    if (!isMaintenanceRabbitEnabled()) {
+        removeMaintenanceRabbitsInChatDom();
+        return;
+    }
     getRenderedRabbitMirrorInteractionRoots(chatRoot).forEach(root => {
         if (isInsideChatMessage(root)) installMaintenanceRabbitForRoot(root);
     });
+}
+
+export function refreshMaintenanceRabbits() {
+    if (isMaintenanceRabbitEnabled()) installMaintenanceRabbitsInChatDom();
+    else removeMaintenanceRabbitsInChatDom();
 }
 
 function scopeRabbitMirrorInteractionsInChatDom() {

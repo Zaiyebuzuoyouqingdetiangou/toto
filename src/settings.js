@@ -36,11 +36,12 @@ export const defaultSettings = Object.freeze({
     cooldownRounds: 10,
     // 0.32.43：所有展现形式等权进入随机池，不再对“富版式”候选做三倍加权。
     richFormatBias: false,
-    // 旧版纯文字急救全局开关仅用于迁移；0.32.38 起改为单条一次性按钮，不再持续启用。
+    // 小小维修兔：统一承接原代码块、纯文字与智能交互急救入口。
+    // 默认只在每条兔子镜标题后安装待巡逻按钮，不自动检查或修改。
+    maintenanceRabbitEnabled: true,
+    // 以下旧键仅保留用于一次性迁移；不再独立控制，也不再显示在 UI。
     plainTextRescueMode: false,
-    // 代码块急救模式：仅在兔子镜显示成代码块时临时开启。默认关闭，避免平时影响 UI 发挥。
     codeBlockRescueMode: false,
-    // 智能交互急救：识别 checked、hover、嵌套 details、:target 等交互类型并选择对应兜底路径。可与代码块急救串联。
     interactionRescueMode: false,
     // 强制启动增强：将小剧场作为本轮输出格式的一部分，而不是可选附加项。
     hardStartup: true,
@@ -110,10 +111,16 @@ export function getSettings() {
     settings.formatsMax = Number(settings.formatsMax) || defaultSettings.formatsMax;
     settings.cooldownRounds = Math.max(1, Number(settings.cooldownRounds) || defaultSettings.cooldownRounds);
     if (settings.autoRabbitMirrorInjection === undefined) settings.autoRabbitMirrorInjection = settings.enabled !== false;
-    // 0.32.38：纯文字急救改为单条一次性选择，不允许旧版全局开关继续扫描。
+    // 0.33.1：旧急救开关合并进小小维修兔。旧用户只要曾开启任一急救，就自动启用维修兔；
+    // 随后强制关闭旧全局扫描，避免与逐条维修兔重复介入。
+    const legacyRescueWasEnabled = !!(settings.plainTextRescueMode || settings.codeBlockRescueMode || settings.interactionRescueMode);
+    if (settings.maintenanceRabbitEnabled === undefined) {
+        settings.maintenanceRabbitEnabled = legacyRescueWasEnabled || defaultSettings.maintenanceRabbitEnabled;
+    }
+    settings.maintenanceRabbitEnabled = !!settings.maintenanceRabbitEnabled;
     settings.plainTextRescueMode = false;
-    if (settings.codeBlockRescueMode === undefined) settings.codeBlockRescueMode = defaultSettings.codeBlockRescueMode;
-    if (settings.interactionRescueMode === undefined) settings.interactionRescueMode = defaultSettings.interactionRescueMode;
+    settings.codeBlockRescueMode = false;
+    settings.interactionRescueMode = false;
     if (!['classic', 'format_only'].includes(settings.samplingMode)) settings.samplingMode = defaultSettings.samplingMode;
     if (!Array.isArray(settings.memoryProviderIds)) settings.memoryProviderIds = [];
     settings.memoryProviderIds = settings.memoryProviderIds.map(value => {
