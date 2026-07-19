@@ -148,7 +148,7 @@ function rewriteCssIdReferences(cssText, idMap) {
         // 典型模型输出：#d1:checked ~ label[for="d1"] div。
         // 过去只改写 #d1 与真实 label.for，遗漏了 style 文本中的 [for="d1"]，
         // 导致整条选择器永久失配。这里只处理明确承载 ID 引用的属性。
-        for (const attr of ['for', 'aria-controls', 'aria-labelledby', 'aria-describedby']) {
+        for (const attr of ['id', 'for', 'aria-controls', 'aria-labelledby', 'aria-describedby']) {
             css = css.replace(
                 new RegExp(`(\\[\\s*${attr}\\s*=\\s*["'])${escaped}(["']\\s*\\])`, 'gi'),
                 `$1${newId}$2`,
@@ -4946,7 +4946,8 @@ function collectExistingIdReferences(text, existingIds, output) {
     for (const id of existingIds) {
         const escaped = escapeRegExp(id);
         if (new RegExp(`#${escaped}(?![\\w-])`).test(value)
-            || new RegExp(`url\\(\\s*["']?#${escaped}(?:["']?\\s*)\\)`, 'i').test(value)) {
+            || new RegExp(`url\\(\\s*["']?#${escaped}(?:["']?\\s*)\\)`, 'i').test(value)
+            || new RegExp(`\\[\\s*id\\s*=\\s*["']${escaped}["']\\s*\\]`, 'i').test(value)) {
             output.add(id);
         }
     }
@@ -5134,14 +5135,14 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 既可捕获已渲染兔子镜交互，也可捕获尚未恢复的代码块/纯文字兔子镜消息；约 650ms 后自动停止。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
 
-// 0.33.2: 小小维修兔 v1.2。巡逻检查分段容错；内部异常不再误报红灯。
+// 0.33.3: 小小维修兔 v1.3。补充每面兔子镜的 ID/for/name/CSS 属性选择器隔离，并识别重复 ID 导致的假交互。
 // 设计底线：没有高置信证据就不修改；黄灯才允许调用已有修复路线，红灯只生成诊断。
 const MAINTENANCE_RABBIT_ATTR = 'data-rabbit-mirror-maintenance-rabbit';
 const MAINTENANCE_STATE_ATTR = 'data-rabbit-mirror-maintenance-state';
 const MAINTENANCE_REASON_ATTR = 'data-rabbit-mirror-maintenance-reason';
 const MAINTENANCE_REPAIR_ATTR = 'data-rabbit-mirror-maintenance-repaired';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '0.33.2-TEST-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.33.3-TEST-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -5774,6 +5775,35 @@ function isLikelyTouchDevice() {
     }
 }
 
+function maintenanceInteractionScopeEvidence(root) {
+    const controls = [...(root?.querySelectorAll?.('input[type="checkbox"][id], input[type="radio"][id]') || [])];
+    let duplicateIds = 0;
+    let brokenLocalLabels = 0;
+    let checkedCssIdSelectors = 0;
+
+    for (const input of controls) {
+        const id = String(input.id || '').trim();
+        if (!id) continue;
+        try {
+            if (document.querySelectorAll(`#${escapeCssIdentifier(id)}`).length > 1) duplicateIds += 1;
+        } catch {
+            // Ignore selector failures.
+        }
+        const localLabel = [...(root.querySelectorAll?.('label[for]') || [])].find(label => label.getAttribute('for') === id);
+        if (!localLabel || localLabel.control !== input) brokenLocalLabels += 1;
+    }
+
+    const cssText = [...(root?.querySelectorAll?.('style') || [])].map(style => String(style.textContent || '')).join('\n');
+    for (const input of controls) {
+        const id = String(input.id || '').trim();
+        if (!id) continue;
+        const escaped = escapeRegExp(id);
+        if (new RegExp(`(?:#${escaped}|\\[\\s*id\\s*=\\s*["']${escaped}["']\\s*\\])[^{}]*:checked`, 'i').test(cssText)) checkedCssIdSelectors += 1;
+    }
+
+    return { duplicateIds, brokenLocalLabels, checkedCssIdSelectors, needsScopeRepair: controls.length > 0 && (duplicateIds > 0 || brokenLocalLabels > 0) };
+}
+
 function maintenanceKnownInteractionEvidence(root, full, code) {
     const raw = decodeHtmlEntitiesForRescue(getRawAssistantMessageForRenderedRoot(root) || '');
     const stateProgram = /\bon(?:click|change|input)\s*=|setAttribute\s*\(\s*['\"]data-|classList\.(?:add|remove|toggle)|\.checked\s*=|:checked\b/i.test(raw);
@@ -5784,7 +5814,8 @@ function maintenanceKnownInteractionEvidence(root, full, code) {
         && root.getAttribute?.('data-rabbit-mirror-touch-hover-fallback') !== 'true';
     const unscopedControls = (full.inputCount > 0 || full.buttonCount > 0)
         && root.dataset?.rabbitMirrorInteractionScoped !== 'true';
-    return { checkedControlsLost, strippedStateProgram, touchHoverMissing, unscopedControls, raw };
+    const scopeEvidence = maintenanceInteractionScopeEvidence(root);
+    return { checkedControlsLost, strippedStateProgram, touchHoverMissing, unscopedControls, raw, ...scopeEvidence };
 }
 
 function maintenanceFallbackFullSummary(root) {
@@ -5831,7 +5862,7 @@ function inspectMaintenanceRabbit(root) {
     } catch (error) {
         partialInspection = true;
         console.debug('[RabbitMirror] maintenance interaction inspection skipped:', error);
-        interaction = { checkedControlsLost: false, strippedStateProgram: false, touchHoverMissing: false, unscopedControls: false, raw: '' };
+        interaction = { checkedControlsLost: false, strippedStateProgram: false, touchHoverMissing: false, unscopedControls: false, duplicateIds: 0, brokenLocalLabels: 0, checkedCssIdSelectors: 0, needsScopeRepair: false, raw: '' };
     }
     const reasons = [];
 
@@ -5840,6 +5871,7 @@ function inspectMaintenanceRabbit(root) {
     if (interaction.checkedControlsLost) reasons.push('CSS 仍依赖 checked，但控件已丢失');
     if (interaction.strippedStateProgram) reasons.push('宿主删除了可识别的状态事件');
     if (interaction.touchHoverMissing) reasons.push('触屏环境缺少 Hover 兜底');
+    if (interaction.needsScopeRepair) reasons.push(`交互 ID 未隔离（重复ID=${interaction.duplicateIds}，失配标签=${interaction.brokenLocalLabels}）`);
 
     if (reasons.length) {
         return { state: MAINTENANCE_STATES.repairable, reason: reasons.slice(0, 3).join('；'), code, full, interaction };
@@ -5930,7 +5962,7 @@ function runMaintenanceRabbitRepair(root, button) {
                 return;
             }
             const liveButton = liveRoot.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || button;
-            if (before.interaction?.checkedControlsLost || before.interaction?.strippedStateProgram || before.interaction?.touchHoverMissing) {
+            if (before.interaction?.checkedControlsLost || before.interaction?.strippedStateProgram || before.interaction?.touchHoverMissing || before.interaction?.needsScopeRepair) {
                 scopeRabbitMirrorInteractionIds(liveRoot);
                 liveRoot.dataset.rabbitMirrorInteractionRescued = 'true';
             }
