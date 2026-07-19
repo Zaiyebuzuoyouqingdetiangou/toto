@@ -5135,7 +5135,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 既可捕获已渲染兔子镜交互，也可捕获尚未恢复的代码块/纯文字兔子镜消息；约 650ms 后自动停止。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
 
-// 0.33.6: 小小维修兔 v1.4。识别仅有选中变色、没有第二层体验的伪交互，避免错误亮绿灯。
+// 0.33.7: 小小维修兔 v1.6。把既有代码块、纯文字、源码/SVG、CSS作用域与完整交互急救库接入逐条维修流水线。
 // 设计底线：没有高置信证据就不修改；黄灯才允许调用已有修复路线，红灯只生成诊断。
 const MAINTENANCE_RABBIT_ATTR = 'data-rabbit-mirror-maintenance-rabbit';
 const MAINTENANCE_STATE_ATTR = 'data-rabbit-mirror-maintenance-state';
@@ -5143,7 +5143,7 @@ const MAINTENANCE_REASON_ATTR = 'data-rabbit-mirror-maintenance-reason';
 const MAINTENANCE_REPAIR_ATTR = 'data-rabbit-mirror-maintenance-repaired';
 const MAINTENANCE_MENU_ATTR = 'data-rabbit-mirror-maintenance-menu';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '0.33.6-TEST-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.33.7-TEST-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -6052,6 +6052,40 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
+
+function runMaintenanceLegacyRescueLibrary(root, mode = 'all') {
+    if (!root?.isConnected) return { code: 0, interaction: 0, style: 0 };
+    const result = { code: 0, interaction: 0, style: 0 };
+    const messageScope = root.closest?.('.mes, [mesid], [data-message-id], [data-messageid]') || root;
+
+    if (mode === 'code' || mode === 'all') {
+        try { result.code += sanitizeCodeBlocksInScope(messageScope, true); } catch (error) { console.debug('[RabbitMirror] maintenance code-block module skipped:', error); }
+        try { result.code += sanitizeWholePlainTextRabbitMirrorsInScope(messageScope, true); } catch (error) { console.debug('[RabbitMirror] maintenance plain-text module skipped:', error); }
+        try { result.code += sanitizeRenderedRabbitMirrorDetailsInScope(messageScope, true); } catch (error) { console.debug('[RabbitMirror] maintenance rendered-details module skipped:', error); }
+    }
+
+    const liveRoots = getRenderedRabbitMirrorInteractionRoots(messageScope);
+    const targets = liveRoots.length ? liveRoots : [root];
+    for (const target of targets) {
+        if (!target?.isConnected) continue;
+        if (mode === 'style' || mode === 'all') {
+            try { result.style += repairMarkdownCorruptedCssComments(target); } catch (error) { console.debug('[RabbitMirror] maintenance CSS-comment module skipped:', error); }
+            try { scopeRabbitMirrorInteractionIds(target); result.style += 1; } catch (error) { console.debug('[RabbitMirror] maintenance scope module skipped:', error); }
+        }
+        if (mode === 'interaction' || mode === 'all') {
+            try {
+                scopeRabbitMirrorInteractionIds(target);
+                installIntelligentInteractionRescue(target);
+                target.dataset.rabbitMirrorInteractionRescued = 'true';
+                result.interaction += 1;
+            } catch (error) {
+                console.debug('[RabbitMirror] maintenance interaction library skipped:', error);
+            }
+        }
+    }
+    return result;
+}
+
 function runMaintenanceUserRepair(root, button, mode) {
     if (!root?.isConnected || !button?.isConnected) return false;
     const labels = {
@@ -6075,14 +6109,8 @@ function runMaintenanceUserRepair(root, button, mode) {
                 return;
             }
             const liveButton = liveRoot.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || button;
-            if (mode === 'interaction' || mode === 'all') {
-                scopeRabbitMirrorInteractionIds(liveRoot);
-                installIntelligentInteractionRescue(liveRoot);
-                liveRoot.dataset.rabbitMirrorInteractionRescued = 'true';
-            }
-            if (mode === 'style') {
-                scopeRabbitMirrorInteractionIds(liveRoot);
-            }
+            const libraryResult = runMaintenanceLegacyRescueLibrary(liveRoot, mode);
+            liveRoot.dataset.rabbitMirrorMaintenanceModules = JSON.stringify(libraryResult);
             liveButton.setAttribute(MAINTENANCE_REPAIR_ATTR, 'true');
             setTimeout(() => {
                 const afterRoot = findLiveMaintenanceRoot(liveRoot, summaryText, sourceResult.index >= 0 ? sourceResult.index : originalIndex);
@@ -7717,10 +7745,10 @@ function isRabbitMirrorDetails(details) {
     return /^【兔子镜[:：]/.test(title) || /兔子镜/.test(title);
 }
 
-function sanitizeRenderedRabbitMirrorDetailsDom() {
-    if (!isCodeBlockRescueModeEnabled()) return;
-    const root = getChatRoot();
-    if (!root) return;
+function sanitizeRenderedRabbitMirrorDetailsInScope(root, force = false) {
+    if (!force && !isCodeBlockRescueModeEnabled()) return 0;
+    if (!root?.querySelectorAll) return 0;
+    let repairedCount = 0;
     const detailsList = [...root.querySelectorAll('toto details, details')].filter(isRabbitMirrorDetails);
 
     for (const details of detailsList) {
@@ -7755,12 +7783,19 @@ function sanitizeRenderedRabbitMirrorDetailsDom() {
             const target = findCodeReplaceTarget(node);
             if (target?.isConnected && details.contains(target) && isInsideChatMessage(target) && isCodeShellNode(target)) {
                 target.replaceWith(replacement);
+                repairedCount += 1;
                 break;
             }
         }
     }
+    return repairedCount;
 }
 
+function sanitizeRenderedRabbitMirrorDetailsDom() {
+    const root = getChatRoot();
+    if (!root) return 0;
+    return sanitizeRenderedRabbitMirrorDetailsInScope(root, false);
+}
 
 function extractStrictWholeRabbitMirrorText(node) {
     if (!node) return '';
@@ -7778,12 +7813,11 @@ function extractStrictWholeRabbitMirrorText(node) {
     return raw;
 }
 
-function sanitizeWholePlainTextRabbitMirrorsInChatDom() {
-    if (!isCodeBlockRescueModeEnabled()) return;
-    const root = getChatRoot();
-    if (!root) return;
-
-    const messageBodies = [...root.querySelectorAll('.mes_text')];
+function sanitizeWholePlainTextRabbitMirrorsInScope(root, force = false) {
+    if (!force && !isCodeBlockRescueModeEnabled()) return 0;
+    if (!root?.querySelectorAll) return 0;
+    let repairedCount = 0;
+    const messageBodies = root.matches?.('.mes_text') ? [root] : [...root.querySelectorAll('.mes_text')];
     for (const body of messageBodies) {
         if (!body?.isConnected || !isInsideChatMessage(body)) continue;
         if (body.querySelector('toto, details')) continue;
@@ -7797,13 +7831,21 @@ function sanitizeWholePlainTextRabbitMirrorsInChatDom() {
 
         // 只修当前显示层，不写回 mes/swipe/display_text，也不触发保存。
         body.replaceChildren(replacement);
+        repairedCount += 1;
     }
+    return repairedCount;
 }
 
-function sanitizeCodeBlocksInChatDom() {
-    if (!isCodeBlockRescueModeEnabled()) return;
+function sanitizeWholePlainTextRabbitMirrorsInChatDom() {
     const root = getChatRoot();
-    if (!root) return;
+    if (!root) return 0;
+    return sanitizeWholePlainTextRabbitMirrorsInScope(root, false);
+}
+
+function sanitizeCodeBlocksInScope(root, force = false) {
+    if (!force && !isCodeBlockRescueModeEnabled()) return 0;
+    if (!root?.querySelectorAll) return 0;
+    let repairedCount = 0;
     const candidates = [...new Set([...root.querySelectorAll(CODE_SHELL_SELECTOR)])]
         .filter(node => !node.querySelector?.('pre, code') || node.matches('pre, code, .hljs'));
 
@@ -7831,8 +7873,16 @@ function sanitizeCodeBlocksInChatDom() {
         const target = findCodeReplaceTarget(node);
         if (target?.isConnected && isInsideChatMessage(target) && isCodeShellNode(target)) {
             target.replaceWith(replacement);
+            repairedCount += 1;
         }
     }
+    return repairedCount;
+}
+
+function sanitizeCodeBlocksInChatDom() {
+    const root = getChatRoot();
+    if (!root) return 0;
+    return sanitizeCodeBlocksInScope(root, false);
 }
 
 function readGenerationBoolean(source) {

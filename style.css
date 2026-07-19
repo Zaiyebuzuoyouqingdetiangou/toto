@@ -1,4 +1,4 @@
-/* 0.33.6 TEST：小小维修兔 v1.5 增加用户现象维修菜单与强制维修入口。 */
+/* 0.33.7 TEST：小小维修兔 v1.6 增加用户现象维修菜单与强制维修入口。 */
 .rabbit-mirror-settings .inline-drawer-content {
     padding: 10px;
 }
@@ -129,7 +129,7 @@ toto[data-rabbit-mirror="true"] summary {
     line-height: 1.45;
 }
 
-/* 0.33.6 小小维修兔 v1.5：每条标题后独立入口，点击打开本地维修菜单。 */
+/* 0.33.7 小小维修兔 v1.6：每条标题后独立入口，点击打开本地维修菜单。 */
 .rabbit-mirror-maintenance-rabbit {
   display: inline-flex !important;
   align-items: center !important;

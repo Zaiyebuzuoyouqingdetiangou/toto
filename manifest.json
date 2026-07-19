@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（小小维修兔 v1.5 用户维修菜单版）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（小小维修兔 v1.6 全急救库合一版）",
   "loading_order": 99,
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.33.6-test.1",
+  "version": "0.33.7-test.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "TEST build: adds Maintenance Rabbit v1.5 user-facing local repair menu for each individual RabbitMirror. Users can choose no response, visible code, broken appearance, force all known repairs, or generate a mirror-scoped full-chain diagnostic. Green status no longer blocks manual repair. Prompt, pools, Menu QR v2.1, and all existing features remain unchanged."
+  "description": "TEST build: adds Maintenance Rabbit v1.6 now dispatches the complete existing rescue library per mirror: code-block/plain-text recovery, source and damaged SVG recovery, CSS/comment and ID scope repair, touch-hover and all validated interaction routes, followed by re-inspection. Prompt, pools, Menu QR v2.1, and all existing features remain unchanged."
 }
