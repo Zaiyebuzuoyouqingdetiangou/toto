@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（智能交互生成时序隔离测试版）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（计算样式交互识别测试版）",
   "loading_order": 99,
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.32.56-test.1",
+  "version": "0.32.59-test.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "TEST build: restores the Copy Recommended Regex helper to the original <toto>...</toto>-only pattern, while preserving the 0.32.54 CSS comment-strip rescue, prompts, source pools, visual styling, and all existing features."
+  "description": "TEST build: recognizes button-adjacent hidden content from computed CSS styles, restoring reversible reveal interactions when opacity, visibility, display, or collapsed dimensions are defined only inside style blocks, while preserving prompts, source pools, visual styling, and all existing features."
 }

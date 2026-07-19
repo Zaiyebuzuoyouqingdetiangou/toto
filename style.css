@@ -49,7 +49,7 @@ toto[data-rabbit-mirror="true"] summary {
     min-width: 0;
 }
 
-/* 0.32.56 TEST：智能交互急救生成时序隔离；生成中不介入，生成结束后再稳定修复。 */
+/* 0.32.59 TEST：按钮后置隐藏内容读取计算样式，恢复仅由 style 规则定义的显隐交互。 */
 .rabbit-mirror-settings .rabbit-mirror-primary-toggle {
     padding: 2px 2px 8px;
 }
