@@ -5063,7 +5063,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 一次性兔子镜总诊断：用户启动后点击一条异常消息。
 // 既可捕获已渲染兔子镜交互，也可捕获尚未恢复的代码块/纯文字兔子镜消息；约 650ms 后自动停止。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.68-TEST-ONESHOT';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.70-TEST-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -5277,6 +5277,60 @@ function diagnosticCodeRescueSummary(root) {
     };
 }
 
+function diagnosticFullChainSummary(root, code) {
+    const body = code?.body || diagnosticMessageBody(root);
+    const rawMessage = String(getRawAssistantMessageForRenderedRoot(root) || '');
+    const decodedRaw = decodeHtmlEntities(rawMessage);
+    const renderedHtml = String(body?.innerHTML || '');
+    const renderedText = String(body?.textContent || '');
+    const styleTexts = [...(body?.querySelectorAll?.('style') || [])].map(style => String(style.textContent || '')).join('\n');
+    const rawStyles = [...decodedRaw.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map(match => match[1] || '').join('\n');
+    const rawInlineEvents = (decodedRaw.match(/\son[a-z]+\s*=/gi) || []).length;
+    let renderedInlineEvents = 0;
+    body?.querySelectorAll?.('*').forEach(element => {
+        for (const attr of [...(element.attributes || [])]) {
+            if (/^on[a-z]+$/i.test(attr.name)) renderedInlineEvents += 1;
+        }
+    });
+    const cssText = `${rawStyles}\n${styleTexts}`;
+    const cssRuleCount = (cssText.match(/[^@{}][^{}]*\{[^{}]*\}/g) || []).length;
+    const animationCount = (cssText.match(/@keyframes\b/gi) || []).length;
+    const hoverCount = (cssText.match(/:hover\b/gi) || []).length;
+    const focusCount = (cssText.match(/:focus(?:-within)?\b/gi) || []).length;
+    const activeCount = (cssText.match(/:active\b/gi) || []).length;
+    const checkedCount = (cssText.match(/:checked\b/gi) || []).length;
+    const detailsCount = body?.querySelectorAll?.('details')?.length || 0;
+    const styleCount = body?.querySelectorAll?.('style')?.length || 0;
+    const scriptCount = body?.querySelectorAll?.('script')?.length || 0;
+    const iframeCount = body?.querySelectorAll?.('iframe')?.length || 0;
+    const inputCount = body?.querySelectorAll?.('input,select,textarea')?.length || 0;
+    const buttonCount = body?.querySelectorAll?.('button')?.length || 0;
+    const thRenderCount = body?.querySelectorAll?.('.TH-render')?.length || 0;
+    const highlightedCount = body?.querySelectorAll?.('code.hljs,[data-highlighted="yes"]')?.length || 0;
+    const mirrorCount = getRenderedRabbitMirrorInteractionRoots(body).length;
+    const scopedCount = body?.querySelectorAll?.('[data-rabbit-mirror-interaction-scoped="true"]')?.length || 0;
+    const rescuedCount = body?.querySelectorAll?.('[data-rabbit-mirror-interaction-rescued="true"]')?.length || 0;
+    const sourceCandidate = code?.rawNeeds && code?.rawHasToto;
+    const sourceObscured = sourceCandidate && (thRenderCount > 0 || highlightedCount > 0 || (!code.renderedNeeds && !code.strictWhole));
+    let verdict = '当前链路未发现单一高置信故障点。';
+    if (!isCodeBlockRescueModeEnabled() && sourceCandidate) verdict = '原始源需要恢复，但代码块急救关闭。';
+    else if (sourceCandidate && thRenderCount) verdict = '原始兔子镜源码被 TH-render 代码壳接管；应检查源码恢复是否在其重绘后再次执行。';
+    else if (sourceCandidate && highlightedCount) verdict = '原始兔子镜源码进入语法高亮代码壳；应检查源码恢复触发时机或后续重绘覆盖。';
+    else if (code?.strictWhole && code?.strictParseOk) verdict = '显示层是可解析的完整纯文字兔子镜，但替换未发生；重点检查消息选择器与观察器触发。';
+    else if (mirrorCount > 0 && code?.codeShells === 0) verdict = '兔子镜主体已经渲染；故障更可能位于 CSS、可读性或交互链。';
+    else if (rawInlineEvents > renderedInlineEvents) verdict = '原始源码中的内联事件在渲染后减少，说明宿主净化器删除了部分事件属性。';
+    return {
+        rawHtml: /<\/?[a-z][^>]*>/i.test(decodedRaw),
+        rawToto: /<toto\b/i.test(decodedRaw),
+        rawFence: /```(?:html|xml)?/i.test(decodedRaw),
+        renderedEscapedTags: /&lt;\/?[a-z]/i.test(renderedHtml) || /<toto\b/i.test(renderedText),
+        detailsCount, styleCount, scriptCount, iframeCount, inputCount, buttonCount,
+        cssRuleCount, animationCount, hoverCount, focusCount, activeCount, checkedCount,
+        rawInlineEvents, renderedInlineEvents, thRenderCount, highlightedCount,
+        mirrorCount, scopedCount, rescuedCount, sourceCandidate, sourceObscured, verdict,
+    };
+}
+
 function buildInteractionDiagnosticText(root, state, phase = 'capture complete') {
     const inputs = [...root.querySelectorAll('input[type="checkbox"], input[type="radio"]')].slice(0, 8);
     const labels = [...root.querySelectorAll('label')].filter(label => !label.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`));
@@ -5284,17 +5338,43 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
     const routes = diagnosticRouteSummary(root);
     const title = diagnosticCompactText(root.querySelector('summary')?.textContent, 64);
     const code = diagnosticCodeRescueSummary(root);
+    const full = diagnosticFullChainSummary(root, code);
     const lines = [
-        `RabbitMirror Full Diagnostic ${INTERACTION_DIAGNOSTIC_VERSION}`,
+        `RabbitMirror 全链路诊断 ${INTERACTION_DIAGNOSTIC_VERSION}`,
         `标题: ${title || '(未渲染 summary／可能仍是代码块或纯文字)'}`,
         `阶段: ${phase}`,
-        `诊断模式: 一次性总诊断（已自动停止）`,
+        `诊断模式: 一次性全链路诊断（已自动停止）`,
         `代码块急救开关: ${isCodeBlockRescueModeEnabled() ? 'ON' : 'OFF'}`,
         `智能交互急救开关: ${isInteractionRescueModeEnabled() ? 'ON' : 'OFF'}`,
         `消息 mesid: ${code.mesid}`,
         `根节点: ${diagnosticElementName(root)} / connected=${!!root.isConnected}`,
         '',
-        '[代码块／纯文字恢复链]',
+        '[1. HTML／Markdown 输入层]',
+        `原始源含HTML=${full.rawHtml} 含toto=${full.rawToto} 含三反引号=${full.rawFence}`,
+        `显示层仍含转义标签=${full.renderedEscapedTags}`,
+        '',
+        '[2. DOM 渲染层]',
+        `details=${full.detailsCount} style=${full.styleCount} script=${full.scriptCount} iframe=${full.iframeCount}`,
+        `buttons=${full.buttonCount} inputs=${full.inputCount} rabbitMirrors=${full.mirrorCount}`,
+        '',
+        '[3. CSS 能力层]',
+        `rules≈${full.cssRuleCount} keyframes=${full.animationCount}`,
+        `hover=${full.hoverCount} focus=${full.focusCount} active=${full.activeCount} checked=${full.checkedCount}`,
+        '',
+        '[4. 净化器／属性保留层]',
+        `原始内联事件=${full.rawInlineEvents} 渲染后内联事件=${full.renderedInlineEvents}`,
+        `script保留=${full.scriptCount} iframe保留=${full.iframeCount}`,
+        '',
+        '[5. 宿主／美化重绘层]',
+        `TH-render=${full.thRenderCount} highlightedCode=${full.highlightedCount}`,
+        `源码恢复候选=${full.sourceCandidate} 源码被显示层遮蔽=${full.sourceObscured}`,
+        '',
+        '[6. RabbitMirror 急救安装层]',
+        `interactionScoped=${full.scopedCount} interactionRescued=${full.rescuedCount}`,
+        '',
+        `[全链路初步判断] ${full.verdict}`,
+        '',
+        '[7. 代码块／纯文字恢复链]',
         `标准代码外壳 codeShells=${code.codeShells}`,
         `已渲染兔子镜节点 renderedMirrors=${code.renderedMirrors}`,
         `显示层含 toto 标签文字=${code.renderedHasTotoText}`,
@@ -5306,7 +5386,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `长度 raw=${code.rawLength} renderedText=${code.renderedLength}`,
         `[代码块初步判断] ${code.reason}`,
         '',
-        '[交互恢复链]',
+        '[8. 交互恢复链]',
         `labels=${labels.length} inputs=${inputs.length} hiddenCandidates=${targets.length}`,
         `相邻隐藏组 entries=${routes.adjacent} listener=${root.dataset.rabbitMirrorAdjacentHiddenGroupFallback || 'false'}`,
         `双层状态 entries=${routes.layers} listener=${root.dataset.rabbitMirrorRenderedStateLayerFallback || 'false'}`,

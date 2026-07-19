@@ -91,7 +91,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[源码恢复测试版]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.32.68 TEST</span>
+      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[母本扩容＋全链路诊断测试版]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.32.70 TEST</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -144,8 +144,8 @@ export function initRabbitMirrorUI() {
           <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.78;font-size:12px;line-height:1.45;">出现无法交互时开启，可长期勾选</div>
           <button id="rh_plaintext_rescue_once" class="menu_button" type="button" style="margin-top:2px;">修复单条纯文字兔子镜</button>
           <div class="rabbit-mirror-subnote" style="margin:4px 0 0 0;opacity:.78;font-size:12px;line-height:1.45;">先点击按钮，再点击出现无法渲染或 CSS ERROR 的那一条；仅处理选中的兔子镜，不影响其他消息。</div>
-          <button id="rh_interaction_diagnostic_once" class="menu_button" type="button" style="margin-top:8px;">开始一次兔子镜总诊断</button>
-          <div class="rabbit-mirror-subnote" style="margin:4px 0 0 0;opacity:.78;font-size:12px;line-height:1.45;">点击后在聊天区点一下异常消息；可检查交互、代码块、纯文字源码、显示源与触发链。捕获完成即自动停止，报告可复制诊断文字、原始源码与实际渲染代码。</div>
+          <button id="rh_interaction_diagnostic_once" class="menu_button" type="button" style="margin-top:8px;">开始一次 RabbitMirror 全链路诊断</button>
+          <div class="rabbit-mirror-subnote" style="margin:4px 0 0 0;opacity:.78;font-size:12px;line-height:1.45;">点击后在聊天区点一下异常消息；按 HTML/Markdown、DOM、CSS、净化器、宿主重绘、源码恢复与交互链逐层检查。捕获完成即自动停止，报告可复制诊断文字、原始源码与实际渲染代码。</div>
         </div>
       </details>
 
@@ -218,7 +218,7 @@ export function initRabbitMirrorUI() {
     $('#rh_interaction_diagnostic_once').on('click', () => {
         const started = triggerInteractionDiagnosticOnce();
         if (started) {
-            toastr?.info?.('一次性总诊断已就绪：请在聊天区点击异常的兔子镜、代码块或纯文字源码消息。捕获后会自动停止并显示报告。');
+            toastr?.info?.('RabbitMirror 全链路诊断已就绪：请在聊天区点击异常的兔子镜、代码块或纯文字源码消息。捕获后会自动停止并显示报告。');
         } else {
             toastr?.warning?.('未找到聊天区域，暂时无法开始诊断。请进入具体聊天后重试。');
         }

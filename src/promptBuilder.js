@@ -252,6 +252,12 @@ function presentationEmbodimentRule() {
   - 当展现形式适合单色、低彩度或有限色域时，可以保持克制，但仍须依靠明度、纹理、材质与空间层次形成完整视觉。`;
 }
 
+function interactionEmbodimentRule() {
+    return String.raw`
+媒介本体交互:
+  交互应从本轮展现形式自身的结构、功能与使用方式中自然产生，并成为媒介体验的一部分；除非悬停、折叠或提示按钮本身符合该媒介的真实操作逻辑，否则不要把它们作为通用交互套件。`;
+}
+
 function mediaEnvironmentRule() {
     return String.raw`
 媒介实现推导:
@@ -302,6 +308,7 @@ ${selectedFormats}`);
     chunks.push(complexInteractiveCore());
     chunks.push(innerDetailsCooldownRule());
     chunks.push(presentationEmbodimentRule());
+    chunks.push(interactionEmbodimentRule());
     chunks.push(mediaEnvironmentRule());
     chunks.push(textReadabilityRule());
     chunks.push(paletteCooldownRule());
