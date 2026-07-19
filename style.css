@@ -1,4 +1,4 @@
-/* 0.32.71 TEST：补充 data-active 同组状态切换急救，保留母本扩容、全链路诊断及既有急救链。 */
+/* 0.32.72 TEST：内置一次性点菜 QR 下载，保留 data-active 同组状态急救、母本扩容、全链路诊断及既有急救链。 */
 .rabbit-mirror-settings .inline-drawer-content {
     padding: 10px;
 }
@@ -117,4 +117,14 @@ toto[data-rabbit-mirror="true"] summary {
     border: 0;
     border-radius: 0;
     line-height: 1.55;
+}
+
+.rabbit-mirror-settings .rabbit-mirror-qr-download {
+    margin: 5px 0 8px 26px;
+}
+.rabbit-mirror-settings .rabbit-mirror-qr-download .rabbit-mirror-subnote {
+    margin-top: 4px;
+    opacity: .72;
+    font-size: 12px;
+    line-height: 1.45;
 }

@@ -91,7 +91,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[data-active 同组状态急救测试版]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.32.71 TEST</span>
+      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[点菜 QR 下载＋data-active 急救测试版]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.32.72 TEST</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -118,6 +118,10 @@ export function initRabbitMirrorUI() {
           <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后强制生成一幅完整、统一、会持续变化的 CSS 动态视觉画面；画面本体承担持续动画，并保留由本轮内容自然产生的交互变化。</div>
 
           <label class="checkbox_label"><input id="rh_user_directive" type="checkbox"> 用户指令优先（正文/兔子镜点播）</label>
+          <div class="rabbit-mirror-qr-download">
+            <button id="rh_download_order_qr" class="menu_button" type="button">下载 RabbitMirror 点菜 QR</button>
+            <div class="rabbit-mirror-subnote">下载后请在快捷回复中手动导入。</div>
+          </div>
 
           <label class="checkbox_label"><input id="rh_avoid_repeat" type="checkbox"> 10轮冷却：避免重复主题/展现形式/整体观感</label>
           <div class="rabbit-mirror-subnote" style="margin:-2px 0 2px 26px;opacity:.72;font-size:12px;line-height:1.45;">仅记录已经实际生成成功的兔子镜；用于避免连续复用相近的结构骨架与整体视觉家族。</div>
@@ -252,6 +256,21 @@ export function initRabbitMirrorUI() {
 
     $('#rh_sampling_mode').on('change', e => updateSettings({ samplingMode: e.target.value }));
     $('#rh_user_directive').on('change', e => updateSettings({ userDirectivePriority: e.target.checked }));
+    $('#rh_download_order_qr').on('click', () => {
+        try {
+            const link = document.createElement('a');
+            link.href = new URL('../assets/RabbitMirror-0.32.72-可扩展三级点菜树-QR.json', import.meta.url).href;
+            link.download = 'RabbitMirror-0.32.72-可扩展三级点菜树-QR.json';
+            link.rel = 'noopener';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            toastr?.success?.('RabbitMirror 点菜 QR 已开始下载；下载后请在快捷回复中手动导入。');
+        } catch (error) {
+            console.error('[RabbitMirror] QR download failed', error);
+            toastr?.error?.('点菜 QR 下载失败，请重新安装扩展后再试。');
+        }
+    });
     $('#rh_creative_expansion').on('change', e => updateSettings({ creativeExpansionMode: e.target.checked }));
     $('#rh_force_visual_scenery').on('change', e => updateSettings({ forceVisualScenery: e.target.checked }));
     $('#rh_avoid_repeat').on('change', e => updateSettings({ avoidRepeat: e.target.checked }));

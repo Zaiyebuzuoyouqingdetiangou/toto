@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（母本扩容＋全链路诊断测试版）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（点菜QR下载＋全链路诊断测试版）",
   "loading_order": 99,
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.32.71-test.1",
+  "version": "0.32.72-test.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "TEST build: expands the extraction mother pools to 101 thematic elements and 177 presentation formats without overwriting existing entries; retains media-native interaction, RabbitMirror full-chain diagnostic, source recovery, thinking isolation, readability safeguards, dark-background cooldown, and all existing rescue routes."
+  "description": "TEST build: adds a local download button for the expandable RabbitMirror Quick Replies ordering tree. The bundled QR creates a latest-pending, one-use order that expires after the next RabbitMirror actually adopts it. The QR is a static asset and is never injected into model context. Retains 101 thematic elements, 177 presentation formats, data-active group-state rescue, media-native interaction, full-chain diagnostic, source recovery, thinking isolation, readability safeguards, dark-background cooldown, and all existing rescue routes."
 }
