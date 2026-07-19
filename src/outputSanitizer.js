@@ -5125,7 +5125,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 一次性兔子镜总诊断：用户启动后点击一条异常消息。
 // 既可捕获已渲染兔子镜交互，也可捕获尚未恢复的代码块/纯文字兔子镜消息；约 650ms 后自动停止。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.72-TEST-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.73-TEST-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -5372,10 +5372,24 @@ function diagnosticFullChainSummary(root, code) {
     const mirrorCount = getRenderedRabbitMirrorInteractionRoots(body).length;
     const scopedCount = body?.querySelectorAll?.('[data-rabbit-mirror-interaction-scoped="true"]')?.length || 0;
     const rescuedCount = body?.querySelectorAll?.('[data-rabbit-mirror-interaction-rescued="true"]')?.length || 0;
+    const rawInputCount = (decodedRaw.match(/<input\b/gi) || []).length;
+    const rawLabelCount = (decodedRaw.match(/<label\b/gi) || []).length;
+    const renderedLabelCount = body?.querySelectorAll?.('label')?.length || 0;
+    const rawUiTagCount = countRawUiTags(decodedRaw);
+    const renderedUiTagCount = body?.querySelectorAll?.('div,section,article,label,input,button,p,span,h1,h2,h3,h4,h5,h6,ul,ol,li,table,form,details,summary,figure,main,header,footer,nav')?.length || 0;
+    const repairedDataUriSource = rescueDamagedDataUriRabbitMirrorOutput(decodedRaw);
+    const damagedDataUriCandidate = repairedDataUriSource !== decodedRaw;
+    const controlsLost = rawInputCount > 0 && inputCount === 0;
+    const labelsLost = rawLabelCount > 0 && renderedLabelCount === 0;
+    const severeStructureLoss = rawUiTagCount >= 8 && renderedUiTagCount + 5 < rawUiTagCount
+        && renderedUiTagCount < Math.ceil(rawUiTagCount * 0.55);
+    const structureTruncated = damagedDataUriCandidate && (controlsLost || labelsLost || severeStructureLoss);
     const sourceCandidate = code?.rawNeeds && code?.rawHasToto;
     const sourceObscured = sourceCandidate && (thRenderCount > 0 || highlightedCount > 0 || (!code.renderedNeeds && !code.strictWhole));
     let verdict = '当前链路未发现单一高置信故障点。';
-    if (!isCodeBlockRescueModeEnabled() && sourceCandidate) verdict = '原始源需要恢复，但代码块急救关闭。';
+    if (structureTruncated) verdict = '高置信：损坏的 SVG Data URI 破坏了 inline style 属性边界，导致后续 DOM 被截断；应移除该背景声明并用原始源码临时重绘显示层。';
+    else if (damagedDataUriCandidate) verdict = '检测到疑似损坏的 SVG Data URI；当前结构尚未达到高置信截断阈值，但建议优先执行保主体清洗。';
+    else if (!isCodeBlockRescueModeEnabled() && sourceCandidate) verdict = '原始源需要恢复，但代码块急救关闭。';
     else if (sourceCandidate && thRenderCount) verdict = '原始兔子镜源码被 TH-render 代码壳接管；应检查源码恢复是否在其重绘后再次执行。';
     else if (sourceCandidate && highlightedCount) verdict = '原始兔子镜源码进入语法高亮代码壳；应检查源码恢复触发时机或后续重绘覆盖。';
     else if (code?.strictWhole && code?.strictParseOk) verdict = '显示层是可解析的完整纯文字兔子镜，但替换未发生；重点检查消息选择器与观察器触发。';
@@ -5389,7 +5403,9 @@ function diagnosticFullChainSummary(root, code) {
         detailsCount, styleCount, scriptCount, iframeCount, inputCount, buttonCount,
         cssRuleCount, animationCount, hoverCount, focusCount, activeCount, checkedCount,
         rawInlineEvents, renderedInlineEvents, thRenderCount, highlightedCount,
-        mirrorCount, scopedCount, rescuedCount, sourceCandidate, sourceObscured, verdict,
+        mirrorCount, scopedCount, rescuedCount, sourceCandidate, sourceObscured,
+        rawInputCount, rawLabelCount, renderedLabelCount, rawUiTagCount, renderedUiTagCount,
+        damagedDataUriCandidate, controlsLost, labelsLost, severeStructureLoss, structureTruncated, verdict,
     };
 }
 
@@ -5418,6 +5434,9 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         '[2. DOM 渲染层]',
         `details=${full.detailsCount} style=${full.styleCount} script=${full.scriptCount} iframe=${full.iframeCount}`,
         `buttons=${full.buttonCount} inputs=${full.inputCount} rabbitMirrors=${full.mirrorCount}`,
+        `原始 inputs=${full.rawInputCount} labels=${full.rawLabelCount} UI标签≈${full.rawUiTagCount}`,
+        `渲染 inputs=${full.inputCount} labels=${full.renderedLabelCount} UI标签≈${full.renderedUiTagCount}`,
+        `SVG Data URI损坏候选=${full.damagedDataUriCandidate} 结构截断=${full.structureTruncated}`,
         '',
         '[3. CSS 能力层]',
         `rules≈${full.cssRuleCount} keyframes=${full.animationCount}`,

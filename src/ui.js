@@ -91,7 +91,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[点菜 QR 下载＋data-active 急救测试版]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.32.72 TEST</span>
+      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[SVG Data URI 保主体急救＋结构截断诊断测试版]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.32.73 TEST</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -259,8 +259,8 @@ export function initRabbitMirrorUI() {
     $('#rh_download_order_qr').on('click', () => {
         try {
             const link = document.createElement('a');
-            link.href = new URL('../assets/RabbitMirror-0.32.72-可扩展三级点菜树-QR.json', import.meta.url).href;
-            link.download = 'RabbitMirror-0.32.72-可扩展三级点菜树-QR.json';
+            link.href = new URL('../assets/RabbitMirror-0.32.73-可扩展三级点菜树-QR.json', import.meta.url).href;
+            link.download = 'RabbitMirror-0.32.73-可扩展三级点菜树-QR.json';
             link.rel = 'noopener';
             document.body.appendChild(link);
             link.click();
