@@ -49,7 +49,7 @@ toto[data-rabbit-mirror="true"] summary {
     min-width: 0;
 }
 
-/* 0.32.59 TEST：按钮后置隐藏内容读取计算样式，恢复仅由 style 规则定义的显隐交互。 */
+/* 0.32.60 TEST：新增媒介本体驱动的色彩关系多样化规则；暗色冷却保持不变。 */
 .rabbit-mirror-settings .rabbit-mirror-primary-toggle {
     padding: 2px 2px 8px;
 }
