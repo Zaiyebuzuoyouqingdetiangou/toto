@@ -3,7 +3,7 @@ import { getSettings } from './settings.js';
 // Cached SillyTavern script module. In module builds, chat is not guaranteed to be exposed on globalThis.
 let hostScriptModule = null;
 
-// 0.32.64: 在 0.32.63 基线上仅新增媒介环境提示规则；保留生成时序、思维链重绘隔离与 CSS 状态兄弟映射急救；
+// 0.32.66: 新增文字可读性底线；代码块急救补充完整转义兔子镜普通文本 DOM 兜底；其余行为保持不变；
 // 本版仅撤回 promptBuilder 中 0.32.60 新增的常驻色彩关系测试规则。
 // 对含有 thinking/reasoning 包裹的消息仍禁止交互急救触发任何临时整条重绘。
 const INTERACTION_POST_GENERATION_DELAYS = Object.freeze([160, 700, 1600]);
@@ -5061,7 +5061,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 一次性交互诊断：仅在用户按下“开始一次交互诊断”后，临时监听聊天区的下一次交互。
 // 捕获一个兔子镜后只读取该条内容，并在约 650ms 后自动停止全部诊断监听。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.64-TEST-ONESHOT';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.65-TEST-ONESHOT';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -6932,6 +6932,45 @@ function sanitizeRenderedRabbitMirrorDetailsDom() {
     }
 }
 
+
+function extractStrictWholeRabbitMirrorText(node) {
+    if (!node) return '';
+    const decoded = decodeHtmlEntities(String(node.textContent || ''))
+        .replace(/\u00a0/g, ' ')
+        .replace(/[\u200B\u200C\u200D\uFEFF]/g, '')
+        .trim();
+    if (!decoded) return '';
+
+    const match = decoded.match(/^\s*(<toto\b[\s\S]*?<\/toto>)\s*$/i);
+    if (!match) return '';
+    const raw = match[1].trim();
+    if (!/<toto\b[^>]*data-rabbit-mirror\s*=\s*["']true["']/i.test(raw)) return '';
+    if (!/<details\b/i.test(raw) || !/<summary\b[^>]*>[\s\S]*?兔子镜/i.test(raw)) return '';
+    return raw;
+}
+
+function sanitizeWholePlainTextRabbitMirrorsInChatDom() {
+    if (!isCodeBlockRescueModeEnabled()) return;
+    const root = getChatRoot();
+    if (!root) return;
+
+    const messageBodies = [...root.querySelectorAll('.mes_text')];
+    for (const body of messageBodies) {
+        if (!body?.isConnected || !isInsideChatMessage(body)) continue;
+        if (body.querySelector('toto, details')) continue;
+
+        const raw = extractStrictWholeRabbitMirrorText(body);
+        if (!raw) continue;
+        const cleaned = cleanRabbitMirrorOutput(raw);
+        const match = cleaned.match(TOTO_BLOCK_SINGLE_RE);
+        const replacement = match ? parseTotoFragment(match[0]) : null;
+        if (!replacement) continue;
+
+        // 只修当前显示层，不写回 mes/swipe/display_text，也不触发保存。
+        body.replaceChildren(replacement);
+    }
+}
+
 function sanitizeCodeBlocksInChatDom() {
     if (!isCodeBlockRescueModeEnabled()) return;
     const root = getChatRoot();
@@ -7081,6 +7120,7 @@ function runEnabledRescueChain(mod = null) {
     if (isCodeBlockRescueModeEnabled()) {
         sanitizeLatestRawMessages(host);
         sanitizeCodeBlocksInChatDom();
+        sanitizeWholePlainTextRabbitMirrorsInChatDom();
         sanitizeRenderedRabbitMirrorDetailsDom();
     }
     triggerInteractionRescue();
@@ -7310,6 +7350,7 @@ function runCodeBlockRescuePass(mod) {
     if (!isCodeBlockRescueModeEnabled()) return;
     sanitizeLatestRawMessages(mod);
     sanitizeCodeBlocksInChatDom();
+    sanitizeWholePlainTextRabbitMirrorsInChatDom();
     sanitizeRenderedRabbitMirrorDetailsDom();
 }
 

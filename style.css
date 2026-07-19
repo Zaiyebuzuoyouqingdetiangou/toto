@@ -49,7 +49,7 @@ toto[data-rabbit-mirror="true"] summary {
     min-width: 0;
 }
 
-/* 0.32.64 TEST：仅新增媒介环境提示规则；保留 0.32.62 CSS 状态兄弟映射急救与 0.32.63 其余行为。 */
+/* 0.32.66 TEST：新增文字可读性底线，并补充完整转义兔子镜普通文本的代码块急救兜底。 */
 .rabbit-mirror-settings .rabbit-mirror-primary-toggle {
     padding: 2px 2px 8px;
 }

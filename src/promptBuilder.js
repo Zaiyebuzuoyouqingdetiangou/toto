@@ -254,8 +254,14 @@ function presentationEmbodimentRule() {
 
 function mediaEnvironmentRule() {
     return String.raw`
-媒介环境成立:
-  展现形式成立后，应自然形成对应的媒介环境，包括时代、光线、空气、天气、空间、介质、材质、屏幕或印刷等因素。整体视觉应由媒介环境自然推导，环境变化会自然影响光感、层次、材质与综合色相，不得先决定颜色再寻找理由。`;
+媒介实现推导:
+  同一种展现形式不存在唯一视觉实现。应先结合本轮内容确定其年代、制作工艺、保存状态、使用环境、光线与材质，再由这些条件自然推导整体视觉，不得套用该媒介最常见的默认样式。`;
+}
+
+function textReadabilityRule() {
+    return String.raw`
+文字可读性优先:
+  正文与交互文字须在实际背景上保持清晰对比，小字号文字不得使用与背景明度或色相过近的颜色；视觉氛围不得以牺牲阅读为代价，除非展现形式需要。`;
 }
 
 function visualColorTruthRule() {
@@ -297,6 +303,7 @@ ${selectedFormats}`);
     chunks.push(innerDetailsCooldownRule());
     chunks.push(presentationEmbodimentRule());
     chunks.push(mediaEnvironmentRule());
+    chunks.push(textReadabilityRule());
     chunks.push(paletteCooldownRule());
     chunks.push(visualColorTruthRule());
     chunks.push(stateBarIsolationRule());
