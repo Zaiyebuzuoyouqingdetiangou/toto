@@ -3,8 +3,9 @@ import { getSettings } from './settings.js';
 // Cached SillyTavern script module. In module builds, chat is not guaranteed to be exposed on globalThis.
 let hostScriptModule = null;
 
-// 0.32.56: 智能交互急救只在生成结束后的稳定阶段运行。
-// 生成中绝不修改当前消息 DOM，避免与 SillyTavern 的 Reasoning/显示正则刷新产生时序竞争。
+// 0.32.61: 智能交互急救只在生成结束后的稳定阶段运行；
+// 对含有 thinking/reasoning 包裹的消息禁止交互急救触发任何临时整条重绘，
+// 避免原始消息源越过 SillyTavern 的显示正则而重新暴露隐藏思维内容。
 const INTERACTION_POST_GENERATION_DELAYS = Object.freeze([160, 700, 1600]);
 const INTERACTION_STABLE_EVENT_DELAYS = Object.freeze([180, 760, 1700]);
 let interactionGenerationActive = false;
@@ -2230,7 +2231,8 @@ function installRenderedClickableAdjacentPopupRescue(root) {
 const RENDERED_CONTAINER_INTERNAL_REVEAL_ATTR = 'data-rabbit-mirror-container-internal-reveal';
 const RENDERED_CONTAINER_INTERNAL_REVEAL_ITEM_ATTR = 'data-rm-container-internal-reveal-item';
 const renderedContainerInternalRevealStates = new WeakMap();
-const CONTAINER_INTERNAL_REVEAL_HINT_RE = /(?:点击|轻触|触摸|恢复|曝光|播放|读取|查看|展开|解锁|揭示)|\b(?:click|tap|touch|restore|expose|play|read|view|open|reveal)\b/i;
+const CONTAINER_INTERNAL_REVEAL_HINT_RE = /(?:点击|轻触|触摸|恢复|曝光|播放|读取|查看|展开|解锁|揭示|悬停|移入|划过|鼠标经过|鼠标移入)|\b(?:click|tap|touch|restore|expose|play|read|view|open|reveal|hover|mouseover|mouse\s*over)\b/i;
+const CONTAINER_INTERNAL_REVEAL_HOVER_HINT_RE = /(?:悬停|移入|划过|鼠标经过|鼠标移入)|\b(?:hover|mouseover|mouse\s*over)\b/i;
 const CONTAINER_INTERNAL_REVEAL_CLASS_RE = /(?:hidden|secret|reveal|detail|content|text|message|msg|fragment|track|scene)/i;
 
 function isRenderedContainerInternalRevealTarget(element, host) {
@@ -2258,14 +2260,20 @@ function collectRenderedContainerInternalRevealHints(host, targets) {
 }
 
 function buildRenderedContainerInternalRevealEntry(host) {
-    if (!host?.children || host.hasAttribute?.(RENDERED_MASK_REVEAL_RESCUE_ATTR)
-        || getInlineStyleValue(host, 'cursor').toLowerCase() !== 'pointer') return null;
+    if (!host?.children || host.hasAttribute?.(RENDERED_MASK_REVEAL_RESCUE_ATTR)) return null;
     if (host.querySelector?.('input, label, button, summary, details, select, textarea')) return null;
 
     const targets = [...host.children].filter(element => isRenderedContainerInternalRevealTarget(element, host)).slice(0, 4);
     if (!targets.length) return null;
     const hints = collectRenderedContainerInternalRevealHints(host, targets);
     const semantic = `${host.id || ''} ${getClassTokens(host).join(' ')} ${normalizeInteractionMatchText(host.textContent).slice(0, 300)}`;
+    const hasPointerCursor = getInlineStyleValue(host, 'cursor').toLowerCase() === 'pointer';
+
+    // 旧路线要求外层容器预先写 cursor:pointer。模型若把 onmouseover 错挂在
+    // opacity:0/max-height:0 的答案自身，宿主净化事件属性后，外层问题行通常没有 cursor。
+    // 此时只在同一直属容器内同时存在“悬停/点击查看”等明确提示与隐藏正文时接管，
+    // 不把普通装饰层或无提示的静态内容误判为交互。
+    if (!hasPointerCursor && !hints.length) return null;
     if (!hints.length && !CONTAINER_INTERNAL_REVEAL_CLASS_RE.test(semantic)) return null;
 
     const targetStates = targets.map(target => ({
@@ -2287,7 +2295,8 @@ function buildRenderedContainerInternalRevealEntry(host) {
 
     host.setAttribute(RENDERED_CONTAINER_INTERNAL_REVEAL_ATTR, 'true');
     targets.forEach((target, index) => target.setAttribute(RENDERED_CONTAINER_INTERNAL_REVEAL_ITEM_ATTR, String(index)));
-    return { host, targetStates, hintStates, active: false };
+    const hoverHint = hints.some(target => CONTAINER_INTERNAL_REVEAL_HOVER_HINT_RE.test(normalizeInteractionMatchText(target.textContent)));
+    return { host, targetStates, hintStates, active: false, pinned: false, hoverHint };
 }
 
 function applyRenderedContainerInternalRevealEntry(entry, active = entry?.active) {
@@ -2335,11 +2344,13 @@ function findRenderedContainerInternalRevealEntries(root) {
 function hasRenderedContainerInternalRevealCandidates(root) {
     if (!root?.querySelectorAll) return false;
     return [...root.querySelectorAll('div, section, article, aside, figure')].some(host => {
-        if (getInlineStyleValue(host, 'cursor').toLowerCase() !== 'pointer') return false;
         if (host.querySelector?.('input, label, button, summary, details, select, textarea')) return false;
         const targets = [...(host.children || [])].filter(element => isRenderedContainerInternalRevealTarget(element, host));
         if (!targets.length) return false;
-        return collectRenderedContainerInternalRevealHints(host, targets).length > 0
+        const hints = collectRenderedContainerInternalRevealHints(host, targets);
+        const hasPointerCursor = getInlineStyleValue(host, 'cursor').toLowerCase() === 'pointer';
+        if (!hasPointerCursor && !hints.length) return false;
+        return hints.length > 0
             || CONTAINER_INTERNAL_REVEAL_CLASS_RE.test(`${host.id || ''} ${getClassTokens(host).join(' ')}`);
     });
 }
@@ -2356,17 +2367,31 @@ function installRenderedContainerInternalRevealRescue(root) {
         if (state.entries.has(entry.host)) continue;
         state.entries.set(entry.host, entry);
         preparePseudoTrigger(entry.host);
-        const toggle = event => {
+        const togglePinned = event => {
             if (event?.type === 'click' && shouldIgnorePseudoToggleEvent(event, entry.host)) return;
             if (event?.type === 'keydown') {
                 if (event.key !== 'Enter' && event.key !== ' ') return;
                 event.preventDefault();
             }
             event?.preventDefault?.();
-            applyRenderedContainerInternalRevealEntry(entry, !entry.active);
+            entry.pinned = !entry.pinned;
+            applyRenderedContainerInternalRevealEntry(entry, entry.pinned);
         };
-        entry.host.addEventListener('click', toggle, false);
-        entry.host.addEventListener('keydown', toggle, false);
+        entry.host.addEventListener('click', togglePinned, false);
+        entry.host.addEventListener('keydown', togglePinned, false);
+
+        // 写着“悬停查看”的结构在桌面端继续保留悬停体验；手机端则由点击锁定。
+        // pinned 与 hover 分离，避免 mouseenter 已展开后随后的 click 反向把内容关掉。
+        if (entry.hoverHint) {
+            entry.host.addEventListener('pointerenter', event => {
+                if (event.pointerType === 'touch' || entry.pinned) return;
+                applyRenderedContainerInternalRevealEntry(entry, true);
+            }, false);
+            entry.host.addEventListener('pointerleave', event => {
+                if (event.pointerType === 'touch' || entry.pinned) return;
+                applyRenderedContainerInternalRevealEntry(entry, false);
+            }, false);
+        }
         applyRenderedContainerInternalRevealEntry(entry, false);
     }
     if (state.entries.size) root.dataset.rabbitMirrorContainerInternalRevealFallback = 'true';
@@ -4690,7 +4715,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 一次性交互诊断：仅在用户按下“开始一次交互诊断”后，临时监听聊天区的下一次交互。
 // 捕获一个兔子镜后只读取该条内容，并在约 650ms 后自动停止全部诊断监听。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.60-TEST-ONESHOT';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.61-TEST-ONESHOT';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -5314,6 +5339,13 @@ function rescueRecentDamagedDataUriMessages(mod = null) {
     let rerendered = false;
 
     for (const { message, index } of findRecentAssistantMessages(host)) {
+        // 交互急救的 data URI 保全是唯一会临时整条重绘消息的自动路线。
+        // 当原消息仍含 <thinking>/<analysis>/<reasoning> 等包裹时，显示正则可能只作用于
+        // 当前渲染结果；若这里拿原始 mes 重新绘制，就会绕过该显示结果并暴露思维内容。
+        // 因此含思维包裹，或 extra.display_text 与原始消息源不同（说明存在显示变换）的消息，
+        // 一律跳过整条临时重绘；其他纯 DOM 交互急救仍照常执行。
+        if (messageContainsReasoningEnvelope(message) || messageUsesDistinctDisplaySource(message)) continue;
+
         const source = getSelectedMessageSource(message);
         if (!source || !/data:image\/svg\+xml/i.test(source)) continue;
         const repaired = rescueDamagedDataUriRabbitMirrorOutput(source);
@@ -6762,6 +6794,30 @@ function cloneMessageForTransientRerender(message) {
     } catch {
         return { ...message };
     }
+}
+
+const TRANSIENT_RERENDER_REASONING_ENVELOPE_RE = /<\s*\/?\s*(?:thinking|think|analysis|reasoning|thought)\b[^>]*>/i;
+
+function messageContainsReasoningEnvelope(message) {
+    const candidates = [];
+    const swipeIndex = Number.isInteger(message?.swipe_id) ? message.swipe_id : -1;
+    if (swipeIndex >= 0 && typeof message?.swipes?.[swipeIndex] === 'string') candidates.push(message.swipes[swipeIndex]);
+    if (typeof message?.mes === 'string') candidates.push(message.mes);
+    if (typeof message?.extra?.display_text === 'string') candidates.push(message.extra.display_text);
+    return candidates.some(source => TRANSIENT_RERENDER_REASONING_ENVELOPE_RE.test(decodeHtmlEntities(source)));
+}
+
+function messageUsesDistinctDisplaySource(message) {
+    if (typeof message?.extra?.display_text !== 'string') return false;
+    const displayText = decodeHtmlEntities(message.extra.display_text).trim();
+    if (!displayText) return false;
+
+    const swipeIndex = Number.isInteger(message?.swipe_id) ? message.swipe_id : -1;
+    const rawSource = swipeIndex >= 0 && typeof message?.swipes?.[swipeIndex] === 'string'
+        ? message.swipes[swipeIndex]
+        : message?.mes;
+    if (typeof rawSource !== 'string') return false;
+    return displayText !== decodeHtmlEntities(rawSource).trim();
 }
 
 function getSelectedMessageSource(message) {
