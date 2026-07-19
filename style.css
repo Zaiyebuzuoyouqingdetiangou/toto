@@ -49,7 +49,7 @@ toto[data-rabbit-mirror="true"] summary {
     min-width: 0;
 }
 
-/* 0.32.67 TEST：一次性交互诊断升级为兔子镜总诊断；急救行为保持不变。 */
+/* 0.32.68 TEST：新增源码恢复链，针对 TH/高亮代码壳瞬时重绘当前显示层。 */
 .rabbit-mirror-settings .rabbit-mirror-primary-toggle {
     padding: 2px 2px 8px;
 }

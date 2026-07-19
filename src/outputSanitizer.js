@@ -3,6 +3,7 @@ import { getSettings } from './settings.js';
 // Cached SillyTavern script module. In module builds, chat is not guaranteed to be exposed on globalThis.
 let hostScriptModule = null;
 
+// 0.32.68: 新增源码恢复链：在 TH/高亮插件生成代码壳后，直接用原始消息的清洗副本瞬时重绘当前显示层；不写回 mes/swipe/display_text；
 // 0.32.67: 一次性交互诊断升级为兔子镜总诊断，可检查交互、代码块、纯文字源码、显示源与触发链；急救逻辑保持不变；
 // 0.32.66: 新增文字可读性底线；代码块急救补充完整转义兔子镜普通文本 DOM 兜底；其余行为保持不变；
 // 本版仅撤回 promptBuilder 中 0.32.60 新增的常驻色彩关系测试规则。
@@ -5062,7 +5063,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 一次性兔子镜总诊断：用户启动后点击一条异常消息。
 // 既可捕获已渲染兔子镜交互，也可捕获尚未恢复的代码块/纯文字兔子镜消息；约 650ms 后自动停止。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
-const INTERACTION_DIAGNOSTIC_VERSION = '0.32.67-TEST-ONESHOT';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.32.68-TEST-ONESHOT';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -6754,6 +6755,107 @@ function preserveAndRerenderSanitizedMessage(mod, index, message) {
     }
 }
 
+
+const SOURCE_RECOVERY_COOLDOWN_MS = 1800;
+const sourceRecoveryLastRun = new Map();
+let codeShellRecoveryObserver = null;
+
+function getMessageIndexFromElement(node) {
+    const messageElement = node?.closest?.('#chat [mesid], .mes[mesid]');
+    const value = Number(messageElement?.getAttribute?.('mesid'));
+    return Number.isInteger(value) && value >= 0 ? value : -1;
+}
+
+function getSourceRecoveryCandidate(message) {
+    if (!message || message?.is_user) return '';
+    const swipeIndex = Number.isInteger(message?.swipe_id) ? message.swipe_id : -1;
+    const sources = [];
+    if (typeof message?.extra?.display_text === 'string') sources.push(message.extra.display_text);
+    if (swipeIndex >= 0 && typeof message?.swipes?.[swipeIndex] === 'string') sources.push(message.swipes[swipeIndex]);
+    if (typeof message?.mes === 'string') sources.push(message.mes);
+
+    for (const source of sources) {
+        const decoded = decodeHtmlEntities(source);
+        if (needsSanitize(decoded)) return decoded;
+    }
+    return '';
+}
+
+function recoverMessageSourceToDisplay(mod, index, message, { force = false } = {}) {
+    if (!isCodeBlockRescueModeEnabled() || !message || message?.is_user) return false;
+    const source = getSourceRecoveryCandidate(message);
+    if (!source) return false;
+
+    // 与思维链隔离保持一致：不得用含 reasoning 包裹的原始源瞬时重绘整条消息。
+    if (TRANSIENT_RERENDER_REASONING_ENVELOPE_RE.test(source)) return false;
+
+    const cleaned = cleanRabbitMirrorOutput(source);
+    if (!cleaned || cleaned === source) return false;
+
+    const signature = `${index}:${source.length}:${cleaned.length}`;
+    const now = Date.now();
+    const previous = sourceRecoveryLastRun.get(signature) || 0;
+    if (!force && now - previous < SOURCE_RECOVERY_COOLDOWN_MS) return false;
+    sourceRecoveryLastRun.set(signature, now);
+
+    const transientMessage = cloneMessageForTransientRerender(message);
+    transientMessage.mes = cleaned;
+    if (Array.isArray(transientMessage.swipes)) {
+        const swipeIndex = Number.isInteger(transientMessage.swipe_id)
+            ? transientMessage.swipe_id
+            : transientMessage.swipes.length - 1;
+        if (typeof transientMessage.swipes[swipeIndex] === 'string') transientMessage.swipes[swipeIndex] = cleaned;
+    }
+    if (typeof transientMessage?.extra?.display_text === 'string') transientMessage.extra.display_text = cleaned;
+
+    const rerendered = preserveAndRerenderSanitizedMessage(mod, index, transientMessage);
+    if (rerendered) setTimeout(() => triggerInteractionRescue(), 80);
+    return rerendered;
+}
+
+function runSourceRecoveryPass(mod, indexes = null, options = {}) {
+    if (!isCodeBlockRescueModeEnabled()) return false;
+    const chat = mod?.chat || globalThis.chat;
+    if (!Array.isArray(chat) || !chat.length) return false;
+
+    const targets = Array.isArray(indexes) && indexes.length
+        ? [...new Set(indexes.filter(index => Number.isInteger(index) && index >= 0))]
+        : findRecentAssistantMessages(mod).map(({ index }) => index);
+
+    let recovered = false;
+    for (const index of targets) {
+        const message = chat[index];
+        if (!message || message?.is_user) continue;
+        recovered = recoverMessageSourceToDisplay(mod, index, message, options) || recovered;
+    }
+    return recovered;
+}
+
+function installCodeShellRecoveryObserver(mod) {
+    if (typeof MutationObserver === 'undefined' || typeof document === 'undefined') return;
+    const root = getChatRoot();
+    if (!root || codeShellRecoveryObserver) return;
+
+    codeShellRecoveryObserver = new MutationObserver(records => {
+        if (!isCodeBlockRescueModeEnabled()) return;
+        const indexes = new Set();
+        for (const record of records) {
+            for (const added of record.addedNodes || []) {
+                if (!(added instanceof Element)) continue;
+                const hit = added.matches?.('.TH-render, pre, code, .hljs, .code_block, .code-block, .codeblock')
+                    || added.querySelector?.('.TH-render, pre, code, .hljs, .code_block, .code-block, .codeblock');
+                if (!hit) continue;
+                const index = getMessageIndexFromElement(added);
+                if (index >= 0) indexes.add(index);
+            }
+        }
+        if (!indexes.size) return;
+        setTimeout(() => runSourceRecoveryPass(mod, [...indexes]), 0);
+        setTimeout(() => runSourceRecoveryPass(mod, [...indexes]), 120);
+    });
+    codeShellRecoveryObserver.observe(root, { childList: true, subtree: true });
+}
+
 function sanitizeLatestRawMessages(mod) {
     if (!isCodeBlockRescueModeEnabled()) return false;
     let rawChanged = false;
@@ -7429,6 +7531,7 @@ export function triggerCodeBlockRescue(mod = null) {
 
 function runCodeBlockRescuePass(mod) {
     if (!isCodeBlockRescueModeEnabled()) return;
+    runSourceRecoveryPass(mod);
     sanitizeLatestRawMessages(mod);
     sanitizeCodeBlocksInChatDom();
     sanitizeWholePlainTextRabbitMirrorsInChatDom();
@@ -7437,7 +7540,10 @@ function runCodeBlockRescuePass(mod) {
 
 function scheduleCodeBlockRescue(mod) {
     if (!isCodeBlockRescueModeEnabled()) return;
+    // 先尝试源码层瞬时恢复，再进入原有多轮 DOM/原文急救。
+    runSourceRecoveryPass(mod);
     const run = () => runCodeBlockRescuePass(mod);
+    setTimeout(run, 0);
     setTimeout(run, 80);
     setTimeout(run, 350);
     setTimeout(run, 900);
@@ -7460,6 +7566,7 @@ function installChatRootReadyObserver(mod) {
     const observer = new MutationObserver(() => {
         if (!getChatRoot()) return;
         observer.disconnect();
+        installCodeShellRecoveryObserver(mod);
         scheduleStableRescueChain(mod);
     });
     observer.observe(document.body, { childList: true, subtree: true });
@@ -7511,6 +7618,7 @@ export async function initOutputSanitizer() {
         }
 
         installChatRootReadyObserver(mod);
+        installCodeShellRecoveryObserver(mod);
         scheduleStableRescueChain(mod);
         console.debug('[RabbitMirror] output sanitizer initialized');
     } catch (error) {

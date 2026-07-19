@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（兔子镜总诊断测试版）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（源码恢复测试版）",
   "loading_order": 99,
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.32.67-test.1",
+  "version": "0.32.68-test.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "TEST build: upgrades the one-shot interaction diagnostic into a full RabbitMirror diagnostic covering interaction, code shells, plain-text toto candidates, display-source differences, parsing viability, and likely trigger failures; rescue behavior remains unchanged."
+  "description": "TEST build: adds transient source recovery before/after TH or syntax-highlighting code shells appear, rebuilding only the current display from a cleaned copy of the original message without writing back mes, swipes, or display_text; retains the full diagnostic and existing rescue paths."
 }
