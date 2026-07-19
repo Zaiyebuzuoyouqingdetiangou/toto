@@ -91,7 +91,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[Menu QR v2.0 动态菜单＋SVG Data URI 保主体急救测试版]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.32.75 TEST</span>
+      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[Menu QR v2.1 动态菜单＋SVG Data URI 保主体急救测试版]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.32.76 TEST</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -259,8 +259,8 @@ export function initRabbitMirrorUI() {
     $('#rh_download_order_qr').on('click', () => {
         try {
             const link = document.createElement('a');
-            link.href = new URL('../assets/RabbitMirror-MenuQR-v2.0.json', import.meta.url).href;
-            link.download = 'RabbitMirror-MenuQR-v2.0.json';
+            link.href = new URL('../assets/RabbitMirror-MenuQR-v2.1.json', import.meta.url).href;
+            link.download = 'RabbitMirror-MenuQR-v2.1.json';
             link.rel = 'noopener';
             document.body.appendChild(link);
             link.click();

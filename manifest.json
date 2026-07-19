@@ -4,7 +4,7 @@
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.32.75-test.1",
+  "version": "0.32.76-test.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "TEST build: replaces the 360-node Quick Replies ordering tree with RabbitMirror Menu QR v2.0, a seven-node dynamic STscript menu containing all 101 thematic elements and 177 presentation formats. Retains custom ordering, one-use pending order semantics, local static download, SVG data-URI body-preservation rescue, data-active group-state rescue, full-chain diagnostic, source recovery, thinking isolation, readability safeguards, dark-background cooldown, and all existing rescue routes. The QR asset is never injected into model context."
+  "description": "TEST build: replaces the 360-node Quick Replies ordering tree with RabbitMirror Menu QR v2.1, a seven-node dynamic STscript menu containing all 101 thematic elements and 177 presentation formats. Retains custom ordering, one-use pending order semantics, local static download, SVG data-URI body-preservation rescue, data-active group-state rescue, full-chain diagnostic, source recovery, thinking isolation, readability safeguards, dark-background cooldown, and all existing rescue routes. The QR asset is never injected into model context."
 }
