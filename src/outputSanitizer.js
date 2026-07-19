@@ -5135,14 +5135,15 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 既可捕获已渲染兔子镜交互，也可捕获尚未恢复的代码块/纯文字兔子镜消息；约 650ms 后自动停止。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
 
-// 0.33.5: 小小维修兔 v1.4。识别仅有选中变色、没有第二层体验的伪交互，避免错误亮绿灯。
+// 0.33.6: 小小维修兔 v1.4。识别仅有选中变色、没有第二层体验的伪交互，避免错误亮绿灯。
 // 设计底线：没有高置信证据就不修改；黄灯才允许调用已有修复路线，红灯只生成诊断。
 const MAINTENANCE_RABBIT_ATTR = 'data-rabbit-mirror-maintenance-rabbit';
 const MAINTENANCE_STATE_ATTR = 'data-rabbit-mirror-maintenance-state';
 const MAINTENANCE_REASON_ATTR = 'data-rabbit-mirror-maintenance-reason';
 const MAINTENANCE_REPAIR_ATTR = 'data-rabbit-mirror-maintenance-repaired';
+const MAINTENANCE_MENU_ATTR = 'data-rabbit-mirror-maintenance-menu';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '0.33.5-TEST-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.33.6-TEST-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -6032,20 +6033,146 @@ function triggerDiagnosticForMaintenanceRoot(root) {
     return true;
 }
 
+function closeMaintenanceRabbitMenu() {
+    document.querySelectorAll?.(`[${MAINTENANCE_MENU_ATTR}]`)?.forEach(panel => panel.remove());
+}
+
+function maintenanceUserRepairInspection(root, mode) {
+    const inspection = inspectMaintenanceRabbit(root);
+    if (mode === 'code' || mode === 'all') {
+        inspection.full = { ...inspection.full, sourceCandidate: true };
+        inspection.code = { ...inspection.code, needsSanitize: true, strictWhole: true };
+    }
+    if (mode === 'style' || mode === 'all') {
+        const full = diagnosticFullChainSummary(root, inspection.code || {}) || {};
+        if (full.damagedDataUriCandidate || full.structureTruncated) {
+            inspection.full = { ...inspection.full, ...full, damagedDataUriCandidate: true };
+        }
+    }
+    return inspection;
+}
+
+function runMaintenanceUserRepair(root, button, mode) {
+    if (!root?.isConnected || !button?.isConnected) return false;
+    const labels = {
+        interaction: '正在尝试修复当前兔子镜的交互',
+        code: '正在尝试恢复当前兔子镜的代码显示',
+        style: '正在尝试修复当前兔子镜的显示样式',
+        all: '正在对当前兔子镜执行强制维修',
+    };
+    setMaintenanceRabbitState(button, MAINTENANCE_STATES.checking, labels[mode] || '正在维修当前兔子镜');
+    const summaryText = getRabbitMirrorSummaryText(root).replace(/🐇[⚪🟢🟡🔴]?/g, '').trim();
+    const originalIndex = getMessageIndexFromMirrorNode(root);
+    try {
+        const inspection = maintenanceUserRepairInspection(root, mode);
+        const sourceResult = (mode === 'code' || mode === 'style' || mode === 'all')
+            ? repairMaintenanceMessageSource(root, inspection)
+            : { changed: false, index: originalIndex, reason: '' };
+        const continueRepair = () => {
+            const liveRoot = findLiveMaintenanceRoot(root, summaryText, sourceResult.index >= 0 ? sourceResult.index : originalIndex);
+            if (!liveRoot) {
+                setMaintenanceRabbitState(button, MAINTENANCE_STATES.unknown, '维修后未找到当前兔子镜，请生成全链路诊断');
+                return;
+            }
+            const liveButton = liveRoot.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || button;
+            if (mode === 'interaction' || mode === 'all') {
+                scopeRabbitMirrorInteractionIds(liveRoot);
+                installIntelligentInteractionRescue(liveRoot);
+                liveRoot.dataset.rabbitMirrorInteractionRescued = 'true';
+            }
+            if (mode === 'style') {
+                scopeRabbitMirrorInteractionIds(liveRoot);
+            }
+            liveButton.setAttribute(MAINTENANCE_REPAIR_ATTR, 'true');
+            setTimeout(() => {
+                const afterRoot = findLiveMaintenanceRoot(liveRoot, summaryText, sourceResult.index >= 0 ? sourceResult.index : originalIndex);
+                const afterButton = afterRoot?.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || liveButton;
+                if (!afterRoot) {
+                    setMaintenanceRabbitState(afterButton, MAINTENANCE_STATES.unknown, '维修后无法重新定位当前兔子镜');
+                    return;
+                }
+                const after = inspectMaintenanceRabbit(afterRoot);
+                if (after.state === MAINTENANCE_STATES.repairable) {
+                    setMaintenanceRabbitState(afterButton, MAINTENANCE_STATES.repairable, `已尝试维修，请实际确认；仍检测到：${after.reason}`);
+                } else if (after.state === MAINTENANCE_STATES.unknown) {
+                    setMaintenanceRabbitState(afterButton, MAINTENANCE_STATES.idle, '已尝试维修，请实际确认；若仍异常请生成全链路诊断');
+                } else {
+                    setMaintenanceRabbitState(afterButton, MAINTENANCE_STATES.idle, '维修路线已执行，请实际确认是否恢复正常');
+                }
+            }, 360);
+        };
+        if (sourceResult.changed) setTimeout(continueRepair, 200);
+        else continueRepair();
+    } catch (error) {
+        console.debug('[RabbitMirror] maintenance user repair failed:', error);
+        setMaintenanceRabbitState(button, MAINTENANCE_STATES.unknown, '维修执行失败，请生成全链路诊断');
+        return false;
+    }
+    return true;
+}
+
+function showMaintenanceRabbitMenu(root, button) {
+    closeMaintenanceRabbitMenu();
+    if (!root?.isConnected || !button?.isConnected) return false;
+    const panel = document.createElement('div');
+    panel.className = 'rabbit-mirror-maintenance-menu';
+    panel.setAttribute(MAINTENANCE_MENU_ATTR, 'true');
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-label', '小小维修兔');
+    panel.innerHTML = `
+      <div class="rabbit-mirror-maintenance-menu-title">🐇 这面兔子镜哪里不对？</div>
+      <button type="button" data-rm-maintenance-action="patrol">🔍 先让维修兔巡逻</button>
+      <button type="button" data-rm-maintenance-action="interaction">🖱️ 点了没有反应</button>
+      <button type="button" data-rm-maintenance-action="code">📄 显示了一堆代码</button>
+      <button type="button" data-rm-maintenance-action="style">🎨 样子不对</button>
+      <button type="button" data-rm-maintenance-action="all">🔧 全部试试（强制维修）</button>
+      <button type="button" data-rm-maintenance-action="diagnostic">📋 生成全链路诊断</button>
+      <button type="button" data-rm-maintenance-action="close">关闭</button>`;
+    document.body.appendChild(panel);
+    const rect = button.getBoundingClientRect();
+    const width = Math.min(300, Math.max(240, globalThis.innerWidth - 24));
+    panel.style.width = `${width}px`;
+    const left = Math.max(12, Math.min(rect.left, globalThis.innerWidth - width - 12));
+    panel.style.left = `${left}px`;
+    panel.style.top = `${Math.min(rect.bottom + 6, globalThis.innerHeight - panel.offsetHeight - 12)}px`;
+    panel.addEventListener('click', event => {
+        const action = event.target?.closest?.('[data-rm-maintenance-action]')?.getAttribute('data-rm-maintenance-action');
+        if (!action) return;
+        event.preventDefault();
+        event.stopPropagation();
+        closeMaintenanceRabbitMenu();
+        if (action === 'close') return;
+        if (action === 'patrol') {
+            patrolMaintenanceRabbit(root, button);
+            return;
+        }
+        if (action === 'diagnostic') {
+            triggerDiagnosticForMaintenanceRoot(root);
+            return;
+        }
+        runMaintenanceUserRepair(root, button, action);
+    }, true);
+    setTimeout(() => {
+        const closeOnOutside = event => {
+            if (!panel.isConnected) {
+                document.removeEventListener('pointerdown', closeOnOutside, true);
+                return;
+            }
+            if (!panel.contains(event.target) && event.target !== button) {
+                closeMaintenanceRabbitMenu();
+                document.removeEventListener('pointerdown', closeOnOutside, true);
+            }
+        };
+        document.addEventListener('pointerdown', closeOnOutside, true);
+    }, 0);
+    return true;
+}
+
 function handleMaintenanceRabbitClick(event, root, button) {
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation?.();
-    const state = button.getAttribute(MAINTENANCE_STATE_ATTR) || MAINTENANCE_STATES.idle;
-    if (state === MAINTENANCE_STATES.repairable) {
-        runMaintenanceRabbitRepair(root, button);
-        return;
-    }
-    if (state === MAINTENANCE_STATES.unknown) {
-        triggerDiagnosticForMaintenanceRoot(root);
-        return;
-    }
-    patrolMaintenanceRabbit(root, button);
+    showMaintenanceRabbitMenu(root, button);
 }
 
 function installMaintenanceRabbitForRoot(root) {

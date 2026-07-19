@@ -1,4 +1,4 @@
-/* 0.33.5 TEST：小小维修兔 v1.1 合并旧急救入口，并严格按单条兔子镜维护。 */
+/* 0.33.6 TEST：小小维修兔 v1.5 增加用户现象维修菜单与强制维修入口。 */
 .rabbit-mirror-settings .inline-drawer-content {
     padding: 10px;
 }
@@ -129,7 +129,7 @@ toto[data-rabbit-mirror="true"] summary {
     line-height: 1.45;
 }
 
-/* 0.33.5 小小维修兔 v1.4：每条标题后独立四状态入口。默认仅显示，不巡逻、不修改。 */
+/* 0.33.6 小小维修兔 v1.5：每条标题后独立入口，点击打开本地维修菜单。 */
 .rabbit-mirror-maintenance-rabbit {
   display: inline-flex !important;
   align-items: center !important;
@@ -157,3 +157,38 @@ toto[data-rabbit-mirror="true"] summary {
 .rabbit-mirror-maintenance-rabbit[data-rabbit-mirror-maintenance-state="unknown"]::before { content: '🐇🔴'; }
 .rabbit-mirror-maintenance-rabbit:hover { background: color-mix(in srgb, currentColor 10%, transparent) !important; }
 .rabbit-mirror-maintenance-rabbit:focus-visible { outline: 2px solid currentColor !important; outline-offset: 2px !important; }
+
+
+.rabbit-mirror-maintenance-menu {
+  position: fixed !important;
+  z-index: 100000 !important;
+  display: grid !important;
+  gap: 6px !important;
+  padding: 10px !important;
+  border: 1px solid var(--SmartThemeBorderColor, rgba(128,128,128,.45)) !important;
+  border-radius: 10px !important;
+  background: var(--SmartThemeBlurTintColor, var(--SmartThemeBodyColor, #fff)) !important;
+  color: var(--SmartThemeBodyColor, inherit) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,.2) !important;
+  font-family: inherit !important;
+}
+.rabbit-mirror-maintenance-menu-title {
+  font-weight: 700 !important;
+  line-height: 1.4 !important;
+  margin-bottom: 2px !important;
+}
+.rabbit-mirror-maintenance-menu button {
+  width: 100% !important;
+  min-height: 36px !important;
+  padding: 7px 9px !important;
+  border: 1px solid var(--SmartThemeBorderColor, rgba(128,128,128,.35)) !important;
+  border-radius: 7px !important;
+  background: color-mix(in srgb, currentColor 7%, transparent) !important;
+  color: inherit !important;
+  text-align: left !important;
+  cursor: pointer !important;
+}
+.rabbit-mirror-maintenance-menu button:hover,
+.rabbit-mirror-maintenance-menu button:focus-visible {
+  background: color-mix(in srgb, currentColor 14%, transparent) !important;
+}

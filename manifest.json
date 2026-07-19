@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（小小维修兔 v1.4 加载修复版）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（小小维修兔 v1.5 用户维修菜单版）",
   "loading_order": 99,
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.33.5-test.1",
+  "version": "0.33.6-test.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "TEST build: fixes a plugin initialization failure introduced in 0.33.4 by accidental newline/backspace control characters inside the incomplete-interaction detector. Restores the settings panel and RabbitMirror runtime while retaining v1.4 incomplete-interaction recognition, mirror-scoped repair, 101 thematic elements, 177 presentation formats, Menu QR v2.1, full-chain diagnostics, and all existing features."
+  "description": "TEST build: adds Maintenance Rabbit v1.5 user-facing local repair menu for each individual RabbitMirror. Users can choose no response, visible code, broken appearance, force all known repairs, or generate a mirror-scoped full-chain diagnostic. Green status no longer blocks manual repair. Prompt, pools, Menu QR v2.1, and all existing features remain unchanged."
 }
