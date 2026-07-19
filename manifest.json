@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（点菜QR下载＋全链路诊断测试版）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（动态点菜 QR＋全链路诊断测试版）",
   "loading_order": 99,
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.32.74-test.1",
+  "version": "0.32.75-test.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "TEST build: strengthens damaged inline SVG data-URI body-preservation rescue and adds high-confidence DOM truncation diagnostics. The local download button for the expandable RabbitMirror Quick Replies ordering tree remains available. The bundled QR creates a latest-pending, one-use order that expires after the next RabbitMirror actually adopts it. The QR is a static asset and is never injected into model context. Retains 101 thematic elements, 177 presentation formats, data-active group-state rescue, media-native interaction, full-chain diagnostic, source recovery, thinking isolation, readability safeguards, dark-background cooldown, and all existing rescue routes."
+  "description": "TEST build: replaces the 360-node Quick Replies ordering tree with RabbitMirror Menu QR v2.0, a seven-node dynamic STscript menu containing all 101 thematic elements and 177 presentation formats. Retains custom ordering, one-use pending order semantics, local static download, SVG data-URI body-preservation rescue, data-active group-state rescue, full-chain diagnostic, source recovery, thinking isolation, readability safeguards, dark-background cooldown, and all existing rescue routes. The QR asset is never injected into model context."
 }
