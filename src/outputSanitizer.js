@@ -5134,14 +5134,14 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 既可捕获已渲染兔子镜交互，也可捕获尚未恢复的代码块/纯文字兔子镜消息；约 650ms 后自动停止。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
 
-// 0.33.1: 小小维修兔 v1.1。旧急救入口已合并；每只维修兔只维护当前这一条。
+// 0.33.2: 小小维修兔 v1.2。巡逻检查分段容错；内部异常不再误报红灯。
 // 设计底线：没有高置信证据就不修改；黄灯才允许调用已有修复路线，红灯只生成诊断。
 const MAINTENANCE_RABBIT_ATTR = 'data-rabbit-mirror-maintenance-rabbit';
 const MAINTENANCE_STATE_ATTR = 'data-rabbit-mirror-maintenance-state';
 const MAINTENANCE_REASON_ATTR = 'data-rabbit-mirror-maintenance-reason';
 const MAINTENANCE_REPAIR_ATTR = 'data-rabbit-mirror-maintenance-repaired';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '0.33.1-TEST-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.33.2-TEST-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -5787,10 +5787,52 @@ function maintenanceKnownInteractionEvidence(root, full, code) {
     return { checkedControlsLost, strippedStateProgram, touchHoverMissing, unscopedControls, raw };
 }
 
+function maintenanceFallbackFullSummary(root) {
+    const body = diagnosticMessageBody(root) || root;
+    const renderedHtml = String(body?.innerHTML || '');
+    const renderedText = String(body?.textContent || '');
+    const styleTexts = [...(body?.querySelectorAll?.('style') || [])].map(style => String(style.textContent || '')).join('\n');
+    return {
+        renderedEscapedTags: /&lt;\/?[a-z]/i.test(renderedHtml) || /<toto\b/i.test(renderedText),
+        structureTruncated: false,
+        damagedDataUriCandidate: false,
+        sourceCandidate: false,
+        severeStructureLoss: false,
+        controlsLost: false,
+        checkedCount: (styleTexts.match(/:checked\b/gi) || []).length,
+        rawInlineEvents: 0,
+        renderedInlineEvents: 0,
+        hoverCount: (styleTexts.match(/:hover\b/gi) || []).length,
+        activeCount: (styleTexts.match(/:active\b/gi) || []).length,
+        inputCount: body?.querySelectorAll?.('input,select,textarea')?.length || 0,
+        buttonCount: body?.querySelectorAll?.('button')?.length || 0,
+    };
+}
+
 function inspectMaintenanceRabbit(root) {
-    const code = diagnosticCodeRescueSummary(root);
-    const full = diagnosticFullChainSummary(root, code);
-    const interaction = maintenanceKnownInteractionEvidence(root, full, code);
+    let code = {};
+    let full = maintenanceFallbackFullSummary(root);
+    let partialInspection = false;
+    try {
+        code = diagnosticCodeRescueSummary(root) || {};
+    } catch (error) {
+        partialInspection = true;
+        console.debug('[RabbitMirror] maintenance code inspection skipped:', error);
+    }
+    try {
+        full = { ...full, ...(diagnosticFullChainSummary(root, code) || {}) };
+    } catch (error) {
+        partialInspection = true;
+        console.debug('[RabbitMirror] maintenance full-chain inspection skipped:', error);
+    }
+    let interaction;
+    try {
+        interaction = maintenanceKnownInteractionEvidence(root, full, code);
+    } catch (error) {
+        partialInspection = true;
+        console.debug('[RabbitMirror] maintenance interaction inspection skipped:', error);
+        interaction = { checkedControlsLost: false, strippedStateProgram: false, touchHoverMissing: false, unscopedControls: false, raw: '' };
+    }
     const reasons = [];
 
     if (full.structureTruncated || full.damagedDataUriCandidate) reasons.push('损坏的 SVG Data URI／结构截断');
@@ -5810,7 +5852,10 @@ function inspectMaintenanceRabbit(root) {
     if (unknownReasons.length) {
         return { state: MAINTENANCE_STATES.unknown, reason: unknownReasons.join('；'), code, full, interaction };
     }
-    return { state: MAINTENANCE_STATES.healthy, reason: '未发现高置信异常', code, full, interaction };
+    const healthyReason = partialInspection
+        ? '未发现可确认异常（部分巡逻项目已安全跳过）'
+        : (full.activeCount > 0 && full.checkedCount === 0 ? '原生按压／长按交互完整，未发现高置信异常' : '未发现高置信异常');
+    return { state: MAINTENANCE_STATES.healthy, reason: healthyReason, code, full, interaction };
 }
 
 function patrolMaintenanceRabbit(root, button) {
@@ -5821,7 +5866,7 @@ function patrolMaintenanceRabbit(root, button) {
         result = inspectMaintenanceRabbit(root);
     } catch (error) {
         console.debug('[RabbitMirror] maintenance rabbit patrol failed:', error);
-        result = { state: MAINTENANCE_STATES.unknown, reason: '巡逻过程发生异常' };
+        result = { state: MAINTENANCE_STATES.idle, reason: '巡逻未完成，可点击重试；未对当前兔子镜作任何修改' };
     }
     setTimeout(() => {
         if (button.isConnected) setMaintenanceRabbitState(button, result.state, result.reason);

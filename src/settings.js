@@ -111,7 +111,7 @@ export function getSettings() {
     settings.formatsMax = Number(settings.formatsMax) || defaultSettings.formatsMax;
     settings.cooldownRounds = Math.max(1, Number(settings.cooldownRounds) || defaultSettings.cooldownRounds);
     if (settings.autoRabbitMirrorInjection === undefined) settings.autoRabbitMirrorInjection = settings.enabled !== false;
-    // 0.33.1：旧急救开关合并进小小维修兔。旧用户只要曾开启任一急救，就自动启用维修兔；
+    // 0.33.2：旧急救开关合并进小小维修兔。旧用户只要曾开启任一急救，就自动启用维修兔；
     // 随后强制关闭旧全局扫描，避免与逐条维修兔重复介入。
     const legacyRescueWasEnabled = !!(settings.plainTextRescueMode || settings.codeBlockRescueMode || settings.interactionRescueMode);
     if (settings.maintenanceRabbitEnabled === undefined) {
