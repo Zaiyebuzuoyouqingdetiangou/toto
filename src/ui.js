@@ -91,7 +91,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[小小维修兔 v1.17＋Menu QR v2.1 测试版]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.33.23 TEST</span>
+      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[小小维修兔 v1.18＋Menu QR v2.1 测试版]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.33.24 TEST</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -145,7 +145,7 @@ export function initRabbitMirrorUI() {
           <label class="checkbox_label" style="font-weight:700;"><input id="rh_maintenance_rabbit" type="checkbox"> 🐇 启用小小维修兔</label>
           <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.78;font-size:12px;line-height:1.5;">在每条已渲染兔子镜标题后安装独立维修入口；一只维修兔只负责当前这一条，不扫描或修改其他兔子镜。</div>
           <div class="rabbit-mirror-maintenance-help" style="margin-top:8px;padding:10px 0;border-top:1px dashed color-mix(in srgb, var(--SmartThemeBorderColor) 62%, transparent);border-bottom:1px dashed color-mix(in srgb, var(--SmartThemeBorderColor) 62%, transparent);">
-            <div style="font-weight:700;margin-bottom:5px;">🐇 小小维修兔 v1.17</div>
+            <div style="font-weight:700;margin-bottom:5px;">🐇 小小维修兔 v1.18</div>
             <div class="rabbit-mirror-subnote" style="opacity:.8;font-size:12px;line-height:1.55;">点击标题后的维修兔，会打开本地菜单。优先点“自动判断并维修”；代码块与纯文字已合并为同一条源码恢复路线，不需要自己判断。绿灯也可以手动维修。</div>
             <div class="rabbit-mirror-subnote" style="margin-top:5px;opacity:.72;font-size:12px;line-height:1.5;">维修兔的自动巡逻仍遵循“没有证据就不修改”；只有用户明确选择“自动维修”、某种问题或“全部试试”时，才会对当前这一面兔子镜执行对应维修路线。所有菜单操作均为本地 UI，不增加模型 token。</div>
           </div>

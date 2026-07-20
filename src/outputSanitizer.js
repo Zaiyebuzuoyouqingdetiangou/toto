@@ -4571,7 +4571,7 @@ function installPseudoInteractionRescue(root) {
 }
 
 function detectInteractionCapabilities(root) {
-    if (!root?.querySelectorAll) return { checked: false, hover: false, details: false, target: false, pseudo: false, listDetail: false, maskReveal: false, stateSibling: false, buttonAdjacent: false, clickableAdjacent: false, clickablePopup: false, containerReveal: false, selfMutation: false };
+    if (!root?.querySelectorAll) return { checked: false, hover: false, details: false, target: false, pseudo: false, listDetail: false, maskReveal: false, stateSibling: false, buttonAdjacent: false, clickableAdjacent: false, clickablePopup: false, containerReveal: false, selfMutation: false, selectionFallback: false };
     const cssText = [...root.querySelectorAll('style')].map(style => style.textContent || '').join('\n');
     const outerDetails = root.matches?.('details') ? root : root.querySelector(':scope > details');
     const nestedDetails = [...root.querySelectorAll('details')].filter(item => item !== outerDetails);
@@ -4589,6 +4589,7 @@ function detectInteractionCapabilities(root) {
         clickablePopup: hasRenderedClickableAdjacentPopupCandidates(root),
         containerReveal: hasRenderedContainerInternalRevealCandidates(root),
         selfMutation: (rawSelfMutationRescueStates.get(root)?.entries?.size || 0) > 0,
+        selectionFallback: !!root.querySelector(`[${SELECTION_ONLY_FALLBACK_ATTR}]`),
     };
     interactionCapabilityStates.set(root, capabilities);
     root.dataset.rabbitMirrorInteractionRoutes = Object.entries(capabilities)
@@ -5505,8 +5506,11 @@ const MAINTENANCE_STATE_ATTR = 'data-rabbit-mirror-maintenance-state';
 const MAINTENANCE_REASON_ATTR = 'data-rabbit-mirror-maintenance-reason';
 const MAINTENANCE_REPAIR_ATTR = 'data-rabbit-mirror-maintenance-repaired';
 const MAINTENANCE_MENU_ATTR = 'data-rabbit-mirror-maintenance-menu';
+const SELECTION_ONLY_FALLBACK_ATTR = 'data-rabbit-mirror-selection-only-fallback';
+const SELECTION_ONLY_PLACEHOLDER_ATTR = 'data-rabbit-mirror-selection-only-placeholder';
+const SELECTION_ONLY_SOURCE_ATTR = 'data-rabbit-mirror-selection-only-source';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '0.33.23-TEST-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.33.24-TEST-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -5627,13 +5631,14 @@ function diagnosticRouteSummary(root) {
         changeProgram: root?.querySelectorAll?.(`[${CHANGE_PSEUDO_RESCUE_ATTR}]`)?.length || 0,
         unlabeledChecked: unlabeledCheckedHostRescueStates.get(root)?.entries?.size || 0,
         webkit3dFlip: Number.parseInt(root?.getAttribute?.(WEBKIT_3D_FLIP_RESCUE_ATTR) || '0', 10) || 0,
+        selectionFallback: root?.querySelectorAll?.(`[${SELECTION_ONLY_FALLBACK_ATTR}]`)?.length || 0,
     };
 }
 
 function diagnosticInferReason(root, inputs, targets) {
     const routes = diagnosticRouteSummary(root);
     const depth = maintenanceCheckedInteractionDepth(root);
-    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.stateSibling + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.focusToChecked + routes.checkedTextRule + routes.expandedOpacity + routes.containerReveal + routes.selfMutation + routes.classStateProgram + routes.cssCommentRepair + routes.changeProgram + routes.unlabeledChecked;
+    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.stateSibling + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.focusToChecked + routes.checkedTextRule + routes.expandedOpacity + routes.containerReveal + routes.selfMutation + routes.classStateProgram + routes.cssCommentRepair + routes.changeProgram + routes.unlabeledChecked + routes.selectionFallback;
     const checkedInputs = inputs.filter(input => input.checked);
     const visibleTargets = targets.filter(target => {
         const style = diagnosticComputedStyle(target);
@@ -5642,7 +5647,8 @@ function diagnosticInferReason(root, inputs, targets) {
         return style?.display !== 'none' && style?.visibility !== 'hidden' && opacity > 0.05 && rect.height > 0;
     });
 
-    if (depth.checkedSelectionOnly && !targets.length) return 'radio/checkbox 只改变选中项外观，源码没有可识别的第二层内容；维修兔不能凭空补写缺失体验。';
+    if (depth.selectionOnlyFallbackCount > 0) return '已为缺少分支内容的选择控件建立明确缺失提示与返回路径；默认内容保持原样，其他选项不会伪造剧情。';
+    if (depth.checkedSelectionOnly && !targets.length) return 'radio/checkbox 只改变选中项外观，源码没有可识别的第二层内容；可使用维修兔建立缺失提示与返回路径。';
     if (!inputs.length && routeCount && visibleTargets.length) return '非表单交互急救路线已建立，候选内容在计算样式中已有可见项。';
     if (!inputs.length && routeCount) return '非表单交互急救路线已建立，但候选内容最终仍不可见：样式可能被覆盖或被布局裁切。';
     if (!inputs.length) return '未找到 checkbox/radio：渲染后控件可能被删除，或当前交互并非表单状态结构。';
@@ -5976,7 +5982,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `ID目标显隐 entries=${routes.checkedIdTarget} listener=${root.dataset.rabbitMirrorCheckedIdTargetFallback || 'false'}`,
         `focus→checked entries=${routes.focusToChecked} listener=${routes.focusToChecked ? 'true' : 'false'}`,
         `CSS状态规则 entries=${routes.checkedTextRule} listener=${routes.checkedTextRule ? 'true' : 'false'}`,
-        `checked交互深度 rules=${checkedDepth.checkedRuleCount} selectionOnly=${checkedDepth.selectionStyleRuleCount} secondLayer=${checkedDepth.meaningfulCheckedRuleCount}`,
+        `checked交互深度 rules=${checkedDepth.checkedRuleCount} selectionOnly=${checkedDepth.selectionStyleRuleCount} secondLayer=${checkedDepth.meaningfulCheckedRuleCount} fallback=${checkedDepth.selectionOnlyFallbackCount}`,
         `展开透明保全 entries=${routes.expandedOpacity} listener=${routes.expandedOpacity ? 'true' : 'false'}`,
         `容器内揭示 entries=${routes.containerReveal} listener=${root.dataset.rabbitMirrorContainerInternalRevealFallback || 'false'}`,
         `元素自变化 entries=${routes.selfMutation} listener=${root.dataset.rabbitMirrorSelfMutationFallback || 'false'}`,
@@ -5984,6 +5990,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `CSS注释保全 entries=${routes.cssCommentRepair} listener=${routes.cssCommentRepair ? 'true' : 'false'}`,
         `安全状态程序 entries=${routes.changeProgram} listener=${routes.changeProgram ? 'true' : 'false'}`,
         `无label控件宿主 entries=${routes.unlabeledChecked} listener=${routes.unlabeledChecked ? 'true' : 'false'} last=${root.dataset.rabbitMirrorUnlabeledCheckedLast || '(尚未点击验证)'}`,
+        `缺失分支兜底 entries=${routes.selectionFallback} listener=${routes.selectionFallback ? 'true' : 'false'}`,
         `iOS 3D翻面兼容 patches=${routes.webkit3dFlip} evidence=${formatWebKit3DFlipEvidence(root)}`,
         `label fallback=${root.dataset.rabbitMirrorLabelFallback || root.dataset.rabbitMirrorCheckedFallback || 'unknown'}`,
         '',
@@ -6288,6 +6295,131 @@ function maintenanceInteractionScopeEvidence(root) {
     return { duplicateIds, brokenLocalLabels, checkedCssIdSelectors, needsScopeRepair: controls.length > 0 && (duplicateIds > 0 || brokenLocalLabels > 0) };
 }
 
+
+function selectionOnlyFallbackLabelText(input) {
+    const label = input?.closest?.('label');
+    const text = diagnosticCompactText(label?.textContent || input?.value || input?.id || '该选项', 120);
+    return text || '该选项';
+}
+
+function lowestCommonElementAncestor(elements, boundary) {
+    const list = (elements || []).filter(Boolean);
+    if (!list.length) return null;
+    let node = list[0];
+    while (node && node !== boundary) {
+        if (list.every(element => node.contains?.(element))) return node;
+        node = node.parentElement;
+    }
+    return boundary && list.every(element => boundary.contains?.(element)) ? boundary : null;
+}
+
+function nextSelectionOnlyContentRegion(groupContainer, root) {
+    let current = groupContainer;
+    while (current && current !== root) {
+        let sibling = current.nextElementSibling;
+        while (sibling) {
+            const tag = String(sibling.tagName || '').toLowerCase();
+            const text = String(sibling.textContent || '').replace(/\s+/g, ' ').trim();
+            if (!['style', 'script', 'br'].includes(tag)
+                && !(tag === 'p' && !text)
+                && !diagnosticIsInternalUiNode(sibling)
+                && !sibling.matches?.(`[${SELECTION_ONLY_PLACEHOLDER_ATTR}]`)) {
+                const hasControls = !!sibling.querySelector?.('input, select, textarea, button, label');
+                if (!hasControls && text.length >= 60) return sibling;
+                break;
+            }
+            sibling = sibling.nextElementSibling;
+        }
+        current = current.parentElement;
+    }
+    return null;
+}
+
+function findSelectionOnlyRadioFallbackCandidates(root) {
+    if (!root?.querySelectorAll) return [];
+    const groups = new Map();
+    for (const input of diagnosticQueryContentAll(root, 'input[type="radio"]')) {
+        const name = String(input.name || '').trim();
+        if (!name) continue;
+        if (!groups.has(name)) groups.set(name, []);
+        groups.get(name).push(input);
+    }
+
+    const candidates = [];
+    for (const inputs of groups.values()) {
+        if (inputs.length < 2) continue;
+        const labels = inputs.map(input => input.closest?.('label')).filter(Boolean);
+        if (labels.length !== inputs.length) continue;
+        const groupContainer = lowestCommonElementAncestor(labels, root);
+        if (!groupContainer || groupContainer === root || groupContainer.hasAttribute?.(SELECTION_ONLY_FALLBACK_ATTR)) continue;
+        const contentRegion = nextSelectionOnlyContentRegion(groupContainer, root);
+        if (!contentRegion) continue;
+        const defaultInput = inputs.find(input => input.checked) || inputs[0];
+        if (!defaultInput) continue;
+        candidates.push({ inputs, labels, groupContainer, contentRegion, defaultInput });
+    }
+    return candidates;
+}
+
+function installSelectionOnlyStateFallback(root) {
+    if (!root?.querySelectorAll || !maintenanceCheckedInteractionDepth(root).checkedSelectionOnly) return 0;
+    let installed = 0;
+    for (const candidate of findSelectionOnlyRadioFallbackCandidates(root)) {
+        const { inputs, groupContainer, contentRegion, defaultInput } = candidate;
+        const placeholder = document.createElement('div');
+        placeholder.setAttribute(SELECTION_ONLY_PLACEHOLDER_ATTR, 'true');
+        placeholder.setAttribute('role', 'status');
+        placeholder.setAttribute('aria-live', 'polite');
+        placeholder.hidden = true;
+        placeholder.style.cssText = 'box-sizing:border-box;width:100%;padding:16px;border:1px dashed currentColor;border-radius:6px;line-height:1.6;opacity:.82;';
+        const title = document.createElement('div');
+        title.style.cssText = 'font-weight:700;margin-bottom:6px;';
+        const note = document.createElement('div');
+        note.style.cssText = 'font-size:13px;opacity:.78;';
+        note.textContent = '原始输出未提供此选项的对应内容。切回默认选项可查看已保留内容。';
+        placeholder.append(title, note);
+        contentRegion.insertAdjacentElement('afterend', placeholder);
+        contentRegion.setAttribute(SELECTION_ONLY_SOURCE_ATTR, 'true');
+
+        const originalDisplay = contentRegion.style.getPropertyValue('display');
+        const originalPriority = contentRegion.style.getPropertyPriority('display');
+        const render = () => {
+            const selected = inputs.find(input => input.checked) || defaultInput;
+            const showOriginal = selected === defaultInput;
+            if (showOriginal) {
+                if (originalDisplay) contentRegion.style.setProperty('display', originalDisplay, originalPriority);
+                else contentRegion.style.removeProperty('display');
+                placeholder.hidden = true;
+                placeholder.style.display = 'none';
+            } else {
+                contentRegion.style.setProperty('display', 'none', 'important');
+                title.textContent = selectionOnlyFallbackLabelText(selected);
+                placeholder.hidden = false;
+                placeholder.style.display = 'block';
+            }
+            groupContainer.dataset.rabbitMirrorSelectionOnlySelected = String(selected?.id || '');
+        };
+        const onChange = event => {
+            if (!inputs.includes(event.target)) return;
+            render();
+        };
+        groupContainer.addEventListener('change', onChange, false);
+        groupContainer.setAttribute(SELECTION_ONLY_FALLBACK_ATTR, 'true');
+        render();
+        installed += 1;
+    }
+    if (installed > 0) {
+        const capabilities = detectInteractionCapabilities(root);
+        capabilities.selectionFallback = true;
+        interactionCapabilityStates.set(root, capabilities);
+        root.dataset.rabbitMirrorInteractionRoutes = Object.entries(capabilities)
+            .filter(([, enabled]) => enabled)
+            .map(([name]) => name)
+            .join(',') || 'none';
+    }
+    return installed;
+}
+
 function isCheckedSelectionVisualProperty(property, value) {
     const name = String(property || '').trim().toLowerCase();
     const cleanValue = String(value || '').trim().toLowerCase();
@@ -6314,7 +6446,8 @@ function isCheckedSelectionVisualProperty(property, value) {
 
 function maintenanceCheckedInteractionDepth(root) {
     const controls = diagnosticQueryContentAll(root, 'input[type="checkbox"], input[type="radio"]');
-    if (!controls.length) return { checkedSelectionOnly: false, checkedRuleCount: 0, meaningfulCheckedRuleCount: 0, selectionStyleRuleCount: 0 };
+    const selectionOnlyFallbackCount = diagnosticQueryContentAll(root, `[${SELECTION_ONLY_FALLBACK_ATTR}]`).length;
+    if (!controls.length) return { checkedSelectionOnly: false, checkedSelectionOnlyRaw: false, checkedRuleCount: 0, meaningfulCheckedRuleCount: 0, selectionStyleRuleCount: 0, selectionOnlyFallbackCount };
 
     let checkedRuleCount = 0;
     let meaningfulCheckedRuleCount = 0;
@@ -6339,11 +6472,12 @@ function maintenanceCheckedInteractionDepth(root) {
         }
     }
 
-    const checkedSelectionOnly = checkedRuleCount > 0
+    const checkedSelectionOnlyRaw = checkedRuleCount > 0
         && meaningfulCheckedRuleCount === 0
         && selectionStyleRuleCount === checkedRuleCount
         && controls.length > 1;
-    return { checkedSelectionOnly, checkedRuleCount, meaningfulCheckedRuleCount, selectionStyleRuleCount };
+    const checkedSelectionOnly = checkedSelectionOnlyRaw && selectionOnlyFallbackCount === 0;
+    return { checkedSelectionOnly, checkedSelectionOnlyRaw, checkedRuleCount, meaningfulCheckedRuleCount, selectionStyleRuleCount, selectionOnlyFallbackCount };
 }
 
 function maintenanceKnownInteractionEvidence(root, full, code) {
@@ -6353,6 +6487,9 @@ function maintenanceKnownInteractionEvidence(root, full, code) {
     const strippedStateProgram = full.rawInlineEvents > full.renderedInlineEvents && stateProgram;
     const scopeEvidence = maintenanceInteractionScopeEvidence(root);
     const checkedDepth = maintenanceCheckedInteractionDepth(root);
+    const selectionOnlyRepairCandidateCount = checkedDepth.checkedSelectionOnly
+        ? findSelectionOnlyRadioFallbackCandidates(root).length
+        : 0;
     // 只有选中项外观变化时，补 Hover 也不会生成缺失的第二层内容，不能误导为可修复交互。
     const touchHoverMissing = !checkedDepth.checkedSelectionOnly
         && isLikelyTouchDevice() && full.hoverCount > 0
@@ -6360,7 +6497,7 @@ function maintenanceKnownInteractionEvidence(root, full, code) {
         && root.getAttribute?.('data-rabbit-mirror-touch-hover-fallback') !== 'true';
     const unscopedControls = (full.inputCount > 0 || full.buttonCount > 0)
         && root.dataset?.rabbitMirrorInteractionScoped !== 'true';
-    return { checkedControlsLost, strippedStateProgram, touchHoverMissing, unscopedControls, raw, ...scopeEvidence, ...checkedDepth };
+    return { checkedControlsLost, strippedStateProgram, touchHoverMissing, unscopedControls, selectionOnlyRepairCandidateCount, raw, ...scopeEvidence, ...checkedDepth };
 }
 
 function maintenanceFallbackFullSummary(root) {
@@ -6417,7 +6554,7 @@ function inspectMaintenanceRabbit(root) {
     } catch (error) {
         partialInspection = true;
         console.debug('[RabbitMirror] maintenance interaction inspection skipped:', error);
-        interaction = { checkedControlsLost: false, strippedStateProgram: false, touchHoverMissing: false, unscopedControls: false, duplicateIds: 0, brokenLocalLabels: 0, checkedCssIdSelectors: 0, needsScopeRepair: false, checkedSelectionOnly: false, checkedRuleCount: 0, meaningfulCheckedRuleCount: 0, selectionStyleRuleCount: 0, raw: '' };
+        interaction = { checkedControlsLost: false, strippedStateProgram: false, touchHoverMissing: false, unscopedControls: false, duplicateIds: 0, brokenLocalLabels: 0, checkedCssIdSelectors: 0, needsScopeRepair: false, checkedSelectionOnly: false, checkedSelectionOnlyRaw: false, checkedRuleCount: 0, meaningfulCheckedRuleCount: 0, selectionStyleRuleCount: 0, selectionOnlyFallbackCount: 0, selectionOnlyRepairCandidateCount: 0, raw: '' };
     }
     const reasons = [];
 
@@ -6429,6 +6566,7 @@ function inspectMaintenanceRabbit(root) {
     if (interaction.checkedControlsLost) reasons.push('CSS 仍依赖 checked，但控件已丢失');
     if (interaction.strippedStateProgram) reasons.push('宿主删除了可识别的状态事件');
     if (interaction.touchHoverMissing) reasons.push('触屏环境缺少 Hover 兜底');
+    if (interaction.selectionOnlyRepairCandidateCount > 0) reasons.push('选择控件只有选中样式，可安全建立缺失分支提示与返回路径');
     if (interaction.needsScopeRepair) reasons.push(`交互 ID 未隔离（重复ID=${interaction.duplicateIds}，失配标签=${interaction.brokenLocalLabels}）`);
     if (full.mobile3DFlipCandidate) reasons.push('iOS 3D 翻面可能出现镜像／双面同显');
 
@@ -6440,7 +6578,7 @@ function inspectMaintenanceRabbit(root) {
     if (full.severeStructureLoss && !full.rawToto) unknownReasons.push('渲染结构明显缺失，但未命中安全修复类型');
     if (full.controlsLost && full.checkedCount === 0 && full.rawInlineEvents === 0) unknownReasons.push('交互控件丢失，无法确认原始状态逻辑');
     if (full.renderedEscapedTags && !code.strictParseOk && !full.sourceCandidate) unknownReasons.push('显示层仍有源码标签，但没有可安全恢复的完整候选');
-    if (interaction.checkedSelectionOnly) unknownReasons.push('选择控件只能改变选中样式，没有可识别的第二层内容；维修兔不能安全代写缺失体验');
+    if (interaction.checkedSelectionOnly && interaction.selectionOnlyRepairCandidateCount === 0) unknownReasons.push('选择控件只能改变选中样式，且没有可安全挂接的内容区；维修兔不能代写缺失体验');
     if (unknownReasons.length) {
         return { state: MAINTENANCE_STATES.unknown, reason: unknownReasons.join('；'), code, full, interaction };
     }
@@ -6756,7 +6894,7 @@ function chooseMaintenanceAutomaticMode(inspection) {
         || full.damagedDataUriCandidate || (code.strictWhole && code.strictParseOk)
         || code.needsSanitize;
     if (sourceFailure) return 'source';
-    if (interaction.checkedControlsLost || interaction.strippedStateProgram || interaction.touchHoverMissing || interaction.needsScopeRepair) {
+    if (interaction.checkedControlsLost || interaction.strippedStateProgram || interaction.touchHoverMissing || interaction.needsScopeRepair || interaction.selectionOnlyRepairCandidateCount > 0) {
         return 'interaction';
     }
     if (inspection?.state === MAINTENANCE_STATES.repairable) return 'all';
@@ -6764,7 +6902,7 @@ function chooseMaintenanceAutomaticMode(inspection) {
 }
 
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.17';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.18';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -6782,13 +6920,17 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
         // 列表详情、ID 目标显隐、data-active/class 状态程序、Touch Hover 与 label fallback。
         scopeRabbitMirrorInteractionIds(target);
         installIntelligentInteractionRescue(target);
-        target.dataset.rabbitMirrorInteractionRescued = 'true';
+        const selectionFallbackCount = installSelectionOnlyStateFallback(target);
+        const depthAfter = maintenanceCheckedInteractionDepth(target);
+        const genuinelyRescued = selectionFallbackCount > 0 || !depthAfter.checkedSelectionOnly;
+        if (genuinelyRescued) target.dataset.rabbitMirrorInteractionRescued = 'true';
+        else delete target.dataset.rabbitMirrorInteractionRescued;
         const routes = String(target.dataset.rabbitMirrorInteractionRoutes || '')
             .split(',')
             .map(item => item.trim())
             .filter(item => item && item !== 'none');
-        // 不再把“调用了总入口”冒充为“命中了一条急救路线”。
-        return routes.length;
+        // 不再把“调用了总入口”冒充为“命中了一条急救路线”；选择样式专用结构只有在安全补出分支提示后才算修复。
+        return genuinelyRescued ? routes.length : 0;
     } },
 ]);
 
@@ -6961,8 +7103,11 @@ function maintenanceRecommendationForInspection(inspection) {
     if (full.mobile3DFlipCandidate) {
         return { mode: 'style', label: '🎨 样子不对', reason: '检测到 iOS 3D 翻面可能镜像或双面同时显示' };
     }
-    if (interaction.checkedControlsLost || interaction.strippedStateProgram || interaction.touchHoverMissing || interaction.needsScopeRepair) {
-        return { mode: 'interaction', label: '🖱️ 点了没有反应', reason: '检测到交互控件、状态程序、触屏 Hover 或 ID 作用域问题' };
+    if (interaction.checkedControlsLost || interaction.strippedStateProgram || interaction.touchHoverMissing || interaction.needsScopeRepair || interaction.selectionOnlyRepairCandidateCount > 0) {
+        const reason = interaction.selectionOnlyRepairCandidateCount > 0
+            ? '检测到选择控件只有选中样式，可为缺失分支建立明确提示并保留返回路径'
+            : '检测到交互控件、状态程序、触屏 Hover 或 ID 作用域问题';
+        return { mode: 'interaction', label: '🖱️ 点了没有反应', reason };
     }
     if (inspection?.state === MAINTENANCE_STATES.repairable) {
         return { mode: 'all', label: '🔧 全部试试', reason: '发现可修复异常，但无法安全归入单一路线' };
