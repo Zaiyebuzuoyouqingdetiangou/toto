@@ -91,7 +91,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[小小维修兔 v1.16＋Menu QR v2.1 测试版]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.33.21 TEST</span>
+      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[小小维修兔 v1.16＋Menu QR v2.1 测试版]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.33.22 TEST</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">

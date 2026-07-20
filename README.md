@@ -1,3 +1,12 @@
+# RabbitMirror 0.33.22 TEST｜视觉实现手段恢复版
+
+## 0.33.22 视觉实现手段恢复
+
+- 以 `0.33.21 TEST` 实际 ZIP 为唯一修改基线，其他功能、规则结构与运行时架构保持不变。
+- 在真实生效的 `src/promptBuilder.js` → `presentationEmbodimentRule()` 中恢复视觉实现手段：可根据本轮展现形式本体的需要，使用 Flex/Grid、定位、SVG、渐变、阴影、滤镜、clip-path、mask、transform、transition 与 CSS 动画等方式，构成空间、材质与视觉质感。
+- 该句属于展现形式美化规则，不并入交互核心；Visual Scenery 的持续动画强制规则保持不变。
+- 小小维修兔仍为 v1.16；不恢复旧全局自动急救链，不修改主题池、展现形式池、Menu QR、急救库或移动端规则。
+
 # RabbitMirror 0.33.21 TEST｜0.32.56 审美回滚・状态化交互融合版
 
 ## 0.33.21 美化规则回滚与交互融合
