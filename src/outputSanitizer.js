@@ -5117,7 +5117,7 @@ const MAINTENANCE_REASON_ATTR = 'data-rabbit-mirror-maintenance-reason';
 const MAINTENANCE_REPAIR_ATTR = 'data-rabbit-mirror-maintenance-repaired';
 const MAINTENANCE_MENU_ATTR = 'data-rabbit-mirror-maintenance-menu';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '0.33.7-TEST-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.33.12-TEST-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -5338,6 +5338,14 @@ function diagnosticFullChainSummary(root, code) {
     const renderedText = String(body?.textContent || '');
     const styleTexts = [...(body?.querySelectorAll?.('style') || [])].map(style => String(style.textContent || '')).join('\n');
     const rawStyles = [...decodedRaw.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map(match => match[1] || '').join('\n');
+    // 宿主/美化插件会返回多种 CSS 错误文案（property missing ':'、missing '}' 等）。
+    // 只要当前消息出现其标准 CSS ERROR 前缀，就应视为源码重建信号，而不能只识别某一种报错。
+    const hostCssParserErrorText = (renderedText.match(/CSS\s+ERROR\s*:\s*Error:[^\r\n]{0,320}/i)?.[0] || '').trim();
+    const hostCssParserError = !!hostCssParserErrorText;
+    const rawUnencodedSvgDataUri = /data:image\/svg\+xml[^,]*,(?:\s|%20)*(?:<|&lt;)svg\b/i.test(rawStyles);
+    const rawCssCommentCount = (rawStyles.match(/\/\*[\s\S]*?\*\//g) || []).length;
+    const rawStylesWithoutComments = stripCssComments(rawStyles);
+    const rawCssIdSelectorCount = (rawStylesWithoutComments.match(/(?:^|})\s*#[A-Za-z_-][\w-]*(?=[\s:.\[>~+,{])/gm) || []).length;
     const rawInlineEvents = (decodedRaw.match(/\son[a-z]+\s*=/gi) || []).length;
     let renderedInlineEvents = 0;
     body?.querySelectorAll?.('*').forEach(element => {
@@ -5380,9 +5388,13 @@ function diagnosticFullChainSummary(root, code) {
     let verdict = '当前链路未发现单一高置信故障点。';
     if (structureTruncated) verdict = '高置信：损坏的 SVG Data URI 破坏了 inline style 属性边界，导致后续 DOM 被截断；应移除该背景声明并用原始源码临时重绘显示层。';
     else if (damagedDataUriCandidate) verdict = '检测到疑似损坏的 SVG Data URI；当前结构尚未达到高置信截断阈值，但建议优先执行保主体清洗。';
-    else if (sourceCandidate) verdict = '原始源需要恢复；请使用当前条目的维修兔，无法恢复时生成全链路诊断。';
+    else if (sourceCandidate && hostCssParserError && rawUnencodedSvgDataUri) verdict = '高置信：宿主 CSS 解析器在原始 SVG Data URI 之后中断，后续 HTML 被代码壳接管；源码恢复时应先编码 SVG 数据并重绘当前显示层。';
+    else if (sourceCandidate && hostCssParserError && rawCssIdSelectorCount > 0) verdict = '高置信：宿主 CSS 解析器在状态 ID 选择器附近中断，后续 HTML 被代码壳接管；源码恢复时应使用兼容选择器并重绘当前显示层。';
+    else if (sourceCandidate && hostCssParserError && rawCssCommentCount > 0) verdict = '高置信：宿主 CSS 解析器在注释边界附近中断，后续 HTML 被代码壳接管；源码恢复时应移除 CSS 注释并重绘当前显示层。';
+    else if (sourceCandidate && hostCssParserError) verdict = '宿主 CSS 解析失败并遮蔽了原始兔子镜源码；应先执行 CSS 兼容清洗，再重绘当前显示层。';
     else if (sourceCandidate && thRenderCount) verdict = '原始兔子镜源码被 TH-render 代码壳接管；应检查源码恢复是否在其重绘后再次执行。';
     else if (sourceCandidate && highlightedCount) verdict = '原始兔子镜源码进入语法高亮代码壳；应检查源码恢复触发时机或后续重绘覆盖。';
+    else if (sourceCandidate) verdict = '原始源需要恢复；请使用当前条目的维修兔，无法恢复时生成全链路诊断。';
     else if (code?.strictWhole && code?.strictParseOk) verdict = '显示层是可解析的完整纯文字兔子镜，但替换未发生；重点检查消息选择器与观察器触发。';
     else if (mirrorCount > 0 && code?.codeShells === 0) verdict = '兔子镜主体已经渲染；故障更可能位于 CSS、可读性或交互链。';
     else if (rawInlineEvents > renderedInlineEvents) verdict = '原始源码中的内联事件在渲染后减少，说明宿主净化器删除了部分事件属性。';
@@ -5395,6 +5407,7 @@ function diagnosticFullChainSummary(root, code) {
         cssRuleCount, animationCount, hoverCount, focusCount, activeCount, checkedCount,
         rawInlineEvents, renderedInlineEvents, thRenderCount, highlightedCount,
         mirrorCount, scopedCount, rescuedCount, sourceCandidate, sourceObscured,
+        hostCssParserError, hostCssParserErrorText, rawUnencodedSvgDataUri, rawCssCommentCount, rawCssIdSelectorCount,
         rawInputCount, rawLabelCount, renderedLabelCount, rawUiTagCount, renderedUiTagCount,
         damagedDataUriCandidate, controlsLost, labelsLost, severeStructureLoss, structureTruncated, verdict,
     };
@@ -5432,6 +5445,8 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         '[3. CSS 能力层]',
         `rules≈${full.cssRuleCount} keyframes=${full.animationCount}`,
         `hover=${full.hoverCount} focus=${full.focusCount} active=${full.activeCount} checked=${full.checkedCount}`,
+        `宿主CSS解析错误=${full.hostCssParserError} 原始未编码SVG=${full.rawUnencodedSvgDataUri} 原始CSS注释=${full.rawCssCommentCount} 原始#ID选择器=${full.rawCssIdSelectorCount}`,
+        `宿主CSS错误摘要=${full.hostCssParserErrorText || '(无)'}`,
         '',
         '[4. 净化器／属性保留层]',
         `原始内联事件=${full.rawInlineEvents} 渲染后内联事件=${full.renderedInlineEvents}`,
@@ -5828,6 +5843,11 @@ function maintenanceFallbackFullSummary(root) {
         structureTruncated: false,
         damagedDataUriCandidate: false,
         sourceCandidate: false,
+        hostCssParserError: false,
+        hostCssParserErrorText: '',
+        rawUnencodedSvgDataUri: false,
+        rawCssCommentCount: 0,
+        rawCssIdSelectorCount: 0,
         severeStructureLoss: false,
         controlsLost: false,
         checkedCount: (styleTexts.match(/:checked\b/gi) || []).length,
@@ -5867,6 +5887,7 @@ function inspectMaintenanceRabbit(root) {
     const reasons = [];
 
     if (full.structureTruncated || full.damagedDataUriCandidate) reasons.push('损坏的 SVG Data URI／结构截断');
+    if (full.hostCssParserError) reasons.push('宿主 CSS 解析失败');
     if (full.sourceCandidate || (code.strictWhole && code.strictParseOk)) reasons.push('存在可恢复的兔子镜源码');
     if (interaction.checkedControlsLost) reasons.push('CSS 仍依赖 checked，但控件已丢失');
     if (interaction.strippedStateProgram) reasons.push('宿主删除了可识别的状态事件');
@@ -6019,30 +6040,45 @@ function closeMaintenanceRabbitMenu() {
 
 function maintenanceUserRepairInspection(root, mode) {
     const inspection = inspectMaintenanceRabbit(root);
-    if (mode === 'code' || mode === 'plainText' || mode === 'all') {
+    if (mode === 'source' || mode === 'code' || mode === 'plainText' || mode === 'all') {
         inspection.full = { ...inspection.full, sourceCandidate: true };
         inspection.code = { ...inspection.code, needsSanitize: true, strictWhole: true };
     }
-    if (mode === 'style' || mode === 'all') {
+    if (mode === 'style' || mode === 'source' || mode === 'all') {
         const full = diagnosticFullChainSummary(root, inspection.code || {}) || {};
-        if (full.damagedDataUriCandidate || full.structureTruncated) {
-            inspection.full = { ...inspection.full, ...full, damagedDataUriCandidate: true };
+        if (full.damagedDataUriCandidate || full.structureTruncated || full.hostCssParserError) {
+            inspection.full = { ...inspection.full, ...full };
         }
     }
     return inspection;
 }
 
+function chooseMaintenanceAutomaticMode(inspection) {
+    const full = inspection?.full || {};
+    const code = inspection?.code || {};
+    const interaction = inspection?.interaction || {};
+    const sourceFailure = full.sourceCandidate || full.hostCssParserError || full.structureTruncated
+        || full.damagedDataUriCandidate || (code.strictWhole && code.strictParseOk)
+        || code.rawNeeds || code.needsSanitize;
+    if (sourceFailure) return 'source';
+    if (interaction.checkedControlsLost || interaction.strippedStateProgram || interaction.touchHoverMissing || interaction.needsScopeRepair) {
+        return 'interaction';
+    }
+    if (inspection?.state === MAINTENANCE_STATES.repairable) return 'all';
+    return 'patrol';
+}
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.8';
+
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.9';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
 const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
-    { id: 'code-block-dom', modes: ['code', 'all'], bucket: 'code', run: ({ messageScope }) => sanitizeCodeBlocksInScope(messageScope, true) },
-    { id: 'plain-text-dom', modes: ['plainText', 'code', 'all'], bucket: 'plainText', run: ({ messageScope }) => sanitizeWholePlainTextRabbitMirrorsInScope(messageScope, true) },
-    { id: 'rendered-details-dom', modes: ['plainText', 'code', 'all'], bucket: 'plainText', run: ({ messageScope }) => sanitizeRenderedRabbitMirrorDetailsInScope(messageScope, true) },
-    { id: 'css-comment-boundary', modes: ['style', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => repairMarkdownCorruptedCssComments(target) },
-    { id: 'interaction-id-scope', modes: ['interaction', 'style', 'all'], bucket: 'scope', perTarget: true, run: ({ target }) => { scopeRabbitMirrorInteractionIds(target); return 1; } },
+    { id: 'code-block-dom', modes: ['source', 'code', 'all'], bucket: 'code', run: ({ messageScope }) => sanitizeCodeBlocksInScope(messageScope, true) },
+    { id: 'plain-text-dom', modes: ['source', 'plainText', 'code', 'all'], bucket: 'plainText', run: ({ messageScope }) => sanitizeWholePlainTextRabbitMirrorsInScope(messageScope, true) },
+    { id: 'rendered-details-dom', modes: ['source', 'plainText', 'code', 'all'], bucket: 'plainText', run: ({ messageScope }) => sanitizeRenderedRabbitMirrorDetailsInScope(messageScope, true) },
+    { id: 'css-comment-boundary', modes: ['source', 'style', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => repairMarkdownCorruptedCssComments(target) },
+    { id: 'interaction-id-scope', modes: ['source', 'interaction', 'style', 'all'], bucket: 'scope', perTarget: true, run: ({ target }) => { scopeRabbitMirrorInteractionIds(target); return 1; } },
     { id: 'complete-interaction-library', modes: ['interaction', 'all'], bucket: 'interaction', perTarget: true, run: ({ target }) => {
         // installIntelligentInteractionRescue 内部包含旧库全部已验证路线：
         // 原始安全状态程序、自变化、checked/change、focus→checked、状态层、相邻隐藏组、
@@ -6107,19 +6143,35 @@ function runMaintenanceLegacyRescueLibrary(root, mode = 'all') {
 
 function runMaintenanceUserRepair(root, button, mode) {
     if (!root?.isConnected || !button?.isConnected) return false;
+    let effectiveMode = mode;
+    let automaticInspection = null;
+    if (mode === 'auto') {
+        automaticInspection = inspectMaintenanceRabbit(root);
+        effectiveMode = chooseMaintenanceAutomaticMode(automaticInspection);
+        if (effectiveMode === 'patrol') {
+            setMaintenanceRabbitState(button, automaticInspection.state, automaticInspection.reason);
+            return false;
+        }
+    }
     const labels = {
+        auto: '正在自动判断并维修当前兔子镜',
+        source: '正在恢复当前兔子镜的代码／纯文字显示',
         interaction: '正在尝试修复当前兔子镜的交互',
         code: '正在尝试恢复当前兔子镜的代码显示',
         plainText: '正在尝试恢复当前兔子镜的纯文字显示',
         style: '正在尝试修复当前兔子镜的显示样式',
         all: '正在对当前兔子镜执行强制维修',
     };
-    setMaintenanceRabbitState(button, MAINTENANCE_STATES.checking, labels[mode] || '正在维修当前兔子镜');
+    setMaintenanceRabbitState(button, MAINTENANCE_STATES.checking, labels[mode] || labels[effectiveMode] || '正在维修当前兔子镜');
     const summaryText = getRabbitMirrorSummaryText(root).replace(/🐇[⚪🟢🟡🔴]?/g, '').trim();
     const originalIndex = getMessageIndexFromMirrorNode(root);
     try {
-        const inspection = maintenanceUserRepairInspection(root, mode);
-        const sourceResult = (mode === 'code' || mode === 'plainText' || mode === 'style' || mode === 'all')
+        const inspection = automaticInspection || maintenanceUserRepairInspection(root, effectiveMode);
+        if (automaticInspection && effectiveMode === 'source') {
+            inspection.full = { ...inspection.full, sourceCandidate: true };
+            inspection.code = { ...inspection.code, needsSanitize: true, strictWhole: true };
+        }
+        const sourceResult = (effectiveMode === 'source' || effectiveMode === 'code' || effectiveMode === 'plainText' || effectiveMode === 'style' || effectiveMode === 'all')
             ? repairMaintenanceMessageSource(root, inspection)
             : { changed: false, index: originalIndex, reason: '' };
         const continueRepair = () => {
@@ -6129,7 +6181,8 @@ function runMaintenanceUserRepair(root, button, mode) {
                 return;
             }
             const liveButton = liveRoot.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || button;
-            const libraryResult = runMaintenanceLegacyRescueLibrary(liveRoot, mode);
+            const libraryResult = runMaintenanceLegacyRescueLibrary(liveRoot, effectiveMode);
+            if (mode === 'auto') libraryResult.autoSelected = effectiveMode;
             liveRoot.dataset.rabbitMirrorMaintenanceModules = JSON.stringify(libraryResult);
             liveButton.setAttribute(MAINTENANCE_REPAIR_ATTR, 'true');
             setTimeout(() => {
@@ -6145,7 +6198,8 @@ function runMaintenanceUserRepair(root, button, mode) {
                 } else if (after.state === MAINTENANCE_STATES.unknown) {
                     setMaintenanceRabbitState(afterButton, MAINTENANCE_STATES.idle, '已尝试维修，请实际确认；若仍异常请生成全链路诊断');
                 } else {
-                    setMaintenanceRabbitState(afterButton, MAINTENANCE_STATES.idle, '维修路线已执行，请实际确认是否恢复正常');
+                    const autoNote = mode === 'auto' ? `（自动选择：${effectiveMode}）` : '';
+                    setMaintenanceRabbitState(afterButton, MAINTENANCE_STATES.idle, `维修路线已执行${autoNote}，请实际确认是否恢复正常`);
                 }
             }, 360);
         };
@@ -6169,10 +6223,10 @@ function showMaintenanceRabbitMenu(root, button) {
     panel.setAttribute('aria-label', '小小维修兔');
     panel.innerHTML = `
       <div class="rabbit-mirror-maintenance-menu-title">🐇 这面兔子镜哪里不对？</div>
-      <button type="button" data-rm-maintenance-action="patrol">🔍 先让维修兔巡逻</button>
+      <button type="button" data-rm-maintenance-action="auto">✨ 自动判断并维修（推荐）</button>
+      <button type="button" data-rm-maintenance-action="patrol">🔍 只巡逻，不修改</button>
       <button type="button" data-rm-maintenance-action="interaction">🖱️ 点了没有反应</button>
-      <button type="button" data-rm-maintenance-action="code">📄 显示了一堆代码</button>
-      <button type="button" data-rm-maintenance-action="plainText">📃 显示了一堆纯文字</button>
+      <button type="button" data-rm-maintenance-action="source">📄 显示代码或纯文字</button>
       <button type="button" data-rm-maintenance-action="style">🎨 样子不对</button>
       <button type="button" data-rm-maintenance-action="all">🔧 全部试试（强制维修）</button>
       <button type="button" data-rm-maintenance-action="diagnostic">📋 生成全链路诊断</button>
@@ -6895,6 +6949,113 @@ function stripCssComments(cssText) {
     return output;
 }
 
+function decodeMinimalSvgHtmlEntities(text) {
+    return String(text || '')
+        .replace(/&lt;/gi, '<')
+        .replace(/&gt;/gi, '>')
+        .replace(/&quot;/gi, '"')
+        .replace(/&#(?:39|x27);/gi, "'")
+        .replace(/&amp;/gi, '&');
+}
+
+function percentEncodeSvgDataPayload(payload) {
+    const source = decodeMinimalSvgHtmlEntities(payload);
+    let output = '';
+    for (let index = 0; index < source.length;) {
+        if (source[index] === '%' && /^[0-9a-f]{2}$/i.test(source.slice(index + 1, index + 3))) {
+            output += source.slice(index, index + 3);
+            index += 3;
+            continue;
+        }
+        const codePoint = source.codePointAt(index);
+        const char = String.fromCodePoint(codePoint);
+        index += char.length;
+        if (/^[A-Za-z0-9._~-]$/.test(char)) {
+            output += char;
+            continue;
+        }
+        output += encodeURIComponent(char).replace(/[!'()*]/g, token => `%${token.charCodeAt(0).toString(16).toUpperCase()}`);
+    }
+    return output;
+}
+
+/**
+ * 将 <style> 中仍携带原始 XML 的 quoted SVG data URI 转成百分号编码。
+ * 浏览器原生 CSS 能接受原始 XML，但部分 SillyTavern 美化/作用域解析器会被其中的
+ * <svg>、引号或内部 url(#id) 扰乱，并在后续选择器处报“property missing ':'”。
+ * 仅处理明确含原始 <svg> 的 quoted data URI；base64 与已编码资源保持不变。
+ */
+function normalizeQuotedCssSvgDataUris(cssText) {
+    let source = String(cssText || '');
+    let cursor = 0;
+    let repairs = 0;
+
+    while (repairs < 24) {
+        const lower = source.toLowerCase();
+        const uriIndex = lower.indexOf('data:image/svg+xml', cursor);
+        if (uriIndex < 0) break;
+
+        const urlStart = lower.lastIndexOf('url(', uriIndex);
+        if (urlStart < 0) {
+            cursor = uriIndex + 18;
+            continue;
+        }
+
+        let quoteIndex = urlStart + 4;
+        while (quoteIndex < source.length && /\s/.test(source[quoteIndex])) quoteIndex += 1;
+        const quote = source[quoteIndex];
+        if (quote !== '"' && quote !== "'") {
+            cursor = uriIndex + 18;
+            continue;
+        }
+
+        let quoteEnd = quoteIndex + 1;
+        let escaped = false;
+        for (; quoteEnd < source.length; quoteEnd += 1) {
+            const char = source[quoteEnd];
+            if (escaped) {
+                escaped = false;
+                continue;
+            }
+            if (char === '\\') {
+                escaped = true;
+                continue;
+            }
+            if (char === quote) break;
+        }
+        if (quoteEnd >= source.length) {
+            cursor = uriIndex + 18;
+            continue;
+        }
+
+        let closeParen = quoteEnd + 1;
+        while (closeParen < source.length && /\s/.test(source[closeParen])) closeParen += 1;
+        if (source[closeParen] !== ')') {
+            cursor = uriIndex + 18;
+            continue;
+        }
+
+        const commaIndex = source.indexOf(',', uriIndex);
+        if (commaIndex < 0 || commaIndex >= quoteEnd) {
+            cursor = uriIndex + 18;
+            continue;
+        }
+
+        const payload = source.slice(commaIndex + 1, quoteEnd);
+        if (!/(?:<|&lt;)svg\b/i.test(payload)) {
+            cursor = quoteEnd + 1;
+            continue;
+        }
+
+        const encodedPayload = percentEncodeSvgDataPayload(payload);
+        source = `${source.slice(0, commaIndex + 1)}${encodedPayload}${source.slice(quoteEnd)}`;
+        repairs += 1;
+        cursor = commaIndex + 1 + encodedPayload.length;
+    }
+
+    return source;
+}
+
 function repairMalformedCssDeclarations(cssText) {
     return String(cssText || '').replace(
         /(^|[;{])(\s*)transform\s*:\s*([^;{}]+)(;|(?=}))/gi,
@@ -6924,7 +7085,8 @@ function repairPlainTextCssInHtml(htmlText) {
             .replace(/<br\s*\/?>/gi, '')
             .replace(/\r\n?/g, '\n');
         const commentStripped = stripCssComments(normalized);
-        const declarationRepaired = repairMalformedCssDeclarations(commentStripped);
+        const svgDataUriNormalized = normalizeQuotedCssSvgDataUris(commentStripped);
+        const declarationRepaired = repairMalformedCssDeclarations(svgDataUriNormalized);
         const expanded = expandUnsupportedCssCustomProperties(declarationRepaired, inheritedValues);
         const repaired = repairLikelyBareRootSelector(expanded, html);
         return `<style${attrs}>${repaired}</style>`;
@@ -7126,6 +7288,66 @@ function splitCssSelectorList(selectorText) {
     return parts;
 }
 
+function rewriteSimpleCssIdSelectorsAsAttributes(selectorText, allowedIds = null) {
+    const source = String(selectorText || '');
+    let output = '';
+    let quote = '';
+    let escaped = false;
+    let brackets = 0;
+
+    for (let index = 0; index < source.length; index += 1) {
+        const char = source[index];
+        if (quote) {
+            output += char;
+            if (escaped) escaped = false;
+            else if (char === '\\') escaped = true;
+            else if (char === quote) quote = '';
+            continue;
+        }
+        if (char === '"' || char === "'") {
+            quote = char;
+            output += char;
+            continue;
+        }
+        if (char === '[') {
+            brackets += 1;
+            output += char;
+            continue;
+        }
+        if (char === ']') {
+            brackets = Math.max(0, brackets - 1);
+            output += char;
+            continue;
+        }
+        if (!brackets && char === '#' && /[A-Za-z_-]/.test(source[index + 1] || '')) {
+            let end = index + 2;
+            while (end < source.length && /[\w-]/.test(source[end])) end += 1;
+            const id = source.slice(index + 1, end);
+            if (!allowedIds || allowedIds.has(id)) output += `[id="${id}"]`;
+            else output += source.slice(index, end);
+            index = end - 1;
+            continue;
+        }
+        output += char;
+    }
+    return output;
+}
+
+function collectRabbitMirrorCheckedStateIds(cssTexts) {
+    const ids = new Set();
+    for (const cssText of cssTexts || []) {
+        transformCssRuleList(cssText, (prelude) => {
+            for (const selector of splitCssSelectorList(prelude)) {
+                if (!/:checked\b/i.test(selector)) continue;
+                const rewritten = rewriteSimpleCssIdSelectorsAsAttributes(selector);
+                for (const match of rewritten.matchAll(/\[id="([A-Za-z_-][\w-]*)"\]/g)) ids.add(match[1]);
+            }
+            return prelude;
+        });
+    }
+    return ids;
+}
+
 function visitSimpleCssClassTokens(selectorText, visitor) {
     const source = String(selectorText || '');
     let output = '';
@@ -7183,9 +7405,13 @@ function buildRabbitMirrorClassMap(cssTexts, classPrefix) {
     return map;
 }
 
-function scopeRabbitMirrorSelectorList(selectorText, scopeSelector, classMap) {
+function scopeRabbitMirrorSelectorList(selectorText, scopeSelector, classMap, checkedStateIds) {
     return splitCssSelectorList(selectorText).map((rawSelector) => {
-        let selector = visitSimpleCssClassTokens(rawSelector.trim(), className => classMap.get(className) || className);
+        // 部分宿主 CSS 作用域解析链会在原始资源解析受扰后，于 checkbox/radio 的 #id
+        // 状态规则附近中断。只改写明确参与 :checked 的状态 ID，避免扩大影响范围；
+        // label/控件语义不变，后续 ID 隔离也会继续同步 [id="..."] 引用。
+        const idSafeSelector = rewriteSimpleCssIdSelectorsAsAttributes(rawSelector.trim(), checkedStateIds);
+        let selector = visitSimpleCssClassTokens(idSafeSelector, className => classMap.get(className) || className);
         selector = selector
             .replace(/:root\b/gi, scopeSelector)
             .replace(/:host\b/gi, scopeSelector)
@@ -7196,8 +7422,8 @@ function scopeRabbitMirrorSelectorList(selectorText, scopeSelector, classMap) {
     }).join(',');
 }
 
-function scopeRabbitMirrorCssText(cssText, scopeSelector, classMap) {
-    return transformCssRuleList(cssText, prelude => scopeRabbitMirrorSelectorList(prelude, scopeSelector, classMap));
+function scopeRabbitMirrorCssText(cssText, scopeSelector, classMap, checkedStateIds) {
+    return transformCssRuleList(cssText, prelude => scopeRabbitMirrorSelectorList(prelude, scopeSelector, classMap, checkedStateIds));
 }
 
 function rewriteRabbitMirrorClassAttributes(htmlText, classMap) {
@@ -7215,6 +7441,7 @@ export function compactTotoBlock(block) {
     const rawStyleTexts = [...html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)]
         .map(match => stripCssComments(String(match[1] || '').replace(/<br\s*\/?>/gi, '')));
     const classMap = buildRabbitMirrorClassMap(rawStyleTexts, preparedScope.classPrefix);
+    const checkedStateIds = collectRabbitMirrorCheckedStateIds(rawStyleTexts);
     const styleSlots = [];
 
     // 1. 保护 <style>...</style>，避免 CSS 文本被误插入 <br>。
@@ -7232,8 +7459,10 @@ export function compactTotoBlock(block) {
         styleSlots.push(compactedStyle.replace(
             /(<style\b[^>]*>)([\s\S]*?)(<\/style>)/i,
             (full, openTag, css, closeTag) => {
-                const repairedCss = repairMalformedCssDeclarations(stripCssComments(css));
-                const scopedCss = scopeRabbitMirrorCssText(repairedCss, preparedScope.scopeSelector, classMap);
+                const commentStripped = stripCssComments(css);
+                const svgDataUriNormalized = normalizeQuotedCssSvgDataUris(commentStripped);
+                const repairedCss = repairMalformedCssDeclarations(svgDataUriNormalized);
+                const scopedCss = scopeRabbitMirrorCssText(repairedCss, preparedScope.scopeSelector, classMap, checkedStateIds);
                 return `${openTag}${scopedCss}${closeTag}`;
             },
         ));
