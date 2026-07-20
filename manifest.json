@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（小小维修兔 v1.18・缺失分支可逆兜底版）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（小小维修兔 v1.20・触摸状态恢复修正版）",
   "loading_order": 99,
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.33.24-test.1",
+  "version": "0.33.26-test.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "TEST build: keeps the 0.33.23 prompt and runtime baseline, and adds a safe reversible fallback for radio groups that only change selection styling while preserving existing content and exposing missing branches without inventing text."
+  "description": "TEST build: keeps the 0.33.24 prompt and runtime baseline, restores the current RabbitMirror from reasoning-wrapped messages whose inline SVG data URI truncated the DOM, preserves the complete style/body, strips inline events before direct DOM insertion, and safely reconstructs strict self class toggles for the current mirror only."
 }

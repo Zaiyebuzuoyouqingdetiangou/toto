@@ -637,6 +637,7 @@ const UNLABELED_CHECKED_HOST_RESCUE_ATTR = 'data-rabbit-mirror-unlabeled-checked
 const UNLABELED_CHECKED_CONTROL_RESCUE_ATTR = 'data-rabbit-mirror-unlabeled-checked-control-rescue';
 const unlabeledCheckedHostRescueStates = new WeakMap();
 const WEBKIT_3D_FLIP_RESCUE_ATTR = 'data-rabbit-mirror-webkit-3d-flip-rescue';
+const DECORATIVE_OVERLAY_PASS_THROUGH_ATTR = 'data-rabbit-mirror-decorative-overlay-pass-through';
 const webKit3DFlipRescueStates = new WeakMap();
 const webKit3DFlipStyleStates = new WeakMap();
 const webKit3DFlipInlineStates = new WeakMap();
@@ -4073,8 +4074,13 @@ function getRawAssistantMessageForRenderedRoot(root) {
 function collectRawRabbitMirrorRoots(rawHtml) {
     if (!rawHtml || typeof document === 'undefined') return [];
     try {
+        // 原始消息可能含会截断 inline style 的未编码 SVG Data URI。
+        // 先在字符串层移除损坏的背景声明，再交给 template 解析；否则后续安全事件回读也会失去真实 DOM 路径。
+        const prepared = rescueDamagedDataUriRabbitMirrorOutput(
+            decodeHtmlEntities(normalizeMirrorAttribute(String(rawHtml))),
+        );
         const template = document.createElement('template');
-        template.innerHTML = normalizeMirrorAttribute(String(rawHtml));
+        template.innerHTML = prepared;
         const roots = [...template.content.querySelectorAll(MIRROR_TOTO_SELECTOR)];
         if (roots.length) return roots;
 
@@ -4084,7 +4090,6 @@ function collectRawRabbitMirrorRoots(rawHtml) {
         return [];
     }
 }
-
 function chooseMatchingRawRabbitMirrorRoot(rawHtml, renderedRoot) {
     const candidates = collectRawRabbitMirrorRoots(rawHtml);
     if (!candidates.length) return null;
@@ -4316,14 +4321,36 @@ function parseSafeAttributeGroupToggleProgram(source, trigger, root, rawTrigger 
     };
 }
 
+function parseSafeSelfClassToggleProgram(source, trigger, root, rawTrigger = null) {
+    const script = String(source || '');
+    const match = /^\s*this\s*\.\s*classList\s*\.\s*toggle\(\s*(['"])([a-zA-Z_][\w-]*)\1\s*\)\s*;?\s*$/i.exec(script);
+    if (!match || !trigger?.classList) return null;
+    const rawClassName = match[2];
+    const rawTokens = [...(rawTrigger?.classList || [])];
+    if (!rawTokens.length) rawTokens.push(rawClassName);
+    const prefix = inferRenderedClassPrefix(trigger, rawTokens, root);
+    const className = trigger.classList.contains(rawClassName)
+        ? rawClassName
+        : `${prefix}${rawClassName}`;
+    return {
+        kind: 'class-toggle',
+        trigger,
+        className,
+        active: trigger.classList.contains(className),
+    };
+}
+
 function parseSelfMutationProgram(source, trigger, root, rawTrigger = null, rawRoot = null) {
     const script = String(source || '');
     if (!script) return null;
 
+    const classToggleProgram = parseSafeSelfClassToggleProgram(script, trigger, root, rawTrigger);
+    if (classToggleProgram) return classToggleProgram;
+
     const attributeProgram = parseSafeAttributeGroupToggleProgram(script, trigger, root, rawTrigger, rawRoot);
     if (attributeProgram) return attributeProgram;
 
-    if (!/this\s*\.(?:innerHTML|innerText|textContent|style|nextElementSibling|previousElementSibling|parentElement|parentNode|querySelector)/i.test(script)) return null;
+    if (!/this\s*\.(?:innerHTML|innerText|textContent|style|nextElementSibling|previousElementSibling|parentElement|parentNode|querySelector|classList)/i.test(script)) return null;
 
     const activeAssignments = parseInlineStyleAssignments(script);
     const relativeMutations = parseRelativeSelfMutationAssignments(script, trigger, root);
@@ -4356,6 +4383,13 @@ function parseSelfMutationProgram(source, trigger, root, rawTrigger = null, rawR
 function applyRawSelfMutationEntry(entry, active) {
     if (!entry?.trigger) return;
     entry.active = !!active;
+
+    if (entry.kind === 'class-toggle') {
+        entry.trigger.classList.toggle(entry.className, entry.active);
+        entry.trigger.setAttribute('aria-pressed', entry.active ? 'true' : 'false');
+        entry.trigger.setAttribute(RAW_SELF_MUTATION_ACTIVE_ATTR, entry.active ? 'true' : 'false');
+        return;
+    }
 
     if (entry.kind === 'attribute-group-toggle') {
         for (const peer of entry.peers || []) {
@@ -4402,7 +4436,7 @@ function installRawMessageSelfMutationRescue(root) {
     let installed = 0;
     for (const rawTrigger of rawRoot.querySelectorAll('[onclick]')) {
         const source = rawTrigger.getAttribute('onclick') || '';
-        if (!/this\s*\.(?:innerHTML|innerText|textContent|style|nextElementSibling|previousElementSibling|parentElement|parentNode|querySelector|setAttribute|getAttribute)/i.test(source)) continue;
+        if (!/this\s*\.(?:innerHTML|innerText|textContent|style|nextElementSibling|previousElementSibling|parentElement|parentNode|querySelector|setAttribute|getAttribute|classList)/i.test(source)) continue;
         const renderedTrigger = resolveRenderedCounterpart(rawRoot, root, rawTrigger, 'div, span, section, article, figure, aside, button');
         if (!renderedTrigger || state.entries.has(renderedTrigger)) continue;
         const entry = parseSelfMutationProgram(source, renderedTrigger, root, rawTrigger, rawRoot);
@@ -5092,6 +5126,54 @@ function installWebKit3DFlipRescue(root) {
     return patchedNodes.size;
 }
 
+
+function isZeroInsetValue(value) {
+    const normalized = String(value || '').trim().toLowerCase();
+    return /^(?:0|0px|0%|0em|0rem)$/.test(normalized);
+}
+
+function isHighConfidenceDecorativeOverlay(element) {
+    if (!element?.style || element.hasAttribute?.(DECORATIVE_OVERLAY_PASS_THROUGH_ATTR)) return false;
+    const position = String(element.style.getPropertyValue('position') || '').trim().toLowerCase();
+    if (position !== 'absolute' && position !== 'fixed') return false;
+
+    const inset = String(element.style.getPropertyValue('inset') || '').trim().toLowerCase();
+    const fullInset = inset && inset.split(/\s+/).every(isZeroInsetValue);
+    const fullEdges = ['top', 'right', 'bottom', 'left']
+        .every(property => isZeroInsetValue(element.style.getPropertyValue(property)));
+    if (!fullInset && !fullEdges) return false;
+
+    if (String(element.textContent || '').trim()) return false;
+    if (element.querySelector?.('a, button, input, select, textarea, label, summary, [role="button"], [contenteditable="true"]')) return false;
+    if (element.hasAttribute?.('onclick') || element.hasAttribute?.('onpointerdown') || element.hasAttribute?.('ontouchstart')) return false;
+
+    const cursor = String(element.style.getPropertyValue('cursor') || '').trim().toLowerCase();
+    const pointerEvents = String(element.style.getPropertyValue('pointer-events') || '').trim().toLowerCase();
+    if (cursor === 'pointer' || pointerEvents === 'none') return false;
+
+    const background = `${element.style.getPropertyValue('background')} ${element.style.getPropertyValue('background-image')}`.trim();
+    const opacity = Number.parseFloat(element.style.getPropertyValue('opacity') || '1');
+    const decorativePaint = !!background && background.toLowerCase() !== 'none';
+    const lowOpacity = Number.isFinite(opacity) && opacity <= 0.45;
+    return decorativePaint && lowOpacity;
+}
+
+function findDecorativeOverlayPassThroughCandidates(root) {
+    if (!root?.querySelectorAll) return [];
+    return [...root.querySelectorAll('[style]')].filter(isHighConfidenceDecorativeOverlay);
+}
+
+function installDecorativeOverlayPassThrough(root) {
+    let patched = 0;
+    for (const overlay of findDecorativeOverlayPassThroughCandidates(root)) {
+        overlay.style.setProperty('pointer-events', 'none', 'important');
+        overlay.setAttribute(DECORATIVE_OVERLAY_PASS_THROUGH_ATTR, 'true');
+        overlay.setAttribute('aria-hidden', 'true');
+        patched += 1;
+    }
+    return patched;
+}
+
 function installIntelligentInteractionRescue(root) {
     // Markdown 可能把相邻的 CSS 注释边界 */ ... /* 解析成 <em>/ ... /</em>，
     // 导致两段注释之间的状态规则被整段吞入注释。只在急救开启后修复当前 DOM 的明确损坏形态。
@@ -5104,6 +5186,9 @@ function installIntelligentInteractionRescue(root) {
     installRawMessageSelfMutationRescue(root);
     // 同样从原始消息回读受限的 onchange 状态程序，覆盖宿主已删除事件属性的情况。
     installRawMessageCheckedChangeProgramRescue(root);
+    // 低透明度、无文字、无交互后代的全覆盖纹理层在部分 WebView 中会截获触摸；
+    // 只对高置信装饰层开启点击穿透，不处理真正的遮罩交互。
+    installDecorativeOverlayPassThrough(root);
 
     const capabilities = detectInteractionCapabilities(root);
     if (capabilities.checked) {
@@ -5510,7 +5595,7 @@ const SELECTION_ONLY_FALLBACK_ATTR = 'data-rabbit-mirror-selection-only-fallback
 const SELECTION_ONLY_PLACEHOLDER_ATTR = 'data-rabbit-mirror-selection-only-placeholder';
 const SELECTION_ONLY_SOURCE_ATTR = 'data-rabbit-mirror-selection-only-source';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '0.33.24-TEST-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.33.26-TEST-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -5632,13 +5717,14 @@ function diagnosticRouteSummary(root) {
         unlabeledChecked: unlabeledCheckedHostRescueStates.get(root)?.entries?.size || 0,
         webkit3dFlip: Number.parseInt(root?.getAttribute?.(WEBKIT_3D_FLIP_RESCUE_ATTR) || '0', 10) || 0,
         selectionFallback: root?.querySelectorAll?.(`[${SELECTION_ONLY_FALLBACK_ATTR}]`)?.length || 0,
+        decorativeOverlayPassThrough: root?.querySelectorAll?.(`[${DECORATIVE_OVERLAY_PASS_THROUGH_ATTR}]`)?.length || 0,
     };
 }
 
-function diagnosticInferReason(root, inputs, targets) {
+function diagnosticInferReason(root, inputs, targets, state = null) {
     const routes = diagnosticRouteSummary(root);
     const depth = maintenanceCheckedInteractionDepth(root);
-    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.stateSibling + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.focusToChecked + routes.checkedTextRule + routes.expandedOpacity + routes.containerReveal + routes.selfMutation + routes.classStateProgram + routes.cssCommentRepair + routes.changeProgram + routes.unlabeledChecked + routes.selectionFallback;
+    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.stateSibling + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.focusToChecked + routes.checkedTextRule + routes.expandedOpacity + routes.containerReveal + routes.selfMutation + routes.classStateProgram + routes.cssCommentRepair + routes.changeProgram + routes.unlabeledChecked + routes.selectionFallback + routes.decorativeOverlayPassThrough;
     const checkedInputs = inputs.filter(input => input.checked);
     const visibleTargets = targets.filter(target => {
         const style = diagnosticComputedStyle(target);
@@ -5652,7 +5738,9 @@ function diagnosticInferReason(root, inputs, targets) {
     if (!inputs.length && routeCount && visibleTargets.length) return '非表单交互急救路线已建立，候选内容在计算样式中已有可见项。';
     if (!inputs.length && routeCount) return '非表单交互急救路线已建立，但候选内容最终仍不可见：样式可能被覆盖或被布局裁切。';
     if (!inputs.length) return '未找到 checkbox/radio：渲染后控件可能被删除，或当前交互并非表单状态结构。';
-    if (!checkedInputs.length) return '捕获结束时没有勾选控件；可能发生了重复切换，或当前交互使用了其他状态机制。';
+    const inputInteractionObserved = (state?.events || []).some(item => /(?:click|input|change):capture target=input/i.test(String(item || '')));
+    if (!checkedInputs.length && !inputInteractionObserved) return '本次诊断没有实际操作 checkbox/radio；当前只能确认急救路线是否安装，不能据此判断控件发生了重复切换。';
+    if (!checkedInputs.length) return '实际操作后控件仍未保持勾选；可能发生重复切换、触摸被覆盖层拦截，或宿主再次回滚了状态。';
     if (!routeCount && targets.length) return 'checkbox 已切换，但没有任何渲染后急救路线建立：当前结构识别条件未命中。';
     if (routeCount && !visibleTargets.length) return '急救路线已建立，但候选内容最终仍不可见：样式可能未执行、被宿主覆盖，或被布局裁切。';
     if (visibleTargets.length) return '候选内容在计算样式中已有可见项；若屏幕仍看不到，请重点查看高度、裁切和时间快照。';
@@ -5989,6 +6077,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `类名状态程序 entries=${routes.classStateProgram} listener=${routes.classStateProgram ? 'true' : 'false'}`,
         `CSS注释保全 entries=${routes.cssCommentRepair} listener=${routes.cssCommentRepair ? 'true' : 'false'}`,
         `安全状态程序 entries=${routes.changeProgram} listener=${routes.changeProgram ? 'true' : 'false'}`,
+        `装饰覆盖层穿透 entries=${routes.decorativeOverlayPassThrough} listener=${routes.decorativeOverlayPassThrough ? 'true' : 'false'}`,
         `无label控件宿主 entries=${routes.unlabeledChecked} listener=${routes.unlabeledChecked ? 'true' : 'false'} last=${root.dataset.rabbitMirrorUnlabeledCheckedLast || '(尚未点击验证)'}`,
         `缺失分支兜底 entries=${routes.selectionFallback} listener=${routes.selectionFallback ? 'true' : 'false'}`,
         `iOS 3D翻面兼容 patches=${routes.webkit3dFlip} evidence=${formatWebKit3DFlipEvidence(root)}`,
@@ -6030,7 +6119,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         );
     });
 
-    lines.push('', `[初步判断] ${diagnosticInferReason(root, inputs, targets)}`);
+    lines.push('', `[初步判断] ${diagnosticInferReason(root, inputs, targets, state)}`);
     return lines.join('\n');
 }
 
@@ -6480,11 +6569,27 @@ function maintenanceCheckedInteractionDepth(root) {
     return { checkedSelectionOnly, checkedSelectionOnlyRaw, checkedRuleCount, meaningfulCheckedRuleCount, selectionStyleRuleCount, selectionOnlyFallbackCount };
 }
 
+
+function recoveredInlineStateProgramCount(root) {
+    if (!root?.querySelectorAll) return 0;
+    const selector = [
+        `[${CHANGE_PSEUDO_RESCUE_ATTR}]`,
+        `[${INLINE_PSEUDO_RESCUE_ATTR}]`,
+        `[${DIRECT_ID_CLICK_RESCUE_ATTR}]`,
+        `[${DIRECT_ID_CLASS_STATE_RESCUE_ATTR}]`,
+        `[${RAW_SELF_MUTATION_RESCUE_ATTR}]`,
+    ].join(',');
+    return new Set([...root.querySelectorAll(selector)]).size;
+}
+
 function maintenanceKnownInteractionEvidence(root, full, code) {
     const raw = decodeHtmlEntities(getRawAssistantMessageForRenderedRoot(root) || '');
     const stateProgram = /\bon(?:click|change|input)\s*=|setAttribute\s*\(\s*['"]data-|classList\.(?:add|remove|toggle)|\.checked\s*=|:checked\b/i.test(raw);
     const checkedControlsLost = full.controlsLost && full.checkedCount > 0;
-    const strippedStateProgram = full.rawInlineEvents > full.renderedInlineEvents && stateProgram;
+    const lostInlineStatePrograms = Math.max(0, Number(full.rawInlineEvents || 0) - Number(full.renderedInlineEvents || 0));
+    const recoveredInlineStatePrograms = recoveredInlineStateProgramCount(root);
+    const strippedStateProgram = lostInlineStatePrograms > recoveredInlineStatePrograms && stateProgram;
+    const decorativeOverlayCandidateCount = findDecorativeOverlayPassThroughCandidates(root).length;
     const scopeEvidence = maintenanceInteractionScopeEvidence(root);
     const checkedDepth = maintenanceCheckedInteractionDepth(root);
     const selectionOnlyRepairCandidateCount = checkedDepth.checkedSelectionOnly
@@ -6497,7 +6602,7 @@ function maintenanceKnownInteractionEvidence(root, full, code) {
         && root.getAttribute?.('data-rabbit-mirror-touch-hover-fallback') !== 'true';
     const unscopedControls = (full.inputCount > 0 || full.buttonCount > 0)
         && root.dataset?.rabbitMirrorInteractionScoped !== 'true';
-    return { checkedControlsLost, strippedStateProgram, touchHoverMissing, unscopedControls, selectionOnlyRepairCandidateCount, raw, ...scopeEvidence, ...checkedDepth };
+    return { checkedControlsLost, strippedStateProgram, lostInlineStatePrograms, recoveredInlineStatePrograms, decorativeOverlayCandidateCount, touchHoverMissing, unscopedControls, selectionOnlyRepairCandidateCount, raw, ...scopeEvidence, ...checkedDepth };
 }
 
 function maintenanceFallbackFullSummary(root) {
@@ -6554,7 +6659,7 @@ function inspectMaintenanceRabbit(root) {
     } catch (error) {
         partialInspection = true;
         console.debug('[RabbitMirror] maintenance interaction inspection skipped:', error);
-        interaction = { checkedControlsLost: false, strippedStateProgram: false, touchHoverMissing: false, unscopedControls: false, duplicateIds: 0, brokenLocalLabels: 0, checkedCssIdSelectors: 0, needsScopeRepair: false, checkedSelectionOnly: false, checkedSelectionOnlyRaw: false, checkedRuleCount: 0, meaningfulCheckedRuleCount: 0, selectionStyleRuleCount: 0, selectionOnlyFallbackCount: 0, selectionOnlyRepairCandidateCount: 0, raw: '' };
+        interaction = { checkedControlsLost: false, strippedStateProgram: false, lostInlineStatePrograms: 0, recoveredInlineStatePrograms: 0, decorativeOverlayCandidateCount: 0, touchHoverMissing: false, unscopedControls: false, duplicateIds: 0, brokenLocalLabels: 0, checkedCssIdSelectors: 0, needsScopeRepair: false, checkedSelectionOnly: false, checkedSelectionOnlyRaw: false, checkedRuleCount: 0, meaningfulCheckedRuleCount: 0, selectionStyleRuleCount: 0, selectionOnlyFallbackCount: 0, selectionOnlyRepairCandidateCount: 0, raw: '' };
     }
     const reasons = [];
 
@@ -6565,6 +6670,7 @@ function inspectMaintenanceRabbit(root) {
     if ((full.sourceCandidate && full.sourceObscured) || (code.strictWhole && code.strictParseOk)) reasons.push('存在可恢复的兔子镜源码');
     if (interaction.checkedControlsLost) reasons.push('CSS 仍依赖 checked，但控件已丢失');
     if (interaction.strippedStateProgram) reasons.push('宿主删除了可识别的状态事件');
+    if (interaction.decorativeOverlayCandidateCount > 0) reasons.push('全覆盖装饰层可能阻断触摸');
     if (interaction.touchHoverMissing) reasons.push('触屏环境缺少 Hover 兜底');
     if (interaction.selectionOnlyRepairCandidateCount > 0) reasons.push('选择控件只有选中样式，可安全建立缺失分支提示与返回路径');
     if (interaction.needsScopeRepair) reasons.push(`交互 ID 未隔离（重复ID=${interaction.duplicateIds}，失配标签=${interaction.brokenLocalLabels}）`);
@@ -6640,14 +6746,57 @@ function normalizeMaintenanceSummaryText(text) {
         .trim();
 }
 
-function isSafeMaintenanceMirrorSourceForDirectDom(source) {
+
+function findBalancedMaintenanceDetailsEnd(source, detailsStart) {
     const text = String(source || '');
-    if (!text) return false;
-    if (/<\s*\/?\s*(?:script|iframe|object|embed|link|meta|base)\b/i.test(text)) return false;
-    if (/\son[a-z]+\s*=/i.test(text)) return false;
-    if (/javascript\s*:/i.test(text)) return false;
-    return true;
+    if (detailsStart < 0) return -1;
+    const tagRe = /<\s*(\/?)\s*details\b[^>]*>/gi;
+    tagRe.lastIndex = detailsStart;
+    let depth = 0;
+    let match;
+    while ((match = tagRe.exec(text))) {
+        if (match.index < detailsStart) continue;
+        if (match[1]) {
+            depth -= 1;
+            if (depth === 0) return tagRe.lastIndex;
+        } else if (!/\/\s*>$/.test(match[0])) {
+            depth += 1;
+        }
+    }
+    return -1;
 }
+
+function extractMaintenanceMirrorSourceBySummary(source, root) {
+    const text = String(source || '');
+    const wantedSummary = normalizeMaintenanceSummaryText(getRabbitMirrorSummaryText(root));
+    if (!text || !wantedSummary) return '';
+
+    const summaryRe = /<summary\b[^>]*>([\s\S]*?)<\/summary\s*>/gi;
+    let fallback = '';
+    let match;
+    while ((match = summaryRe.exec(text))) {
+        const candidateText = normalizeMaintenanceSummaryText(
+            decodeHtmlEntities(String(match[1] || '').replace(/<[^>]*>/g, ' ')),
+        );
+        if (!candidateText) continue;
+        const matches = candidateText === wantedSummary
+            || candidateText.includes(wantedSummary)
+            || wantedSummary.includes(candidateText);
+        if (!matches) continue;
+
+        const prefix = text.slice(0, match.index).toLowerCase();
+        const detailsStart = prefix.lastIndexOf('<details');
+        if (detailsStart < 0) continue;
+        const detailsEnd = findBalancedMaintenanceDetailsEnd(text, detailsStart);
+        if (detailsEnd <= detailsStart) continue;
+
+        const isolated = text.slice(detailsStart, detailsEnd).trim();
+        if (!fallback) fallback = isolated;
+        if (!TRANSIENT_RERENDER_REASONING_ENVELOPE_RE.test(isolated)) return isolated;
+    }
+    return fallback && !TRANSIENT_RERENDER_REASONING_ENVELOPE_RE.test(fallback) ? fallback : '';
+}
+
 
 function prepareMaintenanceMirrorSource(source) {
     let text = decodeHtmlEntities(String(source || ''))
@@ -6670,9 +6819,21 @@ function extractIsolatedMaintenanceMirrorSource(source, root) {
         .trim();
     if (!text) return '';
 
-    // 只在脱离页面的 template 中寻找与当前 summary 对应的兔子镜。
-    // 即使整条消息含 thinking/reasoning，也不会把包裹外的文字写入显示层。
-    // 先做损坏 SVG Data URI 保主体，否则浏览器解析时同样会截断候选 DOM。
+    // 优先按当前 summary 在字符串层截取对应 <details>。
+    // 这一步不解析整条消息，因此即使前面含 thinking/reasoning，或损坏 SVG 已破坏 HTML 属性边界，
+    // 也只会拿到当前兔子镜本体，不会把思维包裹带入显示层。
+    const isolatedBySummary = extractMaintenanceMirrorSourceBySummary(text, root);
+    if (isolatedBySummary) {
+        const repairedIsolated = rescueDamagedDataUriRabbitMirrorOutput(isolatedBySummary).trim();
+        if (repairedIsolated
+            && !TRANSIENT_RERENDER_REASONING_ENVELOPE_RE.test(repairedIsolated)
+            && /<(?:toto|details)\b/i.test(repairedIsolated)
+            && /<summary\b[^>]*>[\s\S]*?兔子镜/i.test(repairedIsolated)) {
+            return repairedIsolated;
+        }
+    }
+
+    // 字符串隔离未命中时，再退回脱离页面的 template 匹配。
     text = rescueDamagedDataUriRabbitMirrorOutput(text);
     const matched = chooseMatchingRawRabbitMirrorRoot(text, root);
     const isolated = String(matched?.outerHTML || '').trim();
@@ -6683,15 +6844,30 @@ function extractIsolatedMaintenanceMirrorSource(source, root) {
     if (!/<(?:toto|details)\b/i.test(isolated) || !/<summary\b[^>]*>[\s\S]*?兔子镜/i.test(isolated)) return '';
     return isolated;
 }
-
 function findCleanMaintenanceMirrorNode(source, root) {
     const cleaned = prepareMaintenanceMirrorSource(source);
-    if (!cleaned || !isSafeMaintenanceMirrorSourceForDirectDom(cleaned) || typeof document === 'undefined') return null;
+    if (!cleaned || typeof document === 'undefined') return null;
     const wantedSummary = normalizeMaintenanceSummaryText(getRabbitMirrorSummaryText(root));
 
     try {
         const template = document.createElement('template');
         template.innerHTML = cleaned;
+
+        // 直接 DOM 恢复绕过宿主 DOMPurify，因此在离线 template 中主动执行同等安全边界：
+        // 拒绝主动内容与 javascript:，移除全部内联事件；真实交互只允许后续安全解析器从原始源码重建。
+        if (template.content.querySelector('script, iframe, object, embed, link, meta, base')) return null;
+        for (const element of template.content.querySelectorAll('*')) {
+            for (const attribute of [...element.attributes]) {
+                const name = String(attribute.name || '').toLowerCase();
+                const value = String(attribute.value || '');
+                if (/^on[a-z]+$/.test(name)) {
+                    element.removeAttribute(attribute.name);
+                    continue;
+                }
+                if (/^(?:href|src|xlink:href|formaction)$/i.test(name) && /^\s*javascript\s*:/i.test(value)) return null;
+            }
+        }
+
         const candidates = [];
         for (const toto of template.content.querySelectorAll('toto')) {
             const cloned = toto.cloneNode(true);
@@ -6894,7 +7070,7 @@ function chooseMaintenanceAutomaticMode(inspection) {
         || full.damagedDataUriCandidate || (code.strictWhole && code.strictParseOk)
         || code.needsSanitize;
     if (sourceFailure) return 'source';
-    if (interaction.checkedControlsLost || interaction.strippedStateProgram || interaction.touchHoverMissing || interaction.needsScopeRepair || interaction.selectionOnlyRepairCandidateCount > 0) {
+    if (interaction.checkedControlsLost || interaction.strippedStateProgram || interaction.decorativeOverlayCandidateCount > 0 || interaction.touchHoverMissing || interaction.needsScopeRepair || interaction.selectionOnlyRepairCandidateCount > 0) {
         return 'interaction';
     }
     if (inspection?.state === MAINTENANCE_STATES.repairable) return 'all';
@@ -6902,7 +7078,7 @@ function chooseMaintenanceAutomaticMode(inspection) {
 }
 
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.18';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.20';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -6919,10 +7095,13 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
         // label 内隐藏、label 后置结果、CSS 状态兄弟、按钮/可点击后置内容、弹层、遮罩、
         // 列表详情、ID 目标显隐、data-active/class 状态程序、Touch Hover 与 label fallback。
         scopeRabbitMirrorInteractionIds(target);
+        const overlayCountBefore = target.querySelectorAll?.(`[${DECORATIVE_OVERLAY_PASS_THROUGH_ATTR}]`)?.length || 0;
         installIntelligentInteractionRescue(target);
+        const overlayCountAfter = target.querySelectorAll?.(`[${DECORATIVE_OVERLAY_PASS_THROUGH_ATTR}]`)?.length || 0;
+        const overlayRepairCount = Math.max(0, overlayCountAfter - overlayCountBefore);
         const selectionFallbackCount = installSelectionOnlyStateFallback(target);
         const depthAfter = maintenanceCheckedInteractionDepth(target);
-        const genuinelyRescued = selectionFallbackCount > 0 || !depthAfter.checkedSelectionOnly;
+        const genuinelyRescued = selectionFallbackCount > 0 || overlayRepairCount > 0 || !depthAfter.checkedSelectionOnly;
         if (genuinelyRescued) target.dataset.rabbitMirrorInteractionRescued = 'true';
         else delete target.dataset.rabbitMirrorInteractionRescued;
         const routes = String(target.dataset.rabbitMirrorInteractionRoutes || '')
@@ -6930,7 +7109,7 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
             .map(item => item.trim())
             .filter(item => item && item !== 'none');
         // 不再把“调用了总入口”冒充为“命中了一条急救路线”；选择样式专用结构只有在安全补出分支提示后才算修复。
-        return genuinelyRescued ? routes.length : 0;
+        return genuinelyRescued ? Math.max(routes.length, overlayRepairCount) : 0;
     } },
 ]);
 
@@ -6984,6 +7163,36 @@ function runMaintenanceLegacyRescueLibrary(root, mode = 'all') {
     return result;
 }
 
+
+function mergeMaintenanceLibraryResult(target, addition, label = '') {
+    if (!target || !addition) return target;
+    for (const bucket of ['code', 'plainText', 'interaction', 'style', 'scope']) {
+        target[bucket] = (Number(target[bucket]) || 0) + (Number(addition[bucket]) || 0);
+    }
+    target.executed = [...(target.executed || []), ...(addition.executed || [])];
+    target.failed = [...(target.failed || []), ...(addition.failed || [])];
+    if (label) target.followup = label;
+    return target;
+}
+
+function runMaintenanceSourceInteractionFollowup(root) {
+    if (!root?.isConnected) return null;
+    const inspection = inspectMaintenanceRabbit(root);
+    const interaction = inspection?.interaction || {};
+    const shouldRepair = interaction.strippedStateProgram
+        || interaction.checkedControlsLost
+        || interaction.decorativeOverlayCandidateCount > 0
+        || interaction.touchHoverMissing
+        || interaction.needsScopeRepair;
+    if (!shouldRepair) return null;
+
+    const module = MAINTENANCE_RESCUE_LIBRARY.find(item => item.id === 'complete-interaction-library');
+    if (!module) return null;
+    const result = createMaintenanceLibraryResult('source-interaction-followup');
+    runMaintenanceRescueModule(module, { root, target: root, messageScope: root, mode: 'interaction' }, result);
+    return result;
+}
+
 function scheduleMaintenanceScopedFollowups(root, summaryText, messageIndex, mode) {
     const sourceModes = new Set(['source', 'code', 'plainText', 'style', 'all']);
     for (const delay of [80, 350, 900, 1800]) {
@@ -6998,6 +7207,7 @@ function scheduleMaintenanceScopedFollowups(root, summaryText, messageIndex, mod
                 const latestRoot = findLiveMaintenanceRoot(liveRoot, summaryText, messageIndex) || liveRoot;
                 if (!latestRoot?.isConnected) return;
                 runMaintenanceLegacyRescueLibrary(latestRoot, mode);
+                if (sourceResult.changed && mode === 'source') runMaintenanceSourceInteractionFollowup(latestRoot);
                 installMaintenanceRabbitForRoot(latestRoot);
             };
             if (sourceResult.changed) setTimeout(runLibrary, 60);
@@ -7047,6 +7257,10 @@ function runMaintenanceUserRepair(root, button, mode) {
             }
             const liveButton = liveRoot.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || button;
             const libraryResult = runMaintenanceLegacyRescueLibrary(liveRoot, effectiveMode);
+            if (sourceResult.changed && effectiveMode === 'source') {
+                const followupResult = runMaintenanceSourceInteractionFollowup(liveRoot);
+                if (followupResult) mergeMaintenanceLibraryResult(libraryResult, followupResult, 'interaction');
+            }
             if (mode === 'auto') libraryResult.autoSelected = effectiveMode;
             libraryResult.sourceRepair = {
                 attempted: effectiveMode === 'source' || effectiveMode === 'code' || effectiveMode === 'plainText' || effectiveMode === 'style' || effectiveMode === 'all',
@@ -7273,6 +7487,43 @@ function findNextUiTagStart(text, fromIndex) {
     return match ? Math.max(0, fromIndex) + match.index : -1;
 }
 
+
+function findDamagedInlineSvgDeclarationEnd(text, propertyStart, uriIndex, styleQuote) {
+    const source = String(text || '');
+    const prefix = source.slice(propertyStart, uriIndex);
+    const urlOpen = prefix.toLowerCase().lastIndexOf('url(');
+    if (urlOpen < 0 || !styleQuote) return -1;
+
+    let quoteIndex = propertyStart + urlOpen + 4;
+    while (quoteIndex < uriIndex && /\s/.test(source[quoteIndex])) quoteIndex += 1;
+    const urlQuote = source[quoteIndex] === '"' || source[quoteIndex] === "'" ? source[quoteIndex] : '';
+
+    // 精确寻找 url(...) 结束后紧接 style 属性闭引号和标签结束符的位置。
+    // 只删除 background-image 声明本身，保留其后的 <style> 与正文；找不到时才使用旧保主体兜底。
+    for (let index = Math.max(uriIndex, quoteIndex + 1); index < source.length; index += 1) {
+        if (urlQuote) {
+            if (source[index] !== urlQuote) continue;
+        } else if (source[index] !== ')') {
+            continue;
+        }
+
+        let cursor = urlQuote ? index + 1 : index;
+        while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
+        if (source[cursor] !== ')') continue;
+        cursor += 1;
+        while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
+        if (source[cursor] === ';') cursor += 1;
+        while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
+        if (source[cursor] !== styleQuote) continue;
+        const styleCloseIndex = cursor;
+        cursor += 1;
+        while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
+        if (source[cursor] === '>') return styleCloseIndex;
+        if (source.slice(cursor, cursor + 4).toLowerCase() === '&gt;') return styleCloseIndex;
+    }
+    return -1;
+}
+
 function countRawUiTags(text) {
     return (String(text || '').match(/<(?:div|section|article|label|input|button|p|span|h[1-6]|ul|ol|li|table|form|details|summary|figure|main|header|footer|nav)\b/gi) || []).length;
 }
@@ -7385,11 +7636,23 @@ export function rescueDamagedDataUriRabbitMirrorOutput(responseText = '') {
             continue;
         }
 
-        const removedFragment = text.slice(propertyStart, nextUiTagIndex);
-        const safePrefix = text.slice(0, propertyStart).replace(/[ \t]+$/g, '');
-        const safeSuffix = text.slice(nextUiTagIndex);
-        text = `${safePrefix}${styleQuote}>\n${safeSuffix}`;
-        text = removeSurplusSvgClosingTags(text, removedFragment);
+        const preciseStyleClose = findDamagedInlineSvgDeclarationEnd(text, propertyStart, uriIndex, styleQuote);
+        if (preciseStyleClose >= 0) {
+            const removedFragment = text.slice(propertyStart, preciseStyleClose);
+            const safePrefix = text.slice(0, propertyStart).replace(/[ \t]+$/g, '');
+            let safeSuffix = text.slice(preciseStyleClose);
+            if (safeSuffix.toLowerCase().startsWith(`${styleQuote}&gt;`)) {
+                safeSuffix = `${styleQuote}>${safeSuffix.slice(styleQuote.length + 4)}`;
+            }
+            text = `${safePrefix}${safeSuffix}`;
+            text = removeSurplusSvgClosingTags(text, removedFragment);
+        } else {
+            const removedFragment = text.slice(propertyStart, nextUiTagIndex);
+            const safePrefix = text.slice(0, propertyStart).replace(/[ \t]+$/g, '');
+            const safeSuffix = text.slice(nextUiTagIndex);
+            text = `${safePrefix}${styleQuote}>\n${safeSuffix}`;
+            text = removeSurplusSvgClosingTags(text, removedFragment);
+        }
         repairs += 1;
         cursor = Math.max(0, propertyStart + 2);
     }
