@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（小小维修兔 v1.8 初始化修复版）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（小小维修兔 v1.9 自动分流修复版）",
   "loading_order": 99,
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.33.10-test.1",
+  "version": "0.33.12-test.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "TEST build: fixes two syntax breakages introduced during the 0.33.9 legacy cleanup, restoring extension initialization while preserving the per-mirror Maintenance Rabbit v1.8 rescue library. Prompt, pools, and Menu QR v2.1 remain unchanged."
+  "description": "TEST build: hardens per-mirror source recovery for host CSS parser failures by percent-encoding raw SVG data URIs and rewriting state #id selectors to compatible attribute selectors before transient rerender. Full-chain diagnostics now report host CSS parser evidence. Prompt, pools, and Menu QR v2.1 remain unchanged."
 }
