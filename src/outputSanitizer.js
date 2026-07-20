@@ -634,8 +634,12 @@ const RENDERED_INPUT_ROUTE_ATTR = 'data-rm-rendered-input-route';
 const REVERSIBLE_TARGET_CLOSE_ATTR = 'data-rm-click-to-restore';
 const interactionLabelFallbackRoots = new WeakSet();
 const UNLABELED_CHECKED_HOST_RESCUE_ATTR = 'data-rabbit-mirror-unlabeled-checked-host-rescue';
+const UNLABELED_CHECKED_CONTROL_RESCUE_ATTR = 'data-rabbit-mirror-unlabeled-checked-control-rescue';
 const unlabeledCheckedHostRescueStates = new WeakMap();
 const WEBKIT_3D_FLIP_RESCUE_ATTR = 'data-rabbit-mirror-webkit-3d-flip-rescue';
+const webKit3DFlipRescueStates = new WeakMap();
+const webKit3DFlipStyleStates = new WeakMap();
+const webKit3DFlipInlineStates = new WeakMap();
 
 function getRenderedInputRoute(input) {
     return String(input?.getAttribute?.(RENDERED_INPUT_ROUTE_ATTR) || '');
@@ -4721,25 +4725,73 @@ function inputHasAssociatedLabel(root, input) {
     return [...root.querySelectorAll('label[for]')].some(label => String(label.getAttribute('for') || '') === id);
 }
 
+function checkedSelectorTargetsInputState(selector, input) {
+    const source = String(selector || '').trim();
+    if (!source || !/:checked\b/i.test(source) || !input?.matches) return false;
+
+    // 只识别“当前 input 自身进入 checked 后会影响其他节点/宿主”的规则。
+    // 允许 ancestor input:checked ~ target，也允许 .host:has(input:checked) target；
+    // 单纯 input:checked { accent-color: ... } 不扩大点击区。
+    const checkedSubjectRe = /((?:[a-zA-Z][\w-]*)?(?:(?:[#.][\w-]+)|(?:\[[^\]]+\]))*)\s*:checked\b/gi;
+    let match;
+    while ((match = checkedSubjectRe.exec(source))) {
+        const subject = String(match[1] || '').trim() || 'input';
+        let matchesInput = false;
+        try {
+            matchesInput = input.matches(subject);
+        } catch {
+            matchesInput = false;
+        }
+        if (!matchesInput) continue;
+
+        const before = source.slice(0, match.index);
+        const after = source.slice(match.index + match[0].length);
+        const openHasIndex = before.lastIndexOf(':has(');
+        const closeBeforeIndex = before.lastIndexOf(')');
+        if (openHasIndex > closeBeforeIndex && after.includes(')')) return true;
+
+        // checkbox/radio 是空元素；实际可见状态通常由 + / ~ / > 目标承担。
+        // 允许中间带 :not(...) / :is(...) 等伪类，只要其后仍出现结构组合符。
+        if (/(?:^|[^\\])[+~>]/.test(after)) return true;
+    }
+    return false;
+}
+
 function inputHasMeaningfulCheckedSiblingRule(root, input) {
     if (!root?.querySelectorAll || !input?.matches) return false;
+
+    // 优先走 CSSOM，能正确进入 @media / @supports 等嵌套规则；
+    // 文本扫描作为 WebView 暂时禁止读取 style.sheet 时的后备。
+    for (const style of root.querySelectorAll('style')) {
+        try {
+            let found = false;
+            const visitRules = (rules) => {
+                for (const rule of [...(rules || [])]) {
+                    if (found) return;
+                    if (rule?.cssRules) visitRules(rule.cssRules);
+                    if (!rule?.selectorText || !/:checked\b/i.test(rule.selectorText)) continue;
+                    for (const selector of splitCssSelectorList(rule.selectorText)) {
+                        if (checkedSelectorTargetsInputState(selector, input)) {
+                            found = true;
+                            return;
+                        }
+                    }
+                }
+            };
+            visitRules(style.sheet?.cssRules);
+            if (found) return true;
+        } catch {
+            // Continue with text scan below.
+        }
+    }
+
     const cssText = [...root.querySelectorAll('style')].map(style => String(style.textContent || '')).join('\n');
-    const blockRe = /([^{}]+)\{[^{}]*\}/g;
+    const selectorBlockRe = /(?:^|[{}])\s*([^{}]*:checked[^{}]*)\{/gi;
     let match;
-    while ((match = blockRe.exec(cssText))) {
-        const selectorText = String(match[1] || '');
-        if (!/:checked\b/i.test(selectorText)) continue;
-        for (const selector of selectorText.split(',').map(value => value.trim()).filter(Boolean)) {
-            const checkedIndex = selector.search(/:checked\b/i);
-            if (checkedIndex < 0) continue;
-            const subject = selector.slice(0, checkedIndex).trim();
-            const afterChecked = selector.slice(checkedIndex).replace(/^:checked\b/i, '').trim();
-            if (!afterChecked || !/^(?:[+~>]|\s)/.test(afterChecked)) continue;
-            try {
-                if (subject && input.matches(subject)) return true;
-            } catch {
-                // Ignore malformed model-generated selectors.
-            }
+    while ((match = selectorBlockRe.exec(cssText))) {
+        const selectorText = String(match[1] || '').trim();
+        for (const selector of splitCssSelectorList(selectorText)) {
+            if (checkedSelectorTargetsInputState(selector, input)) return true;
         }
     }
     return false;
@@ -4747,12 +4799,52 @@ function inputHasMeaningfulCheckedSiblingRule(root, input) {
 
 function findUnlabeledCheckedHost(root, input) {
     let host = input?.parentElement || null;
-    for (let depth = 0; host && host !== root && depth < 3; depth += 1, host = host.parentElement) {
+    for (let depth = 0; host && host !== root && depth < 6; depth += 1, host = host.parentElement) {
         const controls = host.querySelectorAll?.('input[type="checkbox"], input[type="radio"]') || [];
         const hasSiblingContent = [...(host.children || [])].some(child => child !== input && !/^(?:style|script)$/i.test(child.tagName || ''));
         if (controls.length === 1 && hasSiblingContent) return host;
     }
     return null;
+}
+
+function recordUnlabeledCheckedHostResult(root, state, before, intended, phase) {
+    if (!root || !state?.input) return;
+    const actual = !!state.input.checked;
+    state.lastBefore = !!before;
+    state.lastIntended = !!intended;
+    state.lastActual = actual;
+    state.lastPhase = String(phase || 'unknown');
+    state.lastMatched = actual === !!intended;
+    if (phase === 'click') state.toggleCount = (state.toggleCount || 0) + 1;
+    if (phase === 'verified' && state.lastMatched) state.verifiedCount = (state.verifiedCount || 0) + 1;
+    const identity = String(state.input.id || state.input.name || state.input.type || 'control').slice(0, 100);
+    root.dataset.rabbitMirrorUnlabeledCheckedLast = `${identity}:${before ? '1' : '0'}>${intended ? '1' : '0'}=${actual ? '1' : '0'}@${state.lastPhase}`;
+}
+
+function verifyUnlabeledCheckedHostState(root, state, before, intended) {
+    for (const delay of [0, 60]) {
+        setTimeout(() => {
+            const { input, host } = state || {};
+            if (!input?.isConnected || !host?.isConnected || !root?.contains?.(input) || !root.contains(host)) return;
+            if (!!input.checked !== !!intended) {
+                setRescuedCheckedState(root, input, intended);
+                state.correctionCount = (state.correctionCount || 0) + 1;
+            } else {
+                applyCheckedVisualFallback(root, input);
+            }
+            recordUnlabeledCheckedHostResult(root, state, before, intended, 'verified');
+        }, delay);
+    }
+}
+
+function detachUnlabeledCheckedHostEntry(state) {
+    const { input, host, onPointerDown, onClick } = state || {};
+    if (host?.removeEventListener) {
+        if (onPointerDown) host.removeEventListener('pointerdown', onPointerDown, true);
+        if (onClick) host.removeEventListener('click', onClick, true);
+    }
+    host?.removeAttribute?.(UNLABELED_CHECKED_HOST_RESCUE_ATTR);
+    input?.removeAttribute?.(UNLABELED_CHECKED_CONTROL_RESCUE_ATTR);
 }
 
 function setRescuedCheckedState(root, input, nextChecked) {
@@ -4777,123 +4869,226 @@ function setRescuedCheckedState(root, input, nextChecked) {
 
 function installUnlabeledCheckedHostFallback(root) {
     if (!root?.querySelectorAll) return 0;
-    const existing = unlabeledCheckedHostRescueStates.get(root);
-    if (existing?.entries) return existing.entries.size;
 
-    const entries = new Map();
+    // 流式渲染时 input、style 与正文可能分批到达。旧实现第一次扫描为 0 后就永久返回空 Map，
+    // 维修兔再次调用也无法真实安装。这里改为增量校准：清理失效条目并补装新命中路线。
+    const rescueState = unlabeledCheckedHostRescueStates.get(root) || { entries: new Map() };
+    const { entries } = rescueState;
+
+    for (const [input, state] of [...entries]) {
+        const expectedHost = input?.isConnected
+            && root.contains?.(input)
+            && !input.disabled
+            && !inputHasAssociatedLabel(root, input)
+            && inputHasMeaningfulCheckedSiblingRule(root, input)
+            ? findUnlabeledCheckedHost(root, input)
+            : null;
+        if (!expectedHost || expectedHost !== state.host || !state.host?.isConnected) {
+            detachUnlabeledCheckedHostEntry(state);
+            entries.delete(input);
+        }
+    }
+
     for (const input of root.querySelectorAll('input[type="checkbox"], input[type="radio"]')) {
-        if (input.disabled || inputHasAssociatedLabel(root, input) || !inputHasMeaningfulCheckedSiblingRule(root, input)) continue;
+        if (entries.has(input) || input.disabled || inputHasAssociatedLabel(root, input)
+            || !inputHasMeaningfulCheckedSiblingRule(root, input)) continue;
         const host = findUnlabeledCheckedHost(root, input);
-        if (!host || host.hasAttribute(UNLABELED_CHECKED_HOST_RESCUE_ATTR)) continue;
+        if (!host) continue;
 
-        const state = { input, host, beforePointer: null };
-        host.addEventListener('pointerdown', event => {
-            const nestedInteractive = event.target?.closest?.('a,button,label,select,textarea,[contenteditable="true"]');
-            if (nestedInteractive && host.contains(nestedInteractive)) return;
+        // DOM 被宿主克隆时 data 属性可能保留而 WeakMap 不保留；先移除无状态的旧标记再重绑。
+        if (host.hasAttribute(UNLABELED_CHECKED_HOST_RESCUE_ATTR)) {
+            const ownedByLiveEntry = [...entries.values()].some(entry => entry.host === host);
+            if (ownedByLiveEntry) continue;
+            host.removeAttribute(UNLABELED_CHECKED_HOST_RESCUE_ATTR);
+        }
+
+        const state = {
+            input,
+            host,
+            beforePointer: null,
+            toggleCount: 0,
+            correctionCount: 0,
+            verifiedCount: 0,
+            onPointerDown: null,
+            onClick: null,
+        };
+
+        state.onPointerDown = (event) => {
+            const nestedInteractive = event.target?.closest?.(EXISTING_INTERACTIVE_SELECTOR);
+            if (nestedInteractive && nestedInteractive !== input && host.contains(nestedInteractive)) return;
             state.beforePointer = !!input.checked;
-        }, true);
+        };
 
-        host.addEventListener('click', event => {
-            const nestedInteractive = event.target?.closest?.('a,button,label,select,textarea,[contenteditable="true"]');
-            if (nestedInteractive && host.contains(nestedInteractive)) return;
+        state.onClick = (event) => {
+            const nestedInteractive = event.target?.closest?.(EXISTING_INTERACTIVE_SELECTOR);
+            if (nestedInteractive && nestedInteractive !== input && host.contains(nestedInteractive)) return;
             const clickedInput = event.target === input || event.target?.closest?.('input') === input;
-            const before = state.beforePointer;
+            const before = state.beforePointer === null ? !!input.checked : state.beforePointer;
             state.beforePointer = null;
+            const intended = input.type === 'radio' ? true : !before;
 
             if (!clickedInput) {
+                // 当前局部宿主已经由急救器接管；阻止同一次点击继续冒泡到旧 onclick/其他兜底，
+                // 避免 true→false 的双重切换。链接、按钮、summary 等原生交互已在上方排除。
                 event.preventDefault();
-                setRescuedCheckedState(root, input, input.type === 'radio' ? true : !input.checked);
+                event.stopImmediatePropagation?.();
+                setRescuedCheckedState(root, input, intended);
+                recordUnlabeledCheckedHostResult(root, state, before, intended, 'click');
+                verifyUnlabeledCheckedHostState(root, state, before, intended);
                 return;
             }
 
+            // 直接点到 input 时优先保留原生切换；若 WebView 没有执行 default action，下一任务补切一次。
             setTimeout(() => {
-                if (!input.isConnected) return;
-                if (before !== null && input.checked === before) {
-                    setRescuedCheckedState(root, input, input.type === 'radio' ? true : !before);
-                } else {
-                    applyCheckedVisualFallback(root, input);
-                }
+                if (!input.isConnected || !root.contains(input)) return;
+                if (!!input.checked === before) setRescuedCheckedState(root, input, intended);
+                else applyCheckedVisualFallback(root, input);
+                recordUnlabeledCheckedHostResult(root, state, before, intended, 'click');
+                verifyUnlabeledCheckedHostState(root, state, before, intended);
             }, 0);
-        }, true);
+        };
 
+        host.addEventListener('pointerdown', state.onPointerDown, true);
+        host.addEventListener('click', state.onClick, true);
         host.setAttribute(UNLABELED_CHECKED_HOST_RESCUE_ATTR, 'true');
+        input.setAttribute(UNLABELED_CHECKED_CONTROL_RESCUE_ATTR, 'true');
         entries.set(input, state);
     }
 
-    unlabeledCheckedHostRescueStates.set(root, { entries });
+    unlabeledCheckedHostRescueStates.set(root, rescueState);
     if (entries.size) root.dataset.rabbitMirrorUnlabeledCheckedFallback = String(entries.size);
+    else {
+        delete root.dataset.rabbitMirrorUnlabeledCheckedFallback;
+        delete root.dataset.rabbitMirrorUnlabeledCheckedLast;
+    }
     return entries.size;
+}
+
+function isRelevant3DFlipDeclaration(property, value) {
+    const lowerProperty = String(property || '').toLowerCase();
+    const sourceValue = String(value || '');
+    return (lowerProperty === 'backface-visibility' && /hidden/i.test(sourceValue))
+        || (lowerProperty === 'transform-style' && /preserve-3d/i.test(sourceValue))
+        || lowerProperty === 'perspective'
+        || (lowerProperty === 'transform' && /rotateY\s*\(/i.test(sourceValue));
 }
 
 function addWebKit3DFlipPrefixes(cssText) {
     let changed = false;
-    const repaired = String(cssText || '').replace(
-        /(^|[;{]\s*)(backface-visibility|transform-style|perspective|transform)\s*:\s*([^;}{]+)(?=;|})/gi,
-        (full, lead, property, rawValue) => {
-            const value = String(rawValue || '').trim();
-            const lowerProperty = String(property || '').toLowerCase();
-            const relevant = (lowerProperty === 'backface-visibility' && /hidden/i.test(value))
-                || (lowerProperty === 'transform-style' && /preserve-3d/i.test(value))
-                || lowerProperty === 'perspective'
-                || (lowerProperty === 'transform' && /rotateY\s*\(/i.test(value));
-            if (!relevant) return full;
-            changed = true;
-            return `${lead}-webkit-${lowerProperty}: ${value}; ${lowerProperty}: ${value}`;
-        },
-    );
+    const repaired = String(cssText || '').replace(/\{([^{}]*)\}/g, (ruleBlock, declarations) => {
+        const patchedDeclarations = String(declarations || '').replace(
+            /(^|;)(\s*)(backface-visibility|transform-style|perspective|transform)\s*:\s*([^;{}]+)(?=;|$)/gi,
+            (full, separator, spacing, property, rawValue, offset, declarationSource) => {
+                const value = String(rawValue || '').trim();
+                const lowerProperty = String(property || '').toLowerCase();
+                if (!isRelevant3DFlipDeclaration(lowerProperty, value)) return full;
+
+                // 第二次扫描时，若紧邻的前一条已经是同值 WebKit 声明，不重复插入。
+                const before = String(declarationSource || '').slice(0, offset);
+                const previousPrefix = new RegExp(
+                    `(?:^|;)\\s*-webkit-${escapeRegExp(lowerProperty)}\\s*:\\s*${escapeRegExp(value)}\\s*$`,
+                    'i',
+                );
+                if (previousPrefix.test(before)) return full;
+
+                changed = true;
+                return `${separator}${spacing}-webkit-${lowerProperty}: ${value};${spacing}${lowerProperty}: ${value}`;
+            },
+        );
+        return `{${patchedDeclarations}}`;
+    });
     return { changed, repaired };
+}
+
+function collectWebKit3DFlipEvidence(root) {
+    if (!root?.querySelectorAll) return {
+        rotateY: 0, webkitRotateY: 0, backface: 0, webkitBackface: 0,
+        preserve3d: 0, webkitPreserve3d: 0, perspective: 0, webkitPerspective: 0,
+    };
+    const source = [
+        ...[...root.querySelectorAll('style')].map(style => String(style.textContent || '')),
+        ...[...root.querySelectorAll('[style]')].map(element => String(element.getAttribute('style') || '')),
+    ].join('\n');
+    const count = pattern => (source.match(pattern) || []).length;
+    return {
+        rotateY: count(/(?:^|[;{]\s*)transform\s*:[^;{}]*rotateY\s*\(/gim),
+        webkitRotateY: count(/(?:^|[;{]\s*)-webkit-transform\s*:[^;{}]*rotateY\s*\(/gim),
+        backface: count(/(?:^|[;{]\s*)backface-visibility\s*:\s*hidden\b/gim),
+        webkitBackface: count(/(?:^|[;{]\s*)-webkit-backface-visibility\s*:\s*hidden\b/gim),
+        preserve3d: count(/(?:^|[;{]\s*)transform-style\s*:\s*preserve-3d\b/gim),
+        webkitPreserve3d: count(/(?:^|[;{]\s*)-webkit-transform-style\s*:\s*preserve-3d\b/gim),
+        perspective: count(/(?:^|[;{]\s*)perspective\s*:/gim),
+        webkitPerspective: count(/(?:^|[;{]\s*)-webkit-perspective\s*:/gim),
+    };
+}
+
+function formatWebKit3DFlipEvidence(root) {
+    const evidence = collectWebKit3DFlipEvidence(root);
+    return `rotateY=${evidence.rotateY}/${evidence.webkitRotateY} backface=${evidence.backface}/${evidence.webkitBackface} preserve3d=${evidence.preserve3d}/${evidence.webkitPreserve3d} perspective=${evidence.perspective}/${evidence.webkitPerspective}`;
 }
 
 function installWebKit3DFlipRescue(root) {
     if (!root?.querySelectorAll) return 0;
-    const existingCount = Number.parseInt(root.getAttribute?.(WEBKIT_3D_FLIP_RESCUE_ATTR) || '0', 10) || 0;
-    if (existingCount) return existingCount;
+    const rescueState = webKit3DFlipRescueStates.get(root) || { patchedNodes: new Set() };
+    const { patchedNodes } = rescueState;
+    for (const node of [...patchedNodes]) {
+        if (!node?.isConnected || !root.contains?.(node)) patchedNodes.delete(node);
+    }
+
     const flipSourceText = [
         ...[...root.querySelectorAll('style')].map(style => String(style.textContent || '')),
         ...[...root.querySelectorAll('[style]')].map(element => String(element.getAttribute('style') || '')),
     ].join('\n');
-    if (!/rotateY\s*\(/i.test(flipSourceText)
-        || !/(?:backface-visibility\s*:\s*hidden|transform-style\s*:\s*preserve-3d)/i.test(flipSourceText)) return 0;
-    let repairedCount = 0;
+    const hasRotateY = /rotateY\s*\(/i.test(flipSourceText);
+    const has3DStructure = /(?:-webkit-)?backface-visibility\s*:\s*hidden/i.test(flipSourceText)
+        || /(?:-webkit-)?transform-style\s*:\s*preserve-3d/i.test(flipSourceText);
+    if (!hasRotateY || !has3DStructure) {
+        webKit3DFlipRescueStates.set(root, rescueState);
+        if (!patchedNodes.size) root.removeAttribute?.(WEBKIT_3D_FLIP_RESCUE_ATTR);
+        return patchedNodes.size;
+    }
 
-    for (const style of root.querySelectorAll(`style:not([${WEBKIT_3D_FLIP_RESCUE_ATTR}])`)) {
+    // 每个 style 独立补前缀。front/back 与 rotateY 常分散在多个 style 标签中，
+    // 不能再要求“当前 style 自己也含 rotateY”；同时允许流式追加后再次增量扫描。
+    for (const style of root.querySelectorAll('style')) {
         const current = String(style.textContent || '');
-        if (!/rotateY\s*\(/i.test(current)) continue;
+        if (webKit3DFlipStyleStates.get(style) === current) continue;
         const result = addWebKit3DFlipPrefixes(current);
-        if (!result.changed || result.repaired === current) continue;
-        style.textContent = result.repaired;
-        style.setAttribute(WEBKIT_3D_FLIP_RESCUE_ATTR, 'true');
-        repairedCount += 1;
+        if (result.changed && result.repaired !== current) {
+            style.textContent = result.repaired;
+            style.setAttribute(WEBKIT_3D_FLIP_RESCUE_ATTR, 'true');
+            patchedNodes.add(style);
+        }
+        webKit3DFlipStyleStates.set(style, String(style.textContent || ''));
     }
 
+    // 仅复制元素本来就有的 3D 声明到 WebKit 前缀；绝不向整个容器新加 rotateY。
     for (const element of root.querySelectorAll('[style]')) {
-        const styleText = String(element.getAttribute('style') || '');
+        const current = String(element.getAttribute('style') || '');
+        if (webKit3DFlipInlineStates.get(element) === current) continue;
         let changed = false;
-        if (/backface-visibility\s*:\s*hidden/i.test(styleText)) {
-            element.style.setProperty('-webkit-backface-visibility', 'hidden', 'important');
-            element.style.setProperty('backface-visibility', 'hidden', 'important');
-            changed = true;
+        for (const property of ['backface-visibility', 'transform-style', 'perspective', 'transform']) {
+            const value = element.style.getPropertyValue(property).trim();
+            if (!value || !isRelevant3DFlipDeclaration(property, value)) continue;
+            const prefixedProperty = `-webkit-${property}`;
+            const priority = element.style.getPropertyPriority(property) || '';
+            if (element.style.getPropertyValue(prefixedProperty).trim() !== value
+                || element.style.getPropertyPriority(prefixedProperty) !== priority) {
+                element.style.setProperty(prefixedProperty, value, priority);
+                changed = true;
+            }
         }
-        if (/transform-style\s*:\s*preserve-3d/i.test(styleText)) {
-            element.style.setProperty('-webkit-transform-style', 'preserve-3d', 'important');
-            element.style.setProperty('transform-style', 'preserve-3d', 'important');
-            changed = true;
+        if (changed) {
+            element.setAttribute(WEBKIT_3D_FLIP_RESCUE_ATTR, 'true');
+            patchedNodes.add(element);
         }
-        const perspective = styleText.match(/(?:^|;)\s*perspective\s*:\s*([^;]+)/i)?.[1]?.trim();
-        if (perspective) {
-            element.style.setProperty('-webkit-perspective', perspective, 'important');
-            changed = true;
-        }
-        const transform = styleText.match(/(?:^|;)\s*transform\s*:\s*([^;]*rotateY\s*\([^;]+)/i)?.[1]?.trim();
-        if (transform) {
-            element.style.setProperty('-webkit-transform', transform, 'important');
-            changed = true;
-        }
-        if (changed) repairedCount += 1;
+        webKit3DFlipInlineStates.set(element, String(element.getAttribute('style') || ''));
     }
 
-    if (repairedCount) root.setAttribute(WEBKIT_3D_FLIP_RESCUE_ATTR, String(repairedCount));
-    return repairedCount;
+    webKit3DFlipRescueStates.set(root, rescueState);
+    if (patchedNodes.size) root.setAttribute(WEBKIT_3D_FLIP_RESCUE_ATTR, String(patchedNodes.size));
+    else root.removeAttribute?.(WEBKIT_3D_FLIP_RESCUE_ATTR);
+    return patchedNodes.size;
 }
 
 function installIntelligentInteractionRescue(root) {
@@ -5311,7 +5506,7 @@ const MAINTENANCE_REASON_ATTR = 'data-rabbit-mirror-maintenance-reason';
 const MAINTENANCE_REPAIR_ATTR = 'data-rabbit-mirror-maintenance-repaired';
 const MAINTENANCE_MENU_ATTR = 'data-rabbit-mirror-maintenance-menu';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '0.33.17-TEST-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.33.20-TEST-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -5437,7 +5632,7 @@ function diagnosticRouteSummary(root) {
 
 function diagnosticInferReason(root, inputs, targets) {
     const routes = diagnosticRouteSummary(root);
-    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.stateSibling + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.focusToChecked + routes.checkedTextRule + routes.expandedOpacity + routes.containerReveal + routes.selfMutation + routes.classStateProgram + routes.cssCommentRepair + routes.changeProgram + routes.unlabeledChecked + routes.webkit3dFlip;
+    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.stateSibling + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.focusToChecked + routes.checkedTextRule + routes.expandedOpacity + routes.containerReveal + routes.selfMutation + routes.classStateProgram + routes.cssCommentRepair + routes.changeProgram + routes.unlabeledChecked;
     const checkedInputs = inputs.filter(input => input.checked);
     const visibleTargets = targets.filter(target => {
         const style = diagnosticComputedStyle(target);
@@ -5559,11 +5754,15 @@ function diagnosticFullChainSummary(root, code) {
     const mobileWebKit = /(?:iPhone|iPad|iPod).*AppleWebKit|AppleWebKit.*Mobile/i.test(String(globalThis.navigator?.userAgent || ''));
     const flipSourceText = `${decodedRaw}
 ${styleTexts}`;
+    const flipEvidence = collectWebKit3DFlipEvidence(root);
     const mobile3DFlipCandidate = mobileWebKit
         && /rotateY\s*\(/i.test(flipSourceText)
         && /backface-visibility\s*:\s*hidden/i.test(flipSourceText)
         && /preserve-3d/i.test(flipSourceText)
-        && root?.getAttribute?.(WEBKIT_3D_FLIP_RESCUE_ATTR) == null;
+        && (flipEvidence.webkitRotateY < flipEvidence.rotateY
+            || flipEvidence.webkitBackface < flipEvidence.backface
+            || flipEvidence.webkitPreserve3d < flipEvidence.preserve3d
+            || flipEvidence.webkitPerspective < flipEvidence.perspective);
     const detailsCount = body?.querySelectorAll?.('details')?.length || 0;
     const styleCount = body?.querySelectorAll?.('style')?.length || 0;
     const scriptCount = body?.querySelectorAll?.('script')?.length || 0;
@@ -5599,6 +5798,22 @@ ${styleTexts}`;
     const renderedLabelCount = body?.querySelectorAll?.('label')?.length || 0;
     const rawUiTagCount = countRawUiTags(decodedRaw);
     const renderedUiTagCount = body?.querySelectorAll?.('div,section,article,label,input,button,p,span,h1,h2,h3,h4,h5,h6,ul,ol,li,table,form,details,summary,figure,main,header,footer,nav')?.length || 0;
+    const primaryDetails = root?.matches?.('details') ? root : root?.querySelector?.('details');
+    const primarySummary = primaryDetails?.querySelector?.(':scope > summary') || primaryDetails?.querySelector?.('summary');
+    const primaryRect = diagnosticRect(primaryDetails);
+    const summaryRect = diagnosticRect(primarySummary);
+    const primaryOpen = String(primaryDetails?.tagName || '').toLowerCase() !== 'details' || !!primaryDetails?.open;
+    const renderedBodyElementCount = primaryDetails ? [...(primaryDetails.children || [])].filter(child => {
+        const tag = String(child?.tagName || '').toLowerCase();
+        if (!tag || tag === 'summary' || tag === 'style' || tag === 'script' || tag === 'br') return false;
+        if (child.matches?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || child.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`)) return false;
+        if (tag === 'p' && !String(child.textContent || '').trim() && !child.children?.length) return false;
+        return true;
+    }).length : 0;
+    const visibleBodyMissing = !!(primaryDetails && primaryOpen && code?.rawHasToto && rawUiTagCount >= 6 && (
+        renderedBodyElementCount === 0
+        || (primaryRect.height > 0 && primaryRect.height <= summaryRect.height + 10)
+    ));
     const repairedDataUriSource = rescueDamagedDataUriRabbitMirrorOutput(decodedRaw);
     const damagedDataUriCandidate = repairedDataUriSource !== decodedRaw;
     const controlsLost = rawInputCount > 0 && inputCount === 0;
@@ -5606,7 +5821,8 @@ ${styleTexts}`;
     const severeStructureLoss = rawUiTagCount >= 8 && renderedUiTagCount + 5 < rawUiTagCount
         && renderedUiTagCount < Math.ceil(rawUiTagCount * 0.55);
     const structureTruncated = damagedDataUriCandidate && (controlsLost || labelsLost || severeStructureLoss);
-    const sourceCandidate = code?.rawNeeds && code?.rawHasToto;
+    const rawMirrorSourcePresent = !!code?.rawHasToto || /<details\b/i.test(decodedRaw);
+    const sourceCandidate = rawMirrorSourcePresent && (!!code?.rawNeeds || visibleBodyMissing || severeStructureLoss);
     // 原始聊天内容会永久保留未清洗源码；这本身不是显示故障。
     // 只有当前显示层仍存在 CSS ERROR、代码壳、转义源码或完整纯文字候选时，才判定源码仍被遮蔽。
     const sourceObscured = sourceCandidate && (
@@ -5617,6 +5833,8 @@ ${styleTexts}`;
         || !!code?.strictWhole
         || !!code?.renderedHasEscapedToto
         || !!code?.renderedNeeds
+        || visibleBodyMissing
+        || severeStructureLoss
     );
     let verdict = '当前链路未发现单一高置信故障点。';
     if (structureTruncated) verdict = '高置信：损坏的 SVG Data URI 破坏了 inline style 属性边界，导致后续 DOM 被截断；应移除该背景声明并用原始源码临时重绘显示层。';
@@ -5643,7 +5861,8 @@ ${styleTexts}`;
         maintenanceModuleVersion, maintenanceModuleMode, maintenanceSourceAttempted, maintenanceSourceChanged, maintenanceSourceReason,
         hostCssParserError, hostCssParserErrorText, rawUnencodedSvgDataUri, rawCssCommentCount, rawCssIdSelectorCount,
         rawInputCount, rawLabelCount, renderedLabelCount, rawUiTagCount, renderedUiTagCount,
-        damagedDataUriCandidate, controlsLost, labelsLost, severeStructureLoss, structureTruncated, mobile3DFlipCandidate, verdict,
+        damagedDataUriCandidate, controlsLost, labelsLost, severeStructureLoss, structureTruncated,
+        visibleBodyMissing, renderedBodyElementCount, mobile3DFlipCandidate, verdict,
     };
 }
 
@@ -5675,6 +5894,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `原始 inputs=${full.rawInputCount} labels=${full.rawLabelCount} UI标签≈${full.rawUiTagCount}`,
         `渲染 inputs=${full.inputCount} labels=${full.renderedLabelCount} UI标签≈${full.renderedUiTagCount}`,
         `SVG Data URI损坏候选=${full.damagedDataUriCandidate} 结构截断=${full.structureTruncated}`,
+        `展开后主体缺失=${full.visibleBodyMissing} 主体子节点=${full.renderedBodyElementCount ?? 0}`,
         '',
         '[3. CSS 能力层]',
         `rules≈${full.cssRuleCount} keyframes=${full.animationCount}`,
@@ -5731,8 +5951,8 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `类名状态程序 entries=${routes.classStateProgram} listener=${routes.classStateProgram ? 'true' : 'false'}`,
         `CSS注释保全 entries=${routes.cssCommentRepair} listener=${routes.cssCommentRepair ? 'true' : 'false'}`,
         `安全状态程序 entries=${routes.changeProgram} listener=${routes.changeProgram ? 'true' : 'false'}`,
-        `无label控件宿主 entries=${routes.unlabeledChecked} listener=${routes.unlabeledChecked ? 'true' : 'false'}`,
-        `iOS 3D翻面兼容 patches=${routes.webkit3dFlip}`,
+        `无label控件宿主 entries=${routes.unlabeledChecked} listener=${routes.unlabeledChecked ? 'true' : 'false'} last=${root.dataset.rabbitMirrorUnlabeledCheckedLast || '(尚未点击验证)'}`,
+        `iOS 3D翻面兼容 patches=${routes.webkit3dFlip} evidence=${formatWebKit3DFlipEvidence(root)}`,
         `label fallback=${root.dataset.rabbitMirrorLabelFallback || root.dataset.rabbitMirrorCheckedFallback || 'unknown'}`,
         '',
         '[捕获事件]',
@@ -5752,7 +5972,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         lines.push(
             `${index}: ${diagnosticElementName(input)} type=${input.type} checked=${!!input.checked}`,
             `   label=${!!label} text="${diagnosticCompactText(label?.textContent, 68)}"`,
-            `   attrs: route=${getRenderedInputRoute(input) || 'none'} adjacent=${input.getAttribute(RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR) || 'false'} layer=${input.getAttribute(RENDERED_STATE_LAYER_RESCUE_ATTR) || 'false'} labelInternal=${input.getAttribute(RENDERED_LABEL_INTERNAL_HIDDEN_RESCUE_ATTR) || 'false'} labelAdjacent=${input.getAttribute(RENDERED_LABEL_ADJACENT_RESULT_RESCUE_ATTR) || 'false'} idTarget=${input.getAttribute(RENDERED_CHECKED_ID_TARGET_RESCUE_ATTR) || 'false'} cssChecked=${input.getAttribute(CHECKED_TEXT_RULE_RESCUE_ATTR) || 'false'} expandedOpacity=${input.getAttribute(EXPANDED_OPACITY_RESCUE_ATTR) || 'false'} change=${input.getAttribute(CHANGE_PSEUDO_RESCUE_ATTR) || 'false'}`,
+            `   attrs: route=${getRenderedInputRoute(input) || 'none'} adjacent=${input.getAttribute(RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR) || 'false'} layer=${input.getAttribute(RENDERED_STATE_LAYER_RESCUE_ATTR) || 'false'} labelInternal=${input.getAttribute(RENDERED_LABEL_INTERNAL_HIDDEN_RESCUE_ATTR) || 'false'} labelAdjacent=${input.getAttribute(RENDERED_LABEL_ADJACENT_RESULT_RESCUE_ATTR) || 'false'} idTarget=${input.getAttribute(RENDERED_CHECKED_ID_TARGET_RESCUE_ATTR) || 'false'} cssChecked=${input.getAttribute(CHECKED_TEXT_RULE_RESCUE_ATTR) || 'false'} expandedOpacity=${input.getAttribute(EXPANDED_OPACITY_RESCUE_ATTR) || 'false'} change=${input.getAttribute(CHANGE_PSEUDO_RESCUE_ATTR) || 'false'} unlabeledHost=${input.getAttribute(UNLABELED_CHECKED_CONTROL_RESCUE_ATTR) || 'false'}`,
         );
     });
 
@@ -6088,6 +6308,10 @@ function maintenanceFallbackFullSummary(root) {
         rawCssCommentCount: 0,
         rawCssIdSelectorCount: 0,
         severeStructureLoss: false,
+        visibleBodyMissing: false,
+        renderedBodyElementCount: 0,
+        rawToto: false,
+        rawHtml: false,
         controlsLost: false,
         checkedCount: (styleTexts.match(/:checked\b/gi) || []).length,
         rawInlineEvents: 0,
@@ -6125,7 +6349,9 @@ function inspectMaintenanceRabbit(root) {
     }
     const reasons = [];
 
+    if (full.visibleBodyMissing) reasons.push('展开后没有显示兔子镜主体，原始源码仍可恢复');
     if (full.structureTruncated || full.damagedDataUriCandidate) reasons.push('损坏的 SVG Data URI／结构截断');
+    if (full.severeStructureLoss && !full.visibleBodyMissing && full.rawToto) reasons.push('渲染主体大面积缺失，原始源码仍可恢复');
     if (full.hostCssParserError) reasons.push('宿主 CSS 解析失败');
     if ((full.sourceCandidate && full.sourceObscured) || (code.strictWhole && code.strictParseOk)) reasons.push('存在可恢复的兔子镜源码');
     if (interaction.checkedControlsLost) reasons.push('CSS 仍依赖 checked，但控件已丢失');
@@ -6139,7 +6365,7 @@ function inspectMaintenanceRabbit(root) {
     }
 
     const unknownReasons = [];
-    if (full.severeStructureLoss) unknownReasons.push('渲染结构明显缺失，但未命中安全修复类型');
+    if (full.severeStructureLoss && !full.rawToto) unknownReasons.push('渲染结构明显缺失，但未命中安全修复类型');
     if (full.controlsLost && full.checkedCount === 0 && full.rawInlineEvents === 0) unknownReasons.push('交互控件丢失，无法确认原始状态逻辑');
     if (full.renderedEscapedTags && !code.strictParseOk && !full.sourceCandidate) unknownReasons.push('显示层仍有源码标签，但没有可安全恢复的完整候选');
     if (interaction.checkedSelectionOnly) unknownReasons.push('选择控件只能改变选中样式，没有可识别的第二层内容；维修兔不能安全代写缺失体验');
@@ -6453,7 +6679,8 @@ function chooseMaintenanceAutomaticMode(inspection) {
     const full = inspection?.full || {};
     const code = inspection?.code || {};
     const interaction = inspection?.interaction || {};
-    const sourceFailure = (full.sourceCandidate && full.sourceObscured) || full.hostCssParserError || full.structureTruncated
+    const sourceFailure = full.visibleBodyMissing || (full.severeStructureLoss && full.rawToto)
+        || (full.sourceCandidate && full.sourceObscured) || full.hostCssParserError || full.structureTruncated
         || full.damagedDataUriCandidate || (code.strictWhole && code.strictParseOk)
         || code.needsSanitize;
     if (sourceFailure) return 'source';
@@ -6465,7 +6692,7 @@ function chooseMaintenanceAutomaticMode(inspection) {
 }
 
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.14';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.16';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -6652,6 +6879,9 @@ function maintenanceRecommendationForInspection(inspection) {
     const full = inspection?.full || {};
     const code = inspection?.code || {};
     const interaction = inspection?.interaction || {};
+    if (full.visibleBodyMissing || (full.severeStructureLoss && full.rawToto)) {
+        return { mode: 'source', label: '📄 显示代码或纯文字', reason: '检测到展开后的兔子镜主体为空，优先使用纯文字／源码恢复' };
+    }
     if (full.structureTruncated || full.damagedDataUriCandidate || full.hostCssParserError
         || (full.sourceCandidate && full.sourceObscured) || code.needsSanitize || (code.strictWhole && code.strictParseOk)) {
         return { mode: 'source', label: '📄 显示代码或纯文字', reason: '检测到源码、代码壳、CSS 解析或结构截断问题' };
