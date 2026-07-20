@@ -7,7 +7,7 @@ let hostScriptModule = null;
 // 0.32.67: 一次性交互诊断升级为兔子镜总诊断，可检查交互、代码块、纯文字源码、显示源与触发链；急救逻辑保持不变；
 // 0.32.66: 新增文字可读性底线；代码块急救补充完整转义兔子镜普通文本 DOM 兜底；其余行为保持不变；
 // 本版仅撤回 promptBuilder 中 0.32.60 新增的常驻色彩关系测试规则。
-// 对含有 thinking/reasoning 包裹的消息仍禁止交互急救触发任何临时整条重绘。
+// 含 thinking/reasoning 包裹时仍禁止整条消息瞬时重绘；但允许先隔离并只重建当前兔子镜 DOM。
 
 const TOTO_BLOCK_RE = /<toto\b[\s\S]*?<\/toto>/gi;
 const TOTO_BLOCK_SINGLE_RE = /<toto\b[\s\S]*?<\/toto>/i;
@@ -5117,7 +5117,7 @@ const MAINTENANCE_REASON_ATTR = 'data-rabbit-mirror-maintenance-reason';
 const MAINTENANCE_REPAIR_ATTR = 'data-rabbit-mirror-maintenance-repaired';
 const MAINTENANCE_MENU_ATTR = 'data-rabbit-mirror-maintenance-menu';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '0.33.13-TEST-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.33.16-TEST-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -6021,6 +6021,26 @@ function prepareMaintenanceMirrorSource(source) {
     return text.trim();
 }
 
+function extractIsolatedMaintenanceMirrorSource(source, root) {
+    let text = decodeHtmlEntities(String(source || ''))
+        .replace(/[\u200B\u200C\u200D\uFEFF]/g, '')
+        .trim();
+    if (!text) return '';
+
+    // 只在脱离页面的 template 中寻找与当前 summary 对应的兔子镜。
+    // 即使整条消息含 thinking/reasoning，也不会把包裹外的文字写入显示层。
+    // 先做损坏 SVG Data URI 保主体，否则浏览器解析时同样会截断候选 DOM。
+    text = rescueDamagedDataUriRabbitMirrorOutput(text);
+    const matched = chooseMatchingRawRabbitMirrorRoot(text, root);
+    const isolated = String(matched?.outerHTML || '').trim();
+    if (!isolated) return '';
+
+    // 若畸形标签把思维包裹卷入候选内部，则宁可停止，也不冒险展示隐藏内容。
+    if (TRANSIENT_RERENDER_REASONING_ENVELOPE_RE.test(isolated)) return '';
+    if (!/<(?:toto|details)\b/i.test(isolated) || !/<summary\b[^>]*>[\s\S]*?兔子镜/i.test(isolated)) return '';
+    return isolated;
+}
+
 function findCleanMaintenanceMirrorNode(source, root) {
     const cleaned = prepareMaintenanceMirrorSource(source);
     if (!cleaned || !isSafeMaintenanceMirrorSourceForDirectDom(cleaned) || typeof document === 'undefined') return null;
@@ -6091,10 +6111,8 @@ function repairMaintenanceMessageSource(root, inspection) {
     const chat = host?.chat || globalThis.chat;
     const message = Array.isArray(chat) ? chat[index] : null;
     if (!message || message?.is_user) return { changed: false, index, reason: '未找到可维护的助手消息' };
-    if (messageContainsReasoningEnvelope(message)) {
-        return { changed: false, index, reason: '存在思维包裹，为避免恢复时暴露隐藏内容已停止整条重绘' };
-    }
 
+    const hasReasoningEnvelope = messageContainsReasoningEnvelope(message);
     const distinctDisplaySource = messageUsesDistinctDisplaySource(message);
     // 存在独立 display_text 时只使用显示源本身，不回退到 mes/swipe，避免绕过用户显示正则。
     const source = getSelectedMessageSource(message, { preferDisplay: distinctDisplaySource });
@@ -6102,14 +6120,30 @@ function repairMaintenanceMessageSource(root, inspection) {
 
     const hasSourceCandidate = inspection?.full?.sourceCandidate || inspection?.code?.strictWhole || inspection?.code?.needsSanitize;
     if (hasSourceCandidate) {
-        // CSS ERROR 已经把当前 details 截断时，优先从当前消息的安全源码中只重建这一面兔子镜。
-        // 该路线不写回 mes/swipe/display_text，也不再次经过 TH/Markdown，因此不会重复触发同一宿主 CSS 解析错误。
-        const directDomRecovered = replaceMaintenanceMirrorDomFromSource(root, source);
-        if (directDomRecovered) return { changed: true, index, reason: '已从当前消息源码直接重建这一面兔子镜 DOM' };
+        // 先从整条消息中安全隔离当前 summary 对应的兔子镜，再只重建这一面 DOM。
+        // 这条路线不写回 mes/swipe/display_text；消息中即使有 thinking/reasoning，包裹外内容也不会进入显示层。
+        const isolatedMirrorSource = extractIsolatedMaintenanceMirrorSource(source, root);
+        if (isolatedMirrorSource) {
+            const directDomRecovered = replaceMaintenanceMirrorDomFromSource(root, isolatedMirrorSource);
+            if (directDomRecovered) {
+                const note = hasReasoningEnvelope ? '（已隔离思维包裹）' : '';
+                return { changed: true, index, reason: `已从当前消息源码安全重建这一面兔子镜 DOM${note}` };
+            }
+        }
 
-        // 直接 DOM 重建不适用时，再调用原有整条瞬时重绘路线。
-        const directRecovered = recoverMessageSourceToDisplay(host, index, message, { force: true, sourceOverride: source });
-        if (directRecovered) return { changed: true, index, reason: '已调用旧源码恢复模块重建当前消息显示层' };
+        // 只有不存在思维包裹、且没有独立显示源时，才允许退回整条消息瞬时重绘。
+        // 这保留原有隐私边界，同时不再误伤“可安全隔离当前兔子镜”的情况。
+        if (!hasReasoningEnvelope && !distinctDisplaySource) {
+            const directRecovered = recoverMessageSourceToDisplay(host, index, message, { force: true, sourceOverride: source });
+            if (directRecovered) return { changed: true, index, reason: '已调用旧源码恢复模块重建当前消息显示层' };
+        }
+    }
+
+    if (hasReasoningEnvelope) {
+        return { changed: false, index, reason: '存在思维包裹；已尝试安全提取当前兔子镜，但未得到可重建片段，未执行整条重绘' };
+    }
+    if (distinctDisplaySource) {
+        return { changed: false, index, reason: '存在独立显示源；当前兔子镜无法安全隔离，未回退到原始消息整条重绘' };
     }
 
     let repaired = source;
@@ -6224,7 +6258,7 @@ function chooseMaintenanceAutomaticMode(inspection) {
 }
 
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.11';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.13';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。

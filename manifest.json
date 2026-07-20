@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（小小维修兔 v1.12 色彩光感恢复版）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（小小维修兔 v1.13 思维隔离源码急救版）",
   "loading_order": 99,
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.33.15-test.1",
+  "version": "0.33.16-test.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "TEST build: restores one focused color-and-light diversity rule for the main visual surface while preserving the 0.33.14 maintenance-rabbit rescue chain, pools, and Menu QR v2.1."
+  "description": "TEST build: allows the maintenance rabbit to isolate and rebuild only the current RabbitMirror DOM even when the surrounding message contains thinking/reasoning wrappers, while still prohibiting whole-message rerenders that could expose hidden content."
 }
