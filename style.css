@@ -192,3 +192,13 @@ toto[data-rabbit-mirror="true"] summary {
 .rabbit-mirror-maintenance-menu button:focus-visible {
   background: color-mix(in srgb, currentColor 14%, transparent) !important;
 }
+
+.rabbit-mirror-maintenance-recommendation {
+    margin: 0 0 8px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: rgba(127, 127, 127, 0.12);
+    font-size: 12px;
+    line-height: 1.45;
+    text-align: left;
+}
