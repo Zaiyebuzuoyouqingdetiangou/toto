@@ -1,4 +1,13 @@
-# RabbitMirror 0.33.16 TEST｜小小维修兔 v1.13 思维隔离源码急救版
+# RabbitMirror 0.33.17 TEST｜小小维修兔 v1.14 iOS 交互与翻面修复版
+
+## 0.33.17 iOS 无 label 交互与 3D 翻面修复
+
+- 新增无 `label` 的 checkbox/radio 局部宿主点击兜底：只在当前控件确实存在有意义的 `:checked` 后置状态规则时启用，点击当前条目即可可靠切换状态。
+- 针对 iOS Safari/WebView 补充 `-webkit-backface-visibility`、`-webkit-transform-style`、`-webkit-perspective` 与 `-webkit-transform`，修复 3D 翻面后文字镜像或正反两面同时显示。
+- 维修兔“点了没有反应”会安装无 label 控件宿主路线；“样子不对”与“全部试试”会运行 iOS 3D 翻面兼容模块。
+- 巡逻在 iOS 检测到 3D 翻面结构且尚未兼容时，会推荐“🎨 样子不对”。
+- 全链路诊断新增“无label控件宿主”与“iOS 3D翻面兼容”计数。
+- 不修改 Prompt、主题池、展现形式池、Menu QR，也不写回 `mes`、swipe 或 `display_text`。
 
 ## 0.33.15 色彩与光感恢复
 

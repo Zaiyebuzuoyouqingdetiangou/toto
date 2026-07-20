@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（小小维修兔 v1.13 思维隔离源码急救版）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（小小维修兔 v1.14 iOS 交互与翻面修复版）",
   "loading_order": 99,
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.33.16-test.1",
+  "version": "0.33.17-test.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "TEST build: allows the maintenance rabbit to isolate and rebuild only the current RabbitMirror DOM even when the surrounding message contains thinking/reasoning wrappers, while still prohibiting whole-message rerenders that could expose hidden content."
+  "description": "TEST build: adds an iOS-safe parent-tap fallback for unlabeled checked interactions and WebKit 3D flip compatibility to prevent mirrored or double-visible card faces, while keeping all repairs scoped to the current RabbitMirror display DOM."
 }
