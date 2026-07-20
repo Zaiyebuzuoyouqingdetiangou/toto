@@ -633,6 +633,9 @@ const reversibleTextBaselineStates = new WeakMap();
 const RENDERED_INPUT_ROUTE_ATTR = 'data-rm-rendered-input-route';
 const REVERSIBLE_TARGET_CLOSE_ATTR = 'data-rm-click-to-restore';
 const interactionLabelFallbackRoots = new WeakSet();
+const UNLABELED_CHECKED_HOST_RESCUE_ATTR = 'data-rabbit-mirror-unlabeled-checked-host-rescue';
+const unlabeledCheckedHostRescueStates = new WeakMap();
+const WEBKIT_3D_FLIP_RESCUE_ATTR = 'data-rabbit-mirror-webkit-3d-flip-rescue';
 
 function getRenderedInputRoute(input) {
     return String(input?.getAttribute?.(RENDERED_INPUT_ROUTE_ATTR) || '');
@@ -4698,6 +4701,201 @@ function repairMarkdownCorruptedCssComments(root) {
     return repairedCount;
 }
 
+
+function applyCheckedVisualFallback(root, input) {
+    const renderedRoute = getRenderedInputRoute(input);
+    if (renderedRoute) {
+        restoreInteractionInlineOverrides(input);
+        return;
+    }
+    const textRuleCount = applyCheckedRuleTextFallback(root, input);
+    if (!textRuleCount) applyCheckedRuleInlineFallback(root, input);
+}
+
+function inputHasAssociatedLabel(root, input) {
+    if (!input) return false;
+    if (input.closest?.('label')) return true;
+    if (input.labels?.length) return true;
+    const id = String(input.id || '');
+    if (!id || !root?.querySelectorAll) return false;
+    return [...root.querySelectorAll('label[for]')].some(label => String(label.getAttribute('for') || '') === id);
+}
+
+function inputHasMeaningfulCheckedSiblingRule(root, input) {
+    if (!root?.querySelectorAll || !input?.matches) return false;
+    const cssText = [...root.querySelectorAll('style')].map(style => String(style.textContent || '')).join('\n');
+    const blockRe = /([^{}]+)\{[^{}]*\}/g;
+    let match;
+    while ((match = blockRe.exec(cssText))) {
+        const selectorText = String(match[1] || '');
+        if (!/:checked\b/i.test(selectorText)) continue;
+        for (const selector of selectorText.split(',').map(value => value.trim()).filter(Boolean)) {
+            const checkedIndex = selector.search(/:checked\b/i);
+            if (checkedIndex < 0) continue;
+            const subject = selector.slice(0, checkedIndex).trim();
+            const afterChecked = selector.slice(checkedIndex).replace(/^:checked\b/i, '').trim();
+            if (!afterChecked || !/^(?:[+~>]|\s)/.test(afterChecked)) continue;
+            try {
+                if (subject && input.matches(subject)) return true;
+            } catch {
+                // Ignore malformed model-generated selectors.
+            }
+        }
+    }
+    return false;
+}
+
+function findUnlabeledCheckedHost(root, input) {
+    let host = input?.parentElement || null;
+    for (let depth = 0; host && host !== root && depth < 3; depth += 1, host = host.parentElement) {
+        const controls = host.querySelectorAll?.('input[type="checkbox"], input[type="radio"]') || [];
+        const hasSiblingContent = [...(host.children || [])].some(child => child !== input && !/^(?:style|script)$/i.test(child.tagName || ''));
+        if (controls.length === 1 && hasSiblingContent) return host;
+    }
+    return null;
+}
+
+function setRescuedCheckedState(root, input, nextChecked) {
+    if (!input || input.disabled) return false;
+    const previous = !!input.checked;
+    if (input.type === 'radio') {
+        const radioName = String(input.name || '');
+        [...root.querySelectorAll('input[type="radio"]')]
+            .filter(item => item !== input && (!radioName || item.name === radioName))
+            .forEach(item => {
+                item.checked = false;
+                restoreInteractionInlineOverrides(item);
+            });
+        input.checked = true;
+    } else {
+        input.checked = !!nextChecked;
+    }
+    applyCheckedVisualFallback(root, input);
+    if (previous !== input.checked) dispatchRescuedInputState(input);
+    return previous !== input.checked;
+}
+
+function installUnlabeledCheckedHostFallback(root) {
+    if (!root?.querySelectorAll) return 0;
+    const existing = unlabeledCheckedHostRescueStates.get(root);
+    if (existing?.entries) return existing.entries.size;
+
+    const entries = new Map();
+    for (const input of root.querySelectorAll('input[type="checkbox"], input[type="radio"]')) {
+        if (input.disabled || inputHasAssociatedLabel(root, input) || !inputHasMeaningfulCheckedSiblingRule(root, input)) continue;
+        const host = findUnlabeledCheckedHost(root, input);
+        if (!host || host.hasAttribute(UNLABELED_CHECKED_HOST_RESCUE_ATTR)) continue;
+
+        const state = { input, host, beforePointer: null };
+        host.addEventListener('pointerdown', event => {
+            const nestedInteractive = event.target?.closest?.('a,button,label,select,textarea,[contenteditable="true"]');
+            if (nestedInteractive && host.contains(nestedInteractive)) return;
+            state.beforePointer = !!input.checked;
+        }, true);
+
+        host.addEventListener('click', event => {
+            const nestedInteractive = event.target?.closest?.('a,button,label,select,textarea,[contenteditable="true"]');
+            if (nestedInteractive && host.contains(nestedInteractive)) return;
+            const clickedInput = event.target === input || event.target?.closest?.('input') === input;
+            const before = state.beforePointer;
+            state.beforePointer = null;
+
+            if (!clickedInput) {
+                event.preventDefault();
+                setRescuedCheckedState(root, input, input.type === 'radio' ? true : !input.checked);
+                return;
+            }
+
+            setTimeout(() => {
+                if (!input.isConnected) return;
+                if (before !== null && input.checked === before) {
+                    setRescuedCheckedState(root, input, input.type === 'radio' ? true : !before);
+                } else {
+                    applyCheckedVisualFallback(root, input);
+                }
+            }, 0);
+        }, true);
+
+        host.setAttribute(UNLABELED_CHECKED_HOST_RESCUE_ATTR, 'true');
+        entries.set(input, state);
+    }
+
+    unlabeledCheckedHostRescueStates.set(root, { entries });
+    if (entries.size) root.dataset.rabbitMirrorUnlabeledCheckedFallback = String(entries.size);
+    return entries.size;
+}
+
+function addWebKit3DFlipPrefixes(cssText) {
+    let changed = false;
+    const repaired = String(cssText || '').replace(
+        /(^|[;{]\s*)(backface-visibility|transform-style|perspective|transform)\s*:\s*([^;}{]+)(?=;|})/gi,
+        (full, lead, property, rawValue) => {
+            const value = String(rawValue || '').trim();
+            const lowerProperty = String(property || '').toLowerCase();
+            const relevant = (lowerProperty === 'backface-visibility' && /hidden/i.test(value))
+                || (lowerProperty === 'transform-style' && /preserve-3d/i.test(value))
+                || lowerProperty === 'perspective'
+                || (lowerProperty === 'transform' && /rotateY\s*\(/i.test(value));
+            if (!relevant) return full;
+            changed = true;
+            return `${lead}-webkit-${lowerProperty}: ${value}; ${lowerProperty}: ${value}`;
+        },
+    );
+    return { changed, repaired };
+}
+
+function installWebKit3DFlipRescue(root) {
+    if (!root?.querySelectorAll) return 0;
+    const existingCount = Number.parseInt(root.getAttribute?.(WEBKIT_3D_FLIP_RESCUE_ATTR) || '0', 10) || 0;
+    if (existingCount) return existingCount;
+    const flipSourceText = [
+        ...[...root.querySelectorAll('style')].map(style => String(style.textContent || '')),
+        ...[...root.querySelectorAll('[style]')].map(element => String(element.getAttribute('style') || '')),
+    ].join('\n');
+    if (!/rotateY\s*\(/i.test(flipSourceText)
+        || !/(?:backface-visibility\s*:\s*hidden|transform-style\s*:\s*preserve-3d)/i.test(flipSourceText)) return 0;
+    let repairedCount = 0;
+
+    for (const style of root.querySelectorAll(`style:not([${WEBKIT_3D_FLIP_RESCUE_ATTR}])`)) {
+        const current = String(style.textContent || '');
+        if (!/rotateY\s*\(/i.test(current)) continue;
+        const result = addWebKit3DFlipPrefixes(current);
+        if (!result.changed || result.repaired === current) continue;
+        style.textContent = result.repaired;
+        style.setAttribute(WEBKIT_3D_FLIP_RESCUE_ATTR, 'true');
+        repairedCount += 1;
+    }
+
+    for (const element of root.querySelectorAll('[style]')) {
+        const styleText = String(element.getAttribute('style') || '');
+        let changed = false;
+        if (/backface-visibility\s*:\s*hidden/i.test(styleText)) {
+            element.style.setProperty('-webkit-backface-visibility', 'hidden', 'important');
+            element.style.setProperty('backface-visibility', 'hidden', 'important');
+            changed = true;
+        }
+        if (/transform-style\s*:\s*preserve-3d/i.test(styleText)) {
+            element.style.setProperty('-webkit-transform-style', 'preserve-3d', 'important');
+            element.style.setProperty('transform-style', 'preserve-3d', 'important');
+            changed = true;
+        }
+        const perspective = styleText.match(/(?:^|;)\s*perspective\s*:\s*([^;]+)/i)?.[1]?.trim();
+        if (perspective) {
+            element.style.setProperty('-webkit-perspective', perspective, 'important');
+            changed = true;
+        }
+        const transform = styleText.match(/(?:^|;)\s*transform\s*:\s*([^;]*rotateY\s*\([^;]+)/i)?.[1]?.trim();
+        if (transform) {
+            element.style.setProperty('-webkit-transform', transform, 'important');
+            changed = true;
+        }
+        if (changed) repairedCount += 1;
+    }
+
+    if (repairedCount) root.setAttribute(WEBKIT_3D_FLIP_RESCUE_ATTR, String(repairedCount));
+    return repairedCount;
+}
+
 function installIntelligentInteractionRescue(root) {
     // Markdown 可能把相邻的 CSS 注释边界 */ ... /* 解析成 <em>/ ... /</em>，
     // 导致两段注释之间的状态规则被整段吞入注释。只在急救开启后修复当前 DOM 的明确损坏形态。
@@ -4730,7 +4928,12 @@ function installIntelligentInteractionRescue(root) {
         // 补救 label 后方紧邻的单块结果层，并可选增强同画布内的零尺寸视觉主体。
         installRenderedLabelAdjacentResultRescue(root);
         installInteractionLabelFallback(root);
+        // 没有 label 的透明 checkbox/radio 在 iOS WebView 中经常只有极小原生点击区；
+        // 用其局部父容器兜底切换，不改动正常 label 交互。
+        installUnlabeledCheckedHostFallback(root);
     }
+    // Safari/WebKit 对 3D 翻面仍要求前缀版 backface/preserve-3d；缺失时背面会镜像或双面同显。
+    installWebKit3DFlipRescue(root);
     // 精准读取 :active/:focus/:focus-within/:hover 与 +/~ 的后置状态映射；
     // 先于启发式按钮路线安装，避免同一按钮被两套可逆状态重复接管。
     if (capabilities.stateSibling) installRenderedCssStateSiblingRescue(root);
@@ -4882,16 +5085,7 @@ function installInteractionLabelFallback(toto) {
         // 规则把状态声明落到匹配目标上，取消勾选时再恢复，作为最终兜底。
         // 先走不依赖 CSSOM 的文本解析兜底；酒馆/WebView 即使不给 style.sheet，仍能修复。
         // 文本规则命中后不要再运行 CSSOM 兜底，否则后者开头的恢复动作会撤销刚应用的状态。
-        const renderedRoute = getRenderedInputRoute(input);
-        if (renderedRoute) {
-            // 结构型急救已经保存了不可变原始基线；不要再让通用 :checked 内联兜底重复写同一目标。
-            // 多路线叠加是“打开后无法恢复”的主要来源之一。
-            restoreInteractionInlineOverrides(input);
-        } else {
-            const textRuleCount = applyCheckedRuleTextFallback(toto, input);
-            // 仅在文本解析没有命中时再尝试 CSSOM（例如规则位于复杂 @media 内）。
-            if (!textRuleCount) applyCheckedRuleInlineFallback(toto, input);
-        }
+        applyCheckedVisualFallback(toto, input);
 
         if (previous !== input.checked) {
             input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -5117,7 +5311,7 @@ const MAINTENANCE_REASON_ATTR = 'data-rabbit-mirror-maintenance-reason';
 const MAINTENANCE_REPAIR_ATTR = 'data-rabbit-mirror-maintenance-repaired';
 const MAINTENANCE_MENU_ATTR = 'data-rabbit-mirror-maintenance-menu';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '0.33.16-TEST-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.33.17-TEST-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -5236,12 +5430,14 @@ function diagnosticRouteSummary(root) {
         classStateProgram: root?.querySelectorAll?.(`[${DIRECT_ID_CLASS_STATE_RESCUE_ATTR}]`)?.length || 0,
         cssCommentRepair: root?.querySelectorAll?.(`[${MARKDOWN_CSS_COMMENT_RESCUE_ATTR}]`)?.length || 0,
         changeProgram: root?.querySelectorAll?.(`[${CHANGE_PSEUDO_RESCUE_ATTR}]`)?.length || 0,
+        unlabeledChecked: unlabeledCheckedHostRescueStates.get(root)?.entries?.size || 0,
+        webkit3dFlip: Number.parseInt(root?.getAttribute?.(WEBKIT_3D_FLIP_RESCUE_ATTR) || '0', 10) || 0,
     };
 }
 
 function diagnosticInferReason(root, inputs, targets) {
     const routes = diagnosticRouteSummary(root);
-    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.stateSibling + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.focusToChecked + routes.checkedTextRule + routes.expandedOpacity + routes.containerReveal + routes.selfMutation + routes.classStateProgram + routes.cssCommentRepair + routes.changeProgram;
+    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.stateSibling + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.focusToChecked + routes.checkedTextRule + routes.expandedOpacity + routes.containerReveal + routes.selfMutation + routes.classStateProgram + routes.cssCommentRepair + routes.changeProgram + routes.unlabeledChecked + routes.webkit3dFlip;
     const checkedInputs = inputs.filter(input => input.checked);
     const visibleTargets = targets.filter(target => {
         const style = diagnosticComputedStyle(target);
@@ -5360,6 +5556,14 @@ function diagnosticFullChainSummary(root, code) {
     const focusCount = (cssText.match(/:focus(?:-within)?\b/gi) || []).length;
     const activeCount = (cssText.match(/:active\b/gi) || []).length;
     const checkedCount = (cssText.match(/:checked\b/gi) || []).length;
+    const mobileWebKit = /(?:iPhone|iPad|iPod).*AppleWebKit|AppleWebKit.*Mobile/i.test(String(globalThis.navigator?.userAgent || ''));
+    const flipSourceText = `${decodedRaw}
+${styleTexts}`;
+    const mobile3DFlipCandidate = mobileWebKit
+        && /rotateY\s*\(/i.test(flipSourceText)
+        && /backface-visibility\s*:\s*hidden/i.test(flipSourceText)
+        && /preserve-3d/i.test(flipSourceText)
+        && root?.getAttribute?.(WEBKIT_3D_FLIP_RESCUE_ATTR) == null;
     const detailsCount = body?.querySelectorAll?.('details')?.length || 0;
     const styleCount = body?.querySelectorAll?.('style')?.length || 0;
     const scriptCount = body?.querySelectorAll?.('script')?.length || 0;
@@ -5439,7 +5643,7 @@ function diagnosticFullChainSummary(root, code) {
         maintenanceModuleVersion, maintenanceModuleMode, maintenanceSourceAttempted, maintenanceSourceChanged, maintenanceSourceReason,
         hostCssParserError, hostCssParserErrorText, rawUnencodedSvgDataUri, rawCssCommentCount, rawCssIdSelectorCount,
         rawInputCount, rawLabelCount, renderedLabelCount, rawUiTagCount, renderedUiTagCount,
-        damagedDataUriCandidate, controlsLost, labelsLost, severeStructureLoss, structureTruncated, verdict,
+        damagedDataUriCandidate, controlsLost, labelsLost, severeStructureLoss, structureTruncated, mobile3DFlipCandidate, verdict,
     };
 }
 
@@ -5527,6 +5731,8 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `类名状态程序 entries=${routes.classStateProgram} listener=${routes.classStateProgram ? 'true' : 'false'}`,
         `CSS注释保全 entries=${routes.cssCommentRepair} listener=${routes.cssCommentRepair ? 'true' : 'false'}`,
         `安全状态程序 entries=${routes.changeProgram} listener=${routes.changeProgram ? 'true' : 'false'}`,
+        `无label控件宿主 entries=${routes.unlabeledChecked} listener=${routes.unlabeledChecked ? 'true' : 'false'}`,
+        `iOS 3D翻面兼容 patches=${routes.webkit3dFlip}`,
         `label fallback=${root.dataset.rabbitMirrorLabelFallback || root.dataset.rabbitMirrorCheckedFallback || 'unknown'}`,
         '',
         '[捕获事件]',
@@ -5926,6 +6132,7 @@ function inspectMaintenanceRabbit(root) {
     if (interaction.strippedStateProgram) reasons.push('宿主删除了可识别的状态事件');
     if (interaction.touchHoverMissing) reasons.push('触屏环境缺少 Hover 兜底');
     if (interaction.needsScopeRepair) reasons.push(`交互 ID 未隔离（重复ID=${interaction.duplicateIds}，失配标签=${interaction.brokenLocalLabels}）`);
+    if (full.mobile3DFlipCandidate) reasons.push('iOS 3D 翻面可能出现镜像／双面同显');
 
     if (reasons.length) {
         return { state: MAINTENANCE_STATES.repairable, reason: reasons.slice(0, 3).join('；'), code, full, interaction };
@@ -6258,7 +6465,7 @@ function chooseMaintenanceAutomaticMode(inspection) {
 }
 
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.13';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.14';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -6267,6 +6474,7 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
     { id: 'plain-text-dom', modes: ['source', 'plainText', 'code', 'all'], bucket: 'plainText', run: ({ messageScope }) => sanitizeWholePlainTextRabbitMirrorsInScope(messageScope, true) },
     { id: 'rendered-details-dom', modes: ['source', 'plainText', 'code', 'all'], bucket: 'plainText', run: ({ messageScope }) => sanitizeRenderedRabbitMirrorDetailsInScope(messageScope, true) },
     { id: 'css-comment-boundary', modes: ['source', 'style', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => repairMarkdownCorruptedCssComments(target) },
+    { id: 'webkit-3d-flip-compat', modes: ['interaction', 'style', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => installWebKit3DFlipRescue(target) },
     { id: 'interaction-id-scope', modes: ['source', 'interaction', 'style', 'all'], bucket: 'scope', perTarget: true, run: ({ target }) => { scopeRabbitMirrorInteractionIds(target); return 1; } },
     { id: 'complete-interaction-library', modes: ['interaction', 'all'], bucket: 'interaction', perTarget: true, run: ({ target }) => {
         // installIntelligentInteractionRescue 内部包含旧库全部已验证路线：
@@ -6447,6 +6655,9 @@ function maintenanceRecommendationForInspection(inspection) {
     if (full.structureTruncated || full.damagedDataUriCandidate || full.hostCssParserError
         || (full.sourceCandidate && full.sourceObscured) || code.needsSanitize || (code.strictWhole && code.strictParseOk)) {
         return { mode: 'source', label: '📄 显示代码或纯文字', reason: '检测到源码、代码壳、CSS 解析或结构截断问题' };
+    }
+    if (full.mobile3DFlipCandidate) {
+        return { mode: 'style', label: '🎨 样子不对', reason: '检测到 iOS 3D 翻面可能镜像或双面同时显示' };
     }
     if (interaction.checkedControlsLost || interaction.strippedStateProgram || interaction.touchHoverMissing || interaction.needsScopeRepair) {
         return { mode: 'interaction', label: '🖱️ 点了没有反应', reason: '检测到交互控件、状态程序、触屏 Hover 或 ID 作用域问题' };
