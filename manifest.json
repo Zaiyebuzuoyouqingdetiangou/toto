@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（小小维修兔 v1.16・视觉手段恢复版）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（小小维修兔 v1.17・交互深度诊断修正版）",
   "loading_order": 99,
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.33.22-test.1",
+  "version": "0.33.23-test.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "TEST build: keeps the 0.33.21 rule fusion and 0.33.20 runtime architecture, and restores the presentation-driven Flex/Grid, SVG, gradient, filter, clip-path, mask, transform, transition, and CSS animation visual toolkit in the real prompt chain."
+  "description": "TEST build: keeps the 0.33.22 prompt and runtime baseline, fixes diagnostic self-contamination, recognizes wrapping labels correctly, and distinguishes selection-only checked styling from genuine second-layer interaction."
 }

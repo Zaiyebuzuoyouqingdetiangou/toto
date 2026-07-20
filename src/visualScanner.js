@@ -234,16 +234,36 @@ function hasMeaningfulStateRule(html = '', statePseudo = ':checked') {
             .split(';')
             .map(part => part.trim())
             .filter(Boolean)
-            .map(part => part.split(':')[0]?.trim().toLowerCase())
+            .map(part => {
+                const colon = part.indexOf(':');
+                if (colon < 0) return null;
+                return {
+                    property: part.slice(0, colon).trim().toLowerCase(),
+                    value: part.slice(colon + 1).trim().toLowerCase(),
+                };
+            })
             .filter(Boolean);
         if (!declarations.length) continue;
-        const cosmeticOnly = declarations.every(prop => [
-            'color', 'background', 'background-color', 'background-image',
-            'border', 'border-color', 'border-width', 'border-style',
-            'box-shadow', 'text-shadow', 'outline', 'outline-color',
-            'fill', 'stroke', 'cursor', 'transition', 'transition-property',
-            'transition-duration', 'transition-timing-function',
-        ].includes(prop) || prop.startsWith('--'));
+        const cosmeticOnly = declarations.every(({ property, value }) => {
+            if (property.startsWith('--')) return true;
+            if (property === 'transform') {
+                // 3D 翻面可改变正反面内容；普通位移/缩放只算选中反馈。
+                return !/(?:rotate[xy]|perspective)\s*\(/i.test(value);
+            }
+            return property === 'color'
+                || property === 'background' || property.startsWith('background-')
+                || property === 'border' || property.startsWith('border-')
+                || property === 'box-shadow' || property === 'text-shadow'
+                || property === 'outline' || property.startsWith('outline-')
+                || property === 'fill' || property === 'stroke'
+                || property === 'filter' || property === 'backdrop-filter'
+                || property === 'cursor'
+                || property === 'font-weight' || property === 'font-style'
+                || property === 'text-decoration' || property === 'letter-spacing'
+                || property === 'translate' || property === 'rotate' || property === 'scale'
+                || property === 'transition' || property.startsWith('transition-')
+                || property === 'transform-origin';
+        });
         if (!cosmeticOnly) return true;
     }
     return false;
