@@ -4319,11 +4319,15 @@ function installDirectIdClickProgramRescue(root) {
                 if (event.key !== 'Enter' && event.key !== ' ') return;
                 event.preventDefault();
             }
+            if (event?.type === 'change' && trigger.matches?.('input[type="radio"]') && !trigger.checked) return;
             applyDirectIdClickAssignments(actions);
         };
 
         trigger.addEventListener('click', activate, false);
         trigger.addEventListener('keydown', activate, false);
+        if (trigger.matches?.('input[type="checkbox"], input[type="radio"]')) {
+            trigger.addEventListener('change', activate, false);
+        }
         trigger.removeAttribute('onclick');
         trigger.removeAttribute('aria-pressed');
         trigger.setAttribute(DIRECT_ID_CLICK_RESCUE_ATTR, 'true');
@@ -4778,11 +4782,18 @@ function bindDirectIdClickActions(trigger, actions) {
             if (event.key !== 'Enter' && event.key !== ' ') return;
             event.preventDefault();
         }
+        // 隐藏 checkbox/radio 在触屏环境通常由 label 兜底直接切换 checked，
+        // 原 input 不一定收到 click，但一定会收到急救器补发的 input/change。
+        // radio 只在成为当前选中项时执行原 onclick 的固定赋值，避免失选分支反向覆盖。
+        if (event?.type === 'change' && trigger.matches?.('input[type="radio"]') && !trigger.checked) return;
         applyDirectIdClickAssignments(actions);
     };
 
     trigger.addEventListener('click', activate, false);
     trigger.addEventListener('keydown', activate, false);
+    if (trigger.matches?.('input[type="checkbox"], input[type="radio"]')) {
+        trigger.addEventListener('change', activate, false);
+    }
     trigger.removeAttribute('onclick');
     trigger.removeAttribute('aria-pressed');
     trigger.setAttribute(DIRECT_ID_CLICK_RESCUE_ATTR, 'true');
@@ -5686,6 +5697,9 @@ function installInteractionLabelFallback(toto) {
         // 先走不依赖 CSSOM 的文本解析兜底；酒馆/WebView 即使不给 style.sheet，仍能修复。
         // 文本规则命中后不要再运行 CSSOM 兜底，否则后者开头的恢复动作会撤销刚应用的状态。
         applyCheckedVisualFallback(toto, input);
+        // label 内隐藏正文已有明确结构路线时，立即按本次 intended checked 状态落地，
+        // 不只依赖后续冒泡 change；部分 WebView 会延迟或吞掉合成事件。
+        applyRenderedLabelInternalHiddenEntries(toto);
 
         if (previous !== input.checked) {
             input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -5700,6 +5714,7 @@ function installInteractionLabelFallback(toto) {
             input.checked = intendedChecked;
             restoreInteractionInlineOverrides(input);
             applyCheckedVisualFallback(toto, input);
+            applyRenderedLabelInternalHiddenEntries(toto);
             input.dispatchEvent(new Event('input', { bubbles: true }));
             input.dispatchEvent(new Event('change', { bubbles: true }));
         }, 0);
@@ -5918,7 +5933,7 @@ const SELECTION_ONLY_PLACEHOLDER_ATTR = 'data-rabbit-mirror-selection-only-place
 const SELECTION_ONLY_SOURCE_ATTR = 'data-rabbit-mirror-selection-only-source';
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '0.33.34-TEST-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.33.35-TEST-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -6080,6 +6095,12 @@ function diagnosticInferReason(root, inputs, targets, state = null) {
     if (!inputs.length && pseudoDepth.pseudoVisualOnlyRaw && !routes.stateSibling && !routes.buttonAdjacent && !routes.clickableAdjacent && !routes.clickablePopup && !routes.containerReveal && !routes.listDetail) {
         return '当前只有 Hover／Active 的变色、背景或轻微位移，没有可保持状态或第二层内容。';
     }
+    if (!inputs.length && routes.selfMutation > 0) {
+        const activeSelfMutation = !!root.querySelector?.(`[${RAW_SELF_MUTATION_ACTIVE_ATTR}="true"]`);
+        return activeSelfMutation
+            ? '元素自身状态切换已执行，当前可见变化由 class／样式状态直接驱动；此类交互不要求另有隐藏内容。'
+            : '元素自身状态切换路线已建立；本次诊断未实际点击该元素，不能因没有隐藏内容而判定交互失败。';
+    }
     if (!inputs.length && routeCount && visibleTargets.length) return '非表单交互急救路线已建立，候选内容在计算样式中已有可见项。';
     if (!inputs.length && routeCount) return '非表单交互急救路线已建立，但候选内容最终仍不可见：样式可能被覆盖或被布局裁切。';
     if (!inputs.length) return '未找到 checkbox/radio：渲染后控件可能被删除，或当前交互并非表单状态结构。';
@@ -6137,6 +6158,212 @@ function diagnosticContentSnapshot(root) {
         html: String(clone.innerHTML || ''),
         text: String(clone.textContent || ''),
     };
+}
+
+
+const TEXT_CLIPPING_REPAIR_ATTR = 'data-rabbit-mirror-text-clipping-repair';
+const TEXT_CLIPPING_ITEM_ATTR = 'data-rm-text-clipping-item';
+const TEXT_CLIPPING_BASELINE_ATTR = 'data-rm-text-clipping-baseline';
+
+function maintenanceSafeComputedStyle(element) {
+    try {
+        return typeof getComputedStyle === 'function' ? getComputedStyle(element) : null;
+    } catch {
+        return null;
+    }
+}
+
+function maintenanceIsVisibleContentElement(element) {
+    if (!element?.getBoundingClientRect || diagnosticIsInternalUiNode(element)) return false;
+    const tag = String(element.tagName || '').toLowerCase();
+    if (/^(?:style|script|template|input|select|textarea|option|svg|path|br|hr)$/.test(tag)) return false;
+    if (element.closest?.('[hidden], [aria-hidden="true"]')) return false;
+    const style = maintenanceSafeComputedStyle(element);
+    if (!style || style.display === 'none' || style.visibility === 'hidden' || style.visibility === 'collapse') return false;
+    const opacity = Number.parseFloat(style.opacity || '1');
+    if (Number.isFinite(opacity) && opacity <= 0.05) return false;
+    const rect = element.getBoundingClientRect();
+    return rect.width > 1 && rect.height > 1;
+}
+
+function maintenanceHasMeaningfulText(element) {
+    const text = String(element?.textContent || '').replace(/\s+/g, ' ').trim();
+    return text.length >= 2 && text.length <= 12000;
+}
+
+function maintenanceDirectTextLength(element) {
+    let length = 0;
+    for (const node of [...(element?.childNodes || [])]) {
+        if (node?.nodeType === 3) length += String(node.nodeValue || '').replace(/\s+/g, ' ').trim().length;
+    }
+    return length;
+}
+
+function maintenanceVisibleTextRects(element, limit = 80) {
+    if (!element || typeof document === 'undefined' || !document.createTreeWalker || !document.createRange) return [];
+    const SHOW_TEXT = globalThis.NodeFilter?.SHOW_TEXT ?? 4;
+    const FILTER_ACCEPT = globalThis.NodeFilter?.FILTER_ACCEPT ?? 1;
+    const FILTER_REJECT = globalThis.NodeFilter?.FILTER_REJECT ?? 2;
+    const walker = document.createTreeWalker(element, SHOW_TEXT, {
+        acceptNode(node) {
+            const value = String(node?.nodeValue || '').replace(/\s+/g, ' ').trim();
+            if (!value) return FILTER_REJECT;
+            const parent = node.parentElement;
+            if (!parent || diagnosticIsInternalUiNode(parent) || !maintenanceIsVisibleContentElement(parent)) return FILTER_REJECT;
+            return FILTER_ACCEPT;
+        },
+    });
+    const rects = [];
+    let node;
+    while ((node = walker.nextNode()) && rects.length < limit) {
+        try {
+            const range = document.createRange();
+            range.selectNodeContents(node);
+            for (const rect of [...range.getClientRects()]) {
+                if (rect.width > 0.5 && rect.height > 0.5) rects.push(rect);
+                if (rects.length >= limit) break;
+            }
+            range.detach?.();
+        } catch {
+            // Ignore a single malformed text node.
+        }
+    }
+    return rects;
+}
+
+function maintenanceTextClippingEvidence(element, root) {
+    if (!maintenanceIsVisibleContentElement(element) || !maintenanceHasMeaningfulText(element)) return null;
+    const style = maintenanceSafeComputedStyle(element);
+    if (!style) return null;
+    const rect = element.getBoundingClientRect();
+    const clientWidth = Number(element.clientWidth || 0);
+    const clientHeight = Number(element.clientHeight || 0);
+    if (clientWidth <= 1 || clientHeight <= 1) return null;
+
+    const overflow = String(style.overflow || '').toLowerCase();
+    const overflowX = String(style.overflowX || overflow).toLowerCase();
+    const overflowY = String(style.overflowY || overflow).toLowerCase();
+    const clipsX = /(?:hidden|clip)/.test(overflowX);
+    const clipsY = /(?:hidden|clip)/.test(overflowY);
+    const whiteSpace = String(style.whiteSpace || '').toLowerCase();
+    const textOverflow = String(style.textOverflow || '').toLowerCase();
+    const lineClamp = String(style.webkitLineClamp || element.style?.getPropertyValue?.('-webkit-line-clamp') || '').trim().toLowerCase();
+    const lineClamped = !!lineClamp && !/^(?:none|unset|initial|0)$/.test(lineClamp);
+    const noWrap = /^(?:nowrap|pre)$/.test(whiteSpace);
+    const directText = maintenanceDirectTextLength(element) > 0;
+    const semanticTextTag = /^(?:p|span|div|li|td|th|h[1-6]|blockquote|pre|code|label|button|summary|figcaption|dd|dt)$/.test(String(element.tagName || '').toLowerCase());
+
+    const scrollOverflowX = Number(element.scrollWidth || 0) > clientWidth + 2;
+    const scrollOverflowY = Number(element.scrollHeight || 0) > clientHeight + 2;
+    const textRects = maintenanceVisibleTextRects(element);
+    const textOutsideX = textRects.some(textRect => textRect.left < rect.left - 1 || textRect.right > rect.right + 1);
+    const textOutsideY = textRects.some(textRect => textRect.top < rect.top - 1 || textRect.bottom > rect.bottom + 1);
+
+    // scrollWidth/scrollHeight 可能由绝对定位装饰层撑大；只有直属文本或典型文字元素才把它当文字证据。
+    const scrollTextEvidence = directText || semanticTextTag;
+    const horizontal = (clipsX && textOutsideX)
+        || ((clipsX || noWrap || textOverflow === 'ellipsis') && scrollTextEvidence && scrollOverflowX);
+    const vertical = lineClamped
+        || (clipsY && textOutsideY)
+        || (clipsY && scrollTextEvidence && scrollOverflowY);
+    if (!horizontal && !vertical) return null;
+
+    return {
+        element,
+        horizontal,
+        vertical,
+        noWrap,
+        lineClamped,
+        rootWidth: Number(root?.getBoundingClientRect?.().width || 0),
+        elementWidth: rect.width,
+    };
+}
+
+function findMaintenanceTextClippingCandidates(root) {
+    if (!root?.querySelectorAll) return [];
+    const candidates = [];
+    const seen = new Set();
+    const elements = [root, ...root.querySelectorAll('*')];
+    for (const element of elements) {
+        if (seen.has(element)) continue;
+        const evidence = maintenanceTextClippingEvidence(element, root);
+        if (!evidence) continue;
+        seen.add(element);
+        candidates.push(evidence);
+        if (candidates.length >= 24) break;
+    }
+    return candidates;
+}
+
+function encodeTextClippingBaseline(element, properties) {
+    if (!element?.style || element.hasAttribute(TEXT_CLIPPING_BASELINE_ATTR)) return;
+    const baseline = {};
+    for (const property of properties) {
+        baseline[property] = {
+            value: element.style.getPropertyValue(property),
+            priority: element.style.getPropertyPriority(property),
+        };
+    }
+    try {
+        element.setAttribute(TEXT_CLIPPING_BASELINE_ATTR, encodeURIComponent(JSON.stringify(baseline)));
+    } catch {
+        element.setAttribute(TEXT_CLIPPING_BASELINE_ATTR, 'captured');
+    }
+}
+
+function repairMaintenanceTextClipping(root) {
+    if (!root?.querySelectorAll) return 0;
+    const candidates = findMaintenanceTextClippingCandidates(root);
+    let repaired = 0;
+    for (const evidence of candidates) {
+        const element = evidence.element;
+        if (!element?.style) continue;
+        const properties = [
+            'white-space', 'overflow-wrap', 'word-break', 'text-overflow',
+            'width', 'max-width', 'min-width', 'box-sizing',
+            'height', 'min-height', 'max-height', 'overflow', 'overflow-x', 'overflow-y',
+            'display', '-webkit-line-clamp', 'line-clamp', '-webkit-box-orient',
+        ];
+        encodeTextClippingBaseline(element, properties);
+        element.style.setProperty('min-width', '0', 'important');
+        element.style.setProperty('max-width', '100%', 'important');
+        element.style.setProperty('box-sizing', 'border-box', 'important');
+        element.style.setProperty('overflow-wrap', 'anywhere', 'important');
+        element.style.setProperty('word-break', 'break-word', 'important');
+        element.style.setProperty('text-overflow', 'clip', 'important');
+        // 用户明确选择“文字被裁切”时，解除当前文字层自身的裁切边界。
+        // 只写 overflow-x/y 在 CSS 规范中可能被 hidden 反推为 auto，必须同时重置 shorthand。
+        element.style.setProperty('overflow', 'visible', 'important');
+        element.style.setProperty('overflow-x', 'visible', 'important');
+        element.style.setProperty('overflow-y', 'visible', 'important');
+
+        const tag = String(element.tagName || '').toLowerCase();
+        if (evidence.noWrap || evidence.horizontal) {
+            element.style.setProperty('white-space', tag === 'pre' || tag === 'code' ? 'pre-wrap' : 'normal', 'important');
+            // 解除 nowrap 后文字会新增行；即使首次采样只有横向溢出，也必须同步释放固定高度。
+            element.style.setProperty('height', 'auto', 'important');
+            element.style.setProperty('max-height', 'none', 'important');
+        }
+        if (evidence.elementWidth > Math.max(1, evidence.rootWidth) + 2) {
+            element.style.setProperty('width', '100%', 'important');
+        }
+        if (evidence.vertical || evidence.lineClamped) {
+            element.style.setProperty('height', 'auto', 'important');
+            element.style.setProperty('max-height', 'none', 'important');
+        }
+        if (evidence.lineClamped) {
+            element.style.setProperty('-webkit-line-clamp', 'unset', 'important');
+            element.style.setProperty('line-clamp', 'unset', 'important');
+            element.style.setProperty('-webkit-box-orient', 'initial', 'important');
+            if (String(maintenanceSafeComputedStyle(element)?.display || '').toLowerCase() === '-webkit-box') {
+                element.style.setProperty('display', 'block', 'important');
+            }
+        }
+        element.setAttribute(TEXT_CLIPPING_ITEM_ATTR, 'true');
+        repaired += 1;
+    }
+    if (repaired > 0) root.setAttribute(TEXT_CLIPPING_REPAIR_ATTR, String(repaired));
+    return repaired;
 }
 
 function diagnosticCodeRescueSummary(root) {
@@ -7167,7 +7394,10 @@ function maintenanceKnownInteractionEvidence(root, full, code) {
     const checkedHasStateRuleMissingCount = Math.max(0, checkedHasStateRuleCandidateCount - checkedHasStateRuleRescueCount);
     // 只有选中项外观变化时，补 Hover 也不会生成缺失的第二层内容，不能误导为可修复交互。
     const touchHoverMissing = !checkedDepth.checkedSelectionOnly
-        && isLikelyTouchDevice() && full.hoverCount > 0
+        && isLikelyTouchDevice()
+        // 只把真正承担第二层内容／状态变化的 Hover 视为需要触屏兜底。
+        // 普通按钮变色、把手轻微位移等装饰 Hover 不应让已存在点击状态程序的作品持续报错。
+        && pseudoDepth.meaningfulPseudoRuleCount > 0
         && !root.querySelector?.(`[${TOUCH_HOVER_STYLE_ATTR}]`)
         && root.getAttribute?.('data-rabbit-mirror-touch-hover-fallback') !== 'true';
     const unscopedControls = (full.inputCount > 0 || full.buttonCount > 0)
@@ -7234,6 +7464,13 @@ function inspectMaintenanceRabbit(root) {
         console.debug('[RabbitMirror] maintenance interaction inspection skipped:', error);
         interaction = { checkedControlsLost: false, strippedStateProgram: false, lostInlineStatePrograms: 0, recoveredInlineStatePrograms: 0, decorativeOverlayCandidateCount: 0, touchHoverMissing: false, unscopedControls: false, duplicateIds: 0, brokenLocalLabels: 0, checkedCssIdSelectors: 0, needsScopeRepair: false, checkedSelectionOnly: false, checkedSelectionOnlyRaw: false, checkedRuleCount: 0, meaningfulCheckedRuleCount: 0, selectionStyleRuleCount: 0, selectionOnlyFallbackCount: 0, selectionOnlyRepairCandidateCount: 0, crossParentCheckedRuleCandidateCount: 0, checkedHasStateRuleCandidateCount: 0, checkedHasStateRuleRescueCount: 0, checkedHasStateRuleMissingCount: 0, pseudoVisualOnly: false, pseudoRuleCount: 0, visualOnlyPseudoRuleCount: 0, meaningfulPseudoRuleCount: 0, touchHoverEligibleCount: 0, touchHoverActiveCount: 0, raw: '' };
     }
+    let textClippingCandidateCount = 0;
+    try {
+        textClippingCandidateCount = findMaintenanceTextClippingCandidates(root).length;
+    } catch (error) {
+        partialInspection = true;
+        console.debug('[RabbitMirror] maintenance text clipping inspection skipped:', error);
+    }
     const reasons = [];
 
     if (full.rawSourceBodyMissing && !full.sourceTruncationNoticeInstalled) {
@@ -7253,9 +7490,10 @@ function inspectMaintenanceRabbit(root) {
     if (interaction.checkedHasStateRuleMissingCount > 0) reasons.push('全选联动仍绑定在错误的 body:has 作用域，完成状态无法命中');
     if (interaction.needsScopeRepair) reasons.push(`交互 ID 未隔离（重复ID=${interaction.duplicateIds}，失配标签=${interaction.brokenLocalLabels}）`);
     if (full.mobile3DFlipCandidate) reasons.push('iOS 3D 翻面可能出现镜像／双面同显');
+    if (textClippingCandidateCount > 0) reasons.push(`检测到 ${textClippingCandidateCount} 处文字可能被裁切或省略`);
 
     if (reasons.length) {
-        return { state: MAINTENANCE_STATES.repairable, reason: reasons.slice(0, 3).join('；'), code, full, interaction };
+        return { state: MAINTENANCE_STATES.repairable, reason: reasons.slice(0, 3).join('；'), code, full, interaction, textClippingCandidateCount };
     }
 
     const unknownReasons = [];
@@ -7266,12 +7504,12 @@ function inspectMaintenanceRabbit(root) {
     if (interaction.checkedSelectionOnly && interaction.selectionOnlyRepairCandidateCount === 0) unknownReasons.push('选择控件只能改变选中样式，且没有可安全挂接的内容区；维修兔不能代写缺失体验');
     if (interaction.pseudoVisualOnly) unknownReasons.push('当前只有 Hover／Active 外观变化，没有可保持状态或第二层内容；维修兔不能代写缺失体验');
     if (unknownReasons.length) {
-        return { state: MAINTENANCE_STATES.unknown, reason: unknownReasons.join('；'), code, full, interaction };
+        return { state: MAINTENANCE_STATES.unknown, reason: unknownReasons.join('；'), code, full, interaction, textClippingCandidateCount };
     }
     const healthyReason = partialInspection
         ? '未发现可确认异常（部分巡逻项目已安全跳过）'
         : (full.activeCount > 0 && full.checkedCount === 0 ? '原生按压／长按交互完整，未发现高置信异常' : '未发现高置信异常');
-    return { state: MAINTENANCE_STATES.healthy, reason: healthyReason, code, full, interaction };
+    return { state: MAINTENANCE_STATES.healthy, reason: healthyReason, code, full, interaction, textClippingCandidateCount };
 }
 
 function patrolMaintenanceRabbit(root, button) {
@@ -7923,6 +8161,7 @@ function chooseMaintenanceAutomaticMode(inspection) {
         || full.damagedDataUriCandidate || (code.strictWhole && code.strictParseOk)
         || code.needsSanitize;
     if (sourceFailure) return 'source';
+    if ((Number(inspection?.textClippingCandidateCount) || 0) > 0) return 'text';
     if (interaction.checkedControlsLost || interaction.strippedStateProgram || interaction.decorativeOverlayCandidateCount > 0 || interaction.touchHoverMissing || interaction.needsScopeRepair || interaction.selectionOnlyRepairCandidateCount > 0 || interaction.crossParentCheckedRuleCandidateCount > 0 || interaction.checkedHasStateRuleMissingCount > 0) {
         return 'interaction';
     }
@@ -7931,7 +8170,7 @@ function chooseMaintenanceAutomaticMode(inspection) {
 }
 
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.27';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.28';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -7940,6 +8179,7 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
     { id: 'plain-text-dom', modes: ['source', 'plainText', 'code', 'all'], bucket: 'plainText', run: ({ messageScope }) => sanitizeWholePlainTextRabbitMirrorsInScope(messageScope, true) },
     { id: 'rendered-details-dom', modes: ['source', 'plainText', 'code', 'all'], bucket: 'plainText', run: ({ messageScope }) => sanitizeRenderedRabbitMirrorDetailsInScope(messageScope, true) },
     { id: 'css-comment-boundary', modes: ['source', 'style', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => repairMarkdownCorruptedCssComments(target) },
+    { id: 'text-clipping-repair', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => repairMaintenanceTextClipping(target) },
     { id: 'webkit-3d-flip-compat', modes: ['interaction', 'style', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => installWebKit3DFlipRescue(target) },
     { id: 'interaction-id-scope', modes: ['source', 'interaction', 'style', 'all'], bucket: 'scope', perTarget: true, run: ({ target }) => { scopeRabbitMirrorInteractionIds(target); return 1; } },
     { id: 'complete-interaction-library', modes: ['interaction', 'all'], bucket: 'interaction', perTarget: true, run: ({ target }) => {
@@ -8087,6 +8327,7 @@ function runMaintenanceUserRepair(root, button, mode) {
         auto: '正在自动判断并维修当前兔子镜',
         source: '正在恢复当前兔子镜的代码／纯文字显示',
         interaction: '正在尝试修复当前兔子镜的交互',
+        text: '正在尝试恢复被裁切或省略的文字',
         code: '正在尝试恢复当前兔子镜的代码显示',
         plainText: '正在尝试恢复当前兔子镜的纯文字显示',
         style: '正在尝试修复当前兔子镜的显示样式',
@@ -8177,6 +8418,9 @@ function maintenanceRecommendationForInspection(inspection) {
         || (full.sourceCandidate && full.sourceObscured) || code.needsSanitize || (code.strictWhole && code.strictParseOk)) {
         return { mode: 'source', label: '📄 空白或显示代码、纯文字', reason: '检测到源码、代码壳、CSS 解析或结构截断问题' };
     }
+    if ((Number(inspection?.textClippingCandidateCount) || 0) > 0) {
+        return { mode: 'text', label: '🔤 文字被裁切或显示不全', reason: `检测到 ${inspection.textClippingCandidateCount} 处文字可能被固定高度、禁止换行或溢出裁切` };
+    }
     if (full.mobile3DFlipCandidate) {
         return { mode: 'style', label: '🎨 样子不对', reason: '检测到 iOS 3D 翻面可能镜像或双面同时显示' };
     }
@@ -8219,6 +8463,7 @@ function showMaintenanceRabbitMenu(root, button) {
       <button type="button" data-rm-maintenance-action="auto">✨ 自动判断并维修（推荐）</button>
       <button type="button" data-rm-maintenance-action="patrol">🔍 只巡逻，不修改</button>
       <button type="button" data-rm-maintenance-action="interaction">🖱️ 点了没有反应</button>
+      <button type="button" data-rm-maintenance-action="text">🔤 文字被裁切或显示不全</button>
       <button type="button" data-rm-maintenance-action="source">📄 空白或显示代码、纯文字</button>
       <button type="button" data-rm-maintenance-action="style">🎨 样子不对</button>
       <button type="button" data-rm-maintenance-action="all">🔧 全部试试（强制维修）</button>
@@ -10071,16 +10316,49 @@ function messageUsesDistinctDisplaySource(message) {
 
 
 
+let chatInstallObserver = null;
+let observedChatInstallRoot = null;
+let chatInstallDebounceTimer = 0;
+
 function scheduleMaintenanceRabbitInstall() {
     setTimeout(() => installMaintenanceRabbitsInChatDom(), 120);
     setTimeout(() => installMaintenanceRabbitsInChatDom(), 900);
 }
 
+function scheduleObservedChatInstall() {
+    if (chatInstallDebounceTimer) return;
+    chatInstallDebounceTimer = setTimeout(() => {
+        chatInstallDebounceTimer = 0;
+        installMaintenanceRabbitsInChatDom();
+    }, 80);
+}
+
+function installChatMutationObserver() {
+    if (typeof MutationObserver === 'undefined') return false;
+    const chatRoot = getChatRoot();
+    if (!chatRoot) return false;
+    if (chatInstallObserver && observedChatInstallRoot === chatRoot) return true;
+    chatInstallObserver?.disconnect?.();
+    observedChatInstallRoot = chatRoot;
+    chatInstallObserver = new MutationObserver(mutations => {
+        const relevant = mutations.some(mutation => {
+            const nodes = [...(mutation.addedNodes || []), ...(mutation.removedNodes || [])];
+            return nodes.some(node => node?.nodeType === 1 && (
+                node.matches?.('toto, details, summary, .mes, .mes_text, [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-maintenance-rabbit]')
+                || node.querySelector?.('toto, details, summary')
+            ));
+        });
+        if (relevant) scheduleObservedChatInstall();
+    });
+    chatInstallObserver.observe(chatRoot, { childList: true, subtree: true });
+    return true;
+}
+
 function installChatRootReadyObserver() {
     if (typeof MutationObserver === 'undefined' || typeof document === 'undefined' || !document.body) return;
-    if (getChatRoot()) return;
+    if (installChatMutationObserver()) return;
     const observer = new MutationObserver(() => {
-        if (!getChatRoot()) return;
+        if (!installChatMutationObserver()) return;
         observer.disconnect();
         scheduleMaintenanceRabbitInstall();
     });
@@ -10088,6 +10366,13 @@ function installChatRootReadyObserver() {
 }
 
 export async function initOutputSanitizer() {
+    // DOM 安装链不依赖宿主事件模块是否成功导入：即使热重载或宿主事件名变化，
+    // 维修兔与挨打猫仍会通过聊天区观察器安装到现有和后续兔子镜标题。
+    installChatRootReadyObserver();
+    installChatMutationObserver();
+    scheduleMaintenanceRabbitInstall();
+    installMaintenanceRabbitsInChatDom();
+
     try {
         const mod = await import('../../../../../script.js');
         hostScriptModule = mod;
@@ -10104,15 +10389,14 @@ export async function initOutputSanitizer() {
                 eventTypes.MESSAGE_EDITED,
             ].filter(Boolean);
             for (const eventName of [...new Set(installEvents)]) {
-                eventSource.on(eventName, () => scheduleMaintenanceRabbitInstall());
+                eventSource.on(eventName, () => {
+                    installChatMutationObserver();
+                    scheduleMaintenanceRabbitInstall();
+                });
             }
         }
-
-        installChatRootReadyObserver();
-        scheduleMaintenanceRabbitInstall();
-        installMaintenanceRabbitsInChatDom();
-        console.debug('[RabbitMirror] output sanitizer initialized (maintenance-rabbit only)');
+        console.debug('[RabbitMirror] output sanitizer initialized (maintenance rabbit + feedback cat)');
     } catch (error) {
-        console.debug('[RabbitMirror] output sanitizer disabled:', error);
+        console.debug('[RabbitMirror] host event integration unavailable; DOM observer fallback remains active:', error);
     }
 }

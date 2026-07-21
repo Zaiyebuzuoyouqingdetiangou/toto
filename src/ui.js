@@ -4,6 +4,19 @@ import { clearRabbitMirrorPrompt } from './injector.js';
 import { refreshFeedbackCats, refreshMaintenanceRabbits, triggerInteractionDiagnosticOnce } from './outputSanitizer.js';
 import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js';
 
+const SETTINGS_UI_VERSION = '0.33.35';
+let uiMountRetryTimer = 0;
+let uiMountRetryCount = 0;
+
+function scheduleUiMountRetry() {
+    if (uiMountRetryTimer || uiMountRetryCount >= 20) return;
+    uiMountRetryCount += 1;
+    uiMountRetryTimer = setTimeout(() => {
+        uiMountRetryTimer = 0;
+        initRabbitMirrorUI();
+    }, Math.min(1000, 120 + uiMountRetryCount * 40));
+}
+
 function checked(id, value) {
     $(id).prop('checked', !!value);
 }
@@ -85,13 +98,30 @@ function memoryTestMessage(result) {
 export function initRabbitMirrorUI() {
     const settings = getSettings();
     const noSendRegex = '/<toto\\b[^>]*>[\\s\\S]*?<\\/toto>\\s*/gi';
-    if ($('#rabbit_mirror_theater_settings').length) return;
+    const existing = $('#rabbit_mirror_theater_settings');
+    if (existing.length) {
+        const currentVersion = String(existing.attr('data-rabbit-mirror-ui-version') || '');
+        const completeCurrentUi = currentVersion === SETTINGS_UI_VERSION
+            && existing.find('#rh_feedback_cat').length
+            && existing.find('#rh_maintenance_rabbit').length;
+        if (completeCurrentUi) return;
+        // SillyTavern 热重载扩展时旧设置 DOM 可能仍在。旧实现直接 return，
+        // 会导致新版本开关永远不出现；这里仅替换本插件自己的旧面板。
+        existing.remove();
+    }
+
+    const settingsMount = $('#extensions_settings2');
+    if (!settingsMount.length) {
+        scheduleUiMountRetry();
+        return;
+    }
+    uiMountRetryCount = 0;
 
     const html = `
-<div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings">
+<div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[挨打猫 v1.0＋小小维修兔 v1.27＋Menu QR v2.1 测试版]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.33.34 TEST</span>
+      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[挨打猫 v1.0＋小小维修兔 v1.28＋Menu QR v2.1 测试版]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.33.35 TEST</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -171,7 +201,7 @@ export function initRabbitMirrorUI() {
   </div>
 </div>`;
 
-    $('#extensions_settings2').append(html);
+    settingsMount.append(html);
 
     checked('#rh_enabled', settings.autoRabbitMirrorInjection !== false && settings.enabled !== false);
     checked('#rh_feedback_cat', settings.feedbackCatEnabled);
