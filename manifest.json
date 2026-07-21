@@ -1,8 +1,8 @@
 {
   "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（挨打猫 v1.1・小小维修兔 v1.29）",
   "loading_order": 99,
-  "js": "index-0.33.37.js",
-  "css": "style-0.33.37.css",
+  "js": "index.js",
+  "css": "style.css"
   "author": "Toto",
   "version": "0.33.37-test.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
