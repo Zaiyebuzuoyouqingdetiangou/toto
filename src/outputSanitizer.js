@@ -1,4 +1,4 @@
-import { getSettings } from './settings.js?rmv=0.33.38';
+import { getSettings } from './settings.js?rmv=0.33.39';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -7,11 +7,11 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=0.33.38';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=0.33.38';
+} from './feedbackCat.js?rmv=0.33.39';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=0.33.39';
 
 
-const RUNTIME_VERSION = '0.33.38';
+const RUNTIME_VERSION = '0.33.39';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -5967,7 +5967,7 @@ const SELECTION_ONLY_PLACEHOLDER_ATTR = 'data-rabbit-mirror-selection-only-place
 const SELECTION_ONLY_SOURCE_ATTR = 'data-rabbit-mirror-selection-only-source';
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '0.33.38-TEST-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.33.39-TEST-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();

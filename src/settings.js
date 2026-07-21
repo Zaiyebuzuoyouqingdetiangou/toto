@@ -41,6 +41,13 @@ export const defaultSettings = Object.freeze({
     maintenanceRabbitEnabled: true,
     // 挨打猫：用户主动选择后，才把临时审美或交互反馈注入后续生成。
     feedbackCatEnabled: true,
+
+    // 随兔子镜生成配图（测试版）：关闭时不构建图片 Prompt、不调用接口、不产生额外请求。
+    imageGenerationEnabled: false,
+    imageApiUrl: '',
+    imageApiKey: '',
+    imageModel: '',
+    imageSize: '1024x1024',
     // 强制启动增强：将小剧场作为本轮输出格式的一部分，而不是可选附加项。
     hardStartup: true,
     // 语言锁定增强：所有可见 UI 文案也必须为简体中文，禁止英文承担主要界面标签。
@@ -117,6 +124,11 @@ export function getSettings() {
     }
     settings.maintenanceRabbitEnabled = !!settings.maintenanceRabbitEnabled;
     settings.feedbackCatEnabled = settings.feedbackCatEnabled !== false;
+    settings.imageGenerationEnabled = !!settings.imageGenerationEnabled;
+    settings.imageApiUrl = String(settings.imageApiUrl || '').trim().slice(0, 1200);
+    settings.imageApiKey = String(settings.imageApiKey || '').trim().slice(0, 2400);
+    settings.imageModel = String(settings.imageModel || '').trim().slice(0, 240);
+    if (!['1024x1024', '1024x1536', '1536x1024'].includes(settings.imageSize)) settings.imageSize = defaultSettings.imageSize;
     delete settings.plainTextRescueMode;
     delete settings.codeBlockRescueMode;
     delete settings.interactionRescueMode;

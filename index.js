@@ -1,12 +1,13 @@
-import { initRabbitMirrorUI, destroyRabbitMirrorUI } from './src/ui.js?rmv=0.33.38';
-import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt } from './src/injector.js?rmv=0.33.38';
-import { clearLastCombo } from './src/storage.js?rmv=0.33.38';
-import { initVisualScanner } from './src/visualScanner.js?rmv=0.33.38';
-import { initOutputSanitizer, destroyOutputSanitizer } from './src/outputSanitizer.js?rmv=0.33.38';
-import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=0.33.38';
-import { getSettings } from './src/settings.js?rmv=0.33.38';
+import { initRabbitMirrorUI, destroyRabbitMirrorUI } from './src/ui.js?rmv=0.33.39';
+import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt } from './src/injector.js?rmv=0.33.39';
+import { clearLastCombo } from './src/storage.js?rmv=0.33.39';
+import { initVisualScanner } from './src/visualScanner.js?rmv=0.33.39';
+import { initOutputSanitizer, destroyOutputSanitizer } from './src/outputSanitizer.js?rmv=0.33.39';
+import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=0.33.39';
+import { getSettings } from './src/settings.js?rmv=0.33.39';
+import { destroyImageGeneration } from './src/imageGeneration.js?rmv=0.33.39';
 
-const RABBIT_MIRROR_RUNTIME_VERSION = '0.33.38';
+const RABBIT_MIRROR_RUNTIME_VERSION = '0.33.39';
 
 // Claim the active runtime before UI/DOM initialization. Versioned module URLs ensure this file and its internal graph cannot be satisfied by a stale hot-reload cache.
 try { globalThis.__rabbitMirrorFeedbackCatSyncCleanup?.(); } catch {}
@@ -29,12 +30,14 @@ export function onDisable() {
     clearRabbitMirrorPrompt();
     destroyRabbitMirrorUI();
     destroyOutputSanitizer();
+    destroyImageGeneration();
 }
 
 export function onClean() {
     destroyFeedbackCatPromptSync();
     destroyRabbitMirrorUI();
     destroyOutputSanitizer();
+    destroyImageGeneration();
     clearRabbitMirrorPrompt();
     clearLastCombo();
     clearAllFeedbackCatState();

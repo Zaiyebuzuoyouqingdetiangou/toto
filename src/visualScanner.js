@@ -1,5 +1,6 @@
-import { updateLatestVisualSignature } from './storage.js?rmv=0.33.38';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=0.33.38';
+import { updateLatestVisualSignature } from './storage.js?rmv=0.33.39';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=0.33.39';
+import { maybeGenerateImageForRabbitMirror } from './imageGeneration.js?rmv=0.33.39';
 
 const TOTO_RE = new RegExp('<toto\\b[^>]*(?:data-rabbit-mirror|data-rabbit-' + 'h' + 'ole)=[\"\']true[\"\'][^>]*>[\\s\\S]*?<\\/toto>', 'i');
 let lastScannedHash = '';
@@ -900,7 +901,7 @@ function findRenderedToto(message, chat, messageHtml) {
     return all[all.length - 1] || null;
 }
 
-async function scanLatestAssistantMessage(mod) {
+async function scanLatestAssistantMessage(mod, allowImageGeneration = false) {
     const chat = mod?.chat || globalThis.chat;
     if (!Array.isArray(chat) || !chat.length) return;
     const recent = chat.slice(-4).reverse();
@@ -931,6 +932,9 @@ async function scanLatestAssistantMessage(mod) {
         }
         console.debug('[RabbitMirror] visual signature:', signature, skeleton, riskFlags, paletteFingerprint);
     }
+    if (allowImageGeneration && renderedToto) {
+        void maybeGenerateImageForRabbitMirror({ message, chat, renderedToto });
+    }
 }
 
 export async function initVisualScanner() {
@@ -939,12 +943,13 @@ export async function initVisualScanner() {
         const eventSource = mod?.eventSource;
         const eventTypes = mod?.event_types || {};
         if (!eventSource?.on) return;
-        const scheduleScan = () => {
-            setTimeout(() => scanLatestAssistantMessage(mod), 600);
-            setTimeout(() => scanLatestAssistantMessage(mod), 1800);
+        const scheduleScan = (allowImageGeneration = false) => {
+            setTimeout(() => scanLatestAssistantMessage(mod, allowImageGeneration), 600);
+            setTimeout(() => scanLatestAssistantMessage(mod, allowImageGeneration), 1800);
         };
-        const events = [eventTypes.MESSAGE_RECEIVED, eventTypes.GENERATION_ENDED, eventTypes.CHAT_CHANGED].filter(Boolean);
-        for (const eventName of events) eventSource.on(eventName, scheduleScan);
+        const generationEvents = [eventTypes.MESSAGE_RECEIVED, eventTypes.GENERATION_ENDED].filter(Boolean);
+        for (const eventName of [...new Set(generationEvents)]) eventSource.on(eventName, () => scheduleScan(true));
+        if (eventTypes.CHAT_CHANGED) eventSource.on(eventTypes.CHAT_CHANGED, () => scheduleScan(false));
         console.debug('[RabbitMirror] visual scanner initialized');
     } catch (error) {
         console.debug('[RabbitMirror] visual scanner disabled:', error);

@@ -1,12 +1,13 @@
-import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=0.33.38';
-import { clearLastCombo } from './storage.js?rmv=0.33.38';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=0.33.38';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=0.33.38';
-import { refreshFeedbackCats, refreshMaintenanceRabbits, triggerInteractionDiagnosticOnce } from './outputSanitizer.js?rmv=0.33.38';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=0.33.38';
+import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=0.33.39';
+import { clearLastCombo } from './storage.js?rmv=0.33.39';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=0.33.39';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=0.33.39';
+import { refreshFeedbackCats, refreshMaintenanceRabbits, triggerInteractionDiagnosticOnce } from './outputSanitizer.js?rmv=0.33.39';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=0.33.39';
+import { getImageGenerationPromptPreviewForLatestMirror, onImageGenerationSettingChanged } from './imageGeneration.js?rmv=0.33.39';
 
-const SETTINGS_UI_VERSION = '0.33.38';
-const RUNTIME_VERSION = '0.33.38';
+const SETTINGS_UI_VERSION = '0.33.39';
+const RUNTIME_VERSION = '0.33.39';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -126,7 +127,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[挨打猫 v1.1＋小小维修兔 v1.29＋Menu QR v2.1 测试版]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.33.38 TEST</span>
+      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[挨打猫 v1.1＋小小维修兔 v1.29＋文生图测试版＋Menu QR v2.1]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.33.39 TEST</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -160,6 +161,41 @@ export function initRabbitMirrorUI() {
 
           <label class="checkbox_label"><input id="rh_avoid_repeat" type="checkbox"> 10轮冷却：避免重复主题/展现形式/整体观感</label>
           <div class="rabbit-mirror-subnote" style="margin:-2px 0 2px 26px;opacity:.72;font-size:12px;line-height:1.45;">仅记录已经实际生成成功的兔子镜；用于避免连续复用相近的结构骨架与整体视觉家族。</div>
+        </div>
+      </details>
+
+
+
+      <details class="rabbit-mirror-section rabbit-mirror-image-generation-test">
+        <summary><span>随兔子镜生成配图</span><span class="rabbit-mirror-section-note">测试版</span></summary>
+        <div class="rabbit-mirror-section-content">
+          <label class="checkbox_label" style="font-weight:700;"><input id="rh_image_generation" type="checkbox"> 随兔子镜生成配图（测试版）</label>
+          <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.78;font-size:12px;line-height:1.5;">关闭时不构建图片 Prompt、不调用接口，也不产生额外请求；开启后仅在兔子镜成功生成时调用一次文生图接口，并在兔子镜内容区右下方显示小画框。</div>
+          <div id="rh_image_generation_config" class="rabbit-mirror-image-generation-config">
+            <label class="flex-container flexFlowColumn" style="gap:4px;margin:8px 0;">
+              <span>文生图 API 地址</span>
+              <input id="rh_image_api_url" class="text_pole" type="url" autocomplete="off" placeholder="https://…/v1/images/generations">
+            </label>
+            <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px;opacity:.7;font-size:11px;line-height:1.45;">请填写完整的 OpenAI 兼容图片生成接口，不是普通文生图网站首页；接口需允许当前浏览器跨域访问。</div>
+            <label class="flex-container flexFlowColumn" style="gap:4px;margin:8px 0;">
+              <span>API Key</span>
+              <input id="rh_image_api_key" class="text_pole" type="password" autocomplete="new-password" placeholder="可留空（本地或免鉴权接口）">
+            </label>
+            <label class="flex-container flexFlowColumn" style="gap:4px;margin:8px 0;">
+              <span>模型名称</span>
+              <input id="rh_image_model" class="text_pole" type="text" autocomplete="off" placeholder="例如：gpt-image-1 或接口支持的模型名">
+            </label>
+            <label for="rh_image_size" class="flex-container alignitemscenter" style="gap:8px;flex-wrap:wrap;margin:8px 0;">
+              <span>图片尺寸</span>
+              <select id="rh_image_size" class="text_pole" style="max-width:220px;">
+                <option value="1024x1024">正方形 1024×1024</option>
+                <option value="1024x1536">竖图 1024×1536</option>
+                <option value="1536x1024">横图 1536×1024</option>
+              </select>
+            </label>
+            <button id="rh_image_prompt_preview" class="menu_button" type="button">预览最新兔子镜的文生图 Prompt</button>
+            <div class="rabbit-mirror-subnote" style="margin-top:6px;opacity:.72;font-size:11px;line-height:1.45;">防多手多脚、人物融合、乱码／UI、水印，以及非血腥、非暴力、非恐怖规则会在配图时自动加入，不单独设置开关。</div>
+          </div>
         </div>
       </details>
 
@@ -217,6 +253,12 @@ export function initRabbitMirrorUI() {
     checked('#rh_force_visual_scenery', settings.forceVisualScenery);
     checked('#rh_avoid_repeat', settings.avoidRepeat);
     checked('#rh_memory_scan_enabled', settings.memoryScanEnabled);
+    checked('#rh_image_generation', settings.imageGenerationEnabled);
+    $('#rh_image_api_url').val(settings.imageApiUrl || '');
+    $('#rh_image_api_key').val(settings.imageApiKey || '');
+    $('#rh_image_model').val(settings.imageModel || '');
+    $('#rh_image_size').val(settings.imageSize || '1024x1024');
+    $('#rh_image_generation_config').toggle(!!settings.imageGenerationEnabled);
 
     $('#rh_enabled').on('change', e => updateSettings({ enabled: e.target.checked, autoRabbitMirrorInjection: e.target.checked, mode: e.target.checked ? 'integrated' : 'off' }));
     $('#rh_feedback_cat').on('change', e => {
@@ -242,6 +284,43 @@ export function initRabbitMirrorUI() {
         } else {
             toastr?.warning?.('未找到聊天区域，暂时无法开始诊断。请进入具体聊天后重试。');
         }
+    });
+
+
+    $('#rh_image_generation').on('change', e => {
+        const enabled = !!e.target.checked;
+        updateSettings({ imageGenerationEnabled: enabled });
+        $('#rh_image_generation_config').toggle(enabled);
+        onImageGenerationSettingChanged(enabled);
+        toastr?.[enabled ? 'info' : 'success']?.(enabled
+            ? '兔子镜配图测试版已开启：仅在兔子镜成功生成后调用文生图接口。'
+            : '兔子镜配图已关闭：不会构建图片 Prompt，也不会调用文生图接口。');
+    });
+    $('#rh_image_api_url').on('change', e => updateSettings({ imageApiUrl: String(e.target.value || '').trim() }));
+    $('#rh_image_api_key').on('change', e => updateSettings({ imageApiKey: String(e.target.value || '').trim() }));
+    $('#rh_image_model').on('change', e => updateSettings({ imageModel: String(e.target.value || '').trim() }));
+    $('#rh_image_size').on('change', e => updateSettings({ imageSize: e.target.value }));
+    $('#rh_image_prompt_preview').on('click', () => {
+        const prompt = getImageGenerationPromptPreviewForLatestMirror();
+        if (!prompt) {
+            toastr?.warning?.('当前聊天中没有可用于预览的兔子镜。');
+            return;
+        }
+        const dialog = document.createElement('div');
+        dialog.className = 'rabbit-mirror-image-prompt-preview';
+        dialog.setAttribute('role', 'dialog');
+        dialog.setAttribute('aria-modal', 'true');
+        dialog.innerHTML = `<div class="rabbit-mirror-image-prompt-preview-card"><div class="rabbit-mirror-image-prompt-preview-title">文生图 Prompt 预览</div><textarea readonly></textarea><div class="rabbit-mirror-image-prompt-preview-actions"><button type="button" data-rm-image-preview-action="copy">复制</button><button type="button" data-rm-image-preview-action="close">关闭</button></div></div>`;
+        dialog.querySelector('textarea').value = prompt;
+        dialog.addEventListener('click', async event => {
+            const action = event.target?.closest?.('[data-rm-image-preview-action]')?.dataset?.rmImagePreviewAction;
+            if (event.target === dialog || action === 'close') { dialog.remove(); return; }
+            if (action === 'copy') {
+                try { await navigator.clipboard.writeText(prompt); toastr?.success?.('文生图 Prompt 已复制。'); }
+                catch { toastr?.warning?.('复制失败，请在文本框中手动复制。'); }
+            }
+        });
+        document.body.appendChild(dialog);
     });
 
     $('#rh_memory_scan_enabled').on('change', e => {

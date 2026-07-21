@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（挨打猫 v1.1・小小维修兔 v1.29）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（挨打猫 v1.1・小小维修兔 v1.29・文生图测试版）",
   "loading_order": 99,
-  "js": "index.js?rmv=0.33.38",
-  "css": "style.css?rmv=0.33.38",
+  "js": "index.js?rmv=0.33.39",
+  "css": "style.css?rmv=0.33.39",
   "author": "Toto",
-  "version": "0.33.38-test.1",
+  "version": "0.33.39-test.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "TEST build: single-cat cache-safe fix; keeps normal root files, forces fresh JS/CSS URLs, removes stale feedback-cat buttons, and renders exactly one compatible cat icon without changing the base RabbitMirror prompt."
+  "description": "TEST build: optional per-RabbitMirror image generation through a user-configured OpenAI-compatible image API; uses a separate image prompt with CHAR/USER appearance anchors, safe-scene constraints, deduplicated one-request-per-generation behavior, and an in-mirror lower-right image frame. Disabled means zero image prompt construction and zero image requests."
 }
