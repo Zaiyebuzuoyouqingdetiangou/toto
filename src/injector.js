@@ -1,11 +1,12 @@
 import { setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
-import { MODULE_NAME, getSettings } from './settings.js?rmv=0.33.36';
-import { buildRabbitMirrorPrompt } from './promptBuilder.js?rmv=0.33.36';
-import { getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=0.33.36';
+import { MODULE_NAME, getSettings } from './settings.js?rmv=0.33.37';
+import { buildRabbitMirrorPrompt } from './promptBuilder.js?rmv=0.33.37';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, markFeedbackCatInjected, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=0.33.37';
 
 const INJECT_KEY = `${MODULE_NAME}:auto_injection`;
 
 export function clearRabbitMirrorPrompt() {
+    clearFeedbackCatExtensionPrompt();
     try {
         setExtensionPrompt(INJECT_KEY, '', extension_prompt_types.IN_CHAT, 0, false, extension_prompt_roles.SYSTEM);
     } catch (error) {
@@ -24,8 +25,11 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
         return;
     }
 
-    const activeFeedback = settings.feedbackCatEnabled !== false ? getActiveFeedbackForCurrentChat() : null;
-    const prompt = buildRabbitMirrorPrompt(settings, type, activeFeedback);
+    const activeFeedback = settings.feedbackCatEnabled !== false ? getActiveFeedbackForCurrentChat(_chat) : null;
+    const feedbackSync = activeFeedback
+        ? syncFeedbackCatExtensionPrompt(activeFeedback)
+        : { ok: clearFeedbackCatExtensionPrompt(), prompt: '', promptHash: '', chars: 0 };
+    const prompt = buildRabbitMirrorPrompt(settings, type, null);
     if (!prompt) {
         clearRabbitMirrorPrompt();
         return;
@@ -40,5 +44,5 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
         false,
         role,
     );
-    if (activeFeedback) markFeedbackCatInjected(activeFeedback, type);
+    if (activeFeedback && feedbackSync.ok) markFeedbackCatInjected(activeFeedback, type, feedbackSync.prompt);
 }

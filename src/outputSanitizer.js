@@ -1,14 +1,17 @@
-import { getSettings } from './settings.js?rmv=0.33.36';
+import { getSettings } from './settings.js?rmv=0.33.37';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
+    feedbackCatReceiptText,
     feedbackCatStatusText,
     getActiveFeedbackForCurrentChat,
+    getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=0.33.36';
+} from './feedbackCat.js?rmv=0.33.37';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=0.33.37';
 
 
-const RUNTIME_VERSION = '0.33.36';
+const RUNTIME_VERSION = '0.33.37';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 function isCurrentRuntime() {
@@ -5940,7 +5943,7 @@ const SELECTION_ONLY_PLACEHOLDER_ATTR = 'data-rabbit-mirror-selection-only-place
 const SELECTION_ONLY_SOURCE_ATTR = 'data-rabbit-mirror-selection-only-source';
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '0.33.36-TEST-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.33.37-TEST-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -7955,7 +7958,20 @@ function feedbackCatSourceIdentity(root) {
     const chat = getAvailableHostChat();
     const message = messageId >= 0 ? chat[messageId] : null;
     const swipeId = Number.isInteger(message?.swipe_id) ? message.swipe_id : -1;
-    return { messageId, swipeId };
+    let sourceFingerprint = null;
+    try {
+        const renderedToto = root?.matches?.('toto') ? root : root?.closest?.('toto') || root;
+        const scanned = scanRabbitMirrorHtml(String(message?.mes || renderedToto?.outerHTML || ''), renderedToto);
+        sourceFingerprint = scanned && typeof scanned === 'object' ? {
+            signature: scanned.signature || '',
+            skeleton: scanned.skeleton || '',
+            riskFlags: Array.isArray(scanned.riskFlags) ? scanned.riskFlags : [],
+            paletteFingerprint: scanned.paletteFingerprint || null,
+        } : null;
+    } catch (error) {
+        console.debug('[RabbitMirror] feedback cat source fingerprint skipped:', error);
+    }
+    return { messageId, swipeId, sourceFingerprint };
 }
 
 function feedbackCatButtonTitle() {
@@ -7982,6 +7998,7 @@ function saveFeedbackCatChoice(root, type, customText, rounds) {
             rounds,
             sourceMessageId: source.messageId,
             sourceSwipeId: source.swipeId,
+            sourceFingerprint: source.sourceFingerprint,
         });
         updateFeedbackCatButtonTitles();
         const rangeText = Number(rounds) === 1 ? '下一轮' : `接下来 ${rounds} 轮`;
@@ -8089,14 +8106,20 @@ function showFeedbackCatMenu(root, button) {
     closeFeedbackCatMenu();
     if (!root?.isConnected || !button?.isConnected) return false;
     const active = getActiveFeedbackForCurrentChat();
+    const lastReceipt = getFeedbackCatLastReceiptForCurrentChat();
     const panel = document.createElement('div');
     panel.className = 'rabbit-mirror-feedback-cat-menu';
     panel.setAttribute(FEEDBACK_CAT_MENU_ATTR, 'true');
     panel.setAttribute('role', 'dialog');
     panel.setAttribute('aria-label', '挨打猫');
+    const receiptLine = lastReceipt
+        ? `<div class="rabbit-mirror-feedback-cat-status">上一轮送达回执：${feedbackCatEscapeHtml(feedbackCatReceiptText(lastReceipt))}</div>`
+        : '';
     const status = active
-        ? `<div class="rabbit-mirror-feedback-cat-status">当前反馈：${feedbackCatEscapeHtml(feedbackCatStatusText(active))}</div>`
-        : '<div class="rabbit-mirror-feedback-cat-status">当前没有生效中的反馈；不选择时不会影响原有美化规则。</div>';
+        ? `<div class="rabbit-mirror-feedback-cat-status">当前反馈：${feedbackCatEscapeHtml(feedbackCatStatusText(active))}</div>${receiptLine}`
+        : lastReceipt
+            ? `<div class="rabbit-mirror-feedback-cat-status">当前没有生效中的反馈。</div>${receiptLine}`
+            : '<div class="rabbit-mirror-feedback-cat-status">当前没有生效中的反馈；不选择时不会影响原有美化规则。</div>';
     panel.innerHTML = `
       <div class="rabbit-mirror-feedback-cat-menu-title">🐈‍⬛ 挨打猫</div>
       ${status}

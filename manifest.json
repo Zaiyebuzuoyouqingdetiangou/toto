@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（挨打猫 v1.0・小小维修兔 v1.29）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（挨打猫 v1.1・小小维修兔 v1.29）",
   "loading_order": 99,
-  "js": "index-0.33.36.js",
-  "css": "style-0.33.36.css",
+  "js": "index-0.33.37.js",
+  "css": "style-0.33.37.css",
   "author": "Toto",
-  "version": "0.33.36-test.1",
+  "version": "0.33.37-test.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "TEST build: cache-safe runtime takeover; uses versioned entry/module/style URLs, replaces stale settings/title controls, and preserves all 0.33.35 interaction, text repair, Feedback Cat, prompt, theme, and presentation behavior; maintenance rabbit v1.29."
+  "description": "TEST build: Feedback Cat delivery-proof channel; stores feedback in current chat metadata with fallback, registers a dedicated hidden prompt immediately on save, refreshes it in the generation interceptor, adds source visual fingerprints for preset feedback, and preserves the 0.33.36 base prompt when no feedback is active."
 }

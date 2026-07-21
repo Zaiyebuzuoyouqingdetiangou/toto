@@ -1,9 +1,8 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=0.33.36';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=0.33.36';
-import { pickCombination } from './picker.js?rmv=0.33.36';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown } from './storage.js?rmv=0.33.36';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=0.33.36';
-import { buildFeedbackCatPrompt } from './feedbackCat.js?rmv=0.33.36';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=0.33.37';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=0.33.37';
+import { pickCombination } from './picker.js?rmv=0.33.37';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown } from './storage.js?rmv=0.33.37';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=0.33.37';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -316,8 +315,6 @@ ${shortVisualAvoidance(combo, 3)}`);
 
     if (tarotRulesText) chunks.push(tarotRulesText);
     chunks.push(htmlSafetyCore());
-    // 挨打猫只在用户存在有效反馈时追加；无反馈时返回空串，原有美化 Prompt 保持逐字不变。
-    chunks.push(buildFeedbackCatPrompt(activeFeedback));
     // 强制输出契约放在注入末尾，利用指令近因保证每轮正文后继续生成完整兔子镜。
     chunks.push(coreOutputProtocol());
     chunks.push('</兔子镜自动注入>');
