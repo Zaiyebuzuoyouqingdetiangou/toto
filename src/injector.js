@@ -1,7 +1,7 @@
 import { setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
-import { MODULE_NAME, getSettings } from './settings.js';
-import { buildRabbitMirrorPrompt } from './promptBuilder.js';
-import { getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js';
+import { MODULE_NAME, getSettings } from './settings.js?rmv=0.33.36';
+import { buildRabbitMirrorPrompt } from './promptBuilder.js?rmv=0.33.36';
+import { getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=0.33.36';
 
 const INJECT_KEY = `${MODULE_NAME}:auto_injection`;
 
