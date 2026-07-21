@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（小小维修兔 v1.20・触摸状态恢复修正版）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（小小维修兔 v1.23・旧消息全选联动修正版）",
   "loading_order": 99,
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.33.26-test.1",
+  "version": "0.33.30-test.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "TEST build: keeps the 0.33.24 prompt and runtime baseline, restores the current RabbitMirror from reasoning-wrapped messages whose inline SVG data URI truncated the DOM, preserves the complete style/body, strips inline events before direct DOM insertion, and safely reconstructs strict self class toggles for the current mirror only."
+  "description": "TEST build: keeps the complete 0.33.29 prompt and runtime baseline and adds a reversible rescue for legacy message CSS where body:has(...:checked) was scoped beneath .mes_text and could never match; maintenance rabbit v1.23."
 }
