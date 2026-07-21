@@ -1,12 +1,12 @@
-import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=0.33.37';
-import { clearLastCombo } from './storage.js?rmv=0.33.37';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=0.33.37';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=0.33.37';
-import { refreshFeedbackCats, refreshMaintenanceRabbits, triggerInteractionDiagnosticOnce } from './outputSanitizer.js?rmv=0.33.37';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=0.33.37';
+import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=0.33.38';
+import { clearLastCombo } from './storage.js?rmv=0.33.38';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=0.33.38';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=0.33.38';
+import { refreshFeedbackCats, refreshMaintenanceRabbits, triggerInteractionDiagnosticOnce } from './outputSanitizer.js?rmv=0.33.38';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=0.33.38';
 
-const SETTINGS_UI_VERSION = '0.33.37';
-const RUNTIME_VERSION = '0.33.37';
+const SETTINGS_UI_VERSION = '0.33.38';
+const RUNTIME_VERSION = '0.33.38';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -126,7 +126,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[挨打猫 v1.1＋小小维修兔 v1.29＋Menu QR v2.1 测试版]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.33.37 TEST</span>
+      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[挨打猫 v1.1＋小小维修兔 v1.29＋Menu QR v2.1 测试版]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.33.38 TEST</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -177,7 +177,7 @@ export function initRabbitMirrorUI() {
       <details class="rabbit-mirror-section rabbit-mirror-emergency rabbit-mirror-emergency-prominent">
         <summary><span>反馈、急救与诊断</span><span class="rabbit-mirror-section-note">按需使用</span></summary>
         <div class="rabbit-mirror-section-content">
-          <label class="checkbox_label" style="font-weight:700;"><input id="rh_feedback_cat" type="checkbox"> 🐈‍⬛ 启用挨打猫</label>
+          <label class="checkbox_label" style="font-weight:700;"><input id="rh_feedback_cat" type="checkbox"> 🐈 启用挨打猫</label>
           <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.78;font-size:12px;line-height:1.5;">挨打猫只把用户主动选择的反馈临时带入后续 1／3／10 轮生成；用户未选择时不向模型追加任何内容。</div>
           <label class="checkbox_label" style="font-weight:700;"><input id="rh_maintenance_rabbit" type="checkbox"> 🐇 启用小小维修兔</label>
           <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.78;font-size:12px;line-height:1.5;">小小维修兔只在用户点击后检查或维修当前这面兔子镜；未点击时不修改内容，也不增加模型 token。</div>
@@ -225,7 +225,7 @@ export function initRabbitMirrorUI() {
         else clearFeedbackCatExtensionPrompt();
         refreshFeedbackCats();
         toastr?.[e.target.checked ? 'info' : 'success']?.(e.target.checked
-            ? '挨打猫已启用：每条兔子镜会显示独立的 🐈‍⬛，没有反馈时不会追加 Prompt。'
+            ? '挨打猫已启用：每条兔子镜会显示独立的 🐈，没有反馈时不会追加 Prompt。'
             : '挨打猫已关闭：标题入口已移除，已保存反馈暂停注入。');
     });
     $('#rh_maintenance_rabbit').on('change', e => {

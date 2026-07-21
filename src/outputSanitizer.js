@@ -1,4 +1,4 @@
-import { getSettings } from './settings.js?rmv=0.33.37';
+import { getSettings } from './settings.js?rmv=0.33.38';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -7,12 +7,36 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=0.33.37';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=0.33.37';
+} from './feedbackCat.js?rmv=0.33.38';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=0.33.38';
 
 
-const RUNTIME_VERSION = '0.33.37';
+const RUNTIME_VERSION = '0.33.38';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
+
+const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
+
+function ensureFeedbackCatRuntimeStyle() {
+    if (typeof document === 'undefined') return;
+    let style = document.getElementById(FEEDBACK_CAT_RUNTIME_STYLE_ID);
+    if (!style) {
+        style = document.createElement('style');
+        style.id = FEEDBACK_CAT_RUNTIME_STYLE_ID;
+        (document.head || document.documentElement)?.appendChild(style);
+    }
+    style.textContent = `
+.rabbit-mirror-feedback-cat::before,
+.rabbit-mirror-feedback-cat::after {
+    content: none !important;
+    display: none !important;
+}
+.rabbit-mirror-feedback-cat {
+    font-size: 14px !important;
+    line-height: 1 !important;
+}
+`;
+}
+
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -5943,7 +5967,7 @@ const SELECTION_ONLY_PLACEHOLDER_ATTR = 'data-rabbit-mirror-selection-only-place
 const SELECTION_ONLY_SOURCE_ATTR = 'data-rabbit-mirror-selection-only-source';
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '0.33.37-TEST-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.33.38-TEST-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -8574,6 +8598,7 @@ function installMaintenanceRabbitForRoot(root) {
 
 function installFeedbackCatForRoot(root) {
     if (!isCurrentRuntime() || !root?.querySelector) return false;
+    ensureFeedbackCatRuntimeStyle();
     const details = root.matches?.('details') ? root : root.querySelector(':scope > details') || root.querySelector('details');
     const summary = details?.querySelector?.(':scope > summary') || details?.querySelector?.('summary');
     if (!summary) return false;
@@ -8586,7 +8611,7 @@ function installFeedbackCatForRoot(root) {
     button.className = 'rabbit-mirror-feedback-cat';
     button.setAttribute(FEEDBACK_CAT_ATTR, 'true');
     button.setAttribute(RUNTIME_VERSION_ATTR, RUNTIME_VERSION);
-    button.textContent = '🐈‍⬛';
+    button.textContent = '🐈';
     button.title = feedbackCatButtonTitle();
     button.setAttribute('aria-label', button.title);
     button.addEventListener('click', event => handleFeedbackCatClick(event, root, button), true);
@@ -8606,6 +8631,7 @@ function removeFeedbackCatsInChatDom() {
     const chatRoot = getChatRoot();
     chatRoot?.querySelectorAll?.(`[${FEEDBACK_CAT_ATTR}]`)?.forEach(button => button.remove());
     closeFeedbackCatMenu();
+    document?.getElementById?.(FEEDBACK_CAT_RUNTIME_STYLE_ID)?.remove?.();
 }
 
 function installMaintenanceRabbitsInChatDom() {
@@ -10417,6 +10443,7 @@ function installChatRootReadyObserver() {
 
 export async function initOutputSanitizer() {
     if (!isCurrentRuntime()) return;
+    ensureFeedbackCatRuntimeStyle();
     // DOM 安装链不依赖宿主事件模块是否成功导入：即使热重载或宿主事件名变化，
     // 维修兔与挨打猫仍会通过聊天区观察器安装到现有和后续兔子镜标题。
     installChatRootReadyObserver();
