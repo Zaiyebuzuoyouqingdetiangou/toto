@@ -3,6 +3,7 @@ import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js';
 import { pickCombination } from './picker.js';
 import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown } from './storage.js';
 import { readSelectedMemoryForPrompt } from './memoryScanner.js';
+import { buildFeedbackCatPrompt } from './feedbackCat.js';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -265,7 +266,7 @@ function stateBarIsolationRule() {
   正文已有的状态栏、属性栏或数据栏只用于理解剧情信息，不得复刻其字段、顺序、标签、配色、卡片结构与信息组织；兔子镜必须按本轮展现形式重新构成。`;
 }
 
-function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive, memoryMaterial }) {
+function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive, memoryMaterial, activeFeedback }) {
     const chunks = [];
     const mode = combo?.samplingMode || settings?.samplingMode || 'classic';
     chunks.push('<兔子镜自动注入>');
@@ -315,13 +316,15 @@ ${shortVisualAvoidance(combo, 3)}`);
 
     if (tarotRulesText) chunks.push(tarotRulesText);
     chunks.push(htmlSafetyCore());
+    // 挨打猫只在用户存在有效反馈时追加；无反馈时返回空串，原有美化 Prompt 保持逐字不变。
+    chunks.push(buildFeedbackCatPrompt(activeFeedback));
     // 强制输出契约放在注入末尾，利用指令近因保证每轮正文后继续生成完整兔子镜。
     chunks.push(coreOutputProtocol());
     chunks.push('</兔子镜自动注入>');
     return chunks.filter(Boolean).join('\n\n').trim();
 }
 
-export function buildRabbitMirrorPrompt(settings, generationType = 'normal') {
+export function buildRabbitMirrorPrompt(settings, generationType = 'normal', activeFeedback = null) {
     if (!settings?.enabled || !settings?.autoRabbitMirrorInjection || settings?.mode === 'off') return '';
     const { combo, directive, disabled } = pickCombination(settings);
     if (disabled) {
@@ -336,7 +339,7 @@ export function buildRabbitMirrorPrompt(settings, generationType = 'normal') {
     const memoryMaterial = hasSharedMemoryTheme(combo)
         ? readSelectedMemoryForPrompt(settings, settings.memoryMaxChars || 2200)
         : null;
-    const prompt = buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive, memoryMaterial });
+    const prompt = buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive, memoryMaterial, activeFeedback });
 
     if (settings.debug) {
         console.debug('[RabbitMirror] generationType:', generationType, 'combo:', combo, 'memorySources:', memoryMaterial?.sources || [], 'prompt chars:', prompt.length);

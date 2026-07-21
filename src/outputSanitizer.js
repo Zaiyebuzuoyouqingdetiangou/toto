@@ -1,4 +1,11 @@
 import { getSettings } from './settings.js';
+import {
+    FEEDBACK_CAT_TYPES,
+    clearActiveFeedbackForCurrentChat,
+    feedbackCatStatusText,
+    getActiveFeedbackForCurrentChat,
+    setActiveFeedbackForCurrentChat,
+} from './feedbackCat.js';
 
 // Cached SillyTavern script module. In module builds, chat is not guaranteed to be exposed on globalThis.
 let hostScriptModule = null;
@@ -25,6 +32,14 @@ const MULTI_BLANK_LINE_RE = /\n\s*\n/g;
 
 
 
+
+function isFeedbackCatEnabled() {
+    try {
+        return getSettings().feedbackCatEnabled !== false;
+    } catch {
+        return true;
+    }
+}
 
 function isMaintenanceRabbitEnabled() {
     try {
@@ -293,6 +308,10 @@ function refreshFocusToCheckedRescue(root) {
 const CHECKED_TEXT_RULE_RESCUE_ATTR = 'data-rabbit-mirror-checked-text-rule-rescue';
 const CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR = 'data-rabbit-mirror-cross-parent-checked-rescue';
 const CROSS_PARENT_CHECKED_ROOT_ATTR = 'data-rabbit-mirror-cross-parent-checked-rules';
+const CHECKED_PSEUDO_RULE_RESCUE_STYLE_ATTR = 'data-rabbit-mirror-checked-pseudo-rule-rescue';
+const CHECKED_PSEUDO_RULE_TARGET_ATTR = 'data-rm-checked-pseudo-rule-target';
+const interactionPseudoOverrideStates = new WeakMap();
+let checkedPseudoRuleTokenCounter = 0;
 const CHECKED_HAS_STATE_RESCUE_STYLE_ATTR = 'data-rabbit-mirror-checked-has-state-rescue';
 const CHECKED_HAS_STATE_ROOT_ATTR = 'data-rabbit-mirror-checked-has-state';
 const CHECKED_HAS_STATE_RULE_COUNT_ATTR = 'data-rabbit-mirror-checked-has-state-rules';
@@ -412,10 +431,111 @@ function buildCheckedSelectorNeedles(input) {
     return needles;
 }
 
+
+function matchGenericLocalCheckedSelector(selector, input) {
+    const source = String(selector || '');
+    if (!source || !input?.matches) return null;
+
+    // 模型经常不给 input 设置 id/class，只写 input:checked + div ...。
+    // 这种规则只能在当前 input 所在 label/局部容器内恢复，绝不能跨兔子镜全局扩散。
+    const genericRe = /(?:^|[\s>+~,(])(input(?:\s*\[[^\]]+\])*)\s*:checked\s*([+~])\s*([^,{]+)/gi;
+    let match;
+    while ((match = genericRe.exec(source))) {
+        const subject = String(match[1] || '').trim();
+        if (!subject) continue;
+        try {
+            if (!input.matches(subject)) continue;
+        } catch {
+            continue;
+        }
+        return {
+            source: 'generic-local',
+            relation: match[2],
+            rawTargetSelector: match[3],
+        };
+    }
+    return null;
+}
+
+function splitCheckedPseudoTargetSelector(selectorText) {
+    const source = String(selectorText || '').trim();
+    const match = source.match(/^(.*?)(?:::)(before|after)\s*$/i);
+    if (!match) return { targetSelector: source, pseudoElement: '' };
+    return {
+        targetSelector: String(match[1] || '').trim(),
+        pseudoElement: String(match[2] || '').toLowerCase(),
+    };
+}
+
+function addSpaceSeparatedAttributeToken(element, attribute, token) {
+    if (!element?.setAttribute || !attribute || !token) return;
+    const tokens = new Set(String(element.getAttribute(attribute) || '').split(/\s+/).filter(Boolean));
+    tokens.add(token);
+    element.setAttribute(attribute, [...tokens].join(' '));
+}
+
+function removeSpaceSeparatedAttributeToken(element, attribute, token) {
+    if (!element?.getAttribute || !attribute || !token) return;
+    const tokens = String(element.getAttribute(attribute) || '').split(/\s+/).filter(Boolean)
+        .filter(value => value !== token);
+    if (tokens.length) element.setAttribute(attribute, tokens.join(' '));
+    else element.removeAttribute(attribute);
+}
+
+function restoreInteractionPseudoOverrides(input) {
+    const state = interactionPseudoOverrideStates.get(input);
+    if (!state) return;
+    state.styleElement?.remove?.();
+    for (const record of state.targets || []) {
+        removeSpaceSeparatedAttributeToken(record.element, CHECKED_PSEUDO_RULE_TARGET_ATTR, record.token);
+    }
+    interactionPseudoOverrideStates.delete(input);
+}
+
+function installInteractionPseudoOverrides(root, input, entries) {
+    restoreInteractionPseudoOverrides(input);
+    if (!root?.appendChild || !input?.checked || !entries?.length) return 0;
+
+    const styleElement = document.createElement('style');
+    styleElement.setAttribute(CHECKED_PSEUDO_RULE_RESCUE_STYLE_ATTR, 'true');
+    const targetRecords = [];
+    const cssRules = [];
+    let declarationCount = 0;
+
+    for (const entry of entries) {
+        const target = entry?.target;
+        const pseudoElement = String(entry?.pseudoElement || '').toLowerCase();
+        const styleMap = Array.isArray(entry?.styleMap) ? entry.styleMap : [];
+        if (!target?.isConnected || !/^(?:before|after)$/.test(pseudoElement) || !styleMap.length) continue;
+
+        checkedPseudoRuleTokenCounter += 1;
+        const token = `p${checkedPseudoRuleTokenCounter.toString(36)}`;
+        addSpaceSeparatedAttributeToken(target, CHECKED_PSEUDO_RULE_TARGET_ATTR, token);
+        targetRecords.push({ element: target, token });
+
+        const declarations = styleMap.map(([property, value]) => {
+            declarationCount += 1;
+            return `${property}: ${value} !important;`;
+        }).join('');
+        cssRules.push(`[${CHECKED_PSEUDO_RULE_TARGET_ATTR}~="${token}"]::${pseudoElement} {${declarations}}`);
+    }
+
+    if (!cssRules.length) {
+        for (const record of targetRecords) {
+            removeSpaceSeparatedAttributeToken(record.element, CHECKED_PSEUDO_RULE_TARGET_ATTR, record.token);
+        }
+        return 0;
+    }
+
+    styleElement.textContent = cssRules.join('\n');
+    root.appendChild(styleElement);
+    interactionPseudoOverrideStates.set(input, { styleElement, targets: targetRecords });
+    return declarationCount;
+}
+
 function parseCheckedRulesFromText(toto, input) {
     if (!toto?.querySelectorAll || !input) return [];
     const selectorNeedles = buildCheckedSelectorNeedles(input);
-    if (!selectorNeedles.length) return [];
 
     const results = [];
     const seen = new Set();
@@ -426,24 +546,39 @@ function parseCheckedRulesFromText(toto, input) {
         while ((match = blockRe.exec(css))) {
             const selectors = String(match[1] || '').split(',').map(v => v.trim()).filter(Boolean);
             const declarations = String(match[2] || '');
+            const styleMap = [];
+            declarations.replace(/(^|;)\s*([a-z-]+)\s*:\s*([^;{}]+?)(\s*!important\s*)?(?=;|$)/gi,
+                (_m, _sep, property, value) => {
+                    const cleanValue = String(value || '').trim().replace(/\s*!important\s*$/i, '');
+                    if (property && cleanValue) styleMap.push([property, cleanValue]);
+                    return _m;
+                });
+            if (!styleMap.length) continue;
+
             for (const selector of selectors) {
+                const parsedRules = [];
                 for (const needle of selectorNeedles) {
                     const selectorMatch = selector.match(needle.pattern);
                     if (!selectorMatch) continue;
-                    const relation = selectorMatch[1];
-                    const targetSelector = selectorMatch[2].trim();
-                    const styleMap = [];
-                    declarations.replace(/(^|;)\s*([a-z-]+)\s*:\s*([^;{}]+?)(\s*!important\s*)?(?=;|$)/gi,
-                        (_m, _sep, property, value) => {
-                            const cleanValue = String(value || '').trim().replace(/\s*!important\s*$/i, '');
-                            if (property && cleanValue) styleMap.push([property, cleanValue]);
-                            return _m;
-                        });
-                    if (!styleMap.length) continue;
-                    const key = `${needle.source}|${relation}|${targetSelector}|${JSON.stringify(styleMap)}`;
+                    parsedRules.push({
+                        source: needle.source,
+                        relation: selectorMatch[1],
+                        rawTargetSelector: selectorMatch[2],
+                    });
+                }
+                const genericRule = matchGenericLocalCheckedSelector(selector, input);
+                if (genericRule) parsedRules.push(genericRule);
+
+                for (const parsedRule of parsedRules) {
+                    const parsedTarget = splitCheckedPseudoTargetSelector(parsedRule.rawTargetSelector);
+                    const targetSelector = parsedTarget.targetSelector;
+                    const pseudoElement = parsedTarget.pseudoElement;
+                    if (!targetSelector) continue;
+                    // 同一条规则可能同时被 id/class 与通用 input 识别；按实际效果去重，保留先出现的精确路线。
+                    const key = `${parsedRule.relation}|${targetSelector}|${pseudoElement}|${JSON.stringify(styleMap)}`;
                     if (seen.has(key)) continue;
                     seen.add(key);
-                    results.push({ source: needle.source, relation, targetSelector, styleMap });
+                    results.push({ source: parsedRule.source, relation: parsedRule.relation, targetSelector, pseudoElement, styleMap });
                 }
             }
         }
@@ -653,12 +788,13 @@ function applyCheckedRuleTextFallback(toto, input) {
     if (!input.checked) return 0;
 
     const records = [];
+    const pseudoEntries = [];
     const routeKinds = new Set();
     const revealCandidates = new Map();
     for (const rule of parseCheckedRulesFromText(toto, input)) {
         let targets = getSiblingTargetsForCheckedRule(input, rule.relation, rule.targetSelector);
         if (!targets.length) {
-            if (rule.source === 'class-local') {
+            if (rule.source === 'class-local' || rule.source === 'generic-local') {
                 // 典型错误：.trigger:checked ~ .panel，但 .panel 实际嵌套在同一 label 的后代容器中。
                 // 按当前 label 局部查找并落实规则状态，不影响其他同 class 节点。
                 targets = getLocalContainerTargetsForCheckedRule(input, rule.targetSelector);
@@ -669,6 +805,10 @@ function applyCheckedRuleTextFallback(toto, input) {
         }
         for (const target of targets) {
             routeKinds.add(rule.source);
+            if (rule.pseudoElement) {
+                pseudoEntries.push({ target, pseudoElement: rule.pseudoElement, styleMap: rule.styleMap });
+                continue;
+            }
             rememberCheckedRevealCandidate(revealCandidates, target, rule.styleMap);
             for (const [property, value] of rule.styleMap) {
                 records.push({
@@ -681,16 +821,20 @@ function applyCheckedRuleTextFallback(toto, input) {
             }
         }
     }
+    const pseudoDeclarationCount = installInteractionPseudoOverrides(toto, input, pseudoEntries);
     if (records.length) {
         interactionInlineOverrideStates.set(input, records);
-        input.setAttribute(CHECKED_TEXT_RULE_RESCUE_ATTR, [...routeKinds].join(','));
         applyExpandedOpacityResidualRescue(input, revealCandidates, records);
         scheduleExpandedOpacityResidualRescue(input, revealCandidates, records);
     }
-    return records.length;
+    if (records.length || pseudoDeclarationCount) {
+        input.setAttribute(CHECKED_TEXT_RULE_RESCUE_ATTR, [...routeKinds].join(','));
+    }
+    return records.length + pseudoDeclarationCount;
 }
 
 function restoreInteractionInlineOverrides(input) {
+    restoreInteractionPseudoOverrides(input);
     const records = interactionInlineOverrideStates.get(input);
     if (!records) {
         input?.removeAttribute?.(EXPANDED_OPACITY_RESCUE_ATTR);
@@ -5403,6 +5547,7 @@ function installIntelligentInteractionRescue(root) {
 
 const touchHoverRescueStates = new WeakMap();
 const TOUCH_HOVER_ATTR = 'data-rm-touch-hover';
+const TOUCH_HOVER_READY_ATTR = 'data-rm-touch-hover-ready';
 const TOUCH_HOVER_STYLE_ATTR = 'data-rabbit-mirror-touch-hover-rescue';
 
 function collectTouchHoverRulesFromCss(cssText) {
@@ -5467,26 +5612,32 @@ function refreshTouchHoverRescue(toto) {
         rescueStyle.remove();
     }
 
-    touchHoverRescueStates.set(toto, { subjects: [...subjects] });
+    // 明确标记所有可由触摸模拟 hover 的元素。active 属性只表示当前已切换，
+    // ready 属性表示该元素确实已被同一条 hover 规则覆盖，避免诊断把“未激活”误看成“未安装”。
+    toto.querySelectorAll?.(`[${TOUCH_HOVER_READY_ATTR}]`)?.forEach(element => element.removeAttribute(TOUCH_HOVER_READY_ATTR));
+    let eligibleCount = 0;
+    for (const subject of subjects) {
+        try {
+            toto.querySelectorAll(subject).forEach(element => {
+                if (!element.hasAttribute(TOUCH_HOVER_READY_ATTR)) eligibleCount += 1;
+                element.setAttribute(TOUCH_HOVER_READY_ATTR, 'true');
+            });
+        } catch {
+            // Ignore malformed model-generated selectors.
+        }
+    }
+    toto.querySelectorAll?.(`[${TOUCH_HOVER_ATTR}]`)?.forEach(element => {
+        if (!element.hasAttribute(TOUCH_HOVER_READY_ATTR)) element.removeAttribute(TOUCH_HOVER_ATTR);
+    });
+    touchHoverRescueStates.set(toto, { subjects: [...subjects], eligibleCount });
 
     if (toto.dataset.rabbitMirrorTouchHoverFallback === 'true') return;
     toto.addEventListener('click', (event) => {
         const state = touchHoverRescueStates.get(toto);
-        if (!state?.subjects?.length) return;
+        if (!state?.eligibleCount) return;
 
-        let hoverTarget = null;
-        for (const subject of state.subjects) {
-            try {
-                const candidate = event.target?.closest?.(subject);
-                if (candidate && toto.contains(candidate)) {
-                    hoverTarget = candidate;
-                    break;
-                }
-            } catch {
-                // Ignore malformed model-generated selectors.
-            }
-        }
-        if (!hoverTarget) return;
+        const hoverTarget = event.target?.closest?.(`[${TOUCH_HOVER_READY_ATTR}="true"]`);
+        if (!hoverTarget || !toto.contains(hoverTarget)) return;
         // 按钮后置隐藏内容已经由可逆揭示路线接管；不要再叠加持久 hover 状态。
         if (hoverTarget.hasAttribute?.(RENDERED_CSS_STATE_SIBLING_RESCUE_ATTR)
             || hoverTarget.hasAttribute?.(RENDERED_BUTTON_ADJACENT_HIDDEN_RESCUE_ATTR)
@@ -5760,12 +5911,14 @@ const MAINTENANCE_STATE_ATTR = 'data-rabbit-mirror-maintenance-state';
 const MAINTENANCE_REASON_ATTR = 'data-rabbit-mirror-maintenance-reason';
 const MAINTENANCE_REPAIR_ATTR = 'data-rabbit-mirror-maintenance-repaired';
 const MAINTENANCE_MENU_ATTR = 'data-rabbit-mirror-maintenance-menu';
+const FEEDBACK_CAT_ATTR = 'data-rabbit-mirror-feedback-cat';
+const FEEDBACK_CAT_MENU_ATTR = 'data-rabbit-mirror-feedback-cat-menu';
 const SELECTION_ONLY_FALLBACK_ATTR = 'data-rabbit-mirror-selection-only-fallback';
 const SELECTION_ONLY_PLACEHOLDER_ATTR = 'data-rabbit-mirror-selection-only-placeholder';
 const SELECTION_ONLY_SOURCE_ATTR = 'data-rabbit-mirror-selection-only-source';
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '0.33.30-TEST-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.33.34-TEST-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -5900,6 +6053,8 @@ function diagnosticRouteSummary(root) {
         webkit3dFlip: Number.parseInt(root?.getAttribute?.(WEBKIT_3D_FLIP_RESCUE_ATTR) || '0', 10) || 0,
         selectionFallback: root?.querySelectorAll?.(`[${SELECTION_ONLY_FALLBACK_ATTR}]`)?.length || 0,
         decorativeOverlayPassThrough: root?.querySelectorAll?.(`[${DECORATIVE_OVERLAY_PASS_THROUGH_ATTR}]`)?.length || 0,
+        touchHoverEligible: root?.querySelectorAll?.(`[${TOUCH_HOVER_READY_ATTR}]`)?.length || 0,
+        touchHoverActive: root?.querySelectorAll?.(`[${TOUCH_HOVER_ATTR}="true"]`)?.length || 0,
     };
 }
 
@@ -5915,8 +6070,16 @@ function diagnosticInferReason(root, inputs, targets, state = null) {
         return style?.display !== 'none' && style?.visibility !== 'hidden' && opacity > 0.05 && rect.height > 0;
     });
 
-    if (depth.selectionOnlyFallbackCount > 0) return '已为缺少分支内容的选择控件建立明确缺失提示与返回路径；默认内容保持原样，其他选项不会伪造剧情。';
-    if (depth.checkedSelectionOnly && !targets.length) return 'radio/checkbox 只改变选中项外观，源码没有可识别的第二层内容；可使用维修兔建立缺失提示与返回路径。';
+    if (depth.selectionOnlyFallbackCount > 0) {
+        const statusOnlyCount = diagnosticQueryContentAll(root, `[${SELECTION_ONLY_FALLBACK_ATTR}="status-only"]`).length;
+        if (statusOnlyCount > 0) return '已为只有选中样式、没有结果内容的选项建立明确状态提示；不会伪造缺失剧情。';
+        return '已为缺少分支内容的选择控件建立明确缺失提示与返回路径；默认内容保持原样，其他选项不会伪造剧情。';
+    }
+    if (depth.checkedSelectionOnly && !targets.length) return 'radio/checkbox 只改变选中项外观，源码没有可识别的第二层内容；可使用维修兔建立明确缺失提示。';
+    const pseudoDepth = maintenancePseudoInteractionDepth(root);
+    if (!inputs.length && pseudoDepth.pseudoVisualOnlyRaw && !routes.stateSibling && !routes.buttonAdjacent && !routes.clickableAdjacent && !routes.clickablePopup && !routes.containerReveal && !routes.listDetail) {
+        return '当前只有 Hover／Active 的变色、背景或轻微位移，没有可保持状态或第二层内容。';
+    }
     if (!inputs.length && routeCount && visibleTargets.length) return '非表单交互急救路线已建立，候选内容在计算样式中已有可见项。';
     if (!inputs.length && routeCount) return '非表单交互急救路线已建立，但候选内容最终仍不可见：样式可能被覆盖或被布局裁切。';
     if (!inputs.length) return '未找到 checkbox/radio：渲染后控件可能被删除，或当前交互并非表单状态结构。';
@@ -5952,8 +6115,8 @@ function diagnosticMessageBody(root) {
 
 function diagnosticIsInternalUiNode(node) {
     if (!node) return false;
-    if (node.matches?.(`[${MAINTENANCE_RABBIT_ATTR}]`)) return true;
-    return !!node.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}]`);
+    if (node.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}]`)) return true;
+    return !!node.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}]`);
 }
 
 function diagnosticQueryContentAll(root, selector) {
@@ -5968,7 +6131,7 @@ function diagnosticContentSnapshot(root) {
     };
     const clone = root?.cloneNode?.(true);
     if (!clone?.querySelectorAll) return fallback;
-    clone.querySelectorAll(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${MAINTENANCE_RABBIT_ATTR}]`)
+    clone.querySelectorAll(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${FEEDBACK_CAT_ATTR}]`)
         .forEach(node => node.remove());
     return {
         html: String(clone.innerHTML || ''),
@@ -6198,7 +6361,7 @@ ${styleTexts}`;
     const renderedBodyElementCount = primaryDetails ? [...(primaryDetails.children || [])].filter(child => {
         const tag = String(child?.tagName || '').toLowerCase();
         if (!tag || tag === 'summary' || tag === 'style' || tag === 'script' || tag === 'br') return false;
-        if (child.matches?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || child.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`)) return false;
+        if (child.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}]`) || child.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}]`)) return false;
         if (tag === 'p' && !String(child.textContent || '').trim() && !child.children?.length) return false;
         return true;
     }).length : 0;
@@ -6274,6 +6437,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
     const targets = diagnosticCollectTargets(root);
     const routes = diagnosticRouteSummary(root);
     const checkedDepth = maintenanceCheckedInteractionDepth(root);
+    const pseudoDepth = maintenancePseudoInteractionDepth(root);
     const title = diagnosticCompactText(root.querySelector('summary')?.textContent, 64);
     const code = diagnosticCodeRescueSummary(root);
     const full = diagnosticFullChainSummary(root, code);
@@ -6352,6 +6516,8 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `跨父层checked兜底 entries=${routes.crossParentChecked} listener=${routes.crossParentChecked ? 'true' : 'false'}`,
         `全选联动兜底 entries=${routes.checkedHasState} listener=${routes.checkedHasState ? 'true' : 'false'}`,
         `checked交互深度 rules=${checkedDepth.checkedRuleCount} selectionOnly=${checkedDepth.selectionStyleRuleCount} secondLayer=${checkedDepth.meaningfulCheckedRuleCount} fallback=${checkedDepth.selectionOnlyFallbackCount}`,
+        `伪类交互深度 rules=${pseudoDepth.pseudoRuleCount} visualOnly=${pseudoDepth.visualOnlyPseudoRuleCount} secondLayer=${pseudoDepth.meaningfulPseudoRuleCount}`,
+        `触屏Hover候选 targets=${routes.touchHoverEligible} active=${routes.touchHoverActive} listener=${root.dataset.rabbitMirrorTouchHoverFallback || 'false'}`,
         `展开透明保全 entries=${routes.expandedOpacity} listener=${routes.expandedOpacity ? 'true' : 'false'}`,
         `容器内揭示 entries=${routes.containerReveal} listener=${root.dataset.rabbitMirrorContainerInternalRevealFallback || 'false'}`,
         `元素自变化 entries=${routes.selfMutation} listener=${root.dataset.rabbitMirrorSelfMutationFallback || 'false'}`,
@@ -6722,11 +6888,20 @@ function findSelectionOnlyRadioFallbackCandidates(root) {
         if (labels.length !== inputs.length) continue;
         const groupContainer = lowestCommonElementAncestor(labels, root);
         if (!groupContainer || groupContainer === root || groupContainer.hasAttribute?.(SELECTION_ONLY_FALLBACK_ATTR)) continue;
-        const contentRegion = nextSelectionOnlyContentRegion(groupContainer, root);
-        if (!contentRegion) continue;
-        const defaultInput = inputs.find(input => input.checked) || inputs[0];
-        if (!defaultInput) continue;
-        candidates.push({ inputs, labels, groupContainer, contentRegion, defaultInput });
+
+        const checkedInput = inputs.find(input => input.checked) || null;
+        const nearbyContentRegion = nextSelectionOnlyContentRegion(groupContainer, root);
+        // 只有确实存在默认选中项时，才能把后续正文安全视为该默认分支。
+        // 若没有默认项或根本没有后续正文，只建立“已选择但原文无结果”的状态提示，不擅自隐藏任何现有内容。
+        const mode = nearbyContentRegion && checkedInput ? 'content-region' : 'status-only';
+        candidates.push({
+            inputs,
+            labels,
+            groupContainer,
+            contentRegion: mode === 'content-region' ? nearbyContentRegion : null,
+            defaultInput: mode === 'content-region' ? checkedInput : null,
+            mode,
+        });
     }
     return candidates;
 }
@@ -6735,7 +6910,7 @@ function installSelectionOnlyStateFallback(root) {
     if (!root?.querySelectorAll || !maintenanceCheckedInteractionDepth(root).checkedSelectionOnly) return 0;
     let installed = 0;
     for (const candidate of findSelectionOnlyRadioFallbackCandidates(root)) {
-        const { inputs, groupContainer, contentRegion, defaultInput } = candidate;
+        const { inputs, groupContainer, contentRegion, defaultInput, mode } = candidate;
         const placeholder = document.createElement('div');
         placeholder.setAttribute(SELECTION_ONLY_PLACEHOLDER_ATTR, 'true');
         placeholder.setAttribute('role', 'status');
@@ -6746,35 +6921,50 @@ function installSelectionOnlyStateFallback(root) {
         title.style.cssText = 'font-weight:700;margin-bottom:6px;';
         const note = document.createElement('div');
         note.style.cssText = 'font-size:13px;opacity:.78;';
-        note.textContent = '原始输出未提供此选项的对应内容。切回默认选项可查看已保留内容。';
         placeholder.append(title, note);
-        contentRegion.insertAdjacentElement('afterend', placeholder);
-        contentRegion.setAttribute(SELECTION_ONLY_SOURCE_ATTR, 'true');
 
-        const originalDisplay = contentRegion.style.getPropertyValue('display');
-        const originalPriority = contentRegion.style.getPropertyPriority('display');
+        if (mode === 'content-region' && contentRegion) {
+            note.textContent = '原始输出未提供此选项的对应内容。切回默认选项可查看已保留内容。';
+            contentRegion.insertAdjacentElement('afterend', placeholder);
+            contentRegion.setAttribute(SELECTION_ONLY_SOURCE_ATTR, 'true');
+        } else {
+            note.textContent = '原始输出只提供了选中样式，没有对应的结果内容。可继续切换其他选项，维修兔不会代写缺失剧情。';
+            groupContainer.insertAdjacentElement('afterend', placeholder);
+        }
+
+        const originalDisplay = contentRegion?.style?.getPropertyValue?.('display') || '';
+        const originalPriority = contentRegion?.style?.getPropertyPriority?.('display') || '';
         const render = () => {
-            const selected = inputs.find(input => input.checked) || defaultInput;
-            const showOriginal = selected === defaultInput;
-            if (showOriginal) {
-                if (originalDisplay) contentRegion.style.setProperty('display', originalDisplay, originalPriority);
-                else contentRegion.style.removeProperty('display');
-                placeholder.hidden = true;
-                placeholder.style.display = 'none';
-            } else {
-                contentRegion.style.setProperty('display', 'none', 'important');
+            const selected = inputs.find(input => input.checked) || null;
+            if (mode === 'content-region' && contentRegion && defaultInput) {
+                const showOriginal = !selected || selected === defaultInput;
+                if (showOriginal) {
+                    if (originalDisplay) contentRegion.style.setProperty('display', originalDisplay, originalPriority);
+                    else contentRegion.style.removeProperty('display');
+                    placeholder.hidden = true;
+                    placeholder.style.display = 'none';
+                } else {
+                    contentRegion.style.setProperty('display', 'none', 'important');
+                    title.textContent = selectionOnlyFallbackLabelText(selected);
+                    placeholder.hidden = false;
+                    placeholder.style.display = 'block';
+                }
+            } else if (selected) {
                 title.textContent = selectionOnlyFallbackLabelText(selected);
                 placeholder.hidden = false;
                 placeholder.style.display = 'block';
+            } else {
+                placeholder.hidden = true;
+                placeholder.style.display = 'none';
             }
-            groupContainer.dataset.rabbitMirrorSelectionOnlySelected = String(selected?.id || '');
+            groupContainer.dataset.rabbitMirrorSelectionOnlySelected = String(selected?.id || selected?.value || '');
         };
         const onChange = event => {
             if (!inputs.includes(event.target)) return;
             render();
         };
         groupContainer.addEventListener('change', onChange, false);
-        groupContainer.setAttribute(SELECTION_ONLY_FALLBACK_ATTR, 'true');
+        groupContainer.setAttribute(SELECTION_ONLY_FALLBACK_ATTR, mode);
         render();
         installed += 1;
     }
@@ -6828,7 +7018,7 @@ function maintenanceCheckedInteractionDepth(root) {
             checkedRuleCount += 1;
             let targets = getSiblingTargetsForCheckedRule(input, rule.relation, rule.targetSelector);
             if (!targets.length) {
-                targets = rule.source === 'class-local'
+                targets = rule.source === 'class-local' || rule.source === 'generic-local'
                     ? getLocalContainerTargetsForCheckedRule(input, rule.targetSelector)
                     : getCrossContainerTargetsForCheckedRule(root, rule.targetSelector);
             }
@@ -6850,6 +7040,82 @@ function maintenanceCheckedInteractionDepth(root) {
     return { checkedSelectionOnly, checkedSelectionOnlyRaw, checkedRuleCount, meaningfulCheckedRuleCount, selectionStyleRuleCount, selectionOnlyFallbackCount };
 }
 
+
+
+function pseudoStateTargetSelector(selectorText) {
+    return String(selectorText || '')
+        .replace(/:(?:hover|active|focus-within|focus)\b/gi, '')
+        .trim();
+}
+
+function pseudoStateOpacityReveal(root, selectorText, value) {
+    const nextOpacity = Number.parseFloat(String(value || ''));
+    if (!Number.isFinite(nextOpacity) || nextOpacity <= 0.05) return false;
+    const selector = pseudoStateTargetSelector(selectorText);
+    if (!selector || !root?.querySelectorAll) return false;
+    try {
+        return [...root.querySelectorAll(selector)].some(target => {
+            const style = diagnosticComputedStyle(target);
+            const current = Number.parseFloat(style?.opacity || '1');
+            return Number.isFinite(current) && current <= 0.05;
+        });
+    } catch {
+        return false;
+    }
+}
+
+function isPseudoStateVisualOnlyProperty(root, selectorText, property, value) {
+    const name = normalizeStylePropertyName(property);
+    const normalizedValue = String(value || '').trim().toLowerCase();
+    if (name === 'opacity') return !pseudoStateOpacityReveal(root, selectorText, normalizedValue);
+    return isCheckedSelectionVisualProperty(name, normalizedValue);
+}
+
+function maintenancePseudoInteractionDepth(root) {
+    let pseudoRuleCount = 0;
+    let visualOnlyPseudoRuleCount = 0;
+    let meaningfulPseudoRuleCount = 0;
+    const blockRe = /([^{}]+)\{([^{}]*)\}/g;
+    const declarationRe = /(^|;)\s*([a-z-]+)\s*:\s*([^;{}]+?)(?=;|$)/gi;
+
+    for (const style of diagnosticQueryContentAll(root, 'style')) {
+        if (style.hasAttribute?.(TOUCH_HOVER_STYLE_ATTR)) continue;
+        const cssText = String(style.textContent || '');
+        blockRe.lastIndex = 0;
+        let block;
+        while ((block = blockRe.exec(cssText))) {
+            const selectorText = String(block[1] || '').trim();
+            if (!/:(?:hover|active|focus-within|focus)\b/i.test(selectorText)) continue;
+            for (const selector of selectorText.split(',').map(value => value.trim()).filter(Boolean)) {
+                if (!/:(?:hover|active|focus-within|focus)\b/i.test(selector)) continue;
+                const declarations = [];
+                declarationRe.lastIndex = 0;
+                let declaration;
+                while ((declaration = declarationRe.exec(String(block[2] || '')))) {
+                    declarations.push([declaration[2], declaration[3]]);
+                }
+                if (!declarations.length) continue;
+                pseudoRuleCount += 1;
+                const visualOnly = declarations.every(([property, value]) => (
+                    isPseudoStateVisualOnlyProperty(root, selector, property, value)
+                ));
+                if (visualOnly) visualOnlyPseudoRuleCount += 1;
+                else meaningfulPseudoRuleCount += 1;
+            }
+        }
+    }
+
+    const touchHoverEligibleCount = diagnosticQueryContentAll(root, `[${TOUCH_HOVER_READY_ATTR}]`).length;
+    const touchHoverActiveCount = diagnosticQueryContentAll(root, `[${TOUCH_HOVER_ATTR}="true"]`).length;
+    return {
+        pseudoRuleCount,
+        visualOnlyPseudoRuleCount,
+        meaningfulPseudoRuleCount,
+        touchHoverEligibleCount,
+        touchHoverActiveCount,
+        pseudoVisualOnlyRaw: pseudoRuleCount > 0 && meaningfulPseudoRuleCount === 0,
+    };
+}
 
 function recoveredInlineStateProgramCount(root) {
     if (!root?.querySelectorAll) return 0;
@@ -6873,6 +7139,23 @@ function maintenanceKnownInteractionEvidence(root, full, code) {
     const decorativeOverlayCandidateCount = findDecorativeOverlayPassThroughCandidates(root).length;
     const scopeEvidence = maintenanceInteractionScopeEvidence(root);
     const checkedDepth = maintenanceCheckedInteractionDepth(root);
+    const pseudoDepth = maintenancePseudoInteractionDepth(root);
+    const routeSummary = diagnosticRouteSummary(root);
+    const otherRouteCount = routeSummary.adjacent + routeSummary.layers + routeSummary.labelInternal + routeSummary.labelAdjacent
+        + routeSummary.maskReveal + routeSummary.listDetail + routeSummary.stateSibling + routeSummary.buttonAdjacent
+        + routeSummary.clickableAdjacent + routeSummary.clickablePopup + routeSummary.checkedIdTarget + routeSummary.focusToChecked
+        + routeSummary.checkedTextRule + routeSummary.crossParentChecked + routeSummary.checkedHasState + routeSummary.expandedOpacity
+        + routeSummary.containerReveal + routeSummary.selfMutation + routeSummary.classStateProgram + routeSummary.changeProgram
+        + routeSummary.unlabeledChecked + routeSummary.selectionFallback;
+    const innerDetailsCount = diagnosticQueryContentAll(root, 'details').length;
+    const hasTargetRoute = !!root?.querySelector?.('a[href^="#"]') && /:target\b/i.test(raw);
+    const hasPopoverRoute = !!root?.querySelector?.('[popovertarget], [commandfor], [popover]');
+    const pseudoVisualOnly = pseudoDepth.pseudoVisualOnlyRaw
+        && checkedDepth.meaningfulCheckedRuleCount === 0
+        && otherRouteCount === 0
+        && innerDetailsCount === 0
+        && !hasTargetRoute
+        && !hasPopoverRoute;
     const selectionOnlyRepairCandidateCount = checkedDepth.checkedSelectionOnly
         ? findSelectionOnlyRadioFallbackCandidates(root).length
         : 0;
@@ -6889,7 +7172,7 @@ function maintenanceKnownInteractionEvidence(root, full, code) {
         && root.getAttribute?.('data-rabbit-mirror-touch-hover-fallback') !== 'true';
     const unscopedControls = (full.inputCount > 0 || full.buttonCount > 0)
         && root.dataset?.rabbitMirrorInteractionScoped !== 'true';
-    return { checkedControlsLost, strippedStateProgram, lostInlineStatePrograms, recoveredInlineStatePrograms, decorativeOverlayCandidateCount, touchHoverMissing, unscopedControls, selectionOnlyRepairCandidateCount, crossParentCheckedRuleCandidateCount, checkedHasStateRuleCandidateCount, checkedHasStateRuleRescueCount, checkedHasStateRuleMissingCount, raw, ...scopeEvidence, ...checkedDepth };
+    return { checkedControlsLost, strippedStateProgram, lostInlineStatePrograms, recoveredInlineStatePrograms, decorativeOverlayCandidateCount, touchHoverMissing, unscopedControls, selectionOnlyRepairCandidateCount, crossParentCheckedRuleCandidateCount, checkedHasStateRuleCandidateCount, checkedHasStateRuleRescueCount, checkedHasStateRuleMissingCount, pseudoVisualOnly, raw, ...scopeEvidence, ...checkedDepth, ...pseudoDepth };
 }
 
 function maintenanceFallbackFullSummary(root) {
@@ -6949,7 +7232,7 @@ function inspectMaintenanceRabbit(root) {
     } catch (error) {
         partialInspection = true;
         console.debug('[RabbitMirror] maintenance interaction inspection skipped:', error);
-        interaction = { checkedControlsLost: false, strippedStateProgram: false, lostInlineStatePrograms: 0, recoveredInlineStatePrograms: 0, decorativeOverlayCandidateCount: 0, touchHoverMissing: false, unscopedControls: false, duplicateIds: 0, brokenLocalLabels: 0, checkedCssIdSelectors: 0, needsScopeRepair: false, checkedSelectionOnly: false, checkedSelectionOnlyRaw: false, checkedRuleCount: 0, meaningfulCheckedRuleCount: 0, selectionStyleRuleCount: 0, selectionOnlyFallbackCount: 0, selectionOnlyRepairCandidateCount: 0, crossParentCheckedRuleCandidateCount: 0, checkedHasStateRuleCandidateCount: 0, checkedHasStateRuleRescueCount: 0, checkedHasStateRuleMissingCount: 0, raw: '' };
+        interaction = { checkedControlsLost: false, strippedStateProgram: false, lostInlineStatePrograms: 0, recoveredInlineStatePrograms: 0, decorativeOverlayCandidateCount: 0, touchHoverMissing: false, unscopedControls: false, duplicateIds: 0, brokenLocalLabels: 0, checkedCssIdSelectors: 0, needsScopeRepair: false, checkedSelectionOnly: false, checkedSelectionOnlyRaw: false, checkedRuleCount: 0, meaningfulCheckedRuleCount: 0, selectionStyleRuleCount: 0, selectionOnlyFallbackCount: 0, selectionOnlyRepairCandidateCount: 0, crossParentCheckedRuleCandidateCount: 0, checkedHasStateRuleCandidateCount: 0, checkedHasStateRuleRescueCount: 0, checkedHasStateRuleMissingCount: 0, pseudoVisualOnly: false, pseudoRuleCount: 0, visualOnlyPseudoRuleCount: 0, meaningfulPseudoRuleCount: 0, touchHoverEligibleCount: 0, touchHoverActiveCount: 0, raw: '' };
     }
     const reasons = [];
 
@@ -6965,7 +7248,7 @@ function inspectMaintenanceRabbit(root) {
     if (interaction.strippedStateProgram) reasons.push('宿主删除了可识别的状态事件');
     if (interaction.decorativeOverlayCandidateCount > 0) reasons.push('全覆盖装饰层可能阻断触摸');
     if (interaction.touchHoverMissing) reasons.push('触屏环境缺少 Hover 兜底');
-    if (interaction.selectionOnlyRepairCandidateCount > 0) reasons.push('选择控件只有选中样式，可安全建立缺失分支提示与返回路径');
+    if (interaction.selectionOnlyRepairCandidateCount > 0) reasons.push('选择控件只有选中样式，可安全建立明确缺失提示');
     if (interaction.crossParentCheckedRuleCandidateCount > 0) reasons.push('checked 目标位于触发器父层之外，原生兄弟选择器无法命中');
     if (interaction.checkedHasStateRuleMissingCount > 0) reasons.push('全选联动仍绑定在错误的 body:has 作用域，完成状态无法命中');
     if (interaction.needsScopeRepair) reasons.push(`交互 ID 未隔离（重复ID=${interaction.duplicateIds}，失配标签=${interaction.brokenLocalLabels}）`);
@@ -6981,6 +7264,7 @@ function inspectMaintenanceRabbit(root) {
     if (full.controlsLost && full.checkedCount === 0 && full.rawInlineEvents === 0) unknownReasons.push('交互控件丢失，无法确认原始状态逻辑');
     if (full.renderedEscapedTags && !code.strictParseOk && !full.sourceCandidate) unknownReasons.push('显示层仍有源码标签，但没有可安全恢复的完整候选');
     if (interaction.checkedSelectionOnly && interaction.selectionOnlyRepairCandidateCount === 0) unknownReasons.push('选择控件只能改变选中样式，且没有可安全挂接的内容区；维修兔不能代写缺失体验');
+    if (interaction.pseudoVisualOnly) unknownReasons.push('当前只有 Hover／Active 外观变化，没有可保持状态或第二层内容；维修兔不能代写缺失体验');
     if (unknownReasons.length) {
         return { state: MAINTENANCE_STATES.unknown, reason: unknownReasons.join('；'), code, full, interaction };
     }
@@ -7382,6 +7666,239 @@ function closeMaintenanceRabbitMenu() {
     document.querySelectorAll?.(`[${MAINTENANCE_MENU_ATTR}]`)?.forEach(panel => panel.remove());
 }
 
+
+function feedbackCatEscapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function closeFeedbackCatMenu() {
+    document.querySelectorAll?.(`[${FEEDBACK_CAT_MENU_ATTR}]`)?.forEach(panel => panel.remove());
+}
+
+function positionFeedbackCatPanel(panel, button, preferredWidth = 300) {
+    const rect = button.getBoundingClientRect();
+    const width = Math.min(preferredWidth, Math.max(250, globalThis.innerWidth - 24));
+    panel.style.width = `${width}px`;
+    const left = Math.max(12, Math.min(rect.left, globalThis.innerWidth - width - 12));
+    panel.style.left = `${left}px`;
+    panel.style.top = `${Math.max(12, Math.min(rect.bottom + 6, globalThis.innerHeight - panel.offsetHeight - 12))}px`;
+}
+
+function bindFeedbackCatOutsideClose(panel, button) {
+    setTimeout(() => {
+        const closeOnOutside = event => {
+            if (!panel.isConnected) {
+                document.removeEventListener('pointerdown', closeOnOutside, true);
+                return;
+            }
+            if (!panel.contains(event.target) && event.target !== button) {
+                closeFeedbackCatMenu();
+                document.removeEventListener('pointerdown', closeOnOutside, true);
+            }
+        };
+        document.addEventListener('pointerdown', closeOnOutside, true);
+    }, 0);
+}
+
+function feedbackCatSourceIdentity(root) {
+    const messageId = getMessageIndexFromMirrorNode(root);
+    const chat = getAvailableHostChat();
+    const message = messageId >= 0 ? chat[messageId] : null;
+    const swipeId = Number.isInteger(message?.swipe_id) ? message.swipe_id : -1;
+    return { messageId, swipeId };
+}
+
+function feedbackCatButtonTitle() {
+    const active = getActiveFeedbackForCurrentChat();
+    return active
+        ? `挨打猫：${feedbackCatStatusText(active)}；点击可修改或清除`
+        : '挨打猫：反馈这面兔子镜；未选择时不会向模型追加内容';
+}
+
+function updateFeedbackCatButtonTitles() {
+    const title = feedbackCatButtonTitle();
+    document.querySelectorAll?.(`[${FEEDBACK_CAT_ATTR}]`)?.forEach(button => {
+        button.title = title;
+        button.setAttribute('aria-label', title);
+    });
+}
+
+function saveFeedbackCatChoice(root, type, customText, rounds) {
+    try {
+        const source = feedbackCatSourceIdentity(root);
+        const record = setActiveFeedbackForCurrentChat({
+            type,
+            customText,
+            rounds,
+            sourceMessageId: source.messageId,
+            sourceSwipeId: source.swipeId,
+        });
+        updateFeedbackCatButtonTitles();
+        const rangeText = Number(rounds) === 1 ? '下一轮' : `接下来 ${rounds} 轮`;
+        globalThis.toastr?.success?.(`挨打猫记住了，将影响${rangeText}。`);
+        return record;
+    } catch (error) {
+        globalThis.toastr?.warning?.(error?.message || '挨打猫没有记住，请重试。');
+        return null;
+    }
+}
+
+function showFeedbackCatRangeMenu(root, button, type, customText = '') {
+    closeFeedbackCatMenu();
+    const panel = document.createElement('div');
+    panel.className = 'rabbit-mirror-feedback-cat-menu';
+    panel.setAttribute(FEEDBACK_CAT_MENU_ATTR, 'true');
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-label', '挨打猫反馈范围');
+    panel.innerHTML = `
+      <div class="rabbit-mirror-feedback-cat-menu-title">🐈‍⬛ (×﹏×)</div>
+      <div class="rabbit-mirror-feedback-cat-menu-copy">这顿打要记多久？</div>
+      <button type="button" data-rm-feedback-rounds="1">○ 下一轮</button>
+      <button type="button" data-rm-feedback-rounds="3">○ 接下来 3 轮</button>
+      <button type="button" data-rm-feedback-rounds="10">○ 接下来 10 轮</button>
+      <button type="button" data-rm-feedback-action="back">返回</button>
+      <button type="button" data-rm-feedback-action="close">取消</button>`;
+    document.body.appendChild(panel);
+    positionFeedbackCatPanel(panel, button);
+    panel.addEventListener('click', event => {
+        const roundsButton = event.target?.closest?.('[data-rm-feedback-rounds]');
+        const action = event.target?.closest?.('[data-rm-feedback-action]')?.getAttribute('data-rm-feedback-action');
+        if (!roundsButton && !action) return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (roundsButton) {
+            const rounds = Number(roundsButton.getAttribute('data-rm-feedback-rounds'));
+            const saved = saveFeedbackCatChoice(root, type, customText, rounds);
+            if (saved) closeFeedbackCatMenu();
+            return;
+        }
+        if (action === 'back') {
+            if (type === 'custom') showFeedbackCatCustomMenu(root, button, customText);
+            else showFeedbackCatMenu(root, button);
+            return;
+        }
+        closeFeedbackCatMenu();
+    }, true);
+    bindFeedbackCatOutsideClose(panel, button);
+    return true;
+}
+
+function showFeedbackCatCustomMenu(root, button, initialText = '') {
+    closeFeedbackCatMenu();
+    const panel = document.createElement('div');
+    panel.className = 'rabbit-mirror-feedback-cat-menu';
+    panel.setAttribute(FEEDBACK_CAT_MENU_ATTR, 'true');
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-label', '挨打猫自定义反馈');
+
+    const title = document.createElement('div');
+    title.className = 'rabbit-mirror-feedback-cat-menu-title';
+    title.textContent = '🐈‍⬛ QAQ';
+    const copy = document.createElement('div');
+    copy.className = 'rabbit-mirror-feedback-cat-menu-copy';
+    copy.textContent = '立正挨骂ing';
+    const textarea = document.createElement('textarea');
+    textarea.className = 'rabbit-mirror-feedback-cat-input';
+    textarea.maxLength = 400;
+    textarea.rows = 5;
+    textarea.placeholder = '输入反馈……';
+    textarea.value = String(initialText || '');
+    const next = document.createElement('button');
+    next.type = 'button';
+    next.textContent = '下一步';
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.textContent = '取消';
+    panel.append(title, copy, textarea, next, cancel);
+    document.body.appendChild(panel);
+    positionFeedbackCatPanel(panel, button, 330);
+    setTimeout(() => textarea.focus(), 0);
+
+    next.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        const text = textarea.value.trim();
+        if (!text) {
+            globalThis.toastr?.warning?.('先骂一句，挨打猫才能记住。');
+            textarea.focus();
+            return;
+        }
+        showFeedbackCatRangeMenu(root, button, 'custom', text);
+    }, true);
+    cancel.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        closeFeedbackCatMenu();
+    }, true);
+    bindFeedbackCatOutsideClose(panel, button);
+    return true;
+}
+
+function showFeedbackCatMenu(root, button) {
+    closeMaintenanceRabbitMenu();
+    closeFeedbackCatMenu();
+    if (!root?.isConnected || !button?.isConnected) return false;
+    const active = getActiveFeedbackForCurrentChat();
+    const panel = document.createElement('div');
+    panel.className = 'rabbit-mirror-feedback-cat-menu';
+    panel.setAttribute(FEEDBACK_CAT_MENU_ATTR, 'true');
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-label', '挨打猫');
+    const status = active
+        ? `<div class="rabbit-mirror-feedback-cat-status">当前反馈：${feedbackCatEscapeHtml(feedbackCatStatusText(active))}</div>`
+        : '<div class="rabbit-mirror-feedback-cat-status">当前没有生效中的反馈；不选择时不会影响原有美化规则。</div>';
+    panel.innerHTML = `
+      <div class="rabbit-mirror-feedback-cat-menu-title">🐈‍⬛ 挨打猫</div>
+      ${status}
+      <button type="button" data-rm-feedback-type="color">🎨 ${FEEDBACK_CAT_TYPES.color}</button>
+      <button type="button" data-rm-feedback-type="structure">▦ ${FEEDBACK_CAT_TYPES.structure}</button>
+      <button type="button" data-rm-feedback-type="overall">◉ ${FEEDBACK_CAT_TYPES.overall}</button>
+      <button type="button" data-rm-feedback-type="interaction">✦ ${FEEDBACK_CAT_TYPES.interaction}</button>
+      <button type="button" data-rm-feedback-type="language">🌐 ${FEEDBACK_CAT_TYPES.language}</button>
+      <button type="button" data-rm-feedback-type="custom">✎ ${FEEDBACK_CAT_TYPES.custom}</button>
+      ${active ? '<button type="button" data-rm-feedback-action="clear">不打了，清除反馈</button>' : ''}
+      <button type="button" data-rm-feedback-action="close">关闭</button>`;
+    document.body.appendChild(panel);
+    positionFeedbackCatPanel(panel, button, 320);
+    panel.addEventListener('click', event => {
+        const type = event.target?.closest?.('[data-rm-feedback-type]')?.getAttribute('data-rm-feedback-type');
+        const action = event.target?.closest?.('[data-rm-feedback-action]')?.getAttribute('data-rm-feedback-action');
+        if (!type && !action) return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (type === 'custom') {
+            showFeedbackCatCustomMenu(root, button, active?.type === 'custom' ? active.customText : '');
+            return;
+        }
+        if (type) {
+            showFeedbackCatRangeMenu(root, button, type, '');
+            return;
+        }
+        if (action === 'clear') {
+            clearActiveFeedbackForCurrentChat();
+            updateFeedbackCatButtonTitles();
+            closeFeedbackCatMenu();
+            globalThis.toastr?.success?.('挨打猫已经忘掉当前反馈。');
+            return;
+        }
+        closeFeedbackCatMenu();
+    }, true);
+    bindFeedbackCatOutsideClose(panel, button);
+    return true;
+}
+
+function handleFeedbackCatClick(event, root, button) {
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation?.();
+    showFeedbackCatMenu(root, button);
+}
+
 function maintenanceUserRepairInspection(root, mode) {
     const inspection = inspectMaintenanceRabbit(root);
     if (mode === 'source' || mode === 'code' || mode === 'plainText' || mode === 'all') {
@@ -7414,7 +7931,7 @@ function chooseMaintenanceAutomaticMode(inspection) {
 }
 
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.23';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.27';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -7626,7 +8143,7 @@ function runMaintenanceUserRepair(root, button, mode) {
                 } else if (after.state === MAINTENANCE_STATES.repairable) {
                     setMaintenanceRabbitState(afterButton, MAINTENANCE_STATES.repairable, `已尝试维修，请实际确认；仍检测到：${after.reason}`);
                 } else if (after.state === MAINTENANCE_STATES.unknown) {
-                    setMaintenanceRabbitState(afterButton, MAINTENANCE_STATES.idle, '已尝试维修，请实际确认；若仍异常请生成全链路诊断');
+                    setMaintenanceRabbitState(afterButton, MAINTENANCE_STATES.unknown, `已尝试维修；仍无法安全确认：${after.reason}`);
                 } else {
                     const autoNote = mode === 'auto' ? `（自动选择：${effectiveMode}）` : '';
                     setMaintenanceRabbitState(afterButton, MAINTENANCE_STATES.idle, `维修路线已执行${autoNote}，请实际确认是否恢复正常`);
@@ -7665,7 +8182,7 @@ function maintenanceRecommendationForInspection(inspection) {
     }
     if (interaction.checkedControlsLost || interaction.strippedStateProgram || interaction.touchHoverMissing || interaction.needsScopeRepair || interaction.selectionOnlyRepairCandidateCount > 0 || interaction.checkedHasStateRuleMissingCount > 0) {
         const reason = interaction.selectionOnlyRepairCandidateCount > 0
-            ? '检测到选择控件只有选中样式，可为缺失分支建立明确提示并保留返回路径'
+            ? '检测到选择控件只有选中样式，可建立明确缺失提示且不代写结果内容'
             : interaction.checkedHasStateRuleMissingCount > 0
                 ? '检测到旧消息的全选联动仍绑定在错误的 body:has 作用域，可恢复完成状态'
                 : '检测到交互控件、状态程序、触屏 Hover 或 ID 作用域问题';
@@ -7686,6 +8203,7 @@ function maintenanceRecommendationText(inspection) {
 }
 
 function showMaintenanceRabbitMenu(root, button) {
+    closeFeedbackCatMenu();
     closeMaintenanceRabbitMenu();
     if (!root?.isConnected || !button?.isConnected) return false;
     const panel = document.createElement('div');
@@ -7774,26 +8292,59 @@ function installMaintenanceRabbitForRoot(root) {
     return true;
 }
 
+function installFeedbackCatForRoot(root) {
+    if (!root?.querySelector) return false;
+    const details = root.matches?.('details') ? root : root.querySelector(':scope > details') || root.querySelector('details');
+    const summary = details?.querySelector?.(':scope > summary') || details?.querySelector?.('summary');
+    if (!summary || summary.querySelector?.(`[${FEEDBACK_CAT_ATTR}]`)) return false;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'rabbit-mirror-feedback-cat';
+    button.setAttribute(FEEDBACK_CAT_ATTR, 'true');
+    button.title = feedbackCatButtonTitle();
+    button.setAttribute('aria-label', button.title);
+    button.addEventListener('click', event => handleFeedbackCatClick(event, root, button), true);
+    button.addEventListener('pointerdown', event => {
+        event.stopPropagation();
+    }, true);
+    summary.appendChild(button);
+    return true;
+}
+
 function removeMaintenanceRabbitsInChatDom() {
     const chatRoot = getChatRoot();
     chatRoot?.querySelectorAll?.(`[${MAINTENANCE_RABBIT_ATTR}]`)?.forEach(button => button.remove());
 }
 
+function removeFeedbackCatsInChatDom() {
+    const chatRoot = getChatRoot();
+    chatRoot?.querySelectorAll?.(`[${FEEDBACK_CAT_ATTR}]`)?.forEach(button => button.remove());
+    closeFeedbackCatMenu();
+}
+
 function installMaintenanceRabbitsInChatDom() {
     const chatRoot = getChatRoot();
     if (!chatRoot) return;
-    if (!isMaintenanceRabbitEnabled()) {
-        removeMaintenanceRabbitsInChatDom();
-        return;
-    }
+    const maintenanceEnabled = isMaintenanceRabbitEnabled();
+    const feedbackEnabled = isFeedbackCatEnabled();
+    if (!maintenanceEnabled) removeMaintenanceRabbitsInChatDom();
+    if (!feedbackEnabled) removeFeedbackCatsInChatDom();
+    if (!maintenanceEnabled && !feedbackEnabled) return;
+
     getRenderedRabbitMirrorInteractionRoots(chatRoot).forEach(root => {
-        if (isInsideChatMessage(root)) installMaintenanceRabbitForRoot(root);
+        if (!isInsideChatMessage(root)) return;
+        if (maintenanceEnabled) installMaintenanceRabbitForRoot(root);
+        if (feedbackEnabled) installFeedbackCatForRoot(root);
     });
+    if (feedbackEnabled) updateFeedbackCatButtonTitles();
 }
 
 export function refreshMaintenanceRabbits() {
-    if (isMaintenanceRabbitEnabled()) installMaintenanceRabbitsInChatDom();
-    else removeMaintenanceRabbitsInChatDom();
+    installMaintenanceRabbitsInChatDom();
+}
+
+export function refreshFeedbackCats() {
+    installMaintenanceRabbitsInChatDom();
 }
 
 

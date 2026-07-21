@@ -39,6 +39,8 @@ export const defaultSettings = Object.freeze({
     // 小小维修兔：统一承接原代码块、纯文字与智能交互急救入口。
     // 默认只在每条兔子镜标题后安装待巡逻按钮，不自动检查或修改。
     maintenanceRabbitEnabled: true,
+    // 挨打猫：用户主动选择后，才把临时审美或交互反馈注入后续生成。
+    feedbackCatEnabled: true,
     // 强制启动增强：将小剧场作为本轮输出格式的一部分，而不是可选附加项。
     hardStartup: true,
     // 语言锁定增强：所有可见 UI 文案也必须为简体中文，禁止英文承担主要界面标签。
@@ -114,6 +116,7 @@ export function getSettings() {
         settings.maintenanceRabbitEnabled = legacyRescueWasEnabled || defaultSettings.maintenanceRabbitEnabled;
     }
     settings.maintenanceRabbitEnabled = !!settings.maintenanceRabbitEnabled;
+    settings.feedbackCatEnabled = settings.feedbackCatEnabled !== false;
     delete settings.plainTextRescueMode;
     delete settings.codeBlockRescueMode;
     delete settings.interactionRescueMode;

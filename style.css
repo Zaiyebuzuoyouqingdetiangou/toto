@@ -202,3 +202,89 @@ toto[data-rabbit-mirror="true"] summary {
     line-height: 1.45;
     text-align: left;
 }
+
+/* 0.33.34 挨打猫 v1.0：用户主动反馈才会进入后续生成 Prompt。 */
+.rabbit-mirror-feedback-cat {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 0 0 4px !important;
+  padding: 1px 3px !important;
+  border: 0 !important;
+  border-radius: 5px !important;
+  background: transparent !important;
+  color: inherit !important;
+  font: inherit !important;
+  line-height: 1 !important;
+  vertical-align: middle !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+  opacity: .92 !important;
+}
+.rabbit-mirror-feedback-cat::before { content: '🐈‍⬛'; }
+.rabbit-mirror-feedback-cat:hover { background: color-mix(in srgb, currentColor 10%, transparent) !important; }
+.rabbit-mirror-feedback-cat:focus-visible { outline: 2px solid currentColor !important; outline-offset: 2px !important; }
+
+.rabbit-mirror-feedback-cat-menu {
+  position: fixed !important;
+  z-index: 100001 !important;
+  display: grid !important;
+  gap: 6px !important;
+  padding: 10px !important;
+  border: 1px solid var(--SmartThemeBorderColor, rgba(128,128,128,.45)) !important;
+  border-radius: 10px !important;
+  background: var(--SmartThemeBlurTintColor, var(--SmartThemeBodyColor, #fff)) !important;
+  color: var(--SmartThemeBodyColor, inherit) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,.2) !important;
+  font-family: inherit !important;
+}
+.rabbit-mirror-feedback-cat-menu-title {
+  font-weight: 700 !important;
+  line-height: 1.4 !important;
+  margin-bottom: 2px !important;
+}
+.rabbit-mirror-feedback-cat-menu-copy,
+.rabbit-mirror-feedback-cat-status {
+  font-size: 12px !important;
+  line-height: 1.5 !important;
+  text-align: left !important;
+}
+.rabbit-mirror-feedback-cat-status {
+  margin: 0 0 4px !important;
+  padding: 8px 9px !important;
+  border-radius: 8px !important;
+  background: rgba(127,127,127,.12) !important;
+  overflow-wrap: anywhere !important;
+}
+.rabbit-mirror-feedback-cat-menu button {
+  width: 100% !important;
+  min-height: 36px !important;
+  padding: 7px 9px !important;
+  border: 1px solid var(--SmartThemeBorderColor, rgba(128,128,128,.35)) !important;
+  border-radius: 7px !important;
+  background: color-mix(in srgb, currentColor 7%, transparent) !important;
+  color: inherit !important;
+  text-align: left !important;
+  cursor: pointer !important;
+}
+.rabbit-mirror-feedback-cat-menu button:hover,
+.rabbit-mirror-feedback-cat-menu button:focus-visible {
+  background: color-mix(in srgb, currentColor 14%, transparent) !important;
+}
+.rabbit-mirror-feedback-cat-input {
+  display: block !important;
+  width: 100% !important;
+  min-height: 108px !important;
+  resize: vertical !important;
+  box-sizing: border-box !important;
+  padding: 9px 10px !important;
+  border: 1px solid var(--SmartThemeBorderColor, rgba(128,128,128,.45)) !important;
+  border-radius: 8px !important;
+  background: color-mix(in srgb, currentColor 5%, transparent) !important;
+  color: inherit !important;
+  font: inherit !important;
+  line-height: 1.5 !important;
+}

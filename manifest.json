@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（小小维修兔 v1.23・旧消息全选联动修正版）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（挨打猫 v1.0・小小维修兔 v1.27）",
   "loading_order": 99,
   "js": "index.js",
   "css": "style.css",
   "author": "Toto",
-  "version": "0.33.30-test.1",
+  "version": "0.33.34-test.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "TEST build: keeps the complete 0.33.29 prompt and runtime baseline and adds a reversible rescue for legacy message CSS where body:has(...:checked) was scoped beneath .mes_text and could never match; maintenance rabbit v1.23."
+  "description": "TEST build: based on 0.33.33; adds the opt-in Feedback Cat for temporary 1/3/10-round user visual and interaction feedback while preserving the original prompt byte-for-byte when no feedback is selected; maintenance rabbit v1.27."
 }

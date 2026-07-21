@@ -1,4 +1,5 @@
 import { updateLatestVisualSignature } from './storage.js';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js';
 
 const TOTO_RE = new RegExp('<toto\\b[^>]*(?:data-rabbit-mirror|data-rabbit-' + 'h' + 'ole)=[\"\']true[\"\'][^>]*>[\\s\\S]*?<\\/toto>', 'i');
 let lastScannedHash = '';
@@ -924,6 +925,10 @@ async function scanLatestAssistantMessage(mod) {
         : null;
     if (signature || skeleton || riskFlags.length || paletteFingerprint) {
         updateLatestVisualSignature(signature, skeleton, riskFlags, paletteFingerprint);
+        const feedbackResult = consumeInjectedFeedbackForSuccessfulRabbitMirror(message);
+        if (feedbackResult?.consumed) {
+            console.debug('[RabbitMirror] feedback cat consumed:', feedbackResult.remainingRounds);
+        }
         console.debug('[RabbitMirror] visual signature:', signature, skeleton, riskFlags, paletteFingerprint);
     }
 }

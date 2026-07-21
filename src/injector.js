@@ -1,6 +1,7 @@
 import { setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
 import { MODULE_NAME, getSettings } from './settings.js';
 import { buildRabbitMirrorPrompt } from './promptBuilder.js';
+import { getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js';
 
 const INJECT_KEY = `${MODULE_NAME}:auto_injection`;
 
@@ -23,7 +24,8 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
         return;
     }
 
-    const prompt = buildRabbitMirrorPrompt(settings, type);
+    const activeFeedback = settings.feedbackCatEnabled !== false ? getActiveFeedbackForCurrentChat() : null;
+    const prompt = buildRabbitMirrorPrompt(settings, type, activeFeedback);
     if (!prompt) {
         clearRabbitMirrorPrompt();
         return;
@@ -38,4 +40,5 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
         false,
         role,
     );
+    if (activeFeedback) markFeedbackCatInjected(activeFeedback, type);
 }

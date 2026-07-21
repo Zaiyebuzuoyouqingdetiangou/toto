@@ -3,6 +3,7 @@ import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt } from './src/
 import { clearLastCombo } from './src/storage.js';
 import { initVisualScanner } from './src/visualScanner.js';
 import { initOutputSanitizer } from './src/outputSanitizer.js';
+import { clearAllFeedbackCatState } from './src/feedbackCat.js';
 
 // SillyTavern reads this global function name from manifest.json -> generate_interceptor.
 globalThis.rabbitMirrorGenerateInterceptor = rabbitMirrorGenerateInterceptor;
@@ -21,4 +22,5 @@ export function onDisable() {
 export function onClean() {
     clearRabbitMirrorPrompt();
     clearLastCombo();
+    clearAllFeedbackCatState();
 }
