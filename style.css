@@ -225,7 +225,7 @@ toto[data-rabbit-mirror="true"] summary {
   box-shadow: none !important;
   opacity: .92 !important;
 }
-.rabbit-mirror-feedback-cat::before { content: '🐈'; font-size: 14px !important; line-height: 1 !important; }
+.rabbit-mirror-feedback-cat::before { content: '🐈' !important; font-size: 14px !important; line-height: 1 !important; }
 .rabbit-mirror-feedback-cat:hover { background: color-mix(in srgb, currentColor 10%, transparent) !important; }
 .rabbit-mirror-feedback-cat:focus-visible { outline: 2px solid currentColor !important; outline-offset: 2px !important; }
 
