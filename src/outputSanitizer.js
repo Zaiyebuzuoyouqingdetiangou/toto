@@ -10106,8 +10106,19 @@ function maintenanceRecommendationForInspection(inspection) {
 }
 
 function maintenanceRecommendationText(inspection) {
-    const recommendation = maintenanceRecommendationForInspection(inspection);
-    return `🐇 建议：${recommendation.label}。${recommendation.reason}`;
+    const findings = inspection?.findings || [];
+    if (findings.length) {
+        const labels = [];
+        for (const finding of findings) {
+            const label = finding?.stage === 'visibility'
+                ? '排版／显示'
+                : (MAINTENANCE_FINDING_STAGE_LABELS[finding?.stage] || '其他');
+            if (!labels.includes(label)) labels.push(label);
+        }
+        return `检测到 ${findings.length} 项：${labels.join('、')}`;
+    }
+    if (inspection?.state === MAINTENANCE_STATES.unknown) return '暂无法安全判断，可生成全链路诊断';
+    return '未发现高置信异常';
 }
 
 function showMaintenanceRabbitMenu(root, button) {
