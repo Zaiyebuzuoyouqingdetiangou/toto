@@ -1,4 +1,4 @@
-import { getSettings } from './settings.js?rmv=0.33.39';
+import { getSettings } from './settings.js?rmv=0.33.42';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -7,11 +7,11 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=0.33.39';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=0.33.39';
+} from './feedbackCat.js?rmv=0.33.42';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=0.33.42';
 
 
-const RUNTIME_VERSION = '0.33.39';
+const RUNTIME_VERSION = '0.33.42';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -2225,6 +2225,8 @@ function installRenderedButtonAdjacentHiddenRescue(root) {
 // 在移动端把瞬时 active/focus 变成可逆点击状态，并按原 CSS 声明显示对应后置内容。
 const RENDERED_CSS_STATE_SIBLING_RESCUE_ATTR = 'data-rabbit-mirror-css-state-sibling-rescue';
 const RENDERED_CSS_STATE_SIBLING_ITEM_ATTR = 'data-rm-css-state-sibling-item';
+const RENDERED_CSS_STATE_CROSS_TREE_RESCUE_ATTR = 'data-rabbit-mirror-css-state-cross-tree-rescue';
+const RENDERED_CSS_STATE_CROSS_TREE_ROOT_ATTR = 'data-rabbit-mirror-css-state-cross-tree-fallback';
 const renderedCssStateSiblingRescueStates = new WeakMap();
 const CSS_STATE_SIBLING_SAFE_PROPERTIES = new Set([
     'display', 'visibility', 'opacity', 'pointer-events', 'transform', 'filter',
@@ -2313,6 +2315,45 @@ function collectCssStateSiblingTargets(trigger, combinator, targetSelector) {
     return targets;
 }
 
+function cssStateNodeDistanceToAncestor(node, ancestor, maxDistance = 6) {
+    let current = node;
+    for (let distance = 0; current && distance <= maxDistance; distance += 1, current = current.parentElement) {
+        if (current === ancestor) return distance;
+    }
+    return Number.POSITIVE_INFINITY;
+}
+
+function findCssStateLocalCommonAncestor(root, trigger, target) {
+    if (!root || !trigger || !target) return null;
+    let ancestor = trigger.parentElement;
+    for (let triggerDistance = 1; ancestor && triggerDistance <= 3; triggerDistance += 1, ancestor = ancestor.parentElement) {
+        if (ancestor === root) break;
+        if (!ancestor.contains?.(target)) continue;
+        const targetDistance = cssStateNodeDistanceToAncestor(target, ancestor, 5);
+        if (targetDistance <= 4) return ancestor;
+    }
+    return null;
+}
+
+// 模型有时把 A:hover ~ B 写成跨层、逆向或嵌套关系：触发器与目标实际位于
+// 同一局部画布，但不满足 CSS 兄弟选择器。只有原关系完全找不到目标、目标数量受限、
+// 且触发器与目标共享近距离局部祖先时，才把它作为高置信跨层候选。
+function collectCssStateCrossTreeTargets(root, trigger, targetSelector) {
+    if (!root?.querySelectorAll || !trigger || !targetSelector) return [];
+    let candidates = [];
+    try {
+        candidates = [...root.querySelectorAll(targetSelector)];
+    } catch {
+        return [];
+    }
+    if (!candidates.length || candidates.length > 8) return [];
+    return candidates.filter(target => {
+        if (!target || target === trigger || target.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`)) return false;
+        if (trigger.contains?.(target) || target.contains?.(trigger)) return false;
+        return !!findCssStateLocalCommonAncestor(root, trigger, target);
+    });
+}
+
 function cssStateSiblingAssignmentsReveal(assignments) {
     for (const { property, value } of assignments || []) {
         const normalized = String(value || '').trim().toLowerCase();
@@ -2364,15 +2405,16 @@ function buildRenderedCssStateSiblingEntries(root) {
     for (const mapping of mappings) {
         for (const trigger of queryCssStateSiblingTriggers(root, mapping.triggerSelector)) {
             if (trigger.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`)) continue;
-            const targets = collectCssStateSiblingTargets(trigger, mapping.combinator, mapping.targetSelector);
+            let targets = collectCssStateSiblingTargets(trigger, mapping.combinator, mapping.targetSelector);
+            let crossTree = false;
+            if (!targets.length) {
+                targets = collectCssStateCrossTreeTargets(root, trigger, mapping.targetSelector);
+                crossTree = targets.length > 0;
+            }
+
             for (const target of targets) {
                 if (!target || target === trigger || target.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`)) continue;
                 const text = normalizeInteractionMatchText(target.textContent);
-                const rendered = getRenderedStyleSnapshot(target);
-                const hidden = rendered.hidden || rendered.rectHeight <= 1
-                    || isCollapsedDimensionValue(getInlineStyleValue(target, 'height'))
-                    || isCollapsedDimensionValue(getInlineStyleValue(target, 'max-height'));
-                if (!hidden && !cssStateSiblingAssignmentsReveal(mapping.assignments)) continue;
                 if (!text && !target.children?.length) continue;
 
                 let entry = grouped.get(trigger);
@@ -2383,9 +2425,11 @@ function buildRenderedCssStateSiblingEntries(root) {
                         triggerAssignments: [],
                         active: false,
                         group: trigger.parentElement || root,
+                        crossTree: false,
                     };
                     grouped.set(trigger, entry);
                 }
+                entry.crossTree = entry.crossTree || crossTree;
                 let targetMap = entry.targetAssignments.get(target);
                 if (!targetMap) {
                     targetMap = new Map();
@@ -2398,6 +2442,30 @@ function buildRenderedCssStateSiblingEntries(root) {
 
     const entries = [];
     for (const entry of grouped.values()) {
+        const targetRecords = [...entry.targetAssignments.entries()].map(([target, assignmentMap]) => {
+            const assignments = [...assignmentMap.entries()].map(([property, value]) => ({ property, value }));
+            const rendered = getRenderedStyleSnapshot(target);
+            const hidden = rendered.hidden || rendered.rectHeight <= 1
+                || isCollapsedDimensionValue(getInlineStyleValue(target, 'height'))
+                || isCollapsedDimensionValue(getInlineStyleValue(target, 'max-height'));
+            return {
+                target,
+                assignments,
+                rendered,
+                hidden,
+                reveals: cssStateSiblingAssignmentsReveal(assignments),
+            };
+        });
+
+        // 跨层兜底必须至少包含一个“原本隐藏、状态后显现”的真实目标。
+        // 满足后才把同一状态里的旧主体隐藏／移位声明一并接管，避免把普通 hover 装饰误变成点击程序。
+        const hasHiddenRevealTarget = targetRecords.some(record => record.hidden && record.reveals);
+        if (entry.crossTree && !hasHiddenRevealTarget) continue;
+        const acceptedTargets = entry.crossTree
+            ? targetRecords
+            : targetRecords.filter(record => record.hidden || record.reveals);
+        if (!acceptedTargets.length) continue;
+
         for (const rule of directRules) {
             if (elementMatchesCssStateSiblingSelector(entry.trigger, rule.triggerSelector)) {
                 const merged = new Map(entry.triggerAssignments.map(item => [item.property, item.value]));
@@ -2408,9 +2476,8 @@ function buildRenderedCssStateSiblingEntries(root) {
 
         const triggerProperties = new Set(entry.triggerAssignments.map(item => item.property));
         entry.triggerOriginalStyles = capturePseudoStyleState(entry.trigger, triggerProperties);
-        entry.targetStates = [...entry.targetAssignments.entries()].map(([target, assignmentMap]) => {
-            const assignments = [...assignmentMap.entries()].map(([property, value]) => ({ property, value }));
-            const rendered = getRenderedStyleSnapshot(target);
+        entry.targetStates = acceptedTargets.map(record => {
+            const { target, assignments, rendered } = record;
             let computedPosition = '';
             try { computedPosition = String(getComputedStyle(target)?.position || '').toLowerCase(); } catch { computedPosition = ''; }
             const position = getInlineStyleValue(target, 'position').toLowerCase() || computedPosition;
@@ -2433,6 +2500,7 @@ function buildRenderedCssStateSiblingEntries(root) {
         });
         if (!entry.targetStates.length) continue;
         entry.trigger.setAttribute(RENDERED_CSS_STATE_SIBLING_RESCUE_ATTR, 'true');
+        if (entry.crossTree) entry.trigger.setAttribute(RENDERED_CSS_STATE_CROSS_TREE_RESCUE_ATTR, 'true');
         entry.targetStates.forEach((state, index) => state.target.setAttribute(RENDERED_CSS_STATE_SIBLING_ITEM_ATTR, String(index)));
         entries.push(entry);
     }
@@ -2556,6 +2624,9 @@ function installRenderedCssStateSiblingRescue(root) {
     }
 
     if (state.entries.size) root.dataset.rabbitMirrorCssStateSiblingFallback = 'true';
+    const crossTreeCount = [...state.entries.values()].filter(entry => entry.crossTree).length;
+    if (crossTreeCount) root.setAttribute(RENDERED_CSS_STATE_CROSS_TREE_ROOT_ATTR, String(crossTreeCount));
+    else root.removeAttribute(RENDERED_CSS_STATE_CROSS_TREE_ROOT_ATTR);
 }
 
 
@@ -5967,7 +6038,7 @@ const SELECTION_ONLY_PLACEHOLDER_ATTR = 'data-rabbit-mirror-selection-only-place
 const SELECTION_ONLY_SOURCE_ATTR = 'data-rabbit-mirror-selection-only-source';
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '0.33.39-TEST-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.33.42-TEST-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -6084,6 +6155,7 @@ function diagnosticRouteSummary(root) {
         maskReveal: renderedMaskRevealRescueStates.get(root)?.hosts?.size || 0,
         listDetail: renderedListDetailRescueStates.get(root)?.entries?.size || 0,
         stateSibling: renderedCssStateSiblingRescueStates.get(root)?.entries?.size || 0,
+        stateCrossTree: Number.parseInt(root?.getAttribute?.(RENDERED_CSS_STATE_CROSS_TREE_ROOT_ATTR) || '0', 10) || 0,
         buttonAdjacent: renderedButtonAdjacentHiddenRescueStates.get(root)?.entries?.size || 0,
         clickableAdjacent: renderedClickableAdjacentHiddenRescueStates.get(root)?.entries?.size || 0,
         clickablePopup: renderedClickableAdjacentPopupRescueStates.get(root)?.entries?.size || 0,
@@ -6293,8 +6365,10 @@ function maintenanceTextClippingEvidence(element, root) {
     const textOutsideX = textRects.some(textRect => textRect.left < rect.left - 1 || textRect.right > rect.right + 1);
     const textOutsideY = textRects.some(textRect => textRect.top < rect.top - 1 || textRect.bottom > rect.bottom + 1);
 
-    // scrollWidth/scrollHeight 可能由绝对定位装饰层撑大；只有直属文本或典型文字元素才把它当文字证据。
-    const scrollTextEvidence = directText || semanticTextTag;
+    // scrollWidth/scrollHeight 可能由绝对定位装饰层或整块媒介结构撑大。
+    // 只有直属文本，或自身就是文字载体且没有块级结构子树时，才把滚动尺寸当文字证据。
+    const hasBlockStructure = !!element.querySelector?.('div,section,article,main,aside,header,footer,ul,ol,table,figure,details,form');
+    const scrollTextEvidence = directText || (semanticTextTag && !hasBlockStructure);
     const horizontal = (clipsX && textOutsideX)
         || ((clipsX || noWrap || textOverflow === 'ellipsis') && scrollTextEvidence && scrollOverflowX);
     const vertical = lineClamped
@@ -6345,10 +6419,74 @@ function encodeTextClippingBaseline(element, properties) {
     }
 }
 
+
+const TEXT_CONTAINMENT_REPAIR_ATTR = 'data-rm-text-containment-repair';
+
+function maintenanceIsStructuralClipContainer(element) {
+    if (!element?.querySelectorAll) return false;
+    const tag = String(element.tagName || '').toLowerCase();
+    if (!/^(?:div|section|article|main|aside|figure|form)$/.test(tag)) return false;
+    const directText = maintenanceDirectTextLength(element);
+    const hasBlockStructure = !!element.querySelector('div,section,article,main,aside,header,footer,ul,ol,table,figure,details,form');
+    let hasPositionedContent = false;
+    for (const child of [...element.querySelectorAll('*')].slice(0, 80)) {
+        const style = maintenanceSafeComputedStyle(child);
+        if (!style) continue;
+        if ((style.position === 'absolute' || style.position === 'fixed') && maintenanceHasMeaningfulText(child)) {
+            hasPositionedContent = true;
+            break;
+        }
+    }
+    return directText < 2 && (hasBlockStructure || hasPositionedContent);
+}
+
+function repairMaintenanceAbsoluteTextContainment(root) {
+    if (!root?.querySelectorAll) return 0;
+    let repaired = 0;
+    const candidates = [...root.querySelectorAll('*')].slice(0, 420);
+    for (const element of candidates) {
+        if (!maintenanceIsVisibleContentElement(element) || !maintenanceHasMeaningfulText(element)) continue;
+        const style = maintenanceSafeComputedStyle(element);
+        if (!style || style.position !== 'absolute') continue;
+        const clientHeight = Number(element.clientHeight || 0);
+        const scrollHeight = Number(element.scrollHeight || 0);
+        if (clientHeight <= 1 || scrollHeight <= clientHeight + 6) continue;
+
+        const parent = element.offsetParent || element.parentElement;
+        if (!parent || parent === root || !root.contains(parent) || !parent.style) continue;
+        const parentRect = parent.getBoundingClientRect?.();
+        const elementRect = element.getBoundingClientRect?.();
+        if (!parentRect || !elementRect || parentRect.width <= 1) continue;
+
+        const topOffset = Math.max(0, elementRect.top - parentRect.top);
+        const requiredHeight = Math.ceil(Math.max(scrollHeight, elementRect.height) + topOffset);
+        const currentParentHeight = Math.ceil(Math.max(parent.clientHeight || 0, parentRect.height || 0));
+        if (requiredHeight <= currentParentHeight + 6) continue;
+
+        encodeTextClippingBaseline(element, ['height', 'min-height', 'max-height', 'overflow', 'overflow-x', 'overflow-y']);
+        encodeTextClippingBaseline(parent, ['height', 'min-height', 'max-height', 'overflow', 'overflow-x', 'overflow-y', 'box-sizing']);
+
+        // 绝对定位状态页承载了可增长正文时，让页面按内容增高，同时让其定位父级承担真实高度。
+        // 不解除父级 overflow:hidden，避免翻页、卡片、相框等媒介边界被破坏。
+        element.style.setProperty('height', 'auto', 'important');
+        element.style.setProperty('min-height', `${requiredHeight}px`, 'important');
+        element.style.setProperty('max-height', 'none', 'important');
+        parent.style.setProperty('height', 'auto', 'important');
+        parent.style.setProperty('min-height', `${requiredHeight}px`, 'important');
+        parent.style.setProperty('max-height', 'none', 'important');
+        parent.style.setProperty('box-sizing', 'border-box', 'important');
+        element.setAttribute(TEXT_CONTAINMENT_REPAIR_ATTR, 'absolute-page');
+        parent.setAttribute(TEXT_CONTAINMENT_REPAIR_ATTR, 'host-grown');
+        repaired += 1;
+        if (repaired >= 12) break;
+    }
+    return repaired;
+}
+
 function repairMaintenanceTextClipping(root) {
     if (!root?.querySelectorAll) return 0;
+    let repaired = repairMaintenanceAbsoluteTextContainment(root);
     const candidates = findMaintenanceTextClippingCandidates(root);
-    let repaired = 0;
     for (const evidence of candidates) {
         const element = evidence.element;
         if (!element?.style) continue;
@@ -6365,11 +6503,14 @@ function repairMaintenanceTextClipping(root) {
         element.style.setProperty('overflow-wrap', 'anywhere', 'important');
         element.style.setProperty('word-break', 'break-word', 'important');
         element.style.setProperty('text-overflow', 'clip', 'important');
-        // 用户明确选择“文字被裁切”时，解除当前文字层自身的裁切边界。
-        // 只写 overflow-x/y 在 CSS 规范中可能被 hidden 反推为 auto，必须同时重置 shorthand。
-        element.style.setProperty('overflow', 'visible', 'important');
-        element.style.setProperty('overflow-x', 'visible', 'important');
-        element.style.setProperty('overflow-y', 'visible', 'important');
+        const structuralClipContainer = maintenanceIsStructuralClipContainer(element);
+        // 只有真正的文字载体自身被截断时才解除 overflow。
+        // 结构外壳、翻页容器、相框和卡片继续保留原裁切边界，避免正文漏到媒介之外。
+        if (!structuralClipContainer) {
+            element.style.setProperty('overflow', 'visible', 'important');
+            element.style.setProperty('overflow-x', 'visible', 'important');
+            element.style.setProperty('overflow-y', 'visible', 'important');
+        }
 
         const tag = String(element.tagName || '').toLowerCase();
         if (evidence.noWrap || evidence.horizontal) {
@@ -6768,6 +6909,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `遮罩揭示 entries=${routes.maskReveal} listener=${routes.maskReveal ? 'true' : 'false'}`,
         `列表详情 entries=${routes.listDetail} listener=${root.dataset.rabbitMirrorRenderedListDetailFallback || 'false'}`,
         `状态兄弟映射 entries=${routes.stateSibling} listener=${root.dataset.rabbitMirrorCssStateSiblingFallback || 'false'}`,
+        `跨层伪类状态 entries=${routes.stateCrossTree} listener=${routes.stateCrossTree ? 'true' : 'false'}`,
         `按钮后置内容 entries=${routes.buttonAdjacent} listener=${root.dataset.rabbitMirrorButtonAdjacentHiddenFallback || 'false'}`,
         `可点击后置内容 entries=${routes.clickableAdjacent} listener=${root.dataset.rabbitMirrorClickableAdjacentHiddenFallback || 'false'}`,
         `可点击画面弹层 entries=${routes.clickablePopup} listener=${root.dataset.rabbitMirrorClickableAdjacentPopupFallback || 'false'}`,
@@ -8224,7 +8366,7 @@ function chooseMaintenanceAutomaticMode(inspection) {
 }
 
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.29';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.31';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。

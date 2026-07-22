@@ -1,9 +1,10 @@
-import { getSettings } from './settings.js?rmv=0.33.39';
-import { buildRabbitMirrorImagePrompt } from './imageGenerationPrompt.js?rmv=0.33.39';
+import { getSettings } from './settings.js?rmv=0.33.42';
+import { buildRabbitMirrorImagePrompt } from './imageGenerationPrompt.js?rmv=0.33.42';
 
 const IMAGE_SLOT_ATTR = 'data-rabbit-mirror-image-slot';
 const IMAGE_KEY_ATTR = 'data-rabbit-mirror-image-key';
 const IMAGE_LIGHTBOX_ID = 'rabbit-mirror-image-lightbox';
+const DEFAULT_FREE_ENDPOINT = 'https://image.pollinations.ai/prompt/{prompt}?width={width}&height={height}';
 const activeRequests = new Map();
 const completedKeys = new Set();
 const attemptedKeys = new Set();
@@ -117,7 +118,7 @@ function elementIsVisible(element) {
         const style = globalThis.getComputedStyle?.(element);
         if (style && (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) <= 0.02)) return false;
     } catch {
-        // Keep the text when host WebView refuses computed-style access.
+        // ignore
     }
     return true;
 }
@@ -163,6 +164,26 @@ function validateEndpoint(value) {
     } catch {
         return '';
     }
+}
+
+function normalizeFreeTemplate(value) {
+    const source = String(value || '').trim() || DEFAULT_FREE_ENDPOINT;
+    const probe = source
+        .replaceAll('{prompt}', 'test')
+        .replaceAll('{width}', '1024')
+        .replaceAll('{height}', '1024');
+    try {
+        const url = new URL(probe, globalThis.location?.href || 'https://localhost/');
+        if (!['http:', 'https:'].includes(url.protocol)) return '';
+        return source;
+    } catch {
+        return '';
+    }
+}
+
+function parseSize(size) {
+    const [width, height] = String(size || '1024x1024').split('x').map(value => Number(value) || 1024);
+    return { width, height };
 }
 
 function ensureSlot(root, key) {
@@ -261,7 +282,62 @@ function firstImageFromJson(payload) {
     return '';
 }
 
-async function callImageEndpoint({ endpoint, apiKey, model, size, prompt, signal }) {
+function normalizeModelList(payload) {
+    const rows = [
+        ...(Array.isArray(payload?.data) ? payload.data : []),
+        ...(Array.isArray(payload?.models) ? payload.models : []),
+        ...(Array.isArray(payload) ? payload : []),
+    ];
+    const ids = rows.map(item => {
+        if (typeof item === 'string') return item.trim();
+        return firstNonEmpty([item?.id, item?.name, item?.model]);
+    }).filter(Boolean);
+    return [...new Set(ids)].slice(0, 200);
+}
+
+function deriveModelsEndpoint(endpoint) {
+    const base = validateEndpoint(endpoint);
+    if (!base) return '';
+    try {
+        const url = new URL(base);
+        if (/\/images\/generations\/?$/i.test(url.pathname)) {
+            url.pathname = url.pathname.replace(/\/images\/generations\/?$/i, '/models');
+        } else if (/\/v1\/?$/i.test(url.pathname)) {
+            url.pathname = url.pathname.replace(/\/?$/, '/models');
+        } else if (/\/models\/?$/i.test(url.pathname)) {
+            // keep
+        } else {
+            url.pathname = `${url.pathname.replace(/\/$/, '')}/models`;
+        }
+        url.search = '';
+        return url.href;
+    } catch {
+        return '';
+    }
+}
+
+function buildFreeEndpointUrl(template, prompt, size) {
+    const normalized = normalizeFreeTemplate(template);
+    if (!normalized) return '';
+    const { width, height } = parseSize(size);
+    const encodedPrompt = encodeURIComponent(prompt);
+    let built = normalized
+        .replaceAll('{prompt}', encodedPrompt)
+        .replaceAll('{width}', String(width))
+        .replaceAll('{height}', String(height));
+    if (built.includes('{')) return '';
+    try {
+        const url = new URL(built, globalThis.location?.href || 'https://localhost/');
+        if (!normalized.includes('{prompt}') && !url.searchParams.has('prompt')) url.searchParams.set('prompt', prompt);
+        if (!url.searchParams.has('width')) url.searchParams.set('width', String(width));
+        if (!url.searchParams.has('height')) url.searchParams.set('height', String(height));
+        return url.href;
+    } catch {
+        return '';
+    }
+}
+
+async function callCustomImageEndpoint({ endpoint, apiKey, model, size, prompt, signal }) {
     const headers = { 'Content-Type': 'application/json' };
     if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
     const body = { prompt, n: 1, size };
@@ -278,9 +354,7 @@ async function callImageEndpoint({ endpoint, apiKey, model, size, prompt, signal
         throw new Error(`接口返回 ${response.status}${text ? `：${text.slice(0, 240)}` : ''}`);
     }
     const contentType = String(response.headers.get('content-type') || '').toLowerCase();
-    if (contentType.startsWith('image/')) {
-        return URL.createObjectURL(await response.blob());
-    }
+    if (contentType.startsWith('image/')) return URL.createObjectURL(await response.blob());
     if (!contentType.includes('json')) {
         throw new Error('接口没有返回图片或 JSON；请填写完整的文生图 API 地址，而不是普通网站首页。');
     }
@@ -288,6 +362,39 @@ async function callImageEndpoint({ endpoint, apiKey, model, size, prompt, signal
     const image = firstImageFromJson(payload);
     if (!image) throw new Error('接口响应中未找到可识别的图片 URL 或 base64 数据。');
     return image;
+}
+
+async function callFreeImageEndpoint({ template, prompt, size, signal }) {
+    const endpoint = buildFreeEndpointUrl(template, prompt, size);
+    if (!endpoint) throw new Error('免费成图地址无效；请填写可直接访问图片的地址模板。');
+    const response = await fetch(endpoint, { method: 'GET', signal });
+    if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        throw new Error(`免费成图返回 ${response.status}${text ? `：${text.slice(0, 240)}` : ''}`);
+    }
+    const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+    if (contentType.startsWith('image/')) return URL.createObjectURL(await response.blob());
+    if (!contentType.includes('json')) throw new Error('免费成图没有返回图片；请检查免费成图地址是否支持直接生成图片。');
+    const payload = await response.json();
+    const image = firstImageFromJson(payload);
+    if (!image) throw new Error('免费成图响应中未找到可识别的图片 URL 或 base64 数据。');
+    return image;
+}
+
+export async function connectImageGenerationModels({ endpoint, apiKey } = {}) {
+    const modelsEndpoint = deriveModelsEndpoint(endpoint);
+    if (!modelsEndpoint) throw new Error('请先填写完整的文生图 API 地址。');
+    const headers = {};
+    if (apiKey) headers.Authorization = `Bearer ${String(apiKey).trim()}`;
+    const response = await fetch(modelsEndpoint, { method: 'GET', headers });
+    if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        throw new Error(`拉取模型失败 ${response.status}${text ? `：${text.slice(0, 240)}` : ''}`);
+    }
+    const payload = await response.json().catch(() => ({}));
+    const models = normalizeModelList(payload);
+    if (!models.length) throw new Error('接口已连接，但没有返回可选模型。');
+    return models;
 }
 
 export async function maybeGenerateImageForRabbitMirror({ message, chat, renderedToto } = {}) {
@@ -308,18 +415,26 @@ export async function maybeGenerateImageForRabbitMirror({ message, chat, rendere
         return { skipped: 'duplicate' };
     }
 
+    const mode = settings.imageGenerationMode === 'custom' ? 'custom' : 'free';
     const endpoint = validateEndpoint(settings.imageApiUrl);
+    const freeTemplate = normalizeFreeTemplate(settings.imageFreeSiteUrl);
     const model = String(settings.imageModel || '').trim();
     const apiKey = String(settings.imageApiKey || '').trim();
     const size = ['1024x1024', '1024x1536', '1536x1024'].includes(settings.imageSize)
         ? settings.imageSize
         : '1024x1024';
     const slot = ensureSlot(renderedToto, key);
-    if (!endpoint || !model) {
-        setSlotState(slot, 'missing', '请在兔子镜设置中填写完整的文生图 API 地址与模型名称。');
+
+    if ((mode === 'custom' && (!endpoint || !model)) || (mode === 'free' && !freeTemplate)) {
+        const detail = mode === 'custom'
+            ? '请先填写文生图 API 地址并连接模型。'
+            : '请先填写可用的免费成图地址。';
+        setSlotState(slot, 'missing', detail);
         if (!missingConfigNoticeShown) {
             missingConfigNoticeShown = true;
-            globalThis.toastr?.warning?.('兔子镜配图已开启，但文生图 API 地址或模型名称尚未填写。');
+            globalThis.toastr?.warning?.(mode === 'custom'
+                ? '兔子镜配图已开启，但自定义 API 地址或模型尚未配置完整。'
+                : '兔子镜配图已开启，但免费成图地址尚未配置完整。');
         }
         return { skipped: 'missing-config' };
     }
@@ -337,7 +452,9 @@ export async function maybeGenerateImageForRabbitMirror({ message, chat, rendere
     setSlotState(slot, 'loading', '正在根据本轮兔子镜内容生成配图。');
 
     try {
-        const src = await callImageEndpoint({ endpoint, apiKey, model, size, prompt, signal: controller.signal });
+        const src = mode === 'custom'
+            ? await callCustomImageEndpoint({ endpoint, apiKey, model, size, prompt, signal: controller.signal })
+            : await callFreeImageEndpoint({ template: freeTemplate, prompt, size, signal: controller.signal });
         if (!renderedToto.isConnected || slot.getAttribute(IMAGE_KEY_ATTR) !== key) return { skipped: 'detached' };
         showImage(slot, src, `${mirrorTitle(renderedToto) || '兔子镜'}配图`);
         imageSources.set(key, src);
