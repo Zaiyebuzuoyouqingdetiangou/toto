@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（挨打猫 v1.2・小小维修兔 v1.32・文生图测试版 v2D）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（挨打猫 v1.2・小小维修兔 v1.32）",
   "loading_order": 99,
-  "js": "index.js?rmv=0.33.47",
-  "css": "style.css?rmv=0.33.47",
+  "js": "index.js?rmv=0.33.49",
+  "css": "style.css?rmv=0.33.49",
   "author": "Toto",
-  "version": "0.33.47-test.1",
+  "version": "0.33.49-test.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "TEST build: fixes the image-generation root detector so both wrapped <toto> mirrors and host-rendered orphan <details> mirrors create an image frame. Adds an independent DOM observer, preserves one-request-per-generation deduplication, and keeps the 2D free/custom image modes and Feedback Cat language-delivery fix."
+  "description": "TEST cleanup build preserving the latest RabbitMirror prompt, interaction, content-flow, Feedback Cat, Maintenance Rabbit, language-feedback, and cache-takeover fixes."
 }
