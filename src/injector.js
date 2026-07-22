@@ -1,7 +1,7 @@
 import { setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
-import { MODULE_NAME, getSettings } from './settings.js?rmv=0.33.45';
-import { buildRabbitMirrorPrompt } from './promptBuilder.js?rmv=0.33.45';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, markFeedbackCatInjected, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=0.33.45';
+import { MODULE_NAME, getSettings } from './settings.js?rmv=0.33.47';
+import { buildRabbitMirrorPrompt } from './promptBuilder.js?rmv=0.33.47';
+import { buildFeedbackCatPrompt, clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=0.33.47';
 
 const INJECT_KEY = `${MODULE_NAME}:auto_injection`;
 
@@ -26,14 +26,23 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
     }
 
     const activeFeedback = settings.feedbackCatEnabled !== false ? getActiveFeedbackForCurrentChat(_chat) : null;
-    const feedbackSync = activeFeedback
-        ? syncFeedbackCatExtensionPrompt(activeFeedback)
-        : { ok: clearFeedbackCatExtensionPrompt(), prompt: '', promptHash: '', chars: 0 };
-    const prompt = buildRabbitMirrorPrompt(settings, type, null);
-    if (!prompt) {
+    const feedbackPrompt = activeFeedback ? buildFeedbackCatPrompt(activeFeedback) : '';
+    // 反馈直接追加在 RabbitMirror 主隐藏 Prompt 的最末尾，避免独立 Prompt 在模型侧被降权。
+    // 未选择反馈时不追加任何字符，基础 Prompt 保持逐字不变。
+    clearFeedbackCatExtensionPrompt();
+    const basePrompt = buildRabbitMirrorPrompt(settings, type, null);
+    if (!basePrompt) {
         clearRabbitMirrorPrompt();
         return;
     }
+    const prompt = feedbackPrompt
+        ? `${basePrompt}
+
+${feedbackPrompt}
+
+【挨打猫最终执行检查】
+本轮输出兔子镜前，必须再次核对并落实上述用户反馈；若反馈涉及可见文字语言，逐项检查 summary、标题、按钮、标签、状态、提示、角标、占位文字与装饰词，不得残留不必要外语。`
+        : basePrompt;
     const role = settings.role === 'user' ? extension_prompt_roles.USER : settings.role === 'assistant' ? extension_prompt_roles.ASSISTANT : extension_prompt_roles.SYSTEM;
 
     setExtensionPrompt(
@@ -44,5 +53,5 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
         false,
         role,
     );
-    if (activeFeedback && feedbackSync.ok) markFeedbackCatInjected(activeFeedback, type, feedbackSync.prompt);
+    if (activeFeedback && feedbackPrompt) markFeedbackCatInjected(activeFeedback, type, feedbackPrompt);
 }

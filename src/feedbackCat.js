@@ -4,7 +4,7 @@ const FEEDBACK_STORAGE_KEY = 'rabbit_mirror_theater:feedback_cat:v1';
 const FEEDBACK_PENDING_KEY = 'rabbit_mirror_theater:feedback_cat_pending:v2';
 const FEEDBACK_METADATA_KEY = 'rabbit_mirror_theater_feedback_cat_v2';
 const FEEDBACK_PROMPT_KEY = 'rabbit_mirror_theater:feedback_cat_prompt';
-const RUNTIME_VERSION = '0.33.45';
+const RUNTIME_VERSION = '0.33.47';
 const VALID_ROUNDS = new Set([1, 3, 10]);
 const VALID_TYPES = new Set(['color', 'structure', 'overall', 'interaction', 'language', 'custom']);
 
@@ -324,7 +324,7 @@ function presetFeedbackInstruction(feedback) {
         return `用户认为被反馈兔子镜的交互过于简单。本轮仅在展现形式本身适合交互时增强交互：建立真实目标、明确操作、可识别且可保持的状态变化、与操作对应的反馈，以及继续推进、组合、切换或返回的可能；不得只增加无意义按钮、装饰性点击或一次性显隐，也不得为了交互破坏展现形式本体。${source}`;
     }
     if (type === 'language') {
-        return '用户不满意兔子镜反复出现不必要的外语。本轮所有面向用户可见的标题、按钮、标签、状态、提示、说明与装饰文字均须使用当前对话的主要语言；正文原有外语、必要专有名词以及 HTML/CSS 的标签、属性、class、id 和代码标识不受此限制。';
+        return '用户不满意兔子镜反复出现不必要的外语。本轮所有面向用户可见的标题、按钮、标签、状态、提示、说明、角标、装饰文字、占位文本与拟态系统词均须使用当前对话的主要语言。禁止使用英文标题、英文大写标签、英文状态词、英文装饰词或用英文制造界面感；正文中原本存在且确有必要保留的外语、专有名词，以及 HTML/CSS 的标签、属性、class、id 和代码标识不受此限制。输出前必须逐项检查最终可见文字，将不必要外语替换为当前对话主要语言。';
     }
     return '';
 }
@@ -436,7 +436,10 @@ export function markFeedbackCatInjected(feedback, generationType = 'normal', fee
         feedbackTextLength: pending.feedbackTextLength,
         runtimeVersion: RUNTIME_VERSION,
         interceptorRead: true,
-        extensionPromptWritten: true,
+        mainPromptAppended: true,
+        complianceReason: '',
+        foreignWords: [],
+        checkedAt: 0,
     };
     record.updatedAt = now;
     state.active = record;
@@ -450,6 +453,38 @@ export function markFeedbackCatInjected(feedback, generationType = 'normal', fee
         console.warn('[RabbitMirror] Failed to mark feedback cat injection:', error);
         return false;
     }
+}
+
+
+const LANGUAGE_VISIBLE_WORD_ALLOWLIST = new Set([
+    'AI', 'API', 'HTML', 'CSS', 'SVG', 'URL', 'QR', 'ID', 'CHAR', 'USER',
+]);
+
+function extractRabbitMirrorVisibleText(source) {
+    const html = String(source || '');
+    const match = html.match(/<toto\b[^>]*>[\s\S]*?<\/toto>/i);
+    if (!match) return '';
+    const fragment = match[0]
+        .replace(/<style\b[\s\S]*?<\/style>/gi, ' ')
+        .replace(/<script\b[\s\S]*?<\/script>/gi, ' ')
+        .replace(/https?:\/\/[^\s<>'\"]+/gi, ' ')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&[a-z0-9#]+;/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    return fragment;
+}
+
+export function auditLanguageFeedbackCompliance(source) {
+    const visible = extractRabbitMirrorVisibleText(source);
+    if (!visible) return { compliant: false, foreignWords: [], reason: '未能读取兔子镜可见文字' };
+    const words = visible.match(/\b[A-Za-z][A-Za-z0-9_-]{1,}\b/g) || [];
+    const foreignWords = [...new Set(words.filter(word => !LANGUAGE_VISIBLE_WORD_ALLOWLIST.has(word.toUpperCase())))].slice(0, 12);
+    return {
+        compliant: foreignWords.length === 0,
+        foreignWords,
+        reason: foreignWords.length ? `仍检测到可见外语：${foreignWords.join('、')}` : '',
+    };
 }
 
 export function consumeInjectedFeedbackForSuccessfulRabbitMirror(message) {
@@ -484,6 +519,41 @@ export function consumeInjectedFeedbackForSuccessfulRabbitMirror(message) {
     }
 
     const now = Date.now();
+    if (record.type === 'language') {
+        const audit = auditLanguageFeedbackCompliance(message.mes);
+        if (!audit.compliant) {
+            record.updatedAt = now;
+            record.delivery = {
+                ...(record.delivery || {}),
+                status: 'not_applied',
+                checkedAt: now,
+                complianceReason: audit.reason,
+                foreignWords: audit.foreignWords,
+                runtimeVersion: RUNTIME_VERSION,
+                successfulRabbitMirrorDetected: true,
+            };
+            state.active = record;
+            state.lastReceipt = clone({
+                ...record.delivery,
+                feedbackId: record.id,
+                type: record.type,
+                label: record.label,
+                remainingRounds: record.remainingRounds,
+            });
+            writeCurrentState(state);
+            syncFeedbackCatExtensionPrompt(record);
+            try { localStorage.removeItem(FEEDBACK_PENDING_KEY); } catch {}
+            return {
+                consumed: false,
+                cleared: false,
+                remainingRounds: Number(record.remainingRounds || 0),
+                record: clone(record),
+                receipt: clone(state.lastReceipt),
+                complianceFailed: true,
+            };
+        }
+    }
+
     const remaining = Math.max(0, Number(record.remainingRounds || 0) - 1);
     const receipt = {
         ...(record.delivery || {}),
@@ -523,8 +593,9 @@ export function consumeInjectedFeedbackForSuccessfulRabbitMirror(message) {
 }
 
 function deliveryStatusLabel(delivery) {
-    if (delivery?.status === 'injected') return '本轮已由生成拦截器读取并写入隐藏 Prompt';
+    if (delivery?.status === 'injected') return '本轮已由生成拦截器读取并追加到兔子镜主隐藏 Prompt';
     if (delivery?.status === 'consumed') return '已随成功生成消耗';
+    if (delivery?.status === 'not_applied') return `上一轮未落实，反馈继续保留${delivery?.complianceReason ? `：${delivery.complianceReason}` : ''}`;
     return '等待下一次正式生成';
 }
 

@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=0.33.45';
-import { buildRabbitMirrorImagePrompt } from './imageGenerationPrompt.js?rmv=0.33.45';
+import { getSettings } from './settings.js?rmv=0.33.47';
+import { buildRabbitMirrorImagePrompt } from './imageGenerationPrompt.js?rmv=0.33.47';
 
 const IMAGE_SLOT_ATTR = 'data-rabbit-mirror-image-slot';
 const IMAGE_KEY_ATTR = 'data-rabbit-mirror-image-key';
@@ -10,6 +10,11 @@ const completedKeys = new Set();
 const attemptedKeys = new Set();
 const imageSources = new Map();
 let missingConfigNoticeShown = false;
+let imageGenerationObserver = null;
+let imageGenerationScanTimer = 0;
+const knownRenderedMirrorRoots = new WeakSet();
+const queuedRenderedMirrorRoots = new WeakSet();
+const imageGenerationRetryTimers = new Set();
 
 function hashText(value) {
     let hash = 2166136261;
@@ -148,10 +153,156 @@ function mirrorTitle(root) {
         .slice(0, 180);
 }
 
-function getMessageKey(message, chat) {
-    const index = Array.isArray(chat) ? chat.lastIndexOf(message) : -1;
+function getMessageIndexFromRoot(root) {
+    const scope = root?.closest?.('.mes, [mesid], [data-message-id], [data-messageid]');
+    if (!scope) return -1;
+    for (const value of [
+        scope.getAttribute?.('mesid'),
+        scope.getAttribute?.('data-message-id'),
+        scope.getAttribute?.('data-messageid'),
+    ]) {
+        if (value !== null && value !== undefined && /^\d+$/.test(String(value))) return Number(value);
+    }
+    return -1;
+}
+
+function getMessageKey(message, chat, renderedRoot = null) {
+    const chatIndex = Array.isArray(chat) && message ? chat.lastIndexOf(message) : -1;
+    const rootIndex = getMessageIndexFromRoot(renderedRoot);
+    const index = chatIndex >= 0 ? chatIndex : rootIndex;
     const swipe = Number.isInteger(message?.swipe_id) ? message.swipe_id : 0;
-    return `${index}:${swipe}:${hashText(message?.mes || '')}`;
+    const fallbackSource = renderedRoot
+        ? `${mirrorTitle(renderedRoot)}|${extractVisibleMirrorContent(renderedRoot)}`
+        : '';
+    return `${index}:${swipe}:${hashText(message?.mes || fallbackSource)}`;
+}
+
+function isRabbitMirrorDetails(details) {
+    if (!details?.matches?.('details')) return false;
+    const summary = details.querySelector?.(':scope > summary') || details.querySelector?.('summary');
+    if (!summary) return false;
+    const clone = summary.cloneNode(true);
+    clone.querySelectorAll?.('button, [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat]')
+        ?.forEach?.(node => node.remove());
+    const title = String(clone.textContent || '').replace(/\s+/g, ' ').trim();
+    return /^【兔子镜[:：]/.test(title) || title.includes('兔子镜');
+}
+
+function normalizeRabbitMirrorRoot(candidate) {
+    if (!candidate?.isConnected) return null;
+    if (candidate.matches?.('toto[data-rabbit-mirror="true"], toto[data-rabbit-hole="true"]')) return candidate;
+    if (candidate.matches?.('details') && isRabbitMirrorDetails(candidate)) {
+        return candidate.closest?.('toto[data-rabbit-mirror="true"], toto[data-rabbit-hole="true"]') || candidate;
+    }
+    const wrapped = candidate.querySelector?.('toto[data-rabbit-mirror="true"], toto[data-rabbit-hole="true"]');
+    if (wrapped) return wrapped;
+    const details = [...(candidate.querySelectorAll?.('details') || [])].find(isRabbitMirrorDetails);
+    return details || null;
+}
+
+export function getRenderedRabbitMirrorRootsForImageGeneration(scope = document) {
+    if (!scope?.querySelectorAll) return [];
+    const roots = [];
+    const seen = new Set();
+    const add = candidate => {
+        const root = normalizeRabbitMirrorRoot(candidate);
+        if (!root || seen.has(root)) return;
+        seen.add(root);
+        roots.push(root);
+    };
+    if (scope.matches?.('toto[data-rabbit-mirror="true"], toto[data-rabbit-hole="true"], details')) add(scope);
+    scope.querySelectorAll('toto[data-rabbit-mirror="true"], toto[data-rabbit-hole="true"]').forEach(add);
+    scope.querySelectorAll('details').forEach(details => {
+        if (!isRabbitMirrorDetails(details)) return;
+        if (details.closest('toto[data-rabbit-mirror="true"], toto[data-rabbit-hole="true"]')) return;
+        add(details);
+    });
+    return roots;
+}
+
+function getChatForImageGeneration() {
+    const context = safeContext();
+    return Array.isArray(context?.chat) ? context.chat : (Array.isArray(globalThis.chat) ? globalThis.chat : []);
+}
+
+function resolveMessageForRenderedRoot(root, chat = getChatForImageGeneration()) {
+    const index = getMessageIndexFromRoot(root);
+    if (index >= 0 && chat[index]) return chat[index];
+    const title = mirrorTitle(root).replace(/^[【\[]兔子镜[:：]?|[】\]]$/g, '').trim();
+    const recent = chat.slice(-12).reverse();
+    if (title) {
+        const matched = recent.find(message => !message?.is_user && String(message?.mes || '').includes(title));
+        if (matched) return matched;
+    }
+    return recent.find(message => !message?.is_user && /<toto\b|<details\b/i.test(String(message?.mes || ''))) || null;
+}
+
+function renderedRootIsReady(root) {
+    const normalized = normalizeRabbitMirrorRoot(root);
+    if (!normalized?.isConnected) return false;
+    const details = normalized.matches?.('details') ? normalized : normalized.querySelector?.('details');
+    if (!details || !isRabbitMirrorDetails(details)) return false;
+    const contentNodes = [...details.children].filter(node => node.tagName !== 'SUMMARY' && node.tagName !== 'STYLE' && !node.hasAttribute?.(IMAGE_SLOT_ATTR));
+    return contentNodes.length > 0 && String(details.textContent || '').replace(/\s+/g, '').length > 12;
+}
+
+function queueRenderedRootForImageGeneration(root, attempt = 0) {
+    const normalized = normalizeRabbitMirrorRoot(root);
+    if (!normalized || queuedRenderedMirrorRoots.has(normalized)) return;
+    queuedRenderedMirrorRoots.add(normalized);
+
+    const run = async currentAttempt => {
+        if (!normalized.isConnected) {
+            queuedRenderedMirrorRoots.delete(normalized);
+            return;
+        }
+        if (!getSettings().imageGenerationEnabled) {
+            queuedRenderedMirrorRoots.delete(normalized);
+            return;
+        }
+        if (!renderedRootIsReady(normalized) && currentAttempt < 12) {
+            const timer = setTimeout(() => {
+                imageGenerationRetryTimers.delete(timer);
+                void run(currentAttempt + 1);
+            }, Math.min(900, 120 + currentAttempt * 70));
+            imageGenerationRetryTimers.add(timer);
+            return;
+        }
+        queuedRenderedMirrorRoots.delete(normalized);
+        const chat = getChatForImageGeneration();
+        const message = resolveMessageForRenderedRoot(normalized, chat);
+        await maybeGenerateImageForRabbitMirror({ message, chat, renderedToto: normalized });
+    };
+    void run(attempt);
+}
+
+function scanForNewRenderedRabbitMirrors({ generate = true } = {}) {
+    const roots = getRenderedRabbitMirrorRootsForImageGeneration(document);
+    for (const root of roots) {
+        if (knownRenderedMirrorRoots.has(root)) continue;
+        knownRenderedMirrorRoots.add(root);
+        if (generate && getSettings().imageGenerationEnabled) queueRenderedRootForImageGeneration(root);
+    }
+}
+
+function scheduleRenderedRabbitMirrorScan(generate = true) {
+    if (imageGenerationScanTimer) clearTimeout(imageGenerationScanTimer);
+    imageGenerationScanTimer = setTimeout(() => {
+        imageGenerationScanTimer = 0;
+        scanForNewRenderedRabbitMirrors({ generate });
+    }, 180);
+}
+
+export function initImageGeneration() {
+    try { globalThis.__rabbitMirrorImageGenerationCleanup?.(); } catch {}
+    if (typeof document === 'undefined' || typeof MutationObserver === 'undefined') return;
+    // Existing mirrors are a baseline. Enabling the feature must not retroactively charge for old messages.
+    scanForNewRenderedRabbitMirrors({ generate: false });
+    const observationRoot = document.body || document.documentElement;
+    if (!observationRoot) return;
+    imageGenerationObserver = new MutationObserver(() => scheduleRenderedRabbitMirrorScan(true));
+    imageGenerationObserver.observe(observationRoot, { childList: true, subtree: true });
+    globalThis.__rabbitMirrorImageGenerationCleanup = destroyImageGeneration;
 }
 
 function validateEndpoint(value) {
@@ -276,10 +427,20 @@ function setSlotState(slot, state, detail = '') {
     slot.title = detail || '';
     if (state === 'loading') {
         slot.innerHTML = '<div class="rabbit-mirror-image-frame rabbit-mirror-image-frame-loading" role="status" aria-label="兔子镜配图绘制中"><span>绘制中</span></div>';
-    } else if (state === 'missing') {
-        slot.innerHTML = '<div class="rabbit-mirror-image-frame rabbit-mirror-image-frame-error" role="status"><span>未配置</span></div>';
-    } else if (state === 'error') {
-        slot.innerHTML = '<div class="rabbit-mirror-image-frame rabbit-mirror-image-frame-error" role="status"><span>绘图失败</span></div>';
+        return;
+    }
+    if (state === 'missing' || state === 'error') {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'rabbit-mirror-image-frame rabbit-mirror-image-frame-error';
+        button.setAttribute('aria-label', detail || (state === 'missing' ? '兔子镜配图未配置' : '兔子镜配图失败'));
+        button.innerHTML = `<span>${state === 'missing' ? '未配置' : '绘图失败'}</span>`;
+        button.addEventListener('click', event => {
+            event.preventDefault();
+            event.stopPropagation();
+            globalThis.toastr?.warning?.(detail || (state === 'missing' ? '兔子镜配图配置不完整。' : '兔子镜配图生成失败。'));
+        });
+        slot.replaceChildren(button);
     }
 }
 
@@ -485,7 +646,7 @@ export async function maybeGenerateImageForRabbitMirror({ message, chat, rendere
     if (!settings.imageGenerationEnabled) return { skipped: 'disabled' };
     if (!renderedToto?.isConnected) return { skipped: 'missing-root' };
 
-    const key = getMessageKey(message, chat);
+    const key = getMessageKey(message, chat, renderedToto);
     const existingSlot = [...(renderedToto.querySelectorAll?.(`[${IMAGE_SLOT_ATTR}]`) || [])]
         .find(slot => slot.getAttribute(IMAGE_KEY_ATTR) === key);
     const rememberedSource = imageSources.get(key);
@@ -507,6 +668,7 @@ export async function maybeGenerateImageForRabbitMirror({ message, chat, rendere
         ? settings.imageSize
         : '1024x1024';
     const slot = ensureSlot(renderedToto, key);
+    if (!slot) return { skipped: 'missing-slot' };
 
     if ((mode === 'custom' && (!endpoint || !model)) || (mode === 'free' && !freeTemplate)) {
         const detail = mode === 'custom'
@@ -557,7 +719,11 @@ export async function maybeGenerateImageForRabbitMirror({ message, chat, rendere
 
 export function onImageGenerationSettingChanged(enabled) {
     missingConfigNoticeShown = false;
-    if (enabled) return;
+    if (enabled) {
+        // Mark current messages as baseline; only newly rendered RabbitMirrors generate images.
+        scanForNewRenderedRabbitMirrors({ generate: false });
+        return;
+    }
     for (const controller of activeRequests.values()) controller.abort();
     activeRequests.clear();
     document?.querySelectorAll?.(`[${IMAGE_SLOT_ATTR}]`)?.forEach(slot => slot.remove());
@@ -565,14 +731,27 @@ export function onImageGenerationSettingChanged(enabled) {
 }
 
 export function destroyImageGeneration() {
+    if (imageGenerationObserver) {
+        imageGenerationObserver.disconnect();
+        imageGenerationObserver = null;
+    }
+    if (imageGenerationScanTimer) {
+        clearTimeout(imageGenerationScanTimer);
+        imageGenerationScanTimer = 0;
+    }
+    for (const timer of imageGenerationRetryTimers) clearTimeout(timer);
+    imageGenerationRetryTimers.clear();
     onImageGenerationSettingChanged(false);
     completedKeys.clear();
     attemptedKeys.clear();
     imageSources.clear();
+    if (globalThis.__rabbitMirrorImageGenerationCleanup === destroyImageGeneration) {
+        delete globalThis.__rabbitMirrorImageGenerationCleanup;
+    }
 }
 
 export function getImageGenerationPromptPreviewForLatestMirror() {
-    const roots = [...document.querySelectorAll('toto[data-rabbit-mirror="true"]')];
+    const roots = getRenderedRabbitMirrorRootsForImageGeneration(document);
     const root = roots[roots.length - 1];
     if (!root) return '';
     return buildRabbitMirrorImagePrompt({

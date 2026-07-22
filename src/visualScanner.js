@@ -1,6 +1,6 @@
-import { updateLatestVisualSignature } from './storage.js?rmv=0.33.45';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=0.33.45';
-import { maybeGenerateImageForRabbitMirror } from './imageGeneration.js?rmv=0.33.45';
+import { updateLatestVisualSignature } from './storage.js?rmv=0.33.47';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=0.33.47';
+import { maybeGenerateImageForRabbitMirror } from './imageGeneration.js?rmv=0.33.47';
 
 const TOTO_RE = new RegExp('<toto\\b[^>]*(?:data-rabbit-mirror|data-rabbit-' + 'h' + 'ole)=[\"\']true[\"\'][^>]*>[\\s\\S]*?<\\/toto>', 'i');
 let lastScannedHash = '';
@@ -868,9 +868,31 @@ function rawSummaryText(messageHtml) {
     return match ? normalizedText(stripTags(match[1])) : '';
 }
 
+function renderedSummaryText(root) {
+    const summary = root?.querySelector?.('summary');
+    if (!summary) return '';
+    const clone = summary.cloneNode(true);
+    clone.querySelectorAll?.('button, [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat]')
+        ?.forEach?.(node => node.remove());
+    return normalizedText(clone.textContent || '');
+}
+
+function isRenderedRabbitMirrorDetails(details) {
+    if (!details?.matches?.('details')) return false;
+    const title = renderedSummaryText(details);
+    return /^【兔子镜[:：]/.test(title) || title.includes('兔子镜');
+}
+
+function findMirrorRootInScope(scope) {
+    if (!scope?.querySelector) return null;
+    const wrapped = scope.querySelector('toto[data-rabbit-mirror="true"], toto[data-rabbit-hole="true"]');
+    if (wrapped) return wrapped;
+    const details = [...scope.querySelectorAll('details')].filter(isRenderedRabbitMirrorDetails);
+    return details[details.length - 1] || null;
+}
+
 function findRenderedToto(message, chat, messageHtml) {
     if (typeof document === 'undefined') return null;
-    const mirrorSelector = 'toto[data-rabbit-mirror="true"], toto[data-rabbit-hole="true"]';
     const messageIndex = Array.isArray(chat) ? chat.lastIndexOf(message) : -1;
     const scopes = [];
     if (messageIndex >= 0) {
@@ -888,14 +910,18 @@ function findRenderedToto(message, chat, messageHtml) {
         }
     }
     for (const scope of scopes) {
-        const found = scope.querySelector?.(mirrorSelector);
+        const found = findMirrorRootInScope(scope);
         if (found) return found;
     }
 
     const expectedSummary = rawSummaryText(messageHtml);
-    const all = [...document.querySelectorAll(mirrorSelector)];
+    const wrapped = [...document.querySelectorAll('toto[data-rabbit-mirror="true"], toto[data-rabbit-hole="true"]')];
+    const orphanDetails = [...document.querySelectorAll('details')]
+        .filter(isRenderedRabbitMirrorDetails)
+        .filter(details => !details.closest('toto[data-rabbit-mirror="true"], toto[data-rabbit-hole="true"]'));
+    const all = [...wrapped, ...orphanDetails];
     if (expectedSummary) {
-        const matched = all.filter(toto => normalizedText(toto.querySelector?.('summary')?.textContent) === expectedSummary);
+        const matched = all.filter(root => renderedSummaryText(root) === expectedSummary);
         if (matched.length) return matched[matched.length - 1];
     }
     return all[all.length - 1] || null;
