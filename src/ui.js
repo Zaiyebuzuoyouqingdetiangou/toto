@@ -1,13 +1,12 @@
-import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=0.33.47';
-import { clearLastCombo } from './storage.js?rmv=0.33.47';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=0.33.47';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=0.33.47';
-import { refreshFeedbackCats, refreshMaintenanceRabbits, triggerInteractionDiagnosticOnce } from './outputSanitizer.js?rmv=0.33.47';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=0.33.47';
-import { connectImageGenerationModels, getImageGenerationPromptPreviewForLatestMirror, onImageGenerationSettingChanged } from './imageGeneration.js?rmv=0.33.47';
+import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=0.33.49';
+import { clearLastCombo } from './storage.js?rmv=0.33.49';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=0.33.49';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=0.33.49';
+import { refreshFeedbackCats, refreshMaintenanceRabbits, triggerInteractionDiagnosticOnce } from './outputSanitizer.js?rmv=0.33.49';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=0.33.49';
 
-const SETTINGS_UI_VERSION = '0.33.47';
-const RUNTIME_VERSION = '0.33.47';
+const SETTINGS_UI_VERSION = '0.33.49';
+const RUNTIME_VERSION = '0.33.49';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -35,27 +34,6 @@ function escapeHtml(value) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
-}
-
-function renderImageModelOptions(models = [], current = '') {
-    const select = $('#rh_image_model');
-    if (!select.length) return;
-    const list = [...new Set((Array.isArray(models) ? models : []).map(value => String(value || '').trim()).filter(Boolean))];
-    const selected = String(current || '').trim();
-    if (selected && !list.includes(selected)) list.unshift(selected);
-    const optionRows = list.length
-        ? ['<option value="">请选择模型</option>', ...list.map(item => '<option value="' + escapeHtml(item) + '">' + escapeHtml(item) + '</option>')]
-        : ['<option value="">请先连接模型</option>'];
-    select.html(optionRows.join(''));
-    select.val(selected);
-}
-
-function syncImageGenerationModeUI(mode) {
-    const normalized = mode === 'custom' ? 'custom' : 'free';
-    checked('#rh_image_mode_free', normalized === 'free');
-    checked('#rh_image_mode_custom', normalized === 'custom');
-    $('#rh_image_free_config').toggle(normalized === 'free');
-    $('#rh_image_custom_config').toggle(normalized === 'custom');
 }
 
 function renderMemoryScanResults(results) {
@@ -148,7 +126,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[挨打猫 v1.2＋小小维修兔 v1.32＋文生图测试版 v2D＋Menu QR v2.1]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.33.47 TEST</span>
+      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[挨打猫 v1.2＋小小维修兔 v1.32＋Menu QR v2.1]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.33.49 TEST</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -225,51 +203,6 @@ export function initRabbitMirrorUI() {
         </div>
       </details>
 
-      <details class="rabbit-mirror-section rabbit-mirror-image-generation-test">
-        <summary><span>文生图（测试版）</span><span class="rabbit-mirror-section-note">2D</span></summary>
-        <div class="rabbit-mirror-section-content">
-          <label class="checkbox_label" style="font-weight:700;"><input id="rh_image_generation" type="checkbox"> 开启随兔子镜生成配图</label>
-          <div id="rh_image_generation_config" class="rabbit-mirror-image-generation-config">
-            <div class="rabbit-mirror-image-mode-row" style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:6px 0 10px;">
-              <span style="font-weight:600;">生成方式</span>
-              <label class="checkbox_label" style="margin:0;"><input id="rh_image_mode_free" name="rh_image_mode" type="radio" value="free"> 免费成图</label>
-              <label class="checkbox_label" style="margin:0;"><input id="rh_image_mode_custom" name="rh_image_mode" type="radio" value="custom"> 自定义 API</label>
-            </div>
-            <div id="rh_image_free_config">
-              <label class="flex-container flexFlowColumn" style="gap:4px;margin:8px 0;">
-                <span>免费成图网站</span>
-                <input id="rh_image_free_url" class="text_pole" type="text" autocomplete="off" placeholder="https://…/{prompt}">
-              </label>
-            </div>
-            <div id="rh_image_custom_config">
-              <label class="flex-container flexFlowColumn" style="gap:4px;margin:8px 0;">
-                <span>接口地址</span>
-                <input id="rh_image_api_url" class="text_pole" type="url" autocomplete="off" placeholder="https://…/v1/images/generations">
-              </label>
-              <label class="flex-container flexFlowColumn" style="gap:4px;margin:8px 0;">
-                <span>API Key</span>
-                <input id="rh_image_api_key" class="text_pole" type="password" autocomplete="new-password" placeholder="可留空（本地或免鉴权接口）">
-              </label>
-              <div class="flex-container alignitemscenter" style="gap:8px;flex-wrap:wrap;margin:8px 0;">
-                <button id="rh_image_connect_models" class="menu_button" type="button">连接并拉取模型</button>
-              </div>
-              <label class="flex-container flexFlowColumn" style="gap:4px;margin:8px 0;">
-                <span>模型</span>
-                <select id="rh_image_model" class="text_pole"></select>
-              </label>
-            </div>
-            <label for="rh_image_size" class="flex-container alignitemscenter" style="gap:8px;flex-wrap:wrap;margin:8px 0;">
-              <span>图片尺寸</span>
-              <select id="rh_image_size" class="text_pole" style="max-width:220px;">
-                <option value="1024x1024">正方形 1024×1024</option>
-                <option value="1024x1536">竖图 1024×1536</option>
-                <option value="1536x1024">横图 1536×1024</option>
-              </select>
-            </label>
-            <button id="rh_image_prompt_preview" class="menu_button" type="button">预览最新兔子镜的文生图 Prompt</button>
-          </div>
-        </div>
-      </details>
     </div>
   </div>
 </div>`;
@@ -285,14 +218,6 @@ export function initRabbitMirrorUI() {
     checked('#rh_force_visual_scenery', settings.forceVisualScenery);
     checked('#rh_avoid_repeat', settings.avoidRepeat);
     checked('#rh_memory_scan_enabled', settings.memoryScanEnabled);
-    checked('#rh_image_generation', settings.imageGenerationEnabled);
-    $('#rh_image_free_url').val(settings.imageFreeSiteUrl || '');
-    $('#rh_image_api_url').val(settings.imageApiUrl || '');
-    $('#rh_image_api_key').val(settings.imageApiKey || '');
-    renderImageModelOptions(settings.imageAvailableModels || [], settings.imageModel || '');
-    $('#rh_image_size').val(settings.imageSize || '1024x1024');
-    $('#rh_image_generation_config').toggle(!!settings.imageGenerationEnabled);
-    syncImageGenerationModeUI(settings.imageGenerationMode || 'free');
 
     $('#rh_enabled').on('change', e => updateSettings({ enabled: e.target.checked, autoRabbitMirrorInjection: e.target.checked, mode: e.target.checked ? 'integrated' : 'off' }));
     $('#rh_feedback_cat').on('change', e => {
@@ -318,66 +243,6 @@ export function initRabbitMirrorUI() {
         } else {
             toastr?.warning?.('未找到聊天区域，暂时无法开始诊断。请进入具体聊天后重试。');
         }
-    });
-
-
-    $('#rh_image_generation').on('change', e => {
-        const enabled = !!e.target.checked;
-        updateSettings({ imageGenerationEnabled: enabled });
-        $('#rh_image_generation_config').toggle(enabled);
-        onImageGenerationSettingChanged(enabled);
-        toastr?.[enabled ? 'info' : 'success']?.(enabled
-            ? '兔子镜配图测试版已开启：仅在兔子镜成功生成后调用文生图接口。'
-            : '兔子镜配图已关闭：不会构建图片 Prompt，也不会调用文生图接口。');
-    });
-    $('input[name="rh_image_mode"]').on('change', e => {
-        const mode = e.target.value === 'custom' ? 'custom' : 'free';
-        updateSettings({ imageGenerationMode: mode });
-        syncImageGenerationModeUI(mode);
-    });
-    $('#rh_image_free_url').on('input change', e => updateSettings({ imageFreeSiteUrl: String(e.target.value || '').trim() }));
-    $('#rh_image_api_url').on('input change', e => updateSettings({ imageApiUrl: String(e.target.value || '').trim() }));
-    $('#rh_image_api_key').on('input change', e => updateSettings({ imageApiKey: String(e.target.value || '').trim() }));
-    $('#rh_image_connect_models').on('click', async () => {
-        const endpoint = String($('#rh_image_api_url').val() || '').trim();
-        const apiKey = String($('#rh_image_api_key').val() || '').trim();
-        updateSettings({ imageApiUrl: endpoint, imageApiKey: apiKey });
-        try {
-            const models = await connectImageGenerationModels({ endpoint, apiKey });
-            const current = String(getSettings().imageModel || '').trim();
-            const selected = models.includes(current) ? current : models[0] || '';
-            renderImageModelOptions(models, selected);
-            updateSettings({ imageAvailableModels: models, imageModel: selected });
-            toastr?.success?.('已连接成功，共拉取 ' + models.length + ' 个模型。');
-        } catch (error) {
-            console.error('[RabbitMirror] image model connect failed', error);
-            renderImageModelOptions(getSettings().imageAvailableModels || [], getSettings().imageModel || '');
-            toastr?.warning?.('连接失败：' + (error?.message || error));
-        }
-    });
-    $('#rh_image_model').on('change', e => updateSettings({ imageModel: String(e.target.value || '').trim() }));
-    $('#rh_image_size').on('change', e => updateSettings({ imageSize: e.target.value }));
-    $('#rh_image_prompt_preview').on('click', () => {
-        const prompt = getImageGenerationPromptPreviewForLatestMirror();
-        if (!prompt) {
-            toastr?.warning?.('当前聊天中没有可用于预览的兔子镜。');
-            return;
-        }
-        const dialog = document.createElement('div');
-        dialog.className = 'rabbit-mirror-image-prompt-preview';
-        dialog.setAttribute('role', 'dialog');
-        dialog.setAttribute('aria-modal', 'true');
-        dialog.innerHTML = `<div class="rabbit-mirror-image-prompt-preview-card"><div class="rabbit-mirror-image-prompt-preview-title">文生图 Prompt 预览</div><textarea readonly></textarea><div class="rabbit-mirror-image-prompt-preview-actions"><button type="button" data-rm-image-preview-action="copy">复制</button><button type="button" data-rm-image-preview-action="close">关闭</button></div></div>`;
-        dialog.querySelector('textarea').value = prompt;
-        dialog.addEventListener('click', async event => {
-            const action = event.target?.closest?.('[data-rm-image-preview-action]')?.dataset?.rmImagePreviewAction;
-            if (event.target === dialog || action === 'close') { dialog.remove(); return; }
-            if (action === 'copy') {
-                try { await navigator.clipboard.writeText(prompt); toastr?.success?.('文生图 Prompt 已复制。'); }
-                catch { toastr?.warning?.('复制失败，请在文本框中手动复制。'); }
-            }
-        });
-        document.body.appendChild(dialog);
     });
 
     $('#rh_memory_scan_enabled').on('change', e => {
@@ -462,7 +327,6 @@ export function initRabbitMirrorUI() {
         location.reload();
     });
 }
-
 
 export function destroyRabbitMirrorUI() {
     if (uiMountRetryTimer) {

@@ -23,16 +23,6 @@ export const defaultSettings = Object.freeze({
     maintenanceRabbitEnabled: true,
     feedbackCatEnabled: true,
 
-    // 随兔子镜生成配图（测试版）
-    imageGenerationEnabled: false,
-    imageGenerationMode: 'free',
-    imageFreeSiteUrl: 'https://image.pollinations.ai/prompt/{prompt}?width={width}&height={height}',
-    imageApiUrl: '',
-    imageApiKey: '',
-    imageModel: '',
-    imageAvailableModels: [],
-    imageSize: '1024x1024',
-
     hardStartup: true,
     hardChineseLock: true,
     userDirectivePriority: true,
@@ -73,6 +63,11 @@ export function getSettings() {
     if (settings.forceInteractiveMode !== undefined) delete settings.forceInteractiveMode;
     if (settings.uiAudit !== undefined) delete settings.uiAudit;
 
+    // Remove settings left by features that no longer exist in this build.
+    for (const key of Object.keys(settings)) {
+        if (!(key in defaultSettings)) delete settings[key];
+    }
+
     settings.themesMin = Number(settings.themesMin) || defaultSettings.themesMin;
     settings.themesMax = Number(settings.themesMax) || defaultSettings.themesMax;
     settings.formatsMin = Number(settings.formatsMin) || defaultSettings.formatsMin;
@@ -84,16 +79,6 @@ export function getSettings() {
     }
     settings.maintenanceRabbitEnabled = !!settings.maintenanceRabbitEnabled;
     settings.feedbackCatEnabled = settings.feedbackCatEnabled !== false;
-
-    settings.imageGenerationEnabled = !!settings.imageGenerationEnabled;
-    settings.imageGenerationMode = settings.imageGenerationMode === 'custom' ? 'custom' : 'free';
-    settings.imageFreeSiteUrl = String(settings.imageFreeSiteUrl || defaultSettings.imageFreeSiteUrl).trim().slice(0, 1600);
-    settings.imageApiUrl = String(settings.imageApiUrl || '').trim().slice(0, 1200);
-    settings.imageApiKey = String(settings.imageApiKey || '').trim().slice(0, 2400);
-    settings.imageModel = String(settings.imageModel || '').trim().slice(0, 240);
-    if (!Array.isArray(settings.imageAvailableModels)) settings.imageAvailableModels = [];
-    settings.imageAvailableModels = [...new Set(settings.imageAvailableModels.map(value => String(value || '').trim()).filter(Boolean))].slice(0, 120);
-    if (!['1024x1024', '1024x1536', '1536x1024'].includes(settings.imageSize)) settings.imageSize = defaultSettings.imageSize;
 
     delete settings.plainTextRescueMode;
     delete settings.codeBlockRescueMode;

@@ -1,6 +1,5 @@
-import { updateLatestVisualSignature } from './storage.js?rmv=0.33.47';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=0.33.47';
-import { maybeGenerateImageForRabbitMirror } from './imageGeneration.js?rmv=0.33.47';
+import { updateLatestVisualSignature } from './storage.js?rmv=0.33.49';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=0.33.49';
 
 const TOTO_RE = new RegExp('<toto\\b[^>]*(?:data-rabbit-mirror|data-rabbit-' + 'h' + 'ole)=[\"\']true[\"\'][^>]*>[\\s\\S]*?<\\/toto>', 'i');
 let lastScannedHash = '';
@@ -927,18 +926,6 @@ function findRenderedToto(message, chat, messageHtml) {
     return all[all.length - 1] || null;
 }
 
-async function tryGenerateImageForLatestAssistantMessage(mod) {
-    const chat = mod?.chat || globalThis.chat;
-    if (!Array.isArray(chat) || !chat.length) return false;
-    const recent = chat.slice(-6).reverse();
-    const message = recent.find(item => !item?.is_user && typeof item?.mes === 'string' && TOTO_RE.test(item.mes));
-    if (!message) return false;
-    const renderedToto = findRenderedToto(message, chat, message.mes);
-    if (!renderedToto?.isConnected) return false;
-    void maybeGenerateImageForRabbitMirror({ message, chat, renderedToto });
-    return true;
-}
-
 async function scanLatestAssistantMessage(mod) {
     const chat = mod?.chat || globalThis.chat;
     if (!Array.isArray(chat) || !chat.length) return;
@@ -978,20 +965,13 @@ export async function initVisualScanner() {
         const eventSource = mod?.eventSource;
         const eventTypes = mod?.event_types || {};
         if (!eventSource?.on) return;
-        const scheduleScan = (allowImageGeneration = false) => {
+        const scheduleScan = () => {
             setTimeout(() => scanLatestAssistantMessage(mod), 600);
             setTimeout(() => scanLatestAssistantMessage(mod), 1800);
-            if (allowImageGeneration) {
-                // Image generation is deliberately decoupled from the visual scanner's
-                // three-attempt limit. Mobile WebViews often mount the final DOM later.
-                for (const delay of [250, 700, 1400, 2600, 4500, 7500]) {
-                    setTimeout(() => tryGenerateImageForLatestAssistantMessage(mod), delay);
-                }
-            }
         };
         const generationEvents = [eventTypes.MESSAGE_RECEIVED, eventTypes.GENERATION_ENDED].filter(Boolean);
-        for (const eventName of [...new Set(generationEvents)]) eventSource.on(eventName, () => scheduleScan(true));
-        if (eventTypes.CHAT_CHANGED) eventSource.on(eventTypes.CHAT_CHANGED, () => scheduleScan(false));
+        for (const eventName of [...new Set(generationEvents)]) eventSource.on(eventName, scheduleScan);
+        if (eventTypes.CHAT_CHANGED) eventSource.on(eventTypes.CHAT_CHANGED, scheduleScan);
         console.debug('[RabbitMirror] visual scanner initialized');
     } catch (error) {
         console.debug('[RabbitMirror] visual scanner disabled:', error);
