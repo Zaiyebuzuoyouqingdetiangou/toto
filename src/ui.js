@@ -1,13 +1,13 @@
-import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=0.33.42';
-import { clearLastCombo } from './storage.js?rmv=0.33.42';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=0.33.42';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=0.33.42';
-import { refreshFeedbackCats, refreshMaintenanceRabbits, triggerInteractionDiagnosticOnce } from './outputSanitizer.js?rmv=0.33.42';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=0.33.42';
-import { connectImageGenerationModels, getImageGenerationPromptPreviewForLatestMirror, onImageGenerationSettingChanged } from './imageGeneration.js?rmv=0.33.42';
+import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=0.33.44';
+import { clearLastCombo } from './storage.js?rmv=0.33.44';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=0.33.44';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=0.33.44';
+import { refreshFeedbackCats, refreshMaintenanceRabbits, triggerInteractionDiagnosticOnce } from './outputSanitizer.js?rmv=0.33.44';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=0.33.44';
+import { connectImageGenerationModels, getImageGenerationPromptPreviewForLatestMirror, onImageGenerationSettingChanged } from './imageGeneration.js?rmv=0.33.44';
 
-const SETTINGS_UI_VERSION = '0.33.42';
-const RUNTIME_VERSION = '0.33.42';
+const SETTINGS_UI_VERSION = '0.33.44';
+const RUNTIME_VERSION = '0.33.44';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -148,7 +148,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[挨打猫 v1.1＋小小维修兔 v1.31＋文生图测试版 v2D＋Menu QR v2.1]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.33.42 TEST</span>
+      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[挨打猫 v1.1＋小小维修兔 v1.32＋文生图测试版 v2D＋Menu QR v2.1]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.33.44 TEST</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -235,7 +235,12 @@ export function initRabbitMirrorUI() {
               <label class="checkbox_label" style="margin:0;"><input id="rh_image_mode_free" name="rh_image_mode" type="radio" value="free"> 免费成图</label>
               <label class="checkbox_label" style="margin:0;"><input id="rh_image_mode_custom" name="rh_image_mode" type="radio" value="custom"> 自定义 API</label>
             </div>
-            <div id="rh_image_free_config"></div>
+            <div id="rh_image_free_config">
+              <label class="flex-container flexFlowColumn" style="gap:4px;margin:8px 0;">
+                <span>免费成图网站</span>
+                <input id="rh_image_free_url" class="text_pole" type="text" autocomplete="off" placeholder="https://…/{prompt}">
+              </label>
+            </div>
             <div id="rh_image_custom_config">
               <label class="flex-container flexFlowColumn" style="gap:4px;margin:8px 0;">
                 <span>接口地址</span>
@@ -281,6 +286,7 @@ export function initRabbitMirrorUI() {
     checked('#rh_avoid_repeat', settings.avoidRepeat);
     checked('#rh_memory_scan_enabled', settings.memoryScanEnabled);
     checked('#rh_image_generation', settings.imageGenerationEnabled);
+    $('#rh_image_free_url').val(settings.imageFreeSiteUrl || '');
     $('#rh_image_api_url').val(settings.imageApiUrl || '');
     $('#rh_image_api_key').val(settings.imageApiKey || '');
     renderImageModelOptions(settings.imageAvailableModels || [], settings.imageModel || '');
@@ -329,6 +335,7 @@ export function initRabbitMirrorUI() {
         updateSettings({ imageGenerationMode: mode });
         syncImageGenerationModeUI(mode);
     });
+    $('#rh_image_free_url').on('change', e => updateSettings({ imageFreeSiteUrl: String(e.target.value || '').trim() }));
     $('#rh_image_api_url').on('change', e => updateSettings({ imageApiUrl: String(e.target.value || '').trim() }));
     $('#rh_image_api_key').on('change', e => updateSettings({ imageApiKey: String(e.target.value || '').trim() }));
     $('#rh_image_connect_models').on('click', async () => {

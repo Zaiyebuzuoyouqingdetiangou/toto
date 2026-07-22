@@ -1,4 +1,4 @@
-import { getSettings } from './settings.js?rmv=0.33.42';
+import { getSettings } from './settings.js?rmv=0.33.44';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -7,11 +7,11 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=0.33.42';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=0.33.42';
+} from './feedbackCat.js?rmv=0.33.44';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=0.33.44';
 
 
-const RUNTIME_VERSION = '0.33.42';
+const RUNTIME_VERSION = '0.33.44';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -6038,7 +6038,7 @@ const SELECTION_ONLY_PLACEHOLDER_ATTR = 'data-rabbit-mirror-selection-only-place
 const SELECTION_ONLY_SOURCE_ATTR = 'data-rabbit-mirror-selection-only-source';
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '0.33.42-TEST-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.33.44-TEST-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -6420,76 +6420,19 @@ function encodeTextClippingBaseline(element, properties) {
 }
 
 
-const TEXT_CONTAINMENT_REPAIR_ATTR = 'data-rm-text-containment-repair';
-
-function maintenanceIsStructuralClipContainer(element) {
-    if (!element?.querySelectorAll) return false;
-    const tag = String(element.tagName || '').toLowerCase();
-    if (!/^(?:div|section|article|main|aside|figure|form)$/.test(tag)) return false;
-    const directText = maintenanceDirectTextLength(element);
-    const hasBlockStructure = !!element.querySelector('div,section,article,main,aside,header,footer,ul,ol,table,figure,details,form');
-    let hasPositionedContent = false;
-    for (const child of [...element.querySelectorAll('*')].slice(0, 80)) {
-        const style = maintenanceSafeComputedStyle(child);
-        if (!style) continue;
-        if ((style.position === 'absolute' || style.position === 'fixed') && maintenanceHasMeaningfulText(child)) {
-            hasPositionedContent = true;
-            break;
-        }
-    }
-    return directText < 2 && (hasBlockStructure || hasPositionedContent);
-}
-
-function repairMaintenanceAbsoluteTextContainment(root) {
-    if (!root?.querySelectorAll) return 0;
-    let repaired = 0;
-    const candidates = [...root.querySelectorAll('*')].slice(0, 420);
-    for (const element of candidates) {
-        if (!maintenanceIsVisibleContentElement(element) || !maintenanceHasMeaningfulText(element)) continue;
-        const style = maintenanceSafeComputedStyle(element);
-        if (!style || style.position !== 'absolute') continue;
-        const clientHeight = Number(element.clientHeight || 0);
-        const scrollHeight = Number(element.scrollHeight || 0);
-        if (clientHeight <= 1 || scrollHeight <= clientHeight + 6) continue;
-
-        const parent = element.offsetParent || element.parentElement;
-        if (!parent || parent === root || !root.contains(parent) || !parent.style) continue;
-        const parentRect = parent.getBoundingClientRect?.();
-        const elementRect = element.getBoundingClientRect?.();
-        if (!parentRect || !elementRect || parentRect.width <= 1) continue;
-
-        const topOffset = Math.max(0, elementRect.top - parentRect.top);
-        const requiredHeight = Math.ceil(Math.max(scrollHeight, elementRect.height) + topOffset);
-        const currentParentHeight = Math.ceil(Math.max(parent.clientHeight || 0, parentRect.height || 0));
-        if (requiredHeight <= currentParentHeight + 6) continue;
-
-        encodeTextClippingBaseline(element, ['height', 'min-height', 'max-height', 'overflow', 'overflow-x', 'overflow-y']);
-        encodeTextClippingBaseline(parent, ['height', 'min-height', 'max-height', 'overflow', 'overflow-x', 'overflow-y', 'box-sizing']);
-
-        // 绝对定位状态页承载了可增长正文时，让页面按内容增高，同时让其定位父级承担真实高度。
-        // 不解除父级 overflow:hidden，避免翻页、卡片、相框等媒介边界被破坏。
-        element.style.setProperty('height', 'auto', 'important');
-        element.style.setProperty('min-height', `${requiredHeight}px`, 'important');
-        element.style.setProperty('max-height', 'none', 'important');
-        parent.style.setProperty('height', 'auto', 'important');
-        parent.style.setProperty('min-height', `${requiredHeight}px`, 'important');
-        parent.style.setProperty('max-height', 'none', 'important');
-        parent.style.setProperty('box-sizing', 'border-box', 'important');
-        element.setAttribute(TEXT_CONTAINMENT_REPAIR_ATTR, 'absolute-page');
-        parent.setAttribute(TEXT_CONTAINMENT_REPAIR_ATTR, 'host-grown');
-        repaired += 1;
-        if (repaired >= 12) break;
-    }
-    return repaired;
-}
-
 function repairMaintenanceTextClipping(root) {
     if (!root?.querySelectorAll) return 0;
-    let repaired = repairMaintenanceAbsoluteTextContainment(root);
+    let repaired = 0;
     const candidates = findMaintenanceTextClippingCandidates(root);
     for (const evidence of candidates) {
         const element = evidence.element;
         if (!element?.style) continue;
+        const tag = String(element.tagName || '').toLowerCase();
+        const hasBlockStructure = !!element.querySelector?.('div,section,article,main,aside,header,footer,ul,ol,table,figure,details,form');
+        const directTextCarrier = maintenanceDirectTextLength(element) > 0;
+        const semanticLeafText = /^(?:p|span|li|td|th|h[1-6]|blockquote|pre|code|label|button|figcaption|dd|dt)$/.test(tag) && !hasBlockStructure;
+        // 只维修真正的叶级文字载体。含完整布局子树的画框、卡片、翻页和档案板只报告，不改结构。
+        if (!directTextCarrier && !semanticLeafText) continue;
         const properties = [
             'white-space', 'overflow-wrap', 'word-break', 'text-overflow',
             'width', 'max-width', 'min-width', 'box-sizing',
@@ -6503,16 +6446,14 @@ function repairMaintenanceTextClipping(root) {
         element.style.setProperty('overflow-wrap', 'anywhere', 'important');
         element.style.setProperty('word-break', 'break-word', 'important');
         element.style.setProperty('text-overflow', 'clip', 'important');
-        const structuralClipContainer = maintenanceIsStructuralClipContainer(element);
-        // 只有真正的文字载体自身被截断时才解除 overflow。
-        // 结构外壳、翻页容器、相框和卡片继续保留原裁切边界，避免正文漏到媒介之外。
-        if (!structuralClipContainer) {
+        const computedPosition = String(maintenanceSafeComputedStyle(element)?.position || '').toLowerCase();
+        // 仅解除叶级、非绝对定位文字自身的裁切；绝不打开媒介外壳或叠层页面的 overflow。
+        if (evidence.lineClamped && computedPosition !== 'absolute' && computedPosition !== 'fixed') {
             element.style.setProperty('overflow', 'visible', 'important');
             element.style.setProperty('overflow-x', 'visible', 'important');
             element.style.setProperty('overflow-y', 'visible', 'important');
         }
 
-        const tag = String(element.tagName || '').toLowerCase();
         if (evidence.noWrap || evidence.horizontal) {
             element.style.setProperty('white-space', tag === 'pre' || tag === 'code' ? 'pre-wrap' : 'normal', 'important');
             // 解除 nowrap 后文字会新增行；即使首次采样只有横向溢出，也必须同步释放固定高度。
@@ -8366,7 +8307,7 @@ function chooseMaintenanceAutomaticMode(inspection) {
 }
 
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.31';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.32';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。

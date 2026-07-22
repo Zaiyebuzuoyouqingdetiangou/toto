@@ -1,6 +1,6 @@
-import { updateLatestVisualSignature } from './storage.js?rmv=0.33.42';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=0.33.42';
-import { maybeGenerateImageForRabbitMirror } from './imageGeneration.js?rmv=0.33.42';
+import { updateLatestVisualSignature } from './storage.js?rmv=0.33.44';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=0.33.44';
+import { maybeGenerateImageForRabbitMirror } from './imageGeneration.js?rmv=0.33.44';
 
 const TOTO_RE = new RegExp('<toto\\b[^>]*(?:data-rabbit-mirror|data-rabbit-' + 'h' + 'ole)=[\"\']true[\"\'][^>]*>[\\s\\S]*?<\\/toto>', 'i');
 let lastScannedHash = '';

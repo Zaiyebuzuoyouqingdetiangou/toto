@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=0.33.42';
-import { buildRabbitMirrorImagePrompt } from './imageGenerationPrompt.js?rmv=0.33.42';
+import { getSettings } from './settings.js?rmv=0.33.44';
+import { buildRabbitMirrorImagePrompt } from './imageGenerationPrompt.js?rmv=0.33.44';
 
 const IMAGE_SLOT_ATTR = 'data-rabbit-mirror-image-slot';
 const IMAGE_KEY_ATTR = 'data-rabbit-mirror-image-key';
