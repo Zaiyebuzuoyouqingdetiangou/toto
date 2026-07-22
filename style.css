@@ -290,7 +290,7 @@ toto[data-rabbit-mirror="true"] summary {
   line-height: 1.5 !important;
 }
 
-/* 0.33.45 文生图测试版：配置仅在总开关开启时显示。 */
+/* 0.33.47 文生图测试版：配置仅在总开关开启时显示。 */
 .rabbit-mirror-image-generation-config {
   margin: 8px 0 0 26px;
   padding: 10px;
