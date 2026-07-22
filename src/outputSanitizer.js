@@ -1,4 +1,4 @@
-import { getSettings } from './settings.js?rmv=0.33.54';
+import { getSettings } from './settings.js?rmv=0.33.55';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -7,11 +7,11 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=0.33.54';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=0.33.54';
+} from './feedbackCat.js?rmv=0.33.55';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=0.33.55';
 
 
-const RUNTIME_VERSION = '0.33.54';
+const RUNTIME_VERSION = '0.33.55';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -1011,6 +1011,7 @@ const HINTED_PSEUDO_RESCUE_ATTR = 'data-rabbit-mirror-hinted-pseudo-rescue';
 const CHANGE_PSEUDO_RESCUE_ATTR = 'data-rabbit-mirror-change-pseudo-rescue';
 const DIRECT_ID_CLICK_RESCUE_ATTR = 'data-rabbit-mirror-direct-id-click-rescue';
 const DIRECT_ID_CLASS_STATE_RESCUE_ATTR = 'data-rabbit-mirror-direct-id-class-state-rescue';
+const RAW_NAMED_FUNCTION_RESCUE_ATTR = 'data-rabbit-mirror-raw-named-function-rescue';
 const MARKDOWN_CSS_COMMENT_RESCUE_ATTR = 'data-rabbit-mirror-markdown-css-comment-rescue';
 const PSEUDO_ACTIVE_ATTR = 'data-rm-pseudo-active';
 const pseudoInteractionStates = new WeakMap();
@@ -4626,6 +4627,12 @@ function resolveRenderedCounterpart(rawRoot, renderedRoot, rawElement, selector 
         return index >= 0 ? (renderedInputs[index] || null) : null;
     }
 
+    const rawId = String(rawElement.id || '').trim();
+    if (rawId) {
+        const idCandidate = resolveScopedPseudoId(renderedRoot, rawId);
+        if (idCandidate && String(idCandidate.tagName || '').toLowerCase() === rawTag) return idCandidate;
+    }
+
     const path = getElementChildIndexPath(rawRoot, rawElement);
     const pathCandidate = path ? resolveElementChildIndexPath(renderedRoot, path) : null;
     if (pathCandidate && String(pathCandidate.tagName || '').toLowerCase() === rawTag) return pathCandidate;
@@ -5023,6 +5030,256 @@ function installRawMessageDirectIdClickProgramRescue(root) {
         const actions = collectDirectIdClickAssignments(source, root);
         if (!actions?.length) continue;
         if (bindDirectIdClickActions(renderedTrigger, actions)) installed += 1;
+    }
+    return installed;
+}
+
+
+function stripSafeJavaScriptComments(sourceText) {
+    const source = String(sourceText || '');
+    let output = '';
+    let quote = '';
+    let escaped = false;
+    let lineComment = false;
+    let blockComment = false;
+
+    for (let index = 0; index < source.length; index += 1) {
+        const char = source[index];
+        const next = source[index + 1] || '';
+        if (lineComment) {
+            if (char === '\n' || char === '\r') {
+                lineComment = false;
+                output += char;
+            } else output += ' ';
+            continue;
+        }
+        if (blockComment) {
+            if (char === '*' && next === '/') {
+                blockComment = false;
+                output += '  ';
+                index += 1;
+            } else output += char === '\n' || char === '\r' ? char : ' ';
+            continue;
+        }
+        if (quote) {
+            output += char;
+            if (escaped) escaped = false;
+            else if (char === '\\') escaped = true;
+            else if (char === quote) quote = '';
+            continue;
+        }
+        if (char === '"' || char === "'" || char === '`') {
+            quote = char;
+            output += char;
+            continue;
+        }
+        if (char === '/' && next === '/') {
+            lineComment = true;
+            output += '  ';
+            index += 1;
+            continue;
+        }
+        if (char === '/' && next === '*') {
+            blockComment = true;
+            output += '  ';
+            index += 1;
+            continue;
+        }
+        output += char;
+    }
+    return output;
+}
+
+function findSafeJavaScriptClosingBrace(sourceText, openIndex) {
+    const source = String(sourceText || '');
+    if (source[openIndex] !== '{') return -1;
+    let depth = 0;
+    let quote = '';
+    let escaped = false;
+    let lineComment = false;
+    let blockComment = false;
+
+    for (let index = openIndex; index < source.length; index += 1) {
+        const char = source[index];
+        const next = source[index + 1] || '';
+        if (lineComment) {
+            if (char === '\n' || char === '\r') lineComment = false;
+            continue;
+        }
+        if (blockComment) {
+            if (char === '*' && next === '/') {
+                blockComment = false;
+                index += 1;
+            }
+            continue;
+        }
+        if (quote) {
+            if (escaped) escaped = false;
+            else if (char === '\\') escaped = true;
+            else if (char === quote) quote = '';
+            continue;
+        }
+        if (char === '"' || char === "'" || char === '`') {
+            quote = char;
+            continue;
+        }
+        if (char === '/' && next === '/') {
+            lineComment = true;
+            index += 1;
+            continue;
+        }
+        if (char === '/' && next === '*') {
+            blockComment = true;
+            index += 1;
+            continue;
+        }
+        if (char === '{') depth += 1;
+        else if (char === '}') {
+            depth -= 1;
+            if (depth === 0) return index;
+            if (depth < 0) return -1;
+        }
+    }
+    return -1;
+}
+
+function extractSafeNamedFunctionBody(rawRoot, functionName) {
+    const name = String(functionName || '').trim();
+    if (!rawRoot?.querySelectorAll || !/^[a-zA-Z_$][\w$]*$/.test(name)) return '';
+    const headerRe = new RegExp(`function\\s+${escapeRegExp(name)}\\s*\\(\\s*\\)\\s*\\{`, 'g');
+    for (const script of rawRoot.querySelectorAll('script')) {
+        const source = String(script.textContent || '');
+        headerRe.lastIndex = 0;
+        const match = headerRe.exec(source);
+        if (!match) continue;
+        const openIndex = source.indexOf('{', match.index + match[0].length - 1);
+        const closeIndex = findSafeJavaScriptClosingBrace(source, openIndex);
+        if (openIndex >= 0 && closeIndex > openIndex) return source.slice(openIndex + 1, closeIndex);
+    }
+    return '';
+}
+
+function resolveRenderedClassName(target, rawClassName, root) {
+    const rawName = String(rawClassName || '').trim();
+    if (!target?.classList || !/^[a-zA-Z_][\w-]*$/.test(rawName)) return '';
+    if (target.classList.contains(rawName)) return rawName;
+    const prefix = inferRenderedClassPrefix(target, [rawName], root);
+    return `${prefix || ''}${rawName}`;
+}
+
+function parseSafeNamedFunctionClassBranch(branchText, variableTargets, root) {
+    const source = String(branchText || '');
+    const actions = [];
+    const actionRe = /([a-zA-Z_$][\w$]*)\s*\.\s*classList\s*\.\s*(add|remove)\s*\(\s*(['"])([a-zA-Z_][\w-]*)\3\s*\)\s*;?/g;
+    let cursor = 0;
+    let match;
+    while ((match = actionRe.exec(source))) {
+        if (source.slice(cursor, match.index).trim()) return null;
+        const target = variableTargets.get(match[1]);
+        const className = resolveRenderedClassName(target, match[4], root);
+        if (!target || !className) return null;
+        actions.push({ target, operation: match[2], className });
+        cursor = match.index + match[0].length;
+    }
+    if (source.slice(cursor).trim() || !actions.length) return null;
+    return actions;
+}
+
+function parseSafeNamedFunctionClassProgram(rawRoot, renderedRoot, functionName) {
+    const rawBody = extractSafeNamedFunctionBody(rawRoot, functionName);
+    if (!rawBody) return null;
+    let source = stripSafeJavaScriptComments(rawBody);
+    const variableTargets = new Map();
+    const declarationRe = /\b(?:const|let|var)\s+([a-zA-Z_$][\w$]*)\s*=\s*document\s*\.\s*getElementById\s*\(\s*(['"])([a-zA-Z_][\w:.-]*)\2\s*\)\s*;?/g;
+    source = source.replace(declarationRe, (whole, variableName, quote, rawId) => {
+        const target = resolveScopedPseudoId(renderedRoot, rawId);
+        if (target) variableTargets.set(variableName, target);
+        return ' '.repeat(whole.length);
+    });
+    if (!variableTargets.size) return null;
+
+    const conditionRe = /if\s*\(\s*([a-zA-Z_$][\w$]*)\s*\.\s*classList\s*\.\s*contains\s*\(\s*(['"])([a-zA-Z_][\w-]*)\2\s*\)\s*\)\s*\{/g;
+    const conditionMatch = conditionRe.exec(source);
+    if (!conditionMatch || source.slice(0, conditionMatch.index).trim()) return null;
+    const conditionTarget = variableTargets.get(conditionMatch[1]);
+    const conditionClassName = resolveRenderedClassName(conditionTarget, conditionMatch[3], renderedRoot);
+    if (!conditionTarget || !conditionClassName) return null;
+
+    const trueOpen = source.indexOf('{', conditionMatch.index + conditionMatch[0].length - 1);
+    const trueClose = findSafeJavaScriptClosingBrace(source, trueOpen);
+    if (trueClose < 0) return null;
+    const afterTrue = source.slice(trueClose + 1);
+    const elseMatch = /^\s*else\s*\{/.exec(afterTrue);
+    if (!elseMatch) return null;
+    const falseOpen = trueClose + 1 + elseMatch[0].lastIndexOf('{');
+    const falseClose = findSafeJavaScriptClosingBrace(source, falseOpen);
+    if (falseClose < 0 || source.slice(falseClose + 1).trim()) return null;
+
+    const whenActive = parseSafeNamedFunctionClassBranch(source.slice(trueOpen + 1, trueClose), variableTargets, renderedRoot);
+    const whenInactive = parseSafeNamedFunctionClassBranch(source.slice(falseOpen + 1, falseClose), variableTargets, renderedRoot);
+    if (!whenActive?.length || !whenInactive?.length) return null;
+    return {
+        functionName,
+        conditionTarget,
+        conditionClassName,
+        whenActive,
+        whenInactive,
+        triggers: new Set(),
+    };
+}
+
+function applySafeNamedFunctionClassProgram(program) {
+    if (!program?.conditionTarget?.classList) return;
+    const wasActive = program.conditionTarget.classList.contains(program.conditionClassName);
+    const actions = wasActive ? program.whenActive : program.whenInactive;
+    for (const action of actions || []) {
+        if (!action?.target?.classList) continue;
+        action.target.classList[action.operation](action.className);
+    }
+    const isActive = program.conditionTarget.classList.contains(program.conditionClassName);
+    for (const trigger of program.triggers || []) {
+        trigger?.setAttribute?.('aria-pressed', isActive ? 'true' : 'false');
+    }
+}
+
+function installRawMessageNamedFunctionClassRescue(root) {
+    if (!root?.querySelectorAll) return 0;
+    const rawMessage = getRawAssistantMessageForRenderedRoot(root);
+    const rawRoot = chooseMatchingRawRabbitMirrorRoot(rawMessage, root);
+    if (!rawRoot?.querySelectorAll) return 0;
+
+    const programs = new Map();
+    let installed = 0;
+    for (const rawTrigger of rawRoot.querySelectorAll('[onclick]')) {
+        const callMatch = /^\s*([a-zA-Z_$][\w$]*)\s*\(\s*\)\s*;?\s*$/.exec(String(rawTrigger.getAttribute('onclick') || ''));
+        if (!callMatch) continue;
+        const renderedTrigger = resolveRenderedCounterpart(rawRoot, root, rawTrigger, '*');
+        if (!renderedTrigger || renderedTrigger.hasAttribute(RAW_NAMED_FUNCTION_RESCUE_ATTR)) continue;
+
+        let program = programs.get(callMatch[1]);
+        if (!program) {
+            program = parseSafeNamedFunctionClassProgram(rawRoot, root, callMatch[1]);
+            if (!program) continue;
+            programs.set(callMatch[1], program);
+        }
+
+        preparePseudoTrigger(renderedTrigger);
+        const activate = event => {
+            if (event?.type === 'click' && shouldIgnorePseudoToggleEvent(event, renderedTrigger)) return;
+            if (event?.type === 'keydown') {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+            }
+            event?.preventDefault?.();
+            applySafeNamedFunctionClassProgram(program);
+        };
+        renderedTrigger.addEventListener('click', activate, false);
+        renderedTrigger.addEventListener('keydown', activate, false);
+        renderedTrigger.setAttribute(RAW_NAMED_FUNCTION_RESCUE_ATTR, callMatch[1]);
+        renderedTrigger.setAttribute(DIRECT_ID_CLICK_RESCUE_ATTR, 'true');
+        renderedTrigger.setAttribute(DIRECT_ID_CLASS_STATE_RESCUE_ATTR, 'true');
+        program.triggers.add(renderedTrigger);
+        installed += 1;
     }
     return installed;
 }
@@ -5842,6 +6099,9 @@ function installIntelligentInteractionRescue(root) {
     // SillyTavern/DOMPurify 可能在渲染前移除 onclick。此时从当前消息的原始 HTML
     // 回读安全可解析的 getElementById 样式/文字赋值，并按同一 DOM 路径绑定到渲染节点。
     installRawMessageDirectIdClickProgramRescue(root);
+    // 命名函数仅接受受限的 getElementById + classList.contains/add/remove 两分支状态机；
+    // 不执行原始 script，只把安全类名切换重新绑定到当前兔子镜。
+    installRawMessageNamedFunctionClassRescue(root);
     // 回读只改写触发元素自身的安全 onclick（文字/样式），并改造成可逆点击。
     installRawMessageSelfMutationRescue(root);
     // 宿主会移除 onmouseover/onmouseout；从原始消息回读仅修改 this.style 的安全样式赋值，
@@ -6319,7 +6579,7 @@ const mobileLayoutRescueStates = new WeakMap();
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '0.33.54-TEST-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.33.55-TEST-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -8073,6 +8333,7 @@ function recoveredInlineStateProgramCount(root) {
         `[${DIRECT_ID_CLICK_RESCUE_ATTR}]`,
         `[${DIRECT_ID_CLASS_STATE_RESCUE_ATTR}]`,
         `[${RAW_SELF_MUTATION_RESCUE_ATTR}]`,
+        `[${RAW_NAMED_FUNCTION_RESCUE_ATTR}]`,
     ].join(',');
     return new Set([...root.querySelectorAll(selector)]).size;
 }
@@ -9675,7 +9936,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.37';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.38';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -9697,12 +9958,15 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
         scopeRabbitMirrorInteractionIds(target);
         const overlayCountBefore = target.querySelectorAll?.(`[${DECORATIVE_OVERLAY_PASS_THROUGH_ATTR}]`)?.length || 0;
         const rawHoverCountBefore = Number.parseInt(target.dataset?.rabbitMirrorRawHoverFallback || '0', 10) || 0;
+        const recoveredProgramCountBefore = recoveredInlineStateProgramCount(target);
         const disabledChoiceRepairCount = installDisabledOnlyChoiceFallback(target);
         installIntelligentInteractionRescue(target);
         const overlayCountAfter = target.querySelectorAll?.(`[${DECORATIVE_OVERLAY_PASS_THROUGH_ATTR}]`)?.length || 0;
         const rawHoverCountAfter = Number.parseInt(target.dataset?.rabbitMirrorRawHoverFallback || '0', 10) || 0;
+        const recoveredProgramCountAfter = recoveredInlineStateProgramCount(target);
         const overlayRepairCount = Math.max(0, overlayCountAfter - overlayCountBefore);
         const rawHoverRepairCount = Math.max(0, rawHoverCountAfter - rawHoverCountBefore);
+        const recoveredProgramRepairCount = Math.max(0, recoveredProgramCountAfter - recoveredProgramCountBefore);
         const crossParentCheckedCount = Number.parseInt(target.getAttribute?.(CROSS_PARENT_CHECKED_ROOT_ATTR) || '0', 10) || 0;
         const checkedHasStateCount = Number.parseInt(target.getAttribute?.(CHECKED_HAS_STATE_RULE_COUNT_ATTR) || '0', 10) || 0;
         const selectionFallbackCount = installSelectionOnlyStateFallback(target);
@@ -9719,6 +9983,8 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
             || inertActionCount > 0
             || overlayRepairCount > 0
             || rawHoverRepairCount > 0
+            || recoveredProgramRepairCount > 0
+            || recoveredProgramCountAfter > 0
             || crossParentCheckedCount > 0
             || checkedHasStateCount > 0
             || meaningfulCheckedRoute;
@@ -9729,7 +9995,7 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
             .map(item => item.trim())
             .filter(item => item && item !== 'none');
         // 不再把“调用了总入口”冒充为“命中了一条急救路线”；选择样式专用结构只有在安全补出分支提示后才算修复。
-        return genuinelyRescued ? Math.max(routes.length, disabledChoiceRepairCount, inertActionRepairCount, disabledChoiceCount, inertActionCount, overlayRepairCount, rawHoverRepairCount, crossParentCheckedCount, checkedHasStateCount) : 0;
+        return genuinelyRescued ? Math.max(routes.length, disabledChoiceRepairCount, inertActionRepairCount, disabledChoiceCount, inertActionCount, overlayRepairCount, rawHoverRepairCount, recoveredProgramRepairCount, recoveredProgramCountAfter, crossParentCheckedCount, checkedHasStateCount) : 0;
     } },
 ]);
 
