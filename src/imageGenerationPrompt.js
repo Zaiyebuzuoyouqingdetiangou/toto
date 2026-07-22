@@ -16,6 +16,7 @@ export function buildRabbitMirrorImagePrompt({
     charAppearance = '',
     userName = 'USER',
     userAppearance = '',
+    compact = false,
 } = {}) {
     const title = cleanText(mirrorTitle, 180) || '未命名兔子镜';
     const content = cleanText(mirrorContent, MAX_MIRROR_CHARS) || '当前兔子镜没有可提取的可见正文。';
@@ -23,6 +24,13 @@ export function buildRabbitMirrorImagePrompt({
     const safeUserName = cleanText(userName, 80) || 'USER';
     const safeCharAppearance = cleanText(charAppearance, MAX_APPEARANCE_CHARS) || '未提供明确外观；仅使用本轮内容中已经明确的信息，不得擅自固定发色、瞳色、体型或服装。';
     const safeUserAppearance = cleanText(userAppearance, MAX_APPEARANCE_CHARS) || '未提供明确外观；仅使用本轮内容中已经明确的信息，不得擅自固定发色、瞳色、体型或服装。';
+
+    if (compact) {
+        const compactContent = cleanText(content, 900);
+        const compactChar = cleanText(safeCharAppearance, 280);
+        const compactUser = cleanText(safeUserAppearance, 280);
+        return `2D 动漫插画，非写实、非摄影、非 3D。根据兔子镜内容生成真实场景化画面，不画网页截图或大面积 UI。标题：${title}。内容：${compactContent}。CHAR ${safeCharName} 外观：${compactChar}。USER ${safeUserName} 外观：${compactUser}。只让本轮实际在场的人物入镜；无人场景不强加人物。主体完整，构图、透视、光线与空间关系自然。避免多手多脚、缺失或额外肢体、人物融合、脸部重叠、五官错位、重复或无关人物、主体裁切、乱码、文字、字幕、水印、标志、二维码、按钮、边框、菜单、聊天气泡与 UI。禁止黑红警报、霓虹赛博和恐怖模板化。非血腥、非暴力、非恐怖、非猎奇；不画血液、伤口、断肢、尸体、内脏、酷刑、腐烂或攻击命中过程。直接生成画面。`;
+    }
 
     return `【RabbitMirror 文生图专用 Prompt｜仅用于本次配图】
 

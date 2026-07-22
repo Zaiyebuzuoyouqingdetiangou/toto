@@ -1,10 +1,10 @@
-import { getSettings } from './settings.js?rmv=0.33.44';
-import { buildRabbitMirrorImagePrompt } from './imageGenerationPrompt.js?rmv=0.33.44';
+import { getSettings } from './settings.js?rmv=0.33.45';
+import { buildRabbitMirrorImagePrompt } from './imageGenerationPrompt.js?rmv=0.33.45';
 
 const IMAGE_SLOT_ATTR = 'data-rabbit-mirror-image-slot';
 const IMAGE_KEY_ATTR = 'data-rabbit-mirror-image-key';
 const IMAGE_LIGHTBOX_ID = 'rabbit-mirror-image-lightbox';
-const DEFAULT_FREE_ENDPOINT = 'https://image.pollinations.ai/prompt/{prompt}?width={width}&height={height}';
+const DEFAULT_FREE_ENDPOINT = 'https://image.pollinations.ai/prompt/{prompt}?width={width}&height={height}&nologo=true&safe=true';
 const activeRequests = new Map();
 const completedKeys = new Set();
 const attemptedKeys = new Set();
@@ -166,15 +166,85 @@ function validateEndpoint(value) {
     }
 }
 
+function normalizeImageGenerationEndpoint(value) {
+    const base = validateEndpoint(value);
+    if (!base) return '';
+    try {
+        const url = new URL(base);
+        if (/\/models\/?$/i.test(url.pathname)) {
+            url.pathname = url.pathname.replace(/\/models\/?$/i, '/images/generations');
+        } else if (/\/v1\/?$/i.test(url.pathname)) {
+            url.pathname = `${url.pathname.replace(/\/$/, '')}/images/generations`;
+        } else if (!/\/images\/generations\/?$/i.test(url.pathname) && (url.pathname === '/' || !url.pathname)) {
+            url.pathname = '/v1/images/generations';
+        }
+        return url.href;
+    } catch {
+        return '';
+    }
+}
+
+function buildSillyTavernCorsProxyUrl(targetUrl) {
+    const target = validateEndpoint(targetUrl);
+    if (!target || !globalThis.location?.origin) return '';
+    return `${globalThis.location.origin}/proxy/${target}`;
+}
+
+let requestHeaderPromise = null;
+async function getSameOriginRequestHeaders() {
+    if (!requestHeaderPromise) {
+        requestHeaderPromise = import('../../../../../script.js')
+            .then(mod => typeof mod?.getRequestHeaders === 'function' ? mod.getRequestHeaders() : {})
+            .catch(() => ({}));
+    }
+    return { ...(await requestHeaderPromise) };
+}
+
+function isLikelyCorsOrNetworkError(error) {
+    const text = String(error?.message || error || '');
+    return error instanceof TypeError || /failed to fetch|networkerror|load failed|cors/i.test(text);
+}
+
+async function fetchWithCorsProxyFallback(targetUrl, init = {}) {
+    try {
+        return await fetch(targetUrl, init);
+    } catch (directError) {
+        if (!isLikelyCorsOrNetworkError(directError)) throw directError;
+        const proxyUrl = buildSillyTavernCorsProxyUrl(targetUrl);
+        if (!proxyUrl) throw directError;
+        const sameOriginHeaders = await getSameOriginRequestHeaders();
+        const response = await fetch(proxyUrl, {
+            ...init,
+            headers: { ...sameOriginHeaders, ...(init.headers || {}) },
+        });
+        if (!response.ok) {
+            const text = await response.clone().text().catch(() => '');
+            if (/cors proxy is disabled/i.test(text)) {
+                throw new Error('浏览器跨域被拦截，且 SillyTavern 的 CORS 代理尚未开启。');
+            }
+        }
+        return response;
+    }
+}
+
 function normalizeFreeTemplate(value) {
     const source = String(value || '').trim() || DEFAULT_FREE_ENDPOINT;
-    const probe = source
-        .replaceAll('{prompt}', 'test')
-        .replaceAll('{width}', '1024')
-        .replaceAll('{height}', '1024');
     try {
-        const url = new URL(probe, globalThis.location?.href || 'https://localhost/');
-        if (!['http:', 'https:'].includes(url.protocol)) return '';
+        const probeSource = source
+            .replaceAll('{prompt}', 'test')
+            .replaceAll('{width}', '1024')
+            .replaceAll('{height}', '1024');
+        const probe = new URL(probeSource, globalThis.location?.href || 'https://localhost/');
+        if (!['http:', 'https:'].includes(probe.protocol)) return '';
+
+        // Pollinations users normally paste only the site root. Expand it into the
+        // actual direct-image endpoint so the browser can load it without CORS fetch.
+        if (probe.hostname.toLowerCase() === 'image.pollinations.ai') {
+            const original = new URL(source, globalThis.location?.href || 'https://localhost/');
+            if (!/\{prompt\}/.test(source) && !/^\/prompt\//i.test(original.pathname)) {
+                return `${original.origin}/prompt/{prompt}?width={width}&height={height}&nologo=true&safe=true`;
+            }
+        }
         return source;
     } catch {
         return '';
@@ -296,7 +366,7 @@ function normalizeModelList(payload) {
 }
 
 function deriveModelsEndpoint(endpoint) {
-    const base = validateEndpoint(endpoint);
+    const base = normalizeImageGenerationEndpoint(endpoint);
     if (!base) return '';
     try {
         const url = new URL(base);
@@ -337,13 +407,37 @@ function buildFreeEndpointUrl(template, prompt, size) {
     }
 }
 
+function loadRemoteImageDirect(src, signal, timeoutMs = 120000) {
+    return new Promise((resolve, reject) => {
+        if (!src) { reject(new Error('免费成图地址为空。')); return; }
+        const image = new Image();
+        let settled = false;
+        const finish = (callback, value) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            signal?.removeEventListener?.('abort', onAbort);
+            image.onload = null;
+            image.onerror = null;
+            callback(value);
+        };
+        const onAbort = () => finish(reject, new DOMException('Aborted', 'AbortError'));
+        const timer = setTimeout(() => finish(reject, new Error('免费成图等待超时。')), timeoutMs);
+        image.onload = () => finish(resolve, src);
+        image.onerror = () => finish(reject, new Error('免费成图地址未能加载图片；请检查网站是否支持直接成图。'));
+        signal?.addEventListener?.('abort', onAbort, { once: true });
+        image.referrerPolicy = 'no-referrer';
+        image.src = src;
+    });
+}
+
 async function callCustomImageEndpoint({ endpoint, apiKey, model, size, prompt, signal }) {
     const headers = { 'Content-Type': 'application/json' };
     if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
     const body = { prompt, n: 1, size };
     if (model) body.model = model;
 
-    const response = await fetch(endpoint, {
+    const response = await fetchWithCorsProxyFallback(endpoint, {
         method: 'POST',
         headers,
         body: JSON.stringify(body),
@@ -366,19 +460,8 @@ async function callCustomImageEndpoint({ endpoint, apiKey, model, size, prompt, 
 
 async function callFreeImageEndpoint({ template, prompt, size, signal }) {
     const endpoint = buildFreeEndpointUrl(template, prompt, size);
-    if (!endpoint) throw new Error('免费成图地址无效；请填写可直接访问图片的地址模板。');
-    const response = await fetch(endpoint, { method: 'GET', signal });
-    if (!response.ok) {
-        const text = await response.text().catch(() => '');
-        throw new Error(`免费成图返回 ${response.status}${text ? `：${text.slice(0, 240)}` : ''}`);
-    }
-    const contentType = String(response.headers.get('content-type') || '').toLowerCase();
-    if (contentType.startsWith('image/')) return URL.createObjectURL(await response.blob());
-    if (!contentType.includes('json')) throw new Error('免费成图没有返回图片；请检查免费成图地址是否支持直接生成图片。');
-    const payload = await response.json();
-    const image = firstImageFromJson(payload);
-    if (!image) throw new Error('免费成图响应中未找到可识别的图片 URL 或 base64 数据。');
-    return image;
+    if (!endpoint) throw new Error('免费成图地址无效；可填写 Pollinations 根地址或带 {prompt} 的图片地址模板。');
+    return await loadRemoteImageDirect(endpoint, signal);
 }
 
 export async function connectImageGenerationModels({ endpoint, apiKey } = {}) {
@@ -386,7 +469,7 @@ export async function connectImageGenerationModels({ endpoint, apiKey } = {}) {
     if (!modelsEndpoint) throw new Error('请先填写完整的文生图 API 地址。');
     const headers = {};
     if (apiKey) headers.Authorization = `Bearer ${String(apiKey).trim()}`;
-    const response = await fetch(modelsEndpoint, { method: 'GET', headers });
+    const response = await fetchWithCorsProxyFallback(modelsEndpoint, { method: 'GET', headers });
     if (!response.ok) {
         const text = await response.text().catch(() => '');
         throw new Error(`拉取模型失败 ${response.status}${text ? `：${text.slice(0, 240)}` : ''}`);
@@ -416,7 +499,7 @@ export async function maybeGenerateImageForRabbitMirror({ message, chat, rendere
     }
 
     const mode = settings.imageGenerationMode === 'custom' ? 'custom' : 'free';
-    const endpoint = validateEndpoint(settings.imageApiUrl);
+    const endpoint = normalizeImageGenerationEndpoint(settings.imageApiUrl);
     const freeTemplate = normalizeFreeTemplate(settings.imageFreeSiteUrl);
     const model = String(settings.imageModel || '').trim();
     const apiKey = String(settings.imageApiKey || '').trim();
@@ -445,6 +528,7 @@ export async function maybeGenerateImageForRabbitMirror({ message, chat, rendere
         mirrorContent,
         mirrorTitle: mirrorTitle(renderedToto),
         ...appearance,
+        compact: mode === 'free',
     });
     const controller = new AbortController();
     attemptedKeys.add(key);
