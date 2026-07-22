@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（挨打猫 v1.2・小小维修兔 v1.32）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（挨打猫 v1.2・小小维修兔 v1.37）",
   "loading_order": 99,
-  "js": "index.js?rmv=0.33.49",
-  "css": "style.css?rmv=0.33.49",
+  "js": "index.js?rmv=0.33.54",
+  "css": "style.css?rmv=0.33.54",
   "author": "Toto",
-  "version": "0.33.49-test.1",
+  "version": "0.33.54-test.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "TEST cleanup build preserving the latest RabbitMirror prompt, interaction, content-flow, Feedback Cat, Maintenance Rabbit, language-feedback, and cache-takeover fixes."
+  "description": "TEST build: synchronizes already-checked cross-parent interaction states and accurately diagnoses mirrors that contain only static content or animation without inventing missing interaction."
 }

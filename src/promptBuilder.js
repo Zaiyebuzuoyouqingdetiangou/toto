@@ -1,8 +1,8 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=0.33.49';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=0.33.49';
-import { pickCombination } from './picker.js?rmv=0.33.49';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown } from './storage.js?rmv=0.33.49';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=0.33.49';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=0.33.54';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=0.33.54';
+import { pickCombination } from './picker.js?rmv=0.33.54';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown } from './storage.js?rmv=0.33.54';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=0.33.54';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -188,11 +188,11 @@ function complexInteractiveCore() {
   - 除最外层折叠外，每轮必须实际存在至少一组从本轮叙事核心、媒介本体或画面内部关系自然生长的完整交互链：可操作对象→明确操作→可识别且可保持的状态变化→对应的内容、关系或结构反馈→可继续推进、分支、组合、切换或返回。
   - 交互产生、替换或推进后的主要正文与关键反馈，须由本轮展现形式自身的内容区域完整承载，并在对应状态中保持可读、可达；具体承载方式由媒介本体决定，不得因裁切、遮挡或脱离所属区域而显示不全。
   - 内容承载优先于复杂度：含主要正文、长句、段落或关键反馈的节点及其承载父级必须参与正常文档流并由内容撑高；禁止用 position:absolute/fixed、固定 px/vh 高度、height:100%、transform 位移或 overflow:hidden/clip 作为正文承载骨架，只有纯装饰、短标签与图形层可脱离文档流。
-  - 需要状态叠层时，优先使用能由内容撑高的 grid 同格叠层、正常流显隐或媒介内部明确可操作的滚动／分页；禁止让两个含长正文的状态以 absolute 叠放在固定画布内。输出前按 360px 手机窄屏自检，每个状态的最后一行必须仍位于所属卡片、画框或页面边界内。
+  - 需要状态叠层时，优先使用能由内容撑高的 grid 同格叠层、正常流显隐或媒介内部明确可操作的滚动／分页；禁止让两个含长正文的状态以 absolute 叠放在固定画布内。若使用内部 details/summary 表示正反面或状态替换，打开后 summary 不得继续以 height:100% 占据整块面板并把后续状态推到裁切区；正面必须收起或退出占位，暗面须在同一媒介区域内可见，并提供可触摸的返回方式。输出前按 360px 手机窄屏自检，每个状态的最后一行必须仍位于所属卡片、画框或页面边界内。
   - 交互必须由真实可触发对象、对应状态机制与受控内容共同构成；第二状态须在内容、关系、结构、空间、视觉层级、材质、时间进程、观察方式、角色反应或后续可操作范围中的至少一项发生清晰且有意义的变化；不同操作不得无故得到完全相同的反馈。
   - 交互形态、规模与阶段须由本轮展现形式自身的结构、功能、使用方式与叙事产生；checkbox、翻面、弹窗、按钮组、标签页等仅在媒介天然适合时使用，不得作为默认骨架换皮复用；非一次性动作的首次操作不得耗尽全部体验。
   - 仅变色、描边、阴影、轻微位移、伪选项、无关交互堆叠，或非一次性媒介中一次显隐后立即结束，不算完整交互。
-  - 交互须真实存在并可触摸触发，hover 只能辅助，装饰不得遮挡操作对象；仅当媒介天然需要分层阅读时才可使用内部 details；禁止内联 JavaScript，可用安全、可稳定渲染的 HTML/CSS 构成状态与反馈。`;
+  - 交互须真实存在并可触摸触发，hover/active 只能辅助，不能单独充当本轮必需的完整交互；装饰不得遮挡操作对象。仅当媒介天然需要分层阅读时才可使用内部 details；禁止 onclick/onmouseover/onmouseout 等事件属性与内联 JavaScript，必须使用宿主可保留的 HTML/CSS 状态机制构成状态与反馈。`;
 }
 
 
