@@ -1,4 +1,4 @@
-import { getSettings } from './settings.js?rmv=0.33.58';
+import { getSettings } from './settings.js?rmv=0.33.60';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -7,11 +7,11 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=0.33.58';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=0.33.58';
+} from './feedbackCat.js?rmv=0.33.60';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=0.33.60';
 
 
-const RUNTIME_VERSION = '0.33.58';
+const RUNTIME_VERSION = '0.33.60';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -648,6 +648,16 @@ function getCrossContainerTargetsForCheckedRule(root, targetSelector) {
     }
 }
 
+function resolveTargetsForCheckedRule(root, input, rule) {
+    if (!root || !input || !rule) return [];
+    let targets = getSiblingTargetsForCheckedRule(input, rule.relation, rule.targetSelector);
+    if (targets.length) return targets;
+    if (rule.source === 'class-local' || rule.source === 'generic-local') {
+        return getLocalContainerTargetsForCheckedRule(input, rule.targetSelector);
+    }
+    return getCrossContainerTargetsForCheckedRule(root, rule.targetSelector);
+}
+
 function findCrossParentCheckedRuleFallbackCandidates(root) {
     if (!root?.querySelectorAll) return [];
     const candidates = [];
@@ -875,17 +885,7 @@ function applyCheckedRuleTextFallback(toto, input) {
     const routeKinds = new Set();
     const revealCandidates = new Map();
     for (const rule of parseCheckedRulesFromText(toto, input)) {
-        let targets = getSiblingTargetsForCheckedRule(input, rule.relation, rule.targetSelector);
-        if (!targets.length) {
-            if (rule.source === 'class-local' || rule.source === 'generic-local') {
-                // 典型错误：.trigger:checked ~ .panel，但 .panel 实际嵌套在同一 label 的后代容器中。
-                // 按当前 label 局部查找并落实规则状态，不影响其他同 class 节点。
-                targets = getLocalContainerTargetsForCheckedRule(input, rule.targetSelector);
-            } else {
-                // 带唯一 ID 的规则允许在当前兔子镜根内寻找受控目标。
-                targets = getCrossContainerTargetsForCheckedRule(toto, rule.targetSelector);
-            }
-        }
+        const targets = resolveTargetsForCheckedRule(toto, input, rule);
         for (const target of targets) {
             routeKinds.add(rule.source);
             if (rule.pseudoElement) {
@@ -1024,10 +1024,23 @@ const CHANGE_PSEUDO_RESCUE_ATTR = 'data-rabbit-mirror-change-pseudo-rescue';
 const DIRECT_ID_CLICK_RESCUE_ATTR = 'data-rabbit-mirror-direct-id-click-rescue';
 const DIRECT_ID_CLASS_STATE_RESCUE_ATTR = 'data-rabbit-mirror-direct-id-class-state-rescue';
 const RAW_NAMED_FUNCTION_RESCUE_ATTR = 'data-rabbit-mirror-raw-named-function-rescue';
+const PASSPORT_DOCUMENT_RESCUE_ATTR = 'data-rabbit-mirror-passport-document-rescue';
+const PASSPORT_DOCUMENT_TRIGGER_RESCUE_ATTR = 'data-rabbit-mirror-passport-document-trigger-rescue';
+const PASSPORT_DOCUMENT_HOST_ATTR = 'data-rm-passport-document-host';
+const PASSPORT_DOCUMENT_COVER_ATTR = 'data-rm-passport-document-cover';
+const PASSPORT_DOCUMENT_PAGES_ATTR = 'data-rm-passport-document-pages';
+const PASSPORT_DOCUMENT_CLOSE_ATTR = 'data-rm-passport-document-close';
+const PASSPORT_DOCUMENT_STAMP_ATTR = 'data-rm-passport-document-stamp';
+const PASSPORT_DOCUMENT_STAMP_INDEX_ATTR = 'data-rm-passport-document-stamp-index';
+const PASSPORT_DOCUMENT_STAMP_DETAIL_ATTR = 'data-rm-passport-document-stamp-detail';
+const PASSPORT_DOCUMENT_STAMP_ACTIVE_ATTR = 'data-rm-passport-document-stamp-active';
+const PASSPORT_DOCUMENT_OPEN_ATTR = 'data-rm-passport-document-open';
+const PASSPORT_DOCUMENT_STYLE_ATTR = 'data-rabbit-mirror-passport-document-style';
 const MARKDOWN_CSS_COMMENT_RESCUE_ATTR = 'data-rabbit-mirror-markdown-css-comment-rescue';
 const PSEUDO_ACTIVE_ATTR = 'data-rm-pseudo-active';
 const pseudoInteractionStates = new WeakMap();
 const directIdClassStateStates = new WeakMap();
+const passportDocumentRescueStates = new WeakMap();
 
 // 统一可逆状态底座：第一次接管某个元素时，把原始内联样式写入 data 属性并保存在 WeakMap。
 // 即使宿主随后克隆当前 DOM 或急救器再次扫描，也不会把“交互后状态”误记为新的初始状态。
@@ -1039,6 +1052,11 @@ const reversibleTextBaselineStates = new WeakMap();
 // 同一个 checkbox/radio 只允许一条“渲染后结构型”急救路线接管，避免多个兜底互相覆盖。
 const RENDERED_INPUT_ROUTE_ATTR = 'data-rm-rendered-input-route';
 const REVERSIBLE_TARGET_CLOSE_ATTR = 'data-rm-click-to-restore';
+const REVERSIBLE_CHECKED_RESULT_RESCUE_ATTR = 'data-rabbit-mirror-reversible-checked-result-rescue';
+const REVERSIBLE_CHECKED_RESULT_TARGET_ATTR = 'data-rm-reversible-checked-result-target';
+const REVERSIBLE_CHECKED_RESULT_ROOT_ATTR = 'data-rabbit-mirror-reversible-checked-result-count';
+const reversibleTargetCloseStates = new WeakMap();
+const reversibleCheckedResultRescueStates = new WeakMap();
 const interactionLabelFallbackRoots = new WeakSet();
 const UNLABELED_CHECKED_HOST_RESCUE_ATTR = 'data-rabbit-mirror-unlabeled-checked-host-rescue';
 const UNLABELED_CHECKED_CONTROL_RESCUE_ATTR = 'data-rabbit-mirror-unlabeled-checked-control-rescue';
@@ -1068,19 +1086,36 @@ function dispatchRescuedInputState(input) {
 }
 
 function installReversibleTargetClose(target, input, root) {
-    if (!target?.addEventListener || !input || !root?.contains?.(target)
-        || target.hasAttribute(REVERSIBLE_TARGET_CLOSE_ATTR)) return;
+    if (!target?.addEventListener || !input || !root?.contains?.(target)) return false;
+    const existing = reversibleTargetCloseStates.get(target);
+    if (existing?.input === input && existing?.root === root) return true;
+    if (existing) {
+        target.removeEventListener?.('click', existing.onClick, false);
+        reversibleTargetCloseStates.delete(target);
+    }
+    // DOM 被宿主克隆时 data 属性可能保留而 WeakMap 不保留；允许重新绑定真实监听器。
+    if (target.hasAttribute(REVERSIBLE_TARGET_CLOSE_ATTR)) target.removeAttribute(REVERSIBLE_TARGET_CLOSE_ATTR);
 
-    target.addEventListener('click', event => {
+    const onClick = event => {
         if (!input.checked) return;
         const nestedInteractive = event.target?.closest?.(EXISTING_INTERACTIVE_SELECTOR);
         if (nestedInteractive && nestedInteractive !== target && target.contains?.(nestedInteractive)) return;
+        const selection = globalThis.getSelection?.();
+        if (selection && !selection.isCollapsed && String(selection).trim()) return;
         event.preventDefault();
-        input.checked = false;
-        restoreInteractionInlineOverrides(input);
-        dispatchRescuedInputState(input);
-    }, false);
+        if (input.type === 'radio') {
+            input.checked = false;
+            restoreInteractionInlineOverrides(input);
+            dispatchRescuedInputState(input);
+        } else {
+            setRescuedCheckedState(root, input, false);
+        }
+    };
+    target.addEventListener('click', onClick, false);
     target.setAttribute(REVERSIBLE_TARGET_CLOSE_ATTR, 'true');
+    if (!target.hasAttribute('title')) target.setAttribute('title', '再次点按返回上一层');
+    reversibleTargetCloseStates.set(target, { input, root, onClick });
+    return true;
 }
 
 // 渲染后结构型状态层急救：不依赖可能已被宿主删除的 onclick/onchange。
@@ -5047,6 +5082,323 @@ function installRawMessageDirectIdClickProgramRescue(root) {
 }
 
 
+
+function passportDocumentSemanticText(element) {
+    return `${element?.id || ''} ${element?.className || ''} ${element?.getAttribute?.('aria-label') || ''}`;
+}
+
+function passportDocumentLooksLikeCover(element) {
+    return /(?:passport|document|book|travel|visa|证件|护照|通行).*(?:cover|front|封面)|(?:cover|front|封面).*(?:passport|document|book|travel|visa|证件|护照|通行)/i.test(passportDocumentSemanticText(element));
+}
+
+function passportDocumentLooksLikePages(element) {
+    return /(?:passport|document|book|travel|visa|证件|护照|通行).*(?:pages?|inside|content|内页|页)|(?:pages?|inside|content|内页|页).*(?:passport|document|book|travel|visa|证件|护照|通行)/i.test(passportDocumentSemanticText(element));
+}
+
+function passportDocumentLooksLikeStamp(element) {
+    if (!element?.querySelector) return false;
+    const signature = passportDocumentSemanticText(element);
+    if (!/(?:^|[\s_-])stamp(?:$|[\s_-])|印章|邮戳/i.test(signature)) return false;
+    return !![...element.querySelectorAll('*')].find(child => /(?:stamp.*detail|detail.*stamp|印章.*详情|批注)/i.test(passportDocumentSemanticText(child)));
+}
+
+function passportDocumentStampDetail(stamp) {
+    if (!stamp?.querySelectorAll) return null;
+    return [...stamp.querySelectorAll('*')].find(child => /(?:stamp.*detail|detail.*stamp|印章.*详情|批注)/i.test(passportDocumentSemanticText(child))) || null;
+}
+
+function findRenderedPassportDocumentCandidates(root) {
+    if (!root?.querySelectorAll) return [];
+    const candidates = [];
+    const seen = new Set();
+    for (const pages of root.querySelectorAll('div,section,article')) {
+        if (!passportDocumentLooksLikePages(pages)) continue;
+        const cover = pages.previousElementSibling;
+        const host = pages.parentElement;
+        if (!cover || !host || !passportDocumentLooksLikeCover(cover)) continue;
+        const stamps = [...pages.querySelectorAll('div,label,button')].filter(passportDocumentLooksLikeStamp);
+        if (stamps.length < 2) continue;
+        const close = [...pages.querySelectorAll('div,span,button,a')].find(element => /(?:close|fold|合上|关闭|收起)/i.test(`${passportDocumentSemanticText(element)} ${element.textContent || ''}`)) || null;
+        if (seen.has(pages)) continue;
+        seen.add(pages);
+        candidates.push({ host, cover, pages, close, stamps });
+    }
+    return candidates;
+}
+
+function markRenderedPassportDocumentCandidate(candidate, marked = null) {
+    if (!candidate) return 0;
+    const { host, cover, pages, close, stamps } = candidate;
+    const mark = (element, attr, value = 'true') => {
+        if (!element?.setAttribute) return;
+        element.setAttribute(attr, value);
+        marked?.add?.(element);
+    };
+    mark(host, PASSPORT_DOCUMENT_HOST_ATTR);
+    mark(cover, PASSPORT_DOCUMENT_COVER_ATTR);
+    mark(pages, PASSPORT_DOCUMENT_PAGES_ATTR);
+    if (close) mark(close, PASSPORT_DOCUMENT_CLOSE_ATTR);
+    (stamps || []).forEach((stamp, index) => {
+        mark(stamp, PASSPORT_DOCUMENT_STAMP_ATTR);
+        mark(stamp, PASSPORT_DOCUMENT_STAMP_INDEX_ATTR, String(index + 1));
+        const detail = passportDocumentStampDetail(stamp);
+        if (detail) mark(detail, PASSPORT_DOCUMENT_STAMP_DETAIL_ATTR);
+    });
+    return 3 + (close ? 1 : 0) + (stamps?.length || 0);
+}
+
+function parseSafeSelfClassAddProgram(source) {
+    const match = /^\s*this\s*\.\s*classList\s*\.\s*add\(\s*(['"])([a-zA-Z_][\w-]*)\1\s*\)\s*;?\s*$/i.exec(String(source || ''));
+    return match ? match[2] : '';
+}
+
+function parseSafeQuerySelectorClassRemoveProgram(source, expectedClass) {
+    const match = /^\s*document\s*\.\s*querySelector\(\s*(['"])(\.[a-zA-Z_][\w-]*)\1\s*\)\s*\.\s*classList\s*\.\s*remove\(\s*(['"])([a-zA-Z_][\w-]*)\3\s*\)\s*;?\s*$/i.exec(String(source || ''));
+    if (!match || match[4] !== expectedClass) return null;
+    return { selector: match[2], className: match[4] };
+}
+
+function parsePassportStampNthRules(rawRoot, stampClassName) {
+    if (!rawRoot?.querySelectorAll || !stampClassName) return new Map();
+    const safeProperties = new Set([
+        'border-color', 'border-style', 'border-width', 'color', 'background', 'background-color',
+        'grid-column', 'grid-row', 'justify-self', 'align-self', 'margin-top', 'margin-bottom',
+        'width', 'height', 'min-width', 'max-width', 'min-height', 'max-height',
+        'border-radius', 'transform', 'opacity',
+    ]);
+    const result = new Map();
+    const escaped = escapeRegExp(stampClassName);
+    const ruleRe = new RegExp(`\\.${escaped}\\s*:nth-child\\(\\s*(\\d+)\\s*\\)\\s*\\{([^{}]*)\\}`, 'gi');
+    const declarationRe = /(^|;)\s*([a-z-]+)\s*:\s*([^;{}]+?)(?=;|$)/gi;
+    for (const style of rawRoot.querySelectorAll('style')) {
+        const cssText = String(style.textContent || '');
+        let ruleMatch;
+        while ((ruleMatch = ruleRe.exec(cssText))) {
+            const index = Number(ruleMatch[1]);
+            if (!Number.isInteger(index) || index < 1 || index > 12) continue;
+            const assignments = [];
+            declarationRe.lastIndex = 0;
+            let declaration;
+            while ((declaration = declarationRe.exec(ruleMatch[2]))) {
+                const property = normalizeStylePropertyName(declaration[2]);
+                const value = String(declaration[3] || '').trim().replace(/\s*!important\s*$/i, '');
+                if (safeProperties.has(property) && value) assignments.push({ property, value });
+            }
+            if (assignments.length) result.set(index, assignments);
+        }
+    }
+    return result;
+}
+
+function applyPassportStampNthRules(rawCandidate, renderedCandidate, rawRoot) {
+    const rawStamps = rawCandidate?.stamps || [];
+    const renderedStamps = renderedCandidate?.stamps || [];
+    if (!rawStamps.length || !renderedStamps.length) return 0;
+    const classCounts = new Map();
+    for (const token of rawStamps[0].classList || []) {
+        if (/(?:^|[-_])stamp$/i.test(token) || /^stamp$/i.test(token)) classCounts.set(token, 1);
+    }
+    const stampClassName = [...classCounts.keys()][0] || [...(rawStamps[0].classList || [])].find(token => /stamp/i.test(token)) || '';
+    const rules = parsePassportStampNthRules(rawRoot, stampClassName);
+    let applied = 0;
+    for (let index = 0; index < renderedStamps.length; index += 1) {
+        const assignments = rules.get(index + 1);
+        if (!assignments?.length) continue;
+        applyPseudoStyleAssignments(renderedStamps[index], assignments);
+        applied += assignments.length;
+    }
+    return applied;
+}
+
+function ensurePassportDocumentRescueStyle(root) {
+    if (!root?.querySelector) return null;
+    let style = root.querySelector(`style[${PASSPORT_DOCUMENT_STYLE_ATTR}]`);
+    if (!style) {
+        style = document.createElement('style');
+        style.setAttribute(PASSPORT_DOCUMENT_STYLE_ATTR, 'true');
+        root.appendChild(style);
+    }
+    style.textContent = `
+[${PASSPORT_DOCUMENT_HOST_ATTR}] { perspective: 1000px; }
+[${PASSPORT_DOCUMENT_COVER_ATTR}] { -webkit-backface-visibility: hidden !important; backface-visibility: hidden !important; -webkit-transform-style: preserve-3d !important; transform-style: preserve-3d !important; will-change: transform; }
+[${PASSPORT_DOCUMENT_PAGES_ATTR}] { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+[${PASSPORT_DOCUMENT_STAMP_ATTR}] { overflow: visible !important; }
+[${PASSPORT_DOCUMENT_STAMP_ATTR}][${PASSPORT_DOCUMENT_STAMP_ACTIVE_ATTR}="true"] > [${PASSPORT_DOCUMENT_STAMP_DETAIL_ATTR}] { opacity: 1 !important; visibility: visible !important; pointer-events: auto !important; }
+@media (max-width: ${MOBILE_LAYOUT_BREAKPOINT_PX}px) {
+  [${PASSPORT_DOCUMENT_HOST_ATTR}] { height: clamp(380px, 70svh, 560px) !important; min-height: 380px !important; overflow: hidden !important; }
+  [${PASSPORT_DOCUMENT_COVER_ATTR}] { height: 100% !important; min-height: 100% !important; box-sizing: border-box !important; }
+  [${PASSPORT_DOCUMENT_PAGES_ATTR}] { height: 100% !important; max-height: none !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; grid-auto-flow: row !important; grid-auto-rows: max-content !important; align-content: start !important; overflow-y: auto !important; overflow-x: hidden !important; padding: clamp(12px, 4vw, 20px) !important; box-sizing: border-box !important; }
+  [${PASSPORT_DOCUMENT_STAMP_ATTR}] { min-width: 0 !important; max-width: 100% !important; box-sizing: border-box !important; flex-wrap: nowrap !important; }
+  [${PASSPORT_DOCUMENT_STAMP_ATTR}][${PASSPORT_DOCUMENT_STAMP_INDEX_ATTR}="1"] { grid-column: 1 !important; grid-row: 1 !important; justify-self: end !important; }
+  [${PASSPORT_DOCUMENT_STAMP_ATTR}][${PASSPORT_DOCUMENT_STAMP_INDEX_ATTR}="2"] { grid-column: 2 !important; grid-row: 2 !important; justify-self: start !important; }
+  [${PASSPORT_DOCUMENT_STAMP_ATTR}][${PASSPORT_DOCUMENT_STAMP_INDEX_ATTR}="3"] { grid-column: 1 / span 2 !important; grid-row: 3 !important; justify-self: center !important; }
+  [${PASSPORT_DOCUMENT_STAMP_ATTR}][${PASSPORT_DOCUMENT_STAMP_ACTIVE_ATTR}="true"] { margin-bottom: clamp(120px, 32vw, 170px) !important; }
+  [${PASSPORT_DOCUMENT_STAMP_DETAIL_ATTR}] { width: min(220px, calc(100vw - 86px)) !important; max-width: min(220px, calc(100vw - 86px)) !important; box-sizing: border-box !important; writing-mode: horizontal-tb !important; white-space: normal !important; overflow-wrap: anywhere !important; word-break: break-word !important; }
+  [${PASSPORT_DOCUMENT_STAMP_ATTR}][${PASSPORT_DOCUMENT_STAMP_INDEX_ATTR}="1"] > [${PASSPORT_DOCUMENT_STAMP_DETAIL_ATTR}] { left: 0 !important; right: auto !important; transform: translateY(6px) !important; }
+  [${PASSPORT_DOCUMENT_STAMP_ATTR}][${PASSPORT_DOCUMENT_STAMP_INDEX_ATTR}="2"] > [${PASSPORT_DOCUMENT_STAMP_DETAIL_ATTR}] { left: auto !important; right: 0 !important; transform: translateY(6px) !important; }
+  [${PASSPORT_DOCUMENT_STAMP_ATTR}][${PASSPORT_DOCUMENT_STAMP_INDEX_ATTR}="3"] > [${PASSPORT_DOCUMENT_STAMP_DETAIL_ATTR}] { left: 50% !important; right: auto !important; transform: translateX(-50%) translateY(6px) !important; }
+  [${PASSPORT_DOCUMENT_STAMP_ATTR}][${PASSPORT_DOCUMENT_STAMP_ACTIVE_ATTR}="true"] > [${PASSPORT_DOCUMENT_STAMP_DETAIL_ATTR}] { transform-origin: top center !important; }
+  [${PASSPORT_DOCUMENT_CLOSE_ATTR}] { position: sticky !important; bottom: 0 !important; right: auto !important; grid-column: 1 / span 2 !important; justify-self: end !important; width: max-content !important; margin-top: 12px !important; padding: 6px 8px !important; background: rgba(253, 251, 247, 0.94) !important; z-index: 40 !important; }
+}`;
+    return style;
+}
+
+function findRawPassportDocumentCandidate(root) {
+    const rawMessage = getRawAssistantMessageForRenderedRoot(root);
+    const rawRoot = chooseMatchingRawRabbitMirrorRoot(rawMessage, root);
+    if (!rawRoot?.querySelectorAll) return null;
+    for (const rawCover of rawRoot.querySelectorAll('[onclick]')) {
+        const openClass = parseSafeSelfClassAddProgram(rawCover.getAttribute('onclick'));
+        if (!openClass || !passportDocumentLooksLikeCover(rawCover)) continue;
+        const rawPages = rawCover.nextElementSibling;
+        if (!rawPages || !passportDocumentLooksLikePages(rawPages)) continue;
+        const rawStamps = [...rawPages.querySelectorAll('div,label,button')].filter(passportDocumentLooksLikeStamp);
+        if (rawStamps.length < 2) continue;
+        const rawClose = [...rawPages.querySelectorAll('[onclick]')].find(element => parseSafeQuerySelectorClassRemoveProgram(element.getAttribute('onclick'), openClass)) || null;
+        const renderedCover = resolveRenderedCounterpart(rawRoot, root, rawCover, '*');
+        const renderedPages = resolveRenderedCounterpart(rawRoot, root, rawPages, '*');
+        if (!renderedCover || !renderedPages) continue;
+        const renderedHost = renderedPages.parentElement;
+        const renderedClose = rawClose ? resolveRenderedCounterpart(rawRoot, root, rawClose, '*') : null;
+        const renderedStamps = rawStamps.map(stamp => resolveRenderedCounterpart(rawRoot, root, stamp, '*')).filter(Boolean);
+        if (!renderedHost || renderedStamps.length < 2) continue;
+        const prefix = inferRenderedClassPrefix(renderedCover, [...rawCover.classList, openClass], root);
+        const renderedOpenClass = renderedCover.classList.contains(openClass) ? openClass : `${prefix}${openClass}`;
+        return {
+            rawRoot,
+            rawCandidate: { host: rawPages.parentElement, cover: rawCover, pages: rawPages, close: rawClose, stamps: rawStamps },
+            renderedCandidate: { host: renderedHost, cover: renderedCover, pages: renderedPages, close: renderedClose, stamps: renderedStamps },
+            openClass: renderedOpenClass,
+        };
+    }
+    return null;
+}
+
+function applyPassportDocumentOpenState(entry, active) {
+    if (!entry?.candidate?.cover || !entry?.candidate?.pages) return;
+    entry.active = !!active;
+    const { host, cover, pages } = entry.candidate;
+    cover.classList.toggle(entry.openClass, entry.active);
+    host.setAttribute(PASSPORT_DOCUMENT_OPEN_ATTR, entry.active ? 'true' : 'false');
+    cover.setAttribute('aria-expanded', entry.active ? 'true' : 'false');
+    pages.setAttribute('aria-hidden', entry.active ? 'false' : 'true');
+    restorePseudoStyleState(pages, entry.pagesOriginalStyles);
+    if (entry.active) {
+        applyPseudoStyleAssignments(pages, [
+            { property: 'opacity', value: '1' },
+            { property: 'visibility', value: 'visible' },
+            { property: 'pointer-events', value: 'auto' },
+        ]);
+    } else {
+        applyPseudoStyleAssignments(pages, [
+            { property: 'opacity', value: '0' },
+            { property: 'pointer-events', value: 'none' },
+        ]);
+        for (const stampEntry of entry.stampEntries || []) applyPassportStampState(entry, stampEntry, false);
+    }
+}
+
+function applyPassportStampState(documentEntry, stampEntry, active) {
+    if (!stampEntry?.stamp) return;
+    stampEntry.active = !!active;
+    stampEntry.stamp.setAttribute(PASSPORT_DOCUMENT_STAMP_ACTIVE_ATTR, stampEntry.active ? 'true' : 'false');
+    stampEntry.stamp.setAttribute('aria-expanded', stampEntry.active ? 'true' : 'false');
+    if (!stampEntry.active && stampEntry.detail) {
+        restorePseudoStyleState(stampEntry.detail, stampEntry.detailOriginalStyles);
+    }
+    if (stampEntry.active && stampEntry.detail) {
+        applyPseudoStyleAssignments(stampEntry.detail, [
+            { property: 'opacity', value: '1' },
+            { property: 'visibility', value: 'visible' },
+            { property: 'pointer-events', value: 'auto' },
+        ]);
+    }
+}
+
+function installPassportDocumentRescue(root) {
+    if (!root?.querySelectorAll || !root?.isConnected) return 0;
+    const raw = findRawPassportDocumentCandidate(root);
+    if (!raw) return 0;
+    const candidate = raw.renderedCandidate;
+    markRenderedPassportDocumentCandidate(candidate);
+    ensurePassportDocumentRescueStyle(root);
+    applyPassportStampNthRules(raw.rawCandidate, candidate, raw.rawRoot);
+
+    let state = passportDocumentRescueStates.get(root);
+    if (!state) {
+        state = { entries: [] };
+        passportDocumentRescueStates.set(root, state);
+    }
+    if (state.entries.some(entry => entry.candidate.cover === candidate.cover)) return 0;
+
+    const entry = {
+        candidate,
+        openClass: raw.openClass,
+        active: candidate.cover.classList.contains(raw.openClass),
+        pagesOriginalStyles: capturePseudoStyleState(candidate.pages, ['opacity', 'visibility', 'pointer-events']),
+        stampEntries: [],
+    };
+    for (const stamp of candidate.stamps) {
+        const detail = passportDocumentStampDetail(stamp);
+        const stampEntry = {
+            stamp,
+            detail,
+            active: false,
+            detailOriginalStyles: detail ? capturePseudoStyleState(detail, ['opacity', 'visibility', 'pointer-events', 'transform']) : new Map(),
+        };
+        entry.stampEntries.push(stampEntry);
+        preparePseudoTrigger(stamp);
+        const toggleStamp = event => {
+            if (event?.type === 'keydown') {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+            } else if (event?.target?.closest?.(`[${PASSPORT_DOCUMENT_STAMP_DETAIL_ATTR}]`)) {
+                return;
+            } else event?.preventDefault?.();
+            const next = !stampEntry.active;
+            for (const other of entry.stampEntries) if (other !== stampEntry && other.active) applyPassportStampState(entry, other, false);
+            applyPassportStampState(entry, stampEntry, next);
+        };
+        stamp.addEventListener('click', toggleStamp, false);
+        stamp.addEventListener('keydown', toggleStamp, false);
+        stamp.setAttribute(PASSPORT_DOCUMENT_TRIGGER_RESCUE_ATTR, 'true');
+        applyPassportStampState(entry, stampEntry, false);
+    }
+
+    preparePseudoTrigger(candidate.cover);
+    const open = event => {
+        if (event?.type === 'keydown') {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+        } else event?.preventDefault?.();
+        applyPassportDocumentOpenState(entry, true);
+        for (const delay of [0, 80, 260, 650]) setTimeout(() => root.isConnected && applyPassportDocumentOpenState(entry, entry.active), delay);
+    };
+    candidate.cover.addEventListener('click', open, false);
+    candidate.cover.addEventListener('keydown', open, false);
+    candidate.cover.setAttribute(PASSPORT_DOCUMENT_TRIGGER_RESCUE_ATTR, 'true');
+
+    if (candidate.close) {
+        preparePseudoTrigger(candidate.close);
+        const close = event => {
+            if (event?.type === 'keydown') {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+            } else event?.preventDefault?.();
+            event?.stopPropagation?.();
+            applyPassportDocumentOpenState(entry, false);
+        };
+        candidate.close.addEventListener('click', close, false);
+        candidate.close.addEventListener('keydown', close, false);
+        candidate.close.setAttribute(PASSPORT_DOCUMENT_TRIGGER_RESCUE_ATTR, 'true');
+    }
+
+    state.entries.push(entry);
+    root.setAttribute(PASSPORT_DOCUMENT_RESCUE_ATTR, String(state.entries.length));
+    applyPassportDocumentOpenState(entry, entry.active);
+    return 1 + entry.stampEntries.length;
+}
+
 function stripSafeJavaScriptComments(sourceText) {
     const source = String(sourceText || '');
     let output = '';
@@ -5396,7 +5748,7 @@ function installPseudoInteractionRescue(root) {
 }
 
 function detectInteractionCapabilities(root) {
-    if (!root?.querySelectorAll) return { checked: false, hover: false, details: false, target: false, pseudo: false, listDetail: false, maskReveal: false, stateSibling: false, buttonAdjacent: false, clickableAdjacent: false, clickablePopup: false, containerReveal: false, selfMutation: false, selectionFallback: false, disabledChoiceFallback: false, actionFallback: false };
+    if (!root?.querySelectorAll) return { checked: false, hover: false, details: false, target: false, pseudo: false, listDetail: false, maskReveal: false, stateSibling: false, buttonAdjacent: false, clickableAdjacent: false, clickablePopup: false, containerReveal: false, selfMutation: false, selectionFallback: false, disabledChoiceFallback: false, actionFallback: false, reversibleChecked: false };
     const cssText = [...root.querySelectorAll('style')].map(style => style.textContent || '').join('\n');
     const outerDetails = root.matches?.('details') ? root : root.querySelector(':scope > details');
     const nestedDetails = [...root.querySelectorAll('details')].filter(item => item !== outerDetails);
@@ -5417,6 +5769,8 @@ function detectInteractionCapabilities(root) {
         selectionFallback: !!root.querySelector(`[${SELECTION_ONLY_FALLBACK_ATTR}]`),
         disabledChoiceFallback: !!root.querySelector(`[${DISABLED_ONLY_CHOICE_RESCUE_ATTR}]`),
         actionFallback: !!root.querySelector(`[${INERT_ACTION_BUTTON_RESCUE_ATTR}]`),
+        passportDocument: (passportDocumentRescueStates.get(root)?.entries?.length || 0) > 0,
+        reversibleChecked: Number.parseInt(root.getAttribute?.(REVERSIBLE_CHECKED_RESULT_ROOT_ATTR) || '0', 10) > 0,
     };
     interactionCapabilityStates.set(root, capabilities);
     root.dataset.rabbitMirrorInteractionRoutes = Object.entries(capabilities)
@@ -5969,6 +6323,148 @@ function applyCheckedVisualFallback(root, input) {
     if (!textRuleCount) applyCheckedRuleInlineFallback(root, input);
 }
 
+function checkedStyleMapHidesTrigger(styleMap) {
+    for (const [rawProperty, rawValue] of styleMap || []) {
+        const property = String(rawProperty || '').trim().toLowerCase();
+        const value = String(rawValue || '').trim().toLowerCase().replace(/\s*!important\s*$/i, '');
+        if (property === 'display' && value === 'none') return true;
+        if (property === 'visibility' && /^(?:hidden|collapse)$/.test(value)) return true;
+        if (property === 'pointer-events' && value === 'none') return true;
+        if (property === 'opacity') {
+            const opacity = Number.parseFloat(value);
+            if (Number.isFinite(opacity) && opacity <= 0.05) return true;
+        }
+        if (/^(?:width|height|max-width|max-height)$/.test(property) && isCollapsedDimensionValue(value)) return true;
+        if (property === 'clip-path' && /^(?:inset\(\s*(?:50%|100%))/i.test(value)) return true;
+        if (property === 'transform' && /scale(?:x|y|3d)?\(\s*0(?:\s*[,)]|\))/i.test(value)) return true;
+    }
+    return false;
+}
+
+function checkedStyleMapRevealsResult(root, target, styleMap) {
+    if (!checkedTargetCarriesResultContent(target)) return false;
+    return (styleMap || []).some(([property, value]) => (
+        checkedDeclarationCreatesContentReveal(root, target, property, value)
+    ));
+}
+
+function associatedLabelsForInput(root, input) {
+    if (!root?.querySelectorAll || !input) return [];
+    const labels = new Set();
+    input.closest?.('label') && labels.add(input.closest('label'));
+    for (const label of [...(input.labels || [])]) {
+        if (root.contains?.(label)) labels.add(label);
+    }
+    const id = String(input.id || '');
+    if (id) {
+        for (const label of root.querySelectorAll('label[for]')) {
+            if (String(label.getAttribute('for') || '') === id) labels.add(label);
+        }
+    }
+    return [...labels];
+}
+
+function inputHasVisibleNativeToggle(input) {
+    if (!input) return false;
+    const snapshot = getRenderedStyleSnapshot(input);
+    let rect = null;
+    try {
+        rect = input.getBoundingClientRect?.();
+    } catch {
+        rect = null;
+    }
+    const width = Number(rect?.width || 0);
+    const height = Number(rect?.height || 0);
+    return !snapshot.hidden && width >= 8 && height >= 8;
+}
+
+function targetAlreadyProvidesCheckedReturn(target, input) {
+    if (!target || !input) return true;
+    if (target.matches?.(EXISTING_INTERACTIVE_SELECTOR)) return true;
+    const wrappingLabel = target.closest?.('label');
+    if (wrappingLabel) {
+        const forId = String(wrappingLabel.getAttribute('for') || '');
+        if ((forId && forId === String(input.id || '')) || wrappingLabel.contains?.(input)) return true;
+    }
+    for (const label of target.querySelectorAll?.('label[for]') || []) {
+        if (String(label.getAttribute('for') || '') === String(input.id || '')) return true;
+    }
+    return false;
+}
+
+function findOneWayCheckedResultCandidates(root) {
+    if (!root?.querySelectorAll) return [];
+    const candidates = [];
+    const seen = new Set();
+
+    for (const input of root.querySelectorAll('input[type="checkbox"]')) {
+        if (input.disabled || inputHasVisibleNativeToggle(input)) continue;
+        const labels = associatedLabelsForInput(root, input);
+        if (!labels.length) continue;
+
+        const hiddenLabels = new Set();
+        const revealedTargets = new Set();
+        for (const rule of parseCheckedRulesFromText(root, input)) {
+            if (rule.pseudoElement) continue;
+            const targets = resolveTargetsForCheckedRule(root, input, rule);
+            for (const target of targets) {
+                if (checkedStyleMapHidesTrigger(rule.styleMap)) {
+                    for (const label of labels) {
+                        if (target === label || target.contains?.(label)) hiddenLabels.add(label);
+                    }
+                }
+                if (checkedStyleMapRevealsResult(root, target, rule.styleMap)) revealedTargets.add(target);
+            }
+        }
+        if (hiddenLabels.size !== labels.length || !revealedTargets.size) continue;
+
+        for (const target of revealedTargets) {
+            if (!target?.isConnected || targetAlreadyProvidesCheckedReturn(target, input)) continue;
+            const key = `${String(input.id || '')}|${String(target.className || target.tagName || '')}|${String(target.textContent || '').slice(0, 80)}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            candidates.push({ input, target, labels });
+        }
+    }
+    return candidates;
+}
+
+function installOneWayCheckedResultFallback(root) {
+    if (!root?.querySelectorAll) return 0;
+    let state = reversibleCheckedResultRescueStates.get(root);
+    if (!state) {
+        state = { entries: new Map() };
+        reversibleCheckedResultRescueStates.set(root, state);
+    }
+    for (const [target, entry] of [...state.entries]) {
+        if (!target?.isConnected || !entry.input?.isConnected || !root.contains?.(target) || !root.contains(entry.input)) {
+            state.entries.delete(target);
+        }
+    }
+
+    const perInput = new Map();
+    for (const candidate of findOneWayCheckedResultCandidates(root)) {
+        const existing = state.entries.get(candidate.target);
+        if (existing && existing.input !== candidate.input) continue;
+        if (!installReversibleTargetClose(candidate.target, candidate.input, root)) continue;
+        candidate.target.setAttribute(REVERSIBLE_CHECKED_RESULT_TARGET_ATTR, 'true');
+        state.entries.set(candidate.target, candidate);
+        perInput.set(candidate.input, (perInput.get(candidate.input) || 0) + 1);
+    }
+
+    for (const input of root.querySelectorAll(`[${REVERSIBLE_CHECKED_RESULT_RESCUE_ATTR}]`)) {
+        if (!perInput.has(input)) input.removeAttribute(REVERSIBLE_CHECKED_RESULT_RESCUE_ATTR);
+    }
+    for (const [input, count] of perInput) {
+        input.setAttribute(REVERSIBLE_CHECKED_RESULT_RESCUE_ATTR, String(count));
+    }
+
+    const liveCount = [...state.entries.keys()].filter(target => target?.isConnected && root.contains?.(target)).length;
+    if (liveCount) root.setAttribute(REVERSIBLE_CHECKED_RESULT_ROOT_ATTR, String(liveCount));
+    else root.removeAttribute(REVERSIBLE_CHECKED_RESULT_ROOT_ATTR);
+    return liveCount;
+}
+
 function inputHasAssociatedLabel(root, input) {
     if (!input) return false;
     if (input.closest?.('label')) return true;
@@ -6400,6 +6896,9 @@ function installIntelligentInteractionRescue(root) {
     // SillyTavern/DOMPurify 可能在渲染前移除 onclick。此时从当前消息的原始 HTML
     // 回读安全可解析的 getElementById 样式/文字赋值，并按同一 DOM 路径绑定到渲染节点。
     installRawMessageDirectIdClickProgramRescue(root);
+    // 护照／证件类翻页采用“一次打开 + 独立关闭 + 印章长按详情”的复合结构；
+    // 不执行原始 JavaScript，只回读固定 class add/remove 意图并恢复可逆开合和点按详情。
+    installPassportDocumentRescue(root);
     // 命名函数仅接受受限的 getElementById + classList.contains/add/remove 两分支状态机；
     // 不执行原始 script，只把安全类名切换重新绑定到当前兔子镜。
     installRawMessageNamedFunctionClassRescue(root);
@@ -6439,6 +6938,9 @@ function installIntelligentInteractionRescue(root) {
         // input 位于按钮组内、受控内容位于按钮组外时，原生 ~ 选择器无法跨父层命中。
         // 只对唯一 ID 触发器登记文本级跨父层兜底，实际切换仍由当前 label 驱动。
         installCrossParentCheckedRuleFallback(root);
+        // checkbox 的 checked 分支若把唯一 label/触发器隐藏，却只留下普通正文结果，
+        // 用户会失去取消勾选的入口。仅对这一高置信单向结构，让已展开结果可再次点按返回上一层。
+        installOneWayCheckedResultFallback(root);
         // 没有 label 的透明 checkbox/radio 在 iOS WebView 中经常只有极小原生点击区；
         // 用其局部父容器兜底切换，不改动正常 label 交互。
         installUnlabeledCheckedHostFallback(root);
@@ -6889,7 +7391,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '0.33.58-TEST-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.33.60-TEST-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -7015,6 +7517,7 @@ function diagnosticRouteSummary(root) {
         checkedTextRule: root?.querySelectorAll?.(`[${CHECKED_TEXT_RULE_RESCUE_ATTR}]`)?.length || 0,
         crossParentChecked: Number.parseInt(root?.getAttribute?.(CROSS_PARENT_CHECKED_ROOT_ATTR) || '0', 10) || 0,
         checkedHasState: Number.parseInt(root?.getAttribute?.(CHECKED_HAS_STATE_RULE_COUNT_ATTR) || '0', 10) || 0,
+        reversibleChecked: Number.parseInt(root?.getAttribute?.(REVERSIBLE_CHECKED_RESULT_ROOT_ATTR) || '0', 10) || 0,
         expandedOpacity: root?.querySelectorAll?.(`[${EXPANDED_OPACITY_RESCUE_ATTR}]`)?.length || 0,
         containerReveal: renderedContainerInternalRevealStates.get(root)?.entries?.size || 0,
         selfMutation: rawSelfMutationRescueStates.get(root)?.entries?.size || 0,
@@ -7026,6 +7529,7 @@ function diagnosticRouteSummary(root) {
         selectionFallback: root?.querySelectorAll?.(`[${SELECTION_ONLY_FALLBACK_ATTR}]`)?.length || 0,
         disabledChoice: root?.querySelectorAll?.(`[${DISABLED_ONLY_CHOICE_RESCUE_ATTR}]`)?.length || 0,
         inertAction: root?.querySelectorAll?.(`[${INERT_ACTION_BUTTON_RESCUE_ATTR}]`)?.length || 0,
+        passportDocument: passportDocumentRescueStates.get(root)?.entries?.length || 0,
         decorativeOverlayPassThrough: root?.querySelectorAll?.(`[${DECORATIVE_OVERLAY_PASS_THROUGH_ATTR}]`)?.length || 0,
         touchHoverEligible: root?.querySelectorAll?.(`[${TOUCH_HOVER_READY_ATTR}]`)?.length || 0,
         touchHoverActive: root?.querySelectorAll?.(`[${TOUCH_HOVER_ATTR}="true"]`)?.length || 0,
@@ -7035,7 +7539,7 @@ function diagnosticRouteSummary(root) {
 function diagnosticInferReason(root, inputs, targets, state = null) {
     const routes = diagnosticRouteSummary(root);
     const depth = maintenanceCheckedInteractionDepth(root);
-    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.stateSibling + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.focusToChecked + routes.checkedTextRule + routes.crossParentChecked + routes.checkedHasState + routes.expandedOpacity + routes.containerReveal + routes.selfMutation + routes.classStateProgram + routes.cssCommentRepair + routes.changeProgram + routes.unlabeledChecked + routes.selectionFallback + routes.disabledChoice + routes.inertAction + routes.decorativeOverlayPassThrough;
+    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.stateSibling + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.focusToChecked + routes.checkedTextRule + routes.crossParentChecked + routes.checkedHasState + routes.expandedOpacity + routes.containerReveal + routes.selfMutation + routes.classStateProgram + routes.cssCommentRepair + routes.changeProgram + routes.unlabeledChecked + routes.selectionFallback + routes.disabledChoice + routes.inertAction + routes.passportDocument + routes.decorativeOverlayPassThrough;
     const checkedInputs = inputs.filter(input => input.checked);
     const visibleTargets = targets.filter(target => {
         const style = diagnosticComputedStyle(target);
@@ -7208,6 +7712,9 @@ function maintenanceHasIntentionalMarquee(element) {
 
 function maintenanceTextClippingEvidence(element, root) {
     if (!maintenanceIsVisibleContentElement(element) || !maintenanceHasMeaningfulText(element)) return null;
+    // 护照／证件专项维修会单独恢复封面、内页滚动与印章详情。
+    // 不再让通用文字裁切巡逻把尚未打开的封面或受控详情误报为正文丢失。
+    if (maintenanceMobileLayoutIsPassportManaged(element)) return null;
     const style = maintenanceSafeComputedStyle(element);
     if (!style) return null;
     const rect = element.getBoundingClientRect();
@@ -7810,6 +8317,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `CSS状态规则 entries=${routes.checkedTextRule} listener=${routes.checkedTextRule ? 'true' : 'false'}`,
         `跨父层checked兜底 entries=${routes.crossParentChecked} listener=${routes.crossParentChecked ? 'true' : 'false'}`,
         `全选联动兜底 entries=${routes.checkedHasState} listener=${routes.checkedHasState ? 'true' : 'false'}`,
+        `单向checked回退 entries=${routes.reversibleChecked} listener=${routes.reversibleChecked ? 'true' : 'false'}`,
         `checked交互深度 rules=${checkedDepth.checkedRuleCount} selectionOnly=${checkedDepth.selectionStyleRuleCount} secondLayer=${checkedDepth.meaningfulCheckedRuleCount} fallback=${checkedDepth.selectionOnlyFallbackCount}`,
         `伪类交互深度 rules=${pseudoDepth.pseudoRuleCount} visualOnly=${pseudoDepth.visualOnlyPseudoRuleCount} secondLayer=${pseudoDepth.meaningfulPseudoRuleCount}`,
         `可达内容交互 elements=${reachability.contentInteractiveElementCount} routes=${reachability.installedInteractionRouteCount} missing=${reachability.noInteractionStructure}`,
@@ -7822,6 +8330,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `类名状态程序 entries=${routes.classStateProgram} listener=${routes.classStateProgram ? 'true' : 'false'}`,
         `CSS注释保全 entries=${routes.cssCommentRepair} listener=${routes.cssCommentRepair ? 'true' : 'false'}`,
         `安全状态程序 entries=${routes.changeProgram} listener=${routes.changeProgram ? 'true' : 'false'}`,
+        `护照／证件翻页 entries=${routes.passportDocument} listener=${routes.passportDocument ? 'true' : 'false'}`,
         `装饰覆盖层穿透 entries=${routes.decorativeOverlayPassThrough} listener=${routes.decorativeOverlayPassThrough ? 'true' : 'false'}`,
         `无label控件宿主 entries=${routes.unlabeledChecked} listener=${routes.unlabeledChecked ? 'true' : 'false'} last=${root.dataset.rabbitMirrorUnlabeledCheckedLast || '(尚未点击验证)'}`,
         `缺失分支兜底 entries=${routes.selectionFallback} listener=${routes.selectionFallback ? 'true' : 'false'}`,
@@ -7834,6 +8343,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `viewportWidth=${mobileLayout.viewportWidth || 0} narrow=${!!mobileLayout.narrowViewport} candidates=${mobileLayout.candidateCount || 0}`,
         `overflow=${mobileLayout.horizontalOverflowCount || 0} fixedWidth=${mobileLayout.fixedWidthCount || 0} grid=${mobileLayout.gridCount || 0} matrix=${mobileLayout.matrixCount || 0} flex=${mobileLayout.flexCount || 0}`,
         `multiColumn=${mobileLayout.multiColumnCount || 0} media=${mobileLayout.mediaCount || 0} stateContent=${mobileLayout.stateContentCount || 0}`,
+        `护照／证件内页=${mobileLayout.passportDocumentCount || 0} repaired=${root.getAttribute?.(PASSPORT_DOCUMENT_RESCUE_ATTR) || '0'}`,
         `内部details弹出结果裁切=${nestedDetailsPopupCandidateCount} repaired=${root.getAttribute?.(NESTED_DETAILS_POPUP_COUNT_ATTR) || '0'}`,
         `手机端行内批注=${mobileInlineAnnotationCandidateCount} repaired=${root.getAttribute?.(MOBILE_INLINE_ANNOTATION_COUNT_ATTR) || '0'}`,
         `repairScope=${root.getAttribute?.(MOBILE_LAYOUT_SCOPE_ATTR) || '(无)'} patched=${root.getAttribute?.(MOBILE_LAYOUT_RESCUE_COUNT_ATTR) || '0'}`,
@@ -8662,6 +9172,7 @@ function recoveredInlineStateProgramCount(root) {
         `[${DIRECT_ID_CLASS_STATE_RESCUE_ATTR}]`,
         `[${RAW_SELF_MUTATION_RESCUE_ATTR}]`,
         `[${RAW_NAMED_FUNCTION_RESCUE_ATTR}]`,
+        `[${PASSPORT_DOCUMENT_TRIGGER_RESCUE_ATTR}]`,
     ].join(',');
     return new Set([...root.querySelectorAll(selector)]).size;
 }
@@ -8700,6 +9211,7 @@ function maintenanceReachableInteractionEvidence(root, routeSummary, checkedDept
         + Number(routeSummary.checkedTextRule || 0)
         + Number(routeSummary.crossParentChecked || 0)
         + Number(routeSummary.checkedHasState || 0)
+        + Number(routeSummary.reversibleChecked || 0)
         + Number(routeSummary.containerReveal || 0)
         + Number(routeSummary.selfMutation || 0)
         + Number(routeSummary.classStateProgram || 0)
@@ -8707,7 +9219,8 @@ function maintenanceReachableInteractionEvidence(root, routeSummary, checkedDept
         + Number(routeSummary.unlabeledChecked || 0)
         + Number(routeSummary.selectionFallback || 0)
         + Number(routeSummary.disabledChoice || 0)
-        + Number(routeSummary.inertAction || 0);
+        + Number(routeSummary.inertAction || 0)
+        + Number(routeSummary.passportDocument || 0);
 
     const rawStateProgram = /\bon(?:click|change|input)\s*=|setAttribute\s*\(\s*['"]data-|classList\.(?:add|remove|toggle)|\.checked\s*=|:checked\b|:target\b/i.test(String(raw || ''));
     const nestedDetailsCount = diagnosticQueryContentAll(root, 'details').filter(details => details !== outerDetails).length;
@@ -8736,8 +9249,9 @@ function maintenanceKnownInteractionEvidence(root, full, code) {
         + routeSummary.maskReveal + routeSummary.listDetail + routeSummary.stateSibling + routeSummary.buttonAdjacent
         + routeSummary.clickableAdjacent + routeSummary.clickablePopup + routeSummary.checkedIdTarget + routeSummary.focusToChecked
         + routeSummary.checkedTextRule + routeSummary.crossParentChecked + routeSummary.checkedHasState + routeSummary.expandedOpacity
+        + routeSummary.reversibleChecked
         + routeSummary.containerReveal + routeSummary.selfMutation + routeSummary.classStateProgram + routeSummary.changeProgram
-        + routeSummary.unlabeledChecked + routeSummary.selectionFallback + routeSummary.disabledChoice + routeSummary.inertAction;
+        + routeSummary.unlabeledChecked + routeSummary.selectionFallback + routeSummary.disabledChoice + routeSummary.inertAction + routeSummary.passportDocument;
     const innerDetailsCount = diagnosticQueryContentAll(root, 'details').length;
     const hasTargetRoute = !!root?.querySelector?.('a[href^="#"]') && /:target\b/i.test(raw);
     const hasPopoverRoute = !!root?.querySelector?.('[popovertarget], [commandfor], [popover]');
@@ -8756,6 +9270,10 @@ function maintenanceKnownInteractionEvidence(root, full, code) {
     const checkedHasStateRuleCandidateCount = parseBrokenCheckedHasStateRules(root).length;
     const checkedHasStateRuleRescueCount = Number.parseInt(root.getAttribute?.(CHECKED_HAS_STATE_RULE_COUNT_ATTR) || '0', 10) || 0;
     const checkedHasStateRuleMissingCount = Math.max(0, checkedHasStateRuleCandidateCount - checkedHasStateRuleRescueCount);
+    const oneWayCheckedResultCandidateCount = findOneWayCheckedResultCandidates(root)
+        .filter(candidate => !candidate.target?.hasAttribute?.(REVERSIBLE_CHECKED_RESULT_TARGET_ATTR))
+        .length;
+    const reversibleCheckedResultRescueCount = Number.parseInt(root.getAttribute?.(REVERSIBLE_CHECKED_RESULT_ROOT_ATTR) || '0', 10) || 0;
     const disabledOnlyChoiceCandidateCount = findDisabledOnlyChoiceGroupCandidates(root).length;
     const inertActionButtonCandidateCount = findInertActionButtonCandidates(root).length;
     // 只有选中项外观变化时，补 Hover 也不会生成缺失的第二层内容，不能误导为可修复交互。
@@ -8769,7 +9287,7 @@ function maintenanceKnownInteractionEvidence(root, full, code) {
     const unscopedControls = (full.inputCount > 0 || full.buttonCount > 0)
         && root.dataset?.rabbitMirrorInteractionScoped !== 'true';
     const reachability = maintenanceReachableInteractionEvidence(root, routeSummary, checkedDepth, pseudoDepth, raw);
-    return { checkedControlsLost, strippedStateProgram, lostInlineStatePrograms, recoveredInlineStatePrograms, decorativeOverlayCandidateCount, touchHoverMissing, unscopedControls, selectionOnlyRepairCandidateCount, disabledOnlyChoiceCandidateCount, inertActionButtonCandidateCount, crossParentCheckedRuleCandidateCount, checkedHasStateRuleCandidateCount, checkedHasStateRuleRescueCount, checkedHasStateRuleMissingCount, pseudoVisualOnly, raw, ...scopeEvidence, ...checkedDepth, ...pseudoDepth, ...reachability };
+    return { checkedControlsLost, strippedStateProgram, lostInlineStatePrograms, recoveredInlineStatePrograms, decorativeOverlayCandidateCount, touchHoverMissing, unscopedControls, selectionOnlyRepairCandidateCount, disabledOnlyChoiceCandidateCount, inertActionButtonCandidateCount, crossParentCheckedRuleCandidateCount, checkedHasStateRuleCandidateCount, checkedHasStateRuleRescueCount, checkedHasStateRuleMissingCount, oneWayCheckedResultCandidateCount, reversibleCheckedResultRescueCount, pseudoVisualOnly, raw, ...scopeEvidence, ...checkedDepth, ...pseudoDepth, ...reachability };
 }
 
 function maintenanceFallbackFullSummary(root) {
@@ -9020,6 +9538,13 @@ function buildMaintenanceFindings(root, {
             evidence: [`checkedHasStateRuleMissingCount=${Number(interaction.checkedHasStateRuleMissingCount)}`], confidence: 0.98,
         });
     }
+    if (Number(interaction.oneWayCheckedResultCandidateCount) > 0) {
+        add({
+            id: 'checked-result-no-return', stage: 'interaction', mode: 'interaction',
+            label: 'checked 分支隐藏了唯一触发器，进入下一层后没有返回上一层的操作入口',
+            evidence: [`oneWayCheckedResultCandidateCount=${Number(interaction.oneWayCheckedResultCandidateCount)}`], confidence: 0.98,
+        });
+    }
     if (interaction.needsScopeRepair) {
         add({
             id: 'interaction-id-scope-collision', stage: 'interaction', mode: 'interaction',
@@ -9097,7 +9622,7 @@ function inspectMaintenanceRabbit(root) {
     } catch (error) {
         partialInspection = true;
         console.debug('[RabbitMirror] maintenance interaction inspection skipped:', error);
-        interaction = { checkedControlsLost: false, strippedStateProgram: false, lostInlineStatePrograms: 0, recoveredInlineStatePrograms: 0, decorativeOverlayCandidateCount: 0, touchHoverMissing: false, unscopedControls: false, duplicateIds: 0, brokenLocalLabels: 0, checkedCssIdSelectors: 0, needsScopeRepair: false, checkedSelectionOnly: false, checkedSelectionOnlyRaw: false, checkedRuleCount: 0, meaningfulCheckedRuleCount: 0, selectionStyleRuleCount: 0, selectionOnlyFallbackCount: 0, selectionOnlyRepairCandidateCount: 0, disabledOnlyChoiceCandidateCount: 0, inertActionButtonCandidateCount: 0, crossParentCheckedRuleCandidateCount: 0, checkedHasStateRuleCandidateCount: 0, checkedHasStateRuleRescueCount: 0, checkedHasStateRuleMissingCount: 0, pseudoVisualOnly: false, pseudoRuleCount: 0, visualOnlyPseudoRuleCount: 0, meaningfulPseudoRuleCount: 0, touchHoverEligibleCount: 0, touchHoverActiveCount: 0, contentInteractiveElementCount: 0, installedInteractionRouteCount: 0, noInteractionStructure: false, raw: '' };
+        interaction = { checkedControlsLost: false, strippedStateProgram: false, lostInlineStatePrograms: 0, recoveredInlineStatePrograms: 0, decorativeOverlayCandidateCount: 0, touchHoverMissing: false, unscopedControls: false, duplicateIds: 0, brokenLocalLabels: 0, checkedCssIdSelectors: 0, needsScopeRepair: false, checkedSelectionOnly: false, checkedSelectionOnlyRaw: false, checkedRuleCount: 0, meaningfulCheckedRuleCount: 0, selectionStyleRuleCount: 0, selectionOnlyFallbackCount: 0, selectionOnlyRepairCandidateCount: 0, disabledOnlyChoiceCandidateCount: 0, inertActionButtonCandidateCount: 0, crossParentCheckedRuleCandidateCount: 0, checkedHasStateRuleCandidateCount: 0, checkedHasStateRuleRescueCount: 0, checkedHasStateRuleMissingCount: 0, oneWayCheckedResultCandidateCount: 0, reversibleCheckedResultRescueCount: 0, pseudoVisualOnly: false, pseudoRuleCount: 0, visualOnlyPseudoRuleCount: 0, meaningfulPseudoRuleCount: 0, touchHoverEligibleCount: 0, touchHoverActiveCount: 0, contentInteractiveElementCount: 0, installedInteractionRouteCount: 0, noInteractionStructure: false, raw: '' };
     }
     let textClippingCandidateCount = 0;
     try {
@@ -9912,6 +10437,16 @@ function maintenanceMobileLayoutIsInternal(element) {
     return false;
 }
 
+function maintenanceMobileLayoutIsPassportManaged(element) {
+    if (!element?.hasAttribute) return false;
+    if (element.hasAttribute(PASSPORT_DOCUMENT_HOST_ATTR)
+        || element.hasAttribute(PASSPORT_DOCUMENT_COVER_ATTR)
+        || element.hasAttribute(PASSPORT_DOCUMENT_PAGES_ATTR)
+        || element.hasAttribute(PASSPORT_DOCUMENT_STAMP_ATTR)
+        || element.hasAttribute(PASSPORT_DOCUMENT_STAMP_DETAIL_ATTR)) return true;
+    return !!element.closest?.(`[${PASSPORT_DOCUMENT_COVER_ATTR}], [${PASSPORT_DOCUMENT_PAGES_ATTR}], [${PASSPORT_DOCUMENT_STAMP_ATTR}]`);
+}
+
 function maintenanceMobileLayoutHorizontalMediaHint(element) {
     if (!element) return false;
     if (element.matches?.('table,thead,tbody,tr,canvas')) return true;
@@ -10131,6 +10666,7 @@ function inspectMaintenanceMobileLayout(root) {
         multiColumnCount: 0,
         mediaCount: 0,
         stateContentCount: 0,
+        passportDocumentCount: 0,
     };
     if (!root?.querySelectorAll) return empty;
     const viewportWidth = Math.max(0, Number(globalThis.innerWidth || globalThis.document?.documentElement?.clientWidth || 0));
@@ -10167,16 +10703,17 @@ function inspectMaintenanceMobileLayout(root) {
         const overflowsSelf = clientWidth > 0 && scrollWidth > clientWidth + 3;
         const overflowsViewport = !!rect && (rect.left < -3 || rect.right > viewportWidth + 3);
         const decorativeOverflow = maintenanceMobileLayoutIsDecorativeOverflow(element, style);
-        if (!decorativeOverflow && (overflowsSelf || overflowsViewport)) buckets.horizontalOverflow.add(element);
+        const passportManaged = maintenanceMobileLayoutIsPassportManaged(element);
+        if (!decorativeOverflow && !passportManaged && (overflowsSelf || overflowsViewport)) buckets.horizontalOverflow.add(element);
 
         const minWidth = maintenanceMobileLayoutLengthPx(style.minWidth, referenceWidth);
         const fixedWidth = maintenanceMobileLayoutLengthPx(style.width, referenceWidth);
         const explicitLargeWidth = /(?:^|;)\s*(?:width|min-width)\s*:\s*(?:3[6-9]\d|[4-9]\d{2}|\d{4,})(?:\.\d+)?px\b/.test(inlineStyle);
-        if (!element.hasAttribute(MOBILE_LAYOUT_FIT_ATTR) && (minWidth > referenceWidth + 3 || fixedWidth > referenceWidth + 3 || explicitLargeWidth)) {
+        if (!passportManaged && !element.hasAttribute(MOBILE_LAYOUT_FIT_ATTR) && (minWidth > referenceWidth + 3 || fixedWidth > referenceWidth + 3 || explicitLargeWidth)) {
             buckets.fixedWidth.add(element);
         }
 
-        if (display.includes('grid') && !element.hasAttribute(MOBILE_LAYOUT_GRID_COLLAPSE_ATTR)) {
+        if (display.includes('grid') && !element.hasAttribute(MOBILE_LAYOUT_GRID_COLLAPSE_ATTR) && !element.hasAttribute(PASSPORT_DOCUMENT_PAGES_ATTR)) {
             const template = String(style.gridTemplateColumns || '').trim();
             const tracks = maintenanceMobileLayoutSplitTracks(template);
             const textHeavy = maintenanceMobileLayoutTextLength(element) >= 120;
@@ -10194,7 +10731,7 @@ function inspectMaintenanceMobileLayout(root) {
             }
         }
 
-        if (display.includes('flex') && !element.hasAttribute(MOBILE_LAYOUT_FLEX_WRAP_ATTR) && !element.hasAttribute(MOBILE_LAYOUT_FLEX_STACK_ATTR)) {
+        if (display.includes('flex') && !passportManaged && !element.hasAttribute(MOBILE_LAYOUT_FLEX_WRAP_ATTR) && !element.hasAttribute(MOBILE_LAYOUT_FLEX_STACK_ATTR)) {
             const children = [...(element.children || [])].filter(child => !maintenanceMobileLayoutIsInternal(child));
             const wrap = String(style.flexWrap || '').toLowerCase();
             const hasLargeHeading = !!element.querySelector?.(':scope > h1, :scope > h2');
@@ -10258,6 +10795,7 @@ function inspectMaintenanceMobileLayout(root) {
         multiColumnCount: buckets.multiColumn.size,
         mediaCount: buckets.media.size,
         stateContentCount: buckets.stateContent.size,
+        passportDocumentCount: findRenderedPassportDocumentCandidates(root).length,
     };
 }
 
@@ -10280,6 +10818,9 @@ function installMaintenanceMobileLayoutRescue(root) {
     ));
     const marked = new Set();
     const matrixEntries = [];
+    const passportCandidates = findRenderedPassportDocumentCandidates(root);
+    for (const candidate of passportCandidates) markRenderedPassportDocumentCandidate(candidate, marked);
+    if (passportCandidates.length) ensurePassportDocumentRescueStyle(root);
     const elements = [...root.querySelectorAll('*')].filter(element => !maintenanceMobileLayoutIsInternal(element));
 
     for (const element of elements) {
@@ -10301,7 +10842,8 @@ function installMaintenanceMobileLayoutRescue(root) {
             && (maintenanceMobileLayoutLengthPx(style.paddingLeft, referenceWidth) + maintenanceMobileLayoutLengthPx(style.paddingRight, referenceWidth) > 0);
 
         const decorativeOverflow = maintenanceMobileLayoutIsDecorativeOverflow(element, style);
-        if (!decorativeOverflow && (overflowsRoot || minWidth > referenceWidth + 3 || inlineFixedWidth || viewportWidthWithPadding)) {
+        const passportManaged = maintenanceMobileLayoutIsPassportManaged(element);
+        if (!decorativeOverflow && !passportManaged && (overflowsRoot || minWidth > referenceWidth + 3 || inlineFixedWidth || viewportWidthWithPadding)) {
             maintenanceMobileLayoutMark(element, MOBILE_LAYOUT_FIT_ATTR, marked);
         }
 
@@ -10309,7 +10851,9 @@ function installMaintenanceMobileLayoutRescue(root) {
             const template = String(style.gridTemplateColumns || '').trim();
             const tracks = maintenanceMobileLayoutSplitTracks(template);
             const matrixInfo = maintenanceMobileLayoutSemanticMatrixInfo(element, style, directChildren);
-            if (matrixInfo) {
+            if (element.hasAttribute(PASSPORT_DOCUMENT_PAGES_ATTR)) {
+                for (const child of directChildren) maintenanceMobileLayoutMark(child, MOBILE_LAYOUT_MIN_ATTR, marked);
+            } else if (matrixInfo) {
                 maintenanceMobileLayoutMark(element, MOBILE_LAYOUT_MATRIX_PRESERVE_ATTR, marked);
                 for (const cell of matrixInfo.cells) maintenanceMobileLayoutMark(cell, MOBILE_LAYOUT_MATRIX_CELL_ATTR, marked);
                 matrixEntries.push({ matrix: element, inputs: maintenanceMobileLayoutMatrixInputs(root, matrixInfo.cells) });
@@ -10325,7 +10869,7 @@ function installMaintenanceMobileLayoutRescue(root) {
             }
         }
 
-        if (display.includes('flex') && directChildren.length > 1) {
+        if (display.includes('flex') && directChildren.length > 1 && !passportManaged) {
             for (const child of directChildren) maintenanceMobileLayoutMark(child, MOBILE_LAYOUT_MIN_ATTR, marked);
             const wrap = String(style.flexWrap || '').toLowerCase();
             const hasLargeHeading = !!element.querySelector?.(':scope > h1, :scope > h2');
@@ -10429,7 +10973,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.41';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.43';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -10464,6 +11008,7 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
         const recoveredProgramRepairCount = Math.max(0, recoveredProgramCountAfter - recoveredProgramCountBefore);
         const crossParentCheckedCount = Number.parseInt(target.getAttribute?.(CROSS_PARENT_CHECKED_ROOT_ATTR) || '0', 10) || 0;
         const checkedHasStateCount = Number.parseInt(target.getAttribute?.(CHECKED_HAS_STATE_RULE_COUNT_ATTR) || '0', 10) || 0;
+        const reversibleCheckedCount = Number.parseInt(target.getAttribute?.(REVERSIBLE_CHECKED_RESULT_ROOT_ATTR) || '0', 10) || 0;
         const selectionFallbackCount = installSelectionOnlyStateFallback(target);
         const inertActionRepairCount = installInertActionButtonFallback(target);
         const disabledChoiceCount = target.querySelectorAll?.(`[${DISABLED_ONLY_CHOICE_RESCUE_ATTR}]`)?.length || 0;
@@ -10482,6 +11027,7 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
             || recoveredProgramCountAfter > 0
             || crossParentCheckedCount > 0
             || checkedHasStateCount > 0
+            || reversibleCheckedCount > 0
             || meaningfulCheckedRoute;
         if (genuinelyRescued) target.dataset.rabbitMirrorInteractionRescued = 'true';
         else delete target.dataset.rabbitMirrorInteractionRescued;
@@ -10490,7 +11036,7 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
             .map(item => item.trim())
             .filter(item => item && item !== 'none');
         // 不再把“调用了总入口”冒充为“命中了一条急救路线”；选择样式专用结构只有在安全补出分支提示后才算修复。
-        return genuinelyRescued ? Math.max(routes.length, disabledChoiceRepairCount, inertActionRepairCount, disabledChoiceCount, inertActionCount, overlayRepairCount, rawHoverRepairCount, recoveredProgramRepairCount, recoveredProgramCountAfter, crossParentCheckedCount, checkedHasStateCount) : 0;
+        return genuinelyRescued ? Math.max(routes.length, disabledChoiceRepairCount, inertActionRepairCount, disabledChoiceCount, inertActionCount, overlayRepairCount, rawHoverRepairCount, recoveredProgramRepairCount, recoveredProgramCountAfter, crossParentCheckedCount, checkedHasStateCount, reversibleCheckedCount) : 0;
     } },
 ]);
 
@@ -10568,7 +11114,8 @@ function runMaintenanceSourceInteractionFollowup(root) {
         || interaction.needsScopeRepair
         || interaction.selectionOnlyRepairCandidateCount > 0
         || interaction.disabledOnlyChoiceCandidateCount > 0
-        || interaction.inertActionButtonCandidateCount > 0;
+        || interaction.inertActionButtonCandidateCount > 0
+        || interaction.oneWayCheckedResultCandidateCount > 0;
     if (!shouldRepair) return null;
 
     const module = MAINTENANCE_RESCUE_LIBRARY.find(item => item.id === 'complete-interaction-library');

@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（挨打猫 v1.2・小小维修兔 v1.41）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（挨打猫 v1.2・小小维修兔 v1.43）",
   "loading_order": 99,
-  "js": "index.js?rmv=0.33.58",
-  "css": "style.css?rmv=0.33.58",
+  "js": "index.js?rmv=0.33.60",
+  "css": "style.css?rmv=0.33.60",
   "author": "Toto",
-  "version": "0.33.58-test.1",
+  "version": "0.33.60-test.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "TEST build: preserves semantic 2×2 quadrant and matrix layouts on mobile while allowing expanded cell content to grow without clipping or collapsing into a list."
+  "description": "TEST build: restores a safe return path when a checked branch hides its only trigger, while preserving independent states and all previous passport, matrix, annotation, and mobile layout repairs."
 }
