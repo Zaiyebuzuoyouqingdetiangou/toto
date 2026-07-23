@@ -1,4 +1,4 @@
-import { getSettings } from './settings.js?rmv=0.33.55';
+import { getSettings } from './settings.js?rmv=0.33.58';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -7,11 +7,11 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=0.33.55';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=0.33.55';
+} from './feedbackCat.js?rmv=0.33.58';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=0.33.58';
 
 
-const RUNTIME_VERSION = '0.33.55';
+const RUNTIME_VERSION = '0.33.58';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -1007,6 +1007,18 @@ const NESTED_DETAILS_REPLACEMENT_ATTR = 'data-rm-nested-details-replacement';
 const NESTED_DETAILS_REPLACEMENT_HOST_ATTR = 'data-rm-nested-details-replacement-host';
 const NESTED_DETAILS_REPLACEMENT_STYLE_ATTR = 'data-rabbit-mirror-nested-details-replacement-style';
 const NESTED_DETAILS_REPLACEMENT_BOUND_ATTR = 'data-rm-nested-details-replacement-bound';
+const NESTED_DETAILS_POPUP_RESCUE_ATTR = 'data-rm-nested-details-popup-rescue';
+const NESTED_DETAILS_POPUP_HOST_ATTR = 'data-rm-nested-details-popup-host';
+const NESTED_DETAILS_POPUP_CONTENT_ATTR = 'data-rm-nested-details-popup-content';
+const NESTED_DETAILS_POPUP_STYLE_ATTR = 'data-rabbit-mirror-nested-details-popup-style';
+const NESTED_DETAILS_POPUP_COUNT_ATTR = 'data-rabbit-mirror-nested-details-popup-count';
+const MOBILE_INLINE_ANNOTATION_RESCUE_ATTR = 'data-rabbit-mirror-mobile-inline-annotation-rescue';
+const MOBILE_INLINE_ANNOTATION_HOST_ATTR = 'data-rm-mobile-inline-annotation-host';
+const MOBILE_INLINE_ANNOTATION_ORIGINAL_ATTR = 'data-rm-mobile-inline-annotation-original';
+const MOBILE_INLINE_ANNOTATION_MIRROR_ATTR = 'data-rm-mobile-inline-annotation-mirror';
+const MOBILE_INLINE_ANNOTATION_VISIBLE_ATTR = 'data-rm-mobile-inline-annotation-visible';
+const MOBILE_INLINE_ANNOTATION_STYLE_ATTR = 'data-rabbit-mirror-mobile-inline-annotation-style';
+const MOBILE_INLINE_ANNOTATION_COUNT_ATTR = 'data-rabbit-mirror-mobile-inline-annotation-count';
 const HINTED_PSEUDO_RESCUE_ATTR = 'data-rabbit-mirror-hinted-pseudo-rescue';
 const CHANGE_PSEUDO_RESCUE_ATTR = 'data-rabbit-mirror-change-pseudo-rescue';
 const DIRECT_ID_CLICK_RESCUE_ATTR = 'data-rabbit-mirror-direct-id-click-rescue';
@@ -5628,6 +5640,295 @@ function installNestedDetailsReplacementContainment(root) {
     return patched;
 }
 
+function findNestedDetailsPopupClippingAncestor(element, root) {
+    let current = element?.parentElement || null;
+    for (let depth = 0; current && depth < 10; depth += 1, current = current.parentElement) {
+        const style = maintenanceSafeComputedStyle(current);
+        const overflow = `${style?.overflow || ''} ${style?.overflowX || ''} ${style?.overflowY || ''}`.toLowerCase();
+        if (/(?:hidden|clip)/.test(overflow)) return current;
+        if (current === root) break;
+    }
+    return null;
+}
+
+function nestedDetailsPopupOffsetLikelyOutside(content) {
+    const top = String(content?.style?.top || '').trim().toLowerCase();
+    if (/^(?:10[1-9]|1[1-9]\d|[2-9]\d{2,})(?:\.\d+)?%$/.test(top)) return true;
+    const bottom = String(content?.style?.bottom || '').trim().toLowerCase();
+    if (/^-(?:\d+(?:\.\d+)?)(?:px|rem|em|%)$/.test(bottom)) return true;
+    return false;
+}
+
+function findNestedDetailsPopupClippingCandidates(root) {
+    if (!root?.querySelectorAll) return [];
+    const outerDetails = root.matches?.('details') ? root : root.querySelector(':scope > details');
+    const candidates = [];
+    const seen = new Set();
+
+    for (const details of root.querySelectorAll('details')) {
+        if (details === outerDetails || details.hasAttribute(NESTED_DETAILS_REPLACEMENT_ATTR)) continue;
+        const summary = details.querySelector?.(':scope > summary');
+        if (!summary) continue;
+        for (const content of directReadableDetailsChildren(details, summary)) {
+            if (seen.has(content)) continue;
+            const text = String(content.textContent || '').replace(/\s+/g, ' ').trim();
+            if (text.length < 2) continue;
+            const style = maintenanceSafeComputedStyle(content);
+            const position = String(style?.position || content.style?.position || '').toLowerCase();
+            if (position !== 'absolute' && position !== 'fixed') continue;
+            const clippingAncestor = findNestedDetailsPopupClippingAncestor(content, root);
+            if (!clippingAncestor) continue;
+
+            let outside = nestedDetailsPopupOffsetLikelyOutside(content);
+            try {
+                const contentRect = content.getBoundingClientRect?.();
+                const clipRect = clippingAncestor.getBoundingClientRect?.();
+                if (contentRect && clipRect) {
+                    outside = outside
+                        || contentRect.left < clipRect.left - 2
+                        || contentRect.right > clipRect.right + 2
+                        || contentRect.top < clipRect.top - 2
+                        || contentRect.bottom > clipRect.bottom + 2;
+                }
+            } catch {
+                // Inline top/left evidence above remains available in older WebViews.
+            }
+            if (!outside) continue;
+            seen.add(content);
+            candidates.push({ details, summary, content, clippingAncestor });
+        }
+    }
+    return candidates;
+}
+
+function ensureNestedDetailsPopupRescueStyle(root) {
+    if (!root?.querySelector) return null;
+    let style = root.querySelector(`style[${NESTED_DETAILS_POPUP_STYLE_ATTR}]`);
+    if (!style) {
+        style = document.createElement('style');
+        style.setAttribute(NESTED_DETAILS_POPUP_STYLE_ATTR, 'true');
+        root.appendChild(style);
+    }
+    style.textContent = `
+[${NESTED_DETAILS_POPUP_HOST_ATTR}="true"] {
+  align-items: stretch !important;
+  min-width: 0 !important;
+}
+[${NESTED_DETAILS_POPUP_RESCUE_ATTR}="true"] {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+[${NESTED_DETAILS_POPUP_RESCUE_ATTR}="true"][open] > [${NESTED_DETAILS_POPUP_CONTENT_ATTR}="true"] {
+  position: relative !important;
+  inset: auto !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  margin-top: 8px !important;
+  box-sizing: border-box !important;
+}
+@media (max-width: 640px) {
+  [${NESTED_DETAILS_POPUP_HOST_ATTR}="true"] {
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
+    align-items: stretch !important;
+  }
+  [${NESTED_DETAILS_POPUP_RESCUE_ATTR}="true"] {
+    width: 100% !important;
+    flex: 1 1 auto !important;
+  }
+}
+`;
+    return style;
+}
+
+function repairNestedDetailsPopupClipping(root) {
+    if (!root?.querySelectorAll) return 0;
+    const candidates = findNestedDetailsPopupClippingCandidates(root);
+    let repaired = 0;
+    for (const { details, content } of candidates) {
+        if (!details?.isConnected || !content?.isConnected) continue;
+        details.setAttribute(NESTED_DETAILS_POPUP_RESCUE_ATTR, 'true');
+        content.setAttribute(NESTED_DETAILS_POPUP_CONTENT_ATTR, 'true');
+        details.parentElement?.setAttribute?.(NESTED_DETAILS_POPUP_HOST_ATTR, 'true');
+        repaired += 1;
+    }
+    if (repaired > 0 || root.querySelector?.(`[${NESTED_DETAILS_POPUP_RESCUE_ATTR}="true"]`)) {
+        ensureNestedDetailsPopupRescueStyle(root);
+        root.setAttribute(
+            NESTED_DETAILS_POPUP_COUNT_ATTR,
+            String(root.querySelectorAll(`[${NESTED_DETAILS_POPUP_RESCUE_ATTR}="true"]`).length),
+        );
+    }
+    return repaired;
+}
+
+
+function mobileInlineAnnotationMeaningfulText(element) {
+    return String(element?.textContent || '').replace(/\s+/g, ' ').trim().length >= 12;
+}
+
+function mobileInlineAnnotationCheckedTargets(root, input) {
+    const targets = new Set();
+    for (const rule of parseCheckedRulesFromText(root, input)) {
+        for (const target of maintenanceMobileLayoutResolveCheckedTargets(root, input, rule)) {
+            if (target && target !== input) targets.add(target);
+        }
+    }
+    return targets;
+}
+
+function findMobileInlineAnnotationCandidates(root) {
+    if (!root?.querySelectorAll) return [];
+    const viewportWidth = Math.max(0, Number(globalThis.innerWidth || globalThis.document?.documentElement?.clientWidth || 0));
+    if (viewportWidth > MOBILE_LAYOUT_BREAKPOINT_PX + 40) return [];
+    const result = [];
+    const seen = new Set();
+
+    for (const host of root.querySelectorAll('label')) {
+        if (host.hasAttribute(MOBILE_INLINE_ANNOTATION_HOST_ATTR)) continue;
+        const input = host.querySelector?.(':scope > input[type="checkbox"], :scope > input[type="radio"]');
+        if (!input || input.disabled) continue;
+        const hostStyle = maintenanceSafeComputedStyle(host);
+        const hostDisplay = String(hostStyle?.display || '').toLowerCase();
+        if (hostDisplay && !/^(?:inline|inline-block|inline-flex|inline-grid)$/.test(hostDisplay)) continue;
+
+        const routedTargets = mobileInlineAnnotationCheckedTargets(root, input);
+        if (!routedTargets.size) continue;
+        const children = [...(host.children || [])];
+        for (const content of children) {
+            if (content === input || seen.has(content) || content.hasAttribute(MOBILE_INLINE_ANNOTATION_ORIGINAL_ATTR)) continue;
+            if (!routedTargets.has(content) || !mobileInlineAnnotationMeaningfulText(content)) continue;
+            const style = maintenanceSafeComputedStyle(content);
+            const position = String(style?.position || content.style?.position || '').toLowerCase();
+            if (position !== 'absolute' && position !== 'fixed') continue;
+            const inlineStyle = String(content.getAttribute?.('style') || '').toLowerCase();
+            const width = maintenanceMobileLayoutLengthPx(style?.width || content.style?.width, Number(root.clientWidth || 0));
+            const fixedWidth = /(?:^|;)\s*(?:width|min-width)\s*:\s*\d+(?:\.\d+)?(?:px|rem|em|vw)\b/.test(inlineStyle) || width >= 140;
+            const overflowAncestor = diagnosticFindClippingAncestor(content, root);
+            if (!fixedWidth && !overflowAncestor) continue;
+            seen.add(content);
+            result.push({ host, input, content });
+        }
+    }
+    return result;
+}
+
+function removeDuplicateIdsFromMobileAnnotationMirror(mirror) {
+    if (!mirror?.querySelectorAll) return;
+    if (mirror.id) mirror.removeAttribute('id');
+    mirror.querySelectorAll('[id]').forEach(element => element.removeAttribute('id'));
+    mirror.querySelectorAll('input,button,select,textarea,a[href],label[for]').forEach(element => {
+        element.removeAttribute?.('for');
+        element.removeAttribute?.('href');
+        element.setAttribute?.('tabindex', '-1');
+        element.setAttribute?.('aria-hidden', 'true');
+    });
+}
+
+function ensureMobileInlineAnnotationRescueStyle(root) {
+    if (!root?.querySelector) return null;
+    let style = root.querySelector(`style[${MOBILE_INLINE_ANNOTATION_STYLE_ATTR}]`);
+    if (!style) {
+        style = document.createElement('style');
+        style.setAttribute(MOBILE_INLINE_ANNOTATION_STYLE_ATTR, 'true');
+        root.appendChild(style);
+    }
+    style.textContent = `
+[${MOBILE_INLINE_ANNOTATION_MIRROR_ATTR}="true"] { display: none !important; }
+@media (max-width: ${MOBILE_LAYOUT_BREAKPOINT_PX}px) {
+  [${MOBILE_INLINE_ANNOTATION_ORIGINAL_ATTR}="true"] { display: none !important; }
+  [${MOBILE_INLINE_ANNOTATION_MIRROR_ATTR}="true"][${MOBILE_INLINE_ANNOTATION_VISIBLE_ATTR}="true"] {
+    display: block !important;
+    position: relative !important;
+    inset: auto !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    float: none !important;
+    clear: both !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    box-sizing: border-box !important;
+    margin: 8px 0 12px !important;
+    white-space: normal !important;
+    writing-mode: horizontal-tb !important;
+    text-orientation: mixed !important;
+    overflow: visible !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+    z-index: auto !important;
+  }
+}`;
+    return style;
+}
+
+function refreshMobileInlineAnnotationRescue(root) {
+    const state = mobileInlineAnnotationRescueStates.get(root);
+    if (!state) return;
+    for (const entry of state.entries || []) {
+        if (!entry.input?.isConnected || !entry.mirror?.isConnected) continue;
+        const visible = !!entry.input.checked;
+        if (visible) entry.mirror.setAttribute(MOBILE_INLINE_ANNOTATION_VISIBLE_ATTR, 'true');
+        else entry.mirror.removeAttribute(MOBILE_INLINE_ANNOTATION_VISIBLE_ATTR);
+        entry.mirror.setAttribute('aria-hidden', visible ? 'false' : 'true');
+    }
+}
+
+function installMobileInlineAnnotationRescue(root) {
+    if (!root?.querySelectorAll || !root?.isConnected) return 0;
+    let state = mobileInlineAnnotationRescueStates.get(root);
+    if (!state) {
+        state = {
+            entries: [],
+            onStateChange: () => setTimeout(() => refreshMobileInlineAnnotationRescue(root), 0),
+        };
+        root.addEventListener('input', state.onStateChange, false);
+        root.addEventListener('change', state.onStateChange, false);
+        mobileInlineAnnotationRescueStates.set(root, state);
+    }
+
+    let repaired = 0;
+    for (const { host, input, content } of findMobileInlineAnnotationCandidates(root)) {
+        if (!host?.isConnected || !input?.isConnected || !content?.isConnected) continue;
+        mobileInlineAnnotationCounter += 1;
+        const token = `rm-note-${mobileInlineAnnotationCounter.toString(36)}`;
+        const mirror = content.cloneNode(true);
+        removeDuplicateIdsFromMobileAnnotationMirror(mirror);
+        mirror.setAttribute(MOBILE_INLINE_ANNOTATION_MIRROR_ATTR, 'true');
+        mirror.setAttribute('data-rm-mobile-inline-annotation-token', token);
+        mirror.setAttribute('aria-live', 'polite');
+        mirror.setAttribute('aria-hidden', 'true');
+        content.setAttribute(MOBILE_INLINE_ANNOTATION_ORIGINAL_ATTR, 'true');
+        content.setAttribute('data-rm-mobile-inline-annotation-token', token);
+        host.setAttribute(MOBILE_INLINE_ANNOTATION_HOST_ATTR, 'true');
+        host.insertAdjacentElement('afterend', mirror);
+        state.entries.push({ host, input, content, mirror, token });
+        repaired += 1;
+    }
+
+    if (repaired > 0 || state.entries.some(entry => entry.mirror?.isConnected)) {
+        ensureMobileInlineAnnotationRescueStyle(root);
+        refreshMobileInlineAnnotationRescue(root);
+        [80, 260, 650].forEach(delay => setTimeout(() => refreshMobileInlineAnnotationRescue(root), delay));
+        root.setAttribute(MOBILE_INLINE_ANNOTATION_RESCUE_ATTR, 'true');
+        root.setAttribute(
+            MOBILE_INLINE_ANNOTATION_COUNT_ATTR,
+            String(state.entries.filter(entry => entry.mirror?.isConnected).length),
+        );
+    }
+    return repaired;
+}
+
 function repairMarkdownEmphasisInsideCssComments(cssText) {
     let changed = false;
     const repaired = String(cssText || '').replace(
@@ -6547,6 +6848,9 @@ const MOBILE_LAYOUT_RESCUE_COUNT_ATTR = 'data-rabbit-mirror-mobile-layout-count'
 const MOBILE_LAYOUT_FIT_ATTR = 'data-rm-mobile-fit';
 const MOBILE_LAYOUT_MIN_ATTR = 'data-rm-mobile-min';
 const MOBILE_LAYOUT_GRID_COLLAPSE_ATTR = 'data-rm-mobile-grid-collapse';
+const MOBILE_LAYOUT_MATRIX_PRESERVE_ATTR = 'data-rm-mobile-matrix-preserve';
+const MOBILE_LAYOUT_MATRIX_ACTIVE_ATTR = 'data-rm-mobile-matrix-active';
+const MOBILE_LAYOUT_MATRIX_CELL_ATTR = 'data-rm-mobile-matrix-cell';
 const MOBILE_LAYOUT_FLEX_WRAP_ATTR = 'data-rm-mobile-flex-wrap';
 const MOBILE_LAYOUT_FLEX_STACK_ATTR = 'data-rm-mobile-flex-stack';
 const MOBILE_LAYOUT_SINGLE_COLUMN_ATTR = 'data-rm-mobile-single-column';
@@ -6563,6 +6867,9 @@ const MOBILE_LAYOUT_TARGET_ATTRS = Object.freeze([
     MOBILE_LAYOUT_FIT_ATTR,
     MOBILE_LAYOUT_MIN_ATTR,
     MOBILE_LAYOUT_GRID_COLLAPSE_ATTR,
+    MOBILE_LAYOUT_MATRIX_PRESERVE_ATTR,
+    MOBILE_LAYOUT_MATRIX_ACTIVE_ATTR,
+    MOBILE_LAYOUT_MATRIX_CELL_ATTR,
     MOBILE_LAYOUT_FLEX_WRAP_ATTR,
     MOBILE_LAYOUT_FLEX_STACK_ATTR,
     MOBILE_LAYOUT_SINGLE_COLUMN_ATTR,
@@ -6576,10 +6883,13 @@ const MOBILE_LAYOUT_TARGET_ATTRS = Object.freeze([
     MOBILE_LAYOUT_STATE_ACTIVE_ATTR,
 ]);
 const mobileLayoutRescueStates = new WeakMap();
+const mobileMatrixPreserveStates = new WeakMap();
+const mobileInlineAnnotationRescueStates = new WeakMap();
+let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '0.33.55-TEST-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.33.58-TEST-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -6884,6 +7194,18 @@ function maintenanceVisibleTextRects(element, limit = 80) {
     return rects;
 }
 
+function maintenanceHasIntentionalMarquee(element) {
+    if (!element?.querySelectorAll) return false;
+    for (const descendant of element.querySelectorAll('*')) {
+        const style = maintenanceSafeComputedStyle(descendant);
+        if (!style) continue;
+        const animationName = String(style.animationName || '').trim().toLowerCase();
+        const whiteSpace = String(style.whiteSpace || '').trim().toLowerCase();
+        if (animationName && animationName !== 'none' && whiteSpace === 'nowrap') return true;
+    }
+    return false;
+}
+
 function maintenanceTextClippingEvidence(element, root) {
     if (!maintenanceIsVisibleContentElement(element) || !maintenanceHasMeaningfulText(element)) return null;
     const style = maintenanceSafeComputedStyle(element);
@@ -6916,11 +7238,13 @@ function maintenanceTextClippingEvidence(element, root) {
     // 只有直属文本，或自身就是文字载体且没有块级结构子树时，才把滚动尺寸当文字证据。
     const hasBlockStructure = !!element.querySelector?.('div,section,article,main,aside,header,footer,ul,ol,table,figure,details,form');
     const scrollTextEvidence = directText || (semanticTextTag && !hasBlockStructure);
-    const horizontal = (clipsX && textOutsideX)
+    let horizontal = (clipsX && textOutsideX)
         || ((clipsX || noWrap || textOverflow === 'ellipsis') && scrollTextEvidence && scrollOverflowX);
     const vertical = lineClamped
         || (clipsY && textOutsideY)
         || (clipsY && scrollTextEvidence && scrollOverflowY);
+    // 滚动字幕会故意把 nowrap 文本移出裁切窗口；这是媒介动画，不是文字丢失。
+    if (horizontal && !vertical && clipsX && maintenanceHasIntentionalMarquee(element)) horizontal = false;
     if (!horizontal && !vertical) return null;
 
     return {
@@ -7403,6 +7727,8 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         getRawAssistantMessageForRenderedRoot(root),
     );
     const mobileLayout = inspectMaintenanceMobileLayout(root);
+    const nestedDetailsPopupCandidateCount = findNestedDetailsPopupClippingCandidates(root).length;
+    const mobileInlineAnnotationCandidateCount = findMobileInlineAnnotationCandidates(root).length;
     const title = diagnosticCompactText(root.querySelector('summary')?.textContent, 64);
     const code = diagnosticCodeRescueSummary(root);
     const full = diagnosticFullChainSummary(root, code);
@@ -7506,8 +7832,10 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         '',
         '[9. 手机端排版／内容承载]',
         `viewportWidth=${mobileLayout.viewportWidth || 0} narrow=${!!mobileLayout.narrowViewport} candidates=${mobileLayout.candidateCount || 0}`,
-        `overflow=${mobileLayout.horizontalOverflowCount || 0} fixedWidth=${mobileLayout.fixedWidthCount || 0} grid=${mobileLayout.gridCount || 0} flex=${mobileLayout.flexCount || 0}`,
+        `overflow=${mobileLayout.horizontalOverflowCount || 0} fixedWidth=${mobileLayout.fixedWidthCount || 0} grid=${mobileLayout.gridCount || 0} matrix=${mobileLayout.matrixCount || 0} flex=${mobileLayout.flexCount || 0}`,
         `multiColumn=${mobileLayout.multiColumnCount || 0} media=${mobileLayout.mediaCount || 0} stateContent=${mobileLayout.stateContentCount || 0}`,
+        `内部details弹出结果裁切=${nestedDetailsPopupCandidateCount} repaired=${root.getAttribute?.(NESTED_DETAILS_POPUP_COUNT_ATTR) || '0'}`,
+        `手机端行内批注=${mobileInlineAnnotationCandidateCount} repaired=${root.getAttribute?.(MOBILE_INLINE_ANNOTATION_COUNT_ATTR) || '0'}`,
         `repairScope=${root.getAttribute?.(MOBILE_LAYOUT_SCOPE_ATTR) || '(无)'} patched=${root.getAttribute?.(MOBILE_LAYOUT_RESCUE_COUNT_ATTR) || '0'}`,
         '',
         '[捕获事件]',
@@ -8514,7 +8842,15 @@ function dedupeMaintenanceFindings(findings) {
     return [...map.values()];
 }
 
-function buildMaintenanceFindings(root, { full = {}, code = {}, interaction = {}, textClippingCandidateCount = 0, mobileLayout = null } = {}) {
+function buildMaintenanceFindings(root, {
+    full = {},
+    code = {},
+    interaction = {},
+    textClippingCandidateCount = 0,
+    nestedDetailsPopupCandidateCount = 0,
+    mobileInlineAnnotationCandidateCount = 0,
+    mobileLayout = null,
+} = {}) {
     const findings = [];
     const add = finding => findings.push(createMaintenanceFinding(finding));
 
@@ -8572,6 +8908,24 @@ function buildMaintenanceFindings(root, { full = {}, code = {}, interaction = {}
         });
     }
 
+    if ((Number(nestedDetailsPopupCandidateCount) || 0) > 0) {
+        add({
+            id: 'nested-details-popup-clipped', stage: 'visibility', mode: 'text',
+            label: `检测到 ${Number(nestedDetailsPopupCandidateCount) || 0} 处展开结果脱离文档流并被外层裁切`,
+            evidence: [`nestedDetailsPopupCandidateCount=${Number(nestedDetailsPopupCandidateCount) || 0}`],
+            confidence: 0.98,
+        });
+    }
+
+    if ((Number(mobileInlineAnnotationCandidateCount) || 0) > 0) {
+        add({
+            id: 'mobile-inline-annotation-clipped', stage: 'visibility', mode: 'text',
+            label: `检测到 ${Number(mobileInlineAnnotationCandidateCount) || 0} 处手机端行内批注被压窄、重叠或裁切`,
+            evidence: [`mobileInlineAnnotationCandidateCount=${Number(mobileInlineAnnotationCandidateCount) || 0}`],
+            confidence: 0.98,
+        });
+    }
+
     if ((Number(mobileLayout?.candidateCount) || 0) > 0) {
         add({
             id: 'mobile-layout-content-risk', stage: 'visibility', mode: 'text',
@@ -8581,6 +8935,7 @@ function buildMaintenanceFindings(root, { full = {}, code = {}, interaction = {}
                 `horizontalOverflow=${Number(mobileLayout?.horizontalOverflowCount) || 0}`,
                 `fixedWidth=${Number(mobileLayout?.fixedWidthCount) || 0}`,
                 `grid=${Number(mobileLayout?.gridCount) || 0}`,
+                `matrix=${Number(mobileLayout?.matrixCount) || 0}`,
                 `flex=${Number(mobileLayout?.flexCount) || 0}`,
                 `multiColumn=${Number(mobileLayout?.multiColumnCount) || 0}`,
                 `media=${Number(mobileLayout?.mediaCount) || 0}`,
@@ -8751,6 +9106,20 @@ function inspectMaintenanceRabbit(root) {
         partialInspection = true;
         console.debug('[RabbitMirror] maintenance text clipping inspection skipped:', error);
     }
+    let nestedDetailsPopupCandidateCount = 0;
+    try {
+        nestedDetailsPopupCandidateCount = findNestedDetailsPopupClippingCandidates(root).length;
+    } catch (error) {
+        partialInspection = true;
+        console.debug('[RabbitMirror] maintenance nested details popup inspection skipped:', error);
+    }
+    let mobileInlineAnnotationCandidateCount = 0;
+    try {
+        mobileInlineAnnotationCandidateCount = findMobileInlineAnnotationCandidates(root).length;
+    } catch (error) {
+        partialInspection = true;
+        console.debug('[RabbitMirror] maintenance mobile inline annotation inspection skipped:', error);
+    }
     let mobileLayout = { candidateCount: 0, viewportWidth: Number(globalThis.innerWidth || 0), narrowViewport: false };
     try {
         mobileLayout = inspectMaintenanceMobileLayout(root);
@@ -8759,7 +9128,15 @@ function inspectMaintenanceRabbit(root) {
         console.debug('[RabbitMirror] maintenance mobile layout inspection skipped:', error);
     }
 
-    const findings = buildMaintenanceFindings(root, { full, code, interaction, textClippingCandidateCount, mobileLayout });
+    const findings = buildMaintenanceFindings(root, {
+        full,
+        code,
+        interaction,
+        textClippingCandidateCount,
+        nestedDetailsPopupCandidateCount,
+        mobileInlineAnnotationCandidateCount,
+        mobileLayout,
+    });
     const repairPlan = maintenanceRepairModesForFindings(findings);
     if (findings.length) {
         return {
@@ -8771,6 +9148,8 @@ function inspectMaintenanceRabbit(root) {
             full,
             interaction,
             textClippingCandidateCount,
+            nestedDetailsPopupCandidateCount,
+            mobileInlineAnnotationCandidateCount,
             mobileLayout,
         };
     }
@@ -8793,6 +9172,8 @@ function inspectMaintenanceRabbit(root) {
             full,
             interaction,
             textClippingCandidateCount,
+            nestedDetailsPopupCandidateCount,
+            mobileInlineAnnotationCandidateCount,
             mobileLayout,
         };
     }
@@ -8808,6 +9189,8 @@ function inspectMaintenanceRabbit(root) {
         full,
         interaction,
         textClippingCandidateCount,
+        nestedDetailsPopupCandidateCount,
+        mobileInlineAnnotationCandidateCount,
         mobileLayout,
     };
 }
@@ -9525,6 +9908,7 @@ function maintenanceMobileLayoutIsInternal(element) {
     if (element.matches('style,script,link,meta,br,summary')) return true;
     if (element.closest?.(`[${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`)) return true;
     if (element.matches(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}]`)) return true;
+    if (element.matches(`[${MOBILE_INLINE_ANNOTATION_ORIGINAL_ATTR}], [${MOBILE_INLINE_ANNOTATION_MIRROR_ATTR}]`)) return true;
     return false;
 }
 
@@ -9533,6 +9917,88 @@ function maintenanceMobileLayoutHorizontalMediaHint(element) {
     if (element.matches?.('table,thead,tbody,tr,canvas')) return true;
     const signature = `${element.id || ''} ${element.className || ''} ${element.getAttribute?.('role') || ''} ${element.getAttribute?.('aria-label') || ''}`;
     return /(?:table|timeline|track|chart|graph|map|board|calendar|schedule|kanban|matrix|gallery|carousel|slider|race|score|仪表|时间轴|赛道|地图|表格|棋盘|画布|日历)/i.test(signature);
+}
+
+
+function maintenanceMobileLayoutSemanticMatrixInfo(element, style = null, directChildren = null) {
+    if (!element) return null;
+    const computed = style || maintenanceMobileLayoutComputedStyle(element);
+    if (!String(computed?.display || '').toLowerCase().includes('grid')) return null;
+    const columnTracks = maintenanceMobileLayoutSplitTracks(computed?.gridTemplateColumns);
+    const rowTracks = maintenanceMobileLayoutSplitTracks(computed?.gridTemplateRows);
+    if (columnTracks.length !== 2 || rowTracks.length !== 2) return null;
+
+    const children = Array.isArray(directChildren)
+        ? directChildren
+        : [...(element.children || [])].filter(child => !maintenanceMobileLayoutIsInternal(child));
+    const cells = children.filter(child => {
+        const childStyle = maintenanceMobileLayoutComputedStyle(child);
+        const position = String(childStyle?.position || '').toLowerCase();
+        if (position === 'absolute' || position === 'fixed') return false;
+        if (child.matches?.('label,button,details,a,[role="button"],[tabindex]')) return true;
+        return maintenanceMobileLayoutTextLength(child) >= 18;
+    });
+    if (cells.length !== 4) return null;
+
+    const signature = `${element.id || ''} ${element.className || ''} ${element.getAttribute?.('aria-label') || ''} ${cells.map(cell => `${cell.id || ''} ${cell.className || ''}`).join(' ')}`;
+    const axisChildren = children.filter(child => /(?:axis|轴线|坐标轴|label-(?:top|bottom|left|right))/i.test(`${child.id || ''} ${child.className || ''}`));
+    const semanticHint = /(?:quadrant|matrix|四象限|象限|坐标图|坐标系|matrix-grid|四宫格)/i.test(signature)
+        || axisChildren.length >= 2;
+    if (!semanticHint) return null;
+    return { cells };
+}
+
+function maintenanceMobileLayoutMatrixInputs(root, cells) {
+    const inputs = [];
+    const seen = new Set();
+    for (const cell of cells || []) {
+        const forId = String(cell.getAttribute?.('for') || '').trim();
+        const input = cell.control || (forId ? globalThis.document?.getElementById?.(forId) : null) || null;
+        if (!input || !root.contains?.(input) || !input.matches?.('input[type="checkbox"], input[type="radio"]') || seen.has(input)) continue;
+        seen.add(input);
+        inputs.push(input);
+    }
+    return inputs;
+}
+
+function refreshMaintenanceMobileMatrixStates(root) {
+    const state = mobileMatrixPreserveStates.get(root);
+    if (!state) return;
+    for (const entry of state.entries || []) {
+        if (!entry.matrix?.isConnected) continue;
+        const active = (entry.inputs || []).some(input => input?.checked);
+        if (active) entry.matrix.setAttribute(MOBILE_LAYOUT_MATRIX_ACTIVE_ATTR, 'true');
+        else entry.matrix.removeAttribute(MOBILE_LAYOUT_MATRIX_ACTIVE_ATTR);
+    }
+}
+
+function installMaintenanceMobileMatrixStateRescue(root, entries) {
+    if (!root) return 0;
+    let state = mobileMatrixPreserveStates.get(root);
+    if (!state) {
+        state = {
+            entries: [],
+            onStateChange: () => setTimeout(() => refreshMaintenanceMobileMatrixStates(root), 0),
+        };
+        root.addEventListener('input', state.onStateChange, false);
+        root.addEventListener('change', state.onStateChange, false);
+        mobileMatrixPreserveStates.set(root, state);
+    }
+    state.entries = entries || [];
+    refreshMaintenanceMobileMatrixStates(root);
+    return state.entries.length;
+}
+
+function maintenanceMobileLayoutIsDecorativeOverflow(element, style = null) {
+    if (!element) return false;
+    const computed = style || maintenanceMobileLayoutComputedStyle(element);
+    const position = String(computed?.position || '').toLowerCase();
+    if (position !== 'absolute' && position !== 'fixed') return false;
+    if (maintenanceMobileLayoutTextLength(element) > 0 || Number(element.childElementCount || 0) > 0) return false;
+    if (element.matches?.('img,video,iframe,canvas,svg,button,input,label,a,summary,[role="button"],[tabindex]')) return false;
+    const opacity = Number.parseFloat(computed?.opacity || '1');
+    const pointerEvents = String(computed?.pointerEvents || '').toLowerCase();
+    return pointerEvents === 'none' || (Number.isFinite(opacity) && opacity <= 0.65);
 }
 
 function maintenanceMobileLayoutMark(element, attr, marked) {
@@ -9632,6 +10098,10 @@ function maintenanceMobileLayoutCss(scopeToken) {
 ${scope} [${MOBILE_LAYOUT_FIT_ATTR}] { max-width: 100% !important; box-sizing: border-box !important; min-width: 0 !important; }
 ${scope} [${MOBILE_LAYOUT_MIN_ATTR}] { min-width: 0 !important; max-width: 100% !important; box-sizing: border-box !important; }
 ${scope} [${MOBILE_LAYOUT_GRID_COLLAPSE_ATTR}] { grid-template-columns: minmax(0, 1fr) !important; width: 100% !important; max-width: 100% !important; min-width: 0 !important; box-sizing: border-box !important; }
+${scope} [${MOBILE_LAYOUT_MATRIX_PRESERVE_ATTR}] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; width: 100% !important; max-width: 100% !important; min-width: 0 !important; box-sizing: border-box !important; }
+${scope} [${MOBILE_LAYOUT_MATRIX_PRESERVE_ATTR}][${MOBILE_LAYOUT_MATRIX_ACTIVE_ATTR}] { aspect-ratio: auto !important; height: auto !important; max-height: none !important; grid-template-rows: repeat(2, minmax(0, 1fr)) !important; align-items: stretch !important; }
+${scope} [${MOBILE_LAYOUT_MATRIX_CELL_ATTR}] { min-width: 0 !important; max-width: 100% !important; box-sizing: border-box !important; overflow: hidden !important; padding-left: clamp(10px, 3vw, 16px) !important; padding-right: clamp(10px, 3vw, 16px) !important; overflow-wrap: anywhere !important; word-break: break-word !important; }
+${scope} [${MOBILE_LAYOUT_MATRIX_PRESERVE_ATTR}][${MOBILE_LAYOUT_MATRIX_ACTIVE_ATTR}] [${MOBILE_LAYOUT_MATRIX_CELL_ATTR}] { height: auto !important; min-height: 0 !important; }
 ${scope} [${MOBILE_LAYOUT_FLEX_WRAP_ATTR}] { flex-wrap: wrap !important; min-width: 0 !important; }
 ${scope} [${MOBILE_LAYOUT_FLEX_STACK_ATTR}] { flex-direction: column !important; align-items: stretch !important; min-width: 0 !important; }
 ${scope} [${MOBILE_LAYOUT_SINGLE_COLUMN_ATTR}] { column-count: 1 !important; column-width: auto !important; }
@@ -9656,6 +10126,7 @@ function inspectMaintenanceMobileLayout(root) {
         horizontalOverflowCount: 0,
         fixedWidthCount: 0,
         gridCount: 0,
+        matrixCount: 0,
         flexCount: 0,
         multiColumnCount: 0,
         mediaCount: 0,
@@ -9675,6 +10146,7 @@ function inspectMaintenanceMobileLayout(root) {
         horizontalOverflow: new Set(),
         fixedWidth: new Set(),
         grid: new Set(),
+        matrix: new Set(),
         flex: new Set(),
         multiColumn: new Set(),
         media: new Set(),
@@ -9694,7 +10166,8 @@ function inspectMaintenanceMobileLayout(root) {
         const scrollWidth = Number(element.scrollWidth || 0);
         const overflowsSelf = clientWidth > 0 && scrollWidth > clientWidth + 3;
         const overflowsViewport = !!rect && (rect.left < -3 || rect.right > viewportWidth + 3);
-        if (overflowsSelf || overflowsViewport) buckets.horizontalOverflow.add(element);
+        const decorativeOverflow = maintenanceMobileLayoutIsDecorativeOverflow(element, style);
+        if (!decorativeOverflow && (overflowsSelf || overflowsViewport)) buckets.horizontalOverflow.add(element);
 
         const minWidth = maintenanceMobileLayoutLengthPx(style.minWidth, referenceWidth);
         const fixedWidth = maintenanceMobileLayoutLengthPx(style.width, referenceWidth);
@@ -9707,7 +10180,16 @@ function inspectMaintenanceMobileLayout(root) {
             const template = String(style.gridTemplateColumns || '').trim();
             const tracks = maintenanceMobileLayoutSplitTracks(template);
             const textHeavy = maintenanceMobileLayoutTextLength(element) >= 120;
-            if (tracks.length > 1 && (overflowsSelf || maintenanceMobileLayoutHasFixedTrack(template) || textHeavy)) {
+            const matrixInfo = maintenanceMobileLayoutSemanticMatrixInfo(element, style);
+            if (matrixInfo) {
+                const matrixInputs = maintenanceMobileLayoutMatrixInputs(root, matrixInfo.cells);
+                const active = matrixInputs.some(input => input.checked);
+                const cellClipped = matrixInfo.cells.some(cell => Number(cell.scrollHeight || 0) > Number(cell.clientHeight || 0) + 3);
+                const constrained = String(style.aspectRatio || '').toLowerCase() !== 'auto'
+                    || maintenanceMobileLayoutLengthPx(style.maxHeight, referenceWidth) > 0
+                    || maintenanceMobileLayoutLengthPx(style.height, referenceWidth) > 0;
+                if (active && (cellClipped || constrained)) buckets.matrix.add(element);
+            } else if (tracks.length > 1 && (overflowsSelf || maintenanceMobileLayoutHasFixedTrack(template) || textHeavy)) {
                 buckets.grid.add(element);
             }
         }
@@ -9771,6 +10253,7 @@ function inspectMaintenanceMobileLayout(root) {
         horizontalOverflowCount: buckets.horizontalOverflow.size,
         fixedWidthCount: buckets.fixedWidth.size,
         gridCount: buckets.grid.size,
+        matrixCount: buckets.matrix.size,
         flexCount: buckets.flex.size,
         multiColumnCount: buckets.multiColumn.size,
         mediaCount: buckets.media.size,
@@ -9796,6 +10279,7 @@ function installMaintenanceMobileLayoutRescue(root) {
         MOBILE_LAYOUT_BREAKPOINT_PX,
     ));
     const marked = new Set();
+    const matrixEntries = [];
     const elements = [...root.querySelectorAll('*')].filter(element => !maintenanceMobileLayoutIsInternal(element));
 
     for (const element of elements) {
@@ -9816,19 +10300,27 @@ function installMaintenanceMobileLayoutRescue(root) {
         const viewportWidthWithPadding = /(?:^|;)\s*width\s*:\s*100vw\b/.test(inlineStyle)
             && (maintenanceMobileLayoutLengthPx(style.paddingLeft, referenceWidth) + maintenanceMobileLayoutLengthPx(style.paddingRight, referenceWidth) > 0);
 
-        if (overflowsRoot || minWidth > referenceWidth + 3 || inlineFixedWidth || viewportWidthWithPadding) {
+        const decorativeOverflow = maintenanceMobileLayoutIsDecorativeOverflow(element, style);
+        if (!decorativeOverflow && (overflowsRoot || minWidth > referenceWidth + 3 || inlineFixedWidth || viewportWidthWithPadding)) {
             maintenanceMobileLayoutMark(element, MOBILE_LAYOUT_FIT_ATTR, marked);
         }
 
         if (display.includes('grid')) {
             const template = String(style.gridTemplateColumns || '').trim();
             const tracks = maintenanceMobileLayoutSplitTracks(template);
-            for (const child of directChildren) maintenanceMobileLayoutMark(child, MOBILE_LAYOUT_MIN_ATTR, marked);
-            if (tracks.length > 1 && (maintenanceMobileLayoutHasFixedTrack(template) || overflowsSelf || overflowsRoot)) {
-                if (maintenanceMobileLayoutHorizontalMediaHint(element)) {
-                    maintenanceMobileLayoutMark(element, MOBILE_LAYOUT_SCROLL_ATTR, marked);
-                } else {
-                    maintenanceMobileLayoutMark(element, MOBILE_LAYOUT_GRID_COLLAPSE_ATTR, marked);
+            const matrixInfo = maintenanceMobileLayoutSemanticMatrixInfo(element, style, directChildren);
+            if (matrixInfo) {
+                maintenanceMobileLayoutMark(element, MOBILE_LAYOUT_MATRIX_PRESERVE_ATTR, marked);
+                for (const cell of matrixInfo.cells) maintenanceMobileLayoutMark(cell, MOBILE_LAYOUT_MATRIX_CELL_ATTR, marked);
+                matrixEntries.push({ matrix: element, inputs: maintenanceMobileLayoutMatrixInputs(root, matrixInfo.cells) });
+            } else {
+                for (const child of directChildren) maintenanceMobileLayoutMark(child, MOBILE_LAYOUT_MIN_ATTR, marked);
+                if (tracks.length > 1 && (maintenanceMobileLayoutHasFixedTrack(template) || overflowsSelf || overflowsRoot)) {
+                    if (maintenanceMobileLayoutHorizontalMediaHint(element)) {
+                        maintenanceMobileLayoutMark(element, MOBILE_LAYOUT_SCROLL_ATTR, marked);
+                    } else {
+                        maintenanceMobileLayoutMark(element, MOBILE_LAYOUT_GRID_COLLAPSE_ATTR, marked);
+                    }
                 }
             }
         }
@@ -9907,6 +10399,7 @@ function installMaintenanceMobileLayoutRescue(root) {
         }
     }
 
+    installMaintenanceMobileMatrixStateRescue(root, matrixEntries);
     installMaintenanceMobileStateContentRescue(root, marked, referenceWidth);
 
     let rescueStyle = root.querySelector(`style[${MOBILE_LAYOUT_RESCUE_STYLE_ATTR}]`);
@@ -9936,7 +10429,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.38';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.41';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -9946,6 +10439,8 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
     { id: 'rendered-details-dom', modes: ['source', 'plainText', 'code', 'all'], bucket: 'plainText', run: ({ messageScope }) => sanitizeRenderedRabbitMirrorDetailsInScope(messageScope, true) },
     { id: 'css-comment-boundary', modes: ['source', 'style', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => repairMarkdownCorruptedCssComments(target) },
     // “排版不适配／内容显示不全”共用同一条手动路线：先修窄屏容器关系，再复测叶级文字裁切。
+    { id: 'mobile-inline-annotation-flow-repair', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => installMobileInlineAnnotationRescue(target) },
+    { id: 'nested-details-popup-flow-repair', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => repairNestedDetailsPopupClipping(target) },
     { id: 'mobile-layout-rescue', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ root, target }) => target === root ? installMaintenanceMobileLayoutRescue(target) : 0 },
     { id: 'text-clipping-repair', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => repairMaintenanceTextClipping(target) },
     { id: 'webkit-3d-flip-compat', modes: ['interaction', 'style', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => installWebKit3DFlipRescue(target) },

@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（挨打猫 v1.2・小小维修兔 v1.38）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（挨打猫 v1.2・小小维修兔 v1.41）",
   "loading_order": 99,
-  "js": "index.js?rmv=0.33.55",
-  "css": "style.css?rmv=0.33.55",
+  "js": "index.js?rmv=0.33.58",
+  "css": "style.css?rmv=0.33.58",
   "author": "Toto",
-  "version": "0.33.55-test.1",
+  "version": "0.33.58-test.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "TEST build: restores safe no-argument named-function class state interactions after host sanitization, while preserving the current manual maintenance boundary."
+  "description": "TEST build: preserves semantic 2×2 quadrant and matrix layouts on mobile while allowing expanded cell content to grow without clipping or collapsing into a list."
 }
