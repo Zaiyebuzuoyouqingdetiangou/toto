@@ -1,4 +1,4 @@
-import { getSettings } from './settings.js?rmv=0.33.63';
+import { getSettings } from './settings.js?rmv=0.33.64';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -7,11 +7,11 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=0.33.63';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=0.33.63';
+} from './feedbackCat.js?rmv=0.33.64';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=0.33.64';
 
 
-const RUNTIME_VERSION = '0.33.63';
+const RUNTIME_VERSION = '0.33.64';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -353,6 +353,11 @@ const CHECKED_HAS_STATE_RESCUE_STYLE_ATTR = 'data-rabbit-mirror-checked-has-stat
 const CHECKED_HAS_STATE_ROOT_ATTR = 'data-rabbit-mirror-checked-has-state';
 const CHECKED_HAS_STATE_RULE_COUNT_ATTR = 'data-rabbit-mirror-checked-has-state-rules';
 const checkedHasStateRescueStates = new WeakMap();
+const PAIRED_CHECKED_STATE_RESCUE_ATTR = 'data-rabbit-mirror-paired-checked-state-rescue';
+const PAIRED_CHECKED_STATE_CONTROL_ATTR = 'data-rm-paired-checked-state-control';
+const PAIRED_CHECKED_STATE_PANEL_ATTR = 'data-rm-paired-checked-state-panel';
+const PAIRED_CHECKED_STATE_COUNT_ATTR = 'data-rabbit-mirror-paired-checked-state-count';
+const pairedCheckedStateRescueStates = new WeakMap();
 const EXPANDED_OPACITY_RESCUE_ATTR = 'data-rabbit-mirror-expanded-opacity-rescue';
 
 function collectCheckedRevealSignal(candidate, property, value) {
@@ -895,6 +900,254 @@ function installCheckedHasStateFallback(root) {
     root.setAttribute(CHECKED_HAS_STATE_RULE_COUNT_ATTR, String(rules.length));
     refreshCheckedHasStateFallback(root);
     return rules.length;
+}
+
+
+function checkedHasDisplayValue(declarations) {
+    const source = String(declarations || '');
+    const match = /(?:^|;)\s*display\s*:\s*([^;{}]+?)(?:\s*!important\s*)?(?=;|$)/i.exec(source);
+    return String(match?.[1] || '').trim().replace(/\s*!important\s*$/i, '').toLowerCase();
+}
+
+function parseSimpleCheckedHasDisplayRules(root) {
+    if (!root?.querySelectorAll) return [];
+    const rules = [];
+    const seen = new Set();
+    for (const style of root.querySelectorAll('style')) {
+        const css = String(style.textContent || '');
+        const blockRe = /([^{}]+)\{([^{}]*)\}/g;
+        let block;
+        while ((block = blockRe.exec(css))) {
+            const display = checkedHasDisplayValue(block[2]);
+            if (!display) continue;
+            for (const rawSelector of splitCssSelectorList(block[1])) {
+                const selector = String(rawSelector || '').trim();
+                if (!selector || !/:has\(/i.test(selector) || !/:checked\b/i.test(selector)) continue;
+                const condition = /:has\(\s*(input(?:\s*\[[^\]]+\]|\s*[.#][A-Za-z_][\w-]*)*)\s*:checked\s*\)/i.exec(selector);
+                if (!condition) continue;
+                const controlSelector = String(condition[1] || '').trim();
+                if (!controlSelector || /[>+~,]/.test(controlSelector) || /:(?!not\()/i.test(controlSelector)) continue;
+                const targetSelector = selector.slice(condition.index + condition[0].length)
+                    .trim()
+                    .replace(/^[>+~]\s*/, '');
+                if (!targetSelector || /:has\(|:checked\b|::(?:before|after)/i.test(targetSelector)) continue;
+
+                let controls = [];
+                let targets = [];
+                try {
+                    controls = [...root.querySelectorAll(controlSelector)]
+                        .filter(input => input.matches?.('input[type="checkbox"]') && !input.disabled);
+                    targets = [...root.querySelectorAll(targetSelector)];
+                } catch {
+                    continue;
+                }
+                if (!controls.length || controls.length > 8 || !targets.length || targets.length > 8) continue;
+                for (const input of controls) {
+                    for (const target of targets) {
+                        const key = `${controlSelector}|${targetSelector}|${display}|${controls.indexOf(input)}|${targets.indexOf(target)}`;
+                        if (seen.has(key)) continue;
+                        seen.add(key);
+                        rules.push({ input, target, display });
+                    }
+                }
+            }
+        }
+    }
+    return rules;
+}
+
+function pairedCheckedStateBaselineHidden(panel) {
+    return String(panel?.style?.getPropertyValue?.('display') || '').trim().toLowerCase() === 'none';
+}
+
+function findPairedCheckedStateCandidates(root) {
+    const rules = parseSimpleCheckedHasDisplayRules(root);
+    if (!rules.length) return [];
+    const byInput = new Map();
+    for (const rule of rules) {
+        let targetMap = byInput.get(rule.input);
+        if (!targetMap) {
+            targetMap = new Map();
+            byInput.set(rule.input, targetMap);
+        }
+        targetMap.set(rule.target, rule.display);
+    }
+
+    const inputs = [...byInput.keys()];
+    const results = [];
+    const seen = new Set();
+    for (let firstIndex = 0; firstIndex < inputs.length; firstIndex += 1) {
+        const first = inputs[firstIndex];
+        const firstMap = byInput.get(first);
+        for (let secondIndex = firstIndex + 1; secondIndex < inputs.length; secondIndex += 1) {
+            const second = inputs[secondIndex];
+            const secondMap = byInput.get(second);
+            const firstPanel = [...firstMap.keys()].find(target => target.contains?.(first) && firstMap.get(target) === 'none');
+            const secondPanel = [...secondMap.keys()].find(target => target.contains?.(second) && secondMap.get(target) === 'none');
+            if (!firstPanel || !secondPanel || firstPanel === secondPanel || firstPanel.parentElement !== secondPanel.parentElement) continue;
+            const firstShowsSecond = String(firstMap.get(secondPanel) || '') !== 'none' && !!firstMap.get(secondPanel);
+            const secondShowsFirst = String(secondMap.get(firstPanel) || '') !== 'none' && !!secondMap.get(firstPanel);
+            if (!firstShowsSecond || !secondShowsFirst) continue;
+            if (!inputHasAssociatedLabel(root, first) || !inputHasAssociatedLabel(root, second)) continue;
+            if (maintenanceMobileLayoutTextLength(firstPanel) < 8 || maintenanceMobileLayoutTextLength(secondPanel) < 8) continue;
+
+            let forward = first;
+            let back = second;
+            let initial = firstPanel;
+            let feedback = secondPanel;
+            let forwardMap = firstMap;
+            let backMap = secondMap;
+            const firstHidden = pairedCheckedStateBaselineHidden(firstPanel);
+            const secondHidden = pairedCheckedStateBaselineHidden(secondPanel);
+            if (firstHidden && !secondHidden) {
+                forward = second;
+                back = first;
+                initial = secondPanel;
+                feedback = firstPanel;
+                forwardMap = secondMap;
+                backMap = firstMap;
+            } else if (firstHidden === secondHidden) {
+                const firstSignature = `${firstPanel.id || ''} ${firstPanel.className || ''}`;
+                const secondSignature = `${secondPanel.id || ''} ${secondPanel.className || ''}`;
+                if (/(?:feedback|result|detail|secondary|back|反馈|结果|详情|次画面)/i.test(firstSignature)
+                    && !/(?:feedback|result|detail|secondary|back|反馈|结果|详情|次画面)/i.test(secondSignature)) {
+                    forward = second;
+                    back = first;
+                    initial = secondPanel;
+                    feedback = firstPanel;
+                    forwardMap = secondMap;
+                    backMap = firstMap;
+                }
+            }
+            if (pairedCheckedStateBaselineHidden(initial) || !pairedCheckedStateBaselineHidden(feedback)) continue;
+
+            const initialShow = String(backMap.get(initial) || '').trim().toLowerCase();
+            const feedbackShow = String(forwardMap.get(feedback) || '').trim().toLowerCase();
+            if (!initialShow || initialShow === 'none' || !feedbackShow || feedbackShow === 'none') continue;
+            const key = `${inputs.indexOf(forward)}|${inputs.indexOf(back)}|${[...root.querySelectorAll('*')].indexOf(initial)}|${[...root.querySelectorAll('*')].indexOf(feedback)}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            results.push({ forward, back, initial, feedback, initialShow, feedbackShow });
+        }
+    }
+    return results;
+}
+
+function refreshPairedCheckedStateRescue(root) {
+    const state = pairedCheckedStateRescueStates.get(root);
+    if (!state) return;
+    for (const entry of state.entries || []) {
+        if (!entry.forward?.isConnected || !entry.back?.isConnected || !entry.initial?.isConnected || !entry.feedback?.isConnected) continue;
+        if (entry.back.checked) {
+            entry.forward.checked = false;
+            entry.back.checked = false;
+            restoreInteractionInlineOverrides(entry.forward);
+            restoreInteractionInlineOverrides(entry.back);
+        } else if (entry.forward.checked) {
+            entry.back.checked = false;
+        }
+        const active = !!entry.forward.checked;
+        entry.initial.style.setProperty('display', active ? 'none' : entry.initialShow, 'important');
+        entry.feedback.style.setProperty('display', active ? entry.feedbackShow : 'none', 'important');
+        entry.forward.setAttribute('aria-pressed', active ? 'true' : 'false');
+        entry.back.setAttribute('aria-pressed', 'false');
+        entry.initial.setAttribute(PAIRED_CHECKED_STATE_PANEL_ATTR, 'initial');
+        entry.feedback.setAttribute(PAIRED_CHECKED_STATE_PANEL_ATTR, 'feedback');
+    }
+}
+
+function schedulePairedCheckedStateRefresh(root) {
+    for (const delay of [0, 80, 260, 650]) {
+        setTimeout(() => {
+            if (root?.isConnected) refreshPairedCheckedStateRescue(root);
+        }, delay);
+    }
+}
+
+function installPairedCheckedStateRescue(root) {
+    if (!root?.querySelectorAll) return 0;
+    const entries = findPairedCheckedStateCandidates(root);
+    let state = pairedCheckedStateRescueStates.get(root);
+    if (!entries.length) {
+        if (state) {
+            root.removeEventListener('click', state.onClick, true);
+            root.removeEventListener('change', state.onChange, false);
+            pairedCheckedStateRescueStates.delete(root);
+        }
+        root.removeAttribute(PAIRED_CHECKED_STATE_RESCUE_ATTR);
+        root.removeAttribute(PAIRED_CHECKED_STATE_COUNT_ATTR);
+        root.querySelectorAll(`[${PAIRED_CHECKED_STATE_CONTROL_ATTR}], [${PAIRED_CHECKED_STATE_PANEL_ATTR}]`).forEach(element => {
+            element.removeAttribute(PAIRED_CHECKED_STATE_CONTROL_ATTR);
+            element.removeAttribute(PAIRED_CHECKED_STATE_PANEL_ATTR);
+        });
+        return 0;
+    }
+
+    if (!state) {
+        state = {
+            entries: [],
+            onClick: event => {
+                const label = event.target?.closest?.('label');
+                if (!label || !root.contains(label)) return;
+                const targetId = label.getAttribute('for');
+                const input = targetId
+                    ? [...root.querySelectorAll('input[id]')].find(element => element.id === targetId)
+                    : label.querySelector('input[type="checkbox"]');
+                const entry = state.entries.find(item => item.forward === input || item.back === input);
+                if (!entry) return;
+
+                // 双向画面由本专项路线独占 label 点击。阻止浏览器原生 label 默认切换，
+                // 避免后续通用 label 兜底或迟到的 WebView 默认行为把 back 再次勾上。
+                event.preventDefault();
+                const forwardBefore = !!entry.forward.checked;
+                const backBefore = !!entry.back.checked;
+                if (input === entry.forward) {
+                    entry.forward.checked = true;
+                    entry.back.checked = false;
+                } else {
+                    entry.forward.checked = false;
+                    entry.back.checked = false;
+                }
+                restoreInteractionInlineOverrides(entry.forward);
+                restoreInteractionInlineOverrides(entry.back);
+                refreshPairedCheckedStateRescue(root);
+                schedulePairedCheckedStateRefresh(root);
+
+                if (forwardBefore !== entry.forward.checked) {
+                    entry.forward.dispatchEvent(new Event('input', { bubbles: true }));
+                    entry.forward.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                if (backBefore !== entry.back.checked) {
+                    entry.back.dispatchEvent(new Event('input', { bubbles: true }));
+                    entry.back.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            },
+            onChange: event => {
+                const entry = state.entries.find(item => item.forward === event.target || item.back === event.target);
+                if (!entry) return;
+                if (event.target === entry.forward && entry.forward.checked) entry.back.checked = false;
+                if (event.target === entry.back && entry.back.checked) {
+                    entry.forward.checked = false;
+                    entry.back.checked = false;
+                }
+                refreshPairedCheckedStateRescue(root);
+                schedulePairedCheckedStateRefresh(root);
+            },
+        };
+        root.addEventListener('click', state.onClick, true);
+        root.addEventListener('change', state.onChange, false);
+        pairedCheckedStateRescueStates.set(root, state);
+    }
+    state.entries = entries;
+    for (const entry of entries) {
+        entry.forward.setAttribute(PAIRED_CHECKED_STATE_CONTROL_ATTR, 'forward');
+        entry.back.setAttribute(PAIRED_CHECKED_STATE_CONTROL_ATTR, 'back');
+    }
+    root.setAttribute(PAIRED_CHECKED_STATE_RESCUE_ATTR, 'true');
+    root.setAttribute(PAIRED_CHECKED_STATE_COUNT_ATTR, String(entries.length));
+    refreshPairedCheckedStateRescue(root);
+    schedulePairedCheckedStateRefresh(root);
+    return entries.length;
 }
 
 function getLocalContainerTargetsForCheckedRule(input, targetSelector) {
@@ -6980,6 +7233,9 @@ function installIntelligentInteractionRescue(root) {
         // 旧消息中可能残留 .mes_text body:has(...:checked) 这类永不命中的全选联动；
         // 用当前兔子镜根的可逆状态属性恢复，不依赖宿主对 :has() 的支持。
         installCheckedHasStateFallback(root);
+        // 两个独立 checkbox 若分别承担“进入下一画面”和“返回主画面”，纯 CSS 会在返回后残留双重 checked，
+        // 且内联 display:none 会压过普通 :has() 规则。只对互为反向显示、各自位于对应状态层内的高置信结构恢复可重复往返。
+        installPairedCheckedStateRescue(root);
         // 优先解析 checkbox/radio 中安全的 ID 目标条件显隐；绑定到 input/change，
         // 避免 label 兜底只切换 checked、却不触发原 onclick 的情况。
         installRenderedCheckedIdTargetRescue(root);
@@ -7142,6 +7398,8 @@ function installInteractionLabelFallback(toto) {
             ? [...toto.querySelectorAll('input[id]')].find(el => el.id === targetId)
             : label.querySelector('input[type="checkbox"], input[type="radio"]');
         if (!input || !/^(?:checkbox|radio)$/i.test(input.type || '') || input.disabled) return;
+        // 双向频道／画面切换由专项路线独占，避免通用 label 兜底把“返回”控件重新勾上。
+        if (input.hasAttribute(PAIRED_CHECKED_STATE_CONTROL_ATTR)) return;
 
         // 浏览器/主题层有时不会可靠触发隐藏 input；只在当前兔子镜内手动完成一次。
         event.preventDefault();
@@ -7532,6 +7790,7 @@ const MOBILE_LAYOUT_BREAK_TEXT_ATTR = 'data-rm-mobile-break-text';
 const MOBILE_LAYOUT_STATE_CONTENT_ATTR = 'data-rm-mobile-state-content';
 const MOBILE_LAYOUT_STATE_ACTIVE_ATTR = 'data-rm-mobile-state-active';
 const MOBILE_LAYOUT_SECTION_STACK_PRESERVE_ATTR = 'data-rm-mobile-section-stack-preserve';
+const MOBILE_LAYOUT_SCREEN_SHELL_PRESERVE_ATTR = 'data-rm-mobile-screen-shell-preserve';
 const MOBILE_LAYOUT_BREAKPOINT_PX = 640;
 const MOBILE_LAYOUT_TARGET_ATTRS = Object.freeze([
     MOBILE_LAYOUT_FIT_ATTR,
@@ -7552,6 +7811,7 @@ const MOBILE_LAYOUT_TARGET_ATTRS = Object.freeze([
     MOBILE_LAYOUT_STATE_CONTENT_ATTR,
     MOBILE_LAYOUT_STATE_ACTIVE_ATTR,
     MOBILE_LAYOUT_SECTION_STACK_PRESERVE_ATTR,
+    MOBILE_LAYOUT_SCREEN_SHELL_PRESERVE_ATTR,
 ]);
 const mobileLayoutRescueStates = new WeakMap();
 const mobileMatrixPreserveStates = new WeakMap();
@@ -7560,7 +7820,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '0.33.63-TEST-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.33.64-TEST-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -7686,6 +7946,7 @@ function diagnosticRouteSummary(root) {
         checkedTextRule: root?.querySelectorAll?.(`[${CHECKED_TEXT_RULE_RESCUE_ATTR}]`)?.length || 0,
         crossParentChecked: Number.parseInt(root?.getAttribute?.(CROSS_PARENT_CHECKED_ROOT_ATTR) || '0', 10) || 0,
         checkedHasState: Number.parseInt(root?.getAttribute?.(CHECKED_HAS_STATE_RULE_COUNT_ATTR) || '0', 10) || 0,
+        pairedCheckedState: Number.parseInt(root?.getAttribute?.(PAIRED_CHECKED_STATE_COUNT_ATTR) || '0', 10) || 0,
         reversibleChecked: Number.parseInt(root?.getAttribute?.(REVERSIBLE_CHECKED_RESULT_ROOT_ATTR) || '0', 10) || 0,
         radioGroups: Number.parseInt(root?.getAttribute?.(RADIO_GROUP_ROOT_ATTR) || '0', 10) || 0,
         expandedOpacity: root?.querySelectorAll?.(`[${EXPANDED_OPACITY_RESCUE_ATTR}]`)?.length || 0,
@@ -7709,7 +7970,7 @@ function diagnosticRouteSummary(root) {
 function diagnosticInferReason(root, inputs, targets, state = null) {
     const routes = diagnosticRouteSummary(root);
     const depth = maintenanceCheckedInteractionDepth(root);
-    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.stateSibling + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.focusToChecked + routes.checkedTextRule + routes.crossParentChecked + routes.checkedHasState + routes.expandedOpacity + routes.containerReveal + routes.selfMutation + routes.classStateProgram + routes.cssCommentRepair + routes.changeProgram + routes.unlabeledChecked + routes.selectionFallback + routes.disabledChoice + routes.inertAction + routes.passportDocument + routes.decorativeOverlayPassThrough;
+    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.stateSibling + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.focusToChecked + routes.checkedTextRule + routes.crossParentChecked + routes.checkedHasState + routes.pairedCheckedState + routes.expandedOpacity + routes.containerReveal + routes.selfMutation + routes.classStateProgram + routes.cssCommentRepair + routes.changeProgram + routes.unlabeledChecked + routes.selectionFallback + routes.disabledChoice + routes.inertAction + routes.passportDocument + routes.decorativeOverlayPassThrough;
     const checkedInputs = inputs.filter(input => input.checked);
     const visibleTargets = targets.filter(target => {
         const style = diagnosticComputedStyle(target);
@@ -8487,6 +8748,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `CSS状态规则 entries=${routes.checkedTextRule} listener=${routes.checkedTextRule ? 'true' : 'false'}`,
         `跨父层checked兜底 entries=${routes.crossParentChecked} listener=${routes.crossParentChecked ? 'true' : 'false'}`,
         `全选联动兜底 entries=${routes.checkedHasState} listener=${routes.checkedHasState ? 'true' : 'false'}`,
+        `双向画面切换 entries=${routes.pairedCheckedState} listener=${routes.pairedCheckedState ? 'true' : 'false'}`,
         `单向checked回退 entries=${routes.reversibleChecked} listener=${routes.reversibleChecked ? 'true' : 'false'}`,
         `radio同组恢复 groups=${routes.radioGroups} listener=${routes.radioGroups ? 'true' : 'false'}`,
         `checked交互深度 rules=${checkedDepth.checkedRuleCount} selectionOnly=${checkedDepth.selectionStyleRuleCount} secondLayer=${checkedDepth.meaningfulCheckedRuleCount} fallback=${checkedDepth.selectionOnlyFallbackCount}`,
@@ -8516,6 +8778,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `multiColumn=${mobileLayout.multiColumnCount || 0} media=${mobileLayout.mediaCount || 0} stateContent=${mobileLayout.stateContentCount || 0}`,
         `护照／证件内页=${mobileLayout.passportDocumentCount || 0} repaired=${root.getAttribute?.(PASSPORT_DOCUMENT_RESCUE_ATTR) || '0'}`,
         `剖面／分层保形=${mobileLayout.sectionStackCount || 0}`,
+        `电视／终端屏幕保形=${mobileLayout.screenShellCount || 0}`,
         `内部details弹出结果裁切=${nestedDetailsPopupCandidateCount} repaired=${root.getAttribute?.(NESTED_DETAILS_POPUP_COUNT_ATTR) || '0'}`,
         `手机端行内批注=${mobileInlineAnnotationCandidateCount} repaired=${root.getAttribute?.(MOBILE_INLINE_ANNOTATION_COUNT_ATTR) || '0'}`,
         `repairScope=${root.getAttribute?.(MOBILE_LAYOUT_SCOPE_ATTR) || '(无)'} patched=${root.getAttribute?.(MOBILE_LAYOUT_RESCUE_COUNT_ATTR) || '0'}`,
@@ -9383,6 +9646,7 @@ function maintenanceReachableInteractionEvidence(root, routeSummary, checkedDept
         + Number(routeSummary.checkedTextRule || 0)
         + Number(routeSummary.crossParentChecked || 0)
         + Number(routeSummary.checkedHasState || 0)
+        + Number(routeSummary.pairedCheckedState || 0)
         + Number(routeSummary.reversibleChecked || 0)
         + Number(routeSummary.containerReveal || 0)
         + Number(routeSummary.selfMutation || 0)
@@ -9420,7 +9684,7 @@ function maintenanceKnownInteractionEvidence(root, full, code) {
     const otherRouteCount = routeSummary.adjacent + routeSummary.layers + routeSummary.labelInternal + routeSummary.labelAdjacent
         + routeSummary.maskReveal + routeSummary.listDetail + routeSummary.stateSibling + routeSummary.buttonAdjacent
         + routeSummary.clickableAdjacent + routeSummary.clickablePopup + routeSummary.checkedIdTarget + routeSummary.focusToChecked
-        + routeSummary.checkedTextRule + routeSummary.crossParentChecked + routeSummary.checkedHasState + routeSummary.expandedOpacity
+        + routeSummary.checkedTextRule + routeSummary.crossParentChecked + routeSummary.checkedHasState + routeSummary.pairedCheckedState + routeSummary.expandedOpacity
         + routeSummary.reversibleChecked
         + routeSummary.containerReveal + routeSummary.selfMutation + routeSummary.classStateProgram + routeSummary.changeProgram
         + routeSummary.unlabeledChecked + routeSummary.selectionFallback + routeSummary.disabledChoice + routeSummary.inertAction + routeSummary.passportDocument;
@@ -9445,6 +9709,9 @@ function maintenanceKnownInteractionEvidence(root, full, code) {
     const checkedHasStateRuleCandidateCount = parseBrokenCheckedHasStateRules(root).length;
     const checkedHasStateRuleRescueCount = Number.parseInt(root.getAttribute?.(CHECKED_HAS_STATE_RULE_COUNT_ATTR) || '0', 10) || 0;
     const checkedHasStateRuleMissingCount = Math.max(0, checkedHasStateRuleCandidateCount - checkedHasStateRuleRescueCount);
+    const pairedCheckedStateCandidateCount = findPairedCheckedStateCandidates(root).length;
+    const pairedCheckedStateRescueCount = Number.parseInt(root.getAttribute?.(PAIRED_CHECKED_STATE_COUNT_ATTR) || '0', 10) || 0;
+    const pairedCheckedStateMissingCount = Math.max(0, pairedCheckedStateCandidateCount - pairedCheckedStateRescueCount);
     const oneWayCheckedResultCandidateCount = findOneWayCheckedResultCandidates(root)
         .filter(candidate => !candidate.target?.hasAttribute?.(REVERSIBLE_CHECKED_RESULT_TARGET_ATTR))
         .length;
@@ -9462,7 +9729,7 @@ function maintenanceKnownInteractionEvidence(root, full, code) {
     const unscopedControls = (full.inputCount > 0 || full.buttonCount > 0)
         && root.dataset?.rabbitMirrorInteractionScoped !== 'true';
     const reachability = maintenanceReachableInteractionEvidence(root, routeSummary, checkedDepth, pseudoDepth, raw);
-    return { checkedControlsLost, strippedStateProgram, lostInlineStatePrograms, recoveredInlineStatePrograms, decorativeOverlayCandidateCount, touchHoverMissing, unscopedControls, radioGroupLossCandidateCount, radioGroupRescueCount, selectionOnlyRepairCandidateCount, disabledOnlyChoiceCandidateCount, inertActionButtonCandidateCount, crossParentCheckedRuleCandidateCount, checkedHasStateRuleCandidateCount, checkedHasStateRuleRescueCount, checkedHasStateRuleMissingCount, oneWayCheckedResultCandidateCount, reversibleCheckedResultRescueCount, pseudoVisualOnly, raw, ...scopeEvidence, ...checkedDepth, ...pseudoDepth, ...reachability };
+    return { checkedControlsLost, strippedStateProgram, lostInlineStatePrograms, recoveredInlineStatePrograms, decorativeOverlayCandidateCount, touchHoverMissing, unscopedControls, radioGroupLossCandidateCount, radioGroupRescueCount, selectionOnlyRepairCandidateCount, disabledOnlyChoiceCandidateCount, inertActionButtonCandidateCount, crossParentCheckedRuleCandidateCount, checkedHasStateRuleCandidateCount, checkedHasStateRuleRescueCount, checkedHasStateRuleMissingCount, pairedCheckedStateCandidateCount, pairedCheckedStateRescueCount, pairedCheckedStateMissingCount, oneWayCheckedResultCandidateCount, reversibleCheckedResultRescueCount, pseudoVisualOnly, raw, ...scopeEvidence, ...checkedDepth, ...pseudoDepth, ...reachability };
 }
 
 function maintenanceFallbackFullSummary(root) {
@@ -9720,6 +9987,13 @@ function buildMaintenanceFindings(root, {
             evidence: [`checkedHasStateRuleMissingCount=${Number(interaction.checkedHasStateRuleMissingCount)}`], confidence: 0.98,
         });
     }
+    if (Number(interaction.pairedCheckedStateMissingCount) > 0) {
+        add({
+            id: 'paired-checked-state-locked', stage: 'interaction', mode: 'interaction',
+            label: '进入下一画面与返回主画面由两个独立 checkbox 控制，返回后会残留状态且内联隐藏阻断显示',
+            evidence: [`pairedCheckedStateMissingCount=${Number(interaction.pairedCheckedStateMissingCount)}`], confidence: 1,
+        });
+    }
     if (Number(interaction.oneWayCheckedResultCandidateCount) > 0) {
         add({
             id: 'checked-result-no-return', stage: 'interaction', mode: 'interaction',
@@ -9804,7 +10078,7 @@ function inspectMaintenanceRabbit(root) {
     } catch (error) {
         partialInspection = true;
         console.debug('[RabbitMirror] maintenance interaction inspection skipped:', error);
-        interaction = { checkedControlsLost: false, strippedStateProgram: false, lostInlineStatePrograms: 0, recoveredInlineStatePrograms: 0, decorativeOverlayCandidateCount: 0, touchHoverMissing: false, unscopedControls: false, radioGroupLossCandidateCount: 0, radioGroupRescueCount: 0, duplicateIds: 0, brokenLocalLabels: 0, checkedCssIdSelectors: 0, needsScopeRepair: false, checkedSelectionOnly: false, checkedSelectionOnlyRaw: false, checkedRuleCount: 0, meaningfulCheckedRuleCount: 0, selectionStyleRuleCount: 0, selectionOnlyFallbackCount: 0, selectionOnlyRepairCandidateCount: 0, disabledOnlyChoiceCandidateCount: 0, inertActionButtonCandidateCount: 0, crossParentCheckedRuleCandidateCount: 0, checkedHasStateRuleCandidateCount: 0, checkedHasStateRuleRescueCount: 0, checkedHasStateRuleMissingCount: 0, oneWayCheckedResultCandidateCount: 0, reversibleCheckedResultRescueCount: 0, pseudoVisualOnly: false, pseudoRuleCount: 0, visualOnlyPseudoRuleCount: 0, meaningfulPseudoRuleCount: 0, touchHoverEligibleCount: 0, touchHoverActiveCount: 0, contentInteractiveElementCount: 0, installedInteractionRouteCount: 0, noInteractionStructure: false, raw: '' };
+        interaction = { checkedControlsLost: false, strippedStateProgram: false, lostInlineStatePrograms: 0, recoveredInlineStatePrograms: 0, decorativeOverlayCandidateCount: 0, touchHoverMissing: false, unscopedControls: false, radioGroupLossCandidateCount: 0, radioGroupRescueCount: 0, duplicateIds: 0, brokenLocalLabels: 0, checkedCssIdSelectors: 0, needsScopeRepair: false, checkedSelectionOnly: false, checkedSelectionOnlyRaw: false, checkedRuleCount: 0, meaningfulCheckedRuleCount: 0, selectionStyleRuleCount: 0, selectionOnlyFallbackCount: 0, selectionOnlyRepairCandidateCount: 0, disabledOnlyChoiceCandidateCount: 0, inertActionButtonCandidateCount: 0, crossParentCheckedRuleCandidateCount: 0, checkedHasStateRuleCandidateCount: 0, checkedHasStateRuleRescueCount: 0, checkedHasStateRuleMissingCount: 0, pairedCheckedStateCandidateCount: 0, pairedCheckedStateRescueCount: 0, pairedCheckedStateMissingCount: 0, oneWayCheckedResultCandidateCount: 0, reversibleCheckedResultRescueCount: 0, pseudoVisualOnly: false, pseudoRuleCount: 0, visualOnlyPseudoRuleCount: 0, meaningfulPseudoRuleCount: 0, touchHoverEligibleCount: 0, touchHoverActiveCount: 0, contentInteractiveElementCount: 0, installedInteractionRouteCount: 0, noInteractionStructure: false, raw: '' };
     }
     let textClippingCandidateCount = 0;
     try {
@@ -9866,7 +10140,7 @@ function inspectMaintenanceRabbit(root) {
     if (full.severeStructureLoss && !full.rawToto) unknownReasons.push('渲染结构明显缺失，但未命中安全修复类型');
     if (full.controlsLost && full.checkedCount === 0 && full.rawInlineEvents === 0) unknownReasons.push('交互控件丢失，无法确认原始状态逻辑');
     if (full.currentMirrorRenderedEscapedTags && !code.strictParseOk && !full.sourceCandidate) unknownReasons.push('显示层仍有源码标签，但没有可安全恢复的完整候选');
-    if (interaction.checkedSelectionOnly && interaction.selectionOnlyRepairCandidateCount === 0) unknownReasons.push('选择控件只能改变选中样式，且没有可安全挂接的内容区；维修兔不能代写缺失体验');
+    if (interaction.checkedSelectionOnly && interaction.selectionOnlyRepairCandidateCount === 0 && Number(interaction.pairedCheckedStateRescueCount || 0) === 0) unknownReasons.push('选择控件只能改变选中样式，且没有可安全挂接的内容区；维修兔不能代写缺失体验');
     if (interaction.pseudoVisualOnly) unknownReasons.push('当前只有 Hover／Active 外观变化，没有可保持状态或第二层内容；维修兔不能代写缺失体验');
     if (interaction.noInteractionStructure) unknownReasons.push('原始输出只有静态内容或动画，没有可达的内容交互结构；维修兔不能在不编造结果的情况下自动补全');
     if (unknownReasons.length) {
@@ -10809,6 +11083,31 @@ function maintenanceMobileLayoutElementInSectionStack(element, hosts) {
     return (hosts || []).some(host => host === element || host.contains?.(element));
 }
 
+
+function maintenanceMobileLayoutScreenShellInfo(element) {
+    if (!element?.querySelectorAll) return null;
+    const signature = `${element.id || ''} ${element.className || ''} ${element.getAttribute?.('aria-label') || ''}`;
+    if (!/(?:tv|television|crt|monitor|terminal|screen-shell|电视|监控|终端|显示器)/i.test(signature)) return null;
+    const screens = [...element.querySelectorAll('div,section,article,main')].filter(child => {
+        const childSignature = `${child.id || ''} ${child.className || ''}`;
+        return /(?:tv-screen|screen|display|viewport|monitor|屏幕|画面)/i.test(childSignature);
+    });
+    if (!screens.length || screens.length > 4) return null;
+    const controls = [...element.querySelectorAll('input[type="checkbox"], input[type="radio"]')];
+    if (controls.length < 1 || controls.length > 8) return null;
+    const statePanels = [...element.querySelectorAll('div,section,article')].filter(panel => {
+        const panelSignature = `${panel.id || ''} ${panel.className || ''}`;
+        return /(?:state|scene|channel|feedback|initial|result|panel|画面|频道|反馈|状态)/i.test(panelSignature)
+            && maintenanceMobileLayoutTextLength(panel) >= 8;
+    });
+    if (statePanels.length < 2) return null;
+    return { screens, controls, statePanels };
+}
+
+function maintenanceMobileLayoutElementInScreenShell(element, hosts) {
+    return (hosts || []).some(host => host === element || host.contains?.(element));
+}
+
 function maintenanceMobileLayoutHorizontalMediaHint(element) {
     if (!element) return false;
     if (element.matches?.('table,thead,tbody,tr,canvas')) return true;
@@ -11030,6 +11329,7 @@ function inspectMaintenanceMobileLayout(root) {
         stateContentCount: 0,
         passportDocumentCount: 0,
         sectionStackCount: 0,
+        screenShellCount: 0,
     };
     if (!root?.querySelectorAll) return empty;
     const viewportWidth = Math.max(0, Number(globalThis.innerWidth || globalThis.document?.documentElement?.clientWidth || 0));
@@ -11055,9 +11355,12 @@ function inspectMaintenanceMobileLayout(root) {
         && !!root.querySelector(`style[${MOBILE_LAYOUT_RESCUE_STYLE_ATTR}]`);
     const elements = [root, ...root.querySelectorAll('*')].filter(element => !maintenanceMobileLayoutIsInternal(element));
     const sectionStackHosts = elements.filter(element => maintenanceMobileLayoutSectionStackInfo(element));
+    const screenShellHosts = elements.filter(element => maintenanceMobileLayoutScreenShellInfo(element))
+        .filter(host => !elements.some(other => other !== host && maintenanceMobileLayoutScreenShellInfo(other) && other.contains?.(host)));
 
     for (const element of elements) {
-        if (maintenanceMobileLayoutElementInSectionStack(element, sectionStackHosts)) continue;
+        if (maintenanceMobileLayoutElementInSectionStack(element, sectionStackHosts)
+            || maintenanceMobileLayoutElementInScreenShell(element, screenShellHosts)) continue;
         const style = maintenanceMobileLayoutComputedStyle(element);
         if (!style) continue;
         const rect = maintenanceMobileLayoutRect(element);
@@ -11175,6 +11478,7 @@ function inspectMaintenanceMobileLayout(root) {
         stateContentCount: buckets.stateContent.size,
         passportDocumentCount: findRenderedPassportDocumentCandidates(root).length,
         sectionStackCount: sectionStackHosts.length,
+        screenShellCount: screenShellHosts.length,
     };
 }
 
@@ -11203,9 +11507,13 @@ function installMaintenanceMobileLayoutRescue(root) {
     const elements = [...root.querySelectorAll('*')].filter(element => !maintenanceMobileLayoutIsInternal(element));
     const sectionStackHosts = elements.filter(element => maintenanceMobileLayoutSectionStackInfo(element));
     for (const host of sectionStackHosts) maintenanceMobileLayoutMark(host, MOBILE_LAYOUT_SECTION_STACK_PRESERVE_ATTR, marked);
+    const screenShellHosts = elements.filter(element => maintenanceMobileLayoutScreenShellInfo(element))
+        .filter(host => !elements.some(other => other !== host && maintenanceMobileLayoutScreenShellInfo(other) && other.contains?.(host)));
+    for (const host of screenShellHosts) maintenanceMobileLayoutMark(host, MOBILE_LAYOUT_SCREEN_SHELL_PRESERVE_ATTR, marked);
 
     for (const element of elements) {
-        if (maintenanceMobileLayoutElementInSectionStack(element, sectionStackHosts)) continue;
+        if (maintenanceMobileLayoutElementInSectionStack(element, sectionStackHosts)
+            || maintenanceMobileLayoutElementInScreenShell(element, screenShellHosts)) continue;
         const style = maintenanceMobileLayoutComputedStyle(element);
         if (!style) continue;
         const rect = maintenanceMobileLayoutRect(element);
@@ -11368,7 +11676,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.46';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.47';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -11406,6 +11714,7 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
         const recoveredProgramRepairCount = Math.max(0, recoveredProgramCountAfter - recoveredProgramCountBefore);
         const crossParentCheckedCount = Number.parseInt(target.getAttribute?.(CROSS_PARENT_CHECKED_ROOT_ATTR) || '0', 10) || 0;
         const checkedHasStateCount = Number.parseInt(target.getAttribute?.(CHECKED_HAS_STATE_RULE_COUNT_ATTR) || '0', 10) || 0;
+        const pairedCheckedStateCount = Number.parseInt(target.getAttribute?.(PAIRED_CHECKED_STATE_COUNT_ATTR) || '0', 10) || 0;
         const reversibleCheckedCount = Number.parseInt(target.getAttribute?.(REVERSIBLE_CHECKED_RESULT_ROOT_ATTR) || '0', 10) || 0;
         const selectionFallbackCount = installSelectionOnlyStateFallback(target);
         const inertActionRepairCount = installInertActionButtonFallback(target);
@@ -11427,6 +11736,7 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
             || radioGroupCountAfter > 0
             || crossParentCheckedCount > 0
             || checkedHasStateCount > 0
+            || pairedCheckedStateCount > 0
             || reversibleCheckedCount > 0
             || meaningfulCheckedRoute;
         if (genuinelyRescued) target.dataset.rabbitMirrorInteractionRescued = 'true';
@@ -11436,7 +11746,7 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
             .map(item => item.trim())
             .filter(item => item && item !== 'none');
         // 不再把“调用了总入口”冒充为“命中了一条急救路线”；选择样式专用结构只有在安全补出分支提示后才算修复。
-        return genuinelyRescued ? Math.max(routes.length, disabledChoiceRepairCount, inertActionRepairCount, disabledChoiceCount, inertActionCount, overlayRepairCount, rawHoverRepairCount, recoveredProgramRepairCount, recoveredProgramCountAfter, radioGroupRepairCount, radioGroupCountAfter, crossParentCheckedCount, checkedHasStateCount, reversibleCheckedCount) : 0;
+        return genuinelyRescued ? Math.max(routes.length, disabledChoiceRepairCount, inertActionRepairCount, disabledChoiceCount, inertActionCount, overlayRepairCount, rawHoverRepairCount, recoveredProgramRepairCount, recoveredProgramCountAfter, radioGroupRepairCount, radioGroupCountAfter, crossParentCheckedCount, checkedHasStateCount, pairedCheckedStateCount, reversibleCheckedCount) : 0;
     } },
 ]);
 

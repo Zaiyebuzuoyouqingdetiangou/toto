@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（挨打猫 v1.2・小小维修兔 v1.46）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（挨打猫 v1.2・小小维修兔 v1.47）",
   "loading_order": 99,
-  "js": "index.js?rmv=0.33.63",
-  "css": "style.css?rmv=0.33.63",
+  "js": "index.js?rmv=0.33.64",
+  "css": "style.css?rmv=0.33.64",
   "author": "Toto",
-  "version": "0.33.63-test.1",
+  "version": "0.33.64-test.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "TEST build: restores safe fixed checked assignments for layered section interactions and prevents mobile layout rescue from flattening section/cutaway visual structures, while preserving all previous repairs."
+  "description": "TEST build: restores repeatable forward/back channel or screen state switching when inline hidden panels override :has() rules, and preserves TV/CRT/terminal visual shells from generic mobile layout rewrites, while preserving all previous repairs."
 }

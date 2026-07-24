@@ -1,8 +1,8 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=0.33.63';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=0.33.63';
-import { pickCombination } from './picker.js?rmv=0.33.63';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown } from './storage.js?rmv=0.33.63';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=0.33.63';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=0.33.64';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=0.33.64';
+import { pickCombination } from './picker.js?rmv=0.33.64';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown } from './storage.js?rmv=0.33.64';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=0.33.64';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
