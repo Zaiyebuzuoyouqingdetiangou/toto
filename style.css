@@ -289,3 +289,25 @@ toto[data-rabbit-mirror="true"] summary {
   font: inherit !important;
   line-height: 1.5 !important;
 }
+
+/* 0.33.65 挨打猫 v1.3：多选后统一提交。 */
+.rabbit-mirror-feedback-cat-menu button.is-selected {
+  border-color: color-mix(in srgb, currentColor 72%, transparent) !important;
+  background: color-mix(in srgb, currentColor 20%, transparent) !important;
+  font-weight: 700 !important;
+}
+.rabbit-mirror-feedback-cat-menu button.is-selected::after {
+  content: " ✓" !important;
+  float: right !important;
+}
+.rabbit-mirror-feedback-cat-custom-inline[hidden] { display: none !important; }
+.rabbit-mirror-feedback-cat-custom-inline.is-visible { display: block !important; }
+.rabbit-mirror-feedback-cat-actions {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  gap: 6px !important;
+}
+.rabbit-mirror-feedback-cat-menu button:disabled {
+  opacity: .45 !important;
+  cursor: not-allowed !important;
+}

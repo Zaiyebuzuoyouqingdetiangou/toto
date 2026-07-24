@@ -1,4 +1,4 @@
-import { getSettings } from './settings.js?rmv=0.33.64';
+import { getSettings } from './settings.js?rmv=0.33.65';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -7,11 +7,11 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=0.33.64';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=0.33.64';
+} from './feedbackCat.js?rmv=0.33.65';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=0.33.65';
 
 
-const RUNTIME_VERSION = '0.33.64';
+const RUNTIME_VERSION = '0.33.65';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -7820,7 +7820,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '0.33.64-TEST-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.33.65-TEST-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -10792,11 +10792,11 @@ function updateFeedbackCatButtonTitles() {
     });
 }
 
-function saveFeedbackCatChoice(root, type, customText, rounds) {
+function saveFeedbackCatChoice(root, types, customText, rounds) {
     try {
         const source = feedbackCatSourceIdentity(root);
         const record = setActiveFeedbackForCurrentChat({
-            type,
+            types,
             customText,
             rounds,
             sourceMessageId: source.messageId,
@@ -10805,7 +10805,7 @@ function saveFeedbackCatChoice(root, type, customText, rounds) {
         });
         updateFeedbackCatButtonTitles();
         const rangeText = Number(rounds) === 1 ? '下一轮' : `接下来 ${rounds} 轮`;
-        globalThis.toastr?.success?.(`挨打猫记住了，将影响${rangeText}。`);
+        globalThis.toastr?.success?.(`挨打猫记住了 ${types.length} 项反馈，将影响${rangeText}。`);
         return record;
     } catch (error) {
         globalThis.toastr?.warning?.(error?.message || '挨打猫没有记住，请重试。');
@@ -10813,8 +10813,9 @@ function saveFeedbackCatChoice(root, type, customText, rounds) {
     }
 }
 
-function showFeedbackCatRangeMenu(root, button, type, customText = '') {
+function showFeedbackCatRangeMenu(root, button, types, customText = '') {
     closeFeedbackCatMenu();
+    const selectedTypes = [...new Set((Array.isArray(types) ? types : [types]).filter(type => FEEDBACK_CAT_TYPES[type]))];
     const panel = document.createElement('div');
     panel.className = 'rabbit-mirror-feedback-cat-menu';
     panel.setAttribute(FEEDBACK_CAT_MENU_ATTR, 'true');
@@ -10822,11 +10823,12 @@ function showFeedbackCatRangeMenu(root, button, type, customText = '') {
     panel.setAttribute('aria-label', '挨打猫反馈范围');
     panel.innerHTML = `
       <div class="rabbit-mirror-feedback-cat-menu-title">🐈‍⬛ (×﹏×)</div>
+      <div class="rabbit-mirror-feedback-cat-menu-copy">已选 ${selectedTypes.length} 项：${feedbackCatEscapeHtml(selectedTypes.map(type => FEEDBACK_CAT_TYPES[type]).join('、'))}</div>
       <div class="rabbit-mirror-feedback-cat-menu-copy">这顿打要记多久？</div>
       <button type="button" data-rm-feedback-rounds="1">○ 下一轮</button>
       <button type="button" data-rm-feedback-rounds="3">○ 接下来 3 轮</button>
       <button type="button" data-rm-feedback-rounds="10">○ 接下来 10 轮</button>
-      <button type="button" data-rm-feedback-action="back">返回</button>
+      <button type="button" data-rm-feedback-action="back">返回修改</button>
       <button type="button" data-rm-feedback-action="close">取消</button>`;
     document.body.appendChild(panel);
     positionFeedbackCatPanel(panel, button);
@@ -10838,13 +10840,12 @@ function showFeedbackCatRangeMenu(root, button, type, customText = '') {
         event.stopPropagation();
         if (roundsButton) {
             const rounds = Number(roundsButton.getAttribute('data-rm-feedback-rounds'));
-            const saved = saveFeedbackCatChoice(root, type, customText, rounds);
+            const saved = saveFeedbackCatChoice(root, selectedTypes, customText, rounds);
             if (saved) closeFeedbackCatMenu();
             return;
         }
         if (action === 'back') {
-            if (type === 'custom') showFeedbackCatCustomMenu(root, button, customText);
-            else showFeedbackCatMenu(root, button);
+            showFeedbackCatMenu(root, button, { types: selectedTypes, customText });
             return;
         }
         closeFeedbackCatMenu();
@@ -10853,68 +10854,26 @@ function showFeedbackCatRangeMenu(root, button, type, customText = '') {
     return true;
 }
 
-function showFeedbackCatCustomMenu(root, button, initialText = '') {
-    closeFeedbackCatMenu();
-    const panel = document.createElement('div');
-    panel.className = 'rabbit-mirror-feedback-cat-menu';
-    panel.setAttribute(FEEDBACK_CAT_MENU_ATTR, 'true');
-    panel.setAttribute('role', 'dialog');
-    panel.setAttribute('aria-label', '挨打猫自定义反馈');
-
-    const title = document.createElement('div');
-    title.className = 'rabbit-mirror-feedback-cat-menu-title';
-    title.textContent = '🐈‍⬛ QAQ';
-    const copy = document.createElement('div');
-    copy.className = 'rabbit-mirror-feedback-cat-menu-copy';
-    copy.textContent = '立正挨骂ing';
-    const textarea = document.createElement('textarea');
-    textarea.className = 'rabbit-mirror-feedback-cat-input';
-    textarea.maxLength = 400;
-    textarea.rows = 5;
-    textarea.placeholder = '输入反馈……';
-    textarea.value = String(initialText || '');
-    const next = document.createElement('button');
-    next.type = 'button';
-    next.textContent = '下一步';
-    const cancel = document.createElement('button');
-    cancel.type = 'button';
-    cancel.textContent = '取消';
-    panel.append(title, copy, textarea, next, cancel);
-    document.body.appendChild(panel);
-    positionFeedbackCatPanel(panel, button, 330);
-    setTimeout(() => textarea.focus(), 0);
-
-    next.addEventListener('click', event => {
-        event.preventDefault();
-        event.stopPropagation();
-        const text = textarea.value.trim();
-        if (!text) {
-            globalThis.toastr?.warning?.('先骂一句，挨打猫才能记住。');
-            textarea.focus();
-            return;
-        }
-        showFeedbackCatRangeMenu(root, button, 'custom', text);
-    }, true);
-    cancel.addEventListener('click', event => {
-        event.preventDefault();
-        event.stopPropagation();
-        closeFeedbackCatMenu();
-    }, true);
-    bindFeedbackCatOutsideClose(panel, button);
-    return true;
-}
-
-function showFeedbackCatMenu(root, button) {
+function showFeedbackCatMenu(root, button, draft = null) {
     closeMaintenanceRabbitMenu();
     closeFeedbackCatMenu();
     if (!root?.isConnected || !button?.isConnected) return false;
     const active = getActiveFeedbackForCurrentChat();
     const lastReceipt = getFeedbackCatLastReceiptForCurrentChat();
+    const initialTypes = Array.isArray(draft?.types)
+        ? draft.types
+        : Array.isArray(active?.types)
+            ? active.types
+            : active?.type
+                ? [active.type]
+                : [];
+    const selected = new Set(initialTypes.filter(type => FEEDBACK_CAT_TYPES[type]));
+    let customText = String(draft?.customText ?? active?.customText ?? '');
     const panel = document.createElement('div');
     panel.className = 'rabbit-mirror-feedback-cat-menu';
     panel.setAttribute(FEEDBACK_CAT_MENU_ATTR, 'true');
     panel.setAttribute('role', 'dialog');
-    panel.setAttribute('aria-label', '挨打猫');
+    panel.setAttribute('aria-label', '挨打猫多选反馈');
     const receiptLine = lastReceipt
         ? `<div class="rabbit-mirror-feedback-cat-status">上一轮送达回执：${feedbackCatEscapeHtml(feedbackCatReceiptText(lastReceipt))}</div>`
         : '';
@@ -10922,35 +10881,77 @@ function showFeedbackCatMenu(root, button) {
         ? `<div class="rabbit-mirror-feedback-cat-status">当前反馈：${feedbackCatEscapeHtml(feedbackCatStatusText(active))}</div>${receiptLine}`
         : lastReceipt
             ? `<div class="rabbit-mirror-feedback-cat-status">当前没有生效中的反馈。</div>${receiptLine}`
-            : '<div class="rabbit-mirror-feedback-cat-status">当前没有生效中的反馈；不选择时不会影响原有美化规则。</div>';
+            : '<div class="rabbit-mirror-feedback-cat-status">可同时选择多项；关闭而未提交不会影响后续生成。</div>';
     panel.innerHTML = `
       <div class="rabbit-mirror-feedback-cat-menu-title">🐈‍⬛ 挨打猫</div>
       ${status}
+      <div class="rabbit-mirror-feedback-cat-menu-copy">可以多选，再统一提交。</div>
       <button type="button" data-rm-feedback-type="color">🎨 ${FEEDBACK_CAT_TYPES.color}</button>
       <button type="button" data-rm-feedback-type="structure">▦ ${FEEDBACK_CAT_TYPES.structure}</button>
       <button type="button" data-rm-feedback-type="overall">◉ ${FEEDBACK_CAT_TYPES.overall}</button>
       <button type="button" data-rm-feedback-type="interaction">✦ ${FEEDBACK_CAT_TYPES.interaction}</button>
       <button type="button" data-rm-feedback-type="language">🌐 ${FEEDBACK_CAT_TYPES.language}</button>
-      <button type="button" data-rm-feedback-type="custom">✎ ${FEEDBACK_CAT_TYPES.custom}</button>
-      ${active ? '<button type="button" data-rm-feedback-action="clear">不打了，清除反馈</button>' : ''}
-      <button type="button" data-rm-feedback-action="close">关闭</button>`;
+      <button type="button" data-rm-feedback-type="custom">✎ 其他：自己输入</button>
+      <textarea class="rabbit-mirror-feedback-cat-input rabbit-mirror-feedback-cat-custom-inline" maxlength="400" rows="4" placeholder="输入其他反馈……"></textarea>
+      <div class="rabbit-mirror-feedback-cat-actions">
+        <button type="button" data-rm-feedback-action="reset">清空选择</button>
+        <button type="button" data-rm-feedback-action="submit">提交反馈</button>
+      </div>
+      ${active ? '<button type="button" data-rm-feedback-action="clear-active">不打了，清除当前生效反馈</button>' : ''}
+      <button type="button" data-rm-feedback-action="close">取消</button>`;
+    const textarea = panel.querySelector('.rabbit-mirror-feedback-cat-custom-inline');
+    textarea.value = customText;
+    const render = () => {
+        panel.querySelectorAll('[data-rm-feedback-type]').forEach(item => {
+            const type = item.getAttribute('data-rm-feedback-type');
+            const on = selected.has(type);
+            item.classList.toggle('is-selected', on);
+            item.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+        const customOn = selected.has('custom');
+        textarea.classList.toggle('is-visible', customOn);
+        textarea.hidden = !customOn;
+        panel.querySelector('[data-rm-feedback-action="submit"]').disabled = selected.size === 0;
+    };
     document.body.appendChild(panel);
-    positionFeedbackCatPanel(panel, button, 320);
+    positionFeedbackCatPanel(panel, button, 340);
+    render();
     panel.addEventListener('click', event => {
-        const type = event.target?.closest?.('[data-rm-feedback-type]')?.getAttribute('data-rm-feedback-type');
+        const typeButton = event.target?.closest?.('[data-rm-feedback-type]');
         const action = event.target?.closest?.('[data-rm-feedback-action]')?.getAttribute('data-rm-feedback-action');
-        if (!type && !action) return;
+        if (!typeButton && !action) return;
         event.preventDefault();
         event.stopPropagation();
-        if (type === 'custom') {
-            showFeedbackCatCustomMenu(root, button, active?.type === 'custom' ? active.customText : '');
+        if (typeButton) {
+            const type = typeButton.getAttribute('data-rm-feedback-type');
+            if (selected.has(type)) selected.delete(type);
+            else selected.add(type);
+            render();
+            if (type === 'custom' && selected.has('custom')) setTimeout(() => textarea.focus(), 0);
             return;
         }
-        if (type) {
-            showFeedbackCatRangeMenu(root, button, type, '');
+        if (action === 'reset') {
+            selected.clear();
+            customText = '';
+            textarea.value = '';
+            render();
             return;
         }
-        if (action === 'clear') {
+        if (action === 'submit') {
+            customText = textarea.value.trim();
+            if (!selected.size) {
+                globalThis.toastr?.warning?.('至少选择一项反馈。');
+                return;
+            }
+            if (selected.has('custom') && !customText) {
+                globalThis.toastr?.warning?.('请填写“其他”反馈内容。');
+                textarea.focus();
+                return;
+            }
+            showFeedbackCatRangeMenu(root, button, [...selected], customText);
+            return;
+        }
+        if (action === 'clear-active') {
             clearActiveFeedbackForCurrentChat();
             updateFeedbackCatButtonTitles();
             closeFeedbackCatMenu();
@@ -10959,6 +10960,7 @@ function showFeedbackCatMenu(root, button) {
         }
         closeFeedbackCatMenu();
     }, true);
+    textarea.addEventListener('input', () => { customText = textarea.value; });
     bindFeedbackCatOutsideClose(panel, button);
     return true;
 }

@@ -4,7 +4,7 @@ const FEEDBACK_STORAGE_KEY = 'rabbit_mirror_theater:feedback_cat:v1';
 const FEEDBACK_PENDING_KEY = 'rabbit_mirror_theater:feedback_cat_pending:v2';
 const FEEDBACK_METADATA_KEY = 'rabbit_mirror_theater_feedback_cat_v2';
 const FEEDBACK_PROMPT_KEY = 'rabbit_mirror_theater:feedback_cat_prompt';
-const RUNTIME_VERSION = '0.33.64';
+const RUNTIME_VERSION = '0.33.65';
 const VALID_ROUNDS = new Set([1, 3, 10]);
 const VALID_TYPES = new Set(['color', 'structure', 'overall', 'interaction', 'language', 'custom']);
 
@@ -16,6 +16,23 @@ export const FEEDBACK_CAT_TYPES = Object.freeze({
     language: '一直说外语',
     custom: '我要亲自骂',
 });
+
+function normalizeFeedbackTypes(value) {
+    const source = Array.isArray(value?.types)
+        ? value.types
+        : Array.isArray(value)
+            ? value
+            : value?.type
+                ? [value.type]
+                : typeof value === 'string'
+                    ? [value]
+                    : [];
+    return [...new Set(source.map(item => String(item || '')).filter(item => VALID_TYPES.has(item)))];
+}
+
+function feedbackTypeLabels(value) {
+    return normalizeFeedbackTypes(value).map(type => FEEDBACK_CAT_TYPES[type] || type);
+}
 
 function clone(value) {
     if (!value || typeof value !== 'object') return value;
@@ -248,7 +265,7 @@ function fingerprintContext(feedback, type) {
 export function getActiveFeedbackForCurrentChat(chatOverride = null) {
     const { state, identity, source } = readCurrentState(chatOverride);
     const record = state.active;
-    if (!record || !VALID_TYPES.has(record.type) || Number(record.remainingRounds || 0) <= 0) return null;
+    if (!record || !normalizeFeedbackTypes(record).length || Number(record.remainingRounds || 0) <= 0) return null;
     return clone({ ...record, chatKey: identity.key, storageSource: source });
 }
 
@@ -259,25 +276,27 @@ export function getFeedbackCatLastReceiptForCurrentChat(chatOverride = null) {
 
 export function setActiveFeedbackForCurrentChat({
     type,
+    types = null,
     customText = '',
     rounds = 1,
     sourceMessageId = -1,
     sourceSwipeId = -1,
     sourceFingerprint = null,
 } = {}) {
-    const normalizedType = String(type || '');
+    const normalizedTypes = normalizeFeedbackTypes(Array.isArray(types) ? types : [type]);
     const normalizedRounds = Number(rounds);
-    if (!VALID_TYPES.has(normalizedType)) throw new Error('未知的挨打猫反馈类型');
+    if (!normalizedTypes.length) throw new Error('至少选择一项挨打猫反馈');
     if (!VALID_ROUNDS.has(normalizedRounds)) throw new Error('未知的挨打猫影响范围');
-    const cleanedCustomText = normalizedType === 'custom' ? sanitizeCustomFeedback(customText) : '';
-    if (normalizedType === 'custom' && !cleanedCustomText) throw new Error('请先输入反馈内容');
+    const cleanedCustomText = normalizedTypes.includes('custom') ? sanitizeCustomFeedback(customText) : '';
+    if (normalizedTypes.includes('custom') && !cleanedCustomText) throw new Error('请先输入其他反馈内容');
 
     const { state, identity } = readCurrentState();
     const now = Date.now();
     const record = {
         id: `rmfc-${now.toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
-        type: normalizedType,
-        label: FEEDBACK_CAT_TYPES[normalizedType],
+        type: normalizedTypes[0],
+        types: normalizedTypes,
+        label: feedbackTypeLabels(normalizedTypes).join('＋'),
         customText: cleanedCustomText,
         totalRounds: normalizedRounds,
         remainingRounds: normalizedRounds,
@@ -330,22 +349,27 @@ function presetFeedbackInstruction(feedback) {
 }
 
 export function buildFeedbackCatPrompt(feedback) {
-    if (!feedback || !VALID_TYPES.has(feedback.type) || Number(feedback.remainingRounds || 0) <= 0) return '';
-    if (feedback.type === 'custom') {
+    const types = normalizeFeedbackTypes(feedback);
+    if (!feedback || !types.length || Number(feedback.remainingRounds || 0) <= 0) return '';
+    const instructions = [];
+    for (const type of types) {
+        if (type === 'custom') continue;
+        const instruction = presetFeedbackInstruction({ ...feedback, type });
+        if (instruction) instructions.push(instruction);
+    }
+    if (types.includes('custom')) {
         const original = sanitizeCustomFeedback(feedback.customText);
         if (!original) return '';
-        return String.raw`【挨打猫·用户明确美化要求｜本轮最终兔子镜必须清晰落实】
-用户原话：${JSON.stringify(original)}
-这条原话是用户直接提出的兔子镜视觉或交互要求。最终可见的兔子镜必须让用户能够明确看出该要求已经落实；不得只在分析或思考中提及，不得省略，不得弱化成难以察觉的小装饰，也不得把反馈原话、“挨打猫”或执行说明直接显示在聊天正文或兔子镜成品中。
-仅落实原话中与兔子镜的视觉、排版、材质、配色、动效、可见文字或交互直接相关的要求；不得擅自概括、改写、扩写或替换为固定风格，不得添加用户没有提出的示例。
-保留本轮展现形式的功能本体，并在适合该媒介的材质、空间、光源、配色、构图、动效、可见文字或交互中清晰实现用户原话。随机主题细节、默认配色惯性与通用模板在不影响正文含义、可读性、必要功能和输出格式时，应让位于这条用户明确要求。
-无需解释反馈，直接体现在最终兔子镜中。`;
+        instructions.push(`用户补充原话：${JSON.stringify(original)}
+仅落实其中与兔子镜的视觉、排版、材质、配色、动效、可见文字或交互直接相关的要求；不得擅自扩写或替换为固定风格。`);
     }
-    const instruction = presetFeedbackInstruction(feedback);
-    if (!instruction) return '';
-    return String.raw`【挨打猫·用户明确反馈｜本轮最终兔子镜必须清晰落实】
-${instruction}
-最终可见的兔子镜必须明显落实这项反馈，不得只在分析或思考中提及，也不得把反馈说明直接显示在聊天正文或兔子镜成品中。反馈只调整其明确涉及的视觉或交互关系，不得改变正文含义、必要功能与输出格式；无需解释反馈，直接落实。`;
+    if (!instructions.length) return '';
+    const labels = feedbackTypeLabels(types).join('、');
+    return String.raw`【挨打猫·用户明确多项反馈｜本轮最终兔子镜必须清晰落实】
+本轮同时收到以下反馈：${labels}。
+${instructions.map((item, index) => `${index + 1}. ${item}`).join('\n')}
+这些反馈需要在同一面最终兔子镜中协调落实，不能只处理其中一项。不得为了满足一项而明显恶化另一项，也不得把反馈说明、“挨打猫”或执行过程显示在聊天正文或兔子镜成品中。
+反馈只调整其明确涉及的视觉、文字或交互关系，不得改变正文含义、必要功能与输出格式；保留本轮展现形式本体，不要机械套用固定替代模板。无需解释反馈，直接落实。`;
 }
 
 export function syncFeedbackCatExtensionPrompt(feedback = getActiveFeedbackForCurrentChat()) {
@@ -421,8 +445,8 @@ export function markFeedbackCatInjected(feedback, generationType = 'normal', fee
         previousSwipeCount: previous.swipeCount,
         remainingAtInjection: Number(feedback.remainingRounds || 0),
         feedbackPromptHash: hashText(prompt),
-        feedbackTextHash: hashText(feedback.type === 'custom' ? feedback.customText : feedback.type),
-        feedbackTextLength: feedback.type === 'custom' ? String(feedback.customText || '').length : 0,
+        feedbackTextHash: hashText(`${normalizeFeedbackTypes(feedback).join(',')}|${feedback.customText || ''}`),
+        feedbackTextLength: String(feedback.customText || '').length,
         runtimeVersion: RUNTIME_VERSION,
     };
 
@@ -443,7 +467,7 @@ export function markFeedbackCatInjected(feedback, generationType = 'normal', fee
     };
     record.updatedAt = now;
     state.active = record;
-    state.lastReceipt = clone({ ...record.delivery, feedbackId: record.id, type: record.type, label: record.label, remainingRounds: record.remainingRounds });
+    state.lastReceipt = clone({ ...record.delivery, feedbackId: record.id, type: record.type, types: normalizeFeedbackTypes(record), label: record.label, remainingRounds: record.remainingRounds });
     writeCurrentState(state);
 
     try {
@@ -519,7 +543,7 @@ export function consumeInjectedFeedbackForSuccessfulRabbitMirror(message) {
     }
 
     const now = Date.now();
-    if (record.type === 'language') {
+    if (normalizeFeedbackTypes(record).includes('language')) {
         const audit = auditLanguageFeedbackCompliance(message.mes);
         if (!audit.compliant) {
             record.updatedAt = now;
@@ -537,6 +561,7 @@ export function consumeInjectedFeedbackForSuccessfulRabbitMirror(message) {
                 ...record.delivery,
                 feedbackId: record.id,
                 type: record.type,
+                types: normalizeFeedbackTypes(record),
                 label: record.label,
                 remainingRounds: record.remainingRounds,
             });
@@ -561,6 +586,7 @@ export function consumeInjectedFeedbackForSuccessfulRabbitMirror(message) {
         consumedAt: now,
         feedbackId: record.id,
         type: record.type,
+        types: normalizeFeedbackTypes(record),
         label: record.label,
         remainingRounds: remaining,
         runtimeVersion: RUNTIME_VERSION,
@@ -601,15 +627,17 @@ function deliveryStatusLabel(delivery) {
 
 export function feedbackCatStatusText(feedback) {
     if (!feedback) return '当前没有生效中的反馈';
-    const label = feedback.type === 'custom'
-        ? `我要亲自骂：${String(feedback.customText || '').replace(/\s+/g, ' ').slice(0, 42)}`
-        : FEEDBACK_CAT_TYPES[feedback.type] || feedback.label || '自定义反馈';
+    const types = normalizeFeedbackTypes(feedback);
+    const labels = feedbackTypeLabels(types);
+    const customIndex = types.indexOf('custom');
+    if (customIndex >= 0 && feedback.customText) labels[customIndex] = `其他：${String(feedback.customText || '').replace(/\s+/g, ' ').slice(0, 42)}`;
+    const label = labels.join('＋') || feedback.label || '自定义反馈';
     return `${label}｜剩余 ${Number(feedback.remainingRounds || 0)} 轮｜${deliveryStatusLabel(feedback.delivery)}`;
 }
 
 export function feedbackCatReceiptText(receipt) {
     if (!receipt) return '';
-    const label = FEEDBACK_CAT_TYPES[receipt.type] || receipt.label || '反馈';
+    const label = feedbackTypeLabels(receipt).join('＋') || receipt.label || '反馈';
     const time = Number(receipt.consumedAt || receipt.injectedAt || 0);
     const timeText = time ? new Date(time).toLocaleTimeString() : '';
     return `${label}｜${deliveryStatusLabel(receipt)}${timeText ? `｜${timeText}` : ''}`;
