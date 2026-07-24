@@ -1,8 +1,8 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=0.33.60';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=0.33.60';
-import { pickCombination } from './picker.js?rmv=0.33.60';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown } from './storage.js?rmv=0.33.60';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=0.33.60';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=0.33.63';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=0.33.63';
+import { pickCombination } from './picker.js?rmv=0.33.63';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown } from './storage.js?rmv=0.33.63';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=0.33.63';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -21,7 +21,7 @@ function compactItemLine(item, kind) {
     const summary = item?.summary || item?.raw || '';
     const note = kind === 'presentation'
         ? '；执行：让该展现形式成为首个主要内容块的视觉本体。'
-        : '；执行：自然融入本轮剧情气味，不要关键词拼贴。';
+        : '；用途：仅供兔子镜内部取材与视觉转译。';
     return `- 【${id} ${title}】${summary ? `：${truncate(summary, 170)}` : ''}${tags}${note}`;
 }
 
@@ -150,6 +150,13 @@ function hardStartupReserve() {
   - 若篇幅冲突，先收束正文，再减少兔子镜内部文字与次要装饰；不得省略整段兔子镜、改成纯文字占位或留下未闭合结构。`;
 }
 
+function rabbitMirrorConstructionScopeRule() {
+    return String.raw`
+兔子镜构思作用域:
+  - 本注入仅用于兔子镜的取材、媒介、视觉、DOM/CSS 与交互构思，可在该阶段分析抽取结果。
+  - 抽取结果的名称、编号、说明与写法不得进入主回复的变量引入、剧情规划、人物行动、角色语言或文风，也不得反向新增或改写主回复剧情。`;
+}
+
 function coreOutputProtocol() {
     return String.raw`
 兔子镜输出顺序与强制输出【每轮必需】:
@@ -174,7 +181,7 @@ function compactCreativeRule(enabled, formatOnly = false) {
     if (enabled) {
         return String.raw`
 发散孵化:
-  抽取结果是灵感种子，不是封闭模板；保留核心气味/媒介痕迹/关系逻辑，同时允许扩展库外媒介、材质、空间结构、交互痕迹与外延剧情。发散必须能追溯回本轮抽取结果，禁止跑题。`;
+  抽取结果是灵感种子，不是封闭模板；保留核心气味、媒介痕迹与关系逻辑，可扩展库外媒介、材质、空间、交互痕迹与兔子镜内部叙事细节；须可追溯本轮抽取，且不得反向改写主回复。`;
     }
     return String.raw`
 经典收敛:
@@ -272,6 +279,7 @@ function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualS
     const chunks = [];
     const mode = combo?.samplingMode || settings?.samplingMode || 'classic';
     chunks.push('<兔子镜自动注入>');
+    chunks.push(rabbitMirrorConstructionScopeRule());
     if (settings.hardStartup !== false) chunks.push(hardStartupReserve());
     chunks.push(visibleChineseHardLock());
     if (mode === 'format_only') {

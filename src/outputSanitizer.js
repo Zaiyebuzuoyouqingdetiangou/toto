@@ -1,4 +1,4 @@
-import { getSettings } from './settings.js?rmv=0.33.60';
+import { getSettings } from './settings.js?rmv=0.33.63';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -7,11 +7,11 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=0.33.60';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=0.33.60';
+} from './feedbackCat.js?rmv=0.33.63';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=0.33.63';
 
 
-const RUNTIME_VERSION = '0.33.60';
+const RUNTIME_VERSION = '0.33.63';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -88,6 +88,8 @@ const MIRROR_TOTO_SELECTOR = 'toto[data-rabbit-mirror="true"], toto[data-rabbit-
 let interactionScopeCounter = 0;
 const interactionScopeStates = new WeakMap();
 const SCOPED_INTERACTION_ID_RE = /^(rm-[a-z0-9]+-[a-z0-9]+-[a-z0-9]{5}-)(.+)$/i;
+const RADIO_GROUP_RESCUE_ATTR = 'data-rabbit-mirror-radio-group-rescue';
+const RADIO_GROUP_ROOT_ATTR = 'data-rabbit-mirror-radio-group-count';
 
 const INTERACTION_RESCUE_MEMORY_KEY = 'rabbitMirrorInteractionRescueMemoryV1';
 const rememberedInteractionRescueKeys = new Set();
@@ -636,6 +638,37 @@ function getSiblingTargetsForCheckedRule(input, relation, targetSelector) {
     return targets;
 }
 
+function getLabelProxyTargetsForCheckedRule(input, relation, targetSelector) {
+    const label = input?.closest?.('label');
+    const parent = label?.parentElement || null;
+    if (!label || !parent?.querySelectorAll || !label.contains(input) || !targetSelector) return [];
+
+    const followingSiblings = [];
+    let sibling = label.nextElementSibling;
+    if (relation === '+') {
+        if (sibling) followingSiblings.push(sibling);
+    } else {
+        while (sibling) {
+            followingSiblings.push(sibling);
+            sibling = sibling.nextElementSibling;
+        }
+    }
+    if (!followingSiblings.length || followingSiblings.length > 8) return [];
+
+    let parentMatches = [];
+    try {
+        parentMatches = [...parent.querySelectorAll(targetSelector)];
+    } catch {
+        return [];
+    }
+    const targets = parentMatches.filter(target => followingSiblings.some(container => (
+        target === container || container.contains?.(target)
+    )));
+    // 只允许当前 label 后方局部兄弟区域内数量可控的目标，避免通用 input:checked 规则扩散到整面兔子镜。
+    if (!targets.length || targets.length > 8) return [];
+    return targets;
+}
+
 function getCrossContainerTargetsForCheckedRule(root, targetSelector) {
     if (!root?.querySelectorAll || !targetSelector) return [];
     try {
@@ -653,7 +686,11 @@ function resolveTargetsForCheckedRule(root, input, rule) {
     let targets = getSiblingTargetsForCheckedRule(input, rule.relation, rule.targetSelector);
     if (targets.length) return targets;
     if (rule.source === 'class-local' || rule.source === 'generic-local') {
-        return getLocalContainerTargetsForCheckedRule(input, rule.targetSelector);
+        targets = getLocalContainerTargetsForCheckedRule(input, rule.targetSelector);
+        if (targets.length) return targets;
+        // 常见误写：input 被包在 label 内，但 :checked 规则把 label 后方内容当作 input 的兄弟。
+        // 以 label 作为结构代理，仅在其同一局部父容器的后续兄弟区域内恢复目标。
+        return getLabelProxyTargetsForCheckedRule(input, rule.relation, rule.targetSelector);
     }
     return getCrossContainerTargetsForCheckedRule(root, rule.targetSelector);
 }
@@ -4439,9 +4476,18 @@ function collectDirectIdClickAssignments(scriptText, root) {
         matches.push({ start: match.index, end: match.index + match[0].length, action });
     };
 
+    // document.getElementById('id').checked = true/false;
+    // 仅接受固定布尔值与当前兔子镜内真实 checkbox/radio，不执行任意表达式。
+    const checkedRe = /document\s*\.\s*getElementById\s*\(\s*(['"])([a-zA-Z_][\w:.-]*)\1\s*\)\s*\.\s*checked\s*=\s*(true|false)\s*;?/gi;
+    let match;
+    while ((match = checkedRe.exec(source))) {
+        const target = resolveScopedPseudoId(root, match[2]);
+        if (!target?.matches?.('input[type="checkbox"], input[type="radio"]')) return null;
+        addMatch(match, { type: 'checked', target, value: String(match[3]).toLowerCase() === 'true', root });
+    }
+
     // document.getElementById('id').style.left = '70%';
     const styleDotRe = /document\s*\.\s*getElementById\s*\(\s*(['"])([a-zA-Z_][\w:.-]*)\1\s*\)\s*\.\s*style\s*\.\s*([a-zA-Z][\w]*)\s*=\s*(['"])((?:\\.|(?!\4)[\s\S])*)\4\s*;?/g;
-    let match;
     while ((match = styleDotRe.exec(source))) {
         const target = resolveScopedPseudoId(root, match[2]);
         const property = normalizeStylePropertyName(match[3]);
@@ -4503,6 +4549,18 @@ function applyDirectIdClickAssignments(actions) {
             action.target.style?.setProperty?.(action.property, action.value, 'important');
         } else if (action.type === 'text') {
             action.target.textContent = action.value;
+        } else if (action.type === 'checked') {
+            const actionRoot = action.root?.contains?.(action.target)
+                ? action.root
+                : action.target.closest?.(MIRROR_TOTO_SELECTOR) || action.target.closest?.('details');
+            if (actionRoot && action.target.type === 'radio' && action.value === false) {
+                const previous = !!action.target.checked;
+                action.target.checked = false;
+                restoreInteractionInlineOverrides(action.target);
+                if (previous) dispatchRescuedInputState(action.target);
+            } else if (actionRoot) {
+                setRescuedCheckedState(actionRoot, action.target, action.value);
+            }
         } else if (action.type === 'class-state') {
             applyDirectIdClassState(action);
         }
@@ -7268,6 +7326,111 @@ function recoverInteractionScopeState(toto) {
     return idMap.size ? { prefix, idMap } : null;
 }
 
+function inspectSanitizedRadioGroupLoss(root) {
+    const empty = { candidateCount: 0, rescuedCount: 0, groups: [] };
+    if (!root?.querySelectorAll) return empty;
+    const rawMessage = getRawAssistantMessageForRenderedRoot(root);
+    const rawRoot = chooseMatchingRawRabbitMirrorRoot(rawMessage, root);
+    if (!rawRoot?.querySelectorAll) {
+        return {
+            ...empty,
+            rescuedCount: Number.parseInt(root.getAttribute?.(RADIO_GROUP_ROOT_ATTR) || '0', 10) || 0,
+        };
+    }
+
+    const rawRadios = [...rawRoot.querySelectorAll('input[type="radio"]')];
+    const renderedRadios = [...root.querySelectorAll('input[type="radio"]')];
+    if (!rawRadios.length || rawRadios.length !== renderedRadios.length) {
+        return {
+            ...empty,
+            rescuedCount: Number.parseInt(root.getAttribute?.(RADIO_GROUP_ROOT_ATTR) || '0', 10) || 0,
+        };
+    }
+
+    const groups = new Map();
+    rawRadios.forEach((rawInput, index) => {
+        const rawName = String(rawInput.getAttribute('name') || '').trim();
+        if (!rawName) return;
+        if (!groups.has(rawName)) groups.set(rawName, []);
+        groups.get(rawName).push({ rawInput, renderedInput: renderedRadios[index] || null });
+    });
+
+    const candidates = [];
+    for (const [rawName, entries] of groups) {
+        if (entries.length < 2 || entries.some(entry => !entry.renderedInput)) continue;
+        const renderedNames = entries.map(entry => String(entry.renderedInput.getAttribute('name') || '').trim());
+        const sameNonEmptyName = renderedNames.every(name => name && name === renderedNames[0]);
+        const rescueMarked = entries.every(entry => entry.renderedInput.hasAttribute(RADIO_GROUP_RESCUE_ATTR));
+        const checkedCount = entries.filter(entry => entry.renderedInput.checked).length;
+        if (!sameNonEmptyName || !rescueMarked || checkedCount > 1) {
+            candidates.push({ rawName, entries, renderedNames, checkedCount });
+        }
+    }
+
+    return {
+        candidateCount: candidates.length,
+        rescuedCount: Number.parseInt(root.getAttribute?.(RADIO_GROUP_ROOT_ATTR) || '0', 10) || 0,
+        groups: candidates,
+    };
+}
+
+function restoreSanitizedRadioGroups(root, scopePrefix = '') {
+    if (!root?.querySelectorAll) return 0;
+    const inspection = inspectSanitizedRadioGroupLoss(root);
+    if (!inspection.groups.length) {
+        const existing = root.querySelectorAll?.(`[${RADIO_GROUP_RESCUE_ATTR}]`)?.length || 0;
+        if (!existing) root.removeAttribute?.(RADIO_GROUP_ROOT_ATTR);
+        return Number.parseInt(root.getAttribute?.(RADIO_GROUP_ROOT_ATTR) || '0', 10) || 0;
+    }
+
+    for (const group of inspection.groups) {
+        const scopedName = `${scopePrefix || ''}${group.rawName}`;
+        const groupToken = `g${hashInteractionSignature(scopedName).slice(0, 10)}`;
+        const renderedInputs = group.entries.map(entry => entry.renderedInput).filter(Boolean);
+        if (renderedInputs.length < 2) continue;
+
+        const checkedInputs = renderedInputs.filter(input => input.checked);
+        const focused = renderedInputs.includes(globalThis.document?.activeElement)
+            ? globalThis.document.activeElement
+            : null;
+        const rawDefaultEntry = [...group.entries].reverse().find(entry => entry.rawInput.hasAttribute('checked')) || null;
+        let preferred = null;
+        if (checkedInputs.length === 1) preferred = checkedInputs[0];
+        else if (checkedInputs.length > 1) preferred = focused && focused.checked ? focused : checkedInputs[checkedInputs.length - 1];
+        else if (rawDefaultEntry) preferred = rawDefaultEntry.renderedInput;
+
+        for (const input of renderedInputs) {
+            if (String(input.getAttribute('name') || '') !== scopedName) {
+                input.setAttribute('name', scopedName);
+            }
+            input.setAttribute(RADIO_GROUP_RESCUE_ATTR, groupToken);
+        }
+
+        if (preferred) {
+            for (const input of renderedInputs) {
+                const shouldCheck = input === preferred;
+                input.checked = shouldCheck;
+                if (!shouldCheck) restoreInteractionInlineOverrides(input);
+            }
+            applyCheckedVisualFallback(root, preferred);
+        } else {
+            for (const input of renderedInputs) {
+                input.checked = false;
+                restoreInteractionInlineOverrides(input);
+            }
+        }
+    }
+
+    const liveGroups = new Set(
+        [...root.querySelectorAll(`[${RADIO_GROUP_RESCUE_ATTR}]`)]
+            .map(input => String(input.getAttribute(RADIO_GROUP_RESCUE_ATTR) || ''))
+            .filter(Boolean),
+    ).size;
+    if (liveGroups) root.setAttribute(RADIO_GROUP_ROOT_ATTR, String(liveGroups));
+    else root.removeAttribute(RADIO_GROUP_ROOT_ATTR);
+    return liveGroups;
+}
+
 function scopeRabbitMirrorInteractionIds(toto) {
     if (!toto?.querySelector) return;
 
@@ -7283,6 +7446,10 @@ function scopeRabbitMirrorInteractionIds(toto) {
         state = { prefix: createInteractionScopePrefix(), idMap: new Map() };
         interactionScopeStates.set(toto, state);
     }
+
+    // DOMPurify/宿主可能移除 radio 的 name，原本的单选组会退化成多个可同时 checked 的独立控件。
+    // 从同一条消息的原始兔子镜按 radio 顺序恢复组名，并使用当前镜面前缀隔离跨消息碰撞。
+    restoreSanitizedRadioGroups(toto, state.prefix);
 
     const mappedValues = new Set(state.idMap.values());
     const elementsById = buildElementsById(toto);
@@ -7364,6 +7531,7 @@ const MOBILE_LAYOUT_SCROLL_ATTR = 'data-rm-mobile-scroll';
 const MOBILE_LAYOUT_BREAK_TEXT_ATTR = 'data-rm-mobile-break-text';
 const MOBILE_LAYOUT_STATE_CONTENT_ATTR = 'data-rm-mobile-state-content';
 const MOBILE_LAYOUT_STATE_ACTIVE_ATTR = 'data-rm-mobile-state-active';
+const MOBILE_LAYOUT_SECTION_STACK_PRESERVE_ATTR = 'data-rm-mobile-section-stack-preserve';
 const MOBILE_LAYOUT_BREAKPOINT_PX = 640;
 const MOBILE_LAYOUT_TARGET_ATTRS = Object.freeze([
     MOBILE_LAYOUT_FIT_ATTR,
@@ -7383,6 +7551,7 @@ const MOBILE_LAYOUT_TARGET_ATTRS = Object.freeze([
     MOBILE_LAYOUT_BREAK_TEXT_ATTR,
     MOBILE_LAYOUT_STATE_CONTENT_ATTR,
     MOBILE_LAYOUT_STATE_ACTIVE_ATTR,
+    MOBILE_LAYOUT_SECTION_STACK_PRESERVE_ATTR,
 ]);
 const mobileLayoutRescueStates = new WeakMap();
 const mobileMatrixPreserveStates = new WeakMap();
@@ -7391,7 +7560,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '0.33.60-TEST-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.33.63-TEST-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -7518,6 +7687,7 @@ function diagnosticRouteSummary(root) {
         crossParentChecked: Number.parseInt(root?.getAttribute?.(CROSS_PARENT_CHECKED_ROOT_ATTR) || '0', 10) || 0,
         checkedHasState: Number.parseInt(root?.getAttribute?.(CHECKED_HAS_STATE_RULE_COUNT_ATTR) || '0', 10) || 0,
         reversibleChecked: Number.parseInt(root?.getAttribute?.(REVERSIBLE_CHECKED_RESULT_ROOT_ATTR) || '0', 10) || 0,
+        radioGroups: Number.parseInt(root?.getAttribute?.(RADIO_GROUP_ROOT_ATTR) || '0', 10) || 0,
         expandedOpacity: root?.querySelectorAll?.(`[${EXPANDED_OPACITY_RESCUE_ATTR}]`)?.length || 0,
         containerReveal: renderedContainerInternalRevealStates.get(root)?.entries?.size || 0,
         selfMutation: rawSelfMutationRescueStates.get(root)?.entries?.size || 0,
@@ -8318,6 +8488,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `跨父层checked兜底 entries=${routes.crossParentChecked} listener=${routes.crossParentChecked ? 'true' : 'false'}`,
         `全选联动兜底 entries=${routes.checkedHasState} listener=${routes.checkedHasState ? 'true' : 'false'}`,
         `单向checked回退 entries=${routes.reversibleChecked} listener=${routes.reversibleChecked ? 'true' : 'false'}`,
+        `radio同组恢复 groups=${routes.radioGroups} listener=${routes.radioGroups ? 'true' : 'false'}`,
         `checked交互深度 rules=${checkedDepth.checkedRuleCount} selectionOnly=${checkedDepth.selectionStyleRuleCount} secondLayer=${checkedDepth.meaningfulCheckedRuleCount} fallback=${checkedDepth.selectionOnlyFallbackCount}`,
         `伪类交互深度 rules=${pseudoDepth.pseudoRuleCount} visualOnly=${pseudoDepth.visualOnlyPseudoRuleCount} secondLayer=${pseudoDepth.meaningfulPseudoRuleCount}`,
         `可达内容交互 elements=${reachability.contentInteractiveElementCount} routes=${reachability.installedInteractionRouteCount} missing=${reachability.noInteractionStructure}`,
@@ -8344,6 +8515,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `overflow=${mobileLayout.horizontalOverflowCount || 0} fixedWidth=${mobileLayout.fixedWidthCount || 0} grid=${mobileLayout.gridCount || 0} matrix=${mobileLayout.matrixCount || 0} flex=${mobileLayout.flexCount || 0}`,
         `multiColumn=${mobileLayout.multiColumnCount || 0} media=${mobileLayout.mediaCount || 0} stateContent=${mobileLayout.stateContentCount || 0}`,
         `护照／证件内页=${mobileLayout.passportDocumentCount || 0} repaired=${root.getAttribute?.(PASSPORT_DOCUMENT_RESCUE_ATTR) || '0'}`,
+        `剖面／分层保形=${mobileLayout.sectionStackCount || 0}`,
         `内部details弹出结果裁切=${nestedDetailsPopupCandidateCount} repaired=${root.getAttribute?.(NESTED_DETAILS_POPUP_COUNT_ATTR) || '0'}`,
         `手机端行内批注=${mobileInlineAnnotationCandidateCount} repaired=${root.getAttribute?.(MOBILE_INLINE_ANNOTATION_COUNT_ATTR) || '0'}`,
         `repairScope=${root.getAttribute?.(MOBILE_LAYOUT_SCOPE_ATTR) || '(无)'} patched=${root.getAttribute?.(MOBILE_LAYOUT_RESCUE_COUNT_ATTR) || '0'}`,
@@ -8365,7 +8537,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         lines.push(
             `${index}: ${diagnosticElementName(input)} type=${input.type} checked=${!!input.checked}`,
             `   label=${!!label} text="${diagnosticCompactText(label?.textContent, 68)}"`,
-            `   attrs: route=${getRenderedInputRoute(input) || 'none'} adjacent=${input.getAttribute(RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR) || 'false'} layer=${input.getAttribute(RENDERED_STATE_LAYER_RESCUE_ATTR) || 'false'} labelInternal=${input.getAttribute(RENDERED_LABEL_INTERNAL_HIDDEN_RESCUE_ATTR) || 'false'} labelAdjacent=${input.getAttribute(RENDERED_LABEL_ADJACENT_RESULT_RESCUE_ATTR) || 'false'} idTarget=${input.getAttribute(RENDERED_CHECKED_ID_TARGET_RESCUE_ATTR) || 'false'} cssChecked=${input.getAttribute(CHECKED_TEXT_RULE_RESCUE_ATTR) || 'false'} expandedOpacity=${input.getAttribute(EXPANDED_OPACITY_RESCUE_ATTR) || 'false'} change=${input.getAttribute(CHANGE_PSEUDO_RESCUE_ATTR) || 'false'} unlabeledHost=${input.getAttribute(UNLABELED_CHECKED_CONTROL_RESCUE_ATTR) || 'false'}`,
+            `   attrs: route=${getRenderedInputRoute(input) || 'none'} adjacent=${input.getAttribute(RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR) || 'false'} layer=${input.getAttribute(RENDERED_STATE_LAYER_RESCUE_ATTR) || 'false'} labelInternal=${input.getAttribute(RENDERED_LABEL_INTERNAL_HIDDEN_RESCUE_ATTR) || 'false'} labelAdjacent=${input.getAttribute(RENDERED_LABEL_ADJACENT_RESULT_RESCUE_ATTR) || 'false'} idTarget=${input.getAttribute(RENDERED_CHECKED_ID_TARGET_RESCUE_ATTR) || 'false'} cssChecked=${input.getAttribute(CHECKED_TEXT_RULE_RESCUE_ATTR) || 'false'} radioGroup=${input.getAttribute(RADIO_GROUP_RESCUE_ATTR) || 'false'} expandedOpacity=${input.getAttribute(EXPANDED_OPACITY_RESCUE_ATTR) || 'false'} change=${input.getAttribute(CHANGE_PSEUDO_RESCUE_ATTR) || 'false'} unlabeledHost=${input.getAttribute(UNLABELED_CHECKED_CONTROL_RESCUE_ATTR) || 'false'}`,
         );
     });
 
@@ -9261,6 +9433,9 @@ function maintenanceKnownInteractionEvidence(root, full, code) {
         && innerDetailsCount === 0
         && !hasTargetRoute
         && !hasPopoverRoute;
+    const radioGroupInspection = inspectSanitizedRadioGroupLoss(root);
+    const radioGroupLossCandidateCount = Number(radioGroupInspection.candidateCount) || 0;
+    const radioGroupRescueCount = Number(radioGroupInspection.rescuedCount) || 0;
     const selectionOnlyRepairCandidateCount = checkedDepth.checkedSelectionOnly
         ? findSelectionOnlyRadioFallbackCandidates(root).length
         : 0;
@@ -9287,7 +9462,7 @@ function maintenanceKnownInteractionEvidence(root, full, code) {
     const unscopedControls = (full.inputCount > 0 || full.buttonCount > 0)
         && root.dataset?.rabbitMirrorInteractionScoped !== 'true';
     const reachability = maintenanceReachableInteractionEvidence(root, routeSummary, checkedDepth, pseudoDepth, raw);
-    return { checkedControlsLost, strippedStateProgram, lostInlineStatePrograms, recoveredInlineStatePrograms, decorativeOverlayCandidateCount, touchHoverMissing, unscopedControls, selectionOnlyRepairCandidateCount, disabledOnlyChoiceCandidateCount, inertActionButtonCandidateCount, crossParentCheckedRuleCandidateCount, checkedHasStateRuleCandidateCount, checkedHasStateRuleRescueCount, checkedHasStateRuleMissingCount, oneWayCheckedResultCandidateCount, reversibleCheckedResultRescueCount, pseudoVisualOnly, raw, ...scopeEvidence, ...checkedDepth, ...pseudoDepth, ...reachability };
+    return { checkedControlsLost, strippedStateProgram, lostInlineStatePrograms, recoveredInlineStatePrograms, decorativeOverlayCandidateCount, touchHoverMissing, unscopedControls, radioGroupLossCandidateCount, radioGroupRescueCount, selectionOnlyRepairCandidateCount, disabledOnlyChoiceCandidateCount, inertActionButtonCandidateCount, crossParentCheckedRuleCandidateCount, checkedHasStateRuleCandidateCount, checkedHasStateRuleRescueCount, checkedHasStateRuleMissingCount, oneWayCheckedResultCandidateCount, reversibleCheckedResultRescueCount, pseudoVisualOnly, raw, ...scopeEvidence, ...checkedDepth, ...pseudoDepth, ...reachability };
 }
 
 function maintenanceFallbackFullSummary(root) {
@@ -9503,6 +9678,13 @@ function buildMaintenanceFindings(root, {
             evidence: [`meaningfulPseudoRuleCount=${Number(interaction.meaningfulPseudoRuleCount) || 0}`], confidence: 0.94,
         });
     }
+    if (Number(interaction.radioGroupLossCandidateCount) > 0) {
+        add({
+            id: 'radio-group-name-stripped', stage: 'interaction', mode: 'interaction',
+            label: 'radio 同组关系被宿主移除，单选节点会累积成同时选中',
+            evidence: [`radioGroupLossCandidateCount=${Number(interaction.radioGroupLossCandidateCount)}`], confidence: 1,
+        });
+    }
     if (Number(interaction.selectionOnlyRepairCandidateCount) > 0) {
         add({
             id: 'selection-only-missing-result', stage: 'interaction', mode: 'interaction',
@@ -9622,7 +9804,7 @@ function inspectMaintenanceRabbit(root) {
     } catch (error) {
         partialInspection = true;
         console.debug('[RabbitMirror] maintenance interaction inspection skipped:', error);
-        interaction = { checkedControlsLost: false, strippedStateProgram: false, lostInlineStatePrograms: 0, recoveredInlineStatePrograms: 0, decorativeOverlayCandidateCount: 0, touchHoverMissing: false, unscopedControls: false, duplicateIds: 0, brokenLocalLabels: 0, checkedCssIdSelectors: 0, needsScopeRepair: false, checkedSelectionOnly: false, checkedSelectionOnlyRaw: false, checkedRuleCount: 0, meaningfulCheckedRuleCount: 0, selectionStyleRuleCount: 0, selectionOnlyFallbackCount: 0, selectionOnlyRepairCandidateCount: 0, disabledOnlyChoiceCandidateCount: 0, inertActionButtonCandidateCount: 0, crossParentCheckedRuleCandidateCount: 0, checkedHasStateRuleCandidateCount: 0, checkedHasStateRuleRescueCount: 0, checkedHasStateRuleMissingCount: 0, oneWayCheckedResultCandidateCount: 0, reversibleCheckedResultRescueCount: 0, pseudoVisualOnly: false, pseudoRuleCount: 0, visualOnlyPseudoRuleCount: 0, meaningfulPseudoRuleCount: 0, touchHoverEligibleCount: 0, touchHoverActiveCount: 0, contentInteractiveElementCount: 0, installedInteractionRouteCount: 0, noInteractionStructure: false, raw: '' };
+        interaction = { checkedControlsLost: false, strippedStateProgram: false, lostInlineStatePrograms: 0, recoveredInlineStatePrograms: 0, decorativeOverlayCandidateCount: 0, touchHoverMissing: false, unscopedControls: false, radioGroupLossCandidateCount: 0, radioGroupRescueCount: 0, duplicateIds: 0, brokenLocalLabels: 0, checkedCssIdSelectors: 0, needsScopeRepair: false, checkedSelectionOnly: false, checkedSelectionOnlyRaw: false, checkedRuleCount: 0, meaningfulCheckedRuleCount: 0, selectionStyleRuleCount: 0, selectionOnlyFallbackCount: 0, selectionOnlyRepairCandidateCount: 0, disabledOnlyChoiceCandidateCount: 0, inertActionButtonCandidateCount: 0, crossParentCheckedRuleCandidateCount: 0, checkedHasStateRuleCandidateCount: 0, checkedHasStateRuleRescueCount: 0, checkedHasStateRuleMissingCount: 0, oneWayCheckedResultCandidateCount: 0, reversibleCheckedResultRescueCount: 0, pseudoVisualOnly: false, pseudoRuleCount: 0, visualOnlyPseudoRuleCount: 0, meaningfulPseudoRuleCount: 0, touchHoverEligibleCount: 0, touchHoverActiveCount: 0, contentInteractiveElementCount: 0, installedInteractionRouteCount: 0, noInteractionStructure: false, raw: '' };
     }
     let textClippingCandidateCount = 0;
     try {
@@ -9824,11 +10006,168 @@ function extractMaintenanceMirrorSourceBySummary(source, root) {
 }
 
 
+const MAINTENANCE_QUARANTINED_SCRIPT_ATTR = 'data-rabbit-mirror-quarantined-script';
+const MAINTENANCE_STATIC_DECOR_ATTR = 'data-rabbit-mirror-static-script-fallback';
+const MAINTENANCE_STATIC_DECOR_CHILD_ATTR = 'data-rabbit-mirror-static-decoration';
+
+function quarantineMaintenanceScriptBlocks(source) {
+    return String(source || '').replace(/<script\b[^>]*>([\s\S]*?)<\/script\s*>/gi, (_match, body) => {
+        let encoded = '';
+        try {
+            encoded = encodeURIComponent(String(body || ''));
+        } catch {
+            encoded = '';
+        }
+        return `<template ${MAINTENANCE_QUARANTINED_SCRIPT_ATTR}="${encoded}"></template>`;
+    });
+}
+
+function decodeQuarantinedMaintenanceScript(element) {
+    const encoded = String(element?.getAttribute?.(MAINTENANCE_QUARANTINED_SCRIPT_ATTR) || '');
+    if (!encoded) return '';
+    try {
+        return decodeURIComponent(encoded);
+    } catch {
+        return '';
+    }
+}
+
+function findMaintenanceElementByRawClass(root, rawClass) {
+    const wanted = String(rawClass || '').trim();
+    if (!root?.querySelectorAll || !wanted) return null;
+    for (const element of root.querySelectorAll('[class]')) {
+        const tokens = String(element.className || '').split(/\s+/).filter(Boolean);
+        if (tokens.some(token => token === wanted || token === `custom-${wanted}` || token.endsWith(`-${wanted}`))) {
+            return element;
+        }
+    }
+    return null;
+}
+
+function resolveMaintenanceGeneratedClass(root, rawClass) {
+    const wanted = String(rawClass || '').trim();
+    if (!wanted) return '';
+    const existing = findMaintenanceElementByRawClass(root, wanted);
+    if (existing) {
+        const tokens = String(existing.className || '').split(/\s+/).filter(Boolean);
+        return tokens.find(token => token === wanted || token === `custom-${wanted}` || token.endsWith(`-${wanted}`)) || wanted;
+    }
+    for (const style of root?.querySelectorAll?.('style') || []) {
+        const css = String(style.textContent || '');
+        const classRe = /\.([_a-zA-Z][\w-]*)/g;
+        let match;
+        while ((match = classRe.exec(css))) {
+            const token = String(match[1] || '');
+            if (token === wanted || token === `custom-${wanted}` || token.endsWith(`-${wanted}`)) return token;
+        }
+    }
+    return wanted;
+}
+
+function parseMaintenanceStaticDecorationPlans(scriptText) {
+    const script = String(scriptText || '');
+    if (!script || !/createElement\s*\(\s*['"]div['"]\s*\)/i.test(script)) return [];
+
+    const targets = new Map();
+    const childClasses = new Map();
+    const plans = [];
+    const targetRe = /(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*document\.querySelector\(\s*(['"])\.([A-Za-z_][\w-]*)\2\s*\)/g;
+    const classRe = /([A-Za-z_$][\w$]*)\.className\s*=\s*(['"])([^'"]+)\2/g;
+    const appendRe = /([A-Za-z_$][\w$]*)\.appendChild\(\s*([A-Za-z_$][\w$]*)\s*\)/g;
+    let match;
+    while ((match = targetRe.exec(script))) targets.set(match[1], match[3]);
+    while ((match = classRe.exec(script))) childClasses.set(match[1], String(match[3] || '').trim());
+    while ((match = appendRe.exec(script))) {
+        const targetClass = targets.get(match[1]);
+        const childClass = childClasses.get(match[2]);
+        if (!targetClass || !childClass) continue;
+        const signal = `${targetClass} ${childClass}`.toLowerCase();
+        const kind = /(?:star|stars|spark|twinkle)/.test(signal)
+            ? 'stars'
+            : /(?:building|cityscape|skyline)/.test(signal) ? 'buildings' : '';
+        if (kind) plans.push({ targetClass, childClass, kind });
+    }
+    return plans.slice(0, 4);
+}
+
+function installMaintenanceStaticDecorationFallback(root, scriptText) {
+    if (!root?.querySelectorAll) return 0;
+    let created = 0;
+    for (const plan of parseMaintenanceStaticDecorationPlans(scriptText)) {
+        const target = findMaintenanceElementByRawClass(root, plan.targetClass);
+        if (!target || target.children.length > 4) continue;
+        const childClass = resolveMaintenanceGeneratedClass(root, plan.childClass);
+        if (!childClass) continue;
+        const count = plan.kind === 'stars' ? 24 : 10;
+        for (let index = 0; index < count; index += 1) {
+            const child = document.createElement('div');
+            child.className = childClass;
+            child.setAttribute(MAINTENANCE_STATIC_DECOR_CHILD_ATTR, plan.kind);
+            if (plan.kind === 'stars') {
+                const size = 1 + ((index * 7) % 4) * 0.45;
+                child.style.width = `${size.toFixed(2)}px`;
+                child.style.height = `${size.toFixed(2)}px`;
+                child.style.top = `${(index * 37 + 9) % 96}%`;
+                child.style.left = `${(index * 53 + 5) % 98}%`;
+                child.style.animationDelay = `${-((index * 0.47) % 5).toFixed(2)}s`;
+                child.style.animationDuration = `${(3 + (index % 5) * 0.55).toFixed(2)}s`;
+            } else {
+                child.style.left = `${Math.min(95, index * 9.7).toFixed(1)}%`;
+                child.style.height = `${14 + ((index * 17) % 47)}%`;
+                child.style.width = `${3 + ((index * 5) % 6)}%`;
+                child.style.opacity = `${(0.32 + (index % 5) * 0.11).toFixed(2)}`;
+            }
+            target.appendChild(child);
+            created += 1;
+        }
+        target.setAttribute(MAINTENANCE_STATIC_DECOR_ATTR, `${plan.kind}:${count}`);
+    }
+    return created;
+}
+
+function sanitizeMaintenanceMirrorTemplate(template) {
+    if (!template?.content?.querySelectorAll) return null;
+    if (template.content.querySelector('iframe, object, embed, link, meta, base')) return null;
+
+    const scriptSources = [];
+    for (const placeholder of [...template.content.querySelectorAll(`template[${MAINTENANCE_QUARANTINED_SCRIPT_ATTR}]`)]) {
+        scriptSources.push(decodeQuarantinedMaintenanceScript(placeholder));
+        placeholder.remove();
+    }
+    for (const script of [...template.content.querySelectorAll('script')]) {
+        scriptSources.push(String(script.textContent || ''));
+        script.remove();
+    }
+
+    for (const element of template.content.querySelectorAll('*')) {
+        for (const attribute of [...element.attributes]) {
+            const name = String(attribute.name || '').toLowerCase();
+            const value = String(attribute.value || '');
+            if (/^on[a-z]+$/.test(name)) {
+                element.removeAttribute(attribute.name);
+                continue;
+            }
+            if (/^(?:href|src|xlink:href|formaction)$/i.test(name) && /^\s*javascript\s*:/i.test(value)) return null;
+            if (name === 'style' && /url\(\s*(['"]?)\s*javascript\s*:/i.test(value)) return null;
+        }
+    }
+
+    let decorationCount = 0;
+    for (const scriptSource of scriptSources) {
+        decorationCount += installMaintenanceStaticDecorationFallback(template.content, scriptSource);
+    }
+    return { strippedScriptCount: scriptSources.length, decorationCount };
+}
+
 function prepareMaintenanceMirrorSource(source) {
     let text = decodeHtmlEntities(String(source || ''))
         .replace(/[\u200B\u200C\u200D\uFEFF]/g, '')
         .trim();
     if (!text) return '';
+
+    // 先把模型脚本隔离为不可执行占位符。这样既不会在重建时执行脚本，
+    // 也不会让脚本正文里的 < 运算符被 HTML 紧凑器误当标签吞掉。
+    text = quarantineMaintenanceScriptBlocks(text);
 
     // 0.32.76 能救版本的关键顺序：先在字符串层保住主体，再进入 HTML 解析。
     // 损坏的 inline SVG Data URI 会提前结束 style 属性；直接交给 template.innerHTML
@@ -9880,19 +10219,8 @@ function findCleanMaintenanceMirrorNode(source, root) {
         template.innerHTML = cleaned;
 
         // 直接 DOM 恢复绕过宿主 DOMPurify，因此在离线 template 中主动执行同等安全边界：
-        // 拒绝主动内容与 javascript:，移除全部内联事件；真实交互只允许后续安全解析器从原始源码重建。
-        if (template.content.querySelector('script, iframe, object, embed, link, meta, base')) return null;
-        for (const element of template.content.querySelectorAll('*')) {
-            for (const attribute of [...element.attributes]) {
-                const name = String(attribute.name || '').toLowerCase();
-                const value = String(attribute.value || '');
-                if (/^on[a-z]+$/.test(name)) {
-                    element.removeAttribute(attribute.name);
-                    continue;
-                }
-                if (/^(?:href|src|xlink:href|formaction)$/i.test(name) && /^\s*javascript\s*:/i.test(value)) return null;
-            }
-        }
+        // script 只删除不执行；其余主动嵌入内容仍整面拒绝。真实交互只允许后续安全解析器重建。
+        if (!sanitizeMaintenanceMirrorTemplate(template)) return null;
 
         const candidates = [];
         for (const toto of template.content.querySelectorAll('toto')) {
@@ -10009,7 +10337,10 @@ function repairMaintenanceMessageSource(root, inspection) {
         if (isolatedMirrorSource) {
             const directDomRecovered = replaceMaintenanceMirrorDomFromSource(root, isolatedMirrorSource);
             if (directDomRecovered) {
-                const note = hasReasoningEnvelope ? '（已隔离思维包裹）' : '';
+                const notes = [];
+                if (hasReasoningEnvelope) notes.push('已隔离思维包裹');
+                if (/<script\b/i.test(isolatedMirrorSource)) notes.push('脚本已移除，静态主体已保留');
+                const note = notes.length ? `（${notes.join('；')}）` : '';
                 return { changed: true, index, reason: `已从当前消息源码安全重建这一面兔子镜 DOM${note}` };
             }
         }
@@ -10063,7 +10394,7 @@ function runMaintenanceRabbitRepair(root, button) {
                 return;
             }
             const liveButton = liveRoot.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || button;
-            if (before.interaction?.checkedControlsLost || before.interaction?.strippedStateProgram || before.interaction?.touchHoverMissing || before.interaction?.needsScopeRepair) {
+            if (before.interaction?.checkedControlsLost || before.interaction?.strippedStateProgram || before.interaction?.touchHoverMissing || before.interaction?.needsScopeRepair || before.interaction?.radioGroupLossCandidateCount) {
                 scopeRabbitMirrorInteractionIds(liveRoot);
                 liveRoot.dataset.rabbitMirrorInteractionRescued = 'true';
             }
@@ -10447,6 +10778,37 @@ function maintenanceMobileLayoutIsPassportManaged(element) {
     return !!element.closest?.(`[${PASSPORT_DOCUMENT_COVER_ATTR}], [${PASSPORT_DOCUMENT_PAGES_ATTR}], [${PASSPORT_DOCUMENT_STAMP_ATTR}]`);
 }
 
+function maintenanceMobileLayoutSectionStackInfo(element, style = null, directChildren = null) {
+    if (!element?.querySelectorAll) return null;
+    const computed = style || maintenanceMobileLayoutComputedStyle(element);
+    const display = String(computed?.display || '').toLowerCase();
+    const direction = String(computed?.flexDirection || '').toLowerCase();
+    if (!display.includes('flex') || !direction.startsWith('column')) return null;
+
+    const signature = `${element.id || ''} ${element.className || ''} ${element.getAttribute?.('aria-label') || ''}`;
+    if (!/(?:entremet|layer|layers|section|section-view|cutaway|cross-section|strata|剖面|分层|层级|夹层|切面)/i.test(signature)) return null;
+
+    const children = Array.isArray(directChildren)
+        ? directChildren
+        : [...(element.children || [])].filter(child => !maintenanceMobileLayoutIsInternal(child));
+    const controls = [...element.querySelectorAll('input[type="checkbox"], input[type="radio"]')]
+        .filter(input => input.closest?.('label')?.parentElement === element || input.parentElement === element);
+    if (controls.length < 3 || controls.length > 12) return null;
+
+    const sections = children.filter(child => {
+        if (child.matches?.('label') && child.querySelector?.('input[type="checkbox"], input[type="radio"]')) return false;
+        const childSignature = `${child.id || ''} ${child.className || ''}`;
+        if (!/(?:^|[\s_-])(?:layer|section|slice|stratum)(?:$|[\s_-])|层|切片/i.test(childSignature)) return false;
+        return maintenanceMobileLayoutTextLength(child) >= 4;
+    });
+    if (sections.length < 3 || Math.abs(sections.length - controls.length) > 1) return null;
+    return { controls, sections };
+}
+
+function maintenanceMobileLayoutElementInSectionStack(element, hosts) {
+    return (hosts || []).some(host => host === element || host.contains?.(element));
+}
+
 function maintenanceMobileLayoutHorizontalMediaHint(element) {
     if (!element) return false;
     if (element.matches?.('table,thead,tbody,tr,canvas')) return true;
@@ -10667,6 +11029,7 @@ function inspectMaintenanceMobileLayout(root) {
         mediaCount: 0,
         stateContentCount: 0,
         passportDocumentCount: 0,
+        sectionStackCount: 0,
     };
     if (!root?.querySelectorAll) return empty;
     const viewportWidth = Math.max(0, Number(globalThis.innerWidth || globalThis.document?.documentElement?.clientWidth || 0));
@@ -10691,8 +11054,10 @@ function inspectMaintenanceMobileLayout(root) {
     const alreadyRepaired = root.hasAttribute(MOBILE_LAYOUT_SCOPE_ATTR)
         && !!root.querySelector(`style[${MOBILE_LAYOUT_RESCUE_STYLE_ATTR}]`);
     const elements = [root, ...root.querySelectorAll('*')].filter(element => !maintenanceMobileLayoutIsInternal(element));
+    const sectionStackHosts = elements.filter(element => maintenanceMobileLayoutSectionStackInfo(element));
 
     for (const element of elements) {
+        if (maintenanceMobileLayoutElementInSectionStack(element, sectionStackHosts)) continue;
         const style = maintenanceMobileLayoutComputedStyle(element);
         if (!style) continue;
         const rect = maintenanceMobileLayoutRect(element);
@@ -10732,25 +11097,38 @@ function inspectMaintenanceMobileLayout(root) {
         }
 
         if (display.includes('flex') && !passportManaged && !element.hasAttribute(MOBILE_LAYOUT_FLEX_WRAP_ATTR) && !element.hasAttribute(MOBILE_LAYOUT_FLEX_STACK_ATTR)) {
-            const children = [...(element.children || [])].filter(child => !maintenanceMobileLayoutIsInternal(child));
-            const wrap = String(style.flexWrap || '').toLowerCase();
-            const hasLargeHeading = !!element.querySelector?.(':scope > h1, :scope > h2');
-            const childOverflow = rect ? children.some(child => {
-                const childRect = maintenanceMobileLayoutRect(child);
-                return childRect && (childRect.right > rect.right + 3 || childRect.left < rect.left - 3);
-            }) : false;
-            const gap = maintenanceMobileLayoutLengthPx(style.columnGap || style.gap, referenceWidth);
-            const estimatedChildrenWidth = children.reduce((total, child) => {
-                const childRect = maintenanceMobileLayoutRect(child);
-                const childStyle = maintenanceMobileLayoutComputedStyle(child);
-                return total + Math.max(
-                    Number(childRect?.width || 0),
-                    maintenanceMobileLayoutLengthPx(childStyle?.width, referenceWidth),
-                    maintenanceMobileLayoutLengthPx(childStyle?.minWidth, referenceWidth),
-                );
-            }, 0) + Math.max(0, children.length - 1) * gap;
-            if (children.length > 1 && wrap === 'nowrap' && (overflowsSelf || childOverflow || hasLargeHeading || estimatedChildrenWidth > referenceWidth + 3)) {
-                buckets.flex.add(element);
+            const direction = String(style.flexDirection || 'row').toLowerCase();
+            if (direction.startsWith('row')) {
+                const children = [...(element.children || [])].filter(child => {
+                    if (maintenanceMobileLayoutIsInternal(child)) return false;
+                    const childPosition = String(maintenanceMobileLayoutComputedStyle(child)?.position || '').toLowerCase();
+                    return childPosition !== 'absolute' && childPosition !== 'fixed';
+                });
+                const wrap = String(style.flexWrap || '').toLowerCase();
+                const hasLargeHeading = !!element.querySelector?.(':scope > h1, :scope > h2');
+                const childOverflow = rect ? children.some(child => {
+                    const childRect = maintenanceMobileLayoutRect(child);
+                    return childRect && (childRect.right > rect.right + 3 || childRect.left < rect.left - 3);
+                }) : false;
+                const gap = maintenanceMobileLayoutLengthPx(style.columnGap || style.gap, referenceWidth);
+                let nonShrinkWidth = 0;
+                let nonShrinkCount = 0;
+                for (const child of children) {
+                    const childRect = maintenanceMobileLayoutRect(child);
+                    const childStyle = maintenanceMobileLayoutComputedStyle(child);
+                    if (Number.parseFloat(childStyle?.flexShrink || '1') !== 0) continue;
+                    nonShrinkCount += 1;
+                    nonShrinkWidth += Math.max(
+                        Number(childRect?.width || 0),
+                        maintenanceMobileLayoutLengthPx(childStyle?.width, referenceWidth),
+                        maintenanceMobileLayoutLengthPx(childStyle?.minWidth, referenceWidth),
+                    );
+                }
+                nonShrinkWidth += Math.max(0, nonShrinkCount - 1) * gap;
+                const constrainedChildren = nonShrinkCount >= 2 && nonShrinkWidth > referenceWidth + 3;
+                if (children.length > 1 && wrap === 'nowrap' && (overflowsSelf || childOverflow || hasLargeHeading || constrainedChildren)) {
+                    buckets.flex.add(element);
+                }
             }
         }
 
@@ -10796,6 +11174,7 @@ function inspectMaintenanceMobileLayout(root) {
         mediaCount: buckets.media.size,
         stateContentCount: buckets.stateContent.size,
         passportDocumentCount: findRenderedPassportDocumentCandidates(root).length,
+        sectionStackCount: sectionStackHosts.length,
     };
 }
 
@@ -10822,8 +11201,11 @@ function installMaintenanceMobileLayoutRescue(root) {
     for (const candidate of passportCandidates) markRenderedPassportDocumentCandidate(candidate, marked);
     if (passportCandidates.length) ensurePassportDocumentRescueStyle(root);
     const elements = [...root.querySelectorAll('*')].filter(element => !maintenanceMobileLayoutIsInternal(element));
+    const sectionStackHosts = elements.filter(element => maintenanceMobileLayoutSectionStackInfo(element));
+    for (const host of sectionStackHosts) maintenanceMobileLayoutMark(host, MOBILE_LAYOUT_SECTION_STACK_PRESERVE_ATTR, marked);
 
     for (const element of elements) {
+        if (maintenanceMobileLayoutElementInSectionStack(element, sectionStackHosts)) continue;
         const style = maintenanceMobileLayoutComputedStyle(element);
         if (!style) continue;
         const rect = maintenanceMobileLayoutRect(element);
@@ -10870,29 +11252,42 @@ function installMaintenanceMobileLayoutRescue(root) {
         }
 
         if (display.includes('flex') && directChildren.length > 1 && !passportManaged) {
-            for (const child of directChildren) maintenanceMobileLayoutMark(child, MOBILE_LAYOUT_MIN_ATTR, marked);
-            const wrap = String(style.flexWrap || '').toLowerCase();
-            const hasLargeHeading = !!element.querySelector?.(':scope > h1, :scope > h2');
-            const childOverflow = rect ? directChildren.some(child => {
-                const childRect = maintenanceMobileLayoutRect(child);
-                return childRect && (childRect.right > rect.right + 3 || childRect.left < rect.left - 3);
-            }) : false;
-            const gap = maintenanceMobileLayoutLengthPx(style.columnGap || style.gap, referenceWidth);
-            const estimatedChildrenWidth = directChildren.reduce((total, child) => {
-                const childRect = maintenanceMobileLayoutRect(child);
-                const childStyle = maintenanceMobileLayoutComputedStyle(child);
-                return total + Math.max(
-                    Number(childRect?.width || 0),
-                    maintenanceMobileLayoutLengthPx(childStyle?.width, referenceWidth),
-                    maintenanceMobileLayoutLengthPx(childStyle?.minWidth, referenceWidth),
-                );
-            }, 0) + Math.max(0, directChildren.length - 1) * gap;
-            if (wrap === 'nowrap' && (overflowsSelf || childOverflow || hasLargeHeading || estimatedChildrenWidth > referenceWidth + 3)) {
-                const textHeavyChildren = directChildren.filter(child => maintenanceMobileLayoutTextLength(child) >= 18).length;
-                if (directChildren.length <= 3 && textHeavyChildren >= 2) {
-                    maintenanceMobileLayoutMark(element, MOBILE_LAYOUT_FLEX_STACK_ATTR, marked);
-                } else {
-                    maintenanceMobileLayoutMark(element, MOBILE_LAYOUT_FLEX_WRAP_ATTR, marked);
+            const direction = String(style.flexDirection || 'row').toLowerCase();
+            if (direction.startsWith('row')) {
+                const flowChildren = directChildren.filter(child => {
+                    const childPosition = String(maintenanceMobileLayoutComputedStyle(child)?.position || '').toLowerCase();
+                    return childPosition !== 'absolute' && childPosition !== 'fixed';
+                });
+                const wrap = String(style.flexWrap || '').toLowerCase();
+                const hasLargeHeading = !!element.querySelector?.(':scope > h1, :scope > h2');
+                const childOverflow = rect ? flowChildren.some(child => {
+                    const childRect = maintenanceMobileLayoutRect(child);
+                    return childRect && (childRect.right > rect.right + 3 || childRect.left < rect.left - 3);
+                }) : false;
+                const gap = maintenanceMobileLayoutLengthPx(style.columnGap || style.gap, referenceWidth);
+                let nonShrinkWidth = 0;
+                let nonShrinkCount = 0;
+                for (const child of flowChildren) {
+                    const childRect = maintenanceMobileLayoutRect(child);
+                    const childStyle = maintenanceMobileLayoutComputedStyle(child);
+                    if (Number.parseFloat(childStyle?.flexShrink || '1') !== 0) continue;
+                    nonShrinkCount += 1;
+                    nonShrinkWidth += Math.max(
+                        Number(childRect?.width || 0),
+                        maintenanceMobileLayoutLengthPx(childStyle?.width, referenceWidth),
+                        maintenanceMobileLayoutLengthPx(childStyle?.minWidth, referenceWidth),
+                    );
+                }
+                nonShrinkWidth += Math.max(0, nonShrinkCount - 1) * gap;
+                const constrainedChildren = nonShrinkCount >= 2 && nonShrinkWidth > referenceWidth + 3;
+                if (wrap === 'nowrap' && (overflowsSelf || childOverflow || hasLargeHeading || constrainedChildren)) {
+                    for (const child of flowChildren) maintenanceMobileLayoutMark(child, MOBILE_LAYOUT_MIN_ATTR, marked);
+                    const textHeavyChildren = flowChildren.filter(child => maintenanceMobileLayoutTextLength(child) >= 18).length;
+                    if (flowChildren.length <= 3 && textHeavyChildren >= 2) {
+                        maintenanceMobileLayoutMark(element, MOBILE_LAYOUT_FLEX_STACK_ATTR, marked);
+                    } else {
+                        maintenanceMobileLayoutMark(element, MOBILE_LAYOUT_FLEX_WRAP_ATTR, marked);
+                    }
                 }
             }
         }
@@ -10973,7 +11368,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.43';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.46';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -10994,6 +11389,7 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
         // 原始安全状态程序、自变化、checked/change、focus→checked、状态层、相邻隐藏组、
         // label 内隐藏、label 后置结果、CSS 状态兄弟、按钮/可点击后置内容、弹层、遮罩、
         // 列表详情、ID 目标显隐、data-active/class 状态程序、Touch Hover 与 label fallback。
+        const radioGroupCountBefore = Number.parseInt(target.getAttribute?.(RADIO_GROUP_ROOT_ATTR) || '0', 10) || 0;
         scopeRabbitMirrorInteractionIds(target);
         const overlayCountBefore = target.querySelectorAll?.(`[${DECORATIVE_OVERLAY_PASS_THROUGH_ATTR}]`)?.length || 0;
         const rawHoverCountBefore = Number.parseInt(target.dataset?.rabbitMirrorRawHoverFallback || '0', 10) || 0;
@@ -11003,6 +11399,8 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
         const overlayCountAfter = target.querySelectorAll?.(`[${DECORATIVE_OVERLAY_PASS_THROUGH_ATTR}]`)?.length || 0;
         const rawHoverCountAfter = Number.parseInt(target.dataset?.rabbitMirrorRawHoverFallback || '0', 10) || 0;
         const recoveredProgramCountAfter = recoveredInlineStateProgramCount(target);
+        const radioGroupCountAfter = Number.parseInt(target.getAttribute?.(RADIO_GROUP_ROOT_ATTR) || '0', 10) || 0;
+        const radioGroupRepairCount = Math.max(0, radioGroupCountAfter - radioGroupCountBefore);
         const overlayRepairCount = Math.max(0, overlayCountAfter - overlayCountBefore);
         const rawHoverRepairCount = Math.max(0, rawHoverCountAfter - rawHoverCountBefore);
         const recoveredProgramRepairCount = Math.max(0, recoveredProgramCountAfter - recoveredProgramCountBefore);
@@ -11025,6 +11423,8 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
             || rawHoverRepairCount > 0
             || recoveredProgramRepairCount > 0
             || recoveredProgramCountAfter > 0
+            || radioGroupRepairCount > 0
+            || radioGroupCountAfter > 0
             || crossParentCheckedCount > 0
             || checkedHasStateCount > 0
             || reversibleCheckedCount > 0
@@ -11036,7 +11436,7 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
             .map(item => item.trim())
             .filter(item => item && item !== 'none');
         // 不再把“调用了总入口”冒充为“命中了一条急救路线”；选择样式专用结构只有在安全补出分支提示后才算修复。
-        return genuinelyRescued ? Math.max(routes.length, disabledChoiceRepairCount, inertActionRepairCount, disabledChoiceCount, inertActionCount, overlayRepairCount, rawHoverRepairCount, recoveredProgramRepairCount, recoveredProgramCountAfter, crossParentCheckedCount, checkedHasStateCount, reversibleCheckedCount) : 0;
+        return genuinelyRescued ? Math.max(routes.length, disabledChoiceRepairCount, inertActionRepairCount, disabledChoiceCount, inertActionCount, overlayRepairCount, rawHoverRepairCount, recoveredProgramRepairCount, recoveredProgramCountAfter, radioGroupRepairCount, radioGroupCountAfter, crossParentCheckedCount, checkedHasStateCount, reversibleCheckedCount) : 0;
     } },
 ]);
 
@@ -11112,6 +11512,7 @@ function runMaintenanceSourceInteractionFollowup(root) {
         || interaction.decorativeOverlayCandidateCount > 0
         || interaction.touchHoverMissing
         || interaction.needsScopeRepair
+        || interaction.radioGroupLossCandidateCount > 0
         || interaction.selectionOnlyRepairCandidateCount > 0
         || interaction.disabledOnlyChoiceCandidateCount > 0
         || interaction.inertActionButtonCandidateCount > 0
