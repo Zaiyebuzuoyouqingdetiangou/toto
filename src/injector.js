@@ -1,9 +1,17 @@
 import { setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
-import { MODULE_NAME, getSettings } from './settings.js?rmv=0.33.65';
-import { buildRabbitMirrorPrompt } from './promptBuilder.js?rmv=0.33.65';
-import { buildFeedbackCatPrompt, clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=0.33.65';
+import { MODULE_NAME, getSettings } from './settings.js?rmv=0.33.70';
+import { buildRabbitMirrorPrompt } from './promptBuilder.js?rmv=0.33.70';
+import { buildFeedbackCatPrompt, clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=0.33.70';
 
 const INJECT_KEY = `${MODULE_NAME}:auto_injection`;
+
+let generationInvocationSequence = 0;
+
+function createGenerationScopeKey(type) {
+    generationInvocationSequence += 1;
+    const generationType = String(type || 'normal').replace(/[^a-z0-9_-]+/gi, '-');
+    return `${generationType}:${Date.now().toString(36)}:${generationInvocationSequence.toString(36)}`;
+}
 
 export function clearRabbitMirrorPrompt() {
     clearFeedbackCatExtensionPrompt();
@@ -30,7 +38,8 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
     // 反馈直接追加在 RabbitMirror 主隐藏 Prompt 的最末尾，避免独立 Prompt 在模型侧被降权。
     // 未选择反馈时不追加任何字符，基础 Prompt 保持逐字不变。
     clearFeedbackCatExtensionPrompt();
-    const basePrompt = buildRabbitMirrorPrompt(settings, type, null);
+    const generationScopeKey = createGenerationScopeKey(type);
+    const basePrompt = buildRabbitMirrorPrompt(settings, type, null, generationScopeKey);
     if (!basePrompt) {
         clearRabbitMirrorPrompt();
         return;

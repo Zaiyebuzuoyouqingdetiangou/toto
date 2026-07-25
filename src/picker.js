@@ -1,6 +1,6 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=0.33.65';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=0.33.65';
-import { getLastCombo, getRecentIds, setLastCombo } from './storage.js?rmv=0.33.65';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=0.33.70';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=0.33.70';
+import { getLastCombo, getRecentIds, setLastCombo } from './storage.js?rmv=0.33.70';
 
 function randomInt(min, max) {
     const low = Math.min(min, max);
@@ -64,16 +64,8 @@ function pickUiReviewFocus(count = 4) {
 
 let cachedPick = null;
 
-function getChatTurnKey() {
-    try {
-        const context = SillyTavern?.getContext?.();
-        const chat = context?.chat || [];
-        const lastUserIndex = [...chat].map((m, i) => ({ m, i })).reverse().find(x => x.m?.is_user)?.i ?? -1;
-        const lastUserMessage = lastUserIndex >= 0 ? String(chat[lastUserIndex]?.mes || '') : '';
-        return `${chat.length}|${lastUserIndex}|${lastUserMessage.slice(0, 500)}`;
-    } catch (_error) {
-        return `fallback|${getLastUserMessage().slice(0, 500)}`;
-    }
+function normalizeGenerationScopeKey(value) {
+    return String(value || '').trim();
 }
 
 function allowByMode(_item, mode) {
@@ -301,9 +293,9 @@ function applyDirectiveOrRandom({ settings, themePool, formatPool, themeCount, f
     return { themes, formats, directive, forcedFormats };
 }
 
-export function pickCombination(settings) {
-    const turnKey = getChatTurnKey();
-    if (cachedPick?.turnKey === turnKey) {
+export function pickCombination(settings, generationScopeKey = '') {
+    const scopeKey = normalizeGenerationScopeKey(generationScopeKey);
+    if (scopeKey && cachedPick?.scopeKey === scopeKey) {
         return cachedPick.payload;
     }
 
@@ -321,7 +313,7 @@ export function pickCombination(settings) {
     const result = applyDirectiveOrRandom({ settings, themePool, formatPool, themeCount, formatCount, last, recent });
     if (result.disabled) {
         const payload = { disabled: true, directive: result.directive, combo: null, last };
-        cachedPick = { turnKey, payload };
+        if (scopeKey) cachedPick = { scopeKey, payload };
         return payload;
     }
 
@@ -343,6 +335,6 @@ export function pickCombination(settings) {
 
     setLastCombo(combo);
     const payload = { combo, last, directive: result.directive || null };
-    cachedPick = { turnKey, payload };
+    if (scopeKey) cachedPick = { scopeKey, payload };
     return payload;
 }

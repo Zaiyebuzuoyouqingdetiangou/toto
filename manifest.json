@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（挨打猫 v1.3・小小维修兔 v1.47）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（挨打猫 v1.3・小小维修兔 v1.51）",
   "loading_order": 99,
-  "js": "index.js?rmv=0.33.65",
-  "css": "style.css?rmv=0.33.65",
+  "js": "index.js?rmv=0.33.70",
+  "css": "style.css?rmv=0.33.70",
   "author": "Toto",
-  "version": "0.33.65-test.1",
+  "version": "0.33.70-test.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "TEST build: restores repeatable forward/back channel or screen state switching when inline hidden panels override :has() rules, and preserves TV/CRT/terminal visual shells from generic mobile layout rewrites, while preserving all previous repairs."
+  "description": "TEST build: restores reversible multi-channel CRT/TV dial controls, keeps only the active channel visible, and preserves complete screen-shell layouts from generic mobile overflow rewrites; prompt text is unchanged."
 }

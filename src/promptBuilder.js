@@ -1,8 +1,8 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=0.33.65';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=0.33.65';
-import { pickCombination } from './picker.js?rmv=0.33.65';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown } from './storage.js?rmv=0.33.65';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=0.33.65';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=0.33.70';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=0.33.70';
+import { pickCombination } from './picker.js?rmv=0.33.70';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown } from './storage.js?rmv=0.33.70';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=0.33.70';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -332,9 +332,9 @@ ${shortVisualAvoidance(combo, 3)}`);
     return chunks.filter(Boolean).join('\n\n').trim();
 }
 
-export function buildRabbitMirrorPrompt(settings, generationType = 'normal', activeFeedback = null) {
+export function buildRabbitMirrorPrompt(settings, generationType = 'normal', activeFeedback = null, generationScopeKey = '') {
     if (!settings?.enabled || !settings?.autoRabbitMirrorInjection || settings?.mode === 'off') return '';
-    const { combo, directive, disabled } = pickCombination(settings);
+    const { combo, directive, disabled } = pickCombination(settings, generationScopeKey);
     if (disabled) {
         if (settings.debug) console.debug('[RabbitMirror] skipped by user directive');
         return '';

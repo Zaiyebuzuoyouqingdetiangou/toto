@@ -1,4 +1,4 @@
-import { getSettings } from './settings.js?rmv=0.33.65';
+import { getSettings } from './settings.js?rmv=0.33.70';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -7,11 +7,11 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=0.33.65';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=0.33.65';
+} from './feedbackCat.js?rmv=0.33.70';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=0.33.70';
 
 
-const RUNTIME_VERSION = '0.33.65';
+const RUNTIME_VERSION = '0.33.70';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -358,6 +358,16 @@ const PAIRED_CHECKED_STATE_CONTROL_ATTR = 'data-rm-paired-checked-state-control'
 const PAIRED_CHECKED_STATE_PANEL_ATTR = 'data-rm-paired-checked-state-panel';
 const PAIRED_CHECKED_STATE_COUNT_ATTR = 'data-rabbit-mirror-paired-checked-state-count';
 const pairedCheckedStateRescueStates = new WeakMap();
+const EXCLUSIVE_STACKED_STATE_RESCUE_ATTR = 'data-rabbit-mirror-exclusive-stacked-state-rescue';
+const EXCLUSIVE_STACKED_STATE_COUNT_ATTR = 'data-rabbit-mirror-exclusive-stacked-state-count';
+const EXCLUSIVE_STACKED_STATE_CONTROL_ATTR = 'data-rm-exclusive-stacked-state-control';
+const EXCLUSIVE_STACKED_STATE_PANEL_ATTR = 'data-rm-exclusive-stacked-state-panel';
+const exclusiveStackedStateRescueStates = new WeakMap();
+const CHANNEL_DIAL_CYCLE_RESCUE_ATTR = 'data-rabbit-mirror-channel-dial-cycle-rescue';
+const CHANNEL_DIAL_CYCLE_COUNT_ATTR = 'data-rabbit-mirror-channel-dial-cycle-count';
+const CHANNEL_DIAL_CYCLE_HOST_ATTR = 'data-rm-channel-dial-cycle-host';
+const CHANNEL_DIAL_CYCLE_LABEL_ATTR = 'data-rm-channel-dial-cycle-label';
+const channelDialCycleRescueStates = new WeakMap();
 const EXPANDED_OPACITY_RESCUE_ATTR = 'data-rabbit-mirror-expanded-opacity-rescue';
 
 function collectCheckedRevealSignal(candidate, property, value) {
@@ -1148,6 +1158,378 @@ function installPairedCheckedStateRescue(root) {
     refreshPairedCheckedStateRescue(root);
     schedulePairedCheckedStateRefresh(root);
     return entries.length;
+}
+
+function checkedStyleMapActivatesStackedPanel(styleMap) {
+    for (const [rawProperty, rawValue] of styleMap || []) {
+        const property = String(rawProperty || '').trim().toLowerCase();
+        const value = String(rawValue || '').trim().toLowerCase().replace(/\s*!important\s*$/i, '');
+        if (property === 'opacity') {
+            const opacity = Number.parseFloat(value);
+            if (Number.isFinite(opacity) && opacity > 0.05) return true;
+        }
+        if (property === 'visibility' && !/^(?:hidden|collapse)$/.test(value)) return true;
+        if (property === 'display' && value && value !== 'none') return true;
+        if (property === 'pointer-events' && value && value !== 'none') return true;
+    }
+    return false;
+}
+
+function commonStackedPanelClassToken(targets) {
+    const lists = (targets || []).map(target => new Set(getClassTokens(target)));
+    if (!lists.length) return '';
+    const candidates = [...lists[0]].filter(token => lists.every(set => set.has(token)));
+    return candidates
+        .filter(token => /(?:info|content|state|panel|result|feedback|detail|text|screen|view)/i.test(token))
+        .sort((a, b) => b.length - a.length)[0] || '';
+}
+
+function stackedPanelsShareLayer(parent, panels) {
+    if (!parent || !panels?.length) return false;
+    const parentStyle = maintenanceSafeComputedStyle(parent);
+    const parentDisplay = String(parentStyle?.display || '').toLowerCase();
+    if (parentDisplay === 'grid' || parentDisplay === 'inline-grid') {
+        const areas = panels.map(panel => {
+            const style = maintenanceSafeComputedStyle(panel);
+            return [
+                String(style?.gridArea || ''),
+                String(style?.gridRowStart || ''),
+                String(style?.gridColumnStart || ''),
+            ].join('|');
+        });
+        const nonEmpty = areas.filter(value => value.replace(/\|/g, '').trim());
+        if (!nonEmpty.length || new Set(nonEmpty).size === 1) return true;
+        // 模型常只在公共 class 上声明 grid-area，部分 WebView 的 computedStyle 不返回长属性；
+        // 父层为单格 grid 且所有候选是同一公共内容 class 时仍可视为叠层。
+        const columnTemplate = String(parentStyle?.gridTemplateColumns || '').trim();
+        const rowTemplate = String(parentStyle?.gridTemplateRows || '').trim();
+        if (!/\s/.test(columnTemplate) && !/\s/.test(rowTemplate)) return true;
+    }
+    const positions = panels.map(panel => String(maintenanceSafeComputedStyle(panel)?.position || '').toLowerCase());
+    return positions.every(position => position === 'absolute' || position === 'fixed');
+}
+
+function findExclusiveStackedStateCandidates(root) {
+    if (!root?.querySelectorAll) return [];
+    const byParent = new Map();
+
+    for (const input of root.querySelectorAll('input[type="radio"], input[type="checkbox"]')) {
+        if (input.disabled) continue;
+        for (const rule of parseCheckedRulesFromText(root, input)) {
+            if (rule.pseudoElement || !checkedStyleMapActivatesStackedPanel(rule.styleMap)) continue;
+            for (const target of resolveTargetsForCheckedRule(root, input, rule)) {
+                if (!target?.parentElement || maintenanceMobileLayoutTextLength(target) < 6) continue;
+                const parent = target.parentElement;
+                if (!byParent.has(parent)) byParent.set(parent, new Map());
+                const inputMap = byParent.get(parent);
+                if (!inputMap.has(input)) inputMap.set(input, new Set());
+                inputMap.get(input).add(target);
+            }
+        }
+    }
+
+    const candidates = [];
+    for (const [parent, inputMap] of byParent) {
+        const mappedTargets = [...new Set([...inputMap.values()].flatMap(set => [...set]))];
+        if (inputMap.size < 2 || mappedTargets.length < 2 || mappedTargets.some(target => target.parentElement !== parent)) continue;
+        const commonClass = commonStackedPanelClassToken(mappedTargets);
+        if (!commonClass) continue;
+        const panels = [...parent.children].filter(child => child.classList?.contains(commonClass));
+        if (panels.length < mappedTargets.length || panels.length > 10) continue;
+        if (!mappedTargets.every(target => panels.includes(target))) continue;
+        if (!stackedPanelsShareLayer(parent, panels)) continue;
+        const defaultPanels = panels.filter(panel => !mappedTargets.includes(panel));
+        if (!defaultPanels.length && panels.length === mappedTargets.length) {
+            // 没有默认层也可以修复，但至少要有两个互斥 radio 分支。
+            const controls = [...inputMap.keys()];
+            if (!controls.every(input => input.type === 'radio')) continue;
+        }
+        candidates.push({ parent, inputMap, panels, defaultPanels, commonClass });
+    }
+    return candidates;
+}
+
+function cleanupExclusiveStackedStateRescue(root) {
+    const state = exclusiveStackedStateRescueStates.get(root);
+    if (state) {
+        root.removeEventListener('input', state.onStateChange, false);
+        root.removeEventListener('change', state.onStateChange, false);
+        for (const entry of state.entries || []) {
+            for (const panelState of entry.panelStates || []) {
+                restorePseudoStyleState(panelState.panel, panelState.originalStyles);
+                panelState.panel?.removeAttribute?.(EXCLUSIVE_STACKED_STATE_PANEL_ATTR);
+                panelState.panel?.removeAttribute?.('aria-hidden');
+            }
+            for (const input of entry.inputMap?.keys?.() || []) {
+                input?.removeAttribute?.(EXCLUSIVE_STACKED_STATE_CONTROL_ATTR);
+            }
+        }
+        exclusiveStackedStateRescueStates.delete(root);
+    }
+    root?.removeAttribute?.(EXCLUSIVE_STACKED_STATE_RESCUE_ATTR);
+    root?.removeAttribute?.(EXCLUSIVE_STACKED_STATE_COUNT_ATTR);
+}
+
+function refreshExclusiveStackedStateRescue(root) {
+    const state = exclusiveStackedStateRescueStates.get(root);
+    if (!state) return;
+    for (const entry of state.entries || []) {
+        if (!entry.parent?.isConnected) continue;
+        const checkedMappings = [...entry.inputMap.entries()]
+            .filter(([input]) => input?.isConnected && input.checked);
+        // radio 组被宿主破坏时，优先采用 DOM 顺序中最后一个 checked 分支；
+        // scopeRabbitMirrorInteractionIds 会在本路线安装前恢复真正的单选组。
+        const activeMapping = checkedMappings.length ? checkedMappings[checkedMappings.length - 1] : null;
+        const activePanels = new Set(activeMapping ? [...activeMapping[1]] : entry.defaultPanels);
+        for (const panelState of entry.panelStates) {
+            const { panel } = panelState;
+            if (!panel?.isConnected) continue;
+            const active = activePanels.has(panel);
+            panel.style.setProperty('opacity', active ? '1' : '0', 'important');
+            panel.style.setProperty('visibility', active ? 'visible' : 'hidden', 'important');
+            panel.style.setProperty('pointer-events', active ? 'auto' : 'none', 'important');
+            panel.style.setProperty('z-index', active ? '2' : '0', 'important');
+            panel.setAttribute(EXCLUSIVE_STACKED_STATE_PANEL_ATTR, active ? 'active' : 'inactive');
+            panel.setAttribute('aria-hidden', active ? 'false' : 'true');
+        }
+        for (const input of entry.inputMap.keys()) {
+            input.setAttribute('aria-pressed', input.checked ? 'true' : 'false');
+        }
+    }
+}
+
+function scheduleExclusiveStackedStateRefresh(root) {
+    for (const delay of [0, 80, 260, 650]) {
+        setTimeout(() => {
+            if (root?.isConnected) refreshExclusiveStackedStateRescue(root);
+        }, delay);
+    }
+}
+
+function installExclusiveStackedStateRescue(root) {
+    if (!root?.querySelectorAll) return 0;
+    const candidates = findExclusiveStackedStateCandidates(root);
+    cleanupExclusiveStackedStateRescue(root);
+    if (!candidates.length) return 0;
+
+    const state = {
+        entries: candidates.map(candidate => ({
+            ...candidate,
+            panelStates: candidate.panels.map(panel => ({
+                panel,
+                originalStyles: capturePseudoStyleState(panel, ['opacity', 'visibility', 'pointer-events', 'z-index']),
+            })),
+        })),
+        onStateChange: () => {
+            refreshExclusiveStackedStateRescue(root);
+            scheduleExclusiveStackedStateRefresh(root);
+        },
+    };
+    root.addEventListener('input', state.onStateChange, false);
+    root.addEventListener('change', state.onStateChange, false);
+    exclusiveStackedStateRescueStates.set(root, state);
+
+    for (const entry of state.entries) {
+        for (const input of entry.inputMap.keys()) {
+            input.setAttribute(EXCLUSIVE_STACKED_STATE_CONTROL_ATTR, 'true');
+        }
+    }
+    root.setAttribute(EXCLUSIVE_STACKED_STATE_RESCUE_ATTR, 'true');
+    root.setAttribute(EXCLUSIVE_STACKED_STATE_COUNT_ATTR, String(state.entries.length));
+    refreshExclusiveStackedStateRescue(root);
+    scheduleExclusiveStackedStateRefresh(root);
+    return state.entries.length;
+}
+
+
+function channelDialLabelsForInput(root, input) {
+    if (!root?.querySelectorAll || !input) return [];
+    const labels = new Set();
+    for (const label of input.labels || []) {
+        if (root.contains?.(label)) labels.add(label);
+    }
+    const id = String(input.id || '').trim();
+    if (id) {
+        for (const label of root.querySelectorAll('label[for]')) {
+            if (String(label.getAttribute('for') || '') === id) labels.add(label);
+        }
+    }
+    return [...labels];
+}
+
+function channelDialMediaSignature(element) {
+    if (!element) return '';
+    return `${element.id || ''} ${element.className || ''} ${element.getAttribute?.('aria-label') || ''}`;
+}
+
+function findChannelDialCycleCandidates(root) {
+    if (!root?.querySelectorAll) return [];
+    const stackedCandidates = findExclusiveStackedStateCandidates(root);
+    const groups = new Map();
+    for (const input of root.querySelectorAll('input[type="radio"]')) {
+        if (input.disabled) continue;
+        const name = String(input.name || '').trim();
+        if (!name) continue;
+        if (!groups.has(name)) groups.set(name, []);
+        groups.get(name).push(input);
+    }
+
+    const candidates = [];
+    for (const inputs of groups.values()) {
+        if (inputs.length < 3 || inputs.length > 8) continue;
+        const stacked = stackedCandidates.find(candidate => {
+            const mappedInputs = new Set(candidate.inputMap.keys());
+            return inputs.every(input => mappedInputs.has(input));
+        });
+        if (!stacked) continue;
+
+        const allLabels = new Map(inputs.map(input => [input, channelDialLabelsForInput(root, input)]));
+        if ([...allLabels.values()].some(labels => !labels.length)) continue;
+
+        const possibleHosts = [...root.querySelectorAll('div,section,nav')].filter(element => {
+            const style = maintenanceSafeComputedStyle(element);
+            const position = String(style?.position || element.style?.position || '').toLowerCase();
+            const signature = channelDialMediaSignature(element);
+            const dialLike = /(?:knob|dial|channel-control|频道|旋钮)/i.test(signature)
+                || !!element.querySelector?.('[class*="knob" i], [class*="dial" i], [aria-label*="频道"], [aria-label*="旋钮"]');
+            if (!dialLike && position !== 'relative') return false;
+            return inputs.every(input => (allLabels.get(input) || []).some(label => element.contains(label)));
+        });
+
+        let host = null;
+        for (const candidateHost of possibleHosts) {
+            const rect = maintenanceMobileLayoutRect(candidateHost);
+            const width = Number(rect?.width || maintenanceMobileLayoutLengthPx(
+                maintenanceSafeComputedStyle(candidateHost)?.width,
+                Number(root.getBoundingClientRect?.().width || 480),
+            ) || 0);
+            const height = Number(rect?.height || 0);
+            if ((width > 0 && width > 180) || (height > 0 && height > 180)) continue;
+            const visibleDial = [...candidateHost.querySelectorAll('div,span')].find(element => {
+                const signature = channelDialMediaSignature(element);
+                if (!/(?:knob|dial|旋钮)/i.test(signature)) return false;
+                const style = maintenanceSafeComputedStyle(element);
+                const elementRect = maintenanceMobileLayoutRect(element);
+                return String(style?.display || '').toLowerCase() !== 'none'
+                    && Number(elementRect?.width || 0) >= 20
+                    && Number(elementRect?.height || 0) >= 20;
+            });
+            if (!visibleDial) continue;
+
+            let mediaHost = candidateHost;
+            let mediaMatched = false;
+            while (mediaHost && root.contains?.(mediaHost)) {
+                const signature = channelDialMediaSignature(mediaHost);
+                const hasScreen = !!mediaHost.querySelector?.('[class*="tv-screen" i], [class*="screen" i], [class*="channel" i], [class*="content-state" i]');
+                if (/(?:tv|television|crt|monitor|terminal|频道|电视|监控|终端)/i.test(signature) || hasScreen) {
+                    mediaMatched = true;
+                    break;
+                }
+                if (mediaHost === root) break;
+                mediaHost = mediaHost.parentElement;
+            }
+            if (!mediaMatched) continue;
+            host = candidateHost;
+            break;
+        }
+        if (!host) continue;
+        candidates.push({ inputs, host, labels: [...new Set([...allLabels.values()].flat())] });
+    }
+    return candidates;
+}
+
+function cleanupChannelDialCycleRescue(root) {
+    const state = channelDialCycleRescueStates.get(root);
+    if (state) {
+        for (const entry of state.entries || []) {
+            entry.host?.removeEventListener?.('click', entry.onClick, true);
+            entry.host?.removeEventListener?.('keydown', entry.onKeyDown, true);
+            if (entry.host) {
+                if (entry.originalRole == null) entry.host.removeAttribute('role');
+                else entry.host.setAttribute('role', entry.originalRole);
+                if (entry.originalTabIndex == null) entry.host.removeAttribute('tabindex');
+                else entry.host.setAttribute('tabindex', entry.originalTabIndex);
+                if (entry.originalAriaLabel == null) entry.host.removeAttribute('aria-label');
+                else entry.host.setAttribute('aria-label', entry.originalAriaLabel);
+                entry.host.removeAttribute(CHANNEL_DIAL_CYCLE_HOST_ATTR);
+            }
+            for (const labelState of entry.labelStates || []) {
+                const { label, value, priority } = labelState;
+                if (!label?.style) continue;
+                if (value) label.style.setProperty('pointer-events', value, priority || '');
+                else label.style.removeProperty('pointer-events');
+                label.removeAttribute(CHANNEL_DIAL_CYCLE_LABEL_ATTR);
+            }
+        }
+        channelDialCycleRescueStates.delete(root);
+    }
+    root?.removeAttribute?.(CHANNEL_DIAL_CYCLE_RESCUE_ATTR);
+    root?.removeAttribute?.(CHANNEL_DIAL_CYCLE_COUNT_ATTR);
+}
+
+function activateChannelDialInput(root, entry, nextInput) {
+    if (!nextInput?.isConnected || !root.contains?.(nextInput)) return;
+    const before = entry.inputs.map(input => !!input.checked);
+    setRescuedCheckedState(root, nextInput, true);
+    entry.inputs.forEach(input => input.setAttribute('aria-pressed', input.checked ? 'true' : 'false'));
+    entry.inputs.forEach((input, index) => {
+        if (before[index] === !!input.checked) return;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    refreshExclusiveStackedStateRescue(root);
+    scheduleExclusiveStackedStateRefresh(root);
+}
+
+function installChannelDialCycleRescue(root) {
+    if (!root?.querySelectorAll) return 0;
+    const candidates = findChannelDialCycleCandidates(root);
+    cleanupChannelDialCycleRescue(root);
+    if (!candidates.length) return 0;
+
+    const state = { entries: [] };
+    for (const candidate of candidates) {
+        const entry = {
+            ...candidate,
+            originalRole: candidate.host.getAttribute('role'),
+            originalTabIndex: candidate.host.getAttribute('tabindex'),
+            originalAriaLabel: candidate.host.getAttribute('aria-label'),
+            labelStates: candidate.labels.map(label => ({
+                label,
+                value: label.style.getPropertyValue('pointer-events'),
+                priority: label.style.getPropertyPriority('pointer-events'),
+            })),
+        };
+        const cycle = event => {
+            if (!entry.host?.isConnected) return;
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation?.();
+            const currentIndex = Math.max(0, entry.inputs.findIndex(input => input.checked));
+            const nextInput = entry.inputs[(currentIndex + 1) % entry.inputs.length];
+            activateChannelDialInput(root, entry, nextInput);
+        };
+        entry.onClick = cycle;
+        entry.onKeyDown = event => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            cycle(event);
+        };
+        candidate.host.addEventListener('click', entry.onClick, true);
+        candidate.host.addEventListener('keydown', entry.onKeyDown, true);
+        candidate.host.setAttribute('role', 'button');
+        candidate.host.setAttribute('tabindex', '0');
+        candidate.host.setAttribute('aria-label', `频道旋钮：点击切换，共 ${candidate.inputs.length} 个频道`);
+        candidate.host.setAttribute(CHANNEL_DIAL_CYCLE_HOST_ATTR, 'true');
+        for (const label of candidate.labels) {
+            label.style.setProperty('pointer-events', 'none', 'important');
+            label.setAttribute(CHANNEL_DIAL_CYCLE_LABEL_ATTR, 'true');
+        }
+        state.entries.push(entry);
+    }
+    channelDialCycleRescueStates.set(root, state);
+    root.setAttribute(CHANNEL_DIAL_CYCLE_RESCUE_ATTR, 'true');
+    root.setAttribute(CHANNEL_DIAL_CYCLE_COUNT_ATTR, String(state.entries.length));
+    return state.entries.length;
 }
 
 function getLocalContainerTargetsForCheckedRule(input, targetSelector) {
@@ -4878,9 +5260,9 @@ function getAvailableHostChat() {
     return [];
 }
 
-function getRawAssistantMessageForRenderedRoot(root) {
+function getAssistantMessageForRenderedRoot(root) {
     const chat = getAvailableHostChat();
-    if (!chat.length || !root?.closest) return '';
+    if (!chat.length || !root?.closest) return null;
 
     const messageElement = root.closest('.mes, [mesid], [data-message-id], [data-messageid]');
     const rawMessageId = messageElement?.getAttribute?.('mesid')
@@ -4888,20 +5270,32 @@ function getRawAssistantMessageForRenderedRoot(root) {
         ?? messageElement?.getAttribute?.('data-messageid')
         ?? messageElement?.dataset?.messageId
         ?? messageElement?.dataset?.messageid;
-
     const numericId = Number.parseInt(String(rawMessageId ?? ''), 10);
-    if (Number.isInteger(numericId) && typeof chat[numericId]?.mes === 'string') {
-        return chat[numericId].mes;
+    if (Number.isInteger(numericId) && chat[numericId] && !chat[numericId]?.is_user) {
+        return chat[numericId];
     }
 
-    // 某些主题不保留 mesid。此时仅在近期助手消息里按兔子镜标题精确回查。
     const summary = getRabbitMirrorSummaryText(root);
-    if (!summary) return '';
+    if (!summary) return null;
     for (let index = chat.length - 1; index >= Math.max(0, chat.length - 12); index -= 1) {
         const item = chat[index];
-        if (item?.is_user || typeof item?.mes !== 'string') continue;
-        if (item.mes.includes(summary)) return item.mes;
+        if (item?.is_user) continue;
+        const sources = maintenanceMessageSourceCandidates(item);
+        if (sources.some(candidate => candidate.source.includes(summary))) return item;
     }
+    return null;
+}
+
+function getRawAssistantMessageForRenderedRoot(root) {
+    const message = getAssistantMessageForRenderedRoot(root);
+    if (!message) return '';
+
+    if (typeof message?.mes === 'string') return message.mes;
+    const swipeIndex = Number.isInteger(message?.swipe_id) ? message.swipe_id : -1;
+    if (swipeIndex >= 0 && typeof message?.swipes?.[swipeIndex] === 'string') {
+        return message.swipes[swipeIndex];
+    }
+    if (typeof message?.extra?.display_text === 'string') return message.extra.display_text;
     return '';
 }
 
@@ -6080,6 +6474,7 @@ function detectInteractionCapabilities(root) {
         selectionFallback: !!root.querySelector(`[${SELECTION_ONLY_FALLBACK_ATTR}]`),
         disabledChoiceFallback: !!root.querySelector(`[${DISABLED_ONLY_CHOICE_RESCUE_ATTR}]`),
         actionFallback: !!root.querySelector(`[${INERT_ACTION_BUTTON_RESCUE_ATTR}]`),
+        staticChoiceSelection: Number.parseInt(root.getAttribute?.(STATIC_CHOICE_SELECTION_COUNT_ATTR) || '0', 10) > 0,
         passportDocument: (passportDocumentRescueStates.get(root)?.entries?.length || 0) > 0,
         reversibleChecked: Number.parseInt(root.getAttribute?.(REVERSIBLE_CHECKED_RESULT_ROOT_ATTR) || '0', 10) > 0,
     };
@@ -7252,6 +7647,12 @@ function installIntelligentInteractionRescue(root) {
         // input 位于按钮组内、受控内容位于按钮组外时，原生 ~ 选择器无法跨父层命中。
         // 只对唯一 ID 触发器登记文本级跨父层兜底，实际切换仍由当前 label 驱动。
         installCrossParentCheckedRuleFallback(root);
+        // 多个正文层叠在同一 grid-area/绝对定位画布中时，模型常给默认层写死内联 opacity:1；
+        // checked 分支虽然成功显现，默认层仍会和新正文重叠。只对同一公共内容 class 的高置信互斥叠层强制单层可见。
+        installExclusiveStackedStateRescue(root);
+        // 电视／终端用多个重叠 label 模拟旋钮分区时，中间频道常被高 z-index 的左右标签永久遮住。
+        // 只对已经存在完整 radio 分支和叠层画面的高置信旋钮，改为每次点按按顺序循环频道。
+        installChannelDialCycleRescue(root);
         // checkbox 的 checked 分支若把唯一 label/触发器隐藏，却只留下普通正文结果，
         // 用户会失去取消勾选的入口。仅对这一高置信单向结构，让已展开结果可再次点按返回上一层。
         installOneWayCheckedResultFallback(root);
@@ -7277,6 +7678,9 @@ function installIntelligentInteractionRescue(root) {
     if (capabilities.maskReveal) installRenderedMaskRevealRescue(root);
     if (capabilities.containerReveal) installRenderedContainerInternalRevealRescue(root);
     if (capabilities.listDetail) installRenderedListDetailRescue(root);
+    // 纯静态的“选项 A/B/C”卡片若已有明确选择文案、统一同级容器与 cursor:pointer，
+    // 可安全补成互斥且可撤回的选择状态；只确认用户选中了哪张卡，不生成缺失的剧情结果。
+    installStaticChoiceSelectionFallback(root);
 }
 
 const touchHoverRescueStates = new WeakMap();
@@ -7769,6 +8173,12 @@ const DISABLED_ONLY_CHOICE_RESCUE_ATTR = 'data-rabbit-mirror-disabled-choice-res
 const DISABLED_ONLY_CHOICE_CONTROL_ATTR = 'data-rm-disabled-choice-control';
 const INERT_ACTION_BUTTON_RESCUE_ATTR = 'data-rabbit-mirror-inert-action-rescue';
 const INERT_ACTION_STATUS_ATTR = 'data-rabbit-mirror-inert-action-status';
+const STATIC_CHOICE_SELECTION_RESCUE_ATTR = 'data-rabbit-mirror-static-choice-selection-rescue';
+const STATIC_CHOICE_SELECTION_ITEM_ATTR = 'data-rm-static-choice-item';
+const STATIC_CHOICE_SELECTION_SELECTED_ATTR = 'data-rm-static-choice-selected';
+const STATIC_CHOICE_SELECTION_COUNT_ATTR = 'data-rabbit-mirror-static-choice-selection-count';
+const STATIC_CHOICE_SELECTION_STYLE_ATTR = 'data-rabbit-mirror-static-choice-selection-style';
+const staticChoiceSelectionRescueStates = new WeakMap();
 const MOBILE_LAYOUT_RESCUE_STYLE_ATTR = 'data-rabbit-mirror-mobile-layout-rescue';
 const MOBILE_LAYOUT_SCOPE_ATTR = 'data-rabbit-mirror-mobile-layout-scope';
 const MOBILE_LAYOUT_RESCUE_COUNT_ATTR = 'data-rabbit-mirror-mobile-layout-count';
@@ -7820,7 +8230,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '0.33.65-TEST-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.33.70-TEST-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -7947,6 +8357,8 @@ function diagnosticRouteSummary(root) {
         crossParentChecked: Number.parseInt(root?.getAttribute?.(CROSS_PARENT_CHECKED_ROOT_ATTR) || '0', 10) || 0,
         checkedHasState: Number.parseInt(root?.getAttribute?.(CHECKED_HAS_STATE_RULE_COUNT_ATTR) || '0', 10) || 0,
         pairedCheckedState: Number.parseInt(root?.getAttribute?.(PAIRED_CHECKED_STATE_COUNT_ATTR) || '0', 10) || 0,
+        exclusiveStackedState: Number.parseInt(root?.getAttribute?.(EXCLUSIVE_STACKED_STATE_COUNT_ATTR) || '0', 10) || 0,
+        channelDialCycle: Number.parseInt(root?.getAttribute?.(CHANNEL_DIAL_CYCLE_COUNT_ATTR) || '0', 10) || 0,
         reversibleChecked: Number.parseInt(root?.getAttribute?.(REVERSIBLE_CHECKED_RESULT_ROOT_ATTR) || '0', 10) || 0,
         radioGroups: Number.parseInt(root?.getAttribute?.(RADIO_GROUP_ROOT_ATTR) || '0', 10) || 0,
         expandedOpacity: root?.querySelectorAll?.(`[${EXPANDED_OPACITY_RESCUE_ATTR}]`)?.length || 0,
@@ -7960,6 +8372,7 @@ function diagnosticRouteSummary(root) {
         selectionFallback: root?.querySelectorAll?.(`[${SELECTION_ONLY_FALLBACK_ATTR}]`)?.length || 0,
         disabledChoice: root?.querySelectorAll?.(`[${DISABLED_ONLY_CHOICE_RESCUE_ATTR}]`)?.length || 0,
         inertAction: root?.querySelectorAll?.(`[${INERT_ACTION_BUTTON_RESCUE_ATTR}]`)?.length || 0,
+        staticChoiceSelection: Number.parseInt(root?.getAttribute?.(STATIC_CHOICE_SELECTION_COUNT_ATTR) || '0', 10) || 0,
         passportDocument: passportDocumentRescueStates.get(root)?.entries?.length || 0,
         decorativeOverlayPassThrough: root?.querySelectorAll?.(`[${DECORATIVE_OVERLAY_PASS_THROUGH_ATTR}]`)?.length || 0,
         touchHoverEligible: root?.querySelectorAll?.(`[${TOUCH_HOVER_READY_ATTR}]`)?.length || 0,
@@ -7970,7 +8383,7 @@ function diagnosticRouteSummary(root) {
 function diagnosticInferReason(root, inputs, targets, state = null) {
     const routes = diagnosticRouteSummary(root);
     const depth = maintenanceCheckedInteractionDepth(root);
-    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.stateSibling + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.focusToChecked + routes.checkedTextRule + routes.crossParentChecked + routes.checkedHasState + routes.pairedCheckedState + routes.expandedOpacity + routes.containerReveal + routes.selfMutation + routes.classStateProgram + routes.cssCommentRepair + routes.changeProgram + routes.unlabeledChecked + routes.selectionFallback + routes.disabledChoice + routes.inertAction + routes.passportDocument + routes.decorativeOverlayPassThrough;
+    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.stateSibling + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.focusToChecked + routes.checkedTextRule + routes.crossParentChecked + routes.checkedHasState + routes.pairedCheckedState + routes.exclusiveStackedState + routes.channelDialCycle + routes.expandedOpacity + routes.containerReveal + routes.selfMutation + routes.classStateProgram + routes.cssCommentRepair + routes.changeProgram + routes.unlabeledChecked + routes.selectionFallback + routes.disabledChoice + routes.inertAction + routes.staticChoiceSelection + routes.passportDocument + routes.decorativeOverlayPassThrough;
     const checkedInputs = inputs.filter(input => input.checked);
     const visibleTargets = targets.filter(target => {
         const style = diagnosticComputedStyle(target);
@@ -7990,6 +8403,12 @@ function diagnosticInferReason(root, inputs, targets, state = null) {
         return '当前只有 Hover／Active 的变色、背景或轻微位移，没有可保持状态或第二层内容。';
     }
     const reachability = maintenanceReachableInteractionEvidence(root, routes, depth, pseudoDepth, getRawAssistantMessageForRenderedRoot(root));
+    if (!inputs.length && routes.staticChoiceSelection > 0) {
+        return '已把原有的静态抉择卡片恢复为互斥、可撤回的选择状态；只记录当前选项，不编造缺失的后续剧情。';
+    }
+    if (!inputs.length && findStaticChoiceSelectionCandidates(root).length > 0) {
+        return '检测到具有明确“选项”文案和点击外观的静态卡片，可使用维修兔恢复互斥选择状态。';
+    }
     if (!inputs.length && reachability.noInteractionStructure) {
         return '原始输出只有静态内容或动画，没有可达的内容交互结构；维修兔不能在不编造结果的情况下自动补全。';
     }
@@ -8571,8 +8990,19 @@ ${styleTexts}`;
         if (tag === 'p' && !String(child.textContent || '').trim() && !child.children?.length) return false;
         return true;
     }).length : 0;
-    const rawBodyVisuallyCollapsed = renderedBodyElementCount === 0 && (primaryRect.height <= 0 || primaryRect.height <= summaryRect.height + 12);
-    const rawSourceBodyMissing = !!(primaryDetails && primaryOpen && rawBodyVisuallyCollapsed && rawSourceIntegrity.rawSourceBodyMissing);
+    // 空壳 details 的默认 margin、summary 按钮或主题样式可能让外框高度略高于 summary，
+    // 不能再把“几何高度几乎相等”作为源码缺失的必要条件。
+    // 同时检查当前消息的 mes、当前 swipe 与有效显示源：只要其中存在同标题完整主体，
+    // 就应判为“可来源恢复”，而不是“内容从未生成”；完全找不到同标题主体时才判为空壳。
+    const currentMessage = getAssistantMessageForRenderedRoot(root);
+    const distinctDisplaySource = messageUsesDistinctDisplaySource(currentMessage);
+    const recoverableBodySource = currentMessage
+        ? findRecoverableMaintenanceMirrorSource(currentMessage, root, { displayOnly: distinctDisplaySource })
+        : null;
+    const renderedShellBodyMissing = !!(primaryDetails && primaryOpen && renderedBodyElementCount === 0);
+    const rawSourceBodyMissing = !!(renderedShellBodyMissing
+        && !recoverableBodySource
+        && (rawSourceIntegrity.rawSourceBodyMissing || !rawSourceIntegrity.isolated));
     const rawCssTruncated = !!(rawSourceIntegrity.rawSourceBodyMissing && rawSourceIntegrity.rawCssTruncated);
     const sourceTruncationNoticeInstalled = !!rawSourceIntegrity.sourceTruncationNoticeInstalled;
     const visibleBodyMissing = !!(primaryDetails && primaryOpen && code?.rawHasToto && rawUiTagCount >= 6 && (
@@ -8587,7 +9017,7 @@ ${styleTexts}`;
         && renderedUiTagCount < Math.ceil(rawUiTagCount * 0.55);
     const structureTruncated = damagedDataUriCandidate && (controlsLost || labelsLost || severeStructureLoss);
     const rawMirrorSourcePresent = !!code?.rawHasToto || /<details\b/i.test(decodedRaw);
-    const sourceCandidate = rawMirrorSourcePresent && !sourceTruncationNoticeInstalled && (
+    const sourceCandidate = !sourceTruncationNoticeInstalled && ((rawMirrorSourcePresent && (
         !!code?.rawNeeds
         || !!code?.currentMirrorNeedsSanitize
         || Number(code?.relevantCodeShells || 0) > 0
@@ -8595,7 +9025,7 @@ ${styleTexts}`;
         || relevantHighlightedCount > 0
         || visibleBodyMissing
         || severeStructureLoss
-    );
+    )) || !!(renderedShellBodyMissing && recoverableBodySource));
     const currentMirrorRenderedEscapedTags = !!code?.currentMirrorNeedsSanitize
         || Number(code?.relevantCodeShells || 0) > 0
         || !!code?.strictWhole;
@@ -8646,7 +9076,7 @@ ${styleTexts}`;
         damagedDataUriCandidate, controlsLost, labelsLost, severeStructureLoss, structureTruncated,
         visibleBodyMissing, rawSourceBodyMissing, rawCssTruncated, sourceTruncationNoticeInstalled,
         rawBodyTagCount: rawSourceIntegrity.rawBodyTagCount, rawBodyTextLength: rawSourceIntegrity.rawBodyTextLength,
-        renderedBodyElementCount, mobile3DFlipCandidate, verdict,
+        renderedBodyElementCount, recoverableBodySource: recoverableBodySource?.label || '', mobile3DFlipCandidate, verdict,
     };
 }
 
@@ -8749,6 +9179,8 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `跨父层checked兜底 entries=${routes.crossParentChecked} listener=${routes.crossParentChecked ? 'true' : 'false'}`,
         `全选联动兜底 entries=${routes.checkedHasState} listener=${routes.checkedHasState ? 'true' : 'false'}`,
         `双向画面切换 entries=${routes.pairedCheckedState} listener=${routes.pairedCheckedState ? 'true' : 'false'}`,
+        `叠层正文互斥 entries=${routes.exclusiveStackedState} listener=${routes.exclusiveStackedState ? 'true' : 'false'}`,
+        `频道旋钮循环 entries=${routes.channelDialCycle} listener=${routes.channelDialCycle ? 'true' : 'false'}`,
         `单向checked回退 entries=${routes.reversibleChecked} listener=${routes.reversibleChecked ? 'true' : 'false'}`,
         `radio同组恢复 groups=${routes.radioGroups} listener=${routes.radioGroups ? 'true' : 'false'}`,
         `checked交互深度 rules=${checkedDepth.checkedRuleCount} selectionOnly=${checkedDepth.selectionStyleRuleCount} secondLayer=${checkedDepth.meaningfulCheckedRuleCount} fallback=${checkedDepth.selectionOnlyFallbackCount}`,
@@ -8769,6 +9201,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `缺失分支兜底 entries=${routes.selectionFallback} listener=${routes.selectionFallback ? 'true' : 'false'}`,
         `disabled选择恢复 groups=${routes.disabledChoice} listener=${routes.disabledChoice ? 'true' : 'false'}`,
         `无动作按钮兜底 entries=${routes.inertAction} listener=${routes.inertAction ? 'true' : 'false'}`,
+        `静态抉择选择 entries=${routes.staticChoiceSelection} listener=${routes.staticChoiceSelection ? 'true' : 'false'}`,
         `iOS 3D翻面兼容 patches=${routes.webkit3dFlip} evidence=${formatWebKit3DFlipEvidence(root)}`,
         `label fallback=${root.dataset.rabbitMirrorLabelFallback || root.dataset.rabbitMirrorCheckedFallback || root.dataset.rabbitMirrorInteractionFallback || 'unknown'}`,
         '',
@@ -9170,6 +9603,133 @@ function installDisabledOnlyChoiceFallback(root) {
         installed += 1;
     }
     if (installed > 0) root.dataset.rabbitMirrorDisabledChoiceFallback = String(installed);
+    return installed;
+}
+
+
+const STATIC_CHOICE_TITLE_RE = /^(?:选项|选择|方案|路线|分支|抉择|结局|行动|choice|option|route|path)\s*(?:[A-Z0-9一二三四五六七八九十]+)?\s*[:：·\-—]/i;
+const STATIC_CHOICE_CONTEXT_RE = /(?:抉择|选择|选项|分支|路线|结局|节点|肉鸽|choice|option|decision|route|branch)/i;
+
+function staticChoiceCardTitle(element) {
+    if (!element?.querySelector) return '';
+    const title = element.querySelector(':scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6, :scope > header, :scope > strong, :scope > b');
+    return diagnosticCompactText(title?.textContent || element.textContent || '', 160);
+}
+
+function staticChoiceCardHasRealControl(element) {
+    if (!element?.querySelector) return false;
+    return !!element.querySelector('button, input, select, textarea, a[href], label, details, summary, [popovertarget], [commandfor], [contenteditable="true"]');
+}
+
+function staticChoiceCardLooksEligible(element) {
+    if (!element || diagnosticIsInternalUiNode(element) || staticChoiceCardHasRealControl(element)) return false;
+    const tag = String(element.tagName || '').toLowerCase();
+    if (!/^(?:div|section|article|li|figure)$/.test(tag)) return false;
+    if (!maintenanceElementLooksClickable(element)) return false;
+    const text = diagnosticCompactText(element.textContent || '', 1600);
+    if (text.length < 18 || text.length > 1500) return false;
+    return STATIC_CHOICE_TITLE_RE.test(staticChoiceCardTitle(element));
+}
+
+function findStaticChoiceSelectionCandidates(root) {
+    if (!root?.querySelectorAll) return [];
+    const candidates = [];
+    const managedGroups = new Set((staticChoiceSelectionRescueStates.get(root)?.entries || []).map(entry => entry.group));
+    for (const group of diagnosticQueryContentAll(root, 'div, section, article, main, ul, ol')) {
+        if (managedGroups.has(group)) continue;
+        const managedAncestor = group.parentElement?.closest?.(`[${STATIC_CHOICE_SELECTION_RESCUE_ATTR}]`);
+        if (managedAncestor && managedGroups.has(managedAncestor)) continue;
+        if (group.querySelector?.('input, button, select, textarea, details, summary, [popovertarget], [commandfor]')) continue;
+
+        const children = [...(group.children || [])]
+            .filter(child => !/^(?:style|script|template|br)$/i.test(String(child.tagName || '')));
+        if (children.length < 2 || children.length > 8) continue;
+        if (!children.every(staticChoiceCardLooksEligible)) continue;
+
+        const style = diagnosticComputedStyle(group);
+        const display = String(style?.display || group.style?.display || '').toLowerCase();
+        if (!/(?:grid|flex)/.test(display)) continue;
+
+        const contextText = diagnosticCompactText(`${group.previousElementSibling?.textContent || ''} ${group.parentElement?.textContent || ''}`, 1200);
+        const titles = children.map(staticChoiceCardTitle);
+        if (!titles.every(title => STATIC_CHOICE_TITLE_RE.test(title))) continue;
+        if (!STATIC_CHOICE_CONTEXT_RE.test(contextText) && children.length < 3) continue;
+
+        candidates.push({ group, items: children, titles });
+    }
+    return candidates;
+}
+
+function ensureStaticChoiceSelectionStyle(root) {
+    let style = root.querySelector?.(`style[${STATIC_CHOICE_SELECTION_STYLE_ATTR}]`);
+    if (!style) {
+        style = document.createElement('style');
+        style.setAttribute(STATIC_CHOICE_SELECTION_STYLE_ATTR, 'true');
+        root.appendChild(style);
+    }
+    style.textContent = `
+[${STATIC_CHOICE_SELECTION_RESCUE_ATTR}] [${STATIC_CHOICE_SELECTION_ITEM_ATTR}] { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+[${STATIC_CHOICE_SELECTION_RESCUE_ATTR}="active"] [${STATIC_CHOICE_SELECTION_ITEM_ATTR}]:not([${STATIC_CHOICE_SELECTION_SELECTED_ATTR}="true"]) { opacity: .72 !important; }
+[${STATIC_CHOICE_SELECTION_ITEM_ATTR}="true"][${STATIC_CHOICE_SELECTION_SELECTED_ATTR}="true"] { outline: 2px solid currentColor !important; outline-offset: 2px !important; }
+`;
+}
+
+function applyStaticChoiceSelectionState(entry, selectedItem = null) {
+    if (!entry?.group) return;
+    entry.selectedItem = selectedItem && entry.items.includes(selectedItem) ? selectedItem : null;
+    entry.group.setAttribute(STATIC_CHOICE_SELECTION_RESCUE_ATTR, entry.selectedItem ? 'active' : 'true');
+    for (const item of entry.items) {
+        const selected = item === entry.selectedItem;
+        item.setAttribute(STATIC_CHOICE_SELECTION_SELECTED_ATTR, selected ? 'true' : 'false');
+        item.setAttribute('aria-checked', selected ? 'true' : 'false');
+    }
+}
+
+function installStaticChoiceSelectionFallback(root) {
+    if (!root?.querySelectorAll) return 0;
+    const candidates = findStaticChoiceSelectionCandidates(root);
+    if (!candidates.length) return Number.parseInt(root.getAttribute?.(STATIC_CHOICE_SELECTION_COUNT_ATTR) || '0', 10) || 0;
+
+    ensureStaticChoiceSelectionStyle(root);
+    let state = staticChoiceSelectionRescueStates.get(root);
+    if (!state) {
+        state = { entries: [] };
+        staticChoiceSelectionRescueStates.set(root, state);
+    }
+
+    let installed = 0;
+    for (const candidate of candidates) {
+        const rememberedSelectedItem = candidate.items.find(item => item.getAttribute?.(STATIC_CHOICE_SELECTION_SELECTED_ATTR) === 'true') || null;
+        const entry = { ...candidate, selectedItem: rememberedSelectedItem };
+        candidate.group.setAttribute(STATIC_CHOICE_SELECTION_RESCUE_ATTR, rememberedSelectedItem ? 'active' : 'true');
+        candidate.group.setAttribute('role', 'radiogroup');
+        candidate.group.setAttribute('aria-label', '抉择选项');
+
+        for (const [index, item] of candidate.items.entries()) {
+            item.setAttribute(STATIC_CHOICE_SELECTION_ITEM_ATTR, 'true');
+            item.setAttribute(STATIC_CHOICE_SELECTION_SELECTED_ATTR, 'false');
+            item.setAttribute('role', 'radio');
+            item.setAttribute('aria-checked', 'false');
+            item.setAttribute('aria-label', candidate.titles[index] || `选项 ${index + 1}`);
+            if (!item.hasAttribute('tabindex')) item.setAttribute('tabindex', '0');
+
+            const activate = event => {
+                if (event?.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ') return;
+                if (event?.type === 'keydown') event.preventDefault();
+                if (event?.type === 'click' && event.target?.closest?.('a,button,input,select,textarea,label,summary')) return;
+                const next = entry.selectedItem === item ? null : item;
+                applyStaticChoiceSelectionState(entry, next);
+            };
+            item.addEventListener('click', activate, false);
+            item.addEventListener('keydown', activate, false);
+        }
+        state.entries.push(entry);
+        applyStaticChoiceSelectionState(entry, rememberedSelectedItem);
+        installed += 1;
+    }
+
+    const total = new Set([...root.querySelectorAll?.(`[${STATIC_CHOICE_SELECTION_RESCUE_ATTR}]`) || []]).size;
+    if (total) root.setAttribute(STATIC_CHOICE_SELECTION_COUNT_ATTR, String(total));
     return installed;
 }
 
@@ -9620,7 +10180,7 @@ function maintenanceReachableInteractionEvidence(root, routeSummary, checkedDept
     const outerSummary = outerDetails?.querySelector?.(':scope > summary') || null;
     const interactiveSelector = [
         'button', 'input:not([type="hidden"])', 'select', 'textarea', 'a[href]',
-        '[role="button"]', '[role="switch"]', '[role="tab"]', '[role="menuitem"]',
+        '[role="button"]', '[role="switch"]', '[role="tab"]', '[role="menuitem"]', '[role="radio"]',
         '[contenteditable="true"]', '[popovertarget]', '[commandfor]', '[tabindex]', 'summary',
     ].join(',');
     const contentInteractiveElementCount = diagnosticQueryContentAll(root, interactiveSelector)
@@ -9647,6 +10207,8 @@ function maintenanceReachableInteractionEvidence(root, routeSummary, checkedDept
         + Number(routeSummary.crossParentChecked || 0)
         + Number(routeSummary.checkedHasState || 0)
         + Number(routeSummary.pairedCheckedState || 0)
+        + Number(routeSummary.exclusiveStackedState || 0)
+        + Number(routeSummary.channelDialCycle || 0)
         + Number(routeSummary.reversibleChecked || 0)
         + Number(routeSummary.containerReveal || 0)
         + Number(routeSummary.selfMutation || 0)
@@ -9656,12 +10218,15 @@ function maintenanceReachableInteractionEvidence(root, routeSummary, checkedDept
         + Number(routeSummary.selectionFallback || 0)
         + Number(routeSummary.disabledChoice || 0)
         + Number(routeSummary.inertAction || 0)
+        + Number(routeSummary.staticChoiceSelection || 0)
         + Number(routeSummary.passportDocument || 0);
 
     const rawStateProgram = /\bon(?:click|change|input)\s*=|setAttribute\s*\(\s*['"]data-|classList\.(?:add|remove|toggle)|\.checked\s*=|:checked\b|:target\b/i.test(String(raw || ''));
     const nestedDetailsCount = diagnosticQueryContentAll(root, 'details').filter(details => details !== outerDetails).length;
+    const staticChoiceCandidateCount = findStaticChoiceSelectionCandidates(root).length;
     const noInteractionStructure = contentInteractiveElementCount === 0
         && installedInteractionRouteCount === 0
+        && staticChoiceCandidateCount === 0
         && Number(checkedDepth?.checkedRuleCount || 0) === 0
         && Number(pseudoDepth?.pseudoRuleCount || 0) === 0
         && nestedDetailsCount === 0
@@ -9687,7 +10252,7 @@ function maintenanceKnownInteractionEvidence(root, full, code) {
         + routeSummary.checkedTextRule + routeSummary.crossParentChecked + routeSummary.checkedHasState + routeSummary.pairedCheckedState + routeSummary.expandedOpacity
         + routeSummary.reversibleChecked
         + routeSummary.containerReveal + routeSummary.selfMutation + routeSummary.classStateProgram + routeSummary.changeProgram
-        + routeSummary.unlabeledChecked + routeSummary.selectionFallback + routeSummary.disabledChoice + routeSummary.inertAction + routeSummary.passportDocument;
+        + routeSummary.unlabeledChecked + routeSummary.selectionFallback + routeSummary.disabledChoice + routeSummary.inertAction + routeSummary.staticChoiceSelection + routeSummary.passportDocument;
     const innerDetailsCount = diagnosticQueryContentAll(root, 'details').length;
     const hasTargetRoute = !!root?.querySelector?.('a[href^="#"]') && /:target\b/i.test(raw);
     const hasPopoverRoute = !!root?.querySelector?.('[popovertarget], [commandfor], [popover]');
@@ -9712,12 +10277,20 @@ function maintenanceKnownInteractionEvidence(root, full, code) {
     const pairedCheckedStateCandidateCount = findPairedCheckedStateCandidates(root).length;
     const pairedCheckedStateRescueCount = Number.parseInt(root.getAttribute?.(PAIRED_CHECKED_STATE_COUNT_ATTR) || '0', 10) || 0;
     const pairedCheckedStateMissingCount = Math.max(0, pairedCheckedStateCandidateCount - pairedCheckedStateRescueCount);
+    const exclusiveStackedStateCandidateCount = findExclusiveStackedStateCandidates(root).length;
+    const exclusiveStackedStateRescueCount = Number.parseInt(root.getAttribute?.(EXCLUSIVE_STACKED_STATE_COUNT_ATTR) || '0', 10) || 0;
+    const exclusiveStackedStateMissingCount = Math.max(0, exclusiveStackedStateCandidateCount - exclusiveStackedStateRescueCount);
+    const channelDialCycleCandidateCount = findChannelDialCycleCandidates(root).length;
+    const channelDialCycleRescueCount = Number.parseInt(root.getAttribute?.(CHANNEL_DIAL_CYCLE_COUNT_ATTR) || '0', 10) || 0;
+    const channelDialCycleMissingCount = Math.max(0, channelDialCycleCandidateCount - channelDialCycleRescueCount);
     const oneWayCheckedResultCandidateCount = findOneWayCheckedResultCandidates(root)
         .filter(candidate => !candidate.target?.hasAttribute?.(REVERSIBLE_CHECKED_RESULT_TARGET_ATTR))
         .length;
     const reversibleCheckedResultRescueCount = Number.parseInt(root.getAttribute?.(REVERSIBLE_CHECKED_RESULT_ROOT_ATTR) || '0', 10) || 0;
     const disabledOnlyChoiceCandidateCount = findDisabledOnlyChoiceGroupCandidates(root).length;
     const inertActionButtonCandidateCount = findInertActionButtonCandidates(root).length;
+    const staticChoiceSelectionCandidateCount = findStaticChoiceSelectionCandidates(root).length;
+    const staticChoiceSelectionRescueCount = Number.parseInt(root.getAttribute?.(STATIC_CHOICE_SELECTION_COUNT_ATTR) || '0', 10) || 0;
     // 只有选中项外观变化时，补 Hover 也不会生成缺失的第二层内容，不能误导为可修复交互。
     const touchHoverMissing = !checkedDepth.checkedSelectionOnly
         && isLikelyTouchDevice()
@@ -9729,7 +10302,7 @@ function maintenanceKnownInteractionEvidence(root, full, code) {
     const unscopedControls = (full.inputCount > 0 || full.buttonCount > 0)
         && root.dataset?.rabbitMirrorInteractionScoped !== 'true';
     const reachability = maintenanceReachableInteractionEvidence(root, routeSummary, checkedDepth, pseudoDepth, raw);
-    return { checkedControlsLost, strippedStateProgram, lostInlineStatePrograms, recoveredInlineStatePrograms, decorativeOverlayCandidateCount, touchHoverMissing, unscopedControls, radioGroupLossCandidateCount, radioGroupRescueCount, selectionOnlyRepairCandidateCount, disabledOnlyChoiceCandidateCount, inertActionButtonCandidateCount, crossParentCheckedRuleCandidateCount, checkedHasStateRuleCandidateCount, checkedHasStateRuleRescueCount, checkedHasStateRuleMissingCount, pairedCheckedStateCandidateCount, pairedCheckedStateRescueCount, pairedCheckedStateMissingCount, oneWayCheckedResultCandidateCount, reversibleCheckedResultRescueCount, pseudoVisualOnly, raw, ...scopeEvidence, ...checkedDepth, ...pseudoDepth, ...reachability };
+    return { checkedControlsLost, strippedStateProgram, lostInlineStatePrograms, recoveredInlineStatePrograms, decorativeOverlayCandidateCount, touchHoverMissing, unscopedControls, radioGroupLossCandidateCount, radioGroupRescueCount, selectionOnlyRepairCandidateCount, disabledOnlyChoiceCandidateCount, inertActionButtonCandidateCount, staticChoiceSelectionCandidateCount, staticChoiceSelectionRescueCount, crossParentCheckedRuleCandidateCount, checkedHasStateRuleCandidateCount, checkedHasStateRuleRescueCount, checkedHasStateRuleMissingCount, pairedCheckedStateCandidateCount, pairedCheckedStateRescueCount, pairedCheckedStateMissingCount, exclusiveStackedStateCandidateCount, exclusiveStackedStateRescueCount, exclusiveStackedStateMissingCount, channelDialCycleCandidateCount, channelDialCycleRescueCount, channelDialCycleMissingCount, oneWayCheckedResultCandidateCount, reversibleCheckedResultRescueCount, pseudoVisualOnly, raw, ...scopeEvidence, ...checkedDepth, ...pseudoDepth, ...reachability };
 }
 
 function maintenanceFallbackFullSummary(root) {
@@ -9973,6 +10546,13 @@ function buildMaintenanceFindings(root, {
             evidence: [`inertActionButtonCandidateCount=${Number(interaction.inertActionButtonCandidateCount)}`], confidence: 0.91,
         });
     }
+    if (Number(interaction.staticChoiceSelectionCandidateCount) > 0) {
+        add({
+            id: 'static-choice-cards-without-selection', stage: 'interaction', mode: 'interaction',
+            label: '抉择卡片具有明确选项与点击外观，但没有可保持的选择状态',
+            evidence: [`staticChoiceSelectionCandidateCount=${Number(interaction.staticChoiceSelectionCandidateCount)}`], confidence: 0.97,
+        });
+    }
     if (Number(interaction.crossParentCheckedRuleCandidateCount) > 0) {
         add({
             id: 'cross-parent-checked-target', stage: 'interaction', mode: 'interaction',
@@ -9992,6 +10572,20 @@ function buildMaintenanceFindings(root, {
             id: 'paired-checked-state-locked', stage: 'interaction', mode: 'interaction',
             label: '进入下一画面与返回主画面由两个独立 checkbox 控制，返回后会残留状态且内联隐藏阻断显示',
             evidence: [`pairedCheckedStateMissingCount=${Number(interaction.pairedCheckedStateMissingCount)}`], confidence: 1,
+        });
+    }
+    if (Number(interaction.exclusiveStackedStateMissingCount) > 0) {
+        add({
+            id: 'exclusive-stacked-state-overlap', stage: 'interaction', mode: 'interaction',
+            label: '多个状态正文叠在同一画布，默认层的内联可见样式会与选中分支重叠',
+            evidence: [`exclusiveStackedStateMissingCount=${Number(interaction.exclusiveStackedStateMissingCount)}`], confidence: 0.99,
+        });
+    }
+    if (Number(interaction.channelDialCycleMissingCount) > 0) {
+        add({
+            id: 'channel-dial-overlap', stage: 'interaction', mode: 'interaction',
+            label: '频道旋钮的重叠点击分区遮住了中间频道，无法按顺序切换全部画面',
+            evidence: [`channelDialCycleMissingCount=${Number(interaction.channelDialCycleMissingCount)}`], confidence: 0.99,
         });
     }
     if (Number(interaction.oneWayCheckedResultCandidateCount) > 0) {
@@ -10078,7 +10672,7 @@ function inspectMaintenanceRabbit(root) {
     } catch (error) {
         partialInspection = true;
         console.debug('[RabbitMirror] maintenance interaction inspection skipped:', error);
-        interaction = { checkedControlsLost: false, strippedStateProgram: false, lostInlineStatePrograms: 0, recoveredInlineStatePrograms: 0, decorativeOverlayCandidateCount: 0, touchHoverMissing: false, unscopedControls: false, radioGroupLossCandidateCount: 0, radioGroupRescueCount: 0, duplicateIds: 0, brokenLocalLabels: 0, checkedCssIdSelectors: 0, needsScopeRepair: false, checkedSelectionOnly: false, checkedSelectionOnlyRaw: false, checkedRuleCount: 0, meaningfulCheckedRuleCount: 0, selectionStyleRuleCount: 0, selectionOnlyFallbackCount: 0, selectionOnlyRepairCandidateCount: 0, disabledOnlyChoiceCandidateCount: 0, inertActionButtonCandidateCount: 0, crossParentCheckedRuleCandidateCount: 0, checkedHasStateRuleCandidateCount: 0, checkedHasStateRuleRescueCount: 0, checkedHasStateRuleMissingCount: 0, pairedCheckedStateCandidateCount: 0, pairedCheckedStateRescueCount: 0, pairedCheckedStateMissingCount: 0, oneWayCheckedResultCandidateCount: 0, reversibleCheckedResultRescueCount: 0, pseudoVisualOnly: false, pseudoRuleCount: 0, visualOnlyPseudoRuleCount: 0, meaningfulPseudoRuleCount: 0, touchHoverEligibleCount: 0, touchHoverActiveCount: 0, contentInteractiveElementCount: 0, installedInteractionRouteCount: 0, noInteractionStructure: false, raw: '' };
+        interaction = { checkedControlsLost: false, strippedStateProgram: false, lostInlineStatePrograms: 0, recoveredInlineStatePrograms: 0, decorativeOverlayCandidateCount: 0, touchHoverMissing: false, unscopedControls: false, radioGroupLossCandidateCount: 0, radioGroupRescueCount: 0, duplicateIds: 0, brokenLocalLabels: 0, checkedCssIdSelectors: 0, needsScopeRepair: false, checkedSelectionOnly: false, checkedSelectionOnlyRaw: false, checkedRuleCount: 0, meaningfulCheckedRuleCount: 0, selectionStyleRuleCount: 0, selectionOnlyFallbackCount: 0, selectionOnlyRepairCandidateCount: 0, disabledOnlyChoiceCandidateCount: 0, inertActionButtonCandidateCount: 0, staticChoiceSelectionCandidateCount: 0, staticChoiceSelectionRescueCount: 0, crossParentCheckedRuleCandidateCount: 0, checkedHasStateRuleCandidateCount: 0, checkedHasStateRuleRescueCount: 0, checkedHasStateRuleMissingCount: 0, pairedCheckedStateCandidateCount: 0, pairedCheckedStateRescueCount: 0, pairedCheckedStateMissingCount: 0, exclusiveStackedStateCandidateCount: 0, exclusiveStackedStateRescueCount: 0, exclusiveStackedStateMissingCount: 0, channelDialCycleCandidateCount: 0, channelDialCycleRescueCount: 0, channelDialCycleMissingCount: 0, oneWayCheckedResultCandidateCount: 0, reversibleCheckedResultRescueCount: 0, pseudoVisualOnly: false, pseudoRuleCount: 0, visualOnlyPseudoRuleCount: 0, meaningfulPseudoRuleCount: 0, touchHoverEligibleCount: 0, touchHoverActiveCount: 0, contentInteractiveElementCount: 0, installedInteractionRouteCount: 0, noInteractionStructure: false, raw: '' };
     }
     let textClippingCandidateCount = 0;
     try {
@@ -10226,6 +10820,68 @@ function normalizeMaintenanceSummaryText(text) {
         .replace(/🐇[⚪🟢🟡🔴]?/g, '')
         .replace(/\s+/g, ' ')
         .trim();
+}
+
+function maintenanceMessageSourceCandidates(message, { displayOnly = false } = {}) {
+    const candidates = [];
+    const seen = new Set();
+    const push = (label, value) => {
+        if (typeof value !== 'string') return;
+        const source = decodeHtmlEntities(value).trim();
+        if (!source || seen.has(source)) return;
+        seen.add(source);
+        candidates.push({ label, source });
+    };
+
+    if (displayOnly) {
+        push('display_text', message?.extra?.display_text);
+        return candidates;
+    }
+
+    const swipeIndex = Number.isInteger(message?.swipe_id) ? message.swipe_id : -1;
+    if (swipeIndex >= 0) push('当前 swipe', message?.swipes?.[swipeIndex]);
+    push('mes', message?.mes);
+    push('display_text', message?.extra?.display_text);
+    return candidates;
+}
+
+function maintenanceMirrorCandidateHasBody(candidate) {
+    if (!(candidate instanceof Element)) return false;
+    const details = candidate.matches?.('details') ? candidate : candidate.querySelector?.('details');
+    if (!details) return false;
+
+    for (const node of details.childNodes || []) {
+        if (node.nodeType === Node.TEXT_NODE) {
+            if (String(node.textContent || '').trim()) return true;
+            continue;
+        }
+        if (!(node instanceof Element)) continue;
+        const tag = String(node.tagName || '').toLowerCase();
+        if (!tag || tag === 'summary' || tag === 'style' || tag === 'script' || tag === 'template' || tag === 'br') continue;
+        if (node.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}]`)) continue;
+        if (tag === 'p' && !String(node.textContent || '').trim() && !node.children?.length) continue;
+        return true;
+    }
+    return false;
+}
+
+function findRecoverableMaintenanceMirrorSource(message, root, { displayOnly = false } = {}) {
+    const wantedSummary = normalizeMaintenanceSummaryText(getRabbitMirrorSummaryText(root));
+    for (const candidateSource of maintenanceMessageSourceCandidates(message, { displayOnly })) {
+        const isolated = extractIsolatedMaintenanceMirrorSource(candidateSource.source, root);
+        if (!isolated) continue;
+        const candidate = findCleanMaintenanceMirrorNode(isolated, root);
+        if (!candidate || !maintenanceMirrorCandidateHasBody(candidate)) continue;
+        const candidateSummary = normalizeMaintenanceSummaryText(getRabbitMirrorSummaryText(candidate));
+        const titleMatches = !!wantedSummary && (
+            candidateSummary === wantedSummary
+            || candidateSummary.includes(wantedSummary)
+            || wantedSummary.includes(candidateSummary)
+        );
+        if (!titleMatches) continue;
+        return { ...candidateSource, source: isolated };
+    }
+    return null;
 }
 
 
@@ -10477,6 +11133,14 @@ function extractIsolatedMaintenanceMirrorSource(source, root) {
     const matched = chooseMatchingRawRabbitMirrorRoot(text, root);
     const isolated = String(matched?.outerHTML || '').trim();
     if (!isolated) return '';
+    const wantedSummary = normalizeMaintenanceSummaryText(getRabbitMirrorSummaryText(root));
+    const matchedSummary = normalizeMaintenanceSummaryText(getRabbitMirrorSummaryText(matched));
+    const titleMatches = !!wantedSummary && (
+        matchedSummary === wantedSummary
+        || matchedSummary.includes(wantedSummary)
+        || wantedSummary.includes(matchedSummary)
+    );
+    if (!titleMatches) return '';
 
     // 若畸形标签把思维包裹卷入候选内部，则宁可停止，也不冒险展示隐藏内容。
     if (TRANSIENT_RERENDER_REASONING_ENVELOPE_RE.test(isolated)) return '';
@@ -10516,9 +11180,15 @@ function findCleanMaintenanceMirrorNode(source, root) {
         for (const candidate of candidates) {
             fallback ||= candidate;
             const candidateSummary = normalizeMaintenanceSummaryText(getRabbitMirrorSummaryText(candidate));
-            if (wantedSummary && candidateSummary === wantedSummary) return candidate;
+            const titleMatches = !!wantedSummary && (
+                candidateSummary === wantedSummary
+                || candidateSummary.includes(wantedSummary)
+                || wantedSummary.includes(candidateSummary)
+            );
+            if (titleMatches) return candidate;
         }
-        return candidates.length === 1 ? fallback : null;
+        // 有目标标题时绝不退回“唯一候选即采用”；否则可能把同一消息里另一面兔子镜错填进当前空壳。
+        return !wantedSummary && candidates.length === 1 ? fallback : null;
     } catch (error) {
         console.debug('[RabbitMirror] maintenance source parse failed:', error);
         return null;
@@ -10528,7 +11198,9 @@ function findCleanMaintenanceMirrorNode(source, root) {
 function replaceMaintenanceMirrorDomFromSource(root, source) {
     if (!root?.isConnected || typeof document === 'undefined') return false;
     const candidate = findCleanMaintenanceMirrorNode(source, root);
-    if (!candidate) return false;
+    // 空 <details><summary>...</summary></details> 不是“成功恢复”。
+    // 只有候选本身确实含正文元素或直接文本时才允许替换，避免用另一份空壳覆盖当前空壳并误报 changed=true。
+    if (!candidate || !maintenanceMirrorCandidateHasBody(candidate)) return false;
 
     const currentToto = root.matches?.(MIRROR_TOTO_SELECTOR)
         ? root
@@ -10565,7 +11237,7 @@ function installMaintenanceSourceTruncationNotice(root, inspection) {
 
     const title = document.createElement('div');
     title.style.cssText = 'font-weight:700;margin-bottom:6px;';
-    title.textContent = '原始输出已截断';
+    title.textContent = inspection?.full?.rawCssTruncated ? '原始输出已截断' : '原始输出为空壳';
     const message = document.createElement('div');
     message.textContent = inspection?.full?.rawCssTruncated
         ? '这条兔子镜在 <style> 中途结束，正文没有出现在原始源码中，无法从现有内容恢复。请重新生成这条消息。'
@@ -10596,22 +11268,36 @@ function repairMaintenanceMessageSource(root, inspection) {
     if (!source) return { changed: false, index, reason: distinctDisplaySource ? '独立显示源中没有可恢复的兔子镜源码' : '没有可恢复的消息源' };
 
     if (inspection?.full?.rawSourceBodyMissing) {
+        // mes、当前 swipe 与非独立 display_text 偶尔会在宿主插件链中不同步。
+        // 先在同一条消息的当前有效来源中按 summary 精确寻找完整镜面；只恢复同标题且确有正文的候选。
+        // 不扫描历史 swipe，不跨消息回填，也不绕过独立 display_text，避免混入另一版剧情或被显示规则隐藏的内容。
+        const alternate = findRecoverableMaintenanceMirrorSource(message, root, { displayOnly: distinctDisplaySource });
+        if (alternate?.source) {
+            const recovered = replaceMaintenanceMirrorDomFromSource(root, alternate.source);
+            if (recovered) {
+                return { changed: true, index, reason: `已从同一消息的${alternate.label}恢复同标题完整兔子镜；未改写聊天原文` };
+            }
+        }
+
         const changed = installMaintenanceSourceTruncationNotice(root, inspection);
         const reason = inspection?.full?.rawCssTruncated
             ? '原始输出在 <style> 中途截断，正文未生成；已显示截断说明，无法恢复不存在的内容'
-            : '原始输出没有正文主体；已显示说明，无法恢复不存在的内容';
+            : '当前消息的 mes、当前 swipe 与显示源中均没有同标题完整正文；已显示空壳说明，无法凭空补写';
         return { changed, index, reason };
     }
 
     const hasSourceCandidate = inspection?.full?.sourceCandidate || inspection?.code?.strictWhole || inspection?.code?.needsSanitize;
     if (hasSourceCandidate) {
-        // 先从整条消息中安全隔离当前 summary 对应的兔子镜，再只重建这一面 DOM。
-        // 这条路线不写回 mes/swipe/display_text；消息中即使有 thinking/reasoning，包裹外内容也不会进入显示层。
-        const isolatedMirrorSource = extractIsolatedMaintenanceMirrorSource(source, root);
+        // 先在当前有效消息来源中寻找同标题且确有正文的候选，再只重建这一面 DOM。
+        // 这样即使当前 swipe 与 mes 暂时不同步，也不会先拿空壳候选误报恢复成功。
+        const recoverable = findRecoverableMaintenanceMirrorSource(message, root, { displayOnly: distinctDisplaySource });
+        const sourceForRecovery = recoverable?.source || source;
+        const isolatedMirrorSource = extractIsolatedMaintenanceMirrorSource(sourceForRecovery, root);
         if (isolatedMirrorSource) {
             const directDomRecovered = replaceMaintenanceMirrorDomFromSource(root, isolatedMirrorSource);
             if (directDomRecovered) {
                 const notes = [];
+                if (recoverable?.label) notes.push(`来源=${recoverable.label}`);
                 if (hasReasoningEnvelope) notes.push('已隔离思维包裹');
                 if (/<script\b/i.test(isolatedMirrorSource)) notes.push('脚本已移除，静态主体已保留');
                 const note = notes.length ? `（${notes.join('；')}）` : '';
@@ -11087,14 +11773,18 @@ function maintenanceMobileLayoutElementInSectionStack(element, hosts) {
 
 
 function maintenanceMobileLayoutScreenShellInfo(element) {
-    if (!element?.querySelectorAll) return null;
+    if (!element?.querySelectorAll || element.matches?.('details,toto,summary,style,script')) return null;
     const signature = `${element.id || ''} ${element.className || ''} ${element.getAttribute?.('aria-label') || ''}`;
-    if (!/(?:tv|television|crt|monitor|terminal|screen-shell|电视|监控|终端|显示器)/i.test(signature)) return null;
+    const ownMediaHint = /(?:tv|television|crt|monitor|terminal|screen-shell|电视|监控|终端|显示器)/i.test(signature);
+    const descendantMediaHint = !!element.querySelector?.(
+        '[class*="tv-cabinet" i], [class*="tv-screen" i], [class*="crt" i], [class*="monitor" i], [class*="terminal" i], [class*="screen-shell" i]',
+    );
+    if (!ownMediaHint && !descendantMediaHint) return null;
     const screens = [...element.querySelectorAll('div,section,article,main')].filter(child => {
         const childSignature = `${child.id || ''} ${child.className || ''}`;
         return /(?:tv-screen|screen|display|viewport|monitor|屏幕|画面)/i.test(childSignature);
     });
-    if (!screens.length || screens.length > 4) return null;
+    if (!screens.length || screens.length > 6) return null;
     const controls = [...element.querySelectorAll('input[type="checkbox"], input[type="radio"]')];
     if (controls.length < 1 || controls.length > 8) return null;
     const statePanels = [...element.querySelectorAll('div,section,article')].filter(panel => {
@@ -11678,7 +12368,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.47';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.51';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -11698,7 +12388,7 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
         // installIntelligentInteractionRescue 内部包含旧库全部已验证路线：
         // 原始安全状态程序、自变化、checked/change、focus→checked、状态层、相邻隐藏组、
         // label 内隐藏、label 后置结果、CSS 状态兄弟、按钮/可点击后置内容、弹层、遮罩、
-        // 列表详情、ID 目标显隐、data-active/class 状态程序、Touch Hover 与 label fallback。
+        // 列表详情、ID 目标显隐、叠层正文互斥、data-active/class 状态程序、Touch Hover 与 label fallback。
         const radioGroupCountBefore = Number.parseInt(target.getAttribute?.(RADIO_GROUP_ROOT_ATTR) || '0', 10) || 0;
         scopeRabbitMirrorInteractionIds(target);
         const overlayCountBefore = target.querySelectorAll?.(`[${DECORATIVE_OVERLAY_PASS_THROUGH_ATTR}]`)?.length || 0;
@@ -11717,19 +12407,25 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
         const crossParentCheckedCount = Number.parseInt(target.getAttribute?.(CROSS_PARENT_CHECKED_ROOT_ATTR) || '0', 10) || 0;
         const checkedHasStateCount = Number.parseInt(target.getAttribute?.(CHECKED_HAS_STATE_RULE_COUNT_ATTR) || '0', 10) || 0;
         const pairedCheckedStateCount = Number.parseInt(target.getAttribute?.(PAIRED_CHECKED_STATE_COUNT_ATTR) || '0', 10) || 0;
+        const exclusiveStackedStateCount = Number.parseInt(target.getAttribute?.(EXCLUSIVE_STACKED_STATE_COUNT_ATTR) || '0', 10) || 0;
+        const channelDialCycleCount = Number.parseInt(target.getAttribute?.(CHANNEL_DIAL_CYCLE_COUNT_ATTR) || '0', 10) || 0;
         const reversibleCheckedCount = Number.parseInt(target.getAttribute?.(REVERSIBLE_CHECKED_RESULT_ROOT_ATTR) || '0', 10) || 0;
         const selectionFallbackCount = installSelectionOnlyStateFallback(target);
         const inertActionRepairCount = installInertActionButtonFallback(target);
+        const staticChoiceRepairCount = installStaticChoiceSelectionFallback(target);
         const disabledChoiceCount = target.querySelectorAll?.(`[${DISABLED_ONLY_CHOICE_RESCUE_ATTR}]`)?.length || 0;
         const inertActionCount = target.querySelectorAll?.(`[${INERT_ACTION_BUTTON_RESCUE_ATTR}]`)?.length || 0;
+        const staticChoiceCount = Number.parseInt(target.getAttribute?.(STATIC_CHOICE_SELECTION_COUNT_ATTR) || '0', 10) || 0;
         detectInteractionCapabilities(target);
         const depthAfter = maintenanceCheckedInteractionDepth(target);
         const meaningfulCheckedRoute = depthAfter.checkedRuleCount > 0 && !depthAfter.checkedSelectionOnly;
         const genuinelyRescued = selectionFallbackCount > 0
             || disabledChoiceRepairCount > 0
             || inertActionRepairCount > 0
+            || staticChoiceRepairCount > 0
             || disabledChoiceCount > 0
             || inertActionCount > 0
+            || staticChoiceCount > 0
             || overlayRepairCount > 0
             || rawHoverRepairCount > 0
             || recoveredProgramRepairCount > 0
@@ -11739,6 +12435,8 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
             || crossParentCheckedCount > 0
             || checkedHasStateCount > 0
             || pairedCheckedStateCount > 0
+            || exclusiveStackedStateCount > 0
+            || channelDialCycleCount > 0
             || reversibleCheckedCount > 0
             || meaningfulCheckedRoute;
         if (genuinelyRescued) target.dataset.rabbitMirrorInteractionRescued = 'true';
@@ -11748,7 +12446,7 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
             .map(item => item.trim())
             .filter(item => item && item !== 'none');
         // 不再把“调用了总入口”冒充为“命中了一条急救路线”；选择样式专用结构只有在安全补出分支提示后才算修复。
-        return genuinelyRescued ? Math.max(routes.length, disabledChoiceRepairCount, inertActionRepairCount, disabledChoiceCount, inertActionCount, overlayRepairCount, rawHoverRepairCount, recoveredProgramRepairCount, recoveredProgramCountAfter, radioGroupRepairCount, radioGroupCountAfter, crossParentCheckedCount, checkedHasStateCount, pairedCheckedStateCount, reversibleCheckedCount) : 0;
+        return genuinelyRescued ? Math.max(routes.length, disabledChoiceRepairCount, inertActionRepairCount, staticChoiceRepairCount, disabledChoiceCount, inertActionCount, staticChoiceCount, overlayRepairCount, rawHoverRepairCount, recoveredProgramRepairCount, recoveredProgramCountAfter, radioGroupRepairCount, radioGroupCountAfter, crossParentCheckedCount, checkedHasStateCount, pairedCheckedStateCount, exclusiveStackedStateCount, channelDialCycleCount, reversibleCheckedCount) : 0;
     } },
 ]);
 
@@ -11828,6 +12526,7 @@ function runMaintenanceSourceInteractionFollowup(root) {
         || interaction.selectionOnlyRepairCandidateCount > 0
         || interaction.disabledOnlyChoiceCandidateCount > 0
         || interaction.inertActionButtonCandidateCount > 0
+        || interaction.staticChoiceSelectionCandidateCount > 0
         || interaction.oneWayCheckedResultCandidateCount > 0;
     if (!shouldRepair) return null;
 
