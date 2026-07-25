@@ -1,8 +1,9 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=0.33.77';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=0.33.77';
-import { pickCombination } from './picker.js?rmv=0.33.77';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown } from './storage.js?rmv=0.33.77';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=0.33.77';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=0.33.81';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=0.33.81';
+import { pickCombination } from './picker.js?rmv=0.33.81';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown } from './storage.js?rmv=0.33.81';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=0.33.81';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=0.33.81';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -14,7 +15,21 @@ function truncate(text, max = 220) {
     return `${raw.slice(0, Math.max(20, max - 1)).trim()}…`;
 }
 
-function compactItemLine(item, kind) {
+const RAW_POLICY_PROFILES = Object.freeze({
+    compact: Object.freeze({ summaryMax: 170, themeTotal: 0, themeItem: 0, presentationTotal: 0, presentationItem: 0 }),
+    balanced: Object.freeze({ summaryMax: 170, themeTotal: 360, themeItem: 180, presentationTotal: 540, presentationItem: 360 }),
+    full: Object.freeze({ summaryMax: 210, themeTotal: 900, themeItem: 500, presentationTotal: 1500, presentationItem: 900 }),
+});
+
+function normalizedRawPolicy(value) {
+    return Object.prototype.hasOwnProperty.call(RAW_POLICY_PROFILES, value) ? value : 'balanced';
+}
+
+function rawPolicyProfile(value) {
+    return RAW_POLICY_PROFILES[normalizedRawPolicy(value)];
+}
+
+function compactItemLine(item, kind, summaryMax = 170, rawSnippet = '') {
     const id = item?.id || '?';
     const title = item?.title || '未命名';
     const tags = Array.isArray(item?.tags) && item.tags.length ? `；tags: ${item.tags.slice(0, 4).join(',')}` : '';
@@ -22,12 +37,32 @@ function compactItemLine(item, kind) {
     const note = kind === 'presentation'
         ? '；执行：让该展现形式成为首个主要内容块的视觉本体。'
         : '；用途：仅供兔子镜内部取材与视觉转译。';
-    return `- 【${id} ${title}】${summary ? `：${truncate(summary, 170)}` : ''}${tags}${note}`;
+    const supplement = rawSnippet ? `\n  母本补充：${rawSnippet}` : '';
+    return `- 【${id} ${title}】${summary ? `：${truncate(summary, summaryMax)}` : ''}${tags}${note}${supplement}`;
 }
 
-function formatItemsCompact(items, kind) {
-    if (!Array.isArray(items) || !items.length) return '- 无';
-    return items.map(item => compactItemLine(item, kind)).join('\n');
+function formatItemsWithRawPolicy(items, kind, rawPolicy) {
+    if (!Array.isArray(items) || !items.length) return { text: '- 无', retrievedChars: 0, retrievedItems: 0 };
+    const profile = rawPolicyProfile(rawPolicy);
+    let remaining = kind === 'presentation' ? profile.presentationTotal : profile.themeTotal;
+    const perItem = kind === 'presentation' ? profile.presentationItem : profile.themeItem;
+    let retrievedChars = 0;
+    let retrievedItems = 0;
+
+    const lines = items.map(item => {
+        const allowance = Math.max(0, Math.min(perItem, remaining));
+        // compact deliberately skips lookup; balanced/full always resolve the
+        // selected ID and only append non-summary material within the budget.
+        const rawSnippet = allowance > 0 ? resolveRawSnippetForItem(item, kind, allowance) : '';
+        if (rawSnippet) {
+            remaining -= rawSnippet.length;
+            retrievedChars += rawSnippet.length;
+            retrievedItems += 1;
+        }
+        return compactItemLine(item, kind, profile.summaryMax, rawSnippet);
+    });
+
+    return { text: lines.join('\n'), retrievedChars, retrievedItems };
 }
 
 function signatureOf(combo) {
@@ -340,8 +375,11 @@ export function buildRabbitMirrorPrompt(settings, generationType = 'normal', act
         return '';
     }
 
-    const selectedThemes = formatItemsCompact(combo.themes, 'theme');
-    const selectedFormats = formatItemsCompact(combo.formats, 'presentation');
+    const rawPolicy = normalizedRawPolicy(settings.rawPolicy);
+    const selectedThemeResult = formatItemsWithRawPolicy(combo.themes, 'theme', rawPolicy);
+    const selectedFormatResult = formatItemsWithRawPolicy(combo.formats, 'presentation', rawPolicy);
+    const selectedThemes = selectedThemeResult.text;
+    const selectedFormats = selectedFormatResult.text;
     const visualSceneryMode = !!(settings.forceVisualScenery || hasVisualScenery(combo));
     const tarotRulesText = isTarotRelated(combo) ? TAROT_IMAGE_RULES : '';
     const memoryMaterial = hasSharedMemoryTheme(combo)
@@ -350,7 +388,7 @@ export function buildRabbitMirrorPrompt(settings, generationType = 'normal', act
     const prompt = buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive, memoryMaterial, activeFeedback });
 
     if (settings.debug) {
-        console.debug('[RabbitMirror] generationType:', generationType, 'combo:', combo, 'memorySources:', memoryMaterial?.sources || [], 'prompt chars:', prompt.length);
+        console.debug('[RabbitMirror] generationType:', generationType, 'combo:', combo, 'rawPolicy:', rawPolicy, 'rawRetrieved:', { themes: selectedThemeResult, formats: selectedFormatResult }, 'memorySources:', memoryMaterial?.sources || [], 'prompt chars:', prompt.length);
     }
     return prompt;
 }

@@ -1,5 +1,5 @@
-import { RAW_THEMATIC_CATEGORIES } from './rawThematicCategories.js?rmv=0.33.77';
-import { RAW_PRESENTATION_FORMATS } from './rawPresentationFormats.js?rmv=0.33.77';
+import { RAW_THEMATIC_CATEGORIES } from './rawThematicCategories.js?rmv=0.33.81';
+import { RAW_PRESENTATION_FORMATS } from './rawPresentationFormats.js?rmv=0.33.81';
 
 function escapeRegExp(text) {
     return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -94,3 +94,92 @@ export function resolveRawForItem(item, kind) {
     if (kind === 'presentation') return resolvePresentationRaw(item);
     return item.raw || `【${item.id} ${item.title}】${item.summary || ''}`;
 }
+
+const RAW_SNIPPET_CACHE = new Map();
+
+function normalizeComparable(text) {
+    return String(text || '')
+        .replace(/\{\{\s*(?:user|char)\s*\}\}/gi, token => token.toLowerCase())
+        .replace(/[\s*_`#>\-—–:：；;，,。.!！?？()（）\[\]【】]/g, '')
+        .toLowerCase();
+}
+
+function cleanSegmentLine(line) {
+    return String(line || '')
+        .replace(/^\s*#{1,6}\s+/, '')
+        .replace(/^\s*(?:[-*]|\d+[.)])\s+/, '')
+        .replace(/\*\*/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function removeOwnMarker(line, item) {
+    let value = cleanSegmentLine(line);
+    const id = String(item?.id || '').trim();
+    const title = String(item?.title || '').trim();
+    if (id) value = value.replace(new RegExp(`^${escapeRegExp(id)}\\s*`), '');
+    if (title) value = value.replace(new RegExp(`^${escapeRegExp(title)}\\s*`), '');
+    return value.replace(/^[:：\-—–]+\s*/, '').trim();
+}
+
+function truncateAtBoundary(text, maxChars) {
+    const raw = String(text || '').trim();
+    const limit = Math.max(0, Number(maxChars) || 0);
+    if (!limit || !raw) return '';
+    if (raw.length <= limit) return raw;
+    const slice = raw.slice(0, Math.max(1, limit - 1));
+    const boundary = Math.max(
+        slice.lastIndexOf('；'),
+        slice.lastIndexOf('。'),
+        slice.lastIndexOf('！'),
+        slice.lastIndexOf('？'),
+        slice.lastIndexOf('\n'),
+    );
+    const safe = boundary >= Math.floor(limit * 0.55) ? slice.slice(0, boundary + 1) : slice;
+    return `${safe.trim()}…`;
+}
+
+/**
+ * Resolve only the non-duplicate, bounded supplement for one selected item.
+ * The full raw segment is still resolved first, so every non-compact policy
+ * performs an exact ID/title lookup against the mother library. The item's
+ * own line is omitted when it merely repeats the structured index summary.
+ */
+export function resolveRawSnippetForItem(item, kind, maxChars = 320) {
+    const limit = Math.max(0, Number(maxChars) || 0);
+    if (!item || !limit) return '';
+    const cacheKey = `${kind || 'unknown'}:${item.id || item.title || '?'}:${limit}`;
+    if (RAW_SNIPPET_CACHE.has(cacheKey)) return RAW_SNIPPET_CACHE.get(cacheKey);
+
+    const rawSegment = resolveRawForItem(item, kind);
+    const rawLines = String(rawSegment || '').split(/\r?\n/).filter(line => line.trim());
+    const summaryComparable = normalizeComparable(item.summary || '');
+    const rawComparable = normalizeComparable(item.raw || '');
+    const seen = new Set();
+    const supplements = [];
+
+    rawLines.forEach((line, index) => {
+        const cleaned = index === 0 ? removeOwnMarker(line, item) : cleanSegmentLine(line);
+        if (!cleaned) return;
+        const comparable = normalizeComparable(cleaned);
+        if (!comparable || seen.has(comparable)) return;
+        seen.add(comparable);
+
+        // The matched item's first line is usually identical to the structured
+        // index. Keep only genuinely additional wording or child entries.
+        if (index === 0 && (
+            comparable === summaryComparable
+            || comparable === rawComparable
+            || (summaryComparable && comparable.includes(summaryComparable) && comparable.length <= summaryComparable.length + 10)
+        )) return;
+
+        // Avoid re-injecting any later line that is only the same summary again.
+        if (summaryComparable && comparable === summaryComparable) return;
+        supplements.push(cleaned);
+    });
+
+    const snippet = truncateAtBoundary(supplements.join('；'), limit);
+    RAW_SNIPPET_CACHE.set(cacheKey, snippet);
+    return snippet;
+}
+

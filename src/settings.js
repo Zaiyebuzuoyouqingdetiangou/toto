@@ -84,6 +84,7 @@ export function getSettings() {
     delete settings.codeBlockRescueMode;
     delete settings.interactionRescueMode;
     if (!['classic', 'format_only'].includes(settings.samplingMode)) settings.samplingMode = defaultSettings.samplingMode;
+    if (!['compact', 'balanced', 'full'].includes(settings.rawPolicy)) settings.rawPolicy = defaultSettings.rawPolicy;
     if (!Array.isArray(settings.memoryProviderIds)) settings.memoryProviderIds = [];
     settings.memoryProviderIds = settings.memoryProviderIds.map(value => {
         const id = String(value || '');

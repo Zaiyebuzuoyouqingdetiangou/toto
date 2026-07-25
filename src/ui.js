@@ -1,12 +1,12 @@
-import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=0.33.77';
-import { clearLastCombo } from './storage.js?rmv=0.33.77';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=0.33.77';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=0.33.77';
-import { refreshFeedbackCats, refreshMaintenanceRabbits, triggerInteractionDiagnosticOnce } from './outputSanitizer.js?rmv=0.33.77';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=0.33.77';
+import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=0.33.81';
+import { clearLastCombo } from './storage.js?rmv=0.33.81';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=0.33.81';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=0.33.81';
+import { refreshFeedbackCats, refreshMaintenanceRabbits, triggerInteractionDiagnosticOnce } from './outputSanitizer.js?rmv=0.33.81';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=0.33.81';
 
-const SETTINGS_UI_VERSION = '0.33.77';
-const RUNTIME_VERSION = '0.33.77';
+const SETTINGS_UI_VERSION = '0.33.81';
+const RUNTIME_VERSION = '0.33.81';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -126,7 +126,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[挨打猫 v1.4＋小小维修兔 v1.53＋Menu QR v2.1]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.33.77 TEST</span>
+      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[挨打猫 v1.4＋小小维修兔 v1.54＋Menu QR v2.2]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.33.81 TEST</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -146,6 +146,16 @@ export function initRabbitMirrorUI() {
             </select>
           </label>
 
+          <label for="rh_raw_policy" class="flex-container alignitemscenter" style="gap:8px;flex-wrap:wrap;margin:8px 0;">
+            <span>母本检索深度</span>
+            <select id="rh_raw_policy" class="text_pole" style="max-width:300px;">
+              <option value="compact">精简：仅索引摘要（最省 Token）</option>
+              <option value="balanced">均衡：摘要＋关键母本片段（默认）</option>
+              <option value="full">完整：较多母本片段（仍有限额）</option>
+            </select>
+          </label>
+          <div class="rabbit-mirror-subnote" style="margin:-4px 0 8px 0;opacity:.72;font-size:12px;line-height:1.45;">均衡模式只检索本轮抽中的条目，并去掉与摘要重复的内容；每轮母本补充最多 900 字符。完整模式最多 2400 字符。</div>
+
           <label class="checkbox_label"><input id="rh_creative_expansion" type="checkbox"> 发散孵化模式（测试版）</label>
           <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后，主题元素与展现形式只作为灵感基底，允许根据正文氛围发散出元素库之外的新内容、新媒介、新细节与新结构。</div>
 
@@ -154,7 +164,7 @@ export function initRabbitMirrorUI() {
 
           <label class="checkbox_label"><input id="rh_user_directive" type="checkbox"> 用户指令优先（正文/兔子镜点播）</label>
           <div class="rabbit-mirror-qr-download">
-            <button id="rh_download_order_qr" class="menu_button" type="button">下载 RabbitMirror 点菜 QR（v2.1）</button>
+            <button id="rh_download_order_qr" class="menu_button" type="button">下载 RabbitMirror 点菜 QR（v2.2）</button>
             <div class="rabbit-mirror-subnote">下载后请在快捷回复中手动导入。</div>
           </div>
 
@@ -213,6 +223,7 @@ export function initRabbitMirrorUI() {
     checked('#rh_feedback_cat', settings.feedbackCatEnabled);
     checked('#rh_maintenance_rabbit', settings.maintenanceRabbitEnabled);
     $('#rh_sampling_mode').val(settings.samplingMode || 'classic');
+    $('#rh_raw_policy').val(settings.rawPolicy || 'balanced');
     checked('#rh_user_directive', settings.userDirectivePriority);
     checked('#rh_creative_expansion', settings.creativeExpansionMode);
     checked('#rh_force_visual_scenery', settings.forceVisualScenery);
@@ -272,12 +283,13 @@ export function initRabbitMirrorUI() {
     });
 
     $('#rh_sampling_mode').on('change', e => updateSettings({ samplingMode: e.target.value }));
+    $('#rh_raw_policy').on('change', e => updateSettings({ rawPolicy: e.target.value }));
     $('#rh_user_directive').on('change', e => updateSettings({ userDirectivePriority: e.target.checked }));
     $('#rh_download_order_qr').on('click', () => {
         try {
             const link = document.createElement('a');
-            link.href = new URL('../assets/RabbitMirror-MenuQR-v2.1.json', import.meta.url).href;
-            link.download = 'RabbitMirror-MenuQR-v2.1.json';
+            link.href = new URL('../assets/RabbitMirror-MenuQR-v2.2.json?rmv=0.33.81', import.meta.url).href;
+            link.download = 'RabbitMirror-MenuQR-v2.2.json';
             link.rel = 'noopener';
             document.body.appendChild(link);
             link.click();

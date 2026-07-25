@@ -1,13 +1,13 @@
 import { setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
-import { MODULE_NAME, getSettings } from './settings.js?rmv=0.33.77';
-import { buildRabbitMirrorPrompt } from './promptBuilder.js?rmv=0.33.77';
+import { MODULE_NAME, getSettings } from './settings.js?rmv=0.33.81';
+import { buildRabbitMirrorPrompt } from './promptBuilder.js?rmv=0.33.81';
 import {
     buildFeedbackCatFinalCheck,
     buildFeedbackCatPrompt,
     clearFeedbackCatExtensionPrompt,
     getActiveFeedbackForCurrentChat,
     markFeedbackCatInjected,
-} from './feedbackCat.js?rmv=0.33.77';
+} from './feedbackCat.js?rmv=0.33.81';
 
 const INJECT_KEY = `${MODULE_NAME}:auto_injection`;
 
