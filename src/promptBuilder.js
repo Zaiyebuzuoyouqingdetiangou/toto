@@ -1,8 +1,8 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=0.33.73';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=0.33.73';
-import { pickCombination } from './picker.js?rmv=0.33.73';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown } from './storage.js?rmv=0.33.73';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=0.33.73';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=0.33.74';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=0.33.74';
+import { pickCombination } from './picker.js?rmv=0.33.74';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown } from './storage.js?rmv=0.33.74';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=0.33.74';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -197,7 +197,12 @@ function complexInteractiveCore() {
   - 交互必须由真实可触发对象、对应状态机制与受控内容共同构成；第二状态须在内容、关系、结构、空间、视觉层级、材质、时间进程、观察方式、角色反应或后续可操作范围中的至少一项发生清晰且有意义的变化；不同操作不得无故得到完全相同的反馈。
   - 交互形态、规模与阶段须由本轮展现形式自身的结构、功能、使用方式与叙事产生；checkbox、翻面、弹窗、按钮组、标签页等仅在媒介天然适合时使用，不得作为默认骨架换皮复用；非一次性动作的首次操作不得耗尽全部体验。
   - 仅变色、描边、阴影、轻微位移、伪选项、无关交互堆叠，或非一次性媒介中一次显隐后立即结束，不算完整交互。
-  - 交互须真实存在并可触摸触发，hover/active 只能辅助，不能单独充当本轮必需的完整交互；装饰不得遮挡操作对象。仅当媒介天然需要分层阅读时才可使用内部 details；禁止 onclick/onmouseover/onmouseout 等事件属性与内联 JavaScript，必须使用宿主可保留的 HTML/CSS 状态机制构成状态与反馈。`;
+  - 交互须真实存在并可触摸触发，hover/active 只能辅助，不能单独充当本轮必需的完整交互；装饰不得遮挡操作对象。仅当媒介天然需要分层阅读时才可使用内部 details；禁止 onclick/onmouseover/onmouseout 等事件属性与内联 JavaScript，必须使用宿主可保留的 HTML/CSS 状态机制构成状态与反馈。
+
+交互有效性终检:
+  - 输出前逐一确认每个入口都能真实进入对应状态；checkbox/radio 必须存在实际生效的 :checked 状态规则，label 必须能改变受控内容。
+  - 只有 :hover、:active、变色、阴影、缩放或位移不算有效交互；按住时出现、松手即消失，视为失败。
+  - 主要反馈必须由可保持状态承载，并至少支持继续推进、切换、组合或返回之一；若入口存在但状态不能保持、内容无法到达或一次显隐后立即结束，必须重新设计。`;
 }
 
 

@@ -1,4 +1,4 @@
-import { getSettings } from './settings.js?rmv=0.33.73';
+import { getSettings } from './settings.js?rmv=0.33.74';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -7,11 +7,11 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=0.33.73';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=0.33.73';
+} from './feedbackCat.js?rmv=0.33.74';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=0.33.74';
 
 
-const RUNTIME_VERSION = '0.33.73';
+const RUNTIME_VERSION = '0.33.74';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -3200,10 +3200,12 @@ function buildRenderedCssStateSiblingEntries(root) {
                         active: false,
                         group: trigger.parentElement || root,
                         crossTree: false,
+                        stateTypes: new Set(),
                     };
                     grouped.set(trigger, entry);
                 }
                 entry.crossTree = entry.crossTree || crossTree;
+                entry.stateTypes.add(mapping.stateType);
                 let targetMap = entry.targetAssignments.get(target);
                 if (!targetMap) {
                     targetMap = new Map();
@@ -3341,6 +3343,9 @@ function applyRenderedCssStateSiblingEntry(entry, active = entry?.active) {
         applyPseudoStyleAssignments(state.target, assignments);
     }
 
+    if (entry.trigger.matches?.('input[type="checkbox"], input[type="radio"]')) {
+        try { entry.trigger.checked = entry.active; } catch {}
+    }
     entry.trigger.setAttribute('aria-expanded', entry.active ? 'true' : 'false');
     entry.trigger.setAttribute('aria-pressed', entry.active ? 'true' : 'false');
 }
@@ -3394,6 +3399,30 @@ function installRenderedCssStateSiblingRescue(root) {
 
         entry.trigger.addEventListener('click', toggle, false);
         entry.trigger.addEventListener('keydown', toggle, false);
+
+        // 隐藏 input 的 :active/:focus 伪交互在触屏端不会形成可保持状态；
+        // 若存在明确 label[for]，让真实可触摸的 label 代理同一可逆状态，并同步 input.checked。
+        const triggerId = String(entry.trigger.id || '').trim();
+        const transientInput = triggerId
+            && entry.trigger.matches?.('input[type="checkbox"], input[type="radio"]')
+            && [...(entry.stateTypes || [])].some(type => /^(?:active|focus|focus-within|hover)$/.test(type));
+        if (transientInput) {
+            let proxyLabels = [];
+            try {
+                const escapedId = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(triggerId) : triggerId.replace(/(["\\])/g, '\\$1');
+                proxyLabels = [...root.querySelectorAll(`label[for="${escapedId}"]`)];
+            } catch {
+                proxyLabels = [...root.querySelectorAll('label')].filter(label => label.getAttribute('for') === triggerId);
+            }
+            for (const label of proxyLabels) {
+                if (label.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`)) continue;
+                label.setAttribute('data-rabbit-mirror-transient-state-proxy', 'true');
+                label.setAttribute('role', label.getAttribute('role') || 'button');
+                if (!label.hasAttribute('tabindex')) label.setAttribute('tabindex', '0');
+                label.addEventListener('click', toggle, false);
+                label.addEventListener('keydown', toggle, false);
+            }
+        }
         applyRenderedCssStateSiblingEntry(entry, false);
     }
 
@@ -8230,7 +8259,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '0.33.73-TEST-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.33.74-TEST-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -12368,7 +12397,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.51';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.52';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
