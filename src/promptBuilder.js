@@ -1,8 +1,8 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=0.33.76';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=0.33.76';
-import { pickCombination } from './picker.js?rmv=0.33.76';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown } from './storage.js?rmv=0.33.76';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=0.33.76';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=0.33.77';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=0.33.77';
+import { pickCombination } from './picker.js?rmv=0.33.77';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown } from './storage.js?rmv=0.33.77';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=0.33.77';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -145,8 +145,9 @@ function paletteCooldownRule() {
 function hardStartupReserve() {
     return String.raw`
 兔子镜输出预留:
+  - 本轮必须完成“主回复正文 + 完整兔子镜”；兔子镜是本轮输出的必需组成，不是可省略的附加项。
   - 开始正文前先为固定外壳与完整内部画面预留足够输出长度，正文不得耗尽全部可用篇幅。
-  - 若篇幅冲突，先收束正文，再减少兔子镜内部文字与次要装饰；完整输出与闭合要求统一按文末“兔子镜输出顺序与强制输出”执行。`;
+  - 若篇幅冲突，先收束正文，再减少兔子镜内部文字与次要装饰；不得省略整段兔子镜、改成纯文字占位或留下未闭合结构。`;
 }
 
 function rabbitMirrorConstructionScopeRule() {
@@ -159,11 +160,12 @@ function rabbitMirrorConstructionScopeRule() {
 function coreOutputProtocol() {
     return String.raw`
 兔子镜输出顺序与强制输出【每轮必需】:
-  - 先完成本轮主回复正文及其他规则要求的状态栏、变量栏、附加记录或固定模块；随后立即输出完整兔子镜，并将其作为整条回复最后一个可见模块。
+  - 先完成本轮主回复正文，以及其他规则要求输出的状态栏、变量栏、附加记录或固定模块。
+  - 上述内容全部结束后，立即继续输出完整兔子镜；兔子镜必须位于整条回复最底部，并作为最后一个可见模块。
   - 若其他规则要求状态栏位于正文末尾，状态栏仍须放在兔子镜之前。
   - 固定外壳：<toto data-rabbit-mirror="true" style="display:block;"><details><summary>【兔子镜：中文短标题】</summary>内部 HTML</details></toto>
   - 外层 <details>/<summary> 只负责折叠整段兔子镜，summary 必须使用「【兔子镜：6到14字简体中文标题】」格式。
-  - 若剩余输出长度不足，应立即收束正文并精简内部次要文字与装饰，但仍须完整输出并闭合，禁止改成纯文字占位。
+  - 若剩余输出长度不足，应立即收束正文并精简内部次要文字与装饰，但仍须完整输出并闭合。
   - 禁止解释规则、Markdown 代码块、<pre>/<code> 与 HTML 注释；禁止 script、iframe、object、embed、form、事件属性。
   - 完整输出 </toto> 后立即结束本轮回复，不得再追加状态栏、文字、标签或其他可见内容。`;
 }
@@ -197,12 +199,7 @@ function complexInteractiveCore() {
   - 交互必须由真实可触发对象、对应状态机制与受控内容共同构成；第二状态须在内容、关系、结构、空间、视觉层级、材质、时间进程、观察方式、角色反应或后续可操作范围中的至少一项发生清晰且有意义的变化；不同操作不得无故得到完全相同的反馈。
   - 交互形态、规模与阶段须由本轮展现形式自身的结构、功能、使用方式与叙事产生；checkbox、翻面、弹窗、按钮组、标签页等仅在媒介天然适合时使用，不得作为默认骨架换皮复用；非一次性动作的首次操作不得耗尽全部体验。
   - 仅变色、描边、阴影、轻微位移、伪选项、无关交互堆叠，或非一次性媒介中一次显隐后立即结束，不算完整交互。
-  - 交互须真实存在并可触摸触发，hover/active 只能辅助，不能单独充当本轮必需的完整交互；装饰不得遮挡操作对象。仅当媒介天然需要分层阅读时才可使用内部 details；禁止 onclick/onmouseover/onmouseout 等事件属性与内联 JavaScript，必须使用宿主可保留的 HTML/CSS 状态机制构成状态与反馈。
-
-交互有效性终检:
-  - 输出前逐一确认每个入口都能真实进入对应状态；checkbox/radio 必须存在实际生效的 :checked 状态规则，label 必须能改变受控内容。
-  - 只有 :hover、:active、变色、阴影、缩放或位移不算有效交互；按住时出现、松手即消失，视为失败。
-  - 主要反馈必须由可保持状态承载，并至少支持继续推进、切换、组合或返回之一；若入口存在但状态不能保持、内容无法到达或一次显隐后立即结束，必须重新设计。`;
+  - 交互须真实存在并可触摸触发，hover/active 只能辅助，不能单独充当本轮必需的完整交互；装饰不得遮挡操作对象。仅当媒介天然需要分层阅读时才可使用内部 details；禁止 onclick/onmouseover/onmouseout 等事件属性与内联 JavaScript，必须使用宿主可保留的 HTML/CSS 状态机制构成状态与反馈。`;
 }
 
 
@@ -278,7 +275,7 @@ function stateBarIsolationRule() {
   正文已有的状态栏、属性栏或数据栏只用于理解剧情信息，不得复刻其字段、顺序、标签、配色、卡片结构与信息组织；兔子镜必须按本轮展现形式重新构成。`;
 }
 
-function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive, memoryMaterial, feedbackBlock }) {
+function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive, memoryMaterial, activeFeedback }) {
     const chunks = [];
     const mode = combo?.samplingMode || settings?.samplingMode || 'classic';
     chunks.push('<兔子镜自动注入>');
@@ -328,11 +325,8 @@ ${shortVisualAvoidance(combo, 3)}`);
     }
 
     if (tarotRulesText) chunks.push(tarotRulesText);
-    if (feedbackBlock?.prompt) chunks.push(feedbackBlock.prompt);
-    if (feedbackBlock?.finalCheck) chunks.push(feedbackBlock.finalCheck);
     chunks.push(htmlSafetyCore());
-    // HTML 安全与强制输出契约必须位于全部 RabbitMirror 模块（含挨打猫）之后。
-    // 依靠最终位置恢复旧版近因锁，不额外复制规则或增加 Prompt 内容。
+    // 强制输出契约放在注入末尾，利用指令近因保证每轮正文后继续生成完整兔子镜。
     chunks.push(coreOutputProtocol());
     chunks.push('</兔子镜自动注入>');
     return chunks.filter(Boolean).join('\n\n').trim();
@@ -353,7 +347,7 @@ export function buildRabbitMirrorPrompt(settings, generationType = 'normal', act
     const memoryMaterial = hasSharedMemoryTheme(combo)
         ? readSelectedMemoryForPrompt(settings, settings.memoryMaxChars || 2200)
         : null;
-    const prompt = buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive, memoryMaterial, feedbackBlock: activeFeedback });
+    const prompt = buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive, memoryMaterial, activeFeedback });
 
     if (settings.debug) {
         console.debug('[RabbitMirror] generationType:', generationType, 'combo:', combo, 'memorySources:', memoryMaterial?.sources || [], 'prompt chars:', prompt.length);

@@ -1,7 +1,13 @@
 import { setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
-import { MODULE_NAME, getSettings } from './settings.js?rmv=0.33.76';
-import { buildRabbitMirrorPrompt } from './promptBuilder.js?rmv=0.33.76';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=0.33.76';
+import { MODULE_NAME, getSettings } from './settings.js?rmv=0.33.77';
+import { buildRabbitMirrorPrompt } from './promptBuilder.js?rmv=0.33.77';
+import {
+    buildFeedbackCatFinalCheck,
+    buildFeedbackCatPrompt,
+    clearFeedbackCatExtensionPrompt,
+    getActiveFeedbackForCurrentChat,
+    markFeedbackCatInjected,
+} from './feedbackCat.js?rmv=0.33.77';
 
 const INJECT_KEY = `${MODULE_NAME}:auto_injection`;
 
@@ -35,21 +41,19 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
 
     const activeFeedback = settings.feedbackCatEnabled !== false ? getActiveFeedbackForCurrentChat(_chat) : null;
     const feedbackPrompt = activeFeedback ? buildFeedbackCatPrompt(activeFeedback) : '';
-    // 反馈直接追加在 RabbitMirror 主隐藏 Prompt 的最末尾，避免独立 Prompt 在模型侧被降权。
+    const feedbackFinalCheck = activeFeedback ? buildFeedbackCatFinalCheck(activeFeedback) : '';
+    // 冻结 0.33.77 的基础生成 Prompt 与拼接位置：基础 Prompt 逐字保持，反馈仅在其后追加。
     // 未选择反馈时不追加任何字符，基础 Prompt 保持逐字不变。
     clearFeedbackCatExtensionPrompt();
     const generationScopeKey = createGenerationScopeKey(type);
-    const feedbackFinalCheck = activeFeedback ? buildFeedbackCatFinalCheck(activeFeedback) : '';
-    const prompt = buildRabbitMirrorPrompt(
-        settings,
-        type,
-        feedbackPrompt ? { prompt: feedbackPrompt, finalCheck: feedbackFinalCheck } : null,
-        generationScopeKey,
-    );
-    if (!prompt) {
+    const basePrompt = buildRabbitMirrorPrompt(settings, type, null, generationScopeKey);
+    if (!basePrompt) {
         clearRabbitMirrorPrompt();
         return;
     }
+    const prompt = feedbackPrompt
+        ? `${basePrompt}\n\n${feedbackPrompt}${feedbackFinalCheck ? `\n\n${feedbackFinalCheck}` : ''}`
+        : basePrompt;
     const role = settings.role === 'user' ? extension_prompt_roles.USER : settings.role === 'assistant' ? extension_prompt_roles.ASSISTANT : extension_prompt_roles.SYSTEM;
 
     setExtensionPrompt(
