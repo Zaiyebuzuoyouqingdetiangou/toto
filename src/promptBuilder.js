@@ -1,8 +1,8 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=0.33.70';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=0.33.70';
-import { pickCombination } from './picker.js?rmv=0.33.70';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown } from './storage.js?rmv=0.33.70';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=0.33.70';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=0.33.73';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=0.33.73';
+import { pickCombination } from './picker.js?rmv=0.33.73';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown } from './storage.js?rmv=0.33.73';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=0.33.73';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -145,9 +145,8 @@ function paletteCooldownRule() {
 function hardStartupReserve() {
     return String.raw`
 兔子镜输出预留:
-  - 本轮必须完成“主回复正文 + 完整兔子镜”；兔子镜是本轮输出的必需组成，不是可省略的附加项。
   - 开始正文前先为固定外壳与完整内部画面预留足够输出长度，正文不得耗尽全部可用篇幅。
-  - 若篇幅冲突，先收束正文，再减少兔子镜内部文字与次要装饰；不得省略整段兔子镜、改成纯文字占位或留下未闭合结构。`;
+  - 若篇幅冲突，先收束正文，再减少兔子镜内部文字与次要装饰；完整输出与闭合要求统一按文末“兔子镜输出顺序与强制输出”执行。`;
 }
 
 function rabbitMirrorConstructionScopeRule() {
@@ -160,12 +159,11 @@ function rabbitMirrorConstructionScopeRule() {
 function coreOutputProtocol() {
     return String.raw`
 兔子镜输出顺序与强制输出【每轮必需】:
-  - 先完成本轮主回复正文，以及其他规则要求输出的状态栏、变量栏、附加记录或固定模块。
-  - 上述内容全部结束后，立即继续输出完整兔子镜；兔子镜必须位于整条回复最底部，并作为最后一个可见模块。
+  - 先完成本轮主回复正文及其他规则要求的状态栏、变量栏、附加记录或固定模块；随后立即输出完整兔子镜，并将其作为整条回复最后一个可见模块。
   - 若其他规则要求状态栏位于正文末尾，状态栏仍须放在兔子镜之前。
   - 固定外壳：<toto data-rabbit-mirror="true" style="display:block;"><details><summary>【兔子镜：中文短标题】</summary>内部 HTML</details></toto>
   - 外层 <details>/<summary> 只负责折叠整段兔子镜，summary 必须使用「【兔子镜：6到14字简体中文标题】」格式。
-  - 若剩余输出长度不足，应立即收束正文并精简内部次要文字与装饰，但仍须完整输出并闭合。
+  - 若剩余输出长度不足，应立即收束正文并精简内部次要文字与装饰，但仍须完整输出并闭合，禁止改成纯文字占位。
   - 禁止解释规则、Markdown 代码块、<pre>/<code> 与 HTML 注释；禁止 script、iframe、object、embed、form、事件属性。
   - 完整输出 </toto> 后立即结束本轮回复，不得再追加状态栏、文字、标签或其他可见内容。`;
 }

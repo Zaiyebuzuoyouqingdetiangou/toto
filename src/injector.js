@@ -1,7 +1,7 @@
 import { setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
-import { MODULE_NAME, getSettings } from './settings.js?rmv=0.33.70';
-import { buildRabbitMirrorPrompt } from './promptBuilder.js?rmv=0.33.70';
-import { buildFeedbackCatPrompt, clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=0.33.70';
+import { MODULE_NAME, getSettings } from './settings.js?rmv=0.33.73';
+import { buildRabbitMirrorPrompt } from './promptBuilder.js?rmv=0.33.73';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=0.33.73';
 
 const INJECT_KEY = `${MODULE_NAME}:auto_injection`;
 
@@ -44,13 +44,13 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
         clearRabbitMirrorPrompt();
         return;
     }
+    const feedbackFinalCheck = activeFeedback ? buildFeedbackCatFinalCheck(activeFeedback) : '';
     const prompt = feedbackPrompt
         ? `${basePrompt}
 
-${feedbackPrompt}
+${feedbackPrompt}${feedbackFinalCheck ? `
 
-【挨打猫最终执行检查】
-本轮输出兔子镜前，必须再次核对并落实上述用户反馈；若反馈涉及可见文字语言，逐项检查 summary、标题、按钮、标签、状态、提示、角标、占位文字与装饰词，不得残留不必要外语。`
+${feedbackFinalCheck}` : ''}`
         : basePrompt;
     const role = settings.role === 'user' ? extension_prompt_roles.USER : settings.role === 'assistant' ? extension_prompt_roles.ASSISTANT : extension_prompt_roles.SYSTEM;
 

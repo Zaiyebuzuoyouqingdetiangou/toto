@@ -4,7 +4,7 @@ const FEEDBACK_STORAGE_KEY = 'rabbit_mirror_theater:feedback_cat:v1';
 const FEEDBACK_PENDING_KEY = 'rabbit_mirror_theater:feedback_cat_pending:v2';
 const FEEDBACK_METADATA_KEY = 'rabbit_mirror_theater_feedback_cat_v2';
 const FEEDBACK_PROMPT_KEY = 'rabbit_mirror_theater:feedback_cat_prompt';
-const RUNTIME_VERSION = '0.33.70';
+const RUNTIME_VERSION = '0.33.73';
 const VALID_ROUNDS = new Set([1, 3, 10]);
 const VALID_TYPES = new Set(['color', 'structure', 'overall', 'interaction', 'language', 'custom']);
 
@@ -241,25 +241,25 @@ function paletteSummary(fingerprint) {
     return parts.join('、');
 }
 
-function fingerprintContext(feedback, type) {
+function feedbackSourceSummary(feedback, types) {
     const fingerprint = feedback?.sourceFingerprint;
     if (!fingerprint) return '';
-    if (type === 'color') {
-        const summary = paletteSummary(fingerprint);
-        return summary ? `\n插件从被反馈作品的最终渲染结果中提取到的配色摘要：${summary}。` : '';
+    const lines = [];
+    if (types.some(type => type === 'color' || type === 'overall')) {
+        const palette = paletteSummary(fingerprint);
+        if (palette) lines.push(`配色摘要：${palette}。`);
     }
-    if (type === 'structure') {
-        return fingerprint.skeleton ? `\n插件从被反馈作品中提取到的结构摘要：${fingerprint.skeleton}` : '';
+    if (types.some(type => type === 'structure' || type === 'overall') && fingerprint.skeleton) {
+        lines.push(`结构摘要：${fingerprint.skeleton}`);
     }
-    if (type === 'interaction') {
-        const flags = fingerprint.riskFlags || [];
-        return flags.length ? `\n插件从被反馈作品中检测到的交互/结构风险：${flags.join('、')}。` : '';
+    if (types.includes('interaction') && Array.isArray(fingerprint.riskFlags) && fingerprint.riskFlags.length) {
+        lines.push(`交互／结构风险：${fingerprint.riskFlags.join('、')}。`);
     }
-    if (type === 'overall') {
-        const parts = [paletteSummary(fingerprint), fingerprint.skeleton].filter(Boolean);
-        return parts.length ? `\n插件从被反馈作品中提取到的粗略视觉摘要：${parts.join('；')}` : '';
-    }
-    return '';
+    return lines.length
+        ? `
+插件从被反馈作品的最终渲染结果中提取到以下摘要；仅用于帮助避开原作品，不得当作固定替代模板：
+${lines.map(line => `- ${line}`).join('\n')}`
+        : '';
 }
 
 export function getActiveFeedbackForCurrentChat(chatOverride = null) {
@@ -327,20 +327,18 @@ export function clearActiveFeedbackForCurrentChat() {
     try { localStorage.removeItem(FEEDBACK_PENDING_KEY); } catch {}
 }
 
-function presetFeedbackInstruction(feedback) {
-    const type = feedback?.type;
-    const source = fingerprintContext(feedback, type);
+function presetFeedbackInstruction(type) {
     if (type === 'color') {
-        return `用户不满意被反馈兔子镜的配色。本轮须重新推导主承载面、文字、强调、边界与光影之间的完整色彩关系；不得回落到相近的明度、彩度、色相倾向和强调逻辑，不得只替换背景颜色，也不得机械固定成另一套替代色系。${source}`;
+        return '用户不满意被反馈兔子镜的配色。本轮须重新推导主承载面、文字、强调、边界与光影之间的完整色彩关系；不得回落到相近的明度、彩度、色相倾向和强调逻辑，不得只替换背景颜色，也不得机械固定成另一套替代色系。';
     }
     if (type === 'structure') {
-        return `用户认为被反馈兔子镜的视觉结构过于模板化。本轮须从当前展现形式本体重新组织空间、层级、边界与信息关系；不得沿用相近的居中容器、卡片分区、规则网格或装饰骨架，也不得机械改用另一套固定模板。${source}`;
+        return '用户认为被反馈兔子镜的视觉结构过于模板化。本轮须从当前展现形式本体重新组织空间、层级、边界与信息关系；不得沿用相近的居中容器、卡片分区、规则网格或装饰骨架，也不得机械改用另一套固定模板。';
     }
     if (type === 'overall') {
-        return `用户不满意被反馈兔子镜的整体审美。本轮须依据自身展现形式重新推导材质、空间、光源、布局、配色、细节与视觉主次；不得沿用相近的整体视觉语法，也不得仅通过换色、换装饰或局部微调敷衍处理。${source}`;
+        return '用户不满意被反馈兔子镜的整体审美。本轮须依据自身展现形式重新推导材质、空间、光源、布局、配色、细节与视觉主次；不得沿用相近的整体视觉语法，也不得仅通过换色、换装饰或局部微调敷衍处理。';
     }
     if (type === 'interaction') {
-        return `用户认为被反馈兔子镜的交互过于简单。本轮仅在展现形式本身适合交互时增强交互：建立真实目标、明确操作、可识别且可保持的状态变化、与操作对应的反馈，以及继续推进、组合、切换或返回的可能；不得只增加无意义按钮、装饰性点击或一次性显隐，也不得为了交互破坏展现形式本体。${source}`;
+        return '用户认为被反馈兔子镜的交互过于简单。本轮仅在展现形式本身适合交互时增强交互：建立真实目标、明确操作、可识别且可保持的状态变化、与操作对应的反馈，以及继续推进、组合、切换或返回的可能；不得只增加无意义按钮、装饰性点击或一次性显隐，也不得为了交互破坏展现形式本体。';
     }
     if (type === 'language') {
         return '用户不满意兔子镜反复出现不必要的外语。本轮所有面向用户可见的标题、按钮、标签、状态、提示、说明、角标、装饰文字、占位文本与拟态系统词均须使用当前对话的主要语言。禁止使用英文标题、英文大写标签、英文状态词、英文装饰词或用英文制造界面感；正文中原本存在且确有必要保留的外语、专有名词，以及 HTML/CSS 的标签、属性、class、id 和代码标识不受此限制。输出前必须逐项检查最终可见文字，将不必要外语替换为当前对话主要语言。';
@@ -354,7 +352,7 @@ export function buildFeedbackCatPrompt(feedback) {
     const instructions = [];
     for (const type of types) {
         if (type === 'custom') continue;
-        const instruction = presetFeedbackInstruction({ ...feedback, type });
+        const instruction = presetFeedbackInstruction(type);
         if (instruction) instructions.push(instruction);
     }
     if (types.includes('custom')) {
@@ -364,12 +362,21 @@ export function buildFeedbackCatPrompt(feedback) {
 仅落实其中与兔子镜的视觉、排版、材质、配色、动效、可见文字或交互直接相关的要求；不得擅自扩写或替换为固定风格。`);
     }
     if (!instructions.length) return '';
-    const labels = feedbackTypeLabels(types).join('、');
-    return String.raw`【挨打猫·用户明确多项反馈｜本轮最终兔子镜必须清晰落实】
-本轮同时收到以下反馈：${labels}。
+    const labels = feedbackTypeLabels(types).join('＋');
+    const sourceSummary = feedbackSourceSummary(feedback, types);
+    return String.raw`【挨打猫·用户已选硬约束】
+已选：${labels}。下列每一项都必须在最终兔子镜中有可辨认的落实结果；漏掉任一项即不合格。${sourceSummary}
 ${instructions.map((item, index) => `${index + 1}. ${item}`).join('\n')}
-这些反馈需要在同一面最终兔子镜中协调落实，不能只处理其中一项。不得为了满足一项而明显恶化另一项，也不得把反馈说明、“挨打猫”或执行过程显示在聊天正文或兔子镜成品中。
-反馈只调整其明确涉及的视觉、文字或交互关系，不得改变正文含义、必要功能与输出格式；保留本轮展现形式本体，不要机械套用固定替代模板。无需解释反馈，直接落实。`;
+多项必须协调落实，不得只处理最容易的一项、用同一处表面改动冒充多项，或为满足一项明显恶化另一项。
+反馈只调整其明确涉及的视觉、文字或交互关系，不得改变正文含义、必要功能、展现形式本体与固定输出格式；不得把反馈说明、“挨打猫”或执行过程显示在正文或成品中。无需解释，直接落实。`;
+}
+
+export function buildFeedbackCatFinalCheck(feedback) {
+    const types = normalizeFeedbackTypes(feedback);
+    if (!feedback || !types.length || Number(feedback.remainingRounds || 0) <= 0) return '';
+    const labels = feedbackTypeLabels(types).join('＋');
+    return String.raw`【挨打猫交付验收】
+已选：${labels}。输出前逐项对照上方编号；任一项尚无可辨认结果，先修正再输出。不得在成品中显示反馈说明或本检查。`;
 }
 
 export function syncFeedbackCatExtensionPrompt(feedback = getActiveFeedbackForCurrentChat()) {
