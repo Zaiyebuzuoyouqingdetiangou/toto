@@ -1,4 +1,4 @@
-import { getSettings } from './settings.js?rmv=0.33.75';
+import { getSettings } from './settings.js?rmv=0.33.76';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -7,11 +7,11 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=0.33.75';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=0.33.75';
+} from './feedbackCat.js?rmv=0.33.76';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=0.33.76';
 
 
-const RUNTIME_VERSION = '0.33.75';
+const RUNTIME_VERSION = '0.33.76';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -8259,7 +8259,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '0.33.75-TEST-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.33.76-TEST-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -8881,7 +8881,8 @@ function maintenanceRawSourceIntegrity(decodedRaw, root) {
     if (!isolated) {
         return {
             isolated: '', rawSourceBodyMissing: false, rawCssTruncated: false,
-            rawBodyTagCount: 0, rawBodyTextLength: 0,
+            rawBodyTagCount: 0, rawBodyTextLength: 0, rawBodyElementCount: 0,
+            rawBodySemanticElementCount: 0, rawBodyVisualProgramCount: 0, rawBodyEmptyShell: false,
             sourceTruncationNoticeInstalled: !!root?.querySelector?.(`[${SOURCE_TRUNCATION_NOTICE_ATTR}]`),
         };
     }
@@ -8899,7 +8900,15 @@ function maintenanceRawSourceIntegrity(decodedRaw, root) {
     const rawBodyText = decodeHtmlEntities(withoutNonBody.replace(/<[^>]*>/g, ' '))
         .replace(/\s+/g, ' ')
         .trim();
-    const rawSourceBodyMissing = rawBodyTagCount === 0 && rawBodyText.length === 0;
+    let parsedBodyEvidence = null;
+    try {
+        const parsedCandidate = findCleanMaintenanceMirrorNode(isolated, root);
+        parsedBodyEvidence = parsedCandidate ? maintenanceMirrorBodyEvidence(parsedCandidate) : null;
+    } catch {
+        parsedBodyEvidence = null;
+    }
+    const rawSourceBodyMissing = (rawBodyTagCount === 0 && rawBodyText.length === 0)
+        || !!parsedBodyEvidence?.highConfidenceEmptyShell;
     const rawCssTruncated = styleBlocks.length > 0 && (
         cssBalance.depth > 0
         || cssBalance.extraClosingBrace
@@ -8913,6 +8922,10 @@ function maintenanceRawSourceIntegrity(decodedRaw, root) {
         rawCssTruncated,
         rawBodyTagCount,
         rawBodyTextLength: rawBodyText.length,
+        rawBodyElementCount: Number(parsedBodyEvidence?.bodyElementCount || 0),
+        rawBodySemanticElementCount: Number(parsedBodyEvidence?.semanticElementCount || 0),
+        rawBodyVisualProgramCount: Number(parsedBodyEvidence?.visualProgramCount || 0),
+        rawBodyEmptyShell: !!parsedBodyEvidence?.highConfidenceEmptyShell,
         sourceTruncationNoticeInstalled: !!root?.querySelector?.(`[${SOURCE_TRUNCATION_NOTICE_ATTR}]`),
     };
 }
@@ -9019,6 +9032,7 @@ ${styleTexts}`;
         if (tag === 'p' && !String(child.textContent || '').trim() && !child.children?.length) return false;
         return true;
     }).length : 0;
+    const renderedBodyEvidence = primaryDetails ? maintenanceMirrorBodyEvidence(primaryDetails) : null;
     // 空壳 details 的默认 margin、summary 按钮或主题样式可能让外框高度略高于 summary，
     // 不能再把“几何高度几乎相等”作为源码缺失的必要条件。
     // 同时检查当前消息的 mes、当前 swipe 与有效显示源：只要其中存在同标题完整主体，
@@ -9028,7 +9042,10 @@ ${styleTexts}`;
     const recoverableBodySource = currentMessage
         ? findRecoverableMaintenanceMirrorSource(currentMessage, root, { displayOnly: distinctDisplaySource })
         : null;
-    const renderedShellBodyMissing = !!(primaryDetails && primaryOpen && renderedBodyElementCount === 0);
+    const renderedShellBodyMissing = !!(primaryDetails && primaryOpen && (
+        renderedBodyElementCount === 0
+        || renderedBodyEvidence?.highConfidenceEmptyShell
+    ));
     const rawSourceBodyMissing = !!(renderedShellBodyMissing
         && !recoverableBodySource
         && (rawSourceIntegrity.rawSourceBodyMissing || !rawSourceIntegrity.isolated));
@@ -9105,7 +9122,16 @@ ${styleTexts}`;
         damagedDataUriCandidate, controlsLost, labelsLost, severeStructureLoss, structureTruncated,
         visibleBodyMissing, rawSourceBodyMissing, rawCssTruncated, sourceTruncationNoticeInstalled,
         rawBodyTagCount: rawSourceIntegrity.rawBodyTagCount, rawBodyTextLength: rawSourceIntegrity.rawBodyTextLength,
-        renderedBodyElementCount, recoverableBodySource: recoverableBodySource?.label || '', mobile3DFlipCandidate, verdict,
+        rawBodyElementCount: rawSourceIntegrity.rawBodyElementCount,
+        rawBodySemanticElementCount: rawSourceIntegrity.rawBodySemanticElementCount,
+        rawBodyVisualProgramCount: rawSourceIntegrity.rawBodyVisualProgramCount,
+        rawBodyEmptyShell: rawSourceIntegrity.rawBodyEmptyShell,
+        renderedBodyElementCount,
+        renderedBodyTextLength: Number(renderedBodyEvidence?.textLength || 0),
+        renderedBodySemanticElementCount: Number(renderedBodyEvidence?.semanticElementCount || 0),
+        renderedBodyVisualProgramCount: Number(renderedBodyEvidence?.visualProgramCount || 0),
+        renderedBodyEmptyShell: !!renderedBodyEvidence?.highConfidenceEmptyShell,
+        recoverableBodySource: recoverableBodySource?.label || '', mobile3DFlipCandidate, verdict,
     };
 }
 
@@ -9149,8 +9175,9 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `原始 inputs=${full.rawInputCount} labels=${full.rawLabelCount} UI标签≈${full.rawUiTagCount}`,
         `渲染 inputs=${full.inputCount} labels=${full.renderedLabelCount} UI标签≈${full.renderedUiTagCount}`,
         `SVG Data URI损坏候选=${full.damagedDataUriCandidate} 结构截断=${full.structureTruncated}`,
-        `原始源码主体缺失=${!!full.rawSourceBodyMissing} CSS中途截断=${!!full.rawCssTruncated} 截断说明=${!!full.sourceTruncationNoticeInstalled}`,
-        `展开后主体缺失=${full.visibleBodyMissing} 主体子节点=${full.renderedBodyElementCount ?? 0}`,
+        `原始源码主体缺失=${!!full.rawSourceBodyMissing} 空结构壳=${!!full.rawBodyEmptyShell} CSS中途截断=${!!full.rawCssTruncated} 截断说明=${!!full.sourceTruncationNoticeInstalled}`,
+        `原始主体 文本=${full.rawBodyTextLength ?? 0} 元素=${full.rawBodyElementCount ?? 0} 语义/媒体=${full.rawBodySemanticElementCount ?? 0} 视觉程序=${full.rawBodyVisualProgramCount ?? 0}`,
+        `展开后主体缺失=${full.visibleBodyMissing} 空结构壳=${!!full.renderedBodyEmptyShell} 主体子节点=${full.renderedBodyElementCount ?? 0} 文本=${full.renderedBodyTextLength ?? 0}`,
         '',
         '[3. CSS 能力层]',
         `rules≈${full.cssRuleCount} keyframes=${full.animationCount}`,
@@ -10354,8 +10381,18 @@ function maintenanceFallbackFullSummary(root) {
         visibleBodyMissing: false,
         rawSourceBodyMissing: false,
         rawCssTruncated: false,
+        rawBodyTagCount: 0,
+        rawBodyTextLength: 0,
+        rawBodyElementCount: 0,
+        rawBodySemanticElementCount: 0,
+        rawBodyVisualProgramCount: 0,
+        rawBodyEmptyShell: false,
         sourceTruncationNoticeInstalled: false,
         renderedBodyElementCount: 0,
+        renderedBodyTextLength: 0,
+        renderedBodySemanticElementCount: 0,
+        renderedBodyVisualProgramCount: 0,
+        renderedBodyEmptyShell: false,
         rawToto: false,
         rawHtml: false,
         controlsLost: false,
@@ -10874,24 +10911,82 @@ function maintenanceMessageSourceCandidates(message, { displayOnly = false } = {
     return candidates;
 }
 
-function maintenanceMirrorCandidateHasBody(candidate) {
-    if (!(candidate instanceof Element)) return false;
+function maintenanceMirrorBodyEvidence(candidate) {
+    const empty = {
+        hasDetails: false,
+        textLength: 0,
+        bodyElementCount: 0,
+        semanticElementCount: 0,
+        visualProgramCount: 0,
+        highConfidenceEmptyShell: false,
+    };
+    if (!(candidate instanceof Element)) return empty;
     const details = candidate.matches?.('details') ? candidate : candidate.querySelector?.('details');
-    if (!details) return false;
+    if (!details) return empty;
 
-    for (const node of details.childNodes || []) {
-        if (node.nodeType === Node.TEXT_NODE) {
-            if (String(node.textContent || '').trim()) return true;
-            continue;
-        }
-        if (!(node instanceof Element)) continue;
-        const tag = String(node.tagName || '').toLowerCase();
-        if (!tag || tag === 'summary' || tag === 'style' || tag === 'script' || tag === 'template' || tag === 'br') continue;
-        if (node.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}]`)) continue;
-        if (tag === 'p' && !String(node.textContent || '').trim() && !node.children?.length) continue;
-        return true;
-    }
-    return false;
+    const clone = details.cloneNode(true);
+    clone.querySelectorAll?.([
+        ':scope > summary',
+        'script',
+        'template',
+        `[${MAINTENANCE_RABBIT_ATTR}]`,
+        `[${FEEDBACK_CAT_ATTR}]`,
+        `[${MAINTENANCE_MENU_ATTR}]`,
+        `[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`,
+        `[${FEEDBACK_CAT_MENU_ATTR}]`,
+        `[${SOURCE_TRUNCATION_NOTICE_ATTR}]`,
+    ].join(','))?.forEach(node => node.remove());
+
+    const contentStyles = [...(clone.querySelectorAll?.('style') || [])]
+        .filter(style => ![...style.attributes].some(attribute => /^data-rabbit-mirror-/i.test(attribute.name)))
+        .map(style => String(style.textContent || ''))
+        .join('\n');
+    clone.querySelectorAll?.('style')?.forEach(style => style.remove());
+
+    const textLength = decodeHtmlEntities(String(clone.textContent || ''))
+        .replace(/\s+/g, ' ')
+        .trim().length;
+    const bodyElements = [...(clone.querySelectorAll?.('*') || [])]
+        .filter(element => !['br'].includes(String(element.tagName || '').toLowerCase()));
+    const semanticSelector = [
+        'input', 'button', 'select', 'textarea', 'a[href]', 'label',
+        'img', 'svg', 'canvas', 'video', 'audio', 'iframe', 'object', 'embed',
+        'table', 'ul', 'ol', 'li', 'p', 'blockquote', 'pre', 'code',
+        'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'figure', 'figcaption',
+        'details', 'meter', 'progress', '[role]', '[tabindex]', '[contenteditable="true"]',
+    ].join(',');
+    const semanticElementCount = clone.querySelectorAll?.(semanticSelector)?.length || 0;
+    const inlineVisualProgramCount = bodyElements.filter(element => {
+        const style = String(element.getAttribute?.('style') || '');
+        return /(?:background(?:-image)?\s*:[^;]*(?:url\(|gradient\()|mask(?:-image)?\s*:|clip-path\s*:|filter\s*:|content\s*:)/i.test(style);
+    }).length;
+    const stylesheetVisualProgramCount = (contentStyles.match(/@keyframes\b|content\s*:|background(?:-image)?\s*:[^;{}]*(?:url\(|gradient\()|mask(?:-image)?\s*:|clip-path\s*:/gi) || []).length;
+    const visualProgramCount = inlineVisualProgramCount + stylesheetVisualProgramCount;
+
+    // 仅把“零文字、零语义／媒体／控件、最多两个空包装元素、也没有视觉程序”的结构判为空壳。
+    // 这样可识别模型只输出外框与一条空分隔栏的失败案例，同时避免把 SVG、渐变绘景、动画或复杂纯视觉作品误删。
+    const highConfidenceEmptyShell = textLength === 0
+        && semanticElementCount === 0
+        && bodyElements.length <= 2
+        && visualProgramCount === 0;
+
+    return {
+        hasDetails: true,
+        textLength,
+        bodyElementCount: bodyElements.length,
+        semanticElementCount,
+        visualProgramCount,
+        highConfidenceEmptyShell,
+    };
+}
+
+function maintenanceMirrorCandidateHasBody(candidate) {
+    const evidence = maintenanceMirrorBodyEvidence(candidate);
+    return evidence.hasDetails && !evidence.highConfidenceEmptyShell
+        && (evidence.textLength > 0
+            || evidence.bodyElementCount > 0
+            || evidence.semanticElementCount > 0
+            || evidence.visualProgramCount > 0);
 }
 
 function findRecoverableMaintenanceMirrorSource(message, root, { displayOnly = false } = {}) {
@@ -12397,7 +12492,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.52';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.53';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
