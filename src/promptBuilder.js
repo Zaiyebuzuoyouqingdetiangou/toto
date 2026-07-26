@@ -1,9 +1,9 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=0.33.84';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=0.33.84';
-import { pickCombination } from './picker.js?rmv=0.33.84';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown } from './storage.js?rmv=0.33.84';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=0.33.84';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=0.33.84';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=0.33.87';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=0.33.87';
+import { pickCombination } from './picker.js?rmv=0.33.87';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown } from './storage.js?rmv=0.33.87';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=0.33.87';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=0.33.87';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -280,7 +280,6 @@ function presentationEmbodimentRule() {
   - DOM 中必须实际出现能够构成该形式的形态、比例、空间关系、层叠方式、材质结构或排版结构；不得只用标题、标签、图标和说明文字宣称它是什么。
   - 可根据本轮展现形式本体的需要，使用 Flex/Grid、定位、SVG、渐变、阴影、滤镜、clip-path、mask、transform、transition 与 CSS 动画等方式，构成空间、材质与视觉质感。
   - 不得以通用圆角面板、卡片列表、数据仪表盘或信息框作为默认主体，再向其中填入本轮内容。
-  - 报告、审批流、属性面板、排行榜等原生信息媒介，可以直接以其真实信息结构成立；禁止的是与本轮形式无关的通用卡片壳。
   - 当展现形式本身属于平面媒介时，其纸面、印刷面、画布、版式、纹理、边缘与承载内容可以直接构成主要视觉本体，不视为通用面板。
   - 主背景、主要承载面、文字、边界、阴影、发光和强调色，必须配合该形式实际采用的材质、环境和光线；不得预设固定的界面配色组合。
   - 标题和情绪词只能影响已经成立的画面本体，不能单独触发预设的界面底盘、警报结构或科技仪表盘。
@@ -367,12 +366,14 @@ ${shortVisualAvoidance(combo, 3)}`);
     return chunks.filter(Boolean).join('\n\n').trim();
 }
 
-export function buildRabbitMirrorPrompt(settings, generationType = 'normal', activeFeedback = null, generationScopeKey = '') {
-    if (!settings?.enabled || !settings?.autoRabbitMirrorInjection || settings?.mode === 'off') return '';
+export function buildRabbitMirrorPromptDetails(settings, generationType = 'normal', activeFeedback = null, generationScopeKey = '') {
+    if (!settings?.enabled || !settings?.autoRabbitMirrorInjection || settings?.mode === 'off') {
+        return { prompt: '', metadata: Object.freeze({ generationType: String(generationType || 'normal') }) };
+    }
     const { combo, directive, disabled } = pickCombination(settings, generationScopeKey);
     if (disabled) {
         if (settings.debug) console.debug('[RabbitMirror] skipped by user directive');
-        return '';
+        return { prompt: '', metadata: Object.freeze({ generationType: String(generationType || 'normal'), disabled: true }) };
     }
 
     const rawPolicy = normalizedRawPolicy(settings.rawPolicy);
@@ -386,9 +387,28 @@ export function buildRabbitMirrorPrompt(settings, generationType = 'normal', act
         ? readSelectedMemoryForPrompt(settings, settings.memoryMaxChars || 2200)
         : null;
     const prompt = buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive, memoryMaterial, activeFeedback });
+    const metadata = Object.freeze({
+        generationType: String(generationType || 'normal'),
+        rawPolicy,
+        samplingMode: combo?.samplingMode || settings?.samplingMode || 'classic',
+        themeIds: Array.isArray(combo?.themeIds) ? [...combo.themeIds] : [],
+        formatIds: Array.isArray(combo?.formatIds) ? [...combo.formatIds] : [],
+        selectedThemeChars: selectedThemes.length,
+        selectedFormatChars: selectedFormats.length,
+        motherLibraryChars: selectedThemeResult.retrievedChars + selectedFormatResult.retrievedChars,
+        motherLibraryItems: selectedThemeResult.retrievedItems + selectedFormatResult.retrievedItems,
+        memoryChars: String(memoryMaterial?.text || '').length,
+        memorySources: Array.isArray(memoryMaterial?.sources) ? [...memoryMaterial.sources] : [],
+        visualSceneryMode,
+        tarotRules: !!tarotRulesText,
+    });
 
     if (settings.debug) {
         console.debug('[RabbitMirror] generationType:', generationType, 'combo:', combo, 'rawPolicy:', rawPolicy, 'rawRetrieved:', { themes: selectedThemeResult, formats: selectedFormatResult }, 'memorySources:', memoryMaterial?.sources || [], 'prompt chars:', prompt.length);
     }
-    return prompt;
+    return { prompt, metadata };
+}
+
+export function buildRabbitMirrorPrompt(settings, generationType = 'normal', activeFeedback = null, generationScopeKey = '') {
+    return buildRabbitMirrorPromptDetails(settings, generationType, activeFeedback, generationScopeKey).prompt;
 }

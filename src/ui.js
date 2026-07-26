@@ -1,12 +1,13 @@
-import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=0.33.84';
-import { clearLastCombo } from './storage.js?rmv=0.33.84';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=0.33.84';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=0.33.84';
-import { refreshFeedbackCats, refreshMaintenanceRabbits, triggerInteractionDiagnosticOnce } from './outputSanitizer.js?rmv=0.33.84';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=0.33.84';
+import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=0.33.87';
+import { clearLastCombo } from './storage.js?rmv=0.33.87';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=0.33.87';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=0.33.87';
+import { refreshFeedbackCats, refreshMaintenanceRabbits, triggerInteractionDiagnosticOnce } from './outputSanitizer.js?rmv=0.33.87';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=0.33.87';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=0.33.87';
 
-const SETTINGS_UI_VERSION = '0.33.84';
-const RUNTIME_VERSION = '0.33.84';
+const SETTINGS_UI_VERSION = '0.33.87';
+const RUNTIME_VERSION = '0.33.87';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -34,6 +35,63 @@ function escapeHtml(value) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+}
+
+
+function formatMeterNumber(value) {
+    return Math.max(0, Number(value) || 0).toLocaleString('zh-CN');
+}
+
+function tokenMeterNoInjectionLabel(reason) {
+    const labels = {
+        disabled: '本轮未注入：兔子镜已关闭',
+        'quiet-skipped': '本轮未注入：静默生成已跳过',
+        'impersonate-skipped': '本轮未注入：角色扮演生成已跳过',
+        'directive-skipped': '本轮未注入：用户指令要求跳过',
+        empty: '本轮未注入：没有形成有效 Prompt',
+        cleared: '当前注入已清空',
+        manual: '当前注入已手动清空',
+    };
+    return labels[String(reason || '')] || '本轮未注入';
+}
+
+function renderTokenMeter(record = getLastRabbitMirrorTokenRecord()) {
+    const root = $('#rh_token_meter');
+    if (!root.length) return;
+    const main = root.find('[data-rh-token-meter-main]');
+    const exact = root.find('[data-rh-token-meter-exact]');
+    const detail = root.find('[data-rh-token-meter-detail]');
+    if (!record) {
+        main.text('尚无生成记录');
+        exact.text('发送下一轮消息后自动更新。');
+        detail.text('只统计 RabbitMirror 自己写入的 Prompt。');
+        return;
+    }
+    if (record.status !== 'injected') {
+        main.text('0 Token');
+        exact.text(tokenMeterNoInjectionLabel(record.reason));
+        detail.text('未向模型追加 RabbitMirror Prompt。');
+        return;
+    }
+
+    const tokens = record.tokens || {};
+    const chars = record.chars || {};
+    main.text(`约 ${formatMeterNumber(tokens.estimated)} Token`);
+    exact.text(`保守范围 ${formatMeterNumber(tokens.min)}–${formatMeterNumber(tokens.max)}；精确字符数 ${formatMeterNumber(chars.total)}`);
+    const parts = [
+        `基础约 ${formatMeterNumber(tokens.baseEstimated)}`,
+        chars.feedback ? `挨打猫追加约 ${formatMeterNumber(tokens.feedbackEstimated)}` : '挨打猫追加 0',
+        `其中母本补充 ${formatMeterNumber(chars.motherLibrary)} 字符`,
+        chars.sharedMemory ? `共同回忆资料 ${formatMeterNumber(chars.sharedMemory)} 字符` : '',
+    ].filter(Boolean);
+    detail.text(parts.join('；'));
+}
+
+function attachTokenMeterListener() {
+    try { globalThis.__rabbitMirrorTokenMeterUiCleanup?.(); } catch {}
+    const handler = event => renderTokenMeter(event?.detail || getLastRabbitMirrorTokenRecord());
+    globalThis.addEventListener?.(TOKEN_METER_EVENT, handler);
+    globalThis.__rabbitMirrorTokenMeterUiCleanup = () => globalThis.removeEventListener?.(TOKEN_METER_EVENT, handler);
 }
 
 function renderMemoryScanResults(results) {
@@ -126,13 +184,24 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[挨打猫 v1.4＋小小维修兔 v1.57＋Menu QR v2.2]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.33.84 TEST</span>
+      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[挨打猫 v1.4＋小小维修兔 v1.58＋Menu QR v2.2]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.33.87 TEST</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
       <div class="rabbit-mirror-primary-toggle">
         <label class="checkbox_label"><input id="rh_enabled" type="checkbox"> 兔子镜自动注入</label>
         <div class="rabbit-mirror-subnote" style="margin:-2px 0 0 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后每轮自动追加兔子镜规则。</div>
+      </div>
+
+
+      <div id="rh_token_meter" class="rabbit-mirror-token-meter" aria-live="polite">
+        <div class="rabbit-mirror-token-meter-head">
+          <b>本轮 RabbitMirror 注入</b>
+          <span data-rh-token-meter-main>尚无生成记录</span>
+        </div>
+        <div data-rh-token-meter-exact class="rabbit-mirror-token-meter-exact">发送下一轮消息后自动更新。</div>
+        <div data-rh-token-meter-detail class="rabbit-mirror-token-meter-detail">只统计 RabbitMirror 自己写入的 Prompt。</div>
+        <div class="rabbit-mirror-token-meter-note">字符数为精确值；Token 因模型分词器不同只能估算，因此同时给出保守范围。统计面板本身不会注入模型。</div>
       </div>
 
       <details class="rabbit-mirror-section">
@@ -218,6 +287,8 @@ export function initRabbitMirrorUI() {
 </div>`;
 
     settingsMount.append(html);
+    attachTokenMeterListener();
+    renderTokenMeter();
 
     checked('#rh_enabled', settings.autoRabbitMirrorInjection !== false && settings.enabled !== false);
     checked('#rh_feedback_cat', settings.feedbackCatEnabled);
@@ -288,7 +359,7 @@ export function initRabbitMirrorUI() {
     $('#rh_download_order_qr').on('click', () => {
         try {
             const link = document.createElement('a');
-            link.href = new URL('../assets/RabbitMirror-MenuQR-v2.2.json?rmv=0.33.84', import.meta.url).href;
+            link.href = new URL('../assets/RabbitMirror-MenuQR-v2.2.json?rmv=0.33.87', import.meta.url).href;
             link.download = 'RabbitMirror-MenuQR-v2.2.json';
             link.rel = 'noopener';
             document.body.appendChild(link);
@@ -327,7 +398,7 @@ export function initRabbitMirrorUI() {
         toastr?.success?.('已清除兔子镜上轮组合记录');
     });
     $('#rh_clear_injection').on('click', () => {
-        clearRabbitMirrorPrompt();
+        clearRabbitMirrorPrompt('manual');
         toastr?.success?.('已清空当前兔子镜注入');
     });
     if (settings.memoryScanEnabled || (settings.memoryProviderIds || []).length) {
@@ -346,5 +417,7 @@ export function destroyRabbitMirrorUI() {
         uiMountRetryTimer = 0;
     }
     uiMountRetryCount = 0;
+    try { globalThis.__rabbitMirrorTokenMeterUiCleanup?.(); } catch {}
+    globalThis.__rabbitMirrorTokenMeterUiCleanup = null;
     $('#rabbit_mirror_theater_settings').remove();
 }

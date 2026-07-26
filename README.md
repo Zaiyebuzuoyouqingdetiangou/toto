@@ -1,38 +1,36 @@
-# RabbitMirror 0.33.84 TEST — 维修兔直接 ID 类名状态恢复
+# RabbitMirror 0.33.87 TEST — 前置 label checked 真实切换验收
 
-基线：RabbitMirror 0.33.83 TEST。
+基线：RabbitMirror 0.33.85 TEST。
 
-本次只升级小小维修兔，不修改 Prompt、母本库、随机抽取库、挨打猫、Menu QR 或输出锁。
+## 新增功能
 
-## 修复内容
+设置面板顶部新增“本轮 RabbitMirror 注入”统计区。每次生成拦截器完成最终 Prompt 拼接后自动更新：
 
-- 小小维修兔升级为 v1.57。
-- 从当前消息原始 HTML 安全回读以下固定形式：
-  - `document.getElementById("...").classList.toggle("...")`
-  - `document.getElementById("...").classList.add("...")`
-  - `document.getElementById("...").classList.remove("...")`
-- 只接受固定 ID、固定 class 和上述三种有限操作，不执行模型生成的 JavaScript。
-- 依据原始目标 class 与渲染后 class 的对应关系推导酒馆 CSS 作用域前缀。
-- 只有状态 class 同时存在于原始 CSS 与渲染 CSS 时才安装恢复，避免无依据接管。
-- 同一目标状态的打开／关闭按钮会同步 `aria-pressed`。
-- 真实类名状态恢复在“无动作按钮兜底”之前安装，避免翻面按钮被错误替换成通用“操作已记录”。
+- 最终实际注入字符数（精确）
+- 模型中立的 Token 估算值
+- 保守 Token 范围
+- 基础 RabbitMirror Prompt 估算
+- 挨打猫追加估算；未选择时显示 0
+- 本轮母本补充字符数
+- 抽中共同回忆时的额外资料字符数
 
-## 对应案例
+Token 会因 OpenAI、Claude、Gemini及本地模型使用的分词器不同而变化，因此不伪装成精确值。字符数是最终送入 `setExtensionPrompt` 的实际字符串长度；统计面板本身不会写入 Prompt。
 
-“一张过期的单程机票”中：
+统计记录只保存数字、抽取 ID 和模式标志，不保存 Prompt 原文。关闭、跳过或手动清空注入时显示 0 Token。
 
-- `[ 翻转查看背面字迹 ]` 恢复为给 `#rabbitPass` 切换 `flipped` 状态；
-- `[ 翻回正面 ]` 恢复为移除同一状态；
-- 背面原有留言真实显示，不生成新文案；
-- 通用无动作按钮兜底不再接管这两个按钮。
+## 保留内容
 
-## 保留能力
-
-- 维修兔仪式按钮可逆状态恢复
-- 填空候选恢复
-- 结构化静态分段恢复
-- 空壳／源码截断识别
-- 母本精确检索与预算控制
-- Menu QR v2.2
+- 0.33.85 的全部 Prompt 与输出锁顺序
+- 母本库、随机抽取库与 Menu QR v2.2
 - 挨打猫 v1.4
-- 最终输出锁顺序
+- 小小维修兔 v1.58
+- 每轮母本检索预算
+
+
+## 0.33.87 维修兔 v1.58
+
+- 修复 label 位于隐藏 checkbox/radio 前方时，部分 iOS WebView 不执行默认切换的问题。
+- 仅对已有明确 `:checked` 结果目标的局部结构安装显式切换。
+- 点击后在 0/60/260ms 复核 checked 状态，必要时校正并重新落实结果样式。
+- 诊断新增“前置label切换验收”与最近一次真实切换记录。
+- 不新增正文，不改 Prompt、母本库、抽取库、Menu QR、挨打猫或 Token 测算。

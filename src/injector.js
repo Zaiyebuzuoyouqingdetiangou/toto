@@ -1,13 +1,14 @@
 import { setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
-import { MODULE_NAME, getSettings } from './settings.js?rmv=0.33.84';
-import { buildRabbitMirrorPrompt } from './promptBuilder.js?rmv=0.33.84';
+import { MODULE_NAME, getSettings } from './settings.js?rmv=0.33.87';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=0.33.87';
 import {
     buildFeedbackCatFinalCheck,
     buildFeedbackCatPrompt,
     clearFeedbackCatExtensionPrompt,
     getActiveFeedbackForCurrentChat,
     markFeedbackCatInjected,
-} from './feedbackCat.js?rmv=0.33.84';
+} from './feedbackCat.js?rmv=0.33.87';
+import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=0.33.87';
 
 const INJECT_KEY = `${MODULE_NAME}:auto_injection`;
 
@@ -19,10 +20,11 @@ function createGenerationScopeKey(type) {
     return `${generationType}:${Date.now().toString(36)}:${generationInvocationSequence.toString(36)}`;
 }
 
-export function clearRabbitMirrorPrompt() {
+export function clearRabbitMirrorPrompt(reason = 'cleared', generationType = '') {
     clearFeedbackCatExtensionPrompt();
     try {
         setExtensionPrompt(INJECT_KEY, '', extension_prompt_types.IN_CHAT, 0, false, extension_prompt_roles.SYSTEM);
+        recordRabbitMirrorNoInjection(reason, generationType);
     } catch (error) {
         console.warn('[RabbitMirror] Failed to clear extension prompt:', error);
     }
@@ -35,7 +37,12 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
     const skipImpersonate = settings.skipImpersonate && type === 'impersonate';
 
     if (!settings.enabled || !settings.autoRabbitMirrorInjection || settings.mode === 'off' || skipQuiet || skipImpersonate) {
-        clearRabbitMirrorPrompt();
+        const reason = skipQuiet
+            ? 'quiet-skipped'
+            : skipImpersonate
+                ? 'impersonate-skipped'
+                : 'disabled';
+        clearRabbitMirrorPrompt(reason, type);
         return;
     }
 
@@ -46,9 +53,10 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
     // 未选择反馈时不追加任何字符，基础 Prompt 保持逐字不变。
     clearFeedbackCatExtensionPrompt();
     const generationScopeKey = createGenerationScopeKey(type);
-    const basePrompt = buildRabbitMirrorPrompt(settings, type, null, generationScopeKey);
+    const promptDetails = buildRabbitMirrorPromptDetails(settings, type, null, generationScopeKey);
+    const basePrompt = promptDetails.prompt;
     if (!basePrompt) {
-        clearRabbitMirrorPrompt();
+        clearRabbitMirrorPrompt(promptDetails.metadata?.disabled ? 'directive-skipped' : 'empty', type);
         return;
     }
     const prompt = feedbackPrompt
@@ -64,5 +72,11 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
         false,
         role,
     );
+    recordRabbitMirrorInjection({
+        prompt,
+        basePrompt,
+        generationType: type,
+        metadata: promptDetails.metadata,
+    });
     if (activeFeedback && feedbackPrompt) markFeedbackCatInjected(activeFeedback, type, feedbackPrompt);
 }

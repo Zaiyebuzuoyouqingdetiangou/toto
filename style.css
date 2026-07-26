@@ -311,3 +311,36 @@ toto[data-rabbit-mirror="true"] summary {
   opacity: .45 !important;
   cursor: not-allowed !important;
 }
+
+
+/* 0.33.87: per-generation RabbitMirror injection token estimate. */
+.rabbit-mirror-token-meter {
+  margin: 10px 0 12px !important;
+  padding: 10px 12px !important;
+  border: 1px solid color-mix(in srgb, var(--SmartThemeBorderColor, currentColor) 58%, transparent) !important;
+  border-radius: 8px !important;
+  background: color-mix(in srgb, var(--SmartThemeBodyColor, transparent) 86%, currentColor 4%) !important;
+  color: inherit !important;
+  line-height: 1.45 !important;
+}
+.rabbit-mirror-token-meter-head {
+  display: flex !important;
+  align-items: baseline !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  flex-wrap: wrap !important;
+}
+.rabbit-mirror-token-meter-head [data-rh-token-meter-main] {
+  font-weight: 700 !important;
+  font-variant-numeric: tabular-nums !important;
+}
+.rabbit-mirror-token-meter-exact,
+.rabbit-mirror-token-meter-detail,
+.rabbit-mirror-token-meter-note {
+  margin-top: 4px !important;
+  font-size: 12px !important;
+  overflow-wrap: anywhere !important;
+}
+.rabbit-mirror-token-meter-exact { opacity: .86 !important; }
+.rabbit-mirror-token-meter-detail { opacity: .76 !important; }
+.rabbit-mirror-token-meter-note { opacity: .58 !important; font-size: 11px !important; }

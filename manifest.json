@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（挨打猫 v1.4・小小维修兔 v1.57）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（挨打猫 v1.4・小小维修兔 v1.58）",
   "loading_order": 99,
-  "js": "index.js?rmv=0.33.84",
-  "css": "style.css?rmv=0.33.84",
+  "js": "index.js?rmv=0.33.87",
+  "css": "style.css?rmv=0.33.87",
   "author": "Toto",
-  "version": "0.33.84-test.1",
+  "version": "0.33.87-test.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "TEST build based on 0.33.83: upgrades Maintenance Rabbit v1.57 with safe direct-ID classList toggle/add/remove recovery, restoring real front/back state programs before generic inert-button fallback, while preserving ritual-action recovery, fill-in-choice recovery, mother-library retrieval, Menu QR v2.2, Feedback Cat v1.4, and final output-lock order."
+  "description": "TEST build based on 0.33.86: Maintenance Rabbit v1.58 adds a verified fallback for forward labels placed before hidden checkbox/radio controls. It only binds when existing checked CSS has real result targets, prevents double toggles, verifies state at 0/60/260ms, and records the last actual result in diagnostics. Prompt rules, output lock, mother library, Menu QR v2.2, Feedback Cat v1.4, and the per-generation token meter are preserved."
 }
