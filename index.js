@@ -1,12 +1,12 @@
-import { initRabbitMirrorUI, destroyRabbitMirrorUI } from './src/ui.js?rmv=0.34.0';
-import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt } from './src/injector.js?rmv=0.34.0';
-import { clearLastCombo } from './src/storage.js?rmv=0.34.0';
-import { initVisualScanner } from './src/visualScanner.js?rmv=0.34.0';
-import { initOutputSanitizer, destroyOutputSanitizer } from './src/outputSanitizer.js?rmv=0.34.0';
-import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=0.34.0';
-import { getSettings } from './src/settings.js?rmv=0.34.0';
+import { initRabbitMirrorUI, destroyRabbitMirrorUI } from './src/ui.js?rmv=0.34.0b2';
+import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt } from './src/injector.js?rmv=0.34.0b2';
+import { clearLastCombo } from './src/storage.js?rmv=0.34.0b2';
+import { initVisualScanner } from './src/visualScanner.js?rmv=0.34.0b2';
+import { initOutputSanitizer, destroyOutputSanitizer } from './src/outputSanitizer.js?rmv=0.34.0b2';
+import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=0.34.0b2';
+import { getSettings } from './src/settings.js?rmv=0.34.0b2';
 
-const RABBIT_MIRROR_RUNTIME_VERSION = '0.34.0';
+const RABBIT_MIRROR_RUNTIME_VERSION = '0.34.0-beta.2';
 
 // Claim the active runtime before UI/DOM initialization. Versioned module URLs ensure this file and its internal graph cannot be satisfied by a stale hot-reload cache.
 try { globalThis.__rabbitMirrorFeedbackCatSyncCleanup?.(); } catch {}

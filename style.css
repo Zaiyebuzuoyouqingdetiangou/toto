@@ -119,15 +119,6 @@ toto[data-rabbit-mirror="true"] summary {
     line-height: 1.55;
 }
 
-.rabbit-mirror-settings .rabbit-mirror-qr-download {
-    margin: 5px 0 8px 26px;
-}
-.rabbit-mirror-settings .rabbit-mirror-qr-download .rabbit-mirror-subnote {
-    margin-top: 4px;
-    opacity: .72;
-    font-size: 12px;
-    line-height: 1.45;
-}
 
 /* 0.33.8 小小维修兔 v1.7：每条标题后独立入口，点击打开本地维修菜单。 */
 .rabbit-mirror-maintenance-rabbit {

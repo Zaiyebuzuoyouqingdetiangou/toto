@@ -1,6 +1,6 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=0.34.0';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=0.34.0';
-import { getLastCombo, getRecentIds, setLastCombo } from './storage.js?rmv=0.34.0';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=0.34.0b2';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=0.34.0b2';
+import { getLastCombo, getRecentIds, setLastCombo } from './storage.js?rmv=0.34.0b2';
 
 function randomInt(min, max) {
     const low = Math.min(min, max);
@@ -252,7 +252,7 @@ function parseUserDirective(message) {
         disabled: false,
         themes: uniqueThemes,
         formats: uniqueFormats,
-        source: '最后一条用户消息中的兔子镜正文指令',
+        source: '最后一条用户消息中的兔子镜手动要求',
         raw: message,
     };
 }

@@ -1,13 +1,13 @@
-import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=0.34.0';
-import { clearLastCombo } from './storage.js?rmv=0.34.0';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=0.34.0';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=0.34.0';
-import { refreshFeedbackCats, refreshMaintenanceRabbits, triggerInteractionDiagnosticOnce } from './outputSanitizer.js?rmv=0.34.0';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=0.34.0';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=0.34.0';
+import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=0.34.0b2';
+import { clearLastCombo } from './storage.js?rmv=0.34.0b2';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=0.34.0b2';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=0.34.0b2';
+import { refreshFeedbackCats, refreshMaintenanceRabbits, triggerInteractionDiagnosticOnce } from './outputSanitizer.js?rmv=0.34.0b2';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=0.34.0b2';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=0.34.0b2';
 
-const SETTINGS_UI_VERSION = '0.34.0';
-const RUNTIME_VERSION = '0.34.0';
+const SETTINGS_UI_VERSION = '0.34.0-beta.2';
+const RUNTIME_VERSION = '0.34.0-beta.2';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -184,7 +184,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[Public Beta・挨打猫 v1.4＋小小维修兔 v1.59＋Menu QR v2.2]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.34.0 Public Beta</span>
+      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[Public Beta 2・挨打猫 v1.4＋小小维修兔 v1.59]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.34.0 Beta 2</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -231,11 +231,8 @@ export function initRabbitMirrorUI() {
           <label class="checkbox_label"><input id="rh_force_visual_scenery" type="checkbox"> Visual Scenery</label>
           <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后强制生成一幅完整、统一、会持续变化的 CSS 动态视觉画面；画面本体承担持续动画，并保留由本轮内容自然产生的交互变化。</div>
 
-          <label class="checkbox_label"><input id="rh_user_directive" type="checkbox"> 用户指令优先（正文/兔子镜点播）</label>
-          <div class="rabbit-mirror-qr-download">
-            <button id="rh_download_order_qr" class="menu_button" type="button">下载 RabbitMirror 点菜 QR（v2.2）</button>
-            <div class="rabbit-mirror-subnote">下载后请在快捷回复中手动导入。</div>
-          </div>
+          <label class="checkbox_label"><input id="rh_user_directive" type="checkbox"> 用户指令优先（手动输入的兔子镜要求）</label>
+          <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">只识别最后一条用户消息中明确写出的兔子镜主题或形式要求；公开版不附带、下载或依赖任何快捷 QR。</div>
 
           <label class="checkbox_label"><input id="rh_avoid_repeat" type="checkbox"> 10轮冷却：避免重复主题/展现形式/整体观感</label>
           <div class="rabbit-mirror-subnote" style="margin:-2px 0 2px 26px;opacity:.72;font-size:12px;line-height:1.45;">仅记录已经实际生成成功的兔子镜；用于避免连续复用相近的结构骨架与整体视觉家族。</div>
@@ -356,21 +353,6 @@ export function initRabbitMirrorUI() {
     $('#rh_sampling_mode').on('change', e => updateSettings({ samplingMode: e.target.value }));
     $('#rh_raw_policy').on('change', e => updateSettings({ rawPolicy: e.target.value }));
     $('#rh_user_directive').on('change', e => updateSettings({ userDirectivePriority: e.target.checked }));
-    $('#rh_download_order_qr').on('click', () => {
-        try {
-            const link = document.createElement('a');
-            link.href = new URL('../assets/RabbitMirror-MenuQR-v2.2.json?rmv=0.34.0', import.meta.url).href;
-            link.download = 'RabbitMirror-MenuQR-v2.2.json';
-            link.rel = 'noopener';
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            toastr?.success?.('RabbitMirror 点菜 QR 已开始下载；下载后请在快捷回复中手动导入。');
-        } catch (error) {
-            console.error('[RabbitMirror] QR download failed', error);
-            toastr?.error?.('点菜 QR 下载失败，请重新安装扩展后再试。');
-        }
-    });
     $('#rh_creative_expansion').on('change', e => updateSettings({ creativeExpansionMode: e.target.checked }));
     $('#rh_force_visual_scenery').on('change', e => updateSettings({ forceVisualScenery: e.target.checked }));
     $('#rh_avoid_repeat').on('change', e => updateSettings({ avoidRepeat: e.target.checked }));

@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（Public Beta・挨打猫 v1.4・小小维修兔 v1.59）",
   "loading_order": 99,
-  "js": "index.js?rmv=0.34.0",
-  "css": "style.css?rmv=0.34.0",
+  "js": "index.js?rmv=0.34.0b2",
+  "css": "style.css?rmv=0.34.0b2",
   "author": "Toto",
-  "version": "0.34.0-beta.1",
+  "version": "0.34.0-beta.2",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "Public Beta. Maintenance Rabbit v1.59 verifies labeled checkbox second states inside an isolated hidden clone and never clicks or dispatches events on the live RabbitMirror. The per-generation token meter uses a fixed warm-light readable panel. Prompt rules, output-lock order, injection amount, mother library, Menu QR v2.2, and Feedback Cat v1.4 are unchanged. Source available, not open source; see LICENSE."
+  "description": "Public Beta 2. The public package no longer bundles, downloads, or depends on any Quick Reply menu. User directive priority now applies only to RabbitMirror requirements manually written in the latest user message. Maintenance Rabbit v1.59 keeps isolated hidden-clone verification, and the token meter keeps its fixed warm-light readable panel. Normal prompt injection and mother-library budgets are not increased. Source available, not open source; see LICENSE."
 }

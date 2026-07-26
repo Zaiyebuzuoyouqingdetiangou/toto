@@ -1,9 +1,9 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=0.34.0';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=0.34.0';
-import { pickCombination } from './picker.js?rmv=0.34.0';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown } from './storage.js?rmv=0.34.0';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=0.34.0';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=0.34.0';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=0.34.0b2';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=0.34.0b2';
+import { pickCombination } from './picker.js?rmv=0.34.0b2';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown } from './storage.js?rmv=0.34.0b2';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=0.34.0b2';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=0.34.0b2';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -342,8 +342,8 @@ ${selectedFormats}`);
 
     if (settings.userDirectivePriority && directive) {
         chunks.push(String.raw`
-用户点播优先:
-  最后一条用户输入已匹配到兔子镜点播条目；点播优先，未指定部分由插件随机补足。兔子镜不得抢占、稀释或改写主回复正文。`);
+本轮用户要求优先:
+  最后一条用户输入已明确指定兔子镜主题或形式；指定项优先，未指定部分随机补足。不得影响主回复正文。`);
     }
 
     if (settings.avoidRepeat) {
