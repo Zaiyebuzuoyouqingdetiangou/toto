@@ -1,6 +1,6 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.0.0b1';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.0.0b1';
-import { getLastCombo, getRecentIds, setLastCombo } from './storage.js?rmv=1.0.0b1';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.1.0b2';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.1.0b2';
+import { getLastCombo, getRecentIds, setLastCombo } from './storage.js?rmv=1.1.0b2';
 
 function randomInt(min, max) {
     const low = Math.min(min, max);
@@ -111,6 +111,80 @@ function weightedSample(pool, count, recentIds = [], recentGroups = [], avoidRep
         used.add(chosen.id);
     }
     return selected.length ? selected : shuffle(candidates).slice(0, Math.max(1, Math.min(count, candidates.length)));
+}
+
+function themeFamilyKey(itemOrId) {
+    const id = typeof itemOrId === 'string' ? itemOrId : itemOrId?.id;
+    const parts = String(id || '').split('.').filter(Boolean);
+    if (parts.length >= 2) return `${parts[0]}.${parts[1]}`;
+    return String(id || 'unknown');
+}
+
+function pickWeightedEntry(entries, getWeight) {
+    if (!entries.length) return null;
+    const weighted = entries.map(entry => ({
+        entry,
+        weight: Math.max(0.0001, Number(getWeight(entry)) || 0.0001),
+    }));
+    const total = weighted.reduce((sum, item) => sum + item.weight, 0);
+    let roll = Math.random() * total;
+    for (const item of weighted) {
+        roll -= item.weight;
+        if (roll <= 0) return item.entry;
+    }
+    return weighted[weighted.length - 1]?.entry || null;
+}
+
+/**
+ * 主题采用“父主题家族优先”抽取：先等权抽 A.1 / G.7 这样的家族，
+ * 再从该家族内部抽父项或子项。新增独立子主题只增加家族内部的精度，
+ * 不会因为子项数量变多而抬高整个父主题在总池中的命中率。
+ */
+function weightedThemeSample(pool, count, recentIds = [], recentGroups = [], avoidRepeat = true) {
+    const recent = new Set(recentIds || []);
+    const recentGroupSet = new Set(recentGroups || []);
+    const recentFamilySet = new Set((recentIds || []).map(themeFamilyKey));
+    const families = new Map();
+
+    for (const item of pool) {
+        const key = themeFamilyKey(item);
+        if (!families.has(key)) families.set(key, { key, group: item.group, items: [] });
+        families.get(key).items.push(item);
+    }
+
+    const familyList = [...families.values()];
+    const selected = [];
+    const usedFamilies = new Set();
+    const targetCount = Math.max(0, Math.min(Number(count) || 0, familyList.length));
+
+    while (selected.length < targetCount) {
+        const availableFamilies = familyList.filter(family => !usedFamilies.has(family.key));
+        if (!availableFamilies.length) break;
+
+        const family = pickWeightedEntry(availableFamilies, entry => {
+            let weight = 1;
+            if (avoidRepeat && recentGroupSet.has(entry.group)) weight *= 0.35;
+            if (avoidRepeat && recentFamilySet.has(entry.key)) weight *= 0.25;
+            return weight;
+        });
+        if (!family) break;
+        usedFamilies.add(family.key);
+
+        let itemCandidates = [...family.items];
+        if (avoidRepeat) {
+            const freshItems = itemCandidates.filter(item => !recent.has(item.id));
+            if (freshItems.length) itemCandidates = freshItems;
+        }
+
+        const chosen = pickWeightedEntry(itemCandidates, item => {
+            if (!avoidRepeat || !recent.has(item.id)) return 1;
+            return 0.12;
+        });
+        if (chosen) selected.push(chosen);
+    }
+
+    if (selected.length) return selected;
+    return shuffle(pool).slice(0, Math.max(1, Math.min(count, pool.length)));
 }
 
 function getLastUserMessage() {
@@ -267,7 +341,7 @@ function applyDirectiveOrRandom({ settings, themePool, formatPool, themeCount, f
         return { disabled: true, directive };
     }
 
-    const pickedThemes = weightedSample(themePool, themeCount, recent.themeIds, recent.themeGroups, settings.avoidRepeat);
+    const pickedThemes = weightedThemeSample(themePool, themeCount, recent.themeIds, recent.themeGroups, settings.avoidRepeat);
     const pickedFormats = weightedSample(formatPool, formatCount, recent.formatIds, recent.formatGroups, settings.avoidRepeat);
     const visualSceneryFormat = getVisualSceneryFormat();
     const forcedFormats = settings.forceVisualScenery && visualSceneryFormat ? [visualSceneryFormat] : [];
@@ -323,6 +397,7 @@ export function pickCombination(settings, generationScopeKey = '') {
         themeIds: result.themes.map(x => x.id),
         formatIds: result.formats.map(x => x.id),
         themeGroups: result.themes.map(x => x.group).filter(Boolean),
+        themeFamilies: result.themes.map(themeFamilyKey).filter(Boolean),
         formatGroups: result.formats.map(x => x.group).filter(Boolean),
         mode: settings.mode,
         samplingMode: settings.samplingMode || 'classic',
