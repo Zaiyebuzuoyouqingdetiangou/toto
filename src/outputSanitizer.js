@@ -1,4 +1,4 @@
-import { getSettings } from './settings.js?rmv=0.33.81';
+import { getSettings } from './settings.js?rmv=0.33.84';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -7,11 +7,11 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=0.33.81';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=0.33.81';
+} from './feedbackCat.js?rmv=0.33.84';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=0.33.84';
 
 
-const RUNTIME_VERSION = '0.33.81';
+const RUNTIME_VERSION = '0.33.84';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -1712,6 +1712,9 @@ const MARKDOWN_CSS_COMMENT_RESCUE_ATTR = 'data-rabbit-mirror-markdown-css-commen
 const PSEUDO_ACTIVE_ATTR = 'data-rm-pseudo-active';
 const pseudoInteractionStates = new WeakMap();
 const directIdClassStateStates = new WeakMap();
+// 同一目标 class 可能由“打开／关闭”两个不同按钮控制；登记所有触发器，
+// 每次执行后统一同步 aria-pressed，避免前后按钮状态互相矛盾。
+const directIdClassOperationTriggerStates = new WeakMap();
 const passportDocumentRescueStates = new WeakMap();
 
 // 统一可逆状态底座：第一次接管某个元素时，把原始内联样式写入 data 属性并保存在 WeakMap。
@@ -5131,13 +5134,38 @@ function applyDirectIdClassState(action) {
     state.applied = new Set(action.classes.filter(className => !state.baseline.has(className)));
 }
 
-function collectDirectIdClickAssignments(scriptText, root) {
+function collectDirectIdClickAssignments(scriptText, root, rawRoot = null) {
     const source = String(scriptText || '');
     if (!source || !/document\s*\.\s*getElementById\s*\(/i.test(source)) return null;
 
     const matches = [];
     const addMatch = (match, action) => {
         matches.push({ start: match.index, end: match.index + match[0].length, action });
+    };
+
+
+    const resolveRawIdTarget = rawId => {
+        const id = String(rawId || '').trim();
+        if (!rawRoot?.querySelectorAll || !id) return null;
+        return [...rawRoot.querySelectorAll('[id]')].find(element => element.id === id) || null;
+    };
+    const buildClassOperationAction = (rawId, rawClassName, operation) => {
+        const target = resolveScopedPseudoId(root, rawId);
+        const rawTarget = resolveRawIdTarget(rawId);
+        const classToken = String(rawClassName || '').trim();
+        if (!target?.classList || !rawTarget?.classList || !/^[a-zA-Z_][\w-]*$/.test(classToken)) return null;
+        const prefix = inferRenderedClassPrefix(target, [...rawTarget.classList], root);
+        const className = target.classList.contains(classToken) ? classToken : `${prefix || ''}${classToken}`;
+
+        // 仅恢复在原始／渲染 CSS 中真实出现过的状态 class，避免把任意 onclick 变成无依据状态机。
+        const rawCssText = [...(rawRoot.querySelectorAll?.('style') || [])].map(style => style.textContent || '').join('\n');
+        const renderedCssText = [...(root.querySelectorAll?.('style') || [])].map(style => style.textContent || '').join('\n');
+        const rawEvidence = new RegExp(`\\.${escapeRegExp(classToken)}(?![\\w-])`).test(rawCssText)
+            || rawTarget.classList.contains(classToken);
+        const renderedEvidence = new RegExp(`\\.${escapeRegExp(className)}(?![\\w-])`).test(renderedCssText)
+            || target.classList.contains(className);
+        if (!rawEvidence || !renderedEvidence) return null;
+        return { type: `class-${operation}`, target, className };
     };
 
     // document.getElementById('id').checked = true/false;
@@ -5177,6 +5205,15 @@ function collectDirectIdClickAssignments(scriptText, root) {
         const value = decodeSafeInlineString(match[5]);
         if (!target) return null;
         addMatch(match, { type: 'text', target, value });
+    }
+
+    // document.getElementById('id').classList.toggle/add/remove('active');
+    // 只接受固定 ID、固定 class 与三种有限操作；按原目标 class 推导宿主前缀，绝不执行原始 JavaScript。
+    const classOperationRe = /document\s*\.\s*getElementById\s*\(\s*(['"])([a-zA-Z_][\w:.-]*)\1\s*\)\s*\.\s*classList\s*\.\s*(toggle|add|remove)\s*\(\s*(['"])([a-zA-Z_][\w-]*)\4\s*\)\s*;?/gi;
+    while ((match = classOperationRe.exec(source))) {
+        const action = buildClassOperationAction(match[2], match[5], String(match[3] || '').toLowerCase());
+        if (!action) return null;
+        addMatch(match, action);
     }
 
     // document.getElementById('id').className = 'base active';
@@ -5227,6 +5264,12 @@ function applyDirectIdClickAssignments(actions) {
             }
         } else if (action.type === 'class-state') {
             applyDirectIdClassState(action);
+        } else if (action.type === 'class-toggle') {
+            action.target.classList.toggle(action.className);
+        } else if (action.type === 'class-add') {
+            action.target.classList.add(action.className);
+        } else if (action.type === 'class-remove') {
+            action.target.classList.remove(action.className);
         }
     }
 }
@@ -5765,6 +5808,39 @@ function installRawMessageSelfMutationRescue(root) {
     return installed;
 }
 
+function directIdClassOperationActions(actions) {
+    return (actions || []).filter(action => /^class-(?:toggle|add|remove)$/.test(String(action?.type || ''))
+        && action?.target?.classList && action?.className);
+}
+
+function registerDirectIdClassOperationTrigger(trigger, actions) {
+    for (const action of directIdClassOperationActions(actions)) {
+        let classMap = directIdClassOperationTriggerStates.get(action.target);
+        if (!classMap) {
+            classMap = new Map();
+            directIdClassOperationTriggerStates.set(action.target, classMap);
+        }
+        let triggers = classMap.get(action.className);
+        if (!triggers) {
+            triggers = new Set();
+            classMap.set(action.className, triggers);
+        }
+        triggers.add(trigger);
+    }
+}
+
+function syncDirectIdClassOperationTriggers(actions) {
+    for (const action of directIdClassOperationActions(actions)) {
+        const active = action.target.classList.contains(action.className);
+        const triggers = directIdClassOperationTriggerStates.get(action.target)?.get?.(action.className) || [];
+        for (const trigger of triggers) {
+            if (!trigger?.isConnected) continue;
+            trigger.setAttribute('aria-pressed', active ? 'true' : 'false');
+            trigger.setAttribute('data-rabbit-mirror-direct-id-class-active', active ? 'true' : 'false');
+        }
+    }
+}
+
 function bindDirectIdClickActions(trigger, actions) {
     if (!trigger || !actions?.length || trigger.hasAttribute(DIRECT_ID_CLICK_RESCUE_ATTR)) return false;
 
@@ -5780,8 +5856,10 @@ function bindDirectIdClickActions(trigger, actions) {
         // radio 只在成为当前选中项时执行原 onclick 的固定赋值，避免失选分支反向覆盖。
         if (event?.type === 'change' && trigger.matches?.('input[type="radio"]') && !trigger.checked) return;
         applyDirectIdClickAssignments(actions);
+        syncDirectIdClassOperationTriggers(actions);
     };
 
+    registerDirectIdClassOperationTrigger(trigger, actions);
     trigger.addEventListener('click', activate, false);
     trigger.addEventListener('keydown', activate, false);
     if (trigger.matches?.('input[type="checkbox"], input[type="radio"]')) {
@@ -5790,10 +5868,35 @@ function bindDirectIdClickActions(trigger, actions) {
     trigger.removeAttribute('onclick');
     trigger.removeAttribute('aria-pressed');
     trigger.setAttribute(DIRECT_ID_CLICK_RESCUE_ATTR, 'true');
-    if (actions.some(action => action?.type === 'class-state')) {
+    if (actions.some(action => action?.type === 'class-state' || /^class-(?:toggle|add|remove)$/.test(String(action?.type || '')))) {
         trigger.setAttribute(DIRECT_ID_CLASS_STATE_RESCUE_ATTR, 'true');
     }
+    syncDirectIdClassOperationTriggers(actions);
     return true;
+}
+
+function reclaimStaleInertActionTrigger(trigger) {
+    if (!trigger?.hasAttribute?.(INERT_ACTION_BUTTON_RESCUE_ATTR) || !trigger.parentNode) return trigger;
+    const statusId = String(trigger.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean)
+        .find(id => trigger.parentElement?.querySelector?.(`#${escapeCssIdentifier(id)}`)?.hasAttribute?.(INERT_ACTION_STATUS_ATTR));
+    const adjacentStatus = trigger.nextElementSibling?.hasAttribute?.(INERT_ACTION_STATUS_ATTR)
+        ? trigger.nextElementSibling
+        : (statusId ? trigger.parentElement?.querySelector?.(`#${escapeCssIdentifier(statusId)}`) : null);
+    adjacentStatus?.remove?.();
+
+    // 热重载时旧版通用兜底的 listener 无法直接移除；用等价克隆替换按钮，
+    // 保留结构与样式，同时清除旧 listener 和通用状态属性，再交给真实 class 状态程序接管。
+    const replacement = trigger.cloneNode(true);
+    replacement.removeAttribute(INERT_ACTION_BUTTON_RESCUE_ATTR);
+    replacement.removeAttribute('data-rabbit-mirror-inert-action-active');
+    replacement.removeAttribute('aria-pressed');
+    if (statusId) {
+        const describedBy = String(replacement.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean).filter(id => id !== statusId);
+        if (describedBy.length) replacement.setAttribute('aria-describedby', describedBy.join(' '));
+        else replacement.removeAttribute('aria-describedby');
+    }
+    trigger.replaceWith(replacement);
+    return replacement;
 }
 
 function installRawMessageDirectIdClickProgramRescue(root) {
@@ -5804,11 +5907,12 @@ function installRawMessageDirectIdClickProgramRescue(root) {
 
     let installed = 0;
     for (const rawTrigger of rawRoot.querySelectorAll('[onclick]')) {
-        const renderedTrigger = resolveRenderedCounterpart(rawRoot, root, rawTrigger, '*');
+        let renderedTrigger = resolveRenderedCounterpart(rawRoot, root, rawTrigger, '*');
         if (!renderedTrigger || renderedTrigger.hasAttribute(DIRECT_ID_CLICK_RESCUE_ATTR)) continue;
+        renderedTrigger = reclaimStaleInertActionTrigger(renderedTrigger);
 
         const source = rawTrigger.getAttribute('onclick');
-        const actions = collectDirectIdClickAssignments(source, root);
+        const actions = collectDirectIdClickAssignments(source, root, rawRoot);
         if (!actions?.length) continue;
         if (bindDirectIdClickActions(renderedTrigger, actions)) installed += 1;
     }
@@ -6482,7 +6586,7 @@ function installPseudoInteractionRescue(root) {
 }
 
 function detectInteractionCapabilities(root) {
-    if (!root?.querySelectorAll) return { checked: false, hover: false, details: false, target: false, pseudo: false, listDetail: false, maskReveal: false, stateSibling: false, buttonAdjacent: false, clickableAdjacent: false, clickablePopup: false, containerReveal: false, selfMutation: false, selectionFallback: false, disabledChoiceFallback: false, actionFallback: false, staticChoiceSelection: false, structuredStaticDisclosure: false, reversibleChecked: false };
+    if (!root?.querySelectorAll) return { checked: false, hover: false, details: false, target: false, pseudo: false, listDetail: false, maskReveal: false, stateSibling: false, buttonAdjacent: false, clickableAdjacent: false, clickablePopup: false, containerReveal: false, selfMutation: false, selectionFallback: false, disabledChoiceFallback: false, actionFallback: false, staticChoiceSelection: false, structuredStaticDisclosure: false, fillInChoice: false, reversibleChecked: false };
     const cssText = [...root.querySelectorAll('style')].map(style => style.textContent || '').join('\n');
     const outerDetails = root.matches?.('details') ? root : root.querySelector(':scope > details');
     const nestedDetails = [...root.querySelectorAll('details')].filter(item => item !== outerDetails);
@@ -6505,6 +6609,7 @@ function detectInteractionCapabilities(root) {
         actionFallback: !!root.querySelector(`[${INERT_ACTION_BUTTON_RESCUE_ATTR}]`),
         staticChoiceSelection: Number.parseInt(root.getAttribute?.(STATIC_CHOICE_SELECTION_COUNT_ATTR) || '0', 10) > 0,
         structuredStaticDisclosure: Number.parseInt(root.getAttribute?.(STRUCTURED_STATIC_DISCLOSURE_COUNT_ATTR) || '0', 10) > 0,
+        fillInChoice: Number.parseInt(root.getAttribute?.(FILL_IN_CHOICE_COUNT_ATTR) || '0', 10) > 0,
         passportDocument: (passportDocumentRescueStates.get(root)?.entries?.length || 0) > 0,
         reversibleChecked: Number.parseInt(root.getAttribute?.(REVERSIBLE_CHECKED_RESULT_ROOT_ATTR) || '0', 10) > 0,
     };
@@ -7809,7 +7914,8 @@ function refreshTouchHoverRescue(toto) {
         // 按钮后置隐藏内容已经由可逆揭示路线接管；不要再叠加持久 hover 状态。
         if (hoverTarget.hasAttribute?.(RENDERED_CSS_STATE_SIBLING_RESCUE_ATTR)
             || hoverTarget.hasAttribute?.(RENDERED_BUTTON_ADJACENT_HIDDEN_RESCUE_ATTR)
-            || hoverTarget.hasAttribute?.(RENDERED_CLICKABLE_ADJACENT_POPUP_RESCUE_ATTR)) return;
+            || hoverTarget.hasAttribute?.(RENDERED_CLICKABLE_ADJACENT_POPUP_RESCUE_ATTR)
+            || hoverTarget.hasAttribute?.(FILL_IN_CHOICE_BLANK_ATTR)) return;
 
         const isActive = hoverTarget.getAttribute(TOUCH_HOVER_ATTR) === 'true';
         if (isActive) hoverTarget.removeAttribute(TOUCH_HOVER_ATTR);
@@ -8216,6 +8322,18 @@ const STRUCTURED_STATIC_DISCLOSURE_OPEN_ATTR = 'data-rm-structured-static-disclo
 const STRUCTURED_STATIC_DISCLOSURE_COUNT_ATTR = 'data-rabbit-mirror-structured-static-disclosure-count';
 const STRUCTURED_STATIC_DISCLOSURE_STYLE_ATTR = 'data-rabbit-mirror-structured-static-disclosure-style';
 const structuredStaticDisclosureRescueStates = new WeakMap();
+const FILL_IN_CHOICE_RESCUE_ATTR = 'data-rabbit-mirror-fill-in-choice-rescue';
+const FILL_IN_CHOICE_BLANK_ATTR = 'data-rm-fill-in-choice-blank';
+const FILL_IN_CHOICE_ACTIVE_ATTR = 'data-rm-fill-in-choice-active';
+const FILL_IN_CHOICE_FILLED_ATTR = 'data-rm-fill-in-choice-filled';
+const FILL_IN_CHOICE_CODE_ATTR = 'data-rm-fill-in-choice-code';
+const FILL_IN_CHOICE_OPTION_ATTR = 'data-rm-fill-in-choice-option';
+const FILL_IN_CHOICE_AVAILABLE_ATTR = 'data-rm-fill-in-choice-available';
+const FILL_IN_CHOICE_SELECTED_ATTR = 'data-rm-fill-in-choice-selected';
+const FILL_IN_CHOICE_USED_ATTR = 'data-rm-fill-in-choice-used';
+const FILL_IN_CHOICE_COUNT_ATTR = 'data-rabbit-mirror-fill-in-choice-count';
+const FILL_IN_CHOICE_STYLE_ATTR = 'data-rabbit-mirror-fill-in-choice-style';
+const fillInChoiceRescueStates = new WeakMap();
 const MOBILE_LAYOUT_RESCUE_STYLE_ATTR = 'data-rabbit-mirror-mobile-layout-rescue';
 const MOBILE_LAYOUT_SCOPE_ATTR = 'data-rabbit-mirror-mobile-layout-scope';
 const MOBILE_LAYOUT_RESCUE_COUNT_ATTR = 'data-rabbit-mirror-mobile-layout-count';
@@ -8267,7 +8385,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '0.33.81-TEST-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.33.84-TEST-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -8411,6 +8529,7 @@ function diagnosticRouteSummary(root) {
         inertAction: root?.querySelectorAll?.(`[${INERT_ACTION_BUTTON_RESCUE_ATTR}]`)?.length || 0,
         staticChoiceSelection: Number.parseInt(root?.getAttribute?.(STATIC_CHOICE_SELECTION_COUNT_ATTR) || '0', 10) || 0,
         structuredStaticDisclosure: Number.parseInt(root?.getAttribute?.(STRUCTURED_STATIC_DISCLOSURE_COUNT_ATTR) || '0', 10) || 0,
+        fillInChoice: Number.parseInt(root?.getAttribute?.(FILL_IN_CHOICE_COUNT_ATTR) || '0', 10) || 0,
         passportDocument: passportDocumentRescueStates.get(root)?.entries?.length || 0,
         decorativeOverlayPassThrough: root?.querySelectorAll?.(`[${DECORATIVE_OVERLAY_PASS_THROUGH_ATTR}]`)?.length || 0,
         touchHoverEligible: root?.querySelectorAll?.(`[${TOUCH_HOVER_READY_ATTR}]`)?.length || 0,
@@ -8421,7 +8540,7 @@ function diagnosticRouteSummary(root) {
 function diagnosticInferReason(root, inputs, targets, state = null) {
     const routes = diagnosticRouteSummary(root);
     const depth = maintenanceCheckedInteractionDepth(root);
-    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.stateSibling + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.focusToChecked + routes.checkedTextRule + routes.crossParentChecked + routes.checkedHasState + routes.pairedCheckedState + routes.exclusiveStackedState + routes.channelDialCycle + routes.expandedOpacity + routes.containerReveal + routes.selfMutation + routes.classStateProgram + routes.cssCommentRepair + routes.changeProgram + routes.unlabeledChecked + routes.selectionFallback + routes.disabledChoice + routes.inertAction + routes.staticChoiceSelection + routes.passportDocument + routes.decorativeOverlayPassThrough;
+    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.stateSibling + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.focusToChecked + routes.checkedTextRule + routes.crossParentChecked + routes.checkedHasState + routes.pairedCheckedState + routes.exclusiveStackedState + routes.channelDialCycle + routes.expandedOpacity + routes.containerReveal + routes.selfMutation + routes.classStateProgram + routes.cssCommentRepair + routes.changeProgram + routes.unlabeledChecked + routes.selectionFallback + routes.disabledChoice + routes.inertAction + routes.staticChoiceSelection + routes.structuredStaticDisclosure + routes.fillInChoice + routes.passportDocument + routes.decorativeOverlayPassThrough;
     const checkedInputs = inputs.filter(input => input.checked);
     const visibleTargets = targets.filter(target => {
         const style = diagnosticComputedStyle(target);
@@ -8441,6 +8560,9 @@ function diagnosticInferReason(root, inputs, targets, state = null) {
         return '当前只有 Hover／Active 的变色、背景或轻微位移，没有可保持状态或第二层内容。';
     }
     const reachability = maintenanceReachableInteractionEvidence(root, routes, depth, pseudoDepth, getRawAssistantMessageForRenderedRoot(root));
+    if (!inputs.length && routes.fillInChoice > 0) {
+        return '已把原有填空与候选碎片恢复为可选择、可改选、可清除的保持状态；只使用源码现有候选，不补写新答案。';
+    }
     if (!inputs.length && routes.staticChoiceSelection > 0) {
         return '已把原有的静态抉择卡片恢复为互斥、可撤回的选择状态；只记录当前选项，不编造缺失的后续剧情。';
     }
@@ -9162,6 +9284,8 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
     const nestedDetailsPopupCandidateCount = findNestedDetailsPopupClippingCandidates(root).length;
     const mobileInlineAnnotationCandidateCount = findMobileInlineAnnotationCandidates(root).length;
     const structuredStaticDisclosureCandidateCount = findStructuredStaticDisclosureCandidates(root).length;
+    const fillInChoiceCandidateCount = findFillInChoiceCandidates(root)
+        .reduce((sum, candidate) => sum + Number(candidate.blanks?.length || 0), 0);
     const title = diagnosticCompactText(root.querySelector('summary')?.textContent, 64);
     const code = diagnosticCodeRescueSummary(root);
     const full = diagnosticFullChainSummary(root, code);
@@ -9269,6 +9393,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `无动作按钮兜底 entries=${routes.inertAction} listener=${routes.inertAction ? 'true' : 'false'}`,
         `静态抉择选择 entries=${routes.staticChoiceSelection} listener=${routes.staticChoiceSelection ? 'true' : 'false'}`,
         `结构化静态分段 candidates=${structuredStaticDisclosureCandidateCount} entries=${routes.structuredStaticDisclosure} listener=${routes.structuredStaticDisclosure ? 'true' : 'false'}`,
+        `填空候选恢复 candidates=${fillInChoiceCandidateCount} entries=${routes.fillInChoice} listener=${routes.fillInChoice ? 'true' : 'false'}`,
         `iOS 3D翻面兼容 patches=${routes.webkit3dFlip} evidence=${formatWebKit3DFlipEvidence(root)}`,
         `label fallback=${root.dataset.rabbitMirrorLabelFallback || root.dataset.rabbitMirrorCheckedFallback || root.dataset.rabbitMirrorInteractionFallback || 'unknown'}`,
         '',
@@ -9801,6 +9926,356 @@ function installStaticChoiceSelectionFallback(root) {
 }
 
 
+const FILL_IN_CHOICE_PLACEHOLDER_RE = /(?:[_＿]{3,}|…{2,}|\.\.\.{1,}|待填|填空|请填|blank|fill[\s_-]*in)/i;
+const FILL_IN_CHOICE_HINT_RE = /(?:选项|候选|可选|答案|option|choice).{0,40}(?:待填|可选|选择|choose|fill)?/i;
+const FILL_IN_CHOICE_CONTEXT_RE = /(?:填空|待填|候选|选项|答案|行为碎片|fill[\s_-]*in|blank|choice|option)/i;
+
+function fillInChoiceDirectTextNode(element) {
+    if (!element?.childNodes) return null;
+    let fallback = null;
+    for (const node of element.childNodes) {
+        if (node?.nodeType !== 3) continue;
+        fallback ||= node;
+        if (FILL_IN_CHOICE_PLACEHOLDER_RE.test(String(node.nodeValue || ''))) return node;
+    }
+    return fallback;
+}
+
+function fillInChoiceDirectText(element) {
+    if (!element?.childNodes) return '';
+    return [...element.childNodes]
+        .filter(node => node?.nodeType === 3)
+        .map(node => String(node.nodeValue || ''))
+        .join(' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function fillInChoiceExtractCodes(value) {
+    const raw = String(value || '').toUpperCase().replace(/／/g, '/');
+    const found = [];
+    const add = code => {
+        const clean = String(code || '').trim().toUpperCase();
+        if (!/^[A-Z0-9]{1,3}$/.test(clean) || found.includes(clean)) return;
+        found.push(clean);
+    };
+    for (const match of raw.matchAll(/\[\s*([A-Z0-9]{1,3})\s*\]/g)) add(match[1]);
+    const stripped = raw
+        .replace(/(?:选项|候选|可选|答案|OPTION|CHOICE|待填|填写|填空|请选择|选择|CHOOSE|FILL\s*IN)/g, ' ')
+        .replace(/[()（）【】\[\]]/g, ' ');
+    for (const token of stripped.split(/[\/、,，;；|\s]+/)) add(token);
+    return found;
+}
+
+function fillInChoiceBlankEvidence(element) {
+    if (!element || diagnosticIsInternalUiNode(element)) return null;
+    const tag = String(element.tagName || '').toLowerCase();
+    if (!/^(?:span|div|p|em|strong|b|i|code|small)$/.test(tag)) return null;
+    if (element.querySelector?.('button, input, select, textarea, a[href], label, details, summary')) return null;
+    const directText = fillInChoiceDirectText(element);
+    const semantic = `${element.id || ''} ${getClassTokens(element).join(' ')} ${element.getAttribute?.('title') || ''}`;
+    if (!FILL_IN_CHOICE_PLACEHOLDER_RE.test(`${directText} ${semantic}`)) return null;
+
+    let hintNode = null;
+    let allowedCodes = [];
+    for (const node of element.querySelectorAll?.('*') || []) {
+        const hint = diagnosticCompactText(node.textContent || '', 180);
+        if (!FILL_IN_CHOICE_HINT_RE.test(hint)) continue;
+        const codes = fillInChoiceExtractCodes(hint);
+        if (!codes.length) continue;
+        hintNode = node;
+        allowedCodes = codes;
+        break;
+    }
+    if (!allowedCodes.length) {
+        const fallbackHint = `${element.getAttribute?.('aria-label') || ''} ${element.getAttribute?.('title') || ''}`;
+        allowedCodes = fillInChoiceExtractCodes(fallbackHint);
+    }
+    if (!allowedCodes.length) return null;
+    const textNode = fillInChoiceDirectTextNode(element);
+    if (!textNode) return null;
+    return {
+        blank: element,
+        textNode,
+        originalText: String(textNode.nodeValue || ''),
+        placeholder: directText || '_______',
+        hintNode,
+        allowedCodes,
+    };
+}
+
+function fillInChoiceOptionEvidence(element) {
+    if (!element || diagnosticIsInternalUiNode(element)) return null;
+    const tag = String(element.tagName || '').toLowerCase();
+    if (!/^(?:div|li|p|span|article|section)$/.test(tag)) return null;
+    if (element.querySelector?.('button, input, select, textarea, a[href], label, details, summary')) return null;
+    const directTag = [...(element.children || [])].find(child => /^\s*\[[A-Z0-9]{1,3}\]\s*$/i.test(String(child.textContent || '')));
+    let code = '';
+    let tagText = '';
+    if (directTag) {
+        tagText = String(directTag.textContent || '').trim();
+        code = fillInChoiceExtractCodes(tagText)[0] || '';
+    } else {
+        const directText = fillInChoiceDirectText(element);
+        const match = /^\s*\[([A-Z0-9]{1,3})\]\s*/i.exec(directText);
+        if (!match) return null;
+        code = String(match[1] || '').toUpperCase();
+        tagText = match[0];
+    }
+    if (!code) return null;
+    const allText = diagnosticCompactText(element.textContent || '', 240);
+    const label = diagnosticCompactText(allText.replace(tagText, ''), 180);
+    if (label.length < 2 || label.length > 160) return null;
+    const nestedTagged = [...(element.querySelectorAll?.('div, li, p, span, article, section') || [])]
+        .filter(node => node !== element && node !== directTag)
+        .some(node => {
+            const direct = fillInChoiceDirectText(node);
+            const total = diagnosticCompactText(node.textContent || '', 220);
+            return /^\s*\[[A-Z0-9]{1,3}\]/i.test(direct) && total.replace(direct, '').trim().length >= 2;
+        });
+    if (nestedTagged) return null;
+    return { option: element, code, label };
+}
+
+function fillInChoiceHasExistingControl(root) {
+    if (!root?.querySelectorAll) return true;
+    const outerDetails = root.matches?.('details') ? root : root.querySelector?.(':scope > details');
+    const outerSummary = outerDetails?.querySelector?.(':scope > summary') || null;
+    return diagnosticQueryContentAll(root, 'button, input:not([type="hidden"]), select, textarea, a[href], label, details, summary, [contenteditable="true"], [popovertarget], [commandfor]')
+        .some(element => {
+            if (outerSummary && (element === outerSummary || outerSummary.contains?.(element))) return false;
+            if (element === outerDetails) return false;
+            if (element.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}]`)) return false;
+            return true;
+        });
+}
+
+function findFillInChoiceCandidates(root) {
+    if (!root?.querySelectorAll || fillInChoiceHasExistingControl(root)) return [];
+    if (Number.parseInt(root.getAttribute?.(FILL_IN_CHOICE_COUNT_ATTR) || '0', 10) > 0) return [];
+
+    const blanks = diagnosticQueryContentAll(root, 'span, div, p, em, strong, b, i, code, small')
+        .map(fillInChoiceBlankEvidence)
+        .filter(Boolean)
+        .filter(entry => !entry.blank.closest?.(`[${FILL_IN_CHOICE_RESCUE_ATTR}]`));
+    if (!blanks.length || blanks.length > 12) return [];
+
+    const options = diagnosticQueryContentAll(root, 'div, li, p, span, article, section')
+        .map(fillInChoiceOptionEvidence)
+        .filter(Boolean);
+    if (options.length < 2 || options.length > 36) return [];
+
+    const optionCodes = new Set(options.map(item => item.code));
+    const matchedBlanks = blanks.map(entry => ({
+        ...entry,
+        allowedCodes: entry.allowedCodes.filter(code => optionCodes.has(code)),
+    })).filter(entry => entry.allowedCodes.length > 0);
+    if (!matchedBlanks.length) return [];
+
+    const usedCodes = new Set(matchedBlanks.flatMap(entry => entry.allowedCodes));
+    const matchedOptions = options.filter(item => usedCodes.has(item.code));
+    if (matchedOptions.length < 2) return [];
+    const contextText = diagnosticCompactText(root.textContent || '', 2600);
+    if (!FILL_IN_CHOICE_CONTEXT_RE.test(contextText)) return [];
+    if (matchedBlanks.length === 1 && matchedOptions.length < 2) return [];
+    return [{ blanks: matchedBlanks, options: matchedOptions }];
+}
+
+function ensureFillInChoiceStyle(root) {
+    let style = root.querySelector?.(`style[${FILL_IN_CHOICE_STYLE_ATTR}]`);
+    if (!style) {
+        style = document.createElement('style');
+        style.setAttribute(FILL_IN_CHOICE_STYLE_ATTR, 'true');
+        root.appendChild(style);
+    }
+    style.textContent = `
+[${FILL_IN_CHOICE_BLANK_ATTR}] { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+[${FILL_IN_CHOICE_BLANK_ATTR}][${FILL_IN_CHOICE_ACTIVE_ATTR}="true"] { outline: 2px solid currentColor !important; outline-offset: 3px !important; }
+[${FILL_IN_CHOICE_BLANK_ATTR}][${FILL_IN_CHOICE_FILLED_ATTR}="true"] { font-style: normal !important; min-width: 0 !important; }
+[${FILL_IN_CHOICE_OPTION_ATTR}] { cursor: pointer !important; touch-action: manipulation; -webkit-tap-highlight-color: transparent; transition: opacity .16s ease, outline-color .16s ease, transform .16s ease; }
+[${FILL_IN_CHOICE_RESCUE_ATTR}="active"] [${FILL_IN_CHOICE_OPTION_ATTR}][${FILL_IN_CHOICE_AVAILABLE_ATTR}="false"] { opacity: .34 !important; pointer-events: none !important; }
+[${FILL_IN_CHOICE_OPTION_ATTR}][${FILL_IN_CHOICE_SELECTED_ATTR}="true"] { outline: 2px solid currentColor !important; outline-offset: 2px !important; }
+[${FILL_IN_CHOICE_OPTION_ATTR}][${FILL_IN_CHOICE_USED_ATTR}="true"] { box-shadow: inset 0 0 0 1px currentColor !important; }
+[${FILL_IN_CHOICE_BLANK_ATTR}]:focus-visible, [${FILL_IN_CHOICE_OPTION_ATTR}]:focus-visible { outline: 2px solid currentColor !important; outline-offset: 3px !important; }
+`;
+}
+
+function fillInChoiceSetBlankText(entry, value) {
+    if (!entry?.textNode) return;
+    entry.textNode.nodeValue = String(value ?? '');
+}
+
+function applyFillInChoiceState(state) {
+    if (!state?.root) return;
+    state.root.setAttribute(FILL_IN_CHOICE_RESCUE_ATTR, state.activeEntry ? 'active' : 'true');
+    for (const entry of state.entries) {
+        const active = state.activeEntry === entry;
+        entry.blank.setAttribute(FILL_IN_CHOICE_ACTIVE_ATTR, active ? 'true' : 'false');
+        entry.blank.setAttribute(FILL_IN_CHOICE_FILLED_ATTR, entry.selectedCode ? 'true' : 'false');
+        if (entry.selectedCode) entry.blank.setAttribute(FILL_IN_CHOICE_CODE_ATTR, entry.selectedCode);
+        else entry.blank.removeAttribute(FILL_IN_CHOICE_CODE_ATTR);
+        entry.blank.setAttribute('aria-expanded', active ? 'true' : 'false');
+        entry.blank.setAttribute('aria-label', entry.selectedLabel
+            ? `已填：${entry.selectedLabel}；点击修改，Delete 清除`
+            : '待填空；点击后选择现有候选项');
+    }
+    for (const item of state.options) {
+        const available = !state.activeEntry || state.activeEntry.allowedCodes.includes(item.code);
+        const selected = !!state.activeEntry && state.activeEntry.selectedCode === item.code;
+        const used = state.entries.some(entry => entry.selectedCode === item.code);
+        item.option.setAttribute(FILL_IN_CHOICE_AVAILABLE_ATTR, available ? 'true' : 'false');
+        item.option.setAttribute(FILL_IN_CHOICE_SELECTED_ATTR, selected ? 'true' : 'false');
+        item.option.setAttribute(FILL_IN_CHOICE_USED_ATTR, used ? 'true' : 'false');
+        item.option.setAttribute('aria-disabled', available ? 'false' : 'true');
+        item.option.setAttribute('aria-selected', selected ? 'true' : 'false');
+        item.option.tabIndex = available ? 0 : -1;
+    }
+}
+
+function fillInChoiceClearEntry(state, entry, { focus = true } = {}) {
+    if (!entry) return;
+    entry.selectedCode = '';
+    entry.selectedLabel = '';
+    fillInChoiceSetBlankText(entry, entry.originalText || entry.placeholder || '_______');
+    state.activeEntry = null;
+    applyFillInChoiceState(state);
+    if (focus) entry.blank.focus?.();
+}
+
+function fillInChoiceSelectOption(state, entry, optionEntry) {
+    if (!entry || !optionEntry || !entry.allowedCodes.includes(optionEntry.code)) return;
+    if (entry.selectedCode === optionEntry.code) {
+        fillInChoiceClearEntry(state, entry);
+        return;
+    }
+    entry.selectedCode = optionEntry.code;
+    entry.selectedLabel = optionEntry.label;
+    fillInChoiceSetBlankText(entry, optionEntry.label);
+    state.activeEntry = null;
+    applyFillInChoiceState(state);
+    entry.blank.focus?.();
+}
+
+function fillInChoiceEligibleOptions(state) {
+    if (!state?.activeEntry) return state?.options || [];
+    return state.options.filter(item => state.activeEntry.allowedCodes.includes(item.code));
+}
+
+function installFillInChoiceFallback(root) {
+    if (!root?.querySelectorAll) return 0;
+    const candidates = findFillInChoiceCandidates(root);
+    if (!candidates.length) return Number.parseInt(root.getAttribute?.(FILL_IN_CHOICE_COUNT_ATTR) || '0', 10) || 0;
+
+    ensureFillInChoiceStyle(root);
+    let state = fillInChoiceRescueStates.get(root);
+    if (!state) {
+        state = { root, entries: [], options: [], activeEntry: null };
+        fillInChoiceRescueStates.set(root, state);
+    }
+    let installed = 0;
+
+    for (const candidate of candidates) {
+        for (const rawEntry of candidate.blanks) {
+            if (state.entries.some(entry => entry.blank === rawEntry.blank)) continue;
+            const entry = { ...rawEntry, selectedCode: '', selectedLabel: '' };
+            entry.blank.setAttribute(FILL_IN_CHOICE_BLANK_ATTR, 'true');
+            entry.blank.setAttribute('role', 'button');
+            if (!entry.blank.hasAttribute('tabindex')) entry.blank.tabIndex = 0;
+            state.entries.push(entry);
+            installed += 1;
+
+            entry.blank.addEventListener('click', event => {
+                if (event.target?.closest?.(`[${FILL_IN_CHOICE_OPTION_ATTR}]`)) return;
+                state.activeEntry = state.activeEntry === entry ? null : entry;
+                applyFillInChoiceState(state);
+            }, false);
+            entry.blank.addEventListener('keydown', event => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    state.activeEntry = state.activeEntry === entry ? null : entry;
+                    applyFillInChoiceState(state);
+                    if (state.activeEntry === entry) fillInChoiceEligibleOptions(state)[0]?.option?.focus?.();
+                    return;
+                }
+                if ((event.key === 'Delete' || event.key === 'Backspace') && entry.selectedCode) {
+                    event.preventDefault();
+                    fillInChoiceClearEntry(state, entry);
+                    return;
+                }
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    state.activeEntry = null;
+                    applyFillInChoiceState(state);
+                }
+            }, false);
+        }
+
+        for (const rawOption of candidate.options) {
+            if (state.options.some(item => item.option === rawOption.option)) continue;
+            const item = { ...rawOption };
+            item.option.setAttribute(FILL_IN_CHOICE_OPTION_ATTR, 'true');
+            item.option.setAttribute(FILL_IN_CHOICE_CODE_ATTR, item.code);
+            item.option.setAttribute('role', 'option');
+            if (!item.option.hasAttribute('tabindex')) item.option.tabIndex = 0;
+            state.options.push(item);
+
+            const choose = event => {
+                if (event?.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ') return;
+                if (event?.type === 'keydown') event.preventDefault();
+                let entry = state.activeEntry;
+                if (!entry || !entry.allowedCodes.includes(item.code)) {
+                    const eligible = state.entries.filter(candidateEntry => candidateEntry.allowedCodes.includes(item.code));
+                    entry = eligible.find(candidateEntry => !candidateEntry.selectedCode) || eligible[0] || null;
+                }
+                if (!entry) return;
+                fillInChoiceSelectOption(state, entry, item);
+            };
+            item.option.addEventListener('click', choose, false);
+            item.option.addEventListener('keydown', event => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    choose(event);
+                    return;
+                }
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    const active = state.activeEntry;
+                    state.activeEntry = null;
+                    applyFillInChoiceState(state);
+                    active?.blank?.focus?.();
+                    return;
+                }
+                const eligible = fillInChoiceEligibleOptions(state);
+                const currentIndex = eligible.indexOf(item);
+                if (currentIndex < 0) return;
+                let nextIndex = currentIndex;
+                if (event.key === 'ArrowDown' || event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % eligible.length;
+                else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + eligible.length) % eligible.length;
+                else if (event.key === 'Home') nextIndex = 0;
+                else if (event.key === 'End') nextIndex = eligible.length - 1;
+                else return;
+                event.preventDefault();
+                eligible[nextIndex]?.option?.focus?.();
+            }, false);
+        }
+    }
+
+    if (installed > 0 && !state.outsideListenerInstalled) {
+        root.addEventListener('click', event => {
+            if (!state.activeEntry) return;
+            if (event.target?.closest?.(`[${FILL_IN_CHOICE_BLANK_ATTR}], [${FILL_IN_CHOICE_OPTION_ATTR}]`)) return;
+            state.activeEntry = null;
+            applyFillInChoiceState(state);
+        }, false);
+        state.outsideListenerInstalled = true;
+    }
+
+    const total = state.entries.length;
+    if (total) root.setAttribute(FILL_IN_CHOICE_COUNT_ATTR, String(total));
+    applyFillInChoiceState(state);
+    return installed;
+}
+
+
 function structuredStaticDisclosureInlineStyle(element) {
     return String(element?.getAttribute?.('style') || '').toLowerCase();
 }
@@ -9998,7 +10473,20 @@ function installStructuredStaticDisclosureFallback(root) {
     return installed;
 }
 
-const INERT_ACTION_BUTTON_TEXT_RE = /(?:确认|提交|下注|买定离手|继续|下一步|开始|启动|执行|打开|查看|领取|解锁|发送|保存|进入|揭示|抽取|投票|选择|决定|confirm|submit|continue|next|start|launch|execute|open|view|claim|unlock|send|save|enter|reveal|draw|vote|choose|bet|place\s+bet)/i;
+const INERT_ACTION_BUTTON_TEXT_RE = /(?:确认|提交|下注|买定离手|继续|下一步|开始|启动|执行|打开|查看|领取|解锁|发送|保存|进入|揭示|抽取|投票|选择|决定|叩谢|拜谢|谢神|参拜|叩拜|礼拜|合掌|祈愿|祈福|还愿|上香|奉纳|致谢|道谢|感谢|confirm|submit|continue|next|start|launch|execute|open|view|claim|unlock|send|save|enter|reveal|draw|vote|choose|bet|place\s+bet|pray|worship|give\s+thanks|offer\s+thanks)/i;
+const INERT_ACTION_RITUAL_TEXT_RE = /(?:叩谢|拜谢|谢神|参拜|叩拜|礼拜|合掌|祈愿|祈福|还愿|上香|奉纳|致谢|道谢|感谢|pray|worship|give\s+thanks|offer\s+thanks)/i;
+let inertActionStatusCounter = 0;
+
+function inertActionStatusMessage(button) {
+    const rawLabel = diagnosticCompactText(button?.textContent || button?.getAttribute?.('aria-label') || '', 80)
+        .replace(/[。！？!?]+$/g, '')
+        .trim();
+    const label = rawLabel || '当前操作';
+    if (INERT_ACTION_RITUAL_TEXT_RE.test(label)) {
+        return `“${label}”状态已记录。原始输出没有提供额外结果；再次点击可撤回。`;
+    }
+    return `“${label}”已记录。原始输出没有提供对应的后续结果内容；再次点击可撤回。`;
+}
 
 function buttonHasKnownInteractionRoute(button, root) {
     if (!button || !root) return true;
@@ -10045,10 +10533,15 @@ function installInertActionButtonFallback(root) {
         status.setAttribute(INERT_ACTION_STATUS_ATTR, 'true');
         status.setAttribute('role', 'status');
         status.setAttribute('aria-live', 'polite');
+        status.id = `rm-inert-action-status-${(++inertActionStatusCounter).toString(36)}`;
         status.hidden = true;
         status.style.cssText = 'display:none;box-sizing:border-box;width:100%;margin-top:10px;padding:10px 12px;border:1px dashed currentColor;border-radius:6px;font-size:13px;line-height:1.55;opacity:.8;';
-        status.textContent = '操作已记录。原始输出没有提供对应的后续结果内容；再次点击可撤回。';
+        status.textContent = inertActionStatusMessage(button);
         button.insertAdjacentElement('afterend', status);
+
+        const describedBy = String(button.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+        if (!describedBy.includes(status.id)) describedBy.push(status.id);
+        button.setAttribute('aria-describedby', describedBy.join(' '));
 
         let active = false;
         const render = () => {
@@ -10485,16 +10978,20 @@ function maintenanceReachableInteractionEvidence(root, routeSummary, checkedDept
         + Number(routeSummary.inertAction || 0)
         + Number(routeSummary.staticChoiceSelection || 0)
         + Number(routeSummary.structuredStaticDisclosure || 0)
+        + Number(routeSummary.fillInChoice || 0)
         + Number(routeSummary.passportDocument || 0);
 
     const rawStateProgram = /\bon(?:click|change|input)\s*=|setAttribute\s*\(\s*['"]data-|classList\.(?:add|remove|toggle)|\.checked\s*=|:checked\b|:target\b/i.test(String(raw || ''));
     const nestedDetailsCount = diagnosticQueryContentAll(root, 'details').filter(details => details !== outerDetails).length;
     const staticChoiceCandidateCount = findStaticChoiceSelectionCandidates(root).length;
     const structuredStaticDisclosureCandidateCount = findStructuredStaticDisclosureCandidates(root).length;
+    const fillInChoiceCandidateCount = findFillInChoiceCandidates(root)
+        .reduce((sum, candidate) => sum + Number(candidate.blanks?.length || 0), 0);
     const noInteractionStructure = contentInteractiveElementCount === 0
         && installedInteractionRouteCount === 0
         && staticChoiceCandidateCount === 0
         && structuredStaticDisclosureCandidateCount === 0
+        && fillInChoiceCandidateCount === 0
         && Number(checkedDepth?.checkedRuleCount || 0) === 0
         && Number(pseudoDepth?.pseudoRuleCount || 0) === 0
         && nestedDetailsCount === 0
@@ -10520,7 +11017,7 @@ function maintenanceKnownInteractionEvidence(root, full, code) {
         + routeSummary.checkedTextRule + routeSummary.crossParentChecked + routeSummary.checkedHasState + routeSummary.pairedCheckedState + routeSummary.expandedOpacity
         + routeSummary.reversibleChecked
         + routeSummary.containerReveal + routeSummary.selfMutation + routeSummary.classStateProgram + routeSummary.changeProgram
-        + routeSummary.unlabeledChecked + routeSummary.selectionFallback + routeSummary.disabledChoice + routeSummary.inertAction + routeSummary.staticChoiceSelection + routeSummary.structuredStaticDisclosure + routeSummary.passportDocument;
+        + routeSummary.unlabeledChecked + routeSummary.selectionFallback + routeSummary.disabledChoice + routeSummary.inertAction + routeSummary.staticChoiceSelection + routeSummary.structuredStaticDisclosure + routeSummary.fillInChoice + routeSummary.passportDocument;
     const innerDetailsCount = diagnosticQueryContentAll(root, 'details').length;
     const hasTargetRoute = !!root?.querySelector?.('a[href^="#"]') && /:target\b/i.test(raw);
     const hasPopoverRoute = !!root?.querySelector?.('[popovertarget], [commandfor], [popover]');
@@ -10565,6 +11062,9 @@ function maintenanceKnownInteractionEvidence(root, full, code) {
         ? findStructuredStaticDisclosureCandidates(root).length
         : 0;
     const structuredStaticDisclosureRescueCount = Number.parseInt(root.getAttribute?.(STRUCTURED_STATIC_DISCLOSURE_COUNT_ATTR) || '0', 10) || 0;
+    const fillInChoiceCandidateCount = findFillInChoiceCandidates(root)
+        .reduce((sum, candidate) => sum + Number(candidate.blanks?.length || 0), 0);
+    const fillInChoiceRescueCount = Number.parseInt(root.getAttribute?.(FILL_IN_CHOICE_COUNT_ATTR) || '0', 10) || 0;
     // 只有选中项外观变化时，补 Hover 也不会生成缺失的第二层内容，不能误导为可修复交互。
     const touchHoverMissing = !checkedDepth.checkedSelectionOnly
         && isLikelyTouchDevice()
@@ -10576,7 +11076,7 @@ function maintenanceKnownInteractionEvidence(root, full, code) {
     const unscopedControls = (full.inputCount > 0 || full.buttonCount > 0)
         && root.dataset?.rabbitMirrorInteractionScoped !== 'true';
     const reachability = maintenanceReachableInteractionEvidence(root, routeSummary, checkedDepth, pseudoDepth, raw);
-    return { checkedControlsLost, strippedStateProgram, lostInlineStatePrograms, recoveredInlineStatePrograms, decorativeOverlayCandidateCount, touchHoverMissing, unscopedControls, radioGroupLossCandidateCount, radioGroupRescueCount, selectionOnlyRepairCandidateCount, disabledOnlyChoiceCandidateCount, inertActionButtonCandidateCount, staticChoiceSelectionCandidateCount, staticChoiceSelectionRescueCount, structuredStaticDisclosureCandidateCount, structuredStaticDisclosureRescueCount, crossParentCheckedRuleCandidateCount, checkedHasStateRuleCandidateCount, checkedHasStateRuleRescueCount, checkedHasStateRuleMissingCount, pairedCheckedStateCandidateCount, pairedCheckedStateRescueCount, pairedCheckedStateMissingCount, exclusiveStackedStateCandidateCount, exclusiveStackedStateRescueCount, exclusiveStackedStateMissingCount, channelDialCycleCandidateCount, channelDialCycleRescueCount, channelDialCycleMissingCount, oneWayCheckedResultCandidateCount, reversibleCheckedResultRescueCount, pseudoVisualOnly, raw, ...scopeEvidence, ...checkedDepth, ...pseudoDepth, ...reachability };
+    return { checkedControlsLost, strippedStateProgram, lostInlineStatePrograms, recoveredInlineStatePrograms, decorativeOverlayCandidateCount, touchHoverMissing, unscopedControls, radioGroupLossCandidateCount, radioGroupRescueCount, selectionOnlyRepairCandidateCount, disabledOnlyChoiceCandidateCount, inertActionButtonCandidateCount, staticChoiceSelectionCandidateCount, staticChoiceSelectionRescueCount, structuredStaticDisclosureCandidateCount, structuredStaticDisclosureRescueCount, fillInChoiceCandidateCount, fillInChoiceRescueCount, crossParentCheckedRuleCandidateCount, checkedHasStateRuleCandidateCount, checkedHasStateRuleRescueCount, checkedHasStateRuleMissingCount, pairedCheckedStateCandidateCount, pairedCheckedStateRescueCount, pairedCheckedStateMissingCount, exclusiveStackedStateCandidateCount, exclusiveStackedStateRescueCount, exclusiveStackedStateMissingCount, channelDialCycleCandidateCount, channelDialCycleRescueCount, channelDialCycleMissingCount, oneWayCheckedResultCandidateCount, reversibleCheckedResultRescueCount, pseudoVisualOnly, raw, ...scopeEvidence, ...checkedDepth, ...pseudoDepth, ...reachability };
 }
 
 function maintenanceFallbackFullSummary(root) {
@@ -10844,6 +11344,13 @@ function buildMaintenanceFindings(root, {
             evidence: [`structuredStaticDisclosureCandidateCount=${Number(interaction.structuredStaticDisclosureCandidateCount)}`], confidence: 0.94,
         });
     }
+    if (Number(interaction.fillInChoiceCandidateCount) > 0) {
+        add({
+            id: 'fill-in-blanks-with-static-options', stage: 'interaction', mode: 'interaction',
+            label: '填空位与候选碎片已经存在，但当前只有 Hover 提示；可只使用现有候选恢复可选择、可改选、可清除的保持状态',
+            evidence: [`fillInChoiceCandidateCount=${Number(interaction.fillInChoiceCandidateCount)}`], confidence: 0.99,
+        });
+    }
     if (Number(interaction.crossParentCheckedRuleCandidateCount) > 0) {
         add({
             id: 'cross-parent-checked-target', stage: 'interaction', mode: 'interaction',
@@ -10963,7 +11470,7 @@ function inspectMaintenanceRabbit(root) {
     } catch (error) {
         partialInspection = true;
         console.debug('[RabbitMirror] maintenance interaction inspection skipped:', error);
-        interaction = { checkedControlsLost: false, strippedStateProgram: false, lostInlineStatePrograms: 0, recoveredInlineStatePrograms: 0, decorativeOverlayCandidateCount: 0, touchHoverMissing: false, unscopedControls: false, radioGroupLossCandidateCount: 0, radioGroupRescueCount: 0, duplicateIds: 0, brokenLocalLabels: 0, checkedCssIdSelectors: 0, needsScopeRepair: false, checkedSelectionOnly: false, checkedSelectionOnlyRaw: false, checkedRuleCount: 0, meaningfulCheckedRuleCount: 0, selectionStyleRuleCount: 0, selectionOnlyFallbackCount: 0, selectionOnlyRepairCandidateCount: 0, disabledOnlyChoiceCandidateCount: 0, inertActionButtonCandidateCount: 0, staticChoiceSelectionCandidateCount: 0, staticChoiceSelectionRescueCount: 0, structuredStaticDisclosureCandidateCount: 0, structuredStaticDisclosureRescueCount: 0, crossParentCheckedRuleCandidateCount: 0, checkedHasStateRuleCandidateCount: 0, checkedHasStateRuleRescueCount: 0, checkedHasStateRuleMissingCount: 0, pairedCheckedStateCandidateCount: 0, pairedCheckedStateRescueCount: 0, pairedCheckedStateMissingCount: 0, exclusiveStackedStateCandidateCount: 0, exclusiveStackedStateRescueCount: 0, exclusiveStackedStateMissingCount: 0, channelDialCycleCandidateCount: 0, channelDialCycleRescueCount: 0, channelDialCycleMissingCount: 0, oneWayCheckedResultCandidateCount: 0, reversibleCheckedResultRescueCount: 0, pseudoVisualOnly: false, pseudoRuleCount: 0, visualOnlyPseudoRuleCount: 0, meaningfulPseudoRuleCount: 0, touchHoverEligibleCount: 0, touchHoverActiveCount: 0, contentInteractiveElementCount: 0, installedInteractionRouteCount: 0, noInteractionStructure: false, raw: '' };
+        interaction = { checkedControlsLost: false, strippedStateProgram: false, lostInlineStatePrograms: 0, recoveredInlineStatePrograms: 0, decorativeOverlayCandidateCount: 0, touchHoverMissing: false, unscopedControls: false, radioGroupLossCandidateCount: 0, radioGroupRescueCount: 0, duplicateIds: 0, brokenLocalLabels: 0, checkedCssIdSelectors: 0, needsScopeRepair: false, checkedSelectionOnly: false, checkedSelectionOnlyRaw: false, checkedRuleCount: 0, meaningfulCheckedRuleCount: 0, selectionStyleRuleCount: 0, selectionOnlyFallbackCount: 0, selectionOnlyRepairCandidateCount: 0, disabledOnlyChoiceCandidateCount: 0, inertActionButtonCandidateCount: 0, staticChoiceSelectionCandidateCount: 0, staticChoiceSelectionRescueCount: 0, structuredStaticDisclosureCandidateCount: 0, structuredStaticDisclosureRescueCount: 0, fillInChoiceCandidateCount: 0, fillInChoiceRescueCount: 0, crossParentCheckedRuleCandidateCount: 0, checkedHasStateRuleCandidateCount: 0, checkedHasStateRuleRescueCount: 0, checkedHasStateRuleMissingCount: 0, pairedCheckedStateCandidateCount: 0, pairedCheckedStateRescueCount: 0, pairedCheckedStateMissingCount: 0, exclusiveStackedStateCandidateCount: 0, exclusiveStackedStateRescueCount: 0, exclusiveStackedStateMissingCount: 0, channelDialCycleCandidateCount: 0, channelDialCycleRescueCount: 0, channelDialCycleMissingCount: 0, oneWayCheckedResultCandidateCount: 0, reversibleCheckedResultRescueCount: 0, pseudoVisualOnly: false, pseudoRuleCount: 0, visualOnlyPseudoRuleCount: 0, meaningfulPseudoRuleCount: 0, touchHoverEligibleCount: 0, touchHoverActiveCount: 0, contentInteractiveElementCount: 0, installedInteractionRouteCount: 0, noInteractionStructure: false, raw: '' };
     }
     let textClippingCandidateCount = 0;
     try {
@@ -12717,7 +13224,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.54';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.57';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -12763,10 +13270,12 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
         const inertActionRepairCount = installInertActionButtonFallback(target);
         const staticChoiceRepairCount = installStaticChoiceSelectionFallback(target);
         const structuredStaticDisclosureRepairCount = installStructuredStaticDisclosureFallback(target);
+        const fillInChoiceRepairCount = installFillInChoiceFallback(target);
         const disabledChoiceCount = target.querySelectorAll?.(`[${DISABLED_ONLY_CHOICE_RESCUE_ATTR}]`)?.length || 0;
         const inertActionCount = target.querySelectorAll?.(`[${INERT_ACTION_BUTTON_RESCUE_ATTR}]`)?.length || 0;
         const staticChoiceCount = Number.parseInt(target.getAttribute?.(STATIC_CHOICE_SELECTION_COUNT_ATTR) || '0', 10) || 0;
         const structuredStaticDisclosureCount = Number.parseInt(target.getAttribute?.(STRUCTURED_STATIC_DISCLOSURE_COUNT_ATTR) || '0', 10) || 0;
+        const fillInChoiceCount = Number.parseInt(target.getAttribute?.(FILL_IN_CHOICE_COUNT_ATTR) || '0', 10) || 0;
         detectInteractionCapabilities(target);
         const depthAfter = maintenanceCheckedInteractionDepth(target);
         const meaningfulCheckedRoute = depthAfter.checkedRuleCount > 0 && !depthAfter.checkedSelectionOnly;
@@ -12775,10 +13284,12 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
             || inertActionRepairCount > 0
             || staticChoiceRepairCount > 0
             || structuredStaticDisclosureRepairCount > 0
+            || fillInChoiceRepairCount > 0
             || disabledChoiceCount > 0
             || inertActionCount > 0
             || staticChoiceCount > 0
             || structuredStaticDisclosureCount > 0
+            || fillInChoiceCount > 0
             || overlayRepairCount > 0
             || rawHoverRepairCount > 0
             || recoveredProgramRepairCount > 0
@@ -12799,7 +13310,7 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
             .map(item => item.trim())
             .filter(item => item && item !== 'none');
         // 不再把“调用了总入口”冒充为“命中了一条急救路线”；选择样式专用结构只有在安全补出分支提示后才算修复。
-        return genuinelyRescued ? Math.max(routes.length, disabledChoiceRepairCount, inertActionRepairCount, staticChoiceRepairCount, structuredStaticDisclosureRepairCount, disabledChoiceCount, inertActionCount, staticChoiceCount, structuredStaticDisclosureCount, overlayRepairCount, rawHoverRepairCount, recoveredProgramRepairCount, recoveredProgramCountAfter, radioGroupRepairCount, radioGroupCountAfter, crossParentCheckedCount, checkedHasStateCount, pairedCheckedStateCount, exclusiveStackedStateCount, channelDialCycleCount, reversibleCheckedCount) : 0;
+        return genuinelyRescued ? Math.max(routes.length, disabledChoiceRepairCount, inertActionRepairCount, staticChoiceRepairCount, structuredStaticDisclosureRepairCount, fillInChoiceRepairCount, disabledChoiceCount, inertActionCount, staticChoiceCount, structuredStaticDisclosureCount, fillInChoiceCount, overlayRepairCount, rawHoverRepairCount, recoveredProgramRepairCount, recoveredProgramCountAfter, radioGroupRepairCount, radioGroupCountAfter, crossParentCheckedCount, checkedHasStateCount, pairedCheckedStateCount, exclusiveStackedStateCount, channelDialCycleCount, reversibleCheckedCount) : 0;
     } },
 ]);
 
@@ -12880,6 +13391,8 @@ function runMaintenanceSourceInteractionFollowup(root) {
         || interaction.disabledOnlyChoiceCandidateCount > 0
         || interaction.inertActionButtonCandidateCount > 0
         || interaction.staticChoiceSelectionCandidateCount > 0
+        || interaction.structuredStaticDisclosureCandidateCount > 0
+        || interaction.fillInChoiceCandidateCount > 0
         || interaction.oneWayCheckedResultCandidateCount > 0;
     if (!shouldRepair) return null;
 

@@ -1,12 +1,12 @@
-import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=0.33.81';
-import { clearLastCombo } from './storage.js?rmv=0.33.81';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=0.33.81';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=0.33.81';
-import { refreshFeedbackCats, refreshMaintenanceRabbits, triggerInteractionDiagnosticOnce } from './outputSanitizer.js?rmv=0.33.81';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=0.33.81';
+import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=0.33.84';
+import { clearLastCombo } from './storage.js?rmv=0.33.84';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=0.33.84';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=0.33.84';
+import { refreshFeedbackCats, refreshMaintenanceRabbits, triggerInteractionDiagnosticOnce } from './outputSanitizer.js?rmv=0.33.84';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=0.33.84';
 
-const SETTINGS_UI_VERSION = '0.33.81';
-const RUNTIME_VERSION = '0.33.81';
+const SETTINGS_UI_VERSION = '0.33.84';
+const RUNTIME_VERSION = '0.33.84';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -126,7 +126,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[挨打猫 v1.4＋小小维修兔 v1.54＋Menu QR v2.2]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.33.81 TEST</span>
+      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[挨打猫 v1.4＋小小维修兔 v1.57＋Menu QR v2.2]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.33.84 TEST</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -288,7 +288,7 @@ export function initRabbitMirrorUI() {
     $('#rh_download_order_qr').on('click', () => {
         try {
             const link = document.createElement('a');
-            link.href = new URL('../assets/RabbitMirror-MenuQR-v2.2.json?rmv=0.33.81', import.meta.url).href;
+            link.href = new URL('../assets/RabbitMirror-MenuQR-v2.2.json?rmv=0.33.84', import.meta.url).href;
             link.download = 'RabbitMirror-MenuQR-v2.2.json';
             link.rel = 'noopener';
             document.body.appendChild(link);

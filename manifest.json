@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（挨打猫 v1.4・小小维修兔 v1.54）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（挨打猫 v1.4・小小维修兔 v1.57）",
   "loading_order": 99,
-  "js": "index.js?rmv=0.33.81",
-  "css": "style.css?rmv=0.33.81",
+  "js": "index.js?rmv=0.33.84",
+  "css": "style.css?rmv=0.33.84",
   "author": "Toto",
-  "version": "0.33.81-test.1",
+  "version": "0.33.84-test.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "TEST build based on 0.33.79: expands and synchronizes the thematic/presentation mother libraries with 31 indexed entries while preserving bounded raw retrieval, Maintenance Rabbit v1.54, Feedback Cat v1.4, and final output-lock order."
+  "description": "TEST build based on 0.33.83: upgrades Maintenance Rabbit v1.57 with safe direct-ID classList toggle/add/remove recovery, restoring real front/back state programs before generic inert-button fallback, while preserving ritual-action recovery, fill-in-choice recovery, mother-library retrieval, Menu QR v2.2, Feedback Cat v1.4, and final output-lock order."
 }
