@@ -313,14 +313,15 @@ toto[data-rabbit-mirror="true"] summary {
 }
 
 
-/* 0.33.87: per-generation RabbitMirror injection token estimate. */
+/* 0.33.86: per-generation RabbitMirror injection token estimate. */
 .rabbit-mirror-token-meter {
   margin: 10px 0 12px !important;
   padding: 10px 12px !important;
-  border: 1px solid color-mix(in srgb, var(--SmartThemeBorderColor, currentColor) 58%, transparent) !important;
+  border: 1px solid #cdbda8 !important;
   border-radius: 8px !important;
-  background: color-mix(in srgb, var(--SmartThemeBodyColor, transparent) 86%, currentColor 4%) !important;
-  color: inherit !important;
+  background: #f7f1e7 !important;
+  color: #382f28 !important;
+  box-shadow: 0 1px 0 rgba(255,255,255,.82) inset, 0 2px 8px rgba(69,52,38,.08) !important;
   line-height: 1.45 !important;
 }
 .rabbit-mirror-token-meter-head {
@@ -341,6 +342,6 @@ toto[data-rabbit-mirror="true"] summary {
   font-size: 12px !important;
   overflow-wrap: anywhere !important;
 }
-.rabbit-mirror-token-meter-exact { opacity: .86 !important; }
-.rabbit-mirror-token-meter-detail { opacity: .76 !important; }
-.rabbit-mirror-token-meter-note { opacity: .58 !important; font-size: 11px !important; }
+.rabbit-mirror-token-meter-exact { color: #4a3f36 !important; opacity: 1 !important; }
+.rabbit-mirror-token-meter-detail { color: #65574b !important; opacity: 1 !important; }
+.rabbit-mirror-token-meter-note { color: #77685b !important; opacity: 1 !important; font-size: 11px !important; }

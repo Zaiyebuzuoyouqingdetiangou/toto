@@ -1,4 +1,4 @@
-import { getSettings } from './settings.js?rmv=0.33.87';
+import { getSettings } from './settings.js?rmv=0.34.0';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -7,11 +7,11 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=0.33.87';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=0.33.87';
+} from './feedbackCat.js?rmv=0.34.0';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=0.34.0';
 
 
-const RUNTIME_VERSION = '0.33.87';
+const RUNTIME_VERSION = '0.34.0';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -345,11 +345,6 @@ const CHECKED_TEXT_RULE_RESCUE_ATTR = 'data-rabbit-mirror-checked-text-rule-resc
 const CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR = 'data-rabbit-mirror-cross-parent-checked-rescue';
 const CROSS_PARENT_CHECKED_ROOT_ATTR = 'data-rabbit-mirror-cross-parent-checked-rules';
 const crossParentCheckedFallbackRoots = new WeakSet();
-const FORWARD_LABEL_CHECKED_RESCUE_ATTR = 'data-rabbit-mirror-forward-label-checked-rescue';
-const FORWARD_LABEL_CHECKED_CONTROL_ATTR = 'data-rabbit-mirror-forward-label-checked-control';
-const FORWARD_LABEL_CHECKED_ROOT_ATTR = 'data-rabbit-mirror-forward-label-checked-count';
-const FORWARD_LABEL_CHECKED_LAST_ATTR = 'data-rabbit-mirror-forward-label-checked-last';
-const forwardLabelCheckedRescueStates = new WeakMap();
 const CHECKED_PSEUDO_RULE_RESCUE_STYLE_ATTR = 'data-rabbit-mirror-checked-pseudo-rule-rescue';
 const CHECKED_PSEUDO_RULE_TARGET_ATTR = 'data-rm-checked-pseudo-rule-target';
 const interactionPseudoOverrideStates = new WeakMap();
@@ -713,123 +708,6 @@ function resolveTargetsForCheckedRule(root, input, rule) {
         return getLabelProxyTargetsForCheckedRule(input, rule.relation, rule.targetSelector);
     }
     return getCrossContainerTargetsForCheckedRule(root, rule.targetSelector);
-}
-
-function findForwardLabelCheckedFallbackCandidates(root) {
-    if (!root?.querySelectorAll) return [];
-    const candidates = [];
-    for (const label of root.querySelectorAll('label[for]')) {
-        const forId = String(label.getAttribute('for') || '').trim();
-        if (!forId) continue;
-        const input = [...root.querySelectorAll('input[type="checkbox"], input[type="radio"]')]
-            .find(item => String(item.id || '') === forId);
-        if (!input || input.disabled || label.contains(input)) continue;
-        if (label.parentElement !== input.parentElement) continue;
-        if (!(label.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING)) continue;
-        const style = globalThis.getComputedStyle?.(input);
-        const hiddenControl = style?.display === 'none' || style?.visibility === 'hidden'
-            || Number.parseFloat(style?.opacity || '1') <= 0.01
-            || input.getClientRects?.().length === 0;
-        if (!hiddenControl) continue;
-        const rules = parseCheckedRulesFromText(root, input);
-        const targetCount = rules.reduce((sum, rule) => sum + resolveTargetsForCheckedRule(root, input, rule).length, 0);
-        if (!targetCount || targetCount > 16) continue;
-        candidates.push({ label, input, targetCount });
-    }
-    return candidates;
-}
-
-function detachForwardLabelCheckedEntry(state) {
-    const { label, input, onPointerDown, onClick, onKeyDown } = state || {};
-    if (label?.removeEventListener) {
-        if (onPointerDown) label.removeEventListener('pointerdown', onPointerDown, true);
-        if (onClick) label.removeEventListener('click', onClick, true);
-        if (onKeyDown) label.removeEventListener('keydown', onKeyDown, true);
-    }
-    label?.removeAttribute?.(FORWARD_LABEL_CHECKED_RESCUE_ATTR);
-    input?.removeAttribute?.(FORWARD_LABEL_CHECKED_CONTROL_ATTR);
-}
-
-function verifyForwardLabelCheckedState(root, state, before, intended, phase = 'verified') {
-    for (const delay of [0, 60, 260]) {
-        setTimeout(() => {
-            const { label, input } = state || {};
-            if (!label?.isConnected || !input?.isConnected || !root?.contains?.(label) || !root.contains(input)) return;
-            if (!!input.checked !== !!intended) {
-                setRescuedCheckedState(root, input, intended);
-                state.correctionCount = (state.correctionCount || 0) + 1;
-            } else {
-                applyCheckedVisualFallback(root, input);
-            }
-            const actual = !!input.checked;
-            label.setAttribute('aria-pressed', actual ? 'true' : 'false');
-            root.setAttribute(FORWARD_LABEL_CHECKED_LAST_ATTR,
-                `${String(input.id || input.type || 'control').slice(0, 100)}:${before ? '1' : '0'}>${intended ? '1' : '0'}=${actual ? '1' : '0'}@${phase}`);
-            if (actual === !!intended) state.verifiedCount = (state.verifiedCount || 0) + 1;
-        }, delay);
-    }
-}
-
-function installForwardLabelCheckedFallback(root) {
-    if (!root?.querySelectorAll) return 0;
-    const rescueState = forwardLabelCheckedRescueStates.get(root) || { entries: new Map() };
-    const { entries } = rescueState;
-    const candidates = findForwardLabelCheckedFallbackCandidates(root);
-    const liveLabels = new Set(candidates.map(item => item.label));
-
-    for (const [label, state] of [...entries]) {
-        if (!liveLabels.has(label) || !label?.isConnected || !state.input?.isConnected) {
-            detachForwardLabelCheckedEntry(state);
-            entries.delete(label);
-        }
-    }
-
-    for (const candidate of candidates) {
-        if (entries.has(candidate.label)) continue;
-        const state = {
-            ...candidate,
-            beforePointer: null,
-            correctionCount: 0,
-            verifiedCount: 0,
-            onPointerDown: null,
-            onClick: null,
-            onKeyDown: null,
-        };
-        const toggle = event => {
-            const before = state.beforePointer === null ? !!state.input.checked : state.beforePointer;
-            state.beforePointer = null;
-            const intended = state.input.type === 'radio' ? true : !before;
-            event?.preventDefault?.();
-            event?.stopImmediatePropagation?.();
-            setRescuedCheckedState(root, state.input, intended);
-            verifyForwardLabelCheckedState(root, state, before, intended, 'verified');
-        };
-        state.onPointerDown = () => { state.beforePointer = !!state.input.checked; };
-        state.onClick = event => toggle(event);
-        state.onKeyDown = event => {
-            if (event.key !== 'Enter' && event.key !== ' ') return;
-            toggle(event);
-        };
-        candidate.label.addEventListener('pointerdown', state.onPointerDown, true);
-        candidate.label.addEventListener('click', state.onClick, true);
-        candidate.label.addEventListener('keydown', state.onKeyDown, true);
-        if (!candidate.label.hasAttribute('tabindex')) candidate.label.setAttribute('tabindex', '0');
-        if (!candidate.label.hasAttribute('role')) candidate.label.setAttribute('role', 'button');
-        candidate.label.setAttribute('aria-pressed', candidate.input.checked ? 'true' : 'false');
-        candidate.label.setAttribute(FORWARD_LABEL_CHECKED_RESCUE_ATTR, String(candidate.targetCount));
-        candidate.input.setAttribute(FORWARD_LABEL_CHECKED_CONTROL_ATTR, 'true');
-        entries.set(candidate.label, state);
-    }
-
-    if (entries.size) {
-        root.setAttribute(FORWARD_LABEL_CHECKED_ROOT_ATTR, String(entries.size));
-        forwardLabelCheckedRescueStates.set(root, rescueState);
-    } else {
-        root.removeAttribute(FORWARD_LABEL_CHECKED_ROOT_ATTR);
-        root.removeAttribute(FORWARD_LABEL_CHECKED_LAST_ATTR);
-        forwardLabelCheckedRescueStates.delete(root);
-    }
-    return entries.size;
 }
 
 function findCrossParentCheckedRuleFallbackCandidates(root) {
@@ -1855,6 +1733,11 @@ const REVERSIBLE_CHECKED_RESULT_ROOT_ATTR = 'data-rabbit-mirror-reversible-check
 const reversibleTargetCloseStates = new WeakMap();
 const reversibleCheckedResultRescueStates = new WeakMap();
 const interactionLabelFallbackRoots = new WeakSet();
+const LABELED_CHECKED_VERIFY_CONTROL_ATTR = 'data-rabbit-mirror-labeled-checked-verify';
+const LABELED_CHECKED_VERIFY_ROOT_ATTR = 'data-rabbit-mirror-labeled-checked-verify-count';
+const LABELED_CHECKED_VERIFY_LAST_ATTR = 'data-rabbit-mirror-labeled-checked-last';
+const LABELED_CHECKED_VERIFY_TARGET_ATTR = 'data-rm-labeled-checked-verify-target';
+const labeledCheckedVerificationStates = new WeakMap();
 const UNLABELED_CHECKED_HOST_RESCUE_ATTR = 'data-rabbit-mirror-unlabeled-checked-host-rescue';
 const UNLABELED_CHECKED_CONTROL_RESCUE_ATTR = 'data-rabbit-mirror-unlabeled-checked-control-rescue';
 const unlabeledCheckedHostRescueStates = new WeakMap();
@@ -7901,9 +7784,9 @@ function installIntelligentInteractionRescue(root) {
         // 补救 label 后方紧邻的单块结果层，并可选增强同画布内的零尺寸视觉主体。
         installRenderedLabelAdjacentResultRescue(root);
         installInteractionLabelFallback(root);
-        // label 位于隐藏 input 前方时，部分 iOS WebView 会丢失 label 的默认切换动作；
-        // 对已有明确 :checked 结果目标的局部结构安装可验证的显式切换，并在 0/60/260ms 复核状态。
-        installForwardLabelCheckedFallback(root);
+        // 有 label 的 checked 控件不仅登记监听器，还登记可验证的受控目标；
+        // 点击后会校验 checked 是否保持、第二状态是否真实改变，并在 WebView 回滚时补正。
+        installLabeledCheckedVerificationFallback(root);
         // input 位于按钮组内、受控内容位于按钮组外时，原生 ~ 选择器无法跨父层命中。
         // 只对唯一 ID 触发器登记文本级跨父层兜底，实际切换仍由当前 label 驱动。
         installCrossParentCheckedRuleFallback(root);
@@ -8050,6 +7933,346 @@ function refreshTouchHoverRescue(toto) {
     toto.dataset.rabbitMirrorTouchHoverFallback = 'true';
 }
 
+function getAssociatedCheckableLabels(root, input) {
+    if (!root?.querySelectorAll || !input) return [];
+    const result = [];
+    const seen = new Set();
+    const wrapping = input.closest?.('label');
+    if (wrapping && root.contains?.(wrapping)) {
+        result.push(wrapping);
+        seen.add(wrapping);
+    }
+    for (const label of [...(input.labels || [])]) {
+        if (!label || seen.has(label) || !root.contains?.(label)) continue;
+        result.push(label);
+        seen.add(label);
+    }
+    const id = String(input.id || '');
+    if (id) {
+        for (const label of root.querySelectorAll('label[for]')) {
+            if (String(label.getAttribute('for') || '') !== id || seen.has(label)) continue;
+            result.push(label);
+            seen.add(label);
+        }
+    }
+    return result;
+}
+
+function checkedVerificationDeclarationIsMeaningful(property, value, pseudoElement = '') {
+    const name = String(property || '').trim().toLowerCase();
+    const cleanValue = String(value || '').trim().toLowerCase();
+    if (pseudoElement && name === 'content') return cleanValue && cleanValue !== 'none' && cleanValue !== 'normal';
+    if (['display', 'visibility', 'opacity', 'height', 'max-height', 'min-height', 'transform', 'clip-path', 'filter'].includes(name)) return true;
+    if (name === 'content') return true;
+    if (name.startsWith('background') || name === 'color' || name.startsWith('border') || name === 'box-shadow' || name === 'text-shadow') return true;
+    return false;
+}
+
+function checkedVerificationDeclarationCarriesSecondState(property, value, pseudoElement = '') {
+    const name = String(property || '').trim().toLowerCase();
+    const cleanValue = String(value || '').trim().toLowerCase();
+    if (name === 'content') return !!cleanValue && cleanValue !== 'none' && cleanValue !== 'normal' && cleanValue !== '""' && cleanValue !== "''";
+    if (pseudoElement) return false;
+    if (name === 'display') return cleanValue !== 'none';
+    if (name === 'visibility') return cleanValue !== 'hidden' && cleanValue !== 'collapse';
+    if (name === 'opacity') return Number.parseFloat(cleanValue) > 0.05;
+    if (['height', 'max-height', 'min-height'].includes(name)) return !isCollapsedDimensionValue(cleanValue);
+    return false;
+}
+
+function collectLabeledCheckedVerificationTargets(root, input) {
+    if (!root || !input) return [];
+    const entries = [];
+    const entriesByKey = new Map();
+    for (const rule of parseCheckedRulesFromText(root, input)) {
+        const meaningful = (rule.styleMap || []).some(([property, value]) => (
+            checkedVerificationDeclarationIsMeaningful(property, value, rule.pseudoElement)
+        ));
+        if (!meaningful) continue;
+        const secondState = (rule.styleMap || []).some(([property, value]) => (
+            checkedVerificationDeclarationCarriesSecondState(property, value, rule.pseudoElement)
+        ));
+        for (const target of resolveTargetsForCheckedRule(root, input, rule)) {
+            if (!target?.isConnected || target === input || !root.contains?.(target)) continue;
+            const key = `${rule.pseudoElement || 'self'}|${String(target.tagName || '')}|${String(target.className || '')}|${String(target.id || '')}`;
+            const existing = entriesByKey.get(key);
+            if (existing) {
+                existing.secondState = existing.secondState || secondState;
+                continue;
+            }
+            const entry = { target, pseudoElement: rule.pseudoElement || '', secondState };
+            entriesByKey.set(key, entry);
+            entries.push(entry);
+            target.setAttribute?.(LABELED_CHECKED_VERIFY_TARGET_ATTR, 'true');
+            if (entries.length >= 12) return entries;
+        }
+    }
+    return entries;
+}
+
+function captureLabeledCheckedTargetState(entry) {
+    const target = entry?.target;
+    if (!target) return null;
+    let computed = null;
+    let pseudo = null;
+    try {
+        computed = typeof getComputedStyle === 'function' ? getComputedStyle(target) : null;
+        if (entry.pseudoElement && typeof getComputedStyle === 'function') pseudo = getComputedStyle(target, entry.pseudoElement);
+    } catch {
+        computed = null;
+        pseudo = null;
+    }
+    let rect = { width: 0, height: 0 };
+    try {
+        rect = target.getBoundingClientRect?.() || rect;
+    } catch {
+        // ignore
+    }
+    const opacity = Number.parseFloat(computed?.opacity || '1');
+    return {
+        display: String(computed?.display || ''),
+        visibility: String(computed?.visibility || ''),
+        opacity: Number.isFinite(opacity) ? opacity : 1,
+        width: Number(rect.width || 0),
+        height: Number(rect.height || 0),
+        color: String(computed?.color || ''),
+        backgroundColor: String(computed?.backgroundColor || ''),
+        transform: String(computed?.transform || ''),
+        content: String(pseudo?.content || ''),
+    };
+}
+
+function labeledCheckedTargetStateChanged(before, after) {
+    if (!before || !after) return false;
+    for (const key of ['display', 'visibility', 'color', 'backgroundColor', 'transform', 'content']) {
+        if (String(before[key] || '') !== String(after[key] || '')) return true;
+    }
+    if (Math.abs(Number(before.opacity || 0) - Number(after.opacity || 0)) > 0.02) return true;
+    if (Math.abs(Number(before.width || 0) - Number(after.width || 0)) > 1) return true;
+    if (Math.abs(Number(before.height || 0) - Number(after.height || 0)) > 1) return true;
+    return false;
+}
+
+function prepareLabeledCheckedVerification(root, input) {
+    const labels = getAssociatedCheckableLabels(root, input);
+    const targets = collectLabeledCheckedVerificationTargets(root, input);
+    return {
+        labels,
+        targets,
+        before: targets.map(entry => captureLabeledCheckedTargetState(entry)),
+        beforeChecked: !!input?.checked,
+    };
+}
+
+function recordLabeledCheckedVerification(root, input, verification, intended, phase, corrected = false) {
+    if (!root || !input || !verification) return false;
+    const after = verification.targets.map(entry => captureLabeledCheckedTargetState(entry));
+    const changedFlags = after.map((snapshot, index) => labeledCheckedTargetStateChanged(verification.before[index], snapshot));
+    const changedCount = changedFlags.filter(Boolean).length;
+    const secondStateTargetCount = verification.targets.filter(entry => entry.secondState).length;
+    const secondStateChangedCount = verification.targets.reduce((count, entry, index) => (
+        count + (entry.secondState && changedFlags[index] ? 1 : 0)
+    ), 0);
+    const checkedMatched = !!input.checked === !!intended;
+    const visualMatched = secondStateTargetCount > 0 && secondStateChangedCount > 0;
+    const matched = checkedMatched && visualMatched;
+    const identity = String(input.id || input.name || input.type || 'control').slice(0, 100);
+    const status = matched ? 'verified' : (corrected ? 'corrected' : 'failed');
+    input.setAttribute(LABELED_CHECKED_VERIFY_CONTROL_ATTR, status);
+    input.setAttribute('aria-pressed', input.checked ? 'true' : 'false');
+    root.setAttribute(LABELED_CHECKED_VERIFY_LAST_ATTR, `${identity}:${verification.beforeChecked ? '1' : '0'}>${intended ? '1' : '0'}=${input.checked ? '1' : '0'};targets=${verification.targets.length};changed=${changedCount};second=${secondStateChangedCount}/${secondStateTargetCount}@${phase}:${status}`);
+    return matched;
+}
+
+function scheduleLabeledCheckedTransitionVerification(root, input, verification, intended, phase = 'label-click') {
+    if (!root || !input || !verification) return;
+    const state = labeledCheckedVerificationStates.get(input) || { verifiedCount: 0, correctionCount: 0 };
+    labeledCheckedVerificationStates.set(input, state);
+    for (const delay of [0, 70, 240]) {
+        setTimeout(() => {
+            if (!root.isConnected || !input.isConnected || !root.contains(input)) return;
+            let corrected = false;
+            if (!!input.checked !== !!intended) {
+                setRescuedCheckedState(root, input, intended);
+                corrected = true;
+                state.correctionCount += 1;
+            } else {
+                applyCheckedVisualFallback(root, input);
+                applyRenderedLabelInternalHiddenEntries(root);
+            }
+            const matched = recordLabeledCheckedVerification(root, input, verification, intended, `${phase}+${delay}ms`, corrected);
+            if (matched) state.verifiedCount += 1;
+        }, delay);
+    }
+}
+
+function installLabeledCheckedVerificationFallback(root) {
+    if (!root?.querySelectorAll) return 0;
+    let count = 0;
+    for (const input of root.querySelectorAll('input[type="checkbox"], input[type="radio"]')) {
+        if (input.disabled || !inputHasAssociatedLabel(root, input) || !inputHasMeaningfulCheckedSiblingRule(root, input)) {
+            input.removeAttribute?.(LABELED_CHECKED_VERIFY_CONTROL_ATTR);
+            continue;
+        }
+        const verification = prepareLabeledCheckedVerification(root, input);
+        if (!verification.labels.length || !verification.targets.some(entry => entry.secondState)) continue;
+        if (!input.hasAttribute(LABELED_CHECKED_VERIFY_CONTROL_ATTR)) input.setAttribute(LABELED_CHECKED_VERIFY_CONTROL_ATTR, 'ready');
+        count += 1;
+    }
+    if (count) root.setAttribute(LABELED_CHECKED_VERIFY_ROOT_ATTR, String(count));
+    else {
+        root.removeAttribute(LABELED_CHECKED_VERIFY_ROOT_ATTR);
+        root.removeAttribute(LABELED_CHECKED_VERIFY_LAST_ATTR);
+    }
+    return count;
+}
+
+const MAINTENANCE_CHECKED_SANDBOX_ATTR = 'data-rabbit-mirror-maintenance-checked-sandbox';
+
+function maintenanceProbeElementPath(ancestor, element) {
+    if (!ancestor || !element) return null;
+    if (ancestor === element) return [];
+    const path = [];
+    let current = element;
+    while (current && current !== ancestor) {
+        const parent = current.parentElement;
+        if (!parent) return null;
+        const index = [...parent.children].indexOf(current);
+        if (index < 0) return null;
+        path.unshift(index);
+        current = parent;
+    }
+    return current === ancestor ? path : null;
+}
+
+function maintenanceProbeElementAtPath(ancestor, path) {
+    let current = ancestor;
+    for (const index of path || []) {
+        current = current?.children?.[index] || null;
+        if (!current) return null;
+    }
+    return current;
+}
+
+function sanitizeMaintenanceProbeClone(clone) {
+    if (!clone?.querySelectorAll) return;
+    clone.querySelectorAll(`script, iframe, object, embed, [${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}]`)
+        .forEach(node => node.remove());
+    clone.querySelectorAll('*').forEach(element => {
+        for (const attribute of [...element.attributes]) {
+            if (/^on[a-z]+$/i.test(attribute.name)) element.removeAttribute(attribute.name);
+        }
+        if (element.matches?.('audio, video')) {
+            element.preload = 'none';
+            element.autoplay = false;
+        }
+        if (element.matches?.('img')) element.loading = 'lazy';
+    });
+}
+
+function createMaintenanceLabeledCheckedProbeSandbox(root) {
+    if (!root?.cloneNode || typeof document === 'undefined' || !document.body) return null;
+    const shell = root.closest?.('toto') || root;
+    const rootPath = maintenanceProbeElementPath(shell, root);
+    if (!rootPath) return null;
+
+    const cloneShell = shell.cloneNode(true);
+    sanitizeMaintenanceProbeClone(cloneShell);
+    const cloneRoot = maintenanceProbeElementAtPath(cloneShell, rootPath);
+    if (!cloneRoot?.querySelectorAll) return null;
+
+    const host = document.createElement('div');
+    host.setAttribute(MAINTENANCE_CHECKED_SANDBOX_ATTR, 'true');
+    host.setAttribute('aria-hidden', 'true');
+    host.inert = true;
+    const width = Math.max(280, Math.min(960, Math.round(root.getBoundingClientRect?.().width || 360)));
+    host.style.cssText = `all:initial!important;position:fixed!important;left:-100000px!important;top:0!important;width:${width}px!important;min-height:1px!important;opacity:0!important;pointer-events:none!important;overflow:hidden!important;contain:layout style paint!important;z-index:-2147483648!important;`;
+
+    let mount = host;
+    try {
+        const shadow = host.attachShadow?.({ mode: 'closed' });
+        if (shadow) mount = shadow;
+    } catch {
+        mount = host;
+    }
+    const quietStyle = document.createElement('style');
+    quietStyle.textContent = '*,:before,:after{animation:none!important;transition:none!important;scroll-behavior:auto!important;}';
+    mount.append(quietStyle, cloneShell);
+    document.body.appendChild(host);
+    return { host, root: cloneRoot, destroy: () => host.remove() };
+}
+
+function applyMaintenanceSandboxCheckedState(root, input, nextChecked) {
+    if (!root || !input || input.disabled) return false;
+    if (input.type === 'radio') {
+        const radioName = String(input.name || '');
+        [...root.querySelectorAll('input[type="radio"]')]
+            .filter(item => item !== input && (!radioName || item.name === radioName))
+            .forEach(item => { item.checked = false; });
+        input.checked = true;
+    } else {
+        input.checked = !!nextChecked;
+    }
+    applyCheckedVisualFallback(root, input);
+    applyRenderedLabelInternalHiddenEntries(root);
+    input.setAttribute('aria-pressed', input.checked ? 'true' : 'false');
+    try { void input.offsetHeight; } catch {}
+    return !!input.checked === (input.type === 'radio' ? true : !!nextChecked);
+}
+
+function scheduleMaintenanceLabeledCheckedProbe(root, diagnosticState) {
+    if (!root?.querySelectorAll) return 0;
+    const sandbox = createMaintenanceLabeledCheckedProbeSandbox(root);
+    if (!sandbox) {
+        diagnosticState?.events?.push?.('maintenance-sandbox-probe:unavailable;未操作真实控件');
+        return 0;
+    }
+
+    const sandboxRoot = sandbox.root;
+    const input = [...sandboxRoot.querySelectorAll('input[type="checkbox"]')].find(candidate => (
+        !candidate.disabled
+        && inputHasAssociatedLabel(sandboxRoot, candidate)
+        && inputHasMeaningfulCheckedSiblingRule(sandboxRoot, candidate)
+        && collectLabeledCheckedVerificationTargets(sandboxRoot, candidate).some(entry => entry.secondState)
+    ));
+    if (!input) {
+        sandbox.destroy();
+        diagnosticState?.events?.push?.('maintenance-sandbox-probe:no-safe-candidate;未操作真实控件');
+        return 0;
+    }
+
+    const originalChecked = !!input.checked;
+    const intended = !originalChecked;
+    const verification = prepareLabeledCheckedVerification(sandboxRoot, input);
+    if (!verification.targets.some(entry => entry.secondState)) {
+        sandbox.destroy();
+        diagnosticState?.events?.push?.('maintenance-sandbox-probe:no-second-state;未操作真实控件');
+        return 0;
+    }
+
+    diagnosticState?.events?.push?.(`maintenance-sandbox-probe:scheduled target=${diagnosticElementName(input)} intended=${intended};真实控件未操作`);
+
+    setTimeout(() => {
+        if (!sandbox.host.isConnected || !input.isConnected) return;
+        const applied = applyMaintenanceSandboxCheckedState(sandboxRoot, input, intended);
+        diagnosticState?.events?.push?.(`maintenance-sandbox-probe:state-set checked=${input.checked} applied=${applied};无click/change/input事件`);
+    }, 30);
+
+    setTimeout(() => {
+        if (!sandbox.host.isConnected || !input.isConnected) return;
+        const matched = recordLabeledCheckedVerification(sandboxRoot, input, verification, intended, 'maintenance-sandbox-probe-observe', false);
+        const evidence = String(sandboxRoot.getAttribute?.(LABELED_CHECKED_VERIFY_LAST_ATTR) || '');
+        if (evidence) root.setAttribute?.(LABELED_CHECKED_VERIFY_LAST_ATTR, evidence);
+        diagnosticState?.events?.push?.(`maintenance-sandbox-probe:observed checked=${input.checked} matched=${matched};真实控件保持原状`);
+    }, 150);
+
+    setTimeout(() => {
+        sandbox.destroy();
+        diagnosticState?.events?.push?.('maintenance-sandbox-probe:destroyed;隐藏副本已删除');
+    }, 310);
+    return 1;
+}
+
 function installInteractionLabelFallback(toto) {
     if (!toto || interactionLabelFallbackRoots.has(toto)) return;
 
@@ -8063,6 +8286,7 @@ function installInteractionLabelFallback(toto) {
             ? [...toto.querySelectorAll('input[id]')].find(el => el.id === targetId)
             : label.querySelector('input[type="checkbox"], input[type="radio"]');
         if (!input || !/^(?:checkbox|radio)$/i.test(input.type || '') || input.disabled) return;
+        const labeledVerification = prepareLabeledCheckedVerification(toto, input);
         // 双向频道／画面切换由专项路线独占，避免通用 label 兜底把“返回”控件重新勾上。
         if (input.hasAttribute(PAIRED_CHECKED_STATE_CONTROL_ATTR)) return;
 
@@ -8095,6 +8319,7 @@ function installInteractionLabelFallback(toto) {
             input.dispatchEvent(new Event('input', { bubbles: true }));
             input.dispatchEvent(new Event('change', { bubbles: true }));
         }
+        scheduleLabeledCheckedTransitionVerification(toto, input, labeledVerification, intendedChecked, 'label-click');
 
         // 某些移动 WebView 会在捕获阶段 preventDefault 后仍执行一次迟到的原生 label 切换，
         // 使 checkbox 刚被急救器设为 true 又立刻回到 false。下一任务强制确认本次意图，
@@ -8510,7 +8735,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '0.33.87-TEST-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '0.34.0-PUBLIC-BETA-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -8635,7 +8860,6 @@ function diagnosticRouteSummary(root) {
         focusToChecked: Number.parseInt(root?.getAttribute?.(FOCUS_TO_CHECKED_ROOT_ATTR) || '0', 10) || 0,
         checkedTextRule: root?.querySelectorAll?.(`[${CHECKED_TEXT_RULE_RESCUE_ATTR}]`)?.length || 0,
         crossParentChecked: Number.parseInt(root?.getAttribute?.(CROSS_PARENT_CHECKED_ROOT_ATTR) || '0', 10) || 0,
-        forwardLabelChecked: Number.parseInt(root?.getAttribute?.(FORWARD_LABEL_CHECKED_ROOT_ATTR) || '0', 10) || 0,
         checkedHasState: Number.parseInt(root?.getAttribute?.(CHECKED_HAS_STATE_RULE_COUNT_ATTR) || '0', 10) || 0,
         pairedCheckedState: Number.parseInt(root?.getAttribute?.(PAIRED_CHECKED_STATE_COUNT_ATTR) || '0', 10) || 0,
         exclusiveStackedState: Number.parseInt(root?.getAttribute?.(EXCLUSIVE_STACKED_STATE_COUNT_ATTR) || '0', 10) || 0,
@@ -8649,6 +8873,7 @@ function diagnosticRouteSummary(root) {
         cssCommentRepair: root?.querySelectorAll?.(`[${MARKDOWN_CSS_COMMENT_RESCUE_ATTR}]`)?.length || 0,
         changeProgram: root?.querySelectorAll?.(`[${CHANGE_PSEUDO_RESCUE_ATTR}]`)?.length || 0,
         unlabeledChecked: unlabeledCheckedHostRescueStates.get(root)?.entries?.size || 0,
+        labeledCheckedVerify: Number.parseInt(root?.getAttribute?.(LABELED_CHECKED_VERIFY_ROOT_ATTR) || '0', 10) || 0,
         webkit3dFlip: Number.parseInt(root?.getAttribute?.(WEBKIT_3D_FLIP_RESCUE_ATTR) || '0', 10) || 0,
         selectionFallback: root?.querySelectorAll?.(`[${SELECTION_ONLY_FALLBACK_ATTR}]`)?.length || 0,
         disabledChoice: root?.querySelectorAll?.(`[${DISABLED_ONLY_CHOICE_RESCUE_ATTR}]`)?.length || 0,
@@ -8666,7 +8891,7 @@ function diagnosticRouteSummary(root) {
 function diagnosticInferReason(root, inputs, targets, state = null) {
     const routes = diagnosticRouteSummary(root);
     const depth = maintenanceCheckedInteractionDepth(root);
-    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.stateSibling + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.focusToChecked + routes.checkedTextRule + routes.crossParentChecked + routes.forwardLabelChecked + routes.checkedHasState + routes.pairedCheckedState + routes.exclusiveStackedState + routes.channelDialCycle + routes.expandedOpacity + routes.containerReveal + routes.selfMutation + routes.classStateProgram + routes.cssCommentRepair + routes.changeProgram + routes.unlabeledChecked + routes.selectionFallback + routes.disabledChoice + routes.inertAction + routes.staticChoiceSelection + routes.structuredStaticDisclosure + routes.fillInChoice + routes.passportDocument + routes.decorativeOverlayPassThrough;
+    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.stateSibling + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.focusToChecked + routes.checkedTextRule + routes.crossParentChecked + routes.checkedHasState + routes.pairedCheckedState + routes.exclusiveStackedState + routes.channelDialCycle + routes.expandedOpacity + routes.containerReveal + routes.selfMutation + routes.classStateProgram + routes.cssCommentRepair + routes.changeProgram + routes.unlabeledChecked + routes.labeledCheckedVerify + routes.selectionFallback + routes.disabledChoice + routes.inertAction + routes.staticChoiceSelection + routes.structuredStaticDisclosure + routes.fillInChoice + routes.passportDocument + routes.decorativeOverlayPassThrough;
     const checkedInputs = inputs.filter(input => input.checked);
     const visibleTargets = targets.filter(target => {
         const style = diagnosticComputedStyle(target);
@@ -8707,7 +8932,16 @@ function diagnosticInferReason(root, inputs, targets, state = null) {
     if (!inputs.length && routeCount && visibleTargets.length) return '非表单交互急救路线已建立，候选内容在计算样式中已有可见项。';
     if (!inputs.length && routeCount) return '非表单交互急救路线已建立，但候选内容最终仍不可见：样式可能被覆盖或被布局裁切。';
     if (!inputs.length) return '未找到 checkbox/radio：渲染后控件可能被删除，或当前交互并非表单状态结构。';
-    const inputInteractionObserved = (state?.events || []).some(item => /(?:click|input|change):capture target=input/i.test(String(item || '')));
+    const diagnosticEvents = state?.events || [];
+    const inputInteractionObserved = diagnosticEvents.some(item => /(?:click|input|change):capture target=input/i.test(String(item || '')));
+    const sandboxProbeAttempted = diagnosticEvents.some(item => /maintenance-sandbox-probe:/i.test(String(item || '')));
+    const labeledProbeLast = String(root.getAttribute?.(LABELED_CHECKED_VERIFY_LAST_ATTR) || '');
+    if (/maintenance-sandbox-probe-observe:verified/i.test(labeledProbeLast)) {
+        return '维修兔已在隐藏隔离副本中切换有 label 的 checkbox，并观察到 checked 状态与第二层内容真实变化；当前页面的真实控件未被操作。';
+    }
+    if (sandboxProbeAttempted && !inputInteractionObserved) {
+        return '全链路诊断只在隐藏隔离副本中尝试动态验证；本次未形成高置信第二状态证据，当前页面真实控件未被操作。';
+    }
     if (!checkedInputs.length && !inputInteractionObserved) return '本次诊断没有实际操作 checkbox/radio；当前只能确认急救路线是否安装，不能据此判断控件发生了重复切换。';
     if (!checkedInputs.length) return '实际操作后控件仍未保持勾选；可能发生重复切换、触摸被覆盖层拦截，或宿主再次回滚了状态。';
     if (!routeCount && targets.length) return 'checkbox 已切换，但没有任何渲染后急救路线建立：当前结构识别条件未命中。';
@@ -9420,6 +9654,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `标题: ${title || '(未渲染 summary／可能仍是代码块或纯文字)'}`,
         `阶段: ${phase}`,
         `诊断模式: 一次性全链路诊断（已自动停止）`,
+        `控件验证: 隐藏隔离副本（不点击、不派发事件、不修改当前页面真实控件）`,
         `小小维修兔: ${isMaintenanceRabbitEnabled() ? 'ON（逐条手动巡逻）' : 'OFF'}`,
         `旧全局急救链: 已合并停用`,
         `消息 mesid: ${code.mesid}`,
@@ -9493,7 +9728,6 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `focus→checked entries=${routes.focusToChecked} listener=${routes.focusToChecked ? 'true' : 'false'}`,
         `CSS状态规则 entries=${routes.checkedTextRule} listener=${routes.checkedTextRule ? 'true' : 'false'}`,
         `跨父层checked兜底 entries=${routes.crossParentChecked} listener=${routes.crossParentChecked ? 'true' : 'false'}`,
-        `前置label切换验收 entries=${routes.forwardLabelChecked} listener=${routes.forwardLabelChecked ? 'true' : 'false'} last=${root.getAttribute?.(FORWARD_LABEL_CHECKED_LAST_ATTR) || '(尚未点击验证)'}`,
         `全选联动兜底 entries=${routes.checkedHasState} listener=${routes.checkedHasState ? 'true' : 'false'}`,
         `双向画面切换 entries=${routes.pairedCheckedState} listener=${routes.pairedCheckedState ? 'true' : 'false'}`,
         `叠层正文互斥 entries=${routes.exclusiveStackedState} listener=${routes.exclusiveStackedState ? 'true' : 'false'}`,
@@ -9515,6 +9749,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `护照／证件翻页 entries=${routes.passportDocument} listener=${routes.passportDocument ? 'true' : 'false'}`,
         `装饰覆盖层穿透 entries=${routes.decorativeOverlayPassThrough} listener=${routes.decorativeOverlayPassThrough ? 'true' : 'false'}`,
         `无label控件宿主 entries=${routes.unlabeledChecked} listener=${routes.unlabeledChecked ? 'true' : 'false'} last=${root.dataset.rabbitMirrorUnlabeledCheckedLast || '(尚未点击验证)'}`,
+        `有label控件安全副本实测 entries=${routes.labeledCheckedVerify} last=${root.getAttribute?.(LABELED_CHECKED_VERIFY_LAST_ATTR) || '(尚未安全验证)'}`,
         `缺失分支兜底 entries=${routes.selectionFallback} listener=${routes.selectionFallback ? 'true' : 'false'}`,
         `disabled选择恢复 groups=${routes.disabledChoice} listener=${routes.disabledChoice ? 'true' : 'false'}`,
         `无动作按钮兜底 entries=${routes.inertAction} listener=${routes.inertAction ? 'true' : 'false'}`,
@@ -9552,7 +9787,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         lines.push(
             `${index}: ${diagnosticElementName(input)} type=${input.type} checked=${!!input.checked}`,
             `   label=${!!label} text="${diagnosticCompactText(label?.textContent, 68)}"`,
-            `   attrs: route=${getRenderedInputRoute(input) || 'none'} adjacent=${input.getAttribute(RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR) || 'false'} layer=${input.getAttribute(RENDERED_STATE_LAYER_RESCUE_ATTR) || 'false'} labelInternal=${input.getAttribute(RENDERED_LABEL_INTERNAL_HIDDEN_RESCUE_ATTR) || 'false'} labelAdjacent=${input.getAttribute(RENDERED_LABEL_ADJACENT_RESULT_RESCUE_ATTR) || 'false'} idTarget=${input.getAttribute(RENDERED_CHECKED_ID_TARGET_RESCUE_ATTR) || 'false'} cssChecked=${input.getAttribute(CHECKED_TEXT_RULE_RESCUE_ATTR) || 'false'} radioGroup=${input.getAttribute(RADIO_GROUP_RESCUE_ATTR) || 'false'} expandedOpacity=${input.getAttribute(EXPANDED_OPACITY_RESCUE_ATTR) || 'false'} change=${input.getAttribute(CHANGE_PSEUDO_RESCUE_ATTR) || 'false'} unlabeledHost=${input.getAttribute(UNLABELED_CHECKED_CONTROL_RESCUE_ATTR) || 'false'}`,
+            `   attrs: route=${getRenderedInputRoute(input) || 'none'} adjacent=${input.getAttribute(RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR) || 'false'} layer=${input.getAttribute(RENDERED_STATE_LAYER_RESCUE_ATTR) || 'false'} labelInternal=${input.getAttribute(RENDERED_LABEL_INTERNAL_HIDDEN_RESCUE_ATTR) || 'false'} labelAdjacent=${input.getAttribute(RENDERED_LABEL_ADJACENT_RESULT_RESCUE_ATTR) || 'false'} idTarget=${input.getAttribute(RENDERED_CHECKED_ID_TARGET_RESCUE_ATTR) || 'false'} cssChecked=${input.getAttribute(CHECKED_TEXT_RULE_RESCUE_ATTR) || 'false'} radioGroup=${input.getAttribute(RADIO_GROUP_RESCUE_ATTR) || 'false'} expandedOpacity=${input.getAttribute(EXPANDED_OPACITY_RESCUE_ATTR) || 'false'} change=${input.getAttribute(CHANGE_PSEUDO_RESCUE_ATTR) || 'false'} unlabeledHost=${input.getAttribute(UNLABELED_CHECKED_CONTROL_RESCUE_ATTR) || 'false'} labeledVerified=${input.getAttribute(LABELED_CHECKED_VERIFY_CONTROL_ATTR) || 'false'}`,
         );
     });
 
@@ -12376,6 +12611,7 @@ function triggerDiagnosticForMaintenanceRoot(root) {
     interactionDiagnosticStates.set(root, state);
     createOneShotInteractionDiagnosticPanel(root, state);
     captureInteractionDiagnosticSnapshot(root, state, '维修兔触发前');
+    scheduleMaintenanceLabeledCheckedProbe(root, state);
     setTimeout(() => captureInteractionDiagnosticSnapshot(root, state, '+100ms'), 100);
     setTimeout(() => captureInteractionDiagnosticSnapshot(root, state, '+500ms'), 500);
     setTimeout(() => finalizeOneShotInteractionDiagnostic(root, state), 650);
@@ -13351,7 +13587,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.58';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.59';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -13388,7 +13624,7 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
         const rawHoverRepairCount = Math.max(0, rawHoverCountAfter - rawHoverCountBefore);
         const recoveredProgramRepairCount = Math.max(0, recoveredProgramCountAfter - recoveredProgramCountBefore);
         const crossParentCheckedCount = Number.parseInt(target.getAttribute?.(CROSS_PARENT_CHECKED_ROOT_ATTR) || '0', 10) || 0;
-        const forwardLabelCheckedCount = Number.parseInt(target.getAttribute?.(FORWARD_LABEL_CHECKED_ROOT_ATTR) || '0', 10) || 0;
+        const labeledCheckedVerifyCount = Number.parseInt(target.getAttribute?.(LABELED_CHECKED_VERIFY_ROOT_ATTR) || '0', 10) || 0;
         const checkedHasStateCount = Number.parseInt(target.getAttribute?.(CHECKED_HAS_STATE_RULE_COUNT_ATTR) || '0', 10) || 0;
         const pairedCheckedStateCount = Number.parseInt(target.getAttribute?.(PAIRED_CHECKED_STATE_COUNT_ATTR) || '0', 10) || 0;
         const exclusiveStackedStateCount = Number.parseInt(target.getAttribute?.(EXCLUSIVE_STACKED_STATE_COUNT_ATTR) || '0', 10) || 0;
@@ -13425,7 +13661,7 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
             || radioGroupRepairCount > 0
             || radioGroupCountAfter > 0
             || crossParentCheckedCount > 0
-            || forwardLabelCheckedCount > 0
+            || labeledCheckedVerifyCount > 0
             || checkedHasStateCount > 0
             || pairedCheckedStateCount > 0
             || exclusiveStackedStateCount > 0
@@ -13439,7 +13675,7 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
             .map(item => item.trim())
             .filter(item => item && item !== 'none');
         // 不再把“调用了总入口”冒充为“命中了一条急救路线”；选择样式专用结构只有在安全补出分支提示后才算修复。
-        return genuinelyRescued ? Math.max(routes.length, disabledChoiceRepairCount, inertActionRepairCount, staticChoiceRepairCount, structuredStaticDisclosureRepairCount, fillInChoiceRepairCount, disabledChoiceCount, inertActionCount, staticChoiceCount, structuredStaticDisclosureCount, fillInChoiceCount, overlayRepairCount, rawHoverRepairCount, recoveredProgramRepairCount, recoveredProgramCountAfter, radioGroupRepairCount, radioGroupCountAfter, crossParentCheckedCount, forwardLabelCheckedCount, checkedHasStateCount, pairedCheckedStateCount, exclusiveStackedStateCount, channelDialCycleCount, reversibleCheckedCount) : 0;
+        return genuinelyRescued ? Math.max(routes.length, disabledChoiceRepairCount, inertActionRepairCount, staticChoiceRepairCount, structuredStaticDisclosureRepairCount, fillInChoiceRepairCount, disabledChoiceCount, inertActionCount, staticChoiceCount, structuredStaticDisclosureCount, fillInChoiceCount, overlayRepairCount, rawHoverRepairCount, recoveredProgramRepairCount, recoveredProgramCountAfter, radioGroupRepairCount, radioGroupCountAfter, crossParentCheckedCount, labeledCheckedVerifyCount, checkedHasStateCount, pairedCheckedStateCount, exclusiveStackedStateCount, channelDialCycleCount, reversibleCheckedCount) : 0;
     } },
 ]);
 

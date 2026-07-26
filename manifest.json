@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（挨打猫 v1.4・小小维修兔 v1.58）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（Public Beta・挨打猫 v1.4・小小维修兔 v1.59）",
   "loading_order": 99,
-  "js": "index.js?rmv=0.33.87",
-  "css": "style.css?rmv=0.33.87",
+  "js": "index.js?rmv=0.34.0",
+  "css": "style.css?rmv=0.34.0",
   "author": "Toto",
-  "version": "0.33.87-test.1",
+  "version": "0.34.0-beta.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "TEST build based on 0.33.86: Maintenance Rabbit v1.58 adds a verified fallback for forward labels placed before hidden checkbox/radio controls. It only binds when existing checked CSS has real result targets, prevents double toggles, verifies state at 0/60/260ms, and records the last actual result in diagnostics. Prompt rules, output lock, mother library, Menu QR v2.2, Feedback Cat v1.4, and the per-generation token meter are preserved."
+  "description": "Public Beta. Maintenance Rabbit v1.59 verifies labeled checkbox second states inside an isolated hidden clone and never clicks or dispatches events on the live RabbitMirror. The per-generation token meter uses a fixed warm-light readable panel. Prompt rules, output-lock order, injection amount, mother library, Menu QR v2.2, and Feedback Cat v1.4 are unchanged. Source available, not open source; see LICENSE."
 }
