@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（Public Beta・挨打猫 v1.4・小小维修兔 v1.59）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（Beta v1.0・挨打猫 v1.4・维修兔 v1.59）",
   "loading_order": 99,
-  "js": "index.js?rmv=0.34.0b2",
-  "css": "style.css?rmv=0.34.0b2",
+  "js": "index.js?rmv=1.0.0b1",
+  "css": "style.css?rmv=1.0.0b1",
   "author": "Toto",
-  "version": "0.34.0-beta.2",
+  "version": "1.0.0-beta.1",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "Public Beta 2. The public package no longer bundles, downloads, or depends on any Quick Reply menu. User directive priority now applies only to RabbitMirror requirements manually written in the latest user message. Maintenance Rabbit v1.59 keeps isolated hidden-clone verification, and the token meter keeps its fixed warm-light readable panel. Normal prompt injection and mother-library budgets are not increased. Source available, not open source; see LICENSE."
+  "description": "RabbitMirror Beta v1.0. Provides random interactive RabbitMirror scenes, user-directed ordering, optional memory-based flashbacks, Feedback Cat, Maintenance Rabbit v1.59, and a readable per-generation token meter. Maintenance and diagnostics run locally and do not add model tokens. Source available, not open source; see LICENSE."
 }

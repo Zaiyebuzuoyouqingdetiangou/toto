@@ -1,4 +1,4 @@
-import { getSettings } from './settings.js?rmv=0.34.0b2';
+import { getSettings } from './settings.js?rmv=1.0.0b1';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -7,11 +7,11 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=0.34.0b2';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=0.34.0b2';
+} from './feedbackCat.js?rmv=1.0.0b1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.0.0b1';
 
 
-const RUNTIME_VERSION = '0.34.0-beta.2';
+const RUNTIME_VERSION = '1.0.0-beta.1';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -8643,7 +8643,7 @@ function getRenderedRabbitMirrorInteractionRoots(root) {
 // 既可捕获已渲染兔子镜交互，也可捕获尚未恢复的代码块/纯文字兔子镜消息；约 650ms 后自动停止。
 const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
 
-// 0.33.7: 小小维修兔 v1.6。把既有代码块、纯文字、源码/SVG、CSS作用域与完整交互急救库接入逐条维修流水线。
+// 0.33.7: 维修兔 v1.6。把既有代码块、纯文字、源码/SVG、CSS作用域与完整交互急救库接入逐条维修流水线。
 // 设计底线：没有高置信证据就不修改；黄灯才允许调用已有修复路线，红灯只生成诊断。
 const MAINTENANCE_RABBIT_ATTR = 'data-rabbit-mirror-maintenance-rabbit';
 const MAINTENANCE_STATE_ATTR = 'data-rabbit-mirror-maintenance-state';
@@ -9655,7 +9655,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `阶段: ${phase}`,
         `诊断模式: 一次性全链路诊断（已自动停止）`,
         `控件验证: 隐藏隔离副本（不点击、不派发事件、不修改当前页面真实控件）`,
-        `小小维修兔: ${isMaintenanceRabbitEnabled() ? 'ON（逐条手动巡逻）' : 'OFF'}`,
+        `维修兔: ${isMaintenanceRabbitEnabled() ? 'ON（逐条手动巡逻）' : 'OFF'}`,
         `旧全局急救链: 已合并停用`,
         `消息 mesid: ${code.mesid}`,
         `根节点: ${diagnosticElementName(root)} / connected=${!!root.isConnected}`,
@@ -14080,7 +14080,7 @@ function showMaintenanceRabbitMenu(root, button) {
     panel.className = 'rabbit-mirror-maintenance-menu';
     panel.setAttribute(MAINTENANCE_MENU_ATTR, 'true');
     panel.setAttribute('role', 'dialog');
-    panel.setAttribute('aria-label', '小小维修兔');
+    panel.setAttribute('aria-label', '维修兔');
     const patrolInspection = inspectMaintenanceRabbit(root);
     const recommendation = maintenanceRecommendationForInspection(patrolInspection);
     panel.innerHTML = `

@@ -1,9 +1,9 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=0.34.0b2';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=0.34.0b2';
-import { pickCombination } from './picker.js?rmv=0.34.0b2';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown } from './storage.js?rmv=0.34.0b2';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=0.34.0b2';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=0.34.0b2';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.0.0b1';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.0.0b1';
+import { pickCombination } from './picker.js?rmv=1.0.0b1';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown } from './storage.js?rmv=1.0.0b1';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.0.0b1';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.0.0b1';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();

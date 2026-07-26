@@ -1,22 +1,13 @@
 # Changelog
 
-## 0.34.0-beta.2 — Public Beta
+## 1.0.0-beta.1 — Beta v1.0
 
-- Removed the bundled Quick Reply menu asset, download button, related UI text, and the unused legacy point-order rule file from the public package.
-- “User directive priority” now means only a RabbitMirror requirement manually written in the latest user message.
-- Reworded the matched-directive Prompt fragment without increasing normal per-generation injection; the matched fragment is shorter than beta.1.
-- Kept Maintenance Rabbit v1.59 hidden-clone verification and the warm-light token meter unchanged.
-
-## 0.34.0-beta.1 — Public Beta
-
-- Maintenance Rabbit upgraded to v1.59.
-- Full-chain labeled-checkbox verification moved from the live RabbitMirror to an isolated hidden clone.
-- The diagnostic no longer calls `.click()` or dispatches `click`, `input`, or `change` events for its automatic probe.
-- Added explicit diagnostic evidence that the live control was not touched and the sandbox was destroyed.
-- Token meter changed to a fixed warm-light high-contrast panel.
-- Added public README and limited personal-use license.
-- Prompt text, output-lock order, mother-library budget, and Feedback Cat v1.4 remain unchanged.
-
-## 0.33.87-test.1
-
-- Added live labeled checkbox/radio verification and WebView checked-state rollback correction.
+- 发布 RabbitMirror Beta v1.0。
+- 简化设置页说明，让功能和 Token 影响更容易理解。
+- “发散孵化模式”更名为“随机发挥模式”。
+- “Visual Scenery”显示名称改为“动态视觉场景”，不公开具体实现方式。
+- “用户指令优先”改为自由点菜说明。
+- 共同回忆、挨打猫与维修兔的 Token 说明改为用户可直接理解的文案。
+- “小小维修兔”更名为“维修兔”。
+- 从设置页移除重复的全链路诊断入口；维修兔菜单内的诊断功能继续保留。
+- 生成 Prompt、母本预算和正常每轮注入逻辑均未增加。

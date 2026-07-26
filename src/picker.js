@@ -1,6 +1,6 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=0.34.0b2';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=0.34.0b2';
-import { getLastCombo, getRecentIds, setLastCombo } from './storage.js?rmv=0.34.0b2';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.0.0b1';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.0.0b1';
+import { getLastCombo, getRecentIds, setLastCombo } from './storage.js?rmv=1.0.0b1';
 
 function randomInt(min, max) {
     const low = Math.min(min, max);

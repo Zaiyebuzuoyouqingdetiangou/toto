@@ -1,13 +1,13 @@
-import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=0.34.0b2';
-import { clearLastCombo } from './storage.js?rmv=0.34.0b2';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=0.34.0b2';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=0.34.0b2';
-import { refreshFeedbackCats, refreshMaintenanceRabbits, triggerInteractionDiagnosticOnce } from './outputSanitizer.js?rmv=0.34.0b2';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=0.34.0b2';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=0.34.0b2';
+import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.0.0b1';
+import { clearLastCombo } from './storage.js?rmv=1.0.0b1';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.0.0b1';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.0.0b1';
+import { refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.0.0b1';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.0.0b1';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.0.0b1';
 
-const SETTINGS_UI_VERSION = '0.34.0-beta.2';
-const RUNTIME_VERSION = '0.34.0-beta.2';
+const SETTINGS_UI_VERSION = '1.0.0-beta.1';
+const RUNTIME_VERSION = '1.0.0-beta.1';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -184,7 +184,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[Public Beta 2・挨打猫 v1.4＋小小维修兔 v1.59]</span></b><span class="rabbit-mirror-toto-watermark">Toto v0.34.0 Beta 2</span>
+      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[Beta v1.0・挨打猫 v1.4＋维修兔 v1.59]</span></b><span class="rabbit-mirror-toto-watermark">Toto Beta v1.0</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -218,21 +218,21 @@ export function initRabbitMirrorUI() {
           <label for="rh_raw_policy" class="flex-container alignitemscenter" style="gap:8px;flex-wrap:wrap;margin:8px 0;">
             <span>母本检索深度</span>
             <select id="rh_raw_policy" class="text_pole" style="max-width:300px;">
-              <option value="compact">精简：仅索引摘要（最省 Token）</option>
-              <option value="balanced">均衡：摘要＋关键母本片段（默认）</option>
-              <option value="full">完整：较多母本片段（仍有限额）</option>
+              <option value="compact">精简：Prompt 较短，Token 较少</option>
+              <option value="balanced">均衡：Prompt 长度适中（默认）</option>
+              <option value="full">完整：Prompt 较长，参考内容更多</option>
             </select>
           </label>
-          <div class="rabbit-mirror-subnote" style="margin:-4px 0 8px 0;opacity:.72;font-size:12px;line-height:1.45;">均衡模式只检索本轮抽中的条目，并去掉与摘要重复的内容；每轮母本补充最多 900 字符。完整模式最多 2400 字符。</div>
+          <div class="rabbit-mirror-subnote" style="margin:-4px 0 8px 0;opacity:.72;font-size:12px;line-height:1.45;">控制随机生成时使用的 Prompt 长短。越完整，参考内容越多，Token 占用也越高。</div>
 
-          <label class="checkbox_label"><input id="rh_creative_expansion" type="checkbox"> 发散孵化模式（测试版）</label>
-          <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后，主题元素与展现形式只作为灵感基底，允许根据正文氛围发散出元素库之外的新内容、新媒介、新细节与新结构。</div>
+          <label class="checkbox_label"><input id="rh_creative_expansion" type="checkbox"> 随机发挥模式（测试版）</label>
+          <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后会探索更为随机的内容，生成结果可能更跳脱、更有惊喜。</div>
 
-          <label class="checkbox_label"><input id="rh_force_visual_scenery" type="checkbox"> Visual Scenery</label>
-          <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后强制生成一幅完整、统一、会持续变化的 CSS 动态视觉画面；画面本体承担持续动画，并保留由本轮内容自然产生的交互变化。</div>
+          <label class="checkbox_label"><input id="rh_force_visual_scenery" type="checkbox"> 动态视觉场景</label>
+          <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后，展现形式将固定为动态视觉场景图，每轮兔子镜都会按此形式生成。</div>
 
-          <label class="checkbox_label"><input id="rh_user_directive" type="checkbox"> 用户指令优先（手动输入的兔子镜要求）</label>
-          <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">只识别最后一条用户消息中明确写出的兔子镜主题或形式要求；公开版不附带、下载或依赖任何快捷 QR。</div>
+          <label class="checkbox_label"><input id="rh_user_directive" type="checkbox"> 用户指令优先</label>
+          <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后，可以自由点菜自己喜欢的任意内容。</div>
 
           <label class="checkbox_label"><input id="rh_avoid_repeat" type="checkbox"> 10轮冷却：避免重复主题/展现形式/整体观感</label>
           <div class="rabbit-mirror-subnote" style="margin:-2px 0 2px 26px;opacity:.72;font-size:12px;line-height:1.45;">仅记录已经实际生成成功的兔子镜；用于避免连续复用相近的结构骨架与整体视觉家族。</div>
@@ -243,9 +243,9 @@ export function initRabbitMirrorUI() {
         <summary><span>共同回忆资料来源</span><span class="rabbit-mirror-section-note">TEST</span></summary>
         <div class="rabbit-mirror-section-content">
           <label class="checkbox_label"><input id="rh_memory_scan_enabled" type="checkbox"> 启用额外资料来源（测试）</label>
-          <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.76;font-size:12px;line-height:1.45;">只有抽中 I.1「共同回忆」时才读取已勾选的额外资料；普通轮次不追加资料正文。当前对话与已注入世界书由模型直接使用，不会重复读取。</div>
+          <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.76;font-size:12px;line-height:1.45;">开启后，兔子镜可能生成回忆杀；仅在实际出现回忆杀时增加额外 Token。</div>
           <button id="rh_memory_scan_now" class="menu_button" type="button">扫描可用资料来源</button>
-          <div style="margin-top:6px;opacity:.68;font-size:11px;line-height:1.45;">列出模型已可见资料与检测到的额外资料来源；请勾选需要额外读取的项目。其他候选默认收起。</div>
+          <div style="margin-top:6px;opacity:.68;font-size:11px;line-height:1.45;">扫描公开、正规的记忆插件接口 API。</div>
           <div id="rh_memory_scan_results" style="margin-top:8px;"></div>
         </div>
       </details>
@@ -254,11 +254,9 @@ export function initRabbitMirrorUI() {
         <summary><span>反馈、急救与诊断</span><span class="rabbit-mirror-section-note">按需使用</span></summary>
         <div class="rabbit-mirror-section-content">
           <label class="checkbox_label" style="font-weight:700;"><input id="rh_feedback_cat" type="checkbox"> 🐈 启用挨打猫</label>
-          <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.78;font-size:12px;line-height:1.5;">挨打猫只把用户主动选择的反馈临时带入后续 1／3／10 轮生成；用户未选择时不向模型追加任何内容。</div>
-          <label class="checkbox_label" style="font-weight:700;"><input id="rh_maintenance_rabbit" type="checkbox"> 🐇 启用小小维修兔</label>
-          <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.78;font-size:12px;line-height:1.5;">小小维修兔只在用户点击后检查或维修当前这面兔子镜；未点击时不修改内容，也不增加模型 token。</div>
-          <button id="rh_interaction_diagnostic_once" class="menu_button" type="button" style="margin-top:10px;">开始一次 RabbitMirror 全链路诊断</button>
-          <div class="rabbit-mirror-subnote" style="margin:4px 0 0 0;opacity:.78;font-size:12px;line-height:1.45;">用于没有维修兔入口的代码块／纯文字源码，或维修兔显示红灯时的维护报告。点击后再选择异常消息，捕获完成即自动停止。</div>
+          <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.78;font-size:12px;line-height:1.5;">用于纠正兔子镜的美化效果；仅在实际提交美化反馈时增加额外 Token。</div>
+          <label class="checkbox_label" style="font-weight:700;"><input id="rh_maintenance_rabbit" type="checkbox"> 🐇 启用维修兔</label>
+          <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.78;font-size:12px;line-height:1.5;">兔子镜出问题时，可使用维修兔进行检查和修复；维修兔本身不会增加模型 Token。</div>
         </div>
       </details>
 
@@ -312,16 +310,8 @@ export function initRabbitMirrorUI() {
         updateSettings({ maintenanceRabbitEnabled: e.target.checked });
         refreshMaintenanceRabbits();
         toastr?.[e.target.checked ? 'info' : 'success']?.(e.target.checked
-            ? '小小维修兔已启用：每条兔子镜会显示独立的 🐇⚪，只有点击后才巡逻。'
-            : '小小维修兔已关闭：标题入口已移除，不会影响兔子镜内容。');
-    });
-    $('#rh_interaction_diagnostic_once').on('click', () => {
-        const started = triggerInteractionDiagnosticOnce();
-        if (started) {
-            toastr?.info?.('RabbitMirror 全链路诊断已就绪：请在聊天区点击异常的兔子镜、代码块或纯文字源码消息。捕获后会自动停止并显示报告。');
-        } else {
-            toastr?.warning?.('未找到聊天区域，暂时无法开始诊断。请进入具体聊天后重试。');
-        }
+            ? '维修兔已启用：每条兔子镜会显示独立的 🐇⚪，只有点击后才巡逻。'
+            : '维修兔已关闭：标题入口已移除，不会影响兔子镜内容。');
     });
 
     $('#rh_memory_scan_enabled').on('change', e => {
