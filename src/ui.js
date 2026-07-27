@@ -1,13 +1,13 @@
-import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.1.0b2';
-import { clearLastCombo } from './storage.js?rmv=1.1.0b2';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.1.0b2';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.1.0b2';
-import { refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.1.0b2';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.1.0b2';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.1.0b2';
+import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.1.0b5';
+import { clearLastCombo } from './storage.js?rmv=1.1.0b5';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.1.0b5';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.1.0b5';
+import { refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.1.0b5';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.1.0b5';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.1.0b5';
 
-const SETTINGS_UI_VERSION = '1.1.0-beta.2';
-const RUNTIME_VERSION = '1.1.0-beta.2';
+const SETTINGS_UI_VERSION = '1.1.0-beta.5';
+const RUNTIME_VERSION = '1.1.0-beta.5';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;

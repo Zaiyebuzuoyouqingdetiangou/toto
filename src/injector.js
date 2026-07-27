@@ -1,14 +1,14 @@
 import { setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
-import { MODULE_NAME, getSettings } from './settings.js?rmv=1.1.0b2';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b2';
+import { MODULE_NAME, getSettings } from './settings.js?rmv=1.1.0b5';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b5';
 import {
     buildFeedbackCatFinalCheck,
     buildFeedbackCatPrompt,
     clearFeedbackCatExtensionPrompt,
     getActiveFeedbackForCurrentChat,
     markFeedbackCatInjected,
-} from './feedbackCat.js?rmv=1.1.0b2';
-import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.1.0b2';
+} from './feedbackCat.js?rmv=1.1.0b5';
+import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.1.0b5';
 
 const INJECT_KEY = `${MODULE_NAME}:auto_injection`;
 
@@ -53,7 +53,7 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
     // 未选择反馈时不追加任何字符，基础 Prompt 保持逐字不变。
     clearFeedbackCatExtensionPrompt();
     const generationScopeKey = createGenerationScopeKey(type);
-    const promptDetails = buildRabbitMirrorPromptDetails(settings, type, null, generationScopeKey);
+    const promptDetails = buildRabbitMirrorPromptDetails(settings, type, null, generationScopeKey, { chat: _chat });
     const basePrompt = promptDetails.prompt;
     if (!basePrompt) {
         clearRabbitMirrorPrompt(promptDetails.metadata?.disabled ? 'directive-skipped' : 'empty', type);

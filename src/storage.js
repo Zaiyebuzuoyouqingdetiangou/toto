@@ -1,6 +1,196 @@
 const STORAGE_KEY = 'rabbit_mirror_theater:last_combo:v11';
 const PENDING_KEY = 'rabbit_mirror_theater:pending_combo:v11';
 const MAX_STORED = 20;
+const ATTEMPT_STORAGE_KEY = 'rabbit_mirror_theater:generation_attempts:v1';
+const DIRECTIVE_PICK_STORAGE_KEY = 'rabbit_mirror_theater:directive_pick_cache:v1';
+const MAX_ATTEMPTS_PER_CHAT = 20;
+const MAX_DIRECTIVE_PICKS_PER_CHAT = 24;
+const ATTEMPT_TTL_MS = 12 * 60 * 60 * 1000;
+const DIRECTIVE_PICK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+function hashText(text) {
+    let hash = 2166136261;
+    for (const char of String(text || '')) {
+        hash ^= char.charCodeAt(0);
+        hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0).toString(36);
+}
+
+function firstNonEmpty(values) {
+    for (const value of values) {
+        if (value !== undefined && value !== null && String(value).trim()) return String(value).trim();
+    }
+    return '';
+}
+
+function getContextSafe() {
+    try {
+        return globalThis.SillyTavern?.getContext?.() || {};
+    } catch {
+        return {};
+    }
+}
+
+function resolveChat(chatOverride = null) {
+    const context = getContextSafe();
+    if (Array.isArray(context?.chat) && context.chat.length) return context.chat;
+    if (Array.isArray(chatOverride) && chatOverride.some(item => typeof item?.is_user === 'boolean')) return chatOverride;
+    if (Array.isArray(globalThis.chat)) return globalThis.chat;
+    return [];
+}
+
+export function getCurrentChatKey(chatOverride = null) {
+    const context = getContextSafe();
+    const chat = resolveChat(chatOverride);
+    const metadata = context?.chatMetadata || globalThis.chat_metadata || {};
+    const chatId = firstNonEmpty([
+        context?.chatId,
+        context?.chat_id,
+        metadata?.chat_id,
+        metadata?.file_name,
+        metadata?.name,
+    ]);
+    const groupId = firstNonEmpty([context?.groupId, context?.group_id, globalThis.selected_group]);
+    const characterId = firstNonEmpty([
+        context?.characterId,
+        context?.character_id,
+        context?.character?.avatar,
+        context?.characterName,
+        globalThis.this_chid,
+    ]);
+    const firstMessage = chat[0] || {};
+    const seed = firstNonEmpty([
+        firstMessage?.send_date,
+        firstMessage?.name,
+        String(firstMessage?.mes || '').slice(0, 160),
+        globalThis.location?.pathname,
+    ]);
+    return chatId
+        ? `chat:${chatId}`
+        : groupId
+            ? `group:${groupId}:${hashText(seed)}`
+            : characterId
+                ? `character:${characterId}:${hashText(seed)}`
+                : `fallback:${hashText(seed || 'unknown-chat')}`;
+}
+
+function readScopedStore(storageKey) {
+    try {
+        const parsed = JSON.parse(localStorage.getItem(storageKey) || '{}');
+        return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+        return {};
+    }
+}
+
+function writeScopedStore(storageKey, value) {
+    try {
+        localStorage.setItem(storageKey, JSON.stringify(value && typeof value === 'object' ? value : {}));
+        return true;
+    } catch (error) {
+        console.warn('[RabbitMirror] Failed to store scoped generation state:', error);
+        return false;
+    }
+}
+
+function compactIdList(values, limit = 16) {
+    return [...new Set((values || []).map(value => String(value || '').trim()).filter(Boolean))].slice(0, limit);
+}
+
+export function getRecentGenerationAttemptIds(chatKey, limit = 10) {
+    const key = String(chatKey || '').trim();
+    if (!key) return { themeIds: [], formatIds: [], themeGroups: [], formatGroups: [] };
+    const store = readScopedStore(ATTEMPT_STORAGE_KEY);
+    const now = Date.now();
+    const items = Array.isArray(store[key])
+        ? store[key].filter(item => item && now - Number(item.ts || 0) <= ATTEMPT_TTL_MS)
+        : [];
+    if (items.length !== (Array.isArray(store[key]) ? store[key].length : 0)) {
+        if (items.length) store[key] = items;
+        else delete store[key];
+        writeScopedStore(ATTEMPT_STORAGE_KEY, store);
+    }
+    const recent = items.slice(-Math.max(1, Number(limit) || 10));
+    const themeIds = new Set();
+    const formatIds = new Set();
+    const themeGroups = new Set();
+    const formatGroups = new Set();
+    for (const item of recent) {
+        for (const id of item.themeIds || []) themeIds.add(id);
+        for (const id of item.formatIds || []) formatIds.add(id);
+        for (const id of item.themeGroups || []) themeGroups.add(id);
+        for (const id of item.formatGroups || []) formatGroups.add(id);
+    }
+    return {
+        themeIds: [...themeIds],
+        formatIds: [...formatIds],
+        themeGroups: [...themeGroups],
+        formatGroups: [...formatGroups],
+    };
+}
+
+export function recordGenerationAttempt(combo, { chatKey = '', attemptId = '', directiveScoped = false } = {}) {
+    const key = String(chatKey || '').trim();
+    const id = String(attemptId || '').trim();
+    if (!key || !id || !combo) return false;
+    const store = readScopedStore(ATTEMPT_STORAGE_KEY);
+    const now = Date.now();
+    const items = Array.isArray(store[key])
+        ? store[key].filter(item => item && now - Number(item.ts || 0) <= ATTEMPT_TTL_MS)
+        : [];
+    if (items.some(item => item.attemptId === id)) return false;
+    items.push({
+        attemptId: id,
+        themeIds: compactIdList(combo.themeIds),
+        formatIds: compactIdList(combo.formatIds),
+        themeGroups: compactIdList(combo.themeGroups),
+        formatGroups: compactIdList(combo.formatGroups),
+        directiveScoped: !!directiveScoped,
+        ts: now,
+    });
+    store[key] = items.slice(-MAX_ATTEMPTS_PER_CHAT);
+    return writeScopedStore(ATTEMPT_STORAGE_KEY, store);
+}
+
+export function getDirectiveScopedPick(chatKey, directiveScopeKey) {
+    const chat = String(chatKey || '').trim();
+    const scope = String(directiveScopeKey || '').trim();
+    if (!chat || !scope) return null;
+    const store = readScopedStore(DIRECTIVE_PICK_STORAGE_KEY);
+    const now = Date.now();
+    const items = Array.isArray(store[chat])
+        ? store[chat].filter(item => item && now - Number(item.ts || 0) <= DIRECTIVE_PICK_TTL_MS)
+        : [];
+    const found = items.find(item => item.scopeKey === scope) || null;
+    if (items.length !== (Array.isArray(store[chat]) ? store[chat].length : 0)) {
+        if (items.length) store[chat] = items;
+        else delete store[chat];
+        writeScopedStore(DIRECTIVE_PICK_STORAGE_KEY, store);
+    }
+    return found ? { ...found } : null;
+}
+
+export function setDirectiveScopedPick(chatKey, directiveScopeKey, combo) {
+    const chat = String(chatKey || '').trim();
+    const scope = String(directiveScopeKey || '').trim();
+    if (!chat || !scope || !combo) return false;
+    const store = readScopedStore(DIRECTIVE_PICK_STORAGE_KEY);
+    const now = Date.now();
+    const items = Array.isArray(store[chat])
+        ? store[chat].filter(item => item && now - Number(item.ts || 0) <= DIRECTIVE_PICK_TTL_MS && item.scopeKey !== scope)
+        : [];
+    items.push({
+        scopeKey: scope,
+        themeIds: compactIdList(combo.themeIds),
+        formatIds: compactIdList(combo.formatIds),
+        uiReviewFocus: Array.isArray(combo.uiReviewFocus) ? combo.uiReviewFocus.slice(0, 8) : [],
+        ts: now,
+    });
+    store[chat] = items.slice(-MAX_DIRECTIVE_PICKS_PER_CHAT);
+    return writeScopedStore(DIRECTIVE_PICK_STORAGE_KEY, store);
+}
+
 
 function readHistory() {
     try {
@@ -175,6 +365,8 @@ export function clearLastCombo() {
     try {
         localStorage.removeItem(STORAGE_KEY);
         localStorage.removeItem(PENDING_KEY);
+        localStorage.removeItem(ATTEMPT_STORAGE_KEY);
+        localStorage.removeItem(DIRECTIVE_PICK_STORAGE_KEY);
         // 清理旧版 key，防止旧记录混淆。
         localStorage.removeItem('rabbit_mirror_theater:last_combo:v3');
         localStorage.removeItem('rabbit_mirror_theater:last_combo:v4');

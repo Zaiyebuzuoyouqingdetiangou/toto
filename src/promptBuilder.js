@@ -1,9 +1,9 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.1.0b2';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.1.0b2';
-import { pickCombination } from './picker.js?rmv=1.1.0b2';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown } from './storage.js?rmv=1.1.0b2';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.1.0b2';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.1.0b2';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.1.0b5';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.1.0b5';
+import { pickCombination } from './picker.js?rmv=1.1.0b5';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown } from './storage.js?rmv=1.1.0b5';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.1.0b5';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.1.0b5';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -297,6 +297,51 @@ function presentationEmbodimentRule() {
   - 当展现形式适合单色、低彩度或有限色域时，可以保持克制，但仍须依靠明度、纹理、材质与空间层次形成完整视觉。`;
 }
 
+function truncateDirectiveText(value, max = 3000) {
+    const text = String(value || '')
+        .replace(/\r\n?/g, '\n')
+        .trim();
+    if (!text || text.length <= max) return text;
+    return `${text.slice(0, Math.max(20, max - 1)).trim()}…`;
+}
+
+function directiveList(values, fallback = '（无）') {
+    const items = (values || [])
+        .map(value => truncate(value, 700))
+        .filter(Boolean)
+        .slice(0, 8);
+    return items.length ? items.map(value => `  - ${JSON.stringify(value)}`).join('\n') : fallback;
+}
+
+function userDirectivePriorityRule(directive) {
+    if (!directive) return '';
+    const knownThemes = (directive.themes || []).map(item => `${item.id} ${item.title}`);
+    const knownFormats = (directive.formats || []).map(item => `${item.id} ${item.title}`);
+    const rawDirective = truncateDirectiveText(directive.rawDirective || '', 3000);
+    if (!rawDirective) return '';
+
+    return String.raw`
+本轮用户点菜【最高优先；只在本轮生效；仅作用于兔子镜】:
+【用户本轮兔子镜原始指令｜必须完整执行】
+<user_rabbit_mirror_directive>
+${rawDirective}
+</user_rabbit_mirror_directive>
+
+库内辅助命中【只用于补充母本参考，不得覆盖原始指令】:
+主题:
+${directiveList(knownThemes)}
+展现形式:
+${directiveList(knownFormats)}
+
+点菜执行规则:
+  - 必须完整执行 <user_rabbit_mirror_directive> 中的全部要求；多项要求必须同时落实，漏一项即不合格。
+  - 母本库没有对应内容时必须现场构造，不得忽略、降级、改写成相近库项或退回纯随机结果。
+  - 用户已指定的主题或展现形式不得再被随机抽取覆盖；随机内容只允许补足用户没有指定的部分。
+  - 对自定义展现形式，必须从该媒介本体推导结构、视觉语言、阅读路径与可实现的交互，不得用普通卡片或信息面板代替。
+  - 点菜只绑定当前待回复的用户消息；不得继承到后续没有明确点菜的新一轮。
+  - 点菜内容只影响兔子镜内部，不得改变主回复正文、角色行动、既有剧情事实或其他固定模块。`;
+}
+
 function visualColorTruthRule() {
     return String.raw`
 视觉真实:
@@ -331,6 +376,7 @@ ${selectedThemes}
 本轮展现形式:
 ${selectedFormats}`);
     }
+    chunks.push(userDirectivePriorityRule(settings.userDirectivePriority ? directive : null));
     chunks.push(sharedMemoryMaterialRule(memoryMaterial));
     chunks.push(compactCreativeRule(!!settings.creativeExpansionMode, mode === 'format_only'));
     chunks.push(presentationEmbodimentRule());
@@ -339,12 +385,6 @@ ${selectedFormats}`);
     chunks.push(paletteCooldownRule());
     chunks.push(visualColorTruthRule());
     chunks.push(stateBarIsolationRule());
-
-    if (settings.userDirectivePriority && directive) {
-        chunks.push(String.raw`
-本轮用户要求优先:
-  最后一条用户输入已明确指定兔子镜主题或形式；指定项优先，未指定部分随机补足。不得影响主回复正文。`);
-    }
 
     if (settings.avoidRepeat) {
         chunks.push(String.raw`
@@ -366,11 +406,11 @@ ${shortVisualAvoidance(combo, 3)}`);
     return chunks.filter(Boolean).join('\n\n').trim();
 }
 
-export function buildRabbitMirrorPromptDetails(settings, generationType = 'normal', activeFeedback = null, generationScopeKey = '') {
+export function buildRabbitMirrorPromptDetails(settings, generationType = 'normal', activeFeedback = null, generationScopeKey = '', generationContext = null) {
     if (!settings?.enabled || !settings?.autoRabbitMirrorInjection || settings?.mode === 'off') {
         return { prompt: '', metadata: Object.freeze({ generationType: String(generationType || 'normal') }) };
     }
-    const { combo, directive, disabled } = pickCombination(settings, generationScopeKey);
+    const { combo, directive, disabled } = pickCombination(settings, generationScopeKey, generationContext);
     if (disabled) {
         if (settings.debug) console.debug('[RabbitMirror] skipped by user directive');
         return { prompt: '', metadata: Object.freeze({ generationType: String(generationType || 'normal'), disabled: true }) };
@@ -401,6 +441,16 @@ export function buildRabbitMirrorPromptDetails(settings, generationType = 'norma
         memorySources: Array.isArray(memoryMaterial?.sources) ? [...memoryMaterial.sources] : [],
         visualSceneryMode,
         tarotRules: !!tarotRulesText,
+        userDirectiveApplied: !!directive,
+        customThemeCount: Array.isArray(directive?.customThemes) ? directive.customThemes.length : 0,
+        customFormatCount: Array.isArray(directive?.customFormats) ? directive.customFormats.length : 0,
+        customRequestCount: Array.isArray(directive?.customRequests) ? directive.customRequests.length : 0,
+        rawDirectiveChars: String(directive?.rawDirective || '').length,
+        customDirectiveChars: [
+            ...(directive?.customThemes || []),
+            ...(directive?.customFormats || []),
+            ...(directive?.customRequests || []),
+        ].join('').length,
     });
 
     if (settings.debug) {
@@ -409,6 +459,6 @@ export function buildRabbitMirrorPromptDetails(settings, generationType = 'norma
     return { prompt, metadata };
 }
 
-export function buildRabbitMirrorPrompt(settings, generationType = 'normal', activeFeedback = null, generationScopeKey = '') {
-    return buildRabbitMirrorPromptDetails(settings, generationType, activeFeedback, generationScopeKey).prompt;
+export function buildRabbitMirrorPrompt(settings, generationType = 'normal', activeFeedback = null, generationScopeKey = '', generationContext = null) {
+    return buildRabbitMirrorPromptDetails(settings, generationType, activeFeedback, generationScopeKey, generationContext).prompt;
 }

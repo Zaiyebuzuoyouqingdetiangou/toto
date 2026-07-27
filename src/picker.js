@@ -1,6 +1,15 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.1.0b2';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.1.0b2';
-import { getLastCombo, getRecentIds, setLastCombo } from './storage.js?rmv=1.1.0b2';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.1.0b5';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.1.0b5';
+import {
+    getCurrentChatKey,
+    getDirectiveScopedPick,
+    getLastCombo,
+    getRecentGenerationAttemptIds,
+    getRecentIds,
+    recordGenerationAttempt,
+    setDirectiveScopedPick,
+    setLastCombo,
+} from './storage.js?rmv=1.1.0b5';
 
 function randomInt(min, max) {
     const low = Math.min(min, max);
@@ -68,17 +77,47 @@ function normalizeGenerationScopeKey(value) {
     return String(value || '').trim();
 }
 
+function hashText(text) {
+    let hash = 2166136261;
+    for (const char of String(text || '')) {
+        hash ^= char.charCodeAt(0);
+        hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0).toString(36);
+}
+
+function compactUnique(values) {
+    return [...new Set((values || []).map(value => String(value || '').trim()).filter(Boolean))];
+}
+
+function mergeRecent(base, attempts) {
+    return {
+        themeIds: compactUnique([...(base?.themeIds || []), ...(attempts?.themeIds || [])]),
+        formatIds: compactUnique([...(base?.formatIds || []), ...(attempts?.formatIds || [])]),
+        themeGroups: compactUnique([...(base?.themeGroups || []), ...(attempts?.themeGroups || [])]),
+        formatGroups: compactUnique([...(base?.formatGroups || []), ...(attempts?.formatGroups || [])]),
+        uiReviewFocus: Array.isArray(base?.uiReviewFocus) ? [...base.uiReviewFocus] : [],
+    };
+}
+
 function allowByMode(_item, mode) {
     if (mode === 'off') return false;
     return true;
 }
 
-function weightedSample(pool, count, recentIds = [], recentGroups = [], avoidRepeat = true) {
+function weightedSample(pool, count, recentIds = [], recentGroups = [], avoidRepeat = true, hardExcludedIds = []) {
     const recent = new Set(recentIds || []);
     const groups = new Set(recentGroups || []);
+    const hardExcluded = new Set(hardExcludedIds || []);
     let candidates = [...pool];
 
-    // 完全相同子项优先从候选池中移除；候选不足时才回退。
+    // 每次新的非点菜生成都先硬排除刚刚抽过的子项；候选不足时才安全回退。
+    if (hardExcluded.size) {
+        const filtered = candidates.filter(x => !hardExcluded.has(x.id));
+        if (filtered.length >= count) candidates = filtered;
+    }
+
+    // 正式冷却历史仍按原设置执行。
     if (avoidRepeat) {
         const filtered = candidates.filter(x => !recent.has(x.id));
         if (filtered.length >= count) candidates = filtered;
@@ -140,13 +179,19 @@ function pickWeightedEntry(entries, getWeight) {
  * 再从该家族内部抽父项或子项。新增独立子主题只增加家族内部的精度，
  * 不会因为子项数量变多而抬高整个父主题在总池中的命中率。
  */
-function weightedThemeSample(pool, count, recentIds = [], recentGroups = [], avoidRepeat = true) {
+function weightedThemeSample(pool, count, recentIds = [], recentGroups = [], avoidRepeat = true, hardExcludedIds = []) {
     const recent = new Set(recentIds || []);
     const recentGroupSet = new Set(recentGroups || []);
     const recentFamilySet = new Set((recentIds || []).map(themeFamilyKey));
+    const hardExcluded = new Set(hardExcludedIds || []);
+    let workingPool = [...pool];
+    if (hardExcluded.size) {
+        const filtered = workingPool.filter(item => !hardExcluded.has(item.id));
+        if (filtered.length >= Math.max(1, Number(count) || 1)) workingPool = filtered;
+    }
     const families = new Map();
 
-    for (const item of pool) {
+    for (const item of workingPool) {
         const key = themeFamilyKey(item);
         if (!families.has(key)) families.set(key, { key, group: item.group, items: [] });
         families.get(key).items.push(item);
@@ -184,17 +229,38 @@ function weightedThemeSample(pool, count, recentIds = [], recentGroups = [], avo
     }
 
     if (selected.length) return selected;
-    return shuffle(pool).slice(0, Math.max(1, Math.min(count, pool.length)));
+    return shuffle(workingPool).slice(0, Math.max(1, Math.min(count, workingPool.length)));
 }
 
-function getLastUserMessage() {
+function getCurrentTurnUserMessage(chatOverride = null) {
     try {
-        const context = SillyTavern?.getContext?.();
-        const chat = context?.chat || [];
-        const lastUser = [...chat].reverse().find(m => m?.is_user && typeof m?.mes === 'string');
-        return lastUser?.mes || '';
+        const context = globalThis.SillyTavern?.getContext?.() || {};
+        const overrideUsable = Array.isArray(chatOverride) && chatOverride.some(item => typeof item?.is_user === 'boolean');
+        const chat = Array.isArray(context?.chat) && context.chat.length
+            ? context.chat
+            : overrideUsable
+                ? chatOverride
+                : Array.isArray(globalThis.chat)
+                    ? globalThis.chat
+                    : [];
+
+        // 取本次助手回复所对应的最近一条用户消息。
+        // 因此同一条回复反复重说/Swipe 时仍能识别同一份点菜；用户发送新消息后自然切换到新消息。
+        for (let index = chat.length - 1; index >= 0; index -= 1) {
+            const message = chat[index];
+            if (!message || typeof message.mes !== 'string' || message.is_system || !message.is_user) continue;
+            const text = message.mes.trim();
+            if (!text) return null;
+            const stablePart = String(message.mesid ?? message.send_date ?? index);
+            return {
+                text: message.mes,
+                index,
+                key: `${stablePart}:${hashText(message.mes)}`,
+            };
+        }
+        return null;
     } catch (_error) {
-        return '';
+        return null;
     }
 }
 
@@ -210,6 +276,21 @@ function splitDirectiveText(text) {
         .split(/[+＋、,，;；\n]/)
         .map(x => x.trim())
         .filter(Boolean);
+}
+
+function uniqueDirectiveTexts(items, limit = 8, maxChars = 700) {
+    const seen = new Set();
+    const result = [];
+    for (const value of items || []) {
+        const text = String(value || '').replace(/\s+/g, ' ').trim().slice(0, maxChars);
+        if (!text) continue;
+        const key = normalizeText(text);
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        result.push(text);
+        if (result.length >= limit) break;
+    }
+    return result;
 }
 
 function itemHaystack(item) {
@@ -276,58 +357,155 @@ function extractAfterPatterns(message, patterns) {
     return results;
 }
 
-function parseUserDirective(message) {
-    if (!message || !/(兔子镜|小剧场)/.test(message)) return null;
+function cleanDirectiveBlock(value, maxChars = 3000) {
+    return String(value || '')
+        .replace(/\r\n?/g, '\n')
+        .replace(/[ \t]+$/gm, '')
+        .trim()
+        .slice(0, maxChars);
+}
 
-    if (/((?:兔子镜|小剧场)\s*(关闭|关掉|不要|禁用|停止|off)|不要\s*(?:兔子镜|小剧场)|关闭\s*(?:兔子镜|小剧场)|本轮不(?:要|用)\s*(?:兔子镜|小剧场))/i.test(message)) {
-        return { disabled: true, reason: '用户正文指令关闭本轮兔子镜' };
+function findExplicitDirectiveStart(message) {
+    const patterns = [
+        // 兔子镜：…… / 本轮兔子镜主题：…… / 小剧场要求：……
+        /(^|[\n。！？!?；;])([ \t]*(?:[-*•]\s*)?(?:(?:本轮|这次|下次|下一个)\s*)?(?:兔子镜|小剧场)\s*(?:(?:主题|元素|题材|展现形式|展示形式|表现形式|格式|形式|要求|指令)\s*)?[:：])/igm,
+        // 这次兔子镜做成…… / 把小剧场改成……
+        /(^|[\n。！？!?；;])([ \t]*(?:[-*•]\s*)?(?:请\s*)?(?:把|将)?\s*(?:(?:本轮|这次|下次|下一个)\s*)?(?:兔子镜|小剧场)\s*(?:做成|改成|换成|用|生成|来|要|想看|想要|指定))/igm,
+        // 做一个……的兔子镜 / 生成一个……小剧场
+        /(^|[\n。！？!?；;])([ \t]*(?:[-*•]\s*)?(?:请\s*)?(?:做|生成|来|给我来|想看|想要|换成|改成|做成)(?:一个|个)?\s*[^。\n！？!?；;]{1,700}?(?:的)?(?:兔子镜|小剧场)(?=$|[。！？!?；;\n]))/igm,
+    ];
+
+    let earliest = null;
+    for (const pattern of patterns) {
+        pattern.lastIndex = 0;
+        const match = pattern.exec(message);
+        if (!match) continue;
+        const index = match.index + String(match[1] || '').length;
+        if (earliest === null || index < earliest) earliest = index;
+    }
+    return earliest;
+}
+
+function extractRabbitMirrorDirective(message) {
+    const source = String(message || '');
+    if (!source || !/(兔子镜|小剧场)/.test(source)) return '';
+
+    const start = findExplicitDirectiveStart(source);
+    if (start === null) return '';
+
+    let block = source.slice(start);
+    // 用户可在同一条消息中用“正文：/继续剧情：”明确结束点菜区块。
+    const stopMatch = /\n\s*(?:正文|剧情|继续剧情|继续角色扮演|角色扮演|RP)\s*[:：]/i.exec(block);
+    if (stopMatch) block = block.slice(0, stopMatch.index);
+    return cleanDirectiveBlock(block);
+}
+
+function extractDisableDirective(message) {
+    const source = String(message || '');
+    const patterns = [
+        /(^|[\n。！？!?；;])\s*(?:(?:本轮|这次)\s*)?(?:不要|不用|关闭|关掉|禁用|停止)\s*(?:兔子镜|小剧场)/im,
+        /(^|[\n。！？!?；;])\s*(?:(?:本轮|这次)\s*)?(?:兔子镜|小剧场)\s*(?:关闭|关掉|不要|不用|禁用|停止|off)/im,
+    ];
+    for (const pattern of patterns) {
+        const match = pattern.exec(source);
+        if (!match) continue;
+        const start = match.index + String(match[1] || '').length;
+        return cleanDirectiveBlock(source.slice(start), 700);
+    }
+    return '';
+}
+
+function parseUserDirective(currentTurn) {
+    const message = String(currentTurn?.text || '');
+    if (!message) return null;
+
+    const disableDirective = extractDisableDirective(message);
+    if (disableDirective) {
+        return {
+            disabled: true,
+            reason: '用户本轮明确要求关闭兔子镜',
+            rawDirective: disableDirective,
+            messageKey: currentTurn?.key || '',
+        };
     }
 
-    const themeTexts = extractAfterPatterns(message, [
-        '(?:兔子镜|小剧场)(?:主题|元素|题材|theme)\s*[:：]\s*([^\n。；;]+)',
+    const rawDirective = extractRabbitMirrorDirective(message);
+    if (!rawDirective) return null;
+
+    const themeTexts = extractAfterPatterns(rawDirective, [
+        '(?:兔子镜|小剧场)(?:主题|元素|题材|theme)\\s*[:：]\\s*([^\\n。；;]+)',
+        '(?:兔子镜|小剧场)(?:主题|元素|题材|theme)\\s+(?:用|要|换成|改成|做成)?\\s*([^\\n。；;]+)',
     ]);
-    const formatTexts = extractAfterPatterns(message, [
-        '(?:兔子镜|小剧场)(?:展现形式|展示形式|表现形式|格式|形式|format|ui|UI)\s*[:：]\s*([^\n。；;]+)',
+    const formatTexts = extractAfterPatterns(rawDirective, [
+        '(?:兔子镜|小剧场)(?:展现形式|展示形式|表现形式|格式|形式|format|ui|UI)\\s*[:：]\\s*([^\\n。；;]+)',
+        '(?:兔子镜|小剧场)(?:展现形式|展示形式|表现形式|格式|形式|format|ui|UI)\\s+(?:用|要|换成|改成|做成)?\\s*([^\\n。；;]+)',
     ]);
-    const generalTexts = extractAfterPatterns(message, [
-        '(?:兔子镜|小剧场)\s*[:：]\s*([^\n。；;]+)',
-        '(?:兔子镜|小剧场)\s*(?:想看|想要|来|要|指定|换成)\s*([^\n。；;]+)',
-        '(?:下一个|下次|这次|本轮)?\s*(?:兔子镜|小剧场)\s*(?:想看|想要|来|要|指定|换成)\s*([^\n。；;]+)',
+    const generalTexts = extractAfterPatterns(rawDirective, [
+        '(?:兔子镜|小剧场)\\s*[:：]\\s*([^\\n。；;]+)',
+        '(?:兔子镜|小剧场)\\s*(?:想看|想要|来|要|指定|换成|改成|做成|用|生成)\\s*([^\\n。；;]+)',
+        '(?:下一个|下次|这次|本轮)?\\s*(?:兔子镜|小剧场)\\s*(?:想看|想要|来|要|指定|换成|改成|做成|用|生成)\\s*([^\\n。；;]+)',
+        '(?:想看|想要|来(?:一个|个)?|做(?:一个|个)?|生成(?:一个|个)?|换成|改成|做成)\\s*([^\\n。；;]{1,700}?)(?:的)?(?:兔子镜|小剧场)(?=$|[。；;！!？?\\n])',
     ]).filter(x => !/^(主题|元素|题材|展现形式|展示形式|表现形式|格式|形式)\s*[:：]/.test(x));
 
-    const themeQueries = splitDirectiveText(themeTexts.join('、'));
-    const formatQueries = splitDirectiveText(formatTexts.join('、'));
-    const generalQueries = splitDirectiveText(generalTexts.join('、'));
+    const themeQueries = uniqueDirectiveTexts(splitDirectiveText(themeTexts.join('、')));
+    const formatQueries = uniqueDirectiveTexts(splitDirectiveText(formatTexts.join('、')));
+    const generalQueries = uniqueDirectiveTexts(splitDirectiveText(generalTexts.join('、')));
 
     const themes = [];
     const formats = [];
+    const customThemes = [];
+    const customFormats = [];
+    const customRequests = [];
+    let hasThemeRequest = themeQueries.length > 0;
+    let hasFormatRequest = formatQueries.length > 0;
 
     for (const query of themeQueries) {
         const matched = matchOne(THEMATIC_CATEGORIES, query);
         if (matched) themes.push(matched);
+        else customThemes.push(query);
     }
     for (const query of formatQueries) {
         const matched = matchOne(PRESENTATION_FORMATS, query);
         if (matched) formats.push(matched);
+        else customFormats.push(query);
     }
     for (const query of generalQueries) {
         const format = matchOne(PRESENTATION_FORMATS, query);
         const theme = matchOne(THEMATIC_CATEGORIES, query);
-        // 一般“兔子镜：xxx”里，像法甜剖面图/短信体更常是展现形式；两边都能匹配时都保留。
-        if (format) formats.push(format);
-        if (theme) themes.push(theme);
+        if (format) {
+            formats.push(format);
+            hasFormatRequest = true;
+        }
+        if (theme) {
+            themes.push(theme);
+            hasThemeRequest = true;
+        }
+        if (!format && !theme) {
+            customRequests.push(query);
+            // 未分类自由点菜可能同时规定“演什么”和“怎么演”；为避免随机项冲掉原意，两侧均视为已指定。
+            hasThemeRequest = true;
+            hasFormatRequest = true;
+        }
     }
 
     const uniqueThemes = uniqueById(themes);
     const uniqueFormats = uniqueById(formats);
-    if (!uniqueThemes.length && !uniqueFormats.length) return null;
+    const uniqueCustomThemes = uniqueDirectiveTexts(customThemes);
+    const uniqueCustomFormats = uniqueDirectiveTexts(customFormats);
+    const uniqueCustomRequests = uniqueDirectiveTexts(customRequests);
 
     return {
         disabled: false,
         themes: uniqueThemes,
         formats: uniqueFormats,
-        source: '最后一条用户消息中的兔子镜手动要求',
-        raw: message,
+        customThemes: uniqueCustomThemes,
+        customFormats: uniqueCustomFormats,
+        customRequests: uniqueCustomRequests,
+        hasThemeRequest,
+        hasFormatRequest,
+        source: '当前待回复用户消息中的明确兔子镜点菜',
+        rawDirective,
+        messageKey: currentTurn?.key || '',
     };
 }
 
@@ -335,14 +513,29 @@ function getVisualSceneryFormat() {
     return PRESENTATION_FORMATS.find(item => item.id === '10.2.2' || normalizeText(item.title) === normalizeText('Visual Scenery')) || null;
 }
 
-function applyDirectiveOrRandom({ settings, themePool, formatPool, themeCount, formatCount, last, recent }) {
-    const directive = settings.userDirectivePriority ? parseUserDirective(getLastUserMessage()) : null;
-    if (directive?.disabled) {
-        return { disabled: true, directive };
-    }
+function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, themeCount, formatCount, recent, hardRecent }) {
+    if (directive?.disabled) return { disabled: true, directive };
 
-    const pickedThemes = weightedThemeSample(themePool, themeCount, recent.themeIds, recent.themeGroups, settings.avoidRepeat);
-    const pickedFormats = weightedSample(formatPool, formatCount, recent.formatIds, recent.formatGroups, settings.avoidRepeat);
+    const pickedThemes = directive?.hasThemeRequest
+        ? []
+        : weightedThemeSample(
+            themePool,
+            themeCount,
+            recent.themeIds,
+            recent.themeGroups,
+            settings.avoidRepeat,
+            hardRecent.themeIds,
+        );
+    const pickedFormats = directive?.hasFormatRequest
+        ? []
+        : weightedSample(
+            formatPool,
+            formatCount,
+            recent.formatIds,
+            recent.formatGroups,
+            settings.avoidRepeat,
+            hardRecent.formatIds,
+        );
     const visualSceneryFormat = getVisualSceneryFormat();
     const forcedFormats = settings.forceVisualScenery && visualSceneryFormat ? [visualSceneryFormat] : [];
     const directiveFormats = directive?.formats || [];
@@ -355,10 +548,8 @@ function applyDirectiveOrRandom({ settings, themePool, formatPool, themeCount, f
 
     let formats;
     if (forcedFormats.length) {
-        // Visual Scenery 动态模式开启时，展现形式锁定为 10.2.2；是否抽主题由抽取模式决定。
         formats = forcedFormats;
     } else if (directiveWantsVisualScenery) {
-        // 用户正文明确指定 Visual Scenery 时，也让它成为本轮核心展现形式，避免被随机格式稀释。
         formats = uniqueById(directiveFormats);
     } else {
         formats = uniqueById([...directiveFormats, ...pickedFormats]).slice(0, Math.max(formatCount, directiveFormats.length));
@@ -367,31 +558,8 @@ function applyDirectiveOrRandom({ settings, themePool, formatPool, themeCount, f
     return { themes, formats, directive, forcedFormats };
 }
 
-export function pickCombination(settings, generationScopeKey = '') {
-    const scopeKey = normalizeGenerationScopeKey(generationScopeKey);
-    if (scopeKey && cachedPick?.scopeKey === scopeKey) {
-        return cachedPick.payload;
-    }
-
-    const last = getLastCombo();
-    const recent = getRecentIds(settings.cooldownRounds || 10);
-    const themeCount = weightedThemeCount(settings);
-    const formatCount = weightedFormatCount(settings);
-
-    let themePool = THEMATIC_CATEGORIES.filter(item => allowByMode(item, settings.mode));
-    let formatPool = PRESENTATION_FORMATS.filter(item => allowByMode(item, settings.mode));
-
-    if (!themePool.length) themePool = THEMATIC_CATEGORIES;
-    if (!formatPool.length) formatPool = PRESENTATION_FORMATS;
-
-    const result = applyDirectiveOrRandom({ settings, themePool, formatPool, themeCount, formatCount, last, recent });
-    if (result.disabled) {
-        const payload = { disabled: true, directive: result.directive, combo: null, last };
-        if (scopeKey) cachedPick = { scopeKey, payload };
-        return payload;
-    }
-
-    const combo = {
+function comboFromSelection(result, settings, recent, uiReviewFocus = null) {
+    return {
         themes: result.themes,
         formats: result.formats,
         themeIds: result.themes.map(x => x.id),
@@ -401,15 +569,98 @@ export function pickCombination(settings, generationScopeKey = '') {
         formatGroups: result.formats.map(x => x.group).filter(Boolean),
         mode: settings.mode,
         samplingMode: settings.samplingMode || 'classic',
-        directive: result.directive || null,
         forcedVisualScenery: !!settings.forceVisualScenery,
         cooldownRounds: settings.cooldownRounds || 10,
-        uiReviewFocus: pickUiReviewFocus(5),
+        uiReviewFocus: Array.isArray(uiReviewFocus) && uiReviewFocus.length ? [...uiReviewFocus] : pickUiReviewFocus(5),
         recentUiReviewFocus: recent.uiReviewFocus || [],
     };
+}
+
+function rehydrateDirectiveCombo(cached, settings, recent) {
+    if (!cached) return null;
+    const themes = (cached.themeIds || [])
+        .map(id => THEMATIC_CATEGORIES.find(item => item.id === id))
+        .filter(Boolean);
+    const formats = (cached.formatIds || [])
+        .map(id => PRESENTATION_FORMATS.find(item => item.id === id))
+        .filter(Boolean);
+    if (themes.length !== (cached.themeIds || []).length || formats.length !== (cached.formatIds || []).length) return null;
+    return comboFromSelection({ themes, formats }, settings, recent, cached.uiReviewFocus);
+}
+
+function directiveScopeKey(directive, settings) {
+    if (!directive?.rawDirective || !directive?.messageKey) return '';
+    const config = [
+        settings.samplingMode || 'classic',
+        settings.forceVisualScenery ? 'visual' : 'normal',
+        settings.themesMin,
+        settings.themesMax,
+        settings.formatsMin,
+        settings.formatsMax,
+    ].join('|');
+    return hashText(`${directive.messageKey}|${directive.rawDirective}|${config}`);
+}
+
+export function pickCombination(settings, generationScopeKey = '', generationContext = null) {
+    const scopeKey = normalizeGenerationScopeKey(generationScopeKey);
+    if (scopeKey && cachedPick?.scopeKey === scopeKey) return cachedPick.payload;
+
+    const chatOverride = generationContext?.chat || null;
+    const chatKey = getCurrentChatKey(chatOverride);
+    const currentTurn = settings.userDirectivePriority ? getCurrentTurnUserMessage(chatOverride) : null;
+    const directive = currentTurn ? parseUserDirective(currentTurn) : null;
+    const last = getLastCombo();
+    const formalRecent = getRecentIds(settings.cooldownRounds || 10);
+    const attemptRecent = getRecentGenerationAttemptIds(chatKey, settings.cooldownRounds || 10);
+    const recent = mergeRecent(formalRecent, attemptRecent);
+    const hardRecent = {
+        themeIds: attemptRecent.themeIds || [],
+        formatIds: attemptRecent.formatIds || [],
+    };
+    const themeCount = weightedThemeCount(settings);
+    const formatCount = weightedFormatCount(settings);
+
+    let themePool = THEMATIC_CATEGORIES.filter(item => allowByMode(item, settings.mode));
+    let formatPool = PRESENTATION_FORMATS.filter(item => allowByMode(item, settings.mode));
+    if (!themePool.length) themePool = THEMATIC_CATEGORIES;
+    if (!formatPool.length) formatPool = PRESENTATION_FORMATS;
+
+    if (directive?.disabled) {
+        const payload = { disabled: true, directive, combo: null, last };
+        if (scopeKey) cachedPick = { scopeKey, payload };
+        return payload;
+    }
+
+    const directiveCacheKey = directiveScopeKey(directive, settings);
+    let combo = null;
+    if (directive && directiveCacheKey) {
+        combo = rehydrateDirectiveCombo(getDirectiveScopedPick(chatKey, directiveCacheKey), settings, recent);
+    }
+
+    if (!combo) {
+        const result = applyDirectiveOrRandom({
+            settings,
+            directive,
+            themePool,
+            formatPool,
+            themeCount,
+            formatCount,
+            recent,
+            hardRecent,
+        });
+        combo = comboFromSelection(result, settings, recent);
+        if (directive && directiveCacheKey) setDirectiveScopedPick(chatKey, directiveCacheKey, combo);
+    }
 
     setLastCombo(combo);
-    const payload = { combo, last, directive: result.directive || null };
+    recordGenerationAttempt(combo, {
+        chatKey,
+        attemptId: scopeKey || `fallback:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 8)}`,
+        directiveScoped: !!directive,
+    });
+
+    const payload = { combo, last, directive: directive || null };
     if (scopeKey) cachedPick = { scopeKey, payload };
     return payload;
 }
+
