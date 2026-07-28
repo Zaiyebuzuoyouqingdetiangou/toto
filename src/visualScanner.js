@@ -1,5 +1,10 @@
-import { updateLatestVisualSignature } from './storage.js?rmv=1.1.0b5';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.1.0b5';
+import { updateLatestVisualSignature } from './storage.js?rmv=1.1.0b10';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.1.0b10';
+import {
+    captureRabbitMirrorGenerationSnapshots,
+    getRabbitMirrorGenerationSnapshot,
+    inspectRabbitMirrorGenerationSource,
+} from './generationGuard.js?rmv=1.1.0b10';
 
 const TOTO_RE = new RegExp('<toto\\b[^>]*(?:data-rabbit-mirror|data-rabbit-' + 'h' + 'ole)=[\"\']true[\"\'][^>]*>[\\s\\S]*?<\\/toto>', 'i');
 let lastScannedHash = '';
@@ -926,13 +931,59 @@ function findRenderedToto(message, chat, messageHtml) {
     return all[all.length - 1] || null;
 }
 
+
+function messageIntegritySources(message) {
+    const candidates = [];
+    const seen = new Set();
+    const push = source => {
+        if (typeof source !== 'string') return;
+        const text = source.trim();
+        if (!text || seen.has(text)) return;
+        seen.add(text);
+        candidates.push(text);
+    };
+    const swipeIndex = Number.isInteger(message?.swipe_id) ? message.swipe_id : -1;
+    if (swipeIndex >= 0) push(message?.swipes?.[swipeIndex]);
+    push(message?.mes);
+    push(message?.extra?.display_text);
+    return candidates;
+}
+
+function successfulRabbitMirrorSource(message, chat) {
+    for (const source of messageIntegritySources(message)) {
+        const inspection = inspectRabbitMirrorGenerationSource(source);
+        if (!inspection.complete) continue;
+        return { source, inspection, fromSnapshot: false };
+    }
+    const messageIndex = Array.isArray(chat) ? chat.lastIndexOf(message) : -1;
+    const title = rawSummaryText(message?.mes || '');
+    const snapshot = getRabbitMirrorGenerationSnapshot(message, chat, messageIndex, title);
+    if (!snapshot?.source) return null;
+    const inspection = inspectRabbitMirrorGenerationSource(snapshot.source, title);
+    if (!inspection.complete) return null;
+    return {
+        source: `<toto data-rabbit-mirror="true">${snapshot.source}</toto>`,
+        inspection,
+        fromSnapshot: true,
+    };
+}
+
 async function scanLatestAssistantMessage(mod) {
     const chat = mod?.chat || globalThis.chat;
     if (!Array.isArray(chat) || !chat.length) return;
-    const recent = chat.slice(-4).reverse();
-    const message = recent.find(item => !item?.is_user && typeof item?.mes === 'string' && TOTO_RE.test(item.mes));
-    if (!message) return;
-    const sigHash = hashText(message.mes);
+    captureRabbitMirrorGenerationSnapshots(chat);
+    const message = [...chat].reverse().find(item => !item?.is_user && typeof item?.mes === 'string');
+    if (!message || !/(?:<toto\b|<details\b)[\s\S]*?兔子镜/i.test(message.mes)) {
+        console.debug('[RabbitMirror] visual commit skipped: latest assistant message has no RabbitMirror source');
+        return;
+    }
+    const successful = successfulRabbitMirrorSource(message, chat);
+    if (!successful) {
+        console.debug('[RabbitMirror] visual commit skipped: incomplete RabbitMirror source');
+        return;
+    }
+    const sourceForScan = successful.source;
+    const sigHash = hashText(sourceForScan);
     if (sigHash !== lastScannedHash) {
         lastScannedHash = sigHash;
         lastScanAttempts = 0;
@@ -942,7 +993,7 @@ async function scanLatestAssistantMessage(mod) {
     lastScanAttempts += 1;
 
     const renderedToto = findRenderedToto(message, chat, message.mes);
-    const result = scanRabbitMirrorHtml(message.mes, renderedToto);
+    const result = scanRabbitMirrorHtml(sourceForScan, renderedToto);
     const signature = result?.signature || '';
     const skeleton = result?.skeleton || '';
     const riskFlags = Array.isArray(result?.riskFlags) ? result.riskFlags : [];
@@ -965,11 +1016,35 @@ export async function initVisualScanner() {
         const eventSource = mod?.eventSource;
         const eventTypes = mod?.event_types || {};
         if (!eventSource?.on) return;
+        let captureTimer = 0;
+        const captureNow = () => {
+            if (captureTimer) {
+                clearTimeout(captureTimer);
+                captureTimer = 0;
+            }
+            try {
+                captureRabbitMirrorGenerationSnapshots(mod?.chat || globalThis.chat);
+            } catch (error) {
+                console.debug('[RabbitMirror] generation snapshot capture skipped:', error);
+            }
+        };
+        const scheduleCapture = (delay = 140) => {
+            if (captureTimer) clearTimeout(captureTimer);
+            captureTimer = setTimeout(captureNow, Math.max(0, Number(delay) || 0));
+        };
         const scheduleScan = () => {
+            captureNow();
+            scheduleCapture(120);
             setTimeout(() => scanLatestAssistantMessage(mod), 600);
             setTimeout(() => scanLatestAssistantMessage(mod), 1800);
         };
-        const generationEvents = [eventTypes.MESSAGE_RECEIVED, eventTypes.GENERATION_ENDED].filter(Boolean);
+        const captureEvents = [
+            eventTypes.MESSAGE_UPDATED,
+            eventTypes.CHARACTER_MESSAGE_RENDERED,
+            eventTypes.MESSAGE_RECEIVED,
+        ].filter(Boolean);
+        for (const eventName of [...new Set(captureEvents)]) eventSource.on(eventName, () => scheduleCapture(140));
+        const generationEvents = [eventTypes.MESSAGE_RECEIVED, eventTypes.GENERATION_STOPPED, eventTypes.GENERATION_ENDED].filter(Boolean);
         for (const eventName of [...new Set(generationEvents)]) eventSource.on(eventName, scheduleScan);
         if (eventTypes.CHAT_CHANGED) eventSource.on(eventTypes.CHAT_CHANGED, scheduleScan);
         console.debug('[RabbitMirror] visual scanner initialized');

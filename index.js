@@ -1,12 +1,13 @@
-import { initRabbitMirrorUI, destroyRabbitMirrorUI } from './src/ui.js?rmv=1.1.0b5';
-import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt } from './src/injector.js?rmv=1.1.0b5';
-import { clearLastCombo } from './src/storage.js?rmv=1.1.0b5';
-import { initVisualScanner } from './src/visualScanner.js?rmv=1.1.0b5';
-import { initOutputSanitizer, destroyOutputSanitizer } from './src/outputSanitizer.js?rmv=1.1.0b5';
-import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.1.0b5';
-import { getSettings } from './src/settings.js?rmv=1.1.0b5';
+import { initRabbitMirrorUI, destroyRabbitMirrorUI } from './src/ui.js?rmv=1.1.0b10';
+import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt } from './src/injector.js?rmv=1.1.0b10';
+import { clearLastCombo } from './src/storage.js?rmv=1.1.0b10';
+import { initVisualScanner } from './src/visualScanner.js?rmv=1.1.0b10';
+import { initOutputSanitizer, destroyOutputSanitizer } from './src/outputSanitizer.js?rmv=1.1.0b10';
+import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.1.0b10';
+import { getSettings } from './src/settings.js?rmv=1.1.0b10';
+import { clearRabbitMirrorGenerationSnapshots } from './src/generationGuard.js?rmv=1.1.0b10';
 
-const RABBIT_MIRROR_RUNTIME_VERSION = '1.1.0-beta.5';
+const RABBIT_MIRROR_RUNTIME_VERSION = '1.1.0-beta.10';
 
 // Claim the active runtime before UI/DOM initialization. Versioned module URLs ensure this file and its internal graph cannot be satisfied by a stale hot-reload cache.
 try { globalThis.__rabbitMirrorFeedbackCatSyncCleanup?.(); } catch {}
@@ -29,6 +30,7 @@ export function onDisable() {
     clearRabbitMirrorPrompt();
     destroyRabbitMirrorUI();
     destroyOutputSanitizer();
+    clearRabbitMirrorGenerationSnapshots();
 }
 
 export function onClean() {
@@ -38,4 +40,5 @@ export function onClean() {
     clearRabbitMirrorPrompt();
     clearLastCombo();
     clearAllFeedbackCatState();
+    clearRabbitMirrorGenerationSnapshots();
 }

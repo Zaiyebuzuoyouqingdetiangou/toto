@@ -367,6 +367,12 @@ export function clearLastCombo() {
         localStorage.removeItem(PENDING_KEY);
         localStorage.removeItem(ATTEMPT_STORAGE_KEY);
         localStorage.removeItem(DIRECTIVE_PICK_STORAGE_KEY);
+        try {
+            sessionStorage.removeItem('rabbit_mirror_theater:generation_snapshots:v1');
+            sessionStorage.removeItem('rabbit_mirror_theater:active_generation_attempt:v1');
+        } catch {
+            // Session storage is optional in some host contexts.
+        }
         // 清理旧版 key，防止旧记录混淆。
         localStorage.removeItem('rabbit_mirror_theater:last_combo:v3');
         localStorage.removeItem('rabbit_mirror_theater:last_combo:v4');
