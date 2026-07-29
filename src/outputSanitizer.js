@@ -1,4 +1,4 @@
-import { getSettings } from './settings.js?rmv=1.1.0b10';
+import { getSettings } from './settings.js?rmv=1.1.0b12';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -7,12 +7,12 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.1.0b10';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b10';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b10';
+} from './feedbackCat.js?rmv=1.1.0b12';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b12';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b12';
 
 
-const RUNTIME_VERSION = '1.1.0-beta.10';
+const RUNTIME_VERSION = '1.1.0-beta.12';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -91,6 +91,10 @@ const interactionScopeStates = new WeakMap();
 const SCOPED_INTERACTION_ID_RE = /^(rm-[a-z0-9]+-[a-z0-9]+-[a-z0-9]{5}-)(.+)$/i;
 const RADIO_GROUP_RESCUE_ATTR = 'data-rabbit-mirror-radio-group-rescue';
 const RADIO_GROUP_ROOT_ATTR = 'data-rabbit-mirror-radio-group-count';
+const RAW_RADIO_RESET_RESCUE_ATTR = 'data-rabbit-mirror-radio-reset-rescue';
+const RAW_RADIO_RESET_ROOT_ATTR = 'data-rabbit-mirror-radio-reset-count';
+const RAW_RADIO_RESET_LAST_ATTR = 'data-rabbit-mirror-radio-reset-last';
+const rawRadioResetRescueStates = new WeakMap();
 
 const INTERACTION_RESCUE_MEMORY_KEY = 'rabbitMirrorInteractionRescueMemoryV1';
 const rememberedInteractionRescueKeys = new Set();
@@ -152,6 +156,41 @@ function createInteractionScopePrefix() {
 
 function escapeRegExp(text) {
     return String(text || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+
+function getRabbitMirrorLocalStyleElements(root) {
+    if (!root?.querySelectorAll) return [];
+    const styles = [];
+    const seen = new Set();
+    const remember = (style) => {
+        if (!style || seen.has(style)) return;
+        seen.add(style);
+        styles.push(style);
+    };
+
+    root.querySelectorAll('style').forEach(remember);
+
+    // SillyTavern/DOMPurify may strip the unknown <toto> wrapper while leaving its scoped
+    // <style> as a sibling of <details>. In that layout the control/label remain inside the
+    // details root, but :checked CSS sits outside it. Recover only styles carrying this exact
+    // mirror's generated scope token, so another mirror in the same message cannot leak in.
+    const scopedNode = root.matches?.('[data-rabbit-mirror-css-scope]')
+        ? root
+        : root.querySelector?.('[data-rabbit-mirror-css-scope]');
+    const scopeValue = String(scopedNode?.getAttribute?.('data-rabbit-mirror-css-scope') || '').trim();
+    if (!scopeValue) return styles;
+
+    const boundary = root.closest?.('.mes_text') || root.closest?.('.mes') || root.parentElement;
+    if (!boundary?.querySelectorAll) return styles;
+    const scopePattern = new RegExp(
+        `\\[\\s*data-rabbit-mirror-css-scope\\s*=\\s*["']${escapeRegExp(scopeValue)}["']\\s*\\]`,
+        'i',
+    );
+    boundary.querySelectorAll('style').forEach(style => {
+        if (scopePattern.test(String(style.textContent || ''))) remember(style);
+    });
+    return styles;
 }
 
 function replaceIdReferenceTokens(value, idMap) {
@@ -222,7 +261,7 @@ function strengthenCheckedCssText(cssText) {
 function strengthenRabbitMirrorCheckedStateCss(toto) {
     if (!toto?.querySelectorAll) return;
 
-    toto.querySelectorAll('style').forEach(styleEl => {
+    getRabbitMirrorLocalStyleElements(toto).forEach(styleEl => {
         const currentText = String(styleEl.textContent || '');
         if (!/:checked\b/i.test(currentText)) return;
 
@@ -296,7 +335,7 @@ function collectFocusToCheckedRules(root) {
 
     const rules = [];
     const seen = new Set();
-    root.querySelectorAll(`style:not([${FOCUS_TO_CHECKED_STYLE_ATTR}])`).forEach(styleEl => {
+    getRabbitMirrorLocalStyleElements(root).filter(styleEl => !styleEl.hasAttribute(FOCUS_TO_CHECKED_STYLE_ATTR)).forEach(styleEl => {
         const css = String(styleEl.textContent || '');
         const blockRe = /([^{}]+)\{([^{}]*)\}/g;
         let match;
@@ -597,7 +636,7 @@ function parseCheckedRulesFromText(toto, input) {
 
     const results = [];
     const seen = new Set();
-    for (const styleEl of toto.querySelectorAll('style')) {
+    for (const styleEl of getRabbitMirrorLocalStyleElements(toto)) {
         const css = String(styleEl.textContent || '');
         const blockRe = /([^{}]+)\{([^{}]*)\}/g;
         let match;
@@ -851,7 +890,7 @@ function parseBrokenCheckedHasStateRules(root) {
         results.push({ ids, controls, targetSelector, declarations: strengthened });
     };
 
-    for (const style of root.querySelectorAll(`style:not([${CHECKED_HAS_STATE_RESCUE_STYLE_ATTR}])`)) {
+    for (const style of getRabbitMirrorLocalStyleElements(root).filter(styleEl => !styleEl.hasAttribute(CHECKED_HAS_STATE_RESCUE_STYLE_ATTR))) {
         const css = String(style.textContent || '');
         const blockRe = /([^{}]+)\{([^{}]*)\}/g;
         let blockMatch;
@@ -969,7 +1008,7 @@ function parseDetachedCheckedHasRules(root) {
     const blockRe = /([^{}]+)\{([^{}]*)\}/g;
     const conditionRe = /:has\(\s*(input(?:\s*(?:\[[^\]]+\]|[.#][A-Za-z_][\w-]*))*)\s*:checked\s*\)/i;
 
-    for (const style of root.querySelectorAll(`style:not([${DETACHED_CHECKED_HAS_RESCUE_STYLE_ATTR}])`)) {
+    for (const style of getRabbitMirrorLocalStyleElements(root).filter(styleEl => !styleEl.hasAttribute(DETACHED_CHECKED_HAS_RESCUE_STYLE_ATTR))) {
         const css = String(style.textContent || '');
         let block;
         blockRe.lastIndex = 0;
@@ -1098,7 +1137,7 @@ function parseSimpleCheckedHasDisplayRules(root) {
     if (!root?.querySelectorAll) return [];
     const rules = [];
     const seen = new Set();
-    for (const style of root.querySelectorAll('style')) {
+    for (const style of getRabbitMirrorLocalStyleElements(root)) {
         const css = String(style.textContent || '');
         const blockRe = /([^{}]+)\{([^{}]*)\}/g;
         let block;
@@ -1820,7 +1859,7 @@ function applyCheckedRuleInlineFallback(toto, input) {
         }
     };
 
-    for (const styleEl of toto.querySelectorAll('style')) {
+    for (const styleEl of getRabbitMirrorLocalStyleElements(toto)) {
         try {
             const visitRules = (rules) => {
                 for (const rule of [...(rules || [])]) {
@@ -3338,7 +3377,7 @@ function collectRenderedCssStateSiblingRuleData(root) {
     const directRules = [];
     const blockRe = /([^{}]+)\{([^{}]*)\}/g;
 
-    for (const style of root.querySelectorAll('style')) {
+    for (const style of getRabbitMirrorLocalStyleElements(root)) {
         if (style.hasAttribute?.(TOUCH_HOVER_STYLE_ATTR)) continue;
         const cssText = String(style.textContent || '');
         blockRe.lastIndex = 0;
@@ -6128,6 +6167,101 @@ function reclaimStaleInertActionTrigger(trigger) {
     return replacement;
 }
 
+
+function parseSafeRawRadioResetProgram(source) {
+    const outer = /^\s*document\s*\.\s*querySelectorAll\s*\(\s*(['"])([\s\S]*?)\1\s*\)\s*\.\s*forEach\s*\(\s*([\s\S]*?)\s*\)\s*;?\s*$/.exec(String(source || ''));
+    if (!outer) return false;
+
+    const selector = String(outer[2] || '')
+        .replace(/\s+/g, '')
+        .replace(/(['"])radio\1/gi, 'radio')
+        .toLowerCase();
+    if (selector !== 'input[type=radio]') return false;
+
+    const callback = String(outer[3] || '').trim();
+    const arrow = /^\(?\s*([a-zA-Z_$][\w$]*)\s*\)?\s*=>\s*(?:\{\s*)?\1\s*\.\s*checked\s*=\s*false\s*;?\s*(?:\}\s*)?$/.exec(callback);
+    if (arrow) return true;
+
+    const classic = /^function\s*\(\s*([a-zA-Z_$][\w$]*)\s*\)\s*\{\s*\1\s*\.\s*checked\s*=\s*false\s*;?\s*\}$/.exec(callback);
+    return !!classic;
+}
+
+function resetLocalRabbitMirrorRadios(root) {
+    if (!root?.querySelectorAll) return 0;
+    const radios = [...root.querySelectorAll('input[type="radio"]')];
+    let changed = 0;
+    for (const radio of radios) {
+        cancelLabeledCheckedTransitionVerification(radio);
+        const wasChecked = !!radio.checked;
+        radio.checked = false;
+        restoreInteractionInlineOverrides(radio);
+        radio.setAttribute?.('aria-pressed', 'false');
+        if (wasChecked) {
+            changed += 1;
+            dispatchRescuedInputState(radio);
+        }
+    }
+    applyRenderedLabelInternalHiddenEntries(root);
+    syncCrossParentCheckedRuleFallback(root);
+    root.setAttribute?.(RAW_RADIO_RESET_LAST_ATTR, `radios=${radios.length};changed=${changed}`);
+    return changed;
+}
+
+function installRawMessageRadioResetProgramRescue(root) {
+    if (!root?.querySelectorAll) return 0;
+    const rawMessage = getRawAssistantMessageForRenderedRoot(root);
+    const rawRoot = chooseMatchingRawRabbitMirrorRoot(rawMessage, root);
+    if (!rawRoot?.querySelectorAll) return 0;
+
+    let state = rawRadioResetRescueStates.get(root);
+    if (!state) {
+        state = { entries: new Map() };
+        rawRadioResetRescueStates.set(root, state);
+    }
+    for (const [trigger, entry] of [...state.entries]) {
+        if (!trigger?.isConnected || !root.contains?.(trigger)) {
+            trigger?.removeEventListener?.('click', entry.onActivate, false);
+            trigger?.removeEventListener?.('keydown', entry.onActivate, false);
+            state.entries.delete(trigger);
+        }
+    }
+
+    let installed = 0;
+    for (const rawTrigger of rawRoot.querySelectorAll('[onclick]')) {
+        if (!parseSafeRawRadioResetProgram(rawTrigger.getAttribute('onclick'))) continue;
+        const renderedTrigger = resolveRenderedCounterpart(rawRoot, root, rawTrigger, '*');
+        if (!renderedTrigger || state.entries.has(renderedTrigger)) continue;
+        if (!root.querySelector('input[type="radio"]')) continue;
+
+        // DOM 克隆会保留 data 属性但不会保留监听器；允许在新根节点上重新绑定。
+        renderedTrigger.removeAttribute?.(RAW_RADIO_RESET_RESCUE_ATTR);
+        preparePseudoTrigger(renderedTrigger);
+        const onActivate = event => {
+            if (event?.type === 'click' && shouldIgnorePseudoToggleEvent(event, renderedTrigger)) return;
+            if (event?.type === 'keydown') {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+            }
+            event?.preventDefault?.();
+            event?.stopPropagation?.();
+            resetLocalRabbitMirrorRadios(root);
+        };
+        renderedTrigger.addEventListener('click', onActivate, false);
+        renderedTrigger.addEventListener('keydown', onActivate, false);
+        renderedTrigger.setAttribute(RAW_RADIO_RESET_RESCUE_ATTR, 'true');
+        state.entries.set(renderedTrigger, { onActivate });
+        installed += 1;
+    }
+
+    const liveCount = state.entries.size;
+    if (liveCount) root.setAttribute(RAW_RADIO_RESET_ROOT_ATTR, String(liveCount));
+    else {
+        root.removeAttribute(RAW_RADIO_RESET_ROOT_ATTR);
+        root.removeAttribute(RAW_RADIO_RESET_LAST_ATTR);
+    }
+    return installed;
+}
+
 function installRawMessageDirectIdClickProgramRescue(root) {
     if (!root?.querySelectorAll) return 0;
     const rawMessage = getRawAssistantMessageForRenderedRoot(root);
@@ -6816,7 +6950,7 @@ function installPseudoInteractionRescue(root) {
 
 function detectInteractionCapabilities(root) {
     if (!root?.querySelectorAll) return { checked: false, hover: false, details: false, target: false, pseudo: false, listDetail: false, maskReveal: false, stateSibling: false, buttonAdjacent: false, clickableAdjacent: false, clickablePopup: false, containerReveal: false, selfMutation: false, detachedCheckedHas: false, selectionFallback: false, disabledChoiceFallback: false, actionFallback: false, staticChoiceSelection: false, structuredStaticDisclosure: false, fillInChoice: false, reversibleChecked: false };
-    const cssText = [...root.querySelectorAll('style')].map(style => style.textContent || '').join('\n');
+    const cssText = getRabbitMirrorLocalStyleElements(root).map(style => style.textContent || '').join('\n');
     const outerDetails = root.matches?.('details') ? root : root.querySelector(':scope > details');
     const nestedDetails = [...root.querySelectorAll('details')].filter(item => item !== outerDetails);
     const capabilities = {
@@ -6872,7 +7006,7 @@ function collectTargetRulesFromCss(cssText) {
 function refreshTargetRescue(root) {
     if (!root?.querySelectorAll) return;
     let combinedCss = '';
-    root.querySelectorAll(`style:not([${TARGET_RESCUE_STYLE_ATTR}])`).forEach(styleEl => {
+    getRabbitMirrorLocalStyleElements(root).filter(styleEl => !styleEl.hasAttribute(TARGET_RESCUE_STYLE_ATTR)).forEach(styleEl => {
         const parsed = collectTargetRulesFromCss(styleEl.textContent || '');
         if (parsed) combinedCss += `${parsed}\n`;
     });
@@ -7370,7 +7504,7 @@ function repairMarkdownEmphasisInsideCssComments(cssText) {
 function repairMarkdownCorruptedCssComments(root) {
     if (!root?.querySelectorAll) return 0;
     let repairedCount = 0;
-    for (const style of root.querySelectorAll('style')) {
+    for (const style of getRabbitMirrorLocalStyleElements(root)) {
         const current = String(style.textContent || '');
         if (!/<(?:em|i)>\s*\//i.test(current) || !/\/\s*<\/(?:em|i)>/i.test(current)) continue;
         const result = repairMarkdownEmphasisInsideCssComments(current);
@@ -7582,7 +7716,7 @@ function inputHasMeaningfulCheckedSiblingRule(root, input) {
 
     // 优先走 CSSOM，能正确进入 @media / @supports 等嵌套规则；
     // 文本扫描作为 WebView 暂时禁止读取 style.sheet 时的后备。
-    for (const style of root.querySelectorAll('style')) {
+    for (const style of getRabbitMirrorLocalStyleElements(root)) {
         try {
             let found = false;
             const visitRules = (rules) => {
@@ -7605,7 +7739,7 @@ function inputHasMeaningfulCheckedSiblingRule(root, input) {
         }
     }
 
-    const cssText = [...root.querySelectorAll('style')].map(style => String(style.textContent || '')).join('\n');
+    const cssText = getRabbitMirrorLocalStyleElements(root).map(style => String(style.textContent || '')).join('\n');
     const selectorBlockRe = /(?:^|[{}])\s*([^{}]*:checked[^{}]*)\{/gi;
     let match;
     while ((match = selectorBlockRe.exec(cssText))) {
@@ -7635,7 +7769,7 @@ function parseFocusWithinPersistentRules(root) {
     const rules = [];
     const seen = new Set();
     const blockRe = /([^{}]+)\{([^{}]*)\}/g;
-    for (const style of root.querySelectorAll(`style:not([${FOCUS_WITHIN_PERSISTENT_STYLE_ATTR}])`)) {
+    for (const style of getRabbitMirrorLocalStyleElements(root).filter(styleEl => !styleEl.hasAttribute(FOCUS_WITHIN_PERSISTENT_STYLE_ATTR))) {
         const cssText = String(style.textContent || '');
         blockRe.lastIndex = 0;
         let block;
@@ -8065,7 +8199,7 @@ function collectWebKit3DFlipEvidence(root) {
         preserve3d: 0, webkitPreserve3d: 0, perspective: 0, webkitPerspective: 0,
     };
     const source = [
-        ...[...root.querySelectorAll('style')].map(style => String(style.textContent || '')),
+        ...getRabbitMirrorLocalStyleElements(root).map(style => String(style.textContent || '')),
         ...[...root.querySelectorAll('[style]')].map(element => String(element.getAttribute('style') || '')),
     ].join('\n');
     const count = pattern => (source.match(pattern) || []).length;
@@ -8095,7 +8229,7 @@ function installWebKit3DFlipRescue(root) {
     }
 
     const flipSourceText = [
-        ...[...root.querySelectorAll('style')].map(style => String(style.textContent || '')),
+        ...getRabbitMirrorLocalStyleElements(root).map(style => String(style.textContent || '')),
         ...[...root.querySelectorAll('[style]')].map(element => String(element.getAttribute('style') || '')),
     ].join('\n');
     const hasRotateY = /rotateY\s*\(/i.test(flipSourceText);
@@ -8109,7 +8243,7 @@ function installWebKit3DFlipRescue(root) {
 
     // 每个 style 独立补前缀。front/back 与 rotateY 常分散在多个 style 标签中，
     // 不能再要求“当前 style 自己也含 rotateY”；同时允许流式追加后再次增量扫描。
-    for (const style of root.querySelectorAll('style')) {
+    for (const style of getRabbitMirrorLocalStyleElements(root)) {
         const current = String(style.textContent || '');
         if (webKit3DFlipStyleStates.get(style) === current) continue;
         const result = addWebKit3DFlipPrefixes(current);
@@ -8203,7 +8337,10 @@ function installIntelligentInteractionRescue(root) {
     // 导致两段注释之间的状态规则被整段吞入注释。只在急救开启后修复当前 DOM 的明确损坏形态。
     repairMarkdownCorruptedCssComments(root);
 
-    // SillyTavern/DOMPurify 可能在渲染前移除 onclick。此时从当前消息的原始 HTML
+    // SillyTavern/DOMPurify 可能在渲染前移除 onclick。只恢复原始源码中精确的
+    // querySelectorAll('input[type=radio]').forEach(r => r.checked=false) 取消程序，
+    // 并把原本会误伤整页的 document 范围收紧到当前兔子镜。
+    installRawMessageRadioResetProgramRescue(root);
     // 回读安全可解析的 getElementById 样式/文字赋值，并按同一 DOM 路径绑定到渲染节点。
     installRawMessageDirectIdClickProgramRescue(root);
     // 护照／证件类翻页采用“一次打开 + 独立关闭 + 印章长按详情”的复合结构；
@@ -8430,7 +8567,7 @@ function refreshTouchHoverRescue(toto) {
 
     let combinedCss = '';
     const subjects = new Set();
-    toto.querySelectorAll(`style:not([${TOUCH_HOVER_STYLE_ATTR}])`).forEach(styleEl => {
+    getRabbitMirrorLocalStyleElements(toto).filter(styleEl => !styleEl.hasAttribute(TOUCH_HOVER_STYLE_ATTR)).forEach(styleEl => {
         const parsed = collectTouchHoverRulesFromCss(toto, styleEl.textContent || '');
         if (parsed.cssText) combinedCss += `${parsed.cssText}\n`;
         parsed.subjects.forEach(subject => subjects.add(subject));
@@ -8648,12 +8785,21 @@ function recordLabeledCheckedVerification(root, input, verification, intended, p
     return matched;
 }
 
+function cancelLabeledCheckedTransitionVerification(input) {
+    const state = labeledCheckedVerificationStates.get(input);
+    if (!state) return;
+    state.sequence = (state.sequence || 0) + 1;
+}
+
 function scheduleLabeledCheckedTransitionVerification(root, input, verification, intended, phase = 'label-click') {
     if (!root || !input || !verification) return;
-    const state = labeledCheckedVerificationStates.get(input) || { verifiedCount: 0, correctionCount: 0 };
+    const state = labeledCheckedVerificationStates.get(input) || { verifiedCount: 0, correctionCount: 0, sequence: 0 };
+    const sequence = (state.sequence || 0) + 1;
+    state.sequence = sequence;
     labeledCheckedVerificationStates.set(input, state);
     for (const delay of [0, 70, 240]) {
         setTimeout(() => {
+            if (state.sequence !== sequence) return;
             if (!root.isConnected || !input.isConnected || !root.contains(input)) return;
             let corrected = false;
             if (!!input.checked !== !!intended) {
@@ -8985,7 +9131,7 @@ function collectCurrentIdsToScope(toto, elementsById, mappedValues = new Set()) 
         }
     });
 
-    toto.querySelectorAll('style').forEach(styleEl => {
+    getRabbitMirrorLocalStyleElements(toto).forEach(styleEl => {
         collectExistingIdReferences(styleEl.textContent, existingIds, idsToScope);
     });
     toto.querySelectorAll('*').forEach(el => {
@@ -9027,7 +9173,7 @@ function synchronizeInteractionReferences(toto, idMap) {
     }
 
     // 流式生成时 <style> 往往最后才到达。每次扫描都重新同步，避免旧 ID 留在晚到的 CSS 中。
-    toto.querySelectorAll('style').forEach(styleEl => {
+    getRabbitMirrorLocalStyleElements(toto).forEach(styleEl => {
         const currentText = String(styleEl.textContent || '');
         const rewrittenText = rewriteCssIdReferences(currentText, idMap);
         // 仅在内容确实变化时重建样式表。无条件写回会触发 MutationObserver，
@@ -9455,6 +9601,7 @@ function diagnosticRouteSummary(root) {
         channelDialCycle: Number.parseInt(root?.getAttribute?.(CHANNEL_DIAL_CYCLE_COUNT_ATTR) || '0', 10) || 0,
         reversibleChecked: Number.parseInt(root?.getAttribute?.(REVERSIBLE_CHECKED_RESULT_ROOT_ATTR) || '0', 10) || 0,
         radioGroups: Number.parseInt(root?.getAttribute?.(RADIO_GROUP_ROOT_ATTR) || '0', 10) || 0,
+        radioReset: Number.parseInt(root?.getAttribute?.(RAW_RADIO_RESET_ROOT_ATTR) || '0', 10) || 0,
         expandedOpacity: root?.querySelectorAll?.(`[${EXPANDED_OPACITY_RESCUE_ATTR}]`)?.length || 0,
         containerReveal: renderedContainerInternalRevealStates.get(root)?.entries?.size || 0,
         selfMutation: rawSelfMutationRescueStates.get(root)?.entries?.size || 0,
@@ -10331,6 +10478,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `频道旋钮循环 entries=${routes.channelDialCycle} listener=${routes.channelDialCycle ? 'true' : 'false'}`,
         `单向checked回退 entries=${routes.reversibleChecked} listener=${routes.reversibleChecked ? 'true' : 'false'}`,
         `radio同组恢复 groups=${routes.radioGroups} listener=${routes.radioGroups ? 'true' : 'false'}`,
+        `radio取消程序恢复 entries=${routes.radioReset} listener=${routes.radioReset ? 'true' : 'false'} last=${root.getAttribute?.(RAW_RADIO_RESET_LAST_ATTR) || '(尚未点击验证)'}`,
         `checked交互深度 rules=${checkedDepth.checkedRuleCount} selectionOnly=${checkedDepth.selectionStyleRuleCount} secondLayer=${checkedDepth.meaningfulCheckedRuleCount} fallback=${checkedDepth.selectionOnlyFallbackCount}`,
         `伪类交互深度 rules=${pseudoDepth.pseudoRuleCount} visualOnly=${pseudoDepth.visualOnlyPseudoRuleCount} secondLayer=${pseudoDepth.meaningfulPseudoRuleCount}`,
         `可达内容交互 elements=${reachability.contentInteractiveElementCount} routes=${reachability.installedInteractionRouteCount} missing=${reachability.noInteractionStructure}`,
@@ -11294,6 +11442,66 @@ function structuredStaticDisclosureBodyLooksMeaningful(bodies) {
     });
 }
 
+const STRUCTURED_STATIC_DISCLOSURE_INTENT_RE = /(?:点击|点按|轻触|展开|收起|折叠|打开|关闭|查看(?:详情|全文|内容)?|更多|显示|隐藏|切换|揭示|翻开|展开阅读|tap|click|expand|collapse|toggle|open|close|view\s+(?:more|details)|show|hide|reveal)/i;
+const STRUCTURED_STATIC_DISCLOSURE_CLASS_RE = /(?:accordion|collapse|collapsible|disclosure|toggle|expander|fold|drawer|spoiler|reveal|expandable)/i;
+
+function structuredStaticDisclosureHasExplicitIntent(trigger, container, ignoreGeneratedRescueSemantics = false) {
+    if (!trigger || !container) return false;
+    const ariaLabel = String(trigger.getAttribute?.('aria-label') || '');
+    const generatedLabel = /^展开或收起：/.test(ariaLabel);
+    const semanticLabel = ignoreGeneratedRescueSemantics && generatedLabel ? '' : ariaLabel;
+    const text = diagnosticCompactText(`${trigger.textContent || ''} ${semanticLabel} ${trigger.getAttribute?.('title') || ''}`, 220);
+    if (STRUCTURED_STATIC_DISCLOSURE_INTENT_RE.test(text)) return true;
+
+    const identity = `${trigger.id || ''} ${trigger.className || ''} ${container.id || ''} ${container.className || ''}`;
+    if (STRUCTURED_STATIC_DISCLOSURE_CLASS_RE.test(identity)) return true;
+
+    const inline = structuredStaticDisclosureInlineStyle(trigger);
+    if (/cursor\s*:\s*pointer\b/i.test(inline)) return true;
+    if (trigger.hasAttribute?.('onclick') || trigger.hasAttribute?.('aria-controls')) return true;
+    if (!ignoreGeneratedRescueSemantics) {
+        const role = String(trigger.getAttribute?.('role') || '').toLowerCase();
+        if (role === 'button' || role === 'switch' || role === 'tab') return true;
+    }
+    return false;
+}
+
+function clearOrphanedStructuredStaticDisclosureArtifacts(root) {
+    if (!root?.querySelectorAll || structuredStaticDisclosureRescueStates.get(root)?.entries?.length) return 0;
+    let cleared = 0;
+    for (const container of root.querySelectorAll(`[${STRUCTURED_STATIC_DISCLOSURE_RESCUE_ATTR}]`)) {
+        const trigger = container.querySelector?.(`:scope > [${STRUCTURED_STATIC_DISCLOSURE_TRIGGER_ATTR}]`);
+        // 新版只撤回缺乏原始交互意图的旧维修结果。明确写有“点击/展开”、组件类名、
+        // cursor:pointer、onclick 或 aria-controls 的真实折叠结构继续保留，避免升级时误伤。
+        if (trigger && structuredStaticDisclosureHasExplicitIntent(trigger, container, true)) continue;
+        if (trigger) {
+            const generatedLabel = /^展开或收起：/.test(String(trigger.getAttribute('aria-label') || ''));
+            trigger.removeAttribute(STRUCTURED_STATIC_DISCLOSURE_TRIGGER_ATTR);
+            // 旧版只有在原元素缺少 aria-label 时才写入这一固定文案；以它作为证据，
+            // 避免清理时误删作者本来就设置的 role/tabindex/aria-expanded。
+            if (generatedLabel) {
+                if (trigger.getAttribute('role') === 'button') trigger.removeAttribute('role');
+                if (trigger.getAttribute('tabindex') === '0') trigger.removeAttribute('tabindex');
+                trigger.removeAttribute('aria-label');
+                trigger.removeAttribute('aria-expanded');
+            }
+        }
+        container.querySelectorAll?.(`:scope > [${STRUCTURED_STATIC_DISCLOSURE_BODY_ATTR}]`)
+            ?.forEach(body => body.removeAttribute(STRUCTURED_STATIC_DISCLOSURE_BODY_ATTR));
+        container.removeAttribute(STRUCTURED_STATIC_DISCLOSURE_RESCUE_ATTR);
+        container.removeAttribute(STRUCTURED_STATIC_DISCLOSURE_OPEN_ATTR);
+        cleared += 1;
+    }
+    const remaining = root.querySelectorAll(`[${STRUCTURED_STATIC_DISCLOSURE_RESCUE_ATTR}]`).length;
+    if (remaining <= 0) {
+        root.querySelector?.(`style[${STRUCTURED_STATIC_DISCLOSURE_STYLE_ATTR}]`)?.remove();
+        root.removeAttribute?.(STRUCTURED_STATIC_DISCLOSURE_COUNT_ATTR);
+    } else {
+        root.setAttribute?.(STRUCTURED_STATIC_DISCLOSURE_COUNT_ATTR, String(remaining));
+    }
+    return cleared;
+}
+
 function structuredStaticDisclosureHasExistingInteraction(root) {
     if (!root?.querySelectorAll) return true;
     const outerDetails = root.matches?.('details') ? root : root.querySelector?.(':scope > details');
@@ -11332,6 +11540,9 @@ function findStructuredStaticDisclosureCandidates(root) {
         if (triggerPosition === 'absolute' || triggerPosition === 'fixed') continue;
         if (Number.isFinite(triggerOpacity) && triggerOpacity <= 0.08) continue;
         if (!structuredStaticDisclosureTitleLooksExplicit(trigger, container, children)) continue;
+        // 维修兔只能恢复已经表达出来的交互意图，不能把普通卡片、漫画分格或静态信息块
+        // 擅自改造成折叠控件。必须存在点击/展开文案、交互语义、cursor:pointer 或明确组件类名。
+        if (!structuredStaticDisclosureHasExplicitIntent(trigger, container)) continue;
         if (!structuredStaticDisclosureBodyLooksMeaningful(bodies)) continue;
         const wholeTextLength = diagnosticCompactText(container.textContent || '', 2200).length;
         if (wholeTextLength < 6 || wholeTextLength > 2000) continue;
@@ -11372,6 +11583,8 @@ function applyStructuredStaticDisclosureState(entry, open) {
 
 function installStructuredStaticDisclosureFallback(root) {
     if (!root?.querySelectorAll) return 0;
+    // 升级后先撤回旧版本在普通静态分段上留下的内部标记与样式；不触碰原始正文和作者样式。
+    clearOrphanedStructuredStaticDisclosureArtifacts(root);
     const candidates = findStructuredStaticDisclosureCandidates(root);
     if (!candidates.length) return Number.parseInt(root.getAttribute?.(STRUCTURED_STATIC_DISCLOSURE_COUNT_ATTR) || '0', 10) || 0;
 
@@ -11893,6 +12106,7 @@ function recoveredInlineStateProgramCount(root) {
         `[${DIRECT_ID_CLASS_STATE_RESCUE_ATTR}]`,
         `[${RAW_SELF_MUTATION_RESCUE_ATTR}]`,
         `[${RAW_NAMED_FUNCTION_RESCUE_ATTR}]`,
+        `[${RAW_RADIO_RESET_RESCUE_ATTR}]`,
         `[${PASSPORT_DOCUMENT_TRIGGER_RESCUE_ATTR}]`,
     ].join(',');
     return new Set([...root.querySelectorAll(selector)]).size;
@@ -11985,7 +12199,7 @@ function maintenanceKnownInteractionEvidence(root, full, code) {
         + routeSummary.maskReveal + routeSummary.listDetail + routeSummary.stateSibling + routeSummary.buttonAdjacent
         + routeSummary.clickableAdjacent + routeSummary.clickablePopup + routeSummary.checkedIdTarget + routeSummary.focusToChecked
         + routeSummary.checkedTextRule + routeSummary.crossParentChecked + routeSummary.checkedHasState + routeSummary.detachedCheckedHas + routeSummary.pairedCheckedState + routeSummary.expandedOpacity
-        + routeSummary.reversibleChecked
+        + routeSummary.reversibleChecked + routeSummary.radioReset
         + routeSummary.containerReveal + routeSummary.selfMutation + routeSummary.classStateProgram + routeSummary.changeProgram
         + routeSummary.focusWithinPersistent + routeSummary.unlabeledChecked + routeSummary.selectionFallback + routeSummary.disabledChoice + routeSummary.inertAction + routeSummary.staticChoiceSelection + routeSummary.structuredStaticDisclosure + routeSummary.fillInChoice + routeSummary.passportDocument;
     const innerDetailsCount = diagnosticQueryContentAll(root, 'details').length;
@@ -14227,7 +14441,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.64';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.66';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -14800,6 +15014,9 @@ function handleMaintenanceRabbitClick(event, root, button) {
 
 function installMaintenanceRabbitForRoot(root) {
     if (!isCurrentRuntime() || !root?.querySelector) return false;
+    // 扩展升级后 WeakMap 状态会重建；在按钮安装阶段立即撤回旧版本对普通静态分段
+    // 误装的折叠标记，无需用户再次点击维修兔，也不改写任何正文内容。
+    clearOrphanedStructuredStaticDisclosureArtifacts(root);
     const details = root.matches?.('details') ? root : root.querySelector(':scope > details') || root.querySelector('details');
     const summary = details?.querySelector?.(':scope > summary') || details?.querySelector?.('summary');
     if (!summary) return false;
