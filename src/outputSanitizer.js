@@ -1,4 +1,4 @@
-import { getSettings } from './settings.js?rmv=1.1.0b12';
+import { getSettings } from './settings.js?rmv=1.1.0b14';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -7,12 +7,12 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.1.0b12';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b12';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b12';
+} from './feedbackCat.js?rmv=1.1.0b14';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14';
 
 
-const RUNTIME_VERSION = '1.1.0-beta.12';
+const RUNTIME_VERSION = '1.1.0-beta.14';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -7111,7 +7111,24 @@ function isFullHeightNestedDetailsCandidate(details, summary) {
         // ignore geometry failures in older WebViews
     }
 
-    return summaryExplicitFull || detailsExplicitFull || geometryFull;
+    const fullOverlayContent = contentChildren.some(child => {
+        const inline = String(child.getAttribute?.('style') || '').toLowerCase();
+        let childStyle = null;
+        try { childStyle = globalThis.getComputedStyle?.(child) || null; } catch {}
+        const position = String(child.style?.position || childStyle?.position || '').toLowerCase();
+        if (!/^(?:absolute|fixed)$/.test(position)) return false;
+        const top = String(child.style?.top || childStyle?.top || '').trim().toLowerCase();
+        const left = String(child.style?.left || childStyle?.left || '').trim().toLowerCase();
+        const width = String(child.style?.width || childStyle?.width || '').trim().toLowerCase();
+        const height = String(child.style?.height || childStyle?.height || '').trim().toLowerCase();
+        const insetZero = /(?:^|;)\s*inset\s*:\s*0(?:px)?(?:\s*;|$)/.test(inline);
+        const anchoredTopLeft = /^(?:0|0px)$/.test(top) && /^(?:0|0px)$/.test(left);
+        const fillsWidth = width === '100%' || /(?:^|;)\s*(?:right\s*:\s*0(?:px)?|width\s*:\s*100%)\s*(?:;|$)/.test(inline);
+        const fillsHeight = height === '100%' || /(?:^|;)\s*(?:bottom\s*:\s*0(?:px)?|height\s*:\s*100%)\s*(?:;|$)/.test(inline);
+        return insetZero || (anchoredTopLeft && fillsWidth && fillsHeight);
+    });
+
+    return summaryExplicitFull || detailsExplicitFull || geometryFull || fullOverlayContent;
 }
 
 function ensureNestedDetailsReplacementStyle(root) {
@@ -9439,6 +9456,11 @@ const MOBILE_LAYOUT_STATE_CONTENT_ATTR = 'data-rm-mobile-state-content';
 const MOBILE_LAYOUT_STATE_ACTIVE_ATTR = 'data-rm-mobile-state-active';
 const MOBILE_LAYOUT_SECTION_STACK_PRESERVE_ATTR = 'data-rm-mobile-section-stack-preserve';
 const MOBILE_LAYOUT_SCREEN_SHELL_PRESERVE_ATTR = 'data-rm-mobile-screen-shell-preserve';
+const MOBILE_LAYOUT_RELATION_TREE_ATTR = 'data-rm-mobile-relation-tree';
+const MOBILE_LAYOUT_RELATION_BRANCH_ATTR = 'data-rm-mobile-relation-branch';
+const MOBILE_LAYOUT_RELATION_CELL_ATTR = 'data-rm-mobile-relation-cell';
+const MOBILE_LAYOUT_RELATION_DETAIL_ATTR = 'data-rm-mobile-relation-detail';
+const MOBILE_LAYOUT_RELATION_SIDE_ATTR = 'data-rm-mobile-relation-side';
 const MOBILE_LAYOUT_BREAKPOINT_PX = 640;
 const MOBILE_LAYOUT_TARGET_ATTRS = Object.freeze([
     MOBILE_LAYOUT_FIT_ATTR,
@@ -9460,6 +9482,11 @@ const MOBILE_LAYOUT_TARGET_ATTRS = Object.freeze([
     MOBILE_LAYOUT_STATE_ACTIVE_ATTR,
     MOBILE_LAYOUT_SECTION_STACK_PRESERVE_ATTR,
     MOBILE_LAYOUT_SCREEN_SHELL_PRESERVE_ATTR,
+    MOBILE_LAYOUT_RELATION_TREE_ATTR,
+    MOBILE_LAYOUT_RELATION_BRANCH_ATTR,
+    MOBILE_LAYOUT_RELATION_CELL_ATTR,
+    MOBILE_LAYOUT_RELATION_DETAIL_ATTR,
+    MOBILE_LAYOUT_RELATION_SIDE_ATTR,
 ]);
 const mobileLayoutRescueStates = new WeakMap();
 const mobileMatrixPreserveStates = new WeakMap();
@@ -12044,10 +12071,36 @@ function pseudoStateOpacityReveal(root, selectorText, value) {
     }
 }
 
+function pseudoStateMovesDecorativeNestedDetailsSummary(root, selectorText, property) {
+    const name = normalizeStylePropertyName(property);
+    if (!['left', 'right', 'top', 'bottom'].includes(name)) return false;
+    if (!/:hover\b/i.test(String(selectorText || ''))) return false;
+    const selector = pseudoStateTargetSelector(selectorText);
+    if (!selector || !root?.querySelectorAll) return false;
+    try {
+        const targets = [...root.querySelectorAll(selector)];
+        if (!targets.length) return false;
+        return targets.every(target => {
+            const summary = target.closest?.('summary');
+            const details = summary?.parentElement;
+            if (!summary || !details || details.tagName !== 'DETAILS') return false;
+            const outerDetails = root.matches?.('details') ? root : root.querySelector?.(':scope > details');
+            if (details === outerDetails) return false;
+            if (String(target.textContent || '').trim()) return false;
+            const rect = target.getBoundingClientRect?.();
+            const thinDecoration = !rect || Number(rect.height || 0) <= 16 || Number(rect.width || 0) <= 16;
+            return thinDecoration;
+        });
+    } catch {
+        return false;
+    }
+}
+
 function isPseudoStateVisualOnlyProperty(root, selectorText, property, value) {
     const name = normalizeStylePropertyName(property);
     const normalizedValue = String(value || '').trim().toLowerCase();
     if (name === 'opacity') return !pseudoStateOpacityReveal(root, selectorText, normalizedValue);
+    if (pseudoStateMovesDecorativeNestedDetailsSummary(root, selectorText, name)) return true;
     return isCheckedSelectionVisualProperty(name, normalizedValue);
 }
 
@@ -14053,6 +14106,64 @@ function installMaintenanceMobileStateContentRescue(root, marked, referenceWidth
     return targets.size;
 }
 
+
+function maintenanceMobileLayoutRelationTreeInfo(element) {
+    if (!element?.querySelectorAll) return null;
+    const style = maintenanceMobileLayoutComputedStyle(element);
+    if (!String(style?.display || '').toLowerCase().includes('grid')) return null;
+    const tracks = maintenanceMobileLayoutSplitTracks(String(style?.gridTemplateColumns || ''));
+    if (tracks.length !== 2) return null;
+    const cells = [...(element.children || [])].filter(child => !maintenanceMobileLayoutIsInternal(child));
+    if (cells.length !== 2) return null;
+    const entries = [];
+    for (const cell of cells) {
+        const input = cell.querySelector?.('input[type="radio"], input[type="checkbox"]');
+        if (!input?.id) return null;
+        const label = cell.querySelector?.(`label[for="${cssEscape(input.id)}"]`);
+        if (!label) return null;
+        let detail = null;
+        for (const sibling of [...(input.parentElement?.children || [])]) {
+            if (sibling === input || sibling === label) continue;
+            if (sibling.compareDocumentPosition?.(input) & Node.DOCUMENT_POSITION_FOLLOWING) continue;
+        }
+        detail = input.nextElementSibling;
+        if (!detail || maintenanceMobileLayoutTextLength(detail) < 8) return null;
+        const detailStyle = maintenanceMobileLayoutComputedStyle(detail);
+        const collapsed = String(detailStyle?.opacity || '') === '0'
+            || maintenanceMobileLayoutLengthPx(detailStyle?.maxHeight, 640) <= 1
+            || String(detail.style?.maxHeight || '').trim() === '0';
+        if (!collapsed) return null;
+        entries.push({ cell, input, label, detail });
+    }
+    const hint = String(element.parentElement?.textContent || '').replace(/\s+/g, ' ').trim();
+    const hasRelationHint = /关系|羁绊|节点|角色|人物|relationship|bond|node/i.test(hint);
+    if (!hasRelationHint) return null;
+    return { branch: element, entries };
+}
+
+function maintenanceMobileLayoutCollectRelationTrees(root, elements, marked) {
+    const infos = [];
+    for (const element of elements) {
+        const info = maintenanceMobileLayoutRelationTreeInfo(element);
+        if (!info) continue;
+        maintenanceMobileLayoutMark(info.branch, MOBILE_LAYOUT_RELATION_BRANCH_ATTR, marked);
+        const host = info.branch.parentElement || info.branch;
+        maintenanceMobileLayoutMark(host, MOBILE_LAYOUT_RELATION_TREE_ATTR, marked);
+        info.entries.forEach((entry, index) => {
+            maintenanceMobileLayoutMark(entry.cell, MOBILE_LAYOUT_RELATION_CELL_ATTR, marked);
+            maintenanceMobileLayoutMark(entry.detail, MOBILE_LAYOUT_RELATION_DETAIL_ATTR, marked);
+            entry.detail.setAttribute(MOBILE_LAYOUT_RELATION_SIDE_ATTR, index === 0 ? 'left' : 'right');
+            marked?.add?.(entry.detail);
+        });
+        infos.push(info);
+    }
+    return infos;
+}
+
+function maintenanceMobileLayoutElementInRelationTree(element, relationInfos) {
+    return relationInfos.some(info => info.branch === element || info.branch.contains?.(element));
+}
+
 function maintenanceMobileLayoutCss(scopeToken) {
     const scope = `[${MOBILE_LAYOUT_SCOPE_ATTR}="${scopeToken}"]`;
     return `@media (max-width: ${MOBILE_LAYOUT_BREAKPOINT_PX}px) {
@@ -14076,6 +14187,11 @@ ${scope} [${MOBILE_LAYOUT_SCROLL_ATTR}] { max-width: 100% !important; overflow-x
 ${scope} table[${MOBILE_LAYOUT_SCROLL_ATTR}], ${scope} pre[${MOBILE_LAYOUT_SCROLL_ATTR}] { display: block !important; }
 ${scope} [${MOBILE_LAYOUT_BREAK_TEXT_ATTR}] { overflow-wrap: anywhere !important; word-break: break-word !important; min-width: 0 !important; }
 ${scope} [${MOBILE_LAYOUT_STATE_CONTENT_ATTR}][${MOBILE_LAYOUT_STATE_ACTIVE_ATTR}] { height: auto !important; max-height: none !important; overflow: visible !important; }
+${scope} [${MOBILE_LAYOUT_RELATION_BRANCH_ATTR}] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; width: 100% !important; max-width: 100% !important; min-width: 0 !important; gap: clamp(8px, 3vw, 16px) !important; overflow: visible !important; }
+${scope} [${MOBILE_LAYOUT_RELATION_CELL_ATTR}] { min-width: 0 !important; max-width: none !important; overflow: visible !important; }
+${scope} [${MOBILE_LAYOUT_RELATION_DETAIL_ATTR}] { width: calc(200% + clamp(8px, 3vw, 16px)) !important; max-width: none !important; box-sizing: border-box !important; overflow-wrap: break-word !important; word-break: normal !important; }
+${scope} [${MOBILE_LAYOUT_RELATION_DETAIL_ATTR}][${MOBILE_LAYOUT_RELATION_SIDE_ATTR}="left"] { transform: none !important; }
+${scope} [${MOBILE_LAYOUT_RELATION_DETAIL_ATTR}][${MOBILE_LAYOUT_RELATION_SIDE_ATTR}="right"] { transform: translateX(calc(-50% - clamp(4px, 1.5vw, 8px))) !important; }
 }`;
 }
 
@@ -14095,6 +14211,7 @@ function inspectMaintenanceMobileLayout(root) {
         passportDocumentCount: 0,
         sectionStackCount: 0,
         screenShellCount: 0,
+        relationTreeCount: 0,
     };
     if (!root?.querySelectorAll) return empty;
     const viewportWidth = Math.max(0, Number(globalThis.innerWidth || globalThis.document?.documentElement?.clientWidth || 0));
@@ -14115,6 +14232,7 @@ function inspectMaintenanceMobileLayout(root) {
         multiColumn: new Set(),
         media: new Set(),
         stateContent: new Set(),
+        relationTree: new Set(),
     };
     const alreadyRepaired = root.hasAttribute(MOBILE_LAYOUT_SCOPE_ATTR)
         && !!root.querySelector(`style[${MOBILE_LAYOUT_RESCUE_STYLE_ATTR}]`);
@@ -14123,9 +14241,12 @@ function inspectMaintenanceMobileLayout(root) {
     const screenShellHosts = elements.filter(element => maintenanceMobileLayoutScreenShellInfo(element))
         .filter(host => !elements.some(other => other !== host && maintenanceMobileLayoutScreenShellInfo(other) && other.contains?.(host)));
 
+    const relationTreeInfos = elements.map(maintenanceMobileLayoutRelationTreeInfo).filter(Boolean);
+    relationTreeInfos.forEach(info => buckets.relationTree.add(info.branch));
     for (const element of elements) {
         if (maintenanceMobileLayoutElementInSectionStack(element, sectionStackHosts)
-            || maintenanceMobileLayoutElementInScreenShell(element, screenShellHosts)) continue;
+            || maintenanceMobileLayoutElementInScreenShell(element, screenShellHosts)
+            || maintenanceMobileLayoutElementInRelationTree(element, relationTreeInfos)) continue;
         const style = maintenanceMobileLayoutComputedStyle(element);
         if (!style) continue;
         const rect = maintenanceMobileLayoutRect(element);
@@ -14244,6 +14365,7 @@ function inspectMaintenanceMobileLayout(root) {
         passportDocumentCount: findRenderedPassportDocumentCandidates(root).length,
         sectionStackCount: sectionStackHosts.length,
         screenShellCount: screenShellHosts.length,
+        relationTreeCount: relationTreeInfos.length,
     };
 }
 
@@ -14275,10 +14397,12 @@ function installMaintenanceMobileLayoutRescue(root) {
     const screenShellHosts = elements.filter(element => maintenanceMobileLayoutScreenShellInfo(element))
         .filter(host => !elements.some(other => other !== host && maintenanceMobileLayoutScreenShellInfo(other) && other.contains?.(host)));
     for (const host of screenShellHosts) maintenanceMobileLayoutMark(host, MOBILE_LAYOUT_SCREEN_SHELL_PRESERVE_ATTR, marked);
+    const relationTreeInfos = maintenanceMobileLayoutCollectRelationTrees(root, elements, marked);
 
     for (const element of elements) {
         if (maintenanceMobileLayoutElementInSectionStack(element, sectionStackHosts)
-            || maintenanceMobileLayoutElementInScreenShell(element, screenShellHosts)) continue;
+            || maintenanceMobileLayoutElementInScreenShell(element, screenShellHosts)
+            || maintenanceMobileLayoutElementInRelationTree(element, relationTreeInfos)) continue;
         const style = maintenanceMobileLayoutComputedStyle(element);
         if (!style) continue;
         const rect = maintenanceMobileLayoutRect(element);
@@ -14441,7 +14565,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.66';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.68';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
