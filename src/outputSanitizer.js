@@ -1,4 +1,4 @@
-import { getSettings } from './settings.js?rmv=1.1.0b14';
+import { getSettings } from './settings.js?rmv=1.1.0b15';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -7,12 +7,12 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.1.0b14';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14';
+} from './feedbackCat.js?rmv=1.1.0b15';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b15';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b15';
 
 
-const RUNTIME_VERSION = '1.1.0-beta.14';
+const RUNTIME_VERSION = '1.1.0-beta.15';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -1894,6 +1894,7 @@ const NESTED_DETAILS_REPLACEMENT_ATTR = 'data-rm-nested-details-replacement';
 const NESTED_DETAILS_REPLACEMENT_HOST_ATTR = 'data-rm-nested-details-replacement-host';
 const NESTED_DETAILS_REPLACEMENT_STYLE_ATTR = 'data-rabbit-mirror-nested-details-replacement-style';
 const NESTED_DETAILS_REPLACEMENT_BOUND_ATTR = 'data-rm-nested-details-replacement-bound';
+const NESTED_DETAILS_REPLACEMENT_OVERLAY_ATTR = 'data-rm-nested-details-replacement-overlay';
 const NESTED_DETAILS_POPUP_RESCUE_ATTR = 'data-rm-nested-details-popup-rescue';
 const NESTED_DETAILS_POPUP_HOST_ATTR = 'data-rm-nested-details-popup-host';
 const NESTED_DETAILS_POPUP_CONTENT_ATTR = 'data-rm-nested-details-popup-content';
@@ -7078,20 +7079,28 @@ function isFullHeightNestedDetailsCandidate(details, summary) {
     if (!contentChildren.length) return false;
 
     const parent = details.parentElement;
-    let parentStyle = null;
     let detailsStyle = null;
     let summaryStyle = null;
     try {
-        parentStyle = globalThis.getComputedStyle?.(parent) || null;
         detailsStyle = globalThis.getComputedStyle?.(details) || null;
         summaryStyle = globalThis.getComputedStyle?.(summary) || null;
     } catch {
         // Inline declarations below are enough for a conservative fallback.
     }
 
-    const parentOverflow = `${parent.style?.overflow || ''} ${parentStyle?.overflow || ''} ${parentStyle?.overflowY || ''}`.toLowerCase();
-    const clippedParent = /hidden|clip/.test(parentOverflow);
-    if (!clippedParent) return false;
+    // 全屏覆盖层常由更外层的设备外壳负责 overflow:hidden，不能只检查 details 的直接父元素。
+    let clippingAncestor = null;
+    for (let current = parent, depth = 0; current && depth < 10; depth += 1, current = current.parentElement) {
+        let currentStyle = null;
+        try { currentStyle = globalThis.getComputedStyle?.(current) || null; } catch {}
+        const overflow = `${current.style?.overflow || ''} ${currentStyle?.overflow || ''} ${currentStyle?.overflowX || ''} ${currentStyle?.overflowY || ''}`.toLowerCase();
+        if (/(?:hidden|clip)/.test(overflow)) {
+            clippingAncestor = current;
+            break;
+        }
+        if (current === root) break;
+    }
+    if (!clippingAncestor) return false;
 
     const summaryInlineHeight = String(summary.style?.height || '').trim().toLowerCase();
     const detailsInlineHeight = String(details.style?.height || '').trim().toLowerCase();
@@ -7102,7 +7111,7 @@ function isFullHeightNestedDetailsCandidate(details, summary) {
 
     let geometryFull = false;
     try {
-        const parentRect = parent.getBoundingClientRect?.();
+        const parentRect = clippingAncestor.getBoundingClientRect?.();
         const summaryRect = summary.getBoundingClientRect?.();
         if (parentRect?.height > 24 && summaryRect?.height > 0) {
             geometryFull = summaryRect.height >= parentRect.height * 0.72;
@@ -7129,6 +7138,25 @@ function isFullHeightNestedDetailsCandidate(details, summary) {
     });
 
     return summaryExplicitFull || detailsExplicitFull || geometryFull || fullOverlayContent;
+}
+
+function nestedDetailsHasFullOverlayContent(details, summary) {
+    return directReadableDetailsChildren(details, summary).some(child => {
+        const inline = String(child.getAttribute?.('style') || '').toLowerCase();
+        let childStyle = null;
+        try { childStyle = globalThis.getComputedStyle?.(child) || null; } catch {}
+        const position = String(child.style?.position || childStyle?.position || '').toLowerCase();
+        if (!/^(?:absolute|fixed)$/.test(position)) return false;
+        const top = String(child.style?.top || childStyle?.top || '').trim().toLowerCase();
+        const left = String(child.style?.left || childStyle?.left || '').trim().toLowerCase();
+        const width = String(child.style?.width || childStyle?.width || '').trim().toLowerCase();
+        const height = String(child.style?.height || childStyle?.height || '').trim().toLowerCase();
+        const insetZero = /(?:^|;)\s*inset\s*:\s*0(?:px)?(?:\s*;|$)/.test(inline);
+        const anchoredTopLeft = /^(?:0|0px)$/.test(top) && /^(?:0|0px)$/.test(left);
+        const fillsWidth = width === '100%' || /(?:^|;)\s*(?:right\s*:\s*0(?:px)?|width\s*:\s*100%)\s*(?:;|$)/.test(inline);
+        const fillsHeight = height === '100%' || /(?:^|;)\s*(?:bottom\s*:\s*0(?:px)?|height\s*:\s*100%)\s*(?:;|$)/.test(inline);
+        return insetZero || (anchoredTopLeft && fillsWidth && fillsHeight);
+    });
 }
 
 function ensureNestedDetailsReplacementStyle(root) {
@@ -7166,6 +7194,23 @@ function ensureNestedDetailsReplacementStyle(root) {
   min-height: 100% !important;
   box-sizing: border-box !important;
 }
+[${NESTED_DETAILS_REPLACEMENT_ATTR}="true"][${NESTED_DETAILS_REPLACEMENT_OVERLAY_ATTR}="true"] {
+  width: auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+[${NESTED_DETAILS_REPLACEMENT_ATTR}="true"][${NESTED_DETAILS_REPLACEMENT_OVERLAY_ATTR}="true"][open] > :not(summary):not(style):not(script):not(template) {
+  position: absolute !important;
+  top: 0 !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+}
 `;
     return style;
 }
@@ -7180,12 +7225,17 @@ function installNestedDetailsReplacementContainment(root) {
         if (!summary || !isFullHeightNestedDetailsCandidate(details, summary)) continue;
         if (details.getAttribute(NESTED_DETAILS_REPLACEMENT_ATTR) !== 'true') {
             details.setAttribute(NESTED_DETAILS_REPLACEMENT_ATTR, 'true');
-            const host = details.parentElement;
-            if (host) {
-                let originalHeight = 0;
-                try { originalHeight = Math.round(host.getBoundingClientRect?.().height || 0); } catch {}
-                if (originalHeight > 0) host.style.setProperty('--rm-nested-details-original-height', `${originalHeight}px`);
-                host.setAttribute(NESTED_DETAILS_REPLACEMENT_HOST_ATTR, 'true');
+            const overlayMode = nestedDetailsHasFullOverlayContent(details, summary);
+            if (overlayMode) {
+                details.setAttribute(NESTED_DETAILS_REPLACEMENT_OVERLAY_ATTR, 'true');
+            } else {
+                const host = details.parentElement;
+                if (host) {
+                    let originalHeight = 0;
+                    try { originalHeight = Math.round(host.getBoundingClientRect?.().height || 0); } catch {}
+                    if (originalHeight > 0) host.style.setProperty('--rm-nested-details-original-height', `${originalHeight}px`);
+                    host.setAttribute(NESTED_DETAILS_REPLACEMENT_HOST_ATTR, 'true');
+                }
             }
             patched += 1;
         }
@@ -13901,6 +13951,22 @@ function maintenanceMobileLayoutElementInSectionStack(element, hosts) {
 function maintenanceMobileLayoutScreenShellInfo(element) {
     if (!element?.querySelectorAll || element.matches?.('details,toto,summary,style,script')) return null;
     const signature = `${element.id || ''} ${element.className || ''} ${element.getAttribute?.('aria-label') || ''}`;
+    const inlineStyle = String(element.getAttribute?.('style') || '').toLowerCase();
+    const width = maintenanceMobileLayoutLengthPx(element.style?.width, 640);
+    const height = maintenanceMobileLayoutLengthPx(element.style?.height, 640);
+    const overflow = String(maintenanceMobileLayoutComputedStyle(element)?.overflow || element.style?.overflow || '').toLowerCase();
+    const radius = maintenanceMobileLayoutLengthPx(element.style?.borderRadius, 640);
+    const fullOverlayDetails = [...element.querySelectorAll('details')].some(details => {
+        const summary = details.querySelector?.(':scope > summary');
+        return summary && nestedDetailsHasFullOverlayContent(details, summary);
+    });
+    const deviceLikeShell = width >= 240 && width <= 520
+        && height >= width * 1.3 && height <= width * 2.8
+        && /(?:hidden|clip)/.test(overflow)
+        && radius >= 12
+        && fullOverlayDetails
+        && /(?:^|;)\s*position\s*:\s*relative\b/.test(inlineStyle);
+    if (deviceLikeShell) return { screens: [element], controls: [], statePanels: [], deviceLikeShell: true };
     const ownMediaHint = /(?:tv|television|crt|monitor|terminal|screen-shell|电视|监控|终端|显示器)/i.test(signature);
     const descendantMediaHint = !!element.querySelector?.(
         '[class*="tv-cabinet" i], [class*="tv-screen" i], [class*="crt" i], [class*="monitor" i], [class*="terminal" i], [class*="screen-shell" i]',
@@ -14565,7 +14631,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.68';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.69';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。

@@ -1,13 +1,13 @@
-import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.1.0b14';
-import { clearLastCombo } from './storage.js?rmv=1.1.0b14';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.1.0b14';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.1.0b14';
-import { refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.1.0b14';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.1.0b14';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.1.0b14';
+import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.1.0b15';
+import { clearLastCombo } from './storage.js?rmv=1.1.0b15';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.1.0b15';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.1.0b15';
+import { refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.1.0b15';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.1.0b15';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.1.0b15';
 
-const SETTINGS_UI_VERSION = '1.1.0-beta.14';
-const RUNTIME_VERSION = '1.1.0-beta.14';
+const SETTINGS_UI_VERSION = '1.1.0-beta.15';
+const RUNTIME_VERSION = '1.1.0-beta.15';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -184,7 +184,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[Beta v1.1・挨打猫 v1.4＋维修兔 v1.68]</span></b><span class="rabbit-mirror-toto-watermark">Toto Beta v1.1</span>
+      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[Beta v1.1・挨打猫 v1.4＋维修兔 v1.69]</span></b><span class="rabbit-mirror-toto-watermark">Toto Beta v1.1</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
