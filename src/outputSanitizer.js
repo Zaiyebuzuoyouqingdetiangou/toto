@@ -1,4 +1,4 @@
-import { getSettings } from './settings.js?rmv=1.1.0b15';
+import { getSettings } from './settings.js?rmv=1.1.0b14h1';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -7,15 +7,16 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.1.0b15';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b15';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b15';
+} from './feedbackCat.js?rmv=1.1.0b14h1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.1.0b14h1';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.1.0b14h1';
 
 
-const RUNTIME_VERSION = '1.1.0-beta.15';
+const RUNTIME_VERSION = '1.1.0-beta.14.1';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
+const TOOL_ENTRY_HOST_ATTR = 'data-rabbit-mirror-tool-entry-host';
 
 function ensureFeedbackCatRuntimeStyle() {
     if (typeof document === 'undefined') return;
@@ -25,17 +26,92 @@ function ensureFeedbackCatRuntimeStyle() {
         style.id = FEEDBACK_CAT_RUNTIME_STYLE_ID;
         (document.head || document.documentElement)?.appendChild(style);
     }
-    style.textContent = `
-.rabbit-mirror-feedback-cat::before,
-.rabbit-mirror-feedback-cat::after {
+    const css = `
+[${TOOL_ENTRY_HOST_ATTR}][${TOOL_ENTRY_HOST_ATTR}] {
+    all: initial !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 2px !important;
+    float: inline-end !important;
+    flex: 0 0 auto !important;
+    position: relative !important;
+    z-index: 2147483000 !important;
+    width: auto !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    margin: 0 0 0 6px !important;
+    margin-inline-start: auto !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    transform: none !important;
+    filter: none !important;
+    clip: auto !important;
+    clip-path: none !important;
+    white-space: nowrap !important;
+    vertical-align: middle !important;
+    color: inherit !important;
+    font: inherit !important;
+    line-height: 1 !important;
+    isolation: isolate !important;
+}
+[${TOOL_ENTRY_HOST_ATTR}] > button[${MAINTENANCE_RABBIT_ATTR}],
+[${TOOL_ENTRY_HOST_ATTR}] > button[${FEEDBACK_CAT_ATTR}] {
+    all: initial !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: relative !important;
+    z-index: 2147483001 !important;
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 20px !important;
+    max-width: none !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 1px 3px !important;
+    border: 0 !important;
+    border-radius: 5px !important;
+    background: transparent !important;
+    color: inherit !important;
+    font: inherit !important;
+    font-size: 14px !important;
+    line-height: 1 !important;
+    text-indent: 0 !important;
+    letter-spacing: normal !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    visibility: visible !important;
+    opacity: .94 !important;
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    transform: none !important;
+    filter: none !important;
+    clip: auto !important;
+    clip-path: none !important;
+    box-shadow: none !important;
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    touch-action: manipulation !important;
+    -webkit-tap-highlight-color: transparent !important;
+}
+[${TOOL_ENTRY_HOST_ATTR}] > button[${MAINTENANCE_RABBIT_ATTR}]::before,
+[${TOOL_ENTRY_HOST_ATTR}] > button[${MAINTENANCE_RABBIT_ATTR}]::after,
+[${TOOL_ENTRY_HOST_ATTR}] > button[${FEEDBACK_CAT_ATTR}]::before,
+[${TOOL_ENTRY_HOST_ATTR}] > button[${FEEDBACK_CAT_ATTR}]::after {
     content: none !important;
     display: none !important;
 }
-.rabbit-mirror-feedback-cat {
-    font-size: 14px !important;
-    line-height: 1 !important;
-}
 `;
+    if (style.textContent !== css) style.textContent = css;
 }
 
 
@@ -1894,7 +1970,6 @@ const NESTED_DETAILS_REPLACEMENT_ATTR = 'data-rm-nested-details-replacement';
 const NESTED_DETAILS_REPLACEMENT_HOST_ATTR = 'data-rm-nested-details-replacement-host';
 const NESTED_DETAILS_REPLACEMENT_STYLE_ATTR = 'data-rabbit-mirror-nested-details-replacement-style';
 const NESTED_DETAILS_REPLACEMENT_BOUND_ATTR = 'data-rm-nested-details-replacement-bound';
-const NESTED_DETAILS_REPLACEMENT_OVERLAY_ATTR = 'data-rm-nested-details-replacement-overlay';
 const NESTED_DETAILS_POPUP_RESCUE_ATTR = 'data-rm-nested-details-popup-rescue';
 const NESTED_DETAILS_POPUP_HOST_ATTR = 'data-rm-nested-details-popup-host';
 const NESTED_DETAILS_POPUP_CONTENT_ATTR = 'data-rm-nested-details-popup-content';
@@ -5540,7 +5615,7 @@ function getRabbitMirrorSummaryText(root) {
     if (!summary) return '';
     const clone = summary.cloneNode?.(true);
     if (clone?.querySelectorAll) {
-        clone.querySelectorAll(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}]`).forEach(node => node.remove());
+        clone.querySelectorAll(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`).forEach(node => node.remove());
     }
     return String((clone || summary).textContent || '')
         .replace(/\s+/g, ' ')
@@ -7079,28 +7154,20 @@ function isFullHeightNestedDetailsCandidate(details, summary) {
     if (!contentChildren.length) return false;
 
     const parent = details.parentElement;
+    let parentStyle = null;
     let detailsStyle = null;
     let summaryStyle = null;
     try {
+        parentStyle = globalThis.getComputedStyle?.(parent) || null;
         detailsStyle = globalThis.getComputedStyle?.(details) || null;
         summaryStyle = globalThis.getComputedStyle?.(summary) || null;
     } catch {
         // Inline declarations below are enough for a conservative fallback.
     }
 
-    // 全屏覆盖层常由更外层的设备外壳负责 overflow:hidden，不能只检查 details 的直接父元素。
-    let clippingAncestor = null;
-    for (let current = parent, depth = 0; current && depth < 10; depth += 1, current = current.parentElement) {
-        let currentStyle = null;
-        try { currentStyle = globalThis.getComputedStyle?.(current) || null; } catch {}
-        const overflow = `${current.style?.overflow || ''} ${currentStyle?.overflow || ''} ${currentStyle?.overflowX || ''} ${currentStyle?.overflowY || ''}`.toLowerCase();
-        if (/(?:hidden|clip)/.test(overflow)) {
-            clippingAncestor = current;
-            break;
-        }
-        if (current === root) break;
-    }
-    if (!clippingAncestor) return false;
+    const parentOverflow = `${parent.style?.overflow || ''} ${parentStyle?.overflow || ''} ${parentStyle?.overflowY || ''}`.toLowerCase();
+    const clippedParent = /hidden|clip/.test(parentOverflow);
+    if (!clippedParent) return false;
 
     const summaryInlineHeight = String(summary.style?.height || '').trim().toLowerCase();
     const detailsInlineHeight = String(details.style?.height || '').trim().toLowerCase();
@@ -7111,7 +7178,7 @@ function isFullHeightNestedDetailsCandidate(details, summary) {
 
     let geometryFull = false;
     try {
-        const parentRect = clippingAncestor.getBoundingClientRect?.();
+        const parentRect = parent.getBoundingClientRect?.();
         const summaryRect = summary.getBoundingClientRect?.();
         if (parentRect?.height > 24 && summaryRect?.height > 0) {
             geometryFull = summaryRect.height >= parentRect.height * 0.72;
@@ -7138,25 +7205,6 @@ function isFullHeightNestedDetailsCandidate(details, summary) {
     });
 
     return summaryExplicitFull || detailsExplicitFull || geometryFull || fullOverlayContent;
-}
-
-function nestedDetailsHasFullOverlayContent(details, summary) {
-    return directReadableDetailsChildren(details, summary).some(child => {
-        const inline = String(child.getAttribute?.('style') || '').toLowerCase();
-        let childStyle = null;
-        try { childStyle = globalThis.getComputedStyle?.(child) || null; } catch {}
-        const position = String(child.style?.position || childStyle?.position || '').toLowerCase();
-        if (!/^(?:absolute|fixed)$/.test(position)) return false;
-        const top = String(child.style?.top || childStyle?.top || '').trim().toLowerCase();
-        const left = String(child.style?.left || childStyle?.left || '').trim().toLowerCase();
-        const width = String(child.style?.width || childStyle?.width || '').trim().toLowerCase();
-        const height = String(child.style?.height || childStyle?.height || '').trim().toLowerCase();
-        const insetZero = /(?:^|;)\s*inset\s*:\s*0(?:px)?(?:\s*;|$)/.test(inline);
-        const anchoredTopLeft = /^(?:0|0px)$/.test(top) && /^(?:0|0px)$/.test(left);
-        const fillsWidth = width === '100%' || /(?:^|;)\s*(?:right\s*:\s*0(?:px)?|width\s*:\s*100%)\s*(?:;|$)/.test(inline);
-        const fillsHeight = height === '100%' || /(?:^|;)\s*(?:bottom\s*:\s*0(?:px)?|height\s*:\s*100%)\s*(?:;|$)/.test(inline);
-        return insetZero || (anchoredTopLeft && fillsWidth && fillsHeight);
-    });
 }
 
 function ensureNestedDetailsReplacementStyle(root) {
@@ -7194,23 +7242,6 @@ function ensureNestedDetailsReplacementStyle(root) {
   min-height: 100% !important;
   box-sizing: border-box !important;
 }
-[${NESTED_DETAILS_REPLACEMENT_ATTR}="true"][${NESTED_DETAILS_REPLACEMENT_OVERLAY_ATTR}="true"] {
-  width: auto !important;
-  height: auto !important;
-  min-height: 0 !important;
-  overflow: visible !important;
-}
-[${NESTED_DETAILS_REPLACEMENT_ATTR}="true"][${NESTED_DETAILS_REPLACEMENT_OVERLAY_ATTR}="true"][open] > :not(summary):not(style):not(script):not(template) {
-  position: absolute !important;
-  top: 0 !important;
-  right: auto !important;
-  bottom: auto !important;
-  left: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  min-height: 0 !important;
-  margin: 0 !important;
-}
 `;
     return style;
 }
@@ -7225,17 +7256,12 @@ function installNestedDetailsReplacementContainment(root) {
         if (!summary || !isFullHeightNestedDetailsCandidate(details, summary)) continue;
         if (details.getAttribute(NESTED_DETAILS_REPLACEMENT_ATTR) !== 'true') {
             details.setAttribute(NESTED_DETAILS_REPLACEMENT_ATTR, 'true');
-            const overlayMode = nestedDetailsHasFullOverlayContent(details, summary);
-            if (overlayMode) {
-                details.setAttribute(NESTED_DETAILS_REPLACEMENT_OVERLAY_ATTR, 'true');
-            } else {
-                const host = details.parentElement;
-                if (host) {
-                    let originalHeight = 0;
-                    try { originalHeight = Math.round(host.getBoundingClientRect?.().height || 0); } catch {}
-                    if (originalHeight > 0) host.style.setProperty('--rm-nested-details-original-height', `${originalHeight}px`);
-                    host.setAttribute(NESTED_DETAILS_REPLACEMENT_HOST_ATTR, 'true');
-                }
+            const host = details.parentElement;
+            if (host) {
+                let originalHeight = 0;
+                try { originalHeight = Math.round(host.getBoundingClientRect?.().height || 0); } catch {}
+                if (originalHeight > 0) host.style.setProperty('--rm-nested-details-original-height', `${originalHeight}px`);
+                host.setAttribute(NESTED_DETAILS_REPLACEMENT_HOST_ATTR, 'true');
             }
             patched += 1;
         }
@@ -8937,7 +8963,7 @@ function maintenanceProbeElementAtPath(ancestor, path) {
 
 function sanitizeMaintenanceProbeClone(clone) {
     if (!clone?.querySelectorAll) return;
-    clone.querySelectorAll(`script, iframe, object, embed, [${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}]`)
+    clone.querySelectorAll(`script, iframe, object, embed, [${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`)
         .forEach(node => node.remove());
     clone.querySelectorAll('*').forEach(element => {
         for (const attribute of [...element.attributes]) {
@@ -9793,7 +9819,7 @@ function diagnosticMessageBody(root) {
 
 function diagnosticIsInternalUiNode(node) {
     if (!node) return false;
-    if (node.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}]`)) return true;
+    if (node.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`)) return true;
     return !!node.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}]`);
 }
 
@@ -10339,7 +10365,7 @@ ${styleTexts}`;
     const renderedBodyElementCount = primaryDetails ? [...(primaryDetails.children || [])].filter(child => {
         const tag = String(child?.tagName || '').toLowerCase();
         if (!tag || tag === 'summary' || tag === 'style' || tag === 'script' || tag === 'br') return false;
-        if (child.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}]`) || child.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}]`)) return false;
+        if (child.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`) || child.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}]`)) return false;
         if (tag === 'p' && !String(child.textContent || '').trim() && !child.children?.length) return false;
         return true;
     }).length : 0;
@@ -10845,12 +10871,21 @@ function maintenanceRabbitTitle(state, reason = '') {
     return '维修兔：点击巡逻';
 }
 
+function maintenanceRabbitGlyph(state) {
+    if (state === MAINTENANCE_STATES.healthy) return '🐇🟢';
+    if (state === MAINTENANCE_STATES.repairable) return '🐇🟡';
+    if (state === MAINTENANCE_STATES.unknown) return '🐇🔴';
+    return '🐇⚪';
+}
+
 function setMaintenanceRabbitState(button, state, reason = '') {
     if (!button) return;
     button.setAttribute(MAINTENANCE_STATE_ATTR, state);
     button.setAttribute(MAINTENANCE_REASON_ATTR, reason);
+    button.textContent = maintenanceRabbitGlyph(state);
     button.title = maintenanceRabbitTitle(state, reason);
     button.setAttribute('aria-label', button.title);
+    normalizeRabbitMirrorToolButton(button);
 }
 
 function isLikelyTouchDevice() {
@@ -11230,7 +11265,7 @@ function fillInChoiceHasExistingControl(root) {
         .some(element => {
             if (outerSummary && (element === outerSummary || outerSummary.contains?.(element))) return false;
             if (element === outerDetails) return false;
-            if (element.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}]`)) return false;
+            if (element.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`)) return false;
             return true;
         });
 }
@@ -11590,7 +11625,7 @@ function structuredStaticDisclosureHasExistingInteraction(root) {
     ].join(',');
     return diagnosticQueryContentAll(root, selector).some(element => {
         if (outerSummary && (element === outerSummary || outerSummary.contains?.(element))) return false;
-        if (element.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}]`)) return false;
+        if (element.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`)) return false;
         return true;
     });
 }
@@ -12229,7 +12264,7 @@ function maintenanceReachableInteractionEvidence(root, routeSummary, checkedDept
     const contentInteractiveElementCount = diagnosticQueryContentAll(root, interactiveSelector)
         .filter(element => {
             if (outerSummary && (element === outerSummary || outerSummary.contains?.(element))) return false;
-            if (element.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}]`)) return false;
+            if (element.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`)) return false;
             return true;
         }).length;
 
@@ -12971,6 +13006,7 @@ function maintenanceMirrorBodyEvidence(candidate) {
         'template',
         `[${MAINTENANCE_RABBIT_ATTR}]`,
         `[${FEEDBACK_CAT_ATTR}]`,
+        `[${TOOL_ENTRY_HOST_ATTR}]`,
         `[${MAINTENANCE_MENU_ATTR}]`,
         `[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`,
         `[${FEEDBACK_CAT_MENU_ATTR}]`,
@@ -13651,6 +13687,8 @@ function updateFeedbackCatButtonTitles() {
     document.querySelectorAll?.(`[${FEEDBACK_CAT_ATTR}]`)?.forEach(button => {
         button.title = title;
         button.setAttribute('aria-label', title);
+        normalizeRabbitMirrorToolButton(button);
+        normalizeRabbitMirrorToolHost(button.parentElement?.matches?.(`[${TOOL_ENTRY_HOST_ATTR}]`) ? button.parentElement : null);
     });
 }
 
@@ -13901,7 +13939,7 @@ function maintenanceMobileLayoutIsInternal(element) {
     if (!element?.matches) return true;
     if (element.matches('style,script,link,meta,br,summary')) return true;
     if (element.closest?.(`[${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`)) return true;
-    if (element.matches(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}]`)) return true;
+    if (element.matches(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`)) return true;
     if (element.matches(`[${MOBILE_INLINE_ANNOTATION_ORIGINAL_ATTR}], [${MOBILE_INLINE_ANNOTATION_MIRROR_ATTR}]`)) return true;
     return false;
 }
@@ -13951,22 +13989,6 @@ function maintenanceMobileLayoutElementInSectionStack(element, hosts) {
 function maintenanceMobileLayoutScreenShellInfo(element) {
     if (!element?.querySelectorAll || element.matches?.('details,toto,summary,style,script')) return null;
     const signature = `${element.id || ''} ${element.className || ''} ${element.getAttribute?.('aria-label') || ''}`;
-    const inlineStyle = String(element.getAttribute?.('style') || '').toLowerCase();
-    const width = maintenanceMobileLayoutLengthPx(element.style?.width, 640);
-    const height = maintenanceMobileLayoutLengthPx(element.style?.height, 640);
-    const overflow = String(maintenanceMobileLayoutComputedStyle(element)?.overflow || element.style?.overflow || '').toLowerCase();
-    const radius = maintenanceMobileLayoutLengthPx(element.style?.borderRadius, 640);
-    const fullOverlayDetails = [...element.querySelectorAll('details')].some(details => {
-        const summary = details.querySelector?.(':scope > summary');
-        return summary && nestedDetailsHasFullOverlayContent(details, summary);
-    });
-    const deviceLikeShell = width >= 240 && width <= 520
-        && height >= width * 1.3 && height <= width * 2.8
-        && /(?:hidden|clip)/.test(overflow)
-        && radius >= 12
-        && fullOverlayDetails
-        && /(?:^|;)\s*position\s*:\s*relative\b/.test(inlineStyle);
-    if (deviceLikeShell) return { screens: [element], controls: [], statePanels: [], deviceLikeShell: true };
     const ownMediaHint = /(?:tv|television|crt|monitor|terminal|screen-shell|电视|监控|终端|显示器)/i.test(signature);
     const descendantMediaHint = !!element.querySelector?.(
         '[class*="tv-cabinet" i], [class*="tv-screen" i], [class*="crt" i], [class*="monitor" i], [class*="terminal" i], [class*="screen-shell" i]',
@@ -14631,7 +14653,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.69';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v1.68.1';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -15202,70 +15224,158 @@ function handleMaintenanceRabbitClick(event, root, button) {
     showMaintenanceRabbitMenu(root, button);
 }
 
+function setImportantStyle(element, property, value) {
+    if (!element?.style) return false;
+    if (element.style.getPropertyValue(property) === value && element.style.getPropertyPriority(property) === 'important') return false;
+    element.style.setProperty(property, value, 'important');
+    return true;
+}
+
+function normalizeRabbitMirrorToolHost(host) {
+    if (!host) return false;
+    host.hidden = false;
+    host.removeAttribute?.('aria-hidden');
+    host.setAttribute(TOOL_ENTRY_HOST_ATTR, 'true');
+    host.setAttribute(RUNTIME_VERSION_ATTR, RUNTIME_VERSION);
+    host.setAttribute('role', 'group');
+    host.setAttribute('aria-label', '兔子镜工具');
+    const styles = {
+        all: 'initial', display: 'inline-flex', 'align-items': 'center', 'justify-content': 'flex-end', gap: '2px',
+        float: 'inline-end', flex: '0 0 auto', position: 'relative', 'z-index': '2147483000', width: 'auto',
+        'min-width': '0', height: 'auto', 'min-height': '0', 'max-width': 'none', 'max-height': 'none',
+        margin: '0 0 0 6px', 'margin-inline-start': 'auto', padding: '0', overflow: 'visible', visibility: 'visible', opacity: '1',
+        'pointer-events': 'auto', transform: 'none', filter: 'none', clip: 'auto', 'clip-path': 'none',
+        'white-space': 'nowrap', 'vertical-align': 'middle', color: 'inherit', font: 'inherit', 'line-height': '1',
+        isolation: 'isolate',
+    };
+    let changed = false;
+    for (const [property, value] of Object.entries(styles)) changed = setImportantStyle(host, property, value) || changed;
+    return changed;
+}
+
+function normalizeRabbitMirrorToolButton(button) {
+    if (!button) return false;
+    button.hidden = false;
+    button.disabled = false;
+    button.removeAttribute?.('aria-hidden');
+    button.tabIndex = 0;
+    const styles = {
+        all: 'initial', display: 'inline-flex', 'align-items': 'center', 'justify-content': 'center', position: 'relative',
+        'z-index': '2147483001', flex: '0 0 auto', width: 'auto', 'min-width': '0', height: 'auto',
+        'min-height': '20px', 'max-width': 'none', 'max-height': 'none', margin: '0', padding: '1px 3px', border: '0',
+        'border-radius': '5px', background: 'transparent', color: 'inherit', font: 'inherit', 'font-size': '14px',
+        'line-height': '1', 'text-indent': '0', 'letter-spacing': 'normal', 'white-space': 'nowrap', overflow: 'visible',
+        visibility: 'visible', opacity: '.94', 'pointer-events': 'auto', cursor: 'pointer', transform: 'none', filter: 'none',
+        clip: 'auto', 'clip-path': 'none', 'box-shadow': 'none', appearance: 'none', '-webkit-appearance': 'none',
+        'touch-action': 'manipulation', '-webkit-tap-highlight-color': 'transparent',
+    };
+    let changed = false;
+    for (const [property, value] of Object.entries(styles)) changed = setImportantStyle(button, property, value) || changed;
+    return changed;
+}
+
+function ensureRabbitMirrorToolHost(summary) {
+    if (!summary?.querySelectorAll) return null;
+    ensureFeedbackCatRuntimeStyle();
+    const hosts = [...summary.querySelectorAll(`:scope > [${TOOL_ENTRY_HOST_ATTR}]`)];
+    let host = hosts.find(item => item.getAttribute(RUNTIME_VERSION_ATTR) === RUNTIME_VERSION) || hosts[0] || null;
+    hosts.filter(item => item !== host).forEach(item => item.remove());
+    if (!host) {
+        host = document.createElement('span');
+        summary.appendChild(host);
+    }
+    normalizeRabbitMirrorToolHost(host);
+    return host;
+}
+
+function rabbitMirrorToolRootFromButton(button) {
+    if (!button?.closest) return null;
+    const toto = button.closest(MIRROR_TOTO_SELECTOR);
+    if (toto && isInsideChatMessage(toto)) return toto;
+    const details = button.closest('details');
+    if (details && isRabbitMirrorDetails(details) && isInsideChatMessage(details)) return details;
+    return null;
+}
+
+function ensureMaintenanceRabbitButton(root, summary, host) {
+    const existing = [...summary.querySelectorAll?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || []];
+    let current = existing.find(button => button.getAttribute(RUNTIME_VERSION_ATTR) === RUNTIME_VERSION) || existing[0] || null;
+    existing.filter(button => button !== current).forEach(button => button.remove());
+    if (!current) {
+        current = document.createElement('button');
+        current.type = 'button';
+        current.className = 'rabbit-mirror-maintenance-rabbit';
+        current.setAttribute(MAINTENANCE_RABBIT_ATTR, 'true');
+        current.setAttribute(MAINTENANCE_STATE_ATTR, MAINTENANCE_STATES.idle);
+    }
+    current.type = 'button';
+    current.className = 'rabbit-mirror-maintenance-rabbit';
+    current.setAttribute(MAINTENANCE_RABBIT_ATTR, 'true');
+    current.setAttribute(RUNTIME_VERSION_ATTR, RUNTIME_VERSION);
+    if (current.parentElement !== host) host.appendChild(current);
+    const state = current.getAttribute(MAINTENANCE_STATE_ATTR) || MAINTENANCE_STATES.idle;
+    const reason = current.getAttribute(MAINTENANCE_REASON_ATTR) || '';
+    setMaintenanceRabbitState(current, state, reason);
+    return current;
+}
+
+function ensureFeedbackCatButton(root, summary, host) {
+    const existing = [...summary.querySelectorAll?.(`[${FEEDBACK_CAT_ATTR}]`) || []];
+    let current = existing.find(button => button.getAttribute(RUNTIME_VERSION_ATTR) === RUNTIME_VERSION) || existing[0] || null;
+    existing.filter(button => button !== current).forEach(button => button.remove());
+    if (!current) current = document.createElement('button');
+    current.type = 'button';
+    current.className = 'rabbit-mirror-feedback-cat';
+    current.setAttribute(FEEDBACK_CAT_ATTR, 'true');
+    current.setAttribute(RUNTIME_VERSION_ATTR, RUNTIME_VERSION);
+    current.textContent = '🐈';
+    current.title = feedbackCatButtonTitle();
+    current.setAttribute('aria-label', current.title);
+    if (current.parentElement !== host) host.appendChild(current);
+    normalizeRabbitMirrorToolButton(current);
+    return current;
+}
+
 function installMaintenanceRabbitForRoot(root) {
     if (!isCurrentRuntime() || !root?.querySelector) return false;
-    // 扩展升级后 WeakMap 状态会重建；在按钮安装阶段立即撤回旧版本对普通静态分段
-    // 误装的折叠标记，无需用户再次点击维修兔，也不改写任何正文内容。
     clearOrphanedStructuredStaticDisclosureArtifacts(root);
     const details = root.matches?.('details') ? root : root.querySelector(':scope > details') || root.querySelector('details');
     const summary = details?.querySelector?.(':scope > summary') || details?.querySelector?.('summary');
     if (!summary) return false;
-    const existing = [...summary.querySelectorAll?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || []];
-    const current = existing.find(button => button.getAttribute(RUNTIME_VERSION_ATTR) === RUNTIME_VERSION);
-    existing.filter(button => button !== current).forEach(button => button.remove());
-    if (current) return false;
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'rabbit-mirror-maintenance-rabbit';
-    button.setAttribute(MAINTENANCE_RABBIT_ATTR, 'true');
-    button.setAttribute(RUNTIME_VERSION_ATTR, RUNTIME_VERSION);
-    button.setAttribute(MAINTENANCE_STATE_ATTR, MAINTENANCE_STATES.idle);
-    button.title = maintenanceRabbitTitle(MAINTENANCE_STATES.idle);
-    button.setAttribute('aria-label', button.title);
-    button.addEventListener('click', event => handleMaintenanceRabbitClick(event, root, button), true);
-    button.addEventListener('pointerdown', event => {
-        event.stopPropagation();
-    }, true);
-    summary.appendChild(button);
+    const host = ensureRabbitMirrorToolHost(summary);
+    if (!host) return false;
+    ensureMaintenanceRabbitButton(root, summary, host);
     return true;
 }
 
 function installFeedbackCatForRoot(root) {
     if (!isCurrentRuntime() || !root?.querySelector) return false;
-    ensureFeedbackCatRuntimeStyle();
     const details = root.matches?.('details') ? root : root.querySelector(':scope > details') || root.querySelector('details');
     const summary = details?.querySelector?.(':scope > summary') || details?.querySelector?.('summary');
     if (!summary) return false;
-    const existing = [...summary.querySelectorAll?.(`[${FEEDBACK_CAT_ATTR}]`) || []];
-    const current = existing.find(button => button.getAttribute(RUNTIME_VERSION_ATTR) === RUNTIME_VERSION);
-    existing.filter(button => button !== current).forEach(button => button.remove());
-    if (current) return false;
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'rabbit-mirror-feedback-cat';
-    button.setAttribute(FEEDBACK_CAT_ATTR, 'true');
-    button.setAttribute(RUNTIME_VERSION_ATTR, RUNTIME_VERSION);
-    button.textContent = '🐈';
-    button.title = feedbackCatButtonTitle();
-    button.setAttribute('aria-label', button.title);
-    button.addEventListener('click', event => handleFeedbackCatClick(event, root, button), true);
-    button.addEventListener('pointerdown', event => {
-        event.stopPropagation();
-    }, true);
-    summary.appendChild(button);
+    const host = ensureRabbitMirrorToolHost(summary);
+    if (!host) return false;
+    ensureFeedbackCatButton(root, summary, host);
     return true;
+}
+
+function removeEmptyRabbitMirrorToolHosts(chatRoot = getChatRoot()) {
+    chatRoot?.querySelectorAll?.(`[${TOOL_ENTRY_HOST_ATTR}]`)?.forEach(host => {
+        if (!host.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}]`)) host.remove();
+    });
 }
 
 function removeMaintenanceRabbitsInChatDom() {
     const chatRoot = getChatRoot();
     chatRoot?.querySelectorAll?.(`[${MAINTENANCE_RABBIT_ATTR}]`)?.forEach(button => button.remove());
+    removeEmptyRabbitMirrorToolHosts(chatRoot);
 }
 
 function removeFeedbackCatsInChatDom() {
     const chatRoot = getChatRoot();
     chatRoot?.querySelectorAll?.(`[${FEEDBACK_CAT_ATTR}]`)?.forEach(button => button.remove());
+    removeEmptyRabbitMirrorToolHosts(chatRoot);
     closeFeedbackCatMenu();
-    document?.getElementById?.(FEEDBACK_CAT_RUNTIME_STYLE_ID)?.remove?.();
 }
 
 function installMaintenanceRabbitsInChatDom() {
@@ -15279,11 +15389,25 @@ function installMaintenanceRabbitsInChatDom() {
 
     getRenderedRabbitMirrorInteractionRoots(chatRoot).forEach(root => {
         if (!isInsideChatMessage(root)) return;
-        // 高置信前后面板兼容：内部 details 的 summary 占满固定高度时，暗面会被排到裁切区。
-        // 该修复仅处理有后置可读内容、父级明确裁切且 summary/详情占满面板的结构。
-        installNestedDetailsReplacementContainment(root);
-        if (maintenanceEnabled) installMaintenanceRabbitForRoot(root);
-        if (feedbackEnabled) installFeedbackCatForRoot(root);
+        try {
+            installNestedDetailsReplacementContainment(root);
+        } catch (error) {
+            console.debug('[RabbitMirror] nested details containment skipped for one mirror:', error);
+        }
+        if (maintenanceEnabled) {
+            try {
+                installMaintenanceRabbitForRoot(root);
+            } catch (error) {
+                console.debug('[RabbitMirror] maintenance rabbit install recovered for one mirror:', error);
+            }
+        }
+        if (feedbackEnabled) {
+            try {
+                installFeedbackCatForRoot(root);
+            } catch (error) {
+                console.debug('[RabbitMirror] feedback cat install recovered for one mirror:', error);
+            }
+        }
     });
     if (feedbackEnabled) updateFeedbackCatButtonTitles();
 }
@@ -17023,6 +17147,9 @@ function messageUsesDistinctDisplaySource(message) {
 let chatInstallObserver = null;
 let observedChatInstallRoot = null;
 let chatInstallDebounceTimer = 0;
+let toolEntryDelegationRoot = null;
+let toolEntryDelegatedClickHandler = null;
+let toolEntryDelegatedPointerHandler = null;
 
 const maintenanceInstallTimers = new Set();
 
@@ -17045,24 +17172,77 @@ function scheduleObservedChatInstall() {
     }, 80);
 }
 
+function removeToolEntryDelegation() {
+    if (toolEntryDelegationRoot && toolEntryDelegatedClickHandler) {
+        toolEntryDelegationRoot.removeEventListener('click', toolEntryDelegatedClickHandler, true);
+    }
+    if (toolEntryDelegationRoot && toolEntryDelegatedPointerHandler) {
+        toolEntryDelegationRoot.removeEventListener('pointerdown', toolEntryDelegatedPointerHandler, true);
+    }
+    toolEntryDelegationRoot = null;
+    toolEntryDelegatedClickHandler = null;
+    toolEntryDelegatedPointerHandler = null;
+}
+
+function installToolEntryDelegation(chatRoot = getChatRoot()) {
+    if (!isCurrentRuntime() || !chatRoot?.addEventListener) return false;
+    if (toolEntryDelegationRoot === chatRoot && toolEntryDelegatedClickHandler) return true;
+    removeToolEntryDelegation();
+    toolEntryDelegationRoot = chatRoot;
+    toolEntryDelegatedPointerHandler = event => {
+        const button = event.target?.closest?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}]`);
+        if (!button || !chatRoot.contains(button)) return;
+        event.stopPropagation();
+    };
+    toolEntryDelegatedClickHandler = event => {
+        const button = event.target?.closest?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}]`);
+        if (!button || !chatRoot.contains(button)) return;
+        const root = rabbitMirrorToolRootFromButton(button);
+        if (!root) return;
+        if (button.matches(`[${MAINTENANCE_RABBIT_ATTR}]`)) {
+            handleMaintenanceRabbitClick(event, root, button);
+            return;
+        }
+        handleFeedbackCatClick(event, root, button);
+    };
+    chatRoot.addEventListener('pointerdown', toolEntryDelegatedPointerHandler, true);
+    chatRoot.addEventListener('click', toolEntryDelegatedClickHandler, true);
+    return true;
+}
+
 function installChatMutationObserver() {
     if (!isCurrentRuntime() || typeof MutationObserver === 'undefined') return false;
     const chatRoot = getChatRoot();
     if (!chatRoot) return false;
+    installToolEntryDelegation(chatRoot);
     if (chatInstallObserver && observedChatInstallRoot === chatRoot) return true;
     chatInstallObserver?.disconnect?.();
     observedChatInstallRoot = chatRoot;
     chatInstallObserver = new MutationObserver(mutations => {
         const relevant = mutations.some(mutation => {
+            if (mutation.type === 'attributes') {
+                const target = mutation.target;
+                return !!target?.closest?.('.mes, .mes_text, details, toto');
+            }
+            if (mutation.type === 'characterData') {
+                return mutation.target?.parentElement?.matches?.('style') === true;
+            }
+            if (mutation.type === 'childList' && mutation.target?.matches?.('style')) return true;
             const nodes = [...(mutation.addedNodes || []), ...(mutation.removedNodes || [])];
             return nodes.some(node => node?.nodeType === 1 && (
-                node.matches?.('toto, details, summary, .mes, .mes_text, [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-maintenance-rabbit]')
-                || node.querySelector?.('toto, details, summary')
+                node.matches?.(`toto, details, summary, style, .mes, .mes_text, [${FEEDBACK_CAT_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`)
+                || node.querySelector?.('toto, details, summary, style')
             ));
         });
         if (relevant) scheduleObservedChatInstall();
     });
-    chatInstallObserver.observe(chatRoot, { childList: true, subtree: true });
+    chatInstallObserver.observe(chatRoot, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['class', 'style', 'hidden'],
+        characterData: true,
+    });
     return true;
 }
 
@@ -17083,6 +17263,7 @@ export async function initOutputSanitizer() {
     // DOM 安装链不依赖宿主事件模块是否成功导入：即使热重载或宿主事件名变化，
     // 维修兔与挨打猫仍会通过聊天区观察器安装到现有和后续兔子镜标题。
     installChatRootReadyObserver();
+    installToolEntryDelegation();
     installChatMutationObserver();
     scheduleMaintenanceRabbitInstall();
     installMaintenanceRabbitsInChatDom();
@@ -17119,6 +17300,7 @@ export async function initOutputSanitizer() {
 export function destroyOutputSanitizer() {
     chatInstallObserver?.disconnect?.();
     chatInstallObserver = null;
+    removeToolEntryDelegation();
     observedChatInstallRoot = null;
     if (chatInstallDebounceTimer) {
         clearTimeout(chatInstallDebounceTimer);
@@ -17130,4 +17312,5 @@ export function destroyOutputSanitizer() {
     removeFeedbackCatsInChatDom();
     closeMaintenanceRabbitMenu();
     closeFeedbackCatMenu();
+    document?.getElementById?.(FEEDBACK_CAT_RUNTIME_STYLE_ID)?.remove?.();
 }

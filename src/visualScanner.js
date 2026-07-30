@@ -1,10 +1,10 @@
-import { updateLatestVisualSignature } from './storage.js?rmv=1.1.0b15';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.1.0b15';
+import { updateLatestVisualSignature } from './storage.js?rmv=1.1.0b14h1';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.1.0b14h1';
 import {
     captureRabbitMirrorGenerationSnapshots,
     getRabbitMirrorGenerationSnapshot,
     inspectRabbitMirrorGenerationSource,
-} from './generationGuard.js?rmv=1.1.0b15';
+} from './generationGuard.js?rmv=1.1.0b14h1';
 
 const TOTO_RE = new RegExp('<toto\\b[^>]*(?:data-rabbit-mirror|data-rabbit-' + 'h' + 'ole)=[\"\']true[\"\'][^>]*>[\\s\\S]*?<\\/toto>', 'i');
 let lastScannedHash = '';
@@ -876,7 +876,7 @@ function renderedSummaryText(root) {
     const summary = root?.querySelector?.('summary');
     if (!summary) return '';
     const clone = summary.cloneNode(true);
-    clone.querySelectorAll?.('button, [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat]')
+    clone.querySelectorAll?.('button, [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-tool-entry-host]')
         ?.forEach?.(node => node.remove());
     return normalizedText(clone.textContent || '');
 }
