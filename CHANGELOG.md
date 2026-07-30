@@ -1,4 +1,14 @@
-## 1.1.0-beta.15 — 双列关系树手机保形
+# RabbitMirror 1.1.0-beta.14.1
+
+- 正式仓库 SillyTavern 适配热修：维修兔与挨打猫改用独立工具入口容器，并以运行时内联 `!important` 样式隔离兔子镜自身的 `button`、`summary > *`、透明度、位移与裁切规则。
+- 维修兔状态图标改为真实按钮文本，不再只依赖 `::before`，避免伪元素被宿主或局部 CSS 清除后入口看似消失。
+- 新增聊天区捕获阶段事件委托；酒馆重绘、克隆或替换消息 DOM 后，即使节点属性被保留但原监听器丢失，两个入口仍可点击。
+- 已存在的入口不再只做“存在即跳过”，每轮重挂载都会恢复容器位置、可见性、点击能力与当前版本。
+- 观察器补充 `style` 节点、局部 class/style/hidden 变化及样式文本变化；兔子镜 CSS 晚于按钮到达时也会重新校正。
+- 每面兔子镜的内部 details、维修兔、挨打猫安装分别隔离异常，一个复杂镜面失败不会阻断后续消息的入口安装。
+- 不修改 Prompt、点菜、母本库、Token 统计、聊天原文、旧 Swipe 或 `display_text`。维修兔仍为手动模式。
+
+## 1.1.0-beta.14 — 双列关系树手机保形
 
 - 将“关系树／节点网络”从通用手机单列压缩中分离。
 - 保留双列人物节点，并让展开详情在窄屏横跨两列，而不是把整棵关系图改成单列。
@@ -7,7 +17,7 @@
 
 # Changelog
 
-## 1.1.0-beta.15 — radio 取消程序局部恢复
+## 1.1.0-beta.14 — radio 取消程序局部恢复
 
 - 修复宿主删除 `document.querySelectorAll('input[type=radio]').forEach(r => r.checked=false)` 后，恋爱游戏等 radio 分支只能进入结果、无法返回初始选项的问题。
 - 只识别“固定选择器＋固定 `checked=false`”这一类安全程序；不执行任意原始 JavaScript，不把普通 label、按钮或其他脚本猜成取消操作。
@@ -117,9 +127,3 @@
 - “小小维修兔”更名为“维修兔”。
 - 从设置页移除重复的全链路诊断入口；维修兔菜单内的诊断功能继续保留。
 - 生成 Prompt、母本预算和正常每轮注入逻辑均未增加。
-
-## 1.1.0-beta.15 HOTFIX
-- Fixed device-shell mobile rescue routing: fixed-ratio rounded phone/terminal mockups with nested full-screen `<details>` overlays are now preserved as a single screen shell instead of receiving broad `fit`, `break-text`, padding, media, and gap patches across their descendants.
-- Fixed full-screen nested `<details>` detection to follow the ancestor chain to the actual clipping shell instead of checking only the direct parent.
-- Added overlay-safe nested-details containment: the close/return fallback is installed without converting an absolute full-screen inner page into ordinary document flow.
-- Maintenance Rabbit updated to v1.69.

@@ -23,7 +23,7 @@ RabbitMirror 是一个用于 SillyTavern 的互动小剧场扩展。它会根据
 - 动态视觉场景；
 - 共同回忆资料来源：可在需要时生成回忆杀；
 - 挨打猫：用于纠正兔子镜的美化效果；
-- 维修兔 v1.69：检查和修复显示、排版及交互问题；
+- 维修兔 v1.68.1：检查和修复显示、排版及交互问题；
 - 每轮 RabbitMirror 注入字符数与 Token 估算；
 - 手机 Safari / WebView 的交互、裁切与 3D 翻面兼容补救。
 
@@ -72,6 +72,3 @@ SillyTavern 的提示词拆分界面可能把同一份内容同时归类在“�
 ## 反馈
 
 请通过本仓库 Issues 反馈，并附 RabbitMirror 版本、SillyTavern 版本、设备、浏览器及已检查隐私的诊断文本。
-
-### beta.15 HOTFIX device-shell preservation
-Fixed-ratio rounded phone/terminal mockups that contain a full-screen nested `<details>` page are treated as preserved device shells. Their internal layout is excluded from broad mobile reflow patches, while the full-screen page receives a local return fallback without being converted into normal flow content.
