@@ -1,6 +1,13 @@
+## 1.1.0-beta.14 — 双列关系树手机保形
+
+- 将“关系树／节点网络”从通用手机单列压缩中分离。
+- 保留双列人物节点，并让展开详情在窄屏横跨两列，而不是把整棵关系图改成单列。
+- 不再向关系树内部批量安装通用 fit/min/break-text 标记。
+- 仅在两列网格、每列具有 label + checkbox/radio + 折叠详情，并存在关系/羁绊/节点语义时启用。
+
 # Changelog
 
-## 1.1.0-beta.12 — radio 取消程序局部恢复
+## 1.1.0-beta.14 — radio 取消程序局部恢复
 
 - 修复宿主删除 `document.querySelectorAll('input[type=radio]').forEach(r => r.checked=false)` 后，恋爱游戏等 radio 分支只能进入结果、无法返回初始选项的问题。
 - 只识别“固定选择器＋固定 `checked=false`”这一类安全程序；不执行任意原始 JavaScript，不把普通 label、按钮或其他脚本猜成取消操作。

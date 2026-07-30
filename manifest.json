@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（Beta v1.1・挨打猫 v1.4・维修兔 v1.66）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（Beta v1.1・挨打猫 v1.4・维修兔 v1.68）",
   "loading_order": 99,
-  "js": "index.js?rmv=1.1.0b12",
-  "css": "style.css?rmv=1.1.0b12",
+  "js": "index.js?rmv=1.1.0b14",
+  "css": "style.css?rmv=1.1.0b14",
   "author": "Toto",
-  "version": "1.1.0-beta.12",
+  "version": "1.1.0-beta.14",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "RabbitMirror Beta v1.1. Supports family-balanced random themes and presentation forms, source-message-scoped user-priority custom requests that work even when the mother library has no matching item, and fresh local random picks for every non-directed assistant generation or regeneration. Includes interactive RabbitMirror scenes, optional memory-based flashbacks, Feedback Cat, Maintenance Rabbit v1.66 with detached :has() radio/content-state recovery, persistent unlabeled focus-within flip recovery, second-state-only touch Hover recovery, generation-integrity validation, temporary complete-source snapshots, and a readable per-generation token meter. Maintenance, diagnostics, and generation de-duplication run locally and do not add model tokens. Source available, not open source; see LICENSE."
+  "description": "RabbitMirror Beta v1.1. Supports family-balanced random themes and presentation forms, source-message-scoped user-priority custom requests that work even when the mother library has no matching item, and fresh local random picks for every non-directed assistant generation or regeneration. Includes interactive RabbitMirror scenes, optional memory-based flashbacks, Feedback Cat, Maintenance Rabbit v1.68 with detached :has() radio/content-state recovery, persistent unlabeled focus-within flip recovery, second-state-only touch Hover recovery, generation-integrity validation, temporary complete-source snapshots, and a readable per-generation token meter. Maintenance, diagnostics, and generation de-duplication run locally and do not add model tokens. Source available, not open source; see LICENSE."
 }
