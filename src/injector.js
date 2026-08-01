@@ -1,15 +1,15 @@
 import { setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
-import { MODULE_NAME, getSettings } from './settings.js?rmv=1.1.0b14h1p1';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.1.0b14h1p1';
+import { MODULE_NAME, getSettings } from './settings.js?rmv=1.2.0';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.0';
 import {
     buildFeedbackCatFinalCheck,
     buildFeedbackCatPrompt,
     clearFeedbackCatExtensionPrompt,
     getActiveFeedbackForCurrentChat,
     markFeedbackCatInjected,
-} from './feedbackCat.js?rmv=1.1.0b14h1p1';
-import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.1.0b14h1p1';
-import { beginRabbitMirrorGenerationAttempt } from './generationGuard.js?rmv=1.1.0b14h1p1';
+} from './feedbackCat.js?rmv=1.2.0';
+import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.2.0';
+import { beginRabbitMirrorGenerationAttempt } from './generationGuard.js?rmv=1.2.0';
 
 const INJECT_KEY = `${MODULE_NAME}:auto_injection`;
 
@@ -33,6 +33,11 @@ export function clearRabbitMirrorPrompt(reason = 'cleared', generationType = '')
 
 export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abort, type) {
     const settings = getSettings();
+
+    if (settings.generationSource === 'independent') {
+        clearRabbitMirrorPrompt('independent-api', type);
+        return;
+    }
 
     const skipQuiet = settings.skipQuiet && type === 'quiet';
     const skipImpersonate = settings.skipImpersonate && type === 'impersonate';

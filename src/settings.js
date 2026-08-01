@@ -13,6 +13,14 @@ export const defaultSettings = Object.freeze({
     enabled: true,
     autoRabbitMirrorInjection: true,
     mode: 'integrated',
+    generationSource: 'follow',
+    followDisplayMode: 'inline',
+    independentApiBaseUrl: '',
+    independentApiKey: '',
+    independentApiModel: '',
+    independentApiTemperature: 0.8,
+    independentApiMaxTokens: 12000,
+    independentDisplayMode: 'external',
     samplingMode: 'classic',
     rawPolicy: 'balanced',
     showCot: false,
@@ -21,6 +29,7 @@ export const defaultSettings = Object.freeze({
     cooldownRounds: 10,
     richFormatBias: false,
     maintenanceRabbitEnabled: true,
+    maintenanceRabbitAutoSafeEnabled: false,
     feedbackCatEnabled: true,
 
     hardStartup: true,
@@ -52,9 +61,17 @@ export function getSettings() {
         if (settings[key] === undefined) settings[key] = value;
     }
 
-    if (settings.mode === 'independent' || settings.mode === 'canon' || settings.mode === 'off') {
+    if (settings.mode === 'canon' || settings.mode === 'off') {
         settings.mode = settings.mode === 'off' ? 'off' : 'integrated';
     }
+    if (!['follow', 'independent'].includes(settings.generationSource)) settings.generationSource = 'follow';
+    if (!['inline', 'external'].includes(settings.followDisplayMode)) settings.followDisplayMode = 'inline';
+    if (!['external', 'external_then_inline'].includes(settings.independentDisplayMode)) settings.independentDisplayMode = 'external';
+    settings.independentApiBaseUrl = String(settings.independentApiBaseUrl || '').trim();
+    settings.independentApiKey = String(settings.independentApiKey || '').trim();
+    settings.independentApiModel = String(settings.independentApiModel || '').trim();
+    settings.independentApiTemperature = Math.max(0, Math.min(2, Number(settings.independentApiTemperature) || 0.8));
+    settings.independentApiMaxTokens = Math.max(512, Math.min(32000, Number(settings.independentApiMaxTokens) || 12000));
 
     if (settings.showCot === undefined && settings.showWonderland !== undefined) {
         settings.showCot = !!settings.showWonderland;
@@ -78,6 +95,8 @@ export function getSettings() {
         settings.maintenanceRabbitEnabled = legacyRescueWasEnabled || defaultSettings.maintenanceRabbitEnabled;
     }
     settings.maintenanceRabbitEnabled = !!settings.maintenanceRabbitEnabled;
+    settings.maintenanceRabbitAutoSafeEnabled = !!settings.maintenanceRabbitAutoSafeEnabled;
+    if (!settings.maintenanceRabbitEnabled) settings.maintenanceRabbitAutoSafeEnabled = false;
     settings.feedbackCatEnabled = settings.feedbackCatEnabled !== false;
 
     delete settings.plainTextRescueMode;

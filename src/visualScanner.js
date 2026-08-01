@@ -1,14 +1,18 @@
-import { updateLatestVisualSignature } from './storage.js?rmv=1.1.0b14h1p1';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.1.0b14h1p1';
+import { updateLatestVisualSignature } from './storage.js?rmv=1.2.0';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.2.0';
+import { getSettings } from './settings.js?rmv=1.2.0';
 import {
     captureRabbitMirrorGenerationSnapshots,
     getRabbitMirrorGenerationSnapshot,
     inspectRabbitMirrorGenerationSource,
-} from './generationGuard.js?rmv=1.1.0b14h1p1';
+} from './generationGuard.js?rmv=1.2.0';
 
 const TOTO_RE = new RegExp('<toto\\b[^>]*(?:data-rabbit-mirror|data-rabbit-' + 'h' + 'ole)=[\"\']true[\"\'][^>]*>[\\s\\S]*?<\\/toto>', 'i');
 let lastScannedHash = '';
 let lastScanAttempts = 0;
+let visualScannerSubscriptions = [];
+let visualScannerTimers = new Set();
+let visualScannerCaptureTimer = 0;
 
 function hashText(text) {
     let hash = 0;
@@ -326,6 +330,33 @@ function detectRepeatedUnitShape(root, html = '') {
 }
 
 
+
+function visualSceneryAuditExpected(html = '') {
+    if (/data-rm-visual-scenery\s*=\s*["']true["']/i.test(String(html || ''))) return true;
+    try { return !!getSettings()?.forceVisualScenery; } catch { return false; }
+}
+
+function inspectVisualSceneryMotion(html = '', spatialSignalCount = 0) {
+    const text = String(html || '');
+    if (!visualSceneryAuditExpected(text)) return [];
+    const flags = [];
+    const hasMarker = /data-rm-visual-scenery\s*=\s*["']true["']/i.test(text);
+    const keyframeCount = count(/@(?:-webkit-)?keyframes\b/gi, text);
+    const animationDeclarationCount = count(/(?:^|[;{])\s*(?:-webkit-)?animation(?:-name)?\s*:/gi, text);
+    const infiniteCount = count(/\binfinite\b/gi, text);
+    const meaningfulKeyframeMotion = /@(?:-webkit-)?keyframes[\s\S]{0,2400}?(?:translate(?:3d|x|y)?\s*\(|rotate(?:3d|x|y)?\s*\(|scale(?:3d|x|y)?\s*\(|clip-path\s*:|mask(?:-position|-size)?\s*:|background-position\s*:|stroke-dashoffset\s*:|offset-distance\s*:)/i.test(text);
+    const layeredSceneSignals = count(/position\s*:\s*absolute|z-index\s*:|grid-area\s*:|clip-path\s*:|mask\s*:|radial-gradient|linear-gradient|<svg\b/gi, text);
+
+    if (!hasMarker) flags.push('visual_scenery_marker_missing');
+    if (keyframeCount < 1 || animationDeclarationCount < 1 || infiniteCount < 1 || !meaningfulKeyframeMotion) {
+        flags.push('weak_visual_scenery_motion');
+    }
+    if (animationDeclarationCount < 2 || spatialSignalCount < 3 || layeredSceneSignals < 4) {
+        flags.push('weak_visual_scenery_layers');
+    }
+    return flags;
+}
+
 function detectRiskFlags({ root, html, plain, dom, repeated, spatialSignalCount }) {
     const flags = [];
     const sameBlockStack = detectSameBlockStack(root, html);
@@ -349,6 +380,7 @@ function detectRiskFlags({ root, html, plain, dom, repeated, spatialSignalCount 
     if (interactionMissing) flags.push('missing_interaction');
     if (fakeInteraction) flags.push('fake_interaction');
     if (detectVisualPromiseWithoutMechanism(html, plain)) flags.push('visual_promise_unfulfilled');
+    flags.push(...inspectVisualSceneryMotion(html, spatialSignalCount));
     return [...new Set(flags)];
 }
 
@@ -987,7 +1019,7 @@ async function scanLatestAssistantMessage(mod) {
     if (sigHash !== lastScannedHash) {
         lastScannedHash = sigHash;
         lastScanAttempts = 0;
-    } else if (lastScanAttempts >= 3) {
+    } else if (lastScanAttempts >= 2) {
         return;
     }
     lastScanAttempts += 1;
@@ -1010,17 +1042,36 @@ async function scanLatestAssistantMessage(mod) {
     }
 }
 
+function clearVisualScannerTimers() {
+    if (visualScannerCaptureTimer) {
+        clearTimeout(visualScannerCaptureTimer);
+        visualScannerCaptureTimer = 0;
+    }
+    for (const timer of visualScannerTimers) clearTimeout(timer);
+    visualScannerTimers.clear();
+}
+
+export function destroyVisualScanner() {
+    clearVisualScannerTimers();
+    for (const { eventSource, eventName, handler } of visualScannerSubscriptions) {
+        try { eventSource?.off?.(eventName, handler); } catch {}
+    }
+    visualScannerSubscriptions = [];
+    if (globalThis.__rabbitMirrorVisualScannerCleanup === destroyVisualScanner) delete globalThis.__rabbitMirrorVisualScannerCleanup;
+}
+
 export async function initVisualScanner() {
     try {
+        try { globalThis.__rabbitMirrorVisualScannerCleanup?.(); } catch {}
+        globalThis.__rabbitMirrorVisualScannerCleanup = destroyVisualScanner;
         const mod = await import('../../../../../script.js');
         const eventSource = mod?.eventSource;
         const eventTypes = mod?.event_types || {};
         if (!eventSource?.on) return;
-        let captureTimer = 0;
         const captureNow = () => {
-            if (captureTimer) {
-                clearTimeout(captureTimer);
-                captureTimer = 0;
+            if (visualScannerCaptureTimer) {
+                clearTimeout(visualScannerCaptureTimer);
+                visualScannerCaptureTimer = 0;
             }
             try {
                 captureRabbitMirrorGenerationSnapshots(mod?.chat || globalThis.chat);
@@ -1029,24 +1080,44 @@ export async function initVisualScanner() {
             }
         };
         const scheduleCapture = (delay = 140) => {
-            if (captureTimer) clearTimeout(captureTimer);
-            captureTimer = setTimeout(captureNow, Math.max(0, Number(delay) || 0));
+            if (visualScannerCaptureTimer) clearTimeout(visualScannerCaptureTimer);
+            visualScannerCaptureTimer = setTimeout(captureNow, Math.max(0, Number(delay) || 0));
+        };
+        const scheduleTimer = (handler, delay) => {
+            const timer = setTimeout(() => {
+                visualScannerTimers.delete(timer);
+                handler();
+            }, delay);
+            visualScannerTimers.add(timer);
         };
         const scheduleScan = () => {
+            // Multiple SillyTavern end events can fire for the same reply. Keep
+            // only one early and one settled scan instead of stacking another
+            // pair for every event.
+            for (const timer of visualScannerTimers) clearTimeout(timer);
+            visualScannerTimers.clear();
             captureNow();
             scheduleCapture(120);
-            setTimeout(() => scanLatestAssistantMessage(mod), 600);
-            setTimeout(() => scanLatestAssistantMessage(mod), 1800);
+            scheduleTimer(() => scanLatestAssistantMessage(mod), 650);
+            scheduleTimer(() => scanLatestAssistantMessage(mod), 1750);
+        };
+        const subscribe = (eventName, handler) => {
+            if (!eventName) return;
+            eventSource.on(eventName, handler);
+            visualScannerSubscriptions.push({ eventSource, eventName, handler });
         };
         const captureEvents = [
             eventTypes.MESSAGE_UPDATED,
             eventTypes.CHARACTER_MESSAGE_RENDERED,
             eventTypes.MESSAGE_RECEIVED,
         ].filter(Boolean);
-        for (const eventName of [...new Set(captureEvents)]) eventSource.on(eventName, () => scheduleCapture(140));
+        for (const eventName of [...new Set(captureEvents)]) {
+            const handler = () => scheduleCapture(140);
+            subscribe(eventName, handler);
+        }
         const generationEvents = [eventTypes.MESSAGE_RECEIVED, eventTypes.GENERATION_STOPPED, eventTypes.GENERATION_ENDED].filter(Boolean);
-        for (const eventName of [...new Set(generationEvents)]) eventSource.on(eventName, scheduleScan);
-        if (eventTypes.CHAT_CHANGED) eventSource.on(eventTypes.CHAT_CHANGED, scheduleScan);
+        for (const eventName of [...new Set(generationEvents)]) subscribe(eventName, scheduleScan);
+        subscribe(eventTypes.CHAT_CHANGED, scheduleScan);
         console.debug('[RabbitMirror] visual scanner initialized');
     } catch (error) {
         console.debug('[RabbitMirror] visual scanner disabled:', error);
