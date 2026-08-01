@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.2.0';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.0';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.0';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.0';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.0';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.0';
+import { getSettings } from './settings.js?rmv=1.2.3';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.3';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.3';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.3';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.3';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.3';
 
-const RUNTIME_VERSION = '1.2.0';
+const RUNTIME_VERSION = '1.2.3';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
@@ -58,6 +58,7 @@ let backgroundLifecycleListenersInstalled = false;
 let backgroundResumeTimer = 0;
 let generationPlaceholderTimer = 0;
 let generationPlaceholderStartedAt = 0;
+const passiveRecoveryTimers = new Set();
 function globalFlights(){
  const current=globalThis[GLOBAL_FLIGHT_KEY];
  if(current&&typeof current.get==='function') return current;
@@ -1743,6 +1744,7 @@ function ensureGenerationPlaceholderForIndex(index,waitingForBody=true){
  if(!currentRuntime() || runtimeMode()!=='independent') return null;
  const live=currentGenerationIdentity(index); const el=messageElement(index);
  if(!live || !el) return null;
+ if(suppressesAutomaticGeneration(live.ctx,index) || hasExistingFollowRabbitMirror(live.ctx,index,live.msg)) return null;
  const store=readStore();
  const recovered=recoverSavedRecord(store,live.slot,live);
  if(recovered.storeChanged) writeStore(store);
@@ -2269,12 +2271,21 @@ function passiveObservedIdentity(ctx,index,msg){
   legacySlots:legacyMessageSlotKeys(ctx,index,msg),
  };
 }
+function automaticCutoverVersionToken(msg){
+ return `${swipeId(msg)}:${messageBodyFingerprint(msg)}`;
+}
 function ensureAutomaticGenerationCutover(ctx=getContext()){
  const ownerChat=chatKey(ctx);
  if(automaticGenerationCutovers.has(ownerChat)) return automaticGenerationCutovers.get(ownerChat);
  let maxIndex=-1;
- for(const {i} of assistantMessages(ctx)) maxIndex=Math.max(maxIndex,Number(i));
- const cutover={maxIndex,allowed:new Set()};
+ const blockedVersions=new Map();
+ for(const {m,i} of assistantMessages(ctx)){
+  const normalized=Number(i);
+  if(!Number.isInteger(normalized) || normalized<0) continue;
+  maxIndex=Math.max(maxIndex,normalized);
+  blockedVersions.set(normalized,automaticCutoverVersionToken(m));
+ }
+ const cutover={maxIndex,blockedVersions,createdAt:Date.now()};
  automaticGenerationCutovers.set(ownerChat,cutover);
  return cutover;
 }
@@ -2282,12 +2293,15 @@ function suppressesAutomaticGeneration(ctx,index){
  const cutover=automaticGenerationCutovers.get(chatKey(ctx));
  if(!cutover) return false;
  const normalized=Number(index);
- return Number.isInteger(normalized) && normalized<=cutover.maxIndex && !cutover.allowed.has(normalized);
-}
-function allowAutomaticGenerationForIndex(ctx,index){
- const cutover=automaticGenerationCutovers.get(chatKey(ctx));
- const normalized=Number(index);
- if(cutover && Number.isInteger(normalized) && normalized>=0) cutover.allowed.add(normalized);
+ if(!Number.isInteger(normalized) || normalized<0 || normalized>cutover.maxIndex) return false;
+ const msg=ctx?.chat?.[normalized];
+ if(!msg || msg.is_user || typeof msg.mes!=='string') return true;
+ const blockedToken=cutover.blockedVersions?.get?.(normalized);
+ // Fail closed for any message that already existed at cutover but was not
+ // captured cleanly. A real Swipe/regeneration changes the exact version token
+ // and therefore unlocks itself without relying on possibly stale host events.
+ if(!blockedToken) return true;
+ return blockedToken===automaticCutoverVersionToken(msg);
 }
 function clearAutomaticGenerationCutovers(){ automaticGenerationCutovers.clear(); }
 function hasExistingFollowRabbitMirror(ctx,index,msg){
@@ -2295,12 +2309,22 @@ function hasExistingFollowRabbitMirror(ctx,index,msg){
  if(el){
   const followHost=externalHosts(el).find(node=>node.dataset.rmSource==='follow' && usableReadyDetails(node.querySelector?.(':scope > details')));
   if(followHost) return true;
-  const inline=[...(el.querySelectorAll?.('toto[data-rabbit-mirror="true"] > details')||[])].find(details=>!details.closest?.(`[${SOURCE_ATTR}][data-rm-source="independent"]`));
-  if(inline) return true;
+  const independentSelector=`[${SOURCE_ATTR}][data-rm-source="independent"]`;
+  const inlineRoot=[...(el.querySelectorAll?.('toto[data-rabbit-mirror="true"], [data-rabbit-mirror="true"]')||[])].find(node=>
+   !node.matches?.(`[${SOURCE_ATTR}]`) && !node.closest?.(independentSelector)
+  );
+  if(inlineRoot) return true;
+  const inlineDetails=[...(el.querySelectorAll?.('details')||[])].find(details=>{
+   if(details.closest?.(independentSelector)) return false;
+   const summary=String(details.querySelector?.(':scope > summary')?.textContent||'').trim();
+   return summary.startsWith('【兔子镜');
+  });
+  if(inlineDetails) return true;
  }
  const raw=`${String(msg?.mes||'')}
 ${String(msg?.extra?.display_text||'')}`;
- return /<toto\b[^>]*data-rabbit-mirror\s*=\s*["']true["'][^>]*>/i.test(raw);
+ return /<toto\b[^>]*data-rabbit-mirror\s*=\s*["']true["'][^>]*>/i.test(raw)
+  || /<summary\b[^>]*>\s*【兔子镜[：:]/i.test(raw);
 }
 function settleIndependentHostsForInactiveSource(el){
  if(!el) return;
@@ -2406,6 +2430,7 @@ function syncMessages(indices=null){
        const independentHosts=externalHosts(el).filter(n=>n.dataset.rmSource==='independent');
        for(const node of independentHosts){ if(node!==keep) node.remove(); }
        const isActiveGenerationTarget=i===activeGenerationIndex;
+       const automaticGenerationSuppressed=suppressesAutomaticGeneration(ctx,i) || hasExistingFollowRabbitMirror(ctx,i,m);
 
        // Never repaint an old mirror over a newly regenerated/swiped正文. A
        // record is eligible only for the exact current source fingerprint.
@@ -2416,13 +2441,17 @@ function syncMessages(indices=null){
          // them. Actual replacement happens only when a new generation starts.
          saved=null;
        }
-       if(!saved?.html && !keep && isActiveGenerationTarget){
+       if(!saved?.html && !keep && isActiveGenerationTarget && !automaticGenerationSuppressed){
          keep=ensureReplyGenerationPlaceholder(el,key,sourceHash,true);
        }
        const hostSourceHash=String(keep?.dataset?.rmSourceHash||'');
        let hostIsStale=!!(keep && hostSourceHash && hostSourceHash!==sourceHash);
        const keepIsReplyPlaceholder=!!(keep && (keep.dataset.rmReplyGenerationPlaceholder==='true' || (keep.dataset.rmState==='loading' && keep.querySelector?.(':scope > details.rabbit-mirror-external-placeholder'))));
-       if(keepIsReplyPlaceholder && !saved?.html){
+       if(keepIsReplyPlaceholder && !saved?.html && automaticGenerationSuppressed){
+         keep.remove();
+         keep=null;
+         hostIsStale=false;
+       } else if(keepIsReplyPlaceholder && !saved?.html){
          // Streaming正文 changes its fingerprint repeatedly. Re-key the same
          // placeholder instead of treating it as an old completed mirror.
          keep=ensureReplyGenerationPlaceholder(el,key,sourceHash,isActiveGenerationTarget);
@@ -2567,10 +2596,43 @@ function disconnectObserver(){
  for(const timer of orphanExternalHostTimers.values()) clearTimeout(timer);
  orphanExternalHostTimers.clear();
 }
+function clearPassiveRecoveryTimers(){
+ for(const timer of passiveRecoveryTimers) clearTimeout(timer);
+ passiveRecoveryTimers.clear();
+}
+function currentChatHasRestorableIndependentRecord(){
+ const ctx=getContext();
+ const store=readStore();
+ for(const {m,i} of assistantMessages(ctx)){
+  const observed=passiveObservedIdentity(ctx,i,m);
+  const saved=findSavedRecord(store,observed.slot,observed.legacySlots||[]);
+  if(saved?.html && independentStoredHtmlRestorable(saved.html) && savedRecordMatchesObserved(saved,observed)) return true;
+  if(historyRecoveryForObserved(observed.slot,observed)?.html) return true;
+ }
+ return false;
+}
+function schedulePassiveRecoveryAfterSourceSwitch(expectedSequence=runtimeConfigSequence){
+ clearPassiveRecoveryTimers();
+ for(const delay of [120,850]){
+  const timer=setTimeout(()=>{
+   passiveRecoveryTimers.delete(timer);
+   if(expectedSequence!==runtimeConfigSequence || !currentRuntime()) return;
+   const mode=runtimeMode();
+   if(mode==='off' || mode==='independent') return;
+   // A source switch can coincide with SillyTavern replacing the message DOM.
+   // Run two finite reconciliation passes so exact cached independent mirrors
+   // are restored even when the first synchronous pass was skipped by an
+   // already-running sync. This is not a loop and creates no network request.
+   syncAll();
+   if(!observer) installObserverIfNeeded();
+  },delay);
+  passiveRecoveryTimers.add(timer);
+ }
+}
 function installObserverIfNeeded(){
  disconnectObserver();
  const mode=runtimeMode();
- const preserveIndependentInInline=mode==='inline' && allExternalHosts().some(node=>node.dataset.rmSource==='independent');
+ const preserveIndependentInInline=mode==='inline' && (allExternalHosts().some(node=>node.dataset.rmSource==='independent') || currentChatHasRestorableIndependentRecord());
  if(mode==='off' || (mode==='inline' && !preserveIndependentInInline) || typeof MutationObserver==='undefined') return;
  const chat=document.querySelector('#chat'); if(!chat) return;
  observer=new MutationObserver(records=>{
@@ -2618,10 +2680,9 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
        const lastMessage=lastIndex>=0?ctx.chat[lastIndex]:null;
        // A user message at the tail means a brand-new assistant reply: the
        // previous reply's mirror remains valid. An assistant message at the
-       // tail means that exact reply is being regenerated, so its old mirror
-       // must stop being shown immediately, without removing the shell.
+       // tail may be regeneration, but never unlock a cutover from this event
+       // alone: the exact Swipe/正文主文本 fingerprint must actually change first.
        if(lastMessage && !lastMessage.is_user && typeof lastMessage.mes==='string'){
-         allowAutomaticGenerationForIndex(ctx,lastIndex);
          cancelFlightsForMessage(lastIndex,'host-regeneration-started');
          markExternalHostsAwaitingFreshSource(lastIndex,'waiting');
        }
@@ -2658,7 +2719,6 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
          ? parsed
          : assistantMessages(ctx).at(-1)?.i;
        if(Number.isInteger(id)&&id>=0){
-         allowAutomaticGenerationForIndex(ctx,id);
          cancelFlightsForMessage(id,'swipe-changed');
          queueMessageSync([id]);
          scheduleMessageGeneration(id,260,true);
@@ -2751,6 +2811,7 @@ function restoreMountedIndependentRecords(snapshots=[]){
 async function reconfigureRuntime(){
  if(!currentRuntime()) return;
  const sequence=++runtimeConfigSequence;
+ clearPassiveRecoveryTimers();
  const mountedIndependentSnapshots=captureMountedIndependentRecords();
  disconnectObserver(); unsubscribeHostEvents();
  const mode=runtimeMode();
@@ -2778,11 +2839,14 @@ async function reconfigureRuntime(){
      syncAll();
      removeEmptyInlineAnchors(document); removeEmptyFollowExternalAnchors(document);
      installObserverIfNeeded();
+     schedulePassiveRecoveryAfterSourceSwitch(sequence);
    }
    if(mode==='off'){ document.querySelectorAll(`[${SOURCE_ATTR}]`).forEach(n=>n.remove()); removeEmptyInlineAnchors(document); removeEmptyFollowExternalAnchors(document); }
    return;
  }
- syncAll(); installObserverIfNeeded(); await installHostEventsIfNeeded(sequence);
+ syncAll(); installObserverIfNeeded();
+ if(mode!=='independent') schedulePassiveRecoveryAfterSourceSwitch(sequence);
+ await installHostEventsIfNeeded(sequence);
  if(sequence!==runtimeConfigSequence || !currentRuntime()) return;
  if(!enteredIndependentFromAnotherSource) scheduleLatest();
 }
@@ -2818,7 +2882,7 @@ export async function initIndependentRabbitMirror(){
  }
 }
 export function destroyIndependentRabbitMirror(){
- runtimeConfigSequence++; hostGenerationInProgress=false; hostGenerationHintStartedAt=0; clearScheduledGeneration(); cancelAllIndependentFlights('runtime-destroyed'); clearAutomaticGenerationCutovers(); lastAppliedRuntimeMode=null;
+ runtimeConfigSequence++; hostGenerationInProgress=false; hostGenerationHintStartedAt=0; clearScheduledGeneration(); clearPassiveRecoveryTimers(); cancelAllIndependentFlights('runtime-destroyed'); clearAutomaticGenerationCutovers(); lastAppliedRuntimeMode=null;
  removeIndependentActionBridge();
  lastIndependentRequestConfig='';
  disconnectObserver(); unsubscribeHostEvents(); removeFeedbackMirrorActionListeners(); removeRepairPersistenceListener(); removeExternalGeometryListeners(); removeBackgroundLifecycleListeners();

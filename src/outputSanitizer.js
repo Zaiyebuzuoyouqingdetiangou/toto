@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.2.0';
-import { getCurrentChatKey } from './storage.js?rmv=1.2.0';
+import { getSettings } from './settings.js?rmv=1.2.3';
+import { getCurrentChatKey } from './storage.js?rmv=1.2.3';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -8,12 +8,12 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.2.0';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.0';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.0';
+} from './feedbackCat.js?rmv=1.2.3';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.3';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.3';
 
 
-const RUNTIME_VERSION = '1.2.0';
+const RUNTIME_VERSION = '1.2.3';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -492,6 +492,77 @@ const CHANNEL_DIAL_CYCLE_HOST_ATTR = 'data-rm-channel-dial-cycle-host';
 const CHANNEL_DIAL_CYCLE_LABEL_ATTR = 'data-rm-channel-dial-cycle-label';
 const channelDialCycleRescueStates = new WeakMap();
 const EXPANDED_OPACITY_RESCUE_ATTR = 'data-rabbit-mirror-expanded-opacity-rescue';
+const STALE_CHECKED_INLINE_CLEANUP_ATTR = 'data-rabbit-mirror-stale-checked-inline-cleanup';
+
+function canonicalCheckedCssValue(property, value) {
+    const clean = String(value || '').trim().replace(/\s*!important\s*$/i, '');
+    if (!clean) return '';
+    if (typeof document === 'undefined' || !document.createElement) {
+        return clean.toLowerCase().replace(/\s+/g, ' ');
+    }
+    try {
+        const probe = document.createElement('span');
+        probe.style.setProperty(String(property || ''), clean);
+        return String(probe.style.getPropertyValue(String(property || '')) || clean)
+            .trim().toLowerCase().replace(/\s+/g, ' ');
+    } catch {
+        return clean.toLowerCase().replace(/\s+/g, ' ');
+    }
+}
+
+function clearPersistedCheckedInlineArtifacts(root, inputs) {
+    if (!root?.querySelectorAll || !inputs?.length) return 0;
+    let cleared = 0;
+    const seen = new WeakMap();
+
+    for (const input of inputs) {
+        const rescueOwned = input.hasAttribute?.(CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR)
+            || input.hasAttribute?.(CHECKED_TEXT_RULE_RESCUE_ATTR)
+            || input.hasAttribute?.(LABELED_CHECKED_VERIFY_CONTROL_ATTR);
+        if (!rescueOwned) continue;
+
+        for (const rule of parseCheckedRulesFromText(root, input)) {
+            if (rule.pseudoElement) continue;
+            const targets = resolveTargetsForCheckedRule(root, input, rule);
+            for (const target of targets) {
+                if (!target?.style) continue;
+                const targetOwned = target.hasAttribute?.(LABELED_CHECKED_VERIFY_TARGET_ATTR)
+                    || input.hasAttribute?.(CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR);
+                if (!targetOwned) continue;
+
+                let properties = seen.get(target);
+                if (!properties) {
+                    properties = new Set();
+                    seen.set(target, properties);
+                }
+                for (const [rawProperty, rawValue] of rule.styleMap || []) {
+                    const property = String(rawProperty || '').trim().toLowerCase();
+                    if (!property || properties.has(property)) continue;
+                    properties.add(property);
+
+                    // Exclusive stacked-state rescue owns these properties after it is installed.
+                    // Do not confuse its live state with a persisted stale checked override.
+                    if (target.hasAttribute?.(EXCLUSIVE_STACKED_STATE_PANEL_ATTR)
+                        && /^(?:opacity|visibility|pointer-events|z-index)$/.test(property)) continue;
+
+                    const priority = String(target.style.getPropertyPriority(property) || '').toLowerCase();
+                    const current = String(target.style.getPropertyValue(property) || '').trim();
+                    if (priority !== 'important' || !current) continue;
+                    if (canonicalCheckedCssValue(property, current)
+                        !== canonicalCheckedCssValue(property, rawValue)) continue;
+
+                    target.style.removeProperty(property);
+                    cleared += 1;
+                }
+            }
+        }
+    }
+
+    if (cleared > 0) {
+        root.setAttribute(STALE_CHECKED_INLINE_CLEANUP_ATTR, String(cleared));
+    }
+    return cleared;
+}
 
 function collectCheckedRevealSignal(candidate, property, value) {
     if (!candidate) return;
@@ -970,6 +1041,10 @@ function syncCrossParentCheckedRuleFallback(root) {
 
     // 先统一撤回旧分支，避免 radio 切换后上一分支的内联急救状态残留。
     for (const input of inputs) restoreInteractionInlineOverrides(input);
+    // 旧公开版会把 checked 兜底写入副 API缓存。重新载入后 WeakMap 已丢失，
+    // 那些 !important 会被误当成“原始内联样式”，从而让多个 radio 分支同时显示。
+    // 这里只移除能与 checked 规则精确对应、且带有维修归属标记的 important 声明。
+    const staleCleanupCount = clearPersistedCheckedInlineArtifacts(root, inputs);
     let activeCount = 0;
     for (const input of inputs) {
         if (!input.checked) continue;
@@ -979,6 +1054,11 @@ function syncCrossParentCheckedRuleFallback(root) {
     }
     for (const input of inputs) {
         if (!input.checked) input.setAttribute('aria-pressed', 'false');
+    }
+    if (staleCleanupCount > 0) {
+        setTimeout(() => {
+            if (root?.isConnected) notifyIndependentRepairPersistence(root);
+        }, 0);
     }
     return activeCount;
 }
@@ -1581,7 +1661,7 @@ function commonStackedPanelClassToken(targets) {
     if (!lists.length) return '';
     const candidates = [...lists[0]].filter(token => lists.every(set => set.has(token)));
     return candidates
-        .filter(token => /(?:info|content|state|panel|result|feedback|detail|text|screen|view)/i.test(token))
+        .filter(token => /(?:info|content|state|panel|result|feedback|detail|text|screen|view|draft|manuscript|essay)/i.test(token))
         .sort((a, b) => b.length - a.length)[0] || '';
 }
 
@@ -9023,6 +9103,16 @@ function scheduleLabeledCheckedTransitionVerification(root, input, verification,
             if (state.sequence !== sequence) return;
             if (!root.isConnected || !input.isConnected || !root.contains(input)) return;
             let corrected = false;
+            if (input.type === 'radio' && intended && !input.checked) {
+                const radioName = String(input.name || '');
+                const newerSelectionExists = [...root.querySelectorAll('input[type="radio"]')]
+                    .some(item => item !== input
+                        && (!radioName || String(item.name || '') === radioName)
+                        && item.checked);
+                // A later click selected another radio in the same group. This verification belongs
+                // to the older click and must never reclaim the group or re-apply its old panel.
+                if (newerSelectionExists) return;
+            }
             if (!!input.checked !== !!intended) {
                 setRescuedCheckedState(root, input, intended);
                 corrected = true;
@@ -9244,11 +9334,17 @@ function installInteractionLabelFallback(toto) {
         const previous = !!input.checked;
         const intendedChecked = input.type === 'radio' ? true : !previous;
         if (input.type === 'radio') {
-            // 先恢复同组上一分支由急救器写入的内联状态，再切换到当前分支。
+            // 将同组切换作为一个原子操作：取消所有旧点击的延迟验证，撤回旧分支，
+            // 再只启用当前分支。否则旧 radio 的 +240ms 验证可能把自己重新勾上。
             const radioName = String(input.name || '');
-            [...toto.querySelectorAll('input[type="radio"]')]
-                .filter(item => item !== input && (!radioName || item.name === radioName))
-                .forEach(item => restoreInteractionInlineOverrides(item));
+            const group = [...toto.querySelectorAll('input[type="radio"]')]
+                .filter(item => !radioName || String(item.name || '') === radioName);
+            for (const item of group) {
+                cancelLabeledCheckedTransitionVerification(item);
+                if (item !== input) item.checked = false;
+                restoreInteractionInlineOverrides(item);
+                if (item !== input) item.setAttribute?.('aria-pressed', 'false');
+            }
             input.checked = true;
         } else {
             input.checked = !input.checked;
@@ -9280,9 +9376,23 @@ function installInteractionLabelFallback(toto) {
         // 仅在状态被回滚时补发一次 input/change，不造成正常环境的双重切换。
         setTimeout(() => {
             if (!input.isConnected || input.checked === intendedChecked) return;
+            if (input.type === 'radio') {
+                const radioName = String(input.name || '');
+                for (const item of toto.querySelectorAll('input[type="radio"]')) {
+                    if (item === input || (radioName && String(item.name || '') !== radioName)) continue;
+                    cancelLabeledCheckedTransitionVerification(item);
+                    item.checked = false;
+                    restoreInteractionInlineOverrides(item);
+                    item.setAttribute?.('aria-pressed', 'false');
+                }
+            }
             input.checked = intendedChecked;
             restoreInteractionInlineOverrides(input);
-            applyCheckedVisualFallback(toto, input);
+            if (input.type === 'radio' && input.hasAttribute?.(CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR)) {
+                syncCrossParentCheckedRuleFallback(toto);
+            } else {
+                applyCheckedVisualFallback(toto, input);
+            }
             applyRenderedLabelInternalHiddenEntries(toto);
             input.dispatchEvent(new Event('input', { bubbles: true }));
             input.dispatchEvent(new Event('change', { bubbles: true }));
@@ -9740,7 +9850,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.1.0-BETA-10-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.2.3-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();

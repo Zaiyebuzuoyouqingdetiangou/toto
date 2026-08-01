@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（v1.2）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（v1.2.3）",
   "loading_order": 99,
-  "js": "index.js?rmv=1.2.0",
-  "css": "style.css?rmv=1.2.0",
+  "js": "index.js?rmv=1.2.3",
+  "css": "style.css?rmv=1.2.3",
   "author": "Toto",
-  "version": "1.2.0",
+  "version": "1.2.3",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "RabbitMirror v1.2：支持跟随当前 API或独立 API生成、正文内嵌与外置显示、挨打猫、维修兔、动态视觉场景及本地历史恢复。"
+  "description": "RabbitMirror v1.2.3：支持跟随当前 API或独立 API生成、正文内嵌与外置显示、挨打猫、维修兔、动态视觉场景及本地历史恢复。"
 }
