@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.2.8';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.8';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.8';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.8';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.8';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.8';
+import { getSettings } from './settings.js?rmv=1.2.9';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.9';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.9';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.9';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.9';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.9';
 
-const RUNTIME_VERSION = '1.2.8';
+const RUNTIME_VERSION = '1.2.9';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
@@ -2713,8 +2713,17 @@ function reconcileVisibleMirrorDuplicates(indices=null){
   }
   if(mode==='independent'){
    const key=recordKey(ctx,i,m);
-   const host=collapseDuplicateIdentityHosts(el,key,'independent',messageSourceFingerprint(m));
-   if(host) removeIndependentInlineDuplicates(el,host,key);
+   const host=collapseDuplicateIdentityHosts(el,key,'independent',messageSourceFingerprint(m))
+    || externalHosts(el).find(node=>node.dataset.rmSource==='independent')
+    || null;
+   if(host){
+    // Page restore or DOM hydration can leave the one surviving independent
+    // host inside the inline anchor. Re-apply the current display setting on
+    // every finite reconciliation pass instead of treating deduplication as
+    // placement. This moves the existing host only; it never regenerates it.
+    placeExternalHost(el,host,host.dataset.rmKey||key,'independent');
+    removeIndependentInlineDuplicates(el,host,host.dataset.rmKey||key);
+   }
    continue;
   }
   if(mode==='inline') removeExternalDuplicatesPreferInline(el);
