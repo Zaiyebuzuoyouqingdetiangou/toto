@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.2.3';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.3';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.3';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.3';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.3';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.3';
+import { getSettings } from './settings.js?rmv=1.2.5';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.5';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.5';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.5';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.5';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.5';
 
-const RUNTIME_VERSION = '1.2.3';
+const RUNTIME_VERSION = '1.2.5';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
@@ -600,7 +600,7 @@ function recentIndependentPaletteGuard(){
 function commitIndependentVisualResult(inner=''){
  try{
   const scanned=scanRabbitMirrorHtml(wrappedIndependentMirrorHtml(inner),null)||{};
-  updateLatestVisualSignature(scanned.signature||'',scanned.skeleton||'',Array.isArray(scanned.riskFlags)?scanned.riskFlags:[],scanned.paletteFingerprint||null);
+  updateLatestVisualSignature(scanned.signature||'',scanned.skeleton||'',Array.isArray(scanned.riskFlags)?scanned.riskFlags:[],scanned.paletteFingerprint||null,scanned.interactionFamily||null);
   return scanned.paletteFingerprint||null;
  }catch(error){ console.debug('[RabbitMirror] independent visual signature skipped:',error); return null; }
 }
