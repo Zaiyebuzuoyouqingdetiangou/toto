@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.2.9';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.9';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.9';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.9';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.9';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.9';
+import { getSettings } from './settings.js?rmv=1.2.10';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.10';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.10';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.10';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.10';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.10';
 
-const RUNTIME_VERSION = '1.2.9';
+const RUNTIME_VERSION = '1.2.10';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
@@ -250,6 +250,14 @@ function messageBaseSlotKey(ctx,index,msg){ return `${chatKey(ctx)}:${index}:${s
 function messageSlotKey(ctx,index,msg){ return `${messageBaseSlotKey(ctx,index,msg)}:${messageSourceFingerprint(msg)}`; }
 function legacyMessageSourceFingerprints(msg){
  const values=[
+  // v1.2.9 bound the generation identity to mes + display_text + reasoning.
+  // Keep that hash only as a cache-migration alias; it must never drive a new
+  // request after display beautification or delayed reasoning updates.
+  hashText(`${String(msg?.mes||'')}
+\u0000display_text\u0000
+${visibleDisplayTextOf(msg)}
+\u0000reasoning\u0000
+${reasoningOf(msg)}`),
   hashText(`${String(msg?.mes||'')}
 \u0000reasoning\u0000
 ${reasoningOf(msg)}`),
@@ -307,26 +315,25 @@ function messageBodyFingerprint(m){ return hashText(String(m?.mes||'')); }
 function messageReasoningFingerprint(m){ const value=reasoningOf(m); return value?hashText(value):''; }
 function visibleDisplayTextOf(m){ return typeof m?.extra?.display_text==='string' ? m.extra.display_text : ''; }
 function messageDisplayFingerprint(m){ const value=visibleDisplayTextOf(m); return value && value!==String(m?.mes||'') ? hashText(value) : ''; }
-function messageSourceFingerprint(m){ return hashText(`${String(m?.mes||'')}
-\u0000display_text\u0000
-${visibleDisplayTextOf(m)}
-\u0000reasoning\u0000
-${reasoningOf(m)}`); }
+function messageSourceFingerprint(m){
+ // The independent mirror belongs to the actual assistant reply, not to its
+ // replaceable presentation layer. display_text, regex beautification and
+ // delayed reasoning remain available as context metadata, but changing them
+ // must not create a new cache identity or authorize another API request.
+ return messageBodyFingerprint(m);
+}
 function savedRecordMatchesObserved(saved,observed){
  if(!saved?.html||!observed) return false;
+ const observedBody=String(observed.bodyHash||observed.sourceHash||'');
  const savedSource=String(saved.sourceHash||'');
- if(savedSource && savedSource===observed.sourceHash) return true;
- // beta.14.47 and earlier stored sourceHash as the正文-only hash. From
- // beta.14.48 onward sourceHash also includes reasoning. Treat the old hash as
- // a valid legacy body fingerprint instead of deleting every historical mirror
- // during an upgrade.
+ if(savedSource && savedSource===String(observed.sourceHash||'')) return true;
+ // From v1.2.10 onward display_text and reasoning are context-only metadata.
+ // A persisted mirror remains valid whenever the real mes正文 is unchanged,
+ // including records written by older composite-fingerprint builds.
  const savedBody=String(saved.bodyHash||'');
- if(!savedBody && savedSource && savedSource===String(observed.bodyHash||'') && !observed.displayHash) return true;
- if(!savedBody || savedBody!==observed.bodyHash) return false;
- const savedDisplay=String(saved.displayHash||'');
- if(observed.displayHash && (!savedDisplay || savedDisplay!==observed.displayHash)) return false;
- const savedReasoning=String(saved.reasoningHash||'');
- return !observed.reasoningHash || !savedReasoning || savedReasoning===observed.reasoningHash;
+ if(savedBody && observedBody && savedBody===observedBody) return true;
+ // Very old records sometimes stored the正文-only hash only in sourceHash.
+ return !!(savedSource && observedBody && savedSource===observedBody);
 }
 function observeMessageSourceRevision(ctx,index,msg){
  const slot=messageSlotKey(ctx,index,msg); const sourceHash=messageSourceFingerprint(msg);
@@ -1458,7 +1465,7 @@ function historyRecoveryForObserved(slot,observed){
  for(const candidate of slotSearchKeys(slot,observed?.legacySlots||[])){
   const entries=historyEntriesForSlot(candidate);
   const matched=entries.find(entry=>savedRecordMatchesObserved(entry,observed) && independentStoredHtmlRestorable(entry.html))
-   || entries.find(entry=>String(entry?.bodyHash||'') && String(entry.bodyHash)===String(observed?.bodyHash||'') && (!observed?.displayHash || String(entry?.displayHash||'')===String(observed.displayHash)) && independentStoredHtmlRestorable(entry.html));
+   || entries.find(entry=>String(entry?.bodyHash||'') && String(entry.bodyHash)===String(observed?.bodyHash||'') && independentStoredHtmlRestorable(entry.html));
   if(matched) return matched;
  }
  return null;
@@ -1466,10 +1473,17 @@ function historyRecoveryForObserved(slot,observed){
 function recoverSavedRecord(store,slot,observed){
  const exact=store?.[slot];
  if(exact?.html && independentStoredHtmlRestorable(exact.html)) return {saved:exact,storeChanged:false,recoveredFromHistory:false};
- const saved=findSavedRecord(store,slot,observed?.legacySlots||[]);
- if(saved?.html && independentStoredHtmlRestorable(saved.html) && savedRecordMatchesObserved(saved,observed)){
+ let saved=null;
+ for(const candidate of slotSearchKeys(slot,observed?.legacySlots||[])){
+  const record=store?.[candidate];
+  if(!record?.html || !independentStoredHtmlRestorable(record.html)) continue;
+  if(!savedRecordMatchesObserved(record,observed)) continue;
+  saved=record;
+  break;
+ }
+ if(saved){
   if(exact!==saved){
-   const recovered={...saved,ts:Number(saved.ts||Date.now()),runtime:String(saved.runtime||RUNTIME_VERSION),recoveredFromHistory:false};
+   const recovered={...saved,sourceHash:String(observed?.sourceHash||saved.sourceHash||''),bodyHash:String(observed?.bodyHash||saved.bodyHash||''),ts:Number(saved.ts||Date.now()),runtime:String(saved.runtime||RUNTIME_VERSION),recoveredFromHistory:false};
    saveRecordForSlot(store,slot,recovered);
    return {saved:recovered,storeChanged:true,recoveredFromHistory:false};
   }
@@ -1952,21 +1966,14 @@ function scheduleGenerationPlaceholderPoll(delay=80){
 function resumeRabbitMirrorLifecycle(){
  if(!currentRuntime()) return;
  const mode=runtimeMode();
- if(mode==='off') return;
- const last=assistantMessages(getContext()).at(-1);
- // Independent generation keeps its existing background behavior. Every active
- // display mode also gets one finite reconciliation pass after pageshow/focus so
- // a rebuilt inline mirror cannot remain beside an older external shell.
- if(document?.visibilityState==='hidden'){
-  if(mode==='independent' && last && !hostGenerationLooksActive()) scheduleMessageGeneration(last.i,0,true);
-  return;
- }
+ if(mode==='off' || document?.visibilityState==='hidden') return;
+ // pageshow / focus / visibilitychange are restoration signals only. They may
+ // remount, deduplicate and reposition an existing mirror, but they never grant
+ // permission to start an independent API request.
  if(backgroundResumeTimer) clearTimeout(backgroundResumeTimer);
  backgroundResumeTimer=setTimeout(()=>{
   backgroundResumeTimer=0;
-  const currentMode=runtimeMode();
   syncAll();
-  if(currentMode==='independent' && last) scheduleMessageGeneration(last.i,160,true);
  },80);
 }
 function installBackgroundLifecycleListeners(){
@@ -2221,7 +2228,8 @@ function resolveIndependentActionIdentity(root,owner={}){
  if(Number.isInteger(ownerSwipe) && ownerSwipe!==currentSwipe) return null;
  const ownerSourceHash=String(parsedOwnerKey?.sourceHash || meta.sourceHash || host?.dataset?.rmSourceHash || '').trim();
  const currentSourceHash=messageSourceFingerprint(msg);
- if(ownerSourceHash && ownerSourceHash!==currentSourceHash) return null;
+ const acceptedSourceHashes=new Set([currentSourceHash,messageBodyFingerprint(msg),...legacyMessageSourceFingerprints(msg)].filter(Boolean));
+ if(ownerSourceHash && !acceptedSourceHashes.has(ownerSourceHash)) return null;
  if(meta.key && meta.key!==currentKey){
   const baseSuffix=`:${index}:${currentSwipe}`;
   const fullSuffix=`${baseSuffix}:${currentSourceHash}`;
@@ -2651,13 +2659,9 @@ function syncMessages(indices=null){
          // placeholder instead of treating it as an old completed mirror.
          keep=ensureReplyGenerationPlaceholder(el,key,sourceHash,isActiveGenerationTarget);
          hostIsStale=false;
-         // A previous reply can lose its early request when display_text or
-         // reasoning changes after GENERATION_ENDED. Once the next reply starts,
-         // that placeholder is no longer the active tail, so schedule its exact
-         // stable version once instead of leaving “正在生成中” forever.
-         if(!isActiveGenerationTarget && String(m?.mes||'').trim() && !hasGenerationWorkFor(i,slot,sourceHash)){
-           scheduleMessageGeneration(i,180,true);
-         }
+         // Reconciliation is deliberately network-silent. An orphaned historical
+         // placeholder may be restored or removed here, but display beautification,
+         // DOM hydration and MESSAGE_UPDATED must never backfill it by calling the API.
        } else if(hostIsStale){
          // The mounted mirror belongs to the previous正文 version. Keep the one
          // shell anchored in place, but never show stale mirror content beside
@@ -2897,7 +2901,8 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
    const generationStartedEvents=[et.GENERATION_STARTED].filter(Boolean);
    const generationFinishedEvents=[et.GENERATION_ENDED,et.GENERATION_STOPPED].filter(Boolean);
    const swipeEvents=[et.MESSAGE_SWIPED].filter(Boolean);
-   const renderOnlyEvents=[et.MESSAGE_RECEIVED,et.CHARACTER_MESSAGE_RENDERED,et.MESSAGE_UPDATED].filter(Boolean);
+   const completionFallbackEvents=[et.MESSAGE_RECEIVED].filter(Boolean);
+   const displayUpdateEvents=[et.CHARACTER_MESSAGE_RENDERED,et.MESSAGE_UPDATED].filter(Boolean);
    for(const event of new Set(fullSyncEvents)){
      const handler=()=>{
        hostGenerationInProgress=false; hostGenerationHintStartedAt=0; clearScheduledGeneration(); cancelAllIndependentFlights('chat-changed'); messageSourceRevisions.clear();
@@ -2963,10 +2968,11 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
      };
      es?.on?.(event,handler); hostSubscriptions.push({es,event,handler});
    }
-   // MESSAGE_RECEIVED / CHARACTER_MESSAGE_RENDERED may be the only reliable
-   // completion signal in some mobile WebViews. They may schedule the exact stable
-   // version only when no poll, pending task or shared flight already owns it.
-   for(const event of new Set(renderOnlyEvents)){
+   // MESSAGE_RECEIVED can be the only reliable completion signal in some mobile
+   // WebViews. With the正文-only identity below,
+   // rerendering the same reply can only restore its cache; it cannot create a
+   // second network request for display_text or reasoning changes.
+   for(const event of new Set(completionFallbackEvents)){
      const handler=messageId=>{
        const id=Number(messageId);
        if(Number.isInteger(id)&&id>=0){
@@ -2978,6 +2984,20 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
            if(live && String(live.msg?.mes||'').trim() && !hasGenerationWorkFor(id,live.slot,live.sourceHash)) scheduleMessageGeneration(id,180,true);
          }
        } else syncAll();
+     };
+     es?.on?.(event,handler); hostSubscriptions.push({es,event,handler});
+   }
+   // CHARACTER_MESSAGE_RENDERED and MESSAGE_UPDATED are both emitted by
+   // beautifiers, display regexes and metadata-only refreshes. They are strictly
+   // render-only: restore/cache/deduplicate, never API.
+   for(const event of new Set(displayUpdateEvents)){
+     const handler=messageId=>{
+       const raw=messageId&&typeof messageId==='object'
+         ? (messageId.messageId ?? messageId.mesid ?? messageId.index)
+         : messageId;
+       const id=Number(raw);
+       if(Number.isInteger(id)&&id>=0) queueMessageSync([id]);
+       else syncAll();
      };
      es?.on?.(event,handler); hostSubscriptions.push({es,event,handler});
    }
@@ -3023,11 +3043,12 @@ function captureMountedIndependentRecords(){
    reasoningHash:messageReasoningFingerprint(msg),
   };
   const mountedSource=String(host.dataset.rmSourceHash||details.dataset.rabbitMirrorOwnerSourceHash||'');
-  const matches=!mountedSource || mountedSource===observed.sourceHash || mountedSource===observed.bodyHash;
+  const acceptedMountedHashes=new Set([observed.sourceHash,observed.bodyHash,...legacyMessageSourceFingerprints(msg)].filter(Boolean));
+  const matches=!mountedSource || acceptedMountedHashes.has(mountedSource);
   snapshots.push({
    slot:observed.slot,
    matches,
-   record:{html,sourceHash:mountedSource||observed.sourceHash,bodyHash:observed.bodyHash,displayHash:observed.displayHash,reasoningHash:observed.reasoningHash,ts:Date.now(),model:'',runtime:RUNTIME_VERSION,recoveredFromMountedHost:true},
+   record:{html,sourceHash:matches?observed.sourceHash:(mountedSource||observed.sourceHash),bodyHash:observed.bodyHash,displayHash:observed.displayHash,reasoningHash:observed.reasoningHash,ts:Date.now(),model:'',runtime:RUNTIME_VERSION,recoveredFromMountedHost:true},
   });
  }
  return snapshots;

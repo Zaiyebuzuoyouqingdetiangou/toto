@@ -1,3 +1,12 @@
+# 1.2.10
+
+- 修复更换美化、显示正则、`display_text` 或延迟 reasoning 更新后，独立 API 兔子镜被误判为新版正文并自动重新生成的问题。
+- 独立 API 的自动生成身份改为 `chat + mesid + swipe + message.mes 正文指纹`；`display_text` 与 reasoning 仍可作为上下文读取，但不再改变缓存身份、请求身份或 owner 身份。
+- `MESSAGE_UPDATED`、`CHARACTER_MESSAGE_RENDERED`、`pageshow`、`focus` 与 `visibilitychange` 现在只负责恢复、去重和重新定位，禁止从这些显示／页面恢复信号启动网络请求。
+- 保留 `MESSAGE_RECEIVED`、生成结束、Swipe、真实正文重说和挨打猫手动重说的合法生成入口。
+- 自动迁移 1.2.9 以“正文＋display_text＋reasoning”保存的独立 API 缓存；正文未变时继续复用原兔子镜，不因升级额外生成。
+- 未修改随机抽取、Prompt、温度、主 API、显示模式、正文、Swipe 数据、维修兔或挨打猫功能。
+
 # 1.2.9
 
 - 修复“纯外置”在页面刷新、手机恢复、BFCache 或消息 DOM 重绘后变成内嵌的问题。
