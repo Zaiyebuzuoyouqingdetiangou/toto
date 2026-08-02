@@ -1,10 +1,10 @@
 {
-  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（v1.2.6）",
+  "display_name": "兔子镜小剧场 / Rabbit Mirror Theater（v1.2.7）",
   "loading_order": 99,
-  "js": "index.js?rmv=1.2.6",
-  "css": "style.css?rmv=1.2.6",
+  "js": "index.js?rmv=1.2.7",
+  "css": "style.css?rmv=1.2.7",
   "author": "Toto",
-  "version": "1.2.6",
+  "version": "1.2.7",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "RabbitMirror v1.2.6：副 API新增本轮组合＋近期避让末尾执行锁、实际请求模式与温度状态显示，并重新验证旧降级兼容模式。"
+  "description": "RabbitMirror v1.2.7：独立 API最终成品随当前消息与Swipe保存，支持跨设备恢复；外置仍仅为显示层。"
 }

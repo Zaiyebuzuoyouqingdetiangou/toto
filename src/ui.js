@@ -1,14 +1,14 @@
-import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.2.6';
-import { clearLastCombo } from './storage.js?rmv=1.2.6';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.2.6';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.2.6';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.2.6';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.2.6';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.2.6';
-import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.2.6';
+import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.2.7';
+import { clearLastCombo } from './storage.js?rmv=1.2.7';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.2.7';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.2.7';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.2.7';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.2.7';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.2.7';
+import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.2.7';
 
-const SETTINGS_UI_VERSION = '1.2.6';
-const RUNTIME_VERSION = '1.2.6';
+const SETTINGS_UI_VERSION = '1.2.7';
+const RUNTIME_VERSION = '1.2.7';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -211,7 +211,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[v1.2.6]</span></b><span class="rabbit-mirror-toto-watermark">Toto v1.2.6</span>
+      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[v1.2.7]</span></b><span class="rabbit-mirror-toto-watermark">Toto v1.2.7</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">

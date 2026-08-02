@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.2.6';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.6';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.6';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.6';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.6';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.6';
+import { getSettings } from './settings.js?rmv=1.2.7';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.7';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.7';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.7';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.7';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.7';
 
-const RUNTIME_VERSION = '1.2.6';
+const RUNTIME_VERSION = '1.2.7';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
@@ -13,6 +13,18 @@ const API_REQUEST_DIAGNOSTIC_EVENT = 'rabbitmirror:independent-api-diagnostic';
 const API_PROFILE_SCHEMA = 2;
 const DEGRADED_PROFILE_RECHECK_MS = 6 * 60 * 60 * 1000;
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
+const PERSISTED_SOURCE_ATTR = 'data-rabbit-mirror-source';
+const PERSISTED_SOURCE_VALUE = 'independent';
+const PERSISTED_ORIGIN_ATTR = 'data-rabbit-mirror-independent-origin';
+const PERSISTED_RUNTIME_ATTR = 'data-rabbit-mirror-runtime';
+const PERSISTED_DISPLAY_VALUE_DATA = 'rmPersistedDisplayValue';
+const PERSISTED_DISPLAY_PRIORITY_DATA = 'rmPersistedDisplayPriority';
+const PERSISTED_ORIGIN_ID_DATA = 'rmPersistedOriginId';
+const PERSISTED_ORIGIN_NAME_DATA = 'rmPersistedOriginName';
+const PERSISTED_STYLE_MEDIA_DATA = 'rmPersistedStyleMedia';
+const PERSISTED_STYLE_MEDIA_PRESENT_DATA = 'rmPersistedStyleMediaPresent';
+const PERSISTED_STYLE_DISABLED_DATA = 'rmPersistedStyleDisabled';
+const PERSISTED_INERT_PRESENT_DATA = 'rmPersistedInertPresent';
 const EXTERNAL_SHELL_ATTR = 'data-rabbit-mirror-external-shell';
 const INLINE_ANCHOR_ATTR = 'data-rabbit-mirror-independent-inline-anchor';
 const FOLLOW_EXTERNAL_ANCHOR_ATTR = 'data-rabbit-mirror-follow-external-anchor';
@@ -62,6 +74,9 @@ let backgroundLifecycleListenersInstalled = false;
 let backgroundResumeTimer = 0;
 let generationPlaceholderTimer = 0;
 let generationPlaceholderStartedAt = 0;
+let chatSaveTimer = 0;
+let chatSaveInFlight = null;
+let chatSaveRequested = false;
 const passiveRecoveryTimers = new Set();
 function globalFlights(){
  const current=globalThis[GLOBAL_FLIGHT_KEY];
@@ -223,7 +238,172 @@ function publishIndependentApiRequestDiagnostic(value){
 export function getLastIndependentApiRequestDiagnostic(){ return readLastIndependentApiRequestDiagnostic(); }
 export { API_REQUEST_DIAGNOSTIC_EVENT };
 function hashText(text=''){ let h=2166136261; for(const ch of String(text)){ h^=ch.charCodeAt(0); h=Math.imul(h,16777619);} return (h>>>0).toString(36); }
+const RABBIT_MIRROR_TOTO_RE=/<toto\b[^>]*\b(?:data-rabbit-mirror|data-rabbit-hole)\s*=\s*(["'])true\1[^>]*>[\s\S]*?<\/toto>/gi;
+function rabbitMirrorTotoBlocks(value=''){
+ const source=String(value||''); const blocks=[]; RABBIT_MIRROR_TOTO_RE.lastIndex=0; let match;
+ while((match=RABBIT_MIRROR_TOTO_RE.exec(source))) blocks.push({html:match[0],index:match.index,end:match.index+match[0].length});
+ RABBIT_MIRROR_TOTO_RE.lastIndex=0; return blocks;
+}
+function rabbitMirrorBlockIsIndependent(block=''){
+ const open=String(block||'').match(/^<toto\b[^>]*>/i)?.[0]||'';
+ return /\bdata-rabbit-mirror-source\s*=\s*(["'])independent\1/i.test(open);
+}
+function stripRabbitMirrorBlocks(value='',independentOnly=false){
+ const source=String(value||'');
+ const blocks=rabbitMirrorTotoBlocks(source).filter(item=>!independentOnly||rabbitMirrorBlockIsIndependent(item.html));
+ if(!blocks.length) return source;
+ let cursor=0; let output='';
+ for(const block of blocks){
+  let start=block.index;
+  // RabbitMirror appends its independent source with exactly one blank line.
+  // Remove that delimiter together with the marked block so the narrative bytes
+  // and therefore the正文 fingerprint remain identical before and after saving.
+  if(rabbitMirrorBlockIsIndependent(block.html)){
+   if(source.slice(Math.max(cursor,start-4),start)==='\r\n\r\n') start-=4;
+   else if(source.slice(Math.max(cursor,start-2),start)==='\n\n') start-=2;
+  }
+  output+=source.slice(cursor,Math.max(cursor,start)); cursor=block.end;
+ }
+ output+=source.slice(cursor);
+ return output;
+}
+function persistedIndependentMirrorFromText(value=''){
+ return rabbitMirrorTotoBlocks(value).find(item=>rabbitMirrorBlockIsIndependent(item.html))||null;
+}
+function persistedIndependentMirrorFromMessage(msg){
+ const currentSwipe=swipeId(msg);
+ const sources=[];
+ if(Array.isArray(msg?.swipes) && typeof msg.swipes[currentSwipe]==='string') sources.push(msg.swipes[currentSwipe]);
+ if(typeof msg?.mes==='string') sources.push(msg.mes);
+ for(const source of sources){ const found=persistedIndependentMirrorFromText(source); if(found) return found; }
+ return null;
+}
+function persistedIndependentWrapper(inner=''){
+ return `<toto data-rabbit-mirror="true" ${PERSISTED_SOURCE_ATTR}="${PERSISTED_SOURCE_VALUE}" ${PERSISTED_RUNTIME_ATTR}="${RUNTIME_VERSION}" style="display:block;">${String(inner||'').trim()}</toto>`;
+}
+function replacePersistedIndependentMirror(value='',inner=''){
+ const source=stripRabbitMirrorBlocks(String(value||''),true);
+ const block=persistedIndependentWrapper(inner);
+ return source ? `${source}\n\n${block}` : block;
+}
 function getContext(){ try { return globalThis.SillyTavern?.getContext?.() || {}; } catch { return {}; } }
+async function performChatSave(){
+ const ctx=getContext();
+ try{
+  if(typeof ctx?.saveChat==='function'){ await ctx.saveChat(); return true; }
+  if(typeof ctx?.saveChatConditional==='function'){ await ctx.saveChatConditional(); return true; }
+  const mod=hostModule || await import('../../../../../script.js'); hostModule=mod;
+  if(typeof mod?.saveChatConditional==='function'){ await mod.saveChatConditional(); return true; }
+  if(typeof mod?.saveChat==='function'){ await mod.saveChat(); return true; }
+ }catch(error){ console.warn('[RabbitMirror] failed to save persisted independent mirror with chat:',error); }
+ return false;
+}
+async function saveChatNow(){
+ chatSaveRequested=true;
+ if(chatSaveInFlight) return chatSaveInFlight;
+ chatSaveInFlight=(async()=>{
+  let success=false;
+  do{
+   chatSaveRequested=false;
+   success=(await performChatSave()) || success;
+  }while(chatSaveRequested);
+  return success;
+ })().finally(()=>{ chatSaveInFlight=null; });
+ return chatSaveInFlight;
+}
+function scheduleChatSave(delay=120){
+ chatSaveRequested=true;
+ if(chatSaveInFlight) return;
+ if(chatSaveTimer) clearTimeout(chatSaveTimer);
+ chatSaveTimer=setTimeout(()=>{ chatSaveTimer=0; void saveChatNow(); },Math.max(0,Number(delay)||0));
+}
+function persistIndependentMirrorToMessage(ctx,index,msg,html,{save=true}={}){
+ if(!ctx || !msg || msg.is_user || typeof msg.mes!=='string' || !independentStoredHtmlRestorable(html)) return false;
+ if(Array.isArray(ctx.chat) && ctx.chat[index]!==msg) return false;
+ const nextMes=replacePersistedIndependentMirror(msg.mes,html); let changed=nextMes!==msg.mes;
+ if(changed) msg.mes=nextMes;
+ const currentSwipe=swipeId(msg);
+ if(Array.isArray(msg.swipes) && typeof msg.swipes[currentSwipe]==='string'){
+  const nextSwipe=replacePersistedIndependentMirror(msg.swipes[currentSwipe],html);
+  if(nextSwipe!==msg.swipes[currentSwipe]){ msg.swipes[currentSwipe]=nextSwipe; changed=true; }
+ }
+ if(changed && save) scheduleChatSave();
+ return changed;
+}
+function persistedIndependentRecord(msg,observed,model=''){
+ const source=persistedIndependentMirrorFromMessage(msg); if(!source?.html) return null;
+ const inner=extractMirrorInner(source.html); if(!independentStoredHtmlRestorable(inner)) return null;
+ return {html:inner,sourceHash:String(observed?.sourceHash||''),bodyHash:String(observed?.bodyHash||''),displayHash:String(observed?.displayHash||''),reasoningHash:String(observed?.reasoningHash||''),ts:Date.now(),model:String(model||''),runtime:RUNTIME_VERSION,persistedWithMessage:true};
+}
+function persistedIndependentOriginRoots(el){
+ const body=messageBody(el); if(!body?.querySelectorAll) return [];
+ return [...body.querySelectorAll(`toto[${PERSISTED_SOURCE_ATTR}="${PERSISTED_SOURCE_VALUE}"]`)];
+}
+function hidePersistedIndependentOrigins(el){
+ for(const root of persistedIndependentOriginRoots(el)){
+  if(!root.hasAttribute(PERSISTED_ORIGIN_ATTR)){
+   root.dataset[PERSISTED_DISPLAY_VALUE_DATA]=root.style?.getPropertyValue?.('display')||'';
+   root.dataset[PERSISTED_DISPLAY_PRIORITY_DATA]=root.style?.getPropertyPriority?.('display')||'';
+   root.dataset[PERSISTED_INERT_PRESENT_DATA]=root.hasAttribute('inert')?'true':'false';
+  }
+  // The message-body copy is a persistence origin only. Neutralize its IDs,
+  // radio names and style sheets while hidden so the visible external copy
+  // cannot collide with it after a maintenance repair has been saved.
+  for(const node of [root,...(root.querySelectorAll?.('[id], [name]')||[])]){
+   if(node.hasAttribute?.('id') && !node.dataset?.[PERSISTED_ORIGIN_ID_DATA]){
+    node.dataset[PERSISTED_ORIGIN_ID_DATA]=node.getAttribute('id')||'';
+    node.removeAttribute('id');
+   }
+   if(node.hasAttribute?.('name') && !node.dataset?.[PERSISTED_ORIGIN_NAME_DATA]){
+    node.dataset[PERSISTED_ORIGIN_NAME_DATA]=node.getAttribute('name')||'';
+    node.removeAttribute('name');
+   }
+  }
+  for(const style of root.querySelectorAll?.('style')||[]){
+   if(!style.dataset?.[PERSISTED_STYLE_MEDIA_PRESENT_DATA]){
+    style.dataset[PERSISTED_STYLE_MEDIA_PRESENT_DATA]=style.hasAttribute('media')?'true':'false';
+    style.dataset[PERSISTED_STYLE_MEDIA_DATA]=style.getAttribute('media')||'';
+    style.dataset[PERSISTED_STYLE_DISABLED_DATA]=style.disabled?'true':'false';
+   }
+   style.setAttribute('media','not all');
+   try{ style.disabled=true; }catch{}
+  }
+  root.setAttribute(PERSISTED_ORIGIN_ATTR,'true'); root.setAttribute('inert',''); root.hidden=true; root.setAttribute('aria-hidden','true');
+  root.style?.setProperty?.('display','none','important');
+ }
+}
+function revealPersistedIndependentOrigins(scope=document){
+ const roots=[];
+ if(scope?.matches?.(`toto[${PERSISTED_ORIGIN_ATTR}="true"]`)) roots.push(scope);
+ roots.push(...(scope?.querySelectorAll?.(`toto[${PERSISTED_ORIGIN_ATTR}="true"]`)||[]));
+ for(const root of roots){
+  const display=String(root.dataset?.[PERSISTED_DISPLAY_VALUE_DATA]||'');
+  const priority=String(root.dataset?.[PERSISTED_DISPLAY_PRIORITY_DATA]||'');
+  for(const node of [root,...(root.querySelectorAll?.('[data-rm-persisted-origin-id], [data-rm-persisted-origin-name]')||[])]){
+   if(node.dataset && Object.prototype.hasOwnProperty.call(node.dataset,PERSISTED_ORIGIN_ID_DATA)){
+    const value=String(node.dataset[PERSISTED_ORIGIN_ID_DATA]||''); if(value) node.setAttribute('id',value);
+    delete node.dataset[PERSISTED_ORIGIN_ID_DATA];
+   }
+   if(node.dataset && Object.prototype.hasOwnProperty.call(node.dataset,PERSISTED_ORIGIN_NAME_DATA)){
+    const value=String(node.dataset[PERSISTED_ORIGIN_NAME_DATA]||''); if(value) node.setAttribute('name',value);
+    delete node.dataset[PERSISTED_ORIGIN_NAME_DATA];
+   }
+  }
+  for(const style of root.querySelectorAll?.('style')||[]){
+   const hadMedia=style.dataset?.[PERSISTED_STYLE_MEDIA_PRESENT_DATA]==='true';
+   const media=String(style.dataset?.[PERSISTED_STYLE_MEDIA_DATA]||'');
+   if(hadMedia) style.setAttribute('media',media); else style.removeAttribute('media');
+   const wasDisabled=style.dataset?.[PERSISTED_STYLE_DISABLED_DATA]==='true';
+   try{ style.disabled=wasDisabled; }catch{}
+   if(style.dataset){ delete style.dataset[PERSISTED_STYLE_MEDIA_DATA]; delete style.dataset[PERSISTED_STYLE_MEDIA_PRESENT_DATA]; delete style.dataset[PERSISTED_STYLE_DISABLED_DATA]; }
+  }
+  const hadInert=root.dataset?.[PERSISTED_INERT_PRESENT_DATA]==='true';
+  root.removeAttribute(PERSISTED_ORIGIN_ATTR); if(!hadInert) root.removeAttribute('inert'); root.hidden=false; root.removeAttribute('aria-hidden'); root.style?.removeProperty?.('display');
+  if(display) root.style?.setProperty?.('display',display,priority);
+  if(root.dataset){ delete root.dataset[PERSISTED_DISPLAY_VALUE_DATA]; delete root.dataset[PERSISTED_DISPLAY_PRIORITY_DATA]; delete root.dataset[PERSISTED_INERT_PRESENT_DATA]; }
+ }
+}
+
 function hostGenerationLooksActive(){
  const ctx=getContext();
  const flags=[
@@ -250,7 +430,7 @@ function messageBaseSlotKey(ctx,index,msg){ return `${chatKey(ctx)}:${index}:${s
 function messageSlotKey(ctx,index,msg){ return `${messageBaseSlotKey(ctx,index,msg)}:${messageSourceFingerprint(msg)}`; }
 function legacyMessageSourceFingerprints(msg){
  const values=[
-  hashText(`${String(msg?.mes||'')}
+  hashText(`${stripRabbitMirrorBlocks(String(msg?.mes||''))}
 \u0000reasoning\u0000
 ${reasoningOf(msg)}`),
   messageBodyFingerprint(msg),
@@ -303,11 +483,11 @@ function messageElement(index){ return document.querySelector(`#chat .mes[mesid=
 function messageBody(el){ return el?.querySelector?.('.mes_text') || el; }
 function assistantMessages(ctx){ const chat=Array.isArray(ctx.chat)?ctx.chat:[]; return chat.map((m,i)=>({m,i})).filter(x=>!x.m?.is_user && typeof x.m?.mes==='string'); }
 function reasoningOf(m){ return String(m?.reasoning ?? m?.extra?.reasoning ?? m?.extra?.reasoning_content ?? m?.extra?.thoughts ?? '').trim(); }
-function messageBodyFingerprint(m){ return hashText(String(m?.mes||'')); }
+function messageBodyFingerprint(m){ return hashText(stripRabbitMirrorBlocks(String(m?.mes||''))); }
 function messageReasoningFingerprint(m){ const value=reasoningOf(m); return value?hashText(value):''; }
-function visibleDisplayTextOf(m){ return typeof m?.extra?.display_text==='string' ? m.extra.display_text : ''; }
-function messageDisplayFingerprint(m){ const value=visibleDisplayTextOf(m); return value && value!==String(m?.mes||'') ? hashText(value) : ''; }
-function messageSourceFingerprint(m){ return hashText(`${String(m?.mes||'')}
+function visibleDisplayTextOf(m){ return typeof m?.extra?.display_text==='string' ? stripRabbitMirrorBlocks(m.extra.display_text) : ''; }
+function messageDisplayFingerprint(m){ const value=visibleDisplayTextOf(m); return value && value!==stripRabbitMirrorBlocks(String(m?.mes||'')) ? hashText(value) : ''; }
+function messageSourceFingerprint(m){ return hashText(`${stripRabbitMirrorBlocks(String(m?.mes||''))}
 \u0000display_text\u0000
 ${visibleDisplayTextOf(m)}
 \u0000reasoning\u0000
@@ -346,7 +526,7 @@ function contextBundle(ctx,targetIndex){
  const rows=[]; let used=0;
  for(let real=Math.min(targetIndex,chat.length-1);real>=0;real--){
   const m=chat[real]; const role=m?.is_user?'USER':'ASSISTANT'; const reasoning=reasoningOf(m);
-  let row=`[${real} ${role}]\n${String(m?.mes||'')}${reasoning?`\n[可用推理内容]\n${reasoning}`:''}`;
+  let row=`[${real} ${role}]\n${stripRabbitMirrorBlocks(String(m?.mes||''))}${reasoning?`\n[可用推理内容]\n${reasoning}`:''}`;
   if(row.length>16000) row=`${row.slice(0,8000)}\n…[中段裁剪]…\n${row.slice(-8000)}`;
   if(rows.length && used+row.length>CONTEXT_TRANSCRIPT_BUDGET) break;
   rows.unshift(row); used+=row.length;
@@ -620,7 +800,7 @@ async function requestIndependentCompletion(st,systemPrompt,userPrompt,options={
  return {response:{ok:false,status:last.status||500},result:{raw:last.detail||''},profile:lastProfile,attempts,requestDiagnostic};
 }
 function wrappedIndependentMirrorHtml(inner=''){
- return `<toto data-rabbit-mirror="true" style="display:block;">${String(inner||'')}</toto>`;
+ return persistedIndependentWrapper(inner);
 }
 function independentMirrorBodyEvidence(inner=''){
  if(typeof DOMParser==='undefined'){
@@ -1835,7 +2015,14 @@ function ensureGenerationPlaceholderForIndex(index,waitingForBody=true){
  if(!live || !el) return null;
  if(suppressesAutomaticGeneration(live.ctx,index) || hasExistingFollowRabbitMirror(live.ctx,index,live.msg)) return null;
  const store=readStore();
+ const persisted=persistedIndependentRecord(live.msg,live,getSettings().independentApiModel);
  const recovered=recoverSavedRecord(store,live.slot,live);
+ if(persisted){
+  const existing=findSavedRecord(store,live.slot,live.legacySlots||[]);
+  if(!existing?.html || String(existing.html)!==String(persisted.html)){ saveRecordForSlot(store,live.slot,persisted); writeStore(store); }
+  hidePersistedIndependentOrigins(el);
+  return null;
+ }
  if(recovered.storeChanged) writeStore(store);
  if(recovered.saved?.html && savedRecordMatchesObserved(recovered.saved,live)) return null;
  const existing=collapseDuplicateIdentityHosts(el,live.key,'independent',live.sourceHash);
@@ -1871,6 +2058,7 @@ function resumeIndependentBackgroundWork(){
  // Keep an already-started request alive, but never create an early snapshot
  // merely because the page is being hidden.
  if(document?.visibilityState==='hidden'){
+  if(chatSaveTimer){ clearTimeout(chatSaveTimer); chatSaveTimer=0; void saveChatNow(); }
   // Do not snapshot immediately on hide: mobile post-processing can still alter
   // display_text/reasoning after GENERATION_ENDED. An already-started request
   // continues normally; a not-yet-started one resumes through the stable poll.
@@ -1966,14 +2154,20 @@ async function generateFor(index,msg,force=false,sourceAware=true){
  const el=messageElement(index);
  let store=readStore();
  const recoveredAtGeneration=recoverSavedRecord(store,slot,observed);
- let saved=recoveredAtGeneration.saved;
- if(recoveredAtGeneration.storeChanged) writeStore(store);
+ const persistedAtGeneration=persistedIndependentRecord(msg,observed,st.independentApiModel);
+ let saved=persistedAtGeneration || recoveredAtGeneration.saved;
+ if(persistedAtGeneration){
+  const existingStored=findSavedRecord(store,slot,observed.legacySlots||[]);
+  if(!existingStored?.html || String(existingStored.html)!==String(persistedAtGeneration.html)){
+   saveRecordForSlot(store,slot,persistedAtGeneration); writeStore(store);
+  }
+ } else if(recoveredAtGeneration.storeChanged) writeStore(store);
  const mountedHost=el ? collapseDuplicateIdentityHosts(el,key,'independent',sourceHash) : null;
  const mountedReady=readyRecordFromHost(mountedHost,observed,st.independentApiModel);
  if(saved?.html && !force){
   const savedSourceHash=String(saved.sourceHash||'');
   if(savedRecordMatchesObserved(saved,observed) || (!savedSourceHash && !sourceAware)){
-   if(el){ const restored=ensureExternalUi(el,key,saved.html,'ready','independent',sourceHash); rebuildCollapsedReadyHost(el,restored,key,'independent',saved.html,sourceHash); }
+   if(el){ const restored=ensureExternalUi(el,key,saved.html,'ready','independent',sourceHash); rebuildCollapsedReadyHost(el,restored,key,'independent',saved.html,sourceHash); hidePersistedIndependentOrigins(el); }
    return saved;
   }
  }
@@ -2022,8 +2216,9 @@ async function generateFor(index,msg,force=false,sourceAware=true){
   const completed={html,sourceHash,bodyHash,displayHash,reasoningHash,paletteFingerprint,ts:Date.now(),model:st.independentApiModel,runtime:RUNTIME_VERSION,apiRequest:result?.requestDiagnostic||null,executionLockChars:Number(result?.executionLockChars||0)};
   appendHistoryEntry(slot,completed);
   const next=readStore(); saveRecordForSlot(next,slot,completed); writeStore(next);
+  persistIndependentMirrorToMessage(getContext(),index,getContext().chat?.[index]||msg,html);
   const liveEl=messageElement(index);
-  if(liveEl) ensureExternalUi(liveEl,key,html,'ready','independent',sourceHash);
+  if(liveEl){ ensureExternalUi(liveEl,key,html,'ready','independent',sourceHash); hidePersistedIndependentOrigins(liveEl); }
   return completed;
  }).catch(err=>{
   if(flight.timedOut && stillCurrent()){
@@ -2241,6 +2436,7 @@ function persistIndependentRepairFromEvent(event) {
  };
  saveRecordForSlot(store,identity.slot,repaired);
  writeStore(store);
+ persistIndependentMirrorToMessage(identity.ctx,identity.index,identity.msg,html);
  host.__rabbitMirrorIndependentSource=html;
  host.dataset.rmSourceHash=identity.sourceHash;
  scheduleExternalShellTint(host,html);
@@ -2291,7 +2487,7 @@ function externalizeFollowMirror(index,msg){
  const st=getSettings(); if(st.generationSource!=='follow'||st.followDisplayMode!=='external') return;
  const el=messageElement(index); const body=messageBody(el); if(!body) return;
  const mirror=[...body.querySelectorAll('toto > details, details[data-rabbit-mirror-css-scope], details')]
-   .find(d=>/兔子镜|RabbitMirror/i.test(d.querySelector(':scope > summary')?.textContent||''));
+   .find(d=>!d.closest(`toto[${PERSISTED_SOURCE_ATTR}="${PERSISTED_SOURCE_VALUE}"]`) && /兔子镜|RabbitMirror/i.test(d.querySelector(':scope > summary')?.textContent||''));
  if(!mirror||mirror.closest(`[${SOURCE_ATTR}]`)) return;
  const ctx=getContext(); const key=`follow:${recordKey(ctx,index,msg)}`;
  const sourceHtml=String(mirror.outerHTML||'');
@@ -2401,17 +2597,19 @@ function hasExistingFollowRabbitMirror(ctx,index,msg){
   const independentSelector=`[${SOURCE_ATTR}][data-rm-source="independent"]`;
   const inlineRoot=[...(el.querySelectorAll?.('toto[data-rabbit-mirror="true"], [data-rabbit-mirror="true"]')||[])].find(node=>
    !node.matches?.(`[${SOURCE_ATTR}]`) && !node.closest?.(independentSelector)
+   && node.getAttribute?.(PERSISTED_SOURCE_ATTR)!==PERSISTED_SOURCE_VALUE
   );
   if(inlineRoot) return true;
   const inlineDetails=[...(el.querySelectorAll?.('details')||[])].find(details=>{
    if(details.closest?.(independentSelector)) return false;
+   if(details.closest?.(`toto[${PERSISTED_SOURCE_ATTR}="${PERSISTED_SOURCE_VALUE}"]`)) return false;
    const summary=String(details.querySelector?.(':scope > summary')?.textContent||'').trim();
    return summary.startsWith('【兔子镜');
   });
   if(inlineDetails) return true;
  }
- const raw=`${String(msg?.mes||'')}
-${String(msg?.extra?.display_text||'')}`;
+ const raw=`${stripRabbitMirrorBlocks(String(msg?.mes||''),true)}
+${stripRabbitMirrorBlocks(String(msg?.extra?.display_text||''),true)}`;
  return /<toto\b[^>]*data-rabbit-mirror\s*=\s*["']true["'][^>]*>/i.test(raw)
   || /<summary\b[^>]*>\s*【兔子镜[：:]/i.test(raw);
 }
@@ -2446,17 +2644,27 @@ function restoreIndependentMirrorPassively(ctx,store,el,index,msg){
  const key=recordKey(ctx,index,msg);
  let keep=collapseDuplicateIdentityHosts(el,key,'independent',observed.sourceHash);
  if(keep?.dataset?.rmState==='ready' && !usableReadyDetails(keep.querySelector?.(':scope > details'))){ keep.remove(); keep=null; }
+ const persisted=persistedIndependentRecord(msg,observed,getSettings().independentApiModel);
  const recovered=recoverSavedRecord(store,observed.slot,observed);
- let saved=recovered.saved;
+ let saved=persisted || recovered.saved;
+ let changed=recovered.storeChanged;
+ if(persisted){
+  const existing=findSavedRecord(store,observed.slot,observed.legacySlots||[]);
+  if(!existing?.html || String(existing.html)!==String(persisted.html)){
+   saveRecordForSlot(store,observed.slot,persisted); changed=true;
+  }
+ }
  if(saved?.html && !savedRecordMatchesObserved(saved,observed)) saved=null;
  if(saved?.html){
+  if(!persisted && persistIndependentMirrorToMessage(ctx,index,msg,saved.html)) changed=true;
   const host=ensureExternalUi(el,key,saved.html,'ready','independent',observed.sourceHash);
   if(host){
    rebuildCollapsedReadyHost(el,host,key,'independent',saved.html,observed.sourceHash);
    host.hidden=false;
    clearExternalHostFreshSourceState(host);
   }
-  return recovered.storeChanged;
+  hidePersistedIndependentOrigins(el);
+  return changed;
  }
  if(keep){
   const mountedSource=String(keep.dataset.rmSourceHash||'');
@@ -2465,14 +2673,16 @@ function restoreIndependentMirrorPassively(ctx,store,el,index,msg){
    keep.hidden=false;
    clearExternalHostFreshSourceState(keep);
    refreshExistingExternalDetails(keep,key,'independent');
+   const mounted=readyRecordFromHost(keep,observed,getSettings().independentApiModel);
+   if(mounted?.html) persistIndependentMirrorToMessage(ctx,index,msg,mounted.html);
+   hidePersistedIndependentOrigins(el);
   }else{
-   // The old mirror belongs to another正文 version. Keep its cache/history but
-   // never display it beside a changed正文 while the follow API is active.
    keep.hidden=true;
   }
  }
- return recovered.storeChanged;
+ return changed;
 }
+
 function syncMessages(indices=null){
  if(!currentRuntime() || syncRunning) return;
  syncRunning=true;
@@ -2488,7 +2698,7 @@ function syncMessages(indices=null){
    for(const {m,i} of assistantMessages(ctx)){
      if(allowed && !allowed.has(i)) continue;
      const el=messageElement(i); if(!el) continue;
-     if(mode==='off') { externalHosts(el).forEach(n=>n.remove()); continue; }
+     if(mode==='off') { externalHosts(el).forEach(n=>n.remove()); revealPersistedIndependentOrigins(el); continue; }
      if(mode==='independent'){
        // Switching generation source must not erase mirrors that were produced
        // together with the正文 API. Restore any externalized follow mirror to
@@ -2500,8 +2710,17 @@ function syncMessages(indices=null){
        cancelSupersededFlightsForBase(messageBaseSlotKey(ctx,i,m),sourceHash);
        cancelFlightsForSlot(slot,sourceHash);
        const recoveredAtSync=recoverSavedRecord(store,slot,observed);
-       let saved=recoveredAtSync.saved;
+       const persistedAtSync=persistedIndependentRecord(m,observed,st.independentApiModel);
+       let saved=persistedAtSync || recoveredAtSync.saved;
        if(recoveredAtSync.storeChanged) storeChanged=true;
+       if(persistedAtSync){
+         const currentStored=findSavedRecord(store,slot,observed.legacySlots||[]);
+         if(!currentStored?.html || String(currentStored.html)!==String(persistedAtSync.html)){
+           saveRecordForSlot(store,slot,persistedAtSync); storeChanged=true;
+         }
+       } else if(saved?.html && savedRecordMatchesObserved(saved,observed)){
+         persistIndependentMirrorToMessage(ctx,i,m,saved.html);
+       }
        let keep=collapseDuplicateIdentityHosts(el,key,'independent',sourceHash);
        // Migrate beta.14.54-beta.14.64 CSS-only failure notices into a real,
        // actionable error placeholder. Those old hosts hid the stale details
@@ -2563,10 +2782,13 @@ function syncMessages(indices=null){
        }
        if(saved?.html && savedRecordMatchesObserved(saved,observed)){
          const host=ensureExternalUi(el,key,saved.html,'ready','independent',sourceHash);
-         if(host){ rebuildCollapsedReadyHost(el,host,key,'independent',saved.html,sourceHash); host.hidden=false; clearExternalHostFreshSourceState(host); }
+         if(host){ rebuildCollapsedReadyHost(el,host,key,'independent',saved.html,sourceHash); host.hidden=false; clearExternalHostFreshSourceState(host); hidePersistedIndependentOrigins(el); }
        } else if(keep && !hostIsStale){
          placeExternalHost(el,keep,keep.dataset.rmKey||key,'independent');
          refreshExistingExternalDetails(keep,key,'independent');
+         const mounted=readyRecordFromHost(keep,observed,st.independentApiModel);
+         if(mounted?.html) persistIndependentMirrorToMessage(ctx,i,m,mounted.html);
+         hidePersistedIndependentOrigins(el);
        }
      } else {
        // Generation-source changes affect only future replies. Keep completed
@@ -2693,6 +2915,7 @@ function currentChatHasRestorableIndependentRecord(){
  const ctx=getContext();
  const store=readStore();
  for(const {m,i} of assistantMessages(ctx)){
+  if(persistedIndependentMirrorFromMessage(m)?.html) return true;
   const observed=passiveObservedIdentity(ctx,i,m);
   const saved=findSavedRecord(store,observed.slot,observed.legacySlots||[]);
   if(saved?.html && independentStoredHtmlRestorable(saved.html) && savedRecordMatchesObserved(saved,observed)) return true;
@@ -2930,7 +3153,7 @@ async function reconfigureRuntime(){
      installObserverIfNeeded();
      schedulePassiveRecoveryAfterSourceSwitch(sequence);
    }
-   if(mode==='off'){ document.querySelectorAll(`[${SOURCE_ATTR}]`).forEach(n=>n.remove()); removeEmptyInlineAnchors(document); removeEmptyFollowExternalAnchors(document); }
+   if(mode==='off'){ document.querySelectorAll(`[${SOURCE_ATTR}]`).forEach(n=>n.remove()); revealPersistedIndependentOrigins(document); removeEmptyInlineAnchors(document); removeEmptyFollowExternalAnchors(document); }
    return;
  }
  syncAll(); installObserverIfNeeded();
@@ -2971,13 +3194,14 @@ export async function initIndependentRabbitMirror(){
  }
 }
 export function destroyIndependentRabbitMirror(){
- runtimeConfigSequence++; hostGenerationInProgress=false; hostGenerationHintStartedAt=0; clearScheduledGeneration(); clearPassiveRecoveryTimers(); cancelAllIndependentFlights('runtime-destroyed'); clearAutomaticGenerationCutovers(); lastAppliedRuntimeMode=null;
+ runtimeConfigSequence++; hostGenerationInProgress=false; hostGenerationHintStartedAt=0; if(chatSaveTimer){clearTimeout(chatSaveTimer);chatSaveTimer=0;void saveChatNow();} clearScheduledGeneration(); clearPassiveRecoveryTimers(); cancelAllIndependentFlights('runtime-destroyed'); clearAutomaticGenerationCutovers(); lastAppliedRuntimeMode=null;
  removeIndependentActionBridge();
  lastIndependentRequestConfig='';
  disconnectObserver(); unsubscribeHostEvents(); removeFeedbackMirrorActionListeners(); removeRepairPersistenceListener(); removeExternalGeometryListeners(); removeBackgroundLifecycleListeners();
  syncRunning=false; pending.clear(); messageSourceRevisions.clear(); preparedReadyHtmlCache.clear();
  document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="follow"]`).forEach(host=>restoreFollowInline(host));
  document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="independent"]`).forEach(n=>n.remove());
+ revealPersistedIndependentOrigins(document);
  removeEmptyInlineAnchors(document); removeEmptyFollowExternalAnchors(document);
  if(globalThis.__rabbitMirrorIndependentCleanup===destroyIndependentRabbitMirror) delete globalThis.__rabbitMirrorIndependentCleanup;
 }
