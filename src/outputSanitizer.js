@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.2.5';
-import { getCurrentChatKey } from './storage.js?rmv=1.2.5';
+import { getSettings } from './settings.js?rmv=1.2.6';
+import { getCurrentChatKey } from './storage.js?rmv=1.2.6';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -8,12 +8,12 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.2.5';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.5';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.5';
+} from './feedbackCat.js?rmv=1.2.6';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.6';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.6';
 
 
-const RUNTIME_VERSION = '1.2.5';
+const RUNTIME_VERSION = '1.2.6';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -9850,7 +9850,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.2.5-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.2.6-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -10753,6 +10753,16 @@ ${styleTexts}`;
     };
 }
 
+function diagnosticIndependentApiRequestSnapshot() {
+    try {
+        const value = JSON.parse(localStorage.getItem('rabbit_mirror_independent_api_last_request_v2') || 'null');
+        if (!value || typeof value !== 'object') return null;
+        return value;
+    } catch {
+        return null;
+    }
+}
+
 function buildInteractionDiagnosticText(root, state, phase = 'capture complete') {
     const inputs = diagnosticQueryContentAll(root, 'input[type="checkbox"], input[type="radio"]').slice(0, 8);
     const labels = diagnosticQueryContentAll(root, 'label');
@@ -10776,6 +10786,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
     const title = diagnosticCompactText(root.querySelector('summary')?.textContent, 64);
     const code = diagnosticCodeRescueSummary(root);
     const full = diagnosticFullChainSummary(root, code);
+    const independentRequest = diagnosticIndependentApiRequestSnapshot();
     const lines = [
         `RabbitMirror 全链路诊断 ${INTERACTION_DIAGNOSTIC_VERSION}`,
         `标题: ${title || '(未渲染 summary／可能仍是代码块或纯文字)'}`,
@@ -10786,6 +10797,12 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `旧全局急救链: 已合并停用`,
         `消息 mesid: ${code.mesid}`,
         `根节点: ${diagnosticElementName(root)} / connected=${!!root.isConnected}`,
+        '',
+        '[0. 独立 API 最近一次实际请求]',
+        independentRequest ? `状态=${independentRequest.ok ? 'success' : 'failed'} HTTP=${independentRequest.status || '?'} model=${independentRequest.model || '(无)'}` : '（暂无独立 API实际生成记录）',
+        independentRequest ? `profile=${independentRequest.profile || '(无)'} systemMessage=${!!independentRequest.systemMessageSent} temperatureConfigured=${independentRequest.configuredTemperature ?? '(无)'} temperatureSent=${!!independentRequest.temperatureSent}` : '',
+        independentRequest ? `tokenField=${independentRequest.tokenField || '(无)'} stream=${!!independentRequest.streamSent} remembered=${independentRequest.rememberedProfile || '(无)'} attempts=${Array.isArray(independentRequest.attempts) ? independentRequest.attempts.map(item => `${item.profile}:${item.status}`).join(' -> ') : '(无)'}` : '',
+        independentRequest ? `samplingMode=${independentRequest.samplingMode || '(无)'} themes=${Array.isArray(independentRequest.themeLabels) ? independentRequest.themeLabels.join(' + ') : '(无)'} formats=${Array.isArray(independentRequest.formatLabels) ? independentRequest.formatLabels.join(' + ') : '(无)'} executionLockChars=${Number(independentRequest.executionLockChars || 0)}` : '',
         '',
         '[1. HTML／Markdown 输入层]',
         `原始源含HTML=${full.rawHtml} 含toto=${full.rawToto} 含三反引号=${full.rawFence}`,

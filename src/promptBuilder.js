@@ -1,9 +1,9 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.2.5';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.2.5';
-import { pickCombination } from './picker.js?rmv=1.2.5';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.2.5';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.2.5';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.2.5';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.2.6';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.2.6';
+import { pickCombination } from './picker.js?rmv=1.2.6';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.2.6';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.2.6';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.2.6';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -173,9 +173,9 @@ function recentRiskCorrection() {
 }
 
 
-function interactionFamilyCooldownRule() {
+function interactionFamilyCooldownSnapshot() {
     const recent = getRecentInteractionFamilies(5);
-    if (!recent.length) return '';
+    if (!recent.length) return null;
     const counts = recent.reduce((map, family) => {
         map[family.id] = (map[family.id] || 0) + 1;
         return map;
@@ -191,7 +191,7 @@ function interactionFamilyCooldownRule() {
         ['flip_card_family', 3],
     ];
     const target = candidates.find(([id, threshold]) => (counts[id] || 0) >= threshold || repeatedLatest === id)?.[0] || '';
-    if (!target) return '';
+    if (!target) return null;
 
     const descriptions = {
         tabbed_radio_family: '并列标签／多按钮切页',
@@ -202,13 +202,23 @@ function interactionFamilyCooldownRule() {
         flip_card_family: '翻面／双面切换',
     };
     const exactBan = target === 'tabbed_radio_family'
-        ? '本轮禁止再次使用“多个同组 radio／并列 label 或按钮／同位置 panel 切换正文”的标签页骨架；把按钮数量从三枚改成两枚或四枚仍算同一骨架。'
-        : `本轮不得继续复用“${descriptions[target] || target}”作为主要交互骨架；必须换成与本轮媒介本体自然一致的另一种状态组织。`;
+        ? '禁止再次使用多个同组 radio＋并列标签／按钮＋同位置 panel 切换正文；改变按钮数量仍算同一骨架。'
+        : `不得继续复用“${descriptions[target] || target}”作为主要交互骨架。`;
+    return {
+        target,
+        label: descriptions[target] || target,
+        count: counts[target] || 0,
+        exactBan,
+    };
+}
 
+function interactionFamilyCooldownRule() {
+    const snapshot = interactionFamilyCooldownSnapshot();
+    if (!snapshot) return '';
     return String.raw`
 交互形态冷却【由近期实际 HTML/CSS 识别；本轮强制换家族】:
-  - 近期重复交互家族：${descriptions[target] || target}（近五轮 ${counts[target] || 0} 次）。
-  - ${exactBan}
+  - 近期重复交互家族：${snapshot.label}（近五轮 ${snapshot.count} 次）。
+  - ${snapshot.exactBan}
   - 禁止仅更换标题、颜色、按钮文案、按钮数量或面板内容后继续复用同一操作路径。
   - 本轮新的交互必须从本轮展现形式的真实使用方式、空间关系、物件行为、叙事推进与内容节奏中自行推导；不得从固定候选清单中挑选，也不得为了躲避冷却机械改套另一种常见组件。
   - 未被现有识别器归类的新交互完全允许；交互家族名称只用于发现近期重复，不是生成模板或可选菜单。
@@ -416,6 +426,58 @@ function stateBarIsolationRule() {
   正文已有的状态栏、属性栏或数据栏只用于理解剧情信息，不得复刻其字段、顺序、标签、配色、卡片结构与信息组织；兔子镜必须按本轮展现形式重新构成。`;
 }
 
+
+function compactLockItems(items, kind) {
+    if (!Array.isArray(items) || !items.length) return kind === 'theme' ? '当前对话语境' : '未记录';
+    return items.slice(0, 3).map(item => {
+        const title = asText(item?.title || item?.id || '未命名');
+        const summary = truncate(item?.summary || item?.raw || '', 120);
+        return summary ? `${title}：${summary}` : title;
+    }).join('｜');
+}
+
+function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
+    const mode = combo?.samplingMode || settings?.samplingMode || 'classic';
+    const themes = mode === 'format_only' ? '当前聊天与刚完成的助手正文' : compactLockItems(combo?.themes, 'theme');
+    const formats = compactLockItems(combo?.formats, 'presentation');
+    const avoidance = settings?.avoidRepeat ? shortVisualAvoidance(combo, 3) : '未启用近期视觉避让。';
+    const interaction = interactionFamilyCooldownSnapshot();
+    const palette = getActivePaletteCooldown(5);
+    const recentFlags = getRecentRiskFlags(5);
+    const innerDetailsBlocked = recentFlags.includes('inner_details_used');
+    const riskCorrection = truncate(recentRiskCorrection().replace(/^\s*真实视觉纠偏[^:]*:\s*/u, ''), 620);
+    const directiveText = settings?.userDirectivePriority && directive?.rawDirective
+        ? truncateDirectiveText(directive.rawDirective, 700)
+        : '';
+
+    const avoidLines = [
+        interaction ? `交互冷却：${interaction.label}（近五轮 ${interaction.count} 次）；${interaction.exactBan}` : '',
+        palette?.active ? `配色冷却：剩余 ${palette.remaining} 轮；主要承载面改用中／高明度，不延续低明度底盘。` : '',
+        innerDetailsBlocked ? '内部折叠冷却：本轮最外层兔子镜内部不得再使用 details/summary。' : '',
+        riskCorrection ? `近期真实输出纠偏：${riskCorrection}` : '',
+    ].filter(Boolean);
+
+    return String.raw`<兔子镜最终执行锁 data-source="independent-api-near-output">
+【本轮必须落实】
+- 抽取模式：${samplingModeLabel(combo, settings)}。
+- 内容构思锁：以“${themes}”作为观察角度、关系组织与细节取材；必须从当前助手正文提取具体动作、情绪、关系变化或物件痕迹，不得只把主题写进标题。
+- UI／媒介构思锁：以“${formats}”作为首个主要视觉本体；DOM/CSS 必须真实呈现其形态、材质、空间关系、阅读路径和操作方式，不得退化为通用卡片、信息面板或只换皮的标签页。
+${directiveText ? `- 用户本轮点菜仍为最高优先，必须同时落实：${directiveText}` : ''}
+
+【近期必须避开】
+${avoidance}
+${avoidLines.length ? avoidLines.map(line => `- ${line}`).join('\n') : '- 当前没有额外冷却；仍不得复用近期相同的视觉骨架与操作路径。'}
+- 新交互必须从本轮媒介本体自行生长；不得从固定组件清单中挑选，也不得为躲避冷却机械轮换另一种常见模板。无法被现有识别器归类的全新交互完全允许。
+
+【输出前逐项自检】
+1. 第一眼能否看出本轮展现形式，而不是只看到标题、按钮组或普通面板；
+2. 本轮主题是否真正进入内容、关系和细节，而不是只成为标签；
+3. 是否复用了近期视觉骨架、阅读路径、配色底盘或交互家族；
+4. 交互是否作用于媒介内部真实对象，并产生可保持、可辨认的第二状态；
+5. 只输出一面完整兔子镜，直接以 <toto> 开始，以 </toto> 结束。
+</兔子镜最终执行锁>`;
+}
+
 function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive, memoryMaterial, activeFeedback }) {
     const chunks = [];
     const mode = combo?.samplingMode || settings?.samplingMode || 'classic';
@@ -471,12 +533,12 @@ ${shortVisualAvoidance(combo, 3)}`);
 
 export function buildRabbitMirrorPromptDetails(settings, generationType = 'normal', activeFeedback = null, generationScopeKey = '', generationContext = null) {
     if (!settings?.enabled || !settings?.autoRabbitMirrorInjection || settings?.mode === 'off') {
-        return { prompt: '', metadata: Object.freeze({ generationType: String(generationType || 'normal') }) };
+        return { prompt: '', executionLock: '', metadata: Object.freeze({ generationType: String(generationType || 'normal') }) };
     }
     const { combo, directive, disabled } = pickCombination(settings, generationScopeKey, generationContext);
     if (disabled) {
         if (settings.debug) console.debug('[RabbitMirror] skipped by user directive');
-        return { prompt: '', metadata: Object.freeze({ generationType: String(generationType || 'normal'), disabled: true }) };
+        return { prompt: '', executionLock: '', metadata: Object.freeze({ generationType: String(generationType || 'normal'), disabled: true }) };
     }
 
     const rawPolicy = normalizedRawPolicy(settings.rawPolicy);
@@ -496,6 +558,8 @@ export function buildRabbitMirrorPromptDetails(settings, generationType = 'norma
         samplingMode: combo?.samplingMode || settings?.samplingMode || 'classic',
         themeIds: Array.isArray(combo?.themeIds) ? [...combo.themeIds] : [],
         formatIds: Array.isArray(combo?.formatIds) ? [...combo.formatIds] : [],
+        themeLabels: Array.isArray(combo?.themes) ? combo.themes.map(item => `${item?.id || '?'} ${item?.title || '未命名'}`) : [],
+        formatLabels: Array.isArray(combo?.formats) ? combo.formats.map(item => `${item?.id || '?'} ${item?.title || '未命名'}`) : [],
         selectedThemeChars: selectedThemes.length,
         selectedFormatChars: selectedFormats.length,
         motherLibraryChars: selectedThemeResult.retrievedChars + selectedFormatResult.retrievedChars,
@@ -519,7 +583,8 @@ export function buildRabbitMirrorPromptDetails(settings, generationType = 'norma
     if (settings.debug) {
         console.debug('[RabbitMirror] generationType:', generationType, 'combo:', combo, 'rawPolicy:', rawPolicy, 'rawRetrieved:', { themes: selectedThemeResult, formats: selectedFormatResult }, 'memorySources:', memoryMaterial?.sources || [], 'prompt chars:', prompt.length);
     }
-    return { prompt, metadata };
+    const executionLock = buildIndependentFinalExecutionLock({ combo, settings, directive });
+    return { prompt, executionLock, metadata };
 }
 
 export function buildRabbitMirrorPrompt(settings, generationType = 'normal', activeFeedback = null, generationScopeKey = '', generationContext = null) {
