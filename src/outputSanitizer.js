@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.2.7';
-import { getCurrentChatKey } from './storage.js?rmv=1.2.7';
+import { getSettings } from './settings.js?rmv=1.2.8';
+import { getCurrentChatKey } from './storage.js?rmv=1.2.8';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -8,12 +8,12 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.2.7';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.7';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.7';
+} from './feedbackCat.js?rmv=1.2.8';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.8';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.8';
 
 
-const RUNTIME_VERSION = '1.2.7';
+const RUNTIME_VERSION = '1.2.8';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -9850,7 +9850,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.2.7-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.2.8-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -10788,7 +10788,8 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
     const full = diagnosticFullChainSummary(root, code);
     const independentRequest = diagnosticIndependentApiRequestSnapshot();
     const lines = [
-        `RabbitMirror 全链路诊断 ${INTERACTION_DIAGNOSTIC_VERSION}`,
+        `兔子镜小剧场 全链路诊断`,
+        `运行版本: ${INTERACTION_DIAGNOSTIC_VERSION}`,
         `标题: ${title || '(未渲染 summary／可能仍是代码块或纯文字)'}`,
         `阶段: ${phase}`,
         `诊断模式: 一次性全链路诊断（已自动停止）`,
@@ -10833,7 +10834,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `当前镜面相关 TH-render=${full.relevantThRenderCount || 0} highlightedCode=${full.relevantHighlightedCount || 0} codeShells=${full.relevantCodeShellCount || 0}`,
         `源码恢复候选=${full.sourceCandidate} 源码被显示层遮蔽=${full.sourceObscured}`,
         '',
-        '[6. RabbitMirror 急救安装层]',
+        '[6. 兔子镜小剧场急救安装层]',
         `interactionScoped=${full.scopedCount} interactionRescued=${full.rescuedCount}`,
         `maintenanceVersion=${full.maintenanceModuleVersion || '(无)'} mode=${full.maintenanceModuleMode || '(无)'}`,
         `findings=${full.maintenanceFindingCount || 0} repairOrder=${full.maintenanceRepairOrder || '(无)'}`,

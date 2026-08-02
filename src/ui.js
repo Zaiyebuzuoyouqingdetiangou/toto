@@ -1,14 +1,14 @@
-import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.2.7';
-import { clearLastCombo } from './storage.js?rmv=1.2.7';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.2.7';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.2.7';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.2.7';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.2.7';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.2.7';
-import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.2.7';
+import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.2.8';
+import { clearLastCombo } from './storage.js?rmv=1.2.8';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.2.8';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.2.8';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.2.8';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.2.8';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.2.8';
+import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.2.8';
 
-const SETTINGS_UI_VERSION = '1.2.7';
-const RUNTIME_VERSION = '1.2.7';
+const SETTINGS_UI_VERSION = '1.2.8';
+const RUNTIME_VERSION = '1.2.8';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -91,13 +91,13 @@ function renderTokenMeter(record = getLastRabbitMirrorTokenRecord()) {
     if (!record) {
         main.text('尚无生成记录');
         exact.text('发送下一轮消息后自动更新。');
-        detail.text('只统计 RabbitMirror 自己写入的 Prompt。');
+        detail.text('只统计兔子镜小剧场自己写入的 Prompt。');
         return;
     }
     if (record.status !== 'injected') {
         main.text('0 Token');
         exact.text(tokenMeterNoInjectionLabel(record.reason));
-        detail.text('未向模型追加 RabbitMirror Prompt。');
+        detail.text('未向模型追加兔子镜小剧场 Prompt。');
         return;
     }
 
@@ -211,7 +211,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场 / Rabbit Mirror Theater <span style="font-size:11px;opacity:.72;">[v1.2.7]</span></b><span class="rabbit-mirror-toto-watermark">Toto v1.2.7</span>
+      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">Toto</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -258,11 +258,11 @@ export function initRabbitMirrorUI() {
 
       <div id="rh_token_meter" class="rabbit-mirror-token-meter" aria-live="polite">
         <div class="rabbit-mirror-token-meter-head">
-          <b>本轮 RabbitMirror 注入</b>
+          <b>本轮兔子镜小剧场注入</b>
           <span data-rh-token-meter-main>尚无生成记录</span>
         </div>
         <div data-rh-token-meter-exact class="rabbit-mirror-token-meter-exact">发送下一轮消息后自动更新。</div>
-        <div data-rh-token-meter-detail class="rabbit-mirror-token-meter-detail">只统计 RabbitMirror 自己写入的 Prompt。</div>
+        <div data-rh-token-meter-detail class="rabbit-mirror-token-meter-detail">只统计兔子镜小剧场自己写入的 Prompt。</div>
         <div class="rabbit-mirror-token-meter-note">字符数为精确值；Token 因模型分词器不同只能估算，因此同时给出保守范围。统计面板本身不会注入模型。</div>
       </div>
 
