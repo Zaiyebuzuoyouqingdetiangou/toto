@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.2.19';
-import { getCurrentChatKey } from './storage.js?rmv=1.2.19';
+import { getSettings } from './settings.js?rmv=1.2.20';
+import { getCurrentChatKey } from './storage.js?rmv=1.2.20';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -8,12 +8,12 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.2.19';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.19';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.19';
+} from './feedbackCat.js?rmv=1.2.20';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.20';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.20';
 
 
-const RUNTIME_VERSION = '1.2.19';
+const RUNTIME_VERSION = '1.2.20';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -9854,7 +9854,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.2.19-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.2.20-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -10807,7 +10807,8 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         independentRequest ? `状态=${independentRequest.ok ? 'success' : 'failed'} HTTP=${independentRequest.status || '?'} model=${independentRequest.model || '(无)'}` : '（暂无独立 API实际生成记录）',
         independentRequest ? `profile=${independentRequest.profile || '(无)'} systemMessage=${!!independentRequest.systemMessageSent} temperatureConfigured=${independentRequest.configuredTemperature ?? '(无)'} temperatureSent=${!!independentRequest.temperatureSent}` : '',
         independentRequest ? `tokenField=${independentRequest.tokenField || '(无)'} stream=${!!independentRequest.streamSent} remembered=${independentRequest.rememberedProfile || '(无)'} attempts=${Array.isArray(independentRequest.attempts) ? independentRequest.attempts.map(item => `${item.profile}:${item.status}`).join(' -> ') : '(无)'}` : '',
-        independentRequest ? `responseTransport=${independentRequest.responseTransport || '(无)'} endReason=${independentRequest.responseEndReason || '(无)'} chunks=${Number(independentRequest.responseChunks || 0)} chars=${Number(independentRequest.responseChars || 0)}` : '',
+        independentRequest ? `responseTransport=${independentRequest.responseTransport || '(无)'} endReason=${independentRequest.responseEndReason || '(无)'} chunks=${Number(independentRequest.responseChunks || 0)} chars=${Number(independentRequest.responseChars || 0)} extracted=${Number(independentRequest.extractedTextChars || 0)}` : '',
+        independentRequest ? `requestCount=${Number(independentRequest.requestCount || (Array.isArray(independentRequest.attempts) ? independentRequest.attempts.length : 0))} automaticFallback=${independentRequest.automaticProfileFallback !== false} completionAccepted=${independentRequest.completionAccepted ?? '(未校验)'} failureStage=${independentRequest.failureStage || '(无)'} mirrorChars=${Number(independentRequest.mirrorChars || 0)}` : '',
         independentRequest ? `samplingMode=${independentRequest.samplingMode || '(无)'} themes=${Array.isArray(independentRequest.themeLabels) ? independentRequest.themeLabels.join(' + ') : '(无)'} formats=${Array.isArray(independentRequest.formatLabels) ? independentRequest.formatLabels.join(' + ') : '(无)'} executionLockChars=${Number(independentRequest.executionLockChars || 0)}` : '',
         '',
         '[1. HTML／Markdown 输入层]',

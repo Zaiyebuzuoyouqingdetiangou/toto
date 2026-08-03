@@ -1,9 +1,9 @@
-import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.2.19';
-import { clearLastCombo } from './storage.js?rmv=1.2.19';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.2.19';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.2.19';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.2.19';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.2.19';
+import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.2.20';
+import { clearLastCombo } from './storage.js?rmv=1.2.20';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.2.20';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.2.20';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.2.20';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.2.20';
 
 
 const API_REQUEST_DIAGNOSTIC_EVENT = 'rabbitmirror:independent-api-diagnostic';
@@ -18,13 +18,13 @@ async function ensureDeferredRuntime() {
 
 async function loadOutputSanitizerModule() {
     await ensureDeferredRuntime();
-    if (!outputSanitizerModulePromise) outputSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.2.19');
+    if (!outputSanitizerModulePromise) outputSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.2.20');
     return outputSanitizerModulePromise;
 }
 
 async function loadIndependentApiModule() {
     await ensureDeferredRuntime();
-    if (!independentApiModulePromise) independentApiModulePromise = import('./independentApi.js?rmv=1.2.19');
+    if (!independentApiModulePromise) independentApiModulePromise = import('./independentApi.js?rmv=1.2.20');
     return independentApiModulePromise;
 }
 
@@ -58,8 +58,8 @@ function configureMaintenanceAutoSafeMode(enabled) {
     void loadOutputSanitizerModule().then(mod => mod.configureMaintenanceAutoSafeMode?.(enabled)).catch(error => console.debug('[RabbitMirror] maintenance mode refresh skipped:', error));
 }
 
-const SETTINGS_UI_VERSION = '1.2.19';
-const RUNTIME_VERSION = '1.2.19';
+const SETTINGS_UI_VERSION = '1.2.20';
+const RUNTIME_VERSION = '1.2.20';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -100,7 +100,11 @@ function independentApiProfileLabel(diagnostic) {
     const transport = diagnostic.responseTransport
         ? `｜${diagnostic.responseTransport}${diagnostic.responseEndReason ? `/${diagnostic.responseEndReason}` : ''}`
         : '';
-    return `${status}｜${messageMode}｜${temperatureMode}｜${diagnostic.tokenField || '未发送输出上限'}｜${streamMode}${transport}`;
+    const chargeGuard = diagnostic.automaticProfileFallback === false ? '｜单次请求保护' : '';
+    const outcome = diagnostic.completionAccepted === true
+        ? '｜兔子镜已接收'
+        : diagnostic.failureStage ? `｜解析失败：${diagnostic.failureStage}` : '';
+    return `${status}｜${messageMode}｜${temperatureMode}｜${diagnostic.tokenField || '未发送输出上限'}｜${streamMode}${transport}${chargeGuard}${outcome}`;
 }
 
 function renderIndependentApiDiagnostic(diagnostic = getLastIndependentApiRequestDiagnostic()) {

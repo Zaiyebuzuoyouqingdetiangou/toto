@@ -1,16 +1,16 @@
-import { getSettings } from './settings.js?rmv=1.2.19';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.19';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.19';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.19';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.19';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.19';
+import { getSettings } from './settings.js?rmv=1.2.20';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.20';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.20';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.20';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.20';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.20';
 
-const RUNTIME_VERSION = '1.2.19';
+const RUNTIME_VERSION = '1.2.20';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
 const API_REQUEST_DIAGNOSTIC_EVENT = 'rabbitmirror:independent-api-diagnostic';
-const API_PROFILE_SCHEMA = 5;
+const API_PROFILE_SCHEMA = 6;
 const DEGRADED_PROFILE_RECHECK_MS = 6 * 60 * 60 * 1000;
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
 const EXTERNAL_SHELL_ATTR = 'data-rabbit-mirror-external-shell';
@@ -34,7 +34,7 @@ let externalGeometryListenersInstalled = false;
 const pending = new Map();
 const independentRequestQueue = [];
 const activeIndependentRequests = new Set();
-const MAX_CONCURRENT_INDEPENDENT_REQUESTS = 2;
+const MAX_CONCURRENT_INDEPENDENT_REQUESTS = 1;
 let independentRequestQueueSequence = 0;
 let feedbackActionListenerInstalled = false;
 let repairPersistenceListenerInstalled = false;
@@ -202,10 +202,10 @@ function profileIsDegraded(profile=''){ return !profileUsesTemperature(profile) 
 function getRememberedApiProfile(st){
  const key=apiProfileKey(st); if(!key) return '';
  const record=readApiProfileStore()[key];
- // v1.2.5 and earlier stored a bare string. Ignore it once after upgrading so
- // standard system+user+temperature is re-probed instead of inheriting a stale
- // no-temp or user-only fallback forever.
- if(!record || typeof record!=='object' || Number(record.schema)!==API_PROFILE_SCHEMA) return '';
+ // Bare-string legacy records are ignored. Structured schema-5 records from
+ // the immediately previous public build are preserved because they already
+ // represent a successful endpoint profile; the next success upgrades them.
+ if(!record || typeof record!=='object' || ![5,API_PROFILE_SCHEMA].includes(Number(record.schema))) return '';
  if(Math.abs(Number(record.temperature)-normalizedConfiguredTemperature(st))>0.0001) return '';
  if(profileIsDegraded(record.profile) && Date.now()-Number(record.ts||0)>DEGRADED_PROFILE_RECHECK_MS) return '';
  return String(record.profile||'');
@@ -225,6 +225,10 @@ function publishIndependentApiRequestDiagnostic(value){
  try{ localStorage.setItem(API_REQUEST_DIAGNOSTIC_STORE_KEY,JSON.stringify(diagnostic)); }catch{}
  try{ globalThis.dispatchEvent?.(new CustomEvent(API_REQUEST_DIAGNOSTIC_EVENT,{detail:diagnostic})); }catch{}
  return diagnostic;
+}
+function updateIndependentApiRequestDiagnostic(patch={}){
+ const previous=readLastIndependentApiRequestDiagnostic()||{};
+ return publishIndependentApiRequestDiagnostic({...previous,...patch,ts:Date.now()});
 }
 export function getLastIndependentApiRequestDiagnostic(){ return readLastIndependentApiRequestDiagnostic(); }
 export { API_REQUEST_DIAGNOSTIC_EVENT };
@@ -517,7 +521,7 @@ function extractResponseText(payload){
    const text=payload.output.flatMap(item=>Array.isArray(item?.content)?item.content:[item?.content,item?.text]).map(textFromContent).filter(Boolean).join('\n').trim();
    if(text) return text;
  }
- const reasoning=textFromContent(choice?.message?.reasoning_content ?? choice?.message?.reasoning ?? payload?.reasoning).trim();
+ const reasoning=textFromContent(choice?.message?.reasoning_content ?? choice?.message?.reasoning ?? choice?.delta?.reasoning_content ?? choice?.delta?.reasoning ?? payload?.reasoning).trim();
  if(/<toto\b|<details\b/i.test(reasoning)) return reasoning;
  return '';
 }
@@ -528,10 +532,15 @@ function parseSsePayload(text=''){
    if(!trimmed) continue;
    let data='';
    if(trimmed.startsWith('data:')) data=trimmed.slice(5).trim();
-   else if(trimmed.startsWith('{')) data=trimmed;
+   else if(trimmed.startsWith('{') || trimmed.startsWith('<')) data=trimmed;
    else continue;
    if(!data) continue;
    if(data==='[DONE]'){ done=true; break; }
+   if(/^<(?:toto|details)\b/i.test(data)){
+     merged+=data;
+     frames++;
+     continue;
+   }
    try{
      const json=JSON.parse(data); lastPayload=json; frames++;
      const part=extractResponseText(json);
@@ -540,46 +549,96 @@ function parseSsePayload(text=''){
  }
  return {payload:lastPayload,text:merged.trim(),done,frames};
 }
-
-// Compatibility transport: use the exact buffered response lifecycle that was
-// proven stable in v1.2.3. Several OpenAI-compatible Gemini gateways expose a
-// ReadableStream but behave differently across Safari/WebView and SillyTavern
-// versions. Reading the complete body through Response.text() avoids keeping a
-// locked reader alive after the gateway has already finished the request.
-async function readApiResponse(response){
- const contentType=String(response.headers?.get?.('content-type')||'').toLowerCase();
- const raw=await response.text();
- const streamLike=/text\/event-stream|application\/x-ndjson/.test(contentType) || /^\s*data:/m.test(raw);
+function parseBufferedApiResponse(raw='',contentType='',transport='buffered',endReason='eof',chunks=1){
+ const source=String(raw||'');
+ const type=String(contentType||'').toLowerCase();
+ const streamLike=/text\/event-stream|application\/x-ndjson/.test(type) || /^\s*data:/m.test(source);
  if(streamLike){
-   const parsed=parseSsePayload(raw);
+   const parsed=parseSsePayload(source);
    return {
-     raw,
+     raw:source,
      payload:parsed.payload,
      text:parsed.text,
-     transport:'compat-buffered-stream',
-     endReason:parsed.done?'done-marker':'eof',
-     chunks:parsed.frames,
+     transport:`${transport}-stream`,
+     endReason:parsed.done?'done-marker':endReason,
+     chunks:Number(chunks||parsed.frames||0),
    };
  }
  try{
-   const payload=JSON.parse(raw);
+   const payload=JSON.parse(source);
    return {
-     raw,
+     raw:source,
      payload,
      text:extractResponseText(payload),
-     transport:'compat-buffered-json',
-     endReason:'eof',
-     chunks:1,
+     transport:`${transport}-json`,
+     endReason,
+     chunks:Number(chunks||1),
    };
  }catch{
    return {
-     raw,
+     raw:source,
      payload:null,
-     text:String(raw||'').trim(),
-     transport:'compat-buffered-text',
-     endReason:'eof',
-     chunks:1,
+     text:source.trim(),
+     transport:`${transport}-text`,
+     endReason,
+     chunks:Number(chunks||1),
    };
+ }
+}
+function responseTextCandidates(result,{includeRaw=true}={}){
+ const values=[];
+ const add=value=>{ const text=String(value||'').trim(); if(text && !values.includes(text)) values.push(text); };
+ add(result?.text);
+ add(extractResponseText(result?.payload));
+ const raw=String(result?.raw||'');
+ if(raw){
+   const sse=parseSsePayload(raw); add(sse.text);
+   try{ add(extractResponseText(JSON.parse(raw))); }catch{}
+   if(includeRaw) add(raw);
+ }
+ return values;
+}
+function completeMirrorFromResponse(result,options={}){
+ for(const candidate of responseTextCandidates(result,options)){
+   const inner=extractMirrorInner(candidate);
+   if(inner) return {inner,candidate};
+ }
+ return {inner:'',candidate:''};
+}
+async function readApiResponse(response){
+ const contentType=String(response.headers?.get?.('content-type')||'').toLowerCase();
+ const body=response?.body;
+ if(!body?.getReader || typeof TextDecoder==='undefined'){
+   const raw=await response.text();
+   return parseBufferedApiResponse(raw,contentType,'compat-buffered','eof',1);
+ }
+ const reader=body.getReader();
+ const decoder=new TextDecoder();
+ let raw=''; let chunks=0; let released=false;
+ const finish=async(reason='eof')=>{
+   const parsed=parseBufferedApiResponse(raw,contentType,'incremental',reason,chunks);
+   try{ await reader.cancel?.(`rabbit-mirror-${reason}`); }catch{}
+   try{ reader.releaseLock?.(); released=true; }catch{}
+   return parsed;
+ };
+ try{
+   while(true){
+     const step=await reader.read();
+     if(step.done) break;
+     chunks++;
+     raw+=decoder.decode(step.value,{stream:true});
+     const likelyBoundary=/<\/(?:toto|details)>/i.test(raw) || /\\u003c\/(?:toto|details)\\u003e/i.test(raw) || /(?:^|\n)data:\s*\[DONE\]\s*(?:$|\n)/m.test(raw);
+     if(!likelyBoundary) continue;
+     const parsed=parseBufferedApiResponse(raw,contentType,'incremental','partial',chunks);
+     if(completeMirrorFromResponse(parsed,{includeRaw:false}).inner) return await finish('complete-mirror');
+     if(parsed.endReason==='done-marker') return await finish('done-marker');
+     const finishReason=responseFinishReason(parsed.payload);
+     if(/^(?:stop|length|max_tokens|MAX_TOKENS)$/i.test(finishReason)) return await finish(`finish-${finishReason}`);
+   }
+   raw+=decoder.decode();
+   return parseBufferedApiResponse(raw,contentType,'incremental','eof',chunks);
+ }finally{
+   if(!released){ try{ reader.releaseLock?.(); }catch{} }
  }
 }
 function extractMirrorInner(raw){
@@ -649,60 +708,41 @@ function compactRemoteError(status,raw=''){
  return source.replace(/\s+/g,' ').trim().slice(0,220);
 }
 
-function retryableParameterError(status,result){
- if(![400,422,500].includes(Number(status))) return false;
- const text=`${result?.raw||''} ${safeJson(result?.payload||{},4000)}`;
- return /invalid[_ -]?request|invalid[_ -]?parameter|parameter|参数错误|参数有误|unsupported|not supported|unknown field|max_tokens|max_completion_tokens|temperature|stream/i.test(text);
-}
 async function requestIndependentCompletion(st,systemPrompt,userPrompt,options={}){
- const attempts=[];
  const rememberedProfile=getRememberedApiProfile(st);
  const profiles=independentRequestProfiles(st,systemPrompt,userPrompt,options);
- for(const profile of profiles){
-  const url=endpoint(st.independentApiBaseUrl,profile.kind==='responses'?'/responses':'/chat/completions');
-  const r=await fetchIndependentUrl(url,{method:'POST',headers:headers(st),body:JSON.stringify(profile.body),signal:options.signal});
-  try{ options.onResponseStart?.({status:Number(r.status||0),ok:!!r.ok,profile:profile.name}); }catch{}
-  const result=await readApiResponse(r);
-  attempts.push({profile:profile.name,status:r.status,detail:String(result.raw||'').slice(0,280)});
-  const diagnosticBase={
-   ok:!!r.ok,
-   status:Number(r.status||0),
-   model:String(st.independentApiModel||''),
-   baseUrl:normalizeBase(st.independentApiBaseUrl||''),
-   configuredTemperature:normalizedConfiguredTemperature(st),
-   profile:profile.name,
-   temperatureSent:Object.prototype.hasOwnProperty.call(profile.body||{},'temperature'),
-   systemMessageSent:profileUsesSystemMessage(profile.name),
-   streamSent:profile.body?.stream!==false,
-   tokenField:profileTokenField(profile.name),
-   rememberedProfile,
-   attempts:attempts.map(item=>({profile:item.profile,status:item.status})),
-   responseTransport:String(result.transport||''),
-   responseEndReason:String(result.endReason||''),
-   responseChunks:Number(result.chunks||0),
-   responseChars:String(result.raw||'').length,
-   ...(options.diagnosticContext && typeof options.diagnosticContext==='object' ? options.diagnosticContext : {}),
-  };
-  if(r.ok){
-   rememberApiProfile(st,profile.name);
-   const requestDiagnostic=publishIndependentApiRequestDiagnostic(diagnosticBase);
-   return {response:r,result,profile:profile.name,attempts,requestDiagnostic};
-  }
-  if(!retryableParameterError(r.status,result) && ![404,405].includes(Number(r.status))){
-   const requestDiagnostic=publishIndependentApiRequestDiagnostic(diagnosticBase);
-   return {response:r,result,profile:profile.name,attempts,requestDiagnostic};
-  }
- }
- const last=attempts[attempts.length-1]||{};
- const lastProfile=String(last.profile||'unknown');
- const requestDiagnostic=publishIndependentApiRequestDiagnostic({
-  ok:false,status:Number(last.status||500),model:String(st.independentApiModel||''),baseUrl:normalizeBase(st.independentApiBaseUrl||''),
-  configuredTemperature:normalizedConfiguredTemperature(st),profile:lastProfile,temperatureSent:profileUsesTemperature(lastProfile),
-  systemMessageSent:profileUsesSystemMessage(lastProfile),streamSent:profileUsesStreaming(lastProfile),tokenField:profileTokenField(lastProfile),
-  rememberedProfile,attempts:attempts.map(item=>({profile:item.profile,status:item.status})),
+ const profile=profiles.find(item=>item.name===rememberedProfile) || profiles.find(item=>item.name==='chat_system_user_full') || profiles[0];
+ if(!profile) throw new Error('没有可用的独立 API 请求参数模式');
+ const url=endpoint(st.independentApiBaseUrl,profile.kind==='responses'?'/responses':'/chat/completions');
+ const r=await fetchIndependentUrl(url,{method:'POST',headers:headers(st),body:JSON.stringify(profile.body),signal:options.signal});
+ try{ options.onResponseStart?.({status:Number(r.status||0),ok:!!r.ok,profile:profile.name}); }catch{}
+ const result=await readApiResponse(r);
+ const attempts=[{profile:profile.name,status:r.status,detail:String(result.raw||'').slice(0,280)}];
+ const diagnosticBase={
+  ok:!!r.ok,
+  status:Number(r.status||0),
+  model:String(st.independentApiModel||''),
+  baseUrl:normalizeBase(st.independentApiBaseUrl||''),
+  configuredTemperature:normalizedConfiguredTemperature(st),
+  profile:profile.name,
+  temperatureSent:Object.prototype.hasOwnProperty.call(profile.body||{},'temperature'),
+  systemMessageSent:profileUsesSystemMessage(profile.name),
+  streamSent:profile.body?.stream!==false,
+  tokenField:profileTokenField(profile.name),
+  rememberedProfile,
+  attempts:attempts.map(item=>({profile:item.profile,status:item.status})),
+  requestCount:1,
+  automaticProfileFallback:false,
+  responseTransport:String(result.transport||''),
+  responseEndReason:String(result.endReason||''),
+  responseChunks:Number(result.chunks||0),
+  responseChars:String(result.raw||'').length,
+  extractedTextChars:String(result.text||'').length,
   ...(options.diagnosticContext && typeof options.diagnosticContext==='object' ? options.diagnosticContext : {}),
- });
- return {response:{ok:false,status:last.status||500},result:{raw:last.detail||''},profile:lastProfile,attempts,requestDiagnostic};
+ };
+ if(r.ok) rememberApiProfile(st,profile.name);
+ const requestDiagnostic=publishIndependentApiRequestDiagnostic(diagnosticBase);
+ return {response:r,result,profile:profile.name,attempts,requestDiagnostic};
 }
 function wrappedIndependentMirrorHtml(inner=''){
  return `<toto data-rabbit-mirror="true" style="display:block;">${String(inner||'')}</toto>`;
@@ -807,27 +847,32 @@ ${executionLock}
  if(!r.ok){
    const detail=compactRemoteError(r.status,result.raw||'');
    const tried=attempts.map(x=>x.profile).join(' → ');
-   throw new Error(`独立 API 请求失败：HTTP ${r.status}${detail?` · ${detail}`:''}${tried?`；已尝试兼容参数：${tried}`:''}`);
+   throw new Error(`独立 API 请求失败：HTTP ${r.status}${detail?` · ${detail}`:''}${tried?`；请求参数：${tried}`:''}。为避免重复扣次数，本次不会自动换参数重试。`);
  }
- const raw=String(result.text||'').trim();
+ const recovered=completeMirrorFromResponse(result);
+ const raw=String(recovered.candidate||result.text||'').trim();
  if(!raw){
    const keys=result.payload&&typeof result.payload==='object'?Object.keys(result.payload).slice(0,12).join(', '):'非 JSON 返回';
-   throw new Error(`独立 API 调用成功，但未解析到正文（返回字段：${keys||'无'}；参数模式：${profile}）`);
+   updateIndependentApiRequestDiagnostic({completionAccepted:false,failureStage:'empty-response-text',mirrorChars:0});
+   throw new Error(`独立 API 已扣除本次请求，但未解析到正文（返回字段：${keys||'无'}；参数模式：${profile}）。本次不会自动再次请求。`);
  }
- const inner=extractMirrorInner(raw);
+ const inner=recovered.inner;
  if(!inner){
    const finish=responseFinishReason(result.payload);
    const configuredMax=Number(st.independentApiMaxTokens)||12000;
+   updateIndependentApiRequestDiagnostic({completionAccepted:false,failureStage:'incomplete-mirror',finishReason:finish,mirrorChars:0,candidateChars:raw.length});
    if(/length|max_tokens|MAX_TOKENS/i.test(finish)){
-     const recommendation=configuredMax<8192?'；建议把“最大输出”提高到至少 8192 后重新生成':'';
-     throw new Error(`独立 API 已返回内容，但兔子镜在输出完成前被截断（finish_reason: ${finish}）。当前最大输出设置：${configuredMax}${recommendation}；参数模式：${profile}`);
+     const recommendation=configuredMax<8192?'；建议把“最大输出”提高到至少 8192 后手动重试':'';
+     throw new Error(`独立 API 已返回内容，但兔子镜在输出完成前被截断（finish_reason: ${finish}）。当前最大输出设置：${configuredMax}${recommendation}；参数模式：${profile}。本次不会自动再次请求。`);
    }
-   throw new Error(`独立 API 调用成功，但返回内容不是完整兔子镜${finish?`（finish_reason: ${finish}）`:''}；参数模式：${profile}`);
+   throw new Error(`独立 API 已返回内容，但没有找到完整兔子镜${finish?`（finish_reason: ${finish}）`:''}；参数模式：${profile}。本次不会自动再次请求。`);
  }
  if(!independentMirrorBodyEvidence(inner)){
-   throw new Error('独立 API 返回了只有标题或样式的空壳兔子镜；本次结果不会保存，也不会交给维修兔改写正文。请在挨打猫中使用“重说”。');
+   updateIndependentApiRequestDiagnostic({completionAccepted:false,failureStage:'empty-mirror-shell',mirrorChars:inner.length});
+   throw new Error('独立 API 返回了只有标题或样式的空壳兔子镜；本次结果不会保存，也不会自动再次请求。请手动重试。');
  }
- return {html:inner,feedbackId:activeFeedback?.id||'',feedbackPrompt,requestDiagnostic,executionLockChars:executionLock.length};
+ const completedDiagnostic=updateIndependentApiRequestDiagnostic({completionAccepted:true,failureStage:'',mirrorChars:inner.length,candidateChars:raw.length});
+ return {html:inner,feedbackId:activeFeedback?.id||'',feedbackPrompt,requestDiagnostic:completedDiagnostic,executionLockChars:executionLock.length};
 }
 function externalOwnerMesid(el){
  return String(el?.getAttribute?.('mesid') ?? el?.dataset?.messageId ?? el?.dataset?.messageid ?? '').trim();
@@ -2509,9 +2554,17 @@ async function generateFor(index,msg,force=false,sourceAware=true){
   return callIndependentApi(ctx,index,msg,controller.signal,lifecycle);
  });
  const task=requestTask.then(result=>{
-  if(!stillCurrent()){ stale=true; return; }
   const html=String(result?.html||'');
-  const paletteFingerprint=commitIndependentVisualResult(html);
+  const isLive=stillCurrent();
+  const paletteFingerprint=isLive ? commitIndependentVisualResult(html) : independentPaletteFingerprintFromHtml(html);
+  const initialHtml=scrubIndependentInteractionState(html,html);
+  const completed={html:initialHtml||html,initialHtml:initialHtml||html,sourceHash,bodyHash,displayHash,reasoningHash,paletteFingerprint,ts:Date.now(),model:st.independentApiModel,runtime:RUNTIME_VERSION,apiRequest:result?.requestDiagnostic||null,executionLockChars:Number(result?.executionLockChars||0)};
+  // Persist the paid result under the exact正文 identity even when the DOM was
+  // remounted before the response arrived. It can be restored when that正文 is
+  // shown again instead of being discarded and regenerated.
+  appendHistoryEntry(slot,completed);
+  const next=readStore(); saveRecordForSlot(next,slot,completed); writeStore(next);
+  if(!isLive){ stale=true; return completed; }
   if(result?.feedbackId && result?.feedbackPrompt){
    const liveFeedback=getActiveFeedbackForCurrentChat(getContext().chat);
    if(liveFeedback?.id===result.feedbackId){
@@ -2519,10 +2572,6 @@ async function generateFor(index,msg,force=false,sourceAware=true){
     consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror(wrappedIndependentMirrorHtml(html),result.feedbackId);
    }
   }
-  const initialHtml=scrubIndependentInteractionState(html,html);
-  const completed={html:initialHtml||html,initialHtml:initialHtml||html,sourceHash,bodyHash,displayHash,reasoningHash,paletteFingerprint,ts:Date.now(),model:st.independentApiModel,runtime:RUNTIME_VERSION,apiRequest:result?.requestDiagnostic||null,executionLockChars:Number(result?.executionLockChars||0)};
-  appendHistoryEntry(slot,completed);
-  const next=readStore(); saveRecordForSlot(next,slot,completed); writeStore(next);
   const liveEl=messageElement(index);
   if(liveEl) ensureExternalUi(liveEl,key,completed.html,'ready','independent',sourceHash);
   return completed;
@@ -2553,8 +2602,10 @@ async function generateFor(index,msg,force=false,sourceAware=true){
   if(flight.timeoutTimer){ clearTimeout(flight.timeoutTimer); flight.timeoutTimer=0; }
   if(pending.get(slot)?.runId===runId) pending.delete(slot);
   if(globalFlights().get(flightKey)===flight) globalFlights().delete(flightKey);
-  const retryStale=!flight.cancelReason || ['source-version-replaced','source-changed'].includes(String(flight.cancelReason));
-  if(stale && retryStale && currentRuntime() && runtimeMode()==='independent') scheduleMessageGeneration(index,360,true);
+  // A request that has reached the provider must never silently enqueue a
+  // second paid request merely because the page, swipe DOM or message owner was
+  // remounted while the response was in flight. New正文 versions are handled by
+  // their own host events or an explicit user retry.
  });
  flight.task=task;
  await task;
