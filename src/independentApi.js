@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.2.10';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.10';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.10';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.10';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.10';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.10';
+import { getSettings } from './settings.js?rmv=1.2.13';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.13';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.13';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.13';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.13';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.13';
 
-const RUNTIME_VERSION = '1.2.10';
+const RUNTIME_VERSION = '1.2.13';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
@@ -32,6 +32,9 @@ let syncRunning = false;
 let externalGeometryFrame = 0;
 let externalGeometryListenersInstalled = false;
 const pending = new Map();
+const independentRequestQueue = [];
+let activeIndependentRequest = null;
+let independentRequestQueueSequence = 0;
 let feedbackActionListenerInstalled = false;
 let repairPersistenceListenerInstalled = false;
 const orphanExternalHostTimers = new Map();
@@ -44,6 +47,8 @@ const CONTEXT_TRANSCRIPT_BUDGET = 52000;
 const CONTEXT_TOTAL_BUDGET = 76000;
 const OWNER_REATTACH_WAIT_MS = 60000;
 const ACTIVE_GENERATION_WAIT_MS = 10 * 60 * 1000;
+const SOFT_HOST_FLAG_RELEASE_MS = 12 * 1000;
+const STALE_DOM_GENERATION_RELEASE_MS = 45 * 1000;
 const SOURCE_STABLE_WAIT_MS = 1400;
 const INDEPENDENT_REQUEST_TIMEOUT_MS = 5 * 60 * 1000;
 const HOST_GENERATION_EVENT_HINT_MS = 15000;
@@ -140,7 +145,7 @@ function normalizeHistoryEntry(value){
  if(!value?.html) return null;
  const html=String(value.html||'');
  return {
-  id:String(value.id||hashText(html)), html, sourceHash:String(value.sourceHash||''),
+  id:String(value.id||hashText(html)), html, initialHtml:String(value.initialHtml||''), sourceHash:String(value.sourceHash||''),
   bodyHash:String(value.bodyHash||''), displayHash:String(value.displayHash||''), reasoningHash:String(value.reasoningHash||''),
   ts:Number(value.ts||Date.now()), model:String(value.model||''), runtime:String(value.runtime||RUNTIME_VERSION),
   apiRequest:value.apiRequest&&typeof value.apiRequest==='object'?{...value.apiRequest}:null,
@@ -224,7 +229,7 @@ export function getLastIndependentApiRequestDiagnostic(){ return readLastIndepen
 export { API_REQUEST_DIAGNOSTIC_EVENT };
 function hashText(text=''){ let h=2166136261; for(const ch of String(text)){ h^=ch.charCodeAt(0); h=Math.imul(h,16777619);} return (h>>>0).toString(36); }
 function getContext(){ try { return globalThis.SillyTavern?.getContext?.() || {}; } catch { return {}; } }
-function hostGenerationLooksActive(){
+function hostGenerationActivity(){
  const ctx=getContext();
  const flags=[
   ctx?.isGenerating,
@@ -233,16 +238,18 @@ function hostGenerationLooksActive(){
   globalThis.is_send_press,
   globalThis.is_group_generating,
  ];
- if(flags.some(value=>value===true)) return true;
+ const soft=flags.some(value=>value===true);
+ let dom=false;
  try{
-  if(document.querySelector?.('#chat .mes.streaming, #chat .mes[data-is-streaming="true"], #chat .mes[is_generating="true"], #chat .mes[data-generating="true"]')) return true;
+  dom=!!document.querySelector?.('#chat .mes.streaming, #chat .mes[data-is-streaming="true"], #chat .mes[is_generating="true"], #chat .mes[data-generating="true"]');
  }catch{}
  // GENERATION_ENDED can occasionally be missed by mobile WebViews. Treat the
- // event-only flag as a short hint, never as a ten-minute permanent lock.
- if(hostGenerationInProgress && hostGenerationHintStartedAt && Date.now()-hostGenerationHintStartedAt<HOST_GENERATION_EVENT_HINT_MS) return true;
- if(hostGenerationInProgress){ hostGenerationInProgress=false; hostGenerationHintStartedAt=0; }
- return false;
+ // event-only flag as a short hint, never as a permanent lock.
+ const eventHint=!!(hostGenerationInProgress && hostGenerationHintStartedAt && Date.now()-hostGenerationHintStartedAt<HOST_GENERATION_EVENT_HINT_MS);
+ if(hostGenerationInProgress && !eventHint){ hostGenerationInProgress=false; hostGenerationHintStartedAt=0; }
+ return {active:soft||dom||eventHint,soft,dom,eventHint,hard:dom||eventHint};
 }
+function hostGenerationLooksActive(){ return hostGenerationActivity().active; }
 function legacyChatKey(ctx){ const meta=ctx?.chatMetadata||globalThis.chat_metadata||{}; return String(meta.chat_id||meta.chatId||meta.file_name||ctx?.characterId||ctx?.groupId||'chat'); }
 function chatKey(ctx){ try{ return String(getCurrentChatKey?.(Array.isArray(ctx?.chat)?ctx.chat:null) || legacyChatKey(ctx)); }catch{ return legacyChatKey(ctx); } }
 function swipeId(msg){ return Number(msg?.swipe_id ?? msg?.swipeId ?? 0) || 0; }
@@ -295,7 +302,7 @@ function slotSearchKeys(slot='',aliases=[]){
 function findSavedRecord(store,slot,aliases=[]){
  for(const candidate of slotSearchKeys(slot,aliases)){
   const exact=store?.[candidate];
-  if(exact?.html) return exact;
+  if(exact?.html) return normalizeSavedInteractionRecord(exact,candidate);
  }
  return null;
 }
@@ -588,6 +595,7 @@ async function requestIndependentCompletion(st,systemPrompt,userPrompt,options={
  for(const profile of profiles){
   const url=endpoint(st.independentApiBaseUrl,profile.kind==='responses'?'/responses':'/chat/completions');
   const r=await fetchIndependentUrl(url,{method:'POST',headers:headers(st),body:JSON.stringify(profile.body),signal:options.signal});
+  try{ options.onResponseStart?.({status:Number(r.status||0),ok:!!r.ok,profile:profile.name}); }catch{}
   const result=await readApiResponse(r);
   attempts.push({profile:profile.name,status:r.status,detail:String(result.raw||'').slice(0,280)});
   const diagnosticBase={
@@ -687,7 +695,7 @@ function commitIndependentVisualResult(inner=''){
   return scanned.paletteFingerprint||null;
  }catch(error){ console.debug('[RabbitMirror] independent visual signature skipped:',error); return null; }
 }
-async function callIndependentApi(ctx,index,msg,signal=null){
+async function callIndependentApi(ctx,index,msg,signal=null,lifecycle={}){
  const st=getSettings(); if(!st.independentApiBaseUrl||!st.independentApiModel) throw new Error('独立 API 尚未完成地址与模型设置');
  const generationScopeKey=`independent:${Date.now().toString(36)}:${index}:${swipeId(msg)}`;
  const activeFeedback=st.feedbackCatEnabled!==false ? getActiveFeedbackForCurrentChat(ctx.chat) : null;
@@ -725,7 +733,7 @@ ${executionLock}
   formatLabels:Array.isArray(details.metadata?.formatLabels)?details.metadata.formatLabels:[],
   executionLockChars:executionLock.length,
  };
- const {response:r,result,profile,attempts,requestDiagnostic}=await requestIndependentCompletion(st,systemPrompt,userPrompt,{signal,diagnosticContext:requestSelectionDiagnostic});
+ const {response:r,result,profile,attempts,requestDiagnostic}=await requestIndependentCompletion(st,systemPrompt,userPrompt,{signal,diagnosticContext:requestSelectionDiagnostic,onResponseStart:lifecycle?.onResponseStart});
  if(!r.ok){
    const detail=compactRemoteError(r.status,result.raw||'');
    const tried=attempts.map(x=>x.profile).join(' → ');
@@ -1148,6 +1156,187 @@ function cachePreparedReadyHtml(key,value){
  }
  return value;
 }
+
+const PERSISTED_STATE_STYLE_ATTRS = [
+ 'data-rabbit-mirror-checked-pseudo-rule-rescue',
+ 'data-rabbit-mirror-focus-within-persistent-style',
+ 'data-rabbit-mirror-static-choice-selection-style',
+ 'data-rabbit-mirror-structured-static-disclosure-style',
+ 'data-rabbit-mirror-fill-in-choice-style',
+];
+const PERSISTED_STATE_ARIA_ATTRS = ['aria-pressed','aria-selected','aria-expanded','aria-current'];
+const PERSISTED_STATE_ATTR_RE = /^(?:data-rm-(?:.*(?:active|selected|open|used|filled|touch-hover|pseudo-active|target-active)|checked-pseudo-rule-target|labeled-checked-verify-target|reversible-style-baseline|reversible-text-baseline|click-to-restore)|data-rabbit-mirror-(?:labeled-checked(?:-last|-verify|-verify-count)?|checked-text-rule-rescue|expanded-opacity-rescue|inert-action-active|radio-reset-last|stale-checked-inline-cleanup))$/i;
+function parseIndependentDetailsRaw(html=''){
+ try{
+  const template=document.createElement('template');
+  template.innerHTML=String(html||'');
+  return template.content.querySelector('details');
+ }catch{return null;}
+}
+function restoreEncodedInteractionBaselines(root){
+ if(!root?.querySelectorAll) return;
+ for(const element of [root,...root.querySelectorAll('[data-rm-reversible-style-baseline]')]){
+  const encoded=String(element.getAttribute?.('data-rm-reversible-style-baseline')||'');
+  if(!encoded || !element.style) continue;
+  try{
+   const parsed=JSON.parse(decodeURIComponent(encoded));
+   for(const [property,state] of Object.entries(parsed||{})){
+    const value=String(state?.value||'');
+    const priority=String(state?.priority||'');
+    if(value) element.style.setProperty(property,value,priority);
+    else element.style.removeProperty(property);
+   }
+  }catch{}
+ }
+ for(const element of root.querySelectorAll('[data-rm-reversible-text-baseline]')){
+  const encoded=String(element.getAttribute('data-rm-reversible-text-baseline')||'');
+  if(!encoded || element.children?.length) continue;
+  try{ element.textContent=decodeURIComponent(encoded); }catch{}
+ }
+}
+function persistedStateElements(root){
+ if(!root?.querySelectorAll) return [];
+ return [root,...root.querySelectorAll('*')].filter(element=>{
+  if(element.matches?.('[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')) return false;
+  if(element.tagName==='STYLE' && PERSISTED_STATE_STYLE_ATTRS.some(name=>element.hasAttribute(name))) return false;
+  return true;
+ });
+}
+function elementHasPersistedRuntimeState(element){
+ if(!element?.attributes) return false;
+ if(PERSISTED_STATE_ARIA_ATTRS.some(name=>element.hasAttribute(name))) return true;
+ return [...element.attributes].some(attribute=>PERSISTED_STATE_ATTR_RE.test(attribute.name));
+}
+function baselineElementForCurrent(current,baselines,used,cursorRef){
+ const tag=String(current?.tagName||'');
+ const id=String(current?.id||'');
+ if(id){
+  const exact=baselines.find((item,index)=>!used.has(index) && item.tagName===tag && (item.id===id || (item.id && id.endsWith(`-${item.id}`))));
+  if(exact){ const index=baselines.indexOf(exact); used.add(index); cursorRef.value=Math.max(cursorRef.value,index+1); return exact; }
+ }
+ for(let i=cursorRef.value;i<Math.min(baselines.length,cursorRef.value+12);i++){
+  if(used.has(i) || baselines[i].tagName!==tag) continue;
+  used.add(i); cursorRef.value=i+1; return baselines[i];
+ }
+ for(let i=0;i<baselines.length;i++){
+  if(used.has(i) || baselines[i].tagName!==tag) continue;
+  used.add(i); return baselines[i];
+ }
+ return null;
+}
+function restoreStateAttributesFromBaseline(current,baseline){
+ if(!current || !baseline) return;
+ const stateful=elementHasPersistedRuntimeState(current);
+ if(stateful){
+  for(const name of ['class','style','hidden']){
+   if(baseline.hasAttribute(name)) current.setAttribute(name,baseline.getAttribute(name));
+   else current.removeAttribute(name);
+  }
+ }
+ for(const name of PERSISTED_STATE_ARIA_ATTRS){
+  if(baseline.hasAttribute(name)) current.setAttribute(name,baseline.getAttribute(name));
+  else current.removeAttribute(name);
+ }
+ for(const attribute of [...current.attributes]){
+  if(!PERSISTED_STATE_ATTR_RE.test(attribute.name)) continue;
+  if(baseline.hasAttribute(attribute.name)) current.setAttribute(attribute.name,baseline.getAttribute(attribute.name));
+  else current.removeAttribute(attribute.name);
+ }
+}
+function scrubIndependentInteractionState(html='',baselineHtml=''){
+ const details=parseIndependentDetailsRaw(html);
+ if(!details) return String(html||'').trim();
+ const baseline=parseIndependentDetailsRaw(baselineHtml)||parseIndependentDetailsRaw(html);
+ restoreEncodedInteractionBaselines(details);
+ details.querySelectorAll(PERSISTED_STATE_STYLE_ATTRS.map(name=>`style[${name}]`).join(',')).forEach(node=>node.remove());
+ const currentElements=persistedStateElements(details);
+ const baselineElements=persistedStateElements(baseline);
+ const used=new Set(); const cursorRef={value:0};
+ for(const current of currentElements){
+  const original=baselineElementForCurrent(current,baselineElements,used,cursorRef);
+  if(original) restoreStateAttributesFromBaseline(current,original);
+ }
+ const currentInputs=[...details.querySelectorAll('input[type="checkbox"], input[type="radio"]')];
+ const baselineInputs=[...baseline.querySelectorAll('input[type="checkbox"], input[type="radio"]')];
+ currentInputs.forEach((input,index)=>{
+  const original=baselineInputs[index];
+  const checked=!!original?.hasAttribute?.('checked');
+  input.checked=checked;
+  input.defaultChecked=checked;
+  if(checked) input.setAttribute('checked',''); else input.removeAttribute('checked');
+  if(original?.hasAttribute?.('aria-pressed')) input.setAttribute('aria-pressed',original.getAttribute('aria-pressed'));
+  else input.removeAttribute('aria-pressed');
+ });
+ const currentOptions=[...details.querySelectorAll('option')];
+ const baselineOptions=[...baseline.querySelectorAll('option')];
+ currentOptions.forEach((option,index)=>{
+  const selected=!!baselineOptions[index]?.hasAttribute?.('selected');
+  option.selected=selected;
+  option.defaultSelected=selected;
+  if(selected) option.setAttribute('selected',''); else option.removeAttribute('selected');
+ });
+ const currentDetails=[details,...details.querySelectorAll('details')];
+ const baselineDetails=[baseline,...baseline.querySelectorAll('details')];
+ currentDetails.forEach((item,index)=>{
+  const open=!!baselineDetails[index]?.hasAttribute?.('open');
+  if(open) item.setAttribute('open',''); else item.removeAttribute('open');
+ });
+ for(const element of [details,...details.querySelectorAll('*')]){
+  for(const attribute of [...element.attributes]){
+   if(PERSISTED_STATE_ATTR_RE.test(attribute.name)) element.removeAttribute(attribute.name);
+  }
+ }
+ return String(details.outerHTML||'').trim();
+}
+function interactionStatePollutionScore(html=''){
+ const source=String(html||'');
+ const markers=source.match(/(?:aria-(?:pressed|selected|expanded)="true"|data-rm-[^=\s>]*(?:active|selected|open|used|filled)|data-rabbit-mirror-(?:checked-pseudo-rule-rescue|checked-text-rule-rescue|labeled-checked))/gi);
+ return markers?.length||0;
+}
+function interactionBaselineProfile(html=''){
+ const details=parseIndependentDetailsRaw(html);
+ if(!details) return null;
+ restoreEncodedInteractionBaselines(details);
+ details.querySelectorAll('[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]').forEach(node=>node.remove());
+ details.querySelectorAll(PERSISTED_STATE_STYLE_ATTRS.map(name=>`style[${name}]`).join(',')).forEach(node=>node.remove());
+ const summary=String(details.querySelector(':scope > summary')?.textContent||'').replace(/\s+/g,' ').trim();
+ const text=String(details.textContent||'').replace(/\s+/g,' ').trim();
+ const controls=[...details.querySelectorAll('input[type="checkbox"], input[type="radio"]')].map(input=>String(input.type||'')).join(',');
+ return {summary,text,controls};
+}
+function interactionBaselinesCompatible(currentHtml,candidateHtml){
+ const current=interactionBaselineProfile(currentHtml); const candidate=interactionBaselineProfile(candidateHtml);
+ if(!current||!candidate) return false;
+ return current.summary===candidate.summary && current.text===candidate.text && current.controls===candidate.controls;
+}
+function initialHtmlForRecord(slot,record){
+ if(record?.initialHtml && independentStoredHtmlRestorable(record.initialHtml)) return String(record.initialHtml);
+ const currentHtml=String(record?.html||'');
+ const candidates=historyEntriesForSlot(slot).filter(entry=>entry?.html&&independentStoredHtmlRestorable(entry.html)&&interactionBaselinesCompatible(currentHtml,entry.initialHtml||entry.html));
+ if(candidates.length){
+  candidates.sort((a,b)=>interactionStatePollutionScore(a.html)-interactionStatePollutionScore(b.html) || Number(a.ts||0)-Number(b.ts||0));
+  return String(candidates[0].initialHtml||candidates[0].html||'');
+ }
+ return currentHtml;
+}
+function normalizeSavedInteractionRecord(record,slot=''){
+ if(!record?.html) return record;
+ const initial=scrubIndependentInteractionState(initialHtmlForRecord(slot,record),initialHtmlForRecord(slot,record));
+ const html=scrubIndependentInteractionState(record.html,initial||record.html);
+ return {...record,html,initialHtml:initial||html};
+}
+function migratePersistedInteractionStateRecords(){
+ const store=readStore(); let changed=false;
+ for(const [slot,record] of Object.entries(store)){
+  if(!record?.html) continue;
+  const normalized=normalizeSavedInteractionRecord(record,slot);
+  if(String(normalized.html||'')!==String(record.html||'') || String(normalized.initialHtml||'')!==String(record.initialHtml||'')){
+   store[slot]=normalized; changed=true;
+  }
+ }
+ if(changed) writeStore(store);
+ return changed;
+}
 function prepareIndependentReadyHtml(html=''){
  const source=String(html||'').trim();
  const cacheKey=`${RUNTIME_VERSION}:${source.length}:${hashText(source)}`;
@@ -1228,9 +1417,12 @@ function readyRecordFromHost(host,observed,model=''){
  if(!details || !observed) return null;
  const clone=details.cloneNode(true);
  clone.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]')?.remove?.();
- const html=String(clone.outerHTML||'').trim();
+ const rawHtml=String(clone.outerHTML||'').trim();
+ const baseline=String(host?.__rabbitMirrorIndependentInitialSource||host?.__rabbitMirrorIndependentSource||rawHtml);
+ const initialHtml=scrubIndependentInteractionState(baseline,baseline);
+ const html=scrubIndependentInteractionState(rawHtml,initialHtml||baseline);
  if(!independentStoredHtmlRestorable(html)) return null;
- return {html,sourceHash:String(host?.dataset?.rmSourceHash||observed.sourceHash||''),bodyHash:String(observed.bodyHash||''),displayHash:String(observed.displayHash||''),reasoningHash:String(observed.reasoningHash||''),ts:Date.now(),model:String(model||''),runtime:RUNTIME_VERSION,recoveredFromMountedHost:true};
+ return {html,initialHtml:initialHtml||html,sourceHash:String(host?.dataset?.rmSourceHash||observed.sourceHash||''),bodyHash:String(observed.bodyHash||''),displayHash:String(observed.displayHash||''),reasoningHash:String(observed.reasoningHash||''),ts:Date.now(),model:String(model||''),runtime:RUNTIME_VERSION,recoveredFromMountedHost:true};
 }
 function transferExternalTools(fromDetails,toDetails){
  const tools=externalToolHost(fromDetails);
@@ -1472,7 +1664,12 @@ function historyRecoveryForObserved(slot,observed){
 }
 function recoverSavedRecord(store,slot,observed){
  const exact=store?.[slot];
- if(exact?.html && independentStoredHtmlRestorable(exact.html)) return {saved:exact,storeChanged:false,recoveredFromHistory:false};
+ if(exact?.html && independentStoredHtmlRestorable(exact.html)){
+  const normalized=normalizeSavedInteractionRecord(exact,slot);
+  const changed=String(normalized.html||'')!==String(exact.html||'') || String(normalized.initialHtml||'')!==String(exact.initialHtml||'');
+  if(changed) store[slot]=normalized;
+  return {saved:normalized,storeChanged:changed,recoveredFromHistory:false};
+ }
  let saved=null;
  for(const candidate of slotSearchKeys(slot,observed?.legacySlots||[])){
   const record=store?.[candidate];
@@ -1483,15 +1680,15 @@ function recoverSavedRecord(store,slot,observed){
  }
  if(saved){
   if(exact!==saved){
-   const recovered={...saved,sourceHash:String(observed?.sourceHash||saved.sourceHash||''),bodyHash:String(observed?.bodyHash||saved.bodyHash||''),ts:Number(saved.ts||Date.now()),runtime:String(saved.runtime||RUNTIME_VERSION),recoveredFromHistory:false};
+   const recovered=normalizeSavedInteractionRecord({...saved,sourceHash:String(observed?.sourceHash||saved.sourceHash||''),bodyHash:String(observed?.bodyHash||saved.bodyHash||''),ts:Number(saved.ts||Date.now()),runtime:String(saved.runtime||RUNTIME_VERSION),recoveredFromHistory:false},slot);
    saveRecordForSlot(store,slot,recovered);
    return {saved:recovered,storeChanged:true,recoveredFromHistory:false};
   }
-  return {saved,storeChanged:false,recoveredFromHistory:false};
+  return {saved:normalizeSavedInteractionRecord(saved,slot),storeChanged:false,recoveredFromHistory:false};
  }
  const history=historyRecoveryForObserved(slot,observed);
  if(history?.html){
-  const recovered={...history,ts:Number(history.ts||Date.now()),runtime:String(history.runtime||RUNTIME_VERSION),recoveredFromHistory:true};
+  const recovered=normalizeSavedInteractionRecord({...history,ts:Number(history.ts||Date.now()),runtime:String(history.runtime||RUNTIME_VERSION),recoveredFromHistory:true},slot);
   saveRecordForSlot(store,slot,recovered);
   return {saved:recovered,storeChanged:true,recoveredFromHistory:true};
  }
@@ -1804,11 +2001,12 @@ function ensureExternalUi(el,key,html,state='ready',source='independent',sourceH
    host.dataset.rmKey=key;
    host.dataset.rmSource=source;
    host.dataset.rmState=state;
-   if(state!=='loading') delete host.dataset.rmReplyGenerationPlaceholder;
+   if(state!=='loading'){ delete host.dataset.rmReplyGenerationPlaceholder; delete host.dataset.rmRequestPhase; }
    if(sourceHash) host.dataset.rmSourceHash=String(sourceHash);
    if(escaped){ markExternalDetails(escaped,key,source); host.append(escaped); }
    else host=buildExternalHost(key,html,state,source);
    host.__rabbitMirrorIndependentSource = state==='ready' ? String(html||'') : '';
+   host.__rabbitMirrorIndependentInitialSource = state==='ready' ? String(html||'') : '';
    if(sourceHash) host.dataset.rmSourceHash=String(sourceHash);
    stampExternalDetailsOwnership(host);
    placeExternalHost(el,host,key,source);
@@ -1820,7 +2018,7 @@ function ensureExternalUi(el,key,html,state='ready',source='independent',sourceH
  host.dataset.rmKey=key;
  host.dataset.rmSource=source;
  host.dataset.rmState=state;
- if(state!=='loading') delete host.dataset.rmReplyGenerationPlaceholder;
+ if(state!=='loading'){ delete host.dataset.rmReplyGenerationPlaceholder; delete host.dataset.rmRequestPhase; }
  if(sourceHash) host.dataset.rmSourceHash=String(sourceHash);
  stampExternalDetailsOwnership(host);
  placeExternalHost(el,host,key,source);
@@ -1833,6 +2031,7 @@ function ensureExternalUi(el,key,html,state='ready',source='independent',sourceH
    clearExternalHostFreshSourceState(host);
    const sameReadySource=currentReady && host.dataset.rmState==='ready' && String(host.__rabbitMirrorIndependentSource||'')===String(html||'');
    host.__rabbitMirrorIndependentSource = String(html||'');
+   if(!host.__rabbitMirrorIndependentInitialSource) host.__rabbitMirrorIndependentInitialSource=String(html||'');
    if(sameReadySource){
      if(wasOpen) currentReady.setAttribute('open','');
      scheduleExternalShellTint(host,html);
@@ -1865,6 +2064,7 @@ function ensureExternalUi(el,key,html,state='ready',source='independent',sourceH
    return host;
  }
  host.__rabbitMirrorIndependentSource = '';
+ host.__rabbitMirrorIndependentInitialSource = '';
  let details=current;
  if(details && !details.classList?.contains('rabbit-mirror-external-placeholder')){
    const placeholder=fallbackExternalDetails(state,html);
@@ -1886,6 +2086,109 @@ function ensureExternalUi(el,key,html,state='ready',source='independent',sourceH
  return host;
 }
 
+
+function independentAbortError(reason='cancelled'){
+ const error=new Error(String(reason||'独立 API 请求已取消'));
+ error.name='AbortError';
+ return error;
+}
+function setIndependentLoadingStatus(index,identity,summary,text,phase=''){
+ const live=identity?.slot ? identity : currentGenerationIdentity(index);
+ const el=messageElement(index);
+ if(!live || !el) return null;
+ const host=ensureExternalUi(el,live.key,String(text||''),'loading','independent',live.sourceHash);
+ if(!host) return null;
+ if(phase) host.dataset.rmRequestPhase=phase; else delete host.dataset.rmRequestPhase;
+ const details=host.querySelector?.(':scope > details.rabbit-mirror-external-placeholder');
+ if(details){
+  setPlaceholderSummary(details,String(summary||'【兔子镜：正在生成中……】'));
+  let body=details.querySelector?.(':scope > .rabbit-mirror-external-placeholder-body');
+  if(!body){ body=document.createElement('div'); body.className='rabbit-mirror-external-placeholder-body'; details.append(body); }
+  body.textContent=String(text||'');
+ }
+ return host;
+}
+function queueAheadCount(item){
+ const index=independentRequestQueue.indexOf(item);
+ if(index<0) return activeIndependentRequest&&activeIndependentRequest!==item?1:0;
+ return (activeIndependentRequest?1:0)+index;
+}
+function updateIndependentQueuePlaceholder(item,phase='queued'){
+ const flight=item?.flight;
+ if(!flight || flight.cancelled || !currentRuntime() || runtimeMode()!=='independent') return;
+ const live=currentGenerationIdentity(flight.index);
+ if(!live || live.slot!==flight.slot || live.sourceHash!==flight.sourceHash) return;
+ if(phase==='queued'){
+  const ahead=queueAheadCount(item);
+  const text=ahead>0
+   ? `独立 API 正按顺序生成，前面还有 ${ahead} 条。轮到本条前不会重复发出请求。`
+   : '独立 API 队列已经轮到本条，正在准备请求。';
+  setIndependentLoadingStatus(flight.index,live,'【兔子镜：等待独立 API 队列……】',text,'queued');
+  return;
+ }
+ if(phase==='requesting'){
+  setIndependentLoadingStatus(flight.index,live,'【兔子镜：正在调用独立 API……】','独立 API 请求已经发出，正在等待模型开始返回兔子镜。','requesting');
+  return;
+ }
+ if(phase==='receiving'){
+  setIndependentLoadingStatus(flight.index,live,'【兔子镜：正在接收兔子镜……】','独立 API 已经响应，正在读取并检查完整结果。','receiving');
+ }
+}
+function refreshIndependentQueuePlaceholders(){
+ for(const item of independentRequestQueue) updateIndependentQueuePlaceholder(item,'queued');
+}
+function settleIndependentQueueItem(item,kind,value){
+ if(!item || item.settled) return;
+ item.settled=true;
+ item.flight.queueItem=null;
+ if(kind==='resolve') item.resolve(value); else item.reject(value);
+}
+function cancelQueuedIndependentRequest(flight,reason='cancelled'){
+ const item=flight?.queueItem;
+ if(!item || item.started || item.settled) return false;
+ const index=independentRequestQueue.indexOf(item);
+ if(index>=0) independentRequestQueue.splice(index,1);
+ settleIndependentQueueItem(item,'reject',independentAbortError(reason));
+ refreshIndependentQueuePlaceholders();
+ return true;
+}
+async function drainIndependentRequestQueue(){
+ if(activeIndependentRequest) return;
+ while(independentRequestQueue.length){
+  const item=independentRequestQueue.shift();
+  if(!item || item.settled) continue;
+  const flight=item.flight;
+  if(flight.cancelled || flight.controller?.signal?.aborted){
+   settleIndependentQueueItem(item,'reject',independentAbortError(flight.cancelReason||flight.controller?.signal?.reason||'cancelled'));
+   continue;
+  }
+  activeIndependentRequest=item;
+  item.started=true;
+  updateIndependentQueuePlaceholder(item,'requesting');
+  refreshIndependentQueuePlaceholders();
+  try{
+   const value=await item.run({
+    onResponseStart:()=>updateIndependentQueuePlaceholder(item,'receiving'),
+   });
+   settleIndependentQueueItem(item,'resolve',value);
+  }catch(error){
+   settleIndependentQueueItem(item,'reject',error);
+  }finally{
+   activeIndependentRequest=null;
+   refreshIndependentQueuePlaceholders();
+  }
+ }
+}
+function enqueueIndependentRequest(flight,run){
+ return new Promise((resolve,reject)=>{
+  const item={id:++independentRequestQueueSequence,flight,run,resolve,reject,started:false,settled:false};
+  flight.queueItem=item;
+  independentRequestQueue.push(item);
+  updateIndependentQueuePlaceholder(item,'queued');
+  refreshIndependentQueuePlaceholders();
+  void drainIndependentRequestQueue();
+ });
+}
 
 function generationPollKey(index){ return `${chatKey(getContext())}:${Number(index)}`; }
 function generationWaitPollDelay(startedAt=0){
@@ -1916,15 +2219,34 @@ function scheduleMessageGeneration(index,delay=260,sourceAware=true){
   if(live && (suppressesAutomaticGeneration(live.ctx,index) || hasExistingFollowRabbitMirror(live.ctx,index,live.msg))){ finish(); return; }
   if(live) cancelSupersededFlightsForBase(live.baseSlot,live.sourceHash);
   if(!live){ if(Date.now()-state.startedAt<OWNER_REATTACH_WAIT_MS) queue(generationWaitPollDelay(state.startedAt)); else finish(); return; }
-  if(hostGenerationLooksActive()){ state.stableSince=0; state.lastHash=''; state.lastRevision=-1; if(Date.now()-state.startedAt<ACTIVE_GENERATION_WAIT_MS) queue(generationWaitPollDelay(state.startedAt)); else finish(); return; }
-  cancelFlightsForSlot(live.slot,live.sourceHash);
-  if(!sourceAware){ finish(); void generateFor(index,live.msg,false,false); return; }
   if(live.sourceHash!==state.lastHash || live.revision!==state.lastRevision){
    state.lastHash=live.sourceHash; state.lastRevision=live.revision; state.stableSince=Date.now();
   }
   const hasBody=String(live.msg?.mes||'').trim().length>0;
-  if(hasBody && state.stableSince && Date.now()-state.stableSince>=SOURCE_STABLE_WAIT_MS){ finish(); void generateFor(index,live.msg,false,true); return; }
-  if(Date.now()-state.startedAt<OWNER_REATTACH_WAIT_MS) queue(GENERATION_PLACEHOLDER_POLL_INTERVAL_MS); else finish();
+  const stableFor=state.stableSince?Date.now()-state.stableSince:0;
+  const activity=hostGenerationActivity();
+  if(activity.active){
+   const softFlagIsStale=!activity.hard && activity.soft && hasBody && stableFor>=SOFT_HOST_FLAG_RELEASE_MS;
+   const domMarkerIsStale=activity.dom && !activity.eventHint && hasBody && stableFor>=STALE_DOM_GENERATION_RELEASE_MS;
+   if(!softFlagIsStale && !domMarkerIsStale){
+    setIndependentLoadingStatus(index,live,'【兔子镜：等待正文完成……】','正在等待正文生成状态结束；此阶段尚未调用独立 API。','waiting-host');
+    if(Date.now()-state.startedAt<ACTIVE_GENERATION_WAIT_MS){ queue(generationWaitPollDelay(state.startedAt)); return; }
+    finish();
+    const el=messageElement(index);
+    if(el) ensureExternalUi(el,live.key,'正文生成状态持续超过 10 分钟，独立 API 尚未发出。请确认正文已经完成后点击“重新生成兔子镜”。','error','independent',live.sourceHash);
+    return;
+   }
+  }
+  cancelFlightsForSlot(live.slot,live.sourceHash);
+  if(!sourceAware){ finish(); void generateFor(index,live.msg,false,false); return; }
+  if(hasBody && state.stableSince && stableFor>=SOURCE_STABLE_WAIT_MS){ finish(); void generateFor(index,live.msg,false,true); return; }
+  setIndependentLoadingStatus(index,live,'【兔子镜：等待正文稳定……】','正文已经出现，正在确认最终版本；此阶段尚未调用独立 API。','waiting-source');
+  if(Date.now()-state.startedAt<OWNER_REATTACH_WAIT_MS) queue(GENERATION_PLACEHOLDER_POLL_INTERVAL_MS);
+  else{
+   finish();
+   const el=messageElement(index);
+   if(el) ensureExternalUi(el,live.key,'正文在 60 秒内没有形成可用的稳定版本，独立 API 未发出。请点击“重新生成兔子镜”。','error','independent',live.sourceHash);
+  }
  };
  queue(delay);
 }
@@ -2000,6 +2322,7 @@ function currentGenerationIdentity(index){
 function abortFlight(flight,reason='cancelled'){
  if(!flight) return;
  flight.cancelled=true; flight.cancelReason=reason;
+ cancelQueuedIndependentRequest(flight,reason);
  if(flight.timeoutTimer){ clearTimeout(flight.timeoutTimer); flight.timeoutTimer=0; }
  try{ flight.controller?.abort?.(reason); }catch{}
 }
@@ -2071,13 +2394,15 @@ async function generateFor(index,msg,force=false,sourceAware=true){
  }
  const existing=pending.get(slot);
  if(existing && existing.sourceHash===sourceHash && existing.revision===revision && !force){
-  if(el) ensureExternalUi(el,key,'正在读取当前上下文并生成兔子镜……','loading','independent',sourceHash);
+  if(existing.queueItem) updateIndependentQueuePlaceholder(existing.queueItem,existing.queueItem.started?'requesting':'queued');
+  else if(el) setIndependentLoadingStatus(index,observed,'【兔子镜：正在调用独立 API……】','独立 API 请求正在进行；同一正文不会重复发出第二次请求。','requesting');
   existing.task?.finally?.(()=>queueMessageSync([index]));
   return existing.task;
  }
  const flightKey=flightIdentity(slot,sourceHash); const shared=globalFlights().get(flightKey);
  if(shared?.task && !force){
-  if(el) ensureExternalUi(el,key,'正在读取当前上下文并生成兔子镜……','loading','independent',sourceHash);
+  if(shared.queueItem) updateIndependentQueuePlaceholder(shared.queueItem,shared.queueItem.started?'requesting':'queued');
+  else if(el) setIndependentLoadingStatus(index,observed,'【兔子镜：正在调用独立 API……】','独立 API 请求正在进行；同一正文不会重复发出第二次请求。','requesting');
   shared.task.finally?.(()=>queueMessageSync([index]));
   return shared.task;
  }
@@ -2091,16 +2416,22 @@ async function generateFor(index,msg,force=false,sourceAware=true){
   ensureExternalUi(el,key,'正在读取当前上下文并生成兔子镜……','loading','independent',sourceHash);
  }
  const runId=++generationSequence; const controller=new AbortController(); let stale=false;
- const flight={task:null,runId,key,slot,index,sourceHash,revision,cancelled:false,controller,baseSlot,timedOut:false,timeoutTimer:0};
+ const flight={task:null,runId,key,slot,index,sourceHash,revision,cancelled:false,controller,baseSlot,timedOut:false,timeoutTimer:0,queueItem:null};
  const stillCurrent=()=>{
   const live=currentGenerationIdentity(index); const active=pending.get(slot);
   return currentRuntime() && runtimeMode()==='independent' && live && live.slot===slot && live.key===key && live.sourceHash===sourceHash && live.revision===revision && active?.runId===runId && active?.revision===revision && !flight.cancelled && globalFlights().get(flightKey)===flight;
  };
- flight.timeoutTimer=setTimeout(()=>{
-  flight.timedOut=true;
-  try{ controller.abort('independent-request-timeout'); }catch{}
- },INDEPENDENT_REQUEST_TIMEOUT_MS);
- const task=callIndependentApi(ctx,index,msg,controller.signal).then(result=>{
+ globalFlights().set(flightKey,flight);
+ pending.set(slot,flight);
+ const requestTask=enqueueIndependentRequest(flight,async lifecycle=>{
+  if(flight.cancelled || controller.signal.aborted) throw independentAbortError(flight.cancelReason||controller.signal.reason||'cancelled');
+  flight.timeoutTimer=setTimeout(()=>{
+   flight.timedOut=true;
+   try{ controller.abort('independent-request-timeout'); }catch{}
+  },INDEPENDENT_REQUEST_TIMEOUT_MS);
+  return callIndependentApi(ctx,index,msg,controller.signal,lifecycle);
+ });
+ const task=requestTask.then(result=>{
   if(!stillCurrent()){ stale=true; return; }
   const html=String(result?.html||'');
   const paletteFingerprint=commitIndependentVisualResult(html);
@@ -2111,11 +2442,12 @@ async function generateFor(index,msg,force=false,sourceAware=true){
     consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror(wrappedIndependentMirrorHtml(html),result.feedbackId);
    }
   }
-  const completed={html,sourceHash,bodyHash,displayHash,reasoningHash,paletteFingerprint,ts:Date.now(),model:st.independentApiModel,runtime:RUNTIME_VERSION,apiRequest:result?.requestDiagnostic||null,executionLockChars:Number(result?.executionLockChars||0)};
+  const initialHtml=scrubIndependentInteractionState(html,html);
+  const completed={html:initialHtml||html,initialHtml:initialHtml||html,sourceHash,bodyHash,displayHash,reasoningHash,paletteFingerprint,ts:Date.now(),model:st.independentApiModel,runtime:RUNTIME_VERSION,apiRequest:result?.requestDiagnostic||null,executionLockChars:Number(result?.executionLockChars||0)};
   appendHistoryEntry(slot,completed);
   const next=readStore(); saveRecordForSlot(next,slot,completed); writeStore(next);
   const liveEl=messageElement(index);
-  if(liveEl) ensureExternalUi(liveEl,key,html,'ready','independent',sourceHash);
+  if(liveEl) ensureExternalUi(liveEl,key,completed.html,'ready','independent',sourceHash);
   return completed;
  }).catch(err=>{
   if(flight.timedOut && stillCurrent()){
@@ -2147,8 +2479,7 @@ async function generateFor(index,msg,force=false,sourceAware=true){
   const retryStale=!flight.cancelReason || ['source-version-replaced','source-changed'].includes(String(flight.cancelReason));
   if(stale && retryStale && currentRuntime() && runtimeMode()==='independent') scheduleMessageGeneration(index,360,true);
  });
- flight.task=task; globalFlights().set(flightKey,flight);
- pending.set(slot,{task,runId,key,sourceHash,revision,controller,cancelled:false,baseSlot});
+ flight.task=task;
  await task;
 }
 
@@ -2245,7 +2576,8 @@ function historyDateLabel(value){
  return Number.isFinite(date.getTime()) ? date.toLocaleString([], {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
 }
 function historyPreviewDetails(entry){
- const details=extractReadyDetails(entry?.html||''); if(!details) return null;
+ const cleanHtml=scrubIndependentInteractionState(entry?.html||'',entry?.initialHtml||entry?.html||'');
+ const details=extractReadyDetails(cleanHtml); if(!details) return null;
  details.removeAttribute('data-rabbit-mirror-external-details');
  details.removeAttribute('data-rabbit-mirror-external-owner');
  details.removeAttribute('data-rabbit-mirror-external-source');
@@ -2314,14 +2646,19 @@ function persistIndependentRepairFromEvent(event) {
  if(!details) return false;
  const clone=details.cloneNode(true);
  clone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
- const html=String(clone.outerHTML||'').trim();
- if(!independentStoredHtmlRestorable(html)) return false;
+ const rawHtml=String(clone.outerHTML||'').trim();
  const store=readStore();
  const existing=store?.[identity.slot] || findSavedRecord(store,identity.slot,identity.legacySlots||[]);
- if(existing?.html && String(existing.html)!==html) appendHistoryEntry(identity.slot,existing);
+ const baseline=String(existing?.initialHtml||host.__rabbitMirrorIndependentInitialSource||initialHtmlForRecord(identity.slot,existing)||existing?.html||rawHtml);
+ const initialHtml=scrubIndependentInteractionState(baseline,baseline);
+ const html=scrubIndependentInteractionState(rawHtml,initialHtml||baseline);
+ if(!independentStoredHtmlRestorable(html)) return false;
+ const previousClean=existing?.html?scrubIndependentInteractionState(existing.html,initialHtml||baseline):'';
+ if(previousClean && previousClean!==html) appendHistoryEntry(identity.slot,{...existing,html:previousClean,initialHtml:initialHtml||previousClean});
  const repaired={
   ...(existing||{}),
   html,
+  initialHtml:initialHtml||html,
   sourceHash:identity.sourceHash,
   bodyHash:identity.bodyHash,
   displayHash:identity.displayHash,
@@ -2335,6 +2672,7 @@ function persistIndependentRepairFromEvent(event) {
  saveRecordForSlot(store,identity.slot,repaired);
  writeStore(store);
  host.__rabbitMirrorIndependentSource=html;
+ host.__rabbitMirrorIndependentInitialSource=initialHtml||html;
  host.dataset.rmSourceHash=identity.sourceHash;
  scheduleExternalShellTint(host,html);
  return true;
@@ -3048,7 +3386,7 @@ function captureMountedIndependentRecords(){
   snapshots.push({
    slot:observed.slot,
    matches,
-   record:{html,sourceHash:matches?observed.sourceHash:(mountedSource||observed.sourceHash),bodyHash:observed.bodyHash,displayHash:observed.displayHash,reasoningHash:observed.reasoningHash,ts:Date.now(),model:'',runtime:RUNTIME_VERSION,recoveredFromMountedHost:true},
+   record:{html:scrubIndependentInteractionState(html,String(host.__rabbitMirrorIndependentInitialSource||host.__rabbitMirrorIndependentSource||html)),initialHtml:scrubIndependentInteractionState(String(host.__rabbitMirrorIndependentInitialSource||host.__rabbitMirrorIndependentSource||html),String(host.__rabbitMirrorIndependentInitialSource||host.__rabbitMirrorIndependentSource||html)),sourceHash:matches?observed.sourceHash:(mountedSource||observed.sourceHash),bodyHash:observed.bodyHash,displayHash:observed.displayHash,reasoningHash:observed.reasoningHash,ts:Date.now(),model:'',runtime:RUNTIME_VERSION,recoveredFromMountedHost:true},
   });
  }
  return snapshots;
@@ -3120,6 +3458,7 @@ export async function initIndependentRabbitMirror(){
  restoreMountedIndependentRecords(mountedSnapshots);
  globalThis.__rabbitMirrorIndependentCleanup=destroyIndependentRabbitMirror;
  migrateLegacyDeletedRecords();
+ migratePersistedInteractionStateRecords();
  installIndependentActionBridge();
  hostGenerationInProgress=hostGenerationLooksActive();
  hostGenerationHintStartedAt=hostGenerationInProgress?Date.now():0;
@@ -3144,7 +3483,7 @@ export function destroyIndependentRabbitMirror(){
  removeIndependentActionBridge();
  lastIndependentRequestConfig='';
  disconnectObserver(); unsubscribeHostEvents(); removeFeedbackMirrorActionListeners(); removeRepairPersistenceListener(); removeExternalGeometryListeners(); removeBackgroundLifecycleListeners();
- syncRunning=false; pending.clear(); messageSourceRevisions.clear(); preparedReadyHtmlCache.clear();
+ syncRunning=false; pending.clear(); independentRequestQueue.splice(0); activeIndependentRequest=null; messageSourceRevisions.clear(); preparedReadyHtmlCache.clear();
  document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="follow"]`).forEach(host=>restoreFollowInline(host));
  document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="independent"]`).forEach(n=>n.remove());
  removeEmptyInlineAnchors(document); removeEmptyFollowExternalAnchors(document);

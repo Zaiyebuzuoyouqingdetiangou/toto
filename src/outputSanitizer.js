@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.2.10';
-import { getCurrentChatKey } from './storage.js?rmv=1.2.10';
+import { getSettings } from './settings.js?rmv=1.2.13';
+import { getCurrentChatKey } from './storage.js?rmv=1.2.13';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -8,12 +8,12 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.2.10';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.10';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.10';
+} from './feedbackCat.js?rmv=1.2.13';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.13';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.13';
 
 
-const RUNTIME_VERSION = '1.2.10';
+const RUNTIME_VERSION = '1.2.13';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -2046,12 +2046,14 @@ function applyCheckedRuleTextFallback(toto, input) {
                 continue;
             }
             rememberCheckedRevealCandidate(revealCandidates, target, rule.styleMap);
+            const baseline = capturePseudoStyleState(target, new Set(rule.styleMap.map(([property]) => property)));
             for (const [property, value] of rule.styleMap) {
+                const original = baseline.get(property) || { value: '', priority: '' };
                 records.push({
                     element: target,
                     property,
-                    value: target.style.getPropertyValue(property),
-                    priority: target.style.getPropertyPriority(property),
+                    value: original.value,
+                    priority: original.priority,
                 });
                 target.style.setProperty(property, value, 'important');
             }
@@ -2114,12 +2116,14 @@ function applyCheckedRuleInlineFallback(toto, input) {
         }
         for (const target of targets) {
             rememberCheckedRevealCandidate(revealCandidates, target, styleMap);
+            const baseline = capturePseudoStyleState(target, new Set(styleMap.map(([property]) => property)));
             for (const [property, value] of styleMap) {
+                const original = baseline.get(property) || { value: '', priority: '' };
                 records.push({
                     element: target,
                     property,
-                    value: target.style.getPropertyValue(property),
-                    priority: target.style.getPropertyPriority(property),
+                    value: original.value,
+                    priority: original.priority,
                 });
                 target.style.setProperty(property, value, 'important');
             }
@@ -9850,7 +9854,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.2.10-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.2.13-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
