@@ -1,14 +1,65 @@
-import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.2.18';
-import { clearLastCombo } from './storage.js?rmv=1.2.18';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.2.18';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.2.18';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.2.18';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.2.18';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.2.18';
-import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.2.18';
+import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.2.19';
+import { clearLastCombo } from './storage.js?rmv=1.2.19';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.2.19';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.2.19';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.2.19';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.2.19';
 
-const SETTINGS_UI_VERSION = '1.2.18';
-const RUNTIME_VERSION = '1.2.18';
+
+const API_REQUEST_DIAGNOSTIC_EVENT = 'rabbitmirror:independent-api-diagnostic';
+const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
+let outputSanitizerModulePromise = null;
+let independentApiModulePromise = null;
+
+async function ensureDeferredRuntime() {
+    const ensure = globalThis.__rabbitMirrorEnsureHeavyRuntime;
+    if (typeof ensure === 'function') await ensure();
+}
+
+async function loadOutputSanitizerModule() {
+    await ensureDeferredRuntime();
+    if (!outputSanitizerModulePromise) outputSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.2.19');
+    return outputSanitizerModulePromise;
+}
+
+async function loadIndependentApiModule() {
+    await ensureDeferredRuntime();
+    if (!independentApiModulePromise) independentApiModulePromise = import('./independentApi.js?rmv=1.2.19');
+    return independentApiModulePromise;
+}
+
+function getLastIndependentApiRequestDiagnostic() {
+    try {
+        const value = JSON.parse(localStorage.getItem(API_REQUEST_DIAGNOSTIC_STORE_KEY) || 'null');
+        return value && typeof value === 'object' ? value : null;
+    } catch {
+        return null;
+    }
+}
+
+function refreshRabbitMirrorGenerationMode() {
+    void loadIndependentApiModule().then(mod => mod.refreshRabbitMirrorGenerationMode?.()).catch(error => console.debug('[RabbitMirror] generation mode refresh skipped:', error));
+}
+async function fetchIndependentModels() {
+    const mod = await loadIndependentApiModule();
+    return mod.fetchIndependentModels();
+}
+async function testIndependentConnection() {
+    const mod = await loadIndependentApiModule();
+    return mod.testIndependentConnection();
+}
+function refreshFeedbackCats() {
+    void loadOutputSanitizerModule().then(mod => mod.refreshFeedbackCats?.()).catch(error => console.debug('[RabbitMirror] feedback cat refresh skipped:', error));
+}
+function refreshMaintenanceRabbits() {
+    void loadOutputSanitizerModule().then(mod => mod.refreshMaintenanceRabbits?.()).catch(error => console.debug('[RabbitMirror] maintenance refresh skipped:', error));
+}
+function configureMaintenanceAutoSafeMode(enabled) {
+    void loadOutputSanitizerModule().then(mod => mod.configureMaintenanceAutoSafeMode?.(enabled)).catch(error => console.debug('[RabbitMirror] maintenance mode refresh skipped:', error));
+}
+
+const SETTINGS_UI_VERSION = '1.2.19';
+const RUNTIME_VERSION = '1.2.19';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;

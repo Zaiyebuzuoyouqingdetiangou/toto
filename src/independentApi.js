@@ -1,16 +1,16 @@
-import { getSettings } from './settings.js?rmv=1.2.18';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.18';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.18';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.18';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.18';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.18';
+import { getSettings } from './settings.js?rmv=1.2.19';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.19';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.19';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.19';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.19';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.19';
 
-const RUNTIME_VERSION = '1.2.18';
+const RUNTIME_VERSION = '1.2.19';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
 const API_REQUEST_DIAGNOSTIC_EVENT = 'rabbitmirror:independent-api-diagnostic';
-const API_PROFILE_SCHEMA = 4;
+const API_PROFILE_SCHEMA = 5;
 const DEGRADED_PROFILE_RECHECK_MS = 6 * 60 * 60 * 1000;
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
 const EXTERNAL_SHELL_ATTR = 'data-rabbit-mirror-external-shell';
@@ -521,28 +521,8 @@ function extractResponseText(payload){
  if(/<toto\b|<details\b/i.test(reasoning)) return reasoning;
  return '';
 }
-function mergeResponseText(current='',next='',payload=null){
- const existing=String(current||'');
- const incoming=String(next||'');
- if(!incoming) return existing;
- const delta=payload?.choices?.[0]?.delta?.content;
- if(delta!==undefined && delta!==null) return `${existing}${incoming}`;
- if(!existing) return incoming;
- if(incoming.startsWith(existing)) return incoming;
- if(existing.endsWith(incoming)) return existing;
- return `${existing}${incoming}`;
-}
-function completeMirrorEvidence(text=''){
- const source=String(text||'');
- const toto=source.match(/<toto\b[\s\S]*?<\/toto>/i);
- if(toto) return toto[0];
- if(/<toto\b/i.test(source)) return '';
- const details=source.match(/<details\b[\s\S]*?<\/details>/i);
- if(details && /兔子镜|RabbitMirror/i.test(details[0])) return details[0];
- return '';
-}
 function parseSsePayload(text=''){
- let merged=''; let lastPayload=null; let done=false;
+ let merged=''; let lastPayload=null; let done=false; let frames=0;
  for(const line of String(text).split(/\r?\n/)){
    const trimmed=line.trim();
    if(!trimmed) continue;
@@ -553,117 +533,54 @@ function parseSsePayload(text=''){
    if(!data) continue;
    if(data==='[DONE]'){ done=true; break; }
    try{
-     const json=JSON.parse(data); lastPayload=json;
-     const part=extractResponseText(json); if(part) merged=mergeResponseText(merged,part,json);
+     const json=JSON.parse(data); lastPayload=json; frames++;
+     const part=extractResponseText(json);
+     if(part) merged+=part;
    }catch{}
  }
- return {payload:lastPayload,text:merged.trim(),done};
+ return {payload:lastPayload,text:merged.trim(),done,frames};
 }
+
+// Compatibility transport: use the exact buffered response lifecycle that was
+// proven stable in v1.2.3. Several OpenAI-compatible Gemini gateways expose a
+// ReadableStream but behave differently across Safari/WebView and SillyTavern
+// versions. Reading the complete body through Response.text() avoids keeping a
+// locked reader alive after the gateway has already finished the request.
 async function readApiResponse(response){
  const contentType=String(response.headers?.get?.('content-type')||'').toLowerCase();
- const streamLike=/text\/event-stream|application\/x-ndjson/.test(contentType);
- const body=response.body;
- if(!body?.getReader){
-   const raw=await response.text();
-   if(streamLike || /^\s*data:/m.test(raw)){
-     const parsed=parseSsePayload(raw); return {raw,payload:parsed.payload,text:parsed.text,transport:'buffered-stream',endReason:parsed.done?'done-marker':'eof',chunks:1};
-   }
-   try{ const payload=JSON.parse(raw); return {raw,payload,text:extractResponseText(payload),transport:'buffered-json',endReason:'eof',chunks:1}; }
-   catch{ return {raw,payload:null,text:String(raw||'').trim(),transport:'buffered-text',endReason:'eof',chunks:1}; }
+ const raw=await response.text();
+ const streamLike=/text\/event-stream|application\/x-ndjson/.test(contentType) || /^\s*data:/m.test(raw);
+ if(streamLike){
+   const parsed=parseSsePayload(raw);
+   return {
+     raw,
+     payload:parsed.payload,
+     text:parsed.text,
+     transport:'compat-buffered-stream',
+     endReason:parsed.done?'done-marker':'eof',
+     chunks:parsed.frames,
+   };
  }
- const reader=body.getReader();
- const decoder=new TextDecoder();
- let raw=''; let merged=''; let lastPayload=null; let lineBuffer=''; let chunks=0; let doneMarker=false;
- const processStreamLines=(flush=false)=>{
-   const source=lineBuffer;
-   const lines=source.split(/\r?\n/);
-   lineBuffer=flush?'':(lines.pop()||'');
-   for(const line of lines){
-     const trimmed=line.trim();
-     if(!trimmed) continue;
-     let data='';
-     if(trimmed.startsWith('data:')) data=trimmed.slice(5).trim();
-     else if(trimmed.startsWith('{')) data=trimmed;
-     else continue;
-     if(!data) continue;
-     if(data==='[DONE]'){ doneMarker=true; continue; }
-     try{
-       const payload=JSON.parse(data); lastPayload=payload;
-       const part=extractResponseText(payload); if(part) merged=mergeResponseText(merged,part,payload);
-     }catch{}
-   }
- };
- // Some OpenAI-compatible proxies flush one complete SSE/NDJSON frame but do
- // not append the terminating newline and keep the HTTP connection alive. In
- // that case processStreamLines() deliberately leaves the final line buffered,
- // so the completed mirror used to remain invisible forever. Parse that pending
- // frame opportunistically whenever it is already valid JSON; incomplete frames
- // stay buffered until the next network chunk arrives.
- const processPendingStreamFrame=()=>{
-   const trimmed=String(lineBuffer||'').trim();
-   if(!trimmed) return false;
-   let data='';
-   if(trimmed.startsWith('data:')) data=trimmed.slice(5).trim();
-   else if(trimmed.startsWith('{') || trimmed.startsWith('[')) data=trimmed;
-   else return false;
-   if(!data) return false;
-   if(data==='[DONE]'){ doneMarker=true; lineBuffer=''; return true; }
-   try{
-     const payload=JSON.parse(data); lastPayload=payload;
-     const part=extractResponseText(payload); if(part) merged=mergeResponseText(merged,part,payload);
-     lineBuffer='';
-     return true;
-   }catch{}
-   return false;
- };
- const finishEarly=async(endReason)=>{
-   try{ await reader.cancel(endReason); }catch{}
-   return {raw,payload:lastPayload,text:merged.trim(),transport:streamLike?'incremental-stream':'incremental-body',endReason,chunks};
- };
- while(true){
-   const step=await reader.read();
-   if(step.done) break;
-   chunks++;
-   const decoded=decoder.decode(step.value,{stream:true});
-   raw+=decoded;
-   let pendingFrameParsed=false;
-   if(streamLike || /^\s*data:/m.test(raw)){
-     lineBuffer+=decoded;
-     processStreamLines(false);
-     pendingFrameParsed=processPendingStreamFrame();
-     // A few gateways label the response as event-stream while forwarding raw
-     // HTML instead of SSE frames. Accept a complete raw mirror only when the
-     // actual body itself starts with markup, avoiding accidental extraction
-     // from a quoted JSON string.
-     const rawTrimmed=raw.trim();
-     if(rawTrimmed.startsWith('<')){
-       const directMirror=completeMirrorEvidence(rawTrimmed);
-       if(directMirror){ merged=directMirror; return finishEarly('complete-raw-stream-mirror'); }
-     }
-   }else{
-     const trimmed=raw.trim();
-     if((trimmed.startsWith('{')&&trimmed.endsWith('}')) || (trimmed.startsWith('[')&&trimmed.endsWith(']'))){
-       try{
-         const payload=JSON.parse(trimmed); const text=extractResponseText(payload);
-         if(text){ lastPayload=payload; merged=text; if(completeMirrorEvidence(text)) return finishEarly('complete-json-mirror'); }
-       }catch{}
-     }else if(trimmed.startsWith('<')){
-       const plainMirror=completeMirrorEvidence(trimmed);
-       if(plainMirror){ merged=plainMirror; return finishEarly('complete-mirror'); }
-     }
-   }
-   if(completeMirrorEvidence(merged)) return finishEarly(pendingFrameParsed?'complete-pending-frame-mirror':'complete-mirror');
-   if(doneMarker) return finishEarly(pendingFrameParsed?'pending-done-marker':'done-marker');
+ try{
+   const payload=JSON.parse(raw);
+   return {
+     raw,
+     payload,
+     text:extractResponseText(payload),
+     transport:'compat-buffered-json',
+     endReason:'eof',
+     chunks:1,
+   };
+ }catch{
+   return {
+     raw,
+     payload:null,
+     text:String(raw||'').trim(),
+     transport:'compat-buffered-text',
+     endReason:'eof',
+     chunks:1,
+   };
  }
- const tail=decoder.decode();
- raw+=tail;
- if(streamLike || /^\s*data:/m.test(raw)){
-   lineBuffer+=tail;
-   processStreamLines(true);
-   return {raw,payload:lastPayload,text:merged.trim(),transport:'incremental-stream',endReason:doneMarker?'done-marker':'eof',chunks};
- }
- try{ const payload=JSON.parse(raw); return {raw,payload,text:extractResponseText(payload),transport:'incremental-json',endReason:'eof',chunks}; }
- catch{ return {raw,payload:null,text:String(raw||'').trim(),transport:'incremental-text',endReason:'eof',chunks}; }
 }
 function extractMirrorInner(raw){
  const cleaned=cleanRabbitMirrorOutput(raw);
@@ -686,7 +603,7 @@ function independentRequestProfiles(st,systemPrompt,userPrompt,options={}){
   // Some OpenAI-compatible Gemini gateways accept stream:false with HTTP 200
   // but do not deliver a locally finishable body, so a non-stream-first profile
   // can remain stuck without ever reaching the fallback profiles. Keep the
-  // modern incremental reader, but restore the proven stream-first order.
+  // later cache, identity and duplicate-request guards, but restore the proven stream-first order.
   chat_system_user_full:{kind:'chat',body:{model,messages:systemUser,temperature,max_tokens:maxTokens,stream}},
   chat_system_user_completion:{kind:'chat',body:{model,messages:systemUser,temperature,max_completion_tokens:maxTokens,stream}},
   chat_system_user_no_temp_full:{kind:'chat',body:{model,messages:systemUser,max_tokens:maxTokens,stream}},
@@ -3233,10 +3150,49 @@ function reconcileVisibleMirrorDuplicates(indices=null){
  removeEmptyInlineAnchors(document);
  removeEmptyFollowExternalAnchors(document);
 }
+const COMPAT_RENDERED_SYNC_LIMIT = 24;
+function renderedMessageIndices(){
+ const found=new Set();
+ const addNode=node=>{
+  const raw=node?.getAttribute?.('mesid') ?? node?.dataset?.messageId ?? node?.dataset?.messageid;
+  const id=Number(raw);
+  if(Number.isInteger(id) && id>=0) found.add(id);
+ };
+ try{
+  const chat=document.querySelector?.('#chat');
+  // Walk only the tail of the direct message lane. A full descendant selector on
+  // every reconciliation was expensive in large chats on ST 1.16.x.
+  let node=chat?.lastElementChild || null;
+  let inspected=0;
+  while(node && inspected<COMPAT_RENDERED_SYNC_LIMIT){
+   if(node.matches?.('.mes, [mesid].mes, .mes[data-message-id], .mes[data-messageid]')){
+    addNode(node); inspected++;
+   }
+   node=node.previousElementSibling;
+  }
+  // Existing external shells can belong to older messages; keep those owners in
+  // the finite reconciliation set without walking every historical message.
+  for(const host of allExternalHosts()){
+   const id=Number(host?.dataset?.rmOwnerMesid ?? host?.dataset?.rmExternalOwnerMessage);
+   if(Number.isInteger(id) && id>=0) found.add(id);
+  }
+  addNode(document.activeElement?.closest?.('.mes, [mesid].mes, .mes[data-message-id], .mes[data-messageid]'));
+ }catch{}
+ return found;
+}
 function syncAll(){
  pruneForeignChatExternalHosts();
- syncMessages(null);
- reconcileVisibleMirrorDuplicates();
+ // Only rendered messages can own or display an external shell. Limiting the
+ // reconciliation pass to those nodes avoids walking every historical chat
+ // entry on SillyTavern 1.16.x large-chat renders while preserving the same
+ // behavior for all currently visible messages.
+ const rendered=renderedMessageIndices();
+ if(rendered.size){
+  syncMessages(rendered);
+  reconcileVisibleMirrorDuplicates(rendered);
+ }
+ removeEmptyInlineAnchors(document);
+ removeEmptyFollowExternalAnchors(document);
 }
 let queuedIndices=new Set();
 let syncTimer=null;

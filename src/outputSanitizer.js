@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.2.18';
-import { getCurrentChatKey } from './storage.js?rmv=1.2.18';
+import { getSettings } from './settings.js?rmv=1.2.19';
+import { getCurrentChatKey } from './storage.js?rmv=1.2.19';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -8,12 +8,12 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from './feedbackCat.js?rmv=1.2.18';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.18';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.18';
+} from './feedbackCat.js?rmv=1.2.19';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.19';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.2.19';
 
 
-const RUNTIME_VERSION = '1.2.18';
+const RUNTIME_VERSION = '1.2.19';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -9854,7 +9854,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.2.18-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.2.19-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -14056,14 +14056,17 @@ function feedbackCatButtonTitle() {
         : '挨打猫：反馈这面兔子镜；未选择时不会向模型追加内容';
 }
 
-function updateFeedbackCatButtonTitles() {
+function updateFeedbackCatButtonTitles(scope = document) {
     const title = feedbackCatButtonTitle();
-    document.querySelectorAll?.(`[${FEEDBACK_CAT_ATTR}]`)?.forEach(button => {
+    const buttons = [];
+    if (scope?.matches?.(`[${FEEDBACK_CAT_ATTR}]`)) buttons.push(scope);
+    scope?.querySelectorAll?.(`[${FEEDBACK_CAT_ATTR}]`)?.forEach(button => buttons.push(button));
+    for (const button of buttons) {
         button.title = title;
         button.setAttribute('aria-label', title);
         normalizeRabbitMirrorToolButton(button);
         normalizeRabbitMirrorToolHost(button.parentElement?.matches?.(`[${TOOL_ENTRY_HOST_ATTR}]`) ? button.parentElement : null);
-    });
+    }
 }
 
 function saveFeedbackCatChoice(root, types, customText, rounds) {
@@ -16080,7 +16083,44 @@ function installMaintenanceRabbitsInScope(scope, { allowGlobalRemoval = false } 
             }
         }
     });
-    if (feedbackEnabled) updateFeedbackCatButtonTitles();
+    if (feedbackEnabled) updateFeedbackCatButtonTitles(scope);
+}
+
+const COMPAT_RECENT_MESSAGE_LIMIT = 16;
+let lastRecentMaintenanceEnabled = null;
+let lastRecentFeedbackEnabled = null;
+
+function recentRenderedMessageScopes(chatRoot, limit = COMPAT_RECENT_MESSAGE_LIMIT) {
+    if (!chatRoot) return [];
+    // Do not inspect every mounted message or call getBoundingClientRect() across
+    // a large chat. Walk backward through only the tail of the direct message
+    // lane; new DOM insertions are handled separately by the scoped observer.
+    const wanted = Math.max(1, Number(limit) || COMPAT_RECENT_MESSAGE_LIMIT);
+    const messages = [];
+    let node = chatRoot.lastElementChild;
+    while (node && messages.length < wanted) {
+        if (node.matches?.('.mes, [mesid].mes, .mes[data-message-id], .mes[data-messageid]')) messages.push(node);
+        node = node.previousElementSibling;
+    }
+    return messages.reverse();
+}
+
+function installMaintenanceRabbitsInRecentChatDom() {
+    const chatRoot = getChatRoot();
+    if (!chatRoot) return;
+    const maintenanceEnabled = isMaintenanceRabbitEnabled();
+    const feedbackEnabled = isFeedbackCatEnabled();
+    // Remove stale controls once when a setting changes, not on every host event.
+    if (lastRecentMaintenanceEnabled !== maintenanceEnabled) {
+        if (!maintenanceEnabled) removeMaintenanceRabbitsInChatDom();
+        lastRecentMaintenanceEnabled = maintenanceEnabled;
+    }
+    if (lastRecentFeedbackEnabled !== feedbackEnabled) {
+        if (!feedbackEnabled) removeFeedbackCatsInChatDom();
+        lastRecentFeedbackEnabled = feedbackEnabled;
+    }
+    if (!maintenanceEnabled && !feedbackEnabled) return;
+    for (const scope of recentRenderedMessageScopes(chatRoot)) installMaintenanceRabbitsInScope(scope);
 }
 
 function installMaintenanceRabbitsInChatDom() {
@@ -18074,7 +18114,7 @@ function scheduleMaintenanceRabbitInstall() {
     if (maintenanceInstallTimers.size) return;
     const timer = setTimeout(() => {
         maintenanceInstallTimers.delete(timer);
-        installMaintenanceRabbitsInChatDom();
+        installMaintenanceRabbitsInRecentChatDom();
     }, 180);
     maintenanceInstallTimers.add(timer);
 }
@@ -18204,7 +18244,7 @@ export async function initOutputSanitizer() {
     installToolEntryDelegation();
     installChatMutationObserver();
     scheduleMaintenanceRabbitInstall();
-    installMaintenanceRabbitsInChatDom();
+    installMaintenanceRabbitsInRecentChatDom();
 
     try {
         const mod = await import('../../../../../script.js');
@@ -18256,6 +18296,8 @@ export function destroyOutputSanitizer() {
     maintenanceAutoSafeBaselineSignatures.clear();
     maintenancePreRepairSnapshots.clear();
     maintenanceAutoSafeReady = false;
+    lastRecentMaintenanceEnabled = null;
+    lastRecentFeedbackEnabled = null;
     removeMaintenanceRabbitsInChatDom();
     removeFeedbackCatsInChatDom();
     closeMaintenanceRabbitMenu();
