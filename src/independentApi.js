@@ -1,16 +1,16 @@
-import { getSettings } from './settings.js?rmv=1.2.13';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.13';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.13';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.13';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.13';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.13';
+import { getSettings } from './settings.js?rmv=1.2.14';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.14';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.14';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.14';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.14';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.14';
 
-const RUNTIME_VERSION = '1.2.13';
+const RUNTIME_VERSION = '1.2.14';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
 const API_REQUEST_DIAGNOSTIC_EVENT = 'rabbitmirror:independent-api-diagnostic';
-const API_PROFILE_SCHEMA = 2;
+const API_PROFILE_SCHEMA = 3;
 const DEGRADED_PROFILE_RECHECK_MS = 6 * 60 * 60 * 1000;
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
 const EXTERNAL_SHELL_ATTR = 'data-rabbit-mirror-external-shell';
@@ -33,7 +33,8 @@ let externalGeometryFrame = 0;
 let externalGeometryListenersInstalled = false;
 const pending = new Map();
 const independentRequestQueue = [];
-let activeIndependentRequest = null;
+const activeIndependentRequests = new Set();
+const MAX_CONCURRENT_INDEPENDENT_REQUESTS = 2;
 let independentRequestQueueSequence = 0;
 let feedbackActionListenerInstalled = false;
 let repairPersistenceListenerInstalled = false;
@@ -188,16 +189,16 @@ function readApiProfileStore(){ try { const v=JSON.parse(localStorage.getItem(AP
 function writeApiProfileStore(v){ try { localStorage.setItem(API_PROFILE_STORE_KEY,JSON.stringify(v)); } catch {} }
 function apiProfileKey(st){ return `${normalizeBase(st?.independentApiBaseUrl||'')}|${String(st?.independentApiModel||'')}`; }
 function normalizedConfiguredTemperature(st){ const value=Number(st?.independentApiTemperature); return Number.isFinite(value)?Math.max(0,Math.min(2,value)):0.8; }
-function profileUsesTemperature(profile=''){ return !/no_temp|minimal|nostream/i.test(String(profile||'')); }
+function profileUsesTemperature(profile=''){ return !/no_temp|minimal/i.test(String(profile||'')); }
 function profileUsesSystemMessage(profile=''){ return !/user_only/i.test(String(profile||'')); }
-function profileUsesStreaming(profile=''){ return !/nostream/i.test(String(profile||'')); }
+function profileUsesStreaming(profile=''){ return !/(?:no[_-]?stream|nostream)/i.test(String(profile||'')); }
 function profileTokenField(profile=''){
  const value=String(profile||'');
- if(/completion/i.test(value) || /nostream/i.test(value)) return 'max_completion_tokens';
+ if(/completion/i.test(value)) return 'max_completion_tokens';
  if(/full/i.test(value)) return 'max_tokens';
  return '未发送';
 }
-function profileIsDegraded(profile=''){ return !profileUsesTemperature(profile) || !profileUsesSystemMessage(profile) || !profileUsesStreaming(profile); }
+function profileIsDegraded(profile=''){ return !profileUsesTemperature(profile) || !profileUsesSystemMessage(profile); }
 function getRememberedApiProfile(st){
  const key=apiProfileKey(st); if(!key) return '';
  const record=readApiProfileStore()[key];
@@ -553,21 +554,39 @@ function independentRequestProfiles(st,systemPrompt,userPrompt,options={}){
  const systemUser=[{role:'system',content:systemPrompt},{role:'user',content:userPrompt}];
  const userOnly=[{role:'user',content:`${systemPrompt}\n\n${userPrompt}`}];
  const profiles={
+  // RabbitMirror does not render partial API chunks. Prefer a complete JSON
+  // response first: this avoids an SSE connection that has already generated
+  // the mirror but never closes, which previously blocked the global queue.
+  chat_system_user_full_nostream:{kind:'chat',body:{model,messages:systemUser,temperature,max_tokens:maxTokens,stream:false}},
+  chat_system_user_completion_nostream:{kind:'chat',body:{model,messages:systemUser,temperature,max_completion_tokens:maxTokens,stream:false}},
   chat_system_user_full:{kind:'chat',body:{model,messages:systemUser,temperature,max_tokens:maxTokens,stream}},
   chat_system_user_completion:{kind:'chat',body:{model,messages:systemUser,temperature,max_completion_tokens:maxTokens,stream}},
+  chat_system_user_no_temp_full_nostream:{kind:'chat',body:{model,messages:systemUser,max_tokens:maxTokens,stream:false}},
+  chat_system_user_no_temp_completion_nostream:{kind:'chat',body:{model,messages:systemUser,max_completion_tokens:maxTokens,stream:false}},
   chat_system_user_no_temp_full:{kind:'chat',body:{model,messages:systemUser,max_tokens:maxTokens,stream}},
   chat_system_user_no_temp_completion:{kind:'chat',body:{model,messages:systemUser,max_completion_tokens:maxTokens,stream}},
   chat_system_user_minimal:{kind:'chat',body:{model,messages:systemUser,stream}},
+  chat_user_only_full_nostream:{kind:'chat',body:{model,messages:userOnly,temperature,max_tokens:maxTokens,stream:false}},
+  chat_user_only_completion_nostream:{kind:'chat',body:{model,messages:userOnly,temperature,max_completion_tokens:maxTokens,stream:false}},
   chat_user_only_full:{kind:'chat',body:{model,messages:userOnly,temperature,max_tokens:maxTokens,stream}},
   chat_user_only_completion:{kind:'chat',body:{model,messages:userOnly,temperature,max_completion_tokens:maxTokens,stream}},
+  chat_user_only_no_temp_full_nostream:{kind:'chat',body:{model,messages:userOnly,max_tokens:maxTokens,stream:false}},
+  chat_user_only_no_temp_completion_nostream:{kind:'chat',body:{model,messages:userOnly,max_completion_tokens:maxTokens,stream:false}},
   chat_user_only_no_temp_full:{kind:'chat',body:{model,messages:userOnly,max_tokens:maxTokens,stream}},
   chat_user_only_no_temp_completion:{kind:'chat',body:{model,messages:userOnly,max_completion_tokens:maxTokens,stream}},
   chat_user_only_minimal:{kind:'chat',body:{model,messages:userOnly,stream}},
-  chat_system_user_nostream:{kind:'chat',body:{model,messages:systemUser,max_completion_tokens:maxTokens,stream:false}},
-  chat_user_only_nostream:{kind:'chat',body:{model,messages:userOnly,max_completion_tokens:maxTokens,stream:false}},
  };
  const remembered=getRememberedApiProfile(st);
- const order=[remembered,'chat_system_user_full','chat_system_user_completion','chat_system_user_no_temp_full','chat_system_user_no_temp_completion','chat_system_user_minimal','chat_user_only_full','chat_user_only_completion','chat_user_only_no_temp_full','chat_user_only_no_temp_completion','chat_user_only_minimal','chat_system_user_nostream','chat_user_only_nostream'].filter(Boolean);
+ const order=[remembered,
+  'chat_system_user_full_nostream','chat_system_user_completion_nostream',
+  'chat_system_user_full','chat_system_user_completion',
+  'chat_system_user_no_temp_full_nostream','chat_system_user_no_temp_completion_nostream',
+  'chat_system_user_no_temp_full','chat_system_user_no_temp_completion','chat_system_user_minimal',
+  'chat_user_only_full_nostream','chat_user_only_completion_nostream',
+  'chat_user_only_full','chat_user_only_completion',
+  'chat_user_only_no_temp_full_nostream','chat_user_only_no_temp_completion_nostream',
+  'chat_user_only_no_temp_full','chat_user_only_no_temp_completion','chat_user_only_minimal'
+ ].filter(Boolean);
  return [...new Set(order)].map(name=>({name,...profiles[name]})).filter(x=>x.body&&x.kind);
 }
 
@@ -2110,8 +2129,8 @@ function setIndependentLoadingStatus(index,identity,summary,text,phase=''){
 }
 function queueAheadCount(item){
  const index=independentRequestQueue.indexOf(item);
- if(index<0) return activeIndependentRequest&&activeIndependentRequest!==item?1:0;
- return (activeIndependentRequest?1:0)+index;
+ if(index<0) return 0;
+ return activeIndependentRequests.size+index;
 }
 function updateIndependentQueuePlaceholder(item,phase='queued'){
  const flight=item?.flight;
@@ -2152,9 +2171,8 @@ function cancelQueuedIndependentRequest(flight,reason='cancelled'){
  refreshIndependentQueuePlaceholders();
  return true;
 }
-async function drainIndependentRequestQueue(){
- if(activeIndependentRequest) return;
- while(independentRequestQueue.length){
+function drainIndependentRequestQueue(){
+ while(activeIndependentRequests.size<MAX_CONCURRENT_INDEPENDENT_REQUESTS && independentRequestQueue.length){
   const item=independentRequestQueue.shift();
   if(!item || item.settled) continue;
   const flight=item.flight;
@@ -2162,21 +2180,20 @@ async function drainIndependentRequestQueue(){
    settleIndependentQueueItem(item,'reject',independentAbortError(flight.cancelReason||flight.controller?.signal?.reason||'cancelled'));
    continue;
   }
-  activeIndependentRequest=item;
+  activeIndependentRequests.add(item);
   item.started=true;
   updateIndependentQueuePlaceholder(item,'requesting');
   refreshIndependentQueuePlaceholders();
-  try{
-   const value=await item.run({
-    onResponseStart:()=>updateIndependentQueuePlaceholder(item,'receiving'),
-   });
-   settleIndependentQueueItem(item,'resolve',value);
-  }catch(error){
-   settleIndependentQueueItem(item,'reject',error);
-  }finally{
-   activeIndependentRequest=null;
+  Promise.resolve().then(()=>item.run({
+   onResponseStart:()=>updateIndependentQueuePlaceholder(item,'receiving'),
+  })).then(
+   value=>settleIndependentQueueItem(item,'resolve',value),
+   error=>settleIndependentQueueItem(item,'reject',error),
+  ).finally(()=>{
+   activeIndependentRequests.delete(item);
    refreshIndependentQueuePlaceholders();
-  }
+   drainIndependentRequestQueue();
+  });
  }
 }
 function enqueueIndependentRequest(flight,run){
@@ -3483,7 +3500,7 @@ export function destroyIndependentRabbitMirror(){
  removeIndependentActionBridge();
  lastIndependentRequestConfig='';
  disconnectObserver(); unsubscribeHostEvents(); removeFeedbackMirrorActionListeners(); removeRepairPersistenceListener(); removeExternalGeometryListeners(); removeBackgroundLifecycleListeners();
- syncRunning=false; pending.clear(); independentRequestQueue.splice(0); activeIndependentRequest=null; messageSourceRevisions.clear(); preparedReadyHtmlCache.clear();
+ syncRunning=false; pending.clear(); independentRequestQueue.splice(0); activeIndependentRequests.clear(); messageSourceRevisions.clear(); preparedReadyHtmlCache.clear();
  document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="follow"]`).forEach(host=>restoreFollowInline(host));
  document.querySelectorAll(`[${SOURCE_ATTR}][data-rm-source="independent"]`).forEach(n=>n.remove());
  removeEmptyInlineAnchors(document); removeEmptyFollowExternalAnchors(document);
