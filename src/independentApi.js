@@ -1,16 +1,16 @@
-import { getSettings } from './settings.js?rmv=1.2.16';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.16';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.16';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.16';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.16';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.16';
+import { getSettings } from './settings.js?rmv=1.2.18';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.18';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.18';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.18';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.18';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.18';
 
-const RUNTIME_VERSION = '1.2.16';
+const RUNTIME_VERSION = '1.2.18';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
 const API_REQUEST_DIAGNOSTIC_EVENT = 'rabbitmirror:independent-api-diagnostic';
-const API_PROFILE_SCHEMA = 3;
+const API_PROFILE_SCHEMA = 4;
 const DEGRADED_PROFILE_RECHECK_MS = 6 * 60 * 60 * 1000;
 const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
 const EXTERNAL_SHELL_ATTR = 'data-rabbit-mirror-external-shell';
@@ -593,6 +593,29 @@ async function readApiResponse(response){
      }catch{}
    }
  };
+ // Some OpenAI-compatible proxies flush one complete SSE/NDJSON frame but do
+ // not append the terminating newline and keep the HTTP connection alive. In
+ // that case processStreamLines() deliberately leaves the final line buffered,
+ // so the completed mirror used to remain invisible forever. Parse that pending
+ // frame opportunistically whenever it is already valid JSON; incomplete frames
+ // stay buffered until the next network chunk arrives.
+ const processPendingStreamFrame=()=>{
+   const trimmed=String(lineBuffer||'').trim();
+   if(!trimmed) return false;
+   let data='';
+   if(trimmed.startsWith('data:')) data=trimmed.slice(5).trim();
+   else if(trimmed.startsWith('{') || trimmed.startsWith('[')) data=trimmed;
+   else return false;
+   if(!data) return false;
+   if(data==='[DONE]'){ doneMarker=true; lineBuffer=''; return true; }
+   try{
+     const payload=JSON.parse(data); lastPayload=payload;
+     const part=extractResponseText(payload); if(part) merged=mergeResponseText(merged,part,payload);
+     lineBuffer='';
+     return true;
+   }catch{}
+   return false;
+ };
  const finishEarly=async(endReason)=>{
    try{ await reader.cancel(endReason); }catch{}
    return {raw,payload:lastPayload,text:merged.trim(),transport:streamLike?'incremental-stream':'incremental-body',endReason,chunks};
@@ -603,9 +626,20 @@ async function readApiResponse(response){
    chunks++;
    const decoded=decoder.decode(step.value,{stream:true});
    raw+=decoded;
+   let pendingFrameParsed=false;
    if(streamLike || /^\s*data:/m.test(raw)){
      lineBuffer+=decoded;
      processStreamLines(false);
+     pendingFrameParsed=processPendingStreamFrame();
+     // A few gateways label the response as event-stream while forwarding raw
+     // HTML instead of SSE frames. Accept a complete raw mirror only when the
+     // actual body itself starts with markup, avoiding accidental extraction
+     // from a quoted JSON string.
+     const rawTrimmed=raw.trim();
+     if(rawTrimmed.startsWith('<')){
+       const directMirror=completeMirrorEvidence(rawTrimmed);
+       if(directMirror){ merged=directMirror; return finishEarly('complete-raw-stream-mirror'); }
+     }
    }else{
      const trimmed=raw.trim();
      if((trimmed.startsWith('{')&&trimmed.endsWith('}')) || (trimmed.startsWith('[')&&trimmed.endsWith(']'))){
@@ -618,8 +652,8 @@ async function readApiResponse(response){
        if(plainMirror){ merged=plainMirror; return finishEarly('complete-mirror'); }
      }
    }
-   if(completeMirrorEvidence(merged)) return finishEarly('complete-mirror');
-   if(doneMarker) return finishEarly('done-marker');
+   if(completeMirrorEvidence(merged)) return finishEarly(pendingFrameParsed?'complete-pending-frame-mirror':'complete-mirror');
+   if(doneMarker) return finishEarly(pendingFrameParsed?'pending-done-marker':'done-marker');
  }
  const tail=decoder.decode();
  raw+=tail;
@@ -648,38 +682,40 @@ function independentRequestProfiles(st,systemPrompt,userPrompt,options={}){
  const systemUser=[{role:'system',content:systemPrompt},{role:'user',content:userPrompt}];
  const userOnly=[{role:'user',content:`${systemPrompt}\n\n${userPrompt}`}];
  const profiles={
-  // RabbitMirror does not render partial API chunks. Prefer a complete JSON
-  // response first: this avoids an SSE connection that has already generated
-  // the mirror but never closes, which previously blocked the global queue.
-  chat_system_user_full_nostream:{kind:'chat',body:{model,messages:systemUser,temperature,max_tokens:maxTokens,stream:false}},
-  chat_system_user_completion_nostream:{kind:'chat',body:{model,messages:systemUser,temperature,max_completion_tokens:maxTokens,stream:false}},
+  // v1.2.3's proven path sent a normal streaming Chat Completions request first.
+  // Some OpenAI-compatible Gemini gateways accept stream:false with HTTP 200
+  // but do not deliver a locally finishable body, so a non-stream-first profile
+  // can remain stuck without ever reaching the fallback profiles. Keep the
+  // modern incremental reader, but restore the proven stream-first order.
   chat_system_user_full:{kind:'chat',body:{model,messages:systemUser,temperature,max_tokens:maxTokens,stream}},
   chat_system_user_completion:{kind:'chat',body:{model,messages:systemUser,temperature,max_completion_tokens:maxTokens,stream}},
-  chat_system_user_no_temp_full_nostream:{kind:'chat',body:{model,messages:systemUser,max_tokens:maxTokens,stream:false}},
-  chat_system_user_no_temp_completion_nostream:{kind:'chat',body:{model,messages:systemUser,max_completion_tokens:maxTokens,stream:false}},
   chat_system_user_no_temp_full:{kind:'chat',body:{model,messages:systemUser,max_tokens:maxTokens,stream}},
   chat_system_user_no_temp_completion:{kind:'chat',body:{model,messages:systemUser,max_completion_tokens:maxTokens,stream}},
   chat_system_user_minimal:{kind:'chat',body:{model,messages:systemUser,stream}},
-  chat_user_only_full_nostream:{kind:'chat',body:{model,messages:userOnly,temperature,max_tokens:maxTokens,stream:false}},
-  chat_user_only_completion_nostream:{kind:'chat',body:{model,messages:userOnly,temperature,max_completion_tokens:maxTokens,stream:false}},
   chat_user_only_full:{kind:'chat',body:{model,messages:userOnly,temperature,max_tokens:maxTokens,stream}},
   chat_user_only_completion:{kind:'chat',body:{model,messages:userOnly,temperature,max_completion_tokens:maxTokens,stream}},
-  chat_user_only_no_temp_full_nostream:{kind:'chat',body:{model,messages:userOnly,max_tokens:maxTokens,stream:false}},
-  chat_user_only_no_temp_completion_nostream:{kind:'chat',body:{model,messages:userOnly,max_completion_tokens:maxTokens,stream:false}},
   chat_user_only_no_temp_full:{kind:'chat',body:{model,messages:userOnly,max_tokens:maxTokens,stream}},
   chat_user_only_no_temp_completion:{kind:'chat',body:{model,messages:userOnly,max_completion_tokens:maxTokens,stream}},
   chat_user_only_minimal:{kind:'chat',body:{model,messages:userOnly,stream}},
+  chat_system_user_full_nostream:{kind:'chat',body:{model,messages:systemUser,temperature,max_tokens:maxTokens,stream:false}},
+  chat_system_user_completion_nostream:{kind:'chat',body:{model,messages:systemUser,temperature,max_completion_tokens:maxTokens,stream:false}},
+  chat_system_user_no_temp_full_nostream:{kind:'chat',body:{model,messages:systemUser,max_tokens:maxTokens,stream:false}},
+  chat_system_user_no_temp_completion_nostream:{kind:'chat',body:{model,messages:systemUser,max_completion_tokens:maxTokens,stream:false}},
+  chat_user_only_full_nostream:{kind:'chat',body:{model,messages:userOnly,temperature,max_tokens:maxTokens,stream:false}},
+  chat_user_only_completion_nostream:{kind:'chat',body:{model,messages:userOnly,temperature,max_completion_tokens:maxTokens,stream:false}},
+  chat_user_only_no_temp_full_nostream:{kind:'chat',body:{model,messages:userOnly,max_tokens:maxTokens,stream:false}},
+  chat_user_only_no_temp_completion_nostream:{kind:'chat',body:{model,messages:userOnly,max_completion_tokens:maxTokens,stream:false}},
  };
  const remembered=getRememberedApiProfile(st);
  const order=[remembered,
-  'chat_system_user_full_nostream','chat_system_user_completion_nostream',
   'chat_system_user_full','chat_system_user_completion',
-  'chat_system_user_no_temp_full_nostream','chat_system_user_no_temp_completion_nostream',
   'chat_system_user_no_temp_full','chat_system_user_no_temp_completion','chat_system_user_minimal',
-  'chat_user_only_full_nostream','chat_user_only_completion_nostream',
   'chat_user_only_full','chat_user_only_completion',
-  'chat_user_only_no_temp_full_nostream','chat_user_only_no_temp_completion_nostream',
-  'chat_user_only_no_temp_full','chat_user_only_no_temp_completion','chat_user_only_minimal'
+  'chat_user_only_no_temp_full','chat_user_only_no_temp_completion','chat_user_only_minimal',
+  'chat_system_user_full_nostream','chat_system_user_completion_nostream',
+  'chat_system_user_no_temp_full_nostream','chat_system_user_no_temp_completion_nostream',
+  'chat_user_only_full_nostream','chat_user_only_completion_nostream',
+  'chat_user_only_no_temp_full_nostream','chat_user_only_no_temp_completion_nostream'
  ].filter(Boolean);
  return [...new Set(order)].map(name=>({name,...profiles[name]})).filter(x=>x.body&&x.kind);
 }
