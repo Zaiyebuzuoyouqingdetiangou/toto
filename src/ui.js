@@ -1,14 +1,14 @@
-import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.2.14';
-import { clearLastCombo } from './storage.js?rmv=1.2.14';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.2.14';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.2.14';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.2.14';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.2.14';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.2.14';
-import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.2.14';
+import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.2.16';
+import { clearLastCombo } from './storage.js?rmv=1.2.16';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.2.16';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.2.16';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.2.16';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.2.16';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.2.16';
+import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.2.16';
 
-const SETTINGS_UI_VERSION = '1.2.14';
-const RUNTIME_VERSION = '1.2.14';
+const SETTINGS_UI_VERSION = '1.2.16';
+const RUNTIME_VERSION = '1.2.16';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -46,7 +46,10 @@ function independentApiProfileLabel(diagnostic) {
         : `未发送温度（设置值 ${Number(diagnostic.configuredTemperature ?? 0.8)}）`;
     const streamMode = diagnostic.streamSent ? '流式' : '非流式';
     const status = diagnostic.ok ? '成功' : `失败 HTTP ${diagnostic.status || '?'}`;
-    return `${status}｜${messageMode}｜${temperatureMode}｜${diagnostic.tokenField || '未发送输出上限'}｜${streamMode}`;
+    const transport = diagnostic.responseTransport
+        ? `｜${diagnostic.responseTransport}${diagnostic.responseEndReason ? `/${diagnostic.responseEndReason}` : ''}`
+        : '';
+    return `${status}｜${messageMode}｜${temperatureMode}｜${diagnostic.tokenField || '未发送输出上限'}｜${streamMode}${transport}`;
 }
 
 function renderIndependentApiDiagnostic(diagnostic = getLastIndependentApiRequestDiagnostic()) {

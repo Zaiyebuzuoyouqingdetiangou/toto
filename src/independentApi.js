@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.2.14';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.14';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.14';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.14';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.14';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.14';
+import { getSettings } from './settings.js?rmv=1.2.16';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.16';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.16';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.16';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.16';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.16';
 
-const RUNTIME_VERSION = '1.2.14';
+const RUNTIME_VERSION = '1.2.16';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
@@ -482,13 +482,18 @@ export async function fetchIndependentModels(){
  return (Array.isArray(j?.data)?j.data:Array.isArray(j)?j:[]).map(x=>typeof x==='string'?x:x?.id).filter(Boolean).sort();
 }
 export async function testIndependentConnection(){ const models=await fetchIndependentModels(); return {ok:true,models}; }
-function textFromContent(value){
+function textFromContent(value,depth=0){
+ if(depth>6 || value===null || value===undefined) return '';
  if(typeof value==='string') return value;
- if(Array.isArray(value)) return value.map(item=>{
-   if(typeof item==='string') return item;
-   return item?.text ?? item?.content ?? item?.output_text ?? item?.value ?? '';
- }).filter(Boolean).join('\n');
- if(value&&typeof value==='object') return String(value.text ?? value.content ?? value.output_text ?? value.value ?? '');
+ if(typeof value==='number' || typeof value==='boolean') return String(value);
+ if(Array.isArray(value)) return value.map(item=>textFromContent(item,depth+1)).filter(Boolean).join('\n');
+ if(value&&typeof value==='object'){
+   const keys=['text','content','output_text','value','parts','message','delta','output'];
+   for(const key of keys){
+     if(!Object.prototype.hasOwnProperty.call(value,key)) continue;
+     const text=textFromContent(value[key],depth+1); if(text) return text;
+   }
+ }
  return '';
 }
 function extractResponseText(payload){
@@ -516,26 +521,115 @@ function extractResponseText(payload){
  if(/<toto\b|<details\b/i.test(reasoning)) return reasoning;
  return '';
 }
+function mergeResponseText(current='',next='',payload=null){
+ const existing=String(current||'');
+ const incoming=String(next||'');
+ if(!incoming) return existing;
+ const delta=payload?.choices?.[0]?.delta?.content;
+ if(delta!==undefined && delta!==null) return `${existing}${incoming}`;
+ if(!existing) return incoming;
+ if(incoming.startsWith(existing)) return incoming;
+ if(existing.endsWith(incoming)) return existing;
+ return `${existing}${incoming}`;
+}
+function completeMirrorEvidence(text=''){
+ const source=String(text||'');
+ const toto=source.match(/<toto\b[\s\S]*?<\/toto>/i);
+ if(toto) return toto[0];
+ if(/<toto\b/i.test(source)) return '';
+ const details=source.match(/<details\b[\s\S]*?<\/details>/i);
+ if(details && /兔子镜|RabbitMirror/i.test(details[0])) return details[0];
+ return '';
+}
 function parseSsePayload(text=''){
- const chunks=[]; let lastPayload=null;
+ let merged=''; let lastPayload=null; let done=false;
  for(const line of String(text).split(/\r?\n/)){
-   if(!line.startsWith('data:')) continue;
-   const data=line.slice(5).trim(); if(!data||data==='[DONE]') continue;
+   const trimmed=line.trim();
+   if(!trimmed) continue;
+   let data='';
+   if(trimmed.startsWith('data:')) data=trimmed.slice(5).trim();
+   else if(trimmed.startsWith('{')) data=trimmed;
+   else continue;
+   if(!data) continue;
+   if(data==='[DONE]'){ done=true; break; }
    try{
      const json=JSON.parse(data); lastPayload=json;
-     const part=extractResponseText(json); if(part) chunks.push(part);
+     const part=extractResponseText(json); if(part) merged=mergeResponseText(merged,part,json);
    }catch{}
  }
- return {payload:lastPayload,text:chunks.join('').trim()};
+ return {payload:lastPayload,text:merged.trim(),done};
 }
 async function readApiResponse(response){
  const contentType=String(response.headers?.get?.('content-type')||'').toLowerCase();
- const raw=await response.text();
- if(/text\/event-stream|application\/x-ndjson/.test(contentType) || /^\s*data:/m.test(raw)){
-   const parsed=parseSsePayload(raw); return {raw,payload:parsed.payload,text:parsed.text};
+ const streamLike=/text\/event-stream|application\/x-ndjson/.test(contentType);
+ const body=response.body;
+ if(!body?.getReader){
+   const raw=await response.text();
+   if(streamLike || /^\s*data:/m.test(raw)){
+     const parsed=parseSsePayload(raw); return {raw,payload:parsed.payload,text:parsed.text,transport:'buffered-stream',endReason:parsed.done?'done-marker':'eof',chunks:1};
+   }
+   try{ const payload=JSON.parse(raw); return {raw,payload,text:extractResponseText(payload),transport:'buffered-json',endReason:'eof',chunks:1}; }
+   catch{ return {raw,payload:null,text:String(raw||'').trim(),transport:'buffered-text',endReason:'eof',chunks:1}; }
  }
- try{ const payload=JSON.parse(raw); return {raw,payload,text:extractResponseText(payload)}; }
- catch{ return {raw,payload:null,text:String(raw||'').trim()}; }
+ const reader=body.getReader();
+ const decoder=new TextDecoder();
+ let raw=''; let merged=''; let lastPayload=null; let lineBuffer=''; let chunks=0; let doneMarker=false;
+ const processStreamLines=(flush=false)=>{
+   const source=lineBuffer;
+   const lines=source.split(/\r?\n/);
+   lineBuffer=flush?'':(lines.pop()||'');
+   for(const line of lines){
+     const trimmed=line.trim();
+     if(!trimmed) continue;
+     let data='';
+     if(trimmed.startsWith('data:')) data=trimmed.slice(5).trim();
+     else if(trimmed.startsWith('{')) data=trimmed;
+     else continue;
+     if(!data) continue;
+     if(data==='[DONE]'){ doneMarker=true; continue; }
+     try{
+       const payload=JSON.parse(data); lastPayload=payload;
+       const part=extractResponseText(payload); if(part) merged=mergeResponseText(merged,part,payload);
+     }catch{}
+   }
+ };
+ const finishEarly=async(endReason)=>{
+   try{ await reader.cancel(endReason); }catch{}
+   return {raw,payload:lastPayload,text:merged.trim(),transport:streamLike?'incremental-stream':'incremental-body',endReason,chunks};
+ };
+ while(true){
+   const step=await reader.read();
+   if(step.done) break;
+   chunks++;
+   const decoded=decoder.decode(step.value,{stream:true});
+   raw+=decoded;
+   if(streamLike || /^\s*data:/m.test(raw)){
+     lineBuffer+=decoded;
+     processStreamLines(false);
+   }else{
+     const trimmed=raw.trim();
+     if((trimmed.startsWith('{')&&trimmed.endsWith('}')) || (trimmed.startsWith('[')&&trimmed.endsWith(']'))){
+       try{
+         const payload=JSON.parse(trimmed); const text=extractResponseText(payload);
+         if(text){ lastPayload=payload; merged=text; if(completeMirrorEvidence(text)) return finishEarly('complete-json-mirror'); }
+       }catch{}
+     }else if(trimmed.startsWith('<')){
+       const plainMirror=completeMirrorEvidence(trimmed);
+       if(plainMirror){ merged=plainMirror; return finishEarly('complete-mirror'); }
+     }
+   }
+   if(completeMirrorEvidence(merged)) return finishEarly('complete-mirror');
+   if(doneMarker) return finishEarly('done-marker');
+ }
+ const tail=decoder.decode();
+ raw+=tail;
+ if(streamLike || /^\s*data:/m.test(raw)){
+   lineBuffer+=tail;
+   processStreamLines(true);
+   return {raw,payload:lastPayload,text:merged.trim(),transport:'incremental-stream',endReason:doneMarker?'done-marker':'eof',chunks};
+ }
+ try{ const payload=JSON.parse(raw); return {raw,payload,text:extractResponseText(payload),transport:'incremental-json',endReason:'eof',chunks}; }
+ catch{ return {raw,payload:null,text:String(raw||'').trim(),transport:'incremental-text',endReason:'eof',chunks}; }
 }
 function extractMirrorInner(raw){
  const cleaned=cleanRabbitMirrorOutput(raw);
@@ -630,6 +724,10 @@ async function requestIndependentCompletion(st,systemPrompt,userPrompt,options={
    tokenField:profileTokenField(profile.name),
    rememberedProfile,
    attempts:attempts.map(item=>({profile:item.profile,status:item.status})),
+   responseTransport:String(result.transport||''),
+   responseEndReason:String(result.endReason||''),
+   responseChunks:Number(result.chunks||0),
+   responseChars:String(result.raw||'').length,
    ...(options.diagnosticContext && typeof options.diagnosticContext==='object' ? options.diagnosticContext : {}),
   };
   if(r.ok){
@@ -858,6 +956,15 @@ function inlineAnchorForMessage(el,create=false){
   }
  }
  if(anchor && body!==el && anchor.previousElementSibling!==body) putAfterBody(anchor);
+ if(anchor){
+  // Mobile SillyTavern renders swipe arrows/counter as an absolute bottom lane
+  // with a very high z-index. Mark the inline anchor so CSS can reserve a
+  // separate touch-safe lane above those controls instead of letting the
+  // mirror summary share their hit area.
+  const hasSwipeLane=!!el.querySelector?.('.swipe_left, .swipe_right, .swipes-counter, .swipeRightBlock');
+  if(hasSwipeLane) anchor.setAttribute('data-rm-inline-swipe-safe','true');
+  else anchor.removeAttribute('data-rm-inline-swipe-safe');
+ }
  return anchor;
 }
 function removeEmptyInlineAnchors(scope=document){
