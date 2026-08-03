@@ -716,3 +716,41 @@ toto[data-rabbit-mirror="true"] summary {
 .rabbit-mirror-external-error-action:active{
   transform:translateY(1px) !important;
 }
+
+/* 1.2.16: mobile inline swipe-safe lane.
+ * SillyTavern positions swipe arrows/counter absolutely at the bottom of each
+ * message with z-index:9999. An external-then-inline mirror inserted directly
+ * after .mes_text could therefore be visible while its summary tap was caught
+ * by the swipe layer. Reserve one control row beneath the inline mirror and
+ * keep its own summary above that layer without changing pure-external mode. */
+@media (max-width: 640px) {
+  #chat [data-rabbit-mirror-independent-inline-anchor="true"][data-rm-inline-swipe-safe="true"] {
+    position: relative !important;
+    z-index: 10000 !important;
+    margin-top: 8px !important;
+    margin-bottom: calc(var(--swipeCounterHeight, 15px) + var(--swipeCounterMargin, 5px) + 34px) !important;
+    pointer-events: auto !important;
+    isolation: isolate !important;
+  }
+
+  #chat [data-rabbit-mirror-independent-inline-anchor="true"][data-rm-inline-swipe-safe="true"]
+  > .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="inline"] {
+    position: relative !important;
+    z-index: 10000 !important;
+    pointer-events: auto !important;
+  }
+
+  #chat [data-rabbit-mirror-independent-inline-anchor="true"][data-rm-inline-swipe-safe="true"]
+  > .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="inline"]
+  > details[data-rabbit-mirror-external-details="true"]
+  > summary {
+    position: relative !important;
+    z-index: 10001 !important;
+    min-height: 48px !important;
+    box-sizing: border-box !important;
+    pointer-events: auto !important;
+    touch-action: manipulation !important;
+    -webkit-user-select: none !important;
+    user-select: none !important;
+  }
+}
