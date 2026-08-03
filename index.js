@@ -1,11 +1,11 @@
-import { initRabbitMirrorUI, destroyRabbitMirrorUI } from './src/ui.js?rmv=1.2.19';
-import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt } from './src/injector.js?rmv=1.2.19';
-import { clearLastCombo } from './src/storage.js?rmv=1.2.19';
-import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.2.19';
-import { getSettings } from './src/settings.js?rmv=1.2.19';
-import { clearRabbitMirrorGenerationSnapshots } from './src/generationGuard.js?rmv=1.2.19';
+import { initRabbitMirrorUI, destroyRabbitMirrorUI } from './src/ui.js?rmv=1.2.20';
+import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt } from './src/injector.js?rmv=1.2.20';
+import { clearLastCombo } from './src/storage.js?rmv=1.2.20';
+import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.2.20';
+import { getSettings } from './src/settings.js?rmv=1.2.20';
+import { clearRabbitMirrorGenerationSnapshots } from './src/generationGuard.js?rmv=1.2.20';
 
-const RABBIT_MIRROR_RUNTIME_VERSION = '1.2.19';
+const RABBIT_MIRROR_RUNTIME_VERSION = '1.2.20';
 
 let outputSanitizerModule = null;
 let visualScannerModule = null;
@@ -16,9 +16,9 @@ let runtimeEnabled = true;
 
 async function loadHeavyRuntimeModules() {
     const [outputMod, visualMod, independentMod] = await Promise.all([
-        import('./src/outputSanitizer.js?rmv=1.2.19'),
-        import('./src/visualScanner.js?rmv=1.2.19'),
-        import('./src/independentApi.js?rmv=1.2.19'),
+        import('./src/outputSanitizer.js?rmv=1.2.20'),
+        import('./src/visualScanner.js?rmv=1.2.20'),
+        import('./src/independentApi.js?rmv=1.2.20'),
     ]);
     outputSanitizerModule = outputMod;
     visualScannerModule = visualMod;
