@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.2.20';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.20';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.20';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.20';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.20';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.20';
+import { getSettings } from './settings.js?rmv=1.2.21';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.21';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.21';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.21';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.21';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.21';
 
-const RUNTIME_VERSION = '1.2.20';
+const RUNTIME_VERSION = '1.2.21';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
@@ -64,6 +64,11 @@ let independentActionBridge = null;
 let runtimeConfigSequence = 0;
 let lastAppliedRuntimeMode = null;
 const automaticGenerationCutovers = new Map();
+// Runtime-only terminal failure records prevent a DOM remount or reconciliation
+// pass from turning a finished error back into an eternal loading placeholder.
+// They are keyed by the exact assistant正文 identity and are cleared only by a
+// successful completion, a deliberate retry, or runtime teardown.
+const independentTerminalFailures = new Map();
 let backgroundLifecycleListenersInstalled = false;
 let backgroundResumeTimer = 0;
 let generationPlaceholderTimer = 0;
@@ -75,6 +80,20 @@ function globalFlights(){
  const created=new Map(); globalThis[GLOBAL_FLIGHT_KEY]=created; return created;
 }
 function flightIdentity(slot,sourceHash=''){ return `${String(slot||'')}\u0000${String(sourceHash||'')}`; }
+function terminalFailureIdentity(slot,sourceHash=''){ return flightIdentity(slot,sourceHash); }
+function rememberTerminalFailure(slot,sourceHash,message,stage='request-failed'){
+ const key=terminalFailureIdentity(slot,sourceHash);
+ if(!key) return null;
+ const record={message:String(message||'独立 API 生成失败。'),stage:String(stage||'request-failed'),ts:Date.now()};
+ independentTerminalFailures.set(key,record);
+ if(independentTerminalFailures.size>160){
+  const stale=[...independentTerminalFailures.entries()].sort((a,b)=>Number(a[1]?.ts||0)-Number(b[1]?.ts||0)).slice(0,independentTerminalFailures.size-120);
+  for(const [id] of stale) independentTerminalFailures.delete(id);
+ }
+ return record;
+}
+function terminalFailureFor(slot,sourceHash=''){ return independentTerminalFailures.get(terminalFailureIdentity(slot,sourceHash))||null; }
+function clearTerminalFailure(slot,sourceHash=''){ independentTerminalFailures.delete(terminalFailureIdentity(slot,sourceHash)); }
 
 function currentRuntime(){ return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION; }
 function byteLength(value=''){ const text=String(value||''); try{return new TextEncoder().encode(text).length;}catch{return unescape(encodeURIComponent(text)).length;} }
@@ -2341,6 +2360,13 @@ function scheduleMessageGeneration(index,delay=260,sourceAware=true){
   if(live && (suppressesAutomaticGeneration(live.ctx,index) || hasExistingFollowRabbitMirror(live.ctx,index,live.msg))){ finish(); return; }
   if(live) cancelSupersededFlightsForBase(live.baseSlot,live.sourceHash);
   if(!live){ if(Date.now()-state.startedAt<OWNER_REATTACH_WAIT_MS) queue(generationWaitPollDelay(state.startedAt)); else finish(); return; }
+  const blockedFailure=terminalFailureFor(live.slot,live.sourceHash);
+  if(blockedFailure){
+   finish();
+   const el=messageElement(index);
+   if(el) ensureExternalUi(el,live.key,blockedFailure.message,'error','independent',live.sourceHash);
+   return;
+  }
   if(live.sourceHash!==state.lastHash || live.revision!==state.lastRevision){
    state.lastHash=live.sourceHash; state.lastRevision=live.revision; state.stableSince=Date.now();
   }
@@ -2499,8 +2525,13 @@ async function generateFor(index,msg,force=false,sourceAware=true){
  const baseSlot=messageBaseSlotKey(ctx,index,msg);
  cancelSupersededFlightsForBase(baseSlot,sourceHash);
  if(st.enabled===false || st.autoRabbitMirrorInjection===false || st.generationSource!=='independent' || runtimeMode()!=='independent') return;
- if(!force && (suppressesAutomaticGeneration(ctx,index) || hasExistingFollowRabbitMirror(ctx,index,msg))) return;
  const el=messageElement(index);
+ const blockedFailure=terminalFailureFor(slot,sourceHash);
+ if(!force && blockedFailure){
+  if(el) ensureExternalUi(el,key,blockedFailure.message,'error','independent',sourceHash);
+  return null;
+ }
+ if(!force && (suppressesAutomaticGeneration(ctx,index) || hasExistingFollowRabbitMirror(ctx,index,msg))) return;
  let store=readStore();
  const recoveredAtGeneration=recoverSavedRecord(store,slot,observed);
  let saved=recoveredAtGeneration.saved;
@@ -2545,15 +2576,27 @@ async function generateFor(index,msg,force=false,sourceAware=true){
  };
  globalFlights().set(flightKey,flight);
  pending.set(slot,flight);
+ clearTerminalFailure(slot,sourceHash);
  const requestTask=enqueueIndependentRequest(flight,async lifecycle=>{
   if(flight.cancelled || controller.signal.aborted) throw independentAbortError(flight.cancelReason||controller.signal.reason||'cancelled');
-  flight.timeoutTimer=setTimeout(()=>{
-   flight.timedOut=true;
-   try{ controller.abort('independent-request-timeout'); }catch{}
-  },INDEPENDENT_REQUEST_TIMEOUT_MS);
-  return callIndependentApi(ctx,index,msg,controller.signal,lifecycle);
+  const apiTask=Promise.resolve().then(()=>callIndependentApi(ctx,index,msg,controller.signal,lifecycle));
+  const watchdogTask=new Promise((_,reject)=>{
+   flight.timeoutTimer=setTimeout(()=>{
+    flight.timedOut=true;
+    const timeoutMessage='独立 API 请求已超过 5 分钟并停止等待。服务端可能已经计费，但页面没有收到可完成的响应；本次不会自动再次请求。';
+    rememberTerminalFailure(slot,sourceHash,timeoutMessage,'client-timeout');
+    updateIndependentApiRequestDiagnostic({completionAccepted:false,failureStage:'client-timeout',timeoutMs:INDEPENDENT_REQUEST_TIMEOUT_MS});
+    try{ controller.abort('independent-request-timeout'); }catch{}
+    // Some SillyTavern proxy/fetch implementations do not reject an already
+    // opened response body after AbortController.abort(). Reject the outer
+    // task ourselves so the queue and UI always reach a terminal state.
+    reject(new Error(timeoutMessage));
+   },INDEPENDENT_REQUEST_TIMEOUT_MS);
+  });
+  return Promise.race([apiTask,watchdogTask]);
  });
  const task=requestTask.then(result=>{
+  clearTerminalFailure(slot,sourceHash);
   const html=String(result?.html||'');
   const isLive=stillCurrent();
   const paletteFingerprint=isLive ? commitIndependentVisualResult(html) : independentPaletteFingerprintFromHtml(html);
@@ -2576,12 +2619,26 @@ async function generateFor(index,msg,force=false,sourceAware=true){
   if(liveEl) ensureExternalUi(liveEl,key,completed.html,'ready','independent',sourceHash);
   return completed;
  }).catch(err=>{
-  if(flight.timedOut && stillCurrent()){
-   err=new Error('独立 API 生成超过 5 分钟，已停止本次等待。可在挨打猫中重说；旧请求不会继续占用当前兔子镜。');
-  } else if(err?.name==='AbortError' || controller.signal.aborted || !stillCurrent()){
+  const liveIdentity=currentGenerationIdentity(index);
+  const sameReply=!!(liveIdentity && liveIdentity.baseSlot===baseSlot && liveIdentity.sourceHash===sourceHash);
+  if(flight.timedOut){
+   const timeoutMessage=terminalFailureFor(slot,sourceHash)?.message || '独立 API 请求已超过 5 分钟并停止等待。服务端可能已经计费，但页面没有收到可完成的响应；本次不会自动再次请求。';
+   err=new Error(timeoutMessage);
+  } else if(err?.name==='AbortError' || controller.signal.aborted){
+   // Genuine source changes/runtime teardown must stay silent, because the
+   // aborted request no longer belongs beside the visible正文. A timeout is
+   // handled above and must never be swallowed as a generic AbortError.
+   if(!sameReply){ stale=true; return; }
+   const reason=String(flight.cancelReason||controller.signal.reason||err?.message||'独立 API 请求已取消');
+   err=new Error(`独立 API 请求已停止：${reason}。本次不会自动再次请求。`);
+  } else if(!sameReply){
    stale=true;
    return;
   }
+  const errorText=String(err?.message||err||'独立 API 生成失败。');
+  const stage=flight.timedOut?'client-timeout':'request-failed';
+  rememberTerminalFailure(slot,sourceHash,errorText,stage);
+  updateIndependentApiRequestDiagnostic({completionAccepted:false,failureStage:stage,errorMessage:errorText.slice(0,500)});
   console.error('[RabbitMirror] independent generation failed',err);
   {
    const liveEl=messageElement(index);
@@ -2594,8 +2651,8 @@ async function generateFor(index,msg,force=false,sourceAware=true){
      // placeholder that carries the exact owner identity, feedback cat and a
      // direct retry action. The previous ready HTML remains in cache/history.
      clearExternalHostFreshSourceState(liveHost);
-     ensureExternalUi(liveEl,key,String(err?.message||err),'error','independent',sourceHash);
-    } else ensureExternalUi(liveEl,key,String(err?.message||err),'error','independent',sourceHash);
+     ensureExternalUi(liveEl,key,errorText,'error','independent',sourceHash);
+    } else ensureExternalUi(liveEl,key,errorText,'error','independent',sourceHash);
    }
   }
  }).finally(()=>{
@@ -3110,7 +3167,10 @@ function syncMessages(indices=null){
          // them. Actual replacement happens only when a new generation starts.
          saved=null;
        }
-       if(!saved?.html && !keep && isActiveGenerationTarget && !automaticGenerationSuppressed){
+       const terminalFailure=terminalFailureFor(slot,sourceHash);
+       if(!saved?.html && terminalFailure){
+         keep=ensureExternalUi(el,key,terminalFailure.message,'error','independent',sourceHash);
+       } else if(!saved?.html && !keep && isActiveGenerationTarget && !automaticGenerationSuppressed){
          keep=ensureReplyGenerationPlaceholder(el,key,sourceHash,true);
        }
        const hostSourceHash=String(keep?.dataset?.rmSourceHash||'');
@@ -3634,19 +3694,18 @@ export async function initIndependentRabbitMirror(){
  installRepairPersistenceListener();
  installExternalGeometryListeners();
  installBackgroundLifecycleListeners();
- await reconfigureRuntime();
- // A beta.14.57 hot update may arrive while an older reply still shows a
- // loading shell. Recreate only those mounted placeholders and restart their
- // exact stable versions; never backfill arbitrary historical messages.
+ // A hot update cannot know whether a previously mounted loading shell already
+ // consumed a paid request. Convert it to a terminal, manually retryable error
+ // instead of silently restarting the API and risking another charge.
  for(const index of mountedPlaceholderIndices){
   const live=currentGenerationIdentity(index);
-  if(!live || hasGenerationWorkFor(index,live.slot,live.sourceHash)) continue;
-  ensureGenerationPlaceholderForIndex(index,false);
-  scheduleMessageGeneration(index,180,true);
+  if(!live) continue;
+  rememberTerminalFailure(live.slot,live.sourceHash,'更新前的独立 API 请求状态无法确认，已停止自动继续。服务端可能已经计费；请查看诊断后再手动重新生成。','runtime-upgrade-uncertain');
  }
+ await reconfigureRuntime();
 }
 export function destroyIndependentRabbitMirror(){
- runtimeConfigSequence++; hostGenerationInProgress=false; hostGenerationHintStartedAt=0; clearScheduledGeneration(); clearPassiveRecoveryTimers(); cancelAllIndependentFlights('runtime-destroyed'); clearAutomaticGenerationCutovers(); lastAppliedRuntimeMode=null;
+ runtimeConfigSequence++; hostGenerationInProgress=false; hostGenerationHintStartedAt=0; clearScheduledGeneration(); clearPassiveRecoveryTimers(); cancelAllIndependentFlights('runtime-destroyed'); independentTerminalFailures.clear(); clearAutomaticGenerationCutovers(); lastAppliedRuntimeMode=null;
  removeIndependentActionBridge();
  lastIndependentRequestConfig='';
  disconnectObserver(); unsubscribeHostEvents(); removeFeedbackMirrorActionListeners(); removeRepairPersistenceListener(); removeExternalGeometryListeners(); removeBackgroundLifecycleListeners();
