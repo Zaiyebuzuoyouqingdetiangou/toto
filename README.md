@@ -13,7 +13,9 @@
 
 `https://github.com/Zaiyebuzuoyouqingdetiangou/toto`
 
-以后保持仓库地址和扩展目录不变，直接在扩展管理中检查更新。扩展清单已允许自动更新；SillyTavern 全局扩展自动更新也需要保持开启。
+以后保持仓库地址和扩展目录不变，直接在扩展管理中检查更新。
+
+> 当前 GitHub `main` 仍需先同步到本发布包。为防止旧仓库代码自动覆盖本地新版本，本包暂时关闭 `auto_update`；仓库更新完成后再由后续发布重新开启。
 
 ### ZIP 安装
 
