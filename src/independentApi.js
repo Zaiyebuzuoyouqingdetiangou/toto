@@ -2717,10 +2717,11 @@ function reconcileVisibleMirrorDuplicates(indices=null){
     || externalHosts(el).find(node=>node.dataset.rmSource==='independent')
     || null;
    if(host){
-    // Page restore or DOM hydration can leave the one surviving independent
-    // host inside the inline anchor. Re-apply the current display setting on
-    // every finite reconciliation pass instead of treating deduplication as
-    // placement. This moves the existing host only; it never regenerates it.
+    // Hot updates, BFCache restores and a second legacy extension copy can leave
+    // a ready independent host inside the inline anchor even though the current
+    // setting is “纯外置”. Re-apply the selected placement on every finite
+    // reconciliation pass; placeExternalHost still keeps loading shells external
+    // and honours external_then_inline for completed mirrors.
     placeExternalHost(el,host,host.dataset.rmKey||key,'independent');
     removeIndependentInlineDuplicates(el,host,host.dataset.rmKey||key);
    }
