@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.3.1';
-import { getCurrentChatKey } from './storage.js?rmv=1.3.1';
+import { getSettings } from './settings.js?rmv=1.3.6';
+import { getCurrentChatKey } from './storage.js?rmv=1.3.6';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,12 +9,12 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.3.1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.1';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.1';
+} from './feedbackCat.js?rmv=1.3.6';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.6';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.3.6';
 
 
-const RUNTIME_VERSION = '1.3.1';
+const RUNTIME_VERSION = '1.3.6';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -9576,6 +9576,12 @@ function checkedVerificationDeclarationCarriesSecondState(property, value, pseud
     if (name === 'visibility') return cleanValue !== 'hidden' && cleanValue !== 'collapse';
     if (name === 'opacity') return Number.parseFloat(cleanValue) > 0.05;
     if (['height', 'max-height', 'min-height'].includes(name)) return !isCollapsedDimensionValue(cleanValue);
+    // A large class of generated interfaces reveals the second state by sliding an
+    // overlay into place or blurring/recoloring the previous layer. Treat these as
+    // real second-state evidence so the safe sandbox can verify them instead of
+    // reporting a false failed label.
+    if (name === 'transform') return !!cleanValue && cleanValue !== 'none';
+    if (name === 'filter') return !!cleanValue && cleanValue !== 'none';
     return false;
 }
 
@@ -10608,6 +10614,10 @@ const VISUAL_SCENERY_MOBILE_OVERFLOW_COPY_ATTR = 'data-rm-mobile-visual-scenery-
 const VISUAL_SCENERY_MOBILE_OVERFLOW_SOURCE_ATTR = 'data-rm-mobile-visual-scenery-overflow-source';
 const VISUAL_SCENERY_MOBILE_OVERFLOW_STYLE_ATTR = 'data-rabbit-mirror-visual-scenery-overflow-rescue';
 const VISUAL_SCENERY_MOBILE_OVERFLOW_COUNT_ATTR = 'data-rabbit-mirror-visual-scenery-overflow-count';
+const INDEPENDENT_MOBILE_SPATIAL_SCROLL_ATTR = 'data-rm-independent-mobile-spatial-scroll';
+const INDEPENDENT_MOBILE_SPATIAL_CANVAS_ATTR = 'data-rm-independent-mobile-spatial-canvas';
+const INDEPENDENT_MOBILE_SPATIAL_STYLE_ATTR = 'data-rabbit-mirror-independent-mobile-spatial-style';
+const INDEPENDENT_MOBILE_SPATIAL_COUNT_ATTR = 'data-rabbit-mirror-independent-mobile-spatial-count';
 const MOBILE_LAYOUT_BREAKPOINT_PX = 640;
 const MOBILE_LAYOUT_TARGET_ATTRS = Object.freeze([
     MOBILE_LAYOUT_FIT_ATTR,
@@ -10643,7 +10653,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.3.1-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.3.3-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -15917,6 +15927,107 @@ function installVisualSceneryMobileNarrativeOverflowRescue(root) {
     }
     if (repaired > 0) root.setAttribute(VISUAL_SCENERY_MOBILE_OVERFLOW_COUNT_ATTR, String(repaired));
     return repaired;
+}
+
+
+function independentMobileSpatialViewportNarrow(root) {
+    // External RabbitMirror has its own narrow shell even on a wide desktop window.
+    // Use the real mounted mirror width first; window.innerWidth is only a fallback.
+    let rootWidth = 0;
+    try { rootWidth = Number(root?.getBoundingClientRect?.().width || root?.parentElement?.getBoundingClientRect?.().width || 0); } catch {}
+    if (rootWidth > 0) return rootWidth <= 760;
+    const viewportWidth = Math.max(0, Number(globalThis.innerWidth || globalThis.document?.documentElement?.clientWidth || 0));
+    return viewportWidth > 0 && viewportWidth <= MOBILE_LAYOUT_BREAKPOINT_PX + 40;
+}
+
+function independentMobileSpatialClippingAncestor(host, root) {
+    let current = host?.parentElement || null;
+    for (let depth = 0; current && depth < 5; depth += 1, current = current.parentElement) {
+        if (current === root) break;
+        const style = maintenanceMobileLayoutComputedStyle(current);
+        const overflowX = String(style?.overflowX || style?.overflow || '').toLowerCase();
+        if (/(?:hidden|clip)/.test(overflowX)) return current;
+    }
+    return null;
+}
+
+function independentMobileSpatialCanvasInfo(host, root) {
+    if (!host?.querySelectorAll || maintenanceMobileLayoutIsInternal(host)) return null;
+    const hostStyle = maintenanceMobileLayoutComputedStyle(host);
+    const position = String(hostStyle?.position || '').toLowerCase();
+    if (!['relative', 'absolute'].includes(position)) return null;
+    const hostRect = maintenanceMobileLayoutRect(host);
+    if (!hostRect || hostRect.width < 180) return null;
+
+    const absoluteChildren = [...host.children].filter(child => {
+        if (maintenanceMobileLayoutIsInternal(child)) return false;
+        const childPosition = String(maintenanceMobileLayoutComputedStyle(child)?.position || '').toLowerCase();
+        return childPosition === 'absolute' || childPosition === 'fixed';
+    });
+    if (absoluteChildren.length < 3) return null;
+
+    let farRight = hostRect.width;
+    let farBottom = hostRect.height;
+    let meaningful = 0;
+    for (const child of absoluteChildren) {
+        const childRect = maintenanceMobileLayoutRect(child);
+        if (!childRect) continue;
+        farRight = Math.max(farRight, childRect.right - hostRect.left);
+        farBottom = Math.max(farBottom, childRect.bottom - hostRect.top);
+        if (maintenanceMobileLayoutTextLength(child) >= 8 || child.matches?.('img,svg,canvas,video,figure')) meaningful += 1;
+    }
+    const naturalWidth = Math.max(Number(host.scrollWidth || 0), farRight);
+    if (meaningful < 2 || naturalWidth <= hostRect.width + 48 || naturalWidth <= hostRect.width * 1.14) return null;
+    if (naturalWidth > 1800) return null;
+
+    const clippingAncestor = independentMobileSpatialClippingAncestor(host, root);
+    if (!clippingAncestor) return null;
+    return { host, clippingAncestor, naturalWidth: Math.ceil(naturalWidth), naturalHeight: Math.ceil(Math.max(Number(host.scrollHeight || 0), farBottom)) };
+}
+
+export function activateRabbitMirrorIndependentMobileSpatialRescue(root) {
+    if (!root?.querySelectorAll || !root?.isConnected) return 0;
+    const independent = root.getAttribute?.('data-rabbit-mirror-external-source') === 'independent'
+        || !!root.closest?.('[data-rabbit-mirror-external-source="independent"]');
+    if (!independent) return 0;
+
+    // Always clear stale marks first. Container width can change without a full regeneration.
+    root.querySelectorAll(`[${INDEPENDENT_MOBILE_SPATIAL_SCROLL_ATTR}], [${INDEPENDENT_MOBILE_SPATIAL_CANVAS_ATTR}]`).forEach(element => {
+        element.removeAttribute(INDEPENDENT_MOBILE_SPATIAL_SCROLL_ATTR);
+        element.removeAttribute(INDEPENDENT_MOBILE_SPATIAL_CANVAS_ATTR);
+        element.style?.removeProperty?.('--rm-mobile-spatial-natural-width');
+    });
+    if (!independentMobileSpatialViewportNarrow(root)) {
+        root.removeAttribute(INDEPENDENT_MOBILE_SPATIAL_COUNT_ATTR);
+        root.querySelector?.(`style[${INDEPENDENT_MOBILE_SPATIAL_STYLE_ATTR}]`)?.remove?.();
+        return 0;
+    }
+
+    const infos = [...root.querySelectorAll('div,section,article,main,figure')]
+        .map(host => independentMobileSpatialCanvasInfo(host, root))
+        .filter(Boolean)
+        .filter((info, index, all) => !all.some((other, otherIndex) => otherIndex !== index && other.host.contains?.(info.host) && other.naturalWidth >= info.naturalWidth));
+    if (!infos.length) {
+        root.removeAttribute(INDEPENDENT_MOBILE_SPATIAL_COUNT_ATTR);
+        root.querySelector?.(`style[${INDEPENDENT_MOBILE_SPATIAL_STYLE_ATTR}]`)?.remove?.();
+        return 0;
+    }
+
+    for (const info of infos) {
+        info.clippingAncestor.setAttribute(INDEPENDENT_MOBILE_SPATIAL_SCROLL_ATTR, 'true');
+        info.host.setAttribute(INDEPENDENT_MOBILE_SPATIAL_CANVAS_ATTR, 'true');
+        info.host.style.setProperty('--rm-mobile-spatial-natural-width', `${Math.max(320, info.naturalWidth)}px`);
+    }
+    let style = root.querySelector(`style[${INDEPENDENT_MOBILE_SPATIAL_STYLE_ATTR}]`);
+    if (!style) {
+        style = document.createElement('style');
+        style.setAttribute(INDEPENDENT_MOBILE_SPATIAL_STYLE_ATTR, 'true');
+        root.appendChild(style);
+    }
+    style.textContent = `[${INDEPENDENT_MOBILE_SPATIAL_SCROLL_ATTR}] { overflow-x: auto !important; overscroll-behavior-inline: contain !important; -webkit-overflow-scrolling: touch !important; touch-action: pan-x pan-y !important; }
+[${INDEPENDENT_MOBILE_SPATIAL_CANVAS_ATTR}] { width: var(--rm-mobile-spatial-natural-width) !important; min-width: var(--rm-mobile-spatial-natural-width) !important; max-width: none !important; box-sizing: border-box !important; }`;
+    root.setAttribute(INDEPENDENT_MOBILE_SPATIAL_COUNT_ATTR, String(infos.length));
+    return infos.length;
 }
 
 function maintenanceMobileLayoutCss(scopeToken) {

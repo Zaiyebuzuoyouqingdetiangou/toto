@@ -486,15 +486,13 @@ toto[data-rabbit-mirror="true"] summary {
   overflow-wrap:anywhere;
   line-height:1.55;
 }
-/* beta.14.53: restore the compact centered white shell that users expect.
- * Independent external hosts should look like a cute neutral frame, not inherit
- * the page theme tint, and should keep comfortable left/right breathing room. */
+/* v1.3.5: external RabbitMirror itself is the mirror body. Keep it wide enough, and let its own palette follow the generated content instead of a neutral detached shell. */
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"]{
   display:block !important;
   position:relative !important;
   isolation:isolate !important;
-  width:calc(100% - 44px) !important;
-  max-width:560px !important;
+  width:calc(100% - 16px) !important;
+  max-width:760px !important;
   min-width:0 !important;
   box-sizing:border-box !important;
   align-self:auto !important;
@@ -599,7 +597,7 @@ toto[data-rabbit-mirror="true"] summary {
 }
 @media (max-width:420px){
   #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"]{
-    width:calc(100% - 32px) !important;
+    width:calc(100% - 8px) !important;
     max-width:none !important;
     border-radius:16px !important;
   }
@@ -703,4 +701,28 @@ toto[data-rabbit-mirror="true"] summary {
 }
 .rabbit-mirror-external-error-action:active{
   transform:translateY(1px) !important;
+}
+
+/* 1.3.6 TEST: pure-external RabbitMirror is one visual body, not a neutral wrapper around another card.
+ * This is intentionally external-only. external_then_inline returns to the existing transparent inline carrier. */
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"][data-rm-shell-integrated="true"]{
+  border-width:var(--rm-shell-border-width, 1px) !important;
+  border-style:solid !important;
+  border-color:var(--rm-shell-border, rgba(0,0,0,.12)) !important;
+  border-radius:var(--rm-shell-radius, 18px) !important;
+  background:var(--rm-shell-surface, var(--rm-shell-bg, rgba(255,255,255,.97))) !important;
+  box-shadow:0 10px 26px var(--rm-shell-shadow, rgba(0,0,0,.10)) !important;
+}
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"][data-rm-shell-integrated="true"] > details[data-rabbit-mirror-external-details="true"] > summary{
+  background:var(--rm-shell-header-bg, var(--rm-shell-surface, transparent)) !important;
+  color:var(--rm-shell-header-text, var(--rm-shell-text, inherit)) !important;
+  border-radius:calc(var(--rm-shell-radius, 18px) - var(--rm-shell-border-width, 1px)) calc(var(--rm-shell-radius, 18px) - var(--rm-shell-border-width, 1px)) 0 0 !important;
+}
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"][data-rm-shell-integrated="true"] > details[data-rabbit-mirror-external-details="true"][open] > summary{
+  border-bottom:var(--rm-shell-border-width, 1px) solid var(--rm-shell-border, rgba(0,0,0,.10)) !important;
+}
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"][data-rm-shell-integrated="true"] > details[data-rabbit-mirror-external-details="true"] > [data-rm-shell-integrated-body="true"]{
+  margin-top:0 !important;
+  border-top-left-radius:0 !important;
+  border-top-right-radius:0 !important;
 }
