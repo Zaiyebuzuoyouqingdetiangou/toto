@@ -1,14 +1,15 @@
-import { getSettings } from './settings.js?rmv=1.2.9';
-import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.2.9';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.2.9';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.2.9';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.2.9';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.2.9';
+import { getSettings } from './settings.js?rmv=1.3.1';
+import { buildRabbitMirrorPromptDetails } from './promptBuilder.js?rmv=1.3.1';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, activateRabbitMirrorInteractionRescue } from './outputSanitizer.js?rmv=1.3.1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.3.1';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.3.1';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.3.1';
 
-const RUNTIME_VERSION = '1.2.9';
+const RUNTIME_VERSION = '1.3.1';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
+const OWNER_LOCK_STORE_KEY = 'rabbit_mirror_independent_owner_locks_v1';
 const API_REQUEST_DIAGNOSTIC_EVENT = 'rabbitmirror:independent-api-diagnostic';
 const API_PROFILE_SCHEMA = 2;
 const DEGRADED_PROFILE_RECHECK_MS = 6 * 60 * 60 * 1000;
@@ -21,7 +22,21 @@ const RESAY_ATTR = 'data-rabbit-mirror-resay';
 const RESAY_EVENT = 'rabbitmirror:resay';
 const HISTORY_EVENT = 'rabbitmirror:history';
 const INDEPENDENT_REPAIR_PERSIST_EVENT = 'rabbitmirror:independent-repair-persist';
+const INDEPENDENT_LIVE_REPAIR_ATTR = 'data-rabbit-mirror-maintenance-live-repair';
+const INDEPENDENT_LIVE_REPAIR_UNTIL_ATTR = 'data-rabbit-mirror-maintenance-live-repair-until';
+function independentMaintenanceLiveRepairLocked(host){
+ if(!host?.isConnected || host.getAttribute?.(INDEPENDENT_LIVE_REPAIR_ATTR)!=='true') return false;
+ const until=Number(host.getAttribute?.(INDEPENDENT_LIVE_REPAIR_UNTIL_ATTR)||0);
+ if(until && until<=Date.now()){
+  host.removeAttribute?.(INDEPENDENT_LIVE_REPAIR_ATTR);
+  host.removeAttribute?.(INDEPENDENT_LIVE_REPAIR_UNTIL_ATTR);
+  return false;
+ }
+ return true;
+}
 const HISTORY_STORE_KEY = 'rabbit_mirror_independent_history_v1';
+const CHAT_OUTPUT_METADATA_KEY = 'rabbit_mirror_independent_outputs_v2';
+const CHAT_OUTPUT_METADATA_SCHEMA = 2;
 const HISTORY_PANEL_ATTR = 'data-rabbit-mirror-history-panel';
 const ACTION_BRIDGE_KEY = '__rabbitMirrorIndependentActionsV1';
 let hostModule = null;
@@ -145,6 +160,7 @@ function normalizeHistoryEntry(value){
   ts:Number(value.ts||Date.now()), model:String(value.model||''), runtime:String(value.runtime||RUNTIME_VERSION),
   apiRequest:value.apiRequest&&typeof value.apiRequest==='object'?{...value.apiRequest}:null,
   executionLockChars:Number(value.executionLockChars||0),
+  paletteFingerprint:value.paletteFingerprint&&typeof value.paletteFingerprint==='object'?{...value.paletteFingerprint}:null,
  };
 }
 function appendHistoryEntry(slot,value){
@@ -165,6 +181,151 @@ function appendHistoryEntry(slot,value){
 function historyEntriesForSlot(slot){
  const list=readHistoryStore().slots?.[slot];
  return (Array.isArray(list)?list:[]).map(normalizeHistoryEntry).filter(Boolean).sort((a,b)=>Number(b.ts||0)-Number(a.ts||0));
+}
+function emptyChatOutputMetadata(){ return {version:CHAT_OUTPUT_METADATA_SCHEMA,owners:{}}; }
+function chatMetadataObject(ctx=getContext()){
+ const value=ctx?.chatMetadata || globalThis.chat_metadata;
+ return value&&typeof value==='object'?value:null;
+}
+function compactChatPersistedRecord(value){
+ if(!value?.html) return null;
+ const record=normalizeHistoryEntry(value); if(!record?.html) return null;
+ return {
+  html:String(record.html||''), sourceHash:String(record.sourceHash||''), bodyHash:String(record.bodyHash||''),
+  displayHash:String(record.displayHash||''), reasoningHash:String(record.reasoningHash||''), ts:Number(record.ts||Date.now()),
+  model:String(record.model||''), runtime:String(record.runtime||RUNTIME_VERSION), executionLockChars:Number(record.executionLockChars||0),
+  paletteFingerprint:record.paletteFingerprint&&typeof record.paletteFingerprint==='object'?{...record.paletteFingerprint}:null,
+  repairedByMaintenance:!!value?.repairedByMaintenance,
+ };
+}
+function normalizeChatOutputMetadata(value){
+ const next=emptyChatOutputMetadata();
+ const owners=value&&typeof value==='object'&&value.owners&&typeof value.owners==='object'?value.owners:{};
+ for(const [key,raw] of Object.entries(owners)){
+  if(!/^\d+:\d+$/.test(String(key||'')) || !raw || typeof raw!=='object') continue;
+  if(raw.deleted===true){ next.owners[key]={deleted:true,ts:Number(raw.ts||0),runtime:String(raw.runtime||RUNTIME_VERSION)}; continue; }
+  const record=compactChatPersistedRecord(raw); if(record) next.owners[key]=record;
+ }
+ return next;
+}
+function readChatOutputMetadata(ctx=getContext()){
+ const metadata=chatMetadataObject(ctx); if(!metadata) return emptyChatOutputMetadata();
+ return normalizeChatOutputMetadata(metadata[CHAT_OUTPUT_METADATA_KEY]);
+}
+const chatMetadataSaveChains=new Map();
+function saveChatOutputMetadata(ctx=getContext()){
+ const save=ctx?.saveMetadata;
+ if(typeof save!=='function') return false;
+ // Chat metadata writes are deliberately fire-and-forget from the generation
+ // path, but writes for the same chat must not race each other. Per-chat queues
+ // prevent a slower earlier save from landing after a newer repair snapshot,
+ // while unrelated chats never block one another.
+ const key=String(chatKey(ctx)||'chat');
+ const previous=chatMetadataSaveChains.get(key)||Promise.resolve();
+ const next=previous
+  .catch(()=>{})
+  .then(()=>save.call(ctx))
+  .catch(error=>console.warn('[RabbitMirror] 独立 API 跨设备兔子镜保存失败:',error));
+ chatMetadataSaveChains.set(key,next);
+ next.finally(()=>{ if(chatMetadataSaveChains.get(key)===next) chatMetadataSaveChains.delete(key); });
+ return true;
+}
+function chatOwnerKey(index,swipe=0){
+ const i=Number(index), s=Number(swipe);
+ return Number.isInteger(i)&&i>=0&&Number.isInteger(s)&&s>=0?`${i}:${s}`:'';
+}
+function parseChatOwnerKey(value=''){
+ const match=String(value||'').match(/^(\d+):(\d+)$/); if(!match) return null;
+ return {index:Number(match[1]),swipe:Number(match[2])};
+}
+function persistedOwnerForMessage(ctx,index,msg){
+ const key=chatOwnerKey(index,swipeId(msg)); if(!key) return null;
+ const metadata=chatMetadataObject(ctx); const raw=metadata?.[CHAT_OUTPUT_METADATA_KEY]?.owners?.[key];
+ if(!raw||typeof raw!=='object') return null;
+ if(raw.deleted===true) return {deleted:true,ts:Number(raw.ts||0),runtime:String(raw.runtime||RUNTIME_VERSION)};
+ return compactChatPersistedRecord(raw);
+}
+function writePersistedOwner(ctx,index,msg,value,{overwrite=true}={}){
+ const metadata=chatMetadataObject(ctx); const ownerKey=chatOwnerKey(index,swipeId(msg));
+ if(!metadata||!ownerKey) return false;
+ let state=metadata[CHAT_OUTPUT_METADATA_KEY];
+ if(!state||typeof state!=='object'||!state.owners||typeof state.owners!=='object') state=emptyChatOutputMetadata();
+ const existing=state.owners?.[ownerKey];
+ if(!overwrite && existing) return false;
+ let next=null;
+ if(value?.deleted===true) next={deleted:true,ts:Number(value.ts||Date.now()),runtime:RUNTIME_VERSION};
+ else next=compactChatPersistedRecord(value);
+ if(!next) return false;
+ if(existing && JSON.stringify(existing)===JSON.stringify(next)) return false;
+ state.version=CHAT_OUTPUT_METADATA_SCHEMA; state.owners[ownerKey]=next; metadata[CHAT_OUTPUT_METADATA_KEY]=state; saveChatOutputMetadata(ctx); return true;
+}
+function suppressPersistedOwnerForResay(ctx,index,msg){
+ return writePersistedOwner(ctx,index,msg,{deleted:true,ts:Date.now()},{overwrite:true});
+}
+function chatPersistenceSlot(ctx,index,swipe,record){
+ const sourceHash=String(record?.sourceHash||record?.bodyHash||'').trim();
+ return sourceHash?`${chatKey(ctx)}:${Number(index)}:${Number(swipe)}:${sourceHash}`:'';
+}
+function mergeChatOutputsIntoLocalStore(ctx,store){
+ const state=readChatOutputMetadata(ctx); const metadata=chatMetadataObject(ctx);
+ let storeChanged=false; let metadataChanged=false;
+ for(const [ownerKey,raw] of Object.entries(state.owners||{})){
+  const owner=parseChatOwnerKey(ownerKey); if(!owner) continue;
+  const base=`${chatKey(ctx)}:${owner.index}:${owner.swipe}`;
+  if(raw?.deleted===true){ clearOwnerLockForBase(base); continue; }
+  const record=compactChatPersistedRecord(raw); if(!record?.html || !independentStoredHtmlRestorable(record.html)) continue;
+  const slot=chatPersistenceSlot(ctx,owner.index,owner.swipe,record); if(!slot) continue;
+  const existing=store?.[slot];
+  const existingReady=existing?.html && independentStoredHtmlRestorable(existing.html) ? compactChatPersistedRecord(existing) : null;
+  const localIsNewer=!!existingReady && Number(existingReady.ts||0)>Number(record.ts||0);
+  if(localIsNewer){
+   // A maintenance repair is first committed to the live/local snapshot. If an
+   // older chatMetadata copy is observed before the queued server save finishes,
+   // keep the newer local HTML authoritative and immediately heal metadata.
+   if(String(existingReady.html||'')!==String(record.html||'')){
+    state.owners[ownerKey]=existingReady; metadataChanged=true;
+   }
+  }else if(!existingReady || String(existingReady.html||'')!==String(record.html||'')){
+   saveRecordForSlot(store,slot,record,{dropLegacy:false}); storeChanged=true;
+  }
+  setOwnerLockForBase(base,slot,String((localIsNewer?existingReady:record)?.sourceHash||(localIsNewer?existingReady:record)?.bodyHash||''));
+ }
+ if(metadataChanged && metadata){ metadata[CHAT_OUTPUT_METADATA_KEY]=state; saveChatOutputMetadata(ctx); }
+ return {storeChanged,metadataChanged};
+}
+function migrateLegacyLocalOutputsToChatMetadata(ctx,store){
+ const metadata=chatMetadataObject(ctx); if(!metadata) return {metadataChanged:false,storeChanged:false};
+ const state=readChatOutputMetadata(ctx); let metadataChanged=false; let storeChanged=false;
+ for(const {m,i} of assistantMessages(ctx)){
+  const ownerKey=chatOwnerKey(i,swipeId(m)); if(!ownerKey || Object.prototype.hasOwnProperty.call(state.owners,ownerKey)) continue;
+  const observed=observeMessageSourceRevision(ctx,i,m);
+  const base=messageBaseSlotKey(ctx,i,m);
+  const locked=lockedIndependentRecordForBase(base,store);
+  let record=locked?.record||null;
+  if(!record?.html){
+   const recovered=recoverSavedRecord(store,observed.slot,observed);
+   if(recovered.storeChanged) storeChanged=true;
+   record=recovered.saved||null;
+  }
+  const compact=compactChatPersistedRecord(record);
+  if(!compact?.html || !independentStoredHtmlRestorable(compact.html)) continue;
+  state.owners[ownerKey]=compact; metadataChanged=true;
+ }
+ if(metadataChanged){ metadata[CHAT_OUTPUT_METADATA_KEY]=state; saveChatOutputMetadata(ctx); }
+ return {metadataChanged,storeChanged};
+}
+function synchronizeIndependentChatPersistence(ctx,store){
+ const imported=mergeChatOutputsIntoLocalStore(ctx,store);
+ const migrated=migrateLegacyLocalOutputsToChatMetadata(ctx,store);
+ return {
+  storeChanged:!!(imported.storeChanged||migrated.storeChanged),
+  metadataChanged:!!(imported.metadataChanged||migrated.metadataChanged),
+ };
+}
+function independentContextChatMetadata(ctx){
+ const source=ctx?.chatMetadata || globalThis.chat_metadata || null;
+ if(!source || typeof source!=='object') return source;
+ const copy={...source}; delete copy[CHAT_OUTPUT_METADATA_KEY]; return copy;
 }
 function migrateLegacyDeletedRecords(){
  const store=readStore(); let changed=false;
@@ -211,6 +372,31 @@ function rememberApiProfile(st,profile){
  const entries=Object.entries(store).sort((a,b)=>Number(b[1]?.ts||0)-Number(a[1]?.ts||0));
  writeApiProfileStore(Object.fromEntries(entries.slice(0,80)));
 }
+function readOwnerLockStore(){ try{ const value=JSON.parse(localStorage.getItem(OWNER_LOCK_STORE_KEY)||'{}'); return value&&typeof value==='object'?value:{}; }catch{return {};} }
+function writeOwnerLockStore(value){
+ try{
+  const entries=Object.entries(value||{}).sort((a,b)=>Number(b[1]?.ts||0)-Number(a[1]?.ts||0)).slice(0,240);
+  localStorage.setItem(OWNER_LOCK_STORE_KEY,JSON.stringify(Object.fromEntries(entries)));
+ }catch{}
+}
+function ownerLockForBase(baseSlot=''){ const key=String(baseSlot||''); return key?readOwnerLockStore()[key]||null:null; }
+function setOwnerLockForBase(baseSlot,slot,sourceHash=''){
+ const base=String(baseSlot||''); const exact=String(slot||''); if(!base||!exact) return;
+ const store=readOwnerLockStore(); store[base]={slot:exact,sourceHash:String(sourceHash||''),ts:Date.now(),runtime:RUNTIME_VERSION}; writeOwnerLockStore(store);
+}
+function clearOwnerLockForBase(baseSlot=''){
+ const base=String(baseSlot||''); if(!base) return;
+ const store=readOwnerLockStore(); if(!Object.prototype.hasOwnProperty.call(store,base)) return;
+ delete store[base]; writeOwnerLockStore(store);
+}
+function lockedIndependentRecordForBase(baseSlot,store=readStore()){
+ const lock=ownerLockForBase(baseSlot); if(!lock?.slot) return null;
+ const saved=store?.[String(lock.slot||'')];
+ if(saved?.html && independentStoredHtmlRestorable(saved.html)) return {record:saved,lock};
+ const history=historyEntriesForSlot(String(lock.slot||'')).find(entry=>entry?.html && independentStoredHtmlRestorable(entry.html));
+ if(history?.html) return {record:history,lock};
+ clearOwnerLockForBase(baseSlot); return null;
+}
 function readLastIndependentApiRequestDiagnostic(){
  try{ const value=JSON.parse(localStorage.getItem(API_REQUEST_DIAGNOSTIC_STORE_KEY)||'null'); return value&&typeof value==='object'?value:null; }catch{return null;}
 }
@@ -250,6 +436,14 @@ function messageBaseSlotKey(ctx,index,msg){ return `${chatKey(ctx)}:${index}:${s
 function messageSlotKey(ctx,index,msg){ return `${messageBaseSlotKey(ctx,index,msg)}:${messageSourceFingerprint(msg)}`; }
 function legacyMessageSourceFingerprints(msg){
  const values=[
+  // 1.2.9 used mes + display_text + reasoning as the cache identity. Keep
+  // that old fingerprint only as a migration alias so existing mirrors can be
+  // recovered, but never use display/reasoning changes to authorize a new API request.
+  hashText(`${String(msg?.mes||'')}
+\u0000display_text\u0000
+${visibleDisplayTextOf(msg)}
+\u0000reasoning\u0000
+${reasoningOf(msg)}`),
   hashText(`${String(msg?.mes||'')}
 \u0000reasoning\u0000
 ${reasoningOf(msg)}`),
@@ -307,26 +501,21 @@ function messageBodyFingerprint(m){ return hashText(String(m?.mes||'')); }
 function messageReasoningFingerprint(m){ const value=reasoningOf(m); return value?hashText(value):''; }
 function visibleDisplayTextOf(m){ return typeof m?.extra?.display_text==='string' ? m.extra.display_text : ''; }
 function messageDisplayFingerprint(m){ const value=visibleDisplayTextOf(m); return value && value!==String(m?.mes||'') ? hashText(value) : ''; }
-function messageSourceFingerprint(m){ return hashText(`${String(m?.mes||'')}
-\u0000display_text\u0000
-${visibleDisplayTextOf(m)}
-\u0000reasoning\u0000
-${reasoningOf(m)}`); }
+function messageSourceFingerprint(m){
+ // One real assistant正文 owns one automatic rabbit mirror. display_text,
+ // regex beautification and delayed reasoning are presentation/context changes
+ // only and must never create a second paid request for the same正文.
+ return messageBodyFingerprint(m);
+}
 function savedRecordMatchesObserved(saved,observed){
  if(!saved?.html||!observed) return false;
+ const observedBody=String(observed.bodyHash||observed.sourceHash||'');
  const savedSource=String(saved.sourceHash||'');
- if(savedSource && savedSource===observed.sourceHash) return true;
- // beta.14.47 and earlier stored sourceHash as the正文-only hash. From
- // beta.14.48 onward sourceHash also includes reasoning. Treat the old hash as
- // a valid legacy body fingerprint instead of deleting every historical mirror
- // during an upgrade.
+ if(savedSource && savedSource===String(observed.sourceHash||'')) return true;
  const savedBody=String(saved.bodyHash||'');
- if(!savedBody && savedSource && savedSource===String(observed.bodyHash||'') && !observed.displayHash) return true;
- if(!savedBody || savedBody!==observed.bodyHash) return false;
- const savedDisplay=String(saved.displayHash||'');
- if(observed.displayHash && (!savedDisplay || savedDisplay!==observed.displayHash)) return false;
- const savedReasoning=String(saved.reasoningHash||'');
- return !observed.reasoningHash || !savedReasoning || savedReasoning===observed.reasoningHash;
+ if(savedBody && observedBody && savedBody===observedBody) return true;
+ // Very old records sometimes stored the正文-only fingerprint only in sourceHash.
+ return !!(savedSource && observedBody && savedSource===observedBody);
 }
 function observeMessageSourceRevision(ctx,index,msg){
  const slot=messageSlotKey(ctx,index,msg); const sourceHash=messageSourceFingerprint(msg);
@@ -355,7 +544,7 @@ function contextBundle(ctx,targetIndex){
  const char=ctx.characters?.[ctx.characterId] || ctx.character || null;
  const persona={name:ctx.name1||globalThis.name1||'', description:ctx.powerUserSettings?.persona_description||globalThis.power_user?.persona_description||ctx.personaDescription||'', avatar:ctx.powerUserSettings?.persona_description_position||''};
  const prompts=ctx.extensionPrompts || globalThis.extension_prompts || {};
- const world={worldInfo:ctx.worldInfo||ctx.world_info||null, extensionPrompts:prompts, chatMetadata:ctx.chatMetadata||globalThis.chat_metadata||null, authorNote:ctx.authorNote||ctx.note||null};
+ const world={worldInfo:ctx.worldInfo||ctx.world_info||null, extensionPrompts:prompts, chatMetadata:independentContextChatMetadata(ctx), authorNote:ctx.authorNote||ctx.note||null};
  const bundle=`【当前聊天逐轮正文与可用推理】\n${transcript}\n\n【当前角色卡】\n${safeJson(char,9000)}\n\n【当前 Persona】\n${safeJson(persona,6000)}\n\n【当前世界书、作者注释与实际扩展提示】\n${safeJson(world,18000)}`;
  return bundle.length>CONTEXT_TOTAL_BUDGET ? `${bundle.slice(0,22000)}\n…[上下文中段裁剪]…\n${bundle.slice(-(CONTEXT_TOTAL_BUDGET-22000))}` : bundle;
 }
@@ -559,6 +748,9 @@ function independentRequestProfiles(st,systemPrompt,userPrompt,options={}){
 
 function compactRemoteError(status,raw=''){
  const source=String(raw||'');
+ if(Number(status)===429 || /rate[_ -]?limit|too many requests|限流|请求过多/i.test(source)){
+   return '副 API 当前触发频率／额度限制（HTTP 429）。插件不会自动换参数或重复请求，请稍后手动重试。';
+ }
  if(Number(status)===524 || /\b524\b|a timeout occurred|cloudflare/i.test(source)){
    return '上游生成等待超时（HTTP 524）。请求已经到达副 API，但网关在时限内没有收到模型返回的数据。';
  }
@@ -578,7 +770,9 @@ async function requestIndependentCompletion(st,systemPrompt,userPrompt,options={
  const attempts=[];
  const rememberedProfile=getRememberedApiProfile(st);
  const profiles=independentRequestProfiles(st,systemPrompt,userPrompt,options);
- for(const profile of profiles){
+ const rememberedMatch=rememberedProfile ? profiles.filter(item=>item.name===rememberedProfile).slice(0,1) : [];
+ const selectedProfiles=rememberedMatch.length ? rememberedMatch : profiles;
+ for(const profile of selectedProfiles){
   const url=endpoint(st.independentApiBaseUrl,profile.kind==='responses'?'/responses':'/chat/completions');
   const r=await fetchIndependentUrl(url,{method:'POST',headers:headers(st),body:JSON.stringify(profile.body),signal:options.signal});
   const result=await readApiResponse(r);
@@ -599,8 +793,7 @@ async function requestIndependentCompletion(st,systemPrompt,userPrompt,options={
    ...(options.diagnosticContext && typeof options.diagnosticContext==='object' ? options.diagnosticContext : {}),
   };
   if(r.ok){
-   rememberApiProfile(st,profile.name);
-   const requestDiagnostic=publishIndependentApiRequestDiagnostic(diagnosticBase);
+   const requestDiagnostic=publishIndependentApiRequestDiagnostic({...diagnosticBase,requestCount:attempts.length,automaticProfileFallback:!rememberedProfile});
    return {response:r,result,profile:profile.name,attempts,requestDiagnostic};
   }
   if(!retryableParameterError(r.status,result) && ![404,405].includes(Number(r.status))){
@@ -614,7 +807,7 @@ async function requestIndependentCompletion(st,systemPrompt,userPrompt,options={
   ok:false,status:Number(last.status||500),model:String(st.independentApiModel||''),baseUrl:normalizeBase(st.independentApiBaseUrl||''),
   configuredTemperature:normalizedConfiguredTemperature(st),profile:lastProfile,temperatureSent:profileUsesTemperature(lastProfile),
   systemMessageSent:profileUsesSystemMessage(lastProfile),streamSent:profileUsesStreaming(lastProfile),tokenField:profileTokenField(lastProfile),
-  rememberedProfile,attempts:attempts.map(item=>({profile:item.profile,status:item.status})),
+  rememberedProfile,attempts:attempts.map(item=>({profile:item.profile,status:item.status})),requestCount:attempts.length,automaticProfileFallback:!rememberedProfile,
   ...(options.diagnosticContext && typeof options.diagnosticContext==='object' ? options.diagnosticContext : {}),
  });
  return {response:{ok:false,status:last.status||500},result:{raw:last.detail||''},profile:lastProfile,attempts,requestDiagnostic};
@@ -1175,8 +1368,27 @@ function extractReadyDetails(html=''){
  template.innerHTML=prepareIndependentReadyHtml(html);
  const details=template.content.querySelector('details') || null;
  if(details){
+  // Independent API outputs are allowed to place <style> as a sibling of <details>
+  // inside <toto>. The external renderer returns only the <details> node, so those
+  // sibling styles used to be discarded here. That leaves the scene with bare
+  // checkbox/text DOM, makes :checked interaction rules disappear, and prevents
+  // both native return labels and the maintenance rabbit from seeing a real route.
+  // Preserve only styles that belong to this prepared fragment by moving them
+  // inside the returned details. The CSS has already been per-mirror scoped by
+  // prepareIndependentReadyHtml(), so this cannot leak into neighboring messages.
+  const detachedStyles=[...template.content.querySelectorAll('style')]
+   .filter(style=>!details.contains(style));
+  if(detachedStyles.length){
+   const summary=details.querySelector(':scope > summary');
+   const reference=summary?.nextSibling || details.firstChild;
+   for(const style of detachedStyles){
+    if(reference) details.insertBefore(style,reference);
+    else details.append(style);
+   }
+  }
+  repairRabbitMirrorScopedClassAliasesInScope(details);
   repairLabelTargets(details);
-  isolateRabbitMirrorInteractionIds(details);
+  activateRabbitMirrorInteractionRescue(details);
   details.setAttribute(INDEPENDENT_SANITIZER_ATTR,RUNTIME_VERSION);
  }
  return details;
@@ -1209,11 +1421,17 @@ function removeIndependentResayButtons(host){
 function ensureExternalTools(host){
  if(!host?.isConnected) return;
  stampExternalDetailsOwnership(host);
+ const details=host.querySelector?.(':scope > details');
+ try{ if(details) activateRabbitMirrorInteractionRescue(details); }catch(error){ console.debug('[RabbitMirror] external interaction activation skipped:',error); }
  try{ refreshRabbitMirrorToolsInScope(host); }catch(error){ console.debug('[RabbitMirror] external tool preparation skipped:',error); }
  removeIndependentResayButtons(host);
 }
 function readyDetailsFromHost(host){
- const details=host?.querySelector?.(':scope > details');
+ // The product lock may only trust an explicitly completed host. A loading
+  // host can still contain the previous A during a manual resay, and a fresh
+  // placeholder contains enough text to fool a generic DOM-content check.
+ if(!host || host.dataset?.rmState!=='ready') return null;
+ const details=host.querySelector?.(':scope > details');
  return usableReadyDetails(details) ? details : null;
 }
 function readyRecordFromHost(host,observed,model=''){
@@ -1419,6 +1637,11 @@ function buildExternalHost(key,html,state,source){
 }
 function usableReadyDetails(details){
  if(!details || details.tagName!=='DETAILS') return false;
+ // Loading/error shells are structural placeholders, never completed mirrors.
+ // Treating their summary/body text as a usable result makes the A/B product
+ // lock return before the independent API request is even sent.
+ if(details.classList?.contains('rabbit-mirror-external-placeholder')) return false;
+ if(details.hasAttribute?.('data-rabbit-mirror-placeholder')) return false;
  const summary=details.querySelector?.(':scope > summary');
  if(!summary || !String(summary.textContent||'').trim()) return false;
  return [...details.childNodes].some(node=>{
@@ -1440,6 +1663,11 @@ function independentStoredHtmlRestorable(html=''){
   template.innerHTML=source;
   const details=template.content.querySelector('details');
   if(!details || details.tagName!=='DETAILS') return false;
+  // Earlier builds could accidentally persist a loading placeholder as the
+  // final A product. Reject it during cache/history recovery so the exact
+  //正文 may make its one legitimate API request and overwrite the bad record.
+  if(details.classList?.contains('rabbit-mirror-external-placeholder')) return false;
+  if(details.hasAttribute?.('data-rabbit-mirror-placeholder')) return false;
   const summary=details.querySelector?.(':scope > summary');
   if(!summary || !String(summary.textContent||'').trim()) return false;
   // Historical mirrors often keep their real body hidden until a checkbox,
@@ -1770,6 +1998,80 @@ function scheduleExternalShellTint(host,html=''){
  return true;
 }
 
+
+function independentPrimaryContentCarrier(details){
+ if(!details?.querySelectorAll || typeof getComputedStyle!=='function') return null;
+ const body=[...(details.children||[])].find(node=>!['SUMMARY','STYLE','SCRIPT','TEMPLATE','LINK','META'].includes(node?.tagName));
+ if(!body?.isConnected) return null;
+ let bodyRect; try{ bodyRect=body.getBoundingClientRect(); }catch{return null;}
+ const bodyWidth=Math.max(1,Number(bodyRect?.width||0));
+ const bodyHeight=Math.max(1,Number(bodyRect?.height||0));
+ const compact=value=>String(value||'').replace(/\s+/g,'').trim();
+ const totalText=Math.max(1,compact(body.textContent).length);
+ const candidates=[];
+ const nodes=[...body.querySelectorAll('main,article,section,figure,div')].slice(0,260);
+ for(const element of nodes){
+  if(!element?.isConnected || element.closest?.('[data-rabbit-mirror-tool-entry-host]')) continue;
+  let style,rect; try{ style=getComputedStyle(element); rect=element.getBoundingClientRect(); }catch{continue;}
+  if(!style || style.display==='none' || style.visibility==='hidden' || Number(style.opacity||1)<.08) continue;
+  const width=Math.max(0,Number(rect?.width||0));
+  const height=Math.max(0,Number(rect?.height||0));
+  if(width<120 || height<120) continue;
+  const widthRatio=width/bodyWidth;
+  const heightRatio=Math.min(1.4,height/bodyHeight);
+  if(widthRatio<.42 || widthRatio>.93) continue;
+  const textLength=compact(element.textContent).length;
+  const textShare=Math.min(1,textLength/totalText);
+  if(textLength<140 || textShare<.42) continue;
+  const background=parseExternalShellColor(style.backgroundColor);
+  const hasBackground=!!(background && background.a>=.20) || (style.backgroundImage && style.backgroundImage!=='none');
+  if(!hasBackground) continue;
+  let depth=0,current=element;
+  while(current&&current!==body&&depth<12){ depth++; current=current.parentElement; }
+  const score=textShare*5 + widthRatio*1.2 + heightRatio + (hasBackground ? 0.8 : 0) + Math.min(.8,depth*.08);
+  candidates.push({element,widthRatio,textShare,score});
+ }
+ candidates.sort((a,b)=>b.score-a.score);
+ return candidates[0]||null;
+}
+
+
+function rescueIndependentExternalContentWidth(host){
+ if(!host?.isConnected || host.dataset.rmSource!=='independent' || host.dataset.rmState!=='ready' || host.dataset.rmPlacement!=='external') return false;
+ const details=host.querySelector?.(':scope > details[data-rabbit-mirror-external-details="true"], :scope > details');
+ if(!details) return false;
+ const carrier=independentPrimaryContentCarrier(details);
+ if(!carrier?.element || carrier.widthRatio>=.84) return false;
+ const viewportWidth=Number(globalThis.innerWidth||document?.documentElement?.clientWidth||0);
+ if(viewportWidth>0 && viewportWidth>760) return false;
+ const element=carrier.element;
+ element.style.setProperty('width','calc(100% - 18px)','important');
+ element.style.setProperty('max-width','none','important');
+ element.style.setProperty('min-width','0','important');
+ element.style.setProperty('margin-left','auto','important');
+ element.style.setProperty('margin-right','auto','important');
+ element.style.setProperty('box-sizing','border-box','important');
+ element.setAttribute('data-rabbit-mirror-independent-content-width-rescue','true');
+ host.dataset.rmIndependentContentWidthRescue='true';
+ return true;
+}
+function scheduleIndependentReadyPostprocess(host,key='',html=''){
+ if(!host || host.dataset.rmSource!=='independent' || host.dataset.rmState!=='ready') return;
+ if(host.__rabbitMirrorIndependentPostFrame) globalThis.cancelAnimationFrame?.(host.__rabbitMirrorIndependentPostFrame);
+ if(host.__rabbitMirrorIndependentPostTimer) clearTimeout(host.__rabbitMirrorIndependentPostTimer);
+ const run=()=>{
+  host.__rabbitMirrorIndependentPostTimer=0;
+  if(!host.isConnected || host.dataset.rmState!=='ready') return;
+  rescueIndependentExternalContentWidth(host);
+ };
+ if(typeof requestAnimationFrame==='function'){
+  host.__rabbitMirrorIndependentPostFrame=requestAnimationFrame(()=>{
+   host.__rabbitMirrorIndependentPostFrame=0;
+   host.__rabbitMirrorIndependentPostTimer=setTimeout(run,80);
+  });
+ }else host.__rabbitMirrorIndependentPostTimer=setTimeout(run,80);
+}
+
 function ensureExternalUi(el,key,html,state='ready',source='independent',sourceHash=''){
  const body=externalInsertTarget(el); if(!body) return null;
  const reconciled=collapseDuplicateIdentityHosts(el,key,source,sourceHash);
@@ -1801,6 +2103,7 @@ function ensureExternalUi(el,key,html,state='ready',source='independent',sourceH
    removeDuplicateExternalHosts(el,host,source);
    if(state==='ready') scheduleExternalShellTint(host,html);
    ensureExternalTools(host);
+   if(state==='ready' && source==='independent') scheduleIndependentReadyPostprocess(host,key,html);
    return host;
  }
  host.dataset.rmKey=key;
@@ -1817,12 +2120,22 @@ function ensureExternalUi(el,key,html,state='ready',source='independent',sourceH
  const currentReady=usableReadyDetails(current) ? current : null;
  if(state==='ready'){
    clearExternalHostFreshSourceState(host);
+   // While the maintenance rabbit is repairing an independent mirror, the live
+   // DOM is the authoritative working copy. Do not let a routine sync/remount
+   // replace it with the older cached/chatMetadata HTML before the repair-persist
+   // bridge has committed the new snapshot.
+   if(currentReady && independentMaintenanceLiveRepairLocked(host)){
+     if(wasOpen) currentReady.setAttribute('open','');
+     ensureExternalTools(host);
+     return host;
+   }
    const sameReadySource=currentReady && host.dataset.rmState==='ready' && String(host.__rabbitMirrorIndependentSource||'')===String(html||'');
    host.__rabbitMirrorIndependentSource = String(html||'');
    if(sameReadySource){
      if(wasOpen) currentReady.setAttribute('open','');
      scheduleExternalShellTint(host,html);
      ensureExternalTools(host);
+     if(source==='independent') scheduleIndependentReadyPostprocess(host,key,html);
      return host;
    }
    const nextDetails=extractReadyDetails(html);
@@ -1843,6 +2156,7 @@ function ensureExternalUi(el,key,html,state='ready',source='independent',sourceH
    if(wasOpen) nextDetails.setAttribute('open','');
    scheduleExternalShellTint(host,html);
    ensureExternalTools(host);
+   if(source==='independent') scheduleIndependentReadyPostprocess(host,key,html);
    return host;
  }
  if(state==='loading' && currentReady){
@@ -2045,19 +2359,49 @@ async function generateFor(index,msg,force=false,sourceAware=true){
  const observed=observeMessageSourceRevision(ctx,index,msg);
  const key=recordKey(ctx,index,msg); const slot=observed.slot; const sourceHash=observed.sourceHash; const bodyHash=observed.bodyHash; const displayHash=observed.displayHash; const reasoningHash=observed.reasoningHash; const revision=observed.revision; const st=getSettings();
  const baseSlot=messageBaseSlotKey(ctx,index,msg);
- cancelSupersededFlightsForBase(baseSlot,sourceHash);
  if(st.enabled===false || st.autoRabbitMirrorInjection===false || st.generationSource!=='independent' || runtimeMode()!=='independent') return;
  if(!force && (suppressesAutomaticGeneration(ctx,index) || hasExistingFollowRabbitMirror(ctx,index,msg))) return;
  const el=messageElement(index);
+ // Keep cross-device migration/reconciliation out of the paid request critical
+ // path. Normal sync passes handle it; generation only reads the already-present
+ // owner snapshot and proceeds without scanning/saving the whole chat first.
  let store=readStore();
+ const persistedOwner=persistedOwnerForMessage(ctx,index,msg);
+ const persistedSuppressed=!!persistedOwner?.deleted;
+ const persistedReady=!persistedSuppressed&&persistedOwner?.html&&independentStoredHtmlRestorable(persistedOwner.html)?persistedOwner:null;
+ if(force){ suppressPersistedOwnerForResay(ctx,index,msg); clearOwnerLockForBase(baseSlot); }
+ else if(persistedReady){
+  const persistedSlot=chatPersistenceSlot(ctx,index,swipeId(msg),persistedReady)||slot;
+  if(!store?.[persistedSlot]?.html){ saveRecordForSlot(store,persistedSlot,persistedReady,{dropLegacy:false}); writeStore(store); }
+  setOwnerLockForBase(baseSlot,persistedSlot,String(persistedReady.sourceHash||persistedReady.bodyHash||sourceHash));
+  if(el) ensureExternalUi(el,key,persistedReady.html,'ready','independent',sourceHash);
+  return persistedReady;
+ } else if(!persistedSuppressed){
+  const locked=lockedIndependentRecordForBase(baseSlot,store);
+  if(locked?.record?.html){
+   if(el) ensureExternalUi(el,key,locked.record.html,'ready','independent',sourceHash);
+   return locked.record;
+  }
+ }
+ cancelSupersededFlightsForBase(baseSlot,sourceHash);
  const recoveredAtGeneration=recoverSavedRecord(store,slot,observed);
- let saved=recoveredAtGeneration.saved;
+ let saved=persistedSuppressed&&!force?null:recoveredAtGeneration.saved;
  if(recoveredAtGeneration.storeChanged) writeStore(store);
  const mountedHost=el ? collapseDuplicateIdentityHosts(el,key,'independent',sourceHash) : null;
  const mountedReady=readyRecordFromHost(mountedHost,observed,st.independentApiModel);
+ if(mountedReady?.html && !force && !persistedSuppressed){
+  const mountedSlot=String(mountedHost?.dataset?.rmKey||slot);
+  const mountedStore=readStore();
+  if(!mountedStore?.[mountedSlot]?.html){ saveRecordForSlot(mountedStore,mountedSlot,mountedReady,{dropLegacy:false}); writeStore(mountedStore); }
+  setOwnerLockForBase(baseSlot,mountedSlot,String(mountedHost?.dataset?.rmSourceHash||sourceHash));
+  writePersistedOwner(ctx,index,msg,mountedReady,{overwrite:false});
+  return mountedReady;
+ }
  if(saved?.html && !force){
   const savedSourceHash=String(saved.sourceHash||'');
   if(savedRecordMatchesObserved(saved,observed) || (!savedSourceHash && !sourceAware)){
+   setOwnerLockForBase(baseSlot,slot,sourceHash);
+   writePersistedOwner(ctx,index,msg,saved,{overwrite:false});
    if(el){ const restored=ensureExternalUi(el,key,saved.html,'ready','independent',sourceHash); rebuildCollapsedReadyHost(el,restored,key,'independent',saved.html,sourceHash); }
    return saved;
   }
@@ -2095,6 +2439,25 @@ async function generateFor(index,msg,force=false,sourceAware=true){
  },INDEPENDENT_REQUEST_TIMEOUT_MS);
  const task=callIndependentApi(ctx,index,msg,controller.signal).then(result=>{
   if(!stillCurrent()){ stale=true; return; }
+  // One chat+mesid+swipe owner accepts only its first successful automatic
+  // result. Later DOM/source rewrites cannot replace A with B; explicit resay
+  // clears this owner lock before starting.
+  if(!force){
+   const serverOwner=persistedOwnerForMessage(ctx,index,msg);
+   const serverRecord=serverOwner?.deleted?null:(serverOwner?.html&&independentStoredHtmlRestorable(serverOwner.html)?serverOwner:null);
+   if(serverRecord?.html){
+    const serverSlot=chatPersistenceSlot(ctx,index,swipeId(msg),serverRecord)||slot;
+    const liveStore=readStore(); if(!liveStore?.[serverSlot]?.html){ saveRecordForSlot(liveStore,serverSlot,serverRecord,{dropLegacy:false}); writeStore(liveStore); }
+    setOwnerLockForBase(baseSlot,serverSlot,String(serverRecord.sourceHash||serverRecord.bodyHash||sourceHash));
+    const liveEl=messageElement(index); if(liveEl) ensureExternalUi(liveEl,key,serverRecord.html,'ready','independent',sourceHash);
+    return serverRecord;
+   }
+   const locked=lockedIndependentRecordForBase(baseSlot,readStore());
+   if(locked?.record?.html){
+    const liveEl=messageElement(index); if(liveEl) ensureExternalUi(liveEl,key,locked.record.html,'ready','independent',sourceHash);
+    return locked.record;
+   }
+  }
   const html=String(result?.html||'');
   const paletteFingerprint=commitIndependentVisualResult(html);
   if(result?.feedbackId && result?.feedbackPrompt){
@@ -2107,6 +2470,8 @@ async function generateFor(index,msg,force=false,sourceAware=true){
   const completed={html,sourceHash,bodyHash,displayHash,reasoningHash,paletteFingerprint,ts:Date.now(),model:st.independentApiModel,runtime:RUNTIME_VERSION,apiRequest:result?.requestDiagnostic||null,executionLockChars:Number(result?.executionLockChars||0)};
   appendHistoryEntry(slot,completed);
   const next=readStore(); saveRecordForSlot(next,slot,completed); writeStore(next);
+  setOwnerLockForBase(baseSlot,slot,sourceHash);
+  writePersistedOwner(ctx,index,msg,completed,{overwrite:true});
   const liveEl=messageElement(index);
   if(liveEl) ensureExternalUi(liveEl,key,html,'ready','independent',sourceHash);
   return completed;
@@ -2137,8 +2502,9 @@ async function generateFor(index,msg,force=false,sourceAware=true){
   if(flight.timeoutTimer){ clearTimeout(flight.timeoutTimer); flight.timeoutTimer=0; }
   if(pending.get(slot)?.runId===runId) pending.delete(slot);
   if(globalFlights().get(flightKey)===flight) globalFlights().delete(flightKey);
-  const retryStale=!flight.cancelReason || ['source-version-replaced','source-changed'].includes(String(flight.cancelReason));
-  if(stale && retryStale && currentRuntime() && runtimeMode()==='independent') scheduleMessageGeneration(index,360,true);
+  // Never turn a completed/cancelled request into another automatic paid
+  // request from finally(). Genuine new正文 versions are scheduled by their
+  // own Swipe/resay/generation events; the same正文 remains single-shot.
  });
  flight.task=task; globalFlights().set(flightKey,flight);
  pending.set(slot,{task,runId,key,sourceHash,revision,controller,cancelled:false,baseSlot});
@@ -2326,6 +2692,8 @@ function persistIndependentRepairFromEvent(event) {
  };
  saveRecordForSlot(store,identity.slot,repaired);
  writeStore(store);
+ setOwnerLockForBase(identity.baseSlot,identity.slot,identity.sourceHash);
+ writePersistedOwner(identity.ctx,identity.index,identity.msg,repaired,{overwrite:true});
  host.__rabbitMirrorIndependentSource=html;
  host.dataset.rmSourceHash=identity.sourceHash;
  scheduleExternalShellTint(host,html);
@@ -2424,9 +2792,10 @@ function restoreFollowInline(elOrHost){
  const host=elOrHost?.matches?.(`[${SOURCE_ATTR}][data-rm-source="follow"]`)
   ? elOrHost
   : externalHosts(el).find(node=>node.dataset.rmSource==='follow');
- if(!host) return;
+ if(!host) return false;
  const mirror=host.querySelector(':scope > details'); const body=messageBody(el);
- if(mirror&&body){
+ if(!mirror || !body){ host.hidden=false; return false; }
+ {
   mirror.removeAttribute('data-rabbit-mirror-external-details');
   mirror.removeAttribute('data-rabbit-mirror-external-owner');
   delete mirror.dataset.rabbitMirrorExternalOwner;
@@ -2448,7 +2817,83 @@ function restoreFollowInline(elOrHost){
  host.remove();
  if(parent?.hasAttribute?.(FOLLOW_EXTERNAL_ANCHOR_ATTR) && !parent.querySelector?.(`[${SOURCE_ATTR}][data-rm-source="follow"]`)) parent.remove();
  removeEmptyFollowExternalAnchors(el||document);
+ return true;
 }
+function followDetailsRootFromHtml(html=''){
+ const source=cleanRabbitMirrorOutput(String(html||'')); if(!source) return null;
+ try{
+  const template=document.createElement('template'); template.innerHTML=source;
+  const details=[...template.content.querySelectorAll('details')].find(node=>isRabbitMirrorDetails(node));
+  if(!details) return null;
+  const toto=details.closest('toto');
+  return (toto||details).cloneNode(true);
+ }catch{return null;}
+}
+function normalizeRecoveredFollowRoot(root){
+ if(!root) return null;
+ root.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay], [data-rabbit-mirror-resay-status]')?.forEach(node=>node.remove());
+ const details=root.matches?.('details')?root:root.querySelector?.('details');
+ if(!details) return null;
+ ['data-rabbit-mirror-external-details','data-rabbit-mirror-external-owner','data-rabbit-mirror-external-source','data-rabbit-mirror-owner-chat','data-rabbit-mirror-owner-mesid','data-rabbit-mirror-owner-swipe','data-rabbit-mirror-owner-key','data-rabbit-mirror-owner-source-hash'].forEach(attr=>details.removeAttribute(attr));
+ return root;
+}
+function followMessageSourceCandidates(msg){
+ const candidates=[]; const seen=new Set();
+ const push=value=>{ const text=String(value||''); if(!text||seen.has(text)) return; seen.add(text); candidates.push(text); };
+ // Prefer the actual visible source, then the current Swipe, then mes. Older
+ // SillyTavern/plugin combinations can temporarily leave these three fields
+ // out of sync during a hot update or message DOM rebuild.
+ push(msg?.extra?.display_text);
+ const swipeIndex=Number.isInteger(msg?.swipe_id)?Number(msg.swipe_id):-1;
+ if(swipeIndex>=0) push(msg?.swipes?.[swipeIndex]);
+ push(msg?.mes);
+ return candidates;
+}
+function restoreFollowMirrorFromMessageSource(el,msg){
+ if(!el || inlineRabbitMirrorDetails(el).length || externalHosts(el).some(node=>node.dataset.rmSource==='follow')) return false;
+ const body=messageBody(el); if(!body) return false;
+ for(const source of followMessageSourceCandidates(msg)){
+  const root=normalizeRecoveredFollowRoot(followDetailsRootFromHtml(source));
+  if(!root) continue;
+  const details=root.matches?.('details')?root:root.querySelector?.('details');
+  if(!isRabbitMirrorDetails(details)) continue;
+  body.append(root);
+  try{ refreshRabbitMirrorToolsInScope(root); }catch{}
+  return true;
+ }
+ return false;
+}
+function mountedFollowRootForMessage(el){
+ if(!el) return null;
+ const host=externalHosts(el).find(node=>node.dataset.rmSource==='follow');
+ const externalDetails=host?.querySelector?.(':scope > details');
+ if(externalDetails) return externalDetails;
+ const inlineDetails=inlineRabbitMirrorDetails(el)[0]||null;
+ if(!inlineDetails) return null;
+ return inlineDetails.closest?.('toto')||inlineDetails;
+}
+function captureMountedFollowSnapshots(){
+ const snapshots=[]; const seen=new Set(); const ctx=getContext();
+ for(const {i} of assistantMessages(ctx)){
+  const index=Number(i); if(!Number.isInteger(index)||index<0) continue;
+  const el=messageElement(index); const root=mountedFollowRootForMessage(el); if(!root) continue;
+  const html=String(root.outerHTML||'').trim(); if(!html) continue;
+  const fingerprint=hashText(html.replace(/\s+/g,' '));
+  const identity=`${index}:${fingerprint}`; if(seen.has(identity)) continue; seen.add(identity);
+  snapshots.push({mesid:index,html});
+ }
+ return snapshots;
+}
+function restoreMountedFollowSnapshots(snapshots=[]){
+ for(const item of snapshots){
+  const index=Number(item?.mesid); if(!Number.isInteger(index)||index<0) continue;
+  const el=messageElement(index); const body=messageBody(el); if(!body) continue;
+  if(inlineRabbitMirrorDetails(el).length || externalHosts(el).some(node=>node.dataset.rmSource==='follow')) continue;
+  const root=normalizeRecoveredFollowRoot(followDetailsRootFromHtml(item.html)); if(!root) continue;
+  body.append(root); try{ refreshRabbitMirrorToolsInScope(root); }catch{}
+ }
+}
+
 function runtimeMode(){
  const st=getSettings();
  if(st.enabled===false || st.autoRabbitMirrorInjection===false) return 'off';
@@ -2552,9 +2997,16 @@ function restoreIndependentMirrorPassively(ctx,store,el,index,msg){
  const key=recordKey(ctx,index,msg);
  let keep=collapseDuplicateIdentityHosts(el,key,'independent',observed.sourceHash);
  if(keep?.dataset?.rmState==='ready' && !usableReadyDetails(keep.querySelector?.(':scope > details'))){ keep.remove(); keep=null; }
- const recovered=recoverSavedRecord(store,observed.slot,observed);
+ const persistedOwner=persistedOwnerForMessage(ctx,index,msg);
+ const persistedReady=!persistedOwner?.deleted&&persistedOwner?.html&&independentStoredHtmlRestorable(persistedOwner.html)&&savedRecordMatchesObserved(persistedOwner,observed)?persistedOwner:null;
+ const recovered=persistedReady?{saved:persistedReady,storeChanged:false}:persistedOwner?.deleted?{saved:null,storeChanged:false}:recoverSavedRecord(store,observed.slot,observed);
  let saved=recovered.saved;
  if(saved?.html && !savedRecordMatchesObserved(saved,observed)) saved=null;
+ if(persistedReady){
+  const persistedSlot=chatPersistenceSlot(ctx,index,swipeId(msg),persistedReady)||observed.slot;
+  if(!store?.[persistedSlot]?.html){ saveRecordForSlot(store,persistedSlot,persistedReady,{dropLegacy:false}); recovered.storeChanged=true; }
+  setOwnerLockForBase(messageBaseSlotKey(ctx,index,msg),persistedSlot,String(persistedReady.sourceHash||persistedReady.bodyHash||observed.sourceHash));
+ }
  if(saved?.html){
   const host=ensureExternalUi(el,key,saved.html,'ready','independent',observed.sourceHash);
   if(host){
@@ -2584,16 +3036,21 @@ function syncMessages(indices=null){
  syncRunning=true;
  try{
    const ctx=getContext(); const st=getSettings(); const mode=runtimeMode(); const store=readStore();
+   let storeChanged=false;
+   if(!(indices instanceof Set)){
+    const persistenceSync=synchronizeIndependentChatPersistence(ctx,store);
+    if(persistenceSync.storeChanged) storeChanged=true;
+   }
    const displayModeChanged=mode==='independent' ? consumeIndependentDisplayModeChange() : false;
    const allowed=indices instanceof Set?indices:null;
    const generationActive=mode==='independent' && hostGenerationLooksActive();
    const tailIndex=Array.isArray(ctx.chat)?ctx.chat.length-1:-1;
    const tailMessage=tailIndex>=0?ctx.chat?.[tailIndex]:null;
    const activeGenerationIndex=generationActive && tailMessage && !tailMessage.is_user && typeof tailMessage.mes==='string' ? tailIndex : -1;
-   let storeChanged=false;
    for(const {m,i} of assistantMessages(ctx)){
      if(allowed && !allowed.has(i)) continue;
      const el=messageElement(i); if(!el) continue;
+     if(mode!=='off') restoreFollowMirrorFromMessageSource(el,m);
      if(mode==='off') { externalHosts(el).forEach(n=>n.remove()); continue; }
      if(mode==='independent'){
        // Switching generation source must not erase mirrors that were produced
@@ -2603,9 +3060,21 @@ function syncMessages(indices=null){
        for(const followHost of externalHosts(el).filter(n=>n.dataset.rmSource==='follow')) restoreFollowInline(followHost);
        const observed=observeMessageSourceRevision(ctx,i,m);
        const key=recordKey(ctx,i,m); const slot=observed.slot; const sourceHash=observed.sourceHash;
-       cancelSupersededFlightsForBase(messageBaseSlotKey(ctx,i,m),sourceHash);
+       const baseSlot=messageBaseSlotKey(ctx,i,m);
+       const persistedOwner=persistedOwnerForMessage(ctx,i,m);
+       const persistedSuppressed=!!persistedOwner?.deleted;
+       cancelSupersededFlightsForBase(baseSlot,sourceHash);
        cancelFlightsForSlot(slot,sourceHash);
-       const recoveredAtSync=recoverSavedRecord(store,slot,observed);
+       const persistedReady=!persistedSuppressed&&persistedOwner?.html&&independentStoredHtmlRestorable(persistedOwner.html)?persistedOwner:null;
+       if(persistedSuppressed) clearOwnerLockForBase(baseSlot);
+       let ownerLocked=null;
+       if(persistedReady){
+        const persistedSlot=chatPersistenceSlot(ctx,i,swipeId(m),persistedReady)||slot;
+        if(!store?.[persistedSlot]?.html){ saveRecordForSlot(store,persistedSlot,persistedReady,{dropLegacy:false}); storeChanged=true; }
+        setOwnerLockForBase(baseSlot,persistedSlot,String(persistedReady.sourceHash||persistedReady.bodyHash||sourceHash));
+        ownerLocked={record:persistedReady,lock:{slot:persistedSlot}};
+       } else if(!persistedSuppressed) ownerLocked=lockedIndependentRecordForBase(baseSlot,store);
+       const recoveredAtSync=persistedSuppressed?{saved:null,storeChanged:false}:ownerLocked?.record ? {saved:ownerLocked.record,storeChanged:false} : recoverSavedRecord(store,slot,observed);
        let saved=recoveredAtSync.saved;
        if(recoveredAtSync.storeChanged) storeChanged=true;
        let keep=collapseDuplicateIdentityHosts(el,key,'independent',sourceHash);
@@ -2618,6 +3087,25 @@ function syncMessages(indices=null){
          keep=ensureExternalUi(el,key,'独立 API 生成失败。可直接重新生成兔子镜，或打开挨打猫后重说。','error','independent',sourceHash);
        }
        if(keep?.dataset?.rmState==='ready' && !usableReadyDetails(keep.querySelector?.(':scope > details'))){ keep.remove(); keep=null; }
+       // A completed mirror already mounted for this chat+mesid+swipe is the
+       // user's visible A, even when a status bar or another extension has since
+       // rewritten the underlying mes fingerprint. Seed the stable owner lock
+       // from that visible result instead of requesting/repainting a B.
+       const mountedReadyAtSync=!persistedSuppressed && keep?.dataset?.rmState==='ready' ? readyRecordFromHost(keep,observed,st.independentApiModel) : null;
+       if(mountedReadyAtSync?.html && !ownerLocked?.record){
+         const mountedSlot=String(keep?.dataset?.rmKey||slot);
+         const previous=store?.[mountedSlot];
+         if(!previous?.html || String(previous.html)!==String(mountedReadyAtSync.html)){
+           if(previous?.html) appendHistoryEntry(mountedSlot,previous);
+           saveRecordForSlot(store,mountedSlot,mountedReadyAtSync,{dropLegacy:false}); storeChanged=true;
+         }
+         setOwnerLockForBase(baseSlot,mountedSlot,String(keep?.dataset?.rmSourceHash||sourceHash));
+         writePersistedOwner(ctx,i,m,mountedReadyAtSync,{overwrite:false});
+         ownerLocked={record:mountedReadyAtSync,lock:{slot:mountedSlot}};
+         saved=mountedReadyAtSync;
+       } else if(mountedReadyAtSync?.html && ownerLocked?.record){
+         saved=ownerLocked.record;
+       }
        if(displayModeChanged && keep){
          // Switching display mode only relocates the one existing mirror.
          placeExternalHost(el,keep,keep.dataset.rmKey||key,'independent');
@@ -2629,7 +3117,7 @@ function syncMessages(indices=null){
 
        // Never repaint an old mirror over a newly regenerated/swiped正文. A
        // record is eligible only for the exact current source fingerprint.
-       if(saved?.html && !savedRecordMatchesObserved(saved,observed)){
+       if(saved?.html && !ownerLocked?.record && !savedRecordMatchesObserved(saved,observed)){
          // Synchronization is read-only for incompatible legacy records. Do
          // not destroy persisted mirrors merely because the current runtime
          // cannot prove a match; a later migration or Swipe may still recover
@@ -2651,13 +3139,6 @@ function syncMessages(indices=null){
          // placeholder instead of treating it as an old completed mirror.
          keep=ensureReplyGenerationPlaceholder(el,key,sourceHash,isActiveGenerationTarget);
          hostIsStale=false;
-         // A previous reply can lose its early request when display_text or
-         // reasoning changes after GENERATION_ENDED. Once the next reply starts,
-         // that placeholder is no longer the active tail, so schedule its exact
-         // stable version once instead of leaving “正在生成中” forever.
-         if(!isActiveGenerationTarget && String(m?.mes||'').trim() && !hasGenerationWorkFor(i,slot,sourceHash)){
-           scheduleMessageGeneration(i,180,true);
-         }
        } else if(hostIsStale){
          // The mounted mirror belongs to the previous正文 version. Keep the one
          // shell anchored in place, but never show stale mirror content beside
@@ -2667,7 +3148,8 @@ function syncMessages(indices=null){
          keep.dataset.rmAwaitingFreshSource='true';
          keep.dataset.rmFreshSourceStatus='waiting';
        }
-       if(saved?.html && savedRecordMatchesObserved(saved,observed)){
+       if(saved?.html && (ownerLocked?.record || savedRecordMatchesObserved(saved,observed))){
+         if(!ownerLocked?.record){ setOwnerLockForBase(baseSlot,slot,sourceHash); writePersistedOwner(ctx,i,m,saved,{overwrite:false}); ownerLocked={record:saved,lock:{slot}}; }
          const host=ensureExternalUi(el,key,saved.html,'ready','independent',sourceHash);
          if(host){ rebuildCollapsedReadyHost(el,host,key,'independent',saved.html,sourceHash); host.hidden=false; clearExternalHostFreshSourceState(host); }
        } else if(keep && !hostIsStale){
@@ -2805,10 +3287,13 @@ function clearGenerationPolls(){
  for(const entry of generationPolls.values()){ entry.cancelled=true; if(entry.timer) clearTimeout(entry.timer); }
  generationPolls.clear();
 }
-function clearScheduledGeneration(){
+function clearLatestGenerationScheduling(){
  if(latestGenerationTimer){ clearTimeout(latestGenerationTimer); latestGenerationTimer=null; }
- clearGenerationPolls();
  clearGenerationPlaceholderPoll();
+}
+function clearScheduledGeneration(){
+ clearLatestGenerationScheduling();
+ clearGenerationPolls();
 }
 function scheduleLatest(delay=520){
  if(latestGenerationTimer) clearTimeout(latestGenerationTimer);
@@ -2856,11 +3341,11 @@ function schedulePassiveRecoveryAfterSourceSwitch(expectedSequence=runtimeConfig
    passiveRecoveryTimers.delete(timer);
    if(expectedSequence!==runtimeConfigSequence || !currentRuntime()) return;
    const mode=runtimeMode();
-   if(mode==='off' || mode==='independent') return;
-   // A source switch can coincide with SillyTavern replacing the message DOM.
-   // Run two finite reconciliation passes so exact cached independent mirrors
-   // are restored even when the first synchronous pass was skipped by an
-   // already-running sync. This is not a loop and creates no network request.
+   if(mode==='off') return;
+   // A hot update or source switch can coincide with SillyTavern replacing the
+   // message DOM after the first synchronous pass. Run two finite, read-only
+   // reconciliations in every active mode: they remount historical follow/API
+   // mirrors from message source or exact cache and never issue a network POST.
    syncAll();
    if(!observer) installObserverIfNeeded();
   },delay);
@@ -2911,7 +3396,10 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
      const handler=()=>{
        hostGenerationInProgress=true;
        hostGenerationHintStartedAt=Date.now();
-       clearScheduledGeneration();
+       // A new assistant reply must not cancel the previous reply's already
+       // queued RabbitMirror poll. Each message owns its own poll/flight; only
+       // the transient latest/placeholder scheduler is replaced here.
+       clearLatestGenerationScheduling();
        scheduleGenerationPlaceholderPoll(60);
        const ctx=getContext();
        const lastIndex=Array.isArray(ctx.chat)?ctx.chat.length-1:-1;
@@ -3054,7 +3542,7 @@ async function reconfigureRuntime(){
  disconnectObserver(); unsubscribeHostEvents();
  const mode=runtimeMode();
  const previousMode=lastAppliedRuntimeMode;
- const enteredIndependentFromAnotherSource=previousMode!==null && mode==='independent' && previousMode!=='independent';
+ const enteredIndependentFromAnotherSource=mode==='independent' && previousMode!=='independent';
  if(enteredIndependentFromAnotherSource){ clearAutomaticGenerationCutovers(); ensureAutomaticGenerationCutover(getContext()); }
  else if(mode!=='independent') clearAutomaticGenerationCutovers();
  lastAppliedRuntimeMode=mode;
@@ -3083,7 +3571,7 @@ async function reconfigureRuntime(){
    return;
  }
  syncAll(); installObserverIfNeeded();
- if(mode!=='independent') schedulePassiveRecoveryAfterSourceSwitch(sequence);
+ schedulePassiveRecoveryAfterSourceSwitch(sequence);
  await installHostEventsIfNeeded(sequence);
  if(sequence!==runtimeConfigSequence || !currentRuntime()) return;
  if(!enteredIndependentFromAnotherSource) scheduleLatest();
@@ -3095,9 +3583,10 @@ export async function initIndependentRabbitMirror(){
  // the old runtime DOM. This is a last-resort migration path when a previous
  // build already pruned its current-output cache.
  const mountedSnapshots=captureMountedIndependentRecords();
- const mountedPlaceholderIndices=captureMountedIndependentPlaceholderIndices();
+ const mountedFollowSnapshots=captureMountedFollowSnapshots();
  try{ globalThis.__rabbitMirrorIndependentCleanup?.(); }catch{}
  restoreMountedIndependentRecords(mountedSnapshots);
+ restoreMountedFollowSnapshots(mountedFollowSnapshots);
  globalThis.__rabbitMirrorIndependentCleanup=destroyIndependentRabbitMirror;
  migrateLegacyDeletedRecords();
  installIndependentActionBridge();
@@ -3109,15 +3598,8 @@ export async function initIndependentRabbitMirror(){
  installExternalGeometryListeners();
  installBackgroundLifecycleListeners();
  await reconfigureRuntime();
- // A beta.14.57 hot update may arrive while an older reply still shows a
- // loading shell. Recreate only those mounted placeholders and restart their
- // exact stable versions; never backfill arbitrary historical messages.
- for(const index of mountedPlaceholderIndices){
-  const live=currentGenerationIdentity(index);
-  if(!live || hasGenerationWorkFor(index,live.slot,live.sourceHash)) continue;
-  ensureGenerationPlaceholderForIndex(index,false);
-  scheduleMessageGeneration(index,180,true);
- }
+ // Hot updates never restart historical loading/error placeholders. Only a
+ // genuinely new assistant reply or an explicit manual retry may issue a POST.
 }
 export function destroyIndependentRabbitMirror(){
  runtimeConfigSequence++; hostGenerationInProgress=false; hostGenerationHintStartedAt=0; clearScheduledGeneration(); clearPassiveRecoveryTimers(); cancelAllIndependentFlights('runtime-destroyed'); clearAutomaticGenerationCutovers(); lastAppliedRuntimeMode=null;
