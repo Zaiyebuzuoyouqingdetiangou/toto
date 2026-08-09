@@ -1,3 +1,11 @@
+# 1.3.7 — 随机抽取恢复 / 正式仓库版
+
+- 恢复 1.2.55 已验证的随机源：优先使用 `crypto.getRandomValues()`，在旧 WebView / 受限环境不可用时自动回退 `Math.random()`。
+- 恢复父主题家族的温和规模校正：家族基础权重按有效条目数的 `0.9` 次方计算，降低单条/小家族在“家族完全等权”下异常偏高的单项命中率，同时避免大树家族按子项数量线性霸榜。
+- 保留现有最近具体条目硬排除、同父类 `0.35` 降权、同主题家族 `0.25` 降权等冷却逻辑。
+- 本次功能修改仅位于 `src/picker.js`；未修改 Prompt、母本、配色、材质、光影、Visual Scenery、独立 API 请求链、维修兔或 1.3.6 外置一体化/自适配逻辑。
+- 正式仓库通道：`https://github.com/Zaiyebuzuoyouqingdetiangou/toto`。
+
 # 1.3.6 — 外置一体化本体测试修复
 
 - 正式仓库发布适配：本发布包的 `homePage` 与安装说明切换到 `https://github.com/Zaiyebuzuoyouqingdetiangou/toto`；功能代码与 1.3.6 测试确认包保持一致。
