@@ -72,6 +72,34 @@
 .rabbit-mirror-settings .inline-drawer-content {
     padding: 10px;
 }
+
+/* 1.3.69: settings drawer owns a stable scroll area instead of relying on the host pane.
+   The blacklist made this drawer taller and exposed cases where the host scrollbar did not
+   scroll the extension content. Keep wheel/touch scrolling local and let it chain at bounds. */
+.rabbit-mirror-settings > .inline-drawer {
+    min-height: 0 !important;
+}
+.rabbit-mirror-settings > .inline-drawer > .inline-drawer-content {
+    box-sizing: border-box !important;
+    min-height: 0 !important;
+    max-height: calc(100vh - 96px) !important;
+    max-height: calc(100dvh - 96px) !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
+    scrollbar-gutter: stable;
+}
+.rabbit-mirror-settings .rabbit-mirror-blacklist-summary {
+    box-sizing: border-box;
+    max-height: 220px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: auto;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+}
 .rabbit-mirror-settings label {
     display: block;
     margin-top: 8px;
@@ -544,6 +572,12 @@ toto[data-rabbit-mirror="true"] summary {
   margin-left:auto !important;
   margin-right:auto !important;
 }
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"][data-rm-independent-external-compact-shell="true"]{
+  width:var(--rm-external-compact-width, var(--rm-external-lane-width, 96%)) !important;
+  max-width:var(--rm-external-lane-width, 96%) !important;
+  margin-left:var(--rm-external-lane-left, 0px) !important;
+  margin-right:auto !important;
+}
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"] > .rabbit-mirror-resay-status{
   position:absolute !important;
   top:10px !important;
@@ -570,11 +604,10 @@ toto[data-rabbit-mirror="true"] summary {
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-pending="true"] > details[data-rabbit-mirror-external-details="true"]{
   opacity:.76 !important;
 }
-#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"],
-#chat .rabbit-mirror-external-shell[data-rm-source="follow"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"]{
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"]{
   display:block !important;
-  width:100% !important;
-  max-width:none !important;
+  width:auto !important;
+  max-width:100% !important;
   min-width:0 !important;
   box-sizing:border-box !important;
   margin:0 !important;
@@ -584,7 +617,16 @@ toto[data-rabbit-mirror="true"] summary {
   overflow:visible !important;
 }
 #chat .rabbit-mirror-external-shell[data-rm-source="follow"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"]{
+  display:block !important;
+  width:100% !important;
+  max-width:none !important;
+  min-width:0 !important;
+  box-sizing:border-box !important;
+  margin:0 !important;
+  border:0 !important;
   border-radius:13px !important;
+  background:transparent !important;
+  overflow:visible !important;
 }
 /* Follow-current external keeps its legacy inner safety constraint. Pure independent
  * external deliberately does not touch generated children. */
@@ -633,6 +675,23 @@ toto[data-rabbit-mirror="true"] summary {
 }
 #chat .rabbit-mirror-external-shell[data-rm-source="follow"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"][open] > summary{
   border-bottom:1px solid var(--rm-shell-border, rgba(0,0,0,.08)) !important;
+}
+/* 1.3.52: mobile pure-external follows the owning message's measured正文 lane.
+ * The JS geometry path writes --rm-external-lane-width/left from the rendered
+ * .mes_text box when it is stable. Do not guess a viewport percentage here.
+ * Desktop still uses the same lane plus the PC-only compact-shell cap. */
+@media (max-width:899px){
+  #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"],
+  #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"][data-rm-independent-external-compact-shell="true"]{
+    width:var(--rm-external-lane-width, 84vw) !important;
+    max-width:none !important;
+    margin-left:var(--rm-external-lane-left, auto) !important;
+    margin-right:auto !important;
+  }
+  #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"]{
+    width:100% !important;
+    max-width:none !important;
+  }
 }
 @media (max-width:420px){
   #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"] > summary{

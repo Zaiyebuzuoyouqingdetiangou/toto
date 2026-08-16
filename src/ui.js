@@ -1,14 +1,15 @@
-import { getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.3.20';
-import { clearLastCombo } from './storage.js?rmv=1.3.20';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.3.20';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.3.20';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.3.20';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.3.20';
-import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.3.20';
-import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.3.20';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.4.0';
+import { clearLastCombo } from './storage.js?rmv=1.4.0';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.0';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.0';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.0';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.0';
+import { getLastRabbitMirrorTokenRecord, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.0';
+import { API_REQUEST_DIAGNOSTIC_EVENT, fetchIndependentModels, getLastIndependentApiRequestDiagnostic, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.4.0';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled } from './blacklist.js?rmv=1.4.0';
 
-const SETTINGS_UI_VERSION = '1.3.3';
-const RUNTIME_VERSION = '1.3.20';
+const SETTINGS_UI_VERSION = '1.4.0-visual-maintenance';
+const RUNTIME_VERSION = '1.4.0';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -29,6 +30,35 @@ function checked(id, value) {
     $(id).prop('checked', !!value);
 }
 
+function renderVisualPromptStatus(settings = getSettings()) {
+    const target = $('#rh_visual_prompt_status');
+    if (!target.length) return;
+    const enabled = !!settings?.visualPromptEditingEnabled;
+    const official = String(settings?.visualPrompt ?? DEFAULT_VISUAL_PROMPT).replace(/\r\n?/g, '\n');
+    const extra = String(settings?.visualExtraPrompt || '').trim();
+    const avoid = String(settings?.visualAvoidPrompt || '').trim();
+    const parts = [];
+    if (official !== DEFAULT_VISUAL_PROMPT) parts.push('通用视觉规则已修改');
+    if (extra) parts.push('额外视觉偏好已保存');
+    if (avoid) parts.push('视觉避雷已保存');
+    // 1.3.69: 开启编辑后，「通用视觉审美规则」这一栏就是整套配色组织与反通用面板规则的
+    // 唯一来源（关闭时走 legacyPresentationEmbodimentRule 内置同样内容）。清空它不会报错，
+    // 但下一面开始这些规则会整体消失，只有画面变差能看出来，因此这里明确提示。
+    if (enabled && !official.trim()) {
+        target.text('当前：编辑注入已启用，但「通用视觉审美规则」为空。配色组织与反通用面板规则这一整层不会发送；如非刻意，请点「恢复默认通用视觉规则」。');
+        return;
+    }
+    if (!enabled) {
+        target.text(parts.length
+            ? `当前：编辑注入未启用，仍走 1.3.20 原版视觉流程；已保存内容不会发送（${parts.join(' / ')}）。`
+            : '当前：编辑注入未启用，下一面仍走 1.3.20 原版视觉流程。');
+        return;
+    }
+    target.text(parts.length
+        ? `当前：编辑注入已启用（${parts.join(' / ')}）`
+        : '当前：编辑注入已启用；使用可编辑的通用视觉规则。');
+}
+
 function escapeHtml(value) {
     return String(value ?? '')
         .replace(/&/g, '&amp;')
@@ -36,6 +66,28 @@ function escapeHtml(value) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+}
+
+
+function renderBlacklistSettings() {
+    const target = $('#rh_blacklist_summary');
+    if (!target.length) return;
+    const settings = getSettings();
+    const themes = blacklistEntries('theme');
+    const formats = blacklistEntries('format');
+    const stats = blacklistPoolStats();
+    const row = item => `<div style="display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid color-mix(in srgb,currentColor 10%,transparent);">
+      <span style="min-width:0;flex:1;overflow-wrap:anywhere;">${escapeHtml(item.id)} ${escapeHtml(item.title)}</span>
+      <button type="button" class="menu_button rh-blacklist-remove" data-kind="${escapeHtml(item.kind)}" data-id="${escapeHtml(item.id)}" style="padding:2px 7px;min-height:24px;">解除</button>
+    </div>`;
+    const section = (title, items) => `<div style="margin-top:7px;"><div style="font-weight:700;font-size:11px;opacity:.74;margin-bottom:2px;">${title}（${items.length}）</div>${items.length ? items.map(row).join('') : '<div style="opacity:.55;font-size:11px;padding:3px 0;">暂无</div>'}</div>`;
+    const warnings = [];
+    if (stats.themePoolEmpty) warnings.push('主题 / 元素候选已全部加入黑名单，随机主题将没有候选。');
+    if (stats.formatPoolEmpty) warnings.push('展现形式候选已全部加入黑名单，随机形式将没有候选。');
+    target.html(`<div style="font-size:11px;line-height:1.5;opacity:.78;">当前${settings.blacklistEnabled !== false ? '启用' : '暂停'}；主题 / 元素 ${themes.length}/${stats.themeTotal}，展现形式 ${formats.length}/${stats.formatTotal}。黑名单只过滤随机抽取，不向模型追加任何 Prompt。</div>
+      ${warnings.length ? `<div style="margin-top:5px;color:#d97706;font-size:11px;line-height:1.45;">${warnings.map(escapeHtml).join('<br>')}</div>` : ''}
+      ${section('主题 / 元素', themes)}
+      ${section('展现形式', formats)}`);
 }
 
 function independentApiProfileLabel(diagnostic) {
@@ -94,10 +146,26 @@ function renderTokenMeter(record = getLastRabbitMirrorTokenRecord()) {
         detail.text('只统计兔子镜小剧场自己写入的 Prompt。');
         return;
     }
+    if (record.status === 'independent') {
+        const tokens = record.tokens || {};
+        const chars = record.chars || {};
+        main.text(`独立 API 约 ${formatMeterNumber(tokens.estimated)} Token`);
+        exact.text(`兔子镜自身规则保守范围 ${formatMeterNumber(tokens.min)}–${formatMeterNumber(tokens.max)}；精确字符数 ${formatMeterNumber(chars.total)}。聊天／角色卡／世界书等上下文另计 ${formatMeterNumber(chars.independentContext)} 字符。`);
+        const parts = [
+            `基础约 ${formatMeterNumber(tokens.baseEstimated)}`,
+            chars.feedback ? `挨打猫追加约 ${formatMeterNumber(tokens.feedbackEstimated)}` : '挨打猫追加 0',
+            chars.executionLock ? `最终执行锁约 ${formatMeterNumber(tokens.executionLockEstimated)}` : '',
+            `其中母本补充 ${formatMeterNumber(chars.motherLibrary)} 字符`,
+            chars.sharedMemory ? `共同回忆资料 ${formatMeterNumber(chars.sharedMemory)} 字符` : '',
+            chars.editableVisual ? `可编辑视觉层 ${formatMeterNumber(chars.editableVisual)} 字符` : '',
+        ].filter(Boolean);
+        detail.text(parts.join('；'));
+        return;
+    }
     if (record.status !== 'injected') {
         main.text('0 Token');
         exact.text(tokenMeterNoInjectionLabel(record.reason));
-        detail.text('未向模型追加兔子镜小剧场 Prompt。');
+        detail.text('未向当前主模型追加兔子镜小剧场 Prompt。');
         return;
     }
 
@@ -110,12 +178,15 @@ function renderTokenMeter(record = getLastRabbitMirrorTokenRecord()) {
         chars.feedback ? `挨打猫追加约 ${formatMeterNumber(tokens.feedbackEstimated)}` : '挨打猫追加 0',
         `其中母本补充 ${formatMeterNumber(chars.motherLibrary)} 字符`,
         chars.sharedMemory ? `共同回忆资料 ${formatMeterNumber(chars.sharedMemory)} 字符` : '',
+        chars.editableVisual ? `可编辑视觉层 ${formatMeterNumber(chars.editableVisual)} 字符` : '',
     ].filter(Boolean);
     detail.text(parts.join('；'));
 }
 
 function attachTokenMeterListener() {
     try { globalThis.__rabbitMirrorTokenMeterUiCleanup?.(); } catch {}
+    try { globalThis.__rabbitMirrorBlacklistUiCleanup?.(); } catch {}
+    globalThis.__rabbitMirrorBlacklistUiCleanup = null;
     const handler = event => renderTokenMeter(event?.detail || getLastRabbitMirrorTokenRecord());
     globalThis.addEventListener?.(TOKEN_METER_EVENT, handler);
     globalThis.__rabbitMirrorTokenMeterUiCleanup = () => globalThis.removeEventListener?.(TOKEN_METER_EVENT, handler);
@@ -193,7 +264,15 @@ export function initRabbitMirrorUI() {
     const existing = $('#rabbit_mirror_theater_settings');
     if (existing.length) {
         const currentPanels = existing.filter(`[data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}"][data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}"]`)
-            .filter((_, panel) => $(panel).find('#rh_feedback_cat').length && $(panel).find('#rh_maintenance_rabbit').length);
+            .filter((_, panel) => {
+                const $panel = $(panel);
+                return $panel.find('#rh_feedback_cat').length
+                    && $panel.find('#rh_maintenance_rabbit').length
+                    && $panel.find('#rh_visual_extra_prompt').length
+                    && $panel.find('#rh_visual_avoid_prompt').length
+                    && $panel.find('#rh_visual_prompt_save').length
+                    && $panel.find('#rh_visual_prompt_enabled').length;
+            });
         if (existing.length === 1 && currentPanels.length === 1) return;
         // A hot reload may leave the old settings DOM alive even after manifest.json has updated.
         // Remove every stale/duplicate panel so the claimed runtime becomes the only UI owner.
@@ -211,7 +290,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.3</span>
+      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.4</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -237,13 +316,17 @@ export function initRabbitMirrorUI() {
               <label><input name="rh_independent_display" type="radio" value="external"> ① 轻壳外置（标题有壳）</label>
               <label><input name="rh_independent_display" type="radio" value="external_then_inline"> ② 外置后内嵌</label>
             </div>
-            <input id="rh_independent_base" class="text_pole" type="text" inputmode="url" autocapitalize="off" spellcheck="false" placeholder="API 地址，例如 https://example.com/v1 或 http://123.45.67.89:8000/v1">
+            <input id="rh_independent_base" class="text_pole" type="text" inputmode="url" autocapitalize="off" spellcheck="false" placeholder="API 地址，例如 https://example.com/v1、.../v4 或 http://123.45.67.89:8000/v1">
             <input id="rh_independent_key" class="text_pole" type="password" autocomplete="off" placeholder="API Key">
             <div class="flex-container" style="gap:7px;flex-wrap:wrap;">
               <button id="rh_independent_models" class="menu_button" type="button">拉取模型</button>
               <button id="rh_independent_test" class="menu_button" type="button">测试连接</button>
             </div>
-            <select id="rh_independent_model" class="text_pole"><option value="">请先拉取模型</option></select>
+            <select id="rh_independent_model_select" class="text_pole" aria-label="已拉取模型列表">
+              <option value="">先点击“拉取模型”获取完整列表</option>
+            </select>
+            <input id="rh_independent_model" class="text_pole" type="text" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="模型 ID；可从上方完整列表选择，也可直接手动填写">
+            <div style="opacity:.66;font-size:11px;line-height:1.45;">拉取成功后，上方下拉框会保留完整模型列表，不会因当前模型 ID 被浏览器过滤；选择后会自动写入模型 ID。若服务不提供 <code>/models</code>，拉取失败也不影响手动填写。API 地址若已以 /v1、/v2、/v4 等版本段结尾会原样使用；未带版本段时继续默认补 /v1。</div>
             <div class="flex-container" style="gap:8px;flex-wrap:wrap;align-items:center;">
               <label>温度 <input id="rh_independent_temperature" class="text_pole" type="number" min="0" max="2" step="0.1" style="width:82px;"></label>
               <label>最大输出 <input id="rh_independent_max_tokens" class="text_pole" type="number" min="512" max="32000" step="256" style="width:110px;"></label>
@@ -298,6 +381,47 @@ export function initRabbitMirrorUI() {
 
           <label class="checkbox_label"><input id="rh_avoid_repeat" type="checkbox"> 10轮冷却：避免重复主题/展现形式/整体观感</label>
           <div class="rabbit-mirror-subnote" style="margin:-2px 0 2px 26px;opacity:.72;font-size:12px;line-height:1.45;">仅记录已经实际生成成功的兔子镜；用于避免连续复用相近的结构骨架与整体视觉家族。</div>
+
+          <div style="margin-top:12px;padding-top:10px;border-top:1px solid color-mix(in srgb,currentColor 12%,transparent);">
+            <label class="checkbox_label" style="font-weight:700;"><input id="rh_blacklist_enabled" type="checkbox"> 🚫 启用抽签黑名单</label>
+            <div class="rabbit-mirror-subnote" style="margin:-2px 0 7px 26px;opacity:.76;font-size:12px;line-height:1.5;">每面兔子镜标题旁的 🎲 会列出本轮真实抽中的主题 / 元素和展现形式。加入黑名单后，从下一轮随机抽取开始直接从候选池排除；不增加 Token。明确点菜和固定动态视觉场景仍可覆盖随机黑名单。</div>
+            <div id="rh_blacklist_summary" class="rabbit-mirror-blacklist-summary" style="padding:8px 9px;border:1px solid color-mix(in srgb,currentColor 16%,transparent);border-radius:8px;font-size:11px;line-height:1.45;"></div>
+            <button id="rh_blacklist_clear" class="menu_button" type="button" style="margin-top:7px;">清空全部黑名单</button>
+          </div>
+        </div>
+      </details>
+
+      <details class="rabbit-mirror-section rabbit-mirror-visual-prompt-test">
+        <summary><span>个性化视觉提示词</span><span class="rabbit-mirror-section-note">TEST</span></summary>
+        <div class="rabbit-mirror-section-content">
+          <div style="opacity:.82;font-size:12px;line-height:1.55;margin-bottom:9px;">这里可以直接写你喜欢或不喜欢的画面感觉。只有勾选下面的“启用视觉提示词编辑注入”后，保存的内容才会随生成兔子镜的请求发送；未勾选时完全沿用 1.3.20 原版视觉 Prompt 流程。这里只开放最终成品的视觉层；HTML 安全、交互兼容、手机适配、近期冷却、维修兔兼容与输出协议仍由插件锁定，不开放编辑。</div>
+          <label class="checkbox_label" style="font-weight:700;"><input id="rh_visual_prompt_enabled" type="checkbox"> 启用视觉提示词编辑注入</label>
+          <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.76;font-size:12px;line-height:1.5;">默认关闭。关闭时已编辑内容仍保存在本地，但不会注入模型；下一面继续使用 1.3.20 原版视觉规则。开启后才切换到可编辑视觉层。</div>
+          <div id="rh_visual_prompt_status" style="padding:7px 9px;border:1px solid color-mix(in srgb, currentColor 18%, transparent);border-radius:8px;opacity:.82;font-size:11px;line-height:1.45;margin-bottom:10px;">当前：正在读取视觉提示词状态……</div>
+
+          <label for="rh_visual_extra_prompt" style="display:block;font-weight:700;margin:8px 0 5px;">额外视觉偏好（可选）</label>
+          <textarea id="rh_visual_extra_prompt" class="text_pole" rows="5" maxlength="${VISUAL_EXTRA_PROMPT_MAX_CHARS}" spellcheck="false" placeholder="例如：像真实纸张拼贴的小剧场，左上方来光，标题压在图像边缘，正文像杂志内页，近看能看到印刷网点和轻微裁切毛边。" style="width:100%;min-height:100px;resize:vertical;box-sizing:border-box;line-height:1.5;"></textarea>
+          <div style="opacity:.68;font-size:11px;line-height:1.45;margin:5px 0 10px;">可以只写“毛玻璃”“粉嫩清新”这类简单偏好，系统会把它当作设计种子并自动补足构图、层级、光线、排版、材质细节与交互第二状态；想更可控时，也可以像占位示例那样写一条完整但不冗长的视觉句子。开启注入后会作为本轮明确视觉要求执行，未指定的部分仍由兔子镜原有视觉规则补足。上限 ${VISUAL_EXTRA_PROMPT_MAX_CHARS} 字符。</div>
+
+          <label for="rh_visual_avoid_prompt" style="display:block;font-weight:700;margin:10px 0 5px;">不希望出现的视觉（可选）</label>
+          <textarea id="rh_visual_avoid_prompt" class="text_pole" rows="4" maxlength="${VISUAL_AVOID_PROMPT_MAX_CHARS}" spellcheck="false" placeholder="例如：不要荧光渐变、蓝白系统 UI、统一圆角卡片、廉价塑料感……" style="width:100%;min-height:88px;resize:vertical;box-sizing:border-box;line-height:1.5;"></textarea>
+          <div style="opacity:.68;font-size:11px;line-height:1.45;margin:5px 0 10px;">可以直接写你不喜欢的颜色、质感、排版方式、光线感觉、UI 套路或整体风格。开启注入后会作为明确避用项处理。上限 ${VISUAL_AVOID_PROMPT_MAX_CHARS} 字符。</div>
+
+          <details style="margin-top:10px;">
+            <summary style="cursor:pointer;font-weight:700;">高级：修改通用视觉规则 <span style="font-weight:400;opacity:.62;font-size:11px;">通常无需修改</span></summary>
+            <div style="padding-top:9px;">
+              <div style="opacity:.72;font-size:11px;line-height:1.5;margin-bottom:7px;">只有想直接改兔子镜原本的通用画面规则时才需要这里。普通用户只填写上面的“额外视觉偏好 / 不希望出现”即可，不需要懂设计术语。</div>
+              <label for="rh_visual_prompt" style="display:block;font-weight:700;margin:8px 0 5px;">通用视觉审美规则（高级，可编辑）</label>
+              <textarea id="rh_visual_prompt" class="text_pole" rows="14" maxlength="${VISUAL_PROMPT_MAX_CHARS}" spellcheck="false" style="width:100%;min-height:230px;resize:vertical;box-sizing:border-box;line-height:1.5;"></textarea>
+              <div style="opacity:.68;font-size:11px;line-height:1.45;margin:5px 0 8px;">修改后会替换兔子镜原本的通用画面规则；上限 ${VISUAL_PROMPT_MAX_CHARS} 字符。核心结构与兼容规则仍不可覆盖。</div>
+              <button id="rh_visual_prompt_reset" class="menu_button" type="button">恢复默认通用视觉规则</button>
+            </div>
+          </details>
+
+          <div class="flex-container" style="gap:8px;flex-wrap:wrap;margin-top:12px;">
+            <button id="rh_visual_prompt_save" class="menu_button" type="button">保存并从下一面生效</button>
+          </div>
+          <div style="opacity:.66;font-size:11px;line-height:1.45;margin-top:7px;">为避免重新引入移动端设置页卡顿，三个输入框都不会在键入时写设置；只有点击上面的保存按钮才会持久化。</div>
         </div>
       </details>
 
@@ -357,7 +481,7 @@ export function initRabbitMirrorUI() {
     $('#rh_independent_key').val(settings.independentApiKey || '');
     $('#rh_independent_temperature').val(settings.independentApiTemperature ?? 0.8);
     $('#rh_independent_max_tokens').val(settings.independentApiMaxTokens ?? 12000);
-    $('#rh_independent_model').html(settings.independentApiModel ? `<option value="${escapeHtml(settings.independentApiModel)}">${escapeHtml(settings.independentApiModel)}</option>` : '<option value="">请先拉取模型</option>').val(settings.independentApiModel || '');
+    $('#rh_independent_model').val(settings.independentApiModel || '');
     const syncGenerationModeFields = () => { const independent = getSettings().generationSource === 'independent'; $('#rh_independent_api_fields').toggle(independent); $('#rh_follow_display_row').toggle(!independent); };
     syncGenerationModeFields();
     renderIndependentApiDiagnostic();
@@ -365,6 +489,10 @@ export function initRabbitMirrorUI() {
     const independentDiagnosticListener = event => renderIndependentApiDiagnostic(event?.detail || null);
     globalThis.addEventListener?.(API_REQUEST_DIAGNOSTIC_EVENT, independentDiagnosticListener);
     globalThis.__rabbitMirrorIndependentApiDiagnosticUiCleanup = () => globalThis.removeEventListener?.(API_REQUEST_DIAGNOSTIC_EVENT, independentDiagnosticListener);
+    try { globalThis.__rabbitMirrorBlacklistUiCleanup?.(); } catch {}
+    const blacklistListener = () => { checked('#rh_blacklist_enabled', getSettings().blacklistEnabled !== false); renderBlacklistSettings(); };
+    globalThis.addEventListener?.(BLACKLIST_CHANGED_EVENT, blacklistListener);
+    globalThis.__rabbitMirrorBlacklistUiCleanup = () => globalThis.removeEventListener?.(BLACKLIST_CHANGED_EVENT, blacklistListener);
     checked('#rh_feedback_cat', settings.feedbackCatEnabled);
     checked('#rh_maintenance_rabbit', settings.maintenanceRabbitEnabled);
     checked('#rh_maintenance_auto_safe', settings.maintenanceRabbitAutoSafeEnabled);
@@ -374,7 +502,14 @@ export function initRabbitMirrorUI() {
     checked('#rh_creative_expansion', settings.creativeExpansionMode);
     checked('#rh_force_visual_scenery', settings.forceVisualScenery);
     checked('#rh_avoid_repeat', settings.avoidRepeat);
+    checked('#rh_blacklist_enabled', settings.blacklistEnabled !== false);
+    renderBlacklistSettings();
     checked('#rh_memory_scan_enabled', settings.memoryScanEnabled);
+    checked('#rh_visual_prompt_enabled', settings.visualPromptEditingEnabled);
+    $('#rh_visual_prompt').val(settings.visualPrompt ?? DEFAULT_VISUAL_PROMPT);
+    $('#rh_visual_extra_prompt').val(settings.visualExtraPrompt || '');
+    $('#rh_visual_avoid_prompt').val(settings.visualAvoidPrompt || '');
+    renderVisualPromptStatus(settings);
 
     $('input[name="rh_generation_source"]').on('change', e => {
         const generationSource = e.target.value === 'independent' ? 'independent' : 'follow';
@@ -399,10 +534,63 @@ export function initRabbitMirrorUI() {
     };
     // Do not serialize the whole extension settings object on every mobile input event.
     // Safari may emit repeated input/autofill events as the drawer opens, which made the UI stutter.
-    $('#rh_independent_base, #rh_independent_key').on('change blur', saveIndependentFields);
-    $('#rh_independent_model, #rh_independent_temperature, #rh_independent_max_tokens').on('change', saveIndependentFields);
-    $('#rh_independent_models').on('click', async () => { saveIndependentFields(); try { const models=await fetchIndependentModels(); const current=getSettings().independentApiModel; $('#rh_independent_model').html(models.map(id=>`<option value="${escapeHtml(id)}">${escapeHtml(id)}</option>`).join('') || '<option value="">没有返回模型</option>'); if(current&&models.includes(current)) $('#rh_independent_model').val(current); else if(models[0]) { $('#rh_independent_model').val(models[0]); updateSettings({independentApiModel:models[0]}); } toastr?.success?.(`已拉取 ${models.length} 个模型`); } catch(error) { toastr?.error?.(String(error?.message||error)); } });
-    $('#rh_independent_test').on('click', async () => { saveIndependentFields(); try { const result=await testIndependentConnection(); toastr?.success?.(`连接成功；可用模型 ${result.models.length} 个`); } catch(error) { toastr?.error?.(String(error?.message||error)); } });
+    $('#rh_independent_base, #rh_independent_key, #rh_independent_model').on('change blur', saveIndependentFields);
+    $('#rh_independent_temperature, #rh_independent_max_tokens').on('change', saveIndependentFields);
+    const renderIndependentModelSelect = (models, currentModel='') => {
+        const select=$('#rh_independent_model_select');
+        const current=String(currentModel||'').trim();
+        select.empty().append($('<option>').val('').text(models.length ? `已拉取 ${models.length} 个模型，请选择` : '先点击“拉取模型”获取完整列表'));
+        for(const id of models){
+            select.append($('<option>').val(id).text(id));
+        }
+        // 只有当前手动模型确实存在于列表时才选中；自定义 ID 保持在文本框，不伪装成列表项。
+        select.val(models.includes(current) ? current : '');
+    };
+    $('#rh_independent_model_select').on('change', e => {
+        const model=String(e.target.value||'').trim();
+        if(!model) return;
+        $('#rh_independent_model').val(model);
+        updateSettings({independentApiModel:model});
+    });
+    $('#rh_independent_model').on('change blur', () => {
+        const current=String($('#rh_independent_model').val()||'').trim();
+        const select=$('#rh_independent_model_select');
+        const exists=select.find('option').toArray().some(option=>String(option.value||'')===current);
+        select.val(exists ? current : '');
+    });
+    $('#rh_independent_models').on('click', async () => {
+        saveIndependentFields();
+        const current=String($('#rh_independent_model').val() || getSettings().independentApiModel || '').trim();
+        try {
+            const models=await fetchIndependentModels();
+            renderIndependentModelSelect(models,current);
+            if(current) {
+                $('#rh_independent_model').val(current);
+            } else if(models[0]) {
+                $('#rh_independent_model').val(models[0]);
+                $('#rh_independent_model_select').val(models[0]);
+                updateSettings({independentApiModel:models[0]});
+            }
+            toastr?.success?.(`已拉取 ${models.length} 个模型；完整列表已显示在模型下拉框中`);
+        } catch(error) {
+            // 拉取失败只清候选列表，不碰用户已经手动填写的 model ID。
+            renderIndependentModelSelect([],current);
+            if(current) $('#rh_independent_model').val(current);
+            toastr?.warning?.(`模型列表拉取失败；手动模型 ID 不受影响。${String(error?.message||error)}`);
+        }
+    });
+    $('#rh_independent_test').on('click', async () => {
+        saveIndependentFields();
+        const result=await testIndependentConnection();
+        if(result.verified) {
+            toastr?.success?.(`模型列表端点可用；检测到 ${result.models.length} 个模型`);
+            return;
+        }
+        const manualModel=String($('#rh_independent_model').val() || result.manualModel || '').trim();
+        toastr?.[manualModel ? 'warning' : 'error']?.(manualModel
+            ? `无法通过 /models 无付费验证连接，但已保留手动模型 ID「${manualModel}」。这不等于生成接口不可用；请直接生成一次验证该模型。${result.error}`
+            : `连接检测未通过：${result.error}`);
+    });
 
     $('#rh_enabled').on('change', e => { updateSettings({ enabled: e.target.checked, autoRabbitMirrorInjection: e.target.checked, mode: e.target.checked ? 'integrated' : 'off' }); if (e.target.checked) syncFeedbackCatExtensionPrompt(getActiveFeedbackForCurrentChat()); else clearFeedbackCatExtensionPrompt(); refreshRabbitMirrorGenerationMode(); });
     $('#rh_feedback_cat').on('change', e => {
@@ -443,6 +631,37 @@ export function initRabbitMirrorUI() {
             : '自动巡逻已关闭：维修兔恢复为纯手动模式。');
     });
 
+    $('#rh_visual_prompt_enabled').on('change', e => {
+        const enabled = !!e.target.checked;
+        updateSettings({ visualPromptEditingEnabled: enabled });
+        renderVisualPromptStatus(getSettings());
+        toastr?.[enabled ? 'info' : 'success']?.(enabled
+            ? '视觉提示词编辑注入已启用：从下一面兔子镜开始使用已保存的可编辑视觉层。'
+            : '视觉提示词编辑注入已关闭：从下一面兔子镜开始恢复 1.3.20 原版视觉 Prompt 流程；已编辑内容仍会保留。');
+    });
+
+    $('#rh_visual_prompt_save').on('click', () => {
+        const visualPrompt = String($('#rh_visual_prompt').val() ?? '').replace(/\r\n?/g, '\n').slice(0, VISUAL_PROMPT_MAX_CHARS);
+        const visualExtraPrompt = String($('#rh_visual_extra_prompt').val() ?? '').replace(/\r\n?/g, '\n').slice(0, VISUAL_EXTRA_PROMPT_MAX_CHARS);
+        const visualAvoidPrompt = String($('#rh_visual_avoid_prompt').val() ?? '').replace(/\r\n?/g, '\n').slice(0, VISUAL_AVOID_PROMPT_MAX_CHARS);
+        updateSettings({ visualPrompt, visualExtraPrompt, visualAvoidPrompt });
+        renderVisualPromptStatus(getSettings());
+        const total = visualPrompt.length + visualExtraPrompt.length + visualAvoidPrompt.length;
+        if (getSettings().visualPromptEditingEnabled && !visualPrompt.trim()) {
+            toastr?.warning?.(`视觉提示词已保存（${total} 字符），但「通用视觉审美规则」为空；从下一面开始将只保留核心结构规则与上方额外偏好／避雷。若不是刻意清空，请点「恢复默认通用视觉规则」。`);
+        } else {
+            toastr?.success?.(getSettings().visualPromptEditingEnabled
+                ? `视觉提示词已保存（${total} 字符），编辑注入已开启，将从下一面兔子镜开始生效。`
+                : `视觉提示词已保存（${total} 字符），但编辑注入当前关闭；不会发送给模型。`);
+        }
+    });
+    $('#rh_visual_prompt_reset').on('click', () => {
+        $('#rh_visual_prompt').val(DEFAULT_VISUAL_PROMPT);
+        updateSettings({ visualPrompt: DEFAULT_VISUAL_PROMPT });
+        renderVisualPromptStatus(getSettings());
+        toastr?.success?.('已恢复默认通用视觉规则；额外视觉偏好与避雷内容保持不变。');
+    });
+
     $('#rh_memory_scan_enabled').on('change', e => {
         updateSettings({ memoryScanEnabled: e.target.checked });
         toastr?.[e.target.checked ? 'info' : 'success']?.(e.target.checked
@@ -475,6 +694,25 @@ export function initRabbitMirrorUI() {
     $('#rh_creative_expansion').on('change', e => updateSettings({ creativeExpansionMode: e.target.checked }));
     $('#rh_force_visual_scenery').on('change', e => updateSettings({ forceVisualScenery: e.target.checked }));
     $('#rh_avoid_repeat').on('change', e => updateSettings({ avoidRepeat: e.target.checked }));
+    $('#rh_blacklist_enabled').on('change', e => {
+        setBlacklistEnabled(e.target.checked);
+        renderBlacklistSettings();
+        refreshRecipeButtons();
+        toastr?.info?.(e.target.checked ? '抽签黑名单已启用：从下一轮随机抽取开始排除名单项目。' : '抽签黑名单已暂停：名单保留，但随机抽取暂不排除。');
+    });
+    $('#rh_blacklist_summary').on('click', '.rh-blacklist-remove', function () {
+        const kind = String($(this).data('kind') || '') === 'format' ? 'format' : 'theme';
+        const id = String($(this).data('id') || '');
+        if (removeBlacklistItem(kind, id)) toastr?.success?.(`已解除黑名单：${id}`);
+        renderBlacklistSettings();
+        refreshRecipeButtons();
+    });
+    $('#rh_blacklist_clear').on('click', () => {
+        clearBlacklist('all');
+        renderBlacklistSettings();
+        refreshRecipeButtons();
+        toastr?.success?.('已清空全部抽签黑名单');
+    });
 
     $('#rh_copy_regex').on('click', async () => {
         try {
@@ -521,6 +759,8 @@ export function destroyRabbitMirrorUI() {
     }
     uiMountRetryCount = 0;
     try { globalThis.__rabbitMirrorTokenMeterUiCleanup?.(); } catch {}
+    try { globalThis.__rabbitMirrorBlacklistUiCleanup?.(); } catch {}
+    globalThis.__rabbitMirrorBlacklistUiCleanup = null;
     globalThis.__rabbitMirrorTokenMeterUiCleanup = null;
     try { globalThis.__rabbitMirrorIndependentApiDiagnosticUiCleanup?.(); } catch {}
     globalThis.__rabbitMirrorIndependentApiDiagnosticUiCleanup = null;

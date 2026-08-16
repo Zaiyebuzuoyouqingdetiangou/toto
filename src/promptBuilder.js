@@ -1,9 +1,10 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.3.20';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.3.20';
-import { pickCombination } from './picker.js?rmv=1.3.20';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRecentInteractionFamilies } from './storage.js?rmv=1.3.20';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.3.20';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.3.20';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.4.0';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.4.0';
+import { pickCombination } from './picker.js?rmv=1.4.0';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getActivePaletteCooldown, getRepeatedPaletteFamily, describePaletteFamily, getRecentInteractionFamilies } from './storage.js?rmv=1.4.0';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.4.0';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.4.0';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from './settings.js?rmv=1.4.0';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -127,7 +128,10 @@ function shortVisualAvoidance(combo, limit = 3) {
         const riskCount = Array.isArray(item.riskFlags) ? item.riskFlags.length : 0;
         const signature = item.visualSignature ? truncate(item.visualSignature, 110) : '已记录视觉骨架';
         const interaction = item?.interactionFamily?.label ? `；交互骨架：${truncate(item.interactionFamily.label, 42)}` : '';
-        return `${index + 1}. 近期展现形式：${formats}；避让摘要：${signature}${interaction}${riskCount ? `；结构风险 ${riskCount} 项` : ''}`;
+        // 1.3.52: 配色一直没有进入避让文本，模型因此看不见自己上几轮用过什么颜色。
+        const palette = describePaletteFamily(item?.paletteFingerprint);
+        const paletteNote = palette ? `；配色家族：${palette}` : '';
+        return `${index + 1}. 近期展现形式：${formats}；避让摘要：${signature}${interaction}${paletteNote}${riskCount ? `；结构风险 ${riskCount} 项` : ''}`;
     }).join('\n');
 }
 
@@ -226,13 +230,32 @@ function interactionFamilyCooldownRule() {
 }
 
 function paletteCooldownRule() {
+    const blocks = [];
     const cooldown = getActivePaletteCooldown(5);
-    if (!cooldown?.active) return '';
-    return String.raw`
+    if (cooldown?.active) {
+        blocks.push(String.raw`
 配色冷却【由近期实际输出触发，剩余 ${cooldown.remaining} 轮】:
   - 本轮主要承载面的整体明度必须改为中明度或高明度，不得延续近期的低明度底盘。
   - 色彩仍须从本轮展现形式的材质、环境、光线与空间关系中产生，不得只把旧方案机械反相或更换强调色。
-  - 局部低明度细节可以保留，但其面积与视觉权重不得主导整体；文字、边界、阴影与强调色须随新的承载关系重新组织。`;
+  - 局部低明度细节可以保留，但其面积与视觉权重不得主导整体；文字、边界、阴影与强调色须随新的承载关系重新组织。
+  - 提高明度不等于退回米黄、奶油、米色、羊皮纸这类高明度暖中性底；避暗不是换成另一种默认色。`);
+    }
+
+    // 1.3.52: 双向冷却。任何配色家族连续重复都要换，不只是暗色。
+    const repeated = getRepeatedPaletteFamily(3, 2);
+    if (repeated) {
+        const creamLine = repeated.cream
+            ? '\n  - 尤其禁止继续使用米黄、奶油、米色、羊皮纸、做旧纸张这一类高明度暖中性底；它不是"安全的浅色"，只是上一轮的重复。'
+            : '';
+        blocks.push(String.raw`
+配色重复冷却【由近期实际输出触发，近 ${repeated.window} 轮中有 ${repeated.count} 轮落在同一配色家族】:
+  - 近期主要承载面持续落在「${repeated.label}」。不要沿用这个配色家族。
+  - 但也不要为了制造差异而机械换色相：请重新从本轮展现形式的材质、环境与光线关系推导配色，让色相自然落到不同的家族上。${creamLine}
+  - 若重新推导后仍然落回同一家族，说明推导过度依赖默认审美而不是本轮媒介本身，须回到材质与光线重新判断。
+  - 换家族仍须保持明确的色彩主次、明度层级与光源一致性，不得为了避重复破坏本轮媒介自身的配色逻辑。`);
+    }
+
+    return blocks.join('\n');
 }
 
 function hardStartupReserve() {
@@ -346,6 +369,17 @@ HTML 直接渲染:
 
 function presentationEmbodimentRule() {
     return String.raw`
+展现形式落地【核心结构层；不可被视觉自定义覆盖】:
+  - 先确定本轮采用的具体展现形式，再编写 HTML/CSS。
+  - <details> 内首个主要内容块必须直接呈现该展现形式本体；外层容器只能负责显示边界，不能成为主要视觉。
+  - DOM 中必须实际出现能够构成该形式的形态、比例、空间关系、层叠方式、材质结构或排版结构；不得只用标题、标签、图标和说明文字宣称它是什么。
+  - 可根据本轮展现形式本体的需要，使用 Flex/Grid、定位、SVG、渐变、阴影、滤镜、clip-path、mask、transform、transition 与 CSS 动画等方式，构成空间、材质与视觉质感。
+  - 动画必须让该展现形式中的主体、空间、材质或关系发生变化；交互必须作用于该形式内部真实存在的对象或结构。
+  - 文字的数量、密度和排版由展现形式决定；文字媒介可以以正文和版式作为主要视觉本体。`;
+}
+
+function legacyPresentationEmbodimentRule() {
+    return String.raw`
 展现形式落地:
   - 先确定本轮采用的具体展现形式，再编写 HTML/CSS。
   - <details> 内首个主要内容块必须直接呈现该展现形式本体；外层容器只能负责显示边界，不能成为主要视觉。
@@ -368,6 +402,118 @@ function presentationEmbodimentRule() {
   - 视觉质感应由比例、留白、层次、材质、光影与色彩关系共同成立，不得依靠堆叠渐变、发光、阴影或高饱和色制造表面效果。
   - 当展现形式适合单色、低彩度或有限色域时，可以保持克制，但仍须依靠明度、纹理、材质与空间层次形成完整视觉。`;
 }
+
+function globalCompletionFloorRule(compact = false) {
+    const rule = '展现形式与媒介本体决定具体长相。成品须主次清楚，比例、空间、材质、信息组织、细节与配色均符合本轮媒介与内容；配色须有主次，不得平均竞争。不得为追求「高级感」固定套用某一种布局、材质、视觉效果或配色。';
+    return compact ? `全局视觉地板：${rule}` : `全局视觉地板【始终适用】：\n${rule}`;
+}
+
+function cleanEditableVisualPrompt(value, maxChars = VISUAL_PROMPT_MAX_CHARS) {
+    const text = String(value ?? '')
+        .replace(/\r\n?/g, '\n')
+        .replace(/<\/?(?:rabbit_mirror_visual_style|rabbit_mirror_visual_extra|rabbit_mirror_visual_avoid)>/gi, '')
+        .trim();
+    if (!text) return '';
+    return text.slice(0, Math.max(0, Number(maxChars) || 0));
+}
+
+function visualCompletionFloorRule(compact = false) {
+    if (compact) {
+        return '视觉编辑补足：用户偏好只决定如何处理本轮展现形式，不提供统一骨架；短偏好未说明的构图、层级、材质、光线、排版与交互由本轮媒介主动补足，不得为了所谓高级感额外套固定卡片、圆角、毛玻璃或装饰模板。';
+    }
+    return `视觉编辑补足【只在视觉编辑开启时适用】:
+  - 即使用户只写一个颜色、材质或气质词，也不得因此缩减本轮展现形式本来应有的结构、阅读路径与交互完成度；用户没指定的维度由本轮展现形式与通用视觉规则主动补足。
+  - 用户偏好描述的是如何处理本轮媒介，不是统一布局骨架；不得因为偏好词相同就复用固定标题区、卡片区、信息栏、三段式或同一套组件顺序。
+  - 视觉主次、对齐、留白、文字层级、边界工艺与交互第二状态都应从本轮媒介本体重新推导；完成度不等于复杂度，也不要求固定层数或额外面板。
+  - 极简形式可以保持克制；毛玻璃、渐变、发光、投影等效果在媒介适合时可以充分使用，但必须服务当前材质、空间与信息关系，而不是代替设计本身。`;
+}
+
+function compactVisualPreferenceExecutionLock(settings) {
+    if (!settings?.visualPromptEditingEnabled) return '';
+    const extra = cleanEditableVisualPrompt(settings?.visualExtraPrompt, VISUAL_EXTRA_PROMPT_MAX_CHARS);
+    const avoid = cleanEditableVisualPrompt(settings?.visualAvoidPrompt, VISUAL_AVOID_PROMPT_MAX_CHARS);
+    if (!extra && !avoid) return '';
+
+    // 偏好与避用项不能共用同一个“必须主导整面作品”谓语。尤其只填写避用项时，
+    // “避用：蓝白系统 UI。必须主导整面作品”会形成自相矛盾的近输出强锁。
+    const clauses = [];
+    if (extra) {
+        clauses.push(`用户偏好是处理本轮展现形式的方式而非整面作品的形状，须在主承载面、次级结构、边界接缝与文字层中被反复认出：${truncate(extra, 180)}`);
+    }
+    if (avoid) {
+        clauses.push(`明确避用项不得主动出现：${truncate(avoid, 120)}；除非与本轮展现形式本体存在不可避免的直接冲突`);
+    }
+    return `最终视觉偏好执行锁：${clauses.join('；')}。不得用说明文字代替实际画面落实；展现形式本体保持不变。${visualCompletionFloorRule(true)}`;
+}
+
+// 用户偏好的具体度分级：短词是 seed，已经给出多个设计方向的是 sketch，
+// 明确描述了构图／材质／光线／排版等多维关系时才视为 detailed。
+function visualPreferenceSpecificity(text) {
+    const value = String(text || '').trim();
+    if (!value) return 'none';
+    const clauses = value.split(/[，,；;。、\n]+/).map(item => item.trim()).filter(Boolean).length;
+    const dimensionPatterns = [
+        /色|饱和|冷色|暖色|明度|配色|色相/u,
+        /光|阴影|逆光|侧光|高光|反射|折射/u,
+        /纸|玻璃|金属|布|木|塑料|石|纹理|材质|网点|颗粒/u,
+        /排版|字体|字号|字重|字距|行距|标题|正文/u,
+        /构图|层级|留白|视线|错位|网格|基线|密度/u,
+        /交互|动效|切换|展开|翻面|第二状态|按钮/u,
+    ];
+    const dimensions = dimensionPatterns.reduce((count, pattern) => count + (pattern.test(value) ? 1 : 0), 0);
+    if (value.length <= 30 && clauses <= 2 && dimensions <= 2) return 'seed';
+    if (value.length <= 120 && clauses <= 6 && dimensions <= 4) return 'sketch';
+    return 'detailed';
+}
+
+// 偏好展开 + 成品完成度下限。只有开启视觉编辑时才进入 Prompt；
+// seed 会主动补足缺失设计维度，sketch 只补缺口，detailed 则优先忠实执行，避免越帮越改。
+function visualPreferenceElaborationRule(extra) {
+    const specificity = visualPreferenceSpecificity(extra);
+    const blocks = [];
+    if (specificity !== 'none') {
+        let specificityLine = '';
+        if (specificity === 'seed') {
+            specificityLine = '\n  - 本轮偏好只指定了极少数维度，属于“设计种子”而不是完整设计说明。必须主动补足未写出的构图与视线路径、层级与密度、材质接缝与工艺细节、光源方向与阴影逻辑、排版层级，以及交互第二状态；补足内容必须与该种子和本轮展现形式共用同一套视觉逻辑，不得因为用户写得短就退回默认卡片。';
+        } else if (specificity === 'sketch') {
+            specificityLine = '\n  - 本轮偏好已经给出若干设计方向，属于“视觉草图”。严格保留已写方向，仅主动补齐仍缺失的构图、光线、排版、材质细节或第二状态，不得用新的通用风格覆盖用户已经指定的部分。';
+        } else {
+            specificityLine = '\n  - 本轮偏好已接近完整视觉规格。优先忠实执行用户已经明确规定的关系，只补足工程上必要但未说明的细节，不得为了追求所谓高级感擅自改写、加戏或套入另一套风格。';
+        }
+        blocks.push(`视觉偏好展开规则:
+  - 偏好描述的是「如何处理本轮展现形式」，不是「替代本轮展现形式」。材质、色调、气质类偏好不得直接等同于整面作品的形状；把整面做成一块该材质的面板视为未完成。
+  - 「可辨认的视觉主导」按能否认出判定，不按覆盖面积判定：须在主承载面、次级结构、边界与接缝、文字层、交互第二状态之中至少四处留下同一套处理痕迹。${specificityLine}`);
+    }
+    blocks.push(visualCompletionFloorRule(false));
+    return blocks.join('\n\n');
+}
+
+function editableVisualPromptRule(settings) {
+    const official = cleanEditableVisualPrompt(settings?.visualPrompt ?? DEFAULT_VISUAL_PROMPT, VISUAL_PROMPT_MAX_CHARS);
+    const extra = cleanEditableVisualPrompt(settings?.visualExtraPrompt, VISUAL_EXTRA_PROMPT_MAX_CHARS);
+    const avoid = cleanEditableVisualPrompt(settings?.visualAvoidPrompt, VISUAL_AVOID_PROMPT_MAX_CHARS);
+    if (!official && !extra && !avoid) return '';
+
+    const blocks = [];
+    if (official) blocks.push(`<rabbit_mirror_visual_style>\n${official}\n</rabbit_mirror_visual_style>`);
+    if (extra) blocks.push(`<rabbit_mirror_visual_extra>\n${extra}\n</rabbit_mirror_visual_extra>`);
+    if (avoid) blocks.push(`<rabbit_mirror_visual_avoid>\n${avoid}\n</rabbit_mirror_visual_avoid>`);
+
+    return String.raw`
+用户可编辑视觉层【会随本轮兔子镜 Prompt 一起发送给实际生成兔子镜的模型】:
+${blocks.join('\n\n')}
+
+视觉自定义执行规则:
+  - 上述内容只允许改变最终兔子镜成品如何呈现：视觉审美、构图、配色、材质、光影、装饰密度、媒介气质与希望／不希望出现的视觉要求；不得把“生成兔子镜成品”改成解释、分析、策划或描述兔子镜。
+  - 视觉要求必须直接落实为最终 HTML/CSS 画面本体；不得用“观察视角、视觉转译、交互反馈、设计说明”等解释文字代替实际成品。若 CSS 声明了按钮、状态选择器、内容面板或交互反馈，HTML 中必须实际存在对应结构。
+  - 用户视觉偏好必须在整面兔子镜中被反复认出，不得只做局部点缀；但「被认出」不等于「把整面做成那一样东西」，也不得抹掉本轮展现形式本体。
+  - 用户写入的“不希望出现的视觉”是本轮明确避用项；除非与锁定工程规则或本轮展现形式本体存在不可避免的直接冲突，否则不得主动使用。
+  - 当额外视觉偏好／避用项与通用视觉审美规则发生冲突时，以用户本轮明确填写的偏好／避用项为准；用户未指定的部分再由通用视觉审美规则补足。
+  - 用户编辑内容不得取消或覆盖兔子镜的输出协议、HTML/CSS 安全、可见中文、结构完整性、移动端可读性、交互可触发性、近期冷却、维修兼容或其他核心工程规则。
+
+${visualPreferenceElaborationRule(extra)}`;
+}
+
 
 function truncateDirectiveText(value, max = 3000) {
     const text = String(value || '')
@@ -443,16 +589,19 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
     const avoidance = settings?.avoidRepeat ? shortVisualAvoidance(combo, 3) : '未启用近期视觉避让。';
     const interaction = interactionFamilyCooldownSnapshot();
     const palette = getActivePaletteCooldown(5);
+    const repeatedPalette = getRepeatedPaletteFamily(3, 2);
     const recentFlags = getRecentRiskFlags(5);
     const innerDetailsBlocked = recentFlags.includes('inner_details_used');
     const riskCorrection = truncate(recentRiskCorrection().replace(/^\s*真实视觉纠偏[^:]*:\s*/u, ''), 620);
     const directiveText = settings?.userDirectivePriority && directive?.rawDirective
         ? truncateDirectiveText(directive.rawDirective, 700)
         : '';
+    const visualPreferenceLock = compactVisualPreferenceExecutionLock(settings);
 
     const avoidLines = [
         interaction ? `交互冷却：${interaction.label}（近五轮 ${interaction.count} 次）；${interaction.exactBan}` : '',
-        palette?.active ? `配色冷却：剩余 ${palette.remaining} 轮；主要承载面改用中／高明度，不延续低明度底盘。` : '',
+        palette?.active ? `配色冷却：剩余 ${palette.remaining} 轮；主要承载面改用中／高明度，不延续低明度底盘，也不得退回米黄／奶油底。` : '',
+        repeatedPalette ? `配色重复冷却：近 ${repeatedPalette.window} 轮有 ${repeatedPalette.count} 轮落在「${repeatedPalette.label}」；从本轮材质与光线重新推导配色，让色相落到不同家族${repeatedPalette.cream ? '，禁止继续使用米黄／奶油／米色底' : ''}。` : '',
         innerDetailsBlocked ? '内部折叠冷却：本轮最外层兔子镜内部不得再使用 details/summary。' : '',
         riskCorrection ? `近期真实输出纠偏：${riskCorrection}` : '',
     ].filter(Boolean);
@@ -462,6 +611,8 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
 - 抽取模式：${samplingModeLabel(combo, settings)}。
 - 内容构思锁：以“${themes}”作为观察角度、关系组织与细节取材；必须从当前助手正文提取具体动作、情绪、关系变化或物件痕迹，不得只把主题写进标题。
 - UI／媒介构思锁：以“${formats}”作为首个主要视觉本体；DOM/CSS 必须真实呈现其形态、材质、空间关系、阅读路径和操作方式，不得退化为通用卡片、信息面板或只换皮的标签页。
+- ${globalCompletionFloorRule(true)}
+${visualPreferenceLock ? `- ${visualPreferenceLock}` : ''}
 ${directiveText ? `- 用户本轮点菜仍为最高优先，必须同时落实：${directiveText}` : ''}
 
 【近期必须避开】
@@ -478,7 +629,7 @@ ${avoidLines.length ? avoidLines.map(line => `- ${line}`).join('\n') : '- 当前
 </兔子镜最终执行锁>`;
 }
 
-function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive, memoryMaterial, activeFeedback }) {
+function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive, memoryMaterial, activeFeedback, generationType = 'normal' }) {
     const chunks = [];
     const mode = combo?.samplingMode || settings?.samplingMode || 'classic';
     chunks.push('<兔子镜自动注入>');
@@ -503,7 +654,12 @@ ${selectedFormats}`);
     chunks.push(userDirectivePriorityRule(settings.userDirectivePriority ? directive : null));
     chunks.push(sharedMemoryMaterialRule(memoryMaterial));
     chunks.push(compactCreativeRule(!!settings.creativeExpansionMode, mode === 'format_only'));
-    chunks.push(presentationEmbodimentRule());
+    if (settings?.visualPromptEditingEnabled) {
+        chunks.push(presentationEmbodimentRule());
+    } else {
+        chunks.push(legacyPresentationEmbodimentRule());
+    }
+    chunks.push(globalCompletionFloorRule());
     chunks.push(visualSceneryMode ? visualScenerySceneFirstCore() : complexInteractiveCore());
     chunks.push(interactionFamilyCooldownRule());
     chunks.push(innerDetailsCooldownRule());
@@ -524,7 +680,18 @@ ${shortVisualAvoidance(combo, 3)}`);
     }
 
     if (tarotRulesText) chunks.push(tarotRulesText);
+    // When visual editing is enabled, keep the full user-editable layer near the final output
+    // contract so later theme/cooldown rules cannot dilute it. The OFF path remains the legacy flow.
+    if (settings?.visualPromptEditingEnabled) chunks.push(editableVisualPromptRule(settings));
     chunks.push(htmlSafetyCore());
+    const visualPreferenceLock = compactVisualPreferenceExecutionLock(settings);
+    // Main/current API receives the visual preference lock here, next to the final output protocol.
+    // Independent API receives the same lock only in its dedicated executionLock below, so it is
+    // never duplicated across system + user prompts.
+    if (visualPreferenceLock && String(generationType || 'normal') !== 'independent') {
+        chunks.push(`最终视觉偏好执行锁:
+  - ${visualPreferenceLock}`);
+    }
     // 强制输出契约放在注入末尾，利用指令近因保证每轮正文后继续生成完整兔子镜。
     chunks.push(coreOutputProtocol());
     chunks.push('</兔子镜自动注入>');
@@ -551,7 +718,7 @@ export function buildRabbitMirrorPromptDetails(settings, generationType = 'norma
     const memoryMaterial = hasSharedMemoryTheme(combo)
         ? readSelectedMemoryForPrompt(settings, settings.memoryMaxChars || 2200)
         : null;
-    const prompt = buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive, memoryMaterial, activeFeedback });
+    const prompt = buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, directive, memoryMaterial, activeFeedback, generationType });
     const metadata = Object.freeze({
         generationType: String(generationType || 'normal'),
         rawPolicy,
@@ -562,11 +729,15 @@ export function buildRabbitMirrorPromptDetails(settings, generationType = 'norma
         formatLabels: Array.isArray(combo?.formats) ? combo.formats.map(item => `${item?.id || '?'} ${item?.title || '未命名'}`) : [],
         selectedThemeChars: selectedThemes.length,
         selectedFormatChars: selectedFormats.length,
+        editableVisualChars: settings?.visualPromptEditingEnabled
+            ? [settings?.visualPrompt ?? DEFAULT_VISUAL_PROMPT, settings?.visualExtraPrompt, settings?.visualAvoidPrompt].map(value => String(value || '')).join('').length
+            : 0,
         motherLibraryChars: selectedThemeResult.retrievedChars + selectedFormatResult.retrievedChars,
         motherLibraryItems: selectedThemeResult.retrievedItems + selectedFormatResult.retrievedItems,
         memoryChars: String(memoryMaterial?.text || '').length,
         memorySources: Array.isArray(memoryMaterial?.sources) ? [...memoryMaterial.sources] : [],
         visualSceneryMode,
+        forcedVisualScenery: !!combo?.forcedVisualScenery,
         tarotRules: !!tarotRulesText,
         userDirectiveApplied: !!directive,
         customThemeCount: Array.isArray(directive?.customThemes) ? directive.customThemes.length : 0,

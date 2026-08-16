@@ -1,3 +1,607 @@
+# v1.4 / 正式版
+
+- 以 `1.3.102 TEST / RC` 的实际源码为唯一基线转为正式仓库版本；功能逻辑、Prompt、主题／展现形式母本、独立 API、Gemini／DeepSeek 请求链、维修兔、挨打猫、黑名单、配色与布局修复均不改。
+- 对外显示名称统一为“兔子镜小剧场”，发布版本为 `v1.4`（manifest 技术版号 `1.4.0`）；仅同步运行时／缓存／诊断版本标识。
+- 发布通道切换为正式仓库 `https://github.com/Zaiyebuzuoyouqingdetiangou/toto`，重新开启 `auto_update`。
+- 正式发布 ZIP 固定命名为 `兔子镜小剧场.zip`。
+
+# 1.3.102 TEST / RC
+
+- 撤回 1.3.101 的激进副 API 启动加速：弱生成 flag 宽限恢复 30s，普通正文稳定窗恢复 1400ms，弱证据稳定窗恢复 4500ms，前 12 秒轮询恢复 760ms。目的只是在正文确实结束后再启动付费副 API，降低主正文尚未完成时误启动、随后 sourceHash 变化导致旧请求已计费却被取消的风险。
+- DeepSeek / 中转流式传输出现 `Load failed`、响应体读取失败或其他 transport 错误时，本轮仍严格只发送 1 次生成 POST，绝不自动重试。若失败 profile 原本为 stream=true，仅暂存一个“所有其它参数完全相同、只把 stream 改为 false”的兼容 profile；只有玩家明确点击“重新生成兔子镜”才会发送下一次请求。
+- 新增同参数 non-stream profile 对：保留 system/user 消息结构、temperature、`max_tokens` / `max_completion_tokens` 字段，只切换 stream。修正旧 `*_nostream` 命名把 temperature 和 token field 一并改变的问题；旧 profile 名仍保留兼容读取。
+- 失败诊断新增 `transport-fetch` / `transport-body` 与 `nextProfile`，错误框会明确告知本轮 1 次请求、不会自动重发，以及手动重试将尝试的非流式模式。
+- 不修改 Prompt、成人内容规则、维修兔、宽度链、Gemini 请求策略、黑名单、配色、交互或缓存身份；不新增 Observer、轮询、网络请求或自动 retry。
+
+# 1.3.101 TEST / RC
+
+- 独立 API 单次请求契约：一次自动兔子镜最多只发送 1 次正文生成 POST。删除 1.3.100 的 transient 自动补救、同轮 profile fallback 与空流自动切非流式重发；HTTP/网络/解析失败均结束本轮并显示可手动重新生成的错误。
+- 保留历代 API 兼容成果：12 套 system/user、token 字段、temperature、stream/non-stream profile 不删除。参数/流式兼容失败时只把“下一候选 profile”暂存到本地；只有玩家明确点击“重新生成兔子镜”时，下一轮才使用该候选，因此每次点击仍只有 1 次 POST。语义完整成功后继续记忆已验证 profile，后续自动兔子镜直接复用成功组合。
+- 防旧版无限请求回归：新增 exact chat+mesid+swipe+sourceHash 失败闸门。某一轮失败后，即使 SillyTavern 再次触发 MESSAGE_UPDATED / CHARACTER_MESSAGE_RENDERED / GENERATION_ENDED 等事件，也不会为同一正文重新自动 POST；玩家手动重试会清除此闸门，若再次失败则重新锁住。
+- 防双击重复计费：同一 exact identity 已有 pending/global flight 时，即使再次点击手动重说也复用现有 task，不会 cancel 后另起第二个并发请求。
+- 启动速度：在保留 DOM streaming / 宿主生成事件强门控的前提下，将弱生成 flag 宽限从 30s 降至 8s、普通正文稳定窗从 1400ms 降至 800ms、弱证据稳定窗从 4500ms 降至 1500ms、前 12 秒轮询粒度从 760ms 降至 350ms；正常收到生成结束事件时，副 API 可更快启动。
+- 等待失败不静默：消息身份连续无法重建到 60s 时也显示明确错误与“重新生成兔子镜”入口，并明确该轮 0 次副 API 请求。
+- 不修改 Prompt、维修兔、模型列表 UI、配色、黑名单、独立 API URL 归一化、SillyTavern 内置 custom generate 通道、5 分钟请求 timeout 或成品挂载结构。
+
+# 1.3.100 TEST / RC
+
+- 独立 API：修正 1.3.99 对临时网关/连接失败“第一次失败即结束”的过度收紧。明确的 408/502/503/504/520/522/523，以及带网关/连接临时故障证据的 500，可在同一个 single-flight / runId 内对同一 profile 自动补救 1 次；补救前短暂等待 1.6 秒。
+- 防无限请求：临时补救预算是整个逻辑请求共享的硬上限 1 次，不按 profile 重置；第二次仍失败立即结束并显示现有错误，不从 `finally()`、宿主事件或生成轮询另起新一轮。参数不兼容仍只走固定有限 profile 列表。
+- 防重复计费边界：429、鉴权、额度/余额、普通未知 500、HTTP 200 已收到非空但无法解析的流/正文均不进入临时自动重试；真正参数错误仍按兼容 profile fallback，真正空流仍保留原有一次非流式兼容兜底。
+- 保留 1.3.99 的 `upstream`/`stream` 误判修复和弱生成/正文稳定超时提示；不修改 Prompt、维修兔、模型列表、配色、黑名单、挂载链或生成调度。
+
+# 1.3.99 TEST / RC
+
+- 独立 API：修正兼容参数判定中 `/stream/i` 会误命中 `upstream` 的问题。HTTP 500 现在只有在“已知请求字段 + 明确不兼容词”同时出现时才允许 profile fallback，普通网关/上游 500 会立即停止，避免全 profile 扇出和潜在重复计费。
+- 独立 API：弱生成标志/正文稳定门在 60 秒窗口耗尽后不再裸 `finish()`；现在显示“等待正文稳定超时”，并明确本轮没有发送副 API 请求，可手动重新生成。
+- 防回归：保留同一 chat+mesid+swipe+sourceHash 的 pending/global-flight 单飞锁、成功 owner/cache 短路、render-only `hasGenerationWorkFor` 门控以及 `finally()` 不自动再调度，防止恢复旧版“同一正文反复请求/一直生成”问题。
+- 其余 Prompt、维修兔、模型列表 UI、配色、黑名单与请求 5 分钟超时边界不变。
+
+# 1.3.98 TEST / RC
+
+- 修复独立 API 的参数 profile 记忆实际从未落盘的问题：只有在 HTTP 成功、正文可解析、完整兔子镜结构与非空主体全部通过后，才调用 `rememberApiProfile()`；下一轮优先复用真正验证过的参数组合。
+- 已记忆 profile 不再成为单点失败：仍然优先尝试记忆项，但若供应商能力变化并返回可判定的参数不兼容错误，会继续后续兼容 profile，而不是只试一次就结束。
+- 主回复生成门拆分强/弱证据：DOM streaming 与短期宿主生命周期事件继续严格等待；`isGenerating / is_send_press / is_group_generating` 等可能残留的全局布尔值只保留有限宽限，超过宽限后仍要求当前正文指纹额外稳定再启动副 API，避免移动端 stale flag 把请求锁死十分钟。
+- 强生成证据持续超过原 10 分钟上限时不再静默 `finish()`；外置占位会明确显示“等待正文结束超时”，允许用户确认正文已结束后手动重新生成。
+- HTTP 200 不再直接等同于兼容成功：`error:true`/错误 payload 会按真实语义处理；明确属于参数兼容问题才继续 fallback。真正空的流式 body 可跳过其余 streaming 组合并尝试非流式兼容；若已收到无法解析的流数据或非空成功 payload，为避免重复计费不自动二次请求，而是明确报错。
+- 不修改 Prompt、上下文预算、维修兔、模型列表 UI、配色/黑名单、独立 API 5 分钟请求 timeout 或成品挂载链。
+
+# 1.3.97 TEST / RC
+
+- 修复独立 API 模型列表“已拉取 N 个，但下拉只显示少量模型”的 UI 回归。根因是 1.3.90 为支持手动 model ID 改成 `input[list] + datalist` 后，浏览器会按输入框当前值自动过滤原生 datalist；例如后端实际返回 23 个，当前模型字符串只匹配 2 个时，界面看起来就像只剩 2 个。
+- 模型选择改为“完整 `<select>` + 独立手动 model ID 输入框”：拉取成功后所有返回模型始终保留在下拉框；从下拉选择会同步写入 model ID；手动填写未出现在 `/models` 中的自定义 ID 仍然有效。
+- 拉取失败只重置候选下拉，不清手动 model ID；不新增 API 请求，不修改 `/models` 解析、生成请求、stream/retry、Prompt、维修兔、配色或黑名单。
+
+# 1.3.95 TEST / RC
+
+- 小小维修兔自动安全层新增 `viewport-layout-rescue`，但只在外层兔子镜已展开且根节点存在真实可测宽高时运行；折叠态/0×0 布局直接跳过，继续依赖 1.3.94 的单镜展开巡检在绘制稳定后补查。
+- `nested-details-popup-flow-repair` 进入自动安全层时额外要求对应内层 `<details>` 已由用户主动打开；原有候选条件仍必须同时满足 absolute/fixed 内容、hidden/clip 裁切祖先与实际几何/offset 越界证据。手动维修保持原行为，可处理折叠态源码层候选。
+- 不提升 `text-clipping-repair`、`mobile-layout-rescue`、`mobile-inline-annotation-flow-repair`、`complete-interaction-library` 或 code/plain/rendered DOM 源码恢复；这些仍需手动确认，避免自动改变内容呈现、状态桥接或消息源。
+- 不新增 observer、timer、轮询或额外 toggle listener；复用 1.3.94 已有的“当前消息定点巡检 + 单镜展开补巡检”。Prompt、API、配色、黑名单、维修兔手动完整库均不改。
+
+# 1.3.94 TEST / RC
+
+- 修复“小小维修兔自动巡检”偶发完全不运行：`MESSAGE_RECEIVED / CHARACTER_MESSAGE_RENDERED / GENERATION_ENDED / GENERATION_STOPPED / MESSAGE_SWIPED / MESSAGE_UPDATED / MESSAGE_EDITED` 现在优先定位当前消息做 scoped 工具恢复与巡检，不再依赖 MutationObserver 恰好命中新节点。
+- 启动 1.1 秒历史保护期内，如果可靠宿主事件确认是当前新消息，不再把它写进历史 baseline；改为保护期结束后延迟巡检。历史聊天进入时仍不会全量自动维修。
+- 自动巡检去重从“只看聊天源码 signature”改为“源码 + 当前 live DOM/checked/open 状态”；同一消息源码未变但 DOM 被重建、clone 或状态结构变化时可重新检查。
+- 历史镜面只绑定轻量 `toggle` 监听；用户真正打开某一面时，才对该面补一次 live DOM 巡检。未打开的历史镜面不做重巡检。
+- 保留自动模式的安全边界：仍只自动执行不会擅自改变用户展开/选择状态的高置信修复；完整检查发现其余问题时将维修兔标成可维修，交给用户手动确认。
+- 当前消息事件解析成功时不再额外触发一次全聊天工具扫描；无法解析消息 ID 时才回退到原有 coalesced 全聊天轻量恢复，避免长聊天性能回退。
+
+# 1.3.93 TEST / RC
+
+- **进入长聊天减负**：`CHAT_CHANGED` 的全聊天工具恢复不再对所有历史兔子镜同步执行嵌套 `<details>` 的 `getComputedStyle / getBoundingClientRect` 候选检测；历史镜面只恢复轻量监听与已持久化的维修标记，真正的重布局判断延迟到该嵌套折叠被打开，或外层兔子镜打开时其中已有折叠处于 open 状态后再执行。
+- `CHAT_CHANGED` 的历史工具恢复也不再为每面历史兔子镜计算完整 `outerHTML` 自动维修指纹或排队自动维修；自动安全维修继续只在新生成／新渲染的 scoped message 路径运行。
+- 新生成/新渲染消息仍保留原来的即时嵌套交互检测，避免为了性能牺牲当前镜面的可用性；clone/cache 恢复后的 live listener 会重新绑定，同一 live DOM 不重复叠加。
+- README / LICENSE 补充 AI 与二改边界：不授权把仓库链接、源码、源码压缩包、规则、母本或实现逻辑提交给生成式 AI / 代码生成工具，用于仿制、替代、生成初始版或继续开发衍生项目；并明确“先做初始版、后导入源码”不构成独立开发授权。
+- 不修改 Prompt、配色冷却、黑名单、独立 API stream/retry、pure-external 宽度救援或维修兔实际修复算法。
+
+# 1.3.92 TEST
+
+- 正式版前稳定性收口：跟随主 API 的横向裁切急救不再在全聊天工具刷新时同步读取历史镜面布局；改为仅给 live `<details>` 绑定轻量 toggle，镜面实际展开并完成一帧绘制后才检测当前镜面。收起状态不会先清空已有 transient 修复；维修兔关闭时已有监听也立即失效，重新开启无需重复叠监听；独立 API 外置链继续走原有专用入口。
+- 独立 API Base URL 正规化改为按 URL pathname 处理：新增 `/models` 完整端点剥离，query 参数保留在请求末尾，hash 丢弃；`/v1`、`/v2`、`/v4`、`/v1beta` 等显式版本仍被尊重；交给 SillyTavern 的 `custom_url` 复用同一正规化，避免 query 场景再次把完整端点当 base。
+- 独立 API 成品在绕过 SillyTavern 消息净化链并挂入 DOM 前增加安全边界：删除 script/iframe/object/embed/link/meta/base、所有 `on*` 与 `srcdoc`，剥离 javascript/vbscript/data:text/html 危险 URL；保留 checkbox/radio/label/details/style/svg 等兔子镜 CSS-only 交互与视觉结构。同一边界也用于跟随模式热更新/BFCache 从消息源码恢复 DOM 的路径。
+- CSS 隔离收口：删除 `@import`（含 CSS 转义写法），防止外部样式绕过逐镜 selector scope；递归 at-rule 同样按 CSS 标识符规则识别，转义 `@media/@supports` 不再漏过内部 selector scope。已有 scope 只有在当前镜面的精确 token 位于安全起点且不以兄弟/column combinator 向外逃逸时才跳过前缀；泛化 `[data-rabbit-mirror-css-scope]` 与跨镜 selector 不再生效。
+- 删除未被任何运行路径读取的 `includeSafetyPatch` 默认死配置。
+- 未改 Prompt 内容、Lannuomi 副 API 行为层、API stream/retry、维修兔修复主体、配色/黑名单、pure-external 宽度救援。
+
+## 1.3.91 TEST — Base URL 剥离误填端点路径 / 跟随模式补齐横向裁切自动急救
+
+- 修复用户把文档里的完整请求地址整条粘进「Base URL」时仍然 404 的问题。1.3.90 已修好「结尾是版本段就不再补 /v1」，但若用户填的是 `https://open.bigmodel.cn/api/paas/v4/chat/completions`，结尾不是版本段，仍会再补一次 `/v1`，拼出 `.../chat/completions/v1/chat/completions`。其报错形态与补 `/v1` 修复前完全一致，极易被误判为没修好。
+- `normalizeBase()` 新增 `stripKnownEndpointPath()`：规范化阶段循环剥离结尾的 `chat/completions`、`completions`、`responses`、`messages`、`embeddings`（最多三轮，覆盖 `/v1/chat/completions` 这类连续两段的写法）。只剥端点动词，绝不剥 `/v1`、`/v4`、`/v1beta` 等版本段。
+- 覆盖验证：智谱正确填法与误填完整路径、DeepSeek 两种填法、OpenAI 完整路径、Anthropic `/v1/messages`、Gemini `v1beta`、Kimi `/v1`、结尾斜杠、本地数字 IP，共 10 种输入全部拼出正确地址。
+- 补齐跟随模式（主 API）的横向裁切自动急救。该模块此前只挂在独立 API 的 `ensureExternalTools()` 上，跟随模式的兔子镜只有用户手动点维修兔时才会执行，同一故障在两条链路上的自愈能力不一致。现在在两条链路共用的 `installMaintenanceRabbitsInScope()` 中补上，受维修兔开关约束。
+- 该模块自身已按「窄视口 + 真实 `scrollWidth` 溢出证据」严格门控，桌面端与无溢出时是廉价空跑；且完全幂等（每次先撤回上一轮 transient 产物再重新实测），与独立 API 侧重复执行无副作用。
+- 不新增 observer / timer / 轮询；不改 Prompt、不增加 Token、不新增 API 请求；未改动独立 API 请求与重试链、外置几何、配色冷却、黑名单与抽签记录。
+
+## 1.3.90 TEST — 独立 API 版本路径兼容 / 手动模型 ID
+
+- 修复独立 API Base URL 被固定补 `/v1` 的兼容性缺陷。若用户地址已经以 `/v1`、`/v2`、`/v4`、`/v1beta` 等显式版本段结尾，兔子镜尊重该版本并直接拼接 `/models` 或 `/chat/completions`；未带版本段的既有地址仍默认补 `/v1`，保持旧配置兼容。
+- 模型控件由只能依赖 `/models` 的下拉框改成“可手动输入 + datalist 建议”。模型列表能拉取时提供候选；拉取失败、返回空列表或服务根本不实现 `/models` 时，不清空已填写模型，用户仍可直接输入 model ID 并生成。
+- “测试连接”仍以 `/models` 为无付费检测，不伪造成功；当模型列表不可用但已填手动 model ID 时，明确提示可直接生成验证，而不是阻断配置。
+- 不增加自动生成请求或重试；不修改副 API Prompt、stream/参数兼容重试、维修兔、宽度救援、折叠交互、配色冷却和随机黑名单。
+
+## 1.3.89 TEST — Lannuomi 原文保留 + 副 API 执行边界
+
+- 将用户提供的完整 Lannuomi 文本逐字保存在 `data/independentBehaviorPatch.js` 的 `LANNUOMI_REFERENCE_TEXT` 中，作为项目参考文本。
+- `LANNUOMI_REFERENCE_TEXT` 不进入任何模型 Prompt；副 API 仍只注入 `INDEPENDENT_BEHAVIOR_PATCH`，主 API 继续 0 注入。
+- 未修改展现形式、视觉、交互、配色、维修兔、独立 API 请求/stream/重试、宽度救援或折叠修复。
+
+## 1.3.89 TEST — 副 API 专用创作行为层
+
+- 旧 `data/safetyPatch.js` 在 1.3.87 中没有任何 import/call site，实际未进入主 API 或副 API Prompt；本版移除该死代码，替换为 `data/independentBehaviorPatch.js`。
+- 新行为层只在 `callIndependentApi()` 组装副 API system prompt 时注入；主 API / 跟随注入的 `promptBuilder` 不引用它。
+- 行为层只负责响应姿态：直接生成、减少无关说教/警告、不无故柔化、不擅改人物关系/冲突/审美/剧情方向；不重复兔子镜已有的展现形式、视觉、交互、配色或输出规则。
+- 副 API Token 计量同步计入该行为层，避免设置页低报兔子镜自身 Prompt。
+- 除版本缓存字符串外，不修改 1.3.87 的宽度救援、折叠交互、维修兔、配色冷却、随机黑名单或 API 请求/stream/重试逻辑。
+
+## 1.3.87 TEST — 短全局视觉地板 / 折叠交互重绑定与首次展开减卡顿
+
+- 基于 1.3.86 实际源码继续修改。把「全局成品完成度地板」与默认「配色构成下限」合并为一条短「全局视觉地板」：展现形式与媒介本体继续决定具体长相；只要求主次、比例、空间、材质、信息组织、细节与配色符合本轮媒介/内容，配色不得平均竞争，并禁止为了“高级感”固定套用某一种布局、材质、视觉效果或配色。删除主 Prompt 与独立 API near-output 中重复的主色相≤2 / 高彩≤10% 等固定数值地板；配色冷却、米黄/暗底重复识别与既有色彩组织规则保持。
+- 审计可折叠交互发现一个真实的重绑定缺口：`installNestedDetailsFallback()` 过去把 `data-rabbit-mirror-details-fallback=true` 当作监听器仍存活的证据，但 DOM clone / HTML 序列化只会保留 data 属性，不会保留 `addEventListener`。因此维修、缓存恢复或重新挂载后的镜面可能带着“已安装”标记却没有兜底监听器，内部 `<details>/<summary>` 在宿主/WebKit 原生切换失灵时就会出现点不开。全高替换式内部 details 的“点击内容返回上一面”也存在同类 `bound` 标记残留问题。1.3.87 两处都改用 live DOM 上不可序列化的 handler/binding 记录作为真实性判断；克隆/重挂载会重新绑定，同一 live DOM 重复扫描不会叠加监听器，子内容被真正替换时也会移除旧监听并绑定新内容。
+- 独立 API 外层折叠还有一个首开展示卡顿风险：1.3.86 在 native `toggle` 回调里同步跑完整 interaction rescue library，复杂镜面会让 Safari 在完成这批 DOM/CSS 扫描前无法先绘制已展开正文，成功点击看起来像“没点开/卡住”。1.3.87 保留 collapsed 历史镜面延迟激活策略，但打开时先做必要宽度校正，再让浏览器完成一次绘制，随后立即执行完整交互急救和横向裁切复测。没有新增 observer、轮询或 API 请求。
+- 不修改维修兔的维修模块本体、米黄/黑色冷却、pure-external 宽度判定、独立 API 请求/stream/重试、抽签黑名单或通用作品子元素宽度。
+
+## 1.3.86 TEST — 全局成品完成度地板 / 展现形式优先的反模板约束
+
+- 基于 1.3.85 实际源码继续调整生成 Prompt；不修改 1.3.84/85 的 Safari pure-external 宽度救援、米黄/黑色冷却、独立 API 请求、维修兔、交互与抽签黑名单。
+- 新增始终适用的短「全局成品完成度地板」：展现形式与媒介本体决定成品具体长相；地板只负责主次、比例/空间、信息组织与材质逻辑等质量下限，不提供统一布局模板，也不得覆盖、削弱或现代 UI 化本轮展现形式。
+- 明确圆角、投影、渐变、发光、玻璃拟态等只是可选手段：当本轮媒介天然适合时可以充分使用，但不得被当作固定的“高级感公式”。因此高级毛玻璃 UI 仍可正常生成，同时不把所有媒介收敛成玻璃卡片。
+- 明确禁止预设标题区、卡片区、信息栏、三段式或统一组件顺序；构图、密度、留白、形状与交互方式必须从本轮媒介和内容重新决定。原先视觉编辑完成度规则里的“固定三层”改成非固定的主次/空间/工艺补足，降低模板化诱导。
+- 「高级感」不再固定对应任何单一配色、材质或设计流派。配色构成下限仍限制色相家族与明度/光源关系，但不再绝对要求所有大面积区域低彩度：若媒介本体天然依赖高彩度色域，可突破“高彩度≤十分之一”的面积限制，但必须保持明确主次，避免多个高彩度色相平均竞争。
+- 独立 API 的近输出执行锁同步加入压缩版全局完成度地板，避免长上下文把“展现形式优先、地板只管质量”的关系冲淡。
+
+## 1.3.85 TEST — 配色构成下限 / 解除冷却与色彩组织的指令冲突
+
+- 修复既有「色彩组织」与「配色重复冷却」之间的直接冲突。色彩组织写明「不得为了避免重复或追求独特强行改变色相」，而重复冷却要求「明度、冷暖、色相、饱和度四项中至少有两项必须发生可见变化」。模型在互相矛盾的指令下最常见的反应是随机化，随机换色相恰恰是产出不协调配色的最短路径——表现为在「颜色单一」与「乱换配色」之间跳。
+- 重复冷却改为只负责「不重复」：不再规定要改动几个维度，改为要求重新从本轮展现形式的材质、环境与光线关系推导配色，让色相自然落到不同家族；并明确「若重新推导后仍落回同一家族，说明推导过度依赖默认审美而非本轮媒介」。与色彩组织的约束方向从此一致。
+- 新增「配色构成下限」，始终发出，不随视觉提示词编辑开关变化。既有色彩组织六条方向正确但全是形容词（「有限」辅助色、「清晰」分层、面积「克制」），模型无法执行形容词。这里把真正区分高级与普通配色的四件事翻译成可检验特征，与 1.3.72 的「成品完成度下限」同一思路：
+  - 主色相不超过 2 个；连同中性色系在内，全画面色相家族不超过 3 个。
+  - 主承载面与其余大面积区域使用低彩度色；高彩度只允许出现在强调元素上，总面积不超过画面十分之一。
+  - 主承载面、正文、次级文字三者之间必须存在可辨认的明度差；不得用色相差异代替明度差。
+  - 阴影与高光的冷暖须来自同一个光源假设。
+- 构成下限排在冷却之前；冷却段落明确声明「换家族不解除配色构成下限」，避免换色相时把结构要求一并丢掉。同一套下限以压缩形式进入近输出执行锁，独立 API 路线同样覆盖。
+- Token 开销：构成下限约 167 token，始终发出；冷却段落改写后长度基本持平。
+- 不改独立 API 请求/stream/重试、维修兔排版与交互链、横向裁切急救、黑名单与抽签记录、外置几何。
+
+## 1.3.84 TEST — pure-external 尺寸意图豁免 / 米黄吸引子识别补强
+
+- 基于 1.3.83 实际源码继续修正 Safari/iOS 手机版 independent pure-external auto-root rescue 的作者尺寸意图判定。
+- `max-width/max-inline-size:100%` 与 `none/initial/unset/revert/revert-layer` 视为通用包含/非约束声明，不再误判为“作者要求保持窄宽”；明确 `width:320px`、`max-width:800px`、`fit-content` 等真实尺寸意图仍会阻止 rescue。
+- 配色审计发现 1.3.52 的“米黄/奶油吸引子”仍有 HSL 饱和度盲点：标准 beige/ivory/old-lace/cream 在接近白色时 HSL saturation 可呈中/高值，导致不能合并为同一重复家族。现在保留原低饱和判断，并把高明度的暖橙/黄/中性色家族合并进 cream-attractor；粉色、冷色不受影响。
+- 黑色/近黑识别与五轮暗底冷却保持原逻辑；本版不增加副 API 重试、不新增请求，也不为了配色强制重生成。
+- 未修改维修兔、horizontal clip、external lane 几何、Prompt 主结构、独立 API 请求/stream/重试、抽签黑名单或交互修复。
+
+## 1.3.83 TEST — Safari 手机版 pure-external 正文根 auto-width 定点修复
+
+- 基于 1.3.82 实际源码，仅修复独立 API `pure external` 在 Safari/iOS 窄屏下的正文直接根元素异常 shrink-to-fit；不再改 external lane 几何。
+- 运行时 A/B 已证明：同一消息、同一 HTML 下 host / details / `::details-content` 均为约 367px，但 pure-external 的无显式宽度正文根会被 Safari 算成约 254px；显式 `width:100%` 可立即恢复，切回 `auto` 又复现。
+- 新增高置信 auto-root rescue：仅 `independent + placement=external + ready + details 已展开 + viewport < 900px`，且正文根必须是普通 block/flex/grid/flow-root/list-item、非 absolute/fixed、非 float、无明显水平 margin、实际宽度低于可用 content lane 的 84%。
+- 尊重作者尺寸意图：正文根自身 inline style 或本镜作者 `<style>` 若声明 `width / inline-size / min/max-width / min/max-inline-size`，即跳过；固定 280px/320px、`fit-content`、明确 `max-width` 等设计不被拉宽。RabbitMirror 自己带 `data-rabbit-mirror-*` 的维修/救援 style 不计为作者尺寸意图。
+- 命中后只给正文直接根补 `width/inline-size/max-width/max-inline-size:100%` 与 `box-sizing:border-box`，并在写入后复测；若未恢复到至少 94% 可用宽度立即撤回，不保留无效补丁。
+- 修复是 transient：复用既有 baseline 机制，不写入缓存/聊天 metadata；切回 external_then_inline 或真实 viewport 跨到桌面断点时恢复原始 inline style。
+- 展开镜面复用既有 toggle/interaction 激活路径，不新增 observer、轮询或新的事件监听；横向裁切维修兔仍保持原逻辑，只在 auto-root 宽度纠正后照常运行。
+- 未修改 Prompt、Token、独立 API 请求/stream/重试、黑名单/抽签、embedded/inline、follow-current、维修兔实现或内部作品子元素通用宽度规则。
+
+## 1.3.82 TEST — 手机版 pure-external 与 external_then_inline 同 lane
+
+- 基于 1.3.81 实际源码，仅调整手机版独立 API 的 pure-external 外层几何。
+- pure-external 不再把 `.mes_text` 的测量宽度作为外壳宽度 authority；改为直接使用与 external_then_inline 相同的 structural content lane（通常是 `.mes_text` 的 containing block / `.mes_block`）。
+- `.mes_text` 宽度仍保留为只读诊断值，不再写入 `--rm-external-lane-width`。
+- 这次不修改 `<details>` 内部作品宽度：280px 票根、320px 舞台、固定 SVG、满宽或超宽作品都继续尊重模型自身 CSS。
+- 保留 1.3.81 的 geometry cycle / 420ms + 1500ms 诊断复测，但 canonical structural lane 立即生效，不允许旧的 message-text last-known-good 再把 pure-external 拉窄。
+- 未修改 external_then_inline、embedded/inline、维修兔、horizontal clip rescue、Prompt、Token、独立 API 请求链。
+
+## 1.3.80 TEST — 手机纯外置正文 lane 共识纠偏 / 两次 settle 复测真正执行
+
+- 对比正式 1.3.20 与测试 1.3.77 后定位：正式版 pure-external 始终跟随稳定父 lane，容易偏宽；1.3.77 手机端改为优先当前 `.mes_text`，方向更接近正文，但某些 iOS/缓存恢复帧会把临时偏窄的正文盒子当成最终宽度并写进 `--rm-external-lane-width`。
+- 新增有界 nearby-message lane consensus：只在窄屏、当前 `.mes_text` 可测且明显比附近普通消息正文比例更窄时触发；最多检查相邻 8 个 sibling 位置、收集最多 4 条有效消息，至少 2 条且宽度比例 spread ≤0.14 才视为稳定共识。纠偏使用中位宽度比例与中位左 inset，不直接回退正式版的整块父 lane，因此避免从「过窄」跳成「过宽」。
+- 正常当前 `.mes_text` 与附近消息一致时完全不改，仍保持 1.3.51 以来「手机纯外置跟随正文 lane」的设计；没有可靠邻近样本时沿用既有 body/lane fallback。
+- 修复 `scheduleExternalHostGeometrySettleRecheck()` 的逻辑遗漏：旧代码只有 420ms 复测已经改变宽度时才会安排 1500ms；若布局在 420ms 之后才稳定，第二次复测永远不会发生。现在 420ms 与 1500ms 两次都会真正执行，仍然是每个 host 每次挂载最多两次一次性 timeout。
+- 不修改内置/外置后内嵌宽度，不修改模型生成的内部视觉宽度，不新增 observer、resize listener、轮询或全聊天扫描；Prompt、Token、API、黑名单、挨打猫、维修兔交互链保持不变。
+
+## 1.3.77 TEST — 撤回 1.3.76 正文缩宽步骤 / 横向裁切只开滚动
+
+- 修复 1.3.76 新增横向裁切急救的回归：当模型有意使用固定宽度视觉舞台、轨道、网格或其它语义内容时，第一层 `min-width:0 / max-width:100%` 会把正常内容主动压成父容器宽度，出现“标题仍宽、正文突然变窄”。
+- 删除横向急救对内容 contributor 的宽度改写。确认存在真实横向溢出、有意义内容越界且最近祖先 `overflow-x:hidden/clip` 后，只把该最近裁切祖先改为 `overflow-x:auto`；作者原本的固定宽度、网格比例与视觉几何保持不变。
+- 继续保留 1.3.76 的高置信装饰跳过、已有 scroller 跳过、只在窄视口/展开镜面运行、transient 不持久化与诊断统计。
+- 不修改独立 API 请求、Prompt、Token、黑名单、挨打猫、维修交互链或桌面布局；不新增 observer、resize 监听、轮询或全聊天扫描。
+
+## 1.3.76 TEST — 移动端横向裁切急救（单独一版，只修有真实裁切证据的最近祖先）
+
+- 只处理一种形态：窄屏下确实存在横向内容溢出，而最近的祖先用 `overflow-x:hidden/clip` 把它裁掉，用户既看不到完整内容也无法横向滚动。不覆盖「外置几何把整面镜子量窄」——那是 1.3.75 几何复测的职责。
+- 触发条件按序收紧：手机窄视口（≤640px）→ root 可见 → 语义候选预筛（跳过插件自身 UI 与无子元素容器，上限 140）→ 真实几何溢出（`scrollWidth - clientWidth ≥ 8px`，不靠 CSS 猜）→ 最近裁切祖先 computed `overflow-x` 必须为 `hidden`/`clip`。`getComputedStyle` 只对确认溢出的少数容器调用，不对全部 descendants 无差别执行布局读。
+- 装饰判定要求组合证据，不使用单信号 OR：必须同时满足脱离文档流（absolute/fixed）、无有意义文本（压缩后 <12 字）、无交互后代、无正文／状态语义，再叠加 `pointer-events:none` 或明显小装饰尺寸（≤64px）才升级为高置信装饰。`img/video/iframe/canvas/svg/picture/object/embed` 及包含它们的容器一律按内容处理，不因无文本判装饰。
+- 确有溢出但找不到任何明确的有意义正文越界贡献者时保守跳过，不改动 `overflow`，并计入新增的 `horizontalClipSkippedUncertain`。
+- 修复分两层且顺序保守：先只修内容自身的可收缩性（`min-width:0` / `max-width:100%` / `box-sizing:border-box` / 子项 `min-width:0`）；若真实溢出已消除则停止，不碰祖先。仅在仍存在明确横向裁切时才改最近裁切祖先，且只改 `overflow-x:auto`，按原 computed 值保留 `overflow-y`（`hidden`/`clip`/`scroll`/`auto` 原样保留，规范上已计算为 auto 的 `visible` 归一到 auto），绝不把整个 `overflow:hidden` 粗暴改成 `overflow:auto`，也不解除纵向裁切。
+- 幂等：每次执行先整体撤回上一轮 transient 产物再重新实测，连跑多次不会继续叠加。
+- 完全不持久化：不写任何 marker、不做 rehydrate，因此不会出现「marker 还在但修复能力没恢复」。全部产物统一使用专用前缀 `data-rm-hclip-*` 与独立的 `<style data-rabbit-mirror-horizontal-clip-rescue>`，不复用既有 mobile / viewport rescue 的持久化标记。
+- `stripIndependentTransientLayoutArtifacts()` 在读取 `preserveMaintenance` 之前无条件清理这些产物，因此即使 root 带 `data-rabbit-mirror-maintenance-persisted-layout="true"` 也不会被保留；手动维修触发的持久化路径（`scrubIndependentInteractionState()`）同样无条件剔除，不会被序列化进缓存或聊天 metadata。
+- 折叠的历史镜面不做深度几何扫描：已展开的 ready 镜面立即检测，折叠镜面复用 `armExternalInteractionTools()` 既有的 ready / toggle 首次激活路径，在真正展开后才检测。不新增 toggle、resize、MutationObserver、ResizeObserver 或轮询。
+- 诊断新增：`horizontalClipCandidates`、`horizontalClipRepaired`、`horizontalClipSkippedDecorative`、`horizontalClipSkippedExistingScroller`、`horizontalClipSkippedUncertain`，并输出实际修改的祖先定位、修复前后的 `overflow-x/y` 与 `scrollWidth/clientWidth`。
+- 不改 Prompt、不增加 Token、不新增 API 请求；不改动 desktop 健康布局；未修改任何既有维修兔模块，仅新增 `horizontal-clip-rescue` 一条。
+
+## 1.3.75 TEST — 外置几何冷启动复测 / 🎲 按钮保留 / 本地状态生命周期三项修复
+
+- 修复「退出很久重新进入变窄、出下一条回复又自己恢复」。`runQueuedExternalHostGeometryRefresh()` 的宽度签名守卫只在浏览器宽度真的变化时才允许重算几何，这在稳态下正确；但页面刚加载时第一次测量常常发生在字体、头像与主题 CSS 尚未稳定的时刻，量到偏窄的 `.mes_text` 盒子并写入 `--rm-external-lane-width` 后，`innerWidth` 一直不变，这个偏窄值再也不会被更正，直到下一条回复重新挂载 host。
+- 新增 `scheduleExternalHostGeometrySettleRecheck()`：挂载／缓存恢复完成后做最多两次定点复测（420ms、1500ms）。首次复测结果与首测一致即停止，不安排第二次；每个 host 每次挂载只安排一轮，重复调用 `ensureExternalTools()` 不会累积定时器。首测被推翻时同步让宽度签名失效，避免后续 resize 因签名相同被跳过。不新增 MutationObserver、ResizeObserver、addEventListener 或轮询。
+- 🎲 按钮在没有抽签记录时不再消失。1.3.65 收紧 `getRabbitMirrorRecipe()`（Swipe 已知时只认该 Swipe 的精确记录，避免上一个 Swipe 的配方冒充当前正文）是正确的，但 `ensureRecipeButton()` 当时直接删除按钮，导致所有没有精确记录的兔子镜——尤其是记录功能上线前生成的全部历史镜面——看起来像功能整个消失。现在按钮保留，标题改为「本轮抽签：这一面没有可读取的记录」，点开沿用既有提示。
+- 修复 stale pending 污染冷却历史。`pendingTs` 此前只写入、从不读取；生成被取消、请求失败或页面刷新后，pending 会一直留在 localStorage，之后任意一面兔子镜渲染完成都会把这个从未生成过的组合当作本轮结果写进正式历史，并把新镜面的视觉指纹贴到旧组合上。现改为双判据：页面会话标记不同即确定丢弃；同会话内超过 12 小时上限兜底丢弃。该上限远大于任何仍可能完成的生成（副 API 单次 5 分钟 × 最多 12 次 profile 回退 ≈ 60 分钟；跟随模式无自有超时），宁可漏判也不误杀慢请求。
+- 修复 scoped store 的读路径写放大与外来 chat 桶永不回收。读路径改为只做内存过滤、不再写盘；回收挂到 `recordGenerationAttempt()` / `setDirectiveScopedPick()` 本来就要写盘的时刻，每次额外回收一个已整桶过期的外来 chat，无需定时器且回收速度与使用频率成正比。
+- 修复 `writeScopedStore()` 配额失败后无恢复。仅在确认为容量类错误（QuotaExceededError / NS_ERROR_DOM_QUOTA_REACHED / code 22 / 1014）时丢弃最旧的外来 chat 桶并重试一次；SecurityError、存储被禁用等非容量错误保持原样告警返回，不删除任何数据、不重试。永不动当前 chat 的数据。
+- 不改 Prompt、不增加 Token、不新增 API 请求；不改独立 API 请求／stream／重试／超时；未改动维修兔排版与交互链、配色冷却、黑名单候选池。
+
+## 1.3.74 TEST — 动画移动交互与维修工具重建
+
+- 修复持续旋转/移动的小型 label 在部分 Safari/WebView 中 pointerdown 与 pointerup 之间发生位移，最终 click 被浏览器丢弃、导致隐藏 radio/checkbox 无法切换的问题。仅对“小命中区 + 动画移动 + checked 已证明存在第二层内容”的高置信结构启用 pointer 补偿；正常 click 成功时不重复触发。
+- 修复维修兔对独立外置 `<details>` 执行 clone+replace 时，先移除运行时工具后调用 `refreshRabbitMirrorToolsInScope(details)`，但根节点发现器只搜索后代、不包含 scope 自身，导致维修兔、挨打猫、抽签按钮可能一起消失的问题。现在 scope 自己若就是兔子镜根节点，也会被纳入工具重建。
+- 本版不修改 Prompt、Token、独立 API 请求链、黑名单/抽签逻辑、调色盘冷却，也不新增 observer、timer 轮询或全聊天扫描。
+
+## 1.3.73 TEST — 视觉编辑种子补全与完成度地板收紧
+
+- 个性化视觉提示词继续只开放“成品视觉层”，不开放输出协议、HTML/CSS 安全、手机适配、近期冷却、交互兼容或维修兔工程契约。
+- 将额外视觉偏好按 `seed / sketch / detailed` 三档处理：像“毛玻璃”“粉嫩清新”这类短偏好只作为设计种子，模型必须主动补足构图、层级、材质工艺、光线、排版与交互第二状态；已有若干方向的视觉草图只补缺口；接近完整规格的长描述优先忠实执行，不再被“通用高级感”二次改写。
+- 完成度下限仍仅在“启用视觉提示词编辑注入”时生效，不做全局常驻，避免无编辑需求时固定增加 Token，也避免误伤本来就应克制的展现形式。
+- 重写完成度下限，明确“完成度不等于复杂度”：三层可以由材质、光影、排版、空间或状态形成，不要求额外卡片/面板；极简形式允许克制，但必须靠比例、留白、微纹理和精细边界成立；禁止为了凑高级感退回统一圆角、无意义投影和装饰堆叠。
+- 完整规则与近输出执行锁共用同一套完成度定义，避免两处文案以后漂移；近输出继续只做压缩提醒。
+- 设置页“额外视觉偏好”占位符改成完整但不冗长的示范句，并明确提示：简单词也可以直接写，系统会把它当设计种子补足未指定维度。
+- 不改独立 API 请求/stream/重试、黑名单候选池、🎲 记录、维修兔、排版修复、配色冷却与视觉母本。
+
+## 1.3.72 TEST — 短偏好不再等于简化指令
+
+- 定位「用户写很短的偏好 → 成品反而更简单」的根因：近输出执行锁与可编辑层规则都写着「用户偏好必须成为**整面作品**可明确辨认的视觉主导」。当偏好是「毛玻璃」「低饱和冷色」这类三五个字的材质／色调词时，这条指令的最省力合规方式就是把整面做成一块该材质的面板——**指令本身在要求简化**，而且偏好越短、被提升成整面设计说明的力度越大。
+- 「视觉主导」的判定改为**按能否认出，而不是按覆盖面积**：偏好须在主承载面、次级结构、边界与接缝、文字层、交互第二状态之中至少四处留下同一套处理痕迹。同时明确「偏好是处理本轮展现形式的方式，不是替代它」，把整面做成一块该材质的面板视为未完成。
+- 新增偏好具体度分级 `visualPreferenceSpecificity()`：≤26 字且 ≤2 个短句判为 `seed`。命中 seed 时追加展开规则，明确告诉模型这是种子而非完整设计说明，其余维度必须由它补足到同等完成度并共用同一套材质与光线逻辑，并列出六条待补维度（构图与视线路径、层级与密度、材质接缝与工艺细节、光源方向与阴影逻辑、排版层级、第二状态如何在同一材质体系内变化）。
+- 新增「成品完成度下限」，与偏好无关、开启视觉编辑即生效。用可检验特征替代「要高级」这类无法执行的形容：≥3 层视觉层级、边界不得只有单一 1px 实线、存在可辨认的对齐系统与留白节奏、文字有字号／字重／字距层级、至少一处近看才可见的工艺细节。同一套下限以压缩形式进入近输出执行锁，独立 API 路线同样覆盖。
+- Token 开销：有 seed 偏好时约 435 token，无偏好时只保留完成度下限约 168 token；两者都只在开启视觉提示词编辑时发出。
+- 不改独立 API 请求/stream/重试、维修兔排版与交互链、黑名单候选池、🎲 记录与配色冷却；未扩大视觉提示词的开放范围。
+
+## 1.3.71 TEST — 可编辑视觉 Prompt 输入上限收紧
+
+- 将可编辑视觉层上限从 `8000 / 4000 / 4000` 收紧为：通用视觉规则 `5000` 字符、额外视觉偏好 `1000` 字符、不希望出现的视觉 `1000` 字符，降低误粘长文本导致每轮 Prompt 膨胀的风险。
+- 三个上限统一由 `settings.js` 常量提供，设置归一化、Prompt 构建和设置 UI 共用同一来源，避免界面提示与实际截断值漂移。
+- 三个 textarea 增加 `maxlength`，用户在输入阶段即可受到明确上限约束；保存时仍做二次截断保护。
+- 不改变默认视觉规则内容，也不改变关闭视觉编辑时的原始 Prompt 路线。未修改维修兔、黑名单、独立 API 请求 / stream / 重试、配色冷却与生成结构规则。
+
+## 1.3.70 TEST — 视觉编辑边界 / 独立 API Token 可见性 / 维修兔 ~ 位置约束
+
+- 修复 1.3.69 近输出视觉执行锁的语义冲突：此前只填写「不希望出现的视觉」时，会形成「避用：XXX；必须主导整面作品」的自相矛盾强锁；现在偏好与避用分开执行，只有偏好要求成为可辨认主导，避用项只负责禁止主动出现。
+- 视觉提示词仍只开放成品视觉层，不开放输出协议、HTML/CSS 安全、手机适配、近期冷却、交互兼容与维修契约；设置页明确说明该边界。清空高级通用视觉规则仍允许，但编辑注入开启时保存会使用 warning 明确提示，不再一边显示成功 toast 一边在状态栏警告。
+- 补齐独立 API 模式的 Token 可见性：原 Token 面板在独立 API 下固定显示「0 Token」，因此 1.3.69 新增的「可编辑视觉层字符数」对实际常用的独立 API 路线仍不可见。现在独立 API 请求会记录兔子镜自身写入的规则 Prompt 估算，并单独显示聊天／角色卡／世界书等上下文字符数；统计仍是本地计算，不增加模型 Token。
+- 修复维修兔 `class-local / generic-local` 的 `:checked ~ target` 错位兜底：原生 `~` 只允许命中控件后方兄弟，但旧 fallback 在直接匹配失败后会查询整个局部容器，可能把控件前面的同类块也当成目标，表现为「点下面 A，上面某块跟着变」。现在 malformed-structure fallback 只在控件后方兄弟区域及其后代中寻找，再保留原 label 代理路线。
+- 不扩大视觉提示词开放范围；不改黑名单候选池、抽签记录、独立 API 请求参数/stream/重试、配色冷却、外置几何与长聊天延迟急救。
+
+## 1.3.69 TEST — 视觉提示词编辑三处修正
+
+- 修复「最终视觉偏好执行锁」空转。`compactVisualPreferenceExecutionLock()` 原本只要打开编辑开关就无条件发出；额外偏好与避雷两栏都为空时会退回占位文案「以上用户可编辑视觉层」，向模型强硬要求「必须主导整面作品的绘制、材质、轮廓与界面／装饰语言；第一眼无法辨认该偏好即视为未完成」——而用户根本没写任何偏好。这既白烧 token，也会让模型去猜一个不存在的偏好并压过本轮展现形式本体。现在只有真的填了偏好或避用项才发出。
+- 该占位文案在独立 API 路线下还是悬空的：可编辑视觉层在 system prompt，执行锁在 user prompt，「以上」指向的内容不在同一条消息里。
+- Token 计量补上可编辑视觉层。`editableVisualChars` 此前在 `promptBuilder` 的 metadata 里算了却从未进入 `tokenMeter` 的字符口径，设置页也不显示；而这一层恰恰是用户唯一能直接把 Prompt 撑大的部分（8000 + 4000 + 4000 上限）。现在与母本补充、共同回忆并列显示。
+- 开启编辑后清空「通用视觉审美规则」时给出明确提示。该栏在编辑开启时是整套「色彩组织」与「反通用面板」规则的唯一来源（关闭时由 `legacyPresentationEmbodimentRule()` 内置同样内容）；清空不会报错，但下一面开始这一整层会消失，此前只能靠画面变差才发现。
+- 核对通过、未改动：编辑注入 ON/OFF 两条路线默认内容等价（`DEFAULT_VISUAL_PROMPT` 是 legacy 规则的忠实迁移）；`cleanEditableVisualPrompt()` 会剥掉三个包裹标签，用户文本不会破坏 Prompt 结构；执行锁在跟随 API 与独立 API 之间不重复注入。
+- 不改独立 API 请求/stream/重试、维修兔排版与交互链、黑名单候选池、🎲 记录与配色冷却。
+
+## 1.3.68 TEST — 聊天内查看 / 管理抽签黑名单
+
+- `🎲 本轮抽签` 浮层新增 `🚫 查看黑名单` 入口，并显示当前黑名单总数。无需离开聊天或进入扩展设置页。
+- 新增同浮层黑名单管理视图：按“主题 / 元素”“展现形式”分组列出全部已拉黑项目，支持逐项解除、清空全部、暂停 / 启用黑名单，并可一键返回当前这面的本轮抽签。
+- 管理视图复用现有单实例浮层与 outside-close cleanup，不新增轮询或全聊天扫描；名单较长时浮层自身滚动。
+- 黑名单仍只过滤本地随机候选池，不向 Prompt 注入禁止文字，不增加模型 Token；不改独立 API、维修兔、排版/交互修复、stream、重试或配色冷却。
+
+## 1.3.67 TEST — 设置页滚动恢复
+
+- 修复兔子镜设置页内容变长后出现“右侧宿主滚动条存在，但兔子镜设置内容无法继续滚动”的问题。设置页此前完全依赖 SillyTavern 外层抽屉滚动；黑名单区加入后总高度增大，部分桌面/浏览器组合会暴露宿主滚动边界问题。
+- 兔子镜自己的 `inline-drawer-content` 现在拥有独立、受视口高度限制的纵向滚动区域：桌面鼠标滚轮、触控板和手机触摸均可直接滚动设置内容；不覆盖宿主的展开/折叠 display 状态。
+- 黑名单列表保留独立最大高度，但 `overscroll-behavior` 改为允许在列表滚到顶/底后继续把滚动链交给设置页，避免鼠标停在黑名单区域时形成“滚轮陷阱”。
+- 修正设置标题水印仍显示 `1.3.62` 的旧版本文本。
+- 仅修改设置 UI/CSS；不改黑名单候选池、🎲 记录、独立 API 请求/stream/重试、维修兔、Prompt 或 Token。
+
+## 1.3.67 TEST — 黑名单缓存旁路 / 暂停警告 / 菜单监听清理
+
+- 保留 1.3.65 的三处修复：Swipe 精确绑定、toggle 返回真实状态、删除不可达整池回退。
+- 修复「部分点菜 + 另一侧随机」的 7 天 directive cache 可绕过后来新增黑名单：directive cache key 现在包含黑名单启停状态与主题/形式 ID 集合指纹。拉黑后重新生成同一条部分点菜，不再复用含已拉黑随机项的旧组合；明确点菜本身仍可覆盖黑名单。
+- 修复展现形式索引里两个不同项目共用 `1.3.3` 的身份冲突：`网站与应用平台` 改用内部唯一 ID `1.3.3.platform`，`评论系统` 改用 `1.3.3.review`。此前两者共用 `1.3.3`，随机实际抽到“网站与应用平台”时，🎲 会因 Map 后写覆盖显示成“评论系统”，拉黑一个也会把两个一起排除；现在新生成记录可独立显示、独立拉黑，原始母本仍通过标题回退取回。旧版已保存的模糊 `1.3.3` 黑名单会安全迁移为同时屏蔽两个新 ID；旧版 `1.3.3` 抽签记录则明确标为“无法区分”，不再冒充具体项目。
+- 新抽签记录额外保存当前消息/Swipe 的本地指纹；读取 🎲 时若同一 chat+mesid+swipe 后来已被编辑、截断后复用或替换，指纹不一致就拒绝显示旧配方，避免“键相同但内容已经不是那一条”的陈旧记录再次误导拉黑。1.3.64/1.3.65 的旧记录没有指纹，继续兼容读取。
+- 修复暂停黑名单后设置页仍提示“候选已全部拉黑，随机将没有候选”。`themePoolEmpty/formatPoolEmpty` 现在只有黑名单实际启用时才判空。
+- 修复 🎲 菜单外部关闭 listener 在键盘/程序化反复开关时可能暂存多个 detached-panel listener：改为单实例 cleanup，关闭菜单和销毁输出净化器时立即解除。
+- 修复未来异常/容量上限下 toggle 失败仍可能被解释成“已解除黑名单”：菜单现在比较操作前后真实状态，未变化时明确提示失败，不再谎报成功。当前主题/形式数量仍低于 512 单类上限。
+- `selection_recipes` 增加 raw-string 内存缓存；进入长聊天为多面兔子镜安装 🎲 时不再为每一面重复 JSON.parse 同一份最多 600 条记录，避免黑名单功能重新制造不必要的聊天入口 CPU 峰值。
+- 黑名单仍为本地候选池过滤，不增加 Prompt / Token；不改独立 API 请求、stream、重试、维修兔排版交互、配色冷却与视觉 Prompt。
+
+- 修复「本轮抽签」跨 Swipe 冒充。`getRabbitMirrorRecipe()` 在找不到该 swipe 的精确记录时，会回落到「同一条消息的任意 swipe」，因此新 swipe（旧版本生成或记录写入失败）会显示上一个 swipe 的抽签结果。用户据此拉黑的其实是别的兔子镜用过的项目。这与 1.3.64 声明的「按聊天 + 消息 + Swipe 绑定」「旧版本生成且没有记录的历史兔子镜不会伪造本轮抽签」直接冲突。现在 swipe 已知时只认该 swipe 自己的记录，找不到就返回 null，由 `showRecipeMenu()` 正常提示「没有可读取的记录」；只有调用方传入 swipeId = -1（确实无法确定）时才保留原回落。
+- 修复 `toggleBlacklistItem()` 谎报结果。原实现无论 `addBlacklistItem()` / `removeBlacklistItem()` 是否真的成功都固定返回 true/false，而 `addBlacklistItem()` 在 id 不在索引中（索引升级后旧 id 失效、kind 传错、或到达 512 上限）时返回 false。表现为：🎲 面板弹出「已加入黑名单」成功提示，面板重绘后按钮却仍是「🚫 加入黑名单」。现在返回操作后的真实状态。
+- `blacklistPoolStats()` 增加 `themePoolEmpty` / `formatPoolEmpty`，设置页「候选已全部拉黑」警告改用这两个字段。当前 `allowByMode()` 对非 off 模式是直通的，与旧写法等价；但一旦模式重新参与池过滤，只比较总数会在「该模式下候选已被拉黑光」时漏报，随机主题静默变空而没有任何提示。
+- 清理 `pickCombination()` 里两行不可达的「整池恢复」兜底：条件写成 `!pool.length && blacklistEnabled === false`，而该状态下 `filterRandomXxxPool()` 已原样返回整池，池为空只可能是 `allowByMode()` 自己筛空的，恢复出来仍是空——在任何可达状态下都是 no-op。留着的真实风险是后来者误以为它是安全网而把条件反过来，从而把用户明确拉黑的项目重新放回随机池。用户故意拉黑整池时必须保持空池。
+- 核对通过、未改动：黑名单确实是候选池级排除而非 Prompt 文本（不增加 token）；用户点菜与固定动态视觉场景走 `directive.themes/formats` 与 `forcedFormats`，不经随机池，仍高于黑名单；独立 API 的 `requestSelectionDiagnostic` 确实带 `themeIds`/`formatIds`，🎲 在副 API 模式下可正常记录；整池拉黑不会崩溃，抽签返回空主题。
+- 不改动独立 API 请求/重试/stream、维修兔排版与交互链、配色冷却、视觉 Prompt。
+
+## 1.3.64 TEST — 本轮抽签 / 随机黑名单
+
+- 新增标题工具入口 `🎲 本轮抽签`：对有可靠生成记录的兔子镜，直接列出这一轮实际抽中的“主题 / 元素”和“展现形式”内部 ID 与名称；记录来自插件自己的抽签元数据，不使用 AI 事后分析。
+- 新增主题 / 元素、展现形式两套精确 ID 黑名单。加入后从下一轮随机候选池中直接过滤，不向 Prompt 追加“不要出现某某”的文字，因此黑名单功能本身不增加模型 Token。
+- 黑名单只约束随机抽取；用户明确点菜以及主动开启的固定“动态视觉场景”继续拥有更高优先级，不会被随机黑名单阻断。
+- 设置页新增“启用抽签黑名单”、当前黑名单清单、逐项解除与一键清空；可暂时停用而保留名单。若某一候选池被全部拉黑，保持空池并在设置页警告，不会偷偷把黑名单项目重新放回随机池。
+- 本轮抽签记录按聊天 + 消息 + Swipe 绑定。跟随当前 API 通过生成快照提交真实抽签记录；独立 API 在成功完成并保存兔子镜时提交记录。旧版本生成且没有记录的历史兔子镜不会伪造“本轮抽签”。
+- `🎲` 与现有 🐇 / 🐈 共用标题工具宿主，不新增全聊天轮询；跟随模式记录落地后仅刷新对应消息的工具入口，避免重新引入长聊天全量扫描。
+- 不修改独立 API 请求参数、stream、重试、维修兔排版/交互链、配色冷却或视觉 Prompt；黑名单与抽签菜单均为本地逻辑。
+
+## 1.3.63 TEST — 全链路诊断卡死修复
+
+- 修复一次性全链路诊断在特定 Grid / label 结构上永久停留在“正在检查…”的问题。1.3.61/1.3.62 的若干结构判断调用了不存在的 `cssEscape()`；只有命中特定结构时才触发 `ReferenceError`，因此此前语法检查无法发现。
+- 三处 label-for 匹配改为直接遍历 `label[for]` 并比较原始 `for`/`id` 字符串，不再依赖 CSS selector 转义，也不会因特殊字符 id 触发 selector 异常。
+- 诊断完成阶段增加异常兜底：以后即使某个诊断子模块再次抛错，面板会直接显示 `[诊断内部错误]` 与错误信息并停止诊断，而不是无限停在等待状态。
+- “复制诊断＋代码”增加异常兜底；整理源码失败时按钮会恢复并显示失败提示，不再永久卡在“正在整理源码…”。
+- 不改变 1.3.62 的确定性 Grid 正文全宽修复、1.3.61 手机/当前视口布局策略、独立 API 请求链或 Prompt；不增加 token。
+
+## 1.3.62 TEST
+
+- 修复电脑端“选择卡正常横排，但下方正文被 Grid 自动挤成一根竖长细柱”的漏判：新增确定性结构识别，不再依赖高宽比、当前可见 panel 或旧维修标记。
+- 当同一多列 Grid 内存在 2 个以上状态控件、一个明确跨满整行的 label 选择卡行，以及 2 个以上由 `:checked` CSS 控制的正文型 panel，且 panel 没有作者指定的 grid 位置时，所有结果 panel 自动跨满 `grid-column: 1 / -1`。
+- 该修复在兔子镜首次展开/交互激活时执行，不在进入长聊天时对所有历史镜面做重型扫描；手动“排版/内容显示不全”维修也复用同一结构修复。
+- 不修改 Prompt，不增加模型 token，不改独立 API 请求/重试/stream 链。
+
+# 1.3.62 TEST — 当前视口排版/裁切闭环，收紧维修兔误修
+
+- 审计 1.3.60 后保留“宽屏必须按当前实际几何判断”的方向，但修正四个遗漏：新定义的滚动属性此前从未被任何元素标记；隐藏的同组状态 panel 不会被修；宽屏自动维修仍会写入整套手机预置；新宽屏候选未进入维修兔 finding，因此自动维修并不会因为“竖长柱”主动选择排版路线。
+- `viewport-layout-rescue` 现在只对高置信 Grid 竖长正文跨满整行：父 Grid 至少 480px、正文宽度 <320px 且 <父宽 42%、文字≥60、高宽比≥4，并排除 sidebar/nav/menu/toolbar 等窄栏提示、作者显式 grid placement 和显式窄尺寸约束。
+- 已经由“叠层正文互斥”识别的状态 panel 会按同一 Grid 父层成组处理；当前可见 panel 一旦证实被压窄，同组隐藏 panel 一起获得同样的 full-span，切换选项后不会再次变成细长柱。
+- 长内容滚动真正落地：对当前可见、正文型容器中真实 `overflow:hidden/clip` 且 `scrollWidth/scrollHeight` 超出 client box 的候选，分别恢复横向/纵向 `overflow:auto`；若同一可见正文里有可交互控件但祖先 `pointer-events:none`，只在该正文容器上恢复 pointer-events。跑马灯/绝对定位视觉层仍跳过。
+- 新增当前视口排版 inspection/finding：维修兔可直接报告“当前窗口正文被异常压窄或裁切”，自动维修会因此进入 `text` 路线，而不再依赖手机诊断。全链路诊断新增当前窗口 squeeze/overflow/x/y/pointer 计数。
+- `mobile-layout-rescue` 不再在 2500px/3400px 等宽屏先写几十个 `data-rm-mobile-*` 预置。只有当前实际视口 ≤640px 且只读巡逻确实发现 mobile layout 风险时才执行；避免排版本来正常时点自动维修却把未来手机布局一起改掉。
+- 独立 API 的 text/style/interaction 手动维修不再在 80/350/900/1800ms 把整套维修库重复执行四遍，只保留一次轻量工具/持久化刷新，降低误修累积和 CPU 峰值。
+- 新 viewport layout 样式/标记正式纳入独立 API 维修持久化分类：只有带维修持久化标记的镜面保留；普通运行时缓存不会意外留下。
+- 不改独立 API 请求发送、stream、重试、超时、外置挂载、配色冷却和 1.3.57 长聊天延迟激活链。
+
+## 1.3.59-test — persisted stacked-grid migration
+
+- Fix 1.3.58 not reaching some already-repaired historical independent mirrors. The full-width Grid logic itself was correct, but it lived only inside the complete interaction-rescue install pass; older mirrors can retain `data-rm-exclusive-stacked-state-*` ownership markers without necessarily re-entering that detector after an upgrade.
+- Add a lightweight persisted-state migration in `ensureExternalTools()`: only mirrors that already own 2+ exclusive-state panels under the same direct Grid parent are considered; the same full-width selector-row proof is required and authored panel grid placement is still refused.
+- The migration writes `grid-column: 1 / -1 !important` directly to the already-owned panels and is idempotent. It does not run the complete interaction library, add observers, or scan unrelated historical message DOM.
+- Keep 1.3.57 chat-entry performance changes, 1.3.56 radio/stack fixes, maintenance persistence, and palette cooldown unchanged.
+
+## 1.3.58-test — desktop stacked-state grid span repair
+
+- Fix mutually-exclusive state/result panels that were correctly switched but auto-placed into only one column of a multi-column CSS Grid.
+- The repair is deliberately narrow: it activates only when the same grid contains 2+ mapped controls, a control/selector row that explicitly spans the full grid (or occupies essentially the full grid width), and result panels with no authored grid placement of their own.
+- Result panels receive a reversible `grid-column: 1 / -1 !important`; authored grid layouts are left untouched.
+- Keeps 1.3.57 lazy historical-mirror activation/performance changes and all 1.3.56 interaction fixes.
+
+# 1.3.57 TEST — 长聊天进入减负 / 历史外置交互按需激活
+
+- 定位进入长聊天时瞬时卡顿/CPU 峰值：历史独立 API 兔子镜从缓存恢复时，完整 `installIntelligentInteractionRescue()` 交互急救库会在 detached `extractReadyDetails()` 阶段执行一次，挂载后 `ensureExternalTools()` 又执行一次；聊天中历史兔子镜越多，重复 CSS/DOM 解析越集中。
+- detached 缓存解析现在只执行 ID / radio name / CSS 引用作用域隔离，不再提前安装完整交互急救 listener。
+- 历史 ready 外置镜默认折叠时只挂工具和轻量结构；完整交互急救与维修兔结构 listener 重建延迟到该面 `<details>` 第一次真正展开时执行，并用 live-DOM WeakSet 保证同一节点只执行一次。
+- 错误/生成中占位壳不运行完整交互急救；其重试/挨打猫按钮继续使用原直接 listener。
+- 输出净化器初始化时删除“立即全聊天装工具后 180ms 再重复同一遍”的冗余第二次全量工具扫描；后续 CHAT_CHANGED / MESSAGE_* 与 MutationObserver 仍保留原合并调度。
+- 延迟激活标记为运行时状态，不写入独立 API 永久缓存。
+- 保留 1.3.56 `class-local` 精确目标和叠层正文互斥；不修改副 API 请求、stream、重试、超时、缓存身份、外置几何、配色冷却。
+
+# 1.3.56 TEST — radio class-local 精确目标 / 叠层正文互斥
+
+- 根据「黑石深处感官弹幕」1.3.55 全链路诊断确认：上一版 stale inline 清理已生效，但 `class-local` 的单个 `+` 规则仍会在直接兄弟不匹配时退化为父容器 class 查询。baseline/close radio 与其他分支共用 trigger class 时，会把两个 `.rm-focus-node` 同时当成目标，重新制造叠字。
+- 单个 `:checked + X` 现在与连续 `+ A + B` 一样保持位置语义：直接兄弟不匹配时仅允许 wrapping-label 代理；普通局部 class fallback 只有唯一目标时才可采用，多个同类目标时直接放弃，禁止扩散到兄弟分支。
+- 手机端状态内容解析改为复用同一安全 target resolver，避免窄屏单独走旧的宽松 class-local 路径。
+- `叠层正文互斥` 识别新增 `focus` 面板类，并识别同 radio 组中 `data-rm-reversible-radio-initial-checked=true` 的 baseline/close radio 后紧邻默认 panel；三层同一 grid-area 时由该路线独占可见状态。
+- baseline/default panel 会在返回状态下强制恢复可见 display；选中其他分支时隐藏。被叠层互斥接管的 controls 不再进入通用 checked visual fallback，避免延迟验证再次把多个 panel 打开。
+- 不修改独立 API 请求、stream、重试、超时、缓存身份、外置几何、配色冷却或维修兔持久化链；不新增 Observer、轮询或全聊天扫描。
+
+# 1.3.55 TEST
+
+- 修复同组 radio 切换/独立 API 重挂载后，已 unchecked 的旧分支仍残留 checked 急救 inline `!important`，导致多个 grid/叠层正文同时可见、文字重叠。
+- 清理仅作用于维修兔拥有且与该控件自身 `:checked` 声明逐项一致的 stale inline 属性；不修改普通字号、行高或用户原始样式。
+- 在 radio 手动切换、延迟校验、可逆返回、程序化 checked 恢复与已挂载镜面初始化时统一清理旧分支。
+- 保留 1.3.54 连续兄弟链 `:checked + A + B` 单目标修复、1.3.53 维修持久化和配色冷却。
+
+## 1.3.55
+
+- 修复有 label 的 checkbox 在 `:checked + A + B` 连续兄弟链中，class-local 急救退化为父容器全局查询，导致点击一个选项同时展开多个同类结果的问题。现在连续 `+` 链按当前 input 逐级匹配，只允许命中自己的分支；识别为连续兄弟链后禁止再退回整组容器搜索。
+- 兼容生成 HTML 中首个 label class 未完成作用域改写但 `for` 仍明确指向当前 input 的情况，仅允许该显式 label 作为链路第一跳，不扩散到其他分支。
+- 删除已废弃且无运行代码依赖的 `SERVER-BRIDGE-INSTALL.txt`，继续使用 SillyTavern 内置 `/api/backends/chat-completions/status` 与 `/api/backends/chat-completions/generate`。
+
+# 1.3.55 TEST — 修正维修兔持久化重挂载 / 保留 1.3.52 双向配色冷却
+
+- 基于 1.3.51 实际源码合入 `files.zip` 的 1.3.52 修复，但不原样采用其中的重挂载实现。
+- 修正 1.3.52 `rehydrateRabbitMirrorMaintenanceRepairs()` 的关键遗漏：普通 `installStructuredStaticDisclosureFallback()` 会被已保存的 `role=button/tabindex` 判定为“已有交互”，`installFillInChoiceFallback()` 会被已保存的 count 标记直接跳过，因此两类 listener 实际没有重绑。
+- 改为只针对带 `data-rabbit-mirror-maintenance-persisted-layout=true` 的镜面，直接根据已保存的维修标记重建静态选项、静态分段折叠、填空选择的 WeakMap 状态与 click/keydown listener；同一 live root 已重建后不重复绑定。
+- 保存独立 API 维修结果时新增 `aria-checked` 净化，并把填空选择的本次已填文字、运行时 aria-label 与 blank code 恢复到生成时基线，避免“修交互”把用户当次选择写死进永久缓存。
+- 保留 1.3.52 的四张结构性急救样式持久化、孤儿清理保护、保存失败 debug，以及 hueFamily/temperature/saturation 双向配色重复冷却与 `cream-attractor` 米黄归并。
+- 不改独立 API 请求发送、重试、超时、外置几何、compact-shell、MutationObserver、resize/scroll/focus 监听与轮询链。
+
+# 1.3.52 TEST — 维修兔结构性修复可持久化 / 配色冷却改为双向
+
+- 修复独立 API 兔子镜「维修兔修好后刷新又坏、永远修不了」的根因。1.3.43 的 `scrubIndependentInteractionState()` 把维修兔自己注入的四张结构性急救样式表（静态选项、静态分段折叠、填空选择、focus-within 持久桥接）当成运行时污染一并删除，因此每次保存都会把修复结果一起抹掉。
+- `PERSISTED_STATE_STYLE_ATTRS` 拆分为 `RUNTIME_STATE_STYLE_ATTRS`（checked 伪元素补丁，仍然永远净化）与 `MAINTENANCE_STRUCTURAL_STYLE_ATTRS`（受 `data-rabbit-mirror-maintenance-persisted-layout` 保护），与 1.3.45 的排版维修保持同一套判定。
+- checkbox/radio 当前选中状态、`aria-pressed`、临时 active/selected/open 标记仍然照旧净化，不会被写死进永久缓存。
+- 修复第二条链路：`clearOrphanedStructuredStaticDisclosureArtifacts()` 会在 `installMaintenanceRabbitForRoot()` 装按钮的同一步里，把重新挂载后 WeakMap 为空的镜面判成「旧版孤儿标记」而清空。带维修持久化标记的镜面现在跳过该清理。
+- 修复第三条链路：静态选项／静态分段折叠／填空选择这三条只登记在维修兔急救库里，挂载链不会调用，而 `addEventListener` 无法随 HTML 保存。新增 `rehydrateRabbitMirrorMaintenanceRepairs()`，在 `ensureExternalTools()` 挂载时按已有维修标记重新绑定，消除「样式还在、点了没反应」的死 UI。该函数只对已带维修标记的镜面生效，不会给没修过的镜面凭空加交互。
+- `persistIndependentRepairFromEvent()` 原本有 7 处静默 `return false`，维修保存失败时界面上没有任何痕迹。改为统一 `console.debug` 记录放弃原因。
+- 修复「一直出米黄色」。整条配色反馈链原本是单向的：`isDarkPaletteTrigger()` 与 `recentIndependentPaletteGuard()` 都只识别暗色，冷却提示词又持续要求「中／高明度」「非黑主背景」，而米黄是 `brightness:light` + `temperature:warm` + `saturation:low`，永远不触发任何冷却——反黑规则本身把模型推向了唯一的收敛点。
+- `classifyPaletteSamples()` 早已计算出的 `hueFamily` / `temperature` / `saturation` 此前完全未被使用（`getRecentPaletteFingerprints()` 是零调用死代码）。新增 `paletteFamilyKey()` / `describePaletteFamily()` / `getRepeatedPaletteFamily()`，配色冷却改为对任何家族一视同仁的双向判定。
+- 米黄／奶油／米色／羊皮纸／做旧纸张归为同一个 `cream-attractor` 家族键，避免它们在 orange/yellow/neutral 之间漂移而各自算作不同家族、恰好绕开重复检测。
+- 近期视觉避让文本现在会列出每轮实际使用的配色家族；此前模型完全看不到自己上几轮用过什么颜色。
+- 不改动外置几何、compact-shell、外置后内嵌、视觉提示词编辑与 1.3.20 性能冻结链；不新增 MutationObserver、focus/resize/scroll 监听或轮询。
+
+# 1.3.51 TEST — 手机纯外置跟随正文 / PC compact 保留
+
+- 手机／窄屏纯外置不再使用固定 `vw` 或固定边距猜宽度。
+- 现有外置几何同步在 `<900px` 时优先读取当前消息真实 `.mes_text` 正文区域，纯外置 host 使用同一宽度与横向起点。
+- 若正文框尚未稳定，则回退到原 `.mes_block` 内容轨道；CSS 最终兜底仍保留流动宽度，避免空宽度。
+- PC 端继续使用原正文轨道，并保留 `compact-shell` 对窄视觉本体的上限控制。
+- 未新增 MutationObserver、ResizeObserver、focus 处理或持续扫描；继续使用既有几何同步／双 RAF／120ms settle／真实 viewport resize 刷新链。
+- 维修兔、挨打猫、视觉提示词编辑、独立 API 与外置后内嵌逻辑不变。
+
+# 1.3.50 TEST — 手机纯外置 viewport 自适应宽度
+
+- 修复 1.3.49 在部分 iPhone / 外置几何状态下再次缩成窄列的问题。
+- 手机／窄屏独立 API 纯外置不再用 `calc(100% - clamp(...))`：`100%` 仍会继承可能已被旧几何快照压窄的父级。
+- 改为直接以 viewport 为基准的 `84vw`，即左右约各保留 `8vw`；440px、390px、375px 等屏宽都会连续自适应。
+- 手机端继续强制取消 compact-shell 的像素宽度影响；PC 几何与 compact-shell、外置后内嵌、维修兔、视觉提示词、性能冻结链均不改。
+
+# 1.3.50 TEST — 手机纯外置宽度自适应
+
+- 窄屏（<900px）独立 API 纯外置不再固定减去 72px，而改为 `calc(100% - clamp(36px, 16vw, 72px))` 并居中。
+- 约 440px 宽手机时仍接近左右各 35～36px；390px 时约 31px/侧；375px 时约 30px/侧；屏幕越小，边距会继续自动缩小，避免固定 36px 把正文挤窄。
+- 最大总留白仍限制为 72px，最小总留白为 36px，因此不会重新贴边铺满；内部 `<details>` 继续 100% 填满宿主。
+- PC 几何、compact-shell、外置后内嵌、维修兔、视觉提示词以及 1.3.20 性能冻结链均不改；不新增 observer、focus/resize/scroll 监听或轮询。
+
+# 1.3.48 TEST — 手机纯外置宽度对齐外置后内嵌
+
+- 根据同一台 iPhone、同一面兔子镜的并排截图校准：1.3.47 纯外置约只有 16px/侧边距，而外置后内嵌约为 36px/侧。
+- 窄屏（<900px）独立 API 纯外置从 `calc(100% - 32px)` 调整为 `calc(100% - 72px)` 并居中，使正文视觉宽度与外置后内嵌一致。
+- 内部 `<details>` 继续 100% 填满宿主；标题仍为轻壳。PC 的正文几何、compact-shell、外置维修、视觉提示词和 1.3.20 性能冻结链均不改。
+- 本版不修改 `src/independentApi.js` / `src/outputSanitizer.js` 的运行逻辑，不新增 observer、focus/resize/scroll 监听或轮询。
+
+# 1.3.48 TEST — 手机纯外置宿主宽度稳定化 / PC 几何冻结
+
+- 1.3.46 只把纯外置内部 `<details>` 改为 100%，但父级 external host 仍由一次性 `--rm-external-lane-width` 像素快照决定宽度；如果 iPhone 首帧测量时 `.mes_block` 尚未稳定，父级会永久锁在偏窄宽度，因此 1.3.46 对该现象无效。
+- 窄屏（<900px）独立 API 纯外置现在直接使用稳定 CSS 内容通道 `calc(100% - 32px)` 并居中，显式覆盖 stale lane-width / compact-width；内部 `<details>` 继续 100% 填满。
+- PC 端仍保留原来的正文几何对齐、compact-shell 与宽背景处理；外置后内嵌不变。
+- 本版除版本号外不修改 `src/independentApi.js`、`src/outputSanitizer.js` 等运行逻辑；不新增 observer、focus/resize/scroll 监听或轮询。
+
+# 1.3.46 TEST — 手机纯外置正文宽度恢复 / PC 贴合保留
+
+- 修复独立 API「轻壳外置」在 iPhone / 窄屏下，标题壳接近正常宽度但生成正文主体被 `details { width:auto }` 收缩成窄列的问题。
+- 在 `<900px` 窄屏中，纯外置 `details` 强制恢复为 `width:100%`，正文重新填满外置内容通道；「外置后内嵌」逻辑不变。
+- PC 仍保留原来的 `width:auto` 与外层 `data-rm-independent-external-compact-shell` / `--rm-external-compact-width` 贴合逻辑，桌面端行为不改。
+- 除版本号外不修改 `src/independentApi.js`、`src/outputSanitizer.js` 等运行逻辑；保留 1.3.20 性能冻结链、视觉提示词编辑、1.3.45 外置维修工作副本与正文更新误判修复。
+
+# 1.3.45 TEST — 外置维修工作副本 / 正文更新误判修复
+
+- 恢复旧满意版 1.2.19 的关键维修行为：手动维修独立 API 外置镜时，只替换当前 `<details>` 为干净工作副本，外置 host、owner/sourceHash 与位置不动；旧 listener / WeakMap 交互状态随旧节点一起丢弃，再在新节点上重新绑定工具与维修。
+- 工作副本与“返回修复前”快照都不克隆运行时工具栏、诊断面板或菜单，避免保存出“长得像按钮但没有 listener”的死 UI。
+- `GENERATION_STARTED` 不再单凭宿主事件就把已完成镜面隐藏成“正文正在更新”；真正正文/Swipe 的 sourceHash 变化仍由既有 syncMessages 精确检测并进入 awaiting-fresh-source。
+- 不新增 MutationObserver、focus/resize/scroll 监听、轮询或全聊天扫描；副 API 请求、stream、重试、外置几何和视觉 Prompt 不变。
+
+# 1.3.44 TEST — 诊断面板禁止持久化 / 死按钮清理
+
+- 修复独立 API 外置镜在维修保存／重挂载时，把一次性全链路诊断面板连同兔子镜正文一起序列化的问题。DOM 可以被保存，但 `addEventListener()` 不能，因此旧报告会变成“看得到按钮、点了完全没反应”的静态死面板。
+- 独立 API 保存前与缓存恢复前都会剔除 `[data-rabbit-mirror-interaction-diagnostic]`；诊断报告不再进入兔子镜缓存、历史快照或维修后的 source。
+- 输出净化器初始化与销毁时会清理页面中上一运行时遗留的旧诊断面板，避免旧版报告跨版本残留。
+- 不修改 1.3.43 的 checked/radio 维修算法、副 API 请求链、外置布局、focus/Observer 性能冻结链；不新增监听、轮询或全聊天扫描。
+
+# 1.3.43 TEST — 恢复旧版外置 checked 维修 / 点击减负
+
+- 根因确认：1.3.39 起的 `independent-native-checked-restore` 只凭静态 `:checked` 规则存在就认为原生交互可用，导致完整 checked/label/radio 兜底被跳过；诊断却能出现 `matched=false`，说明该假设不成立。
+- 恢复 1.2.19 满意版行为：清理旧急救内联状态后仍继续安装 `applyCheckedVisualFallback`、label fallback、radio fallback 等已验证交互路线，不再因“规则看起来完整”而绕开维修。
+- 已存在的 `data-rabbit-mirror-independent-native-checked-restored` 旧标记会在维修时撤销，避免历史外置镜继续绕开 checked 维修库。
+- 独立 API 的“点了没有反应”只执行一次完整当前镜面维修，后续仅做一次轻量工具/持久化刷新；不恢复四轮重复扫描。
+- 不新增 MutationObserver、focus/resize/scroll 监听、轮询或全聊天扫描；独立 API 请求/重试/外置同步链保持 1.3.41。
+
+# 1.3.43 TEST — 恢复旧版独立 API 交互状态净化基线
+
+- 对比用户提供的 `副api满意版(2).zip`（内部 1.2.19）后确认：旧版 1.2.12 起存在完整的独立 API 交互状态净化层，当前 1.3.x 已将其移除。
+- 恢复 `initialHtml` 干净基线、`scrubIndependentInteractionState()`、运行时状态属性／临时救援 style 清理，以及旧缓存污染迁移。
+- 维修结果仍可保存结构修复，但 checkbox/radio 当前选中状态、`aria-pressed`、临时 active/selected/open 标记、checked 伪元素补丁与可逆内联样式不再被写死进永久外置缓存。
+- 已有 1.3.x 污染缓存会在启动／恢复时优先从兼容历史中寻找更干净的初始基线并做一次性净化；不会重新请求副 API。
+- 不回退现有外置几何、跨设备元数据、维修兔 v2.18、视觉提示词编辑或 1.3.20 性能冻结链；不新增 MutationObserver、focus/resize/scroll 监听或轮询。
+
+# 1.3.43 TEST — 外置维修原生恢复 / 点击减负 / 视觉偏好收口
+
+- 撤回 1.3.38 的 `independent-checked-runtime-reset` 双重重建链；该链会在同一次交互维修中重复解析 checked CSS、撤样式并再次进入完整交互维修库，造成额外卡顿。
+- PC 独立 API 外置镜面若 checkbox/radio、label 与 checked 目标结构完整且无 unresolved 规则，维修兔优先只清理旧维修遗留的 `!important` checked 内联状态，恢复浏览器原生 label/input/:checked CSS；不再把正常结构强行接管成第二套手动状态机。
+- 已安装过的通用 label / 可逆 radio 监听会动态识别“原生 checked 已恢复”标记并让行，不继续 preventDefault 或重复写入状态。只有结构真的不完整时才进入原有重维修库。
+- 维修兔菜单打开时不再同步执行整面 `inspectMaintenanceRabbit()`；选择自动判断、巡逻或诊断后才检测，减少点击兔子时的瞬时卡顿。
+- 视觉偏好最终锁改为：偏好必须主导整面作品的绘制、材质、轮廓与界面／装饰语言；第一眼无法辨认即视为未完成。仍不写死像素、赛璐璐等具体风格。
+- 不新增 MutationObserver、focus/resize/scroll 监听、轮询或全聊天扫描；1.3.20 性能冻结链、1.3.35 外置贴合与既有副 API 请求参数保持不变。
+
+# 1.3.37 TEST — 副 API 视觉锁去重 / 生成链冻结
+
+- 1.3.36 的视觉偏好锁在独立 API 中会同时进入 system Prompt 与最终 execution lock，副 API 实际收到两次相同约束；本版改为副 API 只在最靠近输出的 execution lock 保留一次。
+- 跟随当前 API 仍在输出协议前保留一次视觉偏好锁，像素 / 赛璐璐 / 水墨等通用视觉偏好强度不降级。
+- 独立 API 请求函数、stream、max_tokens、重试、超时与完整 `<toto>` 校验逻辑全部保持 1.3.36 不变。
+- 不新增 MutationObserver、focus/resize/scroll 监听、轮询或全聊天扫描；1.3.33 维修兔与 1.3.35 外置贴合继续保留。
+
+# 1.3.37 TEST — 视觉偏好最终执行锁 / 性能冻结
+
+- 修复视觉偏好虽然已进入 Prompt 中段，但独立 API 的近输出“最终执行锁”只再次强调主题、展现形式、交互与冷却，导致用户写入的“像素 / 赛璐璐 / 水墨”等风格在最后一步被稀释的问题。
+- 用户填写了额外视觉偏好时，只追加一条短锁：复述用户实际填写内容，并要求它成为整面兔子镜可明确辨认的视觉主导；不写死任何具体风格。
+- 主 API 也会在输出协议前追加同一条短锁；未填写额外视觉偏好时不增加任何内容，关闭视觉编辑总开关时继续保持旧流程。
+- 不新增 MutationObserver、focus/resize/scroll 监听、轮询或全聊天扫描；1.3.35 的纯外置标题壳贴合与 1.3.33 的维修兔修复保持不变。
+
+# 1.3.35 TEST — 修复 1.3.34 不加载 / 保留外置贴合与视觉偏好
+
+- 修复 1.3.34 打包时 `index.js` 已切到 1.3.34、但 `ui / independentApi / outputSanitizer / feedbackCat` 内部 runtime 仍停在 1.3.33，导致 UI 与独立 API 在启动检查时直接 return 的问题。
+- 以用户确认可加载的 1.3.33 原包重新制作，不在坏掉的 1.3.34 上补丁叠补丁。
+- 保留视觉偏好一句话强约束，以及独立 API 纯外置标题壳贴近窄本体的修复。
+- 不新增 MutationObserver、focus/resize/scroll 监听、轮询或全聊天扫描；1.3.20 性能冻结链与 1.3.33 维修兔修复保持不变。
+
+# 1.3.33 TEST — 外置维修兔真实执行 / checked 后代误写恢复
+
+- 修复独立 API 纯外置维修前为了回滚而 clone+replace 整个 `<details>` 的问题：外置镜现在只保存克隆快照，维修直接作用于当前 connected live DOM，不再先把真实维修目标换掉。
+- 修复 `:checked ~ .paper.manuscript` 这类常见模型误写：当同节点复合 class 完全匹配不到，但后续唯一 `.paper` 内存在唯一 `.manuscript`，且该后代确实是默认隐藏、checked 后应显现的正文时，交互急救会高置信恢复为实际后代目标。
+- 维修诊断不再把“checked 规则存在但目标元素为 0”算成有效第二层；新增 unresolved 计数，避免只看到提示卡变色/缩放就误报维修成功。
+- 不新增 MutationObserver、focus/resize/scroll 监听、轮询或全聊天扫描；外置宽度、视觉 Prompt、独立 API 请求链保持不变。
+
+# 1.3.33 TEST — 外置维修兔持久化修复 / 性能冻结
+
+- 对比 1.2.69 后确认：维修兔核心检测、菜单、点击、维修库本身未回归；问题位于后来新增的独立 API 外置布局清理链。
+- 1.3.31 的 `stripIndependentTransientLayoutArtifacts()` 会把维修兔写入的 mobile-layout 标记与救援 CSS 当成运行时临时布局，在外置 ready 后处理／重挂载时清除；1.2.69 不存在该清理链。
+- 现在 user-triggered 维修兔修复会写入持久化标记；重新挂载时保留维修兔的 media-scoped 布局修复，同时仍清理独立 API 自己的 runtime-only spatial fitting。
+- 外置 ready 后处理不再对已经挂载的 live DOM 做无条件 transient-layout strip，避免“刚修好又被擦掉”。
+- 不新增 MutationObserver、focus/resize/scroll 监听、轮询或全聊天扫描；1.3.20 性能修复、1.3.29/1.3.30 外置显示修复、1.3.31 Prompt 修复均保留。
+
+# 1.3.33 TEST — 视觉偏好只改成品视觉 / 老流程冻结
+
+- 仅在“启用视觉提示词编辑注入”开启时增加防跑偏约束；关闭开关时不增加本修复文案，继续保持原老流程。
+- 用户视觉偏好只能改变最终兔子镜成品如何呈现，不能把任务改写成“解释 / 分析 / 策划 / 描述兔子镜”。
+- 禁止用“观察视角 / 视觉转译 / 交互反馈 / 设计说明”等解释文字代替实际成品；CSS 声明了按钮、状态选择器、内容面板或交互反馈时，HTML 必须真实存在对应结构。
+- 规则位于主 API 与独立 API 共用的视觉编辑注入分支，不新增第二套 Prompt，不增加像素风等具体风格教程。
+- 未修改 independentApi / outputSanitizer / settings / ui / style 的运行逻辑，不新增 MutationObserver、focus/resize/scroll 监听、轮询或输入框实时监听。
+
+# 1.3.33 TEST — PC 纯外置窄本体贴合标题壳 / 性能冻结
+
+- 修复独立 API「轻壳外置」在 PC 端出现“标题壳在上方一条，真正的窄本体却悬在整行正文容器中央”的问题。
+- 当结果属于明显更窄、居中、以单个主要视觉本体承载内容的外置结果时，外置宿主会在 ready 后一次性收缩到“标题壳与主本体的较大宽度”，让本体直接挂在标题条下方。
+- 不放大、不压缩、不重排模型生成的真实本体；只修正外置宿主宽度与挂载关系。
+- 仅在 PC 宽屏、独立 API、纯外置、ready 状态下执行一次检测，不新增持续监听、轮询或额外观察器。
+- 1.3.29 的宽背景透明化、1.3.28 的提示词强注入、以及既有不卡顿链保持不变。
+
+# 1.3.29 TEST — PC 纯外置宽背景收束 / 性能冻结
+
+- 修复独立 API「轻壳外置」在 PC 宽屏中，模型生成物本体明显较窄且居中，但最外层纯色舞台容器铺满整个正文内容通道，造成两侧大片同色背景的问题。
+- 仅在 PC 宽屏、独立 API、纯外置、ready 结果下做一次性检测；必须同时确认“外层为全宽纯色背景”以及“内部存在明显更窄、居中、承载绝大多数正文的纸页／文档式本体”才会透明化外层舞台。
+- 不放大或压缩模型生成的真实本体，不改变本体背景、边框、内容、交互或动画；场景型背景图／渐变背景不参与此修复。
+- 此修复只挂在既有 ready 后处理里执行一次，不新增 MutationObserver、focus/resize/scroll 监听、轮询或持续布局扫描。
+- 1.3.20 已确认不卡的 focus 恢复链与 #chat MutationObserver 消息隔离逻辑保持不变；视觉提示词强注入流程保持 1.3.28 不变。
+
+# 1.3.28 TEST — 视觉编辑强注入 / 性能冻结
+
+- 直接加硬现有视觉提示词编辑注入流程；没有新增第二套 Prompt。
+- “额外视觉偏好”开启后视为本轮明确视觉指令，必须在整面主要视觉中明显、成体系落实，而不是仅作点缀或弱参考。
+- “不希望出现的视觉”开启后视为明确避用项。
+- 用户本轮明确偏好／避用项与通用视觉审美规则冲突时，优先采用用户填写内容；锁定工程规则与展现形式本体仍不可覆盖。
+- 关闭视觉提示词编辑注入时，继续逐字使用 1.3.20 原版视觉流程。
+- 不修改已冻结的卡顿修复逻辑，不新增 MutationObserver / focus / resize / scroll 监听或输入框实时保存。
+
+# 1.3.27 TEST — 视觉编辑文案口语化 / 测试版名称隔离
+
+- 测试仓库扩展显示名称由“兔子镜小剧场”改为“兔子镜测试版”，设置页标题与全链路诊断同步显示测试版名称，便于和正式版区分；内部设置键与运行架构不变。
+- “个性化视觉提示词”标题移除 🎨 图标，使设置页风格与其它分区保持一致。
+- 视觉偏好说明改为普通用户更直观的说法：可直接描述喜欢画面怎么排、什么质感、什么颜色、什么光线、想要简洁还是丰富、想要平面还是有前后层次；不要求理解“构图 / 材质 / 光影 / 装饰密度 / 空间层次”等设计术语。
+- 高级区名称改为“高级：修改通用视觉规则 / 通用视觉审美规则（高级，可编辑）”，并明确普通用户无需修改。
+- 保留 1.3.26 的显式注入开关：默认关闭时仍逐字走 1.3.20 原版视觉 Prompt 流程；开启后才发送可编辑视觉层。
+- 本版不修改 independentApi 的 focus 恢复链、outputSanitizer 的 MutationObserver 消息隔离、外置尺寸、独立 API、维修兔交互修复或动画弹幕修复，不新增高频输入监听、轮询或布局监听。
+
+# 1.3.26 — 视觉提示词编辑注入显式开关
+
+- 新增“启用视觉提示词编辑注入”总开关，默认关闭。
+- 未勾选时不发送 `visualPrompt` / `visualExtraPrompt` / `visualAvoidPrompt`，Prompt 组装直接恢复 1.3.20 原版 `展现形式落地 + 色彩组织` 流程。
+- 勾选后才启用可编辑官方视觉基线、额外视觉偏好与视觉避雷，并随实际生成兔子镜的模型请求发送。
+- 关闭开关不会清空已编辑内容；用户可先保存草稿，之后再开启。
+- 本次不修改 independentApi / outputSanitizer 的性能修复逻辑，不新增 input/keyup/keydown 高频监听、MutationObserver、focus/resize/scroll 监听或轮询。
+
+# 1.3.26 — 视觉提示词设置页强制刷新 / 旧 UI 残留修复
+
+- 修复覆盖安装或热更新后，旧的兔子镜设置面板 DOM 被误判为当前 UI，导致 1.3.21 起新增的“个性化视觉提示词”入口没有显示的问题。
+- 设置面板现在只有在运行版本、UI 版本以及“额外视觉偏好 / 不希望出现的视觉 / 保存视觉提示词”关键控件全部匹配时才会复用；否则自动移除旧面板并按当前版本重建。
+- 设置标题旁新增内部版本 `1.3.26`，便于直接确认浏览器实际加载版本。
+- 不修改 1.3.20 已验证的 focus / MutationObserver 性能修复，不修改独立 API、外置、维修兔、挨打猫、随机冷却或视觉 Prompt 拼接逻辑。
+
+# 1.3.24 TEST — radio 弹幕互斥 / 动画溢出误修 / CSS 类选择器笔误修复
+
+- 修复模型把多个 radio 状态组的弹幕条目全部挂上公共 `active-danmaku`／跑马灯 class 时，未选中组也因公共 `opacity + animation` 规则持续可见，造成三组文本同时叠在同一画布的问题。维修兔现在可把这类“同一绝对定位画布、同一弹幕公共 class、由多个 radio 的 `:checked` 规则分别激活”的条目识别为互斥状态集合；只保留当前选中组可见并运行，其他组隐藏且暂停动画。
+- 对这类被动动画条目保留 `pointer-events:none`，不会因为互斥急救而让飞行文字反过来遮挡触摸；普通叠层正文仍沿用原有互斥 panel 维修逻辑。
+- 手机排版巡逻不再把 `position:absolute/fixed + nowrap + animation + pointer-events:none` 的弹幕／跑马灯当作普通正文横向溢出；其跨画布移动属于设计本身，不会再被错误压宽、换行或持续报黄兔。
+- 清洗 CSS 时新增高置信类选择器笔误修复：模型偶发输出的 `. className` 会恢复为合法的 `.className`。本例中的 `. reality-text` / `. reality-sub` 因此可重新命中原本的文字样式。
+- 继续保留 1.3.23 的外层 `<details>` 手机 overflow 误报修复、1.3.22 个性化视觉提示词，以及 1.3.20 已实机确认不卡的 `focus` / MutationObserver 性能修复；本版未修改两条性能链。
+
+# 1.3.23 — 手机端根节点横向溢出误报修复
+
+- 修复维修兔在手机窄屏下把兔子镜最外层 `<details>` 根节点也计入“正文横向溢出”的问题。外层根节点的 `scrollWidth` 会包含标题文字与 🐇/🐈 工具入口，长标题可能因此被误判为正文内容溢出。
+- 手机排版诊断现在与实际维修范围保持一致：只检查维修器真正会处理的镜面内部生成内容，不再让不可维修的外层根节点形成“检测到 1 处风险 → 维修无改动 → 风险永久残留”的黄兔循环。
+- 不改变正文、标题、外置尺寸或交互结构；真实的内部横向溢出、固定宽度、Grid/Flex、媒体和状态内容风险仍按原规则检测。
+- 1.3.20 起已验证的性能修复继续冻结：普通 `focus` 不触发全聊天 `syncAll()`，聊天 MutationObserver 只处理真实消息作用域。本版未修改这两条性能链。
+- 保留 1.3.22 的个性化视觉提示词编辑功能与测试仓库发布通道。
+
+# 1.3.22 TEST — 可编辑视觉提示词
+
+- 以已实机确认不卡顿的 1.3.20 为唯一运行时基线；保留 1.3.19 的消息级 MutationObserver 隔离，以及 1.3.20“普通 focus 不触发整段聊天 syncAll”性能修复。
+- 新增设置页“🎨 视觉提示词编辑”：把原 `presentationEmbodimentRule()` 中可归类为审美的默认主体、材质、配色、光影与反模板化规则拆成“官方默认视觉规则”，允许用户直接编辑。
+- 新增“额外视觉偏好”和“不希望出现的视觉”两个可选输入框；三块内容保存后都会进入下一次兔子镜 Prompt。
+- 跟随当前 API 与独立 API 共用同一 `buildRabbitMirrorPromptDetails()`，因此编辑后的视觉提示词会发送给实际负责生成兔子镜的模型；独立 API 不把它注入主 API 正文请求。
+- 核心工程规则继续锁定：`<toto>` 输出协议、HTML/CSS 安全、中文硬锁、结构完整性、移动端可读性、交互可触发性、近期冷却、维修兔兼容均不可被视觉编辑覆盖。
+- 设置页只在显式点击“保存视觉提示词”时持久化，不监听 textarea 的每次 input，避免重新引入移动端设置抽屉卡顿。
+- 发布通道切回测试仓库 `https://github.com/Zaiyebuzuoyouqingdetiangou/tototest`；正式仓库 1.3.20 不受影响。
+
 # 1.3.20 — 普通 SillyTavern 焦点切换不再触发整段聊天对账
 
 - **正式仓库发布适配**：将已实机确认流畅的 1.3.20 测试确认包提升为 `toto` 正式发布包；`homePage` 与安装说明切换到正式仓库，运行源码、Prompt、母本、随机/冷却、维修兔、挨打猫与 API 链保持测试确认状态不变。
