@@ -7,84 +7,6 @@ const MAX_ATTEMPTS_PER_CHAT = 20;
 const MAX_DIRECTIVE_PICKS_PER_CHAT = 24;
 const ATTEMPT_TTL_MS = 12 * 60 * 60 * 1000;
 const DIRECTIVE_PICK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const FORMAT_ELIGIBLE_MISS_STORAGE_KEY = 'rabbit_mirror_theater:format_eligible_misses:v1';
-const FORMAT_ELIGIBLE_MISS_CAP = 320;
-
-function normalizeFormatEligibleMisses(raw, validFormatIds = []) {
-    const valid = new Set((validFormatIds || []).map(id => String(id || '').trim()).filter(Boolean));
-    const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
-    const normalized = {};
-    for (const [rawId, rawValue] of Object.entries(source)) {
-        const sourceId = String(rawId || '').trim();
-        const id = sourceId === '6.2.1.2' ? '6.2.1.1.e' : sourceId;
-        if (!id || (valid.size && !valid.has(id))) continue;
-        const value = Number(rawValue);
-        if (!Number.isFinite(value) || value < 0) continue;
-        const misses = Math.min(FORMAT_ELIGIBLE_MISS_CAP, Math.floor(value));
-        if (misses > 0) normalized[id] = Math.max(Number(normalized[id] || 0), misses);
-    }
-    return normalized;
-}
-
-function readFormatEligibleMissStore(validFormatIds = []) {
-    try {
-        return normalizeFormatEligibleMisses(
-            JSON.parse(localStorage.getItem(FORMAT_ELIGIBLE_MISS_STORAGE_KEY) || '{}'),
-            validFormatIds,
-        );
-    } catch {
-        return {};
-    }
-}
-
-function writeFormatEligibleMissStore(value) {
-    try {
-        localStorage.setItem(FORMAT_ELIGIBLE_MISS_STORAGE_KEY, JSON.stringify(value || {}));
-        return true;
-    } catch (error) {
-        console.warn('[RabbitMirror] Failed to store format fairness state:', error);
-        return false;
-    }
-}
-
-export function getFormatEligibleMisses(validFormatIds = []) {
-    return readFormatEligibleMissStore(validFormatIds);
-}
-
-export function recordFormatEligibleMissRound({ eligibleIds = [], selectedIds = [], validFormatIds = [] } = {}) {
-    const valid = new Set((validFormatIds || []).map(id => String(id || '').trim()).filter(Boolean));
-    const eligible = [...new Set((eligibleIds || []).map(id => String(id || '').trim()).filter(id => id && (!valid.size || valid.has(id))))];
-    if (!eligible.length) return false;
-
-    const selected = new Set((selectedIds || []).map(id => String(id || '').trim()).filter(Boolean));
-    const state = readFormatEligibleMissStore(validFormatIds);
-
-    for (const id of eligible) {
-        if (selected.has(id)) {
-            delete state[id];
-            continue;
-        }
-        const next = Math.min(FORMAT_ELIGIBLE_MISS_CAP, Number(state[id] || 0) + 1);
-        state[id] = next;
-    }
-
-    // 每次真实随机抽签本来就需要持久化 aging；即使所有计数都已到 cap，也写回一次
-    // 规范化后的稀疏 map，以便顺手清掉已经从当前 format 索引消失的旧 ID / 非法值。
-    return writeFormatEligibleMissStore(state);
-}
-
-export function resetFormatEligibleMisses(formatIds = []) {
-    const targets = [...new Set((formatIds || []).map(id => String(id || '').trim()).filter(Boolean))];
-    if (!targets.length) return false;
-    const state = readFormatEligibleMissStore();
-    let changed = false;
-    for (const id of targets) {
-        if (state[id] === undefined) continue;
-        delete state[id];
-        changed = true;
-    }
-    return changed ? writeFormatEligibleMissStore(state) : true;
-}
 
 // 抽签写入 pending 后，只有真正渲染出兔子镜才会提交。若生成被取消、请求失败或页面刷新，
 // pending 会一直留在 localStorage；之后任意一面兔子镜渲染完成都会把这个从未生成过的组合
@@ -458,6 +380,18 @@ const PALETTE_HUE_LABELS = {
 // 米黄／奶油／米色／羊皮纸／做旧纸张实际上是同一个吸引子，只是 hueFamily 在
 // orange / yellow / neutral 之间漂移。若按四元组严格分家族，米黄→羊皮纸→米色
 // 会被算成三个不同家族而永远不触发重复冷却，正好放过最需要拦的那一种。
+function isCoolBlueAttractor(fingerprint) {
+    if (!fingerprint || typeof fingerprint !== 'object') return false;
+    if (Number(fingerprint.confidence || 0) < 0.35) return false;
+    const hueFamily = String(fingerprint.hueFamily || 'neutral');
+    const temperature = String(fingerprint.temperature || 'neutral');
+    // Light sky-blue, cyan-blue and medium blue often drift between saturation /
+    // brightness buckets while looking like the same blue visual family. Treat the
+    // two adjacent cool hue buckets as one short-term anti-repeat family; this is a
+    // cooldown detector only, never a permanent ban on blue.
+    return temperature === 'cool' && ['cyan', 'blue'].includes(hueFamily);
+}
+
 function isCreamAttractor(fingerprint) {
     if (!fingerprint) return false;
     if (String(fingerprint.brightness || '') !== 'light' || String(fingerprint.temperature || '') !== 'warm') return false;
@@ -473,16 +407,6 @@ function isCreamAttractor(fingerprint) {
         && Number.isFinite(averageLuminance)
         && averageLuminance >= 228;
     return lowSaturationWarmNeutral || paleWarmNeutral;
-}
-
-// 1.4.25.1: 米黄冷却长期生效后，模型容易把“高明度、非暖中性”的最省力答案收敛成蓝白/青蓝。
-// 旧 key 又把 cyan/blue、明度与饱和度拆得过细，肉眼连续蓝色却会被当成不同家族而漏掉重复冷却。
-function isCoolBlueAttractor(fingerprint) {
-    if (!fingerprint || typeof fingerprint !== 'object') return false;
-    if (Number(fingerprint.confidence || 0) < 0.35) return false;
-    const hueFamily = String(fingerprint.hueFamily || 'neutral');
-    const temperature = String(fingerprint.temperature || 'neutral');
-    return temperature === 'cool' && ['cyan', 'blue'].includes(hueFamily);
 }
 
 export function paletteFamilyKey(fingerprint) {
@@ -509,23 +433,8 @@ export function describePaletteFamily(fingerprint) {
     // Do not echo HSL's misleading near-white saturation label back into the
     // prompt once this fingerprint has been recognized as the cream attractor.
     if (isCreamAttractor(fingerprint)) return '高明度暖中性（米黄／奶油／米色底盘）';
-    if (isCoolBlueAttractor(fingerprint)) return '冷青蓝主色家族（蓝白／青蓝底盘）';
+    if (isCoolBlueAttractor(fingerprint)) return '冷色青蓝家族';
     return base;
-}
-
-// 1.4.25.2: 配色冷却从“出现重复后再纠偏”改为每一面成品完成后立即进入短期冷却。
-// 这里不决定下一轮该用什么颜色，只把最近实际成品按时间距离交给 Prompt；越近权重越高，
-// 超出窗口自然解除。这样不会再形成“黑 -> 米黄 -> 蓝白 -> 再补一个禁色”的打地鼠链。
-export function getRecentPaletteCooldown(window = 3) {
-    const span = Math.max(1, Number(window) || 3);
-    const recent = getRecentPaletteFingerprints(span).slice().reverse();
-    return recent.map((fingerprint, roundsAgo) => ({
-        fingerprint,
-        key: paletteFamilyKey(fingerprint),
-        label: describePaletteFamily(fingerprint),
-        roundsAgo,
-        strength: Math.max(1, span - roundsAgo),
-    })).filter(item => item.label);
 }
 
 // 近 window 轮中，最新一轮所属的配色家族出现了 threshold 次及以上即视为重复。
@@ -547,7 +456,6 @@ export function getRepeatedPaletteFamily(window = 3, threshold = 2) {
         window: keyed.length,
         label: describePaletteFamily(latest.item) || latest.key,
         cream: isCreamAttractor(latest.item),
-        blue: isCoolBlueAttractor(latest.item),
         fingerprint: latest.item,
     };
 }
@@ -682,7 +590,6 @@ export function clearLastCombo() {
         localStorage.removeItem(PENDING_KEY);
         localStorage.removeItem(ATTEMPT_STORAGE_KEY);
         localStorage.removeItem(DIRECTIVE_PICK_STORAGE_KEY);
-        localStorage.removeItem(FORMAT_ELIGIBLE_MISS_STORAGE_KEY);
         try {
             sessionStorage.removeItem('rabbit_mirror_theater:generation_snapshots:v1');
             sessionStorage.removeItem('rabbit_mirror_theater:active_generation_attempt:v1');
