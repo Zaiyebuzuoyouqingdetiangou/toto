@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.4.0';
-import { getCurrentChatKey } from './storage.js?rmv=1.4.0';
+import { getSettings } from './settings.js?rmv=1.4.25.2';
+import { getCurrentChatKey } from './storage.js?rmv=1.4.25.2';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,13 +9,13 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.4.0';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.0';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.0';
-import { RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, getBlacklistState, getRabbitMirrorRecipe, isBlacklisted, removeBlacklistItem, setBlacklistEnabled, toggleBlacklistItem } from './blacklist.js?rmv=1.4.0';
+} from './feedbackCat.js?rmv=1.4.25.2';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.25.2';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.25.2';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.25.2';
 
 
-const RUNTIME_VERSION = '1.4.0';
+const RUNTIME_VERSION = '1.4.25.2';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -910,15 +910,152 @@ function applyExpandedOpacityResidualRescue(input, candidates, records) {
     return rescuedCount;
 }
 
-function scheduleExpandedOpacityResidualRescue(input, candidates, records) {
+function scheduleExpandedOpacityResidualRescue(root, input, candidates, records) {
     if (!input || !candidates?.size || !records) return;
     for (const delay of [0, 80, 260, 650]) {
         setTimeout(() => {
             if (!input.isConnected || !input.checked
                 || interactionInlineOverrideStates.get(input) !== records) return;
             applyExpandedOpacityResidualRescue(input, candidates, records);
+            applyNestedCheckedContentResidualRescue(root, input, candidates, records);
         }, delay);
     }
+}
+
+
+const NESTED_CHECKED_CONTENT_RESCUE_ATTR = 'data-rabbit-mirror-nested-checked-content-rescue';
+
+function checkedDescendantHasIndependentStateRule(root, element) {
+    if (!root?.querySelectorAll || !element) return true;
+    const id = String(element.id || '').trim();
+    const classes = getClassTokens(element).filter(Boolean);
+    if (!id && !classes.length) return false;
+    const needles = [];
+    if (id) needles.push(`#${id}`);
+    for (const className of classes) needles.push(`.${className}`);
+    if (!needles.length) return false;
+
+    const statePseudo = /:(?:checked|hover|active|focus|focus-within|target|has)\b/i;
+    const revealProperty = /(?:^|;)\s*(?:display|visibility|opacity|height|max-height|min-height|clip-path)\s*:/i;
+    const blockRe = /([^{}]+)\{([^{}]*)\}/g;
+    for (const style of getRabbitMirrorLocalStyleElements(root)) {
+        const cssText = String(style.textContent || '');
+        blockRe.lastIndex = 0;
+        let block;
+        while ((block = blockRe.exec(cssText))) {
+            const selectorText = String(block[1] || '');
+            if (!statePseudo.test(selectorText) || !revealProperty.test(String(block[2] || ''))) continue;
+            if (needles.some(needle => selectorText.includes(needle))) return true;
+        }
+    }
+    return false;
+}
+
+function checkedNestedContentDefaultDisplay(element) {
+    const tag = String(element?.tagName || '').toLowerCase();
+    if (['span', 'strong', 'em', 'i', 'b', 'small', 'mark', 'code', 'kbd', 'samp', 'q', 'cite', 'time'].includes(tag)) return 'inline';
+    if (tag === 'li') return 'list-item';
+    if (tag === 'table') return 'table';
+    if (tag === 'tbody') return 'table-row-group';
+    if (tag === 'thead') return 'table-header-group';
+    if (tag === 'tfoot') return 'table-footer-group';
+    if (tag === 'tr') return 'table-row';
+    if (tag === 'td' || tag === 'th') return 'table-cell';
+    return 'block';
+}
+
+function checkedNestedContentResidualEvidence(root, element) {
+    if (!element?.isConnected || !root?.contains?.(element) || element.hidden) return null;
+    if (element.matches?.('script,style,noscript,template,input,select,textarea,button,label,summary,details')) return null;
+    if (element.querySelector?.('input,select,textarea,button,label,summary,details,[role="button"],[contenteditable="true"]')) return null;
+    const text = normalizeInteractionMatchText(element.textContent);
+    const hasMedia = !!element.querySelector?.('img,svg,canvas,video,audio,figure,table,ul,ol,dl,blockquote');
+    if (text.length < 2 && !hasMedia) return null;
+    if (checkedDescendantHasIndependentStateRule(root, element)) return null;
+
+    const computed = diagnosticComputedStyle(element);
+    const display = String(computed?.display || '').toLowerCase();
+    const visibility = String(computed?.visibility || '').toLowerCase();
+    const opacity = Number.parseFloat(String(computed?.opacity || '1'));
+    const height = Number.parseFloat(String(computed?.height || ''));
+    const maxHeight = String(computed?.maxHeight || computed?.getPropertyValue?.('max-height') || '').toLowerCase();
+    const strong = display === 'none' || /^(?:hidden|collapse)$/.test(visibility);
+    const weak = (Number.isFinite(opacity) && opacity <= 0.05)
+        || (Number.isFinite(height) && height <= 1)
+        || isCollapsedDimensionValue(maxHeight);
+    if (!strong && !weak) return null;
+    return { computed, display, visibility, opacity, height, maxHeight, strong };
+}
+
+
+function checkedExpandedResultStillCollapsed(target) {
+    if (!target?.isConnected) return false;
+    const computed = diagnosticComputedStyle(target);
+    if (String(computed?.display || '').toLowerCase() === 'none') return false;
+    if (/^(?:hidden|collapse)$/.test(String(computed?.visibility || '').toLowerCase())) return false;
+    const opacity = Number.parseFloat(String(computed?.opacity || '1'));
+    if (Number.isFinite(opacity) && opacity <= 0.05) return false;
+    let height = 0;
+    try { height = Number(target.getBoundingClientRect?.().height || 0); } catch { height = 0; }
+    return height <= 1 && checkedTargetCarriesResultContent(target);
+}
+
+function applyNestedCheckedContentResidualRescue(root, input, candidates, records) {
+    if (!root || !input?.checked || !candidates?.size || !records) return 0;
+    const rescuedElements = new Set(records
+        .filter(record => record.rescueKind === 'nested-checked-content')
+        .map(record => record.element));
+
+    for (const candidate of candidates.values()) {
+        const target = candidate?.target;
+        if (!target?.isConnected || !candidate.expands || !checkedExpandedResultStillCollapsed(target)) continue;
+        // This route is intentionally shallow. It repairs only direct result-body children
+        // left hidden after the checked rule has already proved that their parent is the
+        // selected result. Nested interactive subpanels keep their own state machine.
+        // Strong hiding evidence (display:none / visibility:hidden) must win over weak
+        // geometry/opacity evidence so a zero-height wrapper cannot consume the one repair
+        // slot before the actually hidden body is reached.
+        const evidenceEntries = [...(target.children || [])]
+            .filter(child => !rescuedElements.has(child))
+            .map(child => ({ child, evidence: checkedNestedContentResidualEvidence(root, child) }))
+            .filter(entry => entry.evidence);
+        const strongEntries = evidenceEntries.filter(entry => entry.evidence.strong);
+        const repairEntries = strongEntries.length
+            ? strongEntries
+            : evidenceEntries.filter(entry => !entry.evidence.strong);
+
+        for (const { child, evidence } of repairEntries) {
+            const { display, visibility, opacity, height, maxHeight } = evidence;
+            const fixes = [];
+            if (display === 'none') fixes.push(['display', checkedNestedContentDefaultDisplay(child)]);
+            if (/^(?:hidden|collapse)$/.test(visibility)) fixes.push(['visibility', 'visible']);
+            if (Number.isFinite(opacity) && opacity <= 0.05) fixes.push(['opacity', '1']);
+            if (Number.isFinite(height) && height <= 1) fixes.push(['height', 'auto']);
+            if (isCollapsedDimensionValue(maxHeight)) fixes.push(['max-height', 'none']);
+            if (!fixes.length) continue;
+
+            for (const [property, value] of fixes) {
+                records.push({
+                    element: child,
+                    property,
+                    value: child.style.getPropertyValue(property),
+                    priority: child.style.getPropertyPriority(property),
+                    rescueKind: 'nested-checked-content',
+                });
+                child.style.setProperty(property, value, 'important');
+            }
+            rescuedElements.add(child);
+            // Stop as soon as the selected result has regained a real content box.
+            // This keeps secondary metadata or intentionally hidden tertiary details closed.
+            let targetHeight = 0;
+            try { targetHeight = Number(target.getBoundingClientRect?.().height || 0); } catch { targetHeight = 0; }
+            if (targetHeight > 4) break;
+        }
+    }
+
+    if (rescuedElements.size) input.setAttribute(NESTED_CHECKED_CONTENT_RESCUE_ATTR, String(rescuedElements.size));
+    else input.removeAttribute?.(NESTED_CHECKED_CONTENT_RESCUE_ATTR);
+    return rescuedElements.size;
 }
 
 
@@ -2844,7 +2981,8 @@ function applyCheckedRuleTextFallback(toto, input) {
     if (records.length) {
         interactionInlineOverrideStates.set(input, records);
         applyExpandedOpacityResidualRescue(input, revealCandidates, records);
-        scheduleExpandedOpacityResidualRescue(input, revealCandidates, records);
+        applyNestedCheckedContentResidualRescue(toto, input, revealCandidates, records);
+        scheduleExpandedOpacityResidualRescue(toto, input, revealCandidates, records);
     }
     if (records.length || pseudoDeclarationCount) {
         input.setAttribute(CHECKED_TEXT_RULE_RESCUE_ATTR, [...routeKinds].join(','));
@@ -2867,6 +3005,7 @@ function restoreInteractionInlineOverrides(input) {
     }
     interactionInlineOverrideStates.delete(input);
     input?.removeAttribute?.(EXPANDED_OPACITY_RESCUE_ATTR);
+    input?.removeAttribute?.(NESTED_CHECKED_CONTENT_RESCUE_ATTR);
 }
 
 function applyCheckedRuleInlineFallback(toto, input) {
@@ -2926,7 +3065,8 @@ function applyCheckedRuleInlineFallback(toto, input) {
     if (records.length) {
         interactionInlineOverrideStates.set(input, records);
         applyExpandedOpacityResidualRescue(input, revealCandidates, records);
-        scheduleExpandedOpacityResidualRescue(input, revealCandidates, records);
+        applyNestedCheckedContentResidualRescue(toto, input, revealCandidates, records);
+        scheduleExpandedOpacityResidualRescue(toto, input, revealCandidates, records);
     }
 }
 
@@ -2945,9 +3085,9 @@ const NESTED_DETAILS_REPLACEMENT_HOST_ATTR = 'data-rm-nested-details-replacement
 const NESTED_DETAILS_REPLACEMENT_STYLE_ATTR = 'data-rabbit-mirror-nested-details-replacement-style';
 const NESTED_DETAILS_REPLACEMENT_BOUND_ATTR = 'data-rm-nested-details-replacement-bound';
 const NESTED_DETAILS_REPLACEMENT_BINDING_PROP = '__rabbitMirrorNestedDetailsReplacementBinding';
-const NESTED_DETAILS_REPLACEMENT_BINDING_VERSION = '1.4.0';
+const NESTED_DETAILS_REPLACEMENT_BINDING_VERSION = '1.4.12';
 const NESTED_DETAILS_DEFERRED_BINDING_PROP = '__rabbitMirrorNestedDetailsDeferredBinding';
-const NESTED_DETAILS_DEFERRED_BINDING_VERSION = '1.4.0';
+const NESTED_DETAILS_DEFERRED_BINDING_VERSION = '1.4.12';
 const nestedDetailsDeferredChecks = new WeakSet();
 const NESTED_DETAILS_POPUP_RESCUE_ATTR = 'data-rm-nested-details-popup-rescue';
 const NESTED_DETAILS_POPUP_HOST_ATTR = 'data-rm-nested-details-popup-host';
@@ -6153,8 +6293,10 @@ function readReversibleStyleBaseline(element) {
             const parsed = JSON.parse(decodeURIComponent(encoded));
             if (parsed && typeof parsed === 'object') {
                 for (const [property, state] of Object.entries(parsed)) {
+                    const value = String(state?.value || '');
+                    if (!boundaryStyleValueIsSafe(value)) continue;
                     baseline.set(property, {
-                        value: String(state?.value || ''),
+                        value,
                         priority: String(state?.priority || ''),
                     });
                 }
@@ -6780,6 +6922,9 @@ const RAW_SELF_MUTATION_RESCUE_ATTR = 'data-rabbit-mirror-self-mutation-rescue';
 const RAW_SELF_MUTATION_HTML_BASELINE_ATTR = 'data-rm-self-mutation-html-baseline';
 const RAW_SELF_MUTATION_ACTIVE_ATTR = 'data-rm-self-mutation-active';
 const rawSelfMutationRescueStates = new WeakMap();
+// Security boundary: self-mutation baselines are extension-owned runtime state.
+// Never trust model-authored data-rm-* HTML baseline/active attributes.
+const rawSelfMutationDomBaselines = new WeakMap();
 
 function parseSafeSelfMutationText(mode, rawValue) {
     const decoded = decodeSafeInlineString(rawValue);
@@ -7009,20 +7154,21 @@ function parseSelfMutationProgram(source, trigger, root, rawTrigger = null, rawR
     if (!activeAssignments.length && activeText == null && !relatedMutations.length) return null;
 
     const properties = new Set(activeAssignments.map(item => item.property));
-    let originalHtml = trigger.innerHTML;
-    const encodedBaseline = trigger.getAttribute?.(RAW_SELF_MUTATION_HTML_BASELINE_ATTR) || '';
-    if (encodedBaseline) {
-        try { originalHtml = decodeURIComponent(encodedBaseline); } catch { originalHtml = trigger.innerHTML; }
-    } else {
-        try { trigger.setAttribute(RAW_SELF_MUTATION_HTML_BASELINE_ATTR, encodeURIComponent(originalHtml)); } catch {}
+    let originalNodes = rawSelfMutationDomBaselines.get(trigger);
+    if (!Array.isArray(originalNodes)) {
+        originalNodes = [...trigger.childNodes].map(node => node.cloneNode(true));
+        rawSelfMutationDomBaselines.set(trigger, originalNodes);
     }
+    // These attributes may be supplied by model HTML. Runtime state lives only in WeakMaps.
+    trigger.removeAttribute?.(RAW_SELF_MUTATION_HTML_BASELINE_ATTR);
+    trigger.removeAttribute?.(RAW_SELF_MUTATION_ACTIVE_ATTR);
     return {
         trigger,
-        active: trigger.getAttribute?.(RAW_SELF_MUTATION_ACTIVE_ATTR) === 'true',
+        active: false,
         activeAssignments,
         activeText,
         relatedMutations,
-        originalHtml,
+        originalNodes,
         originalStyles: capturePseudoStyleState(trigger, properties),
     };
 }
@@ -7069,7 +7215,8 @@ function applyRawSelfMutationEntry(entry, active) {
             applyPseudoStyleAssignments(mutation.target, mutation.assignments);
         }
     } else if (entry.activeText != null) {
-        entry.trigger.innerHTML = entry.originalHtml;
+        const restoredNodes = (entry.originalNodes || []).map(node => node.cloneNode(true));
+        entry.trigger.replaceChildren(...restoredNodes);
     }
     entry.trigger.setAttribute('aria-pressed', entry.active ? 'true' : 'false');
     entry.trigger.setAttribute(RAW_SELF_MUTATION_ACTIVE_ATTR, entry.active ? 'true' : 'false');
@@ -8571,7 +8718,7 @@ function refreshTargetRescue(root) {
 }
 
 const NESTED_DETAILS_FALLBACK_HANDLER_PROP = '__rabbitMirrorNestedDetailsFallbackHandler';
-const NESTED_DETAILS_FALLBACK_HANDLER_VERSION = '1.4.0';
+const NESTED_DETAILS_FALLBACK_HANDLER_VERSION = '1.4.12';
 
 function installNestedDetailsFallback(root) {
     if (!root?.querySelectorAll || !root?.addEventListener) return;
@@ -11633,6 +11780,9 @@ function releaseIndependentMaintenanceLiveRepair(root, delay = 700) {
     return true;
 }
 const maintenancePreRepairSnapshots = new Map();
+const rabbitMirrorInteractionResetSnapshots = new Map();
+const rabbitMirrorInteractionResetInstanceIds = new WeakMap();
+let rabbitMirrorInteractionResetInstanceCounter = 0;
 const MAINTENANCE_AUTO_SAFE_ATTR = 'data-rabbit-mirror-auto-safe-maintenance';
 const MAINTENANCE_AUTO_SAFE_RESULT_ATTR = 'data-rabbit-mirror-auto-safe-result';
 const MAINTENANCE_AUTO_SAFE_VERSION = 'safe-v3-live-patrol';
@@ -11675,6 +11825,15 @@ const FILL_IN_CHOICE_USED_ATTR = 'data-rm-fill-in-choice-used';
 const FILL_IN_CHOICE_COUNT_ATTR = 'data-rabbit-mirror-fill-in-choice-count';
 const FILL_IN_CHOICE_STYLE_ATTR = 'data-rabbit-mirror-fill-in-choice-style';
 const fillInChoiceRescueStates = new WeakMap();
+const STYLELESS_STRUCTURED_RESCUE_ATTR = 'data-rabbit-mirror-styleless-structured-rescue';
+const STYLELESS_STRUCTURED_STYLE_ATTR = 'data-rabbit-mirror-styleless-structured-style';
+const STYLELESS_STRUCTURED_SHELL_ATTR = 'data-rm-styleless-shell';
+const STYLELESS_STRUCTURED_HEADER_ATTR = 'data-rm-styleless-header';
+const STYLELESS_STRUCTURED_TITLE_ATTR = 'data-rm-styleless-title';
+const STYLELESS_STRUCTURED_SUBTITLE_ATTR = 'data-rm-styleless-subtitle';
+const STYLELESS_STRUCTURED_SECTION_ATTR = 'data-rm-styleless-section';
+const STYLELESS_STRUCTURED_TEXT_ATTR = 'data-rm-styleless-text';
+const STYLELESS_STRUCTURED_COUNT_ATTR = 'data-rabbit-mirror-styleless-structured-count';
 const MOBILE_LAYOUT_RESCUE_STYLE_ATTR = 'data-rabbit-mirror-mobile-layout-rescue';
 const MOBILE_LAYOUT_SCOPE_ATTR = 'data-rabbit-mirror-mobile-layout-scope';
 const MOBILE_LAYOUT_RESCUE_COUNT_ATTR = 'data-rabbit-mirror-mobile-layout-count';
@@ -11695,6 +11854,8 @@ const MOBILE_LAYOUT_COMPACT_GAP_ATTR = 'data-rm-mobile-compact-gap';
 const MOBILE_LAYOUT_MEDIA_ATTR = 'data-rm-mobile-media';
 const MOBILE_LAYOUT_SCROLL_ATTR = 'data-rm-mobile-scroll';
 const MOBILE_LAYOUT_BREAK_TEXT_ATTR = 'data-rm-mobile-break-text';
+const MOBILE_LAYOUT_SQUEEZED_TEXT_ATTR = 'data-rm-mobile-squeezed-text';
+const MOBILE_LAYOUT_UNDERFILL_ATTR = 'data-rm-mobile-underfill';
 const MOBILE_LAYOUT_STATE_CONTENT_ATTR = 'data-rm-mobile-state-content';
 const MOBILE_LAYOUT_STATE_ACTIVE_ATTR = 'data-rm-mobile-state-active';
 const MOBILE_LAYOUT_SECTION_STACK_PRESERVE_ATTR = 'data-rm-mobile-section-stack-preserve';
@@ -11731,6 +11892,8 @@ const MOBILE_LAYOUT_TARGET_ATTRS = Object.freeze([
     MOBILE_LAYOUT_MEDIA_ATTR,
     MOBILE_LAYOUT_SCROLL_ATTR,
     MOBILE_LAYOUT_BREAK_TEXT_ATTR,
+    MOBILE_LAYOUT_SQUEEZED_TEXT_ATTR,
+    MOBILE_LAYOUT_UNDERFILL_ATTR,
     MOBILE_LAYOUT_STATE_CONTENT_ATTR,
     MOBILE_LAYOUT_STATE_ACTIVE_ATTR,
     MOBILE_LAYOUT_SECTION_STACK_PRESERVE_ATTR,
@@ -11748,7 +11911,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.4.0-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = '1.4.25.2-FULL-CHAIN';
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -11885,6 +12048,7 @@ function diagnosticRouteSummary(root) {
         reversibleRadio: Number.parseInt(root?.getAttribute?.(REVERSIBLE_RADIO_ROOT_ATTR) || '0', 10) || 0,
         radioReset: Number.parseInt(root?.getAttribute?.(RAW_RADIO_RESET_ROOT_ATTR) || '0', 10) || 0,
         expandedOpacity: root?.querySelectorAll?.(`[${EXPANDED_OPACITY_RESCUE_ATTR}]`)?.length || 0,
+        nestedCheckedContent: root?.querySelectorAll?.(`[${NESTED_CHECKED_CONTENT_RESCUE_ATTR}]`)?.length || 0,
         containerReveal: renderedContainerInternalRevealStates.get(root)?.entries?.size || 0,
         selfMutation: rawSelfMutationRescueStates.get(root)?.entries?.size || 0,
         classStateProgram: root?.querySelectorAll?.(`[${DIRECT_ID_CLASS_STATE_RESCUE_ATTR}]`)?.length || 0,
@@ -11911,7 +12075,7 @@ function diagnosticRouteSummary(root) {
 function diagnosticInferReason(root, inputs, targets, state = null) {
     const routes = diagnosticRouteSummary(root);
     const depth = maintenanceCheckedInteractionDepth(root);
-    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.stateSibling + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.focusToChecked + routes.checkedTextRule + routes.missingCheckedClass + routes.crossParentChecked + routes.checkedHasState + routes.detachedCheckedHas + routes.pairedCheckedState + routes.exclusiveStackedState + routes.channelDialCycle + routes.reversibleRadio + routes.expandedOpacity + routes.containerReveal + routes.selfMutation + routes.classStateProgram + routes.scriptTimeline + routes.cssCommentRepair + routes.changeProgram + routes.focusWithinPersistent + routes.unlabeledChecked + routes.labeledCheckedVerify + routes.selectionFallback + routes.disabledChoice + routes.inertAction + routes.staticChoiceSelection + routes.structuredStaticDisclosure + routes.fillInChoice + routes.passportDocument + routes.decorativeOverlayPassThrough;
+    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.stateSibling + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.focusToChecked + routes.checkedTextRule + routes.missingCheckedClass + routes.crossParentChecked + routes.checkedHasState + routes.detachedCheckedHas + routes.pairedCheckedState + routes.exclusiveStackedState + routes.channelDialCycle + routes.reversibleRadio + routes.expandedOpacity + routes.nestedCheckedContent + routes.containerReveal + routes.selfMutation + routes.classStateProgram + routes.scriptTimeline + routes.cssCommentRepair + routes.changeProgram + routes.focusWithinPersistent + routes.unlabeledChecked + routes.labeledCheckedVerify + routes.selectionFallback + routes.disabledChoice + routes.inertAction + routes.staticChoiceSelection + routes.structuredStaticDisclosure + routes.fillInChoice + routes.passportDocument + routes.decorativeOverlayPassThrough;
     const checkedInputs = inputs.filter(input => input.checked);
     const visibleTargets = targets.filter(target => {
         const style = diagnosticComputedStyle(target);
@@ -12826,6 +12990,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `radio可逆返回 groups=${routes.reversibleRadio} listener=${routes.reversibleRadio ? 'true' : 'false'} last=${root.getAttribute?.(REVERSIBLE_RADIO_LAST_ATTR) || '(尚未再次点按已选项)'}`,
         `radio取消程序恢复 entries=${routes.radioReset} listener=${routes.radioReset ? 'true' : 'false'} last=${root.getAttribute?.(RAW_RADIO_RESET_LAST_ATTR) || '(尚未点击验证)'}`,
         `checked交互深度 rules=${checkedDepth.checkedRuleCount} selectionOnly=${checkedDepth.selectionStyleRuleCount} secondLayer=${checkedDepth.meaningfulCheckedRuleCount} unresolved=${checkedDepth.unresolvedCheckedRuleCount || 0} fallback=${checkedDepth.selectionOnlyFallbackCount}`,
+        `checked内层正文残留兜底 entries=${routes.nestedCheckedContent || 0} listener=${routes.nestedCheckedContent ? 'true' : 'false'}`,
         `伪类交互深度 rules=${pseudoDepth.pseudoRuleCount} visualOnly=${pseudoDepth.visualOnlyPseudoRuleCount} secondLayer=${pseudoDepth.meaningfulPseudoRuleCount}`,
         `可达内容交互 elements=${reachability.contentInteractiveElementCount} routes=${reachability.installedInteractionRouteCount} missing=${reachability.noInteractionStructure}`,
         `内部details替换承载 patches=${root.dataset.rabbitMirrorNestedDetailsReplacement || '0'}`,
@@ -12855,7 +13020,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         '[9. 手机端排版／内容承载]',
         `viewportWidth=${mobileLayout.viewportWidth || 0} narrow=${!!mobileLayout.narrowViewport} candidates=${mobileLayout.candidateCount || 0}`,
         `overflow=${mobileLayout.horizontalOverflowCount || 0} fixedWidth=${mobileLayout.fixedWidthCount || 0} grid=${mobileLayout.gridCount || 0} matrix=${mobileLayout.matrixCount || 0} flex=${mobileLayout.flexCount || 0}`,
-        `multiColumn=${mobileLayout.multiColumnCount || 0} media=${mobileLayout.mediaCount || 0} stateContent=${mobileLayout.stateContentCount || 0}`,
+        `multiColumn=${mobileLayout.multiColumnCount || 0} media=${mobileLayout.mediaCount || 0} stateContent=${mobileLayout.stateContentCount || 0} squeezedText=${mobileLayout.squeezedTextCount || 0} underfill=${mobileLayout.underfillCount || 0}`,
         `护照／证件内页=${mobileLayout.passportDocumentCount || 0} repaired=${root.getAttribute?.(PASSPORT_DOCUMENT_RESCUE_ATTR) || '0'}`,
         `剖面／分层保形=${mobileLayout.sectionStackCount || 0}`,
         `电视／终端屏幕保形=${mobileLayout.screenShellCount || 0}`,
@@ -14746,6 +14911,220 @@ function maintenanceKnownInteractionEvidence(root, full, code) {
     return { checkedControlsLost, stateControlsLost: !!full.stateControlsLost, strippedStateProgram, lostInlineStatePrograms, recoveredInlineStatePrograms, decorativeOverlayCandidateCount, touchHoverMissing, unscopedControls, missingCheckedSubjectClassCandidateCount, missingCheckedSubjectClassRescueCount, missingCheckedSubjectClassMissingCount, radioGroupLossCandidateCount, radioGroupRescueCount, selectionOnlyRepairCandidateCount, disabledOnlyChoiceCandidateCount, inertActionButtonCandidateCount, staticChoiceSelectionCandidateCount, staticChoiceSelectionRescueCount, structuredStaticDisclosureCandidateCount, structuredStaticDisclosureRescueCount, fillInChoiceCandidateCount, fillInChoiceRescueCount, focusWithinPersistentCandidateCount, focusWithinPersistentRescueCount, focusWithinPersistentMissingCount, rawScriptTimelineCandidateCount, rawScriptTimelineRescueCount, rawScriptTimelineMissingCount, crossParentCheckedRuleCandidateCount, crossParentCheckedRuleVerifiedCount, checkedHasStateRuleCandidateCount, checkedHasStateRuleRescueCount, checkedHasStateRuleMissingCount, detachedCheckedHasRuleCandidateCount, detachedCheckedHasRuleRescueCount, detachedCheckedHasRuleMissingCount, pairedCheckedStateCandidateCount, pairedCheckedStateRescueCount, pairedCheckedStateMissingCount, exclusiveStackedStateCandidateCount, exclusiveStackedStateRescueCount, exclusiveStackedStateMissingCount, channelDialCycleCandidateCount, channelDialCycleRescueCount, channelDialCycleMissingCount, oneWayCheckedResultCandidateCount, reversibleCheckedResultRescueCount, pseudoVisualOnly, raw, ...scopeEvidence, ...checkedDepth, ...pseudoDepth, ...reachability };
 }
 
+
+function maintenanceStyleRuleCountFromText(cssText) {
+    return (String(cssText || '').match(/[^@{}][^{}]*\{[^{}]*\}/g) || []).length;
+}
+
+function maintenanceStylelessAuthoredRuleCount(root) {
+    let rendered = 0;
+    for (const style of root?.querySelectorAll?.('style') || []) {
+        if ([...(style.attributes || [])].some(attribute => /^data-rabbit-mirror-/i.test(attribute.name))) continue;
+        rendered += maintenanceStyleRuleCountFromText(style.textContent || '');
+    }
+    let raw = 0;
+    try {
+        const decodedRaw = decodeHtmlEntities(String(getRawAssistantMessageForRenderedRoot(root) || ''));
+        const isolated = extractMaintenanceMirrorSourceBySummary(decodedRaw, root) || decodedRaw;
+        const css = [...String(isolated || '').matchAll(/<style\b[^>]*>([\s\S]*?)<\/style\s*>/gi)]
+            .map(match => String(match[1] || ''))
+            .join('\n');
+        raw = maintenanceStyleRuleCountFromText(css);
+    } catch {}
+    return { rendered, raw, total: Math.max(rendered, raw) };
+}
+
+function maintenanceStylelessComputedVisualMaturity(elements = []) {
+    let computedVisualCount = 0;
+    let computedVisualSignalCount = 0;
+    let inlineStructuralVisualCount = 0;
+    for (const element of elements || []) {
+        if (!element?.getAttribute || element.matches?.('input,button,select,textarea,label,img,svg,canvas,video,audio,iframe,object,embed')) continue;
+        const inline = String(element.getAttribute('style') || '').toLowerCase();
+        const strongInlineVisual = [
+            /(?:^|;)\s*background(?:-color|-image)?\s*:/,
+            /(?:^|;)\s*border(?:-[\w-]+)?\s*:/,
+            /(?:^|;)\s*box-shadow\s*:/,
+            /(?:^|;)\s*border-radius\s*:/,
+            /(?:^|;)\s*display\s*:\s*(?:flex|grid|inline-flex|inline-grid)\b/,
+        ].some(pattern => pattern.test(inline));
+        if (strongInlineVisual) inlineStructuralVisualCount += 1;
+
+        const style = maintenanceMobileLayoutComputedStyle(element);
+        if (!style) continue;
+        let signals = 0;
+        const background = String(style.backgroundColor || '').toLowerCase();
+        if (!/(?:^|;)\s*background(?:-color|-image)?\s*:/.test(inline)
+            && background && background !== 'transparent' && background !== 'rgba(0, 0, 0, 0)') signals += 1;
+        const borderWidth = Math.max(
+            Number.parseFloat(style.borderTopWidth || '0') || 0,
+            Number.parseFloat(style.borderRightWidth || '0') || 0,
+            Number.parseFloat(style.borderBottomWidth || '0') || 0,
+            Number.parseFloat(style.borderLeftWidth || '0') || 0,
+        );
+        if (!/(?:^|;)\s*border(?:-[\w-]+)?\s*:/.test(inline) && borderWidth >= 1) signals += 1;
+        if (!/(?:^|;)\s*box-shadow\s*:/.test(inline) && String(style.boxShadow || '').toLowerCase() !== 'none') signals += 1;
+        const radius = Math.max(
+            Number.parseFloat(style.borderTopLeftRadius || '0') || 0,
+            Number.parseFloat(style.borderTopRightRadius || '0') || 0,
+            Number.parseFloat(style.borderBottomLeftRadius || '0') || 0,
+            Number.parseFloat(style.borderBottomRightRadius || '0') || 0,
+        );
+        if (!/(?:^|;)\s*border-radius\s*:/.test(inline) && radius >= 4) signals += 1;
+        const display = String(style.display || '').toLowerCase();
+        if (!/(?:^|;)\s*display\s*:/.test(inline) && /^(?:flex|grid|inline-flex|inline-grid)$/.test(display)) signals += 1;
+        const padding = ['paddingTop','paddingRight','paddingBottom','paddingLeft']
+            .reduce((sum, key) => sum + (Number.parseFloat(style[key] || '0') || 0), 0);
+        if (!/(?:^|;)\s*padding(?:-[\w-]+)?\s*:/.test(inline) && padding >= 16) signals += 1;
+        if (signals >= 2) computedVisualCount += 1;
+        computedVisualSignalCount += signals;
+    }
+    return { computedVisualCount, computedVisualSignalCount, inlineStructuralVisualCount };
+}
+
+function maintenanceStylelessStructuredInfo(root, full = null) {
+    const empty = {
+        candidate: false,
+        authoredRuleCount: 0,
+        textLength: 0,
+        elementCount: 0,
+        classedCount: 0,
+        distinctClassCount: 0,
+        inlineStyledCount: 0,
+        inlineDeclarationCount: 0,
+        richInlineCount: 0,
+        inlineStructuralVisualCount: 0,
+        computedVisualCount: 0,
+        computedVisualSignalCount: 0,
+        formControlCount: 0,
+        meaningfulFormControlCount: 0,
+    };
+    if (!root?.querySelectorAll || root.hasAttribute?.(STYLELESS_STRUCTURED_RESCUE_ATTR)) return empty;
+    const details = root.matches?.('details') ? root : root.querySelector?.('details');
+    if (!details) return empty;
+    const authored = maintenanceStylelessAuthoredRuleCount(root);
+    if (authored.total > 0) return { ...empty, authoredRuleCount: authored.total };
+
+    const elements = [...details.querySelectorAll('*')].filter(element => {
+        const tag = String(element.tagName || '').toLowerCase();
+        if (!tag || ['summary', 'style', 'script', 'template', 'br'].includes(tag)) return false;
+        return !maintenanceMobileLayoutIsInternal(element);
+    });
+    const textLength = Number(full?.rawBodyTextLength || full?.renderedBodyTextLength || maintenanceMobileLayoutTextLength(details) || 0);
+    const elementCount = Number(full?.rawBodyElementCount || full?.renderedBodyElementCount || elements.length || 0);
+    const visualProgramCount = Math.max(Number(full?.rawBodyVisualProgramCount || 0), Number(full?.renderedBodyVisualProgramCount || 0));
+    const semanticElementCount = Math.max(Number(full?.rawBodySemanticElementCount || 0), Number(full?.renderedBodySemanticElementCount || 0));
+    const classed = elements.filter(element => String(element.getAttribute?.('class') || '').trim());
+    const distinctClasses = new Set(classed.flatMap(element => String(element.getAttribute('class') || '').split(/\s+/).filter(Boolean)));
+    let inlineStyledCount = 0;
+    let inlineDeclarationCount = 0;
+    const richInlineCount = elements.filter(element => {
+        const style = String(element.getAttribute?.('style') || '');
+        if (style.trim()) inlineStyledCount += 1;
+        const declarations = (style.match(/(?:^|;)\s*[-\w]+\s*:/g) || []).length;
+        inlineDeclarationCount += declarations;
+        return declarations >= 5 || /(?:background(?:-image)?\s*:[^;]*(?:url\(|gradient\()|mask(?:-image)?\s*:|clip-path\s*:|filter\s*:)/i.test(style);
+    }).length;
+    const maturity = maintenanceStylelessComputedVisualMaturity(elements);
+    const formControls = [...details.querySelectorAll('input,button,select,textarea')];
+    const formControlCount = formControls.length;
+    const meaningfulFormControlCount = formControls.filter(control => {
+        if (control.matches?.('button,select,textarea')) return maintenanceMobileLayoutTextLength(control) >= 1 || !!control.getAttribute?.('aria-label');
+        if (!control.id) return false;
+        let label = null;
+        try { label = details.querySelector(`label[for="${cssEscape(control.id)}"]`); } catch {}
+        return maintenanceMobileLayoutTextLength(label) >= 2 || !!control.getAttribute?.('aria-label');
+    }).length;
+
+    // This rescue is deliberately fail-closed. It only handles the narrow case where a
+    // structured mirror has essentially no visual program at all. External/theme CSS,
+    // a modest but coherent inline design, or a real form are author intent and must win.
+    const candidate = textLength >= 140
+        && elementCount >= 8
+        && semanticElementCount >= 1
+        && visualProgramCount === 0
+        && classed.length >= 5
+        && distinctClasses.size >= 5
+        && inlineStyledCount <= 2
+        && inlineDeclarationCount <= 9
+        && richInlineCount === 0
+        && maturity.inlineStructuralVisualCount === 0
+        && maturity.computedVisualSignalCount === 0
+        && formControlCount <= 1
+        && meaningfulFormControlCount === 0;
+    return {
+        candidate,
+        authoredRuleCount: authored.total,
+        textLength,
+        elementCount,
+        classedCount: classed.length,
+        distinctClassCount: distinctClasses.size,
+        inlineStyledCount,
+        inlineDeclarationCount,
+        richInlineCount,
+        inlineStructuralVisualCount: maturity.inlineStructuralVisualCount,
+        computedVisualCount: maturity.computedVisualCount,
+        computedVisualSignalCount: maturity.computedVisualSignalCount,
+        formControlCount,
+        meaningfulFormControlCount,
+    };
+}
+
+function maintenanceStylelessStructuredCss() {
+    return `
+[${STYLELESS_STRUCTURED_RESCUE_ATTR}] [${STYLELESS_STRUCTURED_SHELL_ATTR}] { width:100% !important; max-width:760px !important; min-width:0 !important; margin:10px auto !important; padding:clamp(14px,4vw,24px) !important; box-sizing:border-box !important; border:1px solid rgba(127,127,127,.28) !important; border-radius:16px !important; background:rgba(127,127,127,.06) !important; overflow:visible !important; }
+[${STYLELESS_STRUCTURED_RESCUE_ATTR}] [${STYLELESS_STRUCTURED_HEADER_ATTR}] { display:block !important; margin:0 0 14px !important; padding:0 0 10px !important; border-bottom:1px solid rgba(127,127,127,.24) !important; }
+[${STYLELESS_STRUCTURED_RESCUE_ATTR}] [${STYLELESS_STRUCTURED_TITLE_ATTR}] { display:block !important; margin:0 0 6px !important; font-size:clamp(1.08rem,4.8vw,1.45rem) !important; line-height:1.3 !important; font-weight:800 !important; letter-spacing:.02em !important; overflow-wrap:anywhere !important; }
+[${STYLELESS_STRUCTURED_RESCUE_ATTR}] [${STYLELESS_STRUCTURED_SUBTITLE_ATTR}] { display:block !important; margin:0 0 10px !important; font-size:.88em !important; line-height:1.55 !important; opacity:.76 !important; overflow-wrap:anywhere !important; }
+[${STYLELESS_STRUCTURED_RESCUE_ATTR}] [${STYLELESS_STRUCTURED_SECTION_ATTR}] { display:block !important; width:100% !important; max-width:100% !important; min-width:0 !important; margin:12px 0 !important; padding:12px 14px !important; box-sizing:border-box !important; border:1px solid rgba(127,127,127,.2) !important; border-radius:12px !important; background:rgba(127,127,127,.045) !important; overflow:visible !important; }
+[${STYLELESS_STRUCTURED_RESCUE_ATTR}] [${STYLELESS_STRUCTURED_TEXT_ATTR}] { max-width:100% !important; min-width:0 !important; line-height:1.75 !important; overflow-wrap:anywhere !important; word-break:break-word !important; }
+`;
+}
+
+function installMaintenanceStylelessStructuredRescue(root) {
+    if (!root?.querySelectorAll || !root?.isConnected) return 0;
+    const full = diagnosticFullChainSummary(root, diagnosticCodeRescueSummary(root));
+    const info = maintenanceStylelessStructuredInfo(root, full);
+    if (!info.candidate) return 0;
+
+    const details = root.matches?.('details') ? root : root.querySelector?.('details');
+    if (!details) return 0;
+    const direct = [...details.children].filter(child => {
+        const tag = String(child.tagName || '').toLowerCase();
+        return tag && !['summary', 'style', 'script', 'template'].includes(tag) && !maintenanceMobileLayoutIsInternal(child);
+    });
+    const shell = direct.find(child => maintenanceMobileLayoutTextLength(child) >= 80 && Number(child.childElementCount || 0) >= 2) || direct[0];
+    if (!shell) return 0;
+
+    const marked = new Set();
+    const mark = (element, attr) => {
+        if (!element?.setAttribute || element.hasAttribute(attr)) return;
+        element.setAttribute(attr, 'true');
+        marked.add(element);
+    };
+    mark(shell, STYLELESS_STRUCTURED_SHELL_ATTR);
+    for (const element of [shell, ...shell.querySelectorAll('*')]) {
+        if (maintenanceMobileLayoutIsInternal(element)) continue;
+        const signature = `${element.id || ''} ${element.className || ''} ${element.getAttribute?.('role') || ''}`.toLowerCase();
+        if (/(?:^|[-_\s])(?:header|masthead|head)(?:$|[-_\s])/.test(signature)) mark(element, STYLELESS_STRUCTURED_HEADER_ATTR);
+        if (/(?:^|[-_\s])(?:title|heading|headline)(?:$|[-_\s])/.test(signature)) mark(element, STYLELESS_STRUCTURED_TITLE_ATTR);
+        if (/(?:^|[-_\s])(?:subtitle|sub-title|subhead|kicker|meta)(?:$|[-_\s])/.test(signature)) mark(element, STYLELESS_STRUCTURED_SUBTITLE_ATTR);
+        if (/(?:^|[-_\s])(?:box|panel|section|speech|confession|track|card|note)(?:$|[-_\s])/.test(signature)) mark(element, STYLELESS_STRUCTURED_SECTION_ATTR);
+        if (/(?:^|[-_\s])(?:text|content|speech|confession|rhyme|desc|description|body)(?:$|[-_\s])/.test(signature)
+            || element.matches?.('p,blockquote,li')) mark(element, STYLELESS_STRUCTURED_TEXT_ATTR);
+    }
+    let style = root.querySelector(`style[${STYLELESS_STRUCTURED_STYLE_ATTR}]`);
+    if (!style) {
+        style = document.createElement('style');
+        style.setAttribute(STYLELESS_STRUCTURED_STYLE_ATTR, 'true');
+        root.appendChild(style);
+    }
+    style.textContent = maintenanceStylelessStructuredCss();
+    root.setAttribute(STYLELESS_STRUCTURED_RESCUE_ATTR, 'true');
+    root.setAttribute(STYLELESS_STRUCTURED_COUNT_ATTR, String(marked.size));
+    return Math.max(1, marked.size);
+}
+
 function maintenanceFallbackFullSummary(root) {
     const body = diagnosticMessageBody(root) || root;
     const snapshot = diagnosticContentSnapshot(body);
@@ -14898,6 +15277,30 @@ function buildMaintenanceFindings(root, {
         });
     }
 
+    const stylelessStructured = maintenanceStylelessStructuredInfo(root, full);
+    if (stylelessStructured.candidate) {
+        add({
+            id: 'styleless-structured-mirror', stage: 'structure', mode: 'style',
+            label: '兔子镜正文结构完整，但原始与当前镜面都没有可用 CSS 规则；可用中性结构样式做本地降级救援',
+            evidence: [
+                `authoredRules=${stylelessStructured.authoredRuleCount}`,
+                `text=${stylelessStructured.textLength}`,
+                `elements=${stylelessStructured.elementCount}`,
+                `classed=${stylelessStructured.classedCount}`,
+                `distinctClasses=${stylelessStructured.distinctClassCount}`,
+                `inlineStyled=${stylelessStructured.inlineStyledCount}`,
+                `inlineDeclarations=${stylelessStructured.inlineDeclarationCount}`,
+                `richInline=${stylelessStructured.richInlineCount}`,
+                `inlineStructuralVisual=${stylelessStructured.inlineStructuralVisualCount}`,
+                `computedVisual=${stylelessStructured.computedVisualCount}`,
+                `computedVisualSignals=${stylelessStructured.computedVisualSignalCount}`,
+                `formControls=${stylelessStructured.formControlCount}`,
+                `meaningfulFormControls=${stylelessStructured.meaningfulFormControlCount}`,
+            ],
+            confidence: 0.99,
+        });
+    }
+
     if ((Number(nestedDetailsPopupCandidateCount) || 0) > 0) {
         add({
             id: 'nested-details-popup-clipped', stage: 'visibility', mode: 'text',
@@ -14930,6 +15333,8 @@ function buildMaintenanceFindings(root, {
                 `multiColumn=${Number(mobileLayout?.multiColumnCount) || 0}`,
                 `media=${Number(mobileLayout?.mediaCount) || 0}`,
                 `stateContent=${Number(mobileLayout?.stateContentCount) || 0}`,
+                `squeezedText=${Number(mobileLayout?.squeezedTextCount) || 0}`,
+                `underfill=${Number(mobileLayout?.underfillCount) || 0}`,
             ],
             confidence: 0.93,
         });
@@ -15704,9 +16109,181 @@ function installMaintenanceStaticDecorationFallback(root, scriptText) {
     return created;
 }
 
+const RABBIT_MIRROR_BOUNDARY_BLOCKED_SELECTOR = 'script,iframe,object,embed,link,meta,base';
+const RABBIT_MIRROR_BOUNDARY_URL_ATTRS = new Set(['href', 'src', 'xlink:href', 'poster']);
+const RABBIT_MIRROR_BOUNDARY_DROP_ATTRS = new Set(['action', 'formaction', 'srcset', 'ping']);
+const RABBIT_MIRROR_BOUNDARY_INTERNAL_ATTRS = new Set([
+    RAW_SELF_MUTATION_HTML_BASELINE_ATTR,
+    RAW_SELF_MUTATION_ACTIVE_ATTR,
+]);
+const RABBIT_MIRROR_TAROT_ORIGIN = 'https://gfx.tarot.com';
+const RABBIT_MIRROR_TAROT_PATH_RE = /^\/images\/site\/decks\/rider\/full_size\/(?:[0-9]|[1-6][0-9]|7[0-7])\.jpg$/;
+const RABBIT_MIRROR_MAX_RASTER_DATA_URI_CHARS = 2000000;
+const RABBIT_MIRROR_MAX_SVG_DATA_CHARS = 300000;
+
+function decodeBoundaryCssEscapes(value = '') {
+    return String(value || '').replace(/\\([0-9a-fA-F]{1,6})(?:\s)?|\\([^\r\n0-9a-fA-F])/g, (_, hex, char) => {
+        if (hex) {
+            const code = Number.parseInt(hex, 16);
+            if (!Number.isFinite(code) || code <= 0 || code > 0x10FFFF) return '';
+            try { return String.fromCodePoint(code); } catch { return ''; }
+        }
+        return char || '';
+    });
+}
+
+function normalizeBoundaryResourceValue(value = '') {
+    return decodeHtmlEntities(String(value || ''))
+        .replace(/[\u0000-\u0020\u007f\u200b-\u200d\ufeff]+/g, '')
+        .trim();
+}
+
+function decodeBoundarySvgDataImage(raw = '') {
+    const value = String(raw || '');
+    const comma = value.indexOf(',');
+    if (comma < 0 || value.length > RABBIT_MIRROR_MAX_SVG_DATA_CHARS * 1.5) return '';
+    const header = value.slice(0, comma).toLowerCase();
+    const payload = value.slice(comma + 1);
+    try {
+        if (/;base64(?:;|$)/i.test(header)) {
+            if (typeof globalThis.atob !== 'function') return '';
+            const decoded = globalThis.atob(payload);
+            return decoded.length <= RABBIT_MIRROR_MAX_SVG_DATA_CHARS ? decoded : '';
+        }
+        const decoded = decodeURIComponent(payload);
+        return decoded.length <= RABBIT_MIRROR_MAX_SVG_DATA_CHARS ? decoded : '';
+    } catch {
+        return '';
+    }
+}
+
+function isSafeBoundarySvgDataImage(value = '') {
+    const svg = decodeBoundarySvgDataImage(value);
+    if (!svg) return false;
+    const normalized = decodeBoundaryCssEscapes(svg)
+        .replace(/&(?:#x?0*3a|colon);/gi, ':')
+        .replace(/&(?:#x?0*2f|sol);/gi, '/');
+    if (/<\s*(?:script|iframe|object|embed|foreignObject)\b/i.test(normalized)) return false;
+    if (/\bon[a-z]+\s*=/i.test(normalized) || /\bsrcdoc\s*=/i.test(normalized)) return false;
+    if (/\@\s*import\b/i.test(normalized)) return false;
+    if (/\b(?:href|xlink:href|src)\s*=\s*(['"])(?!\s*#)[\s\S]*?\1/i.test(normalized)) return false;
+    const urlRe = /url\(\s*(['"]?)([\s\S]*?)\1\s*\)/gi;
+    let match;
+    while ((match = urlRe.exec(normalized))) {
+        if (!String(match[2] || '').trim().startsWith('#')) return false;
+    }
+    return true;
+}
+
+function canonicalBoundaryTarotUrl(value = '') {
+    const raw = normalizeBoundaryResourceValue(value);
+    if (!raw) return '';
+    try {
+        const parsed = new URL(raw);
+        if (parsed.origin !== RABBIT_MIRROR_TAROT_ORIGIN || parsed.username || parsed.password) return '';
+        if (!RABBIT_MIRROR_TAROT_PATH_RE.test(parsed.pathname)) return '';
+        return `${RABBIT_MIRROR_TAROT_ORIGIN}${parsed.pathname}`;
+    } catch {
+        return '';
+    }
+}
+
+function isAllowedBoundaryResourceValue(value = '') {
+    const raw = normalizeBoundaryResourceValue(value);
+    if (!raw) return true;
+    if (raw.startsWith('#')) return true;
+    if (/^data:image\/(?:png|gif|jpe?g|webp|avif)(?:;|,)/i.test(raw)) {
+        return raw.length <= RABBIT_MIRROR_MAX_RASTER_DATA_URI_CHARS;
+    }
+    if (/^data:image\/svg\+xml(?:;|,)/i.test(raw)) return isSafeBoundarySvgDataImage(raw);
+    return !!canonicalBoundaryTarotUrl(raw);
+}
+
+function boundaryStyleValueIsSafe(value = '') {
+    const raw = String(value || '');
+    const decoded = decodeBoundaryCssEscapes(raw).replace(/\/\*[\s\S]*?\*\//g, '');
+    if (/(?:expression\s*\(|-moz-binding\s*:|behavior\s*:|\@\s*import\b)/i.test(decoded)) return false;
+    if (/url\s*\(/i.test(decoded) && !/url\s*\(/i.test(raw)) return false;
+    const urlRe = /url\(\s*(['"]?)([\s\S]*?)\1\s*\)/gi;
+    let match;
+    while ((match = urlRe.exec(raw))) {
+        if (!isAllowedBoundaryResourceValue(match[2])) return false;
+    }
+    return true;
+}
+
+function stripBoundaryCssImports(css = '') {
+    return String(css || '').replace(/@(?:\\[0-9a-fA-F]{1,6}\s?|\\.|[-_a-zA-Z0-9])+[\s\S]*?;/g, rule => {
+        return /^\s*@import\b/i.test(decodeBoundaryCssEscapes(rule)) ? '' : rule;
+    });
+}
+
+function sanitizeBoundaryCssText(value = '') {
+    const original = String(value || '');
+    if (!original.trim()) return original;
+    let css = stripBoundaryCssImports(original);
+
+    // Obfuscated escaped function names are not normal generated CSS. Fail closed only for that declaration/style,
+    // while ordinary url(...) declarations are sanitized in place below.
+    const decoded = decodeBoundaryCssEscapes(css).replace(/\/\*[\s\S]*?\*\//g, '');
+    if (/url\s*\(/i.test(decoded) && !/url\s*\(/i.test(css)) return '';
+    if (/\@\s*import\b/i.test(decoded)) return '';
+
+    css = css.replace(/url\(\s*(['"]?)([\s\S]*?)\1\s*\)/gi, (full, _quote, resource) => {
+        return isAllowedBoundaryResourceValue(resource) ? full : 'none';
+    });
+    css = css.replace(/(?:-webkit-)?image-set\s*\(([\s\S]*?)\)/gi, (full, body) => {
+        const decodedBody = decodeBoundaryCssEscapes(body);
+        const directStrings = [...decodedBody.matchAll(/(['"])([\s\S]*?)\1/g)].map(match => match[2]);
+        return directStrings.some(resource => !isAllowedBoundaryResourceValue(resource)) ? 'none' : full;
+    });
+    if (/(?:expression\s*\(|-moz-binding\s*:|behavior\s*:)/i.test(decodeBoundaryCssEscapes(css))) return '';
+    return css;
+}
+
+export function sanitizeRabbitMirrorBoundaryTemplate(template) {
+    if (!template?.content?.querySelectorAll) return false;
+    template.content.querySelectorAll(RABBIT_MIRROR_BOUNDARY_BLOCKED_SELECTOR).forEach(node => node.remove());
+
+    for (const style of [...template.content.querySelectorAll('style')]) {
+        style.textContent = sanitizeBoundaryCssText(style.textContent || '');
+    }
+
+    for (const element of [...template.content.querySelectorAll('*')]) {
+        for (const attribute of [...element.attributes]) {
+            const name = String(attribute.name || '').toLowerCase();
+            const value = String(attribute.value || '');
+            if (RABBIT_MIRROR_BOUNDARY_INTERNAL_ATTRS.has(name)
+                || /^on[a-z]+$/.test(name)
+                || name === 'srcdoc'
+                || RABBIT_MIRROR_BOUNDARY_DROP_ATTRS.has(name)) {
+                element.removeAttribute(attribute.name);
+                continue;
+            }
+            if (RABBIT_MIRROR_BOUNDARY_URL_ATTRS.has(name)) {
+                const canonicalTarot = canonicalBoundaryTarotUrl(value);
+                if (canonicalTarot) {
+                    element.setAttribute(attribute.name, canonicalTarot);
+                    if (element.tagName?.toLowerCase() === 'img') element.setAttribute('referrerpolicy', 'no-referrer');
+                    continue;
+                }
+                if (!isAllowedBoundaryResourceValue(value)) {
+                    element.removeAttribute(attribute.name);
+                    continue;
+                }
+            }
+            if (name === 'style') {
+                const cleaned = sanitizeBoundaryCssText(value);
+                if (cleaned) element.setAttribute(attribute.name, cleaned);
+                else element.removeAttribute(attribute.name);
+            }
+        }
+    }
+    return true;
+}
+
 function sanitizeMaintenanceMirrorTemplate(template) {
     if (!template?.content?.querySelectorAll) return null;
-    if (template.content.querySelector('iframe, object, embed, link, meta, base')) return null;
 
     const scriptSources = [];
     for (const placeholder of [...template.content.querySelectorAll(`template[${MAINTENANCE_QUARANTINED_SCRIPT_ATTR}]`)]) {
@@ -15718,18 +16295,7 @@ function sanitizeMaintenanceMirrorTemplate(template) {
         script.remove();
     }
 
-    for (const element of template.content.querySelectorAll('*')) {
-        for (const attribute of [...element.attributes]) {
-            const name = String(attribute.name || '').toLowerCase();
-            const value = String(attribute.value || '');
-            if (/^on[a-z]+$/.test(name)) {
-                element.removeAttribute(attribute.name);
-                continue;
-            }
-            if (/^(?:href|src|xlink:href|formaction)$/i.test(name) && /^\s*javascript\s*:/i.test(value)) return null;
-            if (name === 'style' && /url\(\s*(['"]?)\s*javascript\s*:/i.test(value)) return null;
-        }
-    }
+    if (!sanitizeRabbitMirrorBoundaryTemplate(template)) return null;
 
     let decorationCount = 0;
     for (const scriptSource of scriptSources) {
@@ -15806,7 +16372,7 @@ function findCleanMaintenanceMirrorNode(source, root) {
         template.innerHTML = cleaned;
 
         // 直接 DOM 恢复绕过宿主 DOMPurify，因此在离线 template 中主动执行同等安全边界：
-        // script 只删除不执行；其余主动嵌入内容仍整面拒绝。真实交互只允许后续安全解析器重建。
+        // script 与主动嵌入节点只删除不执行；危险网络资源按声明/属性窄移除，保留本地 CSS 与真实交互结构。
         if (!sanitizeMaintenanceMirrorTemplate(template)) return null;
 
         const candidates = [];
@@ -16043,6 +16609,146 @@ function trimMaintenanceSnapshots(max = 24) {
         if (!oldest) break;
         maintenancePreRepairSnapshots.delete(oldest);
     }
+}
+
+function trimRabbitMirrorInteractionResetSnapshots(max = 24) {
+    while (rabbitMirrorInteractionResetSnapshots.size > max) {
+        const oldest = [...rabbitMirrorInteractionResetSnapshots.entries()].sort((a, b) => Number(a[1]?.ts || 0) - Number(b[1]?.ts || 0))[0]?.[0];
+        if (!oldest) break;
+        rabbitMirrorInteractionResetSnapshots.delete(oldest);
+    }
+}
+
+function rabbitMirrorInteractionResetIdentityNode(root) {
+    if (!root) return null;
+    if (root.matches?.('details')) return root;
+    return root.querySelector?.(':scope > details') || root.querySelector?.('details') || root;
+}
+
+function rabbitMirrorInteractionResetInstanceId(root, create = false) {
+    const node = rabbitMirrorInteractionResetIdentityNode(root);
+    if (!node) return '';
+    let id = rabbitMirrorInteractionResetInstanceIds.get(node) || '';
+    if (!id && create) {
+        rabbitMirrorInteractionResetInstanceCounter += 1;
+        id = `${Date.now().toString(36)}-${rabbitMirrorInteractionResetInstanceCounter.toString(36)}`;
+        rabbitMirrorInteractionResetInstanceIds.set(node, id);
+    }
+    return id;
+}
+
+function rabbitMirrorInteractionResetSourceSignature(root) {
+    const externalHost = root?.matches?.('[data-rabbit-mirror-external-source="true"]')
+        ? root
+        : root?.closest?.('[data-rabbit-mirror-external-source="true"]');
+    const externalSourceHash = String(
+        externalHost?.getAttribute?.('data-rabbit-mirror-owner-source-hash')
+        || externalHost?.getAttribute?.('data-rm-owner-source-hash')
+        || externalHost?.dataset?.rabbitMirrorOwnerSourceHash
+        || '',
+    ).trim();
+    const externalOwnerKey = String(externalHost?.dataset?.rmKey || externalHost?.dataset?.rabbitMirrorExternalOwner || '').trim();
+    if (externalSourceHash || externalOwnerKey) {
+        return hashInteractionSignature(`external|${externalOwnerKey}|${externalSourceHash}`);
+    }
+
+    const index = getMessageIndexFromMirrorNode(root);
+    const chat = getAvailableHostChat();
+    const message = index >= 0 ? chat[index] : null;
+    if (message && !message?.is_user) {
+        const swipe = Number.isInteger(message?.swipe_id) ? message.swipe_id : 0;
+        const source = getSelectedMessageSource(message, { preferDisplay: messageUsesDistinctDisplaySource(message) });
+        if (source) return hashInteractionSignature(`${index}|${swipe}|${source}`);
+    }
+    return 'fallback';
+}
+
+function rabbitMirrorInteractionResetSnapshotKey(root, createInstance = false) {
+    const base = maintenanceSnapshotKey(root);
+    const instance = rabbitMirrorInteractionResetInstanceId(root, createInstance);
+    const source = rabbitMirrorInteractionResetSourceSignature(root);
+    return base && instance && source ? `${base}|mirror:${instance}|src:${source}` : '';
+}
+
+function cleanRabbitMirrorInteractionResetClone(details) {
+    if (!details?.cloneNode) return null;
+    const clone = details.cloneNode(true);
+    clone.querySelectorAll?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${RECIPE_MENU_ATTR}]`)?.forEach(node => node.remove());
+    clone.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]')?.remove?.();
+    clone.querySelectorAll?.('[data-rabbit-mirror-maintenance-checked-sandbox]')?.forEach(node => node.remove());
+    return clone;
+}
+
+function invalidateRabbitMirrorInteractionResetSnapshot(root) {
+    const key = rabbitMirrorInteractionResetSnapshotKey(root, false);
+    if (key) rabbitMirrorInteractionResetSnapshots.delete(key);
+}
+
+function captureRabbitMirrorInteractionResetSnapshot(root) {
+    if (!root?.isConnected) return false;
+    const key = rabbitMirrorInteractionResetSnapshotKey(root, true);
+    if (!key || rabbitMirrorInteractionResetSnapshots.has(key)) return false;
+    const details = root.matches?.('details') ? root : root.querySelector?.(':scope > details') || root.querySelector?.('details');
+    if (!details?.parentNode) return false;
+    const node = cleanRabbitMirrorInteractionResetClone(details);
+    if (!node) return false;
+    const instanceId = rabbitMirrorInteractionResetInstanceId(root, false);
+    rabbitMirrorInteractionResetSnapshots.set(key, { node, instanceId, sourceSignature: rabbitMirrorInteractionResetSourceSignature(root), ts: Date.now() });
+    trimRabbitMirrorInteractionResetSnapshots();
+    return true;
+}
+
+function hasRabbitMirrorInteractionResetSnapshot(root) {
+    const key = rabbitMirrorInteractionResetSnapshotKey(root, false);
+    return !!key && rabbitMirrorInteractionResetSnapshots.has(key);
+}
+
+function rabbitMirrorInteractionRootFromTarget(target) {
+    if (!(target instanceof Element)) return null;
+    const directToto = target.closest?.(MIRROR_TOTO_SELECTOR);
+    if (directToto && isInsideChatMessage(directToto)) return directToto;
+    let details = target.closest?.('details');
+    while (details) {
+        if (isRabbitMirrorDetails(details) && isInsideChatMessage(details)) return details;
+        details = details.parentElement?.closest?.('details') || null;
+    }
+    const label = target.closest?.('label');
+    const forId = String(label?.getAttribute?.('for') || '').trim();
+    if (forId) {
+        const input = label.ownerDocument?.getElementById?.(forId);
+        if (input && input !== target) return rabbitMirrorInteractionRootFromTarget(input);
+    }
+    return null;
+}
+
+function captureRabbitMirrorInteractionResetFromEventTarget(target) {
+    if (!(target instanceof Element)) return false;
+    if (target.closest?.(`[${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${RECIPE_MENU_ATTR}], [${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`)) return false;
+    const root = rabbitMirrorInteractionRootFromTarget(target);
+    return root ? captureRabbitMirrorInteractionResetSnapshot(root) : false;
+}
+
+function restoreRabbitMirrorInteractionResetSnapshot(root, button) {
+    const key = rabbitMirrorInteractionResetSnapshotKey(root, false);
+    const snapshot = key ? rabbitMirrorInteractionResetSnapshots.get(key) : null;
+    if (!snapshot?.node) {
+        setMaintenanceRabbitState(button, MAINTENANCE_STATES.unknown, '当前兔子镜还没有可恢复的交互初始状态');
+        return false;
+    }
+    const details = root.matches?.('details') ? root : root.querySelector?.(':scope > details') || root.querySelector?.('details');
+    if (!details?.parentNode) return false;
+    const keepOpen = details.hasAttribute('open');
+    const restoredDetails = snapshot.node.cloneNode(true);
+    if (keepOpen) restoredDetails.setAttribute('open', ''); else restoredDetails.removeAttribute('open');
+    details.replaceWith(restoredDetails);
+    if (snapshot.instanceId) rabbitMirrorInteractionResetInstanceIds.set(restoredDetails, snapshot.instanceId);
+    const restoredRoot = root === details ? restoredDetails : root;
+    try { activateRabbitMirrorInteractionRescue(restoredRoot); } catch (error) { console.debug('[RabbitMirror] interaction reset rescue rebind skipped:', error); }
+    try { rehydrateRabbitMirrorMaintenanceRepairs(restoredRoot); } catch (error) { console.debug('[RabbitMirror] interaction reset maintenance rehydrate skipped:', error); }
+    try { refreshRabbitMirrorToolsInScope(restoredRoot); } catch (error) { console.debug('[RabbitMirror] interaction reset tool refresh skipped:', error); }
+    const restoredButton = restoredRoot.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || restoredDetails.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || button;
+    setMaintenanceRabbitState(restoredButton, MAINTENANCE_STATES.idle, '已恢复这面兔子镜的交互初始状态；外层展开状态保持不变');
+    return true;
 }
 
 function captureMaintenancePreRepairSnapshot(root) {
@@ -16564,16 +17270,22 @@ function rabbitMirrorRecipeForRoot(root) {
 function recipeButtonTitle(recipe) {
     if (!recipe) return '本轮抽签：暂无可读取的抽取记录';
     const count = (recipe.themes?.length || 0) + (recipe.formats?.length || 0);
-    const blocked = [...(recipe.themes || []), ...(recipe.formats || [])].filter(item => isBlacklisted(item.kind, item.id)).length;
-    return `本轮抽签：${count} 项${blocked ? `；其中 ${blocked} 项已加入黑名单` : ''}`;
+    const items = [...(recipe.themes || []), ...(recipe.formats || [])];
+    const blocked = items.filter(item => isBlacklisted(item.kind, item.id)).length;
+    const favored = items.filter(item => isFavorited(item.kind, item.id)).length;
+    return `本轮抽签：${count} 项${favored ? `；${favored} 项已收藏` : ''}${blocked ? `；${blocked} 项已加入黑名单` : ''}`;
 }
 
 function recipePanelRow(item) {
     const blocked = isBlacklisted(item.kind, item.id);
+    const favored = isFavorited(item.kind, item.id);
     const kindLabel = item.kind === 'format' ? '展现形式' : '主题 / 元素';
-    const action = item?.ambiguous
+    const blacklistAction = item?.ambiguous
         ? blocked ? '解除两项黑名单' : '同时拉黑两项'
         : blocked ? '解除黑名单' : '加入黑名单';
+    const favoriteAction = item?.ambiguous
+        ? favored ? '解除两项收藏' : '同时收藏两项'
+        : favored ? '取消收藏' : '加入收藏室';
     const ambiguityNote = item?.ambiguous
         ? '<div style="font-size:9px;opacity:.58;margin-top:3px;line-height:1.35;">旧版记录无法判断当时实际是哪一项；操作会同时作用于这两个旧同 ID 项目。</div>'
         : '';
@@ -16583,7 +17295,10 @@ function recipePanelRow(item) {
         <div style="font-size:12px;font-weight:700;overflow-wrap:anywhere;">${feedbackCatEscapeHtml(item.id)} ${feedbackCatEscapeHtml(item.title)}</div>
         ${ambiguityNote}
       </div>
-      <button type="button" data-rm-recipe-blacklist-kind="${feedbackCatEscapeHtml(item.kind)}" data-rm-recipe-blacklist-id="${feedbackCatEscapeHtml(item.id)}" style="flex:0 0 auto;border:1px solid rgba(127,127,127,.34);border-radius:7px;padding:5px 8px;background:${blocked ? 'rgba(127,127,127,.12)' : 'rgba(190,70,70,.08)'};color:inherit;cursor:pointer;font:inherit;font-size:11px;">${blocked ? '✓ ' : '🚫 '}${action}</button>
+      <div style="display:flex;flex:0 0 auto;gap:5px;flex-wrap:wrap;justify-content:flex-end;max-width:190px;">
+        <button type="button" data-rm-recipe-favorite-kind="${feedbackCatEscapeHtml(item.kind)}" data-rm-recipe-favorite-id="${feedbackCatEscapeHtml(item.id)}" style="border:1px solid rgba(127,127,127,.34);border-radius:7px;padding:5px 8px;background:${favored ? 'rgba(222,170,55,.16)' : 'rgba(222,170,55,.07)'};color:inherit;cursor:pointer;font:inherit;font-size:11px;">${favored ? '★ ' : '☆ '}${favoriteAction}</button>
+        <button type="button" data-rm-recipe-blacklist-kind="${feedbackCatEscapeHtml(item.kind)}" data-rm-recipe-blacklist-id="${feedbackCatEscapeHtml(item.id)}" style="border:1px solid rgba(127,127,127,.34);border-radius:7px;padding:5px 8px;background:${blocked ? 'rgba(127,127,127,.12)' : 'rgba(190,70,70,.08)'};color:inherit;cursor:pointer;font:inherit;font-size:11px;">${blocked ? '✓ ' : '🚫 '}${blacklistAction}</button>
+      </div>
     </div>`;
 }
 
@@ -16679,6 +17394,292 @@ function showBlacklistManagerMenu(root, button) {
     return true;
 }
 
+function recipeFavoriteManagerRow(item) {
+    const multiplier = getFavoriteMultiplier(item.kind, item.id);
+    return `<div style="display:flex;gap:7px;align-items:center;padding:7px 0;border-bottom:1px solid rgba(127,127,127,.18);">
+      <div style="min-width:0;flex:1;">
+        <div style="font-size:11px;font-weight:700;line-height:1.35;overflow-wrap:anywhere;">${feedbackCatEscapeHtml(item.title || item.id)}</div>
+        <div style="font-size:9px;opacity:.55;margin-top:2px;">${feedbackCatEscapeHtml(item.id)} · ${item.kind === 'format' ? '展现形式' : '主题 / 元素'}</div>
+      </div>
+      <label style="display:inline-flex;align-items:center;gap:3px;flex:0 0 auto;font-size:10px;opacity:.9;">×<input type="number" inputmode="decimal" min="${FAVORITE_MULTIPLIER_MIN}" max="${FAVORITE_MULTIPLIER_MAX}" step="0.5" value="${feedbackCatEscapeHtml(String(multiplier))}" data-rm-favorite-multiplier-kind="${feedbackCatEscapeHtml(item.kind)}" data-rm-favorite-multiplier-id="${feedbackCatEscapeHtml(item.id)}" style="width:50px;box-sizing:border-box;border:1px solid rgba(222,170,55,.38);border-radius:6px;padding:4px 5px;background:rgba(127,127,127,.10);color:inherit;font:inherit;font-size:11px;"></label>
+      <button type="button" data-rm-favorite-manager-remove="true" data-rm-favorite-manager-kind="${feedbackCatEscapeHtml(item.kind)}" data-rm-favorite-manager-id="${feedbackCatEscapeHtml(item.id)}" style="flex:0 0 auto;border:1px solid rgba(222,170,55,.34);border-radius:7px;padding:5px 8px;background:rgba(222,170,55,.10);color:inherit;cursor:pointer;font:inherit;font-size:11px;">★ 取消收藏</button>
+    </div>`;
+}
+
+function showFavoriteManagerMenu(root, button) {
+    closeRecipeMenu();
+    closeFeedbackCatMenu();
+    closeMaintenanceRabbitMenu();
+    const themes = favoriteEntries('theme');
+    const formats = favoriteEntries('format');
+    const panel = document.createElement('div');
+    panel.setAttribute(RECIPE_MENU_ATTR, 'true');
+    panel.style.cssText = 'position:fixed;z-index:2147483646;box-sizing:border-box;padding:12px 13px;border:1px solid rgba(127,127,127,.35);border-radius:10px;background:var(--SmartThemeBlurTintColor,rgba(28,28,32,.97));color:var(--SmartThemeBodyColor,#eee);box-shadow:0 10px 32px rgba(0,0,0,.28);overflow:auto;font-family:inherit;';
+    const themeRows = themes.map(recipeFavoriteManagerRow).join('');
+    const formatRows = formats.map(recipeFavoriteManagerRow).join('');
+    panel.innerHTML = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">
+        <button type="button" data-rm-favorite-manager-action="back" style="border:0;background:transparent;color:inherit;cursor:pointer;font:inherit;font-size:12px;padding:2px 4px;">←</button>
+        <div style="font-weight:800;font-size:13px;">⭐ 收藏室</div>
+      </div>
+      <div style="font-size:10px;opacity:.62;line-height:1.45;margin-bottom:7px;">收藏只在本地提高随机抽取权重，不向 Prompt 追加偏好文字；不会越过黑名单或近期冷却。每项可单独设置 ×1～×50，旧收藏默认 ×3。×50 仍是相对随机权重，不代表 50% 或必出。</div>
+      <div style="font-size:10px;opacity:.58;margin-top:9px;">主题 / 元素（${themes.length}）</div>
+      ${themeRows || '<div style="padding:8px 0;opacity:.62;font-size:11px;">暂无。</div>'}
+      <div style="font-size:10px;opacity:.58;margin-top:9px;">展现形式（${formats.length}）</div>
+      ${formatRows || '<div style="padding:8px 0;opacity:.62;font-size:11px;">暂无。</div>'}
+      <div style="display:flex;gap:7px;margin-top:10px;">
+        <button type="button" data-rm-favorite-manager-action="back" style="flex:1;border:1px solid rgba(127,127,127,.34);border-radius:7px;padding:6px 8px;background:rgba(127,127,127,.08);color:inherit;cursor:pointer;font:inherit;font-size:11px;">← 返回本轮抽签</button>
+        <button type="button" data-rm-favorite-manager-action="clear" ${themes.length || formats.length ? '' : 'disabled'} style="flex:1;border:1px solid rgba(222,170,55,.34);border-radius:7px;padding:6px 8px;background:rgba(222,170,55,.08);color:inherit;cursor:${themes.length || formats.length ? 'pointer' : 'default'};opacity:${themes.length || formats.length ? '1' : '.45'};font:inherit;font-size:11px;">清空收藏室</button>
+      </div>`;
+    document.body.appendChild(panel);
+    positionFeedbackCatPanel(panel, button, 400);
+    panel.addEventListener('change', event => {
+        const input = event.target?.closest?.('[data-rm-favorite-multiplier-kind][data-rm-favorite-multiplier-id]');
+        if (!input || !panel.contains(input)) return;
+        const kind = input.getAttribute('data-rm-favorite-multiplier-kind') === 'format' ? 'format' : 'theme';
+        const id = String(input.getAttribute('data-rm-favorite-multiplier-id') || '');
+        const raw = String(input.value ?? '').trim();
+        if (!raw || !Number.isFinite(Number(raw))) {
+            input.value = String(getFavoriteMultiplier(kind, id));
+            globalThis.toastr?.warning?.(`收藏倍率未修改：${id}。请输入 ${FAVORITE_MULTIPLIER_MIN}～${FAVORITE_MULTIPLIER_MAX} 之间的数字。`);
+            return;
+        }
+        const value = setFavoriteMultiplier(kind, id, raw);
+        if (value == null) {
+            globalThis.toastr?.warning?.(`收藏倍率没有修改：${id}。请确认该项目仍在收藏室。`);
+            closeRecipeMenu();
+            showFavoriteManagerMenu(root, button);
+            return;
+        }
+        input.value = String(value);
+        globalThis.toastr?.success?.(`收藏倍率已设为 ×${value}：${id}`);
+    });
+    panel.addEventListener('click', event => {
+        const remove = event.target?.closest?.('[data-rm-favorite-manager-remove="true"]');
+        if (remove && panel.contains(remove)) {
+            event.preventDefault();
+            event.stopPropagation();
+            const kind = remove.getAttribute('data-rm-favorite-manager-kind') === 'format' ? 'format' : 'theme';
+            const id = String(remove.getAttribute('data-rm-favorite-manager-id') || '');
+            if (removeFavoriteItem(kind, id)) globalThis.toastr?.success?.(`已取消收藏：${id}`);
+            const freshRecipe = rabbitMirrorRecipeForRoot(root);
+            button.title = recipeButtonTitle(freshRecipe);
+            button.setAttribute('aria-label', button.title);
+            closeRecipeMenu();
+            showFavoriteManagerMenu(root, button);
+            return;
+        }
+        const action = event.target?.closest?.('[data-rm-favorite-manager-action]');
+        if (!action || !panel.contains(action)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const value = action.getAttribute('data-rm-favorite-manager-action');
+        if (value === 'back') {
+            closeRecipeMenu();
+            showRecipeMenu(root, button);
+            return;
+        }
+        if (value === 'clear') {
+            if (themes.length || formats.length) {
+                clearFavorites('all');
+                globalThis.toastr?.success?.('已清空收藏室。');
+            }
+            const freshRecipe = rabbitMirrorRecipeForRoot(root);
+            button.title = recipeButtonTitle(freshRecipe);
+            button.setAttribute('aria-label', button.title);
+            closeRecipeMenu();
+            showFavoriteManagerMenu(root, button);
+        }
+    });
+    bindRecipeOutsideClose(panel, button);
+    return true;
+}
+
+
+function catalogParentId(item, idSet) {
+    const id = String(item?.id || '');
+    const parts = id.split('.').filter(Boolean);
+    for (let cut = parts.length - 1; cut >= 1; cut--) {
+        const candidate = parts.slice(0, cut).join('.');
+        if (idSet.has(candidate)) return candidate;
+    }
+    return '';
+}
+
+function buildSelectionCatalog(kind) {
+    const entries = selectionCatalogEntries(kind);
+    const idSet = new Set(entries.map(item => item.id));
+    const byId = new Map(entries.map(item => [item.id, item]));
+    const children = new Map();
+    const groups = new Map();
+    for (const item of entries) {
+        const parentId = catalogParentId(item, idSet);
+        if (parentId) {
+            if (!children.has(parentId)) children.set(parentId, []);
+            children.get(parentId).push(item);
+        } else {
+            const group = String(item.group || '其他');
+            if (!groups.has(group)) groups.set(group, []);
+            groups.get(group).push(item);
+        }
+    }
+    const sortItems = items => [...items].sort((a, b) => String(a.id).localeCompare(String(b.id), undefined, { numeric: true }));
+    for (const [key, items] of children) children.set(key, sortItems(items));
+    for (const [key, items] of groups) groups.set(key, sortItems(items));
+    return { kind, entries, idSet, byId, children, groups };
+}
+
+function catalogItemRow(item, tree) {
+    const favored = isFavorited(item.kind, item.id);
+    const blocked = isBlacklisted(item.kind, item.id);
+    const childCount = tree.children.get(item.id)?.length || 0;
+    const multiplier = favored ? getFavoriteMultiplier(item.kind, item.id) : 0;
+    return `<div style="display:flex;gap:6px;align-items:center;padding:7px 0;border-bottom:1px solid rgba(127,127,127,.16);">
+      <button type="button" ${childCount ? `data-rm-catalog-enter-id="${feedbackCatEscapeHtml(item.id)}"` : 'disabled'} style="flex:0 0 25px;width:25px;height:25px;border:1px solid rgba(127,127,127,.28);border-radius:6px;background:rgba(127,127,127,.08);color:inherit;cursor:${childCount ? 'pointer' : 'default'};opacity:${childCount ? '1' : '.28'};font:inherit;">${childCount ? '›' : '·'}</button>
+      <div style="min-width:0;flex:1;">
+        <div style="font-size:11px;font-weight:700;line-height:1.35;overflow-wrap:anywhere;">${feedbackCatEscapeHtml(item.title || item.id)}</div>
+        <div style="font-size:9px;opacity:.54;margin-top:2px;overflow-wrap:anywhere;">${feedbackCatEscapeHtml(item.id)}${childCount ? ` · 下级 ${childCount} 项` : ''}</div>
+      </div>
+      <button type="button" data-rm-catalog-favorite-kind="${feedbackCatEscapeHtml(item.kind)}" data-rm-catalog-favorite-id="${feedbackCatEscapeHtml(item.id)}" style="flex:0 0 auto;border:1px solid rgba(222,170,55,.34);border-radius:7px;padding:5px 7px;background:${favored ? 'rgba(222,170,55,.22)' : 'rgba(127,127,127,.08)'};color:inherit;cursor:pointer;font:inherit;font-size:10px;font-weight:700;">${favored ? `★ ×${feedbackCatEscapeHtml(String(multiplier))}` : '☆'}</button>
+      <button type="button" data-rm-catalog-blacklist-kind="${feedbackCatEscapeHtml(item.kind)}" data-rm-catalog-blacklist-id="${feedbackCatEscapeHtml(item.id)}" style="flex:0 0 auto;border:1px solid rgba(190,70,70,.34);border-radius:7px;padding:5px 7px;background:${blocked ? 'rgba(190,70,70,.22)' : 'rgba(127,127,127,.08)'};color:inherit;cursor:pointer;font:inherit;font-size:10px;font-weight:700;">${blocked ? '🚫' : '○'}</button>
+    </div>`;
+}
+
+function showSelectionCatalogMenu(root, button, navigation = {}) {
+    closeRecipeMenu();
+    closeFeedbackCatMenu();
+    closeMaintenanceRabbitMenu();
+    const kind = navigation.kind === 'format' ? 'format' : navigation.kind === 'theme' ? 'theme' : '';
+    const group = String(navigation.group || '');
+    const parentId = String(navigation.parentId || '');
+    const query = String(navigation.query || '').trim();
+    const panel = document.createElement('div');
+    panel.setAttribute(RECIPE_MENU_ATTR, 'true');
+    panel.style.cssText = 'position:fixed;z-index:2147483646;box-sizing:border-box;padding:12px 13px;border:1px solid rgba(127,127,127,.35);border-radius:10px;background:var(--SmartThemeBlurTintColor,rgba(28,28,32,.97));color:var(--SmartThemeBodyColor,#eee);box-shadow:0 10px 32px rgba(0,0,0,.28);overflow:auto;font-family:inherit;';
+
+    let body = '';
+    let tree = null;
+    if (!kind) {
+        const themeCount = selectionCatalogEntries('theme').length;
+        const formatCount = selectionCatalogEntries('format').length;
+        body = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px;">
+          <button type="button" data-rm-catalog-kind="theme" style="border:1px solid rgba(127,127,127,.34);border-radius:8px;padding:10px 8px;background:rgba(127,127,127,.09);color:inherit;cursor:pointer;font:inherit;font-size:11px;font-weight:700;">主题 / 元素<br><span style="font-size:9px;opacity:.6;font-weight:400;">${themeCount} 项</span></button>
+          <button type="button" data-rm-catalog-kind="format" style="border:1px solid rgba(127,127,127,.34);border-radius:8px;padding:10px 8px;background:rgba(127,127,127,.09);color:inherit;cursor:pointer;font:inherit;font-size:11px;font-weight:700;">展现形式<br><span style="font-size:9px;opacity:.6;font-weight:400;">${formatCount} 项</span></button>
+        </div>`;
+    } else {
+        tree = buildSelectionCatalog(kind);
+        const kindLabel = kind === 'format' ? '展现形式' : '主题 / 元素';
+        const searchResults = query ? tree.entries.filter(item => `${item.id} ${item.title} ${item.summary}`.toLowerCase().includes(query.toLowerCase())) : [];
+        const clippedResults = searchResults.slice(0, 80);
+        let rows = '';
+        let title = kindLabel;
+        if (query) {
+            title = `${kindLabel} · 搜索`;
+            rows = clippedResults.map(item => catalogItemRow(item, tree)).join('') || '<div style="padding:10px 0;opacity:.62;font-size:11px;">没有匹配项目。</div>';
+            if (searchResults.length > clippedResults.length) rows += `<div style="font-size:9px;opacity:.55;margin-top:6px;">匹配 ${searchResults.length} 项，仅显示前 ${clippedResults.length} 项；请继续缩小关键词。</div>`;
+        } else if (!group) {
+            title = `${kindLabel} · 大组`;
+            const groupKeys = [...tree.groups.keys()].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+            rows = groupKeys.map(key => {
+                const roots = tree.groups.get(key) || [];
+                const descendantCount = tree.entries.filter(item => String(item.group || '其他') === key).length;
+                return `<button type="button" data-rm-catalog-group="${feedbackCatEscapeHtml(key)}" style="display:flex;width:100%;align-items:center;justify-content:space-between;gap:8px;border:0;border-bottom:1px solid rgba(127,127,127,.16);padding:9px 3px;background:transparent;color:inherit;cursor:pointer;font:inherit;text-align:left;"><span style="font-size:11px;font-weight:700;">组 ${feedbackCatEscapeHtml(key)}</span><span style="font-size:9px;opacity:.56;">${descendantCount} 项 · ${roots.length} 个顶层 ›</span></button>`;
+            }).join('');
+        } else {
+            const current = parentId ? tree.byId.get(parentId) : null;
+            title = current ? `${kindLabel} · ${current.title}` : `${kindLabel} · 组 ${group}`;
+            const items = parentId ? (tree.children.get(parentId) || []) : (tree.groups.get(group) || []);
+            rows = items.map(item => catalogItemRow(item, tree)).join('') || '<div style="padding:10px 0;opacity:.62;font-size:11px;">这一层没有项目。</div>';
+        }
+        body = `<div style="display:flex;gap:6px;margin:8px 0;">
+          <input type="search" value="${feedbackCatEscapeHtml(query)}" data-rm-catalog-search style="min-width:0;flex:1;box-sizing:border-box;border:1px solid rgba(127,127,127,.32);border-radius:7px;padding:6px 7px;background:rgba(127,127,127,.08);color:inherit;font:inherit;font-size:11px;" placeholder="搜索名称 / ID / 说明">
+          <button type="button" data-rm-catalog-search-action="run" style="border:1px solid rgba(127,127,127,.32);border-radius:7px;padding:6px 8px;background:rgba(127,127,127,.08);color:inherit;cursor:pointer;font:inherit;font-size:10px;">搜索</button>
+          ${query ? '<button type="button" data-rm-catalog-search-action="clear" style="border:1px solid rgba(127,127,127,.32);border-radius:7px;padding:6px 8px;background:rgba(127,127,127,.08);color:inherit;cursor:pointer;font:inherit;font-size:10px;">清除</button>' : ''}
+        </div><div style="font-size:10px;font-weight:700;opacity:.72;margin:3px 0 4px;">${feedbackCatEscapeHtml(title)}</div>${rows}`;
+    }
+
+    panel.innerHTML = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">
+        <button type="button" data-rm-catalog-action="back" style="border:0;background:transparent;color:inherit;cursor:pointer;font:inherit;font-size:12px;padding:2px 4px;">←</button>
+        <div style="font-weight:800;font-size:13px;">📚 全池一览</div>
+      </div>
+      <div style="font-size:10px;opacity:.62;line-height:1.45;">无需等项目被随机抽中。按层级浏览或搜索后，可直接收藏 / 拉黑；操作仍只影响本地随机池，不增加 Prompt。</div>
+      ${body}`;
+    document.body.appendChild(panel);
+    positionFeedbackCatPanel(panel, button, 420);
+
+    const reopen = next => { closeRecipeMenu(); showSelectionCatalogMenu(root, button, next); };
+    const parentOf = id => {
+        if (!tree || !id) return '';
+        const item = tree.byId.get(id);
+        return item ? catalogParentId(item, tree.idSet) : '';
+    };
+    panel.addEventListener('keydown', event => {
+        const input = event.target?.closest?.('[data-rm-catalog-search]');
+        if (!input || event.key !== 'Enter') return;
+        event.preventDefault();
+        reopen({ kind, query: input.value });
+    });
+    panel.addEventListener('click', event => {
+        const action = event.target?.closest?.('[data-rm-catalog-action]');
+        if (action && panel.contains(action)) {
+            event.preventDefault(); event.stopPropagation();
+            if (!kind) { closeRecipeMenu(); showRecipeMenu(root, button); return; }
+            if (query) { reopen({ kind }); return; }
+            if (parentId) {
+                const previousParent = parentOf(parentId);
+                reopen({ kind, group, parentId: previousParent });
+                return;
+            }
+            if (group) { reopen({ kind }); return; }
+            reopen({});
+            return;
+        }
+        const kindButton = event.target?.closest?.('[data-rm-catalog-kind]');
+        if (kindButton && panel.contains(kindButton)) { event.preventDefault(); event.stopPropagation(); reopen({ kind: kindButton.getAttribute('data-rm-catalog-kind') }); return; }
+        const groupButton = event.target?.closest?.('[data-rm-catalog-group]');
+        if (groupButton && panel.contains(groupButton)) { event.preventDefault(); event.stopPropagation(); reopen({ kind, group: String(groupButton.getAttribute('data-rm-catalog-group') || '') }); return; }
+        const enterButton = event.target?.closest?.('[data-rm-catalog-enter-id]');
+        if (enterButton && panel.contains(enterButton)) { event.preventDefault(); event.stopPropagation(); reopen({ kind, group, parentId: String(enterButton.getAttribute('data-rm-catalog-enter-id') || '') }); return; }
+        const searchAction = event.target?.closest?.('[data-rm-catalog-search-action]');
+        if (searchAction && panel.contains(searchAction)) {
+            event.preventDefault(); event.stopPropagation();
+            const mode = searchAction.getAttribute('data-rm-catalog-search-action');
+            const input = panel.querySelector('[data-rm-catalog-search]');
+            if (mode === 'clear') reopen({ kind });
+            else reopen({ kind, query: String(input?.value || '') });
+            return;
+        }
+        const favoriteAction = event.target?.closest?.('[data-rm-catalog-favorite-kind][data-rm-catalog-favorite-id]');
+        if (favoriteAction && panel.contains(favoriteAction)) {
+            event.preventDefault(); event.stopPropagation();
+            const actionKind = favoriteAction.getAttribute('data-rm-catalog-favorite-kind') === 'format' ? 'format' : 'theme';
+            const id = String(favoriteAction.getAttribute('data-rm-catalog-favorite-id') || '');
+            const before = isFavorited(actionKind, id);
+            const after = toggleFavoriteItem(actionKind, id);
+            if (after === before) globalThis.toastr?.warning?.(`收藏室没有修改：${id}。`);
+            else globalThis.toastr?.success?.(after ? `已加入收藏室：${id}（默认 ×3，可在收藏室修改倍率）` : `已取消收藏：${id}`);
+            const freshRecipe = rabbitMirrorRecipeForRoot(root);
+            button.title = recipeButtonTitle(freshRecipe); button.setAttribute('aria-label', button.title);
+            reopen({ kind, group, parentId, query });
+            return;
+        }
+        const blacklistAction = event.target?.closest?.('[data-rm-catalog-blacklist-kind][data-rm-catalog-blacklist-id]');
+        if (blacklistAction && panel.contains(blacklistAction)) {
+            event.preventDefault(); event.stopPropagation();
+            const actionKind = blacklistAction.getAttribute('data-rm-catalog-blacklist-kind') === 'format' ? 'format' : 'theme';
+            const id = String(blacklistAction.getAttribute('data-rm-catalog-blacklist-id') || '');
+            const before = isBlacklisted(actionKind, id);
+            const after = toggleBlacklistItem(actionKind, id);
+            if (after === before) globalThis.toastr?.warning?.(`黑名单没有修改：${id}。`);
+            else globalThis.toastr?.success?.(after ? `已加入黑名单：${id}` : `已解除黑名单：${id}`);
+            const freshRecipe = rabbitMirrorRecipeForRoot(root);
+            button.title = recipeButtonTitle(freshRecipe); button.setAttribute('aria-label', button.title);
+            reopen({ kind, group, parentId, query });
+        }
+    });
+    bindRecipeOutsideClose(panel, button);
+    return true;
+}
+
 function showRecipeMenu(root, button) {
     closeRecipeMenu();
     closeFeedbackCatMenu();
@@ -16689,6 +17690,7 @@ function showRecipeMenu(root, button) {
         return false;
     }
     const state = getBlacklistState();
+    const favoriteState = getFavoritesState();
     const items = [...(recipe.themes || []), ...(recipe.formats || [])];
     const panel = document.createElement('div');
     panel.setAttribute(RECIPE_MENU_ATTR, 'true');
@@ -16696,20 +17698,48 @@ function showRecipeMenu(root, button) {
     const directiveNote = recipe.userDirectiveApplied ? '本轮含用户明确点菜；黑名单只影响之后的随机抽取。' : '';
     const forcedNote = recipe.forcedVisualScenery ? '本轮含固定动态视觉场景；固定模式会优先于随机黑名单。' : '';
     const totalBlocked = state.themeIds.length + state.formatIds.length;
+    const totalFavorites = favoriteState.themeIds.length + favoriteState.formatIds.length;
     panel.innerHTML = `<div style="font-weight:800;font-size:13px;margin-bottom:3px;">🎲 本轮抽签</div>
-      <div style="font-size:10px;opacity:.62;line-height:1.45;margin-bottom:7px;">显示的是这一面兔子镜当时真实抽中的内部项目，不做 AI 事后分析。</div>
+      <div style="font-size:10px;opacity:.62;line-height:1.45;margin-bottom:7px;">显示的是这一面兔子镜当时真实抽中的内部项目，不做 AI 事后分析。⭐ 收藏提高本地随机权重；🚫 黑名单从随机池排除；两者互斥且都不加 Prompt。</div>
       ${items.map(recipePanelRow).join('') || '<div style="padding:8px 0;opacity:.68;font-size:11px;">本轮没有记录主题或展现形式。</div>'}
-      <button type="button" data-rm-recipe-action="blacklist-manager" style="width:100%;margin-top:9px;border:1px solid rgba(127,127,127,.34);border-radius:7px;padding:6px 8px;background:rgba(127,127,127,.08);color:inherit;cursor:pointer;font:inherit;font-size:11px;font-weight:700;">🚫 查看黑名单${totalBlocked ? `（${totalBlocked}）` : ''}</button>
-      <div style="font-size:10px;opacity:.68;line-height:1.5;margin-top:9px;">${state.enabled ? '黑名单已启用：加入后从下一轮随机抽取开始排除。' : '黑名单目前暂时停用：名单会保留，但随机抽取暂不排除。'}${directiveNote ? `<br>${feedbackCatEscapeHtml(directiveNote)}` : ''}${forcedNote ? `<br>${feedbackCatEscapeHtml(forcedNote)}` : ''}</div>`;
+      <div style="display:flex;gap:7px;margin-top:9px;flex-wrap:wrap;">
+        <button type="button" data-rm-recipe-action="favorite-manager" style="flex:1 1 100px;border:1px solid rgba(222,170,55,.34);border-radius:7px;padding:6px 8px;background:rgba(222,170,55,.08);color:inherit;cursor:pointer;font:inherit;font-size:11px;font-weight:700;">⭐ 收藏室${totalFavorites ? `（${totalFavorites}）` : ''}</button>
+        <button type="button" data-rm-recipe-action="blacklist-manager" style="flex:1 1 100px;border:1px solid rgba(127,127,127,.34);border-radius:7px;padding:6px 8px;background:rgba(127,127,127,.08);color:inherit;cursor:pointer;font:inherit;font-size:11px;font-weight:700;">🚫 黑名单${totalBlocked ? `（${totalBlocked}）` : ''}</button>
+        <button type="button" data-rm-recipe-action="catalog-manager" style="flex:1 1 100%;border:1px solid rgba(80,135,190,.34);border-radius:7px;padding:6px 8px;background:rgba(80,135,190,.08);color:inherit;cursor:pointer;font:inherit;font-size:11px;font-weight:700;">📚 全池一览</button>
+      </div>
+      <div style="font-size:10px;opacity:.68;line-height:1.5;margin-top:9px;">${state.enabled ? '黑名单已启用。' : '黑名单目前暂时停用；名单仍保留。'}${directiveNote ? `<br>${feedbackCatEscapeHtml(directiveNote)}` : ''}${forcedNote ? `<br>${feedbackCatEscapeHtml(forcedNote)}` : ''}</div>`;
     document.body.appendChild(panel);
     positionFeedbackCatPanel(panel, button, 360);
     panel.addEventListener('click', event => {
-        const managerAction = event.target?.closest?.('[data-rm-recipe-action="blacklist-manager"]');
+        const managerAction = event.target?.closest?.('[data-rm-recipe-action="blacklist-manager"], [data-rm-recipe-action="favorite-manager"], [data-rm-recipe-action="catalog-manager"]');
         if (managerAction && panel.contains(managerAction)) {
             event.preventDefault();
             event.stopPropagation();
+            const manager = managerAction.getAttribute('data-rm-recipe-action');
             closeRecipeMenu();
-            showBlacklistManagerMenu(root, button);
+            if (manager === 'favorite-manager') showFavoriteManagerMenu(root, button);
+            else if (manager === 'catalog-manager') showSelectionCatalogMenu(root, button);
+            else showBlacklistManagerMenu(root, button);
+            return;
+        }
+        const favoriteAction = event.target?.closest?.('[data-rm-recipe-favorite-kind][data-rm-recipe-favorite-id]');
+        if (favoriteAction && panel.contains(favoriteAction)) {
+            event.preventDefault();
+            event.stopPropagation();
+            const kind = favoriteAction.getAttribute('data-rm-recipe-favorite-kind') === 'format' ? 'format' : 'theme';
+            const id = String(favoriteAction.getAttribute('data-rm-recipe-favorite-id') || '');
+            const wasFavorited = isFavorited(kind, id);
+            const nowFavorited = toggleFavoriteItem(kind, id);
+            if (nowFavorited === wasFavorited) {
+                globalThis.toastr?.warning?.(`收藏室没有修改：${id}。项目可能已失效，或收藏已达到容量上限。`);
+            } else {
+                globalThis.toastr?.success?.(nowFavorited ? `已加入收藏室：${id}；之后随机抽中概率会提高。` : `已取消收藏：${id}`);
+            }
+            const freshRecipe = rabbitMirrorRecipeForRoot(root);
+            button.title = recipeButtonTitle(freshRecipe);
+            button.setAttribute('aria-label', button.title);
+            closeRecipeMenu();
+            showRecipeMenu(root, button);
             return;
         }
         const action = event.target?.closest?.('[data-rm-recipe-blacklist-kind][data-rm-recipe-blacklist-id]');
@@ -17512,6 +18542,8 @@ ${scope} iframe[${MOBILE_LAYOUT_MEDIA_ATTR}] { width: 100% !important; }
 ${scope} [${MOBILE_LAYOUT_SCROLL_ATTR}] { max-width: 100% !important; overflow-x: auto !important; overscroll-behavior-inline: contain; -webkit-overflow-scrolling: touch; }
 ${scope} table[${MOBILE_LAYOUT_SCROLL_ATTR}], ${scope} pre[${MOBILE_LAYOUT_SCROLL_ATTR}] { display: block !important; }
 ${scope} [${MOBILE_LAYOUT_BREAK_TEXT_ATTR}] { overflow-wrap: anywhere !important; word-break: break-word !important; min-width: 0 !important; }
+${scope} [${MOBILE_LAYOUT_SQUEEZED_TEXT_ATTR}] { min-width:min(72%, 280px) !important; max-width:calc(100% - 16px) !important; box-sizing:border-box !important; white-space:normal !important; overflow-wrap:break-word !important; word-break:normal !important; }
+${scope} [${MOBILE_LAYOUT_UNDERFILL_ATTR}] { width:min(100%, 420px) !important; min-width:min(100%, 420px) !important; max-width:100% !important; box-sizing:border-box !important; }
 ${scope} [${MOBILE_LAYOUT_STATE_CONTENT_ATTR}][${MOBILE_LAYOUT_STATE_ACTIVE_ATTR}] { height: auto !important; max-height: none !important; overflow: visible !important; }
 ${scope} [${MOBILE_LAYOUT_RELATION_BRANCH_ATTR}] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; width: 100% !important; max-width: 100% !important; min-width: 0 !important; gap: clamp(8px, 3vw, 16px) !important; overflow: visible !important; }
 ${scope} [${MOBILE_LAYOUT_RELATION_CELL_ATTR}] { min-width: 0 !important; max-width: none !important; overflow: visible !important; }
@@ -17519,6 +18551,115 @@ ${scope} [${MOBILE_LAYOUT_RELATION_DETAIL_ATTR}] { width: calc(200% + clamp(8px,
 ${scope} [${MOBILE_LAYOUT_RELATION_DETAIL_ATTR}][${MOBILE_LAYOUT_RELATION_SIDE_ATTR}="left"] { transform: none !important; }
 ${scope} [${MOBILE_LAYOUT_RELATION_DETAIL_ATTR}][${MOBILE_LAYOUT_RELATION_SIDE_ATTR}="right"] { transform: translateX(calc(-50% - clamp(4px, 1.5vw, 8px))) !important; }
 }`;
+}
+
+
+
+function maintenanceMobileLayoutSqueezedTextCandidate(element, style = null, referenceWidth = 0) {
+    if (!element?.parentElement || referenceWidth < 280) return false;
+    if (maintenanceMobileLayoutIsInternal(element) || maintenanceMobileLayoutIsPassportManaged(element)) return false;
+    if (element.matches?.('input,select,textarea,button,label,a,pre,code,table,blockquote,figcaption,svg,canvas,img,video,iframe')) return false;
+    if (element.closest?.('[data-rm-touch-zone]')) return false;
+
+    const computed = style || maintenanceMobileLayoutComputedStyle(element);
+    const rect = maintenanceMobileLayoutRect(element);
+    const parentRect = maintenanceMobileLayoutRect(element.parentElement);
+    if (!computed || !rect || !parentRect || parentRect.width < 260 || rect.width <= 0 || rect.height <= 0) return false;
+    const textLength = maintenanceMobileLayoutTextLength(element);
+    if (textLength < 72) return false;
+
+    const writingMode = String(computed.writingMode || '').trim().toLowerCase();
+    if (writingMode && !writingMode.startsWith('horizontal')) return false;
+    const whiteSpace = String(computed.whiteSpace || '').trim().toLowerCase();
+    if (/(?:pre|nowrap)/.test(whiteSpace)) return false;
+    const signature = `${element.id || ''} ${element.className || ''} ${element.getAttribute?.('role') || ''} ${element.getAttribute?.('aria-label') || ''}`;
+    if (/(?:^|[-_\s])(?:sidebar|side-bar|rail|toc|menu|nav|toolbar|badge|tag|legend|avatar|icon|ticker|caption|label|quote|blockquote|poem|verse|lyrics|lyric|haiku|couplet|vertical-text)(?:$|[-_\s])/i.test(signature)) return false;
+
+    const fontSize = maintenanceMobileLayoutLengthPx(computed.fontSize, parentRect.width) || Number.parseFloat(computed.fontSize || '0') || 0;
+    if (fontSize < 10 || fontSize > 42) return false;
+    const padding = maintenanceMobileLayoutLengthPx(computed.paddingLeft, parentRect.width)
+        + maintenanceMobileLayoutLengthPx(computed.paddingRight, parentRect.width);
+    const usableWidth = Math.max(1, rect.width - padding);
+    const approxCharsPerLine = usableWidth / Math.max(10, fontSize * 0.95);
+    const parentFraction = rect.width / Math.max(1, parentRect.width);
+    const extremeNarrow = rect.width <= 176 && parentFraction <= 0.5 && parentRect.width - rect.width >= 72;
+    const columnLike = rect.height / Math.max(1, rect.width) >= 2.2 && approxCharsPerLine <= 5.4;
+    if (!extremeNarrow || !columnLike) return false;
+
+    const transform = String(computed.transform || '').trim().toLowerCase();
+    const matrix = transform.match(/^matrix\(([^)]+)\)$/);
+    if (matrix) {
+        const parts = matrix[1].split(',').map(value => Number.parseFloat(value.trim()));
+        if (parts.length >= 4 && (Math.abs(parts[1] || 0) > 0.08 || Math.abs(parts[2] || 0) > 0.08)) return false;
+    }
+    const aspectRatio = String(computed.aspectRatio || '').trim().toLowerCase();
+    if (aspectRatio && aspectRatio !== 'auto') return false;
+
+    // On absolute Visual Scenery overlays, only rescue a block that is already geometrically
+    // centered. This avoids stretching intentionally narrow edge labels or side annotations.
+    const position = String(computed.position || '').trim().toLowerCase();
+    if (position === 'absolute' || position === 'fixed') {
+        const centerDelta = Math.abs((rect.left + rect.width / 2) - (parentRect.left + parentRect.width / 2));
+        if (centerDelta > parentRect.width * 0.2) return false;
+    }
+    return true;
+}
+
+function maintenanceMobileLayoutUnderfillCandidate(element, style = null, referenceWidth = 0) {
+    if (!element?.parentElement || referenceWidth < 300) return false;
+    if (maintenanceMobileLayoutIsInternal(element) || maintenanceMobileLayoutIsPassportManaged(element)) return false;
+    if (maintenanceMobileLayoutHorizontalMediaHint(element)) return false;
+    const computed = style || maintenanceMobileLayoutComputedStyle(element);
+    const rect = maintenanceMobileLayoutRect(element);
+    const parent = element.parentElement;
+    const parentStyle = maintenanceMobileLayoutComputedStyle(parent);
+    const parentRect = maintenanceMobileLayoutRect(parent);
+    if (!computed || !rect || !parentStyle || !parentRect || rect.width < 170 || parentRect.width < 300) return false;
+    if (rect.width >= Math.min(referenceWidth, parentRect.width) * 0.78) return false;
+    if (parentRect.width - rect.width < 56) return false;
+    const position = String(computed.position || '').toLowerCase();
+    if (position === 'absolute' || position === 'fixed') return false;
+    const writingMode = String(computed.writingMode || '').trim().toLowerCase();
+    if (writingMode && writingMode !== 'horizontal-tb') return false;
+    const parentDisplay = String(parentStyle.display || '').toLowerCase();
+    const centeredFlex = parentDisplay.includes('flex') && /center/.test(String(parentStyle.justifyContent || '').toLowerCase());
+    const centeredGrid = parentDisplay.includes('grid') && /center/.test(`${parentStyle.justifyItems || ''} ${parentStyle.placeItems || ''}`.toLowerCase());
+    if (!centeredFlex && !centeredGrid) return false;
+
+    const signature = `${element.id || ''} ${element.className || ''} ${element.getAttribute?.('role') || ''}`;
+    if (/(?:^|[-_\s])(?:sidebar|side-bar|rail|toc|menu|nav|toolbar|badge|tag|legend|avatar|icon|ticket|receipt|passport|document|tarot|playing-card|photo|polaroid|postcard|phone|mobile|device|stamp|qr|barcode|coupon|voucher|letter|invitation|envelope|book|page|poster|sheet|parchment|scroll|certificate|stationery)(?:$|[-_\s])/i.test(signature)) return false;
+    if (String(computed.aspectRatio || '').toLowerCase() !== 'auto' && String(computed.aspectRatio || '').trim()) return false;
+    const explicitMaxWidth = Math.max(
+        maintenanceMobileLayoutLengthPx(computed.maxWidth, parentRect.width),
+        maintenanceMobileLayoutLengthPx(computed.maxInlineSize, parentRect.width),
+    );
+    if (explicitMaxWidth > 0 && explicitMaxWidth <= 340) return false;
+    const explicitFlexBasis = maintenanceMobileLayoutLengthPx(computed.flexBasis, parentRect.width);
+    if (explicitFlexBasis > 0 && explicitFlexBasis <= 340) return false;
+    if (maintenanceMobileLayoutTextLength(element) < 110 || Number(element.childElementCount || 0) < 2) return false;
+
+    const meaningfulSiblings = [...parent.children].filter(child => {
+        if (child === element || maintenanceMobileLayoutIsInternal(child)) return false;
+        const childStyle = maintenanceMobileLayoutComputedStyle(child);
+        if (!childStyle || childStyle.display === 'none' || childStyle.visibility === 'hidden') return false;
+        const childRect = maintenanceMobileLayoutRect(child);
+        const childWidth = Number(childRect?.width || 0);
+        const childHeight = Number(childRect?.height || 0);
+        if (childWidth <= 8 && childHeight <= 8) return false;
+        const childText = maintenanceMobileLayoutTextLength(child);
+        if (childText >= 8) return true;
+        if (!child.matches?.('img,svg,canvas,video,figure')) return false;
+        const hint = `${child.id || ''} ${child.className || ''} ${child.getAttribute?.('role') || ''} ${child.getAttribute?.('aria-label') || ''}`;
+        const decorative = child.getAttribute?.('aria-hidden') === 'true'
+            || String(childStyle.pointerEvents || '').toLowerCase() === 'none'
+            || /(?:^|[-_\s])(?:icon|badge|ornament|decor|decoration|seal|stamp|mark|sparkle|flourish)(?:$|[-_\s])/i.test(hint);
+        if (decorative) return false;
+        return (childWidth >= 64 && childHeight >= 48) || childWidth * childHeight >= 4096;
+    });
+    if (meaningfulSiblings.length > 0) return false;
+
+    const fixedWidth = maintenanceMobileLayoutLengthPx(computed.width, parentRect.width);
+    return fixedWidth > 0 && fixedWidth <= 340;
 }
 
 function inspectMaintenanceMobileLayout(root) {
@@ -17534,6 +18675,8 @@ function inspectMaintenanceMobileLayout(root) {
         multiColumnCount: 0,
         mediaCount: 0,
         stateContentCount: 0,
+        squeezedTextCount: 0,
+        underfillCount: 0,
         passportDocumentCount: 0,
         sectionStackCount: 0,
         screenShellCount: 0,
@@ -17560,6 +18703,8 @@ function inspectMaintenanceMobileLayout(root) {
         multiColumn: new Set(),
         media: new Set(),
         stateContent: new Set(),
+        squeezedText: new Set(),
+        underfill: new Set(),
         relationTree: new Set(),
     };
     const alreadyRepaired = root.hasAttribute(MOBILE_LAYOUT_SCOPE_ATTR)
@@ -17658,6 +18803,16 @@ function inspectMaintenanceMobileLayout(root) {
             }
         }
 
+        if (!element.hasAttribute(MOBILE_LAYOUT_SQUEEZED_TEXT_ATTR)
+            && maintenanceMobileLayoutSqueezedTextCandidate(element, style, referenceWidth)) {
+            buckets.squeezedText.add(element);
+        }
+
+        if (!element.hasAttribute(MOBILE_LAYOUT_UNDERFILL_ATTR)
+            && maintenanceMobileLayoutUnderfillCandidate(element, style, referenceWidth)) {
+            buckets.underfill.add(element);
+        }
+
         const columnCount = Number.parseInt(style.columnCount || '1', 10) || 1;
         if (columnCount > 1 && !element.hasAttribute(MOBILE_LAYOUT_SINGLE_COLUMN_ATTR)) buckets.multiColumn.add(element);
 
@@ -17701,6 +18856,8 @@ function inspectMaintenanceMobileLayout(root) {
         multiColumnCount: buckets.multiColumn.size,
         mediaCount: buckets.media.size,
         stateContentCount: buckets.stateContent.size,
+        squeezedTextCount: buckets.squeezedText.size,
+        underfillCount: buckets.underfill.size,
         passportDocumentCount: findRenderedPassportDocumentCandidates(root).length,
         sectionStackCount: sectionStackHosts.length,
         screenShellCount: screenShellHosts.length,
@@ -17843,6 +19000,14 @@ function installMaintenanceMobileLayoutRescue(root) {
                     }
                 }
             }
+        }
+
+        if (maintenanceMobileLayoutSqueezedTextCandidate(element, style, referenceWidth)) {
+            maintenanceMobileLayoutMark(element, MOBILE_LAYOUT_SQUEEZED_TEXT_ATTR, marked);
+        }
+
+        if (maintenanceMobileLayoutUnderfillCandidate(element, style, referenceWidth)) {
+            maintenanceMobileLayoutMark(element, MOBILE_LAYOUT_UNDERFILL_ATTR, marked);
         }
 
         const columnCount = Number.parseInt(style.columnCount || '1', 10) || 1;
@@ -18533,7 +19698,7 @@ function maintenanceUserRepairInspection(root, mode) {
     return inspection;
 }
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.19';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.21';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -18541,6 +19706,7 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
     { id: 'code-block-dom', modes: ['source', 'code', 'all'], bucket: 'code', run: ({ messageScope }) => sanitizeCodeBlocksInScope(messageScope, true) },
     { id: 'plain-text-dom', modes: ['source', 'plainText', 'code', 'all'], bucket: 'plainText', run: ({ messageScope }) => sanitizeWholePlainTextRabbitMirrorsInScope(messageScope, true) },
     { id: 'rendered-details-dom', modes: ['source', 'plainText', 'code', 'all'], bucket: 'plainText', run: ({ messageScope }) => sanitizeRenderedRabbitMirrorDetailsInScope(messageScope, true) },
+    { id: 'styleless-structured-rescue', modes: ['style', 'all'], bucket: 'style', perTarget: true, run: ({ root, target }) => target === root ? installMaintenanceStylelessStructuredRescue(target) : 0 },
     { id: 'css-comment-boundary', modes: ['source', 'style', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => repairMarkdownCorruptedCssComments(target) },
     // “排版不适配／内容显示不全”共用同一条手动路线：先修窄屏容器关系，再复测叶级文字裁切。
     { id: 'mobile-inline-annotation-flow-repair', modes: ['text', 'all'], bucket: 'style', perTarget: true, run: ({ target }) => installMobileInlineAnnotationRescue(target) },
@@ -18591,6 +19757,7 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
         const channelDialCycleCount = Number.parseInt(target.getAttribute?.(CHANNEL_DIAL_CYCLE_COUNT_ATTR) || '0', 10) || 0;
         const reversibleCheckedCount = Number.parseInt(target.getAttribute?.(REVERSIBLE_CHECKED_RESULT_ROOT_ATTR) || '0', 10) || 0;
         const reversibleRadioCount = Number.parseInt(target.getAttribute?.(REVERSIBLE_RADIO_ROOT_ATTR) || '0', 10) || 0;
+        const nestedCheckedContentCount = target.querySelectorAll?.(`[${NESTED_CHECKED_CONTENT_RESCUE_ATTR}]`)?.length || 0;
         const focusWithinPersistentCount = Number.parseInt(target.getAttribute?.(FOCUS_WITHIN_PERSISTENT_ROOT_ATTR) || '0', 10) || 0;
         const selectionFallbackCount = installSelectionOnlyStateFallback(target);
         const inertActionRepairCount = installInertActionButtonFallback(target);
@@ -18633,6 +19800,7 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
             || channelDialCycleCount > 0
             || reversibleCheckedCount > 0
             || reversibleRadioCount > 0
+            || nestedCheckedContentCount > 0
             || focusWithinPersistentCount > 0
             || meaningfulCheckedRoute;
         if (genuinelyRescued) target.dataset.rabbitMirrorInteractionRescued = 'true';
@@ -18642,7 +19810,7 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
             .map(item => item.trim())
             .filter(item => item && item !== 'none');
         // 不再把“调用了总入口”冒充为“命中了一条急救路线”；选择样式专用结构只有在安全补出分支提示后才算修复。
-        return genuinelyRescued ? Math.max(routes.length, disabledChoiceRepairCount, inertActionRepairCount, staticChoiceRepairCount, structuredStaticDisclosureRepairCount, fillInChoiceRepairCount, disabledChoiceCount, inertActionCount, staticChoiceCount, structuredStaticDisclosureCount, fillInChoiceCount, overlayRepairCount, rawHoverRepairCount, recoveredProgramRepairCount, recoveredProgramCountAfter, rawScriptTimelineRepairCount, rawScriptTimelineCountAfter, radioGroupRepairCount, radioGroupCountAfter, crossParentCheckedCount, labeledCheckedVerifyCount, checkedHasStateCount, detachedCheckedHasCount, pairedCheckedStateCount, exclusiveStackedStateCount, channelDialCycleCount, reversibleCheckedCount, focusWithinPersistentCount) : 0;
+        return genuinelyRescued ? Math.max(routes.length, disabledChoiceRepairCount, inertActionRepairCount, staticChoiceRepairCount, structuredStaticDisclosureRepairCount, fillInChoiceRepairCount, disabledChoiceCount, inertActionCount, staticChoiceCount, structuredStaticDisclosureCount, fillInChoiceCount, overlayRepairCount, rawHoverRepairCount, recoveredProgramRepairCount, recoveredProgramCountAfter, rawScriptTimelineRepairCount, rawScriptTimelineCountAfter, radioGroupRepairCount, radioGroupCountAfter, crossParentCheckedCount, labeledCheckedVerifyCount, checkedHasStateCount, detachedCheckedHasCount, pairedCheckedStateCount, exclusiveStackedStateCount, channelDialCycleCount, reversibleCheckedCount, nestedCheckedContentCount, focusWithinPersistentCount) : 0;
     } },
 ]);
 
@@ -19044,6 +20212,7 @@ function restoreMaintenanceAutoSafeUiState(snapshot) {
 
 function runMaintenanceSafeAutomaticRepairs(root, button) {
     if (!root?.isConnected || !button?.isConnected) return { repaired: 0, modules: [] };
+    invalidateRabbitMirrorInteractionResetSnapshot(root);
     const uiStateSnapshot = captureMaintenanceAutoSafeUiState(root);
     const modules = [];
     const add = (id, count) => {
@@ -19120,6 +20289,7 @@ function runMaintenanceSafeAutomaticRepairs(root, button) {
 
 function runMaintenanceUserRepair(root, button, mode) {
     if (!root?.isConnected || !button?.isConnected) return false;
+    invalidateRabbitMirrorInteractionResetSnapshot(root);
     if (mode === 'auto') return runMaintenanceAutomaticRepairPlan(root, button);
     markIndependentMaintenanceLiveRepair(root, 5200);
     const captured = captureMaintenancePreRepairSnapshot(root);
@@ -19284,6 +20454,7 @@ function showMaintenanceRabbitMenu(root, button) {
       <button type="button" data-rm-maintenance-action="source">📄 空白或显示代码、纯文字</button>
       <button type="button" data-rm-maintenance-action="style">🎨 样子不对</button>
       <button type="button" data-rm-maintenance-action="all">🔧 全部试试（仅当前兔子镜）</button>
+      <button type="button" data-rm-maintenance-action="reset-interaction" ${hasRabbitMirrorInteractionResetSnapshot(root) ? '' : 'disabled'}>⏪ 恢复交互初始状态</button>
       <button type="button" data-rm-maintenance-action="restore-before" ${maintenancePreRepairSnapshots.has(maintenanceSnapshotKey(root)) ? '' : 'disabled'}>↩️ 返回修复前</button>
       <button type="button" data-rm-maintenance-action="diagnostic">📋 生成全链路诊断</button>
       <button type="button" data-rm-maintenance-action="close">关闭</button>`;
@@ -19301,7 +20472,12 @@ function showMaintenanceRabbitMenu(root, button) {
         event.stopPropagation();
         closeMaintenanceRabbitMenu();
         if (action === 'close') return;
+        if (action === 'reset-interaction') {
+            restoreRabbitMirrorInteractionResetSnapshot(root, button);
+            return;
+        }
         if (action === 'restore-before') {
+            invalidateRabbitMirrorInteractionResetSnapshot(root);
             const restoreSummary = getRabbitMirrorSummaryText(root);
             const restoreIndex = getMessageIndexFromMirrorNode(root);
             if (restoreMaintenancePreRepairSnapshot(root, button)) {
@@ -21689,6 +22865,7 @@ function parseHtmlFragment(html) {
     try {
         const template = document.createElement('template');
         template.innerHTML = html;
+        if (!sanitizeMaintenanceMirrorTemplate(template)) return null;
         return template.content.childNodes.length ? template.content.cloneNode(true) : null;
     } catch {
         return null;
@@ -21699,6 +22876,7 @@ function parseTotoFragment(html) {
     try {
         const template = document.createElement('template');
         template.innerHTML = html;
+        if (!sanitizeMaintenanceMirrorTemplate(template)) return null;
         const toto = template.content.querySelector('toto[data-rabbit-mirror="true"], toto');
         return toto ? toto.cloneNode(true) : null;
     } catch {
@@ -22119,6 +23297,7 @@ function initializeMaintenanceAutoSafeStartupGuard() {
     maintenanceAutoSafeBaselineSignatures.clear();
     maintenanceAutoSafeAttemptedRoots = new WeakMap();
     maintenancePreRepairSnapshots.clear();
+    rabbitMirrorInteractionResetSnapshots.clear();
     maintenanceAutoSafeReady = false;
     if (!isMaintenanceAutoSafeEnabled()) return;
     captureMaintenanceAutoSafeBaseline();
@@ -22336,11 +23515,17 @@ function installToolEntryDelegation(chatRoot = getChatRoot()) {
     removeToolEntryDelegation();
     toolEntryDelegationRoot = chatRoot;
     toolEntryDelegatedPointerHandler = event => {
+        // Capture the pristine per-mirror interaction baseline at the earliest existing delegated
+        // pointer boundary. This covers pointerdown-driven rescue/UI paths before their later click
+        // handlers mutate state; keyboard activation is still covered by the capture-phase click
+        // delegate below. Tool buttons are excluded by the capture helper itself.
+        captureRabbitMirrorInteractionResetFromEventTarget(event.target);
         const button = event.target?.closest?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}]`);
         if (!button || !chatRoot.contains(button)) return;
         event.stopPropagation();
     };
     toolEntryDelegatedClickHandler = event => {
+        captureRabbitMirrorInteractionResetFromEventTarget(event.target);
         const button = event.target?.closest?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}]`);
         if (!button || !chatRoot.contains(button)) return;
         const root = rabbitMirrorToolRootFromButton(button);
@@ -22545,6 +23730,7 @@ export function destroyOutputSanitizer() {
     maintenanceAutoSafeBaselineSignatures.clear();
     maintenanceAutoSafeAttemptedRoots = new WeakMap();
     maintenancePreRepairSnapshots.clear();
+    rabbitMirrorInteractionResetSnapshots.clear();
     maintenanceAutoSafeReady = false;
     removeMaintenanceRabbitsInChatDom();
     removeFeedbackCatsInChatDom();

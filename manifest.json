@@ -1,17 +1,17 @@
 {
-  "display_name": "兔子镜小剧场",
+  "display_name": "兔子镜测试版",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.0",
-  "css": "style.css?rmv=1.4.0",
+  "js": "index.js?rmv=1.4.25.2",
+  "css": "style.css?rmv=1.4.25.2",
   "author": "Toto",
-  "version": "1.4.0",
-  "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
-  "auto_update": true,
+  "version": "1.4.25.2",
+  "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/tototest",
+  "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
   "minimum_client_version": "1.13.0",
   "hooks": {
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜小剧场 v1.4：为 SillyTavern 对话生成可交互的小剧场，并支持跟随当前 API 或独立 API。"
+  "description": "兔子镜测试版 1.4.25.2：基于稳定的 1.4.25.1 安全边界，将配色冷却改为每轮生成前主动短期冷却并按时间自然衰减；不再等待重复出现后纠偏，也不指定固定替代颜色。"
 }

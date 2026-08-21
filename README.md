@@ -1,3 +1,84 @@
+# RabbitMirror / 兔子镜 1.4.25.2 TEST
+
+## 1.4.25.2 TEST：配色冷却前置 + 逐轮衰减
+
+- 基于 1.4.25.1；1.4.25.1 的窄安全边界保持不变。
+- 每一面真实成品完成后，配色路径立即进入最近 3 轮的短期冷却；下一轮生成前主动读取，上一面权重最高，更早记录按轮次自然衰减。
+- 不再等“已经重复两次”才纠偏；只换同色相的色值、饱和度、明暗或强调色不算真正换路。
+- 不指定替代颜色，不在配色冷却里重复点菜优先规则，也不把某一种颜色长期写成固定安全色／禁色。
+- 独立 API 移除永久性的“黑色不能作为默认方案”提示，改由同一套真实近期短期冷却处理，减少向米黄、蓝白或其他单一浅色底盘收敛。
+
+
+## 1.4.25.1 TEST：稳定基线安全边界 + 蓝色收敛冷却
+
+- 基线仍是 1.4.25；不带入 1.4.26～1.4.30 的交互／布局改动。
+- 独立 API 与维修兔重建 HTML 增加窄安全净化，但不会整块删除正常 CSS；外框、隐藏态、`:checked`、fixed/sticky、popover/dialog 继续按 1.4.25 行为工作。
+- 自修改交互 baseline 改为仅存在于运行时 WeakMap，不再从模型 HTML 读取并 `innerHTML` 恢复。
+- 蓝白／青蓝现在作为同一个重复配色家族参与冷却；避黑规则也明确不得默认退到蓝白／青蓝。
+
+
+## 1.4.25.1 TEST：世界书拉取超时保护
+
+- 世界书列表 15 秒未返回会自动结束，不再一直卡在“正在拉取”。
+- 拉取只用于拿名单/元数据和逐本开关，不会重新扫描世界书。
+
+## 1.4.25.1 TEST：设置页大白话 + 主动拉取世界书列表
+
+- 设置页长说明改成简短大白话。
+- 世界书新增“拉取世界书”按钮；拉取后可在列表里逐本勾选。
+- 拉取只拿世界书名单，不扫描条目、不重掷 probability；独立 API 仍只复用本轮真正激活且允许的条目。
+
+## 1.4.23 TEST：世界书逐本边界修复 + 单镜面交互复位防串镜
+
+- 1.4.23 修复同一消息重绘/编辑或同消息多镜面时 reset baseline 串镜；复位身份同时绑定当前渲染实例与消息/外置源码指纹。
+- 逐本世界书不再对 161+ 字符身份 fail-open；合法名称统一到 512 字符，超出范围 fail-closed。逐本关闭列表不再静默截断 256 本；观察缓存内存与持久化统一 512 本 LRU。
+
+- 原有「读取本轮已激活的世界书」总开关保留；设置页新增逐本世界书开关。列表来自 SillyTavern 自身 World Info load 事件，RabbitMirror 不主动再扫描世界书、不重掷 probability。
+- 逐本筛选只作用于本轮 host 已加载且最终 activated 的条目；禁用集合在主生成开始时冻结，途中改动下一轮生效；新世界书默认启用，原 12k 世界书预算不变。
+- 维修兔菜单新增「⏪ 恢复交互初始状态」。RabbitMirror 在该镜面第一次真实交互的 capture phase 懒保存基线；之后可以反复把 checkbox/radio、内部 details、交互产生的 DOM 状态和大接近 approach/reaction 恢复到首次交互前，无需刷新页面。
+- 复位通过替换为干净 clone 丢弃旧 DOM listener / WeakMap 状态，再按现有链重装交互救援和工具；外层兔子镜当前展开状态保持不变。维修发生前会使旧交互基线失效，避免复位把维修结果一起撤销。
+- 本版不新增世界书扫描调用，不为复位新增全局 listener/Observer/polling/API；交互快照限量保存。
+
+## 1.4.21 TEST：大接近反向审查修复
+
+- threshold reaction 不再相信模型初始 `hidden/stage`：运行时把现有和新插入舞台统一归一，达到 threshold 前强制锁闭；关闭反应仍保留本轮 approach。
+- `data-rm-touch-adult=true` 不再等于“运行时已确认成年”。私密 mystery 首次实际触发时需要用户本地确认一次；年龄候选标记缺失、用户拒绝或环境无法确认时均 fail-closed。
+- 成人确认不能被旁路：直接点私密 radio/checkbox、第二 label、舞台外 label 都不能揭示私密 reaction；只有唯一 canonical hotspot 能获得一次性状态源激活许可。
+- malformed hotspot 没有真实、唯一、非 disabled input 路线时，不推进 approach、不触发 Live2D。
+- 新增 1 个只观察 `#chat` 子节点插入的轻量 observer，用来在动态/流式大接近 DOM 进入页面时立即归一化；不增加 API、polling 或 timer。
+
+## 1.4.20 TEST：大接近自然接近 / GS 稀有演出 / 成人私密随机触点
+
+- 常规热点候选调整为头、脸、肩、胸、手、腰、大腿、膝盖、小腿；明确成年且情境适合时可额外出现 0～2 个 `mystery-1/2` 私密随机隐藏触点。
+- 普通关系仍只有本轮预生成触摸反应；热恋／高亲密才可启用本轮 approach。默认 `natural` 只暴露阶段，不显示数字；少数 `gs` 演出才允许 meter。
+- 达到 threshold 只解锁本轮已预生成的关系变化反应，不触发新 API；关闭 reaction 不清空 approach，本轮结束后 WeakMap 状态自然消失。
+- Live2D 常规热点继续按语义匹配本地 hit area；mystery 仅允许映射到受控的 chest/waist/thigh/knee/calf/hip/leg/body 通用区域，模型不能指定 motion/expression/command。
+- 规则文本相较 1.4.19 反而缩短，不写医院/雨天/冬天等“场景→固定 UI”模板。
+
+
+## 1.4.19 TEST：大接近 reaction 收起 + 手机极窄正文救援
+
+- 大接近模式专用规则明确：人物舞台不是固定“图床/皮肤套数”，CSS 剪影、线稿、局部近景、半身等只是模型本轮构图，不存在内置固定 3D 图床。
+- 每个大接近 reaction 对话框要求提供 `data-rm-touch-close="true"` 的明确关闭入口；radio 方案使用同组中立状态，运行时同一 click 委托提供无事件派发的关闭兜底，不触发 Live2D message 或模型生成。
+- 维修兔新增 `mobile squeezed text`：只在手机窄屏下，对横排、长正文、实际宽度极窄且呈“高瘦竖柱”的高置信候选提高最小可读宽度；排除竖排、sidebar/nav、诗歌/引文、旋转元素、触摸热点、短文本与已正常宽度内容。
+- 不新增 API 请求、timer、Observer、轮询或全局 listener；1.4.18 styleless/underfill、1.4.16 大接近 Live2D、1.4.14 Android/Xiaomi、1.4.12 checked BUG-1 继续保留。
+
+
+## 1.4.18 TEST：收紧无样式降级救援 + 欠宽救援作者意图保护
+
+- `styleless-structured-mirror` 改为 fail-closed：外部/美化 CSS 已提供成体系的背景、边框、阴影、布局或 padding 时不接管；已有中等 inline 结构视觉、真实表单也不接管。
+- 无 CSS fallback 只恢复可读结构，不再隐藏 checkbox/radio、也不再给空 label 伪造“触碰”按钮；没有真实第二状态时不会制造假交互。
+- 手机 `underfill` 尊重显式小 `max-width`、非水平 writing-mode 与信函/书页/海报等明确窄媒介；小型装饰 SVG/图标不再阻断唯一主正文的欠宽救援。
+- 仍用 `全链路2.txt`（无 CSS）与 `全链路.txt`（260px 符纸）作为正向回归；同时加入外部 CSS、中等 inline、native form、profile max-width、竖排信函和小装饰 sibling 的反例。
+- 不增加 API 请求、timer、Observer、轮询或全局 listener；1.4.16 大接近、1.4.14 Android/Xiaomi 外置宽度、1.4.12 checked BUG-1 保持。
+
+> 1.4.15：在 1.4.13 Android／小米外置宽度修复上补齐 mobile transition 与 viewport lifecycle：mobile 时清除旧 PC compact-shell，复合宽度 signature 与 visualViewport resize 共用现有 debounce；同时避免桌面仅因 visualViewport 缩放而进入手机 lane。1.4.12 的 checked 正文优先级修复与其它链路保持。
+
+本测试版在 1.4.11 基础上修正 checked 内层正文兜底的候选优先级：优先处理明确的 `display:none` / `visibility:hidden` 正文，只有没有强隐藏候选时才使用零高度、低透明度、折叠 max-height 等弱证据，避免零高度包装节点抢先消耗修复机会；其它高风险链不变。
+
+> **RabbitMirror 1.4.10 TEST / 兔子镜测试版**  
+> 测试仓库：`https://github.com/Zaiyebuzuoyouqingdetiangou/tototest`。本版在 1.4.6 Eligible Misses soft pity 基础上补齐随机偏好控制面：🎲 新增可逐层浏览／搜索全部主题与展现形式的「📚 全池一览」，无需先抽中即可收藏或拉黑；收藏室支持每项独立设置 ×1～×50 倍率。全部仍为本地随机状态，不增加 Prompt／Token、API 请求、Observer、poll 或 timer。
+
 # 兔子镜小剧场
 
 当前正式版本：`v1.4`。
@@ -56,7 +137,9 @@
 
 ## 主要功能
 
-- 随机抽取主题、展现形式与玩法组合；
+- 随机抽取主题、展现形式与玩法组合；展现形式对长期 eligible-but-missed 项目提供 2.0× 封顶的温和 soft pity，缩短极端长尾但不做固定轮播；
+- 🎲 抽签载体除显示本轮真实抽签外，还可进入「📚 全池一览」按层级浏览／搜索全部主题与展现形式；无需等项目先出现即可直接 ⭐ 收藏或 🚫 拉黑；收藏室支持每项独立设置 ×1～×50 倍率，黑名单仍从随机池排除，均不增加 Prompt；
+- 可选“展现形式世界观锁”：保留展现形式功能与结构，只转换不合当前世界观的具体载体；带 `if` 标签的主题自动放行；
 - 用户指令优先，可自由点菜；
 - 三档 Prompt 长度与随机发挥模式；
 - 动态视觉场景与本地有限次视觉检查；
@@ -99,11 +182,15 @@
 - **轻壳外置（标题有壳）**：等待、生成成功与失败都保留在消息后；标题保留兔子镜工具壳，生成本体不再被整层外壳强改宽高；
 - **外置后内嵌**：等待与失败时显示外置圆框，成功后将同一个宿主自然移入本条回复的正文内容区域，不复制第二份兔子镜，也不写入 `message.mes`、`display_text` 或 Swipe 正文。
 
+可选开启 **“读取本轮已激活的世界书”**：复用 SillyTavern 主生成本轮已经加载并最终激活的全局／角色／聊天／Persona World Info 条目，不重新调用 World Info 扫描、不重新掷 probability、不读取未激活条目。四类来源共用同一份 12,000 字符独立预算；开启后这些已激活条目会作为参考资料发送给用户配置的独立 API，开关关闭时不会因为这项功能增加上下文。
+
 切换生成来源只影响之后的新回复；已经生成的主 API／独立 API 兔子镜会尽量保留。
 
 ## 随机、冷却与交互多样性
 
 跟随当前 API 与独立 API 共用同一套随机抽取器。近期成功成品会以压缩记录参与主题、展现形式、整体视觉、配色与交互骨架避让。
+
+展现形式另有本地 Eligible Misses soft pity：只有某个 format 在本轮真实有资格进入随机池、但最终没有抽中时才累计一次 miss；黑名单、当前模式不允许、强制动态视觉或明确指定展现形式的轮次不会让普通 format aging。倍率按 40／80／140／220／320 个 eligible miss 分档上升并在 2.0× 封顶；抽中后归零。收藏室的偏好权重与这项公平性补偿彼此独立、可叠加。收藏项默认仍为 ×3，但可在收藏室逐项调整到 ×1～×50；主题的家族层加权单独在 ×6 封顶，避免高倍率把整个家族无界放大。
 
 交互家族只用于识别近期重复，不是固定模板库。新的交互应从本轮展现形式、空间关系、物件行为、叙事推进与内容节奏中自行产生；radio、checkbox 与 details 不会被永久禁止。
 
@@ -171,3 +258,25 @@
 版本更新内容见 [CHANGELOG](./CHANGELOG.md)。
 
 请通过本仓库 Issues 反馈，并附：内部版本、SillyTavern 版本、设备、浏览器、生成方式、显示方式，以及已经检查隐私的诊断文本。
+
+
+### 1.4.10 TEST：近输出短锁与重 roll 配色避重复
+独立 API 的近输出层只保留本轮 identity、当前真正生效的短避让和最终 `<toto>` 输出契约；基础 Prompt 已经包含的长规则不再整段重复。手动重新生成同一面兔子镜时，会把上一版真实配色家族作为本次避让对象（用户明确固定配色时除外）。这不是预设固定色盘，也不会额外发起 API 请求。
+
+
+## 1.4.16：大接近模式（大接近モード）
+
+- 将 1.4.15 的 `6.2.1.2 触摸小剧场` 改为 `6.2.1.1.e 大接近模式`，正式归入「心跳回忆 GS 模式」子项。
+- 参考用户提供的 `touch-theater-pure-card-v1.0.0.zip` 纯卡母本，默认语义热区改为 head / face / shoulder / chest / arm / hand / waist / thigh / knee；不把母本约 1.7MB 的 Base64 立绘或 Scoped Regex 打进 RabbitMirror。
+- 新舞台使用 `data-rm-dai-sekkin-mode="true"`；运行时继续兼容 1.4.15 的 `data-rm-touch-theater` 及 left-hand / right-hand / hair 历史语义。
+- 旧 `6.2.1.2` 的收藏、黑名单、收藏倍率和 Eligible Misses 读取时迁移到 `6.2.1.1.e`。
+- 基础触摸仍不调用模型；Live2D 仍只复用用户本地已经配置的 expression / motion，忽略 hit-area message。
+
+## 1.4.15：触摸小剧场 / Touch Theater
+
+- 新展现形式 ID：`6.2.1.2`。可随机抽中，也可直接点名「兔子镜展现形式：触摸小剧场」。
+- 模型只在本轮预生成触摸舞台、5～9 个热区和对应反应；点击不会再发一次 LLM 请求，也不伪造跨消息好感度。
+- 基础交互使用 `radio/checkbox + label + CSS`，Live2D 未安装时仍完整可用。
+- 可选 Live2D 增强：如果 SillyTavern 官方 Live2D 扩展已启用、当前角色已绑定模型且 hit area 有 expression / motion 映射，RabbitMirror 会在触摸对应区域时播放匹配动画。RabbitMirror 不执行 Live2D hit area 的 message 映射，也不会因此自动生成回复。
+- 首版 Live2D 桥只处理单角色聊天；群聊为避免驱动错误角色会自动跳过 Live2D 动画，但 HTML/CSS 触摸反馈照常工作。
+
