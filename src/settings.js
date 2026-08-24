@@ -6,7 +6,17 @@ export const MODULE_NAME = 'rabbit_mirror_theater';
 export const VISUAL_PROMPT_MAX_CHARS = 5000;
 export const VISUAL_EXTRA_PROMPT_MAX_CHARS = 1000;
 export const VISUAL_AVOID_PROMPT_MAX_CHARS = 1000;
+export const WORLD_INFO_BOOK_NAME_MAX_CHARS = 512;
 
+
+const LEGACY_FORMAT_ID_ALIASES = Object.freeze({
+    '6.2.1.2': '6.2.1.1.e',
+});
+
+function canonicalFormatSettingId(value) {
+    const id = String(value || '').trim();
+    return LEGACY_FORMAT_ID_ALIASES[id] || id;
+}
 export const DEFAULT_VISUAL_PROMPT = String.raw`兔子镜默认视觉规则:
   - 不得以通用圆角面板、卡片列表、数据仪表盘或信息框作为默认主体，再向其中填入本轮内容。
   - 当展现形式本身属于平面媒介时，其纸面、印刷面、画布、版式、纹理、边缘与承载内容可以直接构成主要视觉本体，不视为通用面板。
@@ -35,12 +45,15 @@ export const defaultSettings = Object.freeze({
     mode: 'integrated',
     generationSource: 'follow',
     followDisplayMode: 'inline',
+    independentConnectionProfileId: '',
     independentApiBaseUrl: '',
     independentApiKey: '',
     independentApiModel: '',
     independentApiTemperature: 0.8,
-    independentApiMaxTokens: 12000,
+    independentApiMaxTokens: 30000,
     independentDisplayMode: 'external',
+    independentReadGlobalWorldInfo: false,
+    independentWorldInfoDisabledBooks: [],
     samplingMode: 'classic',
     rawPolicy: 'balanced',
     showCot: false,
@@ -49,9 +62,14 @@ export const defaultSettings = Object.freeze({
     blacklistEnabled: true,
     blacklistedThemeIds: [],
     blacklistedFormatIds: [],
+    favoriteThemeIds: [],
+    favoriteFormatIds: [],
+    favoriteThemeMultipliers: {},
+    favoriteFormatMultipliers: {},
+    presentationWorldviewLock: false,
     richFormatBias: false,
     maintenanceRabbitEnabled: true,
-    maintenanceRabbitAutoSafeEnabled: false,
+    maintenanceRabbitAutoSafeEnabled: true,
     feedbackCatEnabled: true,
     visualPromptEditingEnabled: false,
     visualPrompt: DEFAULT_VISUAL_PROMPT,
@@ -61,7 +79,7 @@ export const defaultSettings = Object.freeze({
     hardStartup: true,
     hardChineseLock: true,
     userDirectivePriority: true,
-    creativeExpansionMode: false,
+    creativeExpansionMode: true,
     forceVisualScenery: false,
     memoryScanEnabled: false,
     memoryProviderIds: [],
@@ -93,6 +111,11 @@ export function getSettings() {
     if (!['follow', 'independent'].includes(settings.generationSource)) settings.generationSource = 'follow';
     if (!['inline', 'external'].includes(settings.followDisplayMode)) settings.followDisplayMode = 'inline';
     if (!['external', 'external_then_inline'].includes(settings.independentDisplayMode)) settings.independentDisplayMode = 'external';
+    settings.independentReadGlobalWorldInfo = settings.independentReadGlobalWorldInfo === true;
+    settings.independentConnectionProfileId = String(settings.independentConnectionProfileId || '').trim().slice(0, 160);
+    settings.independentWorldInfoDisabledBooks = [...new Set((Array.isArray(settings.independentWorldInfoDisabledBooks) ? settings.independentWorldInfoDisabledBooks : [])
+        .map(value => String(value || '').trim())
+        .filter(value => value && value.length <= WORLD_INFO_BOOK_NAME_MAX_CHARS))];
     settings.independentApiBaseUrl = String(settings.independentApiBaseUrl || '').trim();
     settings.independentApiKey = String(settings.independentApiKey || '').trim();
     settings.independentApiModel = String(settings.independentApiModel || '').trim();
@@ -100,7 +123,7 @@ export function getSettings() {
         const temperature = Number(settings.independentApiTemperature);
         settings.independentApiTemperature = Math.max(0, Math.min(2, Number.isFinite(temperature) ? temperature : 0.8));
     }
-    settings.independentApiMaxTokens = Math.max(512, Math.min(32000, Number(settings.independentApiMaxTokens) || 12000));
+    settings.independentApiMaxTokens = Math.max(512, Math.min(32000, Number(settings.independentApiMaxTokens) || 30000));
 
     if (settings.showCot === undefined && settings.showWonderland !== undefined) {
         settings.showCot = !!settings.showWonderland;
@@ -120,9 +143,30 @@ export function getSettings() {
     settings.formatsMax = Number(settings.formatsMax) || defaultSettings.formatsMax;
     settings.cooldownRounds = Math.max(1, Number(settings.cooldownRounds) || defaultSettings.cooldownRounds);
     settings.blacklistEnabled = settings.blacklistEnabled !== false;
-    const normalizeBlacklistIds = value => [...new Set((Array.isArray(value) ? value : []).map(id => String(id || '').trim()).filter(Boolean))].slice(0, 512);
-    settings.blacklistedThemeIds = normalizeBlacklistIds(settings.blacklistedThemeIds);
-    settings.blacklistedFormatIds = normalizeBlacklistIds(settings.blacklistedFormatIds);
+    const normalizeSelectionIds = (value, mapId = id => id) => [...new Set((Array.isArray(value) ? value : []).map(id => mapId(String(id || '').trim())).filter(Boolean))].slice(0, 512);
+    settings.blacklistedThemeIds = normalizeSelectionIds(settings.blacklistedThemeIds);
+    settings.blacklistedFormatIds = normalizeSelectionIds(settings.blacklistedFormatIds, canonicalFormatSettingId);
+    settings.favoriteThemeIds = normalizeSelectionIds(settings.favoriteThemeIds);
+    settings.favoriteFormatIds = normalizeSelectionIds(settings.favoriteFormatIds, canonicalFormatSettingId);
+    const normalizeFavoriteMultipliers = (value, favoriteIds, mapId = id => id) => {
+        const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+        const allowed = new Set(favoriteIds || []);
+        const forbiddenKeys = new Set(['__proto__', 'prototype', 'constructor']);
+        const result = {};
+        for (const [rawId, rawMultiplier] of Object.entries(source)) {
+            const sourceId = String(rawId || '').trim();
+            const id = mapId(sourceId);
+            if (!id || forbiddenKeys.has(sourceId) || forbiddenKeys.has(id) || !allowed.has(id) || Object.keys(result).length >= 512) continue;
+            const empty = rawMultiplier == null || (typeof rawMultiplier === 'string' && !rawMultiplier.trim());
+            const parsed = empty ? NaN : Number(rawMultiplier);
+            const bounded = Math.max(1, Math.min(50, Number.isFinite(parsed) ? parsed : 3));
+            result[id] = Math.round(bounded * 2) / 2;
+        }
+        return result;
+    };
+    settings.favoriteThemeMultipliers = normalizeFavoriteMultipliers(settings.favoriteThemeMultipliers, settings.favoriteThemeIds);
+    settings.favoriteFormatMultipliers = normalizeFavoriteMultipliers(settings.favoriteFormatMultipliers, settings.favoriteFormatIds, canonicalFormatSettingId);
+    settings.presentationWorldviewLock = settings.presentationWorldviewLock === true;
     if (settings.autoRabbitMirrorInjection === undefined) settings.autoRabbitMirrorInjection = settings.enabled !== false;
     if (settings.maintenanceRabbitEnabled === undefined) {
         settings.maintenanceRabbitEnabled = legacyRescueWasEnabled || defaultSettings.maintenanceRabbitEnabled;
@@ -160,7 +204,9 @@ export function getSettings() {
 }
 
 export function updateSettings(patch) {
-    Object.assign(getSettings(), patch);
+    const settings = getSettings();
+    Object.assign(settings, patch);
+    if (String(settings.independentConnectionProfileId || '').trim()) settings.independentApiKey = '';
     saveSettingsDebounced();
 }
 

@@ -7,6 +7,84 @@ const MAX_ATTEMPTS_PER_CHAT = 20;
 const MAX_DIRECTIVE_PICKS_PER_CHAT = 24;
 const ATTEMPT_TTL_MS = 12 * 60 * 60 * 1000;
 const DIRECTIVE_PICK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const FORMAT_ELIGIBLE_MISS_STORAGE_KEY = 'rabbit_mirror_theater:format_eligible_misses:v1';
+const FORMAT_ELIGIBLE_MISS_CAP = 320;
+
+function normalizeFormatEligibleMisses(raw, validFormatIds = []) {
+    const valid = new Set((validFormatIds || []).map(id => String(id || '').trim()).filter(Boolean));
+    const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+    const normalized = {};
+    for (const [rawId, rawValue] of Object.entries(source)) {
+        const sourceId = String(rawId || '').trim();
+        const id = sourceId === '6.2.1.2' ? '6.2.1.1.e' : sourceId;
+        if (!id || (valid.size && !valid.has(id))) continue;
+        const value = Number(rawValue);
+        if (!Number.isFinite(value) || value < 0) continue;
+        const misses = Math.min(FORMAT_ELIGIBLE_MISS_CAP, Math.floor(value));
+        if (misses > 0) normalized[id] = Math.max(Number(normalized[id] || 0), misses);
+    }
+    return normalized;
+}
+
+function readFormatEligibleMissStore(validFormatIds = []) {
+    try {
+        return normalizeFormatEligibleMisses(
+            JSON.parse(localStorage.getItem(FORMAT_ELIGIBLE_MISS_STORAGE_KEY) || '{}'),
+            validFormatIds,
+        );
+    } catch {
+        return {};
+    }
+}
+
+function writeFormatEligibleMissStore(value) {
+    try {
+        localStorage.setItem(FORMAT_ELIGIBLE_MISS_STORAGE_KEY, JSON.stringify(value || {}));
+        return true;
+    } catch (error) {
+        console.warn('[RabbitMirror] Failed to store format fairness state:', error);
+        return false;
+    }
+}
+
+export function getFormatEligibleMisses(validFormatIds = []) {
+    return readFormatEligibleMissStore(validFormatIds);
+}
+
+export function recordFormatEligibleMissRound({ eligibleIds = [], selectedIds = [], validFormatIds = [] } = {}) {
+    const valid = new Set((validFormatIds || []).map(id => String(id || '').trim()).filter(Boolean));
+    const eligible = [...new Set((eligibleIds || []).map(id => String(id || '').trim()).filter(id => id && (!valid.size || valid.has(id))))];
+    if (!eligible.length) return false;
+
+    const selected = new Set((selectedIds || []).map(id => String(id || '').trim()).filter(Boolean));
+    const state = readFormatEligibleMissStore(validFormatIds);
+
+    for (const id of eligible) {
+        if (selected.has(id)) {
+            delete state[id];
+            continue;
+        }
+        const next = Math.min(FORMAT_ELIGIBLE_MISS_CAP, Number(state[id] || 0) + 1);
+        state[id] = next;
+    }
+
+    // 每次真实随机抽签本来就需要持久化 aging；即使所有计数都已到 cap，也写回一次
+    // 规范化后的稀疏 map，以便顺手清掉已经从当前 format 索引消失的旧 ID / 非法值。
+    return writeFormatEligibleMissStore(state);
+}
+
+export function resetFormatEligibleMisses(formatIds = []) {
+    const targets = [...new Set((formatIds || []).map(id => String(id || '').trim()).filter(Boolean))];
+    if (!targets.length) return false;
+    const state = readFormatEligibleMissStore();
+    let changed = false;
+    for (const id of targets) {
+        if (state[id] === undefined) continue;
+        delete state[id];
+        changed = true;
+    }
+    return changed ? writeFormatEligibleMissStore(state) : true;
+}
 
 // 抽签写入 pending 后，只有真正渲染出兔子镜才会提交。若生成被取消、请求失败或页面刷新，
 // pending 会一直留在 localStorage；之后任意一面兔子镜渲染完成都会把这个从未生成过的组合
@@ -377,45 +455,13 @@ const PALETTE_HUE_LABELS = {
     cyan: '青', blue: '蓝', purple: '紫', pink: '粉', neutral: '中性色',
 };
 
-// 米黄／奶油／米色／羊皮纸／做旧纸张实际上是同一个吸引子，只是 hueFamily 在
-// orange / yellow / neutral 之间漂移。若按四元组严格分家族，米黄→羊皮纸→米色
-// 会被算成三个不同家族而永远不触发重复冷却，正好放过最需要拦的那一种。
-function isCoolBlueAttractor(fingerprint) {
-    if (!fingerprint || typeof fingerprint !== 'object') return false;
-    if (Number(fingerprint.confidence || 0) < 0.35) return false;
-    const hueFamily = String(fingerprint.hueFamily || 'neutral');
-    const temperature = String(fingerprint.temperature || 'neutral');
-    // Light sky-blue, cyan-blue and medium blue often drift between saturation /
-    // brightness buckets while looking like the same blue visual family. Treat the
-    // two adjacent cool hue buckets as one short-term anti-repeat family; this is a
-    // cooldown detector only, never a permanent ban on blue.
-    return temperature === 'cool' && ['cyan', 'blue'].includes(hueFamily);
-}
-
-function isCreamAttractor(fingerprint) {
-    if (!fingerprint) return false;
-    if (String(fingerprint.brightness || '') !== 'light' || String(fingerprint.temperature || '') !== 'warm') return false;
-    const hueFamily = String(fingerprint.hueFamily || 'neutral');
-    const saturation = String(fingerprint.saturation || '');
-    const averageLuminance = Number(fingerprint.averageLuminance);
-    // HSL saturation is misleading near white: literal beige/ivory/old-lace/cream
-    // often report medium/high saturation even though they are perceptually pale
-    // warm neutrals. Keep the original low-saturation path, and additionally
-    // collapse very bright orange/yellow/neutral families into the same attractor.
-    const lowSaturationWarmNeutral = saturation === 'low' && ['orange', 'yellow', 'neutral', 'red'].includes(hueFamily);
-    const paleWarmNeutral = ['orange', 'yellow', 'neutral'].includes(hueFamily)
-        && Number.isFinite(averageLuminance)
-        && averageLuminance >= 228;
-    return lowSaturationWarmNeutral || paleWarmNeutral;
-}
-
+// 1.4.30.5: 配色冷却不再给任何具体颜色家族特殊待遇。
+// 统一使用同一组结构维度描述近期成品，避免“禁蓝→全紫→再禁紫”式颜色打地鼠。
 export function paletteFamilyKey(fingerprint) {
     if (!fingerprint || typeof fingerprint !== 'object') return '';
     if (Number(fingerprint.confidence || 0) < 0.35) return '';
     const brightness = String(fingerprint.brightness || '').trim();
     if (!brightness) return '';
-    if (isCreamAttractor(fingerprint)) return 'cream-attractor';
-    if (isCoolBlueAttractor(fingerprint)) return 'cool-blue-attractor';
     const hueFamily = String(fingerprint.hueFamily || 'neutral').trim() || 'neutral';
     const temperature = String(fingerprint.temperature || 'neutral').trim() || 'neutral';
     const saturation = String(fingerprint.saturation || 'low').trim() || 'low';
@@ -428,13 +474,91 @@ export function describePaletteFamily(fingerprint) {
     const temperature = PALETTE_TEMPERATURE_LABELS[String(fingerprint.temperature || '')] || '';
     const saturation = PALETTE_SATURATION_LABELS[String(fingerprint.saturation || '')] || '';
     const hue = PALETTE_HUE_LABELS[String(fingerprint.hueFamily || 'neutral')] || '';
-    const base = [brightness, temperature, hue, saturation].filter(Boolean).join('');
-    if (!base) return '';
-    // Do not echo HSL's misleading near-white saturation label back into the
-    // prompt once this fingerprint has been recognized as the cream attractor.
-    if (isCreamAttractor(fingerprint)) return '高明度暖中性（米黄／奶油／米色底盘）';
-    if (isCoolBlueAttractor(fingerprint)) return '冷色青蓝家族';
-    return base;
+    return [brightness, temperature, hue, saturation].filter(Boolean).join('');
+}
+
+// 1.4.30.5: 不再等重复已经形成才纠偏。每一面真实成品完成后立即进入短期冷却；
+// 这里只按时间距离返回近期真实配色，不决定下一轮该用什么颜色。
+export function getRecentPaletteCooldown(window = 3) {
+    const span = Math.max(1, Number(window) || 3);
+    const recent = getRecentPaletteFingerprints(span).slice().reverse();
+    return recent.map((fingerprint, roundsAgo) => ({
+        fingerprint,
+        key: paletteFamilyKey(fingerprint),
+        label: describePaletteFamily(fingerprint),
+        roundsAgo,
+        strength: Math.max(1, span - roundsAgo),
+    })).filter(item => item.label);
+}
+
+
+const VISUAL_FAMILY_DIMENSION_LABELS = Object.freeze({
+    surface_family: '主底盘／材质',
+    contrast_family: '明暗关系',
+    contour_family: '整体轮廓',
+    reading_family: '阅读路径',
+    unit_family: '信息单位',
+    space_family: '空间结构',
+});
+
+export function parseVisualFamilySkeleton(value = '') {
+    const text = String(value || '').trim();
+    if (!text) return {};
+    const parsed = {};
+    for (const part of text.split('；')) {
+        const match = part.match(/^\s*([a-z_]+)\s*:\s*(.+?)\s*$/i);
+        if (!match) continue;
+        const key = String(match[1] || '').trim();
+        if (!Object.prototype.hasOwnProperty.call(VISUAL_FAMILY_DIMENSION_LABELS, key)) continue;
+        const valueText = String(match[2] || '').trim();
+        if (valueText) parsed[key] = valueText.slice(0, 120);
+    }
+    return parsed;
+}
+
+export function describeVisualFamilyDimensions(family = {}) {
+    if (!family || typeof family !== 'object') return '';
+    return Object.entries(VISUAL_FAMILY_DIMENSION_LABELS)
+        .map(([key, label]) => family[key] ? `${label}=${family[key]}` : '')
+        .filter(Boolean)
+        .join('；');
+}
+
+export function getRecentVisualFamilyCooldown(window = 3) {
+    const span = Math.max(1, Number(window) || 3);
+    return getComboHistory(span)
+        .slice()
+        .reverse()
+        .map((item, roundsAgo) => ({
+            family: parseVisualFamilySkeleton(item?.visualSkeleton || ''),
+            roundsAgo,
+            strength: Math.max(1, span - roundsAgo),
+        }))
+        .filter(item => Object.keys(item.family).length);
+}
+
+export function getRepeatedVisualFamilyDimensions(window = 3, threshold = 2) {
+    const span = Math.max(2, Number(window) || 3);
+    const hits = Math.max(2, Number(threshold) || 2);
+    const chronological = getComboHistory(span)
+        .map(item => parseVisualFamilySkeleton(item?.visualSkeleton || ''))
+        .filter(family => Object.keys(family).length);
+    if (chronological.length < hits) return [];
+
+    const latest = chronological[chronological.length - 1];
+    const result = [];
+    for (const [key, label] of Object.entries(VISUAL_FAMILY_DIMENSION_LABELS)) {
+        const latestValue = latest[key];
+        if (!latestValue) continue;
+        let streak = 0;
+        for (let index = chronological.length - 1; index >= 0; index -= 1) {
+            if (chronological[index]?.[key] !== latestValue) break;
+            streak += 1;
+        }
+        if (streak < hits) continue;
+        result.push({ key, label, value: latestValue, streak, strength: Math.min(span, streak) });
+    }
+    return result;
 }
 
 // 近 window 轮中，最新一轮所属的配色家族出现了 threshold 次及以上即视为重复。
@@ -455,7 +579,6 @@ export function getRepeatedPaletteFamily(window = 3, threshold = 2) {
         count,
         window: keyed.length,
         label: describePaletteFamily(latest.item) || latest.key,
-        cream: isCreamAttractor(latest.item),
         fingerprint: latest.item,
     };
 }
@@ -550,7 +673,7 @@ export function commitPendingCombo(visualSignature = '', visualSkeleton = '', ri
         const last = history[history.length - 1];
         if (last?.signature === sig && now - Number(last?.ts || 0) < 120000) {
             if (visualSignature) last.visualSignature = String(visualSignature).slice(0, 280);
-            if (visualSkeleton) last.visualSkeleton = String(visualSkeleton).slice(0, 360);
+            if (visualSkeleton) last.visualSkeleton = String(visualSkeleton).slice(0, 420);
             if (Array.isArray(riskFlags) && riskFlags.length) last.riskFlags = [...new Set(riskFlags)].slice(0, 8);
             if (paletteFingerprint && typeof paletteFingerprint === 'object') last.paletteFingerprint = paletteFingerprint;
             const normalizedFamily = normalizeInteractionFamily(interactionFamily);
@@ -566,7 +689,7 @@ export function commitPendingCombo(visualSignature = '', visualSkeleton = '', ri
             signature: sig,
             ts: now,
             visualSignature: visualSignature ? String(visualSignature).slice(0, 280) : pending.visualSignature,
-            visualSkeleton: visualSkeleton ? String(visualSkeleton).slice(0, 360) : pending.visualSkeleton,
+            visualSkeleton: visualSkeleton ? String(visualSkeleton).slice(0, 420) : pending.visualSkeleton,
             riskFlags: Array.isArray(riskFlags) ? [...new Set(riskFlags)].slice(0, 8) : [],
             paletteFingerprint: paletteFingerprint && typeof paletteFingerprint === 'object' ? paletteFingerprint : undefined,
             interactionFamily: normalizeInteractionFamily(interactionFamily),
@@ -590,6 +713,7 @@ export function clearLastCombo() {
         localStorage.removeItem(PENDING_KEY);
         localStorage.removeItem(ATTEMPT_STORAGE_KEY);
         localStorage.removeItem(DIRECTIVE_PICK_STORAGE_KEY);
+        localStorage.removeItem(FORMAT_ELIGIBLE_MISS_STORAGE_KEY);
         try {
             sessionStorage.removeItem('rabbit_mirror_theater:generation_snapshots:v1');
             sessionStorage.removeItem('rabbit_mirror_theater:active_generation_attempt:v1');
@@ -619,7 +743,7 @@ export function updateLatestVisualSignature(visualSignature, visualSkeleton = ''
         if (!history.length) return;
         const last = history[history.length - 1];
         if (visualSignature) last.visualSignature = String(visualSignature).slice(0, 280);
-        if (visualSkeleton) last.visualSkeleton = String(visualSkeleton).slice(0, 360);
+        if (visualSkeleton) last.visualSkeleton = String(visualSkeleton).slice(0, 420);
         if (Array.isArray(riskFlags) && riskFlags.length) last.riskFlags = [...new Set(riskFlags)].slice(0, 8);
         if (paletteFingerprint && typeof paletteFingerprint === 'object') last.paletteFingerprint = paletteFingerprint;
         const normalizedFamily = normalizeInteractionFamily(interactionFamily);
