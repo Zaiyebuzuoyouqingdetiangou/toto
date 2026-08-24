@@ -10,7 +10,8 @@ import { initIndependentRabbitMirror, destroyIndependentRabbitMirror, getIndepen
 import { initTouchTheaterBridge, destroyTouchTheaterBridge } from './src/touchTheater.js?rmv=1.4.30.17';
 import { initRabbitMirrorMobileModalHotfix, destroyRabbitMirrorMobileModalHotfix } from './src/mobileModalHotfix.js?rmv=1.4.30.19';
 import { initRabbitMirrorIndependentSecurityGuard, destroyRabbitMirrorIndependentSecurityGuard } from './src/independentSecurityGuard.js?rmv=1.4.30.24';
-import { initRabbitMirrorIndependentProfileSelectorHotfix, destroyRabbitMirrorIndependentProfileSelectorHotfix } from './src/independentProfileSelectorHotfix.js?rmv=1.4.30.24';
+import { initRabbitMirrorIndependentProfileSelectorHotfix, destroyRabbitMirrorIndependentProfileSelectorHotfix } from './src/independentProfileSelectorHotfix.js?rmv=1.4.5';
+import { initRabbitMirrorMaintenanceRecommendationHotfix, destroyRabbitMirrorMaintenanceRecommendationHotfix } from './src/maintenanceRecommendationHotfix.js?rmv=1.4.5';
 import { initRabbitMirrorRenderedVisualFeedbackHotfix, destroyRabbitMirrorRenderedVisualFeedbackHotfix } from './src/renderedVisualFeedbackHotfix.js?rmv=1.4.30.22';
 import { initRabbitMirrorCheckedSelectorRepair, destroyRabbitMirrorCheckedSelectorRepair } from './src/checkedSelectorRepair.js?rmv=1.4.30.26';
 
@@ -32,6 +33,7 @@ jQuery(async () => {
         getIndependentConnectionProfiles,
         refreshRabbitMirrorGenerationMode,
     });
+    initRabbitMirrorMaintenanceRecommendationHotfix();
     initOutputSanitizer();
     initRabbitMirrorCheckedSelectorRepair();
     initVisualScanner();
@@ -44,6 +46,7 @@ jQuery(async () => {
 export function onDisable() {
     destroyFeedbackCatPromptSync();
     destroyRabbitMirrorIndependentProfileSelectorHotfix();
+    destroyRabbitMirrorMaintenanceRecommendationHotfix();
     clearRabbitMirrorPrompt();
     destroyRabbitMirrorUI();
     destroyRabbitMirrorCheckedSelectorRepair();
@@ -60,6 +63,7 @@ export function onDisable() {
 export function onClean() {
     destroyFeedbackCatPromptSync();
     destroyRabbitMirrorIndependentProfileSelectorHotfix();
+    destroyRabbitMirrorMaintenanceRecommendationHotfix();
     destroyRabbitMirrorUI();
     destroyRabbitMirrorCheckedSelectorRepair();
     destroyOutputSanitizer();

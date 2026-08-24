@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜小剧场",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.30.26",
+  "js": "index.js?rmv=1.4.5",
   "css": "style.css?rmv=1.4.30.17",
   "author": "Toto",
-  "version": "1.4.30.26",
+  "version": "1.4.5",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜小剧场 1.4.30.26：正式版迁移保持测试仓库当前功能基线不变，包含 1.4.30.25 的性能、生成生命周期与缓存修复，以及主/副 API 共用的 checked 叠层选择器窄修复；不改生成、审美、安卓/小米布局、塔罗或图片来源。"
+  "description": "兔子镜小剧场 1.4.5：保持当前正式版全部功能不变；10轮冷却默认开启，并为维修兔报错状态增加对应手动维修路线推荐。"
 }
