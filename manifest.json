@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜小剧场",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.5",
+  "js": "index.js?rmv=1.4.6",
   "css": "style.css?rmv=1.4.30.17",
   "author": "Toto",
-  "version": "1.4.5",
+  "version": "1.4.6",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜小剧场 1.4.5：保持当前正式版全部功能不变；10轮冷却默认开启，并为维修兔报错状态增加对应手动维修路线推荐。"
+  "description": "兔子镜小剧场 1.4.6：独立 API 新增可自定义最近读取层数；发送前过滤历史兔子镜，并继续保留原有 52,000 字符聊天与 76,000 字符总上下文上限。"
 }

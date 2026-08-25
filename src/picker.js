@@ -12,7 +12,7 @@ import {
     setDirectiveScopedPick,
     setLastCombo,
 } from './storage.js?rmv=1.4.30.17';
-import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.4.30.17';
+import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.4.6';
 
 function randomUnit() {
     try {
