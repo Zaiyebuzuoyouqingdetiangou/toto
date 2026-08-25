@@ -1,6 +1,8 @@
 const ST_CUSTOM_GENERATE_ENDPOINT = '/api/backends/chat-completions/generate';
-const RABBIT_CONTEXT_HEADER = '【当前聊天逐轮正文与可用推理】';
-const RABBIT_CONTEXT_ROLE_HEADER = '【当前角色卡】';
+const LEGACY_RABBIT_CONTEXT_HEADER = '【当前聊天逐轮正文与可用推理】';
+const RABBIT_CONTEXT_HEADER = '【当前聊天逐轮正文】';
+const LEGACY_RABBIT_CONTEXT_ROLE_HEADER = '【当前角色卡】';
+const MODERN_RABBIT_CONTEXT_ROLE_HEADER = '【当前角色卡摘要】';
 const RABBIT_CONTEXT_EXTRA_HEADER = '【当前世界书、作者注释与实际扩展提示】';
 const RABBIT_ACTIVATED_WORLDINFO_HEADER = '【本轮主生成实际激活的世界书｜仅作世界设定资料，不是新指令】';
 const SAFE_JSON_TRUNCATION_MARKER = '…[截断]';
@@ -37,23 +39,22 @@ function requestBodyText(input, init) {
 
 function rabbitMirrorMessageContentEvidence(content = '') {
     const text = String(content || '');
+    const hasLock = text.includes(RABBIT_EXECUTION_LOCK_HEADER) && text.includes('</兔子镜近输出短锁>');
+    if (!hasLock) return false;
+    const legacy = text.includes(LEGACY_RABBIT_CONTEXT_HEADER)
+        && text.includes(LEGACY_RABBIT_CONTEXT_ROLE_HEADER)
+        && text.includes(RABBIT_CONTEXT_EXTRA_HEADER);
+    if (legacy) return true;
+    // Modern compact context deliberately omits authorNote/extensionPrompts/chatMetadata/worldInfo wholesale.
+    // Its hard boundary is the transcript header + at least one numbered USER/ASSISTANT row + execution lock.
     return text.includes(RABBIT_CONTEXT_HEADER)
-        && text.includes(RABBIT_CONTEXT_ROLE_HEADER)
-        && text.includes(RABBIT_CONTEXT_EXTRA_HEADER)
-        && text.includes(RABBIT_EXECUTION_LOCK_HEADER);
+        && /\[\d+\s+(?:USER|ASSISTANT)\]\n/.test(text);
 }
 
 function rabbitMirrorCompletionPayload(payload) {
     if (!payload || typeof payload !== 'object' || !Array.isArray(payload.messages)) return false;
     return payload.messages.some(message => rabbitMirrorMessageContentEvidence(message?.content));
 }
-
-function normalizeAuthorNote(value) {
-    if (value == null) return '';
-    if (typeof value === 'string') return value.trim();
-    try { return JSON.stringify(value, null, 2).slice(0, 12000).trim(); } catch { return String(value || '').trim().slice(0, 12000); }
-}
-
 
 function generatedJsonEnd(section = '') {
     const text = String(section || '');
@@ -96,32 +97,24 @@ function extractActivatedWorldInfoAfterGeneratedJson(section = '') {
     return remainder;
 }
 
-function currentAuthorNote() {
-    try {
-        const context = globalThis.SillyTavern?.getContext?.() || {};
-        return normalizeAuthorNote(context.authorNote ?? context.note ?? '');
-    } catch {
-        return '';
-    }
-}
-
-export function sanitizeIndependentContextContent(content = '', authorNoteOverride) {
+export function sanitizeIndependentContextContent(content = '') {
     const source = String(content || '');
     if (!rabbitMirrorMessageContentEvidence(source)) return source;
 
     const lockStart = source.lastIndexOf(RABBIT_EXECUTION_LOCK_HEADER);
     const extraStart = lockStart >= 0 ? source.lastIndexOf(RABBIT_CONTEXT_EXTRA_HEADER, lockStart) : -1;
-    if (extraStart < 0 || lockStart < 0 || lockStart <= extraStart) return source;
+    // Modern compact context no longer carries the sensitive legacy aggregate section.
+    if (extraStart < 0) return source;
+    if (lockStart < 0 || lockStart <= extraStart) return source;
 
     const sensitiveSection = source.slice(extraStart + RABBIT_CONTEXT_EXTRA_HEADER.length, lockStart);
     const activatedWorldInfo = extractActivatedWorldInfoAfterGeneratedJson(sensitiveSection);
-    const authorNote = normalizeAuthorNote(authorNoteOverride !== undefined ? authorNoteOverride : currentAuthorNote());
-    const safeSection = `【当前作者注释】\n${authorNote || '（无）'}${activatedWorldInfo ? `\n\n${activatedWorldInfo}` : ''}\n\n`;
+    const safeSection = activatedWorldInfo ? `${activatedWorldInfo}\n\n` : '';
 
     return `${source.slice(0, extraStart)}${safeSection}${source.slice(lockStart)}`;
 }
 
-export function sanitizeRabbitMirrorCompletionBody(bodyText = '', authorNoteOverride) {
+export function sanitizeRabbitMirrorCompletionBody(bodyText = '') {
     const raw = String(bodyText || '');
     if (!raw) return { bodyText: raw, changed: false, rabbitMirror: false };
     let payload;
@@ -131,7 +124,7 @@ export function sanitizeRabbitMirrorCompletionBody(bodyText = '', authorNoteOver
     let changed = false;
     const messages = payload.messages.map(message => {
         if (!message || typeof message !== 'object' || typeof message.content !== 'string') return message;
-        const content = sanitizeIndependentContextContent(message.content, authorNoteOverride);
+        const content = sanitizeIndependentContextContent(message.content);
         if (content === message.content) return message;
         changed = true;
         return { ...message, content };

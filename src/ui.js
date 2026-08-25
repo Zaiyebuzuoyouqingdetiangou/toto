@@ -1,12 +1,12 @@
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.4.30.17';
-import { clearLastCombo } from './storage.js?rmv=1.4.30.17';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.30.23';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.30.17';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.30.24';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.4.9-subapifix1';
+import { clearLastCombo } from './storage.js?rmv=1.4.9-subapifix1';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.9-subapifix1';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.9-subapifix1';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.9-subapifix1';
 import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.30.17';
-import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.30.23';
-import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.4.30.24';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.4.30.17';
+import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.9-subapifix1';
+import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.4.9-contextboundary1';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.4.9-subapifix1';
 
 const SETTINGS_UI_VERSION = '1.4.30.17-visual-maintenance';
 const RUNTIME_VERSION = '1.4.30.17';
@@ -26,6 +26,7 @@ const WORLD_INFO_BOOK_RENDER_DEBOUNCE_MS = 140;
 function scheduleUiMountRetry() {
     if (!isCurrentRuntime() || uiMountRetryTimer || uiMountRetryCount >= 20) return;
     uiMountRetryCount += 1;
+    globalThis.__rabbitMirrorPerfDiag?.mark?.('ui.mountRetryScheduled', { retry: uiMountRetryCount });
     uiMountRetryTimer = setTimeout(() => {
         uiMountRetryTimer = 0;
         initRabbitMirrorUI();
@@ -268,8 +269,14 @@ function renderTokenMeter(record = getLastRabbitMirrorTokenRecordForSource(getSe
     if (record.status === 'independent') {
         const tokens = record.tokens || {};
         const chars = record.chars || {};
-        main.text(`独立 API 约 ${formatMeterNumber(tokens.estimated)} Token`);
-        exact.text(`规则约 ${formatMeterNumber(tokens.min)}–${formatMeterNumber(tokens.max)} Token；上下文 ${formatMeterNumber(chars.independentContext)} 字符。`);
+        main.text(`兔子镜规则约 ${formatMeterNumber(tokens.estimated)} Token`);
+        const layerText = chars.independentContextLayers
+            ? ` · 最近 ${formatMeterNumber(chars.independentContextLayers)}/${formatMeterNumber(chars.independentContextMaxLayers || chars.independentContextLayers)} 层`
+            : '';
+        const filteredText = chars.filteredRabbitMirrorChars
+            ? ` · 已过滤历史兔子镜 ${formatMeterNumber(chars.filteredRabbitMirrorChars)} 字符`
+            : '';
+        exact.text(`规则约 ${formatMeterNumber(tokens.min)}–${formatMeterNumber(tokens.max)} Token；上下文 ${formatMeterNumber(chars.independentContext)} 字符${layerText}${filteredText}。`);
         const parts = [
             `基础约 ${formatMeterNumber(tokens.baseEstimated)}`,
             chars.feedback ? `反馈约 ${formatMeterNumber(tokens.feedbackEstimated)}` : '反馈 0',
@@ -381,6 +388,7 @@ function memoryTestMessage(result) {
 
 export function initRabbitMirrorUI() {
     if (!isCurrentRuntime()) return;
+    const finishUiInit = globalThis.__rabbitMirrorPerfDiag?.begin?.('ui.initCall', { retry: uiMountRetryCount }, 0);
     const settings = getSettings();
     const noSendRegex = '/<toto\\b[^>]*>[\\s\\S]*?<\\/toto>\\s*/gi';
     const existing = $('#rabbit_mirror_theater_settings');
@@ -402,7 +410,7 @@ export function initRabbitMirrorUI() {
                     && $advanced.find('#rh_advanced_back_top').length
                     && $advanced.find('#rh_advanced_page_worldinfo').length;
             });
-        if (existing.length === 1 && currentPanels.length === 1) return;
+        if (existing.length === 1 && currentPanels.length === 1) { finishUiInit?.({ outcome: 'already-mounted' }); return; }
         // A hot reload may leave the old settings DOM alive even after manifest.json has updated.
         // Remove every stale/duplicate panel so the claimed runtime becomes the only UI owner.
         existing.remove();
@@ -412,6 +420,7 @@ export function initRabbitMirrorUI() {
     const settingsMount = $('#extensions_settings2');
     if (!settingsMount.length) {
         scheduleUiMountRetry();
+        finishUiInit?.({ outcome: 'mount-missing' });
         return;
     }
     uiMountRetryCount = 0;
@@ -473,8 +482,9 @@ export function initRabbitMirrorUI() {
             <div class="flex-container" style="gap:8px;flex-wrap:wrap;align-items:center;">
               <label>温度 <input id="rh_independent_temperature" class="text_pole" type="number" min="0" max="2" step="0.1" style="width:82px;"></label>
               <label>最大输出 <input id="rh_independent_max_tokens" class="text_pole" type="number" min="512" max="32000" step="256" style="width:110px;"></label>
+              <label>自动读取最近 <input id="rh_independent_context_layers" class="text_pole" type="number" min="1" max="200" step="1" inputmode="numeric" style="width:76px;"> 层</label>
             </div>
-            <div style="opacity:.72;font-size:11px;line-height:1.45;">温度建议 <b>1.0</b>；想更稳可用 0.9～1.1。</div>
+            <div style="opacity:.72;font-size:11px;line-height:1.45;">温度建议 <b>1.0</b>；独立 API 会先过滤历史兔子镜，只读取聊天可见正文，不读取模型 reasoning / reasoning_content / thoughts；再读取最近 X 层聊天。无论填写多少，仍受 52,000 字符聊天与 76,000 字符总上下文上限保护。</div>
             <div id="rh_independent_api_diagnostic" aria-live="polite" style="padding:7px 9px;border-left:2px solid color-mix(in srgb, var(--SmartThemeBorderColor) 65%, transparent);opacity:.78;font-size:11px;line-height:1.5;word-break:break-word;">最近请求：暂无记录</div>
             <div style="opacity:.66;font-size:11px;line-height:1.45;">一键配置时不保存 API Key；旧手动模式仍按原逻辑保存在当前 SillyTavern 扩展设置里。</div>
           </div>
@@ -677,6 +687,7 @@ export function initRabbitMirrorUI() {
     $('#rh_independent_key').val(settings.independentApiKey || '');
     $('#rh_independent_temperature').val(settings.independentApiTemperature ?? 0.8);
     $('#rh_independent_max_tokens').val(settings.independentApiMaxTokens ?? 30000);
+    $('#rh_independent_context_layers').val(settings.independentContextMaxLayers ?? 20);
     $('#rh_independent_model').val(settings.independentApiModel || '');
     const renderIndependentConnectionStatus = () => {
         const currentId=String(getSettings().independentConnectionProfileId||'').trim();
@@ -854,6 +865,7 @@ export function initRabbitMirrorUI() {
     $('#rh_independent_use_manual').on('click', () => {
         const temperature=Number($('#rh_independent_temperature').val());
         const maxTokens=Number($('#rh_independent_max_tokens').val());
+        const contextLayers=Number($('#rh_independent_context_layers').val());
         updateSettings({
             independentConnectionProfileId:'',
             independentApiBaseUrl:$('#rh_independent_base').val(),
@@ -861,6 +873,7 @@ export function initRabbitMirrorUI() {
             independentApiModel:$('#rh_independent_model').val(),
             independentApiTemperature:Number.isFinite(temperature)?temperature:0.8,
             independentApiMaxTokens:Number.isFinite(maxTokens)&&maxTokens>0?maxTokens:30000,
+            independentContextMaxLayers:Number.isFinite(contextLayers)&&contextLayers>0?contextLayers:20,
         });
         renderIndependentConnectionStatus();
         refreshRabbitMirrorGenerationMode();
@@ -869,18 +882,20 @@ export function initRabbitMirrorUI() {
     const saveIndependentFields = () => {
         const temperature = Number($('#rh_independent_temperature').val());
         const maxTokens = Number($('#rh_independent_max_tokens').val());
+        const contextLayers = Number($('#rh_independent_context_layers').val());
         updateSettings({
             independentApiBaseUrl: $('#rh_independent_base').val(),
             independentApiKey: $('#rh_independent_key').val(),
             independentApiModel: $('#rh_independent_model').val(),
             independentApiTemperature: Number.isFinite(temperature) ? temperature : 0.8,
             independentApiMaxTokens: Number.isFinite(maxTokens) && maxTokens > 0 ? maxTokens : 30000,
+            independentContextMaxLayers: Number.isFinite(contextLayers) && contextLayers > 0 ? contextLayers : 20,
         });
     };
     // Do not serialize the whole extension settings object on every mobile input event.
     // Safari may emit repeated input/autofill events as the drawer opens, which made the UI stutter.
     $('#rh_independent_base, #rh_independent_key, #rh_independent_model').on('change blur', saveIndependentFields);
-    $('#rh_independent_temperature, #rh_independent_max_tokens').on('change', saveIndependentFields);
+    $('#rh_independent_temperature, #rh_independent_max_tokens, #rh_independent_context_layers').on('change', saveIndependentFields);
     const renderIndependentModelSelect = (models, currentModel='') => {
         const select=$('#rh_independent_model_select');
         const current=String(currentModel||'').trim();
@@ -920,7 +935,12 @@ export function initRabbitMirrorUI() {
                 $('#rh_independent_model_select').val(models[0]);
                 updateSettings({independentApiModel:models[0]});
             }
-            toastr?.success?.(`已拉取 ${models.length} 个模型；完整列表已显示在模型下拉框中`);
+            const diagnostic=getLastIndependentModelListDiagnostic();
+            if(diagnostic?.mode==='saved-fallback') {
+                toastr?.warning?.(`远端模型列表不可用；已显示酒馆连接中保存的 ${models.length} 个模型。${diagnostic.error||''}`);
+            } else {
+                toastr?.success?.(`已拉取 ${models.length} 个模型；完整列表已显示在模型下拉框中`);
+            }
         } catch(error) {
             // 远端 /models 卡住或失败时保留酒馆已保存模型与手动 ID，不让设置页无限等待。
             renderIndependentModelSelect(savedModels,current);
@@ -1151,6 +1171,7 @@ export function initRabbitMirrorUI() {
         resetSettings();
         location.reload();
     });
+    finishUiInit?.({ outcome: 'mounted' });
 }
 
 export function destroyRabbitMirrorUI() {

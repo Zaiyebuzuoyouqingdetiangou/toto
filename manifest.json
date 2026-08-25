@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜小剧场",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.5",
+  "js": "index.js?rmv=1.4.10",
   "css": "style.css?rmv=1.4.30.17",
   "author": "Toto",
-  "version": "1.4.5",
+  "version": "1.4.10",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜小剧场 1.4.5：保持当前正式版全部功能不变；10轮冷却默认开启，并为维修兔报错状态增加对应手动维修路线推荐。"
+  "description": "兔子镜小剧场 1.4.10：保留轻启动、长聊天性能修复与副 API 524/不完整响应的安全手动重试；收紧独立 API 上下文边界，不再读取或重新注入作者注释，并继续仅使用可见正文、紧凑角色/Persona、允许且本轮实际激活的世界书。上下文层数与读取记忆插件设置保持用户原有配置。"
 }

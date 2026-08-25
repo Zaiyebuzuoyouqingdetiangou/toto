@@ -1,19 +1,406 @@
-# 1.4.2 — 维修兔 listener 生命周期补全 / 蓝色配色吸引子修正
+# 1.4.10 正式版：独立 API 上下文边界收口
 
-- F1：`rearmRabbitMirrorSerializedInteractionRoot()` 现在同时撤销 `rabbitMirrorTargetFallback`。`:target` fallback 的 click listener 不再因为 clone/outerHTML 保留 dataset、丢失 listener 后被误判为仍已绑定。
-- F2：独立 API 手动维修无论选择交互、排版、样式或其它会替换 `<details>` 的路线，重新定位最终 live root 后都会幂等执行安全交互激活与维修结果 rehydrate；非交互维修不再因为 clone+replace 顺手杀死既有 direct-id / named-function / checked 等 listener。
-- 配色：定位独立 API 仍残留 1.3.85 已撤销的旧强制换色句——“明度、冷暖、色相、饱和度至少两项变化”。该句会把避开米黄/暗色机械推向蓝青冷色，现与主 Prompt 对齐，改为从本轮媒介材质与光线重新推导，不允许机械反相或固定转向某一冷暖。
-- 配色冷却：新增短期 `cool-blue-attractor` 识别，将视觉上高度近似、但在 brightness/saturation bucket 间漂移的 cyan/blue 冷色主盘合并为同一短期重复家族；只用于近期 anti-repeat，不永久禁止蓝色。
-- 不恢复模型原生 `onclick/script` 执行，不放松 independent sanitizer；不修改独立 API 请求、stream、重试或计费契约。
+- 保留 LightBoot、长聊天性能修复，以及副 API HTTP 524 / 不完整响应的单次请求与显式手动重试修复。
+- 独立 API 不再读取或重新注入 SillyTavern 作者注释。
+- 常规上下文继续只使用当前聊天可见正文、紧凑角色卡摘要、紧凑 Persona 摘要，以及用户允许且本轮主生成实际激活的世界书；不回退到 extensionPrompts、chatMetadata、整包 worldInfo 或模型推理字段。
+- 上下文层数保持用户可配置，不强制改成 1。
+- “读取记忆插件”的 memoryScanEnabled / memoryProviderIds / memoryMaxChars 与 memoryScanner 逻辑保持不变。
 
-# 1.4.1 / 维修兔交互重绑定修复
+# ContextBoundary1
 
-- 跟随主 API：手动维修不再先 `cloneNode(true)` 替换当前 live `<details>`；改为只保存脱离 DOM 的回滚副本，并直接维修当前连接节点，避免 clone 保留 `data-*` 标记却丢失 `addEventListener` 导致“显示已修但仍点不动”。
-- 新增序列化交互重装边界：凡从 HTML/clone 恢复出的兔子镜，在重新挂载前只清理“listener 已绑定”类运行时标记，再由原有白名单交互解析器重新绑定；不恢复或直接执行模型 `onclick` / `<script>`。
-- 跟随主 API 热更新/BFCache 恢复后不再只重建维修兔工具入口；现在同步重新激活安全交互救援与维修持久化 rehydrate。
-- 跟随主 API 的原始交互源码选择改为优先当前 Swipe，并按当前兔子镜标题在 Swipe / mes / display_text 候选中匹配，避免维修兔拿错旧 Swipe 源码。
-- 独立 API：重新挂载缓存/维修结果时恢复独立保存的 `initialHtml` 作为只读白名单解析基线；持久化后的 live HTML 仍走原安全净化链，原始事件属性不会直接挂载。
-- 版本与模块缓存标识更新为 `1.4.1`；未修改 Prompt、独立 API 请求参数/stream/retry、黑名单、配色、生成调度或 Token 注入规则。
+- 独立 API 上下文不再读取 `authorNote` / `note`，Security Guard 对旧版敏感聚合上下文也不再重新注入当前作者注释；旧版兼容净化只允许保留经过识别的“本轮实际激活世界书”。
+- 独立 API 资料边界收紧为：当前聊天可见正文 + 角色卡摘要 + Persona 摘要 + 用户允许且本轮实际激活的世界书。
+- `independentContextMaxLayers` 保持用户可配置，不强制改为 1 层。
+- `memoryScanEnabled`、`memoryProviderIds`、`memoryMaxChars` 及记忆插件读取逻辑未修改。
+- 保留 SubApiFix1 的 524 / HTTP 200 不完整兔子镜手动重试状态机，以及 LightBoot / PerfFix 性能修复。
+
+# SubApiFix1
+
+- 基于 LightBoot1 + PerfFix1，不回退启动性能修复。
+- HTTP 524 明确记为 `gateway-timeout`；当轮绝不自动重发，下一次用户明确重说只把同一请求 profile 的 `stream` 从 true 改为 false。
+- HTTP 200 但返回内容未形成完整兔子镜时，不再把 request diagnostic 留在 `ok:true`；改记 `incomplete-mirror`，并在原请求为流式时为下一次手动重说 stage exact non-stream twin。
+- finish_reason 明确为 length / max_tokens 时仍判定真实截断，不误当 stream 兼容问题。
+- 仅丢失外层 `</toto>`、内部 `<details>...</details>` 完整时允许高置信恢复；真正未闭合正文仍 fail-closed。
+- 手动重说不再先删除 persisted owner / owner lock；等待期间保留上一版 ready 镜，失败时恢复旧成品，成功后原位覆盖。
+- 仍维持 single-shot：一次用户动作只发送一次生成请求，不新增自动计费重试。
+
+# LightBoot1
+
+- 保留 PerfFix1：正常生命周期不再使用全聊天 `syncAll()`。
+- 扩展入口改为极小 bootstrap，不再在 SillyTavern 首屏之前静态加载整套 RabbitMirror 模块图。
+- `generate_interceptor` 立即注册轻量桥；真实 `injector.js` 仅在生成或宿主首屏完成后的空闲启动阶段加载，解除启动期 `injector -> script.js` 反向依赖等待。
+- Output Sanitizer / Visual Scanner / Independent API / Touch Theater / UI 分组加载，并在组间让出事件循环。
+- 不修改 Prompt 内容、不关闭 Security Guard、不删除维修兔、Touch Theater 或独立 API。
+
+## 单请求多面 第一阶段（基础层）
+
+仅实现基础层，**提取层未改造，多面尚不可端到端使用**。
+
+- `settings.js` 新增 `rabbitMirrorFaceCount`，默认 1；归一化只接受 1/2/3，NaN/Infinity/0/负数/超界/null 全部回落到 1，旧设置升级不会意外开启多面。
+- `picker.js` 新增 `pickCombinationBatch()`：按面依次抽取，复用既有 `hardExcluded` 机制做批内互斥，不新写过滤路径。每面用独立 scopeKey，避免点菜缓存把三面命中同一结果。`faceCount === 1` 时直接返回 `[pickCombination(...)]`。
+- `picker.js` 的 `hardRecent` 并入 `generationContext.batchExcludedThemeIds / batchExcludedFormatIds`；不传这两个字段时与原版逐字等价。
+- `storage.js` 新增 `pending_batch:v1` 批次队列与 `commitPendingBatchFace()`：只提交实际渲染成功的那一面，停止／截断／只成功 2 面时未提交的面不进入正式历史；沿用单面 pending 的会话标记 + 超龄双判据。
+
+# RabbitMirror 1.4.30.23 TEST
+
+- Prompt 减重：配色与六维视觉家族仅在实际连续重复时注入短冷却；最终成品锁压缩为“形式、交互、360px 手机”三项短检，并把完整可保持交互放回近输出位置。
+- 美化基调回归正式版：媒介本体决定构图、材质与色彩，不再把黑／深灰系统面板、蓝色科技 UI、浅暖纸面或通用圆角卡片当作默认高级感。
+- 跟随主 API 的手动维修保留 live DOM，只保存 detached rollback clone；克隆、反序列化与恢复前清除失真的 listener marker，再由既有安全交互库重绑。
+- 独立 API Token 记录按 follow / independent 分开保留；主 API 的“0 Token／未注入”状态不再覆盖最近一次副 API 规则 Token。
+- 不放宽不受信 HTML 净化、URL/CSS 安全、单请求与失败不自动重发边界；保留 1.4.30.22 的纯文字判定与移动端数量群组修复。
+
+# RabbitMirror 1.4.30.17 TEST
+
+- 修复手机高级设置弹窗：不再复用 `.rabbit-mirror-settings` 容器样式，改为 body 级独立模态层；顶部/底部尊重 safe-area，卡片内部独立滚动并保留 iOS 惯性滚动。
+- 高级弹窗新增固定标题栏、左上返回上级、右上 × 关闭；高级入口改为带图标和说明的设置卡片。
+- “读取世界书”及当前聊天/全部世界书选择完整移入“高级设置 → 独立 API 世界书”，原世界书设置键、过滤、捕获与预算逻辑不改。
+- 用户主动切换到“使用独立 API”时弹出世界书选择 UI：可选择“启用世界书”或“暂不启用”，并展示与高级设置相同的世界书读取说明；关闭弹窗不强制改写原设置。
+- 不改 1.4.30.16 首次安装默认值，不改独立 API 请求、Prompt、stream/retry/single-flight、世界书捕获、Touch Theater/长聊天性能、维修兔或视觉逻辑。
+
+# RabbitMirror 1.4.30.16 TEST
+
+- 仅重排设置 UI：一级保留“兔子镜自动注入 / 兔子镜生成方式 / Token / 工具与维护 / 黑名单和收藏室 / 高级”；生成抽取、个性化视觉、共同回忆、挨打猫与维修兔移入高级弹窗选择。
+- 自动注入下方说明改为“使用说明：勾选自动注入开关，添加不发送小剧场正则即可。”
+- 黑名单与收藏室合并为一级管理区；收藏项可直接查看、调倍率、取消或清空，仍只使用既有本地收藏/黑名单接口。
+- 首次安装 / 恢复默认：经典抽取、均衡参考内容保持原默认；发散孵化与维修兔自动巡检改为默认开启；挨打猫、维修兔、自动注入保持默认开启；独立 API 最大输出默认 30000。已有用户已保存值不强制覆盖。
+- 勾选“展现形式世界观锁”时，如当前不是“仅展现形式”，弹出确认并可一键切换；取消则不启用世界观锁。Prompt/IF 豁免逻辑不改。
+- 不改 1.4.30.14 的卡顿修复，不改生成 Prompt、抽签算法、独立 API 请求、世界书、维修执行、外框或视觉内容。
+
+# RabbitMirror 1.4.30.15 TEST
+
+- 设置页文案回归：个性化视觉提示词使用用户指定的完整说明文字；生成设置与共同回忆资料来源的开关/解释对齐正式版 `toto/main/src/ui.js`。
+- 恢复 `presentationWorldviewLock` 的原始 UI 名称“展现形式世界观锁”；设置键、默认值、Prompt 注入与 IF 主题自动豁免逻辑均沿用原实现，仅修 UI 命名/说明回归。
+- 不改 1.4.30.14 已验证的长聊天/Touch Theater 性能修复，不改独立 API 请求、世界书、维修兔、挨打猫、视觉冷却或生成逻辑。
+
+# RabbitMirror 1.4.30.15 TEST
+
+## 1.4.30.15 - 2026-08-23
+
+- 根据 Safari/云酒馆真机隔离结果，锁定 `Touch Theater / 大接近` 的 `#chat` 全子树 MutationObserver 为流式主线程热路径：停用该 bridge 后，打开、流式结束释放与设置保存恢复正常。
+- 不删除大接近功能；新增 observer 前置结构门，普通 SillyTavern 流式正文子节点在任何后代扫描前直接跳过。
+- 真正的 RabbitMirror/Touch Theater/threshold reaction、新消息根仍会归一化；相关候选由两次后代扫描合并为一次 selector 扫描。
+- 点击时的 neutral 初始化、GS approach、Live2D、本地成人确认、mystery fail-closed、threshold CSS 安全边界保持原语义。
+- 不修改独立 API Prompt、POST body、stream/retry/single-flight、世界书、维修兔、视觉冷却、sanitizer 或生成内容。
+
+# RabbitMirror 1.4.30.13 TEST
+
+## 1.4.30.13 - 2026-08-23
+
+- 修复长聊天进入时真正的同步 I/O 热点：owner-lock 原实现会在持久化合并和消息同步中按消息反复读取、解析、重写整份 localStorage JSON；全聊天同步现在使用一次有限事务，最多一次读 + 一次写。
+- `independentStoredHtmlRestorable()` 对完全相同的历史 HTML 复用解析结果，避免 metadata/store/owner-lock 多条链对同一大块 `<details>` 反复建立 template DOM。
+- `followDetailsRootFromHtml()` 增加宽松前置证据门，普通正文在没有 RabbitMirror 标记/标题证据时不再进入完整 clean/sanitize/template 解析。
+- 初次 runtime 配置和同模式 reconfigure 不再无条件追加 120ms/850ms 两轮 `syncAll()`；仅真实 runtime mode/source transition 保留这两轮兼容恢复。
+- 保留 1.4.30.12 的历史折叠镜 light boundary；不采用 1.4.30.11 历史 DOM 分批挂载。
+- 不修改独立 API Prompt、POST body、temperature/max tokens、stream/retry/single-flight、一键连接、模型拉取、世界书、视觉冷却、成品完整性门或维修兔语义。
+
+# RabbitMirror 1.4.30.12 TEST
+
+## 1.4.30.12 - 2026-08-23
+
+- 修正长聊天性能修复方向：不再新增“历史 DOM 分批挂载”机制，而是回到正式版 1.3.57 / 1.3.93 / 1.3.94 的既有不变量——折叠历史镜在 CHAT_CHANGED/full-chat restore 期间只能做轻量恢复。
+- `ensureExternalTools()` 的 full-history 路径现在显式传入 `historyRestoreLight`：保留工具按钮、首次打开 patrol/toggle 与持久化结构标记，但跳过即时 nested-details candidate pass、自动维修签名/排队以及 layout-based legacy mobile row migration。
+- 后续版本新增的 external geometry / shell integration / ready postprocess 也纳入历史轻量边界：折叠历史镜不启动 geometry settle，不执行 rendered-body `getComputedStyle`/rect 外框采样，也不执行主视觉 wide-stage/compact 后处理。
+- 历史镜首次真正打开时，移除 runtime-only historical-light 标记，并只为该镜恢复 geometry、外框融合、ready 后处理、inline mobile spatial rescue 与原有交互/维修首开链。
+- 新消息、Swipe、MESSAGE_UPDATED 等 targeted 单条更新不进入 history-light scope；保持原本即时修复/后处理语义。
+- 基线为 GitHub 1.4.30.10；未合入此前 1.4.30.11 候选版的历史 DOM hydration batching。
+- 不修改独立 API Prompt、POST body、temperature/max tokens、stream/retry/single-flight、一键连接、模型拉取、世界书、视觉冷却或 1.4.30.9 成品完整性门。
+
+# RabbitMirror 1.4.30.10 TEST
+
+## 1.4.30.10 - 2026-08-22
+
+- 修复长聊天进入时的 CPU/主线程高负载：一次同步周期只扫描一次全局外置兔子镜 DOM，并按 mesid / owner key 建索引，避免逐消息重复 `document.querySelectorAll()` 形成近平方级放大。
+- 已稳定且 owner DOM 未变化的历史独立镜面不再重复启动 geometry；同一 geometry cycle 只允许一个 scheduler。桌面端新 cycle 只做即时测量 + 双 rAF 确认，不再启动 120/420/1500ms 的移动端/WebView settle 链；移动端原 settle 语义保留。
+- 已完成且 HTML/placement 未变化的 ready 镜面跳过重复主视觉 shell / compact / wide-stage 后处理；真实重挂载、显示位置变化或新 HTML 仍会重新执行。
+- 历史 ready 镜面的“summary 是否视觉塌缩”改为同一 details DOM 只做一次布局探针；已有 owner lock 时也不再每轮 clone + 序列化整份 mounted HTML。
+- `CHAT_CHANGED` 不再无条件让所有已挂载镜面 geometry epoch 失效；owner DOM replacement 与真实 viewport resize 仍分别触发必要重算。
+- 不修改独立 API Prompt、POST body、stream/retry/single-flight、一键连接、模型拉取、世界书、visual cooldown、sanitizer、维修兔或生成结果内容。
+
+# RabbitMirror 1.4.30.9 TEST
+
+## 1.4.30.9 - 2026-08-22
+
+- 独立 API 新增“视觉程序完整性门”：在已有正文/空壳检查之后，继续识别“HTML 主体存在但依赖的 CSS 程序整块缺失”的半成品。
+- 高置信命中包括：多处本地 CSS 变量被引用却没有定义、checkbox/radio 状态交互明显依赖 class 但没有有效样式表、或大量 class 几乎没有 inline 样式且没有有效样式表。命中后不保存、不进入历史、不让维修兔猜 CSS，直接提示重新生成。
+- 保留合法纯 inline-style、简单无样式 HTML、宿主/兔子镜已提供 CSS 变量，以及带有效 <style> 的正常兔子镜。
+- 不修改独立 API Prompt、请求 body、stream/retry/single-flight、一键连接、模型拉取、世界书、视觉冷却、外置框、sanitizer 或维修兔其它模块。
+
+# RabbitMirror 1.4.30.9 TEST
+
+## 1.4.30.9 - 2026-08-22
+
+- 修复 1.4.30.7 的聊天切换性能回归：`CHAT_CHANGED` / `WORLDINFO_ENTRIES_LOADED` 不再同步重建世界书设置 DOM，而是仅标记当前聊天列表待刷新，并在设置区域真正可见时延迟合并刷新。
+- “全部世界书”折叠区改为真正懒渲染：折叠时不创建完整 checkbox 列表，关闭折叠区会立即释放该大列表 DOM；只有用户展开时才按当前内存名单构建。
+- API 请求诊断更新不再顺带重绘世界书设置；世界书 UI listener 与延迟/可见性 observer 在销毁时完整清理。
+- 不修改世界书 loaded→activated 实际捕获语义、独立 API Prompt / POST body / stream / retry / single-flight、模型拉取逻辑、维修兔、sanitizer、外容器或六维视觉冷却。
+
+# 1.4.30.7 TEST
+
+- 世界书设置按当前聊天隔离：默认列表只显示 SillyTavern 在当前聊天 World Info 生命周期中加载过的书，不再把其他角色/聊天的历史观察缓存混进来。实际发送逻辑仍只复用本轮最终激活条目，不重扫、不重掷 probability。
+- “全部世界书”移入默认折叠区，需要时再手动拉取完整名单，避免设置页被大量世界书撑长。
+- 一键配置酒馆 API 后不再同步等待远端 `/models`；先使用当前 Connection Manager 已保存模型。手动“拉取模型”增加 12 秒超时，失败/超时时保留已保存模型和手动模型 ID，不再无限卡住。
+- 不修改独立 API 生成 Prompt、POST 请求 body、stream/retry/single-flight、维修兔、外容器、sanitizer、视觉冷却或世界书实际激活捕获语义。
+
+# RabbitMirror 1.4.30.7 TEST
+
+## 1.4.30.7 - 2026-08-22
+
+- 独立 API 设置页新增“从酒馆当前连接一键配置”，参考 tokimemo 的 Connection Manager 导入方式：优先引用酒馆当前选中的 Chat Completion profile；没有可引用 profile 时，只在当前主 API 本身为 Chat Completion 时读取现有连接参数并创建兔子镜专用 Connection Manager profile。
+- 一键模式只保存 Connection Manager profile ID 与模型 ID；API Key 不复制到兔子镜设置，继续由 SillyTavern Secrets 保管。
+- 原 Base URL / API Key 手动输入移到“高级：手动 OpenAI 兼容接口（旧配置兼容）”，原有用户配置不删除，可显式切回。
+- 生成仍使用兔子镜原有 system/user Prompt、profile body、temperature/max_tokens、stream、手动兼容切换、single-flight、超时与失败语义；Connection Manager 只负责把既有请求交给酒馆已保存的 Chat Completion 连接与 Secrets。
+- 不修改维修兔、外容器、视觉家族冷却、sanitizer、随机/黑名单、世界书上下文或重说语义。
+
+
+## 1.4.30.5 - 2026-08-22
+
+- 基于 1.4.30.4，小修独立 API 视觉优先级：近因视觉避让先执行，用户视觉偏好改为近输出阶段的最终视觉裁决，避免“连续暗底冷却”把成品直接推成不符合美化主题的极亮/极淡方案。
+- 近输出短锁增加关键文字可读性底线，明确禁止正文/按钮/标签为了明暗避让而贴近实际背景色。
+- 维修兔新增严重低对比文字检测与 `text-contrast-repair`：仅对真实显示、直接承载正文且对比度低于保守阈值的元素介入；隐藏态/透明交互内容不参与。
+- 独立 API 纯外置模式重新启用既有 `applyExternalShellIntegration()`，从本体 surface/header/border/radius 采样外置标题框，避免标题条与兔子镜本体颜色脱节。
+- 保留 1.4.30.4 手动“重说” single-flight 修复、1.4.30.3 六维视觉家族冷却、1.4.30.2 主 API 维修兔身份识别；不改请求参数/stream/retry、sanitizer 主体、checked/radio 或母本。
+
+- 直接基于 1.4.30.1，小修两处；底座仍是 1.4.30，不合并 1.4.25.1/1.4.25.2。
+- 配色冷却取消“冷青蓝”及其它具体颜色家族的特殊待遇；所有颜色统一按主色相、冷暖、底盘、明度/饱和度/对比结构做近期 3 面短期避重。仅换主色相但继续沿用同一白底/深底、冷暖与明暗结构，也视为近似模板复用。
+- 跟随主 API 的兔子镜识别不再只靠 summary 中“兔子镜”三个字：优先兼容兔子镜/兔子鏡/Rabbit Mirror 标题，同时接受 RabbitMirror 自己生成的 `data-rabbit-mirror-css-scope=rmcss-*` 结构身份；标题被显示正则改名、且 `<toto>` 被宿主剥掉时，维修兔仍可找到外层 details。
+- 结构身份只认最外层受 scope 标记的 details，避免把镜内嵌套 details 当成独立兔子镜。
+- 不修改 1.4.30/1.4.30.1 的 sanitizer 主体、checked/radio 别名、外置 shell/外容器、Prompt 母本、抽签、独立 API stream/retry/single-flight。
+
+# RabbitMirror 1.4.30 TEST
+
+- 修复 1.4.26 起 strict sanitizer 对 `@import` 的整份 `<style>` 删除：现在只移除 `@import` 语句，保留同一 stylesheet 中的本地外框、`display:none` 默认隐藏态、`:checked` 交互规则与布局。外部字体/样式仍不会发起网络请求。
+- 再收窄 1.4.28/1.4.29 的 checked/radio ID 别名：别名不再写入全局 ID 映射，不再重写普通 panel/SVG/base selector；只允许修 `label[for]` 与作为 `:checked` / `:not(:checked)` 主体的控件选择器。
+- sanitizer 若真的因剩余本地 CSS 仍不安全而不得不删除整份 style，会写入诊断标记；维修兔/全链路诊断不再沉默，会明确报告“外框/默认隐藏态/交互显示规则可能丢失”。
+- 保留 1.4.26+ 的 script/iframe/form/外部资源安全边界、WeakMap + DOM clone、popover/local route；不修改 Prompt、母本、抽签、独立 API stream/retry/single-flight。
+
+# RabbitMirror 1.4.29 TEST
+
+- 修复 1.4.28 checked/radio ID 别名修复的范围过宽回归：不再把任意 CSS `#id`、`aria-controls`、锚点目标等都当作 checkbox/radio 控件引用，避免把结果面板/装饰节点的隐藏规则错误重定向到 input，导致“本应点击后出现的内容默认全展开”。
+- checked/radio 别名只在有明确控件证据时生效：`label[for]`，或 CSS 中作为 `:checked` / `:not(:checked)` 主体的 `#id` / `[id=...]`。候选目标也只允许真实 checkbox/radio input。
+- 修复必须保持初始可见状态：若某个 checkbox 原本因坏掉的 `:checked` 引用而“看起来未开启”，1.4.29 不会在修好引用的同一刻把第二层内容突然展开；仅对这种新修复且之前没有有效 checked 路线的 checkbox 清除错误的初始 checked，用户首次点击后再正常显示第二层。radio 默认分支不动。
+- 保留 1.4.28 对 `toggle/chk/check/checkbox/cb/switch` 与 `rad/radio/rb` 的高置信唯一别名能力，因此上一轮“按钮能点但 CSS 永远找不到真实 checked 控件”的修复不回滚。
+- 保留 1.4.27 的 sanitizer、WeakMap + DOM clone、CSS 声明级净化、popover/local route 与外部资源边界；不修改 Prompt、母本、抽签、独立 API 请求参数/stream/retry/single-flight。
+
+# RabbitMirror 1.4.28 TEST
+
+- 修复 checked/radio 交互引用的高置信别名漏判：模型把真实控件 ID 写成 `...-toggle-analysis`，却在 CSS/label 中引用 `...-chk-analysis`（或 checkbox/check/cb/switch、rad/radio/rb 同族命名）时，维修兔/独立 API 的 ID 隔离现在可在“唯一目标 + 语义尾部一致”前提下同步引用。
+- 不放宽跨镜/歧义映射：若同一别名能命中多个不同控件，仍保持不修；不同语义尾部（如 analysis vs danmaku）不会互相串接。
+- 保留 1.4.27 的未信任 HTML sanitizer、WeakMap + DOM clone、CSS 声明级净化、popover/local route、外部资源阻断。
+- 不修改 Prompt、母本、抽签、独立 API 请求参数/stream/retry/single-flight、World Info 或其它维修兔模块。
+
+# RabbitMirror 1.4.27 TEST
+
+- 回修 1.4.26 strict sanitizer 的兼容性误杀，同时保留原安全边界。
+- CSS overlay 判定从“任何 fixed/sticky 都危险”缩窄为真实全视口覆盖；局部 fixed 浮层、sticky 吸顶、普通 absolute 不再导致整份样式被删除。
+- 外部 `url()` / legacy executable CSS 改为声明级剔除，安全布局/配色声明继续保留；`@import` 仍整块拒绝。
+- 恢复同镜、唯一 ID、合法动作的 popover/commandfor 路由；无效/歧义/跨目标路由继续删除。dialog 保留结构但移除自动 open。
+- data image 增加 2,000,000 字符上限；塔罗固定图源、SVG fragment 与既有严格 URL 规则保持。
+- 不修改 Prompt、抽签、独立 API 请求参数/stream/retry/single-flight、World Info 或维修兔其它功能。
+
+# RabbitMirror 1.4.26 TEST
+
+- F1：自修改交互 baseline/active 改为 runtime-only WeakMap + DOM clone；不再从模型 attribute 回读，不再通过 `innerHTML` 恢复 baseline。
+- F2/F3/F7：独立 API 首次挂载与维修兔 direct-DOM recovery 共用未信任 HTML sanitizer；默认拒绝任意外部资源、form 提交与越界覆盖层，同时保留 checkbox/radio、普通 absolute CSS、本地 SVG fragment、健康 data image。
+- 塔罗 Prompt/规则文件保持 1.4.25 原样；运行时仅放行既有 `gfx.tarot.com/images/site/decks/rider/full_size/0-77.jpg` 固定路径，query/fragment 不放行。
+- F4：删除误残留 dead file `data/safetyPatch.js`，不接入 Prompt。
+- F5：只把设置页文案改为“清除抽签历史与冷却记录”，不扩大 `onClean()` 的删除语义。
+- F6：本轮不处理；`response.text()`、stream/non-stream、retry/single-flight 等独立 API 高风险请求链保持原行为。
+
+# RabbitMirror 1.4.25 TEST
+
+- 「拉取世界书」增加 15 秒本地超时；宿主卡住时会自动结束并恢复按钮。
+- 世界书说明改成更准确的大白话：只拿名单/元数据用于逐本选择，不会重新扫描或重掷激活概率。
+- 其余功能沿用 1.4.24。
+
+- 设置页说明文字全面压短，改成直接的大白话；独立 API、Token、生成设置、黑名单、自定义视觉等不再堆技术说明。
+- 世界书区域新增“拉取世界书”按钮与可滚动逐本勾选框，可主动读取当前 SillyTavern 的世界书名单。
+- 拉取只调用 SillyTavern 世界书列表接口，不读取条目内容、不运行 World Info scanner、不触发 probability；真正发送给独立 API 的仍只限主生成本轮已经激活、且逐本开关允许的条目。
+- 世界书列表使用 file_id 作为实际筛选身份，显示名仅用于 UI，避免显示名与实际 entry.world 不一致。
+- 保留 1.4.23 的 reset 指纹隔离、512 字符书名边界、fail-closed 与 512 本缓存修复。
+
+# RabbitMirror 1.4.23 TEST
+
+- 修复“恢复交互初始状态”按 chat/mesid/swipe 复用旧快照导致串镜：复位快照现在同时绑定当前渲染镜面实例和消息/外置源码指纹；同一消息重绘、编辑或同消息多镜面不会共用 baseline。
+- 世界书逐本筛选：合法名称上限统一为 512 字符；无法安全表示的身份改为 fail-closed，不再默认放行到独立 API。
+- 世界书逐本关闭不再静默截断为 256 本；观察缓存内存与 localStorage 统一使用 512 本 LRU 上限。
+- 逐本切换 toast 对书名做 HTML 转义。
+- 不重扫世界书、不重掷 probability；独立 API 请求、12k World Info 预算、大接近与维修兔其它链保持。
+
+# 1.4.22 TEST — 2026-08-20
+
+- World Info：保留原有全局开关，并新增逐本启用/停用。逐本设置只过滤 SillyTavern 本轮已经加载且最终激活的条目，不主动调用 World Info scanner、不重掷 probability、不增加独立 API 请求；新观察到的世界书默认启用。
+- World Info：逐本禁用集合在主生成开始时冻结，生成途中修改只影响下一轮；继续复用原 12k chars 共享预算与 loaded-key → activated 双证明链。
+- 维修兔菜单新增「⏪ 恢复交互初始状态」：第一次真实交互发生前按需保存该镜面 DOM 基线，之后可重复恢复 checkbox/radio、内部 details、交互产生的 DOM 状态和大接近 reaction/approach，无需刷新整个页面。
+- 交互复位使用 clone + replace 生成新 DOM，避免旧 listener / WeakMap 状态继续污染；外层兔子镜当前展开状态保持不变。执行任何维修前会使旧交互基线失效，避免“恢复交互”反向撤销刚完成的维修。
+- 不为逐本世界书增加扫描器/Observer，不为交互复位新增全局 listener/Observer/polling/API；复位快照按实际首次交互懒创建并限量保存。
+
+# 1.4.21 TEST — 2026-08-20
+
+- 修复大接近 threshold 初始状态与运行时 WeakMap 脱节：加载／新插入舞台统一归一到 neutral，threshold reaction 由运行时强制隐藏，达到临界点后才解锁。
+- 私密 mystery 成人边界改为双门槛：模型的 adult/intimate 仅作为候选，首次实际触发还需用户在 DOM 外本地确认当前角色成年；确认按当前角色在本次扩展会话内复用。
+- 成人门槛收口到真实 radio/checkbox 状态源：直接 input、第二个普通 label、舞台外 label 指向私密 input 都 fail-closed；合法 canonical hotspot 通过一次性 input 激活令牌继续工作。
+- 无 for、无真实 input、disabled、共用/歧义 input 的坏热点不再写 last-zone、不推进 approach、不触发 Live2D。
+- 为防流式／动态插入时 threshold 短暂泄露，新增 1 个仅监听 #chat 子节点插入的窄 MutationObserver；不扫描文本、不轮询、不发 API。
+
+# 1.4.20 TEST — 2026-08-20
+
+- 大接近模式：新输出常规热点以 head / face / shoulder / chest / hand / waist / thigh / knee / calf 为候选，并允许明确成年角色在关系/情境适合时额外生成 0～2 个 mystery 私密随机隐藏触点。
+- 热恋／高亲密回合新增仅属于当前舞台的本地 approach state：默认 natural 不显示数字，少数 gs 回合可显示作者自定义 meter；达到 threshold 仅揭示本轮已经预生成的关系变化反应。
+- approach 使用 WeakMap 临时状态，不写聊天历史、不跨兔子镜继承；重复同区推进自动衰减，热点可用 1～3 的本轮剧情权重，但不建立固定部位分值表。
+- mystery Live2D 仅接受受控通用语义映射到本地既有 hit area；继续只执行本地 expression / motion，忽略 message，不新增模型请求、timer、Observer 或 listener。
+- 未同时满足 `data-rm-touch-adult=true` + `data-rm-touch-intimate=true` 的 mystery 点击运行时 fail-closed，并阻止 label 原生激活。
+
+# 1.4.19 TEST — 2026-08-19
+
+- 大接近模式：明确无固定图床套数；reaction 对话框新增强制 close/neutral DOM 契约，并由现有单一 click 委托提供关闭兜底，关闭不派发 input/change、不触发 Live2D message 或模型生成。
+- 维修兔：新增手机端极窄长正文救援，针对横排长文本被压成一两字宽的高瘦竖柱；排除作者有意竖排、侧栏/导航、诗歌/引文、旋转元素、触摸热点、短文本与正常宽度内容。
+- 不新增请求、timer、Observer、polling 或全局 listener；其它高风险链保持。
+
+# 1.4.18 TEST — 2026-08-19
+
+- 修复 1.4.17 styleless fallback 的三类反例：外部/美化 CSS 误覆盖、中等 inline 视觉误覆盖、无真实第二状态却伪造“触碰”按钮。
+- 修复 underfill 对显式 `max-width`、竖排和明确物理窄媒介的误拉宽；忽略小型装饰媒体 sibling，避免主正文因此漏救。
+- 只改 `src/outputSanitizer.js` 的功能逻辑；其余文件仅版本/cache-bust。
+
+# 1.4.17 TEST — 2026-08-19
+
+- 维修兔：新增“DOM 完整但 CSS 完全缺失”的中性结构降级救援。
+- 维修兔：新增手机端主正文 underfill rescue；严格排除常见有意窄媒介与侧栏/工具组件。
+- 回归样本：`全链路2.txt`（纯文字/无 CSS）与 `全链路.txt`（260px 符纸窄面）。
+- 不新增 API 请求、timer、Observer、轮询或全局 listener。
+
+# RabbitMirror 1.4.16 TEST
+
+## 1.4.16 TEST
+
+- 将 `6.2.1.2 触摸小剧场 (Touch Theater)` 重构为 `6.2.1.1.e 大接近模式 (大接近モード)`，真正归入「心跳回忆 GS 模式」子项。
+- 参考用户提供的纯角色卡母本统一新输出九区语义：head / face / shoulder / chest / arm / hand / waist / thigh / knee；不捆绑母本 Base64 立绘或 Regex 安装包。
+- 大接近模式新根标记为 `data-rm-dai-sekkin-mode="true"`；Live2D 桥保留 1.4.15 旧根标记与 left-hand/right-hand/hair 兼容。
+- 兼容迁移 1.4.15 的旧 `6.2.1.2` 收藏、黑名单、倍率与 Eligible Misses 到 `6.2.1.1.e`。
+- 触摸基础层仍为纯 HTML/CSS，Live2D 只允许 expression/motion，不发送 hit-area message、不触发 generate 或其它模型请求。
+
+
+## 1.4.15 TEST
+
+- 新增独立展现形式 `6.2.1.2 触摸小剧场 (Touch Theater)`：5～9 个移动端可触摸人物热区，每个热区在本轮预生成独立反应。
+- 新增条件式 `TOUCH_THEATER_RULES`，只有抽中／点名触摸小剧场时才进入 Prompt；普通兔子镜不承担这段专用规则。
+- 新增可选 Live2D 动作桥：若官方 Live2D 扩展已启用且当前角色 hit area 能高置信匹配，只复用其 expression / motion；不发送映射 message、不调用 generate。
+- 运行时仅增加一个全局委托 click listener，无 Observer、polling 或定时器；基础触摸交互在 Live2D 缺失时仍由 HTML/CSS 独立工作。
+- 保留 1.4.14 Android／小米外置宽度与 1.4.12 checked 正文优先级修复。
+
+## 1.4.15 TEST
+
+- 修复 Android／小米 external host 从 PC lane 切入 mobile lane 后遗留 `data-rm-independent-external-compact-shell` / `--rm-external-compact-width`，避免旧 320px 左右 compact 宽度继续压窄已经判定为手机布局的外置兔子镜。
+- viewport refresh signature 与 1.4.13 的多源宽度判断对齐，综合 `visualViewport.width`、`innerWidth`、`documentElement.clientWidth`、`screen.width`；resize 先共用原 160ms debounce，再比较复合 signature，避免在高频事件中反复读取布局。
+- 新增 `visualViewport.resize` 到现有 geometry refresh 队列，并在 disable/cleanup 成对移除；宽度未变化时 settle 后直接 no-op，不新增 observer / polling / API generation。
+- 为避免桌面 pinch/browser zoom 的 `visualViewport.width` 单独变小就误入 mobile lane，visualViewport-only 的窄宽只在移动平台提示成立时作为 mobile 证据；手机 `screen/inner/clientWidth` 任一已窄时仍按手机 lane。
+- 1.4.12 checked 正文强／弱隐藏优先级、独立 API 请求闸门、Prompt、抽签、收藏、World Info、维修兔其它链保持不变。
+
+
+# RabbitMirror 1.4.13 TEST
+
+## 1.4.13 TEST
+
+- 基于 1.4.12，仅修复独立 API 纯外置在部分 Android／小米浏览器或 WebView 上的窄面误判。
+- 新增外置专用有效 viewport 宽度判定：综合 `visualViewport.width`、`innerWidth`、`document.documentElement.clientWidth`、`screen.width` 的有效 CSS 宽度，避免真实手机因 desktop-like `innerWidth` 被误送进 PC-only compact/wide-stage 路径。
+- 手机结构宽度计划、auto-root fill rescue、PC compact shell、PC wide-stage neutralization 使用同一有效宽度判定；原来的 resize signature 仍保持 DOM-read-free，不新增 observer、polling 或 timer。
+- 1.4.12 `src/outputSanitizer.js` 的 BUG-1 强／弱隐藏证据优先级修复保留；独立 API 请求次数、Prompt、维修兔、黑名单／收藏等其它逻辑不改。
+
+
+## 1.4.12 TEST
+
+- 修复 1.4.11「checked 内层正文残留兜底」的候选优先级：`display:none` / `visibility:hidden|collapse` 作为强隐藏证据优先处理；只有不存在强隐藏候选时，才允许 `height<=1` / `opacity<=0.05` / 折叠 `max-height` 作为弱证据进入兜底。
+- 防止正文之前的零高度包装层、占位行、绝对定位 wrapper 或动画初始 0 高度节点先被修复并把父容器撑高，从而触发提前 `break`、真正正文仍保持隐藏。
+- 保留 1.4.11 的浅层直接子节点范围、第三层交互/独立伪类跳过、inline override 可逆回滚与“恢复出真实内容盒后立即停止”保护。
+- 不修改独立 API、近输出短锁、重 Roll 配色、World Info、抽签、收藏倍率、Eligible Misses、维修兔其它模块或请求次数。
+
+# RabbitMirror 1.4.11 TEST
+
+## 1.4.11 TEST
+
+- 维修兔新增「checked 内层正文残留兜底」：当 checkbox/radio 的 checked 分支已经明确展开一个结果容器，但该容器的直接正文子节点仍被无条件 `display:none` / `visibility:hidden` / `opacity:0` / 零高度残留样式卡住时，只恢复这些无独立交互状态的正文/媒体子节点。
+- 该兜底只作用于已经由 checked 规则证明为当前选中结果的容器；带 input/button/label/details 等嵌套交互的子区，以及拥有自己 `:checked/:hover/:focus/:active/:target/:has()` 状态规则的子内容会跳过，避免把真正的第三层交互粗暴摊开。
+- 切换 radio/checkbox 时使用既有 inline override 回滚机制恢复原样，不让多个分支同时展开；全链路诊断新增「checked内层正文残留兜底」计数，便于确认是否命中。
+- 不修改独立 API、抽签、World Info、近输出短锁、重 Roll 配色、收藏/fairness、Prompt 或请求次数。
+
+# RabbitMirror 1.4.10 TEST
+
+## 1.4.10 TEST
+
+- 独立 API 的“最终执行锁”压缩为真正的近输出短锁：只重复本轮抽中 identity、实际生效的近因避让、可选点菜/视觉偏好与最短输出契约；不再重复基础 Prompt 已包含的展现形式母本、全局视觉地板、完整冷却段、风险纠偏和五项自检。
+- 手动“重新生成兔子镜”现在会读取同槽位上一版真实配色指纹；除非用户明确固定配色，否则本次重 roll 必须换配色家族。
+- 独立 API 的近期配色守卫改为优先读取真实历史版本，而不是只看每个消息槽位当前保留的一版，因此同一兔子镜连续重 roll 也会进入重复配色判断。
+
+
+- 独立 API 的“读取本轮已激活世界书”从仅 Global selector 扩展为复用 SillyTavern 主生成当轮已加载并最终激活的 全局／角色／聊天／Persona World Info。
+- 仍以 `WORLDINFO_ENTRIES_LOADED` 建立本轮合法条目集合、再以 `WORLD_INFO_ACTIVATED` 取真正激活项；不调用 `getWorldInfoPrompt()`，不重新扫描、不重新掷 probability，也不读取未激活条目。
+- 四类 World Info 共用原有单一 12,000 字符独立预算，不按来源各给 12,000；关闭开关时行为与 1.4.8 一致，不为此增加上下文。
+- 内部 settings 键 `independentReadGlobalWorldInfo` 暂保留用于旧设置兼容；用户界面与诊断文案改为“已激活世界书”。
+- 1.4.8 的全池一览、×1～×50 收藏倍率、Eligible Misses soft pity、独立 API 请求 profile、single-flight、维修兔与 Prompt 主结构不作其它功能修改。
+
+# RabbitMirror 1.4.8 TEST
+
+- ⭐ 收藏室单项自定义倍率上限由 `×20` 提升到 `×50`（仍为 0.5 步进、默认 `×3`）。`×50` 只是相对 weighted-random 权重，不是 50% 命中率，也不形成硬保底。
+- 主题继续保持双层保护：单个收藏主题可以设到 `×50`，但家族层额外加权仍保持 `×6` 封顶，避免一个高倍率子项把整个家族一起抬到 50 倍。
+- 黑名单、hard exclusion、近期 exact-ID 冷却与 1.4.6 Eligible Misses fairness 优先级不变；收藏倍率仍只服务本地抽签，不进入 Prompt、API 或 World Info。
+- 反向审计修复一个确定的倍率输入边界：输入框清空／非法时不再因为 `Number('') === 0` 被静默夹成 `×1`，而是恢复当前已保存倍率并提示重新输入。
+- 本轮同步执行 1.4.7 功能反向审计，重点复查全池一览可达性、倍率生命周期、cache identity、fairness 组合、DOM 转义与 listener 清理。
+
+# RabbitMirror 1.4.7 TEST
+
+- 🎲 本轮抽签新增「📚 全池一览」：无需等待项目先被随机抽中，即可按“主题／元素 → 大组 → 父项 → 子项”逐层浏览全部当前索引，也可按名称／ID／说明搜索；任意项目可直接加入 ⭐ 收藏室或 🚫 黑名单。目录按需逐层渲染，不一次性铺满全部项目，不新增 Observer／poll／timer。
+- ⭐ 收藏室新增逐项倍率：每个收藏项目可独立设置 `×1～×20`（0.5 步进），旧收藏与新收藏在未设置时继续默认 `×3`。展现形式直接使用该单项倍率；主题保留“家族 + 子项”两级结构，默认 `×3` 仍精确对应既有家族 `×2.5`，高倍率时家族层额外权重最多 `×6`，避免收藏一个子项把整个大家族一起无限放大。
+- 收藏倍率与 1.4.6 的 Eligible Misses 公平性继续独立相乘；黑名单、hard exclusion、近期 exact-ID 冷却与明确点菜仍优先。倍率变化加入部分点菜随机缓存 identity，避免缓存继续沿用旧倍率。
+- 收藏／黑名单互斥继续保持：加入黑名单会移除对应收藏倍率；解除后重新收藏默认从 `×3` 开始。倍率设置持久化在现有 extension settings，不进入 Prompt，不增加 Token 或 API 请求。
+- 不修改独立 API、Gemini／DeepSeek、Global World Info、维修兔、挨打猫、Prompt 母本、主题／展现形式数据源或 1.4.6 soft-pity 状态机。
+
+# RabbitMirror 1.4.6 TEST
+
+- 展现形式随机抽签新增 Eligible Misses + bounded soft pity：只有“本轮真实通过 mode／黑名单／近期 exact-ID 资格过滤、实际进入随机候选池但最终未命中”的 format 才累计一次 miss；一轮抽 2 个时其它 eligible 候选仍只 +1。
+- 公平性倍率分档为 `0–39 ×1.00 / 40–79 ×1.10 / 80–139 ×1.25 / 140–219 ×1.45 / 220–319 ×1.70 / 320+ ×2.00`，320 封顶；不做硬保底或固定轮播。
+- 收藏室继续作为独立偏好权重与公平性相乘；黑名单与 hard exclusion 不会被 aging 复活。强制 Visual Scenery、明确展现形式点菜等没有普通 format 随机资格的轮次不累计 miss。
+- 公平性状态使用现有 `storage.js` 本地持久化风格保存稀疏 `formatId -> eligibleMisses`；非法值、过期 ID、负数与超 cap 数值在读取／下一次写入时清洗。解除展现形式黑名单（含收藏自动解除、清空黑名单）会把对应 miss 重置为 0。
+- 不增加 Prompt／Token、API 请求、Observer、poll 或 timer；独立 API、Gemini／DeepSeek、Global World Info、维修兔、Prompt 结构与主题抽签逻辑不改。
+
+# RabbitMirror 1.4.5 TEST
+
+- 修复 🎲 本轮抽签中的「⭐ 收藏室」总管理入口不可达：事件委托现在同时接收收藏室与黑名单管理按钮。
+- 加固维修兔 direct-DOM 恢复边界：危险 URL 属性覆盖 `href/src/xlink:href/formaction/action/poster`，同时拦截 JavaScript/VBScript、`data:text/html`、控制字符混淆、`srcdoc` 与危险内联 CSS。
+- 异常设置读时去冲突：若旧备份/外部写入让同一 ID 同时存在于收藏与黑名单，黑名单在有效状态中优先；不主动改写用户 settings。
+- 独立 API、Gemini／DeepSeek、Global World Info、付费 POST/single-flight、维修兔自动巡检与 Prompt 结构未改。
+
+# RabbitMirror 1.4.4 TEST
+
+- 同一个 🎲 本轮抽签载体新增 ⭐ 收藏室：可对本轮真实抽中的主题／元素与展现形式直接收藏、取消收藏、查看收藏室或清空收藏。收藏项只在本地提高后续随机候选权重（展现形式 ×3；主题家族 ×2.5、家族内收藏项 ×3），不向 Prompt 注入“喜欢”文字，也不会越过近期冷却或黑名单。
+- 收藏室与黑名单互斥：把同一项目加入收藏室会自动解除该项目黑名单；加入黑名单会自动移出收藏室。旧版 `1.3.3` 歧义展现形式沿用现有双目标兼容规则。
+- 新增布尔变量 / UI 开关 `presentationWorldviewLock`（“展现形式世界观锁”），默认关闭。开启且本轮抽中的主题没有 `if` 标签时，仅追加一条极简规则：`世界观载体锁：保留展现形式功能与结构；不合当前世界观的具体载体必须换成世界观内功能等价物。不得删形式、改剧情或套固定模板。`；抽中 `if` 主题时代码层自动不注入该规则。
+- 收藏室变化会进入部分点菜的随机缓存身份，避免已经缓存的“另一侧随机结果”忽略用户刚刚更新的收藏偏好。
+- 独立 API、Global WI capture / 12,000 字符预算、Gemini／DeepSeek profile、Load failed 手动降级、一轮失败不自动重复 POST、维修兔与宽度链不改。
+- 测试仓库：`https://github.com/Zaiyebuzuoyouqingdetiangou/tototest`。
+
+# RabbitMirror 1.4.3 TEST
+
+- 修复全局世界书 capture 的漏结束事件串轮边界：`GENERATION_STARTED` 不再仅凭 RabbitMirror 自己短期保留的 `hostGenerationInProgress` 事件提示判断“嵌套生成”。若上一轮 `GENERATION_ENDED` 偶发漏收、但 SillyTavern 已无 streaming DOM / isGenerating / is_send_press / group generating 等真实生成证据，则下一次正常生成会重建 capture，不继承上一轮已激活世界书。
+- 保留真实嵌套生成：SillyTavern 工具调用递归期间生成状态仍保持 active，因此递归 `Generate('normal')` 继续复用同一 capture；不使用 30s/60s 等固定超时，不会因为主模型生成较慢而强制切断 capture。
+- 其余 1.4.2 行为不变：Global WI 默认关闭；只复用当轮已激活 global 条目；独立 12,000 字符预算、参考资料边界与 `<toto>` 定界符中和不改；Gemini／DeepSeek profile、Load failed 手动降级、一轮失败不自动重复 POST、维修兔、Prompt、视觉与宽度链不改。
+- 测试仓库：`https://github.com/Zaiyebuzuoyouqingdetiangou/tototest`。
+
+# RabbitMirror 1.4.2 TEST
+
+- 修复全局世界书 capture 在主回复尚未完成时被嵌套／辅助 `GENERATION_STARTED` 无条件覆盖的问题：同一聊天、同一 assistant baseline 且宿主仍处于生成中的嵌套 start 不再夺走已有 capture；真正新的顶层生成仍可正常重建 capture。
+- World Info 事件入口增加保守形状校验：`GENERATION_STARTED` type 异常、options 非对象、显式 dry-run、quiet、impersonate 均不会开启世界书 capture；`WORLDINFO_ENTRIES_LOADED` 非 `globalLore[]` 结构时不标记已加载。
+- 已激活全局世界书改为“参考资料”块；明确不得覆盖 RabbitMirror 系统规则，并 neutralize 世界书中裸 `<toto>` / `</toto>` 起始标记，降低模型误模仿输出定界符的风险。
+- 全局世界书增加独立 12,000 字符预算；按条目优先完整保留，单条超长时才截断并注明，其余条目注明省略数量。开启该功能时先为固定上下文与世界书预留预算，再从最新聊天向前取正文，避免大世界书把刚完成的 assistant 正文从总上下文中挤掉。
+- 默认开关仍为关闭；关闭时不增加世界书上下文。Gemini／DeepSeek 请求 profile、Load failed 手动降级、维修兔、Prompt 母本、视觉与宽度链不改。
+- 测试仓库：`https://github.com/Zaiyebuzuoyouqingdetiangou/tototest`。
+
+# RabbitMirror 1.4.1 TEST
+
+- 独立 API 新增“读取本轮已激活的全局世界书”开关，默认关闭。
+- 开启后通过 SillyTavern 现有 World Info 生命周期事件复用主生成当轮实际激活的“全局选择器”条目；不额外调用 `getWorldInfoPrompt()`，因此不会为了兔子镜重新扫描、重新掷概率或再次加载整本世界书。
+- 只带入已激活的全局条目正文；角色绑定、聊天绑定、Persona 绑定世界书不因本开关额外加入。
+- 关闭时不增加该部分上下文；现有独立 API、Gemini/DeepSeek兼容、维修兔、宽度、Prompt、黑名单等逻辑不变。
+- 测试仓库：`https://github.com/Zaiyebuzuoyouqingdetiangou/tototest`。
 
 # v1.4 / 正式版
 
@@ -24,7 +411,7 @@
 
 # 1.3.102 TEST / RC
 
-- 撤回 1.3.101 的激进副 API 启动加速：弱生成 flag 宽限恢复 30s，普通正文稳定窗恢复 1400ms，弱证据稳定窗恢复 4500ms，前 12 秒轮询恢复 760ms。目的只是在正文确实结束后再启动付费副 API，降低主正文尚未完成时误启动、随后 sourceHash 变化导致旧请求已计费却被取消的风险。
+- 撤回 1.3.101 的激进副 API 启动加速：弱生成 flag 宽限恢复 30s，普通正文稳定窗恢复 1400ms，弱证据稳定窗恢复 4500ms，前 15 秒轮询恢复 760ms。目的只是在正文确实结束后再启动付费副 API，降低主正文尚未完成时误启动、随后 sourceHash 变化导致旧请求已计费却被取消的风险。
 - DeepSeek / 中转流式传输出现 `Load failed`、响应体读取失败或其他 transport 错误时，本轮仍严格只发送 1 次生成 POST，绝不自动重试。若失败 profile 原本为 stream=true，仅暂存一个“所有其它参数完全相同、只把 stream 改为 false”的兼容 profile；只有玩家明确点击“重新生成兔子镜”才会发送下一次请求。
 - 新增同参数 non-stream profile 对：保留 system/user 消息结构、temperature、`max_tokens` / `max_completion_tokens` 字段，只切换 stream。修正旧 `*_nostream` 命名把 temperature 和 token field 一并改变的问题；旧 profile 名仍保留兼容读取。
 - 失败诊断新增 `transport-fetch` / `transport-body` 与 `nextProfile`，错误框会明确告知本轮 1 次请求、不会自动重发，以及手动重试将尝试的非流式模式。
@@ -36,7 +423,7 @@
 - 保留历代 API 兼容成果：12 套 system/user、token 字段、temperature、stream/non-stream profile 不删除。参数/流式兼容失败时只把“下一候选 profile”暂存到本地；只有玩家明确点击“重新生成兔子镜”时，下一轮才使用该候选，因此每次点击仍只有 1 次 POST。语义完整成功后继续记忆已验证 profile，后续自动兔子镜直接复用成功组合。
 - 防旧版无限请求回归：新增 exact chat+mesid+swipe+sourceHash 失败闸门。某一轮失败后，即使 SillyTavern 再次触发 MESSAGE_UPDATED / CHARACTER_MESSAGE_RENDERED / GENERATION_ENDED 等事件，也不会为同一正文重新自动 POST；玩家手动重试会清除此闸门，若再次失败则重新锁住。
 - 防双击重复计费：同一 exact identity 已有 pending/global flight 时，即使再次点击手动重说也复用现有 task，不会 cancel 后另起第二个并发请求。
-- 启动速度：在保留 DOM streaming / 宿主生成事件强门控的前提下，将弱生成 flag 宽限从 30s 降至 8s、普通正文稳定窗从 1400ms 降至 800ms、弱证据稳定窗从 4500ms 降至 1500ms、前 12 秒轮询粒度从 760ms 降至 350ms；正常收到生成结束事件时，副 API 可更快启动。
+- 启动速度：在保留 DOM streaming / 宿主生成事件强门控的前提下，将弱生成 flag 宽限从 30s 降至 8s、普通正文稳定窗从 1400ms 降至 800ms、弱证据稳定窗从 4500ms 降至 1500ms、前 15 秒轮询粒度从 760ms 降至 350ms；正常收到生成结束事件时，副 API 可更快启动。
 - 等待失败不静默：消息身份连续无法重建到 60s 时也显示明确错误与“重新生成兔子镜”入口，并明确该轮 0 次副 API 请求。
 - 不修改 Prompt、维修兔、模型列表 UI、配色、黑名单、独立 API URL 归一化、SillyTavern 内置 custom generate 通道、5 分钟请求 timeout 或成品挂载结构。
 
