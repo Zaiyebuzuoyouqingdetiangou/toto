@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜小剧场",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.7",
+  "js": "index.js?rmv=1.4.8",
   "css": "style.css?rmv=1.4.30.17",
   "author": "Toto",
-  "version": "1.4.7",
+  "version": "1.4.8",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜小剧场 1.4.7：独立 API 上下文仅读取可见正文，不再读取模型推理字段；保留历史兔子镜过滤与自定义层数。长聊天启动改为最近消息优先、历史兔子镜分批恢复，降低进入酒馆时主线程阻塞。"
+  "description": "兔子镜小剧场 1.4.8：修复长聊天进入/切换时持续白屏、独立 API 模型列表失败与“1层上下文仍过大”。冷启动历史镜面改为按可见区域懒恢复；副 API 只发送正文和紧凑角色/Persona/作者注释摘要，可选世界书继续独立受限。"
 }

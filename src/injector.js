@@ -8,7 +8,7 @@ import {
     getActiveFeedbackForCurrentChat,
     markFeedbackCatInjected,
 } from './feedbackCat.js?rmv=1.4.30.17';
-import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.4.6';
+import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.4.8';
 import { attachRabbitMirrorGenerationSelection, beginRabbitMirrorGenerationAttempt } from './generationGuard.js?rmv=1.4.6';
 
 const INJECT_KEY = `${MODULE_NAME}:auto_injection`;
