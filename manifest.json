@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜小剧场",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.10",
+  "js": "index.js?rmv=1.4.11",
   "css": "style.css?rmv=1.4.30.17",
   "author": "Toto",
-  "version": "1.4.10",
+  "version": "1.4.11",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜小剧场 1.4.10：保留轻启动、长聊天性能修复与副 API 524/不完整响应的安全手动重试；收紧独立 API 上下文边界，不再读取或重新注入作者注释，并继续仅使用可见正文、紧凑角色/Persona、允许且本轮实际激活的世界书。上下文层数与读取记忆插件设置保持用户原有配置。"
+  "description": "兔子镜小剧场 1.4.11：在 1.4.10 的轻启动、长聊天性能修复、副 API 524/不完整响应安全重试与紧上下文边界基础上，新增聊天持久化安全边界：兔子镜与挨打猫不再主动调用 SillyTavern 的整份聊天保存接口，仅更新自身 metadata/localStorage，由酒馆正常保存流程自然持久化，避免聊天加载异常时覆盖完整记录。"
 }

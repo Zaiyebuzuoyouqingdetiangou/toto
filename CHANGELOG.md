@@ -1,3 +1,9 @@
+## 1.4.11 - Chat persistence safety
+
+- RabbitMirror no longer calls SillyTavern `context.saveMetadata()` for independent-output or Feedback Cat metadata. In SillyTavern that API delegates to `saveChatConditional()` and serializes the entire currently loaded chat.
+- RabbitMirror now only mutates its own `chatMetadata` namespace and immediate `localStorage` fallback; the host's next normal chat save may persist metadata naturally.
+- This removes the extension-owned whole-chat write path during slow/failed/partial chat loading while retaining ContextBoundary1, LightBoot/PerfFix and SubApiFix behavior.
+
 # 1.4.10 正式版：独立 API 上下文边界收口
 
 - 保留 LightBoot、长聊天性能修复，以及副 API HTTP 524 / 不完整响应的单次请求与显式手动重试修复。
