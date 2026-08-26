@@ -1,12 +1,12 @@
-import { updateLatestVisualSignature } from './storage.js?rmv=1.4.11-chatsafety1';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.4.11-chatsafety1';
-import { getSettings } from './settings.js?rmv=1.4.11-chatsafety1';
+import { updateLatestVisualSignature } from './storage.js?rmv=1.4.7';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.4.7';
+import { getSettings } from './settings.js?rmv=1.4.7';
 import {
     captureRabbitMirrorGenerationSnapshots,
     getRabbitMirrorGenerationSnapshot,
     inspectRabbitMirrorGenerationSource,
-} from './generationGuard.js?rmv=1.4.11-chatsafety1';
-import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.4.30.22';
+} from './generationGuard.js?rmv=1.4.7';
+import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.4.7';
 
 const TOTO_RE = new RegExp('<toto\\b[^>]*(?:data-rabbit-mirror|data-rabbit-' + 'h' + 'ole)=[\"\']true[\"\'][^>]*>[\\s\\S]*?<\\/toto>', 'i');
 let lastScannedHash = '';
@@ -1214,9 +1214,7 @@ export async function initVisualScanner() {
             visualScannerSubscriptions.push({ eventSource, eventName, handler });
         };
         const captureEvents = [
-            eventTypes.MESSAGE_UPDATED,
             eventTypes.CHARACTER_MESSAGE_RENDERED,
-            eventTypes.MESSAGE_RECEIVED,
         ].filter(Boolean);
         for (const eventName of [...new Set(captureEvents)]) {
             const handler = () => scheduleCapture(140);
@@ -1224,7 +1222,9 @@ export async function initVisualScanner() {
         }
         const generationEvents = [eventTypes.MESSAGE_RECEIVED, eventTypes.GENERATION_STOPPED, eventTypes.GENERATION_ENDED].filter(Boolean);
         for (const eventName of [...new Set(generationEvents)]) subscribe(eventName, scheduleScan);
-        subscribe(eventTypes.CHAT_CHANGED, scheduleScan);
+        // CHAT_CHANGED and MESSAGE_UPDATED can fire while a long history/reply is
+        // still arriving. Final rendered/received/end events own the settled scan;
+        // never rescan a growing正文 on every token or an empty chat boundary.
         console.debug('[RabbitMirror] visual scanner initialized');
     } catch (error) {
         console.debug('[RabbitMirror] visual scanner disabled:', error);

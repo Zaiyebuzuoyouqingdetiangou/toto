@@ -1,15 +1,15 @@
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.4.11-chatsafety1';
-import { clearLastCombo } from './storage.js?rmv=1.4.11-chatsafety1';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.11-chatsafety1';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.11-chatsafety1';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.11-chatsafety1';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.30.17';
-import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.11-chatsafety1';
-import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.4.11-chatsafety1';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.4.11-chatsafety1';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, updateSettings, resetSettings } from './settings.js?rmv=1.4.7';
+import { clearLastCombo } from './storage.js?rmv=1.4.7';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.4.7';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.4.7';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.4.7';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.7';
+import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.4.7';
+import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, testIndependentConnection } from './independentApi.js?rmv=1.4.7';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.4.7';
 
-const SETTINGS_UI_VERSION = '1.4.30.17-visual-maintenance';
-const RUNTIME_VERSION = '1.4.30.17';
+const SETTINGS_UI_VERSION = '1.4.7-visual-maintenance';
+const RUNTIME_VERSION = '1.4.7';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -429,7 +429,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.4.30.17</span>
+      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.4.7</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -484,7 +484,7 @@ export function initRabbitMirrorUI() {
               <label>最大输出 <input id="rh_independent_max_tokens" class="text_pole" type="number" min="512" max="32000" step="256" style="width:110px;"></label>
               <label>自动读取最近 <input id="rh_independent_context_layers" class="text_pole" type="number" min="1" max="200" step="1" inputmode="numeric" style="width:76px;"> 层</label>
             </div>
-            <div style="opacity:.72;font-size:11px;line-height:1.45;">温度建议 <b>1.0</b>；独立 API 会先过滤历史兔子镜，只读取聊天可见正文，不读取模型 reasoning / reasoning_content / thoughts；再读取最近 X 层聊天。无论填写多少，仍受 52,000 字符聊天与 76,000 字符总上下文上限保护。</div>
+            <div style="opacity:.72;font-size:11px;line-height:1.45;">温度建议 <b>1.0</b>；独立 API 会先过滤历史兔子镜，只读取聊天可见正文，不读取模型 reasoning / reasoning_content / thoughts；再读取最近 X 层聊天。无论填写多少，仍受 12,000 字符聊天正文、20,000 字符上下文和 32,000 字符完整请求上限保护。</div>
             <div id="rh_independent_api_diagnostic" aria-live="polite" style="padding:7px 9px;border-left:2px solid color-mix(in srgb, var(--SmartThemeBorderColor) 65%, transparent);opacity:.78;font-size:11px;line-height:1.5;word-break:break-word;">最近请求：暂无记录</div>
             <div style="opacity:.66;font-size:11px;line-height:1.45;">一键配置时不保存 API Key；旧手动模式仍按原逻辑保存在当前 SillyTavern 扩展设置里。</div>
           </div>
@@ -515,6 +515,19 @@ export function initRabbitMirrorUI() {
             <button id="rh_clear_injection" class="menu_button">清空当前注入</button>
             <button id="rh_reset" class="menu_button">恢复默认设置</button>
           </div>
+          <div style="margin-top:12px;padding:10px 11px;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:10px;">
+            <div style="font-weight:700;">🛰 外部代码／宿主性能诊断（测试版）</div>
+            <div style="opacity:.74;font-size:11px;line-height:1.5;margin-top:4px;">只诊断 <b>SillyTavern 本体、其他扩展、浏览器主线程和网络</b>：聊天为什么空白、发送为什么迟滞、AI 请求何时真正发出、维修兔点击后是否被外部脚本/网络阻塞。<br><b>不读取兔子镜内部生成或维修状态。</b> 兔子镜内部问题仍请使用对应兔子镜里的「📋 生成全链路诊断」，两份报告互不合并。</div>
+            <div id="rh_external_diag_status" style="margin-top:7px;opacity:.82;font-size:11px;line-height:1.45;">默认关闭（零常驻监听）；需要复现问题时再手动开启。</div>
+            <div class="flex-container" style="gap:7px;flex-wrap:wrap;margin-top:8px;">
+              <button id="rh_external_diag_start" class="menu_button" type="button" style="font-weight:700;">开始外部诊断</button>
+              <button id="rh_external_diag_stop" class="menu_button" type="button">停止外部诊断</button>
+              <button id="rh_external_diag_report" class="menu_button" type="button" style="font-weight:700;">生成外部诊断报告</button>
+              <button id="rh_external_diag_copy" class="menu_button" type="button">复制外部报告</button>
+              <button id="rh_external_diag_reset" class="menu_button" type="button">清空外部记录</button>
+            </div>
+            <textarea id="rh_external_diag_output" class="text_pole" readonly spellcheck="false" style="display:none;width:100%;min-height:240px;resize:vertical;box-sizing:border-box;margin-top:8px;font:11px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace;"></textarea>
+          </div>
         </div>
       </details>
 
@@ -543,8 +556,8 @@ export function initRabbitMirrorUI() {
       </div>
 
       <div id="rh_advanced_modal" class="rabbit-mirror-advanced-modal" role="dialog" aria-modal="true" aria-label="兔子镜高级设置" aria-hidden="true" style="display:none;position:fixed;inset:0;z-index:2147483000;background:rgba(8,10,14,.62);box-sizing:border-box;padding-top:max(24px,calc(env(safe-area-inset-top) + 14px));padding-right:max(12px,calc(env(safe-area-inset-right) + 8px));padding-bottom:max(24px,calc(env(safe-area-inset-bottom) + 14px));padding-left:max(12px,calc(env(safe-area-inset-left) + 8px));align-items:center;justify-content:center;overflow:hidden;pointer-events:auto;">
-        <div id="rh_advanced_modal_card" style="width:min(760px,calc(100vw - 24px));max-width:100%;max-height:88vh;max-height:calc(100dvh - 76px - env(safe-area-inset-top) - env(safe-area-inset-bottom));display:flex;flex-direction:column;min-height:0;overflow:hidden;background:var(--SmartThemeBodyColor,#202226);color:var(--SmartThemeBodyColorText,inherit);border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:18px;box-shadow:0 22px 70px rgba(0,0,0,.42);box-sizing:border-box;pointer-events:auto;">
-          <div id="rh_advanced_modal_header" style="display:grid;grid-template-columns:auto minmax(0,1fr) 40px;align-items:center;gap:8px;flex:0 0 auto;padding:11px 12px;border-bottom:1px solid color-mix(in srgb,currentColor 12%,transparent);background:var(--SmartThemeBodyColor,#202226);">
+        <div id="rh_advanced_modal_card" style="width:min(760px,calc(100vw - 24px));max-width:100%;max-height:88vh;max-height:calc(100dvh - 76px - env(safe-area-inset-top) - env(safe-area-inset-bottom));display:flex;flex-direction:column;min-height:0;overflow:hidden;background:var(--SmartThemeBlurTintColor,#202226);color:var(--SmartThemeBodyColor,#ddd);border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:18px;box-shadow:0 22px 70px rgba(0,0,0,.42);box-sizing:border-box;pointer-events:auto;">
+          <div id="rh_advanced_modal_header" style="display:grid;grid-template-columns:auto minmax(0,1fr) 40px;align-items:center;gap:8px;flex:0 0 auto;padding:11px 12px;border-bottom:1px solid color-mix(in srgb,currentColor 12%,transparent);background:var(--SmartThemeBlurTintColor,#202226);">
             <button id="rh_advanced_back_top" class="menu_button" type="button" aria-label="返回高级选项" title="返回高级选项" style="display:none;min-width:84px;height:38px;padding:0 10px;border-radius:12px;font-size:12px;line-height:1;">← 高级选项</button>
             <div style="min-width:0;text-align:left;"><b id="rh_advanced_modal_title" style="font-size:15px;">高级设置</b><div id="rh_advanced_modal_hint" style="opacity:.65;font-size:11px;line-height:1.35;margin-top:2px;white-space:normal;">选择要调整的项目</div></div>
             <button id="rh_advanced_close" class="menu_button" type="button" aria-label="关闭高级设置" title="关闭" style="width:38px;min-width:38px;height:38px;padding:0;border-radius:12px;font-size:20px;line-height:1;">×</button>
@@ -658,7 +671,7 @@ export function initRabbitMirrorUI() {
     $('#rh_advanced_modal').appendTo(document.body);
     const worldInfoPromptHtml = `
 <div id="rh_world_info_prompt_modal" role="dialog" aria-modal="true" aria-label="独立 API 世界书设置" aria-hidden="true" style="display:none;position:fixed;inset:0;z-index:2147483001;background:rgba(8,10,14,.62);box-sizing:border-box;padding-top:max(24px,calc(env(safe-area-inset-top) + 14px));padding-right:max(12px,calc(env(safe-area-inset-right) + 8px));padding-bottom:max(24px,calc(env(safe-area-inset-bottom) + 14px));padding-left:max(12px,calc(env(safe-area-inset-left) + 8px));align-items:center;justify-content:center;overflow:hidden;pointer-events:auto;">
-  <div style="width:min(520px,calc(100vw - 24px));max-height:calc(100dvh - 76px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow:hidden;background:var(--SmartThemeBodyColor,#202226);color:var(--SmartThemeBodyColorText,inherit);border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:18px;box-shadow:0 22px 70px rgba(0,0,0,.42);display:flex;flex-direction:column;">
+  <div style="width:min(520px,calc(100vw - 24px));max-height:calc(100dvh - 76px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow:hidden;background:var(--SmartThemeBlurTintColor,#202226);color:var(--SmartThemeBodyColor,#ddd);border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:18px;box-shadow:0 22px 70px rgba(0,0,0,.42);display:flex;flex-direction:column;">
     <div style="display:grid;grid-template-columns:minmax(0,1fr) 40px;align-items:center;gap:8px;padding:11px 12px;border-bottom:1px solid color-mix(in srgb,currentColor 12%,transparent);">
       <div><b style="font-size:15px;">独立 API 是否读取世界书？</b><div style="opacity:.65;font-size:11px;line-height:1.35;margin-top:2px;">之后也可以在「高级设置 → 独立 API 世界书」随时修改</div></div>
       <button id="rh_world_info_prompt_close" class="menu_button" type="button" aria-label="关闭" style="width:38px;min-width:38px;height:38px;padding:0;border-radius:12px;font-size:20px;line-height:1;">×</button>
@@ -1166,6 +1179,62 @@ export function initRabbitMirrorUI() {
     if (settings.memoryScanEnabled || (settings.memoryProviderIds || []).length) {
         $('#rh_memory_scan_results').html('<div style="padding:8px 0;opacity:.68;font-size:11px;line-height:1.45;">已保存资料来源设置。需要刷新列表时请点击“扫描可用资料来源”。</div>');
     }
+
+    const renderExternalDiagnosticStatus = () => {
+        const api = globalThis.__rabbitMirrorExternalDiag;
+        const target = $('#rh_external_diag_status');
+        if (!target.length) return;
+        if (!api?.status) { target.text('默认关闭（零常驻监听）；需要复现问题时再手动开启。'); return; }
+        const state = api.status();
+        target.text(`已记录 ${state.entries} 条｜外部资源 ${state.externalResources}｜外部长帧 ${state.externalLoaf}｜主线程阻塞 ${state.stalls}｜网络 ${state.network}｜维修点击窗口 ${state.maintenanceWindows}`);
+    };
+    const ensureExternalDiagnosticApi = async () => {
+        const existing = globalThis.__rabbitMirrorExternalDiag;
+        if (existing?.status) return existing;
+        return await globalThis.__rabbitMirrorEnsureExternalDiag?.();
+    };
+    const renderExternalDiagnosticReport = async () => {
+        const api = await ensureExternalDiagnosticApi();
+        const output = $('#rh_external_diag_output');
+        if (!api?.report) { toastr?.error?.('外部诊断模块尚未就绪'); return ''; }
+        const text = String(api.report() || '');
+        output.val(text).show();
+        renderExternalDiagnosticStatus();
+        return text;
+    };
+    $('#rh_external_diag_start').on('click', async () => {
+        const api = await ensureExternalDiagnosticApi();
+        if (!api) { toastr?.error?.('外部诊断模块启动失败'); return; }
+        renderExternalDiagnosticStatus();
+        toastr?.success?.('外部诊断已开始；复现完成后可停止或生成报告');
+    });
+    $('#rh_external_diag_stop').on('click', () => {
+        globalThis.__rabbitMirrorDisableExternalDiag?.();
+        renderExternalDiagnosticStatus();
+        toastr?.success?.('外部诊断已停止，常驻监听和定时器已移除');
+    });
+    $('#rh_external_diag_report').on('click', async () => { await renderExternalDiagnosticReport(); });
+    $('#rh_external_diag_copy').on('click', async () => {
+        const text = await renderExternalDiagnosticReport();
+        if (!text) return;
+        try {
+            await navigator.clipboard.writeText(text);
+            toastr?.success?.('已复制外部代码／宿主性能诊断报告');
+        } catch {
+            const output = document.getElementById('rh_external_diag_output');
+            output?.focus?.(); output?.select?.();
+            try { document.execCommand('copy'); toastr?.success?.('已复制外部代码／宿主性能诊断报告'); }
+            catch { toastr?.error?.('复制失败，请手动复制报告'); }
+        }
+    });
+    $('#rh_external_diag_reset').on('click', async () => {
+        const api = await ensureExternalDiagnosticApi();
+        api?.reset?.('settings-button');
+        $('#rh_external_diag_output').hide().val('');
+        renderExternalDiagnosticStatus();
+        toastr?.success?.('已清空外部诊断记录，从现在重新记录');
+    });
+    renderExternalDiagnosticStatus();
 
     $('#rh_reset').on('click', () => {
         resetSettings();

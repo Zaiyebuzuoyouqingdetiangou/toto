@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=1.4.11-chatsafety1';
-import { getCurrentChatKey } from './storage.js?rmv=1.4.11-chatsafety1';
+import { getSettings } from './settings.js?rmv=1.4.7';
+import { getCurrentChatKey } from './storage.js?rmv=1.4.7';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -9,14 +9,14 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.4.11-chatsafety1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.11-chatsafety1';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.11-chatsafety1';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.11-chatsafety1';
-import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.4.30.22';
+} from './feedbackCat.js?rmv=1.4.7';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.4.7';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.4.7';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.4.7';
+import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.4.7';
 
 
-const RUNTIME_VERSION = '1.4.30.17';
+const RUNTIME_VERSION = '1.4.7';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -1177,6 +1177,7 @@ function buildCheckedSelectorNeedles(input) {
         const idSubject = `(?:#${escapedId}|\\[\\s*id\\s*=\\s*["']${escapedId}["']\\s*\\])`;
         needles.push({
             source: 'id',
+            subjectSelector: `#${escapeCssIdentifier(input.id)}`,
             pattern: new RegExp(`${idSubject}\\s*:checked\\s*([+~])\\s*([^,{]+)`, 'i'),
         });
     }
@@ -1186,6 +1187,7 @@ function buildCheckedSelectorNeedles(input) {
         const escapedClass = escapeRegExp(className);
         needles.push({
             source: 'class-local',
+            subjectSelector: `.${className}`,
             pattern: new RegExp(`\\.${escapedClass}:checked\\s*([+~])\\s*([^,{]+)`, 'i'),
         });
     }
@@ -1211,6 +1213,7 @@ function matchGenericLocalCheckedSelector(selector, input) {
         }
         return {
             source: 'generic-local',
+            subjectSelector: subject,
             relation: match[2],
             rawTargetSelector: match[3],
         };
@@ -1323,6 +1326,7 @@ function parseCheckedRulesFromText(toto, input) {
                     if (!selectorMatch) continue;
                     parsedRules.push({
                         source: needle.source,
+                        subjectSelector: needle.subjectSelector,
                         relation: selectorMatch[1],
                         rawTargetSelector: selectorMatch[2],
                     });
@@ -1339,7 +1343,7 @@ function parseCheckedRulesFromText(toto, input) {
                     const key = `${parsedRule.relation}|${targetSelector}|${pseudoElement}|${JSON.stringify(styleMap)}`;
                     if (seen.has(key)) continue;
                     seen.add(key);
-                    results.push({ source: parsedRule.source, relation: parsedRule.relation, targetSelector, pseudoElement, styleMap });
+                    results.push({ source: parsedRule.source, subjectSelector: parsedRule.subjectSelector || '', relation: parsedRule.relation, targetSelector, pseudoElement, styleMap });
                 }
             }
         }
@@ -1403,6 +1407,28 @@ function getCrossContainerTargetsForCheckedRule(root, targetSelector) {
     } catch {
         return [];
     }
+}
+
+function getProvableCrossParentTargetsForCheckedRule(root, input, rule) {
+    if (!root?.querySelectorAll || !input || !rule) return [];
+    if (rule.source === 'id') return getCrossContainerTargetsForCheckedRule(root, rule.targetSelector);
+    if (rule.source !== 'class-local') return [];
+
+    // A class subject may be promoted beyond its local label/container only when it
+    // names exactly one checkable control and exactly one content-bearing target in
+    // this mirror. Shared radio/tab classes and generic input selectors stay local.
+    const subjectSelector = String(rule.subjectSelector || '').trim();
+    if (!/^\.[_a-zA-Z][\w-]*$/.test(subjectSelector)) return [];
+    let subjects = [];
+    try { subjects = [...root.querySelectorAll(subjectSelector)]; } catch { return []; }
+    if (subjects.length !== 1 || subjects[0] !== input || !inputHasAssociatedLabel(root, input)) return [];
+
+    const targets = getCrossContainerTargetsForCheckedRule(root, rule.targetSelector);
+    if (targets.length !== 1) return [];
+    const target = targets[0];
+    if (!target || target === input || input.parentElement?.contains?.(target)) return [];
+    if (!checkedTargetCarriesResultContent(target)) return [];
+    return targets;
 }
 
 function getCollapsedCompoundDescendantTargetsForCheckedRule(root, input, rule) {
@@ -1531,6 +1557,8 @@ function resolveTargetsForCheckedRule(root, input, rule) {
             targets = getLabelProxyTargetsForCheckedRule(input, rule.relation, rule.targetSelector);
             if (targets.length) return targets;
         }
+        targets = getProvableCrossParentTargetsForCheckedRule(root, input, rule);
+        if (targets.length) return targets;
     } else {
         targets = getCrossContainerTargetsForCheckedRule(root, rule.targetSelector);
         if (targets.length) return targets;
@@ -1550,9 +1578,9 @@ function findCrossParentCheckedRuleFallbackCandidates(root) {
         let ruleCount = 0;
         let targetCount = 0;
         for (const rule of parseCheckedRulesFromText(root, input)) {
-            if (rule.source !== 'id') continue;
+            if (rule.source !== 'id' && rule.source !== 'class-local') continue;
             if (getSiblingTargetsForCheckedRule(input, rule.relation, rule.targetSelector).length) continue;
-            const targets = getCrossContainerTargetsForCheckedRule(root, rule.targetSelector);
+            const targets = getProvableCrossParentTargetsForCheckedRule(root, input, rule);
             if (!targets.length) continue;
             ruleCount += 1;
             targetCount += targets.length;
@@ -5713,6 +5741,104 @@ function normalizeStylePropertyName(property) {
         .toLowerCase();
 }
 
+const RECOVERED_INTERACTION_STYLE_MAX_VALUE_CHARS = 4000;
+const RECOVERED_INTERACTION_OVERLAY_PROPERTIES = new Set([
+    'position', 'inset', 'top', 'right', 'bottom', 'left',
+    'width', 'min-width', 'height', 'min-height', 'z-index',
+]);
+
+function normalizeRecoveredInteractionStyleAssignments(assignments = []) {
+    const normalized = [];
+    for (const assignment of assignments || []) {
+        const property = normalizeStylePropertyName(assignment?.property);
+        const value = String(assignment?.value ?? '').trim();
+        // Custom properties can indirectly feed an existing url()/position declaration,
+        // which would bypass a property-local check. Recovered model events do not need
+        // extension-defined variables, so keep the boundary to ordinary declarations.
+        if (!/^-?[a-z][a-z0-9-]*$/i.test(property) || property.startsWith('--')) return [];
+        if (!value || value.length > RECOVERED_INTERACTION_STYLE_MAX_VALUE_CHARS) return [];
+        normalized.push({ property, value });
+    }
+    return normalized;
+}
+
+function currentRecoveredInteractionOverlayDeclarationMap(element) {
+    const declarations = new Map();
+    const style = element?.style;
+    const length = Number(style?.length);
+    if (style && Number.isInteger(length) && length >= 0 && typeof style.item === 'function') {
+        for (let index = 0; index < length; index += 1) {
+            const property = normalizeStylePropertyName(style.item(index));
+            if (!RECOVERED_INTERACTION_OVERLAY_PROPERTIES.has(property)) continue;
+            const value = String(style.getPropertyValue?.(property) || '').trim();
+            if (property && value) declarations.set(property, value);
+        }
+    } else {
+        // Minimal DOM/test doubles may not expose CSSStyleDeclaration iteration.
+        const raw = String(element?.getAttribute?.('style') || '');
+        for (const declaration of splitCssDeclarationList(raw)) {
+            const index = declaration.indexOf(':');
+            if (index <= 0) continue;
+            const property = normalizeStylePropertyName(declaration.slice(0, index).trim());
+            const value = declaration.slice(index + 1).trim().replace(/\s*!important\s*$/i, '');
+            if (RECOVERED_INTERACTION_OVERLAY_PROPERTIES.has(property) && value) {
+                declarations.set(property, value);
+            }
+        }
+    }
+
+    // A recovered declaration can combine with positioning supplied by a sanitized
+    // stylesheet, not only with inline state. Bring just the overlay-relevant computed
+    // values into the effective-state check so ordinary computed CSS is not reserialized.
+    try {
+        const view = element?.ownerDocument?.defaultView || globalThis;
+        const computed = typeof view?.getComputedStyle === 'function' ? view.getComputedStyle(element) : null;
+        for (const property of RECOVERED_INTERACTION_OVERLAY_PROPERTIES) {
+            if (declarations.has(property)) continue;
+            const value = String(computed?.getPropertyValue?.(property) || '').trim();
+            if (value) declarations.set(property, value);
+        }
+    } catch {
+        // Detached/test DOM nodes may not have a computable style; inline state still applies.
+    }
+    return declarations;
+}
+
+function sanitizeRecoveredInteractionStyleAssignments(element, assignments = [], { removedProperties = [] } = {}) {
+    const normalized = normalizeRecoveredInteractionStyleAssignments(assignments);
+    if (!normalized.length || normalized.length !== (assignments || []).length) return [];
+
+    const block = normalized.map(({ property, value }) => `${property}:${value}`).join(';');
+    if (!block || cssContainsUnsafeGeneratedResource(block)) return [];
+
+    // Reuse the initial generated-CSS policy and reject the whole recovered operation if
+    // that policy would drop any declaration. Never reinterpret a partly unsafe program.
+    const sanitized = sanitizeGeneratedCssDeclarationBlock(block);
+    const sourceCount = splitCssDeclarationList(block).filter(item => String(item || '').trim()).length;
+    const sanitizedCount = splitCssDeclarationList(sanitized).filter(item => String(item || '').trim()).length;
+    if (!sanitized || sourceCount !== sanitizedCount) return [];
+
+    const hasOverlayAssignment = normalized.some(({ property }) => RECOVERED_INTERACTION_OVERLAY_PROPERTIES.has(property));
+    if (!hasOverlayAssignment) return normalized;
+
+    // Evaluate the final declaration state rather than only the new values. Otherwise a
+    // recovered `position:fixed` could combine with sanitized-but-inert inset/size values
+    // already present on the element and recreate a full-screen overlay across state copies.
+    const overlayDeclarations = currentRecoveredInteractionOverlayDeclarationMap(element);
+    for (const property of removedProperties || []) {
+        overlayDeclarations.delete(normalizeStylePropertyName(property));
+    }
+    for (const { property, value } of normalized) {
+        if (RECOVERED_INTERACTION_OVERLAY_PROPERTIES.has(property)) overlayDeclarations.set(property, value);
+    }
+    const overlayBlock = [...overlayDeclarations.entries()].map(([property, value]) => `${property}:${value}`).join(';');
+    return !overlayBlock || !cssDeclarationBlockContainsUnsafeOverlayGeometry(overlayBlock) ? normalized : [];
+}
+
+export function validateRabbitMirrorRecoveredStyleAssignments(element, assignments = [], options = {}) {
+    return sanitizeRecoveredInteractionStyleAssignments(element, assignments, options);
+}
+
 function parseInlineStyleAssignments(scriptText) {
     const assignments = new Map();
     const source = String(scriptText || '');
@@ -5733,7 +5859,10 @@ function parseInlineStyleAssignments(scriptText) {
     const bracketAssignmentRe = /this\.style\[\s*(['"])([a-zA-Z-]+)\1\s*\]\s*=\s*(['"])([\s\S]*?)\3\s*;?/g;
     while ((match = bracketAssignmentRe.exec(source))) remember(match[2], match[4]);
 
-    return [...assignments.entries()].map(([property, value]) => ({ property, value }));
+    return sanitizeRecoveredInteractionStyleAssignments(
+        null,
+        [...assignments.entries()].map(([property, value]) => ({ property, value })),
+    );
 }
 
 function collectInlineAssignments(element, attributeNames) {
@@ -6294,11 +6423,24 @@ function readReversibleStyleBaseline(element) {
         try {
             const parsed = JSON.parse(decodeURIComponent(encoded));
             if (parsed && typeof parsed === 'object') {
-                for (const [property, state] of Object.entries(parsed)) {
-                    baseline.set(property, {
-                        value: String(state?.value || ''),
-                        priority: String(state?.priority || ''),
-                    });
+                const entries = Object.entries(parsed).map(([property, state]) => ({
+                    property,
+                    value: String(state?.value || ''),
+                    priority: String(state?.priority || '').toLowerCase() === 'important' ? 'important' : '',
+                }));
+                const valued = entries.filter(entry => entry.value);
+                const removedProperties = entries.filter(entry => !entry.value).map(entry => entry.property);
+                const safe = valued.length
+                    ? sanitizeRecoveredInteractionStyleAssignments(element, valued, { removedProperties })
+                    : [];
+                if (!valued.length || safe.length === valued.length) {
+                    for (const entry of entries) {
+                        const property = normalizeStylePropertyName(entry.property);
+                        if (!property || property.startsWith('--')) continue;
+                        baseline.set(property, { value: entry.value, priority: entry.priority });
+                    }
+                } else {
+                    element.removeAttribute?.(REVERSIBLE_STYLE_BASELINE_ATTR);
                 }
             }
         } catch {
@@ -6373,17 +6515,39 @@ function captureStableTextState(element) {
 }
 
 function applyPseudoStyleAssignments(element, assignments) {
-    for (const { property, value } of assignments || []) {
-        if (!property || !value) continue;
+    const safeAssignments = sanitizeRecoveredInteractionStyleAssignments(element, assignments);
+    if (!safeAssignments.length) return 0;
+    let applied = 0;
+    for (const { property, value } of safeAssignments) {
         element.style?.setProperty?.(property, value, 'important');
+        applied += 1;
     }
+    return applied;
 }
 
 function restorePseudoStyleState(element, captured) {
-    for (const [property, previous] of captured || []) {
-        if (previous?.value) element.style?.setProperty?.(property, previous.value, previous.priority || '');
-        else element.style?.removeProperty?.(property);
+    const entries = [...(captured || [])].map(([property, previous]) => ({
+        property,
+        value: String(previous?.value || ''),
+        priority: String(previous?.priority || '').toLowerCase() === 'important' ? 'important' : '',
+    }));
+    const valued = entries.filter(entry => entry.value);
+    const removedProperties = entries.filter(entry => !entry.value).map(entry => entry.property);
+    const safe = valued.length
+        ? sanitizeRecoveredInteractionStyleAssignments(element, valued, { removedProperties })
+        : [];
+    const canRestoreValues = safe.length === valued.length;
+    let restored = 0;
+    for (const entry of entries) {
+        if (entry.value) {
+            if (!canRestoreValues) continue;
+            element.style?.setProperty?.(normalizeStylePropertyName(entry.property), entry.value, entry.priority);
+        } else {
+            element.style?.removeProperty?.(normalizeStylePropertyName(entry.property));
+        }
+        restored += 1;
     }
+    return restored;
 }
 
 function setPseudoInteractionState(state, active) {
@@ -6674,7 +6838,7 @@ function applyDirectIdClickAssignments(actions) {
     for (const action of actions || []) {
         if (!action?.target) continue;
         if (action.type === 'style') {
-            action.target.style?.setProperty?.(action.property, action.value, 'important');
+            applyPseudoStyleAssignments(action.target, [action]);
         } else if (action.type === 'text') {
             action.target.textContent = action.value;
         } else if (action.type === 'checked') {
@@ -6814,11 +6978,13 @@ function getRawAssistantMessageForRenderedRoot(root) {
 function collectRawRabbitMirrorRoots(rawHtml) {
     if (!rawHtml || typeof document === 'undefined') return [];
     try {
+        if (!validateRabbitMirrorMarkupLexicalBudget(rawHtml)) return [];
         // 原始消息可能含会截断 inline style 的未编码 SVG Data URI。
         // 先在字符串层移除损坏的背景声明，再交给 template 解析；否则后续安全事件回读也会失去真实 DOM 路径。
         const prepared = rescueDamagedDataUriRabbitMirrorOutput(
             decodeHtmlEntities(normalizeMirrorAttribute(String(rawHtml))),
         );
+        if (!validateRabbitMirrorMarkupLexicalBudget(prepared)) return [];
         const template = document.createElement('template');
         template.innerHTML = prepared;
         const roots = [...template.content.querySelectorAll(MIRROR_TOTO_SELECTOR)];
@@ -6929,6 +7095,7 @@ function parseSafeSelfMutationText(mode, rawValue) {
     if (mode !== 'innerHTML') return decoded;
     if (typeof document === 'undefined') return decoded.replace(/<[^>]*>/g, '');
     try {
+        if (!validateRabbitMirrorMarkupLexicalBudget(decoded)) return null;
         const template = document.createElement('template');
         template.innerHTML = decoded;
         if (template.content.querySelector('script, style, iframe, object, embed, form, input, button, a')) return null;
@@ -7869,7 +8036,7 @@ function collectSafeRawScriptTimelinePrograms(root) {
 function applyRawScriptTimelineActions(actions) {
     for (const action of actions || []) {
         if (!action?.target?.isConnected) continue;
-        if (action.type === 'style') action.target.style?.setProperty?.(action.property, action.value, 'important');
+        if (action.type === 'style') applyPseudoStyleAssignments(action.target, [action]);
         else if (action.type === 'text') action.target.textContent = action.value;
     }
 }
@@ -11862,6 +12029,7 @@ const MAINTENANCE_STATE_ATTR = 'data-rabbit-mirror-maintenance-state';
 const MAINTENANCE_REASON_ATTR = 'data-rabbit-mirror-maintenance-reason';
 const MAINTENANCE_REPAIR_ATTR = 'data-rabbit-mirror-maintenance-repaired';
 const MAINTENANCE_MENU_ATTR = 'data-rabbit-mirror-maintenance-menu';
+const MAINTENANCE_MIRROR_IDENTITY_ATTR = 'data-rabbit-mirror-maintenance-identity';
 const INDEPENDENT_REPAIR_PERSIST_EVENT = 'rabbitmirror:independent-repair-persist';
 const INDEPENDENT_LIVE_REPAIR_ATTR = 'data-rabbit-mirror-maintenance-live-repair';
 const INDEPENDENT_LIVE_REPAIR_UNTIL_ATTR = 'data-rabbit-mirror-maintenance-live-repair-until';
@@ -12036,7 +12204,7 @@ let mobileInlineAnnotationCounter = 0;
 let mobileLayoutScopeCounter = 0;
 const SOURCE_TRUNCATION_NOTICE_ATTR = 'data-rabbit-mirror-source-truncation-notice';
 const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'checking', healthy: 'healthy', repairable: 'repairable', notice: 'notice', unknown: 'unknown' });
-const INTERACTION_DIAGNOSTIC_VERSION = '1.4.30.17-FULL-CHAIN';
+const INTERACTION_DIAGNOSTIC_VERSION = `${RUNTIME_VERSION}-FULL-CHAIN`;
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
 const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 const interactionDiagnosticStates = new WeakMap();
@@ -13284,7 +13452,11 @@ function removeInteractionDiagnostic(root) {
 
 function removeAllInteractionDiagnosticPanels() {
     const chatRoot = getChatRoot();
-    chatRoot?.querySelectorAll?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`).forEach(panel => panel.remove());
+    for (let message = chatRoot?.lastElementChild, examined = 0; message && examined < 6; message = message.previousElementSibling) {
+        if (!message.matches?.('.mes[mesid], [mesid].mes')) continue;
+        examined += 1;
+        message.querySelectorAll?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`).forEach(panel => panel.remove());
+    }
 }
 
 function createOneShotInteractionDiagnosticPanel(root, state) {
@@ -15837,6 +16009,13 @@ function buildMaintenanceFindings(root, {
             evidence: [`fillInChoiceCandidateCount=${Number(interaction.fillInChoiceCandidateCount)}`], confidence: 0.99,
         });
     }
+    if (Number(interaction.unresolvedCheckedRuleCount) > 0) {
+        add({
+            id: 'unresolved-checked-target', stage: 'interaction', mode: 'interaction',
+            label: '存在无法命中真实目标的 checked 规则，当前交互不能判定为正常或已修复',
+            evidence: [`unresolvedCheckedRuleCount=${Number(interaction.unresolvedCheckedRuleCount)}`], confidence: 0.99,
+        });
+    }
     if (Number(interaction.crossParentCheckedRuleCandidateCount) > 0) {
         add({
             id: 'cross-parent-checked-target', stage: 'interaction', mode: 'interaction',
@@ -15966,7 +16145,7 @@ function inspectMaintenanceRabbit(root) {
     } catch (error) {
         partialInspection = true;
         console.debug('[RabbitMirror] maintenance interaction inspection skipped:', error);
-        interaction = { checkedControlsLost: false, stateControlsLost: false, strippedStateProgram: false, lostInlineStatePrograms: 0, recoveredInlineStatePrograms: 0, decorativeOverlayCandidateCount: 0, touchHoverMissing: false, unscopedControls: false, missingCheckedSubjectClassCandidateCount: 0, missingCheckedSubjectClassRescueCount: 0, missingCheckedSubjectClassMissingCount: 0, radioGroupLossCandidateCount: 0, radioGroupRescueCount: 0, duplicateIds: 0, brokenLocalLabels: 0, checkedCssIdSelectors: 0, needsScopeRepair: false, checkedSelectionOnly: false, checkedSelectionOnlyRaw: false, checkedRuleCount: 0, meaningfulCheckedRuleCount: 0, selectionStyleRuleCount: 0, selectionOnlyFallbackCount: 0, selectionOnlyRepairCandidateCount: 0, disabledOnlyChoiceCandidateCount: 0, inertActionButtonCandidateCount: 0, staticChoiceSelectionCandidateCount: 0, staticChoiceSelectionRescueCount: 0, structuredStaticDisclosureCandidateCount: 0, structuredStaticDisclosureRescueCount: 0, fillInChoiceCandidateCount: 0, fillInChoiceRescueCount: 0, focusWithinPersistentCandidateCount: 0, focusWithinPersistentRescueCount: 0, focusWithinPersistentMissingCount: 0, rawScriptTimelineCandidateCount: 0, rawScriptTimelineRescueCount: 0, rawScriptTimelineMissingCount: 0, crossParentCheckedRuleCandidateCount: 0, checkedHasStateRuleCandidateCount: 0, checkedHasStateRuleRescueCount: 0, checkedHasStateRuleMissingCount: 0, detachedCheckedHasRuleCandidateCount: 0, detachedCheckedHasRuleRescueCount: 0, detachedCheckedHasRuleMissingCount: 0, pairedCheckedStateCandidateCount: 0, pairedCheckedStateRescueCount: 0, pairedCheckedStateMissingCount: 0, exclusiveStackedStateCandidateCount: 0, exclusiveStackedStateRescueCount: 0, exclusiveStackedStateMissingCount: 0, channelDialCycleCandidateCount: 0, channelDialCycleRescueCount: 0, channelDialCycleMissingCount: 0, oneWayCheckedResultCandidateCount: 0, reversibleCheckedResultRescueCount: 0, pseudoVisualOnly: false, pseudoRuleCount: 0, visualOnlyPseudoRuleCount: 0, meaningfulPseudoRuleCount: 0, touchHoverEligibleCount: 0, touchHoverActiveCount: 0, contentInteractiveElementCount: 0, installedInteractionRouteCount: 0, noInteractionStructure: false, raw: '' };
+        interaction = { checkedControlsLost: false, stateControlsLost: false, strippedStateProgram: false, lostInlineStatePrograms: 0, recoveredInlineStatePrograms: 0, decorativeOverlayCandidateCount: 0, touchHoverMissing: false, unscopedControls: false, missingCheckedSubjectClassCandidateCount: 0, missingCheckedSubjectClassRescueCount: 0, missingCheckedSubjectClassMissingCount: 0, radioGroupLossCandidateCount: 0, radioGroupRescueCount: 0, duplicateIds: 0, brokenLocalLabels: 0, checkedCssIdSelectors: 0, needsScopeRepair: false, checkedSelectionOnly: false, checkedSelectionOnlyRaw: false, checkedRuleCount: 0, meaningfulCheckedRuleCount: 0, selectionStyleRuleCount: 0, unresolvedCheckedRuleCount: 0, selectionOnlyFallbackCount: 0, selectionOnlyRepairCandidateCount: 0, disabledOnlyChoiceCandidateCount: 0, inertActionButtonCandidateCount: 0, staticChoiceSelectionCandidateCount: 0, staticChoiceSelectionRescueCount: 0, structuredStaticDisclosureCandidateCount: 0, structuredStaticDisclosureRescueCount: 0, fillInChoiceCandidateCount: 0, fillInChoiceRescueCount: 0, focusWithinPersistentCandidateCount: 0, focusWithinPersistentRescueCount: 0, focusWithinPersistentMissingCount: 0, rawScriptTimelineCandidateCount: 0, rawScriptTimelineRescueCount: 0, rawScriptTimelineMissingCount: 0, crossParentCheckedRuleCandidateCount: 0, checkedHasStateRuleCandidateCount: 0, checkedHasStateRuleRescueCount: 0, checkedHasStateRuleMissingCount: 0, detachedCheckedHasRuleCandidateCount: 0, detachedCheckedHasRuleRescueCount: 0, detachedCheckedHasRuleMissingCount: 0, pairedCheckedStateCandidateCount: 0, pairedCheckedStateRescueCount: 0, pairedCheckedStateMissingCount: 0, exclusiveStackedStateCandidateCount: 0, exclusiveStackedStateRescueCount: 0, exclusiveStackedStateMissingCount: 0, channelDialCycleCandidateCount: 0, channelDialCycleRescueCount: 0, channelDialCycleMissingCount: 0, oneWayCheckedResultCandidateCount: 0, reversibleCheckedResultRescueCount: 0, pseudoVisualOnly: false, pseudoRuleCount: 0, visualOnlyPseudoRuleCount: 0, meaningfulPseudoRuleCount: 0, touchHoverEligibleCount: 0, touchHoverActiveCount: 0, contentInteractiveElementCount: 0, installedInteractionRouteCount: 0, noInteractionStructure: false, raw: '' };
     }
     let textContrastCandidateCount = 0;
     try {
@@ -16115,8 +16294,41 @@ function inspectMaintenanceRabbit(root) {
     };
 }
 
+function maintenanceRepairRootBudget(root) {
+    const limits = { maxNodes: 2200, maxDepth: 64, maxAttributes: 7000 };
+    if (!root?.isConnected) return { ok: false, reason: 'detached', ...limits };
+    const stack = [{ node: root, depth: 1 }];
+    let nodes = 0;
+    let attributes = 0;
+    while (stack.length) {
+        const { node, depth } = stack.pop();
+        nodes += 1;
+        attributes += Number(node?.attributes?.length || 0);
+        if (nodes > limits.maxNodes || depth > limits.maxDepth || attributes > limits.maxAttributes) {
+            return { ok: false, reason: 'complexity', nodes, depth, attributes, ...limits };
+        }
+        const children = node?.children || [];
+        for (let index = children.length - 1; index >= 0; index -= 1) stack.push({ node: children[index], depth: depth + 1 });
+    }
+    return { ok: true, nodes, attributes, ...limits };
+}
+
+function rejectOversizedMaintenanceRepair(root, button, action = '维修') {
+    const budget = maintenanceRepairRootBudget(root);
+    if (budget.ok) return false;
+    setMaintenanceRabbitState(
+        button,
+        MAINTENANCE_STATES.unknown,
+        budget.reason === 'complexity'
+            ? `当前单镜结构过大（${budget.nodes || '>'}${budget.maxNodes} 节点上限），为避免浏览器卡死未执行${action}；请重新生成或使用轻量模板`
+            : `当前兔子镜已脱离页面，未执行${action}`,
+    );
+    return true;
+}
+
 function patrolMaintenanceRabbit(root, button) {
     if (!root?.isConnected || !button?.isConnected) return null;
+    if (rejectOversizedMaintenanceRepair(root, button, '巡逻')) return null;
     setMaintenanceRabbitState(button, MAINTENANCE_STATES.checking, '正在检查 HTML、CSS、源码与交互链');
     let result;
     try {
@@ -16133,6 +16345,7 @@ function patrolMaintenanceRabbit(root, button) {
 
 function findLiveMaintenanceRoot(root, summaryText = '', messageIndex = -1) {
     if (root?.isConnected) return exactIndependentMaintenanceRoot(root);
+    const wantedIdentity = followMaintenanceMirrorIdentity(root);
     const independentHost = independentMaintenanceHost(root);
     const ownerKey = String(independentHost?.dataset?.rmKey || root?.dataset?.rabbitMirrorExternalOwner || '');
     if (ownerKey) {
@@ -16143,6 +16356,10 @@ function findLiveMaintenanceRoot(root, summaryText = '', messageIndex = -1) {
     const messageElement = messageIndex >= 0 ? getRenderedMessageElement(messageIndex) : null;
     if (!messageElement) return null;
     const candidates = getRenderedRabbitMirrorInteractionRoots(messageElement);
+    if (wantedIdentity) {
+        const exact = candidates.find(candidate => followMaintenanceMirrorIdentity(candidate) === wantedIdentity);
+        if (exact) return exact;
+    }
     if (!summaryText) return candidates[0] || null;
     return candidates.find(candidate => getRabbitMirrorSummaryText(candidate).includes(summaryText)) || candidates[0] || null;
 }
@@ -16480,6 +16697,8 @@ function installMaintenanceStaticDecorationFallback(root, scriptText) {
 const RABBIT_MIRROR_BLOCKED_RENDER_SELECTOR = 'script, iframe, object, embed, link, meta, base, frame';
 const RABBIT_MIRROR_NETWORK_URL_ATTRS = new Set(['href', 'src', 'xlink:href', 'poster', 'background']);
 const RABBIT_MIRROR_INTERNAL_MODEL_ATTRS = new Set([
+    REVERSIBLE_STYLE_BASELINE_ATTR,
+    REVERSIBLE_TEXT_BASELINE_ATTR,
     RAW_SELF_MUTATION_HTML_BASELINE_ATTR,
     RAW_SELF_MUTATION_ACTIVE_ATTR,
 ]);
@@ -16858,8 +17077,96 @@ function sanitizeLocalGeneratedPopoverRoutes(template) {
     }
 }
 
+const RABBIT_MIRROR_MAX_TEMPLATE_NODES = 4200;
+const RABBIT_MIRROR_MAX_TEMPLATE_DEPTH = 72;
+const RABBIT_MIRROR_MAX_TEMPLATE_ATTRIBUTES = 12000;
+const RABBIT_MIRROR_MAX_TEMPLATE_CSS_CHARS = 160000;
+const RABBIT_MIRROR_MAX_TEMPLATE_CSS_RULES = 1400;
+const RABBIT_MIRROR_MAX_TEMPLATE_DATA_URI_CHARS = 192000;
+const RABBIT_MIRROR_MAX_TEMPLATE_SOURCE_CHARS = 786432;
+
+export function validateRabbitMirrorMarkupLexicalBudget(value = '') {
+    const source = String(value || '');
+    if (!source || source.length > RABBIT_MIRROR_MAX_TEMPLATE_SOURCE_CHARS) return false;
+    const lower = source.toLowerCase();
+    let dataIndex = lower.indexOf('data:');
+    while (dataIndex >= 0) {
+        let end = dataIndex + 5;
+        const hardLimit = dataIndex + RABBIT_MIRROR_MAX_TEMPLATE_DATA_URI_CHARS + 6;
+        const limit = Math.min(source.length, hardLimit);
+        while (end < limit && !/[\s"'<>)]/.test(source[end])) end += 1;
+        if (hardLimit <= source.length && end >= hardLimit && !/[\s"'<>)]/.test(source[end] || '')) return false;
+        dataIndex = lower.indexOf('data:', Math.max(end, dataIndex + 5));
+    }
+
+    const voidTags = new Set(['area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr']);
+    const tagRe = /<\s*(\/?)\s*([a-z][a-z0-9:-]*)\b([^>]*)>/gi;
+    let tags = 0; let depth = 0; let attributes = 0; let match;
+    while ((match = tagRe.exec(source))) {
+        tags += 1;
+        if (tags > RABBIT_MIRROR_MAX_TEMPLATE_NODES) return false;
+        const closing = !!match[1]; const name = String(match[2] || '').toLowerCase(); const tail = String(match[3] || '');
+        if (closing) depth = Math.max(0, depth - 1);
+        else {
+            const attrMatches = tail.match(/\s+[a-z_:][-a-z0-9_:.]*(?:\s*=)?/gi);
+            attributes += attrMatches?.length || 0;
+            if (attributes > RABBIT_MIRROR_MAX_TEMPLATE_ATTRIBUTES) return false;
+            if (!voidTags.has(name) && !/\/\s*$/.test(tail)) {
+                depth += 1;
+                if (depth > RABBIT_MIRROR_MAX_TEMPLATE_DEPTH) return false;
+            }
+        }
+    }
+
+    let cssChars = 0; let cssRules = 0; let cursor = 0;
+    while (true) {
+        const open = lower.indexOf('<style', cursor); if (open < 0) break;
+        const body = lower.indexOf('>', open + 6); if (body < 0) return false;
+        const close = lower.indexOf('</style', body + 1); if (close < 0) return false;
+        const css = source.slice(body + 1, close);
+        cssChars += css.length; cssRules += (css.match(/{/g) || []).length;
+        if (cssChars > RABBIT_MIRROR_MAX_TEMPLATE_CSS_CHARS || cssRules > RABBIT_MIRROR_MAX_TEMPLATE_CSS_RULES) return false;
+        cursor = close + 7;
+    }
+    return true;
+}
+
+export function validateRabbitMirrorTemplateStructuralBudget(template) {
+    const root = template?.content;
+    if (!root?.childNodes) return false;
+    let nodes = 0; let attributes = 0; let cssChars = 0; let cssRules = 0;
+    const stack = [...root.childNodes].reverse().map(node => ({ node, depth: 1 }));
+    while (stack.length) {
+        const { node, depth } = stack.pop();
+        nodes += 1;
+        if (nodes > RABBIT_MIRROR_MAX_TEMPLATE_NODES || depth > RABBIT_MIRROR_MAX_TEMPLATE_DEPTH) return false;
+        if (node?.nodeType === 1) {
+            const attrs = [...(node.attributes || [])];
+            attributes += attrs.length;
+            if (attributes > RABBIT_MIRROR_MAX_TEMPLATE_ATTRIBUTES) return false;
+            for (const attr of attrs) {
+                const value = String(attr?.value || '');
+                const dataAt = value.toLowerCase().indexOf('data:');
+                if (dataAt >= 0 && value.length - dataAt > RABBIT_MIRROR_MAX_TEMPLATE_DATA_URI_CHARS) return false;
+            }
+            if (String(node.tagName || '').toLowerCase() === 'style') {
+                const css = String(node.textContent || '');
+                cssChars += css.length;
+                cssRules += (css.match(/{/g) || []).length;
+                if (cssChars > RABBIT_MIRROR_MAX_TEMPLATE_CSS_CHARS || cssRules > RABBIT_MIRROR_MAX_TEMPLATE_CSS_RULES) return false;
+            }
+        }
+        const children = [...(node?.childNodes || [])];
+        for (let i = children.length - 1; i >= 0; i -= 1) stack.push({ node: children[i], depth: depth + 1 });
+    }
+    return true;
+}
+
 export function sanitizeRabbitMirrorUntrustedTemplate(template) {
     if (!template?.content?.querySelectorAll) return false;
+    // Fail closed before any broad selector walk. This prevents model-produced tag,
+    // attribute, CSS-rule and deep-nesting bombs from turning sanitization into a long task.
+    if (!validateRabbitMirrorTemplateStructuralBudget(template)) return false;
 
     template.content.querySelectorAll(RABBIT_MIRROR_BLOCKED_RENDER_SELECTOR).forEach(node => node.remove());
     unwrapGeneratedForms(template);
@@ -17028,6 +17335,7 @@ function extractIsolatedMaintenanceMirrorSource(source, root) {
 function findCleanMaintenanceMirrorNode(source, root) {
     const cleaned = prepareMaintenanceMirrorSource(source);
     if (!cleaned || typeof document === 'undefined') return null;
+    if (!validateRabbitMirrorMarkupLexicalBudget(cleaned)) return null;
     const wantedSummary = normalizeMaintenanceSummaryText(getRabbitMirrorSummaryText(root));
 
     try {
@@ -17349,6 +17657,11 @@ function invalidateRabbitMirrorInteractionResetSnapshot(root) {
 
 function captureRabbitMirrorInteractionResetSnapshot(root) {
     if (!root?.isConnected) return false;
+    // This capture runs on pointerdown before the browser can deliver the native
+    // label/radio/details interaction. Never deep-clone a large generated mirror on
+    // that critical path; the optional “restore initial state” feature is skipped.
+    const budget = maintenanceRepairRootBudget(root);
+    if (!budget.ok || budget.nodes > 1200 || budget.attributes > 4000) return false;
     const key = rabbitMirrorInteractionResetSnapshotKey(root, true);
     if (!key || rabbitMirrorInteractionResetSnapshots.has(key)) return false;
     const details = root.matches?.('details') ? root : root.querySelector?.(':scope > details') || root.querySelector?.('details');
@@ -19987,7 +20300,6 @@ const HCLIP_INTERACTIVE_SELECTOR = 'a[href],button,input,select,textarea,label,d
 
 // 1.3.92: 跟随主 API 的横向裁切只在真实展开后测量。WeakMap 只记录当前 live DOM，
 // clone/重挂载后的新 <details> 会自然重新绑定，不写入任何可持久化 data-* 标记。
-const maintenanceHorizontalClipOpenStates = new WeakMap();
 
 // 诊断用的可读定位串，只取标签、id、前两个 class 与在父层中的序号。
 function hclipElementPath(element) {
@@ -20414,54 +20726,10 @@ export function installMaintenanceHorizontalClipRescue(root) {
 }
 
 
-function scheduleMaintenanceHorizontalClipOpenRescue(root, details) {
-    if (!isMaintenanceRabbitEnabled()) return false;
-    if (!root?.isConnected || !details?.isConnected || !details.open) return false;
-    const state = maintenanceHorizontalClipOpenStates.get(details);
-    if (!state || state.scheduled) return false;
-    state.scheduled = true;
-
-    const run = () => {
-        state.scheduled = false;
-        if (!isMaintenanceRabbitEnabled()) return;
-        if (!root?.isConnected || !details?.isConnected || !details.open) return;
-        try {
-            installMaintenanceHorizontalClipRescue(root);
-        } catch (error) {
-            console.debug('[RabbitMirror] deferred horizontal clip rescue skipped for one mirror:', error);
-        }
-    };
-
-    // 先让原生 <details> 完成本帧展开绘制，再做 scrollWidth/clientWidth/getComputedStyle。
-    // 这样点击本身不会被重布局扫描阻塞；后台/无 rAF 环境退回 setTimeout。
-    if (typeof globalThis.requestAnimationFrame === 'function') {
-        globalThis.requestAnimationFrame(() => globalThis.setTimeout(run, 0));
-    } else {
-        globalThis.setTimeout(run, 0);
-    }
-    return true;
-}
-
 function installMaintenanceHorizontalClipOpenRescue(root) {
-    if (!root?.querySelector) return false;
-    // 独立 API 已在 ensureExternalTools() 的展开链做同一救援；这里仅补跟随主 API，避免双测。
-    if (root.closest?.('.rabbit-mirror-external-shell[data-rm-source="independent"]')) return false;
-    const details = root.matches?.('details') ? root : root.querySelector(':scope > details') || root.querySelector('details');
-    if (!details?.addEventListener) return false;
-
-    let state = maintenanceHorizontalClipOpenStates.get(details);
-    if (!state) {
-        state = { scheduled: false };
-        const onToggle = () => {
-            if (isMaintenanceRabbitEnabled() && details.open) scheduleMaintenanceHorizontalClipOpenRescue(root, details);
-        };
-        details.addEventListener('toggle', onToggle, { passive: true });
-        state.onToggle = onToggle;
-        maintenanceHorizontalClipOpenStates.set(details, state);
-    }
-
-    if (details.open) scheduleMaintenanceHorizontalClipOpenRescue(root, details);
-    return true;
+    // Ordinary expand is not a repair intent. Horizontal layout measurement is
+    // available through explicit “排版/显示” Maintenance Rabbit repair only.
+    return !!root?.isConnected;
 }
 
 function installMaintenanceViewportLayoutRescue(root) {
@@ -20612,7 +20880,9 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
         const fillInChoiceCount = Number.parseInt(target.getAttribute?.(FILL_IN_CHOICE_COUNT_ATTR) || '0', 10) || 0;
         detectInteractionCapabilities(target);
         const depthAfter = maintenanceCheckedInteractionDepth(target);
-        const meaningfulCheckedRoute = depthAfter.checkedRuleCount > 0 && !depthAfter.checkedSelectionOnly;
+        const meaningfulCheckedRoute = depthAfter.meaningfulCheckedRuleCount > 0
+            && depthAfter.unresolvedCheckedRuleCount === 0
+            && !depthAfter.checkedSelectionOnly;
         const genuinelyRescued = selectionFallbackCount > 0
             || disabledChoiceRepairCount > 0
             || inertActionRepairCount > 0
@@ -20688,9 +20958,10 @@ function runMaintenanceLegacyRescueLibrary(root, mode = 'all') {
     const messageScope = independent
         ? exactIndependentMaintenanceRoot(root)
         : (root.closest?.('[data-rabbit-mirror-external-shell], [data-rabbit-mirror-external-source], .mes, [mesid], [data-message-id], [data-messageid]') || root);
-    const liveRoots = independent ? [exactIndependentMaintenanceRoot(root)] : getRenderedRabbitMirrorInteractionRoots(messageScope);
     // 副 API镜面永远只维修自己；不能让任何全局源码／DOM急救器扫到聊天正文。
-    const targets = independent ? [exactIndependentMaintenanceRoot(root)] : (mode === 'text' ? [root] : (liveRoots.length ? liveRoots : [root]));
+    // 跟随主 API 也只维修用户点中的这一面；跨同消息其它镜面的扩散扫描会在复杂输出上
+    // 放大成事件长任务，并可能把另一个镜面的状态误当成当前目标。
+    const targets = [independent ? exactIndependentMaintenanceRoot(root) : root];
 
     for (const module of MAINTENANCE_RESCUE_LIBRARY) {
         if (!module.modes.includes(mode) || (independent && ['code-block-dom', 'plain-text-dom', 'rendered-details-dom'].includes(module.id))) {
@@ -20719,6 +20990,64 @@ function mergeMaintenanceLibraryResult(target, addition, label = '') {
     target.failed = [...(target.failed || []), ...(addition.failed || [])];
     if (label) target.followup = label;
     return target;
+}
+
+function followMaintenanceRepairKey(root) {
+    if (!root || isIndependentMaintenanceRoot(root)) return '';
+    const index = getMessageIndexFromMirrorNode(root);
+    const message = index >= 0 ? getAvailableHostChat()?.[index] : null;
+    const source = getSelectedMessageSource(message, { preferDisplay: true }) || getSelectedMessageSource(message);
+    const identity = followMaintenanceMirrorIdentity(root);
+    return identity ? `${maintenanceSnapshotKey(root)}:${hashInteractionSignature(source)}:${identity}` : '';
+}
+
+function followMaintenanceMirrorIdentity(root) {
+    if (!root || isIndependentMaintenanceRoot(root)) return '';
+    const existing = String(root.getAttribute?.(MAINTENANCE_MIRROR_IDENTITY_ATTR) || '').trim();
+    if (existing) return existing;
+    const index = getMessageIndexFromMirrorNode(root);
+    const messageElement = index >= 0 ? getRenderedMessageElement(index) : null;
+    const candidates = messageElement ? getRenderedRabbitMirrorInteractionRoots(messageElement) : [];
+    let ordinal = candidates.findIndex(candidate => candidate === root || candidate.contains?.(root) || root.contains?.(candidate));
+    if (ordinal < 0) ordinal = 0;
+    const summary = normalizeMaintenanceSummaryText(getRabbitMirrorSummaryText(root));
+    const identity = `m${ordinal}:${hashInteractionSignature(`${ordinal}|${String(root.tagName || '')}|${summary}`).slice(0, 12)}`;
+    try { root.setAttribute?.(MAINTENANCE_MIRROR_IDENTITY_ATTR, identity); } catch {}
+    return identity;
+}
+
+function rememberFollowMaintenanceRepair(root, mode, result) {
+    const key = followMaintenanceRepairKey(root);
+    if (!key) return false;
+    const moduleIds = [...new Set((result?.executed || []).filter(item => Number(item?.count || 0) > 0).map(item => String(item.id || '')).filter(Boolean))];
+    if (!moduleIds.length) return false;
+    followMaintenanceRepairRecipes.set(key, { mode, moduleIds, lastRoot: root, ts: Date.now() });
+    while (followMaintenanceRepairRecipes.size > 24) {
+        const oldest = [...followMaintenanceRepairRecipes.entries()].sort((a, b) => Number(a[1]?.ts || 0) - Number(b[1]?.ts || 0))[0]?.[0];
+        if (!oldest) break;
+        followMaintenanceRepairRecipes.delete(oldest);
+    }
+    return true;
+}
+
+function replayFollowMaintenanceRepair(root) {
+    const key = followMaintenanceRepairKey(root);
+    const recipe = key ? followMaintenanceRepairRecipes.get(key) : null;
+    if (!recipe || recipe.lastRoot === root || !root?.isConnected) return 0;
+    if (!maintenanceRepairRootBudget(root).ok) return 0;
+    let repaired = 0;
+    const messageScope = root.closest?.('[data-rabbit-mirror-external-shell], [data-rabbit-mirror-external-source], .mes, [mesid]') || root;
+    for (const id of recipe.moduleIds) {
+        const module = MAINTENANCE_RESCUE_LIBRARY.find(item => item.id === id && item.modes.includes(recipe.mode));
+        if (!module) continue;
+        const result = createMaintenanceLibraryResult(`replay:${recipe.mode}`);
+        if (module.perTarget) runMaintenanceRescueModule(module, { root, target: root, messageScope, mode: recipe.mode }, result);
+        else runMaintenanceRescueModule(module, { root, messageScope, mode: recipe.mode }, result);
+        repaired += Number(result[module.bucket] || 0);
+    }
+    recipe.lastRoot = root; recipe.ts = Date.now();
+    root.dataset.rabbitMirrorMaintenanceRecipeReplayed = repaired > 0 ? 'true' : 'checked';
+    return repaired;
 }
 
 function runMaintenanceSourceInteractionFollowup(root) {
@@ -20768,28 +21097,14 @@ function scheduleMaintenanceScopedFollowups(root, summaryText, messageIndex, mod
         }, 140);
         return;
     }
-    const sourceModes = new Set(['source', 'code', 'plainText', 'style', 'all']);
-    for (const delay of [80, 350, 900, 1800]) {
-        setTimeout(() => {
-            const liveRoot = findLiveMaintenanceRoot(root, summaryText, messageIndex);
-            if (!liveRoot?.isConnected) return;
-            markIndependentMaintenanceLiveRepair(liveRoot, 2600);
-            const inspection = maintenanceUserRepairInspection(liveRoot, mode);
-            const sourceResult = sourceModes.has(mode)
-                ? repairMaintenanceMessageSource(liveRoot, inspection)
-                : { changed: false };
-            const runLibrary = () => {
-                const latestRoot = findLiveMaintenanceRoot(liveRoot, summaryText, messageIndex) || liveRoot;
-                if (!latestRoot?.isConnected) return;
-                runMaintenanceLegacyRescueLibrary(latestRoot, mode);
-                if (sourceResult.changed && mode === 'source') runMaintenanceSourceInteractionFollowup(latestRoot);
-                installMaintenanceRabbitForRoot(latestRoot);
-                notifyIndependentRepairPersistence(latestRoot);
-            };
-            if (sourceResult.changed) setTimeout(runLibrary, 60);
-            else runLibrary();
-        }, delay);
-    }
+    // One bounded follow-up only: if the host replaced the repaired DOM, replay the
+    // exact successful module recipe on the new live root. Never rescan/repair source four times.
+    setTimeout(() => {
+        const liveRoot = findLiveMaintenanceRoot(root, summaryText, messageIndex);
+        if (!liveRoot?.isConnected) return;
+        if (liveRoot !== root) replayFollowMaintenanceRepair(liveRoot);
+        installMaintenanceRabbitForRoot(liveRoot);
+    }, 160);
 }
 
 
@@ -20822,6 +21137,7 @@ function notifyIndependentRepairPersistence(root) {
 
 function runMaintenanceAutomaticRepairPlan(root, button) {
     if (!root?.isConnected || !button?.isConnected) return false;
+    if (rejectOversizedMaintenanceRepair(root, button, '自动维修')) return false;
     const initialInspection = inspectMaintenanceRabbit(root);
     const initialFindings = initialInspection.findings || [];
     const initialPlan = maintenanceRepairModesForFindings(initialFindings);
@@ -20865,6 +21181,7 @@ function runMaintenanceAutomaticRepairPlan(root, button) {
             setMaintenanceRabbitState(liveButton, MAINTENANCE_STATES.unknown, '维修后无法重新定位当前兔子镜');
             return;
         }
+        if (rejectOversizedMaintenanceRepair(liveRoot, liveButton, '维修后复核')) return;
         const afterInspection = inspectMaintenanceRabbit(liveRoot);
         for (const finding of afterInspection.findings || []) discoveredFindings.set(maintenanceFindingKey(finding), finding);
         const comparison = compareMaintenanceFindings([...discoveredFindings.values()], afterInspection.findings || []);
@@ -20913,6 +21230,7 @@ function runMaintenanceAutomaticRepairPlan(root, button) {
             const verifyRoot = findLiveMaintenanceRoot(liveRoot, summaryText, originalIndex) || liveRoot;
             const verifyButton = verifyRoot?.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || liveButton;
             if (!verifyRoot?.isConnected || !verifyButton?.isConnected) return;
+            if (rejectOversizedMaintenanceRepair(verifyRoot, verifyButton, '延迟复核')) return;
             const lateInspection = inspectMaintenanceRabbit(verifyRoot);
             if ((lateInspection.findings || []).length) {
                 setMaintenanceRabbitState(
@@ -20930,6 +21248,8 @@ function runMaintenanceAutomaticRepairPlan(root, button) {
             finalize();
             return;
         }
+        const liveButton = liveRoot.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || button;
+        if (rejectOversizedMaintenanceRepair(liveRoot, liveButton, '自动维修')) return;
         currentRoot = liveRoot;
         const currentInspection = inspectMaintenanceRabbit(liveRoot);
         for (const finding of currentInspection.findings || []) discoveredFindings.set(maintenanceFindingKey(finding), finding);
@@ -20953,6 +21273,8 @@ function runMaintenanceAutomaticRepairPlan(root, button) {
                 finalize();
                 return;
             }
+            const latestButton = latestRoot.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || button;
+            if (rejectOversizedMaintenanceRepair(latestRoot, latestButton, '自动维修')) return;
             currentRoot = latestRoot;
             const nativeCheckedRestoreCount = nextMode === 'interaction'
                 ? restoreIndependentNativeCheckedInteraction(latestRoot)
@@ -21133,6 +21455,7 @@ function runMaintenanceSafeAutomaticRepairs(root, button) {
 
 function runMaintenanceUserRepair(root, button, mode) {
     if (!root?.isConnected || !button?.isConnected) return false;
+    if (rejectOversizedMaintenanceRepair(root, button, mode === 'interaction' ? '交互维修' : '维修')) return false;
     invalidateRabbitMirrorInteractionResetSnapshot(root);
     if (mode === 'auto') return runMaintenanceAutomaticRepairPlan(root, button);
     markIndependentMaintenanceLiveRepair(root, 5200);
@@ -21155,18 +21478,23 @@ function runMaintenanceUserRepair(root, button, mode) {
     setMaintenanceRabbitState(button, MAINTENANCE_STATES.checking, labels[mode] || labels[effectiveMode] || '正在维修当前兔子镜');
     const summaryText = getRabbitMirrorSummaryText(root).replace(/🐇[⚪🟢🟡🔴]?/g, '').trim();
     const originalIndex = getMessageIndexFromMirrorNode(root);
+    const repairRunKey = followMaintenanceRepairKey(root) || maintenanceSnapshotKey(root);
+    const repairRunToken = (maintenanceRepairRunTokens.get(repairRunKey) || 0) + 1;
+    maintenanceRepairRunTokens.set(repairRunKey, repairRunToken);
     try {
         const inspection = maintenanceUserRepairInspection(root, effectiveMode);
         const sourceResult = (effectiveMode === 'source' || effectiveMode === 'code' || effectiveMode === 'plainText' || effectiveMode === 'style' || effectiveMode === 'all')
             ? repairMaintenanceMessageSource(root, inspection)
             : { changed: false, index: originalIndex, reason: '' };
         const continueRepair = () => {
+            if (maintenanceRepairRunTokens.get(repairRunKey) !== repairRunToken) return;
             const liveRoot = findLiveMaintenanceRoot(root, summaryText, sourceResult.index >= 0 ? sourceResult.index : originalIndex);
             if (!liveRoot) {
                 setMaintenanceRabbitState(button, MAINTENANCE_STATES.unknown, '维修后未找到当前兔子镜，请生成全链路诊断');
                 return;
             }
             const liveButton = liveRoot.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || button;
+            if (rejectOversizedMaintenanceRepair(liveRoot, liveButton, effectiveMode === 'interaction' ? '交互维修' : '维修')) return;
             // Clear stale rescue-owned checked state first, then run the normal verified checked fallback.
             const nativeCheckedRestoreCount = (effectiveMode === 'interaction' || effectiveMode === 'all')
                 ? restoreIndependentNativeCheckedInteraction(liveRoot)
@@ -21187,8 +21515,13 @@ function runMaintenanceUserRepair(root, button, mode) {
                 unrecoverable: !!sourceResult.unrecoverable,
                 reason: String(sourceResult.reason || ''),
             };
+            const executedRepairCount = (libraryResult.executed || [])
+                .filter(entry => entry?.id !== 'interaction-id-scope')
+                .reduce((sum, entry) => sum + Math.max(0, Number(entry?.count) || 0), 0);
+            const actualRepairApplied = !!sourceResult.changed || executedRepairCount > 0;
             liveRoot.dataset.rabbitMirrorMaintenanceModules = JSON.stringify(libraryResult);
-            if (sourceResult.unrecoverable) liveButton.removeAttribute(MAINTENANCE_REPAIR_ATTR);
+            rememberFollowMaintenanceRepair(liveRoot, effectiveMode, libraryResult);
+            if (sourceResult.unrecoverable || !actualRepairApplied) liveButton.removeAttribute(MAINTENANCE_REPAIR_ATTR);
             else liveButton.setAttribute(MAINTENANCE_REPAIR_ATTR, 'true');
             scheduleMaintenanceScopedFollowups(
                 liveRoot,
@@ -21197,20 +21530,27 @@ function runMaintenanceUserRepair(root, button, mode) {
                 effectiveMode,
             );
             setTimeout(() => {
+                if (maintenanceRepairRunTokens.get(repairRunKey) !== repairRunToken) return;
                 const afterRoot = findLiveMaintenanceRoot(liveRoot, summaryText, sourceResult.index >= 0 ? sourceResult.index : originalIndex);
                 const afterButton = afterRoot?.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`) || liveButton;
                 if (!afterRoot) {
                     setMaintenanceRabbitState(afterButton, MAINTENANCE_STATES.unknown, '维修后无法重新定位当前兔子镜');
                     return;
                 }
+                if (rejectOversizedMaintenanceRepair(afterRoot, afterButton, '维修后复核')) return;
                 const after = inspectMaintenanceRabbit(afterRoot);
                 if (after.full?.sourceTruncationNoticeInstalled) {
                     afterButton.removeAttribute(MAINTENANCE_REPAIR_ATTR);
                     setMaintenanceRabbitState(afterButton, MAINTENANCE_STATES.unknown, '本次生成不完整，未计为修复成功；请重新生成该条');
                 } else if (after.state === MAINTENANCE_STATES.repairable) {
+                    afterButton.removeAttribute(MAINTENANCE_REPAIR_ATTR);
                     setMaintenanceRabbitState(afterButton, MAINTENANCE_STATES.repairable, `已尝试维修，请实际确认；仍检测到：${after.reason}`);
                 } else if (after.state === MAINTENANCE_STATES.unknown) {
+                    afterButton.removeAttribute(MAINTENANCE_REPAIR_ATTR);
                     setMaintenanceRabbitState(afterButton, MAINTENANCE_STATES.unknown, `已尝试维修；仍无法安全确认：${after.reason}`);
+                } else if (!actualRepairApplied) {
+                    afterButton.removeAttribute(MAINTENANCE_REPAIR_ATTR);
+                    setMaintenanceRabbitState(afterButton, MAINTENANCE_STATES.unknown, '未命中任何可安全执行的维修路线，未标记为已维修');
                 } else {
                     const autoNote = mode === 'auto' ? `（自动选择：${effectiveMode}）` : '';
                     // 1.3.62: 排版类修复原本无论如何都报“已执行”。窄屏样式表在宽屏上不可能生效，
@@ -21618,6 +21958,10 @@ function installMaintenanceRabbitsInScope(scope, { allowGlobalRemoval = false, a
 
     getRenderedRabbitMirrorInteractionRoots(scope).forEach(root => {
         if (!isInsideChatMessage(root)) return;
+        // If SillyTavern replaced a follow-mode mirror after a successful manual repair,
+        // replay only that recorded recipe on the new live root. This is bounded and does
+        // not touch chat source, sibling mirrors, cache, or the independent-API path.
+        replayFollowMaintenanceRepair(root);
         if (captureStartupBaseline) {
             const signature = maintenanceAutoSafeSignature(root);
             if (signature) maintenanceAutoSafeBaselineSignatures.add(signature);
@@ -21640,12 +21984,10 @@ function installMaintenanceRabbitsInScope(scope, { allowGlobalRemoval = false, a
             try {
                 installMaintenanceRabbitForRoot(root);
                 const maintenanceButton = root.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`);
-                if (!allowGlobalRemoval && !historyRestoreLight && maintenanceButton && rabbitMirrorExternalGenerationState(root) !== 'loading') {
-                    // Auto-safe is a new/scoped-message feature. CHAT_CHANGED history
-                    // restoration must not serialize every historical root for a signature
-                    // or enqueue automatic repairs merely because the user entered a chat.
-                    scheduleMaintenanceAutoSafeForRoot(root, maintenanceButton, { forceCurrent: autoSafeForceCurrent });
-                }
+                // Installing the tool must remain read-only. A settled render, ordinary
+                // details toggle or chat mutation never launches repair passes; only an
+                // explicit Maintenance Rabbit action may inspect or rewrite this mirror.
+                void maintenanceButton;
             } catch (error) {
                 console.debug('[RabbitMirror] maintenance rabbit install recovered for one mirror:', error);
             }
@@ -21716,12 +22058,6 @@ function installMaintenanceRabbitsDeferredInChatDom() {
     if (!chatRoot) return;
     cancelStartupMaintenanceHistoryInstall();
     pruneMaintenanceAutoSafeOpenBindings();
-    const messageRoots = [...(chatRoot.querySelectorAll?.('.mes[mesid], [mesid].mes') || [])];
-    if (!messageRoots.length) return;
-    const split = Math.max(0, messageRoots.length - 6);
-    const immediate = messageRoots.slice(split);
-    const historical = messageRoots.slice(0, split);
-    globalThis.__rabbitMirrorPerfDiag?.mark?.('maintenance.startupDeferred', { total: messageRoots.length, immediate: immediate.length, historical: historical.length });
     const install = root => {
         if (!root?.isConnected) return;
         installMaintenanceRabbitsInScope(root, {
@@ -21729,39 +22065,35 @@ function installMaintenanceRabbitsDeferredInChatDom() {
             captureStartupBaseline: isMaintenanceAutoSafeEnabled(),
         });
     };
-    for (const root of immediate) install(root);
-    if (!historical.length) return;
-    if (typeof IntersectionObserver === 'function') {
-        startupMaintenanceVisibilityObserver = new IntersectionObserver(entries => {
-            const perfEnd = globalThis.__rabbitMirrorPerfDiag?.begin?.('maintenance.visibilityObserver', { entries: entries.length }, 8);
-            let installed = 0;
-            for (const entry of entries) {
-                if (!entry.isIntersecting) continue;
-                startupMaintenanceVisibilityObserver?.unobserve?.(entry.target);
-                install(entry.target); installed += 1;
-            }
-            perfEnd?.({ installed });
-        }, { root: chatRoot, rootMargin: '1200px 0px', threshold: 0 });
-        for (const root of historical) startupMaintenanceVisibilityObserver.observe(root);
-        return;
+    const recent = [];
+    for (let node = chatRoot.lastElementChild; node && recent.length < 6; node = node.previousElementSibling) {
+        if (node.matches?.('.mes[mesid], [mesid].mes')) recent.push(node);
     }
+    globalThis.__rabbitMirrorPerfDiag?.mark?.('maintenance.startupDeferred', { bounded: true, immediate: recent.length });
+    for (const root of recent.reverse()) install(root);
+
     let queued = false;
-    const probe = () => {
+    const probe = event => {
+        const direct = event?.target?.closest?.('.mes[mesid], [mesid].mes');
+        if (direct && chatRoot.contains?.(direct)) { install(direct); return; }
         if (queued) return;
         queued = true;
         startupMaintenanceInstallTimer = setTimeout(() => {
             startupMaintenanceInstallTimer = 0; queued = false;
             if (!isCurrentRuntime()) return;
-            const viewport = chatRoot.getBoundingClientRect?.(); if (!viewport) return;
-            let installed = 0;
-            for (const root of historical) {
-                if (!root?.isConnected || root.hasAttribute?.('data-rm-lazy-tools-ready')) continue;
-                const box = root.getBoundingClientRect?.(); if (!box) continue;
-                if (box.bottom >= viewport.top - 1200 && box.top <= viewport.bottom + 1200) {
-                    root.setAttribute?.('data-rm-lazy-tools-ready', 'true'); install(root); installed += 1;
-                    if (installed >= 6) break;
+            const box = chatRoot.getBoundingClientRect?.();
+            if (!box || typeof document.elementsFromPoint !== 'function') return;
+            const x = Math.max(box.left + 1, Math.min(box.right - 1, box.left + box.width / 2));
+            const roots = new Set();
+            for (const y of [box.top + 8, box.top + box.height / 2, box.bottom - 8]) {
+                for (const element of document.elementsFromPoint(x, y) || []) {
+                    const root = element?.closest?.('.mes[mesid], [mesid].mes');
+                    if (root && chatRoot.contains?.(root)) roots.add(root);
+                    if (roots.size >= 6) break;
                 }
+                if (roots.size >= 6) break;
             }
+            for (const root of roots) install(root);
         }, 80);
     };
     startupMaintenanceFallbackRoot = chatRoot; startupMaintenanceFallbackHandler = probe;
@@ -22184,6 +22516,7 @@ function countRawUiTags(text) {
 function parsedElementCount(text) {
     try {
         if (typeof document === 'undefined') return -1;
+        if (!validateRabbitMirrorMarkupLexicalBudget(text)) return -1;
         const template = document.createElement('template');
         template.innerHTML = String(text || '');
         return template.content.querySelectorAll('*').length;
@@ -23793,6 +24126,7 @@ function recoverMessageSourceToDisplay(mod, index, message, { force = false, sou
 
 function parseHtmlFragment(html) {
     try {
+        if (!validateRabbitMirrorMarkupLexicalBudget(html)) return null;
         const template = document.createElement('template');
         template.innerHTML = html;
         if (!sanitizeMaintenanceMirrorTemplate(template)) return null;
@@ -23804,6 +24138,7 @@ function parseHtmlFragment(html) {
 
 function parseTotoFragment(html) {
     try {
+        if (!validateRabbitMirrorMarkupLexicalBudget(html)) return null;
         const template = document.createElement('template');
         template.innerHTML = html;
         if (!sanitizeMaintenanceMirrorTemplate(template)) return null;
@@ -24147,6 +24482,8 @@ const maintenanceAutoSafeBaselineSignatures = new Set();
 let maintenanceAutoSafeAttemptedRoots = new WeakMap();
 const maintenanceAutoSafeCurrentMessageTimers = new Map();
 const maintenanceAutoSafeOpenBindings = new Map();
+const followMaintenanceRepairRecipes = new Map();
+const maintenanceRepairRunTokens = new Map();
 let maintenanceAutoSafeReady = false;
 let maintenanceAutoSafeStartupTimer = 0;
 
@@ -24377,23 +24714,11 @@ function scheduleMaintenanceAutoSafeForMessageIndex(messageIndex, { delay = 180,
 }
 
 function installMaintenanceAutoSafeOpenPatrol(root) {
-    if (!root?.querySelector) return false;
-    const details = root.matches?.('details') ? root : root.querySelector(':scope > details') || root.querySelector('details');
-    if (!details?.addEventListener) return false;
-    if (maintenanceAutoSafeOpenBindings.has(details)) return true;
-    const handler = () => {
-        if (!isCurrentRuntime() || !isMaintenanceAutoSafeEnabled() || !details.open) return;
-        const liveRoot = root?.isConnected ? root : (details.matches?.('details') ? details : null);
-        const button = liveRoot?.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`);
-        if (!liveRoot?.isConnected || !button?.isConnected) return;
-        if (rabbitMirrorExternalGenerationState(liveRoot) === 'loading') return;
-        // Opening a mirror is an explicit signal that this one live DOM matters now. Re-check only
-        // this mirror after its open layout has settled; historical mirrors that stay closed remain cheap.
-        scheduleMaintenanceAutoSafeForRoot(liveRoot, button, { forceCurrent: true, delay: 320 });
-    };
-    details.addEventListener('toggle', handler, false);
-    maintenanceAutoSafeOpenBindings.set(details, handler);
-    return true;
+    // A normal details toggle is content interaction, not consent to run a repair
+    // pipeline. Previous builds scheduled a multi-pass auto patrol 320 ms after every
+    // first expand, which could freeze large generated cards. Repairs now run only
+    // after an explicit Maintenance Rabbit action or a settled host render event.
+    return !!root?.isConnected;
 }
 
 function pruneMaintenanceAutoSafeOpenBindings() {
@@ -24486,6 +24811,13 @@ function installToolEntryDelegation(chatRoot = getChatRoot()) {
     return true;
 }
 
+function outputHostGenerationLooksActive() {
+    try {
+        if (hostScriptModule?.is_send_press === true || hostScriptModule?.isGenerating?.() === true) return true;
+        return !!document?.querySelector?.('#chat .mes.streaming, #chat .mes[data-is-streaming="true"], #chat .mes[is_generating="true"], #chat .mes[data-generating="true"]');
+    } catch { return false; }
+}
+
 function installChatMutationObserver() {
     if (!isCurrentRuntime() || typeof MutationObserver === 'undefined') return false;
     const chatRoot = getChatRoot();
@@ -24496,6 +24828,10 @@ function installChatMutationObserver() {
     observedChatInstallRoot = chatRoot;
     chatInstallObserver = new MutationObserver(mutations => {
         const perfEnd = globalThis.__rabbitMirrorPerfDiag?.begin?.('maintenance.mutationObserver', { records: mutations.length }, 8);
+        if (outputHostGenerationLooksActive()) {
+            perfEnd?.({ affectedMessages: 0, skippedStreaming: true });
+            return;
+        }
         const messageRoots = new Set();
         for (const mutation of mutations) {
             if (mutation.type !== 'childList') continue;
@@ -24591,7 +24927,7 @@ export async function initOutputSanitizer() {
             if (!isCurrentRuntime()) return;
             const chatRoot = getChatRoot();
             if (!chatRoot || !Number.isInteger(index) || index < 0) return;
-            const messageRoot = [...(chatRoot.querySelectorAll?.('.mes[mesid], [mesid].mes') || [])].find(node => Number(node.getAttribute?.('mesid')) === index);
+            const messageRoot = chatRoot.querySelector?.(`.mes[mesid="${index}"], [mesid="${index}"].mes`);
             if (messageRoot) installMaintenanceRabbitsInScope(messageRoot);
         }, 60);
     };
@@ -24618,14 +24954,13 @@ export async function initOutputSanitizer() {
                 eventTypes.MESSAGE_RECEIVED,
                 eventTypes.CHARACTER_MESSAGE_RENDERED,
                 eventTypes.MESSAGE_SWIPED,
-                eventTypes.MESSAGE_UPDATED,
                 eventTypes.MESSAGE_EDITED,
             ].filter(Boolean);
             for (const eventName of [...new Set(currentMessageEvents)]) {
                 const handler = messageId => {
                     installChatMutationObserver();
                     const index = maintenanceAutoSafeEventMessageIndex(messageId, { fallbackLatest: eventName === eventTypes.CHARACTER_MESSAGE_RENDERED });
-                    if (index >= 0) scheduleMaintenanceAutoSafeForMessageIndex(index, { delay: 180, attempts: 3 });
+                    if (index >= 0) scheduleMaintenanceAutoSafeForMessageIndex(index, { delay: 180, attempts: 1 });
                     else scheduleMaintenanceRabbitInstall();
                 };
                 eventSource.on(eventName, handler);
@@ -24637,7 +24972,7 @@ export async function initOutputSanitizer() {
                 const handler = messageId => {
                     installChatMutationObserver();
                     const index = maintenanceAutoSafeEventMessageIndex(messageId, { fallbackLatest: true });
-                    if (index >= 0) scheduleMaintenanceAutoSafeForMessageIndex(index, { delay: 220, attempts: 3 });
+                    if (index >= 0) scheduleMaintenanceAutoSafeForMessageIndex(index, { delay: 220, attempts: 1 });
                     else scheduleMaintenanceRabbitInstall();
                 };
                 eventSource.on(eventName, handler);
@@ -24675,6 +25010,8 @@ export function destroyOutputSanitizer() {
     maintenanceAutoSafeAttemptedRoots = new WeakMap();
     maintenancePreRepairSnapshots.clear();
     rabbitMirrorInteractionResetSnapshots.clear();
+    followMaintenanceRepairRecipes.clear();
+    maintenanceRepairRunTokens.clear();
     maintenanceAutoSafeReady = false;
     removeMaintenanceRabbitsInChatDom();
     removeFeedbackCatsInChatDom();

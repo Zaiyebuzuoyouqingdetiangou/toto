@@ -1,8 +1,15 @@
-# 兔子镜小剧场 1.4.10
+# 兔子镜小剧场 1.4.7
 
-本版保留已经验证的轻启动、长聊天性能修复，以及副 API HTTP 524 / 不完整响应的安全手动重试机制；同时进一步收紧独立 API 上下文边界，不再读取或重新注入 SillyTavern 作者注释，并继续禁止把 extensionPrompts、chatMetadata、整包 worldInfo 或模型推理字段作为独立 API 上下文。上下文层数仍由用户自行设置。
+> 正式仓库适配说明：本包以 `兔子镜测试版-1.4.9-externaldiag1-securityfix3(2).zip` 的实际源码为唯一运行代码基线。仅修改正式仓库发布身份、版本/cache-bust 与仓库地址；未把 `toto` 当前旧运行源码合并回来。
 
-独立 API 的常规上下文来源为：当前聊天可见正文、紧凑角色卡摘要、紧凑 Persona 摘要，以及用户允许且本轮主生成实际激活的世界书。设置中的“读取记忆插件”是用户显式开启的独立功能，本版不修改其开关、provider 选择或最大字符设置。
+
+## SecurityFix3 / 1.4.30.19
+
+本候选在 SecurityFix2 的性能、上下文与单次付费请求边界上，补齐桌面高级设置弹窗、独立 API 重说状态、维修兔跨父层 checked 识别及诊断版本同步。原 SecurityFix2 ZIP 不覆盖。
+
+这是基于 SubApiFix1 的独立 API 上下文边界收口候选版。LightBoot、PerfFix、HTTP 524 / 不完整响应的手动重试修复全部保留；本轮只删除独立 API 对 SillyTavern 作者注释的读取/重新注入，并继续禁止把 extensionPrompts、chatMetadata、整包 worldInfo 或模型推理字段作为独立 API 上下文。上下文层数仍由用户自行设置。
+
+独立 API 的常规上下文来源现在是：当前聊天可见正文、紧凑角色卡摘要、紧凑 Persona 摘要，以及用户允许且本轮主生成实际激活的世界书。兔子镜设置中的“读取记忆插件”属于用户显式开启的独立功能，本轮不修改其开关、provider 选择或最大字符设置。
 
 - HTTP 524 当轮仍只发送 **1 次**付费请求，不自动重发；若失败模式为 stream=true，仅为下一次用户明确点击“重新生成兔子镜”准备同参数 `stream=false` twin。
 - HTTP 200 但 `<toto>` 不完整时同样不会自动二次扣费；流式模式会为下一次手动重说准备 exact non-stream twin。

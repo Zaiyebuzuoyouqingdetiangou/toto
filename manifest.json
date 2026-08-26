@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜小剧场",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.11",
-  "css": "style.css?rmv=1.4.30.17",
+  "js": "index.js?rmv=1.4.7",
+  "css": "style.css?rmv=1.4.7",
   "author": "Toto",
-  "version": "1.4.11",
+  "version": "1.4.7",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜小剧场 1.4.11：在 1.4.10 的轻启动、长聊天性能修复、副 API 524/不完整响应安全重试与紧上下文边界基础上，新增聊天持久化安全边界：兔子镜与挨打猫不再主动调用 SillyTavern 的整份聊天保存接口，仅更新自身 metadata/localStorage，由酒馆正常保存流程自然持久化，避免聊天加载异常时覆盖完整记录。"
+  "description": "兔子镜小剧场 1.4.7：由测试版 ExternalDiag1 SecurityFix3 原运行源码正式仓库适配；仅切换正式发布身份与缓存版本，不混入 toto 旧运行代码。"
 }

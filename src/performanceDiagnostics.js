@@ -1,4 +1,4 @@
-const PERF_DIAG_VERSION = '1.4.11-chatsafety1';
+const PERF_DIAG_VERSION = '1.4.7';
 const MAX_ENTRIES = 600;
 let cleanup = [];
 let entries = [];

@@ -1,12 +1,12 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.4.30.17';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.4.30.17';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.4.30.17';
-import { pickCombination } from './picker.js?rmv=1.4.11-chatsafety1';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.4.11-chatsafety1';
-import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.4.11-chatsafety1';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.4.30.17';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.4.30.17';
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from './settings.js?rmv=1.4.11-chatsafety1';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.4.7';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.4.7';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.4.7';
+import { pickCombination } from './picker.js?rmv=1.4.7';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.4.7';
+import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.4.7';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.4.7';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.4.7';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from './settings.js?rmv=1.4.7';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -734,7 +734,9 @@ export function buildRabbitMirrorPromptDetails(settings, generationType = 'norma
     const visualSceneryMode = !!(settings.forceVisualScenery || hasVisualScenery(combo));
     const tarotRulesText = isTarotRelated(combo) ? TAROT_IMAGE_RULES : '';
     const touchTheaterRulesText = isTouchTheaterRelated(combo) ? TOUCH_THEATER_RULES : '';
-    const memoryMaterial = hasSharedMemoryTheme(combo)
+    // The user's memory-provider setting remains intact for the main API, but the
+    // independent API has a stricter data boundary and must not read plugin memory.
+    const memoryMaterial = String(generationType || 'normal') !== 'independent' && hasSharedMemoryTheme(combo)
         ? readSelectedMemoryForPrompt(settings, settings.memoryMaxChars || 2200)
         : null;
     const prompt = buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, touchTheaterRulesText, directive, memoryMaterial, activeFeedback, generationType });

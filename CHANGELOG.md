@@ -1,16 +1,45 @@
-## 1.4.11 - Chat persistence safety
+## 1.4.7
 
-- RabbitMirror no longer calls SillyTavern `context.saveMetadata()` for independent-output or Feedback Cat metadata. In SillyTavern that API delegates to `saveChatConditional()` and serializes the entire currently loaded chat.
-- RabbitMirror now only mutates its own `chatMetadata` namespace and immediate `localStorage` fallback; the host's next normal chat save may persist metadata naturally.
-- This removes the extension-owned whole-chat write path during slow/failed/partial chat loading while retaining ContextBoundary1, LightBoot/PerfFix and SubApiFix behavior.
+- 正式仓库适配：以 `1.4.9-test-multiface-step1-externaldiag1-securityfix3` 测试包实际源码为唯一运行代码基线。
+- 仅切换显示名、版本、`homePage`、`auto_update` 与本地模块 cache-bust；不合并 `toto` 旧运行代码，不改变 SecurityFix3 功能逻辑。
+- 正式交付不包含测试脚本与 `PERFORMANCE-DIAGNOSTIC.txt`；运行时源码与 data 资源完整保留。
 
-# 1.4.10 正式版：独立 API 上下文边界收口
+## 1.4.9-test-multiface-step1-externaldiag1-securityfix3
 
-- 保留 LightBoot、长聊天性能修复，以及副 API HTTP 524 / 不完整响应的单次请求与显式手动重试修复。
-- 独立 API 不再读取或重新注入 SillyTavern 作者注释。
-- 常规上下文继续只使用当前聊天可见正文、紧凑角色卡摘要、紧凑 Persona 摘要，以及用户允许且本轮主生成实际激活的世界书；不回退到 extensionPrompts、chatMetadata、整包 worldInfo 或模型推理字段。
-- 上下文层数保持用户可配置，不强制改成 1。
-- “读取记忆插件”的 memoryScanEnabled / memoryProviderIds / memoryMaxChars 与 memoryScanner 逻辑保持不变。
+- 修复 body 级高级设置弹窗在桌面端失去按钮横排与主题色的问题；世界书提示弹窗同步使用相同的桌面基础样式。
+- 独立 API 手动重说继续保留旧成品，同时在外置框显示“正在重新生成”，成功或失败后清理状态；不增加请求次数。
+- 维修兔支持唯一 class 控件到唯一跨父层正文目标的有界 checked 修复；共享/歧义 class 继续拒绝，未解析规则与零命中路线不再误报“已维修”。
+- 全链路诊断版本从统一运行时版本派生，避免诊断头与实际 DOM 版本错位。
+
+## 1.4.9-test-multiface-step1-externaldiag1
+
+- 新增与兔子镜内部「全链路诊断」完全分离的「外部代码／宿主性能诊断」。原维修兔全链路诊断保持原样。
+- 外部诊断只观察 SillyTavern 本体、其他扩展、浏览器主线程、Resource Timing 和同源 `/api` 网络，不读取兔子镜内部生成/维修 start/complete/persist。
+- 自动记录外部 JS/CSS 资源耗时、Long Animation Frame 外部脚本归因、LongTask/event-loop stall、聊天 DOM 0~10 秒装载、发送→宿主事件→generate→AI 首字，以及维修兔点击后的 10 秒外部阻塞窗口。
+- 当浏览器只把长帧归因到 RabbitMirror 时，外部报告只提示“改用内部全链路诊断”，不继续把两套诊断混在一起。
+- 不覆盖 `fetch`，不保存聊天正文、Prompt、API Key、请求/响应 body。
+
+## 1.4.9-test-multiface-step1-goldenmerge3
+
+- 修复 GoldenMerge2 的按需兼容层事件递归：删除全局 `toggle` 加载器和人工 `toggle` 回放，避免 `toggle → lazy load → replay toggle → toggle` 无限闭环造成浏览器事件风暴/卡死。
+- 可选兼容层仅由真实用户 `pointerover` / `pointerdown` / `focusin` 意图预热；合成事件 (`isTrusted === false`) 不触发加载。
+- 维护兔推荐、checked selector 修复、渲染视觉反馈、独立 API profile selector、移动端 modal 均保留；未使用时不参与酒馆启动。
+- 保留 GoldenMerge 性能骨架、PerfFix（正常生命周期无 `syncAll()`）、ChatSafety、紧上下文边界、副 API 524/不完整响应安全手动重试与模型拉取修复。
+
+# GoldenMerge1
+
+- 以 1.4.30.14 真机丝滑版本为性能骨架参考，核心模块恢复为宿主对齐的一次模块图/一次初始化，不再使用 LightBoot 的逐模块串行动态导入。
+- `performanceDiagnostics` 不再参与运行时启动，所有现存可选诊断钩子保持空操作。
+- mobile/profile/maintenance/checked/rendered 五个兼容层保留，但改为核心就绪后的空闲小体积加载。
+- 保留 PerfFix：正常启动、CHAT_CHANGED、后台恢复、source 切换不调用 `syncAll()`，历史继续最近 6 条 + 可视区懒恢复。
+- 保留 ChatSafety：RabbitMirror 不主动调用 SillyTavern 整份聊天保存接口。
+- 保留 ContextBoundary、记忆插件设置、SubApiFix1 的 524/non-stream 手动重试与不完整兔子镜判定。
+
+## 1.4.9-test-multiface-step1-chatsafety1
+
+- Chat persistence safety: RabbitMirror no longer calls SillyTavern `context.saveMetadata()` for independent-output or Feedback Cat metadata. That host API delegates to a whole-chat save.
+- RabbitMirror now limits itself to its own in-memory `chatMetadata` namespace plus localStorage fallback; normal SillyTavern saves may persist metadata later.
+- No change to user-configurable independent context layers, memory-provider settings, LightBoot/PerfFix, or SubApiFix retry semantics.
 
 # ContextBoundary1
 
@@ -1828,3 +1857,12 @@
 - Independent context bundle includes chat messages, available stored reasoning fields, character card, Persona, world-info/author-note and extension-prompt context when exposed by SillyTavern.
 - Added external presentation for follow-current-API mode without rewriting stored chat message text.
 - Preserved safe auto-patrol as an opt-in test feature.
+
+## GoldenMerge3
+- 性能参考：1.4.30.14 真机丝滑基线。
+- 保留 GoldenMerge1 的 1.4.30.14 核心一次初始化骨架；取消核心完成后 1.2~3.5 秒内一次性 Promise.all 导入 5 个兼容 hotfix。
+- mobile modal 仅在移动端进入兔子镜设置时加载。
+- independent profile selector 仅在首次进入独立 API 设置区域时加载。
+- maintenance recommendation / checked selector repair / rendered visual feedback 仅在首次操作兔子镜时加载。
+- 因而未使用对应功能时，不安装这些兼容层的长期 MutationObserver / document 全局监听器。
+- PerfFix（正常生命周期无 syncAll）、ChatSafety（不主动整份保存聊天）、ContextBoundary、524/non-stream 手动重试、完整兔子镜判定、模型拉取修复全部保留。
