@@ -1,8 +1,133 @@
-## 1.4.7
+# 1.5.5 VarietyFix1
 
-- 正式仓库适配：以 `1.4.9-test-multiface-step1-externaldiag1-securityfix3` 测试包实际源码为唯一运行代码基线。
-- 仅切换显示名、版本、`homePage`、`auto_update` 与本地模块 cache-bust；不合并 `toto` 旧运行代码，不改变 SecurityFix3 功能逻辑。
-- 正式交付不包含测试脚本与 `PERFORMANCE-DIAGNOSTIC.txt`；运行时源码与 data 资源完整保留。
+- 修复安卓本地酒馆在独立 API 成功结算帧替换宿主 DOM 时，已经生成并保存的精确楼层镜面随旧宿主一起消失的问题；被动恢复不自动补发付费请求。
+- 按既有母本结构与连续编号落实用户指定的 24 项主题／展现形式：新增 22 项，复用并强化已有的“视觉小说”和“伪史论／野史考据”，不覆盖原有条目、收藏、黑名单或倍率。
+- 同时平衡主题与展现形式的家族规模及近期命中，降低大池天然支配和同一家族近期重复；被选中的首项展现形式仍须作为唯一主形式真实落地。
+- 成人向条目被选中时使用只供内部构造的虚构角色扮演边界，不在成品中额外输出年龄核验、免责声明或跳出角色说明。
+- 发布身份更新为 `1.5.5`；核心模块与本轮 structured/raw 数据链统一使用 `1.5-varietyfix1` cache cohort，避免热更新混装旧随机池或母本。
+- 未新增网络请求、Observer、`setInterval`、常驻轮询、事件监听或全聊天扫描。仅完成源码／自动化验证，尚未完成真实 SillyTavern、真实副 API、安卓／PC／iPhone 与真实模型实机验证；GitHub 未写入。
+
+# 1.5.4 QualityFix5
+
+- 修复第一条兔子镜仍在生成时发送第二条消息会取消、清除或遗失第一条镜面的问题；被动正文 hash 漂移与 DOM 重挂保持同一操作所有权，显式 Swipe／重说／聊天切换仍隔离旧结果。
+- 生成宿主被替换时只复挂对应 loading 外壳，结算后只做一次精确被动同步，不自动补发副 API 请求。
+- 手动“重说”会先取得同一消息的唯一写回权并取消旧自动请求；Swipe 会取消同消息旧 Swipe 的在途请求，晚到旧结果不能覆盖新成品或继续占用 loading。
+- 页面恢复／DOM 重挂发现已消费但仍在运行的精确请求时只恢复 loading，不再先显示“生成失败”再被成功结果覆盖。
+- 新增净化后只读质量门：拒收通用三按钮纵向文字流、多节点单入口与明确低对比半成品；原生频道／档位／分页媒介继续允许。
+- 质量失败不保存、不挂载、不记忆 API 兼容配置；同一精确正文的下一次用户手动重说会收到一条有界短锁，新正文不继承旧失败提示；净化成品首挂复用同一有界缓存，不重复解析大型镜面。随机抽取、候选池、权重和历史成功记录不变。
+- 发布身份更新为 `1.5.4`，核心模块统一使用 `1.5-qualityfix5` cache cohort；未新增网络请求、Observer、`setInterval`、常驻轮询、事件监听或全聊天扫描。
+- 仅完成源码／自动化验证，尚未完成真实 SillyTavern、真实副 API、PC／iPhone 与真实模型实机验证；GitHub 未写入。
+
+## 1.5.3 QualityFix4（测试候选）
+
+- 修复同一消息／Swipe 的已完成兔子镜被正文后置改写误判为新 source，进而变成等待、失败或持续生成的问题；被动改写不迁移旧 HTML，也不建立新 owner lock。
+- 保留 Swipe／重说／续写的显式 source 替换证据；真正的新正文继续隔离旧镜。
+- 精确 ready 成品优先于已消费的一次性请求租约；隐藏／恢复／DOM 重挂不再用错误壳覆盖成功结果，也不会发送第二次请求。
+- 发布身份更新为 `1.5.3`，统一核心模块 `1.5-qualityfix4` cache cohort；未改 Prompt、随机、多样性、标签／世界书、维修交互、Token 口径或预算上限。
+- 未新增网络请求、Observer、`setInterval`、常驻轮询或全聊天扫描。仅完成源码／自动化验证，尚未真实 SillyTavern／副 API 实机验证；GitHub 未写入。
+
+## 1.5.1 QualityFix2（测试候选）
+
+- 修复延迟加载忙碌检测未识别官方 `#mes_stop` 的兼容性缺口；隐藏控制不会误判为生成中。
+- 新增默认关闭的跟随 API 标签隔离：只约束兔子镜 `<toto>` 不参考所选标签，不删除或修改主 API 正文／预设。
+- 保留 AwaitingOwnerIdentityFix 的 owner 恢复与旧 Swipe／sourceHash 隔离；统一 cache cohort 为 `1.5-qualityfix2`。
+
+## 1.5
+
+- 修复长正文先裁至约 8,000 字符、却仍按裁剪前长度占用 12,000 字符聊天选择预算的回归；无过滤标签时恢复上一层前情可用性，过滤标签内容仍不外发且不以更老聊天回填。
+- 多节点媒介明确要求多入口或连续阶段；删除冷却规则中“只需一条完整链”的最低满足暗示，单焦点媒介继续要求至少一条完整深入链路。
+- Touch Theater／大接近强规则只按精确专用展现形式 ID 启用，不再被综合父项或兄弟子项说明中的名称误触发。
+- 用户主动模型列表拉取的单请求有界等待从 12 秒调整为 30 秒；不自动重试，不切换正文连接，失败继续保留当前 Profile 已保存模型和手填模型。
+- 测试版与正式版版本统一为 1.5；运行时、水印、manifest、cache-bust 闭包及回归测试同步更新。未新增常驻任务或额外网络请求。
+
+## 1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1-followupfix1
+
+- 复核临时对话的 fallback 聊天键、连续两轮授权与 stale owner 替换；补充刷新后连续两轮回归，不放宽历史消息拒绝、工具递归或单次付费请求限制。
+- 标签过滤后的删除字符计入 12,000 字符聊天选取预算，防止用更早正文回填；请求副本中标签名、标签与包裹内容仍完整缺席，酒馆原正文不变。
+- 最终正文稳定后改为约 120ms 精确复核，移除额外 1.6～4 秒结算退避；独立 API 重模块图延至意图返回后的下一任务，并在强宿主活动提示期跳过全局聊天选择器探测。
+- 最近请求诊断移入本轮 Token；删除指定的两段设置说明。
+- 外部性能诊断在销毁前留存真实 report／status，报告入口不再隐式启动空会话，并明确展示原始事件数量和分类。
+- 黑名单关闭或当前 Swipe 无抽签记录时隐藏 🎲；维修兔按钮移除问题类别图标，菜单顶部问题文字显示安全的类别 emoji 与真实原因；推荐 hotfix 不再覆盖真实问题。
+- 运行版本升至 1.4.30.33，更新 manifest、完整模块 cache-bust 闭包、维修建议 hotfix 版本及对应非回归测试。
+- 不修改母本、Prompt、随机候选池／权重、收藏倍率、主题与配色冷却、Touch Theater、挨打猫、世界书选择、Token 统计或 12,000／20,000／32,000 字符上限；保留 Variety1。
+- 未新增 fetch、setInterval 或 MutationObserver；新增一个可合并、可销毁的一次性 0ms 定时唤醒。仅完成源码／自动化验证，尚未真机验证；GitHub 未写入。
+
+## 1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1-streamfix1-variety1
+
+- 将自动生成 owner 与工具递归阶段、准确消息渲染及当前正文指纹绑定；quiet、dry-run、历史重绘和工具结果系统消息不作为新的付费意图。
+- 使用宿主公开的工具能力检查并单调锁存当前操作快照；工具关闭时不再要求 quiet 之后必然有第二次结束事件；流式工具中间帧同步拒绝。
+- 非流式工具调用缺少最终证明时，使用有界等待和明确的 ⚠️ 未付费／手动重生说明；停止后保留最多 8 条 metadata-only 操作标记，迟到工具递归不能自动重开。跟随当前 API 模式不会创建独立 API 错误壳。
+- 健康长流改为按响应进度续期：5 分钟无进度超时、20 分钟绝对上限；每个用户意图仍最多一次付费请求，不自动重试。
+- 手动非流式重说配置单次消费、20 分钟过期，隔离模型和运行版本；只有完整成品成功才更新兼容记忆，6 小时后重新允许流式探测。
+- 补充嵌套 Abort／网络中断及成品复杂度失败诊断；界面区分 HTTP 错误与没有收到完整响应，不展示虚假的 HTTP 状态。
+- 上下文读取限定当前挂载楼层，保持目标正文实时复读；系统／工具结果不进入聊天正文与尾层选题指令，预算与标签隐私边界不变。
+- 使用既有最近 10 次记录软降低重复主题组与形式家族权重；无历史分布、收藏倍率、黑名单、候选母本与配色冷却不变。
+- 补充确定性生命周期、迟到递归、单次响应进度、失败重说状态、Profile 模型覆盖、复杂度诊断、挂载楼层索引和随机多样性回归；保留全部旧安全断言，并加强运行版本／水印／模块缓存闭包检查。
+- 原包不覆盖，GitHub 未写入；仅完成源码／自动化验证，尚未真机验证。
+
+## 1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2-modelselectfix1
+
+- 将酒馆 Connection Profile 与手动 OpenAI 兼容接口的模型拉取入口明确拆开；两者都只在用户点击时各发一次模型列表请求，不新增轮询、Observer 或后台网络请求。
+- 从模型列表选择条目时同时保存该列表的连接来源与模型；Profile A 拉到模型 B 后，兔子镜请求使用 A 的连接凭据与 B 的模型覆盖，正文当前连接不切换。
+- 手动模型拉取显式使用当时填写的 URL／Key，即使此前仍保存 Profile A 也不会误从 A 拉取；选中手动列表模型后才切换为该手动连接。
+- 状态区区分“当前连接”“兔子镜请求模型”和“Profile 默认模型”，最近请求诊断显示请求体指定的模型；切换来源时清空旧来源列表，避免旧列表混用。
+- 两种拉取与一键配置共用操作序号；后发操作、Profile／手动切换、热更新或手动 URL／Key／模型编辑都会让旧响应失效，慢请求不能覆盖用户后来选择的连接。动态 Profile 下拉与实际连接同步。
+- 再次导入或重选同一个 Profile 时保留用户已选模型；只有真正切换到另一个 Profile 时才采用新 Profile 默认模型。
+- 发送前验证当前 Connection Manager 前端确实会在 Profile 默认模型之后合并请求级模型覆盖；若服务器版本与旧浏览器模块混装，则在付费请求前阻止并提示强制刷新，不静默回退到 Profile 默认模型。
+- 新增官方 SillyTavern 1.18 请求合并语义、显式双来源拉取、同 Profile 模型持久化及旧列表隔离回归；保留单次请求、Secrets 隔离、Prompt、上下文预算与视觉生成逻辑。
+
+## 1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1-apifix2
+
+- 独立 API 的 Connection Manager 模式改走 SillyTavern 1.18.0 官方按 Profile 请求服务；正文 Profile A 与兔子镜 Profile B 可以不同，生成不会切换 A，也不再由兔子镜手工投影 B 的密钥、端点、代理或 PPP。
+- Profile 模型列表会用 B 自己的 Secret、URL 与命名代理请求 SillyTavern `/status`；不会读取正文 A 的 headers、密钥或当前代理，也不会切换 A。远端不支持或失败时仅回退 B 已保存模型，手填模型 ID 继续可用。
+- 修复 `[DONE]` 后取消 reader 导致宿主后端记录 `AbortError`、错误 MIME 流等待 EOF，以及完整响应后上游裸 Abort 被当成本地取消的问题；所有恢复只使用同一次付费响应，不自动重发。
+- 成功、失败、超时、配置／来源切换和运行时取消统一结算 loading UI；裸传输 Abort 不再静默留下永久“生成中”。
+- Connection Manager 通道继续执行请求清洗、单次 dispatch lease、192 KiB 请求与 2 MiB 响应上限；响应统计包含累计可见正文和隐藏 reasoning／swipes／state，安全上限及普通异常不能被完整标签恢复。
+- 一键 Connection Profile 入口明确标注仅支持 SillyTavern 1.18.0 及以上，并在运行时拦截缺少 Profile `secret-id` 支持的旧版；扩展整体最低版本恢复为 1.13.0，旧版手动独立 API 不受影响。
+- 保留 WidthFix1 的 iPhone／Safari 首次展开宽度救援、启动性能、美化及全部既有安全边界。
+
+## 1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1-widthfix1
+
+- 修复 iPhone／Safari 独立 API 纯外置镜面首次展开时，`summary` 已铺满而正文直接根仍保持 shrink-to-fit 窄列、必须横竖屏一次才恢复的问题。
+- 将既有、带作者尺寸意图豁免的 auto-root width rescue 接入首次展开后的现成 post-paint 路径，覆盖已展开、折叠后首次展开及历史镜面首次展开。
+- 不新增 Observer、轮询、监听器、网络请求或全聊天扫描；显式窄宽、定位、浮动和有意窄媒介继续保持原样。
+- 新增 440px iPhone、366px 承载区、227px 正文根的生命周期回归，以及作者尺寸意图不得被拉宽的反例。
+
+## 1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1-stability1-repairemoji1-cleanui1
+
+- 设置主面板改为紧凑、主题自适应布局：同一个“高级设置”总入口整合到自动注入开关旁，不复制 ID、不改变弹窗和事件链。
+- Token 总数保持常显，原有精确范围与组成明细改为按需展开；统计口径及更新逻辑不变。
+- 独立 API 的读取内容入口压缩为横排，生成方式、独立 API、工具维护、收藏与黑名单分区默认收起并降低视觉权重；不新增动画、Observer、定时器、网络请求或聊天扫描。
+- 修复跟随当前 API 的维修兔在同标题多镜面、快速切聊天／Swipe／编辑和重复点击时可能命中错误目标或并发执行的问题；延迟维修现在绑定 chat、消息、Swipe、正文指纹和镜面身份，失配即停止。
+- “只巡逻”和自动安全巡逻统一经过 2,200 节点复杂度预算；自动巡逻默认关闭，只有用户明确勾选同意后才接入当前新消息，不扫历史，不新增常驻轮询、Observer 或网络请求。
+- 所有维修模式的错误与部分失败统一附带问题类别 emoji（源码、样式、排版、交互、语言、API、诊断、执行或超限），独立维修保存失败也会直接提示。
+- 独立生成关闭时不再唤醒重运行时；宿主完成事件没有待处理 intent 时不读取聊天；cache-bust 热更新会先卸载旧监听，避免同一监听叠加。
+- 恢复受保护的副 API Prompt 前导句，并补齐 AdvancedUI1 控件的同版本 DOM 完整性检查；不改变随机池、美化 Prompt、Token 口径、请求次数、上下文上限或输出净化边界。
+- 补充维修目标隔离、错误 emoji、意图桥清理、标签扫描安全、角色卡／Persona 预算释放和 UI 完整性的定向非回归测试。
+
+## 1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2-advancedui1
+
+- 将“本轮兔子镜 Token”移动到“兔子镜自动注入”下方；只移动设置布局，不改变统计口径。
+- 独立 API 主区保留连接、模型、温度、最大输出与生成位置，将最近 X 层、角色卡／Persona 摘要、世界书和正文标签集中到“高级设置 → 独立 API”。
+- 新增默认开启的角色卡摘要与 Persona 摘要开关；只有用户明确关闭时才从副 API 临时上下文移除，对旧设置保持兼容。
+- 设置说明改成简短大白话；历史兔子镜、隐藏推理、作者注释、扩展提示与聊天元数据的硬边界不改。
+- 不新增常驻监听、轮询、定时器或网络请求；世界书完整列表与正文标签仍只在用户主动操作时按需读取。
+
+## 1.4.9-test-multiface-step1-externaldiag1-securityfix6-subapitag2
+
+- 修复独立 API 在外层生成期间遇到工具调用／嵌套 `GENERATION_STARTED` 时清空 owner，导致结束事件无法授权、三轮甚至持续不发 POST 的断链；嵌套开始只复用已存在 owner，单独嵌套与 dry-run 仍默认拒绝。
+- 轻量生成拦截器在独立模式下记录当前聊天与酒馆原始尾正文指纹，并立即、非阻塞地唤醒延迟运行时；轻量事件桥再写入结束／最终渲染证明。冷运行时只有匹配当前 chat + tail + final 正文的 intent 能授权一次生成，流式中间片段、quiet／impersonate 与历史重绘都不能认领。
+- 标签扫描从当前聊天窗口已挂载楼层映射到对应 `mes` / `extra.display_text` 正文源，同时与可见 DOM 结果合并；修复宿主剥掉未知 wrapper 后只能扫描到 `<content>` 的问题，不读取 reasoning、历史 swipe、metadata 或扩展提示。
+- 被宿主剥掉 wrapper 但保留子文本时，只有源正文与 live DOM 的可见字符投影一致才使用源标签边界过滤；不匹配时继续使用 live DOM，禁止 raw source 兜底泄漏隐藏正文。
+- “独立 API 生成方式”“自动读取最近 X 层”“检索与过滤 <> 正文标签”集中到独立 API 常驻分区；扫描只生成候选，必须由用户勾选并保存。
+- 保留 SecurityFix4 的最终正文快路、真正单 Response SSE/NDJSON 流、单次请求小缓存与单次付费 lease；不修改原聊天、主 API、美化 Prompt 或最终渲染规则。
+
+## 1.4.9-test-multiface-step1-externaldiag1-securityfix4-contextspeed1
+
+- 独立 API 在 `CHARACTER_MESSAGE_RENDERED` 确认的同一正文指纹上使用 520ms 有界快速通道；正文随后变化会自动失效，网络请求仍只从原单次付费链路发出。
+- SSE / NDJSON 改为同一个 Response body 的增量读取，支持 UTF-8 与 JSON 跨 chunk、SSE 多行 data、keepalive 和 `[DONE]`；非流式与误标响应保持原兼容路径，不自动重发。
+- 最近历史正文使用最多 12 项、仅单次请求存活的小缓存；目标正文始终重新读取当前可见 DOM，不跨请求复用。
+- 新增“副 API 正文标签过滤”窗口：预设 `thinking`、`UpdateVariable`、`UpdateVarible`，可取消或添加自定义标签；仅过滤副 API 上下文副本，不修改聊天记录、主 API 或美化 Prompt。
 
 ## 1.4.9-test-multiface-step1-externaldiag1-securityfix3
 

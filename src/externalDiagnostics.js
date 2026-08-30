@@ -1,4 +1,4 @@
-const DIAG_VERSION = '1.4.7';
+const DIAG_VERSION = '1.4.9-externaldiag1-securityfix2';
 const MAX_ENTRIES = 1800;
 const STALL_INTERVAL_MS = 1000;
 const STALL_THRESHOLD_MS = 250;

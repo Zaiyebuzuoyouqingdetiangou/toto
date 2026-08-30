@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜小剧场",
   "loading_order": 100,
-  "js": "index.js?rmv=1.4.7",
-  "css": "style.css?rmv=1.4.7",
+  "js": "index.js?rmv=1.5-varietyfix1",
+  "css": "style.css?rmv=1.5.5",
   "author": "Toto",
-  "version": "1.4.7",
+  "version": "1.5.5",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜小剧场 1.4.7：由测试版 ExternalDiag1 SecurityFix3 原运行源码正式仓库适配；仅切换正式发布身份与缓存版本，不混入 toto 旧运行代码。"
+  "description": "兔子镜小剧场 1.5.5｜保住安卓本地酒馆生成成功后的镜面，扩充主题／展现母本并增强近期主题与形式多样性；不自动重发付费请求。"
 }

@@ -1,14 +1,14 @@
-import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt, prewarmRabbitMirrorGenerationRuntime } from './src/injector.js?rmv=1.4.7';
-import { clearLastCombo } from './src/storage.js?rmv=1.4.7';
-import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.4.7';
-import { getSettings, updateSettings } from './src/settings.js?rmv=1.4.7';
-import { initRabbitMirrorIndependentSecurityGuard, destroyRabbitMirrorIndependentSecurityGuard } from './src/independentSecurityGuard.js?rmv=1.4.7';
+import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt, destroyIndependentGenerationIntentBridge, initIndependentGenerationIntentBridge, prewarmRabbitMirrorGenerationRuntime } from './src/injector.js?rmv=1.5-varietyfix1';
+import { clearLastCombo } from './src/storage.js?rmv=1.5-varietyfix1';
+import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.5-varietyfix1';
+import { getSettings, updateSettings } from './src/settings.js?rmv=1.5-varietyfix1';
+import { initRabbitMirrorIndependentSecurityGuard, destroyRabbitMirrorIndependentSecurityGuard } from './src/independentSecurityGuard.js?rmv=1.5-varietyfix1';
 
 // SecurityFix2 leaves only the prompt interceptor and request guard in the parser-critical
 // graph. The 1.8 MiB UI/sanitizer/independent runtime graph is imported after the host has
 // received a paint/idle opportunity, or immediately after explicit RabbitMirror intent.
-const GOLDEN_MERGE_VERSION = '1.4.7';
-const RABBIT_MIRROR_RUNTIME_VERSION = '1.4.7';
+const GOLDEN_MERGE_VERSION = '1.5.5';
+const RABBIT_MIRROR_RUNTIME_VERSION = '1.5.5';
 let runtimeCancelled = false;
 let deferredRuntimePromise = null;
 let deferredRuntimeModules = null;
@@ -23,6 +23,8 @@ let generationPrewarmDone = false;
 let externalDiagnosticsPromise = null;
 let externalDiagnosticsModule = null;
 let externalDiagnosticsApi = null;
+let externalDiagnosticsOperationRevision = 0;
+let externalDiagnosticsDesiredEnabled = false;
 const optionalModules = new Map();
 const optionalPromises = new Map();
 let lazyPointerHandler = null;
@@ -37,6 +39,10 @@ globalThis.__rabbitMirrorGoldenMerge = {
     deferredReady: () => !!deferredRuntimeModules,
     optionalLoaded: () => [...optionalModules.keys()],
 };
+// The lightweight generation interceptor calls this without awaiting it when
+// independent mode is selected. That closes the cold-start event gap without
+// making the host's main generation wait for the 1.8 MiB UI/runtime graph.
+globalThis.__rabbitMirrorEnsureDeferredCoreRuntime = ensureDeferredCoreRuntime;
 
 function captureDeferredBootBoundary() {
     try {
@@ -55,11 +61,11 @@ async function ensureDeferredCoreRuntime(reason = 'scheduled-idle') {
     if (deferredRuntimeModules) return deferredRuntimeModules;
     if (deferredRuntimePromise) return deferredRuntimePromise;
     deferredRuntimePromise = Promise.all([
-        import('./src/outputSanitizer.js?rmv=1.4.7'),
-        import('./src/visualScanner.js?rmv=1.4.7'),
-        import('./src/independentApi.js?rmv=1.4.7'),
-        import('./src/touchTheater.js?rmv=1.4.7'),
-        import('./src/ui.js?rmv=1.4.7'),
+        import('./src/outputSanitizer.js?rmv=1.5-varietyfix1'),
+        import('./src/visualScanner.js?rmv=1.5-varietyfix1'),
+        import('./src/independentApi.js?rmv=1.5-varietyfix1'),
+        import('./src/touchTheater.js?rmv=1.5-varietyfix1'),
+        import('./src/ui.js?rmv=1.5-varietyfix1'),
     ]).then(async ([output, visual, independent, touch, ui]) => {
         if (runtimeCancelled) return null;
         deferredRuntimeModules = { output, visual, independent, touch, ui };
@@ -78,11 +84,23 @@ async function ensureDeferredCoreRuntime(reason = 'scheduled-idle') {
     return deferredRuntimePromise;
 }
 
+function hostControlVisible(selector) {
+    try {
+        const node = document?.querySelector?.(selector);
+        if (!node || node.hidden || node.classList?.contains('displayNone') || node.getAttribute?.('aria-hidden') === 'true') return false;
+        const style = globalThis.getComputedStyle?.(node);
+        if (style && (style.display === 'none' || style.visibility === 'hidden' || style.contentVisibility === 'hidden')) return false;
+        const rects = node.getClientRects?.();
+        return !rects || rects.length > 0;
+    } catch { return false; }
+}
+
 function hostLooksBusy() {
     try {
         const context = globalThis.SillyTavern?.getContext?.();
         if ([context?.isGenerating, context?.is_generating, context?.is_send_press, globalThis.is_send_press, globalThis.is_group_generating].some(value => value === true)) return true;
-        return !!document?.querySelector?.('#chat .mes.streaming, #chat .mes[data-is-streaming="true"], #chat .mes[is_generating="true"], #chat .mes[data-generating="true"], #stop_but:not(.displayNone):not([hidden])');
+        const streamingMessage = document?.querySelector?.('#chat .mes.streaming, #chat .mes[data-is-streaming="true"], #chat .mes[is_generating="true"], #chat .mes[data-generating="true"]');
+        return !!streamingMessage || hostControlVisible('#mes_stop') || hostControlVisible('#stop_but');
     } catch { return true; }
 }
 
@@ -222,7 +240,7 @@ function loadOptional(name, specifier, init) {
 }
 
 function loadProfileSelector() {
-    return ensureDeferredCoreRuntime('settings-intent').then(modules => loadOptional('profileSelector', './src/independentProfileSelectorHotfix.js?rmv=1.4.7', mod => {
+    return ensureDeferredCoreRuntime('settings-intent').then(modules => loadOptional('profileSelector', './src/independentProfileSelectorHotfix.js?rmv=1.5-varietyfix1', mod => {
         mod.initRabbitMirrorIndependentProfileSelectorHotfix?.({
             getSettings,
             updateSettings,
@@ -238,13 +256,13 @@ function loadMirrorVisualCompat() {
     // stable idle boundary or by an explicit RabbitMirror settings/maintenance action.
     if (!deferredRuntimeModules) return Promise.resolve(null);
     return Promise.all([
-        loadOptional('checkedSelectorRepair', './src/checkedSelectorRepair.js?rmv=1.4.7', mod => mod.initRabbitMirrorCheckedSelectorRepair?.()),
-        loadOptional('renderedVisualFeedback', './src/renderedVisualFeedbackHotfix.js?rmv=1.4.7', mod => mod.initRabbitMirrorRenderedVisualFeedbackHotfix?.()),
+        loadOptional('checkedSelectorRepair', './src/checkedSelectorRepair.js?rmv=1.4.30.26', mod => mod.initRabbitMirrorCheckedSelectorRepair?.()),
+        loadOptional('renderedVisualFeedback', './src/renderedVisualFeedbackHotfix.js?rmv=1.5-varietyfix1', mod => mod.initRabbitMirrorRenderedVisualFeedbackHotfix?.()),
     ]);
 }
 
 function loadMaintenanceCompat() {
-    return ensureDeferredCoreRuntime('maintenance-intent').then(() => loadOptional('maintenanceRecommendation', './src/maintenanceRecommendationHotfix.js?rmv=1.4.7', mod => mod.initRabbitMirrorMaintenanceRecommendationHotfix?.()));
+    return ensureDeferredCoreRuntime('maintenance-intent').then(() => loadOptional('maintenanceRecommendation', './src/maintenanceRecommendationHotfix.js?rmv=1.4.6', mod => mod.initRabbitMirrorMaintenanceRecommendationHotfix?.()));
 }
 
 function mobileLike() {
@@ -254,7 +272,7 @@ function mobileLike() {
 
 function loadMobileModalCompat() {
     if (!mobileLike()) return Promise.resolve(null);
-    return ensureDeferredCoreRuntime('mobile-settings-intent').then(() => loadOptional('mobileModal', './src/mobileModalHotfix.js?rmv=1.4.7', mod => mod.initRabbitMirrorMobileModalHotfix?.()));
+    return ensureDeferredCoreRuntime('mobile-settings-intent').then(() => loadOptional('mobileModal', './src/mobileModalHotfix.js?rmv=1.5-varietyfix1', mod => mod.initRabbitMirrorMobileModalHotfix?.()));
 }
 
 function isRabbitMirrorSurface(target) {
@@ -315,25 +333,33 @@ function removeOnDemandCompatTriggers() {
 
 async function ensureExternalDiagnostics() {
     if (runtimeCancelled) return null;
+    externalDiagnosticsDesiredEnabled = true;
     if (externalDiagnosticsApi) return externalDiagnosticsApi;
     if (externalDiagnosticsPromise) return externalDiagnosticsPromise;
-    externalDiagnosticsPromise = import('./src/externalDiagnostics.js?rmv=1.4.7').then(mod => {
-        if (runtimeCancelled) return null;
+    const revision = ++externalDiagnosticsOperationRevision;
+    const loadPromise = import('./src/externalDiagnostics.js?rmv=1.5-varietyfix1').then(mod => {
+        if (runtimeCancelled || !externalDiagnosticsDesiredEnabled || revision !== externalDiagnosticsOperationRevision) return null;
         externalDiagnosticsModule = mod;
         externalDiagnosticsApi = mod.initRabbitMirrorExternalDiagnostics?.() || null;
         externalDiagnosticsApi?.mark?.('externalDiag.userEnabled', { readyState: String(document?.readyState || '') });
         return externalDiagnosticsApi;
-    }).finally(() => { externalDiagnosticsPromise = null; });
-    return externalDiagnosticsPromise;
+    }).finally(() => {
+        if (externalDiagnosticsPromise === loadPromise) externalDiagnosticsPromise = null;
+    });
+    externalDiagnosticsPromise = loadPromise;
+    return loadPromise;
 }
 
 function disableExternalDiagnostics() {
+    externalDiagnosticsDesiredEnabled = false;
+    externalDiagnosticsOperationRevision += 1;
+    externalDiagnosticsPromise = null;
     try { externalDiagnosticsModule?.destroyRabbitMirrorExternalDiagnostics?.(); } catch {}
     externalDiagnosticsApi = null;
 }
 
 function clearDeferredGenerationSnapshots() {
-    void import('./src/generationGuard.js?rmv=1.4.7')
+    void import('./src/generationGuard.js?rmv=1.5-varietyfix1')
         .then(mod => mod.clearRabbitMirrorGenerationSnapshots?.())
         .catch(() => {});
 }
@@ -360,6 +386,7 @@ jQuery(() => {
     captureDeferredBootBoundary();
     initFeedbackCatPromptSync(() => getSettings().feedbackCatEnabled !== false);
     globalThis.__rabbitMirrorFeedbackCatSyncCleanup = destroyFeedbackCatPromptSync;
+    initIndependentGenerationIntentBridge();
     initRabbitMirrorIndependentSecurityGuard({ getSettings, updateSettings });
     installOnDemandCompatTriggers();
     scheduleDeferredCoreRuntime();
@@ -383,6 +410,7 @@ export function onDisable() {
     removeOnDemandCompatTriggers();
     destroyOptionalCompat();
     destroyFeedbackCatPromptSync();
+    destroyIndependentGenerationIntentBridge({ clearIntents: true });
     clearRabbitMirrorPrompt();
     deferredRuntimeModules?.ui?.destroyRabbitMirrorUI?.();
     deferredRuntimeModules?.output?.destroyOutputSanitizer?.();
@@ -392,6 +420,9 @@ export function onDisable() {
     destroyRabbitMirrorIndependentSecurityGuard();
     clearDeferredGenerationSnapshots();
     disableExternalDiagnostics();
+    if (globalThis.__rabbitMirrorEnsureDeferredCoreRuntime === ensureDeferredCoreRuntime) {
+        try { delete globalThis.__rabbitMirrorEnsureDeferredCoreRuntime; } catch {}
+    }
     try { delete globalThis.__rabbitMirrorEnsureExternalDiag; } catch {}
     try { delete globalThis.__rabbitMirrorDisableExternalDiag; } catch {}
 }
