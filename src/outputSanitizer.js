@@ -1,6 +1,7 @@
-import { getSettings } from './settings.js?rmv=1.5.23-ui1';
-import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.23-ui1';
-import { getCurrentChatKey } from './storage.js?rmv=1.5.23-ui1';
+import { getSettings, syncExternalReferenceVisibility } from './settings.js?rmv=1.5.26-compat1';
+import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.26-compat1';
+import { getCurrentChatKey } from './storage.js?rmv=1.5.26-compat1';
+import { getSanitizedRabbitMirrorFaceProof } from './multifaceProof.js?rmv=1.5.26-compat1';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -10,18 +11,19 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.5.23-ui1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.23-ui1';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.23-ui1';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.23-ui1';
+} from './feedbackCat.js?rmv=1.5.26-compat1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.26-compat1';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.26-compat1';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.26-compat1';
 import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.4.30.23';
 
 
-const RUNTIME_VERSION = '1.5.23';
+const RUNTIME_VERSION = '1.5.26';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
 const TOOL_ENTRY_HOST_ATTR = 'data-rabbit-mirror-tool-entry-host';
+const EXTERNAL_REFERENCE_NOTE_ATTR = 'data-rabbit-mirror-reference-note';
 
 function ensureFeedbackCatRuntimeStyle() {
     if (typeof document === 'undefined') return;
@@ -11027,6 +11029,14 @@ function scheduleLabeledCheckedTransitionVerification(root, input, verification,
                 // to the older click and must never reclaim the group or re-apply its old panel.
                 if (newerSelectionExists) return;
             }
+            // A healthy native/CSS state needs verification, not another restore +
+            // rewrite of all matched rules. Keep every delayed check for late WebView
+            // rollbacks, but only apply the fallback when the state actually failed.
+            if (!!input.checked === !!intended
+                && recordLabeledCheckedVerification(root, input, verification, intended, `${phase}+${delay}ms`)) {
+                state.verifiedCount += 1;
+                return;
+            }
             if (!!input.checked !== !!intended) {
                 setRescuedCheckedState(root, input, intended);
                 corrected = true;
@@ -12573,6 +12583,7 @@ function diagnosticMessageBody(root) {
 
 function diagnosticIsInternalUiNode(node) {
     if (!node) return false;
+    if (node.closest?.(`[${EXTERNAL_REFERENCE_NOTE_ATTR}]`)) return true;
     if (node.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}], [${RESAY_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`)) return true;
     return !!node.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}]`);
 }
@@ -12589,7 +12600,7 @@ function diagnosticContentSnapshot(root) {
     };
     const clone = root?.cloneNode?.(true);
     if (!clone?.querySelectorAll) return fallback;
-    clone.querySelectorAll(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${RECIPE_MENU_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}]`)
+    clone.querySelectorAll(`[${EXTERNAL_REFERENCE_NOTE_ATTR}], [${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${RECIPE_MENU_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}]`)
         .forEach(node => node.remove());
     return {
         html: String(clone.innerHTML || ''),
@@ -16863,6 +16874,7 @@ function maintenanceMirrorBodyEvidence(candidate) {
         `[${FEEDBACK_CAT_MENU_ATTR}]`,
         `[${RECIPE_MENU_ATTR}]`,
         `[${SOURCE_TRUNCATION_NOTICE_ATTR}]`,
+        `[${EXTERNAL_REFERENCE_NOTE_ATTR}]`,
     ].join(','))?.forEach(node => node.remove());
 
     const contentStyles = [...(clone.querySelectorAll?.('style') || [])]
@@ -17555,6 +17567,8 @@ export function sanitizeRabbitMirrorUntrustedTemplate(template) {
     if (!validateRabbitMirrorTemplateStructuralBudget(template)) return false;
 
     template.content.querySelectorAll(RABBIT_MIRROR_BLOCKED_RENDER_SELECTOR).forEach(node => node.remove());
+    // Local attribution is rebuilt from exact-owner metadata, never model HTML.
+    template.content.querySelectorAll(`[${EXTERNAL_REFERENCE_NOTE_ATTR}]`).forEach(node => node.remove());
     unwrapGeneratedForms(template);
 
     let droppedLocalStyleCount = 0;
@@ -18238,6 +18252,7 @@ function rabbitMirrorInteractionResetSnapshotKey(root, createInstance = false) {
 function cleanRabbitMirrorInteractionResetClone(details) {
     if (!details?.cloneNode) return null;
     const clone = cloneRabbitMirrorFilteredNode(details);
+    clone.querySelectorAll?.(`[${EXTERNAL_REFERENCE_NOTE_ATTR}]`)?.forEach(node => node.remove());
     clone.querySelectorAll?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${RECIPE_MENU_ATTR}]`)?.forEach(node => node.remove());
     clone.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]')?.remove?.();
     clone.querySelectorAll?.('[data-rabbit-mirror-maintenance-checked-sandbox]')?.forEach(node => node.remove());
@@ -18913,13 +18928,17 @@ function rabbitMirrorRecipeIdentity(root) {
             ? message.swipe_id
             : 0;
     const chatKey = ownerChat || getCurrentChatKey(chat);
-    const faceIndex = getRabbitMirrorFacePosition(root)?.faceIndex;
+    // Follow-mode external recovery may mount direct details instead of toto.
+    // Its sanitizer-owned WeakMap proof is authoritative, not a model data-* ID.
+    const proof = getSanitizedRabbitMirrorFaceProof(details);
+    const faceIndex = getRabbitMirrorFacePosition(root)?.faceIndex
+        ?? (proof?.origin === 'follow' ? proof.faceIndex : null);
     return { chatKey, messageIndex, swipeId, message, ...(Number.isInteger(faceIndex) ? { faceIndex } : {}) };
 }
 
-function rabbitMirrorRecipeForRoot(root) {
+function rabbitMirrorRecipeForRoot(root, includeExternalOnly = false) {
     const identity = rabbitMirrorRecipeIdentity(root);
-    return getRabbitMirrorRecipe(identity);
+    return getRabbitMirrorRecipe({ ...identity, includeExternalOnly });
 }
 
 function recipeButtonTitle(recipe) {
@@ -22671,7 +22690,29 @@ function ensureFeedbackCatButton(root, summary, host) {
 
 
 function recipeButtonShouldBeVisible(recipe, blacklistState = getBlacklistState()) {
-    return blacklistState?.enabled === true && !!recipe;
+    return blacklistState?.enabled === true && !!recipe
+        && (!recipe.hasExternalReferences || !!((recipe.themes?.length || 0) + (recipe.formats?.length || 0)));
+}
+
+function installExternalReferenceNote(details, recipe) {
+    const settings = getSettings();
+    syncExternalReferenceVisibility(settings);
+    const existing = [...details.querySelectorAll(`:scope > [${EXTERNAL_REFERENCE_NOTE_ATTR}]`)];
+    if (settings.externalWorldBookRandomEnabled !== true || !recipe?.hasExternalReferences) {
+        existing.forEach(node => node.remove());
+        return;
+    }
+    const sources = (Array.isArray(recipe.externalSources) ? recipe.externalSources : [])
+        .filter(name => typeof name === 'string').slice(0, 24)
+        .map(name => name.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 200)).filter(Boolean);
+    const text = sources.length ? `本轮抽取来源：${[...new Set(sources)].join('、')}` : '本轮抽取来源：旧记录未保存世界书名称';
+    const note = existing[0] || document.createElement('small');
+    existing.slice(1).forEach(node => node.remove());
+    if (note.getAttribute(EXTERNAL_REFERENCE_NOTE_ATTR) !== 'true') note.setAttribute(EXTERNAL_REFERENCE_NOTE_ATTR, 'true');
+    // Names are plain text, not links, markup, attribution inferred from the title,
+    // or content to send to the model. This runs on the existing scoped mount event.
+    if (note.textContent !== text) note.textContent = text;
+    if (note.parentElement !== details || note !== details.lastElementChild) details.appendChild(note);
 }
 
 function removeRecipeButtonsFromSummary(summary) {
@@ -22708,7 +22749,8 @@ function installRecipeButtonForRoot(root) {
     const details = root.matches?.('details') ? root : root.querySelector(':scope > details') || root.querySelector('details');
     const summary = details?.querySelector?.(':scope > summary') || details?.querySelector?.('summary');
     if (!summary) return false;
-    const recipe = rabbitMirrorRecipeForRoot(root);
+    const recipe = rabbitMirrorRecipeForRoot(root, true);
+    installExternalReferenceNote(details, recipe);
     if (!recipeButtonShouldBeVisible(recipe, getBlacklistState())) {
         removeRecipeButtonsFromSummary(summary);
         return true;
@@ -25334,7 +25376,7 @@ function maintenanceAutoSafeLiveFingerprint(root, { budgetChecked = false } = {}
     let structural = '';
     try {
         const clone = root.cloneNode(true);
-        clone.querySelectorAll?.(`[${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${RECIPE_MENU_ATTR}]`).forEach(node => node.remove());
+        clone.querySelectorAll?.(`[${EXTERNAL_REFERENCE_NOTE_ATTR}], [${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${RECIPE_MENU_ATTR}]`).forEach(node => node.remove());
         const volatile = new Set([
             RUNTIME_VERSION_ATTR,
             MAINTENANCE_AUTO_SAFE_ATTR,
@@ -25692,7 +25734,7 @@ function installChatMutationObserver() {
             const targetElement = mutation.target?.nodeType === 1 ? mutation.target : mutation.target?.parentElement;
             // External mirrors install their tools synchronously. Never observe their internal
             // replacement, animation or tool DOM, otherwise the two observers can ping-pong.
-            if (targetElement?.closest?.(`[${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [data-rabbit-mirror-external-source]`)) continue;
+            if (targetElement?.closest?.(`[${EXTERNAL_REFERENCE_NOTE_ATTR}], [${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [data-rabbit-mirror-external-source]`)) continue;
 
             const targetMessage = targetElement?.closest?.('.mes, [mesid]') || null;
             const added = [...(mutation.addedNodes || [])].filter(node => node?.nodeType === 1);
@@ -25704,7 +25746,7 @@ function installChatMutationObserver() {
             // real message scope *before* any descendant scan.
             if (targetMessage) {
                 const relevant = added.some(node => {
-                    if (node.matches?.(`[${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [data-rabbit-mirror-external-source]`)) return false;
+                    if (node.matches?.(`[${EXTERNAL_REFERENCE_NOTE_ATTR}], [${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [data-rabbit-mirror-external-source]`)) return false;
                     return node.matches?.('toto, details, .mes_text') || !!node.querySelector?.('toto, details');
                 });
                 if (relevant) messageRoots.add(targetMessage);
@@ -25715,7 +25757,7 @@ function installChatMutationObserver() {
             // newly-added chat wrapper). Only search for message roots here; never scan a
             // non-message UI subtree for arbitrary details elements.
             for (const node of added) {
-                if (node.matches?.(`[${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [data-rabbit-mirror-external-source]`)) continue;
+                if (node.matches?.(`[${EXTERNAL_REFERENCE_NOTE_ATTR}], [${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [data-rabbit-mirror-external-source]`)) continue;
                 if (node.matches?.('.mes, [mesid]')) {
                     messageRoots.add(node);
                     continue;

@@ -1,17 +1,17 @@
-import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, RABBIT_MIRROR_BANNED_WORD_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, normalizeRabbitMirrorBannedWords, updateSettings, resetSettings } from './settings.js?rmv=1.5.23-ui1';
-import { clearLastCombo } from './storage.js?rmv=1.5.23-ui1';
-import { parseRabbitMirrorReplacementLines, formatRabbitMirrorReplacementLines } from './bannedWords.js?rmv=1.5.23-ui1';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.5.23-ui1';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.5.23-ui1';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.5.23-ui1';
+import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, RABBIT_MIRROR_BANNED_WORD_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, normalizeRabbitMirrorBannedWords, updateSettings, resetSettings } from './settings.js?rmv=1.5.26-compat1';
+import { clearLastCombo } from './storage.js?rmv=1.5.26-compat1';
+import { parseRabbitMirrorReplacementLines, formatRabbitMirrorReplacementLines } from './bannedWords.js?rmv=1.5.26-compat1';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.5.26-compat1';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.5.26-compat1';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.5.26-compat1';
 import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.30.17';
-import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.5.23-ui1';
-import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5.23-ui1';
-import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.5.23-ui1';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.23-ui1';
+import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.5.26-compat1';
+import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5.26-compat1';
+import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.5.26-compat1';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.26-compat1';
 
 const SETTINGS_UI_VERSION = '1.6';
-const RUNTIME_VERSION = '1.5.23';
+const RUNTIME_VERSION = '1.5.26';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -553,7 +553,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}" data-rabbit-mirror-ui-ready="false">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header rabbit-mirror-drawer-header">
-      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.5.23</span>
+      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.5.26</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -690,6 +690,7 @@ export function initRabbitMirrorUI() {
           </div>
           <div style="margin-top:12px;padding:10px 11px;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:10px;">
             <div style="font-weight:700;">📚 外部世界书母本</div>
+            <div style="font-size:12px;line-height:1.5;margin-top:4px;">不会进入兔子镜内置，感谢各位制作小剧场的老师，请征求作者同意后使用。</div>
             <div style="opacity:.74;font-size:11px;line-height:1.5;margin-top:4px;">用于导入小剧场世界书：可选择酒馆已有世界书或本地 JSON 文件，导入后确认分类。在管理窗口按需开启外部抽签；仅使用本轮抽中的条目，新库默认停用。</div>
             <button id="rh_external_worldbook_open" class="menu_button" type="button" style="margin-top:8px;font-weight:700;">打开外部世界书导入工具</button>
           </div>
@@ -1730,7 +1731,7 @@ export function initRabbitMirrorUI() {
         const button = $('#rh_external_worldbook_open');
         button.prop('disabled', true).text('正在加载…');
         try {
-            const module = await import('./externalWorldBook/importWizard.js?rmv=1.5.23-ui1');
+            const module = await import('./externalWorldBook/importWizard.js?rmv=1.5.26-compat1');
             if (!isCurrentRuntime()) return;
             module.openExternalWorldBookImportWizard?.();
         } catch (error) {

@@ -843,9 +843,6 @@ toto[data-rabbit-mirror="true"] summary {
   min-width:0 !important;
   box-sizing:border-box !important;
   margin:0 !important;
-  border:0 !important;
-  border-radius:0 !important;
-  background:transparent !important;
   overflow:visible !important;
 }
 #chat .rabbit-mirror-external-shell[data-rm-source="follow"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"]{
@@ -855,9 +852,6 @@ toto[data-rabbit-mirror="true"] summary {
   min-width:0 !important;
   box-sizing:border-box !important;
   margin:0 !important;
-  border:0 !important;
-  border-radius:13px !important;
-  background:transparent !important;
   overflow:visible !important;
 }
 /* Legacy follow-current root sizing; the common per-face rules below give the
@@ -1070,11 +1064,8 @@ toto[data-rabbit-mirror="true"] summary {
   border-top-right-radius:0 !important;
 }
 
-/* A boundary belongs to EACH face, not the shared multi-face host. Keep the
- * original scene colors and native details/radio/checkbox relationships intact.
- * Auto overflow is a reachable fallback for genuinely wide tables/stages; the
- * face has no fixed height, so ordinary paragraphs still grow in document flow.
- * These are stylesheet-only constraints: no layout polling or repair scans. */
+/* Layout containment is not decoration. Leave authored colors, borders and
+ * radii alone; do not wrap each colored title in another padded frame. */
 #chat .rabbit-mirror-external-shell[data-rm-source][data-rm-placement] > details[data-rabbit-mirror-external-details="true"],
 #chat toto[data-rabbit-mirror="true"] > details{
   box-sizing:border-box !important;
@@ -1082,10 +1073,33 @@ toto[data-rabbit-mirror="true"] summary {
   max-width:100% !important;
   height:auto !important;
   max-height:none !important;
-  padding:6px !important;
-  border:1px solid var(--rm-shell-border, var(--SmartThemeBorderColor, rgba(110,110,110,.42))) !important;
-  border-radius:14px !important;
-  overflow:auto !important;
+  overflow:visible !important;
+}
+/* Keep the generated body in the available lane, including browsers that use
+ * an intrinsic-size ::details-content wrapper. Explicit inner card widths and
+ * scene coordinates remain authored; wide material scrolls in the body. */
+#chat :is(details[data-rabbit-mirror-external-details="true"],toto[data-rabbit-mirror="true"] > details)::details-content{
+  width:100%;
+  min-width:0;
+  max-width:100%;
+  box-sizing:border-box;
+}
+/* Flow-root contains the floating tool strip. Long titles may wrap and grow
+ * their own background; no truncation, new title, JS scan or outer box. */
+#chat .rabbit-mirror-external-shell[data-rm-source][data-rm-placement] > details[data-rabbit-mirror-external-details="true"] > summary,
+#chat toto[data-rabbit-mirror="true"] > details > summary{
+  display:flow-root list-item !important;
+  box-sizing:border-box !important;
+  max-width:100% !important;
+  min-width:0 !important;
+  min-height:44px !important;
+  height:auto !important;
+  max-height:none !important;
+  white-space:normal !important;
+  overflow-wrap:anywhere;
+}
+#chat :is(details[data-rabbit-mirror-external-details="true"],toto[data-rabbit-mirror="true"] > details) > :is(div,section,article,main,aside,header,footer,nav,figure){
+  overflow:auto;
   overscroll-behavior-inline:contain;
 }
 #chat .rabbit-mirror-external-shell[data-rm-source][data-rm-placement] > details[data-rabbit-mirror-external-details="true"] > :is(div,section,article,main,aside,header,footer,nav,figure),
@@ -1127,4 +1141,29 @@ toto[data-rabbit-mirror="true"] summary {
 [data-rm-dai-sekkin-mode="true"] [data-rm-touch-threshold-reaction="true"][data-rm-touch-threshold-runtime-visible="true"],
 [data-rm-touch-theater="true"] [data-rm-touch-threshold-reaction="true"][data-rm-touch-threshold-runtime-visible="true"] {
   display: block !important;
+}
+[data-rabbit-mirror-reference-note="true"] {
+    display: block !important;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    margin: 8px 0 0 !important;
+    padding: 6px 4px !important;
+    font: inherit;
+    font-size: 12px !important;
+    line-height: 1.5 !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    color: inherit;
+    opacity: .72;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+}
+html[data-rabbit-mirror-external-sampling-enabled="false"] [data-rabbit-mirror-reference-note="true"] {
+    display: none !important;
+}
+@media (prefers-contrast: more) {
+    [data-rabbit-mirror-reference-note="true"] { opacity: 1; }
 }
