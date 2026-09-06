@@ -3,12 +3,12 @@ import { assertRabbitMirrorIndependentResponseBytes, assertRabbitMirrorIndepende
 import { buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan } from './promptBuilder.js?rmv=1.5.26-compat1';
 import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from './externalWorldBook/store.js?rmv=1.5.26-compat1';
 import { describeExternalWorldBookPreflightFailure, describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.26-compat1';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, armRabbitMirrorFirstUseInteraction, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.26-compat1';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, armRabbitMirrorFirstUseInteraction, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.26-preview-title2';
 import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.26-compat1';
 import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=1.5.26-compat1';
 import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from './multifaceProtocol.js?rmv=1.5.26-compat1';
 import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.26-compat1';
-import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, getRabbitMirrorFollowBatchFailure, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.26-compat1';
+import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, getRabbitMirrorFollowBatchFailure, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.26-preview-title2';
 import { evaluateIndependentPostSanitizeQuality } from './independentQualityGate.js?rmv=1.5.26-compat1';
 import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions, markPendingBatchAttempt, commitPendingComboBatch, releasePendingComboBatch } from './storage.js?rmv=1.5.26-compat1';
 import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5.26-compat1';
@@ -3495,6 +3495,77 @@ function independentMultifaceIncompleteHint(protocolErrorCode='',finishReason=''
  if(protocolErrorCode==='outside-content') return '响应在镜面外夹带了文字或注释；独立 API 只能输出镜面，不能续写主回复。本次未丢弃面外内容来强行判为成功，也不必仅凭此错误调高输出上限。';
  return '响应的面结构未完整闭合或不符合多面格式；请保留诊断后手动重试，不必仅凭此错误调高输出上限。';
 }
+const independentRejectedFacePreviews=new Map();
+const INDEPENDENT_REJECTED_PREVIEW_MAX_ENTRIES=20;
+const INDEPENDENT_REJECTED_PREVIEW_MAX_CHARS=1024*1024;
+let independentRejectedPreviewChars=0;
+let independentRejectedPreviewSequence=0;
+const independentRejectedFaceControlsWired=new WeakSet();
+function clearIndependentRejectedFacePreviews(){
+ independentRejectedFacePreviews.clear(); independentRejectedPreviewChars=0;
+}
+function cacheIndependentRejectedFacePreview(html=''){
+ if(!html || html.length>INDEPENDENT_REJECTED_PREVIEW_MAX_CHARS) return '';
+ while(independentRejectedFacePreviews.size && (independentRejectedFacePreviews.size>=INDEPENDENT_REJECTED_PREVIEW_MAX_ENTRIES || independentRejectedPreviewChars+html.length>INDEPENDENT_REJECTED_PREVIEW_MAX_CHARS)){
+  const oldest=independentRejectedFacePreviews.keys().next().value;
+  independentRejectedPreviewChars-=independentRejectedFacePreviews.get(oldest).length;
+  independentRejectedFacePreviews.delete(oldest);
+ }
+ const id=`rejected-${Date.now().toString(36)}-${++independentRejectedPreviewSequence}`;
+ independentRejectedFacePreviews.set(id,html); independentRejectedPreviewChars+=html.length;
+ return id;
+}
+function independentRejectedFaceReason(code=''){
+ return String(code||'')==='generic-tabbed-flat-layout'?'版式质量检查未通过':'质量检查未通过';
+}
+function createIndependentMultifaceFailureSlot(faceIndex,failure={}){
+ const code=String(failure?.code||'incomplete-face').replace(/[^a-z0-9-]/gi,'').slice(0,80)||'incomplete-face';
+ const ordinal=faceIndex+1;
+ const previewId=cacheIndependentRejectedFacePreview(String(failure?.previewHtml||''));
+ const previewButton=previewId?`<button type="button" data-rm-rejected-preview-toggle="${previewId}">查看被拦截内容</button> `:'';
+ const previewHost=previewId?`<div data-rm-rejected-preview-host="${previewId}" hidden></div>`:'';
+ return `<toto data-rabbit-mirror="true" data-rm-face="${ordinal}"><details ${MULTIFACE_FAILURE_ATTR}="${code}"><summary>【兔子镜：第 ${ordinal} 面未完成】</summary><p>这一面未通过检查，其他成功面已保留。原因：${independentRejectedFaceReason(code)}。</p><div data-rm-rejected-face-actions="true">${previewButton}<button type="button" data-rm-rejected-face-resay="true">重说</button></div>${previewHost}<p>不会自动补发请求。如需重试，只重新生成这一面。</p></details></toto>`;
+}
+function wireIndependentRejectedFaceControls(host){
+ for(const details of externalFaceDetails(host)){
+  if(!details.hasAttribute(MULTIFACE_FAILURE_ATTR)) continue;
+  const actions=details.querySelector(':scope > [data-rm-rejected-face-actions]');
+  if(!actions) continue;
+  const button=actions.querySelector('[data-rm-rejected-preview-toggle]');
+  const target=details.querySelector(':scope > [data-rm-rejected-preview-host]');
+  if(button && target && !independentRejectedFaceControlsWired.has(button)){
+   independentRejectedFaceControlsWired.add(button);
+   const id=String(button.getAttribute('data-rm-rejected-preview-toggle')||'');
+   const closePreview=()=>{
+    target.hidden=true;
+    if(target.childNodes.length) target.replaceChildren();
+    const available=independentRejectedFacePreviews.has(id);
+    button.textContent=available?'查看被拦截内容':'预览已失效';
+    button.disabled=!available;
+   };
+   closePreview();
+   button.addEventListener('click',event=>{
+    event.preventDefault(); event.stopPropagation();
+    if(!target.hidden){ closePreview(); return; }
+    const html=independentRejectedFacePreviews.get(id);
+    if(!html){ closePreview(); return; }
+    const template=document.createElement('template'); template.innerHTML=html;
+    target.replaceChildren(template.content);
+    target.hidden=false; button.textContent='收起预览';
+    globalThis.toastr?.info?.('此面未通过质量检查，仅供预览。','',{timeOut:1600,extendedTimeOut:0,showDuration:100,hideDuration:180,progressBar:false,closeButton:false});
+   },true);
+   details.addEventListener('toggle',()=>{ if(!details.open) closePreview(); });
+  }
+  const resay=actions.querySelector('[data-rm-rejected-face-resay]');
+  if(resay && !independentRejectedFaceControlsWired.has(resay)){
+   independentRejectedFaceControlsWired.add(resay);
+   resay.addEventListener('click',event=>{
+    event.preventDefault(); event.stopPropagation();
+    resayIndependentMirror(details,{});
+   },true);
+  }
+ }
+}
 function prepareIndependentMultifaceResult(raw,metadata,requestDiagnostic,requestOptions={}){
  const parsed=parseMultifaceOutput(raw,{expectedCount:Number(metadata.faceCount)});
  const sourceFaces=recoverableMultifaceFrames(parsed);
@@ -3508,11 +3579,12 @@ function prepareIndependentMultifaceResult(raw,metadata,requestDiagnostic,reques
   throw independentMultifacePostprocessError(`⚠️ 多面结果未完整生成（完整 ${parsed.faces?.length||0}/${metadata.faceCount} 面${detail.terminalFace?`，第 ${detail.terminalFace} 面`:''}；${detail.protocolErrorCode}）。本轮只发送了 1 次请求，不会自动补发。${independentMultifaceIncompleteHint(detail.protocolErrorCode,requestDiagnostic?.finishReason)}`,'multiface-incomplete',-1,detail);
  }
  const count=Number(metadata.faceCount);
- const prepared=Array(count).fill(null); const scans=Array(count).fill(null); const failures=Array(count).fill(null); const seenBodies=new Set(); const seenTitles=new Set();
+ const prepared=Array(count).fill(null); const scans=Array(count).fill(null); const failures=Array(count).fill(null); const rejectedPreviews=Array(count).fill(''); const seenBodies=new Set(); const seenTitles=new Set();
  for(let index=0;index<count;index+=1){
   if(!sourceFaces.some(face=>face.index===index)) failures[index]={faceIndex:index,status:'failed',code:String(parsed.errors?.[0]?.code||'incomplete-face')};
  }
  for(const face of sourceFaces){
+  let rejectedPreviewHtml='';
   try{
   const faceMetadata=metadata.faces?.[face.index]||{};
   const prefix=`⚠️ 第 ${face.index+1} 面：`;
@@ -3543,6 +3615,7 @@ function prepareIndependentMultifaceResult(raw,metadata,requestDiagnostic,reques
    selectedFormats:independentSelectedFormatDescriptors(faceMetadata),
   });
   if(!quality.ok){
+   rejectedPreviewHtml=html;
    rememberIndependentQualityFailure(requestOptions.slot,quality);
    throw independentMultifacePostprocessError(`${prefix}${quality.message||'未达到成品质量门槛。'} 本轮只发送了 1 次请求，不会自动补发。`,quality.code||'multiface-quality',face.index,{qualityCode:String(quality.code||''),qualityFlags:Array.isArray(quality.flags)?quality.flags.slice(0,12):[]});
   }
@@ -3556,11 +3629,12 @@ function prepareIndependentMultifaceResult(raw,metadata,requestDiagnostic,reques
   }catch(error){
    if(!error?.rabbitMirrorMultifaceDiagnostic) throw error;
    failures[face.index]={faceIndex:face.index,status:'failed',code:String(error.code||'multiface-quality').slice(0,80)};
+   rejectedPreviews[face.index]=rejectedPreviewHtml;
   }
  }
  const succeeded=scans.filter(Boolean).length;
  if(!succeeded) throw independentMultifacePostprocessError('所有面均未通过检查；本轮不会自动补发请求。','multiface-all-failed',-1,{completedFaces:0,expectedFaces:count,failedFaces:failures.filter(Boolean)});
- for(let index=0;index<count;index+=1) if(!prepared[index]) prepared[index]=createMultifaceFailureSlot(index,failures[index]?.code);
+ for(let index=0;index<count;index+=1) if(!prepared[index]) prepared[index]=createIndependentMultifaceFailureSlot(index,{...failures[index],previewHtml:rejectedPreviews[index]});
  const html=prepared.join('\n');
  const finalProtocol=parseMultifaceOutput(html,{expectedCount:Number(metadata.faceCount)});
  if(!finalProtocol.ok){
@@ -5609,6 +5683,7 @@ function armExternalInteractionTools(host,details){
 }
 function ensureExternalTools(host){
  if(!host?.isConnected) return;
+ if(host.dataset?.rmState==='ready' && host.dataset?.rmSource==='independent') wireIndependentRejectedFaceControls(host);
  stampExternalDetailsOwnership(host);
  const historyRestoreLight=historicalLightHost(host);
  // Placement already owns one post-paint geometry pass. Tool refresh must not
@@ -6636,6 +6711,7 @@ function rescueIndependentExternalAutoRootWidth(host,targetDetails=null){
 
 function stripIndependentTransientLayoutArtifacts(details){
  if(!details?.querySelectorAll) return details;
+ details.querySelectorAll('[data-rm-rejected-preview-host]').forEach(node=>{ node.replaceChildren(); node.hidden=true; });
  // One-shot diagnostics belong to the current live DOM only. A cached/remounted
  // diagnostic panel has no JS listeners and becomes an uncloseable dead UI shell.
  details.querySelectorAll('[data-rabbit-mirror-interaction-diagnostic]').forEach(node=>node.remove());
@@ -8110,7 +8186,7 @@ function showIndependentHistory(root,owner={}){
 }
 function resayIndependentMirror(root,owner={}){
  if(getSettings().generationSource==='follow'){
-  void import('./followFaceRetry.js?rmv=1.5.26-compat1').then(({retryFollowFace})=>retryFollowFace(root,owner,{
+  void import('./followFaceRetry.js?rmv=1.5.26-preview-title2').then(({retryFollowFace})=>retryFollowFace(root,owner,{
    getContext,hostBusy:hostGenerationLooksActive,maxRequestChars:MAX_INDEPENDENT_REQUEST_CHARS,
    resolveOwner:target=>{
     const host=target?.closest?.('[data-rabbit-mirror-external-source="true"][data-rm-source="follow"]');
@@ -9859,7 +9935,7 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
    const finalRenderEvents=[et.CHARACTER_MESSAGE_RENDERED].filter(Boolean);
    for(const event of new Set(fullSyncEvents)){
       const handler=()=>{
-        hostGenerationInProgress=false; hostGenerationHintStartedAt=0; clearScheduledGeneration(); cancelAllIndependentFlights('chat-changed'); messageSourceRevisions.clear(); activeGlobalWorldInfoCapture=null;
+        hostGenerationInProgress=false; hostGenerationHintStartedAt=0; clearScheduledGeneration(); cancelAllIndependentFlights('chat-changed'); clearIndependentRejectedFacePreviews(); messageSourceRevisions.clear(); activeGlobalWorldInfoCapture=null;
         globalThis[INDEPENDENT_GENERATION_INTENTS_KEY]=[];
         globalThis[INDEPENDENT_GENERATION_STOPS_KEY]=[];
         dispatchWorldInfoBooksChanged(currentWorldInfoBookScope());
@@ -10162,7 +10238,7 @@ export async function initIndependentRabbitMirror(){
  // genuinely new assistant reply or an explicit manual retry may issue a POST.
 }
 export function destroyIndependentRabbitMirror(){
- runtimeConfigSequence++; hostGenerationInProgress=false; hostGenerationHintStartedAt=0; clearScheduledGeneration(); clearPassiveRecoveryTimers(); cancelAllIndependentFlights('runtime-destroyed'); clearAutomaticGenerationCutovers(); lastAppliedRuntimeMode=null;
+ runtimeConfigSequence++; hostGenerationInProgress=false; hostGenerationHintStartedAt=0; clearScheduledGeneration(); clearPassiveRecoveryTimers(); cancelAllIndependentFlights('runtime-destroyed'); clearIndependentRejectedFacePreviews(); clearAutomaticGenerationCutovers(); lastAppliedRuntimeMode=null;
  if(persistedInteractionMigrationHandle){
   if(persistedInteractionMigrationIdle && typeof cancelIdleCallback==='function') cancelIdleCallback(persistedInteractionMigrationHandle);
   else clearTimeout(persistedInteractionMigrationHandle);

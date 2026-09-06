@@ -12,7 +12,7 @@ import {
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
 } from './feedbackCat.js?rmv=1.5.26-compat1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.26-compat1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.26-preview-title2';
 import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.26-compat1';
 import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.26-compat1';
 import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.4.30.23';
@@ -24,6 +24,7 @@ const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
 const TOOL_ENTRY_HOST_ATTR = 'data-rabbit-mirror-tool-entry-host';
 const EXTERNAL_REFERENCE_NOTE_ATTR = 'data-rabbit-mirror-reference-note';
+const EXTERNAL_TITLE_PREFIX_ATTR = 'data-rabbit-mirror-title-prefix';
 
 function ensureFeedbackCatRuntimeStyle() {
     if (typeof document === 'undefined') return;
@@ -34,6 +35,13 @@ function ensureFeedbackCatRuntimeStyle() {
         (document.head || document.documentElement)?.appendChild(style);
     }
     const css = `
+summary > span[${EXTERNAL_TITLE_PREFIX_ATTR}="true"] {
+    all: unset !important;
+    display: inline !important;
+}
+summary > span[${EXTERNAL_TITLE_PREFIX_ATTR}="true"]::before {
+    content: "兔子镜：" !important;
+}
 [${TOOL_ENTRY_HOST_ATTR}][${TOOL_ENTRY_HOST_ATTR}] {
     all: initial !important;
     display: inline-flex !important;
@@ -22694,6 +22702,19 @@ function recipeButtonShouldBeVisible(recipe, blacklistState = getBlacklistState(
         && (!recipe.hasExternalReferences || !!((recipe.themes?.length || 0) + (recipe.formats?.length || 0)));
 }
 
+function ensureExternalMirrorTitlePrefix(summary, recipe) {
+    if (!summary) return;
+    const existing = summary.querySelector(`:scope > [${EXTERNAL_TITLE_PREFIX_ATTR}]`);
+    const needed = recipe?.hasExternalReferences === true && !/兔子镜\s*[:：]/.test(summary.textContent || '');
+    if (!needed) { existing?.remove(); return; }
+    if (existing) return;
+    // Display-only prefix: raw title text remains the identity used by repair/retry.
+    const prefix = document.createElement('span');
+    prefix.setAttribute(EXTERNAL_TITLE_PREFIX_ATTR, 'true');
+    prefix.setAttribute('aria-hidden', 'true');
+    summary.prepend(prefix);
+}
+
 function installExternalReferenceNote(details, recipe) {
     const settings = getSettings();
     syncExternalReferenceVisibility(settings);
@@ -22750,6 +22771,7 @@ function installRecipeButtonForRoot(root) {
     const summary = details?.querySelector?.(':scope > summary') || details?.querySelector?.('summary');
     if (!summary) return false;
     const recipe = rabbitMirrorRecipeForRoot(root, true);
+    ensureExternalMirrorTitlePrefix(summary, recipe);
     installExternalReferenceNote(details, recipe);
     if (!recipeButtonShouldBeVisible(recipe, getBlacklistState())) {
         removeRecipeButtonsFromSummary(summary);
