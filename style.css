@@ -691,9 +691,8 @@ toto[data-rabbit-mirror="true"] summary {
   overflow-wrap:anywhere;
   line-height:1.55;
 }
-/* 1.3.14: light pure-external shell.
- * The external host owns only placement and the title bar. Generated content is
- * intentionally unframed and receives no extension width/height/aspect-ratio rewrite. */
+/* The batch host owns placement, not the visible face boundary. The common
+ * per-face rules below frame both API routes without recoloring generated art. */
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"]{
   display:block !important;
   position:relative !important;
@@ -774,6 +773,69 @@ toto[data-rabbit-mirror="true"] summary {
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-pending="true"] > details[data-rabbit-mirror-external-details="true"]{
   opacity:.76 !important;
 }
+#chat .rabbit-mirror-external-shell.rabbit-mirror-multiface-host{
+  background:transparent !important;
+  border:0 !important;
+  box-shadow:none !important;
+  overflow:visible !important;
+}
+#chat .rabbit-mirror-external-shell.rabbit-mirror-multiface-host > details[data-rabbit-mirror-external-details="true"] + details[data-rabbit-mirror-external-details="true"]{
+  margin-top:18px !important;
+}
+/* Reserve space between independent face envelopes, never inside their scenes.
+   Inline follow results are sibling toto roots; independent inline results use
+   the existing multiface shell. Do not restyle nested details or model palettes. */
+#chat toto[data-rabbit-mirror="true"][data-rm-face]{
+  display:block !important;
+  margin-block:24px !important;
+}
+#chat .rabbit-mirror-external-shell.rabbit-mirror-multiface-host[data-rm-placement="inline"] > details[data-rabbit-mirror-external-details="true"] + details[data-rabbit-mirror-external-details="true"]{
+  margin-top:24px !important;
+}
+#chat toto[data-rabbit-mirror="true"][data-rm-face] > details > summary,
+#chat .rabbit-mirror-external-shell.rabbit-mirror-multiface-host[data-rm-placement="inline"] > details[data-rabbit-mirror-external-details="true"] > summary{
+  box-sizing:border-box !important;
+  min-height:48px !important;
+  padding-block:10px !important;
+  touch-action:manipulation;
+  cursor:pointer;
+}
+
+/* Collapsed mirrors keep their scene in the DOM but stop consuming animation frames.
+   The summary/tool row is excluded and stays immediately usable. */
+#chat toto[data-rabbit-mirror="true"] > details:not([open]) > :not(summary),
+#chat toto[data-rabbit-mirror="true"] > details:not([open]) > :not(summary) *,
+#chat details[data-rabbit-mirror-external-details="true"]:not([open]) > :not(summary),
+#chat details[data-rabbit-mirror-external-details="true"]:not([open]) > :not(summary) *,
+#chat toto[data-rabbit-mirror="true"] > details:not([open]) > :not(summary)::before,
+#chat toto[data-rabbit-mirror="true"] > details:not([open]) > :not(summary)::after,
+#chat toto[data-rabbit-mirror="true"] > details:not([open]) > :not(summary) *::before,
+#chat toto[data-rabbit-mirror="true"] > details:not([open]) > :not(summary) *::after,
+#chat details[data-rabbit-mirror-external-details="true"]:not([open]) > :not(summary)::before,
+#chat details[data-rabbit-mirror-external-details="true"]:not([open]) > :not(summary)::after,
+#chat details[data-rabbit-mirror-external-details="true"]:not([open]) > :not(summary) *::before,
+#chat details[data-rabbit-mirror-external-details="true"]:not([open]) > :not(summary) *::after{
+  animation-play-state:paused !important;
+}
+@media (prefers-reduced-motion: reduce){
+  #chat toto[data-rabbit-mirror="true"] > details > :not(summary),
+  #chat toto[data-rabbit-mirror="true"] > details > :not(summary) *,
+  #chat toto[data-rabbit-mirror="true"] > details > :not(summary)::before,
+  #chat toto[data-rabbit-mirror="true"] > details > :not(summary)::after,
+  #chat toto[data-rabbit-mirror="true"] > details > :not(summary) *::before,
+  #chat toto[data-rabbit-mirror="true"] > details > :not(summary) *::after,
+  #chat details[data-rabbit-mirror-external-details="true"] > :not(summary),
+  #chat details[data-rabbit-mirror-external-details="true"] > :not(summary) *,
+  #chat details[data-rabbit-mirror-external-details="true"] > :not(summary)::before,
+  #chat details[data-rabbit-mirror-external-details="true"] > :not(summary)::after,
+  #chat details[data-rabbit-mirror-external-details="true"] > :not(summary) *::before,
+  #chat details[data-rabbit-mirror-external-details="true"] > :not(summary) *::after{
+    animation-duration:.001ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:.001ms !important;
+    scroll-behavior:auto !important;
+  }
+}
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"]{
   display:block !important;
   width:auto !important;
@@ -798,8 +860,8 @@ toto[data-rabbit-mirror="true"] summary {
   background:transparent !important;
   overflow:visible !important;
 }
-/* Follow-current external keeps its legacy inner safety constraint. Pure independent
- * external deliberately does not touch generated children. */
+/* Legacy follow-current root sizing; the common per-face rules below give the
+ * same overflow safety to independent and inline presentation. */
 #chat .rabbit-mirror-external-shell[data-rm-source="follow"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"] > :not(summary):not(style):not(script){
   max-width:100% !important;
   box-sizing:border-box !important;
@@ -1006,6 +1068,54 @@ toto[data-rabbit-mirror="true"] summary {
   margin-top:0 !important;
   border-top-left-radius:0 !important;
   border-top-right-radius:0 !important;
+}
+
+/* A boundary belongs to EACH face, not the shared multi-face host. Keep the
+ * original scene colors and native details/radio/checkbox relationships intact.
+ * Auto overflow is a reachable fallback for genuinely wide tables/stages; the
+ * face has no fixed height, so ordinary paragraphs still grow in document flow.
+ * These are stylesheet-only constraints: no layout polling or repair scans. */
+#chat .rabbit-mirror-external-shell[data-rm-source][data-rm-placement] > details[data-rabbit-mirror-external-details="true"],
+#chat toto[data-rabbit-mirror="true"] > details{
+  box-sizing:border-box !important;
+  min-width:0 !important;
+  max-width:100% !important;
+  height:auto !important;
+  max-height:none !important;
+  padding:6px !important;
+  border:1px solid var(--rm-shell-border, var(--SmartThemeBorderColor, rgba(110,110,110,.42))) !important;
+  border-radius:14px !important;
+  overflow:auto !important;
+  overscroll-behavior-inline:contain;
+}
+#chat .rabbit-mirror-external-shell[data-rm-source][data-rm-placement] > details[data-rabbit-mirror-external-details="true"] > :is(div,section,article,main,aside,header,footer,nav,figure),
+#chat toto[data-rabbit-mirror="true"] > details > :is(div,section,article,main,aside,header,footer,nav,figure){
+  box-sizing:border-box !important;
+  min-width:0 !important;
+  max-width:100% !important;
+  overflow-wrap:anywhere;
+}
+/* Constrain intrinsic media, not arbitrary scene descendants or the coordinates
+ * of an intentionally fixed canvas. Very wide tabular/preformatted material
+ * remains scrollable inside its own surface. */
+#chat :is(details[data-rabbit-mirror-external-details="true"],toto[data-rabbit-mirror="true"] > details) :is(img,video,svg,canvas){
+  max-width:100%;
+}
+#chat :is(details[data-rabbit-mirror-external-details="true"],toto[data-rabbit-mirror="true"] > details) :is(table,pre){
+  box-sizing:border-box;
+  max-width:100%;
+  overflow:auto;
+}
+@media (max-width:899px){
+  /* Only the first two layout levels of a face body receive intrinsic shrink
+   * safety. This fixes centered card rows without flattening nested scenes,
+   * changing authored palettes, or shrinking all text to fit a phone. */
+  #chat :is(details[data-rabbit-mirror-external-details="true"],toto[data-rabbit-mirror="true"] > details) > :is(div,section,article,main,aside,figure) > :is(div,section,article,main,aside,nav,figure),
+  #chat :is(details[data-rabbit-mirror-external-details="true"],toto[data-rabbit-mirror="true"] > details) > :is(div,section,article,main,aside,figure) > :is(div,section,article,main,aside,nav,figure) > :is(div,section,article,main,aside,figure){
+    box-sizing:border-box;
+    min-width:0;
+    max-width:100%;
+  }
 }
 
 /* RabbitMirror 大接近：临界反应由运行时解锁。生成 HTML 即使漏写 hidden，

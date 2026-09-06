@@ -14,6 +14,34 @@ export const DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS = Object.freeze([
     'updatevarible',
 ]);
 
+export const RABBIT_MIRROR_BANNED_WORD_MAX_COUNT = 256;
+export const RABBIT_MIRROR_BANNED_WORD_MAX_CHARS = 80;
+
+export function normalizeRabbitMirrorBannedWords(value) {
+    const source = typeof value === 'string'
+        ? value.replace(/\r\n?/g, '\n').split('\n')
+        : Array.isArray(value) ? value : [];
+    const result = [];
+    const seen = new Set();
+    for (const raw of source) {
+        const term = String((raw && typeof raw === 'object' ? raw.find : raw) ?? '')
+            .replace(/[\u0000-\u001F\u007F]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, RABBIT_MIRROR_BANNED_WORD_MAX_CHARS);
+        if (!term) continue;
+        const key = term.toLocaleLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const replacement = raw && typeof raw === 'object'
+            ? String(raw.replace ?? '').replace(/[\u0000-\u001F\u007F]/g, ' ').slice(0, 240) : '';
+        result.push(replacement ? { find: term, replace: replacement } : term);
+        if (result.length >= RABBIT_MIRROR_BANNED_WORD_MAX_COUNT) break;
+    }
+    return result;
+}
+
+
 export function normalizeIndependentContextExcludedTags(value) {
     const source = Array.isArray(value)
         ? value
@@ -102,13 +130,18 @@ export const defaultSettings = Object.freeze({
     favoriteThemeMultipliers: {},
     favoriteFormatMultipliers: {},
     presentationWorldviewLock: false,
-    // 每轮生成的兔子镜面数（1/2/3）。默认 1，与既有单面行为完全一致。
+    // 每轮生成的兔子镜面数（1～5）。默认 1，关闭多面不改旧单面路径。
     rabbitMirrorFaceCount: 1,
     richFormatBias: false,
     maintenanceRabbitEnabled: true,
     maintenanceRabbitAutoSafeEnabled: false,
     maintenanceRabbitAutoSafeConsent: false,
     feedbackCatEnabled: true,
+    rabbitMirrorBannedWords: [],
+    // 1C-1 only: hidden production gate. The UI does not expose this until external raw lookup exists.
+    externalWorldBookRandomEnabled: false,
+    externalWorldBookMixMode: 'builtin-only',
+    enhancedVisualDrawing: false,
     visualPromptEditingEnabled: false,
     visualPrompt: DEFAULT_VISUAL_PROMPT,
     visualExtraPrompt: '',
@@ -213,10 +246,10 @@ export function getSettings() {
     settings.favoriteThemeMultipliers = normalizeFavoriteMultipliers(settings.favoriteThemeMultipliers, settings.favoriteThemeIds);
     settings.favoriteFormatMultipliers = normalizeFavoriteMultipliers(settings.favoriteFormatMultipliers, settings.favoriteFormatIds, canonicalFormatSettingId);
     settings.presentationWorldviewLock = settings.presentationWorldviewLock === true;
-    // 只接受 1/2/3；任何异常值（NaN、字符串、0、负数、超界）都回落到 1，
+    // 只接受数字 1～5；任何异常值（NaN、字符串、0、负数、超界）都回落到 1，
     // 保证旧设置升级与畸形写入都不会意外开启多面。
-    const faceCount = Math.trunc(Number(settings.rabbitMirrorFaceCount));
-    settings.rabbitMirrorFaceCount = (faceCount === 2 || faceCount === 3) ? faceCount : 1;
+    const faceCount = settings.rabbitMirrorFaceCount;
+    settings.rabbitMirrorFaceCount = Number.isInteger(faceCount) && faceCount >= 2 && faceCount <= 5 ? faceCount : 1;
     if (settings.autoRabbitMirrorInjection === undefined) settings.autoRabbitMirrorInjection = settings.enabled !== false;
     if (settings.maintenanceRabbitEnabled === undefined) {
         settings.maintenanceRabbitEnabled = legacyRescueWasEnabled || defaultSettings.maintenanceRabbitEnabled;
@@ -230,6 +263,12 @@ export function getSettings() {
         settings.maintenanceRabbitAutoSafeConsent = false;
     }
     settings.feedbackCatEnabled = settings.feedbackCatEnabled !== false;
+    settings.rabbitMirrorBannedWords = normalizeRabbitMirrorBannedWords(settings.rabbitMirrorBannedWords);
+    settings.externalWorldBookRandomEnabled = settings.externalWorldBookRandomEnabled === true;
+    settings.externalWorldBookMixMode = ['builtin-only','builtin-preferred','balanced','external-preferred','external-only'].includes(settings.externalWorldBookMixMode)
+        ? settings.externalWorldBookMixMode
+        : 'builtin-only';
+    settings.enhancedVisualDrawing = settings.enhancedVisualDrawing === true;
     settings.visualPromptEditingEnabled = !!settings.visualPromptEditingEnabled;
     const normalizeVisualSetting = (value, fallback, maxChars) => {
         const raw = typeof value === 'string' ? value : String(value ?? fallback);
@@ -266,6 +305,24 @@ export function updateSettings(patch) {
     }
     if (Object.prototype.hasOwnProperty.call(safePatch, 'followTagIsolationEnabled')) {
         safePatch.followTagIsolationEnabled = safePatch.followTagIsolationEnabled === true;
+    }
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'rabbitMirrorBannedWords')) {
+        safePatch.rabbitMirrorBannedWords = normalizeRabbitMirrorBannedWords(safePatch.rabbitMirrorBannedWords);
+    }
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'externalWorldBookRandomEnabled')) {
+        safePatch.externalWorldBookRandomEnabled = safePatch.externalWorldBookRandomEnabled === true;
+    }
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'externalWorldBookMixMode')) {
+        safePatch.externalWorldBookMixMode = ['builtin-only','builtin-preferred','balanced','external-preferred','external-only'].includes(safePatch.externalWorldBookMixMode)
+            ? safePatch.externalWorldBookMixMode
+            : 'builtin-only';
+    }
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'enhancedVisualDrawing')) {
+        safePatch.enhancedVisualDrawing = safePatch.enhancedVisualDrawing === true;
+    }
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'rabbitMirrorFaceCount')) {
+        const faceCount = safePatch.rabbitMirrorFaceCount;
+        safePatch.rabbitMirrorFaceCount = Number.isInteger(faceCount) && faceCount >= 2 && faceCount <= 5 ? faceCount : 1;
     }
     for (const key of ['independentReadCharacterCardSummary', 'independentReadPersonaSummary']) {
         if (Object.prototype.hasOwnProperty.call(safePatch, key)) safePatch[key] = safePatch[key] !== false;

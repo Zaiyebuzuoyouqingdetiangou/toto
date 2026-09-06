@@ -1,15 +1,16 @@
 import { eventSource, event_types, setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
 import * as hostRuntime from '../../../../../script.js';
-import { MODULE_NAME, getSettings } from './settings.js?rmv=1.5-varietyfix1';
+import { MODULE_NAME, getSettings } from './settings.js?rmv=1.5.23-ui1';
 import {
     buildFeedbackCatFinalCheck,
     buildFeedbackCatPrompt,
     clearFeedbackCatExtensionPrompt,
     getActiveFeedbackForCurrentChat,
     markFeedbackCatInjected,
-} from './feedbackCat.js?rmv=1.5-varietyfix1';
-import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.5-varietyfix1';
-import { getCurrentChatKey } from './storage.js?rmv=1.5-varietyfix1';
+} from './feedbackCat.js?rmv=1.5.23-ui1';
+import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.5.23-ui1';
+import { getCurrentChatKey, markPendingBatchAttempt, releasePendingComboBatch } from './storage.js?rmv=1.5.23-ui1';
+import { describeExternalWorldBookPreflightFailure } from './externalWorldBook/errors.js?rmv=1.5.23-ui1';
 
 const INJECT_KEY = `${MODULE_NAME}:auto_injection`;
 
@@ -17,6 +18,9 @@ let generationInvocationSequence = 0;
 let independentGenerationIntentSequence = 0;
 let promptBuilderPromise = null;
 let generationGuardPromise = null;
+let lastFollowExternalPreflightFailure = null;
+
+export function getLastFollowExternalPreflightFailure() { return lastFollowExternalPreflightFailure; }
 
 const INDEPENDENT_GENERATION_INTENTS_KEY = '__rabbitMirrorIndependentGenerationIntents';
 const INDEPENDENT_GENERATION_STOPS_KEY = '__rabbitMirrorIndependentStoppedHostOperations';
@@ -26,6 +30,8 @@ const INDEPENDENT_GENERATION_INTENT_MAX = 8;
 const INDEPENDENT_GENERATION_INTENT_TYPES = new Set(['normal', 'continue', 'swipe', 'regenerate']);
 let independentIntentBridgeSubscriptions = [];
 let independentCoreRuntimeWakeTimer = 0;
+let independentCoreRuntimeWakeRevision = 0;
+const INDEPENDENT_CORE_RUNTIME_WAKE_DELAY_MS = 120;
 
 function hashIndependentIntentText(text = '') {
     let hash = 2166136261;
@@ -129,6 +135,10 @@ function independentIntentCandidateIndex(intent, chat) {
 }
 
 function resolveIndependentIntentCompletionIndex(payload, chat) {
+    if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+        const exactIndex = chat.indexOf(payload);
+        if (exactIndex >= 0 && isIndependentEligibleAssistantMessage(chat[exactIndex])) return exactIndex;
+    }
     const candidates = [payload, payload?.messageId, payload?.message_id, payload?.mesid, payload?.id];
     for (const value of candidates) {
         const index = Number(value);
@@ -149,6 +159,7 @@ function markIndependentGenerationIntentCompleted(payload, reason = 'host-comple
     const finalBodyHash = hashIndependentIntentText(message?.mes || '');
     if (!finalBodyHash || !String(message?.mes || '').trim()) return false;
     let changed = false;
+    let wakeEligible = false;
     const next = intents.map(intent => {
         if (String(intent.chatKey || '') !== chatKey || independentIntentCandidateIndex(intent, chat) !== index) return intent;
         changed = true;
@@ -165,12 +176,14 @@ function markIndependentGenerationIntentCompleted(payload, reason = 'host-comple
             next.intermediateIndex = index;
             return Object.freeze(next);
         }
+        wakeEligible = true;
         return Object.freeze({ ...next,
             completedAt: Date.now(), completionReason: String(reason || '').slice(0, 64),
             finalIndex: index, finalBodyHash, finalProof,
         });
     });
     globalThis[INDEPENDENT_GENERATION_INTENTS_KEY] = next;
+    if (changed && wakeEligible) scheduleIndependentCoreRuntimeWake();
     return changed;
 }
 
@@ -195,24 +208,55 @@ function markIndependentGenerationIntentTerminal(reason = 'host-terminal') {
         });
     });
     globalThis[INDEPENDENT_GENERATION_INTENTS_KEY] = next;
+    if (changed) scheduleIndependentCoreRuntimeWake();
     return changed;
+}
+
+function cancelIndependentCoreRuntimeWake() {
+    independentCoreRuntimeWakeRevision += 1;
+    if (independentCoreRuntimeWakeTimer) {
+        try { globalThis.clearTimeout?.(independentCoreRuntimeWakeTimer); } catch {}
+        independentCoreRuntimeWakeTimer = 0;
+    }
 }
 
 function scheduleIndependentCoreRuntimeWake() {
     if (independentCoreRuntimeWakeTimer || typeof globalThis.setTimeout !== 'function') return false;
-    // Intent proof is recorded synchronously, but the 2 MiB deferred graph starts in
-    // the next task so SillyTavern can dispatch its main request first.
+    // Completion proof is recorded synchronously, but the deferred graph gets a
+    // cancellable paint window. A recursive/new START revokes this wake before it
+    // can compete with the host's next paid request or tool continuation.
+    const revision = ++independentCoreRuntimeWakeRevision;
     independentCoreRuntimeWakeTimer = globalThis.setTimeout(() => {
+        if (revision !== independentCoreRuntimeWakeRevision) return;
         independentCoreRuntimeWakeTimer = 0;
         try {
             const runtimeLoad = globalThis.__rabbitMirrorEnsureDeferredCoreRuntime?.('independent-generation-intent');
             if (runtimeLoad && typeof runtimeLoad.catch === 'function') void runtimeLoad.catch(() => {});
         } catch {}
-    }, 0);
+    }, INDEPENDENT_CORE_RUNTIME_WAKE_DELAY_MS);
     return true;
 }
 
+function independentIntentHasCompletedProof(intent) {
+    return Number(intent?.completedAt) > 0
+        && Number.isInteger(Number(intent?.finalIndex))
+        && !!String(intent?.finalBodyHash || '')
+        && !!String(intent?.finalProof || '');
+}
+
+function independentIntentSupersededByStart(intent, start = {}) {
+    if (String(intent?.chatKey || '') !== String(start.chatKey || '')) return false;
+    if (!independentIntentHasCompletedProof(intent)) return true;
+    const finalIndex = Number(intent.finalIndex);
+    const tailIndex = Number(start.tailIndex);
+    const tailRole = String(start.tailRole || '');
+    if (tailRole === 'system' && start.type === 'normal') return finalIndex === tailIndex - 1;
+    if (tailRole === 'assistant') return finalIndex === tailIndex;
+    return false;
+}
+
 function recordIndependentGenerationIntent(chat, type = '') {
+    cancelIndependentCoreRuntimeWake();
     const messages = Array.isArray(chat) ? chat : [];
     const normalizedType = String(type || 'normal').trim().toLowerCase() || 'normal';
     const chatKey = String(getCurrentChatKey(messages) || '');
@@ -255,11 +299,12 @@ function recordIndependentGenerationIntent(chat, type = '') {
         tailBodyHash: hashIndependentIntentText(proofTail.mes || ''),
         tailSwipeId: Number(proofTail?.swipe_id ?? proofTail?.swipeId ?? 0) || 0,
     });
-    // Every visible START supersedes older proof for this chat. Tool recursion
-    // therefore revokes the pre-tool assistant before the nested final can render.
-    globalThis[INDEPENDENT_GENERATION_INTENTS_KEY] = [...previous.filter(item => String(item?.chatKey || '') !== chatKey), intent]
+    // Revoke only unfinished or exact same-operation proof. Completed replies
+    // from this chat may still be waiting for the deferred runtime and must not
+    // disappear merely because the user starts a second message.
+    const startIdentity = { chatKey, type: normalizedType, tailIndex, tailRole };
+    globalThis[INDEPENDENT_GENERATION_INTENTS_KEY] = [...previous.filter(item => !independentIntentSupersededByStart(item, startIdentity)), intent]
         .slice(-INDEPENDENT_GENERATION_INTENT_MAX);
-    scheduleIndependentCoreRuntimeWake();
     return intent;
 }
 
@@ -289,10 +334,7 @@ export function initIndependentGenerationIntentBridge() {
 }
 
 export function destroyIndependentGenerationIntentBridge({ clearIntents = false } = {}) {
-    if (independentCoreRuntimeWakeTimer) {
-        try { globalThis.clearTimeout?.(independentCoreRuntimeWakeTimer); } catch {}
-        independentCoreRuntimeWakeTimer = 0;
-    }
+    cancelIndependentCoreRuntimeWake();
     for (const { event, handler } of independentIntentBridgeSubscriptions) {
         try { eventSource?.off?.(event, handler); } catch {}
     }
@@ -308,7 +350,7 @@ export function destroyIndependentGenerationIntentBridge({ clearIntents = false 
 
 function loadPromptBuilder() {
     if (!promptBuilderPromise) {
-        promptBuilderPromise = import('./promptBuilder.js?rmv=1.5-varietyfix1').catch(error => {
+        promptBuilderPromise = import('./promptBuilder.js?rmv=1.5.23-ui1').catch(error => {
             promptBuilderPromise = null;
             throw error;
         });
@@ -318,7 +360,7 @@ function loadPromptBuilder() {
 
 function loadGenerationGuard() {
     if (!generationGuardPromise) {
-        generationGuardPromise = import('./generationGuard.js?rmv=1.5-varietyfix1').catch(error => {
+        generationGuardPromise = import('./generationGuard.js?rmv=1.5.23-ui1').catch(error => {
             generationGuardPromise = null;
             throw error;
         });
@@ -346,10 +388,51 @@ export function clearRabbitMirrorPrompt(reason = 'cleared', generationType = '')
     }
 }
 
+// External reads may outlive the host's generation. Capture only the two tail
+// owners (host chat and interceptor copy), not a new full-chat scan or cache.
+function captureFollowPrefetchOwner(chat, sequence) {
+    const hostChat = currentIndependentIntentContext().chat;
+    const capture = messages => {
+        if (!Array.isArray(messages)) return null;
+        const index = messages.length - 1;
+        const message = messages[index];
+        return { messages, index, message, body: String(message?.mes || ''), swipe: Number(message?.swipe_id ?? message?.swipeId ?? 0) || 0 };
+    };
+    return { sequence, chatKey: getCurrentChatKey(chat), input: capture(chat), host: capture(hostChat) };
+}
+
+function followPrefetchOwnerMismatch(owner, chat) {
+    if (!owner || owner.sequence !== generationInvocationSequence) return 'generation-replaced';
+    if (owner.chatKey !== getCurrentChatKey(chat)) return 'chat-changed';
+    if (owner.host && currentIndependentIntentContext().chat !== owner.host.messages) return 'host-chat-replaced';
+    for (const [name, snapshot] of [['input', owner.input], ['host', owner.host]]) {
+        if (!snapshot) continue;
+        if (snapshot.messages.length - 1 !== snapshot.index) return `${name}-length-changed`;
+        if (snapshot.messages[snapshot.index] !== snapshot.message) return `${name}-tail-replaced`;
+        if (String(snapshot.message?.mes || '') !== snapshot.body) return `${name}-body-changed`;
+        if ((Number(snapshot.message?.swipe_id ?? snapshot.message?.swipeId ?? 0) || 0) !== snapshot.swipe) return `${name}-swipe-changed`;
+    }
+    return '';
+}
+
+function followPrefetchOwnerIsCurrent(owner, chat) {
+    return !followPrefetchOwnerMismatch(owner, chat);
+}
+
+function assertFollowPrefetchOwner(owner, chat) {
+    if (followPrefetchOwnerIsCurrent(owner, chat)) return;
+    const error = new Error('本轮外部参考读取期间正文或聊天已变化，未注入兔子镜请求。');
+    error.code = 'RABBIT_MIRROR_EXTERNAL_PREFETCH_STALE';
+    error.ownerMismatch = followPrefetchOwnerMismatch(owner, chat);
+    error.requestCount = 0;
+    throw error;
+}
+
 export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abort, type) {
     const settings = getSettings();
 
     if (settings.generationSource === 'independent') {
+        generationInvocationSequence += 1;
         // The full independent runtime is intentionally deferred during page startup.
         // Capture this exact host generation before returning so a fast model cannot
         // finish before the deferred event subscribers exist. Loading is fire-and-forget:
@@ -365,6 +448,7 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
     const skipImpersonate = settings.skipImpersonate && type === 'impersonate';
 
     if (!settings.enabled || !settings.autoRabbitMirrorInjection || settings.mode === 'off' || skipQuiet || skipImpersonate) {
+        generationInvocationSequence += 1;
         const reason = skipQuiet
             ? 'quiet-skipped'
             : skipImpersonate
@@ -381,12 +465,75 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
     // 未选择反馈时不追加任何字符，基础 Prompt 保持逐字不变。
     clearFeedbackCatExtensionPrompt();
     const generationScopeKey = createGenerationScopeKey(type);
-    const [{ buildRabbitMirrorPromptDetails }, { attachRabbitMirrorGenerationSelection, beginRabbitMirrorGenerationAttempt }] = await Promise.all([
+    const externalEnabled = settings.externalWorldBookRandomEnabled === true && settings.externalWorldBookMixMode !== 'builtin-only';
+    const prefetchOwner = externalEnabled ? captureFollowPrefetchOwner(_chat, generationInvocationSequence) : null;
+    const [{ buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan }, {
+        attachRabbitMirrorGenerationSelection,
+        beginRabbitMirrorGenerationAttempt,
+        registerRabbitMirrorFollowBatch,
+    }] = await Promise.all([
         loadPromptBuilder(),
         loadGenerationGuard(),
     ]);
-    beginRabbitMirrorGenerationAttempt(_chat, generationScopeKey);
-    const promptDetails = buildRabbitMirrorPromptDetails(settings, type, null, generationScopeKey, { chat: _chat });
+    const generationContext = {
+        chat: _chat,
+        batchOperation: {
+            operationId: generationScopeKey,
+            generationType: String(type || 'normal'),
+            preview: false,
+        },
+    };
+    let promptDetails;
+    let frozenPlan;
+    let externalRawMap;
+    let externalStage = 'runtime';
+    try {
+        if (externalEnabled) {
+            assertFollowPrefetchOwner(prefetchOwner, _chat);
+            const repository = await import('./externalWorldBook/store.js?rmv=1.5.23-ui1');
+            assertFollowPrefetchOwner(prefetchOwner, _chat);
+            externalStage = 'index';
+            await repository.hydrateExternalPoolMetadata();
+            assertFollowPrefetchOwner(prefetchOwner, _chat);
+            if (repository.getExternalPoolHydrationStatus().enabledMetadataRebuildRequired.length) {
+                const error = new Error('外部库需要先重建抽取索引。');
+                error.code = 'RABBIT_MIRROR_EXTERNAL_METADATA_REBUILD_REQUIRED';
+                error.requestCount = 0;
+                throw error;
+            }
+            beginRabbitMirrorGenerationAttempt(_chat, generationScopeKey);
+            externalStage = 'selection';
+            frozenPlan = planRabbitMirrorPromptDetails(settings, type, null, generationScopeKey, generationContext);
+            if (frozenPlan.selectedExternalIds.length) {
+                externalStage = 'selected-read';
+                externalRawMap = await repository.getSelectedExternalEntries(frozenPlan.selectedExternalIds);
+                assertFollowPrefetchOwner(prefetchOwner, _chat);
+            }
+            externalStage = 'render';
+            promptDetails = renderRabbitMirrorPromptPlan(frozenPlan, externalRawMap);
+            assertFollowPrefetchOwner(prefetchOwner, _chat);
+        } else {
+            beginRabbitMirrorGenerationAttempt(_chat, generationScopeKey);
+            promptDetails = buildRabbitMirrorPromptDetails(settings, type, null, generationScopeKey, generationContext);
+        }
+    } catch (error) {
+        if (!externalEnabled) throw error;
+        if (frozenPlan?.batchPlan) releasePendingComboBatch({ batchId: frozenPlan.batchPlan.batchId, identity: frozenPlan.batchPlan.identity });
+        // A stale completion must not erase a newer interceptor's installed prompt.
+        if (!prefetchOwner || prefetchOwner.sequence === generationInvocationSequence) {
+            const failure = describeExternalWorldBookPreflightFailure(error);
+            const mismatch = error?.code === 'RABBIT_MIRROR_EXTERNAL_PREFETCH_STALE' ? followPrefetchOwnerMismatch(prefetchOwner, _chat) : '';
+            lastFollowExternalPreflightFailure = Object.freeze({ code: failure.code, stage: externalStage, ownerMismatch: mismatch, requestCount: 0, time: Date.now() });
+            clearRabbitMirrorPrompt('external-material-preflight-rejected', type);
+            globalThis.toastr?.warning?.(`${failure.message} 本轮未注入兔子镜。[${failure.code} / ${externalStage}${mismatch ? ` / ${mismatch}` : ''}]`);
+            console.warn('[RabbitMirror] Follow external preflight:', lastFollowExternalPreflightFailure);
+        }
+        console.warn('[RabbitMirror] Follow external material preflight rejected; no RabbitMirror injection.');
+        return;
+    } finally {
+        externalRawMap?.clear?.();
+    }
+    if (externalEnabled) lastFollowExternalPreflightFailure = null;
     attachRabbitMirrorGenerationSelection(promptDetails.metadata);
     const basePrompt = promptDetails.prompt;
     if (!basePrompt) {
@@ -406,6 +553,24 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
         false,
         role,
     );
+    if (promptDetails.batchPlan) {
+        const marked = markPendingBatchAttempt(promptDetails.batchPlan);
+        const registered = marked && registerRabbitMirrorFollowBatch(
+            _chat,
+            generationScopeKey,
+            promptDetails.batchPlan,
+            promptDetails.metadata,
+        );
+        if (!registered) {
+            if (marked) releasePendingComboBatch({
+                batchId: promptDetails.batchPlan.batchId,
+                identity: promptDetails.batchPlan.identity,
+            });
+            clearRabbitMirrorPrompt('multiface-attempt-registration-failed', type);
+            console.warn('[RabbitMirror] Follow multiface attempt was not registered; the host request continues without RabbitMirror injection.');
+            return;
+        }
+    }
     recordRabbitMirrorInjection({
         prompt,
         basePrompt,
