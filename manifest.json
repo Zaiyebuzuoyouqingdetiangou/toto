@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜小剧场",
   "loading_order": 100,
-  "js": "index.js?rmv=1.5.26-content-title1",
-  "css": "style.css?rmv=1.5.26",
+  "js": "index.js?rmv=1.5.30-layout1",
+  "css": "style.css?rmv=1.5.30",
   "author": "Toto",
-  "version": "1.5.26",
+  "version": "1.5.30",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜小剧场 1.5.26｜半透明抽取来源、导入提醒；修复独立生成输出规则冲突与移动导入窗口定位。不改美化规则，不自动补请求；真实模型及手机兼容仍需实机确认。"
+  "description": "兔子镜小剧场 1.5.30｜基于 1.5.29，修正标题工具挤窄正文与特定局部交互面板被裁切。不改美化提示或抽取规则；跨设备同步未补齐，真实手机效果与发热仍待验收。"
 }
