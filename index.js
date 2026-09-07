@@ -1,4 +1,4 @@
-import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt, destroyIndependentGenerationIntentBridge, initIndependentGenerationIntentBridge, prewarmRabbitMirrorGenerationRuntime } from './src/injector.js?rmv=1.5.26-compat1';
+import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt, destroyIndependentGenerationIntentBridge, initIndependentGenerationIntentBridge, prewarmRabbitMirrorGenerationRuntime } from './src/injector.js?rmv=1.5.26-content-title1';
 import { clearLastCombo } from './src/storage.js?rmv=1.5.26-compat1';
 import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.5.26-compat1';
 import { getSettings, updateSettings } from './src/settings.js?rmv=1.5.26-compat1';
@@ -61,11 +61,11 @@ async function ensureDeferredCoreRuntime(reason = 'scheduled-idle') {
     if (deferredRuntimeModules) return deferredRuntimeModules;
     if (deferredRuntimePromise) return deferredRuntimePromise;
     deferredRuntimePromise = Promise.all([
-        import('./src/outputSanitizer.js?rmv=1.5.26-preview-title2'),
-        import('./src/visualScanner.js?rmv=1.5.26-preview-title2'),
-        import('./src/independentApi.js?rmv=1.5.26-preview-title2'),
+        import('./src/outputSanitizer.js?rmv=1.5.26-content-title1'),
+        import('./src/visualScanner.js?rmv=1.5.26-content-title1'),
+        import('./src/independentApi.js?rmv=1.5.26-content-title1'),
         import('./src/touchTheater.js?rmv=1.5.26-compat1'),
-        import('./src/ui.js?rmv=1.5.26-preview-title2'),
+        import('./src/ui.js?rmv=1.5.26-content-title1'),
     ]).then(async ([output, visual, independent, touch, ui]) => {
         if (runtimeCancelled) return null;
         deferredRuntimeModules = { output, visual, independent, touch, ui };
@@ -257,7 +257,7 @@ function loadMirrorVisualCompat() {
     if (!deferredRuntimeModules) return Promise.resolve(null);
     return Promise.all([
         loadOptional('checkedSelectorRepair', './src/checkedSelectorRepair.js?rmv=1.4.30.26', mod => mod.initRabbitMirrorCheckedSelectorRepair?.()),
-        loadOptional('renderedVisualFeedback', './src/renderedVisualFeedbackHotfix.js?rmv=1.5.26-preview-title2', mod => mod.initRabbitMirrorRenderedVisualFeedbackHotfix?.()),
+        loadOptional('renderedVisualFeedback', './src/renderedVisualFeedbackHotfix.js?rmv=1.5.26-content-title1', mod => mod.initRabbitMirrorRenderedVisualFeedbackHotfix?.()),
     ]);
 }
 
