@@ -350,7 +350,7 @@ export function destroyIndependentGenerationIntentBridge({ clearIntents = false 
 
 function loadPromptBuilder() {
     if (!promptBuilderPromise) {
-        promptBuilderPromise = import('./promptBuilder.js?rmv=1.5.26-compat1').catch(error => {
+        promptBuilderPromise = import('./promptBuilder.js?rmv=1.5.26-content-title1').catch(error => {
             promptBuilderPromise = null;
             throw error;
         });

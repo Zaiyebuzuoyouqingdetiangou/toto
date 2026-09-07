@@ -12,7 +12,7 @@ import {
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
 } from './feedbackCat.js?rmv=1.5.26-compat1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.26-preview-title2';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.26-content-title1';
 import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.26-compat1';
 import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.26-compat1';
 import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.4.30.23';
@@ -24,7 +24,10 @@ const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
 const TOOL_ENTRY_HOST_ATTR = 'data-rabbit-mirror-tool-entry-host';
 const EXTERNAL_REFERENCE_NOTE_ATTR = 'data-rabbit-mirror-reference-note';
-const EXTERNAL_TITLE_PREFIX_ATTR = 'data-rabbit-mirror-title-prefix';
+const MIRROR_TITLE_PREFIX_ATTR = 'data-rabbit-mirror-title-prefix';
+const MIRROR_TITLE_PART_ATTR = 'data-rabbit-mirror-title-part';
+const MIRROR_TITLE_DISPLAY_ATTR = 'data-rabbit-mirror-title-display';
+const MIRROR_TITLE_SOURCE_ATTR = 'data-rabbit-mirror-title-source';
 
 function ensureFeedbackCatRuntimeStyle() {
     if (typeof document === 'undefined') return;
@@ -35,12 +38,19 @@ function ensureFeedbackCatRuntimeStyle() {
         (document.head || document.documentElement)?.appendChild(style);
     }
     const css = `
-summary > span[${EXTERNAL_TITLE_PREFIX_ATTR}="true"] {
+summary span[${MIRROR_TITLE_PART_ATTR}][${MIRROR_TITLE_PART_ATTR}],
+summary span[${MIRROR_TITLE_PART_ATTR}][${MIRROR_TITLE_PART_ATTR}]::before {
     all: unset !important;
     display: inline !important;
 }
-summary > span[${EXTERNAL_TITLE_PREFIX_ATTR}="true"]::before {
-    content: "兔子镜：" !important;
+summary span[${MIRROR_TITLE_PART_ATTR}][${MIRROR_TITLE_PART_ATTR}]::before {
+    content: attr(${MIRROR_TITLE_DISPLAY_ATTR}) !important;
+}
+summary span[${MIRROR_TITLE_PART_ATTR}]::after {
+    content: none !important;
+}
+summary span[${MIRROR_TITLE_PART_ATTR}] > span[${MIRROR_TITLE_SOURCE_ATTR}][${MIRROR_TITLE_SOURCE_ATTR}] {
+    display: none !important;
 }
 [${TOOL_ENTRY_HOST_ATTR}][${TOOL_ENTRY_HOST_ATTR}] {
     all: initial !important;
@@ -7097,6 +7107,7 @@ function filterRabbitMirrorRuntimeText(value) {
 function filterRabbitMirrorRuntimeDom(root) {
     const words = getSettings()?.rabbitMirrorBannedWords;
     if (!Array.isArray(words) || !words.length) return 0;
+    clearMirrorTitleDisplayArtifacts(root);
     return applyRabbitMirrorBannedWordsToDom(root, words);
 }
 
@@ -17573,6 +17584,7 @@ export function sanitizeRabbitMirrorUntrustedTemplate(template) {
     // Fail closed before any broad selector walk. This prevents model-produced tag,
     // attribute, CSS-rule and deep-nesting bombs from turning sanitization into a long task.
     if (!validateRabbitMirrorTemplateStructuralBudget(template)) return false;
+    clearMirrorTitleDisplayArtifacts(template.content);
 
     template.content.querySelectorAll(RABBIT_MIRROR_BLOCKED_RENDER_SELECTOR).forEach(node => node.remove());
     // Local attribution is rebuilt from exact-owner metadata, never model HTML.
@@ -22702,17 +22714,94 @@ function recipeButtonShouldBeVisible(recipe, blacklistState = getBlacklistState(
         && (!recipe.hasExternalReferences || !!((recipe.themes?.length || 0) + (recipe.formats?.length || 0)));
 }
 
-function ensureExternalMirrorTitlePrefix(summary, recipe) {
-    if (!summary) return;
-    const existing = summary.querySelector(`:scope > [${EXTERNAL_TITLE_PREFIX_ATTR}]`);
-    const needed = recipe?.hasExternalReferences === true && !/兔子镜\s*[:：]/.test(summary.textContent || '');
-    if (!needed) { existing?.remove(); return; }
-    if (existing) return;
-    // Display-only prefix: raw title text remains the identity used by repair/retry.
-    const prefix = document.createElement('span');
-    prefix.setAttribute(EXTERNAL_TITLE_PREFIX_ATTR, 'true');
-    prefix.setAttribute('aria-hidden', 'true');
-    summary.prepend(prefix);
+function clearMirrorTitleDisplayArtifacts(root) {
+    // Rebuild display text from filtered source, never from model/persisted attributes.
+    root?.querySelectorAll?.(`span[${MIRROR_TITLE_SOURCE_ATTR}], span[${MIRROR_TITLE_PART_ATTR}]`)
+        .forEach(node => node.replaceWith(...node.childNodes));
+    root?.querySelectorAll?.(`span[${MIRROR_TITLE_PREFIX_ATTR}]`).forEach(node => {
+        if (!node.textContent) node.remove();
+    });
+}
+
+function mirrorTitleDisplayParts(texts) {
+    const chars = texts.flatMap((node, part) => Array.from(node.data, char => ({ char, part })));
+    const trim = () => {
+        while (chars.length && /\s/u.test(chars[0].char)) chars.shift();
+        while (chars.length && /\s/u.test(chars[chars.length - 1].char)) chars.pop();
+    };
+    const pairs = { '【': '】', '[': ']', '［': '］' };
+    for (let pass = 0; pass < 8 && chars.length; pass += 1) {
+        trim();
+        if (!chars.length) break;
+        if (pairs[chars[0].char] === chars[chars.length - 1].char) {
+            chars.shift(); chars.pop();
+            continue;
+        }
+        const text = chars.map(item => item.char).join('');
+        const brand = text.match(/^([\p{P}\p{S}\u200d\ufe0f\s]*?)(?:兔子[镜鏡]|Rabbit\s*Mirror)\s*[:：]\s*/iu);
+        if (!brand) break;
+        const decorationLength = Array.from(brand[1]).length;
+        chars.splice(decorationLength, Array.from(brand[0]).length - decorationLength);
+    }
+    trim();
+    if (!chars.length) return null;
+    const display = texts.map(() => '');
+    for (const { char, part } of chars) display[part] += char === '•' ? '·' : char;
+    display[chars[0].part] = `【兔子镜：${display[chars[0].part]}`;
+    display[chars[chars.length - 1].part] += '】';
+    return display;
+}
+
+function ensureMirrorTitleDisplay(summary) {
+    if (!summary?.childNodes || summary.childNodes.length > 256) return;
+    const skip = `[${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}], [${RESAY_ATTR}], [${MIRROR_TITLE_PREFIX_ATTR}], button, input, select, textarea, a, label, svg, style, script, template, noscript, [contenteditable], [role="button"], [role="link"]`;
+    const texts = [];
+    const stack = [...summary.childNodes].reverse();
+    let visited = 0, length = 0;
+    while (stack.length) {
+        const node = stack.pop();
+        if (++visited > 256) return;
+        if (node.nodeType === 3) {
+            length += node.data.length;
+            if (length > 2048 || texts.length >= 64) return;
+            texts.push(node);
+        } else if (node.nodeType === 1 && !node.matches(skip)) {
+            if (node.hidden || node.getAttribute('aria-hidden') === 'true') continue;
+            if (visited + stack.length + node.childNodes.length > 256) return;
+            stack.push(...[...node.childNodes].reverse());
+        }
+    }
+    const display = mirrorTitleDisplayParts(texts);
+    if (!display) return;
+    const raw = texts.map(node => node.data).join('');
+    const alreadyFormatted = display.join('') === raw;
+    summary.querySelectorAll(`:scope > span[${MIRROR_TITLE_PREFIX_ATTR}]`).forEach(node => {
+        if (!node.textContent) node.remove();
+    });
+    let styleReady = false;
+    texts.forEach((node, index) => {
+        const source = node.parentElement;
+        let part = source?.hasAttribute(MIRROR_TITLE_SOURCE_ATTR)
+            && source.parentElement?.hasAttribute(MIRROR_TITLE_PART_ATTR) ? source.parentElement : null;
+        if (alreadyFormatted || display[index] === node.data) {
+            if (part) part.replaceWith(node);
+            return;
+        }
+        // Keep original Text nodes/receipts and rich-title parents; repair/retry reads raw textContent.
+        if (!part) {
+            if (!styleReady) { ensureFeedbackCatRuntimeStyle(); styleReady = true; }
+            part = summary.ownerDocument.createElement('span');
+            part.setAttribute(MIRROR_TITLE_PART_ATTR, 'true');
+            const original = summary.ownerDocument.createElement('span');
+            original.setAttribute(MIRROR_TITLE_SOURCE_ATTR, 'true');
+            node.replaceWith(part);
+            original.appendChild(node);
+            part.appendChild(original);
+        }
+        if (part.getAttribute(MIRROR_TITLE_DISPLAY_ATTR) !== display[index]) {
+            part.setAttribute(MIRROR_TITLE_DISPLAY_ATTR, display[index]);
+        }
+    });
 }
 
 function installExternalReferenceNote(details, recipe) {
@@ -22770,8 +22859,8 @@ function installRecipeButtonForRoot(root) {
     const details = root.matches?.('details') ? root : root.querySelector(':scope > details') || root.querySelector('details');
     const summary = details?.querySelector?.(':scope > summary') || details?.querySelector?.('summary');
     if (!summary) return false;
+    ensureMirrorTitleDisplay(summary);
     const recipe = rabbitMirrorRecipeForRoot(root, true);
-    ensureExternalMirrorTitlePrefix(summary, recipe);
     installExternalReferenceNote(details, recipe);
     if (!recipeButtonShouldBeVisible(recipe, getBlacklistState())) {
         removeRecipeButtonsFromSummary(summary);
