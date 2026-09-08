@@ -1,25 +1,25 @@
-import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.31-compat1';
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5.31-compat1';
-import { assertRabbitMirrorIndependentResponseBytes, assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.5.31-compat1';
-import { buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan } from './promptBuilder.js?rmv=1.5.31-compat1';
-import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from './externalWorldBook/store.js?rmv=1.5.31-compat1';
-import { describeExternalWorldBookPreflightFailure, describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.31-compat1';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, armRabbitMirrorFirstUseInteraction, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.31-compat1';
-import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.31-compat1';
-import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=1.5.31-compat1';
-import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from './multifaceProtocol.js?rmv=1.5.31-compat1';
-import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.31-compat1';
-import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, getRabbitMirrorFollowBatchFailure, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.31-compat1';
-import { evaluateIndependentPostSanitizeQuality } from './independentQualityGate.js?rmv=1.5.31-compat1';
-import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions, markPendingBatchAttempt, commitPendingComboBatch, releasePendingComboBatch } from './storage.js?rmv=1.5.31-compat1';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5.31-compat1';
-import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.31-compat1';
-import { readFollowPartialResult, followPartialResultFaceOwnerKey } from './followPartialResults.js?rmv=1.5.31-compat1';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.5.31-compat1';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.31-compat1';
+import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.34-external1';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5.34-external1';
+import { assertRabbitMirrorIndependentResponseBytes, assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.5.34-external1';
+import { buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan } from './promptBuilder.js?rmv=1.5.34-external1';
+import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from './externalWorldBook/store.js?rmv=1.5.34-external1';
+import { describeExternalWorldBookPreflightFailure, describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.34-external1';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, armRabbitMirrorFirstUseInteraction, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.34-external1';
+import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.34-external1';
+import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=1.5.34-external1';
+import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from './multifaceProtocol.js?rmv=1.5.34-external1';
+import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.34-external1';
+import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, getRabbitMirrorFollowBatchFailure, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.34-external1';
+import { evaluateIndependentPostSanitizeQuality } from './independentQualityGate.js?rmv=1.5.34-external1';
+import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions, markPendingBatchAttempt, commitPendingComboBatch, releasePendingComboBatch } from './storage.js?rmv=1.5.34-external1';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5.34-external1';
+import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.34-external1';
+import { readFollowPartialResult, followPartialResultFaceOwnerKey } from './followPartialResults.js?rmv=1.5.34-external1';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.5.34-external1';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.34-external1';
 import { INDEPENDENT_BEHAVIOR_PATCH } from '../data/independentBehaviorPatch.js?rmv=1.4.30.17';
 
-const RUNTIME_VERSION = '1.5.31';
+const RUNTIME_VERSION = '1.5.34';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_securityfix2_v2';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -3542,6 +3542,7 @@ function wireIndependentRejectedFaceControls(host){
     if(target.childNodes.length) target.replaceChildren();
     const available=independentRejectedFacePreviews.has(id);
     button.textContent=available?'查看被拦截内容':'预览已失效';
+    button.setAttribute('aria-expanded','false');
     button.disabled=!available;
    };
    closePreview();
@@ -3551,9 +3552,19 @@ function wireIndependentRejectedFaceControls(host){
     const html=independentRejectedFacePreviews.get(id);
     if(!html){ closePreview(); return; }
     const template=document.createElement('template'); template.innerHTML=html;
+    // The old preview is a complete, already sanitized face. Open only its
+    // outer disclosure; nested narrative controls and neighboring faces keep
+    // their own state. Previously the preview merely revealed a second lid.
+    for(const child of template.content.children){
+     if(child.tagName==='DETAILS') child.open=true;
+     else if(child.tagName==='TOTO'){
+      const face=child.querySelector(':scope > details');
+      if(face) face.open=true;
+     }
+    }
     target.replaceChildren(template.content);
     target.hidden=false; button.textContent='收起预览';
-    globalThis.toastr?.info?.('此面未通过质量检查，仅供预览。','',{timeOut:1600,extendedTimeOut:0,showDuration:100,hideDuration:180,progressBar:false,closeButton:false});
+    button.setAttribute('aria-expanded','true');
    },true);
    details.addEventListener('toggle',()=>{ if(!details.open) closePreview(); });
   }
@@ -3580,7 +3591,7 @@ function prepareIndependentMultifaceResult(raw,metadata,requestDiagnostic,reques
   throw independentMultifacePostprocessError(`⚠️ 多面结果未完整生成（完整 ${parsed.faces?.length||0}/${metadata.faceCount} 面${detail.terminalFace?`，第 ${detail.terminalFace} 面`:''}；${detail.protocolErrorCode}）。本轮只发送了 1 次请求，不会自动补发。${independentMultifaceIncompleteHint(detail.protocolErrorCode,requestDiagnostic?.finishReason)}`,'multiface-incomplete',-1,detail);
  }
  const count=Number(metadata.faceCount);
- const prepared=Array(count).fill(null); const scans=Array(count).fill(null); const failures=Array(count).fill(null); const rejectedPreviews=Array(count).fill(''); const seenBodies=new Set(); const seenTitles=new Set();
+ const prepared=Array(count).fill(null); const scans=Array(count).fill(null); const failures=Array(count).fill(null); const rejectedPreviews=Array(count).fill(''); const seenTitles=new Set();
  for(let index=0;index<count;index+=1){
   if(!sourceFaces.some(face=>face.index===index)) failures[index]={faceIndex:index,status:'failed',code:String(parsed.errors?.[0]?.code||'incomplete-face')};
  }
@@ -3598,16 +3609,9 @@ function prepareIndependentMultifaceResult(raw,metadata,requestDiagnostic,reques
    if(sourceTemplate.content.querySelector('[data-rabbit-mirror-css-scope]'))
     throw independentMultifacePostprocessError(`${prefix}返回了保留的运行时样式标记，未挂载；不会自动补发。`,'multiface-untrusted-css-scope',face.index);
   }
-  const bodyFingerprint=String(face.inner||'').replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi,'').replace(/<summary\b[^>]*>[\s\S]*?<\/summary\s*>/gi,'').replace(/<[^>]+>/g,'').replace(/\s+/g,'').trim();
-  if(bodyFingerprint.length>80 && seenBodies.has(bodyFingerprint)) throw independentMultifacePostprocessError(`${prefix}与另一面正文重复，未作为多面成品保存；不会自动补发。`,'multiface-duplicate-body',face.index);
-  seenBodies.add(bodyFingerprint);
   if(!independentMirrorBodyEvidence(face.inner)) throw independentMultifacePostprocessError(`${prefix}仅有标题或样式，没有可用正文；不会自动补发。`,'multiface-empty-face',face.index);
-  const visual=independentVisualProgramIntegrity(face.inner);
-  if(!visual.ok) throw independentMultifacePostprocessError(`${prefix}交互或样式程序不完整；不会自动补发。`,'multiface-visual-program-invalid',face.index,{visualFailure:String(visual.reason||'')});
   const html=prepareIndependentReadyHtml(face.inner);
   if(!html || !independentMirrorBodyEvidence(html)) throw independentMultifacePostprocessError(`${prefix}安全净化后没有可用正文；不会自动补发。`,'multiface-post-sanitize-empty',face.index);
-  const safeVisual=independentVisualProgramIntegrity(html);
-  if(!safeVisual.ok) throw independentMultifacePostprocessError(`${prefix}安全净化后交互或样式不完整；不会自动补发。`,'multiface-post-sanitize-visual-invalid',face.index,{visualFailure:String(safeVisual.reason||'')});
   const scan=scanRabbitMirrorHtml(wrappedIndependentMirrorHtml(html),null)||{};
   const quality=evaluateIndependentPostSanitizeQuality(html,{
    ...faceMetadata,
@@ -3968,30 +3972,12 @@ ${independentUserTail}`;
    republishIndependentSemanticFailure(requestDiagnostic,'empty-mirror-body','',{responseChars:raw.length});
    throw new Error('独立 API 返回了只有标题或样式的空壳兔子镜；本次结果不会保存，也不会交给维修兔改写正文。请在挨打猫中使用“重说”。');
  }
- const visualProgram=independentVisualProgramIntegrity(inner);
- if(!visualProgram.ok){
-   const detail=visualProgram.reason==='unresolved-css-variables'
-    ? `引用了未定义的 CSS 变量：${visualProgram.unresolvedVariables.slice(0,4).join('、')}`
-    : visualProgram.reason==='state-css-missing'
-      ? '存在 checkbox/radio 状态交互，但没有对应的有效样式程序'
-      : '大量自定义 class 依赖样式表，但没有有效样式定义';
-   republishIndependentSemanticFailure(requestDiagnostic,'visual-program-invalid','',{responseChars:raw.length,visualFailure:String(visualProgram.reason||'')});
-   throw new Error(`独立 API 返回了 HTML 主体，但视觉样式程序缺失（${detail}）。本次半成品不会保存，也不会让维修兔凭空猜测 CSS；请重新生成兔子镜。`);
- }
  const preparedHtml=prepareIndependentReadyHtml(inner);
  if(!preparedHtml || !independentMirrorBodyEvidence(preparedHtml)){
    republishIndependentSemanticFailure(requestDiagnostic,'post-sanitize-empty','',{responseChars:raw.length});
    throw new Error('⚠️ 独立 API 返回了完整结构，但经过安全净化后没有留下可用正文。本次结果不会保存；本轮只发送了 1 次生成请求，不会自动重发，请手动重新生成兔子镜。');
  }
  assertIndependentMarkupComplexityWithDiagnostic(preparedHtml,'sanitized',requestDiagnostic);
- const preparedVisualProgram=independentVisualProgramIntegrity(preparedHtml);
- if(!preparedVisualProgram.ok){
-   republishIndependentSemanticFailure(requestDiagnostic,'post-sanitize-visual-program-invalid','',{
-    responseChars:raw.length,
-    visualFailure:String(preparedVisualProgram.reason||''),
-   });
-   throw new Error('⚠️ 兔子镜的视觉样式程序在安全净化后变得不完整。本次半成品不会保存；本轮只发送了 1 次生成请求，不会自动重发，请手动重新生成兔子镜。');
- }
  const postSanitizeScan=scanRabbitMirrorHtml(wrappedIndependentMirrorHtml(preparedHtml),null)||{};
  const selectedFormats=independentSelectedFormatDescriptors(details.metadata);
  const postSanitizeQuality=evaluateIndependentPostSanitizeQuality(preparedHtml,{
@@ -8249,7 +8235,7 @@ function showIndependentHistory(root,owner={}){
 }
 function resayIndependentMirror(root,owner={}){
  if(getSettings().generationSource==='follow'){
-  void import('./followFaceRetry.js?rmv=1.5.31-compat1').then(({retryFollowFace})=>retryFollowFace(root,owner,{
+  void import('./followFaceRetry.js?rmv=1.5.34-external1').then(({retryFollowFace})=>retryFollowFace(root,owner,{
    getContext,hostBusy:hostGenerationLooksActive,maxRequestChars:MAX_INDEPENDENT_REQUEST_CHARS,
    resolveOwner:target=>{
     const host=target?.closest?.('[data-rabbit-mirror-external-source="true"][data-rm-source="follow"]');
