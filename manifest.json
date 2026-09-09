@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜小剧场",
   "loading_order": 100,
-  "js": "index.js?rmv=1.5.34-external1",
-  "css": "style.css?rmv=1.5.34",
+  "js": "index.js?rmv=1.5.38-update1",
+  "css": "style.css?rmv=1.5.38",
   "author": "Toto",
-  "version": "1.5.34",
+  "version": "1.5.38",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜小剧场 1.5.34｜基于 1.5.33，收窄塔罗规则误触发，改善外部抽签冷却耗尽后的重复倾向。保留美化、成品展示、自然返回与单次请求保护，无需重导世界书。"
+  "description": "兔子镜小剧场：跟随或独立生成可交互小剧场。"
 }

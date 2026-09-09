@@ -1,16 +1,16 @@
 import { eventSource, event_types, setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
 import * as hostRuntime from '../../../../../script.js';
-import { MODULE_NAME, getSettings } from './settings.js?rmv=1.5.34-external1';
+import { MODULE_NAME, getSettings } from './settings.js?rmv=1.5.38-update1';
 import {
     buildFeedbackCatFinalCheck,
     buildFeedbackCatPrompt,
     clearFeedbackCatExtensionPrompt,
     getActiveFeedbackForCurrentChat,
     markFeedbackCatInjected,
-} from './feedbackCat.js?rmv=1.5.34-external1';
-import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.5.34-external1';
-import { getCurrentChatKey, markPendingBatchAttempt, releasePendingComboBatch } from './storage.js?rmv=1.5.34-external1';
-import { describeExternalWorldBookPreflightFailure } from './externalWorldBook/errors.js?rmv=1.5.34-external1';
+} from './feedbackCat.js?rmv=1.5.38-update1';
+import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.5.38-update1';
+import { getCurrentChatKey, markPendingBatchAttempt, releasePendingComboBatch } from './storage.js?rmv=1.5.38-update1';
+import { describeExternalWorldBookPreflightFailure } from './externalWorldBook/errors.js?rmv=1.5.38-update1';
 
 const INJECT_KEY = `${MODULE_NAME}:auto_injection`;
 
@@ -32,6 +32,65 @@ let independentIntentBridgeSubscriptions = [];
 let independentCoreRuntimeWakeTimer = 0;
 let independentCoreRuntimeWakeRevision = 0;
 const INDEPENDENT_CORE_RUNTIME_WAKE_DELAY_MS = 120;
+const INDEPENDENT_EARLY_PACKET_KEY = '__rabbitMirrorEarlyBodyPacket';
+const INDEPENDENT_EARLY_BRIDGE_KEY = '__rabbitMirrorEarlyBodyBridge';
+
+function independentEarlyIntentEnabled(settings = getSettings(), ctx = currentIndependentIntentContext()) {
+    return settings.enabled !== false && settings.autoRabbitMirrorInjection !== false
+        && settings.generationSource === 'independent' && settings.mode !== 'off'
+        && settings.independentEarlyBodyEnabled === true
+        && !!String(settings.independentEarlyBodyChatKey || '')
+        && String(settings.independentEarlyBodyChatKey) === String(getCurrentChatKey(ctx.chat) || '')
+        && Array.isArray(settings.independentEarlyBodyTags) && settings.independentEarlyBodyTags.length > 0;
+}
+function independentEarlySelectionKey(settings) {
+    return JSON.stringify([String(settings.independentEarlyBodyChatKey || ''), settings.independentEarlyBodyTags || [], settings.independentContextExcludedTags || []]);
+}
+
+function cancelIndependentEarlyIntent(reason = 'host-operation-replaced') {
+    delete globalThis[INDEPENDENT_EARLY_PACKET_KEY];
+    try { globalThis[INDEPENDENT_EARLY_BRIDGE_KEY]?.({ kind: 'cancel', reason }); } catch {}
+}
+
+function recordIndependentEarlyToken(text) {
+    const ctx = currentIndependentIntentContext();
+    const settings = getSettings();
+    if (!independentEarlyIntentEnabled(settings, ctx)) {
+        if (globalThis[INDEPENDENT_EARLY_PACKET_KEY]) cancelIndependentEarlyIntent('early-settings-changed');
+        return;
+    }
+    const processor = ctx.streamingProcessor;
+    const index = processor?.messageId;
+    const message = Number.isSafeInteger(index) ? ctx.chat?.[index] : null;
+    const type = String(processor?.type || '').toLowerCase();
+    // Public ST/TT event payload is cumulative text, emitted before its next DOM
+    // paint. Never concatenate successive payloads or await work in this listener.
+    if (typeof text !== 'string' || text.length > 256 * 1024 || !processor
+        || processor.result !== text || processor.isStopped === true || processor.isFinished === true
+        || processor.abortController?.signal?.aborted || !isIndependentEligibleAssistantMessage(message)
+        || !INDEPENDENT_GENERATION_INTENT_TYPES.has(type)
+        || (Array.isArray(processor.toolCalls) && processor.toolCalls.length)) return;
+    try { if (typeof ctx.canPerformToolCalls !== 'function' || ctx.canPerformToolCalls(type) !== false) return; }
+    catch { return; }
+    const chatKey = String(getCurrentChatKey(ctx.chat) || '');
+    const intent = currentIndependentGenerationIntents().slice().reverse().find(item => item.chatKey === chatKey
+        && item.type === type && !item.auxiliaryTerminalPending && !item.terminalAt
+        && independentIntentCandidateIndex(item, ctx.chat) === index);
+    if (!intent || !intent.earlySelectionKey || intent.earlySelectionKey !== independentEarlySelectionKey(settings)) {
+        if (globalThis[INDEPENDENT_EARLY_PACKET_KEY]) cancelIndependentEarlyIntent('early-selection-changed');
+        return;
+    }
+    const prefix = typeof processor.continueMessage === 'string' ? processor.continueMessage : '';
+    if (prefix.length + text.length > 256 * 1024) return;
+    const packet = { intentId: intent.id, selectionKey: intent.earlySelectionKey, chat: ctx.chat, chatKey, processor, index, message,
+        swipe: Number(message.swipe_id ?? message.swipeId ?? 0) || 0, type, text: prefix + text };
+    globalThis[INDEPENDENT_EARLY_PACKET_KEY] = packet;
+    try { globalThis[INDEPENDENT_EARLY_BRIDGE_KEY]?.({ kind: 'token', packet }); } catch {}
+}
+
+function prewarmIndependentEarlyIntent(intent) {
+    if (intent && independentEarlyIntentEnabled()) scheduleIndependentCoreRuntimeWake();
+}
 
 function hashIndependentIntentText(text = '') {
     let hash = 2166136261;
@@ -255,8 +314,9 @@ function independentIntentSupersededByStart(intent, start = {}) {
     return false;
 }
 
-function recordIndependentGenerationIntent(chat, type = '') {
+function recordIndependentGenerationIntent(chat, type = '', earlySelectionKey = '') {
     cancelIndependentCoreRuntimeWake();
+    if (globalThis[INDEPENDENT_EARLY_PACKET_KEY]) cancelIndependentEarlyIntent();
     const messages = Array.isArray(chat) ? chat : [];
     const normalizedType = String(type || 'normal').trim().toLowerCase() || 'normal';
     const chatKey = String(getCurrentChatKey(messages) || '');
@@ -290,6 +350,7 @@ function recordIndependentGenerationIntent(chat, type = '') {
     independentGenerationIntentSequence += 1;
     const intent = Object.freeze({
         id: `${now.toString(36)}:${independentGenerationIntentSequence.toString(36)}`,
+        earlySelectionKey: String(earlySelectionKey || ''),
         chatKey,
         startedAt: now,
         type: normalizedType,
@@ -309,6 +370,7 @@ function recordIndependentGenerationIntent(chat, type = '') {
 }
 
 function clearIndependentGenerationIntents() {
+    cancelIndependentEarlyIntent('chat-changed');
     globalThis[INDEPENDENT_GENERATION_INTENTS_KEY] = [];
     globalThis[INDEPENDENT_GENERATION_STOPS_KEY] = [];
 }
@@ -320,7 +382,11 @@ export function initIndependentGenerationIntentBridge() {
         // END/STOP carries no message owner in SillyTavern. Preserve only an
         // unscoped terminal hint; never fabricate a final正文 hash from the tail.
         [event_types?.GENERATION_ENDED, () => markIndependentGenerationIntentTerminal('generation-ended')],
-        [event_types?.GENERATION_STOPPED, () => markIndependentGenerationIntentTerminal('generation-stopped')],
+        [event_types?.GENERATION_STOPPED, () => {
+            markIndependentGenerationIntentTerminal('generation-stopped');
+            cancelIndependentEarlyIntent('host-stopped');
+        }],
+        [event_types?.STREAM_TOKEN_RECEIVED, recordIndependentEarlyToken],
         [event_types?.CHARACTER_MESSAGE_RENDERED, payload => markIndependentGenerationIntentCompleted(payload, 'character-rendered')],
         [event_types?.CHAT_CHANGED, clearIndependentGenerationIntents],
     ].filter(([event]) => !!event);
@@ -335,6 +401,7 @@ export function initIndependentGenerationIntentBridge() {
 
 export function destroyIndependentGenerationIntentBridge({ clearIntents = false } = {}) {
     cancelIndependentCoreRuntimeWake();
+    if (globalThis[INDEPENDENT_EARLY_PACKET_KEY]) cancelIndependentEarlyIntent('bridge-destroyed');
     for (const { event, handler } of independentIntentBridgeSubscriptions) {
         try { eventSource?.off?.(event, handler); } catch {}
     }
@@ -350,7 +417,7 @@ export function destroyIndependentGenerationIntentBridge({ clearIntents = false 
 
 function loadPromptBuilder() {
     if (!promptBuilderPromise) {
-        promptBuilderPromise = import('./promptBuilder.js?rmv=1.5.34-external1').catch(error => {
+        promptBuilderPromise = import('./promptBuilder.js?rmv=1.5.38-update1').catch(error => {
             promptBuilderPromise = null;
             throw error;
         });
@@ -360,7 +427,7 @@ function loadPromptBuilder() {
 
 function loadGenerationGuard() {
     if (!generationGuardPromise) {
-        generationGuardPromise = import('./generationGuard.js?rmv=1.5.34-external1').catch(error => {
+        generationGuardPromise = import('./generationGuard.js?rmv=1.5.38-update1').catch(error => {
             generationGuardPromise = null;
             throw error;
         });
@@ -438,7 +505,9 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
         // finish before the deferred event subscribers exist. Loading is fire-and-forget:
         // it never blocks or joins the host's paid main-generation request.
         if (settings.enabled && settings.autoRabbitMirrorInjection && settings.mode !== 'off') {
-            recordIndependentGenerationIntent(_chat, type);
+            const intent = recordIndependentGenerationIntent(_chat, type,
+                settings.independentEarlyBodyEnabled === true ? independentEarlySelectionKey(settings) : '');
+            if (settings.independentEarlyBodyEnabled === true) prewarmIndependentEarlyIntent(intent);
         }
         clearRabbitMirrorPrompt('independent-api', type);
         return;
@@ -466,7 +535,18 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
     clearFeedbackCatExtensionPrompt();
     const generationScopeKey = createGenerationScopeKey(type);
     const externalEnabled = settings.externalWorldBookRandomEnabled === true && settings.externalWorldBookMixMode !== 'builtin-only';
-    const prefetchOwner = externalEnabled ? captureFollowPrefetchOwner(_chat, generationInvocationSequence) : null;
+    const appearanceEnabled = settings.appearanceReferenceEnabled === true;
+    const appearanceRequest = { enabled: appearanceEnabled, revision: String(settings.appearanceReferenceRevision || '') };
+    const materialEnabled = externalEnabled || appearanceEnabled;
+    const prefetchOwner = materialEnabled ? captureFollowPrefetchOwner(_chat, generationInvocationSequence) : null;
+    const assertAppearanceOwner = () => {
+        if (!appearanceEnabled) return;
+        const current = getSettings();
+        if (current.appearanceReferenceEnabled !== true || current.appearanceReferenceRevision !== appearanceRequest.revision) {
+            const error = new Error('外观参考设置在读取期间已改变；本轮未注入兔子镜。');
+            error.code = 'RABBIT_MIRROR_APPEARANCE_STALE'; error.requestCount = 0; throw error;
+        }
+    };
     const [{ buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan }, {
         attachRabbitMirrorGenerationSelection,
         beginRabbitMirrorGenerationAttempt,
@@ -486,42 +566,57 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
     let promptDetails;
     let frozenPlan;
     let externalRawMap;
+    let appearanceMaterial;
     let externalStage = 'runtime';
     try {
-        if (externalEnabled) {
+        if (materialEnabled) {
             assertFollowPrefetchOwner(prefetchOwner, _chat);
-            const repository = await import('./externalWorldBook/store.js?rmv=1.5.34-external1');
-            assertFollowPrefetchOwner(prefetchOwner, _chat);
-            externalStage = 'index';
-            await repository.hydrateExternalPoolMetadata();
-            assertFollowPrefetchOwner(prefetchOwner, _chat);
-            if (repository.getExternalPoolHydrationStatus().enabledMetadataRebuildRequired.length) {
-                const error = new Error('外部库需要先重建抽取索引。');
-                error.code = 'RABBIT_MIRROR_EXTERNAL_METADATA_REBUILD_REQUIRED';
-                error.requestCount = 0;
-                throw error;
+            assertAppearanceOwner();
+            let repository;
+            if (externalEnabled) {
+                repository = await import('./externalWorldBook/store.js?rmv=1.5.38-update1');
+                assertFollowPrefetchOwner(prefetchOwner, _chat);
+                externalStage = 'index';
+                await repository.hydrateExternalPoolMetadata();
+                assertFollowPrefetchOwner(prefetchOwner, _chat);
+                if (repository.getExternalPoolHydrationStatus().enabledMetadataRebuildRequired.length) {
+                    const error = new Error('外部库需要先重建抽取索引。');
+                    error.code = 'RABBIT_MIRROR_EXTERNAL_METADATA_REBUILD_REQUIRED';
+                    error.requestCount = 0;
+                    throw error;
+                }
             }
+            assertAppearanceOwner();
             beginRabbitMirrorGenerationAttempt(_chat, generationScopeKey);
             externalStage = 'selection';
-            frozenPlan = planRabbitMirrorPromptDetails(settings, type, null, generationScopeKey, generationContext);
+            frozenPlan = planRabbitMirrorPromptDetails({ ...settings, appearanceReferenceEnabled: appearanceEnabled, appearanceReferenceRevision: appearanceRequest.revision }, type, null, generationScopeKey, generationContext);
             if (frozenPlan.selectedExternalIds.length) {
                 externalStage = 'selected-read';
                 externalRawMap = await repository.getSelectedExternalEntries(frozenPlan.selectedExternalIds);
                 assertFollowPrefetchOwner(prefetchOwner, _chat);
             }
+            if (frozenPlan.appearanceReference.enabled) {
+                externalStage = 'appearance-read';
+                const appearance = await import('./appearanceReference.js?rmv=1.5.38-update1');
+                assertFollowPrefetchOwner(prefetchOwner, _chat); assertAppearanceOwner();
+                appearanceMaterial = await appearance.loadAppearanceReferenceMaterial(frozenPlan.appearanceReference.revision);
+                assertFollowPrefetchOwner(prefetchOwner, _chat); assertAppearanceOwner();
+            }
             externalStage = 'render';
-            promptDetails = renderRabbitMirrorPromptPlan(frozenPlan, externalRawMap);
+            promptDetails = renderRabbitMirrorPromptPlan(frozenPlan, externalRawMap, appearanceMaterial);
             assertFollowPrefetchOwner(prefetchOwner, _chat);
+            assertAppearanceOwner();
         } else {
             beginRabbitMirrorGenerationAttempt(_chat, generationScopeKey);
             promptDetails = buildRabbitMirrorPromptDetails(settings, type, null, generationScopeKey, generationContext);
         }
     } catch (error) {
-        if (!externalEnabled) throw error;
+        if (!materialEnabled) throw error;
         if (frozenPlan?.batchPlan) releasePendingComboBatch({ batchId: frozenPlan.batchPlan.batchId, identity: frozenPlan.batchPlan.identity });
         // A stale completion must not erase a newer interceptor's installed prompt.
         if (!prefetchOwner || prefetchOwner.sequence === generationInvocationSequence) {
-            const failure = describeExternalWorldBookPreflightFailure(error);
+            const failure = String(error?.code || '').startsWith('RABBIT_MIRROR_APPEARANCE_')
+                ? { code: error.code, message: error.message } : describeExternalWorldBookPreflightFailure(error);
             const mismatch = error?.code === 'RABBIT_MIRROR_EXTERNAL_PREFETCH_STALE' ? followPrefetchOwnerMismatch(prefetchOwner, _chat) : '';
             lastFollowExternalPreflightFailure = Object.freeze({ code: failure.code, stage: externalStage, ownerMismatch: mismatch, requestCount: 0, time: Date.now() });
             clearRabbitMirrorPrompt('external-material-preflight-rejected', type);
@@ -532,8 +627,9 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
         return;
     } finally {
         externalRawMap?.clear?.();
+        appearanceMaterial = null;
     }
-    if (externalEnabled) lastFollowExternalPreflightFailure = null;
+    if (materialEnabled) lastFollowExternalPreflightFailure = null;
     attachRabbitMirrorGenerationSelection(promptDetails.metadata);
     const basePrompt = promptDetails.prompt;
     if (!basePrompt) {

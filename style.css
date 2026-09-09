@@ -174,6 +174,9 @@ toto[data-rabbit-mirror="true"] summary {
     word-break: normal !important;
     overflow-wrap: anywhere !important;
 }
+.rabbit-mirror-advanced-modal #rh_appearance_reference_unlink[hidden] {
+    display: none !important;
+}
 .rabbit-mirror-advanced-modal button.menu_button.rh-advanced-choice > span {
     display: block !important;
     min-width: 0 !important;
@@ -225,6 +228,27 @@ toto[data-rabbit-mirror="true"] summary {
     font-size: 11px;
     font-weight: 400;
     opacity: .64;
+}
+/* TT themes may give all checkbox labels a fixed single-line height. Scope the
+   exception to our settings copy, not the host theme or generated mirrors. */
+.rabbit-mirror-settings[data-rm-host="tauritavern"] .rabbit-mirror-primary-row {
+    flex-wrap: wrap;
+    align-items: flex-start;
+}
+.rabbit-mirror-settings[data-rm-host="tauritavern"] .rabbit-mirror-enable-control,
+.rabbit-mirror-settings[data-rm-host="tauritavern"] .rabbit-mirror-enable-copy,
+.rabbit-mirror-settings[data-rm-host="tauritavern"] .rabbit-mirror-enable-copy > b,
+.rabbit-mirror-settings[data-rm-host="tauritavern"] .rabbit-mirror-enable-copy > small {
+    height: auto !important;
+    max-height: none !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    overflow-wrap: anywhere;
+    line-height: 1.5 !important;
+}
+.rabbit-mirror-settings[data-rm-host="tauritavern"] .rabbit-mirror-enable-copy > small {
+    opacity: 1;
+    color: inherit;
 }
 .rabbit-mirror-settings button.menu_button.rabbit-mirror-advanced-launch {
     flex: 0 0 auto;
@@ -1120,6 +1144,17 @@ toto[data-rabbit-mirror="true"] summary {
   max-width:100%;
   overflow:auto;
 }
+@media (min-width:900px){
+  /* A phone-authored square grid must not grow to the entire desktop chat lane.
+   * Bound only each mirror's outer reading surface: no zoom, font override,
+   * grid reflow or new frame; authored smaller objects remain smaller. Keep the
+   * placement host full-sized so existing owner/viewport geometry stays valid. */
+  #chat .rabbit-mirror-external-shell[data-rm-source][data-rm-placement] > details[data-rabbit-mirror-external-details="true"],
+  #chat toto[data-rabbit-mirror="true"] > details{
+    max-width:min(100%,720px) !important;
+    margin-inline:auto !important;
+  }
+}
 @media (max-width:899px){
   /* Only the first two layout levels of a face body receive intrinsic shrink
    * safety. This fixes centered card rows without flattening nested scenes,
@@ -1168,7 +1203,8 @@ html[data-rabbit-mirror-external-sampling-enabled="false"] [data-rabbit-mirror-r
     [data-rabbit-mirror-reference-note="true"] { opacity: 1; }
 }
 /* Only scroll clearance: keep each mirror's original palette and border. */
-#chat > .rabbit-mirror-composer-clearance {
+#chat > .rabbit-mirror-composer-clearance,
+#chat > .mes > .rabbit-mirror-composer-clearance {
   display:block !important; flex:0 0 var(--rm-composer-clearance,0px) !important;
   height:var(--rm-composer-clearance,0px) !important; min-height:var(--rm-composer-clearance,0px) !important;
   width:1px !important; padding:0 !important; margin:0 !important; border:0 !important;
@@ -1216,3 +1252,22 @@ html[data-rabbit-mirror-external-sampling-enabled="false"] [data-rabbit-mirror-r
 .rabbit-mirror-guide-return .rabbit-mirror-guide-caption { font-size:12px; overflow-wrap:anywhere; }
 .rabbit-mirror-guide-highlight { outline:2px solid var(--SmartThemeQuoteColor,currentColor); outline-offset:3px; border-radius:4px; }
 @media (max-width:380px) { #rh_quick_start .rabbit-mirror-quick-start-body { padding-right:2px; padding-left:2px; } }
+/* Library entry points stay readable in narrow host settings columns. */
+#rh_external_library_section .rh-library-quick-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+    gap: 8px;
+    margin-top: 12px;
+}
+#rh_external_library_section .rh-library-quick-actions > button {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 14px;
+    line-height: 1.5;
+    font-weight: 700;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: left;
+}

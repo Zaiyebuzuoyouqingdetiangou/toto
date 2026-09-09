@@ -1,17 +1,21 @@
-import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, RABBIT_MIRROR_BANNED_WORD_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, normalizeRabbitMirrorBannedWords, updateSettings, resetSettings } from './settings.js?rmv=1.5.34-external1';
-import { clearLastCombo } from './storage.js?rmv=1.5.34-external1';
-import { parseRabbitMirrorReplacementLines, formatRabbitMirrorReplacementLines } from './bannedWords.js?rmv=1.5.34-external1';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.5.34-external1';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.5.34-external1';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.5.34-external1';
+import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, RABBIT_MIRROR_BANNED_WORD_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, normalizeRabbitMirrorBannedWords, updateSettings, resetSettings } from './settings.js?rmv=1.5.38-update1';
+import { clearLastCombo, getCurrentChatKey } from './storage.js?rmv=1.5.38-update1';
+import { normalizeEarlyBodyTags } from './earlyBodyTags.js?rmv=1.5.38-update1';
+import { applyRabbitMirrorHostSurface } from './hostCompatibility.js?rmv=1.5.38-update1';
+import { BEHAVIOR_RULE_MAX_CHARS, DEFAULT_BEHAVIOR_RULE_TEXT, resolveBehaviorRuleText } from './behaviorRules.js?rmv=1.5.38-update1';
+import { clearRecentIndependentTransportDiagnostics } from './transportDiagnostics.js?rmv=1.5.38-update1';
+import { parseRabbitMirrorReplacementLines, formatRabbitMirrorReplacementLines } from './bannedWords.js?rmv=1.5.38-update1';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.5.38-update1';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.5.38-update1';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.5.38-update1';
 import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.30.17';
-import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.5.34-external1';
-import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5.34-external1';
-import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.5.34-external1';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.34-external1';
+import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.5.38-update1';
+import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5.38-update1';
+import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.5.38-update1';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.38-update1';
 
-const SETTINGS_UI_VERSION = '1.7';
-const RUNTIME_VERSION = '1.5.34';
+const SETTINGS_UI_VERSION = '1.8';
+const RUNTIME_VERSION = '1.5.38';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -514,6 +518,7 @@ export function initRabbitMirrorUI() {
                     && $advanced.find('#rh_visual_extra_prompt').length
                     && $advanced.find('#rh_visual_avoid_prompt').length
                     && $advanced.find('#rh_visual_prompt_save').length
+                    && $advanced.find('#rh_appearance_reference_save').length
                     && $advanced.find('#rh_worldview_lock').length
                     && $advanced.find('#rh_advanced_back_top').length
                     && $advanced.find('#rh_advanced_page_worldinfo').length
@@ -553,7 +558,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}" data-rabbit-mirror-ui-ready="false">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header rabbit-mirror-drawer-header">
-      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.5.34</span>
+      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.5.38</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -612,9 +617,25 @@ export function initRabbitMirrorUI() {
       </details>
 
       <details class="rabbit-mirror-section" id="rh_independent_api_section">
-        <summary><span>独立 API</span><span class="rabbit-mirror-section-note">连接 · 模型 · 上下文</span></summary>
+        <summary><span>独立 API</span><span class="rabbit-mirror-section-note">连接 · 模型 · 显示</span></summary>
         <div class="rabbit-mirror-section-content">
           <div id="rh_independent_mode_status" aria-live="polite" style="padding:7px 9px;border-left:2px solid color-mix(in srgb,var(--SmartThemeBorderColor) 65%,transparent);opacity:.78;font-size:11px;line-height:1.45;">正在读取当前生成模式……</div>
+          <section id="rh_behavior_rules" aria-labelledby="rh_behavior_rule_heading" style="margin:12px 0;padding:14px;min-width:0;border:2px solid var(--SmartThemeQuoteColor,currentColor);border-radius:10px;background:color-mix(in srgb,var(--SmartThemeQuoteColor,currentColor) 7%,transparent);">
+            <h3 id="rh_behavior_rule_heading" style="font-size:16px;margin:0 0 8px;font-weight:700;">补充创作规则 · 独立 API</h3>
+            <label for="rh_behavior_rule_mode" style="display:block;font-weight:700;margin:8px 0;">注入方式</label>
+            <select id="rh_behavior_rule_mode" class="text_pole" style="width:100%;max-width:100%;box-sizing:border-box;min-height:44px;">
+              <option value="always">每轮注入</option><option value="off">不注入</option><option value="adult-only">仅在抽到成人内容时注入</option>
+            </select>
+            <label for="rh_behavior_rule_text" style="display:block;font-weight:700;margin:8px 0;">补充规则完整内容（可编辑或留空）</label>
+            <textarea id="rh_behavior_rule_text" class="text_pole" rows="10" maxlength="${BEHAVIOR_RULE_MAX_CHARS}" spellcheck="false" aria-describedby="rh_behavior_rule_help" style="width:100%;max-width:100%;min-height:200px;box-sizing:border-box;resize:vertical;font-size:14px;line-height:1.6;"></textarea>
+            <div id="rh_behavior_rule_help" style="font-size:12px;line-height:1.6;">仅作用于独立 API，不改变正文连接。</div>
+            <div class="flex-container" style="gap:8px;flex-wrap:wrap;margin:10px 0;">
+              <button id="rh_behavior_rule_save" class="menu_button" type="button" style="min-height:44px;font-weight:700;">保存创作规则</button>
+              <button id="rh_behavior_rule_clear" class="menu_button" type="button" style="min-height:44px;">清空内容</button>
+              <button id="rh_behavior_rule_reset" class="menu_button" type="button" style="min-height:44px;">恢复默认</button>
+            </div>
+            <div id="rh_behavior_rule_status" role="status" aria-live="polite" style="font-size:13px;line-height:1.6;"></div>
+          </section>
           <div id="rh_independent_api_fields" style="display:grid;gap:9px;">
             <div style="padding:10px;border:1px solid color-mix(in srgb,currentColor 16%,transparent);border-radius:10px;">
               <div style="font-weight:700;font-size:12px;margin-bottom:7px;">独立 API 生成方式</div>
@@ -666,6 +687,11 @@ export function initRabbitMirrorUI() {
         </div>
       </details>
 
+      <details id="rh_external_library_section" class="rabbit-mirror-section">
+        <summary><span>母本库：导入与备份</span><span class="rabbit-mirror-section-note">文字 · 文件 · 换设备</span></summary>
+        <div id="rh_external_library_content" class="rabbit-mirror-section-content"></div>
+      </details>
+
       <details class="rabbit-mirror-section rabbit-mirror-tools">
         <summary><span>工具与维护</span><span class="rabbit-mirror-section-note">正则 · 诊断 · 重置</span></summary>
         <div class="rabbit-mirror-section-content">
@@ -698,11 +724,16 @@ export function initRabbitMirrorUI() {
             <button id="rh_clear_injection" class="menu_button">清空当前注入</button>
             <button id="rh_reset" class="menu_button">恢复默认设置</button>
           </div>
-          <div style="margin-top:12px;padding:10px 11px;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:10px;">
-            <div style="font-weight:700;">📚 外部世界书母本</div>
+          <div id="rh_external_library_actions" style="padding:10px 11px;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:10px;">
+            <div style="font-weight:700;">把你的文字、玩法或世界书加入母本库</div>
             <div style="font-size:12px;line-height:1.5;margin-top:4px;">不会进入兔子镜内置，感谢各位制作小剧场的老师，请征求作者同意后使用。</div>
-            <div style="opacity:.74;font-size:11px;line-height:1.5;margin-top:4px;">用于导入小剧场世界书：可选择酒馆已有世界书或本地 JSON 文件，导入后确认分类。在管理窗口按需开启外部抽签；仅使用本轮抽中的条目，新库默认停用。</div>
-            <button id="rh_external_worldbook_open" class="menu_button" type="button" style="margin-top:8px;font-weight:700;">打开外部世界书导入工具</button>
+            <div class="rh-library-quick-actions">
+              <button id="rh_external_plain_open" class="menu_button" type="button">粘贴文字</button>
+              <button id="rh_external_file_open" class="menu_button" type="button">导入文件（TXT / MD / JSON）</button>
+              <button id="rh_external_transfer_open" class="menu_button" type="button">换设备：导出／导入整库</button>
+              <button id="rh_external_worldbook_open" class="menu_button" type="button">管理母本库</button>
+            </div>
+            <div style="font-size:12px;line-height:1.6;margin-top:8px;">首次导入：填写文字或选择文件 → 确认分类 → 保存 → 启用库并打开外部抽签。换设备：旧设备导出整库文件，再到新设备导入。</div>
           </div>
           <div style="margin-top:12px;padding:10px 11px;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:10px;">
             <div style="font-weight:700;">🛰 外部代码／宿主性能诊断（测试版）</div>
@@ -749,13 +780,16 @@ export function initRabbitMirrorUI() {
             <button class="menu_button rh-advanced-choice" type="button" data-page="generation" style="min-height:66px;text-align:left;padding:11px 12px;border-radius:12px;"><span style="display:block;font-weight:700;font-size:13px;">🎛️ 生成与抽取</span><span style="display:block;opacity:.64;font-size:10px;line-height:1.4;margin-top:3px;">抽取模式、参考内容、世界观锁与冷却</span></button>
             <button class="menu_button rh-advanced-choice" type="button" data-page="visual" style="min-height:66px;text-align:left;padding:11px 12px;border-radius:12px;"><span style="display:block;font-weight:700;font-size:13px;">🎨 个性化视觉提示词</span><span style="display:block;opacity:.64;font-size:10px;line-height:1.4;margin-top:3px;">额外视觉偏好、避雷与通用视觉规则</span></button>
             <button class="menu_button rh-advanced-choice" type="button" data-page="memory" style="min-height:66px;text-align:left;padding:11px 12px;border-radius:12px;"><span style="display:block;font-weight:700;font-size:13px;">🧠 共同回忆资料来源</span><span style="display:block;opacity:.64;font-size:10px;line-height:1.4;margin-top:3px;">扫描并选择可读取的记忆资料接口</span></button>
-            <button class="menu_button rh-advanced-choice" type="button" data-page="worldinfo" style="min-height:66px;text-align:left;padding:11px 12px;border-radius:12px;"><span style="display:block;font-weight:700;font-size:13px;">🔌 独立 API</span><span style="display:block;opacity:.64;font-size:10px;line-height:1.4;margin-top:3px;">读取范围、角色 / Persona、世界书与正文标签</span></button>
+            <button class="menu_button rh-advanced-choice" type="button" data-page="worldinfo" style="min-height:66px;text-align:left;padding:11px 12px;border-radius:12px;"><span style="display:block;font-weight:700;font-size:13px;">🔌 独立 API</span><span style="display:block;opacity:.64;font-size:10px;line-height:1.4;margin-top:3px;">补充创作规则、读取范围、世界书与正文标签</span></button>
             <button class="menu_button rh-advanced-choice" type="button" data-page="repair" style="min-height:66px;text-align:left;padding:11px 12px;border-radius:12px;"><span style="display:block;font-weight:700;font-size:13px;">🐈‍⬛🐇 挨打猫与维修兔</span><span style="display:block;opacity:.64;font-size:10px;line-height:1.4;margin-top:3px;">美化反馈、维修兔与自动巡逻</span></button>
-            <button class="menu_button rh-advanced-choice" type="button" data-page="external" style="min-height:66px;text-align:left;padding:11px 12px;border-radius:12px;"><span style="display:block;font-weight:700;font-size:13px;">📚 外部世界书母本</span><span style="display:block;opacity:.64;font-size:10px;line-height:1.4;margin-top:3px;">导入小剧场世界书</span></button>
+            <button class="menu_button rh-advanced-choice" type="button" data-page="external" style="min-height:66px;text-align:left;padding:11px 12px;border-radius:12px;"><span style="display:block;font-weight:700;font-size:13px;">📚 母本库：导入与备份</span><span style="display:block;opacity:.64;font-size:10px;line-height:1.4;margin-top:3px;">粘贴文字、导入文件、换设备</span></button>
             <button class="menu_button rh-advanced-choice" type="button" data-page="replacement" style="min-height:66px;text-align:left;padding:11px 12px;border-radius:12px;">🚫 禁词与文字替换</button>
           </div>
 
-          <div id="rh_advanced_page_external" class="rh-advanced-page" data-title="外部世界书母本" style="display:none;"></div>
+          <div id="rh_advanced_page_external" class="rh-advanced-page" data-title="母本库：导入与备份" style="display:none;">
+            <p>文字导入、文件导入和整库备份现在集中在设置首页的「母本库：导入与备份」。</p>
+            <button id="rh_external_library_shortcut" class="menu_button" type="button" style="min-height:44px;white-space:normal;">前往母本库：导入与备份</button>
+          </div>
           <div id="rh_advanced_page_replacement" class="rh-advanced-page" data-title="🚫 禁词与文字替换" style="display:none;"></div>
           <div id="rh_advanced_page_generation" class="rh-advanced-page" data-title="生成与抽取" style="display:none;">
             <label for="rh_multiface_enabled" class="checkbox_label"><input id="rh_multiface_enabled" type="checkbox" aria-describedby="rh_multiface_help" aria-controls="rh_multiface_count_row"> 多面兔子镜</label>
@@ -817,6 +851,19 @@ export function initRabbitMirrorUI() {
             </div></details>
             <div class="flex-container" style="gap:8px;flex-wrap:wrap;margin-top:12px;"><button id="rh_visual_prompt_save" class="menu_button" type="button">保存并从下一面生效</button></div>
             <div style="opacity:.66;font-size:11px;line-height:1.45;margin-top:7px;">为避免重新引入移动端设置页卡顿，三个输入框都不会在键入时写设置；只有点击上面的保存按钮才会持久化。</div>
+            <details id="rh_appearance_reference" style="margin-top:16px;min-width:0;">
+              <summary style="cursor:pointer;font-weight:700;min-height:44px;line-height:44px;">参考一个外观 / 交互模板（可选）</summary>
+              <p style="font-size:12px;line-height:1.6;">只借鉴布局、配色与交互结构，人物、正文和情节仍按当前聊天生成。不会执行或预览导入的 HTML，也不会请求其中的图片、字体等资源。</p>
+              <label class="checkbox_label" style="min-height:44px;"><input id="rh_appearance_reference_enabled" type="checkbox"> 启用已保存的外观参考</label>
+              <p style="font-size:12px;line-height:1.6;">默认关闭。原输入最多 128 KiB；只在本设备保存去掉原文字、脚本、事件和网址的结构摘要（每份最多 12,000 字符；安全替换时最多保留新旧两份），不保存原文、不塞入酒馆 settings。开启后每次生成会增加输入 Token；一批多面仅带入当前一份。不支持的样式会省略，不保证复刻原作。</p>
+              <label for="rh_appearance_reference_input" style="display:block;margin:8px 0;">粘贴需要参考的 HTML</label>
+              <textarea id="rh_appearance_reference_input" class="text_pole" rows="4" maxlength="131072" spellcheck="false" style="width:100%;max-width:100%;box-sizing:border-box;resize:vertical;"></textarea>
+              <label for="rh_appearance_reference_file" style="display:block;margin:8px 0;">或选择本地 HTML / TXT 文件</label>
+              <input id="rh_appearance_reference_file" type="file" accept=".html,.htm,.txt" style="width:100%;max-width:100%;min-height:44px;">
+              <button id="rh_appearance_reference_save" class="menu_button" type="button" style="min-height:44px;margin-top:8px;">提取并保存外观参考</button>
+              <div id="rh_appearance_reference_status" role="status" aria-live="polite" style="font-size:12px;line-height:1.6;margin-top:8px;"></div>
+              <button id="rh_appearance_reference_unlink" class="menu_button" type="button" hidden style="min-height:44px;margin-top:8px;">解除旧参考关联</button>
+            </details>
           </div>
 
           <div id="rh_advanced_page_memory" class="rh-advanced-page" data-title="共同回忆资料来源" style="display:none;">
@@ -828,6 +875,17 @@ export function initRabbitMirrorUI() {
           </div>
 
           <div id="rh_advanced_page_worldinfo" class="rh-advanced-page" data-title="独立 API" style="display:none;">
+            <details id="rh_early_body_options" style="margin-bottom:12px;min-width:0;">
+              <summary style="min-height:44px;cursor:pointer;">正文标签闭合后提前生成（可选）</summary>
+              <label class="checkbox_label" style="min-height:44px;"><input id="rh_early_body_enabled" type="checkbox"> 为当前聊天开启提前生成</label>
+              <label for="rh_early_body_tags" style="display:block;margin:8px 0;">正文标签名（最多 8 个，逗号分隔）</label>
+              <input id="rh_early_body_tags" class="text_pole" type="text" maxlength="520" placeholder="例如 story_scene" style="width:100%;min-height:44px;box-sizing:border-box;">
+              <button id="rh_early_body_scan" class="menu_button" type="button" style="min-height:44px;">扫描当前聊天可选标签</button>
+              <div id="rh_early_body_candidates" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+              <button id="rh_early_body_save" class="menu_button" type="button" style="min-height:44px;margin-top:8px;">保存当前聊天设置</button>
+              <div style="font-size:12px;line-height:1.6;margin-top:8px;">这里选的是要读取的正文，不是上面的过滤标签。所有选中标签完整闭合且内容可见后，可在状态栏等尾部仍输出时先请求兔子镜；仍最多一次请求，主回复结束后展示。未闭合、工具调用或无法确认时，仍等正文结束。切换聊天不会沿用此设置。</div>
+              <div id="rh_early_body_status" role="status" aria-live="polite" style="font-size:12px;line-height:1.6;"></div>
+            </details>
             <div style="padding:10px 11px;margin-bottom:12px;border:1px solid color-mix(in srgb,currentColor 14%,transparent);border-radius:12px;background:color-mix(in srgb,currentColor 5%,transparent);">
               <div style="font-weight:700;font-size:12px;margin-bottom:7px;">读取范围</div>
               <label>最近 <input id="rh_independent_context_layers" class="text_pole" type="number" min="1" max="200" step="1" inputmode="numeric" style="width:76px;"> 层可见聊天正文</label>
@@ -885,6 +943,7 @@ export function initRabbitMirrorUI() {
     globalThis.__rabbitMirrorQuickStartUiCleanup = null;
     $('body > #rh_advanced_modal, body > #rh_world_info_prompt_modal, body > #rh_independent_tag_filter_modal').remove();
     settingsMount.append(html);
+    if (globalThis.__TAURITAVERN__) document.getElementById('rabbit_mirror_theater_settings')?.setAttribute('data-rm-host', 'tauritavern');
     $('#rh_update_now').on('click', async event => {
         const button = event.currentTarget;
         if (button.disabled) return;
@@ -895,7 +954,7 @@ export function initRabbitMirrorUI() {
         status.textContent = '正在向酒馆请求更新当前兔子镜，请稍候。不会更新其他扩展，也不会删除本地数据。';
         reload.hidden = true;
         try {
-            const updater = await import('./extensionUpdater.js?rmv=1.5.34-external1');
+            const updater = await import('./extensionUpdater.js?rmv=1.5.38-update1');
             const result = await updater.requestRabbitMirrorUpdate();
             if (!status.isConnected) return;
             status.textContent = result.status === 'current'
@@ -960,6 +1019,12 @@ export function initRabbitMirrorUI() {
   </div>
 </div>`;
     $(tagFilterModalHtml).appendTo(document.body);
+    for (const id of ['rh_advanced_modal', 'rh_world_info_prompt_modal', 'rh_independent_tag_filter_modal']) {
+        // Stable TT layout contract, scoped to our modal; no host/theme rewrite.
+        const modal = document.getElementById(id);
+        applyRabbitMirrorHostSurface(modal, 'backdrop');
+        applyRabbitMirrorHostSurface(modal?.firstElementChild, 'fullscreen-window');
+    }
     attachTokenMeterListener();
     renderTokenMeter();
 
@@ -974,7 +1039,8 @@ export function initRabbitMirrorUI() {
     $('#rh_independent_context_layers').val(settings.independentContextMaxLayers ?? 20);
     checked('#rh_follow_tag_isolation', settings.followTagIsolationEnabled === true);
     $('#rh_banned_words_save').parent().parent().appendTo('#rh_advanced_page_replacement');
-    $('#rh_external_worldbook_open').parent().appendTo('#rh_advanced_page_external');
+    $('#rh_external_library_actions').appendTo('#rh_external_library_content');
+    document.getElementById('rh_advanced_page_worldinfo').prepend(document.getElementById('rh_behavior_rules'));
     $('#rh_banned_words').val(formatRabbitMirrorReplacementLines(settings.rabbitMirrorBannedWords || []));
     $('#rh_banned_words_status').text(`已保存 ${(settings.rabbitMirrorBannedWords || []).length} / ${RABBIT_MIRROR_BANNED_WORD_MAX_COUNT} 个词`);
     $('#rh_independent_model').val(settings.independentApiModel || '');
@@ -1037,6 +1103,68 @@ export function initRabbitMirrorUI() {
         if (open) setTimeout(() => $('#rh_independent_tag_filter_input').trigger('focus'), 0);
     };
     renderTagFilterSummary();
+    const earlyBodyChat = () => { try { return String(getCurrentChatKey(globalThis.SillyTavern?.getContext?.()?.chat || []) || ''); } catch { return ''; } };
+    let earlyBodyRenderedChat = '';
+    const renderEarlyBodySettings = () => {
+        const value = getSettings();
+        const currentChat = earlyBodyChat();
+        if (currentChat !== earlyBodyRenderedChat) {
+            $('#rh_early_body_candidates').empty();
+            earlyBodyRenderedChat = currentChat;
+        }
+        const sameChat = value.independentEarlyBodyChatKey === currentChat;
+        checked('#rh_early_body_enabled', sameChat && value.independentEarlyBodyEnabled === true);
+        $('#rh_early_body_tags').val(sameChat ? (value.independentEarlyBodyTags || []).join(', ') : '');
+        $('#rh_early_body_status').text(sameChat && value.independentEarlyBodyEnabled === true ? '当前聊天已开启；只影响下一次独立生成。' : '当前聊天未开启提前生成。');
+    };
+    renderEarlyBodySettings();
+    $('#rh_early_body_options').on('toggle', event => { if (event.currentTarget.open) renderEarlyBodySettings(); });
+    $('#rh_early_body_enabled').on('change', event => {
+        if (!event.currentTarget.checked && getSettings().independentEarlyBodyChatKey === earlyBodyChat()) {
+            updateSettings({ independentEarlyBodyEnabled: false });
+            refreshRabbitMirrorGenerationMode();
+            $('#rh_early_body_status').text('已关闭。普通正文结束后生成的流程保持不变。');
+        } else $('#rh_early_body_status').text('请选好正文标签，再保存以开启。');
+    });
+    $('#rh_early_body_save').on('click', () => {
+        const enabled = $('#rh_early_body_enabled').prop('checked') === true;
+        const input = String($('#rh_early_body_tags').val() || '').split(/[\s,，、;；]+/).filter(Boolean);
+        const tags = normalizeEarlyBodyTags(input);
+        const context = globalThis.SillyTavern?.getContext?.() || {};
+        const key = earlyBodyChat();
+        if (!Array.isArray(context.chat) || !context.chat.length || !key) { $('#rh_early_body_status').text('请先打开要设置的聊天。'); return; }
+        if (enabled && !tags.length) { $('#rh_early_body_status').text('请填写 1–8 个有效正文标签名；不能使用思考、脚本或兔子镜标签。'); return; }
+        if (enabled && tags.some(tag => (getSettings().independentContextExcludedTags || []).includes(tag))) { $('#rh_early_body_status').text('正文标签同时被设为过滤标签。请先取消过滤该标签，或选择真正的正文标签。'); return; }
+        updateSettings({ independentEarlyBodyEnabled: enabled, independentEarlyBodyTags: tags, independentEarlyBodyChatKey: key });
+        refreshRabbitMirrorGenerationMode();
+        $('#rh_early_body_status').text(enabled ? '已保存，仅在当前聊天的下一次独立生成生效。' : '已保存，提前生成功能关闭。');
+    });
+    $('#rh_early_body_scan').on('click', async event => {
+        const button = event.currentTarget, owner = earlyBodyChat();
+        if (button.disabled) return;
+        button.disabled = true;
+        $('#rh_early_body_status').text('正在扫描已加载的当前聊天，不会请求模型。');
+        try {
+            const result = await scanCurrentChatIndependentContextTags();
+            if (!button.isConnected || owner !== earlyBodyChat()) return;
+            const target = document.getElementById('rh_early_body_candidates'); target.replaceChildren();
+            const selected = new Set(normalizeEarlyBodyTags(String($('#rh_early_body_tags').val() || '').split(/[\s,，、;；]+/).filter(Boolean)));
+            for (const row of result?.tags || []) {
+                const name = normalizeEarlyBodyTags([row?.name])[0]; if (!name) continue;
+                const label = document.createElement('label'); label.className = 'checkbox_label'; label.style.minHeight = '44px';
+                const control = document.createElement('input'); control.type = 'checkbox'; control.checked = selected.has(name);
+                control.addEventListener('change', () => {
+                    const current = new Set(normalizeEarlyBodyTags(String($('#rh_early_body_tags').val() || '').split(/[\s,，、;；]+/).filter(Boolean)));
+                    if (control.checked && current.size >= 8 && !current.has(name)) { control.checked = false; return; }
+                    if (control.checked) current.add(name); else current.delete(name);
+                    $('#rh_early_body_tags').val([...current].join(', '));
+                });
+                label.append(control, document.createTextNode(name)); target.append(label);
+            }
+            $('#rh_early_body_status').text(target.childElementCount ? '扫描完成。勾选真正的正文标签后保存；不会自动勾选。' : '没有找到可用正文标签，可以手动填写标签名。');
+        } catch { if (button.isConnected) $('#rh_early_body_status').text('扫描未完成，请确认当前聊天后重试。'); }
+        finally { if (button.isConnected) button.disabled = false; }
+    });
     const renderIndependentConnectionStatus = () => {
         const currentSettings=getSettings();
         const currentId=String(currentSettings.independentConnectionProfileId||'').trim();
@@ -1100,6 +1228,145 @@ export function initRabbitMirrorUI() {
     $('#rh_visual_avoid_prompt').val(settings.visualAvoidPrompt || '');
     renderVisualPromptStatus(settings);
 
+    let appearanceFileSequence = 0;
+    let appearanceSaving = false;
+    $('#rh_behavior_rule_mode').val(settings.behaviorRuleMode || 'always');
+    $('#rh_behavior_rule_text').val(resolveBehaviorRuleText(settings));
+    $('#rh_behavior_rule_status').text(settings.behaviorRuleMode === 'off' ? '当前：不注入；已保存的内容仍保留。' : settings.behaviorRuleMode === 'adult-only' ? '当前：仅在抽到成人内容时向独立 API 注入。' : '当前：每轮向独立 API 注入已保存内容。');
+    $('#rh_behavior_rule_mode').on('change', () => {
+        const mode = String($('#rh_behavior_rule_mode').val());
+        updateSettings({ behaviorRuleMode: mode });
+        refreshRabbitMirrorGenerationMode();
+        $('#rh_behavior_rule_status').text(mode === 'off' ? '已关闭，从下一轮起不发送这一块；编辑内容仍保留。' : '注入方式已保存，从下一轮生效。未保存的文本修改不会发送。');
+    });
+    $('#rh_behavior_rule_save').on('click', () => {
+        updateSettings({ behaviorRuleText: String($('#rh_behavior_rule_text').val() ?? '') });
+        refreshRabbitMirrorGenerationMode();
+        $('#rh_behavior_rule_status').text('内容已保存，从下一轮生效；每份请求最多注入一次。');
+    });
+    $('#rh_behavior_rule_clear').on('click', () => {
+        $('#rh_behavior_rule_text').val('');
+        updateSettings({ behaviorRuleText: '' });
+        refreshRabbitMirrorGenerationMode();
+        $('#rh_behavior_rule_status').text('已清空并保存，不会自动补回默认内容。');
+    });
+    $('#rh_behavior_rule_reset').on('click', () => {
+        $('#rh_behavior_rule_text').val(DEFAULT_BEHAVIOR_RULE_TEXT);
+        updateSettings({ behaviorRuleText: null });
+        refreshRabbitMirrorGenerationMode();
+        $('#rh_behavior_rule_status').text('已恢复默认内容并保存；注入方式保持不变。');
+    });
+    const appearanceUIOwner = document.getElementById('rh_appearance_reference');
+    const appearanceRawInput = document.getElementById('rh_appearance_reference_input');
+    const appearanceFileInput = document.getElementById('rh_appearance_reference_file');
+    const appearanceOwnerIsCurrent = () => isCurrentRuntime() && appearanceUIOwner?.isConnected === true && document.getElementById('rh_appearance_reference') === appearanceUIOwner;
+    const appearanceStatus = message => { if (appearanceOwnerIsCurrent()) $('#rh_appearance_reference_status').text(message); };
+    let appearanceRecoveryRevision = '';
+    const showAppearanceRecovery = (error, revision) => {
+        if (!appearanceOwnerIsCurrent() || getSettings().appearanceReferenceRevision !== revision) return;
+        const code = String(error?.code || '');
+        if (!['RABBIT_MIRROR_APPEARANCE_RETAIN_MISSING', 'RABBIT_MIRROR_APPEARANCE_MISSING'].includes(code)) return;
+        appearanceRecoveryRevision = revision;
+        $('#rh_appearance_reference_unlink').prop('hidden', false);
+        appearanceStatus('当前设备缺少已关联的有效参考。可点“解除旧参考关联”：只关闭参考并清除关联，不删除数据库内容；之后再显式保存新参考。');
+    };
+    const renderAppearanceState = () => {
+        const current = getSettings();
+        checked('#rh_appearance_reference_enabled', current.appearanceReferenceEnabled === true);
+        appearanceStatus(current.appearanceReferenceEnabled
+            ? '已启用：从下一轮读取当前设备的参考摘要；若本设备没有对应模板，会在请求前提示。'
+            : '已关闭：生成时不读取或发送参考模板。已保存的摘要仍保留。');
+    };
+    const clearAppearanceInput = () => {
+        appearanceFileSequence += 1;
+        if (appearanceRawInput) appearanceRawInput.value = '';
+        if (appearanceFileInput) appearanceFileInput.value = '';
+    };
+    renderAppearanceState();
+    // An explicit expansion may check this device's small saved material. No
+    // check at UI startup, no polling, and no module/read on generation OFF.
+    $('#rh_appearance_reference').on('toggle', async () => {
+        if (!appearanceUIOwner?.open || !appearanceOwnerIsCurrent() || appearanceSaving) return;
+        const revision = String(getSettings().appearanceReferenceRevision || '');
+        if (!revision) return;
+        const sequence = appearanceFileSequence;
+        try {
+            const module = await import('./appearanceReference.js?rmv=1.5.38-update1');
+            if (!appearanceOwnerIsCurrent() || !appearanceUIOwner.open || sequence !== appearanceFileSequence || appearanceSaving) return;
+            await module.loadAppearanceReferenceMaterial(revision);
+            if (!appearanceOwnerIsCurrent() || !appearanceUIOwner.open || sequence !== appearanceFileSequence || appearanceSaving || getSettings().appearanceReferenceRevision !== revision) return;
+            appearanceRecoveryRevision = '';
+            $('#rh_appearance_reference_unlink').prop('hidden', true);
+        } catch (error) {
+            if (!appearanceSaving && sequence === appearanceFileSequence && appearanceUIOwner?.open) showAppearanceRecovery(error, revision);
+        }
+    });
+    $('#rh_appearance_reference_unlink').on('click', () => {
+        if (!appearanceOwnerIsCurrent() || appearanceSaving || !appearanceRecoveryRevision || getSettings().appearanceReferenceRevision !== appearanceRecoveryRevision) return;
+        if (!globalThis.confirm('仅关闭外观参考并解除当前设置的关联，不删除数据库中的摘要，不修改聊天或其他数据。继续吗？')) return;
+        updateSettings({ appearanceReferenceEnabled: false, appearanceReferenceRevision: '' });
+        appearanceRecoveryRevision = '';
+        $('#rh_appearance_reference_unlink').prop('hidden', true);
+        renderAppearanceState();
+        appearanceStatus('已解除旧参考关联，数据库内容未删除。现在可粘贴或选择文件，显式保存新参考。');
+    });
+    $('#rh_appearance_reference_enabled').on('change', e => {
+        if (e.target.checked && !getSettings().appearanceReferenceRevision) {
+            e.target.checked = false;
+            appearanceStatus('请先提取并保存一个外观参考，再启用。');
+            return;
+        }
+        updateSettings({ appearanceReferenceEnabled: e.target.checked === true });
+        renderAppearanceState();
+    });
+    $('#rh_appearance_reference_file').on('change', async e => {
+        const file = e.target.files?.[0];
+        const sequence = ++appearanceFileSequence;
+        if (!file) return;
+        if (!/\.(?:html?|txt)$/i.test(file.name) || file.size > 128 * 1024) {
+            clearAppearanceInput(); appearanceStatus('请选择不超过 128 KiB 的 HTML / TXT 文件。原有参考未改动。'); return;
+        }
+        appearanceStatus('正在读取本地文件；尚未保存，也不会运行文件。');
+        try {
+            const text = await file.text();
+            if (sequence !== appearanceFileSequence || !appearanceOwnerIsCurrent()) return;
+            $('#rh_appearance_reference_input').val(text);
+            appearanceStatus('文件已填入，点击“提取并保存”后才会替换已保存的参考。');
+        } catch { if (sequence === appearanceFileSequence) appearanceStatus('文件读取失败；原有参考未改动。'); }
+    });
+    $('#rh_appearance_reference_save').on('click', async () => {
+        if (appearanceSaving || !appearanceOwnerIsCurrent()) return;
+        appearanceSaving = true;
+        $('#rh_appearance_reference_save, #rh_appearance_reference_input, #rh_appearance_reference_file').prop('disabled', true);
+        appearanceStatus('正在提取安全的结构摘要并保存……');
+        const retainRevision = String(getSettings().appearanceReferenceRevision || '');
+        let raw = String($('#rh_appearance_reference_input').val() || '');
+        try {
+            const module = await import('./appearanceReference.js?rmv=1.5.38-update1');
+            if (!appearanceOwnerIsCurrent()) return;
+            if (String(getSettings().appearanceReferenceRevision || '') !== retainRevision) {
+                appearanceStatus('参考关联已改变，本次保存已停止；未写入摘要，也未覆盖当前设置。请核对当前关联后再保存。');
+                return;
+            }
+            const saved = await module.saveAppearanceReference(raw, { retainRevision });
+            if (!appearanceOwnerIsCurrent()) return;
+            if (String(getSettings().appearanceReferenceRevision || '') !== retainRevision) {
+                appearanceStatus('参考关联已改变，摘要可能已写入本设备，但本次保存未覆盖当前设置。请核对当前关联后再保存。');
+                return;
+            }
+            updateSettings({ appearanceReferenceRevision: saved.revision });
+            appearanceRecoveryRevision = '';
+            $('#rh_appearance_reference_unlink').prop('hidden', true);
+            appearanceStatus(`已保存 ${saved.nodeCount} 个结构节点、${saved.ruleCount} 条样式规则，共 ${saved.chars} 字符。原文字和资源已去掉，输入已清空。${getSettings().appearanceReferenceEnabled ? '下一轮生效。' : '当前仍关闭，可勾选上方开关启用。'}`);
+        } catch (error) {
+            appearanceStatus(`${String(error?.code || '').startsWith('RABBIT_MIRROR_APPEARANCE_') ? error.message : '参考模板保存失败。'} 原有设置保持不变。`);
+            showAppearanceRecovery(error, retainRevision);
+        } finally {
+            raw = ''; clearAppearanceInput(); appearanceSaving = false;
+            if (appearanceOwnerIsCurrent()) $('#rh_appearance_reference_save, #rh_appearance_reference_input, #rh_appearance_reference_file').prop('disabled', false);
+        }
+    });
+
     const showAdvancedMenu = () => {
         $('.rh-advanced-page').hide();
         $('#rh_advanced_menu').css('display', 'grid');
@@ -1115,6 +1382,7 @@ export function initRabbitMirrorUI() {
         modal.css('display', open ? 'flex' : 'none');
     };
     const closeAdvancedModal = () => {
+        clearAppearanceInput();
         setAdvancedOpen(false);
         showAdvancedMenu();
     };
@@ -1123,6 +1391,13 @@ export function initRabbitMirrorUI() {
         setAdvancedOpen(true);
     });
     $('#rh_advanced_close').on('click', closeAdvancedModal);
+    $('#rh_external_library_shortcut').on('click', () => {
+        closeAdvancedModal();
+        const section = document.getElementById('rh_external_library_section');
+        section.open = true;
+        section.scrollIntoView({ block: 'center', behavior: 'auto' });
+        section.querySelector('summary')?.focus({ preventScroll: true });
+    });
     $('#rh_advanced_back_top').on('click', showAdvancedMenu);
     $('#rh_advanced_modal').on('click', function (event) {
         if (event.target === this) closeAdvancedModal();
@@ -1158,7 +1433,7 @@ export function initRabbitMirrorUI() {
         if (!quickStart.open || guideLoading || guideCleanup || guideDisposed) return;
         guideLoading = true;
         try {
-            const module = await import('./quickStart.js?rmv=1.5.34-external1');
+            const module = await import('./quickStart.js?rmv=1.5.38-update1');
             if (guideDisposed || !quickStart.isConnected || !isCurrentRuntime()) return;
             guideCleanup = module.mountRabbitMirrorQuickStart({
                 root: document.getElementById('rabbit_mirror_theater_settings'),
@@ -1789,20 +2064,33 @@ export function initRabbitMirrorUI() {
         toastr?.success?.('已清空全部收藏');
     });
 
-    $('#rh_external_worldbook_open').on('click', async () => {
-        const button = $('#rh_external_worldbook_open');
-        button.prop('disabled', true).text('正在加载…');
-        try {
-            const module = await import('./externalWorldBook/importWizard.js?rmv=1.5.34-external1');
-            if (!isCurrentRuntime()) return;
-            module.openExternalWorldBookImportWizard?.();
-        } catch (error) {
-            console.error('[RabbitMirror] external worldbook import tool failed:', error);
-            toastr?.warning?.(`外部世界书导入工具加载失败：${String(error?.message || error)}`);
-        } finally {
-            button.prop('disabled', false).text('打开外部世界书导入工具');
-        }
-    });
+    const libraryEntryViews = { rh_external_plain_open: 'plain', rh_external_file_open: 'file', rh_external_transfer_open: 'transfer', rh_external_worldbook_open: 'manage' };
+    let libraryOpening = false;
+    for (const [id, initialView] of Object.entries(libraryEntryViews)) {
+        const button = document.getElementById(id);
+        const label = button.textContent;
+        button.addEventListener('click', async () => {
+            if (libraryOpening) return;
+            libraryOpening = true;
+            for (const key of Object.keys(libraryEntryViews)) document.getElementById(key).disabled = true;
+            button.textContent = '正在加载…';
+            try {
+                const module = await import('./externalWorldBook/importWizard.js?rmv=1.5.38-update1');
+                if (!isCurrentRuntime() || !button.isConnected) return;
+                module.openExternalWorldBookImportWizard?.({ initialView });
+            } catch (error) {
+                console.error('[RabbitMirror] library tool failed:', error);
+                toastr?.warning?.('母本库暂时未能打开，请再点一次。现有库不会改变。');
+            } finally {
+                libraryOpening = false;
+                for (const key of Object.keys(libraryEntryViews)) {
+                    const entry = document.getElementById(key);
+                    if (entry) entry.disabled = false;
+                }
+                button.textContent = label;
+            }
+        });
+    }
 
     const setNoSendRegexStatus = (text, tone = '') => {
         $('[data-rh-no-send-regex-status]').text(text).css('opacity', tone === 'ok' ? '.92' : '.78');
@@ -1959,7 +2247,7 @@ export function initRabbitMirrorUI() {
         api.reset?.('user-start');
         $('#rh_external_diag_output').hide().val('');
         renderExternalDiagnosticStatus();
-        toastr?.success?.('外部诊断已开始；请复现问题，再点击“结束并生成报告”');
+        toastr?.success?.('外部诊断已开始；已保留本页最近的副 API 传输摘要，无需为查看它重新生成。页面性能需开启后记录。');
     });
     $('#rh_external_diag_stop').on('click', () => {
         externalDiagnosticUiRevision += 1;
@@ -1990,6 +2278,7 @@ export function initRabbitMirrorUI() {
         }
     });
     $('#rh_external_diag_reset').on('click', () => {
+        clearRecentIndependentTransportDiagnostics();
         const api = globalThis.__rabbitMirrorExternalDiag;
         api?.reset?.('settings-button');
         retainedExternalDiagnosticReport = '';
