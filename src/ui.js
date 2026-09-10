@@ -1,21 +1,23 @@
-import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, RABBIT_MIRROR_BANNED_WORD_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, normalizeRabbitMirrorBannedWords, updateSettings, resetSettings } from './settings.js?rmv=1.5.38-update1';
-import { clearLastCombo, getCurrentChatKey } from './storage.js?rmv=1.5.38-update1';
-import { normalizeEarlyBodyTags } from './earlyBodyTags.js?rmv=1.5.38-update1';
-import { applyRabbitMirrorHostSurface } from './hostCompatibility.js?rmv=1.5.38-update1';
-import { BEHAVIOR_RULE_MAX_CHARS, DEFAULT_BEHAVIOR_RULE_TEXT, resolveBehaviorRuleText } from './behaviorRules.js?rmv=1.5.38-update1';
-import { clearRecentIndependentTransportDiagnostics } from './transportDiagnostics.js?rmv=1.5.38-update1';
-import { parseRabbitMirrorReplacementLines, formatRabbitMirrorReplacementLines } from './bannedWords.js?rmv=1.5.38-update1';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.5.38-update1';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.5.38-update1';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.5.38-update1';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.4.30.17';
-import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.5.38-update1';
-import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5.38-update1';
-import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.5.38-update1';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.38-update1';
+import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, RABBIT_MIRROR_BANNED_WORD_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, normalizeRabbitMirrorBannedWords, updateSettings, resetSettings } from './settings.js?rmv=1.5.40-tttouch2';
+import { startTtSurfaceDiagnostics, stopTtSurfaceDiagnostics, isTtSurfaceDiagnosticsActive, buildTtSurfaceReport, recordTtSurface, registerTtSurfaceCleanup, nextTtSurfaceClickSeq } from './ttSurfaceDiagnostics.js?rmv=1.5.40-tttouch2';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorHostCompatibilityStatus } from './hostCompatibility.js?rmv=1.5.40-tttouch2';
+import { clearLastCombo, getCurrentChatKey } from './storage.js?rmv=1.5.40-tttouch2';
+import { normalizeEarlyBodyTags } from './earlyBodyTags.js?rmv=1.5.40-tttouch2';
+import { applyRabbitMirrorHostSurface } from './hostCompatibility.js?rmv=1.5.40-tttouch2';
+import { BEHAVIOR_RULE_MAX_CHARS, DEFAULT_BEHAVIOR_RULE_TEXT, resolveBehaviorRuleText } from './behaviorRules.js?rmv=1.5.40-tttouch2';
+import { clearRecentIndependentTransportDiagnostics } from './transportDiagnostics.js?rmv=1.5.40-tttouch2';
+import { parseRabbitMirrorReplacementLines, formatRabbitMirrorReplacementLines } from './bannedWords.js?rmv=1.5.40-tttouch2';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.5.40-tttouch2';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.5.40-tttouch2';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.5.40-tttouch2';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.5.40-tttouch2';
+import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.5.40-tttouch2';
+import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5.40-tttouch2';
+import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.5.40-tttouch2';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.40-tttouch2';
 
-const SETTINGS_UI_VERSION = '1.8';
-const RUNTIME_VERSION = '1.5.38';
+const SETTINGS_UI_VERSION = '1.8-ttentry3';
+const RUNTIME_VERSION = '1.5.40';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -475,6 +477,273 @@ function memoryTestMessage(result) {
     return parts.join('；');
 }
 
+let retainedTtDiagnosticReport = '';
+
+// Session-only capture. Never retain generated text or put diagnostic state on DOM nodes.
+function captureTtDiagnosticInputs(chatRoot, session) {
+    if (!chatRoot?.addEventListener) return;
+    let root = chatRoot;
+    let nodeIds = new WeakMap();
+    let nextNodeId = 0;
+    const pending = new Map();
+    const recent = new Map();
+    const bound = (map, key, value) => {
+        map.delete(key); map.set(key, value);
+        if (map.size > 24) map.delete(map.keys().next().value);
+    };
+    const nodeId = node => {
+        if (!nodeIds.has(node)) nodeIds.set(node, ++nextNodeId);
+        return nodeIds.get(node);
+    };
+    const handler = event => {
+        if (!isTtSurfaceDiagnosticsActive() || !root) return;
+        const target = event.target?.nodeType === 1 ? event.target : event.target?.parentElement;
+        const summary = target?.closest?.('summary');
+        const details = event.type === 'toggle' ? target : summary?.parentElement;
+        if (!details?.matches?.('details') || !root.contains(details)) return;
+        if (!details.closest('toto[data-rabbit-mirror="true"], toto[data-rabbit-hole="true"], [data-rabbit-mirror-css-scope], [data-rabbit-mirror-external-source="true"], .rabbit-mirror-external-host')) return;
+        if (summary && target.closest('button, input, select, textarea, a[href], [contenteditable="true"], [data-rabbit-mirror-tool-entry-host]')) return;
+        const id = nodeId(details);
+        const pointer = Number.isFinite(event.pointerId) ? event.pointerId : -1;
+        let previous = pending.get(pointer);
+        let seq;
+        if (event.type === 'pointerdown') {
+            seq = nextTtSurfaceClickSeq();
+            bound(pending, pointer, { seq, node: id });
+            previous = null;
+        } else if (event.type === 'toggle') {
+            seq = recent.get(id) || 0;
+        } else {
+            seq = previous?.seq || recent.get(id) || nextTtSurfaceClickSeq();
+        }
+        if (event.type === 'click' || event.type === 'pointercancel') pending.delete(pointer);
+        if (seq) bound(recent, id, seq);
+        const messageId = Number(details.closest('.mes')?.getAttribute('mesid'));
+        session.inputEvents += 1;
+        // All arguments are scalars. A new DOM identity is recorded, never restored.
+        recordTtSurface(event.type, {
+            seq, node: id, mesid: Number.isInteger(messageId) ? messageId : -1,
+            pointerId: Number.isFinite(event.pointerId) ? event.pointerId : undefined,
+            pointerType: typeof event.pointerType === 'string' ? event.pointerType : undefined,
+            detail: Number.isFinite(event.detail) ? event.detail : undefined,
+            eventTime: Number.isFinite(event.timeStamp) ? event.timeStamp : undefined,
+            phase: 'capture-before-default',
+            open: !!details.open, connected: !!details.isConnected,
+            sameDetails: previous ? previous.node === id : undefined,
+            defaultPrevented: !!event.defaultPrevented,
+        });
+    };
+    const events = ['pointerdown', 'pointerup', 'pointercancel', 'click', 'toggle'];
+    registerTtSurfaceCleanup(() => {
+        for (const type of events) root?.removeEventListener(type, handler, true);
+        pending.clear(); recent.clear(); nodeIds = new WeakMap(); root = null;
+    });
+    for (const type of events) root.addEventListener(type, handler, { capture: true, passive: true });
+}
+
+// Only these two TT controls use pointerup; a drag/cancel must never start diagnostics.
+function bindTtDiagnosticTap(button, activate, isAlive) {
+    let gesture = null;
+    let suppressClick = null;
+    const now = () => performance.now();
+    const isTouch = event => event.pointerType === 'touch' || event.pointerType === 'pen';
+    const usable = () => isAlive() && button.isConnected && !button.disabled;
+    const clearGesture = event => {
+        if (gesture && gesture.id === event.pointerId) {
+            suppressClick = { at: now(), id: gesture.id };
+            gesture = null;
+        }
+    };
+    const onDown = event => {
+        if (!isTouch(event) || !usable()) return;
+        if (event.isPrimary === false) {
+            if (gesture) suppressClick = { at: now(), id: gesture.id };
+            gesture = null;
+            return;
+        }
+        if (event.button !== 0) return;
+        suppressClick = null;
+        gesture = { id: event.pointerId, x: event.clientX, y: event.clientY, at: now(), moved: false };
+    };
+    const onMove = event => {
+        if (!gesture || gesture.id !== event.pointerId) return;
+        if (Math.abs(event.clientX - gesture.x) > 12 || Math.abs(event.clientY - gesture.y) > 12) gesture.moved = true;
+    };
+    const onUp = event => {
+        if (!isTouch(event) || !gesture || gesture.id !== event.pointerId) return;
+        const tap = gesture;
+        gesture = null;
+        suppressClick = { at: now(), id: tap.id };
+        if (!usable() || event.isPrimary === false || tap.moved || now() - tap.at > 900
+            || Math.abs(event.clientX - tap.x) > 12 || Math.abs(event.clientY - tap.y) > 12) return;
+        // Do not synthesize click or cancel native scrolling. The later click is de-duplicated.
+        activate('pointerup');
+    };
+    const onClick = event => {
+        if (!usable()) return;
+        // detail=0 is keyboard/accessibility activation, not the compatibility click after a tap.
+        if (event.detail !== 0 && suppressClick && now() - suppressClick.at < 1000
+            && (!(event.pointerId > 0) || event.pointerId === suppressClick.id)) return;
+        suppressClick = null;
+        gesture = null;
+        activate('click');
+    };
+    const handlers = { pointerdown: onDown, pointermove: onMove, pointerup: onUp,
+        pointercancel: clearGesture, lostpointercapture: clearGesture, click: onClick };
+    for (const [type, handler] of Object.entries(handlers)) {
+        button.addEventListener(type, handler, { capture: true, passive: true });
+    }
+    return () => {
+        for (const [type, handler] of Object.entries(handlers)) button.removeEventListener(type, handler, true);
+        gesture = null;
+        suppressClick = null;
+    };
+}
+
+function installTtDiagnosticEntry() {
+    try { globalThis.__rabbitMirrorTtDiagnosticUiCleanup?.(); } catch {}
+    globalThis.__rabbitMirrorTtDiagnosticUiCleanup = null;
+    const panel = document.getElementById('rabbit_mirror_theater_settings');
+    if (!panel) return;
+    const start = $(panel.querySelector('#rh_tt_diag_start'));
+    const copy = $(panel.querySelector('#rh_tt_diag_copy'));
+    const statusText = $(panel.querySelector('#rh_tt_diag_status'));
+    const output = $(panel.querySelector('#rh_tt_diag_output'));
+    if (!start.length || !copy.length || !statusText.length || !output.length) return;
+    const hostState = getRabbitMirrorHostCompatibilityStatus();
+    const isTt = !!globalThis.__TAURITAVERN__ || hostState?.host === 'tauritavern';
+    // The shared button CSS uses display:... !important; plain .hide() cannot beat it.
+    for (const button of [start[0], copy[0]]) {
+        button.hidden = !isTt;
+        button.style.setProperty('display', isTt ? 'inline-flex' : 'none', 'important');
+    }
+    if (!isTt) { statusText.hide(); output.hide(); return; }
+    let disposed = false;
+    let session = null;
+    const inputCleanups = [];
+    const isAlive = () => !disposed && isCurrentRuntime() && panel.isConnected
+        && document.getElementById('rabbit_mirror_theater_settings') === panel;
+    const hostNote = hostState?.managed === true && hostState?.registered === true
+        ? 'ChatSurface 已托管。'
+        : '当前未接入 managed ChatSurface；仍可采集触摸和入口状态，缺少挂载记录不能用于排除问题。';
+    const notify = (kind, text) => { try { globalThis.toastr?.[kind]?.(text); } catch {} };
+    const setStatus = text => { if (!disposed) statusText.text(text).show(); };
+    const report = () => {
+        if (!session) return retainedTtDiagnosticReport;
+        const elapsed = Math.max(0, (session.endedAt ?? performance.now()) - session.startedAt);
+        const head = [
+            'TT 诊断入口：1.5.40-ttentry3',
+            `diagnostic-start +0ms | managed=${session.host.managed} | registered=${session.host.registered} | protocolVersion=${session.host.protocolVersion ?? '不可用'}`,
+            `入口动作=${session.activation} | chatRootFound=${session.chatRootFound} | pointerEvents=${session.pointerEvents} | 输入事件 ${session.inputEvents} 条`,
+            session.host.managed && session.host.registered ? '' : '未接入 managed ChatSurface：挂载分发不可用或未启用；以下报告不代表没有卡顿。',
+            session.endedAt !== null ? `diagnostic-stop +${elapsed.toFixed(0)}ms | ${session.stopReason || '自动停止或达到条数上限'}` : '状态：正在采集',
+            session.host.errorCode ? `宿主状态：${session.host.errorCode}` : '',
+            '没有业务记录不代表没有卡顿；以下为空时，只能确认入口已运行。',
+        ].filter(Boolean).join('\n');
+        return head + '\n\n' + (session.engineStarted ? buildTtSurfaceReport({ version: RUNTIME_VERSION, ...session.host }) : '采集模块未成功启动。');
+    };
+    const renderStopped = () => {
+        if (!session) return;
+        session.endedAt = performance.now();
+        retainedTtDiagnosticReport = report();
+        if (disposed) return;
+        start.text('开始 TT 诊断（20 秒）').prop('disabled', false);
+        copy.prop('disabled', false);
+        setStatus('TT 诊断已结束，报告已显示，可复制；没有业务事件也会保留入口状态。');
+        output.val(retainedTtDiagnosticReport).show();
+        if (session.stopReason !== '入口启动异常') notify('success', 'TT 诊断已结束，报告已保留；请点击“复制 TT 诊断”。');
+    };
+    const startDiagnostic = activation => {
+        if (!isAlive()) return;
+        if (isTtSurfaceDiagnosticsActive()) {
+            if (session) session.stopReason = '手动结束';
+            stopTtSurfaceDiagnostics();
+            return;
+        }
+        try {
+            const state = getRabbitMirrorHostCompatibilityStatus();
+            const chatRoot = document.getElementById('chat');
+            session = {
+                startedAt: performance.now(), endedAt: null, inputEvents: 0, engineStarted: false, activation,
+                chatRootFound: !!chatRoot, pointerEvents: typeof globalThis.PointerEvent === 'function',
+                host: { managed: state?.managed === true, registered: state?.registered === true,
+                    protocolVersion: Number.isFinite(state?.protocolVersion) ? state.protocolVersion : null,
+                    errorCode: String(state?.errorCode || '').slice(0, 48) },
+            };
+            retainedTtDiagnosticReport = '';
+            output.val('').hide();
+            startTtSurfaceDiagnostics({ onStateChange: active => {
+                if (active) {
+                    session.engineStarted = true;
+                    recordTtSurface('diagnostic-start', { managed: session.host.managed, registered: session.host.registered, protocolVersion: session.host.protocolVersion });
+                } else renderStopped();
+            } });
+            captureTtDiagnosticInputs(chatRoot, session);
+            start.text('结束 TT 诊断（20 秒自动停止）').prop('disabled', false);
+            copy.prop('disabled', false);
+            setStatus(chatRoot ? `TT 诊断已开始（入口修复3）。请收起设置，在 20 秒内复现问题。${hostNote}` : 'TT 诊断已开始，但未找到聊天窗口；请进入聊天后重新采集。');
+            notify('info', 'TT 诊断已开始，请在 20 秒内复现滚动卡顿或点不开。');
+        } catch {
+            if (session) session.stopReason = '入口启动异常';
+            try { stopTtSurfaceDiagnostics(); } catch {}
+            if (session) { session.endedAt = performance.now(); retainedTtDiagnosticReport = report(); }
+            start.text('开始 TT 诊断（20 秒）').prop('disabled', false);
+            copy.prop('disabled', false);
+            output.val(retainedTtDiagnosticReport || 'TT 诊断入口启动失败，未进行采集。').show();
+            setStatus('TT 诊断启动失败，已显示入口报告；请复制反馈，不需要重新生成兔子镜。');
+            notify('error', 'TT 诊断未正常启动，请复制下方入口报告。');
+        }
+    };
+    const copyDiagnostic = async () => {
+        if (!isAlive()) return;
+        if (isTtSurfaceDiagnosticsActive()) {
+            if (session) session.stopReason = '复制前结束';
+            stopTtSurfaceDiagnostics();
+        }
+        const text = report();
+        if (!text) {
+            setStatus('还没有 TT 诊断报告，请先点击“开始 TT 诊断”并复现问题。');
+            notify('warning', '还没有 TT 诊断报告，请先开始诊断。');
+            return;
+        }
+        output.val(text).show();
+        try {
+            if (typeof navigator.clipboard?.writeText !== 'function') throw new Error('clipboard-unavailable');
+            await navigator.clipboard.writeText(text);
+            if (isAlive()) { setStatus('TT 诊断已复制。'); notify('success', '已复制 TT ChatSurface 诊断'); }
+        } catch {
+            if (!isAlive()) return;
+            const textarea = output[0];
+            let copied = false;
+            try {
+                textarea?.focus?.({ preventScroll: true }); textarea?.select?.();
+                textarea?.setSelectionRange?.(0, text.length);
+                copied = document.execCommand?.('copy') === true;
+            } catch {}
+            setStatus(copied ? 'TT 诊断已复制。' : '自动复制未成功：报告已显示，请长按下方文本全选复制。');
+            notify(copied ? 'success' : 'warning', copied ? '已复制 TT ChatSurface 诊断' : '自动复制未成功，请长按下方报告手动复制。');
+        }
+    };
+    start.off('.rmTtDiag'); copy.off('.rmTtDiag');
+    inputCleanups.push(bindTtDiagnosticTap(start[0], startDiagnostic, isAlive));
+    inputCleanups.push(bindTtDiagnosticTap(copy[0], copyDiagnostic, isAlive));
+    start.text('开始 TT 诊断（20 秒）').prop('disabled', false);
+    copy.prop('disabled', false);
+    setStatus(`TT 入口修复3 · 已就绪。${hostNote}`
+        + (retainedTtDiagnosticReport ? ' 已保留上次报告。' : ' 手动开启后采集 20 秒，不发模型请求。'));
+    if (retainedTtDiagnosticReport) output.val(retainedTtDiagnosticReport).show();
+    const cleanup = () => {
+        if (disposed) return;
+        disposed = true;
+        if (session) session.stopReason = '设置界面卸载';
+        try { stopTtSurfaceDiagnostics(); } catch {}
+        for (const dispose of inputCleanups.splice(0)) dispose();
+        start.off('.rmTtDiag'); copy.off('.rmTtDiag');
+        if (globalThis.__rabbitMirrorTtDiagnosticUiCleanup === cleanup) globalThis.__rabbitMirrorTtDiagnosticUiCleanup = null;
+    };
+    globalThis.__rabbitMirrorTtDiagnosticUiCleanup = cleanup;
+}
+
 export function initRabbitMirrorUI() {
     if (!isCurrentRuntime()) return;
     const finishUiInit = globalThis.__rabbitMirrorPerfDiag?.begin?.('ui.initCall', { retry: uiMountRetryCount }, 0);
@@ -542,6 +811,7 @@ export function initRabbitMirrorUI() {
         // Remove every stale/duplicate panel so the claimed runtime becomes the only UI owner.
         try { globalThis.__rabbitMirrorTagFilterScanUiCleanup?.(); } catch {}
         globalThis.__rabbitMirrorTagFilterScanUiCleanup = null;
+        try { globalThis.__rabbitMirrorTtDiagnosticUiCleanup?.(); } catch {}
         existing.remove();
         $('body > #rh_advanced_modal, body > #rh_world_info_prompt_modal, body > #rh_independent_tag_filter_modal').remove();
     }
@@ -558,7 +828,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}" data-rabbit-mirror-ui-ready="false">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header rabbit-mirror-drawer-header">
-      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.5.38</span>
+      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.5.40</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -620,22 +890,24 @@ export function initRabbitMirrorUI() {
         <summary><span>独立 API</span><span class="rabbit-mirror-section-note">连接 · 模型 · 显示</span></summary>
         <div class="rabbit-mirror-section-content">
           <div id="rh_independent_mode_status" aria-live="polite" style="padding:7px 9px;border-left:2px solid color-mix(in srgb,var(--SmartThemeBorderColor) 65%,transparent);opacity:.78;font-size:11px;line-height:1.45;">正在读取当前生成模式……</div>
-          <section id="rh_behavior_rules" aria-labelledby="rh_behavior_rule_heading" style="margin:12px 0;padding:14px;min-width:0;border:2px solid var(--SmartThemeQuoteColor,currentColor);border-radius:10px;background:color-mix(in srgb,var(--SmartThemeQuoteColor,currentColor) 7%,transparent);">
-            <h3 id="rh_behavior_rule_heading" style="font-size:16px;margin:0 0 8px;font-weight:700;">补充创作规则 · 独立 API</h3>
-            <label for="rh_behavior_rule_mode" style="display:block;font-weight:700;margin:8px 0;">注入方式</label>
-            <select id="rh_behavior_rule_mode" class="text_pole" style="width:100%;max-width:100%;box-sizing:border-box;min-height:44px;">
-              <option value="always">每轮注入</option><option value="off">不注入</option><option value="adult-only">仅在抽到成人内容时注入</option>
-            </select>
-            <label for="rh_behavior_rule_text" style="display:block;font-weight:700;margin:8px 0;">补充规则完整内容（可编辑或留空）</label>
-            <textarea id="rh_behavior_rule_text" class="text_pole" rows="10" maxlength="${BEHAVIOR_RULE_MAX_CHARS}" spellcheck="false" aria-describedby="rh_behavior_rule_help" style="width:100%;max-width:100%;min-height:200px;box-sizing:border-box;resize:vertical;font-size:14px;line-height:1.6;"></textarea>
-            <div id="rh_behavior_rule_help" style="font-size:12px;line-height:1.6;">仅作用于独立 API，不改变正文连接。</div>
-            <div class="flex-container" style="gap:8px;flex-wrap:wrap;margin:10px 0;">
-              <button id="rh_behavior_rule_save" class="menu_button" type="button" style="min-height:44px;font-weight:700;">保存创作规则</button>
-              <button id="rh_behavior_rule_clear" class="menu_button" type="button" style="min-height:44px;">清空内容</button>
-              <button id="rh_behavior_rule_reset" class="menu_button" type="button" style="min-height:44px;">恢复默认</button>
+          <details id="rh_behavior_rules" style="margin:12px 0;min-width:0;border:2px solid var(--SmartThemeQuoteColor,currentColor);border-radius:10px;background:color-mix(in srgb,var(--SmartThemeQuoteColor,currentColor) 7%,transparent);">
+            <summary id="rh_behavior_rule_heading" style="cursor:pointer;padding:13px 14px;font-size:16px;font-weight:700;">补充创作规则 · 独立 API</summary>
+            <div style="padding:0 14px 14px;">
+              <label for="rh_behavior_rule_mode" style="display:block;font-weight:700;margin:8px 0;">注入方式</label>
+              <select id="rh_behavior_rule_mode" class="text_pole" style="width:100%;max-width:100%;box-sizing:border-box;min-height:44px;">
+                <option value="always">每轮注入</option><option value="off">不注入</option><option value="adult-only">仅在抽到成人内容时注入</option>
+              </select>
+              <label for="rh_behavior_rule_text" style="display:block;font-weight:700;margin:8px 0;">补充规则完整内容（可编辑或留空）</label>
+              <textarea id="rh_behavior_rule_text" class="text_pole" rows="10" maxlength="${BEHAVIOR_RULE_MAX_CHARS}" spellcheck="false" aria-describedby="rh_behavior_rule_help" style="width:100%;max-width:100%;min-height:200px;box-sizing:border-box;resize:vertical;font-size:14px;line-height:1.6;"></textarea>
+              <div id="rh_behavior_rule_help" style="font-size:12px;line-height:1.6;">仅作用于独立 API，不改变正文连接。</div>
+              <div class="flex-container" style="gap:8px;flex-wrap:wrap;margin:10px 0;">
+                <button id="rh_behavior_rule_save" class="menu_button" type="button" style="min-height:44px;font-weight:700;">保存创作规则</button>
+                <button id="rh_behavior_rule_clear" class="menu_button" type="button" style="min-height:44px;">清空内容</button>
+                <button id="rh_behavior_rule_reset" class="menu_button" type="button" style="min-height:44px;">恢复默认</button>
+              </div>
+              <div id="rh_behavior_rule_status" role="status" aria-live="polite" style="font-size:13px;line-height:1.6;"></div>
             </div>
-            <div id="rh_behavior_rule_status" role="status" aria-live="polite" style="font-size:13px;line-height:1.6;"></div>
-          </section>
+          </details>
           <div id="rh_independent_api_fields" style="display:grid;gap:9px;">
             <div style="padding:10px;border:1px solid color-mix(in srgb,currentColor 16%,transparent);border-radius:10px;">
               <div style="font-weight:700;font-size:12px;margin-bottom:7px;">独立 API 生成方式</div>
@@ -685,11 +957,6 @@ export function initRabbitMirrorUI() {
             <div style="opacity:.66;font-size:11px;line-height:1.45;">一键配置时不保存 API Key；旧手动模式仍按原逻辑保存在当前 SillyTavern 扩展设置里。</div>
           </div>
         </div>
-      </details>
-
-      <details id="rh_external_library_section" class="rabbit-mirror-section">
-        <summary><span>母本库：导入与备份</span><span class="rabbit-mirror-section-note">文字 · 文件 · 换设备</span></summary>
-        <div id="rh_external_library_content" class="rabbit-mirror-section-content"></div>
       </details>
 
       <details class="rabbit-mirror-section rabbit-mirror-tools">
@@ -744,8 +1011,12 @@ export function initRabbitMirrorUI() {
               <button id="rh_external_diag_stop" class="menu_button" type="button">结束并生成报告</button>
               <button id="rh_external_diag_report" class="menu_button" type="button" style="font-weight:700;">查看当前／最后报告</button>
               <button id="rh_external_diag_copy" class="menu_button" type="button">复制外部报告</button>
+                <button id="rh_tt_diag_start" class="menu_button" type="button" hidden style="display:none!important;min-height:44px;">开始 TT 诊断（20 秒）</button>
+                <button id="rh_tt_diag_copy" class="menu_button" type="button" hidden style="display:none!important;min-height:44px;">复制 TT 诊断</button>
               <button id="rh_external_diag_reset" class="menu_button" type="button">清空外部记录</button>
             </div>
+            <div id="rh_tt_diag_status" role="status" style="display:none;margin-top:7px;opacity:.82;font-size:11px;line-height:1.45;"></div>
+            <textarea id="rh_tt_diag_output" class="text_pole" aria-label="TT 诊断报告" readonly spellcheck="false" style="display:none;width:100%;min-height:220px;max-height:50vh;resize:vertical;box-sizing:border-box;margin-top:8px;font:11px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace;user-select:text;-webkit-user-select:text;"></textarea>
             <textarea id="rh_external_diag_output" class="text_pole" readonly spellcheck="false" style="display:none;width:100%;min-height:240px;resize:vertical;box-sizing:border-box;margin-top:8px;font:11px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace;"></textarea>
           </div>
         </div>
@@ -787,8 +1058,13 @@ export function initRabbitMirrorUI() {
           </div>
 
           <div id="rh_advanced_page_external" class="rh-advanced-page" data-title="母本库：导入与备份" style="display:none;">
-            <p>文字导入、文件导入和整库备份现在集中在设置首页的「母本库：导入与备份」。</p>
-            <button id="rh_external_library_shortcut" class="menu_button" type="button" style="min-height:44px;white-space:normal;">前往母本库：导入与备份</button>
+            <div style="font-size:12px;line-height:1.6;margin-bottom:10px;">想加入自己的小剧场，或把已导入的库带到另一台设备？都从这里操作；不导入也能直接使用兔子镜。</div>
+            <div style="display:grid;gap:7px;margin-bottom:10px;font-size:12px;line-height:1.55;">
+              <div><b>粘贴文字：</b>填名称、贴文字 → 读取并确认分类。主题是“演什么”，展现形式是“怎么玩” → 保存，无需转成 JSON。</div>
+              <div><b>导入文件：</b>选择 TXT / MD / JSON 或世界书文件 → 读取 → 确认分类 → 保存；兔子镜整库备份会自动进入导入确认。</div>
+              <div><b>换设备：</b>旧设备导出整库备份 → 把文件传到新设备 → 新设备导入 → 核对并确认保存。</div>
+              <div><b>启用方式：</b>新导入的库默认停用。保存后请在“管理母本库”启用新库，并打开“外部母本参与抽签”。同编号的已有库会跳过、不覆盖，抽签总开关也不会自动替你打开。</div>
+            </div>
           </div>
           <div id="rh_advanced_page_replacement" class="rh-advanced-page" data-title="🚫 禁词与文字替换" style="display:none;"></div>
           <div id="rh_advanced_page_generation" class="rh-advanced-page" data-title="生成与抽取" style="display:none;">
@@ -954,7 +1230,7 @@ export function initRabbitMirrorUI() {
         status.textContent = '正在向酒馆请求更新当前兔子镜，请稍候。不会更新其他扩展，也不会删除本地数据。';
         reload.hidden = true;
         try {
-            const updater = await import('./extensionUpdater.js?rmv=1.5.38-update1');
+            const updater = await import('./extensionUpdater.js?rmv=1.5.40-tttouch2');
             const result = await updater.requestRabbitMirrorUpdate();
             if (!status.isConnected) return;
             status.textContent = result.status === 'current'
@@ -1039,7 +1315,7 @@ export function initRabbitMirrorUI() {
     $('#rh_independent_context_layers').val(settings.independentContextMaxLayers ?? 20);
     checked('#rh_follow_tag_isolation', settings.followTagIsolationEnabled === true);
     $('#rh_banned_words_save').parent().parent().appendTo('#rh_advanced_page_replacement');
-    $('#rh_external_library_actions').appendTo('#rh_external_library_content');
+    $('#rh_external_library_actions').appendTo('#rh_advanced_page_external');
     document.getElementById('rh_advanced_page_worldinfo').prepend(document.getElementById('rh_behavior_rules'));
     $('#rh_banned_words').val(formatRabbitMirrorReplacementLines(settings.rabbitMirrorBannedWords || []));
     $('#rh_banned_words_status').text(`已保存 ${(settings.rabbitMirrorBannedWords || []).length} / ${RABBIT_MIRROR_BANNED_WORD_MAX_COUNT} 个词`);
@@ -1291,7 +1567,7 @@ export function initRabbitMirrorUI() {
         if (!revision) return;
         const sequence = appearanceFileSequence;
         try {
-            const module = await import('./appearanceReference.js?rmv=1.5.38-update1');
+            const module = await import('./appearanceReference.js?rmv=1.5.40-tttouch2');
             if (!appearanceOwnerIsCurrent() || !appearanceUIOwner.open || sequence !== appearanceFileSequence || appearanceSaving) return;
             await module.loadAppearanceReferenceMaterial(revision);
             if (!appearanceOwnerIsCurrent() || !appearanceUIOwner.open || sequence !== appearanceFileSequence || appearanceSaving || getSettings().appearanceReferenceRevision !== revision) return;
@@ -1342,7 +1618,7 @@ export function initRabbitMirrorUI() {
         const retainRevision = String(getSettings().appearanceReferenceRevision || '');
         let raw = String($('#rh_appearance_reference_input').val() || '');
         try {
-            const module = await import('./appearanceReference.js?rmv=1.5.38-update1');
+            const module = await import('./appearanceReference.js?rmv=1.5.40-tttouch2');
             if (!appearanceOwnerIsCurrent()) return;
             if (String(getSettings().appearanceReferenceRevision || '') !== retainRevision) {
                 appearanceStatus('参考关联已改变，本次保存已停止；未写入摘要，也未覆盖当前设置。请核对当前关联后再保存。');
@@ -1391,13 +1667,6 @@ export function initRabbitMirrorUI() {
         setAdvancedOpen(true);
     });
     $('#rh_advanced_close').on('click', closeAdvancedModal);
-    $('#rh_external_library_shortcut').on('click', () => {
-        closeAdvancedModal();
-        const section = document.getElementById('rh_external_library_section');
-        section.open = true;
-        section.scrollIntoView({ block: 'center', behavior: 'auto' });
-        section.querySelector('summary')?.focus({ preventScroll: true });
-    });
     $('#rh_advanced_back_top').on('click', showAdvancedMenu);
     $('#rh_advanced_modal').on('click', function (event) {
         if (event.target === this) closeAdvancedModal();
@@ -1433,7 +1702,7 @@ export function initRabbitMirrorUI() {
         if (!quickStart.open || guideLoading || guideCleanup || guideDisposed) return;
         guideLoading = true;
         try {
-            const module = await import('./quickStart.js?rmv=1.5.38-update1');
+            const module = await import('./quickStart.js?rmv=1.5.40-tttouch2');
             if (guideDisposed || !quickStart.isConnected || !isCurrentRuntime()) return;
             guideCleanup = module.mountRabbitMirrorQuickStart({
                 root: document.getElementById('rabbit_mirror_theater_settings'),
@@ -2075,7 +2344,7 @@ export function initRabbitMirrorUI() {
             for (const key of Object.keys(libraryEntryViews)) document.getElementById(key).disabled = true;
             button.textContent = '正在加载…';
             try {
-                const module = await import('./externalWorldBook/importWizard.js?rmv=1.5.38-update1');
+                const module = await import('./externalWorldBook/importWizard.js?rmv=1.5.40-tttouch2');
                 if (!isCurrentRuntime() || !button.isConnected) return;
                 module.openExternalWorldBookImportWizard?.({ initialView });
             } catch (error) {
@@ -2289,6 +2558,8 @@ export function initRabbitMirrorUI() {
     });
     renderExternalDiagnosticStatus();
 
+    installTtDiagnosticEntry();
+
     $('#rh_reset').on('click', () => {
         resetSettings();
         location.reload();
@@ -2300,6 +2571,7 @@ export function initRabbitMirrorUI() {
 export function destroyRabbitMirrorUI() {
     invalidateIndependentModelPull();
     beginIndependentConnectionOperation();
+    try { globalThis.__rabbitMirrorTtDiagnosticUiCleanup?.(); } catch {}
     try { globalThis.__rabbitMirrorQuickStartUiCleanup?.(); } catch {}
     globalThis.__rabbitMirrorQuickStartUiCleanup = null;
     try { globalThis.__rabbitMirrorTagFilterScanUiCleanup?.(); } catch {}
