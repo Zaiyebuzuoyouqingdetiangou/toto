@@ -216,7 +216,7 @@ export function getSettings() {
     }
     settings.independentContextExcludedTags = normalizeIndependentContextExcludedTags(settings.independentContextExcludedTags);
     settings.behaviorRuleMode = ['always', 'off', 'adult-only'].includes(settings.behaviorRuleMode) ? settings.behaviorRuleMode : 'always';
-    settings.behaviorRuleText = settings.behaviorRuleText == null ? null : String(settings.behaviorRuleText).replace(/\u0000/g, '').slice(0, 5000);
+    settings.behaviorRuleText = settings.behaviorRuleText == null ? null : String(settings.behaviorRuleText).replace(/\u0000/g, '').slice(0, 20000);
     settings.independentEarlyBodyEnabled = settings.independentEarlyBodyEnabled === true;
     settings.independentEarlyBodyTags = normalizeIndependentEarlyBodyTags(settings.independentEarlyBodyTags);
     settings.independentEarlyBodyChatKey = String(settings.independentEarlyBodyChatKey || '').slice(0, 2048);
@@ -336,7 +336,7 @@ export function updateSettings(patch) {
     if (Object.prototype.hasOwnProperty.call(safePatch, 'independentEarlyBodyTags')) safePatch.independentEarlyBodyTags = normalizeIndependentEarlyBodyTags(safePatch.independentEarlyBodyTags);
     if (Object.prototype.hasOwnProperty.call(safePatch, 'independentEarlyBodyChatKey')) safePatch.independentEarlyBodyChatKey = String(safePatch.independentEarlyBodyChatKey || '').slice(0, 2048);
     if (Object.prototype.hasOwnProperty.call(safePatch, 'behaviorRuleMode')) safePatch.behaviorRuleMode = ['always', 'off', 'adult-only'].includes(safePatch.behaviorRuleMode) ? safePatch.behaviorRuleMode : 'always';
-    if (Object.prototype.hasOwnProperty.call(safePatch, 'behaviorRuleText')) safePatch.behaviorRuleText = safePatch.behaviorRuleText == null ? null : String(safePatch.behaviorRuleText).replace(/\u0000/g, '').slice(0, 5000);
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'behaviorRuleText')) safePatch.behaviorRuleText = safePatch.behaviorRuleText == null ? null : String(safePatch.behaviorRuleText).replace(/\u0000/g, '').slice(0, 20000);
     if (Object.prototype.hasOwnProperty.call(safePatch, 'independentContextExcludedTags')) {
         safePatch.independentContextExcludedTags = normalizeIndependentContextExcludedTags(safePatch.independentContextExcludedTags);
     }
