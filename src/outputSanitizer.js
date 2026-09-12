@@ -1,10 +1,10 @@
-import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.40-rulelimit1';
-import { isRabbitMirrorManagedChatSurface, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.5.40-rulelimit1';
-import { recordTtSurface, ttSurfaceNow, nextTtSurfaceClickSeq } from './ttSurfaceDiagnostics.js?rmv=1.5.40-rulelimit1';
-import { getSettings, syncExternalReferenceVisibility } from './settings.js?rmv=1.5.40-rulelimit1';
-import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.40-rulelimit1';
-import { getCurrentChatKey } from './storage.js?rmv=1.5.40-rulelimit1';
-import { getSanitizedRabbitMirrorFaceProof } from './multifaceProof.js?rmv=1.5.40-rulelimit1';
+import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.45-exclude1';
+import { isRabbitMirrorManagedChatSurface, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.5.45-exclude1';
+import { recordTtSurface, ttSurfaceNow, nextTtSurfaceClickSeq } from './ttSurfaceDiagnostics.js?rmv=1.5.45-exclude1';
+import { getSettings, syncExternalReferenceVisibility } from './settings.js?rmv=1.5.45-exclude1';
+import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.45-exclude1';
+import { getCurrentChatKey } from './storage.js?rmv=1.5.45-exclude1';
+import { getSanitizedRabbitMirrorFaceProof } from './multifaceProof.js?rmv=1.5.45-exclude1';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -14,14 +14,14 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.5.40-rulelimit1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.40-rulelimit1';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.40-rulelimit1';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.40-rulelimit1';
-import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.5.40-rulelimit1';
+} from './feedbackCat.js?rmv=1.5.45-exclude1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.45-exclude1';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.45-exclude1';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.45-exclude1';
+import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.5.45-exclude1';
 
 
-const RUNTIME_VERSION = '1.5.40';
+const RUNTIME_VERSION = '1.5.45';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -13916,6 +13916,107 @@ async function copyDiagnosticText(text) {
     }
 }
 
+// Explicit menu action only: export one live face, never its message/raw-source
+// owner. The detached clone is sanitized but never mounted or executed.
+function buildRabbitMirrorCurrentFaceHtml(root) {
+    const details = root?.matches?.('details') ? root
+        : root?.matches?.(MIRROR_TOTO_SELECTOR) ? root.querySelector(':scope > details') : null;
+    if (!details?.isConnected || !isRabbitMirrorDetails(details)) {
+        throw new Error('当前镜面已离开页面，请重新打开这一面的维修兔后复制。');
+    }
+    if (!validateRabbitMirrorTemplateStructuralBudget({ content: { childNodes: [details] } })) {
+        throw new Error('这面 HTML 超出安全复制范围，未复制，也未截断内容。');
+    }
+    const template = document.createElement('template');
+    const clone = cloneRabbitMirrorFilteredNode(details);
+    const originals = details.querySelectorAll('input, textarea, option');
+    const copies = clone.querySelectorAll('input, textarea, option');
+    originals.forEach((node, index) => {
+        const copy = copies[index];
+        if (node.matches('input[type="checkbox"], input[type="radio"]')) copy.toggleAttribute('checked', !!node.checked);
+        else if (node.matches('option')) copy.toggleAttribute('selected', !!node.selected);
+        else if (node.matches('textarea')) copy.textContent = node.value;
+        else if (!node.matches('input[type="password"], input[type="file"]')) copy.setAttribute('value', node.value);
+    });
+    // A normal inline face may keep its local stylesheet/scope on the <toto>
+    // wrapper. Clone only that shell and direct styles, not sibling prose/faces.
+    if (root !== details) {
+        const shell = root.cloneNode(false);
+        for (const child of root.children) {
+            if (child === details) shell.appendChild(clone);
+            else if (child.matches('style')) shell.appendChild(child.cloneNode(true));
+        }
+        template.content.appendChild(shell);
+    } else template.content.appendChild(clone);
+    template.content.querySelectorAll([
+        `[${TOOL_ENTRY_HOST_ATTR}]`, `[${MAINTENANCE_RABBIT_ATTR}]`, `[${FEEDBACK_CAT_ATTR}]`,
+        `[${RECIPE_BUTTON_ATTR}]`, `[${RESAY_ATTR}]`, `[${MAINTENANCE_MENU_ATTR}]`,
+        `[${FEEDBACK_CAT_MENU_ATTR}]`, `[${RECIPE_MENU_ATTR}]`, `[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`,
+        `[${EXTERNAL_REFERENCE_NOTE_ATTR}]`, `[${INTERACTION_HOME_ATTR}]`,
+        '[data-rabbit-mirror-maintenance-checked-sandbox]', '[data-rabbit-mirror-title-flow-end]',
+        `template[${MAINTENANCE_QUARANTINED_SCRIPT_ATTR}]`,
+    ].join(',')).forEach(node => node.remove());
+    if (!sanitizeRabbitMirrorUntrustedTemplate(template)) {
+        throw new Error('这面 HTML 未通过安全复制检查；当前页面没有改变。');
+    }
+    const html = template.innerHTML;
+    if (!html || html.length > RABBIT_MIRROR_MAX_TEMPLATE_SOURCE_CHARS) {
+        throw new Error('这面 HTML 超出安全复制范围，未复制，也未截断内容。');
+    }
+    return '<!doctype html>\n<html lang="zh-CN"><head><meta charset="utf-8">'
+        + '<meta name="viewport" content="width=device-width,initial-scale=1">'
+        + '<title>兔子镜小剧场</title></head><body>\n' + html + '\n</body></html>';
+}
+
+async function writeRabbitMirrorHtmlClipboard(text) {
+    try { await navigator.clipboard.writeText(text); return true; } catch { /* WebView fallback below. */ }
+    const previousFocus = document.activeElement;
+    let field;
+    try {
+        field = document.createElement('textarea');
+        field.value = text;
+        field.readOnly = true;
+        field.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;';
+        document.body.appendChild(field);
+        field.focus({ preventScroll: true });
+        field.select();
+        return !!document.execCommand('copy');
+    } catch { return false; }
+    finally {
+        field?.remove();
+        if (previousFocus?.isConnected) { try { previousFocus.focus({ preventScroll: true }); } catch {} }
+    }
+}
+
+async function copyRabbitMirrorCurrentFaceHtml(root, actionButton, panel) {
+    if (!actionButton || actionButton.disabled) return;
+    const status = panel.querySelector('[data-rm-copy-html-status]');
+    actionButton.disabled = true;
+    if (status) status.textContent = '正在复制本面 HTML…';
+    panel.querySelector('[data-rm-copy-html-fallback]')?.remove();
+    try {
+        const html = buildRabbitMirrorCurrentFaceHtml(root);
+        const copied = await writeRabbitMirrorHtmlClipboard(html);
+        if (!panel.isConnected) return;
+        if (status) status.textContent = copied
+            ? '已复制本面 HTML（含样式）。粘贴到纯文本文件并保存为 .html 即可；不含整份诊断或其他消息。'
+            : '自动复制失败。请在下方文本框全选复制，再保存为 .html；当前镜面没有改变。';
+        if (!copied) {
+            const field = document.createElement('textarea');
+            field.setAttribute('data-rm-copy-html-fallback', 'true');
+            field.setAttribute('aria-label', '本面 HTML，可全选后手动复制');
+            field.readOnly = true;
+            field.value = html;
+            field.style.cssText = 'box-sizing:border-box;width:100%;min-height:96px;';
+            status?.insertAdjacentElement('afterend', field);
+        }
+    } catch (error) {
+        if (status?.isConnected) status.textContent = String(error?.message || '复制失败，当前镜面没有改变。');
+    } finally {
+        actionButton.disabled = false;
+    }
+}
+
 function removeInteractionDiagnostic(root) {
     const state = interactionDiagnosticStates.get(root);
     state?.panel?.remove?.();
@@ -22545,6 +22646,8 @@ function showMaintenanceRabbitMenu(root, button) {
       <button type="button" data-rm-maintenance-action="all">🔧 全部试试（仅当前兔子镜）</button>
       <button type="button" data-rm-maintenance-action="reset-interaction" ${hasRabbitMirrorInteractionResetSnapshot(root) ? '' : 'disabled'}>⏪ 恢复交互初始状态</button>
       <button type="button" data-rm-maintenance-action="restore-before" ${maintenancePreRepairSnapshots.has(maintenanceSnapshotKey(root)) ? '' : 'disabled'}>↩️ 返回修复前</button>
+      <button type="button" data-rm-maintenance-action="copy-html" style="min-height:44px!important;">复制本面 HTML（含样式）</button>
+      <div data-rm-copy-html-status role="status" aria-live="polite" style="font-size:12px;line-height:1.5;">复制为独立 HTML，仅包含本面。依赖兔子镜脚本的交互不会随文件导出。</div>
       <button type="button" data-rm-maintenance-action="diagnostic">📋 生成全链路诊断</button>
       <button type="button" data-rm-maintenance-action="close">关闭</button>`;
     const recommendation = panel.querySelector('.rabbit-mirror-maintenance-recommendation');
@@ -22568,6 +22671,10 @@ function showMaintenanceRabbitMenu(root, button) {
         if (!action) return;
         event.preventDefault();
         event.stopPropagation();
+        if (action === 'copy-html') {
+            void copyRabbitMirrorCurrentFaceHtml(root, event.target.closest('[data-rm-maintenance-action]'), panel);
+            return;
+        }
         closeMaintenanceRabbitMenu();
         if (action === 'close') return;
         if (action === 'reset-interaction') {
@@ -26003,6 +26110,7 @@ function rememberTtOuterSummaryDelayedClick(details, state) {
     pending.set(key, {
         pointerType: state.pointerType, pointerId: state.pointerId,
         count: (previous?.count || 0) + 1,
+        mouseCompatibleCount: (previous?.mouseCompatibleCount || 0) + 1,
         expires: now + TT_OUTER_SUMMARY_DELAYED_CLICK_TTL_MS,
         x: state.x, y: state.y,
     });
@@ -26015,32 +26123,44 @@ function consumeTtOuterSummaryDelayedClick(details, event) {
     const now = performance.now();
     const pointerType = String(event.pointerType || '');
     if (event.detail === 0 && pointerType !== 'touch' && pointerType !== 'pen') return false;
+    const identifiedPointer = Number.isFinite(event.pointerId) && event.pointerId >= 0 && !!pointerType;
+    const mouseCompatiblePointer = pointerType === 'mouse' && identifiedPointer;
     const mouseActivation = ttOuterSummaryMouseActivations.get(details);
     const explicitTouch = event.sourceCapabilities?.firesTouchEvents === true;
     const matchesMouse = mouseActivation?.expires > now
         && Math.hypot(Number(event.clientX || 0) - mouseActivation.x, Number(event.clientY || 0) - mouseActivation.y)
             <= TT_OUTER_SUMMARY_TAP_MAX_MOVE_PX;
-    if (pointerType === 'mouse' || (!pointerType && !explicitTouch && matchesMouse)) {
+    // Some TT WebViews relabel the delayed touch click as mouse, but keep its
+    // pointer ID. A real mouse down takes precedence, including ID reuse; a
+    // different physical mouse ID must not claim this touch-derived click.
+    if ((pointerType === 'mouse' && (!identifiedPointer
+            || (mouseActivation?.expires > now && mouseActivation.pointerId === event.pointerId)))
+            || (!pointerType && !explicitTouch && matchesMouse)) {
         ttOuterSummaryMouseActivations.delete(details);
         return false;
     }
-    if (pointerType && pointerType !== 'touch' && pointerType !== 'pen') return false;
+    if (pointerType && pointerType !== 'touch' && pointerType !== 'pen' && !mouseCompatiblePointer) return false;
     if (!pointerType && event.sourceCapabilities?.firesTouchEvents === false) return false;
     const pending = pendingTtOuterSummaryClicks(details, now);
     if (!pending) return false;
-    const identifiedPointer = Number.isFinite(event.pointerId) && event.pointerId >= 0 && pointerType;
     // Older WebViews expose a touch-derived MouseEvent without pointer ID.
     // Keep its spatial pairing, but never ignore a modern click's distinct ID.
-    const key = [...pending].find(([, receipt]) => (!pointerType || receipt.pointerType === pointerType)
+    // Mouse compatibility additionally requires its own still-eligible receipt;
+    // timing or position alone can never suppress an identified mouse click.
+    const key = [...pending].find(([, receipt]) => (!pointerType || receipt.pointerType === pointerType
+            || (mouseCompatiblePointer && receipt.mouseCompatibleCount > 0))
         && (!identifiedPointer || receipt.pointerId === event.pointerId)
         && Math.hypot(Number(event.clientX || 0) - receipt.x, Number(event.clientY || 0) - receipt.y)
             <= TT_OUTER_SUMMARY_TAP_MAX_MOVE_PX)?.[0];
     const receipt = pending.get(key);
     if (!receipt) return false;
     receipt.count -= 1;
+    if (mouseCompatiblePointer) receipt.mouseCompatibleCount -= 1;
+    receipt.mouseCompatibleCount = Math.min(receipt.mouseCompatibleCount, receipt.count);
     if (!receipt.count) pending.delete(key);
     if (!pending.size) ttOuterSummaryDelayedClickSuppressions.delete(details);
-    return identifiedPointer ? 'pointer' : explicitTouch ? 'legacy-touch' : 'legacy-spatial';
+    return mouseCompatiblePointer ? 'pointer-mouse-compatible'
+        : identifiedPointer ? 'pointer' : explicitTouch ? 'legacy-touch' : 'legacy-spatial';
 }
 
 const managedOuterSummaryToggleFallbackPending = new WeakSet();
@@ -26148,10 +26268,20 @@ function installToolEntryDelegation(chatRoot = getChatRoot()) {
         const isTouchOrPen = event.pointerType === 'touch' || event.pointerType === 'pen';
         const tapTarget = ttOuterSummaryTapTarget(event.target);
         if (tapTarget && event.pointerType === 'mouse' && event.button === 0 && event.isPrimary !== false) {
+            const now = performance.now();
             ttOuterSummaryMouseActivations.set(tapTarget.details, {
-                expires: performance.now() + TT_OUTER_SUMMARY_DELAYED_CLICK_TTL_MS,
+                pointerId: event.pointerId,
+                expires: now + TT_OUTER_SUMMARY_DELAYED_CLICK_TTL_MS,
                 x: Number(event.clientX || 0), y: Number(event.clientY || 0),
             });
+            // Do not reinterpret a genuine same-ID mouse activation as an old
+            // touch click, even after its mouse marker has been consumed. Keep
+            // the original touch receipts; a later new touch earns only one
+            // new compatible receipt, rather than reviving these old ones.
+            const pending = pendingTtOuterSummaryClicks(tapTarget.details, now);
+            for (const receipt of pending?.values() || []) {
+                if (receipt.pointerId === event.pointerId) receipt.mouseCompatibleCount = 0;
+            }
         }
         const interruptedPointer = ttOuterSummaryTapState && ttOuterSummaryTapState.pointerId !== event.pointerId;
         if (!interruptedPointer && tapTarget && isTouchOrPen && event.isPrimary !== false && event.button === 0

@@ -8,6 +8,11 @@ export const VISUAL_EXTRA_PROMPT_MAX_CHARS = 1000;
 export const VISUAL_AVOID_PROMPT_MAX_CHARS = 1000;
 export const WORLD_INFO_BOOK_NAME_MAX_CHARS = 512;
 export const INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT = 32;
+// Keep startup normalization scalar-only; loading host world-book readers is a user action.
+function normalizeMemoryWorldBookSettingId(value) {
+    return typeof value === 'string' && value.length <= 1000 && !/[\u0000\r\n]/.test(value)
+        ? value.trim() : '';
+}
 // Do not silently reduce a malformed early-body selection: that could start a
 // request before all tags the user selected have closed. Reserved names are also
 // rejected by the runtime parser; this startup normalizer stays dependency-free.
@@ -115,6 +120,10 @@ export const defaultSettings = Object.freeze({
     independentApiModel: '',
     independentApiTemperature: 0.8,
     independentApiMaxTokens: 30000,
+    independentAdvancedEnabled: false,
+    independentReasoningEffort: '',
+    independentExtraParams: '',
+    independentExcludedParams: [],
     independentContextMaxLayers: 20,
     independentContextExcludedTags: [...DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS],
     behaviorRuleMode: 'always',
@@ -168,6 +177,8 @@ export const defaultSettings = Object.freeze({
     creativeExpansionMode: true,
     forceVisualScenery: false,
     memoryScanEnabled: false,
+    memoryWorldBookEnabled: false,
+    memoryWorldBookId: '',
     memoryProviderIds: [],
     memoryMaxChars: 2200,
     themesMin: 1,
@@ -210,6 +221,9 @@ export function getSettings() {
         settings.independentApiTemperature = Math.max(0, Math.min(2, Number.isFinite(temperature) ? temperature : 0.8));
     }
     settings.independentApiMaxTokens = Math.max(512, Math.min(32000, Number(settings.independentApiMaxTokens) || 30000));
+    // Keep this startup path scalar-only. Invalid stored JSON is not silently
+    // truncated or repaired; opt-in request preflight validates it before send.
+    settings.independentAdvancedEnabled = settings.independentAdvancedEnabled === true;
     {
         const contextLayers = Number(settings.independentContextMaxLayers);
         settings.independentContextMaxLayers = Math.max(1, Math.min(200, Number.isFinite(contextLayers) ? Math.round(contextLayers) : 20));
@@ -313,6 +327,8 @@ export function getSettings() {
     });
     settings.memoryProviderIds = [...new Set(settings.memoryProviderIds.filter(Boolean))].slice(0, 12);
     settings.memoryScanEnabled = !!settings.memoryScanEnabled;
+    settings.memoryWorldBookEnabled = settings.memoryWorldBookEnabled === true;
+    settings.memoryWorldBookId = normalizeMemoryWorldBookSettingId(settings.memoryWorldBookId);
     settings.memoryMaxChars = Math.max(600, Math.min(6000, Number(settings.memoryMaxChars) || defaultSettings.memoryMaxChars));
     settings.richFormatBias = false;
     settings.depth = Number(settings.depth) || 0;
@@ -332,6 +348,8 @@ export function syncExternalReferenceVisibility(settings) {
 export function updateSettings(patch) {
     const settings = getSettings();
     const safePatch = patch && typeof patch === 'object' ? { ...patch } : {};
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'memoryWorldBookEnabled')) safePatch.memoryWorldBookEnabled = safePatch.memoryWorldBookEnabled === true;
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'memoryWorldBookId')) safePatch.memoryWorldBookId = normalizeMemoryWorldBookSettingId(safePatch.memoryWorldBookId);
     if (Object.prototype.hasOwnProperty.call(safePatch, 'independentEarlyBodyEnabled')) safePatch.independentEarlyBodyEnabled = safePatch.independentEarlyBodyEnabled === true;
     if (Object.prototype.hasOwnProperty.call(safePatch, 'independentEarlyBodyTags')) safePatch.independentEarlyBodyTags = normalizeIndependentEarlyBodyTags(safePatch.independentEarlyBodyTags);
     if (Object.prototype.hasOwnProperty.call(safePatch, 'independentEarlyBodyChatKey')) safePatch.independentEarlyBodyChatKey = String(safePatch.independentEarlyBodyChatKey || '').slice(0, 2048);
