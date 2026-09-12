@@ -37,7 +37,7 @@ function ttSettingsEntryHostNote(status) {
     return '兔子镜已登记 TT ChatSurface；具体消息挂载状态以诊断为准，完整设置按需加载。';
 }
 
-export function mountRabbitMirrorTtSettingsEntry({ runtimeVersion, isCurrent, getStatus, loadSettings, isTauriTavern = false, document: doc = globalThis.document }) {
+export function mountRabbitMirrorTtSettingsEntry({ runtimeVersion, isCurrent, getStatus, loadSettings, loadViewer, isTauriTavern = false, document: doc = globalThis.document }) {
     if (!isCurrent()) return null;
     let status;
     try { status = getStatus?.() || {}; }
@@ -62,7 +62,7 @@ export function mountRabbitMirrorTtSettingsEntry({ runtimeVersion, isCurrent, ge
     shell.className = 'rabbit-mirror-settings';
     shell.dataset.rabbitMirrorRuntimeVersion = runtimeVersion;
     shell.innerHTML = `
-      <style>#rh_tt_settings_entry_open:focus-visible { outline: 3px solid currentColor !important; outline-offset: 2px !important; }</style>
+      <style>#rh_tt_settings_entry_open:focus-visible,#rh_tt_settings_entry_view:focus-visible { outline: 3px solid currentColor !important; outline-offset: 2px !important; }</style>
       <div class="inline-drawer">
         <div class="inline-drawer-header rabbit-mirror-drawer-header"><b>兔子镜小剧场</b></div>
         <div style="padding:12px;line-height:1.5;overflow-wrap:anywhere">
@@ -74,14 +74,42 @@ export function mountRabbitMirrorTtSettingsEntry({ runtimeVersion, isCurrent, ge
     shell.querySelector('[data-rm-tt-entry-host-note]').textContent = ttSettingsEntryHostNote(status);
     const button = shell.querySelector('button');
     const feedback = shell.querySelector('[role="status"]');
+    let viewButton = null;
+    if (typeof loadViewer === 'function') {
+        viewButton = doc.createElement('button');
+        viewButton.id = 'rh_tt_settings_entry_view';
+        viewButton.type = 'button';
+        viewButton.className = 'menu_button';
+        viewButton.textContent = '独立查看已有小剧场';
+        viewButton.style.cssText = 'min-height:48px;min-width:48px!important;max-width:100%;box-sizing:border-box;white-space:normal!important;cursor:pointer;touch-action:manipulation;margin-top:8px';
+        viewButton.setAttribute('aria-describedby', 'rh_tt_settings_entry_status');
+        button.after(viewButton);
+        viewButton.addEventListener('click', view);
+    }
     let disposed = false;
     let busy = false;
+    let viewBusy = false;
     const active = () => !disposed && isCurrent() && shell.isConnected;
     function dispose() {
         disposed = true;
         button.removeEventListener('click', open);
+        viewButton?.removeEventListener('click', view);
         shell.remove();
         if (entries.get(doc) === controller) entries.delete(doc);
+    }
+    async function view() {
+        if (!active() || viewBusy) return;
+        viewBusy = true;
+        viewButton.disabled = true;
+        feedback.textContent = '正在打开只读查看面板；不生成、不重试。';
+        try {
+            await loadViewer(active);
+            if (active()) feedback.textContent = '独立面板仅查看已有结果，不代表 TT 原位置内嵌已修复。';
+        } catch {
+            if (active()) feedback.textContent = '查看面板未能加载，请手动重试；原记录未修改。';
+        } finally {
+            if (active()) { viewBusy = false; viewButton.disabled = false; }
+        }
     }
     function reconcile() {
         const panel = fullPanel();

@@ -26,6 +26,14 @@ const EMPTY_SNAPSHOT = Object.freeze({
 
 let snapshot = EMPTY_SNAPSHOT;
 let snapshotRevision = 0;
+const selectionKeys = new WeakMap();
+
+// Computed alongside eligible-ID snapshot construction, never by reading raw
+// material or scanning a library during directive-cache lookup. Commutative
+// sums keep the key stable when IDB hydration returns the same IDs reordered.
+export function getExternalPoolSelectionKey() {
+    return selectionKeys.get(snapshot) || '0:0:0';
+}
 
 export const EXTERNAL_POOL_METADATA_VERSION = 1;
 
@@ -89,6 +97,8 @@ export function buildExternalPoolSnapshot(libraries = [], entriesByLibrary = new
     const formatsByLibrary = [];
     let themeCount = 0;
     let formatCount = 0;
+    let selectionFirst = 0;
+    let selectionSecond = 0;
 
     for (const rawLibrary of Array.isArray(libraries) ? libraries : []) {
         const libraryId = cleanId(rawLibrary?.libraryId, 1024);
@@ -106,6 +116,16 @@ export function buildExternalPoolSnapshot(libraries = [], entriesByLibrary = new
             const light = lightweightEntry(entry, libraryId, classification);
             if (!light || seen.has(light.id)) continue;
             seen.add(light.id);
+            let first = 2166136261;
+            let second = 5381;
+            const identity = `${libraryId}\u0000${classification}\u0000${light.id}`;
+            for (let index = 0; index < identity.length; index += 1) {
+                const code = identity.charCodeAt(index);
+                first = Math.imul(first ^ code, 16777619);
+                second = Math.imul(second, 33) ^ code;
+            }
+            selectionFirst = (selectionFirst + (first >>> 0)) >>> 0;
+            selectionSecond = (selectionSecond + (second >>> 0)) >>> 0;
             if (classification === 'theme') themeIds.push(light.id);
             else formatIds.push(light.id);
         }
@@ -121,13 +141,15 @@ export function buildExternalPoolSnapshot(libraries = [], entriesByLibrary = new
         }
     }
 
-    return Object.freeze({
+    const result = Object.freeze({
         libraries: Object.freeze(enabledLibraries),
         themesByLibrary: Object.freeze(themesByLibrary),
         formatsByLibrary: Object.freeze(formatsByLibrary),
         themeCount,
         formatCount,
     });
+    selectionKeys.set(result, `${themeCount + formatCount}:${selectionFirst.toString(36)}:${selectionSecond.toString(36)}`);
+    return result;
 }
 
 export function setExternalPoolSnapshot(libraries = [], entriesByLibrary = new Map()) {

@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜小剧场 · TT 测试",
   "loading_order": 100,
-  "js": "tt-entry.js?rmv=1.5.46-ttboot1",
-  "css": "style.css?rmv=1.5.46",
+  "js": "tt-entry.js?rmv=1.5.48-externalfix1",
+  "css": "style.css?rmv=1.5.48",
   "author": "Toto",
-  "version": "1.5.46",
+  "version": "1.5.48",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜 TT 专项测试：轻量同步登记与独立设置入口；尚未真机验证。"
+  "description": "兔子镜外部母本修复测试：修复启用库后旧点菜缓存仍选内置，以及长标题/关键词挤掉摘要正文。保留 TT 独立查看；虚化内嵌未修复，尚未真机验证。"
 }

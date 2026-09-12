@@ -1,24 +1,24 @@
-import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, RABBIT_MIRROR_BANNED_WORD_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, normalizeRabbitMirrorBannedWords, updateSettings, resetSettings } from './settings.js?rmv=1.5.46-ttboot1';
-import { startTtSurfaceDiagnostics, stopTtSurfaceDiagnostics, isTtSurfaceDiagnosticsActive, buildTtSurfaceReport, recordTtSurface, registerTtSurfaceCleanup, nextTtSurfaceClickSeq } from './ttSurfaceDiagnostics.js?rmv=1.5.46-ttboot1';
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorHostCompatibilityStatus } from './hostCompatibility.js?rmv=1.5.46-ttboot1';
-import { clearLastCombo, getCurrentChatKey } from './storage.js?rmv=1.5.46-ttboot1';
-import { normalizeEarlyBodyTags } from './earlyBodyTags.js?rmv=1.5.46-ttboot1';
-import { applyRabbitMirrorHostSurface } from './hostCompatibility.js?rmv=1.5.46-ttboot1';
-import { BEHAVIOR_RULE_MAX_CHARS, DEFAULT_BEHAVIOR_RULE_TEXT, resolveBehaviorRuleText } from './behaviorRules.js?rmv=1.5.46-ttboot1';
-import { clearRecentIndependentTransportDiagnostics } from './transportDiagnostics.js?rmv=1.5.46-ttboot1';
-import { parseIndependentAdvancedOptions } from './advancedRequestOptions.js?rmv=1.5.46-ttboot1';
-import { parseRabbitMirrorReplacementLines, formatRabbitMirrorReplacementLines } from './bannedWords.js?rmv=1.5.46-ttboot1';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.5.46-ttboot1';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.5.46-ttboot1';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.5.46-ttboot1';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.5.46-ttboot1';
-import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.5.46-ttboot1';
-import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5.46-ttboot1';
-import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.5.46-ttboot1';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.46-ttboot1';
+import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, RABBIT_MIRROR_BANNED_WORD_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, normalizeRabbitMirrorBannedWords, updateSettings, resetSettings } from './settings.js?rmv=1.5.48-externalfix1';
+import { startTtSurfaceDiagnostics, stopTtSurfaceDiagnostics, isTtSurfaceDiagnosticsActive, buildTtSurfaceReport, recordTtSurface, registerTtSurfaceCleanup, nextTtSurfaceClickSeq } from './ttSurfaceDiagnostics.js?rmv=1.5.48-externalfix1';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorHostCompatibilityStatus } from './hostCompatibility.js?rmv=1.5.48-externalfix1';
+import { clearLastCombo, getCurrentChatKey } from './storage.js?rmv=1.5.48-externalfix1';
+import { normalizeEarlyBodyTags } from './earlyBodyTags.js?rmv=1.5.48-externalfix1';
+import { applyRabbitMirrorHostSurface } from './hostCompatibility.js?rmv=1.5.48-externalfix1';
+import { BEHAVIOR_RULE_MAX_CHARS, DEFAULT_BEHAVIOR_RULE_TEXT, resolveBehaviorRuleText } from './behaviorRules.js?rmv=1.5.48-externalfix1';
+import { clearRecentIndependentTransportDiagnostics } from './transportDiagnostics.js?rmv=1.5.48-externalfix1';
+import { parseIndependentAdvancedOptions } from './advancedRequestOptions.js?rmv=1.5.48-externalfix1';
+import { parseRabbitMirrorReplacementLines, formatRabbitMirrorReplacementLines } from './bannedWords.js?rmv=1.5.48-externalfix1';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.5.48-externalfix1';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.5.48-externalfix1';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.5.48-externalfix1';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.5.48-externalfix1';
+import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.5.48-externalfix1';
+import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5.48-externalfix1';
+import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.5.48-externalfix1';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.48-externalfix1';
 
 const SETTINGS_UI_VERSION = '1.10-parameter-exclusion';
-const RUNTIME_VERSION = '1.5.46';
+const RUNTIME_VERSION = '1.5.48';
 
 function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
@@ -507,7 +507,7 @@ async function refreshMemoryWorldBookDirectory() {
     memoryWorldBookDirectoryBusy = true;
     renderMemoryWorldBookBinding();
     try {
-        const { listMemoryWorldBooks, normalizeMemoryWorldBookId } = await import('./memoryWorldBook.js?rmv=1.5.46-ttboot1');
+        const { listMemoryWorldBooks, normalizeMemoryWorldBookId } = await import('./memoryWorldBook.js?rmv=1.5.48-externalfix1');
         if (!isAlive()) return;
         const books = await listMemoryWorldBooks();
         if (!isAlive()) return;
@@ -683,17 +683,20 @@ function installTtDiagnosticEntry() {
     const copy = $(panel.querySelector('#rh_tt_diag_copy'));
     const statusText = $(panel.querySelector('#rh_tt_diag_status'));
     const output = $(panel.querySelector('#rh_tt_diag_output'));
+    const viewerButton = panel.querySelector('#rh_tt_viewer_open');
     if (!start.length || !copy.length || !statusText.length || !output.length) return;
     const hostState = getRabbitMirrorHostCompatibilityStatus();
     const isTt = !!globalThis.__TAURITAVERN__ || hostState?.host === 'tauritavern';
     // The shared button CSS uses display:... !important; plain .hide() cannot beat it.
-    for (const button of [start[0], copy[0]]) {
+    for (const button of [start[0], copy[0], viewerButton].filter(Boolean)) {
         button.hidden = !isTt;
         button.style.setProperty('display', isTt ? 'inline-flex' : 'none', 'important');
     }
     if (!isTt) { statusText.hide(); output.hide(); return; }
     let disposed = false;
     let session = null;
+    let viewer = null;
+    let viewerBusy = false;
     const inputCleanups = [];
     const isAlive = () => !disposed && isCurrentRuntime() && panel.isConnected
         && document.getElementById('rabbit_mirror_theater_settings') === panel;
@@ -704,7 +707,7 @@ function installTtDiagnosticEntry() {
         if (!session) return retainedTtDiagnosticReport;
         const elapsed = Math.max(0, (session.endedAt ?? performance.now()) - session.startedAt);
         const head = [
-            'TT 诊断入口：1.5.46-ttentry3',
+            'TT 诊断入口：1.5.48-ttentry3',
             `diagnostic-start +0ms | managed=${session.host.managed} | registered=${session.host.registered} | protocolVersion=${session.host.protocolVersion ?? '不可用'}`,
             `入口动作=${session.activation} | chatRootFound=${session.chatRootFound} | pointerEvents=${session.pointerEvents} | 输入事件 ${session.inputEvents} 条`,
             session.host.managed && session.host.registered ? '' : '未接入 managed ChatSurface：挂载分发不可用或未启用；以下报告不代表没有卡顿。',
@@ -801,6 +804,21 @@ function installTtDiagnosticEntry() {
     start.off('.rmTtDiag'); copy.off('.rmTtDiag');
     inputCleanups.push(bindTtDiagnosticTap(start[0], startDiagnostic, isAlive));
     inputCleanups.push(bindTtDiagnosticTap(copy[0], copyDiagnostic, isAlive));
+    if (viewerButton) inputCleanups.push(bindTtDiagnosticTap(viewerButton, async () => {
+        if (!isAlive() || viewerBusy) return;
+        viewerBusy = true;
+        viewerButton.disabled = true;
+        try {
+            const module = await import('./ttTheaterViewer.js?rmv=1.5.48-externalfix1');
+            if (!isAlive()) return;
+            viewer = module.openRabbitMirrorTtTheaterViewer({ isCurrent: isAlive });
+            if (!viewer) setStatus('TT 查看面板暂不可用；未生成或修改任何记录。');
+        } catch {
+            if (isAlive()) setStatus('TT 查看面板加载失败，可手动重试；未生成或修改任何记录。');
+        } finally {
+            if (isAlive()) { viewerBusy = false; viewerButton.disabled = false; }
+        }
+    }, isAlive));
     start.text('开始 TT 诊断（20 秒）').prop('disabled', false);
     copy.prop('disabled', false);
     setStatus(`TT 入口修复3 · 已就绪。${hostNote}`
@@ -809,6 +827,8 @@ function installTtDiagnosticEntry() {
     const cleanup = () => {
         if (disposed) return;
         disposed = true;
+        viewer?.close();
+        viewer = null;
         if (session) session.stopReason = '设置界面卸载';
         try { stopTtSurfaceDiagnostics(); } catch {}
         for (const dispose of inputCleanups.splice(0)) dispose();
@@ -906,7 +926,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}" data-rabbit-mirror-ui-ready="false">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header rabbit-mirror-drawer-header">
-      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.5.46</span>
+      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.5.48</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -1136,6 +1156,7 @@ export function initRabbitMirrorUI() {
               <button id="rh_external_diag_copy" class="menu_button" type="button">复制外部报告</button>
                 <button id="rh_tt_diag_start" class="menu_button" type="button" hidden style="display:none!important;min-height:44px;">开始 TT 诊断（20 秒）</button>
                 <button id="rh_tt_diag_copy" class="menu_button" type="button" hidden style="display:none!important;min-height:44px;">复制 TT 诊断</button>
+                <button id="rh_tt_viewer_open" class="menu_button" type="button" hidden style="display:none!important;min-height:48px;">TT：查看已有小剧场</button>
               <button id="rh_external_diag_reset" class="menu_button" type="button">清空外部记录</button>
             </div>
             <div id="rh_tt_diag_status" role="status" style="display:none;margin-top:7px;opacity:.82;font-size:11px;line-height:1.45;"></div>
@@ -1363,7 +1384,7 @@ export function initRabbitMirrorUI() {
         status.textContent = '正在向酒馆请求更新当前兔子镜，请稍候。不会更新其他扩展，也不会删除本地数据。';
         reload.hidden = true;
         try {
-            const updater = await import('./extensionUpdater.js?rmv=1.5.46-ttboot1');
+            const updater = await import('./extensionUpdater.js?rmv=1.5.48-externalfix1');
             const result = await updater.requestRabbitMirrorUpdate();
             if (!status.isConnected) return;
             status.textContent = result.status === 'current'
@@ -1711,7 +1732,7 @@ export function initRabbitMirrorUI() {
         if (!revision) return;
         const sequence = appearanceFileSequence;
         try {
-            const module = await import('./appearanceReference.js?rmv=1.5.46-ttboot1');
+            const module = await import('./appearanceReference.js?rmv=1.5.48-externalfix1');
             if (!appearanceOwnerIsCurrent() || !appearanceUIOwner.open || sequence !== appearanceFileSequence || appearanceSaving) return;
             await module.loadAppearanceReferenceMaterial(revision);
             if (!appearanceOwnerIsCurrent() || !appearanceUIOwner.open || sequence !== appearanceFileSequence || appearanceSaving || getSettings().appearanceReferenceRevision !== revision) return;
@@ -1762,7 +1783,7 @@ export function initRabbitMirrorUI() {
         const retainRevision = String(getSettings().appearanceReferenceRevision || '');
         let raw = String($('#rh_appearance_reference_input').val() || '');
         try {
-            const module = await import('./appearanceReference.js?rmv=1.5.46-ttboot1');
+            const module = await import('./appearanceReference.js?rmv=1.5.48-externalfix1');
             if (!appearanceOwnerIsCurrent()) return;
             if (String(getSettings().appearanceReferenceRevision || '') !== retainRevision) {
                 appearanceStatus('参考关联已改变，本次保存已停止；未写入摘要，也未覆盖当前设置。请核对当前关联后再保存。');
@@ -1846,7 +1867,7 @@ export function initRabbitMirrorUI() {
         if (!quickStart.open || guideLoading || guideCleanup || guideDisposed) return;
         guideLoading = true;
         try {
-            const module = await import('./quickStart.js?rmv=1.5.46-ttboot1');
+            const module = await import('./quickStart.js?rmv=1.5.48-externalfix1');
             if (guideDisposed || !quickStart.isConnected || !isCurrentRuntime()) return;
             guideCleanup = module.mountRabbitMirrorQuickStart({
                 root: document.getElementById('rabbit_mirror_theater_settings'),
@@ -2587,7 +2608,7 @@ export function initRabbitMirrorUI() {
             for (const key of Object.keys(libraryEntryViews)) document.getElementById(key).disabled = true;
             button.textContent = '正在加载…';
             try {
-                const module = await import('./externalWorldBook/importWizard.js?rmv=1.5.46-ttboot1');
+                const module = await import('./externalWorldBook/importWizard.js?rmv=1.5.48-externalfix1');
                 if (!isCurrentRuntime() || !button.isConnected) return;
                 module.openExternalWorldBookImportWizard?.({ initialView });
             } catch (error) {

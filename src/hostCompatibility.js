@@ -1,7 +1,7 @@
-import { recordTtSurface, ttSurfaceNow } from './ttSurfaceDiagnostics.js?rmv=1.5.46-ttboot1';
-import { createRabbitMirrorHostCompatibility as createHostCompatibility } from './hostCompatibilityCore.js?rmv=1.5.46-ttboot1';
+import { recordTtSurface, ttSurfaceNow } from './ttSurfaceDiagnostics.js?rmv=1.5.48-externalfix1';
+import { createRabbitMirrorHostCompatibility as createHostCompatibility } from './hostCompatibilityCore.js?rmv=1.5.48-externalfix1';
 
-const COHORT = '1.5.46-ttboot1';
+const COHORT = '1.5.48-externalfix1';
 const rootUrl = new URL('../', import.meta.url).href;
 
 // Adopt only this exact installation, host object and module cohort.

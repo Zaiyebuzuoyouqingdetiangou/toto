@@ -266,7 +266,7 @@ function ttSettingsEntryHostNote(status) {
     return '兔子镜已登记 TT ChatSurface；具体消息挂载状态以诊断为准，完整设置按需加载。';
 }
 
-function mountRabbitMirrorTtSettingsEntry({ runtimeVersion, isCurrent, getStatus, loadSettings, isTauriTavern = false, document: doc = globalThis.document }) {
+function mountRabbitMirrorTtSettingsEntry({ runtimeVersion, isCurrent, getStatus, loadSettings, loadViewer, isTauriTavern = false, document: doc = globalThis.document }) {
     if (!isCurrent()) return null;
     let status;
     try { status = getStatus?.() || {}; }
@@ -291,7 +291,7 @@ function mountRabbitMirrorTtSettingsEntry({ runtimeVersion, isCurrent, getStatus
     shell.className = 'rabbit-mirror-settings';
     shell.dataset.rabbitMirrorRuntimeVersion = runtimeVersion;
     shell.innerHTML = `
-      <style>#rh_tt_settings_entry_open:focus-visible { outline: 3px solid currentColor !important; outline-offset: 2px !important; }</style>
+      <style>#rh_tt_settings_entry_open:focus-visible,#rh_tt_settings_entry_view:focus-visible { outline: 3px solid currentColor !important; outline-offset: 2px !important; }</style>
       <div class="inline-drawer">
         <div class="inline-drawer-header rabbit-mirror-drawer-header"><b>兔子镜小剧场</b></div>
         <div style="padding:12px;line-height:1.5;overflow-wrap:anywhere">
@@ -303,14 +303,42 @@ function mountRabbitMirrorTtSettingsEntry({ runtimeVersion, isCurrent, getStatus
     shell.querySelector('[data-rm-tt-entry-host-note]').textContent = ttSettingsEntryHostNote(status);
     const button = shell.querySelector('button');
     const feedback = shell.querySelector('[role="status"]');
+    let viewButton = null;
+    if (typeof loadViewer === 'function') {
+        viewButton = doc.createElement('button');
+        viewButton.id = 'rh_tt_settings_entry_view';
+        viewButton.type = 'button';
+        viewButton.className = 'menu_button';
+        viewButton.textContent = '独立查看已有小剧场';
+        viewButton.style.cssText = 'min-height:48px;min-width:48px!important;max-width:100%;box-sizing:border-box;white-space:normal!important;cursor:pointer;touch-action:manipulation;margin-top:8px';
+        viewButton.setAttribute('aria-describedby', 'rh_tt_settings_entry_status');
+        button.after(viewButton);
+        viewButton.addEventListener('click', view);
+    }
     let disposed = false;
     let busy = false;
+    let viewBusy = false;
     const active = () => !disposed && isCurrent() && shell.isConnected;
     function dispose() {
         disposed = true;
         button.removeEventListener('click', open);
+        viewButton?.removeEventListener('click', view);
         shell.remove();
         if (entries.get(doc) === controller) entries.delete(doc);
+    }
+    async function view() {
+        if (!active() || viewBusy) return;
+        viewBusy = true;
+        viewButton.disabled = true;
+        feedback.textContent = '正在打开只读查看面板；不生成、不重试。';
+        try {
+            await loadViewer(active);
+            if (active()) feedback.textContent = '独立面板仅查看已有结果，不代表 TT 原位置内嵌已修复。';
+        } catch {
+            if (active()) feedback.textContent = '查看面板未能加载，请手动重试；原记录未修改。';
+        } finally {
+            if (active()) { viewBusy = false; viewButton.disabled = false; }
+        }
     }
     function reconcile() {
         const panel = fullPanel();
@@ -361,8 +389,8 @@ function mountRabbitMirrorTtSettingsEntry({ runtimeVersion, isCurrent, getStatus
 // Canonical source: scripts/tt-entry.template.js
 // Build source only. build-tt-entry.mjs embeds the import-free bridge
 // and settings entry above this code. No top-level await may delay registration.
-const BOOT_COHORT = '1.5.46-ttboot1';
-const BOOT_VERSION = '1.5.46';
+const BOOT_COHORT = '1.5.48-externalfix1';
+const BOOT_VERSION = '1.5.48';
 const ttHost = globalThis.__TAURITAVERN__;
 const boot = {
     cohort: BOOT_COHORT,
@@ -374,6 +402,9 @@ const boot = {
     ui: null,
     coreState: 'loading',
 };
+// A previously open viewer owns no chat DOM. Release only that ephemeral panel
+// before replacing the bootstrap; never revive or migrate its saved records.
+try { globalThis.__rabbitMirrorTtBootstrap?.viewerClose?.(); } catch { /* An old panel cannot block new registration. */ }
 globalThis.__rabbitMirrorTtBootstrap = boot;
 const bootIsCurrent = () => !boot.cancelled && globalThis.__rabbitMirrorTtBootstrap === boot;
 // This is synchronous and runs before ANY core/UI/settings module request.
@@ -391,9 +422,15 @@ function mountEarlySettings() {
         isTauriTavern: true,
         isCurrent: bootIsCurrent,
         getStatus: () => boot.bridge.getStatus(),
+        loadViewer: async isActive => {
+            if (!bootIsCurrent() || !isActive()) return;
+            const viewer = await import('./src/ttTheaterViewer.js?rmv=1.5.48-externalfix1');
+            if (!bootIsCurrent() || !isActive()) return;
+            viewer.openRabbitMirrorTtTheaterViewer({ isCurrent: bootIsCurrent });
+        },
         loadSettings: async isActive => {
             if (!bootIsCurrent() || !isActive()) return;
-            const ui = await import('./src/ui.js?rmv=1.5.46-ttboot1');
+            const ui = await import('./src/ui.js?rmv=1.5.48-externalfix1');
             if (!bootIsCurrent() || !isActive()) return;
             boot.ui = ui;
             ui.initRabbitMirrorUI();
@@ -427,7 +464,7 @@ const earlyInterceptor = async (...args) => {
 };
 globalThis.rabbitMirrorGenerateInterceptor = earlyInterceptor;
 boot.interceptor = earlyInterceptor;
-const corePromise = import('./index.js?rmv=1.5.46-ttboot1').then(mod => {
+const corePromise = import('./index.js?rmv=1.5.48-externalfix1').then(mod => {
     coreModule = mod;
     boot.coreState = boot.cancelled ? 'disabled' : 'ready';
     applyCoreCleanup();
@@ -448,6 +485,7 @@ function stopBootstrap(kind) {
     cleanupKind = kind === 'clean' || cleanupKind === 'clean' ? 'clean' : 'disable';
     boot.cancelled = true; // Keep the tombstone for an already-in-flight import.
     boot.coreState = 'disabled';
+    try { boot.viewerClose?.(); } catch { /* A read-only panel must not block the existing disable chain. */ }
     if (readyListener) document.removeEventListener('DOMContentLoaded', readyListener);
     readyListener = null;
     boot.settingsEntry?.dispose();

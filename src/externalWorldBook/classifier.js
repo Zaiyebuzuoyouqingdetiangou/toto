@@ -1,4 +1,5 @@
-import { entryIdentity } from './selectionState.js?rmv=1.5.46-ttboot1';
+import { entryIdentity } from './selectionState.js?rmv=1.5.48-externalfix1';
+import { buildExternalEntrySummary } from './summary.js?rmv=1.5.48-externalfix1';
 
 export const EXTERNAL_WORLD_BOOK_CLASSIFICATION = Object.freeze({
     THEME: 'theme',
@@ -111,21 +112,6 @@ function explicitCategories(sources) {
     return kinds;
 }
 
-function plainSummary(entry, maxChars = 240) {
-    const title = String(entry?.title || '').trim();
-    const keywords = [...new Set([...(entry?.primaryKeywords || []), ...(entry?.secondaryKeywords || [])])].slice(0, 5);
-    const content = String(entry?.content || '')
-        .replace(/<[^>]{0,200}>/g, ' ')
-        .replace(/\{\{[^}]{0,120}\}\}/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-    const parts = [];
-    if (title) parts.push(title);
-    if (keywords.length) parts.push(`关键词：${keywords.join(' / ')}`);
-    if (content && normalize(content) !== normalize(title)) parts.push(content);
-    return parts.join('｜').slice(0, maxChars);
-}
-
 export function classifyExternalWorldBookEntry(entry) {
     const sources = {
         title: normalize(`${entry?.title || ''}\n${entry?.comment || ''}`),
@@ -230,7 +216,7 @@ export function createExternalWorldBookClassificationDraft(book, selectedIds) {
                 userConfirmed: false,
                 requiresReview: !analysis.autoAccepted,
                 localTitle: String(entry.title || '').trim(),
-                summary: plainSummary(entry),
+                summary: buildExternalEntrySummary(entry),
                 contentHash: entry.contentHash,
             };
         });

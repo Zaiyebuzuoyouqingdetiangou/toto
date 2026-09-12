@@ -1,15 +1,16 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.5.46-ttboot1';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.5.46-ttboot1';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.5.46-ttboot1';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.5.46-ttboot1';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.5.46-ttboot1';
-import { pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.5.46-ttboot1';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.5.46-ttboot1';
-import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.5.46-ttboot1';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.5.46-ttboot1';
-export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.5.46-ttboot1';
-import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.5.46-ttboot1';
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.5.46-ttboot1';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.5.48-externalfix1';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.5.48-externalfix1';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.5.48-externalfix1';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.5.48-externalfix1';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.5.48-externalfix1';
+import { pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.5.48-externalfix1';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.5.48-externalfix1';
+import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.5.48-externalfix1';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.5.48-externalfix1';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.5.48-externalfix1';
+import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.5.48-externalfix1';
+import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.5.48-externalfix1';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.5.48-externalfix1';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -77,13 +78,13 @@ function externalRecordFor(item, kind, externalRawMap) {
     return record;
 }
 
-function externalDescriptor(item, kind, externalRawMap) {
+function externalDescriptor(item, kind, externalRawMap, summaryMax = 210) {
     const record = externalRecordFor(item, kind, externalRawMap);
     const title = externalReferenceText(record.localTitle, 160);
     if (!title) throw externalMaterialError('RABBIT_MIRROR_EXTERNAL_MATERIAL_INVALID');
     return {
         id: item.id, title,
-        summary: externalReferenceText(record.summary, 210),
+        summary: externalReferenceText(externalSummaryForSending(record, summaryMax), 210),
         tags: (Array.isArray(record.sourceKeywords) ? record.sourceKeywords : [])
             .slice(0, 4).map(tag => externalReferenceText(tag, 64)).filter(Boolean),
         externalKind: kind === 'presentation' ? 'format' : 'theme',
@@ -861,10 +862,11 @@ function freezeDeep(value) {
 
 function buildFaceContext(selectionCombo, settings, rawPolicy, externalRawMap = null) {
     const hasExternal = [...(selectionCombo.themes || []), ...(selectionCombo.formats || [])].some(isExternalItem);
+    const summaryMax = rawPolicyProfile(rawPolicy).summaryMax;
     const combo = hasExternal ? {
         ...selectionCombo,
-        themes: selectionCombo.themes.map(item => isExternalItem(item) ? externalDescriptor(item, 'theme', externalRawMap) : item),
-        formats: selectionCombo.formats.map(item => isExternalItem(item) ? externalDescriptor(item, 'presentation', externalRawMap) : item),
+        themes: selectionCombo.themes.map(item => isExternalItem(item) ? externalDescriptor(item, 'theme', externalRawMap, summaryMax) : item),
+        formats: selectionCombo.formats.map(item => isExternalItem(item) ? externalDescriptor(item, 'presentation', externalRawMap, summaryMax) : item),
     } : selectionCombo;
     const selectedThemeResult = formatItemsWithRawPolicy(combo.themes, 'theme', rawPolicy, externalRawMap);
     const selectedFormatResult = formatItemsWithRawPolicy(combo.formats, 'presentation', rawPolicy, externalRawMap);

@@ -1,7 +1,7 @@
-import { readLocalExternalImportFile, readPlainTextWorldBook } from './fileReader.js?rmv=1.5.46-ttboot1';
-import { getSettings, updateSettings } from '../settings.js?rmv=1.5.46-ttboot1';
-import { listHostWorldBooks, readHostWorldBook } from './hostReader.js?rmv=1.5.46-ttboot1';
-import { searchNormalizedWorldBookEntries } from './normalize.js?rmv=1.5.46-ttboot1';
+import { readLocalExternalImportFile, readPlainTextWorldBook } from './fileReader.js?rmv=1.5.48-externalfix1';
+import { getSettings, updateSettings } from '../settings.js?rmv=1.5.48-externalfix1';
+import { listHostWorldBooks, readHostWorldBook } from './hostReader.js?rmv=1.5.48-externalfix1';
+import { searchNormalizedWorldBookEntries } from './normalize.js?rmv=1.5.48-externalfix1';
 import {
     EXTERNAL_WORLD_BOOK_SELECTION_MODE,
     createEmptySelection,
@@ -9,14 +9,14 @@ import {
     createWholeBookSelection,
     entryIdentity,
     toggleEntrySelection,
-} from './selectionState.js?rmv=1.5.46-ttboot1';
+} from './selectionState.js?rmv=1.5.48-externalfix1';
 import {
     EXTERNAL_WORLD_BOOK_CLASSIFICATION,
     applyExternalWorldBookBulkClassification,
     createExternalWorldBookClassificationDraft,
     externalWorldBookClassificationCounts,
     updateExternalWorldBookDraftItem,
-} from './classifier.js?rmv=1.5.46-ttboot1';
+} from './classifier.js?rmv=1.5.48-externalfix1';
 import {
     deleteExternalLibrary,
     listExternalLibraries,
@@ -28,7 +28,7 @@ import {
     hydrateExternalPoolMetadata,
     getExternalPoolHydrationStatus,
     rebuildExternalPoolMetadata,
-} from './store.js?rmv=1.5.46-ttboot1';
+} from './store.js?rmv=1.5.48-externalfix1';
 
 const MODAL_ID = 'rh_external_worldbook_import_modal';
 const PAGE_SIZE = 50;
@@ -631,7 +631,7 @@ function createLibraryTransferControls() {
         if (busy) return;
         const owner = state; lock(true); feedback('正在读取本设备已导入的库并生成迁移文件……');
         try {
-            const module = await import('./backup.js?rmv=1.5.46-ttboot1');
+            const module = await import('./backup.js?rmv=1.5.48-externalfix1');
             if (!current(owner)) return;
             const result = await module.exportExternalLibraryBackup();
             if (!current(owner)) return;
@@ -648,7 +648,7 @@ function createLibraryTransferControls() {
         if (!globalThis.confirm('导入这份备份里的外部库？目标已有同编号库会保留并跳过，其余库保留备份的分类和启用状态。不删除或覆盖旧库，不改变抽签总开关。')) return;
         const owner = state, backup = pending; lock(true); feedback('正在原子保存迁移数据；请暂时保留此页面……');
         try {
-            const module = await import('./backup.js?rmv=1.5.46-ttboot1');
+            const module = await import('./backup.js?rmv=1.5.48-externalfix1');
             if (!current(owner)) return;
             const result = await module.importExternalLibraryBackup(backup);
             if (!current(owner)) return;
@@ -666,7 +666,7 @@ function createLibraryTransferControls() {
         const selected = file.files?.[0]; if (!selected) return;
         const owner = state, ownSequence = ++sequence; lock(true); feedback('正在校验迁移文件，尚未写入……');
         try {
-            const module = await import('./backup.js?rmv=1.5.46-ttboot1');
+            const module = await import('./backup.js?rmv=1.5.48-externalfix1');
             if (!current(owner)) return;
             const backup = await module.readExternalLibraryBackupFile(selected);
             if (!current(owner) || sequence !== ownSequence) return;
@@ -763,6 +763,8 @@ function createModal(initialView = 'plain') {
 #${MODAL_ID} .rh-external-button:focus-visible, #${MODAL_ID} .rh-external-input:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 #${MODAL_ID} .rh-external-button:active:not(:disabled) { filter: brightness(.92); }
 #${MODAL_ID} .rh-external-button[aria-pressed="true"] { border-width: 2px; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+#${MODAL_ID} #rh_external_local_file { display: none !important; }
+#${MODAL_ID} #rh_external_choose_file { min-height: 48px !important; border-width: 2px; font-weight: 700; }
 @media (pointer: coarse) { #${MODAL_ID} .rh-external-input { font-size: 16px !important; } }
 ` }));
     const card = el('div', { className: 'rh-external-card', style: { width: 'min(820px,100%)', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--SmartThemeBlurTintColor,#202226)', color: 'var(--SmartThemeBodyColor,#ddd)', border: '1px solid color-mix(in srgb,currentColor 18%,transparent)', borderRadius: '18px', boxShadow: '0 22px 70px rgba(0,0,0,.42)' } });
@@ -832,12 +834,27 @@ function createModal(initialView = 'plain') {
     bookSearch.addEventListener('input', renderBookList);
     hostPane.append(el('h3', { text: '从酒馆已有世界书导入', style: { fontSize: '16px', margin: '0 0 8px' } }), bookSearch, bookList);
 
-    const fileInput = el('input', { id: 'rh_external_local_file', type: 'file', className: 'text_pole', attrs: { accept: '.json,.txt,.md,application/json,text/json,text/plain,text/markdown,application/octet-stream', multiple: 'multiple' }, style: { width: '100%', marginTop: '8px' } });
+    // The host may hide native file inputs. Own an explicit, visible action;
+    // keep click synchronous so mobile file pickers retain the user gesture.
+    const fileInput = el('input', { id: 'rh_external_local_file', type: 'file', attrs: { accept: '.json,.txt,.md,application/json,text/json,text/plain,text/markdown,application/octet-stream', multiple: 'multiple', tabindex: '-1', 'aria-label': '导入母本文件' } });
+    const chooseFile = button('选择 TXT / MD / JSON 文件', () => {
+        if (state?.overlay === overlay && overlay.isConnected) fileInput.click();
+    });
+    chooseFile.id = 'rh_external_choose_file';
+    chooseFile.setAttribute('aria-describedby', 'rh_external_file_help rh_external_file_selection');
+    const fileSelection = el('div', { id: 'rh_external_file_selection', attrs: { role: 'status', 'aria-live': 'polite' }, text: '尚未选择文件。支持多选。', style: { fontSize: '13px', lineHeight: '1.5', marginTop: '8px', overflowWrap: 'anywhere' } });
     const localBookList = el('div', { style: { maxHeight: '210px', overflowY: 'auto', marginTop: '6px', padding: '4px 2px', WebkitOverflowScrolling: 'touch' } });
-    fileInput.addEventListener('change', () => loadLocalFiles(fileInput.files));
+    fileInput.addEventListener('change', () => {
+        const files = Array.from(fileInput.files || []);
+        fileInput.value = ''; // Selecting the same file again must fire change.
+        if (state?.overlay !== overlay || !overlay.isConnected) return;
+        if (!files.length) return; // Cancelling does not clear the previous read.
+        fileSelection.textContent = `已选择 ${files.length} 个文件：${files.slice(0, 3).map(file => file.name).join('、')}${files.length > 3 ? '…' : ''}`;
+        loadLocalFiles(files);
+    });
     filePane.append(el('h3', { text: '导入文件：不必先转成 JSON', style: { fontSize: '16px', margin: '0 0 8px' } }),
-        el('label', { text: '选择 TXT / MD 文字、JSON 世界书或整库备份（可多选）', attrs: { for: fileInput.id }, style: { display: 'block', fontSize: '14px', lineHeight: '1.5' } }), fileInput,
-        el('div', { text: 'TXT / MD 每个文件先作为一个条目，JSON 世界书保留原条目。整库备份会直接进入导入确认；读取文件不会直接保存。普通文件最多 8 MiB、文字最多 100 万字符，整库备份最多 32 MiB。', style: { fontSize: '12px', lineHeight: '1.6', marginTop: '8px' } }), localBookList);
+        chooseFile, fileInput, fileSelection,
+        el('div', { id: 'rh_external_file_help', text: '点击上方按钮选择文件。TXT / MD 每个文件先作为一个条目，JSON 世界书保留原条目。整库备份会直接进入导入确认；读取文件不会直接保存。普通文件最多 8 MiB、文字最多 100 万字符，整库备份最多 32 MiB。', style: { fontSize: '12px', lineHeight: '1.6', marginTop: '8px' } }), localBookList);
     const plainTitle = el('input', { id: 'rh_external_plain_title', type: 'text', className: 'text_pole', attrs: { maxlength: '1000' }, value: '我的小剧场文字', style: { width: '100%' } });
     // Reject oversized input as a whole in the reader; native maxlength would
     // silently truncate a paste before validation could detect the missing tail.
