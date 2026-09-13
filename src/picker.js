@@ -1,5 +1,5 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.5.45-exclude1';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.45-exclude1';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.5.48-release1';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.48-release1';
 import {
     getCurrentChatKey,
     getDirectiveScopedPick,
@@ -17,19 +17,20 @@ import {
     clearPendingComboBatch,
     createPendingComboBatchPlan,
     findPendingComboBatchPlan,
-} from './storage.js?rmv=1.5.45-exclude1';
-import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.5.45-exclude1';
-import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.45-exclude1';
-import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.5.45-exclude1';
+} from './storage.js?rmv=1.5.48-release1';
+import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.5.48-release1';
+import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.48-release1';
+import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.5.48-release1';
 import {
     chooseExternalSource,
     externalPoolActive,
     externalPoolHasAvailable,
     externalPoolItem,
+    getExternalPoolSelectionKey,
     getExternalPoolSnapshot,
     pickExternalItems,
     sourceMixModeIsExternalOnly,
-} from './externalWorldBook/externalPool.js?rmv=1.5.45-exclude1';
+} from './externalWorldBook/externalPool.js?rmv=1.5.48-release1';
 
 function randomUnit() {
     try {
@@ -960,6 +961,12 @@ function directiveScopeKey(directive, settings) {
         settings.externalWorldBookRandomEnabled === true ? 'external-on' : 'external-off',
         String(settings.externalWorldBookMixMode || 'builtin-only'),
         directiveRandomPreferenceScopeKey(settings),
+        // A partial directive may cache a builtin random half while a library
+        // is disabled. New operations must respect later import/enable changes.
+        // Keep the OFF cache key byte-identical; in-flight picks remain frozen
+        // by the earlier generationScopeKey fast path.
+        ...(settings.externalWorldBookRandomEnabled === true && settings.externalWorldBookMixMode !== 'builtin-only'
+            ? [`external-pool:${getExternalPoolSelectionKey()}`] : []),
     ].join('|');
     return hashText(`${directive.messageKey}|${directive.rawDirective}|${config}`);
 }

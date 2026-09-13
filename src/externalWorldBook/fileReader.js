@@ -1,8 +1,28 @@
-import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.5.45-exclude1';
-import { EXTERNAL_WORLD_BOOK_MAX_FILE_BYTES } from './schema.js?rmv=1.5.45-exclude1';
-import { normalizeFileWorldBook } from './normalize.js?rmv=1.5.45-exclude1';
+import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.5.48-release1';
+import { EXTERNAL_WORLD_BOOK_MAX_FILE_BYTES } from './schema.js?rmv=1.5.48-release1';
+import { normalizeFileWorldBook } from './normalize.js?rmv=1.5.48-release1';
 
-async function readFileText(file) {
+async function readFileText(file, maxBytes) {
+    // Blob.text() always decodes UTF-8. Honor only explicit UTF-16 BOMs;
+    // do not guess encodings or reinterpret the contents as JSON/HTML.
+    if (typeof file?.arrayBuffer === 'function' && typeof TextDecoder !== 'undefined') {
+        let bytes;
+        try { bytes = new Uint8Array(await file.arrayBuffer()); }
+        catch { throw new ExternalWorldBookError(EXTERNAL_WORLD_BOOK_ERROR_CODES.READ_FAILED, '本地文件读取失败。'); }
+        if (bytes.byteLength > maxBytes) {
+            throw new ExternalWorldBookError(EXTERNAL_WORLD_BOOK_ERROR_CODES.FILE_TOO_LARGE, `本地文件超过 ${Math.round(maxBytes / 1024 / 1024)} MiB 安全上限。`);
+        }
+        const utf32 = bytes.length >= 4 && ((bytes[0] === 0xff && bytes[1] === 0xfe && bytes[2] === 0 && bytes[3] === 0)
+            || (bytes[0] === 0 && bytes[1] === 0 && bytes[2] === 0xfe && bytes[3] === 0xff));
+        const encoding = bytes[0] === 0xff && bytes[1] === 0xfe ? 'utf-16le'
+            : bytes[0] === 0xfe && bytes[1] === 0xff ? 'utf-16be' : 'utf-8';
+        try {
+            if (utf32) throw new Error('unsupported encoding');
+            return new TextDecoder(encoding, { fatal: encoding !== 'utf-8' }).decode(bytes);
+        } catch {
+            throw new ExternalWorldBookError(EXTERNAL_WORLD_BOOK_ERROR_CODES.READ_FAILED, '文件编码不支持或内容不完整；请另存为 UTF-8，或带 BOM 的 UTF-16 后重试。');
+        }
+    }
     if (typeof file?.text === 'function') return file.text();
     if (typeof FileReader === 'undefined') {
         throw new ExternalWorldBookError(EXTERNAL_WORLD_BOOK_ERROR_CODES.READ_FAILED, '当前浏览器无法读取本地文件。');
@@ -57,7 +77,7 @@ async function readLocalFile(file, allowLibraryBackup = false) {
             { size },
         );
     }
-    const text = await readFileText(file);
+    const text = await readFileText(file, maxBytes);
     const actualBytes = typeof text === 'string' && text.length <= maxBytes ? new TextEncoder().encode(text).byteLength : Infinity;
     if (actualBytes > maxBytes) {
         throw new ExternalWorldBookError(EXTERNAL_WORLD_BOOK_ERROR_CODES.FILE_TOO_LARGE, `本地文件超过 ${Math.round(maxBytes / 1024 / 1024)} MiB 安全上限。`);
@@ -72,7 +92,7 @@ async function readLocalFile(file, allowLibraryBackup = false) {
     // Never infer a backup from its filename (which users can rename). Its
     // explicit format marker selects the strict backup schema/ID validation.
     if (allowLibraryBackup && raw?.format === 'RabbitMirror.ExternalLibraries') {
-        const { validateExternalLibraryBackup } = await import('./backup.js?rmv=1.5.45-exclude1');
+        const { validateExternalLibraryBackup } = await import('./backup.js?rmv=1.5.48-release1');
         return { kind: 'backup', backup: validateExternalLibraryBackup(raw) };
     }
     if (size > EXTERNAL_WORLD_BOOK_MAX_FILE_BYTES || actualBytes > EXTERNAL_WORLD_BOOK_MAX_FILE_BYTES) {

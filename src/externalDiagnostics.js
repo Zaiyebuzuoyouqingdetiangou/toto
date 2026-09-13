@@ -1,6 +1,6 @@
-import { sanitizeExternalTransportSummary as sanitizeTransportSummary, getRecentIndependentTransportDiagnostics, clearRecentIndependentTransportDiagnostics } from './transportDiagnostics.js?rmv=1.5.45-exclude1';
+import { sanitizeExternalTransportSummary as sanitizeTransportSummary, getRecentIndependentTransportDiagnostics, clearRecentIndependentTransportDiagnostics } from './transportDiagnostics.js?rmv=1.5.48-release1';
 
-const DIAG_VERSION = '1.5.45-externaldiag-transport1';
+const DIAG_VERSION = '1.5.48-externaldiag-transport1';
 const MAX_ENTRIES = 1800;
 const STALL_INTERVAL_MS = 1000;
 const STALL_THRESHOLD_MS = 250;

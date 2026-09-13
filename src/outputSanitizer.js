@@ -1,10 +1,10 @@
-import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.45-exclude1';
-import { isRabbitMirrorManagedChatSurface, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.5.45-exclude1';
-import { recordTtSurface, ttSurfaceNow, nextTtSurfaceClickSeq } from './ttSurfaceDiagnostics.js?rmv=1.5.45-exclude1';
-import { getSettings, syncExternalReferenceVisibility } from './settings.js?rmv=1.5.45-exclude1';
-import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.45-exclude1';
-import { getCurrentChatKey } from './storage.js?rmv=1.5.45-exclude1';
-import { getSanitizedRabbitMirrorFaceProof } from './multifaceProof.js?rmv=1.5.45-exclude1';
+import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.48-release1';
+import { isRabbitMirrorManagedChatSurface, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.5.48-release1';
+import { recordTtSurface, ttSurfaceNow, nextTtSurfaceClickSeq } from './ttSurfaceDiagnostics.js?rmv=1.5.48-release1';
+import { getSettings, syncExternalReferenceVisibility } from './settings.js?rmv=1.5.48-release1';
+import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.48-release1';
+import { getCurrentChatKey } from './storage.js?rmv=1.5.48-release1';
+import { getSanitizedRabbitMirrorFaceProof } from './multifaceProof.js?rmv=1.5.48-release1';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -14,14 +14,14 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
-} from './feedbackCat.js?rmv=1.5.45-exclude1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.45-exclude1';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.45-exclude1';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.45-exclude1';
-import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.5.45-exclude1';
+} from './feedbackCat.js?rmv=1.5.48-release1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.48-release1';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.48-release1';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.48-release1';
+import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.5.48-release1';
 
 
-const RUNTIME_VERSION = '1.5.45';
+const RUNTIME_VERSION = '1.5.48';
 const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
 const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
@@ -13634,6 +13634,36 @@ function diagnosticIndependentTerminalFields(value) {
     return `requestCount=${requestCount} terminalFace=${terminalFace} protocolErrorCode=${protocolErrorCode} protocolOffset=${protocolOffset}`;
 }
 
+function diagnosticIndependentSelectionFields(value) {
+    if (!value || typeof value !== 'object') return [];
+    // This is a bounded view of the existing selection receipt, not another
+    // library read or evidence that the adapter/provider used those materials.
+    const recorded = Array.isArray(value.faces) && value.faces.length ? value.faces : [value];
+    const declared = Number.isInteger(value.faceCount) && value.faceCount >= 1 && value.faceCount <= 5 ? value.faceCount : 1;
+    const count = Math.min(5, Math.max(recorded.length, declared));
+    const counts = ids => {
+        if (!Array.isArray(ids)) return '未记录';
+        if (ids.length > 8) return '未知（超过8项）';
+        let builtin = 0;
+        let external = 0;
+        for (const id of ids) {
+            if (typeof id !== 'string' || id.length > 2048 || !id.trim()) return '未知（记录无效）';
+            if (id.startsWith('ext:')) external += 1;
+            else builtin += 1;
+        }
+        return `内置${builtin}/外部${external}`;
+    };
+    const lines = ['选材记录（最近请求，不一定对应当前镜面；不等于最终发送或模型遵从）：'];
+    for (let index = 0; index < count; index += 1) {
+        const face = recorded[index];
+        const visual = face?.forcedVisualScenery === true ? '是' : face?.forcedVisualScenery === false ? '否' : '未记录';
+        lines.push(`第${index + 1}面：主题 ${counts(face?.themeIds)}；形式 ${counts(face?.formatIds)}；动态视觉固定=${visual}`);
+    }
+    if (recorded.length > 5) lines.push('选材记录超过展示上限，最多展示5面。');
+    lines.push('外部预取与最终请求体：未记录独立验证证据；选材记录不能证明已发送或模型采用。');
+    return lines;
+}
+
 function buildInteractionDiagnosticText(root, state, phase = 'capture complete') {
     const inputs = diagnosticQueryContentAll(root, 'input[type="checkbox"], input[type="radio"]').slice(0, 8);
     const labels = diagnosticQueryContentAll(root, 'label');
@@ -13677,7 +13707,9 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         independentRequest ? `profile=${independentRequest.profile || '(无)'} systemMessage=${!!independentRequest.systemMessageSent} temperatureConfigured=${independentRequest.configuredTemperature ?? '(无)'} temperatureSent=${!!independentRequest.temperatureSent}` : '',
         independentRequest ? `tokenField=${independentRequest.tokenField || '(无)'} stream=${!!independentRequest.streamSent} remembered=${independentRequest.rememberedProfile || '(无)'} attempts=${Array.isArray(independentRequest.attempts) ? independentRequest.attempts.map(item => `${item.profile}:${item.status}`).join(' -> ') : '(无)'}` : '',
         independentRequest ? diagnosticIndependentTerminalFields(independentRequest) : '',
-        independentRequest ? `samplingMode=${independentRequest.samplingMode || '(无)'} themes=${Array.isArray(independentRequest.themeLabels) ? independentRequest.themeLabels.join(' + ') : '(无)'} formats=${Array.isArray(independentRequest.formatLabels) ? independentRequest.formatLabels.join(' + ') : '(无)'} executionLockChars=${Number(independentRequest.executionLockChars || 0)}` : '',
+        independentRequest ? `samplingMode=${independentRequest.samplingMode || '(无)'} executionLockChars=${Number(independentRequest.executionLockChars || 0)}` : '',
+        independentRequest ? `首面选材名称：themes=${Array.isArray(independentRequest.themeLabels) ? independentRequest.themeLabels.join(' + ') : '(无)'} formats=${Array.isArray(independentRequest.formatLabels) ? independentRequest.formatLabels.join(' + ') : '(无)'}` : '',
+        ...diagnosticIndependentSelectionFields(independentRequest),
         '',
         '[1. HTML／Markdown 输入层]',
         `原始源含HTML=${full.rawHtml} 含toto=${full.rawToto} 含三反引号=${full.rawFence}`,
