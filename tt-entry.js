@@ -226,171 +226,11 @@ function createRabbitMirrorHostCompatibility(hostGlobal = globalThis, diagnostic
     });
 }
 
-// Canonical source: src/ttSettingsEntry.js
-// A settings-only escape hatch for TT, independent of chat ownership. No observers,
-// timers, layout measurements, library reads or heavy imports live here.
-const entries = new WeakMap();
-
-function ttSettingsEntryHostNote(status) {
-    // Only fixed status codes are presented; do not echo host error messages.
-    if (status.errorCode === 'CHAT_SURFACE_STATUS_UNAVAILABLE') {
-        return 'TT 聊天接口状态暂不可用；仍可打开设置与诊断，不代表聊天已接入。';
-    }
-    if (status.errorCode === 'CHAT_SURFACE_OWNERSHIP_UNAVAILABLE') {
-        return 'TT 聊天所有权状态暂不可用；仍可打开设置与诊断，不能据此确认聊天已接入。';
-    }
-    if (status.errorCode === 'CHAT_SURFACE_PROTOCOL_UNSUPPORTED') {
-        return '当前 TT 聊天接口协议不支持；仍可打开设置与诊断，聊天接入尚不可用。';
-    }
-    if (status.registrationFailure === 'late-projection') {
-        return '兔子镜尝试注册时 TT 的首次聊天投影已开始，已错过注册窗口；反复点击设置不能补注册，具体加载时序请查看 TT 诊断。';
-    }
-    if (status.registrationFailure === 'duplicate-participant') {
-        return 'TT 检测到重复的兔子镜参与者；请仅启用一份正式版或测试版，再重启。';
-    }
-    if (status.registrationFailure === 'host-rejected' || status.errorCode === 'CHAT_SURFACE_REGISTRATION_FAILED') {
-        return 'TT 拒绝了兔子镜的聊天挂载登记；仍可打开设置，具体原因请查看 TT 诊断。';
-    }
-    if (status.errorCode === 'CHAT_SURFACE_CONSUMER_FAILED') {
-        return 'TT 聊天挂载处理发生错误；仍可打开设置，具体原因请查看 TT 诊断。';
-    }
-    if (status.protocolVersion == null) {
-        return 'TT 聊天接口未检测到；仍可打开完整设置，设置可用不代表聊天已接入。';
-    }
-    if (status.managed === false) {
-        return '当前 TT 使用普通静态聊天模式，不要求 ChatSurface 挂载；完整设置按需加载。';
-    }
-    if (status.registered !== true) {
-        return '兔子镜尚未获得 TT 聊天挂载；具体原因可在高级设置的「工具与维护」中查看 TT 诊断。';
-    }
-    return '兔子镜已登记 TT ChatSurface；具体消息挂载状态以诊断为准，完整设置按需加载。';
-}
-
-function mountRabbitMirrorTtSettingsEntry({ runtimeVersion, isCurrent, getStatus, loadSettings, loadViewer, isTauriTavern = false, document: doc = globalThis.document }) {
-    if (!isCurrent()) return null;
-    let status;
-    try { status = getStatus?.() || {}; }
-    catch { status = { errorCode: 'CHAT_SURFACE_STATUS_UNAVAILABLE' }; }
-    // The explicit option is supplied only after the bootstrap has detected the
-    // real TT host object. A pending/missing chat API is not a settings gate.
-    if (status.host !== 'tauritavern' && isTauriTavern !== true) return null;
-    const mount = doc?.getElementById('extensions_settings2');
-    if (!mount) return null;
-    entries.get(doc)?.dispose();
-    const fullPanel = () => {
-        const panel = doc.getElementById('rabbit_mirror_theater_settings');
-        return panel?.isConnected && panel.dataset.rabbitMirrorRuntimeVersion === runtimeVersion
-            && panel.dataset.rabbitMirrorUiReady === 'true' ? panel : null;
-    };
-    if (fullPanel()) return null;
-    // The shell intentionally does not match the full-settings intent selectors
-    // in index.js: merely hovering or focusing it must not load the runtime.
-    doc.getElementById('rabbit_mirror_tt_settings_entry')?.remove();
-    const shell = doc.createElement('div');
-    shell.id = 'rabbit_mirror_tt_settings_entry';
-    shell.className = 'rabbit-mirror-settings';
-    shell.dataset.rabbitMirrorRuntimeVersion = runtimeVersion;
-    shell.innerHTML = `
-      <style>#rh_tt_settings_entry_open:focus-visible,#rh_tt_settings_entry_view:focus-visible { outline: 3px solid currentColor !important; outline-offset: 2px !important; }</style>
-      <div class="inline-drawer">
-        <div class="inline-drawer-header rabbit-mirror-drawer-header"><b>兔子镜小剧场</b></div>
-        <div style="padding:12px;line-height:1.5;overflow-wrap:anywhere">
-          <p id="rh_tt_settings_entry_note" style="margin:0 0 12px"><b>设置可用不代表聊天已接入。</b><br><span data-rm-tt-entry-host-note></span></p>
-          <button id="rh_tt_settings_entry_open" class="menu_button" type="button" aria-describedby="rh_tt_settings_entry_note rh_tt_settings_entry_status" style="min-height:48px;min-width:48px!important;max-width:100%;box-sizing:border-box;white-space:normal!important;cursor:pointer;touch-action:manipulation">打开设置与诊断</button>
-          <p id="rh_tt_settings_entry_status" role="status" aria-live="polite" aria-atomic="true" style="margin:8px 0 0"></p>
-        </div>
-      </div>`;
-    shell.querySelector('[data-rm-tt-entry-host-note]').textContent = ttSettingsEntryHostNote(status);
-    const button = shell.querySelector('button');
-    const feedback = shell.querySelector('[role="status"]');
-    let viewButton = null;
-    if (typeof loadViewer === 'function') {
-        viewButton = doc.createElement('button');
-        viewButton.id = 'rh_tt_settings_entry_view';
-        viewButton.type = 'button';
-        viewButton.className = 'menu_button';
-        viewButton.textContent = '独立查看已有小剧场';
-        viewButton.style.cssText = 'min-height:48px;min-width:48px!important;max-width:100%;box-sizing:border-box;white-space:normal!important;cursor:pointer;touch-action:manipulation;margin-top:8px';
-        viewButton.setAttribute('aria-describedby', 'rh_tt_settings_entry_status');
-        button.after(viewButton);
-        viewButton.addEventListener('click', view);
-    }
-    let disposed = false;
-    let busy = false;
-    let viewBusy = false;
-    const active = () => !disposed && isCurrent() && shell.isConnected;
-    function dispose() {
-        disposed = true;
-        button.removeEventListener('click', open);
-        viewButton?.removeEventListener('click', view);
-        shell.remove();
-        if (entries.get(doc) === controller) entries.delete(doc);
-    }
-    async function view() {
-        if (!active() || viewBusy) return;
-        viewBusy = true;
-        viewButton.disabled = true;
-        feedback.textContent = '正在打开只读查看面板；不生成、不重试。';
-        try {
-            await loadViewer(active);
-            if (active()) feedback.textContent = '独立面板仅查看已有结果，不代表 TT 原位置内嵌已修复。';
-        } catch {
-            if (active()) feedback.textContent = '查看面板未能加载，请手动重试；原记录未修改。';
-        } finally {
-            if (active()) { viewBusy = false; viewButton.disabled = false; }
-        }
-    }
-    function reconcile() {
-        const panel = fullPanel();
-        if (!panel) return false;
-        dispose();
-        return true;
-    }
-    async function open() {
-        if (!active() || busy) return;
-        if (reconcile()) return;
-        busy = true;
-        button.disabled = true;
-        button.textContent = '正在加载设置…';
-        shell.setAttribute('aria-busy', 'true');
-        feedback.textContent = '正在加载完整设置；不会发送生成请求。';
-        try {
-            await loadSettings(active);
-            if (!active()) return;
-            const panel = fullPanel();
-            if (!panel) throw new Error('RabbitMirror settings did not mount');
-            // Open only the existing settings drawer. Do not dispatch a focus or
-            // click into it: legacy intent listeners would initialize the API.
-            const content = panel.querySelector(':scope > .inline-drawer > .inline-drawer-content');
-            if (content) content.style.display = 'block';
-            const icon = panel.querySelector(':scope > .inline-drawer > .inline-drawer-header .inline-drawer-icon');
-            icon?.classList.remove('down', 'fa-circle-chevron-down');
-            icon?.classList.add('up', 'fa-circle-chevron-up');
-            reconcile();
-        } catch {
-            if (!active()) return;
-            button.textContent = '重试打开设置与诊断';
-            feedback.textContent = '未能打开完整设置，请手动重试；聊天挂载状态请查看 TT 诊断。未发送生成请求。';
-        } finally {
-            if (active()) {
-                busy = false;
-                button.disabled = false;
-                shell.removeAttribute('aria-busy');
-            }
-        }
-    }
-    const controller = Object.freeze({ dispose, reconcile });
-    entries.set(doc, controller);
-    button.addEventListener('click', open);
-    mount.append(shell);
-    return controller;
-}
-
 // Canonical source: scripts/tt-entry.template.js
-// Build source only. build-tt-entry.mjs embeds the import-free bridge
-// and settings entry above this code. No top-level await may delay registration.
-const BOOT_COHORT = '1.5.48-externalfix1';
-const BOOT_VERSION = '1.5.48';
+// Build source only. build-tt-entry.mjs embeds only the import-free bridge
+// above this code. No top-level await or UI work may delay registration.
+const BOOT_COHORT = '1.5.49-ttimmediate1';
+const BOOT_VERSION = '1.5.49';
 const ttHost = globalThis.__TAURITAVERN__;
 const boot = {
     cohort: BOOT_COHORT,
@@ -398,57 +238,17 @@ const boot = {
     host: ttHost,
     bridge: ttHost ? createRabbitMirrorHostCompatibility(globalThis) : null,
     cancelled: false,
-    settingsEntry: null,
-    ui: null,
     coreState: 'loading',
 };
-// A previously open viewer owns no chat DOM. Release only that ephemeral panel
-// before replacing the bootstrap; never revive or migrate its saved records.
-try { globalThis.__rabbitMirrorTtBootstrap?.viewerClose?.(); } catch { /* An old panel cannot block new registration. */ }
 globalThis.__rabbitMirrorTtBootstrap = boot;
 const bootIsCurrent = () => !boot.cancelled && globalThis.__rabbitMirrorTtBootstrap === boot;
 // This is synchronous and runs before ANY core/UI/settings module request.
 boot.bridge?.initialize();
 if (ttHost) globalThis.__rabbitMirrorRuntimeVersion = BOOT_VERSION;
 
-let readyListener = null;
 let coreModule = null;
 let cleanupKind = '';
 let appliedCleanupKind = '';
-function mountEarlySettings() {
-    if (!ttHost || !bootIsCurrent() || boot.settingsEntry) return;
-    boot.settingsEntry = mountRabbitMirrorTtSettingsEntry({
-        runtimeVersion: BOOT_VERSION,
-        isTauriTavern: true,
-        isCurrent: bootIsCurrent,
-        getStatus: () => boot.bridge.getStatus(),
-        loadViewer: async isActive => {
-            if (!bootIsCurrent() || !isActive()) return;
-            const viewer = await import('./src/ttTheaterViewer.js?rmv=1.5.48-externalfix1');
-            if (!bootIsCurrent() || !isActive()) return;
-            viewer.openRabbitMirrorTtTheaterViewer({ isCurrent: bootIsCurrent });
-        },
-        loadSettings: async isActive => {
-            if (!bootIsCurrent() || !isActive()) return;
-            const ui = await import('./src/ui.js?rmv=1.5.48-externalfix1');
-            if (!bootIsCurrent() || !isActive()) return;
-            boot.ui = ui;
-            ui.initRabbitMirrorUI();
-        },
-    });
-    showCoreFailure();
-}
-function showCoreFailure() {
-    if (!bootIsCurrent() || boot.coreState !== 'failed') return;
-    const shell = globalThis.document?.getElementById('rabbit_mirror_tt_settings_entry');
-    const feedback = shell?.querySelector('[role="status"]');
-    if (feedback) feedback.textContent = '兔子镜核心模块未能加载；设置入口仍可尝试打开。请检查扩展文件是否完整并重启 TT，不会自动重发生成请求。';
-}
-mountEarlySettings();
-if (ttHost && !boot.settingsEntry && globalThis.document?.readyState === 'loading') {
-    readyListener = () => { readyListener = null; mountEarlySettings(); };
-    document.addEventListener('DOMContentLoaded', readyListener, { once: true });
-}
 
 // TT awaits this interceptor even while the asynchronous core is loading.
 // Never let a generation slip through without the existing prompt/guard contract.
@@ -464,14 +264,13 @@ const earlyInterceptor = async (...args) => {
 };
 globalThis.rabbitMirrorGenerateInterceptor = earlyInterceptor;
 boot.interceptor = earlyInterceptor;
-const corePromise = import('./index.js?rmv=1.5.48-externalfix1').then(mod => {
+const corePromise = import('./index.js?rmv=1.5.49-ttimmediate1').then(mod => {
     coreModule = mod;
     boot.coreState = boot.cancelled ? 'disabled' : 'ready';
     applyCoreCleanup();
     return mod;
 }).catch(() => {
     boot.coreState = boot.cancelled ? 'disabled' : 'failed';
-    showCoreFailure();
     return null;
 });
 
@@ -485,14 +284,7 @@ function stopBootstrap(kind) {
     cleanupKind = kind === 'clean' || cleanupKind === 'clean' ? 'clean' : 'disable';
     boot.cancelled = true; // Keep the tombstone for an already-in-flight import.
     boot.coreState = 'disabled';
-    try { boot.viewerClose?.(); } catch { /* A read-only panel must not block the existing disable chain. */ }
-    if (readyListener) document.removeEventListener('DOMContentLoaded', readyListener);
-    readyListener = null;
-    boot.settingsEntry?.dispose();
-    boot.settingsEntry = null;
     boot.bridge?.dispose();
-    if (globalThis.__rabbitMirrorTtBootstrap === boot) boot.ui?.destroyRabbitMirrorUI?.();
-    boot.ui = null;
     if (globalThis.rabbitMirrorGenerateInterceptor === earlyInterceptor) delete globalThis.rabbitMirrorGenerateInterceptor;
     applyCoreCleanup();
 }

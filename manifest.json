@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜小剧场 · TT 测试",
   "loading_order": 100,
-  "js": "tt-entry.js?rmv=1.5.48-externalfix1",
-  "css": "style.css?rmv=1.5.48",
+  "js": "tt-entry.js?rmv=1.5.49-ttimmediate1",
+  "css": "style.css?rmv=1.5.49",
   "author": "Toto",
-  "version": "1.5.48",
+  "version": "1.5.49",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": false,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜外部母本修复测试：修复启用库后旧点菜缓存仍选内置，以及长标题/关键词挤掉摘要正文。保留 TT 独立查看；虚化内嵌未修复，尚未真机验证。"
+  "description": "TT 立即启动测试：不再等待空闲与聊天租约才初始化核心和正常设置；移除备用设置栏和独立查看面板。已错过 TT 注册窗口时，虚化正文内嵌仍不可用；尚未真机验证。"
 }

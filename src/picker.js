@@ -1,5 +1,5 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.5.48-externalfix1';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.48-externalfix1';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.5.49-ttimmediate1';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.49-ttimmediate1';
 import {
     getCurrentChatKey,
     getDirectiveScopedPick,
@@ -17,10 +17,10 @@ import {
     clearPendingComboBatch,
     createPendingComboBatchPlan,
     findPendingComboBatchPlan,
-} from './storage.js?rmv=1.5.48-externalfix1';
-import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.5.48-externalfix1';
-import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.48-externalfix1';
-import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.5.48-externalfix1';
+} from './storage.js?rmv=1.5.49-ttimmediate1';
+import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.5.49-ttimmediate1';
+import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.49-ttimmediate1';
+import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.5.49-ttimmediate1';
 import {
     chooseExternalSource,
     externalPoolActive,
@@ -30,7 +30,7 @@ import {
     getExternalPoolSnapshot,
     pickExternalItems,
     sourceMixModeIsExternalOnly,
-} from './externalWorldBook/externalPool.js?rmv=1.5.48-externalfix1';
+} from './externalWorldBook/externalPool.js?rmv=1.5.49-ttimmediate1';
 
 function randomUnit() {
     try {
