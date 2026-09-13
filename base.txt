@@ -1,0 +1,5 @@
+TauriTavern target:
+version: 2.2.0 dev
+commit: 223be954afa7b60c8637a44a43319524a185ea11
+platform: iOS
+RabbitMirror observed: 1.5.49

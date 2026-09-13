@@ -1,0 +1,52 @@
+diff --git a/src/scripts/extensions.js b/src/scripts/extensions.js
+--- a/src/scripts/extensions.js
++++ b/src/scripts/extensions.js
+@@ -651,5 +651,5 @@
+ /**
+- * Activates the one known renderer required by bounded ChatSurface before any
++ * Activates known renderers and RabbitMirror's registration entry before any
+  * chat is materialized. Capability verification remains a separate host step.
+  */
+ export async function activateRequiredChatSurfaceExtensions() {
+@@ -659,18 +659,37 @@
+             'Bounded ChatSurface cannot start while JS-Slash-Runner and LittleWhiteBox are both enabled',
+         );
+     }
+-    if (enabled.length === 0) {
++
++    // RabbitMirror decorates messages; it must not claim the exclusive code
++    // renderer slot. Match its registration entry, not a user-renamable folder.
++    const decorators = Object.entries(manifests)
++        .filter(([name, manifest]) => isDeferredThirdPartyExtension(name)
++            && !extension_settings.disabledExtensions.includes(name)
++            && manifest?.generate_interceptor === 'rabbitMirrorGenerateInterceptor'
++            && typeof manifest.js === 'string'
++            && manifest.js.split(/[?#]/)[0] === 'tt-entry.js')
++        .map(([internalName]) => ({
++            extensionName: 'RabbitMirror',
++            participantId: 'rabbitmirror/message-runtime',
++            internalName,
++        }));
++    if (decorators.length > 1) {
++        throw new Error('Bounded ChatSurface cannot start while multiple RabbitMirror installations are enabled');
++    }
++
++    const required = [...enabled, ...decorators];
++    if (required.length === 0) {
+         return Object.freeze([]);
+     }
+ 
+-    const requiredNames = new Set(enabled.map(capability => capability.internalName));
++    const requiredNames = new Set(required.map(capability => capability.internalName));
+     await activateExtensions({
+         parallelism: 1,
+         includeExtension: name => requiredNames.has(name),
+         resetErrors: false,
+     });
+ 
+-    return Object.freeze(enabled.map(({ extensionName, participantId }) => Object.freeze({
++    return Object.freeze(required.map(({ extensionName, participantId }) => Object.freeze({
+         extensionName,
+         participantId,
+     })));
+ }
