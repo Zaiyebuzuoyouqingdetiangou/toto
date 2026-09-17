@@ -5,9 +5,10 @@
 const PARTICIPANT_ID = 'rabbitmirror/message-runtime';
 const SURFACES = new Set(['fullscreen-window', 'backdrop', 'free-window', 'viewport-host']);
 
-// Only retain a fixed diagnostic code, never the host exception/body. TT v1
-// freezes registration at the first projection; reattempting or launching a
-// legacy observer after that point would violate managed DOM ownership.
+// TT v1 freezes registration at the first projection. If this extension is
+// loaded after that freeze, we still follow currently visible #chat > .mes
+// nodes and emit the same lease callbacks. We do not rewrite projection
+// structure or append siblings to #chat.
 function registrationFailureReason(error) {
     const message = typeof error?.message === 'string' ? error.message : '';
     if (message.includes('must register before the first projection')) return 'late-projection';
@@ -30,9 +31,26 @@ export function createRabbitMirrorHostCompatibility(hostGlobal = globalThis, dia
     let initialized = false;
     let managed = false;
     let registration = null;
-    let status = Object.freeze({ host: 'sillytavern', managed: false, registered: false, protocolVersion: null, errorCode: '' });
+    let status = Object.freeze({ host: 'sillytavern', managed: false, registered: false, protocolVersion: null, errorCode: '', projectionFallback: false });
     const subscriptions = new Map();
     const mounted = new Map();
+    const visibleFallback = { observer: null, chatWaiter: null, chatPoll: 0, contentFrame: 0, pendingContent: new Set(), adopted: new Map() };
+
+    function hostTimeout(fn, ms) {
+        const schedule = hostGlobal.setTimeout?.bind(hostGlobal) || setTimeout;
+        return schedule(fn, ms);
+    }
+
+    function hostClearTimeout(id) {
+        if (!id) return;
+        const clear = hostGlobal.clearTimeout?.bind(hostGlobal) || clearTimeout;
+        clear(id);
+    }
+
+    function findChatRoot() {
+        const doc = hostGlobal.document;
+        return doc?.getElementById?.('chat') || doc?.querySelector?.('#chat') || null;
+    }
 
     function reportFault(error) {
         status = Object.freeze({ ...status, errorCode: 'CHAT_SURFACE_CONSUMER_FAILED' });
@@ -104,12 +122,193 @@ export function createRabbitMirrorHostCompatibility(hostGlobal = globalThis, dia
         return dispose;
     }
 
+    function messageContent(element) {
+        return element.querySelector?.('.mes_text') || element;
+    }
+
+    function messageId(element) {
+        const id = Number(element?.getAttribute?.('mesid'));
+        return Number.isInteger(id) ? id : NaN;
+    }
+
+    function mutationTargetIsAuxiliary(record) {
+        const target = record.target?.nodeType === 1 ? record.target : record.target?.parentElement;
+        return !!target?.closest?.(
+            'toto, [data-rabbit-mirror-external-source="true"], .rabbit-mirror-composer-clearance, [data-rabbit-mirror-tool-entry-host], .rabbit-mirror-maintenance-toolbar',
+        );
+    }
+
+    function isHostMessageContentMutation(records) {
+        return records.some(record => {
+            if (record.type === 'attributes') return record.attributeName === 'mesid';
+            if (record.type !== 'childList' || mutationTargetIsAuxiliary(record)) return false;
+            return [...(record.addedNodes || []), ...(record.removedNodes || [])].some(node => {
+                if (!(node instanceof Element)) return true;
+                return !node.matches?.(
+                    '[data-rabbit-mirror-external-source="true"], .rabbit-mirror-composer-clearance, [data-rabbit-mirror-tool-entry-host], .rabbit-mirror-maintenance-toolbar',
+                );
+            });
+        });
+    }
+
+    function dropVisibleLease(element) {
+        const record = visibleFallback.adopted.get(element);
+        if (!record) return;
+        visibleFallback.adopted.delete(element);
+        hostClearTimeout(record.commitTimer);
+        record.contentObserver?.disconnect?.();
+        try { record.mount.abort(); } catch {}
+        try { record.content.abort(); } catch {}
+    }
+
+    function adoptVisibleMessage(element) {
+        if (disposed || !managed || status.registered || !(element instanceof Element) || !element.matches?.('.mes')) return;
+        const mesid = messageId(element);
+        if (!Number.isInteger(mesid) || !element.isConnected) return;
+        dropVisibleLease(element);
+        const content = messageContent(element);
+        const mount = new AbortController();
+        openLease('didMount', { mesid, element, content, signal: mount.signal });
+        // Host generations rewrite .mes_text, not #chat children. Independent /
+        // follow 外置 shells are placed on the floor (.mes), never serialized into
+        // 正文. Wait for the host body to settle, then emit didCommitContent so
+        // those shells can attach to the same .mes.
+        const contentObserver = typeof MutationObserver === 'function'
+            ? new MutationObserver(records => {
+                if (disposed || status.registered) return;
+                const nextId = messageId(element);
+                if (nextId !== mesid) {
+                    adoptVisibleMessage(element);
+                    return;
+                }
+                if (isHostMessageContentMutation(records)) queueVisibleContent(element);
+            })
+            : null;
+        contentObserver?.observe(element, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['mesid'],
+        });
+        visibleFallback.adopted.set(element, { mount, content: null, contentObserver, commitTimer: 0 });
+        queueVisibleContent(element);
+    }
+
+    function refreshVisibleContent(element) {
+        const record = visibleFallback.adopted.get(element);
+        if (!record || disposed || !element.isConnected) return;
+        const mesid = messageId(element);
+        if (!Number.isInteger(mesid)) return;
+        const content = messageContent(element);
+        try { record.content?.abort(); } catch {}
+        const contentLease = new AbortController();
+        openLease('didCommitContent', { mesid, element, content, signal: contentLease.signal });
+        record.content = contentLease;
+        record.contentNode = content;
+    }
+
+    function queueVisibleContent(element) {
+        const record = visibleFallback.adopted.get(element);
+        if (!record || disposed) return;
+        hostClearTimeout(record.commitTimer);
+        // Coalesce streaming token writes. Host replaceChildren on .mes_text
+        // otherwise looks like a new commit on every frame.
+        record.commitTimer = hostTimeout(() => {
+            record.commitTimer = 0;
+            refreshVisibleContent(element);
+        }, 150);
+    }
+
+    function collectDirectMessages(root, node) {
+        if (!(node instanceof Element)) return [];
+        if (node.matches?.('.mes') && node.parentElement === root) return [node];
+        return [...(node.querySelectorAll?.(':scope > .mes, .mes') || [])].filter(el => el.parentElement === root);
+    }
+
+    function stopVisibleProjectionFallback() {
+        visibleFallback.observer?.disconnect?.();
+        visibleFallback.observer = null;
+        visibleFallback.chatWaiter?.disconnect?.();
+        visibleFallback.chatWaiter = null;
+        hostClearTimeout(visibleFallback.chatPoll);
+        visibleFallback.chatPoll = 0;
+        if (visibleFallback.contentFrame && typeof hostGlobal.cancelAnimationFrame === 'function') {
+            hostGlobal.cancelAnimationFrame(visibleFallback.contentFrame);
+        }
+        visibleFallback.contentFrame = 0;
+        visibleFallback.pendingContent.clear();
+        for (const element of [...visibleFallback.adopted.keys()]) dropVisibleLease(element);
+    }
+
+    function attachVisibleProjectionFallback(chatRoot) {
+        if (disposed || !managed || status.registered || visibleFallback.observer || !chatRoot?.isConnected) return;
+        status = Object.freeze({ ...status, projectionFallback: true });
+        // Prefer direct children: TT ChatSurface only owns #chat > .mes.
+        // Avoid :scope here; some WKWebView query paths miss it during bootstrap.
+        for (const node of chatRoot.children || []) adoptVisibleMessage(node);
+        if (typeof MutationObserver !== 'function') return;
+        visibleFallback.observer = new MutationObserver(records => {
+            if (disposed || status.registered) return;
+            for (const record of records) {
+                if (record.target !== chatRoot || record.type !== 'childList') continue;
+                for (const node of record.removedNodes || []) {
+                    for (const element of collectDirectMessages(chatRoot, node)) dropVisibleLease(element);
+                }
+                for (const node of record.addedNodes || []) {
+                    for (const element of collectDirectMessages(chatRoot, node)) adoptVisibleMessage(element);
+                }
+            }
+        });
+        visibleFallback.observer.observe(chatRoot, { childList: true });
+        try { console.info('[RabbitMirror] ChatSurface late-projection fallback: following visible #chat > .mes leases'); } catch {}
+    }
+
+    function startVisibleProjectionFallback() {
+        if (disposed || !managed || status.registered) return;
+        const attachIfReady = () => {
+            if (disposed || !managed || status.registered || visibleFallback.observer) return true;
+            const chatRoot = findChatRoot();
+            if (!chatRoot?.isConnected) return false;
+            visibleFallback.chatWaiter?.disconnect?.();
+            visibleFallback.chatWaiter = null;
+            hostClearTimeout(visibleFallback.chatPoll);
+            visibleFallback.chatPoll = 0;
+            attachVisibleProjectionFallback(chatRoot);
+            return true;
+        };
+        if (attachIfReady()) return;
+        const doc = hostGlobal.document;
+        if (!visibleFallback.chatWaiter && typeof MutationObserver === 'function' && doc?.documentElement) {
+            visibleFallback.chatWaiter = new MutationObserver(() => { attachIfReady(); });
+            visibleFallback.chatWaiter.observe(doc.documentElement, { childList: true, subtree: true });
+        }
+        // iOS WKWebView can skip subtree MutationObserver delivery while the
+        // virtualizer is measuring. Bounded polling still finds #chat.
+        if (!visibleFallback.chatPoll) {
+            let attempts = 0;
+            const poll = () => {
+                visibleFallback.chatPoll = 0;
+                if (attachIfReady() || disposed || status.registered || ++attempts > 40) return;
+                visibleFallback.chatPoll = hostTimeout(poll, 250);
+            };
+            visibleFallback.chatPoll = hostTimeout(poll, 0);
+        }
+    }
+
     function initialize() {
-        if (initialized || disposed) return status;
-        initialized = true;
+        if (disposed) return status;
         const host = hostGlobal?.__TAURITAVERN__;
+        // First evaluation can beat the host ABI on iOS deferred third-party load.
+        if (initialized) {
+            if (status.host === 'sillytavern' && host) initialized = false;
+            else return status;
+        }
+        initialized = true;
         const api = host?.api?.chatSurface;
-        if (!host) return status;
+        if (!host) {
+            initialized = false;
+            return status;
+        }
         status = Object.freeze({ ...status, host: 'tauritavern', protocolVersion: api?.protocolVersion ?? null });
         if (typeof api?.isManagedOwnershipRequired !== 'function') return status;
         try { managed = api.isManagedOwnershipRequired() === true; }
@@ -117,12 +316,14 @@ export function createRabbitMirrorHostCompatibility(hostGlobal = globalThis, dia
             // Ownership is unknown, so do not launch an unmanaged repair watcher.
             managed = true;
             status = Object.freeze({ ...status, managed, errorCode: 'CHAT_SURFACE_OWNERSHIP_UNAVAILABLE' });
+            startVisibleProjectionFallback();
             return status;
         }
         status = Object.freeze({ ...status, managed });
         if (!managed) return status;
         if (api.protocolVersion !== 1 || typeof api.registerParticipant !== 'function') {
             status = Object.freeze({ ...status, errorCode: 'CHAT_SURFACE_PROTOCOL_UNSUPPORTED' });
+            startVisibleProjectionFallback();
             return status;
         }
         try {
@@ -136,6 +337,7 @@ export function createRabbitMirrorHostCompatibility(hostGlobal = globalThis, dia
         } catch (error) {
             status = Object.freeze({ ...status, errorCode: 'CHAT_SURFACE_REGISTRATION_FAILED',
                 registrationFailure: registrationFailureReason(error) });
+            startVisibleProjectionFallback();
         }
         return status;
     }
@@ -151,7 +353,9 @@ export function createRabbitMirrorHostCompatibility(hostGlobal = globalThis, dia
                 throw new TypeError(`RabbitMirror ChatSurface ${kind} must be a function`);
             }
         }
-        if (!managed || !status.registered) return () => {};
+        // Host registration is best-effort. Late-projection still delivers visible
+        // #chat leases so settings and in-viewport theaters can start.
+        if (!managed) return () => {};
         if (subscriptions.has(definition.id)) throw new Error(`Duplicate RabbitMirror ChatSurface consumer: ${definition.id}`);
         const subscription = { id: definition.id, didMount: definition.didMount, didCommitContent: definition.didCommitContent };
         subscriptions.set(subscription.id, subscription);
@@ -186,6 +390,7 @@ export function createRabbitMirrorHostCompatibility(hostGlobal = globalThis, dia
     function dispose() {
         if (disposed) return;
         disposed = true;
+        stopVisibleProjectionFallback();
         let firstError = null;
         for (const record of [...mounted.values()]) {
             for (const kind of ['didMount', 'didCommitContent']) {
@@ -212,9 +417,20 @@ export function createRabbitMirrorHostCompatibility(hostGlobal = globalThis, dia
         subscribe,
         getMountedMessages() {
             initialize();
-            return [...mounted.values()].map(record => (record.didCommitContent || record.didMount)?.context).filter(Boolean);
+            return [...mounted.values()].map(record => {
+                const content = record.didCommitContent;
+                const mount = record.didMount;
+                const live = (content && !content.context.signal.aborted ? content : null)
+                    || (mount && !mount.context.signal.aborted ? mount : null);
+                return live?.context;
+            }).filter(Boolean);
         },
-        externalPlacementParent(message) { initialize(); return managed ? message : null; },
+        externalPlacementParent(message) {
+            initialize();
+            // Managed ChatSurface forbids #chat siblings. 纯外置 still belongs to
+            // this floor: append on .mes, outside .mes_text.
+            return managed ? message : null;
+        },
         applySurface(element, surface) {
             if (!SURFACES.has(surface)) throw new TypeError('Unsupported RabbitMirror host surface');
             if (!hostGlobal?.__TAURITAVERN__?.api?.layout || typeof element?.setAttribute !== 'function') return false;
