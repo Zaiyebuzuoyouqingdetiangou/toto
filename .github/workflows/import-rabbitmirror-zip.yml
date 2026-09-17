@@ -1,0 +1,262 @@
+name: RabbitMirror ZIP import
+
+'on':
+  push:
+    branches: [main]
+    paths: [rabbitmirror-upload.zip]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rabbitmirror-zip-import-main
+  cancel-in-progress: false
+
+jobs:
+  import-zip:
+    if: github.repository == 'Zaiyebuzuoyouqingdetiangou/toto' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+
+      - name: Validate and unpack the RabbitMirror plugin ZIP
+        shell: python
+        env:
+          EXPECTED_REPOSITORY: ${{ github.repository }}
+        run: |
+          import json, os, stat, subprocess, sys, zipfile
+          from pathlib import Path, PurePosixPath
+
+          root = Path.cwd().resolve()
+          archive = root / "rabbitmirror-upload.zip"
+
+          if not archive.is_file():
+              print("No rabbitmirror-upload.zip found; nothing to import.")
+              sys.exit(0)
+
+          if archive.is_symlink() or archive.stat().st_size > 25 * 1024 * 1024:
+              raise ValueError("Invalid or oversized ZIP file.")
+
+          # Validate the complete ZIP before changing any files.
+          with zipfile.ZipFile(archive) as z:
+              entries = [i for i in z.infolist() if not i.is_dir()]
+              entries = [
+                  i for i in entries
+                  if not i.filename.startswith("__MACOSX/")
+                  and PurePosixPath(i.filename).name != ".DS_Store"
+              ]
+
+              if (
+                  not entries
+                  or len(entries) > 5000
+                  or sum(i.file_size for i in entries) > 100 * 1024 * 1024
+              ):
+                  raise ValueError(
+                      "Empty ZIP or unpacked size/file-count limit exceeded."
+                  )
+
+              # Accept a normal plugin ZIP or a GitHub-style toto-main/ wrapper.
+              prefix = (
+                  "toto-main/"
+                  if all(i.filename.startswith("toto-main/") for i in entries)
+                  else ""
+              )
+
+              payload = {}
+              seen = set()
+
+              for info in entries:
+                  name = info.filename[len(prefix):]
+                  parts = name.split("/")
+
+                  if (
+                      not name
+                      or "\\" in name
+                      or any(p in ("", ".", "..", ".git", ".github") for p in parts)
+                      or parts[0].startswith(".git")
+                      or ":" in name
+                      or "\x00" in name
+                      or name == "rabbitmirror-upload.zip"
+                      or name.casefold() in seen
+                  ):
+                      raise ValueError(
+                          "Unsafe or duplicate ZIP path: " + repr(name)
+                      )
+
+                  mode = info.external_attr >> 16
+                  if stat.S_IFMT(mode) not in (0, stat.S_IFREG):
+                      raise ValueError(
+                          "Only regular files may be imported: " + repr(name)
+                      )
+
+                  destination = root.joinpath(*parts)
+
+                  if any(
+                      p.is_symlink()
+                      for p in [destination, *destination.parents]
+                      if p != root
+                  ):
+                      raise ValueError(
+                          "Refusing to overwrite or follow a symbolic link."
+                      )
+
+                  if (
+                      destination.is_dir()
+                      or any(
+                          p.exists() and not p.is_dir()
+                          for p in destination.parents
+                      )
+                  ):
+                      raise ValueError(
+                          "File/directory conflict: " + repr(name)
+                      )
+
+                  seen.add(name.casefold())
+                  payload[name] = z.read(info)
+
+          # RabbitMirror complete-package checks.
+          required = (
+              "manifest.json",
+              "index.js",
+              "src/injector.js",
+              "src/settings.js",
+          )
+
+          if not all(name in payload and payload[name] for name in required):
+              raise ValueError(
+                  "Not a complete RabbitMirror plugin ZIP."
+              )
+
+          manifest = json.loads(
+              payload["manifest.json"].decode("utf-8-sig")
+          )
+
+          expected = (
+              "https://github.com/"
+              + os.environ["EXPECTED_REPOSITORY"]
+          )
+
+          if (
+              manifest.get("homePage", "")
+              .rstrip("/")
+              .lower()
+              != expected.lower()
+          ):
+              raise ValueError(
+                  "Manifest homePage does not match this repository."
+              )
+
+          if manifest.get("display_name") != "兔子镜小剧场":
+              raise ValueError(
+                  "Unexpected RabbitMirror display_name."
+              )
+
+          if manifest.get("js", "").split("?", 1)[0] != "index.js":
+              raise ValueError(
+                  "Unexpected plugin entry point."
+              )
+
+          # Reject a file that would also need to become a parent directory.
+          for name in payload:
+              if any(
+                  str(p).casefold() in seen
+                  for p in PurePosixPath(name).parents
+                  if str(p) != "."
+              ):
+                  raise ValueError(
+                      "Conflicting file paths inside ZIP."
+                  )
+
+          # Overlay only:
+          # preserve every existing repository file absent from the ZIP.
+          # This matches the Hearttrace importer behavior.
+          for name, content in payload.items():
+              target = root / name
+              target.parent.mkdir(
+                  parents=True,
+                  exist_ok=True
+              )
+              target.write_bytes(content)
+
+          # Remove the uploaded transport ZIP from the repository.
+          archive.unlink()
+
+          paths = [
+              *payload,
+              "rabbitmirror-upload.zip",
+          ]
+
+          subprocess.run(
+              [
+                  "git",
+                  "--literal-pathspecs",
+                  "add",
+                  "-f",
+                  "--pathspec-from-file=-",
+                  "--pathspec-file-nul",
+              ],
+              input=(
+                  b"\x00".join(
+                      p.encode("utf-8")
+                      for p in paths
+                  )
+                  + b"\x00"
+              ),
+              check=True,
+          )
+
+          print(
+              "Prepared "
+              + str(len(payload))
+              + " RabbitMirror plugin files; "
+                "outer toto-main folder removed if present."
+          )
+
+          summary = os.environ.get(
+              "GITHUB_STEP_SUMMARY"
+          )
+
+          if summary:
+              with open(
+                  summary,
+                  "a",
+                  encoding="utf-8"
+              ) as f:
+                  f.write(
+                      "## RabbitMirror ZIP import\n\n"
+                      "Prepared **"
+                      + str(len(payload))
+                      + "** files. "
+                      "The next step commits and pushes them. "
+                      "Existing files outside the ZIP are preserved.\n"
+                  )
+
+      - name: Commit all imported files together
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if git diff --cached --quiet; then
+            echo "Nothing to commit."
+            exit 0
+          fi
+
+          git \
+            -c user.name='github-actions[bot]' \
+            -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            -c core.hooksPath=/dev/null \
+            -c commit.gpgsign=false \
+            commit -m 'Import RabbitMirror plugin ZIP'
+
+          # Normal push: do not force-overwrite concurrent changes
+          # or bypass branch protection.
+          git push origin HEAD:main
+
+          echo \
+            'RabbitMirror import committed and pushed successfully.' \
+            >> "$GITHUB_STEP_SUMMARY"
