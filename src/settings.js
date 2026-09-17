@@ -68,8 +68,10 @@ export function normalizeIndependentContextExcludedTags(value) {
             .replace(/^<\s*\/?\s*/, '')
             .replace(/\s*\/?>\s*$/, '')
             .split(/\s/, 1)[0]
-            .toLowerCase();
-        if (!/^[a-z][a-z0-9._:-]{0,63}$/.test(unwrapped) || seen.has(unwrapped)) continue;
+            .toLocaleLowerCase();
+        // User-defined context tags may be Chinese or other Unicode letter names.
+        // Keep the same 64-code-point/name-character boundary used for ASCII tags.
+        if (!/^[\p{L}][\p{L}\p{N}._:-]{0,63}$/u.test(unwrapped) || [...unwrapped].length > 64 || seen.has(unwrapped)) continue;
         seen.add(unwrapped);
         normalized.push(unwrapped);
         if (normalized.length >= INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT) break;

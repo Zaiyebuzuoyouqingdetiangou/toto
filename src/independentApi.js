@@ -1,27 +1,27 @@
-import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.51-narrow1';
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, getRabbitMirrorExternalPlacementParent, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.5.51-narrow1';
-import { recordTtSurface, ttSurfaceNow } from './ttSurfaceDiagnostics.js?rmv=1.5.51-narrow1';
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5.51-narrow1';
-import { assertRabbitMirrorIndependentResponseBytes, assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.5.51-narrow1';
-import { parseIndependentAdvancedOptions, buildIndependentAdvancedCarrier, applyIndependentAdvancedExclusions, independentAdvancedOptionsSignature } from './advancedRequestOptions.js?rmv=1.5.51-narrow1';
-import { buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.5.51-narrow1';
-import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from './externalWorldBook/store.js?rmv=1.5.51-narrow1';
-import { describeExternalWorldBookPreflightFailure, describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.51-narrow1';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, armRabbitMirrorFirstUseInteraction, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.51-narrow1';
-import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.51-narrow1';
-import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=1.5.51-narrow1';
-import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from './multifaceProtocol.js?rmv=1.5.51-narrow1';
-import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.51-narrow1';
-import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, getRabbitMirrorFollowBatchFailure, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.51-narrow1';
-import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions, markPendingBatchAttempt, commitPendingComboBatch, releasePendingComboBatch } from './storage.js?rmv=1.5.51-narrow1';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5.51-narrow1';
-import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.51-narrow1';
-import { readFollowPartialResult, followPartialResultFaceOwnerKey } from './followPartialResults.js?rmv=1.5.51-narrow1';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.5.51-narrow1';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.51-narrow1';
-import { rememberIndependentTransportDiagnostic } from './transportDiagnostics.js?rmv=1.5.51-narrow1';
+import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.53-cn-boundary1';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, getRabbitMirrorExternalPlacementParent, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.5.53-cn-boundary1';
+import { recordTtSurface, ttSurfaceNow } from './ttSurfaceDiagnostics.js?rmv=1.5.53-cn-boundary1';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5.53-cn-boundary1';
+import { assertRabbitMirrorIndependentResponseBytes, assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.5.53-cn-boundary1';
+import { parseIndependentAdvancedOptions, buildIndependentAdvancedCarrier, applyIndependentAdvancedExclusions, independentAdvancedOptionsSignature } from './advancedRequestOptions.js?rmv=1.5.53-cn-boundary1';
+import { buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.5.53-cn-boundary1';
+import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from './externalWorldBook/store.js?rmv=1.5.53-cn-boundary1';
+import { describeExternalWorldBookPreflightFailure, describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.53-cn-boundary1';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, armRabbitMirrorFirstUseInteraction, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.53-cn-boundary1';
+import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.53-cn-boundary1';
+import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=1.5.53-cn-boundary1';
+import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from './multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
+import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.53-cn-boundary1';
+import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, getRabbitMirrorFollowBatchFailure, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.53-cn-boundary1';
+import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions, markPendingBatchAttempt, commitPendingComboBatch, releasePendingComboBatch } from './storage.js?rmv=1.5.53-cn-boundary1';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5.53-cn-boundary1';
+import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.53-cn-boundary1';
+import { readFollowPartialResult, followPartialResultFaceOwnerKey } from './followPartialResults.js?rmv=1.5.53-cn-boundary1';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.5.53-cn-boundary1';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.53-cn-boundary1';
+import { rememberIndependentTransportDiagnostic } from './transportDiagnostics.js?rmv=1.5.53-cn-boundary1';
 
-const RUNTIME_VERSION = '1.5.51';
+const RUNTIME_VERSION = '1.5.53';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_securityfix2_v2';
 const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
@@ -1490,6 +1490,20 @@ function decodeIndependentVisibleEntities(value=''){
 function independentContextExcludedTagSet(settings=getSettings()){
  return new Set(normalizeIndependentContextExcludedTags(settings?.independentContextExcludedTags));
 }
+// Settings count tag names in Unicode code points, not UTF-16 code units.
+// Share that boundary between complete tokens and incomplete-prefix filtering.
+function readIndependentMarkupName(source,start){
+ let cursor=start, count=0;
+ while(cursor<source.length && count<64){
+  const char=String.fromCodePoint(source.codePointAt(cursor));
+  if(!/[\p{L}\p{N}._:-]/u.test(char)) break;
+  cursor+=char.length; count+=1;
+ }
+ const next=cursor<source.length?String.fromCodePoint(source.codePointAt(cursor)):'';
+ const name=source.slice(start,cursor).toLocaleLowerCase();
+ if(/[\p{L}\p{N}._:-]/u.test(next) || !/^[\p{L}][\p{L}\p{N}._:-]{0,63}$/u.test(name)) return null;
+ return {name,end:cursor};
+}
 function scanIndependentMarkupToken(source,start){
  if(source.startsWith('<!--',start)){
   const close=source.indexOf('-->',start+4);
@@ -1503,10 +1517,9 @@ function scanIndependentMarkupToken(source,start){
  while(/\s/.test(source[cursor]||'')) cursor+=1;
  let closing=false;
  if(source[cursor]==='/'){ closing=true; cursor+=1; while(/\s/.test(source[cursor]||'')) cursor+=1; }
- const nameStart=cursor;
- while(/[A-Za-z0-9._:-]/.test(source[cursor]||'') && cursor-nameStart<64) cursor+=1;
- const name=source.slice(nameStart,cursor).toLowerCase();
- if(!/^[a-z][a-z0-9._:-]{0,63}$/.test(name)) return null;
+ const parsedName=readIndependentMarkupName(source,cursor);
+ if(!parsedName) return null;
+ const {name}=parsedName; cursor=parsedName.end;
  let quote='';
  const hardEnd=Math.min(source.length,start+4096);
  for(;cursor<hardEnd;cursor+=1){
@@ -1526,7 +1539,7 @@ function decodeConfiguredIndependentTagTokens(value='',selected=new Set()){
  const encodedGt='&(?:amp;){0,3}(?:gt|#0*62|#x0*3e);';
  for(const tag of selected){
   const escaped=String(tag).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-  const token=new RegExp(`${encodedLt}(\\s*\\/?\\s*${escaped}(?![a-z0-9._:-])[\\s\\S]{0,4096}?)${encodedGt}`,'gi');
+  const token=new RegExp(`${encodedLt}(\\s*\\/?\\s*${escaped}(?![\\p{L}\\p{N}._:-])[\\s\\S]{0,4096}?)${encodedGt}`,'giu');
   source=source.replace(token,(_match,inner)=>`<${inner}>`);
  }
  return source;
@@ -1536,10 +1549,9 @@ function configuredIndependentTagPrefix(source,start,selected){
  while(/\s/.test(source[cursor]||'')) cursor+=1;
  let closing=false;
  if(source[cursor]==='/'){ closing=true; cursor+=1; while(/\s/.test(source[cursor]||'')) cursor+=1; }
- const nameStart=cursor;
- while(/[A-Za-z0-9._:-]/.test(source[cursor]||'') && cursor-nameStart<64) cursor+=1;
- const name=source.slice(nameStart,cursor).toLowerCase();
- if(!name || !selected.has(name) || /[A-Za-z0-9._:-]/.test(source[cursor]||'')) return null;
+ const parsedName=readIndependentMarkupName(source,cursor);
+ if(!parsedName || !selected.has(parsedName.name)) return null;
+ const {name}=parsedName;
  return {name,closing};
 }
 function stripConfiguredIndependentTagBlocks(value='',excludedTags=new Set()){
@@ -1875,9 +1887,112 @@ function verifiedSourceTagFilteringForLiveText(message,liveUnfilteredText='',exc
  }
  return null;
 }
+function verifiedUnicodeTagFilteringForLiveText(message,liveText='',excludedTags=new Set()){
+ // HTML treats <中文> as visible text but </中文> as a bogus comment.
+ // Do not read/restore comments or trust raw source as visible content. Recover
+ // delimiters only when the whole source projection matches the current live
+ // text. The result only deletes selected spans; it cannot add hidden content.
+ if(![...excludedTags].some(name=>!/^[a-z]/i.test(name))) return null;
+ const display=typeof message?.extra?.display_text==='string'?message.extra.display_text:'';
+ const body=typeof message?.mes==='string'?message.mes:'';
+ const expected=normalizedIndependentVisibleComparison(liveText);
+ if(!expected) return null;
+ for(const source of [...new Set([display,body])]){
+  if(!source || source.length>INDEPENDENT_TAG_SCAN_MAX_TEXT_CHARS) continue;
+  const historical=stripHistoricalRabbitMirrorBlocks(source);
+  let prefix='\uE000RM_TAG_';
+  // Never let source text impersonate a temporary delimiter placeholder.
+  for(let n=0;n<8 && (source.includes(prefix)||liveText.includes(prefix));n+=1) prefix+='X';
+  if(source.includes(prefix)||liveText.includes(prefix)) continue;
+  const tokens=[]; let needsRecovery=false;
+  const mask=(visible,boundary=visible)=>{
+   const marker=`${prefix}${tokens.length}\uE001`;
+   tokens.push({marker,visible,boundary}); return marker;
+  };
+  // Protect entity-escaped tags from the generic HTML-text projection. In a
+  // browser these are visible text, not elements. Only one entity layer is
+  // decoded for the equality proof; the selected-tag filter handles nesting.
+  const encoded=/&(?:amp;){0,3}(?:lt|#0*60|#x0*3c);[\s\S]{0,4096}?&(?:amp;){0,3}(?:gt|#0*62|#x0*3e);/giy;
+  const rawSource=historical.text, parts=[]; let bounded=true;
+  for(let cursor=0;cursor<rawSource.length;){
+   if(tokens.length>=1024){bounded=false;break;}
+   const lt=rawSource.indexOf('<',cursor), amp=rawSource.indexOf('&',cursor);
+   const start=lt<0?amp:amp<0?lt:Math.min(lt,amp);
+   if(start<0){parts.push(rawSource.slice(cursor));break;}
+   parts.push(rawSource.slice(cursor,start));
+   if(rawSource[start]==='&'){
+    encoded.lastIndex=start;
+    const match=encoded.exec(rawSource);
+    if(match){parts.push(mask(decodeIndependentVisibleEntities(match[0])));cursor=encoded.lastIndex;continue;}
+    parts.push('&');cursor=start+1;continue;
+   }
+   const token=scanIndependentMarkupToken(rawSource,start);
+   if(!token){parts.push('<');cursor=start+1;continue;}
+   const raw=rawSource.slice(start,token.end);
+   const unicode=!!token.name && !/^[a-z]/i.test(token.name);
+   const selected=excludedTags.has(token.name);
+   if(unicode || selected){
+    const visible=unicode && !token.closing?decodeIndependentVisibleEntities(raw):'';
+    parts.push(mask(visible,selected?raw:visible));
+    if(unicode && selected) needsRecovery=true;
+   }else parts.push(raw);
+   cursor=token.end;
+  }
+  if(!bounded) continue;
+  if(!needsRecovery) continue;
+  const projected=stripInvisibleIndependentContextMarkup(parts.join(''),new Set()).text;
+  const markers=new RegExp(`${prefix}(\\d+)\\uE001`,'g');
+  const segments=[]; let last=0, match;
+  while((match=markers.exec(projected))){
+   segments.push({visible:projected.slice(last,match.index),decoration:true});
+   segments.push(tokens[Number(match[1])]); last=markers.lastIndex;
+  }
+  segments.push({visible:projected.slice(last),decoration:true});
+  // Match source boundaries against live characters, not against source text
+  // that would be returned to the API. A second pass permits Markdown emphasis
+  // punctuation removed by the host; tag literals must still match exactly.
+  for(const decorations of [false,true]){
+   let offset=0, matches=true; const insertions=[];
+   for(const segment of segments){
+    if(!segment.visible && segment.boundary) insertions.push({offset,text:segment.boundary});
+    for(const char of segment.visible){
+     if(/\s/.test(char)) continue;
+     if(expected.startsWith(char,offset)){offset+=char.length;continue;}
+     if(decorations && segment.decoration && /^[*_~`#-]$/.test(char)) continue;
+     matches=false;break;
+    }
+    if(!matches) break;
+   }
+   if(!matches || offset!==expected.length) continue;
+   // Only splice verified, selected delimiters into an ephemeral copy. All
+   // actual content/spacing comes from the live DOM, including unselected text.
+   const liveOffsets=[]; let count=0;
+   for(let i=0;i<liveText.length;i+=1) if(!/\s/.test(liveText[i])) liveOffsets[count++]=i;
+   liveOffsets[count]=liveText.length;
+   const chunks=[]; let cursor=0;
+   for(const insertion of insertions){
+    const endTag=/^<\s*\//.test(insertion.text);
+    const boundary=endTag && insertion.offset>0?liveOffsets[insertion.offset-1]+1:liveOffsets[insertion.offset];
+    const at=Math.max(cursor,boundary);
+    chunks.push(liveText.slice(cursor,at),insertion.text); cursor=at;
+   }
+   chunks.push(liveText.slice(cursor));
+   const filtered=stripConfiguredIndependentTagBlocks(chunks.join(''),excludedTags);
+   return {...filtered,text:filtered.text.replace(/\s+/g,' ').trim(),
+    filteredRabbitMirrorChars:historical.filteredRabbitMirrorChars,source:'live-dom+verified-unicode-tags'};
+  }
+
+ }
+ return null;
+}
 function canonicalVisibleMessageText(message,index,excludedTags=independentContextExcludedTagSet()){
  const live=liveVisibleIndependentMessageText(index,excludedTags);
  if(live.available){
+  if(excludedTags.size && [...excludedTags].some(name=>!/^[a-z]/i.test(name))){
+   const unfiltered=(live.filteredExcludedTags||[]).length?liveVisibleIndependentMessageText(index,new Set()):live;
+   const verified=unfiltered.available?verifiedUnicodeTagFilteringForLiveText(message,unfiltered.text,excludedTags):null;
+   if(verified) return verified;
+  }
   // Some hosts remove an unknown wrapper (for example <thinking>) but keep its child text.
   // Use source markup only when its unfiltered visible projection exactly matches the live
   // DOM text. This preserves live DOM as the content authority while recovering the tag
@@ -3901,7 +4016,7 @@ async function loadIndependentAppearanceReference(owner){
  let module;
  assertIndependentPromptOwner(owner);
  try{
-  try{module=await import('./appearanceReference.js?rmv=1.5.51-narrow1');}
+  try{module=await import('./appearanceReference.js?rmv=1.5.53-cn-boundary1');}
   catch{
    const error=new Error('外观参考模块未能加载；本轮未发送请求，请刷新后重试或关闭外观参考。');
    error.code='RABBIT_MIRROR_APPEARANCE_MODULE_UNAVAILABLE';error.requestCount=0;throw error;
@@ -4023,6 +4138,11 @@ async function callIndependentApi(ctx,index,msg,signal=null,requestOptions={}){
  }else{
   // Keep the builtin-only route synchronous: no hydration, raw read or second draw.
   details=buildRabbitMirrorPromptDetails(st,'independent',null,generationScopeKey,generationContext);
+  // The builtin route used to skip the final owner guard entirely. Capture the
+  // same exact chat/message/swipe/source identity so the dispatch lease rechecks
+  // the final body immediately before the one permitted paid request.
+  promptOwner=captureIndependentPromptOwner(ctx,index,msg,signal,requestOptions,generationScopeKey);
+  bindIndependentPromptBatch(promptOwner,details.batchPlan||null);
  }
  const faceCount=Number(details.metadata?.faceCount)||1;
  const basePrompt=String(details.prompt||'').trim();
@@ -4058,7 +4178,12 @@ ${independentSystemRules}`;
   : '现在依据近输出短锁完成唯一成品。不要解释构思过程，不要复述规则，直接输出完整 <toto>...</toto>。';
  const fixedRequestChars=systemPrompt.length+executionLock.length+independentUserLead.length+independentUserTail.length+16;
  const availableContextChars=MAX_INDEPENDENT_REQUEST_CHARS-fixedRequestChars;
- if(availableContextChars<8000) throw new Error('兔子镜规则与执行锁本身已超过独立 API 完整请求安全预算；本次未发送网络请求。');
+ // Do not reserve an arbitrary 8k context floor. The real request-size check
+ // below is authoritative; a short current turn can safely fit in the remainder.
+ if(availableContextChars<=0){
+  const error=new Error(`兔子镜规则与执行锁已超过独立 API 完整请求 ${MAX_INDEPENDENT_REQUEST_CHARS} 字符安全预算；本次未发送网络请求。`);
+  error.code='RABBIT_MIRROR_REQUEST_TOO_LARGE'; error.requestCount=0; throw error;
+ }
  const globalWorldInfoSnapshot=globalWorldInfoSnapshotFor(ctx,index,msg);
  const globalWorldInfoView=globalWorldInfoContextView(globalWorldInfoSnapshot);
  const contextResult=contextBundle(ctx,index,globalWorldInfoSnapshot,globalWorldInfoView,availableContextChars,readVisible);
@@ -4072,7 +4197,10 @@ ${executionLock}
 
 ${independentUserTail}`;
  const totalRequestChars=systemPrompt.length+userPrompt.length;
- if(totalRequestChars>MAX_INDEPENDENT_REQUEST_CHARS) throw new Error(`独立 API 完整请求超过 ${MAX_INDEPENDENT_REQUEST_CHARS} 字符安全预算；本次未发送网络请求。`);
+ if(totalRequestChars>MAX_INDEPENDENT_REQUEST_CHARS){
+  const error=new Error(`独立 API 完整请求超过 ${MAX_INDEPENDENT_REQUEST_CHARS} 字符安全预算；本次未发送网络请求。`);
+  error.code='RABBIT_MIRROR_REQUEST_TOO_LARGE'; error.requestCount=0; throw error;
+ }
  // 设置页原来的 Token 面板在独立 API 模式只显示“主 API 0 Token”，看不到实际上
  // 发送给独立模型的可编辑视觉层。这里只统计兔子镜扩展自己写入的规则，不把聊天、
  // 角色卡、世界书等上下文字符混进“兔子镜自身 Prompt”口径；上下文长度单独报告。
@@ -8668,7 +8796,7 @@ function showIndependentHistory(root,owner={}){
 }
 function resayIndependentMirror(root,owner={}){
  if(getSettings().generationSource==='follow'){
-  void import('./followFaceRetry.js?rmv=1.5.51-narrow1').then(({retryFollowFace})=>retryFollowFace(root,owner,{
+  void import('./followFaceRetry.js?rmv=1.5.53-cn-boundary1').then(({retryFollowFace})=>retryFollowFace(root,owner,{
    getContext,hostBusy:hostGenerationLooksActive,maxRequestChars:MAX_INDEPENDENT_REQUEST_CHARS,
    resolveOwner:target=>{
     const host=target?.closest?.('[data-rabbit-mirror-external-source="true"][data-rm-source="follow"]');
@@ -9516,7 +9644,7 @@ function settleEarlyBodyAtFinal(ctx,index){
 }
 async function probeIndependentEarlyBody(packet,sequence){
  if(!earlyBodyPacketCurrent(packet)) return;
- if(!earlyBodyParserPromise) earlyBodyParserPromise=import('./earlyBodyTags.js?rmv=1.5.51-narrow1')
+ if(!earlyBodyParserPromise) earlyBodyParserPromise=import('./earlyBodyTags.js?rmv=1.5.53-cn-boundary1')
   .then(module=>{earlyBodyParser=module;return module;}).catch(()=>{earlyBodyParserPromise=null;return null;});
  const parser=await earlyBodyParserPromise;
  if(!parser || sequence!==earlyBodyProbeSequence || !earlyBodyPacketCurrent(packet)) return;
