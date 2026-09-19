@@ -74,11 +74,11 @@ async function ensureDeferredCoreRuntime(reason = 'scheduled-idle') {
     if (deferredRuntimeModules) return deferredRuntimeModules;
     if (deferredRuntimePromise) return deferredRuntimePromise;
     deferredRuntimePromise = Promise.all([
-        import('./src/outputSanitizer.js?rmv=1.5.53-timing1'),
-        import('./src/visualScanner.js?rmv=1.5.53-timing1'),
-        import('./src/independentApi.js?rmv=1.5.53-timing1'),
+        import('./src/outputSanitizer.js?rmv=1.5.53-ttperfdiag1'),
+        import('./src/visualScanner.js?rmv=1.5.53-ttperfdiag1'),
+        import('./src/independentApi.js?rmv=1.5.53-ttperfdiag1'),
         import('./src/touchTheater.js?rmv=1.5.53-cn-boundary1'),
-        import('./src/ui.js?rmv=1.5.53-timing1'),
+        import('./src/ui.js?rmv=1.5.53-ttperfdiag1'),
         import('./src/composerClearance.js?rmv=1.5.53-cn-boundary1'),
     ]).then(async ([output, visual, independent, touch, ui, clearance]) => {
         if (!runtimeIsActive()) return null;
@@ -296,7 +296,7 @@ function loadMirrorVisualCompat() {
     if (!deferredRuntimeModules) return Promise.resolve(null);
     return Promise.all([
         loadOptional('checkedSelectorRepair', './src/checkedSelectorRepair.js?rmv=1.5.53-cn-boundary1', mod => mod.initRabbitMirrorCheckedSelectorRepair?.()),
-        loadOptional('renderedVisualFeedback', './src/renderedVisualFeedbackHotfix.js?rmv=1.5.53-timing1', mod => mod.initRabbitMirrorRenderedVisualFeedbackHotfix?.()),
+        loadOptional('renderedVisualFeedback', './src/renderedVisualFeedbackHotfix.js?rmv=1.5.53-ttperfdiag1', mod => mod.initRabbitMirrorRenderedVisualFeedbackHotfix?.()),
     ]);
 }
 
@@ -405,7 +405,7 @@ async function ensureExternalDiagnostics() {
     if (externalDiagnosticsApi) return externalDiagnosticsApi;
     if (externalDiagnosticsPromise) return externalDiagnosticsPromise;
     const revision = ++externalDiagnosticsOperationRevision;
-    const loadPromise = import('./src/externalDiagnostics.js?rmv=1.5.53-cn-boundary1').then(mod => {
+    const loadPromise = import('./src/externalDiagnostics.js?rmv=1.5.53-ttperfdiag1').then(mod => {
         if (!runtimeIsActive() || !externalDiagnosticsDesiredEnabled || revision !== externalDiagnosticsOperationRevision) return null;
         externalDiagnosticsModule = mod;
         externalDiagnosticsApi = mod.initRabbitMirrorExternalDiagnostics?.() || null;

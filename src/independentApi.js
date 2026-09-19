@@ -8,12 +8,12 @@ import { parseIndependentAdvancedOptions, buildIndependentAdvancedCarrier, apply
 import { buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.5.53-timing1';
 import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from './externalWorldBook/store.js?rmv=1.5.53-cn-boundary1';
 import { describeExternalWorldBookPreflightFailure, describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.53-cn-boundary1';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, armRabbitMirrorFirstUseInteraction, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.53-timing1';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, armRabbitMirrorFirstUseInteraction, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.53-ttperfdiag1';
 import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.53-cn-boundary1';
 import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=1.5.53-cn-boundary1';
 import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from './multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
 import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.53-cn-boundary1';
-import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, getRabbitMirrorFollowBatchFailure, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.53-timing1';
+import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, getRabbitMirrorFollowBatchFailure, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.53-ttperfdiag1';
 import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions, markPendingBatchAttempt, commitPendingComboBatch, releasePendingComboBatch } from './storage.js?rmv=1.5.53-cn-boundary1';
 import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5.53-cn-boundary1';
 import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.53-timing1';
@@ -6124,7 +6124,18 @@ function markMountedFaceProofs(host,source='independent'){
  for(const [index,details] of faces.entries()) markSanitizedRabbitMirrorFace(details,{faceIndex:index,faceCount:faces.length,sourceHash:String(host.dataset?.rmSourceHash||''),origin:String(source||'independent')});
  return faces.length;
 }
+// Diagnostics are optional and cannot change the operation's return or error.
+function beginHostWorkTiming(name){
+ let end;
+ try{ end=globalThis.__rabbitMirrorExternalDiag?.beginHostWork?.(name); }catch{}
+ if(typeof end!=='function') return null;
+ return ()=>{ try{ end(); }catch{} };
+}
 function refreshExistingExternalDetails(host,key,source='independent'){
+ const end=beginHostWorkTiming('independent.refreshExistingExternalDetails');
+ try{ return refreshExistingExternalDetailsCore(host,key,source); }finally{ end?.(); }
+}
+function refreshExistingExternalDetailsCore(host,key,source='independent'){
  if(!host?.isConnected || host.dataset.rmState!=='ready') return null;
  if(externalFaceDetails(host).length>1){
   const faces=externalFaceDetails(host);
@@ -7815,6 +7826,10 @@ function scheduleIndependentReadyPostprocess(host,key='',html=''){
 }
 
 function ensureExternalUi(el,key,html,state='ready',source='independent',sourceHash='',savedRecord=null){
+ const end=beginHostWorkTiming('independent.ensureExternalUi');
+ try{ return ensureExternalUiCore(el,key,html,state,source,sourceHash,savedRecord); }finally{ end?.(); }
+}
+function ensureExternalUiCore(el,key,html,state='ready',source='independent',sourceHash='',savedRecord=null){
  const body=externalInsertTarget(el); if(!body) return null;
  let locallyPrepared=false;
  if(state==='ready' && source==='independent' && savedRecord?.html===html){
@@ -8939,7 +8954,7 @@ function showIndependentHistory(root,owner={}){
 }
 function resayIndependentMirror(root,owner={}){
  if(getSettings().generationSource==='follow'){
-  void import('./followFaceRetry.js?rmv=1.5.53-timing1').then(({retryFollowFace})=>retryFollowFace(root,owner,{
+  void import('./followFaceRetry.js?rmv=1.5.53-ttperfdiag1').then(({retryFollowFace})=>retryFollowFace(root,owner,{
    getContext,hostBusy:hostGenerationLooksActive,maxRequestChars:MAX_INDEPENDENT_REQUEST_CHARS,
    resolveOwner:target=>{
     const host=target?.closest?.('[data-rabbit-mirror-external-source="true"][data-rm-source="follow"]');
@@ -10661,6 +10676,10 @@ function restoreIndependentMirrorPassively(ctx,store,el,index,msg){
  return recovered.storeChanged;
 }
 function syncMessages(indices=null){
+ const end=beginHostWorkTiming('independent.syncMessages');
+ try{ return syncMessagesCore(indices); }finally{ end?.(); }
+}
+function syncMessagesCore(indices=null){
  if(!currentRuntime() || syncRunning) return;
  syncRunning=true;
  try{
@@ -10867,6 +10886,10 @@ function pruneForeignChatExternalHosts(){
  }
 }
 function reconcileVisibleMirrorDuplicates(indices=null){
+ const end=beginHostWorkTiming('independent.reconcileVisibleMirrorDuplicates');
+ try{ return reconcileVisibleMirrorDuplicatesCore(indices); }finally{ end?.(); }
+}
+function reconcileVisibleMirrorDuplicatesCore(indices=null){
  const ctx=getContext();
  const mode=runtimeMode();
  const allowed=indices instanceof Set?indices:null;
@@ -10939,6 +10962,10 @@ function syncMessageBatch(indices=[],historyRestoreLight=true){
  finally{ end?.(); }
 }
 function viewportMessageIndices(chat,limit=STARTUP_SYNC_IMMEDIATE_MESSAGES){
+ const end=beginHostWorkTiming('independent.viewportMessageIndices');
+ try{ return viewportMessageIndicesCore(chat,limit); }finally{ end?.(); }
+}
+function viewportMessageIndicesCore(chat,limit=STARTUP_SYNC_IMMEDIATE_MESSAGES){
  const found=new Set(); const max=Math.max(1,Math.min(8,Number(limit)||STARTUP_SYNC_IMMEDIATE_MESSAGES));
  const add=node=>{
   const message=node?.closest?.('.mes[mesid], [mesid].mes') || (node?.matches?.('.mes[mesid], [mesid].mes')?node:null);
