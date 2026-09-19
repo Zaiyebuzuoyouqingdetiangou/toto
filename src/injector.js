@@ -41,6 +41,82 @@ const INDEPENDENT_MANUAL_INTENTS_KEY = '__rabbitMirrorIndependentManualIntentsV1
 const INDEPENDENT_MANUAL_BRIDGE_KEY = '__rabbitMirrorIndependentManualBridge';
 const INDEPENDENT_MANUAL_BIND_KEY = '__rabbitMirrorBindIndependentManualIntent';
 
+// Opt-in, in-memory scalar diagnostics. Never serialize host payloads or owners.
+const MANUAL_DIAG_VERSION = '1.5.53-manualdiag1';
+const MANUAL_DIAG_HOOK = '__rabbitMirrorManualEntryDiagnosticRecord';
+const MANUAL_DIAG_EVENTS = new Set(['start','stop','host-event','host-start','user-sent','interceptor','manual-record','manual-bind','bridge','placeholder','click','runtime-start','runtime-stop']);
+const MANUAL_DIAG_NUMBERS = new Set(['index','messageCount','intentCount','boundCount','cancelledCount','consumedCount','subscriptionCount','pendingFrames','readyFrames','visiblePendingFrames']);
+const MANUAL_DIAG_BOOLEANS = new Set(['enabled','autoInjection','modeOff','sourceIndependent','timingManual','runtimeCurrent','bridgePresent','elementFound','intentPresent','sameChat','sameKey','sameTail','alreadyBound','dryRun','consumed','cancelled','hostFound','connected','hasButton','hidden','visible','returned','candidateEligible']);
+const MANUAL_DIAG_ENUMS = new Set(['normal','continue','swipe','regenerate','quiet','impersonate','other','auto','manual','off','unknown','created','reused','rejected','bound','unbound','entered','existing','missing-element','missing-intent','inactive','unavailable','ready','GENERATION_STARTED','MESSAGE_SENT','GENERATION_ENDED','GENERATION_STOPPED','STREAM_TOKEN_RECEIVED','MESSAGE_RECEIVED','CHARACTER_MESSAGE_RENDERED','CHAT_CHANGED',MANUAL_DIAG_VERSION]);
+let manualEntryDiagnosticSession = null;
+let manualEntryDiagnosticReport = '';
+function manualEntryDiagnosticFields(values = {}) {
+    const clean = {};
+    for (const [key, value] of Object.entries(values)) {
+        if (MANUAL_DIAG_NUMBERS.has(key) && Number.isSafeInteger(value) && value >= -1) clean[key] = value;
+        else if (MANUAL_DIAG_BOOLEANS.has(key) && typeof value === 'boolean') clean[key] = value;
+        else if (['type','timing','result','event','runtimeVersion'].includes(key) && MANUAL_DIAG_ENUMS.has(value)) clean[key] = value;
+    }
+    return clean;
+}
+function recordManualEntryDiagnostic(event, values = {}) {
+    try {
+        const session = manualEntryDiagnosticSession;
+        if (!session || !MANUAL_DIAG_EVENTS.has(event)) return;
+        const fields = manualEntryDiagnosticFields(values);
+        const counter = event === 'host-event' ? `${event}:${fields.event || 'unknown'}` : event;
+        session.counts[counter] = (session.counts[counter] || 0) + 1;
+        // Tokens are counted, never copied into the timeline. Retain the first
+        // boundary and the latest 199 records if a long session fills the buffer.
+        if (event === 'host-event' && fields.event === 'STREAM_TOKEN_RECEIVED') return;
+        if (session.rows.length >= 200) { session.rows.splice(1, 1); session.dropped += 1; }
+        session.rows.push({ ms: Math.max(0, Date.now() - session.started), event, ...fields });
+    } catch { /* Diagnostics must never interrupt generation. */ }
+}
+function manualEntryDiagnosticSnapshot() {
+    try {
+        const settings = getSettings(), chat = currentIndependentIntentChat();
+        const intents = currentIndependentManualIntents();
+        const bridge = globalThis[INDEPENDENT_MANUAL_BRIDGE_KEY];
+        const core = typeof bridge?.diagnosticSnapshot === 'function' ? bridge.diagnosticSnapshot() : { result: 'unavailable' };
+        return manualEntryDiagnosticFields({ enabled: settings.enabled !== false,
+            autoInjection: settings.autoRabbitMirrorInjection !== false, modeOff: settings.mode === 'off',
+            sourceIndependent: settings.generationSource === 'independent', timing: independentGenerationTiming(settings),
+            messageCount: chat.length, intentCount: intents.length,
+            boundCount: intents.filter(i => i.message && !i.cancelled).length,
+            cancelledCount: intents.filter(i => i.cancelled).length, consumedCount: intents.filter(i => i.consumed).length,
+            subscriptionCount: independentIntentBridgeSubscriptions.length, bridgePresent: typeof bridge === 'function', ...core });
+    } catch { return { result: 'unavailable' }; }
+}
+export function startManualEntryDiagnostic() {
+    manualEntryDiagnosticSession = { started: Date.now(), counts: {}, rows: [], dropped: 0 };
+    manualEntryDiagnosticReport = '';
+    globalThis[MANUAL_DIAG_HOOK] = recordManualEntryDiagnostic;
+    recordManualEntryDiagnostic('start', manualEntryDiagnosticSnapshot());
+}
+export function stopManualEntryDiagnostic() {
+    if (!manualEntryDiagnosticSession) return manualEntryDiagnosticReport;
+    recordManualEntryDiagnostic('stop', manualEntryDiagnosticSnapshot());
+    const session = manualEntryDiagnosticSession;
+    manualEntryDiagnosticSession = null;
+    if (globalThis[MANUAL_DIAG_HOOK] === recordManualEntryDiagnostic) delete globalThis[MANUAL_DIAG_HOOK];
+    manualEntryDiagnosticReport = [
+        `RabbitMirror 手动入口诊断 ${MANUAL_DIAG_VERSION}`,
+        `生成时间: ${new Date().toISOString()}`,
+        '边界：手动入口、宿主事件、消息绑定与外置框挂载。此报告独立于外部性能诊断。',
+        '隐私：仅布尔值、计数及固定状态码；不记录聊天正文、Prompt、密钥、聊天标识或事件原始内容。',
+        '诊断不调用模型；计数为 0 只表示本次采集未记录到，不证明宿主从未触发。',
+        'runtimeVersion=unavailable 或缺失表示核心诊断接口不可用，不能由此断言核心未运行。',
+        `记录上限 200 条；省略中间记录 ${session.dropped} 条；事件计数保留。`,
+        '【计数】', JSON.stringify(session.counts), '【时序】', ...session.rows.map(row => JSON.stringify(row))
+    ].join('\n');
+    return manualEntryDiagnosticReport;
+}
+export function getManualEntryDiagnosticState() {
+    return { active: !!manualEntryDiagnosticSession, report: manualEntryDiagnosticReport };
+}
+
+
 function currentIndependentManualIntents() {
     return Array.isArray(globalThis[INDEPENDENT_MANUAL_INTENTS_KEY])
         ? globalThis[INDEPENDENT_MANUAL_INTENTS_KEY] : [];
@@ -75,17 +151,19 @@ function independentManualIntentCandidateIndex(intent, chat, processor = null) {
 // Called by existing host events and renderer mounts. This only binds intentions
 // captured during this page session; it never discovers historical messages.
 function bindIndependentManualIntent(payload, processor = null) {
-    if (!currentIndependentManualIntents().length) return false;
+    if (!currentIndependentManualIntents().length) { recordManualEntryDiagnostic('manual-bind', {result:'missing-intent'}); return false; }
     const settings = getSettings();
-    if (settings.generationSource !== 'independent' || independentGenerationTiming(settings) !== 'manual') return false;
+    if (settings.generationSource !== 'independent' || independentGenerationTiming(settings) !== 'manual') { recordManualEntryDiagnostic('manual-bind', {result:'inactive'}); return false; }
     const chat = currentIndependentIntentChat();
     const chatKey = String(getCurrentChatKey(chat) || '');
     const exactIndex = payload === undefined ? null : resolveIndependentIntentCompletionIndex(payload, chat);
     if (payload !== undefined && !Number.isInteger(exactIndex)) return false;
     let changed = false;
     for (const intent of currentIndependentManualIntents()) {
+        recordManualEntryDiagnostic('manual-bind', {index: Number.isInteger(exactIndex)?exactIndex:-1, sameKey:intent.chatKey===chatKey, sameChat:intent.chat===chat, sameTail:chat[intent.tailIndex]===intent.tail, cancelled:!!intent.cancelled, consumed:!!intent.consumed, alreadyBound:!!intent.message});
         if (intent.chatKey !== chatKey || intent.cancelled || intent.consumed) continue;
         const index = independentManualIntentCandidateIndex(intent, chat, processor);
+        recordManualEntryDiagnostic('manual-bind', {candidateEligible:Number.isInteger(index)});
         if (!Number.isInteger(index) || (exactIndex !== null && exactIndex !== index)) continue;
         intent.index = index;
         intent.message = chat[index];
@@ -93,6 +171,7 @@ function bindIndependentManualIntent(payload, processor = null) {
         changed = true;
         notifyIndependentManualIntent(intent);
     }
+    recordManualEntryDiagnostic('manual-bind', {result:changed?'bound':'unbound'});
     return changed;
 }
 
@@ -122,6 +201,7 @@ let independentManualHostStart = null;
 function beginIndependentManualHostGeneration(type, _options, dryRun = false) {
     const settings = getSettings();
     const normalizedType = String(type || 'normal').trim().toLowerCase() || 'normal';
+    recordManualEntryDiagnostic('host-start', {type:MANUAL_DIAG_ENUMS.has(normalizedType)?normalizedType:'other', dryRun:!!dryRun, enabled:settings.enabled!==false, autoInjection:settings.autoRabbitMirrorInjection!==false, modeOff:settings.mode==='off', sourceIndependent:settings.generationSource==='independent', timing:independentGenerationTiming(settings)});
     if (dryRun || settings.enabled === false || settings.autoRabbitMirrorInjection === false
         || settings.mode === 'off' || settings.generationSource !== 'independent'
         || independentGenerationTiming(settings) !== 'manual'
@@ -134,6 +214,7 @@ function beginIndependentManualHostGeneration(type, _options, dryRun = false) {
 function bindIndependentManualUserMessage(payload) {
     const start = independentManualHostStart;
     const chat = currentIndependentIntentChat();
+    recordManualEntryDiagnostic('user-sent', {intentPresent:!!start, sameChat:start?.chat===chat, sameKey:start?.chatKey===String(getCurrentChatKey(chat)||''), sameTail:!!start&&(start.tailIndex<0||chat[start.tailIndex]===start.tail), messageCount:chat.length});
     if (!start || start.type !== 'normal' || start.chat !== chat
         || start.chatKey !== String(getCurrentChatKey(chat) || '')
         || (start.tailIndex >= 0 && chat[start.tailIndex] !== start.tail)) return;
@@ -155,14 +236,14 @@ function recordIndependentManualIntent(type, { reuse = false } = {}) {
     const tailIndex = chat.length - 1;
     const tail = chat[tailIndex];
     const tailRole = independentIntentTailRole(tail);
-    if (!chatKey || !tail || !tailRole || (normalizedType !== 'normal' && tailRole !== 'assistant')) return null;
+    if (!chatKey || !tail || !tailRole || (normalizedType !== 'normal' && tailRole !== 'assistant')) { recordManualEntryDiagnostic('manual-record', {result:'rejected'}); return null; }
     if (reuse) {
         const existing = currentIndependentManualIntents().slice().reverse().find(intent =>
             !intent.cancelled && !intent.consumed && intent.type === normalizedType && intent.chat === chat
             && intent.chatKey === chatKey && intent.tailIndex === tailIndex && intent.tail === tail
             && intent.tailSource === String(tail.mes || '')
             && intent.tailSwipe === (Number(tail.swipe_id ?? tail.swipeId ?? 0) || 0));
-        if (existing) return existing;
+        if (existing) { recordManualEntryDiagnostic('manual-record', {result:'reused'}); return existing; }
     }
     // Preserve an earlier reply's waiting frame when a later normal turn starts.
     // An unbound intention is superseded only after trying its exact old target.
@@ -180,6 +261,7 @@ function recordIndependentManualIntent(type, { reuse = false } = {}) {
         tailSwipe: Number(tail.swipe_id ?? tail.swipeId ?? 0) || 0,
         tailSource: String(tail.mes || ''), index: -1, message: null, swipe: 0, cancelled: false, consumed: false };
     globalThis[INDEPENDENT_MANUAL_INTENTS_KEY] = [...previous, intent];
+    recordManualEntryDiagnostic('manual-record', {result:'created', type:normalizedType, index:tailIndex});
     scheduleIndependentCoreRuntimeWake();
     notifyIndependentManualIntent(intent);
     return intent;
@@ -624,8 +706,10 @@ export function initIndependentGenerationIntentBridge() {
     ].filter(([event]) => !!event);
     for (const [event, handler] of bindings) {
         try {
-            eventSource?.on?.(event, handler);
-            independentIntentBridgeSubscriptions.push({ event, handler });
+            const name = ['GENERATION_STARTED','MESSAGE_SENT','GENERATION_ENDED','GENERATION_STOPPED','STREAM_TOKEN_RECEIVED','MESSAGE_RECEIVED','CHARACTER_MESSAGE_RENDERED','CHAT_CHANGED'].find(key => event_types?.[key] === event) || 'other';
+            const observedHandler = (...args) => { recordManualEntryDiagnostic('host-event', {event:name}); return handler(...args); };
+            eventSource?.on?.(event, observedHandler);
+            independentIntentBridgeSubscriptions.push({ event, handler: observedHandler });
         } catch {}
     }
     globalThis[INDEPENDENT_GENERATION_INTENT_BRIDGE_CLEANUP_KEY] = destroyIndependentGenerationIntentBridge;
@@ -633,6 +717,7 @@ export function initIndependentGenerationIntentBridge() {
 }
 
 export function destroyIndependentGenerationIntentBridge({ clearIntents = false } = {}) {
+    stopManualEntryDiagnostic();
     independentManualHostStart = null;
     cancelIndependentCoreRuntimeWake();
     if (globalThis[INDEPENDENT_EARLY_PACKET_KEY]) cancelIndependentEarlyIntent('bridge-destroyed');
@@ -735,6 +820,7 @@ function assertFollowPrefetchOwner(owner, chat) {
 
 export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abort, type) {
     const settings = getSettings();
+    recordManualEntryDiagnostic('interceptor', {type:MANUAL_DIAG_ENUMS.has(type)?type:type==null?'normal':'other', sourceIndependent:settings.generationSource==='independent', timing:independentGenerationTiming(settings)});
     const operationType = String(type || '').trim().toLowerCase();
     cancelReplacedIndependentManualIntents(operationType);
     if (['continue', 'swipe', 'regenerate'].includes(operationType)) {

@@ -9,18 +9,18 @@ import { BEHAVIOR_RULE_MAX_CHARS, DEFAULT_BEHAVIOR_RULE_TEXT, resolveBehaviorRul
 import { clearRecentIndependentTransportDiagnostics } from './transportDiagnostics.js?rmv=1.5.53-cn-boundary1';
 import { parseIndependentAdvancedOptions } from './advancedRequestOptions.js?rmv=1.5.53-cn-boundary1';
 import { parseRabbitMirrorReplacementLines, formatRabbitMirrorReplacementLines } from './bannedWords.js?rmv=1.5.53-cn-boundary1';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.5.53-ttfix1';
+import { clearRabbitMirrorPrompt, startManualEntryDiagnostic, stopManualEntryDiagnostic, getManualEntryDiagnosticState } from './injector.js?rmv=1.5.53-manualdiag1';
 import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.5.53-ttfix1';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.5.53-manualdiag1';
 import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.5.53-cn-boundary1';
 import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.5.53-cn-boundary1';
-import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5.53-ttfix1';
+import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5.53-manualdiag1';
 import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.5.53-cn-boundary1';
 import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.53-timing1';
 
-import { mountSettingsAppearance, destroySettingsAppearance } from './settingsAppearance.js?rmv=1.5.53-timing1';
+import { mountSettingsAppearance, destroySettingsAppearance } from './settingsAppearance.js?rmv=1.5.53-manualdiag1';
 
-const SETTINGS_UI_VERSION = '1.12-layered-ui3';
+const SETTINGS_UI_VERSION = '1.12-layered-ui3-manualdiag1';
 const RUNTIME_VERSION = '1.5.53';
 
 function isCurrentRuntime() {
@@ -1091,6 +1091,14 @@ export function initRabbitMirrorUI() {
             </div>
             <div style="font-size:12px;line-height:1.6;margin-top:8px;">首次导入：填写文字或选择文件 → 确认分类 → 保存 → 启用库并打开外部抽签。换设备：旧设备导出整库文件，再到新设备导入。</div>
           </div>
+          <section id="rh_manual_entry_diag" style="margin-top:12px;padding:12px;border:1px solid currentColor;border-radius:10px;">
+            <strong>手动生成没有外置框？</strong>
+            <p>先开始记录，再回到聊天正常发送一条消息。角色回复后，回来结束记录并复制报告。没有兔子镜也能使用。</p>
+            <p>只记录触发与挂载状态，不读取正文、不调用模型。与宿主性能诊断分开。</p>
+            <div class="flex-container flexGap5"><button id="rh_manual_diag_start" class="menu_button" type="button">开始记录</button><button id="rh_manual_diag_stop" class="menu_button" type="button">结束并生成报告</button><button id="rh_manual_diag_copy" class="menu_button" type="button">复制报告</button></div>
+            <p id="rh_manual_diag_status" role="status"></p>
+            <textarea id="rh_manual_diag_output" class="text_pole" aria-label="手动入口诊断报告" readonly spellcheck="false" hidden style="width:100%;min-height:220px;user-select:text;-webkit-user-select:text;"></textarea>
+          </section>
           <div style="margin-top:12px;padding:10px 11px;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:10px;">
             <div style="font-weight:700;">🛰 外部代码／宿主性能诊断（测试版）</div>
             <div style="opacity:.74;font-size:11px;line-height:1.5;margin-top:4px;">只诊断 <b>SillyTavern 本体、其他扩展、浏览器主线程和网络</b>：聊天为什么空白、发送为什么迟滞、AI 请求何时真正发出、维修兔点击后是否被外部脚本/网络阻塞。<br><b>不读取兔子镜内部生成或维修状态。</b> 兔子镜内部问题仍请使用对应兔子镜里的「📋 生成全链路诊断」，两份报告互不合并。</div>
@@ -2704,6 +2712,29 @@ export function initRabbitMirrorUI() {
     if (settings.memoryScanEnabled || (settings.memoryProviderIds || []).length) {
         $('#rh_memory_scan_results').html('<div style="padding:8px 0;opacity:.68;font-size:11px;line-height:1.45;">已保存资料来源设置。需要刷新列表时请点击“扫描可用资料来源”。</div>');
     }
+
+    const renderManualEntryDiagnostic = () => {
+        const state = getManualEntryDiagnosticState();
+        $('#rh_manual_diag_start').prop('disabled', state.active);
+        $('#rh_manual_diag_stop').prop('disabled', !state.active);
+        $('#rh_manual_diag_copy').prop('disabled', !state.report);
+        $('#rh_manual_diag_output').val(state.report).prop('hidden', !state.report);
+        $('#rh_manual_diag_status').text(state.active ? '正在记录。可关闭设置，回聊天正常发送一条消息；角色回复后回来结束记录。' : state.report ? '已停止并保留报告。不需要点击生成或重说兔子镜。' : '尚未开始。诊断默认关闭。');
+    };
+    $('#rh_manual_diag_start').on('click', () => { startManualEntryDiagnostic(); renderManualEntryDiagnostic(); });
+    $('#rh_manual_diag_stop').on('click', () => { stopManualEntryDiagnostic(); renderManualEntryDiagnostic(); });
+    $('#rh_manual_diag_copy').on('click', async () => {
+        const report = getManualEntryDiagnosticState().report;
+        if (!report) return;
+        try { await navigator.clipboard.writeText(report); $('#rh_manual_diag_status').text('报告已复制。'); }
+        catch {
+            const output = document.getElementById('rh_manual_diag_output');
+            output?.focus(); output?.select();
+            let copied = false; try { copied = document.execCommand('copy'); } catch {}
+            $('#rh_manual_diag_status').text(copied ? '报告已复制。' : '自动复制失败，请长按下方报告全选复制。');
+        }
+    });
+    renderManualEntryDiagnostic();
 
     let externalDiagnosticUiRevision = 0;
     const externalDiagnosticStatusText = (state, prefix = '诊断中') => `${prefix}｜原始事件 ${Number(state?.entries || 0)} 条（不是报告数）｜分类：外部资源 ${Number(state?.externalResources || 0)}｜外部长帧 ${Number(state?.externalLoaf || 0)}｜主线程阻塞 ${Number(state?.stalls || 0)}｜网络 ${Number(state?.network || 0)}｜维修点击窗口 ${Number(state?.maintenanceWindows || 0)}`;
