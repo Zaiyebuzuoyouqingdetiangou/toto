@@ -265,7 +265,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     move(get('rh_blacklist_enabled').closest('label').parentElement,'blacklist');move(get('rh_favorite_summary').parentElement,'favorites');
     move('rh_advanced_page_repair','mirror');
     note('mirror','每面兔子镜的标题旁都有对应工具。挨打猫用于反馈、重说和查看历史；维修兔用于检查、修复、复制本面 HTML 与生成全链路诊断。');
-    body('tools').prepend(move('rh_manual_entry_diag','tools'));
+    move('rh_manual_entry_diag','diagnosis');
     move('rh_token_meter','usage');move(get('rh_copy_regex').closest('.rabbit-mirror-regex-helper'),'regex');
     move(get('rh_clear_last').parentElement,'cleanup');move(get('rh_external_diag_status').parentElement,'diagnosis');
     for(const id of ['rh_update_now','rh_update_status','rh_update_reload'])move(id,'update');
