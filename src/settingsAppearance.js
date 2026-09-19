@@ -254,7 +254,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     move(get('rh_independent_include_character_summary').closest('label').parentElement,'chat');
     move(get('rh_independent_tag_filter_open').parentElement.parentElement,'tags');
     move('rh_advanced_page_worldinfo','books');move('rh_advanced_page_memory','memories');
-    withNote('rh_multiface_enabled','faces');move('rh_multiface_count_row','faces');move('rh_multiface_help','faces');
+    withNote('rh_multiface_enabled','faces');move('rh_multiface_count_row','faces');move('rh_multiface_help','faces');move('rh_face_presentation_modes','faces');
     withNote('rh_force_visual_scenery','drawing');withNote('rh_enhanced_visual_drawing','drawing');move('rh_advanced_page_generation','draw');
     for(const key of ['visualText','drawing','writing','references','visualRules','replacement'])row('look',key);
     move('rh_appearance_reference','references');
@@ -345,10 +345,53 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
         active=key;search.value='';paint();
     }
     function goBack(){const prev=history.pop();if(prev){active=prev.key;search.value=prev.query;}else{active=definitions[active][0];search.value='';}paint(true);}
-    function setOpen(open){
-        if(open){originFocus=doc.activeElement;root.hidden=false;applyTheme();paint();close.focus({preventScroll:true});}
-        else{root.hidden=true;originFocus?.focus?.({preventScroll:true});}
+    // The main workbench must use the browser top layer just like its child
+    // dialogs: host body transforms otherwise clip a position:fixed panel.
+    const view = doc.defaultView;
+    let viewportCleanup = null;
+    function syncViewport(){
+        if(root.hidden)return;
+        const viewport=view?.visualViewport;
+        const width=viewport?.width || view?.innerWidth;
+        const height=viewport?.height || view?.innerHeight;
+        if(!(width>0&&height>0))return;
+        for(const [key,value] of Object.entries({width,height,left:viewport?.offsetLeft||0,top:viewport?.offsetTop||0})){
+            const name='--rh-viewport-'+key, next=value+'px';
+            if(root.style.getPropertyValue(name)!==next)root.style.setProperty(name,next);
+        }
     }
+    function trackViewport(){
+        viewportCleanup?.();
+        const viewport=view?.visualViewport;
+        viewport?.addEventListener('resize',syncViewport);
+        viewport?.addEventListener('scroll',syncViewport);
+        view?.addEventListener('resize',syncViewport);
+        viewportCleanup=()=>{
+            viewport?.removeEventListener('resize',syncViewport);
+            viewport?.removeEventListener('scroll',syncViewport);
+            view?.removeEventListener('resize',syncViewport);
+            viewportCleanup=null;
+        };
+        syncViewport();
+    }
+    function setOpen(open){
+        if(open){
+            originFocus=doc.activeElement;root.hidden=false;
+            // Desktop hosts may not load the optional mobile dialog promoter.
+            // Keep ordinary child overlays inside this modal's active subtree.
+            for(const id of ['rh_world_info_prompt_modal','rh_independent_tag_filter_modal']){
+                const modal=get(id);if(modal&&modal.tagName!=='DIALOG'&&!root.contains(modal))root.append(modal);
+            }
+            if(typeof root.showModal==='function'){if(!root.open)root.showModal();}
+            else root.setAttribute('open','');
+            trackViewport();applyTheme();paint();close.focus({preventScroll:true});
+        }else{
+            viewportCleanup?.();
+            if(root.open&&typeof root.close==='function')root.close();else root.removeAttribute('open');
+            root.hidden=true;originFocus?.focus?.({preventScroll:true});
+        }
+    }
+    listen(root,'cancel',event=>{if(event.target!==root)return;event.preventDefault();setOpen(false);});
     for(const [key,name] of Object.entries(tabNames)){const tab=button(name,()=>{history=[];navigate(key,false);});tab.dataset.rhTab=key;tab.setAttribute('role','tab');tabs.append(tab);}
     listen(tabs,'keydown',e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;const items=[...tabs.children],i=items.indexOf(e.target);if(i<0)return;e.preventDefault();const j=e.key==='Home'?0:e.key==='End'?items.length-1:(i+(e.key==='ArrowLeft'?-1:1)+items.length)%items.length;items[j].click();items[j].focus();});
     listen(search,'input',()=>paint());
@@ -356,6 +399,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     listen(root,'change',()=>sync());
     listen(root,'click',e=>{if(e.target===root)setOpen(false);});
     listen(root,'keydown',e=>{
+        if(e.target.closest?.('dialog')!==root)return;
         if(e.key==='Escape'){e.preventDefault();setOpen(false);}
         if(e.key!=='Tab')return;
         const items=[...window.querySelectorAll('button,input,select,textarea,a[href],[tabindex="0"]')].filter(n=>!n.disabled&&n.getClientRects().length);
@@ -369,5 +413,5 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     root.__rabbitMirrorWorkbench={open:()=>setOpen(true),navigate,hasEntry:()=>entry.isConnected,
         isComplete:()=>requiredControls.every(id=>root.querySelectorAll('#'+id).length===1)};
     applyTheme();paint();
-    const cleanup=()=>{listeners.splice(0).forEach(fn=>fn());entry.remove();delete root.__rabbitMirrorWorkbench;mounts.delete(root);};mounts.set(root,cleanup);
+    const cleanup=()=>{viewportCleanup?.();if(root.open&&typeof root.close==='function')root.close();listeners.splice(0).forEach(fn=>fn());entry.remove();delete root.__rabbitMirrorWorkbench;mounts.delete(root);};mounts.set(root,cleanup);
 }

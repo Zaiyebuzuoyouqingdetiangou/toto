@@ -1,3 +1,4 @@
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.5.53-text1';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
 import { independentGenerationTiming } from './independentTiming.js?rmv=1.5.53-timing1';
@@ -158,6 +159,7 @@ export const defaultSettings = Object.freeze({
     presentationWorldviewLock: false,
     // 每轮生成的兔子镜面数（1～5）。默认 1，关闭多面不改旧单面路径。
     rabbitMirrorFaceCount: 1,
+    rabbitMirrorPresentationModes: ['auto', 'auto', 'auto', 'auto', 'auto'],
     richFormatBias: false,
     maintenanceRabbitEnabled: true,
     maintenanceRabbitAutoSafeEnabled: false,
@@ -288,6 +290,7 @@ export function getSettings() {
     settings.presentationWorldviewLock = settings.presentationWorldviewLock === true;
     // 只接受数字 1～5；任何异常值（NaN、字符串、0、负数、超界）都回落到 1，
     // 保证旧设置升级与畸形写入都不会意外开启多面。
+    settings.rabbitMirrorPresentationModes = normalizePresentationModes(settings.rabbitMirrorPresentationModes);
     const faceCount = settings.rabbitMirrorFaceCount;
     settings.rabbitMirrorFaceCount = Number.isInteger(faceCount) && faceCount >= 2 && faceCount <= 5 ? faceCount : 1;
     if (settings.autoRabbitMirrorInjection === undefined) settings.autoRabbitMirrorInjection = settings.enabled !== false;
@@ -395,6 +398,9 @@ export function updateSettings(patch) {
     }
     if (Object.prototype.hasOwnProperty.call(safePatch, 'appearanceReferenceEnabled')) safePatch.appearanceReferenceEnabled = safePatch.appearanceReferenceEnabled === true;
     if (Object.prototype.hasOwnProperty.call(safePatch, 'appearanceReferenceRevision')) safePatch.appearanceReferenceRevision = /^[a-z\d-]{8,80}$/i.test(String(safePatch.appearanceReferenceRevision || '')) ? String(safePatch.appearanceReferenceRevision) : '';
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'rabbitMirrorPresentationModes')) {
+        safePatch.rabbitMirrorPresentationModes = normalizePresentationModes(safePatch.rabbitMirrorPresentationModes);
+    }
     if (Object.prototype.hasOwnProperty.call(safePatch, 'rabbitMirrorFaceCount')) {
         const faceCount = safePatch.rabbitMirrorFaceCount;
         safePatch.rabbitMirrorFaceCount = Number.isInteger(faceCount) && faceCount >= 2 && faceCount <= 5 ? faceCount : 1;

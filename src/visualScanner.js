@@ -1,6 +1,7 @@
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.5.53-cn-boundary1';
+import { presentationModeFields } from './presentationMode.js?rmv=1.5.53-text1';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.5.53-text1';
 import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { getSettings } from './settings.js?rmv=1.5.53-timing1';
+import { getSettings } from './settings.js?rmv=1.5.53-text1';
 import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.5.53-cn-boundary1';
 import {
     commitRabbitMirrorFollowBatch,
@@ -11,16 +12,16 @@ import {
     inspectRabbitMirrorGenerationSource,
     releaseRabbitMirrorFollowBatch,
     releaseRabbitMirrorFollowBatchAtMessage,
-} from './generationGuard.js?rmv=1.5.53-timing1';
+} from './generationGuard.js?rmv=1.5.53-text1';
 import {
     clearSanitizedRabbitMirrorFaceProof,
     getSanitizedRabbitMirrorFaceProof,
     markSanitizedRabbitMirrorFace,
     rabbitMirrorMultifaceSourceHash,
-} from './multifaceProof.js?rmv=1.5.53-cn-boundary1';
+} from './multifaceProof.js?rmv=1.5.53-text1';
 import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.5.53-cn-boundary1';
 import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
-import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.5.53-cn-boundary1';
+import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.5.53-text1';
 import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.53-cn-boundary1';
 
 export const FOLLOW_MULTIFACE_COMMITTED_EVENT = 'rabbit-mirror:follow-multiface-committed';
@@ -1285,7 +1286,7 @@ function templateSingleFollowRoot(template) {
 
 function loadFollowBatchSanitizer() {
     if (!followBatchSanitizerModulePromise) {
-        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.5.53-manualdiag1').catch(error => {
+        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.5.53-text1').catch(error => {
             followBatchSanitizerModulePromise = null;
             console.debug('[RabbitMirror] follow multiface sanitizer unavailable:', error);
             return null;
@@ -1448,6 +1449,7 @@ function sanitizeAndMountFollowFaces(scope, set, sanitizer, preparedFaces = null
                 faceCount: prepared.length,
                 sourceHash: item.sourceHash,
                 origin: 'follow',
+                ...presentationModeFields(item.sourceFace.metadata),
             })) throw new Error('follow multiface proof rejected');
         }
         if (prepared.some(item => {

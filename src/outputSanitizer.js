@@ -1,10 +1,11 @@
+import { isTextPresentation } from './presentationMode.js?rmv=1.5.53-text1';
 import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.53-cn-boundary1';
 import { isRabbitMirrorManagedChatSurface, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.5.53-cn-boundary1';
 import { recordTtSurface, ttSurfaceNow, nextTtSurfaceClickSeq } from './ttSurfaceDiagnostics.js?rmv=1.5.53-cn-boundary1';
-import { getSettings, syncExternalReferenceVisibility } from './settings.js?rmv=1.5.53-timing1';
+import { getSettings, syncExternalReferenceVisibility } from './settings.js?rmv=1.5.53-text1';
 import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.53-cn-boundary1';
-import { getCurrentChatKey } from './storage.js?rmv=1.5.53-cn-boundary1';
-import { getSanitizedRabbitMirrorFaceProof } from './multifaceProof.js?rmv=1.5.53-cn-boundary1';
+import { getCurrentChatKey } from './storage.js?rmv=1.5.53-text1';
+import { getSanitizedRabbitMirrorFaceProof } from './multifaceProof.js?rmv=1.5.53-text1';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -15,9 +16,9 @@ import {
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
 } from './feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.53-manualdiag1';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.53-timing1';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.53-timing1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.53-text1';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.53-text1';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.53-text1';
 import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.5.53-cn-boundary1';
 
 
@@ -12598,6 +12599,10 @@ function diagnosticRouteSummary(root) {
 }
 
 function diagnosticInferReason(root, inputs, targets, state = null) {
+    if (rabbitMirrorTextPresentation(root) && !inputs.length
+        && !targets.some(target => !diagnosticIsInternalUiNode(target)
+            && !target.closest?.(`[${TOOL_ENTRY_HOST_ATTR}]`)
+            && !target.matches?.('[data-rabbit-mirror-title-flow-end="true"]'))) return '本面为文本模式：使用 HTML 排版阅读，不要求内部交互；外层收展与重说工具照常可用。';
     const routes = diagnosticRouteSummary(root);
     const depth = maintenanceCheckedInteractionDepth(root);
     const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.stateSibling + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.focusToChecked + routes.checkedTextRule + routes.missingCheckedClass + routes.crossParentChecked + routes.checkedHasState + routes.detachedCheckedHas + routes.pairedCheckedState + routes.exclusiveStackedState + routes.channelDialCycle + routes.reversibleRadio + routes.expandedOpacity + routes.nestedCheckedContent + routes.containerReveal + routes.selfMutation + routes.classStateProgram + routes.scriptTimeline + routes.cssCommentRepair + routes.changeProgram + routes.focusWithinPersistent + routes.unlabeledChecked + routes.labeledCheckedVerify + routes.selectionFallback + routes.disabledChoice + routes.inertAction + routes.staticChoiceSelection + routes.structuredStaticDisclosure + routes.fillInChoice + routes.passportDocument + routes.decorativeOverlayPassThrough;
@@ -13657,7 +13662,8 @@ function diagnosticIndependentSelectionFields(value) {
     for (let index = 0; index < count; index += 1) {
         const face = recorded[index];
         const visual = face?.forcedVisualScenery === true ? '是' : face?.forcedVisualScenery === false ? '否' : '未记录';
-        lines.push(`第${index + 1}面：主题 ${counts(face?.themeIds)}；形式 ${counts(face?.formatIds)}；动态视觉固定=${visual}`);
+        const presentation = face?.presentationMode ? `；呈现=${face.presentationMode === 'text' ? '文本' : 'HTML'}；文本类 ${counts(face.textIds || [])}` : '';
+        lines.push(`第${index + 1}面：主题 ${counts(face?.themeIds)}；形式 ${counts(face?.formatIds)}；动态视觉固定=${visual}${presentation}`);
     }
     if (recorded.length > 5) lines.push('选材记录超过展示上限，最多展示5面。');
     lines.push('外部预取与最终请求体：未记录独立验证证据；选材记录不能证明已发送或模型采用。');
@@ -15762,7 +15768,7 @@ function maintenanceReachableInteractionEvidence(root, routeSummary, checkedDept
     const structuredStaticDisclosureCandidateCount = findStructuredStaticDisclosureCandidates(root).length;
     const fillInChoiceCandidateCount = findFillInChoiceCandidates(root)
         .reduce((sum, candidate) => sum + Number(candidate.blanks?.length || 0), 0);
-    const noInteractionStructure = contentInteractiveElementCount === 0
+    const noInteractionStructure = !rabbitMirrorTextPresentation(root) && contentInteractiveElementCount === 0
         && installedInteractionRouteCount === 0
         && staticChoiceCandidateCount === 0
         && structuredStaticDisclosureCandidateCount === 0
@@ -16917,7 +16923,7 @@ function inspectMaintenanceRabbit(root) {
     if (full.controlsLost && full.checkedCount === 0 && full.rawInlineEvents === 0) unknownReasons.push('交互控件丢失，无法确认原始状态逻辑');
     if (full.currentMirrorRenderedEscapedTags && !code.strictParseOk && !full.sourceCandidate) unknownReasons.push('显示层仍有源码标签，但没有可安全恢复的完整候选');
     if (interaction.checkedSelectionOnly && interaction.selectionOnlyRepairCandidateCount === 0 && Number(interaction.pairedCheckedStateRescueCount || 0) === 0) unknownReasons.push('选择控件只能改变选中样式，且没有可安全挂接的内容区；维修兔不能代写缺失体验');
-    if (interaction.pseudoVisualOnly) unknownReasons.push('当前只有 Hover／Active 外观变化，没有可保持状态或第二层内容；维修兔不能代写缺失体验');
+    if (!rabbitMirrorTextPresentation(root) && interaction.pseudoVisualOnly) unknownReasons.push('当前只有 Hover／Active 外观变化，没有可保持状态或第二层内容；维修兔不能代写缺失体验');
     if (interaction.noInteractionStructure) unknownReasons.push('原始输出只有静态内容或动画，没有可达的内容交互结构；维修兔不能在不编造结果的情况下自动补全');
     if (unknownReasons.length) {
         return {
@@ -19183,6 +19189,14 @@ function rabbitMirrorRecipeIdentity(root) {
     const faceIndex = getRabbitMirrorFacePosition(root)?.faceIndex
         ?? (proof?.origin === 'follow' ? proof.faceIndex : null);
     return { chatKey, messageIndex, swipeId, message, ...(Number.isInteger(faceIndex) ? { faceIndex } : {}) };
+}
+
+function rabbitMirrorTextPresentation(root) {
+    const details = root?.matches?.('details') ? root : root?.querySelector?.(':scope > details');
+    const proof = getSanitizedRabbitMirrorFaceProof(root) || getSanitizedRabbitMirrorFaceProof(details)
+        || getSanitizedRabbitMirrorFaceProof(root?.closest?.('toto'));
+    if (proof?.presentationMode) return isTextPresentation(proof);
+    return isTextPresentation(rabbitMirrorRecipeForRoot(root, true));
 }
 
 function rabbitMirrorRecipeForRoot(root, includeExternalOnly = false) {
@@ -22635,7 +22649,7 @@ async function runMaintenanceNarrowFaceRepair(root, button) {
         if (rejectOversizedMaintenanceRepair(root, button, '窄面电击')) return false;
         if (!maintenanceRepairRunIsCurrent(repairRun)) return false;
         setMaintenanceRabbitState(button, MAINTENANCE_STATES.checking, '⚡ 正在重新测量并恢复这面兔子镜的宽度');
-        const adapter = await import('./independentApi.js?rmv=1.5.53-manualdiag1');
+        const adapter = await import('./independentApi.js?rmv=1.5.53-text1');
         // Loading the adapter is the sole async boundary. Never apply a delayed
         // click to a new chat, Swipe, source revision, face or replacement node.
         if (!root.isConnected || !details.isConnected || !button.isConnected
