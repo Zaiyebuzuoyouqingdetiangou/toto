@@ -51,7 +51,7 @@ jobs:
           archive = root / "rabbitmirror-upload.zip"
 
           # ------------------------------------------------------------
-          # 1. Basic upload ZIP validation
+          # 1. Validate uploaded ZIP
           # ------------------------------------------------------------
 
           if not archive.is_file():
@@ -69,7 +69,7 @@ jobs:
               )
 
           # ------------------------------------------------------------
-          # 2. Read and validate the complete ZIP before modifying repo
+          # 2. Read and validate ZIP before modifying repository
           # ------------------------------------------------------------
 
           with zipfile.ZipFile(archive) as z:
@@ -90,7 +90,8 @@ jobs:
                   )
 
               unpacked_size = sum(
-                  item.file_size for item in entries
+                  item.file_size
+                  for item in entries
               )
 
               if unpacked_size > 100 * 1024 * 1024:
@@ -99,13 +100,14 @@ jobs:
                   )
 
               filenames = [
-                  item.filename for item in entries
+                  item.filename
+                  for item in entries
               ]
 
               # --------------------------------------------------------
               # Detect plugin root.
               #
-              # Supported:
+              # Supports:
               #
               # manifest.json
               # index.js
@@ -130,9 +132,8 @@ jobs:
                   }
 
                   if len(top_level) == 1:
-                      candidate = (
-                          next(iter(top_level)) + "/"
-                      )
+                      outer = next(iter(top_level))
+                      candidate = outer + "/"
 
                       if (
                           candidate + "manifest.json"
@@ -166,10 +167,10 @@ jobs:
                   parts = PurePosixPath(name).parts
 
                   # ----------------------------------------------------
-                  # Reject unsafe repository paths.
+                  # Reject unsafe paths.
                   #
-                  # .github is intentionally blocked so a plugin ZIP
-                  # can never replace/delete its own GitHub workflow.
+                  # .github is blocked so the ZIP can never replace
+                  # this workflow.
                   # ----------------------------------------------------
 
                   if (
@@ -203,15 +204,13 @@ jobs:
                       stat.S_IFREG,
                   ):
                       raise ValueError(
-                          "Only regular files may be "
-                          "imported: "
+                          "Only regular files may be imported: "
                           + repr(name)
                       )
 
                   # ----------------------------------------------------
-                  # tests/ and tools/ remain inside the delivery ZIP
-                  # for source/automation verification,
-                  # but are NOT published to the public GitHub repo.
+                  # Keep tests/ and tools/ inside delivery ZIP,
+                  # but never publish them into GitHub repository.
                   # ----------------------------------------------------
 
                   if (
@@ -233,8 +232,8 @@ jobs:
 
                       if parent.is_symlink():
                           raise ValueError(
-                              "Refusing to overwrite or "
-                              "follow symbolic link: "
+                              "Refusing to overwrite or follow "
+                              "symbolic link: "
                               + repr(name)
                           )
 
@@ -259,7 +258,7 @@ jobs:
                   payload[name] = z.read(info)
 
           # ------------------------------------------------------------
-          # 3. Verify this is a complete RabbitMirror plugin
+          # 3. Verify complete RabbitMirror package
           # ------------------------------------------------------------
 
           required = (
@@ -322,12 +321,11 @@ jobs:
               != "index.js"
           ):
               raise ValueError(
-                  "Unexpected RabbitMirror "
-                  "entry point."
+                  "Unexpected RabbitMirror entry point."
               )
 
           # ------------------------------------------------------------
-          # 4. Detect conflicting file paths inside ZIP
+          # 4. Reject conflicting ZIP paths
           # ------------------------------------------------------------
 
           for name in payload:
@@ -342,16 +340,14 @@ jobs:
                       in seen
                   ):
                       raise ValueError(
-                          "Conflicting file paths "
-                          "inside ZIP: "
+                          "Conflicting file paths inside ZIP: "
                           + repr(name)
                       )
 
           # ------------------------------------------------------------
-          # 5. Remove repository-only copies of tests/ and tools/
+          # 5. Remove tests/ and tools/ from public repository
           #
-          # They remain inside rabbitmirror-upload.zip,
-          # but the public GitHub branch should not contain them.
+          # They remain in the ZIP, but are intentionally not published.
           # ------------------------------------------------------------
 
           for private_dir in (
@@ -365,8 +361,7 @@ jobs:
 
               if target.is_symlink():
                   raise ValueError(
-                      "Refusing to remove symbolic-link "
-                      "directory: "
+                      "Refusing to remove symbolic-link path: "
                       + private_dir
                   )
 
@@ -381,10 +376,9 @@ jobs:
               )
 
           # ------------------------------------------------------------
-          # 6. Overlay plugin files from ZIP
+          # 6. Overlay public plugin files
           #
-          # Existing repository files absent from the ZIP are preserved.
-          # This means repository documentation and workflow files survive.
+          # Repository files absent from ZIP are preserved.
           # ------------------------------------------------------------
 
           for name, content in payload.items():
@@ -398,15 +392,13 @@ jobs:
               target.write_bytes(content)
 
           # ------------------------------------------------------------
-          # 7. Remove transport ZIP after successful validation/import
+          # 7. Remove uploaded transport ZIP
           # ------------------------------------------------------------
 
           archive.unlink()
 
           # ------------------------------------------------------------
-          # 8. Stage imported files
-          #
-          # Use NUL-separated pathspecs so filenames are handled safely.
+          # 8. Stage imported/updated files
           # ------------------------------------------------------------
 
           imported_paths = list(
@@ -434,13 +426,10 @@ jobs:
               )
 
           # ------------------------------------------------------------
-          # 9. Stage deletion of:
+          # 9. Stage deletion of rabbitmirror-upload.zip
           #
-          # rabbitmirror-upload.zip
-          # tests/
-          # tools/
-          #
-          # -A is important here because these paths may have been deleted.
+          # This file definitely exists in the triggering commit,
+          # so normal git add -A is safe here.
           # ------------------------------------------------------------
 
           subprocess.run(
@@ -450,11 +439,63 @@ jobs:
                   "-A",
                   "--",
                   "rabbitmirror-upload.zip",
+              ],
+              check=True,
+          )
+
+          # ------------------------------------------------------------
+          # 10. Stage deletion of tests/tools safely.
+          #
+          # IMPORTANT:
+          # Do NOT run:
+          #
+          # git add -A -- tests tools
+          #
+          # unconditionally, because Git exits with pathspec error after
+          # those directories have already been removed in an earlier run.
+          #
+          # Instead, ask Git which files are still tracked first.
+          # ------------------------------------------------------------
+
+          tracked_private = subprocess.run(
+              [
+                  "git",
+                  "ls-files",
+                  "-z",
+                  "--",
                   "tests",
                   "tools",
               ],
               check=True,
-          )
+              capture_output=True,
+          ).stdout
+
+          if tracked_private:
+              subprocess.run(
+                  [
+                      "git",
+                      "update-index",
+                      "--remove",
+                      "-z",
+                      "--stdin",
+                  ],
+                  input=tracked_private,
+                  check=True,
+              )
+
+              print(
+                  "Staged deletion of tracked "
+                  "tests/tools files."
+              )
+          else:
+              print(
+                  "tests/tools are already absent "
+                  "from the public repository."
+              )
+
+          # ------------------------------------------------------------
+          # 11. Summary
+          # ------------------------------------------------------------
 
           branch = os.environ["TARGET_BRANCH"]
 
@@ -476,21 +517,16 @@ jobs:
               ) as f:
                   f.write(
                       "## RabbitMirror ZIP import\n\n"
-                      f"- Target branch: "
-                      f"`{branch}`\n"
+                      f"- Target branch: `{branch}`\n"
                       f"- Public plugin files prepared: "
                       f"**{len(payload)}**\n"
-                      "- `tests/` excluded from "
-                      "public repository\n"
-                      "- `tools/` excluded from "
-                      "public repository\n"
-                      "- Existing public `tests/` "
-                      "and `tools/` removed\n"
-                      "- `rabbitmirror-upload.zip` "
-                      "removed after import\n"
+                      "- `tests/` excluded from public repository\n"
+                      "- `tools/` excluded from public repository\n"
+                      "- Previously tracked `tests/` / `tools/` "
+                      "removed when present\n"
+                      "- `rabbitmirror-upload.zip` removed after import\n"
                       "- `.github/` preserved\n"
-                      "- Other repository files absent "
-                      "from ZIP preserved\n"
+                      "- Other repository files absent from ZIP preserved\n"
                   )
 
       - name: Commit imported RabbitMirror files
@@ -520,7 +556,7 @@ jobs:
             -m "Import RabbitMirror plugin ZIP (${TARGET_BRANCH})"
 
           # Push only back to the branch that triggered this run.
-          # Never promote tset to main automatically.
+          # Never automatically promote tset to main.
           # Never force-push.
           git push origin "HEAD:${TARGET_BRANCH}"
 
