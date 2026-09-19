@@ -17,9 +17,9 @@ import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchInde
 import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.5.53-cn-boundary1';
 import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.53-cn-boundary1';
 
-import { mountSettingsAppearance, destroySettingsAppearance } from './settingsAppearance.js?rmv=1.5.53-hearttraceui1';
+import { mountSettingsAppearance, destroySettingsAppearance } from './settingsAppearance.js?rmv=1.5.53-ui3';
 
-const SETTINGS_UI_VERSION = '1.11-hearttrace-ui1';
+const SETTINGS_UI_VERSION = '1.12-layered-ui3';
 const RUNTIME_VERSION = '1.5.53';
 
 function isCurrentRuntime() {
@@ -828,62 +828,13 @@ export function initRabbitMirrorUI() {
     const existing = $('#rabbit_mirror_theater_settings');
     if (existing.length) {
         const currentPanels = existing.filter(`[data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}"][data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}"]`)
-            .filter((_, panel) => {
-                const $panel = $(panel);
-                const $advanced = $('body > #rh_advanced_modal');
-                const $worldPrompt = $('body > #rh_world_info_prompt_modal');
-                const $tagFilter = $('body > #rh_independent_tag_filter_modal');
-                return $panel.attr('data-rabbit-mirror-ui-ready') === 'true'
-                    && $advanced.length === 1
-                    && $worldPrompt.length === 1
-                    && $tagFilter.length === 1
-                    && $panel.find('.rh-ui-tabs').length === 1
-                    && $panel.find('#rh_ui_theme').length === 1
-                    && $panel.find('#rh_enabled').length === 1
-                    && $panel.find('#rh_advanced_open').length === 1
-                    && $panel.find('#rh_independent_advanced_open').length === 1
-                    && $panel.find('.rabbit-mirror-primary-row').length === 1
-                    && $panel.find('#rh_token_meter > summary').length === 1
-                    && $panel.find('#rh_token_meter #rh_independent_api_diagnostic').length === 1
-                    && $panel.find('#rh_independent_api_section #rh_independent_api_diagnostic').length === 0
-                    && $panel.find('#rh_external_diag_status').length === 1
-                    && $panel.find('#rh_external_diag_start').length === 1
-                    && $panel.find('#rh_external_diag_stop').length === 1
-                    && $panel.find('#rh_external_diag_report').length === 1
-                    && $panel.find('#rh_external_diag_copy').length === 1
-                    && $panel.find('#rh_external_diag_reset').length === 1
-                    && $panel.find('#rh_external_diag_output').length === 1
-                    && $panel.find('#rh_blacklist_enabled').length
-                    && $panel.find('#rh_favorite_summary').length
-                    && $advanced.find('#rh_feedback_cat').length
-                    && $advanced.find('#rh_maintenance_rabbit').length
-                    && $advanced.find('#rh_enhanced_visual_drawing').length === 1
-                    && $advanced.find('#rh_enhanced_visual_drawing_help').length === 1
-                    && $advanced.find('#rh_advanced_page_generation #rh_multiface_enabled').length === 1
-                    && $advanced.find('#rh_advanced_page_generation #rh_multiface_count').length === 1
-                    && $advanced.find('#rh_advanced_page_generation #rh_enhanced_visual_drawing').length === 1
-                    && $advanced.find('#rh_visual_extra_prompt').length
-                    && $advanced.find('#rh_visual_avoid_prompt').length
-                    && $advanced.find('#rh_visual_prompt_save').length
-                    && $advanced.find('#rh_appearance_reference_save').length
-                    && $advanced.find('#rh_worldview_lock').length
-                    && $advanced.find('#rh_advanced_back_top').length
-                    && $advanced.find('#rh_advanced_page_worldinfo').length
-                    && $advanced.find('#rh_independent_context_layers').length
-                    && $advanced.find('#rh_independent_include_character_summary').length
-                    && $advanced.find('#rh_independent_include_persona_summary').length
-                    && $advanced.find('#rh_independent_tag_filter_open').length
-                    && $advanced.find('#rh_independent_read_global_world_info').length
-                    && $advanced.find('#rh_world_info_book_filters').length
-                    && $advanced.find('#rh_world_info_books_fetch').length
-                    && $advanced.find('#rh_world_info_all_book_filters').length
-                    && $panel.find('#rh_independent_api_section').length
-                    && $worldPrompt.find('#rh_world_info_prompt_close').length
-                    && $worldPrompt.find('#rh_world_info_prompt_enable').length
-                    && $worldPrompt.find('#rh_world_info_prompt_disable').length
-                    && $tagFilter.find('#rh_independent_tag_filter_scan').length
-                    && $tagFilter.find('#rh_independent_tag_filter_save').length;
-            });
+            .filter((_, panel) => panel.dataset.rabbitMirrorUiReady === 'true'
+                && panel.dataset.rhWorkbench === 'ui3'
+                && panel.__rabbitMirrorWorkbench?.hasEntry()
+                && panel.__rabbitMirrorWorkbench?.isComplete()
+                && panel.querySelector('#rh_enabled')
+                && panel.querySelector('#rh_ui_theme')
+                && panel.querySelectorAll('.rh-ui-tabs').length === 1);
         if (existing.length === 1 && currentPanels.length === 1) { finishUiInit?.({ outcome: 'already-mounted' }); return; }
         // A hot reload may leave the old settings DOM alive even after manifest.json has updated.
         // Remove every stale/duplicate panel so the claimed runtime becomes the only UI owner.
@@ -899,8 +850,8 @@ export function initRabbitMirrorUI() {
     // Invalidate old responses here; they must not unlock a later request.
     memoryWorldBookDirectorySequence += 1;
     memoryWorldBookDirectoryBusy = false;
-    const settingsMount = $('#extensions_settings2');
-    if (!settingsMount.length) {
+    const settingsMount = $('body');
+    if (!settingsMount.length || !document.getElementById('extensionsMenu')) {
         scheduleUiMountRetry();
         finishUiInit?.({ outcome: 'mount-missing' });
         return;
@@ -1390,7 +1341,7 @@ export function initRabbitMirrorUI() {
 <div id="rh_world_info_prompt_modal" role="dialog" aria-modal="true" aria-label="独立 API 世界书设置" aria-hidden="true" style="display:none;position:fixed;inset:0;z-index:2147483001;background:rgba(8,10,14,.62);box-sizing:border-box;padding-top:max(24px,calc(env(safe-area-inset-top) + 14px));padding-right:max(12px,calc(env(safe-area-inset-right) + 8px));padding-bottom:max(24px,calc(env(safe-area-inset-bottom) + 14px));padding-left:max(12px,calc(env(safe-area-inset-left) + 8px));align-items:center;justify-content:center;overflow:hidden;pointer-events:auto;">
   <div style="width:min(520px,calc(100vw - 24px));max-height:calc(100dvh - 76px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow:hidden;background:var(--SmartThemeBlurTintColor,#202226);color:var(--SmartThemeBodyColor,#ddd);border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:18px;box-shadow:0 22px 70px rgba(0,0,0,.42);display:flex;flex-direction:column;">
     <div style="display:grid;grid-template-columns:minmax(0,1fr) 40px;align-items:center;gap:8px;padding:11px 12px;border-bottom:1px solid color-mix(in srgb,currentColor 12%,transparent);">
-      <div><b style="font-size:15px;">独立 API 是否读取世界书？</b><div style="opacity:.65;font-size:11px;line-height:1.35;margin-top:2px;">之后也可以在「高级设置 → 独立 API」随时修改</div></div>
+      <div><b style="font-size:15px;">独立 API 是否读取世界书？</b><div style="opacity:.65;font-size:11px;line-height:1.35;margin-top:2px;">之后也可以在「设置 → 它可以参考什么」随时修改</div></div>
       <button id="rh_world_info_prompt_close" class="menu_button" type="button" aria-label="关闭" style="width:38px;min-width:38px;height:38px;padding:0;border-radius:12px;font-size:20px;line-height:1;">×</button>
     </div>
     <div style="padding:15px;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;">
@@ -1878,7 +1829,7 @@ export function initRabbitMirrorUI() {
         updateSettings({ independentReadGlobalWorldInfo: enabled === true });
         checked('#rh_independent_read_global_world_info', enabled === true);
         setWorldInfoPromptOpen(false);
-        toastr?.info?.(enabled ? '已开启世界书读取，从下一轮独立 API 生成生效。' : '暂不读取世界书；之后可在高级设置中随时开启。');
+        toastr?.info?.(enabled ? '已开启世界书读取，从下一轮独立 API 生成生效。' : '暂不读取世界书；之后可在“设置 → 它可以参考什么 → 使用世界书资料”中随时开启。');
     };
     $('#rh_world_info_prompt_enable').on('click', () => applyIndependentWorldInfoChoice(true));
     $('#rh_world_info_prompt_disable').on('click', () => applyIndependentWorldInfoChoice(false));
@@ -2812,7 +2763,12 @@ export function initRabbitMirrorUI() {
         resetSettings();
         location.reload();
     });
-    mountSettingsAppearance(document.getElementById('rabbit_mirror_theater_settings'));
+    mountSettingsAppearance(document.getElementById('rabbit_mirror_theater_settings'), {
+        onNavigate(page) {
+            if (page === 'books') renderWorldInfoBookSettings({ current: true, all: false });
+            if (page === 'preferences') { renderBlacklistSettings(); renderFavoriteSettings(); }
+        },
+    });
     $('#rabbit_mirror_theater_settings').attr('data-rabbit-mirror-ui-ready', 'true');
     finishUiInit?.({ outcome: 'mounted' });
 }
