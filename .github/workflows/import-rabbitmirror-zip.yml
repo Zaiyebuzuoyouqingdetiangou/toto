@@ -27,11 +27,12 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout target branch
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.ref_name }}
 
-      - name: Validate and unpack the RabbitMirror plugin ZIP
+      - name: Validate and import RabbitMirror ZIP
         shell: python
         env:
           EXPECTED_REPOSITORY: ${{ github.repository }}
@@ -39,6 +40,7 @@ jobs:
         run: |
           import json
           import os
+          import shutil
           import stat
           import subprocess
           import sys
@@ -48,20 +50,32 @@ jobs:
           root = Path.cwd().resolve()
           archive = root / "rabbitmirror-upload.zip"
 
+          # ------------------------------------------------------------
+          # 1. Basic upload ZIP validation
+          # ------------------------------------------------------------
+
           if not archive.is_file():
               print("No rabbitmirror-upload.zip found; nothing to import.")
               sys.exit(0)
 
           if archive.is_symlink():
-              raise ValueError("rabbitmirror-upload.zip must not be a symbolic link.")
+              raise ValueError(
+                  "rabbitmirror-upload.zip must not be a symbolic link."
+              )
 
           if archive.stat().st_size > 25 * 1024 * 1024:
-              raise ValueError("ZIP file exceeds the 25 MiB upload limit.")
+              raise ValueError(
+                  "rabbitmirror-upload.zip exceeds the 25 MiB limit."
+              )
 
-          # Validate the complete ZIP before changing repository files.
+          # ------------------------------------------------------------
+          # 2. Read and validate the complete ZIP before modifying repo
+          # ------------------------------------------------------------
+
           with zipfile.ZipFile(archive) as z:
               entries = [
-                  item for item in z.infolist()
+                  item
+                  for item in z.infolist()
                   if not item.is_dir()
                   and not item.filename.startswith("__MACOSX/")
                   and PurePosixPath(item.filename).name != ".DS_Store"
@@ -71,23 +85,40 @@ jobs:
                   raise ValueError("The ZIP is empty.")
 
               if len(entries) > 5000:
-                  raise ValueError("ZIP contains too many files.")
+                  raise ValueError(
+                      "ZIP contains too many files."
+                  )
 
-              unpacked_size = sum(item.file_size for item in entries)
+              unpacked_size = sum(
+                  item.file_size for item in entries
+              )
+
               if unpacked_size > 100 * 1024 * 1024:
-                  raise ValueError("Unpacked ZIP exceeds 100 MiB.")
+                  raise ValueError(
+                      "Unpacked ZIP exceeds 100 MiB."
+                  )
 
-              # Accept:
-              #   manifest.json
-              #   src/...
+              filenames = [
+                  item.filename for item in entries
+              ]
+
+              # --------------------------------------------------------
+              # Detect plugin root.
+              #
+              # Supported:
+              #
+              # manifest.json
+              # index.js
+              # src/...
               #
               # or:
-              #   toto-main/manifest.json
-              #   toto-main/src/...
               #
-              # Also tolerate another single outer directory as long as
-              # manifest.json is found directly inside it.
-              filenames = [item.filename for item in entries]
+              # toto-main/manifest.json
+              # toto-main/index.js
+              # toto-main/src/...
+              #
+              # Also supports another single outer folder.
+              # --------------------------------------------------------
 
               prefix = ""
 
@@ -99,76 +130,138 @@ jobs:
                   }
 
                   if len(top_level) == 1:
-                      candidate = next(iter(top_level)) + "/"
-                      if candidate + "manifest.json" in filenames:
+                      candidate = (
+                          next(iter(top_level)) + "/"
+                      )
+
+                      if (
+                          candidate + "manifest.json"
+                          in filenames
+                      ):
                           prefix = candidate
 
               payload = {}
               seen = set()
 
               for info in entries:
-                  if prefix and not info.filename.startswith(prefix):
+                  if (
+                      prefix
+                      and not info.filename.startswith(prefix)
+                  ):
                       raise ValueError(
-                          "ZIP contains files outside the detected plugin root: "
+                          "ZIP contains files outside "
+                          "the detected plugin root: "
                           + repr(info.filename)
                       )
 
-                  name = info.filename[len(prefix):] if prefix else info.filename
+                  name = (
+                      info.filename[len(prefix):]
+                      if prefix
+                      else info.filename
+                  )
 
                   if not name:
                       continue
 
                   parts = PurePosixPath(name).parts
 
+                  # ----------------------------------------------------
+                  # Reject unsafe repository paths.
+                  #
+                  # .github is intentionally blocked so a plugin ZIP
+                  # can never replace/delete its own GitHub workflow.
+                  # ----------------------------------------------------
+
                   if (
                       "\\" in name
                       or ":" in name
                       or "\x00" in name
                       or not parts
-                      or any(part in ("", ".", "..", ".git", ".github") for part in parts)
+                      or any(
+                          part in (
+                              "",
+                              ".",
+                              "..",
+                              ".git",
+                              ".github",
+                          )
+                          for part in parts
+                      )
                       or parts[0].startswith(".git")
                       or name == "rabbitmirror-upload.zip"
                       or name.casefold() in seen
                   ):
                       raise ValueError(
-                          "Unsafe or duplicate ZIP path: " + repr(name)
+                          "Unsafe or duplicate ZIP path: "
+                          + repr(name)
                       )
 
                   mode = info.external_attr >> 16
-                  if stat.S_IFMT(mode) not in (0, stat.S_IFREG):
+
+                  if stat.S_IFMT(mode) not in (
+                      0,
+                      stat.S_IFREG,
+                  ):
                       raise ValueError(
-                          "Only regular files may be imported: " + repr(name)
+                          "Only regular files may be "
+                          "imported: "
+                          + repr(name)
                       )
+
+                  # ----------------------------------------------------
+                  # tests/ and tools/ remain inside the delivery ZIP
+                  # for source/automation verification,
+                  # but are NOT published to the public GitHub repo.
+                  # ----------------------------------------------------
+
+                  if (
+                      name == "tests"
+                      or name.startswith("tests/")
+                      or name == "tools"
+                      or name.startswith("tools/")
+                  ):
+                      continue
 
                   destination = root.joinpath(*parts)
 
-                  for parent in [destination, *destination.parents]:
+                  for parent in [
+                      destination,
+                      *destination.parents,
+                  ]:
                       if parent == root:
                           break
+
                       if parent.is_symlink():
                           raise ValueError(
-                              "Refusing to overwrite or follow a symbolic link: "
+                              "Refusing to overwrite or "
+                              "follow symbolic link: "
                               + repr(name)
                           )
 
                   if destination.is_dir():
                       raise ValueError(
-                          "File/directory conflict: " + repr(name)
+                          "File/directory conflict: "
+                          + repr(name)
                       )
 
                   if any(
-                      parent.exists() and not parent.is_dir()
+                      parent.exists()
+                      and not parent.is_dir()
                       for parent in destination.parents
                       if parent != root
                   ):
                       raise ValueError(
-                          "Parent file/directory conflict: " + repr(name)
+                          "Parent file/directory conflict: "
+                          + repr(name)
                       )
 
                   seen.add(name.casefold())
                   payload[name] = z.read(info)
 
-          # Required RabbitMirror files.
+          # ------------------------------------------------------------
+          # 3. Verify this is a complete RabbitMirror plugin
+          # ------------------------------------------------------------
+
           required = (
               "manifest.json",
               "index.js",
@@ -177,19 +270,22 @@ jobs:
           )
 
           missing = [
-              name for name in required
-              if name not in payload or not payload[name]
+              name
+              for name in required
+              if name not in payload
+              or not payload[name]
           ]
 
           if missing:
               raise ValueError(
-                  "Not a complete RabbitMirror ZIP. Missing: "
+                  "Not a complete RabbitMirror ZIP. "
+                  "Missing: "
                   + ", ".join(missing)
               )
 
-          # Validate manifest identity.
           manifest = json.loads(
-              payload["manifest.json"].decode("utf-8-sig")
+              payload["manifest.json"]
+              .decode("utf-8-sig")
           )
 
           expected_homepage = (
@@ -201,101 +297,203 @@ jobs:
               manifest.get("homePage", "")
           ).rstrip("/")
 
-          if actual_homepage.lower() != expected_homepage.lower():
+          if (
+              actual_homepage.lower()
+              != expected_homepage.lower()
+          ):
               raise ValueError(
-                  "manifest.json homePage does not match this repository."
+                  "manifest.json homePage does not "
+                  "match this repository."
               )
 
-          if manifest.get("display_name") != "兔子镜小剧场":
+          if (
+              manifest.get("display_name")
+              != "兔子镜小剧场"
+          ):
               raise ValueError(
-                  "manifest.json display_name must be 兔子镜小剧场."
+                  "manifest.json display_name must "
+                  "be 兔子镜小剧场."
               )
 
-          if str(manifest.get("js", "")).split("?", 1)[0] != "index.js":
+          if (
+              str(
+                  manifest.get("js", "")
+              ).split("?", 1)[0]
+              != "index.js"
+          ):
               raise ValueError(
-                  "Unexpected RabbitMirror entry point."
+                  "Unexpected RabbitMirror "
+                  "entry point."
               )
 
-          # Reject paths where one ZIP file would also have to become
-          # a parent directory of another ZIP file.
+          # ------------------------------------------------------------
+          # 4. Detect conflicting file paths inside ZIP
+          # ------------------------------------------------------------
+
           for name in payload:
-              for parent in PurePosixPath(name).parents:
+              for parent in PurePosixPath(
+                  name
+              ).parents:
                   if str(parent) == ".":
                       continue
-                  if str(parent).casefold() in seen:
+
+                  if (
+                      str(parent).casefold()
+                      in seen
+                  ):
                       raise ValueError(
-                          "Conflicting file paths inside ZIP: "
+                          "Conflicting file paths "
+                          "inside ZIP: "
                           + repr(name)
                       )
 
-          # Overlay import:
-          # files contained in the ZIP are replaced/created.
-          # Existing repository files absent from the ZIP are preserved.
+          # ------------------------------------------------------------
+          # 5. Remove repository-only copies of tests/ and tools/
           #
-          # This deliberately preserves:
-          #   .github/workflows/
-          #   repository docs
-          #   other files not shipped inside the plugin ZIP
+          # They remain inside rabbitmirror-upload.zip,
+          # but the public GitHub branch should not contain them.
+          # ------------------------------------------------------------
+
+          for private_dir in (
+              "tests",
+              "tools",
+          ):
+              target = root / private_dir
+
+              if not target.exists():
+                  continue
+
+              if target.is_symlink():
+                  raise ValueError(
+                      "Refusing to remove symbolic-link "
+                      "directory: "
+                      + private_dir
+                  )
+
+              if target.is_dir():
+                  shutil.rmtree(target)
+              else:
+                  target.unlink()
+
+              print(
+                  "Removed public repository path: "
+                  + private_dir
+              )
+
+          # ------------------------------------------------------------
+          # 6. Overlay plugin files from ZIP
+          #
+          # Existing repository files absent from the ZIP are preserved.
+          # This means repository documentation and workflow files survive.
+          # ------------------------------------------------------------
+
           for name, content in payload.items():
               target = root / name
+
               target.parent.mkdir(
                   parents=True,
-                  exist_ok=True
+                  exist_ok=True,
               )
+
               target.write_bytes(content)
 
-          # Remove the transport ZIP after a successful validation/import.
+          # ------------------------------------------------------------
+          # 7. Remove transport ZIP after successful validation/import
+          # ------------------------------------------------------------
+
           archive.unlink()
 
-          # Stage only files imported from ZIP plus deletion of upload ZIP.
-          paths = [
-              *payload.keys(),
-              "rabbitmirror-upload.zip",
-          ]
+          # ------------------------------------------------------------
+          # 8. Stage imported files
+          #
+          # Use NUL-separated pathspecs so filenames are handled safely.
+          # ------------------------------------------------------------
+
+          imported_paths = list(
+              payload.keys()
+          )
+
+          if imported_paths:
+              subprocess.run(
+                  [
+                      "git",
+                      "--literal-pathspecs",
+                      "add",
+                      "-f",
+                      "--pathspec-from-file=-",
+                      "--pathspec-file-nul",
+                  ],
+                  input=(
+                      b"\x00".join(
+                          path.encode("utf-8")
+                          for path in imported_paths
+                      )
+                      + b"\x00"
+                  ),
+                  check=True,
+              )
+
+          # ------------------------------------------------------------
+          # 9. Stage deletion of:
+          #
+          # rabbitmirror-upload.zip
+          # tests/
+          # tools/
+          #
+          # -A is important here because these paths may have been deleted.
+          # ------------------------------------------------------------
 
           subprocess.run(
               [
                   "git",
-                  "--literal-pathspecs",
                   "add",
-                  "-f",
-                  "--pathspec-from-file=-",
-                  "--pathspec-file-nul",
+                  "-A",
+                  "--",
+                  "rabbitmirror-upload.zip",
+                  "tests",
+                  "tools",
               ],
-              input=(
-                  b"\x00".join(
-                      path.encode("utf-8")
-                      for path in paths
-                  )
-                  + b"\x00"
-              ),
               check=True,
           )
 
           branch = os.environ["TARGET_BRANCH"]
 
           print(
-              f"Prepared {len(payload)} RabbitMirror files "
+              f"Prepared {len(payload)} "
+              f"RabbitMirror public files "
               f"for branch {branch}."
           )
 
-          summary = os.environ.get("GITHUB_STEP_SUMMARY")
+          summary = os.environ.get(
+              "GITHUB_STEP_SUMMARY"
+          )
 
           if summary:
               with open(
                   summary,
                   "a",
-                  encoding="utf-8"
+                  encoding="utf-8",
               ) as f:
                   f.write(
                       "## RabbitMirror ZIP import\n\n"
-                      f"- Target branch: `{branch}`\n"
-                      f"- Prepared plugin files: **{len(payload)}**\n"
-                      "- `rabbitmirror-upload.zip` will be removed after import.\n"
-                      "- Existing repository files absent from the ZIP are preserved.\n"
+                      f"- Target branch: "
+                      f"`{branch}`\n"
+                      f"- Public plugin files prepared: "
+                      f"**{len(payload)}**\n"
+                      "- `tests/` excluded from "
+                      "public repository\n"
+                      "- `tools/` excluded from "
+                      "public repository\n"
+                      "- Existing public `tests/` "
+                      "and `tools/` removed\n"
+                      "- `rabbitmirror-upload.zip` "
+                      "removed after import\n"
+                      "- `.github/` preserved\n"
+                      "- Other repository files absent "
+                      "from ZIP preserved\n"
                   )
 
-      - name: Commit all imported files together
+      - name: Commit imported RabbitMirror files
         shell: bash
         env:
           TARGET_BRANCH: ${{ github.ref_name }}
@@ -304,19 +502,26 @@ jobs:
 
           if git diff --cached --quiet; then
             echo "Nothing to commit."
-            echo 'Nothing changed; no import commit was created.' >> "$GITHUB_STEP_SUMMARY"
+            echo \
+              'Nothing changed; no import commit was created.' \
+              >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
+
+          echo "Files to commit:"
+          git diff --cached --name-status
 
           git \
             -c user.name='github-actions[bot]' \
             -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
             -c core.hooksPath=/dev/null \
             -c commit.gpgsign=false \
-            commit -m "Import RabbitMirror plugin ZIP (${TARGET_BRANCH})"
+            commit \
+            -m "Import RabbitMirror plugin ZIP (${TARGET_BRANCH})"
 
-          # Push only to the branch that triggered this workflow.
-          # No force push and no cross-branch promotion.
+          # Push only back to the branch that triggered this run.
+          # Never promote tset to main automatically.
+          # Never force-push.
           git push origin "HEAD:${TARGET_BRANCH}"
 
           echo \
