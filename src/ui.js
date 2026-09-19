@@ -17,7 +17,9 @@ import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchInde
 import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.5.53-cn-boundary1';
 import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.53-cn-boundary1';
 
-const SETTINGS_UI_VERSION = '1.10-parameter-exclusion';
+import { mountSettingsAppearance, destroySettingsAppearance } from './settingsAppearance.js?rmv=1.5.53-hearttraceui1';
+
+const SETTINGS_UI_VERSION = '1.11-hearttrace-ui1';
 const RUNTIME_VERSION = '1.5.53';
 
 function isCurrentRuntime() {
@@ -835,6 +837,8 @@ export function initRabbitMirrorUI() {
                     && $advanced.length === 1
                     && $worldPrompt.length === 1
                     && $tagFilter.length === 1
+                    && $panel.find('.rh-ui-tabs').length === 1
+                    && $panel.find('#rh_ui_theme').length === 1
                     && $panel.find('#rh_enabled').length === 1
                     && $panel.find('#rh_advanced_open').length === 1
                     && $panel.find('#rh_independent_advanced_open').length === 1
@@ -886,6 +890,7 @@ export function initRabbitMirrorUI() {
         try { globalThis.__rabbitMirrorTagFilterScanUiCleanup?.(); } catch {}
         globalThis.__rabbitMirrorTagFilterScanUiCleanup = null;
         try { globalThis.__rabbitMirrorTtDiagnosticUiCleanup?.(); } catch {}
+        existing.each((_, panel) => destroySettingsAppearance(panel));
         existing.remove();
         $('body > #rh_advanced_modal, body > #rh_world_info_prompt_modal, body > #rh_independent_tag_filter_modal').remove();
     }
@@ -906,7 +911,7 @@ export function initRabbitMirrorUI() {
 <div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}" data-rabbit-mirror-ui-ready="false">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header rabbit-mirror-drawer-header">
-      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTOv1.5.48</span>
+      <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTO · UI1</span>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -2807,11 +2812,13 @@ export function initRabbitMirrorUI() {
         resetSettings();
         location.reload();
     });
+    mountSettingsAppearance(document.getElementById('rabbit_mirror_theater_settings'));
     $('#rabbit_mirror_theater_settings').attr('data-rabbit-mirror-ui-ready', 'true');
     finishUiInit?.({ outcome: 'mounted' });
 }
 
 export function destroyRabbitMirrorUI() {
+    destroySettingsAppearance(document.getElementById('rabbit_mirror_theater_settings'));
     memoryWorldBookDirectorySequence += 1;
     memoryWorldBookDirectory = [];
     memoryWorldBookDirectoryLoaded = false;
