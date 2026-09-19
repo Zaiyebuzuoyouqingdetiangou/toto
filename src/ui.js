@@ -18,7 +18,7 @@ import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchInde
 import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.5.53-cn-boundary1';
 import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.53-timing1';
 
-import { mountSettingsAppearance, destroySettingsAppearance } from './settingsAppearance.js?rmv=1.5.53-diaglocation1';
+import { mountSettingsAppearance, destroySettingsAppearance } from './settingsAppearance.js?rmv=1.5.53-mobileui1';
 
 const SETTINGS_UI_VERSION = '1.12-layered-ui3-manualdiag1';
 const RUNTIME_VERSION = '1.5.53';
@@ -831,6 +831,7 @@ export function initRabbitMirrorUI() {
         const currentPanels = existing.filter(`[data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}"][data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}"]`)
             .filter((_, panel) => panel.dataset.rabbitMirrorUiReady === 'true'
                 && panel.dataset.rhWorkbench === 'ui3'
+                && panel.tagName === 'DIALOG'
                 && panel.__rabbitMirrorWorkbench?.hasEntry()
                 && panel.__rabbitMirrorWorkbench?.isComplete()
                 && panel.querySelector('#rh_enabled')
@@ -860,7 +861,7 @@ export function initRabbitMirrorUI() {
     uiMountRetryCount = 0;
 
     const html = `
-<div id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}" data-rabbit-mirror-ui-ready="false">
+<dialog id="rabbit_mirror_theater_settings" class="rabbit-mirror-settings" data-rabbit-mirror-ui-version="${SETTINGS_UI_VERSION}" data-rabbit-mirror-runtime-version="${RUNTIME_VERSION}" data-rabbit-mirror-ui-ready="false">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header rabbit-mirror-drawer-header">
       <b>兔子镜小剧场</b><span class="rabbit-mirror-toto-watermark">TOTO · UI1</span>
@@ -1320,7 +1321,7 @@ export function initRabbitMirrorUI() {
 
     </div>
   </div>
-</div>`;
+</dialog>`;
 
     try { globalThis.__rabbitMirrorQuickStartUiCleanup?.(); } catch {}
     globalThis.__rabbitMirrorQuickStartUiCleanup = null;
