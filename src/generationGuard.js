@@ -3,7 +3,7 @@ import {
     getCurrentChatKey,
     releasePendingComboBatch,
 } from './storage.js?rmv=1.5.53-cn-boundary1';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.53-cn-boundary1';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.53-timing1';
 import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, multifaceRecoveryWithinRawBudgets } from './multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
 
 const SNAPSHOT_STORAGE_KEY = 'rabbit_mirror_theater:generation_snapshots:v1';

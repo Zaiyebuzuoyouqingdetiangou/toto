@@ -1,5 +1,6 @@
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.5.53-timing1';
 
 export const MODULE_NAME = 'rabbit_mirror_theater';
 
@@ -115,6 +116,7 @@ export const defaultSettings = Object.freeze({
     autoRabbitMirrorInjection: true,
     mode: 'integrated',
     generationSource: 'follow',
+    independentGenerationTiming: 'auto',
     followDisplayMode: 'inline',
     independentConnectionProfileId: '',
     independentApiBaseUrl: '',
@@ -199,6 +201,8 @@ export function getSettings() {
         extension_settings[MODULE_NAME] = cloneDefaultSettings();
     }
     const settings = extension_settings[MODULE_NAME];
+    // Resolve missing/corrupt timing from the old flags before defaults fill it.
+    settings.independentGenerationTiming = independentGenerationTiming(settings);
     const legacyRescueWasEnabled = !!(settings.plainTextRescueMode || settings.codeBlockRescueMode || settings.interactionRescueMode);
     for (const [key, value] of Object.entries(defaultSettings)) {
         if (settings[key] === undefined) settings[key] = value;
@@ -350,6 +354,18 @@ export function syncExternalReferenceVisibility(settings) {
 export function updateSettings(patch) {
     const settings = getSettings();
     const safePatch = patch && typeof patch === 'object' ? { ...patch } : {};
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'independentGenerationTiming')) {
+        safePatch.independentGenerationTiming = independentGenerationTiming({ ...settings, ...safePatch });
+    }
+    if ((safePatch.generationSource ?? settings.generationSource) === 'independent'
+        && (Object.prototype.hasOwnProperty.call(safePatch, 'independentGenerationTiming') || safePatch.generationSource === 'independent')) {
+        const timing = independentGenerationTiming({ ...settings, ...safePatch });
+        const enabled = timing !== 'off';
+        const previousMode = safePatch.mode ?? settings.mode;
+        safePatch.enabled = enabled;
+        safePatch.autoRabbitMirrorInjection = enabled;
+        safePatch.mode = enabled ? (previousMode === 'off' ? 'integrated' : previousMode) : 'off';
+    }
     if (Object.prototype.hasOwnProperty.call(safePatch, 'memoryWorldBookEnabled')) safePatch.memoryWorldBookEnabled = safePatch.memoryWorldBookEnabled === true;
     if (Object.prototype.hasOwnProperty.call(safePatch, 'memoryWorldBookId')) safePatch.memoryWorldBookId = normalizeMemoryWorldBookSettingId(safePatch.memoryWorldBookId);
     if (Object.prototype.hasOwnProperty.call(safePatch, 'independentEarlyBodyEnabled')) safePatch.independentEarlyBodyEnabled = safePatch.independentEarlyBodyEnabled === true;

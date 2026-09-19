@@ -231,6 +231,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     };
     move(choice(get('rh_generation_follow'),'跟随正文 API','使用聊天正在用的模型，一次回复里带出正文和小剧场。','不需要另外配置模型'),'mode');
     move(choice(get('rh_generation_independent'),'使用副 API','正文照常回复，兔子镜另外请求一个模型。','需要单独连接，会产生额外模型用量'),'mode');
+    const timingRow=move('rh_independent_generation_timing_row','mode');
     const nextConnection=row('mode','connection','接下来，给兔子镜选一个模型','可以使用酒馆已有的连接配置，也可以自己填写接口。');
     row('mode','early','想在正文完成前开始生成？','默认等正文完成。需要时再配置正文标签。');
     row('mode','regex','检查不发送兔子镜正则','避免旧镜面跟着下一次请求重复发送。');
@@ -268,7 +269,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     move(get('rh_clear_last').parentElement,'cleanup');move(get('rh_external_diag_status').parentElement,'diagnosis');
     for(const id of ['rh_update_now','rh_update_status','rh_update_reload'])move(id,'update');
     const steps=[['先选生成方式','选择“跟随正文 API”，或“使用副 API”。使用副 API 时，再为兔子镜配置连接与模型。','mode','选择生成方式'],['选择兔子镜显示模式',`根据生成方式，选择正文下方、外置展示或跟随正文内嵌。外置展示时，${outer}跟随正文内嵌则是${inner}`,'display','选择兔子镜显示模式'],['回到聊天，发一条消息','保持“随聊天生成小剧场”开启。按选好的生成与显示模式使用兔子镜。']];
-    steps.forEach(([title,desc,target,label],i)=>{const step=html('section','rh-ui-guide-step',`<span>${i+1}</span><div><h3>${title}</h3><p>${desc}</p></div>`);if(target){const link=button(label+' ›',()=>navigate(target),'rh-ui-text-link');link.dataset.rhRoute=target;step.lastElementChild.append(link);}body('help').append(step);});
+    steps.forEach(([title,desc,target,label],i)=>{const step=html('section','rh-ui-guide-step',`<span>${i+1}</span><div><h3>${title}</h3><p>${desc}</p></div>`);if(i===2)step.querySelector('p').dataset.rhTimingGuide='true';if(target){const link=button(label+' ›',()=>navigate(target),'rh-ui-text-link');link.dataset.rhRoute=target;step.lastElementChild.append(link);}body('help').append(step);});
     note('help','想换内容，去「玩法」。遇到显示问题，查看具体镜面上的工具。');
     let state;
     try{state=normalizeAppearance(JSON.parse(globalThis.localStorage.getItem(APPEARANCE_STORAGE_KEY)||'null'));}catch{state=normalizeAppearance(null);}
@@ -302,8 +303,13 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     const searchResults=make('section','rh-ui-search-results');searchResults.hidden=true;main.append(searchResults);
     function sync(){
         const follow=get('rh_generation_follow').checked;
-        modeSummary.querySelector('[data-rh-source-label]').textContent=follow?'跟随正文 API':'使用副 API';
-        modeSummary.querySelector('[data-rh-source-description]').textContent=follow?'使用聊天正在用的模型，不需要另外连接。':'正文照常回复，兔子镜另外请求你配置的模型。';
+        const timing=get('rh_independent_generation_timing').value;
+        const timingTitle={auto:'自动生成',manual:'手动生成',off:'关闭'}[timing];
+        get('rh_enabled').closest('.rabbit-mirror-primary-row').hidden=!follow;
+        timingRow.hidden=follow;
+        modeSummary.querySelector('[data-rh-source-label]').textContent=follow?'跟随正文 API':`使用副 API · ${timingTitle}`;
+        modeSummary.querySelector('[data-rh-source-description]').textContent=follow?'使用聊天正在用的模型，不需要另外连接。':timing==='manual'?'先显示待生成外置框，等你点击“生成”才请求模型。':timing==='off'?'当前不生成兔子镜，已保存内容仍保留。':'按原有规则自动请求你配置的模型。';
+        body('help').querySelector('[data-rh-timing-guide]').textContent=follow?'保持“随聊天生成小剧场”开启。按选好的生成与显示模式使用兔子镜。':timing==='manual'?'回到聊天，先看到待生成外置框。你判断正文完成后，点击框内“生成”。':timing==='off'?'副 API 当前关闭。需要生成时，先在“怎么生成兔子镜”选择自动生成或手动生成。':'回到聊天，发一条消息。兔子镜按原有自动规则生成。';
         connectionNudge.hidden=follow;nextConnection.hidden=follow;
         connectionNudge.querySelector('strong').textContent=get('rh_independent_model').value?'连接与模型':'还没有配置副 API 模型';
         followDisplay.hidden=!follow;indDisplay.hidden=follow;

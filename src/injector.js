@@ -1,6 +1,6 @@
 import { eventSource, event_types, setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
 import * as hostRuntime from '../../../../../script.js';
-import { MODULE_NAME, getSettings } from './settings.js?rmv=1.5.53-cn-boundary1';
+import { MODULE_NAME, getSettings } from './settings.js?rmv=1.5.53-timing1';
 import {
     buildFeedbackCatFinalCheck,
     buildFeedbackCatPrompt,
@@ -11,6 +11,7 @@ import {
 import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.5.53-cn-boundary1';
 import { getCurrentChatKey, markPendingBatchAttempt, releasePendingComboBatch } from './storage.js?rmv=1.5.53-cn-boundary1';
 import { describeExternalWorldBookPreflightFailure } from './externalWorldBook/errors.js?rmv=1.5.53-cn-boundary1';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.5.53-timing1';
 
 const INJECT_KEY = `${MODULE_NAME}:auto_injection`;
 
@@ -36,10 +37,119 @@ let independentCoreRuntimeWakeRevision = 0;
 const INDEPENDENT_CORE_RUNTIME_WAKE_DELAY_MS = 120;
 const INDEPENDENT_EARLY_PACKET_KEY = '__rabbitMirrorEarlyBodyPacket';
 const INDEPENDENT_EARLY_BRIDGE_KEY = '__rabbitMirrorEarlyBodyBridge';
+const INDEPENDENT_MANUAL_INTENTS_KEY = '__rabbitMirrorIndependentManualIntentsV1';
+const INDEPENDENT_MANUAL_BRIDGE_KEY = '__rabbitMirrorIndependentManualBridge';
+const INDEPENDENT_MANUAL_BIND_KEY = '__rabbitMirrorBindIndependentManualIntent';
+
+function currentIndependentManualIntents() {
+    return Array.isArray(globalThis[INDEPENDENT_MANUAL_INTENTS_KEY])
+        ? globalThis[INDEPENDENT_MANUAL_INTENTS_KEY] : [];
+}
+
+function notifyIndependentManualIntent(intent) {
+    try { globalThis[INDEPENDENT_MANUAL_BRIDGE_KEY]?.({ kind: 'changed', intent }); } catch {}
+}
+
+function independentManualIntentCandidateIndex(intent, chat, processor = null) {
+    if (!intent || intent.cancelled || intent.chat !== chat || chat[intent.tailIndex] !== intent.tail) return null;
+    if (intent.message) {
+        return chat[intent.index] === intent.message
+            && (Number(intent.message.swipe_id ?? intent.message.swipeId ?? 0) || 0) === intent.swipe
+            ? intent.index : null;
+    }
+    if (intent.type === 'normal') {
+        if (independentIntentTailRole(intent.tail) !== intent.tailRole
+            || String(intent.tail.mes || '') !== intent.tailSource
+            || (Number(intent.tail.swipe_id ?? intent.tail.swipeId ?? 0) || 0) !== intent.tailSwipe) return null;
+        return isIndependentEligibleAssistantMessage(chat[intent.tailIndex + 1]) ? intent.tailIndex + 1 : null;
+    }
+    if (!['continue', 'swipe', 'regenerate'].includes(intent.type)
+        || intent.tailRole !== 'assistant' || !isIndependentEligibleAssistantMessage(intent.tail)) return null;
+    const observedStream = processor && Number(processor.messageId) === intent.tailIndex
+        && String(processor.type || '').toLowerCase() === intent.type;
+    const bodyChanged = String(intent.tail.mes || '') !== intent.tailSource
+        || (Number(intent.tail.swipe_id ?? intent.tail.swipeId ?? 0) || 0) !== intent.tailSwipe;
+    return bodyChanged || observedStream ? intent.tailIndex : null;
+}
+
+// Called by existing host events and renderer mounts. This only binds intentions
+// captured during this page session; it never discovers historical messages.
+function bindIndependentManualIntent(payload, processor = null) {
+    if (!currentIndependentManualIntents().length) return false;
+    const settings = getSettings();
+    if (settings.generationSource !== 'independent' || independentGenerationTiming(settings) !== 'manual') return false;
+    const chat = currentIndependentIntentChat();
+    const chatKey = String(getCurrentChatKey(chat) || '');
+    const exactIndex = payload === undefined ? null : resolveIndependentIntentCompletionIndex(payload, chat);
+    if (payload !== undefined && !Number.isInteger(exactIndex)) return false;
+    let changed = false;
+    for (const intent of currentIndependentManualIntents()) {
+        if (intent.chatKey !== chatKey || intent.cancelled || intent.consumed) continue;
+        const index = independentManualIntentCandidateIndex(intent, chat, processor);
+        if (!Number.isInteger(index) || (exactIndex !== null && exactIndex !== index)) continue;
+        intent.index = index;
+        intent.message = chat[index];
+        intent.swipe = Number(intent.message.swipe_id ?? intent.message.swipeId ?? 0) || 0;
+        changed = true;
+        notifyIndependentManualIntent(intent);
+    }
+    return changed;
+}
+
+function recordIndependentManualToken() {
+    const ctx = currentIndependentIntentContext();
+    const processor = hostRuntime.streamingProcessor || ctx.streamingProcessor;
+    if (processor && Number.isSafeInteger(processor.messageId)) bindIndependentManualIntent(processor.messageId, processor);
+}
+
+function cancelReplacedIndependentManualIntents(type) {
+    if (!['continue', 'swipe', 'regenerate'].includes(type)) return;
+    const chat = currentIndependentIntentChat();
+    const tail = chat.at(-1);
+    const chatKey = String(getCurrentChatKey(chat) || '');
+    for (const intent of currentIndependentManualIntents()) {
+        if (intent.cancelled || intent.chat !== chat || intent.chatKey !== chatKey) continue;
+        if (intent.message === tail || (!intent.message && intent.tail === tail && intent.tailRole === 'assistant')) {
+            intent.cancelled = true;
+            notifyIndependentManualIntent(intent);
+        }
+    }
+}
+
+function recordIndependentManualIntent(type) {
+    const normalizedType = String(type || 'normal').trim().toLowerCase() || 'normal';
+    if (!INDEPENDENT_GENERATION_INTENT_TYPES.has(normalizedType)) return null;
+    const chat = currentIndependentIntentChat();
+    const chatKey = String(getCurrentChatKey(chat) || '');
+    const tailIndex = chat.length - 1;
+    const tail = chat[tailIndex];
+    const tailRole = independentIntentTailRole(tail);
+    if (!chatKey || !tail || !tailRole || (normalizedType !== 'normal' && tailRole !== 'assistant')) return null;
+    // Preserve an earlier reply's waiting frame when a later normal turn starts.
+    // An unbound intention is superseded only after trying its exact old target.
+    bindIndependentManualIntent();
+    const previous = currentIndependentManualIntents();
+    for (const intent of previous) {
+        if (intent.chat === chat && intent.chatKey === chatKey && !intent.message && !intent.cancelled) {
+            intent.cancelled = true;
+            notifyIndependentManualIntent(intent);
+        }
+    }
+    independentGenerationIntentSequence += 1;
+    const intent = { id: `manual:${Date.now().toString(36)}:${independentGenerationIntentSequence.toString(36)}`,
+        type: normalizedType, chatKey, chat, tail, tailIndex, tailRole,
+        tailSwipe: Number(tail.swipe_id ?? tail.swipeId ?? 0) || 0,
+        tailSource: String(tail.mes || ''), index: -1, message: null, swipe: 0, cancelled: false, consumed: false };
+    globalThis[INDEPENDENT_MANUAL_INTENTS_KEY] = [...previous, intent];
+    scheduleIndependentCoreRuntimeWake();
+    notifyIndependentManualIntent(intent);
+    return intent;
+}
 
 function independentEarlyIntentEnabled(settings = getSettings(), ctx = currentIndependentIntentContext()) {
     return settings.enabled !== false && settings.autoRabbitMirrorInjection !== false
         && settings.generationSource === 'independent' && settings.mode !== 'off'
+        && independentGenerationTiming(settings) === 'auto'
         && settings.independentEarlyBodyEnabled === true
         && !!String(settings.independentEarlyBodyChatKey || '')
         && String(settings.independentEarlyBodyChatKey) === String(getCurrentChatKey(ctx.chat) || '')
@@ -448,6 +558,9 @@ function clearIndependentGenerationIntents() {
     cancelIndependentEarlyIntent('chat-changed');
     globalThis[INDEPENDENT_GENERATION_INTENTS_KEY] = [];
     globalThis[INDEPENDENT_GENERATION_STOPS_KEY] = [];
+    for (const intent of currentIndependentManualIntents()) intent.cancelled = true;
+    globalThis[INDEPENDENT_MANUAL_INTENTS_KEY] = [];
+    try { globalThis[INDEPENDENT_MANUAL_BRIDGE_KEY]?.({ kind: 'clear' }); } catch {}
 }
 
 export function initIndependentGenerationIntentBridge() {
@@ -461,9 +574,9 @@ export function initIndependentGenerationIntentBridge() {
             markIndependentGenerationIntentTerminal('generation-stopped');
             cancelIndependentEarlyIntent('host-stopped');
         }],
-        [event_types?.STREAM_TOKEN_RECEIVED, recordIndependentEarlyToken],
-        [event_types?.MESSAGE_RECEIVED, markIndependentGenerationIntentReceived],
-        [event_types?.CHARACTER_MESSAGE_RENDERED, payload => markIndependentGenerationIntentCompleted(payload, 'character-rendered')],
+        [event_types?.STREAM_TOKEN_RECEIVED, text => { recordIndependentEarlyToken(text); recordIndependentManualToken(); }],
+        [event_types?.MESSAGE_RECEIVED, payload => { markIndependentGenerationIntentReceived(payload); bindIndependentManualIntent(payload); }],
+        [event_types?.CHARACTER_MESSAGE_RENDERED, payload => { markIndependentGenerationIntentCompleted(payload, 'character-rendered'); bindIndependentManualIntent(payload); }],
         [event_types?.CHAT_CHANGED, clearIndependentGenerationIntents],
     ].filter(([event]) => !!event);
     for (const [event, handler] of bindings) {
@@ -473,6 +586,7 @@ export function initIndependentGenerationIntentBridge() {
         } catch {}
     }
     globalThis[INDEPENDENT_GENERATION_INTENT_BRIDGE_CLEANUP_KEY] = destroyIndependentGenerationIntentBridge;
+    globalThis[INDEPENDENT_MANUAL_BIND_KEY] = bindIndependentManualIntent;
 }
 
 export function destroyIndependentGenerationIntentBridge({ clearIntents = false } = {}) {
@@ -482,18 +596,22 @@ export function destroyIndependentGenerationIntentBridge({ clearIntents = false 
         try { eventSource?.off?.(event, handler); } catch {}
     }
     independentIntentBridgeSubscriptions = [];
+    if (globalThis[INDEPENDENT_MANUAL_BIND_KEY] === bindIndependentManualIntent) delete globalThis[INDEPENDENT_MANUAL_BIND_KEY];
     if (globalThis[INDEPENDENT_GENERATION_INTENT_BRIDGE_CLEANUP_KEY] === destroyIndependentGenerationIntentBridge) {
         try { delete globalThis[INDEPENDENT_GENERATION_INTENT_BRIDGE_CLEANUP_KEY]; } catch {}
     }
     if (clearIntents) {
         try { delete globalThis[INDEPENDENT_GENERATION_INTENTS_KEY]; } catch {}
         try { delete globalThis[INDEPENDENT_GENERATION_STOPS_KEY]; } catch {}
+        for (const intent of currentIndependentManualIntents()) intent.cancelled = true;
+        try { delete globalThis[INDEPENDENT_MANUAL_INTENTS_KEY]; } catch {}
+        try { globalThis[INDEPENDENT_MANUAL_BRIDGE_KEY]?.({ kind: 'clear' }); } catch {}
     }
 }
 
 function loadPromptBuilder() {
     if (!promptBuilderPromise) {
-        promptBuilderPromise = import('./promptBuilder.js?rmv=1.5.53-cn-boundary1').catch(error => {
+        promptBuilderPromise = import('./promptBuilder.js?rmv=1.5.53-timing1').catch(error => {
             promptBuilderPromise = null;
             throw error;
         });
@@ -503,7 +621,7 @@ function loadPromptBuilder() {
 
 function loadGenerationGuard() {
     if (!generationGuardPromise) {
-        generationGuardPromise = import('./generationGuard.js?rmv=1.5.53-cn-boundary1').catch(error => {
+        generationGuardPromise = import('./generationGuard.js?rmv=1.5.53-timing1').catch(error => {
             generationGuardPromise = null;
             throw error;
         });
@@ -574,6 +692,7 @@ function assertFollowPrefetchOwner(owner, chat) {
 export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abort, type) {
     const settings = getSettings();
     const operationType = String(type || '').trim().toLowerCase();
+    cancelReplacedIndependentManualIntents(operationType);
     if (['continue', 'swipe', 'regenerate'].includes(operationType)) {
         const hostChat = currentIndependentIntentChat();
         const index = Array.isArray(_chat) ? _chat.length - 1 : -1;
@@ -595,10 +714,13 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
         // Capture this exact host generation before returning so a fast model cannot
         // finish before the deferred event subscribers exist. Loading is fire-and-forget:
         // it never blocks or joins the host's paid main-generation request.
-        if (settings.enabled && settings.autoRabbitMirrorInjection && settings.mode !== 'off') {
+        const timing = independentGenerationTiming(settings);
+        if (settings.enabled && settings.autoRabbitMirrorInjection && settings.mode !== 'off' && timing === 'auto') {
             const intent = recordIndependentGenerationIntent(_chat, type,
                 settings.independentEarlyBodyEnabled === true ? independentEarlySelectionKey(settings) : '');
             if (settings.independentEarlyBodyEnabled === true) prewarmIndependentEarlyIntent(intent);
+        } else if (timing === 'manual') {
+            recordIndependentManualIntent(type);
         }
         clearRabbitMirrorPrompt('independent-api', type);
         return;

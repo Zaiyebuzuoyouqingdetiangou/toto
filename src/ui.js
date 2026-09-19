@@ -1,23 +1,24 @@
-import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, RABBIT_MIRROR_BANNED_WORD_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, normalizeRabbitMirrorBannedWords, updateSettings, resetSettings } from './settings.js?rmv=1.5.53-cn-boundary1';
+import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, RABBIT_MIRROR_BANNED_WORD_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, normalizeRabbitMirrorBannedWords, updateSettings, resetSettings } from './settings.js?rmv=1.5.53-timing1';
 import { startTtSurfaceDiagnostics, stopTtSurfaceDiagnostics, isTtSurfaceDiagnosticsActive, buildTtSurfaceReport, recordTtSurface, registerTtSurfaceCleanup, nextTtSurfaceClickSeq } from './ttSurfaceDiagnostics.js?rmv=1.5.53-cn-boundary1';
 import { isRabbitMirrorManagedChatSurface, getRabbitMirrorHostCompatibilityStatus } from './hostCompatibility.js?rmv=1.5.53-cn-boundary1';
 import { clearLastCombo, getCurrentChatKey } from './storage.js?rmv=1.5.53-cn-boundary1';
 import { normalizeEarlyBodyTags } from './earlyBodyTags.js?rmv=1.5.53-cn-boundary1';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.5.53-timing1';
 import { applyRabbitMirrorHostSurface } from './hostCompatibility.js?rmv=1.5.53-cn-boundary1';
 import { BEHAVIOR_RULE_MAX_CHARS, DEFAULT_BEHAVIOR_RULE_TEXT, resolveBehaviorRuleText } from './behaviorRules.js?rmv=1.5.53-cn-boundary1';
 import { clearRecentIndependentTransportDiagnostics } from './transportDiagnostics.js?rmv=1.5.53-cn-boundary1';
 import { parseIndependentAdvancedOptions } from './advancedRequestOptions.js?rmv=1.5.53-cn-boundary1';
 import { parseRabbitMirrorReplacementLines, formatRabbitMirrorReplacementLines } from './bannedWords.js?rmv=1.5.53-cn-boundary1';
-import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.5.53-lifecycle1';
+import { clearRabbitMirrorPrompt } from './injector.js?rmv=1.5.53-timing1';
 import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.5.53-lifecycle1';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.5.53-timing1';
 import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.5.53-cn-boundary1';
 import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.5.53-cn-boundary1';
-import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5.53-lifecycle1';
+import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5.53-timing1';
 import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.5.53-cn-boundary1';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.53-cn-boundary1';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.53-timing1';
 
-import { mountSettingsAppearance, destroySettingsAppearance } from './settingsAppearance.js?rmv=1.5.53-ui3';
+import { mountSettingsAppearance, destroySettingsAppearance } from './settingsAppearance.js?rmv=1.5.53-timing1';
 
 const SETTINGS_UI_VERSION = '1.12-layered-ui3';
 const RUNTIME_VERSION = '1.5.53';
@@ -917,6 +918,15 @@ export function initRabbitMirrorUI() {
           </div>
           <label class="checkbox_label" style="margin-top:12px;"><input name="rh_generation_source" id="rh_generation_independent" type="radio" value="independent"> 使用独立 API</label>
           <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.72;font-size:12px;line-height:1.45;">正文先生成，回复结束后再用独立 API 单独生成兔子镜；具体配置在下面的独立分区。</div>
+          <div id="rh_independent_generation_timing_row">
+            <label for="rh_independent_generation_timing">副 API 什么时候生成</label>
+            <select id="rh_independent_generation_timing" class="text_pole">
+              <option value="auto">自动生成</option>
+              <option value="manual">手动生成</option>
+              <option value="off">关闭</option>
+            </select>
+            <p id="rh_independent_generation_timing_hint" class="rabbit-mirror-subnote" aria-live="polite"></p>
+          </div>
         </div>
       </details>
 
@@ -1394,6 +1404,7 @@ export function initRabbitMirrorUI() {
     renderTokenMeter();
 
     checked('#rh_enabled', settings.autoRabbitMirrorInjection !== false && settings.enabled !== false);
+    $('#rh_independent_generation_timing').val(independentGenerationTiming(settings));
     $(`input[name="rh_generation_source"][value="${settings.generationSource || 'follow'}"]`).prop('checked', true);
     $(`input[name="rh_follow_display"][value="${settings.followDisplayMode || 'inline'}"]`).prop('checked', true);
     $(`input[name="rh_independent_display"][value="${settings.independentDisplayMode || 'external'}"]`).prop('checked', true);
@@ -1560,10 +1571,21 @@ export function initRabbitMirrorUI() {
     const syncGenerationModeFields = () => {
         const current = getSettings();
         const independent = current.generationSource === 'independent';
+        const timing = independentGenerationTiming(current);
+        const timingDescriptions = {
+            auto: '按原有规则自动生成；已配置的正文标签提前生成仍按原设置生效。',
+            manual: '先显示待生成外置框。你判断正文完成后，点击框内“生成”才请求副 API。',
+            off: '不生成兔子镜。保留已保存内容，显示与操作沿用原关闭行为。',
+        };
+        $('#rh_independent_generation_timing').val(timing);
+        $('#rh_independent_generation_timing_row').prop('hidden', !independent);
+        $('#rh_independent_generation_timing_hint').text(timingDescriptions[timing]);
+        $('#rh_enabled').prop('checked', current.autoRabbitMirrorInjection !== false && current.enabled !== false);
+        $('#rh_enabled').closest('.rabbit-mirror-primary-row').prop('hidden', independent);
         $('#rh_independent_api_fields').show();
         $('#rh_follow_display_row').toggle(!independent);
         $('#rh_independent_mode_status').text(independent
-            ? '当前已启用独立 API；以下设置会用于下一轮副 API 生成。'
+            ? `当前副 API：${{ auto: '自动生成', manual: '手动生成', off: '关闭' }[timing]}。${timingDescriptions[timing]}`
             : `当前使用“跟随当前 API”；标签隔离${current.followTagIsolationEnabled === true ? '已开启' : '未开启'}，其余独立 API 设置可提前配置。`);
     };
     syncGenerationModeFields();
@@ -1936,6 +1958,13 @@ export function initRabbitMirrorUI() {
         toastr?.info?.(generationSource === 'independent' ? '已切换为独立 API。' : '已切换为跟随当前 API。');
         void refreshNoSendRegexStatus();
         if (generationSource === 'independent') setWorldInfoPromptOpen(true);
+    });
+    $('#rh_independent_generation_timing').on('change', e => {
+        updateSettings({ independentGenerationTiming: e.target.value });
+        clearRabbitMirrorPrompt('independent-api');
+        syncGenerationModeFields();
+        refreshRabbitMirrorGenerationMode();
+        renderTokenMeter();
     });
     $('input[name="rh_follow_display"]').on('change', e => { updateSettings({ followDisplayMode: e.target.value === 'external' ? 'external' : 'inline' }); refreshRabbitMirrorGenerationMode(); });
     $('input[name="rh_independent_display"]').on('change', e => { updateSettings({ independentDisplayMode: e.target.value === 'external_then_inline' ? 'external_then_inline' : 'external' }); refreshRabbitMirrorGenerationMode(); });
@@ -2543,7 +2572,7 @@ export function initRabbitMirrorUI() {
             for (const key of Object.keys(libraryEntryViews)) document.getElementById(key).disabled = true;
             button.textContent = '正在加载…';
             try {
-                const module = await import('./externalWorldBook/importWizard.js?rmv=1.5.53-cn-boundary1');
+                const module = await import('./externalWorldBook/importWizard.js?rmv=1.5.53-timing1');
                 if (!isCurrentRuntime() || !button.isConnected) return;
                 module.openExternalWorldBookImportWizard?.({ initialView });
             } catch (error) {

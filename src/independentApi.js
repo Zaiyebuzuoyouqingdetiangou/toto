@@ -1,21 +1,22 @@
 import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.53-cn-boundary1';
 import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, getRabbitMirrorExternalPlacementParent, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.5.53-cn-boundary1';
 import { recordTtSurface, ttSurfaceNow } from './ttSurfaceDiagnostics.js?rmv=1.5.53-cn-boundary1';
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5.53-cn-boundary1';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5.53-timing1';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.5.53-timing1';
 import { assertRabbitMirrorIndependentResponseBytes, assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.5.53-cn-boundary1';
 import { parseIndependentAdvancedOptions, buildIndependentAdvancedCarrier, applyIndependentAdvancedExclusions, independentAdvancedOptionsSignature } from './advancedRequestOptions.js?rmv=1.5.53-cn-boundary1';
-import { buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.5.53-cn-boundary1';
+import { buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.5.53-timing1';
 import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from './externalWorldBook/store.js?rmv=1.5.53-cn-boundary1';
 import { describeExternalWorldBookPreflightFailure, describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.53-cn-boundary1';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, armRabbitMirrorFirstUseInteraction, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.53-lifecycle1';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, armRabbitMirrorFirstUseInteraction, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.53-timing1';
 import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.53-cn-boundary1';
 import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=1.5.53-cn-boundary1';
 import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from './multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
 import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.53-cn-boundary1';
-import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, getRabbitMirrorFollowBatchFailure, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.53-lifecycle1';
+import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, getRabbitMirrorFollowBatchFailure, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.53-timing1';
 import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions, markPendingBatchAttempt, commitPendingComboBatch, releasePendingComboBatch } from './storage.js?rmv=1.5.53-cn-boundary1';
 import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.53-cn-boundary1';
+import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.53-timing1';
 import { readFollowPartialResult, followPartialResultFaceOwnerKey } from './followPartialResults.js?rmv=1.5.53-cn-boundary1';
 import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.5.53-cn-boundary1';
 import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.53-cn-boundary1';
@@ -237,6 +238,7 @@ let hostGenerationHintStartedAt = 0;
 let independentActionBridge = null;
 let runtimeConfigSequence = 0;
 let lastAppliedRuntimeMode = null;
+let lastAppliedIndependentTiming = null;
 const automaticGenerationCutovers = new Map();
 let backgroundLifecycleListenersInstalled = false;
 let backgroundResumeTimer = 0;
@@ -4084,13 +4086,16 @@ function captureIndependentPromptOwner(ctx,index,msg,signal,requestOptions,gener
  const baseSlot=messageBaseSlotKey(ctx,index,msg);
  const owner={chat:ctx?.chat,index,message:msg,chatKey:chatKey(ctx),swipe:swipeId(msg),sourceHash:messageSourceFingerprint(msg),
   baseSlot,operationEpoch:operationEpochForBase(baseSlot),signal,requestOptions,generationScopeKey,
-  earlyBody:requestOptions.earlyBodyOwner||null,
+  earlyBody:requestOptions.earlyBodyOwner||null,manualBody:requestOptions.manualBodyOwner||null,
   awaited:false,batchPlan:null,batchSignature:'',batchBound:false,batchPublished:false,batchReleaseIdentity:null};
  assertIndependentPromptOwner(owner);
  return owner;
 }
 function assertIndependentPromptOwner(owner){
  if(owner.earlyBody) assertEarlyBodyOwner(owner.earlyBody);
+ if(owner.manualBody && !manualBodyOwnerCurrent(owner.manualBody)) throw independentPromptOwnerPreflightError();
+ if(independentGenerationTiming(getSettings())==='off'
+  || (!owner.requestOptions.dispatchLease?.consumed?.() && !owner.requestOptions.manualRetry && !owner.manualBody && !automaticIndependentTiming())) throw independentPromptOwnerPreflightError();
  if(owner.memoryRequestSettingsKey) assertMemoryRequestSettings(getSettings(),owner.memoryRequestSettingsKey,'independent');
  const reference=owner.appearanceReference;
  if(reference){
@@ -4105,7 +4110,7 @@ function assertIndependentPromptOwner(owner){
  if(owner.signal?.aborted||!Array.isArray(owner.chat)||live?.chat!==owner.chat
   ||!Number.isSafeInteger(owner.index)||owner.index<0||live.chat[owner.index]!==owner.message
   ||chatKey(live)!==owner.chatKey||swipeId(owner.message)!==owner.swipe
-  ||(!owner.earlyBody&&messageSourceFingerprint(owner.message)!==owner.sourceHash)
+  ||(!owner.earlyBody&&!owner.manualBody&&messageSourceFingerprint(owner.message)!==owner.sourceHash)
   ||messageBaseSlotKey(live,owner.index,owner.message)!==owner.baseSlot
   ||operationEpochForBase(owner.baseSlot)!==owner.operationEpoch
   ||(Number.isSafeInteger(owner.requestOptions.dispatchLease?.epoch)&&owner.requestOptions.dispatchLease.epoch!==owner.operationEpoch)
@@ -4164,9 +4169,11 @@ async function callIndependentApi(ctx,index,msg,signal=null,requestOptions={}){
  const generationScopeKey=`independent:${Date.now().toString(36)}:${index}:${swipeId(msg)}`;
  const regularVisibleReader=createIndependentVisibleTextReader(index,st);
  const earlyBody=requestOptions.earlyBodyOwner||null;
+ const manualBody=requestOptions.manualBodyOwner||null;
  if(earlyBody) assertEarlyBodyOwner(earlyBody);
- const readVisible=earlyBody ? Object.assign((message,realIndex)=>Number(realIndex)===Number(index)
-  ? earlyBody.visible : regularVisibleReader(message,realIndex),{renderedIndexes:regularVisibleReader.renderedIndexes}) : regularVisibleReader;
+ const visibleOwner=earlyBody||manualBody;
+ const readVisible=visibleOwner ? Object.assign((message,realIndex)=>Number(realIndex)===Number(index)
+  ? visibleOwner.visible : regularVisibleReader(message,realIndex),{renderedIndexes:regularVisibleReader.renderedIndexes}) : regularVisibleReader;
  // Feedback-cat history and memory-plugin content belong to the main-generation path.
  // The independent request may inspect only this turn's visible text and approved summaries.
  const activeFeedback=null;
@@ -6245,6 +6252,7 @@ function ensureExternalTools(host){
  if(!host?.isConnected) return;
  if(host.dataset?.rmState==='ready' && host.dataset?.rmSource==='independent') wireIndependentRejectedFaceControls(host);
  stampExternalDetailsOwnership(host);
+ if(host.dataset?.rmState==='manual') return;
  const historyRestoreLight=historicalLightHost(host);
  // Placement already owns one post-paint geometry pass. Tool refresh must not
  // reopen the old mobile settle timer chain.
@@ -6569,7 +6577,7 @@ function fallbackExternalDetails(state,text=''){
  const summary=document.createElement('summary');
  const label=document.createElement('span');
  label.setAttribute('data-rabbit-mirror-external-summary-label','true');
- label.textContent=state==='loading'?'【兔子镜：正在生成中……】':'【兔子镜：生成失败】';
+ label.textContent=state==='manual'?'【兔子镜：等待手动生成】':state==='loading'?'【兔子镜：正在生成中……】':'【兔子镜：生成失败】';
  summary.append(label);
  details.append(summary);
  if(state==='error') renderExternalErrorBody(details,text);
@@ -7939,7 +7947,7 @@ function ensureExternalUi(el,key,html,state='ready',source='independent',sourceH
  }
  if(!details){ details=fallbackExternalDetails(state,html); host.append(details); }
  markExternalDetails(details,key,source);
- setPlaceholderSummary(details,state==='loading'?'【兔子镜：正在生成中……】':'【兔子镜：生成失败】');
+ setPlaceholderSummary(details,state==='manual'?'【兔子镜：等待手动生成】':state==='loading'?'【兔子镜：正在生成中……】':'【兔子镜：生成失败】');
  let bodyNode=details.querySelector(':scope > .rabbit-mirror-external-placeholder-body');
  if(state==='error') renderExternalErrorBody(details,html);
  else if(html){
@@ -8085,6 +8093,7 @@ function confirmFinalRenderedGeneration(index){
  return true;
 }
 function scheduleMessageGeneration(index,delay=260,sourceAware=true,finalRenderConfirmed=false,sourceStabilityConfirmed=false,sourceStableSince=0){
+ if(!automaticIndependentTiming()) return null;
  const initialContext=getContext();
  const initialMessage=initialContext.chat?.[index];
  if(suppressesAutomaticGeneration(initialContext,index) || hasExistingFollowRabbitMirror(initialContext,index,initialMessage)) return null;
@@ -8205,6 +8214,7 @@ function clearGenerationPlaceholderPoll(){
  generationPlaceholderStartedAt=0;
 }
 function scheduleGenerationPlaceholderPoll(delay=80){
+ if(!automaticIndependentTiming()) return;
  clearGenerationPlaceholderPoll();
  generationPlaceholderStartedAt=Date.now();
  const poll=()=>{
@@ -8353,13 +8363,13 @@ function cancelSupersededFlightsForBase(baseSlot,currentSourceHash=''){
  if(!base) return;
  for(const [id,flight] of globalFlights()){
   if(String(flight?.baseSlot||'')!==base || String(flight?.sourceHash||'')===String(currentSourceHash||'')) continue;
-  if(automaticFlightStillOwnsBaseOperation(flight)) continue;
+  if(automaticFlightStillOwnsBaseOperation(flight) || (flight.manualBodyOwner && manualBodyOwnerCurrent(flight.manualBodyOwner))) continue;
   abortFlight(flight,'source-version-replaced');
   globalFlights().delete(id);
  }
  for(const [slot,active] of pending.entries()){
   if(String(active?.baseSlot||'')!==base || String(active?.sourceHash||'')===String(currentSourceHash||'')) continue;
-  if(automaticFlightStillOwnsBaseOperation(active)) continue;
+  if(automaticFlightStillOwnsBaseOperation(active) || (active.manualBodyOwner && manualBodyOwnerCurrent(active.manualBodyOwner))) continue;
   abortFlight(active,'source-version-replaced');
   pending.delete(slot);
  }
@@ -8402,7 +8412,7 @@ function cancelAllIndependentFlights(reason='runtime-changed'){
  for(const active of pending.values()) abortFlight(active,reason);
  pending.clear();
 }
-async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay=null,earlyBodyOwner=null){
+async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay=null,earlyBodyOwner=null,manualBodyOwner=null){
  const ctx=getContext(); const currentMsg=ctx.chat?.[index];
  if(!isRabbitMirrorEligibleAssistantMessage(currentMsg)) return;
  msg=currentMsg;
@@ -8411,6 +8421,12 @@ async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay
  const key=recordKey(ctx,index,msg); const slot=observed.slot; const sourceHash=observed.sourceHash; const bodyHash=observed.bodyHash; const displayHash=observed.displayHash; const reasoningHash=observed.reasoningHash; const revision=observed.revision; const st=getSettings();
  const baseSlot=messageBaseSlotKey(ctx,index,msg);
  if(st.enabled===false || st.autoRabbitMirrorInjection===false || st.generationSource!=='independent' || runtimeMode()!=='independent') return;
+ if(independentGenerationTiming(st)==='off' || (!force&&!automaticIndependentTiming())) return;
+ if(force && independentGenerationTiming(st)==='manual'){
+  const active=activeIndependentFlightForBase(baseSlot);
+  if(active) return active.task;
+  manualBodyOwner??=captureManualBodyOwner(ctx,index,msg,manualIntentForMessage(ctx,index));
+ }
  if(!force && ((!earlyBodyOwner&&suppressesAutomaticGeneration(ctx,index)) || hasExistingFollowRabbitMirror(ctx,index,msg))) return;
  if(!force){
   const preciseFailure=automaticFailureStopFor(slot,sourceHash);
@@ -8452,6 +8468,10 @@ async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay
   // the manual result after it has already mounted.
   advanceOperationEpochForBase(baseSlot,'manual-resay');
   cancelFlightsForMessage(index,'manual-resay');
+  if(manualBodyOwner){
+   manualBodyOwner.epoch=operationEpochForBase(baseSlot);
+   rememberManualClickOwner(manualBodyOwner);
+  }
  } else cancelSupersededFlightsForBase(baseSlot,sourceHash);
  const recoveredAtGeneration=recoverSavedRecord(store,slot,observed);
  let saved=persistedSuppressed&&!force?null:recoveredAtGeneration.saved;
@@ -8526,7 +8546,7 @@ async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay
  }
  const runId=++generationSequence; const controller=new AbortController(); let stale=false;
  const operationEpoch=Number(dispatchLease?.epoch||operationEpochForBase(baseSlot));
- const flight={task:null,runId,key,slot,index,sourceHash,revision,manual:!!force,cancelled:false,controller,baseSlot,operationEpoch,flightKey,dispatchLease,timedOut:false,timeoutError:null,deadline:null,loadingHost,previousReadyRecord,uiSettled:false,batchPlan:null};
+ const flight={task:null,runId,key,slot,index,sourceHash,revision,manual:!!force,manualBodyOwner,cancelled:false,controller,baseSlot,operationEpoch,flightKey,dispatchLease,timedOut:false,timeoutError:null,deadline:null,loadingHost,previousReadyRecord,uiSettled:false,batchPlan:null};
  if(earlyBodyOwner){flight.earlyBodyOwner=earlyBodyOwner;earlyBodyOwner.flight=flight;}
  const currentIdentityForFlight=()=>{
   const live=currentGenerationIdentity(index); const active=pending.get(slot);
@@ -8535,6 +8555,7 @@ async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay
    && !flight.cancelled && globalFlights().get(flightKey)===flight;
   if(!registered) return null;
   if(earlyBodyOwner) return earlyBodyOwnerCurrent(earlyBodyOwner) ? live : null;
+  if(manualBodyOwner) return manualBodyOwnerCurrent(manualBodyOwner) ? live : null;
   if(force){
    return live.slot===slot && live.key===key && live.sourceHash===sourceHash && live.revision===revision ? live : null;
   }
@@ -8551,10 +8572,10 @@ async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay
   flight.timeoutError=error;
   timeoutReject?.(error);
  });
- const apiTask=callIndependentApi(ctx,index,msg,controller.signal,{manualRetry:force,slot,dispatchLease,multifaceResay,earlyBodyOwner,isPromptOwnerCurrent:stillCurrent,currentBatchPlan:()=>flight.batchPlan,onProgress:()=>flight.deadline?.progress?.(),onBatchPlan:plan=>{ flight.batchPlan=plan||null; }});
+ const apiTask=callIndependentApi(ctx,index,msg,controller.signal,{manualRetry:force&&!manualBodyOwner?.firstGeneration,slot,dispatchLease,multifaceResay,earlyBodyOwner,manualBodyOwner,isPromptOwnerCurrent:stillCurrent,currentBatchPlan:()=>flight.batchPlan,onProgress:()=>flight.deadline?.progress?.(),onBatchPlan:plan=>{ flight.batchPlan=plan||null; }});
  const task=Promise.race([apiTask,timeoutPromise]).then(async result=>{
   if(result?.skipped){
-   settleCancelledIndependentFlightUi(flight,'prompt-skipped');
+   if(!settleSkippedManualIndependentFlightUi(flight,result)) settleCancelledIndependentFlightUi(flight,'prompt-skipped');
    flight.uiSettled=true;
    return result;
   }
@@ -8918,7 +8939,7 @@ function showIndependentHistory(root,owner={}){
 }
 function resayIndependentMirror(root,owner={}){
  if(getSettings().generationSource==='follow'){
-  void import('./followFaceRetry.js?rmv=1.5.53-lifecycle1').then(({retryFollowFace})=>retryFollowFace(root,owner,{
+  void import('./followFaceRetry.js?rmv=1.5.53-timing1').then(({retryFollowFace})=>retryFollowFace(root,owner,{
    getContext,hostBusy:hostGenerationLooksActive,maxRequestChars:MAX_INDEPENDENT_REQUEST_CHARS,
    resolveOwner:target=>{
     const host=target?.closest?.('[data-rabbit-mirror-external-source="true"][data-rm-source="follow"]');
@@ -9075,6 +9096,7 @@ function removeRepairPersistenceListener(){
 function installIndependentActionBridge(){
  independentActionBridge={
   runtime:RUNTIME_VERSION,
+  generateManual:root=>generateManualIndependentMirror(root),
   resay:(root,owner={})=>resayIndependentMirror(root,owner),
   history:(root,owner={})=>showIndependentHistory(root,owner),
  };
@@ -9564,6 +9586,167 @@ function restoreMountedFollowSnapshots(snapshots=[]){
  }
 }
 
+const MANUAL_INTENTS_KEY='__rabbitMirrorIndependentManualIntentsV1';
+const manualPlaceholderOwners=new WeakMap();
+const manualTerminalOwners=new Map();
+function automaticIndependentTiming(){ return independentGenerationTiming(getSettings())==='auto'; }
+function manualIndependentTiming(){ return independentGenerationTiming(getSettings())==='manual'; }
+function manualIntentForMessage(ctx,index){
+ if(!manualIndependentTiming()) return null;
+ const findBound=()=>{
+  const intents=globalThis[MANUAL_INTENTS_KEY];
+  if(!Array.isArray(intents)) return null;
+  return intents.slice().reverse().find(intent=>!intent.cancelled && intent.chat===ctx.chat
+   && intent.chatKey===chatKey(ctx) && intent.index===Number(index)
+   && intent.message===ctx.chat?.[index] && intent.swipe===swipeId(intent.message))||null;
+ };
+ const bound=findBound();
+ if(bound) return bound;
+ globalThis.__rabbitMirrorBindIndependentManualIntent?.(Number(index));
+ return findBound();
+}
+function captureManualBodyOwner(ctx,index,msg,intent=null,{firstGeneration=false}={}){
+ const visible=createIndependentVisibleTextReader(index,getSettings())(msg,index);
+ const processor=ctx.streamingProcessor;
+ return {chat:ctx.chat,chatKey:chatKey(ctx),index,message:msg,swipe:swipeId(msg),
+  baseSlot:messageBaseSlotKey(ctx,index,msg),epoch:operationEpochForBase(messageBaseSlotKey(ctx,index,msg)),
+  sourceText:String(msg.mes||''),visible:Object.freeze({...visible}),intent,firstGeneration,
+  processor:Number(processor?.messageId)===index?processor:null};
+}
+function manualBodyOwnerCurrent(owner){
+ const ctx=getContext();
+ if(!owner || runtimeMode()!=='independent' || independentGenerationTiming(getSettings())==='off'
+  || owner.intent?.cancelled || owner.chat!==ctx.chat || owner.chatKey!==chatKey(ctx)
+  || owner.message!==ctx.chat?.[owner.index] || owner.swipe!==swipeId(owner.message)
+  || owner.epoch!==operationEpochForBase(owner.baseSlot)
+  || !isRabbitMirrorEligibleAssistantMessage(owner.message)
+  || hasExplicitSourceReplacementEvidence(ctx,owner.index,owner.message)) return false;
+ const source=String(owner.message.mes||'');
+ // The click freezes the request text. Only appending after that exact prefix
+ // can keep this paid request; replacing even one captured character cannot.
+ return source===owner.sourceText || (!!owner.sourceText && source.startsWith(owner.sourceText));
+}
+function currentManualPlaceholder(host,ctx,index,msg,intent){
+ const owner=host && manualPlaceholderOwners.get(host);
+ return !!(host?.isConnected && host.dataset.rmState==='manual' && owner
+  && owner.intent===intent && owner.chat===ctx.chat && owner.chatKey===chatKey(ctx)
+  && owner.index===index && owner.message===msg && owner.swipe===swipeId(msg)
+  && host.querySelector?.('[data-rm-manual-generate]'));
+}
+function ensureManualGenerationPlaceholder(ctx,index,msg,intent,settlingFlight=null){
+ const el=messageElement(index);
+ if(!el || !intent || intent.consumed || intent.cancelled || !manualIndependentTiming()) return null;
+ const existing=externalHosts(el).find(host=>host.dataset.rmSource==='independent');
+ const active=activeIndependentFlightForBase(messageBaseSlotKey(ctx,index,msg));
+ if(readyDetailsFromHost(existing) || (active && active!==settlingFlight)) return existing||null;
+ if(currentManualPlaceholder(existing,ctx,index,msg,intent)) return existing;
+ const host=ensureExternalUi(el,recordKey(ctx,index,msg),intent.manualSkipReason||'点击后，按这一刻可见的正文生成兔子镜。','manual','independent',messageSourceFingerprint(msg));
+ if(!host) return null;
+ manualPlaceholderOwners.set(host,{intent,chat:ctx.chat,chatKey:chatKey(ctx),index,message:msg,swipe:swipeId(msg)});
+ const details=host.querySelector?.(':scope > details');
+ const body=details?.querySelector?.(':scope > .rabbit-mirror-external-placeholder-body');
+ if(body && !body.querySelector('[data-rm-manual-generate]')){
+  const button=document.createElement('button');button.type='button';
+  button.setAttribute('data-rm-manual-generate','true');button.className='rabbit-mirror-external-manual-action';
+  button.textContent='生成兔子镜';body.append(button);
+ }
+ return host;
+}
+function settleSkippedManualIndependentFlightUi(flight,result){
+ const owner=flight.manualBodyOwner,intent=owner?.intent;
+ if(!owner?.firstGeneration || !intent || flight.dispatchLease?.consumed?.()
+  || !manualIndependentTiming() || !manualBodyOwnerCurrent(owner)) return false;
+ intent.consumed=false;
+ intent.manualSkipReason=result.reason==='directive-disabled'
+  ? '本次未生成：上下文中的关闭兔子镜指令已生效，未发送请求。调整该指令后可再次点击。'
+  : '本次未生成：当前没有可用的生成提示词，未发送请求。调整设置后可再次点击。';
+ const ctx=getContext();
+ const host=ensureManualGenerationPlaceholder(ctx,owner.index,owner.message,intent,flight);
+ if(host) flight.uiSettled=true;
+ return !!host;
+}
+function rememberManualClickOwner(owner){
+ if(!owner) return;
+ manualTerminalOwners.set(owner.baseSlot,owner);
+ const intent=owner?.intent;
+ if(!intent) return;
+ intent.consumed=true;
+}
+function generateManualIndependentMirror(root){
+ const host=root?.matches?.('.rabbit-mirror-external-host')?root:root?.closest?.('.rabbit-mirror-external-host');
+ const owner=host && manualPlaceholderOwners.get(host);
+ if(!owner || !host.isConnected || host.dataset.rmState!=='manual' || !manualIndependentTiming() || runtimeMode()!=='independent') return false;
+ const ctx=getContext(),intent=owner.intent,msg=ctx.chat?.[owner.index];
+ if(owner.chat!==ctx.chat || owner.chatKey!==chatKey(ctx) || owner.message!==msg || owner.swipe!==swipeId(msg)
+  || !isRabbitMirrorEligibleAssistantMessage(msg) || intent.cancelled || intent.consumed
+  || manualIntentForMessage(ctx,owner.index)!==intent) return false;
+ if(activeIndependentFlightForBase(messageBaseSlotKey(ctx,owner.index,msg))) return true;
+ const snapshot=captureManualBodyOwner(ctx,owner.index,msg,intent,{firstGeneration:true});
+ rememberManualClickOwner(snapshot);
+ for(const button of host.querySelectorAll('[data-rm-manual-generate]')) button.disabled=true;
+ void generateFor(owner.index,msg,true,true,null,null,snapshot);
+ return true;
+}
+function handleIndependentManualBridge(event={}){
+ if(!currentRuntime()) return;
+ const ctx=getContext();
+ for(const flight of globalFlights().values()){
+  const snapshot=flight.manualBodyOwner;
+  if(!snapshot) continue;
+  const intent=event.intent;
+  const replacement=intent && intent!==snapshot.intent && !intent.cancelled
+   && intent.chat===snapshot.chat && intent.chatKey===snapshot.chatKey
+   && ['continue','swipe','regenerate'].includes(intent.type) && intent.tailIndex===snapshot.index;
+  if(replacement || !manualBodyOwnerCurrent(snapshot)) abortFlight(flight,replacement?'manual-source-replaced':'manual-owner-replaced');
+ }
+ if(event.kind==='clear'){
+  manualTerminalOwners.clear();
+  for(const host of allExternalHosts()) if(host.dataset.rmState==='manual') host.remove();
+  return;
+ }
+ if(!manualIndependentTiming()) return;
+ const index=Number.isInteger(event.intent?.index)&&event.intent.index>=0?event.intent.index:ctx.chat?.length-1;
+ if(!Number.isInteger(index)||index<0 || !isRabbitMirrorEligibleAssistantMessage(ctx.chat?.[index])) return;
+ const intent=manualIntentForMessage(ctx,index),el=messageElement(index);
+ if(!intent || intent.consumed) return;
+ if(externalHosts(el).some(host=>currentManualPlaceholder(host,ctx,index,ctx.chat[index],intent))) return;
+ queueMessageSync([index]);
+}
+function queueManualGenerationTerminalSync(){
+ // A paid manual result can finish before the main reply's trailing status.
+ // END/STOP only passively reconciles an already captured exact owner; it
+ // never authorizes a request or discovers an old message.
+ const ids=new Set(),ctx=getContext();let ownsEndedProcessor=false;
+ for(const [base,owner] of manualTerminalOwners){
+  if(owner.intent && !owner.intent.consumed) continue;
+  if(!manualBodyOwnerCurrent(owner)){manualTerminalOwners.delete(base);continue;}
+  ids.add(owner.index);
+  if(owner.processor && owner.processor===ctx.streamingProcessor
+   && Number(owner.processor.messageId)===owner.index
+   && (owner.processor.isFinished===true || owner.processor.isStopped===true)) ownsEndedProcessor=true;
+ }
+ if(ids.size && (manualIndependentTiming() || ownsEndedProcessor)
+  && !automaticGenerationCutovers.get(chatKey(ctx))?.activeHostGeneration && !externalHostGenerationActivity().active){
+  hostGenerationInProgress=false;hostGenerationHintStartedAt=0;
+ }
+ if(ids.size) queueMessageSync([...ids]);
+}
+function reconcileManualTimingChange(){
+ const timing=independentGenerationTiming(getSettings());
+ if(lastAppliedIndependentTiming!==null && lastAppliedIndependentTiming!==timing){
+  clearScheduledGeneration();
+  globalThis[INDEPENDENT_GENERATION_INTENTS_KEY]=[];
+  for(const cutover of automaticGenerationCutovers.values()){
+   cutover.authorized.clear();
+   const paidEarly=[...(cutover.earlyBodies?.values()||[])].some(owner=>!owner.cancelled&&owner.flight?.dispatchLease?.consumed?.());
+   if(!paidEarly){clearAutomaticHostGenerationSettlement(cutover.activeHostGeneration);cutover.activeHostGeneration=null;}
+   for(const owner of cutover.earlyBodies?.values()||[]) if(!owner.flight?.dispatchLease?.consumed?.()) cancelEarlyBodyOwner(owner,'generation-timing-changed');
+  }
+  for(const flight of globalFlights().values()) if(!flight.dispatchLease?.consumed?.()) abortFlight(flight,'generation-timing-changed');
+  for(const host of allExternalHosts()) if(host.dataset.rmState==='manual') host.remove();
+ }
+ lastAppliedIndependentTiming=timing;
+}
 function runtimeMode(){
  const st=getSettings();
  if(st.enabled===false || st.autoRabbitMirrorInjection===false) return 'off';
@@ -9773,7 +9956,7 @@ function cancelEarlyBodyProbes(reason='early-body-cancelled',{clear=false}={}){
  }
 }
 function earlyBodyPacketCurrent(packet,ctx=getContext()){
- if(!packet || !earlyBodyEnabled(ctx) || packet.chat!==ctx.chat || packet.chatKey!==chatKey(ctx)
+ if(!automaticIndependentTiming() || !packet || !earlyBodyEnabled(ctx) || packet.chat!==ctx.chat || packet.chatKey!==chatKey(ctx)
   || packet.message!==ctx.chat?.[packet.index] || packet.swipe!==swipeId(packet.message)
   || !isRabbitMirrorEligibleAssistantMessage(packet.message)
   || ctx.streamingProcessor!==packet.processor || packet.processor?.isStopped===true
@@ -9951,7 +10134,7 @@ function automaticHostRenderProof(index){
  return 'exact-render';
 }
 function beginAutomaticHostGeneration(ctx,type='',nested=false,dryRun=false){
- if(runtimeMode()!=='independent') return false;
+ if(runtimeMode()!=='independent' || !automaticIndependentTiming()) return false;
  const cutover=ensureAutomaticGenerationCutover(ctx);
  const normalized=String(type||'').trim().toLowerCase();
  const current=cutover.activeHostGeneration;
@@ -10142,6 +10325,8 @@ function settleAutomaticHostGeneration(ctx,index,reason='host-final-render'){
  return unlockAutomaticGenerationCutover(ctx,normalized,reason,owner);
 }
 function suppressesAutomaticGeneration(ctx,index){
+ const timing=getSettings().independentGenerationTiming;
+ if(timing==='manual' || timing==='off') return true;
  const cutover=automaticGenerationCutovers.get(chatKey(ctx));
  if(!cutover) return true;
  if(cutover.earlyBodies?.has(Number(index))) return true;
@@ -10319,7 +10504,7 @@ function scheduleAutomaticHostGenerationSettlement(delay=FINAL_RENDER_POLL_INTER
  return true;
 }
 function recoverDeferredAutomaticHostCompletion(ctx,index,reason='deferred-host-completion'){
- if(runtimeMode()!=='independent') return false;
+ if(runtimeMode()!=='independent' || !automaticIndependentTiming()) return false;
  const normalized=Number(index);
  if(!Number.isInteger(normalized)||normalized<0||externalHostGenerationActivity().active) return false;
  refreshDeferredIndependentProof(ctx,normalized);
@@ -10329,7 +10514,7 @@ function recoverDeferredAutomaticHostCompletion(ctx,index,reason='deferred-host-
  return activateAuthorizedAutomaticGeneration(ctx,normalized,reason,true,false,completedAt);
 }
 function recoverDeferredIndependentGenerations(){
- if(!currentRuntime() || runtimeMode()!=='independent' || hostGenerationLooksActive()) return 0;
+ if(!currentRuntime() || runtimeMode()!=='independent' || !automaticIndependentTiming() || hostGenerationLooksActive()) return 0;
  const ctx=getContext(); const candidates=new Set();
  for(const intent of deferredIndependentGenerationIntents()){
   const index=deferredIndependentIntentCandidateIndex(intent,ctx);
@@ -10529,6 +10714,13 @@ function syncMessages(indices=null){
        let saved=recoveredAtSync.saved;
        if(recoveredAtSync.storeChanged) storeChanged=true;
        let keep=collapseDuplicateIdentityHosts(el,key,'independent',sourceHash);
+       const manualIntent=st.independentGenerationTiming==='manual'?manualIntentForMessage(ctx,i):null;
+       if(keep?.dataset?.rmState==='manual' && (!manualIntent || manualIntent.cancelled || !manualIndependentTiming())){
+        keep.remove();keep=null;
+       }
+       if(manualIntent && !manualIntent.consumed && !saved?.html && !activeBaseFlight){
+        keep=ensureManualGenerationPlaceholder(ctx,i,m,manualIntent)||keep;
+       }
        // Migrate beta.14.54-beta.14.64 CSS-only failure notices into a real,
        // actionable error placeholder. Those old hosts hid the stale details
        // and exposed only a ::before sentence, so neither the feedback cat nor
@@ -10602,7 +10794,7 @@ function syncMessages(indices=null){
         }
        const hostSourceHash=String(keep?.dataset?.rmSourceHash||'');
        const mountedReadyIdentityStale=!!(readyDetailsFromHost(keep) && !mountedReadyMatchesObserved && !mountedReadyPassiveSourceDrift);
-       let hostIsStale=!!(keep && !passiveFailureHost && !mountedReadyPassiveSourceDrift && (mountedReadyIdentityStale || (hostSourceHash && hostSourceHash!==sourceHash)));
+       let hostIsStale=!!(keep && keep.dataset.rmState!=='manual' && !passiveFailureHost && !mountedReadyPassiveSourceDrift && (mountedReadyIdentityStale || (hostSourceHash && hostSourceHash!==sourceHash)));
        const keepIsReplyPlaceholder=!!(keep && (keep.dataset.rmReplyGenerationPlaceholder==='true' || (keep.dataset.rmState==='loading' && keep.querySelector?.(':scope > details.rabbit-mirror-external-placeholder'))));
         if(keepIsReplyPlaceholder && !saved?.html && automaticGenerationSuppressed && !activeBaseFlight){
           keep.remove();
@@ -10626,8 +10818,9 @@ function syncMessages(indices=null){
         const activePending=pending.get(slot)||activeBaseFlight;
        const manualResayPending=!!(activePending?.manual
         && !activePending.cancelled
-        && String(activePending.sourceHash||'')===String(sourceHash||'')
-        && Number(activePending.revision)===Number(observed.revision));
+        && ((activePending.manualBodyOwner && manualBodyOwnerCurrent(activePending.manualBodyOwner))
+         || (String(activePending.sourceHash||'')===String(sourceHash||'')
+          && Number(activePending.revision)===Number(observed.revision))));
        if(saved?.html && (ownerLocked?.record || savedRecordMatchesObserved(saved,observed))){
          if(bindIndependentRecordContinuity(ctx,i,m,saved,store)) storeChanged=true;
          if(!ownerLocked?.record){ setOwnerLockForBase(baseSlot,slot,sourceHash); writePersistedOwner(ctx,i,m,saved,{overwrite:false}); ownerLocked={record:saved,lock:{slot}}; }
@@ -11014,6 +11207,7 @@ function installObserverIfNeeded({skipHistoricalProbe=false}={}){
    // current message on every token used to turn a long reply into repeated full
    // source/DOM passes even though no paid request may start before completion.
     if(hostGenerationLooksActive()){
+     if(manualIndependentTiming()) handleIndependentManualBridge({kind:'changed'});
      // Do not scan streaming additions. Removals are different: SillyTavern may
      // replace an older message wrapper or its external RabbitMirror shell when
      // a new reply starts. Recover only those exact owner ids, with no chat-wide
@@ -11140,6 +11334,7 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
     for(const event of new Set(generationFinishedEvents)){
       const handler=payload=>{
         const finishedContext=getContext();
+        queueManualGenerationTerminalSync();
         if(runtimeMode()==='follow-external'){
           const id=resolveHostEventMessageIndex(payload,finishedContext,{fallbackLastAssistant:true});
           if(Number.isInteger(id)&&id>=0) queueMessageSync([id]);
@@ -11325,6 +11520,7 @@ function restoreMountedIndependentRecords(snapshots=[]){
 
 async function reconfigureRuntime({coldStart=false}={}){
  if(!currentRuntime()) return;
+ reconcileManualTimingChange();
  const sequence=++runtimeConfigSequence;
  if([...automaticGenerationCutovers.values()].some(cutover=>[...(cutover.earlyBodies?.values()||[])].some(owner=>!owner.cancelled&&(owner.config!==earlyBodyConfigSignature()||earlyBodyCredentials.get(owner)!==String(getSettings().independentApiKey||''))))) cancelEarlyBodyProbes('early-settings-changed');
  clearPassiveRecoveryTimers();
@@ -11390,8 +11586,9 @@ export async function initIndependentRabbitMirror({isActive=()=>true}={}){
  globalThis.__rabbitMirrorIndependentCleanup=destroyIndependentRabbitMirror;
  migrateLegacyDeletedRecords();
  installIndependentActionBridge();
+ globalThis.__rabbitMirrorIndependentManualBridge=handleIndependentManualBridge;
  installFollowMultifaceCommitListener();
- hostGenerationInProgress=hostGenerationLooksActive();
+ hostGenerationInProgress=automaticIndependentTiming() && hostGenerationLooksActive();
  hostGenerationHintStartedAt=hostGenerationInProgress?Date.now():0;
  for(const key of LEGACY_GLOBAL_FLIGHT_KEYS){ const legacy=globalThis[key]; if(legacy?.values) for(const flight of legacy.values()) abortFlight(flight,'runtime-upgrade'); try{legacy?.clear?.();}catch{} delete globalThis[key]; }
  installFeedbackMirrorActionListeners();
@@ -11401,11 +11598,15 @@ export async function initIndependentRabbitMirror({isActive=()=>true}={}){
  await reconfigureRuntime({coldStart:!hotUpdate});
  if(!isActive()) return;
  installIndependentEarlyBodyBridge();
+ if(manualIndependentTiming()) handleIndependentManualBridge({kind:'changed'});
  recoverDeferredIndependentGenerations();
  // Hot updates never restart historical loading/error placeholders. Only a
  // genuinely new assistant reply or an explicit manual retry may issue a POST.
 }
 export function destroyIndependentRabbitMirror(){
+ if(globalThis.__rabbitMirrorIndependentManualBridge===handleIndependentManualBridge) delete globalThis.__rabbitMirrorIndependentManualBridge;
+ manualTerminalOwners.clear();
+ lastAppliedIndependentTiming=null;
  cancelEarlyBodyProbes('runtime-destroyed',{clear:true});
  if(globalThis.__rabbitMirrorEarlyBodyBridge===handleIndependentEarlyBodyBridge) delete globalThis.__rabbitMirrorEarlyBodyBridge;
  managedIndependentMessagesUnsubscribe?.(); managedIndependentMessagesUnsubscribe=null;
