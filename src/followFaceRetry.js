@@ -6,7 +6,7 @@ import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbi
 import { parseMultifaceOutput, MULTIFACE_FAILURE_ATTR } from './multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
 import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.5.53-timing1';
 import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=1.5.53-cn-boundary1';
-import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.5.53-ttperfdiag1';
+import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.5.53-ttfix1';
 import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=1.5.53-cn-boundary1';
 
 const active = new WeakSet();

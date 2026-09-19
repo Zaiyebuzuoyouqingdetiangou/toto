@@ -116,7 +116,38 @@ function cancelReplacedIndependentManualIntents(type) {
     }
 }
 
-function recordIndependentManualIntent(type) {
+// Host generation starts before a new user message is appended. Keep that
+// exact boundary until MESSAGE_SENT, rather than treating an old reply as new.
+let independentManualHostStart = null;
+function beginIndependentManualHostGeneration(type, _options, dryRun = false) {
+    const settings = getSettings();
+    const normalizedType = String(type || 'normal').trim().toLowerCase() || 'normal';
+    if (dryRun || settings.enabled === false || settings.autoRabbitMirrorInjection === false
+        || settings.mode === 'off' || settings.generationSource !== 'independent'
+        || independentGenerationTiming(settings) !== 'manual'
+        || normalizedType !== 'normal') return;
+    const chat = currentIndependentIntentChat();
+    independentManualHostStart = { chat, chatKey: String(getCurrentChatKey(chat) || ''),
+        tail: chat.at(-1), tailIndex: chat.length - 1, type: normalizedType };
+    recordIndependentManualIntent(normalizedType);
+}
+function bindIndependentManualUserMessage(payload) {
+    const start = independentManualHostStart;
+    const chat = currentIndependentIntentChat();
+    if (!start || start.type !== 'normal' || start.chat !== chat
+        || start.chatKey !== String(getCurrentChatKey(chat) || '')
+        || (start.tailIndex >= 0 && chat[start.tailIndex] !== start.tail)) return;
+    const raw = typeof payload === 'object' && payload !== null
+        ? payload.messageId ?? payload.message_id ?? payload.mesid ?? payload.index ?? payload.id : payload;
+    if (typeof raw === 'string' ? !/^\d+$/.test(raw.trim()) : !Number.isSafeInteger(raw)) return;
+    const index = Number(raw);
+    if (index !== start.tailIndex + 1 || index !== chat.length - 1 || chat[index]?.is_user !== true) return;
+    const settings = getSettings();
+    if (settings.enabled === false || settings.autoRabbitMirrorInjection === false || settings.mode === 'off'
+        || settings.generationSource !== 'independent' || independentGenerationTiming(settings) !== 'manual') return;
+    recordIndependentManualIntent('normal', { reuse: true });
+}
+function recordIndependentManualIntent(type, { reuse = false } = {}) {
     const normalizedType = String(type || 'normal').trim().toLowerCase() || 'normal';
     if (!INDEPENDENT_GENERATION_INTENT_TYPES.has(normalizedType)) return null;
     const chat = currentIndependentIntentChat();
@@ -125,6 +156,14 @@ function recordIndependentManualIntent(type) {
     const tail = chat[tailIndex];
     const tailRole = independentIntentTailRole(tail);
     if (!chatKey || !tail || !tailRole || (normalizedType !== 'normal' && tailRole !== 'assistant')) return null;
+    if (reuse) {
+        const existing = currentIndependentManualIntents().slice().reverse().find(intent =>
+            !intent.cancelled && !intent.consumed && intent.type === normalizedType && intent.chat === chat
+            && intent.chatKey === chatKey && intent.tailIndex === tailIndex && intent.tail === tail
+            && intent.tailSource === String(tail.mes || '')
+            && intent.tailSwipe === (Number(tail.swipe_id ?? tail.swipeId ?? 0) || 0));
+        if (existing) return existing;
+    }
     // Preserve an earlier reply's waiting frame when a later normal turn starts.
     // An unbound intention is superseded only after trying its exact old target.
     bindIndependentManualIntent();
@@ -555,6 +594,7 @@ function recordIndependentGenerationIntent(chat, type = '', earlySelectionKey = 
 }
 
 function clearIndependentGenerationIntents() {
+    independentManualHostStart = null;
     cancelIndependentEarlyIntent('chat-changed');
     globalThis[INDEPENDENT_GENERATION_INTENTS_KEY] = [];
     globalThis[INDEPENDENT_GENERATION_STOPS_KEY] = [];
@@ -567,10 +607,13 @@ export function initIndependentGenerationIntentBridge() {
     try { globalThis[INDEPENDENT_GENERATION_INTENT_BRIDGE_CLEANUP_KEY]?.(); } catch {}
     destroyIndependentGenerationIntentBridge();
     const bindings = [
+        [event_types?.GENERATION_STARTED, beginIndependentManualHostGeneration],
+        [event_types?.MESSAGE_SENT, bindIndependentManualUserMessage],
         // END/STOP carries no message owner. Only the exact previously bound
         // operation may use END to reconcile its non-tool/final-render proof.
-        [event_types?.GENERATION_ENDED, () => markIndependentGenerationIntentTerminal('generation-ended')],
+        [event_types?.GENERATION_ENDED, () => { independentManualHostStart = null; markIndependentGenerationIntentTerminal('generation-ended'); }],
         [event_types?.GENERATION_STOPPED, () => {
+            independentManualHostStart = null;
             markIndependentGenerationIntentTerminal('generation-stopped');
             cancelIndependentEarlyIntent('host-stopped');
         }],
@@ -590,6 +633,7 @@ export function initIndependentGenerationIntentBridge() {
 }
 
 export function destroyIndependentGenerationIntentBridge({ clearIntents = false } = {}) {
+    independentManualHostStart = null;
     cancelIndependentCoreRuntimeWake();
     if (globalThis[INDEPENDENT_EARLY_PACKET_KEY]) cancelIndependentEarlyIntent('bridge-destroyed');
     for (const { event, handler } of independentIntentBridgeSubscriptions) {
@@ -720,7 +764,7 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
                 settings.independentEarlyBodyEnabled === true ? independentEarlySelectionKey(settings) : '');
             if (settings.independentEarlyBodyEnabled === true) prewarmIndependentEarlyIntent(intent);
         } else if (timing === 'manual') {
-            recordIndependentManualIntent(type);
+            recordIndependentManualIntent(type, { reuse: true });
         }
         clearRabbitMirrorPrompt('independent-api', type);
         return;

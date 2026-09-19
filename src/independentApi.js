@@ -8,12 +8,12 @@ import { parseIndependentAdvancedOptions, buildIndependentAdvancedCarrier, apply
 import { buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.5.53-timing1';
 import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from './externalWorldBook/store.js?rmv=1.5.53-cn-boundary1';
 import { describeExternalWorldBookPreflightFailure, describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.53-cn-boundary1';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, armRabbitMirrorFirstUseInteraction, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.53-ttperfdiag1';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, armRabbitMirrorFirstUseInteraction, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.53-ttfix1';
 import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.53-cn-boundary1';
 import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=1.5.53-cn-boundary1';
 import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from './multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
 import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.53-cn-boundary1';
-import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, getRabbitMirrorFollowBatchFailure, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.53-ttperfdiag1';
+import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, getRabbitMirrorFollowBatchFailure, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.53-ttfix1';
 import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions, markPendingBatchAttempt, commitPendingComboBatch, releasePendingComboBatch } from './storage.js?rmv=1.5.53-cn-boundary1';
 import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5.53-cn-boundary1';
 import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.53-timing1';
@@ -8954,7 +8954,7 @@ function showIndependentHistory(root,owner={}){
 }
 function resayIndependentMirror(root,owner={}){
  if(getSettings().generationSource==='follow'){
-  void import('./followFaceRetry.js?rmv=1.5.53-ttperfdiag1').then(({retryFollowFace})=>retryFollowFace(root,owner,{
+  void import('./followFaceRetry.js?rmv=1.5.53-ttfix1').then(({retryFollowFace})=>retryFollowFace(root,owner,{
    getContext,hostBusy:hostGenerationLooksActive,maxRequestChars:MAX_INDEPENDENT_REQUEST_CHARS,
    resolveOwner:target=>{
     const host=target?.closest?.('[data-rabbit-mirror-external-source="true"][data-rm-source="follow"]');
@@ -10995,19 +10995,53 @@ function viewportMessageIndicesCore(chat,limit=STARTUP_SYNC_IMMEDIATE_MESSAGES){
  }
  return [...found].slice(0,max);
 }
+// This cache only suppresses passive viewport probes. Host events, explicit
+// repairs and structural replacement observers retain their existing sync path.
+function restoredHistoryProbeState(ctx,index){
+ const message=ctx.chat?.[index],element=messageElement(index);
+ if(!element || !isRabbitMirrorEligibleAssistantMessage(message)) return null;
+ const hosts=externalHosts(element).filter(host=>host.dataset.rmSource==='independent');
+ if(hosts.length!==1) return null;
+ const host=hosts[0];
+ if(!host.isConnected || host.dataset.rmState!=='ready' || host.dataset.rmAwaitingFreshSource==='true') return null;
+ const faces=externalFaceDetails(host);
+ if(!faces.length) return null;
+ return {element,message,chat:ctx.chat,chatKey:chatKey(ctx),host,faces,
+  body:String(message.mes||''),display:String(message.extra?.display_text||''),reasoning:String(message.extra?.reasoning||''),
+  swipe:swipeId(message),source:host.__rabbitMirrorIndependentSource,
+  textRoot:element.querySelector?.('.mes_text'),
+  tools:[...(host.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-recipe]')||[])]};
+}
+function sameRestoredHistoryProbe(a,b){
+ return !!(a&&b&&a.element===b.element&&a.message===b.message&&a.chat===b.chat&&a.chatKey===b.chatKey
+  &&a.host===b.host&&a.body===b.body&&a.display===b.display&&a.reasoning===b.reasoning&&a.swipe===b.swipe
+  &&a.source===b.source&&a.textRoot===b.textRoot&&a.faces.length===b.faces.length&&a.faces.every((face,i)=>face===b.faces[i])
+  &&a.tools.length===b.tools.length&&a.tools.every((tool,i)=>tool===b.tools[i]));
+}
 function installStartupHistoryLazySync(expectedSequence=runtimeConfigSequence){
  clearStartupHistoryLazySync();
  if(isRabbitMirrorManagedChatSurface()){ installManagedIndependentMessages(); return; }
  const chat=document.querySelector('#chat');
  if(!chat) return;
+ const restored=new WeakMap();
  let queued=false;
  const probe=()=>{
   if(queued) return; queued=true;
   setTimeout(()=>{
    queued=false;
    if(expectedSequence!==runtimeConfigSequence || !currentRuntime()) return;
-   const ready=viewportMessageIndices(chat,STARTUP_SYNC_IMMEDIATE_MESSAGES);
+   const ctx=getContext();
+   const visible=viewportMessageIndices(chat,STARTUP_SYNC_IMMEDIATE_MESSAGES);
+   const ready=visible.filter(index=>{
+    if(!isRabbitMirrorEligibleAssistantMessage(ctx.chat?.[index])) return false;
+    const state=restoredHistoryProbeState(ctx,index);
+    return !state || !sameRestoredHistoryProbe(restored.get(state.element),state);
+   });
    if(ready.length) syncMessageBatch(ready,true);
+   for(const index of ready){
+    const state=restoredHistoryProbeState(ctx,index);
+    if(state) restored.set(state.element,state);
+   }
   },80);
  };
  startupHistoryFallbackRoot=chat; startupHistoryFallbackHandler=probe;
