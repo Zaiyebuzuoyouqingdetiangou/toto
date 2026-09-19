@@ -23,6 +23,8 @@ let lastFollowExternalPreflightFailure = null;
 export function getLastFollowExternalPreflightFailure() { return lastFollowExternalPreflightFailure; }
 
 const INDEPENDENT_GENERATION_INTENTS_KEY = '__rabbitMirrorIndependentGenerationIntents';
+// Runtime-only references survive object spreads but never enter JSON/Prompt.
+const INDEPENDENT_INTENT_OWNER = Symbol.for('rabbitMirror.independentIntentOwner');
 const INDEPENDENT_GENERATION_STOPS_KEY = '__rabbitMirrorIndependentStoppedHostOperations';
 const INDEPENDENT_GENERATION_INTENT_BRIDGE_CLEANUP_KEY = '__rabbitMirrorIndependentGenerationIntentBridgeCleanup';
 const INDEPENDENT_GENERATION_INTENT_TTL_MS = 5 * 60 * 1000;
@@ -159,7 +161,7 @@ function independentHostGenerationMayUseTools(type, ctx = currentIndependentInte
 }
 
 function independentHostRenderProof(index, toolCapable = true) {
-    const processor = hostRuntime?.streamingProcessor;
+    const processor = hostRuntime?.streamingProcessor || currentIndependentIntentContext().streamingProcessor;
     if (processor && Number(processor.messageId) === Number(index) && processor.isFinished === true) {
         return Array.isArray(processor.toolCalls) && processor.toolCalls.length > 0
             ? 'stream-tool-intermediate'
@@ -174,6 +176,10 @@ function independentIntentCandidateIndex(intent, chat) {
     const tailIndex = Number(intent.tailIndex);
     if (!Number.isInteger(tailIndex) || tailIndex < 0) return null;
     const tail = messages[tailIndex];
+    const owner = intent[INDEPENDENT_INTENT_OWNER];
+    if (owner && (owner.chat !== messages || owner.tail !== tail)) return null;
+    if (owner?.message && (messages[owner.index] !== owner.message
+        || (Number(owner.message.swipe_id ?? owner.message.swipeId ?? 0) || 0) !== owner.swipe)) return null;
     const tailRole = String(intent.tailRole || '');
     const type = String(intent.type || '');
     if (type === 'normal') {
@@ -200,10 +206,53 @@ function resolveIndependentIntentCompletionIndex(payload, chat) {
     }
     const candidates = [payload, payload?.messageId, payload?.message_id, payload?.mesid, payload?.id];
     for (const value of candidates) {
+        if (typeof value === 'string' ? !/^\d+$/.test(value.trim()) : typeof value !== 'number' || !Number.isSafeInteger(value)) continue;
         const index = Number(value);
         if (Number.isInteger(index) && index >= 0 && isIndependentEligibleAssistantMessage(chat[index])) return index;
     }
     return null;
+}
+
+function independentIntentBoundOwner(intent, chat, index, event) {
+    const owner = intent[INDEPENDENT_INTENT_OWNER];
+    if (!owner || owner.chat !== chat || owner.tail !== chat[Number(intent.tailIndex)]
+        || independentIntentCandidateIndex(intent, chat) !== index) return null;
+    const message = chat[index];
+    const swipe = Number(message?.swipe_id ?? message?.swipeId ?? 0) || 0;
+    if (owner.message && (owner.message !== message || owner.index !== index || owner.swipe !== swipe)) return null;
+    return Object.freeze({ ...owner, message, index, swipe,
+        receivedAt: event === 'received' ? Date.now() : owner.receivedAt,
+        renderedAt: event === 'rendered' ? Date.now() : owner.renderedAt,
+    });
+}
+
+function markIndependentGenerationIntentReceived(payload) {
+    const chat = currentIndependentIntentChat();
+    const chatKey = String(getCurrentChatKey(chat) || '');
+    const index = resolveIndependentIntentCompletionIndex(payload, chat);
+    if (!chatKey || !Number.isInteger(index)) return false;
+    let changed = false;
+    globalThis[INDEPENDENT_GENERATION_INTENTS_KEY] = currentIndependentGenerationIntents().map(intent => {
+        if (intent.chatKey !== chatKey) return intent;
+        const owner = independentIntentBoundOwner(intent, chat, index, 'received');
+        if (!owner) return intent;
+        changed = true;
+        // RECEIVE binds an owner only. It is not a final-response assertion.
+        return Object.freeze({ ...intent, [INDEPENDENT_INTENT_OWNER]: owner });
+    });
+    return changed;
+}
+
+function independentIntentHostIsActive(ctx = currentIndependentIntentContext()) {
+    if ([ctx.isGenerating, ctx.is_generating, ctx.is_send_press,
+        globalThis.is_send_press, globalThis.is_group_generating].some(value => value === true)) return true;
+    try {
+        if (hostRuntime.is_send_press === true || hostRuntime.isGenerating?.() === true) return true;
+        if (globalThis.document?.querySelector?.('#chat .mes.streaming, #chat .mes[data-is-streaming="true"], #chat .mes[is_generating="true"], #chat .mes[data-generating="true"]')) return true;
+    } catch { return true; }
+    const processor = hostRuntime.streamingProcessor || ctx.streamingProcessor;
+    return !!(processor && processor.isFinished === false && processor.isStopped !== true
+        && processor.abortController?.signal?.aborted !== true);
 }
 
 function markIndependentGenerationIntentCompleted(payload, reason = 'host-completed') {
@@ -221,10 +270,12 @@ function markIndependentGenerationIntentCompleted(payload, reason = 'host-comple
     let wakeEligible = false;
     const next = intents.map(intent => {
         if (String(intent.chatKey || '') !== chatKey || independentIntentCandidateIndex(intent, chat) !== index) return intent;
+        const owner = independentIntentBoundOwner(intent, chat, index, 'rendered');
+        if (!owner) return intent;
         changed = true;
         const toolCapable = intent.toolCapable !== false || independentHostGenerationMayUseTools(intent.type);
         const finalProof = independentHostRenderProof(index, toolCapable);
-        const next = { ...intent, toolCapable };
+        const next = { ...intent, toolCapable, [INDEPENDENT_INTENT_OWNER]: owner };
         if (finalProof === 'stream-tool-intermediate') {
             delete next.completedAt;
             delete next.completionReason;
@@ -252,9 +303,11 @@ function markIndependentGenerationIntentTerminal(reason = 'host-terminal') {
     const chat = currentIndependentIntentChat();
     const chatKey = String(getCurrentChatKey(chat) || '');
     if (!chatKey || !intents.some(intent => String(intent?.chatKey || '') === chatKey)) return false;
+    const currentOperation = intents.slice().reverse().find(intent => intent.chatKey === chatKey && !intent.terminalAt);
     let changed = false;
     const next = intents.map(intent => {
         if (String(intent?.chatKey || '') !== chatKey) return intent;
+        if (intent.terminalAt) return intent;
         changed = true;
         if (intent.auxiliaryTerminalPending === true) {
             const next = { ...intent, auxiliaryTerminalAt: Date.now(), auxiliaryTerminalReason: String(reason || '').slice(0, 64) };
@@ -262,8 +315,26 @@ function markIndependentGenerationIntentTerminal(reason = 'host-terminal') {
             delete next.auxiliaryStartedAt;
             return Object.freeze(next);
         }
-        return Object.freeze({ ...intent,
+        const next = { ...intent,
             terminalAt: Date.now(), terminalReason: String(reason || '').slice(0, 64),
+        };
+        const owner = intent[INDEPENDENT_INTENT_OWNER];
+        const index = Number(owner?.index);
+        if (intent !== currentOperation || intent.terminalAt || reason !== 'generation-ended'
+            || intent.intermediateAt || !owner?.message || (!owner.receivedAt && !owner.renderedAt)
+            || !independentIntentBoundOwner(intent, chat, index, '') || independentIntentHostIsActive()) return Object.freeze(next);
+        const toolCapable = intent.toolCapable !== false || independentHostGenerationMayUseTools(intent.type);
+        const proof = independentHostRenderProof(index, toolCapable);
+        const processor = hostRuntime.streamingProcessor || currentIndependentIntentContext().streamingProcessor;
+        if (proof === 'stream-tool-intermediate' || processor?.isStopped === true || processor?.abortController?.signal?.aborted === true) return Object.freeze(next);
+        const hadRenderedProof = owner.renderedAt && independentIntentHasCompletedProof(intent);
+        if (!hadRenderedProof && toolCapable !== false && proof !== 'stream-final') return Object.freeze(next);
+        // A terminal may complete an exact received non-tool owner, or reconcile
+        // postprocessing of a previously rendered owner. Never guess a tail.
+        return Object.freeze({ ...next, toolCapable, completedAt: Date.now(),
+            completionReason: hadRenderedProof ? 'rendered-ended' : 'received-ended',
+            finalIndex: index, finalBodyHash: hashIndependentIntentText(owner.message.mes || ''),
+            finalProof: hadRenderedProof ? intent.finalProof : 'received-ended',
         });
     });
     globalThis[INDEPENDENT_GENERATION_INTENTS_KEY] = next;
@@ -359,6 +430,10 @@ function recordIndependentGenerationIntent(chat, type = '', earlySelectionKey = 
         tailRole,
         tailBodyHash: hashIndependentIntentText(proofTail.mes || ''),
         tailSwipeId: Number(proofTail?.swipe_id ?? proofTail?.swipeId ?? 0) || 0,
+        [INDEPENDENT_INTENT_OWNER]: Object.freeze({
+            chat: Array.isArray(hostContext.chat) ? hostContext.chat : messages,
+            tail: proofTail, message: null, index: -1, swipe: 0, receivedAt: 0, renderedAt: 0,
+        }),
     });
     // Revoke only unfinished or exact same-operation proof. Completed replies
     // from this chat may still be waiting for the deferred runtime and must not
@@ -379,14 +454,15 @@ export function initIndependentGenerationIntentBridge() {
     try { globalThis[INDEPENDENT_GENERATION_INTENT_BRIDGE_CLEANUP_KEY]?.(); } catch {}
     destroyIndependentGenerationIntentBridge();
     const bindings = [
-        // END/STOP carries no message owner in SillyTavern. Preserve only an
-        // unscoped terminal hint; never fabricate a final正文 hash from the tail.
+        // END/STOP carries no message owner. Only the exact previously bound
+        // operation may use END to reconcile its non-tool/final-render proof.
         [event_types?.GENERATION_ENDED, () => markIndependentGenerationIntentTerminal('generation-ended')],
         [event_types?.GENERATION_STOPPED, () => {
             markIndependentGenerationIntentTerminal('generation-stopped');
             cancelIndependentEarlyIntent('host-stopped');
         }],
         [event_types?.STREAM_TOKEN_RECEIVED, recordIndependentEarlyToken],
+        [event_types?.MESSAGE_RECEIVED, markIndependentGenerationIntentReceived],
         [event_types?.CHARACTER_MESSAGE_RENDERED, payload => markIndependentGenerationIntentCompleted(payload, 'character-rendered')],
         [event_types?.CHAT_CHANGED, clearIndependentGenerationIntents],
     ].filter(([event]) => !!event);
@@ -497,6 +573,21 @@ function assertFollowPrefetchOwner(owner, chat) {
 
 export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abort, type) {
     const settings = getSettings();
+    const operationType = String(type || '').trim().toLowerCase();
+    if (['continue', 'swipe', 'regenerate'].includes(operationType)) {
+        const hostChat = currentIndependentIntentChat();
+        const index = Array.isArray(_chat) ? _chat.length - 1 : -1;
+        const tail = hostChat[index];
+        if (index >= 0 && index === hostChat.length - 1 && isIndependentEligibleAssistantMessage(tail)
+            && independentIntentTailRole(_chat[index]) === 'assistant'
+            && getCurrentChatKey(_chat) === getCurrentChatKey(hostChat)
+            && tail.extra?.rabbitMirrorOwnerLineage) {
+            // Replacing the body revokes restore lineage even while generation
+            // is disabled. Preserve the previously paid result itself.
+            tail.extra.rabbitMirrorOwnerLineage = { revoked: true,
+                swipe: Number(tail.swipe_id ?? tail.swipeId ?? 0) || 0 };
+        }
+    }
 
     if (settings.generationSource === 'independent') {
         generationInvocationSequence += 1;

@@ -7,12 +7,12 @@ import { parseIndependentAdvancedOptions, buildIndependentAdvancedCarrier, apply
 import { buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.5.53-cn-boundary1';
 import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from './externalWorldBook/store.js?rmv=1.5.53-cn-boundary1';
 import { describeExternalWorldBookPreflightFailure, describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.53-cn-boundary1';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, armRabbitMirrorFirstUseInteraction, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.53-cn-boundary1';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, armRabbitMirrorFirstUseInteraction, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.53-lifecycle1';
 import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.53-cn-boundary1';
 import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=1.5.53-cn-boundary1';
 import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from './multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
 import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.53-cn-boundary1';
-import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, getRabbitMirrorFollowBatchFailure, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.53-cn-boundary1';
+import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, getRabbitMirrorFollowBatchFailure, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.53-lifecycle1';
 import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions, markPendingBatchAttempt, commitPendingComboBatch, releasePendingComboBatch } from './storage.js?rmv=1.5.53-cn-boundary1';
 import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5.53-cn-boundary1';
 import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.53-cn-boundary1';
@@ -381,7 +381,7 @@ function independentRecordWithinBudget(value){
 function warnStorageTrimmed(){
  if(storageWarningShown) return;
  storageWarningShown=true;
- console.warn('[RabbitMirror] localStorage 接近容量上限，已淘汰最旧兔子镜缓存以保护当前结果。');
+ console.warn('[RabbitMirror] 本地存储发生容量不足或拒写；当前成品是否保存成功须以读回结果为准。');
 }
 function readStore(){ try { const v=JSON.parse(localStorage.getItem(STORE_KEY)||'{}'); return v&&typeof v==='object'?v:{}; } catch { return {}; } }
 function compactOutputStore(value){
@@ -455,6 +455,7 @@ function normalizeHistoryEntry(value){
   textReplacementReceipt:copyIndependentReplacementReceipt(value.textReplacementReceipt),
   textReplacementReceipts:Array.isArray(value.textReplacementReceipts)?value.textReplacementReceipts.slice(0,5).map(copyIndependentReplacementReceipt):null,
   initialTextReplacementReceipt:copyIndependentReplacementReceipt(value.initialTextReplacementReceipt),
+  ownerLineage:copyIndependentOwnerLineage(value.ownerLineage),
  };
 }
 function appendHistoryEntry(slot,value){
@@ -502,6 +503,7 @@ function compactChatPersistedRecord(value){
   textReplacementReceipt:record.textReplacementReceipt,
   textReplacementReceipts:record.textReplacementReceipts,
   initialTextReplacementReceipt:record.initialTextReplacementReceipt,
+  ownerLineage:record.ownerLineage,
   ...(faces?{apiRequest:{faceCount:faces.length,faces,...compactExternalSourceNote(diagnostic),
    ...(diagnostic.partial===true?{partial:true,failedFaces:(Array.isArray(diagnostic.failedFaces)?diagnostic.failedFaces:[])
     .filter(face=>Number.isInteger(face?.faceIndex)&&face.faceIndex>=0&&face.faceIndex<faces.length)
@@ -584,15 +586,17 @@ function mergeChatOutputsIntoLocalStore(ctx,store){
   if(!record.initialHtml && interactionStatePollutionScore(record.html)>0) record=normalizeSavedInteractionRecord(record,slot);
   const existing=store?.[slot];
   const existingReady=existing?.html && independentStoredHtmlRestorable(existing.html) ? compactChatPersistedRecord(existing) : null;
-  const localIsNewer=!!existingReady && Number(existingReady.ts||0)>Number(record.ts||0);
+  const localIsNewer=!!existingReady && (Number(existingReady.ts||0)>Number(record.ts||0)
+   || (Number(existingReady.ts||0)===Number(record.ts||0)
+    && Number(existingReady.ownerLineage?.observedAt||0)>Number(record.ownerLineage?.observedAt||0)));
   if(localIsNewer){
    // A maintenance repair is first committed to the live/local snapshot. If an
    // older chatMetadata copy is observed before the queued server save finishes,
    // keep the newer local HTML authoritative and immediately heal metadata.
-   if(String(existingReady.html||'')!==String(record.html||'')){
+   if(String(existingReady.html||'')!==String(record.html||'') || JSON.stringify(existingReady.ownerLineage)!==JSON.stringify(record.ownerLineage)){
     state.owners[ownerKey]=existingReady; metadataChanged=true;
    }
-  }else if(!existingReady || String(existingReady.html||'')!==String(record.html||'')){
+  }else if(!existingReady || String(existingReady.html||'')!==String(record.html||'') || JSON.stringify(existingReady.ownerLineage)!==JSON.stringify(record.ownerLineage)){
    saveRecordForSlot(store,slot,record,{dropLegacy:false}); storeChanged=true;
   }
   setOwnerLockForBase(base,slot,String((localIsNewer?existingReady:record)?.sourceHash||(localIsNewer?existingReady:record)?.bodyHash||''));
@@ -1182,6 +1186,104 @@ function messageSourceFingerprint(m){
  // only and must never create a second paid request for the same正文.
  return messageBodyFingerprint(m);
 }
+const INDEPENDENT_OWNER_OBSERVATION=Symbol.for('rabbitMirror.independentObservedOwner');
+const independentRecordContinuity=new WeakMap();
+let independentRecordContinuitySequence=0;
+function copyIndependentOwnerLineage(value){
+ if(!value || typeof value.id!=='string' || !value.id || typeof value.chatKey!=='string' || !value.chatKey
+  || !Number.isInteger(value.mesid) || value.mesid<0 || !Number.isInteger(value.swipe) || value.swipe<0
+  || typeof value.originSourceHash!=='string' || !value.originSourceHash
+  || typeof value.acceptedBodyHash!=='string' || !value.acceptedBodyHash) return null;
+ return {id:value.id,chatKey:value.chatKey,mesid:value.mesid,swipe:value.swipe,
+  originSourceHash:value.originSourceHash,acceptedBodyHash:value.acceptedBodyHash,observedAt:Number(value.observedAt)||0};
+}
+function independentLineageOriginSlot(record){
+ const lineage=copyIndependentOwnerLineage(record?.ownerLineage);
+ if(!lineage || lineage.originSourceHash!==String(record?.sourceHash||record?.bodyHash||'')) return '';
+ return `${lineage.chatKey}:${lineage.mesid}:${lineage.swipe}:${lineage.originSourceHash}`;
+}
+function independentLineageMatchesObserved(record,observed){
+ const lineage=copyIndependentOwnerLineage(record?.ownerLineage);
+ const owner=observed?.[INDEPENDENT_OWNER_OBSERVATION] || observed;
+ const ctx=owner?.ctx, msg=owner?.msg, index=owner?.index;
+ if(!lineage || !independentLineageOriginSlot(record) || !ctx || ctx.chat?.[index]!==msg
+  || lineage.chatKey!==chatKey(ctx) || lineage.mesid!==Number(index) || lineage.swipe!==swipeId(msg)
+  || lineage.acceptedBodyHash!==String(observed?.bodyHash||observed?.sourceHash||'')) return false;
+ const marker=msg?.extra?.rabbitMirrorOwnerLineage;
+ // The host may not have saved the new message marker yet. The durable proof
+ // still names an exact body observed in this owner, never an arbitrary mesid.
+ return !marker || (marker.revoked!==true && marker.id===lineage.id && marker.swipe===lineage.swipe);
+}
+function bindIndependentRecordContinuity(ctx,index,msg,record,store=null,{completed=false,commit=true}={}){
+ if(!record?.html || ctx?.chat?.[index]!==msg) return false;
+ const sourceHash=messageSourceFingerprint(msg);
+ const original=String(record.sourceHash||record.bodyHash||'');
+ const observed={sourceHash,bodyHash:sourceHash,[INDEPENDENT_OWNER_OBSERVATION]:{ctx,index,msg}};
+ if(!original || (original!==sourceHash && !independentLineageMatchesObserved(record,observed))) return false;
+ const base=messageBaseSlotKey(ctx,index,msg);
+ if(!completed && (hostGenerationLooksActive() || activeIndependentFlightForBase(base)
+  || hasExplicitSourceReplacementEvidence(ctx,index,msg))) return false;
+ let lineage=copyIndependentOwnerLineage(record.ownerLineage);
+ const marker=msg.extra?.rabbitMirrorOwnerLineage;
+ if(!completed && marker && (marker.revoked===true || (lineage && marker.id!==lineage.id))) return false;
+ if(lineage && (lineage.chatKey!==chatKey(ctx) || lineage.mesid!==Number(index) || lineage.swipe!==swipeId(msg)
+  || lineage.originSourceHash!==original)) return false;
+ const created=!lineage;
+ if(!lineage) lineage={id:`${Date.now().toString(36)}:${++independentRecordContinuitySequence}:${hashText(base+original)}`,
+  chatKey:chatKey(ctx),mesid:Number(index),swipe:swipeId(msg),originSourceHash:original,
+  acceptedBodyHash:sourceHash,observedAt:Date.now()};
+ record.ownerLineage=lineage;
+ if(!commit) return created;
+ if(!msg.extra || typeof msg.extra!=='object') msg.extra={};
+ msg.extra.rabbitMirrorOwnerLineage={id:lineage.id,swipe:lineage.swipe};
+ independentRecordContinuity.set(msg,{chat:ctx.chat,index:Number(index),base,epoch:operationEpochForBase(base),
+  id:lineage.id,slot:independentLineageOriginSlot(record),acceptedBodyHash:lineage.acceptedBodyHash});
+ if(created && store){
+  saveRecordForSlot(store,independentLineageOriginSlot(record),record,{dropLegacy:false});
+  writePersistedOwner(ctx,index,msg,record,{overwrite:true});
+ }
+ return created;
+}
+function updateIndependentRecordContinuity(ctx,index,msg,store){
+ const proof=independentRecordContinuity.get(msg);
+ if(!proof || proof.chat!==ctx.chat || proof.index!==Number(index) || proof.base!==messageBaseSlotKey(ctx,index,msg)
+  || proof.epoch!==operationEpochForBase(proof.base) || hostGenerationLooksActive()
+  || activeIndependentFlightForBase(proof.base) || hasExplicitSourceReplacementEvidence(ctx,index,msg)) return false;
+ const metadata=persistedOwnerForMessage(ctx,index,msg);
+ if(metadata?.deleted) return false;
+ const record=store?.[proof.slot] || metadata;
+ const lineage=copyIndependentOwnerLineage(record?.ownerLineage);
+ const marker=msg.extra?.rabbitMirrorOwnerLineage;
+ if(!record?.html || !lineage || lineage.id!==proof.id || independentLineageOriginSlot(record)!==proof.slot
+  || lineage.acceptedBodyHash!==proof.acceptedBodyHash || !marker || marker.revoked===true
+  || marker.id!==proof.id || marker.swipe!==swipeId(msg)) return false;
+ const bodyHash=messageSourceFingerprint(msg);
+ if(bodyHash===lineage.acceptedBodyHash || !String(msg.mes||'').trim()) return false;
+ const next={...record,ownerLineage:{...lineage,acceptedBodyHash:bodyHash,observedAt:Date.now()}};
+ // One original slot, one witnessed current body. Keep the paid HTML, provenance,
+ // initial state and text-filter receipts; no duplicate output/history or POST.
+ saveRecordForSlot(store,proof.slot,next,{dropLegacy:false});
+ writePersistedOwner(ctx,index,msg,next,{overwrite:true});
+ setOwnerLockForBase(proof.base,proof.slot,lineage.originSourceHash);
+ proof.acceptedBodyHash=bodyHash;
+ writeStore(store);
+ const stored=readStore()?.[proof.slot];
+ if(stored?.html!==next.html || stored?.ownerLineage?.acceptedBodyHash!==bodyHash) showIndependentUnsavedOutput(next);
+ return true;
+}
+function revokeIndependentRecordContinuity(ctx,index){
+ const msg=ctx?.chat?.[index]; if(!msg) return;
+ independentRecordContinuity.delete(msg);
+ if(msg.extra?.rabbitMirrorOwnerLineage) msg.extra.rabbitMirrorOwnerLineage={revoked:true,swipe:swipeId(msg)};
+}
+function savedIndependentRecordForOwner(ctx,index,msg,store){
+ const observed=passiveObservedIdentity(ctx,index,msg);
+ const persisted=persistedOwnerForMessage(ctx,index,msg);
+ if(persisted?.deleted) return null;
+ const locked=lockedIndependentRecordForBase(messageBaseSlotKey(ctx,index,msg),store)?.record;
+ return [findSavedRecord(store,observed.slot,observed.legacySlots||[]),locked,persisted]
+  .find(record=>record?.html && savedRecordMatchesObserved(record,observed)) || null;
+}
 function savedRecordMatchesObserved(saved,observed){
  if(!saved?.html||!observed) return false;
  const observedBody=String(observed.bodyHash||observed.sourceHash||'');
@@ -1190,13 +1292,13 @@ function savedRecordMatchesObserved(saved,observed){
  const savedBody=String(saved.bodyHash||'');
  if(savedBody && observedBody && savedBody===observedBody) return true;
  // Very old records sometimes stored the正文-only fingerprint only in sourceHash.
- return !!(savedSource && observedBody && savedSource===observedBody);
+ return !!(savedSource && observedBody && savedSource===observedBody) || independentLineageMatchesObserved(saved,observed);
 }
 function observeMessageSourceRevision(ctx,index,msg){
  const slot=messageSlotKey(ctx,index,msg); const sourceHash=messageSourceFingerprint(msg);
  const previous=messageSourceRevisions.get(slot);
  const revision=previous && previous.sourceHash===sourceHash ? previous.revision : Number(previous?.revision||0)+1;
- const value={slot,sourceHash,bodyHash:messageBodyFingerprint(msg),displayHash:messageDisplayFingerprint(msg),reasoningHash:messageReasoningFingerprint(msg),legacySlots:legacyMessageSlotKeys(ctx,index,msg),revision,seenAt:Date.now()};
+ const value={slot,sourceHash,bodyHash:messageBodyFingerprint(msg),displayHash:messageDisplayFingerprint(msg),reasoningHash:messageReasoningFingerprint(msg),legacySlots:legacyMessageSlotKeys(ctx,index,msg),revision,seenAt:Date.now(),[INDEPENDENT_OWNER_OBSERVATION]:{ctx,index,msg}};
  messageSourceRevisions.set(slot,value);
  if(messageSourceRevisions.size>400){
   const stale=[...messageSourceRevisions.entries()].sort((a,b)=>Number(a[1]?.seenAt||0)-Number(b[1]?.seenAt||0)).slice(0,messageSourceRevisions.size-320);
@@ -5820,6 +5922,9 @@ function sealIndependentTextReplacementRecord(record,slot,previousRecord=null,re
 }
 function prepareStoredIndependentRecordHtml(record,slot){
  if(!independentRecordWithinBudget(record) || !slot) return '';
+ const lineage=copyIndependentOwnerLineage(record.ownerLineage);
+ const originSlot=independentLineageOriginSlot(record);
+ if(originSlot && slot===`${lineage.chatKey}:${lineage.mesid}:${lineage.swipe}:${lineage.acceptedBodyHash}`) slot=originSlot;
  // This seam is reached only after the caller has selected and validated the
 // owning saved result. No startup readStore scan parses or hashes all records.
  if(hasMultifaceMarkup(record.html) && Array.isArray(record.textReplacementReceipts)){
@@ -8011,6 +8116,19 @@ function scheduleMessageGeneration(index,delay=260,sourceAware=true,finalRenderC
  const poll=()=>{
   if(state.cancelled || !currentRuntime() || runtimeMode()!=='independent'){ finish(); return; }
   const live=currentGenerationIdentity(index);
+  if(live && suppressesAutomaticGeneration(live.ctx,index)){
+   const authorization=automaticGenerationCutovers.get(chatKey(live.ctx))?.authorized.get(Number(index));
+   const refreshed=refreshUnpaidAutomaticAuthorization(live.ctx,index,authorization);
+   if(refreshed==='waiting'){
+    if(Date.now()-state.startedAt<ACTIVE_GENERATION_WAIT_MS) queue(generationWaitPollDelay(state.startedAt));
+    else { finish(); renderGenerationGateTimeout(index,'source-stability'); }
+    return;
+   }
+   if(refreshed===true){
+    state.lastHash=''; state.lastRevision=-1; state.stableSince=0; state.sourceStabilityConfirmed=false;
+    state.finalRenderHash=live.sourceHash; state.finalRenderRevision=live.revision; state.finalRenderAt=Date.now();
+   }
+  }
   if(live && (suppressesAutomaticGeneration(live.ctx,index) || hasExistingFollowRabbitMirror(live.ctx,index,live.msg))){ finish(); return; }
   if(live) cancelSupersededFlightsForBase(live.baseSlot,live.sourceHash);
   if(!live){ if(Date.now()-state.startedAt<OWNER_REATTACH_WAIT_MS) queue(generationWaitPollDelay(state.startedAt)); else { finish(); renderGenerationGateTimeout(index,'identity-missing'); } return; }
@@ -8162,7 +8280,7 @@ function currentGenerationIdentity(index){
  const ctx=getContext(); const msg=ctx.chat?.[index];
  if(!isRabbitMirrorEligibleAssistantMessage(msg)) return null;
  const observed=observeMessageSourceRevision(ctx,index,msg);
- return {ctx,msg,index,slot:observed.slot,baseSlot:messageBaseSlotKey(ctx,index,msg),legacySlots:observed.legacySlots||[],key:recordKey(ctx,index,msg),sourceHash:observed.sourceHash,bodyHash:observed.bodyHash,displayHash:observed.displayHash,reasoningHash:observed.reasoningHash,revision:observed.revision};
+ return {ctx,msg,index,slot:observed.slot,baseSlot:messageBaseSlotKey(ctx,index,msg),legacySlots:observed.legacySlots||[],key:recordKey(ctx,index,msg),sourceHash:observed.sourceHash,bodyHash:observed.bodyHash,displayHash:observed.displayHash,reasoningHash:observed.reasoningHash,revision:observed.revision,[INDEPENDENT_OWNER_OBSERVATION]:{ctx,index,msg}};
 }
 function settleCancelledIndependentFlightUi(flight,reason='cancelled'){
  if(!flight || flight.uiSettled) return false;
@@ -8515,13 +8633,16 @@ async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay
   }
   const initialHtml=scrubIndependentInteractionState(html,html);
    const completed={html:initialHtml||html,initialHtml:'',sourceHash:settledSourceHash,bodyHash:settledBodyHash,displayHash:settledDisplayHash,reasoningHash:settledReasoningHash,paletteFingerprint,ts:Date.now(),model:st.independentApiModel,runtime:RUNTIME_VERSION,apiRequest:result?.requestDiagnostic||null,executionLockChars:Number(result?.executionLockChars||0)};
+   bindIndependentRecordContinuity(settledCtx,index,settledMsg,completed,null,{completed:true,commit:false});
    sealIndependentTextReplacementRecord(completed,settledSlot,replacementPreviousRecord,multifaceResay?Number(multifaceResay.faceIndex):null);
    if(!independentRecordWithinBudget(completed)) throw independentMarkupLimitError('record-bytes',byteLength(completed.html),INDEPENDENT_RECORD_BUDGET_BYTES);
+   bindIndependentRecordContinuity(settledCtx,index,settledMsg,completed,null,{completed:true});
    recordRabbitMirrorRecipe({ chat:settledCtx.chat, chatKey:chatKey(settledCtx), messageIndex:index, swipeId:swipeId(settledMsg), message:settledMsg, metadata:result?.requestDiagnostic||null, source:'independent' });
    appendHistoryEntry(settledSlot,completed);
    const next=readStore(); saveRecordForSlot(next,settledSlot,completed); writeStore(next);
    setOwnerLockForBase(baseSlot,settledSlot,settledSourceHash);
    writePersistedOwner(settledCtx,index,settledMsg,completed,{overwrite:true});
+   if(String(readStore()?.[settledSlot]?.html||'')!==completed.html) showIndependentUnsavedOutput(completed);
    const liveEl=messageElement(index);
    let liveHost=null;
    if(liveEl){
@@ -8761,9 +8882,10 @@ function historyPreviewDetails(entry,faceIndex=-1,ownerSlot=''){
 function showIndependentHistory(root,owner={}){
  const identity=resolveIndependentActionIdentity(root,owner);
  if(!identity) return false;
- const current=findSavedRecord(readStore(),identity.slot,identity.legacySlots||[]);
- if(current?.html) appendHistoryEntry(identity.slot,current);
- const entries=[...new Map(slotSearchKeys(identity.slot,identity.legacySlots||[])
+ const current=savedIndependentRecordForOwner(identity.ctx,identity.index,identity.msg,readStore());
+ const historySlot=independentLineageOriginSlot(current)||identity.slot;
+ if(current?.html) appendHistoryEntry(historySlot,current);
+ const entries=[...new Map(slotSearchKeys(historySlot,[identity.slot,...identity.legacySlots||[]])
   .flatMap(candidate=>historyEntriesForSlot(candidate))
   .map(entry=>[String(entry.id||hashText(entry.html||'')),entry])).values()]
   .sort((a,b)=>Number(b.ts||0)-Number(a.ts||0));
@@ -8779,7 +8901,7 @@ function showIndependentHistory(root,owner={}){
  const preview=overlay.querySelector('.rabbit-mirror-history-preview');
  const render=(entry,button)=>{
   list.querySelectorAll('button').forEach(item=>item.classList.toggle('is-active',item===button));
-  preview.replaceChildren(); const details=historyPreviewDetails(entry,identity.faceIndex,identity.slot);
+  preview.replaceChildren(); const details=historyPreviewDetails(entry,identity.faceIndex,independentLineageOriginSlot(entry)||historySlot);
   if(details) preview.append(details); else preview.textContent='这版兔子镜无法预览。';
  };
  entries.forEach((entry,index)=>{
@@ -8796,7 +8918,7 @@ function showIndependentHistory(root,owner={}){
 }
 function resayIndependentMirror(root,owner={}){
  if(getSettings().generationSource==='follow'){
-  void import('./followFaceRetry.js?rmv=1.5.53-cn-boundary1').then(({retryFollowFace})=>retryFollowFace(root,owner,{
+  void import('./followFaceRetry.js?rmv=1.5.53-lifecycle1').then(({retryFollowFace})=>retryFollowFace(root,owner,{
    getContext,hostBusy:hostGenerationLooksActive,maxRequestChars:MAX_INDEPENDENT_REQUEST_CHARS,
    resolveOwner:target=>{
     const host=target?.closest?.('[data-rabbit-mirror-external-source="true"][data-rm-source="follow"]');
@@ -8809,7 +8931,8 @@ function resayIndependentMirror(root,owner={}){
  }
  const identity=resolveIndependentActionIdentity(root,owner,{allowPassiveErrorRetry:true});
  if(!identity) return false;
- const saved=findSavedRecord(readStore(),identity.slot,identity.legacySlots||[]); if(saved?.html) appendHistoryEntry(identity.slot,saved);
+ const saved=savedIndependentRecordForOwner(identity.ctx,identity.index,identity.msg,readStore());
+ if(saved?.html) appendHistoryEntry(independentLineageOriginSlot(saved)||identity.slot,saved);
  const diagnostic=saved?.apiRequest&&typeof saved.apiRequest==='object'?saved.apiRequest:{};
  const faces=Array.isArray(diagnostic.faces)?diagnostic.faces:[];
  if(identity.faceIndex>=0 && faces.length<=identity.faceIndex){
@@ -8824,6 +8947,33 @@ function resayIndependentMirror(root,owner={}){
  globalThis.toastr?.info?.(multifaceResay?'正在准备重说这一面；其他面会原样保留……':'正在准备重新生成兔子镜……');
  void generateFor(identity.index,identity.msg,true,true,multifaceResay);
  return true;
+}
+function showIndependentUnsavedOutput(record){
+ if(!record?.html || typeof document==='undefined' || !document.body) return;
+ const noticeId=hashText(String(record.ownerLineage?.id||'')+String(record.ownerLineage?.acceptedBodyHash||'')+record.html);
+ if(document.querySelector?.(`[data-rabbit-mirror-unsaved-id="${noticeId}"]`)) return;
+ let container=document.querySelector('[data-rabbit-mirror-unsaved-list]');
+ if(!container){
+  container=document.createElement('div');container.setAttribute('data-rabbit-mirror-unsaved-list','true');
+  container.style.cssText='position:fixed;bottom:16px;right:16px;z-index:2147483000;max-width:min(420px,90vw);max-height:80vh;overflow:auto;display:flex;flex-direction:column;gap:8px';
+  document.body.append(container);
+ }
+ const notice=document.createElement('section');
+ notice.setAttribute('data-rabbit-mirror-unsaved-output','true');
+ notice.setAttribute('data-rabbit-mirror-unsaved-id',noticeId);
+ notice.setAttribute('role','alert');
+ notice.style.cssText='padding:16px;border:1px solid #bb8a43;border-radius:12px;background:#fff8e8;color:#45301a;box-shadow:0 4px 20px #0004;font:14px/1.6 sans-serif';
+ const description=document.createElement('p');
+ description.textContent='这份兔子镜尚未保存到浏览器，退出或刷新后可能丢失。请先下载成品备份；这里不会重新请求 API。';
+ const download=document.createElement('button'); download.type='button';download.textContent='下载本轮成品';
+ download.addEventListener('click',()=>{
+  const url=URL.createObjectURL(new Blob([String(record.html)],{type:'text/html;charset=utf-8'}));
+  const link=document.createElement('a');link.href=url;link.download=`RabbitMirror-${Number(record.ts)||Date.now()}.html`;
+  document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),0);
+ });
+ const dismiss=document.createElement('button');dismiss.type='button';dismiss.textContent='关闭提示';
+ dismiss.addEventListener('click',()=>{notice.remove();if(!container.childElementCount)container.remove();});
+ notice.append(description,download,dismiss);container.append(notice);
 }
 function persistIndependentRepairFromEvent(event) {
  const detail=event?.detail||{};
@@ -8859,8 +9009,9 @@ function persistIndependentRepairFromEvent(event) {
  clone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
  const rawHtml=faces.length>1 ? serializeExternalFaceDetails(host) : String(clone.outerHTML||'').trim();
  const store=readStore();
- const existing=store?.[identity.slot] || findSavedRecord(store,identity.slot,identity.legacySlots||[]);
- const baseline=String(existing?.initialHtml||host.__rabbitMirrorIndependentInitialSource||initialHtmlForRecord(identity.slot,existing)||existing?.html||rawHtml);
+ const existing=savedIndependentRecordForOwner(identity.ctx,identity.index,identity.msg,store);
+ const existingSlot=independentLineageOriginSlot(existing)||identity.slot;
+ const baseline=String(existing?.initialHtml||host.__rabbitMirrorIndependentInitialSource||initialHtmlForRecord(existingSlot,existing)||existing?.html||rawHtml);
  const initialHtml=scrubIndependentInteractionState(baseline,baseline);
  const html=scrubIndependentInteractionState(rawHtml,initialHtml||baseline);
  if(!independentStoredHtmlRestorable(html)) return abort('scrubbed html failed restorability check');
@@ -8878,19 +9029,22 @@ function persistIndependentRepairFromEvent(event) {
   model:String(existing?.model||getSettings().independentApiModel||''),
   runtime:RUNTIME_VERSION,
   repairedByMaintenance:true,
+  ownerLineage:null,
  };
  // Reject before replacing the last restorable local record. The compactor may
  // otherwise discard an over-budget replacement and erase the previous result.
  if(!independentRecordWithinBudget(repaired)) return abort('repaired mirror exceeds storage budget');
- if(previousClean && previousClean!==html) appendHistoryEntry(identity.slot,{...existing,html:previousClean,initialHtml:initialHtml||previousClean});
+ if(previousClean && previousClean!==html) appendHistoryEntry(existingSlot,{...existing,html:previousClean,initialHtml:initialHtml||previousClean});
+ bindIndependentRecordContinuity(identity.ctx,identity.index,identity.msg,repaired,null,{completed:true,commit:false});
  sealIndependentTextReplacementRecord(repaired,identity.slot);
  saveRecordForSlot(store,identity.slot,repaired);
- if(!writeStore(store)) return abort('local repaired mirror store write failed');
+ if(!writeStore(store)){ showIndependentUnsavedOutput(repaired); return abort('local repaired mirror store write failed'); }
  const stored=findSavedRecord(readStore(),identity.slot,identity.legacySlots||[]);
- if(String(stored?.html||'')!==html) return abort('local repaired mirror store read-back mismatch');
+ if(String(stored?.html||'')!==html){ showIndependentUnsavedOutput(repaired); return abort('local repaired mirror store read-back mismatch'); }
  setOwnerLockForBase(identity.baseSlot,identity.slot,identity.sourceHash);
  const savedOwnerLock=ownerLockForBase(identity.baseSlot);
  if(String(savedOwnerLock?.slot||'')!==identity.slot || String(savedOwnerLock?.sourceHash||'')!==identity.sourceHash) return abort('owner lock read-back mismatch');
+ bindIndependentRecordContinuity(identity.ctx,identity.index,identity.msg,repaired,null,{completed:true});
  writePersistedOwner(identity.ctx,identity.index,identity.msg,repaired,{overwrite:true});
  const persistedOwner=persistedOwnerForMessage(identity.ctx,identity.index,identity.msg);
  if(String(persistedOwner?.html||'')!==html || String(persistedOwner?.sourceHash||'')!==identity.sourceHash) return abort('chat metadata read-back mismatch');
@@ -9419,6 +9573,7 @@ function runtimeMode(){
 }
 function passiveObservedIdentity(ctx,index,msg){
  return {
+  [INDEPENDENT_OWNER_OBSERVATION]:{ctx,index,msg},
   slot:messageSlotKey(ctx,index,msg),
   sourceHash:messageSourceFingerprint(msg),
   bodyHash:messageBodyFingerprint(msg),
@@ -9429,6 +9584,64 @@ function passiveObservedIdentity(ctx,index,msg){
 }
 function automaticCutoverVersionToken(msg){
  return `${swipeId(msg)}:${messageBodyFingerprint(msg)}`;
+}
+const INDEPENDENT_INTENT_OWNER=Symbol.for('rabbitMirror.independentIntentOwner');
+function boundIndependentIntentOwner(intent,ctx,index){
+ const owner=intent?.[INDEPENDENT_INTENT_OWNER];
+ return owner && owner.chat===ctx.chat && owner.tail===ctx.chat?.[Number(intent.tailIndex)]
+  && owner.message===ctx.chat?.[index] && owner.index===Number(index) && owner.swipe===swipeId(owner.message)
+  ? owner : null;
+}
+function refreshDeferredIndependentProof(ctx,index){
+ if(externalHostGenerationActivity().active) return false;
+ let changed=false;
+ const source=deferredIndependentGenerationIntents();
+ const next=source.map(intent=>{
+  if(deferredIndependentIntentCandidateIndex(intent,ctx)!==Number(index)
+   || intent.terminalReason!=='generation-ended' || !intent.terminalAt || intent.auxiliaryTerminalPending
+   || intent.intermediateAt) return intent;
+  const owner=boundIndependentIntentOwner(intent,ctx,index);
+  if(!owner || (!owner.receivedAt && !owner.renderedAt)) return intent;
+  const proof=automaticHostRenderProof(index);
+  const processor=hostModule?.streamingProcessor || ctx.streamingProcessor;
+  if(proof==='stream-tool-intermediate' || processor?.isStopped===true || processor?.abortController?.signal?.aborted===true) return intent;
+  const toolCapable=intent.toolCapable!==false || automaticHostGenerationMayUseTools(intent.type,ctx);
+  if(!owner.renderedAt && toolCapable && proof!=='stream-final') return intent;
+  const bodyHash=messageBodyFingerprint(owner.message);
+  if(!String(owner.message.mes||'').trim() || (intent.completedAt && intent.finalBodyHash===bodyHash)) return intent;
+  changed=true;
+  return Object.freeze({...intent,toolCapable,completedAt:Date.now(),finalIndex:Number(index),finalBodyHash:bodyHash,
+   finalProof:owner.renderedAt?(intent.finalProof||proof):'received-ended',completionReason:'owner-ended-reconciled'});
+ });
+ if(changed) globalThis[INDEPENDENT_GENERATION_INTENTS_KEY]=next;
+ return changed;
+}
+function automaticAuthorizationLineage(ctx,index,evidence){
+ const fromIntent=boundIndependentIntentOwner(evidence,ctx,index);
+ const fromRender=evidence?.tentativeRender;
+ const owner=fromIntent || (fromRender?.message===ctx.chat?.[index] && fromRender?.chat===ctx.chat ? fromRender : null);
+ if(!owner) return null;
+ const ended=fromIntent ? evidence.terminalReason==='generation-ended'
+  : evidence.terminalReason===String(hostModule?.event_types?.GENERATION_ENDED||'GENERATION_ENDED');
+ return {chat:ctx.chat,message:ctx.chat[index],index:Number(index),swipe:swipeId(ctx.chat[index]),
+  terminalEnded:ended,epoch:operationEpochForBase(messageBaseSlotKey(ctx,index,ctx.chat[index]))};
+}
+function stampAutomaticAuthorizationEpoch(ctx,index){
+ const proof=automaticGenerationCutovers.get(chatKey(ctx))?.authorized?.get(Number(index))?.[INDEPENDENT_INTENT_OWNER];
+ if(proof) proof.epoch=operationEpochForBase(messageBaseSlotKey(ctx,index,ctx.chat[index]));
+}
+function refreshUnpaidAutomaticAuthorization(ctx,index,authorization){
+ const cutover=automaticGenerationCutovers.get(chatKey(ctx));
+ const proof=authorization?.[INDEPENDENT_INTENT_OWNER]; const msg=ctx.chat?.[index];
+ if(!proof || cutover?.authorized.get(Number(index))!==authorization || proof.chat!==ctx.chat
+  || proof.message!==msg || proof.index!==Number(index) || proof.swipe!==swipeId(msg) || !proof.terminalEnded) return false;
+ const base=messageBaseSlotKey(ctx,index,msg);
+ if(proof.epoch!==operationEpochForBase(base) || automaticDispatchAlreadyConsumed(base)
+  || activeIndependentFlightForBase(base)) return false;
+ if([...automaticFailureStops.values()].some(failure=>failure.baseSlot===base && failure.operationEpoch===proof.epoch)) return false;
+ if(cutover.activeHostGeneration || externalHostGenerationActivity().active) return 'waiting';
+ authorization.token=automaticCutoverVersionToken(msg);
+ return true;
 }
 function deferredIndependentGenerationIntents(){
  const now=Date.now();
@@ -9475,6 +9688,7 @@ function deferredIndependentIntentHasFinalProof(intent,ctx,index){
    && Number(intent?.completedAt)>0
   && lifecycleComplete
   && isRabbitMirrorEligibleAssistantMessage(message)
+  && (!intent?.[INDEPENDENT_INTENT_OWNER] || !!boundIndependentIntentOwner(intent,ctx,normalized))
    && messageBodyFingerprint(message)===String(intent?.finalBodyHash||'');
 }
 function deferredIndependentIntentCompletedAt(ctx,index){
@@ -9488,7 +9702,7 @@ function claimDeferredIndependentGenerationIntent(ctx,index,reason='deferred-gen
  const normalized=Number(index); const source=deferredIndependentGenerationIntents();
  const matching=source.filter(intent=>deferredIndependentIntentCandidateIndex(intent,ctx)===normalized
    && (!requireFinalProof || deferredIndependentIntentHasFinalProof(intent,ctx,normalized)));
- if(!matching.length || !unlockAutomaticGenerationCutover(ctx,normalized,reason)) return false;
+ if(!matching.length || !unlockAutomaticGenerationCutover(ctx,normalized,reason,matching.at(-1))) return false;
  // Consume only the exact target proof(s). Other completed messages in the same
  // chat may have finished before the cold graph woke and remain recoverable.
  const consumed=new Set(matching);
@@ -9728,7 +9942,7 @@ function automaticHostToolResultTail(ctx){
  return Array.isArray(tail?.extra?.tool_invocations) && tail.extra.tool_invocations.length>0;
 }
 function automaticHostRenderProof(index){
- const processor=hostModule?.streamingProcessor;
+ const processor=hostModule?.streamingProcessor || getContext()?.streamingProcessor;
  if(processor && Number(processor.messageId)===Number(index) && processor.isFinished===true){
   return Array.isArray(processor.toolCalls) && processor.toolCalls.length>0
    ? 'stream-tool-intermediate'
@@ -9770,7 +9984,8 @@ function beginAutomaticHostGeneration(ctx,type='',nested=false,dryRun=false){
   current.phase=Number(current.phase||0)+1;
   current.phaseBaselineIndex=baseline.index;
   current.phaseBaselineToken=baseline.token;
-   current.tentativeRender=null;
+  current.tentativeRender=null;
+   current.received=null;
    current.intermediateRender=null;
    current.terminalSeen=false;
    current.terminalAt=0;
@@ -9784,12 +9999,16 @@ function beginAutomaticHostGeneration(ctx,type='',nested=false,dryRun=false){
  clearAutomaticHostGenerationSettlement(current);
  const chat=Array.isArray(ctx?.chat)?ctx.chat:[];
  const tailIndex=chat.length-1; const tail=tailIndex>=0?chat[tailIndex]:null;
+ if(['continue','swipe','regenerate'].includes(normalized)){
+  revokeIndependentRecordContinuity(ctx,tailIndex);
+  cutover.authorized.delete(tailIndex);
+ }
  if(['continue','swipe','regenerate'].includes(normalized) && cutover.earlyBodies?.has(tailIndex)){
   cancelEarlyBodyOwner(cutover.earlyBodies.get(tailIndex),'new-host-operation');cutover.earlyBodies.delete(tailIndex);
  }
  const baseline=automaticHostGenerationPhaseBaseline(ctx);
  cutover.activeHostGeneration={
-  chat:chatKey(ctx),type:normalized,startedAt:Date.now(),phase:0,
+  chat:chatKey(ctx),chatRef:chat,type:normalized,startedAt:Date.now(),phase:0,
   startChatLength:chat.length,startTailIndex:tailIndex,
   startTailRole:tail?.is_user===true?'user':(tail?'assistant':'none'),
    startTailToken:tail&&!tail.is_user?automaticCutoverVersionToken(tail):'',
@@ -9801,18 +10020,23 @@ function beginAutomaticHostGeneration(ctx,type='',nested=false,dryRun=false){
   };
  return 'new';
 }
-function unlockAutomaticGenerationCutover(ctx,index,reason='host-generation-finished'){
+function unlockAutomaticGenerationCutover(ctx,index,reason='host-generation-finished',evidence=null){
  const cutover=ensureAutomaticGenerationCutover(ctx); const normalized=Number(index); const msg=ctx?.chat?.[normalized];
  if(!Number.isInteger(normalized)||normalized<0||!isRabbitMirrorEligibleAssistantMessage(msg)) return false;
  const token=automaticCutoverVersionToken(msg);
  if(!token) return false;
- cutover.authorized.set(normalized,{token,reason:String(reason||''),ts:Date.now()});
+ cutover.authorized.set(normalized,{token,reason:String(reason||''),ts:Date.now(),[INDEPENDENT_INTENT_OWNER]:automaticAuthorizationLineage(ctx,normalized,evidence)});
  return true;
 }
 function automaticHostGenerationRenderMatches(ctx,index,owner){
  if(!owner || String(owner.chat||'')!==chatKey(ctx)) return false;
+ if(owner.chatRef && owner.chatRef!==ctx.chat) return false;
  const normalized=Number(index); const msg=ctx?.chat?.[normalized];
  if(!Number.isInteger(normalized)||normalized<0||!isRabbitMirrorEligibleAssistantMessage(msg)||!String(msg.mes||'').trim()) return false;
+ for(const bound of [owner.received,owner.tentativeRender,owner.intermediateRender]){
+  if(bound?.message && bound.phase===Number(owner.phase||0)
+   && (bound.chat!==ctx.chat || bound.message!==msg || bound.index!==normalized || bound.swipe!==swipeId(msg))) return false;
+ }
  const last=lastAssistantMessage(ctx); if(!last || last.i!==normalized) return false;
  const token=automaticCutoverVersionToken(msg);
  if(!token || (normalized===Number(owner.phaseBaselineIndex) && token===String(owner.phaseBaselineToken||''))) return false;
@@ -9833,6 +10057,7 @@ function noteAutomaticHostGenerationTerminal(ctx,reason='host-generation-ended')
   owner.auxiliaryTerminalReason=String(reason||'').slice(0,64);
   return 'auxiliary';
  }
+ if(owner.terminalSeen===true) return 'terminal';
  owner.terminalSeen=true; owner.terminalAt=Date.now(); owner.terminalReason=String(reason||'').slice(0,64);
  return 'terminal';
 }
@@ -9850,20 +10075,51 @@ function noteAutomaticHostGenerationRender(ctx,index){
  const proof=automaticHostRenderProof(normalized);
  if(proof==='stream-tool-intermediate'){
   owner.tentativeRender=null;
-  owner.intermediateRender={index:normalized,token:automaticCutoverVersionToken(msg),phase:Number(owner.phase||0),at:Date.now(),proof};
+  owner.intermediateRender={index:normalized,token:automaticCutoverVersionToken(msg),phase:Number(owner.phase||0),at:Date.now(),proof,
+   chat:ctx.chat,message:msg,swipe:swipeId(msg)};
   return false;
  }
  owner.tentativeRender={
   index:normalized,token:automaticCutoverVersionToken(msg),phase:Number(owner.phase||0),at:Date.now(),proof,
+  chat:ctx.chat,message:msg,swipe:swipeId(msg),
  };
+ return true;
+}
+function noteAutomaticHostGenerationReceived(ctx,index){
+ const owner=automaticGenerationCutovers.get(chatKey(ctx))?.activeHostGeneration;
+ if(!automaticHostGenerationRenderMatches(ctx,index,owner)) return false;
+ const bound=deferredIndependentGenerationIntents().some(intent=>!!boundIndependentIntentOwner(intent,ctx,index));
+ if(!bound) return false;
+ const msg=ctx.chat[index];
+ owner.received={index:Number(index),token:automaticCutoverVersionToken(msg),phase:Number(owner.phase||0),
+  at:Date.now(),chat:ctx.chat,message:msg,swipe:swipeId(msg)};
+ return true;
+}
+function refreshAutomaticHostGenerationEvidence(ctx,owner){
+ if(!owner?.terminalSeen || owner.terminalReason!==String(hostModule?.event_types?.GENERATION_ENDED||'GENERATION_ENDED')
+  || owner.auxiliaryTerminalPending || owner.intermediateRender || externalHostGenerationActivity().active) return false;
+ const rendered=owner.tentativeRender, candidate=rendered||owner.received;
+ if(!candidate || candidate.chat!==ctx.chat || candidate.message!==ctx.chat?.[candidate.index]
+  || candidate.swipe!==swipeId(candidate.message) || candidate.phase!==Number(owner.phase||0)
+  || !automaticHostGenerationRenderMatches(ctx,candidate.index,owner)) return false;
+ const proof=automaticHostRenderProof(candidate.index);
+ const processor=hostModule?.streamingProcessor || ctx.streamingProcessor;
+ if(proof==='stream-tool-intermediate' || processor?.isStopped===true || processor?.abortController?.signal?.aborted===true) return false;
+ owner.toolCapable=owner.toolCapable===true || automaticHostGenerationMayUseTools(owner.type,ctx);
+ if(!rendered && owner.toolCapable && proof!=='stream-final') return false;
+ const token=automaticCutoverVersionToken(candidate.message);
+ if(rendered && rendered.token===token) return true;
+ owner.tentativeRender={...candidate,token,at:Date.now(),proof:rendered?.proof||(proof==='stream-final'?proof:'received-ended')};
  return true;
 }
 function automaticHostGenerationSettlementCandidate(ctx,{externalActive=false}={}){
  const cutover=automaticGenerationCutovers.get(chatKey(ctx)); const owner=cutover?.activeHostGeneration;
+ refreshAutomaticHostGenerationEvidence(ctx,owner);
  const rendered=owner?.tentativeRender;
  if(!owner || !rendered || externalActive===true || Number(rendered.phase)!==Number(owner.phase||0)) return null;
  if(!automaticHostGenerationRenderMatches(ctx,rendered.index,owner)) return null;
  const msg=ctx?.chat?.[rendered.index]; const token=automaticCutoverVersionToken(msg);
+ if(rendered.message && (rendered.message!==msg || rendered.chat!==ctx.chat || rendered.swipe!==swipeId(msg))) return null;
  if(token!==String(rendered.token||'')) return null;
  const proof=String(rendered.proof||'exact-render');
  // A non-stream Chat Completion render may be the visible pre-tool assistant.
@@ -9883,7 +10139,7 @@ function settleAutomaticHostGeneration(ctx,index,reason='host-final-render'){
   || String(rendered.token||'')!==automaticCutoverVersionToken(ctx.chat[normalized])) return false;
  clearAutomaticHostGenerationSettlement(owner);
  cutover.activeHostGeneration=null;
- return unlockAutomaticGenerationCutover(ctx,normalized,reason);
+ return unlockAutomaticGenerationCutover(ctx,normalized,reason,owner);
 }
 function suppressesAutomaticGeneration(ctx,index){
  const cutover=automaticGenerationCutovers.get(chatKey(ctx));
@@ -9893,6 +10149,8 @@ function suppressesAutomaticGeneration(ctx,index){
  if(!Number.isInteger(normalized) || normalized<0) return true;
  const msg=ctx?.chat?.[normalized]; const authorization=cutover.authorized.get(normalized);
  if(!isRabbitMirrorEligibleAssistantMessage(msg) || !authorization) return true;
+ const proof=authorization[INDEPENDENT_INTENT_OWNER];
+ if(proof && (proof.chat!==ctx.chat || proof.message!==msg || proof.swipe!==swipeId(msg))) return true;
  return String(authorization.token||'')!==automaticCutoverVersionToken(msg);
 }
 function clearAutomaticGenerationCutovers(){
@@ -9911,6 +10169,7 @@ function activateAuthorizedAutomaticGeneration(ctx,index,reason='host-final-rend
   reason,
   automaticCutoverVersionToken(msg),
  );
+ stampAutomaticAuthorizationEpoch(ctx,normalized);
  ensureGenerationPlaceholderForIndex(normalized,false);
  queueMessageSync([normalized]);
  const live=currentGenerationIdentity(normalized);
@@ -9962,10 +10221,12 @@ function stopAutomaticHostGenerationSettlement(ctx,owner,reason='host-completion
  globalThis.__rabbitMirrorPerfDiag?.mark?.('independent.hostCompletionUnproven',{reason:String(reason||''),phase:Number(owner.phase||0)});
  // A timeout is UI/error evidence only, never permission to read a guessed tail
  // or send a paid request. Bind the retry shell only to this exact rendered body.
- const rendered=owner.tentativeRender || owner.intermediateRender;
+ const rendered=owner.tentativeRender || owner.intermediateRender || owner.received;
  const index=Number(rendered?.index); const msg=ctx?.chat?.[index];
  if(!rendered || !automaticHostGenerationRenderMatches(ctx,index,owner)
-  || automaticCutoverVersionToken(msg)!==String(rendered.token||'')) return true;
+  || (!rendered.message && automaticCutoverVersionToken(msg)!==String(rendered.token||''))) return true;
+ // A positively bound object may have been postprocessed while waiting. This
+ // only places a zero-request error on its current body; it grants no dispatch.
  const live=currentGenerationIdentity(index); const el=messageElement(index);
  if(!live || !el || hasExistingFollowRabbitMirror(ctx,index,msg) || hasGenerationWorkFor(index,live.slot,live.sourceHash)) return true;
  cutover.authorized.delete(index);
@@ -10017,7 +10278,7 @@ function scheduleAutomaticHostGenerationSettlement(delay=FINAL_RENDER_POLL_INTER
   if(liveCutover?.activeHostGeneration!==owner || String(owner.chat||'')!==chatKey(ctx)) return;
   const external=externalHostGenerationActivity();
   const candidate=automaticHostGenerationSettlementCandidate(ctx,{externalActive:external.active});
-  const renderedAt=Number(owner.tentativeRender?.at||0);
+  const renderedAt=Number(owner.tentativeRender?.at||owner.received?.at||0);
   // Even a terminal-backed render gets one short final-paint window. This lets a
   // recursive tool START revoke the intermediate phase before authorization;
   // the downstream poll then rechecks the exact hash/revision once more.
@@ -10031,8 +10292,10 @@ function scheduleAutomaticHostGenerationSettlement(delay=FINAL_RENDER_POLL_INTER
   // A non-stream tool response can render before tool execution. If the host
   // then loses its shared END edge, do not hang or turn elapsed time into final
   // proof: stop with an explicit manual retry entry after a bounded grace window.
-  if(!external.active && owner.toolCapable===true && owner.terminalSeen!==true
-   && owner.tentativeRender?.proof==='exact-render' && renderedAt
+  const receivedWithoutFinal=!owner.tentativeRender && !owner.intermediateRender && owner.received
+   && owner.terminalSeen===true && owner.terminalReason===String(hostModule?.event_types?.GENERATION_ENDED||'GENERATION_ENDED');
+  if(!external.active && owner.toolCapable===true
+   && ((owner.terminalSeen!==true && owner.tentativeRender?.proof==='exact-render') || receivedWithoutFinal) && renderedAt
    && Date.now()-renderedAt>=HOST_FINAL_PROOF_WAIT_MS){
    stopAutomaticHostGenerationSettlement(ctx,owner,'final-proof-missing');
    return;
@@ -10059,6 +10322,7 @@ function recoverDeferredAutomaticHostCompletion(ctx,index,reason='deferred-host-
  if(runtimeMode()!=='independent') return false;
  const normalized=Number(index);
  if(!Number.isInteger(normalized)||normalized<0||externalHostGenerationActivity().active) return false;
+ refreshDeferredIndependentProof(ctx,normalized);
  const completedAt=deferredIndependentIntentCompletedAt(ctx,normalized);
  if(!completedAt || !claimDeferredIndependentGenerationIntent(ctx,normalized,reason,{requireFinalProof:true})) return false;
  hostGenerationInProgress=false; hostGenerationHintStartedAt=0; clearGenerationPlaceholderPoll();
@@ -10075,17 +10339,20 @@ function recoverDeferredIndependentGenerations(){
  for(const index of candidates){
   const msg=ctx.chat?.[index];
   if(!isRabbitMirrorEligibleAssistantMessage(msg) || !messageElement(index)) continue;
+  refreshDeferredIndependentProof(ctx,index);
   // A cold runtime can initialize after the first streaming fragment but before
   // final paint. Recovery therefore requires completion proof captured by the
   // lightweight bridge plus the same final正文 hash; nonempty partial text alone
   // is never enough to consume an intent.
   const completedAt=deferredIndependentIntentCompletedAt(ctx,index);
-  if(!completedAt || !claimDeferredIndependentGenerationIntent(ctx,index,'deferred-runtime-recovery',{requireFinalProof:true})) continue;
+  if(!completedAt){ recoverDeferredUnprovenOwner(ctx,index); continue; }
+  if(!claimDeferredIndependentGenerationIntent(ctx,index,'deferred-runtime-recovery',{requireFinalProof:true})) continue;
   recovered+=1;
   if(automaticGenerationCutovers.get(chatKey(ctx))?.earlyBodies?.has(index)){
    settleEarlyBodyAtFinal(ctx,index);queueMessageSync([index]);continue;
   }
   advanceOperationEpochForBase(messageBaseSlotKey(ctx,index,msg),'deferred-runtime-recovery',automaticCutoverVersionToken(msg));
+  stampAutomaticAuthorizationEpoch(ctx,index);
   ensureGenerationPlaceholderForIndex(index,hostGenerationLooksActive());
   queueMessageSync([index]);
   const finalRendered=!hostGenerationLooksActive() && !!liveVisibleIndependentMessageText(index,independentContextExcludedTagSet()).text;
@@ -10095,6 +10362,28 @@ function recoverDeferredIndependentGenerations(){
   scheduleMessageGeneration(index,recoveredDelay,true,finalRendered,false,completedAt);
  }
  return recovered;
+}
+function recoverDeferredUnprovenOwner(ctx,index){
+ const cutover=ensureAutomaticGenerationCutover(ctx);
+ if(cutover.activeHostGeneration || cutover.authorized.has(Number(index))) return false;
+ const intent=deferredIndependentGenerationIntents().filter(value=>String(value.chatKey||'')===chatKey(ctx)).at(-1);
+ const bound=boundIndependentIntentOwner(intent,ctx,index);
+ if(!bound?.receivedAt || intent?.terminalReason!=='generation-ended' || !intent.terminalAt
+  || intent.auxiliaryTerminalPending || intent.intermediateAt || deferredIndependentIntentCandidateIndex(intent,ctx)!==Number(index)) return false;
+ const live=currentGenerationIdentity(index);
+ if(!live || hasGenerationWorkFor(index,live.slot,live.sourceHash) || exactIndependentReadyForIdentity(index,live)) return false;
+ // Restore only the wait owner, never final proof or a dispatch authorization.
+ // The existing bounded settlement timer can accept a later real final render,
+ // or expose the missing proof with zero requests and the existing manual action.
+ cutover.activeHostGeneration={chat:chatKey(ctx),chatRef:ctx.chat,type:String(intent.type),startedAt:Number(intent.startedAt),phase:0,
+  startChatLength:Number(intent.tailIndex)+1,startTailIndex:Number(intent.tailIndex),startTailRole:String(intent.tailRole),
+  phaseBaselineIndex:-1,phaseBaselineToken:'',tentativeRender:null,intermediateRender:null,
+  received:{index:Number(index),token:automaticCutoverVersionToken(bound.message),phase:0,at:Number(bound.receivedAt),
+   chat:ctx.chat,message:bound.message,swipe:bound.swipe},
+  terminalSeen:true,terminalAt:Number(intent.terminalAt),terminalReason:String(hostModule?.event_types?.GENERATION_ENDED||'GENERATION_ENDED'),
+  auxiliaryTerminalPending:false,toolCapable:intent.toolCapable!==false || automaticHostGenerationMayUseTools(intent.type,ctx),
+  settleTimer:0,settleStartedAt:0};
+ return scheduleAutomaticHostGenerationSettlement();
 }
 function hasExistingFollowRabbitMirror(ctx,index,msg){
  const el=messageElement(index);
@@ -10145,6 +10434,7 @@ function settleIndependentHostsForInactiveSource(el){
 }
 
 function restoreIndependentMirrorPassively(ctx,store,el,index,msg){
+ const continuityChanged=updateIndependentRecordContinuity(ctx,index,msg,store);
  const observed=passiveObservedIdentity(ctx,index,msg);
  const key=recordKey(ctx,index,msg);
  let keep=collapseDuplicateIdentityHosts(el,key,'independent',observed.sourceHash);
@@ -10152,6 +10442,7 @@ function restoreIndependentMirrorPassively(ctx,store,el,index,msg){
  const persistedOwner=persistedOwnerForMessage(ctx,index,msg);
  const persistedReady=!persistedOwner?.deleted&&persistedOwner?.html&&independentStoredHtmlRestorable(persistedOwner.html)&&savedRecordMatchesObserved(persistedOwner,observed)?persistedOwner:null;
  const recovered=persistedReady?{saved:persistedReady,storeChanged:false}:persistedOwner?.deleted?{saved:null,storeChanged:false}:recoverSavedRecord(store,observed.slot,observed);
+ if(continuityChanged) recovered.storeChanged=true;
  let saved=recovered.saved;
  if(saved?.html && !savedRecordMatchesObserved(saved,observed)) saved=null;
  if(persistedReady){
@@ -10160,6 +10451,7 @@ function restoreIndependentMirrorPassively(ctx,store,el,index,msg){
   setOwnerLockForBase(messageBaseSlotKey(ctx,index,msg),persistedSlot,String(persistedReady.sourceHash||persistedReady.bodyHash||observed.sourceHash));
  }
  if(saved?.html){
+  if(bindIndependentRecordContinuity(ctx,index,msg,saved,store)) recovered.storeChanged=true;
   const host=ensureExternalUi(el,key,saved.html,'ready','independent',observed.sourceHash,saved);
   if(host){
    rebuildCollapsedReadyHost(el,host,key,'independent',saved.html,observed.sourceHash,saved);
@@ -10212,6 +10504,7 @@ function syncMessages(indices=null){
        // its exact origin marker first; only future replies use the independent
        // generator.
        for(const followHost of externalHosts(el).filter(n=>n.dataset.rmSource==='follow')) restoreFollowInline(followHost);
+       if(updateIndependentRecordContinuity(ctx,i,m,store)) storeChanged=true;
        const observed=observeMessageSourceRevision(ctx,i,m);
        const key=recordKey(ctx,i,m); const slot=observed.slot; const sourceHash=observed.sourceHash;
        const baseSlot=messageBaseSlotKey(ctx,i,m);
@@ -10336,6 +10629,7 @@ function syncMessages(indices=null){
         && String(activePending.sourceHash||'')===String(sourceHash||'')
         && Number(activePending.revision)===Number(observed.revision));
        if(saved?.html && (ownerLocked?.record || savedRecordMatchesObserved(saved,observed))){
+         if(bindIndependentRecordContinuity(ctx,i,m,saved,store)) storeChanged=true;
          if(!ownerLocked?.record){ setOwnerLockForBase(baseSlot,slot,sourceHash); writePersistedOwner(ctx,i,m,saved,{overwrite:false}); ownerLocked={record:saved,lock:{slot}}; }
          const host=ensureExternalUi(el,key,saved.html,'ready','independent',sourceHash,saved);
          if(host){
@@ -10751,8 +11045,9 @@ function resolveHostEventMessageIndex(payload,ctx=getContext(),{fallbackLastAssi
    if(exact>=0) raw=exact;
   }
  }
- const parsed=Number(raw);
- if(Number.isInteger(parsed) && parsed>=0 && isRabbitMirrorEligibleAssistantMessage(chat?.[parsed])) return parsed;
+ const explicit=typeof raw==='number' || (typeof raw==='string' && /^\d+$/.test(raw.trim()));
+ const parsed=explicit?Number(raw):NaN;
+ if(Number.isSafeInteger(parsed) && parsed>=0 && isRabbitMirrorEligibleAssistantMessage(chat?.[parsed])) return parsed;
  if(!fallbackLastAssistant) return null;
  const last=lastAssistantMessage(ctx)?.i;
  return Number.isInteger(last)&&last>=0?last:null;
@@ -10876,6 +11171,7 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
         queueMessageSync([id]);return;
        }
        if(early){cancelEarlyBodyOwner(early,'swipe-changed');automaticGenerationCutovers.get(chatKey(ctx)).earlyBodies.delete(id);}
+       independentRecordContinuity.delete(ctx.chat?.[id]);
        unlockAutomaticGenerationCutover(ctx,id,'host-swipe');
        const message=ctx.chat?.[id];
          const currentBase=isRabbitMirrorEligibleAssistantMessage(message)?messageBaseSlotKey(ctx,id,message):'';
@@ -10898,6 +11194,8 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
        const ctx=getContext();
        const id=resolveHostEventMessageIndex(messageId,ctx,{fallbackLastAssistant:true});
        if(Number.isInteger(id)&&id>=0){
+         noteAutomaticHostGenerationReceived(ctx,id);
+         scheduleAutomaticHostGenerationSettlement();
          const active=hostGenerationLooksActive();
          if(active) ensureGenerationPlaceholderForIndex(id,true);
          if(runtimeMode()!=='follow-external' || !active) queueMessageSync([id]);
