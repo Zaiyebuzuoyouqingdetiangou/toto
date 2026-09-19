@@ -1,5 +1,5 @@
 import { readLocalExternalImportFile, readPlainTextWorldBook } from './fileReader.js?rmv=1.5.53-cn-boundary1';
-import { getSettings, updateSettings } from '../settings.js?rmv=1.5.53-cn-boundary1';
+import { getSettings, updateSettings } from '../settings.js?rmv=1.5.53-timing1';
 import { listHostWorldBooks, readHostWorldBook } from './hostReader.js?rmv=1.5.53-cn-boundary1';
 import { searchNormalizedWorldBookEntries } from './normalize.js?rmv=1.5.53-cn-boundary1';
 import {

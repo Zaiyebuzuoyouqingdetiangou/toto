@@ -1,7 +1,7 @@
-import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt, destroyIndependentGenerationIntentBridge, initIndependentGenerationIntentBridge, prewarmRabbitMirrorGenerationRuntime } from './src/injector.js?rmv=1.5.53-cn-boundary1';
+import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt, destroyIndependentGenerationIntentBridge, initIndependentGenerationIntentBridge, prewarmRabbitMirrorGenerationRuntime } from './src/injector.js?rmv=1.5.53-manualdiag1';
 import { clearLastCombo } from './src/storage.js?rmv=1.5.53-cn-boundary1';
 import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { getSettings, updateSettings } from './src/settings.js?rmv=1.5.53-cn-boundary1';
+import { getSettings, updateSettings } from './src/settings.js?rmv=1.5.53-timing1';
 import { initRabbitMirrorIndependentSecurityGuard, destroyRabbitMirrorIndependentSecurityGuard } from './src/independentSecurityGuard.js?rmv=1.5.53-cn-boundary1';
 import { initRabbitMirrorHostCompatibility, isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface, getRabbitMirrorEarlyBootstrap } from './src/hostCompatibility.js?rmv=1.5.53-cn-boundary1';
 
@@ -74,11 +74,11 @@ async function ensureDeferredCoreRuntime(reason = 'scheduled-idle') {
     if (deferredRuntimeModules) return deferredRuntimeModules;
     if (deferredRuntimePromise) return deferredRuntimePromise;
     deferredRuntimePromise = Promise.all([
-        import('./src/outputSanitizer.js?rmv=1.5.53-cn-boundary1'),
-        import('./src/visualScanner.js?rmv=1.5.53-cn-boundary1'),
-        import('./src/independentApi.js?rmv=1.5.53-cn-boundary1'),
+        import('./src/outputSanitizer.js?rmv=1.5.53-manualdiag1'),
+        import('./src/visualScanner.js?rmv=1.5.53-manualdiag1'),
+        import('./src/independentApi.js?rmv=1.5.53-manualdiag1'),
         import('./src/touchTheater.js?rmv=1.5.53-cn-boundary1'),
-        import('./src/ui.js?rmv=1.5.53-cn-boundary1'),
+        import('./src/ui.js?rmv=1.5.53-diaglocation1'),
         import('./src/composerClearance.js?rmv=1.5.53-cn-boundary1'),
     ]).then(async ([output, visual, independent, touch, ui, clearance]) => {
         if (!runtimeIsActive()) return null;
@@ -296,7 +296,7 @@ function loadMirrorVisualCompat() {
     if (!deferredRuntimeModules) return Promise.resolve(null);
     return Promise.all([
         loadOptional('checkedSelectorRepair', './src/checkedSelectorRepair.js?rmv=1.5.53-cn-boundary1', mod => mod.initRabbitMirrorCheckedSelectorRepair?.()),
-        loadOptional('renderedVisualFeedback', './src/renderedVisualFeedbackHotfix.js?rmv=1.5.53-cn-boundary1', mod => mod.initRabbitMirrorRenderedVisualFeedbackHotfix?.()),
+        loadOptional('renderedVisualFeedback', './src/renderedVisualFeedbackHotfix.js?rmv=1.5.53-manualdiag1', mod => mod.initRabbitMirrorRenderedVisualFeedbackHotfix?.()),
     ]);
 }
 
@@ -320,6 +320,34 @@ function isRabbitMirrorSurface(target) {
 
 function isRabbitMirrorSettingsSurface(target) {
     return !!target?.closest?.('#rabbit_mirror_theater_settings, #rh_independent_api_fields, #rh_generation_independent, [data-extension-name="兔子镜"]');
+}
+
+function installSettingsWandEntry() {
+    if (!runtimeIsActive() || document.getElementById('rabbit_mirror_wand_entry')) return;
+    const menu = document.getElementById('extensionsMenu');
+    if (!menu || document.getElementById('rabbit_mirror_wand_bootstrap')) return;
+    const entry = document.createElement('button');
+    entry.id = 'rabbit_mirror_wand_bootstrap';
+    entry.type = 'button';
+    entry.className = 'list-group-item flex-container flexGap5';
+    entry.textContent = '兔子镜';
+    entry.setAttribute('aria-haspopup', 'dialog');
+    entry.addEventListener('click', async () => {
+        if (entry.disabled || !runtimeIsActive()) return;
+        entry.disabled = true;
+        entry.textContent = '正在打开兔子镜…';
+        try {
+            await ensureDeferredCoreRuntime('wand-settings-intent');
+            if (!runtimeIsActive()) return;
+            const workbench = document.getElementById('rabbit_mirror_theater_settings')?.__rabbitMirrorWorkbench;
+            if (!workbench) throw new Error('RabbitMirror settings did not mount');
+            workbench.open();
+        } catch (error) {
+            if (entry.isConnected && runtimeIsActive()) entry.textContent = '打开失败，点击重试兔子镜';
+            console.debug('[RabbitMirror] settings entry could not open:', error);
+        } finally { if (entry.isConnected) entry.disabled = false; }
+    });
+    menu.append(entry);
 }
 
 function installOnDemandCompatTriggers() {
@@ -346,6 +374,7 @@ function installOnDemandCompatTriggers() {
     };
     lazyClickHandler = event => {
         const target = event?.target;
+        if (target?.closest?.('#extensionsMenuButton')) installSettingsWandEntry();
         if (!target?.closest || event?.isTrusted === false || !isRabbitMirrorSurface(target)) return;
         // Native details/label/radio interaction completes first. If the heavy runtime
         // is not already ready, this click stays entirely native and performs no import.
@@ -376,7 +405,7 @@ async function ensureExternalDiagnostics() {
     if (externalDiagnosticsApi) return externalDiagnosticsApi;
     if (externalDiagnosticsPromise) return externalDiagnosticsPromise;
     const revision = ++externalDiagnosticsOperationRevision;
-    const loadPromise = import('./src/externalDiagnostics.js?rmv=1.5.53-cn-boundary1').then(mod => {
+    const loadPromise = import('./src/externalDiagnostics.js?rmv=1.5.53-ttperfdiag1').then(mod => {
         if (!runtimeIsActive() || !externalDiagnosticsDesiredEnabled || revision !== externalDiagnosticsOperationRevision) return null;
         externalDiagnosticsModule = mod;
         externalDiagnosticsApi = mod.initRabbitMirrorExternalDiagnostics?.() || null;
@@ -398,7 +427,7 @@ function disableExternalDiagnostics() {
 }
 
 function clearDeferredGenerationSnapshots() {
-    void import('./src/generationGuard.js?rmv=1.5.53-cn-boundary1')
+    void import('./src/generationGuard.js?rmv=1.5.53-timing1')
         .then(mod => {
             // Disable may await this import while a newer installation takes
             // ownership. Do not clear that owner's shared snapshot/attempt keys.
@@ -435,6 +464,7 @@ jQuery(() => {
     initIndependentGenerationIntentBridge();
     initRabbitMirrorIndependentSecurityGuard({ getSettings, updateSettings });
     installOnDemandCompatTriggers();
+    installSettingsWandEntry();
     scheduleDeferredCoreRuntime();
     console.log(`[RabbitMirror] lightweight bootstrap ${RABBIT_MIRROR_RUNTIME_VERSION} ready; heavy runtime deferred`);
 });
@@ -458,6 +488,7 @@ export function onDisable() {
     deferredHostStableSince = 0;
     generationPrewarmStarted = false;
     generationPrewarmDone = false;
+    document.getElementById('rabbit_mirror_wand_bootstrap')?.remove();
     removeOnDemandCompatTriggers();
     destroyOptionalCompat();
     destroyFeedbackCatPromptSync();

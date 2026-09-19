@@ -1,21 +1,22 @@
 import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.53-cn-boundary1';
 import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, getRabbitMirrorExternalPlacementParent, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.5.53-cn-boundary1';
 import { recordTtSurface, ttSurfaceNow } from './ttSurfaceDiagnostics.js?rmv=1.5.53-cn-boundary1';
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5.53-cn-boundary1';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5.53-timing1';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.5.53-timing1';
 import { assertRabbitMirrorIndependentResponseBytes, assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.5.53-cn-boundary1';
 import { parseIndependentAdvancedOptions, buildIndependentAdvancedCarrier, applyIndependentAdvancedExclusions, independentAdvancedOptionsSignature } from './advancedRequestOptions.js?rmv=1.5.53-cn-boundary1';
-import { buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.5.53-cn-boundary1';
+import { buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.5.53-timing1';
 import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from './externalWorldBook/store.js?rmv=1.5.53-cn-boundary1';
 import { describeExternalWorldBookPreflightFailure, describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.53-cn-boundary1';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, armRabbitMirrorFirstUseInteraction, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.53-cn-boundary1';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, armRabbitMirrorFirstUseInteraction, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.53-manualdiag1';
 import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.53-cn-boundary1';
 import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=1.5.53-cn-boundary1';
 import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from './multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
 import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.53-cn-boundary1';
-import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, getRabbitMirrorFollowBatchFailure, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.53-cn-boundary1';
+import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, getRabbitMirrorFollowBatchFailure, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.53-manualdiag1';
 import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions, markPendingBatchAttempt, commitPendingComboBatch, releasePendingComboBatch } from './storage.js?rmv=1.5.53-cn-boundary1';
 import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.53-cn-boundary1';
+import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.53-timing1';
 import { readFollowPartialResult, followPartialResultFaceOwnerKey } from './followPartialResults.js?rmv=1.5.53-cn-boundary1';
 import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.5.53-cn-boundary1';
 import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.53-cn-boundary1';
@@ -237,6 +238,7 @@ let hostGenerationHintStartedAt = 0;
 let independentActionBridge = null;
 let runtimeConfigSequence = 0;
 let lastAppliedRuntimeMode = null;
+let lastAppliedIndependentTiming = null;
 const automaticGenerationCutovers = new Map();
 let backgroundLifecycleListenersInstalled = false;
 let backgroundResumeTimer = 0;
@@ -381,7 +383,7 @@ function independentRecordWithinBudget(value){
 function warnStorageTrimmed(){
  if(storageWarningShown) return;
  storageWarningShown=true;
- console.warn('[RabbitMirror] localStorage 接近容量上限，已淘汰最旧兔子镜缓存以保护当前结果。');
+ console.warn('[RabbitMirror] 本地存储发生容量不足或拒写；当前成品是否保存成功须以读回结果为准。');
 }
 function readStore(){ try { const v=JSON.parse(localStorage.getItem(STORE_KEY)||'{}'); return v&&typeof v==='object'?v:{}; } catch { return {}; } }
 function compactOutputStore(value){
@@ -455,6 +457,7 @@ function normalizeHistoryEntry(value){
   textReplacementReceipt:copyIndependentReplacementReceipt(value.textReplacementReceipt),
   textReplacementReceipts:Array.isArray(value.textReplacementReceipts)?value.textReplacementReceipts.slice(0,5).map(copyIndependentReplacementReceipt):null,
   initialTextReplacementReceipt:copyIndependentReplacementReceipt(value.initialTextReplacementReceipt),
+  ownerLineage:copyIndependentOwnerLineage(value.ownerLineage),
  };
 }
 function appendHistoryEntry(slot,value){
@@ -502,6 +505,7 @@ function compactChatPersistedRecord(value){
   textReplacementReceipt:record.textReplacementReceipt,
   textReplacementReceipts:record.textReplacementReceipts,
   initialTextReplacementReceipt:record.initialTextReplacementReceipt,
+  ownerLineage:record.ownerLineage,
   ...(faces?{apiRequest:{faceCount:faces.length,faces,...compactExternalSourceNote(diagnostic),
    ...(diagnostic.partial===true?{partial:true,failedFaces:(Array.isArray(diagnostic.failedFaces)?diagnostic.failedFaces:[])
     .filter(face=>Number.isInteger(face?.faceIndex)&&face.faceIndex>=0&&face.faceIndex<faces.length)
@@ -584,15 +588,17 @@ function mergeChatOutputsIntoLocalStore(ctx,store){
   if(!record.initialHtml && interactionStatePollutionScore(record.html)>0) record=normalizeSavedInteractionRecord(record,slot);
   const existing=store?.[slot];
   const existingReady=existing?.html && independentStoredHtmlRestorable(existing.html) ? compactChatPersistedRecord(existing) : null;
-  const localIsNewer=!!existingReady && Number(existingReady.ts||0)>Number(record.ts||0);
+  const localIsNewer=!!existingReady && (Number(existingReady.ts||0)>Number(record.ts||0)
+   || (Number(existingReady.ts||0)===Number(record.ts||0)
+    && Number(existingReady.ownerLineage?.observedAt||0)>Number(record.ownerLineage?.observedAt||0)));
   if(localIsNewer){
    // A maintenance repair is first committed to the live/local snapshot. If an
    // older chatMetadata copy is observed before the queued server save finishes,
    // keep the newer local HTML authoritative and immediately heal metadata.
-   if(String(existingReady.html||'')!==String(record.html||'')){
+   if(String(existingReady.html||'')!==String(record.html||'') || JSON.stringify(existingReady.ownerLineage)!==JSON.stringify(record.ownerLineage)){
     state.owners[ownerKey]=existingReady; metadataChanged=true;
    }
-  }else if(!existingReady || String(existingReady.html||'')!==String(record.html||'')){
+  }else if(!existingReady || String(existingReady.html||'')!==String(record.html||'') || JSON.stringify(existingReady.ownerLineage)!==JSON.stringify(record.ownerLineage)){
    saveRecordForSlot(store,slot,record,{dropLegacy:false}); storeChanged=true;
   }
   setOwnerLockForBase(base,slot,String((localIsNewer?existingReady:record)?.sourceHash||(localIsNewer?existingReady:record)?.bodyHash||''));
@@ -1182,6 +1188,104 @@ function messageSourceFingerprint(m){
  // only and must never create a second paid request for the same正文.
  return messageBodyFingerprint(m);
 }
+const INDEPENDENT_OWNER_OBSERVATION=Symbol.for('rabbitMirror.independentObservedOwner');
+const independentRecordContinuity=new WeakMap();
+let independentRecordContinuitySequence=0;
+function copyIndependentOwnerLineage(value){
+ if(!value || typeof value.id!=='string' || !value.id || typeof value.chatKey!=='string' || !value.chatKey
+  || !Number.isInteger(value.mesid) || value.mesid<0 || !Number.isInteger(value.swipe) || value.swipe<0
+  || typeof value.originSourceHash!=='string' || !value.originSourceHash
+  || typeof value.acceptedBodyHash!=='string' || !value.acceptedBodyHash) return null;
+ return {id:value.id,chatKey:value.chatKey,mesid:value.mesid,swipe:value.swipe,
+  originSourceHash:value.originSourceHash,acceptedBodyHash:value.acceptedBodyHash,observedAt:Number(value.observedAt)||0};
+}
+function independentLineageOriginSlot(record){
+ const lineage=copyIndependentOwnerLineage(record?.ownerLineage);
+ if(!lineage || lineage.originSourceHash!==String(record?.sourceHash||record?.bodyHash||'')) return '';
+ return `${lineage.chatKey}:${lineage.mesid}:${lineage.swipe}:${lineage.originSourceHash}`;
+}
+function independentLineageMatchesObserved(record,observed){
+ const lineage=copyIndependentOwnerLineage(record?.ownerLineage);
+ const owner=observed?.[INDEPENDENT_OWNER_OBSERVATION] || observed;
+ const ctx=owner?.ctx, msg=owner?.msg, index=owner?.index;
+ if(!lineage || !independentLineageOriginSlot(record) || !ctx || ctx.chat?.[index]!==msg
+  || lineage.chatKey!==chatKey(ctx) || lineage.mesid!==Number(index) || lineage.swipe!==swipeId(msg)
+  || lineage.acceptedBodyHash!==String(observed?.bodyHash||observed?.sourceHash||'')) return false;
+ const marker=msg?.extra?.rabbitMirrorOwnerLineage;
+ // The host may not have saved the new message marker yet. The durable proof
+ // still names an exact body observed in this owner, never an arbitrary mesid.
+ return !marker || (marker.revoked!==true && marker.id===lineage.id && marker.swipe===lineage.swipe);
+}
+function bindIndependentRecordContinuity(ctx,index,msg,record,store=null,{completed=false,commit=true}={}){
+ if(!record?.html || ctx?.chat?.[index]!==msg) return false;
+ const sourceHash=messageSourceFingerprint(msg);
+ const original=String(record.sourceHash||record.bodyHash||'');
+ const observed={sourceHash,bodyHash:sourceHash,[INDEPENDENT_OWNER_OBSERVATION]:{ctx,index,msg}};
+ if(!original || (original!==sourceHash && !independentLineageMatchesObserved(record,observed))) return false;
+ const base=messageBaseSlotKey(ctx,index,msg);
+ if(!completed && (hostGenerationLooksActive() || activeIndependentFlightForBase(base)
+  || hasExplicitSourceReplacementEvidence(ctx,index,msg))) return false;
+ let lineage=copyIndependentOwnerLineage(record.ownerLineage);
+ const marker=msg.extra?.rabbitMirrorOwnerLineage;
+ if(!completed && marker && (marker.revoked===true || (lineage && marker.id!==lineage.id))) return false;
+ if(lineage && (lineage.chatKey!==chatKey(ctx) || lineage.mesid!==Number(index) || lineage.swipe!==swipeId(msg)
+  || lineage.originSourceHash!==original)) return false;
+ const created=!lineage;
+ if(!lineage) lineage={id:`${Date.now().toString(36)}:${++independentRecordContinuitySequence}:${hashText(base+original)}`,
+  chatKey:chatKey(ctx),mesid:Number(index),swipe:swipeId(msg),originSourceHash:original,
+  acceptedBodyHash:sourceHash,observedAt:Date.now()};
+ record.ownerLineage=lineage;
+ if(!commit) return created;
+ if(!msg.extra || typeof msg.extra!=='object') msg.extra={};
+ msg.extra.rabbitMirrorOwnerLineage={id:lineage.id,swipe:lineage.swipe};
+ independentRecordContinuity.set(msg,{chat:ctx.chat,index:Number(index),base,epoch:operationEpochForBase(base),
+  id:lineage.id,slot:independentLineageOriginSlot(record),acceptedBodyHash:lineage.acceptedBodyHash});
+ if(created && store){
+  saveRecordForSlot(store,independentLineageOriginSlot(record),record,{dropLegacy:false});
+  writePersistedOwner(ctx,index,msg,record,{overwrite:true});
+ }
+ return created;
+}
+function updateIndependentRecordContinuity(ctx,index,msg,store){
+ const proof=independentRecordContinuity.get(msg);
+ if(!proof || proof.chat!==ctx.chat || proof.index!==Number(index) || proof.base!==messageBaseSlotKey(ctx,index,msg)
+  || proof.epoch!==operationEpochForBase(proof.base) || hostGenerationLooksActive()
+  || activeIndependentFlightForBase(proof.base) || hasExplicitSourceReplacementEvidence(ctx,index,msg)) return false;
+ const metadata=persistedOwnerForMessage(ctx,index,msg);
+ if(metadata?.deleted) return false;
+ const record=store?.[proof.slot] || metadata;
+ const lineage=copyIndependentOwnerLineage(record?.ownerLineage);
+ const marker=msg.extra?.rabbitMirrorOwnerLineage;
+ if(!record?.html || !lineage || lineage.id!==proof.id || independentLineageOriginSlot(record)!==proof.slot
+  || lineage.acceptedBodyHash!==proof.acceptedBodyHash || !marker || marker.revoked===true
+  || marker.id!==proof.id || marker.swipe!==swipeId(msg)) return false;
+ const bodyHash=messageSourceFingerprint(msg);
+ if(bodyHash===lineage.acceptedBodyHash || !String(msg.mes||'').trim()) return false;
+ const next={...record,ownerLineage:{...lineage,acceptedBodyHash:bodyHash,observedAt:Date.now()}};
+ // One original slot, one witnessed current body. Keep the paid HTML, provenance,
+ // initial state and text-filter receipts; no duplicate output/history or POST.
+ saveRecordForSlot(store,proof.slot,next,{dropLegacy:false});
+ writePersistedOwner(ctx,index,msg,next,{overwrite:true});
+ setOwnerLockForBase(proof.base,proof.slot,lineage.originSourceHash);
+ proof.acceptedBodyHash=bodyHash;
+ writeStore(store);
+ const stored=readStore()?.[proof.slot];
+ if(stored?.html!==next.html || stored?.ownerLineage?.acceptedBodyHash!==bodyHash) showIndependentUnsavedOutput(next);
+ return true;
+}
+function revokeIndependentRecordContinuity(ctx,index){
+ const msg=ctx?.chat?.[index]; if(!msg) return;
+ independentRecordContinuity.delete(msg);
+ if(msg.extra?.rabbitMirrorOwnerLineage) msg.extra.rabbitMirrorOwnerLineage={revoked:true,swipe:swipeId(msg)};
+}
+function savedIndependentRecordForOwner(ctx,index,msg,store){
+ const observed=passiveObservedIdentity(ctx,index,msg);
+ const persisted=persistedOwnerForMessage(ctx,index,msg);
+ if(persisted?.deleted) return null;
+ const locked=lockedIndependentRecordForBase(messageBaseSlotKey(ctx,index,msg),store)?.record;
+ return [findSavedRecord(store,observed.slot,observed.legacySlots||[]),locked,persisted]
+  .find(record=>record?.html && savedRecordMatchesObserved(record,observed)) || null;
+}
 function savedRecordMatchesObserved(saved,observed){
  if(!saved?.html||!observed) return false;
  const observedBody=String(observed.bodyHash||observed.sourceHash||'');
@@ -1190,13 +1294,13 @@ function savedRecordMatchesObserved(saved,observed){
  const savedBody=String(saved.bodyHash||'');
  if(savedBody && observedBody && savedBody===observedBody) return true;
  // Very old records sometimes stored the正文-only fingerprint only in sourceHash.
- return !!(savedSource && observedBody && savedSource===observedBody);
+ return !!(savedSource && observedBody && savedSource===observedBody) || independentLineageMatchesObserved(saved,observed);
 }
 function observeMessageSourceRevision(ctx,index,msg){
  const slot=messageSlotKey(ctx,index,msg); const sourceHash=messageSourceFingerprint(msg);
  const previous=messageSourceRevisions.get(slot);
  const revision=previous && previous.sourceHash===sourceHash ? previous.revision : Number(previous?.revision||0)+1;
- const value={slot,sourceHash,bodyHash:messageBodyFingerprint(msg),displayHash:messageDisplayFingerprint(msg),reasoningHash:messageReasoningFingerprint(msg),legacySlots:legacyMessageSlotKeys(ctx,index,msg),revision,seenAt:Date.now()};
+ const value={slot,sourceHash,bodyHash:messageBodyFingerprint(msg),displayHash:messageDisplayFingerprint(msg),reasoningHash:messageReasoningFingerprint(msg),legacySlots:legacyMessageSlotKeys(ctx,index,msg),revision,seenAt:Date.now(),[INDEPENDENT_OWNER_OBSERVATION]:{ctx,index,msg}};
  messageSourceRevisions.set(slot,value);
  if(messageSourceRevisions.size>400){
   const stale=[...messageSourceRevisions.entries()].sort((a,b)=>Number(a[1]?.seenAt||0)-Number(b[1]?.seenAt||0)).slice(0,messageSourceRevisions.size-320);
@@ -3982,13 +4086,16 @@ function captureIndependentPromptOwner(ctx,index,msg,signal,requestOptions,gener
  const baseSlot=messageBaseSlotKey(ctx,index,msg);
  const owner={chat:ctx?.chat,index,message:msg,chatKey:chatKey(ctx),swipe:swipeId(msg),sourceHash:messageSourceFingerprint(msg),
   baseSlot,operationEpoch:operationEpochForBase(baseSlot),signal,requestOptions,generationScopeKey,
-  earlyBody:requestOptions.earlyBodyOwner||null,
+  earlyBody:requestOptions.earlyBodyOwner||null,manualBody:requestOptions.manualBodyOwner||null,
   awaited:false,batchPlan:null,batchSignature:'',batchBound:false,batchPublished:false,batchReleaseIdentity:null};
  assertIndependentPromptOwner(owner);
  return owner;
 }
 function assertIndependentPromptOwner(owner){
  if(owner.earlyBody) assertEarlyBodyOwner(owner.earlyBody);
+ if(owner.manualBody && !manualBodyOwnerCurrent(owner.manualBody)) throw independentPromptOwnerPreflightError();
+ if(independentGenerationTiming(getSettings())==='off'
+  || (!owner.requestOptions.dispatchLease?.consumed?.() && !owner.requestOptions.manualRetry && !owner.manualBody && !automaticIndependentTiming())) throw independentPromptOwnerPreflightError();
  if(owner.memoryRequestSettingsKey) assertMemoryRequestSettings(getSettings(),owner.memoryRequestSettingsKey,'independent');
  const reference=owner.appearanceReference;
  if(reference){
@@ -4003,7 +4110,7 @@ function assertIndependentPromptOwner(owner){
  if(owner.signal?.aborted||!Array.isArray(owner.chat)||live?.chat!==owner.chat
   ||!Number.isSafeInteger(owner.index)||owner.index<0||live.chat[owner.index]!==owner.message
   ||chatKey(live)!==owner.chatKey||swipeId(owner.message)!==owner.swipe
-  ||(!owner.earlyBody&&messageSourceFingerprint(owner.message)!==owner.sourceHash)
+  ||(!owner.earlyBody&&!owner.manualBody&&messageSourceFingerprint(owner.message)!==owner.sourceHash)
   ||messageBaseSlotKey(live,owner.index,owner.message)!==owner.baseSlot
   ||operationEpochForBase(owner.baseSlot)!==owner.operationEpoch
   ||(Number.isSafeInteger(owner.requestOptions.dispatchLease?.epoch)&&owner.requestOptions.dispatchLease.epoch!==owner.operationEpoch)
@@ -4062,9 +4169,11 @@ async function callIndependentApi(ctx,index,msg,signal=null,requestOptions={}){
  const generationScopeKey=`independent:${Date.now().toString(36)}:${index}:${swipeId(msg)}`;
  const regularVisibleReader=createIndependentVisibleTextReader(index,st);
  const earlyBody=requestOptions.earlyBodyOwner||null;
+ const manualBody=requestOptions.manualBodyOwner||null;
  if(earlyBody) assertEarlyBodyOwner(earlyBody);
- const readVisible=earlyBody ? Object.assign((message,realIndex)=>Number(realIndex)===Number(index)
-  ? earlyBody.visible : regularVisibleReader(message,realIndex),{renderedIndexes:regularVisibleReader.renderedIndexes}) : regularVisibleReader;
+ const visibleOwner=earlyBody||manualBody;
+ const readVisible=visibleOwner ? Object.assign((message,realIndex)=>Number(realIndex)===Number(index)
+  ? visibleOwner.visible : regularVisibleReader(message,realIndex),{renderedIndexes:regularVisibleReader.renderedIndexes}) : regularVisibleReader;
  // Feedback-cat history and memory-plugin content belong to the main-generation path.
  // The independent request may inspect only this turn's visible text and approved summaries.
  const activeFeedback=null;
@@ -5820,6 +5929,9 @@ function sealIndependentTextReplacementRecord(record,slot,previousRecord=null,re
 }
 function prepareStoredIndependentRecordHtml(record,slot){
  if(!independentRecordWithinBudget(record) || !slot) return '';
+ const lineage=copyIndependentOwnerLineage(record.ownerLineage);
+ const originSlot=independentLineageOriginSlot(record);
+ if(originSlot && slot===`${lineage.chatKey}:${lineage.mesid}:${lineage.swipe}:${lineage.acceptedBodyHash}`) slot=originSlot;
  // This seam is reached only after the caller has selected and validated the
 // owning saved result. No startup readStore scan parses or hashes all records.
  if(hasMultifaceMarkup(record.html) && Array.isArray(record.textReplacementReceipts)){
@@ -6012,7 +6124,18 @@ function markMountedFaceProofs(host,source='independent'){
  for(const [index,details] of faces.entries()) markSanitizedRabbitMirrorFace(details,{faceIndex:index,faceCount:faces.length,sourceHash:String(host.dataset?.rmSourceHash||''),origin:String(source||'independent')});
  return faces.length;
 }
+// Diagnostics are optional and cannot change the operation's return or error.
+function beginHostWorkTiming(name){
+ let end;
+ try{ end=globalThis.__rabbitMirrorExternalDiag?.beginHostWork?.(name); }catch{}
+ if(typeof end!=='function') return null;
+ return ()=>{ try{ end(); }catch{} };
+}
 function refreshExistingExternalDetails(host,key,source='independent'){
+ const end=beginHostWorkTiming('independent.refreshExistingExternalDetails');
+ try{ return refreshExistingExternalDetailsCore(host,key,source); }finally{ end?.(); }
+}
+function refreshExistingExternalDetailsCore(host,key,source='independent'){
  if(!host?.isConnected || host.dataset.rmState!=='ready') return null;
  if(externalFaceDetails(host).length>1){
   const faces=externalFaceDetails(host);
@@ -6140,6 +6263,7 @@ function ensureExternalTools(host){
  if(!host?.isConnected) return;
  if(host.dataset?.rmState==='ready' && host.dataset?.rmSource==='independent') wireIndependentRejectedFaceControls(host);
  stampExternalDetailsOwnership(host);
+ if(host.dataset?.rmState==='manual') return;
  const historyRestoreLight=historicalLightHost(host);
  // Placement already owns one post-paint geometry pass. Tool refresh must not
  // reopen the old mobile settle timer chain.
@@ -6464,7 +6588,7 @@ function fallbackExternalDetails(state,text=''){
  const summary=document.createElement('summary');
  const label=document.createElement('span');
  label.setAttribute('data-rabbit-mirror-external-summary-label','true');
- label.textContent=state==='loading'?'【兔子镜：正在生成中……】':'【兔子镜：生成失败】';
+ label.textContent=state==='manual'?'【兔子镜：等待手动生成】':state==='loading'?'【兔子镜：正在生成中……】':'【兔子镜：生成失败】';
  summary.append(label);
  details.append(summary);
  if(state==='error') renderExternalErrorBody(details,text);
@@ -7702,6 +7826,10 @@ function scheduleIndependentReadyPostprocess(host,key='',html=''){
 }
 
 function ensureExternalUi(el,key,html,state='ready',source='independent',sourceHash='',savedRecord=null){
+ const end=beginHostWorkTiming('independent.ensureExternalUi');
+ try{ return ensureExternalUiCore(el,key,html,state,source,sourceHash,savedRecord); }finally{ end?.(); }
+}
+function ensureExternalUiCore(el,key,html,state='ready',source='independent',sourceHash='',savedRecord=null){
  const body=externalInsertTarget(el); if(!body) return null;
  let locallyPrepared=false;
  if(state==='ready' && source==='independent' && savedRecord?.html===html){
@@ -7834,7 +7962,7 @@ function ensureExternalUi(el,key,html,state='ready',source='independent',sourceH
  }
  if(!details){ details=fallbackExternalDetails(state,html); host.append(details); }
  markExternalDetails(details,key,source);
- setPlaceholderSummary(details,state==='loading'?'【兔子镜：正在生成中……】':'【兔子镜：生成失败】');
+ setPlaceholderSummary(details,state==='manual'?'【兔子镜：等待手动生成】':state==='loading'?'【兔子镜：正在生成中……】':'【兔子镜：生成失败】');
  let bodyNode=details.querySelector(':scope > .rabbit-mirror-external-placeholder-body');
  if(state==='error') renderExternalErrorBody(details,html);
  else if(html){
@@ -7980,6 +8108,7 @@ function confirmFinalRenderedGeneration(index){
  return true;
 }
 function scheduleMessageGeneration(index,delay=260,sourceAware=true,finalRenderConfirmed=false,sourceStabilityConfirmed=false,sourceStableSince=0){
+ if(!automaticIndependentTiming()) return null;
  const initialContext=getContext();
  const initialMessage=initialContext.chat?.[index];
  if(suppressesAutomaticGeneration(initialContext,index) || hasExistingFollowRabbitMirror(initialContext,index,initialMessage)) return null;
@@ -8011,6 +8140,19 @@ function scheduleMessageGeneration(index,delay=260,sourceAware=true,finalRenderC
  const poll=()=>{
   if(state.cancelled || !currentRuntime() || runtimeMode()!=='independent'){ finish(); return; }
   const live=currentGenerationIdentity(index);
+  if(live && suppressesAutomaticGeneration(live.ctx,index)){
+   const authorization=automaticGenerationCutovers.get(chatKey(live.ctx))?.authorized.get(Number(index));
+   const refreshed=refreshUnpaidAutomaticAuthorization(live.ctx,index,authorization);
+   if(refreshed==='waiting'){
+    if(Date.now()-state.startedAt<ACTIVE_GENERATION_WAIT_MS) queue(generationWaitPollDelay(state.startedAt));
+    else { finish(); renderGenerationGateTimeout(index,'source-stability'); }
+    return;
+   }
+   if(refreshed===true){
+    state.lastHash=''; state.lastRevision=-1; state.stableSince=0; state.sourceStabilityConfirmed=false;
+    state.finalRenderHash=live.sourceHash; state.finalRenderRevision=live.revision; state.finalRenderAt=Date.now();
+   }
+  }
   if(live && (suppressesAutomaticGeneration(live.ctx,index) || hasExistingFollowRabbitMirror(live.ctx,index,live.msg))){ finish(); return; }
   if(live) cancelSupersededFlightsForBase(live.baseSlot,live.sourceHash);
   if(!live){ if(Date.now()-state.startedAt<OWNER_REATTACH_WAIT_MS) queue(generationWaitPollDelay(state.startedAt)); else { finish(); renderGenerationGateTimeout(index,'identity-missing'); } return; }
@@ -8087,6 +8229,7 @@ function clearGenerationPlaceholderPoll(){
  generationPlaceholderStartedAt=0;
 }
 function scheduleGenerationPlaceholderPoll(delay=80){
+ if(!automaticIndependentTiming()) return;
  clearGenerationPlaceholderPoll();
  generationPlaceholderStartedAt=Date.now();
  const poll=()=>{
@@ -8162,7 +8305,7 @@ function currentGenerationIdentity(index){
  const ctx=getContext(); const msg=ctx.chat?.[index];
  if(!isRabbitMirrorEligibleAssistantMessage(msg)) return null;
  const observed=observeMessageSourceRevision(ctx,index,msg);
- return {ctx,msg,index,slot:observed.slot,baseSlot:messageBaseSlotKey(ctx,index,msg),legacySlots:observed.legacySlots||[],key:recordKey(ctx,index,msg),sourceHash:observed.sourceHash,bodyHash:observed.bodyHash,displayHash:observed.displayHash,reasoningHash:observed.reasoningHash,revision:observed.revision};
+ return {ctx,msg,index,slot:observed.slot,baseSlot:messageBaseSlotKey(ctx,index,msg),legacySlots:observed.legacySlots||[],key:recordKey(ctx,index,msg),sourceHash:observed.sourceHash,bodyHash:observed.bodyHash,displayHash:observed.displayHash,reasoningHash:observed.reasoningHash,revision:observed.revision,[INDEPENDENT_OWNER_OBSERVATION]:{ctx,index,msg}};
 }
 function settleCancelledIndependentFlightUi(flight,reason='cancelled'){
  if(!flight || flight.uiSettled) return false;
@@ -8235,13 +8378,13 @@ function cancelSupersededFlightsForBase(baseSlot,currentSourceHash=''){
  if(!base) return;
  for(const [id,flight] of globalFlights()){
   if(String(flight?.baseSlot||'')!==base || String(flight?.sourceHash||'')===String(currentSourceHash||'')) continue;
-  if(automaticFlightStillOwnsBaseOperation(flight)) continue;
+  if(automaticFlightStillOwnsBaseOperation(flight) || (flight.manualBodyOwner && manualBodyOwnerCurrent(flight.manualBodyOwner))) continue;
   abortFlight(flight,'source-version-replaced');
   globalFlights().delete(id);
  }
  for(const [slot,active] of pending.entries()){
   if(String(active?.baseSlot||'')!==base || String(active?.sourceHash||'')===String(currentSourceHash||'')) continue;
-  if(automaticFlightStillOwnsBaseOperation(active)) continue;
+  if(automaticFlightStillOwnsBaseOperation(active) || (active.manualBodyOwner && manualBodyOwnerCurrent(active.manualBodyOwner))) continue;
   abortFlight(active,'source-version-replaced');
   pending.delete(slot);
  }
@@ -8284,7 +8427,7 @@ function cancelAllIndependentFlights(reason='runtime-changed'){
  for(const active of pending.values()) abortFlight(active,reason);
  pending.clear();
 }
-async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay=null,earlyBodyOwner=null){
+async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay=null,earlyBodyOwner=null,manualBodyOwner=null){
  const ctx=getContext(); const currentMsg=ctx.chat?.[index];
  if(!isRabbitMirrorEligibleAssistantMessage(currentMsg)) return;
  msg=currentMsg;
@@ -8293,6 +8436,12 @@ async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay
  const key=recordKey(ctx,index,msg); const slot=observed.slot; const sourceHash=observed.sourceHash; const bodyHash=observed.bodyHash; const displayHash=observed.displayHash; const reasoningHash=observed.reasoningHash; const revision=observed.revision; const st=getSettings();
  const baseSlot=messageBaseSlotKey(ctx,index,msg);
  if(st.enabled===false || st.autoRabbitMirrorInjection===false || st.generationSource!=='independent' || runtimeMode()!=='independent') return;
+ if(independentGenerationTiming(st)==='off' || (!force&&!automaticIndependentTiming())) return;
+ if(force && independentGenerationTiming(st)==='manual'){
+  const active=activeIndependentFlightForBase(baseSlot);
+  if(active) return active.task;
+  manualBodyOwner??=captureManualBodyOwner(ctx,index,msg,manualIntentForMessage(ctx,index));
+ }
  if(!force && ((!earlyBodyOwner&&suppressesAutomaticGeneration(ctx,index)) || hasExistingFollowRabbitMirror(ctx,index,msg))) return;
  if(!force){
   const preciseFailure=automaticFailureStopFor(slot,sourceHash);
@@ -8334,6 +8483,10 @@ async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay
   // the manual result after it has already mounted.
   advanceOperationEpochForBase(baseSlot,'manual-resay');
   cancelFlightsForMessage(index,'manual-resay');
+  if(manualBodyOwner){
+   manualBodyOwner.epoch=operationEpochForBase(baseSlot);
+   rememberManualClickOwner(manualBodyOwner);
+  }
  } else cancelSupersededFlightsForBase(baseSlot,sourceHash);
  const recoveredAtGeneration=recoverSavedRecord(store,slot,observed);
  let saved=persistedSuppressed&&!force?null:recoveredAtGeneration.saved;
@@ -8408,7 +8561,7 @@ async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay
  }
  const runId=++generationSequence; const controller=new AbortController(); let stale=false;
  const operationEpoch=Number(dispatchLease?.epoch||operationEpochForBase(baseSlot));
- const flight={task:null,runId,key,slot,index,sourceHash,revision,manual:!!force,cancelled:false,controller,baseSlot,operationEpoch,flightKey,dispatchLease,timedOut:false,timeoutError:null,deadline:null,loadingHost,previousReadyRecord,uiSettled:false,batchPlan:null};
+ const flight={task:null,runId,key,slot,index,sourceHash,revision,manual:!!force,manualBodyOwner,cancelled:false,controller,baseSlot,operationEpoch,flightKey,dispatchLease,timedOut:false,timeoutError:null,deadline:null,loadingHost,previousReadyRecord,uiSettled:false,batchPlan:null};
  if(earlyBodyOwner){flight.earlyBodyOwner=earlyBodyOwner;earlyBodyOwner.flight=flight;}
  const currentIdentityForFlight=()=>{
   const live=currentGenerationIdentity(index); const active=pending.get(slot);
@@ -8417,6 +8570,7 @@ async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay
    && !flight.cancelled && globalFlights().get(flightKey)===flight;
   if(!registered) return null;
   if(earlyBodyOwner) return earlyBodyOwnerCurrent(earlyBodyOwner) ? live : null;
+  if(manualBodyOwner) return manualBodyOwnerCurrent(manualBodyOwner) ? live : null;
   if(force){
    return live.slot===slot && live.key===key && live.sourceHash===sourceHash && live.revision===revision ? live : null;
   }
@@ -8433,10 +8587,10 @@ async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay
   flight.timeoutError=error;
   timeoutReject?.(error);
  });
- const apiTask=callIndependentApi(ctx,index,msg,controller.signal,{manualRetry:force,slot,dispatchLease,multifaceResay,earlyBodyOwner,isPromptOwnerCurrent:stillCurrent,currentBatchPlan:()=>flight.batchPlan,onProgress:()=>flight.deadline?.progress?.(),onBatchPlan:plan=>{ flight.batchPlan=plan||null; }});
+ const apiTask=callIndependentApi(ctx,index,msg,controller.signal,{manualRetry:force&&!manualBodyOwner?.firstGeneration,slot,dispatchLease,multifaceResay,earlyBodyOwner,manualBodyOwner,isPromptOwnerCurrent:stillCurrent,currentBatchPlan:()=>flight.batchPlan,onProgress:()=>flight.deadline?.progress?.(),onBatchPlan:plan=>{ flight.batchPlan=plan||null; }});
  const task=Promise.race([apiTask,timeoutPromise]).then(async result=>{
   if(result?.skipped){
-   settleCancelledIndependentFlightUi(flight,'prompt-skipped');
+   if(!settleSkippedManualIndependentFlightUi(flight,result)) settleCancelledIndependentFlightUi(flight,'prompt-skipped');
    flight.uiSettled=true;
    return result;
   }
@@ -8515,13 +8669,16 @@ async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay
   }
   const initialHtml=scrubIndependentInteractionState(html,html);
    const completed={html:initialHtml||html,initialHtml:'',sourceHash:settledSourceHash,bodyHash:settledBodyHash,displayHash:settledDisplayHash,reasoningHash:settledReasoningHash,paletteFingerprint,ts:Date.now(),model:st.independentApiModel,runtime:RUNTIME_VERSION,apiRequest:result?.requestDiagnostic||null,executionLockChars:Number(result?.executionLockChars||0)};
+   bindIndependentRecordContinuity(settledCtx,index,settledMsg,completed,null,{completed:true,commit:false});
    sealIndependentTextReplacementRecord(completed,settledSlot,replacementPreviousRecord,multifaceResay?Number(multifaceResay.faceIndex):null);
    if(!independentRecordWithinBudget(completed)) throw independentMarkupLimitError('record-bytes',byteLength(completed.html),INDEPENDENT_RECORD_BUDGET_BYTES);
+   bindIndependentRecordContinuity(settledCtx,index,settledMsg,completed,null,{completed:true});
    recordRabbitMirrorRecipe({ chat:settledCtx.chat, chatKey:chatKey(settledCtx), messageIndex:index, swipeId:swipeId(settledMsg), message:settledMsg, metadata:result?.requestDiagnostic||null, source:'independent' });
    appendHistoryEntry(settledSlot,completed);
    const next=readStore(); saveRecordForSlot(next,settledSlot,completed); writeStore(next);
    setOwnerLockForBase(baseSlot,settledSlot,settledSourceHash);
    writePersistedOwner(settledCtx,index,settledMsg,completed,{overwrite:true});
+   if(String(readStore()?.[settledSlot]?.html||'')!==completed.html) showIndependentUnsavedOutput(completed);
    const liveEl=messageElement(index);
    let liveHost=null;
    if(liveEl){
@@ -8761,9 +8918,10 @@ function historyPreviewDetails(entry,faceIndex=-1,ownerSlot=''){
 function showIndependentHistory(root,owner={}){
  const identity=resolveIndependentActionIdentity(root,owner);
  if(!identity) return false;
- const current=findSavedRecord(readStore(),identity.slot,identity.legacySlots||[]);
- if(current?.html) appendHistoryEntry(identity.slot,current);
- const entries=[...new Map(slotSearchKeys(identity.slot,identity.legacySlots||[])
+ const current=savedIndependentRecordForOwner(identity.ctx,identity.index,identity.msg,readStore());
+ const historySlot=independentLineageOriginSlot(current)||identity.slot;
+ if(current?.html) appendHistoryEntry(historySlot,current);
+ const entries=[...new Map(slotSearchKeys(historySlot,[identity.slot,...identity.legacySlots||[]])
   .flatMap(candidate=>historyEntriesForSlot(candidate))
   .map(entry=>[String(entry.id||hashText(entry.html||'')),entry])).values()]
   .sort((a,b)=>Number(b.ts||0)-Number(a.ts||0));
@@ -8779,7 +8937,7 @@ function showIndependentHistory(root,owner={}){
  const preview=overlay.querySelector('.rabbit-mirror-history-preview');
  const render=(entry,button)=>{
   list.querySelectorAll('button').forEach(item=>item.classList.toggle('is-active',item===button));
-  preview.replaceChildren(); const details=historyPreviewDetails(entry,identity.faceIndex,identity.slot);
+  preview.replaceChildren(); const details=historyPreviewDetails(entry,identity.faceIndex,independentLineageOriginSlot(entry)||historySlot);
   if(details) preview.append(details); else preview.textContent='这版兔子镜无法预览。';
  };
  entries.forEach((entry,index)=>{
@@ -8796,7 +8954,7 @@ function showIndependentHistory(root,owner={}){
 }
 function resayIndependentMirror(root,owner={}){
  if(getSettings().generationSource==='follow'){
-  void import('./followFaceRetry.js?rmv=1.5.53-cn-boundary1').then(({retryFollowFace})=>retryFollowFace(root,owner,{
+  void import('./followFaceRetry.js?rmv=1.5.53-manualdiag1').then(({retryFollowFace})=>retryFollowFace(root,owner,{
    getContext,hostBusy:hostGenerationLooksActive,maxRequestChars:MAX_INDEPENDENT_REQUEST_CHARS,
    resolveOwner:target=>{
     const host=target?.closest?.('[data-rabbit-mirror-external-source="true"][data-rm-source="follow"]');
@@ -8809,7 +8967,8 @@ function resayIndependentMirror(root,owner={}){
  }
  const identity=resolveIndependentActionIdentity(root,owner,{allowPassiveErrorRetry:true});
  if(!identity) return false;
- const saved=findSavedRecord(readStore(),identity.slot,identity.legacySlots||[]); if(saved?.html) appendHistoryEntry(identity.slot,saved);
+ const saved=savedIndependentRecordForOwner(identity.ctx,identity.index,identity.msg,readStore());
+ if(saved?.html) appendHistoryEntry(independentLineageOriginSlot(saved)||identity.slot,saved);
  const diagnostic=saved?.apiRequest&&typeof saved.apiRequest==='object'?saved.apiRequest:{};
  const faces=Array.isArray(diagnostic.faces)?diagnostic.faces:[];
  if(identity.faceIndex>=0 && faces.length<=identity.faceIndex){
@@ -8824,6 +8983,33 @@ function resayIndependentMirror(root,owner={}){
  globalThis.toastr?.info?.(multifaceResay?'正在准备重说这一面；其他面会原样保留……':'正在准备重新生成兔子镜……');
  void generateFor(identity.index,identity.msg,true,true,multifaceResay);
  return true;
+}
+function showIndependentUnsavedOutput(record){
+ if(!record?.html || typeof document==='undefined' || !document.body) return;
+ const noticeId=hashText(String(record.ownerLineage?.id||'')+String(record.ownerLineage?.acceptedBodyHash||'')+record.html);
+ if(document.querySelector?.(`[data-rabbit-mirror-unsaved-id="${noticeId}"]`)) return;
+ let container=document.querySelector('[data-rabbit-mirror-unsaved-list]');
+ if(!container){
+  container=document.createElement('div');container.setAttribute('data-rabbit-mirror-unsaved-list','true');
+  container.style.cssText='position:fixed;bottom:16px;right:16px;z-index:2147483000;max-width:min(420px,90vw);max-height:80vh;overflow:auto;display:flex;flex-direction:column;gap:8px';
+  document.body.append(container);
+ }
+ const notice=document.createElement('section');
+ notice.setAttribute('data-rabbit-mirror-unsaved-output','true');
+ notice.setAttribute('data-rabbit-mirror-unsaved-id',noticeId);
+ notice.setAttribute('role','alert');
+ notice.style.cssText='padding:16px;border:1px solid #bb8a43;border-radius:12px;background:#fff8e8;color:#45301a;box-shadow:0 4px 20px #0004;font:14px/1.6 sans-serif';
+ const description=document.createElement('p');
+ description.textContent='这份兔子镜尚未保存到浏览器，退出或刷新后可能丢失。请先下载成品备份；这里不会重新请求 API。';
+ const download=document.createElement('button'); download.type='button';download.textContent='下载本轮成品';
+ download.addEventListener('click',()=>{
+  const url=URL.createObjectURL(new Blob([String(record.html)],{type:'text/html;charset=utf-8'}));
+  const link=document.createElement('a');link.href=url;link.download=`RabbitMirror-${Number(record.ts)||Date.now()}.html`;
+  document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),0);
+ });
+ const dismiss=document.createElement('button');dismiss.type='button';dismiss.textContent='关闭提示';
+ dismiss.addEventListener('click',()=>{notice.remove();if(!container.childElementCount)container.remove();});
+ notice.append(description,download,dismiss);container.append(notice);
 }
 function persistIndependentRepairFromEvent(event) {
  const detail=event?.detail||{};
@@ -8859,8 +9045,9 @@ function persistIndependentRepairFromEvent(event) {
  clone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
  const rawHtml=faces.length>1 ? serializeExternalFaceDetails(host) : String(clone.outerHTML||'').trim();
  const store=readStore();
- const existing=store?.[identity.slot] || findSavedRecord(store,identity.slot,identity.legacySlots||[]);
- const baseline=String(existing?.initialHtml||host.__rabbitMirrorIndependentInitialSource||initialHtmlForRecord(identity.slot,existing)||existing?.html||rawHtml);
+ const existing=savedIndependentRecordForOwner(identity.ctx,identity.index,identity.msg,store);
+ const existingSlot=independentLineageOriginSlot(existing)||identity.slot;
+ const baseline=String(existing?.initialHtml||host.__rabbitMirrorIndependentInitialSource||initialHtmlForRecord(existingSlot,existing)||existing?.html||rawHtml);
  const initialHtml=scrubIndependentInteractionState(baseline,baseline);
  const html=scrubIndependentInteractionState(rawHtml,initialHtml||baseline);
  if(!independentStoredHtmlRestorable(html)) return abort('scrubbed html failed restorability check');
@@ -8878,19 +9065,22 @@ function persistIndependentRepairFromEvent(event) {
   model:String(existing?.model||getSettings().independentApiModel||''),
   runtime:RUNTIME_VERSION,
   repairedByMaintenance:true,
+  ownerLineage:null,
  };
  // Reject before replacing the last restorable local record. The compactor may
  // otherwise discard an over-budget replacement and erase the previous result.
  if(!independentRecordWithinBudget(repaired)) return abort('repaired mirror exceeds storage budget');
- if(previousClean && previousClean!==html) appendHistoryEntry(identity.slot,{...existing,html:previousClean,initialHtml:initialHtml||previousClean});
+ if(previousClean && previousClean!==html) appendHistoryEntry(existingSlot,{...existing,html:previousClean,initialHtml:initialHtml||previousClean});
+ bindIndependentRecordContinuity(identity.ctx,identity.index,identity.msg,repaired,null,{completed:true,commit:false});
  sealIndependentTextReplacementRecord(repaired,identity.slot);
  saveRecordForSlot(store,identity.slot,repaired);
- if(!writeStore(store)) return abort('local repaired mirror store write failed');
+ if(!writeStore(store)){ showIndependentUnsavedOutput(repaired); return abort('local repaired mirror store write failed'); }
  const stored=findSavedRecord(readStore(),identity.slot,identity.legacySlots||[]);
- if(String(stored?.html||'')!==html) return abort('local repaired mirror store read-back mismatch');
+ if(String(stored?.html||'')!==html){ showIndependentUnsavedOutput(repaired); return abort('local repaired mirror store read-back mismatch'); }
  setOwnerLockForBase(identity.baseSlot,identity.slot,identity.sourceHash);
  const savedOwnerLock=ownerLockForBase(identity.baseSlot);
  if(String(savedOwnerLock?.slot||'')!==identity.slot || String(savedOwnerLock?.sourceHash||'')!==identity.sourceHash) return abort('owner lock read-back mismatch');
+ bindIndependentRecordContinuity(identity.ctx,identity.index,identity.msg,repaired,null,{completed:true});
  writePersistedOwner(identity.ctx,identity.index,identity.msg,repaired,{overwrite:true});
  const persistedOwner=persistedOwnerForMessage(identity.ctx,identity.index,identity.msg);
  if(String(persistedOwner?.html||'')!==html || String(persistedOwner?.sourceHash||'')!==identity.sourceHash) return abort('chat metadata read-back mismatch');
@@ -8921,6 +9111,7 @@ function removeRepairPersistenceListener(){
 function installIndependentActionBridge(){
  independentActionBridge={
   runtime:RUNTIME_VERSION,
+  generateManual:root=>generateManualIndependentMirror(root),
   resay:(root,owner={})=>resayIndependentMirror(root,owner),
   history:(root,owner={})=>showIndependentHistory(root,owner),
  };
@@ -9410,6 +9601,172 @@ function restoreMountedFollowSnapshots(snapshots=[]){
  }
 }
 
+const MANUAL_INTENTS_KEY='__rabbitMirrorIndependentManualIntentsV1';
+const manualPlaceholderOwners=new WeakMap();
+const manualTerminalOwners=new Map();
+function automaticIndependentTiming(){ return independentGenerationTiming(getSettings())==='auto'; }
+function manualIndependentTiming(){ return independentGenerationTiming(getSettings())==='manual'; }
+function manualIntentForMessage(ctx,index){
+ if(!manualIndependentTiming()) return null;
+ const findBound=()=>{
+  const intents=globalThis[MANUAL_INTENTS_KEY];
+  if(!Array.isArray(intents)) return null;
+  return intents.slice().reverse().find(intent=>!intent.cancelled && intent.chat===ctx.chat
+   && intent.chatKey===chatKey(ctx) && intent.index===Number(index)
+   && intent.message===ctx.chat?.[index] && intent.swipe===swipeId(intent.message))||null;
+ };
+ const bound=findBound();
+ if(bound) return bound;
+ globalThis.__rabbitMirrorBindIndependentManualIntent?.(Number(index));
+ return findBound();
+}
+function captureManualBodyOwner(ctx,index,msg,intent=null,{firstGeneration=false}={}){
+ const visible=createIndependentVisibleTextReader(index,getSettings())(msg,index);
+ const processor=ctx.streamingProcessor;
+ return {chat:ctx.chat,chatKey:chatKey(ctx),index,message:msg,swipe:swipeId(msg),
+  baseSlot:messageBaseSlotKey(ctx,index,msg),epoch:operationEpochForBase(messageBaseSlotKey(ctx,index,msg)),
+  sourceText:String(msg.mes||''),visible:Object.freeze({...visible}),intent,firstGeneration,
+  processor:Number(processor?.messageId)===index?processor:null};
+}
+function manualBodyOwnerCurrent(owner){
+ const ctx=getContext();
+ if(!owner || runtimeMode()!=='independent' || independentGenerationTiming(getSettings())==='off'
+  || owner.intent?.cancelled || owner.chat!==ctx.chat || owner.chatKey!==chatKey(ctx)
+  || owner.message!==ctx.chat?.[owner.index] || owner.swipe!==swipeId(owner.message)
+  || owner.epoch!==operationEpochForBase(owner.baseSlot)
+  || !isRabbitMirrorEligibleAssistantMessage(owner.message)
+  || hasExplicitSourceReplacementEvidence(ctx,owner.index,owner.message)) return false;
+ const source=String(owner.message.mes||'');
+ // The click freezes the request text. Only appending after that exact prefix
+ // can keep this paid request; replacing even one captured character cannot.
+ return source===owner.sourceText || (!!owner.sourceText && source.startsWith(owner.sourceText));
+}
+function currentManualPlaceholder(host,ctx,index,msg,intent){
+ const owner=host && manualPlaceholderOwners.get(host);
+ return !!(host?.isConnected && host.dataset.rmState==='manual' && owner
+  && owner.intent===intent && owner.chat===ctx.chat && owner.chatKey===chatKey(ctx)
+  && owner.index===index && owner.message===msg && owner.swipe===swipeId(msg)
+  && host.querySelector?.('[data-rm-manual-generate]'));
+}
+function ensureManualGenerationPlaceholder(ctx,index,msg,intent,settlingFlight=null){
+ const el=messageElement(index);
+ try{ globalThis.__rabbitMirrorManualEntryDiagnosticRecord?.('placeholder',{result:'entered',index,elementFound:!!el,intentPresent:!!intent,consumed:!!intent?.consumed,cancelled:!!intent?.cancelled,timingManual:manualIndependentTiming()}); }catch{}
+ if(!el || !intent || intent.consumed || intent.cancelled || !manualIndependentTiming()) return null;
+ const existing=externalHosts(el).find(host=>host.dataset.rmSource==='independent');
+ const active=activeIndependentFlightForBase(messageBaseSlotKey(ctx,index,msg));
+ if(readyDetailsFromHost(existing) || (active && active!==settlingFlight)) return existing||null;
+ if(currentManualPlaceholder(existing,ctx,index,msg,intent)) return existing;
+ const host=ensureExternalUi(el,recordKey(ctx,index,msg),intent.manualSkipReason||'点击后，按这一刻可见的正文生成兔子镜。','manual','independent',messageSourceFingerprint(msg));
+ if(!host){try{globalThis.__rabbitMirrorManualEntryDiagnosticRecord?.('placeholder',{result:'unavailable',index});}catch{}return null;}
+ manualPlaceholderOwners.set(host,{intent,chat:ctx.chat,chatKey:chatKey(ctx),index,message:msg,swipe:swipeId(msg)});
+ const details=host.querySelector?.(':scope > details');
+ const body=details?.querySelector?.(':scope > .rabbit-mirror-external-placeholder-body');
+ if(body && !body.querySelector('[data-rm-manual-generate]')){
+  const button=document.createElement('button');button.type='button';
+  button.setAttribute('data-rm-manual-generate','true');button.className='rabbit-mirror-external-manual-action';
+  button.textContent='生成兔子镜';body.append(button);
+ }
+ try{globalThis.__rabbitMirrorManualEntryDiagnosticRecord?.('placeholder',{result:'created',index,connected:!!host.isConnected,hidden:!!host.hidden,hasButton:!!host.querySelector?.('[data-rm-manual-generate]')});}catch{}
+ return host;
+}
+function settleSkippedManualIndependentFlightUi(flight,result){
+ const owner=flight.manualBodyOwner,intent=owner?.intent;
+ if(!owner?.firstGeneration || !intent || flight.dispatchLease?.consumed?.()
+  || !manualIndependentTiming() || !manualBodyOwnerCurrent(owner)) return false;
+ intent.consumed=false;
+ intent.manualSkipReason=result.reason==='directive-disabled'
+  ? '本次未生成：上下文中的关闭兔子镜指令已生效，未发送请求。调整该指令后可再次点击。'
+  : '本次未生成：当前没有可用的生成提示词，未发送请求。调整设置后可再次点击。';
+ const ctx=getContext();
+ const host=ensureManualGenerationPlaceholder(ctx,owner.index,owner.message,intent,flight);
+ if(host) flight.uiSettled=true;
+ return !!host;
+}
+function rememberManualClickOwner(owner){
+ if(!owner) return;
+ manualTerminalOwners.set(owner.baseSlot,owner);
+ const intent=owner?.intent;
+ if(!intent) return;
+ intent.consumed=true;
+}
+function generateManualIndependentMirror(root){
+ try{globalThis.__rabbitMirrorManualEntryDiagnosticRecord?.('click',{result:'entered',runtimeCurrent:currentRuntime(),timingManual:manualIndependentTiming()});}catch{}
+ const host=root?.matches?.('.rabbit-mirror-external-host')?root:root?.closest?.('.rabbit-mirror-external-host');
+ const owner=host && manualPlaceholderOwners.get(host);
+ if(!owner || !host.isConnected || host.dataset.rmState!=='manual' || !manualIndependentTiming() || runtimeMode()!=='independent') return false;
+ const ctx=getContext(),intent=owner.intent,msg=ctx.chat?.[owner.index];
+ if(owner.chat!==ctx.chat || owner.chatKey!==chatKey(ctx) || owner.message!==msg || owner.swipe!==swipeId(msg)
+  || !isRabbitMirrorEligibleAssistantMessage(msg) || intent.cancelled || intent.consumed
+  || manualIntentForMessage(ctx,owner.index)!==intent) return false;
+ if(activeIndependentFlightForBase(messageBaseSlotKey(ctx,owner.index,msg))) return true;
+ const snapshot=captureManualBodyOwner(ctx,owner.index,msg,intent,{firstGeneration:true});
+ rememberManualClickOwner(snapshot);
+ for(const button of host.querySelectorAll('[data-rm-manual-generate]')) button.disabled=true;
+ void generateFor(owner.index,msg,true,true,null,null,snapshot);
+ return true;
+}
+function handleIndependentManualBridge(event={}){
+ try{globalThis.__rabbitMirrorManualEntryDiagnosticRecord?.('bridge',{runtimeCurrent:currentRuntime(),timingManual:manualIndependentTiming(),index:Number.isInteger(event.intent?.index)?event.intent.index:-1});}catch{}
+ if(!currentRuntime()) return;
+ const ctx=getContext();
+ for(const flight of globalFlights().values()){
+  const snapshot=flight.manualBodyOwner;
+  if(!snapshot) continue;
+  const intent=event.intent;
+  const replacement=intent && intent!==snapshot.intent && !intent.cancelled
+   && intent.chat===snapshot.chat && intent.chatKey===snapshot.chatKey
+   && ['continue','swipe','regenerate'].includes(intent.type) && intent.tailIndex===snapshot.index;
+  if(replacement || !manualBodyOwnerCurrent(snapshot)) abortFlight(flight,replacement?'manual-source-replaced':'manual-owner-replaced');
+ }
+ if(event.kind==='clear'){
+  manualTerminalOwners.clear();
+  for(const host of allExternalHosts()) if(host.dataset.rmState==='manual') host.remove();
+  return;
+ }
+ if(!manualIndependentTiming()) return;
+ const index=Number.isInteger(event.intent?.index)&&event.intent.index>=0?event.intent.index:ctx.chat?.length-1;
+ if(!Number.isInteger(index)||index<0 || !isRabbitMirrorEligibleAssistantMessage(ctx.chat?.[index])) return;
+ const intent=manualIntentForMessage(ctx,index),el=messageElement(index);
+ try{globalThis.__rabbitMirrorManualEntryDiagnosticRecord?.('bridge',{index,intentPresent:!!intent,elementFound:!!el});}catch{}
+ if(!intent || intent.consumed) return;
+ if(externalHosts(el).some(host=>currentManualPlaceholder(host,ctx,index,ctx.chat[index],intent))) return;
+ queueMessageSync([index]);
+}
+function queueManualGenerationTerminalSync(){
+ // A paid manual result can finish before the main reply's trailing status.
+ // END/STOP only passively reconciles an already captured exact owner; it
+ // never authorizes a request or discovers an old message.
+ const ids=new Set(),ctx=getContext();let ownsEndedProcessor=false;
+ for(const [base,owner] of manualTerminalOwners){
+  if(owner.intent && !owner.intent.consumed) continue;
+  if(!manualBodyOwnerCurrent(owner)){manualTerminalOwners.delete(base);continue;}
+  ids.add(owner.index);
+  if(owner.processor && owner.processor===ctx.streamingProcessor
+   && Number(owner.processor.messageId)===owner.index
+   && (owner.processor.isFinished===true || owner.processor.isStopped===true)) ownsEndedProcessor=true;
+ }
+ if(ids.size && (manualIndependentTiming() || ownsEndedProcessor)
+  && !automaticGenerationCutovers.get(chatKey(ctx))?.activeHostGeneration && !externalHostGenerationActivity().active){
+  hostGenerationInProgress=false;hostGenerationHintStartedAt=0;
+ }
+ if(ids.size) queueMessageSync([...ids]);
+}
+function reconcileManualTimingChange(){
+ const timing=independentGenerationTiming(getSettings());
+ if(lastAppliedIndependentTiming!==null && lastAppliedIndependentTiming!==timing){
+  clearScheduledGeneration();
+  globalThis[INDEPENDENT_GENERATION_INTENTS_KEY]=[];
+  for(const cutover of automaticGenerationCutovers.values()){
+   cutover.authorized.clear();
+   const paidEarly=[...(cutover.earlyBodies?.values()||[])].some(owner=>!owner.cancelled&&owner.flight?.dispatchLease?.consumed?.());
+   if(!paidEarly){clearAutomaticHostGenerationSettlement(cutover.activeHostGeneration);cutover.activeHostGeneration=null;}
+   for(const owner of cutover.earlyBodies?.values()||[]) if(!owner.flight?.dispatchLease?.consumed?.()) cancelEarlyBodyOwner(owner,'generation-timing-changed');
+  }
+  for(const flight of globalFlights().values()) if(!flight.dispatchLease?.consumed?.()) abortFlight(flight,'generation-timing-changed');
+  for(const host of allExternalHosts()) if(host.dataset.rmState==='manual') host.remove();
+ }
+ lastAppliedIndependentTiming=timing;
+}
 function runtimeMode(){
  const st=getSettings();
  if(st.enabled===false || st.autoRabbitMirrorInjection===false) return 'off';
@@ -9419,6 +9776,7 @@ function runtimeMode(){
 }
 function passiveObservedIdentity(ctx,index,msg){
  return {
+  [INDEPENDENT_OWNER_OBSERVATION]:{ctx,index,msg},
   slot:messageSlotKey(ctx,index,msg),
   sourceHash:messageSourceFingerprint(msg),
   bodyHash:messageBodyFingerprint(msg),
@@ -9429,6 +9787,64 @@ function passiveObservedIdentity(ctx,index,msg){
 }
 function automaticCutoverVersionToken(msg){
  return `${swipeId(msg)}:${messageBodyFingerprint(msg)}`;
+}
+const INDEPENDENT_INTENT_OWNER=Symbol.for('rabbitMirror.independentIntentOwner');
+function boundIndependentIntentOwner(intent,ctx,index){
+ const owner=intent?.[INDEPENDENT_INTENT_OWNER];
+ return owner && owner.chat===ctx.chat && owner.tail===ctx.chat?.[Number(intent.tailIndex)]
+  && owner.message===ctx.chat?.[index] && owner.index===Number(index) && owner.swipe===swipeId(owner.message)
+  ? owner : null;
+}
+function refreshDeferredIndependentProof(ctx,index){
+ if(externalHostGenerationActivity().active) return false;
+ let changed=false;
+ const source=deferredIndependentGenerationIntents();
+ const next=source.map(intent=>{
+  if(deferredIndependentIntentCandidateIndex(intent,ctx)!==Number(index)
+   || intent.terminalReason!=='generation-ended' || !intent.terminalAt || intent.auxiliaryTerminalPending
+   || intent.intermediateAt) return intent;
+  const owner=boundIndependentIntentOwner(intent,ctx,index);
+  if(!owner || (!owner.receivedAt && !owner.renderedAt)) return intent;
+  const proof=automaticHostRenderProof(index);
+  const processor=hostModule?.streamingProcessor || ctx.streamingProcessor;
+  if(proof==='stream-tool-intermediate' || processor?.isStopped===true || processor?.abortController?.signal?.aborted===true) return intent;
+  const toolCapable=intent.toolCapable!==false || automaticHostGenerationMayUseTools(intent.type,ctx);
+  if(!owner.renderedAt && toolCapable && proof!=='stream-final') return intent;
+  const bodyHash=messageBodyFingerprint(owner.message);
+  if(!String(owner.message.mes||'').trim() || (intent.completedAt && intent.finalBodyHash===bodyHash)) return intent;
+  changed=true;
+  return Object.freeze({...intent,toolCapable,completedAt:Date.now(),finalIndex:Number(index),finalBodyHash:bodyHash,
+   finalProof:owner.renderedAt?(intent.finalProof||proof):'received-ended',completionReason:'owner-ended-reconciled'});
+ });
+ if(changed) globalThis[INDEPENDENT_GENERATION_INTENTS_KEY]=next;
+ return changed;
+}
+function automaticAuthorizationLineage(ctx,index,evidence){
+ const fromIntent=boundIndependentIntentOwner(evidence,ctx,index);
+ const fromRender=evidence?.tentativeRender;
+ const owner=fromIntent || (fromRender?.message===ctx.chat?.[index] && fromRender?.chat===ctx.chat ? fromRender : null);
+ if(!owner) return null;
+ const ended=fromIntent ? evidence.terminalReason==='generation-ended'
+  : evidence.terminalReason===String(hostModule?.event_types?.GENERATION_ENDED||'GENERATION_ENDED');
+ return {chat:ctx.chat,message:ctx.chat[index],index:Number(index),swipe:swipeId(ctx.chat[index]),
+  terminalEnded:ended,epoch:operationEpochForBase(messageBaseSlotKey(ctx,index,ctx.chat[index]))};
+}
+function stampAutomaticAuthorizationEpoch(ctx,index){
+ const proof=automaticGenerationCutovers.get(chatKey(ctx))?.authorized?.get(Number(index))?.[INDEPENDENT_INTENT_OWNER];
+ if(proof) proof.epoch=operationEpochForBase(messageBaseSlotKey(ctx,index,ctx.chat[index]));
+}
+function refreshUnpaidAutomaticAuthorization(ctx,index,authorization){
+ const cutover=automaticGenerationCutovers.get(chatKey(ctx));
+ const proof=authorization?.[INDEPENDENT_INTENT_OWNER]; const msg=ctx.chat?.[index];
+ if(!proof || cutover?.authorized.get(Number(index))!==authorization || proof.chat!==ctx.chat
+  || proof.message!==msg || proof.index!==Number(index) || proof.swipe!==swipeId(msg) || !proof.terminalEnded) return false;
+ const base=messageBaseSlotKey(ctx,index,msg);
+ if(proof.epoch!==operationEpochForBase(base) || automaticDispatchAlreadyConsumed(base)
+  || activeIndependentFlightForBase(base)) return false;
+ if([...automaticFailureStops.values()].some(failure=>failure.baseSlot===base && failure.operationEpoch===proof.epoch)) return false;
+ if(cutover.activeHostGeneration || externalHostGenerationActivity().active) return 'waiting';
+ authorization.token=automaticCutoverVersionToken(msg);
+ return true;
 }
 function deferredIndependentGenerationIntents(){
  const now=Date.now();
@@ -9475,6 +9891,7 @@ function deferredIndependentIntentHasFinalProof(intent,ctx,index){
    && Number(intent?.completedAt)>0
   && lifecycleComplete
   && isRabbitMirrorEligibleAssistantMessage(message)
+  && (!intent?.[INDEPENDENT_INTENT_OWNER] || !!boundIndependentIntentOwner(intent,ctx,normalized))
    && messageBodyFingerprint(message)===String(intent?.finalBodyHash||'');
 }
 function deferredIndependentIntentCompletedAt(ctx,index){
@@ -9488,7 +9905,7 @@ function claimDeferredIndependentGenerationIntent(ctx,index,reason='deferred-gen
  const normalized=Number(index); const source=deferredIndependentGenerationIntents();
  const matching=source.filter(intent=>deferredIndependentIntentCandidateIndex(intent,ctx)===normalized
    && (!requireFinalProof || deferredIndependentIntentHasFinalProof(intent,ctx,normalized)));
- if(!matching.length || !unlockAutomaticGenerationCutover(ctx,normalized,reason)) return false;
+ if(!matching.length || !unlockAutomaticGenerationCutover(ctx,normalized,reason,matching.at(-1))) return false;
  // Consume only the exact target proof(s). Other completed messages in the same
  // chat may have finished before the cold graph woke and remain recoverable.
  const consumed=new Set(matching);
@@ -9559,7 +9976,7 @@ function cancelEarlyBodyProbes(reason='early-body-cancelled',{clear=false}={}){
  }
 }
 function earlyBodyPacketCurrent(packet,ctx=getContext()){
- if(!packet || !earlyBodyEnabled(ctx) || packet.chat!==ctx.chat || packet.chatKey!==chatKey(ctx)
+ if(!automaticIndependentTiming() || !packet || !earlyBodyEnabled(ctx) || packet.chat!==ctx.chat || packet.chatKey!==chatKey(ctx)
   || packet.message!==ctx.chat?.[packet.index] || packet.swipe!==swipeId(packet.message)
   || !isRabbitMirrorEligibleAssistantMessage(packet.message)
   || ctx.streamingProcessor!==packet.processor || packet.processor?.isStopped===true
@@ -9728,7 +10145,7 @@ function automaticHostToolResultTail(ctx){
  return Array.isArray(tail?.extra?.tool_invocations) && tail.extra.tool_invocations.length>0;
 }
 function automaticHostRenderProof(index){
- const processor=hostModule?.streamingProcessor;
+ const processor=hostModule?.streamingProcessor || getContext()?.streamingProcessor;
  if(processor && Number(processor.messageId)===Number(index) && processor.isFinished===true){
   return Array.isArray(processor.toolCalls) && processor.toolCalls.length>0
    ? 'stream-tool-intermediate'
@@ -9737,7 +10154,7 @@ function automaticHostRenderProof(index){
  return 'exact-render';
 }
 function beginAutomaticHostGeneration(ctx,type='',nested=false,dryRun=false){
- if(runtimeMode()!=='independent') return false;
+ if(runtimeMode()!=='independent' || !automaticIndependentTiming()) return false;
  const cutover=ensureAutomaticGenerationCutover(ctx);
  const normalized=String(type||'').trim().toLowerCase();
  const current=cutover.activeHostGeneration;
@@ -9770,7 +10187,8 @@ function beginAutomaticHostGeneration(ctx,type='',nested=false,dryRun=false){
   current.phase=Number(current.phase||0)+1;
   current.phaseBaselineIndex=baseline.index;
   current.phaseBaselineToken=baseline.token;
-   current.tentativeRender=null;
+  current.tentativeRender=null;
+   current.received=null;
    current.intermediateRender=null;
    current.terminalSeen=false;
    current.terminalAt=0;
@@ -9784,12 +10202,16 @@ function beginAutomaticHostGeneration(ctx,type='',nested=false,dryRun=false){
  clearAutomaticHostGenerationSettlement(current);
  const chat=Array.isArray(ctx?.chat)?ctx.chat:[];
  const tailIndex=chat.length-1; const tail=tailIndex>=0?chat[tailIndex]:null;
+ if(['continue','swipe','regenerate'].includes(normalized)){
+  revokeIndependentRecordContinuity(ctx,tailIndex);
+  cutover.authorized.delete(tailIndex);
+ }
  if(['continue','swipe','regenerate'].includes(normalized) && cutover.earlyBodies?.has(tailIndex)){
   cancelEarlyBodyOwner(cutover.earlyBodies.get(tailIndex),'new-host-operation');cutover.earlyBodies.delete(tailIndex);
  }
  const baseline=automaticHostGenerationPhaseBaseline(ctx);
  cutover.activeHostGeneration={
-  chat:chatKey(ctx),type:normalized,startedAt:Date.now(),phase:0,
+  chat:chatKey(ctx),chatRef:chat,type:normalized,startedAt:Date.now(),phase:0,
   startChatLength:chat.length,startTailIndex:tailIndex,
   startTailRole:tail?.is_user===true?'user':(tail?'assistant':'none'),
    startTailToken:tail&&!tail.is_user?automaticCutoverVersionToken(tail):'',
@@ -9801,18 +10223,23 @@ function beginAutomaticHostGeneration(ctx,type='',nested=false,dryRun=false){
   };
  return 'new';
 }
-function unlockAutomaticGenerationCutover(ctx,index,reason='host-generation-finished'){
+function unlockAutomaticGenerationCutover(ctx,index,reason='host-generation-finished',evidence=null){
  const cutover=ensureAutomaticGenerationCutover(ctx); const normalized=Number(index); const msg=ctx?.chat?.[normalized];
  if(!Number.isInteger(normalized)||normalized<0||!isRabbitMirrorEligibleAssistantMessage(msg)) return false;
  const token=automaticCutoverVersionToken(msg);
  if(!token) return false;
- cutover.authorized.set(normalized,{token,reason:String(reason||''),ts:Date.now()});
+ cutover.authorized.set(normalized,{token,reason:String(reason||''),ts:Date.now(),[INDEPENDENT_INTENT_OWNER]:automaticAuthorizationLineage(ctx,normalized,evidence)});
  return true;
 }
 function automaticHostGenerationRenderMatches(ctx,index,owner){
  if(!owner || String(owner.chat||'')!==chatKey(ctx)) return false;
+ if(owner.chatRef && owner.chatRef!==ctx.chat) return false;
  const normalized=Number(index); const msg=ctx?.chat?.[normalized];
  if(!Number.isInteger(normalized)||normalized<0||!isRabbitMirrorEligibleAssistantMessage(msg)||!String(msg.mes||'').trim()) return false;
+ for(const bound of [owner.received,owner.tentativeRender,owner.intermediateRender]){
+  if(bound?.message && bound.phase===Number(owner.phase||0)
+   && (bound.chat!==ctx.chat || bound.message!==msg || bound.index!==normalized || bound.swipe!==swipeId(msg))) return false;
+ }
  const last=lastAssistantMessage(ctx); if(!last || last.i!==normalized) return false;
  const token=automaticCutoverVersionToken(msg);
  if(!token || (normalized===Number(owner.phaseBaselineIndex) && token===String(owner.phaseBaselineToken||''))) return false;
@@ -9833,6 +10260,7 @@ function noteAutomaticHostGenerationTerminal(ctx,reason='host-generation-ended')
   owner.auxiliaryTerminalReason=String(reason||'').slice(0,64);
   return 'auxiliary';
  }
+ if(owner.terminalSeen===true) return 'terminal';
  owner.terminalSeen=true; owner.terminalAt=Date.now(); owner.terminalReason=String(reason||'').slice(0,64);
  return 'terminal';
 }
@@ -9850,20 +10278,51 @@ function noteAutomaticHostGenerationRender(ctx,index){
  const proof=automaticHostRenderProof(normalized);
  if(proof==='stream-tool-intermediate'){
   owner.tentativeRender=null;
-  owner.intermediateRender={index:normalized,token:automaticCutoverVersionToken(msg),phase:Number(owner.phase||0),at:Date.now(),proof};
+  owner.intermediateRender={index:normalized,token:automaticCutoverVersionToken(msg),phase:Number(owner.phase||0),at:Date.now(),proof,
+   chat:ctx.chat,message:msg,swipe:swipeId(msg)};
   return false;
  }
  owner.tentativeRender={
   index:normalized,token:automaticCutoverVersionToken(msg),phase:Number(owner.phase||0),at:Date.now(),proof,
+  chat:ctx.chat,message:msg,swipe:swipeId(msg),
  };
+ return true;
+}
+function noteAutomaticHostGenerationReceived(ctx,index){
+ const owner=automaticGenerationCutovers.get(chatKey(ctx))?.activeHostGeneration;
+ if(!automaticHostGenerationRenderMatches(ctx,index,owner)) return false;
+ const bound=deferredIndependentGenerationIntents().some(intent=>!!boundIndependentIntentOwner(intent,ctx,index));
+ if(!bound) return false;
+ const msg=ctx.chat[index];
+ owner.received={index:Number(index),token:automaticCutoverVersionToken(msg),phase:Number(owner.phase||0),
+  at:Date.now(),chat:ctx.chat,message:msg,swipe:swipeId(msg)};
+ return true;
+}
+function refreshAutomaticHostGenerationEvidence(ctx,owner){
+ if(!owner?.terminalSeen || owner.terminalReason!==String(hostModule?.event_types?.GENERATION_ENDED||'GENERATION_ENDED')
+  || owner.auxiliaryTerminalPending || owner.intermediateRender || externalHostGenerationActivity().active) return false;
+ const rendered=owner.tentativeRender, candidate=rendered||owner.received;
+ if(!candidate || candidate.chat!==ctx.chat || candidate.message!==ctx.chat?.[candidate.index]
+  || candidate.swipe!==swipeId(candidate.message) || candidate.phase!==Number(owner.phase||0)
+  || !automaticHostGenerationRenderMatches(ctx,candidate.index,owner)) return false;
+ const proof=automaticHostRenderProof(candidate.index);
+ const processor=hostModule?.streamingProcessor || ctx.streamingProcessor;
+ if(proof==='stream-tool-intermediate' || processor?.isStopped===true || processor?.abortController?.signal?.aborted===true) return false;
+ owner.toolCapable=owner.toolCapable===true || automaticHostGenerationMayUseTools(owner.type,ctx);
+ if(!rendered && owner.toolCapable && proof!=='stream-final') return false;
+ const token=automaticCutoverVersionToken(candidate.message);
+ if(rendered && rendered.token===token) return true;
+ owner.tentativeRender={...candidate,token,at:Date.now(),proof:rendered?.proof||(proof==='stream-final'?proof:'received-ended')};
  return true;
 }
 function automaticHostGenerationSettlementCandidate(ctx,{externalActive=false}={}){
  const cutover=automaticGenerationCutovers.get(chatKey(ctx)); const owner=cutover?.activeHostGeneration;
+ refreshAutomaticHostGenerationEvidence(ctx,owner);
  const rendered=owner?.tentativeRender;
  if(!owner || !rendered || externalActive===true || Number(rendered.phase)!==Number(owner.phase||0)) return null;
  if(!automaticHostGenerationRenderMatches(ctx,rendered.index,owner)) return null;
  const msg=ctx?.chat?.[rendered.index]; const token=automaticCutoverVersionToken(msg);
+ if(rendered.message && (rendered.message!==msg || rendered.chat!==ctx.chat || rendered.swipe!==swipeId(msg))) return null;
  if(token!==String(rendered.token||'')) return null;
  const proof=String(rendered.proof||'exact-render');
  // A non-stream Chat Completion render may be the visible pre-tool assistant.
@@ -9883,9 +10342,11 @@ function settleAutomaticHostGeneration(ctx,index,reason='host-final-render'){
   || String(rendered.token||'')!==automaticCutoverVersionToken(ctx.chat[normalized])) return false;
  clearAutomaticHostGenerationSettlement(owner);
  cutover.activeHostGeneration=null;
- return unlockAutomaticGenerationCutover(ctx,normalized,reason);
+ return unlockAutomaticGenerationCutover(ctx,normalized,reason,owner);
 }
 function suppressesAutomaticGeneration(ctx,index){
+ const timing=getSettings().independentGenerationTiming;
+ if(timing==='manual' || timing==='off') return true;
  const cutover=automaticGenerationCutovers.get(chatKey(ctx));
  if(!cutover) return true;
  if(cutover.earlyBodies?.has(Number(index))) return true;
@@ -9893,6 +10354,8 @@ function suppressesAutomaticGeneration(ctx,index){
  if(!Number.isInteger(normalized) || normalized<0) return true;
  const msg=ctx?.chat?.[normalized]; const authorization=cutover.authorized.get(normalized);
  if(!isRabbitMirrorEligibleAssistantMessage(msg) || !authorization) return true;
+ const proof=authorization[INDEPENDENT_INTENT_OWNER];
+ if(proof && (proof.chat!==ctx.chat || proof.message!==msg || proof.swipe!==swipeId(msg))) return true;
  return String(authorization.token||'')!==automaticCutoverVersionToken(msg);
 }
 function clearAutomaticGenerationCutovers(){
@@ -9911,6 +10374,7 @@ function activateAuthorizedAutomaticGeneration(ctx,index,reason='host-final-rend
   reason,
   automaticCutoverVersionToken(msg),
  );
+ stampAutomaticAuthorizationEpoch(ctx,normalized);
  ensureGenerationPlaceholderForIndex(normalized,false);
  queueMessageSync([normalized]);
  const live=currentGenerationIdentity(normalized);
@@ -9962,10 +10426,12 @@ function stopAutomaticHostGenerationSettlement(ctx,owner,reason='host-completion
  globalThis.__rabbitMirrorPerfDiag?.mark?.('independent.hostCompletionUnproven',{reason:String(reason||''),phase:Number(owner.phase||0)});
  // A timeout is UI/error evidence only, never permission to read a guessed tail
  // or send a paid request. Bind the retry shell only to this exact rendered body.
- const rendered=owner.tentativeRender || owner.intermediateRender;
+ const rendered=owner.tentativeRender || owner.intermediateRender || owner.received;
  const index=Number(rendered?.index); const msg=ctx?.chat?.[index];
  if(!rendered || !automaticHostGenerationRenderMatches(ctx,index,owner)
-  || automaticCutoverVersionToken(msg)!==String(rendered.token||'')) return true;
+  || (!rendered.message && automaticCutoverVersionToken(msg)!==String(rendered.token||''))) return true;
+ // A positively bound object may have been postprocessed while waiting. This
+ // only places a zero-request error on its current body; it grants no dispatch.
  const live=currentGenerationIdentity(index); const el=messageElement(index);
  if(!live || !el || hasExistingFollowRabbitMirror(ctx,index,msg) || hasGenerationWorkFor(index,live.slot,live.sourceHash)) return true;
  cutover.authorized.delete(index);
@@ -10017,7 +10483,7 @@ function scheduleAutomaticHostGenerationSettlement(delay=FINAL_RENDER_POLL_INTER
   if(liveCutover?.activeHostGeneration!==owner || String(owner.chat||'')!==chatKey(ctx)) return;
   const external=externalHostGenerationActivity();
   const candidate=automaticHostGenerationSettlementCandidate(ctx,{externalActive:external.active});
-  const renderedAt=Number(owner.tentativeRender?.at||0);
+  const renderedAt=Number(owner.tentativeRender?.at||owner.received?.at||0);
   // Even a terminal-backed render gets one short final-paint window. This lets a
   // recursive tool START revoke the intermediate phase before authorization;
   // the downstream poll then rechecks the exact hash/revision once more.
@@ -10031,8 +10497,10 @@ function scheduleAutomaticHostGenerationSettlement(delay=FINAL_RENDER_POLL_INTER
   // A non-stream tool response can render before tool execution. If the host
   // then loses its shared END edge, do not hang or turn elapsed time into final
   // proof: stop with an explicit manual retry entry after a bounded grace window.
-  if(!external.active && owner.toolCapable===true && owner.terminalSeen!==true
-   && owner.tentativeRender?.proof==='exact-render' && renderedAt
+  const receivedWithoutFinal=!owner.tentativeRender && !owner.intermediateRender && owner.received
+   && owner.terminalSeen===true && owner.terminalReason===String(hostModule?.event_types?.GENERATION_ENDED||'GENERATION_ENDED');
+  if(!external.active && owner.toolCapable===true
+   && ((owner.terminalSeen!==true && owner.tentativeRender?.proof==='exact-render') || receivedWithoutFinal) && renderedAt
    && Date.now()-renderedAt>=HOST_FINAL_PROOF_WAIT_MS){
    stopAutomaticHostGenerationSettlement(ctx,owner,'final-proof-missing');
    return;
@@ -10056,16 +10524,17 @@ function scheduleAutomaticHostGenerationSettlement(delay=FINAL_RENDER_POLL_INTER
  return true;
 }
 function recoverDeferredAutomaticHostCompletion(ctx,index,reason='deferred-host-completion'){
- if(runtimeMode()!=='independent') return false;
+ if(runtimeMode()!=='independent' || !automaticIndependentTiming()) return false;
  const normalized=Number(index);
  if(!Number.isInteger(normalized)||normalized<0||externalHostGenerationActivity().active) return false;
+ refreshDeferredIndependentProof(ctx,normalized);
  const completedAt=deferredIndependentIntentCompletedAt(ctx,normalized);
  if(!completedAt || !claimDeferredIndependentGenerationIntent(ctx,normalized,reason,{requireFinalProof:true})) return false;
  hostGenerationInProgress=false; hostGenerationHintStartedAt=0; clearGenerationPlaceholderPoll();
  return activateAuthorizedAutomaticGeneration(ctx,normalized,reason,true,false,completedAt);
 }
 function recoverDeferredIndependentGenerations(){
- if(!currentRuntime() || runtimeMode()!=='independent' || hostGenerationLooksActive()) return 0;
+ if(!currentRuntime() || runtimeMode()!=='independent' || !automaticIndependentTiming() || hostGenerationLooksActive()) return 0;
  const ctx=getContext(); const candidates=new Set();
  for(const intent of deferredIndependentGenerationIntents()){
   const index=deferredIndependentIntentCandidateIndex(intent,ctx);
@@ -10075,17 +10544,20 @@ function recoverDeferredIndependentGenerations(){
  for(const index of candidates){
   const msg=ctx.chat?.[index];
   if(!isRabbitMirrorEligibleAssistantMessage(msg) || !messageElement(index)) continue;
+  refreshDeferredIndependentProof(ctx,index);
   // A cold runtime can initialize after the first streaming fragment but before
   // final paint. Recovery therefore requires completion proof captured by the
   // lightweight bridge plus the same final正文 hash; nonempty partial text alone
   // is never enough to consume an intent.
   const completedAt=deferredIndependentIntentCompletedAt(ctx,index);
-  if(!completedAt || !claimDeferredIndependentGenerationIntent(ctx,index,'deferred-runtime-recovery',{requireFinalProof:true})) continue;
+  if(!completedAt){ recoverDeferredUnprovenOwner(ctx,index); continue; }
+  if(!claimDeferredIndependentGenerationIntent(ctx,index,'deferred-runtime-recovery',{requireFinalProof:true})) continue;
   recovered+=1;
   if(automaticGenerationCutovers.get(chatKey(ctx))?.earlyBodies?.has(index)){
    settleEarlyBodyAtFinal(ctx,index);queueMessageSync([index]);continue;
   }
   advanceOperationEpochForBase(messageBaseSlotKey(ctx,index,msg),'deferred-runtime-recovery',automaticCutoverVersionToken(msg));
+  stampAutomaticAuthorizationEpoch(ctx,index);
   ensureGenerationPlaceholderForIndex(index,hostGenerationLooksActive());
   queueMessageSync([index]);
   const finalRendered=!hostGenerationLooksActive() && !!liveVisibleIndependentMessageText(index,independentContextExcludedTagSet()).text;
@@ -10095,6 +10567,28 @@ function recoverDeferredIndependentGenerations(){
   scheduleMessageGeneration(index,recoveredDelay,true,finalRendered,false,completedAt);
  }
  return recovered;
+}
+function recoverDeferredUnprovenOwner(ctx,index){
+ const cutover=ensureAutomaticGenerationCutover(ctx);
+ if(cutover.activeHostGeneration || cutover.authorized.has(Number(index))) return false;
+ const intent=deferredIndependentGenerationIntents().filter(value=>String(value.chatKey||'')===chatKey(ctx)).at(-1);
+ const bound=boundIndependentIntentOwner(intent,ctx,index);
+ if(!bound?.receivedAt || intent?.terminalReason!=='generation-ended' || !intent.terminalAt
+  || intent.auxiliaryTerminalPending || intent.intermediateAt || deferredIndependentIntentCandidateIndex(intent,ctx)!==Number(index)) return false;
+ const live=currentGenerationIdentity(index);
+ if(!live || hasGenerationWorkFor(index,live.slot,live.sourceHash) || exactIndependentReadyForIdentity(index,live)) return false;
+ // Restore only the wait owner, never final proof or a dispatch authorization.
+ // The existing bounded settlement timer can accept a later real final render,
+ // or expose the missing proof with zero requests and the existing manual action.
+ cutover.activeHostGeneration={chat:chatKey(ctx),chatRef:ctx.chat,type:String(intent.type),startedAt:Number(intent.startedAt),phase:0,
+  startChatLength:Number(intent.tailIndex)+1,startTailIndex:Number(intent.tailIndex),startTailRole:String(intent.tailRole),
+  phaseBaselineIndex:-1,phaseBaselineToken:'',tentativeRender:null,intermediateRender:null,
+  received:{index:Number(index),token:automaticCutoverVersionToken(bound.message),phase:0,at:Number(bound.receivedAt),
+   chat:ctx.chat,message:bound.message,swipe:bound.swipe},
+  terminalSeen:true,terminalAt:Number(intent.terminalAt),terminalReason:String(hostModule?.event_types?.GENERATION_ENDED||'GENERATION_ENDED'),
+  auxiliaryTerminalPending:false,toolCapable:intent.toolCapable!==false || automaticHostGenerationMayUseTools(intent.type,ctx),
+  settleTimer:0,settleStartedAt:0};
+ return scheduleAutomaticHostGenerationSettlement();
 }
 function hasExistingFollowRabbitMirror(ctx,index,msg){
  const el=messageElement(index);
@@ -10145,6 +10639,7 @@ function settleIndependentHostsForInactiveSource(el){
 }
 
 function restoreIndependentMirrorPassively(ctx,store,el,index,msg){
+ const continuityChanged=updateIndependentRecordContinuity(ctx,index,msg,store);
  const observed=passiveObservedIdentity(ctx,index,msg);
  const key=recordKey(ctx,index,msg);
  let keep=collapseDuplicateIdentityHosts(el,key,'independent',observed.sourceHash);
@@ -10152,6 +10647,7 @@ function restoreIndependentMirrorPassively(ctx,store,el,index,msg){
  const persistedOwner=persistedOwnerForMessage(ctx,index,msg);
  const persistedReady=!persistedOwner?.deleted&&persistedOwner?.html&&independentStoredHtmlRestorable(persistedOwner.html)&&savedRecordMatchesObserved(persistedOwner,observed)?persistedOwner:null;
  const recovered=persistedReady?{saved:persistedReady,storeChanged:false}:persistedOwner?.deleted?{saved:null,storeChanged:false}:recoverSavedRecord(store,observed.slot,observed);
+ if(continuityChanged) recovered.storeChanged=true;
  let saved=recovered.saved;
  if(saved?.html && !savedRecordMatchesObserved(saved,observed)) saved=null;
  if(persistedReady){
@@ -10160,6 +10656,7 @@ function restoreIndependentMirrorPassively(ctx,store,el,index,msg){
   setOwnerLockForBase(messageBaseSlotKey(ctx,index,msg),persistedSlot,String(persistedReady.sourceHash||persistedReady.bodyHash||observed.sourceHash));
  }
  if(saved?.html){
+  if(bindIndependentRecordContinuity(ctx,index,msg,saved,store)) recovered.storeChanged=true;
   const host=ensureExternalUi(el,key,saved.html,'ready','independent',observed.sourceHash,saved);
   if(host){
    rebuildCollapsedReadyHost(el,host,key,'independent',saved.html,observed.sourceHash,saved);
@@ -10184,6 +10681,10 @@ function restoreIndependentMirrorPassively(ctx,store,el,index,msg){
  return recovered.storeChanged;
 }
 function syncMessages(indices=null){
+ const end=beginHostWorkTiming('independent.syncMessages');
+ try{ return syncMessagesCore(indices); }finally{ end?.(); }
+}
+function syncMessagesCore(indices=null){
  if(!currentRuntime() || syncRunning) return;
  syncRunning=true;
  try{
@@ -10212,6 +10713,7 @@ function syncMessages(indices=null){
        // its exact origin marker first; only future replies use the independent
        // generator.
        for(const followHost of externalHosts(el).filter(n=>n.dataset.rmSource==='follow')) restoreFollowInline(followHost);
+       if(updateIndependentRecordContinuity(ctx,i,m,store)) storeChanged=true;
        const observed=observeMessageSourceRevision(ctx,i,m);
        const key=recordKey(ctx,i,m); const slot=observed.slot; const sourceHash=observed.sourceHash;
        const baseSlot=messageBaseSlotKey(ctx,i,m);
@@ -10236,6 +10738,13 @@ function syncMessages(indices=null){
        let saved=recoveredAtSync.saved;
        if(recoveredAtSync.storeChanged) storeChanged=true;
        let keep=collapseDuplicateIdentityHosts(el,key,'independent',sourceHash);
+       const manualIntent=st.independentGenerationTiming==='manual'?manualIntentForMessage(ctx,i):null;
+       if(keep?.dataset?.rmState==='manual' && (!manualIntent || manualIntent.cancelled || !manualIndependentTiming())){
+        keep.remove();keep=null;
+       }
+       if(manualIntent && !manualIntent.consumed && !saved?.html && !activeBaseFlight){
+        keep=ensureManualGenerationPlaceholder(ctx,i,m,manualIntent)||keep;
+       }
        // Migrate beta.14.54-beta.14.64 CSS-only failure notices into a real,
        // actionable error placeholder. Those old hosts hid the stale details
        // and exposed only a ::before sentence, so neither the feedback cat nor
@@ -10309,7 +10818,7 @@ function syncMessages(indices=null){
         }
        const hostSourceHash=String(keep?.dataset?.rmSourceHash||'');
        const mountedReadyIdentityStale=!!(readyDetailsFromHost(keep) && !mountedReadyMatchesObserved && !mountedReadyPassiveSourceDrift);
-       let hostIsStale=!!(keep && !passiveFailureHost && !mountedReadyPassiveSourceDrift && (mountedReadyIdentityStale || (hostSourceHash && hostSourceHash!==sourceHash)));
+       let hostIsStale=!!(keep && keep.dataset.rmState!=='manual' && !passiveFailureHost && !mountedReadyPassiveSourceDrift && (mountedReadyIdentityStale || (hostSourceHash && hostSourceHash!==sourceHash)));
        const keepIsReplyPlaceholder=!!(keep && (keep.dataset.rmReplyGenerationPlaceholder==='true' || (keep.dataset.rmState==='loading' && keep.querySelector?.(':scope > details.rabbit-mirror-external-placeholder'))));
         if(keepIsReplyPlaceholder && !saved?.html && automaticGenerationSuppressed && !activeBaseFlight){
           keep.remove();
@@ -10333,9 +10842,11 @@ function syncMessages(indices=null){
         const activePending=pending.get(slot)||activeBaseFlight;
        const manualResayPending=!!(activePending?.manual
         && !activePending.cancelled
-        && String(activePending.sourceHash||'')===String(sourceHash||'')
-        && Number(activePending.revision)===Number(observed.revision));
+        && ((activePending.manualBodyOwner && manualBodyOwnerCurrent(activePending.manualBodyOwner))
+         || (String(activePending.sourceHash||'')===String(sourceHash||'')
+          && Number(activePending.revision)===Number(observed.revision))));
        if(saved?.html && (ownerLocked?.record || savedRecordMatchesObserved(saved,observed))){
+         if(bindIndependentRecordContinuity(ctx,i,m,saved,store)) storeChanged=true;
          if(!ownerLocked?.record){ setOwnerLockForBase(baseSlot,slot,sourceHash); writePersistedOwner(ctx,i,m,saved,{overwrite:false}); ownerLocked={record:saved,lock:{slot}}; }
          const host=ensureExternalUi(el,key,saved.html,'ready','independent',sourceHash,saved);
          if(host){
@@ -10380,6 +10891,10 @@ function pruneForeignChatExternalHosts(){
  }
 }
 function reconcileVisibleMirrorDuplicates(indices=null){
+ const end=beginHostWorkTiming('independent.reconcileVisibleMirrorDuplicates');
+ try{ return reconcileVisibleMirrorDuplicatesCore(indices); }finally{ end?.(); }
+}
+function reconcileVisibleMirrorDuplicatesCore(indices=null){
  const ctx=getContext();
  const mode=runtimeMode();
  const allowed=indices instanceof Set?indices:null;
@@ -10452,6 +10967,10 @@ function syncMessageBatch(indices=[],historyRestoreLight=true){
  finally{ end?.(); }
 }
 function viewportMessageIndices(chat,limit=STARTUP_SYNC_IMMEDIATE_MESSAGES){
+ const end=beginHostWorkTiming('independent.viewportMessageIndices');
+ try{ return viewportMessageIndicesCore(chat,limit); }finally{ end?.(); }
+}
+function viewportMessageIndicesCore(chat,limit=STARTUP_SYNC_IMMEDIATE_MESSAGES){
  const found=new Set(); const max=Math.max(1,Math.min(8,Number(limit)||STARTUP_SYNC_IMMEDIATE_MESSAGES));
  const add=node=>{
   const message=node?.closest?.('.mes[mesid], [mesid].mes') || (node?.matches?.('.mes[mesid], [mesid].mes')?node:null);
@@ -10481,19 +11000,53 @@ function viewportMessageIndices(chat,limit=STARTUP_SYNC_IMMEDIATE_MESSAGES){
  }
  return [...found].slice(0,max);
 }
+// This cache only suppresses passive viewport probes. Host events, explicit
+// repairs and structural replacement observers retain their existing sync path.
+function restoredHistoryProbeState(ctx,index){
+ const message=ctx.chat?.[index],element=messageElement(index);
+ if(!element || !isRabbitMirrorEligibleAssistantMessage(message)) return null;
+ const hosts=externalHosts(element).filter(host=>host.dataset.rmSource==='independent');
+ if(hosts.length!==1) return null;
+ const host=hosts[0];
+ if(!host.isConnected || host.dataset.rmState!=='ready' || host.dataset.rmAwaitingFreshSource==='true') return null;
+ const faces=externalFaceDetails(host);
+ if(!faces.length) return null;
+ return {element,message,chat:ctx.chat,chatKey:chatKey(ctx),host,faces,
+  body:String(message.mes||''),display:String(message.extra?.display_text||''),reasoning:String(message.extra?.reasoning||''),
+  swipe:swipeId(message),source:host.__rabbitMirrorIndependentSource,
+  textRoot:element.querySelector?.('.mes_text'),
+  tools:[...(host.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-recipe]')||[])]};
+}
+function sameRestoredHistoryProbe(a,b){
+ return !!(a&&b&&a.element===b.element&&a.message===b.message&&a.chat===b.chat&&a.chatKey===b.chatKey
+  &&a.host===b.host&&a.body===b.body&&a.display===b.display&&a.reasoning===b.reasoning&&a.swipe===b.swipe
+  &&a.source===b.source&&a.textRoot===b.textRoot&&a.faces.length===b.faces.length&&a.faces.every((face,i)=>face===b.faces[i])
+  &&a.tools.length===b.tools.length&&a.tools.every((tool,i)=>tool===b.tools[i]));
+}
 function installStartupHistoryLazySync(expectedSequence=runtimeConfigSequence){
  clearStartupHistoryLazySync();
  if(isRabbitMirrorManagedChatSurface()){ installManagedIndependentMessages(); return; }
  const chat=document.querySelector('#chat');
  if(!chat) return;
+ const restored=new WeakMap();
  let queued=false;
  const probe=()=>{
   if(queued) return; queued=true;
   setTimeout(()=>{
    queued=false;
    if(expectedSequence!==runtimeConfigSequence || !currentRuntime()) return;
-   const ready=viewportMessageIndices(chat,STARTUP_SYNC_IMMEDIATE_MESSAGES);
+   const ctx=getContext();
+   const visible=viewportMessageIndices(chat,STARTUP_SYNC_IMMEDIATE_MESSAGES);
+   const ready=visible.filter(index=>{
+    if(!isRabbitMirrorEligibleAssistantMessage(ctx.chat?.[index])) return false;
+    const state=restoredHistoryProbeState(ctx,index);
+    return !state || !sameRestoredHistoryProbe(restored.get(state.element),state);
+   });
    if(ready.length) syncMessageBatch(ready,true);
+   for(const index of ready){
+    const state=restoredHistoryProbeState(ctx,index);
+    if(state) restored.set(state.element,state);
+   }
   },80);
  };
  startupHistoryFallbackRoot=chat; startupHistoryFallbackHandler=probe;
@@ -10720,6 +11273,7 @@ function installObserverIfNeeded({skipHistoricalProbe=false}={}){
    // current message on every token used to turn a long reply into repeated full
    // source/DOM passes even though no paid request may start before completion.
     if(hostGenerationLooksActive()){
+     if(manualIndependentTiming()) handleIndependentManualBridge({kind:'changed'});
      // Do not scan streaming additions. Removals are different: SillyTavern may
      // replace an older message wrapper or its external RabbitMirror shell when
      // a new reply starts. Recover only those exact owner ids, with no chat-wide
@@ -10751,8 +11305,9 @@ function resolveHostEventMessageIndex(payload,ctx=getContext(),{fallbackLastAssi
    if(exact>=0) raw=exact;
   }
  }
- const parsed=Number(raw);
- if(Number.isInteger(parsed) && parsed>=0 && isRabbitMirrorEligibleAssistantMessage(chat?.[parsed])) return parsed;
+ const explicit=typeof raw==='number' || (typeof raw==='string' && /^\d+$/.test(raw.trim()));
+ const parsed=explicit?Number(raw):NaN;
+ if(Number.isSafeInteger(parsed) && parsed>=0 && isRabbitMirrorEligibleAssistantMessage(chat?.[parsed])) return parsed;
  if(!fallbackLastAssistant) return null;
  const last=lastAssistantMessage(ctx)?.i;
  return Number.isInteger(last)&&last>=0?last:null;
@@ -10845,6 +11400,7 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
     for(const event of new Set(generationFinishedEvents)){
       const handler=payload=>{
         const finishedContext=getContext();
+        queueManualGenerationTerminalSync();
         if(runtimeMode()==='follow-external'){
           const id=resolveHostEventMessageIndex(payload,finishedContext,{fallbackLastAssistant:true});
           if(Number.isInteger(id)&&id>=0) queueMessageSync([id]);
@@ -10876,6 +11432,7 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
         queueMessageSync([id]);return;
        }
        if(early){cancelEarlyBodyOwner(early,'swipe-changed');automaticGenerationCutovers.get(chatKey(ctx)).earlyBodies.delete(id);}
+       independentRecordContinuity.delete(ctx.chat?.[id]);
        unlockAutomaticGenerationCutover(ctx,id,'host-swipe');
        const message=ctx.chat?.[id];
          const currentBase=isRabbitMirrorEligibleAssistantMessage(message)?messageBaseSlotKey(ctx,id,message):'';
@@ -10898,6 +11455,8 @@ async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence)
        const ctx=getContext();
        const id=resolveHostEventMessageIndex(messageId,ctx,{fallbackLastAssistant:true});
        if(Number.isInteger(id)&&id>=0){
+         noteAutomaticHostGenerationReceived(ctx,id);
+         scheduleAutomaticHostGenerationSettlement();
          const active=hostGenerationLooksActive();
          if(active) ensureGenerationPlaceholderForIndex(id,true);
          if(runtimeMode()!=='follow-external' || !active) queueMessageSync([id]);
@@ -11027,6 +11586,7 @@ function restoreMountedIndependentRecords(snapshots=[]){
 
 async function reconfigureRuntime({coldStart=false}={}){
  if(!currentRuntime()) return;
+ reconcileManualTimingChange();
  const sequence=++runtimeConfigSequence;
  if([...automaticGenerationCutovers.values()].some(cutover=>[...(cutover.earlyBodies?.values()||[])].some(owner=>!owner.cancelled&&(owner.config!==earlyBodyConfigSignature()||earlyBodyCredentials.get(owner)!==String(getSettings().independentApiKey||''))))) cancelEarlyBodyProbes('early-settings-changed');
  clearPassiveRecoveryTimers();
@@ -11092,8 +11652,11 @@ export async function initIndependentRabbitMirror({isActive=()=>true}={}){
  globalThis.__rabbitMirrorIndependentCleanup=destroyIndependentRabbitMirror;
  migrateLegacyDeletedRecords();
  installIndependentActionBridge();
+ handleIndependentManualBridge.diagnosticSnapshot=()=>{const frames=[...document.querySelectorAll('.rabbit-mirror-external-host[data-rm-state="manual"]')];return {runtimeVersion:'1.5.53-manualdiag1',runtimeCurrent:currentRuntime(),timingManual:manualIndependentTiming(),pendingFrames:frames.length,visiblePendingFrames:frames.filter(el=>!el.hidden&&getComputedStyle(el).visibility!=='hidden'&&el.getClientRects().length>0).length,readyFrames:document.querySelectorAll('.rabbit-mirror-external-host[data-rm-state="ready"]').length};};
+ globalThis.__rabbitMirrorIndependentManualBridge=handleIndependentManualBridge;
+ try{globalThis.__rabbitMirrorManualEntryDiagnosticRecord?.('runtime-start',{runtimeVersion:'1.5.53-manualdiag1',runtimeCurrent:currentRuntime()});}catch{}
  installFollowMultifaceCommitListener();
- hostGenerationInProgress=hostGenerationLooksActive();
+ hostGenerationInProgress=automaticIndependentTiming() && hostGenerationLooksActive();
  hostGenerationHintStartedAt=hostGenerationInProgress?Date.now():0;
  for(const key of LEGACY_GLOBAL_FLIGHT_KEYS){ const legacy=globalThis[key]; if(legacy?.values) for(const flight of legacy.values()) abortFlight(flight,'runtime-upgrade'); try{legacy?.clear?.();}catch{} delete globalThis[key]; }
  installFeedbackMirrorActionListeners();
@@ -11103,11 +11666,16 @@ export async function initIndependentRabbitMirror({isActive=()=>true}={}){
  await reconfigureRuntime({coldStart:!hotUpdate});
  if(!isActive()) return;
  installIndependentEarlyBodyBridge();
+ if(manualIndependentTiming()) handleIndependentManualBridge({kind:'changed'});
  recoverDeferredIndependentGenerations();
  // Hot updates never restart historical loading/error placeholders. Only a
  // genuinely new assistant reply or an explicit manual retry may issue a POST.
 }
 export function destroyIndependentRabbitMirror(){
+ try{globalThis.__rabbitMirrorManualEntryDiagnosticRecord?.('runtime-stop',{runtimeVersion:'1.5.53-manualdiag1'});}catch{}
+ if(globalThis.__rabbitMirrorIndependentManualBridge===handleIndependentManualBridge) delete globalThis.__rabbitMirrorIndependentManualBridge;
+ manualTerminalOwners.clear();
+ lastAppliedIndependentTiming=null;
  cancelEarlyBodyProbes('runtime-destroyed',{clear:true});
  if(globalThis.__rabbitMirrorEarlyBodyBridge===handleIndependentEarlyBodyBridge) delete globalThis.__rabbitMirrorEarlyBodyBridge;
  managedIndependentMessagesUnsubscribe?.(); managedIndependentMessagesUnsubscribe=null;

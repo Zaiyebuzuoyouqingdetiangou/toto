@@ -1,7 +1,7 @@
 import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.53-cn-boundary1';
 import { isRabbitMirrorManagedChatSurface, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.5.53-cn-boundary1';
 import { recordTtSurface, ttSurfaceNow, nextTtSurfaceClickSeq } from './ttSurfaceDiagnostics.js?rmv=1.5.53-cn-boundary1';
-import { getSettings, syncExternalReferenceVisibility } from './settings.js?rmv=1.5.53-cn-boundary1';
+import { getSettings, syncExternalReferenceVisibility } from './settings.js?rmv=1.5.53-timing1';
 import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.53-cn-boundary1';
 import { getCurrentChatKey } from './storage.js?rmv=1.5.53-cn-boundary1';
 import { getSanitizedRabbitMirrorFaceProof } from './multifaceProof.js?rmv=1.5.53-cn-boundary1';
@@ -15,9 +15,9 @@ import {
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
 } from './feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.53-cn-boundary1';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.53-cn-boundary1';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.53-cn-boundary1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.53-manualdiag1';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.53-timing1';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.53-timing1';
 import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.5.53-cn-boundary1';
 
 
@@ -18853,9 +18853,9 @@ function feedbackCatButtonTitle() {
         : '挨打猫：反馈这面兔子镜；未选择时不会向模型追加内容';
 }
 
-function updateFeedbackCatButtonTitles() {
+function updateFeedbackCatButtonTitles(scope = document) {
     const title = feedbackCatButtonTitle();
-    document.querySelectorAll?.(`[${FEEDBACK_CAT_ATTR}]`)?.forEach(button => {
+    scope.querySelectorAll?.(`[${FEEDBACK_CAT_ATTR}]`)?.forEach(button => {
         button.title = title;
         button.setAttribute('aria-label', title);
         normalizeRabbitMirrorToolButton(button);
@@ -22635,7 +22635,7 @@ async function runMaintenanceNarrowFaceRepair(root, button) {
         if (rejectOversizedMaintenanceRepair(root, button, '窄面电击')) return false;
         if (!maintenanceRepairRunIsCurrent(repairRun)) return false;
         setMaintenanceRabbitState(button, MAINTENANCE_STATES.checking, '⚡ 正在重新测量并恢复这面兔子镜的宽度');
-        const adapter = await import('./independentApi.js?rmv=1.5.53-cn-boundary1');
+        const adapter = await import('./independentApi.js?rmv=1.5.53-manualdiag1');
         // Loading the adapter is the sole async boundary. Never apply a delayed
         // click to a new chat, Swipe, source revision, face or replacement node.
         if (!root.isConnected || !details.isConnected || !button.isConnected
@@ -23233,7 +23233,18 @@ function removeFeedbackCatsInChatDom() {
 
 
 const PALETTE_DEDUPE_CHECKED_ATTR = 'data-rabbit-mirror-palette-dedupe-checked';
-function installMaintenanceRabbitsInScope(scope, { allowGlobalRemoval = false, autoSafeForceCurrent = false, historyRestoreLight = false } = {}) {
+// Diagnostics are optional and cannot change the operation's return or error.
+function beginHostWorkTiming(name){
+ let end;
+ try{ end=globalThis.__rabbitMirrorExternalDiag?.beginHostWork?.(name); }catch{}
+ if(typeof end!=='function') return null;
+ return ()=>{ try{ end(); }catch{} };
+}
+function installMaintenanceRabbitsInScope(scope, options = {}) {
+    const end = beginHostWorkTiming('maintenance.installScope');
+    try { return installMaintenanceRabbitsInScopeCore(scope, options); } finally { end?.(); }
+}
+function installMaintenanceRabbitsInScopeCore(scope, { allowGlobalRemoval = false, autoSafeForceCurrent = false, historyRestoreLight = false } = {}) {
     if (!isCurrentRuntime() || !scope?.querySelectorAll) return;
     const perfEnd = globalThis.__rabbitMirrorPerfDiag?.begin?.('maintenance.installScope', { allowGlobalRemoval: !!allowGlobalRemoval, historyRestoreLight: !!historyRestoreLight }, 8);
     const maintenanceEnabled = isMaintenanceRabbitEnabled();
@@ -23310,7 +23321,7 @@ function installMaintenanceRabbitsInScope(scope, { allowGlobalRemoval = false, a
         }
         if (!historyRestoreLight) scheduleCurrentHighConfidenceTextRepair(root);
     });
-    if (feedbackEnabled) updateFeedbackCatButtonTitles();
+    if (feedbackEnabled) updateFeedbackCatButtonTitles(scope);
     perfEnd?.();
 }
 
@@ -26445,6 +26456,20 @@ function installToolEntryDelegation(chatRoot = getChatRoot()) {
         captureRabbitMirrorInteractionResetFromEventTarget(control);
     };
     toolEntryDelegatedClickHandler = event => {
+        const manualButton = event.target?.closest?.('[data-rm-manual-generate="true"]');
+        if (manualButton && chatRoot.contains(manualButton)) {
+            event.preventDefault();
+            event.stopPropagation();
+            const manualHost = manualButton.closest('.rabbit-mirror-external-host');
+            if (!manualHost?.isConnected || manualButton.disabled) return;
+            // The runtime validates its own host/intent identity; markup alone
+            // never grants permission to send a paid request.
+            const action = globalThis.__rabbitMirrorIndependentActionsV1?.generateManual;
+            if (typeof action === 'function') {
+                Promise.resolve(action(manualHost)).catch(error => console.warn('[RabbitMirror] Manual generation failed:', error));
+            }
+            return;
+        }
         // Reuse this existing delegated boundary: after a collapsed current mirror is
         // opened, one animation frame is enough for layout before the bounded text check.
         // No per-mirror listener, observer or polling loop is introduced.
