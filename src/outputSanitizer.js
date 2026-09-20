@@ -1,8 +1,9 @@
+import { installMirrorToolMenu, fitMirrorToolPanel } from './mirrorToolMenu.js?rmv=1.5.53-image1';
 import { isTextPresentation } from './presentationMode.js?rmv=1.5.53-visualquick1';
 import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.53-cn-boundary1';
 import { isRabbitMirrorManagedChatSurface, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.5.53-cn-boundary1';
 import { recordTtSurface, ttSurfaceNow, nextTtSurfaceClickSeq } from './ttSurfaceDiagnostics.js?rmv=1.5.53-cn-boundary1';
-import { getSettings, syncExternalReferenceVisibility } from './settings.js?rmv=1.5.53-visualquick1';
+import { getSettings, syncExternalReferenceVisibility } from './settings.js?rmv=1.5.53-image1';
 import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.53-cn-boundary1';
 import { getCurrentChatKey } from './storage.js?rmv=1.5.53-visualquick1';
 import { getSanitizedRabbitMirrorFaceProof } from './multifaceProof.js?rmv=1.5.53-visualquick1';
@@ -16,9 +17,9 @@ import {
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
 } from './feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.53-visualquick1';
-import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.53-visualquick1';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.53-visualquick1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.53-image1';
+import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.53-image1';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.53-image1';
 import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.5.53-cn-boundary1';
 
 
@@ -6934,7 +6935,7 @@ function getRabbitMirrorSummaryText(root) {
     if (!summary) return '';
     const clone = summary.cloneNode?.(true);
     if (clone?.querySelectorAll) {
-        clone.querySelectorAll(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}], [${RESAY_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`).forEach(node => node.remove());
+        clone.querySelectorAll(`[data-rm-image-region], [data-rm-image-portal], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}], [${RESAY_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`).forEach(node => node.remove());
     }
     return String((clone || summary).textContent || '')
         .replace(/\s+/g, ' ')
@@ -11203,7 +11204,7 @@ function maintenanceProbeElementAtPath(ancestor, path) {
 
 function sanitizeMaintenanceProbeClone(clone) {
     if (!clone?.querySelectorAll) return;
-    clone.querySelectorAll(`script, iframe, object, embed, [${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`)
+    clone.querySelectorAll(`[data-rm-image-region], [data-rm-image-portal], script, iframe, object, embed, [${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`)
         .forEach(node => node.remove());
     clone.querySelectorAll('*').forEach(element => {
         for (const attribute of [...element.attributes]) {
@@ -12693,6 +12694,7 @@ function diagnosticMessageBody(root) {
 
 function diagnosticIsInternalUiNode(node) {
     if (!node) return false;
+    if (node.closest?.('[data-rm-image-region], [data-rm-image-portal], [data-rm-tool-menu]')) return true;
     if (node.closest?.(`[${EXTERNAL_REFERENCE_NOTE_ATTR}]`)) return true;
     if (node.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}], [${RESAY_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`)) return true;
     return !!node.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}]`);
@@ -12710,7 +12712,7 @@ function diagnosticContentSnapshot(root) {
     };
     const clone = root?.cloneNode?.(true);
     if (!clone?.querySelectorAll) return fallback;
-    clone.querySelectorAll(`[${EXTERNAL_REFERENCE_NOTE_ATTR}], [${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${RECIPE_MENU_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}]`)
+    clone.querySelectorAll(`[data-rm-image-region], [data-rm-image-portal], [${EXTERNAL_REFERENCE_NOTE_ATTR}], [${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${RECIPE_MENU_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}]`)
         .forEach(node => node.remove());
     return {
         html: String(clone.innerHTML || ''),
@@ -13911,7 +13913,7 @@ function getDiagnosticRenderedSource(root) {
     try {
         const clone = root.cloneNode(true);
         if (clone.matches?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`)) return '（当前根节点为诊断面板，无法复制兔子镜）';
-        clone.querySelectorAll?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`).forEach(panel => panel.remove());
+        clone.querySelectorAll?.(`[data-rm-image-region], [data-rm-image-portal], [${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`).forEach(panel => panel.remove());
         return diagnosticLimitSource(clone.outerHTML || '（无法序列化实际渲染代码）');
     } catch {
         return '（无法序列化实际渲染代码）';
@@ -13987,6 +13989,7 @@ function buildRabbitMirrorCurrentFaceHtml(root) {
         template.content.appendChild(shell);
     } else template.content.appendChild(clone);
     template.content.querySelectorAll([
+        '[data-rm-image-region]', '[data-rm-image-portal]',
         `[${TOOL_ENTRY_HOST_ATTR}]`, `[${MAINTENANCE_RABBIT_ATTR}]`, `[${FEEDBACK_CAT_ATTR}]`,
         `[${RECIPE_BUTTON_ATTR}]`, `[${RESAY_ATTR}]`, `[${MAINTENANCE_MENU_ATTR}]`,
         `[${FEEDBACK_CAT_MENU_ATTR}]`, `[${RECIPE_MENU_ATTR}]`, `[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`,
@@ -14231,7 +14234,7 @@ function rabbitMirrorLanguageBalance(root) {
     try {
         const clone = root.cloneNode?.(true);
         if (clone?.querySelectorAll) {
-            clone.querySelectorAll(`style,script,[${TOOL_ENTRY_HOST_ATTR}],[${MAINTENANCE_RABBIT_ATTR}],[${FEEDBACK_CAT_ATTR}],[${RESAY_ATTR}],[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}],[${FEEDBACK_CAT_MENU_ATTR}]`).forEach(node => node.remove());
+            clone.querySelectorAll(`[data-rm-image-region], [data-rm-image-portal], style,script,[${TOOL_ENTRY_HOST_ATTR}],[${MAINTENANCE_RABBIT_ATTR}],[${FEEDBACK_CAT_ATTR}],[${RESAY_ATTR}],[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}],[${FEEDBACK_CAT_MENU_ATTR}]`).forEach(node => node.remove());
             return auditVisibleLanguageBalanceText(clone.textContent || '');
         }
     } catch (error) {
@@ -17108,6 +17111,7 @@ function maintenanceMirrorBodyEvidence(candidate) {
     const clone = details.cloneNode(true);
     clone.querySelectorAll?.([
         ':scope > summary',
+        '[data-rm-image-region]',
         'script',
         'template',
         `[${MAINTENANCE_RABBIT_ATTR}]`,
@@ -18499,7 +18503,7 @@ function cleanRabbitMirrorInteractionResetClone(details) {
     if (!details?.cloneNode) return null;
     const clone = cloneRabbitMirrorFilteredNode(details);
     clone.querySelectorAll?.(`[${EXTERNAL_REFERENCE_NOTE_ATTR}]`)?.forEach(node => node.remove());
-    clone.querySelectorAll?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${RECIPE_MENU_ATTR}]`)?.forEach(node => node.remove());
+    clone.querySelectorAll?.(`[data-rm-image-region], [data-rm-image-portal], [${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${RECIPE_MENU_ATTR}]`)?.forEach(node => node.remove());
     clone.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]')?.remove?.();
     clone.querySelectorAll?.('[data-rabbit-mirror-maintenance-checked-sandbox]')?.forEach(node => node.remove());
     clone.querySelectorAll?.(`[${INTERACTION_HOME_ATTR}]`)?.forEach(node => node.remove());
@@ -18585,7 +18589,7 @@ function rabbitMirrorInteractionRootFromTarget(target) {
 
 function captureRabbitMirrorInteractionResetFromEventTarget(target) {
     if (!(target instanceof Element)) return false;
-    if (target.closest?.(`[${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${RECIPE_MENU_ATTR}], [${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`)) return false;
+    if (target.closest?.(`[data-rm-image-region], [data-rm-image-portal], [${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${RECIPE_MENU_ATTR}], [${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`)) return false;
     const root = rabbitMirrorInteractionRootFromTarget(target);
     if (!root) return false;
     const details = getRabbitMirrorFacePosition(root)?.details
@@ -18641,9 +18645,9 @@ function captureMaintenancePreRepairSnapshot(root) {
     if (isIndependentMaintenanceRoot(root)) {
         const snapshotNode = cloneRabbitMirrorFilteredNode(originalNode);
         const workingNode = cloneRabbitMirrorFilteredNode(originalNode);
-        snapshotNode.querySelectorAll?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}]`)?.forEach(node => node.remove());
+        snapshotNode.querySelectorAll?.(`[data-rm-image-region], [data-rm-image-portal], [${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}]`)?.forEach(node => node.remove());
         snapshotNode.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]')?.remove?.();
-        workingNode.querySelectorAll?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}]`)?.forEach(node => node.remove());
+        workingNode.querySelectorAll?.(`[data-rm-image-region], [data-rm-image-portal], [${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}]`)?.forEach(node => node.remove());
         workingNode.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]')?.remove?.();
         const wasOpen = originalNode.hasAttribute('open');
         rearmRabbitMirrorSerializedInteractionRoot(workingNode);
@@ -18664,7 +18668,7 @@ function captureMaintenancePreRepairSnapshot(root) {
     // place and store only a detached rollback clone. Replacing the working node
     // would drop handlers while preserving data-* "already bound" markers.
     const snapshotNode = cloneRabbitMirrorFilteredNode(originalNode);
-    snapshotNode.querySelectorAll?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}]`)?.forEach(node => node.remove());
+    snapshotNode.querySelectorAll?.(`[data-rm-image-region], [data-rm-image-portal], [${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}]`)?.forEach(node => node.remove());
     snapshotNode.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]')?.remove?.();
     maintenancePreRepairSnapshots.set(key, {
         node: snapshotNode,
@@ -18770,6 +18774,7 @@ function closeFeedbackCatMenu() {
 }
 
 function positionFeedbackCatPanel(panel, button, preferredWidth = 300) {
+    if (typeof fitMirrorToolPanel === 'function') return fitMirrorToolPanel(panel, button, preferredWidth);
     const rect = button.getBoundingClientRect();
     // 1.3.20: on phones the menu is taller than the visual viewport. Use the
     // visual viewport when available, cap the panel height, and let the menu
@@ -19031,9 +19036,12 @@ function showFeedbackCatMenu(root, button, draft = null) {
             ? `<div class="rabbit-mirror-feedback-cat-status">当前没有生效中的反馈。</div>${receiptLine}`
             : '<div class="rabbit-mirror-feedback-cat-status">可同时选择多项；关闭而未提交不会影响后续生成。</div>';
     const independentOwner = feedbackCatIndependentOwner(root, button);
+    const actionBridge = globalThis.__rabbitMirrorIndependentActionsV1;
+    const quickResay = independentOwner && actionBridge?.runtime === RUNTIME_VERSION
+        ? actionBridge.prepareQuickResay?.(root, independentOwner) : null;
     const independentActions = independentOwner
         ? `<div class="rabbit-mirror-feedback-cat-actions rabbit-mirror-feedback-cat-mirror-actions">
-            <button type="button" data-rm-feedback-action="resay">↻ 重说</button>
+            <button type="button" data-rm-feedback-action="resay"${quickResay ? ' data-rm-quick-resay="true"' : ''}>↻ ${quickResay ? '快速重说这一面' : '重说'}</button>
             <button type="button" data-rm-feedback-action="history">◷ 兔子镜历史</button>
           </div>`
         : '';
@@ -19115,8 +19123,10 @@ function showFeedbackCatMenu(root, button, draft = null) {
             return;
         }
         if (action === 'resay' || action === 'history') {
+            if (!panel.isConnected) return;
             const owner = independentOwner || feedbackCatIndependentOwner(root, button) || {};
-            const handled = invokeFeedbackMirrorAction(action, root, owner);
+            const handled = action === 'resay' && typeof quickResay === 'function'
+                ? quickResay() : invokeFeedbackMirrorAction(action, root, owner);
             closeFeedbackCatMenu();
             if (!handled) globalThis.toastr?.warning?.('没有找到这条回复对应的副 API 兔子镜。');
             return;
@@ -19775,6 +19785,7 @@ function maintenanceMobileLayoutTextLength(element) {
 
 function maintenanceMobileLayoutIsInternal(element) {
     if (!element?.matches) return true;
+    if (element.closest?.('[data-rm-image-region], [data-rm-image-portal], [data-rm-tool-menu]')) return true;
     if (element.matches('style,script,link,meta,br,summary')) return true;
     if (element.closest?.(`[${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${RECIPE_MENU_ATTR}], [${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`)) return true;
     if (element.matches(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}], [${RESAY_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`)) return true;
@@ -22649,7 +22660,7 @@ async function runMaintenanceNarrowFaceRepair(root, button) {
         if (rejectOversizedMaintenanceRepair(root, button, '窄面电击')) return false;
         if (!maintenanceRepairRunIsCurrent(repairRun)) return false;
         setMaintenanceRabbitState(button, MAINTENANCE_STATES.checking, '⚡ 正在重新测量并恢复这面兔子镜的宽度');
-        const adapter = await import('./independentApi.js?rmv=1.5.53-visualquick1');
+        const adapter = await import('./independentApi.js?rmv=1.5.53-image1');
         // Loading the adapter is the sole async boundary. Never apply a delayed
         // click to a new chat, Swipe, source revision, face or replacement node.
         if (!root.isConnected || !details.isConnected || !button.isConnected
@@ -22766,6 +22777,7 @@ function showMaintenanceRabbitMenu(root, button) {
     const left = Math.max(12, Math.min(rect.left, globalThis.innerWidth - width - 12));
     panel.style.left = `${left}px`;
     panel.style.top = `${Math.min(rect.bottom + 6, globalThis.innerHeight - panel.offsetHeight - 12)}px`;
+    if (typeof fitMirrorToolPanel === 'function') fitMirrorToolPanel(panel, button, 340);
     panel.addEventListener('click', event => {
         const action = event.target?.closest?.('[data-rm-maintenance-action]')?.getAttribute('data-rm-maintenance-action');
         if (!action) return;
@@ -23254,6 +23266,37 @@ function beginHostWorkTiming(name){
  if(typeof end!=='function') return null;
  return ()=>{ try{ end(); }catch{} };
 }
+let mirrorImageModule = null;
+function loadMirrorImageModule() {
+    if (!mirrorImageModule) mirrorImageModule = import('./imageUi.js?rmv=1.5.53-image1').catch(error => { mirrorImageModule = null; throw error; });
+    return mirrorImageModule;
+}
+function installUnifiedMirrorTools(root) {
+    const details = root.matches?.('details') ? root : root.querySelector(':scope > details') || root.querySelector('details');
+    const summary = details?.querySelector(':scope > summary');
+    if (!summary) return;
+    const host = ensureRabbitMirrorToolHost(summary);
+    const actions = [];
+    const add = (attr, enabled, id, label, handler) => {
+        const button = host.querySelector(`[${attr}]`);
+        if (button && enabled) actions.push({ id, label, run: event => handler(event, root, button) });
+        else if (button && !enabled) button.remove();
+    };
+    add(MAINTENANCE_RABBIT_ATTR, isMaintenanceRabbitEnabled(), 'maintenance', '🐇 维修兔', handleMaintenanceRabbitClick);
+    add(FEEDBACK_CAT_ATTR, isFeedbackCatEnabled(), 'feedback', '🐈 挨打猫 · 反馈与重说', handleFeedbackCatClick);
+    add(RECIPE_BUTTON_ATTR, true, 'recipe', '🎲 黑名单与本轮抽签', handleRecipeClick);
+    actions.push({ id: 'image', label: '▧ 生图', run: (_event, opener) => {
+        void loadMirrorImageModule().then(module => { if (root.isConnected) return module.openMirrorImagePanel(root, { opener }); })
+            .catch(() => globalThis.toastr?.warning?.('生图面板未能打开，请重新打开后再试。'));
+    } });
+    installMirrorToolMenu(root, host, actions, () => {
+        closeMaintenanceRabbitMenu(); closeFeedbackCatMenu(); closeRecipeMenu();
+        mirrorImageModule?.then(module => module.closeMirrorImagePanel?.()).catch(() => {});
+    });
+    // Restore saved images even when image generation is disabled; this never requests a model.
+    void loadMirrorImageModule().then(module => { if (root.isConnected) return module.mountMirrorImage(root); })
+        .catch(() => {});
+}
 function installMaintenanceRabbitsInScope(scope, options = {}) {
     const end = beginHostWorkTiming('maintenance.installScope');
     try { return installMaintenanceRabbitsInScopeCore(scope, options); } finally { end?.(); }
@@ -23333,6 +23376,7 @@ function installMaintenanceRabbitsInScopeCore(scope, { allowGlobalRemoval = fals
         } catch (error) {
             console.debug('[RabbitMirror] recipe button install recovered for one mirror:', error);
         }
+        if (typeof installUnifiedMirrorTools === 'function') installUnifiedMirrorTools(root);
         if (!historyRestoreLight) scheduleCurrentHighConfidenceTextRepair(root);
     });
     if (feedbackEnabled) updateFeedbackCatButtonTitles(scope);
@@ -25913,7 +25957,7 @@ function maintenanceAutoSafeLiveFingerprint(root, { budgetChecked = false } = {}
     let structural = '';
     try {
         const clone = root.cloneNode(true);
-        clone.querySelectorAll?.(`[${EXTERNAL_REFERENCE_NOTE_ATTR}], [${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${RECIPE_MENU_ATTR}]`).forEach(node => node.remove());
+        clone.querySelectorAll?.(`[data-rm-image-region], [data-rm-image-portal], [${EXTERNAL_REFERENCE_NOTE_ATTR}], [${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}], [${RECIPE_MENU_ATTR}]`).forEach(node => node.remove());
         const volatile = new Set([
             RUNTIME_VERSION_ATTR,
             MAINTENANCE_AUTO_SAFE_ATTR,

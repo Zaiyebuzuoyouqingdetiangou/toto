@@ -161,6 +161,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
         books:['settings','使用世界书资料','复用当前聊天本轮已激活的资料，不重新抽取世界书。'],
         memories:['settings','加入共同回忆','让抽到的回忆类内容，有合适的过往资料可参考。'],
         early:['settings','什么时候开始副 API 生成','这是可选项。默认等正文完成后，再生成兔子镜。'],
+        image:['settings','镜面生图','把这一面里的角色与高光画面画出来。手动点击才调用模型。'],
         appearance:['settings','主题与外观','只改变这个设置面板的颜色，不影响小剧场画面。'],
         faces:['play','一次生成几面','一面就是一份独立呈现的小剧场。默认一次生成一面。'],
         draw:['play','怎么挑选题材和形式','先决定是一起抽题材与形式，还是只抽呈现形式。'],
@@ -218,6 +219,8 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     const change=button('更改 ›',()=>navigate('mode'),'rh-ui-text-link');change.dataset.rhRoute='mode';modeSummary.append(change);enable.append(modeSummary);
     const connectionNudge=row('settings','connection','还没有配置副 API 模型','选择连接和模型，供兔子镜单独使用。','memory');
     const displayRow=row('settings','display','兔子镜显示模式');
+    row('settings','image','镜面生图','连接柏宝绘、选择提示词格式。','palette');
+    move('rh_image_settings','image');
     row('settings','appearance','主题与外观','调整这个面板的颜色。','palette');row('settings','read','它可以参考什么','聊天正文、角色资料、世界书和共同回忆。','memory');
     for(const [key,title,desc,glyph] of [
         ['faces','一次想看几面','现在每轮生成 1 面；想多看几种内容时再开启多面。'],

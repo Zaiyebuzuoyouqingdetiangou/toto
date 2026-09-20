@@ -2,22 +2,22 @@ import { presentationModeFields, hasExplicitTextFace } from './presentationMode.
 import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.53-cn-boundary1';
 import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, getRabbitMirrorExternalPlacementParent, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.5.53-cn-boundary1';
 import { recordTtSurface, ttSurfaceNow } from './ttSurfaceDiagnostics.js?rmv=1.5.53-cn-boundary1';
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5.53-visualquick1';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5.53-image1';
 import { independentGenerationTiming } from './independentTiming.js?rmv=1.5.53-timing1';
 import { assertRabbitMirrorIndependentResponseBytes, assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.5.53-cn-boundary1';
 import { parseIndependentAdvancedOptions, buildIndependentAdvancedCarrier, applyIndependentAdvancedExclusions, independentAdvancedOptionsSignature } from './advancedRequestOptions.js?rmv=1.5.53-cn-boundary1';
-import { buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.5.53-visualquick1';
+import { buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.5.53-image1';
 import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from './externalWorldBook/store.js?rmv=1.5.53-text1';
 import { describeExternalWorldBookPreflightFailure, describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.53-cn-boundary1';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, armRabbitMirrorFirstUseInteraction, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.53-visualquick1';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, armRabbitMirrorFirstUseInteraction, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.53-image1';
 import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.53-cn-boundary1';
 import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=1.5.53-cn-boundary1';
 import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from './multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
 import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.53-visualquick1';
-import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, getRabbitMirrorFollowBatchFailure, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.53-visualquick1';
+import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, getRabbitMirrorFollowBatchFailure, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.53-image1';
 import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions, markPendingBatchAttempt, commitPendingComboBatch, releasePendingComboBatch } from './storage.js?rmv=1.5.53-visualquick1';
 import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.53-visualquick1';
+import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.53-image1';
 import { readFollowPartialResult, followPartialResultFaceOwnerKey } from './followPartialResults.js?rmv=1.5.53-visualquick1';
 import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.5.53-visualquick1';
 import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.53-cn-boundary1';
@@ -1714,7 +1714,7 @@ const INDEPENDENT_TAG_SCAN_STANDARD_TAGS=new Set(`a abbr address area article as
 const INDEPENDENT_TAG_SCAN_RESERVED_TAGS=new Set(['toto']);
 const INDEPENDENT_TAG_SCAN_SKIP_SUBTREES=new Set(['toto','script','style','template','noscript','iframe','object','embed','svg','math']);
 const INDEPENDENT_TAG_SCAN_SKIP_CODE_SUBTREES=new Set(['code','pre','textarea','kbd','samp']);
-const INDEPENDENT_TAG_SCAN_BLOCKED_SELECTOR='toto, [data-rabbit-mirror-external-source], [data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-ui-version], script, style, template, noscript, iframe, object, embed, svg, math, [hidden], [inert], [aria-hidden="true"], [aria-hidden="1"], .displayNone, .display-none, .hidden, .invisible, .sr-only, [class*="display-none"], [class*="display_none"]';
+const INDEPENDENT_TAG_SCAN_BLOCKED_SELECTOR='toto, [data-rabbit-mirror-external-source], [data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-ui-version], script, style, template, noscript, iframe, object, embed, svg, math, [hidden], [inert], [aria-hidden="true"], [aria-hidden="1"], .displayNone, .display-none, .hidden, .invisible, .sr-only, [class*="display-none"], [class*="display_none"]';
 function normalizedIndependentDiscoveredTagName(value=''){
  const tag=normalizeIndependentContextExcludedTags([String(value||'')])[0]||'';
  if(!tag || INDEPENDENT_TAG_SCAN_STANDARD_TAGS.has(tag) || INDEPENDENT_TAG_SCAN_RESERVED_TAGS.has(tag)) return '';
@@ -1930,7 +1930,7 @@ function liveVisibleIndependentMessageText(index,excludedTags=new Set()){
   const body=document.querySelector(`#chat .mes[mesid="${Number(index)}"] .mes_text, #chat [mesid="${Number(index)}"].mes .mes_text`);
   if(!body) return {available:false,text:''};
   const parts=[]; const stack=[{node:body,depth:0}]; const filteredExcludedTags=new Set(); let examined=0; let chars=0; let filteredExcludedTagChars=0;
-  const blockedSelector='toto, [data-rabbit-mirror-external-source], [data-rabbit-mirror-tool-entry-host], script, style, template, noscript, [hidden], [inert], [aria-hidden="true"], [aria-hidden="1"], .displayNone, .display-none, .hidden, .invisible, .sr-only, [class*="display-none"], [class*="display_none"]';
+  const blockedSelector='toto, [data-rabbit-mirror-external-source], [data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], script, style, template, noscript, [hidden], [inert], [aria-hidden="true"], [aria-hidden="1"], .displayNone, .display-none, .hidden, .invisible, .sr-only, [class*="display-none"], [class*="display_none"]';
   const blockTags=new Set(['BR','P','DIV','LI','SECTION','ARTICLE','BLOCKQUOTE','H1','H2','H3','H4','H5','H6','TR']);
   for(let ancestor=body,depth=0;ancestor && depth<5;ancestor=ancestor.parentElement,depth+=1){
    if(ancestor.matches?.(blockedSelector)) return {available:true,text:''};
@@ -3650,7 +3650,7 @@ function serializeExternalFaceDetails(host,{scrubTools=true}={}){
  return faces.map((details,index)=>{
   const clone=details.cloneNode(true);
   clone.querySelectorAll?.('[data-rabbit-mirror-reference-note]')?.forEach(node=>node.remove());
-  if(scrubTools) clone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-interaction-diagnostic], [data-rabbit-mirror-interaction-home]')?.forEach(node=>node.remove());
+  if(scrubTools) clone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-interaction-diagnostic], [data-rabbit-mirror-interaction-home]')?.forEach(node=>node.remove());
   stripIndependentTransientLayoutArtifacts(clone);
   clone.removeAttribute?.(DEFERRED_INTERACTION_RESCUE_ATTR);
   return faces.length>1?wrapIndependentFace(clone.outerHTML,index):String(clone.outerHTML||'');
@@ -5597,7 +5597,7 @@ const MAINTENANCE_STRUCTURAL_STYLE_ATTRS = [
 ];
 const PERSISTED_STATE_STYLE_ATTRS = [...RUNTIME_STATE_STYLE_ATTRS, ...MAINTENANCE_STRUCTURAL_STYLE_ATTRS];
 const PERSISTED_STATE_ARIA_ATTRS = ['aria-pressed','aria-selected','aria-expanded','aria-current','aria-checked'];
-const PERSISTED_RUNTIME_UI_SELECTOR = '[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay], [data-rabbit-mirror-interaction-home], [data-rabbit-mirror-interaction-diagnostic], [data-rabbit-mirror-reference-note]';
+const PERSISTED_RUNTIME_UI_SELECTOR = '[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay], [data-rabbit-mirror-interaction-home], [data-rabbit-mirror-interaction-diagnostic], [data-rabbit-mirror-reference-note]';
 const PERSISTED_STATE_ATTR_RE = /^(?:data-rm-(?:.*(?:active|selected|open|used|filled|touch-hover|pseudo-active|target-active)|checked-pseudo-rule-target|labeled-checked-verify-target|reversible-style-baseline|reversible-text-baseline|click-to-restore)|data-rabbit-mirror-(?:labeled-checked(?:-last|-verify|-verify-count)?|checked-text-rule-rescue|expanded-opacity-rescue|inert-action-active|radio-reset-last|stale-checked-inline-cleanup|deferred-interaction-rescue))$/i;
 function parseIndependentDetailsRaw(html=''){
  try{
@@ -5842,7 +5842,7 @@ function interactionBaselineProfile(html=''){
  const details=parseIndependentDetailsRaw(html);
  if(!details) return null;
  restoreEncodedInteractionBaselines(details);
- details.querySelectorAll('[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]').forEach(node=>node.remove());
+ details.querySelectorAll('[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]').forEach(node=>node.remove());
  details.querySelectorAll(PERSISTED_STATE_STYLE_ATTRS.map(name=>`style[${name}]`).join(',')).forEach(node=>node.remove());
  const summary=String(details.querySelector(':scope > summary')?.textContent||'').replace(/\s+/g,' ').trim();
  const text=String(details.textContent||'').replace(/\s+/g,' ').trim();
@@ -6191,7 +6191,7 @@ function externalToolHost(details){
 }
 function removeIndependentResayButtons(host){
  if(!host?.querySelectorAll) return;
- for(const button of host.querySelectorAll(`[${RESAY_ATTR}], .rabbit-mirror-resay`)) if(!quickResayButtons.has(button)&&!quickStartButtonOwners.has(button)) button.remove();
+ for(const button of host.querySelectorAll(`[${RESAY_ATTR}], .rabbit-mirror-resay`)) if(!quickStartButtonOwners.has(button)) button.remove();
  const details=host.querySelector?.(':scope > details');
  const tools=externalToolHost(details);
  if(tools && !tools.querySelector('[data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rm-quick-resay]')) tools.remove();
@@ -6303,7 +6303,6 @@ function ensureExternalTools(host){
  // once after a pure-external mirror is actually opened.
  try{ refreshRabbitMirrorToolsInScope(host,{historyRestoreLight}); }catch(error){ console.debug('[RabbitMirror] external tool preparation skipped:',error); }
  removeIndependentResayButtons(host);
- installQuickResayButtons(host);
 }
 function readyDetailsFromHost(host){
  // The product lock may only trust an explicitly completed host. A loading
@@ -6441,7 +6440,7 @@ function rabbitMirrorSummaryText(details){
  const summary=details?.querySelector?.(':scope > summary');
  if(!summary) return '';
  const clone=summary.cloneNode(true);
- clone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
+ clone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
  return String(clone.textContent||'').replace(/\s+/g,' ').trim();
 }
 function isRabbitMirrorDetails(details){
@@ -6460,7 +6459,7 @@ function inlineRabbitMirrorDetails(el){
 function mirrorSemanticFingerprint(details){
  if(!isRabbitMirrorDetails(details)) return '';
  const clone=details.cloneNode(true);
- clone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay], [data-rabbit-mirror-resay-status]')?.forEach(node=>node.remove());
+ clone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay], [data-rabbit-mirror-resay-status]')?.forEach(node=>node.remove());
  const text=String(clone.textContent||'').replace(/\s+/g,' ').trim();
  if(text.length<12) return '';
  const counts=[
@@ -6537,7 +6536,6 @@ function removeExternalDuplicatesPreferInline(el){
 
 // Only locally created controls carry quick-action authority. Markup attributes
 // alone never authorize a request, and waiting clicks use the automatic lease.
-const quickResayButtons=new WeakMap();
 const quickStartOwners=new WeakSet();
 const quickStartButtonOwners=new WeakMap();
 const quickAuthorizationOwners=new WeakMap();
@@ -6593,31 +6591,17 @@ function installQuickStartButton(host,body){
  },true);
  body.append(document.createElement('br'),button);
 }
-function installQuickResayButtons(host){
- if(host.dataset?.rmSource!=='independent'||host.dataset?.rmState!=='ready') return;
- for(const details of externalFaceDetails(host)){
-  const existingButton=details.querySelector('[data-rm-quick-resay="true"]');
-  const identity=resolveIndependentActionIdentity(details,{});if(!identity) continue;
-  const owner=quickActionOwner(identity.ctx,identity.index,identity.msg);
-  if(existingButton && quickResayButtons.has(existingButton)){quickResayButtons.set(existingButton,owner);continue;}
-  existingButton?.remove();
-  const summary=details.querySelector(':scope > summary');if(!summary) continue;
-  let tools=externalToolHost(details);
-  if(!tools){tools=document.createElement('span');tools.setAttribute('data-rabbit-mirror-tool-entry-host','true');summary.append(tools);}
-  const button=document.createElement('button');button.type='button';
-  button.setAttribute(RESAY_ATTR,'true');button.setAttribute('data-rm-quick-resay','true');
-  button.textContent='↻';button.title='快速重说这一面';button.setAttribute('aria-label','快速重说这一面');
-  quickResayButtons.set(button,owner);
-  button.addEventListener('click',event=>{
-   event.preventDefault();event.stopPropagation();
-   const liveOwner=quickResayButtons.get(button);
-   if(!button.isConnected||!details.contains(button)||!quickActionOwnerCurrent(liveOwner)
-    ||host.dataset.rmState!=='ready'||activeIndependentFlightForBase(owner.base)) return;
-   if(!resolveIndependentActionIdentity(details,{})) return;
-   resayIndependentMirror(details,{});
-  },true);
-  tools.append(button);
- }
+function prepareQuickResay(root,owner={}){
+ const identity=resolveIndependentActionIdentity(root,owner);
+ if(!identity || identity.host?.dataset.rmState!=='ready') return null;
+ const proof=quickActionOwner(identity.ctx,identity.index,identity.msg);
+ return ()=>{
+  if(!root?.isConnected || !quickActionOwnerCurrent(proof)
+   || identity.host?.dataset.rmState!=='ready') return false;
+  if(activeIndependentFlightForBase(proof.base)) return true;
+  if(!resolveIndependentActionIdentity(root,owner)) return false;
+  return resayIndependentMirror(root,owner);
+ };
 }
 
 function setPlaceholderSummary(details,text){
@@ -9028,7 +9012,7 @@ function historyPreviewDetails(entry,faceIndex=-1,ownerSlot=''){
  details.removeAttribute('data-rabbit-mirror-external-owner');
  details.removeAttribute('data-rabbit-mirror-external-source');
  details.setAttribute('open','');
- details.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
+ details.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
  try{ isolateRabbitMirrorInteractionIds(details); }catch{}
  return details;
 }
@@ -9071,7 +9055,7 @@ function showIndependentHistory(root,owner={}){
 }
 function resayIndependentMirror(root,owner={}){
  if(getSettings().generationSource==='follow'){
-  void import('./followFaceRetry.js?rmv=1.5.53-visualquick1').then(({retryFollowFace})=>retryFollowFace(root,owner,{
+  void import('./followFaceRetry.js?rmv=1.5.53-image1').then(({retryFollowFace})=>retryFollowFace(root,owner,{
    getContext,hostBusy:hostGenerationLooksActive,maxRequestChars:MAX_INDEPENDENT_REQUEST_CHARS,
    resolveOwner:target=>{
     const host=target?.closest?.('[data-rabbit-mirror-external-source="true"][data-rm-source="follow"]');
@@ -9161,7 +9145,7 @@ function persistIndependentRepairFromEvent(event) {
  details.setAttribute(MAINTENANCE_PERSISTED_LAYOUT_ATTR,'true');
  const clone=details.cloneNode(true);
  clone.setAttribute(MAINTENANCE_PERSISTED_LAYOUT_ATTR,'true');
- clone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
+ clone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
  const rawHtml=faces.length>1 ? serializeExternalFaceDetails(host) : String(clone.outerHTML||'').trim();
  const store=readStore();
  const existing=savedIndependentRecordForOwner(identity.ctx,identity.index,identity.msg,store);
@@ -9227,10 +9211,117 @@ function removeRepairPersistenceListener(){
  repairPersistenceListenerInstalled=false;
 }
 
+
+// Image requests are explicit actions, isolated from automatic mirror dispatch.
+// The key uses persisted source, never generated toolbar/image DOM.
+const mirrorImageTargetCache = new WeakMap();
+function mirrorImageFaceSource(source,faceIndex){
+ const text=String(source||'');
+ if(hasMultifaceMarkup(text)){
+  const parsed=parseMultifaceOutput(text,{allowProse:true});
+  return parsed.ok?String(parsed.faces?.[faceIndex]?.html||''):'';
+ }
+ if(faceIndex!==0)return '';
+ // Identity reads must not run cleanRabbitMirrorOutput: that sanitizer may
+ // allocate fresh interaction IDs, making unchanged source look replaced.
+ const toto=text.match(/<toto\b[^>]*>([\s\S]*?)<\/toto>/i);
+ if(toto)return toto[1].trim();
+ const trimmed=text.trim();
+ return /^<details\b/i.test(trimmed)&&/<\/details>$/i.test(trimmed)?trimmed:'';
+}
+function prepareMirrorImageTarget(root){
+ if(!root?.isConnected || !currentRuntime()) return null;
+ const details=root.matches?.('details')?root:root.querySelector?.(':scope > details')||root.querySelector?.('details');
+ if(!details) return null;
+ const ctx=getContext();
+ const cached=mirrorImageTargetCache.get(details);
+ if(cached){try{cached.assertCurrent();return cached;}catch{mirrorImageTargetCache.delete(details);}}
+ const independentHost=independentHostForRoot(root);
+ let index,msg,faceIndex,readSource;
+ if(independentHost){
+  if(!independentHost.contains(details)||independentHost.dataset.rmState!=='ready') return null;
+  const identity=resolveIndependentActionIdentity(details);
+  if(!identity) return null;
+  index=identity.index;msg=identity.msg;faceIndex=externalFaceDetails(independentHost).indexOf(details);
+  if(faceIndex<0) return null;
+  readSource=()=>mirrorImageFaceSource(savedIndependentRecordForOwner(getContext(),index,msg,readStore())?.html,faceIndex);
+ }else{
+  const followHost=details.closest?.(`[${SOURCE_ATTR}][data-rm-source="follow"]`);
+  const el=followHost?messageElementForExternalHost(followHost):details.closest?.('.mes[mesid], [mesid].mes');
+  const owner=followRecoveryOwner(el);
+  if(!owner||!isRabbitMirrorEligibleAssistantMessage(owner.message)) return null;
+  index=owner.index;msg=owner.message;
+  faceIndex=(followHost?externalFaceDetails(followHost):inlineRabbitMirrorDetails(el)).indexOf(details);
+  if(faceIndex<0) return null;
+  readSource=()=>{
+   for(const source of followMessageSourceCandidates(msg)){
+    const face=mirrorImageFaceSource(source,faceIndex);if(face)return face;
+   }
+   return '';
+  };
+ }
+ const faceSource=readSource();if(!faceSource) return null;
+ const ownerChat=chatKey(ctx),ownerSwipe=swipeId(msg),ownerSource=messageSourceFingerprint(msg);
+ const template=document.createElement('template');template.innerHTML=faceSource;
+ template.content.querySelectorAll('script,style,noscript,[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal],[data-rm-image-region]').forEach(node=>node.remove());
+ const title=String(template.content.querySelector('summary')?.textContent||'兔子镜').trim();
+ const faceText=String(template.content.textContent||'').trim();if(!faceText)return null;
+ const char=ctx.characters?.[ctx.characterId]||ctx.character||{};
+ const data=char.data&&typeof char.data==='object'?char.data:char;
+ const st=getSettings();
+ const character=st.independentReadCharacterCardSummary===false?{name:String(char.name||data.name||ctx.name2||'')}:
+  {name:String(char.name||data.name||ctx.name2||''),description:String(data.description||char.description||''),personality:String(data.personality||char.personality||''),scenario:String(data.scenario||char.scenario||'')};
+ const persona={name:String(ctx.name1||globalThis.name1||''),description:st.independentReadPersonaSummary===false?'':String(ctx.powerUserSettings?.persona_description||globalThis.power_user?.persona_description||ctx.personaDescription||'')};
+ const key=JSON.stringify([ownerChat,index,ownerSwipe,faceIndex,hashText(faceSource)]);
+ const assertCurrent=()=>{
+  const live=getContext();
+  if(!currentRuntime()||!root.isConnected||!details.isConnected||chatKey(live)!==ownerChat||live.chat?.[index]!==msg
+   ||swipeId(msg)!==ownerSwipe||messageSourceFingerprint(msg)!==ownerSource||readSource()!==faceSource)
+   throw new Error('这面兔子镜的聊天、分支或内容已变化；未继续发送请求，请在当前镜面重新打开生图。');
+  return true;
+ };
+ const target={key,title,faceText,floor:index,character,persona,group:character.name||persona.name||'兔子镜',assertCurrent,
+  plan:(input={},options={})=>requestMirrorImagePlan(target,input,options)};
+ mirrorImageTargetCache.set(details,target);
+ return target;
+}
+async function requestMirrorImagePlan(target,input={},options={}){
+ target.assertCurrent();
+ const current=getSettings();
+ if(current.imageEnabled!==true) throw new Error('请先在兔子镜设置中开启手动生图。');
+ const st={...current,independentExcludedParams:Array.isArray(current.independentExcludedParams)?[...current.independentExcludedParams]:current.independentExcludedParams};
+ if((!st.independentConnectionProfileId&&!st.independentApiBaseUrl)||!st.independentApiModel)
+  throw new Error('请先完成兔子镜副 API 连接和模型设置；尚未发送请求。');
+ const {buildImagePlanningPrompt,parseImagePlan}=await import('./imagePlan.js?rmv=1.5.53-image1');
+ target.assertCurrent();
+ const {systemPrompt,userPrompt}=buildImagePlanningPrompt({...input,title:target.title,faceText:target.faceText,
+  floor:target.floor,character:target.character,persona:target.persona,promptFormat:input.promptFormat||st.imagePromptFormat});
+ if(systemPrompt.length+userPrompt.length>MAX_INDEPENDENT_REQUEST_CHARS)
+  throw new Error(`画面规划超过既有副 API ${MAX_INDEPENDENT_REQUEST_CHARS} 字符安全预算；未截断材料，也未发送请求。`);
+ const connectionKeys=['imageEnabled','independentApiBaseUrl','independentApiKey','independentApiModel','independentConnectionProfileId',
+  'independentAdvancedEnabled','independentReasoningEffort','independentExtraParams','independentExcludedParams'];
+ const assertCurrent=()=>{
+  target.assertCurrent();
+  const live=getSettings();
+  if(connectionKeys.some(key=>JSON.stringify(live[key])!==JSON.stringify(st[key])))
+   throw new Error('生图开关或副 API 设置已变化；未继续发送请求，请重新操作。');
+  if(options.signal?.aborted) throw new DOMException('已取消画面规划','AbortError');
+ };
+ const lease=createManualDispatchLease();
+ const guardedLease={consume(){assertCurrent();return lease.consume();},release:()=>lease.release(),consumed:()=>lease.consumed()};
+ const result=await requestIndependentCompletion(st,systemPrompt,userPrompt,{signal:options.signal,dispatchLease:guardedLease,
+  advancedSettings:st,assertAdvancedCurrent:assertCurrent,onProgress:options.onProgress,diagnosticContext:{imagePlanning:true}});
+ if(!result.response?.ok||result.semanticError) throw new Error(result.semanticError||'画面规划请求失败；未自动重试。');
+ assertCurrent();
+ return parseImagePlan(result.result?.text||'');
+}
+
 function installIndependentActionBridge(){
  independentActionBridge={
   runtime:RUNTIME_VERSION,
   generateManual:root=>generateManualIndependentMirror(root),
+  prepareImageTarget:root=>prepareMirrorImageTarget(root),
+  prepareQuickResay:(root,owner={})=>prepareQuickResay(root,owner),
   resay:(root,owner={})=>resayIndependentMirror(root,owner),
   history:(root,owner={})=>showIndependentHistory(root,owner),
  };
@@ -9370,7 +9461,7 @@ function externalizeFollowMirror(index,msg){
   return;
  }
  const sourceClone=cloneFollowFaceForExternal(mirror);
- sourceClone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
+ sourceClone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
  const sourceHtml=String(sourceClone.outerHTML||'');
  const semanticFingerprint=mirrorSemanticFingerprint(mirror);
  // A mobile BFCache restore or cross-device redraw can recreate the inline正文
@@ -9591,7 +9682,7 @@ function recoveredFollowFaces(html='',options={}){
 }
 function normalizeRecoveredFollowRoot(root){
  if(!root) return null;
- root.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay], [data-rabbit-mirror-resay-status]')?.forEach(node=>node.remove());
+ root.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay], [data-rabbit-mirror-resay-status]')?.forEach(node=>node.remove());
  const details=root.matches?.('details')?root:root.querySelector?.('details');
  if(!details) return null;
  ['data-rabbit-mirror-external-details','data-rabbit-mirror-external-owner','data-rabbit-mirror-external-source','data-rabbit-mirror-owner-chat','data-rabbit-mirror-owner-mesid','data-rabbit-mirror-owner-swipe','data-rabbit-mirror-owner-key','data-rabbit-mirror-owner-source-hash'].forEach(attr=>details.removeAttribute(attr));
@@ -11145,7 +11236,7 @@ function restoredHistoryProbeState(ctx,index){
   body:String(message.mes||''),display:String(message.extra?.display_text||''),reasoning:String(message.extra?.reasoning||''),
   swipe:swipeId(message),source:host.__rabbitMirrorIndependentSource,
   textRoot:element.querySelector?.('.mes_text'),
-  tools:[...(host.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-recipe]')||[])]};
+  tools:[...(host.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-recipe]')||[])]};
 }
 function sameRestoredHistoryProbe(a,b){
  return !!(a&&b&&a.element===b.element&&a.message===b.message&&a.chat===b.chat&&a.chatKey===b.chatKey
