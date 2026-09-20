@@ -1,6 +1,6 @@
 import { eventSource, event_types, setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
 import * as hostRuntime from '../../../../../script.js';
-import { MODULE_NAME, getSettings } from './settings.js?rmv=1.5.53-timing1';
+import { MODULE_NAME, getSettings } from './settings.js?rmv=1.5.53-text1';
 import {
     buildFeedbackCatFinalCheck,
     buildFeedbackCatPrompt,
@@ -8,8 +8,8 @@ import {
     getActiveFeedbackForCurrentChat,
     markFeedbackCatInjected,
 } from './feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.5.53-cn-boundary1';
-import { getCurrentChatKey, markPendingBatchAttempt, releasePendingComboBatch } from './storage.js?rmv=1.5.53-cn-boundary1';
+import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.5.53-text1';
+import { getCurrentChatKey, markPendingBatchAttempt, releasePendingComboBatch } from './storage.js?rmv=1.5.53-text1';
 import { describeExternalWorldBookPreflightFailure } from './externalWorldBook/errors.js?rmv=1.5.53-cn-boundary1';
 import { independentGenerationTiming } from './independentTiming.js?rmv=1.5.53-timing1';
 
@@ -740,7 +740,7 @@ export function destroyIndependentGenerationIntentBridge({ clearIntents = false 
 
 function loadPromptBuilder() {
     if (!promptBuilderPromise) {
-        promptBuilderPromise = import('./promptBuilder.js?rmv=1.5.53-timing1').catch(error => {
+        promptBuilderPromise = import('./promptBuilder.js?rmv=1.5.53-text1').catch(error => {
             promptBuilderPromise = null;
             throw error;
         });
@@ -750,7 +750,7 @@ function loadPromptBuilder() {
 
 function loadGenerationGuard() {
     if (!generationGuardPromise) {
-        generationGuardPromise = import('./generationGuard.js?rmv=1.5.53-timing1').catch(error => {
+        generationGuardPromise = import('./generationGuard.js?rmv=1.5.53-text1').catch(error => {
             generationGuardPromise = null;
             throw error;
         });
@@ -877,7 +877,9 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
     // 未选择反馈时不追加任何字符，基础 Prompt 保持逐字不变。
     clearFeedbackCatExtensionPrompt();
     const generationScopeKey = createGenerationScopeKey(type);
-    const externalEnabled = settings.externalWorldBookRandomEnabled === true && settings.externalWorldBookMixMode !== 'builtin-only';
+    const explicitTextFace = Array.isArray(settings.rabbitMirrorPresentationModes)
+        && settings.rabbitMirrorPresentationModes.slice(0, Math.min(5, Math.max(1, Number(settings.rabbitMirrorFaceCount) || 1))).includes('text');
+    const externalEnabled = (settings.externalWorldBookRandomEnabled === true && settings.externalWorldBookMixMode !== 'builtin-only') || explicitTextFace;
     const appearanceEnabled = settings.appearanceReferenceEnabled === true;
     const appearanceRequest = { enabled: appearanceEnabled, revision: String(settings.appearanceReferenceRevision || '') };
     const memoryWorldBookEnabled = settings.memoryScanEnabled === true && settings.memoryWorldBookEnabled === true && !!String(settings.memoryWorldBookId || '').trim();
@@ -930,7 +932,7 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
             assertMemoryOwner();
             let repository;
             if (externalEnabled) {
-                repository = await import('./externalWorldBook/store.js?rmv=1.5.53-cn-boundary1');
+                repository = await import('./externalWorldBook/store.js?rmv=1.5.53-text1');
                 assertFollowPrefetchOwner(prefetchOwner, _chat);
                 externalStage = 'index';
                 await repository.hydrateExternalPoolMetadata();

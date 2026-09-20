@@ -92,7 +92,7 @@ async function readLocalFile(file, allowLibraryBackup = false) {
     // Never infer a backup from its filename (which users can rename). Its
     // explicit format marker selects the strict backup schema/ID validation.
     if (allowLibraryBackup && raw?.format === 'RabbitMirror.ExternalLibraries') {
-        const { validateExternalLibraryBackup } = await import('./backup.js?rmv=1.5.53-cn-boundary1');
+        const { validateExternalLibraryBackup } = await import('./backup.js?rmv=1.5.53-text1');
         return { kind: 'backup', backup: validateExternalLibraryBackup(raw) };
     }
     if (size > EXTERNAL_WORLD_BOOK_MAX_FILE_BYTES || actualBytes > EXTERNAL_WORLD_BOOK_MAX_FILE_BYTES) {

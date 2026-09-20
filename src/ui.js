@@ -1,7 +1,8 @@
-import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, RABBIT_MIRROR_BANNED_WORD_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, normalizeRabbitMirrorBannedWords, updateSettings, resetSettings } from './settings.js?rmv=1.5.53-timing1';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.5.53-text1';
+import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, RABBIT_MIRROR_BANNED_WORD_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, normalizeRabbitMirrorBannedWords, updateSettings, resetSettings } from './settings.js?rmv=1.5.53-text1';
 import { startTtSurfaceDiagnostics, stopTtSurfaceDiagnostics, isTtSurfaceDiagnosticsActive, buildTtSurfaceReport, recordTtSurface, registerTtSurfaceCleanup, nextTtSurfaceClickSeq } from './ttSurfaceDiagnostics.js?rmv=1.5.53-cn-boundary1';
 import { isRabbitMirrorManagedChatSurface, getRabbitMirrorHostCompatibilityStatus } from './hostCompatibility.js?rmv=1.5.53-cn-boundary1';
-import { clearLastCombo, getCurrentChatKey } from './storage.js?rmv=1.5.53-cn-boundary1';
+import { clearLastCombo, getCurrentChatKey } from './storage.js?rmv=1.5.53-text1';
 import { normalizeEarlyBodyTags } from './earlyBodyTags.js?rmv=1.5.53-cn-boundary1';
 import { independentGenerationTiming } from './independentTiming.js?rmv=1.5.53-timing1';
 import { applyRabbitMirrorHostSurface } from './hostCompatibility.js?rmv=1.5.53-cn-boundary1';
@@ -9,16 +10,16 @@ import { BEHAVIOR_RULE_MAX_CHARS, DEFAULT_BEHAVIOR_RULE_TEXT, resolveBehaviorRul
 import { clearRecentIndependentTransportDiagnostics } from './transportDiagnostics.js?rmv=1.5.53-cn-boundary1';
 import { parseIndependentAdvancedOptions } from './advancedRequestOptions.js?rmv=1.5.53-cn-boundary1';
 import { parseRabbitMirrorReplacementLines, formatRabbitMirrorReplacementLines } from './bannedWords.js?rmv=1.5.53-cn-boundary1';
-import { clearRabbitMirrorPrompt, startManualEntryDiagnostic, stopManualEntryDiagnostic, getManualEntryDiagnosticState } from './injector.js?rmv=1.5.53-manualdiag1';
+import { clearRabbitMirrorPrompt, startManualEntryDiagnostic, stopManualEntryDiagnostic, getManualEntryDiagnosticState } from './injector.js?rmv=1.5.53-text1';
 import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.5.53-manualdiag1';
+import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.5.53-text1';
 import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.5.53-cn-boundary1';
-import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.5.53-cn-boundary1';
-import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5.53-manualdiag1';
+import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.5.53-text1';
+import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5.53-text1';
 import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.5.53-cn-boundary1';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.53-timing1';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.53-text1';
 
-import { mountSettingsAppearance, destroySettingsAppearance } from './settingsAppearance.js?rmv=1.5.53-mobileui1';
+import { mountSettingsAppearance, destroySettingsAppearance } from './settingsAppearance.js?rmv=1.5.53-text1';
 
 const SETTINGS_UI_VERSION = '1.12-layered-ui3-manualdiag1';
 const RUNTIME_VERSION = '1.5.53';
@@ -1175,6 +1176,13 @@ export function initRabbitMirrorUI() {
               </label>
             </div>
             <div id="rh_multiface_help" class="rabbit-mirror-subnote" style="margin:0 0 10px 26px;">一次请求，各面独立展示。所有面共用整批输出上限，面数更多时每面可用篇幅更少；上下文字符不是绘制额度。</div>
+            <div id="rh_face_presentation_modes" style="display:grid;gap:8px;margin:10px 0;">
+              <b>每一面怎么呈现</b>
+              ${Array.from({length:5},(_,index)=>`<label data-rh-presentation-row="${index}" for="rh_face_mode_${index}" style="display:flex;gap:12px;align-items:center;justify-content:space-between;">
+                <span>第 ${index+1} 面</span><select id="rh_face_mode_${index}" class="text_pole" style="min-height:44px;width:160px;max-width:65%;" aria-describedby="rh_face_modes_help"><option value="auto">自动</option><option value="html">HTML 交互</option><option value="text">文本</option></select>
+              </label>`).join('')}
+              <div id="rh_face_modes_help" class="rabbit-mirror-subnote">自动：抽中文本类才用文本呈现。文本：优先抽已启用的文本类，没有可用条目则正常抽取，改成长文本与 HTML 排版，不要求内部交互。其他 HTML 面照常生成。</div>
+            </div>
             <label for="rh_sampling_mode" class="flex-container alignitemscenter" style="gap:8px;flex-wrap:wrap;margin:8px 0;">
               <span>抽取模式</span>
               <select id="rh_sampling_mode" class="text_pole" style="max-width:300px;">
@@ -1629,6 +1637,7 @@ export function initRabbitMirrorUI() {
     $('#rh_multiface_count').val(String(settings.rabbitMirrorFaceCount > 1 ? settings.rabbitMirrorFaceCount : 2));
     $('#rh_multiface_count_row').prop('hidden', settings.rabbitMirrorFaceCount <= 1);
     $('#rh_multiface_count').prop('disabled', settings.rabbitMirrorFaceCount <= 1);
+    renderFacePresentationSettings(settings);
     checked('#rh_visual_prompt_enabled', settings.visualPromptEditingEnabled);
     $('#rh_visual_prompt').val(settings.visualPrompt ?? DEFAULT_VISUAL_PROMPT);
     $('#rh_visual_extra_prompt').val(settings.visualExtraPrompt || '');
@@ -2414,15 +2423,25 @@ export function initRabbitMirrorUI() {
     $('#rh_enhanced_visual_drawing').on('change', e => {
         updateSettings({ enhancedVisualDrawing: e.target.checked === true });
     });
+    for (let index = 0; index < 5; index += 1) {
+        $(`#rh_face_mode_${index}`).on('change', e => {
+            const modes = normalizePresentationModes(getSettings().rabbitMirrorPresentationModes);
+            modes[index] = e.target.value;
+            updateSettings({ rabbitMirrorPresentationModes: modes });
+            renderFacePresentationSettings(getSettings());
+        });
+    }
     $('#rh_multiface_enabled').on('change', e => {
         const enabled = e.target.checked === true;
         const count = Number($('#rh_multiface_count').val());
         updateSettings({ rabbitMirrorFaceCount: enabled && Number.isInteger(count) && count >= 2 && count <= 5 ? count : enabled ? 2 : 1 });
         $('#rh_multiface_count_row').prop('hidden', !enabled);
         $('#rh_multiface_count').prop('disabled', !enabled);
+        renderFacePresentationSettings(getSettings());
     });
     $('#rh_multiface_count').on('change', e => {
         if ($('#rh_multiface_enabled').prop('checked') === true) updateSettings({ rabbitMirrorFaceCount: Number(e.target.value) });
+        renderFacePresentationSettings(getSettings());
     });
 
     $('#rh_visual_prompt_enabled').on('change', e => {
@@ -2581,7 +2600,7 @@ export function initRabbitMirrorUI() {
             for (const key of Object.keys(libraryEntryViews)) document.getElementById(key).disabled = true;
             button.textContent = '正在加载…';
             try {
-                const module = await import('./externalWorldBook/importWizard.js?rmv=1.5.53-timing1');
+                const module = await import('./externalWorldBook/importWizard.js?rmv=1.5.53-text1');
                 if (!isCurrentRuntime() || !button.isConnected) return;
                 module.openExternalWorldBookImportWizard?.({ initialView });
             } catch (error) {
@@ -2866,4 +2885,15 @@ export function destroyRabbitMirrorUI() {
     disconnectWorldInfoBookVisibilityObserver();
     worldInfoBookCurrentDirty = true;
     $('#rabbit_mirror_theater_settings').remove();
+}
+
+function renderFacePresentationSettings(settings) {
+    const modes = normalizePresentationModes(settings.rabbitMirrorPresentationModes);
+    const count = settings.rabbitMirrorFaceCount || 1;
+    for (let index = 0; index < 5; index += 1) {
+        const row = document.querySelector(`[data-rh-presentation-row="${index}"]`);
+        if (row) { row.hidden = index >= count; row.style.display = index < count ? 'flex' : 'none'; }
+        const select = document.getElementById(`rh_face_mode_${index}`);
+        if (select) { select.value = modes[index]; select.disabled = index >= count; }
+    }
 }
