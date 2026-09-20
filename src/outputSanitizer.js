@@ -17,7 +17,7 @@ import {
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
 } from './feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.53-hostuifix1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.53-imageerror1';
 import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.53-image1';
 import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.53-image1';
 import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.5.53-cn-boundary1';
@@ -22697,7 +22697,7 @@ async function runMaintenanceNarrowFaceRepair(root, button) {
         if (rejectOversizedMaintenanceRepair(root, button, '窄面电击')) return false;
         if (!maintenanceRepairRunIsCurrent(repairRun)) return false;
         setMaintenanceRabbitState(button, MAINTENANCE_STATES.checking, '⚡ 正在重新测量并恢复这面兔子镜的宽度');
-        const adapter = await import('./independentApi.js?rmv=1.5.53-hostuifix1');
+        const adapter = await import('./independentApi.js?rmv=1.5.53-imageerror1');
         // Loading the adapter is the sole async boundary. Never apply a delayed
         // click to a new chat, Swipe, source revision, face or replacement node.
         if (!root.isConnected || !details.isConnected || !button.isConnected
@@ -23311,7 +23311,7 @@ function beginHostWorkTiming(name){
 }
 let mirrorImageModule = null;
 function loadMirrorImageModule() {
-    if (!mirrorImageModule) mirrorImageModule = import('./imageUi.js?rmv=1.5.53-hostuifix1').catch(error => { mirrorImageModule = null; throw error; });
+    if (!mirrorImageModule) mirrorImageModule = import('./imageUi.js?rmv=1.5.53-imageerror1').catch(error => { mirrorImageModule = null; throw error; });
     return mirrorImageModule;
 }
 function installUnifiedMirrorTools(root) {

@@ -9,12 +9,12 @@ import { parseIndependentAdvancedOptions, buildIndependentAdvancedCarrier, apply
 import { buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.5.53-image1';
 import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from './externalWorldBook/store.js?rmv=1.5.53-text1';
 import { describeExternalWorldBookPreflightFailure, describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.53-cn-boundary1';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, armRabbitMirrorFirstUseInteraction, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.53-hostuifix1';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, armRabbitMirrorFirstUseInteraction, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.53-imageerror1';
 import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.53-cn-boundary1';
 import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=1.5.53-cn-boundary1';
 import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from './multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
 import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.53-visualquick1';
-import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, getRabbitMirrorFollowBatchFailure, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.53-hostuifix1';
+import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, getRabbitMirrorFollowBatchFailure, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.53-imageerror1';
 import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions, markPendingBatchAttempt, commitPendingComboBatch, releasePendingComboBatch } from './storage.js?rmv=1.5.53-visualquick1';
 import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5.53-cn-boundary1';
 import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.53-image1';
@@ -9055,7 +9055,7 @@ function showIndependentHistory(root,owner={}){
 }
 function resayIndependentMirror(root,owner={}){
  if(getSettings().generationSource==='follow'){
-  void import('./followFaceRetry.js?rmv=1.5.53-hostuifix1').then(({retryFollowFace})=>retryFollowFace(root,owner,{
+  void import('./followFaceRetry.js?rmv=1.5.53-imageerror1').then(({retryFollowFace})=>retryFollowFace(root,owner,{
    getContext,hostBusy:hostGenerationLooksActive,maxRequestChars:MAX_INDEPENDENT_REQUEST_CHARS,
    resolveOwner:target=>{
     const host=target?.closest?.('[data-rabbit-mirror-external-source="true"][data-rm-source="follow"]');
@@ -9277,7 +9277,7 @@ function prepareMirrorImageTarget(root){
   const live=getContext();
   if(!currentRuntime()||!root.isConnected||!details.isConnected||chatKey(live)!==ownerChat||live.chat?.[index]!==msg
    ||swipeId(msg)!==ownerSwipe||messageSourceFingerprint(msg)!==ownerSource||readSource()!==faceSource)
-   throw new Error('这面兔子镜的聊天、分支或内容已变化；未继续发送请求，请在当前镜面重新打开生图。');
+   throw Object.assign(new Error('这面兔子镜的聊天、分支或内容已变化；未继续发送请求，请在当前镜面重新打开生图。'),{rabbitMirrorImageCode:'PLAN_TARGET_CHANGED'});
   return true;
  };
  const target={key,title,faceText,floor:index,character,persona,group:character.name||persona.name||'兔子镜',assertCurrent,
@@ -9285,33 +9285,63 @@ function prepareMirrorImageTarget(root){
  mirrorImageTargetCache.set(details,target);
  return target;
 }
+// Diagnostic labels only: do not change request admission or retry behavior.
+function mirrorImagePlanningFailure(error, diagnostic = {}) {
+ const codes = {
+  PLAN_TARGET_CHANGED:'PLAN_TARGET_CHANGED', PLAN_SETTINGS_CHANGED:'PLAN_SETTINGS_CHANGED',
+  RABBIT_MIRROR_REQUEST_TOO_LARGE:'PLAN_REQUEST_LIMIT',
+  RABBIT_MIRROR_CONTEXT_BOUNDARY_REJECTED:'PLAN_CONTEXT_BOUNDARY',
+  RABBIT_MIRROR_DISPATCH_LEASE_REJECTED:'PLAN_DISPATCH_LEASE',
+  RABBIT_MIRROR_RESPONSE_TOO_LARGE:'PLAN_RESPONSE_LIMIT',
+  RABBIT_MIRROR_RESPONSE_TOO_COMPLEX:'PLAN_RESPONSE_LIMIT',
+ };
+ const categories = {'local-preflight':'PLAN_PREFLIGHT','response-boundary':'PLAN_RESPONSE_LIMIT',authentication:'PLAN_AUTH',
+  'rate-limit':'PLAN_RATE_LIMIT',concurrency:'PLAN_CONCURRENCY',network:'PLAN_NETWORK'};
+ const semantics = {'empty-stream':'PLAN_EMPTY_RESPONSE','unparsed-stream':'PLAN_UNPARSED_STREAM','empty-content':'PLAN_EMPTY_RESPONSE','error-payload':'PLAN_UPSTREAM_ERROR'};
+ const rawStatus=diagnostic.transport?.status??diagnostic.status;
+ const httpStatus=Number.isInteger(rawStatus)&&rawStatus>=400&&rawStatus<=599?rawStatus:null;
+ const reportedCode=error?.rabbitMirrorImageCode||error?.code;
+ let code=Object.hasOwn(codes,reportedCode)?codes[reportedCode]:'';
+ if(!code && diagnostic.transport?.failureCategory==='local-preflight')code='PLAN_PREFLIGHT';
+ if(!code && httpStatus)code=httpStatus===401||httpStatus===403?'PLAN_AUTH':httpStatus===429?'PLAN_RATE_LIMIT':'PLAN_HTTP';
+ if(!code && Object.hasOwn(categories,diagnostic.transport?.failureCategory))code=categories[diagnostic.transport.failureCategory];
+ if(!code && Object.hasOwn(semantics,diagnostic.semanticFailure))code=semantics[diagnostic.semanticFailure];
+ return Object.assign(new Error('画面构思请求未完成。'),{rabbitMirrorImageCode:code||'PLAN_REQUEST_FAILED',rabbitMirrorImageHttpStatus:httpStatus,cause:error});
+}
 async function requestMirrorImagePlan(target,input={},options={}){
  target.assertCurrent();
  const current=getSettings();
- if(current.imageEnabled!==true) throw new Error('请先在兔子镜设置中开启手动生图。');
+ if(current.imageEnabled!==true) throw Object.assign(new Error('请先在兔子镜设置中开启手动生图。'),{rabbitMirrorImageCode:'PLAN_DISABLED'});
  const st={...current,independentExcludedParams:Array.isArray(current.independentExcludedParams)?[...current.independentExcludedParams]:current.independentExcludedParams};
  if((!st.independentConnectionProfileId&&!st.independentApiBaseUrl)||!st.independentApiModel)
-  throw new Error('请先完成兔子镜副 API 连接和模型设置；尚未发送请求。');
- const {buildImagePlanningPrompt,parseImagePlan}=await import('./imagePlan.js?rmv=1.5.53-image1');
+  throw Object.assign(new Error('请先完成兔子镜副 API 连接和模型设置；尚未发送请求。'),{rabbitMirrorImageCode:'PLAN_CONFIGURATION'});
+ const {buildImagePlanningPrompt,parseImagePlan}=await import('./imagePlan.js?rmv=1.5.53-imageerror1');
  target.assertCurrent();
  const {systemPrompt,userPrompt}=buildImagePlanningPrompt({...input,title:target.title,faceText:target.faceText,
   floor:target.floor,character:target.character,persona:target.persona,promptFormat:input.promptFormat||st.imagePromptFormat});
  if(systemPrompt.length+userPrompt.length>MAX_INDEPENDENT_REQUEST_CHARS)
-  throw new Error(`画面规划超过既有副 API ${MAX_INDEPENDENT_REQUEST_CHARS} 字符安全预算；未截断材料，也未发送请求。`);
+  throw Object.assign(new Error(`画面规划超过既有副 API ${MAX_INDEPENDENT_REQUEST_CHARS} 字符安全预算；未截断材料，也未发送请求。`),{rabbitMirrorImageCode:'PLAN_REQUEST_LIMIT'});
  const connectionKeys=['imageEnabled','independentApiBaseUrl','independentApiKey','independentApiModel','independentConnectionProfileId',
   'independentAdvancedEnabled','independentReasoningEffort','independentExtraParams','independentExcludedParams'];
  const assertCurrent=()=>{
   target.assertCurrent();
   const live=getSettings();
   if(connectionKeys.some(key=>JSON.stringify(live[key])!==JSON.stringify(st[key])))
-   throw new Error('生图开关或副 API 设置已变化；未继续发送请求，请重新操作。');
+   throw Object.assign(new Error('生图开关或副 API 设置已变化；未继续发送请求，请重新操作。'),{rabbitMirrorImageCode:'PLAN_SETTINGS_CHANGED'});
   if(options.signal?.aborted) throw new DOMException('已取消画面规划','AbortError');
  };
  const lease=createManualDispatchLease();
  const guardedLease={consume(){assertCurrent();return lease.consume();},release:()=>lease.release(),consumed:()=>lease.consumed()};
- const result=await requestIndependentCompletion(st,systemPrompt,userPrompt,{signal:options.signal,dispatchLease:guardedLease,
-  advancedSettings:st,assertAdvancedCurrent:assertCurrent,onProgress:options.onProgress,diagnosticContext:{imagePlanning:true}});
- if(!result.response?.ok||result.semanticError) throw new Error(result.semanticError||'画面规划请求失败；未自动重试。');
+ let result;
+ try{
+  result=await requestIndependentCompletion(st,systemPrompt,userPrompt,{signal:options.signal,dispatchLease:guardedLease,
+   advancedSettings:st,assertAdvancedCurrent:assertCurrent,onProgress:options.onProgress,diagnosticContext:{imagePlanning:true}});
+ }catch(error){
+  if(options.signal?.aborted)throw error;
+  throw mirrorImagePlanningFailure(error,error?.rabbitMirrorRequestDiagnostic);
+ }
+ if(!result.response?.ok||result.semanticError)
+  throw mirrorImagePlanningFailure(null,result.requestDiagnostic||{status:result.response?.status});
  assertCurrent();
  return parseImagePlan(result.result?.text||'');
 }

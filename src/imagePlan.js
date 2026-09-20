@@ -1,3 +1,7 @@
+function planningError(code, message) {
+    return Object.assign(new TypeError(message), { rabbitMirrorImageCode: code });
+}
+
 function string(value) { return typeof value === 'string' ? value : ''; }
 
 function sourceJson(value) {
@@ -18,7 +22,7 @@ function relevantCharacters(input, faceText) {
 
 export function buildImagePlanningPrompt(input = {}) {
     const faceText = string(input.faceText);
-    if (!faceText.trim()) throw new TypeError('这面兔子镜没有可供构思的内容。');
+    if (!faceText.trim()) throw planningError('PLAN_EMPTY_SOURCE', '这面兔子镜没有可供构思的内容。');
     const floor = Number.isSafeInteger(input.floor) && input.floor >= 0 ? input.floor : 0;
     const materials = {
         source: '用户选中的这一面兔子镜成品；不是全部聊天记录',
@@ -39,17 +43,17 @@ export function parseImagePlan(text) {
     if (typeof text === 'string') {
         const clean = text.trim().replace(/^```(?:json)?\s*\n?([\s\S]*?)\n?```$/i, '$1');
         try { value = JSON.parse(clean); }
-        catch { throw new TypeError('画面构思没有返回有效 JSON；请查看或重新构思，不会自动重试。'); }
+        catch { throw planningError('PLAN_INVALID_JSON', '画面构思没有返回有效 JSON；请查看或重新构思，不会自动重试。'); }
     }
-    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('画面构思必须是一个 JSON 对象。');
+    if (!value || typeof value !== 'object' || Array.isArray(value)) throw planningError('PLAN_INVALID_OBJECT', '画面构思必须是一个 JSON 对象。');
     const prompt = string(value.prompt).trim();
-    if (!prompt) throw new TypeError('画面构思缺少生图提示词。');
+    if (!prompt) throw planningError('PLAN_MISSING_PROMPT', '画面构思缺少生图提示词。');
     const characters = value.characters == null ? [] : value.characters;
-    if (!Array.isArray(characters)) throw new TypeError('角色提示词必须是数组。');
+    if (!Array.isArray(characters)) throw planningError('PLAN_INVALID_CHARACTERS', '角色提示词必须是数组。');
     const parsedCharacters = characters.map(person => {
         const name = string(person?.name).trim();
         const tag = string(person?.tag).trim();
-        if (!name || !tag) throw new TypeError('每个画面角色都需要原名与外貌提示词。');
+        if (!name || !tag) throw planningError('PLAN_INCOMPLETE_CHARACTER', '每个画面角色都需要原名与外貌提示词。');
         return { name, tag, nl: string(person.nl).trim() };
     });
     return {

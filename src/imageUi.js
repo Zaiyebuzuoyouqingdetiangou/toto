@@ -35,6 +35,55 @@ function el(doc, tag, text, attrs = {}) {
     for (const [name, value] of Object.entries(attrs)) node.setAttribute(name, value);
     return node;
 }
+// Only fixed descriptions and numeric HTTP status reach the UI. Provider
+// messages, response bodies, source text and credentials are never echoed.
+function imageFailureText(error, stage) {
+    const stages = { backend: '检查柏宝绘连接', characters: '读取柏宝绘角色资料', planning: '画面构思', drawing: '柏宝绘出图' };
+    const reasons = {
+        PLAN_EMPTY_SOURCE: '未读取到可供构思的镜面内容。',
+        PLAN_INVALID_JSON: '副 API 已返回内容，但构思结果不是可解析的 JSON。',
+        PLAN_INVALID_OBJECT: '构思结果应为一个 JSON 对象，实际格式不符。',
+        PLAN_MISSING_PROMPT: '构思结果缺少非空的画面标签 prompt。',
+        PLAN_INVALID_CHARACTERS: '构思结果的 characters 不是数组。',
+        PLAN_INCOMPLETE_CHARACTER: '构思结果中至少一位角色缺少 name 或 tag，整份结果未被接收。',
+        PLAN_DISABLED: '镜面生图已关闭。',
+        PLAN_CONFIGURATION: '兔子镜副 API 连接或模型尚未配置完整，未发送构思请求。',
+        PLAN_REQUEST_LIMIT: '规划材料超过原有请求上限；未截断材料，未发送构思请求。',
+        PLAN_CONTEXT_BOUNDARY: '原有上下文边界检查未通过，未发送构思请求。',
+        PLAN_DISPATCH_LEASE: '原有单次请求租约未通过，未再次发送构思请求。',
+        PLAN_PREFLIGHT: '构思请求在本地检查阶段失败，尚未发送。',
+        PLAN_RESPONSE_LIMIT: '返回内容触及原有响应上限，读取被停止。',
+        PLAN_AUTH: '副 API 报告认证或访问被拒绝，请检查连接配置与权限。',
+        PLAN_RATE_LIMIT: '副 API 报告请求频率或额度限制。',
+        PLAN_CONCURRENCY: '副 API 或宿主报告并发限制。',
+        PLAN_NETWORK: '副 API 连接或响应流中断。',
+        PLAN_HTTP: '副 API 返回失败 HTTP 状态。',
+        PLAN_EMPTY_RESPONSE: '副 API 返回为空，没有可解析的画面构思。',
+        PLAN_UNPARSED_STREAM: '收到了副 API 流式数据，但未解析到文本内容。',
+        PLAN_UPSTREAM_ERROR: '副 API 的响应中包含上游错误。',
+        PLAN_REQUEST_FAILED: '构思请求未完成，宿主未提供可确认的具体原因。',
+        PLAN_TARGET_CHANGED: '聊天、分支或镜面内容已变化，请回到当前镜面重新打开。',
+        PLAN_SETTINGS_CHANGED: '生图开关或副 API 设置已变化，请重新打开面板。',
+    };
+    const providerReasons = {
+        not_configured: '柏宝绘尚未配置连接。', unsupported_api: '柏宝绘公开接口不兼容。',
+        invalid_args: '生图参数不完整或未被柏宝绘接受，请检查提示词。',
+        invalid_result: '柏宝绘未返回可用的图片路径或图片数据。',
+        stale_owner: '聊天或镜面已变化，未发送生图请求。',
+        rate_limited: '柏宝绘报告限流。', aborted: '本次操作已取消。',
+    };
+    let code = Object.hasOwn(reasons, error?.rabbitMirrorImageCode) ? error.rabbitMirrorImageCode : '';
+    let reason = code ? reasons[code] : '';
+    if (!reason && stage !== 'planning' && Object.hasOwn(providerReasons, error?.code)) {
+        code = error.code; reason = providerReasons[code];
+    }
+    if (!reason) { code = 'UNKNOWN'; reason = '未取得可确认的具体原因；不能据此判定为文字过少。'; }
+    const status = error?.rabbitMirrorImageHttpStatus;
+    const http = stage === 'planning' && Number.isInteger(status) && status >= 400 && status <= 599 ? `，HTTP ${status}` : '';
+    const next = stage === 'drawing' ? '' : '尚未进入柏宝绘出图。';
+    return `${stages[stage] || '生图准备'}未完成：${reason}（${code}${http}）${next}原图保留，没有自动补发。`;
+}
+
 function safeImageUrl(value) {
     const text = String(value || '');
     if (!text) return '';
@@ -241,6 +290,7 @@ export function openMirrorImagePanel(root, { opener = null } = {}) {
         if (!current(target)) { status.textContent = '聊天或这一面已变化，请回到对应镜面重新打开生图。'; return; }
         const controller = new AbortController();
         jobs.set(target.key, controller); renderState();
+        let stage = 'backend';
         try {
             if (kind !== 'reconceive') {
                 const connection = await getImageBackendStatus();
@@ -249,7 +299,9 @@ export function openMirrorImagePanel(root, { opener = null } = {}) {
             let draft = readDraft();
             if (kind !== 'draw') {
                 status.textContent = '正在构思画面（一次副 API 请求）…';
+                stage = 'characters';
                 const publicCharacters = await getImageCharacters({ floor: target.floor });
+                stage = 'planning';
                 draft = await target.plan({ publicCharacters, promptFormat: format.value }, { signal: controller.signal });
                 // Draft persistence is local only. A failed draft save must not
                 // discard the completed plan or trigger a second paid request.
@@ -263,6 +315,7 @@ export function openMirrorImagePanel(root, { opener = null } = {}) {
             if (!current(target)) throw new Error('target_changed');
             if (controller.signal.aborted) throw new Error('aborted');
             if (kind === 'draw') { try { rememberDraft(target.key, draft); } catch { /* Retain exact edited draft in this page even if storage is full. */ } }
+            stage = 'drawing';
             status.textContent = '正在调用柏宝绘（一次生图调用）…';
             const record = await generateMirrorImage(draft, { signal: controller.signal, character: target.group,
                 ...(size.value ? { size: size.value } : {}), assertCurrent: target.assertCurrent,
@@ -282,7 +335,7 @@ export function openMirrorImagePanel(root, { opener = null } = {}) {
             if (current(target) && root.isConnected) { mountedRoots.delete(root); mountMirrorImage(root); }
         } catch (error) {
             // Never display arbitrary provider error bodies (may contain secrets).
-            status.textContent = error?.message === 'target_changed' ? '聊天或镜面已变化，未继续生图。' : controller.signal.aborted ? '已请求取消；本次调用结算完成后才能再次生成。原图保留。' : '本次未完成。请检查副 API／柏宝绘连接或提示词；原图保留，没有自动补发。';
+            status.textContent = error?.message === 'target_changed' ? '聊天或镜面已变化，未继续生图。' : controller.signal.aborted ? '已请求取消；本次调用结算完成后才能再次生成。原图保留。' : imageFailureText(error, stage);
         } finally {
             jobs.delete(target.key); notify();
         }
