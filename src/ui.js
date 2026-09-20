@@ -12,10 +12,10 @@ import { parseIndependentAdvancedOptions } from './advancedRequestOptions.js?rmv
 import { parseRabbitMirrorReplacementLines, formatRabbitMirrorReplacementLines } from './bannedWords.js?rmv=1.5.53-cn-boundary1';
 import { clearRabbitMirrorPrompt, startManualEntryDiagnostic, stopManualEntryDiagnostic, getManualEntryDiagnosticState } from './injector.js?rmv=1.5.53-image1';
 import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { configureMaintenanceAutoSafeMode, refreshFeedbackCats, refreshMaintenanceRabbits, refreshRecipeButtons } from './outputSanitizer.js?rmv=1.5.53-image1';
+import { configureMaintenanceAutoSafeMode, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.5.53-hostuifix1';
 import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.5.53-cn-boundary1';
 import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from './tokenMeter.js?rmv=1.5.53-visualquick1';
-import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5.53-image1';
+import { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, fetchIndependentModels, fetchWorldInfoBooks, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentApiRequestDiagnostic, getLastIndependentModelListDiagnostic, getObservedWorldInfoBooks, importCurrentSillyTavernConnection, refreshRabbitMirrorGenerationMode, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.5.53-hostuifix1';
 import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.5.53-cn-boundary1';
 import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.53-image1';
 
@@ -41,6 +41,22 @@ let memoryWorldBookDirectoryLoaded = false;
 let memoryWorldBookDirectoryBusy = false;
 let memoryWorldBookDirectorySequence = 0;
 const WORLD_INFO_BOOK_RENDER_DEBOUNCE_MS = 140;
+
+// Commit settings synchronously; let the checkbox paint before refreshing chat tools.
+// All three legacy refresh exports rebuild the same tools, so one pending pass
+// reads the latest flags for rapid changes instead of scanning the chat repeatedly.
+let settingsToolsRefreshPending = false;
+function scheduleSettingsToolsRefresh() {
+    if (settingsToolsRefreshPending) return;
+    settingsToolsRefreshPending = true;
+    const refresh = () => {
+        settingsToolsRefreshPending = false;
+        if (isCurrentRuntime()) refreshMaintenanceRabbits();
+    };
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+        globalThis.requestAnimationFrame(() => setTimeout(refresh, 0));
+    } else setTimeout(refresh, 0);
+}
 
 function scheduleUiMountRetry() {
     if (!isCurrentRuntime() || uiMountRetryTimer || uiMountRetryCount >= 20) return;
@@ -1625,7 +1641,7 @@ export function initRabbitMirrorUI() {
     globalThis.addEventListener?.(WORLD_INFO_BOOKS_CHANGED_EVENT, worldInfoBooksListener);
     globalThis.__rabbitMirrorWorldInfoBooksUiCleanup = () => globalThis.removeEventListener?.(WORLD_INFO_BOOKS_CHANGED_EVENT, worldInfoBooksListener);
     try { globalThis.__rabbitMirrorBlacklistUiCleanup?.(); } catch {}
-    const blacklistListener = event => { checked('#rh_blacklist_enabled', getSettings().blacklistEnabled !== false); if (event?.detail?.action === 'enabled') refreshRecipeButtons(); if (document.getElementById('rh_random_preference_section')?.open) { renderBlacklistSettings(); renderFavoriteSettings(); } };
+    const blacklistListener = event => { checked('#rh_blacklist_enabled', getSettings().blacklistEnabled !== false); if (event?.detail?.action === 'enabled') scheduleSettingsToolsRefresh(); if (document.getElementById('rh_random_preference_section')?.open) { renderBlacklistSettings(); renderFavoriteSettings(); } };
     globalThis.addEventListener?.(BLACKLIST_CHANGED_EVENT, blacklistListener);
     globalThis.__rabbitMirrorBlacklistUiCleanup = () => globalThis.removeEventListener?.(BLACKLIST_CHANGED_EVENT, blacklistListener);
     checked('#rh_feedback_cat', settings.feedbackCatEnabled);
@@ -2398,7 +2414,7 @@ export function initRabbitMirrorUI() {
         updateSettings({ feedbackCatEnabled: e.target.checked });
         if (e.target.checked) syncFeedbackCatExtensionPrompt(getActiveFeedbackForCurrentChat());
         else clearFeedbackCatExtensionPrompt();
-        refreshFeedbackCats();
+        scheduleSettingsToolsRefresh();
         toastr?.[e.target.checked ? 'info' : 'success']?.(e.target.checked
             ? '挨打猫已启用：每条兔子镜会显示独立的 🐈，没有反馈时不会追加 Prompt。'
             : '挨打猫已关闭：标题入口已移除，已保存反馈暂停注入。');
@@ -2413,7 +2429,7 @@ export function initRabbitMirrorUI() {
             checked('#rh_maintenance_auto_safe', false);
             configureMaintenanceAutoSafeMode(false);
         }
-        refreshMaintenanceRabbits();
+        scheduleSettingsToolsRefresh();
         toastr?.[enabled ? 'info' : 'success']?.(enabled
             ? '维修兔已启用：每条兔子镜会显示独立的 🐇⚪；默认仍为手动巡逻。'
             : '维修兔已关闭：自动巡逻同时关闭，标题入口已移除。');
@@ -2427,7 +2443,7 @@ export function initRabbitMirrorUI() {
             maintenanceRabbitAutoSafeConsent: enabled,
         });
         configureMaintenanceAutoSafeMode(enabled);
-        refreshMaintenanceRabbits();
+        scheduleSettingsToolsRefresh();
         toastr?.[enabled ? 'info' : 'success']?.(enabled
             ? '自动巡逻已开启，只自动修简单问题。'
             : '自动巡逻已关闭：维修兔恢复为纯手动模式。');
@@ -2561,7 +2577,7 @@ export function initRabbitMirrorUI() {
     $('#rh_visual_scenery_combination').on('change', e => updateSettings({ visualSceneryCombination: e.target.checked }));
     $('#rh_image_enabled').on('change', e => {
         updateSettings({ imageEnabled: e.target.checked });
-        refreshMaintenanceRabbits(); refreshFeedbackCats(); refreshRecipeButtons();
+        scheduleSettingsToolsRefresh();
     });
     $('#rh_image_prompt_format').on('change', e => updateSettings({ imagePromptFormat: e.target.value }));
     $('#rh_image_status_refresh').on('click', async () => {
@@ -2588,12 +2604,12 @@ export function initRabbitMirrorUI() {
         const id = String($(this).data('id') || '');
         if (removeBlacklistItem(kind, id)) toastr?.success?.(`已解除黑名单：${id}`);
         renderBlacklistSettings();
-        refreshRecipeButtons();
+        scheduleSettingsToolsRefresh();
     });
     $('#rh_blacklist_clear').on('click', () => {
         clearBlacklist('all');
         renderBlacklistSettings();
-        refreshRecipeButtons();
+        scheduleSettingsToolsRefresh();
         toastr?.success?.('已清空全部抽签黑名单');
     });
     $('#rh_favorite_summary').on('change', '.rh-favorite-multiplier', function () {
@@ -2603,19 +2619,19 @@ export function initRabbitMirrorUI() {
         if (multiplier == null) toastr?.warning?.(`收藏倍率没有修改：${id}`);
         else toastr?.success?.(`收藏倍率已更新：${id} ×${multiplier}`);
         renderFavoriteSettings();
-        refreshRecipeButtons();
+        scheduleSettingsToolsRefresh();
     });
     $('#rh_favorite_summary').on('click', '.rh-favorite-remove', function () {
         const kind = String($(this).data('kind') || '') === 'format' ? 'format' : 'theme';
         const id = String($(this).data('id') || '');
         if (removeFavoriteItem(kind, id)) toastr?.success?.(`已取消收藏：${id}`);
         renderFavoriteSettings();
-        refreshRecipeButtons();
+        scheduleSettingsToolsRefresh();
     });
     $('#rh_favorite_clear').on('click', () => {
         clearFavorites('all');
         renderFavoriteSettings();
-        refreshRecipeButtons();
+        scheduleSettingsToolsRefresh();
         toastr?.success?.('已清空全部收藏');
     });
 

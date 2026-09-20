@@ -17,7 +17,7 @@ import {
     setActiveFeedbackForCurrentChat,
     auditVisibleLanguageBalanceText,
 } from './feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.53-image1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.53-hostuifix1';
 import { getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.5.53-image1';
 import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, RECIPE_RECORDED_EVENT, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem } from './blacklist.js?rmv=1.5.53-image1';
 import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules, semanticEnsembleScalePlan } from './presentationQuality.js?rmv=1.5.53-cn-boundary1';
@@ -13997,6 +13997,15 @@ function buildRabbitMirrorCurrentFaceHtml(root) {
         '[data-rabbit-mirror-maintenance-checked-sandbox]', '[data-rabbit-mirror-title-flow-end]',
         `template[${MAINTENANCE_QUARANTINED_SCRIPT_ATTR}]`,
     ].join(',')).forEach(node => node.remove());
+    // Remove only diagnostic bookkeeping from the detached export. Functional
+    // rescue markers/CSS remain intact; live DOM and saved source are untouched.
+    const diagnosticAttributes = [
+        'data-rabbit-mirror-maintenance-modules', MAINTENANCE_AUTO_SAFE_RESULT_ATTR,
+        MAINTENANCE_STATE_ATTR, MAINTENANCE_REASON_ATTR,
+    ];
+    for (const node of template.content.querySelectorAll('*')) {
+        for (const attribute of diagnosticAttributes) node.removeAttribute(attribute);
+    }
     if (!sanitizeRabbitMirrorUntrustedTemplate(template)) {
         throw new Error('这面 HTML 未通过安全复制检查；当前页面没有改变。');
     }
@@ -14009,7 +14018,7 @@ function buildRabbitMirrorCurrentFaceHtml(root) {
         + '<title>兔子镜小剧场</title></head><body>\n' + html + '\n</body></html>';
 }
 
-async function writeRabbitMirrorHtmlClipboard(text) {
+async function writeRabbitMirrorHtmlClipboard(text, panel) {
     try { await navigator.clipboard.writeText(text); return true; } catch { /* WebView fallback below. */ }
     const previousFocus = document.activeElement;
     let field;
@@ -14017,11 +14026,17 @@ async function writeRabbitMirrorHtmlClipboard(text) {
         field = document.createElement('textarea');
         field.value = text;
         field.readOnly = true;
-        field.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;';
-        document.body.appendChild(field);
+        field.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;font-size:16px;';
+        // A modal dialog makes body siblings inert. Put the selection inside
+        // the active top-layer dialog so mobile WebViews can actually focus it.
+        const dialog = panel?.closest?.('dialog[open]') || [...document.querySelectorAll('dialog[open]')].reverse().find(node => {
+            try { return node.matches(':modal'); } catch { return node.contains(previousFocus); }
+        });
+        (dialog || panel || document.body).appendChild(field);
         field.focus({ preventScroll: true });
         field.select();
-        return !!document.execCommand('copy');
+        field.setSelectionRange(0, field.value.length);
+        return document.activeElement === field && !!document.execCommand('copy');
     } catch { return false; }
     finally {
         field?.remove();
@@ -14037,11 +14052,11 @@ async function copyRabbitMirrorCurrentFaceHtml(root, actionButton, panel) {
     panel.querySelector('[data-rm-copy-html-fallback]')?.remove();
     try {
         const html = buildRabbitMirrorCurrentFaceHtml(root);
-        const copied = await writeRabbitMirrorHtmlClipboard(html);
+        const copied = await writeRabbitMirrorHtmlClipboard(html, panel);
         if (!panel.isConnected) return;
         if (status) status.textContent = copied
-            ? '已复制本面 HTML（含样式）。粘贴到纯文本文件并保存为 .html 即可；不含整份诊断或其他消息。'
-            : '自动复制失败。请在下方文本框全选复制，再保存为 .html；当前镜面没有改变。';
+            ? '已提交完整 HTML 到剪贴板（含样式）。若粘贴软件限制长度，请用“下载本面 HTML 文件”；不含整份诊断或其他消息。'
+            : '自动复制失败。可下载本面 HTML 文件，或在下方全选复制；当前镜面没有改变。';
         if (!copied) {
             const field = document.createElement('textarea');
             field.setAttribute('data-rm-copy-html-fallback', 'true');
@@ -14055,6 +14070,29 @@ async function copyRabbitMirrorCurrentFaceHtml(root, actionButton, panel) {
         if (status?.isConnected) status.textContent = String(error?.message || '复制失败，当前镜面没有改变。');
     } finally {
         actionButton.disabled = false;
+    }
+}
+
+function downloadRabbitMirrorCurrentFaceHtml(root, actionButton, panel) {
+    if (!actionButton || actionButton.disabled) return;
+    const status = panel.querySelector('[data-rm-copy-html-status]');
+    let url, link;
+    try {
+        const html = buildRabbitMirrorCurrentFaceHtml(root);
+        url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+        link = document.createElement('a');
+        link.href = url;
+        link.download = '兔子镜-本面.html';
+        link.textContent = '保存本面 HTML 文件';
+        panel.appendChild(link);
+        link.click();
+        if (status) status.textContent = '已请求保存本面 HTML 文件。若宿主未弹出保存，请使用复制；依赖兔子镜脚本的交互不会随文件导出。';
+    } catch (error) {
+        if (status) status.textContent = String(error?.message || '文件导出失败，当前镜面没有改变。');
+    } finally {
+        link?.remove();
+        // Keep the URL valid through the browser/native download hand-off.
+        if (url) setTimeout(() => URL.revokeObjectURL(url), 60000);
     }
 }
 
@@ -19631,24 +19669,23 @@ function showRecipeMenu(root, button) {
     closeRecipeMenu();
     closeFeedbackCatMenu();
     closeMaintenanceRabbitMenu();
-    const recipe = rabbitMirrorRecipeForRoot(root);
-    if (!recipe) {
-        globalThis.toastr?.info?.('这面兔子镜没有可读取的本轮抽签记录。新生成的兔子镜会自动记录。');
-        return false;
-    }
+    const recipe = rabbitMirrorRecipeForRoot(root, true);
     const state = getBlacklistState();
     const favoriteState = getFavoritesState();
-    const items = [...(recipe.themes || []), ...(recipe.formats || [])];
+    const items = [...(recipe?.themes || []), ...(recipe?.formats || [])];
     const panel = document.createElement('div');
     panel.setAttribute(RECIPE_MENU_ATTR, 'true');
     panel.style.cssText = 'position:fixed;z-index:2147483646;box-sizing:border-box;padding:12px 13px;border:1px solid rgba(127,127,127,.35);border-radius:10px;background:var(--SmartThemeBlurTintColor,rgba(28,28,32,.97));color:var(--SmartThemeBodyColor,#eee);box-shadow:0 10px 32px rgba(0,0,0,.28);overflow:auto;font-family:inherit;';
-    const directiveNote = recipe.userDirectiveApplied ? '本轮含用户明确点菜；黑名单只影响之后的随机抽取。' : '';
-    const forcedNote = recipe.forcedVisualScenery ? '本轮含固定动态视觉场景；固定模式会优先于随机黑名单。' : '';
+    const directiveNote = recipe?.userDirectiveApplied ? '本轮含用户明确点菜；黑名单只影响之后的随机抽取。' : '';
+    const forcedNote = recipe?.forcedVisualScenery ? '本轮含固定动态视觉场景；固定模式会优先于随机黑名单。' : '';
+    const emptyNote = !recipe ? '本面暂无可读取的抽签记录；无法确定本面抽中了哪些项目。仍可管理全局黑名单、收藏和全池。'
+        : recipe.hasExternalReferences ? '本面仅有外部材料记录，没有可列出的内部主题或展现形式。可在下方管理全局黑名单、收藏和全池。'
+        : '本轮没有记录主题或展现形式。';
     const totalBlocked = state.themeIds.length + state.formatIds.length;
     const totalFavorites = favoriteState.themeIds.length + favoriteState.formatIds.length;
     panel.innerHTML = `<div style="font-weight:800;font-size:13px;margin-bottom:3px;">🎲 本轮抽签</div>
       <div style="font-size:10px;opacity:.62;line-height:1.45;margin-bottom:7px;">显示的是这一面兔子镜当时真实抽中的内部项目，不做 AI 事后分析。⭐ 收藏提高本地随机权重；🚫 黑名单从随机池排除；两者互斥且都不加 Prompt。</div>
-      ${items.map(recipePanelRow).join('') || '<div style="padding:8px 0;opacity:.68;font-size:11px;">本轮没有记录主题或展现形式。</div>'}
+      ${items.map(recipePanelRow).join('') || `<div data-rm-recipe-record-status style="padding:8px 0;opacity:.68;font-size:11px;">${emptyNote}</div>`}
       <div style="display:flex;gap:7px;margin-top:9px;flex-wrap:wrap;">
         <button type="button" data-rm-recipe-action="favorite-manager" style="flex:1 1 100px;border:1px solid rgba(222,170,55,.34);border-radius:7px;padding:6px 8px;background:rgba(222,170,55,.08);color:inherit;cursor:pointer;font:inherit;font-size:11px;font-weight:700;">⭐ 收藏室${totalFavorites ? `（${totalFavorites}）` : ''}</button>
         <button type="button" data-rm-recipe-action="blacklist-manager" style="flex:1 1 100px;border:1px solid rgba(127,127,127,.34);border-radius:7px;padding:6px 8px;background:rgba(127,127,127,.08);color:inherit;cursor:pointer;font:inherit;font-size:11px;font-weight:700;">🚫 黑名单${totalBlocked ? `（${totalBlocked}）` : ''}</button>
@@ -22660,7 +22697,7 @@ async function runMaintenanceNarrowFaceRepair(root, button) {
         if (rejectOversizedMaintenanceRepair(root, button, '窄面电击')) return false;
         if (!maintenanceRepairRunIsCurrent(repairRun)) return false;
         setMaintenanceRabbitState(button, MAINTENANCE_STATES.checking, '⚡ 正在重新测量并恢复这面兔子镜的宽度');
-        const adapter = await import('./independentApi.js?rmv=1.5.53-image1');
+        const adapter = await import('./independentApi.js?rmv=1.5.53-hostuifix1');
         // Loading the adapter is the sole async boundary. Never apply a delayed
         // click to a new chat, Swipe, source revision, face or replacement node.
         if (!root.isConnected || !details.isConnected || !button.isConnected
@@ -22758,6 +22795,7 @@ function showMaintenanceRabbitMenu(root, button) {
       <button type="button" data-rm-maintenance-action="reset-interaction" ${hasRabbitMirrorInteractionResetSnapshot(root) ? '' : 'disabled'}>⏪ 恢复交互初始状态</button>
       <button type="button" data-rm-maintenance-action="restore-before" ${maintenancePreRepairSnapshots.has(maintenanceSnapshotKey(root)) ? '' : 'disabled'}>↩️ 返回修复前</button>
       <button type="button" data-rm-maintenance-action="copy-html" style="min-height:44px!important;">复制本面 HTML（含样式）</button>
+      <button type="button" data-rm-maintenance-action="download-html" style="min-height:44px!important;">下载本面 HTML 文件</button>
       <div data-rm-copy-html-status role="status" aria-live="polite" style="font-size:12px;line-height:1.5;">复制为独立 HTML，仅包含本面。依赖兔子镜脚本的交互不会随文件导出。</div>
       <button type="button" data-rm-maintenance-action="diagnostic">📋 生成全链路诊断</button>
       <button type="button" data-rm-maintenance-action="close">关闭</button>`;
@@ -22783,6 +22821,10 @@ function showMaintenanceRabbitMenu(root, button) {
         if (!action) return;
         event.preventDefault();
         event.stopPropagation();
+        if (action === 'download-html') {
+            downloadRabbitMirrorCurrentFaceHtml(root, event.target.closest('[data-rm-maintenance-action]'), panel);
+            return;
+        }
         if (action === 'copy-html') {
             void copyRabbitMirrorCurrentFaceHtml(root, event.target.closest('[data-rm-maintenance-action]'), panel);
             return;
@@ -23053,8 +23095,9 @@ function ensureFeedbackCatButton(root, summary, host) {
 
 
 function recipeButtonShouldBeVisible(recipe, blacklistState = getBlacklistState()) {
-    return blacklistState?.enabled === true && !!recipe
-        && (!recipe.hasExternalReferences || !!((recipe.themes?.length || 0) + (recipe.formats?.length || 0)));
+    // Visibility is a user setting; missing face receipts must not hide management.
+    // Recipe resolution itself remains owner-checked in blacklist.js.
+    return blacklistState?.enabled === true;
 }
 
 function clearMirrorTitleDisplayArtifacts(root) {
@@ -23191,7 +23234,7 @@ function ensureRecipeButton(root, summary, host, recipe = rabbitMirrorRecipeForR
     current.textContent = '🎲';
     current.title = recipeButtonTitle(recipe);
     current.setAttribute('aria-label', current.title);
-    current.dataset.rmRecipeAvailable = 'true';
+    current.dataset.rmRecipeAvailable = recipe ? 'true' : 'false';
     if (current.parentElement !== host) host.appendChild(current);
     normalizeRabbitMirrorToolButton(current);
     return current;
@@ -23268,7 +23311,7 @@ function beginHostWorkTiming(name){
 }
 let mirrorImageModule = null;
 function loadMirrorImageModule() {
-    if (!mirrorImageModule) mirrorImageModule = import('./imageUi.js?rmv=1.5.53-image1').catch(error => { mirrorImageModule = null; throw error; });
+    if (!mirrorImageModule) mirrorImageModule = import('./imageUi.js?rmv=1.5.53-hostuifix1').catch(error => { mirrorImageModule = null; throw error; });
     return mirrorImageModule;
 }
 function installUnifiedMirrorTools(root) {

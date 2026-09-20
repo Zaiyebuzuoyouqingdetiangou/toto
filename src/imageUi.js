@@ -41,7 +41,14 @@ function safeImageUrl(value) {
     if (/^data:image\/(?:png|jpeg|webp|gif);base64,[a-z\d+/=\s]+$/i.test(text)) return text;
     try {
         const url = new URL(text, document.baseURI);
-        return ['http:', 'https:'].includes(url.protocol) ? url.href : '';
+        if (['http:', 'https:'].includes(url.protocol)) return url.href;
+        // TT stores provider images on its own local Tauri host. Reuse that
+        // saved path; restoring an image must never require another generation.
+        const host = new URL(document.location?.href || document.baseURI);
+        if (host.protocol === 'tauri:' && host.host === 'localhost'
+            && url.protocol === host.protocol && url.host === host.host
+            && !host.username && !host.password && !url.username && !url.password) return url.href;
+        return '';
     } catch { return ''; }
 }
 function makeImage(doc, record) {
