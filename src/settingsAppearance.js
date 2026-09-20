@@ -255,7 +255,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     move(get('rh_independent_tag_filter_open').parentElement.parentElement,'tags');
     move('rh_advanced_page_worldinfo','books');move('rh_advanced_page_memory','memories');
     withNote('rh_multiface_enabled','faces');move('rh_multiface_count_row','faces');move('rh_multiface_help','faces');move('rh_face_presentation_modes','faces');
-    withNote('rh_force_visual_scenery','drawing');withNote('rh_enhanced_visual_drawing','drawing');move('rh_advanced_page_generation','draw');
+    withNote('rh_force_visual_scenery','drawing');withNote('rh_visual_scenery_combination','drawing');withNote('rh_enhanced_visual_drawing','drawing');move('rh_advanced_page_generation','draw');
     for(const key of ['visualText','drawing','writing','references','visualRules','replacement'])row('look',key);
     move('rh_appearance_reference','references');
     move(get('rh_visual_prompt').closest('details'),'visualRules');

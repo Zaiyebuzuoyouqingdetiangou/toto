@@ -1,4 +1,4 @@
-import { presentationModeFields } from './presentationMode.js?rmv=1.5.53-text1';
+import { presentationModeFields } from './presentationMode.js?rmv=1.5.53-visualquick1';
 import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.5.53-cn-boundary1';
 
 const STORAGE_KEY = 'rabbit_mirror_theater:last_combo:v11';
