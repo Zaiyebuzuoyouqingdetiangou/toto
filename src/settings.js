@@ -1,4 +1,4 @@
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.5.53-text1';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.5.53-visualquick1';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
 import { independentGenerationTiming } from './independentTiming.js?rmv=1.5.53-timing1';
@@ -182,6 +182,9 @@ export const defaultSettings = Object.freeze({
     userDirectivePriority: true,
     creativeExpansionMode: true,
     forceVisualScenery: false,
+    visualSceneryCombination: false,
+    imageEnabled: false,
+    imagePromptFormat: 'nai5-natural',
     memoryScanEnabled: false,
     memoryWorldBookEnabled: false,
     memoryWorldBookId: '',
@@ -312,6 +315,9 @@ export function getSettings() {
         ? settings.externalWorldBookMixMode
         : 'builtin-only';
     settings.enhancedVisualDrawing = settings.enhancedVisualDrawing === true;
+    settings.visualSceneryCombination = settings.visualSceneryCombination === true;
+    settings.imageEnabled = settings.imageEnabled === true;
+    settings.imagePromptFormat = settings.imagePromptFormat === 'nai45-tags' ? 'nai45-tags' : 'nai5-natural';
     settings.visualPromptEditingEnabled = !!settings.visualPromptEditingEnabled;
     settings.appearanceReferenceEnabled = settings.appearanceReferenceEnabled === true;
     settings.appearanceReferenceRevision = /^[a-z\d-]{8,80}$/i.test(String(settings.appearanceReferenceRevision || '')) ? String(settings.appearanceReferenceRevision) : '';
@@ -392,6 +398,11 @@ export function updateSettings(patch) {
         safePatch.externalWorldBookMixMode = ['builtin-only','builtin-preferred','balanced','external-preferred','external-only'].includes(safePatch.externalWorldBookMixMode)
             ? safePatch.externalWorldBookMixMode
             : 'builtin-only';
+    }
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'imageEnabled')) safePatch.imageEnabled = safePatch.imageEnabled === true;
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'imagePromptFormat')) safePatch.imagePromptFormat = safePatch.imagePromptFormat === 'nai45-tags' ? 'nai45-tags' : 'nai5-natural';
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'visualSceneryCombination')) {
+        safePatch.visualSceneryCombination = safePatch.visualSceneryCombination === true;
     }
     if (Object.prototype.hasOwnProperty.call(safePatch, 'enhancedVisualDrawing')) {
         safePatch.enhancedVisualDrawing = safePatch.enhancedVisualDrawing === true;

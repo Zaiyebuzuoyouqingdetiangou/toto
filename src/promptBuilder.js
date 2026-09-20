@@ -3,15 +3,15 @@ import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.5.53
 import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.5.53-cn-boundary1';
 import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.5.53-text1';
 import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.5.53-cn-boundary1';
-import { pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.5.53-text1';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.5.53-text1';
-import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.5.53-text1';
+import { pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.5.53-image1';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.5.53-visualquick1';
+import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.5.53-visualquick1';
 import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.5.53-cn-boundary1';
 export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.5.53-cn-boundary1';
 import { resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.5.53-cn-boundary1';
 import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.5.53-cn-boundary1';
-import { isTextPresentation, presentationModeFields } from './presentationMode.js?rmv=1.5.53-text1';
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.5.53-text1';
+import { isTextPresentation, presentationModeFields } from './presentationMode.js?rmv=1.5.53-visualquick1';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.5.53-image1';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -484,6 +484,19 @@ function complexInteractiveCore() {
 }
 
 
+function visualCombinationRule(combo) {
+    if (combo?.visualSceneryCombination !== true || isTextPresentation(combo)) return '';
+    return String.raw`
+动态视觉组合【本面冻结：动态画面＋抽中的其他展现形式】:
+  - 保留动态视觉基底，同时完整实现本面抽中的其他展现形式；它们的内容、结构、阅读方式和交互玩法都必须真实出现，不能只剩标题、图标、背景装饰或几句说明。主题仍使用本面已抽中的题材。
+  - 抽中的形式决定内容的组织和使用方式，动态画面落实在该媒介自身的主体、空间、材质或叙事关系中；两者共同构成首个主要内容块。书信仍有完整书信、日志仍有实际记录、播放器仍有其媒介结构，例子不是固定模板；不得另套通用卡片后仅放一个会动的头图。
+  - 主要动态画面根节点必须标记 data-rm-visual-scenery="true"，有可辨认的背景层、中景主体层与前景／叙事层；未操作时核心画面就完整可见。至少一条主动画和一条协同环境动画打开即循环；每面最多 1 条主连续动画 + 1 条辅助连续动画。
+  - 主动画须有真实 @keyframes、可见元素 animation 与 infinite，打开 1 秒内产生肉眼可见的位移／缩放／旋转／形变／遮罩／流体／光影变化；只写 transition、动画名、SVG、微尘或低对比呼吸不算。动画承载真实的空间、关系或叙事变化；原有 transform 须保留，或由外层容器承载动画。
+  - 辅助动画与主动画共同服务构图；禁止粒子群、批量重复动画节点及大面积 blur、filter、backdrop-filter。
+  - 交互依抽中的形式自然产生，须真实可触摸并改变内容、关系、结构、空间、材质、时间或观察方式；动态与交互不能互相替代。可以有该媒介需要的正文和控件，不能把正文降格为画面说明或删除其阅读路径。
+  - 主要正文和反馈进入正常文档流，由内容撑高；纯装饰与短标签才可定位裁切。手机窄屏仍能读到各状态的最后一行。`;
+}
+
 function visualScenerySceneFirstCore() {
     return String.raw`
 Visual Scenery 场景优先级【覆盖通用交互骨架的执行顺序】:
@@ -555,10 +568,15 @@ function compactPresentationExecutionContract(items) {
     }).join('；');
 }
 
+function compactComboExecutionContract(combo) {
+    if (combo?.visualSceneryCombination !== true || isTextPresentation(combo)) return compactPresentationExecutionContract(combo?.formats);
+    return '锁定动态画面基底，与以下形式的内容、结构和玩法共同成立；' + compactPresentationExecutionContract(combo.formats.filter(item => item.id !== '10.2.2'));
+}
+
 function presentationFinalAcceptanceLock(combo) {
     return String.raw`
 最终成品短检【只在脑内执行】:
-  - 形式：${compactPresentationExecutionContract(combo?.formats)}。首个主体须以至少两项可见的轮廓／比例／空间／阅读／材质／排版证据呈现形式本体，真实 CSS 必须命中可见节点；不能只剩默认文字流、原生控件或通用卡片。
+  - 形式：${compactComboExecutionContract(combo)}。首个主体须以至少两项可见的轮廓／比例／空间／阅读／材质／排版证据呈现形式本体，真实 CSS 必须命中可见节点；不能只剩默认文字流、原生控件或通用卡片。
   - 交互：必须有一条可触摸且可保持的完整链「对象→操作→第二状态→明确反馈」；动画、hover 与仅变色不能代替交互。
   - 手机：按 360px 检查人物、关系节点、图例等数量群组，整组完整适配且正文由内容撑高，不得裁掉最后一项。任一项失败先重构再输出。`;
 }
@@ -803,7 +821,7 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
     const mode = combo?.samplingMode || settings?.samplingMode || 'classic';
     const themes = mode === 'format_only' ? '当前助手正文' : compactLockItems(combo?.themes, 'theme');
     const formats = compactLockItems(combo?.formats, 'presentation');
-    const formatContract = compactPresentationExecutionContract(combo?.formats);
+    const formatContract = compactComboExecutionContract(combo);
     const interaction = interactionFamilyCooldownSnapshot(settings);
     const repeatedVisualDimensions = getRepeatedVisualFamilyDimensions(3, 2);
     const paletteCooldownLock = buildPaletteCooldownExecutionLock();
@@ -823,6 +841,7 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
     return [
         '<兔子镜近输出短锁 data-source="independent-api-near-output">',
         `本轮锁定：${samplingModeLabel(combo, settings)}；主题：${themes}；展现形式：${formats}。`,
+        combo?.visualSceneryCombination === true ? '动态视觉组合锁：动态画面与抽中形式的真实内容、阅读路径和玩法同时保留，不得互相替代。' : '',
         `短检：${formatContract}。首个主体落实两项可见结构证据和真实 CSS；完成至少一条「对象→操作→可保持第二状态→反馈」交互，多节点媒介须有多入口或连续阶段，不用单次显隐敷衍。360px 下数量群组完整适配、正文不裁切。`,
         directiveText ? `点菜优先：${directiveText}` : '',
         activeBans.length ? `近因避让：${activeBans.join('；')}。` : '',
@@ -851,7 +870,7 @@ function buildMultiIndependentExecutionLock(faceContexts, settings, directive) {
         const themes = mode === 'format_only' ? '当前助手正文' : compactLockItems(face.combo?.themes, 'theme');
         const formats = compactLockItems(face.combo?.formats, 'presentation');
         const tarot = face.tarotRulesText ? '；具体塔罗牌必须使用白名单实体牌图' : '';
-        return `第 ${index + 1} 面：${samplingModeLabel(face.combo, settings)}；主题：${themes}；展现形式：${formats}。短检：${compactPresentationExecutionContract(face.combo?.formats)}；主体、空间层次、材质与完整交互均须落实${tarot}。`;
+        return `第 ${index + 1} 面：${samplingModeLabel(face.combo, settings)}；主题：${themes}；展现形式：${formats}。${face.combo?.visualSceneryCombination === true ? "动态视觉组合锁：动态画面与抽中形式的真实内容、阅读路径和玩法同时保留，不得互相替代。" : ""}短检：${compactComboExecutionContract(face.combo)}；主体、空间层次、材质与完整交互均须落实${tarot}。`;
     });
     return [
         '<兔子镜近输出短锁 data-source="independent-api-near-output">',
@@ -884,7 +903,9 @@ function buildFaceContext(selectionCombo, settings, rawPolicy, externalRawMap = 
         ...(selectionCombo.texts?.length ? { texts: selectionCombo.texts.map(item => externalDescriptor(item, 'text', externalRawMap, summaryMax)) } : {}),
     } : selectionCombo;
     const selectedThemeResult = formatItemsWithRawPolicy(combo.themes, 'theme', rawPolicy, externalRawMap);
-    const selectedFormatResult = formatItemsWithRawPolicy(combo.formats, 'presentation', rawPolicy, externalRawMap, textPresentation);
+    const combination = combo.visualSceneryCombination === true && !textPresentation;
+    const selectedFormatResult = formatItemsWithRawPolicy(combination ? combo.formats.filter(item => item.id !== '10.2.2') : combo.formats, 'presentation', rawPolicy, externalRawMap, textPresentation);
+    if (combination) selectedFormatResult.text = '- 【10.2.2 Visual Scenery】锁定动态视觉基底；与以下实际展现形式共同成立，具体执行本面的动态视觉组合规则。\n' + selectedFormatResult.text;
     const selectedTextResult = formatItemsWithRawPolicy(combo.texts, 'text', rawPolicy, externalRawMap);
     return {
         combo, settings, hasExternal, textPresentation,
@@ -996,11 +1017,11 @@ function buildTextAwarePrompt({ faceContexts, settings, directive, memoryMateria
         local.push(directiveRule, compactCreativeRule(!!settings.creativeExpansionMode, mode === 'format_only'),
             settings.visualPromptEditingEnabled ? presentationEmbodimentRule() : legacyPresentationEmbodimentRule(),
             globalCompletionFloorRule(), settings.enhancedVisualDrawing === true ? enhancedVisualDrawingRule() : '',
-            face.visualSceneryMode ? visualScenerySceneFirstCore() : complexInteractiveCore(),
+            face.visualSceneryMode ? (visualCombinationRule(face.combo) || visualScenerySceneFirstCore()) : complexInteractiveCore(),
             interactionFamilyCooldownRule(settings), innerDetailsCooldownRule(), buildPaletteCooldownRule(),
             visualFamilyCooldownRule(), visualColorTruthRule(), presentationWorldviewLockRule(face.combo, settings),
             settings.avoidRepeat ? `近期视觉避让:\n${shortVisualAvoidance(face.combo, 3)}` : '', recentRiskCorrection());
-        if (face.visualSceneryMode) local.push(VISUAL_SCENERY_RULES, visualSceneryInteractionLinkRule());
+        if (face.visualSceneryMode && !face.combo.visualSceneryCombination) local.push(VISUAL_SCENERY_RULES, visualSceneryInteractionLinkRule());
         if (face.tarotRulesText) local.push(tarotPhysicalImageRule([index + 1]), face.tarotRulesText);
         if (face.touchTheaterRulesText) local.push(face.touchTheaterRulesText);
         if (settings.visualPromptEditingEnabled) local.push(editableVisualPromptRule(settings));
@@ -1076,13 +1097,15 @@ ${selectedFormats}`);
     if (settings?.enhancedVisualDrawing === true) {
         chunks.push(enhancedVisualDrawingRule());
     }
+    const combinationFaces = multiface ? faceContexts.filter(face => face.combo.visualSceneryCombination === true) : [];
     if (multiface) {
+        combinationFaces.forEach(face => chunks.push(`第 ${faceContexts.indexOf(face) + 1} 面：${visualCombinationRule(face.combo)}`));
         const nonVisualFaces = faceContexts.map((face, index) => !face.visualSceneryMode ? index : -1).filter(index => index >= 0);
         if (nonVisualFaces.length === faceContexts.length) chunks.push(complexInteractiveCore());
         else if (nonVisualFaces.length) chunks.push(`通用交互规则仅作用于第 ${nonVisualFaces.map(index => index + 1).join('、')} 面：\n${complexInteractiveCore()}`);
-        const visualFaces = faceContexts.map((face, index) => face.visualSceneryMode ? index : -1).filter(index => index >= 0);
+        const visualFaces = faceContexts.map((face, index) => face.visualSceneryMode && !face.combo.visualSceneryCombination ? index : -1).filter(index => index >= 0);
         if (visualFaces.length) chunks.push(`Visual Scenery 局部覆盖：以下完整规则只作用于第 ${visualFaces.map(index => index + 1).join('、')} 面，其他面继续执行通用复杂交互核心。\n${visualScenerySceneFirstCore()}`);
-    } else chunks.push(visualSceneryMode ? visualScenerySceneFirstCore() : complexInteractiveCore());
+    } else chunks.push(visualSceneryMode ? (visualCombinationRule(combo) || visualScenerySceneFirstCore()) : complexInteractiveCore());
     chunks.push(interactionFamilyCooldownRule(settings));
     if (multiface) chunks.push(buildBatchInteractionDiversityRule(faceContexts.map(face => face.combo), settings));
     chunks.push(innerDetailsCooldownRule());
@@ -1105,12 +1128,12 @@ ${multiface ? faceContexts.map((face, index) => `第 ${index + 1} 面:\n${shortV
     chunks.push(recentRiskCorrection());
 
     if (multiface) {
-        const visualFaces = faceContexts.map((face, index) => face.visualSceneryMode ? index : -1).filter(index => index >= 0);
+        const visualFaces = faceContexts.map((face, index) => face.visualSceneryMode && !face.combo.visualSceneryCombination ? index : -1).filter(index => index >= 0);
         if (visualFaces.length) {
             chunks.push(`以下 Visual Scenery 规则只作用于第 ${visualFaces.map(index => index + 1).join('、')} 面:\n${VISUAL_SCENERY_RULES}`);
             chunks.push(`第 ${visualFaces.map(index => index + 1).join('、')} 面：${visualSceneryInteractionLinkRule()}`);
         }
-    } else if (visualSceneryMode) {
+    } else if (visualSceneryMode && !combo.visualSceneryCombination) {
         chunks.push(VISUAL_SCENERY_RULES);
         chunks.push(visualSceneryInteractionLinkRule());
     }
@@ -1167,7 +1190,7 @@ const PROMPT_SETTING_KEYS = Object.freeze([
     'enabled', 'autoRabbitMirrorInjection', 'mode', 'rabbitMirrorFaceCount', 'rawPolicy',
     'rabbitMirrorPresentationModes',
     'samplingMode', 'hardStartup', 'creativeExpansionMode', 'debug', 'avoidRepeat',
-    'forceVisualScenery', 'enhancedVisualDrawing', 'userDirectivePriority',
+    'forceVisualScenery', 'visualSceneryCombination', 'enhancedVisualDrawing', 'userDirectivePriority',
     'presentationWorldviewLock', 'visualPromptEditingEnabled', 'visualPrompt',
     'visualExtraPrompt', 'visualAvoidPrompt', 'generationSource',
     'appearanceReferenceEnabled', 'appearanceReferenceRevision',

@@ -1,13 +1,13 @@
-import { presentationModeFields } from './presentationMode.js?rmv=1.5.53-text1';
-import { getSettings } from './settings.js?rmv=1.5.53-text1';
-import { getCurrentChatKey } from './storage.js?rmv=1.5.53-text1';
-import { getRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.53-text1';
-import { readFollowPartialResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=1.5.53-text1';
-import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.53-text1';
+import { presentationModeFields } from './presentationMode.js?rmv=1.5.53-visualquick1';
+import { getSettings } from './settings.js?rmv=1.5.53-image1';
+import { getCurrentChatKey } from './storage.js?rmv=1.5.53-visualquick1';
+import { getRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.53-image1';
+import { readFollowPartialResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=1.5.53-visualquick1';
+import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.53-visualquick1';
 import { parseMultifaceOutput, MULTIFACE_FAILURE_ATTR } from './multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
-import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.5.53-text1';
+import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.5.53-image1';
 import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=1.5.53-text1';
-import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.5.53-text1';
+import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.5.53-hostuifix1';
 import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=1.5.53-cn-boundary1';
 
 const active = new WeakSet();

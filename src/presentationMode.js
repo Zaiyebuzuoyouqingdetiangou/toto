@@ -17,11 +17,19 @@ export function hasExplicitTextFace(settings) {
     return normalizePresentationModes(settings?.rabbitMirrorPresentationModes).slice(0, count).includes('text');
 }
 
+export function visualSceneryCombinationEnabled(settings) {
+    return settings?.forceVisualScenery === true && settings?.visualSceneryCombination === true;
+}
+
 // Optional fields keep old records and default Prompt plans byte-compatible.
 // Bounds match existing selection metadata; raw imported content is never copied.
 export function presentationModeFields(source) {
-    if (!source || !['html', 'text'].includes(source.presentationMode)) return {};
+    // Batch parents never lend a face-specific flag to a sibling recipe.
+    const combination = source?.visualSceneryCombination === true && source?.presentationMode !== 'text' && !(Array.isArray(source?.faces) && source.faces.length >= 2 && !Number.isInteger(source.faceIndex))
+        ? { visualSceneryCombination: true } : {};
+    if (!source || !['html', 'text'].includes(source.presentationMode)) return combination;
     const fields = {
+        ...combination,
         requestedPresentationMode: ['auto', 'html', 'text'].includes(source.requestedPresentationMode)
             ? source.requestedPresentationMode : 'auto',
         presentationMode: source.presentationMode,

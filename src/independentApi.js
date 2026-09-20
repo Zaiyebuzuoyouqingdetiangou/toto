@@ -1,25 +1,25 @@
-import { presentationModeFields, hasExplicitTextFace } from './presentationMode.js?rmv=1.5.53-text1';
+import { presentationModeFields, hasExplicitTextFace } from './presentationMode.js?rmv=1.5.53-visualquick1';
 import { scheduleRabbitMirrorComposerClearance } from './composerClearance.js?rmv=1.5.53-cn-boundary1';
 import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, getRabbitMirrorExternalPlacementParent, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.5.53-cn-boundary1';
 import { recordTtSurface, ttSurfaceNow } from './ttSurfaceDiagnostics.js?rmv=1.5.53-cn-boundary1';
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5.53-text1';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings } from './settings.js?rmv=1.5.53-image1';
 import { independentGenerationTiming } from './independentTiming.js?rmv=1.5.53-timing1';
 import { assertRabbitMirrorIndependentResponseBytes, assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, fetchRabbitMirrorIndependentCompletion } from './independentSecurityGuard.js?rmv=1.5.53-cn-boundary1';
 import { parseIndependentAdvancedOptions, buildIndependentAdvancedCarrier, applyIndependentAdvancedExclusions, independentAdvancedOptionsSignature } from './advancedRequestOptions.js?rmv=1.5.53-cn-boundary1';
-import { buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.5.53-text1';
+import { buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.5.53-image1';
 import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from './externalWorldBook/store.js?rmv=1.5.53-text1';
 import { describeExternalWorldBookPreflightFailure, describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.53-cn-boundary1';
-import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, armRabbitMirrorFirstUseInteraction, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.53-text1';
+import { cleanRabbitMirrorOutput, compactTotoBlock, refreshRabbitMirrorToolsInScope, repairMalformedRabbitMirrorMarkup, repairRabbitMirrorScopedClassAliasesInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, armRabbitMirrorFirstUseInteraction, repairRabbitMirrorPersistedExclusiveGridSpan, clearRabbitMirrorHorizontalClipArtifacts, sanitizeRabbitMirrorUntrustedTemplate, validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer.js?rmv=1.5.53-hostuifix1';
 import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from './bannedWords.js?rmv=1.5.53-cn-boundary1';
 import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=1.5.53-cn-boundary1';
 import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from './multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
-import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.53-text1';
-import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, getRabbitMirrorFollowBatchFailure, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.53-text1';
-import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions, markPendingBatchAttempt, commitPendingComboBatch, releasePendingComboBatch } from './storage.js?rmv=1.5.53-text1';
+import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.5.53-visualquick1';
+import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, getRabbitMirrorFollowBatchFailure, scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.5.53-hostuifix1';
+import { getCurrentChatKey, updateLatestVisualSignature, parseVisualFamilySkeleton, describeVisualFamilyDimensions, markPendingBatchAttempt, commitPendingComboBatch, releasePendingComboBatch } from './storage.js?rmv=1.5.53-visualquick1';
 import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected } from './feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.53-text1';
-import { readFollowPartialResult, followPartialResultFaceOwnerKey } from './followPartialResults.js?rmv=1.5.53-text1';
-import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.5.53-text1';
+import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.5.53-image1';
+import { readFollowPartialResult, followPartialResultFaceOwnerKey } from './followPartialResults.js?rmv=1.5.53-visualquick1';
+import { recordRabbitMirrorIndependentPrompt } from './tokenMeter.js?rmv=1.5.53-visualquick1';
 import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.53-cn-boundary1';
 import { rememberIndependentTransportDiagnostic } from './transportDiagnostics.js?rmv=1.5.53-cn-boundary1';
 
@@ -323,6 +323,7 @@ function operationEpochForBase(baseSlot=''){
 }
 function advanceOperationEpochForBase(baseSlot='',reason='explicit-host-operation',operationToken=''){
  const key=String(baseSlot||''); if(!key) return 1;
+ 
  const epochs=globalOperationEpochs();
  const current=epochs.get(key);
  const now=Date.now(); const token=String(operationToken||'').trim();
@@ -511,7 +512,16 @@ function compactChatPersistedRecord(value){
    ...(diagnostic.partial===true?{partial:true,failedFaces:(Array.isArray(diagnostic.failedFaces)?diagnostic.failedFaces:[])
     .filter(face=>Number.isInteger(face?.faceIndex)&&face.faceIndex>=0&&face.faceIndex<faces.length)
     .slice(0,5).map(face=>({faceIndex:face.faceIndex,status:'failed',code:String(face.code||'incomplete-face').replace(/[^a-z0-9-]/gi,'').slice(0,80)}))}:{}),
-  }}:diagnostic?.hasExternalReferences||diagnostic?.presentationMode?{apiRequest:{...compactExternalSourceNote(diagnostic),...presentationModeFields(diagnostic)}}:{}),
+  }}:diagnostic?.hasExternalReferences||diagnostic?.presentationMode||diagnostic?.visualSceneryCombination===true?{apiRequest:{...compactExternalSourceNote(diagnostic),...presentationModeFields(diagnostic),
+   ...(diagnostic?.visualSceneryCombination===true?{
+    samplingMode:String(diagnostic.samplingMode||''),
+    themeIds:Array.isArray(diagnostic.themeIds)?diagnostic.themeIds.map(String).slice(0,12):[],
+    formatIds:Array.isArray(diagnostic.formatIds)?diagnostic.formatIds.map(String).slice(0,12):[],
+    themeLabels:Array.isArray(diagnostic.themeLabels)?diagnostic.themeLabels.map(String).slice(0,12):[],
+    formatLabels:Array.isArray(diagnostic.formatLabels)?diagnostic.formatLabels.map(String).slice(0,12):[],
+    forcedVisualScenery:diagnostic.forcedVisualScenery===true,
+   }:{}),
+  }}:{}),
  };
 }
 function normalizeChatOutputMetadata(value){
@@ -1704,7 +1714,7 @@ const INDEPENDENT_TAG_SCAN_STANDARD_TAGS=new Set(`a abbr address area article as
 const INDEPENDENT_TAG_SCAN_RESERVED_TAGS=new Set(['toto']);
 const INDEPENDENT_TAG_SCAN_SKIP_SUBTREES=new Set(['toto','script','style','template','noscript','iframe','object','embed','svg','math']);
 const INDEPENDENT_TAG_SCAN_SKIP_CODE_SUBTREES=new Set(['code','pre','textarea','kbd','samp']);
-const INDEPENDENT_TAG_SCAN_BLOCKED_SELECTOR='toto, [data-rabbit-mirror-external-source], [data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-ui-version], script, style, template, noscript, iframe, object, embed, svg, math, [hidden], [inert], [aria-hidden="true"], [aria-hidden="1"], .displayNone, .display-none, .hidden, .invisible, .sr-only, [class*="display-none"], [class*="display_none"]';
+const INDEPENDENT_TAG_SCAN_BLOCKED_SELECTOR='toto, [data-rabbit-mirror-external-source], [data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-ui-version], script, style, template, noscript, iframe, object, embed, svg, math, [hidden], [inert], [aria-hidden="true"], [aria-hidden="1"], .displayNone, .display-none, .hidden, .invisible, .sr-only, [class*="display-none"], [class*="display_none"]';
 function normalizedIndependentDiscoveredTagName(value=''){
  const tag=normalizeIndependentContextExcludedTags([String(value||'')])[0]||'';
  if(!tag || INDEPENDENT_TAG_SCAN_STANDARD_TAGS.has(tag) || INDEPENDENT_TAG_SCAN_RESERVED_TAGS.has(tag)) return '';
@@ -1920,7 +1930,7 @@ function liveVisibleIndependentMessageText(index,excludedTags=new Set()){
   const body=document.querySelector(`#chat .mes[mesid="${Number(index)}"] .mes_text, #chat [mesid="${Number(index)}"].mes .mes_text`);
   if(!body) return {available:false,text:''};
   const parts=[]; const stack=[{node:body,depth:0}]; const filteredExcludedTags=new Set(); let examined=0; let chars=0; let filteredExcludedTagChars=0;
-  const blockedSelector='toto, [data-rabbit-mirror-external-source], [data-rabbit-mirror-tool-entry-host], script, style, template, noscript, [hidden], [inert], [aria-hidden="true"], [aria-hidden="1"], .displayNone, .display-none, .hidden, .invisible, .sr-only, [class*="display-none"], [class*="display_none"]';
+  const blockedSelector='toto, [data-rabbit-mirror-external-source], [data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], script, style, template, noscript, [hidden], [inert], [aria-hidden="true"], [aria-hidden="1"], .displayNone, .display-none, .hidden, .invisible, .sr-only, [class*="display-none"], [class*="display_none"]';
   const blockTags=new Set(['BR','P','DIV','LI','SECTION','ARTICLE','BLOCKQUOTE','H1','H2','H3','H4','H5','H6','TR']);
   for(let ancestor=body,depth=0;ancestor && depth<5;ancestor=ancestor.parentElement,depth+=1){
    if(ancestor.matches?.(blockedSelector)) return {available:true,text:''};
@@ -3640,7 +3650,7 @@ function serializeExternalFaceDetails(host,{scrubTools=true}={}){
  return faces.map((details,index)=>{
   const clone=details.cloneNode(true);
   clone.querySelectorAll?.('[data-rabbit-mirror-reference-note]')?.forEach(node=>node.remove());
-  if(scrubTools) clone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-interaction-diagnostic], [data-rabbit-mirror-interaction-home]')?.forEach(node=>node.remove());
+  if(scrubTools) clone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-interaction-diagnostic], [data-rabbit-mirror-interaction-home]')?.forEach(node=>node.remove());
   stripIndependentTransientLayoutArtifacts(clone);
   clone.removeAttribute?.(DEFERRED_INTERACTION_RESCUE_ATTR);
   return faces.length>1?wrapIndependentFace(clone.outerHTML,index):String(clone.outerHTML||'');
@@ -4079,7 +4089,7 @@ function independentPromptBatchSignature(plan,owner){
    if(!Array.isArray(values)||values.length>16||values.some(id=>typeof id!=='string'||!id||id.length>2048)) throw independentPromptOwnerPreflightError();
    return values;
   };
-  return [index,ids('themeIds'),ids('formatIds'),...(face.combo?.presentationMode?[presentationModeFields(face.combo)]:[])];
+  return [index,ids('themeIds'),ids('formatIds'),...((face.combo?.presentationMode||face.combo?.visualSceneryCombination===true)?[presentationModeFields(face.combo)]:[])];
  });
  return JSON.stringify([plan.batchId,identity.chatKey,identity.generationScopeKey,identity.mesid,identity.swipeId,identity.sourceHash,identity.settingsKey,count,faces]);
 }
@@ -5587,7 +5597,7 @@ const MAINTENANCE_STRUCTURAL_STYLE_ATTRS = [
 ];
 const PERSISTED_STATE_STYLE_ATTRS = [...RUNTIME_STATE_STYLE_ATTRS, ...MAINTENANCE_STRUCTURAL_STYLE_ATTRS];
 const PERSISTED_STATE_ARIA_ATTRS = ['aria-pressed','aria-selected','aria-expanded','aria-current','aria-checked'];
-const PERSISTED_RUNTIME_UI_SELECTOR = '[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay], [data-rabbit-mirror-interaction-home], [data-rabbit-mirror-interaction-diagnostic], [data-rabbit-mirror-reference-note]';
+const PERSISTED_RUNTIME_UI_SELECTOR = '[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay], [data-rabbit-mirror-interaction-home], [data-rabbit-mirror-interaction-diagnostic], [data-rabbit-mirror-reference-note]';
 const PERSISTED_STATE_ATTR_RE = /^(?:data-rm-(?:.*(?:active|selected|open|used|filled|touch-hover|pseudo-active|target-active)|checked-pseudo-rule-target|labeled-checked-verify-target|reversible-style-baseline|reversible-text-baseline|click-to-restore)|data-rabbit-mirror-(?:labeled-checked(?:-last|-verify|-verify-count)?|checked-text-rule-rescue|expanded-opacity-rescue|inert-action-active|radio-reset-last|stale-checked-inline-cleanup|deferred-interaction-rescue))$/i;
 function parseIndependentDetailsRaw(html=''){
  try{
@@ -5832,7 +5842,7 @@ function interactionBaselineProfile(html=''){
  const details=parseIndependentDetailsRaw(html);
  if(!details) return null;
  restoreEncodedInteractionBaselines(details);
- details.querySelectorAll('[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]').forEach(node=>node.remove());
+ details.querySelectorAll('[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]').forEach(node=>node.remove());
  details.querySelectorAll(PERSISTED_STATE_STYLE_ATTRS.map(name=>`style[${name}]`).join(',')).forEach(node=>node.remove());
  const summary=String(details.querySelector(':scope > summary')?.textContent||'').replace(/\s+/g,' ').trim();
  const text=String(details.textContent||'').replace(/\s+/g,' ').trim();
@@ -6181,10 +6191,10 @@ function externalToolHost(details){
 }
 function removeIndependentResayButtons(host){
  if(!host?.querySelectorAll) return;
- for(const button of host.querySelectorAll(`[${RESAY_ATTR}], .rabbit-mirror-resay`)) button.remove();
+ for(const button of host.querySelectorAll(`[${RESAY_ATTR}], .rabbit-mirror-resay`)) if(!quickStartButtonOwners.has(button)) button.remove();
  const details=host.querySelector?.(':scope > details');
  const tools=externalToolHost(details);
- if(tools && !tools.querySelector('[data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat]')) tools.remove();
+ if(tools && !tools.querySelector('[data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rm-quick-resay]')) tools.remove();
 }
 const DEFERRED_INTERACTION_RESCUE_ATTR='data-rabbit-mirror-deferred-interaction-rescue';
 const externalInteractionActivatedDetails=new WeakSet();
@@ -6430,7 +6440,7 @@ function rabbitMirrorSummaryText(details){
  const summary=details?.querySelector?.(':scope > summary');
  if(!summary) return '';
  const clone=summary.cloneNode(true);
- clone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
+ clone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
  return String(clone.textContent||'').replace(/\s+/g,' ').trim();
 }
 function isRabbitMirrorDetails(details){
@@ -6449,7 +6459,7 @@ function inlineRabbitMirrorDetails(el){
 function mirrorSemanticFingerprint(details){
  if(!isRabbitMirrorDetails(details)) return '';
  const clone=details.cloneNode(true);
- clone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay], [data-rabbit-mirror-resay-status]')?.forEach(node=>node.remove());
+ clone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay], [data-rabbit-mirror-resay-status]')?.forEach(node=>node.remove());
  const text=String(clone.textContent||'').replace(/\s+/g,' ').trim();
  if(text.length<12) return '';
  const counts=[
@@ -6523,6 +6533,77 @@ function removeExternalDuplicatesPreferInline(el){
  }
  return removed;
 }
+
+// Only locally created controls carry quick-action authority. Markup attributes
+// alone never authorize a request, and waiting clicks use the automatic lease.
+const quickStartOwners=new WeakSet();
+const quickStartButtonOwners=new WeakMap();
+const quickAuthorizationOwners=new WeakMap();
+const quickIntentOwners=new WeakMap();
+function quickActionOwner(ctx,index,msg){
+ return {chat:ctx.chat,chatKey:chatKey(ctx),index,message:msg,swipe:swipeId(msg),
+  token:automaticCutoverVersionToken(msg),base:messageBaseSlotKey(ctx,index,msg),
+  epoch:operationEpochForBase(messageBaseSlotKey(ctx,index,msg))};
+}
+function quickActionOwnerCurrent(owner){
+ const ctx=getContext(),msg=ctx.chat?.[owner?.index];
+ return !!(owner && currentRuntime() && runtimeMode()==='independent'
+  && ctx.chat===owner.chat && chatKey(ctx)===owner.chatKey && msg===owner.message
+  && swipeId(msg)===owner.swipe && automaticCutoverVersionToken(msg)===owner.token
+  && operationEpochForBase(owner.base)===owner.epoch);
+}
+function quickWaitingCandidate(ctx,index){
+ if(!automaticIndependentTiming()) return false;
+ const msg=ctx.chat?.[index];
+ if(!isRabbitMirrorEligibleAssistantMessage(msg)||!String(msg.mes||'').trim()) return false;
+ const base=messageBaseSlotKey(ctx,index,msg);
+ if(activeIndependentFlightForBase(base)||automaticDispatchAlreadyConsumed(base)||hasExistingFollowRabbitMirror(ctx,index,msg)) return false;
+ if(!suppressesAutomaticGeneration(ctx,index)) return true;
+ const owner=automaticGenerationCutovers.get(chatKey(ctx))?.activeHostGeneration;
+ return automaticHostGenerationRenderMatches(ctx,index,owner)
+  && deferredIndependentGenerationIntents().some(intent=>!!boundIndependentIntentOwner(intent,ctx,index));
+}
+function installQuickStartButton(host,body){
+ const ctx=getContext(),index=messageIndexForExternalHost(host),msg=ctx.chat?.[index];
+ if(!body||!quickWaitingCandidate(ctx,index)) return;
+ const owner=quickActionOwner(ctx,index,msg);quickStartOwners.add(owner);
+ const button=document.createElement('button');button.type='button';
+ button.setAttribute('data-rm-quick-generate','true');button.setAttribute(RESAY_ATTR,'true');
+ quickStartButtonOwners.set(button,owner);
+ button.textContent='正文已出，立即生成';
+ button.title='跳过自动等待，立即发送本轮尚未发送的副 API 请求';
+ button.addEventListener('click',event=>{
+  event.preventDefault();event.stopPropagation();
+  if(!button.isConnected||!host.contains(button)||host.dataset.rmReplyGenerationPlaceholder!=='true'
+   ||host.dataset.rmState!=='loading'||!quickActionOwnerCurrent(owner)) return;
+  if(activeIndependentFlightForBase(owner.base)||automaticDispatchAlreadyConsumed(owner.base)) return;
+  if(!quickWaitingCandidate(getContext(),index)) return;
+  const pollKey=generationPollKey(index),poll=generationPolls.get(pollKey);
+  if(poll){poll.cancelled=true;clearTimeout(poll.timer);generationPolls.delete(pollKey);}
+  const hostOperation=automaticGenerationCutovers.get(owner.chatKey)?.activeHostGeneration;
+   if(hostOperation) hostOperation.quickStartOwner=owner;
+  for(const intent of deferredIndependentGenerationIntents()){
+   const proof=boundIndependentIntentOwner(intent,getContext(),index);
+   if(proof){quickIntentOwners.set(proof,owner);(owner.intentIds??=new Set()).add(intent.id);}
+  }
+  button.disabled=true;
+  void generateFor(index,msg,false,true,null,null,null,null,owner);
+ },true);
+ body.append(document.createElement('br'),button);
+}
+function prepareQuickResay(root,owner={}){
+ const identity=resolveIndependentActionIdentity(root,owner);
+ if(!identity || identity.host?.dataset.rmState!=='ready') return null;
+ const proof=quickActionOwner(identity.ctx,identity.index,identity.msg);
+ return ()=>{
+  if(!root?.isConnected || !quickActionOwnerCurrent(proof)
+   || identity.host?.dataset.rmState!=='ready') return false;
+  if(activeIndependentFlightForBase(proof.base)) return true;
+  if(!resolveIndependentActionIdentity(root,owner)) return false;
+  return resayIndependentMirror(root,owner);
+ };
+}
+
 function setPlaceholderSummary(details,text){
  const summary=details?.querySelector?.(':scope > summary');
  if(!summary) return;
@@ -6540,7 +6621,8 @@ function ensureReplyGenerationPlaceholder(el,key,sourceHash='',waitingForBody=tr
  const message=waitingForBody
   ? '正文回复完成后会自动生成兔子镜。'
   : '正文已经完成，正在生成这条回复对应的兔子镜。';
- const host=ensureExternalUi(el,key,message,'loading','independent',sourceHash);
+ const existing=externalHosts(el).find(node=>node.dataset.rmKey===key && node.dataset.rmState==='loading' && node.dataset.rmReplyGenerationPlaceholder==='true');
+ const host=existing||ensureExternalUi(el,key,message,'loading','independent',sourceHash);
  if(!host) return null;
  host.dataset.rmReplyGenerationPlaceholder='true';
  clearExternalHostFreshSourceState(host);
@@ -6550,7 +6632,12 @@ function ensureReplyGenerationPlaceholder(el,key,sourceHash='',waitingForBody=tr
  setPlaceholderSummary(details,waitingForBody?'【兔子镜：等待正文完成……】':'【兔子镜：正在生成中……】');
  let body=details?.querySelector?.(':scope > .rabbit-mirror-external-placeholder-body');
  if(details && !body){ body=document.createElement('div'); body.className='rabbit-mirror-external-placeholder-body'; details.append(body); }
- if(body) body.textContent=message;
+ if(body){
+  const button=body.querySelector('[data-rm-quick-generate="true"]'),owner=quickStartButtonOwners.get(button);
+  if(button && quickActionOwnerCurrent(owner) && quickWaitingCandidate(getContext(),owner.index)){
+   if(body.firstChild?.nodeType===3 && body.firstChild.textContent!==message) body.firstChild.textContent=message;
+  }else{body.textContent=message;installQuickStartButton(host,body);}
+ }
  return host;
 }
 function renderExternalErrorBody(details,text=''){
@@ -8440,8 +8527,9 @@ function cancelAllIndependentFlights(reason='runtime-changed'){
  for(const active of pending.values()) abortFlight(active,reason);
  pending.clear();
 }
-async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay=null,earlyBodyOwner=null,manualBodyOwner=null,singlePresentationResay=null){
+async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay=null,earlyBodyOwner=null,manualBodyOwner=null,singlePresentationResay=null,quickStartOwner=null){
  const ctx=getContext(); const currentMsg=ctx.chat?.[index];
+ if(quickStartOwner && (!quickStartOwners.has(quickStartOwner)||!quickActionOwnerCurrent(quickStartOwner)||quickStartOwner.index!==index||force)) return;
  if(!isRabbitMirrorEligibleAssistantMessage(currentMsg)) return;
  msg=currentMsg;
  if(earlyBodyOwner) assertEarlyBodyOwner(earlyBodyOwner);
@@ -8455,7 +8543,7 @@ async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay
   if(active) return active.task;
   manualBodyOwner??=captureManualBodyOwner(ctx,index,msg,manualIntentForMessage(ctx,index));
  }
- if(!force && ((!earlyBodyOwner&&suppressesAutomaticGeneration(ctx,index)) || hasExistingFollowRabbitMirror(ctx,index,msg))) return;
+ if(!force && ((!earlyBodyOwner&&!quickStartOwner&&suppressesAutomaticGeneration(ctx,index)) || hasExistingFollowRabbitMirror(ctx,index,msg))) return;
  if(!force){
   const preciseFailure=automaticFailureStopFor(slot,sourceHash);
   if(preciseFailure){ renderAutomaticFailureStop(index,currentGenerationIdentity(index),preciseFailure); return; }
@@ -8924,7 +9012,7 @@ function historyPreviewDetails(entry,faceIndex=-1,ownerSlot=''){
  details.removeAttribute('data-rabbit-mirror-external-owner');
  details.removeAttribute('data-rabbit-mirror-external-source');
  details.setAttribute('open','');
- details.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
+ details.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
  try{ isolateRabbitMirrorInteractionIds(details); }catch{}
  return details;
 }
@@ -8967,7 +9055,7 @@ function showIndependentHistory(root,owner={}){
 }
 function resayIndependentMirror(root,owner={}){
  if(getSettings().generationSource==='follow'){
-  void import('./followFaceRetry.js?rmv=1.5.53-text1').then(({retryFollowFace})=>retryFollowFace(root,owner,{
+  void import('./followFaceRetry.js?rmv=1.5.53-hostuifix1').then(({retryFollowFace})=>retryFollowFace(root,owner,{
    getContext,hostBusy:hostGenerationLooksActive,maxRequestChars:MAX_INDEPENDENT_REQUEST_CHARS,
    resolveOwner:target=>{
     const host=target?.closest?.('[data-rabbit-mirror-external-source="true"][data-rm-source="follow"]');
@@ -8994,7 +9082,7 @@ function resayIndependentMirror(root,owner={}){
  // Announce preparation before dispatch. A synchronous preflight rejection
  // must not be followed by a misleading new "generating" notification.
  globalThis.toastr?.info?.(multifaceResay?'正在准备重说这一面；其他面会原样保留……':'正在准备重新生成兔子镜……');
- const singlePresentationResay=!multifaceResay&&diagnostic.presentationMode
+ const singlePresentationResay=!multifaceResay&&(diagnostic.presentationMode||diagnostic.visualSceneryCombination===true)
   ? {faceIndex:0,faces:[diagnostic]} : null;
  void generateFor(identity.index,identity.msg,true,true,multifaceResay,null,null,singlePresentationResay);
  return true;
@@ -9057,7 +9145,7 @@ function persistIndependentRepairFromEvent(event) {
  details.setAttribute(MAINTENANCE_PERSISTED_LAYOUT_ATTR,'true');
  const clone=details.cloneNode(true);
  clone.setAttribute(MAINTENANCE_PERSISTED_LAYOUT_ATTR,'true');
- clone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
+ clone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
  const rawHtml=faces.length>1 ? serializeExternalFaceDetails(host) : String(clone.outerHTML||'').trim();
  const store=readStore();
  const existing=savedIndependentRecordForOwner(identity.ctx,identity.index,identity.msg,store);
@@ -9123,10 +9211,117 @@ function removeRepairPersistenceListener(){
  repairPersistenceListenerInstalled=false;
 }
 
+
+// Image requests are explicit actions, isolated from automatic mirror dispatch.
+// The key uses persisted source, never generated toolbar/image DOM.
+const mirrorImageTargetCache = new WeakMap();
+function mirrorImageFaceSource(source,faceIndex){
+ const text=String(source||'');
+ if(hasMultifaceMarkup(text)){
+  const parsed=parseMultifaceOutput(text,{allowProse:true});
+  return parsed.ok?String(parsed.faces?.[faceIndex]?.html||''):'';
+ }
+ if(faceIndex!==0)return '';
+ // Identity reads must not run cleanRabbitMirrorOutput: that sanitizer may
+ // allocate fresh interaction IDs, making unchanged source look replaced.
+ const toto=text.match(/<toto\b[^>]*>([\s\S]*?)<\/toto>/i);
+ if(toto)return toto[1].trim();
+ const trimmed=text.trim();
+ return /^<details\b/i.test(trimmed)&&/<\/details>$/i.test(trimmed)?trimmed:'';
+}
+function prepareMirrorImageTarget(root){
+ if(!root?.isConnected || !currentRuntime()) return null;
+ const details=root.matches?.('details')?root:root.querySelector?.(':scope > details')||root.querySelector?.('details');
+ if(!details) return null;
+ const ctx=getContext();
+ const cached=mirrorImageTargetCache.get(details);
+ if(cached){try{cached.assertCurrent();return cached;}catch{mirrorImageTargetCache.delete(details);}}
+ const independentHost=independentHostForRoot(root);
+ let index,msg,faceIndex,readSource;
+ if(independentHost){
+  if(!independentHost.contains(details)||independentHost.dataset.rmState!=='ready') return null;
+  const identity=resolveIndependentActionIdentity(details);
+  if(!identity) return null;
+  index=identity.index;msg=identity.msg;faceIndex=externalFaceDetails(independentHost).indexOf(details);
+  if(faceIndex<0) return null;
+  readSource=()=>mirrorImageFaceSource(savedIndependentRecordForOwner(getContext(),index,msg,readStore())?.html,faceIndex);
+ }else{
+  const followHost=details.closest?.(`[${SOURCE_ATTR}][data-rm-source="follow"]`);
+  const el=followHost?messageElementForExternalHost(followHost):details.closest?.('.mes[mesid], [mesid].mes');
+  const owner=followRecoveryOwner(el);
+  if(!owner||!isRabbitMirrorEligibleAssistantMessage(owner.message)) return null;
+  index=owner.index;msg=owner.message;
+  faceIndex=(followHost?externalFaceDetails(followHost):inlineRabbitMirrorDetails(el)).indexOf(details);
+  if(faceIndex<0) return null;
+  readSource=()=>{
+   for(const source of followMessageSourceCandidates(msg)){
+    const face=mirrorImageFaceSource(source,faceIndex);if(face)return face;
+   }
+   return '';
+  };
+ }
+ const faceSource=readSource();if(!faceSource) return null;
+ const ownerChat=chatKey(ctx),ownerSwipe=swipeId(msg),ownerSource=messageSourceFingerprint(msg);
+ const template=document.createElement('template');template.innerHTML=faceSource;
+ template.content.querySelectorAll('script,style,noscript,[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal],[data-rm-image-region]').forEach(node=>node.remove());
+ const title=String(template.content.querySelector('summary')?.textContent||'兔子镜').trim();
+ const faceText=String(template.content.textContent||'').trim();if(!faceText)return null;
+ const char=ctx.characters?.[ctx.characterId]||ctx.character||{};
+ const data=char.data&&typeof char.data==='object'?char.data:char;
+ const st=getSettings();
+ const character=st.independentReadCharacterCardSummary===false?{name:String(char.name||data.name||ctx.name2||'')}:
+  {name:String(char.name||data.name||ctx.name2||''),description:String(data.description||char.description||''),personality:String(data.personality||char.personality||''),scenario:String(data.scenario||char.scenario||'')};
+ const persona={name:String(ctx.name1||globalThis.name1||''),description:st.independentReadPersonaSummary===false?'':String(ctx.powerUserSettings?.persona_description||globalThis.power_user?.persona_description||ctx.personaDescription||'')};
+ const key=JSON.stringify([ownerChat,index,ownerSwipe,faceIndex,hashText(faceSource)]);
+ const assertCurrent=()=>{
+  const live=getContext();
+  if(!currentRuntime()||!root.isConnected||!details.isConnected||chatKey(live)!==ownerChat||live.chat?.[index]!==msg
+   ||swipeId(msg)!==ownerSwipe||messageSourceFingerprint(msg)!==ownerSource||readSource()!==faceSource)
+   throw new Error('这面兔子镜的聊天、分支或内容已变化；未继续发送请求，请在当前镜面重新打开生图。');
+  return true;
+ };
+ const target={key,title,faceText,floor:index,character,persona,group:character.name||persona.name||'兔子镜',assertCurrent,
+  plan:(input={},options={})=>requestMirrorImagePlan(target,input,options)};
+ mirrorImageTargetCache.set(details,target);
+ return target;
+}
+async function requestMirrorImagePlan(target,input={},options={}){
+ target.assertCurrent();
+ const current=getSettings();
+ if(current.imageEnabled!==true) throw new Error('请先在兔子镜设置中开启手动生图。');
+ const st={...current,independentExcludedParams:Array.isArray(current.independentExcludedParams)?[...current.independentExcludedParams]:current.independentExcludedParams};
+ if((!st.independentConnectionProfileId&&!st.independentApiBaseUrl)||!st.independentApiModel)
+  throw new Error('请先完成兔子镜副 API 连接和模型设置；尚未发送请求。');
+ const {buildImagePlanningPrompt,parseImagePlan}=await import('./imagePlan.js?rmv=1.5.53-image1');
+ target.assertCurrent();
+ const {systemPrompt,userPrompt}=buildImagePlanningPrompt({...input,title:target.title,faceText:target.faceText,
+  floor:target.floor,character:target.character,persona:target.persona,promptFormat:input.promptFormat||st.imagePromptFormat});
+ if(systemPrompt.length+userPrompt.length>MAX_INDEPENDENT_REQUEST_CHARS)
+  throw new Error(`画面规划超过既有副 API ${MAX_INDEPENDENT_REQUEST_CHARS} 字符安全预算；未截断材料，也未发送请求。`);
+ const connectionKeys=['imageEnabled','independentApiBaseUrl','independentApiKey','independentApiModel','independentConnectionProfileId',
+  'independentAdvancedEnabled','independentReasoningEffort','independentExtraParams','independentExcludedParams'];
+ const assertCurrent=()=>{
+  target.assertCurrent();
+  const live=getSettings();
+  if(connectionKeys.some(key=>JSON.stringify(live[key])!==JSON.stringify(st[key])))
+   throw new Error('生图开关或副 API 设置已变化；未继续发送请求，请重新操作。');
+  if(options.signal?.aborted) throw new DOMException('已取消画面规划','AbortError');
+ };
+ const lease=createManualDispatchLease();
+ const guardedLease={consume(){assertCurrent();return lease.consume();},release:()=>lease.release(),consumed:()=>lease.consumed()};
+ const result=await requestIndependentCompletion(st,systemPrompt,userPrompt,{signal:options.signal,dispatchLease:guardedLease,
+  advancedSettings:st,assertAdvancedCurrent:assertCurrent,onProgress:options.onProgress,diagnosticContext:{imagePlanning:true}});
+ if(!result.response?.ok||result.semanticError) throw new Error(result.semanticError||'画面规划请求失败；未自动重试。');
+ assertCurrent();
+ return parseImagePlan(result.result?.text||'');
+}
+
 function installIndependentActionBridge(){
  independentActionBridge={
   runtime:RUNTIME_VERSION,
   generateManual:root=>generateManualIndependentMirror(root),
+  prepareImageTarget:root=>prepareMirrorImageTarget(root),
+  prepareQuickResay:(root,owner={})=>prepareQuickResay(root,owner),
   resay:(root,owner={})=>resayIndependentMirror(root,owner),
   history:(root,owner={})=>showIndependentHistory(root,owner),
  };
@@ -9266,7 +9461,7 @@ function externalizeFollowMirror(index,msg){
   return;
  }
  const sourceClone=cloneFollowFaceForExternal(mirror);
- sourceClone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
+ sourceClone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
  const sourceHtml=String(sourceClone.outerHTML||'');
  const semanticFingerprint=mirrorSemanticFingerprint(mirror);
  // A mobile BFCache restore or cross-device redraw can recreate the inline正文
@@ -9487,7 +9682,7 @@ function recoveredFollowFaces(html='',options={}){
 }
 function normalizeRecoveredFollowRoot(root){
  if(!root) return null;
- root.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay], [data-rabbit-mirror-resay-status]')?.forEach(node=>node.remove());
+ root.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay], [data-rabbit-mirror-resay-status]')?.forEach(node=>node.remove());
  const details=root.matches?.('details')?root:root.querySelector?.('details');
  if(!details) return null;
  ['data-rabbit-mirror-external-details','data-rabbit-mirror-external-owner','data-rabbit-mirror-external-source','data-rabbit-mirror-owner-chat','data-rabbit-mirror-owner-mesid','data-rabbit-mirror-owner-swipe','data-rabbit-mirror-owner-key','data-rabbit-mirror-owner-source-hash'].forEach(attr=>details.removeAttribute(attr));
@@ -10238,12 +10433,18 @@ function beginAutomaticHostGeneration(ctx,type='',nested=false,dryRun=false){
   };
  return 'new';
 }
-function unlockAutomaticGenerationCutover(ctx,index,reason='host-generation-finished',evidence=null){
+function unlockAutomaticGenerationCutover(ctx,index,reason='host-generation-finished',evidence=null){ 
  const cutover=ensureAutomaticGenerationCutover(ctx); const normalized=Number(index); const msg=ctx?.chat?.[normalized];
  if(!Number.isInteger(normalized)||normalized<0||!isRabbitMirrorEligibleAssistantMessage(msg)) return false;
  const token=automaticCutoverVersionToken(msg);
  if(!token) return false;
- cutover.authorized.set(normalized,{token,reason:String(reason||''),ts:Date.now(),[INDEPENDENT_INTENT_OWNER]:automaticAuthorizationLineage(ctx,normalized,evidence)});
+ const previousQuick=quickAuthorizationOwners.get(cutover.authorized.get(normalized));
+ const authorization={token,reason:String(reason||''),ts:Date.now(),[INDEPENDENT_INTENT_OWNER]:automaticAuthorizationLineage(ctx,normalized,evidence)};
+ cutover.authorized.set(normalized,authorization);
+ const quickOwner=evidence?.quickStartOwner||quickIntentOwners.get(boundIndependentIntentOwner(evidence,ctx,normalized))
+  ||(previousQuick?.intentIds?.has(evidence?.id)?previousQuick:null);
+ 
+ if(quickStartOwners.has(quickOwner)) quickAuthorizationOwners.set(authorization,quickOwner);
  return true;
 }
 function automaticHostGenerationRenderMatches(ctx,index,owner){
@@ -10384,7 +10585,11 @@ function activateAuthorizedAutomaticGeneration(ctx,index,reason='host-final-rend
  if(automaticGenerationCutovers.get(chatKey(ctx))?.earlyBodies?.has(normalized)){
   settleEarlyBodyAtFinal(ctx,normalized);queueMessageSync([normalized]);return true;
  }
- advanceOperationEpochForBase(
+ const quickOwner=quickAuthorizationOwners.get(automaticGenerationCutovers.get(chatKey(ctx))?.authorized.get(normalized));
+ // Completion of the same host reply must preserve its already reserved/paid lease.
+ const sameQuickOperation=quickOwner && quickOwner.chat===ctx.chat && quickOwner.message===msg
+  && quickOwner.swipe===swipeId(msg) && quickOwner.epoch===operationEpochForBase(quickOwner.base);
+   if(!sameQuickOperation) advanceOperationEpochForBase(
   messageBaseSlotKey(ctx,normalized,msg),
   reason,
   automaticCutoverVersionToken(msg),
@@ -10798,6 +11003,7 @@ function syncMessagesCore(indices=null){
        for(const node of independentHosts){ if(node!==keep) node.remove(); }
        const isActiveGenerationTarget=i===activeGenerationIndex;
        const automaticGenerationSuppressed=suppressesAutomaticGeneration(ctx,i) || hasExistingFollowRabbitMirror(ctx,i,m);
+       const quickWaiting=quickWaitingCandidate(ctx,i);
 
        // Never repaint an old mirror over a newly regenerated/swiped正文. A
        // record is eligible only for the exact current source fingerprint.
@@ -10828,14 +11034,14 @@ function syncMessagesCore(indices=null){
           if(live?.slot===slot && live.sourceHash===sourceHash){
            keep=renderAutomaticFailureStop(i,live,automaticFailureStopFor(slot,sourceHash));
           }
-        } else if(!saved?.html && !keep && isActiveGenerationTarget && !automaticGenerationSuppressed){
+        } else if(!saved?.html && !keep && !persistedSuppressed && (isActiveGenerationTarget && !automaticGenerationSuppressed || quickWaiting)){
           keep=ensureReplyGenerationPlaceholder(el,key,sourceHash,true);
         }
        const hostSourceHash=String(keep?.dataset?.rmSourceHash||'');
        const mountedReadyIdentityStale=!!(readyDetailsFromHost(keep) && !mountedReadyMatchesObserved && !mountedReadyPassiveSourceDrift);
        let hostIsStale=!!(keep && keep.dataset.rmState!=='manual' && !passiveFailureHost && !mountedReadyPassiveSourceDrift && (mountedReadyIdentityStale || (hostSourceHash && hostSourceHash!==sourceHash)));
        const keepIsReplyPlaceholder=!!(keep && (keep.dataset.rmReplyGenerationPlaceholder==='true' || (keep.dataset.rmState==='loading' && keep.querySelector?.(':scope > details.rabbit-mirror-external-placeholder'))));
-        if(keepIsReplyPlaceholder && !saved?.html && automaticGenerationSuppressed && !activeBaseFlight){
+        if(keepIsReplyPlaceholder && !saved?.html && automaticGenerationSuppressed && !quickWaiting && !activeBaseFlight){
           keep.remove();
           keep=null;
           hostIsStale=false;
@@ -11030,7 +11236,7 @@ function restoredHistoryProbeState(ctx,index){
   body:String(message.mes||''),display:String(message.extra?.display_text||''),reasoning:String(message.extra?.reasoning||''),
   swipe:swipeId(message),source:host.__rabbitMirrorIndependentSource,
   textRoot:element.querySelector?.('.mes_text'),
-  tools:[...(host.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-recipe]')||[])]};
+  tools:[...(host.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-recipe]')||[])]};
 }
 function sameRestoredHistoryProbe(a,b){
  return !!(a&&b&&a.element===b.element&&a.message===b.message&&a.chat===b.chat&&a.chatKey===b.chatKey

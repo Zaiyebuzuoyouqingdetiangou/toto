@@ -17,10 +17,10 @@ import {
     clearPendingComboBatch,
     createPendingComboBatchPlan,
     findPendingComboBatchPlan,
-} from './storage.js?rmv=1.5.53-text1';
-import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.5.53-text1';
+} from './storage.js?rmv=1.5.53-visualquick1';
+import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.5.53-image1';
 import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.53-cn-boundary1';
-import { requestedPresentationMode, presentationModeFields } from './presentationMode.js?rmv=1.5.53-text1';
+import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled } from './presentationMode.js?rmv=1.5.53-visualquick1';
 import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.5.53-text1';
 import {
     chooseExternalSource,
@@ -834,6 +834,9 @@ function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, th
             formatFairnessEligibleIds: [], formatFairnessSelectedIds: [] };
     }
     if (requestedMode === 'text') settings = { ...settings, forceVisualScenery: false };
+    const combineVisual = visualSceneryCombinationEnabled(settings);
+    // Only the new combination path excludes the already locked visual item.
+    if (combineVisual) formatPool = formatPool.filter(item => item.id !== '10.2.2');
     const includeAutoText = requestedMode === 'auto' && externalPoolActive(settings, 'text');
     const themeFamilyHitMap = recentFamilyHits(recent.themeIdHits, themeFamilyKey);
     // 格式兄弟家族只参考既有正式提交记录；失败 attempt 仍参与 exact 防重，
@@ -868,7 +871,7 @@ function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, th
         Array.isArray(item?.tags) && item.tags.some(tag => String(tag || '').trim().toLowerCase() === 'if'));
     const formatSample = directive?.hasFormatRequest
         ? { selected: [], eligibleIds: [] }
-        : settings.forceVisualScenery && !includeAutoText
+        : settings.forceVisualScenery && !combineVisual && !includeAutoText
             ? weightedSample(
                 formatPool,
                 formatCount,
@@ -913,16 +916,19 @@ function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, th
 
     let formats;
     if (forcedFormats.length) {
-        formats = forcedFormats;
+        formats = combineVisual
+            ? uniqueById([...forcedFormats, ...directiveFormats.filter(item => item.id !== '10.2.2'), ...pickedFormats])
+            : forcedFormats;
     } else if (directiveWantsVisualScenery) {
         formats = uniqueById(directiveFormats);
     } else {
         formats = uniqueById([...directiveFormats, ...pickedFormats]).slice(0, Math.max(formatCount, directiveFormats.length));
     }
 
-    const formatFairnessEligibleIds = settings.forceVisualScenery ? [] : formatSample.eligibleIds;
-    const formatFairnessSelectedIds = settings.forceVisualScenery ? [] : pickedFormats.map(item => item.id);
+    const formatFairnessEligibleIds = settings.forceVisualScenery && !combineVisual ? [] : formatSample.eligibleIds;
+    const formatFairnessSelectedIds = settings.forceVisualScenery && !combineVisual ? [] : pickedFormats.map(item => item.id);
     return { themes, formats, directive, forcedFormats, formatFairnessEligibleIds, formatFairnessSelectedIds,
+        ...(combineVisual && !isText ? { visualSceneryCombination: true } : {}),
         ...(requestedMode !== 'auto' || isText ? { requestedPresentationMode: requestedMode, presentationMode: isText ? 'text' : 'html' } : {}),
         ...(texts.length ? { texts } : {}) };
 }
@@ -982,6 +988,7 @@ function directiveScopeKey(directive, settings) {
     const config = [
         settings.samplingMode || 'classic',
         settings.forceVisualScenery ? 'visual' : 'normal',
+        ...(visualSceneryCombinationEnabled(settings) ? ['visual-combination'] : []),
         settings.themesMin,
         settings.themesMax,
         settings.formatsMin,
@@ -1042,6 +1049,7 @@ function batchRandomSettingsKey(settings, total, favorites, exclusions, directiv
         cooldownRounds: settings.cooldownRounds || 10,
         userDirectivePriority: !!settings.userDirectivePriority,
         forceVisualScenery: !!settings.forceVisualScenery,
+        ...(visualSceneryCombinationEnabled(settings) ? { visualSceneryCombination: true } : {}),
         externalWorldBookRandomEnabled: settings.externalWorldBookRandomEnabled === true,
         externalWorldBookMixMode: String(settings.externalWorldBookMixMode || 'builtin-only'),
         blacklistEnabled: settings.blacklistEnabled !== false,
@@ -1244,7 +1252,7 @@ function pickLiveCombinationBatch(settings, planning, faceCount, planningReason 
     const fixedFormats = new Set((snapshot.directive?.formats || []).map(item => item.id));
     if (settings.forceVisualScenery) fixedFormats.add('10.2.2');
     const needsRandomThemes = settings.samplingMode !== 'format_only' && !snapshot.directive?.hasThemeRequest;
-    const needsRandomFormats = !settings.forceVisualScenery && !snapshot.directive?.hasFormatRequest;
+    const needsRandomFormats = (!settings.forceVisualScenery || visualSceneryCombinationEnabled(settings)) && !snapshot.directive?.hasFormatRequest;
     const results = [];
     for (let faceIndex = 0; faceIndex < faceCount; faceIndex += 1) {
         const requestedMode = requestedPresentationMode(settings, faceIndex);
@@ -1306,7 +1314,7 @@ export function pickCombinationForMultifaceResay(settings, resay) {
     const formats = resolveIds(face?.formatIds, PRESENTATION_FORMATS, 'format');
     const texts = resolveIds(face?.textIds || [], [], 'text');
     if (!themes.length && !formats.length && !texts.length) throw multiFacePlanningError('原面只有自定义指令，缺少可复用抽取记录；请重新选择整批生成。');
-    const selectedSettings = { ...settings, samplingMode: face.samplingMode || settings.samplingMode, forceVisualScenery: face.forcedVisualScenery === true };
+    const selectedSettings = { ...settings, samplingMode: face.samplingMode || settings.samplingMode, forceVisualScenery: face.forcedVisualScenery === true, visualSceneryCombination: face.visualSceneryCombination === true };
     return { combo: comboFromSelection({ themes, formats, ...(texts.length ? { texts } : {}), ...presentationModeFields(face) }, selectedSettings, getRecentIds(settings.cooldownRounds || 10)), directive: null, last: null };
 }
 
@@ -1330,7 +1338,7 @@ export function pickCombinationBatch(settings, generationScopeKey = '', generati
     const snapshot = batchPickSnapshot(settings, generationContext, planning);
     // 点菜和强制展现优先，不能为了凑面数改写用户明确选择。
     const hasPresentationSelection = Array.from({ length: faceCount }, (_, index) => requestedPresentationMode(settings, index))
-        .some(mode => mode !== 'auto') || externalPoolActive(settings, 'text');
+        .some(mode => mode !== 'auto') || externalPoolActive(settings, 'text') || visualSceneryCombinationEnabled(settings);
     if (planning.signatureTooLarge || (!hasPresentationSelection && (snapshot.directive || settings.forceVisualScenery))) {
         return batchPrioritySingle(settings, snapshot, scopeKey, identityKey, identity.chatKey);
     }
