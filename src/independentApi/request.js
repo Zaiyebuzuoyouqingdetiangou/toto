@@ -106,7 +106,7 @@ import {
     writeExternalGeometryCycleSequence,
     writeExternalGeometryLifecycleEpoch,
     writeExternalGeometryLifecycleReason,
-} from './geometry.js?rmv=1.6';
+} from './geometry.js?rmv=1.6.1';
 import {
     INDEPENDENT_REJECTED_PREVIEW_MAX_CHARS,
     INDEPENDENT_REJECTED_PREVIEW_MAX_ENTRIES,
@@ -122,7 +122,7 @@ import {
     writeExternalHostSyncIndex,
     writeIndependentRejectedPreviewChars,
     writeIndependentRejectedPreviewSequence,
-} from './mount.js?rmv=1.6';
+} from './mount.js?rmv=1.6.1';
 import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.6';
 
 const NON_STREAM_PROFILE_BY_STREAM_PROFILE={

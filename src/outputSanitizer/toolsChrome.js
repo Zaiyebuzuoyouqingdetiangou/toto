@@ -11,7 +11,7 @@ import {
     openTheaterFavoriteLibrary,
     toggleTheaterFavorite,
     isTheaterFavoriteHtml,
-} from '../theaterFavorites.js?rmv=1.6';
+} from '../theaterFavorites.js?rmv=1.6.1';
 import { FACE_SWIPE_FULL_MESSAGE, faceSwipeBarIntent, fallbackFaceSwipeView } from '../swipeVersions.js?rmv=1.6';
 import {
     FEEDBACK_CAT_TYPES,
@@ -1816,39 +1816,18 @@ function liveFaceSwipeView(root) {
     return bridge.swipeView?.(root) || fallbackFaceSwipeView();
 }
 
-function ensureFaceSwipeHost(summary) {
-    if (!summary?.appendChild) return null;
-    let row = summary.querySelector(':scope > [data-rm-face-swipe-host]');
-    if (!row) {
-        row = document.createElement('span');
-        row.setAttribute('data-rm-face-swipe-host', 'true');
-    }
-    // Sit next to the native ▶ so a right-floated star/rabbit cannot clip it.
-    if (summary.firstElementChild !== row) summary.insertBefore(row, summary.firstElementChild);
-    const styles = {
-        all: 'initial', display: 'inline-flex', 'align-items': 'center', 'justify-content': 'flex-start',
-        float: 'none', flex: '0 0 auto', position: 'relative', 'z-index': '2147483002',
-        width: 'auto', 'min-width': 'max-content', height: 'auto', 'min-height': '28px',
-        margin: '0 6px 0 0', padding: '0', overflow: 'visible', visibility: 'visible', opacity: '1',
-        'pointer-events': 'auto', 'white-space': 'nowrap', 'vertical-align': 'middle',
-        color: 'inherit', font: 'inherit', 'line-height': '1',
-    };
-    for (const [property, value] of Object.entries(styles)) setImportantStyle(row, property, value);
-    return row;
-}
-
 function installFaceSwipeBar(root, host) {
     const view = liveFaceSwipeView(root);
     let bar = host.querySelector(':scope > [data-rm-face-swipe-bar]');
     if (!view) {
         bar?.remove();
-        return;
+        return null;
     }
     if (!bar) {
         bar = document.createElement('span');
         bar.setAttribute('data-rm-face-swipe-bar', 'true');
         bar.className = 'rabbit-mirror-face-swipe-bar';
-        bar.innerHTML = '<button type="button" data-rm-face-swipe="prev" aria-label="上一版">‹</button><span data-rm-face-swipe-label></span><button type="button" data-rm-face-swipe="next" aria-label="下一版">›</button><button type="button" data-rm-face-swipe="delete" aria-label="删除这一版">×</button>';
+        bar.innerHTML = '<button type="button" data-rm-face-swipe="prev" aria-label="上一版">‹</button><span data-rm-face-swipe-label></span><button type="button" data-rm-face-swipe="next" aria-label="下一版">›</button>';
         bar.addEventListener('click', event => {
             const action = event.target?.closest?.('[data-rm-face-swipe]')?.getAttribute('data-rm-face-swipe');
             if (!action) return;
@@ -1862,12 +1841,13 @@ function installFaceSwipeBar(root, host) {
             else if (intent.type === 'delete') live.deleteSwipe?.(root);
         }, true);
     }
-    host.append(bar);
+    host.prepend(bar);
+    // Stacked (narrow) layout: pager hugs the left edge, star/rabbit keep the right.
+    if (toolHostShouldStack()) setImportantStyle(host, 'justify-content', 'space-between');
     const label = bar.querySelector('[data-rm-face-swipe-label]');
     if (label) label.textContent = view.label;
     const prev = bar.querySelector('[data-rm-face-swipe="prev"]');
     const next = bar.querySelector('[data-rm-face-swipe="next"]');
-    const remove = bar.querySelector('[data-rm-face-swipe="delete"]');
     if (prev) {
         prev.disabled = !(view.canPrev || view.canResay);
         prev.title = view.canPrev ? '上一版' : (view.canResay ? '重说这一面' : '已经是第一版');
@@ -1878,13 +1858,42 @@ function installFaceSwipeBar(root, host) {
         next.title = view.canNext ? '下一版' : (view.canResay ? '重说这一面' : FACE_SWIPE_FULL_MESSAGE);
         next.setAttribute('aria-label', next.title);
     }
-    if (remove) {
-        remove.disabled = !view.canDelete;
-        remove.hidden = false;
-        remove.title = view.canDelete ? '删除当前这一版' : (view.overlay ? '失败这一格不会保存，切回上一版即可清掉' : '只剩一版时不能删除');
-    }
     bar.title = view.overlay ? '这一版生成失败，可切回上一版' : (view.full ? FACE_SWIPE_FULL_MESSAGE : '左右箭头可切换版本；到头后点一下就是重说');
-    return bar;
+    return view;
+}
+
+// 1.6.1: the delete button leaves the pager row and floats at the title row's far
+// right corner, as the summary's first child, so long titles cannot push it down
+// and it can no longer sit one mis-tap away from the › button.
+function installFaceSwipeDelete(root, summary, view) {
+    if (!summary?.appendChild) return null;
+    const stale = [...summary.querySelectorAll('[data-rm-face-swipe-delete]')];
+    let del = stale.find(node => node.parentElement === summary) || stale[0] || null;
+    stale.filter(node => node !== del).forEach(node => node.remove());
+    if (!view) {
+        del?.remove();
+        return null;
+    }
+    if (!del) {
+        del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'rabbit-mirror-face-swipe-delete';
+        del.setAttribute('data-rm-face-swipe-delete', 'true');
+        del.textContent = '×';
+        del.addEventListener('click', event => {
+            stopTitleToggle(event);
+            const live = independentActionBridge();
+            const current = liveFaceSwipeView(root);
+            if (!current) return;
+            const intent = faceSwipeBarIntent(current, 'delete');
+            if (intent.type === 'delete') live.deleteSwipe?.(root);
+        }, true);
+    }
+    if (summary.firstElementChild !== del) summary.insertBefore(del, summary.firstElementChild);
+    del.disabled = !view.canDelete;
+    del.title = view.canDelete ? '删除当前这一版' : (view.overlay ? '失败这一格不会保存，切回上一版即可清掉' : '只剩一版时不能删除');
+    del.setAttribute('aria-label', del.title);
+    return del;
 }
 
 function installFaceTitleChrome(root, host) {
@@ -1892,13 +1901,15 @@ function installFaceTitleChrome(root, host) {
     const rabbit = host.querySelector(':scope > [data-rm-tool-menu-button]');
     installFavoriteStar(root, host, rabbit);
     host.querySelectorAll(':scope > [data-rm-face-swipe-bar]').forEach(node => node.remove());
-    const swipeHost = ensureFaceSwipeHost(summary);
-    if (swipeHost) installFaceSwipeBar(root, swipeHost);
+    // Pre-1.6.1 pagers floated before the title in their own host; drop that stale shell.
+    summary?.querySelectorAll?.(':scope > [data-rm-face-swipe-host]').forEach(node => node.remove());
+    const view = installFaceSwipeBar(root, host);
+    installFaceSwipeDelete(root, summary, view);
 }
 
 function stripTheaterFavoriteTitleChrome(scope) {
     if (!scope?.querySelectorAll) return;
-    scope.querySelectorAll(`[${TOOL_ENTRY_HOST_ATTR}], [data-rm-face-swipe-host], [data-rm-face-swipe-bar], [data-rm-face-favorite-star], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}], [data-rm-tool-menu-button]`).forEach(node => node.remove());
+    scope.querySelectorAll(`[${TOOL_ENTRY_HOST_ATTR}], [data-rm-face-swipe-host], [data-rm-face-swipe-bar], [data-rm-face-swipe-delete], [data-rm-face-favorite-star], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}], [data-rm-tool-menu-button]`).forEach(node => node.remove());
 }
 
 function installUnifiedMirrorTools(root) {

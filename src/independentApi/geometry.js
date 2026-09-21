@@ -120,7 +120,7 @@ import {
     serializeExternalFaceDetails,
     showMultifaceFace,
     stripIndependentTransientLayoutArtifacts,
-} from './mount.js?rmv=1.6';
+} from './mount.js?rmv=1.6.1';
 import {
     automaticHostGenerationRenderMatches,
     hasExistingFollowRabbitMirror,
@@ -1621,7 +1621,7 @@ export function ensureExternalTools(host){
  // automatic write here is the guarded Safari auto-root correction scheduled
  // once after a pure-external mirror is actually opened.
  if(host.dataset?.rmFavorite==='true' || host.dataset?.rmSource==='favorite'){
-  host.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-face-swipe-host], [data-rm-face-swipe-bar], [data-rm-face-favorite-star]').forEach(node=>node.remove());
+  host.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-face-swipe-host], [data-rm-face-swipe-bar], [data-rm-face-swipe-delete], [data-rm-face-favorite-star]').forEach(node=>node.remove());
  }else{
   try{ refreshRabbitMirrorToolsInScope(host,{historyRestoreLight}); }catch(error){ console.debug('[RabbitMirror] external tool preparation skipped:',error); }
  }
