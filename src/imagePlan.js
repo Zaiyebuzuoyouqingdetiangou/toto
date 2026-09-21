@@ -1,8 +1,50 @@
+function planningError(code, message) {
+    return Object.assign(new TypeError(message), { rabbitMirrorImageCode: code });
+}
+
 function string(value) { return typeof value === 'string' ? value : ''; }
 
 function sourceJson(value) {
     // Materials stay in one data row, even when a mirror contains boundary-like text.
     return JSON.stringify(value).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/【/g, '\\u3010');
+}
+
+// Tolerant extraction, same idea as Heartbeat Memories' jsonParser: models
+// often wrap the plan in prose, fences, or reasoning text. Scan for balanced
+// {...} regions with string/escape awareness, so braces inside JSON string
+// values never split a candidate.
+function extractBalancedJsonObjects(text) {
+    const candidates = [];
+    let start = -1;
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+    for (let i = 0; i < text.length; i += 1) {
+        const char = text[i];
+        if (inString) {
+            if (escaped) escaped = false;
+            else if (char === '\\') escaped = true;
+            else if (char === '"') inString = false;
+            continue;
+        }
+        if (char === '"') {
+            if (depth > 0) inString = true;
+            continue;
+        }
+        if (char === '{') {
+            if (depth === 0) start = i;
+            depth += 1;
+            continue;
+        }
+        if (char === '}' && depth > 0) {
+            depth -= 1;
+            if (depth === 0 && start >= 0) {
+                candidates.push(text.slice(start, i + 1));
+                start = -1;
+            }
+        }
+    }
+    return candidates;
 }
 
 function relevantCharacters(input, faceText) {
@@ -18,7 +60,7 @@ function relevantCharacters(input, faceText) {
 
 export function buildImagePlanningPrompt(input = {}) {
     const faceText = string(input.faceText);
-    if (!faceText.trim()) throw new TypeError('这面兔子镜没有可供构思的内容。');
+    if (!faceText.trim()) throw planningError('PLAN_EMPTY_SOURCE', '这面兔子镜没有可供构思的内容。');
     const floor = Number.isSafeInteger(input.floor) && input.floor >= 0 ? input.floor : 0;
     const materials = {
         source: '用户选中的这一面兔子镜成品；不是全部聊天记录',
@@ -38,18 +80,33 @@ export function parseImagePlan(text) {
     let value = text;
     if (typeof text === 'string') {
         const clean = text.trim().replace(/^```(?:json)?\s*\n?([\s\S]*?)\n?```$/i, '$1');
-        try { value = JSON.parse(clean); }
-        catch { throw new TypeError('画面构思没有返回有效 JSON；请查看或重新构思，不会自动重试。'); }
+        // Try the whole body first so code-fence markers inside JSON strings
+        // stay literal; then fenced blocks; then balanced objects, so a plan
+        // buried in reasoning or chatty text is still recovered. Later
+        // candidates win first, since models tend to put the final JSON last.
+        const attempts = [clean];
+        for (const match of clean.matchAll(/```(?:json)?[ \t]*\r?\n([\s\S]*?)\n?[ \t]*```/gi)) {
+            attempts.push(match[1].trim());
+        }
+        attempts.push(...extractBalancedJsonObjects(clean).reverse());
+        value = null;
+        for (const candidate of attempts) {
+            try {
+                const parsed = JSON.parse(candidate);
+                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) { value = parsed; break; }
+            } catch { /* try the next candidate */ }
+        }
+        if (!value) throw planningError('PLAN_INVALID_JSON', '画面构思没有返回有效 JSON；请查看或重新构思，不会自动重试。');
     }
-    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('画面构思必须是一个 JSON 对象。');
+    if (!value || typeof value !== 'object' || Array.isArray(value)) throw planningError('PLAN_INVALID_OBJECT', '画面构思必须是一个 JSON 对象。');
     const prompt = string(value.prompt).trim();
-    if (!prompt) throw new TypeError('画面构思缺少生图提示词。');
+    if (!prompt) throw planningError('PLAN_MISSING_PROMPT', '画面构思缺少生图提示词。');
     const characters = value.characters == null ? [] : value.characters;
-    if (!Array.isArray(characters)) throw new TypeError('角色提示词必须是数组。');
+    if (!Array.isArray(characters)) throw planningError('PLAN_INVALID_CHARACTERS', '角色提示词必须是数组。');
     const parsedCharacters = characters.map(person => {
         const name = string(person?.name).trim();
         const tag = string(person?.tag).trim();
-        if (!name || !tag) throw new TypeError('每个画面角色都需要原名与外貌提示词。');
+        if (!name || !tag) throw planningError('PLAN_INCOMPLETE_CHARACTER', '每个画面角色都需要原名与外貌提示词。');
         return { name, tag, nl: string(person.nl).trim() };
     });
     return {
