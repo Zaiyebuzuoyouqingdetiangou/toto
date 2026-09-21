@@ -138,7 +138,7 @@ import {
     setPlaceholderSummary,
     usableReadyDetails,
     withRestorableHtmlCacheBatch,
-} from './geometry.js?rmv=1.6.2';
+} from './geometry.js?rmv=1.6';
 import {
     INDEPENDENT_INTENT_OWNER,
     abortFlight,
@@ -192,7 +192,7 @@ import {
     serializeExternalFaceDetails,
     stampAutomaticAuthorizationEpoch,
     withHistoricalRestoreLightPass,
-} from './mount.js?rmv=1.6.1';
+} from './mount.js?rmv=1.6';
 import {
     automaticGenerationCutovers,
     hostGenerationHintStartedAt,

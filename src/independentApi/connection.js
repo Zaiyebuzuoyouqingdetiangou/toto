@@ -36,7 +36,7 @@ import {
     hasExplicitSourceReplacementEvidence,
     independentStoredHtmlLightRestorable,
     independentStoredHtmlRestorable,
-} from './geometry.js?rmv=1.6.2';
+} from './geometry.js?rmv=1.6';
 import {
     activeIndependentFlightForBase,
     messageSourceRevisions,
@@ -44,7 +44,7 @@ import {
     passiveObservedIdentity,
     runtimeMode,
     showIndependentUnsavedOutput,
-} from './mount.js?rmv=1.6.1';
+} from './mount.js?rmv=1.6';
 import {
     hostGenerationHintStartedAt,
     hostGenerationInProgress,

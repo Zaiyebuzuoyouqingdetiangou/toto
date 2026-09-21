@@ -72,7 +72,7 @@ import {
     removeFeedbackCatsInChatDom,
     removeMaintenanceRabbitsInChatDom,
     toolOutsideCloseOwners,
-} from './toolsChrome.js?rmv=1.6.2';
+} from './toolsChrome.js?rmv=1.6';
 
 export let hostScriptModule = null;
 
