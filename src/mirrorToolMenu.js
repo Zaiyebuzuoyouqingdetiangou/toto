@@ -17,9 +17,14 @@ export function fitMirrorToolPanel(panel, button, preferredWidth = 340) {
         const availableHeight = Math.max(1, height - margin * 2);
         const panelWidth = Math.min(preferredWidth, Math.max(1, width - margin * 2));
         const rect = anchor?.getBoundingClientRect?.() || { left, bottom: top };
-        const styles = { position: 'fixed', 'z-index': '2147483646', 'box-sizing': 'border-box', width: `${panelWidth}px`, 'max-width': `${panelWidth}px`, 'max-height': `${availableHeight}px`, 'min-height': '0', overflow: 'auto', 'overscroll-behavior': 'contain', 'touch-action': 'pan-y', left: `${Math.max(left + margin, Math.min(rect.left, left + width - panelWidth - margin))}px` };
+        const sendForm = document.getElementById('send_form') || document.getElementById('form_sheld') || document.querySelector('#send_textarea')?.closest('form, #send_form, .mes_edit_buttons');
+        const sendTop = sendForm?.getBoundingClientRect?.().top;
+        const composerTop = Number.isFinite(sendTop) ? sendTop : top + height;
+        const maxBottom = Math.min(top + height - margin, composerTop - 8);
+        const styles = { position: 'fixed', 'z-index': '10050', 'box-sizing': 'border-box', width: `${panelWidth}px`, 'max-width': `${panelWidth}px`, 'max-height': `${Math.max(1, maxBottom - (top + margin))}px`, 'min-height': '0', overflow: 'auto', 'overscroll-behavior': 'contain', 'touch-action': 'pan-y', left: `${Math.max(left + margin, Math.min(rect.left, left + width - panelWidth - margin))}px` };
         for (const [name, value] of Object.entries(styles)) panel.style.setProperty(name, value, 'important');
-        panel.style.setProperty('top', `${Math.max(top + margin, Math.min(rect.bottom + 6, top + height - Math.min(panel.offsetHeight, availableHeight) - margin))}px`, 'important');
+        const panelHeight = Math.min(panel.offsetHeight || availableHeight, Math.max(1, maxBottom - (top + margin)));
+        panel.style.setProperty('top', `${Math.max(top + margin, Math.min(rect.bottom + 6, maxBottom - panelHeight))}px`, 'important');
     };
     const view = globalThis.visualViewport;
     const cleanup = () => {
@@ -62,7 +67,7 @@ export function installMirrorToolMenu(root, host, actions, beforeOpen) {
         button.setAttribute('aria-expanded', 'false');
         button.title = '兔子镜工具';
         button.innerHTML = logo;
-        button.style.cssText = 'all:initial!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;width:40px!important;height:40px!important;box-sizing:border-box!important;border:1px solid currentColor!important;border-radius:12px!important;background:transparent!important;color:inherit!important;cursor:pointer!important;flex:0 0 auto!important;pointer-events:auto!important;';
+        button.style.cssText = 'all:initial!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;width:36px!important;height:36px!important;box-sizing:border-box!important;border:1px solid currentColor!important;border-radius:10px!important;background:transparent!important;color:inherit!important;cursor:pointer!important;flex:0 0 auto!important;pointer-events:auto!important;touch-action:manipulation!important;-webkit-tap-highlight-color:transparent!important;';
         host.append(button);
         state = { root, actions, button, beforeOpen };
         bindings.set(host, state);

@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜小剧场",
   "loading_order": 100,
-  "js": "index.js?rmv=1.5.53-hostuifix1",
-  "css": "style.css?rmv=1.5.53-mobileui1",
+  "js": "index.js?rmv=1.6.3",
+  "css": "style.css?rmv=1.6.3-fav2",
   "author": "Toto",
-  "version": "1.5.53",
+  "version": "1.6",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜小剧场：修复中文标签结束边界丢失误删后文及补充汉字扫描／过滤不一致；保留原 Prompt、单次请求与既有功能。测试候选，尚未真机验证。"
+  "description": "兔子镜小剧场：副 API 重说按面保留最多五版可切换；满五需手动删除；标题星标收藏；魔杖入口带兔子图标。安装通道为 Zaiyebuzuoyouqingdetiangou/toto。"
 }
