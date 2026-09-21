@@ -36,7 +36,7 @@ import {
     hasExplicitSourceReplacementEvidence,
     independentStoredHtmlLightRestorable,
     independentStoredHtmlRestorable,
-} from './geometry.js?rmv=1.6.1';
+} from './geometry.js?rmv=1.6.2';
 import {
     activeIndependentFlightForBase,
     messageSourceRevisions,

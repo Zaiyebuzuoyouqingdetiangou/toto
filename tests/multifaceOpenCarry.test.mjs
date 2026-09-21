@@ -96,3 +96,12 @@ test('toolsChrome keeps delete out of the pager bar and pins it top-right', () =
     assert.ok(!barHtml.includes('data-rm-face-swipe="delete"'), 'pager bar must not contain the delete button');
     assert.match(source, /faceSwipeBarIntent\(current, 'delete'\)/);
 });
+
+test('persisted-HTML scrub strips the delete button (no storage leak)', () => {
+    const geometry = readFileSync(new URL('../src/independentApi/geometry.js', import.meta.url), 'utf8');
+    const selector = geometry.match(/PERSISTED_RUNTIME_UI_SELECTOR = '([^']*)'/)?.[1] || '';
+    assert.ok(selector.includes('[data-rm-face-swipe-delete]'), 'delete button must be stripped before persisting');
+    assert.ok(selector.includes('[data-rm-face-swipe-bar]'));
+    const faceSwipe = readFileSync(new URL('../src/independentApi/faceSwipe.js', import.meta.url), 'utf8');
+    assert.ok(faceSwipe.includes('[data-rm-face-swipe-delete]'));
+});

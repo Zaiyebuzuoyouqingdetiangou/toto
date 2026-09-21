@@ -1877,9 +1877,13 @@ function installFaceSwipeDelete(root, summary, view) {
     if (!del) {
         del = document.createElement('button');
         del.type = 'button';
-        del.className = 'rabbit-mirror-face-swipe-delete';
         del.setAttribute('data-rm-face-swipe-delete', 'true');
         del.textContent = '×';
+    }
+    // A del restored from persisted HTML has no listener; wire exactly once per node.
+    if (!del.dataset.rmDeleteWired) {
+        del.dataset.rmDeleteWired = 'true';
+        del.className = 'rabbit-mirror-face-swipe-delete';
         del.addEventListener('click', event => {
             stopTitleToggle(event);
             const live = independentActionBridge();

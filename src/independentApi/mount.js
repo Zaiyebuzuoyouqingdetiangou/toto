@@ -250,7 +250,7 @@ import {
     showIndependentResayStatus,
     transferExternalTools,
     usableReadyDetails,
-} from './geometry.js?rmv=1.6.1';
+} from './geometry.js?rmv=1.6.2';
 import {
     assertEarlyBodyOwner,
     automaticHostGenerationMayUseTools,

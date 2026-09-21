@@ -138,7 +138,7 @@ import {
     setPlaceholderSummary,
     usableReadyDetails,
     withRestorableHtmlCacheBatch,
-} from './geometry.js?rmv=1.6.1';
+} from './geometry.js?rmv=1.6.2';
 import {
     INDEPENDENT_INTENT_OWNER,
     abortFlight,

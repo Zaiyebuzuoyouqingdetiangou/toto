@@ -53,7 +53,7 @@ import {
     normalizeSavedInteractionRecord,
     recoverSavedRecord,
     replaceExternalMultifaceFace,
-} from './geometry.js?rmv=1.6.1';
+} from './geometry.js?rmv=1.6.2';
 import { externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace } from './mount.js?rmv=1.6.1';
 
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
