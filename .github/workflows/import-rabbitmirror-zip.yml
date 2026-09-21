@@ -1,0 +1,395 @@
+# Install/replace this file on from-nancy-test; push events work there directly.
+# Upload toto1.6.zip OR rabbitmirror-upload.zip at the repository root, not both.
+# Changing this workflow also checks for a ZIP that was uploaded before the workflow.
+# Optional: copy to main ONLY to expose the manual Run workflow button.
+# Even when run manually from main, only from-nancy-test is updated.
+# This replaces the old import-rabbitmirror-zip.yml, not the clean publishing file.
+name: "RabbitMirror 1 - 上传解压到 from-nancy-test"
+run-name: "RabbitMirror 上传解压（只更新 from-nancy-test）"
+
+'on':
+  push:
+    branches: [from-nancy-test]
+    paths:
+      - toto1.6.zip
+      - rabbitmirror-upload.zip
+      - .github/workflows/import-rabbitmirror-zip.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Shared with publishing so the two operations cannot overlap.
+concurrency:
+  group: rabbitmirror-from-nancy-test-main-write
+  cancel-in-progress: false
+
+jobs:
+  import-zip:
+    if: >-
+      github.repository == 'Zaiyebuzuoyouqingdetiangou/toto' &&
+      (github.event_name == 'workflow_dispatch' ||
+       github.ref == 'refs/heads/from-nancy-test')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout from-nancy-test snapshot
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6, pinned
+        with:
+          ref: ${{ github.event_name == 'push' && github.sha || 'refs/heads/from-nancy-test' }}
+          fetch-depth: 1
+          persist-credentials: true
+      - name: Validate, unpack, and push only from-nancy-test
+        shell: python
+        run: |
+          import hashlib
+          import json
+          import os
+          import posixpath
+          import re
+          import stat
+          import struct
+          import zlib
+          import subprocess
+          import unicodedata
+          import zipfile
+          from pathlib import Path
+
+          REPOSITORY = 'Zaiyebuzuoyouqingdetiangou/toto'
+          HOMEPAGE = 'https://github.com/' + REPOSITORY
+          TEST_BRANCH = 'from-nancy-test'
+          UPLOAD_NAMES = ('toto1.6.zip', 'rabbitmirror-upload.zip')
+          RUNTIME_DIRS = {'src', 'data'}
+          RUNTIME_FILES = {'index.js', 'manifest.json', 'style.css', 'settings-ui.css', 'LICENSE'}
+          # These controls belong to the destination branch, never to an uploaded ZIP.
+          CONTROL_FILES = {'.gitignore', '.gitattributes'}
+          MAX_UNPACKED = 100 * 1024 * 1024
+          MAX_FILE = 12 * 1024 * 1024
+          ROOT = Path.cwd().resolve()
+
+
+          def git(*args, data=None):
+              return subprocess.run(
+                  ['git', '-c', 'core.hooksPath=/dev/null', *args],
+                  input=data, stdout=subprocess.PIPE, check=True,
+              ).stdout
+
+
+          def text_git(*args):
+              return git(*args).decode('utf-8').strip()
+
+
+          def require(condition, message):
+              if not condition:
+                  raise SystemExit(message)
+
+
+          def summary(message):
+              print(message)
+              target = os.environ.get('GITHUB_STEP_SUMMARY')
+              if target:
+                  with open(target, 'a', encoding='utf-8') as stream:
+                      stream.write(message + '\n\n')
+
+
+          def safe_name(name):
+              require(isinstance(name, str) and bool(name), 'Empty file path.')
+              require(not name.startswith('/') and '\\' not in name and ':' not in name,
+                      'Unsafe file path: ' + repr(name))
+              require(not any(ord(ch) < 32 or ord(ch) == 127 for ch in name),
+                      'Control character in file path: ' + repr(name))
+              parts = name.split('/')
+              require(all(p not in ('', '.', '..') and not p.endswith((' ', '.')) for p in parts),
+                      'Unsafe file path: ' + repr(name))
+              return parts
+
+
+          def zip_name(info):
+              # Honor Windows ZIP Unicode path records using their CRC, not guessed encodings.
+              # Necessary for the same filenames on Python 3.12 and Python 3.13 runners.
+              original = info.orig_filename
+              require('\x00' not in original, 'NUL character in ZIP path.')
+              safe_name(original.rstrip('/') if info.is_dir() else original)
+              raw = original.encode('utf-8' if info.flag_bits & 0x800 else 'cp437')
+              name = original
+              extra = info.extra
+              while len(extra) >= 4:
+                  tag, size = struct.unpack('<HH', extra[:4])
+                  require(size + 4 <= len(extra), 'Malformed ZIP extra field.')
+                  body = extra[4:4 + size]
+                  if tag == 0x7075:
+                      require(len(body) >= 5, 'Malformed Unicode path field.')
+                      version, checksum = struct.unpack('<BI', body[:5])
+                      if version == 1 and checksum == (zlib.crc32(raw) & 0xffffffff):
+                          candidate = body[5:].decode('utf-8')
+                          require(bool(candidate) and '\x00' not in candidate, 'Invalid Unicode ZIP path.')
+                          name = candidate
+                  extra = extra[4 + size:]
+              safe_name(name.rstrip('/') if info.is_dir() else name)
+              return name
+
+
+          def protected(name):
+              return name.split('/')[0] == '.github' or name in CONTROL_FILES
+
+
+          def junk(name):
+              parts = safe_name(name)
+              lower = [part.casefold() for part in parts]
+              if any(part in {'.git', '.github', '__macosx', '__pycache__', 'node_modules',
+                              '.venv', '.cache', '.idea', '.vscode'} for part in lower):
+                  return True
+              if lower[-1] in {'.ds_store', 'thumbs.db', 'desktop.ini'} or lower[-1].startswith('._'):
+                  return True
+              if lower[-1] == '.env' or lower[-1].startswith('.env.'):
+                  return True
+              if len(parts) == 1 and lower[-1].endswith(('.zip', '.7z', '.rar')):
+                  return True
+              if len(parts) == 1 and parts[0] in CONTROL_FILES | {'.gitmodules'}:
+                  return True
+              return False
+
+
+          def runtime_file(name):
+              return name.split('/')[0] in RUNTIME_DIRS or name in RUNTIME_FILES
+
+
+          def unique_paths(names):
+              folded = {}
+              for name in names:
+                  safe_name(name)
+                  key = unicodedata.normalize('NFC', name).casefold()
+                  require(key not in folded, 'Duplicate/case-conflicting path: ' + repr(name))
+                  folded[key] = name
+              for key in folded:
+                  parent = posixpath.dirname(key)
+                  while parent:
+                      require(parent not in folded, 'File/directory conflict: ' + repr(folded[key]))
+                      parent = posixpath.dirname(parent)
+
+
+          def normalize_manifest(payload):
+              required = RUNTIME_FILES | {'src/settings.js', 'src/injector.js'}
+              missing = sorted(name for name in required if not payload.get(name))
+              require(not missing, 'Incomplete RabbitMirror package. Missing: ' + ', '.join(missing))
+              require(any(name.startswith('data/') for name in payload), 'Missing data/ files.')
+              manifest = json.loads(payload['manifest.json'].decode('utf-8-sig'))
+              require(isinstance(manifest, dict), 'manifest.json must be an object.')
+              require(manifest.get('display_name') == '兔子镜小剧场', 'This is not RabbitMirror.')
+              require(isinstance(manifest.get('version'), str) and
+                      re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._+\-]{0,79}', manifest['version']),
+                      'Missing or unsafe version in manifest.json.')
+              require(str(manifest.get('js', '')).split('?', 1)[0] == 'index.js',
+                      'Unexpected JavaScript entry point.')
+              require(str(manifest.get('css', '')).split('?', 1)[0] == 'style.css',
+                      'Unexpected CSS entry point.')
+              old_home = str(manifest.get('homePage', '')).rstrip('/')
+              require(old_home.casefold() in {HOMEPAGE.casefold(),
+                                            'https://github.com/nancyindaeyo/toto'},
+                      'Unknown package repository; refusing to import.')
+              changed = old_home != HOMEPAGE or manifest.get('homePage') != HOMEPAGE
+              manifest['homePage'] = HOMEPAGE
+              description = manifest.get('description')
+              if isinstance(description, str):
+                  corrected = description.replace('安装通道为 Nancyindaeyo/toto',
+                                                  '安装通道为 ' + REPOSITORY)
+                  changed = changed or corrected != description
+                  manifest['description'] = corrected
+              # Preserve the exact original bytes when no metadata fix is necessary.
+              if changed:
+                  payload['manifest.json'] = (json.dumps(manifest, ensure_ascii=False, indent=2) + '\n').encode('utf-8')
+              return manifest, changed
+
+
+          def validate_runtime(payload):
+              """Check literal in-repository module links; do NOT execute plugin code."""
+              selected = {name for name in payload if runtime_file(name)}
+              pattern = re.compile(r'''\b(?:from\s*|import\s*\(\s*|import\s*)['"]([^'"\n]+)['"]''')
+              missing = set()
+              checked = 0
+              for name in sorted(selected):
+                  content = payload[name]
+                  require(not content.startswith(b'version https://git-lfs.github.com/spec/v1'),
+                          'Git LFS pointer, not runtime content: ' + name)
+                  if not name.endswith(('.js', '.mjs')):
+                      continue
+                  for match in pattern.finditer(content.decode('utf-8-sig')):
+                      spec = match.group(1).split('?', 1)[0].split('#', 1)[0]
+                      if not spec.startswith('.'):
+                          continue
+                      target = posixpath.normpath(posixpath.join(posixpath.dirname(name), spec))
+                      # Host files such as ../../../../../script.js are supplied by SillyTavern.
+                      if target.startswith('../'):
+                          continue
+                      checked += 1
+                      if target not in selected:
+                          missing.add(name + ' -> ' + target)
+              require(not missing, 'Missing/filtered runtime import(s):\n' + '\n'.join(sorted(missing)))
+              return checked
+
+
+          def tree_entries(sha):
+              result = {}
+              for row in git('ls-tree', '-r', '-z', '--full-tree', sha).split(b'\0'):
+                  if not row:
+                      continue
+                  meta, path = row.split(b'\t', 1)
+                  mode, kind, oid = meta.decode('ascii').split()
+                  name = path.decode('utf-8')
+                  safe_name(name)
+                  result[name] = (mode, kind, oid)
+              return result
+
+
+          def remote_tip(branch):
+              ref = 'refs/heads/' + branch
+              rows = text_git('ls-remote', '--exit-code', 'origin', ref).splitlines()
+              require(len(rows) == 1 and rows[0].split()[1] == ref,
+                      'Could not resolve remote branch: ' + branch)
+              return rows[0].split()[0]
+
+
+          def local_safe(name, allow_directory=False):
+              parts = safe_name(name)
+              target = ROOT.joinpath(*parts)
+              p = ROOT
+              for part in parts:
+                  p = p / part
+                  require(not p.is_symlink(), 'Refusing symbolic link: ' + repr(name))
+                  require(not p.exists() or p == target or p.is_dir(),
+                          'Parent path is not a directory: ' + repr(name))
+              require(allow_directory or not target.is_dir(),
+                      'Target is a directory: ' + repr(name))
+              return target
+
+
+          def apply_changes(payload, removals):
+              # Validate ALL destinations before touching any local file.
+              for name in set(payload) | set(removals):
+                  require(not protected(name), 'Refusing to modify repository controls: ' + name)
+                  local_safe(name)
+              for name in sorted(removals, reverse=True):
+                  target = local_safe(name)
+                  if target.exists():
+                      target.unlink()
+              for name, content in payload.items():
+                  target = local_safe(name)
+                  target.parent.mkdir(parents=True, exist_ok=True)
+                  target.write_bytes(content)
+                  target.chmod(0o644)
+              git('add', '--all', '--force', '--', '.')
+              staged = [n.decode('utf-8') for n in git('diff', '--cached', '--name-only', '-z').split(b'\0') if n]
+              require(not any(protected(name) for name in staged), 'Workflow/control files changed unexpectedly.')
+              require(set(staged) <= (set(payload) | set(removals)), 'Unexpected staged files; refusing to push.')
+              return staged
+
+
+          def commit_and_push(target, old_sha, message):
+              require(target == TEST_BRANCH, 'This importer may ONLY push from-nancy-test.')
+              require(remote_tip(target) == old_sha,
+                      target + ' changed during this run. Nothing pushed; run again.')
+              git('-c', 'user.name=github-actions[bot]',
+                  '-c', 'user.email=41898282+github-actions[bot]@users.noreply.github.com',
+                  '-c', 'commit.gpgsign=false', 'commit', '-m', message)
+              new_sha = text_git('rev-parse', 'HEAD')
+              # Normal fast-forward push only. Rejection must STOP, never force/rebase/retry.
+              git('push', 'origin', 'HEAD:refs/heads/' + target)
+              require(remote_tip(target) == new_sha,
+                      'Push returned, but remote moved again. Inspect Actions and the branch; do not assume the latest state.')
+              summary('Published commit: `' + new_sha + '` on `' + target + '`.')
+              return new_sha
+
+
+          require(os.environ.get('GITHUB_REPOSITORY') == REPOSITORY, 'Wrong GitHub repository.')
+          require(os.environ.get('GITHUB_EVENT_NAME') in {'push', 'workflow_dispatch'},
+                  'Unsupported workflow event.')
+          require(os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch' or
+                  os.environ.get('GITHUB_REF') == 'refs/heads/' + TEST_BRANCH,
+                  'Automatic imports are allowed only on from-nancy-test.')
+          require(not text_git('status', '--porcelain'), 'Checkout is not clean; refusing to continue.')
+          OLD_SHA = text_git('rev-parse', 'HEAD')
+
+          # This workflow writes ONLY to from-nancy-test, even when dispatched from main.
+          require(remote_tip(TEST_BRANCH) == OLD_SHA,
+                  'from-nancy-test changed after this run started. Run again on the latest branch.')
+          # No guessing when more than one delivery is present.
+          candidates = []
+          for candidate in UPLOAD_NAMES:
+              candidate_path = local_safe(candidate)
+              if candidate_path.is_file():
+                  candidates.append(candidate)
+          if not candidates:
+              summary('未发现 toto1.6.zip 或 rabbitmirror-upload.zip；没有修改源码。')
+              raise SystemExit(0)
+          require(len(candidates) == 1,
+                  '发现两个待导入 ZIP。请只保留本次要导入的一个，再运行，避免导入旧代码。')
+          UPLOAD = candidates[0]
+          archive = local_safe(UPLOAD)
+          require(archive.stat().st_size <= 25 * 1024 * 1024, 'ZIP exceeds 25 MiB.')
+          archive_hash = hashlib.sha256(archive.read_bytes()).hexdigest()
+          payload = {}
+          skipped = []
+          with zipfile.ZipFile(archive) as z:
+              entries = z.infolist()
+              require(0 < len(entries) <= 10000, 'ZIP is empty or has too many entries.')
+              require(sum(i.file_size for i in entries) <= MAX_UNPACKED, 'ZIP expands beyond 100 MiB.')
+              files = []
+              for info in entries:
+                  require('\x00' not in info.orig_filename, 'NUL character in ZIP path.')
+                  resolved_name = zip_name(info)
+                  raw_name = resolved_name.rstrip('/') if info.is_dir() else resolved_name
+                  safe_name(raw_name)
+                  if info.is_dir():
+                      continue
+                  # Ignore OS wrappers when detecting a single plugin root.
+                  parts = raw_name.split('/')
+                  if '__MACOSX' in parts or parts[-1] == '.DS_Store' or parts[-1].startswith('._'):
+                      skipped.append(raw_name)
+                      continue
+                  files.append((info, resolved_name))
+              require(len(files) <= 5000, 'ZIP contains too many files.')
+              names = {name for info, name in files}
+              if 'manifest.json' in names:
+                  prefix = ''
+              else:
+                  top = {name.split('/')[0] for name in names}
+                  require(len(top) == 1, 'ZIP must have plugin files at root or inside one outer folder.')
+                  prefix = next(iter(top)) + '/'
+                  require(prefix + 'manifest.json' in names, 'manifest.json was not found at plugin root.')
+              for info, resolved_name in files:
+                  require(not prefix or resolved_name.startswith(prefix), 'File outside plugin root.')
+                  name = resolved_name[len(prefix):]
+                  safe_name(name)
+                  if junk(name):
+                      skipped.append(name)
+                      continue
+                  require(not (info.flag_bits & 1), 'Encrypted ZIP entries are not supported.')
+                  mode = stat.S_IFMT(info.external_attr >> 16)
+                  require(mode in {0, stat.S_IFREG}, 'ZIP symlink/special file rejected: ' + repr(name))
+                  require(info.file_size <= MAX_FILE, 'ZIP file exceeds 12 MiB: ' + repr(name))
+                  require(name not in payload, 'Duplicate ZIP entry: ' + repr(name))
+                  payload[name] = z.read(info)
+          unique_paths(payload)
+          manifest, corrected = normalize_manifest(payload)
+          links = validate_runtime(payload)
+          old_tree = tree_entries(OLD_SHA)
+          # Runtime directories are synchronized exactly, removing obsolete code after refactors.
+          # Other developer files absent from the ZIP are preserved.
+          removals = {name for name in old_tree if runtime_file(name) and name not in payload}
+          removals.add(UPLOAD)
+          staged = apply_changes(payload, removals)
+          summary('## RabbitMirror import → from-nancy-test\n'
+                  '- Version: `' + manifest['version'] + '`\n'
+                  '- Imported ZIP: `' + UPLOAD + '`\n'
+                  '- ZIP SHA-256: `' + archive_hash + '`\n'
+                  '- Imported files: ' + str(len(payload)) + '\n'
+                  '- Literal runtime links checked: ' + str(links) + '\n'
+                  '- Excluded Git/control/cache entries: ' + str(len(skipped)) + '\n'
+                  '- Homepage metadata corrected: ' + str(corrected) + '\n'
+                  '- docs/scripts/tests/tools from the ZIP are retained.\n'
+                  '- Obsolete src/data files are removed; .github is preserved.\n'
+                  '- main is NOT modified. No plugin code or uploaded script was executed.\n'
+                  '- The imported transport ZIP is removed in the same commit.')
+          require(bool(staged), 'No import changes staged; refusing an empty commit.')
+          commit_and_push(TEST_BRANCH, OLD_SHA,
+                          'Import RabbitMirror ' + manifest['version'] + ' into from-nancy-test\n\nZIP-SHA256: ' + archive_hash)
