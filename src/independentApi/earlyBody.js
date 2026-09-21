@@ -1,15 +1,20 @@
 // Split from independentApi.js — earlyBody.
 
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.5.58-fork1';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.6';
 import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.5.53-cn-boundary1';
-import { getSettings } from '../settings.js?rmv=1.5.60-fork1';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
+import { getSettings } from '../settings.js?rmv=1.6';
 import { independentGenerationTiming } from '../independentTiming.js?rmv=1.5.53-timing1';
 import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.5.53-cn-boundary1';
 import {
-    MISSING_INDEPENDENT_RETRY_SHELL_LIMIT,
     MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE,
+    assistantRowsInScanRange,
+    formatMissingShellReport,
+    hasUsableAssistantBody,
+    isMissingShellTargetFloor,
+    normalizeMissingShellScanRange,
     shouldRestoreMissingIndependentRetryShell,
-} from './missingRetryShell.js?rmv=1.5.69';
+} from './missingRetryShell.js?rmv=1.6';
 import {
     INDEPENDENT_GENERATION_INTENTS_KEY,
     INDEPENDENT_GENERATION_INTENT_TYPES,
@@ -19,7 +24,7 @@ import {
     currentRuntime,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.5.69';
+} from './runtime.js?rmv=1.6';
 import {
     ACTIVE_GENERATION_WAIT_MS,
     FINAL_RENDER_POLL_INTERVAL_MS,
@@ -33,7 +38,7 @@ import {
     markAutomaticFailureStop,
     operationEpochForBase,
     pending,
-} from './flights.js?rmv=1.5.69';
+} from './flights.js?rmv=1.6';
 import {
     appendHistoryEntry,
     chatPersistenceSlot,
@@ -43,7 +48,7 @@ import {
     synchronizeIndependentChatPersistence,
     writePersistedOwner,
     writeStore,
-} from './persistence.js?rmv=1.5.69';
+} from './persistence.js?rmv=1.6';
 import {
     activeGlobalWorldInfoCapture,
     assistantMessages,
@@ -92,14 +97,15 @@ import {
     withOwnerLockStoreBatch,
     writeActiveGlobalWorldInfoCapture,
     writeHostModule,
-} from './connection.js?rmv=1.5.69';
+} from './connection.js?rmv=1.6';
 import {
     allExternalHosts,
     externalHosts,
+    hasMultifaceMarkup,
     removeEmptyFollowExternalAnchors,
     removeEmptyInlineAnchors,
     withExternalHostSyncIndex,
-} from './request.js?rmv=1.5.69';
+} from './request.js?rmv=1.6';
 import {
     beginHostWorkTiming,
     clearExternalHostFreshSourceState,
@@ -132,7 +138,7 @@ import {
     setPlaceholderSummary,
     usableReadyDetails,
     withRestorableHtmlCacheBatch,
-} from './geometry.js?rmv=1.5.69';
+} from './geometry.js?rmv=1.6';
 import {
     INDEPENDENT_INTENT_OWNER,
     abortFlight,
@@ -186,7 +192,7 @@ import {
     serializeExternalFaceDetails,
     stampAutomaticAuthorizationEpoch,
     withHistoricalRestoreLightPass,
-} from './mount.js?rmv=1.5.69';
+} from './mount.js?rmv=1.6';
 import {
     automaticGenerationCutovers,
     hostGenerationHintStartedAt,
@@ -211,7 +217,7 @@ import {
     writeStartupHistoryFallbackRoot,
     writeSyncRunning,
     writeSyncTimer,
-} from './lifecycle.js?rmv=1.5.69';
+} from './lifecycle.js?rmv=1.6';
 
 let earlyBodyParserPromise=null;
 
@@ -1040,7 +1046,7 @@ function syncMessagesCore(indices=null){
    const tailMessage=tailIndex>=0?ctx.chat?.[tailIndex]:null;
     const activeGenerationIndex=generationActive && isRabbitMirrorEligibleAssistantMessage(tailMessage) ? tailIndex : -1;
     const recentRetryIndices=mode==='independent'
-     ? new Set(recentAssistantMessages(ctx,MISSING_INDEPENDENT_RETRY_SHELL_LIMIT).map(row=>Number(row.i)).filter(n=>Number.isInteger(n)&&n>=0))
+     ? new Set(assistantRowsInScanRange(assistantMessages(ctx), normalizeMissingShellScanRange(st.missingShellScanRange)).map(row=>Number(row.i)).filter(n=>Number.isInteger(n)&&n>=0))
      : null;
     const rows=allowed
      ? [...allowed].sort((a,b)=>a-b).map(i=>({m:ctx.chat?.[i],i})).filter(({m})=>isRabbitMirrorEligibleAssistantMessage(m))
@@ -1136,15 +1142,18 @@ function syncMessagesCore(indices=null){
          // them. Actual replacement happens only when a new generation starts.
          saved=null;
        }
-        // Crash / network / TT unmount can leave a recent floor with no shell.
-        // Record the same in-session failure stop used by real errors so the
-        // existing terminal UI path can remount a retry card. Never POST here.
-        if(!saved?.html && !keep && !activeBaseFlight && !persistedSuppressed && !automaticGenerationSuppressed
+        // Crash / network / TT unmount leave no cutover authorization.
+        // That flag correctly blocks automatic POST, but must not block the
+        // retry card that sits under this assistant reply. Never POST here.
+        const followMirror=hasExistingFollowRabbitMirror(ctx,i,m);
+        const isTargetFloor=isMissingShellTargetFloor(i,{recentIndices:recentRetryIndices,syncedIndices:allowed});
+        if(!saved?.html && (!keep || keep.dataset?.rmState==='loading') && !activeBaseFlight && !persistedSuppressed && !followMirror
          && !automaticFailureStopFor(slot,sourceHash)
          && shouldRestoreMissingIndependentRetryShell({
           timing:independentGenerationTiming(st),
-          isRecentAssistant:recentRetryIndices?.has(i)===true,
-          hasMessageBody:!!String(m?.mes||'').trim(),
+          hasFollowMirror:followMirror,
+          isTargetFloor,
+          hasMessageBody:hasUsableAssistantBody(m),
           isActiveGenerationTarget,
           quickWaiting,
          })){
@@ -1167,13 +1176,18 @@ function syncMessagesCore(indices=null){
           // that exact owner shell; do not schedule or dispatch another request.
           keep=ensureExternalUi(el,key,'正在读取当前上下文并生成兔子镜……','loading','independent',sourceHash);
           if(keep) activeBaseFlight.loadingHost=keep;
-        } else if(!saved?.html && !activeBaseFlight && !persistedSuppressed && !automaticGenerationSuppressed
+        } else if(!saved?.html && !activeBaseFlight && !persistedSuppressed && !followMirror
           && (!keep || keep.dataset?.rmState==='loading') && automaticFailureStopFor(slot,sourceHash)){
-          // Passive DOM replacement must restore the exact terminal state, never
-          // schedule a request or turn the previous failure back into waiting.
+          // Place the terminal card under this assistant reply even when the
+          // crash left no generation authorization. Never schedule a request.
           const live=currentGenerationIdentity(i);
-          if(live?.slot===slot && live.sourceHash===sourceHash){
-           keep=renderAutomaticFailureStop(i,live,automaticFailureStopFor(slot,sourceHash));
+          const failure=automaticFailureStopFor(slot,sourceHash);
+          keep=(live?.slot===slot && live.sourceHash===sourceHash ? renderAutomaticFailureStop(i,live,failure) : null)
+           || ensureExternalUi(el,key,failure?.message||MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE,'error','independent',sourceHash);
+          if(keep){
+           keep.hidden=false;
+           keep.dataset.rmMissingShellRetry=failure?.code==='missing-external-shell'?'true':'false';
+           placeExternalHost(el,keep,keep.dataset.rmKey||key,'independent');
           }
         } else if(!saved?.html && !keep && !persistedSuppressed && (isActiveGenerationTarget && !automaticGenerationSuppressed || quickWaiting)){
           keep=ensureReplyGenerationPlaceholder(el,key,sourceHash,true);
@@ -1453,6 +1467,108 @@ export function queueMessageSync(indices=[]){
  },120));
 }
 
+function restoreMissingIndependentRetryOnElement(el,index){
+ if(!el?.isConnected || runtimeMode()!=='independent') return null;
+ const ctx=getContext();
+ const m=ctx.chat?.[index];
+ if(!isRabbitMirrorEligibleAssistantMessage(m) || !hasUsableAssistantBody(m)) return null;
+ const followMirror=hasExistingFollowRabbitMirror(ctx,index,m);
+ const persisted=persistedOwnerForMessage(ctx,index,m);
+ const observed=passiveObservedIdentity(ctx,index,m);
+ const store=readStore();
+ const saved=persisted?.html?persisted:findSavedRecord(store,observed.slot,observed.legacySlots||[]);
+ const hasSavedHtml=!!(saved?.html && independentStoredHtmlRestorable(saved.html) && savedRecordMatchesObserved(saved,observed));
+ const hosts=externalHosts(el).filter(node=>node.dataset.rmSource==='independent');
+ const keep=hosts[0]||null;
+ const hasReady=hosts.some(host=>readyDetailsFromHost(host));
+ const baseSlot=messageBaseSlotKey(ctx,index,m);
+ const activeBaseFlight=activeIndependentFlightForBase(baseSlot);
+ const generationActive=hostGenerationLooksActive();
+ const tailIndex=Array.isArray(ctx.chat)?ctx.chat.length-1:-1;
+ const key=recordKey(ctx,index,m);
+ const errorHost=hosts.find(host=>host.dataset.rmState==='error')||null;
+ if(errorHost && !hasReady){
+  errorHost.hidden=false;
+  errorHost.dataset.rmMissingShellRetry='true';
+  placeExternalHost(el,errorHost,errorHost.dataset.rmKey||key,'independent');
+  if(!automaticFailureStopFor(observed.slot,observed.sourceHash)){
+   markAutomaticFailureStop(observed.slot,observed.sourceHash,'missing-external-shell',{
+    baseSlot,
+    operationEpoch:operationEpochForBase(baseSlot),
+    message:MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE,
+    code:'missing-external-shell',
+   });
+  }
+  return errorHost;
+ }
+ if(!shouldRestoreMissingIndependentRetryShell({
+  timing:independentGenerationTiming(getSettings()),
+  hasSavedHtml,
+  persistedDeleted:!!persisted?.deleted,
+  hasHost:hasReady || !!(keep && keep.dataset.rmState==='loading' && activeBaseFlight),
+  hasActiveFlight:!!activeBaseFlight,
+  hasFollowMirror:followMirror,
+  isTargetFloor:true,
+  hasMessageBody:true,
+  isActiveGenerationTarget:generationActive && index===tailIndex,
+  quickWaiting:quickWaitingCandidate(ctx,index),
+ })) return null;
+ markAutomaticFailureStop(observed.slot,observed.sourceHash,'missing-external-shell',{
+  baseSlot,
+  operationEpoch:operationEpochForBase(baseSlot),
+  message:MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE,
+  code:'missing-external-shell',
+ });
+ const host=ensureExternalUi(el,key,MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE,'error','independent',observed.sourceHash);
+ if(host){
+  host.hidden=false;
+  host.dataset.rmMissingShellRetry='true';
+  placeExternalHost(el,host,host.dataset.rmKey||key,'independent');
+ }
+ return host;
+}
+
+export function listMissingIndependentRetryFloors(){
+ const ctx=getContext();
+ const st=getSettings();
+ const range=normalizeMissingShellScanRange(st.missingShellScanRange);
+ if(runtimeMode()!=='independent') return {range,floors:[],text:'当前不是独立 API，不会扫描缺壳楼层。'};
+ const store=readStore();
+ const floors=[];
+ for(const {m,i} of assistantRowsInScanRange(assistantMessages(ctx),range)){
+  if(!hasUsableAssistantBody(m) || hasExistingFollowRabbitMirror(ctx,i,m)) continue;
+  const persisted=persistedOwnerForMessage(ctx,i,m);
+  if(persisted?.deleted) continue;
+  const observed=passiveObservedIdentity(ctx,i,m);
+  const saved=persisted?.html?persisted:findSavedRecord(store,observed.slot,observed.legacySlots||[]);
+  if(saved?.html && independentStoredHtmlRestorable(saved.html) && savedRecordMatchesObserved(saved,observed)) continue;
+  const el=messageElement(i);
+  const hosts=el?externalHosts(el).filter(node=>node.dataset.rmSource==='independent'):[];
+  if(hosts.some(host=>readyDetailsFromHost(host))) continue;
+  floors.push({index:i,mounted:!!el,hasErrorHost:hosts.some(host=>host.dataset.rmState==='error')});
+ }
+ return {range,floors,text:formatMissingShellReport({range,floors})};
+}
+
+export function resyncMissingIndependentRetryShells(){
+ const listed=listMissingIndependentRetryFloors();
+ const ids=new Set(listed.floors.map(item=>Number(item.index)).filter(index=>Number.isInteger(index)&&index>=0&&messageElement(index)));
+ if(isRabbitMirrorManagedChatSurface()){
+  for(const context of getRabbitMirrorMountedMessages()){
+   const id=Number(context?.mesid);
+   if(Number.isInteger(id)&&id>=0&&!context.signal.aborted&&context.element?.isConnected) ids.add(id);
+  }
+ }
+ if(ids.size) queueMessageSync([...ids]);
+ if(isRabbitMirrorManagedChatSurface()){
+  for(const context of getRabbitMirrorMountedMessages()){
+   if(context.signal.aborted || !context.element?.isConnected) continue;
+   restoreMissingIndependentRetryOnElement(context.element,context.mesid);
+  }
+ }
+ return listed;
+}
+
 function nodeMessageIndex(node){
  const el=node?.nodeType===1?node:node?.parentElement;
  const mes=el?.closest?.('.mes[mesid], [mesid].mes, [mesid]');
@@ -1624,6 +1740,7 @@ function installManagedIndependentMessages(){
    const ctx=getContext();
    const id=context.mesid;
    const remounted=remountVisibleFloorFromCache(id);
+   restoreMissingIndependentRetryOnElement(context.element,id);
    ensureGenerationPlaceholderForIndex(id,hostGenerationLooksActive());
    if(!wholeMessage){
     if(recoverDeferredAutomaticHostCompletion(ctx,id,'visible-floor-content-commit')) return;
@@ -1642,6 +1759,9 @@ function installManagedIndependentMessages(){
    const hosts=externalHosts(context.element).filter(host=>context.element.contains(host));
    for(const host of hosts){
     // Visible-floor dispose only detaches this projection. Cache/history stay for remount.
+    // Keep the missing-shell retry card on the live `.mes` if the lease ends
+    // while the floor itself is still connected (content rewrite, not unmount).
+    if(host.dataset.rmMissingShellRetry==='true' && context.element.isConnected) continue;
     if(context.element.contains(host)) host.remove();
    }
   };
@@ -1906,7 +2026,7 @@ export async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSe
 }
 
 export function independentRequestConfigSignature(st=getSettings()){
- const base=[st?.generationSource,normalizeIndependentConnectionText(st?.independentConnectionProfileId,160)||normalizeBase(st?.independentApiBaseUrl||''),String(st?.independentApiModel||''),Number(st?.independentApiTemperature)||0,Number(st?.independentApiMaxTokens)||12000].join('|');
+ const base=[st?.generationSource,normalizeIndependentConnectionText(st?.independentConnectionProfileId,160)||normalizeBase(st?.independentApiBaseUrl||''),String(st?.independentApiModel||''),Number(st?.independentApiTemperature)||0,Number(st?.independentApiMaxTokens)||12000,Number(st?.independentMaxRequestChars)||50000].join('|');
  const advanced=st?.independentAdvancedEnabled===true?independentAdvancedOptionsSignature(st):'';
  return advanced?`${base}|advanced:${advanced}`:base;
 }
@@ -1951,7 +2071,7 @@ export function captureMountedIndependentRecords(){
   const details=host.querySelector?.(':scope > details');
   if(!details) continue;
   let html=String(host.__rabbitMirrorIndependentSource||'').trim();
-  if(!html){
+  if(!html || (externalFaceDetails(host).length>1 && !hasMultifaceMarkup(html))){
    const clone=details.cloneNode(true);
    clone.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]')?.remove?.();
    html=externalFaceDetails(host).length>1 ? serializeExternalFaceDetails(host) : clone.outerHTML;
@@ -1969,21 +2089,39 @@ export function captureMountedIndependentRecords(){
   snapshots.push({
    slot:observed.slot,
    matches,
+   index,
    record:{html,sourceHash:mountedSource||observed.sourceHash,bodyHash:observed.bodyHash,displayHash:observed.displayHash,reasoningHash:observed.reasoningHash,ts:Date.now(),model:'',runtime:RUNTIME_VERSION,recoveredFromMountedHost:true},
   });
  }
  return snapshots;
 }
 
+function independentHtmlFaceCount(html=''){
+ if(hasMultifaceMarkup(html)){
+  const parsed=parseMultifaceOutput(html);
+  return parsed.ok?parsed.faces.length:0;
+ }
+ return String(html||'').trim()?1:0;
+}
+
 export function restoreMountedIndependentRecords(snapshots=[]){
  if(!Array.isArray(snapshots)||!snapshots.length) return;
  const store=readStore(); let changed=false;
+ const ctx=getContext();
  for(const snapshot of snapshots){
   const slot=String(snapshot?.slot||''); const record=normalizeHistoryEntry(snapshot?.record);
   if(!slot||!record) continue;
   appendHistoryEntry(slot,record);
   const existing=findSavedRecord(store,slot);
-  if(snapshot.matches && (!existing?.html || !independentStoredHtmlRestorable(existing.html))){ saveRecordForSlot(store,slot,record); changed=true; }
+  const capturedFaces=independentHtmlFaceCount(record.html);
+  const existingFaces=independentHtmlFaceCount(existing?.html);
+  const shouldSave=snapshot.matches && (!existing?.html || !independentStoredHtmlRestorable(existing.html) || capturedFaces>existingFaces);
+  if(!shouldSave) continue;
+  saveRecordForSlot(store,slot,record);
+  const index=Number(snapshot.index);
+  const msg=Number.isInteger(index)&&index>=0?ctx.chat?.[index]:null;
+  if(msg) writePersistedOwner(ctx,index,msg,record,{overwrite:true});
+  changed=true;
  }
  if(changed) writeStore(store);
 }

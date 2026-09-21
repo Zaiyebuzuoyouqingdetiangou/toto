@@ -1,6 +1,6 @@
 // UI palettes from the user-provided Hearttrace source, by Toto.
 // Presentation only: no generation settings, Prompt, content storage, or network.
-import { closeTheaterFavoriteLibrary, closeTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.5.69';
+import { closeTheaterFavoriteLibrary, closeTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.6';
 export const UI_THEMES = Object.freeze([
   {
     "id": "default",
@@ -99,6 +99,30 @@ export function normalizeAppearance(value) {
     };
 }
 
+const tokenNames = { background: 'bg', surface: 'card', text: 'text', muted: 'muted', accent: 'primary', accentAlt: 'secondary', border: 'border' };
+const hostTokens = { background: 'var(--SmartThemeBlurTintColor, #f5f4fb)', surface: 'var(--SmartThemeBlurTintColor, #ffffff)', text: 'var(--SmartThemeBodyColor, #34495d)', muted: 'var(--SmartThemeBodyColor, #586b7c)', accent: 'var(--SmartThemeQuoteColor, #ce729c)', accentAlt: 'var(--SmartThemeQuoteColor, #58a59e)', border: 'var(--SmartThemeBorderColor, #cfdae5)' };
+const smartThemeAliases = [['--SmartThemeBodyColor', 'text'], ['--SmartThemeBlurTintColor', 'card'], ['--SmartThemeBorderColor', 'border'], ['--SmartThemeQuoteColor', 'primary']];
+
+// Panels mounted outside the settings workbench (for example the world-book import
+// wizard on document.body) cannot inherit the workbench's theme tokens. Apply the
+// exact same --rh-* palette and SmartTheme aliasing to one such root element.
+export function applyAppearanceTheme(target, appearance) {
+    if (!target?.style) return;
+    let state = appearance;
+    if (!state) {
+        try { state = normalizeAppearance(JSON.parse(globalThis.localStorage.getItem(APPEARANCE_STORAGE_KEY) || 'null')); }
+        catch { state = normalizeAppearance(null); }
+    }
+    const preset = UI_THEMES.find(theme => theme.id === state.mode);
+    const palette = state.mode === 'custom' ? state.custom : preset?.palette;
+    target.dataset.rhTheme = state.mode;
+    for (const key of paletteKeys) target.style.setProperty('--rh-' + tokenNames[key], palette?.[key] || hostTokens[key]);
+    for (const [alias, key] of smartThemeAliases) {
+        if (state.mode === 'host') target.style.removeProperty(alias);
+        else target.style.setProperty(alias, `var(--rh-${key})`);
+    }
+}
+
 const iconPaths = {
     palette: '<circle cx="12" cy="12" r="8"/><circle cx="9" cy="9" r="1"/><circle cx="15" cy="9" r="1"/><path d="M8 15h8"/>',
     sliders: '<path d="M6 4v16M12 4v16M18 4v16M3 8h6M9 16h6M15 10h6"/>',
@@ -154,7 +178,8 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
         display:['settings','兔子镜显示模式','选择兔子镜的显示模式。'],
         connection:['settings','给兔子镜连接模型','副 API 生成时，兔子镜会使用这里的连接。'],
         manual:['settings','自己填写接口','使用兼容 OpenAI 的接口地址、密钥与模型。'],
-        parameters:['settings','生成参数','调整副 API 生成时的随机程度和输出长度。'],
+        parameters:['settings','生成参数','调整副 API 的温度、整批最大输出和完整请求字符预算。'],
+        reroll:['settings','自动重 roll','空回、报错或缺面时自动再试；跟随正文 API 和副 API 共用。'],
         request:['settings','请求参数','默认关闭。只有你的模型需要这些参数时，才启用并配置。'],
         read:['settings','它可以参考什么','决定兔子镜副 API 生成时，可以读取哪些资料。'],
         chat:['settings','参考聊天正文','读取层数，以及角色卡和你的 Persona 摘要。'],
@@ -177,7 +202,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
         references:['play','参考已有的 HTML','借鉴参考的外观与交互特点，和界面主题是两回事。'],
         visualRules:['play','通用视觉规则','查看或修改每次绘制遵循的规则。'],
         replacement:['play','禁词与文字替换','只处理兔子镜可见文字，保留原聊天正文。'],
-        mirror:['tools','镜面出问题了','先找到需要处理的那一面，再使用对应的工具。'],
+        mirror:['tools','镜面出问题了','先处理缺外壳的楼层，再对已有镜面使用挨打猫或维修兔。'],
         usage:['tools','看看这次抽到了什么','查看抽签、请求记录和 Prompt 估算。估算不是服务商账单。'],
         regex:['tools','避免旧镜面重复发给模型','跟随正文 API 生成时，用这条正则过滤旧的兔子镜内容。'],
         diagnosis:['tools','检查宿主与连接问题','记录情况、查看诊断报告。'],
@@ -221,6 +246,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     const change=button('更改 ›',()=>navigate('mode'),'rh-ui-text-link');change.dataset.rhRoute='mode';modeSummary.append(change);enable.append(modeSummary);
     const connectionNudge=row('settings','connection','还没有配置副 API 模型','选择连接和模型，供兔子镜单独使用。','memory');
     const displayRow=row('settings','display','兔子镜显示模式');
+    row('settings','reroll','自动重 roll','空回、报错或缺面时自动再试。关闭后只在手动重说或重新生成正文时再出兔子镜。');
     row('settings','image','镜面生图','连接柏宝绘、选择提示词格式。','palette');
     move('rh_image_settings','image');
     row('settings','appearance','主题与外观','调整这个面板的颜色。','palette');row('settings','read','它可以参考什么','聊天正文、角色资料、世界书和共同回忆。','memory');
@@ -246,7 +272,9 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     for(const input of followDisplay.querySelectorAll('input'))choice(input,input.value==='inline'?'放在正文下方':'外置展示',input.value==='inline'?'翻到这条回复，就能看到对应的小剧场。':outer);
     for(const input of indDisplay.querySelectorAll('input'))choice(input,input.value==='external'?'外置展示':'跟随正文内嵌',input.value==='external'?outer:inner);
     for(const node of [followDisplay,indDisplay]){node.removeAttribute('style');node.className='rh-ui-display-options';}
-    move('rh_independent_manual_legacy','manual');move(get('rh_independent_temperature').closest('.flex-container'),'parameters');move('rh_independent_request_advanced','request');
+    move('rh_independent_manual_legacy','manual');
+    move('rh_automatic_reroll_block','reroll');
+    move(get('rh_independent_temperature').closest('.rh-independent-generation-params')||get('rh_independent_temperature').closest('.flex-container'),'parameters');move('rh_independent_request_advanced','request');
     get('rh_independent_advanced_open').closest('.rabbit-mirror-independent-advanced-row').hidden=true;
     const apiFields=get('rh_independent_api_fields');
     // The emptied display wrapper is presentation only. Connection/profile hooks retain their original parent card.
@@ -269,6 +297,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     move('rh_advanced_page_replacement','replacement');move('rh_advanced_page_external','library');
     move(get('rh_blacklist_enabled').closest('label').parentElement,'blacklist');move(get('rh_favorite_summary').parentElement,'favorites');
     move(get('rh_theater_favorite_section')?.querySelector('.rabbit-mirror-section-content'),'theaterFavorites');
+    move('rh_missing_shell_panel','mirror');
     move('rh_advanced_page_repair','mirror');
     note('mirror','每面兔子镜的标题旁都有版本箭头、收藏星标和兔子工具。挨打猫用于反馈和重说；维修兔用于检查、修复、复制本面 HTML；星标收藏当前这一版。');
     move('rh_manual_entry_diag','diagnosis');
@@ -283,17 +312,9 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     const appearance=html('div','rh-ui-appearance',`<label for="rh_ui_theme">界面主题</label><select id="rh_ui_theme" class="text_pole"><option value="host">跟随酒馆主题</option>${UI_THEMES.map(t=>`<option value="${t.id}">${t.label}</option>`).join('')}<option value="custom">自定义配色</option></select><p data-rh-theme-label></p><div id="rh_ui_custom" class="rh-ui-custom-grid" hidden>${paletteKeys.map((key,i)=>`<label>${colorLabels[i]}<input type="color" data-rh-color="${key}" aria-label="${colorLabels[i]}"><span data-rh-color-value="${key}"></span></label>`).join('')}</div><div class="rh-ui-save-status" role="status" aria-live="polite"></div>`);body('appearance').append(appearance);
     const themeSelect=get('rh_ui_theme'),status=appearance.querySelector('.rh-ui-save-status');
     const modalIds=['rh_advanced_modal','rh_world_info_prompt_modal','rh_independent_tag_filter_modal'];
-    const tokenNames={background:'bg',surface:'card',text:'text',muted:'muted',accent:'primary',accentAlt:'secondary',border:'border'};
-    const hostTokens={background:'var(--SmartThemeBlurTintColor, #f5f4fb)',surface:'var(--SmartThemeBlurTintColor, #ffffff)',text:'var(--SmartThemeBodyColor, #34495d)',muted:'var(--SmartThemeBodyColor, #586b7c)',accent:'var(--SmartThemeQuoteColor, #ce729c)',accentAlt:'var(--SmartThemeQuoteColor, #58a59e)',border:'var(--SmartThemeBorderColor, #cfdae5)'};
     function applyTheme(save=false){
-        const preset=UI_THEMES.find(t=>t.id===state.mode),palette=state.mode==='custom'?state.custom:preset?.palette;
-        for(const target of [root,...modalIds.map(get).filter(Boolean)]){
-            target.dataset.rhTheme=state.mode;
-            for(const key of paletteKeys)target.style.setProperty('--rh-'+tokenNames[key],palette?.[key]||hostTokens[key]);
-            for(const [alias,key] of [['--SmartThemeBodyColor','text'],['--SmartThemeBlurTintColor','card'],['--SmartThemeBorderColor','border'],['--SmartThemeQuoteColor','primary']]){
-                if(state.mode==='host')target.style.removeProperty(alias);else target.style.setProperty(alias,`var(--rh-${key})`);
-            }
-        }
+        const preset=UI_THEMES.find(t=>t.id===state.mode);
+        for(const target of [root,...modalIds.map(get).filter(Boolean)])applyAppearanceTheme(target,state);
         themeSelect.value=state.mode;get('rh_ui_custom').hidden=state.mode!=='custom';appearance.querySelector('[data-rh-theme-label]').textContent=preset?.label||(state.mode==='host'?'跟随酒馆主题':'自定义配色');
         for(const input of appearance.querySelectorAll('[data-rh-color]')){input.value=state.custom[input.dataset.rhColor];appearance.querySelector(`[data-rh-color-value="${input.dataset.rhColor}"]`).textContent=input.value;}
         if(save){try{globalThis.localStorage.setItem(APPEARANCE_STORAGE_KEY,JSON.stringify(state));status.textContent='外观已保存到此设备。';}catch{status.textContent='当前外观已应用，但此设备未能保存；重新进入后可能恢复原设置。';}}
@@ -318,6 +339,9 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
         modeSummary.querySelector('[data-rh-source-description]').textContent=follow?'使用聊天正在用的模型，不需要另外连接。':timing==='manual'?'先显示待生成外置框，等你点击“生成”才请求模型。':timing==='off'?'当前不生成兔子镜，已保存内容仍保留。':'按原有规则自动请求你配置的模型。';
         body('help').querySelector('[data-rh-timing-guide]').textContent=follow?'保持“随聊天生成小剧场”开启。按选好的生成与显示模式使用兔子镜。':timing==='manual'?'回到聊天，先看到待生成外置框。你判断正文完成后，点击框内“生成”。':timing==='off'?'副 API 当前关闭。需要生成时，先在“怎么生成兔子镜”选择自动生成或手动生成。':'回到聊天，发一条消息。兔子镜按原有自动规则生成。';
         connectionNudge.hidden=follow;nextConnection.hidden=follow;
+        const rerollOn=get('rh_automatic_reroll_enabled').checked===true;
+        const rerollFields=get('rh_automatic_reroll_fields');
+        if(rerollFields) rerollFields.hidden=!rerollOn;
         connectionNudge.querySelector('strong').textContent=get('rh_independent_model').value?'连接与模型':'还没有配置副 API 模型';
         followDisplay.hidden=!follow;indDisplay.hidden=follow;
         const selected=(follow?followDisplay:indDisplay).querySelector('input:checked')?.value;

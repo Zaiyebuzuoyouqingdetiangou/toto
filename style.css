@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=1.5.56');
+@import url('./settings-ui.css?rmv=1.6');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -1357,8 +1357,38 @@ html[data-rabbit-mirror-external-sampling-enabled="false"] [data-rabbit-mirror-r
 }
 /* Compact the last message's large spacer, but reserve the measured part of its
    footer/swipe controls that really extends outside. No theme artwork is copied. */
-#chat > .mes.last_mes:has(+ .rabbit-mirror-external-host[data-rm-source="independent"][data-rm-placement="external"]:not([hidden])) {
-  margin-bottom:var(--rm-external-footer-clearance,0px) !important;
+#chat .mes:has(> [data-rabbit-mirror-external-shell="true"]){
+  flex-wrap:wrap !important;
+}
+#chat .mes > [data-rabbit-mirror-external-shell="true"]{
+  flex:1 1 100% !important;
+  flex-basis:100% !important;
+  order:50;
+  width:100% !important;
+  max-width:100% !important;
+  min-width:0 !important;
+  align-self:stretch;
+  margin-left:0 !important;
+  box-sizing:border-box;
+}
+#chat .mes_block:has(> [data-rabbit-mirror-external-shell="true"]),
+#chat .mes_block:has(> [data-rabbit-mirror-independent-inline-anchor="true"]){
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  min-width:0;
+  width:100%;
+  max-width:100%;
+}
+#chat .mes_block > [data-rabbit-mirror-external-shell="true"],
+#chat .mes_block > [data-rabbit-mirror-independent-inline-anchor="true"] + [data-rabbit-mirror-external-shell="true"]{
+  display:block !important;
+  flex:0 0 auto;
+  width:100% !important;
+  max-width:100% !important;
+  min-width:0;
+  margin-top:8px;
+  box-sizing:border-box;
 }
 .rabbit-mirror-help-update-row { display:flex; flex-wrap:wrap; align-items:flex-start; gap:8px; margin:8px 0; }
 .rabbit-mirror-quick-start { flex:1 1 180px; min-width:0; }
@@ -1439,4 +1469,12 @@ dialog[data-rm-theater-favorite-library] {
   max-height: none;
   margin: 0;
   border: 0;
+}
+
+/* Pager hides extra faces only after one face is marked current.
+   Otherwise every details matches :not(current) and the whole theater vanishes. */
+#chat .rabbit-mirror-external-shell.rabbit-mirror-multiface-host[data-rm-source][data-rm-placement]:has(> details[data-rm-face-current="true"]) > details[data-rabbit-mirror-external-details="true"]:not([data-rm-face-current="true"]),
+#chat .rabbit-mirror-multiface-host:has(> details[data-rm-face-current="true"]) > details:not([data-rm-face-current="true"]){
+  display:none !important;
+  margin-top:0 !important;
 }

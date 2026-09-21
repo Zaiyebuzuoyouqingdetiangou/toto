@@ -1,7 +1,7 @@
 import { presentationModeFields } from './presentationMode.js?rmv=1.5.53-visualquick1';
 import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.5.53-visualquick1';
 import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { getSettings } from './settings.js?rmv=1.5.60-fork1';
+import { getSettings } from './settings.js?rmv=1.6';
 import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.5.53-cn-boundary1';
 import {
     commitRabbitMirrorFollowBatch,
@@ -26,6 +26,7 @@ import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rm
 
 export const FOLLOW_MULTIFACE_COMMITTED_EVENT = 'rabbit-mirror:follow-multiface-committed';
 export const FOLLOW_MULTIFACE_REJECTED_EVENT = 'rabbit-mirror:follow-multiface-rejected';
+export const FOLLOW_GENERATION_SETTLED_EVENT = 'rabbit-mirror:follow-generation-settled';
 
 const TOTO_RE = new RegExp('<toto\\b[^>]*(?:data-rabbit-mirror|data-rabbit-' + 'h' + 'ole)=[\"\']true[\"\'][^>]*>[\\s\\S]*?<\\/toto>', 'i');
 let lastScannedHash = '';
@@ -1286,7 +1287,7 @@ function templateSingleFollowRoot(template) {
 
 function loadFollowBatchSanitizer() {
     if (!followBatchSanitizerModulePromise) {
-        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.5.69').catch(error => {
+        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.6').catch(error => {
             followBatchSanitizerModulePromise = null;
             console.debug('[RabbitMirror] follow multiface sanitizer unavailable:', error);
             return null;
@@ -1727,6 +1728,11 @@ export async function initVisualScanner() {
             if (Number.isInteger(messageIndex) && eventName === eventTypes.GENERATION_STOPPED) {
                 releaseRabbitMirrorFollowBatchAtMessage(eventChat, messageIndex);
                 terminalFollowMessageIndexes.delete(ownerKey);
+                try {
+                    globalThis.dispatchEvent?.(new CustomEvent(FOLLOW_GENERATION_SETTLED_EVENT, {
+                        detail: { messageIndex, cancelled: true },
+                    }));
+                } catch {}
             } else if (Number.isInteger(messageIndex) && eventName === eventTypes.GENERATION_ENDED) {
                 if (terminalFollowMessageIndexes.size >= 8) terminalFollowMessageIndexes.delete(terminalFollowMessageIndexes.values().next().value);
                 terminalFollowMessageIndexes.add(ownerKey);
@@ -1739,7 +1745,17 @@ export async function initVisualScanner() {
             captureNow();
             scheduleCapture(120);
             scheduleTimer(() => scanLatestAssistantMessage(mod), 650);
-            scheduleTimer(() => scanLatestAssistantMessage(mod), 1750);
+            scheduleTimer(() => {
+                void scanLatestAssistantMessage(mod).then(() => {
+                    if (!Number.isInteger(messageIndex)) return;
+                    if (eventName === eventTypes.GENERATION_STOPPED) return;
+                    try {
+                        globalThis.dispatchEvent?.(new CustomEvent(FOLLOW_GENERATION_SETTLED_EVENT, {
+                            detail: { messageIndex, cancelled: false },
+                        }));
+                    } catch {}
+                });
+            }, 1750);
         };
         const subscribe = (eventName, handler) => {
             if (!eventName) return;

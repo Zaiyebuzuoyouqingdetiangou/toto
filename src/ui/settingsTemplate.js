@@ -1,8 +1,8 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.5.60-fork1';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.6';
 import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.5.53-cn-boundary1';
-import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.5.69';
+import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.6';
 
 export function buildRabbitMirrorSettingsDialogHtml() {
     return `
@@ -106,7 +106,6 @@ export function buildRabbitMirrorSettingsDialogHtml() {
               <label><input name="rh_independent_display" type="radio" value="external_then_inline"> ② 外置后内嵌</label>
             </div>
               <div style="opacity:.66;font-size:11px;line-height:1.45;margin-top:6px;">只决定副 API 成品显示在哪里，不改变提示词、美化规则或模型。</div>
-              <div style="opacity:.72;font-size:11px;line-height:1.5;margin-top:8px;">副 API 本轮若没有可用鲜兔镜，会按「自动重 roll 次数」自动再发（默认 2 次，合计请求 = 1 + 该次数）。0 表示失败后不再自动重发。已出的 ready 镜面不会被失败卡盖掉。</div>
             </div>
             <div style="padding:9px 10px;border:1px solid color-mix(in srgb, currentColor 16%, transparent);border-radius:9px;">
               <div style="font-weight:700;font-size:12px;margin-bottom:7px;">连接与模型</div>
@@ -136,10 +135,21 @@ export function buildRabbitMirrorSettingsDialogHtml() {
                 </div>
               </div>
             </details>
+            <div style="padding:9px 10px;border:1px solid color-mix(in srgb,currentColor 14%,transparent);border-radius:9px;margin-bottom:8px;" id="rh_automatic_reroll_block">
+              <label class="checkbox_label"><input id="rh_automatic_reroll_enabled" type="checkbox"> 自动重 roll</label>
+              <div id="rh_automatic_reroll_fields" class="flex-container" style="gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px;">
+                <label>自动重 roll 次数 <input id="rh_independent_automatic_reroll" class="text_pole" type="number" min="0" step="1" style="width:72px;"></label>
+                <label>无进度中止秒数 <input id="rh_independent_automatic_reroll_idle" class="text_pole" type="number" min="1" step="1" style="width:72px;"></label>
+              </div>
+              <p style="opacity:.72;font-size:11px;line-height:1.5;margin:8px 0 0;">跟随正文 API 和副 API 共用。打开后，空回、报错、掉格式、净化失败或缺面会按次数再试，多面只补缺的面。无进度中止只作用于补发请求，不会中止正在写的正文。401 / 429 会重试；额度不足、发送前拦截、点停止、切聊天、正文被换掉不会。关闭后，除了手动重新生成正文或手动重说，都不会自动再生成兔子镜。</p>
+            </div>
+            <div class="rh-independent-generation-params">
             <div class="flex-container" style="gap:8px;flex-wrap:wrap;align-items:center;padding:9px 10px;border:1px solid color-mix(in srgb,currentColor 14%,transparent);border-radius:9px;">
               <label>温度 <input id="rh_independent_temperature" class="text_pole" type="number" min="0" max="2" step="0.1" style="width:82px;"></label>
               <label>整批最大输出 <input id="rh_independent_max_tokens" class="text_pole" type="number" min="512" max="32000" step="256" style="width:110px;"></label>
-              <label>自动重 roll 次数 <input id="rh_independent_automatic_reroll" class="text_pole" type="number" min="0" max="10" step="1" style="width:72px;"></label>
+              <label>完整请求字符预算 <input id="rh_independent_max_request_chars" class="text_pole" type="number" min="8000" step="1000" style="width:120px;"></label>
+            </div>
+            <p class="rh-independent-generation-params-note" style="opacity:.72;font-size:11px;line-height:1.5;margin:6px 0 0;">规则、执行锁与上下文合计的本地预检上限，默认 50000，可按模型上下文自行调大。超限不会发送网络请求。</p>
             </div>
             <div class="rabbit-mirror-independent-advanced-row">
               <details id="rh_independent_request_advanced" class="rabbit-mirror-request-options">
@@ -195,6 +205,18 @@ export function buildRabbitMirrorSettingsDialogHtml() {
           </div>
         </div>
       </details>
+
+      <div id="rh_missing_shell_panel">
+        <label for="rh_missing_shell_range"><strong>缺壳扫描范围</strong></label>
+        <select id="rh_missing_shell_range" class="text_pole">
+          <option value="10">最近 10 楼</option>
+          <option value="20">最近 20 楼</option>
+          <option value="all">全部助手回复</option>
+        </select>
+        <p class="rabbit-mirror-subnote">网络中断或闪退后，范围内缺外壳的助手回复下面会挂失败卡，不会自动再发请求。正在看的楼层即使不在范围内也会补卡。</p>
+        <div id="rh_missing_shell_report" role="status">打开设置后检查当前聊天。</div>
+        <button id="rh_missing_shell_rescan" class="menu_button" type="button">重新检查缺壳楼层</button>
+      </div>
 
       <details class="rabbit-mirror-section rabbit-mirror-tools">
         <summary><span>工具与维护</span><span class="rabbit-mirror-section-note">正则 · 诊断 · 重置</span></summary>

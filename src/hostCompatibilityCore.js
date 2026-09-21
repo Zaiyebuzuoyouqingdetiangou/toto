@@ -427,9 +427,15 @@ export function createRabbitMirrorHostCompatibility(hostGlobal = globalThis, dia
         },
         externalPlacementParent(message) {
             initialize();
-            // Managed ChatSurface forbids #chat siblings. 纯外置 still belongs to
-            // this floor: append on .mes, outside .mes_text.
-            return managed ? message : null;
+            // Managed ChatSurface forbids #chat siblings. `.mes` is a horizontal
+            // flex row (avatar + block), so a host appended there shrinks into the
+            // leftover slot on the right. Put 纯外置 after `.mes_text` in `.mes_block`.
+            if (!managed || !message) return null;
+            const body = message.querySelector?.('.mes_text');
+            if (body?.parentElement && message.contains(body.parentElement)) return body.parentElement;
+            const block = message.querySelector?.('.mes_block');
+            if (block && message.contains(block)) return block;
+            return message;
         },
         applySurface(element, surface) {
             if (!SURFACES.has(surface)) throw new TypeError('Unsupported RabbitMirror host surface');
