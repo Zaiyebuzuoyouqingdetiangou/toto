@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { captureTheaterFavoriteFromRoot, groupTheaterFavoritesByCharacter, UNCATEGORIZED_CHARACTER_NAME } from '../src/theaterFavorites.js';
+import { captureTheaterFavoriteFromRoot, groupTheaterFavoritesByCharacter, theaterFavoriteToggleId, UNCATEGORIZED_CHARACTER_NAME } from '../src/theaterFavorites.js';
 import { collectRevealedClipHosts, shouldRelaxRevealedClipPanel } from '../src/revealedClipRepair.js';
 
 test('favorite capture keeps the live face markup and skips placeholders', () => {
@@ -85,6 +85,14 @@ test('favorite capture from a placeholder walks to the ready face on the same fl
     assert.equal(captured.title, '星空剧场');
     assert.match(captured.html, /可交互/);
     assert.equal(captured.mesid, 4);
+});
+
+test('favorite toggle id ignores open state and title chrome wrappers', () => {
+    if (!globalThis.document?.createElement) return;
+    const plain = theaterFavoriteToggleId('<details><summary>星空剧场</summary><p>可交互</p></details>');
+    const chrome = theaterFavoriteToggleId('<details open data-rm-title-chrome="true"><summary><span data-rm-title-label="true">星空剧场</span></summary><p>可交互</p></details>');
+    assert.equal(plain, chrome);
+    assert.match(plain, /^toggle_/);
 });
 
 test('favorites group by character and keep uncategorized last', () => {

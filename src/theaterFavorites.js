@@ -189,7 +189,7 @@ export function theaterFavoriteTitleFromDetails(details) {
     if (!summary) return '';
     const clone = typeof summary.cloneNode === 'function' ? summary.cloneNode(true) : null;
     if (clone?.querySelectorAll) {
-        clone.querySelectorAll(FAVORITE_RUNTIME_UI_SELECTOR).forEach(node => node.remove());
+        stripTheaterFavoriteRuntimeUi(clone);
         return sanitizeTheaterFavoriteTitle(clone.textContent);
     }
     return sanitizeTheaterFavoriteTitle(summary.textContent);
@@ -206,9 +206,27 @@ export function theaterFavoriteDisplayTitle(record) {
     return sanitizeTheaterFavoriteTitle(record?.title) || '未命名兔子镜';
 }
 
+function unwrapTheaterFavoriteTitleChrome(scope) {
+    if (!scope?.querySelectorAll) return;
+    scope.querySelectorAll('[data-rm-title-label]').forEach(label => {
+        label.replaceWith(...[...label.childNodes]);
+    });
+    scope.querySelectorAll('[data-rabbit-mirror-title-part]').forEach(part => {
+        const source = part.querySelector('[data-rabbit-mirror-title-source]');
+        const text = source?.textContent
+            || part.getAttribute('data-rabbit-mirror-title-display')
+            || part.textContent
+            || '';
+        part.replaceWith(part.ownerDocument.createTextNode(text));
+    });
+    scope.querySelectorAll('[data-rm-title-chrome]').forEach(node => node.removeAttribute('data-rm-title-chrome'));
+    scope.querySelectorAll('details[open]').forEach(node => node.removeAttribute('open'));
+}
+
 export function stripTheaterFavoriteRuntimeUi(scope) {
     if (!scope?.querySelectorAll) return;
     scope.querySelectorAll(FAVORITE_RUNTIME_UI_SELECTOR).forEach(node => node.remove());
+    unwrapTheaterFavoriteTitleChrome(scope);
 }
 
 async function copyTextToClipboard(text) {
@@ -247,7 +265,7 @@ export function scrubTheaterFavoriteHtml(html) {
     if (!source || typeof document === 'undefined') return source;
     const template = document.createElement('template');
     template.innerHTML = source;
-    template.content.querySelectorAll?.(FAVORITE_RUNTIME_UI_SELECTOR)?.forEach(node => node.remove());
+    stripTheaterFavoriteRuntimeUi(template.content);
     const root = [...template.content.children].find(node => node.nodeType === 1);
     return String(root?.outerHTML || source).trim();
 }

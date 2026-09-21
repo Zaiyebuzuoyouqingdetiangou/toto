@@ -520,7 +520,9 @@ toto[data-rabbit-mirror="true"] summary {
   -webkit-tap-highlight-color: transparent !important;
 }
 .rabbit-mirror-face-favorite-star.is-favorited { color: #e8b84a !important; }
-.rabbit-mirror-face-favorite-star:hover { background: color-mix(in srgb, currentColor 10%, transparent) !important; }
+@media (hover: hover) and (pointer: fine) {
+  .rabbit-mirror-face-favorite-star:hover { background: color-mix(in srgb, currentColor 10%, transparent) !important; }
+}
 .rabbit-mirror-ephemeral-failure {
   margin: 10px 12px 14px !important;
   padding: 12px !important;

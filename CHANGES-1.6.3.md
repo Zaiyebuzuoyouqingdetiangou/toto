@@ -18,14 +18,9 @@
   - 输入栏垫片不再缓存 `managed`；TT 上只挂在当前最后一条 `.mes` 里，找不到楼层就不挂。
 - 回归测试：tests/hostCompatEarlyWatch.test.mjs（ABI 晚到、late-projection、dispose、api 不完整不锁存、TT 未 latch 仍进 `.mes_block`）。
 
-### 2. 收藏星标点了提示「当前没有可收藏的兔子镜」
-- 根因：独立 API 的占位 `details.rabbit-mirror-external-placeholder` 标题也带「兔子镜」，
-  会被当成交互根并装上星标。点击时 `captureTheaterFavoriteFromRoot` 直接拒绝占位卡。
-  切脸/转工具后星标还可能带着旧 `root` 闭包，同样采空。
-- 修复（src/theaterFavorites.js、src/outputSanitizer/toolsChrome.js）：
-  - 捕获时若当前是占位卡，改去同楼层外置壳里找真正的成品 `details`。
-  - 占位卡不再装星标。
-  - 星标与删除键一样 `rmFavoriteWired` 只绑一次，点击时从按钮所在 live details 再解析。
+### 2. 收藏星标
+- 点占位卡提示「当前没有可收藏的兔子镜」：捕获时改去同楼层成品 `details`；占位卡不再装星标。
+- 第一次没反应、点亮后一直闪：点一下立刻亮/灭；重装工具不再先画空心；手机用 pointerup，随后的 click 不再连着取消。收藏比对去掉 `open` 和标题壳。
 
 ### 3. 标题行（手机优先）
 - 窄屏不再把工具栏拉满整行（去掉 720px `width:100%`），翻页 / 星标 / 兔子 / × 收成一组，互不拉开。
@@ -54,11 +49,12 @@
 - independentBehaviorPatch.js → ?rmv=1.6.3-rule1（src/behaviorRules.js）
 - hostCompatibilityCore.js → ?rmv=1.6.3-ttchild1（src/hostCompatibility.js）
 - composerClearance.js / geometry.js → ?rmv=1.6.3-ttchild1
-- theaterFavorites.js → ?rmv=1.6.3-fav1
-- toolsChrome.js → ?rmv=1.6.3-title1（outputSanitizer.js / diagnostics.js / lifecycle.js / maintenanceInspect.js）
+- theaterFavorites.js → ?rmv=1.6.3-fav2
+- toolsChrome.js → ?rmv=1.6.3-fav2（outputSanitizer.js / diagnostics.js / lifecycle.js / maintenanceInspect.js）
 - runtime.js → ?rmv=1.6.3-title1（toolsChrome.js）
 - mirrorToolMenu.js → ?rmv=1.6.3-title1
-- style.css → ?rmv=1.6.3-title1
+- style.css → ?rmv=1.6.3-fav2
 
 ## 测试
 - 标题行布局：tests/titleChromeLayout.test.mjs；multifaceOpenCarry 的删除键断言已改为「控件组末尾」。
+- 收藏星身份稳定：tests/theaterFavorites.test.mjs（open / 标题壳不改变 toggle id）。

@@ -11,7 +11,7 @@ import {
     openTheaterFavoriteLibrary,
     toggleTheaterFavorite,
     isTheaterFavoriteHtml,
-} from '../theaterFavorites.js?rmv=1.6.3-fav1';
+} from '../theaterFavorites.js?rmv=1.6.3-fav2';
 import { FACE_SWIPE_FULL_MESSAGE, faceSwipeBarIntent, fallbackFaceSwipeView } from '../swipeVersions.js?rmv=1.6';
 import {
     FEEDBACK_CAT_TYPES,
@@ -1794,13 +1794,20 @@ function stopTitleToggle(event) {
     event.stopImmediatePropagation?.();
 }
 
+function favoriteStarIsOn(button) {
+    return button?.classList?.contains('is-favorited') || button?.getAttribute('aria-pressed') === 'true';
+}
+
 function paintFavoriteStar(button, on) {
     if (!button) return;
-    button.classList.toggle('is-favorited', !!on);
-    button.setAttribute('aria-pressed', on ? 'true' : 'false');
-    button.title = on ? '取消收藏本面' : '收藏本面';
+    const next = !!on;
+    if (button.dataset.rmFavoritePainted === String(next) && favoriteStarIsOn(button) === next && button.querySelector('svg')) return;
+    button.dataset.rmFavoritePainted = String(next);
+    button.classList.toggle('is-favorited', next);
+    button.setAttribute('aria-pressed', next ? 'true' : 'false');
+    button.title = next ? '取消收藏本面' : '收藏本面';
     button.setAttribute('aria-label', button.title);
-    button.innerHTML = on
+    button.innerHTML = next
         ? '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 3.6 14.5 9l6 .5-4.6 4 1.4 5.9L12 16.8 6.7 19.4 8.1 13.5 3.5 9.5 9.5 9z"/></svg>'
         : '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.7" d="M12 4.2 14.2 9l5.3.4-4.1 3.5 1.3 5.2L12 15.7 7.3 18.1 8.6 12.9 4.5 9.4 9.8 9z"/></svg>';
 }
@@ -1809,6 +1816,33 @@ function favoriteCaptureRootFromStar(star, fallbackRoot) {
     return rabbitMirrorToolRootFromButton(star)
         || star?.closest?.('details')
         || fallbackRoot;
+}
+
+function runFavoriteStarToggle(star, fallbackRoot, event) {
+    stopTitleToggle(event);
+    if (star.dataset.rmFavoriteBusy === 'true') return;
+    const captured = captureTheaterFavoriteFromRoot(favoriteCaptureRootFromStar(star, fallbackRoot));
+    if (!captured) {
+        globalThis.toastr?.warning?.('当前没有可收藏的兔子镜。');
+        return;
+    }
+    const next = !favoriteStarIsOn(star);
+    const seq = String((Number(star.dataset.rmFavoriteSeq) || 0) + 1);
+    star.dataset.rmFavoriteSeq = seq;
+    star.dataset.rmFavoriteBusy = 'true';
+    star.dataset.rmFavoriteHydrate = String((Number(star.dataset.rmFavoriteHydrate) || 0) + 1);
+    paintFavoriteStar(star, next);
+    void toggleTheaterFavorite(captured).then(result => {
+        if (star.dataset.rmFavoriteSeq !== seq) return;
+        paintFavoriteStar(star, result.favorited);
+        globalThis.toastr?.success?.(result.favorited ? '已收入兔子镜收藏夹。' : '已取消收藏。');
+    }).catch(error => {
+        if (star.dataset.rmFavoriteSeq !== seq) return;
+        paintFavoriteStar(star, !next);
+        globalThis.toastr?.warning?.(String(error?.message || '收藏失败。'));
+    }).finally(() => {
+        if (star.dataset.rmFavoriteSeq === seq) delete star.dataset.rmFavoriteBusy;
+    });
 }
 
 function installFavoriteStar(root, host, before) {
@@ -1821,26 +1855,41 @@ function installFavoriteStar(root, host, before) {
     }
     // Persisted / transferred stars have no listener. Re-resolve the live details
     // at click time so a placeholder or swapped face cannot freeze an empty capture.
+    // pointerup handles the first phone tap (iOS hover does not fire click);
+    // the following click is swallowed so one tap cannot toggle twice.
     if (!star.dataset.rmFavoriteWired) {
         star.dataset.rmFavoriteWired = 'true';
+        star.addEventListener('pointerup', event => {
+            if (event.button !== 0) return;
+            star.dataset.rmFavoritePointer = '1';
+            runFavoriteStarToggle(star, root, event);
+            clearTimeout(star._rmFavoriteClickTimer);
+            star._rmFavoriteClickTimer = setTimeout(() => delete star.dataset.rmFavoritePointer, 500);
+        }, true);
         star.addEventListener('click', event => {
             stopTitleToggle(event);
-            const captured = captureTheaterFavoriteFromRoot(favoriteCaptureRootFromStar(star, root));
-            if (!captured) {
-                globalThis.toastr?.warning?.('当前没有可收藏的兔子镜。');
+            if (star.dataset.rmFavoritePointer) {
+                delete star.dataset.rmFavoritePointer;
                 return;
             }
-            void toggleTheaterFavorite(captured).then(result => {
-                paintFavoriteStar(star, result.favorited);
-                globalThis.toastr?.success?.(result.favorited ? '已收入兔子镜收藏夹。' : '已取消收藏。');
-            }).catch(error => globalThis.toastr?.warning?.(String(error?.message || '收藏失败。')));
+            runFavoriteStarToggle(star, root, event);
+        }, true);
+        star.addEventListener('pointercancel', () => {
+            delete star.dataset.rmFavoritePointer;
         }, true);
     }
     if (before?.parentElement === host) host.insertBefore(star, before);
     else host.append(star);
+    if (star.dataset.rmFavoriteBusy === 'true') return star;
+    if (!star.querySelector('svg')) paintFavoriteStar(star, false);
     const captured = captureTheaterFavoriteFromRoot(favoriteCaptureRootFromStar(star, root));
-    paintFavoriteStar(star, false);
-    if (captured?.html) void isTheaterFavoriteHtml(captured.html).then(on => { if (star.isConnected) paintFavoriteStar(star, on); }).catch(() => {});
+    if (!captured?.html) return star;
+    const hydrate = String((Number(star.dataset.rmFavoriteHydrate) || 0) + 1);
+    star.dataset.rmFavoriteHydrate = hydrate;
+    void isTheaterFavoriteHtml(captured.html).then(on => {
+        if (!star.isConnected || star.dataset.rmFavoriteBusy === 'true' || star.dataset.rmFavoriteHydrate !== hydrate) return;
+        paintFavoriteStar(star, on);
+    }).catch(() => {});
     return star;
 }
 
