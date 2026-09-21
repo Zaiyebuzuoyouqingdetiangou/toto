@@ -67,7 +67,7 @@ export function installMirrorToolMenu(root, host, actions, beforeOpen) {
         button.setAttribute('aria-expanded', 'false');
         button.title = '兔子镜工具';
         button.innerHTML = logo;
-        button.style.cssText = 'all:initial!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;width:40px!important;height:40px!important;box-sizing:border-box!important;border:1px solid currentColor!important;border-radius:12px!important;background:transparent!important;color:inherit!important;cursor:pointer!important;flex:0 0 auto!important;pointer-events:auto!important;';
+        button.style.cssText = 'all:initial!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;width:36px!important;height:36px!important;box-sizing:border-box!important;border:1px solid currentColor!important;border-radius:10px!important;background:transparent!important;color:inherit!important;cursor:pointer!important;flex:0 0 auto!important;pointer-events:auto!important;touch-action:manipulation!important;-webkit-tap-highlight-color:transparent!important;';
         host.append(button);
         state = { root, actions, button, beforeOpen };
         bindings.set(host, state);

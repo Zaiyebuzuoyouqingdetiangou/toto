@@ -21,6 +21,10 @@ export const MIRROR_TITLE_DISPLAY_ATTR = 'data-rabbit-mirror-title-display';
 
 export const MIRROR_TITLE_SOURCE_ATTR = 'data-rabbit-mirror-title-source';
 
+export const TITLE_CHROME_ATTR = 'data-rm-title-chrome';
+
+export const MIRROR_TITLE_LABEL_ATTR = 'data-rm-title-label';
+
 
 export const MIRROR_TOTO_SELECTOR = 'toto[data-rabbit-mirror="true"], toto[data-rabbit-hole="true"]';
 
@@ -65,13 +69,63 @@ summary span[${MIRROR_TITLE_PART_ATTR}]::after {
 summary span[${MIRROR_TITLE_PART_ATTR}] > span[${MIRROR_TITLE_SOURCE_ATTR}][${MIRROR_TITLE_SOURCE_ATTR}] {
     display: none !important;
 }
+#chat summary[${TITLE_CHROME_ATTR}][${TITLE_CHROME_ATTR}],
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"] > summary[${TITLE_CHROME_ATTR}][${TITLE_CHROME_ATTR}] {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 6px 8px !important;
+    white-space: normal !important;
+    overflow: visible !important;
+}
+#chat summary[${TITLE_CHROME_ATTR}][${TITLE_CHROME_ATTR}]::-webkit-details-marker {
+    display: none !important;
+}
+#chat summary[${TITLE_CHROME_ATTR}][${TITLE_CHROME_ATTR}]::marker {
+    content: none !important;
+    font-size: 0 !important;
+}
+#chat summary[${TITLE_CHROME_ATTR}][${TITLE_CHROME_ATTR}]::before {
+    content: '' !important;
+    flex: 0 0 auto !important;
+    width: 0 !important;
+    height: 0 !important;
+    margin: 0.35em 2px 0 0 !important;
+    border-style: solid !important;
+    border-width: 0.32em 0 0.32em 0.46em !important;
+    border-color: transparent transparent transparent currentColor !important;
+    opacity: .62 !important;
+    transform: none !important;
+    pointer-events: none !important;
+}
+#chat details[open] > summary[${TITLE_CHROME_ATTR}][${TITLE_CHROME_ATTR}]::before {
+    transform: rotate(90deg) !important;
+    margin-top: 0.42em !important;
+}
+#chat span[${MIRROR_TITLE_LABEL_ATTR}][${MIRROR_TITLE_LABEL_ATTR}] {
+    flex: 0 1 auto !important;
+    min-width: min(8em, 100%) !important;
+    display: -webkit-box !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 2 !important;
+    line-clamp: 2 !important;
+    overflow: hidden !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+    white-space: normal !important;
+    line-height: 1.35 !important;
+    text-align: start !important;
+    color: inherit !important;
+    font: inherit !important;
+}
 [${TOOL_ENTRY_HOST_ATTR}][${TOOL_ENTRY_HOST_ATTR}] {
     all: initial !important;
     display: inline-flex !important;
     align-items: center !important;
-    justify-content: flex-end !important;
+    justify-content: flex-start !important;
     gap: 2px !important;
-    float: inline-end !important;
+    float: none !important;
     flex: 0 0 auto !important;
     position: relative !important;
     z-index: 2147483000 !important;
@@ -81,8 +135,8 @@ summary span[${MIRROR_TITLE_PART_ATTR}] > span[${MIRROR_TITLE_SOURCE_ATTR}][${MI
     min-height: 0 !important;
     max-width: none !important;
     max-height: none !important;
-    margin: 0 0 0 6px !important;
-    margin-inline-start: auto !important;
+    margin: 0 !important;
+    margin-inline-start: 0 !important;
     padding: 0 !important;
     overflow: visible !important;
     visibility: visible !important;
@@ -98,17 +152,6 @@ summary span[${MIRROR_TITLE_PART_ATTR}] > span[${MIRROR_TITLE_SOURCE_ATTR}][${MI
     font: inherit !important;
     line-height: 1 !important;
     isolation: isolate !important;
-}
-@media (max-width: 720px) {
-[${TOOL_ENTRY_HOST_ATTR}][${TOOL_ENTRY_HOST_ATTR}] {
-    float: none !important;
-    display: flex !important;
-    width: 100% !important;
-    min-width: 100% !important;
-    flex: 1 1 auto !important;
-    margin: 2px 0 0 !important;
-    margin-inline-start: 0 !important;
-}
 }
 [${TOOL_ENTRY_HOST_ATTR}] > button[${MAINTENANCE_RABBIT_ATTR}],
 [${TOOL_ENTRY_HOST_ATTR}] > button[${FEEDBACK_CAT_ATTR}],

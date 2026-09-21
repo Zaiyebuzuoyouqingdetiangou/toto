@@ -379,9 +379,9 @@ toto[data-rabbit-mirror="true"] summary {
   all: initial !important;
   display: inline-flex !important;
   align-items: center !important;
-  justify-content: flex-end !important;
+  justify-content: flex-start !important;
   gap: 2px !important;
-  float: inline-end !important;
+  float: none !important;
   flex: 0 0 auto !important;
   position: relative !important;
   z-index: 2147483000 !important;
@@ -391,8 +391,7 @@ toto[data-rabbit-mirror="true"] summary {
   min-height: 0 !important;
   max-width: none !important;
   max-height: none !important;
-  margin: 0 0 0 6px !important;
-  margin-inline-start: auto !important;
+  margin: 0 !important;
   padding: 0 !important;
   overflow: visible !important;
   visibility: visible !important;
@@ -428,9 +427,11 @@ toto[data-rabbit-mirror="true"] summary {
   display: inline-flex !important;
   align-items: center !important;
   flex: 0 0 auto !important;
-  gap: 2px !important;
-  margin: 0 4px 0 0 !important;
-  padding: 0 2px !important;
+  gap: 0 !important;
+  margin: 0 2px 0 0 !important;
+  padding: 1px !important;
+  border-radius: 11px !important;
+  background: color-mix(in srgb, currentColor 8%, transparent) !important;
   color: inherit !important;
   font: 13px/1 sans-serif !important;
   pointer-events: auto !important;
@@ -442,18 +443,17 @@ toto[data-rabbit-mirror="true"] summary {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  min-width: 36px !important;
-  min-height: 34px !important;
-  padding: 0 6px !important;
+  min-width: 32px !important;
+  min-height: 36px !important;
+  padding: 0 4px !important;
   border-radius: 10px !important;
   cursor: pointer !important;
   color: inherit !important;
   font: inherit !important;
-  font-size: 18px !important;
+  font-size: 17px !important;
   font-weight: 700 !important;
   line-height: 1 !important;
   opacity: .88 !important;
-  /* 1.6.1: keep rapid pager taps from being eaten by iOS double-tap zoom detection */
   touch-action: manipulation !important;
   -webkit-tap-highlight-color: transparent !important;
   user-select: none !important;
@@ -464,30 +464,32 @@ toto[data-rabbit-mirror="true"] summary {
   cursor: default !important;
 }
 .rabbit-mirror-face-swipe-bar [data-rm-face-swipe-label] {
-  min-width: 2.4em !important;
-  font-size: 13px !important;
+  min-width: 2em !important;
+  padding: 0 2px !important;
+  font-size: 12px !important;
   text-align: center !important;
   font-variant-numeric: tabular-nums !important;
   pointer-events: none !important;
 }
-/* 1.6.1: version delete lives at the title row's far right corner, away from the pager */
+/* 1.6.3: × stays last in the compact cluster, same tap family as star/rabbit */
 .rabbit-mirror-face-swipe-delete {
   all: unset !important;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  float: inline-end !important;
-  width: 30px !important;
-  min-width: 30px !important;
-  height: 30px !important;
-  min-height: 30px !important;
-  margin: 0 0 2px 8px !important;
+  float: none !important;
+  flex: 0 0 auto !important;
+  width: 36px !important;
+  min-width: 36px !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  margin: 0 !important;
   padding: 0 !important;
-  border-radius: 50% !important;
+  border-radius: 10px !important;
   cursor: pointer !important;
   color: inherit !important;
   font: 17px/1 sans-serif !important;
-  opacity: .5 !important;
+  opacity: .48 !important;
   position: relative !important;
   z-index: 2147483002 !important;
   pointer-events: auto !important;
@@ -505,14 +507,17 @@ toto[data-rabbit-mirror="true"] summary {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
+  flex: 0 0 auto !important;
   width: 36px !important;
   height: 36px !important;
-  margin: 0 2px 0 0 !important;
+  margin: 0 !important;
   border-radius: 10px !important;
   background: transparent !important;
   color: inherit !important;
   cursor: pointer !important;
   pointer-events: auto !important;
+  touch-action: manipulation !important;
+  -webkit-tap-highlight-color: transparent !important;
 }
 .rabbit-mirror-face-favorite-star.is-favorited { color: #e8b84a !important; }
 .rabbit-mirror-face-favorite-star:hover { background: color-mix(in srgb, currentColor 10%, transparent) !important; }
@@ -535,17 +540,54 @@ toto[data-rabbit-mirror="true"] summary {
   border-radius: 10px !important;
   cursor: pointer !important;
 }
-@media (max-width: 720px) {
-  [data-rabbit-mirror-tool-entry-host] {
-    float: none !important;
-    display: flex !important;
-    width: 100% !important;
-    min-width: 100% !important;
-    flex: 1 1 auto !important;
-    margin: 2px 0 0 !important;
-    margin-inline-start: 0 !important;
-    justify-content: flex-end !important;
-  }
+
+#chat summary[data-rm-title-chrome="true"],
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"] > summary[data-rm-title-chrome="true"] {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 6px 8px !important;
+  white-space: normal !important;
+  overflow: visible !important;
+}
+#chat summary[data-rm-title-chrome="true"]::-webkit-details-marker {
+  display: none !important;
+}
+#chat summary[data-rm-title-chrome="true"]::marker {
+  content: none !important;
+  font-size: 0 !important;
+}
+#chat summary[data-rm-title-chrome="true"]::before {
+  content: '' !important;
+  flex: 0 0 auto !important;
+  width: 0 !important;
+  height: 0 !important;
+  margin: 0.35em 2px 0 0 !important;
+  border-style: solid !important;
+  border-width: 0.32em 0 0.32em 0.46em !important;
+  border-color: transparent transparent transparent currentColor !important;
+  opacity: .62 !important;
+  transform: none !important;
+  pointer-events: none !important;
+}
+#chat details[open] > summary[data-rm-title-chrome="true"]::before {
+  transform: rotate(90deg) !important;
+  margin-top: 0.42em !important;
+}
+#chat span[data-rm-title-label] {
+  flex: 0 1 auto !important;
+  min-width: min(8em, 100%) !important;
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+  line-clamp: 2 !important;
+  overflow: hidden !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  white-space: normal !important;
+  line-height: 1.35 !important;
+  text-align: start !important;
 }
 
 #extensionsMenu #rabbit_mirror_wand_entry,
@@ -1127,6 +1169,13 @@ toto[data-rabbit-mirror="true"] summary {
   #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"] > summary{
     border-radius:13px !important;
     padding:9px 12px !important;
+  }
+  #chat summary[data-rm-title-chrome="true"] {
+    gap: 4px 6px !important;
+  }
+  .rabbit-mirror-face-swipe-bar [data-rm-face-swipe-label] {
+    min-width: 1.8em !important;
+    font-size: 11px !important;
   }
   #chat .rabbit-mirror-external-shell[data-rm-source="follow"][data-rm-placement="external"]{
     border-radius:16px !important;

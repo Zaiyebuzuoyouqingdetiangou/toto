@@ -1,8 +1,8 @@
 // Split from outputSanitizer.js — toolsChrome.
 
-import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.5.58-fork1';
+import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.6.3-title1';
 import { isTextPresentation } from '../presentationMode.js?rmv=1.5.53-visualquick1';
-import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.6';
+import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.6.3-ttchild1';
 import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=1.6';
 import { getCurrentChatKey } from '../storage.js?rmv=1.5.53-visualquick1';
 import { getSanitizedRabbitMirrorFaceProof } from '../multifaceProof.js?rmv=1.5.53-visualquick1';
@@ -11,7 +11,7 @@ import {
     openTheaterFavoriteLibrary,
     toggleTheaterFavorite,
     isTheaterFavoriteHtml,
-} from '../theaterFavorites.js?rmv=1.6.1';
+} from '../theaterFavorites.js?rmv=1.6.3-fav1';
 import { FACE_SWIPE_FULL_MESSAGE, faceSwipeBarIntent, fallbackFaceSwipeView } from '../swipeVersions.js?rmv=1.6';
 import {
     FEEDBACK_CAT_TYPES,
@@ -22,7 +22,7 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
 } from '../feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.3-star2';
 import {
     FAVORITE_MULTIPLIER_MAX,
     FAVORITE_MULTIPLIER_MIN,
@@ -49,9 +49,11 @@ import {
     FEEDBACK_CAT_ATTR,
     MAINTENANCE_RABBIT_ATTR,
     MIRROR_TITLE_DISPLAY_ATTR,
+    MIRROR_TITLE_LABEL_ATTR,
     MIRROR_TITLE_PART_ATTR,
     MIRROR_TITLE_PREFIX_ATTR,
     MIRROR_TITLE_SOURCE_ATTR,
+    TITLE_CHROME_ATTR,
     MIRROR_TOTO_SELECTOR,
     RECIPE_BUTTON_ATTR,
     RUNTIME_VERSION,
@@ -65,7 +67,7 @@ import {
     isInsideChatMessage,
     isMaintenanceRabbitEnabled,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.6';
+} from './runtime.js?rmv=1.6.3-title1';
 import { getAvailableHostChat } from './scriptedInteractionRescue.js?rmv=1.6';
 import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.6';
 import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=1.6';
@@ -1332,10 +1334,6 @@ function setImportantStyle(element, property, value) {
 }
 
 
-function toolHostShouldStack() {
-    return typeof matchMedia === 'function' && matchMedia('(max-width: 720px)').matches;
-}
-
 function isTheaterFavoriteSurface(node) {
     return !!node?.closest?.('[data-rm-theater-favorite-host], [data-rm-theater-favorite-stage], [data-rm-theater-favorite-viewer], [data-rm-theater-favorite-library]');
 }
@@ -1348,13 +1346,12 @@ function normalizeRabbitMirrorToolHost(host) {
     host.setAttribute(RUNTIME_VERSION_ATTR, RUNTIME_VERSION);
     host.setAttribute('role', 'group');
     host.setAttribute('aria-label', '兔子镜工具');
-    const stack = toolHostShouldStack();
     const styles = {
-        all: 'initial', display: 'inline-flex', 'align-items': 'center', 'justify-content': 'flex-end', gap: '2px',
-        float: stack ? 'none' : 'inline-end', flex: stack ? '1 1 auto' : '0 0 auto', position: 'relative',
-        'z-index': '2147483000', width: stack ? '100%' : 'auto',
-        'min-width': stack ? '100%' : 'max-content', height: 'auto', 'min-height': '0', 'max-width': 'none', 'max-height': 'none',
-        margin: stack ? '2px 0 0' : '0 0 0 6px', 'margin-inline-start': stack ? '0' : 'auto', padding: '0',
+        all: 'initial', display: 'inline-flex', 'align-items': 'center', 'justify-content': 'flex-start', gap: '2px',
+        float: 'none', flex: '0 0 auto', position: 'relative',
+        'z-index': '2147483000', width: 'auto',
+        'min-width': 'max-content', height: 'auto', 'min-height': '0', 'max-width': 'none', 'max-height': 'none',
+        margin: '0', 'margin-inline-start': '0', padding: '0',
         overflow: 'visible', visibility: 'visible', opacity: '1',
         'pointer-events': 'auto', transform: 'none', filter: 'none', clip: 'auto', 'clip-path': 'none',
         'white-space': 'nowrap', 'vertical-align': 'middle', color: 'inherit', font: 'inherit', 'line-height': '1',
@@ -1396,6 +1393,10 @@ export function containRabbitMirrorTitleToolFloat(summary) {
     if (!summary?.isConnected || typeof getComputedStyle !== 'function') return;
     const attr = 'data-rabbit-mirror-title-flow-end';
     let end = summary.querySelector(`:scope > [${attr}]`);
+    if (summary.hasAttribute?.(TITLE_CHROME_ATTR)) {
+        end?.remove();
+        return;
+    }
     const display = getComputedStyle(summary).display;
     const flow = ['block','list-item','flow-root','flow-root list-item','inline','inline-block'].includes(display);
     if (!flow && !end) return;
@@ -1412,9 +1413,30 @@ export function containRabbitMirrorTitleToolFloat(summary) {
 }
 
 
+const TITLE_CHROME_SKIP = `[${TOOL_ENTRY_HOST_ATTR}], [data-rm-face-swipe-delete], [data-rm-face-swipe-host], [data-rm-face-swipe-bar], [data-rm-face-favorite-star], [data-rm-tool-menu-button], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}], [data-rabbit-mirror-title-flow-end]`;
+
+function ensureMirrorTitleLabel(summary, host) {
+    if (!summary?.querySelectorAll) return null;
+    let label = summary.querySelector(`:scope > [${MIRROR_TITLE_LABEL_ATTR}]`);
+    if (!label) {
+        label = summary.ownerDocument.createElement('span');
+        label.setAttribute(MIRROR_TITLE_LABEL_ATTR, 'true');
+    }
+    for (const node of [...summary.childNodes]) {
+        if (node === label || node === host) continue;
+        if (node.nodeType === 1 && node.matches?.(TITLE_CHROME_SKIP)) continue;
+        label.append(node);
+    }
+    if (host?.parentElement === summary) {
+        if (label.parentElement !== summary || host.previousElementSibling !== label) summary.insertBefore(label, host);
+    } else if (label.parentElement !== summary) summary.append(label);
+    return label;
+}
+
 function ensureRabbitMirrorToolHost(summary) {
     if (!summary?.querySelectorAll) return null;
     ensureFeedbackCatRuntimeStyle();
+    summary.setAttribute(TITLE_CHROME_ATTR, 'true');
     const hosts = [...summary.querySelectorAll(`:scope > [${TOOL_ENTRY_HOST_ATTR}]`)];
     let host = hosts.find(item => item.getAttribute(RUNTIME_VERSION_ATTR) === RUNTIME_VERSION) || hosts[0] || null;
     hosts.filter(item => item !== host).forEach(item => item.remove());
@@ -1423,6 +1445,7 @@ function ensureRabbitMirrorToolHost(summary) {
         summary.appendChild(host);
     }
     normalizeRabbitMirrorToolHost(host);
+    ensureMirrorTitleLabel(summary, host);
     containRabbitMirrorTitleToolFloat(summary);
     if (summary) {
         setImportantStyle(summary, 'overflow', 'visible');
@@ -1573,7 +1596,7 @@ function mirrorTitleDisplayParts(texts) {
 
 function ensureMirrorTitleDisplay(summary) {
     if (!summary?.childNodes || summary.childNodes.length > 256) return;
-    const skip = `[${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}], [${RESAY_ATTR}], [${MIRROR_TITLE_PREFIX_ATTR}], button, input, select, textarea, a, label, svg, style, script, template, noscript, [contenteditable], [role="button"], [role="link"], [data-rm-face-swipe-bar], [data-rm-face-favorite-star]`;
+    const skip = `[${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}], [${RESAY_ATTR}], [${MIRROR_TITLE_PREFIX_ATTR}], button, input, select, textarea, a, label, svg, style, script, template, noscript, [contenteditable], [role="button"], [role="link"], [data-rm-face-swipe-bar], [data-rm-face-favorite-star], [data-rm-face-swipe-delete]`;
     const texts = [];
     const stack = [...summary.childNodes].reverse();
     let visited = 0, length = 0;
@@ -1782,6 +1805,12 @@ function paintFavoriteStar(button, on) {
         : '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.7" d="M12 4.2 14.2 9l5.3.4-4.1 3.5 1.3 5.2L12 15.7 7.3 18.1 8.6 12.9 4.5 9.4 9.8 9z"/></svg>';
 }
 
+function favoriteCaptureRootFromStar(star, fallbackRoot) {
+    return rabbitMirrorToolRootFromButton(star)
+        || star?.closest?.('details')
+        || fallbackRoot;
+}
+
 function installFavoriteStar(root, host, before) {
     let star = host.querySelector(':scope > [data-rm-face-favorite-star]');
     if (!star) {
@@ -1789,9 +1818,14 @@ function installFavoriteStar(root, host, before) {
         star.type = 'button';
         star.setAttribute('data-rm-face-favorite-star', 'true');
         star.className = 'rabbit-mirror-face-favorite-star';
+    }
+    // Persisted / transferred stars have no listener. Re-resolve the live details
+    // at click time so a placeholder or swapped face cannot freeze an empty capture.
+    if (!star.dataset.rmFavoriteWired) {
+        star.dataset.rmFavoriteWired = 'true';
         star.addEventListener('click', event => {
             stopTitleToggle(event);
-            const captured = captureTheaterFavoriteFromRoot(root);
+            const captured = captureTheaterFavoriteFromRoot(favoriteCaptureRootFromStar(star, root));
             if (!captured) {
                 globalThis.toastr?.warning?.('当前没有可收藏的兔子镜。');
                 return;
@@ -1804,7 +1838,7 @@ function installFavoriteStar(root, host, before) {
     }
     if (before?.parentElement === host) host.insertBefore(star, before);
     else host.append(star);
-    const captured = captureTheaterFavoriteFromRoot(root);
+    const captured = captureTheaterFavoriteFromRoot(favoriteCaptureRootFromStar(star, root));
     paintFavoriteStar(star, false);
     if (captured?.html) void isTheaterFavoriteHtml(captured.html).then(on => { if (star.isConnected) paintFavoriteStar(star, on); }).catch(() => {});
     return star;
@@ -1842,10 +1876,7 @@ function installFaceSwipeBar(root, host) {
         }, true);
     }
     host.prepend(bar);
-    // Stacked (narrow) layout: the pager hugs the left edge via its own auto margin,
-    // keeping justify-content flex-end so star and rabbit stay grouped on the right.
-    if (toolHostShouldStack()) setImportantStyle(bar, 'margin-inline-end', 'auto');
-    else bar.style.removeProperty('margin-inline-end');
+    bar.style.removeProperty('margin-inline-end');
     const label = bar.querySelector('[data-rm-face-swipe-label]');
     if (label) label.textContent = view.label;
     const prev = bar.querySelector('[data-rm-face-swipe="prev"]');
@@ -1864,13 +1895,12 @@ function installFaceSwipeBar(root, host) {
     return view;
 }
 
-// 1.6.1: the delete button leaves the pager row and floats at the title row's far
-// right corner, as the summary's first child, so long titles cannot push it down
-// and it can no longer sit one mis-tap away from the › button.
-function installFaceSwipeDelete(root, summary, view) {
-    if (!summary?.appendChild) return null;
-    const stale = [...summary.querySelectorAll('[data-rm-face-swipe-delete]')];
-    let del = stale.find(node => node.parentElement === summary) || stale[0] || null;
+// 1.6.3: delete sits last in the compact control cluster (pager / star / rabbit / ×).
+function installFaceSwipeDelete(root, host, view) {
+    if (!host?.appendChild) return null;
+    const scope = host.parentElement || host;
+    const stale = [...(scope.querySelectorAll?.('[data-rm-face-swipe-delete]') || [])];
+    let del = stale.find(node => node.parentElement === host) || stale[0] || null;
     stale.filter(node => node !== del).forEach(node => node.remove());
     if (!view) {
         del?.remove();
@@ -1895,22 +1925,30 @@ function installFaceSwipeDelete(root, summary, view) {
             if (intent.type === 'delete') live.deleteSwipe?.(root);
         }, true);
     }
-    if (summary.firstElementChild !== del) summary.insertBefore(del, summary.firstElementChild);
+    if (host.lastElementChild !== del) host.append(del);
     del.disabled = !view.canDelete;
     del.title = view.canDelete ? '删除当前这一版' : (view.overlay ? '失败这一格不会保存，切回上一版即可清掉' : '只剩一版时不能删除');
     del.setAttribute('aria-label', del.title);
     return del;
 }
 
+function isPlaceholderMirrorRoot(root) {
+    const details = root?.matches?.('details') ? root : root?.querySelector?.(':scope > details, details');
+    return !!details?.classList?.contains('rabbit-mirror-external-placeholder')
+        || !!details?.hasAttribute?.('data-rabbit-mirror-placeholder');
+}
+
 function installFaceTitleChrome(root, host) {
     const summary = host?.parentElement;
     const rabbit = host.querySelector(':scope > [data-rm-tool-menu-button]');
-    installFavoriteStar(root, host, rabbit);
+    if (isPlaceholderMirrorRoot(root)) host.querySelectorAll(':scope > [data-rm-face-favorite-star]').forEach(node => node.remove());
+    else installFavoriteStar(root, host, rabbit);
     host.querySelectorAll(':scope > [data-rm-face-swipe-bar]').forEach(node => node.remove());
     // Pre-1.6.1 pagers floated before the title in their own host; drop that stale shell.
     summary?.querySelectorAll?.(':scope > [data-rm-face-swipe-host]').forEach(node => node.remove());
     const view = installFaceSwipeBar(root, host);
-    installFaceSwipeDelete(root, summary, view);
+    installFaceSwipeDelete(root, host, view);
+    if (summary) ensureMirrorTitleLabel(summary, host);
 }
 
 function stripTheaterFavoriteTitleChrome(scope) {
@@ -1942,7 +1980,7 @@ function installUnifiedMirrorTools(root) {
             .catch(() => globalThis.toastr?.warning?.('生图面板未能打开，请重新打开后再试。'));
     } });
     actions.push({ id: 'theater-favorite-library', label: '📖 打开收藏夹', run: () => {
-        void import('../independentApi.js?rmv=1.6').then(module =>
+        void import('../independentApi.js?rmv=1.6.3-ttchild1').then(module =>
             openTheaterFavoriteLibrary((container, record) => module.hydrateIndependentFavoriteHtml(container, record)))
             .catch(error => globalThis.toastr?.warning?.(String(error?.message || '无法打开收藏夹。')));
     } });

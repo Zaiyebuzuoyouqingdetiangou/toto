@@ -76,3 +76,25 @@ test('api-incomplete pass does not latch: retry registers once ABI completes', a
     compat.dispose();
     assert.equal(status.registered, true);
 });
+
+test('TT host before ABI latch still places inside .mes_block, not as a #chat sibling', () => {
+    const hostGlobal = fakeHostGlobal();
+    hostGlobal.__TAURITAVERN__ = { api: {} };
+    const mesBlock = { id: 'mes-block' };
+    const mesText = { parentElement: mesBlock };
+    const mes = {
+        querySelector(sel) {
+            if (sel === '.mes_text') return mesText;
+            if (sel === '.mes_block') return mesBlock;
+            return null;
+        },
+        contains(node) { return node === mesText || node === mesBlock; },
+    };
+    mesBlock.parentElement = mes;
+    const compat = createRabbitMirrorHostCompatibility(hostGlobal);
+    const status = compat.initialize();
+    assert.equal(status.registered, false);
+    assert.equal(compat.isManaged(), false);
+    assert.equal(compat.externalPlacementParent(mes), mesBlock);
+    compat.dispose();
+});

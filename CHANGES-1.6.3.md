@@ -3,27 +3,36 @@
 ## 本轮修复（1.6.3）
 
 ### 1. 聊天 DOM 虚拟化停止（"Bounded ChatSurface contains an unknown direct child: div"）
-- 根因：不是 DOM 结构差异，而是 **ChatSurface 注册赛跑失败**。iOS 上第三方扩展延迟加载——
-  扩展求值时 TT 宿主 ABI（`__TAURITAVERN__.api.chatSurface`）尚未就绪；官方 1.6 在
-  "host 已存在但 api.chatSurface 不完整"的分支把 `initialized` 锁存为 true，之后永不重试。
-  注册因此推迟到 ~1.4s 后重型模块图的第一次 subscribe，而 TT 的首次投影早已冻结注册表，
-  于是 `registerParticipant` 被拒绝（late-projection），扩展落入可见层 fallback，
-  fallback 挂载的 DOM 不受 ChatSurface 托管 → TT 判定"未知直接子节点"→ 停止虚拟化。
-- 修复（src/hostCompatibilityCore.js）：
-  - 新增 `scheduleEarlyHostWatch()`：求值期若 ABI 未就绪，每 50ms 轮询一次（上限 80 次 = 4s），
-    ABI 一出现立即 `initialize()` 完成注册——抢在首次投影冻结之前。
-  - "api 不完整"分支不再锁存：`initialized = false` 并挂上守望，允许重试。
-  - `initialize()` 重入守卫改为：仅当已有终态（registered / errorCode / ownershipDetermined）才短路。
-  - `dispose()` 清理守望定时器。
-- 回归测试：tests/hostCompatEarlyWatch.test.mjs（4 个场景：ABI 晚到先注册成功、
-  late-projection 仍正确报错并走 fallback、dispose 后守望停止、api 不完整不锁存）。
+- 根因分两层：
+  1. **ChatSurface 注册赛跑**：iOS 上第三方扩展延迟加载，求值时 TT 宿主 ABI 尚未就绪；官方 1.6 在
+     "host 已存在但 api.chatSurface 不完整"的分支把 `initialized` 锁存为 true，之后永不重试。
+     注册推迟到 ~1.4s 后重型模块图的第一次 subscribe，TT 首次投影已冻结注册表。
+  2. **即便尚未 `managed`，扩展仍可能把 `<div>` 插成 `#chat` 的直接子节点**：输入栏垫片
+     （`rabbit-mirror-composer-clearance`）和外置壳在 ABI 未 latch 时走原生酒馆路径
+     `insertBefore(host, .mes.nextSibling)`。ChatSurface 只允许 `#chat > .mes`，看到未知 `div` 就停止虚拟化。
+- 修复：
+  - `scheduleEarlyHostWatch()`：求值期 ABI 未就绪则 50ms 轮询（上限 4s），一出现立即注册。
+  - "api 不完整"不再锁存；`initialize()` 仅在已有终态时短路。
+  - `externalPlacementParent()` 在 `__TAURITAVERN__` 已存在、ownership 尚未 latch 时仍返回 `.mes_block`。
+  - `placeExternalHost()` 在 TT 上永远把外置壳挂在楼层内（`.mes_text` 后面），不再成为 `#chat` 兄弟。
+  - 输入栏垫片不再缓存 `managed`；TT 上只挂在当前最后一条 `.mes` 里，找不到楼层就不挂。
+- 回归测试：tests/hostCompatEarlyWatch.test.mjs（ABI 晚到、late-projection、dispose、api 不完整不锁存、TT 未 latch 仍进 `.mes_block`）。
 
-### 2. 收藏星星位置：挨着兔子图标
-- 之前三元素行用 space-between，把 ☆ 顶到了中间。改为窄屏堆叠模式下
-  翻页条用 `margin-inline-end: auto` 自己贴左，整行保持 `justify-content: flex-end`，
-  ☆ 与 🐰 始终成组靠右相邻（src/outputSanitizer/toolsChrome.js）。
+### 2. 收藏星标点了提示「当前没有可收藏的兔子镜」
+- 根因：独立 API 的占位 `details.rabbit-mirror-external-placeholder` 标题也带「兔子镜」，
+  会被当成交互根并装上星标。点击时 `captureTheaterFavoriteFromRoot` 直接拒绝占位卡。
+  切脸/转工具后星标还可能带着旧 `root` 闭包，同样采空。
+- 修复（src/theaterFavorites.js、src/outputSanitizer/toolsChrome.js）：
+  - 捕获时若当前是占位卡，改去同楼层外置壳里找真正的成品 `details`。
+  - 占位卡不再装星标。
+  - 星标与删除键一样 `rmFavoriteWired` 只绑一次，点击时从按钮所在 live details 再解析。
 
-### 3. 默认补充创作规则替换
+### 3. 标题行（手机优先）
+- 窄屏不再把工具栏拉满整行（去掉 720px `width:100%`），翻页 / 星标 / 兔子 / × 收成一组，互不拉开。
+- 标题单独进左栏，最多两行后省略；控件不够一行时整组换到下一行，而不是把翻页条拉成空白长条。
+- × 改回控件组末尾（不再 float 到标题右上角）。翻页条做成胶囊；星标 / 兔子 / × 统一 36px 触控。
+
+### 4. 默认补充创作规则替换
 - data/independentBehaviorPatch.js 的 `INDEPENDENT_BEHAVIOR_EDITOR_DEFAULT`
   逐字替换为用户指定的「lannuomi · 兔子镜小剧场生成助手 · 超级自由版」。
 - 只影响出厂默认值：已保存过自定义规则的用户不受影响
@@ -38,13 +47,18 @@
 - imagePlan.js 容错 JSON 解析（整串 → ```json 围栏 → 平衡括号逆序扫描），根治 PLAN_INVALID_JSON。
 - 切脸/切版本后保持镜子展开状态（showMultifaceFace carryOpen）。
 - 翻页键 ‹ › 下移并适度放大（36×34px），touch-action: manipulation 治"点着点着没响应"。
-- × 删除按钮移至标题行绝对右上角（float: inline-end，30px 圆形）。
+- × 删除按钮曾移至标题行右上角；1.6.3 改回收进控件组末尾。
 
 ## 缓存破坏（rmv）引用点
+- index.js / manifest.js → ?rmv=1.6.3
 - independentBehaviorPatch.js → ?rmv=1.6.3-rule1（src/behaviorRules.js）
-- hostCompatibilityCore.js → ?rmv=1.6.3-hostwatch1（src/hostCompatibility.js）
-- toolsChrome.js → ?rmv=1.6.3-star1（outputSanitizer.js / diagnostics.js / lifecycle.js / maintenanceInspect.js）
+- hostCompatibilityCore.js → ?rmv=1.6.3-ttchild1（src/hostCompatibility.js）
+- composerClearance.js / geometry.js → ?rmv=1.6.3-ttchild1
+- theaterFavorites.js → ?rmv=1.6.3-fav1
+- toolsChrome.js → ?rmv=1.6.3-title1（outputSanitizer.js / diagnostics.js / lifecycle.js / maintenanceInspect.js）
+- runtime.js → ?rmv=1.6.3-title1（toolsChrome.js）
+- mirrorToolMenu.js → ?rmv=1.6.3-title1
+- style.css → ?rmv=1.6.3-title1
 
 ## 测试
-- 全套 184 项：175 通过 / 2 失败（官方 1.6 原生既有失败：batchStorageQuota:356、
-  theaterFavorites:6，与本补丁无关）/ 7 跳过。
+- 标题行布局：tests/titleChromeLayout.test.mjs；multifaceOpenCarry 的删除键断言已改为「控件组末尾」。

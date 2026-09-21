@@ -86,10 +86,11 @@ test('single-face hosts leave open untouched', () => {
     assert.equal(faces[0].hasAttribute('open'), true);
 });
 
-test('toolsChrome keeps delete out of the pager bar and pins it top-right', () => {
+test('toolsChrome keeps delete out of the pager bar and last in the cluster', () => {
     const source = readFileSync(new URL('../src/outputSanitizer/toolsChrome.js', import.meta.url), 'utf8');
-    assert.match(source, /function installFaceSwipeDelete\(/);
-    assert.match(source, /summary\.insertBefore\(del, summary\.firstElementChild\)/);
+    assert.match(source, /function installFaceSwipeDelete\(root, host, view\)/);
+    assert.match(source, /host\.append\(del\)/);
+    assert.equal(source.includes('summary.insertBefore(del, summary.firstElementChild)'), false);
     const barHtml = source.match(/bar\.innerHTML = '([^']*)'/)?.[1] || '';
     assert.ok(barHtml.includes('data-rm-face-swipe="prev"'));
     assert.ok(barHtml.includes('data-rm-face-swipe="next"'));

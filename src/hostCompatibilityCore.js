@@ -466,7 +466,9 @@ export function createRabbitMirrorHostCompatibility(hostGlobal = globalThis, dia
             // Managed ChatSurface forbids #chat siblings. `.mes` is a horizontal
             // flex row (avatar + block), so a host appended there shrinks into the
             // leftover slot on the right. Put 纯外置 after `.mes_text` in `.mes_block`.
-            if (!managed || !message) return null;
+            // TT can exist before isManagedOwnershipRequired() is callable. Still
+            // never return null in a way that lets callers insert beside `.mes`.
+            if (!message || (!managed && !hostGlobal?.__TAURITAVERN__)) return null;
             const body = message.querySelector?.('.mes_text');
             if (body?.parentElement && message.contains(body.parentElement)) return body.parentElement;
             const block = message.querySelector?.('.mes_block');
