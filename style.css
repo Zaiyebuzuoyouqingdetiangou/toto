@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=1.5.53-mobileui1');
+@import url('./settings-ui.css?rmv=1.6');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -379,20 +379,19 @@ toto[data-rabbit-mirror="true"] summary {
   all: initial !important;
   display: inline-flex !important;
   align-items: center !important;
-  justify-content: flex-end !important;
+  justify-content: flex-start !important;
   gap: 2px !important;
-  float: inline-end !important;
+  float: none !important;
   flex: 0 0 auto !important;
   position: relative !important;
   z-index: 2147483000 !important;
   width: auto !important;
-  min-width: 0 !important;
+  min-width: max-content !important;
   height: auto !important;
   min-height: 0 !important;
   max-width: none !important;
   max-height: none !important;
-  margin: 0 0 0 6px !important;
-  margin-inline-start: auto !important;
+  margin: 0 !important;
   padding: 0 !important;
   overflow: visible !important;
   visibility: visible !important;
@@ -408,6 +407,214 @@ toto[data-rabbit-mirror="true"] summary {
   font: inherit !important;
   line-height: 1 !important;
   isolation: isolate !important;
+}
+
+[data-rm-face-swipe-host] {
+  display: inline-flex !important;
+  align-items: center !important;
+  float: none !important;
+  flex: 0 0 auto !important;
+  min-width: max-content !important;
+  min-height: 28px !important;
+  margin: 0 6px 0 0 !important;
+  overflow: visible !important;
+  white-space: nowrap !important;
+  vertical-align: middle !important;
+  pointer-events: auto !important;
+  z-index: 2147483002 !important;
+}
+.rabbit-mirror-face-swipe-bar {
+  display: inline-flex !important;
+  align-items: center !important;
+  flex: 0 0 auto !important;
+  gap: 0 !important;
+  margin: 0 2px 0 0 !important;
+  padding: 1px !important;
+  border-radius: 11px !important;
+  background: color-mix(in srgb, currentColor 8%, transparent) !important;
+  color: inherit !important;
+  font: 13px/1 sans-serif !important;
+  pointer-events: auto !important;
+  vertical-align: middle !important;
+  white-space: nowrap !important;
+}
+.rabbit-mirror-face-swipe-bar button {
+  all: unset !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 32px !important;
+  min-height: 36px !important;
+  padding: 0 4px !important;
+  border-radius: 10px !important;
+  cursor: pointer !important;
+  color: inherit !important;
+  font: inherit !important;
+  font-size: 17px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  opacity: .88 !important;
+  touch-action: manipulation !important;
+  -webkit-tap-highlight-color: transparent !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+.rabbit-mirror-face-swipe-bar button:disabled {
+  opacity: .35 !important;
+  cursor: default !important;
+}
+.rabbit-mirror-face-swipe-bar [data-rm-face-swipe-label] {
+  min-width: 2em !important;
+  padding: 0 2px !important;
+  font-size: 12px !important;
+  text-align: center !important;
+  font-variant-numeric: tabular-nums !important;
+  pointer-events: none !important;
+}
+/* 1.6.3: × stays last in the compact cluster, same tap family as star/rabbit */
+.rabbit-mirror-face-swipe-delete {
+  all: unset !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  float: none !important;
+  flex: 0 0 auto !important;
+  width: 36px !important;
+  min-width: 36px !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-radius: 10px !important;
+  cursor: pointer !important;
+  color: inherit !important;
+  font: 17px/1 sans-serif !important;
+  opacity: .48 !important;
+  position: relative !important;
+  z-index: 2147483002 !important;
+  pointer-events: auto !important;
+  touch-action: manipulation !important;
+  -webkit-tap-highlight-color: transparent !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+.rabbit-mirror-face-swipe-delete:disabled {
+  opacity: .28 !important;
+  cursor: default !important;
+}
+.rabbit-mirror-face-favorite-star {
+  all: initial !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 auto !important;
+  width: 36px !important;
+  height: 36px !important;
+  margin: 0 !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+  color: inherit !important;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  touch-action: manipulation !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+.rabbit-mirror-face-favorite-star.is-favorited { color: #e8b84a !important; }
+@media (hover: hover) and (pointer: fine) {
+  .rabbit-mirror-face-favorite-star:hover { background: color-mix(in srgb, currentColor 10%, transparent) !important; }
+}
+.rabbit-mirror-ephemeral-failure {
+  margin: 10px 12px 14px !important;
+  padding: 12px !important;
+  border: 1px solid color-mix(in srgb, currentColor 22%, transparent) !important;
+  border-radius: 12px !important;
+  font: 14px/1.55 sans-serif !important;
+}
+.rabbit-mirror-ephemeral-failure-actions {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  margin-top: 10px !important;
+}
+.rabbit-mirror-ephemeral-failure-actions button {
+  min-height: 36px !important;
+  padding: 6px 12px !important;
+  border-radius: 10px !important;
+  cursor: pointer !important;
+}
+
+#chat summary[data-rm-title-chrome="true"],
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"] > summary[data-rm-title-chrome="true"] {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 6px 8px !important;
+  white-space: normal !important;
+  overflow: visible !important;
+}
+#chat summary[data-rm-title-chrome="true"]::-webkit-details-marker {
+  display: none !important;
+}
+#chat summary[data-rm-title-chrome="true"]::marker {
+  content: none !important;
+  font-size: 0 !important;
+}
+#chat summary[data-rm-title-chrome="true"]::before {
+  content: '' !important;
+  flex: 0 0 auto !important;
+  width: 0 !important;
+  height: 0 !important;
+  margin: 0.35em 2px 0 0 !important;
+  border-style: solid !important;
+  border-width: 0.32em 0 0.32em 0.46em !important;
+  border-color: transparent transparent transparent currentColor !important;
+  opacity: .62 !important;
+  transform: none !important;
+  pointer-events: none !important;
+}
+#chat details[open] > summary[data-rm-title-chrome="true"]::before {
+  transform: rotate(90deg) !important;
+  margin-top: 0.42em !important;
+}
+#chat span[data-rm-title-label] {
+  flex: 0 1 auto !important;
+  min-width: min(8em, 100%) !important;
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+  line-clamp: 2 !important;
+  overflow: hidden !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  white-space: normal !important;
+  line-height: 1.35 !important;
+  text-align: start !important;
+}
+
+#extensionsMenu #rabbit_mirror_wand_entry,
+#extensionsMenu #rabbit_mirror_wand_bootstrap {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: inherit !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+}
+
+.rabbit-mirror-wand-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 18px !important;
+  height: 18px !important;
+  flex: 0 0 auto !important;
+}
+.rabbit-mirror-wand-icon svg {
+  display: block !important;
+  width: 18px !important;
+  height: 18px !important;
 }
 
 /* 0.33.8 小小维修兔 v1.7：每条标题后独立入口，点击打开本地维修菜单。 */
@@ -965,6 +1172,13 @@ toto[data-rabbit-mirror="true"] summary {
     border-radius:13px !important;
     padding:9px 12px !important;
   }
+  #chat summary[data-rm-title-chrome="true"] {
+    gap: 4px 6px !important;
+  }
+  .rabbit-mirror-face-swipe-bar [data-rm-face-swipe-label] {
+    min-width: 1.8em !important;
+    font-size: 11px !important;
+  }
   #chat .rabbit-mirror-external-shell[data-rm-source="follow"][data-rm-placement="external"]{
     border-radius:16px !important;
   }
@@ -1230,8 +1444,38 @@ html[data-rabbit-mirror-external-sampling-enabled="false"] [data-rabbit-mirror-r
 }
 /* Compact the last message's large spacer, but reserve the measured part of its
    footer/swipe controls that really extends outside. No theme artwork is copied. */
-#chat > .mes.last_mes:has(+ .rabbit-mirror-external-host[data-rm-source="independent"][data-rm-placement="external"]:not([hidden])) {
-  margin-bottom:var(--rm-external-footer-clearance,0px) !important;
+#chat .mes:has(> [data-rabbit-mirror-external-shell="true"]){
+  flex-wrap:wrap !important;
+}
+#chat .mes > [data-rabbit-mirror-external-shell="true"]{
+  flex:1 1 100% !important;
+  flex-basis:100% !important;
+  order:50;
+  width:100% !important;
+  max-width:100% !important;
+  min-width:0 !important;
+  align-self:stretch;
+  margin-left:0 !important;
+  box-sizing:border-box;
+}
+#chat .mes_block:has(> [data-rabbit-mirror-external-shell="true"]),
+#chat .mes_block:has(> [data-rabbit-mirror-independent-inline-anchor="true"]){
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  min-width:0;
+  width:100%;
+  max-width:100%;
+}
+#chat .mes_block > [data-rabbit-mirror-external-shell="true"],
+#chat .mes_block > [data-rabbit-mirror-independent-inline-anchor="true"] + [data-rabbit-mirror-external-shell="true"]{
+  display:block !important;
+  flex:0 0 auto;
+  width:100% !important;
+  max-width:100% !important;
+  min-width:0;
+  margin-top:8px;
+  box-sizing:border-box;
 }
 .rabbit-mirror-help-update-row { display:flex; flex-wrap:wrap; align-items:flex-start; gap:8px; margin:8px 0; }
 .rabbit-mirror-quick-start { flex:1 1 180px; min-width:0; }
@@ -1287,4 +1531,37 @@ html[data-rabbit-mirror-external-sampling-enabled="false"] [data-rabbit-mirror-r
     white-space: normal;
     overflow-wrap: anywhere;
     text-align: left;
+}
+
+[data-rm-theater-favorite-stage],
+.rabbit-mirror-theater-favorite-host {
+  position: relative !important;
+  inset: auto !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  box-sizing: border-box !important;
+  transform: none !important;
+}
+.rabbit-mirror-theater-favorite-host {
+  isolation: isolate;
+}
+dialog[data-rm-theater-favorite-viewer],
+dialog[data-rm-theater-favorite-library] {
+  position: fixed;
+  inset: 0;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  border: 0;
+}
+
+/* Pager hides extra faces only after one face is marked current.
+   Otherwise every details matches :not(current) and the whole theater vanishes. */
+#chat .rabbit-mirror-external-shell.rabbit-mirror-multiface-host[data-rm-source][data-rm-placement]:has(> details[data-rm-face-current="true"]) > details[data-rabbit-mirror-external-details="true"]:not([data-rm-face-current="true"]),
+#chat .rabbit-mirror-multiface-host:has(> details[data-rm-face-current="true"]) > details:not([data-rm-face-current="true"]){
+  display:none !important;
+  margin-top:0 !important;
 }

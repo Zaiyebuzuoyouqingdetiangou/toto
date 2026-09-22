@@ -1,9 +1,10 @@
 import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt, destroyIndependentGenerationIntentBridge, initIndependentGenerationIntentBridge, prewarmRabbitMirrorGenerationRuntime } from './src/injector.js?rmv=1.5.53-image1';
 import { clearLastCombo } from './src/storage.js?rmv=1.5.53-visualquick1';
 import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { getSettings, updateSettings } from './src/settings.js?rmv=1.5.53-image1';
+import { getSettings, updateSettings } from './src/settings.js?rmv=1.6';
+import { installRabbitMirrorPublicAPI } from './src/publicApi.js?rmv=script-api2';
 import { initRabbitMirrorIndependentSecurityGuard, destroyRabbitMirrorIndependentSecurityGuard } from './src/independentSecurityGuard.js?rmv=1.5.53-cn-boundary1';
-import { initRabbitMirrorHostCompatibility, isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface, getRabbitMirrorEarlyBootstrap } from './src/hostCompatibility.js?rmv=1.5.53-cn-boundary1';
+import { initRabbitMirrorHostCompatibility, isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface, getRabbitMirrorEarlyBootstrap, getRabbitMirrorHostCompatibilityStatus } from './src/hostCompatibility.js?rmv=1.6.3-ttchild1';
 
 // TT requires ownership registration before its first projection, not after the
 // deferred DOM runtime loads. This bridge has no network, timers or heavy imports.
@@ -12,18 +13,21 @@ initRabbitMirrorHostCompatibility();
 // SecurityFix2 leaves only the prompt interceptor and request guard in the parser-critical
 // graph. The 1.8 MiB UI/sanitizer/independent runtime graph is imported after the host has
 // received a paint/idle opportunity, or immediately after explicit RabbitMirror intent.
-const GOLDEN_MERGE_VERSION = '1.5.53';
-const RABBIT_MIRROR_RUNTIME_VERSION = '1.5.53';
+const GOLDEN_MERGE_VERSION = '1.6';
+const RABBIT_MIRROR_RUNTIME_VERSION = '1.6';
 const earlyBootstrap = getRabbitMirrorEarlyBootstrap();
 let runtimeCancelled = earlyBootstrap?.cancelled === true || (!!globalThis.__rabbitMirrorTtBootstrap && !earlyBootstrap);
 let runtimeClaimed = !runtimeCancelled;
 const runtimeIsActive = () => !runtimeCancelled && (earlyBootstrap
     ? globalThis.__rabbitMirrorTtBootstrap === earlyBootstrap && !earlyBootstrap.cancelled
     : !globalThis.__rabbitMirrorTtBootstrap);
+const disposePublicAPI = runtimeIsActive() ? installRabbitMirrorPublicAPI(runtimeIsActive) : null;
 let deferredRuntimePromise = null;
 let deferredRuntimeModules = null;
 let deferredBootTimer = 0;
 let deferredIdleHandle = 0;
+let deferredTtBootTimer = 0;
+let deferredTtBootAttempts = 0;
 let deferredLoadHandler = null;
 let deferredChatWakeObserver = null;
 let deferredChatSurfaceWakeCleanup = null;
@@ -74,12 +78,12 @@ async function ensureDeferredCoreRuntime(reason = 'scheduled-idle') {
     if (deferredRuntimeModules) return deferredRuntimeModules;
     if (deferredRuntimePromise) return deferredRuntimePromise;
     deferredRuntimePromise = Promise.all([
-        import('./src/outputSanitizer.js?rmv=1.5.53-imageerror1'),
-        import('./src/visualScanner.js?rmv=1.5.53-imageerror1'),
-        import('./src/independentApi.js?rmv=1.5.53-imageerror1'),
-        import('./src/touchTheater.js?rmv=1.5.53-cn-boundary1'),
-        import('./src/ui.js?rmv=1.5.53-imageerror1'),
-        import('./src/composerClearance.js?rmv=1.5.53-cn-boundary1'),
+        import('./src/outputSanitizer.js?rmv=1.6.3-star2'),
+        import('./src/visualScanner.js?rmv=1.6.3-star2'),
+        import('./src/independentApi.js?rmv=1.6.3-ttchild1'),
+        import('./src/touchTheater.js?rmv=1.6.3-ttchild1'),
+        import('./src/ui.js?rmv=1.6.3-fav1'),
+        import('./src/composerClearance.js?rmv=1.6.3-ttchild1'),
     ]).then(async ([output, visual, independent, touch, ui, clearance]) => {
         if (!runtimeIsActive()) return null;
         deferredRuntimeModules = { output, visual, independent, touch, ui, clearance };
@@ -150,14 +154,48 @@ function stableHostChatSignature() {
     } catch { return ''; }
 }
 
+function shouldBypassEmptyChatGate() {
+    try {
+        const status = getRabbitMirrorHostCompatibilityStatus();
+        return status.host === 'tauritavern' && status.managed === true && status.registered !== true;
+    } catch { return false; }
+}
+
+function bootTtLateProjectionRuntime() {
+    if (!runtimeIsActive() || deferredRuntimeModules || deferredRuntimePromise) return false;
+    if (!shouldBypassEmptyChatGate()) return false;
+    if (deferredTtBootTimer) {
+        clearTimeout(deferredTtBootTimer);
+        deferredTtBootTimer = 0;
+    }
+    void ensureDeferredCoreRuntime('tt-late-projection');
+    return true;
+}
+
+function scheduleTtLateProjectionBackup() {
+    if (deferredTtBootTimer || deferredRuntimeModules || deferredRuntimePromise) return;
+    deferredTtBootTimer = setTimeout(() => {
+        deferredTtBootTimer = 0;
+        if (!runtimeIsActive() || deferredRuntimeModules || deferredRuntimePromise) return;
+        if (bootTtLateProjectionRuntime()) return;
+        if (++deferredTtBootAttempts > 24) return;
+        scheduleTtLateProjectionBackup();
+    }, deferredTtBootAttempts ? 250 : 50);
+}
+
 function requestDeferredIdleCheck(delay = 1400) {
     if (!runtimeIsActive() || deferredRuntimeModules || deferredRuntimePromise) return;
+    if (bootTtLateProjectionRuntime()) return;
     deferredBootTimer = setTimeout(() => {
         deferredBootTimer = 0;
+        if (bootTtLateProjectionRuntime()) return;
         if (typeof globalThis.requestIdleCallback === 'function') {
-            // Deliberately no timeout: a timeout used to force the 1.8 MiB runtime graph
-            // onto the main thread while SillyTavern was still loading a long chat.
-            deferredIdleHandle = globalThis.requestIdleCallback(runDeferredBoot);
+            // SillyTavern keeps no timeout so a long chat load cannot be forced
+            // onto the 1.8 MiB graph. TT already deferred third-party until after
+            // APP_READY; iOS WKWebView idle often never comes under virtualization.
+            deferredIdleHandle = globalThis.__TAURITAVERN__
+                ? globalThis.requestIdleCallback(runDeferredBoot, { timeout: 2000 })
+                : globalThis.requestIdleCallback(runDeferredBoot);
         } else {
             runDeferredBoot();
         }
@@ -204,6 +242,7 @@ function installDeferredChatWakeObserver() {
 function runDeferredBoot() {
     deferredBootTimer = 0;
     deferredIdleHandle = 0;
+    if (bootTtLateProjectionRuntime()) return;
     const signature = stableHostChatSignature();
     if (hostLooksBusy()) {
         deferredHostSignature = '';
@@ -215,11 +254,10 @@ function runDeferredBoot() {
         // Empty chat and not-yet-loaded chat are intentionally indistinguishable for
         // the heavy DOM graph. A no-timeout idle slot may still prewarm only the much
         // smaller generation graph so the first send does not pay its parse cost.
+        installDeferredChatWakeObserver();
+        if (bootTtLateProjectionRuntime()) return;
         if (!generationPrewarmDone && beginGenerationRuntimePrewarm()) return;
         if (!generationPrewarmDone && generationPrewarmStarted) return;
-        // Stay dormant in a genuinely empty chat; one direct-child observer wakes
-        // the idle gate when SillyTavern mounts a message. No permanent polling.
-        installDeferredChatWakeObserver();
         return;
     }
     deferredChatWakeObserver?.disconnect?.();
@@ -245,17 +283,21 @@ function runDeferredBoot() {
 }
 
 function scheduleDeferredCoreRuntime() {
+    if (bootTtLateProjectionRuntime()) return;
     const schedule = () => {
         if (!runtimeIsActive() || deferredRuntimeModules || deferredRuntimePromise) return;
-        // Require a real host chat boundary plus three continuously stable seconds.
-        // Idle callbacks are never given a force timeout, so RabbitMirror cannot seize
-        // the main thread during an unfinished SillyTavern chat load.
+        if (bootTtLateProjectionRuntime()) return;
+        // SillyTavern still waits for a stable idle chat. TT late-projection
+        // already returned above; remaining TT paths use a 2s idle timeout.
         requestDeferredIdleCheck(3500);
+        scheduleTtLateProjectionBackup();
     };
     if (document?.readyState === 'complete') schedule();
     else {
         deferredLoadHandler = () => { deferredLoadHandler = null; schedule(); };
         window.addEventListener('load', deferredLoadHandler, { once: true });
+        // WKWebView injected scripts can miss window load. Keep a bounded backup.
+        scheduleTtLateProjectionBackup();
     }
 }
 
@@ -296,7 +338,7 @@ function loadMirrorVisualCompat() {
     if (!deferredRuntimeModules) return Promise.resolve(null);
     return Promise.all([
         loadOptional('checkedSelectorRepair', './src/checkedSelectorRepair.js?rmv=1.5.53-cn-boundary1', mod => mod.initRabbitMirrorCheckedSelectorRepair?.()),
-        loadOptional('renderedVisualFeedback', './src/renderedVisualFeedbackHotfix.js?rmv=1.5.53-imageerror1', mod => mod.initRabbitMirrorRenderedVisualFeedbackHotfix?.()),
+        loadOptional('renderedVisualFeedback', './src/renderedVisualFeedbackHotfix.js?rmv=1.6', mod => mod.initRabbitMirrorRenderedVisualFeedbackHotfix?.()),
     ]);
 }
 
@@ -330,12 +372,14 @@ function installSettingsWandEntry() {
     entry.id = 'rabbit_mirror_wand_bootstrap';
     entry.type = 'button';
     entry.className = 'list-group-item flex-container flexGap5';
-    entry.textContent = '兔子镜';
+    entry.style.cssText = 'background:transparent;background-color:transparent;color:inherit;border:0;box-shadow:none;appearance:none;-webkit-appearance:none;';
+    entry.innerHTML = '<span class="rabbit-mirror-wand-icon" aria-hidden="true"><svg viewBox="0 0 32 32" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M10 16C4 2 11 1 14 14M18 14C20 1 27 2 23 16M9 16c-7 11 3 15 9 14s13-8 5-14c-4-3-10-3-14 0Z"/><path d="M12 22h1m6 0h1m-6 4 2 1 2-1"/></svg></span><span>兔子镜</span>';
     entry.setAttribute('aria-haspopup', 'dialog');
     entry.addEventListener('click', async () => {
         if (entry.disabled || !runtimeIsActive()) return;
         entry.disabled = true;
-        entry.textContent = '正在打开兔子镜…';
+        const label = entry.querySelector('span:last-child');
+        if (label) label.textContent = '正在打开兔子镜…';
         try {
             await ensureDeferredCoreRuntime('wand-settings-intent');
             if (!runtimeIsActive()) return;
@@ -343,7 +387,7 @@ function installSettingsWandEntry() {
             if (!workbench) throw new Error('RabbitMirror settings did not mount');
             workbench.open();
         } catch (error) {
-            if (entry.isConnected && runtimeIsActive()) entry.textContent = '打开失败，点击重试兔子镜';
+            if (entry.isConnected && runtimeIsActive() && label) label.textContent = '打开失败，点击重试兔子镜';
             console.debug('[RabbitMirror] settings entry could not open:', error);
         } finally { if (entry.isConnected) entry.disabled = false; }
     });
@@ -465,17 +509,21 @@ jQuery(() => {
     initRabbitMirrorIndependentSecurityGuard({ getSettings, updateSettings });
     installOnDemandCompatTriggers();
     installSettingsWandEntry();
-    scheduleDeferredCoreRuntime();
+    if (!bootTtLateProjectionRuntime()) scheduleDeferredCoreRuntime();
     console.log(`[RabbitMirror] lightweight bootstrap ${RABBIT_MIRROR_RUNTIME_VERSION} ready; heavy runtime deferred`);
 });
 
 export function onDisable() {
+    disposePublicAPI?.();
     runtimeCancelled = true;
     if (earlyBootstrap && globalThis.__rabbitMirrorTtBootstrap !== earlyBootstrap) return;
     if (!runtimeClaimed) return;
     runtimeClaimed = false;
     if (deferredBootTimer) clearTimeout(deferredBootTimer);
     deferredBootTimer = 0;
+    if (deferredTtBootTimer) clearTimeout(deferredTtBootTimer);
+    deferredTtBootTimer = 0;
+    deferredTtBootAttempts = 0;
     if (deferredIdleHandle && typeof globalThis.cancelIdleCallback === 'function') globalThis.cancelIdleCallback(deferredIdleHandle);
     deferredIdleHandle = 0;
     if (deferredLoadHandler) window.removeEventListener('load', deferredLoadHandler);

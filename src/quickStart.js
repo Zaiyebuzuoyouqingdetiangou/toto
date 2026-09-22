@@ -33,28 +33,32 @@ export const QUICK_START_GROUPS = [
         setting('behavior', '补充创作规则', '高级设置 → 独立 API：选择注入方式，编辑并保存；可清空、关闭或恢复默认，只影响独立 API。', '#rh_behavior_rule_text', 'worldinfo'),
         setting('draw', '本轮抽签记录', '在 Prompt 估算里查看逐面记录；镜面的挨打猫里也可查看本轮抽签。', '#rh_token_meter'),
         setting('favorites', '收藏偏好', '提高收藏项目的随机抽取权重，不保证每轮必出。', '#rh_favorite_summary'),
+        setting('theater-favorites', '兔子镜收藏夹', '回看已收藏成品，按角色卡分组；聊天里也可在工具菜单打开收藏夹。', '#rh_theater_favorite_summary'),
         setting('blacklist', '抽签黑名单', '排除不喜欢的随机项目；明确指令和强制场景有例外。', '#rh_blacklist_enabled'),
         setting('replacement', '禁词与文字替换', '本地删除或替换兔子镜可见文字，不改聊天原文。', '#rh_banned_words', 'replacement'),
     ] },
     { name: '镜面工具', items: [
         mirror('cat', '反馈猫 / 挨打猫', '对某一面反馈配色、结构、交互或文字等问题。', '该镜面标题 → 挨打猫'),
-        mirror('resay', '重说', '重新请求独立 API 生成，会消耗所配置 API 的额度。', '该独立镜面 → 挨打猫 → 重说'),
-        mirror('history', '兔子镜历史', '查看已有独立生成记录；不是跨设备同步入口。', '该独立镜面 → 挨打猫 → 兔子镜历史'),
-        mirror('repair', '维修兔', '在具体镜面里检查并尝试本地修复，不请求模型。', '该镜面标题 → 维修兔'),
+        mirror('resay', '重说', '重新请求独立 API 生成，会消耗所配置 API 的额度。同一面最多保留五版，满了要先删一版。', '该独立镜面 → 挨打猫 → 重说'),
+        mirror('swipe', '上一版 / 下一版', '标题旁 ‹ 2/5 › 切换这一面已成功的重说版本；失败的一格不会保存。', '该独立镜面标题旁的版本箭头'),
+        mirror('repair', '维修兔', '在具体镜面里检查并尝试本地修复，不请求模型。高频项：点了没反应、展开后文字被裁。', '该镜面标题 → 维修兔'),
         mirror('copyhtml', '复制本面 HTML', '单独保存这一面的代码和样式；不含诊断，依赖插件脚本的交互不会随之导出。', '该镜面标题 → 维修兔 → 复制本面 HTML（含样式）'),
-        mirror('inspect', '只巡检不修改', '检查该镜面的问题，保留当前成品。', '该镜面 → 维修兔 → 只巡检不修改'),
-        mirror('resetinteraction', '重置交互 / 撤销维修', '有对应快照时，恢复交互初态或撤销维修。', '该镜面 → 维修兔 → 重置交互 / 撤销维修'),
+        mirror('inspect', '只巡检不修改', '检查该镜面的问题，保留当前成品。', '该镜面 → 维修兔 → 只巡逻，不修改'),
+        mirror('resetinteraction', '恢复到初始', '丢掉这一版上的维修和交互改动，回到刚生成时的整面 HTML；不会删掉 swipe 格子。', '该镜面 → 维修兔 → 恢复到初始'),
+        setting('reroll', '自动重 roll', '打开后，空回、报错、掉格式或缺面时自动再试；跟随正文 API 和副 API 共用。', '#rh_automatic_reroll_enabled'),
+        setting('reroll-count', '自动重 roll 次数', '打开自动重 roll 后可填，默认 2，没有上限。', '#rh_independent_automatic_reroll'),
+        setting('reroll-idle', '无进度中止秒数', '打开自动重 roll 后可填；连续这么多秒没有新进度就中止补发再试，默认 90。', '#rh_independent_automatic_reroll_idle'),
         setting('patrol', '自动安全巡检（实验性）', '按需启用自动检查，复杂问题仍需手动处理。', '#rh_maintenance_auto_safe', 'repair'),
     ] },
     { name: '配置与维护', items: [
         setting('connection', '连接与模型', '从酒馆当前连接配置，或手动填写兼容接口与模型。', '#rh_independent_import_current'),
-        setting('output', '温度与整批最大输出', '配置生成参数；多面共享整批输出上限。', '#rh_independent_max_tokens'),
+        setting('output', '温度、整批最大输出与请求字符预算', '配置生成参数；多面共享整批输出上限。完整请求字符预算可按模型上下文自行调大。', '#rh_independent_max_request_chars'),
         setting('regex', '一键配置正则', '为跟随正文 API 配置不发送正则；也可查看或复制。', '.rabbit-mirror-tools .rh_regex_configure'),
         setting('estimate', 'Prompt 估算', '查看请求前的本地估算，不是服务商账单。', '#rh_token_meter'),
         mirror('chain', '生成全链路诊断', '在出问题的镜面中查看生成与维修链路。', '该镜面 → 维修兔 → 生成全链路诊断'),
         setting('hostdiag', '宿主性能诊断', '检查宿主、其他扩展和网络，与内部诊断分开。', '#rh_external_diag_start'),
         setting('clear', '清理与恢复', '分别清除抽签冷却、当前注入或恢复默认；先确认范围。', '#rh_clear_last'),
-        setting('update', '检查并更新', '通过宿主更新当前扩展；权限或非 Git 安装仍可能受限。', '#rh_update_now'),
+        setting('update', '检查并更新', '通过宿主更新当前扩展所登记的 git 仓库。安装通道为官方仓库 Zaiyebuzuoyouqingdetiangou/toto。权限或非 Git 安装仍可能受限。', '#rh_update_now'),
     ] },
 ];
 export const QUICK_START_STEPS = {
@@ -165,6 +169,7 @@ export function mountRabbitMirrorQuickStart({ root, openAdvanced, closeAdvanced 
         }
         let selector = item.target;
         if (item.id === 'display') selector = root.querySelector('#rh_generation_independent')?.checked ? '#rh_independent_display_row' : '#rh_follow_display_row';
+        if (item.id === 'theater-favorites') root.__rabbitMirrorWorkbench?.navigate?.('theaterFavorites');
         const scope = item.page ? doc.getElementById('rh_advanced_modal') : root;
         const target = scope?.querySelector(selector);
         if (!target) { showMessage('此入口暂时不可用，请在原设置中查找；没有修改任何配置。'); return; }

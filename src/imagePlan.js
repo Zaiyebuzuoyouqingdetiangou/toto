@@ -1,7 +1,3 @@
-function planningError(code, message) {
-    return Object.assign(new TypeError(message), { rabbitMirrorImageCode: code });
-}
-
 function string(value) { return typeof value === 'string' ? value : ''; }
 
 function sourceJson(value) {
@@ -22,7 +18,7 @@ function relevantCharacters(input, faceText) {
 
 export function buildImagePlanningPrompt(input = {}) {
     const faceText = string(input.faceText);
-    if (!faceText.trim()) throw planningError('PLAN_EMPTY_SOURCE', '这面兔子镜没有可供构思的内容。');
+    if (!faceText.trim()) throw new TypeError('这面兔子镜没有可供构思的内容。');
     const floor = Number.isSafeInteger(input.floor) && input.floor >= 0 ? input.floor : 0;
     const materials = {
         source: '用户选中的这一面兔子镜成品；不是全部聊天记录',
@@ -38,22 +34,75 @@ export function buildImagePlanningPrompt(input = {}) {
     return { systemPrompt, userPrompt };
 }
 
+// Tolerant extraction, ported from 心迹回廊 (tokimemo) jsonParser:
+// scan the text for balanced top-level {...} objects, aware of strings and escapes,
+// so thinking-type models that wrap the JSON in prose / chain-of-thought still parse.
+function extractBalancedJsonObjects(text) {
+    const results = [];
+    let depth = 0;
+    let start = -1;
+    let inString = false;
+    let escaped = false;
+    for (let i = 0; i < text.length; i += 1) {
+        const ch = text[i];
+        if (inString) {
+            if (escaped) { escaped = false; }
+            else if (ch === '\\') { escaped = true; }
+            else if (ch === '"') { inString = false; }
+            continue;
+        }
+        if (ch === '"') { inString = true; continue; }
+        if (ch === '{') {
+            if (depth === 0) start = i;
+            depth += 1;
+        } else if (ch === '}') {
+            if (depth > 0) {
+                depth -= 1;
+                if (depth === 0 && start >= 0) {
+                    results.push(text.slice(start, i + 1));
+                    start = -1;
+                }
+            }
+        }
+    }
+    return results;
+}
+
+function parseImagePlanCandidates(text) {
+    const trimmed = text.trim();
+    const candidates = [trimmed];
+    // Fenced ```json blocks anywhere in the reply (not only wrapping the whole text).
+    for (const match of trimmed.matchAll(/```(?:json)?[ \t]*\r?\n([\s\S]*?)\n?[ \t]*```/gi)) {
+        candidates.push(match[1]);
+    }
+    // Balanced JSON objects, last one first: thinking models usually put the answer last.
+    const balanced = extractBalancedJsonObjects(trimmed);
+    for (let i = balanced.length - 1; i >= 0; i -= 1) candidates.push(balanced[i]);
+    const seen = new Set();
+    for (const candidate of candidates) {
+        const clean = candidate.trim();
+        if (!clean || seen.has(clean)) continue;
+        seen.add(clean);
+        try { return JSON.parse(clean); }
+        catch { /* try the next candidate */ }
+    }
+    throw new TypeError('画面构思没有返回有效 JSON；请查看或重新构思，不会自动重试。');
+}
+
 export function parseImagePlan(text) {
     let value = text;
     if (typeof text === 'string') {
-        const clean = text.trim().replace(/^```(?:json)?\s*\n?([\s\S]*?)\n?```$/i, '$1');
-        try { value = JSON.parse(clean); }
-        catch { throw planningError('PLAN_INVALID_JSON', '画面构思没有返回有效 JSON；请查看或重新构思，不会自动重试。'); }
+        value = parseImagePlanCandidates(text);
     }
-    if (!value || typeof value !== 'object' || Array.isArray(value)) throw planningError('PLAN_INVALID_OBJECT', '画面构思必须是一个 JSON 对象。');
+    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('画面构思必须是一个 JSON 对象。');
     const prompt = string(value.prompt).trim();
-    if (!prompt) throw planningError('PLAN_MISSING_PROMPT', '画面构思缺少生图提示词。');
+    if (!prompt) throw new TypeError('画面构思缺少生图提示词。');
     const characters = value.characters == null ? [] : value.characters;
-    if (!Array.isArray(characters)) throw planningError('PLAN_INVALID_CHARACTERS', '角色提示词必须是数组。');
+    if (!Array.isArray(characters)) throw new TypeError('角色提示词必须是数组。');
     const parsedCharacters = characters.map(person => {
         const name = string(person?.name).trim();
         const tag = string(person?.tag).trim();
-        if (!name || !tag) throw planningError('PLAN_INCOMPLETE_CHARACTER', '每个画面角色都需要原名与外貌提示词。');
+        if (!name || !tag) throw new TypeError('每个画面角色都需要原名与外貌提示词。');
         return { name, tag, nl: string(person.nl).trim() };
     });
     return {
