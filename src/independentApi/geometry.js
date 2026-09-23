@@ -1503,6 +1503,9 @@ function refreshExistingExternalDetailsCore(host,key,source='independent'){
  transferExternalTools(current,next);
  current.replaceWith(next);
  if(wasOpen) next.setAttribute('open','');
+ // Transferred controls keep their listeners; refresh their owner closures only
+ // after the replacement is live, otherwise they still target detached details.
+ ensureExternalTools(host);
  return next;
 }
 

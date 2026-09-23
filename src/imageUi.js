@@ -125,12 +125,13 @@ function closePanel() {
     if (!panel) return;
     const previous = panel;
     panel = null;
-    previous.cleanup(); previous.host.remove();
+    try { previous.cleanup(); } finally { previous.host.remove(); }
+    try { previous.onClose?.(); } catch (error) { console.debug('[RabbitMirror] image panel tool restore skipped:', error); }
     if (previous.opener?.isConnected) previous.opener.focus();
 }
 export function closeMirrorImagePanel() { closePanel(); }
 
-export function openMirrorImagePanel(root, { opener = null } = {}) {
+export function openMirrorImagePanel(root, { opener = null, onClose = null } = {}) {
     closePanel();
     const doc = root.ownerDocument;
     const target = targetFor(root);
@@ -336,7 +337,7 @@ export function openMirrorImagePanel(root, { opener = null } = {}) {
     }
     doc.defaultView.addEventListener('resize', fit); doc.defaultView.visualViewport?.addEventListener('resize', fit); doc.defaultView.visualViewport?.addEventListener('scroll', fit);
     host.addEventListener('keydown', keydown);
-    panel = { host, target, opener, renderState, receive: (record, draft) => { localRecord = record; fillDraft(draft); showRecord(record); }, cleanup: () => {
+    panel = { host, target, opener, onClose, renderState, receive: (record, draft) => { localRecord = record; fillDraft(draft); showRecord(record); }, cleanup: () => {
         doc.defaultView.removeEventListener('resize', fit); doc.defaultView.visualViewport?.removeEventListener('resize', fit); doc.defaultView.visualViewport?.removeEventListener('scroll', fit);
     } };
     const pending = target && pendingSaves.get(target.key);

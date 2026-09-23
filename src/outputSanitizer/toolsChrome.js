@@ -2028,7 +2028,13 @@ function installUnifiedMirrorTools(root) {
     add(FEEDBACK_CAT_ATTR, isFeedbackCatEnabled(), 'feedback', '🐈 挨打猫 · 反馈与重说', handleFeedbackCatClick);
     add(RECIPE_BUTTON_ATTR, true, 'recipe', '🎲 黑名单与本轮抽签', handleRecipeClick);
     actions.push({ id: 'image', label: '▧ 生图', run: (_event, opener) => {
-        void loadMirrorImageModule().then(module => { if (root.isConnected) return module.openMirrorImagePanel(root, { opener }); })
+        const scope = root.closest?.('.mes') || root;
+        void loadMirrorImageModule().then(module => { if (root.isConnected) return module.openMirrorImagePanel(root, {
+            opener,
+            // Host rendering during a request may replace tool nodes. Restore
+            // only the still-mounted message's controls, never regenerate it.
+            onClose: () => { if (scope.isConnected) installMaintenanceRabbitsInScope(scope, { historyRestoreLight: true }); },
+        }); })
             .catch(() => globalThis.toastr?.warning?.('生图面板未能打开，请重新打开后再试。'));
     } });
     actions.push({ id: 'theater-favorite-library', label: '📖 打开收藏夹', run: () => {

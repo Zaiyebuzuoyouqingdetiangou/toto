@@ -77,6 +77,13 @@ function closeMenu() {
 
 export function installMirrorToolMenu(root, host, actions, beforeOpen) {
     let state = bindings.get(host);
+    // A host can survive while the renderer replaces its serialized children.
+    // The WeakMap entry does not prove the visible button still has listeners.
+    if (state && state.button.parentElement !== host) {
+        if (activeMenu?.button === state.button) closeMenu();
+        bindings.delete(host);
+        state = null;
+    }
     if (!state) {
         // Serialized controls have no trusted closures; rebind the current face.
         host.querySelectorAll('[data-rm-tool-menu-button]').forEach(node => node.remove());

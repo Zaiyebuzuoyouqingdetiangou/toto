@@ -272,6 +272,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     for(const input of followDisplay.querySelectorAll('input'))choice(input,input.value==='inline'?'放在正文下方':'外置展示',input.value==='inline'?'翻到这条回复，就能看到对应的小剧场。':outer);
     for(const input of indDisplay.querySelectorAll('input'))choice(input,input.value==='external'?'外置展示':'跟随正文内嵌',input.value==='external'?outer:inner);
     for(const node of [followDisplay,indDisplay]){node.removeAttribute('style');node.className='rh-ui-display-options';}
+    move('rh_face_pager_settings','display');
     move('rh_independent_manual_legacy','manual');
     move('rh_automatic_reroll_block','reroll');
     move(get('rh_independent_temperature').closest('.rh-independent-generation-params')||get('rh_independent_temperature').closest('.flex-container'),'parameters');move('rh_independent_request_advanced','request');
