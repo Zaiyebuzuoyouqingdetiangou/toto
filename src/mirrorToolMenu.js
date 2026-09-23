@@ -18,27 +18,48 @@ export function fitMirrorToolPanel(panel, button, preferredWidth = 340) {
         const panelWidth = Math.min(preferredWidth, Math.max(1, width - margin * 2));
         const rect = anchor?.getBoundingClientRect?.() || { left, bottom: top };
         const sendForm = document.getElementById('send_form') || document.getElementById('form_sheld') || document.querySelector('#send_textarea')?.closest('form, #send_form, .mes_edit_buttons');
-        const sendTop = sendForm?.getBoundingClientRect?.().top;
-        const composerTop = Number.isFinite(sendTop) ? sendTop : top + height;
-        const maxBottom = Math.min(top + height - margin, composerTop - 8);
+        const composer = sendForm?.getBoundingClientRect?.();
+        const focused = document.activeElement;
+        const editingPanel = panel.contains(focused) && focused?.matches?.('textarea, input, [contenteditable="true"]');
+        const viewportBottom = top + height - margin;
+        // iOS may pan the visual viewport past the chat composer when focusing
+        // feedback. A hidden/offscreen composer must not collapse the dialog.
+        const roomAboveComposer = composer?.top - 8 - (top + margin);
+        const avoidComposer = !editingPanel && composer?.height > 0 && composer?.width > 0
+            && composer.bottom > top && composer.top < viewportBottom
+            && roomAboveComposer >= Math.min(160, availableHeight);
+        const maxBottom = avoidComposer ? Math.min(viewportBottom, composer.top - 8) : viewportBottom;
         const styles = { position: 'fixed', 'z-index': '10050', 'box-sizing': 'border-box', width: `${panelWidth}px`, 'max-width': `${panelWidth}px`, 'max-height': `${Math.max(1, maxBottom - (top + margin))}px`, 'min-height': '0', overflow: 'auto', 'overscroll-behavior': 'contain', 'touch-action': 'pan-y', left: `${Math.max(left + margin, Math.min(rect.left, left + width - panelWidth - margin))}px` };
         for (const [name, value] of Object.entries(styles)) panel.style.setProperty(name, value, 'important');
         const panelHeight = Math.min(panel.offsetHeight || availableHeight, Math.max(1, maxBottom - (top + margin)));
         panel.style.setProperty('top', `${Math.max(top + margin, Math.min(rect.bottom + 6, maxBottom - panelHeight))}px`, 'important');
+        if (editingPanel) {
+            const inputRect = focused.getBoundingClientRect();
+            const panelRect = panel.getBoundingClientRect();
+            if (inputRect.top < panelRect.top + 8) panel.scrollTop -= panelRect.top + 8 - inputRect.top;
+            else if (inputRect.bottom > panelRect.bottom - 8) panel.scrollTop += Math.min(inputRect.bottom - panelRect.bottom + 8, inputRect.top - panelRect.top - 8);
+        }
     };
     const view = globalThis.visualViewport;
     const cleanup = () => {
         globalThis.removeEventListener('resize', position);
         view?.removeEventListener('resize', position);
         view?.removeEventListener('scroll', position);
+        panel.removeEventListener('focusin', position);
+        panel.removeEventListener('focusout', position);
+        resizeObserver?.disconnect();
         observer.disconnect();
         fits.delete(panel);
     };
     const observer = new MutationObserver(() => { if (!panel.isConnected) cleanup(); });
+    const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(position) : null;
+    resizeObserver?.observe(panel);
     observer.observe(document.body, { childList: true });
     globalThis.addEventListener('resize', position);
     view?.addEventListener('resize', position);
     view?.addEventListener('scroll', position);
+    panel.addEventListener('focusin', position);
+    panel.addEventListener('focusout', position);
     fits.set(panel, cleanup);
     position();
 }

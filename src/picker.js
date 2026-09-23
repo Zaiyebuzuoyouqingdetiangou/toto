@@ -535,6 +535,38 @@ function randomCandidateAvailable(settings, kind, builtinPool, usedIds = new Set
     return builtinAvailable || externalAvailable;
 }
 
+function usesStandaloneTextPool(settings, directive, themePool, formatPool, faceIndex = 0, excludedThemes = [], excludedFormats = []) {
+    const mode = requestedPresentationMode(settings, faceIndex);
+    const source = normalizeLongTextSource(settings.longTextSource);
+    if (mode === 'text' || (mode === 'longtext' && source === 'text')) return true;
+    if (!(mode === 'auto' || (mode === 'longtext' && source === 'mixed')) || !externalPoolActive(settings, 'text')) return false;
+    if (directive?.hasThemeRequest || directive?.hasFormatRequest) return false;
+    const available = (kind, pool, excluded) => sourceMixModeIsExternalOnly(settings)
+        ? externalPoolHasAvailable(kind, excluded)
+        : randomCandidateAvailable(settings, kind, pool, new Set(excluded));
+    const hasTheme = settings.samplingMode === 'format_only' || available('theme', themePool, excludedThemes);
+    const hasFormat = (settings.forceVisualScenery && !visualSceneryCombinationEnabled(settings)) || available('format', formatPool, excludedFormats);
+    return !hasTheme || !hasFormat;
+}
+
+function batchUsesStandaloneTextPool(settings, snapshot, faceIndex) {
+    // Use the original eligible pools, not pools depleted by earlier faces:
+    // a normal mixed batch must keep its existing no-repeat policy.
+    return usesStandaloneTextPool(settings, snapshot.directive, snapshot.themePool, snapshot.formatPool,
+        faceIndex, snapshot.exclusions.themeIds, snapshot.exclusions.formatIds);
+}
+
+function renewStandaloneTextCycle(settings, snapshot, faceIndex, usedTextIds) {
+    const excluded = snapshot.exclusions.textIds || [];
+    if (!batchUsesStandaloneTextPool(settings, snapshot, faceIndex)
+        || externalPoolHasAvailable('text', [...usedTextIds]) || !externalPoolHasAvailable('text', excluded)) return;
+    // A text entry is a complete creative recipe. Exhaust distinct enabled
+    // entries first, then reuse them for independent faces; explicit caller
+    // exclusions and disabled/unconfirmed entries are never restored.
+    usedTextIds.clear();
+    excluded.forEach(id => usedTextIds.add(id));
+}
+
 function getCurrentTurnUserMessage(chatOverride = null) {
     try {
         const context = globalThis.SillyTavern?.getContext?.() || {};
@@ -819,7 +851,7 @@ function getVisualSceneryFormat() {
     return PRESENTATION_FORMATS.find(item => item.id === '10.2.2' || normalizeText(item.title) === normalizeText('Visual Scenery')) || null;
 }
 
-function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, themeCount, formatCount, recent, formalRecent, hardRecent, previousThemeFamilyKeys = [], previousFormatFamilyKeys = [], favoriteThemeIds, favoriteFormatIds, favoriteThemeMultipliers, favoriteFormatMultipliers, formatEligibleMisses, externalExcludedThemeIds = [], externalExcludedFormatIds = [], externalExcludedTextIds = [], faceIndex = 0 }) {
+function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, themeCount, formatCount, recent, formalRecent, hardRecent, previousThemeFamilyKeys = [], previousFormatFamilyKeys = [], favoriteThemeIds, favoriteFormatIds, favoriteThemeMultipliers, favoriteFormatMultipliers, formatEligibleMisses, externalExcludedThemeIds = [], externalExcludedFormatIds = [], externalExcludedTextIds = [], faceIndex = 0, standaloneTextPool = null }) {
     if (directive?.disabled) return { disabled: true, directive };
     const requestedMode = requestedPresentationMode(settings, faceIndex);
     const longText = requestedMode === 'longtext';
@@ -829,8 +861,9 @@ function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, th
             forcedFormats: [], requestedPresentationMode: 'longtext', presentationMode: 'text', blankLongText: true,
             formatFairnessEligibleIds: [], formatFairnessSelectedIds: [] };
     }
+    const standaloneText = standaloneTextPool ?? usesStandaloneTextPool(settings, directive, themePool, formatPool, faceIndex, externalExcludedThemeIds, externalExcludedFormatIds);
     const textSettings = { ...settings, externalWorldBookRandomEnabled: true, externalWorldBookMixMode: 'external-only' };
-    if ((requestedMode === 'text' || (longText && longTextSource === 'text')) && settings.mode !== 'off') {
+    if (standaloneText && settings.mode !== 'off') {
         const texts = pickExternalItems(textSettings, 'text', 1, {
             randomUnit, hardExcludedIds: externalExcludedTextIds, avoidRepeat: settings.avoidRepeat,
             recentIds: recent.textIds || [], recentIdHits: recent.textIdHits || {},
@@ -1172,6 +1205,7 @@ function planBatchFace(settings, snapshot, usedThemeIds, usedFormatIds, counts =
         externalExcludedFormatIds: [...snapshot.exclusions.formatIds, ...usedFormatIds],
         externalExcludedTextIds: [...(snapshot.exclusions.textIds || []), ...usedTextIds],
         faceIndex,
+        standaloneTextPool: batchUsesStandaloneTextPool(settings, snapshot, faceIndex),
     });
     return { result, payload: { combo: comboFromSelection(result, settings, snapshot.recent), last: snapshot.last, directive: snapshot.directive || null } };
 }
@@ -1268,6 +1302,7 @@ function pickLiveCombinationBatch(settings, planning, faceCount, planningReason 
     const needsRandomFormats = (!settings.forceVisualScenery || visualSceneryCombinationEnabled(settings)) && !snapshot.directive?.hasFormatRequest;
     const results = [];
     for (let faceIndex = 0; faceIndex < faceCount; faceIndex += 1) {
+        renewStandaloneTextCycle(settings, snapshot, faceIndex, usedTextIds);
         const requestedMode = requestedPresentationMode(settings, faceIndex);
         const blankLongText = requestedMode === 'longtext' && normalizeLongTextSource(settings.longTextSource) === 'blank';
         const textAvailable = requestedMode !== 'html' && (requestedMode === 'text' || (requestedMode === 'longtext' && normalizeLongTextSource(settings.longTextSource) === 'text') || externalPoolActive(settings, 'text'))
@@ -1365,6 +1400,7 @@ export function pickCombinationBatch(settings, generationScopeKey = '', generati
     const wantsThemes = settings.samplingMode !== 'format_only';
     if (isBlankLongTextSelection(first.payload.combo) || first.payload.combo.textIds?.length || (usedFormatIds.size && (!wantsThemes || usedThemeIds.size))) {
         for (let index = 1; index < faceCount; index += 1) {
+            renewStandaloneTextCycle(settings, snapshot, index, usedTextIds);
             const mode = requestedPresentationMode(settings, index);
             const blankLongText = mode === 'longtext' && normalizeLongTextSource(settings.longTextSource) === 'blank';
             const textAvailable = mode !== 'html' && (mode === 'text' || (mode === 'longtext' && normalizeLongTextSource(settings.longTextSource) === 'text') || externalPoolActive(settings, 'text')) && externalPoolHasAvailable('text', [...usedTextIds]);

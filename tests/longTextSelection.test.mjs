@@ -78,7 +78,9 @@ test('longtext text source uses enabled text entries and does not revive disable
     assert.equal(combo.requestedPresentationMode, 'longtext');
     assert.equal(combo.presentationMode, 'text');
     assert.notEqual(combo.blankLongText, true);
-    assert.throws(() => f.picker.pickCombinationBatch(f.settings, 'text-two', f.context, 2));
+    const batch = f.picker.pickCombinationBatch(f.settings, 'text-two', f.context, 2);
+    assert.equal(batch.length, 2);
+    assert.ok(batch.every(face => face.combo.textIds.length === 1 && face.combo.textIds[0] === id));
     f.external.clearExternalPoolSnapshot();
     assert.throws(() => f.picker.pickCombination(f.settings, 'text-empty'));
     assert.throws(() => f.picker.pickCombinationForMultifaceResay(f.settings, { faceIndex: 0, faces: [combo] }));
