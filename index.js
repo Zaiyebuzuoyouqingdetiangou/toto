@@ -2,6 +2,7 @@ import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt, destroyIndepe
 import { clearLastCombo } from './src/storage.js?rmv=1.5.53-visualquick1';
 import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.5.53-cn-boundary1';
 import { getSettings, updateSettings } from './src/settings.js?rmv=1.6';
+import { installRabbitMirrorPublicAPI } from './src/publicApi.js?rmv=script-api2';
 import { initRabbitMirrorIndependentSecurityGuard, destroyRabbitMirrorIndependentSecurityGuard } from './src/independentSecurityGuard.js?rmv=1.5.53-cn-boundary1';
 import { initRabbitMirrorHostCompatibility, isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface, getRabbitMirrorEarlyBootstrap, getRabbitMirrorHostCompatibilityStatus } from './src/hostCompatibility.js?rmv=1.6.3-ttchild1';
 
@@ -20,6 +21,7 @@ let runtimeClaimed = !runtimeCancelled;
 const runtimeIsActive = () => !runtimeCancelled && (earlyBootstrap
     ? globalThis.__rabbitMirrorTtBootstrap === earlyBootstrap && !earlyBootstrap.cancelled
     : !globalThis.__rabbitMirrorTtBootstrap);
+const disposePublicAPI = runtimeIsActive() ? installRabbitMirrorPublicAPI(runtimeIsActive) : null;
 let deferredRuntimePromise = null;
 let deferredRuntimeModules = null;
 let deferredBootTimer = 0;
@@ -512,6 +514,7 @@ jQuery(() => {
 });
 
 export function onDisable() {
+    disposePublicAPI?.();
     runtimeCancelled = true;
     if (earlyBootstrap && globalThis.__rabbitMirrorTtBootstrap !== earlyBootstrap) return;
     if (!runtimeClaimed) return;
