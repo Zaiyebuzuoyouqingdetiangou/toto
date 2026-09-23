@@ -23,6 +23,12 @@ export function buildRabbitMirrorSettingsDialogHtml() {
         </div>
       </div>
 
+      <div id="rh_face_pager_settings" style="margin:12px 0;">
+        <label for="rh_face_pager_position">多面切页位置</label>
+        <select id="rh_face_pager_position" class="text_pole" style="min-height:44px;max-width:100%;"><option value="top">顶部切页</option><option value="bottom">底部切页</option></select>
+        <p class="rabbit-mirror-subnote">底部切页显示在当前镜面外框内、内容下方；手机居中，电脑靠右。选择后立即生效，收藏和兔子按钮仍在标题栏。</p>
+      </div>
+
       <div class="rabbit-mirror-help-update-row">
         <details id="rh_quick_start" class="rabbit-mirror-quick-start">
           <summary>新手指引</summary>
@@ -351,9 +357,6 @@ export function buildRabbitMirrorSettingsDialogHtml() {
           </div>
           <div id="rh_advanced_page_replacement" class="rh-advanced-page" data-title="🚫 禁词与文字替换" style="display:none;"></div>
           <div id="rh_advanced_page_generation" class="rh-advanced-page" data-title="生成与抽取" style="display:none;">
-            <label for="rh_face_pager_position">切页位置</label>
-            <select id="rh_face_pager_position" class="text_pole" style="min-height:44px;max-width:100%;"><option value="top">顶部切页</option><option value="bottom">底部切页</option></select>
-            <p class="rabbit-mirror-subnote">底部切页显示在当前镜面外框内、内容下方；手机居中，电脑靠右。选择后立即生效，收藏和兔子按钮仍在标题栏。</p>
             <label for="rh_multiface_enabled" class="checkbox_label"><input id="rh_multiface_enabled" type="checkbox" aria-describedby="rh_multiface_help" aria-controls="rh_multiface_count_row"> 多面兔子镜</label>
             <div id="rh_multiface_count_row" hidden style="margin:6px 0 6px 26px;">
               <label for="rh_multiface_count">每轮生成
