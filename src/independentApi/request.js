@@ -1688,7 +1688,8 @@ export async function callIndependentApi(ctx,index,msg,signal=null,requestOption
  const resay=missingIndexes.length?null:requestOptions.multifaceResay;
  const st=missingIndexes.length
   ? {...currentSettings,rabbitMirrorFaceCount:missingIndexes.length}
-  : resay ? {...currentSettings,rabbitMirrorFaceCount:1}
+  : resay ? {...currentSettings,rabbitMirrorFaceCount:1,
+    rabbitMirrorPresentationModes:[currentSettings.rabbitMirrorPresentationModes?.[resay.faceIndex]||'auto']}
   : currentSettings;
  // Preserve exact settings across optional asynchronous worldbook/reference
  // reads. No JSON parsing on the stream hot path, and no draft data in Prompt.
@@ -1906,6 +1907,9 @@ ${independentUserTail}`;
  const batchPlan=details.batchPlan||null;
  requestOptions.onBatchPlan?.(batchPlan);
  if(promptOwner){ promptOwner.batchPublished=true; assertIndependentPromptOwner(promptOwner); }
+ // Freeze the actual selection before sending: even timeout, empty-body and
+ // postprocessing failures must retry the same recipe, not draw again.
+ requestOptions.onRequestSelection?.(requestSelectionDiagnostic);
  const originalLease=requestOptions.dispatchLease;
  const dispatchLease=batchPlan||promptOwner ? {
   ...originalLease,

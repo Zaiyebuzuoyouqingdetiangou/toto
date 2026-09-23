@@ -1245,7 +1245,21 @@ export function planRabbitMirrorPromptDetails(settings, generationType = 'normal
     if (missingIndexes.length) {
         selections = missingIndexes.map(index => pickCombinationForMultifaceResay(settings, { faceIndex: index, faces: missingRetry.faces }));
     } else if (resay) {
-        selections = [pickCombinationForMultifaceResay(settings, resay)];
+        // A user-clicked failed slot must remain retryable even when a legacy
+        // recipe was lost or its source was disabled. Select only one new face
+        // under current filters; automatic retries and successful faces keep
+        // the exact-recipe contract. No request has been sent at this stage.
+        if (resay.retryFailedFace === true && resay.freshSelection === true) {
+            selections = [pickCombination(settings, generationScopeKey, generationContext)];
+        } else {
+            try { selections = [pickCombinationForMultifaceResay(settings, resay)]; }
+            catch (error) {
+                if (resay.retryFailedFace !== true || error?.code !== 'MULTIFACE_PLAN_UNAVAILABLE'
+                    || !['BATCH_RESAY_ENTRY_UNAVAILABLE', 'BATCH_RESAY_RECIPE_INCOMPLETE', 'BATCH_RESAY_CUSTOM_RECIPE'].includes(error.reasonCode)) throw error;
+                globalThis.toastr?.info?.('这一失败面的原条目已不可用，将按当前设置重新抽取这一面；其他面保留。');
+                selections = [pickCombination(settings, generationScopeKey, generationContext)];
+            }
+        }
     } else if (requestedFaceCount > 1) {
         const operation = generationContext?.batchIdentity ? null : generationContext?.batchOperation || {
             operationId: generationScopeKey || `preview:${String(generationType || 'normal')}`,
