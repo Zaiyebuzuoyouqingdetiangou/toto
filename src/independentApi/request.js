@@ -1,6 +1,6 @@
 // Split from independentApi.js — request.
 
-import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.5.53-visualquick1';
+import { presentationModeFields, hasExplicitTextFace, normalizePresentationModes, normalizeLongTextSource } from '../presentationMode.js?rmv=1.5.53-visualquick1';
 import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.6.4-creation1';
 import { getSettings } from '../settings.js?rmv=1.6';
 import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.6';
@@ -1763,7 +1763,14 @@ export async function callIndependentApi(ctx,index,msg,signal=null,requestOption
   ...(missingIndexes.length?{missingFaceRetry:{indexes:missingIndexes,faces:missingRetry.faces}}:{}),
   ...(resay?{multifaceResay:resay}:{}),
  };
- const externalEnabled=(st.externalWorldBookRandomEnabled===true&&String(st.externalWorldBookMixMode||'builtin-only')!=='builtin-only')||hasExplicitTextFace(st);
+ // Empty longtext faces never draw external material. An unrelated enabled
+ // library must not make them depend on its database or legacy index. Mixed
+ // batches still require their ordinary pools; exact external retries below
+ // independently opt in from the saved IDs, even after settings change.
+ const activePresentationModes=normalizePresentationModes(st.rabbitMirrorPresentationModes)
+  .slice(0,Math.min(5,Math.max(1,Number(st.rabbitMirrorFaceCount)||1)));
+ const usesRandomMaterial=activePresentationModes.some(mode=>mode!=='longtext'||normalizeLongTextSource(st.longTextSource)!=='blank');
+ const externalEnabled=(usesRandomMaterial&&st.externalWorldBookRandomEnabled===true&&String(st.externalWorldBookMixMode||'builtin-only')!=='builtin-only')||hasExplicitTextFace(st);
  const appearanceEnabled=st.appearanceReferenceEnabled===true;
  const characterWorldBookEnabled=st.independentReadCharacterWorldBook===true;
  const memoryWorldBookEnabled=st.memoryScanEnabled===true&&st.memoryWorldBookEnabled===true&&!!String(st.memoryWorldBookId||'').trim();
