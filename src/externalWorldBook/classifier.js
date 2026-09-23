@@ -105,7 +105,7 @@ function confidenceFor(score, runnerUp = 0) {
 function explicitCategories(sources) {
     const labels = `${sources.title}\n${sources.keywords}`;
     const kinds = [];
-    for (const [kind, label] of [['format', '展现(?:形式)?'], ['theme', '主题(?:元素)?'], ['auxiliary', '辅助(?:片段|规则)?']]) {
+    for (const [kind, label] of [['format', '展现(?:形式)?'], ['theme', '主题(?:元素)?'], ['text', '(?:独立|纯|长)?文本(?:类)?'], ['auxiliary', '辅助(?:片段|规则)?']]) {
         const labelled = new RegExp(`(?:^|[\\s【\\[（(｜|/])${label}(?:\\s*[:：]?\\s*(?:[0-9一二三四五六七八九十]+)|\\s*(?=$|[\\n】\\]）)]))`, 'm');
         const declaration = new RegExp(`^\\s*(?:分类|类别|类型)\\s*[:：]\\s*${label}(?:\\s|$|[】\\]）)])`, 'm');
         if (labelled.test(labels) || declaration.test(`${labels}\n${sources.content}`)) kinds.push(kind);
@@ -136,7 +136,7 @@ export function classifyExternalWorldBookEntry(entry) {
     } else if (explicit.length === 1) {
         suggestion = explicit[0];
         confidence = EXTERNAL_WORLD_BOOK_CONFIDENCE.HIGH;
-        reasons.push(`明确分类标记：${suggestion === 'format' ? '展现形式' : suggestion === 'theme' ? '主题元素' : '辅助片段'}`);
+        reasons.push(`明确分类标记：${suggestion === 'format' ? '展现形式' : suggestion === 'theme' ? '主题元素' : suggestion === 'text' ? '独立文本' : '辅助片段'}`);
     } else if (explicit.length > 1) {
         suggestion = EXTERNAL_WORLD_BOOK_CLASSIFICATION.MIXED;
         reasons.push('存在多个不同分类标记，请选择最终用途');
@@ -175,6 +175,7 @@ export function classifyExternalWorldBookEntry(entry) {
         && [
             EXTERNAL_WORLD_BOOK_CLASSIFICATION.THEME,
             EXTERNAL_WORLD_BOOK_CLASSIFICATION.FORMAT,
+            EXTERNAL_WORLD_BOOK_CLASSIFICATION.TEXT,
             EXTERNAL_WORLD_BOOK_CLASSIFICATION.AUXILIARY,
         ].includes(suggestion);
 

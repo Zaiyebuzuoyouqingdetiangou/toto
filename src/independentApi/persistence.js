@@ -351,13 +351,18 @@ function compactExternalSourceNote(metadata){
  return metadata?.hasExternalReferences===true||externalSources.length?{hasExternalReferences:true,externalSources}:{};
 }
 
+function compactDirectiveCounts(metadata){
+ return Object.fromEntries(['customThemeCount','customFormatCount','customRequestCount'].filter(key=>Number(metadata?.[key])>0)
+  .map(key=>[key,Math.min(1000,Math.max(1,Math.floor(Number(metadata[key]))))]));
+}
+
 function compactChatPersistedRecord(value){
  if(!independentRecordWithinBudget(value)) return null;
  const record=normalizeHistoryEntry(value); if(!record?.html) return null;
  const initialHtml=String(value.initialHtml||record.initialHtml||'');
  const diagnostic=value?.apiRequest&&typeof value.apiRequest==='object'?value.apiRequest:null;
  const faces=Array.isArray(diagnostic?.faces)&&diagnostic.faces.length>=2&&diagnostic.faces.length<=5
-  ? diagnostic.faces.map((face,faceIndex)=>({faceIndex, samplingMode:String(face?.samplingMode||''), themeIds:Array.isArray(face?.themeIds)?face.themeIds.map(String).slice(0,12):[], formatIds:Array.isArray(face?.formatIds)?face.formatIds.map(String).slice(0,12):[], themeLabels:Array.isArray(face?.themeLabels)?face.themeLabels.map(String).slice(0,12):[], formatLabels:Array.isArray(face?.formatLabels)?face.formatLabels.map(String).slice(0,12):[], forcedVisualScenery:face?.forcedVisualScenery===true,...compactExternalSourceNote(face),...presentationModeFields(face)}))
+  ? diagnostic.faces.map((face,faceIndex)=>({faceIndex, samplingMode:String(face?.samplingMode||''), themeIds:Array.isArray(face?.themeIds)?face.themeIds.map(String).slice(0,12):[], formatIds:Array.isArray(face?.formatIds)?face.formatIds.map(String).slice(0,12):[], themeLabels:Array.isArray(face?.themeLabels)?face.themeLabels.map(String).slice(0,12):[], formatLabels:Array.isArray(face?.formatLabels)?face.formatLabels.map(String).slice(0,12):[], forcedVisualScenery:face?.forcedVisualScenery===true,...compactExternalSourceNote(face),...presentationModeFields(face),...compactDirectiveCounts(face)}))
   : null;
  return {
   html:String(record.html||''), initialHtml:initialHtml && initialHtml!==String(record.html||'') ? initialHtml : '', sourceHash:String(record.sourceHash||''), bodyHash:String(record.bodyHash||''),
@@ -373,8 +378,8 @@ function compactChatPersistedRecord(value){
    ...(diagnostic.partial===true?{partial:true,failedFaces:(Array.isArray(diagnostic.failedFaces)?diagnostic.failedFaces:[])
     .filter(face=>Number.isInteger(face?.faceIndex)&&face.faceIndex>=0&&face.faceIndex<faces.length)
     .slice(0,5).map(face=>({faceIndex:face.faceIndex,status:'failed',code:String(face.code||'incomplete-face').replace(/[^a-z0-9-]/gi,'').slice(0,80)}))}:{}),
-  }}:diagnostic?.hasExternalReferences||diagnostic?.presentationMode||diagnostic?.visualSceneryCombination===true?{apiRequest:{...compactExternalSourceNote(diagnostic),...presentationModeFields(diagnostic),
-   ...(diagnostic?.visualSceneryCombination===true?{
+  }}:diagnostic?.hasExternalReferences||diagnostic?.presentationMode||Array.isArray(diagnostic?.formatIds)||diagnostic?.visualSceneryCombination===true?{apiRequest:{...compactExternalSourceNote(diagnostic),...presentationModeFields(diagnostic),...compactDirectiveCounts(diagnostic),
+   ...(Array.isArray(diagnostic?.themeIds)&&Array.isArray(diagnostic?.formatIds)?{
     samplingMode:String(diagnostic.samplingMode||''),
     themeIds:Array.isArray(diagnostic.themeIds)?diagnostic.themeIds.map(String).slice(0,12):[],
     formatIds:Array.isArray(diagnostic.formatIds)?diagnostic.formatIds.map(String).slice(0,12):[],

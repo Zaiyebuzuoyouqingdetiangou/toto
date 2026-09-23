@@ -1,4 +1,6 @@
 import { parseMultifaceOutput, createMultifaceFailureSlot } from './multifaceProtocol.js';
+import { compactFormatDescriptors } from './selectionImageMetadata.js?rmv=1.6.4-creation1';
+import { isBlankLongTextSelection } from './presentationMode.js?rmv=1.5.53-visualquick1';
 
 function wrapIndependentFaceForMerge(inner, index) {
     return `<toto data-rabbit-mirror="true" data-rm-face="${index + 1}">${String(inner || '')}</toto>`;
@@ -27,7 +29,7 @@ function retryFaces(incomingHtml, count) {
 
 const RETRY_SELECTION_FIELDS = Object.freeze([
     'samplingMode', 'themeIds', 'formatIds', 'textIds', 'themeLabels', 'formatLabels', 'textLabels',
-    'requestedPresentationMode', 'presentationMode', 'forcedVisualScenery', 'visualSceneryCombination',
+    'requestedPresentationMode', 'presentationMode', 'blankLongText', 'forcedVisualScenery', 'visualSceneryCombination',
     'hasExternalReferences', 'externalSources', 'customThemeCount', 'customFormatCount', 'customRequestCount',
 ]);
 
@@ -36,10 +38,14 @@ function retrySelectionFields(value) {
     const ids = ['themeIds', 'formatIds', ...(value.textIds !== undefined ? ['textIds'] : [])];
     if (ids.some(key => !Array.isArray(value[key]) || value[key].length > 16
         || value[key].some(id => typeof id !== 'string' || !id.trim()))) return null;
-    if (!ids.some(key => value[key].length) && !['customThemeCount', 'customFormatCount', 'customRequestCount']
+    if (value.blankLongText !== undefined && !isBlankLongTextSelection(value)) return null;
+    if (!isBlankLongTextSelection(value) && !ids.some(key => value[key].length) && !['customThemeCount', 'customFormatCount', 'customRequestCount']
         .some(key => Number(value[key]) > 0)) return null;
-    return Object.fromEntries(RETRY_SELECTION_FIELDS.filter(key => Object.hasOwn(value, key))
+    const selection = Object.fromEntries(RETRY_SELECTION_FIELDS.filter(key => Object.hasOwn(value, key))
         .map(key => [key, Array.isArray(value[key]) ? [...value[key]] : value[key]]));
+    const descriptors = compactFormatDescriptors(value);
+    if (descriptors.length) selection.formatDescriptors = descriptors;
+    return selection;
 }
 
 // failedFaces is already expressed in original batch indices by the HTML merge.

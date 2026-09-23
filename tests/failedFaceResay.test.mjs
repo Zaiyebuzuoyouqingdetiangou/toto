@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import { createRuntime } from './helpers/vmLoader.mjs';
+import { isBlankLongTextSelection } from '../src/presentationMode.js';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const mount = () => readFileSync(new URL('../src/independentApi/mount.js', import.meta.url), 'utf8');
@@ -13,6 +14,7 @@ function clickFixture({ failed = true, faces = [], overlay = false } = {}) {
     const details = [{ hasAttribute: () => false }, { hasAttribute: () => failed }];
     const identity = { ctx: {}, msg: {}, index: 0, faceIndex: 1, host: {}, baseSlot: 'owner' };
     const sandbox = {
+        isBlankLongTextSelection,
         getSettings: () => ({ generationSource: 'independent' }),
         resolveIndependentActionIdentity: () => identity,
         canIndependentFaceResay: () => ({ ok: true }),

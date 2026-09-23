@@ -1,6 +1,7 @@
 // Split from independentApi.js — mount.
 
-import { presentationModeFields } from '../presentationMode.js?rmv=1.5.53-visualquick1';
+import { presentationModeFields, isBlankLongTextSelection } from '../presentationMode.js?rmv=1.5.53-visualquick1';
+import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.5.53-cn-boundary1';
 import { getSettings } from '../settings.js?rmv=1.6';
 import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.6';
 import { independentGenerationTiming } from '../independentTiming.js?rmv=1.5.53-timing1';
@@ -2203,7 +2204,7 @@ export function resayIndependentMirror(root,owner={}){
   || hasEphemeralFaceFailure(target));
  const recipe=faces[identity.faceIndex];
  const hasRecipe=faces.length===mountedFaces.length && recipe
-  && ['themeIds','formatIds','textIds'].some(key=>Array.isArray(recipe[key])&&recipe[key].length);
+  && (isBlankLongTextSelection(recipe) || ['themeIds','formatIds','textIds'].some(key=>Array.isArray(recipe[key])&&recipe[key].length));
  if(identity.faceIndex>=0 && !hasRecipe && !failedFace){
   globalThis.toastr?.error?.('这批多面兔子镜缺少可信的逐面抽取记录，不能静默改成整批重说；本次未发送请求。');
   return true;
@@ -2375,6 +2376,15 @@ function mirrorImageFaceSource(source,faceIndex){
  return /^<details\b/i.test(trimmed)&&/<\/details>$/i.test(trimmed)?trimmed:'';
 }
 
+function mirrorImageReferenceSnapshot(ctx,settings){
+ const char=ctx.characters?.[ctx.characterId]||ctx.character||{};
+ const data=char.data&&typeof char.data==='object'?char.data:char;
+ const character=settings.independentReadCharacterCardSummary===false?{name:String(char.name||data.name||ctx.name2||'')}:
+  {name:String(char.name||data.name||ctx.name2||''),description:String(data.description||char.description||''),personality:String(data.personality||char.personality||''),scenario:String(data.scenario||char.scenario||'')};
+ const persona={name:String(ctx.name1||globalThis.name1||''),description:settings.independentReadPersonaSummary===false?'':String(ctx.powerUserSettings?.persona_description||globalThis.power_user?.persona_description||ctx.personaDescription||'')};
+ return {character,persona};
+}
+
 function prepareMirrorImageTarget(root){
  if(!root?.isConnected || !currentRuntime()) return null;
  const details=root.matches?.('details')?root:root.querySelector?.(':scope > details')||root.querySelector?.('details');
@@ -2412,21 +2422,38 @@ function prepareMirrorImageTarget(root){
  template.content.querySelectorAll('script,style,noscript,[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal],[data-rm-image-region]').forEach(node=>node.remove());
  const title=String(template.content.querySelector('summary')?.textContent||'兔子镜').trim();
  const faceText=String(template.content.textContent||'').trim();if(!faceText)return null;
+ const imageHasCharacter=!!(ctx.characters?.[ctx.characterId]||ctx.character);
  const char=ctx.characters?.[ctx.characterId]||ctx.character||{};
- const data=char.data&&typeof char.data==='object'?char.data:char;
+ const imageCharacterId=ctx.characterId;
  const st=getSettings();
- const character=st.independentReadCharacterCardSummary===false?{name:String(char.name||data.name||ctx.name2||'')}:
-  {name:String(char.name||data.name||ctx.name2||''),description:String(data.description||char.description||''),personality:String(data.personality||char.personality||''),scenario:String(data.scenario||char.scenario||'')};
- const persona={name:String(ctx.name1||globalThis.name1||''),description:st.independentReadPersonaSummary===false?'':String(ctx.powerUserSettings?.persona_description||globalThis.power_user?.persona_description||ctx.personaDescription||'')};
+ const imageReadCharacter=st.independentReadCharacterCardSummary!==false;
+ const imageReadPersona=st.independentReadPersonaSummary!==false;
+ const {character,persona}=mirrorImageReferenceSnapshot(ctx,st);
+ const imageReferenceKey=JSON.stringify({character,persona});
  const key=JSON.stringify([ownerChat,index,ownerSwipe,faceIndex,hashText(faceSource)]);
  const assertCurrent=()=>{
   const live=getContext();
+  const settings=getSettings();
+  const currentCharacter=live.characters?.[live.characterId]||live.character||null;
   if(!currentRuntime()||!root.isConnected||!details.isConnected||chatKey(live)!==ownerChat||live.chat?.[index]!==msg
+   ||live.characterId!==imageCharacterId||(imageHasCharacter?currentCharacter!==char:currentCharacter!==null)
+   ||(settings.independentReadCharacterCardSummary!==false)!==imageReadCharacter
+   ||(settings.independentReadPersonaSummary!==false)!==imageReadPersona
+   ||JSON.stringify(mirrorImageReferenceSnapshot(live,settings))!==imageReferenceKey
    ||swipeId(msg)!==ownerSwipe||messageSourceFingerprint(msg)!==ownerSource||readSource()!==faceSource)
    throw new Error('这面兔子镜的聊天、分支或内容已变化；未继续发送请求，请在当前镜面重新打开生图。');
   return true;
  };
- const target={key,title,faceText,floor:index,character,persona,group:character.name||persona.name||'兔子镜',assertCurrent,
+ const savedDiagnostic=independentHost?savedIndependentRecordForOwner(ctx,index,msg,readStore())?.apiRequest:null;
+ const recipe=independentHost?(Array.isArray(savedDiagnostic?.faces)?savedDiagnostic.faces[faceIndex]:faceIndex===0?savedDiagnostic:null)
+  :getRabbitMirrorRecipe({chatKey:ownerChat,messageIndex:index,swipeId:ownerSwipe,message:msg,faceIndex,includeExternalOnly:true});
+ const formats=(Array.isArray(recipe?.formatIds)?recipe.formatIds:[]).map((id,index)=>{
+  const item=String(id).startsWith('ext:')?recipe?.formatDescriptors?.find(item=>item.id===id):PRESENTATION_FORMATS.find(item=>item.id===id);
+  const label=String(recipe?.formatLabels?.[index]||'');
+  return item?{title:String(item.title||''),summary:String(item.summary||'')}:label.startsWith(`${id} `)?{title:label.slice(String(id).length+1),summary:''}:null;
+ }).filter(Boolean);
+ const presentationMode=recipe?.requestedPresentationMode==='longtext'?'longtext':recipe?.presentationMode||'html';
+ const target={key,title,faceText,floor:index,character,persona,presentationMode,formats,group:character.name||persona.name||'兔子镜',assertCurrent,
   plan:(input={},options={})=>requestMirrorImagePlan(target,input,options)};
  mirrorImageTargetCache.set(details,target);
  return target;
@@ -2442,7 +2469,8 @@ async function requestMirrorImagePlan(target,input={},options={}){
  const {buildImagePlanningPrompt,parseImagePlan}=await import('../imagePlan.js?rmv=1.6-image2');
  target.assertCurrent();
  const {systemPrompt,userPrompt}=buildImagePlanningPrompt({...input,title:target.title,faceText:target.faceText,
-  floor:target.floor,character:target.character,persona:target.persona,promptFormat:input.promptFormat||st.imagePromptFormat});
+  floor:target.floor,character:target.character,persona:target.persona,presentationMode:target.presentationMode,formats:target.formats,
+  compositionMode:input.compositionMode||st.imageCompositionMode,promptFormat:input.promptFormat||st.imagePromptFormat});
  const maxRequestChars=configuredIndependentMaxRequestChars(st);
  if(systemPrompt.length+userPrompt.length>maxRequestChars)
   throw new Error(`画面规划超过既有副 API ${maxRequestChars} 字符安全预算；未截断材料，也未发送请求。`);

@@ -639,6 +639,20 @@ export function initRabbitMirrorUI() {
     let appearanceSaving = false;
     $('#rh_behavior_rule_mode').val(settings.behaviorRuleMode || 'always');
     $('#rh_behavior_rule_text').val(resolveBehaviorRuleText(settings));
+    $('#rh_writing_style').val(settings.writingStyle || '');
+    $('#rh_writing_style_save').on('click', () => {
+        updateSettings({ writingStyle: String($('#rh_writing_style').val() ?? '') });
+        refreshRabbitMirrorGenerationMode();
+        $('#rh_writing_style_status').text('文风已保存，从下一轮兔子镜生效。');
+    });
+    $('#rh_writing_style_clear').on('click', () => {
+        $('#rh_writing_style').val(''); updateSettings({ writingStyle: '' });
+        refreshRabbitMirrorGenerationMode();
+        $('#rh_writing_style_status').text('文风已清空，原成品保留。');
+    });
+    $('#rh_long_text_source').val(settings.longTextSource || 'blank').on('change', e => updateSettings({ longTextSource: e.target.value }));
+    $('#rh_image_composition').val(settings.imageCompositionMode || 'scene').on('change', e => updateSettings({ imageCompositionMode: e.target.value }));
+    $('#rh_character_world_book').prop('checked', settings.independentReadCharacterWorldBook === true).on('change', e => updateSettings({ independentReadCharacterWorldBook: e.target.checked === true }));
     $('#rh_behavior_rule_status').text(settings.behaviorRuleMode === 'off' ? '当前：不注入；已保存的内容仍保留。' : settings.behaviorRuleMode === 'adult-only' ? '当前：仅在抽到成人内容时向独立 API 注入。' : '当前：每轮向独立 API 注入已保存内容。');
     $('#rh_behavior_rule_mode').on('change', () => {
         const mode = String($('#rh_behavior_rule_mode').val());

@@ -156,6 +156,9 @@ export function openMirrorImagePanel(root, { opener = null } = {}) {
         inputs[name] = input; wrap.append(input); fields.append(wrap); return input;
     }
     const format = field('promptFormat', '提示词写法', 'select');
+    const composition = field('compositionMode', '构图方式（重新构思时生效）', 'select');
+    composition.append(el(doc, 'option', '场景插画', { value: 'scene' }), el(doc, 'option', '展现形式落地／长文本高光', { value: 'auto' }));
+    composition.value = getSettings().imageCompositionMode || 'scene';
     format.append(el(doc, 'option', '自然语言＋标签（NAI 5）', { value: 'nai5-natural' }), el(doc, 'option', '标签（NAI 4.5）', { value: 'nai45-tags' }));
     field('prompt', '画面标签'); field('nl', '画面描述'); field('flatPrompt', '完整通用提示词（不支持独立人物字段的后端使用）');
     const characters = el(doc, 'div'); characters.style.cssText = 'display:grid;gap:12px;'; fields.append(characters);
@@ -250,7 +253,7 @@ export function openMirrorImagePanel(root, { opener = null } = {}) {
             if (kind !== 'draw') {
                 status.textContent = '正在构思画面（一次副 API 请求）…';
                 const publicCharacters = await getImageCharacters({ floor: target.floor });
-                draft = await target.plan({ publicCharacters, promptFormat: format.value }, { signal: controller.signal });
+                draft = await target.plan({ publicCharacters, promptFormat: format.value, compositionMode: composition.value }, { signal: controller.signal });
                 // Draft persistence is local only. A failed draft save must not
                 // discard the completed plan or trigger a second paid request.
                 try { rememberDraft(target.key, draft); } catch { status.textContent = '画面已构思，但草稿未能保存；当前页面仍可编辑。'; }
@@ -311,7 +314,7 @@ export function openMirrorImagePanel(root, { opener = null } = {}) {
         renderState();
     });
     fields.addEventListener('input', event => {
-        if (event.target !== inputs.flatPrompt && event.target !== size && event.target !== format && inputs.flatPrompt.value) {
+        if (event.target !== inputs.flatPrompt && event.target !== size && event.target !== format && event.target !== composition && inputs.flatPrompt.value) {
             inputs.flatPrompt.value = ''; status.textContent = '画面或人物已编辑，旧通用提示词已清空；请补全完整提示词，或重新构思后核对。';
         }
         updatePreview(); renderState();
