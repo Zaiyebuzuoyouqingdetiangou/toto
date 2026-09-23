@@ -2132,7 +2132,7 @@ function historyPreviewDetails(entry,faceIndex=-1,ownerSlot=''){
  details.removeAttribute('data-rabbit-mirror-external-owner');
  details.removeAttribute('data-rabbit-mirror-external-source');
  details.setAttribute('open','');
- details.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
+ details.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-face-swipe-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
  try{ isolateRabbitMirrorInteractionIds(details); }catch{}
  return details;
 }
@@ -2280,7 +2280,7 @@ function persistIndependentRepairFromEvent(event) {
  details.setAttribute(MAINTENANCE_PERSISTED_LAYOUT_ATTR,'true');
  const clone=details.cloneNode(true);
  clone.setAttribute(MAINTENANCE_PERSISTED_LAYOUT_ATTR,'true');
- clone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
+ clone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-face-swipe-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
  const rawHtml=faces.length>1 ? serializeExternalFaceDetails(host) : String(clone.outerHTML||'').trim();
  const store=readStore();
  const existing=savedIndependentRecordForOwner(identity.ctx,identity.index,identity.msg,store);
@@ -2419,7 +2419,7 @@ function prepareMirrorImageTarget(root){
  const faceSource=readSource();if(!faceSource) return null;
  const ownerChat=chatKey(ctx),ownerSwipe=swipeId(msg),ownerSource=messageSourceFingerprint(msg);
  const template=document.createElement('template');template.innerHTML=faceSource;
- template.content.querySelectorAll('script,style,noscript,[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal],[data-rm-image-region]').forEach(node=>node.remove());
+ template.content.querySelectorAll('script,style,noscript,[data-rabbit-mirror-tool-entry-host], [data-rm-face-swipe-host], [data-rm-image-region], [data-rm-image-portal],[data-rm-image-region]').forEach(node=>node.remove());
  const title=String(template.content.querySelector('summary')?.textContent||'兔子镜').trim();
  const faceText=String(template.content.textContent||'').trim();if(!faceText)return null;
  const imageHasCharacter=!!(ctx.characters?.[ctx.characterId]||ctx.character);
@@ -2682,7 +2682,7 @@ export function externalizeFollowMirror(index,msg){
   return;
  }
  const sourceClone=cloneFollowFaceForExternal(mirror);
- sourceClone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
+ sourceClone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-face-swipe-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
  const sourceHtml=String(sourceClone.outerHTML||'');
  const semanticFingerprint=mirrorSemanticFingerprint(mirror);
  // A mobile BFCache restore or cross-device redraw can recreate the inline正文
@@ -2703,6 +2703,7 @@ export function externalizeFollowMirror(index,msg){
  const previous=host.querySelector?.(':scope > details');
  const existingTools=externalToolHost(previous);
  mirror.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]')?.remove?.();
+ mirror.querySelectorAll?.('[data-rm-face-swipe-host]')?.forEach(node=>node.remove());
  if(existingTools && mirror.querySelector?.(':scope > summary')) mirror.querySelector(':scope > summary').append(existingTools);
  mirror.removeAttribute('open');
  markExternalDetails(mirror,key,'follow');
@@ -2912,7 +2913,7 @@ function recoveredFollowFaces(html='',options={}){
 
 function normalizeRecoveredFollowRoot(root){
  if(!root) return null;
- root.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay], [data-rabbit-mirror-resay-status]')?.forEach(node=>node.remove());
+ root.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-face-swipe-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay], [data-rabbit-mirror-resay-status]')?.forEach(node=>node.remove());
  const details=root.matches?.('details')?root:root.querySelector?.('details');
  if(!details) return null;
  ['data-rabbit-mirror-external-details','data-rabbit-mirror-external-owner','data-rabbit-mirror-external-source','data-rabbit-mirror-owner-chat','data-rabbit-mirror-owner-mesid','data-rabbit-mirror-owner-swipe','data-rabbit-mirror-owner-key','data-rabbit-mirror-owner-source-hash'].forEach(attr=>details.removeAttribute(attr));

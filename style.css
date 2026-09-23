@@ -438,6 +438,36 @@ toto[data-rabbit-mirror="true"] summary {
   vertical-align: middle !important;
   white-space: nowrap !important;
 }
+/* Runtime-only footer inside the current face; never fixed over chat content. */
+details > [data-rm-face-swipe-host][data-rm-face-swipe-position="bottom"] {
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  position: static !important;
+  float: none !important;
+  clear: both !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  margin: 12px 0 0 !important;
+  padding: 10px 16px !important;
+  border-top: 1px solid color-mix(in srgb, currentColor 18%, transparent) !important;
+  z-index: auto !important;
+}
+details:not([open]) > [data-rm-face-swipe-host][data-rm-face-swipe-position="bottom"] {
+  display: none !important;
+}
+details > [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar button {
+  min-width: 44px !important;
+  min-height: 44px !important;
+  box-sizing: border-box !important;
+}
+@media (max-width: 720px) {
+  details > [data-rm-face-swipe-host][data-rm-face-swipe-position="bottom"] {
+    justify-content: center !important;
+  }
+}
 .rabbit-mirror-face-swipe-bar button {
   all: unset !important;
   display: inline-flex !important;

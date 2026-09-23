@@ -684,7 +684,7 @@ export function diagnosticRouteSummary(root) {
 function diagnosticInferReason(root, inputs, targets, state = null) {
     if (rabbitMirrorTextPresentation(root) && !inputs.length
         && !targets.some(target => !diagnosticIsInternalUiNode(target)
-            && !target.closest?.(`[${TOOL_ENTRY_HOST_ATTR}]`)
+            && !target.closest?.(`[${TOOL_ENTRY_HOST_ATTR}], [data-rm-face-swipe-host]`)
             && !target.matches?.('[data-rabbit-mirror-title-flow-end="true"]'))) return '本面为文本模式：使用 HTML 排版阅读，不要求内部交互；外层收展与重说工具照常可用。';
     const routes = diagnosticRouteSummary(root);
     const depth = maintenanceCheckedInteractionDepth(root);
@@ -779,7 +779,7 @@ export function diagnosticMessageBody(root) {
 
 export function diagnosticIsInternalUiNode(node) {
     if (!node) return false;
-    if (node.closest?.('[data-rm-image-region], [data-rm-image-portal], [data-rm-tool-menu]')) return true;
+    if (node.closest?.('[data-rm-image-region], [data-rm-image-portal], [data-rm-tool-menu], [data-rm-face-swipe-host]')) return true;
     if (node.closest?.(`[${EXTERNAL_REFERENCE_NOTE_ATTR}]`)) return true;
     if (node.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}], [${RESAY_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`)) return true;
     return !!node.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${MAINTENANCE_MENU_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}]`);
@@ -1721,7 +1721,7 @@ ${styleTexts}`;
     const renderedBodyElementCount = primaryDetails ? [...(primaryDetails.children || [])].filter(child => {
         const tag = String(child?.tagName || '').toLowerCase();
         if (!tag || tag === 'summary' || tag === 'style' || tag === 'script' || tag === 'br') return false;
-        if (child.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}], [${RESAY_ATTR}], [${TOOL_ENTRY_HOST_ATTR}]`) || child.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}]`)) return false;
+        if (child.matches?.(`[${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}], [${RESAY_ATTR}], [${TOOL_ENTRY_HOST_ATTR}], [data-rm-face-swipe-host]`) || child.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}], [${FEEDBACK_CAT_MENU_ATTR}]`)) return false;
         if (tag === 'p' && !String(child.textContent || '').trim() && !child.children?.length) return false;
         return true;
     }).length : 0;
@@ -2221,7 +2221,7 @@ function buildRabbitMirrorCurrentFaceHtml(root) {
     } else template.content.appendChild(clone);
     template.content.querySelectorAll([
         '[data-rm-image-region]', '[data-rm-image-portal]',
-        `[${TOOL_ENTRY_HOST_ATTR}]`, `[${MAINTENANCE_RABBIT_ATTR}]`, `[${FEEDBACK_CAT_ATTR}]`,
+        `[${TOOL_ENTRY_HOST_ATTR}]`, '[data-rm-face-swipe-host]', `[${MAINTENANCE_RABBIT_ATTR}]`, `[${FEEDBACK_CAT_ATTR}]`,
         `[${RECIPE_BUTTON_ATTR}]`, `[${RESAY_ATTR}]`, `[${MAINTENANCE_MENU_ATTR}]`,
         `[${FEEDBACK_CAT_MENU_ATTR}]`, `[${RECIPE_MENU_ATTR}]`, `[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`,
         `[${EXTERNAL_REFERENCE_NOTE_ATTR}]`, `[${INTERACTION_HOME_ATTR}]`,
@@ -2514,7 +2514,7 @@ export function rabbitMirrorLanguageBalance(root) {
     try {
         const clone = root.cloneNode?.(true);
         if (clone?.querySelectorAll) {
-            clone.querySelectorAll(`[data-rm-image-region], [data-rm-image-portal], style,script,[${TOOL_ENTRY_HOST_ATTR}],[${MAINTENANCE_RABBIT_ATTR}],[${FEEDBACK_CAT_ATTR}],[${RESAY_ATTR}],[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}],[${FEEDBACK_CAT_MENU_ATTR}]`).forEach(node => node.remove());
+            clone.querySelectorAll(`[data-rm-image-region], [data-rm-image-portal], style,script,[${TOOL_ENTRY_HOST_ATTR}], [data-rm-face-swipe-host],[${MAINTENANCE_RABBIT_ATTR}],[${FEEDBACK_CAT_ATTR}],[${RESAY_ATTR}],[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}],[${FEEDBACK_CAT_MENU_ATTR}]`).forEach(node => node.remove());
             return auditVisibleLanguageBalanceText(clone.textContent || '');
         }
     } catch (error) {

@@ -5,6 +5,7 @@ import { attachWorldInfoBooksListener, clearCollapsedAllWorldInfoBookRows, clear
 import { installTtDiagnosticEntry } from './ui/ttDiagnostics.js?rmv=1.6';
 
 import { normalizePresentationModes } from './presentationMode.js?rmv=1.5.53-visualquick1';
+import { refreshFacePagerPositions } from './facePagerPlacement.js?rmv=1.6.4-pager1';
 import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, RABBIT_MIRROR_BANNED_WORD_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, normalizeRabbitMirrorBannedWords, updateSettings, resetSettings } from './settings.js?rmv=1.6';
 import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS } from './independentRequestBudget.js?rmv=1.6';
 import { clearLastCombo, getCurrentChatKey } from './storage.js?rmv=1.5.53-visualquick1';
@@ -651,6 +652,10 @@ export function initRabbitMirrorUI() {
         $('#rh_writing_style_status').text('文风已清空，原成品保留。');
     });
     $('#rh_long_text_source').val(settings.longTextSource || 'blank').on('change', e => updateSettings({ longTextSource: e.target.value }));
+    $('#rh_face_pager_position').val(settings.facePagerPosition || 'top').on('change', e => {
+        updateSettings({ facePagerPosition: e.target.value });
+        refreshFacePagerPositions(document, getSettings().facePagerPosition);
+    });
     $('#rh_image_composition').val(settings.imageCompositionMode || 'scene').on('change', e => updateSettings({ imageCompositionMode: e.target.value }));
     $('#rh_character_world_book').prop('checked', settings.independentReadCharacterWorldBook === true).on('change', e => updateSettings({ independentReadCharacterWorldBook: e.target.checked === true }));
     $('#rh_behavior_rule_status').text(settings.behaviorRuleMode === 'off' ? '当前：不注入；已保存的内容仍保留。' : settings.behaviorRuleMode === 'adult-only' ? '当前：仅在抽到成人内容时向独立 API 注入。' : '当前：每轮向独立 API 注入已保存内容。');

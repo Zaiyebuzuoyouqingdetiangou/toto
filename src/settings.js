@@ -169,6 +169,7 @@ export const defaultSettings = Object.freeze({
     rabbitMirrorFaceCount: 1,
     rabbitMirrorPresentationModes: ['auto', 'auto', 'auto', 'auto', 'auto'],
     longTextSource: 'blank',
+    facePagerPosition: 'top',
     writingStyle: '',
     independentReadCharacterWorldBook: false,
     richFormatBias: false,
@@ -312,6 +313,7 @@ export function getSettings() {
     // 保证旧设置升级与畸形写入都不会意外开启多面。
     settings.rabbitMirrorPresentationModes = normalizePresentationModes(settings.rabbitMirrorPresentationModes);
     settings.longTextSource = ['blank', 'text', 'mixed'].includes(settings.longTextSource) ? settings.longTextSource : 'blank';
+    settings.facePagerPosition = settings.facePagerPosition === 'bottom' ? 'bottom' : 'top';
     settings.writingStyle = typeof settings.writingStyle === 'string' ? settings.writingStyle.slice(0, 6000) : '';
     settings.independentReadCharacterWorldBook = settings.independentReadCharacterWorldBook === true;
     settings.imageCompositionMode = settings.imageCompositionMode === 'auto' ? 'auto' : 'scene';
@@ -434,6 +436,7 @@ export function updateSettings(patch) {
     }
     if (Object.prototype.hasOwnProperty.call(safePatch, 'imageEnabled')) safePatch.imageEnabled = safePatch.imageEnabled === true;
     if (Object.prototype.hasOwnProperty.call(safePatch, 'longTextSource')) safePatch.longTextSource = ['blank', 'text', 'mixed'].includes(safePatch.longTextSource) ? safePatch.longTextSource : 'blank';
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'facePagerPosition')) safePatch.facePagerPosition = safePatch.facePagerPosition === 'bottom' ? 'bottom' : 'top';
     if (Object.prototype.hasOwnProperty.call(safePatch, 'writingStyle')) safePatch.writingStyle = typeof safePatch.writingStyle === 'string' ? safePatch.writingStyle.slice(0, 6000) : '';
     if (Object.prototype.hasOwnProperty.call(safePatch, 'independentReadCharacterWorldBook')) safePatch.independentReadCharacterWorldBook = safePatch.independentReadCharacterWorldBook === true;
     if (Object.prototype.hasOwnProperty.call(safePatch, 'imageCompositionMode')) safePatch.imageCompositionMode = safePatch.imageCompositionMode === 'auto' ? 'auto' : 'scene';

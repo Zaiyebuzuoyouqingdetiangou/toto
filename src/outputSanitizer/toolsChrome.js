@@ -1,6 +1,7 @@
 // Split from outputSanitizer.js — toolsChrome.
 
 import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.6.3-title1';
+import { placeFacePager } from '../facePagerPlacement.js?rmv=1.6.4-pager1';
 import { isTextPresentation } from '../presentationMode.js?rmv=1.5.53-visualquick1';
 import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.6.3-ttchild1';
 import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=1.6';
@@ -1997,6 +1998,8 @@ function installFaceTitleChrome(root, host) {
     summary?.querySelectorAll?.(':scope > [data-rm-face-swipe-host]').forEach(node => node.remove());
     const view = installFaceSwipeBar(root, host);
     installFaceSwipeDelete(root, host, view);
+    if (!view) summary?.parentElement?.querySelectorAll?.(':scope > [data-rm-face-swipe-host]').forEach(node => node.remove());
+    else placeFacePager(summary?.parentElement, host, getSettings().facePagerPosition);
     if (summary) ensureMirrorTitleLabel(summary, host);
 }
 
