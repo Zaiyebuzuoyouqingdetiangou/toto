@@ -16,15 +16,17 @@ test('omitted and invalid composition modes preserve the explicit scene contract
     assert.doesNotMatch(scene.systemPrompt, /采用“形式落地”构图/);
 });
 
-test('auto renders trusted letter, album and impression-box media without forcing a character scene', () => {
+test('auto stages character participation in letters and albums using the trusted form', () => {
     for (const title of ['信件', '相册', '印象盒']) {
         const formats = [{ title, summary: '按本面实际发生的内容组织物件。' }];
         const prompt = buildImagePlanningPrompt({ faceText, compositionMode: 'auto', presentationMode: 'html', formats });
         assert.deepEqual(sourceRow(prompt).formats, formats);
-        assert.match(prompt.systemPrompt, /将所选展现形式本身画出来/);
-        assert.match(prompt.systemPrompt, /不要一律改画成“人物拿着它”或通用人物场景/);
-        assert.match(prompt.systemPrompt, /不预设人物必须出镜，不预设固定容器、固定版式或固定插画模板/);
-        assert.doesNotMatch(prompt.systemPrompt, /char 使用手机的真实场景，不画软件截图/);
+        assert.match(prompt.systemPrompt, /将展现形式转化为角色正在创作、使用或体验它的具体场景/);
+        assert.match(prompt.systemPrompt, /信件：画 char 正在写这封信/);
+        assert.match(prompt.systemPrompt, /相册：画角色正在翻看这些相册/);
+        assert.match(prompt.systemPrompt, /原文明确作者或使用者另有其人时，遵循原有身份/);
+        assert.match(prompt.systemPrompt, /不把信件、相册等只画成静物、版式或界面截图/);
+        assert.doesNotMatch(prompt.systemPrompt, /将所选展现形式本身画出来|不预设人物必须出镜|不要一律改画成“人物拿着它”/);
     }
 });
 
@@ -34,20 +36,20 @@ test('longtext prioritizes a real highlight over even a supplied medium record',
     assert.equal(sourceRow(prompt).presentationMode, 'longtext');
     assert.match(prompt.systemPrompt, /优先选择正文中真实发生、最有依据的高光瞬间/);
     assert.match(prompt.systemPrompt, /不因形式名称强加容器/);
-    assert.doesNotMatch(prompt.systemPrompt, /将所选展现形式本身画出来/);
+    assert.doesNotMatch(prompt.systemPrompt, /信件：画 char 正在写这封信|相册：画角色正在翻看这些相册/);
 });
 
 test('text media remain eligible for composition while missing records do not invent a medium', () => {
     const text = buildImagePlanningPrompt({ faceText, compositionMode: 'auto', presentationMode: 'text',
         formats: [{ title: '信件', summary: '' }] });
     assert.equal(sourceRow(text).presentationMode, 'text');
-    assert.match(text.systemPrompt, /将所选展现形式本身画出来/);
+    assert.match(text.systemPrompt, /信件：画 char 正在写这封信/);
     for (const formats of [undefined, [], [null, '相册', { title: 42 }, { title: ' ', summary: '' }]]) {
         const prompt = buildImagePlanningPrompt({ faceText, compositionMode: 'auto', formats });
         assert.deepEqual(sourceRow(prompt).formats, []);
         assert.match(prompt.systemPrompt, /没有可信展现形式记录/);
         assert.match(prompt.systemPrompt, /不要仅凭标题猜造一个抽取形式/);
-        assert.doesNotMatch(prompt.systemPrompt, /将所选展现形式本身画出来/);
+        assert.doesNotMatch(prompt.systemPrompt, /信件：画 char 正在写这封信|相册：画角色正在翻看这些相册/);
     }
 });
 

@@ -390,8 +390,8 @@ export function buildRabbitMirrorSettingsDialogHtml() {
               <label class="checkbox_label"><input id="rh_image_enabled" type="checkbox"> 启用镜面生图</label>
               <p>默认关闭。从每面的小兔子工具入口打开「生图」。首次点击生成时，使用当前副 API 构思一次，再调用柏宝绘出图一次；查看、编辑不调用模型。</p>
               <label>提示词格式 <select id="rh_image_prompt_format" class="text_pole"><option value="nai5-natural">自然语言＋标签（NAI 5）</option><option value="nai45-tags">标签（NAI 4.5）</option></select></label>
-              <label for="rh_image_composition">生图构图方式</label><select id="rh_image_composition" class="text_pole" style="min-height:44px;"><option value="scene">场景插画</option><option value="auto">展现形式落地／长文本高光</option></select>
-              <p>形式落地会参考当前面的抽取记录与成品；长文本取正文高光。不会预设固定人物、盒子或画稿。</p>
+              <label for="rh_image_composition">生图构图方式</label><select id="rh_image_composition" class="text_pole" style="min-height:44px;"><option value="scene">场景插画</option><option value="auto">按展现形式演绎／长文本高光</option></select>
+              <p>按形式画角色参与的场景：信件画 char 写信，相册画角色翻看相册；长文本取正文高光。动作、神态和构图结合当前人物与内容。</p>
               <p>模型、密钥、画幅像素等在柏宝绘配置。这里的格式只决定提示词写法，不替换它的模型。柏宝绘内部重试遵循其原有规则。</p>
               <button type="button" id="rh_image_status_refresh" class="menu_button">检查柏宝绘连接</button><p id="rh_image_provider_status" role="status">点击检查读取当前连接状态，不发起生图。</p>
             </div>

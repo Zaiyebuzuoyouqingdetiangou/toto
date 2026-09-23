@@ -157,7 +157,7 @@ export function openMirrorImagePanel(root, { opener = null } = {}) {
     }
     const format = field('promptFormat', '提示词写法', 'select');
     const composition = field('compositionMode', '构图方式（重新构思时生效）', 'select');
-    composition.append(el(doc, 'option', '场景插画', { value: 'scene' }), el(doc, 'option', '展现形式落地／长文本高光', { value: 'auto' }));
+    composition.append(el(doc, 'option', '场景插画', { value: 'scene' }), el(doc, 'option', '按展现形式演绎／长文本高光', { value: 'auto' }));
     composition.value = getSettings().imageCompositionMode || 'scene';
     format.append(el(doc, 'option', '自然语言＋标签（NAI 5）', { value: 'nai5-natural' }), el(doc, 'option', '标签（NAI 4.5）', { value: 'nai45-tags' }));
     field('prompt', '画面标签'); field('nl', '画面描述'); field('flatPrompt', '完整通用提示词（不支持独立人物字段的后端使用）');
