@@ -1795,6 +1795,7 @@ export async function generateFor(index,msg,force=false,sourceAware=true,multifa
     const replacedOne=multifaceResay && liveHost
      ? replaceExternalMultifaceFace(liveHost,settledKey,'independent',html,Number(multifaceResay.faceIndex),true) : false;
     if(replacedOne){
+     clearIndependentResayStatus(liveHost);
      liveHost.dataset.rmSourceHash=settledSourceHash;
      stampExternalDetailsOwnership(liveHost);
      markMountedFaceProofs(liveHost,'independent',completed.apiRequest);

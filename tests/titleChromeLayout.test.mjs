@@ -23,6 +23,25 @@ test('title chrome wraps the label and keeps the control cluster compact', () =>
     assert.match(runtime, /line-clamp:\s*2/);
 });
 
+test('legacy float containment cannot override the owned title disclosure layout', () => {
+    // A zero-sized border triangle becomes a tall inline border if a later
+    // summary rule replaces flex with list-item (desktop's stray vertical bar).
+    const rules = [...css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)];
+    const legacyFlowRules = rules.filter(([, , declarations]) => /display:\s*flow-root\s+list-item\s*!important/.test(declarations));
+    assert.ok(legacyFlowRules.length > 0, 'legacy floated tools still need containment');
+    for (const [, selectors] of legacyFlowRules) {
+        for (const selector of selectors.split(',')) {
+            assert.match(selector, /summary:not\(\[data-rm-title-chrome="true"\]\)/,
+                'flow-root must exclude title chrome so its arrow remains a flex item');
+        }
+    }
+    assert.ok(rules.some(([, selectors, declarations]) =>
+        selectors.includes('summary[data-rm-title-chrome="true"]')
+        && /display:\s*flex\s*!important/.test(declarations)
+        && /flex-wrap:\s*wrap\s*!important/.test(declarations)),
+    'owned titles must keep wrapping their label and compact tools');
+});
+
 test('delete button is last in the tool host, not floated on the summary', () => {
     assert.match(toolsChrome, /function installFaceSwipeDelete\(root, host, view\)/);
     assert.match(toolsChrome, /host\.append\(del\)/);
