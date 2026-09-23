@@ -88,6 +88,7 @@ import {
     recordKey,
     revokeIndependentRecordContinuity,
     saveRecordForSlot,
+    savedIndependentRecordForOwner,
     savedRecordMatchesObserved,
     setOwnerLockForBase,
     stripHistoricalRabbitMirrorBlocks,
@@ -1070,12 +1071,15 @@ function syncMessagesCore(indices=null){
         cancelSupersededFlightsForBase(baseSlot,sourceHash);
         cancelFlightsForSlot(slot,sourceHash);
         const activeBaseFlight=activeIndependentFlightForBase(baseSlot);
-       const persistedReady=!persistedSuppressed&&persistedOwner?.html&&independentStoredHtmlRestorable(persistedOwner.html)&&savedRecordMatchesObserved(persistedOwner,observed)?persistedOwner:null;
+       // Targeted sync skips the full-chat merge. It must still reconcile this
+       // exact owner's newest record before repainting a completed resay.
+       const persistedReady=persistedSuppressed?null:savedIndependentRecordForOwner(ctx,i,m,store,observed);
        if(persistedSuppressed) clearOwnerLockForBase(baseSlot);
        let ownerLocked=null;
        if(persistedReady){
         const persistedSlot=chatPersistenceSlot(ctx,i,swipeId(m),persistedReady)||slot;
-        if(!store?.[persistedSlot]?.html){ saveRecordForSlot(store,persistedSlot,persistedReady,{dropLegacy:false}); storeChanged=true; }
+        if(store?.[persistedSlot]!==persistedReady){ saveRecordForSlot(store,persistedSlot,persistedReady,{dropLegacy:false}); storeChanged=true; }
+        writePersistedOwner(ctx,i,m,persistedReady,{overwrite:true});
         setOwnerLockForBase(baseSlot,persistedSlot,String(persistedReady.sourceHash||persistedReady.bodyHash||sourceHash));
         ownerLocked={record:persistedReady,lock:{slot:persistedSlot}};
        } else if(!persistedSuppressed){
@@ -1218,6 +1222,7 @@ function syncMessagesCore(indices=null){
         const activePending=pending.get(slot)||activeBaseFlight;
        const manualResayPending=!!(activePending?.manual
         && !activePending.cancelled
+        && !activePending.uiSettled
         && ((activePending.manualBodyOwner && manualBodyOwnerCurrent(activePending.manualBodyOwner))
          || (String(activePending.sourceHash||'')===String(sourceHash||'')
           && Number(activePending.revision)===Number(observed.revision))));

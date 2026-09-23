@@ -1290,15 +1290,15 @@ function pickLiveCombinationBatch(settings, planning, faceCount, planningReason 
 export function pickCombinationForMultifaceResay(settings, resay) {
     if (!resay || !Number.isSafeInteger(resay.faceIndex) || resay.faceIndex < 0 ||
         !Array.isArray(resay.faces) || resay.faceIndex >= resay.faces.length || resay.faces.length > 5) {
-        throw multiFacePlanningError('未找到要重新生成的兔子镜面；本次尚未发送请求。');
+        throw multiFacePlanningError('未找到要重新生成的兔子镜面；本次尚未发送请求。', 'BATCH_RESAY_FACE_MISSING');
     }
     const face = resay.faces[resay.faceIndex];
     if (Number(face?.customThemeCount || 0) > 0 || Number(face?.customFormatCount || 0) > 0 || Number(face?.customRequestCount || 0) > 0) {
-        throw multiFacePlanningError('原面包含未入库的自定义点菜，仅凭面元数据无法安全还原；请重新选择整批生成。');
+        throw multiFacePlanningError('原面包含未入库的自定义点菜，仅凭面元数据无法安全还原；请重新选择整批生成。', 'BATCH_RESAY_CUSTOM_RECIPE');
     }
     const externalSnapshot = getExternalPoolSnapshot();
     const resolveIds = (ids, pool, kind) => {
-        if (!Array.isArray(ids) || ids.length > 16) throw multiFacePlanningError('原面抽取记录不完整，不能静默更换选题。');
+        if (!Array.isArray(ids) || ids.length > 16) throw multiFacePlanningError('原面抽取记录不完整，不能静默更换选题。', 'BATCH_RESAY_RECIPE_INCOMPLETE');
         const externalLibraries = kind === 'text' ? externalSnapshot.textsByLibrary : kind === 'format' ? externalSnapshot.formatsByLibrary : externalSnapshot.themesByLibrary;
         const selected = ids.map(id => {
             if (typeof id !== 'string' || !id.startsWith('ext:')) return pool.find(item => item.id === id);
@@ -1307,13 +1307,13 @@ export function pickCombinationForMultifaceResay(settings, resay) {
             if (!externalLibraries.some(library => library.ids.includes(id))) return null;
             return externalPoolItem(id, kind);
         });
-        if (selected.some(item => !item)) throw multiFacePlanningError('原面使用的库条目已不存在，不能静默更换选题。');
+        if (selected.some(item => !item)) throw multiFacePlanningError('原面使用的条目当前不可用，不能静默更换选题。', 'BATCH_RESAY_ENTRY_UNAVAILABLE');
         return selected;
     };
     const themes = resolveIds(face?.themeIds, THEMATIC_CATEGORIES, 'theme');
     const formats = resolveIds(face?.formatIds, PRESENTATION_FORMATS, 'format');
     const texts = resolveIds(face?.textIds || [], [], 'text');
-    if (!themes.length && !formats.length && !texts.length) throw multiFacePlanningError('原面只有自定义指令，缺少可复用抽取记录；请重新选择整批生成。');
+    if (!themes.length && !formats.length && !texts.length) throw multiFacePlanningError('原面缺少可复用抽取记录；请重新选择整批生成。', 'BATCH_RESAY_RECIPE_INCOMPLETE');
     const selectedSettings = { ...settings, samplingMode: face.samplingMode || settings.samplingMode, forceVisualScenery: face.forcedVisualScenery === true, visualSceneryCombination: face.visualSceneryCombination === true };
     return { combo: comboFromSelection({ themes, formats, ...(texts.length ? { texts } : {}), ...presentationModeFields(face) }, selectedSettings, getRecentIds(settings.cooldownRounds || 10)), directive: null, last: null };
 }

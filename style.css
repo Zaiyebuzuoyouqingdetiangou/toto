@@ -1339,11 +1339,16 @@ toto[data-rabbit-mirror="true"] summary {
   max-width:100%;
   box-sizing:border-box;
 }
-/* Flow-root contains the floating tool strip. Long titles may wrap and grow
- * their own background; no truncation, new title, JS scan or outer box. */
+/* Legacy titles need flow-root to contain their floating tools. Owned title
+ * chrome uses the flex layout above: list-item would turn its zero-sized
+ * disclosure triangle into an inline border and split the tools from the label. */
+#chat .rabbit-mirror-external-shell[data-rm-source][data-rm-placement] > details[data-rabbit-mirror-external-details="true"] > summary:not([data-rm-title-chrome="true"]),
+#chat toto[data-rabbit-mirror="true"] > details > summary:not([data-rm-title-chrome="true"]){
+  display:flow-root list-item !important;
+}
+/* Keep both title layouts inside the available lane. */
 #chat .rabbit-mirror-external-shell[data-rm-source][data-rm-placement] > details[data-rabbit-mirror-external-details="true"] > summary,
 #chat toto[data-rabbit-mirror="true"] > details > summary{
-  display:flow-root list-item !important;
   box-sizing:border-box !important;
   max-width:100% !important;
   min-width:0 !important;
