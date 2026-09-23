@@ -1,0 +1,352 @@
+# Install on main. Select "Use workflow from: main" when running this action.
+# Keep README.md; preserve main workflows and Git controls.
+# Nothing is released automatically after ZIP import.
+# This file does not replace import-rabbitmirror-zip.yml.
+name: "RabbitMirror 2 - 过滤发布到 main"
+run-name: "RabbitMirror 正式发布（tset → main）"
+
+'on':
+  workflow_dispatch:
+    inputs:
+      confirm_main:
+        description: "测试通过后输入 main，确认用 tset 的运行源码更新正式版"
+        type: string
+        required: true
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rabbitmirror-tset-main-write
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == 'Zaiyebuzuoyouqingdetiangou/toto' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout latest main
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6, pinned
+        with:
+          ref: refs/heads/main
+          fetch-depth: 1
+          persist-credentials: true
+      - name: Validate snapshot, filter, and push main
+        shell: python
+        env:
+          CONFIRM_MAIN: ${{ inputs.confirm_main }}
+        run: |
+          import json
+          import os
+          import posixpath
+          import re
+          import subprocess
+          import unicodedata
+          from pathlib import Path
+
+          REPOSITORY = 'Zaiyebuzuoyouqingdetiangou/toto'
+          HOMEPAGE = 'https://github.com/' + REPOSITORY
+          TEST_BRANCH = 'tset'
+          UPLOAD_PATTERN = re.compile(r'(?:rabbitmirror-upload|toto[0-9][0-9A-Za-z._+\-]*)(?: ?\(\d+\))?\.zip', re.I)
+          RUNTIME_DIRS = {'src', 'data'}
+          RUNTIME_FILES = {'index.js', 'manifest.json', 'style.css', 'settings-ui.css', 'LICENSE'}
+          # These controls belong to the destination branch, never to an uploaded ZIP.
+          CONTROL_FILES = {'.gitignore', '.gitattributes'}
+          MAX_UNPACKED = 100 * 1024 * 1024
+          MAX_FILE = 12 * 1024 * 1024
+          ROOT = Path.cwd().resolve()
+
+
+          def git(*args, data=None):
+              return subprocess.run(
+                  ['git', '-c', 'core.hooksPath=/dev/null', *args],
+                  input=data, stdout=subprocess.PIPE, check=True,
+              ).stdout
+
+
+          def text_git(*args):
+              return git(*args).decode('utf-8').strip()
+
+
+          def require(condition, message):
+              if not condition:
+                  raise SystemExit(message)
+
+
+          def summary(message):
+              print(message)
+              target = os.environ.get('GITHUB_STEP_SUMMARY')
+              if target:
+                  with open(target, 'a', encoding='utf-8') as stream:
+                      stream.write(message + '\n\n')
+
+
+          def safe_name(name):
+              require(isinstance(name, str) and bool(name), 'Empty file path.')
+              require(not name.startswith('/') and '\\' not in name and ':' not in name,
+                      'Unsafe file path: ' + repr(name))
+              require(not any(ord(ch) < 32 or ord(ch) == 127 for ch in name),
+                      'Control character in file path: ' + repr(name))
+              parts = name.split('/')
+              require(all(p not in ('', '.', '..') and not p.endswith((' ', '.')) for p in parts),
+                      'Unsafe file path: ' + repr(name))
+              return parts
+
+
+          def protected(name):
+              return name.split('/')[0] == '.github' or name in CONTROL_FILES
+
+
+          def junk(name):
+              parts = safe_name(name)
+              lower = [part.casefold() for part in parts]
+              if any(part in {'.git', '.github', '__macosx', '__pycache__', 'node_modules',
+                              '.venv', '.cache', '.idea', '.vscode'} for part in lower):
+                  return True
+              if lower[-1] in {'.ds_store', 'thumbs.db', 'desktop.ini'} or lower[-1].startswith('._'):
+                  return True
+              if lower[-1] == '.env' or lower[-1].startswith('.env.'):
+                  return True
+              if len(parts) == 1 and lower[-1].endswith(('.zip', '.7z', '.rar')):
+                  return True
+              if len(parts) == 1 and parts[0] in CONTROL_FILES | {'.gitmodules'}:
+                  return True
+              return False
+
+
+          def runtime_file(name):
+              return (name.split('/')[0] in RUNTIME_DIRS or name in RUNTIME_FILES) and not junk(name)
+
+
+          def unique_paths(names):
+              folded = {}
+              for name in names:
+                  safe_name(name)
+                  key = unicodedata.normalize('NFC', name).casefold()
+                  require(key not in folded, 'Duplicate/case-conflicting path: ' + repr(name))
+                  folded[key] = name
+              for key in folded:
+                  parent = posixpath.dirname(key)
+                  while parent:
+                      require(parent not in folded, 'File/directory conflict: ' + repr(folded[key]))
+                      parent = posixpath.dirname(parent)
+
+
+          def normalize_manifest(payload):
+              required = RUNTIME_FILES | {'src/settings.js', 'src/injector.js'}
+              missing = sorted(name for name in required if not payload.get(name))
+              require(not missing, 'Incomplete RabbitMirror package. Missing: ' + ', '.join(missing))
+              require(any(name.startswith('data/') for name in payload), 'Missing data/ files.')
+              manifest = json.loads(payload['manifest.json'].decode('utf-8-sig'))
+              require(isinstance(manifest, dict), 'manifest.json must be an object.')
+              require(manifest.get('display_name') == '兔子镜小剧场', 'This is not RabbitMirror.')
+              require(isinstance(manifest.get('version'), str) and
+                      re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._+\-]{0,79}', manifest['version']),
+                      'Missing or unsafe version in manifest.json.')
+              require(str(manifest.get('js', '')).split('?', 1)[0] == 'index.js',
+                      'Unexpected JavaScript entry point.')
+              require(str(manifest.get('css', '')).split('?', 1)[0] == 'style.css',
+                      'Unexpected CSS entry point.')
+              old_home = str(manifest.get('homePage', '')).rstrip('/')
+              require(old_home.casefold() in {HOMEPAGE.casefold(),
+                                            'https://github.com/nancyindaeyo/toto'},
+                      'Unknown package repository; refusing to import.')
+              changed = old_home != HOMEPAGE or manifest.get('homePage') != HOMEPAGE
+              manifest['homePage'] = HOMEPAGE
+              description = manifest.get('description')
+              if isinstance(description, str):
+                  corrected = description.replace('安装通道为 Nancyindaeyo/toto',
+                                                  '安装通道为 ' + REPOSITORY)
+                  changed = changed or corrected != description
+                  manifest['description'] = corrected
+              # Preserve the exact original bytes when no metadata fix is necessary.
+              if changed:
+                  payload['manifest.json'] = (json.dumps(manifest, ensure_ascii=False, indent=2) + '\n').encode('utf-8')
+              return manifest, changed
+
+
+          def validate_runtime(payload):
+              """Check literal in-repository module links; do NOT execute plugin code."""
+              selected = {name for name in payload if runtime_file(name)}
+              pattern = re.compile(r'''\b(?:from\s*|import\s*\(\s*|import\s*)['"]([^'"\n]+)['"]''')
+              missing = set()
+              checked = 0
+              for name in sorted(selected):
+                  content = payload[name]
+                  require(not content.startswith(b'version https://git-lfs.github.com/spec/v1'),
+                          'Git LFS pointer, not runtime content: ' + name)
+                  if not name.endswith(('.js', '.mjs')):
+                      continue
+                  for match in pattern.finditer(content.decode('utf-8-sig')):
+                      spec = match.group(1).split('?', 1)[0].split('#', 1)[0]
+                      if not spec.startswith('.'):
+                          continue
+                      target = posixpath.normpath(posixpath.join(posixpath.dirname(name), spec))
+                      # Host files such as ../../../../../script.js are supplied by SillyTavern.
+                      if target.startswith('../'):
+                          continue
+                      checked += 1
+                      if target not in selected:
+                          missing.add(name + ' -> ' + target)
+              require(not missing, 'Missing/filtered runtime import(s):\n' + '\n'.join(sorted(missing)))
+              return checked
+
+
+          def tree_entries(sha):
+              result = {}
+              for row in git('ls-tree', '-r', '-z', '--full-tree', sha).split(b'\0'):
+                  if not row:
+                      continue
+                  meta, path = row.split(b'\t', 1)
+                  mode, kind, oid = meta.decode('ascii').split()
+                  name = path.decode('utf-8')
+                  safe_name(name)
+                  result[name] = (mode, kind, oid)
+              return result
+
+
+          def blob(entry, name):
+              mode, kind, oid = entry
+              require(kind == 'blob' and mode in {'100644', '100755'},
+                      'Only regular files are accepted: ' + repr(name))
+              content = git('cat-file', 'blob', oid)
+              require(len(content) <= MAX_FILE, 'File exceeds size limit: ' + repr(name))
+              return content
+
+
+          def remote_tip(branch):
+              ref = 'refs/heads/' + branch
+              rows = text_git('ls-remote', '--exit-code', 'origin', ref).splitlines()
+              require(len(rows) == 1 and rows[0].split()[1] == ref,
+                      'Could not resolve remote branch: ' + branch)
+              return rows[0].split()[0]
+
+
+          def local_safe(name, allow_directory=False):
+              parts = safe_name(name)
+              target = ROOT.joinpath(*parts)
+              p = ROOT
+              for part in parts:
+                  p = p / part
+                  require(not p.is_symlink(), 'Refusing symbolic link: ' + repr(name))
+                  require(not p.exists() or p == target or p.is_dir(),
+                          'Parent path is not a directory: ' + repr(name))
+              require(allow_directory or not target.is_dir(),
+                      'Target is a directory: ' + repr(name))
+              return target
+
+
+          def apply_changes(payload, removals):
+              # Validate ALL destinations before touching any local file.
+              for name in set(payload) | set(removals):
+                  require(not protected(name), 'Refusing to modify repository controls: ' + name)
+                  local_safe(name)
+              for name in sorted(removals, reverse=True):
+                  target = local_safe(name)
+                  if target.exists():
+                      target.unlink()
+              for name, content in payload.items():
+                  target = local_safe(name)
+                  target.parent.mkdir(parents=True, exist_ok=True)
+                  target.write_bytes(content)
+                  target.chmod(0o644)
+              git('add', '--all', '--force', '--', '.')
+              staged = [n.decode('utf-8') for n in git('diff', '--cached', '--name-only', '-z').split(b'\0') if n]
+              require(not any(protected(name) for name in staged), 'Workflow/control files changed unexpectedly.')
+              require(set(staged) <= (set(payload) | set(removals)), 'Unexpected staged files; refusing to push.')
+              # Verify Git did not silently rewrite bytes through attributes/filters.
+              staged_tree = tree_entries(text_git('write-tree'))
+              for name, content in payload.items():
+                  expected = git('hash-object', '--stdin', data=content).decode('ascii').strip()
+                  require(staged_tree.get(name, (None, None, None))[2] == expected,
+                          'Staged file bytes differ from the selected source: ' + name)
+              require(not set(removals) & set(staged_tree), 'Some excluded files remain staged.')
+              return staged
+
+
+          def commit_and_push(target, old_sha, message, source_sha=None):
+              require(remote_tip(target) == old_sha,
+                      target + ' changed during this run. Nothing pushed; run again.')
+              if source_sha is not None:
+                  require(remote_tip(TEST_BRANCH) == source_sha,
+                          'tset changed during this run. Nothing pushed; retest and run again.')
+              git('-c', 'user.name=github-actions[bot]',
+                  '-c', 'user.email=41898282+github-actions[bot]@users.noreply.github.com',
+                  '-c', 'commit.gpgsign=false', 'commit', '-m', message)
+              new_sha = text_git('rev-parse', 'HEAD')
+              # Normal fast-forward push only. Rejection must STOP, never force/rebase/retry.
+              git('push', 'origin', 'HEAD:refs/heads/' + target)
+              require(remote_tip(target) == new_sha,
+                      'Push returned, but remote moved again. Inspect Actions and the branch; do not assume the latest state.')
+              summary('Published commit: `' + new_sha + '` on `' + target + '`.')
+              return new_sha
+
+
+          require(os.environ.get('GITHUB_REPOSITORY') == REPOSITORY, 'Wrong GitHub repository.')
+          require(os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch',
+                  'This publishing workflow must be started manually.')
+          require(not text_git('status', '--porcelain'), 'Checkout is not clean; refusing to continue.')
+          OLD_SHA = text_git('rev-parse', 'HEAD')
+
+          require(os.environ.get('CONFIRM_MAIN') == 'main',
+                  'Enter main in confirm_main only after testing tset. No files changed.')
+          require(os.environ.get('GITHUB_REF') == 'refs/heads/main',
+                  'Run this workflow using Use workflow from: main.')
+          require(remote_tip('main') == OLD_SHA, 'main moved. Run again from main.')
+          # Fetch a tree without checking out or executing any code from the test branch.
+          git('fetch', '--no-tags', '--depth=1', '--refmap=', 'origin', 'refs/heads/tset')
+          source_sha = text_git('rev-parse', 'FETCH_HEAD')
+          source_tree = tree_entries(source_sha)
+          pending_uploads = sorted(name for name in source_tree
+                                   if '/' not in name and UPLOAD_PATTERN.fullmatch(name))
+          require(not pending_uploads,
+                  'Unprocessed upload ZIP(s) remain on tset: ' + ', '.join(pending_uploads)
+                  + '. Finish ZIP import successfully before publishing.')
+          selected_names = [name for name in source_tree if runtime_file(name) or name == 'README.md']
+          unique_paths(selected_names)
+          payload = {name: blob(source_tree[name], name) for name in selected_names}
+          require(sum(map(len, payload.values())) <= MAX_UNPACKED, 'Runtime exceeds 100 MiB.')
+          manifest, corrected = normalize_manifest(payload)
+          links = validate_runtime(payload)
+          # Keep documentation readable from main without copying its development folders.
+          readme_relinks = 0
+          if 'README.md' in payload:
+              readme = payload['README.md'].decode('utf-8-sig')
+              pattern = re.compile(r'(?P<lead>\]\()(?:\./)?(?P<path>(?:docs|scripts|tests|tools)/[^)\s]+|CHANGELOG\.md(?:#[^)\s]*)?)(?P<end>\))')
+              base = HOMEPAGE + '/blob/' + source_sha + '/'
+              readme, readme_relinks = pattern.subn(lambda m: m['lead'] + base + m['path'] + m['end'], readme)
+              if readme_relinks:
+                  payload['README.md'] = readme.encode('utf-8')
+          old_tree = tree_entries(OLD_SHA)
+          # Preserve automation and Git controls from MAIN, never import test workflows.
+          # Preserve the existing main README if a runtime-only upload did not include one.
+          kept_main = {name for name in old_tree if protected(name)}
+          if 'README.md' not in payload and 'README.md' in old_tree:
+              kept_main.add('README.md')
+          removals = set(old_tree) - set(payload) - kept_main
+          staged = apply_changes(payload, removals)
+          summary('## Clean publish tset → main\n'
+                  '- Source snapshot (test manually before publishing): `' + source_sha + '`\n'
+                  '- Previous main: `' + OLD_SHA + '`\n'
+                  '- Version: `' + manifest['version'] + '`\n'
+                  '- Runtime/public files: ' + str(len(payload)) + '\n'
+                  '- Literal runtime links checked: ' + str(links) + '\n'
+                  '- Files removed from main: ' + str(len(removals)) + '\n'
+                  '- README development links redirected: ' + str(readme_relinks) + '\n'
+                  '- Main .github and Git control files are preserved.\n'
+                  '- tset is NOT modified. This is a snapshot publication, NOT a branch merge.\n'
+                  '- No plugin code/tests were executed; this does not certify in-app behavior.')
+          if removals:
+              summary('Removed paths (main only):\n```\n' + '\n'.join(sorted(removals)) + '\n```')
+          if not staged:
+              summary('main already has this clean content. No commit or push needed.')
+              raise SystemExit(0)
+          commit_and_push('main', OLD_SHA,
+                          'Publish RabbitMirror ' + manifest['version'] + ' (tset → main)\n\nSource-commit: ' + source_sha,
+                          source_sha=source_sha)
+
+# GitHub workflow documentation:
+# https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow
+# https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
