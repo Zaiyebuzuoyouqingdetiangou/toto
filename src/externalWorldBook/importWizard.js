@@ -30,6 +30,8 @@ import {
     rebuildExternalPoolMetadata,
 } from './store.js?rmv=1.5.53-text1';
 import { applyAppearanceTheme } from '../settingsAppearance.js?rmv=1.6';
+import { getExternalPoolSnapshot } from './externalPool.js?rmv=1.5.53-text1';
+import { externalCandidateCounts } from './candidateCounts.js?rmv=1.5.53-longtext1';
 
 const MODAL_ID = 'rh_external_worldbook_import_modal';
 const PAGE_SIZE = 50;
@@ -440,12 +442,19 @@ async function renderSavedLibraries() {
         state.savedLibrariesList.append(el('div', { text: '还没有保存的外部世界书。', style: { opacity: '.65', fontSize: '11px', padding: '8px 2px' } }));
         return;
     }
+    const poolSnapshot = getExternalPoolSnapshot();
     for (const library of libraries) {
+        const candidates = externalCandidateCounts(poolSnapshot, library.libraryId);
         const row = el('div', { style: { padding: '9px 3px', borderBottom: '1px solid color-mix(in srgb,currentColor 10%,transparent)' } });
         row.append(el('div', { text: library.displayName, style: { fontWeight: '700', fontSize: '12px', overflowWrap: 'anywhere' } }));
         row.append(el('div', {
-            text: `主题 ${library.themeCount || 0}｜展现 ${library.formatCount || 0}｜文本 ${library.textCount || 0}｜辅助 ${library.auxiliaryCount || 0}｜待确认 ${library.pendingCount || 0}｜${library.enabled ? '已启用' : '已停用'}`,
+            text: `导入总数 ${library.entryCount || 0}｜主题 ${library.themeCount || 0}｜展现 ${library.formatCount || 0}｜文本 ${library.textCount || 0}｜辅助 ${library.auxiliaryCount || 0}｜待确认 ${library.pendingCount || 0}｜${library.enabled ? '已启用' : '已停用'}`,
             style: { opacity: '.65', fontSize: '10px', marginTop: '3px', overflowWrap: 'anywhere' },
+        }));
+        row.append(el('div', {
+            text: `当前可抽：主题 ${candidates.theme}｜展现 ${candidates.format}｜文本 ${candidates.text}`,
+            attrs: { 'data-rh-external-candidate-library': library.libraryId },
+            style: { fontSize: '12px', lineHeight: '1.5', marginTop: '6px' },
         }));
         row.append(el('div', { text: `抽签索引：${needsRebuild.has(library.libraryId) ? '需重建（已保存内容仍在）' : '可用'}`, style: { fontSize: '12px', lineHeight: '1.5', marginTop: '6px' } }));
         const actions = el('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '7px' } });
@@ -554,6 +563,7 @@ async function renderSavedEntryChoices() {
                 message.textContent = `正在保存「${choice.title}」…`;
                 try {
                     const saved = await setExternalLibraryEntryEnabled(library.libraryId, choice.externalId, desired);
+                    if (state === owner && owner.overlay.isConnected) await renderSavedLibraries();
                     if (!current()) return;
                     choice.enabled = saved.enabled;
                     checkbox.checked = saved.enabled;
@@ -954,7 +964,7 @@ function createModal(initialView = 'plain', importKind = '') {
 
     const savedLibrariesPanel = el('div', { style: { display: 'none', borderTop: '1px solid color-mix(in srgb,currentColor 12%,transparent)', marginTop: '14px', paddingTop: '10px' } });
     savedLibrariesPanel.append(el('div', { text: '已保存的外部世界书', style: { fontWeight: '700', fontSize: '13px' } }));
-    savedLibrariesPanel.append(el('div', { text: '启用需要的库，再点“勾选参与抽签的条目”选择具体内容。取消勾选不会删除原文；启用本地库不会修改上方总开关。', style: { opacity: '.8', fontSize: '12px', lineHeight: '1.5', marginTop: '3px' } }));
+    savedLibrariesPanel.append(el('div', { text: '启用需要的库，再点“勾选参与抽签的条目”选择具体内容。取消勾选不会删除原文；启用本地库不会修改上方总开关。当前可抽数按已启用且确认的条目计算，实际使用哪一池取决于生成设置。有可用文本条目时，指定文本面只抽文本子池；“长文本”可选择“混合库”使用常规抽取来源。', style: { opacity: '.8', fontSize: '12px', lineHeight: '1.5', marginTop: '3px' } }));
     const savedLibrariesList = el('div', { style: { marginTop: '5px' } });
     savedLibrariesPanel.append(savedLibrariesList);
     const savedEntriesPanel = el('section', { id: 'rh_external_saved_entry_choices', attrs: { tabindex: '-1', 'aria-label': '已导入条目的抽签选择' }, style: { marginTop: '14px', paddingTop: '12px', borderTop: '1px solid color-mix(in srgb,currentColor 18%,transparent)' } });

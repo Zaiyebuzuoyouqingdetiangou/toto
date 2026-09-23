@@ -288,6 +288,9 @@ function copySelectionMetadata(metadata = null) {
     };
     const formatDescriptors = copyFormatDescriptors(metadata);
     if (formatDescriptors.length) copy.formatDescriptors = formatDescriptors;
+    for (const key of ['customThemeCount', 'customFormatCount', 'customRequestCount']) {
+        if (Number(metadata[key]) > 0) copy[key] = Math.min(1000, Math.max(1, Math.floor(Number(metadata[key]))));
+    }
     if (Array.isArray(metadata.faces)) {
         copy.faces = metadata.faces.slice(0, 5).map(face => ({
             faceIndex: Number(face?.faceIndex),

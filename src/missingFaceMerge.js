@@ -1,4 +1,6 @@
 import { parseMultifaceOutput, createMultifaceFailureSlot } from './multifaceProtocol.js';
+import { compactFormatDescriptors } from './selectionImageMetadata.js?rmv=1.6.4-creation1';
+import { isBlankLongTextSelection } from './presentationMode.js?rmv=1.5.53-visualquick1';
 
 function wrapIndependentFaceForMerge(inner, index) {
     return `<toto data-rabbit-mirror="true" data-rm-face="${index + 1}">${String(inner || '')}</toto>`;
@@ -6,6 +8,77 @@ function wrapIndependentFaceForMerge(inner, index) {
 
 function isFailureFaceHtml(html = '') {
     return /data-rabbit-mirror-face-failure/i.test(String(html || ''));
+}
+
+function retryFaces(incomingHtml, count) {
+    const source = String(incomingHtml || '').trim();
+    if (!source || count < 1 || count > 5) return [];
+    if (count > 1) {
+        const parsed = parseMultifaceOutput(source, { expectedCount: count });
+        return parsed.ok ? parsed.faces : [];
+    }
+    // The request layer has already sanitized a single response into details.
+    // Keep the shared parser's budgets and structural checks: its sole error
+    // may be the deliberate 2..5-face minimum, never a malformed suffix.
+    const framed = /^<details\b/i.test(source) ? wrapIndependentFaceForMerge(source, 0) : source;
+    const parsed = parseMultifaceOutput(framed);
+    return parsed.faces.length === 1 && parsed.faces[0].index === 0
+        && parsed.errors.length === 1 && parsed.errors[0].code === 'face-count-mismatch'
+        ? parsed.faces : [];
+}
+
+const RETRY_SELECTION_FIELDS = Object.freeze([
+    'samplingMode', 'themeIds', 'formatIds', 'textIds', 'themeLabels', 'formatLabels', 'textLabels',
+    'requestedPresentationMode', 'presentationMode', 'blankLongText', 'forcedVisualScenery', 'visualSceneryCombination',
+    'hasExternalReferences', 'externalSources', 'customThemeCount', 'customFormatCount', 'customRequestCount',
+]);
+
+function retrySelectionFields(value) {
+    if (!value || !Array.isArray(value.themeIds) || !Array.isArray(value.formatIds)) return null;
+    const ids = ['themeIds', 'formatIds', ...(value.textIds !== undefined ? ['textIds'] : [])];
+    if (ids.some(key => !Array.isArray(value[key]) || value[key].length > 16
+        || value[key].some(id => typeof id !== 'string' || !id.trim()))) return null;
+    if (value.blankLongText !== undefined && !isBlankLongTextSelection(value)) return null;
+    if (!isBlankLongTextSelection(value) && !ids.some(key => value[key].length) && !['customThemeCount', 'customFormatCount', 'customRequestCount']
+        .some(key => Number(value[key]) > 0)) return null;
+    const selection = Object.fromEntries(RETRY_SELECTION_FIELDS.filter(key => Object.hasOwn(value, key))
+        .map(key => [key, Array.isArray(value[key]) ? [...value[key]] : value[key]]));
+    const descriptors = compactFormatDescriptors(value);
+    if (descriptors.length) selection.formatDescriptors = descriptors;
+    return selection;
+}
+
+// failedFaces is already expressed in original batch indices by the HTML merge.
+// A network error may have no selection metadata: retain the frozen recipes,
+// and leave unknown entries null rather than inventing retry authority.
+export function mergeRetrySelectionDiagnostic(previousFaces, incomingDiagnostic, missingIndexes, expectedCount, failedFaces = []) {
+    const count = Number.isInteger(expectedCount) && expectedCount >= 1 && expectedCount <= 5 ? expectedCount : 0;
+    const diagnostic = incomingDiagnostic && typeof incomingDiagnostic === 'object' && !Array.isArray(incomingDiagnostic)
+        ? incomingDiagnostic : {};
+    const faces = Array.from({ length: count }, (_, index) => {
+        const old = Array.isArray(previousFaces) ? previousFaces[index] : null;
+        return old && typeof old === 'object' && !Array.isArray(old) ? { ...old, faceIndex: index } : null;
+    });
+    const missing = [...new Set((Array.isArray(missingIndexes) ? missingIndexes : [])
+        .filter(index => Number.isInteger(index) && index >= 0 && index < count))].sort((a, b) => a - b);
+    const incomingFaces = Array.isArray(diagnostic.faces) && diagnostic.faces.length === missing.length
+        ? diagnostic.faces : missing.length === 1 && !Array.isArray(diagnostic.faces) ? [diagnostic] : [];
+    missing.forEach((index, localIndex) => {
+        const incoming = incomingFaces[localIndex];
+        if (incoming?.faceIndex !== undefined && incoming.faceIndex !== localIndex) return;
+        const selection = retrySelectionFields(incoming);
+        if (selection) {
+            // A deliberately fresh selection can change text/HTML or source.
+            // Missing optional fields must not retain the old recipe's flags.
+            faces[index] = { ...selection, faceIndex: index };
+        }
+    });
+    const failures = (Array.isArray(failedFaces) ? failedFaces : [])
+        .filter(face => Number.isInteger(face?.faceIndex) && face.faceIndex >= 0 && face.faceIndex < count)
+        .filter((face, index, list) => list.findIndex(other => other.faceIndex === face.faceIndex) === index)
+        .map(face => ({ ...face }));
+    return { ...diagnostic, faceCount: count, faces, partial: failures.length > 0,
+        failedFaces: failures, completedFaces: count - failures.length };
 }
 
 export function recipesCoverMissing(recipes, indexes = []) {
@@ -67,10 +140,7 @@ export function mergeMissingIndependentFaces(previousHtml, expectedCount, missin
     const previous = parseMultifaceOutput(String(previousHtml || ''), { expectedCount: expected });
     const previousFaces = previous.ok ? previous.faces : [];
     const incomingHtml = String(incoming?.html || '');
-    const incomingParsed = incomingHtml
-        ? parseMultifaceOutput(incomingHtml, { expectedCount: Math.max(1, missing.length || 1) })
-        : { ok: false, faces: [] };
-    const incomingFaces = incomingParsed.ok ? incomingParsed.faces : [];
+    const incomingFaces = retryFaces(incomingHtml, missing.length);
     const incomingFailed = new Set((Array.isArray(incoming?.failedFaces) ? incoming.failedFaces : [])
         .map(face => Number(face.faceIndex)));
     const next = [];

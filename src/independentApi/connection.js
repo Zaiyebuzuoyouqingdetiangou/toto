@@ -876,13 +876,17 @@ export function revokeIndependentRecordContinuity(ctx,index){
  if(msg.extra?.rabbitMirrorOwnerLineage) msg.extra.rabbitMirrorOwnerLineage={revoked:true,swipe:swipeId(msg)};
 }
 
-export function savedIndependentRecordForOwner(ctx,index,msg,store){
- const observed=passiveObservedIdentity(ctx,index,msg);
+export function savedIndependentRecordForOwner(ctx,index,msg,store,observed=passiveObservedIdentity(ctx,index,msg)){
  const persisted=persistedOwnerForMessage(ctx,index,msg);
  if(persisted?.deleted) return null;
  const locked=lockedIndependentRecordForBase(messageBaseSlotKey(ctx,index,msg),store)?.record;
+ // A quota failure can leave local storage older than live metadata, while a
+ // delayed host snapshot can do the reverse. Resolve by revision time only
+ // after checking the exact owner/source; never prefer a storage tier blindly.
  return [findSavedRecord(store,observed.slot,observed.legacySlots||[]),locked,persisted]
-  .find(record=>record?.html && savedRecordMatchesObserved(record,observed)) || null;
+  .filter(record=>record?.html && savedRecordMatchesObserved(record,observed) && independentStoredHtmlRestorable(record.html))
+  .sort((a,b)=>Number(b.ts||0)-Number(a.ts||0)
+   || Number(b.ownerLineage?.observedAt||0)-Number(a.ownerLineage?.observedAt||0))[0] || null;
 }
 
 export function savedRecordMatchesObserved(saved,observed){

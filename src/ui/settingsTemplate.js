@@ -23,6 +23,12 @@ export function buildRabbitMirrorSettingsDialogHtml() {
         </div>
       </div>
 
+      <div id="rh_face_pager_settings" style="margin:12px 0;">
+        <label for="rh_face_pager_position">多面切页位置</label>
+        <select id="rh_face_pager_position" class="text_pole" style="min-height:44px;max-width:100%;"><option value="top">顶部切页</option><option value="bottom">底部切页</option></select>
+        <p class="rabbit-mirror-subnote">底部切页显示在当前镜面外框内、内容下方；手机居中，电脑靠右。选择后立即生效，收藏和兔子按钮仍在标题栏。</p>
+      </div>
+
       <div class="rabbit-mirror-help-update-row">
         <details id="rh_quick_start" class="rabbit-mirror-quick-start">
           <summary>新手指引</summary>
@@ -96,6 +102,12 @@ export function buildRabbitMirrorSettingsDialogHtml() {
                 <button id="rh_behavior_rule_reset" class="menu_button" type="button" style="min-height:44px;">恢复默认</button>
               </div>
               <div id="rh_behavior_rule_status" role="status" aria-live="polite" style="font-size:13px;line-height:1.6;"></div>
+              <label for="rh_writing_style" style="display:block;font-weight:700;margin:14px 0 8px;">文风</label>
+              <textarea id="rh_writing_style" class="text_pole" rows="4" maxlength="6000" aria-describedby="rh_writing_style_help" style="width:100%;box-sizing:border-box;resize:vertical;"></textarea>
+              <p id="rh_writing_style_help">作用于兔子镜的文字表达（跟随与独立模式均有效）。例如叙述口吻、节奏、句式；不覆盖原条目的篇幅、HTML 要求或角色设定。留空不追加文风。</p>
+              <button id="rh_writing_style_save" class="menu_button" type="button" style="min-height:44px;">保存文风</button>
+              <button id="rh_writing_style_clear" class="menu_button" type="button" style="min-height:44px;">清空文风</button>
+              <p id="rh_writing_style_status" role="status" aria-live="polite"></p>
             </div>
           </details>
           <div id="rh_independent_api_fields" style="display:grid;gap:9px;">
@@ -354,12 +366,15 @@ export function buildRabbitMirrorSettingsDialogHtml() {
               </label>
             </div>
             <div id="rh_multiface_help" class="rabbit-mirror-subnote" style="margin:0 0 10px 26px;">一次请求，各面独立展示。所有面共用整批输出上限，面数更多时每面可用篇幅更少；上下文字符不是绘制额度。</div>
-            <div id="rh_face_presentation_modes" style="display:grid;gap:8px;margin:10px 0;">
+            <div id="rh_face_presentation_modes" style="display:grid;grid-template-columns:minmax(0,1fr);min-width:0;gap:8px;margin:10px 0;">
               <b>每一面怎么呈现</b>
               ${Array.from({length:5},(_,index)=>`<label data-rh-presentation-row="${index}" for="rh_face_mode_${index}" style="display:flex;gap:12px;align-items:center;justify-content:space-between;">
-                <span>第 ${index+1} 面</span><select id="rh_face_mode_${index}" class="text_pole" style="min-height:44px;width:160px;max-width:65%;" aria-describedby="rh_face_modes_help"><option value="auto">自动</option><option value="html">HTML 交互</option><option value="text">文本</option></select>
+                <span>第 ${index+1} 面</span><select id="rh_face_mode_${index}" class="text_pole" style="min-height:44px;width:180px;max-width:65%;" aria-describedby="rh_face_modes_help"><option value="auto">自动</option><option value="html">HTML 交互</option><option value="text">文本</option><option value="longtext">长文本 · 3000–5000 字</option></select>
               </label>`).join('')}
-              <div id="rh_face_modes_help" class="rabbit-mirror-subnote">自动：抽中文本类才用文本呈现。文本：优先抽已启用的文本类，没有可用条目则正常抽取，改成长文本与 HTML 排版，不要求内部交互。其他 HTML 面照常生成。</div>
+              <div id="rh_face_modes_help" class="rabbit-mirror-subnote">自动：按抽中的类别呈现。文本：优先抽已启用的文本类；小文本池可能反复抽到同类题材。长文本：默认 3000–5000 字，以正文为主；原条目明确的字数和 HTML 要求优先。所有面仍共用本次输出额度。</div>
+              <label for="rh_long_text_source">长文本素材来源</label>
+              <select id="rh_long_text_source" class="text_pole" style="min-height:44px;min-width:0;width:100%;max-width:100%;"><option value="blank">空白小剧场：按人物、语境和点菜自由写作</option><option value="mixed">常规抽取：按当前内置／外置设置</option><option value="text">只抽已启用的独立文本条目</option></select>
+              <p class="rabbit-mirror-subnote">仅作用于长文本面。空白小剧场不抽主题或展现形式，不套美化模板；只抽文本条目时，候选仅限文本类。</p>
             </div>
             <label for="rh_sampling_mode" class="flex-container alignitemscenter" style="gap:8px;flex-wrap:wrap;margin:8px 0;">
               <span>抽取模式</span>
@@ -381,6 +396,8 @@ export function buildRabbitMirrorSettingsDialogHtml() {
               <label class="checkbox_label"><input id="rh_image_enabled" type="checkbox"> 启用镜面生图</label>
               <p>默认关闭。从每面的小兔子工具入口打开「生图」。首次点击生成时，使用当前副 API 构思一次，再调用柏宝绘出图一次；查看、编辑不调用模型。</p>
               <label>提示词格式 <select id="rh_image_prompt_format" class="text_pole"><option value="nai5-natural">自然语言＋标签（NAI 5）</option><option value="nai45-tags">标签（NAI 4.5）</option></select></label>
+              <label for="rh_image_composition">生图构图方式</label><select id="rh_image_composition" class="text_pole" style="min-height:44px;"><option value="scene">场景插画</option><option value="auto">按展现形式演绎／长文本高光</option></select>
+              <p>按形式画角色参与的场景：信件画 char 写信，相册画角色翻看相册；长文本取正文高光。动作、神态和构图结合当前人物与内容。</p>
               <p>模型、密钥、画幅像素等在柏宝绘配置。这里的格式只决定提示词写法，不替换它的模型。柏宝绘内部重试遵循其原有规则。</p>
               <button type="button" id="rh_image_status_refresh" class="menu_button">检查柏宝绘连接</button><p id="rh_image_provider_status" role="status">点击检查读取当前连接状态，不发起生图。</p>
             </div>
@@ -491,6 +508,8 @@ export function buildRabbitMirrorSettingsDialogHtml() {
               <div class="rabbit-mirror-subnote" style="margin:2px 0 0 26px;opacity:.72;font-size:11px;line-height:1.5;">进入当前角色聊天后，优先显示酒馆为当前聊天加载过的角色／聊天／Persona／当前全局世界书；真正发送时仍只复用主生成本轮实际激活的条目，不会重新扫描或重掷概率。</div>
             </div>
             <div style="margin:7px 0 4px;font-size:12px;font-weight:700;opacity:.86;">当前聊天相关世界书</div>
+            <label class="checkbox_label"><input id="rh_character_world_book" type="checkbox"> 自动参考当前角色主世界书的已启用条目</label>
+            <p class="rabbit-mirror-subnote">独立 API 生成时跟随当前角色，读取主绑定书（没有主绑定时使用卡内嵌世界书）作为人物和故事背景；不加入随机抽题。尊重下方关闭的书和条目开关，不额外按关键词或概率激活。跟随模式仍由酒馆处理世界书。</p>
             <div id="rh_world_info_book_filters" style="margin:4px 0 10px;padding:8px 9px;border:1px solid color-mix(in srgb,var(--SmartThemeBorderColor) 45%,transparent);border-radius:10px;max-height:190px;overflow:auto;-webkit-overflow-scrolling:touch;"><div style="font-size:11px;line-height:1.4;opacity:.66;">打开此高级选项时自动显示当前聊天相关世界书。</div></div>
             <details id="rh_world_info_all_books" style="margin:5px 0 8px;">
               <summary style="cursor:pointer;font-size:11px;opacity:.78;">更多：从全部世界书中选择（折叠）</summary>

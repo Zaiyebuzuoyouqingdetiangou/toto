@@ -176,7 +176,7 @@ const PERSISTED_STATE_STYLE_ATTRS = [...RUNTIME_STATE_STYLE_ATTRS, ...MAINTENANC
 
 const PERSISTED_STATE_ARIA_ATTRS = ['aria-pressed','aria-selected','aria-expanded','aria-current','aria-checked'];
 
-const PERSISTED_RUNTIME_UI_SELECTOR = '[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay], [data-rabbit-mirror-interaction-home], [data-rabbit-mirror-interaction-diagnostic], [data-rabbit-mirror-reference-note], [data-rm-ephemeral-failure-body], [data-rm-face-swipe-bar], [data-rm-face-swipe-delete], [data-rm-face-favorite-star]';
+const PERSISTED_RUNTIME_UI_SELECTOR = '[data-rabbit-mirror-tool-entry-host], [data-rm-face-swipe-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay], [data-rabbit-mirror-interaction-home], [data-rabbit-mirror-interaction-diagnostic], [data-rabbit-mirror-reference-note], [data-rm-ephemeral-failure-body], [data-rm-face-swipe-bar], [data-rm-face-swipe-delete], [data-rm-face-favorite-star]';
 
 const PERSISTED_STATE_ATTR_RE = /^(?:data-rm-(?:.*(?:active|selected|open|used|filled|touch-hover|pseudo-active|target-active)|checked-pseudo-rule-target|labeled-checked-verify-target|reversible-style-baseline|reversible-text-baseline|click-to-restore)|data-rabbit-mirror-(?:labeled-checked(?:-last|-verify|-verify-count)?|checked-text-rule-rescue|expanded-opacity-rescue|inert-action-active|radio-reset-last|stale-checked-inline-cleanup|deferred-interaction-rescue))$/i;
 
@@ -1147,7 +1147,7 @@ function interactionBaselineProfile(html=''){
  const details=parseIndependentDetailsRaw(html);
  if(!details) return null;
  restoreEncodedInteractionBaselines(details);
- details.querySelectorAll('[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]').forEach(node=>node.remove());
+ details.querySelectorAll('[data-rabbit-mirror-tool-entry-host], [data-rm-face-swipe-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]').forEach(node=>node.remove());
  details.querySelectorAll(PERSISTED_STATE_STYLE_ATTRS.map(name=>`style[${name}]`).join(',')).forEach(node=>node.remove());
  const summary=String(details.querySelector(':scope > summary')?.textContent||'').replace(/\s+/g,' ').trim();
  const text=String(details.textContent||'').replace(/\s+/g,' ').trim();
@@ -1503,6 +1503,9 @@ function refreshExistingExternalDetailsCore(host,key,source='independent'){
  transferExternalTools(current,next);
  current.replaceWith(next);
  if(wasOpen) next.setAttribute('open','');
+ // Transferred controls keep their listeners; refresh their owner closures only
+ // after the replacement is live, otherwise they still target detached details.
+ ensureExternalTools(host);
  return next;
 }
 
@@ -1510,6 +1513,7 @@ function prepareLocalDetailsClone(details){
  const template=document.createElement('template');
  const clone=cloneRabbitMirrorFilteredNode(details);
  clone.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]')?.remove?.();
+ clone.querySelectorAll?.('[data-rm-face-swipe-host]')?.forEach(node=>node.remove());
  template.content.append(clone);
  return sanitizeRabbitMirrorUntrustedTemplate(template)?template.innerHTML:'';
 }
@@ -1765,6 +1769,7 @@ export function readyRecordFromHost(host,observed,model=''){
  if(!details || !observed) return null;
  const clone=details.cloneNode(true);
  clone.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]')?.remove?.();
+ clone.querySelectorAll?.('[data-rm-face-swipe-host]')?.forEach(node=>node.remove());
  clone.removeAttribute?.(DEFERRED_INTERACTION_RESCUE_ATTR);
  // Never persist device/container-specific layout rescue state. It must be recalculated
  // from the next mounted container instead of leaking from phone -> desktop or vice versa.
@@ -1784,7 +1789,7 @@ function rabbitMirrorSummaryText(details){
  const summary=details?.querySelector?.(':scope > summary');
  if(!summary) return '';
  const clone=summary.cloneNode(true);
- clone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
+ clone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-face-swipe-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
  return String(clone.textContent||'').replace(/\s+/g,' ').trim();
 }
 
@@ -1806,7 +1811,7 @@ export function inlineRabbitMirrorDetails(el){
 export function mirrorSemanticFingerprint(details){
  if(!isRabbitMirrorDetails(details)) return '';
  const clone=details.cloneNode(true);
- clone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay], [data-rabbit-mirror-resay-status]')?.forEach(node=>node.remove());
+ clone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-face-swipe-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay], [data-rabbit-mirror-resay-status]')?.forEach(node=>node.remove());
  const text=String(clone.textContent||'').replace(/\s+/g,' ').trim();
  if(text.length<12) return '';
  const counts=[

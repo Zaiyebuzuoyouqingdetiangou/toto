@@ -1,4 +1,4 @@
-import { presentationModeFields } from './presentationMode.js?rmv=1.5.53-visualquick1';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.5.53-visualquick1';
 import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.5.53-cn-boundary1';
 import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.6';
 
@@ -734,7 +734,8 @@ function batchMatchesExpected(batch, expected, requireCommitIdentity = false) {
 function validBatchCombo(combo) {
     if (!combo || typeof combo !== 'object' || Array.isArray(combo)) return false;
     if (combo.presentationMode !== undefined && !['html', 'text'].includes(combo.presentationMode)) return false;
-    if (combo.requestedPresentationMode !== undefined && !['auto', 'html', 'text'].includes(combo.requestedPresentationMode)) return false;
+    if (combo.requestedPresentationMode !== undefined && !['auto', 'html', 'text', 'longtext'].includes(combo.requestedPresentationMode)) return false;
+    if (combo.blankLongText !== undefined && !isBlankLongTextSelection(combo)) return false;
     // A selected text source must retain its actual mode; otherwise compact
     // accounting would discard its IDs and the original face could not recover.
     if (combo.textIds?.length && combo.presentationMode !== 'text') return false;
@@ -755,7 +756,7 @@ function validBatchCombo(combo) {
         }
         if (new Set(combo[key]).size !== combo[key].length) return false;
     }
-    return combo.themeIds.length + combo.formatIds.length + (combo.textIds?.length || 0) > 0 || combo.customDirective === true;
+    return combo.themeIds.length + combo.formatIds.length + (combo.textIds?.length || 0) > 0 || combo.customDirective === true || isBlankLongTextSelection(combo);
 }
 
 function removeBatchRawIfUnchanged(raw) {

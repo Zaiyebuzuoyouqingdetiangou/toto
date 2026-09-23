@@ -1,6 +1,7 @@
 // Split from independentApi.js — mount.
 
-import { presentationModeFields } from '../presentationMode.js?rmv=1.5.53-visualquick1';
+import { presentationModeFields, isBlankLongTextSelection } from '../presentationMode.js?rmv=1.5.53-visualquick1';
+import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.5.53-cn-boundary1';
 import { getSettings } from '../settings.js?rmv=1.6';
 import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.6';
 import { independentGenerationTiming } from '../independentTiming.js?rmv=1.5.53-timing1';
@@ -40,6 +41,7 @@ import {
 } from '../automaticReroll.js?rmv=1.6';
 import {
     mergeMissingIndependentFaces,
+    mergeRetrySelectionDiagnostic,
     missingIndexesFromIndependentResult,
     recipesCoverMissing,
 } from '../missingFaceMerge.js?rmv=1.6';
@@ -1524,7 +1526,7 @@ export async function generateFor(index,msg,force=false,sourceAware=true,multifa
  let store=readStore();
  const persistedOwner=persistedOwnerForMessage(ctx,index,msg);
  const persistedSuppressed=!!persistedOwner?.deleted;
- const persistedReady=!persistedSuppressed&&persistedOwner?.html&&independentStoredHtmlRestorable(persistedOwner.html)&&savedRecordMatchesObserved(persistedOwner,observed)?persistedOwner:null;
+ const persistedReady=persistedSuppressed?null:savedIndependentRecordForOwner(ctx,index,msg,store,observed);
  if(force){
   // Keep the last successful persisted owner and owner lock intact while a
   // paid resay is in flight. The force branch already bypasses the restore
@@ -1567,7 +1569,7 @@ export async function generateFor(index,msg,force=false,sourceAware=true,multifa
   }
  } else cancelSupersededFlightsForBase(baseSlot,sourceHash);
  const recoveredAtGeneration=recoverSavedRecord(store,slot,observed);
- let saved=persistedSuppressed&&!force?null:recoveredAtGeneration.saved;
+ let saved=persistedSuppressed&&!force?null:(persistedReady||recoveredAtGeneration.saved);
  if(recoveredAtGeneration.storeChanged) writeStore(store);
  const mountedHost=el ? collapseDuplicateIdentityHosts(el,key,'independent',sourceHash) : null;
  const mountedReady=mountedIndependentReadyHostMatchesObserved(mountedHost,ctx,index,msg,observed,key)
@@ -1608,7 +1610,10 @@ export async function generateFor(index,msg,force=false,sourceAware=true,multifa
   shared.task.finally?.(()=>queueMessageSync([index]));
   return shared.task;
  }
- const previousReadyRecord=mountedReady || (saved?.html && independentStoredHtmlRestorable(saved.html) ? {...saved} : null);
+ // DOM snapshots retain live interactions but do not contain the original
+ // selection recipe. Carry it from the matching saved owner, never from HTML.
+ const previousReadyRecord=mountedReady ? {...saved,...mountedReady,apiRequest:saved?.apiRequest}
+  : (saved?.html && independentStoredHtmlRestorable(saved.html) ? {...saved} : null);
  if(multifaceResay){
   const previousBatch=parseMultifaceOutput(String(previousReadyRecord?.html||''));
   const faceIndex=Number(multifaceResay.faceIndex);
@@ -1641,14 +1646,13 @@ export async function generateFor(index,msg,force=false,sourceAware=true,multifa
  const runId=++generationSequence; let stale=false;
  const operationEpoch=Number(dispatchLease?.epoch||operationEpochForBase(baseSlot));
  const expectedFaceCount=(()=>{
-  if(multifaceResay){
-   const previous=parseMultifaceOutput(String(previousReadyRecord?.html||''));
-   return previous.ok?previous.faces.length:1;
-  }
+  // The response contains one replacement, not the surrounding batch. Judging
+  // it against the batch size falsely marks a successful resay as incomplete.
+  if(multifaceResay) return 1;
   const count=Number(st.rabbitMirrorFaceCount);
   return Number.isInteger(count)&&count>=1?count:1;
  })();
- const flight={task:null,runId,key,slot,index,sourceHash,revision,manual:!!force,manualBodyOwner,cancelled:false,controller:new AbortController(),baseSlot,operationEpoch,flightKey,dispatchLease,timedOut:false,stalled:false,timeoutError:null,deadline:null,loadingHost,previousReadyRecord,uiSettled:false,batchPlan:null,automaticRerollCount:0,expectedFaceCount,retainedHtml:'',missingIndexes:[],faceRecipes:Array.isArray(multifaceResay?.faces)?multifaceResay.faces:[]};
+ const flight={task:null,runId,key,slot,index,sourceHash,revision,manual:!!force,manualBodyOwner,cancelled:false,controller:new AbortController(),baseSlot,operationEpoch,flightKey,dispatchLease,timedOut:false,stalled:false,timeoutError:null,deadline:null,loadingHost,previousReadyRecord,uiSettled:false,batchPlan:null,automaticRerollCount:0,expectedFaceCount,retainedHtml:'',missingIndexes:[],faceRecipes:multifaceResay?.faces?.[multifaceResay.faceIndex]?[multifaceResay.faces[multifaceResay.faceIndex]]:[]};
  if(earlyBodyOwner){flight.earlyBodyOwner=earlyBodyOwner;earlyBodyOwner.flight=flight;}
  const currentIdentityForFlight=()=>{
   const live=currentGenerationIdentity(index); const active=pending.get(slot);
@@ -1680,7 +1684,11 @@ export async function generateFor(index,msg,force=false,sourceAware=true,multifa
    timeoutReject?.(error);
   },{idleMs:configuredAutomaticRerollIdleMs(getSettings())});
   const missingRetry=recipesCoverMissing(flight.faceRecipes,flight.missingIndexes)?{indexes:flight.missingIndexes,faces:flight.faceRecipes}:null;
-  const apiTask=callIndependentApi(ctx,index,msg,flight.controller.signal,{manualRetry:force&&!manualBodyOwner?.firstGeneration,slot,dispatchLease,multifaceResay:missingRetry?null:(multifaceResay||singlePresentationResay),missingFaceRetry:missingRetry,earlyBodyOwner,manualBodyOwner,isPromptOwnerCurrent:stillCurrent,currentBatchPlan:()=>flight.batchPlan,onProgress:()=>flight.deadline?.progress?.(),onBatchPlan:plan=>{ flight.batchPlan=plan||null; }});
+  if(multifaceResay && flight.automaticRerollCount>0 && !missingRetry){
+   const error=new Error('本次重试缺少已选中的逐面记录；旧内容已保留，请手动重说这一面。');
+   error.requestCount=0; throw error;
+  }
+  const apiTask=callIndependentApi(ctx,index,msg,flight.controller.signal,{manualRetry:force&&!manualBodyOwner?.firstGeneration,slot,dispatchLease,multifaceResay:missingRetry?null:(multifaceResay||singlePresentationResay),missingFaceRetry:missingRetry,earlyBodyOwner,manualBodyOwner,isPromptOwnerCurrent:stillCurrent,currentBatchPlan:()=>flight.batchPlan,onProgress:()=>flight.deadline?.progress?.(),onRequestSelection:diagnostic=>captureRecipes({requestDiagnostic:diagnostic},null),onBatchPlan:plan=>{ flight.batchPlan=plan||null; }});
   return Promise.race([apiTask,timeoutPromise]);
  };
  const settleSuccessfulIndependentResult=async result=>{
@@ -1747,9 +1755,13 @@ export async function generateFor(index,msg,force=false,sourceAware=true,multifa
     const merged=parseMultifaceOutput(html,{expectedCount:previousBatch.faces.length});
     if(!merged.ok || !independentStoredHtmlRestorable(html)) throw new Error('这面兔子镜已生成，但无法在不改动其他面的前提下安全合并；旧成品已保留，不会自动重发。');
     const oldDiagnostic=mergeRecord?.apiRequest&&typeof mergeRecord.apiRequest==='object'?mergeRecord.apiRequest:{};
-    const oldFaces=Array.isArray(oldDiagnostic.faces)?oldDiagnostic.faces:[];
-    const remainingFailures=Array.isArray(oldDiagnostic.failedFaces)?oldDiagnostic.failedFaces.filter(face=>face.faceIndex!==faceIndex):[];
-    result.requestDiagnostic={...oldDiagnostic,faces:oldFaces.length===previousBatch.faces.length?oldFaces.map((face,i)=>i===faceIndex?{...face,...result.requestDiagnostic}:face):oldFaces,faceCount:previousBatch.faces.length,multifaceResayFace:faceIndex+1,
+    const oldFaces=Array.isArray(oldDiagnostic.faces)&&oldDiagnostic.faces.length===previousBatch.faces.length
+     ? oldDiagnostic.faces : Array.from({length:previousBatch.faces.length},()=>null);
+    const remainingFailures=missingIndexesFromIndependentResult({html},previousBatch.faces.length).map(index=>({
+     ...(Array.isArray(oldDiagnostic.failedFaces)?oldDiagnostic.failedFaces.find(face=>face.faceIndex===index):null),
+     faceIndex:index,status:'failed',code:String(oldDiagnostic.failedFaces?.find?.(face=>face.faceIndex===index)?.code||'incomplete-face'),
+    }));
+    result.requestDiagnostic={...oldDiagnostic,faces:oldFaces.map((face,i)=>i===faceIndex?{...result.requestDiagnostic,faceIndex:i}:face),faceCount:previousBatch.faces.length,multifaceResayFace:faceIndex+1,
      partial:remainingFailures.length>0,failedFaces:remainingFailures,completedFaces:previousBatch.faces.length-remainingFailures.length};
    }
    clearAutomaticFailureStop(slot,sourceHash);
@@ -1795,6 +1807,7 @@ export async function generateFor(index,msg,force=false,sourceAware=true,multifa
     const replacedOne=multifaceResay && liveHost
      ? replaceExternalMultifaceFace(liveHost,settledKey,'independent',html,Number(multifaceResay.faceIndex),true) : false;
     if(replacedOne){
+     clearIndependentResayStatus(liveHost);
      liveHost.dataset.rmSourceHash=settledSourceHash;
      stampExternalDetailsOwnership(liveHost);
      markMountedFaceProofs(liveHost,'independent',completed.apiRequest);
@@ -1897,14 +1910,10 @@ export async function generateFor(index,msg,force=false,sourceAware=true,multifa
   }
  };
  const captureRecipes=(result,err)=>{
-  const faces=result?.requestDiagnostic?.faces||err?.rabbitMirrorRequestDiagnostic?.faces;
-  if(!Array.isArray(faces)||!faces.length) return;
-  if(!flight.faceRecipes?.length){ flight.faceRecipes=faces; return; }
-  if(flight.missingIndexes?.length && faces.length===flight.missingIndexes.length){
-   const next=flight.faceRecipes.slice();
-   flight.missingIndexes.forEach((original,local)=>{ if(faces[local]) next[original]=faces[local]; });
-   flight.faceRecipes=next;
-  }
+  const diagnostic=result?.requestDiagnostic||err?.rabbitMirrorRequestDiagnostic;
+  if(!diagnostic) return;
+  const indexes=flight.missingIndexes?.length?flight.missingIndexes:Array.from({length:flight.expectedFaceCount},(_,index)=>index);
+  flight.faceRecipes=mergeRetrySelectionDiagnostic(flight.faceRecipes,diagnostic,indexes,flight.expectedFaceCount).faces;
  };
  const independentDiagnostic=(err,result)=>result?.requestDiagnostic||err?.rabbitMirrorRequestDiagnostic||{};
  const canReroll=(err,result,missing)=>{
@@ -1944,19 +1953,7 @@ export async function generateFor(index,msg,force=false,sourceAware=true,multifa
     let merged=result;
     if(flight.retainedHtml && flight.missingIndexes?.length){
      merged={...result,...mergeMissingIndependentFaces(flight.retainedHtml,flight.expectedFaceCount,flight.missingIndexes,result)};
-     if(Array.isArray(result?.requestDiagnostic?.faces) && result.requestDiagnostic.faces.length===flight.missingIndexes.length){
-      const oldFaces=Array.isArray(merged.requestDiagnostic?.faces)?merged.requestDiagnostic.faces:flight.faceRecipes;
-      merged.requestDiagnostic={
-       ...(result.requestDiagnostic||{}),
-       faces:oldFaces?.length===flight.expectedFaceCount
-        ? oldFaces.map((face,index)=>flight.missingIndexes.includes(index)?{...face,...result.requestDiagnostic.faces[flight.missingIndexes.indexOf(index)]}:face)
-        : oldFaces,
-       faceCount:flight.expectedFaceCount,
-       partial:!!merged.failedFaces?.length,
-       failedFaces:merged.failedFaces,
-       completedFaces:merged.completedFaces,
-      };
-     }
+     merged.requestDiagnostic=mergeRetrySelectionDiagnostic(flight.faceRecipes,result?.requestDiagnostic,flight.missingIndexes,flight.expectedFaceCount,merged.failedFaces);
     } else if(Array.isArray(result?.failedFaces) && result.failedFaces.length && flight.expectedFaceCount>1){
      flight.retainedHtml=String(result.html||'');
     }
@@ -1991,7 +1988,8 @@ export async function generateFor(index,msg,force=false,sourceAware=true,multifa
     if(flight.retainedHtml && /<details\b/i.test(flight.retainedHtml)){
      return await settleSuccessfulIndependentResult({
       html:flight.retainedHtml,
-      requestDiagnostic:independentDiagnostic(err,null),
+      requestDiagnostic:mergeRetrySelectionDiagnostic(flight.faceRecipes,independentDiagnostic(err,null),[],flight.expectedFaceCount,
+       missing.map(faceIndex=>({faceIndex,status:'failed',code:String(err?.code||'incomplete-face')}))),
       failedFaces:missing.map(faceIndex=>({faceIndex,status:'failed',code:String(err?.code||'incomplete-face')})),
       completedFaces:Math.max(0,flight.expectedFaceCount-missing.length),
       mergedFromMissingRetry:true,
@@ -2134,7 +2132,7 @@ function historyPreviewDetails(entry,faceIndex=-1,ownerSlot=''){
  details.removeAttribute('data-rabbit-mirror-external-owner');
  details.removeAttribute('data-rabbit-mirror-external-source');
  details.setAttribute('open','');
- details.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
+ details.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-face-swipe-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
  try{ isolateRabbitMirrorInteractionIds(details); }catch{}
  return details;
 }
@@ -2200,16 +2198,23 @@ export function resayIndependentMirror(root,owner={}){
  const saved=savedIndependentRecordForOwner(identity.ctx,identity.index,identity.msg,readStore());
  const diagnostic=saved?.apiRequest&&typeof saved.apiRequest==='object'?saved.apiRequest:{};
  const faces=Array.isArray(diagnostic.faces)?diagnostic.faces:[];
- if(identity.faceIndex>=0 && faces.length<=identity.faceIndex){
+ const mountedFaces=externalFaceDetails(identity.host);
+ const target=mountedFaces[identity.faceIndex];
+ const failedFace=identity.faceIndex>=0 && (target?.hasAttribute?.(MULTIFACE_FAILURE_ATTR)
+  || hasEphemeralFaceFailure(target));
+ const recipe=faces[identity.faceIndex];
+ const hasRecipe=faces.length===mountedFaces.length && recipe
+  && (isBlankLongTextSelection(recipe) || ['themeIds','formatIds','textIds'].some(key=>Array.isArray(recipe[key])&&recipe[key].length));
+ if(identity.faceIndex>=0 && !hasRecipe && !failedFace){
   globalThis.toastr?.error?.('这批多面兔子镜缺少可信的逐面抽取记录，不能静默改成整批重说；本次未发送请求。');
   return true;
  }
- const multifaceResay=identity.faceIndex>=0&&faces.length>identity.faceIndex
-  ? {faceIndex:identity.faceIndex,faces}
+ const multifaceResay=identity.faceIndex>=0
+  ? {faceIndex:identity.faceIndex,faces,retryFailedFace:!!failedFace,freshSelection:!hasRecipe}
   : null;
  // Announce preparation before dispatch. A synchronous preflight rejection
  // must not be followed by a misleading new "generating" notification.
- globalThis.toastr?.info?.(multifaceResay?'正在准备重说这一面；其他面会原样保留……':'正在准备重新生成兔子镜……');
+ globalThis.toastr?.info?.(multifaceResay?.freshSelection?'这一失败面的原抽取记录不完整，将按当前设置重新抽取这一面；其他面会原样保留。':multifaceResay?'正在准备重说这一面；其他面会原样保留……':'正在准备重新生成兔子镜……');
  const singlePresentationResay=!multifaceResay&&(diagnostic.presentationMode||diagnostic.visualSceneryCombination===true)
   ? {faceIndex:0,faces:[diagnostic]} : null;
  void generateFor(identity.index,identity.msg,true,true,multifaceResay,null,null,singlePresentationResay);
@@ -2275,7 +2280,7 @@ function persistIndependentRepairFromEvent(event) {
  details.setAttribute(MAINTENANCE_PERSISTED_LAYOUT_ATTR,'true');
  const clone=details.cloneNode(true);
  clone.setAttribute(MAINTENANCE_PERSISTED_LAYOUT_ATTR,'true');
- clone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
+ clone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-face-swipe-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
  const rawHtml=faces.length>1 ? serializeExternalFaceDetails(host) : String(clone.outerHTML||'').trim();
  const store=readStore();
  const existing=savedIndependentRecordForOwner(identity.ctx,identity.index,identity.msg,store);
@@ -2371,6 +2376,15 @@ function mirrorImageFaceSource(source,faceIndex){
  return /^<details\b/i.test(trimmed)&&/<\/details>$/i.test(trimmed)?trimmed:'';
 }
 
+function mirrorImageReferenceSnapshot(ctx,settings){
+ const char=ctx.characters?.[ctx.characterId]||ctx.character||{};
+ const data=char.data&&typeof char.data==='object'?char.data:char;
+ const character=settings.independentReadCharacterCardSummary===false?{name:String(char.name||data.name||ctx.name2||'')}:
+  {name:String(char.name||data.name||ctx.name2||''),description:String(data.description||char.description||''),personality:String(data.personality||char.personality||''),scenario:String(data.scenario||char.scenario||'')};
+ const persona={name:String(ctx.name1||globalThis.name1||''),description:settings.independentReadPersonaSummary===false?'':String(ctx.powerUserSettings?.persona_description||globalThis.power_user?.persona_description||ctx.personaDescription||'')};
+ return {character,persona};
+}
+
 function prepareMirrorImageTarget(root){
  if(!root?.isConnected || !currentRuntime()) return null;
  const details=root.matches?.('details')?root:root.querySelector?.(':scope > details')||root.querySelector?.('details');
@@ -2405,24 +2419,41 @@ function prepareMirrorImageTarget(root){
  const faceSource=readSource();if(!faceSource) return null;
  const ownerChat=chatKey(ctx),ownerSwipe=swipeId(msg),ownerSource=messageSourceFingerprint(msg);
  const template=document.createElement('template');template.innerHTML=faceSource;
- template.content.querySelectorAll('script,style,noscript,[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal],[data-rm-image-region]').forEach(node=>node.remove());
+ template.content.querySelectorAll('script,style,noscript,[data-rabbit-mirror-tool-entry-host], [data-rm-face-swipe-host], [data-rm-image-region], [data-rm-image-portal],[data-rm-image-region]').forEach(node=>node.remove());
  const title=String(template.content.querySelector('summary')?.textContent||'兔子镜').trim();
  const faceText=String(template.content.textContent||'').trim();if(!faceText)return null;
+ const imageHasCharacter=!!(ctx.characters?.[ctx.characterId]||ctx.character);
  const char=ctx.characters?.[ctx.characterId]||ctx.character||{};
- const data=char.data&&typeof char.data==='object'?char.data:char;
+ const imageCharacterId=ctx.characterId;
  const st=getSettings();
- const character=st.independentReadCharacterCardSummary===false?{name:String(char.name||data.name||ctx.name2||'')}:
-  {name:String(char.name||data.name||ctx.name2||''),description:String(data.description||char.description||''),personality:String(data.personality||char.personality||''),scenario:String(data.scenario||char.scenario||'')};
- const persona={name:String(ctx.name1||globalThis.name1||''),description:st.independentReadPersonaSummary===false?'':String(ctx.powerUserSettings?.persona_description||globalThis.power_user?.persona_description||ctx.personaDescription||'')};
+ const imageReadCharacter=st.independentReadCharacterCardSummary!==false;
+ const imageReadPersona=st.independentReadPersonaSummary!==false;
+ const {character,persona}=mirrorImageReferenceSnapshot(ctx,st);
+ const imageReferenceKey=JSON.stringify({character,persona});
  const key=JSON.stringify([ownerChat,index,ownerSwipe,faceIndex,hashText(faceSource)]);
  const assertCurrent=()=>{
   const live=getContext();
+  const settings=getSettings();
+  const currentCharacter=live.characters?.[live.characterId]||live.character||null;
   if(!currentRuntime()||!root.isConnected||!details.isConnected||chatKey(live)!==ownerChat||live.chat?.[index]!==msg
+   ||live.characterId!==imageCharacterId||(imageHasCharacter?currentCharacter!==char:currentCharacter!==null)
+   ||(settings.independentReadCharacterCardSummary!==false)!==imageReadCharacter
+   ||(settings.independentReadPersonaSummary!==false)!==imageReadPersona
+   ||JSON.stringify(mirrorImageReferenceSnapshot(live,settings))!==imageReferenceKey
    ||swipeId(msg)!==ownerSwipe||messageSourceFingerprint(msg)!==ownerSource||readSource()!==faceSource)
    throw new Error('这面兔子镜的聊天、分支或内容已变化；未继续发送请求，请在当前镜面重新打开生图。');
   return true;
  };
- const target={key,title,faceText,floor:index,character,persona,group:character.name||persona.name||'兔子镜',assertCurrent,
+ const savedDiagnostic=independentHost?savedIndependentRecordForOwner(ctx,index,msg,readStore())?.apiRequest:null;
+ const recipe=independentHost?(Array.isArray(savedDiagnostic?.faces)?savedDiagnostic.faces[faceIndex]:faceIndex===0?savedDiagnostic:null)
+  :getRabbitMirrorRecipe({chatKey:ownerChat,messageIndex:index,swipeId:ownerSwipe,message:msg,faceIndex,includeExternalOnly:true});
+ const formats=(Array.isArray(recipe?.formatIds)?recipe.formatIds:[]).map((id,index)=>{
+  const item=String(id).startsWith('ext:')?recipe?.formatDescriptors?.find(item=>item.id===id):PRESENTATION_FORMATS.find(item=>item.id===id);
+  const label=String(recipe?.formatLabels?.[index]||'');
+  return item?{title:String(item.title||''),summary:String(item.summary||'')}:label.startsWith(`${id} `)?{title:label.slice(String(id).length+1),summary:''}:null;
+ }).filter(Boolean);
+ const presentationMode=recipe?.requestedPresentationMode==='longtext'?'longtext':recipe?.presentationMode||'html';
+ const target={key,title,faceText,floor:index,character,persona,presentationMode,formats,group:character.name||persona.name||'兔子镜',assertCurrent,
   plan:(input={},options={})=>requestMirrorImagePlan(target,input,options)};
  mirrorImageTargetCache.set(details,target);
  return target;
@@ -2438,7 +2469,8 @@ async function requestMirrorImagePlan(target,input={},options={}){
  const {buildImagePlanningPrompt,parseImagePlan}=await import('../imagePlan.js?rmv=1.6-image2');
  target.assertCurrent();
  const {systemPrompt,userPrompt}=buildImagePlanningPrompt({...input,title:target.title,faceText:target.faceText,
-  floor:target.floor,character:target.character,persona:target.persona,promptFormat:input.promptFormat||st.imagePromptFormat});
+  floor:target.floor,character:target.character,persona:target.persona,presentationMode:target.presentationMode,formats:target.formats,
+  compositionMode:input.compositionMode||st.imageCompositionMode,promptFormat:input.promptFormat||st.imagePromptFormat});
  const maxRequestChars=configuredIndependentMaxRequestChars(st);
  if(systemPrompt.length+userPrompt.length>maxRequestChars)
   throw new Error(`画面规划超过既有副 API ${maxRequestChars} 字符安全预算；未截断材料，也未发送请求。`);
@@ -2650,7 +2682,7 @@ export function externalizeFollowMirror(index,msg){
   return;
  }
  const sourceClone=cloneFollowFaceForExternal(mirror);
- sourceClone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
+ sourceClone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-face-swipe-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay]')?.forEach(node=>node.remove());
  const sourceHtml=String(sourceClone.outerHTML||'');
  const semanticFingerprint=mirrorSemanticFingerprint(mirror);
  // A mobile BFCache restore or cross-device redraw can recreate the inline正文
@@ -2671,6 +2703,7 @@ export function externalizeFollowMirror(index,msg){
  const previous=host.querySelector?.(':scope > details');
  const existingTools=externalToolHost(previous);
  mirror.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]')?.remove?.();
+ mirror.querySelectorAll?.('[data-rm-face-swipe-host]')?.forEach(node=>node.remove());
  if(existingTools && mirror.querySelector?.(':scope > summary')) mirror.querySelector(':scope > summary').append(existingTools);
  mirror.removeAttribute('open');
  markExternalDetails(mirror,key,'follow');
@@ -2880,7 +2913,7 @@ function recoveredFollowFaces(html='',options={}){
 
 function normalizeRecoveredFollowRoot(root){
  if(!root) return null;
- root.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay], [data-rabbit-mirror-resay-status]')?.forEach(node=>node.remove());
+ root.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-face-swipe-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay], [data-rabbit-mirror-resay-status]')?.forEach(node=>node.remove());
  const details=root.matches?.('details')?root:root.querySelector?.('details');
  if(!details) return null;
  ['data-rabbit-mirror-external-details','data-rabbit-mirror-external-owner','data-rabbit-mirror-external-source','data-rabbit-mirror-owner-chat','data-rabbit-mirror-owner-mesid','data-rabbit-mirror-owner-swipe','data-rabbit-mirror-owner-key','data-rabbit-mirror-owner-source-hash'].forEach(attr=>details.removeAttribute(attr));

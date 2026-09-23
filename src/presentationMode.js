@@ -1,7 +1,19 @@
 // Local selection metadata only. Never derive presentation from model HTML.
 export function normalizePresentationModes(value) {
     return Array.from({ length: 5 }, (_, index) =>
-        ['auto', 'html', 'text'].includes(value?.[index]) ? value[index] : 'auto');
+        ['auto', 'html', 'text', 'longtext'].includes(value?.[index]) ? value[index] : 'auto');
+}
+
+export function normalizeLongTextSource(value) {
+    return ['blank', 'text', 'mixed'].includes(value) ? value : 'blank';
+}
+
+export function isBlankLongTextSelection(source) {
+    return source?.requestedPresentationMode === 'longtext' && source.presentationMode === 'text'
+        && source.blankLongText === true && source.customDirective !== true
+        && Array.isArray(source.themeIds) && source.themeIds.length === 0
+        && Array.isArray(source.formatIds) && source.formatIds.length === 0
+        && (source.textIds === undefined || (Array.isArray(source.textIds) && source.textIds.length === 0));
 }
 
 export function requestedPresentationMode(settings, index = 0) {
@@ -14,7 +26,8 @@ export function isTextPresentation(source) {
 
 export function hasExplicitTextFace(settings) {
     const count = Math.min(5, Math.max(1, Number(settings?.rabbitMirrorFaceCount) || 1));
-    return normalizePresentationModes(settings?.rabbitMirrorPresentationModes).slice(0, count).includes('text');
+    return normalizePresentationModes(settings?.rabbitMirrorPresentationModes).slice(0, count)
+        .some(mode => mode === 'text' || (mode === 'longtext' && normalizeLongTextSource(settings?.longTextSource) === 'text'));
 }
 
 export function visualSceneryCombinationEnabled(settings) {
@@ -30,10 +43,11 @@ export function presentationModeFields(source) {
     if (!source || !['html', 'text'].includes(source.presentationMode)) return combination;
     const fields = {
         ...combination,
-        requestedPresentationMode: ['auto', 'html', 'text'].includes(source.requestedPresentationMode)
+        requestedPresentationMode: ['auto', 'html', 'text', 'longtext'].includes(source.requestedPresentationMode)
             ? source.requestedPresentationMode : 'auto',
         presentationMode: source.presentationMode,
     };
+    if (isBlankLongTextSelection(source)) fields.blankLongText = true;
     if (Array.isArray(source.textIds)) fields.textIds = source.textIds.slice(0, 16)
         .filter(id => typeof id === 'string' && id.length <= 2048 && /^ext:[A-Za-z0-9:._!~*'()-]+$/.test(id));
     if (Array.isArray(source.textLabels)) fields.textLabels = source.textLabels.slice(0, 16)

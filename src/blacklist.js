@@ -1,4 +1,5 @@
-import { presentationModeFields } from './presentationMode.js?rmv=1.5.53-visualquick1';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.5.53-visualquick1';
+import { compactFormatDescriptors, isExternalSelectionId } from './selectionImageMetadata.js?rmv=1.6.4-creation1';
 import { getSettings, updateSettings } from './settings.js?rmv=1.5.53-image1';
 import { getCurrentChatKey, resetFormatEligibleMisses } from './storage.js?rmv=1.5.53-visualquick1';
 import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.5.53-cn-boundary1';
@@ -399,24 +400,42 @@ export function filterRandomFormatPool(pool, settings = getSettings()) {
     return blocked.size ? items.filter(item => !blocked.has(String(item?.id || ''))) : [...items];
 }
 
+function compactDirectiveCounts(metadata) {
+    return Object.fromEntries(['customThemeCount', 'customFormatCount', 'customRequestCount']
+        .filter(key => Number(metadata?.[key]) > 0)
+        .map(key => [key, Math.min(1000, Math.max(1, Math.floor(Number(metadata[key]))))]));
+}
+
 function compactSelectionMetadata(metadata = {}, allowFaces = true) {
-    const themeIds = compactIds(metadata?.themeIds).filter(id => THEME_BY_ID.has(id));
-    const formatIds = compactIds(metadata?.formatIds).filter(id => FORMAT_BY_ID.has(id));
+    const themeIds = compactIds(metadata?.themeIds).filter(id => THEME_BY_ID.has(id) || isExternalSelectionId(id));
+    const formatIds = compactIds(metadata?.formatIds).filter(id => FORMAT_BY_ID.has(id) || isExternalSelectionId(id));
+    const formatDescriptors = compactFormatDescriptors({ ...metadata, formatIds });
+    const formatLabels = formatIds.map(id => {
+        const index = Array.isArray(metadata?.formatIds) ? metadata.formatIds.indexOf(id) : -1;
+        const label = metadata?.formatLabels?.[index];
+        return typeof label === 'string' ? label.slice(0, 2209) : '';
+    });
+    const faces = allowFaces && Array.isArray(metadata?.faces) && metadata.faces.length >= 2 && metadata.faces.length <= 5
+        ? metadata.faces.map(face => compactSelectionMetadata(face, false)) : null;
     const externalSources = [...new Set((Array.isArray(metadata?.externalSources) ? metadata.externalSources : [])
         .filter(name => typeof name === 'string').slice(0, 24)
         .map(name => name.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 200)).filter(Boolean))];
-    const hasExternalReferences = metadata?.hasExternalReferences === true || externalSources.length > 0;
-    if (!themeIds.length && !formatIds.length && !hasExternalReferences && !metadata?.textIds?.length) return null;
+    const hasExternalReferences = metadata?.hasExternalReferences === true || externalSources.length > 0
+        || [...themeIds, ...formatIds].some(isExternalSelectionId);
+    if (!themeIds.length && !formatIds.length && !hasExternalReferences && !metadata?.textIds?.length
+        && !isBlankLongTextSelection(metadata) && !faces?.some(Boolean)) return null;
     return {
         themeIds,
         formatIds,
+        ...(formatLabels.some(Boolean) ? { formatLabels } : {}),
+        ...(formatDescriptors.length ? { formatDescriptors } : {}),
         ...(hasExternalReferences ? { hasExternalReferences: true, externalSources } : {}),
         ...presentationModeFields(metadata),
+        ...compactDirectiveCounts(metadata),
         samplingMode: String(metadata?.samplingMode || 'classic'),
         userDirectiveApplied: !!metadata?.userDirectiveApplied,
         forcedVisualScenery: !!metadata?.forcedVisualScenery || !!metadata?.visualSceneryMode,
-        ...(allowFaces && Array.isArray(metadata?.faces) && metadata.faces.length >= 2 && metadata.faces.length <= 5
-            ? { faces: metadata.faces.map(face => compactSelectionMetadata(face, false)) } : {}),
+        ...(faces ? { faces } : {}),
     };
 }
 
@@ -474,7 +493,10 @@ export function recordRabbitMirrorRecipe({ chat = null, chatKey = '', messageInd
     const unchanged = existing
         && JSON.stringify(existing.themeIds || []) === JSON.stringify(compact.themeIds)
         && JSON.stringify(existing.formatIds || []) === JSON.stringify(compact.formatIds)
+        && JSON.stringify(existing.formatLabels || []) === JSON.stringify(compact.formatLabels || [])
+        && JSON.stringify(existing.formatDescriptors || []) === JSON.stringify(compact.formatDescriptors || [])
         && JSON.stringify(presentationModeFields(existing)) === JSON.stringify(presentationModeFields(compact))
+        && JSON.stringify(compactDirectiveCounts(existing)) === JSON.stringify(compactDirectiveCounts(compact))
         && JSON.stringify(existing.externalSources || []) === JSON.stringify(compact.externalSources || [])
         && !!existing.hasExternalReferences === !!compact.hasExternalReferences
         && String(existing.samplingMode || '') === compact.samplingMode
@@ -507,7 +529,8 @@ export function getRabbitMirrorRecipe({ chatKey = '', messageIndex = -1, swipeId
         if (!Array.isArray(record?.faces)) return decorateRecipe(record, includeExternalOnly);
         if (!Number.isInteger(faceIndex) || faceIndex < 0 || faceIndex >= record.faces.length) return null;
         const face = compactSelectionMetadata(record.faces[faceIndex], false);
-        const { requestedPresentationMode, presentationMode, textIds, textLabels, ...batchRecord } = record;
+        const { requestedPresentationMode, presentationMode, blankLongText, textIds, textLabels,
+            formatDescriptors, formatLabels, customThemeCount, customFormatCount, customRequestCount, ...batchRecord } = record;
         return face ? decorateRecipe({ ...batchRecord, hasExternalReferences: false, externalSources: [], ...face, faceIndex }, includeExternalOnly) : null;
     };
     const resolvedChatKey = String(chatKey || '').trim();
@@ -547,9 +570,12 @@ function decorateRecipe(record, includeExternalOnly = false) {
         if (id === LEGACY_AMBIGUOUS_FORMAT_ID) return { ...LEGACY_AMBIGUOUS_FORMAT_RECIPE_ITEM };
         return null;
     }).filter(Boolean);
-    if (!themes.length && !formats.length && !(includeExternalOnly && record.hasExternalReferences)) return null;
+    if (!themes.length && !formats.length && !(includeExternalOnly && (record.hasExternalReferences || isBlankLongTextSelection(record)))) return null;
     return {
         ...record,
+        // Existing favorite/blacklist callers see only known builtin IDs. The
+        // image and retry callers must opt in to external/blank recipes.
+        ...(!includeExternalOnly ? { themeIds: themes.map(item => item.id), formatIds: formats.map(item => item.id) } : {}),
         themes,
         formats,
     };

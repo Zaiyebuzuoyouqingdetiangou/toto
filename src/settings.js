@@ -168,6 +168,10 @@ export const defaultSettings = Object.freeze({
     // 每轮生成的兔子镜面数（1～5）。默认 1，关闭多面不改旧单面路径。
     rabbitMirrorFaceCount: 1,
     rabbitMirrorPresentationModes: ['auto', 'auto', 'auto', 'auto', 'auto'],
+    longTextSource: 'blank',
+    facePagerPosition: 'top',
+    writingStyle: '',
+    independentReadCharacterWorldBook: false,
     richFormatBias: false,
     maintenanceRabbitEnabled: true,
     maintenanceRabbitAutoSafeEnabled: false,
@@ -193,6 +197,7 @@ export const defaultSettings = Object.freeze({
     visualSceneryCombination: false,
     imageEnabled: false,
     imagePromptFormat: 'nai5-natural',
+    imageCompositionMode: 'scene',
     memoryScanEnabled: false,
     memoryWorldBookEnabled: false,
     memoryWorldBookId: '',
@@ -307,6 +312,11 @@ export function getSettings() {
     // 只接受数字 1～5；任何异常值（NaN、字符串、0、负数、超界）都回落到 1，
     // 保证旧设置升级与畸形写入都不会意外开启多面。
     settings.rabbitMirrorPresentationModes = normalizePresentationModes(settings.rabbitMirrorPresentationModes);
+    settings.longTextSource = ['blank', 'text', 'mixed'].includes(settings.longTextSource) ? settings.longTextSource : 'blank';
+    settings.facePagerPosition = settings.facePagerPosition === 'bottom' ? 'bottom' : 'top';
+    settings.writingStyle = typeof settings.writingStyle === 'string' ? settings.writingStyle.slice(0, 6000) : '';
+    settings.independentReadCharacterWorldBook = settings.independentReadCharacterWorldBook === true;
+    settings.imageCompositionMode = settings.imageCompositionMode === 'auto' ? 'auto' : 'scene';
     const faceCount = settings.rabbitMirrorFaceCount;
     settings.rabbitMirrorFaceCount = Number.isInteger(faceCount) && faceCount >= 2 && faceCount <= 5 ? faceCount : 1;
     if (settings.autoRabbitMirrorInjection === undefined) settings.autoRabbitMirrorInjection = settings.enabled !== false;
@@ -425,6 +435,11 @@ export function updateSettings(patch) {
             : 'builtin-only';
     }
     if (Object.prototype.hasOwnProperty.call(safePatch, 'imageEnabled')) safePatch.imageEnabled = safePatch.imageEnabled === true;
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'longTextSource')) safePatch.longTextSource = ['blank', 'text', 'mixed'].includes(safePatch.longTextSource) ? safePatch.longTextSource : 'blank';
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'facePagerPosition')) safePatch.facePagerPosition = safePatch.facePagerPosition === 'bottom' ? 'bottom' : 'top';
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'writingStyle')) safePatch.writingStyle = typeof safePatch.writingStyle === 'string' ? safePatch.writingStyle.slice(0, 6000) : '';
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'independentReadCharacterWorldBook')) safePatch.independentReadCharacterWorldBook = safePatch.independentReadCharacterWorldBook === true;
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'imageCompositionMode')) safePatch.imageCompositionMode = safePatch.imageCompositionMode === 'auto' ? 'auto' : 'scene';
     if (Object.prototype.hasOwnProperty.call(safePatch, 'imagePromptFormat')) safePatch.imagePromptFormat = safePatch.imagePromptFormat === 'nai45-tags' ? 'nai45-tags' : 'nai5-natural';
     if (Object.prototype.hasOwnProperty.call(safePatch, 'visualSceneryCombination')) {
         safePatch.visualSceneryCombination = safePatch.visualSceneryCombination === true;

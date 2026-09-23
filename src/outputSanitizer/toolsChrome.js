@@ -1,6 +1,7 @@
 // Split from outputSanitizer.js — toolsChrome.
 
 import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.6.3-title1';
+import { placeFacePager } from '../facePagerPlacement.js?rmv=1.6.4-pager1';
 import { isTextPresentation } from '../presentationMode.js?rmv=1.5.53-visualquick1';
 import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.6.3-ttchild1';
 import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=1.6';
@@ -1997,6 +1998,8 @@ function installFaceTitleChrome(root, host) {
     summary?.querySelectorAll?.(':scope > [data-rm-face-swipe-host]').forEach(node => node.remove());
     const view = installFaceSwipeBar(root, host);
     installFaceSwipeDelete(root, host, view);
+    if (!view) summary?.parentElement?.querySelectorAll?.(':scope > [data-rm-face-swipe-host]').forEach(node => node.remove());
+    else placeFacePager(summary?.parentElement, host, getSettings().facePagerPosition);
     if (summary) ensureMirrorTitleLabel(summary, host);
 }
 
@@ -2025,7 +2028,13 @@ function installUnifiedMirrorTools(root) {
     add(FEEDBACK_CAT_ATTR, isFeedbackCatEnabled(), 'feedback', '🐈 挨打猫 · 反馈与重说', handleFeedbackCatClick);
     add(RECIPE_BUTTON_ATTR, true, 'recipe', '🎲 黑名单与本轮抽签', handleRecipeClick);
     actions.push({ id: 'image', label: '▧ 生图', run: (_event, opener) => {
-        void loadMirrorImageModule().then(module => { if (root.isConnected) return module.openMirrorImagePanel(root, { opener }); })
+        const scope = root.closest?.('.mes') || root;
+        void loadMirrorImageModule().then(module => { if (root.isConnected) return module.openMirrorImagePanel(root, {
+            opener,
+            // Host rendering during a request may replace tool nodes. Restore
+            // only the still-mounted message's controls, never regenerate it.
+            onClose: () => { if (scope.isConnected) installMaintenanceRabbitsInScope(scope, { historyRestoreLight: true }); },
+        }); })
             .catch(() => globalThis.toastr?.warning?.('生图面板未能打开，请重新打开后再试。'));
     } });
     actions.push({ id: 'theater-favorite-library', label: '📖 打开收藏夹', run: () => {
