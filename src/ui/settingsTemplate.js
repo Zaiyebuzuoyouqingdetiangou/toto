@@ -1,6 +1,6 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.6';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.6.4-longtext1';
 import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.5.53-cn-boundary1';
 import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.6';
 
@@ -371,7 +371,28 @@ export function buildRabbitMirrorSettingsDialogHtml() {
               ${Array.from({length:5},(_,index)=>`<label data-rh-presentation-row="${index}" for="rh_face_mode_${index}" style="display:flex;gap:12px;align-items:center;justify-content:space-between;">
                 <span>第 ${index+1} 面</span><select id="rh_face_mode_${index}" class="text_pole" style="min-height:44px;width:180px;max-width:65%;" aria-describedby="rh_face_modes_help"><option value="auto">自动</option><option value="html">HTML 交互</option><option value="text">文本</option><option value="longtext">长文本 · 3000–5000 字</option></select>
               </label>`).join('')}
-              <div id="rh_face_modes_help" class="rabbit-mirror-subnote">自动：按抽中的类别呈现。文本：优先抽已启用的文本类；小文本池可能反复抽到同类题材。长文本：默认 3000–5000 字，以正文为主；原条目明确的字数和 HTML 要求优先。所有面仍共用本次输出额度。</div>
+              <div id="rh_face_modes_help" class="rabbit-mirror-subnote">自动：按下面的比例决定这一面是长文本还是 HTML。手动选了 HTML、文本或长文本的面，按你选的来。一次出 2 面或 3 面、而且这些面都是自动时，会保证至少有一面是长文本。常用是 1–3 面；4 面和 5 面仍可选择，但长文本更容易写到一半被截断。</div>
+              <label for="rh_auto_longtext_percent">自动时长文本占 <output id="rh_auto_longtext_percent_value">40</output>%，其余是 HTML</label>
+              <input id="rh_auto_longtext_percent" type="range" min="0" max="100" step="5" value="40" style="width:100%;">
+              <p class="rabbit-mirror-subnote">0% 表示自动仍按抽中的类别呈现。改这里只影响之后新抽的面，不会改写已经生成的成品。</p>
+              <label for="rh_lottery_source">抽什么</label>
+              <select id="rh_lottery_source" class="text_pole" style="min-height:44px;width:100%;">
+                <option value="builtin">兔子镜已有条目（黑名单和收藏仍然生效）</option>
+                <option value="worldbook">只抽选中的世界书条目</option>
+                <option value="both">两边都抽</option>
+              </select>
+              <div id="rh_lottery_builtin_row">
+                <label for="rh_lottery_builtin_percent">两边都抽时，兔子镜已有条目占 <output id="rh_lottery_builtin_percent_value">50</output>%</label>
+                <input id="rh_lottery_builtin_percent" type="range" min="0" max="100" step="5" value="50" style="width:100%;">
+              </div>
+              <div id="rh_lottery_books">
+                <label for="rh_lottery_book_search">世界书</label>
+                <input id="rh_lottery_book_search" class="text_pole" type="search" placeholder="搜索世界书" style="width:100%;min-height:40px;">
+                <div id="rh_lottery_book_list" style="display:grid;gap:4px;max-height:160px;overflow:auto;margin-top:6px;"></div>
+                <div id="rh_lottery_book_chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
+                <div id="rh_lottery_entries" style="display:grid;gap:6px;margin-top:8px;"></div>
+                <p class="rabbit-mirror-subnote">选中的条目才会进入抽签。这里的选中和不选中只记在兔子镜里，不会改酒馆世界书原来的开启或关闭。可以查看条目，不能在这里改内容。</p>
+              </div>
               <label for="rh_long_text_source">长文本素材来源</label>
               <select id="rh_long_text_source" class="text_pole" style="min-height:44px;min-width:0;width:100%;max-width:100%;"><option value="blank">空白小剧场：按人物、语境和点菜自由写作</option><option value="mixed">常规抽取：按当前内置／外置设置</option><option value="text">只抽已启用的独立文本条目</option></select>
               <p class="rabbit-mirror-subnote">仅作用于长文本面。空白小剧场不抽主题或展现形式，不套美化模板；只抽文本条目时，候选仅限文本类。</p>

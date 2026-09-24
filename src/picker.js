@@ -18,9 +18,9 @@ import {
     createPendingComboBatchPlan,
     findPendingComboBatchPlan,
 } from './storage.js?rmv=1.5.53-visualquick1';
-import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.6.4-resay5';
+import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.6.4-longtext1';
 import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.53-cn-boundary1';
-import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, normalizeLongTextSource, isBlankLongTextSelection } from './presentationMode.js?rmv=1.5.53-visualquick1';
+import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, normalizeLongTextSource, isBlankLongTextSelection } from './presentationMode.js?rmv=1.6.4-longtext1';
 import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.5.53-text1';
 import {
     chooseExternalSource,
@@ -851,12 +851,85 @@ function getVisualSceneryFormat() {
     return PRESENTATION_FORMATS.find(item => item.id === '10.2.2' || normalizeText(item.title) === normalizeText('Visual Scenery')) || null;
 }
 
-function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, themeCount, formatCount, recent, formalRecent, hardRecent, previousThemeFamilyKeys = [], previousFormatFamilyKeys = [], favoriteThemeIds, favoriteFormatIds, favoriteThemeMultipliers, favoriteFormatMultipliers, formatEligibleMisses, externalExcludedThemeIds = [], externalExcludedFormatIds = [], externalExcludedTextIds = [], faceIndex = 0, standaloneTextPool = null }) {
+function autoLongTextBucket(scopeKey, faceIndex) {
+    let hash = 2166136261;
+    for (const char of `${scopeKey}|auto-form|${faceIndex}`) {
+        hash ^= char.charCodeAt(0);
+        hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0) % 100;
+}
+
+function lotteryBucket(scopeKey, faceIndex) {
+    let hash = 2166136261;
+    for (const char of `${scopeKey}|lottery|${faceIndex}`) {
+        hash ^= char.charCodeAt(0);
+        hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0) % 100;
+}
+
+function faceCountOf(settings) {
+    const count = Number(settings?.rabbitMirrorFaceCount);
+    return Number.isInteger(count) && count >= 2 && count <= 5 ? count : 1;
+}
+
+function autoFaceResolvesLongText(settings, faceIndex, scopeKey) {
+    const requested = requestedPresentationMode(settings, faceIndex);
+    if (requested === 'longtext') return true;
+    if (requested !== 'auto') return false;
+    const percent = Math.max(0, Math.min(100, Math.round(Number(settings?.autoLongTextPercent) || 0)));
+    if (percent <= 0) return false;
+    if (percent >= 100) return true;
+    const count = faceCountOf(settings);
+    const autoIndexes = [];
+    for (let index = 0; index < count; index += 1) {
+        if (requestedPresentationMode(settings, index) === 'auto') autoIndexes.push(index);
+    }
+    const explicitLongText = Array.from({ length: count }, (_, index) => requestedPresentationMode(settings, index)).includes('longtext');
+    const hashed = autoIndexes.some(index => autoLongTextBucket(scopeKey, index) < percent);
+    if ((count === 2 || count === 3) && !explicitLongText && !hashed && faceIndex === autoIndexes[0]) return true;
+    return autoLongTextBucket(scopeKey, faceIndex) < percent;
+}
+
+function usesWorldBookLottery(settings, faceIndex, scopeKey) {
+    const source = ['builtin', 'worldbook', 'both'].includes(settings?.lotterySource) ? settings.lotterySource : 'builtin';
+    if (source === 'worldbook') return true;
+    if (source !== 'both') return false;
+    const builtinPercent = Math.max(0, Math.min(100, Math.round(Number(settings?.lotteryBuiltinPercent) || 0)));
+    return lotteryBucket(scopeKey, faceIndex) >= builtinPercent;
+}
+
+function worldBookLotteryResult(settings, faceIndex, scopeKey, longText) {
+    const entries = Array.isArray(settings?.lotteryEntries) ? settings.lotteryEntries.filter(item => item?.id) : [];
+    if (!entries.length) {
+        throw multiFacePlanningError('还没有选中可抽的世界书条目；请先选中条目，或改回抽兔子镜已有条目。本次尚未发送请求。', 'LOTTERY_WORLD_BOOK_EMPTY');
+    }
+    const recent = Array.isArray(settings?.__lotteryRecentIds) ? settings.__lotteryRecentIds : [];
+    const fresh = entries.filter(item => !recent.includes(item.id));
+    const pool = fresh.length ? fresh : entries;
+    const entry = pool[lotteryBucket(scopeKey, faceIndex) % pool.length];
+    return {
+        themes: [], formats: [], texts: [], directive: null, forcedFormats: [],
+        requestedPresentationMode: longText ? 'longtext' : 'html',
+        presentationMode: longText ? 'text' : 'html',
+        worldBookEntryId: entry.id,
+        worldBookTitle: entry.title || entry.uid,
+        worldBookExcerpt: entry.content || '',
+        formatFairnessEligibleIds: [], formatFairnessSelectedIds: [],
+    };
+}
+
+function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, themeCount, formatCount, recent, formalRecent, hardRecent, previousThemeFamilyKeys = [], previousFormatFamilyKeys = [], favoriteThemeIds, favoriteFormatIds, favoriteThemeMultipliers, favoriteFormatMultipliers, formatEligibleMisses, externalExcludedThemeIds = [], externalExcludedFormatIds = [], externalExcludedTextIds = [], faceIndex = 0, standaloneTextPool = null, presentationScopeKey = '' }) {
     if (directive?.disabled) return { disabled: true, directive };
     const requestedMode = requestedPresentationMode(settings, faceIndex);
-    const longText = requestedMode === 'longtext';
+    const autoLongText = requestedMode === 'auto' && autoFaceResolvesLongText(settings, faceIndex, presentationScopeKey);
+    const longText = requestedMode === 'longtext' || autoLongText;
     const longTextSource = normalizeLongTextSource(settings.longTextSource);
-    if (longText && longTextSource === 'blank') {
+    if (usesWorldBookLottery(settings, faceIndex, presentationScopeKey)) {
+        return { ...worldBookLotteryResult(settings, faceIndex, presentationScopeKey, longText), directive };
+    }
+    if (requestedMode === 'longtext' && longTextSource === 'blank') {
         return { themes: [], formats: [], texts: [], themeIds: [], formatIds: [], textIds: [], directive,
             forcedFormats: [], requestedPresentationMode: 'longtext', presentationMode: 'text', blankLongText: true,
             formatFairnessEligibleIds: [], formatFairnessSelectedIds: [] };
@@ -970,7 +1043,7 @@ function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, th
     const formatFairnessSelectedIds = settings.forceVisualScenery && !combineVisual ? [] : pickedFormats.map(item => item.id);
     return { themes, formats, directive, forcedFormats, formatFairnessEligibleIds, formatFairnessSelectedIds,
         ...(combineVisual && !isText ? { visualSceneryCombination: true } : {}),
-        ...(requestedMode !== 'auto' || isText ? { requestedPresentationMode: requestedMode, presentationMode: isText ? 'text' : 'html' } : {}),
+        ...(requestedMode !== 'auto' || isText ? { requestedPresentationMode: autoLongText ? 'longtext' : requestedMode, presentationMode: isText ? 'text' : 'html' } : {}),
         ...(texts.length ? { texts } : {}) };
 }
 
@@ -989,6 +1062,11 @@ function comboFromSelection(result, settings, recent, uiReviewFocus = null) {
         ...presentationModeFields(result),
         ...(result.texts?.length ? { texts: result.texts, textIds: result.texts.map(item => item.id) } : {}),
         cooldownRounds: settings.cooldownRounds || 10,
+        ...(result.worldBookEntryId ? {
+            worldBookEntryId: result.worldBookEntryId,
+            worldBookTitle: result.worldBookTitle || '',
+            worldBookExcerpt: result.worldBookExcerpt || '',
+        } : {}),
         uiReviewFocus: Array.isArray(uiReviewFocus) && uiReviewFocus.length ? [...uiReviewFocus] : pickUiReviewFocus(5),
         recentUiReviewFocus: recent.uiReviewFocus || [],
     };
@@ -1085,6 +1163,13 @@ function batchRandomSettingsKey(settings, total, favorites, exclusions, directiv
             ? { presentationModes: Array.from({ length: total }, (_, index) => requestedPresentationMode(settings, index)) } : {}),
         ...(Array.from({ length: total }, (_, index) => requestedPresentationMode(settings, index)).includes('longtext')
             ? { longTextSource: normalizeLongTextSource(settings.longTextSource) } : {}),
+        ...(Array.from({ length: total }, (_, index) => requestedPresentationMode(settings, index)).includes('auto') && Number(settings.autoLongTextPercent) > 0
+            ? { autoLongTextPercent: Math.max(0, Math.min(100, Math.round(Number(settings.autoLongTextPercent) || 0))) } : {}),
+        ...(settings.lotterySource && settings.lotterySource !== 'builtin' ? {
+            lotterySource: settings.lotterySource,
+            lotteryBuiltinPercent: Math.max(0, Math.min(100, Math.round(Number(settings.lotteryBuiltinPercent) || 0))),
+            lotteryEntryIds: (Array.isArray(settings.lotteryEntries) ? settings.lotteryEntries : []).map(item => item.id),
+        } : {}),
         mode: settings.mode,
         samplingMode: settings.samplingMode || 'classic',
         themesMin: settings.themesMin,
@@ -1173,7 +1258,7 @@ function batchPickSnapshot(settings, generationContext, planning) {
     };
 }
 
-function planBatchFace(settings, snapshot, usedThemeIds, usedFormatIds, counts = null, faceIndex = 0, usedTextIds = new Set()) {
+function planBatchFace(settings, snapshot, usedThemeIds, usedFormatIds, counts = null, faceIndex = 0, usedTextIds = new Set(), presentationScopeKey = '') {
     // 在生产 selector 的输入池里移除批内已选 exact，历史不足时的回退不能恢复它们。
     // 不要求每面 family / group 不同，仍由同一权重函数决定。
     const themePool = snapshot.themePool.filter(item => !usedThemeIds.has(item.id));
@@ -1206,6 +1291,7 @@ function planBatchFace(settings, snapshot, usedThemeIds, usedFormatIds, counts =
         externalExcludedTextIds: [...(snapshot.exclusions.textIds || []), ...usedTextIds],
         faceIndex,
         standaloneTextPool: batchUsesStandaloneTextPool(settings, snapshot, faceIndex),
+        presentationScopeKey,
     });
     return { result, payload: { combo: comboFromSelection(result, settings, snapshot.recent), last: snapshot.last, directive: snapshot.directive || null } };
 }
@@ -1304,16 +1390,17 @@ function pickLiveCombinationBatch(settings, planning, faceCount, planningReason 
     for (let faceIndex = 0; faceIndex < faceCount; faceIndex += 1) {
         renewStandaloneTextCycle(settings, snapshot, faceIndex, usedTextIds);
         const requestedMode = requestedPresentationMode(settings, faceIndex);
-        const blankLongText = requestedMode === 'longtext' && normalizeLongTextSource(settings.longTextSource) === 'blank';
+        const worldBookFace = usesWorldBookLottery(settings, faceIndex, identityKey);
+        const blankLongText = !worldBookFace && requestedMode === 'longtext' && normalizeLongTextSource(settings.longTextSource) === 'blank';
         const textAvailable = requestedMode !== 'html' && (requestedMode === 'text' || (requestedMode === 'longtext' && normalizeLongTextSource(settings.longTextSource) === 'text') || externalPoolActive(settings, 'text'))
             && externalPoolHasAvailable('text', [...usedTextIds]);
-        if (!blankLongText && !textAvailable && ((needsRandomThemes && !randomCandidateAvailable(settings, 'theme', snapshot.themePool, usedThemeIds)) ||
+        if (!worldBookFace && !blankLongText && !textAvailable && ((needsRandomThemes && !randomCandidateAvailable(settings, 'theme', snapshot.themePool, usedThemeIds)) ||
             (needsRandomFormats && !randomCandidateAvailable(settings, 'format', snapshot.formatPool, usedFormatIds)))) {
             throw multiFacePlanningError(`当前候选池不足以抽取 ${faceCount} 面不同的随机内容；请调整黑名单或面数，本次尚未发送请求。`, 'BATCH_CANDIDATE_POOL_EXHAUSTED');
         }
-        const selected = planBatchFace(settings, snapshot, usedThemeIds, usedFormatIds, null, faceIndex, usedTextIds);
+        const selected = planBatchFace(settings, snapshot, usedThemeIds, usedFormatIds, null, faceIndex, usedTextIds, identityKey);
         const combo = selected.payload.combo;
-        if (!isBlankLongTextSelection(combo) && !combo.textIds?.length && ((needsRandomThemes && !combo.themeIds.length) || (needsRandomFormats && !combo.formatIds.length))) {
+        if (!isBlankLongTextSelection(combo) && !combo.textIds?.length && !combo.worldBookEntryId && ((needsRandomThemes && !combo.themeIds.length) || (needsRandomFormats && !combo.formatIds.length))) {
             throw multiFacePlanningError('多面抽取未得到完整的随机选题／形式；本次尚未发送请求。', 'BATCH_SELECTION_INCOMPLETE');
         }
         if (!isBlankLongTextSelection(combo) && !combo.themeIds.length && !combo.formatIds.length && snapshot.directive) combo.customDirective = true;
@@ -1362,7 +1449,7 @@ export function pickCombinationForMultifaceResay(settings, resay) {
     const themes = resolveIds(face?.themeIds, THEMATIC_CATEGORIES, 'theme');
     const formats = resolveIds(face?.formatIds, PRESENTATION_FORMATS, 'format');
     const texts = resolveIds(face?.textIds || [], [], 'text');
-    if (!themes.length && !formats.length && !texts.length && !isBlankLongTextSelection(face)) throw multiFacePlanningError('原面缺少可复用抽取记录；请重新选择整批生成。', 'BATCH_RESAY_RECIPE_INCOMPLETE');
+    if (!themes.length && !formats.length && !texts.length && !isBlankLongTextSelection(face) && !face?.worldBookEntryId) throw multiFacePlanningError('原面缺少可复用抽取记录；请重新选择整批生成。', 'BATCH_RESAY_RECIPE_INCOMPLETE');
     const selectedSettings = { ...settings, samplingMode: face.samplingMode || settings.samplingMode, forceVisualScenery: face.forcedVisualScenery === true, visualSceneryCombination: face.visualSceneryCombination === true };
     return { combo: comboFromSelection({ themes, formats, ...(texts.length ? { texts } : {}), ...(isBlankLongTextSelection(face) ? { themeIds: [], formatIds: [], textIds: [] } : {}), ...presentationModeFields(face) }, selectedSettings, getRecentIds(settings.cooldownRounds || 10)), directive: null, last: null };
 }
@@ -1501,6 +1588,7 @@ export function pickCombination(settings, generationScopeKey = '', generationCon
             formatEligibleMisses,
             externalExcludedTextIds: generationContext?.batchExcludedTextIds || [],
             faceIndex: Number.isSafeInteger(generationContext?.faceIndex) ? generationContext.faceIndex : 0,
+            presentationScopeKey: scopeKey,
         });
         combo = comboFromSelection(result, settings, recent);
         if (result.formatFairnessEligibleIds?.length) {

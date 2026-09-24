@@ -1,6 +1,6 @@
 // Split from outputSanitizer.js — markup.
 
-import { getSettings } from '../settings.js?rmv=1.6';
+import { getSettings } from '../settings.js?rmv=1.6.4-longtext1';
 import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.5.53-cn-boundary1';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,

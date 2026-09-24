@@ -1,12 +1,13 @@
 import { SETTINGS_UI_VERSION, RUNTIME_VERSION, escapeHtml, isCurrentRuntime } from './ui/runtime.js?rmv=1.6';
-import { buildRabbitMirrorSettingsDialogHtml, buildWorldInfoPromptModalHtml, buildTagFilterModalHtml } from './ui/settingsTemplate.js?rmv=1.6';
-import { attachIndependentApiDiagnosticListener, attachTokenMeterListener, renderIndependentApiDiagnostic, renderTokenMeter } from './ui/tokenMeter.js?rmv=1.6.4-resay5';
-import { attachWorldInfoBooksListener, clearCollapsedAllWorldInfoBookRows, clearPulledWorldInfoBooks, installWorldInfoBookVisibilityObserver, pullAllWorldInfoBooks, renderWorldInfoBookSettings, resetWorldInfoBookUiState } from './ui/worldInfoBooks.js?rmv=1.6.4-resay5';
+import { buildRabbitMirrorSettingsDialogHtml, buildWorldInfoPromptModalHtml, buildTagFilterModalHtml } from './ui/settingsTemplate.js?rmv=1.6.4-longtext1';
+import { attachIndependentApiDiagnosticListener, attachTokenMeterListener, renderIndependentApiDiagnostic, renderTokenMeter } from './ui/tokenMeter.js?rmv=1.6.4-longtext1';
+import { attachWorldInfoBooksListener, clearCollapsedAllWorldInfoBookRows, clearPulledWorldInfoBooks, installWorldInfoBookVisibilityObserver, pullAllWorldInfoBooks, renderWorldInfoBookSettings, resetWorldInfoBookUiState } from './ui/worldInfoBooks.js?rmv=1.6.4-longtext1';
 import { installTtDiagnosticEntry } from './ui/ttDiagnostics.js?rmv=1.6';
 
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.5.53-visualquick1';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.6.4-longtext1';
+import { listHostWorldBooks, readHostWorldBook } from './externalWorldBook/hostReader.js?rmv=1.5.53-cn-boundary1';
 import { refreshFacePagerPositions } from './facePagerPlacement.js?rmv=1.6.4-pager1';
-import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, RABBIT_MIRROR_BANNED_WORD_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, normalizeRabbitMirrorBannedWords, updateSettings, resetSettings } from './settings.js?rmv=1.6';
+import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, RABBIT_MIRROR_BANNED_WORD_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, normalizeRabbitMirrorBannedWords, updateSettings, resetSettings } from './settings.js?rmv=1.6.4-longtext1';
 import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS } from './independentRequestBudget.js?rmv=1.6';
 import { clearLastCombo, getCurrentChatKey } from './storage.js?rmv=1.5.53-visualquick1';
 import { normalizeEarlyBodyTags } from './earlyBodyTags.js?rmv=1.5.53-cn-boundary1';
@@ -16,16 +17,16 @@ import { DEFAULT_BEHAVIOR_RULE_TEXT, resolveBehaviorRuleText } from './behaviorR
 import { clearRecentIndependentTransportDiagnostics } from './transportDiagnostics.js?rmv=1.5.53-cn-boundary1';
 import { parseIndependentAdvancedOptions } from './advancedRequestOptions.js?rmv=1.5.53-cn-boundary1';
 import { parseRabbitMirrorReplacementLines, formatRabbitMirrorReplacementLines } from './bannedWords.js?rmv=1.5.53-cn-boundary1';
-import { clearRabbitMirrorPrompt, startManualEntryDiagnostic, stopManualEntryDiagnostic, getManualEntryDiagnosticState } from './injector.js?rmv=1.6.4-resay5';
+import { clearRabbitMirrorPrompt, startManualEntryDiagnostic, stopManualEntryDiagnostic, getManualEntryDiagnosticState } from './injector.js?rmv=1.6.4-longtext1';
 import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { configureMaintenanceAutoSafeMode, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.6.4-resay5';
+import { configureMaintenanceAutoSafeMode, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.6.4-longtext1';
 import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.5.53-cn-boundary1';
-import { fetchIndependentModels, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentModelListDiagnostic, hydrateIndependentFavoriteHtml, importCurrentSillyTavernConnection, listMissingIndependentRetryFloors, refreshRabbitMirrorGenerationMode, resyncMissingIndependentRetryShells, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.6.4-resay5';
+import { fetchIndependentModels, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentModelListDiagnostic, hydrateIndependentFavoriteHtml, importCurrentSillyTavernConnection, listMissingIndependentRetryFloors, refreshRabbitMirrorGenerationMode, resyncMissingIndependentRetryShells, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.6.4-longtext1';
 import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.5.53-cn-boundary1';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.6.4-resay5';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.6.4-longtext1';
 import { THEATER_FAVORITES_CHANGED_EVENT, deleteTheaterFavorite, groupTheaterFavoritesByCharacter, listTheaterFavorites, openTheaterFavoriteLibrary, openTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.6.3-fav2';
 
-import { mountSettingsAppearance, destroySettingsAppearance } from './settingsAppearance.js?rmv=1.6';
+import { mountSettingsAppearance, destroySettingsAppearance } from './settingsAppearance.js?rmv=1.6.4-longtext1';
 
 let uiMountRetryTimer = 0;
 let uiMountRetryCount = 0;
@@ -852,7 +853,7 @@ export function initRabbitMirrorUI() {
         if (!quickStart.open || guideLoading || guideCleanup || guideDisposed) return;
         guideLoading = true;
         try {
-            const module = await import('./quickStart.js?rmv=1.6.4-resay5');
+            const module = await import('./quickStart.js?rmv=1.6.4-longtext1');
             if (guideDisposed || !quickStart.isConnected || !isCurrentRuntime()) return;
             guideCleanup = module.mountRabbitMirrorQuickStart({
                 root: document.getElementById('rabbit_mirror_theater_settings'),
@@ -1482,6 +1483,59 @@ export function initRabbitMirrorUI() {
         if ($('#rh_multiface_enabled').prop('checked') === true) updateSettings({ rabbitMirrorFaceCount: Number(e.target.value) });
         renderFacePresentationSettings(getSettings());
     });
+    $('#rh_auto_longtext_percent').on('input change', e => {
+        const autoLongTextPercent = Math.max(0, Math.min(100, Math.round(Number(e.target.value) || 0)));
+        $('#rh_auto_longtext_percent_value').text(String(autoLongTextPercent));
+        if (e.type === 'change') updateSettings({ autoLongTextPercent });
+    });
+    $('#rh_lottery_source').on('change', e => {
+        const lotterySource = ['builtin', 'worldbook', 'both'].includes(e.target.value) ? e.target.value : 'builtin';
+        updateSettings({ lotterySource });
+        renderFacePresentationSettings(getSettings());
+    });
+    $('#rh_lottery_builtin_percent').on('input change', e => {
+        const lotteryBuiltinPercent = Math.max(0, Math.min(100, Math.round(Number(e.target.value) || 0)));
+        $('#rh_lottery_builtin_percent_value').text(String(lotteryBuiltinPercent));
+        if (e.type === 'change') updateSettings({ lotteryBuiltinPercent });
+    });
+    $('#rh_lottery_book_search').on('input', () => renderLotteryBookList());
+    $('#rh_lottery_book_list').on('change', 'input[data-lottery-book]', e => {
+        const name = e.target.getAttribute('data-lottery-book');
+        const selected = new Set(lotterySelectedBooks(getSettings()));
+        if (e.target.checked) selected.add(name);
+        else selected.delete(name);
+        updateSettings({ lotteryEntries: (getSettings().lotteryEntries || []).filter(entry => selected.has(entry.book)) });
+        renderLotteryBooks(getSettings());
+        if (e.target.checked) void openLotteryBook(name);
+    });
+    $('#rh_lottery_book_chips').on('click', '[data-lottery-remove-book]', e => {
+        const name = e.target.getAttribute('data-lottery-remove-book');
+        updateSettings({ lotteryEntries: (getSettings().lotteryEntries || []).filter(entry => entry.book !== name) });
+        renderLotteryBooks(getSettings());
+    });
+    $('#rh_lottery_entries').on('click', '[data-lottery-entry]', e => {
+        const button = e.target.closest('[data-lottery-entry]');
+        if (!button) return;
+        const id = button.getAttribute('data-lottery-entry');
+        const current = getSettings().lotteryEntries || [];
+        const book = button.getAttribute('data-lottery-book');
+        const uid = button.getAttribute('data-lottery-uid');
+        const title = button.getAttribute('data-lottery-title') || uid;
+        const exists = current.some(entry => entry.id === id);
+        updateSettings({ lotteryEntries: exists ? current.filter(entry => entry.id !== id) : current.concat([{ id, book, uid, title, content: lotteryEntryContent(book, uid) }]) });
+        renderLotteryEntries(getSettings());
+    });
+    $('#rh_lottery_entries').on('click', '[data-lottery-select-all]', e => {
+        const book = e.target.getAttribute('data-lottery-select-all');
+        const turningOn = e.target.getAttribute('data-lottery-all-state') !== 'on';
+        const others = (getSettings().lotteryEntries || []).filter(entry => entry.book !== book);
+        updateSettings({ lotteryEntries: turningOn ? others.concat(lotteryBookEntries(book).map(entry => lotteryEntryRecord(book, entry))) : others });
+        renderLotteryEntries(getSettings());
+    });
+    $('#rh_lottery_entries').on('click', '[data-lottery-view]', e => {
+        const box = e.target.closest('[data-lottery-view]')?.parentElement?.querySelector('[data-lottery-content]');
+        if (box) box.hidden = !box.hidden;
+    });
 
     $('#rh_visual_prompt_enabled').on('change', e => {
         const enabled = !!e.target.checked;
@@ -1686,7 +1740,7 @@ export function initRabbitMirrorUI() {
             for (const key of Object.keys(libraryEntryViews)) document.getElementById(key).disabled = true;
             button.textContent = '正在加载…';
             try {
-                const module = await import('./externalWorldBook/importWizard.js?rmv=1.6.4-resay5');
+                const module = await import('./externalWorldBook/importWizard.js?rmv=1.6.4-longtext1');
                 if (!isCurrentRuntime() || !button.isConnected) return;
                 module.openExternalWorldBookImportWizard?.({ initialView });
             } catch (error) {
@@ -1980,4 +2034,109 @@ function renderFacePresentationSettings(settings) {
         const select = document.getElementById(`rh_face_mode_${index}`);
         if (select) { select.value = modes[index]; select.disabled = index >= count; }
     }
+    const percent = Math.max(0, Math.min(100, Math.round(Number(settings.autoLongTextPercent) || 0)));
+    const percentInput = document.getElementById('rh_auto_longtext_percent');
+    if (percentInput && document.activeElement !== percentInput) percentInput.value = String(percent);
+    const percentValue = document.getElementById('rh_auto_longtext_percent_value');
+    if (percentValue) percentValue.textContent = String(percent);
+    const source = ['builtin', 'worldbook', 'both'].includes(settings.lotterySource) ? settings.lotterySource : 'builtin';
+    const sourceSelect = document.getElementById('rh_lottery_source');
+    if (sourceSelect) sourceSelect.value = source;
+    const builtin = Math.max(0, Math.min(100, Math.round(Number(settings.lotteryBuiltinPercent) || 0)));
+    const builtinInput = document.getElementById('rh_lottery_builtin_percent');
+    if (builtinInput && document.activeElement !== builtinInput) builtinInput.value = String(builtin);
+    const builtinValue = document.getElementById('rh_lottery_builtin_percent_value');
+    if (builtinValue) builtinValue.textContent = String(builtin);
+    const builtinRow = document.getElementById('rh_lottery_builtin_row');
+    if (builtinRow) builtinRow.hidden = source !== 'both';
+    const books = document.getElementById('rh_lottery_books');
+    if (books) books.hidden = source === 'builtin';
+    if (source !== 'builtin') renderLotteryBooks(settings);
+}
+
+const lotteryBooksCache = { list: [], entries: new Map() };
+
+function lotterySelectedBooks(settings) {
+    return [...new Set((settings.lotteryEntries || []).map(entry => entry.book).filter(Boolean))];
+}
+
+function lotteryBookEntries(book) {
+    return lotteryBooksCache.entries.get(book) || [];
+}
+
+function lotteryEntryContent(book, uid) {
+    return String(lotteryBookEntries(book).find(entry => String(entry.sourceEntryUid) === String(uid))?.content || '').slice(0, 1800);
+}
+
+function lotteryEntryRecord(book, entry) {
+    const uid = String(entry.sourceEntryUid || '');
+    return { id: `${book}::${uid}`, book, uid, title: entry.title || uid, content: String(entry.content || '').slice(0, 1800) };
+}
+
+function renderLotteryBookList() {
+    const box = document.getElementById('rh_lottery_book_list');
+    if (!box) return;
+    const query = String(document.getElementById('rh_lottery_book_search')?.value || '').trim().toLocaleLowerCase();
+    const selected = new Set(lotterySelectedBooks(getSettings()));
+    const books = lotteryBooksCache.list.filter(book => !query || String(book.displayName || book.fileId || '').toLocaleLowerCase().includes(query));
+    box.innerHTML = books.length ? books.map(book => {
+        const name = String(book.fileId || book.displayName || '');
+        const label = String(book.displayName || name);
+        return `<label style="display:flex;gap:8px;align-items:center;"><input type="checkbox" data-lottery-book="${escapeHtml(name)}" ${selected.has(name) ? 'checked' : ''}>${escapeHtml(label)}</label>`;
+    }).join('') : '<p class="rabbit-mirror-subnote">没有匹配的世界书。</p>';
+}
+
+function renderLotteryEntries(settings) {
+    const box = document.getElementById('rh_lottery_entries');
+    if (!box) return;
+    const selected = new Set((settings.lotteryEntries || []).map(entry => entry.id));
+    const books = lotterySelectedBooks(settings);
+    box.innerHTML = books.map(book => {
+        const entries = lotteryBookEntries(book);
+        if (!entries.length) return `<p class="rabbit-mirror-subnote">正在读取「${escapeHtml(book)}」的条目…</p>`;
+        const allOn = entries.every(entry => selected.has(`${book}::${entry.sourceEntryUid}`));
+        const rows = entries.map(entry => {
+            const id = `${book}::${entry.sourceEntryUid}`;
+            const on = selected.has(id);
+            return `<div style="border-top:1px solid rgba(127,127,127,.25);padding:6px 0;">
+              <button type="button" data-lottery-entry="${escapeHtml(id)}" data-lottery-book="${escapeHtml(book)}" data-lottery-uid="${escapeHtml(entry.sourceEntryUid)}" data-lottery-title="${escapeHtml(entry.title || '')}">${on ? '已选中' : '未选中'}</button>
+              <button type="button" data-lottery-view="true">查看</button>
+              <span>${escapeHtml(entry.title || entry.sourceEntryUid || '未命名')}</span>
+              <div data-lottery-content hidden class="rabbit-mirror-subnote">${escapeHtml(entry.content || '这条没有正文。')}</div>
+            </div>`;
+        }).join('');
+        return `<section><button type="button" data-lottery-select-all="${escapeHtml(book)}" data-lottery-all-state="${allOn ? 'on' : 'off'}">${allOn ? '取消全选' : '全选'}「${escapeHtml(book)}」</button>${rows}</section>`;
+    }).join('');
+}
+
+function renderLotteryBooks(settings) {
+    const chips = document.getElementById('rh_lottery_book_chips');
+    if (chips) {
+        chips.innerHTML = lotterySelectedBooks(settings).map(book => `<button type="button" data-lottery-remove-book="${escapeHtml(book)}">${escapeHtml(book)} ×</button>`).join('');
+    }
+    renderLotteryBookList();
+    renderLotteryEntries(settings);
+    if (!lotteryBooksCache.list.length) {
+        void listHostWorldBooks().then(list => {
+            lotteryBooksCache.list = Array.isArray(list) ? list : [];
+            renderLotteryBookList();
+        }).catch(() => {
+            const box = document.getElementById('rh_lottery_book_list');
+            if (box) box.textContent = '世界书列表没有读出来。';
+        });
+    }
+}
+
+async function openLotteryBook(book) {
+    if (lotteryBooksCache.entries.has(book)) {
+        renderLotteryEntries(getSettings());
+        return;
+    }
+    try {
+        const normalized = await readHostWorldBook({ fileId: book, displayName: book });
+        lotteryBooksCache.entries.set(book, Array.isArray(normalized?.entries) ? normalized.entries : []);
+    } catch {
+        lotteryBooksCache.entries.set(book, []);
+    }
+    renderLotteryEntries(getSettings());
 }

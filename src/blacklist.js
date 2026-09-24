@@ -1,6 +1,6 @@
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.5.53-visualquick1';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.6.4-longtext1';
 import { compactFormatDescriptors, isExternalSelectionId } from './selectionImageMetadata.js?rmv=1.6.4-creation1';
-import { getSettings, updateSettings } from './settings.js?rmv=1.6';
+import { getSettings, updateSettings } from './settings.js?rmv=1.6.4-longtext1';
 import { getCurrentChatKey, resetFormatEligibleMisses } from './storage.js?rmv=1.5.53-visualquick1';
 import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.5.53-cn-boundary1';
 import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.53-cn-boundary1';
@@ -425,7 +425,7 @@ function compactSelectionMetadata(metadata = {}, allowFaces = true) {
     const hasExternalReferences = metadata?.hasExternalReferences === true || externalSources.length > 0
         || [...themeIds, ...formatIds].some(isExternalSelectionId);
     if (!themeIds.length && !formatIds.length && !hasExternalReferences && !metadata?.textIds?.length
-        && !isBlankLongTextSelection(metadata) && !faces?.some(Boolean)) return null;
+        && !isBlankLongTextSelection(metadata) && !metadata?.worldBookEntryId && !faces?.some(Boolean)) return null;
     return {
         themeIds,
         formatIds,
@@ -583,7 +583,7 @@ function decorateRecipe(record, includeExternalOnly = false) {
         return null;
     }).filter(Boolean);
     const textIds = compactIds(record?.textIds);
-    if (!themes.length && !formats.length && !(includeExternalOnly && (record.hasExternalReferences || isBlankLongTextSelection(record) || textIds.length))) return null;
+    if (!themes.length && !formats.length && !(includeExternalOnly && (record.hasExternalReferences || isBlankLongTextSelection(record) || textIds.length || record.worldBookEntryId))) return null;
     return {
         ...record,
         // Existing favorite/blacklist callers see only known builtin IDs. The

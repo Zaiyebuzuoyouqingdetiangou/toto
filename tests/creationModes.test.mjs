@@ -21,9 +21,9 @@ test('blank longtext renders the agreed length without the optional visual templ
     const result = f.prompt.buildRabbitMirrorPromptDetails(f.settings, 'independent', null, 'long-blank');
     assert.equal(result.metadata.blankLongText, true);
     assert.equal(result.metadata.requestedPresentationMode, 'longtext');
-    assert.match(result.prompt, /正文默认 3000–5000 字/);
-    assert.match(result.prompt, /原条目或用户本轮点菜明确规定字数时优先遵循/);
-    assert.match(result.executionLock, /默认 3000–5000 字/);
+    assert.match(result.prompt, /3000–5000 字只是没有原条目篇幅要求时的参考/);
+    assert.match(result.prompt, /写成一篇读得完的故事/);
+    assert.match(result.executionLock, /3000–5000 字只作参考/);
     assert.doesNotMatch(result.prompt, /UNWANTED_VISUAL_TEMPLATE/);
 });
 
@@ -40,7 +40,7 @@ test('longtext retains the complete selected original including its word count a
     const plan = f.prompt.planRabbitMirrorPromptDetails(f.settings, 'independent', null, 'long-original');
     const result = f.prompt.renderRabbitMirrorPromptPlan(plan, materials);
     assert.ok(result.prompt.includes(raw));
-    assert.match(result.prompt, /原条目明确要求 HTML 结构或内部交互时遵循原条目/);
+    assert.match(result.prompt, /不要把条目里的按钮、页面骨架、第二状态或交互说明做成界面/);
     assert.equal(materials.get(id).rawContent, raw);
     assert.doesNotMatch(result.prompt, /文本呈现替换本面母本中的界面/);
 });

@@ -52,5 +52,11 @@ export function presentationModeFields(source) {
         .filter(id => typeof id === 'string' && id.length <= 2048 && /^ext:[A-Za-z0-9:._!~*'()-]+$/.test(id));
     if (Array.isArray(source.textLabels)) fields.textLabels = source.textLabels.slice(0, 16)
         .filter(label => typeof label === 'string').map(label => label.slice(0, 160));
+    const worldBookEntryId = String(source.worldBookEntryId || '').trim().slice(0, 360);
+    if (worldBookEntryId) {
+        fields.worldBookEntryId = worldBookEntryId;
+        fields.worldBookTitle = String(source.worldBookTitle || '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 200);
+        fields.worldBookExcerpt = String(source.worldBookExcerpt || '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 1800);
+    }
     return fields;
 }

@@ -1,8 +1,8 @@
 // Split from independentApi.js — request.
 
-import { presentationModeFields, hasExplicitTextFace, normalizePresentationModes, normalizeLongTextSource } from '../presentationMode.js?rmv=1.5.53-visualquick1';
+import { presentationModeFields, hasExplicitTextFace, normalizePresentationModes, normalizeLongTextSource } from '../presentationMode.js?rmv=1.6.4-longtext1';
 import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.6.4-creation1';
-import { getSettings } from '../settings.js?rmv=1.6';
+import { getSettings } from '../settings.js?rmv=1.6.4-longtext1';
 import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.6';
 import { independentGenerationTiming } from '../independentTiming.js?rmv=1.5.53-timing1';
 import {
@@ -22,12 +22,12 @@ import {
     prepareSelectedMemoryForPrompt,
     memoryRequestSettingsKey,
     assertMemoryRequestSettings,
-} from '../promptBuilder.js?rmv=1.6.4-resay5';
+} from '../promptBuilder.js?rmv=1.6.4-longtext1';
 import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.5.53-text1';
 import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.5.53-cn-boundary1';
-import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.6.4-resay5';
+import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.6.4-longtext1';
 import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from '../multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.4-resay5';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.4-longtext1';
 import {
     updateLatestVisualSignature,
     parseVisualFamilySkeleton,
@@ -47,7 +47,7 @@ import {
     getContext,
     hashText,
 } from './runtime.js?rmv=1.6';
-import { operationEpochForBase } from './flights.js?rmv=1.6.4-resay5';
+import { operationEpochForBase } from './flights.js?rmv=1.6.4-longtext1';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INDEPENDENT_MAX_APPROX_DEPTH,
@@ -62,7 +62,7 @@ import {
     normalizedConfiguredTemperature,
     readHistoryStore,
     readStore,
-} from './persistence.js?rmv=1.6.4-resay5';
+} from './persistence.js?rmv=1.6.4-longtext1';
 import {
     API_PROFILE_ORDER,
     chatKey,
@@ -96,7 +96,7 @@ import {
     stageNextApiProfile,
     swipeId,
     validatedIndependentConnectionProfile,
-} from './connection.js?rmv=1.6.4-resay5';
+} from './connection.js?rmv=1.6.4-longtext1';
 import {
     externalGeometryCycleSequence,
     externalGeometryLifecycleEpoch,
@@ -107,7 +107,7 @@ import {
     writeExternalGeometryCycleSequence,
     writeExternalGeometryLifecycleEpoch,
     writeExternalGeometryLifecycleReason,
-} from './geometry.js?rmv=1.6.4-resay5';
+} from './geometry.js?rmv=1.6.4-longtext1';
 import {
     INDEPENDENT_REJECTED_PREVIEW_MAX_CHARS,
     INDEPENDENT_REJECTED_PREVIEW_MAX_ENTRIES,
@@ -122,8 +122,8 @@ import {
     writeExternalHostSyncIndex,
     writeIndependentRejectedPreviewChars,
     writeIndependentRejectedPreviewSequence,
-} from './mount.js?rmv=1.6.4-resay5';
-import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.6.4-resay5';
+} from './mount.js?rmv=1.6.4-longtext1';
+import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.6.4-longtext1';
 
 const NON_STREAM_PROFILE_BY_STREAM_PROFILE={
  chat_system_user_full:'chat_system_user_full_nostream',
@@ -444,6 +444,23 @@ async function readApiResponse(response,{expectedStream=false,signal=null,onProg
    const parsed=finalize(incremental.finish(),incremental.state);return {...parsed,contentType,transport:transport(parsed,incremental.state,null,false)};
  }
  return bufferedResult(raw,false);
+}
+
+function escapeLongText(value){
+ return String(value||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function salvageLongTextProse(raw){
+ const source=String(raw||'');
+ const end=source.toLowerCase().lastIndexOf('</toto>');
+ const tail=end>=0?source.slice(end+7):source;
+ const text=tail.replace(/<style[\s\S]*?<\/style>/gi,' ').replace(/<script[\s\S]*?<\/script>/gi,' ').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
+ return text.length>=80?text:'';
+}
+
+function salvagedLongTextFace(text,index){
+ const inner=`<details data-rm-longtext="truncated"><summary>长文本（未写完，可续写）</summary><article data-rm-longtext="true"><p>${escapeLongText(text)}</p></article></details>`;
+ return {index,inner,html:`<toto data-rabbit-mirror="true" data-rm-face="${index+1}">${inner}</toto>`,details:inner,summaryHtml:`长文本（未写完，可续写）·第${index+1}面`};
 }
 
 function extractMirrorInner(raw){
@@ -1491,7 +1508,7 @@ export function wireIndependentRejectedFaceControls(host){
    independentRejectedFaceControlsWired.add(resay);
    resay.addEventListener('click',event=>{
     event.preventDefault(); event.stopPropagation();
-    void import('../outputSanitizer/toolsChrome.js?rmv=1.6.4-resay5').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+    void import('../outputSanitizer/toolsChrome.js?rmv=1.6.4-longtext1').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
    },true);
   }
  }
@@ -1499,8 +1516,9 @@ export function wireIndependentRejectedFaceControls(host){
 
 function prepareIndependentMultifaceResult(raw,metadata,requestDiagnostic,requestOptions={}){
  const parsed=parseMultifaceOutput(raw,{expectedCount:Number(metadata.faceCount)});
- const sourceFaces=recoverableMultifaceFrames(parsed);
- if(!sourceFaces.length){
+ const sourceFaces=recoverableMultifaceFrames(parsed).slice();
+ const canSalvageLongText=Array.isArray(metadata?.faces)&&metadata.faces.some(face=>face?.requestedPresentationMode==='longtext')&&!!salvageLongTextProse(raw);
+ if(!sourceFaces.length && !canSalvageLongText){
   const first=parsed.errors?.[0]||{};
   const detail={completedFaces:parsed.faces?.length||0,expectedFaces:metadata.faceCount,
    protocolErrorCode:String(first.code||'face-count-mismatch').slice(0,120),
@@ -1511,8 +1529,15 @@ function prepareIndependentMultifaceResult(raw,metadata,requestDiagnostic,reques
  }
  const count=Number(metadata.faceCount);
  const prepared=Array(count).fill(null); const scans=Array(count).fill(null); const failures=Array(count).fill(null); const seenTitles=new Set();
+ let tailUsed=false;
+ const metaFaces=Array.isArray(metadata?.faces)?metadata.faces:[];
  for(let index=0;index<count;index+=1){
-  if(!sourceFaces.some(face=>face.index===index)) failures[index]={faceIndex:index,status:'failed',code:String(parsed.errors?.[0]?.code||'incomplete-face')};
+  if(sourceFaces.some(face=>face.index===index)) continue;
+  if(!tailUsed && metaFaces[index]?.requestedPresentationMode==='longtext'){
+   const prose=salvageLongTextProse(raw);
+   if(prose){ tailUsed=true; sourceFaces.push(salvagedLongTextFace(prose,index)); continue; }
+  }
+  failures[index]={faceIndex:index,status:'failed',code:String(parsed.errors?.[0]?.code||'incomplete-face')};
  }
  for(const face of sourceFaces){
   try{
@@ -1858,9 +1883,10 @@ ${JSON.stringify(resayNote)}
 只把上面的想要和不要落实到这一面的视觉、排版、文字和交互。不得把这段说明显示在成品里，也不得因此更换已经指定的选题。`:'';
  // 原选题重写只锁抽签。视觉冷却只要求换外观，模型会留下上一版句子和骨架。
  const keepSelectionRewrite=!!resay && resay.freshSelection!==true && resay.retryFailedFace!==true;
+ const keepSelectionForm=resay?.presentationOverride==='longtext'?'longtext':resay?.presentationOverride==='html'?'html':'';
  const keepSelectionRewriteBlock=keepSelectionRewrite?`
 
-本轮是原选题重写：已经指定的主题 / 元素和展现形式必须原样保留，不得重抽或更换。这一面的成品要整篇重写，可见文字和 HTML 都重新写；不得沿用上一版的句子、按钮文案或页面骨架。`:'';
+本轮是原选题重写：已经指定的主题 / 元素和展现形式必须原样保留，不得重抽或更换。${keepSelectionForm==='longtext'?'这一次改成长文本：抽中的内容只作题材和叙述，写成一篇完整故事，不要做成 HTML 界面。':'这一次'+(keepSelectionForm==='html'?'改成 HTML，':'')+'成品要整篇重写，可见文字和 HTML 都重新写；不得沿用上一版的句子、按钮文案或页面骨架。'}`:'';
  const presentationFaces=Array.isArray(details.metadata?.faces)?details.metadata.faces:[details.metadata];
  const hasTextFace=presentationFaces.some(face=>face?.presentationMode==='text');
  const htmlFaceNumbers=presentationFaces.flatMap((face,index)=>face?.presentationMode==='text'?[]:[index+1]);
@@ -2023,6 +2049,17 @@ ${independentUserTail}`;
  }
  const inner=extractMirrorInner(raw);
  if(!inner){
+   const metaFaces=Array.isArray(details.metadata?.faces)&&details.metadata.faces.length?details.metadata.faces:[details.metadata];
+   if(metaFaces.length===1 && metaFaces[0]?.requestedPresentationMode==='longtext'){
+    const prose=salvageLongTextProse(raw);
+    if(prose){
+     const preparedHtml=prepareIndependentReadyHtml(salvagedLongTextFace(prose,0).inner);
+     if(preparedHtml && independentMirrorBodyEvidence(preparedHtml)){
+      rememberApiProfile(st,profile);
+      return {html:preparedHtml,truncated:true,feedbackId:activeFeedback?.id||'',feedbackPrompt,requestDiagnostic,executionLockChars:executionLock.length};
+     }
+    }
+   }
    const finish=responseFinishReason(result.payload);
    const configuredMax=Number(st.independentApiMaxTokens)||12000;
    if(/length|max_tokens|MAX_TOKENS/i.test(finish)){

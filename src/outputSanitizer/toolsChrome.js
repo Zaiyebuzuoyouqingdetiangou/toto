@@ -1,10 +1,10 @@
 // Split from outputSanitizer.js — toolsChrome.
 
-import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.6.4-resay5';
+import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.6.4-longtext1';
 import { placeFacePager } from '../facePagerPlacement.js?rmv=1.6.4-pager1';
-import { isTextPresentation } from '../presentationMode.js?rmv=1.5.53-visualquick1';
+import { isTextPresentation } from '../presentationMode.js?rmv=1.6.4-longtext1';
 import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.6.3-ttchild1';
-import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=1.6';
+import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=1.6.4-longtext1';
 import { getCurrentChatKey } from '../storage.js?rmv=1.5.53-visualquick1';
 import { getSanitizedRabbitMirrorFaceProof } from '../multifaceProof.js?rmv=1.5.53-visualquick1';
 import {
@@ -23,7 +23,7 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
 } from '../feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.4-resay5';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.4-longtext1';
 import {
     FAVORITE_MULTIPLIER_MAX,
     FAVORITE_MULTIPLIER_MIN,
@@ -45,7 +45,7 @@ import {
     setFavoriteMultiplier,
     toggleBlacklistItem,
     toggleFavoriteItem,
-} from '../blacklist.js?rmv=1.6.4-resay5';
+} from '../blacklist.js?rmv=1.6.4-longtext1';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -70,9 +70,9 @@ import {
     isMaintenanceRabbitEnabled,
     isRabbitMirrorDetails,
 } from './runtime.js?rmv=1.6';
-import { getAvailableHostChat } from './scriptedInteractionRescue.js?rmv=1.6.4-resay5';
-import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.6.4-resay5';
-import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=1.6.4-resay5';
+import { getAvailableHostChat } from './scriptedInteractionRescue.js?rmv=1.6.4-longtext1';
+import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.6.4-longtext1';
+import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=1.6.4-longtext1';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     FEEDBACK_HISTORY_EVENT,
@@ -92,8 +92,8 @@ import {
     rabbitMirrorLanguageBalance,
     scheduleCurrentHighConfidenceTextRepair,
     setMaintenanceRabbitState,
-} from './diagnostics.js?rmv=1.6.4-resay5';
-import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=1.6.4-resay5';
+} from './diagnostics.js?rmv=1.6.4-longtext1';
+import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=1.6.4-longtext1';
 import {
     MAINTENANCE_FINDING_STAGE_LABELS,
     beginMaintenanceRepairRun,
@@ -111,19 +111,19 @@ import {
     runMaintenanceRevealClipRepair,
     runMaintenanceUserRepair,
     triggerDiagnosticForMaintenanceRoot,
-} from './maintenanceInspect.js?rmv=1.6.4-resay5';
+} from './maintenanceInspect.js?rmv=1.6.4-longtext1';
 import {
     getRabbitMirrorFacePosition,
     installMaintenanceHorizontalClipOpenRescue,
     repairLegacyMaintenanceMobileStateRows,
-} from './layoutRescue.js?rmv=1.6.4-resay5';
+} from './layoutRescue.js?rmv=1.6.4-longtext1';
 import {
     getMessageIndexFromMirrorNode,
     installMaintenanceAutoSafeOpenPatrol,
     installManagedRabbitMirrorTools,
     pruneMaintenanceAutoSafeOpenBindings,
     scheduleMaintenanceAutoSafeForRoot,
-} from './lifecycle.js?rmv=1.6.4-resay5';
+} from './lifecycle.js?rmv=1.6.4-longtext1';
 
 let recipeOutsideCloseCleanup = null;
 
@@ -644,6 +644,23 @@ export function openRabbitMirrorResayChooser(root, anchor = null) {
     };
     makeChoice('original', '原选题重写', '保留抽到的主题 / 元素和展现形式，文字和 HTML 都重新写。');
     makeChoice('fresh', '重新抽一张', '按当前设置重新随机抽取，不沿用上一轮选题。');
+    let form = 'keep';
+    const formLabel = doc.createElement('div');
+    formLabel.textContent = '这一次用什么形式';
+    formLabel.style.cssText = 'margin:10px 0 4px;font-size:12px;';
+    const forms = doc.createElement('div');
+    forms.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;';
+    const makeForm = (value, label) => {
+        const button = doc.createElement('button');
+        button.type = 'button';
+        button.setAttribute('data-rm-resay-form', value);
+        button.textContent = label;
+        button.style.cssText = 'min-height:36px;padding:6px 10px;border:1px solid rgba(127,127,127,.4);border-radius:8px;background:transparent;color:inherit;font:inherit;cursor:pointer;';
+        forms.append(button);
+    };
+    makeForm('keep', '沿用现在的形式');
+    makeForm('html', '这次改成 HTML');
+    makeForm('longtext', '这次改成长文本');
     const noteLabel = doc.createElement('label');
     noteLabel.textContent = '这一次想要什么、不要什么（可选）';
     noteLabel.style.cssText = 'display:block;margin:10px 0 4px;font-size:12px;';
@@ -664,7 +681,7 @@ export function openRabbitMirrorResayChooser(root, anchor = null) {
     cancel.textContent = '取消';
     cancel.style.cssText = submit.style.cssText;
     actions.append(submit, cancel);
-    panel.append(title, help, choices, noteLabel, note, actions);
+    panel.append(title, help, choices, formLabel, forms, noteLabel, note, actions);
     doc.body.append(panel);
     const button = anchor?.isConnected ? anchor : root;
     positionFeedbackCatPanel(panel, button, 340);
@@ -675,12 +692,24 @@ export function openRabbitMirrorResayChooser(root, anchor = null) {
             item.style.borderColor = on ? 'currentColor' : 'rgba(127,127,127,.4)';
         }
         submit.disabled = !mode;
+        for (const item of forms.querySelectorAll('[data-rm-resay-form]')) {
+            const on = item.getAttribute('data-rm-resay-form') === form;
+            item.setAttribute('aria-pressed', on ? 'true' : 'false');
+            item.style.borderColor = on ? 'currentColor' : 'rgba(127,127,127,.4)';
+        }
     };
     choices.addEventListener('click', event => {
         const value = event.target?.closest?.('[data-rm-resay-mode]')?.getAttribute('data-rm-resay-mode');
         if (!value) return;
         event.preventDefault();
         mode = value;
+        paint();
+    });
+    forms.addEventListener('click', event => {
+        const value = event.target?.closest?.('[data-rm-resay-form]')?.getAttribute('data-rm-resay-form');
+        if (!value) return;
+        event.preventDefault();
+        form = value;
         paint();
     });
     cancel.addEventListener('click', event => {
@@ -694,10 +723,11 @@ export function openRabbitMirrorResayChooser(root, anchor = null) {
         closeRabbitMirrorResayChooser();
         const live = globalThis.__rabbitMirrorIndependentActionsV1;
         const handled = live?.runtime === RUNTIME_VERSION && typeof live.resay === 'function'
-            ? live.resay(root, {}, { mode, note: text })
+            ? live.resay(root, {}, { mode, note: text, ...(form === 'html' || form === 'longtext' ? { form } : {}) })
             : invokeFeedbackMirrorAction('resay', root, {});
         if (!handled) globalThis.toastr?.warning?.('没有找到这一面可以重说的兔子镜。');
     });
+    paint();
     setTimeout(() => {
         if (!panel.isConnected) return;
         const closeOnOutside = event => {
@@ -841,6 +871,7 @@ function recipeDrawnRows(recipe) {
         push({ id, kind: 'text', title: selectionDisplayTitle(recipe.textLabels?.[index], id), category: '纯文本', actionable: false });
     });
     if (recipe.blankLongText) push({ id: 'blank-longtext', kind: 'text', title: '空白长文本，不抽母本条目', category: '纯文本', actionable: false });
+    if (recipe.worldBookEntryId) push({ id: recipe.worldBookEntryId, kind: 'text', title: recipe.worldBookTitle || '世界书条目', category: '世界书条目', actionable: false });
     return rows;
 }
 
@@ -1965,7 +1996,7 @@ function beginHostWorkTiming(name){
 }
 
 function loadMirrorImageModule() {
-    if (!mirrorImageModule) mirrorImageModule = import('../imageUi.js?rmv=1.6.4-resay5').catch(error => { mirrorImageModule = null; throw error; });
+    if (!mirrorImageModule) mirrorImageModule = import('../imageUi.js?rmv=1.6.4-longtext1').catch(error => { mirrorImageModule = null; throw error; });
     return mirrorImageModule;
 }
 
@@ -2209,6 +2240,13 @@ function installUnifiedMirrorTools(root) {
     const host = ensureRabbitMirrorToolHost(summary);
     const actions = [];
     actions.push({ id: 'resay', label: '↻ 重说', run: (_event, opener) => openRabbitMirrorResayChooser(root, opener) });
+    const continueRecipe = rabbitMirrorRecipeForRoot(root, true);
+    if (continueRecipe?.requestedPresentationMode === 'longtext' || continueRecipe?.blankLongText === true) {
+        actions.push({ id: 'continue', label: '✎ 续写', run: () => {
+            void import('../independentApi/mount.js?rmv=1.6.4-longtext1').then(module => module.continueIndependentLongText(root))
+                .catch(() => globalThis.toastr?.error?.('续写没有写上，原来的正文还在。'));
+        } });
+    }
     const add = (attr, enabled, id, label, handler) => {
         const button = host.querySelector(`[${attr}]`);
         if (button && enabled) actions.push({ id, label, run: event => handler(event, root, button) });
@@ -2228,7 +2266,7 @@ function installUnifiedMirrorTools(root) {
             .catch(() => globalThis.toastr?.warning?.('生图面板未能打开，请重新打开后再试。'));
     } });
     actions.push({ id: 'theater-favorite-library', label: '📖 打开收藏夹', run: () => {
-        void import('../independentApi.js?rmv=1.6.4-resay5').then(module =>
+        void import('../independentApi.js?rmv=1.6.4-longtext1').then(module =>
             openTheaterFavoriteLibrary((container, record) => module.hydrateIndependentFavoriteHtml(container, record)))
             .catch(error => globalThis.toastr?.warning?.(String(error?.message || '无法打开收藏夹。')));
     } });

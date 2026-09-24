@@ -150,3 +150,38 @@ test('the stored batch API also preserves multiple blank longtext faces', async 
     assert.equal(result.length, 3);
     assert.ok(result.every(face => face.combo.blankLongText === true));
 });
+
+test('auto weight can choose long text without dropping the drawn materials', async () => {
+    const f = await fixture({ rabbitMirrorPresentationModes: ['auto'], autoLongTextPercent: 100, longTextSource: 'mixed' });
+    const result = f.picker.pickCombination(f.settings, 'auto-all-long');
+    assert.equal(result.combo.requestedPresentationMode, 'longtext');
+    assert.notEqual(result.combo.blankLongText, true);
+    assert.ok(result.combo.themeIds.length);
+});
+
+test('auto weight zero keeps the legacy category presentation', async () => {
+    const f = await fixture({ rabbitMirrorPresentationModes: ['auto'], autoLongTextPercent: 0 });
+    const result = f.picker.pickCombination(f.settings, 'auto-zero');
+    assert.notEqual(result.combo.requestedPresentationMode, 'longtext');
+});
+
+test('selected world book entries replace the builtin draw', async () => {
+    const f = await fixture({
+        rabbitMirrorPresentationModes: ['html'], lotterySource: 'worldbook',
+        lotteryEntries: [{ id: 'book::1', book: 'book', uid: '1', title: '信', content: '写一封信' }],
+    });
+    const result = f.picker.pickCombination(f.settings, 'world-one');
+    assert.equal(result.combo.worldBookEntryId, 'book::1');
+    assert.equal(result.combo.worldBookTitle, '信');
+    assert.deepEqual(clone(result.combo.themeIds), []);
+    assert.equal(f.presentation.presentationModeFields(result.combo).worldBookEntryId, 'book::1');
+});
+
+test('two auto faces still include one long text when the weight is tiny', async () => {
+    const f = await fixture({
+        rabbitMirrorFaceCount: 2, rabbitMirrorPresentationModes: ['auto', 'auto'],
+        autoLongTextPercent: 1, longTextSource: 'mixed',
+    });
+    const result = f.picker.pickCombinationBatch(f.settings, 'two-auto', f.context, 2);
+    assert.ok(result.some(face => face.combo.requestedPresentationMode === 'longtext'));
+});

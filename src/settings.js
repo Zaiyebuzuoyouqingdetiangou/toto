@@ -1,4 +1,4 @@
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.5.53-visualquick1';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.6.4-longtext1';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
 import { independentGenerationTiming } from './independentTiming.js?rmv=1.5.53-timing1';
@@ -55,6 +55,29 @@ export function normalizeRabbitMirrorBannedWords(value) {
             ? String(raw.replace ?? '').replace(/[\u0000-\u001F\u007F]/g, ' ').slice(0, 240) : '';
         result.push(replacement ? { find: term, replace: replacement } : term);
         if (result.length >= RABBIT_MIRROR_BANNED_WORD_MAX_COUNT) break;
+    }
+    return result;
+}
+
+function normalizeLotteryEntries(value) {
+    if (!Array.isArray(value)) return [];
+    const result = [];
+    const seen = new Set();
+    for (const raw of value) {
+        if (!raw || typeof raw !== 'object') continue;
+        const book = String(raw.book || '').trim().slice(0, 240);
+        const uid = String(raw.uid || '').trim().slice(0, 80);
+        const id = String(raw.id || (book && uid ? `${book}::${uid}` : '')).trim().slice(0, 360);
+        if (!book || !uid || !id || seen.has(id)) continue;
+        seen.add(id);
+        result.push({
+            id,
+            book,
+            uid,
+            title: String(raw.title || uid).replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 200),
+            content: String(raw.content || '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 1800),
+        });
+        if (result.length >= 80) break;
     }
     return result;
 }
@@ -169,6 +192,12 @@ export const defaultSettings = Object.freeze({
     rabbitMirrorFaceCount: 1,
     rabbitMirrorPresentationModes: ['auto', 'auto', 'auto', 'auto', 'auto'],
     longTextSource: 'blank',
+    // 自动呈现时，长文本所占百分比；其余为 HTML。0 表示仍按抽中的类别呈现。
+    autoLongTextPercent: 40,
+    // builtin：兔子镜已有条目。worldbook：选中的世界书条目。both：按权重两边都抽。
+    lotterySource: 'builtin',
+    lotteryBuiltinPercent: 50,
+    lotteryEntries: [],
     facePagerPosition: 'top',
     writingStyle: '',
     independentReadCharacterWorldBook: false,
@@ -313,6 +342,12 @@ export function getSettings() {
     // 保证旧设置升级与畸形写入都不会意外开启多面。
     settings.rabbitMirrorPresentationModes = normalizePresentationModes(settings.rabbitMirrorPresentationModes);
     settings.longTextSource = ['blank', 'text', 'mixed'].includes(settings.longTextSource) ? settings.longTextSource : 'blank';
+    const autoPercent = Number(settings.autoLongTextPercent);
+    settings.autoLongTextPercent = Number.isFinite(autoPercent) ? Math.max(0, Math.min(100, Math.round(autoPercent))) : 40;
+    settings.lotterySource = ['builtin', 'worldbook', 'both'].includes(settings.lotterySource) ? settings.lotterySource : 'builtin';
+    const builtinPercent = Number(settings.lotteryBuiltinPercent);
+    settings.lotteryBuiltinPercent = Number.isFinite(builtinPercent) ? Math.max(0, Math.min(100, Math.round(builtinPercent))) : 50;
+    settings.lotteryEntries = normalizeLotteryEntries(settings.lotteryEntries);
     settings.facePagerPosition = settings.facePagerPosition === 'bottom' ? 'bottom' : 'top';
     settings.writingStyle = typeof settings.writingStyle === 'string' ? settings.writingStyle.slice(0, 6000) : '';
     settings.independentReadCharacterWorldBook = settings.independentReadCharacterWorldBook === true;
@@ -436,6 +471,16 @@ export function updateSettings(patch) {
     }
     if (Object.prototype.hasOwnProperty.call(safePatch, 'imageEnabled')) safePatch.imageEnabled = safePatch.imageEnabled === true;
     if (Object.prototype.hasOwnProperty.call(safePatch, 'longTextSource')) safePatch.longTextSource = ['blank', 'text', 'mixed'].includes(safePatch.longTextSource) ? safePatch.longTextSource : 'blank';
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'autoLongTextPercent')) {
+        const autoPercent = Number(safePatch.autoLongTextPercent);
+        safePatch.autoLongTextPercent = Number.isFinite(autoPercent) ? Math.max(0, Math.min(100, Math.round(autoPercent))) : 40;
+    }
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'lotterySource')) safePatch.lotterySource = ['builtin', 'worldbook', 'both'].includes(safePatch.lotterySource) ? safePatch.lotterySource : 'builtin';
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'lotteryBuiltinPercent')) {
+        const builtinPercent = Number(safePatch.lotteryBuiltinPercent);
+        safePatch.lotteryBuiltinPercent = Number.isFinite(builtinPercent) ? Math.max(0, Math.min(100, Math.round(builtinPercent))) : 50;
+    }
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'lotteryEntries')) safePatch.lotteryEntries = normalizeLotteryEntries(safePatch.lotteryEntries);
     if (Object.prototype.hasOwnProperty.call(safePatch, 'facePagerPosition')) safePatch.facePagerPosition = safePatch.facePagerPosition === 'bottom' ? 'bottom' : 'top';
     if (Object.prototype.hasOwnProperty.call(safePatch, 'writingStyle')) safePatch.writingStyle = typeof safePatch.writingStyle === 'string' ? safePatch.writingStyle.slice(0, 6000) : '';
     if (Object.prototype.hasOwnProperty.call(safePatch, 'independentReadCharacterWorldBook')) safePatch.independentReadCharacterWorldBook = safePatch.independentReadCharacterWorldBook === true;
