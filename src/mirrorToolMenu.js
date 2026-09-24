@@ -108,13 +108,13 @@ export function installMirrorToolMenu(root, host, actions, beforeOpen) {
             panel.setAttribute('data-rm-tool-menu', 'true');
             panel.setAttribute('role', 'dialog');
             panel.setAttribute('aria-label', '兔子镜工具');
-            panel.style.cssText = 'padding:14px;border:1px solid var(--SmartThemeBorderColor,#bbb);border-radius:15px;background:var(--SmartThemeBlurTintColor,#fff);color:var(--SmartThemeBodyColor,#34495d);box-shadow:0 8px 30px #0004;font:14px/1.5 sans-serif;';
+            panel.style.cssText = 'padding:14px;border:1px solid var(--SmartThemeBorderColor,#bbb);border-radius:15px;background-color:#243044;background-image:linear-gradient(var(--SmartThemeBlurTintColor,#243044),var(--SmartThemeBlurTintColor,#243044));color:var(--SmartThemeBodyColor,#34495d);box-shadow:0 8px 30px #0004;font:14px/1.5 sans-serif;';
             const title = document.createElement('strong'); title.textContent = '这面兔子镜的工具'; panel.append(title);
             const items = [...state.actions, { id: 'close', label: '关闭', run: () => button.focus() }];
             for (const action of items) {
                 const item = document.createElement('button'); item.type = 'button';
                 item.setAttribute('data-rm-tool-choice', action.id); item.textContent = action.label;
-                item.style.cssText = 'display:block;width:100%;min-height:44px;margin-top:8px;padding:10px 12px;text-align:left;white-space:normal;border:1px solid var(--SmartThemeBorderColor,#bbb);border-radius:10px;background:transparent;color:inherit;font:inherit;cursor:pointer;';
+                item.style.cssText = 'display:block;width:100%;min-height:44px;margin-top:8px;padding:10px 12px;text-align:left;white-space:normal;border:1px solid var(--SmartThemeBorderColor,#bbb);border-radius:10px;background-color:#243044;background-image:linear-gradient(var(--SmartThemeBlurTintColor,#243044),var(--SmartThemeBlurTintColor,#243044));color:inherit;font:inherit;cursor:pointer;';
                 item.addEventListener('click', event => {
                     event.preventDefault(); event.stopPropagation();
                     if (!panel.isConnected || !state.root.isConnected) return;

@@ -22,20 +22,20 @@ import {
     repairMalformedNestedInteractiveLabels,
     repairRabbitMirrorSelectorPanelGridSpan,
     restoreInteractionInlineOverrides,
-} from './checkedStateRescue.js?rmv=1.6.4-api14';
+} from './checkedStateRescue.js?rmv=1.6.4-resay3';
 import {
     RAW_SELF_MUTATION_RESCUE_ATTR,
     chooseMatchingRawRabbitMirrorRoot,
     getRawAssistantMessageForRenderedRoot,
-} from './scriptedInteractionRescue.js?rmv=1.6.4-api14';
+} from './scriptedInteractionRescue.js?rmv=1.6.4-resay3';
 import {
     applyCheckedVisualFallback,
     inputHasMeaningfulCheckedSiblingRule,
     installIntelligentInteractionRescue,
-} from './fallbackRescue.js?rmv=1.6.4-api14';
-import { INERT_ACTION_BUTTON_RESCUE_ATTR, INERT_ACTION_STATUS_ATTR } from './diagnostics.js?rmv=1.6.4-api14';
-import { rehydrateRabbitMirrorMaintenanceRepairs } from './choiceRescue.js?rmv=1.6.4-api14';
-import { maintenanceRepairRootBudget } from './maintenanceInspect.js?rmv=1.6.4-api14';
+} from './fallbackRescue.js?rmv=1.6.4-resay3';
+import { INERT_ACTION_BUTTON_RESCUE_ATTR, INERT_ACTION_STATUS_ATTR } from './diagnostics.js?rmv=1.6.4-resay3';
+import { rehydrateRabbitMirrorMaintenanceRepairs } from './choiceRescue.js?rmv=1.6.4-resay3';
+import { maintenanceRepairRootBudget } from './maintenanceInspect.js?rmv=1.6.4-resay3';
 
 let interactionScopeCounter = 0;
 

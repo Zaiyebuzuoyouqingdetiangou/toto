@@ -41,11 +41,11 @@ const BODY = extractFunction(SOURCE, 'resayIndependentMirror');
 const MULTIFACE_ARG = 4;
 const SINGLE_PRESENTATION_ARG = 7;
 
-function runResay({ diagnostic, faceIndex = -1, mountedCount = 0 }) {
+function runResay({ diagnostic, faceIndex = -1, mountedCount = 0, options, generationSource = 'independent' } = {}) {
     const calls = [];
     const toasts = [];
     const deps = {
-        getSettings: () => ({ generationSource: 'independent' }),
+        getSettings: () => ({ generationSource }),
         resolveIndependentActionIdentity: () => ({ ctx: {}, index: 7, msg: { mes: 'x' }, slot: 's', faceIndex, host: {} }),
         canIndependentFaceResay: () => ({ ok: true }),
         FACE_SWIPE_FULL_MESSAGE: '',
@@ -61,7 +61,7 @@ function runResay({ diagnostic, faceIndex = -1, mountedCount = 0 }) {
     const fn = new Function(...names, `${BODY}\nreturn resayIndependentMirror;`)(...names.map(n => deps[n]));
     const saved = globalThis.toastr;
     globalThis.toastr = { info: m => toasts.push(m), error: m => toasts.push(m), warning: m => toasts.push(m) };
-    try { fn({}, {}); } finally { globalThis.toastr = saved; }
+    try { fn({}, {}, options); } finally { globalThis.toastr = saved; }
     return { calls, toasts };
 }
 
@@ -92,6 +92,57 @@ test('multiface per-face resay keeps its exact-restore semantics unchanged', () 
     assert.equal(calls[0][MULTIFACE_ARG].faces, faces, '多面重说这一面仍须携带原逐面记录');
     assert.equal(calls[0][MULTIFACE_ARG].freshSelection, false);
     assert.equal(calls[0][SINGLE_PRESENTATION_ARG], null);
+});
+
+test('single-face original resay restores the saved recipe without entering batch merge', () => {
+    const diagnostic = { themeIds: ['C.3'], formatIds: ['2.1'] };
+    const { calls } = runResay({ diagnostic, options: { mode: 'original' } });
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0][MULTIFACE_ARG], null, '原选题的单面记录不得走多面合并');
+    assert.equal(calls[0][SINGLE_PRESENTATION_ARG].singleFaceRecipe, true);
+    assert.equal(calls[0][SINGLE_PRESENTATION_ARG].freshSelection, false);
+    assert.equal(calls[0][SINGLE_PRESENTATION_ARG].faces[0], diagnostic);
+    assert.equal(calls[0][9], '');
+});
+
+test('single-face fresh resay stays a new draw and carries only this note', () => {
+    const { calls } = runResay({
+        diagnostic: { themeIds: ['C.3'], formatIds: ['2.1'] },
+        options: { mode: 'fresh', note: '  要信纸\u0000不要仪表盘  ' },
+    });
+    assert.equal(calls[0][MULTIFACE_ARG], null);
+    assert.equal(calls[0][SINGLE_PRESENTATION_ARG], null);
+    assert.equal(calls[0][9], '要信纸 不要仪表盘');
+});
+
+test('multiface fresh resay redraws the selected face and keeps the other records', () => {
+    const faces = [{ themeIds: ['A.1'], formatIds: ['1.1'] }, { themeIds: ['B.2'], formatIds: ['2.2'] }];
+    const { calls } = runResay({ diagnostic: { faces }, faceIndex: 1, mountedCount: 2, options: { mode: 'fresh' } });
+    assert.equal(calls[0][MULTIFACE_ARG].faceIndex, 1);
+    assert.equal(calls[0][MULTIFACE_ARG].faces, faces);
+    assert.equal(calls[0][MULTIFACE_ARG].freshSelection, true);
+    assert.equal(calls[0][MULTIFACE_ARG].retryFailedFace, true);
+    assert.equal(calls[0][SINGLE_PRESENTATION_ARG], null);
+});
+
+test('multiface original resay keeps exact restore', () => {
+    const faces = [{ themeIds: ['A.1'], formatIds: ['1.1'] }, { themeIds: ['B.2'], formatIds: ['2.2'] }];
+    const { calls } = runResay({ diagnostic: { faces }, faceIndex: 1, mountedCount: 2, options: { mode: 'original' } });
+    assert.equal(calls[0][MULTIFACE_ARG].freshSelection, false);
+    assert.equal(calls[0][MULTIFACE_ARG].retryFailedFace, false);
+    assert.equal(calls[0][SINGLE_PRESENTATION_ARG], null);
+});
+
+test('original resay without a saved recipe does not send', () => {
+    const { calls, toasts } = runResay({ diagnostic: {}, options: { mode: 'original' } });
+    assert.equal(calls.length, 0);
+    assert.ok(toasts.some(message => String(message).includes('未发送请求')));
+});
+
+test('follow mode refuses a fresh redraw before any request', () => {
+    const { calls, toasts } = runResay({ diagnostic: {}, options: { mode: 'fresh' }, generationSource: 'follow' });
+    assert.equal(calls.length, 0);
+    assert.ok(toasts.some(message => String(message).includes('不能在这里重新抽一张')));
 });
 
 test('multiface resay without a trusted face record still refuses to send', () => {

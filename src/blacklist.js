@@ -410,11 +410,13 @@ function compactSelectionMetadata(metadata = {}, allowFaces = true) {
     const themeIds = compactIds(metadata?.themeIds).filter(id => THEME_BY_ID.has(id) || isExternalSelectionId(id));
     const formatIds = compactIds(metadata?.formatIds).filter(id => FORMAT_BY_ID.has(id) || isExternalSelectionId(id));
     const formatDescriptors = compactFormatDescriptors({ ...metadata, formatIds });
-    const formatLabels = formatIds.map(id => {
-        const index = Array.isArray(metadata?.formatIds) ? metadata.formatIds.indexOf(id) : -1;
-        const label = metadata?.formatLabels?.[index];
+    const alignedLabels = (ids, sourceIds, labels) => ids.map(id => {
+        const index = Array.isArray(sourceIds) ? sourceIds.indexOf(id) : -1;
+        const label = labels?.[index];
         return typeof label === 'string' ? label.slice(0, 2209) : '';
     });
+    const formatLabels = alignedLabels(formatIds, metadata?.formatIds, metadata?.formatLabels);
+    const themeLabels = alignedLabels(themeIds, metadata?.themeIds, metadata?.themeLabels);
     const faces = allowFaces && Array.isArray(metadata?.faces) && metadata.faces.length >= 2 && metadata.faces.length <= 5
         ? metadata.faces.map(face => compactSelectionMetadata(face, false)) : null;
     const externalSources = [...new Set((Array.isArray(metadata?.externalSources) ? metadata.externalSources : [])
@@ -427,6 +429,7 @@ function compactSelectionMetadata(metadata = {}, allowFaces = true) {
     return {
         themeIds,
         formatIds,
+        ...(themeLabels.some(Boolean) ? { themeLabels } : {}),
         ...(formatLabels.some(Boolean) ? { formatLabels } : {}),
         ...(formatDescriptors.length ? { formatDescriptors } : {}),
         ...(hasExternalReferences ? { hasExternalReferences: true, externalSources } : {}),
@@ -493,6 +496,7 @@ export function recordRabbitMirrorRecipe({ chat = null, chatKey = '', messageInd
     const unchanged = existing
         && JSON.stringify(existing.themeIds || []) === JSON.stringify(compact.themeIds)
         && JSON.stringify(existing.formatIds || []) === JSON.stringify(compact.formatIds)
+        && JSON.stringify(existing.themeLabels || []) === JSON.stringify(compact.themeLabels || [])
         && JSON.stringify(existing.formatLabels || []) === JSON.stringify(compact.formatLabels || [])
         && JSON.stringify(existing.formatDescriptors || []) === JSON.stringify(compact.formatDescriptors || [])
         && JSON.stringify(presentationModeFields(existing)) === JSON.stringify(presentationModeFields(compact))
@@ -530,7 +534,7 @@ export function getRabbitMirrorRecipe({ chatKey = '', messageIndex = -1, swipeId
         if (!Number.isInteger(faceIndex) || faceIndex < 0 || faceIndex >= record.faces.length) return null;
         const face = compactSelectionMetadata(record.faces[faceIndex], false);
         const { requestedPresentationMode, presentationMode, blankLongText, textIds, textLabels,
-            formatDescriptors, formatLabels, customThemeCount, customFormatCount, customRequestCount, ...batchRecord } = record;
+            themeLabels, formatDescriptors, formatLabels, customThemeCount, customFormatCount, customRequestCount, ...batchRecord } = record;
         return face ? decorateRecipe({ ...batchRecord, hasExternalReferences: false, externalSources: [], ...face, faceIndex }, includeExternalOnly) : null;
     };
     const resolvedChatKey = String(chatKey || '').trim();
@@ -570,7 +574,8 @@ function decorateRecipe(record, includeExternalOnly = false) {
         if (id === LEGACY_AMBIGUOUS_FORMAT_ID) return { ...LEGACY_AMBIGUOUS_FORMAT_RECIPE_ITEM };
         return null;
     }).filter(Boolean);
-    if (!themes.length && !formats.length && !(includeExternalOnly && (record.hasExternalReferences || isBlankLongTextSelection(record)))) return null;
+    const textIds = compactIds(record?.textIds);
+    if (!themes.length && !formats.length && !(includeExternalOnly && (record.hasExternalReferences || isBlankLongTextSelection(record) || textIds.length))) return null;
     return {
         ...record,
         // Existing favorite/blacklist callers see only known builtin IDs. The

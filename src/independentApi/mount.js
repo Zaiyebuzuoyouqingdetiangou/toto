@@ -11,7 +11,7 @@ import {
     refreshRabbitMirrorToolsInScope,
     isolateRabbitMirrorInteractionIds,
     rearmRabbitMirrorSerializedInteractionRoot,
-} from '../outputSanitizer.js?rmv=1.6.4-api14';
+} from '../outputSanitizer.js?rmv=1.6.4-resay3';
 import { matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.5.53-cn-boundary1';
 import { parseMultifaceOutput, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR } from '../multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
 import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from '../multifaceProof.js?rmv=1.5.53-visualquick1';
@@ -20,14 +20,14 @@ import {
     FOLLOW_MULTIFACE_REJECTED_EVENT,
     FOLLOW_GENERATION_SETTLED_EVENT,
     getRabbitMirrorFollowBatchFailure,
-} from '../visualScanner.js?rmv=1.6.4-api14';
+} from '../visualScanner.js?rmv=1.6.4-resay3';
 import { commitPendingComboBatch, releasePendingComboBatch } from '../storage.js?rmv=1.5.53-visualquick1';
 import {
     consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror,
     getActiveFeedbackForCurrentChat,
     markFeedbackCatInjected,
 } from '../feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from '../blacklist.js?rmv=1.6.4-api14';
+import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from '../blacklist.js?rmv=1.6.4-resay3';
 import { readFollowPartialResult, followPartialResultFaceOwnerKey } from '../followPartialResults.js?rmv=1.5.53-visualquick1';
 import {
     shouldAutomaticReroll,
@@ -44,7 +44,7 @@ import {
     mergeRetrySelectionDiagnostic,
     missingIndexesFromIndependentResult,
     recipesCoverMissing,
-} from '../missingFaceMerge.js?rmv=1.6.4-api14';
+} from '../missingFaceMerge.js?rmv=1.6.4-resay3';
 import {
     FACE_SWIPE_FULL_MESSAGE,
     canAppendSwipe,
@@ -100,7 +100,7 @@ import {
     operationEpochForBase,
     pending,
     reserveAutomaticDispatchLease,
-} from './flights.js?rmv=1.6.4-api14';
+} from './flights.js?rmv=1.6.4-resay3';
 import {
     HISTORY_PANEL_ATTR,
     INDEPENDENT_RECORD_BUDGET_BYTES,
@@ -118,7 +118,7 @@ import {
     restoreIndependentFaceSwipeInitial,
     writePersistedOwner,
     writeStore,
-} from './persistence.js?rmv=1.6.4-api14';
+} from './persistence.js?rmv=1.6.4-resay3';
 import {
     appendIndependentFaceSwipe,
     faceDetailsListFromHtml,
@@ -129,7 +129,7 @@ import {
     seedIndependentFaceSwipes,
     seedNeighborIndependentFaceSwipes,
     showEphemeralFaceFailure,
-} from './faceSwipe.js?rmv=1.6.4-api14';
+} from './faceSwipe.js?rmv=1.6.4-resay3';
 import {
     INDEPENDENT_OWNER_OBSERVATION,
     assistantMessages,
@@ -168,7 +168,7 @@ import {
     setOwnerLockForBase,
     slotSearchKeys,
     swipeId,
-} from './connection.js?rmv=1.6.4-api14';
+} from './connection.js?rmv=1.6.4-resay3';
 import {
     allExternalHosts,
     assertIndependentMarkupComplexityWithDiagnostic,
@@ -193,7 +193,7 @@ import {
     wrapIndependentFace,
     wrapPreparedIndependentFace,
     wrappedIndependentMirrorHtml,
-} from './request.js?rmv=1.6.4-api14';
+} from './request.js?rmv=1.6.4-resay3';
 import {
     DEFERRED_INTERACTION_RESCUE_ATTR,
     INDEPENDENT_CONTENT_WIDTH_BASELINE_ATTR,
@@ -252,7 +252,7 @@ import {
     showIndependentResayStatus,
     transferExternalTools,
     usableReadyDetails,
-} from './geometry.js?rmv=1.6.4-api14';
+} from './geometry.js?rmv=1.6.4-resay3';
 import {
     assertEarlyBodyOwner,
     automaticHostGenerationMayUseTools,
@@ -266,7 +266,7 @@ import {
     scheduleStartupHistorySync,
     suppressesAutomaticGeneration,
     unlockAutomaticGenerationCutover,
-} from './earlyBody.js?rmv=1.6.4-api14';
+} from './earlyBody.js?rmv=1.6.4-resay3';
 import {
     automaticGenerationCutovers,
     backgroundLifecycleListenersInstalled,
@@ -288,7 +288,7 @@ import {
     writeHostGenerationInProgress,
     writeIndependentActionBridge,
     writeLastAppliedIndependentTiming,
-} from './lifecycle.js?rmv=1.6.4-api14';
+} from './lifecycle.js?rmv=1.6.4-resay3';
 
 let generationSequence = 0;
 
@@ -1497,7 +1497,7 @@ export function cancelAllIndependentFlights(reason='runtime-changed'){
  pending.clear();
 }
 
-export async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay=null,earlyBodyOwner=null,manualBodyOwner=null,singlePresentationResay=null,quickStartOwner=null){
+export async function generateFor(index,msg,force=false,sourceAware=true,multifaceResay=null,earlyBodyOwner=null,manualBodyOwner=null,singlePresentationResay=null,quickStartOwner=null,resayNote=null){
  const ctx=getContext(); const currentMsg=ctx.chat?.[index];
  if(quickStartOwner && (!quickStartOwners.has(quickStartOwner)||!quickActionOwnerCurrent(quickStartOwner)||quickStartOwner.index!==index||force)) return;
  if(!isRabbitMirrorEligibleAssistantMessage(currentMsg)) return;
@@ -1652,7 +1652,7 @@ export async function generateFor(index,msg,force=false,sourceAware=true,multifa
   const count=Number(st.rabbitMirrorFaceCount);
   return Number.isInteger(count)&&count>=1?count:1;
  })();
- const flight={task:null,runId,key,slot,index,sourceHash,revision,manual:!!force,manualBodyOwner,cancelled:false,controller:new AbortController(),baseSlot,operationEpoch,flightKey,dispatchLease,timedOut:false,stalled:false,timeoutError:null,deadline:null,loadingHost,previousReadyRecord,uiSettled:false,batchPlan:null,automaticRerollCount:0,expectedFaceCount,retainedHtml:'',missingIndexes:[],faceRecipes:multifaceResay?.faces?.[multifaceResay.faceIndex]?[multifaceResay.faces[multifaceResay.faceIndex]]:[]};
+ const flight={task:null,runId,key,slot,index,sourceHash,revision,manual:!!force,manualBodyOwner,cancelled:false,controller:new AbortController(),baseSlot,operationEpoch,flightKey,dispatchLease,timedOut:false,stalled:false,timeoutError:null,deadline:null,loadingHost,previousReadyRecord,uiSettled:false,batchPlan:null,automaticRerollCount:0,expectedFaceCount,retainedHtml:'',missingIndexes:[],faceRecipes:multifaceResay?.faces?.[multifaceResay.faceIndex]?[multifaceResay.faces[multifaceResay.faceIndex]]:[],resayNote:String(resayNote||'')};
  if(earlyBodyOwner){flight.earlyBodyOwner=earlyBodyOwner;earlyBodyOwner.flight=flight;}
  const currentIdentityForFlight=()=>{
   const live=currentGenerationIdentity(index); const active=pending.get(slot);
@@ -1688,7 +1688,7 @@ export async function generateFor(index,msg,force=false,sourceAware=true,multifa
    const error=new Error('本次重试缺少已选中的逐面记录；旧内容已保留，请手动重说这一面。');
    error.requestCount=0; throw error;
   }
-  const apiTask=callIndependentApi(ctx,index,msg,flight.controller.signal,{manualRetry:force&&!manualBodyOwner?.firstGeneration,slot,dispatchLease,multifaceResay:missingRetry?null:(multifaceResay||singlePresentationResay),missingFaceRetry:missingRetry,earlyBodyOwner,manualBodyOwner,isPromptOwnerCurrent:stillCurrent,currentBatchPlan:()=>flight.batchPlan,onProgress:()=>flight.deadline?.progress?.(),onRequestSelection:diagnostic=>captureRecipes({requestDiagnostic:diagnostic},null),onBatchPlan:plan=>{ flight.batchPlan=plan||null; }});
+  const apiTask=callIndependentApi(ctx,index,msg,flight.controller.signal,{manualRetry:force&&!manualBodyOwner?.firstGeneration,slot,dispatchLease,multifaceResay:missingRetry?null:(multifaceResay||singlePresentationResay),missingFaceRetry:missingRetry,earlyBodyOwner,manualBodyOwner,resayNote:flight.resayNote,isPromptOwnerCurrent:stillCurrent,currentBatchPlan:()=>flight.batchPlan,onProgress:()=>flight.deadline?.progress?.(),onRequestSelection:diagnostic=>captureRecipes({requestDiagnostic:diagnostic},null),onBatchPlan:plan=>{ flight.batchPlan=plan||null; }});
   return Promise.race([apiTask,timeoutPromise]);
  };
  const settleSuccessfulIndependentResult=async result=>{
@@ -1890,7 +1890,7 @@ export async function generateFor(index,msg,force=false,sourceAware=true,multifa
      const faceIndex=Number.isInteger(multifaceResay?.faceIndex)?multifaceResay.faceIndex:0;
      const overlayRoot=externalFaceDetails(currentHost)[currentHost && externalFaceDetails(currentHost).length>1?faceIndex:0]||currentHost;
      showEphemeralFaceFailure(currentHost,faceIndex,failureMessage,
-      ()=>{ resayIndependentMirror(overlayRoot,{}); },
+      ()=>{ void import('../outputSanitizer/toolsChrome.js?rmv=1.6.4-resay3').then(module=>module.openRabbitMirrorResayChooser(overlayRoot)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。')); },
       ()=>{ applyIndependentFaceSwipe(overlayRoot,readFaceSwipe(independentSwipeSlot(failedIdentity),faceIndex).currentIndex); }
      );
     }else{
@@ -2175,10 +2175,16 @@ function showIndependentHistory(root,owner={}){
  document.body.append(overlay); return true;
 }
 
-export function resayIndependentMirror(root,owner={}){
+export function resayIndependentMirror(root,owner={},options={}){
+ const mode=options?.mode==='fresh'||options?.mode==='original'?options.mode:'';
+ const note=String(options?.note||'').replace(/[\u0000-\u001f\u007f]/g,' ').replace(/\s+/g,' ').trim().slice(0,400);
  if(getSettings().generationSource==='follow'){
-  void import('../followFaceRetry.js?rmv=1.6.4-api14').then(({retryFollowFace})=>retryFollowFace(root,owner,{
-   getContext,hostBusy:hostGenerationLooksActive,maxRequestChars:configuredIndependentMaxRequestChars(getSettings()),
+  if(mode==='fresh'){
+   globalThis.toastr?.warning?.('跟随正文只能按这一面原来的选题重试失败面，不能在这里重新抽一张。');
+   return true;
+  }
+  void import('../followFaceRetry.js?rmv=1.6.4-resay3').then(({retryFollowFace})=>retryFollowFace(root,owner,{
+   getContext,hostBusy:hostGenerationLooksActive,maxRequestChars:configuredIndependentMaxRequestChars(getSettings()),resayNote:note,
    resolveOwner:target=>{
     const host=target?.closest?.('[data-rabbit-mirror-external-source="true"][data-rm-source="follow"]');
     return followRecoveryOwner(host?messageElementForExternalHost(host):target?.closest?.('.mes[mesid]'));
@@ -2205,21 +2211,45 @@ export function resayIndependentMirror(root,owner={}){
  const recipe=faces[identity.faceIndex];
  const hasRecipe=faces.length===mountedFaces.length && recipe
   && (isBlankLongTextSelection(recipe) || ['themeIds','formatIds','textIds'].some(key=>Array.isArray(recipe[key])&&recipe[key].length));
- if(identity.faceIndex>=0 && !hasRecipe && !failedFace){
-  globalThis.toastr?.error?.('这批多面兔子镜缺少可信的逐面抽取记录，不能静默改成整批重说；本次未发送请求。');
-  return true;
+ const singleRecipe=identity.faceIndex<0 ? (faces[0]||diagnostic) : null;
+ const hasSingleRecipe=!!singleRecipe && (isBlankLongTextSelection(singleRecipe) || ['themeIds','formatIds','textIds'].some(key=>Array.isArray(singleRecipe[key])&&singleRecipe[key].length));
+ let multifaceResay=null;
+ let singlePresentationResay=null;
+ if(mode==='fresh'){
+  multifaceResay=identity.faceIndex>=0 ? {faceIndex:identity.faceIndex,faces,retryFailedFace:true,freshSelection:true} : null;
+ }else if(mode==='original'){
+  if(identity.faceIndex>=0){
+   if(!hasRecipe){
+    globalThis.toastr?.error?.('这一面没有留下可复用的抽签记录，不能按原选题重写；本次未发送请求。');
+    return true;
+   }
+   multifaceResay={faceIndex:identity.faceIndex,faces,retryFailedFace:false,freshSelection:false};
+  }else if(!hasSingleRecipe){
+   globalThis.toastr?.error?.('这一面没有留下可复用的抽签记录，不能按原选题重写；本次未发送请求。');
+   return true;
+  }else singlePresentationResay={faceIndex:0,faces:[singleRecipe],freshSelection:false,retryFailedFace:false,singleFaceRecipe:true};
+ }else{
+  if(identity.faceIndex>=0 && !hasRecipe && !failedFace){
+   globalThis.toastr?.error?.('这批多面兔子镜缺少可信的逐面抽取记录，不能静默改成整批重说；本次未发送请求。');
+   return true;
+  }
+  multifaceResay=identity.faceIndex>=0
+   ? {faceIndex:identity.faceIndex,faces,retryFailedFace:!!failedFace,freshSelection:!hasRecipe}
+   : null;
  }
- const multifaceResay=identity.faceIndex>=0
-  ? {faceIndex:identity.faceIndex,faces,retryFailedFace:!!failedFace,freshSelection:!hasRecipe}
-  : null;
  // Announce preparation before dispatch. A synchronous preflight rejection
  // must not be followed by a misleading new "generating" notification.
- globalThis.toastr?.info?.(multifaceResay?.freshSelection?'这一失败面的原抽取记录不完整，将按当前设置重新抽取这一面；其他面会原样保留。':multifaceResay?'正在准备重说这一面；其他面会原样保留……':'正在准备重新生成兔子镜……');
- // 单面重说是一次新的随机抽取，与多面「重说这一面」的精确复原语义不同。
- // 呈现模式、动态视觉组合等都来自当前设置，由正常抽签路径自然带上；
- // 不得再把上一轮的单面诊断当作 multifaceResay 传下去——那条路径会按原
- // themeIds/formatIds 精确复原，导致重说永远抽到同一组合。
- void generateFor(identity.index,identity.msg,true,true,multifaceResay,null,null,null);
+ // 未指定方式时，单面仍是一次新的随机抽取。只有用户选了「原选题重写」，
+ // 才把上一轮记录放到 singlePresentationResay；它不进入多面合并。
+ const preparing=mode==='fresh'
+  ? (multifaceResay?'正在按当前设置重新抽取这一面；其他面会原样保留……':'正在按当前设置重新抽取……')
+  : mode==='original'
+   ? (multifaceResay?'正在按原选题重写这一面；其他面会原样保留……':'正在按原选题重写……')
+   : multifaceResay?.freshSelection
+    ? '这一失败面的原抽取记录不完整，将按当前设置重新抽取这一面；其他面会原样保留。'
+    : multifaceResay?'正在准备重说这一面；其他面会原样保留……':'正在准备重新生成兔子镜……';
+ globalThis.toastr?.info?.(preparing);
+ void generateFor(identity.index,identity.msg,true,true,multifaceResay,null,null,singlePresentationResay,null,note);
  return true;
 }
 
@@ -2468,7 +2498,7 @@ async function requestMirrorImagePlan(target,input={},options={}){
  const st={...current,independentExcludedParams:Array.isArray(current.independentExcludedParams)?[...current.independentExcludedParams]:current.independentExcludedParams};
  if((!st.independentConnectionProfileId&&!st.independentApiBaseUrl)||!st.independentApiModel)
   throw new Error('请先完成兔子镜副 API 连接和模型设置；尚未发送请求。');
- const {buildImagePlanningPrompt,parseImagePlan}=await import('../imagePlan.js?rmv=1.6.4-api14');
+ const {buildImagePlanningPrompt,parseImagePlan}=await import('../imagePlan.js?rmv=1.6.4-resay3');
  target.assertCurrent();
  const {systemPrompt,userPrompt}=buildImagePlanningPrompt({...input,title:target.title,faceText:target.faceText,
   floor:target.floor,character:target.character,persona:target.persona,presentationMode:target.presentationMode,formats:target.formats,
@@ -2501,7 +2531,7 @@ export function installIndependentActionBridge(){
   generateManual:root=>generateManualIndependentMirror(root),
   prepareImageTarget:root=>prepareMirrorImageTarget(root),
   prepareQuickResay:(root,owner={})=>prepareQuickResay(root,owner),
-  resay:(root,owner={})=>resayIndependentMirror(root,owner),
+  resay:(root,owner={},options={})=>resayIndependentMirror(root,owner,options),
   history:(root,owner={})=>true,
   swipeView:(root,owner={})=>independentFaceSwipeView(root,owner),
   selectSwipe:(root,index,owner={})=>applyIndependentFaceSwipe(root,index,owner),
@@ -2520,7 +2550,7 @@ export function removeIndependentActionBridge(){
 
 function handleFeedbackMirrorActionEvent(event){
  const detail=event?.detail; if(!detail||typeof detail!=='object') return;
- if(event.type===RESAY_EVENT){ if(resayIndependentMirror(detail.root,detail.owner||{})) detail.handled=true; return; }
+ if(event.type===RESAY_EVENT){ if(resayIndependentMirror(detail.root,detail.owner||{},detail.options||{})) detail.handled=true; return; }
  if(event.type===HISTORY_EVENT){ if(showIndependentHistory(detail.root,detail.owner||{})) detail.handled=true; }
 }
 
@@ -2589,7 +2619,7 @@ function handleFollowMultifaceRejected(event){
  const failure=getRabbitMirrorFollowBatchFailure(ctx?.chat,index);
  if(!failure || failure.batchId!==event?.detail?.batchId) return false;
  queueMessageSync([index]);
- void import('../followAutomaticReroll.js?rmv=1.6.4-api14').then(({maybeAutomaticFollowReroll})=>maybeAutomaticFollowReroll(index,followAutomaticRerollDeps()));
+ void import('../followAutomaticReroll.js?rmv=1.6.4-resay3').then(({maybeAutomaticFollowReroll})=>maybeAutomaticFollowReroll(index,followAutomaticRerollDeps()));
  return true;
 }
 
@@ -2597,12 +2627,12 @@ function handleFollowGenerationSettled(event){
  const index=Number(event?.detail?.messageIndex);
  if(!Number.isInteger(index)||index<0) return false;
  if(event?.detail?.cancelled===true){
-  void import('../followAutomaticReroll.js?rmv=1.6.4-api14').then(({markFollowAutomaticRerollCancelled})=>{
+  void import('../followAutomaticReroll.js?rmv=1.6.4-resay3').then(({markFollowAutomaticRerollCancelled})=>{
    markFollowAutomaticRerollCancelled(getContext(),index);
   });
   return true;
  }
- void import('../followAutomaticReroll.js?rmv=1.6.4-api14').then(({maybeAutomaticFollowReroll})=>maybeAutomaticFollowReroll(index,followAutomaticRerollDeps()));
+ void import('../followAutomaticReroll.js?rmv=1.6.4-resay3').then(({maybeAutomaticFollowReroll})=>maybeAutomaticFollowReroll(index,followAutomaticRerollDeps()));
  return true;
 }
 
