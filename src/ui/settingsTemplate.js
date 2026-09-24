@@ -1,6 +1,6 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.6.4-longtext2';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.6.4-longtext3';
 import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.5.53-cn-boundary1';
 import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.6';
 
@@ -388,10 +388,9 @@ export function buildRabbitMirrorSettingsDialogHtml() {
               <div id="rh_lottery_books">
                 <label for="rh_lottery_book_search">世界书</label>
                 <input id="rh_lottery_book_search" class="text_pole" type="search" placeholder="搜索世界书" style="width:100%;min-height:40px;">
-                <div id="rh_lottery_book_list" style="display:grid;gap:4px;max-height:160px;overflow:auto;margin-top:6px;"></div>
-                <div id="rh_lottery_book_chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
-                <div id="rh_lottery_entries" style="display:grid;gap:6px;margin-top:8px;"></div>
-                <p class="rabbit-mirror-subnote">选中的条目才会进入抽签。这里的选中和不选中只记在兔子镜里，不会改酒馆世界书原来的开启或关闭。可以查看条目，不能在这里改内容。</p>
+                <div id="rh_lottery_book_list"></div>
+                <div id="rh_lottery_entries"></div>
+                <p class="rabbit-mirror-subnote">先勾选世界书，再点开那一本查看条目。条目原文按世界书里的样子显示，这里不能改。选中的条目才会进入抽签，不会改酒馆世界书原来的开启或关闭。</p>
               </div>
               <label for="rh_long_text_source">长文本素材来源</label>
               <select id="rh_long_text_source" class="text_pole" style="min-height:44px;min-width:0;width:100%;max-width:100%;"><option value="blank">空白小剧场：按人物、语境和点菜自由写作</option><option value="mixed">常规抽取：按当前内置／外置设置</option><option value="text">只抽已启用的独立文本条目</option></select>

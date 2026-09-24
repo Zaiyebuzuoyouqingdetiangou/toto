@@ -1,10 +1,10 @@
 import { createRabbitMirrorPublicAPI } from './publicApiCore.js?rmv=script-api2';
-import { getSettings, updateSettings } from './settings.js?rmv=1.6.4-longtext2';
+import { getSettings, updateSettings } from './settings.js?rmv=1.6.4-longtext3';
 import { buildScriptUserPrompt } from './publicApiPrompt.js?rmv=script-api2';
 
 // Preserve the lightweight startup graph; host/network modules load only on use.
 export function installRabbitMirrorPublicAPI(isActive, target = globalThis) {
-    const connection = () => import('./independentApi/connection.js?rmv=1.6.4-longtext2');
+    const connection = () => import('./independentApi/connection.js?rmv=1.6.4-longtext3');
     const captureContext = () => {
         const identity = ctx => String(ctx?.getCurrentChatId?.() ?? ctx?.chatId ?? ctx?.chatMetadata?.chat_id ?? '') + ':' + String(ctx?.characterId ?? '') + ':' + String(ctx?.groupId ?? '');
         const context = target.SillyTavern?.getContext?.();
@@ -34,7 +34,7 @@ export function installRabbitMirrorPublicAPI(isActive, target = globalThis) {
             return material;
         },
         async complete(settings, system, prompt, options) {
-            const runtime = await import('./independentApi/request.js?rmv=1.6.4-longtext2');
+            const runtime = await import('./independentApi/request.js?rmv=1.6.4-longtext3');
             options.assertAdvancedCurrent();
             if (/【(?:当前聊天逐轮正文|当前角色卡|当前世界书、作者注释与实际扩展提示)/.test(system + prompt) || /<\/?兔子镜近输出短锁/.test(system + prompt)) throw Object.assign(new Error('输入包含保留的请求边界标记，请只传正文。'), { code: 'INVALID_ARGUMENT' });
             const userPrompt = buildScriptUserPrompt(prompt);

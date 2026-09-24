@@ -1,13 +1,13 @@
 import { SETTINGS_UI_VERSION, RUNTIME_VERSION, escapeHtml, isCurrentRuntime } from './ui/runtime.js?rmv=1.6';
-import { buildRabbitMirrorSettingsDialogHtml, buildWorldInfoPromptModalHtml, buildTagFilterModalHtml } from './ui/settingsTemplate.js?rmv=1.6.4-longtext2';
-import { attachIndependentApiDiagnosticListener, attachTokenMeterListener, renderIndependentApiDiagnostic, renderTokenMeter } from './ui/tokenMeter.js?rmv=1.6.4-longtext2';
-import { attachWorldInfoBooksListener, clearCollapsedAllWorldInfoBookRows, clearPulledWorldInfoBooks, installWorldInfoBookVisibilityObserver, pullAllWorldInfoBooks, renderWorldInfoBookSettings, resetWorldInfoBookUiState } from './ui/worldInfoBooks.js?rmv=1.6.4-longtext2';
+import { buildRabbitMirrorSettingsDialogHtml, buildWorldInfoPromptModalHtml, buildTagFilterModalHtml } from './ui/settingsTemplate.js?rmv=1.6.4-longtext3';
+import { attachIndependentApiDiagnosticListener, attachTokenMeterListener, renderIndependentApiDiagnostic, renderTokenMeter } from './ui/tokenMeter.js?rmv=1.6.4-longtext3';
+import { attachWorldInfoBooksListener, clearCollapsedAllWorldInfoBookRows, clearPulledWorldInfoBooks, installWorldInfoBookVisibilityObserver, pullAllWorldInfoBooks, renderWorldInfoBookSettings, resetWorldInfoBookUiState } from './ui/worldInfoBooks.js?rmv=1.6.4-longtext3';
 import { installTtDiagnosticEntry } from './ui/ttDiagnostics.js?rmv=1.6';
 
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.6.4-longtext2';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.6.4-longtext3';
 import { listHostWorldBooks, readHostWorldBook } from './externalWorldBook/hostReader.js?rmv=1.5.53-cn-boundary1';
 import { refreshFacePagerPositions } from './facePagerPlacement.js?rmv=1.6.4-pager1';
-import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, RABBIT_MIRROR_BANNED_WORD_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, normalizeRabbitMirrorBannedWords, updateSettings, resetSettings } from './settings.js?rmv=1.6.4-longtext2';
+import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, RABBIT_MIRROR_BANNED_WORD_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, normalizeRabbitMirrorBannedWords, updateSettings, resetSettings } from './settings.js?rmv=1.6.4-longtext3';
 import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS } from './independentRequestBudget.js?rmv=1.6';
 import { clearLastCombo, getCurrentChatKey } from './storage.js?rmv=1.5.53-visualquick1';
 import { normalizeEarlyBodyTags } from './earlyBodyTags.js?rmv=1.5.53-cn-boundary1';
@@ -17,16 +17,16 @@ import { DEFAULT_BEHAVIOR_RULE_TEXT, resolveBehaviorRuleText } from './behaviorR
 import { clearRecentIndependentTransportDiagnostics } from './transportDiagnostics.js?rmv=1.5.53-cn-boundary1';
 import { parseIndependentAdvancedOptions } from './advancedRequestOptions.js?rmv=1.5.53-cn-boundary1';
 import { parseRabbitMirrorReplacementLines, formatRabbitMirrorReplacementLines } from './bannedWords.js?rmv=1.5.53-cn-boundary1';
-import { clearRabbitMirrorPrompt, startManualEntryDiagnostic, stopManualEntryDiagnostic, getManualEntryDiagnosticState } from './injector.js?rmv=1.6.4-longtext2';
+import { clearRabbitMirrorPrompt, startManualEntryDiagnostic, stopManualEntryDiagnostic, getManualEntryDiagnosticState } from './injector.js?rmv=1.6.4-longtext3';
 import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { configureMaintenanceAutoSafeMode, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.6.4-longtext2';
+import { configureMaintenanceAutoSafeMode, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.6.4-longtext3';
 import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.5.53-cn-boundary1';
-import { fetchIndependentModels, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentModelListDiagnostic, hydrateIndependentFavoriteHtml, importCurrentSillyTavernConnection, listMissingIndependentRetryFloors, refreshRabbitMirrorGenerationMode, resyncMissingIndependentRetryShells, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.6.4-longtext2';
+import { fetchIndependentModels, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentModelListDiagnostic, hydrateIndependentFavoriteHtml, importCurrentSillyTavernConnection, listMissingIndependentRetryFloors, refreshRabbitMirrorGenerationMode, resyncMissingIndependentRetryShells, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.6.4-longtext3';
 import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.5.53-cn-boundary1';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.6.4-longtext2';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.6.4-longtext3';
 import { THEATER_FAVORITES_CHANGED_EVENT, deleteTheaterFavorite, groupTheaterFavoritesByCharacter, listTheaterFavorites, openTheaterFavoriteLibrary, openTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.6.3-fav2';
 
-import { mountSettingsAppearance, destroySettingsAppearance } from './settingsAppearance.js?rmv=1.6.4-longtext2';
+import { mountSettingsAppearance, destroySettingsAppearance } from './settingsAppearance.js?rmv=1.6.4-longtext3';
 
 let uiMountRetryTimer = 0;
 let uiMountRetryCount = 0;
@@ -853,7 +853,7 @@ export function initRabbitMirrorUI() {
         if (!quickStart.open || guideLoading || guideCleanup || guideDisposed) return;
         guideLoading = true;
         try {
-            const module = await import('./quickStart.js?rmv=1.6.4-longtext2');
+            const module = await import('./quickStart.js?rmv=1.6.4-longtext3');
             if (guideDisposed || !quickStart.isConnected || !isCurrentRuntime()) return;
             guideCleanup = module.mountRabbitMirrorQuickStart({
                 root: document.getElementById('rabbit_mirror_theater_settings'),
@@ -1503,23 +1503,35 @@ export function initRabbitMirrorUI() {
         const name = e.target.getAttribute('data-lottery-book');
         const books = lotterySelectedBooks(getSettings()).filter(book => book !== name);
         if (e.target.checked) books.push(name);
+        if (e.target.checked) lotteryBooksCache.open.add(name);
+        else lotteryBooksCache.open.delete(name);
         updateSettings({
             lotteryBooks: books,
             lotteryEntries: (getSettings().lotteryEntries || []).filter(entry => books.includes(entry.book)),
         });
         renderLotteryBooks(getSettings());
-        if (e.target.checked) void openLotteryBook(name);
     });
-    $('#rh_lottery_book_chips').on('click', '[data-lottery-remove-book]', e => {
+    $('#rh_lottery_entries').on('click', '[data-lottery-remove-book]', e => {
+        e.preventDefault();
+        e.stopPropagation();
         const name = e.target.getAttribute('data-lottery-remove-book');
         const books = lotterySelectedBooks(getSettings()).filter(book => book !== name);
+        lotteryBooksCache.open.delete(name);
         updateSettings({
             lotteryBooks: books,
             lotteryEntries: (getSettings().lotteryEntries || []).filter(entry => entry.book !== name),
         });
         renderLotteryBooks(getSettings());
     });
+    $('#rh_lottery_entries').on('toggle', '[data-lottery-fold]', e => {
+        if (!e.target?.matches?.('[data-lottery-fold]') || lotteryBooksCache.rendering) return;
+        const name = e.target.getAttribute('data-lottery-fold');
+        if (e.target.open) lotteryBooksCache.open.add(name);
+        else lotteryBooksCache.open.delete(name);
+    });
     $('#rh_lottery_entries').on('click', '[data-lottery-entry]', e => {
+        e.preventDefault();
+        e.stopPropagation();
         const button = e.target.closest('[data-lottery-entry]');
         if (!button) return;
         const id = button.getAttribute('data-lottery-entry');
@@ -1537,10 +1549,6 @@ export function initRabbitMirrorUI() {
         const others = (getSettings().lotteryEntries || []).filter(entry => entry.book !== book);
         updateSettings({ lotteryEntries: turningOn ? others.concat(lotteryBookEntries(book).map(entry => lotteryEntryRecord(book, entry))) : others });
         renderLotteryEntries(getSettings());
-    });
-    $('#rh_lottery_entries').on('click', '[data-lottery-view]', e => {
-        const box = e.target.closest('[data-lottery-view]')?.parentElement?.querySelector('[data-lottery-content]');
-        if (box) box.hidden = !box.hidden;
     });
 
     $('#rh_visual_prompt_enabled').on('change', e => {
@@ -1746,7 +1754,7 @@ export function initRabbitMirrorUI() {
             for (const key of Object.keys(libraryEntryViews)) document.getElementById(key).disabled = true;
             button.textContent = '正在加载…';
             try {
-                const module = await import('./externalWorldBook/importWizard.js?rmv=1.6.4-longtext2');
+                const module = await import('./externalWorldBook/importWizard.js?rmv=1.6.4-longtext3');
                 if (!isCurrentRuntime() || !button.isConnected) return;
                 module.openExternalWorldBookImportWizard?.({ initialView });
             } catch (error) {
@@ -2060,7 +2068,12 @@ function renderFacePresentationSettings(settings) {
     if (source !== 'builtin') renderLotteryBooks(settings);
 }
 
-const lotteryBooksCache = { list: [], entries: new Map() };
+const lotteryBooksCache = { list: [], entries: new Map(), open: new Set(), pending: new Set(), rendering: false };
+
+function lotteryBookLabel(book) {
+    const found = lotteryBooksCache.list.find(item => String(item.fileId || item.displayName || '') === book);
+    return String(found?.displayName || book);
+}
 
 function lotterySelectedBooks(settings) {
     if (Array.isArray(settings.lotteryBooks) && settings.lotteryBooks.length) return settings.lotteryBooks.slice();
@@ -2089,61 +2102,92 @@ function renderLotteryBookList() {
     box.innerHTML = books.length ? books.map(book => {
         const name = String(book.fileId || book.displayName || '');
         const label = String(book.displayName || name);
-        return `<label class="rh-lottery-book"><input type="checkbox" data-lottery-book="${escapeHtml(name)}" ${selected.has(name) ? 'checked' : ''}>${escapeHtml(label)}</label>`;
-    }).join('') : '<p class="rabbit-mirror-subnote">没有匹配的世界书。</p>';
+        return `<label class="rh-lottery-book"><input type="checkbox" data-lottery-book="${escapeHtml(name)}" ${selected.has(name) ? 'checked' : ''}><span>${escapeHtml(label)}</span></label>`;
+    }).join('') : '<p class="rh-ui-note">没有匹配的世界书。</p>';
 }
 
 function renderLotteryEntries(settings) {
     const box = document.getElementById('rh_lottery_entries');
     if (!box) return;
+    lotteryBooksCache.rendering = true;
+    try {
     const selected = new Set((settings.lotteryEntries || []).map(entry => entry.id));
     const books = lotterySelectedBooks(settings);
     box.innerHTML = books.map(book => {
         const entries = lotteryBookEntries(book);
-        if (!entries.length) return `<p class="rabbit-mirror-subnote">正在读取「${escapeHtml(book)}」的条目…</p>`;
-        const allOn = entries.every(entry => selected.has(`${book}::${entry.sourceEntryUid}`));
-        const rows = entries.map(entry => {
-            const id = `${book}::${entry.sourceEntryUid}`;
-            const on = selected.has(id);
-            return `<div style="border-top:1px solid rgba(127,127,127,.25);padding:6px 0;">
-              <button type="button" data-lottery-entry="${escapeHtml(id)}" data-lottery-book="${escapeHtml(book)}" data-lottery-uid="${escapeHtml(entry.sourceEntryUid)}" data-lottery-title="${escapeHtml(entry.title || '')}">${on ? '已选中' : '未选中'}</button>
-              <button type="button" data-lottery-view="true">查看</button>
-              <span>${escapeHtml(entry.title || entry.sourceEntryUid || '未命名')}</span>
-              <div data-lottery-content hidden class="rabbit-mirror-subnote">${escapeHtml(entry.content || '这条没有正文。')}</div>
-            </div>`;
-        }).join('');
-        return `<section><button type="button" data-lottery-select-all="${escapeHtml(book)}" data-lottery-all-state="${allOn ? 'on' : 'off'}">${allOn ? '取消全选' : '全选'}「${escapeHtml(book)}」</button>${rows}</section>`;
+        const loaded = lotteryBooksCache.entries.has(book);
+        const failed = loaded && lotteryBooksCache.entries.get(book) === null;
+        const picked = entries.filter(entry => selected.has(`${book}::${entry.sourceEntryUid}`)).length;
+        const allOn = entries.length > 0 && picked === entries.length;
+        const rows = !loaded
+            ? '<p class="rh-ui-note">正在读取条目…</p>'
+            : failed
+                ? '<p class="rh-ui-note">这本世界书没有读出来。</p>'
+                : !entries.length
+                    ? '<p class="rh-ui-note">这本世界书里没有条目。</p>'
+                    : entries.map(entry => {
+                const id = `${book}::${entry.sourceEntryUid}`;
+                const on = selected.has(id);
+                const content = String(entry.content || '');
+                return `<div class="rh-lottery-entry">
+                  <button type="button" class="rh-lottery-pick" aria-pressed="${on ? 'true' : 'false'}" data-lottery-entry="${escapeHtml(id)}" data-lottery-book="${escapeHtml(book)}" data-lottery-uid="${escapeHtml(entry.sourceEntryUid)}" data-lottery-title="${escapeHtml(entry.title || '')}">${on ? '已选中' : '选中'}</button>
+                  <details class="rh-lottery-read">
+                    <summary>${escapeHtml(entry.title || entry.sourceEntryUid || '未命名')}</summary>
+                    <div class="rh-lottery-source">${escapeHtml(content || '这条没有正文。')}</div>
+                  </details>
+                </div>`;
+            }).join('');
+        const tools = entries.length
+            ? `<button type="button" class="rh-lottery-all" data-lottery-select-all="${escapeHtml(book)}" data-lottery-all-state="${allOn ? 'on' : 'off'}">${allOn ? '取消全选' : '全选'}</button>`
+            : '';
+        return `<details class="rh-lottery-fold" data-lottery-fold="${escapeHtml(book)}" ${lotteryBooksCache.open.has(book) ? 'open' : ''}>
+          <summary>
+            <i class="rh-lottery-caret" aria-hidden="true"></i>
+            <span>${escapeHtml(lotteryBookLabel(book))}</span>
+            <small>${entries.length ? `${picked}/${entries.length}` : ''}</small>
+            <button type="button" data-lottery-remove-book="${escapeHtml(book)}">移出</button>
+          </summary>
+          <div class="rh-lottery-fold-body">${tools}${rows}</div>
+        </details>`;
     }).join('');
+    } finally {
+        lotteryBooksCache.rendering = false;
+    }
 }
 
 function renderLotteryBooks(settings) {
-    const chips = document.getElementById('rh_lottery_book_chips');
-    if (chips) {
-        chips.innerHTML = lotterySelectedBooks(settings).map(book => `<button type="button" data-lottery-remove-book="${escapeHtml(book)}">${escapeHtml(book)} ×</button>`).join('');
-    }
     renderLotteryBookList();
     renderLotteryEntries(settings);
-    if (!lotteryBooksCache.list.length) {
+    for (const book of lotterySelectedBooks(settings)) {
+        if (!lotteryBooksCache.entries.has(book) && !lotteryBooksCache.pending.has(book)) void openLotteryBook(book);
+    }
+    if (!lotteryBooksCache.list.length && !lotteryBooksCache.pending.has('')) {
+        lotteryBooksCache.pending.add('');
         void listHostWorldBooks().then(list => {
             lotteryBooksCache.list = Array.isArray(list) ? list : [];
             renderLotteryBookList();
+            renderLotteryEntries(getSettings());
         }).catch(() => {
             const box = document.getElementById('rh_lottery_book_list');
             if (box) box.textContent = '世界书列表没有读出来。';
-        });
+        }).finally(() => lotteryBooksCache.pending.delete(''));
     }
 }
 
 async function openLotteryBook(book) {
+    if (lotteryBooksCache.pending.has(book)) return;
     if (lotteryBooksCache.entries.has(book)) {
         renderLotteryEntries(getSettings());
         return;
     }
+    lotteryBooksCache.pending.add(book);
     try {
         const normalized = await readHostWorldBook({ fileId: book, displayName: book });
         lotteryBooksCache.entries.set(book, Array.isArray(normalized?.entries) ? normalized.entries : []);
     } catch {
-        lotteryBooksCache.entries.set(book, []);
+        lotteryBooksCache.entries.set(book, null);
+    } finally {
+        lotteryBooksCache.pending.delete(book);
     }
     renderLotteryEntries(getSettings());
 }
