@@ -1,7 +1,7 @@
 import { SETTINGS_UI_VERSION, RUNTIME_VERSION, escapeHtml, isCurrentRuntime } from './ui/runtime.js?rmv=1.6';
 import { buildRabbitMirrorSettingsDialogHtml, buildWorldInfoPromptModalHtml, buildTagFilterModalHtml } from './ui/settingsTemplate.js?rmv=1.6';
-import { attachIndependentApiDiagnosticListener, attachTokenMeterListener, renderIndependentApiDiagnostic, renderTokenMeter } from './ui/tokenMeter.js?rmv=1.6.4-resay1';
-import { attachWorldInfoBooksListener, clearCollapsedAllWorldInfoBookRows, clearPulledWorldInfoBooks, installWorldInfoBookVisibilityObserver, pullAllWorldInfoBooks, renderWorldInfoBookSettings, resetWorldInfoBookUiState } from './ui/worldInfoBooks.js?rmv=1.6.4-resay1';
+import { attachIndependentApiDiagnosticListener, attachTokenMeterListener, renderIndependentApiDiagnostic, renderTokenMeter } from './ui/tokenMeter.js?rmv=1.6.4-api14';
+import { attachWorldInfoBooksListener, clearCollapsedAllWorldInfoBookRows, clearPulledWorldInfoBooks, installWorldInfoBookVisibilityObserver, pullAllWorldInfoBooks, renderWorldInfoBookSettings, resetWorldInfoBookUiState } from './ui/worldInfoBooks.js?rmv=1.6.4-api14';
 import { installTtDiagnosticEntry } from './ui/ttDiagnostics.js?rmv=1.6';
 
 import { normalizePresentationModes } from './presentationMode.js?rmv=1.5.53-visualquick1';
@@ -16,13 +16,13 @@ import { DEFAULT_BEHAVIOR_RULE_TEXT, resolveBehaviorRuleText } from './behaviorR
 import { clearRecentIndependentTransportDiagnostics } from './transportDiagnostics.js?rmv=1.5.53-cn-boundary1';
 import { parseIndependentAdvancedOptions } from './advancedRequestOptions.js?rmv=1.5.53-cn-boundary1';
 import { parseRabbitMirrorReplacementLines, formatRabbitMirrorReplacementLines } from './bannedWords.js?rmv=1.5.53-cn-boundary1';
-import { clearRabbitMirrorPrompt, startManualEntryDiagnostic, stopManualEntryDiagnostic, getManualEntryDiagnosticState } from './injector.js?rmv=1.5.53-image1';
+import { clearRabbitMirrorPrompt, startManualEntryDiagnostic, stopManualEntryDiagnostic, getManualEntryDiagnosticState } from './injector.js?rmv=1.6.4-api14';
 import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { configureMaintenanceAutoSafeMode, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.6.4-resay1';
+import { configureMaintenanceAutoSafeMode, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.6.4-api14';
 import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.5.53-cn-boundary1';
-import { fetchIndependentModels, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentModelListDiagnostic, hydrateIndependentFavoriteHtml, importCurrentSillyTavernConnection, listMissingIndependentRetryFloors, refreshRabbitMirrorGenerationMode, resyncMissingIndependentRetryShells, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.6.4-resay1';
+import { fetchIndependentModels, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentModelListDiagnostic, hydrateIndependentFavoriteHtml, importCurrentSillyTavernConnection, listMissingIndependentRetryFloors, refreshRabbitMirrorGenerationMode, resyncMissingIndependentRetryShells, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.6.4-api14';
 import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.5.53-cn-boundary1';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.5.53-image1';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.6.4-api14';
 import { THEATER_FAVORITES_CHANGED_EVENT, deleteTheaterFavorite, groupTheaterFavoritesByCharacter, listTheaterFavorites, openTheaterFavoriteLibrary, openTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.6.3-fav2';
 
 import { mountSettingsAppearance, destroySettingsAppearance } from './settingsAppearance.js?rmv=1.6';
@@ -1686,7 +1686,7 @@ export function initRabbitMirrorUI() {
             for (const key of Object.keys(libraryEntryViews)) document.getElementById(key).disabled = true;
             button.textContent = '正在加载…';
             try {
-                const module = await import('./externalWorldBook/importWizard.js?rmv=1.6');
+                const module = await import('./externalWorldBook/importWizard.js?rmv=1.6.4-api14');
                 if (!isCurrentRuntime() || !button.isConnected) return;
                 module.openExternalWorldBookImportWizard?.({ initialView });
             } catch (error) {

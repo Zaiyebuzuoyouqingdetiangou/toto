@@ -1,4 +1,4 @@
-import { parseMultifaceOutput, createMultifaceFailureSlot } from './multifaceProtocol.js';
+import { parseMultifaceOutput, createMultifaceFailureSlot } from './multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
 import { compactFormatDescriptors } from './selectionImageMetadata.js?rmv=1.6.4-creation1';
 import { isBlankLongTextSelection } from './presentationMode.js?rmv=1.5.53-visualquick1';
 

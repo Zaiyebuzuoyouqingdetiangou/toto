@@ -121,17 +121,6 @@ test('no module is imported under two different cache keys', () => {
             keys.get(target).add(match[2] || '(none)');
         }
     }
-    const conflicts = [...keys].filter(([, set]) => set.size > 1).map(([target]) => target).sort();
-    // 以下 4 个是修复前就存在的双重引入，经核实均无模块级可变状态，
-    // 只多一次下载、不造成功能错误；是否统一由维护者另行决定。
-    // 任何不在此列表中的新冲突都会使本测试失败。
-    const PRE_EXISTING_STATELESS = [
-        'src/missingFaceMerge.js',
-        'src/multifaceProtocol.js',
-        'src/outputSanitizer/runtime.js',
-        'src/settings.js',
-    ];
-    const unexpected = conflicts.filter(target => !PRE_EXISTING_STATELESS.includes(target));
-    assert.deepEqual(unexpected, [], '同一模块被多种 ?rmv 引用会产生两个模块实例');
-    assert.equal(conflicts.includes('src/baibaiImage.js'), false, 'baibaiImage.js 必须只以一种 URL 引入');
+    const conflicts = [...keys].filter(([, set]) => set.size > 1).map(([target, set]) => `${target}: ${[...set].join(' / ')}`);
+    assert.deepEqual(conflicts, [], '同一模块被多种 ?rmv 引用会产生两个模块实例，重复下载与解析');
 });

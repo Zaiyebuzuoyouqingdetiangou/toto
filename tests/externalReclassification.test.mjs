@@ -4,6 +4,21 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
+import { spawnSync } from 'node:child_process';
+
+// 本测试在隔离上下文中加载模块，依赖 vm.SourceTextModule，而该 API 需要
+// --experimental-vm-modules。直接用 `node 本文件` 运行时自动带上该参数重跑一次，
+// 输出与退出码原样透传；环境变量防止在不支持的 Node 版本上无限重启。
+if (typeof vm.SourceTextModule !== 'function') {
+    if (process.env.RABBIT_MIRROR_VM_MODULES_RELAUNCHED === '1') {
+        console.error('当前 Node 不支持 vm.SourceTextModule，即使启用 --experimental-vm-modules 也不可用。');
+        process.exit(1);
+    }
+    const child = spawnSync(process.execPath, ['--experimental-vm-modules', ...process.execArgv, fileURLToPath(import.meta.url)], {
+        stdio: 'inherit', env: { ...process.env, RABBIT_MIRROR_VM_MODULES_RELAUNCHED: '1' },
+    });
+    process.exit(child.status ?? 1);
+}
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 async function modules() {
