@@ -18,9 +18,9 @@ import {
     createPendingComboBatchPlan,
     findPendingComboBatchPlan,
 } from './storage.js?rmv=1.5.53-visualquick1';
-import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.6.6';
+import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.6.7';
 import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.53-cn-boundary1';
-import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.6.6';
+import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.6.7';
 import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.5.53-text1';
 import {
     chooseExternalSource,
@@ -1410,6 +1410,28 @@ function pickLiveCombinationBatch(settings, planning, faceCount, planningReason 
     cachedLiveBatchPlans.set(identityKey, cloneBatchPlan(plan));
     if (cachedLiveBatchPlans.size > 8) cachedLiveBatchPlans.delete(cachedLiveBatchPlans.keys().next().value);
     return liveBatchResult(plan, snapshot.directive);
+}
+
+export function buildPureOrderSelection(settings, order) {
+    const form = order?.presentationOverride === 'html' ? 'html' : order?.presentationOverride === 'longtext' ? 'longtext' : '';
+    const text = String(order?.orderText || '').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, ' ').trim().slice(0, 2000);
+    if (form !== 'html' && form !== 'longtext') {
+        throw multiFacePlanningError('纯点菜要先选择 HTML 或长文本；本次尚未发送请求。', 'PURE_ORDER_FORM');
+    }
+    if (!text) throw multiFacePlanningError('纯点菜需要写下这一面的要求；本次尚未发送请求。', 'PURE_ORDER_EMPTY');
+    const directive = {
+        disabled: false, themes: [], formats: [], customThemes: [], customFormats: [],
+        customRequests: [text], hasThemeRequest: true, hasFormatRequest: true,
+        source: '重说纯点菜', rawDirective: text, messageKey: 'resay-pure-order', pureOrder: true,
+    };
+    const combo = comboFromSelection({
+        themes: [], formats: [],
+        requestedPresentationMode: form,
+        presentationMode: form === 'longtext' ? 'text' : 'html',
+    }, { ...settings, forceVisualScenery: false }, { uiReviewFocus: [] });
+    combo.customDirective = true;
+    combo.pureOrder = true;
+    return { combo, directive, last: null };
 }
 
 export function pickCombinationForMultifaceResay(settings, resay) {

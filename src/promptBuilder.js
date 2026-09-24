@@ -3,15 +3,15 @@ import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.5.53
 import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.5.53-cn-boundary1';
 import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.5.53-text1';
 import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.5.53-cn-boundary1';
-import { pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.6.6';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.6.7';
 import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.5.53-visualquick1';
 import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.5.53-visualquick1';
 import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.5.53-cn-boundary1';
 export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.5.53-cn-boundary1';
 import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.5.53-cn-boundary1';
 import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.5.53-cn-boundary1';
-import { isTextPresentation, presentationModeFields } from './presentationMode.js?rmv=1.6.6';
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.6.6';
+import { isTextPresentation, presentationModeFields } from './presentationMode.js?rmv=1.6.7';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.6.7';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -736,12 +736,39 @@ function directiveList(values, fallback = '（无）') {
     return items.length ? items.map(value => `  - ${JSON.stringify(value)}`).join('\n') : fallback;
 }
 
+function activeUserDirective(settings, directive) {
+    if (!directive?.rawDirective) return null;
+    if (directive.pureOrder === true || settings?.userDirectivePriority) return directive;
+    return null;
+}
+
+function pureOrderFaceLock(face, index) {
+    const kind = face?.longText
+        ? '长文本。外壳标签必须完整，故事写进 article，不能只留标题。'
+        : 'HTML。按要求做界面，不要套上一轮的页面。';
+    return `第 ${index + 1} 面：纯点菜，${kind}没有抽签，不要沿用上一轮主题或展现形式。`;
+}
+
 function userDirectivePriorityRule(directive, textPresentation = false) {
     if (!directive) return '';
-    const knownThemes = (directive.themes || []).map(item => `${item.id} ${item.title}`);
-    const knownFormats = (directive.formats || []).map(item => `${item.id} ${item.title}`);
     const rawDirective = truncateDirectiveText(directive.rawDirective || '', 3000);
     if (!rawDirective) return '';
+    if (directive.pureOrder === true) {
+        return String.raw`
+本轮纯点菜【最高优先；没有抽签；只在这一面生效】:
+【用户要求｜必须完整执行】
+<user_rabbit_mirror_directive>
+${rawDirective}
+</user_rabbit_mirror_directive>
+
+纯点菜规则:
+  - 不要抽取，也不要声称抽中了主题、展现形式或母本条目。
+  - 不要沿用上一轮兔子镜的选题、句子、按钮或页面骨架。
+  - 用户写下的界面、篇幅、字数和其他要求必须落实。没写到的交互、装饰和玩法不要自行加一套。
+  - 这些要求只作用于这一面兔子镜，不改主回复。`;
+    }
+    const knownThemes = (directive.themes || []).map(item => `${item.id} ${item.title}`);
+    const knownFormats = (directive.formats || []).map(item => `${item.id} ${item.title}`);
 
     return String.raw`
 本轮用户点菜【${textPresentation ? '内容、篇幅与明确 HTML 要求优先' : '最高优先'}；只在本轮生效；仅作用于兔子镜】:
@@ -828,6 +855,15 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
     const repeatedVisualDimensions = getRepeatedVisualFamilyDimensions(3, 2);
     const paletteCooldownLock = buildPaletteCooldownExecutionLock();
     const innerDetailsBlocked = getRecentRiskFlags(5).includes('inner_details_used');
+    if (directive?.pureOrder === true || combo?.pureOrder === true) {
+        return [
+            '<兔子镜近输出短锁 data-source="independent-api-near-output">',
+            pureOrderFaceLock({ longText: combo?.requestedPresentationMode === 'longtext' }, 0),
+            `点菜优先：${truncateDirectiveText(directive?.rawDirective || '', 2000)}`,
+            '直接输出唯一完整 <toto>...</toto>，闭合后结束。',
+            '</兔子镜近输出短锁>',
+        ].filter(Boolean).join('\n');
+    }
     const directiveText = settings?.userDirectivePriority && directive?.rawDirective
         ? truncateDirectiveText(directive.rawDirective, 240)
         : '';
@@ -916,7 +952,7 @@ function buildFaceContext(selectionCombo, settings, rawPolicy, externalRawMap = 
         selectedThemeResult, selectedFormatResult,
         selectedThemes: selectedThemeResult.text,
         selectedFormats: selectedFormatResult.text,
-        visualSceneryMode: !textPresentation && !!(settings.forceVisualScenery || hasVisualScenery(combo)),
+        visualSceneryMode: !textPresentation && combo?.pureOrder !== true && !!(settings.forceVisualScenery || hasVisualScenery(combo)),
         tarotRulesText: !textPresentation && isTarotRelated(combo) ? TAROT_IMAGE_RULES : '',
         touchTheaterRulesText: !textPresentation && isTouchTheaterRelated(combo) ? TOUCH_THEATER_RULES : '',
     };
@@ -1018,12 +1054,14 @@ function buildTextAwarePrompt({ faceContexts, settings, directive, memoryMateria
             `展现形式：\n${face.selectedFormats}`];
         if (face.combo.texts?.length) local.push(`文本类创作材料：\n${face.selectedTexts}`);
         if (face.combo.worldBookExcerpt) local.push(`本面抽中的世界书条目「${face.combo.worldBookTitle || '未命名'}」：\n${face.combo.worldBookExcerpt}`);
-        const directiveRule = userDirectivePriorityRule(settings.userDirectivePriority ? directive : null, face.textPresentation);
+        const directiveRule = userDirectivePriorityRule(activeUserDirective(settings, directive), face.textPresentation);
         if (face.textPresentation) {
             local.push(textPresentationRule(face.longText));
             if (directiveRule) local.push(directiveRule);
+            if (face.combo?.pureOrder) local.push('这一面没有抽签。用户要求里的字数和内容优先。');
             local.push('创作边界：围绕本面素材与当前对话创作，不另起库外题材，不反向改写主回复事实。',
-                presentationWorldviewLockRule(face.combo, settings), visualColorTruthRule(), textFaceLock(face, index));
+                presentationWorldviewLockRule(face.combo, settings), visualColorTruthRule(),
+                face.combo?.pureOrder ? pureOrderFaceLock(face, index) : textFaceLock(face, index));
             chunks.push(`<兔子镜文本面规则 data-rm-face="${index + 1}">\n${local.filter(Boolean).join('\n\n')}\n</兔子镜文本面规则>`);
             return;
         }
@@ -1062,7 +1100,8 @@ function buildTextAwarePrompt({ faceContexts, settings, directive, memoryMateria
 
 function buildTextAwareExecutionLock(faceContexts, settings, directive) {
     const count = faceContexts.length;
-    const locks = faceContexts.map((face, index) => face.textPresentation ? textFaceLock(face, index)
+    const locks = faceContexts.map((face, index) => (face.combo?.pureOrder || directive?.pureOrder) ? pureOrderFaceLock(face, index)
+        : face.textPresentation ? textFaceLock(face, index)
         : `第 ${index + 1} 面 HTML 专用短锁：\n${buildIndependentFinalExecutionLock({ combo: face.combo, settings, directive })
             .replace(/<\/?兔子镜近输出短锁[^>]*>/g, '')
             .replace('直接输出唯一完整 <toto>...</toto>，闭合后结束。', '本面输出独立完整 <toto>...</toto>，按本批面序继续。').trim()}`);
@@ -1077,6 +1116,14 @@ function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualS
     const multiface = Array.isArray(faceContexts) && faceContexts.length > 1;
     const independent = generationType === 'independent';
     const mode = combo?.samplingMode || settings?.samplingMode || 'classic';
+    if ((combo?.pureOrder === true || directive?.pureOrder === true) && !multiface) {
+        chunks.push('<兔子镜自动注入>', rabbitMirrorConstructionScopeRule());
+        if (settings.hardStartup !== false) chunks.push(hardStartupReserve(independent));
+        chunks.push(visibleChineseHardLock(), userDirectivePriorityRule(directive),
+            '这一面没有抽签。按用户要求做 HTML 界面。不要套通用交互模板、动态视觉、母本玩法或上一轮页面。用户没写的交互和装饰不要自行加。',
+            htmlSafetyCore(), stateBarIsolationRule(), followTagIsolationText, coreOutputProtocol(independent), '</兔子镜自动注入>');
+        return chunks.filter(Boolean).join('\n\n').trim();
+    }
     chunks.push('<兔子镜自动注入>');
     chunks.push(rabbitMirrorConstructionScopeRule());
     if (settings.hardStartup !== false) chunks.push(hardStartupReserve(independent));
@@ -1099,7 +1146,7 @@ ${selectedThemes}
 本轮展现形式:
 ${selectedFormats}`);
     }
-    chunks.push(userDirectivePriorityRule(settings.userDirectivePriority ? directive : null));
+    chunks.push(userDirectivePriorityRule(activeUserDirective(settings, directive)));
     chunks.push(sharedMemoryMaterialRule(memoryMaterial));
     chunks.push(compactCreativeRule(!!settings.creativeExpansionMode, mode === 'format_only'));
     if (independent) chunks.push(buildBehaviorRuleBlock(settings, multiface ? faceContexts.map(face => face.combo) : [combo]));
@@ -1285,7 +1332,9 @@ export function planRabbitMirrorPromptDetails(settings, generationType = 'normal
         // recipe was lost or its source was disabled. Select only one new face
         // under current filters; automatic retries and successful faces keep
         // the exact-recipe contract. No request has been sent at this stage.
-        if (resay.retryFailedFace === true && resay.freshSelection === true) {
+        if (resay.pureOrder === true) {
+            selections = [buildPureOrderSelection(resaySettings, resay)];
+        } else if (resay.retryFailedFace === true && resay.freshSelection === true) {
             selections = [pickCombination(resaySettings, generationScopeKey, generationContext)];
         } else {
             try { selections = [stampPresentationOverride(pickCombinationForMultifaceResay(resaySettings, resay), resay.presentationOverride)]; }

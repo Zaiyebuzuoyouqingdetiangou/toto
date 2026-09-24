@@ -139,6 +139,40 @@ test('original resay without a saved recipe does not send', () => {
     assert.ok(toasts.some(message => String(message).includes('未发送请求')));
 });
 
+test('pure order sends the written request and does not restore or redraw the saved recipe', () => {
+    const diagnostic = { themeIds: ['C.3'], formatIds: ['2.1'] };
+    const { calls } = runResay({
+        diagnostic,
+        options: { mode: 'order', form: 'longtext', note: '  夜谈，大约八千字\u0000不要界面  ' },
+    });
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0][MULTIFACE_ARG], null);
+    assert.equal(calls[0][SINGLE_PRESENTATION_ARG].pureOrder, true);
+    assert.equal(calls[0][SINGLE_PRESENTATION_ARG].presentationOverride, 'longtext');
+    assert.equal(calls[0][SINGLE_PRESENTATION_ARG].orderText, '夜谈，大约八千字 不要界面');
+    assert.equal(calls[0][SINGLE_PRESENTATION_ARG].freshSelection, false);
+    assert.equal(calls[0][9], '');
+});
+
+test('pure order without a form or a request does not send', () => {
+    const noForm = runResay({ diagnostic: { themeIds: ['C.3'], formatIds: ['2.1'] }, options: { mode: 'order', note: '要一封信' } });
+    assert.equal(noForm.calls.length, 0);
+    assert.ok(noForm.toasts.some(message => String(message).includes('未发送请求')));
+    const noText = runResay({ diagnostic: { themeIds: ['C.3'], formatIds: ['2.1'] }, options: { mode: 'order', form: 'html', note: '   ' } });
+    assert.equal(noText.calls.length, 0);
+});
+
+test('follow mode can pure-order through the side API without redrawing', () => {
+    const { calls, toasts } = runResay({
+        diagnostic: { themeIds: ['C.3'], formatIds: ['2.1'] },
+        options: { mode: 'order', form: 'html', note: '做成一封可以翻开的信' },
+        generationSource: 'follow',
+    });
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0][SINGLE_PRESENTATION_ARG].pureOrder, true);
+    assert.ok(!toasts.some(message => String(message).includes('不能在这里重新抽一张')));
+});
+
 test('follow mode refuses a fresh redraw before any request', () => {
     const { calls, toasts } = runResay({ diagnostic: {}, options: { mode: 'fresh' }, generationSource: 'follow' });
     assert.equal(calls.length, 0);

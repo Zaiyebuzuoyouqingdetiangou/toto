@@ -64,6 +64,24 @@ test('mixed longtext and HTML faces keep per-face rules and complete metadata', 
     assert.doesNotMatch(result.executionLock, /第 2 面：长文本/);
 });
 
+test('pure order keeps the written request and drops the previous draw', async () => {
+    const f = await fixture({ userDirectivePriority: false });
+    const plan = f.prompt.planRabbitMirrorPromptDetails(f.settings, 'independent', null, 'pure-order', {
+        multifaceResay: {
+            pureOrder: true, presentationOverride: 'html', orderText: '做成一封可以翻开的信，暖色纸张。',
+            faceIndex: 0, faces: [{ themeIds: ['SHOULD_NOT_DRAW'], formatIds: ['1.1'] }],
+        },
+    });
+    const result = f.prompt.renderRabbitMirrorPromptPlan(plan);
+    assert.match(result.prompt, /做成一封可以翻开的信，暖色纸张/);
+    assert.match(result.prompt, /没有抽签/);
+    assert.equal(result.metadata.requestedPresentationMode, 'html');
+    assert.equal(result.metadata.themeIds.length, 0);
+    assert.equal(result.metadata.formatIds.length, 0);
+    assert.doesNotMatch(result.prompt, /SHOULD_NOT_DRAW/);
+    assert.doesNotMatch(result.executionLock, /完成至少一条/);
+});
+
 test('writing style saves, freezes per plan, and clears without changing saved originals', async () => {
     const f = await fixture();
     f.config.updateSettings({ writingStyle: '克制，短句和具体动作。', independentReadCharacterWorldBook: true, imageCompositionMode: 'auto' });
