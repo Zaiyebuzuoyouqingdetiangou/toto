@@ -97,6 +97,21 @@ test('descriptor copying is bounded, selected-ID scoped, detached, and never cop
     assert.equal(source.formatDescriptors[1].tags.length, 5);
 });
 
+test('a saved mirror diagnostic still lists its theme and format without a recipe ledger row', async () => {
+    const { api, builtin } = await fixture();
+    const view = api.recipeFromSelectionMetadata({
+        themeIds: ['A.1'],
+        formatIds: [builtin],
+        themeLabels: ['A.1 官能色情'],
+        formatLabels: [`${builtin} 内置形式`],
+        samplingMode: 'classic',
+    }, { faceIndex: 0, includeExternalOnly: true });
+    assert.equal(view.themes[0].id, 'A.1');
+    assert.equal(view.themes[0].kind, 'theme');
+    assert.equal(view.formats[0].id, builtin);
+    assert.equal(view.formats[0].kind, 'format');
+});
+
 test('same-ID metadata changes persist, malformed external IDs never gain a recipe', async () => {
     const { api, owner } = await fixture();
     const metadata = externalRecipe();

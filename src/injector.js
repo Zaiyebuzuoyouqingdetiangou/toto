@@ -740,7 +740,7 @@ export function destroyIndependentGenerationIntentBridge({ clearIntents = false 
 
 function loadPromptBuilder() {
     if (!promptBuilderPromise) {
-        promptBuilderPromise = import('./promptBuilder.js?rmv=1.6.4-resay3').catch(error => {
+        promptBuilderPromise = import('./promptBuilder.js?rmv=1.6.4-resay4').catch(error => {
             promptBuilderPromise = null;
             throw error;
         });
@@ -750,7 +750,7 @@ function loadPromptBuilder() {
 
 function loadGenerationGuard() {
     if (!generationGuardPromise) {
-        generationGuardPromise = import('./generationGuard.js?rmv=1.6.4-resay3').catch(error => {
+        generationGuardPromise = import('./generationGuard.js?rmv=1.6.4-resay4').catch(error => {
             generationGuardPromise = null;
             throw error;
         });

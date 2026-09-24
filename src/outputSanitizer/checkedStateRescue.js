@@ -1,7 +1,7 @@
 // Split from outputSanitizer.js — checkedStateRescue.
 
 import { escapeCssIdentifier, escapeRegExp, getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.6';
-import { getClassTokens, isCollapsedDimensionValue, parseCssStateSiblingAssignments } from './renderedStateRescue.js?rmv=1.6.4-resay3';
+import { getClassTokens, isCollapsedDimensionValue, parseCssStateSiblingAssignments } from './renderedStateRescue.js?rmv=1.6.4-resay4';
 import {
     capturePseudoStyleState,
     chooseMatchingRawRabbitMirrorRoot,
@@ -9,15 +9,15 @@ import {
     normalizeInteractionMatchText,
     resolveRenderedCounterpart,
     restorePseudoStyleState,
-} from './scriptedInteractionRescue.js?rmv=1.6.4-resay3';
+} from './scriptedInteractionRescue.js?rmv=1.6.4-resay4';
 import {
     REVERSIBLE_RADIO_BASELINE_ATTR,
     applyCheckedVisualFallback,
     inputHasAssociatedLabel,
     setRescuedCheckedState,
-} from './fallbackRescue.js?rmv=1.6.4-resay3';
-import { RADIO_GROUP_RESCUE_ATTR } from './idsAndRearm.js?rmv=1.6.4-resay3';
-import { diagnosticComputedStyle, maintenanceSafeComputedStyle } from './diagnostics.js?rmv=1.6.4-resay3';
+} from './fallbackRescue.js?rmv=1.6.4-resay4';
+import { RADIO_GROUP_RESCUE_ATTR } from './idsAndRearm.js?rmv=1.6.4-resay4';
+import { diagnosticComputedStyle, maintenanceSafeComputedStyle } from './diagnostics.js?rmv=1.6.4-resay4';
 import {
     checkedDeclarationCreatesContentReveal,
     checkedTargetCarriesResultContent,
@@ -25,14 +25,14 @@ import {
     isIndependentMaintenanceRoot,
     notifyIndependentRepairPersistence,
     resolveMaintenanceGeneratedClass,
-} from './maintenanceInspect.js?rmv=1.6.4-resay3';
+} from './maintenanceInspect.js?rmv=1.6.4-resay4';
 import { splitCssSelectorList } from './markup.js?rmv=1.6';
 import {
     maintenanceMobileLayoutLengthPx,
     maintenanceMobileLayoutRect,
     maintenanceMobileLayoutTextLength,
     viewportLayoutHasAuthoredGridPlacement,
-} from './layoutRescue.js?rmv=1.6.4-resay3';
+} from './layoutRescue.js?rmv=1.6.4-resay4';
 
 const interactionInlineOverrideStates = new WeakMap();
 

@@ -2,7 +2,7 @@
 
 import { getSettings } from '../settings.js?rmv=1.6';
 import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from '../tokenMeter.js?rmv=1.5.53-visualquick1';
-import { API_REQUEST_DIAGNOSTIC_EVENT, getLastIndependentApiRequestDiagnostic } from '../independentApi.js?rmv=1.6.4-resay3';
+import { API_REQUEST_DIAGNOSTIC_EVENT, getLastIndependentApiRequestDiagnostic } from '../independentApi.js?rmv=1.6.4-resay4';
 import { escapeHtml } from './runtime.js?rmv=1.6';
 
 function independentApiProfileLabel(diagnostic) {

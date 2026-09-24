@@ -528,15 +528,23 @@ export function recordRabbitMirrorRecipe({ chat = null, chatKey = '', messageInd
     return written;
 }
 
+function recipeView(record, faceIndex, includeExternalOnly) {
+    if (!record || typeof record !== 'object') return null;
+    if (!Array.isArray(record.faces)) return decorateRecipe(record, includeExternalOnly);
+    if (!Number.isInteger(faceIndex) || faceIndex < 0 || faceIndex >= record.faces.length) return null;
+    const face = compactSelectionMetadata(record.faces[faceIndex], false);
+    const { requestedPresentationMode, presentationMode, blankLongText, textIds, textLabels,
+        themeLabels, formatDescriptors, formatLabels, customThemeCount, customFormatCount, customRequestCount, ...batchRecord } = record;
+    return face ? decorateRecipe({ ...batchRecord, hasExternalReferences: false, externalSources: [], ...face, faceIndex }, includeExternalOnly) : null;
+}
+
+export function recipeFromSelectionMetadata(metadata, { faceIndex = null, includeExternalOnly = false } = {}) {
+    const compact = compactSelectionMetadata(metadata);
+    return compact ? recipeView(compact, faceIndex, includeExternalOnly) : null;
+}
+
 export function getRabbitMirrorRecipe({ chatKey = '', messageIndex = -1, swipeId = -1, message = null, faceIndex = null, includeExternalOnly = false } = {}) {
-    const faceRecipe = record => {
-        if (!Array.isArray(record?.faces)) return decorateRecipe(record, includeExternalOnly);
-        if (!Number.isInteger(faceIndex) || faceIndex < 0 || faceIndex >= record.faces.length) return null;
-        const face = compactSelectionMetadata(record.faces[faceIndex], false);
-        const { requestedPresentationMode, presentationMode, blankLongText, textIds, textLabels,
-            themeLabels, formatDescriptors, formatLabels, customThemeCount, customFormatCount, customRequestCount, ...batchRecord } = record;
-        return face ? decorateRecipe({ ...batchRecord, hasExternalReferences: false, externalSources: [], ...face, faceIndex }, includeExternalOnly) : null;
-    };
+    const faceRecipe = record => recipeView(record, faceIndex, includeExternalOnly);
     const resolvedChatKey = String(chatKey || '').trim();
     const index = Number(messageIndex);
     if (!resolvedChatKey || !Number.isInteger(index) || index < 0) return null;

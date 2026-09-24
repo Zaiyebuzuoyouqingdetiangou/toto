@@ -5,7 +5,7 @@ import { isRabbitMirrorManagedChatSurface, subscribeRabbitMirrorChatSurface } fr
 import { recordTtSurface, ttSurfaceNow, nextTtSurfaceClickSeq } from '../ttSurfaceDiagnostics.js?rmv=1.5.53-cn-boundary1';
 import { getSettings } from '../settings.js?rmv=1.6';
 import { getCurrentChatKey } from '../storage.js?rmv=1.5.53-visualquick1';
-import { RECIPE_RECORDED_EVENT } from '../blacklist.js?rmv=1.6.4-resay3';
+import { RECIPE_RECORDED_EVENT } from '../blacklist.js?rmv=1.6.4-resay4';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -26,8 +26,8 @@ import {
     getExternalOwnerMessageIndex,
     getRabbitMirrorSummaryText,
     getRawAssistantMessageForRenderedRoot,
-} from './scriptedInteractionRescue.js?rmv=1.6.4-resay3';
-import { firstUseInteractionBindings } from './idsAndRearm.js?rmv=1.6.4-resay3';
+} from './scriptedInteractionRescue.js?rmv=1.6.4-resay4';
+import { firstUseInteractionBindings } from './idsAndRearm.js?rmv=1.6.4-resay4';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     MAINTENANCE_AUTO_SAFE_ATTR,
@@ -45,7 +45,7 @@ import {
     removeAllInteractionDiagnosticPanels,
     scheduleCurrentHighConfidenceTextRepair,
     stripMaintenanceRabbitGlyphs,
-} from './diagnostics.js?rmv=1.6.4-resay3';
+} from './diagnostics.js?rmv=1.6.4-resay4';
 import {
     cancelMaintenanceRepairRun,
     cancelMaintenanceRepairRuns,
@@ -55,9 +55,9 @@ import {
     rabbitMirrorInteractionRootFromTarget,
     rejectOversizedMaintenanceRepair,
     runMaintenanceSafeAutomaticRepairs,
-} from './maintenanceInspect.js?rmv=1.6.4-resay3';
+} from './maintenanceInspect.js?rmv=1.6.4-resay4';
 import { decodeHtmlEntities } from './markup.js?rmv=1.6';
-import { getRabbitMirrorFacePosition } from './layoutRescue.js?rmv=1.6.4-resay3';
+import { getRabbitMirrorFacePosition } from './layoutRescue.js?rmv=1.6.4-resay4';
 import {
     cancelStartupMaintenanceHistoryInstall,
     closeFeedbackCatMenu,
@@ -72,7 +72,7 @@ import {
     removeFeedbackCatsInChatDom,
     removeMaintenanceRabbitsInChatDom,
     toolOutsideCloseOwners,
-} from './toolsChrome.js?rmv=1.6.4-resay3';
+} from './toolsChrome.js?rmv=1.6.4-resay4';
 
 export let hostScriptModule = null;
 

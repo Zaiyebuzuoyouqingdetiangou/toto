@@ -2,8 +2,8 @@
 
 import { getSettings } from '../settings.js?rmv=1.6';
 import { SOURCE_ATTR, currentRuntime, getContext } from './runtime.js?rmv=1.6';
-import { LEGACY_GLOBAL_FLIGHT_KEYS, clearAutomaticFailureStops, pending } from './flights.js?rmv=1.6.4-resay3';
-import { migrateLegacyDeletedRecords } from './persistence.js?rmv=1.6.4-resay3';
+import { LEGACY_GLOBAL_FLIGHT_KEYS, clearAutomaticFailureStops, pending } from './flights.js?rmv=1.6.4-resay4';
+import { migrateLegacyDeletedRecords } from './persistence.js?rmv=1.6.4-resay4';
 import {
     activeGlobalWorldInfoCapture,
     activeOwnerLockBatch,
@@ -13,8 +13,8 @@ import {
     writeActiveGlobalWorldInfoCapture,
     writeActiveOwnerLockBatch,
     writeActiveOwnerLockBatchDirty,
-} from './connection.js?rmv=1.6.4-resay3';
-import { isTheaterFavoriteHost, removeEmptyFollowExternalAnchors, removeEmptyInlineAnchors } from './request.js?rmv=1.6.4-resay3';
+} from './connection.js?rmv=1.6.4-resay4';
+import { isTheaterFavoriteHost, removeEmptyFollowExternalAnchors, removeEmptyInlineAnchors } from './request.js?rmv=1.6.4-resay4';
 import {
     activeRestorableHtmlCache,
     installExternalGeometryListeners,
@@ -22,7 +22,7 @@ import {
     preparedReadyHtmlCache,
     removeExternalGeometryListeners,
     writeActiveRestorableHtmlCache,
-} from './geometry.js?rmv=1.6.4-resay3';
+} from './geometry.js?rmv=1.6.4-resay4';
 import {
     abortFlight,
     automaticIndependentTiming,
@@ -50,7 +50,7 @@ import {
     restoreFollowInline,
     restoreMountedFollowSnapshots,
     runtimeMode,
-} from './mount.js?rmv=1.6.4-resay3';
+} from './mount.js?rmv=1.6.4-resay4';
 import {
     cancelEarlyBodyProbes,
     captureMountedIndependentPlaceholderIndices,
@@ -70,7 +70,7 @@ import {
     scheduleStartupHistorySync,
     settleMountedIndependentPlaceholders,
     unsubscribeHostEvents,
-} from './earlyBody.js?rmv=1.6.4-resay3';
+} from './earlyBody.js?rmv=1.6.4-resay4';
 
 export let observer = null;
 

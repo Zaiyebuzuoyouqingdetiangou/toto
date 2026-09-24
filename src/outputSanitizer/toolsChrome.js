@@ -1,6 +1,6 @@
 // Split from outputSanitizer.js — toolsChrome.
 
-import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.6.4-resay3';
+import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.6.4-resay4';
 import { placeFacePager } from '../facePagerPlacement.js?rmv=1.6.4-pager1';
 import { isTextPresentation } from '../presentationMode.js?rmv=1.5.53-visualquick1';
 import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.6.3-ttchild1';
@@ -23,7 +23,7 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
 } from '../feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.4-resay3';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.4-resay4';
 import {
     FAVORITE_MULTIPLIER_MAX,
     FAVORITE_MULTIPLIER_MIN,
@@ -35,6 +35,7 @@ import {
     getFavoriteMultiplier,
     getFavoritesState,
     getRabbitMirrorRecipe,
+    recipeFromSelectionMetadata,
     isBlacklisted,
     isFavorited,
     removeBlacklistItem,
@@ -44,7 +45,7 @@ import {
     setFavoriteMultiplier,
     toggleBlacklistItem,
     toggleFavoriteItem,
-} from '../blacklist.js?rmv=1.6.4-resay3';
+} from '../blacklist.js?rmv=1.6.4-resay4';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -69,9 +70,9 @@ import {
     isMaintenanceRabbitEnabled,
     isRabbitMirrorDetails,
 } from './runtime.js?rmv=1.6';
-import { getAvailableHostChat } from './scriptedInteractionRescue.js?rmv=1.6.4-resay3';
-import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.6.4-resay3';
-import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=1.6.4-resay3';
+import { getAvailableHostChat } from './scriptedInteractionRescue.js?rmv=1.6.4-resay4';
+import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.6.4-resay4';
+import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=1.6.4-resay4';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     FEEDBACK_HISTORY_EVENT,
@@ -91,8 +92,8 @@ import {
     rabbitMirrorLanguageBalance,
     scheduleCurrentHighConfidenceTextRepair,
     setMaintenanceRabbitState,
-} from './diagnostics.js?rmv=1.6.4-resay3';
-import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=1.6.4-resay3';
+} from './diagnostics.js?rmv=1.6.4-resay4';
+import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=1.6.4-resay4';
 import {
     MAINTENANCE_FINDING_STAGE_LABELS,
     beginMaintenanceRepairRun,
@@ -110,19 +111,19 @@ import {
     runMaintenanceRevealClipRepair,
     runMaintenanceUserRepair,
     triggerDiagnosticForMaintenanceRoot,
-} from './maintenanceInspect.js?rmv=1.6.4-resay3';
+} from './maintenanceInspect.js?rmv=1.6.4-resay4';
 import {
     getRabbitMirrorFacePosition,
     installMaintenanceHorizontalClipOpenRescue,
     repairLegacyMaintenanceMobileStateRows,
-} from './layoutRescue.js?rmv=1.6.4-resay3';
+} from './layoutRescue.js?rmv=1.6.4-resay4';
 import {
     getMessageIndexFromMirrorNode,
     installMaintenanceAutoSafeOpenPatrol,
     installManagedRabbitMirrorTools,
     pruneMaintenanceAutoSafeOpenBindings,
     scheduleMaintenanceAutoSafeForRoot,
-} from './lifecycle.js?rmv=1.6.4-resay3';
+} from './lifecycle.js?rmv=1.6.4-resay4';
 
 let recipeOutsideCloseCleanup = null;
 
@@ -761,9 +762,40 @@ export function rabbitMirrorTextPresentation(root) {
 }
 
 
+function diagnosticFromJsonStore(storageKey, slot) {
+    if (!slot || !globalThis.localStorage?.getItem) return null;
+    try {
+        const store = JSON.parse(localStorage.getItem(storageKey) || '{}');
+        const diagnostic = store?.[slot]?.apiRequest;
+        return diagnostic && typeof diagnostic === 'object' ? diagnostic : null;
+    } catch {
+        return null;
+    }
+}
+
+function savedMirrorSelectionMetadata(root, identity) {
+    const details = root?.matches?.('details') ? root : root?.querySelector?.('details');
+    const shell = root?.matches?.('[data-rm-key]') ? root : root?.closest?.('[data-rm-key]');
+    const slot = String(shell?.getAttribute?.('data-rm-key') || details?.dataset?.rabbitMirrorOwnerKey || '');
+    const mounted = diagnosticFromJsonStore('rabbit_mirror_independent_outputs_v1', slot);
+    if (mounted && (Array.isArray(mounted.themeIds) || Array.isArray(mounted.formatIds) || Array.isArray(mounted.faces) || Array.isArray(mounted.textIds) || mounted.blankLongText === true)) return mounted;
+    if (!Number.isInteger(identity?.messageIndex) || identity.messageIndex < 0) return null;
+    let metadata = null;
+    try { metadata = (typeof getContext === 'function' ? getContext() : null)?.chatMetadata; } catch {}
+    metadata = metadata || globalThis.chat_metadata;
+    const swipe = Number.isInteger(identity.swipeId) && identity.swipeId >= 0 ? identity.swipeId : 0;
+    const owner = metadata?.rabbit_mirror_independent_outputs_v2?.owners?.[`${identity.messageIndex}:${swipe}`];
+    const diagnostic = owner?.deleted === true ? null : owner?.apiRequest;
+    return diagnostic && typeof diagnostic === 'object' ? diagnostic : null;
+}
+
 function rabbitMirrorRecipeForRoot(root, includeExternalOnly = false) {
     const identity = rabbitMirrorRecipeIdentity(root);
-    return getRabbitMirrorRecipe({ ...identity, includeExternalOnly });
+    return getRabbitMirrorRecipe({ ...identity, includeExternalOnly })
+        || recipeFromSelectionMetadata(savedMirrorSelectionMetadata(root, identity), {
+            faceIndex: identity.faceIndex,
+            includeExternalOnly,
+        });
 }
 
 
@@ -1253,7 +1285,7 @@ function showRecipeMenu(root, button) {
     panel.style.cssText = 'position:fixed;z-index:2147483646;box-sizing:border-box;padding:12px 13px;border:1px solid rgba(127,127,127,.35);border-radius:10px;background:var(--SmartThemeBlurTintColor,rgba(28,28,32,.97));color:var(--SmartThemeBodyColor,#eee);box-shadow:0 10px 32px rgba(0,0,0,.28);overflow:auto;font-family:inherit;';
     const directiveNote = recipe?.userDirectiveApplied ? '本轮含用户明确点菜；黑名单只影响之后的随机抽取。' : '';
     const forcedNote = recipe?.forcedVisualScenery ? '本轮含固定动态视觉场景；固定模式会优先于随机黑名单。' : '';
-    const emptyNote = !recipe ? '本面暂无可读取的抽签记录；无法确定本面抽中了哪些项目。仍可管理全局黑名单、收藏和全池。'
+    const emptyNote = !recipe ? '这面成品已经在，但没有留下当时抽中的主题 / 元素和展现形式。仍可管理全局黑名单、收藏和全池。'
         : '本轮没有留下可显示的主题 / 元素或展现形式。';
     const totalBlocked = state.themeIds.length + state.formatIds.length;
     const totalFavorites = favoriteState.themeIds.length + favoriteState.formatIds.length;
@@ -1933,7 +1965,7 @@ function beginHostWorkTiming(name){
 }
 
 function loadMirrorImageModule() {
-    if (!mirrorImageModule) mirrorImageModule = import('../imageUi.js?rmv=1.6.4-resay3').catch(error => { mirrorImageModule = null; throw error; });
+    if (!mirrorImageModule) mirrorImageModule = import('../imageUi.js?rmv=1.6.4-resay4').catch(error => { mirrorImageModule = null; throw error; });
     return mirrorImageModule;
 }
 
@@ -2196,7 +2228,7 @@ function installUnifiedMirrorTools(root) {
             .catch(() => globalThis.toastr?.warning?.('生图面板未能打开，请重新打开后再试。'));
     } });
     actions.push({ id: 'theater-favorite-library', label: '📖 打开收藏夹', run: () => {
-        void import('../independentApi.js?rmv=1.6.4-resay3').then(module =>
+        void import('../independentApi.js?rmv=1.6.4-resay4').then(module =>
             openTheaterFavoriteLibrary((container, record) => module.hydrateIndependentFavoriteHtml(container, record)))
             .catch(error => globalThis.toastr?.warning?.(String(error?.message || '无法打开收藏夹。')));
     } });
