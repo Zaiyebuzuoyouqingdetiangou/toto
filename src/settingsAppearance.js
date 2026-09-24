@@ -189,7 +189,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
         early:['settings','什么时候开始副 API 生成','这是可选项。默认等正文完成后，再生成兔子镜。'],
         image:['settings','镜面生图','把这一面里的角色与高光画面画出来。手动点击才调用模型。'],
         appearance:['settings','主题与外观','只改变这个设置面板的颜色，不影响小剧场画面。'],
-        faces:['play','一次生成几面','一面就是一份独立呈现的小剧场。默认一次生成一面。'],
+        faces:['play','每一面怎么呈现','先决定是 HTML 还是长文本，再决定一次出几面。'],
         draw:['play','怎么挑选题材和形式','先决定是一起抽题材与形式，还是只抽呈现形式。'],
         library:['play','导入小剧场世界书','导入你的题材或呈现模板。不导入，也可以使用内置玩法。'],
         favorites:['play','让喜欢的更常出现','收藏能提高抽取权重；不是锁定每轮都出现。'],
@@ -251,7 +251,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     move('rh_image_settings','image');
     row('settings','appearance','主题与外观','调整这个面板的颜色。','palette');row('settings','read','它可以参考什么','聊天正文、角色资料、世界书和共同回忆。','memory');
     for(const [key,title,desc,glyph] of [
-        ['faces','一次想看几面','现在每轮生成 1 面；想多看几种内容时再开启多面。'],
+        ['faces','每一面怎么呈现','先选形式，再决定一次出几面。常用 1–3 面。'],
         ['draw','怎么挑选题材和形式'],['look','调整画面与写法',null,'palette'],
         ['library','导入小剧场世界书',null,'book'],['theaterFavorites','回看收藏的兔子镜'],['favorites','让喜欢的更常出现'],['blacklist','不想抽到哪些内容']])row('play',key,title,desc,glyph);
     for(const key of ['help','mirror','usage','diagnosis','regex','cleanup','update'])row('tools',key);
@@ -288,7 +288,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     move(get('rh_independent_include_character_summary').closest('label').parentElement,'chat');
     move(get('rh_independent_tag_filter_open').parentElement.parentElement,'tags');
     move('rh_advanced_page_worldinfo','books');move('rh_advanced_page_memory','memories');
-    withNote('rh_multiface_enabled','faces');move('rh_multiface_count_row','faces');move('rh_multiface_help','faces');move('rh_face_presentation_modes','faces');
+    move('rh_face_presentation_modes','faces');withNote('rh_multiface_enabled','faces');move('rh_multiface_count_row','faces');move('rh_multiface_help','faces');
     withNote('rh_force_visual_scenery','drawing');withNote('rh_visual_scenery_combination','drawing');withNote('rh_enhanced_visual_drawing','drawing');move('rh_advanced_page_generation','draw');
     for(const key of ['visualText','drawing','writing','references','visualRules','replacement'])row('look',key);
     move('rh_appearance_reference','references');
@@ -368,6 +368,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
         back.hidden=history.length===0&&!searching;
         if(active==='theaterFavorites'||active==='favorites'||active==='blacklist')onNavigate('preferences');
         if(active==='books')onNavigate('books');
+        if(active==='library')onNavigate('library');
         sync();main.scrollTop=0;if(focus&&!back.hidden)back.focus({preventScroll:true});
     }
     function navigate(key,remember=true){

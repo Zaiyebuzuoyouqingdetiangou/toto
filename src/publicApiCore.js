@@ -13,7 +13,7 @@ const connectionFields = {
         try { const u = new URL(value); return ['http:', 'https:'].includes(u.protocol) && !u.username && !u.password && !u.search && !u.hash; } catch { return false; }
     },
     independentApiKey: str(4096), independentApiModel: str(200),
-    independentApiTemperature: num(0, 2), independentApiMaxTokens: num(512, 32000, true),
+    independentApiTemperature: num(0, 2), independentApiMaxTokens: num(512, 64000, true),
     independentMaxRequestChars: num(8000, 2000000, true),
     independentContextMaxLayers: num(1, 200, true),
     independentContextExcludedTags: list(32, 100),

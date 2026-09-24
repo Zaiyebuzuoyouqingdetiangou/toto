@@ -1,5 +1,5 @@
 import { readLocalExternalImportFile, readPlainTextWorldBook } from './fileReader.js?rmv=1.5.53-text1';
-import { getSettings, updateSettings } from '../settings.js?rmv=1.6';
+import { getSettings, updateSettings } from '../settings.js?rmv=1.6.6';
 import { listHostWorldBooks, readHostWorldBook } from './hostReader.js?rmv=1.5.53-cn-boundary1';
 import { searchNormalizedWorldBookEntries } from './normalize.js?rmv=1.5.53-cn-boundary1';
 import {
@@ -29,7 +29,7 @@ import {
     getExternalPoolHydrationStatus,
     rebuildExternalPoolMetadata,
 } from './store.js?rmv=1.5.53-text1';
-import { applyAppearanceTheme } from '../settingsAppearance.js?rmv=1.6';
+import { applyAppearanceTheme } from '../settingsAppearance.js?rmv=1.6.6';
 import { getExternalPoolSnapshot } from './externalPool.js?rmv=1.5.53-text1';
 import { externalCandidateCounts } from './candidateCounts.js?rmv=1.5.53-longtext1';
 import { openExternalReclassificationPanel } from './reclassificationPanel.js?rmv=1.6.4-reclass1';
@@ -38,6 +38,13 @@ const MODAL_ID = 'rh_external_worldbook_import_modal';
 const PAGE_SIZE = 50;
 const CLASSIFICATION_PAGE_SIZE = 40;
 let state = null;
+let pageState = null;
+
+function openMotherLibraryPage() {
+    const workbench = document.getElementById('rabbit_mirror_theater_settings')?.__rabbitMirrorWorkbench;
+    workbench?.open?.();
+    workbench?.navigate?.('library');
+}
 
 const CLASSIFICATION_LABELS = Object.freeze({
     [EXTERNAL_WORLD_BOOK_CLASSIFICATION.THEME]: '主题元素',
@@ -53,7 +60,11 @@ const CONFIDENCE_LABELS = Object.freeze({ high: '高', medium: '中', low: '低'
 
 function el(tag, options = {}) {
     const node = document.createElement(tag);
-    if (options.className) node.className = options.className.replace(/\bmenu_button\b/g, 'rh-external-button').replace(/\btext_pole\b/g, 'rh-external-input');
+    // The import dialog escapes host button skins. The library page keeps them,
+    // so its controls match the rest of the settings panel.
+    if (options.className) node.className = state?.inline === true
+        ? options.className
+        : options.className.replace(/\bmenu_button\b/g, 'rh-external-button').replace(/\btext_pole\b/g, 'rh-external-input');
     if (options.text !== undefined) node.textContent = String(options.text);
     if (options.type) node.type = options.type;
     if (options.placeholder) node.placeholder = options.placeholder;
@@ -411,7 +422,11 @@ async function saveClassificationReview() {
         if (state !== owner || !owner.overlay.isConnected) return saved;
         const counts = externalWorldBookClassificationCounts(state.classificationDraft);
         setStatus(`已保存到兔子镜本地库：主题 ${counts.theme}、展现形式 ${counts.format}、文本 ${counts.text}、辅助 ${counts.auxiliary}、待确认 ${counts.pending}。新库默认停用，请按需启用。`, 'success');
-        state.showView('manage', { announce: false });
+        if (state.inline) await renderSavedLibraries();
+        else {
+            state.dismiss(false);
+            openMotherLibraryPage();
+        }
         return saved;
     } catch (error) {
         if (state === owner) setStatus(String(error?.message || error), 'error');
@@ -478,7 +493,7 @@ async function renderSavedLibraries() {
                     await setExternalLibraryEnabled(library.libraryId, !library.enabled);
                     if (state !== owner || !owner.overlay.isConnected) return;
                     await renderSavedLibraries();
-                    setStatus(`已${library.enabled ? '停用' : '启用'}「${library.displayName}」。自动档参与外部抽取需打开“外部母本参与抽签”；指定文本面会优先使用已启用的文本类。`);
+                    setStatus(`已${library.enabled ? '停用' : '启用'}「${library.displayName}」。要和自带条目一起抽，还需打开“已启用的母本库参与抽签”。指定「文本」面只抽已启用的文本类。`);
                 } catch (error) { setStatus(String(error?.message || error), 'error'); }
                 finally { control.disabled = false; }
             }, { minHeight: '44px' }),
@@ -539,7 +554,7 @@ async function renderSavedEntryChoices() {
     panel.hidden = false;
     panel.replaceChildren();
     panel.append(el('h3', { text: `${library.displayName}：选择参与抽签的条目`, style: { fontSize: '15px', margin: '0 0 8px', overflowWrap: 'anywhere' } }));
-    panel.append(el('p', { text: '勾选后立即保存；取消勾选只是不再参与之后的新抽签，不删除原文。换角色卡时可回来手动调整，选择不会随角色自动切换。仍需启用这本库及“外部母本参与抽签”总开关。', style: { fontSize: '13px', lineHeight: '1.6', margin: '0 0 8px' } }));
+    panel.append(el('p', { text: '勾选后立即保存；取消勾选只是不再参与之后的新抽签，不删除原文。换角色卡时可回来手动调整，选择不会随角色自动切换。仍需启用这本库，并打开“已启用的母本库参与抽签”。', style: { fontSize: '13px', lineHeight: '1.6', margin: '0 0 8px' } }));
     const message = el('div', { text: '正在读取这一页条目…', attrs: { role: 'status', 'aria-live': 'polite' }, style: { fontSize: '13px', lineHeight: '1.5', margin: '8px 0' } });
     const searchLabel = el('label', { text: '按条目标题查找', style: { display: 'block', fontSize: '13px' } });
     const search = el('input', { type: 'search', value: owner.savedEntryQuery, className: 'text_pole', style: { width: '100%', minHeight: '44px', boxSizing: 'border-box' } });
@@ -602,13 +617,14 @@ async function renderSavedEntryChoices() {
 
 function createExternalRandomControls() {
     const box = el('fieldset', { style: { border: '1px solid color-mix(in srgb,currentColor 22%,transparent)', borderRadius: '12px', padding: '10px', margin: '0 0 14px', minWidth: '0' } });
-    box.append(el('legend', { text: '生成与抽签', style: { fontSize: '13px', fontWeight: '700' } }));
+    box.append(el('legend', { text: '内置和母本库', style: { fontSize: '13px', fontWeight: '700' } }));
     const label = el('label', { style: { display: 'flex', alignItems: 'center', gap: '8px', minHeight: '44px', fontSize: '14px' } });
     const toggle = el('input', { id: 'rh_external_random_enabled', type: 'checkbox' });
-    label.append(toggle, document.createTextNode('外部母本参与抽签'));
-    const modeLabel = el('label', { text: '抽签偏好', attrs: { for: 'rh_external_random_mix' }, style: { display: 'block', fontSize: '13px', margin: '6px 0' } });
+    label.append(toggle, document.createTextNode('已启用的母本库参与抽签'));
+    const hint = el('p', { text: '内置是兔子镜自带的主题和展现形式。母本库是你导入并启用的内容，不会改掉内置条目。这里只决定母本库进不进「兔子镜已有条目」，不管另一页勾选的世界书。', style: { fontSize: '12px', lineHeight: '1.55', margin: '0 0 8px' } });
+    const modeLabel = el('label', { text: '这一池内部怎么分', attrs: { for: 'rh_external_random_mix' }, style: { display: 'block', fontSize: '13px', margin: '6px 0' } });
     const mode = el('select', { id: 'rh_external_random_mix', className: 'text_pole', style: { width: '100%', minHeight: '44px', boxSizing: 'border-box' } });
-    for (const [value, text] of [['builtin-preferred', '内置优先（推荐）'], ['balanced', '内置与外部均衡'], ['external-preferred', '外部优先'], ['external-only', '仅外部（可用池不足时按现有规则回退）']]) {
+    for (const [value, text] of [['builtin-preferred', '内置优先：多抽自带条目'], ['balanced', '均衡：自带条目和母本库差不多'], ['external-preferred', '母本库优先：多抽已启用的母本库'], ['external-only', '只用母本库：不抽自带条目']]) {
         mode.append(el('option', { value, text }));
     }
     const status = el('div', { attrs: { role: 'status' }, style: { fontSize: '12px', lineHeight: '1.5', marginTop: '8px', overflowWrap: 'anywhere' } });
@@ -618,15 +634,15 @@ function createExternalRandomControls() {
         mode.value = settings.externalWorldBookMixMode === 'builtin-only' ? 'builtin-preferred' : settings.externalWorldBookMixMode;
         mode.disabled = !toggle.checked;
         status.textContent = toggle.checked
-            ? '已开启。请另外启用下方需要的本地库；仅发送本轮抽中的条目。'
-            : '已关闭，新抽签不使用外部母本；手动重说旧面仍保留原抽签。开启也不会自动启用本地库。';
+            ? '已开启。还要在下面启用要用的库。每次只发送抽中的条目。'
+            : '已关闭。新抽签只用兔子镜自带条目。已导入的库还在，不会删除。手动重说旧面仍保留原抽签。';
     };
     toggle.addEventListener('change', () => {
         updateSettings({ externalWorldBookRandomEnabled: toggle.checked, ...(toggle.checked ? { externalWorldBookMixMode: mode.value || 'builtin-preferred' } : {}) });
         render();
     });
     mode.addEventListener('change', () => { updateSettings({ externalWorldBookMixMode: mode.value }); render(); });
-    box.append(label, modeLabel, mode, status);
+    box.append(label, hint, modeLabel, mode, status);
     render();
     return box;
 }
@@ -739,7 +755,13 @@ function bindImportViewport(overlay) {
 }
 
 function createModal(initialView = 'plain', importKind = '') {
-    state?.dismiss?.(false);
+    if (initialView === 'manage') {
+        openMotherLibraryPage();
+        return;
+    }
+    if (state?.inline === true) pageState = state;
+    else state?.dismiss?.(false);
+    state = null;
     document.getElementById(MODAL_ID)?.remove();
     const returnFocus = document.activeElement;
     // The settings dialog is already in the browser top layer. A body-level div
@@ -805,7 +827,8 @@ function createModal(initialView = 'plain', importKind = '') {
         plainInput.value = '';
         if (overlay.open && typeof overlay.close === 'function') overlay.close();
         overlay.remove();
-        if (state?.overlay === overlay) state = null;
+        if (state?.overlay === overlay) state = pageState;
+        if (pageState?.ready && pageState.overlay?.isConnected) void renderSavedLibraries();
         if (restoreFocus && returnFocus?.isConnected) {
             try { returnFocus.focus({ preventScroll: true }); } catch {}
         }
@@ -841,7 +864,7 @@ function createModal(initialView = 'plain', importKind = '') {
         if (which === 'host') loadHostBooks();
         if (which === 'manage') renderSavedLibraries();
         if (which === 'plain') { try { plainInput.focus({ preventScroll: true }); } catch {} }
-        if (announce && which !== 'host') setStatus(which === 'transfer' ? '旧设备导出 → 把文件发到新设备 → 新设备选文件并确认导入。' : which === 'manage' ? '先启用需要的库。自动档使用外部内容需打开“外部母本参与抽签”；指定文本面优先使用已启用的文本类。' : '先读取内容 → 确认分类并保存 → 启用母本库。读取和切换页面不会保存。');
+        if (announce && which !== 'host') setStatus(which === 'transfer' ? '旧设备导出 → 把文件发到新设备 → 新设备选文件并确认导入。' : which === 'manage' ? '内置是兔子镜自带条目。先启用需要的母本库，再打开“已启用的母本库参与抽签”，它才会和自带条目一起抽。指定「文本」面只抽已启用的文本类。' : '先读取内容 → 确认分类并保存 → 启用母本库。读取和切换页面不会保存。');
     };
     for (const [view, label, panelId, group] of [
         ['plain', '粘贴文字', plainPane.id, 'source'],
@@ -850,7 +873,14 @@ function createModal(initialView = 'plain', importKind = '') {
         ['transfer', '换设备：导出／导入整库', transferControls.panel.id, 'utility'],
         ['manage', '管理母本库', managePane.id, 'utility'],
     ]) {
-        const control = button(label, () => showView(view), { minHeight: '44px' });
+        const control = button(label, () => {
+            if (view === 'manage') {
+                dismiss(false);
+                openMotherLibraryPage();
+                return;
+            }
+            showView(view);
+        }, { minHeight: '44px' });
         control.setAttribute('aria-controls', panelId);
         navButtons.set(view, control);
         (group === 'source' ? sourceButtons : utilityButtons).append(control);
@@ -974,12 +1004,12 @@ function createModal(initialView = 'plain', importKind = '') {
 
     const savedLibrariesPanel = el('div', { style: { display: 'none', borderTop: '1px solid color-mix(in srgb,currentColor 12%,transparent)', marginTop: '14px', paddingTop: '10px' } });
     savedLibrariesPanel.append(el('div', { text: '已保存的外部世界书', style: { fontWeight: '700', fontSize: '13px' } }));
-    savedLibrariesPanel.append(el('div', { text: '启用需要的库，再点“勾选参与抽签的条目”选择具体内容。取消勾选不会删除原文；启用本地库不会修改上方总开关。当前可抽数按已启用且确认的条目计算，实际使用哪一池取决于生成设置。有可用文本条目时，指定文本面只抽文本子池；“长文本”可选择“混合库”使用常规抽取来源。', style: { opacity: '.8', fontSize: '12px', lineHeight: '1.5', marginTop: '3px' } }));
+    savedLibrariesPanel.append(el('div', { text: '启用需要的库，再点“勾选参与抽签的条目”选择具体内容。取消勾选不会删除原文；启用某一本库不会自动打开上面的总开关。指定「文本」面只从已启用的文本类里抽。长文本和 HTML 抽同一池。', style: { opacity: '.8', fontSize: '12px', lineHeight: '1.5', marginTop: '3px' } }));
     const savedLibrariesList = el('div', { style: { marginTop: '5px' } });
     savedLibrariesPanel.append(savedLibrariesList);
     const savedEntriesPanel = el('section', { id: 'rh_external_saved_entry_choices', attrs: { tabindex: '-1', 'aria-label': '已导入条目的抽签选择' }, style: { marginTop: '14px', paddingTop: '12px', borderTop: '1px solid color-mix(in srgb,currentColor 18%,transparent)' } });
     savedEntriesPanel.hidden = true;
-    managePane.append(createExternalRandomControls(), savedLibrariesPanel, savedEntriesPanel);
+    managePane.append(el('p', { text: '母本库的启用、比例和条目勾选在导入页里。点「管理母本库」会回到那一页。', style: { fontSize: '13px', lineHeight: '1.6', margin: '0' } }));
 
     scroll.append(el('div', { text: '跟随与独立 API 均可使用；不会发送整本世界书，也不会按面额外请求。', style: { marginTop: '10px', opacity: '.8', fontSize: '12px', lineHeight: '1.5' } }));
 
@@ -1015,6 +1045,47 @@ function createModal(initialView = 'plain', importKind = '') {
     }
     try { closeButton.focus({ preventScroll: true }); } catch {}
     showView(initialView);
+}
+
+export function mountMotherLibraryManager(host) {
+    if (!host?.isConnected) return;
+    if (pageState?.host === host && pageState.ready) {
+        if (state?.inline === true || !state?.overlay?.isConnected) {
+            state = pageState;
+            void renderSavedLibraries();
+        }
+        return;
+    }
+    host.replaceChildren();
+    const previous = state?.inline === true || !state?.overlay?.isConnected ? null : state;
+    const status = el('div', { attrs: { role: 'status' }, style: { fontSize: '12px', lineHeight: '1.5', marginTop: '8px', overflowWrap: 'anywhere' } });
+    const savedLibrariesPanel = el('div', { style: { borderTop: '1px solid color-mix(in srgb,currentColor 12%,transparent)', marginTop: '14px', paddingTop: '10px' } });
+    savedLibrariesPanel.append(el('div', { text: '已保存的母本库', style: { fontWeight: '700', fontSize: '13px' } }));
+    savedLibrariesPanel.append(el('div', { text: '启用需要的库，再点“勾选参与抽签的条目”选择具体内容。取消勾选不会删除原文；启用某一本库不会自动打开上面的总开关。指定「文本」面只从已启用的文本类里抽。长文本和 HTML 抽同一池。', style: { opacity: '.8', fontSize: '12px', lineHeight: '1.5', marginTop: '3px' } }));
+    const savedLibrariesList = el('div', { style: { marginTop: '5px' } });
+    savedLibrariesPanel.append(savedLibrariesList);
+    const savedEntriesPanel = el('section', { attrs: { tabindex: '-1', 'aria-label': '已导入条目的抽签选择' }, style: { marginTop: '14px', paddingTop: '12px', borderTop: '1px solid color-mix(in srgb,currentColor 18%,transparent)' } });
+    savedEntriesPanel.hidden = true;
+    pageState = {
+        inline: true,
+        ready: true,
+        host,
+        overlay: host,
+        status,
+        savedLibrariesPanel,
+        savedLibrariesList,
+        savedLibrariesSequence: 0,
+        savedEntriesPanel,
+        savedEntryLibrary: null,
+        savedEntrySequence: 0,
+        savedEntryPage: 0,
+        savedEntryQuery: '',
+        dismiss() {},
+    };
+    state = pageState;
+    host.append(createExternalRandomControls(), savedLibrariesPanel, savedEntriesPanel, status);
+    void renderSavedLibraries();
+    if (previous?.overlay?.isConnected) state = previous;
 }
 
 export function openExternalWorldBookImportWizard(options = {}) {

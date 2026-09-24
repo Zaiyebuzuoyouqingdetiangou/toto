@@ -1,6 +1,6 @@
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.5.53-visualquick1';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.6.6';
 import { compactFormatDescriptors, isExternalSelectionId } from './selectionImageMetadata.js?rmv=1.6.4-creation1';
-import { getSettings, updateSettings } from './settings.js?rmv=1.6';
+import { getSettings, updateSettings } from './settings.js?rmv=1.6.6';
 import { getCurrentChatKey, resetFormatEligibleMisses } from './storage.js?rmv=1.5.53-visualquick1';
 import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.5.53-cn-boundary1';
 import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.53-cn-boundary1';
@@ -410,11 +410,13 @@ function compactSelectionMetadata(metadata = {}, allowFaces = true) {
     const themeIds = compactIds(metadata?.themeIds).filter(id => THEME_BY_ID.has(id) || isExternalSelectionId(id));
     const formatIds = compactIds(metadata?.formatIds).filter(id => FORMAT_BY_ID.has(id) || isExternalSelectionId(id));
     const formatDescriptors = compactFormatDescriptors({ ...metadata, formatIds });
-    const formatLabels = formatIds.map(id => {
-        const index = Array.isArray(metadata?.formatIds) ? metadata.formatIds.indexOf(id) : -1;
-        const label = metadata?.formatLabels?.[index];
+    const alignedLabels = (ids, sourceIds, labels) => ids.map(id => {
+        const index = Array.isArray(sourceIds) ? sourceIds.indexOf(id) : -1;
+        const label = labels?.[index];
         return typeof label === 'string' ? label.slice(0, 2209) : '';
     });
+    const formatLabels = alignedLabels(formatIds, metadata?.formatIds, metadata?.formatLabels);
+    const themeLabels = alignedLabels(themeIds, metadata?.themeIds, metadata?.themeLabels);
     const faces = allowFaces && Array.isArray(metadata?.faces) && metadata.faces.length >= 2 && metadata.faces.length <= 5
         ? metadata.faces.map(face => compactSelectionMetadata(face, false)) : null;
     const externalSources = [...new Set((Array.isArray(metadata?.externalSources) ? metadata.externalSources : [])
@@ -423,10 +425,11 @@ function compactSelectionMetadata(metadata = {}, allowFaces = true) {
     const hasExternalReferences = metadata?.hasExternalReferences === true || externalSources.length > 0
         || [...themeIds, ...formatIds].some(isExternalSelectionId);
     if (!themeIds.length && !formatIds.length && !hasExternalReferences && !metadata?.textIds?.length
-        && !isBlankLongTextSelection(metadata) && !faces?.some(Boolean)) return null;
+        && !isBlankLongTextSelection(metadata) && !metadata?.worldBookEntryId && !faces?.some(Boolean)) return null;
     return {
         themeIds,
         formatIds,
+        ...(themeLabels.some(Boolean) ? { themeLabels } : {}),
         ...(formatLabels.some(Boolean) ? { formatLabels } : {}),
         ...(formatDescriptors.length ? { formatDescriptors } : {}),
         ...(hasExternalReferences ? { hasExternalReferences: true, externalSources } : {}),
@@ -493,6 +496,7 @@ export function recordRabbitMirrorRecipe({ chat = null, chatKey = '', messageInd
     const unchanged = existing
         && JSON.stringify(existing.themeIds || []) === JSON.stringify(compact.themeIds)
         && JSON.stringify(existing.formatIds || []) === JSON.stringify(compact.formatIds)
+        && JSON.stringify(existing.themeLabels || []) === JSON.stringify(compact.themeLabels || [])
         && JSON.stringify(existing.formatLabels || []) === JSON.stringify(compact.formatLabels || [])
         && JSON.stringify(existing.formatDescriptors || []) === JSON.stringify(compact.formatDescriptors || [])
         && JSON.stringify(presentationModeFields(existing)) === JSON.stringify(presentationModeFields(compact))
@@ -524,15 +528,23 @@ export function recordRabbitMirrorRecipe({ chat = null, chatKey = '', messageInd
     return written;
 }
 
+function recipeView(record, faceIndex, includeExternalOnly) {
+    if (!record || typeof record !== 'object') return null;
+    if (!Array.isArray(record.faces)) return decorateRecipe(record, includeExternalOnly);
+    if (!Number.isInteger(faceIndex) || faceIndex < 0 || faceIndex >= record.faces.length) return null;
+    const face = compactSelectionMetadata(record.faces[faceIndex], false);
+    const { requestedPresentationMode, presentationMode, blankLongText, textIds, textLabels,
+        themeLabels, formatDescriptors, formatLabels, customThemeCount, customFormatCount, customRequestCount, ...batchRecord } = record;
+    return face ? decorateRecipe({ ...batchRecord, hasExternalReferences: false, externalSources: [], ...face, faceIndex }, includeExternalOnly) : null;
+}
+
+export function recipeFromSelectionMetadata(metadata, { faceIndex = null, includeExternalOnly = false } = {}) {
+    const compact = compactSelectionMetadata(metadata);
+    return compact ? recipeView(compact, faceIndex, includeExternalOnly) : null;
+}
+
 export function getRabbitMirrorRecipe({ chatKey = '', messageIndex = -1, swipeId = -1, message = null, faceIndex = null, includeExternalOnly = false } = {}) {
-    const faceRecipe = record => {
-        if (!Array.isArray(record?.faces)) return decorateRecipe(record, includeExternalOnly);
-        if (!Number.isInteger(faceIndex) || faceIndex < 0 || faceIndex >= record.faces.length) return null;
-        const face = compactSelectionMetadata(record.faces[faceIndex], false);
-        const { requestedPresentationMode, presentationMode, blankLongText, textIds, textLabels,
-            formatDescriptors, formatLabels, customThemeCount, customFormatCount, customRequestCount, ...batchRecord } = record;
-        return face ? decorateRecipe({ ...batchRecord, hasExternalReferences: false, externalSources: [], ...face, faceIndex }, includeExternalOnly) : null;
-    };
+    const faceRecipe = record => recipeView(record, faceIndex, includeExternalOnly);
     const resolvedChatKey = String(chatKey || '').trim();
     const index = Number(messageIndex);
     if (!resolvedChatKey || !Number.isInteger(index) || index < 0) return null;
@@ -570,7 +582,8 @@ function decorateRecipe(record, includeExternalOnly = false) {
         if (id === LEGACY_AMBIGUOUS_FORMAT_ID) return { ...LEGACY_AMBIGUOUS_FORMAT_RECIPE_ITEM };
         return null;
     }).filter(Boolean);
-    if (!themes.length && !formats.length && !(includeExternalOnly && (record.hasExternalReferences || isBlankLongTextSelection(record)))) return null;
+    const textIds = compactIds(record?.textIds);
+    if (!themes.length && !formats.length && !(includeExternalOnly && (record.hasExternalReferences || isBlankLongTextSelection(record) || textIds.length || record.worldBookEntryId))) return null;
     return {
         ...record,
         // Existing favorite/blacklist callers see only known builtin IDs. The
