@@ -1,10 +1,10 @@
-import { presentationModeFields } from './presentationMode.js?rmv=1.6.4-longtext1';
+import { presentationModeFields } from './presentationMode.js?rmv=1.6.4-longtext2';
 import {
     commitPendingComboBatch,
     getCurrentChatKey,
     releasePendingComboBatch,
 } from './storage.js?rmv=1.5.53-visualquick1';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.6.4-longtext1';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.6.4-longtext2';
 import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, multifaceRecoveryWithinRawBudgets } from './multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
 
 const SNAPSHOT_STORAGE_KEY = 'rabbit_mirror_theater:generation_snapshots:v1';

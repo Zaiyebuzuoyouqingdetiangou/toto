@@ -1,4 +1,4 @@
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.6.4-longtext1';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.6.4-longtext2';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
 import { independentGenerationTiming } from './independentTiming.js?rmv=1.5.53-timing1';
@@ -78,6 +78,20 @@ function normalizeLotteryEntries(value) {
             content: String(raw.content || '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 1800),
         });
         if (result.length >= 80) break;
+    }
+    return result;
+}
+
+function normalizeLotteryBooks(value, entries = []) {
+    const source = Array.isArray(value) && value.length ? value : entries.map(entry => entry?.book);
+    const result = [];
+    const seen = new Set();
+    for (const raw of source) {
+        const book = String(raw || '').trim().slice(0, 240);
+        if (!book || seen.has(book)) continue;
+        seen.add(book);
+        result.push(book);
+        if (result.length >= 40) break;
     }
     return result;
 }
@@ -197,6 +211,7 @@ export const defaultSettings = Object.freeze({
     // builtin：兔子镜已有条目。worldbook：选中的世界书条目。both：按权重两边都抽。
     lotterySource: 'builtin',
     lotteryBuiltinPercent: 50,
+    lotteryBooks: [],
     lotteryEntries: [],
     facePagerPosition: 'top',
     writingStyle: '',
@@ -348,6 +363,8 @@ export function getSettings() {
     const builtinPercent = Number(settings.lotteryBuiltinPercent);
     settings.lotteryBuiltinPercent = Number.isFinite(builtinPercent) ? Math.max(0, Math.min(100, Math.round(builtinPercent))) : 50;
     settings.lotteryEntries = normalizeLotteryEntries(settings.lotteryEntries);
+    settings.lotteryBooks = normalizeLotteryBooks(settings.lotteryBooks, settings.lotteryEntries);
+    settings.lotteryEntries = settings.lotteryEntries.filter(entry => settings.lotteryBooks.includes(entry.book));
     settings.facePagerPosition = settings.facePagerPosition === 'bottom' ? 'bottom' : 'top';
     settings.writingStyle = typeof settings.writingStyle === 'string' ? settings.writingStyle.slice(0, 6000) : '';
     settings.independentReadCharacterWorldBook = settings.independentReadCharacterWorldBook === true;
@@ -480,6 +497,7 @@ export function updateSettings(patch) {
         const builtinPercent = Number(safePatch.lotteryBuiltinPercent);
         safePatch.lotteryBuiltinPercent = Number.isFinite(builtinPercent) ? Math.max(0, Math.min(100, Math.round(builtinPercent))) : 50;
     }
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'lotteryBooks')) safePatch.lotteryBooks = normalizeLotteryBooks(safePatch.lotteryBooks, []);
     if (Object.prototype.hasOwnProperty.call(safePatch, 'lotteryEntries')) safePatch.lotteryEntries = normalizeLotteryEntries(safePatch.lotteryEntries);
     if (Object.prototype.hasOwnProperty.call(safePatch, 'facePagerPosition')) safePatch.facePagerPosition = safePatch.facePagerPosition === 'bottom' ? 'bottom' : 'top';
     if (Object.prototype.hasOwnProperty.call(safePatch, 'writingStyle')) safePatch.writingStyle = typeof safePatch.writingStyle === 'string' ? safePatch.writingStyle.slice(0, 6000) : '';

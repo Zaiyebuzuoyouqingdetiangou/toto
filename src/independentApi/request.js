@@ -1,8 +1,8 @@
 // Split from independentApi.js — request.
 
-import { presentationModeFields, hasExplicitTextFace, normalizePresentationModes, normalizeLongTextSource } from '../presentationMode.js?rmv=1.6.4-longtext1';
+import { presentationModeFields, hasExplicitTextFace, normalizePresentationModes, normalizeLongTextSource } from '../presentationMode.js?rmv=1.6.4-longtext2';
 import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.6.4-creation1';
-import { getSettings } from '../settings.js?rmv=1.6.4-longtext1';
+import { getSettings } from '../settings.js?rmv=1.6.4-longtext2';
 import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.6';
 import { independentGenerationTiming } from '../independentTiming.js?rmv=1.5.53-timing1';
 import {
@@ -22,12 +22,12 @@ import {
     prepareSelectedMemoryForPrompt,
     memoryRequestSettingsKey,
     assertMemoryRequestSettings,
-} from '../promptBuilder.js?rmv=1.6.4-longtext1';
+} from '../promptBuilder.js?rmv=1.6.4-longtext2';
 import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.5.53-text1';
 import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.5.53-cn-boundary1';
-import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.6.4-longtext1';
+import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.6.4-longtext2';
 import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from '../multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.4-longtext1';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.4-longtext2';
 import {
     updateLatestVisualSignature,
     parseVisualFamilySkeleton,
@@ -47,7 +47,7 @@ import {
     getContext,
     hashText,
 } from './runtime.js?rmv=1.6';
-import { operationEpochForBase } from './flights.js?rmv=1.6.4-longtext1';
+import { operationEpochForBase } from './flights.js?rmv=1.6.4-longtext2';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INDEPENDENT_MAX_APPROX_DEPTH,
@@ -62,7 +62,7 @@ import {
     normalizedConfiguredTemperature,
     readHistoryStore,
     readStore,
-} from './persistence.js?rmv=1.6.4-longtext1';
+} from './persistence.js?rmv=1.6.4-longtext2';
 import {
     API_PROFILE_ORDER,
     chatKey,
@@ -96,7 +96,7 @@ import {
     stageNextApiProfile,
     swipeId,
     validatedIndependentConnectionProfile,
-} from './connection.js?rmv=1.6.4-longtext1';
+} from './connection.js?rmv=1.6.4-longtext2';
 import {
     externalGeometryCycleSequence,
     externalGeometryLifecycleEpoch,
@@ -107,7 +107,7 @@ import {
     writeExternalGeometryCycleSequence,
     writeExternalGeometryLifecycleEpoch,
     writeExternalGeometryLifecycleReason,
-} from './geometry.js?rmv=1.6.4-longtext1';
+} from './geometry.js?rmv=1.6.4-longtext2';
 import {
     INDEPENDENT_REJECTED_PREVIEW_MAX_CHARS,
     INDEPENDENT_REJECTED_PREVIEW_MAX_ENTRIES,
@@ -122,8 +122,8 @@ import {
     writeExternalHostSyncIndex,
     writeIndependentRejectedPreviewChars,
     writeIndependentRejectedPreviewSequence,
-} from './mount.js?rmv=1.6.4-longtext1';
-import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.6.4-longtext1';
+} from './mount.js?rmv=1.6.4-longtext2';
+import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.6.4-longtext2';
 
 const NON_STREAM_PROFILE_BY_STREAM_PROFILE={
  chat_system_user_full:'chat_system_user_full_nostream',
@@ -1508,7 +1508,7 @@ export function wireIndependentRejectedFaceControls(host){
    independentRejectedFaceControlsWired.add(resay);
    resay.addEventListener('click',event=>{
     event.preventDefault(); event.stopPropagation();
-    void import('../outputSanitizer/toolsChrome.js?rmv=1.6.4-longtext1').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+    void import('../outputSanitizer/toolsChrome.js?rmv=1.6.4-longtext2').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
    },true);
   }
  }
