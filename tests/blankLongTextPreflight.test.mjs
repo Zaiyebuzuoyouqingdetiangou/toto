@@ -119,4 +119,5 @@ test('exact external resay still hydrates its original recipe when current setti
     assert.equal(result.selectedRaw, 1);
     assert.equal(result.dispatch, 1);
     assert.equal(result.diagnostic.requestedPresentationMode, 'text');
+    assert.match(result.prompt, /可见文字和 HTML 都重新写/);
 });

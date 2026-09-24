@@ -38,7 +38,7 @@ import {
     markAutomaticFailureStop,
     operationEpochForBase,
     pending,
-} from './flights.js?rmv=1.6.4-resay4';
+} from './flights.js?rmv=1.6.4-resay5';
 import {
     appendHistoryEntry,
     chatPersistenceSlot,
@@ -48,7 +48,7 @@ import {
     synchronizeIndependentChatPersistence,
     writePersistedOwner,
     writeStore,
-} from './persistence.js?rmv=1.6.4-resay4';
+} from './persistence.js?rmv=1.6.4-resay5';
 import {
     activeGlobalWorldInfoCapture,
     assistantMessages,
@@ -98,7 +98,7 @@ import {
     withOwnerLockStoreBatch,
     writeActiveGlobalWorldInfoCapture,
     writeHostModule,
-} from './connection.js?rmv=1.6.4-resay4';
+} from './connection.js?rmv=1.6.4-resay5';
 import {
     allExternalHosts,
     externalHosts,
@@ -106,7 +106,7 @@ import {
     removeEmptyFollowExternalAnchors,
     removeEmptyInlineAnchors,
     withExternalHostSyncIndex,
-} from './request.js?rmv=1.6.4-resay4';
+} from './request.js?rmv=1.6.4-resay5';
 import {
     beginHostWorkTiming,
     clearExternalHostFreshSourceState,
@@ -139,7 +139,7 @@ import {
     setPlaceholderSummary,
     usableReadyDetails,
     withRestorableHtmlCacheBatch,
-} from './geometry.js?rmv=1.6.4-resay4';
+} from './geometry.js?rmv=1.6.4-resay5';
 import {
     INDEPENDENT_INTENT_OWNER,
     abortFlight,
@@ -193,7 +193,7 @@ import {
     serializeExternalFaceDetails,
     stampAutomaticAuthorizationEpoch,
     withHistoricalRestoreLightPass,
-} from './mount.js?rmv=1.6.4-resay4';
+} from './mount.js?rmv=1.6.4-resay5';
 import {
     automaticGenerationCutovers,
     hostGenerationHintStartedAt,
@@ -218,7 +218,7 @@ import {
     writeStartupHistoryFallbackRoot,
     writeSyncRunning,
     writeSyncTimer,
-} from './lifecycle.js?rmv=1.6.4-resay4';
+} from './lifecycle.js?rmv=1.6.4-resay5';
 
 let earlyBodyParserPromise=null;
 

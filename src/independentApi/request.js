@@ -22,12 +22,12 @@ import {
     prepareSelectedMemoryForPrompt,
     memoryRequestSettingsKey,
     assertMemoryRequestSettings,
-} from '../promptBuilder.js?rmv=1.6.4-resay4';
+} from '../promptBuilder.js?rmv=1.6.4-resay5';
 import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.5.53-text1';
 import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.5.53-cn-boundary1';
-import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.6.4-resay4';
+import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.6.4-resay5';
 import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from '../multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.4-resay4';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.4-resay5';
 import {
     updateLatestVisualSignature,
     parseVisualFamilySkeleton,
@@ -47,7 +47,7 @@ import {
     getContext,
     hashText,
 } from './runtime.js?rmv=1.6';
-import { operationEpochForBase } from './flights.js?rmv=1.6.4-resay4';
+import { operationEpochForBase } from './flights.js?rmv=1.6.4-resay5';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INDEPENDENT_MAX_APPROX_DEPTH,
@@ -62,7 +62,7 @@ import {
     normalizedConfiguredTemperature,
     readHistoryStore,
     readStore,
-} from './persistence.js?rmv=1.6.4-resay4';
+} from './persistence.js?rmv=1.6.4-resay5';
 import {
     API_PROFILE_ORDER,
     chatKey,
@@ -96,7 +96,7 @@ import {
     stageNextApiProfile,
     swipeId,
     validatedIndependentConnectionProfile,
-} from './connection.js?rmv=1.6.4-resay4';
+} from './connection.js?rmv=1.6.4-resay5';
 import {
     externalGeometryCycleSequence,
     externalGeometryLifecycleEpoch,
@@ -107,7 +107,7 @@ import {
     writeExternalGeometryCycleSequence,
     writeExternalGeometryLifecycleEpoch,
     writeExternalGeometryLifecycleReason,
-} from './geometry.js?rmv=1.6.4-resay4';
+} from './geometry.js?rmv=1.6.4-resay5';
 import {
     INDEPENDENT_REJECTED_PREVIEW_MAX_CHARS,
     INDEPENDENT_REJECTED_PREVIEW_MAX_ENTRIES,
@@ -122,8 +122,8 @@ import {
     writeExternalHostSyncIndex,
     writeIndependentRejectedPreviewChars,
     writeIndependentRejectedPreviewSequence,
-} from './mount.js?rmv=1.6.4-resay4';
-import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.6.4-resay4';
+} from './mount.js?rmv=1.6.4-resay5';
+import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.6.4-resay5';
 
 const NON_STREAM_PROFILE_BY_STREAM_PROFILE={
  chat_system_user_full:'chat_system_user_full_nostream',
@@ -1491,7 +1491,7 @@ export function wireIndependentRejectedFaceControls(host){
    independentRejectedFaceControlsWired.add(resay);
    resay.addEventListener('click',event=>{
     event.preventDefault(); event.stopPropagation();
-    void import('../outputSanitizer/toolsChrome.js?rmv=1.6.4-resay4').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+    void import('../outputSanitizer/toolsChrome.js?rmv=1.6.4-resay5').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
    },true);
   }
  }
@@ -1856,6 +1856,11 @@ ${feedbackFinalCheck}`:''}` : '';
 本轮重说补充：
 ${JSON.stringify(resayNote)}
 只把上面的想要和不要落实到这一面的视觉、排版、文字和交互。不得把这段说明显示在成品里，也不得因此更换已经指定的选题。`:'';
+ // 原选题重写只锁抽签。视觉冷却只要求换外观，模型会留下上一版句子和骨架。
+ const keepSelectionRewrite=!!resay && resay.freshSelection!==true && resay.retryFailedFace!==true;
+ const keepSelectionRewriteBlock=keepSelectionRewrite?`
+
+本轮是原选题重写：已经指定的主题 / 元素和展现形式必须原样保留，不得重抽或更换。这一面的成品要整篇重写，可见文字和 HTML 都重新写；不得沿用上一版的句子、按钮文案或页面骨架。`:'';
  const presentationFaces=Array.isArray(details.metadata?.faces)?details.metadata.faces:[details.metadata];
  const hasTextFace=presentationFaces.some(face=>face?.presentationMode==='text');
  const htmlFaceNumbers=presentationFaces.flatMap((face,index)=>face?.presentationMode==='text'?[]:[index+1]);
@@ -1870,7 +1875,7 @@ ${JSON.stringify(resayNote)}
 - 黑色、近黑色、深灰系统面板和蓝色科技 UI 不是默认高级感；仅在本轮内容或媒介明确需要暗视觉时使用。${visualGuard}`;
  // The selected editable rule is already rendered once in the frozen base plan.
  const independentBehaviorPatch='';
- const systemPrompt=`${basePrompt}${feedbackBlock}${resayNoteBlock}${independentBehaviorPatch?`
+ const systemPrompt=`${basePrompt}${feedbackBlock}${keepSelectionRewriteBlock}${resayNoteBlock}${independentBehaviorPatch?`
 
 ${independentBehaviorPatch}`:''}
 
@@ -1910,7 +1915,7 @@ ${independentUserTail}`;
  // 发送给独立模型的可编辑视觉层。这里只统计兔子镜扩展自己写入的规则，不把聊天、
  // 角色卡、世界书等上下文字符混进“兔子镜自身 Prompt”口径；上下文长度单独报告。
  recordRabbitMirrorIndependentPrompt({
-  extensionPrompt:[basePrompt,feedbackBlock,resayNoteBlock,independentBehaviorPatch,independentSystemRules,independentUserLead,executionLock,independentUserTail].filter(Boolean).join('\n\n'),
+  extensionPrompt:[basePrompt,feedbackBlock,keepSelectionRewriteBlock,resayNoteBlock,independentBehaviorPatch,independentSystemRules,independentUserLead,executionLock,independentUserTail].filter(Boolean).join('\n\n'),
   basePrompt,
   feedbackPrompt:feedbackBlock,
   executionLock,
