@@ -1,6 +1,6 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.6.4-longtext4';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.6.5';
 import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.5.53-cn-boundary1';
 import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.6';
 
@@ -258,14 +258,12 @@ export function buildRabbitMirrorSettingsDialogHtml() {
           </div>
           <div id="rh_external_library_actions" style="padding:10px 11px;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:10px;">
             <div style="font-weight:700;">把你的文字、玩法或世界书加入母本库</div>
-            <div style="font-size:12px;line-height:1.5;margin-top:4px;">母本库不会改写兔子镜自带的内置条目。感谢各位制作小剧场的老师，请征求作者同意后使用。</div>
+            <div style="font-size:12px;line-height:1.5;margin-top:4px;">母本库不会改写兔子镜自带的内置条目。导入和换设备会打开窗口；启用和勾选就在这一页。</div>
             <div class="rh-library-quick-actions">
               <button id="rh_external_plain_open" class="menu_button" type="button">粘贴文字</button>
               <button id="rh_external_file_open" class="menu_button" type="button">导入文件（TXT / MD / JSON）</button>
               <button id="rh_external_transfer_open" class="menu_button" type="button">换设备：导出／导入整库</button>
-              <button id="rh_external_worldbook_open" class="menu_button" type="button">管理母本库</button>
             </div>
-            <div style="font-size:12px;line-height:1.6;margin-top:8px;">首次导入：填写文字或选择文件 → 确认分类 → 保存 → 启用库，并打开“已启用的母本库参与抽签”。换设备：旧设备导出整库文件，再到新设备导入。</div>
           </div>
           <section id="rh_manual_entry_diag" style="margin-top:12px;padding:12px;border:1px solid currentColor;border-radius:10px;">
             <strong>手动生成没有外置框？</strong>
@@ -341,13 +339,7 @@ export function buildRabbitMirrorSettingsDialogHtml() {
           </div>
 
           <div id="rh_advanced_page_external" class="rh-advanced-page" data-title="母本库：导入与备份" style="display:none;">
-            <div style="font-size:12px;line-height:1.6;margin-bottom:10px;">想加入自己的小剧场，或把已导入的库带到另一台设备？都从这里操作；不导入也能直接使用兔子镜。</div>
-            <div style="display:grid;gap:7px;margin-bottom:10px;font-size:12px;line-height:1.55;">
-              <div><b>粘贴文字：</b>填名称、贴文字 → 读取并确认分类。主题是“演什么”，展现形式是“怎么玩” → 保存，无需转成 JSON。</div>
-              <div><b>导入文件：</b>选择 TXT / MD / JSON 或世界书文件 → 读取 → 确认分类 → 保存；兔子镜整库备份会自动进入导入确认。</div>
-              <div><b>换设备：</b>旧设备导出整库备份 → 把文件传到新设备 → 新设备导入 → 核对并确认保存。</div>
-              <div><b>启用方式：</b>内置是兔子镜自带的主题和展现形式。母本库是你另外导入的内容，不会改掉内置条目。新导入的库默认停用。保存后请在“管理母本库”启用新库，并打开“已启用的母本库参与抽签”。同编号的已有库会跳过、不覆盖，抽签总开关也不会自动替你打开。</div>
-            </div>
+            <div id="rh_external_inline_manage"></div>
           </div>
           <div id="rh_advanced_page_replacement" class="rh-advanced-page" data-title="🚫 禁词与文字替换" style="display:none;"></div>
           <div id="rh_advanced_page_generation" class="rh-advanced-page" data-title="生成与抽取" style="display:none;">

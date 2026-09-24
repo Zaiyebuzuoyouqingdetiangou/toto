@@ -368,6 +368,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
         back.hidden=history.length===0&&!searching;
         if(active==='theaterFavorites'||active==='favorites'||active==='blacklist')onNavigate('preferences');
         if(active==='books')onNavigate('books');
+        if(active==='library')onNavigate('library');
         sync();main.scrollTop=0;if(focus&&!back.hidden)back.focus({preventScroll:true});
     }
     function navigate(key,remember=true){

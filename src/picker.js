@@ -18,9 +18,9 @@ import {
     createPendingComboBatchPlan,
     findPendingComboBatchPlan,
 } from './storage.js?rmv=1.5.53-visualquick1';
-import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.6.4-longtext4';
+import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.6.5';
 import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.53-cn-boundary1';
-import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.6.4-longtext4';
+import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.6.5';
 import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.5.53-text1';
 import {
     chooseExternalSource,
