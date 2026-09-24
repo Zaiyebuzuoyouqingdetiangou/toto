@@ -84,8 +84,57 @@ function extractBalancedJsonObjects(text) {
     return results;
 }
 
+// thinking 模型常把推理写进正文。从头扫描的平衡扫描器一旦遇到推理文字里
+// 落单的 ASCII 引号，就会误以为进入字符串，之后引号开闭全部错位，推理之后那份
+// 完好的 JSON 因此取不出来。回退策略：从每个 '{' 各自重新开始扫描（不继承之前
+// 的引号状态），只接受含非空 prompt 的对象，取最后一个（答案通常在推理之后）。
+// 只在常规候选全部解析失败时才启用，因此凡是原本能成功的输入，路径完全不变。
+function recoverPlanAfterReasoning(text, limit = 400) {
+    const found = [];
+    let checked = 0;
+    for (let start = text.indexOf('{'); start !== -1 && checked < limit; start = text.indexOf('{', start + 1)) {
+        checked += 1;
+        let depth = 0, inString = false, escaped = false;
+        for (let i = start; i < text.length; i += 1) {
+            const ch = text[i];
+            if (inString) {
+                if (escaped) escaped = false;
+                else if (ch === '\\') escaped = true;
+                else if (ch === '"') inString = false;
+                continue;
+            }
+            if (ch === '"') inString = true;
+            else if (ch === '{') depth += 1;
+            else if (ch === '}' && --depth === 0) {
+                try {
+                    const value = JSON.parse(text.slice(start, i + 1));
+                    if (value && typeof value === 'object' && !Array.isArray(value)
+                        && typeof value.prompt === 'string' && value.prompt.trim()) found.push(value);
+                } catch { /* 这个起点不是合法 JSON，换下一个 */ }
+                break;
+            }
+        }
+    }
+    return found.length ? found[found.length - 1] : null;
+}
+
+// 推理闭合标签之后才是答案。推理里草拟过的 JSON 若被当作候选，可能在后面
+// 引号错位时被误选为最终结果——那样不会报错，而是直接拿草稿去生图。
+// 有闭合标签时先只解析其后的内容；找不到再退回全文。无推理标签的输出不受影响。
+function textAfterReasoning(text) {
+    const close = /<\/(?:think|thinking|reasoning|analysis)\s*>/gi;
+    let last = -1;
+    for (let match = close.exec(text); match; match = close.exec(text)) last = match.index + match[0].length;
+    return last >= 0 ? text.slice(last).trim() : text;
+}
+
 function parseImagePlanCandidates(text) {
     const trimmed = text.trim();
+    const answer = textAfterReasoning(trimmed);
+    // answer 不再含闭合标签，递归只会发生一层。
+    if (answer && answer !== trimmed) {
+        try { return parseImagePlanCandidates(answer); } catch { /* 退回全文 */ }
+    }
     const candidates = [trimmed];
     // Fenced ```json blocks anywhere in the reply (not only wrapping the whole text).
     for (const match of trimmed.matchAll(/```(?:json)?[ \t]*\r?\n([\s\S]*?)\n?[ \t]*```/gi)) {
@@ -102,6 +151,8 @@ function parseImagePlanCandidates(text) {
         try { return JSON.parse(clean); }
         catch { /* try the next candidate */ }
     }
+    const recovered = recoverPlanAfterReasoning(trimmed);
+    if (recovered) return recovered;
     throw new TypeError('画面构思没有返回有效 JSON；请查看或重新构思，不会自动重试。');
 }
 
