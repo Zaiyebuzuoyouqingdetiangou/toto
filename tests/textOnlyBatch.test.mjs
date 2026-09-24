@@ -82,11 +82,10 @@ test('external-only text pool never falls back to builtin themes or formats', as
     assert.ok(batch.every(face => face.combo.textIds[0] === f.ids[0] && !face.combo.themeIds.length && !face.combo.formatIds.length));
 });
 
-test('blank longtext supports three empty recipes without accessing any text candidate', async () => {
+test('longtext does not stay blank when themes, formats and text entries are all unavailable', async () => {
     const f = await fixture('longtext', 'blank', 0);
-    const batch = f.picker.pickCombinationBatch(f.settings, 'blank', f.context, 3);
-    assert.equal(batch.length, 3);
-    assert.ok(batch.every(face => face.combo.blankLongText && face.combo.textIds.length === 0));
+    assert.throws(() => f.picker.pickCombinationBatch(f.settings, 'blank', f.context, 3),
+        error => error.reasonCode === 'BATCH_CANDIDATE_POOL_EXHAUSTED');
 });
 
 test('text candidates do not silently substitute for an explicitly requested HTML sibling', async () => {

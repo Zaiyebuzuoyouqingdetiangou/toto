@@ -27,7 +27,7 @@ export function isTextPresentation(source) {
 export function hasExplicitTextFace(settings) {
     const count = Math.min(5, Math.max(1, Number(settings?.rabbitMirrorFaceCount) || 1));
     return normalizePresentationModes(settings?.rabbitMirrorPresentationModes).slice(0, count)
-        .some(mode => mode === 'text' || (mode === 'longtext' && normalizeLongTextSource(settings?.longTextSource) === 'text'));
+        .some(mode => mode === 'text');
 }
 
 export function visualSceneryCombinationEnabled(settings) {

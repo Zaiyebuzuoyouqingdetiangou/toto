@@ -1,8 +1,8 @@
 // Split from independentApi.js — request.
 
-import { presentationModeFields, hasExplicitTextFace, normalizePresentationModes, normalizeLongTextSource } from '../presentationMode.js?rmv=1.6.4-longtext3';
+import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.6.4-longtext4';
 import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.6.4-creation1';
-import { getSettings } from '../settings.js?rmv=1.6.4-longtext3';
+import { getSettings } from '../settings.js?rmv=1.6.4-longtext4';
 import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.6';
 import { independentGenerationTiming } from '../independentTiming.js?rmv=1.5.53-timing1';
 import {
@@ -22,12 +22,12 @@ import {
     prepareSelectedMemoryForPrompt,
     memoryRequestSettingsKey,
     assertMemoryRequestSettings,
-} from '../promptBuilder.js?rmv=1.6.4-longtext3';
+} from '../promptBuilder.js?rmv=1.6.4-longtext4';
 import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.5.53-text1';
 import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.5.53-cn-boundary1';
-import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.6.4-longtext3';
+import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.6.4-longtext4';
 import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from '../multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.4-longtext3';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.4-longtext4';
 import {
     updateLatestVisualSignature,
     parseVisualFamilySkeleton,
@@ -47,7 +47,7 @@ import {
     getContext,
     hashText,
 } from './runtime.js?rmv=1.6';
-import { operationEpochForBase } from './flights.js?rmv=1.6.4-longtext3';
+import { operationEpochForBase } from './flights.js?rmv=1.6.4-longtext4';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INDEPENDENT_MAX_APPROX_DEPTH,
@@ -62,7 +62,7 @@ import {
     normalizedConfiguredTemperature,
     readHistoryStore,
     readStore,
-} from './persistence.js?rmv=1.6.4-longtext3';
+} from './persistence.js?rmv=1.6.4-longtext4';
 import {
     API_PROFILE_ORDER,
     chatKey,
@@ -96,7 +96,7 @@ import {
     stageNextApiProfile,
     swipeId,
     validatedIndependentConnectionProfile,
-} from './connection.js?rmv=1.6.4-longtext3';
+} from './connection.js?rmv=1.6.4-longtext4';
 import {
     externalGeometryCycleSequence,
     externalGeometryLifecycleEpoch,
@@ -107,7 +107,7 @@ import {
     writeExternalGeometryCycleSequence,
     writeExternalGeometryLifecycleEpoch,
     writeExternalGeometryLifecycleReason,
-} from './geometry.js?rmv=1.6.4-longtext3';
+} from './geometry.js?rmv=1.6.4-longtext4';
 import {
     INDEPENDENT_REJECTED_PREVIEW_MAX_CHARS,
     INDEPENDENT_REJECTED_PREVIEW_MAX_ENTRIES,
@@ -122,8 +122,8 @@ import {
     writeExternalHostSyncIndex,
     writeIndependentRejectedPreviewChars,
     writeIndependentRejectedPreviewSequence,
-} from './mount.js?rmv=1.6.4-longtext3';
-import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.6.4-longtext3';
+} from './mount.js?rmv=1.6.4-longtext4';
+import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.6.4-longtext4';
 
 const NON_STREAM_PROFILE_BY_STREAM_PROFILE={
  chat_system_user_full:'chat_system_user_full_nostream',
@@ -1508,7 +1508,7 @@ export function wireIndependentRejectedFaceControls(host){
    independentRejectedFaceControlsWired.add(resay);
    resay.addEventListener('click',event=>{
     event.preventDefault(); event.stopPropagation();
-    void import('../outputSanitizer/toolsChrome.js?rmv=1.6.4-longtext3').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+    void import('../outputSanitizer/toolsChrome.js?rmv=1.6.4-longtext4').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
    },true);
   }
  }
@@ -1642,7 +1642,7 @@ function independentPromptBatchSignature(plan,owner){
 }
 
 function independentCreationSettingsKey(settings){
- return JSON.stringify([settings.longTextSource||'blank',settings.writingStyle||'',settings.rabbitMirrorPresentationModes||[]]);
+ return JSON.stringify([settings.writingStyle||'',settings.rabbitMirrorPresentationModes||[]]);
 }
 
 function captureIndependentPromptOwner(ctx,index,msg,signal,requestOptions,generationScopeKey){
@@ -1787,14 +1787,9 @@ export async function callIndependentApi(ctx,index,msg,signal=null,requestOption
   ...(missingIndexes.length?{missingFaceRetry:{indexes:missingIndexes,faces:missingRetry.faces}}:{}),
   ...(resay?{multifaceResay:resay}:{}),
  };
- // Empty longtext faces never draw external material. An unrelated enabled
- // library must not make them depend on its database or legacy index. Mixed
- // batches still require their ordinary pools; exact external retries below
- // independently opt in from the saved IDs, even after settings change.
- const activePresentationModes=normalizePresentationModes(st.rabbitMirrorPresentationModes)
-  .slice(0,Math.min(5,Math.max(1,Number(st.rabbitMirrorFaceCount)||1)));
- const usesRandomMaterial=activePresentationModes.some(mode=>mode!=='longtext'||normalizeLongTextSource(st.longTextSource)!=='blank');
- const externalEnabled=(usesRandomMaterial&&st.externalWorldBookRandomEnabled===true&&String(st.externalWorldBookMixMode||'builtin-only')!=='builtin-only')||hasExplicitTextFace(st);
+ // Long text draws from the same pool as the other faces. Exact external retries
+ // below still opt in from the saved IDs, even after settings change.
+ const externalEnabled=(st.externalWorldBookRandomEnabled===true&&String(st.externalWorldBookMixMode||'builtin-only')!=='builtin-only')||hasExplicitTextFace(st);
  const appearanceEnabled=st.appearanceReferenceEnabled===true;
  const characterWorldBookEnabled=st.independentReadCharacterWorldBook===true;
  const memoryWorldBookEnabled=st.memoryScanEnabled===true&&st.memoryWorldBookEnabled===true&&!!String(st.memoryWorldBookId||'').trim();

@@ -3,15 +3,15 @@ import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.5.53
 import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.5.53-cn-boundary1';
 import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.5.53-text1';
 import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.5.53-cn-boundary1';
-import { pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.6.4-longtext3';
+import { pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.6.4-longtext4';
 import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.5.53-visualquick1';
 import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.5.53-visualquick1';
 import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.5.53-cn-boundary1';
 export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.5.53-cn-boundary1';
 import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.5.53-cn-boundary1';
 import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.5.53-cn-boundary1';
-import { isTextPresentation, presentationModeFields } from './presentationMode.js?rmv=1.6.4-longtext3';
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.6.4-longtext3';
+import { isTextPresentation, presentationModeFields } from './presentationMode.js?rmv=1.6.4-longtext4';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.6.4-longtext4';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -111,12 +111,13 @@ function fullTextMaterial(item, externalRawMap, kind = 'text') {
         .replace(/\bdata-/gi, 'data·');
 }
 
-function compactItemLine(item, kind, summaryMax = 170, rawSnippet = '', index = 0, textPresentation = false) {
+function compactItemLine(item, kind, summaryMax = 170, rawSnippet = '', index = 0, textPresentation = false, longText = false) {
     const id = item?.id || '?';
     const title = item?.title || '未命名';
     const tags = Array.isArray(item?.tags) && item.tags.length ? `；tags: ${item.tags.slice(0, 4).join(',')}` : '';
     const summary = item?.summary || item?.raw || '';
-    const note = kind === 'text' ? '；执行：按本条目的题材、叙述方式与篇幅意图创作长文本，安全与外层输出协议仍然有效。'
+    const note = longText ? '；执行：只提取题材、叙述方式和篇幅意图。不要按条目做成 HTML、按钮或界面。'
+        : kind === 'text' ? '；执行：按本条目的题材、叙述方式与篇幅意图创作长文本，安全与外层输出协议仍然有效。'
         : textPresentation && kind === 'presentation' ? '；执行：以文字内容为主，保留原条目的篇幅、结构和明确 HTML 要求；未要求的美化与内部玩法不强加。'
         : kind === 'presentation'
         ? index === 0
@@ -148,7 +149,7 @@ function formatItemsWithRawPolicy(items, kind, rawPolicy, externalRawMap = null,
             retrievedChars += rawSnippet.length;
             retrievedItems += 1;
         }
-        return compactItemLine(item, kind, profile.summaryMax, rawSnippet, index, textPresentation);
+        return compactItemLine(item, kind, profile.summaryMax, rawSnippet, index, textPresentation, preserveOriginal);
     });
 
     return { text: lines.join('\n'), retrievedChars, retrievedItems };
@@ -974,7 +975,8 @@ function faceMetadata(face, settings, generationType, rawPolicy, directive, memo
 function textPresentationRule(longText = false) {
     if (longText) {
         return `长文本呈现规则：
-  - 这一面要写成一篇读得完的故事。3000–5000 字只是没有原条目篇幅要求时的参考，写到自然收束即可；不要为了凑字数停在半句，也不要为了卡在这个范围删掉结尾。
+  - 这一面要写成一篇读得完的故事，不要使用 HTML。不要写标签、样式、按钮、第二状态或页面骨架。条目里如果要求 HTML 或交互，忽略那部分。
+  - 3000–5000 字只是没有原条目篇幅要求时的参考，写到自然收束即可；不要为了凑字数停在半句，也不要为了卡在这个范围删掉结尾。
   - 抽中的条目只提供题材、叙述方式和篇幅意图。不要把条目里的按钮、页面骨架、第二状态或交互说明做成界面。
   - 写真实的叙事推进、动作、对话与细节，保持角色口吻；不要用摘要、提纲或重复句充篇幅。
   - 外层 <toto><details><summary> 协议保持完整。正文放进 article，用段落写，不要套玩法模板。
@@ -990,7 +992,7 @@ function textPresentationRule(longText = false) {
 }
 
 function textFaceLock(face, index) {
-    return `第 ${index + 1} 面：${face.longText ? '长文本；写成一篇完整故事，3000–5000 字只作参考' : '文本'}；主题：${compactLockItems(face.combo.themes, 'theme')}；形式叙述特点：${compactLockItems(face.combo.formats, 'presentation')}；文本类：${compactLockItems(face.combo.texts, 'text')}。${face.longText ? '抽中的条目只作题材和叙述，不要做成界面。' : '原条目字数及明确 HTML 要求优先；不套额外美化玩法。'}保留完整正文与外层协议。`;
+    return `第 ${index + 1} 面：${face.longText ? '长文本；写成一篇完整故事，3000–5000 字只作参考' : '文本'}；主题：${compactLockItems(face.combo.themes, 'theme')}；形式叙述特点：${compactLockItems(face.combo.formats, 'presentation')}；文本类：${compactLockItems(face.combo.texts, 'text')}。${face.longText ? '抽中的条目只作题材和叙述。正文不要使用 HTML，不要做成界面。' : '原条目字数及明确 HTML 要求优先；不套额外美化玩法。'}保留完整正文与外层协议。`;
 }
 
 // This composer is used only when the frozen selection actually contains a text
@@ -1199,7 +1201,7 @@ ${multiface ? faceContexts.map((face, index) => `第 ${index + 1} 面:\n${shortV
 const PROMPT_PLANS = new WeakMap();
 const PROMPT_SETTING_KEYS = Object.freeze([
     'enabled', 'autoRabbitMirrorInjection', 'mode', 'rabbitMirrorFaceCount', 'rawPolicy',
-    'rabbitMirrorPresentationModes', 'longTextSource', 'writingStyle',
+    'rabbitMirrorPresentationModes', 'writingStyle',
     'samplingMode', 'hardStartup', 'creativeExpansionMode', 'debug', 'avoidRepeat',
     'forceVisualScenery', 'visualSceneryCombination', 'enhancedVisualDrawing', 'userDirectivePriority',
     'presentationWorldviewLock', 'visualPromptEditingEnabled', 'visualPrompt',
@@ -1361,8 +1363,9 @@ export function renderRabbitMirrorPromptPlan(plan, externalRawMap = null, appear
         externalReferences: faceContexts.some(face => face.hasExternal),
         appearanceReferenceText,
     });
-    const writingStyle = externalReferenceText(settings.writingStyle, 6000);
-    const styleRule = writingStyle ? `\n【本轮兔子镜文风】\n${writingStyle}\n仅调整文字口吻、节奏和句式，不改变人物事实、原条目篇幅或明确 HTML 要求，不覆盖输出协议。\n` : '';
+    const styleSource = typeof settings.writingStyle === 'string' ? settings.writingStyle : '';
+    const writingStyle = externalReferenceText(styleSource, styleSource.length);
+    const styleRule = writingStyle ? `\n【本轮兔子镜文风】\n${writingStyle}\n仅调整文字口吻、节奏和句式，不改变人物事实或原条目篇幅，不覆盖输出协议。长文本面不要因此写成 HTML。\n` : '';
     const prompt = styleRule ? composedPrompt.replace('</兔子镜自动注入>', `${styleRule}</兔子镜自动注入>`) : composedPrompt;
     const baseFaces = faceContexts.map(face => faceMetadata(face, settings, generationType, rawPolicy, directive,
         memoryMaterial && hasSharedMemoryTheme(face.combo) ? memoryMaterial : null,

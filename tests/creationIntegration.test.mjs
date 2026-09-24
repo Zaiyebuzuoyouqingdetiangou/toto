@@ -22,10 +22,8 @@ test('settings UI saves and clears style and persists all new choices through re
     $('#rh_writing_style').val('用具体动作表达感情');
     $('#rh_writing_style_save').handlers.click();
     assert.equal(config.getSettings().writingStyle, '用具体动作表达感情');
-    $('#rh_long_text_source').handlers.change({ target: { value: 'mixed' } });
     $('#rh_image_composition').handlers.change({ target: { value: 'auto' } });
     $('#rh_character_world_book').handlers.change({ target: { checked: true } });
-    assert.equal(config.getSettings().longTextSource, 'mixed');
     assert.equal(config.getSettings().imageCompositionMode, 'auto');
     assert.equal(config.getSettings().independentReadCharacterWorldBook, true);
     $('#rh_writing_style_clear').handlers.click();
@@ -66,7 +64,6 @@ test('asynchronous creation rejects changed style, source, worldbook switch, bin
     const functions = request.slice(request.indexOf('function independentCreationSettingsKey('), request.indexOf('async function loadIndependentAppearanceReference('));
     for (const change of [
         (st) => { st.writingStyle = '新文风'; },
-        (st) => { st.longTextSource = 'mixed'; },
         (st) => { st.independentReadCharacterWorldBook = false; },
         (st, ctx) => { ctx.characters[0].data.extensions.world = '另一本'; },
         (st, ctx) => { ctx.characterId = 1; },

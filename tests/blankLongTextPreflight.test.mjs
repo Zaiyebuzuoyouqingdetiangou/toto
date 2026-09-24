@@ -64,24 +64,19 @@ async function runRequest(overrides = {}, { stale = false, unavailable = false, 
     return { ...counters, error };
 }
 
-test('blank longtext reaches dispatch without unrelated stale external indexes, including all-blank batches', async () => {
+test('longtext with enabled mother libraries still waits for a rebuilt index', async () => {
     for (const count of [1, 3]) {
         const result = await runRequest({ rabbitMirrorFaceCount: count, rabbitMirrorPresentationModes: Array(count).fill('longtext') }, { stale: true });
-        assert.equal(result.error?.code, 'TEST_DISPATCH_CAPTURED');
-        assert.equal(result.dispatch, 1);
-        assert.equal(result.hydrate, 0);
-        assert.equal(result.selectedRaw, 0);
-        const faces = result.diagnostic.faces || [result.diagnostic];
-        assert.ok(faces.every(face => face.blankLongText === true));
-        assert.match(result.prompt, /3000–5000/);
+        assert.equal(result.error?.code, 'WORLD_BOOK_ENTRY_STATE_CONFLICT');
+        assert.equal(result.error?.details?.reason, 'metadata-rebuild-required');
+        assert.equal(result.dispatch, 0);
     }
 });
 
-test('blank longtext never opens an unavailable external database', async () => {
+test('longtext does not skip an unavailable mother-library database', async () => {
     const result = await runRequest({}, { unavailable: true });
-    assert.equal(result.error?.code, 'TEST_DISPATCH_CAPTURED');
-    assert.equal(result.hydrate, 0);
-    assert.equal(result.dispatch, 1);
+    assert.equal(result.error?.code, 'WORLD_BOOK_STORAGE_UNAVAILABLE');
+    assert.equal(result.dispatch, 0);
 });
 
 test('HTML siblings and mixed-source longtext retain the external index preflight', async () => {
@@ -96,10 +91,9 @@ test('HTML siblings and mixed-source longtext retain the external index prefligh
     }
 });
 
-test('legacy text and longtext text-source still hydrate and send the selected material with the global switch off', async () => {
+test('an explicit text face still hydrates and sends the selected material with the global switch off', async () => {
     for (const overrides of [
         { rabbitMirrorPresentationModes: ['text'] },
-        { longTextSource: 'text' },
     ]) {
         const result = await runRequest({ externalWorldBookRandomEnabled: false, ...overrides });
         assert.equal(result.error?.code, 'TEST_DISPATCH_CAPTURED');

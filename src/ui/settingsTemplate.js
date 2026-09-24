@@ -1,6 +1,6 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.6.4-longtext3';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.6.4-longtext4';
 import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.5.53-cn-boundary1';
 import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.6';
 
@@ -102,12 +102,6 @@ export function buildRabbitMirrorSettingsDialogHtml() {
                 <button id="rh_behavior_rule_reset" class="menu_button" type="button" style="min-height:44px;">恢复默认</button>
               </div>
               <div id="rh_behavior_rule_status" role="status" aria-live="polite" style="font-size:13px;line-height:1.6;"></div>
-              <label for="rh_writing_style" style="display:block;font-weight:700;margin:14px 0 8px;">文风</label>
-              <textarea id="rh_writing_style" class="text_pole" rows="4" maxlength="6000" aria-describedby="rh_writing_style_help" style="width:100%;box-sizing:border-box;resize:vertical;"></textarea>
-              <p id="rh_writing_style_help">作用于兔子镜的文字表达（跟随与独立模式均有效）。例如叙述口吻、节奏、句式；不覆盖原条目的篇幅、HTML 要求或角色设定。留空不追加文风。</p>
-              <button id="rh_writing_style_save" class="menu_button" type="button" style="min-height:44px;">保存文风</button>
-              <button id="rh_writing_style_clear" class="menu_button" type="button" style="min-height:44px;">清空文风</button>
-              <p id="rh_writing_style_status" role="status" aria-live="polite"></p>
             </div>
           </details>
           <div id="rh_independent_api_fields" style="display:grid;gap:9px;">
@@ -264,14 +258,14 @@ export function buildRabbitMirrorSettingsDialogHtml() {
           </div>
           <div id="rh_external_library_actions" style="padding:10px 11px;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:10px;">
             <div style="font-weight:700;">把你的文字、玩法或世界书加入母本库</div>
-            <div style="font-size:12px;line-height:1.5;margin-top:4px;">不会进入兔子镜内置，感谢各位制作小剧场的老师，请征求作者同意后使用。</div>
+            <div style="font-size:12px;line-height:1.5;margin-top:4px;">母本库不会改写兔子镜自带的内置条目。感谢各位制作小剧场的老师，请征求作者同意后使用。</div>
             <div class="rh-library-quick-actions">
               <button id="rh_external_plain_open" class="menu_button" type="button">粘贴文字</button>
               <button id="rh_external_file_open" class="menu_button" type="button">导入文件（TXT / MD / JSON）</button>
               <button id="rh_external_transfer_open" class="menu_button" type="button">换设备：导出／导入整库</button>
               <button id="rh_external_worldbook_open" class="menu_button" type="button">管理母本库</button>
             </div>
-            <div style="font-size:12px;line-height:1.6;margin-top:8px;">首次导入：填写文字或选择文件 → 确认分类 → 保存 → 启用库并打开外部抽签。换设备：旧设备导出整库文件，再到新设备导入。</div>
+            <div style="font-size:12px;line-height:1.6;margin-top:8px;">首次导入：填写文字或选择文件 → 确认分类 → 保存 → 启用库，并打开“已启用的母本库参与抽签”。换设备：旧设备导出整库文件，再到新设备导入。</div>
           </div>
           <section id="rh_manual_entry_diag" style="margin-top:12px;padding:12px;border:1px solid currentColor;border-radius:10px;">
             <strong>手动生成没有外置框？</strong>
@@ -352,7 +346,7 @@ export function buildRabbitMirrorSettingsDialogHtml() {
               <div><b>粘贴文字：</b>填名称、贴文字 → 读取并确认分类。主题是“演什么”，展现形式是“怎么玩” → 保存，无需转成 JSON。</div>
               <div><b>导入文件：</b>选择 TXT / MD / JSON 或世界书文件 → 读取 → 确认分类 → 保存；兔子镜整库备份会自动进入导入确认。</div>
               <div><b>换设备：</b>旧设备导出整库备份 → 把文件传到新设备 → 新设备导入 → 核对并确认保存。</div>
-              <div><b>启用方式：</b>新导入的库默认停用。保存后请在“管理母本库”启用新库，并打开“外部母本参与抽签”。同编号的已有库会跳过、不覆盖，抽签总开关也不会自动替你打开。</div>
+              <div><b>启用方式：</b>内置是兔子镜自带的主题和展现形式。母本库是你另外导入的内容，不会改掉内置条目。新导入的库默认停用。保存后请在“管理母本库”启用新库，并打开“已启用的母本库参与抽签”。同编号的已有库会跳过、不覆盖，抽签总开关也不会自动替你打开。</div>
             </div>
           </div>
           <div id="rh_advanced_page_replacement" class="rh-advanced-page" data-title="🚫 禁词与文字替换" style="display:none;"></div>
@@ -377,7 +371,7 @@ export function buildRabbitMirrorSettingsDialogHtml() {
               <p class="rabbit-mirror-subnote">0% 表示自动仍按抽中的类别呈现。改这里只影响之后新抽的面，不会改写已经生成的成品。</p>
               <label for="rh_lottery_source">抽什么</label>
               <select id="rh_lottery_source" class="text_pole" style="min-height:44px;width:100%;">
-                <option value="builtin">兔子镜已有条目（黑名单和收藏仍然生效）</option>
+                <option value="builtin">兔子镜已有条目（自带条目和已启用的母本库）</option>
                 <option value="worldbook">只抽选中的世界书条目</option>
                 <option value="both">两边都抽</option>
               </select>
@@ -392,9 +386,17 @@ export function buildRabbitMirrorSettingsDialogHtml() {
                 <div id="rh_lottery_entries"></div>
                 <p class="rabbit-mirror-subnote">先勾选世界书，再点开那一本查看条目。条目原文按世界书里的样子显示，这里不能改。选中的条目才会进入抽签，不会改酒馆世界书原来的开启或关闭。</p>
               </div>
-              <label for="rh_long_text_source">长文本素材来源</label>
-              <select id="rh_long_text_source" class="text_pole" style="min-height:44px;min-width:0;width:100%;max-width:100%;"><option value="blank">空白小剧场：按人物、语境和点菜自由写作</option><option value="mixed">常规抽取：按当前内置／外置设置</option><option value="text">只抽已启用的独立文本条目</option></select>
-              <p class="rabbit-mirror-subnote">仅作用于长文本面。空白小剧场不抽主题或展现形式，不套美化模板；只抽文本条目时，候选仅限文本类。</p>
+              <p class="rabbit-mirror-subnote">长文本和 HTML 抽同一池，跟上面的「抽什么」走。长文本写成故事，不要写成 HTML；条目里的按钮、页面和交互都不当界面。</p>
+              <div>
+                <p class="rabbit-mirror-subnote">母本库是导入后分成主题、展现形式、文本的库。内置是兔子镜自带的条目。启用那本库，并打开「已启用的母本库参与抽签」，母本库才会进入「兔子镜已有条目」。上面的世界书不导入，按选中的原文抽一条。</p>
+                <button id="rh_lottery_open_library" class="menu_button" type="button">管理母本库</button>
+              </div>
+              <label for="rh_writing_style" style="display:block;font-weight:700;margin-top:8px;">文风（可选）</label>
+              <textarea id="rh_writing_style" class="text_pole" rows="4" aria-describedby="rh_writing_style_help" style="width:100%;box-sizing:border-box;resize:vertical;"></textarea>
+              <p id="rh_writing_style_help" class="rabbit-mirror-subnote">只改兔子镜的口吻、节奏和句式，跟随和独立模式都有效。留空不追加。不改人物事实，也不把长文本写成 HTML。</p>
+              <button id="rh_writing_style_save" class="menu_button" type="button" style="min-height:44px;">保存文风</button>
+              <button id="rh_writing_style_clear" class="menu_button" type="button" style="min-height:44px;">清空文风</button>
+              <p id="rh_writing_style_status" role="status" aria-live="polite"></p>
             </div>
             <label for="rh_sampling_mode" class="flex-container alignitemscenter" style="gap:8px;flex-wrap:wrap;margin:8px 0;">
               <span>抽取模式</span>

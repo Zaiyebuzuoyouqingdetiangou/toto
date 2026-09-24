@@ -1,4 +1,4 @@
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.6.4-longtext3';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.6.4-longtext4';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
 import { independentGenerationTiming } from './independentTiming.js?rmv=1.5.53-timing1';
@@ -366,7 +366,7 @@ export function getSettings() {
     settings.lotteryBooks = normalizeLotteryBooks(settings.lotteryBooks, settings.lotteryEntries);
     settings.lotteryEntries = settings.lotteryEntries.filter(entry => settings.lotteryBooks.includes(entry.book));
     settings.facePagerPosition = settings.facePagerPosition === 'bottom' ? 'bottom' : 'top';
-    settings.writingStyle = typeof settings.writingStyle === 'string' ? settings.writingStyle.slice(0, 6000) : '';
+    settings.writingStyle = typeof settings.writingStyle === 'string' ? settings.writingStyle : '';
     settings.independentReadCharacterWorldBook = settings.independentReadCharacterWorldBook === true;
     settings.imageCompositionMode = settings.imageCompositionMode === 'auto' ? 'auto' : 'scene';
     const faceCount = settings.rabbitMirrorFaceCount;
@@ -500,7 +500,7 @@ export function updateSettings(patch) {
     if (Object.prototype.hasOwnProperty.call(safePatch, 'lotteryBooks')) safePatch.lotteryBooks = normalizeLotteryBooks(safePatch.lotteryBooks, []);
     if (Object.prototype.hasOwnProperty.call(safePatch, 'lotteryEntries')) safePatch.lotteryEntries = normalizeLotteryEntries(safePatch.lotteryEntries);
     if (Object.prototype.hasOwnProperty.call(safePatch, 'facePagerPosition')) safePatch.facePagerPosition = safePatch.facePagerPosition === 'bottom' ? 'bottom' : 'top';
-    if (Object.prototype.hasOwnProperty.call(safePatch, 'writingStyle')) safePatch.writingStyle = typeof safePatch.writingStyle === 'string' ? safePatch.writingStyle.slice(0, 6000) : '';
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'writingStyle')) safePatch.writingStyle = typeof safePatch.writingStyle === 'string' ? safePatch.writingStyle : '';
     if (Object.prototype.hasOwnProperty.call(safePatch, 'independentReadCharacterWorldBook')) safePatch.independentReadCharacterWorldBook = safePatch.independentReadCharacterWorldBook === true;
     if (Object.prototype.hasOwnProperty.call(safePatch, 'imageCompositionMode')) safePatch.imageCompositionMode = safePatch.imageCompositionMode === 'auto' ? 'auto' : 'scene';
     if (Object.prototype.hasOwnProperty.call(safePatch, 'imagePromptFormat')) safePatch.imagePromptFormat = safePatch.imagePromptFormat === 'nai45-tags' ? 'nai45-tags' : 'nai5-natural';

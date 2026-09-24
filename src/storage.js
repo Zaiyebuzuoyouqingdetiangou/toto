@@ -1,4 +1,4 @@
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.6.4-longtext3';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.6.4-longtext4';
 import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.5.53-cn-boundary1';
 import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.6';
 

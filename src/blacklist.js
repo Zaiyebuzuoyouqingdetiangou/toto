@@ -1,6 +1,6 @@
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.6.4-longtext3';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.6.4-longtext4';
 import { compactFormatDescriptors, isExternalSelectionId } from './selectionImageMetadata.js?rmv=1.6.4-creation1';
-import { getSettings, updateSettings } from './settings.js?rmv=1.6.4-longtext3';
+import { getSettings, updateSettings } from './settings.js?rmv=1.6.4-longtext4';
 import { getCurrentChatKey, resetFormatEligibleMisses } from './storage.js?rmv=1.5.53-visualquick1';
 import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.5.53-cn-boundary1';
 import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.53-cn-boundary1';

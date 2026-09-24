@@ -20,32 +20,25 @@ async function fixture(overrides = {}) {
 const blankRecipe = () => ({ requestedPresentationMode: 'longtext', presentationMode: 'text', blankLongText: true,
     themeIds: [], formatIds: [], textIds: [] });
 
-test('default longtext is blank context writing and its metadata stays explicit', async () => {
+test('default longtext draws the same pool as the other faces', async () => {
     const f = await fixture();
-    const result = f.picker.pickCombination(f.settings, 'blank-default');
-    assert.deepEqual(clone(result.combo.themeIds), []);
-    assert.deepEqual(clone(result.combo.formatIds), []);
+    const result = f.picker.pickCombination(f.settings, 'long-default');
+    assert.ok(result.combo.themeIds.length > 0);
+    assert.ok(result.combo.formatIds.length > 0);
     assert.equal(result.combo.requestedPresentationMode, 'longtext');
     assert.equal(result.combo.presentationMode, 'text');
-    assert.equal(result.combo.blankLongText, true);
-    assert.notEqual(result.combo.customDirective, true);
-    assert.equal(f.presentation.isBlankLongTextSelection(result.combo), true);
-    assert.equal(f.presentation.presentationModeFields(result.combo).blankLongText, true);
+    assert.notEqual(result.combo.blankLongText, true);
+    assert.equal(f.presentation.isBlankLongTextSelection(result.combo), false);
 });
 
-test('five blank longtext faces can freeze and survive stored batch recovery with no drawable formats', async () => {
+test('longtext does not invent a blank recipe when nothing can be drawn', async () => {
     const f = await fixture();
     const { THEMATIC_CATEGORIES } = await f.runtime.load('data/structured/thematicIndex.js');
     const { PRESENTATION_FORMATS } = await f.runtime.load('data/structured/presentationIndex.js');
     f.settings.blacklistedThemeIds = THEMATIC_CATEGORIES.map(item => item.id);
     f.settings.blacklistedFormatIds = PRESENTATION_FORMATS.map(item => item.id);
-    const result = f.picker.pickCombinationBatch(f.settings, 'blank-five', f.context, 5);
-    assert.equal(result.length, 5);
-    assert.ok(result.every(face => face.combo.blankLongText === true && face.combo.formatIds.length === 0));
-    assert.equal(f.storage.markPendingBatchAttempt(result.batchPlan), true);
-    const restored = f.storage.findPendingComboBatchPlan(result.batchPlan.identity);
-    assert.ok(restored.faces.every(face => face.combo.blankLongText === true));
-    assert.equal(f.storage.getLastCombo()?.blankLongText, undefined, 'planning alone does not commit history');
+    assert.throws(() => f.picker.pickCombinationBatch(f.settings, 'empty-five', f.context, 5),
+        error => error.reasonCode === 'BATCH_CANDIDATE_POOL_EXHAUSTED');
 });
 
 test('blank longtext exact resay needs the complete marker and does not become a custom directive', async () => {
@@ -67,23 +60,19 @@ test('blank longtext exact resay needs the complete marker and does not become a
     }
 });
 
-test('longtext text source uses enabled text entries and does not revive disabled originals', async () => {
-    const f = await fixture({ longTextSource: 'text' });
+test('longtext keeps drawing themes while an explicit text face still uses enabled text entries', async () => {
+    const f = await fixture();
     const id = 'ext:longtext:text:one';
     f.external.setExternalPoolSnapshot([{ libraryId: 'longtext', enabled: true }], new Map([
         ['longtext', [{ externalId: id, classification: 'text', enabled: true, userConfirmed: true }]],
     ]));
-    const combo = f.picker.pickCombination(f.settings, 'text-source').combo;
+    const longtext = f.picker.pickCombination(f.settings, 'long-ordinary').combo;
+    assert.ok(longtext.themeIds.length > 0);
+    assert.notDeepEqual(clone(longtext.textIds || []), [id]);
+    f.settings.rabbitMirrorPresentationModes = ['text'];
+    const combo = f.picker.pickCombination(f.settings, 'text-face').combo;
     assert.deepEqual(clone(combo.textIds), [id]);
-    assert.equal(combo.requestedPresentationMode, 'longtext');
     assert.equal(combo.presentationMode, 'text');
-    assert.notEqual(combo.blankLongText, true);
-    const batch = f.picker.pickCombinationBatch(f.settings, 'text-two', f.context, 2);
-    assert.equal(batch.length, 2);
-    assert.ok(batch.every(face => face.combo.textIds.length === 1 && face.combo.textIds[0] === id));
-    f.external.clearExternalPoolSnapshot();
-    assert.throws(() => f.picker.pickCombination(f.settings, 'text-empty'));
-    assert.throws(() => f.picker.pickCombinationForMultifaceResay(f.settings, { faceIndex: 0, faces: [combo] }));
 });
 
 test('mixed longtext uses ordinary materials but remains text presentation', async () => {
@@ -99,11 +88,12 @@ test('mixed longtext uses ordinary materials but remains text presentation', asy
     assert.ok(batch.every(face => face.combo.presentationMode === 'text' && face.combo.formatIds.length));
 });
 
-test('longtext source participates in frozen batch identity', async () => {
+test('retired longtext source no longer changes the frozen batch', async () => {
     const f = await fixture({ longTextSource: 'blank' });
     const blank = f.picker.pickCombinationBatch(f.settings, 'source-change', f.context, 2);
     const mixed = f.picker.pickCombinationBatch({ ...f.settings, longTextSource: 'mixed' }, 'source-change', f.context, 2);
-    assert.notEqual(blank.batchPlan.identity.settingsKey, mixed.batchPlan.identity.settingsKey);
+    assert.equal(blank.batchPlan.identity.settingsKey, mixed.batchPlan.identity.settingsKey);
+    assert.ok(blank.every(face => face.combo.formatIds.length));
     assert.ok(mixed.every(face => face.combo.formatIds.length));
 });
 
@@ -133,22 +123,23 @@ test('mixed longtext keeps the ordinary auto material selection for the same ran
     assert.equal(b.presentationMode, 'text');
 });
 
-test('blank longtext keeps its explicit marker when the same directive is restored from cache', async () => {
+test('longtext with a directive still draws and restores the same selection', async () => {
     const f = await fixture({ userDirectivePriority: true });
     const context = { chat: [{ is_user: true, mes: '兔子镜：写今晚窗边的长篇故事' }] };
     const first = f.picker.pickCombination(f.settings, 'directive-first', context);
     assert.ok(first.directive);
-    assert.equal(first.combo.blankLongText, true);
+    assert.notEqual(first.combo.blankLongText, true);
     const restored = f.picker.pickCombination(f.settings, 'directive-second', context);
-    assert.equal(restored.combo.blankLongText, true);
-    assert.notEqual(restored.combo.customDirective, true);
+    assert.deepEqual(clone(restored.combo.themeIds), clone(first.combo.themeIds));
+    assert.deepEqual(clone(restored.combo.formatIds), clone(first.combo.formatIds));
+    assert.notEqual(restored.combo.blankLongText, true);
 });
 
-test('the stored batch API also preserves multiple blank longtext faces', async () => {
+test('the stored batch API keeps drawn longtext faces', async () => {
     const f = await fixture();
-    const result = f.picker.pickCombinationBatch(f.settings, 'stored-blank', { ...f.context, batchPlanningOnly: false }, 3);
+    const result = f.picker.pickCombinationBatch(f.settings, 'stored-long', { ...f.context, batchPlanningOnly: false }, 3);
     assert.equal(result.length, 3);
-    assert.ok(result.every(face => face.combo.blankLongText === true));
+    assert.ok(result.every(face => face.combo.requestedPresentationMode === 'longtext' && face.combo.formatIds.length && face.combo.blankLongText !== true));
 });
 
 test('auto weight can choose long text without dropping the drawn materials', async () => {

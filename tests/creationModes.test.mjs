@@ -16,33 +16,38 @@ async function fixture(overrides = {}) {
     return { runtime, config, prompt, settings };
 }
 
-test('blank longtext renders the agreed length without the optional visual template', async () => {
+test('longtext renders the agreed length without HTML or the optional visual template', async () => {
     const f = await fixture({ visualPromptEditingEnabled: true, visualPrompt: 'UNWANTED_VISUAL_TEMPLATE' });
-    const result = f.prompt.buildRabbitMirrorPromptDetails(f.settings, 'independent', null, 'long-blank');
-    assert.equal(result.metadata.blankLongText, true);
+    const result = f.prompt.buildRabbitMirrorPromptDetails(f.settings, 'independent', null, 'long-drawn');
+    assert.notEqual(result.metadata.blankLongText, true);
     assert.equal(result.metadata.requestedPresentationMode, 'longtext');
+    assert.match(result.prompt, /不要使用 HTML/);
     assert.match(result.prompt, /3000–5000 字只是没有原条目篇幅要求时的参考/);
     assert.match(result.prompt, /写成一篇读得完的故事/);
-    assert.match(result.executionLock, /3000–5000 字只作参考/);
+    assert.match(result.executionLock, /正文不要使用 HTML/);
     assert.doesNotMatch(result.prompt, /UNWANTED_VISUAL_TEMPLATE/);
 });
 
-test('longtext retains the complete selected original including its word count and HTML instruction', async () => {
-    const f = await fixture({ longTextSource: 'text', rawPolicy: 'compact' });
+test('longtext keeps a drawn text original but forbids turning its HTML instruction into a page', async () => {
+    const f = await fixture({ rawPolicy: 'compact', externalWorldBookRandomEnabled: true, externalWorldBookMixMode: 'external-only' });
+    const { THEMATIC_CATEGORIES } = await f.runtime.load('data/structured/thematicIndex.js');
+    const { PRESENTATION_FORMATS } = await f.runtime.load('data/structured/presentationIndex.js');
+    f.settings.blacklistedThemeIds = THEMATIC_CATEGORIES.map(item => item.id);
+    f.settings.blacklistedFormatIds = PRESENTATION_FORMATS.map(item => item.id);
     const pool = await f.runtime.load('src/externalWorldBook/externalPool.js');
     const id = 'ext:original:text:one';
     pool.setExternalPoolSnapshot([{ libraryId: 'original', enabled: true }], new Map([['original', [
         { externalId: id, classification: 'text', enabled: true, userConfirmed: true },
     ]]]));
-    const raw = '写一封完整信件。'.repeat(350) + '正文只写800字，必须用HTML的details展示附言。';
+    const raw = '写一封完整信件。'.repeat(40) + '正文只写800字，必须用HTML的details展示附言。';
     const materials = new Map([[id, { externalId: id, classification: 'text', enabled: true, userConfirmed: true,
         rawContent: raw, localTitle: '一封信', sourceWorldBookName: '原创测试', sourceKeywords: [] }]]);
     const plan = f.prompt.planRabbitMirrorPromptDetails(f.settings, 'independent', null, 'long-original');
     const result = f.prompt.renderRabbitMirrorPromptPlan(plan, materials);
     assert.ok(result.prompt.includes(raw));
+    assert.match(result.prompt, /不要使用 HTML/);
     assert.match(result.prompt, /不要把条目里的按钮、页面骨架、第二状态或交互说明做成界面/);
     assert.equal(materials.get(id).rawContent, raw);
-    assert.doesNotMatch(result.prompt, /文本呈现替换本面母本中的界面/);
 });
 
 test('mixed longtext and HTML faces keep per-face rules and complete metadata', async () => {
@@ -51,7 +56,8 @@ test('mixed longtext and HTML faces keep per-face rules and complete metadata', 
         { batchIdentity: { mesid: 0, swipeId: 0, sourceHash: 'source' } });
     const result = f.prompt.renderRabbitMirrorPromptPlan(plan);
     assert.equal(result.metadata.faces.length, 2);
-    assert.equal(result.metadata.faces[0].blankLongText, true);
+    assert.equal(result.metadata.faces[0].requestedPresentationMode, 'longtext');
+    assert.notEqual(result.metadata.faces[0].blankLongText, true);
     assert.equal(result.metadata.faces[1].presentationMode, 'html');
     assert.match(result.executionLock, /第 1 面：长文本/);
     assert.doesNotMatch(result.executionLock, /第 2 面：长文本/);
@@ -59,7 +65,7 @@ test('mixed longtext and HTML faces keep per-face rules and complete metadata', 
 
 test('writing style saves, freezes per plan, and clears without changing saved originals', async () => {
     const f = await fixture();
-    f.config.updateSettings({ writingStyle: '克制，短句和具体动作。', longTextSource: 'blank', independentReadCharacterWorldBook: true, imageCompositionMode: 'auto' });
+    f.config.updateSettings({ writingStyle: '克制，短句和具体动作。', independentReadCharacterWorldBook: true, imageCompositionMode: 'auto' });
     assert.equal(f.config.getSettings().writingStyle, '克制，短句和具体动作。');
     assert.equal(f.config.getSettings().independentReadCharacterWorldBook, true);
     f.settings.writingStyle = f.config.getSettings().writingStyle;
