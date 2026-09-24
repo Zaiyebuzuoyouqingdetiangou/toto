@@ -91,17 +91,12 @@ test('HTML siblings and mixed-source longtext retain the external index prefligh
     }
 });
 
-test('an explicit text face still hydrates and sends the selected material with the global switch off', async () => {
-    for (const overrides of [
-        { rabbitMirrorPresentationModes: ['text'] },
-    ]) {
-        const result = await runRequest({ externalWorldBookRandomEnabled: false, ...overrides });
-        assert.equal(result.error?.code, 'TEST_DISPATCH_CAPTURED');
-        assert.equal(result.hydrate, 1);
-        assert.equal(result.selectedRaw, 1);
-        assert.equal(result.dispatch, 1);
-        assert.deepEqual([...result.diagnostic.textIds], [externalId]);
-    }
+test('retired text mode follows longtext and does not force a mother-library read when the switch is off', async () => {
+    const result = await runRequest({ externalWorldBookRandomEnabled: false, rabbitMirrorPresentationModes: ['text'] });
+    assert.equal(result.error?.code, 'TEST_DISPATCH_CAPTURED');
+    assert.equal(result.hydrate, 0);
+    assert.equal(result.dispatch, 1);
+    assert.equal(result.diagnostic.requestedPresentationMode, 'longtext');
 });
 
 test('exact external resay still hydrates its original recipe when current settings select blank longtext', async () => {

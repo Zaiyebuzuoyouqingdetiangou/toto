@@ -21,10 +21,11 @@ test('longtext renders the agreed length without HTML or the optional visual tem
     const result = f.prompt.buildRabbitMirrorPromptDetails(f.settings, 'independent', null, 'long-drawn');
     assert.notEqual(result.metadata.blankLongText, true);
     assert.equal(result.metadata.requestedPresentationMode, 'longtext');
-    assert.match(result.prompt, /不要使用 HTML/);
-    assert.match(result.prompt, /3000–5000 字只是没有原条目篇幅要求时的参考/);
+    assert.match(result.prompt, /外壳必须完整/);
+    assert.match(result.prompt, /不能只留下标题就闭合/);
     assert.match(result.prompt, /写成一篇读得完的故事/);
-    assert.match(result.executionLock, /正文不要使用 HTML/);
+    assert.doesNotMatch(result.prompt, /3000–5000/);
+    assert.match(result.executionLock, /不能只留标题/);
     assert.doesNotMatch(result.prompt, /UNWANTED_VISUAL_TEMPLATE/);
 });
 
@@ -45,7 +46,7 @@ test('longtext keeps a drawn text original but forbids turning its HTML instruct
     const plan = f.prompt.planRabbitMirrorPromptDetails(f.settings, 'independent', null, 'long-original');
     const result = f.prompt.renderRabbitMirrorPromptPlan(plan, materials);
     assert.ok(result.prompt.includes(raw));
-    assert.match(result.prompt, /不要使用 HTML/);
+    assert.match(result.prompt, /不要做成界面/);
     assert.match(result.prompt, /不要把条目里的按钮、页面骨架、第二状态或交互说明做成界面/);
     assert.equal(materials.get(id).rawContent, raw);
 });

@@ -60,19 +60,17 @@ test('blank longtext exact resay needs the complete marker and does not become a
     }
 });
 
-test('longtext keeps drawing themes while an explicit text face still uses enabled text entries', async () => {
+test('retired text mode is longtext and still draws themes', async () => {
     const f = await fixture();
     const id = 'ext:longtext:text:one';
     f.external.setExternalPoolSnapshot([{ libraryId: 'longtext', enabled: true }], new Map([
         ['longtext', [{ externalId: id, classification: 'text', enabled: true, userConfirmed: true }]],
     ]));
-    const longtext = f.picker.pickCombination(f.settings, 'long-ordinary').combo;
-    assert.ok(longtext.themeIds.length > 0);
-    assert.notDeepEqual(clone(longtext.textIds || []), [id]);
     f.settings.rabbitMirrorPresentationModes = ['text'];
-    const combo = f.picker.pickCombination(f.settings, 'text-face').combo;
-    assert.deepEqual(clone(combo.textIds), [id]);
-    assert.equal(combo.presentationMode, 'text');
+    const combo = f.picker.pickCombination(f.settings, 'retired-text-face').combo;
+    assert.equal(combo.requestedPresentationMode, 'longtext');
+    assert.ok(combo.themeIds.length > 0);
+    assert.notDeepEqual(clone(combo.textIds || []), [id]);
 });
 
 test('mixed longtext uses ordinary materials but remains text presentation', async () => {

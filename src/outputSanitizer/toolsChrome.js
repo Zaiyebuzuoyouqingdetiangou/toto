@@ -1,10 +1,10 @@
 // Split from outputSanitizer.js — toolsChrome.
 
-import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.6.5';
+import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.6.6';
 import { placeFacePager } from '../facePagerPlacement.js?rmv=1.6.4-pager1';
-import { isTextPresentation } from '../presentationMode.js?rmv=1.6.5';
+import { isTextPresentation } from '../presentationMode.js?rmv=1.6.6';
 import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.6.3-ttchild1';
-import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=1.6.5';
+import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=1.6.6';
 import { getCurrentChatKey } from '../storage.js?rmv=1.5.53-visualquick1';
 import { getSanitizedRabbitMirrorFaceProof } from '../multifaceProof.js?rmv=1.5.53-visualquick1';
 import {
@@ -23,7 +23,7 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
 } from '../feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.5';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.6';
 import {
     FAVORITE_MULTIPLIER_MAX,
     FAVORITE_MULTIPLIER_MIN,
@@ -45,7 +45,7 @@ import {
     setFavoriteMultiplier,
     toggleBlacklistItem,
     toggleFavoriteItem,
-} from '../blacklist.js?rmv=1.6.5';
+} from '../blacklist.js?rmv=1.6.6';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -70,9 +70,9 @@ import {
     isMaintenanceRabbitEnabled,
     isRabbitMirrorDetails,
 } from './runtime.js?rmv=1.6';
-import { getAvailableHostChat } from './scriptedInteractionRescue.js?rmv=1.6.5';
-import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.6.5';
-import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=1.6.5';
+import { getAvailableHostChat } from './scriptedInteractionRescue.js?rmv=1.6.6';
+import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.6.6';
+import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=1.6.6';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     FEEDBACK_HISTORY_EVENT,
@@ -92,8 +92,8 @@ import {
     rabbitMirrorLanguageBalance,
     scheduleCurrentHighConfidenceTextRepair,
     setMaintenanceRabbitState,
-} from './diagnostics.js?rmv=1.6.5';
-import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=1.6.5';
+} from './diagnostics.js?rmv=1.6.6';
+import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=1.6.6';
 import {
     MAINTENANCE_FINDING_STAGE_LABELS,
     beginMaintenanceRepairRun,
@@ -111,19 +111,19 @@ import {
     runMaintenanceRevealClipRepair,
     runMaintenanceUserRepair,
     triggerDiagnosticForMaintenanceRoot,
-} from './maintenanceInspect.js?rmv=1.6.5';
+} from './maintenanceInspect.js?rmv=1.6.6';
 import {
     getRabbitMirrorFacePosition,
     installMaintenanceHorizontalClipOpenRescue,
     repairLegacyMaintenanceMobileStateRows,
-} from './layoutRescue.js?rmv=1.6.5';
+} from './layoutRescue.js?rmv=1.6.6';
 import {
     getMessageIndexFromMirrorNode,
     installMaintenanceAutoSafeOpenPatrol,
     installManagedRabbitMirrorTools,
     pruneMaintenanceAutoSafeOpenBindings,
     scheduleMaintenanceAutoSafeForRoot,
-} from './lifecycle.js?rmv=1.6.5';
+} from './lifecycle.js?rmv=1.6.6';
 
 let recipeOutsideCloseCleanup = null;
 
@@ -1996,7 +1996,7 @@ function beginHostWorkTiming(name){
 }
 
 function loadMirrorImageModule() {
-    if (!mirrorImageModule) mirrorImageModule = import('../imageUi.js?rmv=1.6.5').catch(error => { mirrorImageModule = null; throw error; });
+    if (!mirrorImageModule) mirrorImageModule = import('../imageUi.js?rmv=1.6.6').catch(error => { mirrorImageModule = null; throw error; });
     return mirrorImageModule;
 }
 
@@ -2228,6 +2228,18 @@ function stripTheaterFavoriteTitleChrome(scope) {
     scope.querySelectorAll(`[${TOOL_ENTRY_HOST_ATTR}], [data-rm-face-swipe-host], [data-rm-face-swipe-bar], [data-rm-face-swipe-delete], [data-rm-face-favorite-star], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}], [${RECIPE_BUTTON_ATTR}], [data-rm-tool-menu-button]`).forEach(node => node.remove());
 }
 
+function mirrorFaceCanContinue(root) {
+    const recipe = rabbitMirrorRecipeForRoot(root, true);
+    if (recipe?.requestedPresentationMode === 'html' || recipe?.presentationMode === 'html') return false;
+    if (recipe?.requestedPresentationMode === 'longtext' || recipe?.blankLongText === true || recipe?.presentationMode === 'text') return true;
+    const details = root?.matches?.('details') ? root : root?.querySelector?.('details');
+    if (!details) return false;
+    const body = details.cloneNode(true);
+    body.querySelectorAll(`summary, style, script, [data-rabbit-mirror-source-truncation-notice], ${TITLE_CHROME_SKIP}`).forEach(node => node.remove());
+    if (body.querySelector?.('input, button, select, textarea')) return false;
+    return String(body.textContent || '').replace(/\s+/g, '').length >= 80;
+}
+
 function installUnifiedMirrorTools(root) {
     const details = root.matches?.('details') ? root : root.querySelector(':scope > details') || root.querySelector('details');
     const summary = details?.querySelector(':scope > summary');
@@ -2240,10 +2252,9 @@ function installUnifiedMirrorTools(root) {
     const host = ensureRabbitMirrorToolHost(summary);
     const actions = [];
     actions.push({ id: 'resay', label: '↻ 重说', run: (_event, opener) => openRabbitMirrorResayChooser(root, opener) });
-    const continueRecipe = rabbitMirrorRecipeForRoot(root, true);
-    if (continueRecipe?.requestedPresentationMode === 'longtext' || continueRecipe?.blankLongText === true) {
+    if (mirrorFaceCanContinue(root)) {
         actions.push({ id: 'continue', label: '✎ 续写', run: () => {
-            void import('../independentApi/mount.js?rmv=1.6.5').then(module => module.continueIndependentLongText(root))
+            void import('../independentApi/mount.js?rmv=1.6.6').then(module => module.continueIndependentLongText(root))
                 .catch(() => globalThis.toastr?.error?.('续写没有写上，原来的正文还在。'));
         } });
     }
@@ -2266,7 +2277,7 @@ function installUnifiedMirrorTools(root) {
             .catch(() => globalThis.toastr?.warning?.('生图面板未能打开，请重新打开后再试。'));
     } });
     actions.push({ id: 'theater-favorite-library', label: '📖 打开收藏夹', run: () => {
-        void import('../independentApi.js?rmv=1.6.5').then(module =>
+        void import('../independentApi.js?rmv=1.6.6').then(module =>
             openTheaterFavoriteLibrary((container, record) => module.hydrateIndependentFavoriteHtml(container, record)))
             .catch(error => globalThis.toastr?.warning?.(String(error?.message || '无法打开收藏夹。')));
     } });

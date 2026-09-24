@@ -1,6 +1,6 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.6.5';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.6.6';
 import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.5.53-cn-boundary1';
 import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.6';
 
@@ -152,7 +152,7 @@ export function buildRabbitMirrorSettingsDialogHtml() {
             <div class="rh-independent-generation-params">
             <div class="flex-container" style="gap:8px;flex-wrap:wrap;align-items:center;padding:9px 10px;border:1px solid color-mix(in srgb,currentColor 14%,transparent);border-radius:9px;">
               <label>温度 <input id="rh_independent_temperature" class="text_pole" type="number" min="0" max="2" step="0.1" style="width:82px;"></label>
-              <label>整批最大输出 <input id="rh_independent_max_tokens" class="text_pole" type="number" min="512" max="32000" step="256" style="width:110px;"></label>
+              <label>整批最大输出 <input id="rh_independent_max_tokens" class="text_pole" type="number" min="512" max="64000" step="256" style="width:110px;"></label>
               <label>完整请求字符预算 <input id="rh_independent_max_request_chars" class="text_pole" type="number" min="8000" step="1000" style="width:120px;"></label>
             </div>
             <p class="rh-independent-generation-params-note" style="opacity:.72;font-size:11px;line-height:1.5;margin:6px 0 0;">规则、执行锁与上下文合计的本地预检上限，默认 50000，可按模型上下文自行调大。超限不会发送网络请求。</p>
@@ -355,9 +355,9 @@ export function buildRabbitMirrorSettingsDialogHtml() {
             <div id="rh_face_presentation_modes" style="display:grid;grid-template-columns:minmax(0,1fr);min-width:0;gap:8px;margin:10px 0;">
               <b>每一面怎么呈现</b>
               ${Array.from({length:5},(_,index)=>`<label data-rh-presentation-row="${index}" for="rh_face_mode_${index}" style="display:flex;gap:12px;align-items:center;justify-content:space-between;">
-                <span>第 ${index+1} 面</span><select id="rh_face_mode_${index}" class="text_pole" style="min-height:44px;width:180px;max-width:65%;" aria-describedby="rh_face_modes_help"><option value="auto">自动</option><option value="html">HTML 交互</option><option value="text">文本</option><option value="longtext">长文本 · 3000–5000 字</option></select>
+                <span>第 ${index+1} 面</span><select id="rh_face_mode_${index}" class="text_pole" style="min-height:44px;width:180px;max-width:65%;" aria-describedby="rh_face_modes_help"><option value="auto">自动</option><option value="html">HTML 交互</option><option value="longtext">长文本</option></select>
               </label>`).join('')}
-              <div id="rh_face_modes_help" class="rabbit-mirror-subnote">自动：按下面的比例决定这一面是长文本还是 HTML。手动选了 HTML、文本或长文本的面，按你选的来。一次出 2 面或 3 面、而且这些面都是自动时，会保证至少有一面是长文本。常用是 1–3 面；4 面和 5 面仍可选择，但长文本更容易写到一半被截断。</div>
+              <div id="rh_face_modes_help" class="rabbit-mirror-subnote">自动：按下面的比例决定这一面是长文本还是 HTML。手动选了 HTML 或长文本的面，按你选的来。一次出 2 面或 3 面、而且这些面都是自动时，会保证至少有一面是长文本。常用是 1–3 面；4 面和 5 面仍可选择，但长文本更容易写到一半被截断。</div>
               <label for="rh_auto_longtext_percent">自动时长文本占 <output id="rh_auto_longtext_percent_value">40</output>%，其余是 HTML</label>
               <input id="rh_auto_longtext_percent" type="range" min="0" max="100" step="5" value="40" style="width:100%;">
               <p class="rabbit-mirror-subnote">0% 表示自动仍按抽中的类别呈现。改这里只影响之后新抽的面，不会改写已经生成的成品。</p>

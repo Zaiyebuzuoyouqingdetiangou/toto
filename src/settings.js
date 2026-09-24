@@ -1,4 +1,4 @@
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.6.5';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.6.6';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
 import { independentGenerationTiming } from './independentTiming.js?rmv=1.5.53-timing1';
@@ -289,7 +289,7 @@ export function getSettings() {
         const temperature = Number(settings.independentApiTemperature);
         settings.independentApiTemperature = Math.max(0, Math.min(2, Number.isFinite(temperature) ? temperature : 0.8));
     }
-    settings.independentApiMaxTokens = Math.max(512, Math.min(32000, Number(settings.independentApiMaxTokens) || 30000));
+    settings.independentApiMaxTokens = Math.max(512, Math.min(64000, Number(settings.independentApiMaxTokens) || 30000));
     settings.independentMaxRequestChars = normalizeIndependentMaxRequestChars(settings.independentMaxRequestChars);
     settings.independentAutomaticRerollMax = normalizeAutomaticRerollMax(settings.independentAutomaticRerollMax);
     settings.independentAutomaticRerollIdleSeconds = normalizeAutomaticRerollIdleSeconds(settings.independentAutomaticRerollIdleSeconds);

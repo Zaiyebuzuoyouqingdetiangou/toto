@@ -1,7 +1,10 @@
 // Local selection metadata only. Never derive presentation from model HTML.
 export function normalizePresentationModes(value) {
-    return Array.from({ length: 5 }, (_, index) =>
-        ['auto', 'html', 'text', 'longtext'].includes(value?.[index]) ? value[index] : 'auto');
+    // 旧的「文本」档并进长文本。已生成成品上的 presentationMode 仍用 text 表示散文，不在这里改。
+    return Array.from({ length: 5 }, (_, index) => {
+        const mode = value?.[index] === 'text' ? 'longtext' : value?.[index];
+        return ['auto', 'html', 'longtext'].includes(mode) ? mode : 'auto';
+    });
 }
 
 export function normalizeLongTextSource(value) {
