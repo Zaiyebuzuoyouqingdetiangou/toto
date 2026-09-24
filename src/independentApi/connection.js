@@ -19,7 +19,7 @@ import {
     getContext,
     hashText,
 } from './runtime.js?rmv=1.6';
-import { HOST_GENERATION_EVENT_HINT_MS, operationEpochForBase } from './flights.js?rmv=1.6';
+import { HOST_GENERATION_EVENT_HINT_MS, operationEpochForBase } from './flights.js?rmv=1.6.4-resay1';
 import {
     OWNER_LOCK_STORE_KEY,
     apiProfileKey,
@@ -31,12 +31,12 @@ import {
     writeApiProfileStore,
     writePersistedOwner,
     writeStore,
-} from './persistence.js?rmv=1.6';
+} from './persistence.js?rmv=1.6.4-resay1';
 import {
     hasExplicitSourceReplacementEvidence,
     independentStoredHtmlLightRestorable,
     independentStoredHtmlRestorable,
-} from './geometry.js?rmv=1.6.3-ttchild1';
+} from './geometry.js?rmv=1.6.4-resay1';
 import {
     activeIndependentFlightForBase,
     messageSourceRevisions,
@@ -44,13 +44,13 @@ import {
     passiveObservedIdentity,
     runtimeMode,
     showIndependentUnsavedOutput,
-} from './mount.js?rmv=1.6.1';
+} from './mount.js?rmv=1.6.4-resay1';
 import {
     hostGenerationHintStartedAt,
     hostGenerationInProgress,
     writeHostGenerationHintStartedAt,
     writeHostGenerationInProgress,
-} from './lifecycle.js?rmv=1.6';
+} from './lifecycle.js?rmv=1.6.4-resay1';
 
 export const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 

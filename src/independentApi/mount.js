@@ -11,7 +11,7 @@ import {
     refreshRabbitMirrorToolsInScope,
     isolateRabbitMirrorInteractionIds,
     rearmRabbitMirrorSerializedInteractionRoot,
-} from '../outputSanitizer.js?rmv=1.6.3-star2';
+} from '../outputSanitizer.js?rmv=1.6.4-resay1';
 import { matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.5.53-cn-boundary1';
 import { parseMultifaceOutput, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR } from '../multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
 import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from '../multifaceProof.js?rmv=1.5.53-visualquick1';
@@ -20,7 +20,7 @@ import {
     FOLLOW_MULTIFACE_REJECTED_EVENT,
     FOLLOW_GENERATION_SETTLED_EVENT,
     getRabbitMirrorFollowBatchFailure,
-} from '../visualScanner.js?rmv=1.6.3-star2';
+} from '../visualScanner.js?rmv=1.6.4-resay1';
 import { commitPendingComboBatch, releasePendingComboBatch } from '../storage.js?rmv=1.5.53-visualquick1';
 import {
     consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror,
@@ -100,7 +100,7 @@ import {
     operationEpochForBase,
     pending,
     reserveAutomaticDispatchLease,
-} from './flights.js?rmv=1.6';
+} from './flights.js?rmv=1.6.4-resay1';
 import {
     HISTORY_PANEL_ATTR,
     INDEPENDENT_RECORD_BUDGET_BYTES,
@@ -118,7 +118,7 @@ import {
     restoreIndependentFaceSwipeInitial,
     writePersistedOwner,
     writeStore,
-} from './persistence.js?rmv=1.6';
+} from './persistence.js?rmv=1.6.4-resay1';
 import {
     appendIndependentFaceSwipe,
     faceDetailsListFromHtml,
@@ -129,7 +129,7 @@ import {
     seedIndependentFaceSwipes,
     seedNeighborIndependentFaceSwipes,
     showEphemeralFaceFailure,
-} from './faceSwipe.js?rmv=1.6.1';
+} from './faceSwipe.js?rmv=1.6.4-resay1';
 import {
     INDEPENDENT_OWNER_OBSERVATION,
     assistantMessages,
@@ -168,7 +168,7 @@ import {
     setOwnerLockForBase,
     slotSearchKeys,
     swipeId,
-} from './connection.js?rmv=1.6';
+} from './connection.js?rmv=1.6.4-resay1';
 import {
     allExternalHosts,
     assertIndependentMarkupComplexityWithDiagnostic,
@@ -193,7 +193,7 @@ import {
     wrapIndependentFace,
     wrapPreparedIndependentFace,
     wrappedIndependentMirrorHtml,
-} from './request.js?rmv=1.6';
+} from './request.js?rmv=1.6.4-resay1';
 import {
     DEFERRED_INTERACTION_RESCUE_ATTR,
     INDEPENDENT_CONTENT_WIDTH_BASELINE_ATTR,
@@ -252,7 +252,7 @@ import {
     showIndependentResayStatus,
     transferExternalTools,
     usableReadyDetails,
-} from './geometry.js?rmv=1.6.3-ttchild1';
+} from './geometry.js?rmv=1.6.4-resay1';
 import {
     assertEarlyBodyOwner,
     automaticHostGenerationMayUseTools,
@@ -266,7 +266,7 @@ import {
     scheduleStartupHistorySync,
     suppressesAutomaticGeneration,
     unlockAutomaticGenerationCutover,
-} from './earlyBody.js?rmv=1.6';
+} from './earlyBody.js?rmv=1.6.4-resay1';
 import {
     automaticGenerationCutovers,
     backgroundLifecycleListenersInstalled,
@@ -288,7 +288,7 @@ import {
     writeHostGenerationInProgress,
     writeIndependentActionBridge,
     writeLastAppliedIndependentTiming,
-} from './lifecycle.js?rmv=1.6';
+} from './lifecycle.js?rmv=1.6.4-resay1';
 
 let generationSequence = 0;
 
@@ -2177,7 +2177,7 @@ function showIndependentHistory(root,owner={}){
 
 export function resayIndependentMirror(root,owner={}){
  if(getSettings().generationSource==='follow'){
-  void import('../followFaceRetry.js?rmv=1.6').then(({retryFollowFace})=>retryFollowFace(root,owner,{
+  void import('../followFaceRetry.js?rmv=1.6.4-resay1').then(({retryFollowFace})=>retryFollowFace(root,owner,{
    getContext,hostBusy:hostGenerationLooksActive,maxRequestChars:configuredIndependentMaxRequestChars(getSettings()),
    resolveOwner:target=>{
     const host=target?.closest?.('[data-rabbit-mirror-external-source="true"][data-rm-source="follow"]');
@@ -2215,9 +2215,11 @@ export function resayIndependentMirror(root,owner={}){
  // Announce preparation before dispatch. A synchronous preflight rejection
  // must not be followed by a misleading new "generating" notification.
  globalThis.toastr?.info?.(multifaceResay?.freshSelection?'这一失败面的原抽取记录不完整，将按当前设置重新抽取这一面；其他面会原样保留。':multifaceResay?'正在准备重说这一面；其他面会原样保留……':'正在准备重新生成兔子镜……');
- const singlePresentationResay=!multifaceResay&&(diagnostic.presentationMode||diagnostic.visualSceneryCombination===true)
-  ? {faceIndex:0,faces:[diagnostic]} : null;
- void generateFor(identity.index,identity.msg,true,true,multifaceResay,null,null,singlePresentationResay);
+ // 单面重说是一次新的随机抽取，与多面「重说这一面」的精确复原语义不同。
+ // 呈现模式、动态视觉组合等都来自当前设置，由正常抽签路径自然带上；
+ // 不得再把上一轮的单面诊断当作 multifaceResay 传下去——那条路径会按原
+ // themeIds/formatIds 精确复原，导致重说永远抽到同一组合。
+ void generateFor(identity.index,identity.msg,true,true,multifaceResay,null,null,null);
  return true;
 }
 
@@ -2587,7 +2589,7 @@ function handleFollowMultifaceRejected(event){
  const failure=getRabbitMirrorFollowBatchFailure(ctx?.chat,index);
  if(!failure || failure.batchId!==event?.detail?.batchId) return false;
  queueMessageSync([index]);
- void import('../followAutomaticReroll.js?rmv=1.6').then(({maybeAutomaticFollowReroll})=>maybeAutomaticFollowReroll(index,followAutomaticRerollDeps()));
+ void import('../followAutomaticReroll.js?rmv=1.6.4-resay1').then(({maybeAutomaticFollowReroll})=>maybeAutomaticFollowReroll(index,followAutomaticRerollDeps()));
  return true;
 }
 
@@ -2595,12 +2597,12 @@ function handleFollowGenerationSettled(event){
  const index=Number(event?.detail?.messageIndex);
  if(!Number.isInteger(index)||index<0) return false;
  if(event?.detail?.cancelled===true){
-  void import('../followAutomaticReroll.js?rmv=1.6').then(({markFollowAutomaticRerollCancelled})=>{
+  void import('../followAutomaticReroll.js?rmv=1.6.4-resay1').then(({markFollowAutomaticRerollCancelled})=>{
    markFollowAutomaticRerollCancelled(getContext(),index);
   });
   return true;
  }
- void import('../followAutomaticReroll.js?rmv=1.6').then(({maybeAutomaticFollowReroll})=>maybeAutomaticFollowReroll(index,followAutomaticRerollDeps()));
+ void import('../followAutomaticReroll.js?rmv=1.6.4-resay1').then(({maybeAutomaticFollowReroll})=>maybeAutomaticFollowReroll(index,followAutomaticRerollDeps()));
  return true;
 }
 

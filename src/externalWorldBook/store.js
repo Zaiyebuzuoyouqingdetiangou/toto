@@ -312,6 +312,7 @@ function externalEntryChoice(row) {
         classification: String(row.classification || ''),
         enabled: row.enabled === true,
         selectable: row.userConfirmed === true && ['theme', 'format', 'text'].includes(row.classification),
+        reclassifiable: ['theme', 'format', 'text'].includes(row.classification),
     };
 }
 
@@ -404,6 +405,97 @@ export async function setExternalLibraryEntryEnabled(libraryId, externalId, enab
         try { transaction?.abort(); } catch {}
         if (done) await done.catch(() => {});
         throw wrapStorageError(error, '条目勾选未保存，请重试；原有内容与选择保持不变。');
+    } finally {
+        try { db.close(); } catch {}
+    }
+}
+
+// Explicit management only: storage identity and source material stay unchanged.
+// Classification IDs intentionally change; saved recipes are never rewritten.
+export async function reclassifyExternalLibraryEntries(libraryId, selection, classification, options = {}) {
+    const conflict = message => new ExternalWorldBookError(EXTERNAL_WORLD_BOOK_ERROR_CODES.ENTRY_STATE_CONFLICT, message);
+    if (typeof libraryId !== 'string' || !libraryId.trim() || libraryId !== libraryId.trim() || libraryId.length > 1024) {
+        throw conflict('没有有效的母本库编号；不会扫描其它库。');
+    }
+    if (!['theme', 'format', 'text'].includes(classification)) {
+        throw conflict('重新分类只支持主题元素、展现形式或文本类；未修改任何条目。');
+    }
+    const all = selection?.all === true;
+    if (!selection || typeof selection !== 'object' || Array.isArray(selection)
+        || (selection.all !== undefined && typeof selection.all !== 'boolean')
+        || (all ? selection.ids !== undefined : !Array.isArray(selection.ids) || selection.excludedIds !== undefined)) {
+        throw conflict('请选择明确的条目，或整库全选；未修改任何条目。');
+    }
+    const requestedIds = all ? (selection.excludedIds ?? []) : selection.ids;
+    if (!Array.isArray(requestedIds) || requestedIds.some(id => typeof id !== 'string' || !id || id !== id.trim() || id.length > 2048)) {
+        throw conflict('所选条目编号不合法；未修改任何条目。');
+    }
+    const ids = new Set(requestedIds);
+    const db = await openExternalLibraryDatabase(options);
+    let transaction;
+    let done;
+    try {
+        transaction = db.transaction([STORE_LIBRARIES, STORE_ENTRIES, STORE_POOL_METADATA], 'readwrite');
+        done = transactionPromise(transaction);
+        done.catch(() => {});
+        const libraries = transaction.objectStore(STORE_LIBRARIES);
+        const entries = transaction.objectStore(STORE_ENTRIES);
+        const metadataStore = transaction.objectStore(STORE_POOL_METADATA);
+        const [library, rows] = await Promise.all([
+            requestPromise(libraries.get(libraryId)),
+            requestPromise(entries.index(INDEX_ENTRIES_BY_LIBRARY).getAll(libraryId)),
+        ]);
+        if (!library) throw new ExternalWorldBookError(EXTERNAL_WORLD_BOOK_ERROR_CODES.NOT_FOUND, '这本外置母本库已不存在；未修改任何条目。');
+        if (!Array.isArray(rows) || rows.some(row => !row || row.libraryId !== libraryId)) {
+            throw conflict('无法确认这本库的条目；未修改任何内容。');
+        }
+        const byId = new Map(rows.map(row => [row.externalId, row]));
+        for (const id of ids) {
+            const row = byId.get(id);
+            if (!row || !externalEntryChoice(row).reclassifiable) {
+                throw conflict('所选条目已变化、不属于这本库或不是可重新分类的主条目；请刷新列表后重选。');
+            }
+        }
+        const now = Number(options.now ?? Date.now());
+        let selectedCount = 0;
+        const changed = [];
+        const nextRows = rows.map(row => {
+            if (!externalEntryChoice(row).reclassifiable || (all ? ids.has(row.externalId) : !ids.has(row.externalId))) return row;
+            selectedCount++;
+            const externalId = externalEntryId(libraryId, row, classification);
+            if (row.classification === classification && row.userConfirmed === true && row.externalId === externalId) return row;
+            const next = { ...row, classification, externalId, userConfirmed: true, updatedAt: now };
+            changed.push(next);
+            return next;
+        });
+        if (!changed.length) {
+            await done;
+            return { changedCount: 0, selectedCount };
+        }
+        const counts = { themeCount: 0, formatCount: 0, textCount: 0, auxiliaryCount: 0, pendingCount: 0, ignoredCount: 0 };
+        for (const row of nextRows) {
+            const field = ({ theme: 'themeCount', format: 'formatCount', text: 'textCount', auxiliary: 'auxiliaryCount', ignore: 'ignoredCount' })[row.classification] || 'pendingCount';
+            counts[field]++;
+        }
+        const nextLibrary = { ...library, ...counts, entryCount: nextRows.length, poolMetadataVersion: EXTERNAL_POOL_METADATA_VERSION, updatedAt: now };
+        const metadata = externalPoolMetadataForLibrary(nextLibrary, nextRows);
+        for (const row of changed) entries.put(row);
+        libraries.put(nextLibrary);
+        metadataStore.put(metadata);
+        await done;
+        // Only durable success may alter live candidate IDs. The pool retains
+        // ID-only projections, never the raw rows read for this explicit edit.
+        upsertExternalPoolLibrary(nextLibrary, [
+            ...metadata.themeIds.map(externalId => ({ externalId, classification: 'theme', enabled: true, userConfirmed: true })),
+            ...metadata.formatIds.map(externalId => ({ externalId, classification: 'format', enabled: true, userConfirmed: true })),
+            ...(metadata.textIds || []).map(externalId => ({ externalId, classification: 'text', enabled: true, userConfirmed: true })),
+        ]);
+        invalidateMetadataHydration();
+        return { changedCount: changed.length, selectedCount };
+    } catch (error) {
+        try { transaction?.abort(); } catch {}
+        if (done) await done.catch(() => {});
+        throw wrapStorageError(error, '重新分类未保存；原条目、分类和勾选状态保持不变。');
     } finally {
         try { db.close(); } catch {}
     }

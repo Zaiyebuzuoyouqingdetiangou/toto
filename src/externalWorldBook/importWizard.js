@@ -32,6 +32,7 @@ import {
 import { applyAppearanceTheme } from '../settingsAppearance.js?rmv=1.6';
 import { getExternalPoolSnapshot } from './externalPool.js?rmv=1.5.53-text1';
 import { externalCandidateCounts } from './candidateCounts.js?rmv=1.5.53-longtext1';
+import { openExternalReclassificationPanel } from './reclassificationPanel.js?rmv=1.6.4-reclass1';
 
 const MODAL_ID = 'rh_external_worldbook_import_modal';
 const PAGE_SIZE = 50;
@@ -460,6 +461,15 @@ async function renderSavedLibraries() {
         const actions = el('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '7px' } });
         actions.append(
             button('勾选参与抽签的条目', () => openSavedEntryChoices(library), { minHeight: '44px' }),
+            button('重新分类', () => {
+                owner.savedEntrySequence++;
+                owner.savedEntryLibrary = { libraryId: library.libraryId, displayName: library.displayName };
+                openExternalReclassificationPanel(owner.savedEntriesPanel, library, {
+                    isCurrent: () => state === owner && owner.overlay.isConnected,
+                    onSaved: async () => { if (state === owner && owner.overlay.isConnected) await renderSavedLibraries(); },
+                });
+                owner.savedEntriesPanel.scrollIntoView?.({ block: 'start' });
+            }, { minHeight: '44px' }),
             button(library.enabled ? '停用' : needsRebuild.has(library.libraryId) ? '重建索引并启用' : '启用', async event => {
                 const control = event.currentTarget;
                 control.disabled = true;

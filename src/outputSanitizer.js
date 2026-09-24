@@ -1,15 +1,15 @@
 // Compatibility barrel. Callers may keep importing outputSanitizer.js.
-export { repairRabbitMirrorPersistedExclusiveGridSpan, repairRabbitMirrorSelectorPanelGridSpan } from './outputSanitizer/checkedStateRescue.js?rmv=1.6';
-export { validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer/renderedStateRescue.js?rmv=1.6';
+export { repairRabbitMirrorPersistedExclusiveGridSpan, repairRabbitMirrorSelectorPanelGridSpan } from './outputSanitizer/checkedStateRescue.js?rmv=1.6.4-resay1';
+export { validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer/renderedStateRescue.js?rmv=1.6.4-resay1';
 export {
     isolateRabbitMirrorInteractionIds,
     rearmRabbitMirrorSerializedInteractionRoot,
     activateRabbitMirrorInteractionRescue,
     armRabbitMirrorFirstUseInteraction,
     repairRabbitMirrorScopedClassAliasesInScope,
-} from './outputSanitizer/idsAndRearm.js?rmv=1.6';
-export { triggerInteractionDiagnosticOnce } from './outputSanitizer/diagnostics.js?rmv=1.6';
-export { rehydrateRabbitMirrorMaintenanceRepairs } from './outputSanitizer/choiceRescue.js?rmv=1.6';
+} from './outputSanitizer/idsAndRearm.js?rmv=1.6.4-resay1';
+export { triggerInteractionDiagnosticOnce } from './outputSanitizer/diagnostics.js?rmv=1.6.4-resay1';
+export { rehydrateRabbitMirrorMaintenanceRepairs } from './outputSanitizer/choiceRescue.js?rmv=1.6.4-resay1';
 export {
     validateRabbitMirrorMarkupLexicalBudget,
     validateRabbitMirrorTemplateStructuralBudget,
@@ -25,11 +25,11 @@ export {
     activateRabbitMirrorIndependentMobileSpatialRescue,
     clearRabbitMirrorHorizontalClipArtifacts,
     installMaintenanceHorizontalClipRescue,
-} from './outputSanitizer/layoutRescue.js?rmv=1.6';
+} from './outputSanitizer/layoutRescue.js?rmv=1.6.4-resay1';
 export {
     refreshMaintenanceRabbits,
     refreshFeedbackCats,
     refreshRecipeButtons,
     refreshRabbitMirrorToolsInScope,
-} from './outputSanitizer/toolsChrome.js?rmv=1.6.3-fav2';
-export { configureMaintenanceAutoSafeMode, initOutputSanitizer, destroyOutputSanitizer } from './outputSanitizer/lifecycle.js?rmv=1.6';
+} from './outputSanitizer/toolsChrome.js?rmv=1.6.4-resay1';
+export { configureMaintenanceAutoSafeMode, initOutputSanitizer, destroyOutputSanitizer } from './outputSanitizer/lifecycle.js?rmv=1.6.4-resay1';

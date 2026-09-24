@@ -2,7 +2,7 @@ import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt, destroyIndepe
 import { clearLastCombo } from './src/storage.js?rmv=1.5.53-visualquick1';
 import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.5.53-cn-boundary1';
 import { getSettings, updateSettings } from './src/settings.js?rmv=1.6';
-import { installRabbitMirrorPublicAPI } from './src/publicApi.js?rmv=script-api2';
+import { installRabbitMirrorPublicAPI } from './src/publicApi.js?rmv=1.6.4-resay1';
 import { initRabbitMirrorIndependentSecurityGuard, destroyRabbitMirrorIndependentSecurityGuard } from './src/independentSecurityGuard.js?rmv=1.5.53-cn-boundary1';
 import { initRabbitMirrorHostCompatibility, isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface, getRabbitMirrorEarlyBootstrap, getRabbitMirrorHostCompatibilityStatus } from './src/hostCompatibility.js?rmv=1.6.3-ttchild1';
 
@@ -78,11 +78,11 @@ async function ensureDeferredCoreRuntime(reason = 'scheduled-idle') {
     if (deferredRuntimeModules) return deferredRuntimeModules;
     if (deferredRuntimePromise) return deferredRuntimePromise;
     deferredRuntimePromise = Promise.all([
-        import('./src/outputSanitizer.js?rmv=1.6.3-star2'),
-        import('./src/visualScanner.js?rmv=1.6.3-star2'),
-        import('./src/independentApi.js?rmv=1.6.3-ttchild1'),
+        import('./src/outputSanitizer.js?rmv=1.6.4-resay1'),
+        import('./src/visualScanner.js?rmv=1.6.4-resay1'),
+        import('./src/independentApi.js?rmv=1.6.4-resay1'),
         import('./src/touchTheater.js?rmv=1.6.3-ttchild1'),
-        import('./src/ui.js?rmv=1.6.3-fav1'),
+        import('./src/ui.js?rmv=1.6.4-resay1'),
         import('./src/composerClearance.js?rmv=1.6.3-ttchild1'),
     ]).then(async ([output, visual, independent, touch, ui, clearance]) => {
         if (!runtimeIsActive()) return null;
