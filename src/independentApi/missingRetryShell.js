@@ -63,6 +63,7 @@ export function shouldRestoreMissingIndependentRetryShell({
     persistedDeleted = false,
     hasHost = false,
     hasActiveFlight = false,
+    hasScheduledGeneration = false,
     hasFollowMirror = false,
     isTargetFloor = false,
     hasMessageBody = false,
@@ -70,7 +71,7 @@ export function shouldRestoreMissingIndependentRetryShell({
     quickWaiting = false,
 } = {}) {
     if (timing !== 'auto' && timing !== 'manual') return false;
-    if (hasSavedHtml || persistedDeleted || hasHost || hasActiveFlight || hasFollowMirror) return false;
+    if (hasSavedHtml || persistedDeleted || hasHost || hasActiveFlight || hasScheduledGeneration || hasFollowMirror) return false;
     if (isActiveGenerationTarget || quickWaiting) return false;
     return !!(isTargetFloor && hasMessageBody);
 }

@@ -52,6 +52,7 @@ function harness({ local, metadata, flight = null } = {}) {
         mountedIndependentReadyHostMatchesObserved: () => true,
         suppressesAutomaticGeneration: () => false, hasExistingFollowRabbitMirror: () => false,
         quickWaitingCandidate: () => false, isMissingShellTargetFloor: () => true,
+        hasScheduledIndependentGeneration: () => false,
         readyDetailsFromHost: () => ({}), pending: new Map(), manualBodyOwnerCurrent: () => true,
         bindIndependentRecordContinuity: () => false,
         ensureExternalUi: (_el, _key, html, state) => {

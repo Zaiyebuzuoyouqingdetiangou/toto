@@ -3,7 +3,7 @@
 import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.6.3-ttchild1';
 import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.5.53-cn-boundary1';
 import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
-import { getSettings } from '../settings.js?rmv=1.6.16-test.2';
+import { getSettings } from '../settings.js?rmv=1.6.16-test.3';
 import { independentGenerationTiming } from '../independentTiming.js?rmv=1.5.53-timing1';
 import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.5.53-cn-boundary1';
 import {
@@ -14,7 +14,7 @@ import {
     isMissingShellTargetFloor,
     normalizeMissingShellScanRange,
     shouldRestoreMissingIndependentRetryShell,
-} from './missingRetryShell.js?rmv=1.6';
+} from './missingRetryShell.js?rmv=1.6.16-test.3';
 import {
     INDEPENDENT_GENERATION_INTENTS_KEY,
     INDEPENDENT_GENERATION_INTENT_TYPES,
@@ -38,7 +38,7 @@ import {
     markAutomaticFailureStop,
     operationEpochForBase,
     pending,
-} from './flights.js?rmv=1.6.16-test.2';
+} from './flights.js?rmv=1.6.16-test.3';
 import {
     appendHistoryEntry,
     chatPersistenceSlot,
@@ -48,7 +48,7 @@ import {
     synchronizeIndependentChatPersistence,
     writePersistedOwner,
     writeStore,
-} from './persistence.js?rmv=1.6.16-test.2';
+} from './persistence.js?rmv=1.6.16-test.3';
 import {
     activeGlobalWorldInfoCapture,
     assistantMessages,
@@ -98,7 +98,7 @@ import {
     withOwnerLockStoreBatch,
     writeActiveGlobalWorldInfoCapture,
     writeHostModule,
-} from './connection.js?rmv=1.6.16-test.2';
+} from './connection.js?rmv=1.6.16-test.3';
 import {
     allExternalHosts,
     externalHosts,
@@ -106,7 +106,7 @@ import {
     removeEmptyFollowExternalAnchors,
     removeEmptyInlineAnchors,
     withExternalHostSyncIndex,
-} from './request.js?rmv=1.6.16-test.2';
+} from './request.js?rmv=1.6.16-test.3';
 import {
     beginHostWorkTiming,
     clearExternalHostFreshSourceState,
@@ -139,7 +139,7 @@ import {
     setPlaceholderSummary,
     usableReadyDetails,
     withRestorableHtmlCacheBatch,
-} from './geometry.js?rmv=1.6.16-test.2';
+} from './geometry.js?rmv=1.6.16-test.3';
 import {
     INDEPENDENT_INTENT_OWNER,
     abortFlight,
@@ -193,7 +193,7 @@ import {
     serializeExternalFaceDetails,
     stampAutomaticAuthorizationEpoch,
     withHistoricalRestoreLightPass,
-} from './mount.js?rmv=1.6.16-test.2';
+} from './mount.js?rmv=1.6.16-test.3';
 import {
     automaticGenerationCutovers,
     hostGenerationHintStartedAt,
@@ -218,7 +218,7 @@ import {
     writeStartupHistoryFallbackRoot,
     writeSyncRunning,
     writeSyncTimer,
-} from './lifecycle.js?rmv=1.6.16-test.2';
+} from './lifecycle.js?rmv=1.6.16-test.3';
 
 let earlyBodyParserPromise=null;
 
@@ -1030,6 +1030,14 @@ function syncMessages(indices=null){
  try{ return syncMessagesCore(indices); }finally{ end?.(); }
 }
 
+// A scheduled poll may be refreshing the final body's authorization after host
+// postprocessing. A passive recovery pass must not terminate that unpaid work.
+// This is only a UI guard; the poll retains all owner, failure and lease checks.
+function hasScheduledIndependentGeneration(index){
+ const poll=generationPolls.get(generationPollKey(index));
+ return !!poll && !poll.cancelled;
+}
+
 function syncMessagesCore(indices=null){
  if(!currentRuntime() || syncRunning) return;
  writeSyncRunning(true);
@@ -1136,6 +1144,7 @@ function syncMessagesCore(indices=null){
        const isActiveGenerationTarget=i===activeGenerationIndex;
        const automaticGenerationSuppressed=suppressesAutomaticGeneration(ctx,i) || hasExistingFollowRabbitMirror(ctx,i,m);
        const quickWaiting=quickWaitingCandidate(ctx,i);
+       const scheduledGeneration=hasScheduledIndependentGeneration(i);
 
        // Never repaint an old mirror over a newly regenerated/swiped正文. A
        // record is eligible only for the exact current source fingerprint.
@@ -1160,6 +1169,7 @@ function syncMessagesCore(indices=null){
           hasMessageBody:hasUsableAssistantBody(m),
           isActiveGenerationTarget,
           quickWaiting,
+          hasScheduledGeneration:scheduledGeneration,
          })){
           markAutomaticFailureStop(slot,sourceHash,'missing-external-shell',{
            baseSlot,
@@ -1193,14 +1203,14 @@ function syncMessagesCore(indices=null){
            keep.dataset.rmMissingShellRetry=failure?.code==='missing-external-shell'?'true':'false';
            placeExternalHost(el,keep,keep.dataset.rmKey||key,'independent');
           }
-        } else if(!saved?.html && !keep && !persistedSuppressed && (isActiveGenerationTarget && !automaticGenerationSuppressed || quickWaiting)){
+        } else if(!saved?.html && !keep && !persistedSuppressed && (isActiveGenerationTarget && !automaticGenerationSuppressed || quickWaiting || scheduledGeneration)){
           keep=ensureReplyGenerationPlaceholder(el,key,sourceHash,true);
         }
        const hostSourceHash=String(keep?.dataset?.rmSourceHash||'');
        const mountedReadyIdentityStale=!!(readyDetailsFromHost(keep) && !mountedReadyMatchesObserved && !mountedReadyPassiveSourceDrift);
        let hostIsStale=!!(keep && keep.dataset.rmState!=='manual' && !passiveFailureHost && !mountedReadyPassiveSourceDrift && (mountedReadyIdentityStale || (hostSourceHash && hostSourceHash!==sourceHash)));
        const keepIsReplyPlaceholder=!!(keep && (keep.dataset.rmReplyGenerationPlaceholder==='true' || (keep.dataset.rmState==='loading' && keep.querySelector?.(':scope > details.rabbit-mirror-external-placeholder'))));
-        if(keepIsReplyPlaceholder && !saved?.html && automaticGenerationSuppressed && !quickWaiting && !activeBaseFlight){
+        if(keepIsReplyPlaceholder && !saved?.html && automaticGenerationSuppressed && !quickWaiting && !scheduledGeneration && !activeBaseFlight){
           keep.remove();
           keep=null;
           hostIsStale=false;
@@ -1395,19 +1405,29 @@ function restoredHistoryProbeState(ctx,index){
  const hosts=externalHosts(element).filter(host=>host.dataset.rmSource==='independent');
  if(hosts.length!==1) return null;
  const host=hosts[0];
- if(!host.isConnected || host.dataset.rmState!=='ready' || host.dataset.rmAwaitingFreshSource==='true') return null;
+ const state=host.dataset.rmState;
+ if(!host.isConnected || !['ready','error'].includes(state) || host.dataset.rmAwaitingFreshSource==='true') return null;
+ // A complete terminal card is just as stable as a ready mirror. Do not read
+ // and reconcile the archive again on every scroll/tap. Incomplete or hidden
+ // error UI still needs recovery, and loading must never be cached as settled.
+ if(state==='error'){
+  const retry=host.querySelector?.('[data-rm-external-error-retry]');
+  const cat=host.querySelector?.('[data-rm-external-error-cat]');
+  if(host.hidden || !retry || retry.disabled || !cat) return null;
+ }
  const faces=externalFaceDetails(host);
  if(!faces.length) return null;
- return {element,message,chat:ctx.chat,chatKey:chatKey(ctx),host,faces,
+ return {element,message,chat:ctx.chat,chatKey:chatKey(ctx),host,faces,state,key:host.dataset.rmKey,sourceHash:host.dataset.rmSourceHash,
   body:String(message.mes||''),display:String(message.extra?.display_text||''),reasoning:String(message.extra?.reasoning||''),
   swipe:swipeId(message),source:host.__rabbitMirrorIndependentSource,
   textRoot:element.querySelector?.('.mes_text'),
-  tools:[...(host.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-recipe]')||[])]};
+  tools:[...(host.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-recipe], .rabbit-mirror-external-error-actions, [data-rm-external-error-retry], [data-rm-external-error-cat]')||[])]};
 }
 
 function sameRestoredHistoryProbe(a,b){
  return !!(a&&b&&a.element===b.element&&a.message===b.message&&a.chat===b.chat&&a.chatKey===b.chatKey
-  &&a.host===b.host&&a.body===b.body&&a.display===b.display&&a.reasoning===b.reasoning&&a.swipe===b.swipe
+  &&a.host===b.host&&a.state===b.state&&a.key===b.key&&a.sourceHash===b.sourceHash
+  &&a.body===b.body&&a.display===b.display&&a.reasoning===b.reasoning&&a.swipe===b.swipe
   &&a.source===b.source&&a.textRoot===b.textRoot&&a.faces.length===b.faces.length&&a.faces.every((face,i)=>face===b.faces[i])
   &&a.tools.length===b.tools.length&&a.tools.every((tool,i)=>tool===b.tools[i]));
 }
@@ -1491,12 +1511,13 @@ function restoreMissingIndependentRetryOnElement(el,index){
  const generationActive=hostGenerationLooksActive();
  const tailIndex=Array.isArray(ctx.chat)?ctx.chat.length-1:-1;
  const key=recordKey(ctx,index,m);
+ const scheduledGeneration=hasScheduledIndependentGeneration(index);
  const errorHost=hosts.find(host=>host.dataset.rmState==='error')||null;
  if(errorHost && !hasReady){
   errorHost.hidden=false;
   errorHost.dataset.rmMissingShellRetry='true';
   placeExternalHost(el,errorHost,errorHost.dataset.rmKey||key,'independent');
-  if(!automaticFailureStopFor(observed.slot,observed.sourceHash)){
+  if(!scheduledGeneration && !automaticFailureStopFor(observed.slot,observed.sourceHash)){
    markAutomaticFailureStop(observed.slot,observed.sourceHash,'missing-external-shell',{
     baseSlot,
     operationEpoch:operationEpochForBase(baseSlot),
@@ -1517,6 +1538,7 @@ function restoreMissingIndependentRetryOnElement(el,index){
   hasMessageBody:true,
   isActiveGenerationTarget:generationActive && index===tailIndex,
   quickWaiting:quickWaitingCandidate(ctx,index),
+  hasScheduledGeneration:scheduledGeneration,
  })) return null;
  markAutomaticFailureStop(observed.slot,observed.sourceHash,'missing-external-shell',{
   baseSlot,
