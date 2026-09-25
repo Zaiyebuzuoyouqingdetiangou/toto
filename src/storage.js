@@ -1,4 +1,4 @@
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.6.11';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.6.12';
 import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.5.53-cn-boundary1';
 import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.6';
 
@@ -997,21 +997,69 @@ function reclaimExpiredTransactionsForQuota(changes) {
     } catch { return null; }
 }
 
-function compactIndependentOutputsForQuota() {
+// 本机镜面缓存只是聊天文件里持久化记录的副本；按「当前聊天优先、再按时间」保留 keep 条。
+function compactIndependentOutputsForQuota(keep = 40, currentChatOnly = false) {
     const key = 'rabbit_mirror_independent_outputs_v1';
     try {
         const parsed = JSON.parse(localStorage.getItem(key) || '{}');
         if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return false;
-        const entries = Object.entries(parsed).sort((a, b) => Number(b[1]?.ts || 0) - Number(a[1]?.ts || 0));
-        if (!entries.length) return false;
-        for (const keep of [40, 20, 10, 5, 1]) {
-            try {
-                localStorage.setItem(key, JSON.stringify(Object.fromEntries(entries.slice(0, keep))));
-                return true;
-            } catch {}
-        }
+        let chatKey = '';
+        try { chatKey = getCurrentChatKey() || ''; } catch {}
+        const inChat = slot => !!chatKey && String(slot).startsWith(`${chatKey}:`);
+        const entries = Object.entries(parsed)
+            .filter(([slot]) => !currentChatOnly || inChat(slot))
+            .sort((a, b) => Number(inChat(b[0])) - Number(inChat(a[0])) || Number(b[1]?.ts || 0) - Number(a[1]?.ts || 0));
+        if (entries.length >= Object.keys(parsed).length && entries.length <= keep) return false;
+        localStorage.setItem(key, JSON.stringify(Object.fromEntries(entries.slice(0, keep))));
+        return true;
     } catch {}
     return false;
+}
+
+// 空间不足时逐级释放兔子镜自己的本机缓存，每一级之后都重试一次同一份写入。
+// 旧版只要缓存压到 40 条能写回就停止，常常仍然腾不出空间，于是每次都报额度不足。
+const QUOTA_RECOVERY_STEPS = [
+    () => compactFaceSwipeStoreForQuota([40]),
+    () => compactIndependentOutputsForQuota(40),
+    () => { compactFaceSwipeStoreForQuota([20]); compactIndependentOutputsForQuota(20); },
+    () => { compactFaceSwipeStoreForQuota([10]); compactIndependentOutputsForQuota(10); },
+    () => { compactFaceSwipeStoreForQuota([5]); compactIndependentOutputsForQuota(10, true); },
+];
+
+const STORAGE_USAGE_CATEGORIES = [
+    ['rabbitMirror:image:v1:', '镜面生图'],
+    ['rabbit_mirror_independent_outputs_v1', '镜面缓存'],
+    ['rabbit_mirror_face_swipes_v1', '多版本切换'],
+    ['rabbit_mirror_independent_history_v1', '兔子镜历史'],
+    ['rabbit_mirror_theater:selection_recipes:v1', '抽签记录'],
+    ['rabbit_mirror_follow_partial_results_v1', '跟随正文残面'],
+    ['rabbit_mirror', '兔子镜其他'],
+    ['rabbitMirror', '兔子镜其他'],
+];
+
+function formatStorageBytes(bytes) {
+    return bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)}MB` : `${Math.max(1, Math.round(bytes / 1024))}KB`;
+}
+
+// 只统计键名与长度，不读取、不输出任何内容。UTF-16 每字符按 2 字节估算。
+export function describeRabbitMirrorStorageUsage() {
+    try {
+        const totals = new Map();
+        let all = 0;
+        for (let index = 0; index < localStorage.length; index += 1) {
+            const key = localStorage.key(index);
+            if (key == null) continue;
+            const bytes = (String(key).length + String(localStorage.getItem(key) || '').length) * 2;
+            all += bytes;
+            const label = STORAGE_USAGE_CATEGORIES.find(([prefix]) => String(key).startsWith(prefix))?.[1] || '酒馆与其他扩展';
+            totals.set(label, Number(totals.get(label) || 0) + bytes);
+        }
+        const top = [...totals.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4)
+            .map(([label, bytes]) => `${label} ${formatStorageBytes(bytes)}`).join('、');
+        return top ? `本站浏览器存储约 ${formatStorageBytes(all)}，占用最多：${top}。` : '';
+    } catch {
+        return '';
+    }
 }
 
 function writeOwnedTransaction(changes = [], options = {}, allowQuotaRecovery = false) {
@@ -1038,11 +1086,19 @@ function writeOwnedTransaction(changes = [], options = {}, allowQuotaRecovery = 
             } catch { /* Fail closed; caller receives false and never dispatches/commits. */ }
         }
         if (allowQuotaRecovery && isStorageQuotaError(error)) {
-            compactFaceSwipeStoreForQuota();
-            compactIndependentOutputsForQuota();
-            const retry = reclaimExpiredTransactionsForQuota(changes);
-            // Same plan and payload, one local retry only. No picker/provider call.
-            return writeOwnedTransaction(retry || changes, options, false);
+            // Same plan and payload, retried locally after each cleanup step.
+            // No picker/provider call, and no request is sent before success.
+            let lastCode = 'BATCH_STORAGE_QUOTA_EXCEEDED';
+            const silent = { ...options, onRejected: code => { lastCode = code; } };
+            const pending = reclaimExpiredTransactionsForQuota(changes) || changes;
+            if (writeOwnedTransaction(pending, silent, false)) return true;
+            for (const step of QUOTA_RECOVERY_STEPS) {
+                if (lastCode !== 'BATCH_STORAGE_QUOTA_EXCEEDED') break;
+                try { step(); } catch { /* Continue with the next cleanup level. */ }
+                if (writeOwnedTransaction(pending, silent, false)) return true;
+            }
+            reportBatchRejection(options, lastCode);
+            return false;
         }
         reportBatchRejection(options, isStorageQuotaError(error) ? 'BATCH_STORAGE_QUOTA_EXCEEDED' : rejection);
         return false;
