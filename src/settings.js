@@ -1,10 +1,10 @@
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.6.16-test.3';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.6.16-test.5';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
 import { independentGenerationTiming } from './independentTiming.js?rmv=1.5.53-timing1';
 import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.6';
 import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.6';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.6.16-test.3';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.6.16-test.5';
 
 export const MODULE_NAME = 'rabbit_mirror_theater';
 
@@ -204,7 +204,7 @@ export const defaultSettings = Object.freeze({
     presentationWorldviewLock: false,
     // 每轮生成的兔子镜面数（1～5）。默认 1，关闭多面不改旧单面路径。
     rabbitMirrorFaceCount: 1,
-    rabbitMirrorPresentationModes: ['auto', 'auto', 'auto', 'auto', 'auto'],
+    rabbitMirrorPresentationModes: ['html', 'html', 'html', 'html', 'html'],
     longTextSource: 'blank',
     // 自动呈现时，长文本所占百分比；其余为 HTML。0 表示仍按抽中的类别呈现。
     autoLongTextPercent: 40,

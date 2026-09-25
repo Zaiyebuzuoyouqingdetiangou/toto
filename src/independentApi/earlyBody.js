@@ -3,7 +3,7 @@
 import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.6.3-ttchild1';
 import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.5.53-cn-boundary1';
 import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
-import { getSettings } from '../settings.js?rmv=1.6.16-test.3';
+import { getSettings } from '../settings.js?rmv=1.6.16-test.5';
 import { independentGenerationTiming } from '../independentTiming.js?rmv=1.5.53-timing1';
 import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.5.53-cn-boundary1';
 import {
@@ -14,7 +14,7 @@ import {
     isMissingShellTargetFloor,
     normalizeMissingShellScanRange,
     shouldRestoreMissingIndependentRetryShell,
-} from './missingRetryShell.js?rmv=1.6.16-test.3';
+} from './missingRetryShell.js?rmv=1.6.16-test.5';
 import {
     INDEPENDENT_GENERATION_INTENTS_KEY,
     INDEPENDENT_GENERATION_INTENT_TYPES,
@@ -38,7 +38,7 @@ import {
     markAutomaticFailureStop,
     operationEpochForBase,
     pending,
-} from './flights.js?rmv=1.6.16-test.3';
+} from './flights.js?rmv=1.6.16-test.5';
 import {
     appendHistoryEntry,
     chatPersistenceSlot,
@@ -48,7 +48,7 @@ import {
     synchronizeIndependentChatPersistence,
     writePersistedOwner,
     writeStore,
-} from './persistence.js?rmv=1.6.16-test.3';
+} from './persistence.js?rmv=1.6.16-test.5';
 import {
     activeGlobalWorldInfoCapture,
     assistantMessages,
@@ -98,7 +98,7 @@ import {
     withOwnerLockStoreBatch,
     writeActiveGlobalWorldInfoCapture,
     writeHostModule,
-} from './connection.js?rmv=1.6.16-test.3';
+} from './connection.js?rmv=1.6.16-test.5';
 import {
     allExternalHosts,
     externalHosts,
@@ -106,7 +106,7 @@ import {
     removeEmptyFollowExternalAnchors,
     removeEmptyInlineAnchors,
     withExternalHostSyncIndex,
-} from './request.js?rmv=1.6.16-test.3';
+} from './request.js?rmv=1.6.16-test.5';
 import {
     beginHostWorkTiming,
     clearExternalHostFreshSourceState,
@@ -139,7 +139,7 @@ import {
     setPlaceholderSummary,
     usableReadyDetails,
     withRestorableHtmlCacheBatch,
-} from './geometry.js?rmv=1.6.16-test.3';
+} from './geometry.js?rmv=1.6.16-test.5';
 import {
     INDEPENDENT_INTENT_OWNER,
     abortFlight,
@@ -193,7 +193,7 @@ import {
     serializeExternalFaceDetails,
     stampAutomaticAuthorizationEpoch,
     withHistoricalRestoreLightPass,
-} from './mount.js?rmv=1.6.16-test.3';
+} from './mount.js?rmv=1.6.16-test.5';
 import {
     automaticGenerationCutovers,
     hostGenerationHintStartedAt,
@@ -218,7 +218,7 @@ import {
     writeStartupHistoryFallbackRoot,
     writeSyncRunning,
     writeSyncTimer,
-} from './lifecycle.js?rmv=1.6.16-test.3';
+} from './lifecycle.js?rmv=1.6.16-test.5';
 
 let earlyBodyParserPromise=null;
 
@@ -487,6 +487,10 @@ function beginAutomaticHostGeneration(ctx,type='',nested=false,dryRun=false){
    return 'nested';
  }
  if(nested) return false;
+ // The preceding normal reply can still be in its final-paint window when the
+ // user sends the next message. Preserve its proven owner in the existing
+ // per-message poll before replacing the single host-lifecycle owner.
+ if(normalized==='normal') preserveCompletedAutomaticHostGeneration(ctx,current);
  clearAutomaticHostGenerationSettlement(current);
  const chat=Array.isArray(ctx?.chat)?ctx.chat:[];
  const tailIndex=chat.length-1; const tail=tailIndex>=0?chat[tailIndex]:null;
@@ -598,9 +602,27 @@ function noteAutomaticHostGenerationReceived(ctx,index){
  return true;
 }
 
+function automaticHostSettlementActivity(ctx,owner){
+ const external=externalHostGenerationActivity();
+ if(!external.active || external.dom || external.moduleActive || !external.weak) return external;
+ const rendered=owner?.tentativeRender;
+ const processor=hostModule?.streamingProcessor || ctx.streamingProcessor;
+ // A weak context/global flag can outlive END. Only the exact, ended owner
+ // supplies completion evidence; elapsed time alone never grants permission.
+ if(owner?.terminalSeen===true
+  && owner.terminalReason===String(hostModule?.event_types?.GENERATION_ENDED||'GENERATION_ENDED')
+  && !owner.auxiliaryTerminalPending && !owner.intermediateRender && rendered
+  && automaticHostGenerationRenderMatches(ctx,rendered.index,owner)
+  && automaticHostRenderProof(rendered.index)!=='stream-tool-intermediate'
+  && processor?.isStopped!==true && processor?.abortController?.signal?.aborted!==true){
+  return {...external,active:false};
+ }
+ return external;
+}
+
 function refreshAutomaticHostGenerationEvidence(ctx,owner){
  if(!owner?.terminalSeen || owner.terminalReason!==String(hostModule?.event_types?.GENERATION_ENDED||'GENERATION_ENDED')
-  || owner.auxiliaryTerminalPending || owner.intermediateRender || externalHostGenerationActivity().active) return false;
+  || owner.auxiliaryTerminalPending || owner.intermediateRender || automaticHostSettlementActivity(ctx,owner).active) return false;
  const rendered=owner.tentativeRender, candidate=rendered||owner.received;
  if(!candidate || candidate.chat!==ctx.chat || candidate.message!==ctx.chat?.[candidate.index]
   || candidate.swipe!==swipeId(candidate.message) || candidate.phase!==Number(owner.phase||0)
@@ -620,7 +642,8 @@ function automaticHostGenerationSettlementCandidate(ctx,{externalActive=false}={
  const cutover=automaticGenerationCutovers.get(chatKey(ctx)); const owner=cutover?.activeHostGeneration;
  refreshAutomaticHostGenerationEvidence(ctx,owner);
  const rendered=owner?.tentativeRender;
- if(!owner || !rendered || externalActive===true || Number(rendered.phase)!==Number(owner.phase||0)) return null;
+ if(!owner || !rendered || owner.auxiliaryTerminalPending || owner.intermediateRender
+  || externalActive===true || Number(rendered.phase)!==Number(owner.phase||0)) return null;
  if(!automaticHostGenerationRenderMatches(ctx,rendered.index,owner)) return null;
  const msg=ctx?.chat?.[rendered.index]; const token=automaticCutoverVersionToken(msg);
  if(rendered.message && (rendered.message!==msg || rendered.chat!==ctx.chat || rendered.swipe!==swipeId(msg))) return null;
@@ -710,7 +733,23 @@ function activateAuthorizedAutomaticGeneration(ctx,index,reason='host-final-rend
  return true;
 }
 
-function finalizeAutomaticHostGeneration(ctx,index,reason='host-final-render'){
+function preserveCompletedAutomaticHostGeneration(ctx,owner){
+ const rendered=owner?.tentativeRender;
+ if(!rendered || !owner.terminalSeen
+  || owner.terminalReason!==String(hostModule?.event_types?.GENERATION_ENDED||'GENERATION_ENDED')
+  || owner.auxiliaryTerminalPending || owner.intermediateRender
+  || rendered.chat!==ctx.chat || rendered.message!==ctx.chat?.[rendered.index]
+  || rendered.swipe!==swipeId(rendered.message)
+  || rendered.token!==automaticCutoverVersionToken(rendered.message)
+  || automaticHostRenderProof(rendered.index)==='stream-tool-intermediate'
+  || !automaticHostGenerationRenderMatches(ctx,rendered.index,owner)) return false;
+ // The host flags may already describe the next normal request. Do not skip
+ // the old body's remaining stability window or dispatch here: its poll keeps
+ // checking host activity, exact owner, failures and the single-request lease.
+ return finalizeAutomaticHostGeneration(ctx,rendered.index,'host-next-normal',false,rendered.at);
+}
+
+function finalizeAutomaticHostGeneration(ctx,index,reason='host-final-render',sourceStabilityConfirmed=true,sourceStableSince=0){
  if(!settleAutomaticHostGeneration(ctx,index,reason)) return false;
  writeHostGenerationInProgress(false);
  writeHostGenerationHintStartedAt(0);
@@ -719,7 +758,7 @@ function finalizeAutomaticHostGeneration(ctx,index,reason='host-final-render'){
  // Consume the lightweight exact-render proof too, so a later duplicate END or
  // RENDER cannot reopen the same operation through the cold-runtime path.
  claimDeferredIndependentGenerationIntent(ctx,index,`${reason}-deferred`,{requireFinalProof:true});
- return activateAuthorizedAutomaticGeneration(ctx,index,reason,true,true);
+ return activateAuthorizedAutomaticGeneration(ctx,index,reason,true,sourceStabilityConfirmed,sourceStableSince);
 }
 
 function stopAutomaticHostGenerationSettlement(ctx,owner,reason='host-completion-timeout'){
@@ -793,7 +832,7 @@ function scheduleAutomaticHostGenerationSettlement(delay=FINAL_RENDER_POLL_INTER
   owner.settleTimer=0;
   const ctx=getContext(); const liveCutover=automaticGenerationCutovers.get(chatKey(ctx));
   if(liveCutover?.activeHostGeneration!==owner || String(owner.chat||'')!==chatKey(ctx)) return;
-  const external=externalHostGenerationActivity();
+  const external=automaticHostSettlementActivity(ctx,owner);
   const candidate=automaticHostGenerationSettlementCandidate(ctx,{externalActive:external.active});
   const renderedAt=Number(owner.tentativeRender?.at||owner.received?.at||0);
   // Even a terminal-backed render gets one short final-paint window. This lets a

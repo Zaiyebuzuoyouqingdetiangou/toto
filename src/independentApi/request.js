@@ -1,15 +1,15 @@
 // Split from independentApi.js — request.
 
-import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.6.16-test.3';
+import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.6.16-test.5';
 import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.6.4-creation1';
-import { getSettings } from '../settings.js?rmv=1.6.16-test.3';
+import { getSettings } from '../settings.js?rmv=1.6.16-test.5';
 import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.6';
 import { independentGenerationTiming } from '../independentTiming.js?rmv=1.5.53-timing1';
 import {
     assertRabbitMirrorIndependentResponseBytes,
     assertRabbitMirrorIndependentResponseText,
     authorizeRabbitMirrorIndependentServiceRequest,
-} from '../independentSecurityGuard.js?rmv=1.5.53-cn-boundary1';
+} from '../independentSecurityGuard.js?rmv=1.6.16-test.5';
 import {
     parseIndependentAdvancedOptions,
     buildIndependentAdvancedCarrier,
@@ -22,20 +22,20 @@ import {
     prepareSelectedMemoryForPrompt,
     memoryRequestSettingsKey,
     assertMemoryRequestSettings,
-} from '../promptBuilder.js?rmv=1.6.16-test.3';
+} from '../promptBuilder.js?rmv=1.6.16-test.5';
 import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.5.53-text1';
 import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.5.53-cn-boundary1';
-import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.6.16-test.3';
+import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.6.16-test.5';
 import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from '../multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.16-test.3';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.16-test.5';
 import {
     updateLatestVisualSignature,
     parseVisualFamilySkeleton,
     describeVisualFamilyDimensions,
     markPendingBatchAttempt,
     releasePendingComboBatch,
-} from '../storage.js?rmv=1.6.16-test.3';
-import { recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.6.16-test.3';
+} from '../storage.js?rmv=1.6.16-test.5';
+import { recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.6.16-test.5';
 import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.5.53-cn-boundary1';
 import {
     EXTERNAL_SHELL_ATTR,
@@ -47,7 +47,7 @@ import {
     getContext,
     hashText,
 } from './runtime.js?rmv=1.6';
-import { operationEpochForBase } from './flights.js?rmv=1.6.16-test.3';
+import { operationEpochForBase } from './flights.js?rmv=1.6.16-test.5';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INDEPENDENT_MAX_APPROX_DEPTH,
@@ -62,7 +62,7 @@ import {
     normalizedConfiguredTemperature,
     readHistoryStore,
     readStore,
-} from './persistence.js?rmv=1.6.16-test.3';
+} from './persistence.js?rmv=1.6.16-test.5';
 import {
     API_PROFILE_ORDER,
     chatKey,
@@ -96,7 +96,7 @@ import {
     stageNextApiProfile,
     swipeId,
     validatedIndependentConnectionProfile,
-} from './connection.js?rmv=1.6.16-test.3';
+} from './connection.js?rmv=1.6.16-test.5';
 import {
     externalGeometryCycleSequence,
     externalGeometryLifecycleEpoch,
@@ -107,7 +107,7 @@ import {
     writeExternalGeometryCycleSequence,
     writeExternalGeometryLifecycleEpoch,
     writeExternalGeometryLifecycleReason,
-} from './geometry.js?rmv=1.6.16-test.3';
+} from './geometry.js?rmv=1.6.16-test.5';
 import {
     INDEPENDENT_REJECTED_PREVIEW_MAX_CHARS,
     INDEPENDENT_REJECTED_PREVIEW_MAX_ENTRIES,
@@ -122,8 +122,8 @@ import {
     writeExternalHostSyncIndex,
     writeIndependentRejectedPreviewChars,
     writeIndependentRejectedPreviewSequence,
-} from './mount.js?rmv=1.6.16-test.3';
-import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.6.16-test.3';
+} from './mount.js?rmv=1.6.16-test.5';
+import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.6.16-test.5';
 
 const NON_STREAM_PROFILE_BY_STREAM_PROFILE={
  chat_system_user_full:'chat_system_user_full_nostream',
@@ -1263,6 +1263,9 @@ function independentMirrorBodyEvidence(inner=''){
    if(element.hasAttribute('hidden') || String(element.getAttribute('aria-hidden')||'').toLowerCase()==='true') continue;
    const inline=String(element.getAttribute('style')||'').toLowerCase();
    if(/(?:^|;)\s*display\s*:\s*none\b/.test(inline) || /(?:^|;)\s*visibility\s*:\s*hidden\b/.test(inline)) continue;
+   // A drawing/photo may be the direct body child. querySelector below only
+   // sees descendants; requiring a wrapping div falsely rejects that artwork.
+   if(element.matches('img,svg,canvas,video,audio,iframe,input,button,select,textarea')) return true;
    if(String(element.textContent||'').trim() || element.querySelector('img,svg,canvas,video,audio,iframe,input,button,select,textarea,table,ul,ol,section,article,main,figure,[role],[data-action]')) return true;
    if(['DIV','SECTION','ARTICLE','MAIN','FIGURE','TABLE','UL','OL','FORM'].includes(element.tagName) && element.children.length) return true;
   }
@@ -1511,7 +1514,7 @@ export function wireIndependentRejectedFaceControls(host){
    independentRejectedFaceControlsWired.add(resay);
    resay.addEventListener('click',event=>{
     event.preventDefault(); event.stopPropagation();
-    void import('../outputSanitizer/toolsChrome.js?rmv=1.6.16-test.3').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+    void import('../outputSanitizer/toolsChrome.js?rmv=1.6.16-test.5').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
    },true);
   }
  }
@@ -1775,7 +1778,7 @@ export async function callIndependentApi(ctx,index,msg,signal=null,requestOption
  const feedbackPrompt='';
  const feedbackFinalCheck='';
  const targetVisibleAtStart=readVisible(msg,index);
- if(!targetVisibleAtStart.text) throw new Error('当前正文在可见性检查和标签过滤后为空；本次未发送副 API 请求。请调整过滤标签或确认正文已完成渲染。');
+ if(!targetVisibleAtStart.text) throw Object.assign(new Error('当前正文在可见性检查和标签过滤后为空；本次未发送副 API 请求。请调整过滤标签或确认正文已完成渲染。'),{code:'RABBIT_MIRROR_VISIBLE_BODY_EMPTY',requestCount:0});
  const directiveStart=Math.max(0,index-3);
  const boundedDirectiveChat=Array.isArray(ctx.chat)?ctx.chat.slice(directiveStart,index+1)
   .map((message,offset)=>({message,realIndex:directiveStart+offset}))
@@ -1867,7 +1870,7 @@ export async function callIndependentApi(ctx,index,msg,signal=null,requestOption
   if(promptOwner) assertIndependentPromptOwner(promptOwner);
   return {skipped:true,reason:details.metadata?.disabled?'directive-disabled':'empty-prompt'};
  }
- if((!st.independentConnectionProfileId&&!st.independentApiBaseUrl)||!st.independentApiModel) throw new Error('独立 API 尚未完成酒馆连接与模型设置');
+ if((!st.independentConnectionProfileId&&!st.independentApiBaseUrl)||!st.independentApiModel) throw Object.assign(new Error('独立 API 尚未完成酒馆连接与模型设置'),{code:'RABBIT_MIRROR_CONNECTION_UNCONFIGURED',requestCount:0});
  const feedbackBlock=feedbackPrompt ? `
 
 ${feedbackPrompt}${feedbackFinalCheck?`
@@ -1921,7 +1924,7 @@ ${independentSystemRules}`;
  const globalWorldInfoSnapshot=globalWorldInfoSnapshotFor(ctx,index,msg);
  const globalWorldInfoView=globalWorldInfoContextView(globalWorldInfoSnapshot);
  const contextResult=contextBundle(ctx,index,globalWorldInfoSnapshot,globalWorldInfoView,availableContextChars,readVisible);
- if(!contextResult.targetVisibleChars) throw new Error('当前正文在可见性检查和标签过滤后为空；本次未发送副 API 请求。请调整过滤标签或确认正文已完成渲染。');
+ if(!contextResult.targetVisibleChars) throw Object.assign(new Error('当前正文在可见性检查和标签过滤后为空；本次未发送副 API 请求。请调整过滤标签或确认正文已完成渲染。'),{code:'RABBIT_MIRROR_VISIBLE_BODY_EMPTY',requestCount:0});
  const contextText=contextResult.text+characterWorldBookBlock;
  const userPrompt=`${independentUserLead}
 

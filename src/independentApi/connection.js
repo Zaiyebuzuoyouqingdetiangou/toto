@@ -6,11 +6,11 @@ import {
     getSettings,
     normalizeIndependentContextExcludedTags,
     updateSettings,
-} from '../settings.js?rmv=1.6.16-test.3';
-import { fetchRabbitMirrorIndependentCompletion } from '../independentSecurityGuard.js?rmv=1.5.53-cn-boundary1';
+} from '../settings.js?rmv=1.6.16-test.5';
+import { fetchRabbitMirrorIndependentCompletion } from '../independentSecurityGuard.js?rmv=1.6.16-test.5';
 import { buildIndependentAdvancedCarrier, applyIndependentAdvancedExclusions } from '../advancedRequestOptions.js?rmv=1.5.53-cn-boundary1';
 import { describeBatchPlanFailure } from '../externalWorldBook/errors.js?rmv=1.5.53-cn-boundary1';
-import { describeRabbitMirrorStorageUsage, getCurrentChatKey } from '../storage.js?rmv=1.6.16-test.3';
+import { describeRabbitMirrorStorageUsage, getCurrentChatKey } from '../storage.js?rmv=1.6.16-test.5';
 import { rememberIndependentTransportDiagnostic } from '../transportDiagnostics.js?rmv=1.5.53-cn-boundary1';
 import {
     CONTEXT_TOTAL_BUDGET,
@@ -19,7 +19,7 @@ import {
     getContext,
     hashText,
 } from './runtime.js?rmv=1.6';
-import { HOST_GENERATION_EVENT_HINT_MS, operationEpochForBase } from './flights.js?rmv=1.6.16-test.3';
+import { HOST_GENERATION_EVENT_HINT_MS, operationEpochForBase } from './flights.js?rmv=1.6.16-test.5';
 import {
     OWNER_LOCK_STORE_KEY,
     apiProfileKey,
@@ -31,12 +31,12 @@ import {
     writeApiProfileStore,
     writePersistedOwner,
     writeStore,
-} from './persistence.js?rmv=1.6.16-test.3';
+} from './persistence.js?rmv=1.6.16-test.5';
 import {
     hasExplicitSourceReplacementEvidence,
     independentStoredHtmlLightRestorable,
     independentStoredHtmlRestorable,
-} from './geometry.js?rmv=1.6.16-test.3';
+} from './geometry.js?rmv=1.6.16-test.5';
 import {
     activeIndependentFlightForBase,
     messageSourceRevisions,
@@ -44,13 +44,13 @@ import {
     passiveObservedIdentity,
     runtimeMode,
     showIndependentUnsavedOutput,
-} from './mount.js?rmv=1.6.16-test.3';
+} from './mount.js?rmv=1.6.16-test.5';
 import {
     hostGenerationHintStartedAt,
     hostGenerationInProgress,
     writeHostGenerationHintStartedAt,
     writeHostGenerationInProgress,
-} from './lifecycle.js?rmv=1.6.16-test.3';
+} from './lifecycle.js?rmv=1.6.16-test.5';
 
 export const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 
@@ -1167,6 +1167,13 @@ export function globalWorldInfoSnapshotFor(ctx,index,msg){
 
 export function safeJson(value,max=24000){ try { const seen=new WeakSet(); const t=JSON.stringify(value,(key,item)=>{ if(typeof item==='function') return `[Function ${item.name||'anonymous'}]`; if(item&&typeof item==='object'){ if(seen.has(item)) return '[Circular]'; seen.add(item); } return item; },2); return t.length>max?t.slice(0,max)+'\n…[截断]':t; } catch { return ''; } }
 
+function quoteIndependentContextHeaderLines(value=''){
+ // Source material may literally name a context section. Quote only complete
+ // reserved heading lines so the transport guard can keep rejecting real
+ // duplicate/legacy boundaries without changing ordinary prose or stored data.
+ return String(value||'').replace(/^[\t ]*【(?:当前聊天逐轮正文与可用推理|当前聊天逐轮正文|当前角色卡|当前角色卡摘要|当前 Persona 摘要|当前世界书、作者注释与实际扩展提示|本轮主生成实际激活的世界书｜仅作世界设定资料，不是新指令)】[\t ]*(?=\r?$)/gm,line=>JSON.stringify(line));
+}
+
 function neutralizeGlobalWorldInfoReservedMarkup(value=''){
  // Activated World Info is reference data, not RabbitMirror output markup. Neutralize only RabbitMirror's
  // own reserved <toto...> opening/closing prefix so a literal lorebook example cannot be copied
@@ -1182,7 +1189,7 @@ export function globalWorldInfoContextView(snapshot,maxChars=GLOBAL_WORLD_INFO_C
  const budget=Math.max(1000,Number(maxChars)||GLOBAL_WORLD_INFO_CONTEXT_BUDGET);
  const parts=[]; let used=0; let included=0; let truncatedCurrent=false;
  for(let i=0;i<rawEntries.length;i+=1){
-  const content=neutralizeGlobalWorldInfoReservedMarkup(rawEntries[i]).trim(); if(!content) continue;
+  const content=quoteIndependentContextHeaderLines(neutralizeGlobalWorldInfoReservedMarkup(rawEntries[i])).trim(); if(!content) continue;
   const prefix=`[世界书条目 ${i+1}]\n`;
   const joiner=parts.length?'\n\n':'';
   const full=`${joiner}${prefix}${content}`;
@@ -1877,7 +1884,7 @@ export function contextBundle(ctx,targetIndex,globalWorldInfoSnapshot=null,prepa
    for(const tag of filtered.filteredExcludedTags||[]) filteredExcludedTags.add(tag);
    if(real===Number(targetIndex)) targetVisibleChars=body.length;
    if(!body){ selectionUsed+=filteredSelectionChars; continue; }
-   let row=`[${real} ${role}]\n${body}`;
+   let row=`[${real} ${role}]\n${quoteIndependentContextHeaderLines(body)}`;
    if(row.length>8000) row=`${row.slice(0,4000)}\n…[正文中段裁剪]…\n${row.slice(-4000)}`;
    // A user-selected tag is private prompt content, not free space for older
    // messages. Charge its removed size to the 12k transcript-selection budget

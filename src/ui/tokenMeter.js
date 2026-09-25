@@ -1,8 +1,8 @@
 // Split from ui.js — Prompt meter and latest independent request diagnostic.
 
-import { getSettings } from '../settings.js?rmv=1.6.16-test.3';
-import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from '../tokenMeter.js?rmv=1.6.16-test.3';
-import { API_REQUEST_DIAGNOSTIC_EVENT, getLastIndependentApiRequestDiagnostic } from '../independentApi.js?rmv=1.6.16-test.3';
+import { getSettings } from '../settings.js?rmv=1.6.16-test.5';
+import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from '../tokenMeter.js?rmv=1.6.16-test.5';
+import { API_REQUEST_DIAGNOSTIC_EVENT, getLastIndependentApiRequestDiagnostic } from '../independentApi.js?rmv=1.6.16-test.5';
 import { escapeHtml } from './runtime.js?rmv=1.6';
 
 function independentApiProfileLabel(diagnostic) {

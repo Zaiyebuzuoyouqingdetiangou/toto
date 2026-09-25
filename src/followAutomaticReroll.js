@@ -1,14 +1,14 @@
-import { getSettings } from './settings.js?rmv=1.6.16-test.3';
-import { getCurrentChatKey } from './storage.js?rmv=1.6.16-test.3';
-import { getRabbitMirrorRecipe } from './blacklist.js?rmv=1.6.16-test.3';
-import { readFollowPartialResult, saveFollowCompletedRetryResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=1.6.16-test.3';
-import { markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.6.16-test.3';
+import { getSettings } from './settings.js?rmv=1.6.16-test.5';
+import { getCurrentChatKey } from './storage.js?rmv=1.6.16-test.5';
+import { getRabbitMirrorRecipe } from './blacklist.js?rmv=1.6.16-test.5';
+import { readFollowPartialResult, saveFollowCompletedRetryResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=1.6.16-test.5';
+import { markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.6.16-test.5';
 import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
-import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.6.16-test.3';
+import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.6.16-test.5';
 import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=1.5.53-text1';
-import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.6.16-test.3';
-import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=1.5.53-cn-boundary1';
-import { presentationModeFields } from './presentationMode.js?rmv=1.6.16-test.3';
+import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.6.16-test.5';
+import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=1.6.16-test.5';
+import { presentationModeFields } from './presentationMode.js?rmv=1.6.16-test.5';
 import {
     automaticRerollEnabled,
     automaticRerollStatusText,
@@ -19,8 +19,8 @@ import {
     shouldAutomaticReroll,
     stallTimeoutError,
 } from './automaticReroll.js?rmv=1.6';
-import { mergeMissingIndependentFaces, missingIndexesFromIndependentResult, recipesCoverMissing } from './missingFaceMerge.js?rmv=1.6.16-test.3';
-import { inspectRabbitMirrorGenerationSource, getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.6.16-test.3';
+import { mergeMissingIndependentFaces, missingIndexesFromIndependentResult, recipesCoverMissing } from './missingFaceMerge.js?rmv=1.6.16-test.5';
+import { inspectRabbitMirrorGenerationSource, getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.6.16-test.5';
 
 const inFlight = new Set();
 const consumeCounts = new Map();

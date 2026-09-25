@@ -1,7 +1,7 @@
 // Split from outputSanitizer.js — checkedStateRescue.
 
-import { escapeCssIdentifier, escapeRegExp, getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.6.16-test.3';
-import { getClassTokens, isCollapsedDimensionValue, parseCssStateSiblingAssignments } from './renderedStateRescue.js?rmv=1.6.16-test.3';
+import { escapeCssIdentifier, escapeRegExp, getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.6.16-test.5';
+import { getClassTokens, isCollapsedDimensionValue, parseCssStateSiblingAssignments } from './renderedStateRescue.js?rmv=1.6.16-test.5';
 import {
     capturePseudoStyleState,
     chooseMatchingRawRabbitMirrorRoot,
@@ -9,15 +9,15 @@ import {
     normalizeInteractionMatchText,
     resolveRenderedCounterpart,
     restorePseudoStyleState,
-} from './scriptedInteractionRescue.js?rmv=1.6.16-test.3';
+} from './scriptedInteractionRescue.js?rmv=1.6.16-test.5';
 import {
     REVERSIBLE_RADIO_BASELINE_ATTR,
     applyCheckedVisualFallback,
     inputHasAssociatedLabel,
     setRescuedCheckedState,
-} from './fallbackRescue.js?rmv=1.6.16-test.3';
-import { RADIO_GROUP_RESCUE_ATTR } from './idsAndRearm.js?rmv=1.6.16-test.3';
-import { diagnosticComputedStyle, maintenanceSafeComputedStyle } from './diagnostics.js?rmv=1.6.16-test.3';
+} from './fallbackRescue.js?rmv=1.6.16-test.5';
+import { RADIO_GROUP_RESCUE_ATTR } from './idsAndRearm.js?rmv=1.6.16-test.5';
+import { diagnosticComputedStyle, maintenanceSafeComputedStyle } from './diagnostics.js?rmv=1.6.16-test.5';
 import {
     checkedDeclarationCreatesContentReveal,
     checkedTargetCarriesResultContent,
@@ -25,14 +25,14 @@ import {
     isIndependentMaintenanceRoot,
     notifyIndependentRepairPersistence,
     resolveMaintenanceGeneratedClass,
-} from './maintenanceInspect.js?rmv=1.6.16-test.3';
-import { splitCssSelectorList } from './markup.js?rmv=1.6.16-test.3';
+} from './maintenanceInspect.js?rmv=1.6.16-test.5';
+import { splitCssSelectorList } from './markup.js?rmv=1.6.16-test.5';
 import {
     maintenanceMobileLayoutLengthPx,
     maintenanceMobileLayoutRect,
     maintenanceMobileLayoutTextLength,
     viewportLayoutHasAuthoredGridPlacement,
-} from './layoutRescue.js?rmv=1.6.16-test.3';
+} from './layoutRescue.js?rmv=1.6.16-test.5';
 
 const interactionInlineOverrideStates = new WeakMap();
 
