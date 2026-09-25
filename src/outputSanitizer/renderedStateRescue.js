@@ -8,7 +8,7 @@ import {
     REVERSIBLE_TARGET_CLOSE_ATTR,
     restoreInteractionInlineOverrides,
     reversibleTargetCloseStates,
-} from './checkedStateRescue.js?rmv=1.6.15';
+} from './checkedStateRescue.js?rmv=1.6.16-test.1';
 import {
     RAW_SELF_MUTATION_RESCUE_ATTR,
     applyPseudoStyleAssignments,
@@ -26,10 +26,10 @@ import {
     resolveElementChildIndexPath,
     restorePseudoStyleState,
     shouldIgnorePseudoToggleEvent,
-} from './scriptedInteractionRescue.js?rmv=1.6.15';
-import { TOUCH_HOVER_STYLE_ATTR, setRescuedCheckedState } from './fallbackRescue.js?rmv=1.6.15';
-import { interactionScopeStates } from './idsAndRearm.js?rmv=1.6.15';
-import { INTERACTION_DIAGNOSTIC_PANEL_ATTR } from './diagnostics.js?rmv=1.6.15';
+} from './scriptedInteractionRescue.js?rmv=1.6.16-test.1';
+import { TOUCH_HOVER_STYLE_ATTR, setRescuedCheckedState } from './fallbackRescue.js?rmv=1.6.16-test.1';
+import { interactionScopeStates } from './idsAndRearm.js?rmv=1.6.16-test.1';
+import { INTERACTION_DIAGNOSTIC_PANEL_ATTR } from './diagnostics.js?rmv=1.6.16-test.1';
 import {
     cssContainsUnsafeGeneratedResource,
     cssDeclarationBlockContainsUnsafeOverlayGeometry,
