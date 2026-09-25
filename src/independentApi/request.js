@@ -1,8 +1,8 @@
 // Split from independentApi.js — request.
 
-import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.6.6';
+import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.6.7';
 import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.6.4-creation1';
-import { getSettings } from '../settings.js?rmv=1.6.6';
+import { getSettings } from '../settings.js?rmv=1.6.7';
 import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.6';
 import { independentGenerationTiming } from '../independentTiming.js?rmv=1.5.53-timing1';
 import {
@@ -22,12 +22,12 @@ import {
     prepareSelectedMemoryForPrompt,
     memoryRequestSettingsKey,
     assertMemoryRequestSettings,
-} from '../promptBuilder.js?rmv=1.6.6';
+} from '../promptBuilder.js?rmv=1.6.7';
 import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.5.53-text1';
 import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.5.53-cn-boundary1';
-import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.6.6';
+import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.6.7';
 import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from '../multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.6';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.7';
 import {
     updateLatestVisualSignature,
     parseVisualFamilySkeleton,
@@ -47,7 +47,7 @@ import {
     getContext,
     hashText,
 } from './runtime.js?rmv=1.6';
-import { operationEpochForBase } from './flights.js?rmv=1.6.6';
+import { operationEpochForBase } from './flights.js?rmv=1.6.7';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INDEPENDENT_MAX_APPROX_DEPTH,
@@ -62,7 +62,7 @@ import {
     normalizedConfiguredTemperature,
     readHistoryStore,
     readStore,
-} from './persistence.js?rmv=1.6.6';
+} from './persistence.js?rmv=1.6.7';
 import {
     API_PROFILE_ORDER,
     chatKey,
@@ -96,7 +96,7 @@ import {
     stageNextApiProfile,
     swipeId,
     validatedIndependentConnectionProfile,
-} from './connection.js?rmv=1.6.6';
+} from './connection.js?rmv=1.6.7';
 import {
     externalGeometryCycleSequence,
     externalGeometryLifecycleEpoch,
@@ -107,7 +107,7 @@ import {
     writeExternalGeometryCycleSequence,
     writeExternalGeometryLifecycleEpoch,
     writeExternalGeometryLifecycleReason,
-} from './geometry.js?rmv=1.6.6';
+} from './geometry.js?rmv=1.6.7';
 import {
     INDEPENDENT_REJECTED_PREVIEW_MAX_CHARS,
     INDEPENDENT_REJECTED_PREVIEW_MAX_ENTRIES,
@@ -122,8 +122,8 @@ import {
     writeExternalHostSyncIndex,
     writeIndependentRejectedPreviewChars,
     writeIndependentRejectedPreviewSequence,
-} from './mount.js?rmv=1.6.6';
-import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.6.6';
+} from './mount.js?rmv=1.6.7';
+import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.6.7';
 
 const NON_STREAM_PROFILE_BY_STREAM_PROFILE={
  chat_system_user_full:'chat_system_user_full_nostream',
@@ -1508,7 +1508,7 @@ export function wireIndependentRejectedFaceControls(host){
    independentRejectedFaceControlsWired.add(resay);
    resay.addEventListener('click',event=>{
     event.preventDefault(); event.stopPropagation();
-    void import('../outputSanitizer/toolsChrome.js?rmv=1.6.6').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+    void import('../outputSanitizer/toolsChrome.js?rmv=1.6.7').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
    },true);
   }
  }
@@ -1805,12 +1805,12 @@ export async function callIndependentApi(ctx,index,msg,signal=null,requestOption
   promptOwner.appearanceReference=Object.freeze({enabled:appearanceEnabled,revision:String(st.appearanceReferenceRevision||'')});
   if(memoryWorldBookEnabled) promptOwner.memoryRequestSettingsKey=memoryRequestSettingsKey(st,'independent');
   try{
-  if((externalEnabled||externalResay)&&getExternalPoolHydrationStatus().hydrated!==true){
+  if(resay?.pureOrder!==true && (externalEnabled||externalResay)&&getExternalPoolHydrationStatus().hydrated!==true){
    assertIndependentPromptOwner(promptOwner);
    try{ await hydrateExternalPoolMetadata(); }
    finally{ promptOwner.awaited=true; assertIndependentPromptOwner(promptOwner); }
   }
-  if(externalEnabled&&!externalResay&&getExternalPoolHydrationStatus().enabledMetadataRebuildRequired?.length){
+  if(resay?.pureOrder!==true && externalEnabled&&!externalResay&&getExternalPoolHydrationStatus().enabledMetadataRebuildRequired?.length){
    const error=new Error('enabled external metadata needs rebuilding');
    error.code='WORLD_BOOK_ENTRY_STATE_CONFLICT'; error.details={reason:'metadata-rebuild-required'};
    throw error;
@@ -1877,7 +1877,7 @@ ${feedbackFinalCheck}`:''}` : '';
 ${JSON.stringify(resayNote)}
 只把上面的想要和不要落实到这一面的视觉、排版、文字和交互。不得把这段说明显示在成品里，也不得因此更换已经指定的选题。`:'';
  // 原选题重写只锁抽签。视觉冷却只要求换外观，模型会留下上一版句子和骨架。
- const keepSelectionRewrite=!!resay && resay.freshSelection!==true && resay.retryFailedFace!==true;
+ const keepSelectionRewrite=!!resay && resay.pureOrder!==true && resay.freshSelection!==true && resay.retryFailedFace!==true;
  const keepSelectionForm=resay?.presentationOverride==='longtext'?'longtext':resay?.presentationOverride==='html'?'html':'';
  const keepSelectionRewriteBlock=keepSelectionRewrite?`
 

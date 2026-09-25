@@ -1,10 +1,10 @@
 // Split from outputSanitizer.js — toolsChrome.
 
-import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.6.6';
+import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.6.7';
 import { placeFacePager } from '../facePagerPlacement.js?rmv=1.6.4-pager1';
-import { isTextPresentation } from '../presentationMode.js?rmv=1.6.6';
+import { isTextPresentation } from '../presentationMode.js?rmv=1.6.7';
 import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.6.3-ttchild1';
-import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=1.6.6';
+import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=1.6.7';
 import { getCurrentChatKey } from '../storage.js?rmv=1.5.53-visualquick1';
 import { getSanitizedRabbitMirrorFaceProof } from '../multifaceProof.js?rmv=1.5.53-visualquick1';
 import {
@@ -23,7 +23,7 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
 } from '../feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.6';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.7';
 import {
     FAVORITE_MULTIPLIER_MAX,
     FAVORITE_MULTIPLIER_MIN,
@@ -45,7 +45,7 @@ import {
     setFavoriteMultiplier,
     toggleBlacklistItem,
     toggleFavoriteItem,
-} from '../blacklist.js?rmv=1.6.6';
+} from '../blacklist.js?rmv=1.6.7';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -70,9 +70,9 @@ import {
     isMaintenanceRabbitEnabled,
     isRabbitMirrorDetails,
 } from './runtime.js?rmv=1.6';
-import { getAvailableHostChat } from './scriptedInteractionRescue.js?rmv=1.6.6';
-import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.6.6';
-import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=1.6.6';
+import { getAvailableHostChat } from './scriptedInteractionRescue.js?rmv=1.6.7';
+import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.6.7';
+import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=1.6.7';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     FEEDBACK_HISTORY_EVENT,
@@ -92,8 +92,8 @@ import {
     rabbitMirrorLanguageBalance,
     scheduleCurrentHighConfidenceTextRepair,
     setMaintenanceRabbitState,
-} from './diagnostics.js?rmv=1.6.6';
-import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=1.6.6';
+} from './diagnostics.js?rmv=1.6.7';
+import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=1.6.7';
 import {
     MAINTENANCE_FINDING_STAGE_LABELS,
     beginMaintenanceRepairRun,
@@ -111,19 +111,19 @@ import {
     runMaintenanceRevealClipRepair,
     runMaintenanceUserRepair,
     triggerDiagnosticForMaintenanceRoot,
-} from './maintenanceInspect.js?rmv=1.6.6';
+} from './maintenanceInspect.js?rmv=1.6.7';
 import {
     getRabbitMirrorFacePosition,
     installMaintenanceHorizontalClipOpenRescue,
     repairLegacyMaintenanceMobileStateRows,
-} from './layoutRescue.js?rmv=1.6.6';
+} from './layoutRescue.js?rmv=1.6.7';
 import {
     getMessageIndexFromMirrorNode,
     installMaintenanceAutoSafeOpenPatrol,
     installManagedRabbitMirrorTools,
     pruneMaintenanceAutoSafeOpenBindings,
     scheduleMaintenanceAutoSafeForRoot,
-} from './lifecycle.js?rmv=1.6.6';
+} from './lifecycle.js?rmv=1.6.7';
 
 let recipeOutsideCloseCleanup = null;
 
@@ -644,6 +644,7 @@ export function openRabbitMirrorResayChooser(root, anchor = null) {
     };
     makeChoice('original', '原选题重写', '保留抽到的主题 / 元素和展现形式，文字和 HTML 都重新写。');
     makeChoice('fresh', '重新抽一张', '按当前设置重新随机抽取，不沿用上一轮选题。');
+    makeChoice('order', '纯点菜', '不抽签，也不沿用上一轮选题。选 HTML 或长文本，再写下你要的界面、篇幅或其他要求。');
     let form = 'keep';
     const formLabel = doc.createElement('div');
     formLabel.textContent = '这一次用什么形式';
@@ -691,18 +692,30 @@ export function openRabbitMirrorResayChooser(root, anchor = null) {
             item.setAttribute('aria-pressed', on ? 'true' : 'false');
             item.style.borderColor = on ? 'currentColor' : 'rgba(127,127,127,.4)';
         }
-        submit.disabled = !mode;
+        const ordering = mode === 'order';
+        formLabel.textContent = ordering ? '做成哪一种' : '这一次用什么形式';
+        noteLabel.textContent = ordering ? '你想要的要求' : '这一次想要什么、不要什么（可选）';
+        note.placeholder = ordering
+            ? '例如：一封可以翻开的信，暖色纸。或：夜谈，大约八千字，不要界面。'
+            : '例如：要手写信纸，不要仪表盘和英文按钮。留空则只按选题重说。';
+        note.maxLength = ordering ? 2000 : 400;
         for (const item of forms.querySelectorAll('[data-rm-resay-form]')) {
-            const on = item.getAttribute('data-rm-resay-form') === form;
+            const value = item.getAttribute('data-rm-resay-form');
+            item.hidden = ordering ? value === 'keep' : false;
+            const on = value === form;
             item.setAttribute('aria-pressed', on ? 'true' : 'false');
             item.style.borderColor = on ? 'currentColor' : 'rgba(127,127,127,.4)';
         }
+        const orderReady = !ordering || ((form === 'html' || form === 'longtext') && note.value.trim());
+        submit.disabled = !mode || !orderReady;
     };
     choices.addEventListener('click', event => {
         const value = event.target?.closest?.('[data-rm-resay-mode]')?.getAttribute('data-rm-resay-mode');
         if (!value) return;
         event.preventDefault();
         mode = value;
+        if (mode === 'order' && form === 'keep') form = '';
+        if (mode !== 'order' && !form) form = 'keep';
         paint();
     });
     forms.addEventListener('click', event => {
@@ -712,6 +725,7 @@ export function openRabbitMirrorResayChooser(root, anchor = null) {
         form = value;
         paint();
     });
+    note.addEventListener('input', () => paint());
     cancel.addEventListener('click', event => {
         event.preventDefault();
         closeRabbitMirrorResayChooser();
@@ -720,6 +734,7 @@ export function openRabbitMirrorResayChooser(root, anchor = null) {
         event.preventDefault();
         if (!mode || !panel.isConnected) return;
         const text = note.value.trim();
+        if (mode === 'order' && ((form !== 'html' && form !== 'longtext') || !text)) return;
         closeRabbitMirrorResayChooser();
         const live = globalThis.__rabbitMirrorIndependentActionsV1;
         const handled = live?.runtime === RUNTIME_VERSION && typeof live.resay === 'function'
@@ -1996,7 +2011,7 @@ function beginHostWorkTiming(name){
 }
 
 function loadMirrorImageModule() {
-    if (!mirrorImageModule) mirrorImageModule = import('../imageUi.js?rmv=1.6.6').catch(error => { mirrorImageModule = null; throw error; });
+    if (!mirrorImageModule) mirrorImageModule = import('../imageUi.js?rmv=1.6.7').catch(error => { mirrorImageModule = null; throw error; });
     return mirrorImageModule;
 }
 
@@ -2254,7 +2269,7 @@ function installUnifiedMirrorTools(root) {
     actions.push({ id: 'resay', label: '↻ 重说', run: (_event, opener) => openRabbitMirrorResayChooser(root, opener) });
     if (mirrorFaceCanContinue(root)) {
         actions.push({ id: 'continue', label: '✎ 续写', run: () => {
-            void import('../independentApi/mount.js?rmv=1.6.6').then(module => module.continueIndependentLongText(root))
+            void import('../independentApi/mount.js?rmv=1.6.7').then(module => module.continueIndependentLongText(root))
                 .catch(() => globalThis.toastr?.error?.('续写没有写上，原来的正文还在。'));
         } });
     }
@@ -2277,7 +2292,7 @@ function installUnifiedMirrorTools(root) {
             .catch(() => globalThis.toastr?.warning?.('生图面板未能打开，请重新打开后再试。'));
     } });
     actions.push({ id: 'theater-favorite-library', label: '📖 打开收藏夹', run: () => {
-        void import('../independentApi.js?rmv=1.6.6').then(module =>
+        void import('../independentApi.js?rmv=1.6.7').then(module =>
             openTheaterFavoriteLibrary((container, record) => module.hydrateIndependentFavoriteHtml(container, record)))
             .catch(error => globalThis.toastr?.warning?.(String(error?.message || '无法打开收藏夹。')));
     } });
