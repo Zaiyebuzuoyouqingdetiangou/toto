@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=1.6.12');
+@import url('./settings-ui.css?rmv=1.6.14');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -1607,3 +1607,39 @@ dialog[data-rm-theater-favorite-library] {
 [data-rh-tool-theme] button[aria-pressed="true"],[data-rh-tool-theme] button[aria-expanded="true"]{border-color:var(--rh-primary)!important;background:color-mix(in srgb,var(--rh-primary) 14%,transparent)!important;}
 [data-rh-tool-theme] :focus-visible{outline:2px solid var(--rh-primary);outline-offset:2px;}
 [data-rh-tool-theme] a{color:var(--rh-primary);}
+
+/* 1.6.13 文本 / 长文本面外壳：这类面只输出 <summary> + 纯段落 <article>，没有自带卡片，
+   会直接浮在聊天背景上。这里补一层跟随酒馆主题配色的可读外壳；
+   只匹配「标题 + 纯文字正文」，自带排版或互动的 HTML 面不受影响。 */
+#chat :is(toto[data-rabbit-mirror="true"] > details, details[data-rabbit-mirror-external-details="true"]):has(> article:not([style])):not(:has(> :is(div, section, main, aside, nav, header, footer, figure, table, form, svg, canvas, iframe, style))):not(:has(> article :is(div, section, main, aside, nav, header, footer, figure, table, button, input, select, textarea, form, svg, canvas, img, video, iframe, style))){
+  --rm-text-card-fg:var(--SmartThemeBodyColor, #e8e8ec);
+  display:block !important;
+  box-sizing:border-box !important;
+  padding:2px 16px 12px !important;
+  border:1px solid color-mix(in srgb, var(--rm-text-card-fg) 16%, transparent) !important;
+  border-radius:14px !important;
+  background:var(--SmartThemeBlurTintColor, rgba(28,30,36,.92)) !important;
+  color:var(--rm-text-card-fg) !important;
+  box-shadow:0 8px 22px rgba(0,0,0,.18) !important;
+  -webkit-backdrop-filter:blur(8px);
+  backdrop-filter:blur(8px);
+}
+#chat :is(toto[data-rabbit-mirror="true"] > details, details[data-rabbit-mirror-external-details="true"]):has(> article:not([style])):not(:has(> :is(div, section, main, aside, nav, header, footer, figure, table, form, svg, canvas, iframe, style))):not(:has(> article :is(div, section, main, aside, nav, header, footer, figure, table, button, input, select, textarea, form, svg, canvas, img, video, iframe, style))) > summary{
+  background:transparent !important;
+  color:inherit !important;
+  border:0 !important;
+  border-bottom:1px solid color-mix(in srgb, var(--rm-text-card-fg) 12%, transparent) !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+  padding:10px 0 !important;
+}
+#chat :is(toto[data-rabbit-mirror="true"] > details, details[data-rabbit-mirror-external-details="true"]):has(> article:not([style])):not(:has(> :is(div, section, main, aside, nav, header, footer, figure, table, form, svg, canvas, iframe, style))):not(:has(> article :is(div, section, main, aside, nav, header, footer, figure, table, button, input, select, textarea, form, svg, canvas, img, video, iframe, style))):not([open]) > summary{ border-bottom:0 !important; }
+#chat :is(toto[data-rabbit-mirror="true"] > details, details[data-rabbit-mirror-external-details="true"]):has(> article:not([style])):not(:has(> :is(div, section, main, aside, nav, header, footer, figure, table, form, svg, canvas, iframe, style))):not(:has(> article :is(div, section, main, aside, nav, header, footer, figure, table, button, input, select, textarea, form, svg, canvas, img, video, iframe, style))) > article{
+  background:transparent !important;
+  color:inherit !important;
+  padding:10px 2px 2px !important;
+  line-height:1.85 !important;
+  overflow-wrap:anywhere;
+}
+#chat :is(toto[data-rabbit-mirror="true"] > details, details[data-rabbit-mirror-external-details="true"]):has(> article:not([style])):not(:has(> :is(div, section, main, aside, nav, header, footer, figure, table, form, svg, canvas, iframe, style))):not(:has(> article :is(div, section, main, aside, nav, header, footer, figure, table, button, input, select, textarea, form, svg, canvas, img, video, iframe, style))) > article p{ margin:0 0 .85em !important; }
+#chat :is(toto[data-rabbit-mirror="true"] > details, details[data-rabbit-mirror-external-details="true"]):has(> article:not([style])):not(:has(> :is(div, section, main, aside, nav, header, footer, figure, table, form, svg, canvas, iframe, style))):not(:has(> article :is(div, section, main, aside, nav, header, footer, figure, table, button, input, select, textarea, form, svg, canvas, img, video, iframe, style))) > article p:last-child{ margin-bottom:0 !important; }
