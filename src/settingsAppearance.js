@@ -121,6 +121,23 @@ export function applyAppearanceTheme(target, appearance) {
         if (state.mode === 'host') target.style.removeProperty(alias);
         else target.style.setProperty(alias, `var(--rh-${key})`);
     }
+    // 表单控件用不透明的卡片色；并告诉浏览器深 / 浅配色，手机弹出的原生下拉列表才会跟着变深。
+    const surface = state.mode === 'host' ? '' : String(palette?.surface || '');
+    if (/^#[0-9a-f]{6}$/i.test(surface)) {
+        target.style.setProperty('--rh-field', surface);
+        target.style.colorScheme = hexLuminance(surface) < 0.35 ? 'dark' : 'light';
+    } else {
+        target.style.removeProperty('--rh-field');
+        target.style.colorScheme = '';
+    }
+}
+
+function hexLuminance(hex) {
+    const channel = offset => {
+        const value = parseInt(hex.slice(offset, offset + 2), 16) / 255;
+        return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+    };
+    return 0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5);
 }
 
 const iconPaths = {

@@ -1,10 +1,10 @@
 // Split from outputSanitizer.js — toolsChrome.
 
-import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.6.7';
+import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.6.9';
 import { placeFacePager } from '../facePagerPlacement.js?rmv=1.6.4-pager1';
-import { isTextPresentation } from '../presentationMode.js?rmv=1.6.7';
+import { isTextPresentation } from '../presentationMode.js?rmv=1.6.9';
 import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.6.3-ttchild1';
-import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=1.6.7';
+import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=1.6.9';
 import { getCurrentChatKey } from '../storage.js?rmv=1.5.53-visualquick1';
 import { getSanitizedRabbitMirrorFaceProof } from '../multifaceProof.js?rmv=1.5.53-visualquick1';
 import {
@@ -23,7 +23,7 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
 } from '../feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.7';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.9';
 import {
     FAVORITE_MULTIPLIER_MAX,
     FAVORITE_MULTIPLIER_MIN,
@@ -45,7 +45,7 @@ import {
     setFavoriteMultiplier,
     toggleBlacklistItem,
     toggleFavoriteItem,
-} from '../blacklist.js?rmv=1.6.7';
+} from '../blacklist.js?rmv=1.6.9';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -70,9 +70,9 @@ import {
     isMaintenanceRabbitEnabled,
     isRabbitMirrorDetails,
 } from './runtime.js?rmv=1.6';
-import { getAvailableHostChat } from './scriptedInteractionRescue.js?rmv=1.6.7';
-import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.6.7';
-import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=1.6.7';
+import { getAvailableHostChat } from './scriptedInteractionRescue.js?rmv=1.6.9';
+import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.6.9';
+import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=1.6.9';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     FEEDBACK_HISTORY_EVENT,
@@ -92,8 +92,8 @@ import {
     rabbitMirrorLanguageBalance,
     scheduleCurrentHighConfidenceTextRepair,
     setMaintenanceRabbitState,
-} from './diagnostics.js?rmv=1.6.7';
-import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=1.6.7';
+} from './diagnostics.js?rmv=1.6.9';
+import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=1.6.9';
 import {
     MAINTENANCE_FINDING_STAGE_LABELS,
     beginMaintenanceRepairRun,
@@ -111,19 +111,19 @@ import {
     runMaintenanceRevealClipRepair,
     runMaintenanceUserRepair,
     triggerDiagnosticForMaintenanceRoot,
-} from './maintenanceInspect.js?rmv=1.6.7';
+} from './maintenanceInspect.js?rmv=1.6.9';
 import {
     getRabbitMirrorFacePosition,
     installMaintenanceHorizontalClipOpenRescue,
     repairLegacyMaintenanceMobileStateRows,
-} from './layoutRescue.js?rmv=1.6.7';
+} from './layoutRescue.js?rmv=1.6.9';
 import {
     getMessageIndexFromMirrorNode,
     installMaintenanceAutoSafeOpenPatrol,
     installManagedRabbitMirrorTools,
     pruneMaintenanceAutoSafeOpenBindings,
     scheduleMaintenanceAutoSafeForRoot,
-} from './lifecycle.js?rmv=1.6.7';
+} from './lifecycle.js?rmv=1.6.9';
 
 let recipeOutsideCloseCleanup = null;
 
@@ -594,6 +594,99 @@ function rabbitMirrorExternalGenerationNotice(root, kind = 'maintenance') {
 
 const RESAY_CHOOSER_ATTR = 'data-rm-resay-chooser';
 
+const RESAY_PICK_MAX = Object.freeze({ theme: 3, format: 2 });
+
+// 「自己挑选题」只列内置题库，按大组浏览或搜索；已拉黑项目仍可手动点选（只会标注）。
+function createResayTopicPicker(doc, kind, initialIds, onChange) {
+    const tree = buildSelectionCatalog(kind);
+    const max = RESAY_PICK_MAX[kind] || 1;
+    const groupNames = kind === 'format' ? FORMAT_GROUP_NAMES : THEME_GROUP_NAMES;
+    const kindLabel = kind === 'format' ? '展现形式' : '主题 / 元素';
+    const selected = [...new Set((initialIds || []).map(String))].filter(id => tree.byId.has(id)).slice(0, max);
+    let query = '';
+    let group = '';
+    const wrap = doc.createElement('div');
+    wrap.setAttribute('data-rm-resay-pick-kind', kind);
+    wrap.style.cssText = 'margin-top:8px;';
+    const head = doc.createElement('div');
+    head.style.cssText = 'display:flex;justify-content:space-between;gap:8px;font-size:12px;margin-bottom:4px;';
+    const headName = doc.createElement('span');
+    headName.textContent = kindLabel;
+    const headCount = doc.createElement('span');
+    headCount.style.cssText = 'opacity:.62;font-size:11px;';
+    head.append(headName, headCount);
+    const chips = doc.createElement('div');
+    chips.style.cssText = 'display:flex;flex-wrap:wrap;gap:5px;margin-bottom:5px;';
+    const search = doc.createElement('input');
+    search.type = 'search';
+    search.placeholder = `搜索${kindLabel}：名称 / 编号 / 说明`;
+    search.setAttribute('aria-label', `搜索${kindLabel}`);
+    search.style.cssText = 'width:100%;box-sizing:border-box;min-height:40px;border:1px solid rgba(127,127,127,.4);border-radius:8px;padding:6px 8px;background:transparent;color:inherit;-webkit-text-fill-color:currentColor;font:inherit;font-size:16px;';
+    const list = doc.createElement('div');
+    list.style.cssText = 'margin-top:5px;max-height:190px;overflow:auto;border:1px solid rgba(127,127,127,.24);border-radius:8px;padding:2px 6px;';
+    wrap.append(head, chips, search, list);
+    const rowStyle = 'display:flex;width:100%;align-items:center;justify-content:space-between;gap:8px;min-height:40px;border:0;border-bottom:1px solid rgba(127,127,127,.16);padding:6px 2px;background:transparent;color:inherit;cursor:pointer;font:inherit;text-align:left;';
+    const emptyNote = text => `<div style="padding:10px 2px;opacity:.62;font-size:11px;">${feedbackCatEscapeHtml(text)}</div>`;
+    const itemRow = (item, depth = 0) => {
+        const on = selected.includes(item.id);
+        const blocked = isBlacklisted(kind, item.id);
+        return `<button type="button" data-rm-resay-pick-id="${feedbackCatEscapeHtml(item.id)}" aria-pressed="${on ? 'true' : 'false'}" style="${rowStyle}padding-left:${2 + Math.min(4, depth) * 12}px;">
+          <span style="min-width:0;flex:1;"><span style="display:block;font-size:12px;font-weight:${on ? 800 : 600};line-height:1.4;overflow-wrap:anywhere;">${feedbackCatEscapeHtml(item.title || item.id)}</span><span style="display:block;font-size:10px;opacity:.55;overflow-wrap:anywhere;">${feedbackCatEscapeHtml(item.id)}${blocked ? ' · 已拉黑' : ''}</span></span>
+          <span aria-hidden="true" style="flex:0 0 auto;font-size:13px;font-weight:800;">${on ? '✓' : '+'}</span>
+        </button>`;
+    };
+    const render = () => {
+        headCount.textContent = `${selected.length}/${max}`;
+        chips.innerHTML = selected.length
+            ? selected.map(id => `<button type="button" data-rm-resay-pick-remove="${feedbackCatEscapeHtml(id)}" title="移除" style="max-width:100%;min-height:32px;border:1px solid currentColor;border-radius:999px;padding:3px 9px;background:rgba(127,127,127,.12);color:inherit;cursor:pointer;font:inherit;font-size:11px;overflow-wrap:anywhere;text-align:left;">${feedbackCatEscapeHtml(tree.byId.get(id)?.title || id)} ×</button>`).join('')
+            : `<span style="font-size:11px;opacity:.6;">还没选${kindLabel}</span>`;
+        if (query) {
+            const needle = query.toLowerCase();
+            const matches = tree.entries.filter(item => `${item.id} ${item.title} ${item.summary}`.toLowerCase().includes(needle));
+            list.innerHTML = matches.slice(0, 40).map(item => itemRow(item)).join('') || emptyNote('没有匹配的项目。');
+            if (matches.length > 40) list.insertAdjacentHTML('beforeend', emptyNote(`共 ${matches.length} 项，只显示前 40 项；再多写几个字缩小范围。`));
+        } else if (group) {
+            const items = tree.entries.filter(item => String(item.group || '其他') === group)
+                .sort((a, b) => String(a.id).localeCompare(String(b.id), undefined, { numeric: true }));
+            const baseDepth = Math.min(...items.map(item => item.id.split('.').length));
+            list.innerHTML = `<button type="button" data-rm-resay-pick-group="" style="${rowStyle}font-size:11px;opacity:.8;">‹ 返回大组</button>`
+                + (items.map(item => itemRow(item, item.id.split('.').length - baseDepth)).join('') || emptyNote('这一组没有项目。'));
+        } else {
+            const keys = [...new Set(tree.entries.map(item => String(item.group || '其他')))]
+                .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+            list.innerHTML = keys.map(key => {
+                const count = tree.entries.filter(item => String(item.group || '其他') === key).length;
+                return `<button type="button" data-rm-resay-pick-group="${feedbackCatEscapeHtml(key)}" style="${rowStyle}"><span style="font-size:12px;font-weight:700;">${feedbackCatEscapeHtml(groupNames[key] ? `${key} · ${groupNames[key]}` : `组 ${key}`)}</span><span style="font-size:10px;opacity:.56;">${count} 项 ›</span></button>`;
+            }).join('');
+        }
+    };
+    const toggle = id => {
+        const at = selected.indexOf(id);
+        if (at >= 0) selected.splice(at, 1);
+        else if (selected.length >= max) {
+            globalThis.toastr?.info?.(`${kindLabel}最多选 ${max} 个；先点上方已选项移除一个。`);
+            return;
+        } else selected.push(id);
+        render();
+        onChange?.();
+    };
+    wrap.addEventListener('click', event => {
+        const target = event.target?.closest?.('button');
+        if (!target || !wrap.contains(target)) return;
+        if (target.hasAttribute('data-rm-resay-pick-id')) { event.preventDefault(); toggle(target.getAttribute('data-rm-resay-pick-id')); return; }
+        if (target.hasAttribute('data-rm-resay-pick-remove')) { event.preventDefault(); toggle(target.getAttribute('data-rm-resay-pick-remove')); return; }
+        if (target.hasAttribute('data-rm-resay-pick-group')) {
+            event.preventDefault();
+            group = target.getAttribute('data-rm-resay-pick-group') || '';
+            render();
+            list.scrollTop = 0;
+        }
+    });
+    search.addEventListener('input', () => { query = search.value.trim(); render(); list.scrollTop = 0; });
+    render();
+    return { element: wrap, selected: () => selected.slice() };
+}
+
 export function closeRabbitMirrorResayChooser() {
     document.querySelectorAll?.(`[${RESAY_CHOOSER_ATTR}]`)?.forEach(panel => panel.remove());
 }
@@ -644,7 +737,18 @@ export function openRabbitMirrorResayChooser(root, anchor = null) {
     };
     makeChoice('original', '原选题重写', '保留抽到的主题 / 元素和展现形式，文字和 HTML 都重新写。');
     makeChoice('fresh', '重新抽一张', '按当前设置重新随机抽取，不沿用上一轮选题。');
-    makeChoice('order', '纯点菜', '不抽签，也不沿用上一轮选题。选 HTML 或长文本，再写下你要的界面、篇幅或其他要求。');
+    makeChoice('order', '纯点菜', '不随机抽签，也不沿用上一轮选题。选 HTML 或长文本，可以从题库点选主题 / 展现形式，也可以直接写下要求。');
+    // 纯点菜里的题库点选：可选，从空白开始，不带上一轮选题。
+    const pickSection = doc.createElement('div');
+    pickSection.hidden = true;
+    const pickLabel = doc.createElement('div');
+    pickLabel.textContent = '从题库点选（可选）';
+    pickLabel.style.cssText = 'margin:10px 0 0;font-size:12px;';
+    const pickStatus = doc.createElement('p');
+    pickStatus.style.cssText = 'font-size:11px;line-height:1.5;opacity:.75;margin:6px 0 0;';
+    const themePicker = createResayTopicPicker(doc, 'theme', [], () => paint());
+    const formatPicker = createResayTopicPicker(doc, 'format', [], () => paint());
+    pickSection.append(pickLabel, themePicker.element, formatPicker.element, pickStatus);
     let form = 'keep';
     const formLabel = doc.createElement('div');
     formLabel.textContent = '这一次用什么形式';
@@ -669,7 +773,7 @@ export function openRabbitMirrorResayChooser(root, anchor = null) {
     note.maxLength = 400;
     note.rows = 3;
     note.placeholder = '例如：要手写信纸，不要仪表盘和英文按钮。留空则只按选题重说。';
-    note.style.cssText = 'width:100%;box-sizing:border-box;min-height:72px;resize:vertical;border:1px solid rgba(127,127,127,.4);border-radius:8px;padding:8px;background:transparent;color:inherit;font:inherit;';
+    note.style.cssText = 'width:100%;box-sizing:border-box;min-height:72px;resize:vertical;border:1px solid rgba(127,127,127,.4);border-radius:8px;padding:8px;background:transparent;color:inherit;-webkit-text-fill-color:currentColor;font:inherit;';
     const actions = doc.createElement('div');
     actions.style.cssText = 'display:flex;gap:8px;margin-top:10px;';
     const submit = doc.createElement('button');
@@ -682,7 +786,7 @@ export function openRabbitMirrorResayChooser(root, anchor = null) {
     cancel.textContent = '取消';
     cancel.style.cssText = submit.style.cssText;
     actions.append(submit, cancel);
-    panel.append(title, help, choices, formLabel, forms, noteLabel, note, actions);
+    panel.append(title, help, choices, formLabel, forms, pickSection, noteLabel, note, actions);
     doc.body.append(panel);
     const button = anchor?.isConnected ? anchor : root;
     positionFeedbackCatPanel(panel, button, 340);
@@ -706,7 +810,31 @@ export function openRabbitMirrorResayChooser(root, anchor = null) {
             item.setAttribute('aria-pressed', on ? 'true' : 'false');
             item.style.borderColor = on ? 'currentColor' : 'rgba(127,127,127,.4)';
         }
-        const orderReady = !ordering || ((form === 'html' || form === 'longtext') && note.value.trim());
+        const wasHidden = pickSection.hidden;
+        pickSection.hidden = !ordering;
+        let orderReady = true;
+        if (ordering) {
+            const themes = themePicker.selected();
+            const formats = formatPicker.selected();
+            const text = note.value.trim();
+            const picked = themes.length + formats.length > 0;
+            if (form !== 'html' && form !== 'longtext') {
+                orderReady = false;
+                pickStatus.textContent = '先选 HTML 或长文本。';
+            } else if (!picked && !text) {
+                orderReady = false;
+                pickStatus.textContent = '从题库点选主题 / 展现形式，或在下面写下要求，至少做一样。';
+            } else if (form === 'html' && picked && !formats.length && !text) {
+                orderReady = false;
+                pickStatus.textContent = 'HTML 面只选了主题：再点一种展现形式，或在下面写清想要的界面。';
+            } else {
+                pickStatus.textContent = picked
+                    ? `这一面会用你点的 ${themes.length} 个主题 / 元素、${formats.length} 种展现形式，${text ? '并按下面的要求来写' : '不再随机抽取'}。`
+                    : '没有点选题库，只按你写的要求来做。';
+            }
+            noteLabel.textContent = picked ? '你想要的要求（可选）' : '你想要的要求';
+        }
+        if (wasHidden !== pickSection.hidden && panel.isConnected) positionFeedbackCatPanel(panel, button, 340);
         submit.disabled = !mode || !orderReady;
     };
     choices.addEventListener('click', event => {
@@ -734,11 +862,12 @@ export function openRabbitMirrorResayChooser(root, anchor = null) {
         event.preventDefault();
         if (!mode || !panel.isConnected) return;
         const text = note.value.trim();
-        if (mode === 'order' && ((form !== 'html' && form !== 'longtext') || !text)) return;
+        if (mode === 'order' && submit.disabled) return;
+        const picked = mode === 'order' ? { themeIds: themePicker.selected(), formatIds: formatPicker.selected() } : {};
         closeRabbitMirrorResayChooser();
         const live = globalThis.__rabbitMirrorIndependentActionsV1;
         const handled = live?.runtime === RUNTIME_VERSION && typeof live.resay === 'function'
-            ? live.resay(root, {}, { mode, note: text, ...(form === 'html' || form === 'longtext' ? { form } : {}) })
+            ? live.resay(root, {}, { mode, note: text, ...picked, ...(form === 'html' || form === 'longtext' ? { form } : {}) })
             : invokeFeedbackMirrorAction('resay', root, {});
         if (!handled) globalThis.toastr?.warning?.('没有找到这一面可以重说的兔子镜。');
     });
@@ -2011,7 +2140,7 @@ function beginHostWorkTiming(name){
 }
 
 function loadMirrorImageModule() {
-    if (!mirrorImageModule) mirrorImageModule = import('../imageUi.js?rmv=1.6.7').catch(error => { mirrorImageModule = null; throw error; });
+    if (!mirrorImageModule) mirrorImageModule = import('../imageUi.js?rmv=1.6.9').catch(error => { mirrorImageModule = null; throw error; });
     return mirrorImageModule;
 }
 
@@ -2269,7 +2398,7 @@ function installUnifiedMirrorTools(root) {
     actions.push({ id: 'resay', label: '↻ 重说', run: (_event, opener) => openRabbitMirrorResayChooser(root, opener) });
     if (mirrorFaceCanContinue(root)) {
         actions.push({ id: 'continue', label: '✎ 续写', run: () => {
-            void import('../independentApi/mount.js?rmv=1.6.7').then(module => module.continueIndependentLongText(root))
+            void import('../independentApi/mount.js?rmv=1.6.9').then(module => module.continueIndependentLongText(root))
                 .catch(() => globalThis.toastr?.error?.('续写没有写上，原来的正文还在。'));
         } });
     }
@@ -2292,7 +2421,7 @@ function installUnifiedMirrorTools(root) {
             .catch(() => globalThis.toastr?.warning?.('生图面板未能打开，请重新打开后再试。'));
     } });
     actions.push({ id: 'theater-favorite-library', label: '📖 打开收藏夹', run: () => {
-        void import('../independentApi.js?rmv=1.6.7').then(module =>
+        void import('../independentApi.js?rmv=1.6.9').then(module =>
             openTheaterFavoriteLibrary((container, record) => module.hydrateIndependentFavoriteHtml(container, record)))
             .catch(error => globalThis.toastr?.warning?.(String(error?.message || '无法打开收藏夹。')));
     } });
