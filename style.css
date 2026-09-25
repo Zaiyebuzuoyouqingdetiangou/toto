@@ -624,6 +624,8 @@ details > [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
 
 #extensionsMenu #rabbit_mirror_wand_entry,
 #extensionsMenu #rabbit_mirror_wand_bootstrap {
+  font: inherit !important;
+  text-align: inherit !important;
   background: transparent !important;
   background-color: transparent !important;
   color: inherit !important;
@@ -637,14 +639,14 @@ details > [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  width: 18px !important;
-  height: 18px !important;
+  width: 1.15em !important;
+  height: 1.15em !important;
   flex: 0 0 auto !important;
 }
 .rabbit-mirror-wand-icon svg {
   display: block !important;
-  width: 18px !important;
-  height: 18px !important;
+  width: 1.15em !important;
+  height: 1.15em !important;
 }
 
 /* 0.33.8 小小维修兔 v1.7：每条标题后独立入口，点击打开本地维修菜单。 */
