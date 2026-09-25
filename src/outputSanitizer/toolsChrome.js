@@ -1,10 +1,10 @@
 // Split from outputSanitizer.js — toolsChrome.
 
-import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.6.14';
+import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.6.15';
 import { placeFacePager } from '../facePagerPlacement.js?rmv=1.6.4-pager1';
-import { isTextPresentation } from '../presentationMode.js?rmv=1.6.14';
+import { isTextPresentation } from '../presentationMode.js?rmv=1.6.15';
 import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.6.3-ttchild1';
-import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=1.6.14';
+import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=1.6.15';
 import { getCurrentChatKey } from '../storage.js?rmv=1.5.53-visualquick1';
 import { getSanitizedRabbitMirrorFaceProof } from '../multifaceProof.js?rmv=1.5.53-visualquick1';
 import {
@@ -13,7 +13,7 @@ import {
     toggleTheaterFavorite,
     isTheaterFavoriteHtml,
 } from '../theaterFavorites.js?rmv=1.6.3-fav2';
-import { FACE_SWIPE_FULL_MESSAGE, faceSwipeBarIntent, fallbackFaceSwipeView } from '../swipeVersions.js?rmv=1.6';
+import { FACE_SWIPE_FULL_MESSAGE, faceSwipeBarIntent, fallbackFaceSwipeView, multifaceFacePagerView } from '../swipeVersions.js?rmv=1.6';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -23,7 +23,7 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
 } from '../feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.14';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.15';
 import {
     FAVORITE_MULTIPLIER_MAX,
     FAVORITE_MULTIPLIER_MIN,
@@ -45,7 +45,7 @@ import {
     setFavoriteMultiplier,
     toggleBlacklistItem,
     toggleFavoriteItem,
-} from '../blacklist.js?rmv=1.6.14';
+} from '../blacklist.js?rmv=1.6.15';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -70,9 +70,9 @@ import {
     isMaintenanceRabbitEnabled,
     isRabbitMirrorDetails,
 } from './runtime.js?rmv=1.6';
-import { getAvailableHostChat } from './scriptedInteractionRescue.js?rmv=1.6.14';
-import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.6.14';
-import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=1.6.14';
+import { getAvailableHostChat } from './scriptedInteractionRescue.js?rmv=1.6.15';
+import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.6.15';
+import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=1.6.15';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     FEEDBACK_HISTORY_EVENT,
@@ -92,8 +92,8 @@ import {
     rabbitMirrorLanguageBalance,
     scheduleCurrentHighConfidenceTextRepair,
     setMaintenanceRabbitState,
-} from './diagnostics.js?rmv=1.6.14';
-import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=1.6.14';
+} from './diagnostics.js?rmv=1.6.15';
+import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=1.6.15';
 import {
     MAINTENANCE_FINDING_STAGE_LABELS,
     beginMaintenanceRepairRun,
@@ -111,19 +111,19 @@ import {
     runMaintenanceRevealClipRepair,
     runMaintenanceUserRepair,
     triggerDiagnosticForMaintenanceRoot,
-} from './maintenanceInspect.js?rmv=1.6.14';
+} from './maintenanceInspect.js?rmv=1.6.15';
 import {
     getRabbitMirrorFacePosition,
     installMaintenanceHorizontalClipOpenRescue,
     repairLegacyMaintenanceMobileStateRows,
-} from './layoutRescue.js?rmv=1.6.14';
+} from './layoutRescue.js?rmv=1.6.15';
 import {
     getMessageIndexFromMirrorNode,
     installMaintenanceAutoSafeOpenPatrol,
     installManagedRabbitMirrorTools,
     pruneMaintenanceAutoSafeOpenBindings,
     scheduleMaintenanceAutoSafeForRoot,
-} from './lifecycle.js?rmv=1.6.14';
+} from './lifecycle.js?rmv=1.6.15';
 
 let recipeOutsideCloseCleanup = null;
 
@@ -793,7 +793,12 @@ export function openRabbitMirrorResayChooser(root, anchor = null) {
     closeFeedbackCatMenu();
     closeRecipeMenu();
     closeMaintenanceRabbitMenu();
-    if (!root?.isConnected) return false;
+    if (!root?.isConnected) root = liveRootFor(root, anchor);
+    if (!root?.isConnected) {
+        globalThis.toastr?.info?.('这面兔子镜刚刚刷新过，请再点一次重说。');
+        try { const scope = anchor?.closest?.('.mes'); if (scope) refreshRabbitMirrorToolsInScope(scope); } catch {}
+        return false;
+    }
     if (rabbitMirrorExternalGenerationNotice(root, 'feedback')) return false;
     const bridge = globalThis.__rabbitMirrorIndependentActionsV1;
     const gate = getSettings().generationSource === 'follow' ? null
@@ -2237,7 +2242,7 @@ function beginHostWorkTiming(name){
 }
 
 function loadMirrorImageModule() {
-    if (!mirrorImageModule) mirrorImageModule = import('../imageUi.js?rmv=1.6.14').catch(error => { mirrorImageModule = null; throw error; });
+    if (!mirrorImageModule) mirrorImageModule = import('../imageUi.js?rmv=1.6.15').catch(error => { mirrorImageModule = null; throw error; });
     return mirrorImageModule;
 }
 
@@ -2361,8 +2366,58 @@ function liveFaceSwipeView(root) {
     return bridge.swipeView?.(root) || fallbackFaceSwipeView();
 }
 
-function installFaceSwipeBar(root, host) {
+// 工具节点可能比它捕获的 root 活得久（镜面重挂、切页、底部切页栏被搬动）。
+// 点击时若旧 root 已脱离页面，就按按钮所在位置找回当前挂载的镜面。
+function liveRootFor(root, node) {
+    if (root?.isConnected) return root;
+    if (!node?.isConnected) return null;
+    const scope = node.closest?.('.mes') || node.ownerDocument || document;
+    try { return getRenderedRabbitMirrorInteractionRoots(scope).find(candidate => candidate?.contains?.(node)) || null; } catch { return null; }
+}
+
+// 多面切页只是显示层操作：直接按 DOM 判断这一面在第几面，不依赖正文归属解析。
+// 旧版在归属解析失败（例如改过正文）时退回单版视图 1/1，于是「下一面」变成了重说。
+function multifaceFacesFor(node) {
+    let face = node?.closest?.('details') || null;
+    while (face && !face.parentElement?.classList?.contains('rabbit-mirror-multiface-host')) {
+        face = face.parentElement?.closest?.('details') || null;
+    }
+    if (!face) return null;
+    const host = face.parentElement;
+    const faces = [...host.children].filter(child => child.tagName === 'DETAILS').slice(0, 5);
+    const index = faces.indexOf(face);
+    return faces.length > 1 && index >= 0 ? { host, faces, index } : null;
+}
+
+function showMultifaceFaceLocally(host, faces, index) {
+    const next = Math.max(0, Math.min(faces.length - 1, index));
+    const previous = Math.max(0, Math.min(faces.length - 1, Number(host.dataset.rmFaceView) || 0));
+    const carryOpen = previous !== next ? faces[previous]?.hasAttribute('open') : null;
+    host.dataset.rmFaceView = String(next);
+    faces.forEach((face, i) => {
+        const current = i === next;
+        if (current) face.setAttribute('data-rm-face-current', 'true');
+        else face.removeAttribute('data-rm-face-current');
+        if (!current) face.style.setProperty('display', 'none', 'important');
+        else face.style.removeProperty('display');
+        if (carryOpen !== null) {
+            if (current && carryOpen) face.setAttribute('open', '');
+            else face.removeAttribute('open');
+        }
+    });
+    try { refreshRabbitMirrorToolsInScope(host); } catch {}
+}
+
+function faceSwipeViewFor(root, node) {
+    const multiface = multifaceFacesFor(node);
     const view = liveFaceSwipeView(root);
+    if (!multiface) return view;
+    const overlay = view && view.count === multiface.faces.length ? view.overlay === true : false;
+    return multifaceFacePagerView(multiface.faces.length, multiface.index, overlay);
+}
+
+function installFaceSwipeBar(root, host) {
+    const view = faceSwipeViewFor(root, host);
     let bar = host.querySelector(':scope > [data-rm-face-swipe-bar]');
     if (!view) {
         bar?.remove();
@@ -2378,12 +2433,19 @@ function installFaceSwipeBar(root, host) {
             if (!action) return;
             stopTitleToggle(event);
             const live = independentActionBridge();
-            const current = liveFaceSwipeView(root);
+            const liveRoot = liveRootFor(root, bar);
+            const current = faceSwipeViewFor(liveRoot, bar);
             if (!current) return;
             const intent = faceSwipeBarIntent(current, action);
-            if (intent.type === 'select') live.selectSwipe?.(root, intent.index);
-            else if (intent.type === 'resay') openRabbitMirrorResayChooser(root, event.target);
-            else if (intent.type === 'delete') live.deleteSwipe?.(root);
+            const multiface = multifaceFacesFor(bar);
+            if (intent.type === 'select' && multiface) {
+                let switched = false;
+                try { switched = !!live?.selectSwipe?.(liveRoot, intent.index); } catch {}
+                const shown = multiface.faces[intent.index];
+                if (!switched || shown?.getAttribute('data-rm-face-current') !== 'true') showMultifaceFaceLocally(multiface.host, multiface.faces, intent.index);
+            } else if (intent.type === 'select') live?.selectSwipe?.(liveRoot, intent.index);
+            else if (intent.type === 'resay') openRabbitMirrorResayChooser(liveRoot || root, event.target);
+            else if (intent.type === 'delete') live?.deleteSwipe?.(liveRoot);
         }, true);
     }
     host.prepend(bar);
@@ -2430,10 +2492,11 @@ function installFaceSwipeDelete(root, host, view) {
         del.addEventListener('click', event => {
             stopTitleToggle(event);
             const live = independentActionBridge();
-            const current = liveFaceSwipeView(root);
+            const liveRoot = liveRootFor(root, del);
+            const current = faceSwipeViewFor(liveRoot, del);
             if (!current) return;
             const intent = faceSwipeBarIntent(current, 'delete');
-            if (intent.type === 'delete') live.deleteSwipe?.(root);
+            if (intent.type === 'delete') live?.deleteSwipe?.(liveRoot);
         }, true);
     }
     if (host.lastElementChild !== del) host.append(del);
@@ -2495,7 +2558,7 @@ function installUnifiedMirrorTools(root) {
     actions.push({ id: 'resay', label: '↻ 重说', run: (_event, opener) => openRabbitMirrorResayChooser(root, opener) });
     if (mirrorFaceCanContinue(root)) {
         actions.push({ id: 'continue', label: '✎ 续写', run: () => {
-            void import('../independentApi/mount.js?rmv=1.6.14').then(module => module.continueIndependentLongText(root))
+            void import('../independentApi/mount.js?rmv=1.6.15').then(module => module.continueIndependentLongText(root))
                 .catch(() => globalThis.toastr?.error?.('续写没有写上，原来的正文还在。'));
         } });
     }
@@ -2518,7 +2581,7 @@ function installUnifiedMirrorTools(root) {
             .catch(() => globalThis.toastr?.warning?.('生图面板未能打开，请重新打开后再试。'));
     } });
     actions.push({ id: 'theater-favorite-library', label: '📖 打开收藏夹', run: () => {
-        void import('../independentApi.js?rmv=1.6.14').then(module =>
+        void import('../independentApi.js?rmv=1.6.15').then(module =>
             openTheaterFavoriteLibrary((container, record) => module.hydrateIndependentFavoriteHtml(container, record)))
             .catch(error => globalThis.toastr?.warning?.(String(error?.message || '无法打开收藏夹。')));
     } });

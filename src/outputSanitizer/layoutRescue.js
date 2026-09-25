@@ -24,13 +24,13 @@ import {
     parseCheckedRulesFromText,
     repairRabbitMirrorSelectorPanelGridSpan,
     resolveTargetsForCheckedRule,
-} from './checkedStateRescue.js?rmv=1.6.14';
-import { getClassTokens } from './renderedStateRescue.js?rmv=1.6.14';
+} from './checkedStateRescue.js?rmv=1.6.15';
+import { getClassTokens } from './renderedStateRescue.js?rmv=1.6.15';
 import {
     ensurePassportDocumentRescueStyle,
     findRenderedPassportDocumentCandidates,
     markRenderedPassportDocumentCandidate,
-} from './scriptedInteractionRescue.js?rmv=1.6.14';
+} from './scriptedInteractionRescue.js?rmv=1.6.15';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     INDEPENDENT_MOBILE_SPATIAL_CANVAS_ATTR,
@@ -88,7 +88,7 @@ import {
     mobileLayoutRescueStates,
     mobileMatrixPreserveStates,
     rabbitMirrorFacePositionHints,
-} from './diagnostics.js?rmv=1.6.14';
+} from './diagnostics.js?rmv=1.6.15';
 
 let mobileLayoutScopeCounter = 0;
 
