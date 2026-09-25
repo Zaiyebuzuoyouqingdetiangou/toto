@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=1.6.9');
+@import url('./settings-ui.css?rmv=1.6.10');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -1600,3 +1600,10 @@ dialog[data-rm-theater-favorite-library] {
   display:none !important;
   margin-top:0 !important;
 }
+
+/* 1.6.9 镜面工具面板跟随「主题与外观」预设（跟随酒馆主题时不生效）。 */
+[data-rh-tool-theme]{background:var(--rh-card)!important;background-image:none!important;color:var(--rh-text)!important;border-color:var(--rh-border)!important;box-shadow:0 12px 34px rgba(0,0,0,.28)!important;}
+[data-rh-tool-theme] :is(button,summary){color:inherit;font-family:inherit;-webkit-appearance:none;appearance:none;}
+[data-rh-tool-theme] button[aria-pressed="true"],[data-rh-tool-theme] button[aria-expanded="true"]{border-color:var(--rh-primary)!important;background:color-mix(in srgb,var(--rh-primary) 14%,transparent)!important;}
+[data-rh-tool-theme] :focus-visible{outline:2px solid var(--rh-primary);outline-offset:2px;}
+[data-rh-tool-theme] a{color:var(--rh-primary);}

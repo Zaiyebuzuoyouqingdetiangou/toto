@@ -1,6 +1,6 @@
 import { eventSource, event_types, setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
 import * as hostRuntime from '../../../../../script.js';
-import { MODULE_NAME, getSettings } from './settings.js?rmv=1.6.9';
+import { MODULE_NAME, getSettings } from './settings.js?rmv=1.6.10';
 import {
     buildFeedbackCatFinalCheck,
     buildFeedbackCatPrompt,
@@ -740,7 +740,7 @@ export function destroyIndependentGenerationIntentBridge({ clearIntents = false 
 
 function loadPromptBuilder() {
     if (!promptBuilderPromise) {
-        promptBuilderPromise = import('./promptBuilder.js?rmv=1.6.9').catch(error => {
+        promptBuilderPromise = import('./promptBuilder.js?rmv=1.6.10').catch(error => {
             promptBuilderPromise = null;
             throw error;
         });
@@ -750,7 +750,7 @@ function loadPromptBuilder() {
 
 function loadGenerationGuard() {
     if (!generationGuardPromise) {
-        generationGuardPromise = import('./generationGuard.js?rmv=1.6.9').catch(error => {
+        generationGuardPromise = import('./generationGuard.js?rmv=1.6.10').catch(error => {
             generationGuardPromise = null;
             throw error;
         });

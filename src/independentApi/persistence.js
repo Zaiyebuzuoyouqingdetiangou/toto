@@ -1,8 +1,8 @@
 // Split from independentApi.js — persistence.
 
-import { presentationModeFields } from '../presentationMode.js?rmv=1.6.9';
+import { presentationModeFields } from '../presentationMode.js?rmv=1.6.10';
 import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.5.53-cn-boundary1';
-import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.6.9';
+import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.6.10';
 import {
     FACE_SWIPE_FULL_MESSAGE,
     FACE_SWIPE_MAX,
@@ -25,7 +25,7 @@ import {
     independentSwipeSlot,
     seedIndependentFaceSwipesFromIdentity,
     writeIndependentOwnerHtml,
-} from './faceSwipe.js?rmv=1.6.9';
+} from './faceSwipe.js?rmv=1.6.10';
 import {
     API_PROFILE_STORE_KEY,
     assistantMessages,
@@ -41,8 +41,8 @@ import {
     savedIndependentRecordForOwner,
     setOwnerLockForBase,
     swipeId,
-} from './connection.js?rmv=1.6.9';
-import { stampExternalDetailsOwnership } from './request.js?rmv=1.6.9';
+} from './connection.js?rmv=1.6.10';
+import { stampExternalDetailsOwnership } from './request.js?rmv=1.6.10';
 import {
     copyIndependentReplacementReceipt,
     ensureExternalTools,
@@ -53,8 +53,8 @@ import {
     normalizeSavedInteractionRecord,
     recoverSavedRecord,
     replaceExternalMultifaceFace,
-} from './geometry.js?rmv=1.6.9';
-import { externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace } from './mount.js?rmv=1.6.9';
+} from './geometry.js?rmv=1.6.10';
+import { externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace } from './mount.js?rmv=1.6.10';
 
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 
@@ -277,7 +277,7 @@ export function independentFaceSwipeView(root,owner={}){
 }
 
 export function canIndependentFaceResay(root,owner={}){
- const identity=resolveIndependentActionIdentity(root,owner,{allowPassiveErrorRetry:true});
+ const identity=resolveIndependentActionIdentity(root,owner,{allowPassiveErrorRetry:true,allowEditedSource:true});
  if(!identity) return {ok:false,reason:'missing'};
  seedIndependentFaceSwipesFromIdentity(identity);
  if(hasEphemeralFaceFailure(independentSwipeDetails(identity))) return {ok:true,retry:true};
