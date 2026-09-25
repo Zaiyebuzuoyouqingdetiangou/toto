@@ -12,8 +12,8 @@ export {
     getLastIndependentModelListDiagnostic,
     fetchIndependentModels,
     testIndependentConnection,
-} from './independentApi/connection.js?rmv=1.6.15';
-export { remeasureRabbitMirrorFaceGeometry, undoRabbitMirrorFaceAutoWidth, repairRabbitMirrorFaceAutoWidth } from './independentApi/geometry.js?rmv=1.6.15';
-export { hydrateIndependentFavoriteHtml } from './independentApi/mount.js?rmv=1.6.15';
-export { listMissingIndependentRetryFloors, resyncMissingIndependentRetryShells } from './independentApi/earlyBody.js?rmv=1.6.15';
-export { refreshRabbitMirrorGenerationMode, initIndependentRabbitMirror, destroyIndependentRabbitMirror } from './independentApi/lifecycle.js?rmv=1.6.15';
+} from './independentApi/connection.js?rmv=1.6.16-test.3';
+export { remeasureRabbitMirrorFaceGeometry, undoRabbitMirrorFaceAutoWidth, repairRabbitMirrorFaceAutoWidth } from './independentApi/geometry.js?rmv=1.6.16-test.3';
+export { hydrateIndependentFavoriteHtml } from './independentApi/mount.js?rmv=1.6.16-test.3';
+export { listMissingIndependentRetryFloors, resyncMissingIndependentRetryShells } from './independentApi/earlyBody.js?rmv=1.6.16-test.3';
+export { refreshRabbitMirrorGenerationMode, initIndependentRabbitMirror, destroyIndependentRabbitMirror } from './independentApi/lifecycle.js?rmv=1.6.16-test.3';

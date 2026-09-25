@@ -17,10 +17,10 @@ import {
     clearPendingComboBatch,
     createPendingComboBatchPlan,
     findPendingComboBatchPlan,
-} from './storage.js?rmv=1.5.53-visualquick1';
-import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.6.15';
+} from './storage.js?rmv=1.6.16-test.3';
+import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.6.16-test.3';
 import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.53-cn-boundary1';
-import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.6.15';
+import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.6.16-test.3';
 import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.5.53-text1';
 import {
     chooseExternalSource,
