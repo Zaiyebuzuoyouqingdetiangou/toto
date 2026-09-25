@@ -96,6 +96,16 @@ function onlyOccurrence(text, needle) {
     return text.indexOf(needle, first + needle.length) < 0 ? first : -1;
 }
 
+// The context builder emits section headings on their own lines. Approved
+// prose and JSON-serialized role/persona data may quote the same words; those
+// inline occurrences are material, not framing. Execution-lock checks remain
+// deliberately stricter and continue to use onlyOccurrence above.
+function headerLineIndexes(text, header) {
+    const escaped = header.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const line = new RegExp(`^([\\t ]*)${escaped}[\\t ]*\\r?$`, 'gm');
+    return Array.from(text.matchAll(line), match => match.index + match[1].length);
+}
+
 function hasNonEmptyTranscriptRow(section = '') {
     const text = String(section || '');
     const marker = /^\[\d+\s+(?:USER|ASSISTANT)\]\r?\n/gm;
@@ -109,7 +119,7 @@ function hasNonEmptyTranscriptRow(section = '') {
 
 function firstIndexAfter(text, needles, start, fallback) {
     return needles.reduce((nearest, needle) => {
-        const index = text.indexOf(needle, start);
+        const index = headerLineIndexes(text, needle).find(index => index >= start);
         return index >= start && index < nearest ? index : nearest;
     }, fallback);
 }
@@ -120,12 +130,14 @@ function rabbitMirrorMessageContentBoundary(content = '') {
     const lockEnd = onlyOccurrence(text, RABBIT_EXECUTION_LOCK_FOOTER);
     if (lockStart < 0 || lockEnd <= lockStart + RABBIT_EXECUTION_LOCK_HEADER.length) return null;
 
-    const legacyStart = onlyOccurrence(text, LEGACY_RABBIT_CONTEXT_HEADER);
-    const legacyRoleStart = onlyOccurrence(text, LEGACY_RABBIT_CONTEXT_ROLE_HEADER);
-    const extraStart = onlyOccurrence(text, RABBIT_CONTEXT_EXTRA_HEADER);
-    const modernStart = onlyOccurrence(text, RABBIT_CONTEXT_HEADER);
+    const headerIndexes = [LEGACY_RABBIT_CONTEXT_HEADER, LEGACY_RABBIT_CONTEXT_ROLE_HEADER,
+        RABBIT_CONTEXT_EXTRA_HEADER, RABBIT_CONTEXT_HEADER].map(header => headerLineIndexes(text, header));
+    // Actual repeated section boundaries remain ambiguous, even if their text
+    // also occurs harmlessly inside quoted source material.
+    if (headerIndexes.some(indexes => indexes.length > 1)) return null;
+    const [legacyStart, legacyRoleStart, extraStart, modernStart] = headerIndexes.map(indexes => indexes[0] ?? -1);
 
-    const legacy = legacyStart >= 0
+    const legacy = modernStart < 0 && legacyStart >= 0
         && legacyRoleStart > legacyStart
         && extraStart > legacyRoleStart
         && lockStart > extraStart
@@ -241,7 +253,7 @@ export function sanitizeRabbitMirrorCompletionBody(bodyText = '') {
         changed = true;
         return { ...message, content };
     });
-    if (messages.some(message => String(message?.content || '').includes(RABBIT_CONTEXT_EXTRA_HEADER))) {
+    if (messages.some(message => headerLineIndexes(String(message?.content || ''), RABBIT_CONTEXT_EXTRA_HEADER).length > 0)) {
         return { bodyText: raw, changed: false, rabbitMirror: false };
     }
     if (!changed) return { bodyText: raw, changed: false, rabbitMirror: true };

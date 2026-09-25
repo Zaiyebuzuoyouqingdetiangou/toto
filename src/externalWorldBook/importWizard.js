@@ -1,5 +1,5 @@
 import { readLocalExternalImportFile, readPlainTextWorldBook } from './fileReader.js?rmv=1.5.53-text1';
-import { getSettings, updateSettings } from '../settings.js?rmv=1.6.16-test.3';
+import { getSettings, updateSettings } from '../settings.js?rmv=1.6.16-test.4';
 import { listHostWorldBooks, readHostWorldBook } from './hostReader.js?rmv=1.5.53-cn-boundary1';
 import { searchNormalizedWorldBookEntries } from './normalize.js?rmv=1.5.53-cn-boundary1';
 import {
@@ -29,7 +29,7 @@ import {
     getExternalPoolHydrationStatus,
     rebuildExternalPoolMetadata,
 } from './store.js?rmv=1.5.53-text1';
-import { applyAppearanceTheme } from '../settingsAppearance.js?rmv=1.6.16-test.3';
+import { applyAppearanceTheme } from '../settingsAppearance.js?rmv=1.6.16-test.4';
 import { getExternalPoolSnapshot } from './externalPool.js?rmv=1.5.53-text1';
 import { externalCandidateCounts } from './candidateCounts.js?rmv=1.5.53-longtext1';
 import { openExternalReclassificationPanel } from './reclassificationPanel.js?rmv=1.6.4-reclass1';

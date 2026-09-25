@@ -37,7 +37,9 @@ async function harness(provider, max = 0, { realMerge = false, failReleaseOnce =
     const foreign = plan();
     assert.equal(storage.markPendingBatchAttempt(foreign), true);
     const foreignRaw = JSON.parse(store.getItem(REGISTRY))[0];
-    const flight = { batchPlan: null, controller: new AbortController(), expectedFaceCount: 2, missingIndexes: [], faceRecipes: [], automaticRerollCount: 0, retainedHtml: '', dispatchLease: { release() {} } };
+    // This fixture enters the mocked provider on every call; expose that paid
+    // boundary so the production timeout can distinguish preparation stalls.
+    const flight = { batchPlan: null, controller: new AbortController(), expectedFaceCount: 2, missingIndexes: [], faceRecipes: [], automaticRerollCount: 0, retainedHtml: '', dispatchLease: { release() {}, consumeCount: () => calls } };
     const failures = [], events = [], results = [];
     let releaseCalls = 0;
     const sandbox = {
