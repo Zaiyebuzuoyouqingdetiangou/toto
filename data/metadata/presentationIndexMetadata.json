@@ -98,6 +98,15 @@
       ]
     },
     {
+      "id": "10.2.10",
+      "group": "10",
+      "tags": [
+        "independent",
+        "visual"
+      ],
+      "summaryOverride": "依照一方对另一方的印象，用内联 SVG + CSS 把一只打开的铁皮盒画满：盒盖内侧是拼贴墙，盒身塞满立体小物；每件物件和每张字条都对应一条具体印象。"
+    },
+    {
       "id": "1.1",
       "group": "1",
       "tags": [
@@ -573,6 +582,15 @@
       "rawIndent": 2
     },
     {
+      "id": "2.1.12",
+      "group": "2",
+      "tags": [
+        "canon",
+        "interactive",
+        "visual"
+      ]
+    },
+    {
       "id": "2.2",
       "group": "2",
       "tags": [
@@ -1009,15 +1027,6 @@
         "art",
         "painting"
       ]
-    },
-    {
-      "id": "5.1.1.7",
-      "group": "5",
-      "tags": [
-        "independent",
-        "visual"
-      ],
-      "summaryOverride": "一方依照对另一方的具体印象，画出有含义的物件装满一只容器。人物、物件、容器与构图由当前关系和经历决定，不用固定图标模板。"
     },
     {
       "id": "5.1.2",
@@ -1601,15 +1610,6 @@
       ],
       "sourceId": null,
       "sourceTitle": "Bingo卡"
-    },
-    {
-      "id": "11.2.1",
-      "group": "11",
-      "tags": [
-        "canon",
-        "interactive",
-        "visual"
-      ]
     },
     {
       "id": "7.1",

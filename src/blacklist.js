@@ -1,6 +1,6 @@
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.6.10';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.6.11';
 import { compactFormatDescriptors, isExternalSelectionId } from './selectionImageMetadata.js?rmv=1.6.4-creation1';
-import { getSettings, updateSettings } from './settings.js?rmv=1.6.10';
+import { getSettings, updateSettings } from './settings.js?rmv=1.6.11';
 import { getCurrentChatKey, resetFormatEligibleMisses } from './storage.js?rmv=1.5.53-visualquick1';
 import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.5.53-cn-boundary1';
 import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.53-cn-boundary1';
@@ -23,6 +23,12 @@ let recipeRecordsCache = null;
 const THEME_BY_ID = new Map(THEMATIC_CATEGORIES.map(item => [String(item?.id || ''), item]));
 const FORMAT_BY_ID = new Map(PRESENTATION_FORMATS.map(item => [String(item?.id || ''), item]));
 const LEGACY_AMBIGUOUS_FORMAT_ID = '1.3.3';
+// 1.6.10 起重新归类：旧 ID 在黑名单、收藏、抽签记录与原选题重说里自动换成新 ID。
+export const LEGACY_FORMAT_ID_ALIASES = Object.freeze({ '5.1.1.7': '10.2.10', '11.2.1': '2.1.12' });
+export function canonicalFormatId(id) {
+    const value = String(id || '').trim();
+    return Object.prototype.hasOwnProperty.call(LEGACY_FORMAT_ID_ALIASES, value) ? LEGACY_FORMAT_ID_ALIASES[value] : value;
+}
 const LEGACY_AMBIGUOUS_FORMAT_TARGET_IDS = ['1.3.3.platform', '1.3.3.review'];
 const LEGACY_AMBIGUOUS_FORMAT_RECIPE_ITEM = Object.freeze({
     id: LEGACY_AMBIGUOUS_FORMAT_ID,
@@ -67,7 +73,7 @@ function normalizeKind(kind) {
 
 function canonicalBlacklistIds(kind, values) {
     const normalized = normalizeKind(kind);
-    const source = compactIds(values);
+    const source = normalized === 'format' ? compactIds(compactIds(values).map(canonicalFormatId)) : compactIds(values);
     if (normalized !== 'format' || !source.includes(LEGACY_AMBIGUOUS_FORMAT_ID)) return source;
     const expanded = [];
     for (const id of source) {
@@ -408,7 +414,7 @@ function compactDirectiveCounts(metadata) {
 
 function compactSelectionMetadata(metadata = {}, allowFaces = true) {
     const themeIds = compactIds(metadata?.themeIds).filter(id => THEME_BY_ID.has(id) || isExternalSelectionId(id));
-    const formatIds = compactIds(metadata?.formatIds).filter(id => FORMAT_BY_ID.has(id) || isExternalSelectionId(id));
+    const formatIds = compactIds(compactIds(metadata?.formatIds).map(canonicalFormatId)).filter(id => FORMAT_BY_ID.has(id) || isExternalSelectionId(id));
     const formatDescriptors = compactFormatDescriptors({ ...metadata, formatIds });
     const alignedLabels = (ids, sourceIds, labels) => ids.map(id => {
         const index = Array.isArray(sourceIds) ? sourceIds.indexOf(id) : -1;

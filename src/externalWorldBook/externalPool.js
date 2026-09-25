@@ -292,12 +292,18 @@ function filteredLibraryPools(kind, hardExcludedIds = [], recentIds = [], avoidR
     return weighted.every(library => library.weights.every(weight => weight === firstWeight)) ? base : weighted;
 }
 
-function weightedLibraryPick(libraries, randomUnit) {
+function weightedLibraryPick(libraries, randomUnit, libraryHits = new Map(), usedLibraries = new Set()) {
     if (!libraries.length) return null;
-    const weighted = libraries.map(library => ({
-        library,
-        weight: Math.sqrt(Math.max(1, library.ids.length)) * (library.meanWeight ?? 1),
-    }));
+    // 1.6.10：多本母本库轮流出场。近期抽得多的库温和降权，同一次抽取里
+    // 已用过的库再降一档；只有一本库时权重不变。
+    const rotate = libraries.length > 1;
+    const weighted = libraries.map(library => {
+        const hits = Number(libraryHits.get(library.libraryId) || 0);
+        let weight = Math.sqrt(Math.max(1, library.ids.length)) * (library.meanWeight ?? 1);
+        if (rotate && hits > 0) weight *= Math.max(0.3, 0.7 * Math.pow(0.8, hits - 1));
+        if (rotate && usedLibraries.has(library.libraryId)) weight *= 0.35;
+        return { library, weight };
+    });
     const total = weighted.reduce((sum, item) => sum + item.weight, 0);
     let roll = Number(randomUnit?.() ?? 0) * total;
     for (const item of weighted) {
@@ -319,13 +325,27 @@ export function pickExternalItems(settings, kind, count, options = {}) {
     const recentIds = Array.isArray(options.recentIds) ? options.recentIds : [];
     const hardExcluded = new Set(Array.isArray(options.hardExcludedIds) ? options.hardExcludedIds : []);
     const selected = [];
+    const recentHitMap = options.recentIdHits && typeof options.recentIdHits === 'object' ? options.recentIdHits : {};
+    const libraryHits = new Map();
+    const recentSet = new Set(recentIds);
+    for (const library of kindLibraries(kind)) {
+        let hits = 0;
+        for (const id of library.ids) {
+            const count = Number(recentHitMap[id]);
+            if (Number.isFinite(count) && count > 0) hits += Math.min(1000, count);
+            else if (recentSet.has(id)) hits += 1;
+        }
+        if (hits) libraryHits.set(library.libraryId, hits);
+    }
+    const usedLibraries = new Set();
 
     while (selected.length < target) {
         const dynamicHard = [...hardExcluded, ...selected.map(item => item.id)];
         const libraries = filteredLibraryPools(kind, dynamicHard, recentIds, options.avoidRepeat !== false, options.preferredExcludedIds, options.recentIdHits || {});
         if (!libraries.length) break;
-        const library = weightedLibraryPick(libraries, randomUnit);
+        const library = weightedLibraryPick(libraries, randomUnit, libraryHits, usedLibraries);
         if (!library?.ids?.length) break;
+        usedLibraries.add(library.libraryId);
         const roll = Number(randomUnit?.() ?? 0);
         let index = Math.min(library.ids.length - 1, Math.floor(roll * library.ids.length));
         if (library.weights) {
