@@ -1,4 +1,4 @@
-import { getSettings } from './settings.js?rmv=1.6.7';
+import { getSettings } from './settings.js?rmv=1.6.9';
 import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=1.5.53-image1';
 import { loadMirrorImage, saveMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft } from './imageStore.js?rmv=1.5.53-image1';
 

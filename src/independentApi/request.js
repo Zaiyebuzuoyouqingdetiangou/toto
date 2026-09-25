@@ -1,8 +1,8 @@
 // Split from independentApi.js — request.
 
-import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.6.7';
+import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.6.9';
 import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.6.4-creation1';
-import { getSettings } from '../settings.js?rmv=1.6.7';
+import { getSettings } from '../settings.js?rmv=1.6.9';
 import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.6';
 import { independentGenerationTiming } from '../independentTiming.js?rmv=1.5.53-timing1';
 import {
@@ -22,12 +22,12 @@ import {
     prepareSelectedMemoryForPrompt,
     memoryRequestSettingsKey,
     assertMemoryRequestSettings,
-} from '../promptBuilder.js?rmv=1.6.7';
+} from '../promptBuilder.js?rmv=1.6.9';
 import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.5.53-text1';
 import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.5.53-cn-boundary1';
-import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.6.7';
+import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.6.9';
 import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from '../multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.7';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.9';
 import {
     updateLatestVisualSignature,
     parseVisualFamilySkeleton,
@@ -47,7 +47,7 @@ import {
     getContext,
     hashText,
 } from './runtime.js?rmv=1.6';
-import { operationEpochForBase } from './flights.js?rmv=1.6.7';
+import { operationEpochForBase } from './flights.js?rmv=1.6.9';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INDEPENDENT_MAX_APPROX_DEPTH,
@@ -62,7 +62,7 @@ import {
     normalizedConfiguredTemperature,
     readHistoryStore,
     readStore,
-} from './persistence.js?rmv=1.6.7';
+} from './persistence.js?rmv=1.6.9';
 import {
     API_PROFILE_ORDER,
     chatKey,
@@ -96,7 +96,7 @@ import {
     stageNextApiProfile,
     swipeId,
     validatedIndependentConnectionProfile,
-} from './connection.js?rmv=1.6.7';
+} from './connection.js?rmv=1.6.9';
 import {
     externalGeometryCycleSequence,
     externalGeometryLifecycleEpoch,
@@ -107,7 +107,7 @@ import {
     writeExternalGeometryCycleSequence,
     writeExternalGeometryLifecycleEpoch,
     writeExternalGeometryLifecycleReason,
-} from './geometry.js?rmv=1.6.7';
+} from './geometry.js?rmv=1.6.9';
 import {
     INDEPENDENT_REJECTED_PREVIEW_MAX_CHARS,
     INDEPENDENT_REJECTED_PREVIEW_MAX_ENTRIES,
@@ -122,8 +122,8 @@ import {
     writeExternalHostSyncIndex,
     writeIndependentRejectedPreviewChars,
     writeIndependentRejectedPreviewSequence,
-} from './mount.js?rmv=1.6.7';
-import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.6.7';
+} from './mount.js?rmv=1.6.9';
+import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.6.9';
 
 const NON_STREAM_PROFILE_BY_STREAM_PROFILE={
  chat_system_user_full:'chat_system_user_full_nostream',
@@ -912,7 +912,10 @@ async function requestIndependentConnectionProfileCompletion(runtime,profile,opt
 export async function requestIndependentCompletion(st,systemPrompt,userPrompt,options={}){
  const attempts=[];
  const rememberedProfile=getRememberedApiProfile(st);
- const stagedProfile=options.manualRetry ? getStagedApiProfile(st,true) : '';
+ // The staged same-parameter twin (usually stream:false) is consumed by the
+ // next retry of this owner: the player's explicit resay, or an automatic
+ // reroll the player enabled. Never on a fresh first dispatch.
+ const stagedProfile=(options.manualRetry||options.automaticReroll===true) ? getStagedApiProfile(st,true) : '';
  const profiles=independentRequestProfiles(st,systemPrompt,userPrompt,options);
  let profile=(stagedProfile && profiles.find(item=>item.name===stagedProfile)) || profiles[0];
  if(!profile){
@@ -1508,7 +1511,7 @@ export function wireIndependentRejectedFaceControls(host){
    independentRejectedFaceControlsWired.add(resay);
    resay.addEventListener('click',event=>{
     event.preventDefault(); event.stopPropagation();
-    void import('../outputSanitizer/toolsChrome.js?rmv=1.6.7').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+    void import('../outputSanitizer/toolsChrome.js?rmv=1.6.9').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
    },true);
   }
  }
@@ -1870,10 +1873,10 @@ export async function callIndependentApi(ctx,index,msg,signal=null,requestOption
 ${feedbackPrompt}${feedbackFinalCheck?`
 
 ${feedbackFinalCheck}`:''}` : '';
- const resayNote=String(requestOptions.resayNote||'').replace(/[\u0000-\u001f\u007f]/g,' ').replace(/\s+/g,' ').trim().slice(0,400);
+ const resayNote=String(requestOptions.resayNote||'').replace(/[\u0000-\u001f\u007f]/g,' ').replace(/\s+/g,' ').trim().slice(0,resay?.userPicked===true?2000:400);
  const resayNoteBlock=resayNote?`
 
-本轮重说补充：
+${resay?.userPicked===true?'本轮纯点菜要求（玩家写下的界面、篇幅与其他要求，必须落实）：':'本轮重说补充：'}
 ${JSON.stringify(resayNote)}
 只把上面的想要和不要落实到这一面的视觉、排版、文字和交互。不得把这段说明显示在成品里，也不得因此更换已经指定的选题。`:'';
  // 原选题重写只锁抽签。视觉冷却只要求换外观，模型会留下上一版句子和骨架。
@@ -1881,7 +1884,7 @@ ${JSON.stringify(resayNote)}
  const keepSelectionForm=resay?.presentationOverride==='longtext'?'longtext':resay?.presentationOverride==='html'?'html':'';
  const keepSelectionRewriteBlock=keepSelectionRewrite?`
 
-本轮是原选题重写：已经指定的主题 / 元素和展现形式必须原样保留，不得重抽或更换。${keepSelectionForm==='longtext'?'这一次改成长文本：抽中的内容只作题材和叙述，写成一篇完整故事，不要做成 HTML 界面。':'这一次'+(keepSelectionForm==='html'?'改成 HTML，':'')+'成品要整篇重写，可见文字和 HTML 都重新写；不得沿用上一版的句子、按钮文案或页面骨架。'}`:'';
+${resay?.userPicked===true?'本轮是纯点菜，选题由玩家从题库亲自点选：已经指定的主题 / 元素和展现形式必须原样使用，不得重抽、替换或增补其他选题；玩家没有点选的那一边不要自行从题库补抽，按玩家写的要求完成。':'本轮是原选题重写：已经指定的主题 / 元素和展现形式必须原样保留，不得重抽或更换。'}${keepSelectionForm==='longtext'?'这一次改成长文本：抽中的内容只作题材和叙述，写成一篇完整故事，不要做成 HTML 界面。':'这一次'+(keepSelectionForm==='html'?'改成 HTML，':'')+'成品要整篇重写，可见文字和 HTML 都重新写；不得沿用上一版的句子、按钮文案或页面骨架。'}`:'';
  const presentationFaces=Array.isArray(details.metadata?.faces)?details.metadata.faces:[details.metadata];
  const hasTextFace=presentationFaces.some(face=>face?.presentationMode==='text');
  const htmlFaceNumbers=presentationFaces.flatMap((face,index)=>face?.presentationMode==='text'?[]:[index+1]);
@@ -2001,7 +2004,7 @@ ${independentUserTail}`;
    return accepted;
   },
  } : originalLease;
- const {response:r,result,profile,attempts,requestDiagnostic,semanticError}=await requestIndependentCompletion(st,systemPrompt,userPrompt,{signal,manualRetry:requestOptions.manualRetry===true,diagnosticContext:requestSelectionDiagnostic,dispatchLease,onProgress:requestOptions.onProgress,earlyBodyOwner:requestOptions.earlyBodyOwner,advancedSettings,assertAdvancedCurrent});
+ const {response:r,result,profile,attempts,requestDiagnostic,semanticError}=await requestIndependentCompletion(st,systemPrompt,userPrompt,{signal,manualRetry:requestOptions.manualRetry===true,automaticReroll:requestOptions.automaticReroll===true,diagnosticContext:requestSelectionDiagnostic,dispatchLease,onProgress:requestOptions.onProgress,earlyBodyOwner:requestOptions.earlyBodyOwner,advancedSettings,assertAdvancedCurrent});
  if(semanticError){
   const error=new Error(semanticError);
   error.rabbitMirrorRequestDiagnostic=requestDiagnostic;
@@ -2055,7 +2058,11 @@ ${independentUserTail}`;
      }
     }
    }
-   const finish=responseFinishReason(result.payload);
+   // result.payload is only the LAST stream frame (often a usage-only frame
+   // with choices:[]) or, for Connection Manager, a synthetic envelope with no
+   // finish_reason at all. The transport parser saw every frame, so prefer it.
+   const transportFinish=String(requestDiagnostic?.finishReason||result.transport?.finishReason||'');
+   const finish=transportFinish&&transportFinish!=='unknown'?transportFinish:responseFinishReason(result.payload);
    const configuredMax=Number(st.independentApiMaxTokens)||12000;
    if(/length|max_tokens|MAX_TOKENS/i.test(finish)){
      republishIndependentSemanticFailure(requestDiagnostic,'truncated-output','',{finishReason:finish,responseChars:raw.length});
@@ -2069,8 +2076,8 @@ ${independentUserTail}`;
    const next=stageManualNonStreamRetry(st,profile,'http-200-incomplete-mirror');
    republishIndependentSemanticFailure(requestDiagnostic,'incomplete-mirror',next,{finishReason:finish,responseChars:raw.length});
    const retryHint=next
-    ? `；本轮不会自动重发。点击“重新生成兔子镜”时将仅把 stream 改为 false，其他消息结构、温度与输出字段保持不变，尝试：${next}`
-    : '；本轮不会自动重发，请手动重新生成兔子镜';
+    ? `；下一次重试（已开启的自动重试，或手动点击“重新生成兔子镜”）将仅把 stream 改为 false，其他消息结构、温度与输出字段保持不变，尝试：${next}`
+    : '；如仍失败，请手动重新生成兔子镜';
    throw new Error(`独立 API 调用成功，但返回内容不是完整兔子镜${finish?`（finish_reason: ${finish}）`:''}；参数模式：${profile}${retryHint}`);
  }
   assertIndependentMarkupComplexityWithDiagnostic(inner,'inner',requestDiagnostic);
