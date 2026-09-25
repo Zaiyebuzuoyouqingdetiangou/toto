@@ -1,10 +1,23 @@
 // Tool controls stay attached to their owning face; only their menu is portalled.
+import { applyAppearanceTheme } from './settingsAppearance.js?rmv=1.6.10';
+
+// 镜面工具面板（挨打猫、维修兔、重说、抽签记录等）跟随设置里的「主题与外观」。
+// 选「跟随酒馆主题」时不改动任何颜色。
+export function themeMirrorToolPanel(panel) {
+    if (!panel?.style) return;
+    try {
+        applyAppearanceTheme(panel);
+        if (panel.dataset.rhTheme && panel.dataset.rhTheme !== 'host') panel.setAttribute('data-rh-tool-theme', 'true');
+        else panel.removeAttribute('data-rh-tool-theme');
+    } catch {}
+}
 const bindings = new WeakMap();
 const fits = new WeakMap();
 let activeMenu = null;
 const logo = '<svg viewBox="0 0 32 32" width="27" height="27" style="display:block!important;width:27px!important;height:27px!important;flex:none!important;fill:none!important;stroke:currentColor!important;pointer-events:none!important" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M10 16C4 2 11 1 14 14M18 14C20 1 27 2 23 16M9 16c-7 11 3 15 9 14s13-8 5-14c-4-3-10-3-14 0Z"/><path d="M12 22h1m6 0h1m-6 4 2 1 2-1"/></svg>';
 
 export function fitMirrorToolPanel(panel, button, preferredWidth = 340) {
+    themeMirrorToolPanel(panel);
     fits.get(panel)?.();
     const anchor = button?.closest?.('[data-rabbit-mirror-tool-entry-host]')?.querySelector('[data-rm-tool-menu-button]') || button;
     const position = () => {

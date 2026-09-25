@@ -1,10 +1,10 @@
 // Split from outputSanitizer.js — toolsChrome.
 
-import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.6.9';
+import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.6.10';
 import { placeFacePager } from '../facePagerPlacement.js?rmv=1.6.4-pager1';
-import { isTextPresentation } from '../presentationMode.js?rmv=1.6.9';
+import { isTextPresentation } from '../presentationMode.js?rmv=1.6.10';
 import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.6.3-ttchild1';
-import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=1.6.9';
+import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=1.6.10';
 import { getCurrentChatKey } from '../storage.js?rmv=1.5.53-visualquick1';
 import { getSanitizedRabbitMirrorFaceProof } from '../multifaceProof.js?rmv=1.5.53-visualquick1';
 import {
@@ -23,7 +23,7 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
 } from '../feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.9';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.10';
 import {
     FAVORITE_MULTIPLIER_MAX,
     FAVORITE_MULTIPLIER_MIN,
@@ -45,7 +45,7 @@ import {
     setFavoriteMultiplier,
     toggleBlacklistItem,
     toggleFavoriteItem,
-} from '../blacklist.js?rmv=1.6.9';
+} from '../blacklist.js?rmv=1.6.10';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -70,9 +70,9 @@ import {
     isMaintenanceRabbitEnabled,
     isRabbitMirrorDetails,
 } from './runtime.js?rmv=1.6';
-import { getAvailableHostChat } from './scriptedInteractionRescue.js?rmv=1.6.9';
-import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.6.9';
-import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=1.6.9';
+import { getAvailableHostChat } from './scriptedInteractionRescue.js?rmv=1.6.10';
+import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.6.10';
+import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=1.6.10';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     FEEDBACK_HISTORY_EVENT,
@@ -92,8 +92,8 @@ import {
     rabbitMirrorLanguageBalance,
     scheduleCurrentHighConfidenceTextRepair,
     setMaintenanceRabbitState,
-} from './diagnostics.js?rmv=1.6.9';
-import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=1.6.9';
+} from './diagnostics.js?rmv=1.6.10';
+import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=1.6.10';
 import {
     MAINTENANCE_FINDING_STAGE_LABELS,
     beginMaintenanceRepairRun,
@@ -111,19 +111,19 @@ import {
     runMaintenanceRevealClipRepair,
     runMaintenanceUserRepair,
     triggerDiagnosticForMaintenanceRoot,
-} from './maintenanceInspect.js?rmv=1.6.9';
+} from './maintenanceInspect.js?rmv=1.6.10';
 import {
     getRabbitMirrorFacePosition,
     installMaintenanceHorizontalClipOpenRescue,
     repairLegacyMaintenanceMobileStateRows,
-} from './layoutRescue.js?rmv=1.6.9';
+} from './layoutRescue.js?rmv=1.6.10';
 import {
     getMessageIndexFromMirrorNode,
     installMaintenanceAutoSafeOpenPatrol,
     installManagedRabbitMirrorTools,
     pruneMaintenanceAutoSafeOpenBindings,
     scheduleMaintenanceAutoSafeForRoot,
-} from './lifecycle.js?rmv=1.6.9';
+} from './lifecycle.js?rmv=1.6.10';
 
 let recipeOutsideCloseCleanup = null;
 
@@ -595,94 +595,191 @@ function rabbitMirrorExternalGenerationNotice(root, kind = 'maintenance') {
 const RESAY_CHOOSER_ATTR = 'data-rm-resay-chooser';
 
 const RESAY_PICK_MAX = Object.freeze({ theme: 3, format: 2 });
+const EXTERNAL_STORE_MODULE = '../externalWorldBook/store.js?rmv=1.5.53-text1';
 
-// 「自己挑选题」只列内置题库，按大组浏览或搜索；已拉黑项目仍可手动点选（只会标注）。
-function createResayTopicPicker(doc, kind, initialIds, onChange) {
+// 纯点菜里的题库点选。默认只显示已选项；点「浏览」才展开列表。
+// 来源可切换：内置题库（按大组浏览 / 搜索）或已导入并启用的母本库。
+function createResayTopicPicker(doc, kind, onChange) {
     const tree = buildSelectionCatalog(kind);
     const max = RESAY_PICK_MAX[kind] || 1;
     const groupNames = kind === 'format' ? FORMAT_GROUP_NAMES : THEME_GROUP_NAMES;
     const kindLabel = kind === 'format' ? '展现形式' : '主题 / 元素';
-    const selected = [...new Set((initialIds || []).map(String))].filter(id => tree.byId.has(id)).slice(0, max);
+    const selected = [];
+    const titles = new Map();
+    let open = false;
+    let source = 'builtin';
     let query = '';
     let group = '';
+    let libraries = null;
+    let libraryId = '';
+    let externalChoices = null;
+    let externalHasNext = false;
+    let externalError = '';
+    let loadToken = 0;
     const wrap = doc.createElement('div');
     wrap.setAttribute('data-rm-resay-pick-kind', kind);
     wrap.style.cssText = 'margin-top:8px;';
     const head = doc.createElement('div');
-    head.style.cssText = 'display:flex;justify-content:space-between;gap:8px;font-size:12px;margin-bottom:4px;';
+    head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;';
     const headName = doc.createElement('span');
-    headName.textContent = kindLabel;
-    const headCount = doc.createElement('span');
-    headCount.style.cssText = 'opacity:.62;font-size:11px;';
-    head.append(headName, headCount);
+    const toggle = doc.createElement('button');
+    toggle.type = 'button';
+    toggle.setAttribute('data-rm-resay-pick-toggle', 'true');
+    toggle.style.cssText = 'min-height:34px;padding:4px 10px;border:1px solid rgba(127,127,127,.4);border-radius:999px;background:transparent;color:inherit;font:inherit;font-size:11px;cursor:pointer;';
+    head.append(headName, toggle);
     const chips = doc.createElement('div');
-    chips.style.cssText = 'display:flex;flex-wrap:wrap;gap:5px;margin-bottom:5px;';
+    chips.style.cssText = 'display:flex;flex-wrap:wrap;gap:5px;margin-top:5px;';
+    const browser = doc.createElement('div');
+    browser.hidden = true;
+    browser.style.cssText = 'margin-top:6px;';
+    const tabs = doc.createElement('div');
+    tabs.style.cssText = 'display:flex;gap:6px;margin-bottom:6px;';
     const search = doc.createElement('input');
     search.type = 'search';
-    search.placeholder = `搜索${kindLabel}：名称 / 编号 / 说明`;
     search.setAttribute('aria-label', `搜索${kindLabel}`);
     search.style.cssText = 'width:100%;box-sizing:border-box;min-height:40px;border:1px solid rgba(127,127,127,.4);border-radius:8px;padding:6px 8px;background:transparent;color:inherit;-webkit-text-fill-color:currentColor;font:inherit;font-size:16px;';
     const list = doc.createElement('div');
-    list.style.cssText = 'margin-top:5px;max-height:190px;overflow:auto;border:1px solid rgba(127,127,127,.24);border-radius:8px;padding:2px 6px;';
-    wrap.append(head, chips, search, list);
+    list.style.cssText = 'margin-top:5px;max-height:220px;overflow:auto;border:1px solid rgba(127,127,127,.24);border-radius:8px;padding:2px 6px;';
+    browser.append(tabs, search, list);
+    wrap.append(head, chips, browser);
     const rowStyle = 'display:flex;width:100%;align-items:center;justify-content:space-between;gap:8px;min-height:40px;border:0;border-bottom:1px solid rgba(127,127,127,.16);padding:6px 2px;background:transparent;color:inherit;cursor:pointer;font:inherit;text-align:left;';
-    const emptyNote = text => `<div style="padding:10px 2px;opacity:.62;font-size:11px;">${feedbackCatEscapeHtml(text)}</div>`;
-    const itemRow = (item, depth = 0) => {
-        const on = selected.includes(item.id);
-        const blocked = isBlacklisted(kind, item.id);
-        return `<button type="button" data-rm-resay-pick-id="${feedbackCatEscapeHtml(item.id)}" aria-pressed="${on ? 'true' : 'false'}" style="${rowStyle}padding-left:${2 + Math.min(4, depth) * 12}px;">
-          <span style="min-width:0;flex:1;"><span style="display:block;font-size:12px;font-weight:${on ? 800 : 600};line-height:1.4;overflow-wrap:anywhere;">${feedbackCatEscapeHtml(item.title || item.id)}</span><span style="display:block;font-size:10px;opacity:.55;overflow-wrap:anywhere;">${feedbackCatEscapeHtml(item.id)}${blocked ? ' · 已拉黑' : ''}</span></span>
+    const tabStyle = on => `flex:1;min-height:34px;border:1px solid ${on ? 'currentColor' : 'rgba(127,127,127,.4)'};border-radius:8px;background:${on ? 'rgba(127,127,127,.14)' : 'transparent'};color:inherit;font:inherit;font-size:11px;font-weight:${on ? 800 : 500};cursor:pointer;`;
+    const note = text => `<div style="padding:10px 2px;opacity:.62;font-size:11px;line-height:1.5;">${feedbackCatEscapeHtml(text)}</div>`;
+    const itemRow = (id, title, meta, depth = 0) => {
+        const on = selected.includes(id);
+        return `<button type="button" data-rm-resay-pick-id="${feedbackCatEscapeHtml(id)}" data-rm-resay-pick-title="${feedbackCatEscapeHtml(title)}" aria-pressed="${on ? 'true' : 'false'}" style="${rowStyle}padding-left:${2 + Math.min(4, depth) * 12}px;">
+          <span style="min-width:0;flex:1;"><span style="display:block;font-size:12px;font-weight:${on ? 800 : 600};line-height:1.4;overflow-wrap:anywhere;">${feedbackCatEscapeHtml(title || id)}</span>${meta ? `<span style="display:block;font-size:10px;opacity:.55;overflow-wrap:anywhere;">${feedbackCatEscapeHtml(meta)}</span>` : ''}</span>
           <span aria-hidden="true" style="flex:0 0 auto;font-size:13px;font-weight:800;">${on ? '✓' : '+'}</span>
         </button>`;
     };
-    const render = () => {
-        headCount.textContent = `${selected.length}/${max}`;
-        chips.innerHTML = selected.length
-            ? selected.map(id => `<button type="button" data-rm-resay-pick-remove="${feedbackCatEscapeHtml(id)}" title="移除" style="max-width:100%;min-height:32px;border:1px solid currentColor;border-radius:999px;padding:3px 9px;background:rgba(127,127,127,.12);color:inherit;cursor:pointer;font:inherit;font-size:11px;overflow-wrap:anywhere;text-align:left;">${feedbackCatEscapeHtml(tree.byId.get(id)?.title || id)} ×</button>`).join('')
-            : `<span style="font-size:11px;opacity:.6;">还没选${kindLabel}</span>`;
+    const renderBuiltin = () => {
         if (query) {
             const needle = query.toLowerCase();
             const matches = tree.entries.filter(item => `${item.id} ${item.title} ${item.summary}`.toLowerCase().includes(needle));
-            list.innerHTML = matches.slice(0, 40).map(item => itemRow(item)).join('') || emptyNote('没有匹配的项目。');
-            if (matches.length > 40) list.insertAdjacentHTML('beforeend', emptyNote(`共 ${matches.length} 项，只显示前 40 项；再多写几个字缩小范围。`));
-        } else if (group) {
+            list.innerHTML = matches.slice(0, 40).map(item => itemRow(item.id, item.title, `${item.id}${isBlacklisted(kind, item.id) ? ' · 已拉黑' : ''}`)).join('') || note('没有匹配的项目。');
+            if (matches.length > 40) list.insertAdjacentHTML('beforeend', note(`共 ${matches.length} 项，只显示前 40 项；再多写几个字缩小范围。`));
+            return;
+        }
+        if (group) {
             const items = tree.entries.filter(item => String(item.group || '其他') === group)
                 .sort((a, b) => String(a.id).localeCompare(String(b.id), undefined, { numeric: true }));
-            const baseDepth = Math.min(...items.map(item => item.id.split('.').length));
+            const base = items.length ? Math.min(...items.map(item => item.id.split('.').length)) : 0;
             list.innerHTML = `<button type="button" data-rm-resay-pick-group="" style="${rowStyle}font-size:11px;opacity:.8;">‹ 返回大组</button>`
-                + (items.map(item => itemRow(item, item.id.split('.').length - baseDepth)).join('') || emptyNote('这一组没有项目。'));
-        } else {
-            const keys = [...new Set(tree.entries.map(item => String(item.group || '其他')))]
-                .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-            list.innerHTML = keys.map(key => {
-                const count = tree.entries.filter(item => String(item.group || '其他') === key).length;
-                return `<button type="button" data-rm-resay-pick-group="${feedbackCatEscapeHtml(key)}" style="${rowStyle}"><span style="font-size:12px;font-weight:700;">${feedbackCatEscapeHtml(groupNames[key] ? `${key} · ${groupNames[key]}` : `组 ${key}`)}</span><span style="font-size:10px;opacity:.56;">${count} 项 ›</span></button>`;
-            }).join('');
+                + (items.map(item => itemRow(item.id, item.title, `${item.id}${isBlacklisted(kind, item.id) ? ' · 已拉黑' : ''}`, item.id.split('.').length - base)).join('') || note('这一组没有项目。'));
+            return;
         }
+        const keys = [...new Set(tree.entries.map(item => String(item.group || '其他')))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+        list.innerHTML = keys.map(key => {
+            const count = tree.entries.filter(item => String(item.group || '其他') === key).length;
+            return `<button type="button" data-rm-resay-pick-group="${feedbackCatEscapeHtml(key)}" style="${rowStyle}"><span style="font-size:12px;font-weight:700;">${feedbackCatEscapeHtml(groupNames[key] ? `${key} · ${groupNames[key]}` : `组 ${key}`)}</span><span style="font-size:10px;opacity:.56;">${count} 项 ›</span></button>`;
+        }).join('');
     };
-    const toggle = id => {
+    const renderExternal = () => {
+        if (externalError) { list.innerHTML = note(externalError); return; }
+        if (!libraries) { list.innerHTML = note('正在读取母本库……'); return; }
+        if (!libraries.length) { list.innerHTML = note('还没有已启用的母本库。可以在「玩法 → 导入小剧场世界书」里导入并启用。'); return; }
+        if (!libraryId) {
+            list.innerHTML = libraries.map(library => `<button type="button" data-rm-resay-pick-library="${feedbackCatEscapeHtml(library.libraryId)}" style="${rowStyle}"><span style="font-size:12px;font-weight:700;overflow-wrap:anywhere;">${feedbackCatEscapeHtml(library.displayName || library.sourceWorldBookName || library.libraryId)}</span><span style="font-size:10px;opacity:.56;">›</span></button>`).join('');
+            return;
+        }
+        const back = `<button type="button" data-rm-resay-pick-library="" style="${rowStyle}font-size:11px;opacity:.8;">‹ 返回母本库列表</button>`;
+        if (!externalChoices) { list.innerHTML = back + note('正在读取条目……'); return; }
+        const rows = externalChoices.map(choice => itemRow(choice.externalId, choice.title, '母本库')).join('');
+        list.innerHTML = back + (rows || note(`这本库里${query ? '没有匹配的' : '没有已启用的'}${kindLabel}条目。`))
+            + (externalHasNext ? note('只显示前 50 条；可以搜索标题缩小范围。') : '');
+    };
+    const loadLibraries = async () => {
+        const token = ++loadToken;
+        try {
+            const store = await import(EXTERNAL_STORE_MODULE);
+            const rows = await store.listExternalLibraries();
+            if (token !== loadToken) return;
+            libraries = (rows || []).filter(row => row?.enabled === true && row?.libraryId);
+        } catch {
+            if (token !== loadToken) return;
+            externalError = '母本库读取失败；内置题库仍可使用。';
+        }
+        render();
+    };
+    const loadChoices = async () => {
+        const token = ++loadToken;
+        externalChoices = null;
+        render();
+        try {
+            const store = await import(EXTERNAL_STORE_MODULE);
+            const page = await store.listExternalLibraryEntryChoices(libraryId, { pageSize: 50, query });
+            if (token !== loadToken) return;
+            externalChoices = (page?.choices || []).filter(choice => choice.enabled && choice.selectable && choice.classification === kind);
+            externalHasNext = page?.hasNext === true;
+        } catch {
+            if (token !== loadToken) return;
+            externalChoices = [];
+            externalError = '这本母本库的条目读取失败；内置题库仍可使用。';
+        }
+        render();
+    };
+    function render() {
+        headName.innerHTML = `${feedbackCatEscapeHtml(kindLabel)} <span style="opacity:.6;font-size:11px;">${selected.length}/${max}</span>`;
+        toggle.textContent = open ? '收起' : (selected.length ? '＋ 修改' : '＋ 浏览');
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        chips.innerHTML = selected.length
+            ? selected.map(id => `<button type="button" data-rm-resay-pick-remove="${feedbackCatEscapeHtml(id)}" title="移除" style="max-width:100%;min-height:32px;border:1px solid currentColor;border-radius:999px;padding:3px 9px;background:rgba(127,127,127,.12);color:inherit;cursor:pointer;font:inherit;font-size:11px;overflow-wrap:anywhere;text-align:left;">${id.startsWith('ext:') ? '📖 ' : ''}${feedbackCatEscapeHtml(titles.get(id) || id)} ×</button>`).join('')
+            : '';
+        chips.hidden = !selected.length;
+        browser.hidden = !open;
+        if (!open) return;
+        tabs.innerHTML = `<button type="button" data-rm-resay-pick-source="builtin" style="${tabStyle(source === 'builtin')}">内置题库</button><button type="button" data-rm-resay-pick-source="external" style="${tabStyle(source === 'external')}">我的母本库</button>`;
+        search.placeholder = source === 'external' ? '搜索条目标题' : '搜索名称 / 编号 / 说明';
+        if (source === 'external') renderExternal();
+        else renderBuiltin();
+    }
+    const choose = (id, title) => {
         const at = selected.indexOf(id);
         if (at >= 0) selected.splice(at, 1);
         else if (selected.length >= max) {
-            globalThis.toastr?.info?.(`${kindLabel}最多选 ${max} 个；先点上方已选项移除一个。`);
+            globalThis.toastr?.info?.(`${kindLabel}最多选 ${max} 个；先点已选项移除一个。`);
             return;
-        } else selected.push(id);
+        } else {
+            selected.push(id);
+            if (title) titles.set(id, title);
+        }
         render();
         onChange?.();
     };
+    let searchTimer = 0;
     wrap.addEventListener('click', event => {
         const target = event.target?.closest?.('button');
         if (!target || !wrap.contains(target)) return;
-        if (target.hasAttribute('data-rm-resay-pick-id')) { event.preventDefault(); toggle(target.getAttribute('data-rm-resay-pick-id')); return; }
-        if (target.hasAttribute('data-rm-resay-pick-remove')) { event.preventDefault(); toggle(target.getAttribute('data-rm-resay-pick-remove')); return; }
-        if (target.hasAttribute('data-rm-resay-pick-group')) {
-            event.preventDefault();
-            group = target.getAttribute('data-rm-resay-pick-group') || '';
+        event.preventDefault();
+        if (target.hasAttribute('data-rm-resay-pick-toggle')) { open = !open; render(); onChange?.(); return; }
+        if (target.hasAttribute('data-rm-resay-pick-id')) { choose(target.getAttribute('data-rm-resay-pick-id'), target.getAttribute('data-rm-resay-pick-title')); return; }
+        if (target.hasAttribute('data-rm-resay-pick-remove')) { choose(target.getAttribute('data-rm-resay-pick-remove')); return; }
+        if (target.hasAttribute('data-rm-resay-pick-group')) { group = target.getAttribute('data-rm-resay-pick-group') || ''; render(); list.scrollTop = 0; return; }
+        if (target.hasAttribute('data-rm-resay-pick-source')) {
+            const next = target.getAttribute('data-rm-resay-pick-source') === 'external' ? 'external' : 'builtin';
+            if (next === source) return;
+            source = next; query = ''; search.value = ''; externalError = '';
             render();
-            list.scrollTop = 0;
+            if (source === 'external' && !libraries) void loadLibraries();
+            return;
+        }
+        if (target.hasAttribute('data-rm-resay-pick-library')) {
+            libraryId = target.getAttribute('data-rm-resay-pick-library') || '';
+            externalChoices = null; externalError = ''; query = ''; search.value = '';
+            if (libraryId) void loadChoices(); else render();
         }
     });
-    search.addEventListener('input', () => { query = search.value.trim(); render(); list.scrollTop = 0; });
+    search.addEventListener('input', () => {
+        query = search.value.trim();
+        if (source === 'external') {
+            clearTimeout(searchTimer);
+            if (libraryId) searchTimer = setTimeout(() => { void loadChoices(); }, 250);
+            return;
+        }
+        render();
+        list.scrollTop = 0;
+    });
+    for (const item of tree.entries) titles.set(item.id, item.title);
     render();
     return { element: wrap, selected: () => selected.slice() };
 }
@@ -742,12 +839,12 @@ export function openRabbitMirrorResayChooser(root, anchor = null) {
     const pickSection = doc.createElement('div');
     pickSection.hidden = true;
     const pickLabel = doc.createElement('div');
-    pickLabel.textContent = '从题库点选（可选）';
+    pickLabel.textContent = '从题库点选（可选，内置题库或我的母本库）';
     pickLabel.style.cssText = 'margin:10px 0 0;font-size:12px;';
     const pickStatus = doc.createElement('p');
     pickStatus.style.cssText = 'font-size:11px;line-height:1.5;opacity:.75;margin:6px 0 0;';
-    const themePicker = createResayTopicPicker(doc, 'theme', [], () => paint());
-    const formatPicker = createResayTopicPicker(doc, 'format', [], () => paint());
+    const themePicker = createResayTopicPicker(doc, 'theme', () => paint());
+    const formatPicker = createResayTopicPicker(doc, 'format', () => paint());
     pickSection.append(pickLabel, themePicker.element, formatPicker.element, pickStatus);
     let form = 'keep';
     const formLabel = doc.createElement('div');
@@ -2140,7 +2237,7 @@ function beginHostWorkTiming(name){
 }
 
 function loadMirrorImageModule() {
-    if (!mirrorImageModule) mirrorImageModule = import('../imageUi.js?rmv=1.6.9').catch(error => { mirrorImageModule = null; throw error; });
+    if (!mirrorImageModule) mirrorImageModule = import('../imageUi.js?rmv=1.6.10').catch(error => { mirrorImageModule = null; throw error; });
     return mirrorImageModule;
 }
 
@@ -2398,7 +2495,7 @@ function installUnifiedMirrorTools(root) {
     actions.push({ id: 'resay', label: '↻ 重说', run: (_event, opener) => openRabbitMirrorResayChooser(root, opener) });
     if (mirrorFaceCanContinue(root)) {
         actions.push({ id: 'continue', label: '✎ 续写', run: () => {
-            void import('../independentApi/mount.js?rmv=1.6.9').then(module => module.continueIndependentLongText(root))
+            void import('../independentApi/mount.js?rmv=1.6.10').then(module => module.continueIndependentLongText(root))
                 .catch(() => globalThis.toastr?.error?.('续写没有写上，原来的正文还在。'));
         } });
     }
@@ -2421,7 +2518,7 @@ function installUnifiedMirrorTools(root) {
             .catch(() => globalThis.toastr?.warning?.('生图面板未能打开，请重新打开后再试。'));
     } });
     actions.push({ id: 'theater-favorite-library', label: '📖 打开收藏夹', run: () => {
-        void import('../independentApi.js?rmv=1.6.9').then(module =>
+        void import('../independentApi.js?rmv=1.6.10').then(module =>
             openTheaterFavoriteLibrary((container, record) => module.hydrateIndependentFavoriteHtml(container, record)))
             .catch(error => globalThis.toastr?.warning?.(String(error?.message || '无法打开收藏夹。')));
     } });

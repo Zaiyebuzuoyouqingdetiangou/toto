@@ -1,8 +1,8 @@
 // Split from independentApi.js — mount.
 
-import { presentationModeFields, isBlankLongTextSelection } from '../presentationMode.js?rmv=1.6.9';
+import { presentationModeFields, isBlankLongTextSelection } from '../presentationMode.js?rmv=1.6.10';
 import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.5.53-cn-boundary1';
-import { getSettings } from '../settings.js?rmv=1.6.9';
+import { getSettings } from '../settings.js?rmv=1.6.10';
 import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.6';
 import { independentGenerationTiming } from '../independentTiming.js?rmv=1.5.53-timing1';
 import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.5.53-cn-boundary1';
@@ -11,7 +11,7 @@ import {
     refreshRabbitMirrorToolsInScope,
     isolateRabbitMirrorInteractionIds,
     rearmRabbitMirrorSerializedInteractionRoot,
-} from '../outputSanitizer.js?rmv=1.6.9';
+} from '../outputSanitizer.js?rmv=1.6.10';
 import { matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.5.53-cn-boundary1';
 import { parseMultifaceOutput, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR } from '../multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
 import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from '../multifaceProof.js?rmv=1.5.53-visualquick1';
@@ -20,14 +20,14 @@ import {
     FOLLOW_MULTIFACE_REJECTED_EVENT,
     FOLLOW_GENERATION_SETTLED_EVENT,
     getRabbitMirrorFollowBatchFailure,
-} from '../visualScanner.js?rmv=1.6.9';
+} from '../visualScanner.js?rmv=1.6.10';
 import { commitPendingComboBatch, releasePendingComboBatch } from '../storage.js?rmv=1.5.53-visualquick1';
 import {
     consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror,
     getActiveFeedbackForCurrentChat,
     markFeedbackCatInjected,
 } from '../feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from '../blacklist.js?rmv=1.6.9';
+import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from '../blacklist.js?rmv=1.6.10';
 import { readFollowPartialResult, followPartialResultFaceOwnerKey } from '../followPartialResults.js?rmv=1.5.53-visualquick1';
 import {
     shouldAutomaticReroll,
@@ -44,7 +44,7 @@ import {
     mergeRetrySelectionDiagnostic,
     missingIndexesFromIndependentResult,
     recipesCoverMissing,
-} from '../missingFaceMerge.js?rmv=1.6.9';
+} from '../missingFaceMerge.js?rmv=1.6.10';
 import {
     FACE_SWIPE_FULL_MESSAGE,
     canAppendSwipe,
@@ -100,7 +100,7 @@ import {
     operationEpochForBase,
     pending,
     reserveAutomaticDispatchLease,
-} from './flights.js?rmv=1.6.9';
+} from './flights.js?rmv=1.6.10';
 import {
     HISTORY_PANEL_ATTR,
     INDEPENDENT_RECORD_BUDGET_BYTES,
@@ -118,7 +118,7 @@ import {
     restoreIndependentFaceSwipeInitial,
     writePersistedOwner,
     writeStore,
-} from './persistence.js?rmv=1.6.9';
+} from './persistence.js?rmv=1.6.10';
 import {
     appendIndependentFaceSwipe,
     faceDetailsListFromHtml,
@@ -129,7 +129,7 @@ import {
     seedIndependentFaceSwipes,
     seedNeighborIndependentFaceSwipes,
     showEphemeralFaceFailure,
-} from './faceSwipe.js?rmv=1.6.9';
+} from './faceSwipe.js?rmv=1.6.10';
 import {
     INDEPENDENT_OWNER_OBSERVATION,
     assistantMessages,
@@ -168,7 +168,7 @@ import {
     setOwnerLockForBase,
     slotSearchKeys,
     swipeId,
-} from './connection.js?rmv=1.6.9';
+} from './connection.js?rmv=1.6.10';
 import {
     allExternalHosts,
     assertIndependentMarkupComplexityWithDiagnostic,
@@ -193,7 +193,7 @@ import {
     wrapIndependentFace,
     wrapPreparedIndependentFace,
     wrappedIndependentMirrorHtml,
-} from './request.js?rmv=1.6.9';
+} from './request.js?rmv=1.6.10';
 import {
     DEFERRED_INTERACTION_RESCUE_ATTR,
     INDEPENDENT_CONTENT_WIDTH_BASELINE_ATTR,
@@ -252,7 +252,7 @@ import {
     showIndependentResayStatus,
     transferExternalTools,
     usableReadyDetails,
-} from './geometry.js?rmv=1.6.9';
+} from './geometry.js?rmv=1.6.10';
 import {
     assertEarlyBodyOwner,
     automaticHostGenerationMayUseTools,
@@ -266,7 +266,7 @@ import {
     scheduleStartupHistorySync,
     suppressesAutomaticGeneration,
     unlockAutomaticGenerationCutover,
-} from './earlyBody.js?rmv=1.6.9';
+} from './earlyBody.js?rmv=1.6.10';
 import {
     automaticGenerationCutovers,
     backgroundLifecycleListenersInstalled,
@@ -288,7 +288,7 @@ import {
     writeHostGenerationInProgress,
     writeIndependentActionBridge,
     writeLastAppliedIndependentTiming,
-} from './lifecycle.js?rmv=1.6.9';
+} from './lifecycle.js?rmv=1.6.10';
 
 let generationSequence = 0;
 
@@ -1890,7 +1890,7 @@ export async function generateFor(index,msg,force=false,sourceAware=true,multifa
      const faceIndex=Number.isInteger(multifaceResay?.faceIndex)?multifaceResay.faceIndex:0;
      const overlayRoot=externalFaceDetails(currentHost)[currentHost && externalFaceDetails(currentHost).length>1?faceIndex:0]||currentHost;
      showEphemeralFaceFailure(currentHost,faceIndex,failureMessage,
-      ()=>{ void import('../outputSanitizer/toolsChrome.js?rmv=1.6.9').then(module=>module.openRabbitMirrorResayChooser(overlayRoot)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。')); },
+      ()=>{ void import('../outputSanitizer/toolsChrome.js?rmv=1.6.10').then(module=>module.openRabbitMirrorResayChooser(overlayRoot)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。')); },
       ()=>{ applyIndependentFaceSwipe(overlayRoot,readFaceSwipe(independentSwipeSlot(failedIdentity),faceIndex).currentIndex); }
      );
     }else{
@@ -2068,7 +2068,7 @@ export function parseMessageIndexFromOwnerKey(key=''){
  return null;
 }
 
-export function resolveIndependentActionIdentity(root,owner={}, {allowPassiveErrorRetry=false}={}){
+export function resolveIndependentActionIdentity(root,owner={}, {allowPassiveErrorRetry=false,allowEditedSource=false}={}){
  const ctx=getContext(); const meta=actionOwnerMetadata(root,owner); let host=independentHostForRoot(root);
  if(!host){
   host=allExternalHosts().find(candidate=>candidate.dataset.rmSource==='independent'
@@ -2100,8 +2100,13 @@ export function resolveIndependentActionIdentity(root,owner={}, {allowPassiveErr
   ? passiveIndependentFailureForIdentity(ctx,index,msg,host) : null;
  const passiveErrorRetry=!!terminalFailure && ownerSourceHash===terminalFailure.sourceHash
   && (!meta.key || meta.key===terminalFailure.slot);
- if(ownerSourceHash && ownerSourceHash!==currentSourceHash && !passiveErrorRetry) return null;
- if(meta.key && meta.key!==currentKey && !passiveErrorRetry){
+ // 玩家改过正文后，这面镜子仍挂在同一楼同一 swipe 上。只在显式重说时
+ // 允许认领它（见 adoptEditedIndependentMirror）；自动流程仍按原正文严格匹配。
+ const editedSource=allowEditedSource && !passiveErrorRetry && !!ownerSourceHash && ownerSourceHash!==currentSourceHash
+  && host?.dataset?.rmSource==='independent' && host?.dataset?.rmState==='ready'
+  && messageIndexForExternalHost(host)===index;
+ if(ownerSourceHash && ownerSourceHash!==currentSourceHash && !passiveErrorRetry && !editedSource) return null;
+ if(meta.key && meta.key!==currentKey && !passiveErrorRetry && !editedSource){
   const baseSuffix=`:${index}:${currentSwipe}`;
   const fullSuffix=`${baseSuffix}:${currentSourceHash}`;
   if(!meta.key.endsWith(baseSuffix) && !meta.key.endsWith(fullSuffix)) return null;
@@ -2109,7 +2114,42 @@ export function resolveIndependentActionIdentity(root,owner={}, {allowPassiveErr
  const faces=externalFaceDetails(host);
  const requestedDetails=root?.matches?.('details')?root:root?.closest?.('details')||root?.querySelector?.('details');
  const faceIndex=faces.length>1?faces.findIndex(face=>face===requestedDetails || face.contains?.(requestedDetails)):-1;
- return {ctx,msg,index,host,slot:messageSlotKey(ctx,index,msg),baseSlot:messageBaseSlotKey(ctx,index,msg),legacySlots:legacyMessageSlotKeys(ctx,index,msg),key:currentKey,faceIndex};
+ return {ctx,msg,index,host,slot:messageSlotKey(ctx,index,msg),baseSlot:messageBaseSlotKey(ctx,index,msg),legacySlots:legacyMessageSlotKeys(ctx,index,msg),key:currentKey,faceIndex,
+  ...(editedSource?{editedSource:true,staleSourceHash:ownerSourceHash}:{})};
+}
+
+// 正文被编辑后显式重说：把当前显示的这面镜子改挂到编辑后的正文上，
+// 再走正常重说流程。旧版本、抽签记录与五版切换都保留；失败时仍回到这面镜子。
+function adoptEditedIndependentMirror(identity){
+ const {ctx,index,msg,host}=identity||{};
+ if(!identity?.editedSource || !host?.isConnected || ctx?.chat?.[index]!==msg) return false;
+ if(hostGenerationLooksActive()) return false;
+ const persisted=persistedOwnerForMessage(ctx,index,msg);
+ let record=persisted && !persisted.deleted && persisted.html && independentStoredHtmlRestorable(persisted.html) ? {...persisted} : null;
+ if(!record){
+  const ready=readyRecordFromHost(host,passiveObservedIdentity(ctx,index,msg),getSettings().independentApiModel);
+  record=ready?.html ? {...ready} : null;
+ }
+ if(!record?.html) return false;
+ const sourceHash=messageSourceFingerprint(msg);
+ const slot=messageSlotKey(ctx,index,msg);
+ delete record.ownerLineage;
+ record.sourceHash=sourceHash;
+ record.bodyHash=sourceHash;
+ record.ts=Date.now();
+ const store=readStore();
+ saveRecordForSlot(store,slot,record,{dropLegacy:false});
+ if(!writeStore(store)) return false;
+ writePersistedOwner(ctx,index,msg,record,{overwrite:true});
+ setOwnerLockForBase(identity.baseSlot,slot,sourceHash);
+ host.dataset.rmKey=slot;
+ host.dataset.rmSourceHash=sourceHash;
+ for(const details of host.querySelectorAll('details')){
+  if(details.dataset.rabbitMirrorOwnerKey) details.dataset.rabbitMirrorOwnerKey=slot;
+  if(details.dataset.rabbitMirrorExternalOwner) details.dataset.rabbitMirrorExternalOwner=slot;
+  if(details.dataset.rabbitMirrorOwnerSourceHash) details.dataset.rabbitMirrorOwnerSourceHash=sourceHash;
+ }
+ return true;
 }
 
 function closeIndependentHistoryPanel(){
@@ -2232,7 +2272,7 @@ export function resayIndependentMirror(root,owner={},options={}){
  const mode=['fresh','original','order'].includes(options?.mode)?options.mode:'';
  // 纯点菜可以附带从题库点选的主题 / 元素和展现形式（可选）。
  const pickIds=(value,limit)=>[...new Set((Array.isArray(value)?value:[]).map(id=>String(id||'').trim())
-  .filter(id=>id && id.length<=160 && /^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(id)))].slice(0,limit);
+  .filter(id=>id && id.length<=2048 && (/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(id) || /^ext:[A-Za-z0-9:._!~*'()-]+$/.test(id))))].slice(0,limit);
  const pickedThemeIds=mode==='order'?pickIds(options?.themeIds,3):[];
  const pickedFormatIds=mode==='order'?pickIds(options?.formatIds,2):[];
  const orderPicked=pickedThemeIds.length>0||pickedFormatIds.length>0;
@@ -2243,7 +2283,7 @@ export function resayIndependentMirror(root,owner={},options={}){
    globalThis.toastr?.warning?.('跟随正文只能按这一面原来的选题重试失败面，不能在这里重新抽一张。');
    return true;
   }
-  void import('../followFaceRetry.js?rmv=1.6.9').then(({retryFollowFace})=>retryFollowFace(root,owner,{
+  void import('../followFaceRetry.js?rmv=1.6.10').then(({retryFollowFace})=>retryFollowFace(root,owner,{
    getContext,hostBusy:hostGenerationLooksActive,maxRequestChars:configuredIndependentMaxRequestChars(getSettings()),resayNote:note,presentationOverride:form,
    resolveOwner:target=>{
     const host=target?.closest?.('[data-rabbit-mirror-external-source="true"][data-rm-source="follow"]');
@@ -2254,8 +2294,19 @@ export function resayIndependentMirror(root,owner={},options={}){
   })).catch(()=>globalThis.toastr?.error?.('主 API 单面重试模块未加载，未发送请求。'));
   return true;
  }
- const identity=resolveIndependentActionIdentity(root,owner,{allowPassiveErrorRetry:true});
+ let identity=resolveIndependentActionIdentity(root,owner,{allowPassiveErrorRetry:true,allowEditedSource:true});
  if(!identity) return false;
+ if(identity.editedSource){
+  if(!adoptEditedIndependentMirror(identity)){
+   globalThis.toastr?.warning?.('正文改过了，但这面镜子没能转到新正文上（可能正文还在生成）；本次未发送请求。');
+   return true;
+  }
+  identity=resolveIndependentActionIdentity(root,owner,{allowPassiveErrorRetry:true});
+  if(!identity){
+   globalThis.toastr?.warning?.('正文改过了，这面镜子的归属没能确认；本次未发送请求。');
+   return true;
+  }
+ }
  const gate=canIndependentFaceResay(root,owner);
  if(!gate.ok){
   globalThis.toastr?.warning?.(gate.message||FACE_SWIPE_FULL_MESSAGE);
@@ -2593,7 +2644,7 @@ async function requestMirrorImagePlan(target,input={},options={}){
  const st={...current,independentExcludedParams:Array.isArray(current.independentExcludedParams)?[...current.independentExcludedParams]:current.independentExcludedParams};
  if((!st.independentConnectionProfileId&&!st.independentApiBaseUrl)||!st.independentApiModel)
   throw new Error('请先完成兔子镜副 API 连接和模型设置；尚未发送请求。');
- const {buildImagePlanningPrompt,parseImagePlan}=await import('../imagePlan.js?rmv=1.6.9');
+ const {buildImagePlanningPrompt,parseImagePlan}=await import('../imagePlan.js?rmv=1.6.10');
  target.assertCurrent();
  const {systemPrompt,userPrompt}=buildImagePlanningPrompt({...input,title:target.title,faceText:target.faceText,
   floor:target.floor,character:target.character,persona:target.persona,presentationMode:target.presentationMode,formats:target.formats,
@@ -2714,7 +2765,7 @@ function handleFollowMultifaceRejected(event){
  const failure=getRabbitMirrorFollowBatchFailure(ctx?.chat,index);
  if(!failure || failure.batchId!==event?.detail?.batchId) return false;
  queueMessageSync([index]);
- void import('../followAutomaticReroll.js?rmv=1.6.9').then(({maybeAutomaticFollowReroll})=>maybeAutomaticFollowReroll(index,followAutomaticRerollDeps()));
+ void import('../followAutomaticReroll.js?rmv=1.6.10').then(({maybeAutomaticFollowReroll})=>maybeAutomaticFollowReroll(index,followAutomaticRerollDeps()));
  return true;
 }
 
@@ -2722,12 +2773,12 @@ function handleFollowGenerationSettled(event){
  const index=Number(event?.detail?.messageIndex);
  if(!Number.isInteger(index)||index<0) return false;
  if(event?.detail?.cancelled===true){
-  void import('../followAutomaticReroll.js?rmv=1.6.9').then(({markFollowAutomaticRerollCancelled})=>{
+  void import('../followAutomaticReroll.js?rmv=1.6.10').then(({markFollowAutomaticRerollCancelled})=>{
    markFollowAutomaticRerollCancelled(getContext(),index);
   });
   return true;
  }
- void import('../followAutomaticReroll.js?rmv=1.6.9').then(({maybeAutomaticFollowReroll})=>maybeAutomaticFollowReroll(index,followAutomaticRerollDeps()));
+ void import('../followAutomaticReroll.js?rmv=1.6.10').then(({maybeAutomaticFollowReroll})=>maybeAutomaticFollowReroll(index,followAutomaticRerollDeps()));
  return true;
 }
 
