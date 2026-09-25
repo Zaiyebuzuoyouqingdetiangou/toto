@@ -3,15 +3,15 @@ import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.5.53
 import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.5.53-cn-boundary1';
 import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.5.53-text1';
 import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.5.53-cn-boundary1';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.6.12';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.6.14';
 import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.5.53-visualquick1';
 import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.5.53-visualquick1';
 import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.5.53-cn-boundary1';
 export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.5.53-cn-boundary1';
 import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.5.53-cn-boundary1';
 import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.5.53-cn-boundary1';
-import { isTextPresentation, presentationModeFields } from './presentationMode.js?rmv=1.6.12';
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.6.12';
+import { isTextPresentation, presentationModeFields } from './presentationMode.js?rmv=1.6.14';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.6.14';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -1011,8 +1011,11 @@ function faceMetadata(face, settings, generationType, rawPolicy, directive, memo
 function textPresentationRule(longText = false) {
     if (longText) {
         return `长文本呈现规则：
-  - 这一面要写成一篇读得完的故事。外壳必须完整：<toto><details><summary>【兔子镜：标题】</summary><article>故事段落</article></details></toto>。这些外壳标签要写，它们不是界面。
-  - article 里用段落写完故事。不要按钮、样式、第二状态或页面骨架。条目里如果要求 HTML 或交互，忽略那部分，不要做成界面。
+  - 这一面要写成一篇读得完的故事。外壳必须完整：<toto><details><summary>【兔子镜：标题】</summary><article style="…">故事段落</article></details></toto>。这些外壳标签要写，它们不是界面。
+  - article 里用段落写完故事。不要按钮、第二状态或页面骨架。条目里如果要求 HTML 或交互，忽略那部分，不要做成界面。
+  - 阅读美化：写完正文后，只在 <article> 上写一个 style 属性，为这篇故事定一套简单高级的阅读外观：一个底色（纯色或极淡的渐变）、一个正文颜色、合适的系统字体栈（衬线、宋体、楷体或等宽之一），内边距约 18–24px，圆角加一条细边框，行高 1.8–2，可加极轻的阴影或字距。配色和字体要从这篇故事本身推出（年代、场景、天气、情绪、叙述者身份），每篇不同，不套固定模板。
+  - 正文和底色的对比度要足够，手机上长时间阅读不累。段落用 <p>；场景切换可用 <hr>（可带简短 style）；强调用 <em>/<strong>；个别关键句可用带 style 的 <span>。除此之外不加任何元素。
+  - 美化禁止项：<style> 块、class、动画与过渡、背景图片或 url()、position 定位、固定高度或溢出裁切、逐段换色、霓虹发光与大面积特效。全部 style 合计控制在约 350 字符内，把篇幅留给故事。
   - 抽中的条目只提供题材、叙述方式和篇幅意图。不要把条目里的按钮、页面骨架、第二状态或交互说明做成界面。
   - 写到自然收束即可。不要为了凑字数停在半句，也不要删掉结尾。写真实的叙事推进、动作、对话与细节，保持角色口吻；不要用摘要、提纲或重复句充篇幅。
   - 故事正文不是可精简的装饰。跟随正文时，篇幅不够就先收短主回复，也不能只留下标题就闭合。
@@ -1028,7 +1031,7 @@ function textPresentationRule(longText = false) {
 }
 
 function textFaceLock(face, index) {
-    return `第 ${index + 1} 面：${face.longText ? '长文本；写成一篇完整故事' : '文本'}；主题：${compactLockItems(face.combo.themes, 'theme')}；形式叙述特点：${compactLockItems(face.combo.formats, 'presentation')}；文本类：${compactLockItems(face.combo.texts, 'text')}。${face.longText ? '抽中的条目只作题材和叙述。article 里只写故事段落，不要做成界面。外壳标签必须完整，不能只留标题。' : '原条目字数及明确 HTML 要求优先；不套额外美化玩法。'}保留完整正文与外层协议。`;
+    return `第 ${index + 1} 面：${face.longText ? '长文本；写成一篇完整故事' : '文本'}；主题：${compactLockItems(face.combo.themes, 'theme')}；形式叙述特点：${compactLockItems(face.combo.formats, 'presentation')}；文本类：${compactLockItems(face.combo.texts, 'text')}。${face.longText ? '抽中的条目只作题材和叙述。article 里只写故事段落，并按正文气质给 article 写一段简洁的内联 style 做阅读美化，不要做成界面。外壳标签必须完整，不能只留标题。' : '原条目字数及明确 HTML 要求优先；不套额外美化玩法。'}保留完整正文与外层协议。`;
 }
 
 // This composer is used only when the frozen selection actually contains a text
