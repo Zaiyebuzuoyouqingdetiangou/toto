@@ -3,7 +3,7 @@ export function normalizePresentationModes(value) {
     // 旧的「文本」档并进长文本。已生成成品上的 presentationMode 仍用 text 表示散文，不在这里改。
     return Array.from({ length: 5 }, (_, index) => {
         const mode = value?.[index] === 'text' ? 'longtext' : value?.[index];
-        return ['auto', 'html', 'longtext'].includes(mode) ? mode : 'auto';
+        return ['auto', 'html', 'longtext'].includes(mode) ? mode : 'html';
     });
 }
 
@@ -20,7 +20,7 @@ export function isBlankLongTextSelection(source) {
 }
 
 export function requestedPresentationMode(settings, index = 0) {
-    return normalizePresentationModes(settings?.rabbitMirrorPresentationModes)[index] || 'auto';
+    return normalizePresentationModes(settings?.rabbitMirrorPresentationModes)[index] || 'html';
 }
 
 export function isTextPresentation(source) {
