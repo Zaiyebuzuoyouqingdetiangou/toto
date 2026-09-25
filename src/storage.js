@@ -1,4 +1,4 @@
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.6.16-test.1';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.6.16-test.2';
 import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.5.53-cn-boundary1';
 import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.6';
 
@@ -683,6 +683,10 @@ const LEGACY_BATCH_REGISTRY_KEY = 'rabbit_mirror_theater:pending_batch_registry:
 const ACTIVE_BATCH_REGISTRY_KEY = 'rabbit_mirror_theater:pending_batch_registry:v3';
 const ACTIVE_BATCH_REGISTRY_MAX = 8;
 const ACTIVE_BATCH_REGISTRY_MAX_CHARS = 1024 * 1024;
+// Independent requests cannot survive their page, so neither should their
+// reservations. Keep durable draw accounting separate from these live plans.
+// The shared registry remains readable for follow-mode and older open tabs.
+const transientBatchRegistry = new Map();
 let pendingBatchSequence = 0;
 
 // These values come from the caller's already-proven owner/operation, never
@@ -916,7 +920,12 @@ function planMatchesExpected(plan, expected) {
 
 export function findPendingComboBatchPlan(identity) {
     const normalized = normalizeBatchIdentity(identity);
-    const registry = normalized && readActiveBatchRegistry();
+    if (!normalized) return null;
+    const transient = [...transientBatchRegistry.values()].find(plan => batchMatchesExpected(
+        plan, { identity: normalized }, false,
+    ));
+    if (transient) return cloneSerializable(transient);
+    const registry = readActiveBatchRegistry();
     if (!registry) return null;
     const record = registry.records.find(item => activeBatchRecordIsFresh(item) && batchMatchesExpected(
         { batchId: item.plan.batchId, identity: item.plan.identity }, { identity: normalized }, false,
@@ -1156,25 +1165,32 @@ export function markPendingBatchAttempt(planInput = null, options = {}) {
     if (!plan) return reject(planInput && typeof planInput === 'object' && !Array.isArray(planInput) && !normalizeBatchIdentity(planInput.identity)
         ? 'BATCH_PLAN_IDENTITY_INVALID' : 'BATCH_PLAN_INVALID');
     if (plan.identity.preview === true) return reject('BATCH_PREVIEW_NOT_DISPATCHABLE');
-    const registry = readActiveBatchRegistry();
-    if (!registry) return reject('BATCH_REGISTRY_UNREADABLE');
+    const transient = options.transient === true;
+    if (transient && (plan.identity.kind === 'generation-operation' || !plan.identity.generationScopeKey.startsWith('independent:'))) {
+        return reject('BATCH_PLAN_IDENTITY_INVALID');
+    }
+    // Do not read or migrate the shared table on the independent path: even a
+    // full or damaged old table must not reserve capacity in this page.
+    const registry = transient ? null : readActiveBatchRegistry();
+    if (!transient && !registry) return reject('BATCH_REGISTRY_UNREADABLE');
     const now = Date.now();
     // A tab can be killed before its finally handler runs. Keep every plausible
     // in-flight request (the independent absolute deadline is 20 minutes), but
     // reclaim only records older than the established 12-hour pending TTL. This
     // avoids both permanent capacity loss after crashes and cross-tab eviction of
     // a live paid request; cleanup happens only inside this explicit dispatch CAS.
-    const liveRecords = registry.records.filter(record => !expiredTransactionTime(record.createdAt, now));
+    const liveRecords = transient ? [...transientBatchRegistry.values()].map(plan => ({ plan }))
+        : registry.records.filter(record => !expiredTransactionTime(record.createdAt, now));
     const existing = liveRecords.find(record => record.plan.batchId === plan.batchId);
     if (existing) return JSON.stringify(existing.plan) === JSON.stringify(plan) || reject('BATCH_ID_CONFLICT');
     if (liveRecords.length >= ACTIVE_BATCH_REGISTRY_MAX) return reject('BATCH_REGISTRY_CAPACITY');
     const planPayload = packBatchPlanText(JSON.stringify(plan));
     if (!planPayload) return reject('BATCH_PLAN_TOO_LARGE');
     const record = { planPayload, registrySession: PENDING_SESSION_TOKEN, createdAt: now };
-    const registryAfter = JSON.stringify([
+    const registryAfter = transient ? null : JSON.stringify([
         ...liveRecords.filter(item => item.storageKey === ACTIVE_BATCH_REGISTRY_KEY).map(item => item.stored), record,
     ]);
-    if (registryAfter.length > ACTIVE_BATCH_REGISTRY_MAX_CHARS) return reject('BATCH_REGISTRY_TOO_LARGE');
+    if (registryAfter && registryAfter.length > ACTIVE_BATCH_REGISTRY_MAX_CHARS) return reject('BATCH_REGISTRY_TOO_LARGE');
     let pityBefore;
     let attemptBefore;
     try {
@@ -1191,7 +1207,7 @@ export function markPendingBatchAttempt(planInput = null, options = {}) {
         return reject(invalidState ? 'BATCH_FAIRNESS_STATE_INVALID' : 'BATCH_FAIRNESS_PLAN_MISMATCH');
     }
     if (attemptAfter === null) return reject('BATCH_ATTEMPT_ALREADY_RECORDED');
-    const changes = [{ key: ACTIVE_BATCH_REGISTRY_KEY, before: registry.raw, after: registryAfter }];
+    const changes = transient ? [] : [{ key: ACTIVE_BATCH_REGISTRY_KEY, before: registry.raw, after: registryAfter }];
     if (pityAfter !== (pityBefore || '{}')) changes.push({ key: FORMAT_ELIGIBLE_MISS_STORAGE_KEY, before: pityBefore, after: pityAfter });
     if (attemptAfter !== (attemptBefore || '{}')) changes.push({ key: ATTEMPT_STORAGE_KEY, before: attemptBefore, after: attemptAfter });
     // Preserve exactly the same planned values and retention policy. Accounting
@@ -1200,7 +1216,9 @@ export function markPendingBatchAttempt(planInput = null, options = {}) {
     // state does not need unnecessary temporary headroom. Owned rollback still
     // runs in reverse order, removing our growth before restoring larger values.
     const shrinks = change => typeof change.before === 'string' && change.after.length < change.before.length;
-    return writeOwnedTransaction([...changes.filter(shrinks), ...changes.filter(change => !shrinks(change))], options, true);
+    const written = writeOwnedTransaction([...changes.filter(shrinks), ...changes.filter(change => !shrinks(change))], options, true);
+    if (written && transient) transientBatchRegistry.set(plan.batchId, plan);
+    return written;
 }
 
 function normalizeFaceScan(value, faceIndex) {
@@ -1255,12 +1273,13 @@ function batchPityCommittedPayload(plan, beforeRaw, scans) {
 }
 
 export function commitPendingComboBatch(faceScans = [], expected = null) {
-    const registry = readActiveBatchRegistry();
-    if (!registry || !expected) return false;
-    const index = registry.records.findIndex(record => activeBatchRecordIsFresh(record) && planMatchesExpected(record.plan, expected));
-    if (index < 0) return false;
-    const record = registry.records[index];
-    const plan = record.plan;
+    if (!expected) return false;
+    const transient = transientBatchRegistry.get(expected.batchId);
+    if (transient && !planMatchesExpected(transient, expected)) return false;
+    const registry = transient ? null : readActiveBatchRegistry();
+    const record = registry?.records.find(record => activeBatchRecordIsFresh(record) && planMatchesExpected(record.plan, expected));
+    const plan = transient || record?.plan;
+    if (!plan) return false;
     if (!Array.isArray(faceScans) || faceScans.length !== plan.requestedFaceCount) return false;
     for (let index = 0; index < faceScans.length; index += 1) if (!Object.hasOwn(faceScans, index)) return false;
     const allowPartial = expected.partial === true;
@@ -1275,19 +1294,26 @@ export function commitPendingComboBatch(faceScans = [], expected = null) {
     const historyAfter = batchHistoryPayload(plan, scans, historyBefore);
     const pityAfter = batchPityCommittedPayload(plan, pityBefore, scans);
     if (historyAfter === null || pityAfter === null) return false;
-    const registryAfter = registryWithoutRecord(registry, record);
     const changes = [];
     if (historyAfter !== historyBefore) changes.push({ key: STORAGE_KEY, before: historyBefore, after: historyAfter });
     if (pityAfter !== (pityBefore || '{}')) changes.push({ key: FORMAT_ELIGIBLE_MISS_STORAGE_KEY, before: pityBefore, after: pityAfter });
-    changes.push({ key: record.storageKey, before: registry.rawByKey[record.storageKey], after: registryAfter });
+    if (record) changes.push({ key: record.storageKey, before: registry.rawByKey[record.storageKey], after: registryWithoutRecord(registry, record) });
     // Release the completed reservation before growing history, so a fitting
     // final state does not require room for both. Owned rollback restores it.
     const shrinks = change => typeof change.before === 'string' && change.after.length < change.before.length;
-    return writeOwnedTransaction([...changes.filter(shrinks), ...changes.filter(change => !shrinks(change))]);
+    const written = writeOwnedTransaction([...changes.filter(shrinks), ...changes.filter(change => !shrinks(change))]);
+    if (written && transient) transientBatchRegistry.delete(plan.batchId);
+    return written;
 }
 
 export function releasePendingComboBatch(expected = null) {
     if (!expected || typeof expected !== 'object') return false;
+    const transient = transientBatchRegistry.get(expected.batchId);
+    if (transient) {
+        if (!planMatchesExpected(transient, expected)) return false;
+        transientBatchRegistry.delete(transient.batchId);
+        return true;
+    }
     const registry = readActiveBatchRegistry();
     if (!registry) return false;
     const index = registry.records.findIndex(record => planMatchesExpected(record.plan, expected));

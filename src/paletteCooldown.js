@@ -1,7 +1,7 @@
 import {
     getActivePaletteCooldown,
     getRepeatedPaletteFamily,
-} from './storage.js?rmv=1.5.53-visualquick1';
+} from './storage.js?rmv=1.6.16-test.2';
 
 const SAFE_PALETTE_LABEL_RE = /^(?:(?:低|中|高)明度)?(?:暖|冷|中性)?(?:红|橙|黄|绿|青|蓝|紫|粉|中性色)?(?:(?:低|中|高)饱和)?$/;
 

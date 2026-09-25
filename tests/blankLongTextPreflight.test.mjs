@@ -10,12 +10,23 @@ const source = readFileSync(new URL('../src/independentApi/request.js', import.m
 const callSource = source.slice(source.indexOf('export async function callIndependentApi('), source.indexOf('\nexport function externalOwnerMesid')).replace(/^export /, '');
 const externalId = 'ext:source:text:one';
 
-async function runRequest(overrides = {}, { stale = false, unavailable = false, requestOptions = {} } = {}) {
+async function runRequest(overrides = {}, { stale = false, unavailable = false, fullRegistry = false, requestOptions = {} } = {}) {
     const runtime = createRuntime(root);
     const config = await runtime.load('src/settings.js');
     const presentation = await runtime.load('src/presentationMode.js');
     const prompt = await runtime.load('src/promptBuilder.js');
     const storage = await runtime.load('src/storage.js');
+    const registryKey = 'rabbit_mirror_theater:pending_batch_registry:v3';
+    if (fullRegistry) {
+        for (let index = 0; index < 8; index++) {
+            const old = storage.createPendingComboBatchPlan([
+                { themeIds: ['old-theme'], formatIds: ['old-format'] },
+                { themeIds: ['old-theme-2'], formatIds: ['old-format-2'] },
+            ], { chatKey: 'old-chat', generationScopeKey: `old-scope-${index}`, mesid: 0, swipeId: 0, sourceHash: 'old-body', settingsKey: 'old-settings' });
+            assert.equal(storage.markPendingBatchAttempt(old), true);
+        }
+    }
+    const registryBefore = runtime.context.localStorage.getItem(registryKey);
     const pool = await runtime.load('src/externalWorldBook/externalPool.js');
     const settings = { ...JSON.parse(JSON.stringify(config.defaultSettings)), enabled: true, autoRabbitMirrorInjection: true,
         mode: 'all', rabbitMirrorFaceCount: 1, rabbitMirrorPresentationModes: ['longtext'], longTextSource: 'blank',
@@ -58,9 +69,19 @@ async function runRequest(overrides = {}, { stale = false, unavailable = false, 
     };
     vm.createContext(sandbox);
     vm.runInContext(callSource, sandbox);
-    let error;
-    try { await sandbox.callIndependentApi(ctx, 0, ctx.chat[0], null, { dispatchLease: { consume: () => true }, ...requestOptions }); }
+    let error, dispatchedPlan;
+    try { await sandbox.callIndependentApi(ctx, 0, ctx.chat[0], null, {
+        dispatchLease: { consume: () => true }, onBatchPlan: plan => { dispatchedPlan = plan; }, ...requestOptions,
+    }); }
     catch (caught) { error = caught; }
+    if (fullRegistry) {
+        assert.equal(runtime.context.localStorage.getItem(registryKey), registryBefore, 'do not change old registrations');
+        if (dispatchedPlan && counters.dispatch) {
+            assert.equal(storage.findPendingComboBatchPlan(dispatchedPlan.identity).batchId, dispatchedPlan.batchId);
+            assert.equal(storage.releasePendingComboBatch(dispatchedPlan), true);
+            assert.equal(runtime.context.localStorage.getItem(registryKey), registryBefore);
+        }
+    }
     return { ...counters, error };
 }
 
@@ -109,4 +130,11 @@ test('exact external resay still hydrates its original recipe when current setti
     assert.equal(result.dispatch, 1);
     assert.equal(result.diagnostic.requestedPresentationMode, 'text');
     assert.match(result.prompt, /可见文字和 HTML 都重新写/);
+});
+
+test('real multi-face request dispatches once even when the old shared registry already has eight entries', async () => {
+    const result = await runRequest({ externalWorldBookRandomEnabled: false, rabbitMirrorFaceCount: 2,
+        rabbitMirrorPresentationModes: ['longtext', 'longtext'] }, { fullRegistry: true });
+    assert.equal(result.error?.code, 'TEST_DISPATCH_CAPTURED');
+    assert.equal(result.dispatch, 1);
 });

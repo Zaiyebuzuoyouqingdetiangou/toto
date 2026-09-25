@@ -1,6 +1,6 @@
 // Split from outputSanitizer.js — renderedStateRescue.
 
-import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.6';
+import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.6.16-test.2';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     PSEUDO_ACTIVE_ATTR,
@@ -8,7 +8,7 @@ import {
     REVERSIBLE_TARGET_CLOSE_ATTR,
     restoreInteractionInlineOverrides,
     reversibleTargetCloseStates,
-} from './checkedStateRescue.js?rmv=1.6.16-test.1';
+} from './checkedStateRescue.js?rmv=1.6.16-test.2';
 import {
     RAW_SELF_MUTATION_RESCUE_ATTR,
     applyPseudoStyleAssignments,
@@ -26,17 +26,17 @@ import {
     resolveElementChildIndexPath,
     restorePseudoStyleState,
     shouldIgnorePseudoToggleEvent,
-} from './scriptedInteractionRescue.js?rmv=1.6.16-test.1';
-import { TOUCH_HOVER_STYLE_ATTR, setRescuedCheckedState } from './fallbackRescue.js?rmv=1.6.16-test.1';
-import { interactionScopeStates } from './idsAndRearm.js?rmv=1.6.16-test.1';
-import { INTERACTION_DIAGNOSTIC_PANEL_ATTR } from './diagnostics.js?rmv=1.6.16-test.1';
+} from './scriptedInteractionRescue.js?rmv=1.6.16-test.2';
+import { TOUCH_HOVER_STYLE_ATTR, setRescuedCheckedState } from './fallbackRescue.js?rmv=1.6.16-test.2';
+import { interactionScopeStates } from './idsAndRearm.js?rmv=1.6.16-test.2';
+import { INTERACTION_DIAGNOSTIC_PANEL_ATTR } from './diagnostics.js?rmv=1.6.16-test.2';
 import {
     cssContainsUnsafeGeneratedResource,
     cssDeclarationBlockContainsUnsafeOverlayGeometry,
     sanitizeGeneratedCssDeclarationBlock,
     splitCssDeclarationList,
     splitCssSelectorList,
-} from './markup.js?rmv=1.6';
+} from './markup.js?rmv=1.6.16-test.2';
 
 export const RENDERED_STATE_LAYER_RESCUE_ATTR = 'data-rabbit-mirror-rendered-state-layer-rescue';
 

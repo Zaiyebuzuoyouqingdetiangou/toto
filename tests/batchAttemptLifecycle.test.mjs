@@ -26,10 +26,14 @@ async function harness(provider, max = 0, { realMerge = false, failReleaseOnce =
     const runtime = createRuntime(root, { store });
     const storage = await runtime.load('src/storage.js');
     let sequence = 0, calls = 0;
-    const plan = (count = 2) => storage.createPendingComboBatchPlan(
+    const createdPlans = [];
+    const plan = (count = 2) => {
+        const value = storage.createPendingComboBatchPlan(
         Array.from({ length: count }, (_, i) => ({ themeIds: [`theme-${i}`], formatIds: [`format-${i}`] })),
-        { chatKey: 'test-chat', generationScopeKey: `scope-${++sequence}`, mesid: 0, swipeId: 0, sourceHash: 'body', settingsKey: 'settings' },
+        { chatKey: 'test-chat', generationScopeKey: `independent:scope-${++sequence}`, mesid: 0, swipeId: 0, sourceHash: 'body', settingsKey: 'settings' },
         { eligibleFormatIds: [], selectedFormatIds: [], validFormatIds: [] });
+        createdPlans.push(value); return value;
+    };
     const foreign = plan();
     assert.equal(storage.markPendingBatchAttempt(foreign), true);
     const foreignRaw = JSON.parse(store.getItem(REGISTRY))[0];
@@ -74,12 +78,16 @@ async function harness(provider, max = 0, { realMerge = false, failReleaseOnce =
     const context = vm.createContext(sandbox);
     const done = vm.runInContext(`(async()=>{${release}${abort}\nglobalThis.cancel=()=>abortFlight(flight);${dispatch}${reroll}${task}\nreturn await task;})()`, context);
     return { done, flight, failures, events, results, cancel: () => context.cancel(), calls: () => calls, releaseCalls: () => releaseCalls, store, storage, plan,
-        assertReleased() { assert.deepEqual(JSON.parse(store.getItem(REGISTRY)), [foreignRaw]); assert.equal(store.getItem('other:content'), 'preserve'); } };
+        assertReleased() {
+            for (const p of createdPlans.filter(p => p !== foreign)) assert.equal(storage.findPendingComboBatchPlan(p.identity), null);
+            assert.deepEqual(JSON.parse(store.getItem(REGISTRY)), [foreignRaw]);
+            assert.equal(store.getItem('other:content'), 'preserve');
+        } };
 }
 function reserve(h, count = 2) {
     const p = h.plan(count); assert.ok(p);
     h.options.onBatchPlan(p);
-    assert.equal(h.storage.markPendingBatchAttempt(p), true, 'request must not hit retained registry capacity');
+    assert.equal(h.storage.markPendingBatchAttempt(p, { transient: true }), true, 'request must not hit retained registry capacity');
     return p;
 }
 

@@ -1,8 +1,8 @@
 // Split from independentApi.js — persistence.
 
-import { presentationModeFields } from '../presentationMode.js?rmv=1.6.16-test.1';
+import { presentationModeFields } from '../presentationMode.js?rmv=1.6.16-test.2';
 import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.5.53-cn-boundary1';
-import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.6.16-test.1';
+import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.6.16-test.2';
 import {
     FACE_SWIPE_FULL_MESSAGE,
     FACE_SWIPE_MAX,
@@ -25,7 +25,7 @@ import {
     independentSwipeSlot,
     seedIndependentFaceSwipesFromIdentity,
     writeIndependentOwnerHtml,
-} from './faceSwipe.js?rmv=1.6.16-test.1';
+} from './faceSwipe.js?rmv=1.6.16-test.2';
 import {
     API_PROFILE_STORE_KEY,
     assistantMessages,
@@ -41,8 +41,8 @@ import {
     savedIndependentRecordForOwner,
     setOwnerLockForBase,
     swipeId,
-} from './connection.js?rmv=1.6.16-test.1';
-import { stampExternalDetailsOwnership } from './request.js?rmv=1.6.16-test.1';
+} from './connection.js?rmv=1.6.16-test.2';
+import { stampExternalDetailsOwnership } from './request.js?rmv=1.6.16-test.2';
 import {
     copyIndependentReplacementReceipt,
     ensureExternalTools,
@@ -53,8 +53,8 @@ import {
     normalizeSavedInteractionRecord,
     recoverSavedRecord,
     replaceExternalMultifaceFace,
-} from './geometry.js?rmv=1.6.16-test.1';
-import { externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace } from './mount.js?rmv=1.6.16-test.1';
+} from './geometry.js?rmv=1.6.16-test.2';
+import { externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace } from './mount.js?rmv=1.6.16-test.2';
 
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 

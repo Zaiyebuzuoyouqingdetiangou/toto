@@ -1,5 +1,5 @@
 // Tool controls stay attached to their owning face; only their menu is portalled.
-import { applyAppearanceTheme } from './settingsAppearance.js?rmv=1.6.16-test.1';
+import { applyAppearanceTheme } from './settingsAppearance.js?rmv=1.6.16-test.2';
 
 // 镜面工具面板（挨打猫、维修兔、重说、抽签记录等）跟随设置里的「主题与外观」。
 // 选「跟随酒馆主题」时不改动任何颜色。
