@@ -18,9 +18,9 @@ import {
     createPendingComboBatchPlan,
     findPendingComboBatchPlan,
 } from './storage.js?rmv=1.5.53-visualquick1';
-import { filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.6.10';
+import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.6.11';
 import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.53-cn-boundary1';
-import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.6.10';
+import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.6.11';
 import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.5.53-text1';
 import {
     chooseExternalSource,
@@ -235,6 +235,48 @@ function immediateFamilySet(values) {
     return new Set((Array.isArray(values) ? values : []).map(value => String(value || '')).filter(Boolean));
 }
 
+// 1.6.10 公平抽取：按「大组 → 家族 → 条目」三层分配基础权重。
+// 每层都按 1 + ln(规模) 增长：大组仍略占优，但 87 条的 IF 组不再按条目数线性霸榜，
+// 只有几个家族的大组（如色情与感官）也不会因为家族少而被稀释。
+// 还有下级条目的父项只是分类标题，权重降到 PARENT_ITEM_FACTOR，让具体子项更常出现。
+const PARENT_ITEM_FACTOR = 0.35;
+const SAME_GROUP_IN_DRAW_FACTOR = 0.3;
+
+function hierarchyBaseWeights(items, familyKey) {
+    const list = Array.isArray(items) ? items : [];
+    const ids = list.map(item => String(item?.id || ''));
+    const parentIds = new Set();
+    for (const id of ids) {
+        const parts = id.split('.');
+        for (let cut = parts.length - 1; cut >= 1; cut -= 1) parentIds.add(parts.slice(0, cut).join('.'));
+    }
+    const groups = new Map();
+    for (const item of list) {
+        const group = String(item?.group || '?');
+        const family = familyKey(item);
+        if (!groups.has(group)) groups.set(group, new Map());
+        const families = groups.get(group);
+        if (!families.has(family)) families.set(family, []);
+        families.get(family).push(item);
+    }
+    const itemWeights = new Map();
+    const familyWeights = new Map();
+    for (const families of groups.values()) {
+        const groupSize = [...families.values()].reduce((sum, members) => sum + members.length, 0);
+        const groupWeight = 1 + Math.log(Math.max(1, groupSize));
+        const familyRaw = [...families.entries()].map(([key, members]) => [key, members, 1 + Math.log(Math.max(1, members.length))]);
+        const familyTotal = familyRaw.reduce((sum, entry) => sum + entry[2], 0) || 1;
+        for (const [key, members, raw] of familyRaw) {
+            const familyWeight = groupWeight * raw / familyTotal;
+            familyWeights.set(key, familyWeight);
+            const leafRaw = members.map(item => [item, parentIds.has(String(item?.id || '')) ? PARENT_ITEM_FACTOR : 1]);
+            const leafTotal = leafRaw.reduce((sum, entry) => sum + entry[1], 0) || 1;
+            for (const [item, leaf] of leafRaw) itemWeights.set(item.id, familyWeight * leaf / leafTotal);
+        }
+    }
+    return { itemWeights, familyWeights };
+}
+
 function weightedSample(pool, count, recentIds = [], recentGroups = [], avoidRepeat = true, hardExcludedIds = [], favoriteIds = [], eligibleMisses = {}, favoriteMultipliers = {}, recentGroupHitMap = {}, recentFamilyHitMap = {}, immediateFamilyKeys = [], groupCooldownEnabled = true) {
     const recent = new Set(recentIds || []);
     const groups = new Set(recentGroups || []);
@@ -258,7 +300,8 @@ function weightedSample(pool, count, recentIds = [], recentGroups = [], avoidRep
     const selected = [];
     const used = new Set();
     const usedFamilies = new Set();
-    const familySizes = familySizeMap(candidates, formatFamilyKey);
+    const usedGroups = new Set();
+    const baseWeights = hierarchyBaseWeights(candidates, formatFamilyKey).itemWeights;
     while (selected.length < count && used.size < candidates.length) {
         let available = candidates.filter(item => !used.has(item.id));
         // Maximise immediate-family avoidance instead of falling back all-or-nothing:
@@ -276,11 +319,12 @@ function weightedSample(pool, count, recentIds = [], recentGroups = [], avoidRep
         }
         const weighted = available
             .map(item => {
-                let weight = balancedFamilyItemFactor(familySizes.get(formatFamilyKey(item)));
-                // 仅显式 IF 主题保留大家族软冷却；普通路线允许同组的不同玩法
-                // 自然相邻。IF 的原系数、下界及所有候选的基础权重保持不变。
+                let weight = Number(baseWeights.get(item.id)) || balancedFamilyItemFactor(1);
+                // IF 主题保留较强的大组软冷却；其余路线也加一层温和的大组轮换，
+                // 让近期少出现的大组自然补上来。
                 const groupHits = Number(recentGroupHitMap?.[item.group] || (groups.has(item.group) ? 1 : 0));
-                if (avoidRepeat && groupCooldownEnabled && groupHits) weight *= recentDiversityFactor(groupHits, 0.35);
+                if (avoidRepeat && groupHits) weight *= recentDiversityFactor(groupHits, groupCooldownEnabled ? 0.35 : 0.7, groupCooldownEnabled ? 0.12 : 0.4);
+                if (usedGroups.has(String(item.group || ''))) weight *= SAME_GROUP_IN_DRAW_FACTOR;
                 // 格式索引同时含父项与子项。精确 ID 虽不同，前两段家族相同
                 // 时观感仍高度近似，因此增加软家族避让而不做硬排除。
                 const familyHits = Number(recentFamilyHitMap?.[formatFamilyKey(item)] || 0);
@@ -305,6 +349,7 @@ function weightedSample(pool, count, recentIds = [], recentGroups = [], avoidRep
         selected.push(chosen);
         used.add(chosen.id);
         usedFamilies.add(formatFamilyKey(chosen));
+        usedGroups.add(String(chosen.group || ''));
     }
     const finalSelected = selected.length
         ? selected
@@ -373,8 +418,10 @@ function weightedThemeSample(pool, count, recentIds = [], recentGroups = [], avo
     }
 
     const familyList = [...families.values()];
+    const { itemWeights: themeItemWeights, familyWeights: themeFamilyWeights } = hierarchyBaseWeights(workingPool, themeFamilyKey);
     const selected = [];
     const usedFamilies = new Set();
+    const usedGroups = new Set();
     const targetCount = Math.max(0, Math.min(Number(count) || 0, familyList.length));
 
     while (selected.length < targetCount) {
@@ -384,7 +431,8 @@ function weightedThemeSample(pool, count, recentIds = [], recentGroups = [], avo
         if (freshFamilies.length) availableFamilies = freshFamilies;
 
         const family = pickWeightedEntry(availableFamilies, entry => {
-            let weight = themeFamilyBaseWeight(entry.items.length);
+            let weight = Number(themeFamilyWeights.get(entry.key)) || themeFamilyBaseWeight(entry.items.length);
+            if (usedGroups.has(String(entry.group || ''))) weight *= SAME_GROUP_IN_DRAW_FACTOR;
             const groupHits = Number(recentGroupHitMap?.[entry.group] || (recentGroupSet.has(entry.group) ? 1 : 0));
             const familyHits = Number(recentFamilyHitMap?.[entry.key] || (recentFamilySet.has(entry.key) ? 1 : 0));
             if (avoidRepeat && groupHits) weight *= recentDiversityFactor(groupHits, 0.35);
@@ -394,6 +442,7 @@ function weightedThemeSample(pool, count, recentIds = [], recentGroups = [], avo
         });
         if (!family) break;
         usedFamilies.add(family.key);
+        usedGroups.add(String(family.group || ''));
 
         let itemCandidates = [...family.items];
         if (avoidRepeat) {
@@ -402,7 +451,7 @@ function weightedThemeSample(pool, count, recentIds = [], recentGroups = [], avo
         }
 
         const chosen = pickWeightedEntry(itemCandidates, item => {
-            let weight = !avoidRepeat || !recent.has(item.id) ? 1 : 0.12;
+            let weight = (Number(themeItemWeights.get(item.id)) || 1) * (!avoidRepeat || !recent.has(item.id) ? 1 : 0.12);
             if (favorites.has(item.id)) weight *= favoriteMultiplierFor(item.id, favorites, favoriteMultipliers);
             return weight;
         });
@@ -1448,7 +1497,10 @@ export function pickCombinationForMultifaceResay(settings, resay) {
         if (!Array.isArray(ids) || ids.length > 16) throw multiFacePlanningError('原面抽取记录不完整，不能静默更换选题。', 'BATCH_RESAY_RECIPE_INCOMPLETE');
         const externalLibraries = kind === 'text' ? externalSnapshot.textsByLibrary : kind === 'format' ? externalSnapshot.formatsByLibrary : externalSnapshot.themesByLibrary;
         const selected = ids.map(id => {
-            if (typeof id !== 'string' || !id.startsWith('ext:')) return pool.find(item => item.id === id);
+            if (typeof id !== 'string' || !id.startsWith('ext:')) {
+                const wanted = kind === 'format' ? canonicalFormatId(id) : id;
+                return pool.find(item => item.id === wanted);
+            }
             // Re-say is an exact selection, not another random draw. The ID-only
             // constructor cannot prove membership: use the current eligible pool.
             if (!externalLibraries.some(library => library.ids.includes(id))) return null;
