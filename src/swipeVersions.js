@@ -254,13 +254,14 @@ function writeStore(store) {
     }
 }
 
-export function compactFaceSwipeStoreForQuota() {
+export function compactFaceSwipeStoreForQuota(limits = [40, 20, 10, 5, 1]) {
     const store = readStore();
     const stacks = Object.entries(store.faces || {})
         .map(([key, value]) => [key, normalizeSwipeState(value)])
         .filter(([, state]) => state.versions.length)
         .sort((a, b) => Number(b[1].touched || 0) - Number(a[1].touched || 0));
-    for (const limit of [40, 20, 10, 5, 1]) {
+    for (const limit of (Array.isArray(limits) && limits.length ? limits : [40, 20, 10, 5, 1])) {
+        if (stacks.length <= limit && limit !== 1) continue;
         const next = emptyStore();
         for (const [key, state] of stacks.slice(0, limit)) next.faces[key] = state;
         memoryStore = next;
