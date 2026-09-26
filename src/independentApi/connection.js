@@ -6,11 +6,11 @@ import {
     getSettings,
     normalizeIndependentContextExcludedTags,
     updateSettings,
-} from '../settings.js?rmv=1.6.16-test.8';
-import { fetchRabbitMirrorIndependentCompletion } from '../independentSecurityGuard.js?rmv=1.6.16-test.8';
+} from '../settings.js?rmv=1.6.16-test.10';
+import { fetchRabbitMirrorIndependentCompletion } from '../independentSecurityGuard.js?rmv=1.6.16-test.10';
 import { buildIndependentAdvancedCarrier, applyIndependentAdvancedExclusions } from '../advancedRequestOptions.js?rmv=1.5.53-cn-boundary1';
 import { describeBatchPlanFailure } from '../externalWorldBook/errors.js?rmv=1.5.53-cn-boundary1';
-import { describeRabbitMirrorStorageUsage, getCurrentChatKey } from '../storage.js?rmv=1.6.16-test.8';
+import { describeRabbitMirrorStorageUsage, getCurrentChatKey } from '../storage.js?rmv=1.6.16-test.10';
 import { rememberIndependentTransportDiagnostic } from '../transportDiagnostics.js?rmv=1.5.53-cn-boundary1';
 import {
     CONTEXT_TOTAL_BUDGET,
@@ -19,7 +19,7 @@ import {
     getContext,
     hashText,
 } from './runtime.js?rmv=1.6';
-import { HOST_GENERATION_EVENT_HINT_MS, operationEpochForBase } from './flights.js?rmv=1.6.16-test.8';
+import { HOST_GENERATION_EVENT_HINT_MS, operationEpochForBase } from './flights.js?rmv=1.6.16-test.10';
 import {
     OWNER_LOCK_STORE_KEY,
     apiProfileKey,
@@ -31,12 +31,12 @@ import {
     writeApiProfileStore,
     writePersistedOwner,
     writeStore,
-} from './persistence.js?rmv=1.6.16-test.8';
+} from './persistence.js?rmv=1.6.16-test.10';
 import {
     hasExplicitSourceReplacementEvidence,
     independentStoredHtmlLightRestorable,
     independentStoredHtmlRestorable,
-} from './geometry.js?rmv=1.6.16-test.8';
+} from './geometry.js?rmv=1.6.16-test.10';
 import {
     activeIndependentFlightForBase,
     messageSourceRevisions,
@@ -44,13 +44,13 @@ import {
     passiveObservedIdentity,
     runtimeMode,
     showIndependentUnsavedOutput,
-} from './mount.js?rmv=1.6.16-test.8';
+} from './mount.js?rmv=1.6.16-test.10';
 import {
     hostGenerationHintStartedAt,
     hostGenerationInProgress,
     writeHostGenerationHintStartedAt,
     writeHostGenerationInProgress,
-} from './lifecycle.js?rmv=1.6.16-test.8';
+} from './lifecycle.js?rmv=1.6.16-test.10';
 
 export const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 
@@ -739,10 +739,19 @@ export function messageElement(index){
 
 export function messageBody(el){ return el?.querySelector?.('.mes_text') || el; }
 
+// 酒馆自己插入的系统消息（欢迎页 Assistant 问候、帮助、旁白、快捷键说明等）
+// 带 extra.type，且不一定标 is_system。它们不是模型回复，不能挂兔子镜。
+const HOST_SYSTEM_MESSAGE_TYPES=new Set(['help','welcome','empty','generic','narrator','comment','slash_commands','formatting','hotkeys','macros','welcome_prompt','assistant_note','assistant_message']);
+export function isHostSystemMessage(message){
+ const type=message?.extra?.type;
+ return typeof type==='string' && HOST_SYSTEM_MESSAGE_TYPES.has(type);
+}
+
 export function isRabbitMirrorToolResultMessage(message){
  const extra=message?.extra;
  return message?.is_system===true
   || extra?.isSmallSys===true
+  || isHostSystemMessage(message)
   || !!(extra && Object.prototype.hasOwnProperty.call(extra,'tool_invocations'));
 }
 
