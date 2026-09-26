@@ -1,6 +1,6 @@
-import { getCurrentChatKey } from './storage.js?rmv=1.6.16-test.10';
+import { getCurrentChatKey } from './storage.js?rmv=1.6.16-test.11';
 import { parseMultifaceOutput, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR } from './multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
-import { rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.6.16-test.10';
+import { rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.6.16-test.11';
 import { createRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=1.5.53-cn-boundary1';
 
 const KEY = 'rabbit_mirror_follow_partial_results_v1';

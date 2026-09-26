@@ -1,8 +1,8 @@
 // Split from independentApi.js — mount.
 
-import { presentationModeFields, isBlankLongTextSelection } from '../presentationMode.js?rmv=1.6.16-test.10';
+import { presentationModeFields, isBlankLongTextSelection } from '../presentationMode.js?rmv=1.6.16-test.11';
 import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.5.53-cn-boundary1';
-import { getSettings } from '../settings.js?rmv=1.6.16-test.10';
+import { getSettings } from '../settings.js?rmv=1.6.16-test.11';
 import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.6';
 import { independentGenerationTiming } from '../independentTiming.js?rmv=1.5.53-timing1';
 import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.5.53-cn-boundary1';
@@ -11,24 +11,24 @@ import {
     refreshRabbitMirrorToolsInScope,
     isolateRabbitMirrorInteractionIds,
     rearmRabbitMirrorSerializedInteractionRoot,
-} from '../outputSanitizer.js?rmv=1.6.16-test.10';
+} from '../outputSanitizer.js?rmv=1.6.16-test.11';
 import { matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.5.53-cn-boundary1';
 import { parseMultifaceOutput, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR } from '../multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
-import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from '../multifaceProof.js?rmv=1.6.16-test.10';
+import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from '../multifaceProof.js?rmv=1.6.16-test.11';
 import {
     FOLLOW_MULTIFACE_COMMITTED_EVENT,
     FOLLOW_MULTIFACE_REJECTED_EVENT,
     FOLLOW_GENERATION_SETTLED_EVENT,
     getRabbitMirrorFollowBatchFailure,
-} from '../visualScanner.js?rmv=1.6.16-test.10';
-import { commitPendingComboBatch, releasePendingComboBatch } from '../storage.js?rmv=1.6.16-test.10';
+} from '../visualScanner.js?rmv=1.6.16-test.11';
+import { commitPendingComboBatch, releasePendingComboBatch } from '../storage.js?rmv=1.6.16-test.11';
 import {
     consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror,
     getActiveFeedbackForCurrentChat,
     markFeedbackCatInjected,
 } from '../feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from '../blacklist.js?rmv=1.6.16-test.10';
-import { readFollowPartialResult, followPartialResultFaceOwnerKey } from '../followPartialResults.js?rmv=1.6.16-test.10';
+import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from '../blacklist.js?rmv=1.6.16-test.11';
+import { readFollowPartialResult, followPartialResultFaceOwnerKey } from '../followPartialResults.js?rmv=1.6.16-test.11';
 import {
     shouldAutomaticReroll,
     automaticRerollStatusText,
@@ -44,7 +44,7 @@ import {
     mergeRetrySelectionDiagnostic,
     missingIndexesFromIndependentResult,
     recipesCoverMissing,
-} from '../missingFaceMerge.js?rmv=1.6.16-test.10';
+} from '../missingFaceMerge.js?rmv=1.6.16-test.11';
 import {
     FACE_SWIPE_FULL_MESSAGE,
     canAppendSwipe,
@@ -100,7 +100,7 @@ import {
     operationEpochForBase,
     pending,
     reserveAutomaticDispatchLease,
-} from './flights.js?rmv=1.6.16-test.10';
+} from './flights.js?rmv=1.6.16-test.11';
 import {
     HISTORY_PANEL_ATTR,
     INDEPENDENT_RECORD_BUDGET_BYTES,
@@ -118,7 +118,7 @@ import {
     restoreIndependentFaceSwipeInitial,
     writePersistedOwner,
     writeStore,
-} from './persistence.js?rmv=1.6.16-test.10';
+} from './persistence.js?rmv=1.6.16-test.11';
 import {
     appendIndependentFaceSwipe,
     faceDetailsListFromHtml,
@@ -129,7 +129,7 @@ import {
     seedIndependentFaceSwipes,
     seedNeighborIndependentFaceSwipes,
     showEphemeralFaceFailure,
-} from './faceSwipe.js?rmv=1.6.16-test.10';
+} from './faceSwipe.js?rmv=1.6.16-test.11';
 import {
     INDEPENDENT_OWNER_OBSERVATION,
     assistantMessages,
@@ -168,7 +168,7 @@ import {
     setOwnerLockForBase,
     slotSearchKeys,
     swipeId,
-} from './connection.js?rmv=1.6.16-test.10';
+} from './connection.js?rmv=1.6.16-test.11';
 import {
     allExternalHosts,
     assertIndependentMarkupComplexityWithDiagnostic,
@@ -193,7 +193,7 @@ import {
     wrapIndependentFace,
     wrapPreparedIndependentFace,
     wrappedIndependentMirrorHtml,
-} from './request.js?rmv=1.6.16-test.10';
+} from './request.js?rmv=1.6.16-test.11';
 import {
     DEFERRED_INTERACTION_RESCUE_ATTR,
     INDEPENDENT_CONTENT_WIDTH_BASELINE_ATTR,
@@ -252,7 +252,7 @@ import {
     showIndependentResayStatus,
     transferExternalTools,
     usableReadyDetails,
-} from './geometry.js?rmv=1.6.16-test.10';
+} from './geometry.js?rmv=1.6.16-test.11';
 import {
     assertEarlyBodyOwner,
     automaticHostGenerationMayUseTools,
@@ -266,7 +266,7 @@ import {
     scheduleStartupHistorySync,
     suppressesAutomaticGeneration,
     unlockAutomaticGenerationCutover,
-} from './earlyBody.js?rmv=1.6.16-test.10';
+} from './earlyBody.js?rmv=1.6.16-test.11';
 import {
     automaticGenerationCutovers,
     backgroundLifecycleListenersInstalled,
@@ -288,7 +288,7 @@ import {
     writeHostGenerationInProgress,
     writeIndependentActionBridge,
     writeLastAppliedIndependentTiming,
-} from './lifecycle.js?rmv=1.6.16-test.10';
+} from './lifecycle.js?rmv=1.6.16-test.11';
 
 let generationSequence = 0;
 
@@ -393,6 +393,7 @@ export function showMultifaceFace(host,index=0){
    else face.removeAttribute('open');
   }
  }
+ if(faces.length>1 && previous!==next) refreshIndependentExternalFaceFit(host);
  return next;
 }
 
@@ -629,12 +630,36 @@ export function clearIndependentExternalCompactShellWidth(host){
 }
 
 
+// 多面宿主一次只显示一面：PC 端按当前可见的这一面收窄外壳，切面后重新测量。
+function independentExternalVisibleFace(host){
+ const faces=externalFaceDetails(host);
+ if(faces.length>1){
+  const index=Math.max(0,Math.min(faces.length-1,Number(host?.dataset?.rmFaceView)||0));
+  return faces.find(face=>face.getAttribute?.('data-rm-face-current')==='true')||faces[index]||null;
+ }
+ return host?.querySelector?.(':scope > details[data-rabbit-mirror-external-details="true"], :scope > details')||null;
+}
+
+function refreshIndependentExternalFaceFit(host){
+ if(!host?.isConnected || host.dataset.rmSource!=='independent' || host.dataset.rmState!=='ready' || host.dataset.rmPlacement!=='external') return;
+ if(host.__rabbitMirrorFaceFitFrame) globalThis.cancelAnimationFrame?.(host.__rabbitMirrorFaceFitFrame);
+ const run=()=>{
+  host.__rabbitMirrorFaceFitFrame=0;
+  if(!host.isConnected || host.dataset.rmState!=='ready') return;
+  delete host.dataset.rmIndependentExternalCompactShell;
+  clearIndependentExternalCompactShellWidth(host);
+  neutralizeIndependentExternalWideStage(host);
+  compactIndependentExternalShellToPrimaryVisual(host);
+ };
+ if(typeof requestAnimationFrame==='function') host.__rabbitMirrorFaceFitFrame=requestAnimationFrame(run);
+ else setTimeout(run,0);
+}
+
 function compactIndependentExternalShellToPrimaryVisual(host){
- if(externalFaceDetails(host).length>1) return false;
  if(!host?.isConnected || host.dataset.rmSource!=='independent' || host.dataset.rmState!=='ready' || host.dataset.rmPlacement!=='external') return false;
  const viewportWidth=independentExternalEffectiveViewportWidth();
  if(viewportWidth>0 && viewportWidth<900) return false;
- const details=host.querySelector?.(':scope > details[data-rabbit-mirror-external-details="true"], :scope > details');
+ const details=independentExternalVisibleFace(host);
  const summary=details?.querySelector?.(':scope > summary');
  if(!details || !summary || typeof getComputedStyle!=='function') return false;
  const body=[...(details.children||[])].find(node=>!['SUMMARY','STYLE','SCRIPT','TEMPLATE','LINK','META'].includes(node?.tagName));
@@ -663,7 +688,6 @@ function compactIndependentExternalShellToPrimaryVisual(host){
 
 
 function neutralizeIndependentExternalWideStage(host){
- if(externalFaceDetails(host).length>1) return false;
  if(!host?.isConnected || host.dataset.rmSource!=='independent' || host.dataset.rmState!=='ready' || host.dataset.rmPlacement!=='external') return false;
  // PC-only, one-shot ready postprocess. This does not install any observer/listener.
  // It fixes the specific pure-external composition where a full-width solid stage
@@ -672,7 +696,7 @@ function neutralizeIndependentExternalWideStage(host){
  // solid stage color is neutralized.
  const viewportWidth=independentExternalEffectiveViewportWidth();
  if(viewportWidth>0 && viewportWidth<900) return false;
- const details=host.querySelector?.(':scope > details[data-rabbit-mirror-external-details="true"], :scope > details');
+ const details=independentExternalVisibleFace(host);
  if(!details || typeof getComputedStyle!=='function') return false;
  const body=[...(details.children||[])].find(node=>!['SUMMARY','STYLE','SCRIPT','TEMPLATE','LINK','META'].includes(node?.tagName));
  if(!body?.isConnected) return false;
@@ -1924,7 +1948,7 @@ export async function generateFor(index,msg,force=false,sourceAware=true,multifa
      const faceIndex=Number.isInteger(multifaceResay?.faceIndex)?multifaceResay.faceIndex:0;
      const overlayRoot=externalFaceDetails(currentHost)[currentHost && externalFaceDetails(currentHost).length>1?faceIndex:0]||currentHost;
      showEphemeralFaceFailure(currentHost,faceIndex,failureMessage,
-      ()=>{ void import('../outputSanitizer/toolsChrome.js?rmv=1.6.16-test.10').then(module=>module.openRabbitMirrorResayChooser(overlayRoot)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。')); },
+      ()=>{ void import('../outputSanitizer/toolsChrome.js?rmv=1.6.16-test.11').then(module=>module.openRabbitMirrorResayChooser(overlayRoot)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。')); },
       ()=>{ applyIndependentFaceSwipe(overlayRoot,readFaceSwipe(independentSwipeSlot(failedIdentity),faceIndex).currentIndex); }
      );
     }else{
@@ -2326,7 +2350,7 @@ export function resayIndependentMirror(root,owner={},options={}){
    globalThis.toastr?.warning?.('跟随正文只能按这一面原来的选题重试失败面，不能在这里重新抽一张。');
    return true;
   }
-  void import('../followFaceRetry.js?rmv=1.6.16-test.10').then(({retryFollowFace})=>retryFollowFace(root,owner,{
+  void import('../followFaceRetry.js?rmv=1.6.16-test.11').then(({retryFollowFace})=>retryFollowFace(root,owner,{
    getContext,hostBusy:hostGenerationLooksActive,maxRequestChars:configuredIndependentMaxRequestChars(getSettings()),resayNote:note,presentationOverride:form,
    resolveOwner:target=>{
     const host=target?.closest?.('[data-rabbit-mirror-external-source="true"][data-rm-source="follow"]');
@@ -2687,7 +2711,7 @@ async function requestMirrorImagePlan(target,input={},options={}){
  const st={...current,independentExcludedParams:Array.isArray(current.independentExcludedParams)?[...current.independentExcludedParams]:current.independentExcludedParams};
  if((!st.independentConnectionProfileId&&!st.independentApiBaseUrl)||!st.independentApiModel)
   throw new Error('请先完成兔子镜副 API 连接和模型设置；尚未发送请求。');
- const {buildImagePlanningPrompt,parseImagePlan}=await import('../imagePlan.js?rmv=1.6.16-test.10');
+ const {buildImagePlanningPrompt,parseImagePlan}=await import('../imagePlan.js?rmv=1.6.16-test.11');
  target.assertCurrent();
  const {systemPrompt,userPrompt}=buildImagePlanningPrompt({...input,title:target.title,faceText:target.faceText,
   floor:target.floor,character:target.character,persona:target.persona,presentationMode:target.presentationMode,formats:target.formats,
@@ -2808,7 +2832,7 @@ function handleFollowMultifaceRejected(event){
  const failure=getRabbitMirrorFollowBatchFailure(ctx?.chat,index);
  if(!failure || failure.batchId!==event?.detail?.batchId) return false;
  queueMessageSync([index]);
- void import('../followAutomaticReroll.js?rmv=1.6.16-test.10').then(({maybeAutomaticFollowReroll})=>maybeAutomaticFollowReroll(index,followAutomaticRerollDeps()));
+ void import('../followAutomaticReroll.js?rmv=1.6.16-test.11').then(({maybeAutomaticFollowReroll})=>maybeAutomaticFollowReroll(index,followAutomaticRerollDeps()));
  return true;
 }
 
@@ -2816,12 +2840,12 @@ function handleFollowGenerationSettled(event){
  const index=Number(event?.detail?.messageIndex);
  if(!Number.isInteger(index)||index<0) return false;
  if(event?.detail?.cancelled===true){
-  void import('../followAutomaticReroll.js?rmv=1.6.16-test.10').then(({markFollowAutomaticRerollCancelled})=>{
+  void import('../followAutomaticReroll.js?rmv=1.6.16-test.11').then(({markFollowAutomaticRerollCancelled})=>{
    markFollowAutomaticRerollCancelled(getContext(),index);
   });
   return true;
  }
- void import('../followAutomaticReroll.js?rmv=1.6.16-test.10').then(({maybeAutomaticFollowReroll})=>maybeAutomaticFollowReroll(index,followAutomaticRerollDeps()));
+ void import('../followAutomaticReroll.js?rmv=1.6.16-test.11').then(({maybeAutomaticFollowReroll})=>maybeAutomaticFollowReroll(index,followAutomaticRerollDeps()));
  return true;
 }
 
