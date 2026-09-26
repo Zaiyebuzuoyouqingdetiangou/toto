@@ -1,7 +1,7 @@
-import { presentationModeFields } from './presentationMode.js?rmv=1.6.16-test.7';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.6.16-test.7';
+import { presentationModeFields } from './presentationMode.js?rmv=1.6.16-test.8';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.6.16-test.8';
 import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { getSettings } from './settings.js?rmv=1.6.16-test.7';
+import { getSettings } from './settings.js?rmv=1.6.16-test.8';
 import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.5.53-cn-boundary1';
 import {
     commitRabbitMirrorFollowBatch,
@@ -12,16 +12,16 @@ import {
     inspectRabbitMirrorGenerationSource,
     releaseRabbitMirrorFollowBatch,
     releaseRabbitMirrorFollowBatchAtMessage,
-} from './generationGuard.js?rmv=1.6.16-test.7';
+} from './generationGuard.js?rmv=1.6.16-test.8';
 import {
     clearSanitizedRabbitMirrorFaceProof,
     getSanitizedRabbitMirrorFaceProof,
     markSanitizedRabbitMirrorFace,
     rabbitMirrorMultifaceSourceHash,
-} from './multifaceProof.js?rmv=1.6.16-test.7';
+} from './multifaceProof.js?rmv=1.6.16-test.8';
 import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.5.53-cn-boundary1';
 import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
-import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.6.16-test.7';
+import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.6.16-test.8';
 import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.53-cn-boundary1';
 
 export const FOLLOW_MULTIFACE_COMMITTED_EVENT = 'rabbit-mirror:follow-multiface-committed';
@@ -377,7 +377,7 @@ function detectInteractionFamily(root, html = '') {
     const largestRadioGroup = [...groups.values()].sort((a, b) => b.length - a.length)[0] || [];
     const groupLabels = labelsForControls(root, largestRadioGroup);
     const sameLayerPanelSignal = /grid-area\s*:\s*1\s*\/\s*1|position\s*:\s*absolute[\s\S]{0,220}(?:opacity\s*:\s*0|visibility\s*:\s*hidden)/i.test(lower);
-    const tabLanguageSignal = /tab|tabs|panel|pane|频道|标签页|选项卡|结局\s*0?1|档位|模式\s*[一二三123]/i.test(`${lower} ${stripTags(text)}`);
+    const tabLanguageSignal = /tab|tabs|panel|pane|频道|标签页|选项卡|结局\s*0?1|档位|模式\s*[一二三123]|(?:线索|阶段|席|证物|档案|视角|章节?|幕|层)\s*[一二三四123４]/i.test(`${lower} ${stripTags(text)}`);
     if (largestRadioGroup.length >= 3 && groupLabels.length >= 3 && checkedRules >= 3) {
         return interactionFamilyRecord('tabbed_radio_family', '并列标签／多按钮切页', sameLayerPanelSignal || tabLanguageSignal ? 0.99 : 0.94, {
             controlCount: largestRadioGroup.length,
@@ -389,6 +389,21 @@ function detectInteractionFamily(root, html = '') {
             controlCount: largestRadioGroup.length,
             panelCount: Math.max(largestRadioGroup.length, checkedRules),
         });
+    }
+    // 同一骨架的其他实现：同名 details 互斥组、:target 锚点切页、每项各自一个 checkbox 的并列按钮栏。
+    const exclusiveDetails = new Map();
+    for (const match of text.matchAll(/<details\b[^>]*\bname\s*=\s*["']([^"']+)["']/gi)) exclusiveDetails.set(match[1], (exclusiveDetails.get(match[1]) || 0) + 1);
+    const largestExclusive = Math.max(0, ...exclusiveDetails.values());
+    if (largestExclusive >= 2) {
+        return interactionFamilyRecord('tabbed_radio_family', '并列标签／多按钮切页', 0.9, { controlCount: largestExclusive, panelCount: largestExclusive });
+    }
+    const anchorTabs = count(/href\s*=\s*["']#[^"']+["']/gi, text);
+    const targetRules = count(/:target\b/gi, text);
+    if (anchorTabs >= 3 && targetRules >= 2 && (sameLayerPanelSignal || tabLanguageSignal)) {
+        return interactionFamilyRecord('tabbed_radio_family', '并列标签／多按钮切页', 0.88, { controlCount: anchorTabs, panelCount: targetRules });
+    }
+    if (checkboxes.length >= 2 && checkboxes.length <= 4 && checkedRules >= 2 && labelsForControls(root, checkboxes).length >= 2 && sameLayerPanelSignal && tabLanguageSignal) {
+        return interactionFamilyRecord('tabbed_radio_family', '并列标签／多按钮切页', 0.82, { controlCount: checkboxes.length, panelCount: checkedRules });
     }
     if (controls.length >= 3 && labelsForControls(root, controls).length >= 3 && checkedRules >= 2) {
         return interactionFamilyRecord('multi_control_panel_family', '多控件状态面板', 0.86, {
@@ -1287,7 +1302,7 @@ function templateSingleFollowRoot(template) {
 
 function loadFollowBatchSanitizer() {
     if (!followBatchSanitizerModulePromise) {
-        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.6.16-test.7').catch(error => {
+        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.6.16-test.8').catch(error => {
             followBatchSanitizerModulePromise = null;
             console.debug('[RabbitMirror] follow multiface sanitizer unavailable:', error);
             return null;

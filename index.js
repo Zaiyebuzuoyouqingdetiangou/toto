@@ -1,9 +1,9 @@
-import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt, destroyIndependentGenerationIntentBridge, initIndependentGenerationIntentBridge, prewarmRabbitMirrorGenerationRuntime } from './src/injector.js?rmv=1.6.16-test.7';
-import { clearLastCombo } from './src/storage.js?rmv=1.6.16-test.7';
+import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt, destroyIndependentGenerationIntentBridge, initIndependentGenerationIntentBridge, prewarmRabbitMirrorGenerationRuntime } from './src/injector.js?rmv=1.6.16-test.8';
+import { clearLastCombo } from './src/storage.js?rmv=1.6.16-test.8';
 import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { getSettings, updateSettings } from './src/settings.js?rmv=1.6.16-test.7';
-import { installRabbitMirrorPublicAPI } from './src/publicApi.js?rmv=1.6.16-test.7';
-import { initRabbitMirrorIndependentSecurityGuard, destroyRabbitMirrorIndependentSecurityGuard } from './src/independentSecurityGuard.js?rmv=1.6.16-test.7';
+import { getSettings, updateSettings } from './src/settings.js?rmv=1.6.16-test.8';
+import { installRabbitMirrorPublicAPI } from './src/publicApi.js?rmv=1.6.16-test.8';
+import { initRabbitMirrorIndependentSecurityGuard, destroyRabbitMirrorIndependentSecurityGuard } from './src/independentSecurityGuard.js?rmv=1.6.16-test.8';
 import { initRabbitMirrorHostCompatibility, isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface, getRabbitMirrorEarlyBootstrap, getRabbitMirrorHostCompatibilityStatus } from './src/hostCompatibility.js?rmv=1.6.3-ttchild1';
 
 // TT requires ownership registration before its first projection, not after the
@@ -78,11 +78,11 @@ async function ensureDeferredCoreRuntime(reason = 'scheduled-idle') {
     if (deferredRuntimeModules) return deferredRuntimeModules;
     if (deferredRuntimePromise) return deferredRuntimePromise;
     deferredRuntimePromise = Promise.all([
-        import('./src/outputSanitizer.js?rmv=1.6.16-test.7'),
-        import('./src/visualScanner.js?rmv=1.6.16-test.7'),
-        import('./src/independentApi.js?rmv=1.6.16-test.7'),
+        import('./src/outputSanitizer.js?rmv=1.6.16-test.8'),
+        import('./src/visualScanner.js?rmv=1.6.16-test.8'),
+        import('./src/independentApi.js?rmv=1.6.16-test.8'),
         import('./src/touchTheater.js?rmv=1.6.3-ttchild1'),
-        import('./src/ui.js?rmv=1.6.16-test.7'),
+        import('./src/ui.js?rmv=1.6.16-test.8'),
         import('./src/composerClearance.js?rmv=1.6.3-ttchild1'),
     ]).then(async ([output, visual, independent, touch, ui, clearance]) => {
         if (!runtimeIsActive()) return null;
@@ -338,7 +338,7 @@ function loadMirrorVisualCompat() {
     if (!deferredRuntimeModules) return Promise.resolve(null);
     return Promise.all([
         loadOptional('checkedSelectorRepair', './src/checkedSelectorRepair.js?rmv=1.5.53-cn-boundary1', mod => mod.initRabbitMirrorCheckedSelectorRepair?.()),
-        loadOptional('renderedVisualFeedback', './src/renderedVisualFeedbackHotfix.js?rmv=1.6.16-test.7', mod => mod.initRabbitMirrorRenderedVisualFeedbackHotfix?.()),
+        loadOptional('renderedVisualFeedback', './src/renderedVisualFeedbackHotfix.js?rmv=1.6.16-test.8', mod => mod.initRabbitMirrorRenderedVisualFeedbackHotfix?.()),
     ]);
 }
 
@@ -471,7 +471,7 @@ function disableExternalDiagnostics() {
 }
 
 function clearDeferredGenerationSnapshots() {
-    void import('./src/generationGuard.js?rmv=1.6.16-test.7')
+    void import('./src/generationGuard.js?rmv=1.6.16-test.8')
         .then(mod => {
             // Disable may await this import while a newer installation takes
             // ownership. Do not clear that owner's shared snapshot/attempt keys.

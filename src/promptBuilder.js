@@ -3,15 +3,15 @@ import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.5.53
 import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.5.53-cn-boundary1';
 import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.5.53-text1';
 import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.5.53-cn-boundary1';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.6.16-test.7';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.6.16-test.7';
-import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.6.16-test.7';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.6.16-test.8';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.6.16-test.8';
+import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.6.16-test.8';
 import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.5.53-cn-boundary1';
 export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.5.53-cn-boundary1';
 import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.5.53-cn-boundary1';
 import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.5.53-cn-boundary1';
-import { isTextPresentation, presentationModeFields } from './presentationMode.js?rmv=1.6.16-test.7';
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.6.16-test.7';
+import { isTextPresentation, presentationModeFields } from './presentationMode.js?rmv=1.6.16-test.8';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.6.16-test.8';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -333,7 +333,10 @@ function interactionFamilyCooldownSnapshot(settings) {
         ['inner_details_family', 3],
         ['flip_card_family', 3],
     ];
-    const target = candidates.find(([id, threshold]) => (counts[id] || 0) >= threshold || repeatedLatest === id)?.[0] || '';
+    // 切页骨架最容易被当成万能答案：近三轮出现过一次就进入冷却。
+    const recentTabbed = recent.slice(-3).some(family => family.id === 'tabbed_radio_family');
+    const target = (recentTabbed ? 'tabbed_radio_family' : '')
+        || candidates.find(([id, threshold]) => (counts[id] || 0) >= threshold || repeatedLatest === id)?.[0] || '';
     if (!target) return null;
 
     const descriptions = {
@@ -345,7 +348,7 @@ function interactionFamilyCooldownSnapshot(settings) {
         flip_card_family: '翻面／双面切换',
     };
     const exactBan = target === 'tabbed_radio_family'
-        ? '禁止再次使用多个同组 radio＋并列标签／按钮＋同位置 panel 切换正文；改变按钮数量仍算同一骨架。'
+        ? '禁止再次使用“一排并列标签／按钮＋同位置 panel 切换正文”；改用 checkbox、同名 details、:target 锚点实现，或改变按钮数量、文案、样式，仍算同一骨架。'
         : `不得继续复用“${descriptions[target] || target}”作为主要交互骨架。`;
     return {
         target,
@@ -479,8 +482,8 @@ function complexInteractiveCore() {
   - 内容承载优先于复杂度：含主要正文、长句、段落或关键反馈的节点及其承载父级必须参与正常文档流并由内容撑高；禁止用 position:absolute/fixed、固定 px/vh 高度、height:100%、transform 位移或 overflow:hidden/clip 作为正文承载骨架，只有纯装饰、短标签与图形层可脱离文档流。
   - 需要状态叠层时，优先使用能由内容撑高的 grid 同格叠层、正常流显隐或媒介内部明确可操作的滚动／分页；禁止让两个含长正文的状态以 absolute 叠放在固定画布内。若使用内部 details/summary 表示正反面或状态替换，打开后 summary 不得继续以 height:100% 占据整块面板并把后续状态推到裁切区；正面必须收起或退出占位，暗面须在同一媒介区域内可见，并提供可触摸的返回方式。输出前按 360px 手机窄屏自检，每个状态的最后一行必须仍位于所属卡片、画框或页面边界内。
   - 交互必须由真实可触发对象、对应状态机制与受控内容共同构成；第二状态须在内容、关系、结构、空间、视觉层级、材质、时间进程、观察方式、角色反应或后续可操作范围中的至少一项发生清晰且有意义的变化；不同操作不得无故得到完全相同的反馈。
-  - 存在多个值得探索的内容节点时，须提供多个有效入口或连续阶段，让不同操作获得不同的内容或状态反馈；不得把本来适合探索、分支或推进的媒介压缩成一次显隐后结束。
-  - 交互形态、规模与阶段须由本轮展现形式自身的结构、功能、使用方式与叙事产生；checkbox、翻面、弹窗、按钮组、标签页等仅在媒介天然适合时使用，不得作为默认骨架换皮复用；尤其禁止把“三枚并列按钮／标签→三块同位置正文切换”当成万能答案，除非本轮媒介天然就是频道、档位或分页系统且近期没有重复；非一次性动作的首次操作不得耗尽全部体验。
+  - 存在多个值得探索的内容节点时，须提供多个有效入口或连续阶段，让不同操作获得不同的内容或状态反馈；不得把本来适合探索、分支或推进的媒介压缩成一次显隐后结束。这些入口必须长在媒介主体自身的不同部位、物件或空间位置上，彼此形态、大小或位置不同，揭示的内容出现在入口附近或直接改变画面；不得把它们收拢成一排与画面分离的通用按钮。
+  - 交互形态、规模与阶段须由本轮展现形式自身的结构、功能、使用方式与叙事产生；checkbox、翻面、弹窗、按钮组、标签页等仅在媒介天然适合时使用，不得作为默认骨架换皮复用；硬性禁止“切页骨架”：在主视觉上方或下方放一排 2–4 个并列、等宽或同款的按钮／标签（线索一二三、阶段一二三、席位一二三、左右耳之类），点哪个就在同一块区域换一段正文——无论用 radio、checkbox、details、:target 还是锚点实现都算，即使媒介看起来像频道、档位、案卷或分页也不例外；非一次性动作的首次操作不得耗尽全部体验。
   - 仅变色、描边、阴影、轻微位移、伪选项、无关交互堆叠，或非一次性媒介中一次显隐后立即结束，不算完整交互。
   - 交互须真实存在并可触摸触发，hover/active 只能辅助，不能单独充当本轮必需的完整交互；装饰不得遮挡操作对象。仅当媒介天然需要分层阅读时才可使用内部 details；禁止 onclick/onmouseover/onmouseout 等事件属性与内联 JavaScript，必须使用宿主可保留的 HTML/CSS 状态机制构成状态与反馈。`;
 }
