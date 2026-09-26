@@ -1,6 +1,6 @@
 import { eventSource, event_types, setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
 import * as hostRuntime from '../../../../../script.js';
-import { MODULE_NAME, getSettings } from './settings.js?rmv=1.6.16-test.5';
+import { MODULE_NAME, getSettings } from './settings.js?rmv=1.6.16-test.7';
 import {
     buildFeedbackCatFinalCheck,
     buildFeedbackCatPrompt,
@@ -8,8 +8,8 @@ import {
     getActiveFeedbackForCurrentChat,
     markFeedbackCatInjected,
 } from './feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.6.16-test.5';
-import { getCurrentChatKey, markPendingBatchAttempt, releasePendingComboBatch } from './storage.js?rmv=1.6.16-test.5';
+import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.6.16-test.7';
+import { getCurrentChatKey, markPendingBatchAttempt, releasePendingComboBatch } from './storage.js?rmv=1.6.16-test.7';
 import { describeExternalWorldBookPreflightFailure } from './externalWorldBook/errors.js?rmv=1.5.53-cn-boundary1';
 import { independentGenerationTiming } from './independentTiming.js?rmv=1.5.53-timing1';
 
@@ -740,7 +740,7 @@ export function destroyIndependentGenerationIntentBridge({ clearIntents = false 
 
 function loadPromptBuilder() {
     if (!promptBuilderPromise) {
-        promptBuilderPromise = import('./promptBuilder.js?rmv=1.6.16-test.5').catch(error => {
+        promptBuilderPromise = import('./promptBuilder.js?rmv=1.6.16-test.7').catch(error => {
             promptBuilderPromise = null;
             throw error;
         });
@@ -750,7 +750,7 @@ function loadPromptBuilder() {
 
 function loadGenerationGuard() {
     if (!generationGuardPromise) {
-        generationGuardPromise = import('./generationGuard.js?rmv=1.6.16-test.5').catch(error => {
+        generationGuardPromise = import('./generationGuard.js?rmv=1.6.16-test.7').catch(error => {
             generationGuardPromise = null;
             throw error;
         });

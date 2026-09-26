@@ -1,12 +1,12 @@
 // Split from outputSanitizer.js — toolsChrome.
 
-import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.6.16-test.5';
+import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.6.16-test.7';
 import { placeFacePager } from '../facePagerPlacement.js?rmv=1.6.4-pager1';
-import { isTextPresentation } from '../presentationMode.js?rmv=1.6.16-test.5';
+import { isTextPresentation } from '../presentationMode.js?rmv=1.6.16-test.7';
 import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.6.3-ttchild1';
-import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=1.6.16-test.5';
-import { getCurrentChatKey } from '../storage.js?rmv=1.6.16-test.5';
-import { getSanitizedRabbitMirrorFaceProof } from '../multifaceProof.js?rmv=1.6.16-test.5';
+import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=1.6.16-test.7';
+import { getCurrentChatKey } from '../storage.js?rmv=1.6.16-test.7';
+import { getSanitizedRabbitMirrorFaceProof } from '../multifaceProof.js?rmv=1.6.16-test.7';
 import {
     captureTheaterFavoriteFromRoot,
     openTheaterFavoriteLibrary,
@@ -23,7 +23,7 @@ import {
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
 } from '../feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.16-test.5';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.16-test.7';
 import {
     FAVORITE_MULTIPLIER_MAX,
     FAVORITE_MULTIPLIER_MIN,
@@ -45,7 +45,7 @@ import {
     setFavoriteMultiplier,
     toggleBlacklistItem,
     toggleFavoriteItem,
-} from '../blacklist.js?rmv=1.6.16-test.5';
+} from '../blacklist.js?rmv=1.6.16-test.7';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -69,10 +69,10 @@ import {
     isInsideChatMessage,
     isMaintenanceRabbitEnabled,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.6.16-test.5';
-import { getAvailableHostChat } from './scriptedInteractionRescue.js?rmv=1.6.16-test.5';
-import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.6.16-test.5';
-import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=1.6.16-test.5';
+} from './runtime.js?rmv=1.6.16-test.7';
+import { getAvailableHostChat } from './scriptedInteractionRescue.js?rmv=1.6.16-test.7';
+import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.6.16-test.7';
+import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=1.6.16-test.7';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     FEEDBACK_HISTORY_EVENT,
@@ -92,8 +92,8 @@ import {
     rabbitMirrorLanguageBalance,
     scheduleCurrentHighConfidenceTextRepair,
     setMaintenanceRabbitState,
-} from './diagnostics.js?rmv=1.6.16-test.5';
-import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=1.6.16-test.5';
+} from './diagnostics.js?rmv=1.6.16-test.7';
+import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=1.6.16-test.7';
 import {
     MAINTENANCE_FINDING_STAGE_LABELS,
     beginMaintenanceRepairRun,
@@ -111,19 +111,19 @@ import {
     runMaintenanceRevealClipRepair,
     runMaintenanceUserRepair,
     triggerDiagnosticForMaintenanceRoot,
-} from './maintenanceInspect.js?rmv=1.6.16-test.5';
+} from './maintenanceInspect.js?rmv=1.6.16-test.7';
 import {
     getRabbitMirrorFacePosition,
     installMaintenanceHorizontalClipOpenRescue,
     repairLegacyMaintenanceMobileStateRows,
-} from './layoutRescue.js?rmv=1.6.16-test.5';
+} from './layoutRescue.js?rmv=1.6.16-test.7';
 import {
     getMessageIndexFromMirrorNode,
     installMaintenanceAutoSafeOpenPatrol,
     installManagedRabbitMirrorTools,
     pruneMaintenanceAutoSafeOpenBindings,
     scheduleMaintenanceAutoSafeForRoot,
-} from './lifecycle.js?rmv=1.6.16-test.5';
+} from './lifecycle.js?rmv=1.6.16-test.7';
 
 let recipeOutsideCloseCleanup = null;
 
@@ -2242,7 +2242,7 @@ function beginHostWorkTiming(name){
 }
 
 function loadMirrorImageModule() {
-    if (!mirrorImageModule) mirrorImageModule = import('../imageUi.js?rmv=1.6.16-test.5').catch(error => { mirrorImageModule = null; throw error; });
+    if (!mirrorImageModule) mirrorImageModule = import('../imageUi.js?rmv=1.6.16-test.7').catch(error => { mirrorImageModule = null; throw error; });
     return mirrorImageModule;
 }
 
@@ -2558,7 +2558,7 @@ function installUnifiedMirrorTools(root) {
     actions.push({ id: 'resay', label: '↻ 重说', run: (_event, opener) => openRabbitMirrorResayChooser(root, opener) });
     if (mirrorFaceCanContinue(root)) {
         actions.push({ id: 'continue', label: '✎ 续写', run: () => {
-            void import('../independentApi/mount.js?rmv=1.6.16-test.5').then(module => module.continueIndependentLongText(root))
+            void import('../independentApi/mount.js?rmv=1.6.16-test.7').then(module => module.continueIndependentLongText(root))
                 .catch(() => globalThis.toastr?.error?.('续写没有写上，原来的正文还在。'));
         } });
     }
@@ -2581,7 +2581,7 @@ function installUnifiedMirrorTools(root) {
             .catch(() => globalThis.toastr?.warning?.('生图面板未能打开，请重新打开后再试。'));
     } });
     actions.push({ id: 'theater-favorite-library', label: '📖 打开收藏夹', run: () => {
-        void import('../independentApi.js?rmv=1.6.16-test.5').then(module =>
+        void import('../independentApi.js?rmv=1.6.16-test.7').then(module =>
             openTheaterFavoriteLibrary((container, record) => module.hydrateIndependentFavoriteHtml(container, record)))
             .catch(error => globalThis.toastr?.warning?.(String(error?.message || '无法打开收藏夹。')));
     } });

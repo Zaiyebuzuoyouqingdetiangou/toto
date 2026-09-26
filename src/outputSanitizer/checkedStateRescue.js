@@ -1,7 +1,7 @@
 // Split from outputSanitizer.js — checkedStateRescue.
 
-import { escapeCssIdentifier, escapeRegExp, getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.6.16-test.5';
-import { getClassTokens, isCollapsedDimensionValue, parseCssStateSiblingAssignments } from './renderedStateRescue.js?rmv=1.6.16-test.5';
+import { escapeCssIdentifier, escapeRegExp, getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.6.16-test.7';
+import { getClassTokens, isCollapsedDimensionValue, parseCssStateSiblingAssignments } from './renderedStateRescue.js?rmv=1.6.16-test.7';
 import {
     capturePseudoStyleState,
     chooseMatchingRawRabbitMirrorRoot,
@@ -9,15 +9,15 @@ import {
     normalizeInteractionMatchText,
     resolveRenderedCounterpart,
     restorePseudoStyleState,
-} from './scriptedInteractionRescue.js?rmv=1.6.16-test.5';
+} from './scriptedInteractionRescue.js?rmv=1.6.16-test.7';
 import {
     REVERSIBLE_RADIO_BASELINE_ATTR,
     applyCheckedVisualFallback,
     inputHasAssociatedLabel,
     setRescuedCheckedState,
-} from './fallbackRescue.js?rmv=1.6.16-test.5';
-import { RADIO_GROUP_RESCUE_ATTR } from './idsAndRearm.js?rmv=1.6.16-test.5';
-import { diagnosticComputedStyle, maintenanceSafeComputedStyle } from './diagnostics.js?rmv=1.6.16-test.5';
+} from './fallbackRescue.js?rmv=1.6.16-test.7';
+import { RADIO_GROUP_RESCUE_ATTR } from './idsAndRearm.js?rmv=1.6.16-test.7';
+import { diagnosticComputedStyle, maintenanceSafeComputedStyle } from './diagnostics.js?rmv=1.6.16-test.7';
 import {
     checkedDeclarationCreatesContentReveal,
     checkedTargetCarriesResultContent,
@@ -25,14 +25,14 @@ import {
     isIndependentMaintenanceRoot,
     notifyIndependentRepairPersistence,
     resolveMaintenanceGeneratedClass,
-} from './maintenanceInspect.js?rmv=1.6.16-test.5';
-import { splitCssSelectorList } from './markup.js?rmv=1.6.16-test.5';
+} from './maintenanceInspect.js?rmv=1.6.16-test.7';
+import { splitCssSelectorList } from './markup.js?rmv=1.6.16-test.7';
 import {
     maintenanceMobileLayoutLengthPx,
     maintenanceMobileLayoutRect,
     maintenanceMobileLayoutTextLength,
     viewportLayoutHasAuthoredGridPlacement,
-} from './layoutRescue.js?rmv=1.6.16-test.5';
+} from './layoutRescue.js?rmv=1.6.16-test.7';
 
 const interactionInlineOverrideStates = new WeakMap();
 
@@ -1375,14 +1375,76 @@ function getCrossContainerTargetsForCheckedRule(root, targetSelector) {
 }
 
 
+function separatedRadioKey(text) {
+    const numbers = String(text || '').normalize('NFKC').match(/\d+/g);
+    return numbers?.length === 1 && numbers[0].length <= 9 ? String(Number(numbers[0])) : '';
+}
+
+// A shared class alone cannot pair tabs with detached panels. Accept only an
+// explicit one-to-one key mapping: numeric radio values, matching label keys,
+// and matching panel headings. Panel order is deliberately irrelevant.
+function separatedRadioPanelMapping(root, input, rule) {
+    if (!root?.querySelectorAll || input?.type !== 'radio' || rule?.source !== 'class-local'
+        || rule.relation !== '+' || rule.pseudoElement
+        || !/^\.[_a-zA-Z][\w-]*$/.test(rule.subjectSelector || '')
+        || !/^\.[_a-zA-Z][\w-]*$/.test(rule.targetSelector || '')
+        || rule.styleMap?.length !== 1 || rule.styleMap[0][0] !== 'display'
+        || !['block', 'flex', 'grid', 'inline-block'].includes(rule.styleMap[0][1])) return null;
+    const controls = [...root.querySelectorAll(rule.subjectSelector)];
+    const panels = [...root.querySelectorAll(rule.targetSelector)];
+    if (controls.length < 2 || controls.length > 8 || panels.length !== controls.length) return null;
+    const name = input.name;
+    const owner = input.closest('details,toto');
+    const labels = controls.map(control => control.closest('label'));
+    const selectorParent = labels[0]?.parentElement;
+    const panelParent = panels[0]?.parentElement;
+    if (!name || !selectorParent || !panelParent || selectorParent.nextElementSibling !== panelParent
+        || selectorParent.parentElement !== panelParent.parentElement
+        || panels.some(panel => panel.parentElement !== panelParent || panel.closest('details,toto') !== owner
+            || !checkedTargetCarriesResultContent(panel))
+        || controls.some((control, index) => control.type !== 'radio' || control.disabled || control.name !== name
+            || control.form !== input.form || control.closest('details,toto') !== owner
+            || labels[index]?.parentElement !== selectorParent
+            || labels[index].querySelectorAll('input').length !== 1
+            || !/^\d{1,9}$/.test(control.getAttribute('value') || '')
+            || getSiblingTargetsForCheckedRule(control, rule.relation, rule.targetSelector).length)) return null;
+    // Reject a partially matched radio group; never capture somebody else's tab.
+    const group = [...root.querySelectorAll('input[type="radio"]')]
+        .filter(control => control.name === name && control.form === input.form);
+    if (group.length !== controls.length || group.some(control => !controls.includes(control))) return null;
+    const byKey = new Map();
+    for (const panel of panels) {
+        const heading = panel.firstElementChild;
+        const text = String(heading?.textContent || '').trim();
+        if (!text || text.length > 160 || heading.querySelector('input,button,select,textarea')) return null;
+        const key = separatedRadioKey(text);
+        if (!key || byKey.has(key)) return null;
+        byKey.set(key, panel);
+    }
+    const mapping = new Map();
+    const used = new Set();
+    for (let index = 0; index < controls.length; index += 1) {
+        const control = controls[index];
+        const key = separatedRadioKey(control.getAttribute('value'));
+        const panel = byKey.get(key);
+        if (!panel || used.has(key) || separatedRadioKey(labels[index].textContent) !== key) return null;
+        mapping.set(control, panel);
+        used.add(key);
+    }
+    return mapping;
+}
+
 function getProvableCrossParentTargetsForCheckedRule(root, input, rule) {
     if (!root?.querySelectorAll || !input || !rule) return [];
     if (rule.source === 'id') return getCrossContainerTargetsForCheckedRule(root, rule.targetSelector);
     if (rule.source !== 'class-local') return [];
 
+    const separated = separatedRadioPanelMapping(root, input, rule);
+    if (separated?.has(input)) return [separated.get(input)];
+
     // A class subject may be promoted beyond its local label/container only when it
     // names exactly one checkable control and exactly one content-bearing target in
-    // this mirror. Shared radio/tab classes and generic input selectors stay local.
+    // this mirror. Shared classes without the keyed mapping above stay local.
     const subjectSelector = String(rule.subjectSelector || '').trim();
     if (!/^\.[_a-zA-Z][\w-]*$/.test(subjectSelector)) return [];
     let subjects = [];
@@ -2345,7 +2407,13 @@ export function findExclusiveStackedStateCandidates(root) {
     for (const [parent, inputMap] of byParent) {
         const mappedTargets = [...new Set([...inputMap.values()].flatMap(set => [...set]))];
         if (inputMap.size < 2 || mappedTargets.length < 2 || mappedTargets.some(target => target.parentElement !== parent)) continue;
-        const commonClass = commonStackedPanelClassToken(mappedTargets);
+        const firstInput = inputMap.keys().next().value;
+        const separatedRule = parseCheckedRulesFromText(root, firstInput).find(rule => {
+            const mapping = separatedRadioPanelMapping(root, firstInput, rule);
+            return mapping?.size === inputMap.size && [...mapping].every(([control, panel]) =>
+                inputMap.get(control)?.size === 1 && inputMap.get(control).has(panel));
+        });
+        const commonClass = separatedRule ? separatedRule.targetSelector.slice(1) : commonStackedPanelClassToken(mappedTargets);
         if (!commonClass) continue;
         const classPanels = [...parent.children].filter(child => child.classList?.contains(commonClass));
         const passiveAnimatedCollection = classPanels.length > 0 && classPanels.every(panel => maintenancePassiveAnimatedStatePanel(panel));
@@ -2385,14 +2453,15 @@ export function findExclusiveStackedStateCandidates(root) {
         }
 
         const panels = [...new Set([...classPanels, ...baselinePanels])];
-        if (!stackedPanelsShareLayer(parent, panels)) continue;
+        if (!separatedRule && !stackedPanelsShareLayer(parent, panels)) continue;
         const defaultPanels = panels.filter(panel => !mappedTargets.includes(panel));
         if (!defaultPanels.length && panels.length === mappedTargets.length) {
             // 没有默认层也可以修复，但至少要有两个互斥 radio 分支。
             if (!controls.every(input => input.type === 'radio')) continue;
         }
         const fullGridSpanPanels = exclusiveStackedPanelsNeedFullGridSpan(parent, inputMap, panels);
-        candidates.push({ parent, inputMap, panels, defaultPanels, baselineControls, commonClass, passiveAnimatedCollection, fullGridSpanPanels });
+        candidates.push({ parent, inputMap, panels, defaultPanels, baselineControls, commonClass, passiveAnimatedCollection, fullGridSpanPanels,
+            ownsDisplay: !!separatedRule, revealDisplay: separatedRule?.styleMap[0][1] });
     }
     return candidates;
 }
@@ -2665,7 +2734,9 @@ export function refreshExclusiveStackedStateRescue(root) {
                 // `.trigger:checked ~ .initial-view { display:none }` rule because the
                 // baseline radio shares the same trigger class. Own display only for the
                 // inferred default panel so the return radio can actually restore it.
-                if (panelState.isDefaultPanel) {
+                // Keyed detached panels also need display ownership: their authored
+                // default often stays display:block when another radio is selected.
+                if (panelState.isDefaultPanel || panelState.ownsDisplay) {
                     panel.style.setProperty('display', active ? panelState.visibleDisplay : 'none', 'important');
                 }
                 panel.style.setProperty('opacity', active ? '1' : '0', 'important');
@@ -2710,8 +2781,9 @@ export function installExclusiveStackedStateRescue(root) {
                 return {
                     panel,
                     isDefaultPanel: candidate.defaultPanels.includes(panel),
+                    ownsDisplay: !!candidate.ownsDisplay,
                     fullGridSpan: !!candidate.fullGridSpanPanels,
-                    visibleDisplay: computedDisplay && computedDisplay !== 'none' ? computedDisplay : 'block',
+                    visibleDisplay: candidate.revealDisplay || (computedDisplay && computedDisplay !== 'none' ? computedDisplay : 'block'),
                     passiveAnimated: !!candidate.passiveAnimatedCollection && maintenancePassiveAnimatedStatePanel(panel),
                     originalStyles: capturePseudoStyleState(panel, ['display', 'opacity', 'visibility', 'pointer-events', 'z-index', 'animation-play-state', 'grid-column']),
                 };

@@ -6,7 +6,7 @@ import {
     TOOL_ENTRY_HOST_ATTR,
     escapeRegExp,
     getRabbitMirrorLocalStyleElements,
-} from './runtime.js?rmv=1.6.16-test.5';
+} from './runtime.js?rmv=1.6.16-test.7';
 import {
     CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR,
     CROSS_PARENT_CHECKED_VERIFIED_ATTR,
@@ -88,7 +88,7 @@ import {
     webKit3DFlipInlineStates,
     webKit3DFlipRescueStates,
     webKit3DFlipStyleStates,
-} from './checkedStateRescue.js?rmv=1.6.16-test.5';
+} from './checkedStateRescue.js?rmv=1.6.16-test.7';
 import {
     EXISTING_INTERACTIVE_SELECTOR,
     RENDERED_BUTTON_ADJACENT_HIDDEN_RESCUE_ATTR,
@@ -115,7 +115,7 @@ import {
     isCollapsedDimensionValue,
     normalizeStylePropertyName,
     parseCssStateSiblingAssignments,
-} from './renderedStateRescue.js?rmv=1.6.16-test.5';
+} from './renderedStateRescue.js?rmv=1.6.16-test.7';
 import {
     chooseMatchingRawRabbitMirrorRoot,
     detectInteractionCapabilities,
@@ -131,7 +131,7 @@ import {
     installRawMessageSelfMutationRescue,
     preparePseudoTrigger,
     shouldIgnorePseudoToggleEvent,
-} from './scriptedInteractionRescue.js?rmv=1.6.16-test.5';
+} from './scriptedInteractionRescue.js?rmv=1.6.16-test.7';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     FILL_IN_CHOICE_BLANK_ATTR,
@@ -143,15 +143,15 @@ import {
     diagnosticFindClippingAncestor,
     maintenanceSafeComputedStyle,
     mobileInlineAnnotationRescueStates,
-} from './diagnostics.js?rmv=1.6.16-test.5';
-import { installStaticChoiceSelectionFallback } from './choiceRescue.js?rmv=1.6.16-test.5';
+} from './diagnostics.js?rmv=1.6.16-test.7';
+import { installStaticChoiceSelectionFallback } from './choiceRescue.js?rmv=1.6.16-test.7';
 import {
     checkedDeclarationCreatesContentReveal,
     checkedTargetCarriesResultContent,
     pseudoStateTargetSelector,
-} from './maintenanceInspect.js?rmv=1.6.16-test.5';
-import { splitCssSelectorList } from './markup.js?rmv=1.6.16-test.5';
-import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutResolveCheckedTargets } from './layoutRescue.js?rmv=1.6.16-test.5';
+} from './maintenanceInspect.js?rmv=1.6.16-test.7';
+import { splitCssSelectorList } from './markup.js?rmv=1.6.16-test.7';
+import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutResolveCheckedTargets } from './layoutRescue.js?rmv=1.6.16-test.7';
 
 const NESTED_DETAILS_FALLBACK_HANDLER_PROP = '__rabbitMirrorNestedDetailsFallbackHandler';
 
@@ -2611,6 +2611,7 @@ function applyMaintenanceSandboxCheckedState(root, input, nextChecked) {
     }
     applyCheckedVisualFallback(root, input);
     applyRenderedLabelInternalHiddenEntries(root);
+    refreshExclusiveStackedStateRescue(root);
     input.setAttribute('aria-pressed', input.checked ? 'true' : 'false');
     try { void input.offsetHeight; } catch {}
     return !!input.checked === (input.type === 'radio' ? true : !!nextChecked);
@@ -2650,6 +2651,12 @@ export function scheduleMaintenanceLabeledCheckedProbe(root, diagnosticState) {
         stateInput.setAttribute('aria-pressed', stateInput.checked ? 'true' : 'false');
     }
 
+    // A clone retains repaired visibility but not the WeakMap-backed exclusive
+    // panel controller. Rebuild that proven route only in the isolated copy,
+    // otherwise a working tab can be falsely reported as having no second state.
+    if (sandboxRoot.querySelector(`[${EXCLUSIVE_STACKED_STATE_CONTROL_ATTR}]`)) {
+        installExclusiveStackedStateRescue(sandboxRoot);
+    }
     const safeCandidates = [...sandboxRoot.querySelectorAll('input[type="checkbox"], input[type="radio"]')].filter(candidate => (
         !candidate.disabled
         && inputHasAssociatedLabel(sandboxRoot, candidate)
