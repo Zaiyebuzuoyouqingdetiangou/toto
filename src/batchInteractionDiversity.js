@@ -18,7 +18,9 @@ function recentRepeatedFamilies(recentFamilies) {
     }
     const lastTwo = recent.slice(-2);
     const repeatedLast = lastTwo.length === 2 && lastTwo[0]?.id === lastTwo[1]?.id ? lastTwo[1]?.id : '';
+    const recentTabbed = recent.slice(-3).some(item => item?.id === 'tabbed_radio_family');
     return Object.keys(FAMILY_LABELS).filter(id => {
+        if (id === 'tabbed_radio_family' && recentTabbed) return true;
         const threshold = id === 'tabbed_radio_family' || id === 'multi_control_panel_family' ? 2 : 3;
         return (counts.get(id) || 0) >= threshold || repeatedLast === id;
     }).slice(0, 2);

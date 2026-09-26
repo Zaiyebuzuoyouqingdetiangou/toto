@@ -1,14 +1,14 @@
-import { presentationModeFields } from './presentationMode.js?rmv=1.6.16-test.7';
-import { getSettings } from './settings.js?rmv=1.6.16-test.7';
-import { getCurrentChatKey } from './storage.js?rmv=1.6.16-test.7';
-import { getRabbitMirrorRecipe } from './blacklist.js?rmv=1.6.16-test.7';
-import { readFollowPartialResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=1.6.16-test.7';
-import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.6.16-test.7';
+import { presentationModeFields } from './presentationMode.js?rmv=1.6.16-test.8';
+import { getSettings } from './settings.js?rmv=1.6.16-test.8';
+import { getCurrentChatKey } from './storage.js?rmv=1.6.16-test.8';
+import { getRabbitMirrorRecipe } from './blacklist.js?rmv=1.6.16-test.8';
+import { readFollowPartialResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=1.6.16-test.8';
+import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.6.16-test.8';
 import { parseMultifaceOutput, MULTIFACE_FAILURE_ATTR } from './multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
-import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.6.16-test.7';
+import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.6.16-test.8';
 import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=1.5.53-text1';
-import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.6.16-test.7';
-import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=1.6.16-test.7';
+import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.6.16-test.8';
+import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=1.6.16-test.8';
 
 const active = new WeakSet();
 const fail = message => { const error=new Error(message);error.rabbitMirrorFollowRetry=true;throw error; };
