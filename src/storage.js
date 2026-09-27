@@ -1,4 +1,4 @@
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.6.16-ttinput2';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.6.16-ttinput3';
 import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.5.53-cn-boundary1';
 import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.6';
 
@@ -840,6 +840,44 @@ function normalizeLocalBatchPlan(value) {
     };
 }
 
+// 公平计数只是抽签权重的辅助数据：个别编号不合规时逐项剔除，不让整批计划失败。
+function validFairnessId(value) {
+    if (typeof value !== 'string' || !value.trim()) return false;
+    if (value.trimStart().startsWith('ext:')) return value === value.trim() && value.length <= 2048 && /^ext:[A-Za-z0-9:._!~*'()-]+$/.test(value);
+    return value.length <= 128;
+}
+
+function sanitizeBatchFairness(fairness) {
+    const source = fairness && typeof fairness === 'object' && !Array.isArray(fairness) ? fairness : {};
+    const list = values => [...new Set((Array.isArray(values) ? values : []).filter(validFairnessId))].slice(0, 512);
+    return {
+        eligibleFormatIds: list(source.eligibleFormatIds),
+        selectedFormatIds: list(source.selectedFormatIds),
+        validFormatIds: list(source.validFormatIds),
+        directiveScoped: source.directiveScoped === true,
+    };
+}
+
+// normalizeLocalBatchPlan 只返回 null；这里给出具体是哪一项没通过，
+// 让报错不再只显示「具体原因尚未确认」。只输出固定代码，不含编号或正文。
+function explainBatchPlanRejection(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return 'BATCH_PLAN_INVALID';
+    if (!normalizeBatchIdentity(value.identity)) return 'BATCH_PLAN_IDENTITY_INVALID';
+    if (typeof value.batchId !== 'string' || !value.batchId.trim() || value.batchId.length > 256) return 'BATCH_PLAN_ID_INVALID';
+    if (!Number.isSafeInteger(value.requestedFaceCount) || value.requestedFaceCount < 2 || value.requestedFaceCount > 5
+        || !Array.isArray(value.faces) || value.faces.length !== value.requestedFaceCount) return 'BATCH_PLAN_FACE_COUNT_INVALID';
+    for (let index = 0; index < value.faces.length; index += 1) {
+        const face = value.faces[index];
+        if (!face || typeof face !== 'object' || face.faceIndex !== index || !validBatchCombo(face.combo)) return 'BATCH_PLAN_FACE_INVALID';
+    }
+    const fairness = value.fairness && typeof value.fairness === 'object' && !Array.isArray(value.fairness) ? value.fairness : {};
+    for (const key of ['eligibleFormatIds', 'selectedFormatIds', 'validFormatIds']) {
+        if (fairness[key] !== undefined && !validStringList(fairness[key])) return 'BATCH_PLAN_FAIRNESS_INVALID';
+    }
+    if (fairness.directiveScoped !== undefined && typeof fairness.directiveScoped !== 'boolean') return 'BATCH_PLAN_FAIRNESS_INVALID';
+    return 'BATCH_PLAN_INVALID';
+}
+
 // Diagnostics are a fixed code only, never IDs, source text or native storage
 // errors. The optional observer cannot turn a rejection into dispatch authority.
 function reportBatchRejection(options, code) {
@@ -861,9 +899,12 @@ export function createPendingComboBatchPlan(combos = [], identity = null, fairne
         identity: normalizedIdentity,
         requestedFaceCount: combos.length,
         faces: combos.map((combo, faceIndex) => ({ faceIndex, combo })),
-        fairness,
+        fairness: sanitizeBatchFairness(fairness),
     });
-    if (!candidate) return reject('BATCH_PLAN_INVALID');
+    if (!candidate) return reject(explainBatchPlanRejection({
+        batchId: `${PENDING_SESSION_TOKEN}:check`, identity: normalizedIdentity, requestedFaceCount: combos.length,
+        faces: combos.map((combo, faceIndex) => ({ faceIndex, combo })), fairness: sanitizeBatchFairness(fairness),
+    }));
     const payload = JSON.stringify(candidate);
     return payload.length <= 262144 ? cloneSerializable(candidate) : reject('BATCH_PLAN_TOO_LARGE');
 }
@@ -1162,8 +1203,7 @@ function batchAttemptPayload(plan, beforeRaw, now) {
 export function markPendingBatchAttempt(planInput = null, options = {}) {
     const reject = code => { reportBatchRejection(options, code); return false; };
     const plan = normalizeLocalBatchPlan(planInput);
-    if (!plan) return reject(planInput && typeof planInput === 'object' && !Array.isArray(planInput) && !normalizeBatchIdentity(planInput.identity)
-        ? 'BATCH_PLAN_IDENTITY_INVALID' : 'BATCH_PLAN_INVALID');
+    if (!plan) return reject(explainBatchPlanRejection(planInput));
     if (plan.identity.preview === true) return reject('BATCH_PREVIEW_NOT_DISPATCHABLE');
     const transient = options.transient === true;
     if (transient && (plan.identity.kind === 'generation-operation' || !plan.identity.generationScopeKey.startsWith('independent:'))) {
