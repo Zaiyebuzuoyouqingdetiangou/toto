@@ -1470,6 +1470,11 @@ html[data-rabbit-mirror-external-sampling-enabled="false"] [data-rabbit-mirror-r
 @media (prefers-contrast: more) {
     [data-rabbit-mirror-reference-note="true"] { opacity: 1; }
 }
+/* Virtualized TT owns item heights. Clearance is scrollport padding, never a
+   child of .mes, so measuring a floor does not reflow the mirror. */
+#chat[data-rm-tt-clearance="true"] {
+  padding-bottom: calc(var(--rm-chat-padding-base, 0px) + var(--rm-composer-clearance, 0px)) !important;
+}
 /* Only scroll clearance: keep each mirror's original palette and border. */
 #chat > .rabbit-mirror-composer-clearance,
 #chat > .mes > .rabbit-mirror-composer-clearance {

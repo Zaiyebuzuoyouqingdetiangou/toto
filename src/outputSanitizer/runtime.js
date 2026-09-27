@@ -1,6 +1,6 @@
 // Split from outputSanitizer.js — runtime.
 
-import { getSettings } from '../settings.js?rmv=1.6.16-test.14';
+import { getSettings } from '../settings.js?rmv=1.6.16-ttinput1';
 
 export const RUNTIME_VERSION = '1.6';
 
