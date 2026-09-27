@@ -1,7 +1,7 @@
-import { presentationModeFields } from './presentationMode.js?rmv=1.6.16-test.11';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.6.16-test.11';
+import { presentationModeFields } from './presentationMode.js?rmv=1.6.16-test.12';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.6.16-test.12';
 import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { getSettings } from './settings.js?rmv=1.6.16-test.11';
+import { getSettings } from './settings.js?rmv=1.6.16-test.12';
 import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.5.53-cn-boundary1';
 import {
     commitRabbitMirrorFollowBatch,
@@ -12,16 +12,16 @@ import {
     inspectRabbitMirrorGenerationSource,
     releaseRabbitMirrorFollowBatch,
     releaseRabbitMirrorFollowBatchAtMessage,
-} from './generationGuard.js?rmv=1.6.16-test.11';
+} from './generationGuard.js?rmv=1.6.16-test.12';
 import {
     clearSanitizedRabbitMirrorFaceProof,
     getSanitizedRabbitMirrorFaceProof,
     markSanitizedRabbitMirrorFace,
     rabbitMirrorMultifaceSourceHash,
-} from './multifaceProof.js?rmv=1.6.16-test.11';
+} from './multifaceProof.js?rmv=1.6.16-test.12';
 import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.5.53-cn-boundary1';
 import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
-import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.6.16-test.11';
+import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.6.16-test.12';
 import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.53-cn-boundary1';
 
 export const FOLLOW_MULTIFACE_COMMITTED_EVENT = 'rabbit-mirror:follow-multiface-committed';
@@ -353,6 +353,30 @@ function labelsForControls(root, controls = []) {
     return [...labels];
 }
 
+function parallelTriggerEntryCount(root) {
+    if (!root?.querySelectorAll) return 0;
+    let best = 0;
+    const trigger = 'label, button, summary, input[type="checkbox"], input[type="radio"], a[href^="#"]';
+    let scanned = 0;
+    for (const parent of root.querySelectorAll('*')) {
+        if (++scanned > 900) break;
+        const kids = [...(parent.children || [])];
+        if (kids.length < 3) continue;
+        const groups = new Map();
+        for (const kid of kids) {
+            const signature = `${kid.tagName}|${String(kid.getAttribute?.('class') || '').trim().split(/\s+/).sort().join('.')}`;
+            if (!groups.has(signature)) groups.set(signature, []);
+            groups.get(signature).push(kid);
+        }
+        for (const members of groups.values()) {
+            if (members.length < 3 || members.length > 6) continue;
+            const withTrigger = members.filter(member => member.matches?.(trigger) || member.tagName === 'DETAILS' || member.querySelector?.(trigger));
+            if (withTrigger.length === members.length) best = Math.max(best, members.length);
+        }
+    }
+    return best;
+}
+
 function detectInteractionFamily(root, html = '') {
     const text = String(html || '');
     const lower = text.toLowerCase();
@@ -404,6 +428,12 @@ function detectInteractionFamily(root, html = '') {
     }
     if (checkboxes.length >= 2 && checkboxes.length <= 4 && checkedRules >= 2 && labelsForControls(root, checkboxes).length >= 2 && sameLayerPanelSignal && tabLanguageSignal) {
         return interactionFamilyRecord('tabbed_radio_family', '并列标签／多按钮切页', 0.82, { controlCount: checkboxes.length, panelCount: checkedRules });
+    }
+    // 竖排同构条目：3–6 个同标签同 class 的兄弟块，每块各自带触发器（按钮、label、折叠、锚点）。
+    // 这是把切页骨架竖过来的写法，归入同一家族，让冷却能识别。
+    const parallelEntries = parallelTriggerEntryCount(root);
+    if (parallelEntries >= 3) {
+        return interactionFamilyRecord('tabbed_radio_family', '并列同构入口（横排切页／竖排条目）', 0.84, { controlCount: parallelEntries, panelCount: parallelEntries });
     }
     if (controls.length >= 3 && labelsForControls(root, controls).length >= 3 && checkedRules >= 2) {
         return interactionFamilyRecord('multi_control_panel_family', '多控件状态面板', 0.86, {
@@ -1302,7 +1332,7 @@ function templateSingleFollowRoot(template) {
 
 function loadFollowBatchSanitizer() {
     if (!followBatchSanitizerModulePromise) {
-        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.6.16-test.11').catch(error => {
+        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.6.16-test.12').catch(error => {
             followBatchSanitizerModulePromise = null;
             console.debug('[RabbitMirror] follow multiface sanitizer unavailable:', error);
             return null;

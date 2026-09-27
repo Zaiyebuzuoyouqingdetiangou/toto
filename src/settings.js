@@ -1,10 +1,10 @@
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.6.16-test.11';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.6.16-test.12';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
 import { independentGenerationTiming } from './independentTiming.js?rmv=1.5.53-timing1';
 import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.6';
 import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.6';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.6.16-test.11';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.6.16-test.12';
 
 export const MODULE_NAME = 'rabbit_mirror_theater';
 
@@ -207,7 +207,9 @@ export const defaultSettings = Object.freeze({
     rabbitMirrorPresentationModes: ['html', 'html', 'html', 'html', 'html'],
     longTextSource: 'blank',
     // 自动呈现时，长文本所占百分比；其余为 HTML。0 表示仍按抽中的类别呈现。
-    autoLongTextPercent: 40,
+    autoLongTextPercent: 0,
+    // 1.6.16 起默认每面 HTML、自动时长文本 0%；老用户升级时统一迁移一次。
+    presentationDefaultsMigration: 1,
     // builtin：兔子镜已有条目。worldbook：选中的世界书条目。both：按权重两边都抽。
     lotterySource: 'builtin',
     lotteryBuiltinPercent: 50,
@@ -266,6 +268,13 @@ export function getSettings() {
     // Resolve missing/corrupt timing from the old flags before defaults fill it.
     settings.independentGenerationTiming = independentGenerationTiming(settings);
     const legacyRescueWasEnabled = !!(settings.plainTextRescueMode || settings.codeBlockRescueMode || settings.interactionRescueMode);
+    // 一次性迁移：必须在默认值回填之前判断，否则缺失的标记会被默认值直接补上。
+    if (settings.presentationDefaultsMigration !== 1) {
+        settings.rabbitMirrorPresentationModes = ['html', 'html', 'html', 'html', 'html'];
+        settings.autoLongTextPercent = 0;
+        settings.presentationDefaultsMigration = 1;
+        try { saveSettingsDebounced(); } catch {}
+    }
     for (const [key, value] of Object.entries(defaultSettings)) {
         if (settings[key] === undefined) settings[key] = value;
     }
@@ -358,7 +367,7 @@ export function getSettings() {
     settings.rabbitMirrorPresentationModes = normalizePresentationModes(settings.rabbitMirrorPresentationModes);
     settings.longTextSource = ['blank', 'text', 'mixed'].includes(settings.longTextSource) ? settings.longTextSource : 'blank';
     const autoPercent = Number(settings.autoLongTextPercent);
-    settings.autoLongTextPercent = Number.isFinite(autoPercent) ? Math.max(0, Math.min(100, Math.round(autoPercent))) : 40;
+    settings.autoLongTextPercent = Number.isFinite(autoPercent) ? Math.max(0, Math.min(100, Math.round(autoPercent))) : 0;
     settings.lotterySource = ['builtin', 'worldbook', 'both'].includes(settings.lotterySource) ? settings.lotterySource : 'builtin';
     const builtinPercent = Number(settings.lotteryBuiltinPercent);
     settings.lotteryBuiltinPercent = Number.isFinite(builtinPercent) ? Math.max(0, Math.min(100, Math.round(builtinPercent))) : 50;
@@ -490,7 +499,7 @@ export function updateSettings(patch) {
     if (Object.prototype.hasOwnProperty.call(safePatch, 'longTextSource')) safePatch.longTextSource = ['blank', 'text', 'mixed'].includes(safePatch.longTextSource) ? safePatch.longTextSource : 'blank';
     if (Object.prototype.hasOwnProperty.call(safePatch, 'autoLongTextPercent')) {
         const autoPercent = Number(safePatch.autoLongTextPercent);
-        safePatch.autoLongTextPercent = Number.isFinite(autoPercent) ? Math.max(0, Math.min(100, Math.round(autoPercent))) : 40;
+        safePatch.autoLongTextPercent = Number.isFinite(autoPercent) ? Math.max(0, Math.min(100, Math.round(autoPercent))) : 0;
     }
     if (Object.prototype.hasOwnProperty.call(safePatch, 'lotterySource')) safePatch.lotterySource = ['builtin', 'worldbook', 'both'].includes(safePatch.lotterySource) ? safePatch.lotterySource : 'builtin';
     if (Object.prototype.hasOwnProperty.call(safePatch, 'lotteryBuiltinPercent')) {

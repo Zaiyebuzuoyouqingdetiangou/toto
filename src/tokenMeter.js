@@ -1,4 +1,4 @@
-import { presentationModeFields } from './presentationMode.js?rmv=1.6.16-test.11';
+import { presentationModeFields } from './presentationMode.js?rmv=1.6.16-test.12';
 const TOKEN_METER_STORAGE_KEY = 'rabbit_mirror_theater:token_meter:v1';
 const TOKEN_METER_SOURCE_STORAGE_KEYS = Object.freeze({
     follow: 'rabbit_mirror_theater:token_meter:follow:v1',
@@ -212,6 +212,31 @@ export function getLastRabbitMirrorTokenRecordForSource(generationSource = '') {
     return sourceForRecord(current) ? null : current;
 }
 
+// 按 Prompt 里的分节标题（顶格、以冒号结尾的短行，或顶格的【…】标题）统计每节字符数。
+// 只保存标题与长度，不保存任何正文内容。
+export function promptSectionBreakdown(text, limit = 14) {
+    const totals = new Map();
+    let label = '开头';
+    for (const line of String(text || '').split('\n')) {
+        const trimmed = line.trim();
+        const topLevel = !!trimmed && !/^\s/.test(line) && !trimmed.startsWith('-');
+        if (topLevel && /[:：]$/.test(trimmed) && trimmed.length <= 32) label = trimmed.replace(/[:：]$/, '');
+        else if (topLevel && /^【[^】]{1,24}】[:：]?$/.test(trimmed)) label = trimmed.replace(/[:：]$/, '');
+        else if (topLevel && /^<\/?[^>\s]{1,24}>$/.test(trimmed)) label = trimmed;
+        totals.set(label, (totals.get(label) || 0) + line.length + 1);
+    }
+    const sorted = [...totals.entries()].filter(([, chars]) => chars > 2).sort((a, b) => b[1] - a[1]);
+    const head = sorted.slice(0, limit).map(([name, chars]) => Object.freeze({ label: String(name).slice(0, 40), chars }));
+    const rest = sorted.slice(limit).reduce((sum, [, chars]) => sum + chars, 0);
+    return Object.freeze(rest ? [...head, Object.freeze({ label: '其他小节', chars: rest })] : head);
+}
+
+function safeSections(value) {
+    return Object.freeze((Array.isArray(value) ? value : []).slice(0, 24)
+        .map(item => Object.freeze({ label: String(item?.label || '').slice(0, 40), chars: safeInteger(item?.chars) }))
+        .filter(item => item.label && item.chars > 0));
+}
+
 export function recordRabbitMirrorInjection({
     prompt,
     basePrompt,
@@ -257,6 +282,7 @@ export function recordRabbitMirrorInjection({
         visualScenery: !!metadata.visualSceneryMode,
         tarotRules: !!metadata.tarotRules,
         touchTheaterRules: !!metadata.touchTheaterRules,
+        sections: promptSectionBreakdown(finalPrompt),
     });
 }
 
@@ -273,6 +299,8 @@ export function recordRabbitMirrorIndependentPrompt({
     filteredRabbitMirrorChars = 0,
     filteredContextTagChars = 0,
     metadata = {},
+    sections = [],
+    contextParts = {},
 } = {}) {
     const finalPrompt = String(extensionPrompt || '');
     const base = String(basePrompt || '');
@@ -321,6 +349,13 @@ export function recordRabbitMirrorIndependentPrompt({
         visualScenery: !!metadata.visualSceneryMode,
         tarotRules: !!metadata.tarotRules,
         touchTheaterRules: !!metadata.touchTheaterRules,
+        sections: safeSections(sections),
+        contextParts: Object.freeze({
+            transcript: safeInteger(contextParts?.transcript),
+            reference: safeInteger(contextParts?.reference),
+            worldInfo: safeInteger(contextParts?.worldInfo),
+            characterWorldBook: safeInteger(contextParts?.characterWorldBook),
+        }),
     });
 }
 

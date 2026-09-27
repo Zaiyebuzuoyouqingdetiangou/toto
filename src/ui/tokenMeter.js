@@ -1,8 +1,8 @@
 // Split from ui.js — Prompt meter and latest independent request diagnostic.
 
-import { getSettings } from '../settings.js?rmv=1.6.16-test.11';
-import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from '../tokenMeter.js?rmv=1.6.16-test.11';
-import { API_REQUEST_DIAGNOSTIC_EVENT, getLastIndependentApiRequestDiagnostic } from '../independentApi.js?rmv=1.6.16-test.11';
+import { getSettings } from '../settings.js?rmv=1.6.16-test.12';
+import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from '../tokenMeter.js?rmv=1.6.16-test.12';
+import { API_REQUEST_DIAGNOSTIC_EVENT, getLastIndependentApiRequestDiagnostic } from '../independentApi.js?rmv=1.6.16-test.12';
 import { escapeHtml } from './runtime.js?rmv=1.6';
 
 function independentApiProfileLabel(diagnostic) {
@@ -95,6 +95,38 @@ function tokenMeterNoInjectionLabel(reason) {
 }
 
 function renderTokenMeter(record = getLastRabbitMirrorTokenRecordForSource(getSettings().generationSource)) {
+    renderTokenMeterSummary(record);
+    renderTokenMeterSections(record);
+}
+
+// 分块明细：规则按分节标题统计，独立 API 另列上下文各部分。只有标题和字符数。
+function renderTokenMeterSections(record) {
+    const root = $('#rh_token_meter');
+    if (!root.length) return;
+    let box = root.find('[data-rh-token-meter-sections]');
+    if (!box.length) {
+        box = $('<div class="rabbit-mirror-token-meter-note" data-rh-token-meter-sections style="margin-top:6px;white-space:pre-line;line-height:1.55;"></div>');
+        root.append(box);
+    }
+    const lines = [];
+    const sections = Array.isArray(record?.sections) ? record.sections.filter(item => Number(item?.chars) > 0) : [];
+    if (sections.length) {
+        lines.push('按分块（字符，从多到少）：');
+        for (const item of [...sections].sort((a, b) => b.chars - a.chars)) lines.push(`· ${item.label}　${formatMeterNumber(item.chars)}`);
+    }
+    const parts = record?.contextParts || {};
+    const contextLines = [
+        parts.transcript ? `聊天正文 ${formatMeterNumber(parts.transcript)}` : '',
+        parts.reference ? `角色卡与 Persona ${formatMeterNumber(parts.reference)}` : '',
+        parts.worldInfo ? `已激活世界书 ${formatMeterNumber(parts.worldInfo)}` : '',
+        parts.characterWorldBook ? `角色主世界书 ${formatMeterNumber(parts.characterWorldBook)}` : '',
+    ].filter(Boolean);
+    if (contextLines.length) lines.push(`上下文（不是兔子镜规则）：${contextLines.join(' · ')}`);
+    box.text(lines.join('\n'));
+    box.toggle(lines.length > 0);
+}
+
+function renderTokenMeterSummary(record) {
     const root = $('#rh_token_meter');
     if (!root.length) return;
     const main = root.find('[data-rh-token-meter-main]');
