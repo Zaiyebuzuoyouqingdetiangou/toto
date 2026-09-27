@@ -1,9 +1,9 @@
 // Split from independentApi.js — geometry.
 
-import { presentationModeFields } from '../presentationMode.js?rmv=1.6.16-ttinput1';
-import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.6.16-ttinput1';
+import { presentationModeFields } from '../presentationMode.js?rmv=1.6.16-ttinput2';
+import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.6.16-ttinput2';
 import { isRabbitMirrorManagedChatSurface, getRabbitMirrorExternalPlacementParent } from '../hostCompatibility.js?rmv=1.6.3-ttchild1';
-import { getSettings } from '../settings.js?rmv=1.6.16-ttinput1';
+import { getSettings } from '../settings.js?rmv=1.6.16-ttinput2';
 import {
     cleanRabbitMirrorOutput,
     compactTotoBlock,
@@ -17,11 +17,11 @@ import {
     clearRabbitMirrorHorizontalClipArtifacts,
     sanitizeRabbitMirrorUntrustedTemplate,
     validateRabbitMirrorRecoveredStyleAssignments,
-} from '../outputSanitizer.js?rmv=1.6.16-ttinput1';
+} from '../outputSanitizer.js?rmv=1.6.16-ttinput2';
 import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.5.53-cn-boundary1';
 import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.5.53-cn-boundary1';
 import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
-import { markSanitizedRabbitMirrorFace } from '../multifaceProof.js?rmv=1.6.16-ttinput1';
+import { markSanitizedRabbitMirrorFace } from '../multifaceProof.js?rmv=1.6.16-ttinput2';
 import {
     EXTERNAL_SHELL_ATTR,
     FOLLOW_EXTERNAL_ANCHOR_ATTR,
@@ -37,7 +37,7 @@ import {
     hashText,
     independentMaintenanceLiveRepairLocked,
 } from './runtime.js?rmv=1.6';
-import { automaticDispatchAlreadyConsumed, automaticFailureStops, generationPolls, operationEpochForBase } from './flights.js?rmv=1.6.16-ttinput1';
+import { automaticDispatchAlreadyConsumed, automaticFailureStops, generationPolls, operationEpochForBase } from './flights.js?rmv=1.6.16-ttinput2';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INTERACTION_STATE_MIGRATION_KEY,
@@ -46,7 +46,7 @@ import {
     persistedOwnerForMessage,
     readStore,
     writeStore,
-} from './persistence.js?rmv=1.6.16-ttinput1';
+} from './persistence.js?rmv=1.6.16-ttinput2';
 import {
     chatKey,
     copyIndependentOwnerLineage,
@@ -63,7 +63,7 @@ import {
     savedRecordMatchesObserved,
     slotSearchKeys,
     swipeId,
-} from './connection.js?rmv=1.6.16-ttinput1';
+} from './connection.js?rmv=1.6.16-ttinput2';
 import {
     EXTERNAL_GEOMETRY_SETTLE_STEPS_MS,
     allExternalHosts,
@@ -97,7 +97,7 @@ import {
     wrapIndependentFace,
     wrapPreparedIndependentFace,
     writeGeometryDataset,
-} from './request.js?rmv=1.6.16-ttinput1';
+} from './request.js?rmv=1.6.16-ttinput2';
 import {
     activeIndependentFlightForBase,
     automaticCutoverVersionToken,
@@ -120,20 +120,20 @@ import {
     serializeExternalFaceDetails,
     showMultifaceFace,
     stripIndependentTransientLayoutArtifacts,
-} from './mount.js?rmv=1.6.16-ttinput1';
+} from './mount.js?rmv=1.6.16-ttinput2';
 import {
     automaticHostGenerationRenderMatches,
     hasExistingFollowRabbitMirror,
     queueMessageSync,
     suppressesAutomaticGeneration,
-} from './earlyBody.js?rmv=1.6.16-ttinput1';
+} from './earlyBody.js?rmv=1.6.16-ttinput2';
 import {
     automaticGenerationCutovers,
     persistedInteractionMigrationHandle,
     persistedInteractionMigrationIdle,
     writePersistedInteractionMigrationHandle,
     writePersistedInteractionMigrationIdle,
-} from './lifecycle.js?rmv=1.6.16-ttinput1';
+} from './lifecycle.js?rmv=1.6.16-ttinput2';
 
 let externalGeometryFrame = 0;
 
@@ -752,7 +752,24 @@ function runQueuedExternalHostGeometryRefresh(){
  else externalGeometryFrame=setTimeout(run,0);
 }
 
+let lastGeometryWidthGate=0;
+
+function cheapViewportWidth(){
+ const visual=Number(globalThis.visualViewport?.width)||0;
+ const inner=Number(globalThis.innerWidth)||0;
+ const width=visual||inner;
+ return Number.isFinite(width)&&width>0 ? Math.round(width) : 0;
+}
+
 function queueExternalHostGeometryRefresh(){
+ // iOS fires visualViewport/window resize while the caret moves. Reading
+ // documentElement.clientWidth here forces layout of the virtualized chat.
+ // Width that did not actually change must not even start the debounce timer.
+ if(globalThis.__TAURITAVERN__ || isRabbitMirrorManagedChatSurface()){
+  const width=cheapViewportWidth();
+  if(lastGeometryWidthGate && Math.abs(width-lastGeometryWidthGate)<8) return;
+  lastGeometryWidthGate=width;
+ }
  // resize is noisy on iOS/Android. Debounce first, then compare the composite
  // viewport-width signature once the event burst settles. This avoids root-width
  // reads on every visualViewport/window resize while still noticing vv/clientWidth
@@ -765,6 +782,7 @@ function queueExternalHostOrientationRefresh(){
  // Orientation is a genuine containing-width change. Force one settled refresh
  // even if Safari reports the old innerWidth during the first orientation event.
  externalGeometryLastSignature='';
+ lastGeometryWidthGate=0;
  if(externalGeometryTimer) globalThis.clearTimeout?.(externalGeometryTimer);
  externalGeometryTimer=setTimeout(runQueuedExternalHostGeometryRefresh,260);
 }
@@ -773,6 +791,7 @@ export function installExternalGeometryListeners(){
  if(externalGeometryListenersInstalled) return;
  externalGeometryListenersInstalled=true;
  externalGeometryLastSignature=externalViewportWidthSignature();
+ lastGeometryWidthGate=cheapViewportWidth();
  globalThis.addEventListener?.('resize',queueExternalHostGeometryRefresh,{passive:true});
  globalThis.addEventListener?.('orientationchange',queueExternalHostOrientationRefresh,{passive:true});
  globalThis.visualViewport?.addEventListener?.('resize',queueExternalHostGeometryRefresh,{passive:true});
@@ -795,6 +814,7 @@ export function removeExternalGeometryListeners(){
   externalGeometryFrame=0;
  }
  externalGeometryLastSignature='';
+ lastGeometryWidthGate=0;
 }
 
 
@@ -2038,7 +2058,7 @@ export function renderExternalErrorBody(details,text=''){
   // second retry intent after the first click has entered loading or READY.
   const host=details.closest?.(`[${SOURCE_ATTR}="true"]`);
   if(!retry.isConnected || !details.contains?.(retry) || host?.dataset?.rmState!=='error') return;
-  void import('../outputSanitizer/toolsChrome.js?rmv=1.6.16-ttinput1').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+  void import('../outputSanitizer/toolsChrome.js?rmv=1.6.16-ttinput2').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
  },true);
  const cat=document.createElement('button');
  cat.type='button';

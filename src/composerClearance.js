@@ -34,8 +34,20 @@ export function initRabbitMirrorComposerClearance() {
     if (!chat) return;
     let frame = 0, stopped = false, spacer = null, lastHeight = 0;
     let observedForm = null, footerOwner = null, footerHeight = 0;
-    let unsubscribeManaged = null, managedDebounce = 0;
-    const resize = typeof ResizeObserver === 'function' ? new ResizeObserver(entries => schedule(entries?.[0]?.target === chat ? 'resize-chat' : 'resize-form')) : null;
+    let unsubscribeManaged = null, managedDebounce = 0, lastInset = -1, lastFormHeight = -1;
+    const resize = typeof ResizeObserver === 'function' ? new ResizeObserver(entries => {
+        const entry = entries?.[0];
+        const target = entry?.target;
+        if (!target) return;
+        if (target === chat) {
+            if (!chatSurfaceOwnsChat()) schedule('resize-chat');
+            return;
+        }
+        const next = Math.round(entry.contentRect?.height || 0);
+        if (chatSurfaceOwnsChat() && lastFormHeight >= 0 && Math.abs(next - lastFormHeight) < 8) return;
+        lastFormHeight = next;
+        schedule('resize-form');
+    }) : null;
     const viewport = window.visualViewport;
     function chatSurfaceOwnsChat() {
         return !!globalThis.__TAURITAVERN__ || isRabbitMirrorManagedChatSurface();
@@ -86,7 +98,9 @@ export function initRabbitMirrorComposerClearance() {
         const formStyle = form && getComputedStyle(form);
         const shown = form && formStyle.display !== 'none' && formStyle.visibility !== 'hidden';
         const bottom = viewport ? viewport.offsetTop + viewport.height : window.innerHeight;
-        const height = hasMirror && shown ? composerOverlap(chat.getBoundingClientRect(), form.getBoundingClientRect(), bottom) : 0;
+        const rawHeight = hasMirror && shown ? composerOverlap(chat.getBoundingClientRect(), form.getBoundingClientRect(), bottom) : 0;
+        // 16px steps: iOS reports a slightly different overlap on each caret move.
+        const height = ownsChat && rawHeight > 0 ? Math.ceil(rawHeight / 16) * 16 : rawHeight;
         // Virtualized #chat measures every .mes. A spacer inside that row is a flex
         // item: its flex-basis steals width, the mirror reflows, and the virtualizer
         // remeasures the whole viewport. iOS fires visualViewport scroll on each
@@ -163,22 +177,38 @@ export function initRabbitMirrorComposerClearance() {
     function notifyChatLayoutChanged() {
         try { window.dispatchEvent(new Event('sillytavern:chat-layout-changed')); } catch {}
     }
+    function keyboardInset() {
+        const vv = window.visualViewport;
+        if (!vv) return 0;
+        return Math.max(0, Math.round(window.innerHeight - vv.height - (vv.offsetTop || 0)));
+    }
     function schedule(source) {
         const sourceName = typeof source === 'string' ? source : 'unknown';
-        recordTtSurface('clearance-schedule', { source: sourceName });
         if (stopped) return;
-        // Caret tracking scrolls the visual viewport on every iOS key. That must
-        // not measure or write. Keyboard open/close still arrives as resize.
-        if (sourceName === 'viewport-scroll' && chatSurfaceOwnsChat()) return;
-        if (chatSurfaceOwnsChat()) {
-            if (managedDebounce) return;
-            managedDebounce = setTimeout(() => {
-                managedDebounce = 0;
-                if (!stopped && !frame) frame = requestAnimationFrame(measure);
-            }, 180);
+        if (!chatSurfaceOwnsChat()) {
+            recordTtSurface('clearance-schedule', { source: sourceName });
+            if (!frame) frame = requestAnimationFrame(measure);
             return;
         }
-        if (!frame) frame = requestAnimationFrame(measure);
+        // Typing moves the visual viewport by a line or two and resizes it by a
+        // few pixels. Measuring then forces layout of every mounted mirror, and
+        // a padding write asks the virtualizer to remeasure them. Only a real
+        // keyboard open/close (or the composer itself growing) may do that.
+        if (sourceName === 'viewport-scroll' || sourceName === 'resize-chat' || sourceName === 'focusin' || sourceName === 'focusout') return;
+        const inset = keyboardInset();
+        const insetChanged = lastInset < 0 || Math.abs(inset - lastInset) >= 80;
+        if (!insetChanged && sourceName !== 'init' && sourceName !== 'resize-form' && sourceName !== 'external' && sourceName !== 'managed-mount' && sourceName !== 'managed-unmount') return;
+        recordTtSurface('clearance-schedule', { source: sourceName });
+        if (managedDebounce) clearTimeout(managedDebounce);
+        managedDebounce = setTimeout(() => {
+            managedDebounce = 0;
+            if (stopped) return;
+            const settled = keyboardInset();
+            const stillChanged = lastInset < 0 || Math.abs(settled - lastInset) >= 80;
+            if (!stillChanged && sourceName !== 'init' && sourceName !== 'resize-form' && sourceName !== 'external' && sourceName !== 'managed-mount' && sourceName !== 'managed-unmount') return;
+            lastInset = settled;
+            if (!frame) frame = requestAnimationFrame(measure);
+        }, 320);
     }
     const onManagedMount = context => {
         schedule('managed-mount');
@@ -201,7 +231,7 @@ export function initRabbitMirrorComposerClearance() {
     const onFocusIn = () => schedule('focusin');
     const onFocusOut = () => schedule('focusout');
     structure?.observe(chat, { childList: true });
-    resize?.observe(chat);
+    if (!chatSurfaceOwnsChat()) resize?.observe(chat);
     window.addEventListener('resize', onWindowResize, { passive: true });
     viewport?.addEventListener('resize', onViewportResize, { passive: true });
     viewport?.addEventListener('scroll', onViewportScroll, { passive: true });
