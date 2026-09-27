@@ -1,7 +1,7 @@
-import { presentationModeFields } from './presentationMode.js?rmv=1.6.16-test.13';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.6.16-test.13';
+import { presentationModeFields } from './presentationMode.js?rmv=1.6.16-test.14';
+import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.6.16-test.14';
 import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { getSettings } from './settings.js?rmv=1.6.16-test.13';
+import { getSettings } from './settings.js?rmv=1.6.16-test.14';
 import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.5.53-cn-boundary1';
 import {
     commitRabbitMirrorFollowBatch,
@@ -12,16 +12,16 @@ import {
     inspectRabbitMirrorGenerationSource,
     releaseRabbitMirrorFollowBatch,
     releaseRabbitMirrorFollowBatchAtMessage,
-} from './generationGuard.js?rmv=1.6.16-test.13';
+} from './generationGuard.js?rmv=1.6.16-test.14';
 import {
     clearSanitizedRabbitMirrorFaceProof,
     getSanitizedRabbitMirrorFaceProof,
     markSanitizedRabbitMirrorFace,
     rabbitMirrorMultifaceSourceHash,
-} from './multifaceProof.js?rmv=1.6.16-test.13';
+} from './multifaceProof.js?rmv=1.6.16-test.14';
 import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.5.53-cn-boundary1';
 import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
-import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.6.16-test.13';
+import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.6.16-test.14';
 import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.53-cn-boundary1';
 
 export const FOLLOW_MULTIFACE_COMMITTED_EVENT = 'rabbit-mirror:follow-multiface-committed';
@@ -377,6 +377,26 @@ function parallelTriggerEntryCount(root) {
     return best;
 }
 
+function homogeneousTriggerCount(root) {
+    if (!root?.querySelectorAll) return 0;
+    const groups = new Map();
+    let scanned = 0;
+    for (const node of root.querySelectorAll('label, summary, button, a[href^="#"]')) {
+        if (++scanned > 400) break;
+        const classes = String(node.getAttribute?.('class') || '').trim().split(/\s+/).filter(Boolean).sort().join('.');
+        // 无 class 时用去掉数字和旋转/位移的内联样式作指纹，避免只靠微调角度或位置逃过识别。
+        const style = classes ? '' : String(node.getAttribute?.('style') || '').split(';')
+            .map(part => part.replace(/\s+/g, '').toLowerCase())
+            .filter(part => part && !/^(?:transform|rotate|translate|top|left|right|bottom|margin[\w-]*|z-index|order)\s*:/.test(part))
+            .map(part => part.replace(/[\d.]+/g, '#'))
+            .sort().join(';');
+        if (!classes && !style) continue;
+        const signature = `${node.tagName}|${classes}|${style}`;
+        groups.set(signature, (groups.get(signature) || 0) + 1);
+    }
+    return Math.max(0, ...groups.values());
+}
+
 function detectInteractionFamily(root, html = '') {
     const text = String(html || '');
     const lower = text.toLowerCase();
@@ -384,6 +404,13 @@ function detectInteractionFamily(root, html = '') {
     const rotateFlip = /rotate[xy]\s*\(\s*(?:-?180|180deg)/i.test(text)
         && /backface-visibility|transform-style\s*:\s*preserve-3d|perspective\s*:/i.test(text);
     if (rotateFlip) return interactionFamilyRecord('flip_card_family', '翻面／双面切换', 0.96, { controlCount: count(/<input\b/gi, text), panelCount: 2 });
+
+    // 同款触发器 ≥3：不管排成横排、竖排、时间轴节点还是胶布条，也不管用 label、summary 还是锚点，
+    // 都是「N 个同样的入口各展开一段」的骨架。先于其他家族判断，免得被 details 等家族截走。
+    const homogeneousTriggers = homogeneousTriggerCount(root);
+    if (homogeneousTriggers >= 3) {
+        return interactionFamilyRecord('tabbed_radio_family', '并列同构入口（同款触发器 ≥3）', 0.9, { controlCount: homogeneousTriggers, panelCount: homogeneousTriggers });
+    }
 
     const controls = root?.querySelectorAll
         ? [...root.querySelectorAll('input[type="radio"], input[type="checkbox"]')]
@@ -1332,7 +1359,7 @@ function templateSingleFollowRoot(template) {
 
 function loadFollowBatchSanitizer() {
     if (!followBatchSanitizerModulePromise) {
-        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.6.16-test.13').catch(error => {
+        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.6.16-test.14').catch(error => {
             followBatchSanitizerModulePromise = null;
             console.debug('[RabbitMirror] follow multiface sanitizer unavailable:', error);
             return null;
