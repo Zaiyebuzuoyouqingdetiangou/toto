@@ -30,7 +30,7 @@ export const QUICK_START_GROUPS = [
         setting('followtags', '跟随模式标签隔离', '通过提示要求忽略指定标签；不同于独立 API 的实际过滤。', '#rh_follow_tag_isolation', 'worldinfo'),
     ] },
     { name: '偏好与文字', items: [
-        setting('behavior', '补充创作规则', '高级设置 → 独立 API：选择注入方式，编辑并保存；可清空、关闭或恢复默认，只影响独立 API。', '#rh_behavior_rule_text', 'worldinfo'),
+        setting('behavior', '破限词', '高级设置 → 独立 API：选择注入方式，编辑并保存；可清空、关闭或恢复默认，只影响独立 API。内容越长，每次请求越贵。', '#rh_behavior_rule_text', 'worldinfo'),
         setting('draw', '本轮抽签记录', '在 Prompt 估算里查看逐面记录；镜面的挨打猫里也可查看本轮抽签。', '#rh_token_meter'),
         setting('favorites', '收藏偏好', '提高收藏项目的随机抽取权重，不保证每轮必出。', '#rh_favorite_summary'),
         setting('theater-favorites', '兔子镜收藏夹', '回看已收藏成品，按角色卡分组；聊天里也可在工具菜单打开收藏夹。', '#rh_theater_favorite_summary'),

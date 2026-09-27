@@ -1,15 +1,16 @@
 // Split from independentApi.js — request.
 
-import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.6.16-test.12';
+import { resolveBehaviorRuleText } from '../behaviorRules.js?rmv=1.5.53-cn-boundary1';
+import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.6.16-test.13';
 import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.6.4-creation1';
-import { getSettings } from '../settings.js?rmv=1.6.16-test.12';
+import { getSettings } from '../settings.js?rmv=1.6.16-test.13';
 import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.6';
 import { independentGenerationTiming } from '../independentTiming.js?rmv=1.5.53-timing1';
 import {
     assertRabbitMirrorIndependentResponseBytes,
     assertRabbitMirrorIndependentResponseText,
     authorizeRabbitMirrorIndependentServiceRequest,
-} from '../independentSecurityGuard.js?rmv=1.6.16-test.12';
+} from '../independentSecurityGuard.js?rmv=1.6.16-test.13';
 import {
     parseIndependentAdvancedOptions,
     buildIndependentAdvancedCarrier,
@@ -22,20 +23,20 @@ import {
     prepareSelectedMemoryForPrompt,
     memoryRequestSettingsKey,
     assertMemoryRequestSettings,
-} from '../promptBuilder.js?rmv=1.6.16-test.12';
+} from '../promptBuilder.js?rmv=1.6.16-test.13';
 import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.5.53-text1';
 import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.5.53-cn-boundary1';
-import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.6.16-test.12';
+import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.6.16-test.13';
 import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from '../multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.16-test.12';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.16-test.13';
 import {
     updateLatestVisualSignature,
     parseVisualFamilySkeleton,
     describeVisualFamilyDimensions,
     markPendingBatchAttempt,
     releasePendingComboBatch,
-} from '../storage.js?rmv=1.6.16-test.12';
-import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.6.16-test.12';
+} from '../storage.js?rmv=1.6.16-test.13';
+import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.6.16-test.13';
 import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.5.53-cn-boundary1';
 import {
     EXTERNAL_SHELL_ATTR,
@@ -47,7 +48,7 @@ import {
     getContext,
     hashText,
 } from './runtime.js?rmv=1.6';
-import { operationEpochForBase } from './flights.js?rmv=1.6.16-test.12';
+import { operationEpochForBase } from './flights.js?rmv=1.6.16-test.13';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INDEPENDENT_MAX_APPROX_DEPTH,
@@ -62,7 +63,7 @@ import {
     normalizedConfiguredTemperature,
     readHistoryStore,
     readStore,
-} from './persistence.js?rmv=1.6.16-test.12';
+} from './persistence.js?rmv=1.6.16-test.13';
 import {
     API_PROFILE_ORDER,
     chatKey,
@@ -96,7 +97,7 @@ import {
     stageNextApiProfile,
     swipeId,
     validatedIndependentConnectionProfile,
-} from './connection.js?rmv=1.6.16-test.12';
+} from './connection.js?rmv=1.6.16-test.13';
 import {
     externalGeometryCycleSequence,
     externalGeometryLifecycleEpoch,
@@ -107,7 +108,7 @@ import {
     writeExternalGeometryCycleSequence,
     writeExternalGeometryLifecycleEpoch,
     writeExternalGeometryLifecycleReason,
-} from './geometry.js?rmv=1.6.16-test.12';
+} from './geometry.js?rmv=1.6.16-test.13';
 import {
     INDEPENDENT_REJECTED_PREVIEW_MAX_CHARS,
     INDEPENDENT_REJECTED_PREVIEW_MAX_ENTRIES,
@@ -122,8 +123,8 @@ import {
     writeExternalHostSyncIndex,
     writeIndependentRejectedPreviewChars,
     writeIndependentRejectedPreviewSequence,
-} from './mount.js?rmv=1.6.16-test.12';
-import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.6.16-test.12';
+} from './mount.js?rmv=1.6.16-test.13';
+import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.6.16-test.13';
 
 const NON_STREAM_PROFILE_BY_STREAM_PROFILE={
  chat_system_user_full:'chat_system_user_full_nostream',
@@ -1514,7 +1515,7 @@ export function wireIndependentRejectedFaceControls(host){
    independentRejectedFaceControlsWired.add(resay);
    resay.addEventListener('click',event=>{
     event.preventDefault(); event.stopPropagation();
-    void import('../outputSanitizer/toolsChrome.js?rmv=1.6.16-test.12').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+    void import('../outputSanitizer/toolsChrome.js?rmv=1.6.16-test.13').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
    },true);
   }
  }
@@ -1941,6 +1942,18 @@ ${independentUserTail}`;
  // 设置页原来的 Token 面板在独立 API 模式只显示“主 API 0 Token”，看不到实际上
  // 发送给独立模型的可编辑视觉层。这里只统计兔子镜扩展自己写入的规则，不把聊天、
  // 角色卡、世界书等上下文字符混进“兔子镜自身 Prompt”口径；上下文长度单独报告。
+ // 破限词整块计为一项：它是玩家自己贴的内容，按内部标签拆开会冒出一堆看不懂的小节。
+ const behaviorRuleText=resolveBehaviorRuleText(st).trim();
+ let behaviorRuleCharsInBase=0, rulesWithoutBehavior=basePrompt;
+ if(behaviorRuleText){
+  const headAt=basePrompt.indexOf('创作补充规则');
+  const bodyAt=headAt>=0?basePrompt.indexOf(behaviorRuleText,headAt):-1;
+  if(bodyAt>=0 && bodyAt-headAt<40){
+   const end=bodyAt+behaviorRuleText.length;
+   behaviorRuleCharsInBase=end-headAt;
+   rulesWithoutBehavior=basePrompt.slice(0,headAt)+basePrompt.slice(end);
+  }
+ }
  recordRabbitMirrorIndependentPrompt({
   extensionPrompt:[basePrompt,feedbackBlock,keepSelectionRewriteBlock,resayNoteBlock,independentBehaviorPatch,independentSystemRules,independentUserLead,executionLock,independentUserTail].filter(Boolean).join('\n\n'),
   basePrompt,
@@ -1954,7 +1967,8 @@ ${independentUserTail}`;
   totalRequestChars,
   metadata:details.metadata,
   sections:[
-   ...promptSectionBreakdown(basePrompt,16).map(item=>({label:`规则·${item.label}`,chars:item.chars})),
+   {label:'破限词（设置里的自定义内容，不是兔子镜规则）',chars:behaviorRuleCharsInBase},
+   ...promptSectionBreakdown(rulesWithoutBehavior,16).map(item=>({label:`规则·${item.label}`,chars:item.chars})),
    {label:'挨打猫反馈',chars:feedbackBlock.length},
    {label:'重说／点菜说明',chars:keepSelectionRewriteBlock.length+resayNoteBlock.length},
    {label:'独立生成要求（含近期视觉避让）',chars:independentSystemRules.length},
