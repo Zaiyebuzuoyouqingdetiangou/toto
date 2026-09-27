@@ -34,8 +34,20 @@ export function initRabbitMirrorComposerClearance() {
     if (!chat) return;
     let frame = 0, stopped = false, spacer = null, lastHeight = 0;
     let observedForm = null, footerOwner = null, footerHeight = 0;
-    let unsubscribeManaged = null;
-    const resize = typeof ResizeObserver === 'function' ? new ResizeObserver(entries => schedule(entries?.[0]?.target === chat ? 'resize-chat' : 'resize-form')) : null;
+    let unsubscribeManaged = null, managedDebounce = 0, lastInset = -1, lastFormHeight = -1;
+    const resize = typeof ResizeObserver === 'function' ? new ResizeObserver(entries => {
+        const entry = entries?.[0];
+        const target = entry?.target;
+        if (!target) return;
+        if (target === chat) {
+            if (!chatSurfaceOwnsChat()) schedule('resize-chat');
+            return;
+        }
+        const next = Math.round(entry.contentRect?.height || 0);
+        if (chatSurfaceOwnsChat() && lastFormHeight >= 0 && Math.abs(next - lastFormHeight) < 8) return;
+        lastFormHeight = next;
+        schedule('resize-form');
+    }) : null;
     const viewport = window.visualViewport;
     function chatSurfaceOwnsChat() {
         return !!globalThis.__TAURITAVERN__ || isRabbitMirrorManagedChatSurface();
@@ -86,7 +98,20 @@ export function initRabbitMirrorComposerClearance() {
         const formStyle = form && getComputedStyle(form);
         const shown = form && formStyle.display !== 'none' && formStyle.visibility !== 'hidden';
         const bottom = viewport ? viewport.offsetTop + viewport.height : window.innerHeight;
-        const height = hasMirror && shown ? composerOverlap(chat.getBoundingClientRect(), form.getBoundingClientRect(), bottom) : 0;
+        const rawHeight = hasMirror && shown ? composerOverlap(chat.getBoundingClientRect(), form.getBoundingClientRect(), bottom) : 0;
+        // 16px steps: iOS reports a slightly different overlap on each caret move.
+        const height = ownsChat && rawHeight > 0 ? Math.ceil(rawHeight / 16) * 16 : rawHeight;
+        // Virtualized #chat measures every .mes. A spacer inside that row is a flex
+        // item: its flex-basis steals width, the mirror reflows, and the virtualizer
+        // remeasures the whole viewport. iOS fires visualViewport scroll on each
+        // caret move, so that write became per-keystroke layout. Keep the gap as
+        // scrollport padding; item geometry stays untouched.
+        if (ownsChat) {
+            const previousHeight = lastHeight;
+            applyManagedClearance(height);
+            recordTtSurface('clearance-measure', { ms: ttStart ? performance.now() - ttStart : 0, managed: true, height, changed: height !== previousHeight });
+            return;
+        }
         if (!height) {
             if (spacer) {
                 recordTtSurface('layout-write', { what: 'spacer-remove', changed: lastHeight !== 0, prev: lastHeight });
@@ -108,23 +133,82 @@ export function initRabbitMirrorComposerClearance() {
             recordTtSurface('layout-write', { what: 'clearance-var', changed: true, prev: lastHeight, next: height });
             lastHeight = height;
         }
-        // TT owns all direct #chat children. Never append this spacer as a sibling
-        // of `.mes` — that is the "unknown direct child: div" virtualizer stop.
-        const spacerParent = ownsChat ? lastMountedOwner : chat;
-        if (ownsChat && !spacerParent) {
-            spacer.remove(); spacer = null; lastHeight = 0;
-            return;
-        }
-        if (spacerParent?.lastElementChild !== spacer) {
-            recordTtSurface('layout-write', { what: 'spacer-append', changed: true, managed: ownsChat, height });
-            spacerParent?.append(spacer);
+        // Unmanaged SillyTavern only. TT never reaches here: a spacer inside .mes
+        // changes the virtualizer's measured item size.
+        if (chat.lastElementChild !== spacer) {
+            recordTtSurface('layout-write', { what: 'spacer-append', changed: true, managed: false, height });
+            chat.append(spacer);
         }
         recordTtSurface('clearance-measure', { ms: ttStart ? performance.now() - ttStart : 0, managed: ownsChat, height, changed: height !== oldHeight });
         if (!ownsChat && nearEnd && height > oldHeight) chat.scrollTop = chat.scrollHeight;
     }
+    function clearManagedClearance() {
+        if (spacer?.isConnected) { spacer.remove(); spacer = null; }
+        chat.style.removeProperty('--rm-composer-clearance');
+        chat.style.removeProperty('--rm-chat-padding-base');
+        chat.removeAttribute('data-rm-tt-clearance');
+    }
+    function applyManagedClearance(height) {
+        if (spacer?.isConnected) { spacer.remove(); spacer = null; }
+        if (!height) {
+            if (chat.hasAttribute('data-rm-tt-clearance') || lastHeight) {
+                recordTtSurface('layout-write', { what: 'tt-padding-clear', changed: lastHeight !== 0, prev: lastHeight });
+                clearManagedClearance();
+                lastHeight = 0;
+                notifyChatLayoutChanged();
+            }
+            return;
+        }
+        if (!chat.hasAttribute('data-rm-tt-clearance')) {
+            // Read the theme padding once, before our own rule replaces it.
+            const base = getComputedStyle(chat).paddingBottom || '0px';
+            chat.style.setProperty('--rm-chat-padding-base', base);
+            chat.setAttribute('data-rm-tt-clearance', 'true');
+        }
+        if (height !== lastHeight) {
+            chat.style.setProperty('--rm-composer-clearance', `${height}px`);
+            recordTtSurface('layout-write', { what: 'tt-padding', changed: true, prev: lastHeight, next: height });
+            lastHeight = height;
+            // TT only re-reads #chat padding on this event. One shot per real
+            // clearance change, so the virtualizer's paddingEnd matches the CSS.
+            notifyChatLayoutChanged();
+        }
+    }
+    function notifyChatLayoutChanged() {
+        try { window.dispatchEvent(new Event('sillytavern:chat-layout-changed')); } catch {}
+    }
+    function keyboardInset() {
+        const vv = window.visualViewport;
+        if (!vv) return 0;
+        return Math.max(0, Math.round(window.innerHeight - vv.height - (vv.offsetTop || 0)));
+    }
     function schedule(source) {
-        recordTtSurface('clearance-schedule', { source: typeof source === 'string' ? source : 'unknown' });
-        if (!stopped && !frame) frame = requestAnimationFrame(measure);
+        const sourceName = typeof source === 'string' ? source : 'unknown';
+        if (stopped) return;
+        if (!chatSurfaceOwnsChat()) {
+            recordTtSurface('clearance-schedule', { source: sourceName });
+            if (!frame) frame = requestAnimationFrame(measure);
+            return;
+        }
+        // Typing moves the visual viewport by a line or two and resizes it by a
+        // few pixels. Measuring then forces layout of every mounted mirror, and
+        // a padding write asks the virtualizer to remeasure them. Only a real
+        // keyboard open/close (or the composer itself growing) may do that.
+        if (sourceName === 'viewport-scroll' || sourceName === 'resize-chat' || sourceName === 'focusin' || sourceName === 'focusout') return;
+        const inset = keyboardInset();
+        const insetChanged = lastInset < 0 || Math.abs(inset - lastInset) >= 80;
+        if (!insetChanged && sourceName !== 'init' && sourceName !== 'resize-form' && sourceName !== 'external' && sourceName !== 'managed-mount' && sourceName !== 'managed-unmount') return;
+        recordTtSurface('clearance-schedule', { source: sourceName });
+        if (managedDebounce) clearTimeout(managedDebounce);
+        managedDebounce = setTimeout(() => {
+            managedDebounce = 0;
+            if (stopped) return;
+            const settled = keyboardInset();
+            const stillChanged = lastInset < 0 || Math.abs(settled - lastInset) >= 80;
+            if (!stillChanged && sourceName !== 'init' && sourceName !== 'resize-form' && sourceName !== 'external' && sourceName !== 'managed-mount' && sourceName !== 'managed-unmount') return;
+            lastInset = settled;
+            if (!frame) frame = requestAnimationFrame(measure);
+        }, 320);
     }
     const onManagedMount = context => {
         schedule('managed-mount');
@@ -147,7 +231,7 @@ export function initRabbitMirrorComposerClearance() {
     const onFocusIn = () => schedule('focusin');
     const onFocusOut = () => schedule('focusout');
     structure?.observe(chat, { childList: true });
-    resize?.observe(chat);
+    if (!chatSurfaceOwnsChat()) resize?.observe(chat);
     window.addEventListener('resize', onWindowResize, { passive: true });
     viewport?.addEventListener('resize', onViewportResize, { passive: true });
     viewport?.addEventListener('scroll', onViewportScroll, { passive: true });
@@ -156,8 +240,10 @@ export function initRabbitMirrorComposerClearance() {
     active = { schedule, destroy() {
         stopped = true;
         unsubscribeManaged?.();
+        if (managedDebounce) { clearTimeout(managedDebounce); managedDebounce = 0; }
         if (frame) cancelAnimationFrame(frame);
         structure?.disconnect(); resize?.disconnect(); spacer?.remove();
+        clearManagedClearance();
         footerOwner?.style.removeProperty('--rm-external-footer-clearance');
         window.removeEventListener('resize', onWindowResize);
         viewport?.removeEventListener('resize', onViewportResize);
