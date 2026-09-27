@@ -1,15 +1,15 @@
 // Split from independentApi.js — request.
 
-import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.6.16-test.11';
+import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.6.16-test.12';
 import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.6.4-creation1';
-import { getSettings } from '../settings.js?rmv=1.6.16-test.11';
+import { getSettings } from '../settings.js?rmv=1.6.16-test.12';
 import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.6';
 import { independentGenerationTiming } from '../independentTiming.js?rmv=1.5.53-timing1';
 import {
     assertRabbitMirrorIndependentResponseBytes,
     assertRabbitMirrorIndependentResponseText,
     authorizeRabbitMirrorIndependentServiceRequest,
-} from '../independentSecurityGuard.js?rmv=1.6.16-test.11';
+} from '../independentSecurityGuard.js?rmv=1.6.16-test.12';
 import {
     parseIndependentAdvancedOptions,
     buildIndependentAdvancedCarrier,
@@ -22,20 +22,20 @@ import {
     prepareSelectedMemoryForPrompt,
     memoryRequestSettingsKey,
     assertMemoryRequestSettings,
-} from '../promptBuilder.js?rmv=1.6.16-test.11';
+} from '../promptBuilder.js?rmv=1.6.16-test.12';
 import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.5.53-text1';
 import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.5.53-cn-boundary1';
-import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.6.16-test.11';
+import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.6.16-test.12';
 import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from '../multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.16-test.11';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.16-test.12';
 import {
     updateLatestVisualSignature,
     parseVisualFamilySkeleton,
     describeVisualFamilyDimensions,
     markPendingBatchAttempt,
     releasePendingComboBatch,
-} from '../storage.js?rmv=1.6.16-test.11';
-import { recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.6.16-test.11';
+} from '../storage.js?rmv=1.6.16-test.12';
+import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.6.16-test.12';
 import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.5.53-cn-boundary1';
 import {
     EXTERNAL_SHELL_ATTR,
@@ -47,7 +47,7 @@ import {
     getContext,
     hashText,
 } from './runtime.js?rmv=1.6';
-import { operationEpochForBase } from './flights.js?rmv=1.6.16-test.11';
+import { operationEpochForBase } from './flights.js?rmv=1.6.16-test.12';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INDEPENDENT_MAX_APPROX_DEPTH,
@@ -62,7 +62,7 @@ import {
     normalizedConfiguredTemperature,
     readHistoryStore,
     readStore,
-} from './persistence.js?rmv=1.6.16-test.11';
+} from './persistence.js?rmv=1.6.16-test.12';
 import {
     API_PROFILE_ORDER,
     chatKey,
@@ -96,7 +96,7 @@ import {
     stageNextApiProfile,
     swipeId,
     validatedIndependentConnectionProfile,
-} from './connection.js?rmv=1.6.16-test.11';
+} from './connection.js?rmv=1.6.16-test.12';
 import {
     externalGeometryCycleSequence,
     externalGeometryLifecycleEpoch,
@@ -107,7 +107,7 @@ import {
     writeExternalGeometryCycleSequence,
     writeExternalGeometryLifecycleEpoch,
     writeExternalGeometryLifecycleReason,
-} from './geometry.js?rmv=1.6.16-test.11';
+} from './geometry.js?rmv=1.6.16-test.12';
 import {
     INDEPENDENT_REJECTED_PREVIEW_MAX_CHARS,
     INDEPENDENT_REJECTED_PREVIEW_MAX_ENTRIES,
@@ -122,8 +122,8 @@ import {
     writeExternalHostSyncIndex,
     writeIndependentRejectedPreviewChars,
     writeIndependentRejectedPreviewSequence,
-} from './mount.js?rmv=1.6.16-test.11';
-import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.6.16-test.11';
+} from './mount.js?rmv=1.6.16-test.12';
+import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.6.16-test.12';
 
 const NON_STREAM_PROFILE_BY_STREAM_PROFILE={
  chat_system_user_full:'chat_system_user_full_nostream',
@@ -1514,7 +1514,7 @@ export function wireIndependentRejectedFaceControls(host){
    independentRejectedFaceControlsWired.add(resay);
    resay.addEventListener('click',event=>{
     event.preventDefault(); event.stopPropagation();
-    void import('../outputSanitizer/toolsChrome.js?rmv=1.6.16-test.11').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+    void import('../outputSanitizer/toolsChrome.js?rmv=1.6.16-test.12').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
    },true);
   }
  }
@@ -1953,6 +1953,19 @@ ${independentUserTail}`;
   filteredContextTagChars:contextResult.filteredExcludedTagChars,
   totalRequestChars,
   metadata:details.metadata,
+  sections:[
+   ...promptSectionBreakdown(basePrompt,16).map(item=>({label:`规则·${item.label}`,chars:item.chars})),
+   {label:'挨打猫反馈',chars:feedbackBlock.length},
+   {label:'重说／点菜说明',chars:keepSelectionRewriteBlock.length+resayNoteBlock.length},
+   {label:'独立生成要求（含近期视觉避让）',chars:independentSystemRules.length},
+   {label:'近输出短锁',chars:executionLock.length},
+  ],
+  contextParts:{
+   transcript:contextResult.transcriptChars,
+   reference:contextResult.referenceContextChars,
+   worldInfo:contextResult.worldInfoContextChars,
+   characterWorldBook:characterWorldBookBlock.length,
+  },
  });
  const requestSelectionDiagnostic={
   chatKeyHash:hashText(chatKey(ctx)),
