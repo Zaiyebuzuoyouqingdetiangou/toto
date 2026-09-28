@@ -30,12 +30,16 @@ export function stripAtmosphereChoiceMarkup(html) {
 export function compactAtmosphereMenu(menu) {
     if (!Array.isArray(menu) || menu.length < 2) return null;
     const line = value => String(value || '').replace(/\s+/g, ' ').trim().slice(0, 140);
+    const full = value => String(value || '').replace(/\s+/g, ' ').trim().slice(0, 2000);
     const ids = values => (Array.isArray(values) ? values : []).filter(id => typeof id === 'string' && id).slice(0, 6);
+    const lines = (values, clean) => (Array.isArray(values) ? values : []).map(clean).filter(Boolean).slice(0, 6);
     return menu.slice(0, 4).map(ticket => ({
         themeIds: ids(ticket?.themeIds),
         formatIds: ids(ticket?.formatIds),
-        themeLines: (Array.isArray(ticket?.themeLines) ? ticket.themeLines : []).map(line).filter(Boolean).slice(0, 4),
-        formatLines: (Array.isArray(ticket?.formatLines) ? ticket.formatLines : []).map(line).filter(Boolean).slice(0, 4),
+        themeLines: lines(ticket?.themeLines, line),
+        formatLines: lines(ticket?.formatLines, line),
+        themeFullLines: lines(ticket?.themeFullLines, full),
+        formatFullLines: lines(ticket?.formatFullLines, full),
     }));
 }
 

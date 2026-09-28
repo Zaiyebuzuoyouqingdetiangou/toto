@@ -17,10 +17,10 @@ import {
     clearPendingComboBatch,
     createPendingComboBatchPlan,
     findPendingComboBatchPlan,
-} from './storage.js?rmv=1.62.2';
-import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.62.2';
+} from './storage.js?rmv=1.62.3';
+import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.62.3';
 import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.53-cn-boundary1';
-import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.2';
+import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.3';
 import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.5.53-text1';
 import {
     chooseExternalSource,
@@ -978,15 +978,26 @@ function cooledPool(pool, blockedIds) {
     return fresh.length ? fresh : (pool || []).filter(item => item?.id);
 }
 
+function atmosphereMenuLine(item, summaryLimit = 0) {
+    const summary = String(item?.summary || '').replace(/\s+/g, ' ').trim();
+    const body = summaryLimit > 0 ? summary.slice(0, summaryLimit) : summary;
+    const head = `${item?.id || ''} ${item?.title || '未命名'}`.trim();
+    return body ? `${head}：${body}` : head;
+}
+
 function compactAtmosphereTicket(themes, formats) {
-    const line = item => `${item.id} ${item.title || '未命名'}：${String(item.summary || '').replace(/\s+/g, ' ').slice(0, 80)}`;
+    const listed = items => (items || []).filter(item => item?.id);
+    const themesListed = listed(themes);
+    const formatsListed = listed(formats);
     return {
-        themeIds: (themes || []).map(item => item.id).filter(Boolean),
-        formatIds: (formats || []).map(item => item.id).filter(Boolean),
-        themeGroups: (themes || []).map(item => item.group).filter(Boolean),
-        formatGroups: (formats || []).map(item => item.group).filter(Boolean),
-        themeLines: (themes || []).map(line),
-        formatLines: (formats || []).map(line),
+        themeIds: themesListed.map(item => item.id),
+        formatIds: formatsListed.map(item => item.id),
+        themeGroups: themesListed.map(item => item.group).filter(Boolean),
+        formatGroups: formatsListed.map(item => item.group).filter(Boolean),
+        themeLines: themesListed.map(item => atmosphereMenuLine(item, 80)),
+        formatLines: formatsListed.map(item => atmosphereMenuLine(item, 80)),
+        themeFullLines: themesListed.map(item => atmosphereMenuLine(item)),
+        formatFullLines: formatsListed.map(item => atmosphereMenuLine(item)),
     };
 }
 
