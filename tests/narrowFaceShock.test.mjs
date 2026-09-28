@@ -196,6 +196,7 @@ function fixture({ placement = 'external', authoredStyle = 'padding: 12px;', bod
         sourceBlock(requestSource, 'const EXTERNAL_GEOMETRY_CYCLE_VERSION=', 'function textFromContent('),
         sourceBlock(requestSource, 'function clearExternalHostGeometryTokens(', null),
         sourceBlock(geometrySource, 'function applyMobileExternalHostGeometryPlan(', 'function scheduleExternalHostGeometryFinalConfirm('),
+        sourceBlock(geometrySource, 'function tauriSafeExternalParent(', 'export function placeExternalHost('),
         sourceBlock(geometrySource, 'function remeasureRabbitMirrorFaceGeometry(', 'function externalHostGeometrySettledForOwner('),
         sourceBlock(geometrySource, 'const INDEPENDENT_CONTENT_WIDTH_RESCUE_ATTR=', 'function applyMobileExternalHostGeometryPlan('),
         sourceBlock(geometrySource, 'function captureIndependentContentWidthBaseline(', null),

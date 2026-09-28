@@ -113,7 +113,8 @@ test('new artwork selections have real mother instructions and unique IDs', asyn
     const { PRESENTATION_FORMATS } = await f.runtime.load('data/structured/presentationIndex.js');
     const { resolveRawForItem } = await f.runtime.load('data/raw/rawSegmentLookup.js');
     assert.equal(new Set(PRESENTATION_FORMATS.map(item => item.id)).size, PRESENTATION_FORMATS.length);
-    for (const id of ['5.1.1.7', '2.1.7.2']) {
+    // 印象之匣 moved from 5.1.1.7 to 10.2.10 (visual experiments); legacy IDs are aliased.
+    for (const id of ['10.2.10', '2.1.7.2']) {
         const item = PRESENTATION_FORMATS.find(item => item.id === id);
         const raw = resolveRawForItem(item, 'presentation');
         assert.match(raw, /SVG/);

@@ -522,6 +522,79 @@ export async function openTheaterFavoriteViewer(id, hydrate) {
     return record;
 }
 
+// 二十四节气收集进度：只看收藏本身（标题优先），不读聊天或抽签记录。
+// 标题里直接写了节气名就算；标题没写但正文是节气题材（出现「节气」二字）时，取正文里最早出现的那个节气。
+// 「雨水」「清明」「白露」等也是普通词，所以不单凭正文里出现这个词就计入。
+export const SOLAR_TERMS = Object.freeze(['立春', '雨水', '惊蛰', '春分', '清明', '谷雨', '立夏', '小满', '芒种', '夏至', '小暑', '大暑',
+    '立秋', '处暑', '白露', '秋分', '寒露', '霜降', '立冬', '小雪', '大雪', '冬至', '小寒', '大寒']);
+
+function favoritePlainText(html = '') {
+    return String(html || '').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]*>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ');
+}
+
+export function solarTermOfFavorite(record) {
+    const title = String(record?.title || '');
+    const inTitle = SOLAR_TERMS.find(term => title.includes(term));
+    if (inTitle) return inTitle;
+    const text = favoritePlainText(record?.html).slice(0, 60000);
+    if (!text.includes('节气')) return '';
+    let best = '';
+    let bestAt = Infinity;
+    for (const term of SOLAR_TERMS) {
+        const at = text.indexOf(term);
+        if (at >= 0 && at < bestAt) { best = term; bestAt = at; }
+    }
+    return best;
+}
+
+export function solarTermProgress(rows) {
+    const collected = new Map();
+    for (const row of Array.isArray(rows) ? rows : []) {
+        const term = solarTermOfFavorite(row);
+        if (term && !collected.has(term)) collected.set(term, row);
+    }
+    return { total: SOLAR_TERMS.length, count: collected.size, collected };
+}
+
+function renderSolarTermProgress(rows, hydrate) {
+    const progress = solarTermProgress(rows);
+    const box = document.createElement('details');
+    box.setAttribute('data-rm-solar-terms', 'true');
+    box.style.cssText = 'margin:14px 0 0;padding:8px 10px;border:1px solid color-mix(in srgb,currentColor 12%,transparent);border-radius:10px;opacity:.9;';
+    const summary = document.createElement('summary');
+    summary.style.cssText = 'cursor:pointer;font-weight:600;font-size:11px;opacity:.8;';
+    summary.textContent = `二十四节气收集 ${progress.count}/${progress.total}`;
+    const bar = document.createElement('div');
+    bar.style.cssText = 'height:6px;margin:8px 0;border-radius:999px;background:color-mix(in srgb,currentColor 12%,transparent);overflow:hidden;';
+    const fill = document.createElement('div');
+    fill.style.cssText = `height:100%;width:${Math.round(progress.count / progress.total * 100)}%;background:currentColor;opacity:.55;border-radius:999px;`;
+    bar.append(fill);
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px;';
+    for (const term of SOLAR_TERMS) {
+        const row = progress.collected.get(term);
+        const cell = document.createElement(row ? 'button' : 'span');
+        cell.textContent = term;
+        cell.style.cssText = `display:flex;align-items:center;justify-content:center;min-height:32px;border-radius:8px;font:inherit;font-size:12px;border:1px solid ${row ? 'currentColor' : 'color-mix(in srgb,currentColor 14%,transparent)'};background:${row ? 'color-mix(in srgb,currentColor 12%,transparent)' : 'transparent'};color:inherit;opacity:${row ? 1 : .42};font-weight:${row ? 800 : 400};`;
+        if (row) {
+            cell.type = 'button';
+            cell.title = `打开「${theaterFavoriteDisplayTitle(row)}」`;
+            cell.style.cursor = 'pointer';
+            cell.addEventListener('click', () => {
+                void openTheaterFavoriteViewer(row.id, hydrate).catch(error => {
+                    globalThis.toastr?.warning?.(String(error?.message || '无法打开收藏。'));
+                });
+            });
+        }
+        grid.append(cell);
+    }
+    const hint = document.createElement('p');
+    hint.style.cssText = 'margin:8px 0 0;opacity:.62;font-size:11px;line-height:1.45;';
+    hint.textContent = '收藏标题里写了节气名，或节气题材的正文里提到它，就算收集到。点亮的格子可以直接打开那一面。';
+    box.append(summary, bar, grid, hint);
+    return box;
+}
+
 export async function openTheaterFavoriteLibrary(hydrate) {
     const rows = await listTheaterFavorites();
     closeTheaterFavoriteLibrary();
@@ -584,7 +657,8 @@ export async function openTheaterFavoriteLibrary(hydrate) {
             }
         }
     }
-    card.append(header, note, list);
+    // 收藏列表是主体；节气进度放在最下方，默认收起。
+    card.append(header, note, list, renderSolarTermProgress(rows, hydrate));
     bindOverlayDismiss(overlay, closeTheaterFavoriteLibrary);
     const keydown = event => {
         if (event.key !== 'Escape') return;

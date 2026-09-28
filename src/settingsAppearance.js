@@ -132,6 +132,9 @@ export function applyAppearanceTheme(target, appearance) {
     }
 }
 
+// Tool panels (mirrorToolMenu.js) pick this up without importing this module.
+globalThis.__rabbitMirrorApplyAppearanceTheme = applyAppearanceTheme;
+
 function hexLuminance(hex) {
     const channel = offset => {
         const value = parseInt(hex.slice(offset, offset + 2), 16) / 255;
