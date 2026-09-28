@@ -300,6 +300,7 @@ export async function saveTheaterFavorite(input) {
         const request = store.getAll();
         request.onsuccess = () => {
             const rows = (Array.isArray(request.result) ? request.result : []).map(normalizeRecord).filter(Boolean)
+                .filter(row => row.id !== record.id)
                 .sort((a, b) => Number(a.createdAt) - Number(b.createdAt));
             while (rows.length >= THEATER_FAVORITE_MAX_ITEMS) {
                 const oldest = rows.shift();
@@ -522,29 +523,59 @@ export async function openTheaterFavoriteViewer(id, hydrate) {
     return record;
 }
 
-// 二十四节气收集进度：只看收藏本身（标题优先），不读聊天或抽签记录。
-// 标题里直接写了节气名就算；标题没写但正文是节气题材（出现「节气」二字）时，取正文里最早出现的那个节气。
-// 「雨水」「清明」「白露」等也是普通词，所以不单凭正文里出现这个词就计入。
+// Only inspect the saved work, never chat history or the draw registry. Old
+// favorites are recognized on read without rewriting their HTML or identity.
 export const SOLAR_TERMS = Object.freeze(['立春', '雨水', '惊蛰', '春分', '清明', '谷雨', '立夏', '小满', '芒种', '夏至', '小暑', '大暑',
     '立秋', '处暑', '白露', '秋分', '寒露', '霜降', '立冬', '小雪', '大雪', '冬至', '小寒', '大寒']);
 
+const SOLAR_TERM_PATTERN = new RegExp(SOLAR_TERMS.join('|'), 'u');
+const ORDINARY_SOLAR_WORDS = new Set(['雨水', '清明', '白露', '寒露', '小雪', '大雪', '小满']);
+const SOLAR_TRADITIONAL_CHARS = { 驚: '惊', 蟄: '蛰', 穀: '谷', 滿: '满', 種: '种', 處: '处', 節: '节', 氣: '气', 歲: '岁', 時: '时' };
+
+function normalizeSolarText(value = '') {
+    return String(value).replace(/&#(x[\da-f]+|\d+);?/gi, (entity, code) => {
+        const number = code[0].toLowerCase() === 'x' ? parseInt(code.slice(1), 16) : Number(code);
+        return number > 0 && number <= 0x10ffff ? String.fromCodePoint(number) : ' ';
+    }).replace(/&(?:nbsp|ensp|emsp|thinsp|ZeroWidthSpace);/gi, ' ')
+        .replace(/&[a-z][a-z\d]+;/gi, ' ')
+        .replace(/[驚蟄穀滿種處節氣歲時]/gu, char => SOLAR_TRADITIONAL_CHARS[char])
+        .replace(/[\s\u200b-\u200d\ufeff]+/gu, '');
+}
+
+function firstSolarTerm(value) {
+    return normalizeSolarText(value).match(SOLAR_TERM_PATTERN)?.[0] || '';
+}
+
+// This is text extraction only: nothing is inserted into the live document.
 function favoritePlainText(html = '') {
-    return String(html || '').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]*>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ');
+    return String(html).replace(/<(?:[^>"']|"[^"]*"|'[^']*')*>/g, tag =>
+        /^<\/?(?:div|p|section|article|header|footer|h[1-6]|summary|li|dt|dd|td|th|tr|figcaption|caption|legend)\b/i.test(tag) ? '\n' : '');
 }
 
 export function solarTermOfFavorite(record) {
-    const title = String(record?.title || '');
-    const inTitle = SOLAR_TERMS.find(term => title.includes(term));
+    const inTitle = firstSolarTerm(record?.title || '');
     if (inTitle) return inTitle;
-    const text = favoritePlainText(record?.html).slice(0, 60000);
-    if (!text.includes('节气')) return '';
-    let best = '';
-    let bestAt = Infinity;
-    for (const term of SOLAR_TERMS) {
-        const at = text.indexOf(term);
-        if (at >= 0 && at < bestAt) { best = term; bestAt = at; }
+    const html = String(record?.html || '')
+        .replace(/<!--[\s\S]*?(?:-->|$)/g, '')
+        .replace(/<(style|script|template)\b[^>]*>[\s\S]*?(?:<\/\1\s*>|$)/gi, '');
+    // A named heading or standalone label is direct evidence, including split
+    // glyphs, vertical typesetting and traditional Chinese in existing works.
+    for (const heading of html.matchAll(/<(h[1-6]|summary|header|figcaption|caption|legend|dt)\b[^>]*>([\s\S]*?)<\/\1\s*>/gi)) {
+        const term = firstSolarTerm(favoritePlainText(heading[2]));
+        if (term) return term;
     }
-    return best;
+    const text = favoritePlainText(html);
+    for (const line of text.split('\n')) {
+        const label = normalizeSolarText(line).replace(/^[\p{P}\p{S}]+|[\p{P}\p{S}]+$/gu, '');
+        if (SOLAR_TERMS.includes(label)) return label;
+    }
+    const normalized = normalizeSolarText(text);
+    if (/节气|岁时|物候|初候|二候|三候/.test(normalized)) return firstSolarTerm(normalized);
+    // Bare weather words and character names are not enough by themselves.
+    for (const match of normalized.matchAll(new RegExp(SOLAR_TERM_PATTERN.source, 'gu'))) {
+        if (!ORDINARY_SOLAR_WORDS.has(match[0])) return match[0];
+    }
+    return '';
 }
 
 export function solarTermProgress(rows) {
@@ -590,7 +621,7 @@ function renderSolarTermProgress(rows, hydrate) {
     }
     const hint = document.createElement('p');
     hint.style.cssText = 'margin:8px 0 0;opacity:.62;font-size:11px;line-height:1.45;';
-    hint.textContent = '收藏标题里写了节气名，或节气题材的正文里提到它，就算收集到。点亮的格子可以直接打开那一面。';
+    hint.textContent = '按收藏的标题和正文识别节气，标题不必写节气名。点亮的格子可以直接打开那一面。';
     box.append(summary, bar, grid, hint);
     return box;
 }

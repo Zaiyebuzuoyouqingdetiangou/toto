@@ -1,17 +1,17 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.5.53-cn-boundary1';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.5.53-cn-boundary1';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.5.53-cn-boundary1';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.5.53-text1';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.5.53-cn-boundary1';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.4';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.62.4';
-import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.4';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.5.53-cn-boundary1';
-export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.5.53-cn-boundary1';
-import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.5.53-cn-boundary1';
-import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.5.53-cn-boundary1';
-import { isTextPresentation, presentationModeFields } from './presentationMode.js?rmv=1.62.4';
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.4';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.5-visual-solar1';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.5-visual-solar1';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.5-visual-solar1';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.5-visual-solar1';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.5-visual-solar1';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.5-visual-solar1';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.62.5-visual-solar1';
+import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.5-visual-solar1';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.5-visual-solar1';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.5-visual-solar1';
+import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.5-visual-solar1';
+import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.5-visual-solar1';
+import { isTextPresentation, presentationModeFields } from './presentationMode.js?rmv=1.62.5-visual-solar1';
+import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.5-visual-solar1';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -602,14 +602,7 @@ function legacyPresentationEmbodimentRule() {
   - 文字的数量、密度和排版由展现形式决定；文字媒介可以以正文和版式作为主要视觉本体。
   - 仅替换标题和正文就能直接用于其他题材的通用界面，属于不合格输出。
 
-色彩组织:
-  - 配色必须形成明确的主次关系，由主要色彩关系统领画面，再用有限的辅助色与局部强调色建立层次；不得让所有颜色平均分布或同时抢眼。
-  - 不得为了避免重复或追求独特强行改变色相，也不得加入不属于媒介的霓虹、光晕或高饱和强调色。
-  - 主背景、承载面、正文、装饰与交互状态须通过明度、饱和度、冷暖、透明度和材质差异清晰分层，并保持相互呼应。
-  - 强调色只用于真正需要聚焦的主体、关系节点或状态变化，数量与面积必须克制。
-  - 材质色、环境光与阴影必须共同作用，不能只给不同区域机械填充不同色块。
-  - 视觉质感应由比例、留白、层次、材质、光影与色彩关系共同成立，不得依靠堆叠渐变、发光、阴影或高饱和色制造表面效果。
-  - 当展现形式适合单色、低彩度或有限色域时，可以保持克制，但仍须依靠明度、纹理、材质与空间层次形成完整视觉。`;
+${DEFAULT_VISUAL_COLOR_RULES}`;
 }
 
 function globalCompletionFloorRule(compact = false) {
