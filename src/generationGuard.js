@@ -1,12 +1,12 @@
-import { presentationModeFields } from './presentationMode.js?rmv=1.62.1';
+import { presentationModeFields } from './presentationMode.js?rmv=1.62.2';
 import {
     commitPendingComboBatch,
     getCurrentChatKey,
     releasePendingComboBatch,
-} from './storage.js?rmv=1.62.1';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.62.1';
+} from './storage.js?rmv=1.62.2';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.62.2';
 import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, multifaceRecoveryWithinRawBudgets } from './multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
-import { atmosphereChoicesFromFaces } from './atmosphereChoice.js?rmv=1.62.1';
+import { atmosphereChoicesFromFaces, compactAtmosphereMenu } from './atmosphereChoice.js?rmv=1.62.2';
 
 const SNAPSHOT_STORAGE_KEY = 'rabbit_mirror_theater:generation_snapshots:v1';
 const ACTIVE_ATTEMPT_STORAGE_KEY = 'rabbit_mirror_theater:active_generation_attempt:v1';
@@ -292,6 +292,8 @@ function copySelectionMetadata(metadata = null) {
     for (const key of ['customThemeCount', 'customFormatCount', 'customRequestCount']) {
         if (Number(metadata[key]) > 0) copy[key] = Math.min(1000, Math.max(1, Math.floor(Number(metadata[key]))));
     }
+    const atmosphereMenu = compactAtmosphereMenu(metadata.atmosphereMenu);
+    if (atmosphereMenu) copy.atmosphereMenu = atmosphereMenu;
     if (Array.isArray(metadata.faces)) {
         copy.faces = metadata.faces.slice(0, 5).map(face => ({
             faceIndex: Number(face?.faceIndex),

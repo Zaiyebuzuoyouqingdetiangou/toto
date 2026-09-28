@@ -3,15 +3,15 @@ import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.5.53
 import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.5.53-cn-boundary1';
 import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.5.53-text1';
 import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.5.53-cn-boundary1';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.1';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.62.1';
-import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.1';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.2';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.62.2';
+import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.2';
 import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.5.53-cn-boundary1';
 export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.5.53-cn-boundary1';
 import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.5.53-cn-boundary1';
 import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.5.53-cn-boundary1';
-import { isTextPresentation, presentationModeFields } from './presentationMode.js?rmv=1.62.1';
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.1';
+import { isTextPresentation, presentationModeFields } from './presentationMode.js?rmv=1.62.2';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.2';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -854,7 +854,7 @@ function atmosphereMenuInstruction(combo) {
         const formats = (ticket.formatLines || []).join('；') || '无';
         return `签 ${index + 1}：主题 ${themes}。展现形式 ${formats}。`;
     });
-    return `按正文挑签：这一面有 ${menu.length} 张已经抽好的签，主题和展现形式互不重复。先按最新正文氛围选出最合适的一张。在该面 <toto> 内最先输出 <rm-ticket>序号</rm-ticket>，序号从 1 到 ${menu.length}。然后只按该签写作，不得混用其他签，也不得因为材料先后默认选签 1。\n${lines.join('\n')}`;
+    return `按正文挑签：这一面有 ${menu.length} 张已经抽好的签，主题和展现形式互不重复。先按最新正文氛围选出最合适的一张。在该面 <toto> 内最先输出 <rm-think>两三句，不超过120字：最新正文是什么氛围，为什么选这一张，另外几张为什么不选。</rm-think><rm-ticket>序号</rm-ticket>，序号从 1 到 ${menu.length}。这两段只用于挑签，不是小剧场正文。然后只按该签写作，不得混用其他签，也不得因为材料先后默认选签 1。\n${lines.join('\n')}`;
 }
 
 function buildIndependentFinalExecutionLock({ combo, settings, directive }) {

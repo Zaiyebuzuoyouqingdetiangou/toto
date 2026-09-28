@@ -1,16 +1,16 @@
 // Split from independentApi.js — request.
 
 import { resolveBehaviorRuleText } from '../behaviorRules.js?rmv=1.5.53-cn-boundary1';
-import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.62.1';
+import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.62.2';
 import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.6.4-creation1';
-import { getSettings } from '../settings.js?rmv=1.62.1';
+import { getSettings } from '../settings.js?rmv=1.62.2';
 import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.6';
 import { independentGenerationTiming } from '../independentTiming.js?rmv=1.5.53-timing1';
 import {
     assertRabbitMirrorIndependentResponseBytes,
     assertRabbitMirrorIndependentResponseText,
     authorizeRabbitMirrorIndependentServiceRequest,
-} from '../independentSecurityGuard.js?rmv=1.62.1';
+} from '../independentSecurityGuard.js?rmv=1.62.2';
 import {
     parseIndependentAdvancedOptions,
     buildIndependentAdvancedCarrier,
@@ -24,14 +24,14 @@ import {
     prepareSelectedMemoryForPrompt,
     memoryRequestSettingsKey,
     assertMemoryRequestSettings,
-} from '../promptBuilder.js?rmv=1.62.1';
+} from '../promptBuilder.js?rmv=1.62.2';
 import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.5.53-text1';
 import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.5.53-cn-boundary1';
-import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.62.1';
+import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.62.2';
 import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText, createMultifaceFailureSlot } from '../multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
-import { parseAtmosphereTicketIndex, stripAtmosphereTicketTag, atmosphereChoicesFromFaces } from '../atmosphereChoice.js?rmv=1.62.1';
+import { applyAtmosphereFields, atmosphereNotesFromHtml, stripAtmosphereChoiceMarkup } from '../atmosphereChoice.js?rmv=1.62.2';
 import { isLocalPreflightFailure, isQuotaInsufficientFailure, configuredAutomaticRerollMax, automaticRerollEnabled } from '../automaticReroll.js?rmv=1.6';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.62.1';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.62.2';
 import {
     updateLatestVisualSignature,
     parseVisualFamilySkeleton,
@@ -39,8 +39,8 @@ import {
     markPendingBatchAttempt,
     releasePendingComboBatch,
     retargetPendingAtmosphereTicket,
-} from '../storage.js?rmv=1.62.1';
-import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.62.1';
+} from '../storage.js?rmv=1.62.2';
+import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.62.2';
 import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.5.53-cn-boundary1';
 import {
     EXTERNAL_SHELL_ATTR,
@@ -52,7 +52,7 @@ import {
     getContext,
     hashText,
 } from './runtime.js?rmv=1.6';
-import { operationEpochForBase } from './flights.js?rmv=1.62.1';
+import { operationEpochForBase } from './flights.js?rmv=1.62.2';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INDEPENDENT_MAX_APPROX_DEPTH,
@@ -67,7 +67,7 @@ import {
     normalizedConfiguredTemperature,
     readHistoryStore,
     readStore,
-} from './persistence.js?rmv=1.62.1';
+} from './persistence.js?rmv=1.62.2';
 import {
     API_PROFILE_ORDER,
     chatKey,
@@ -101,7 +101,7 @@ import {
     stageNextApiProfile,
     swipeId,
     validatedIndependentConnectionProfile,
-} from './connection.js?rmv=1.62.1';
+} from './connection.js?rmv=1.62.2';
 import {
     externalGeometryCycleSequence,
     externalGeometryLifecycleEpoch,
@@ -112,7 +112,7 @@ import {
     writeExternalGeometryCycleSequence,
     writeExternalGeometryLifecycleEpoch,
     writeExternalGeometryLifecycleReason,
-} from './geometry.js?rmv=1.62.1';
+} from './geometry.js?rmv=1.62.2';
 import {
     INDEPENDENT_REJECTED_PREVIEW_MAX_CHARS,
     INDEPENDENT_REJECTED_PREVIEW_MAX_ENTRIES,
@@ -127,8 +127,8 @@ import {
     writeExternalHostSyncIndex,
     writeIndependentRejectedPreviewChars,
     writeIndependentRejectedPreviewSequence,
-} from './mount.js?rmv=1.62.1';
-import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.62.1';
+} from './mount.js?rmv=1.62.2';
+import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.62.2';
 
 const NON_STREAM_PROFILE_BY_STREAM_PROFILE={
  chat_system_user_full:'chat_system_user_full_nostream',
@@ -1519,7 +1519,7 @@ export function wireIndependentRejectedFaceControls(host){
    independentRejectedFaceControlsWired.add(resay);
    resay.addEventListener('click',event=>{
     event.preventDefault(); event.stopPropagation();
-    void import('../outputSanitizer/toolsChrome.js?rmv=1.62.1').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+    void import('../outputSanitizer/toolsChrome.js?rmv=1.62.2').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
    },true);
   }
  }
@@ -1741,26 +1741,30 @@ function bindIndependentPromptBatch(owner,plan=null){
  assertIndependentPromptOwner(owner);
 }
 
-function settleAtmosphereSingle(html, metadata) {
+function settleAtmosphereSingle(note, metadata, diagnostic) {
  const menu = metadata?.atmosphereMenu;
- if (!Array.isArray(menu) || menu.length < 2) return html;
- const choice = parseAtmosphereTicketIndex(html, menu.length);
- if (choice == null) throw Object.assign(new Error('这一面没有选中菜单里的签。'), { code: 'ATMOSPHERE_TICKET_MISSING' });
- retargetPendingAtmosphereTicket(choice);
- return stripAtmosphereTicketTag(html);
+ if (!Array.isArray(menu) || menu.length < 2) return;
+ if (note?.choice == null) throw Object.assign(new Error('这一面没有选中菜单里的签。'), { code: 'ATMOSPHERE_TICKET_MISSING' });
+ retargetPendingAtmosphereTicket(note.choice);
+ applyAtmosphereFields(diagnostic, menu, note);
 }
 
-function settleAtmosphereMultiface(prepared, metadata) {
- const menus = (Array.isArray(metadata?.faces) && metadata.faces.length ? metadata.faces : [metadata]).map(face => face?.atmosphereMenu || null);
+function settleAtmosphereMultiface(prepared, metadata, notes) {
+ const faces = Array.isArray(metadata?.faces) && metadata.faces.length ? metadata.faces : [metadata];
+ const menus = faces.map(face => face?.atmosphereMenu || null);
  if (!menus.some(menu => Array.isArray(menu) && menu.length > 1)) return prepared;
  const parsed = parseMultifaceOutput(prepared.html, { expectedCount: menus.length });
- const choices = atmosphereChoicesFromFaces(parsed.faces || [], menus);
- let html = String(prepared.html || '');
+ const choices = menus.map((menu, index) => (Array.isArray(menu) && menu.length > 1 ? notes?.[index]?.choice ?? null : null));
+ let html = stripAtmosphereChoiceMarkup(prepared.html || '');
  const failedFaces = Array.isArray(prepared.failedFaces) ? [...prepared.failedFaces] : [];
  const faceScans = Array.isArray(prepared.faceScans) ? [...prepared.faceScans] : null;
  choices.forEach((choice, index) => {
   const menu = menus[index];
-  if (!Array.isArray(menu) || menu.length < 2 || choice != null) return;
+  if (!Array.isArray(menu) || menu.length < 2) return;
+  if (choice != null) {
+   applyAtmosphereFields(faces[index], menu, notes[index]);
+   return;
+  }
   if (failedFaces.some(face => face?.faceIndex === index)) return;
   const slot = createMultifaceFailureSlot(index, 'atmosphere-ticket-missing');
   const face = (parsed.faces || []).find(item => item.index === index);
@@ -1770,7 +1774,7 @@ function settleAtmosphereMultiface(prepared, metadata) {
   if (faceScans) faceScans[index] = null;
  });
  const completedFaces = menus.length - failedFaces.length;
- return { ...prepared, html: stripAtmosphereTicketTag(html), chosenTickets: choices, failedFaces, ...(faceScans ? { faceScans } : {}), completedFaces: Math.max(0, completedFaces) };
+ return { ...prepared, html, chosenTickets: choices, failedFaces, ...(faceScans ? { faceScans } : {}), completedFaces: Math.max(0, completedFaces) };
 }
 
 function wrapSerialFace(html, faceIndex) {
@@ -1806,12 +1810,12 @@ async function runIndependentSerialFaces({ ctx, index, msg, signal, requestOptio
  const choices = Array(faceCount).fill(null);
  const acceptFace = (faceIndex, faceResult) => {
   const menu = selections[faceIndex]?.combo?.atmosphereMenu;
-  let html = String(faceResult?.html || '');
+  let html = stripAtmosphereChoiceMarkup(faceResult?.html || '');
   if (Array.isArray(menu) && menu.length > 1) {
-   const choice = parseAtmosphereTicketIndex(html, menu.length);
-   if (choice == null) throw Object.assign(new Error(`第 ${faceIndex + 1} 面没有选中菜单里的签。`), { code: 'ATMOSPHERE_TICKET_MISSING' });
-   choices[faceIndex] = choice;
-   html = stripAtmosphereTicketTag(html);
+   const note = faceResult?.atmosphereNote || { choice: null, reason: '' };
+   if (note.choice == null) throw Object.assign(new Error(`第 ${faceIndex + 1} 面没有选中菜单里的签。`), { code: 'ATMOSPHERE_TICKET_MISSING' });
+   choices[faceIndex] = note.choice;
+   applyAtmosphereFields(details.metadata?.faces?.[faceIndex], menu, note);
   }
   if (!html) throw new Error(`第 ${faceIndex + 1} 面没有返回可显示的内容。`);
   htmlByFace[faceIndex] = wrapSerialFace(html, faceIndex);
@@ -2190,9 +2194,14 @@ ${independentUserTail}`;
    throw new Error(`独立 API 调用成功，但未解析到正文（返回字段：${keys||'无'}；参数模式：${profile}）`);
  }
    assertIndependentMarkupComplexityWithDiagnostic(raw,'raw',requestDiagnostic);
+ const atmosphereMenus=faceCount>1
+  ? (Array.isArray(details.metadata?.faces)?details.metadata.faces:[]).map(face=>face?.atmosphereMenu||null)
+  : [details.metadata?.atmosphereMenu||null];
+ const atmosphereNotes=atmosphereNotesFromHtml(raw,atmosphereMenus);
+ const mirrorSource=stripAtmosphereChoiceMarkup(raw);
  if(faceCount>1){
   let prepared;
-  try{ prepared=prepareIndependentMultifaceResult(raw,details.metadata,requestDiagnostic,requestOptions); }
+  try{ prepared=prepareIndependentMultifaceResult(mirrorSource,details.metadata,requestDiagnostic,requestOptions); }
   catch(error){
    const detail=error?.rabbitMirrorMultifaceDiagnostic&&typeof error.rabbitMirrorMultifaceDiagnostic==='object'?error.rabbitMirrorMultifaceDiagnostic:{};
    const semantic=independentMultifaceFailureSemantic(error);
@@ -2201,16 +2210,16 @@ ${independentUserTail}`;
    throw error;
   }
   rememberApiProfile(st,profile);
-  const settled=settleAtmosphereMultiface(prepared,details.metadata);
+  const settled=settleAtmosphereMultiface(prepared,details.metadata,atmosphereNotes);
   const batchDiagnostic=settled.failedFaces?.length?{...requestDiagnostic,partial:true,completedFaces:settled.completedFaces,failedFaces:settled.failedFaces}:requestDiagnostic;
   if(settled.failedFaces?.length) publishIndependentApiRequestDiagnostic(batchDiagnostic);
   return {...settled,feedbackId:activeFeedback?.id||'',feedbackPrompt,requestDiagnostic:batchDiagnostic,executionLockChars:executionLock.length,batchPlan:details.batchPlan};
  }
- const inner=extractMirrorInner(raw);
+ const inner=extractMirrorInner(mirrorSource);
  if(!inner){
    const metaFaces=Array.isArray(details.metadata?.faces)&&details.metadata.faces.length?details.metadata.faces:[details.metadata];
    if(metaFaces.length===1 && metaFaces[0]?.requestedPresentationMode==='longtext'){
-    const prose=salvageLongTextProse(raw);
+    const prose=salvageLongTextProse(mirrorSource);
     if(prose){
      const preparedHtml=prepareIndependentReadyHtml(salvagedLongTextFace(prose,0).inner);
      if(preparedHtml && independentMirrorBodyEvidence(preparedHtml)){
@@ -2257,10 +2266,10 @@ ${independentUserTail}`;
  // parameter profile.
  rememberApiProfile(st,profile);
  if(requestOptions.serialChild===true){
-  return {html:preparedHtml,feedbackId:activeFeedback?.id||'',feedbackPrompt,requestDiagnostic,executionLockChars:executionLock.length};
+  return {html:preparedHtml,atmosphereNote:atmosphereNotes[0]||{choice:null,reason:''},feedbackId:activeFeedback?.id||'',feedbackPrompt,requestDiagnostic,executionLockChars:executionLock.length};
  }
- const atmosphereHtml=settleAtmosphereSingle(preparedHtml,details.metadata);
- return {html:atmosphereHtml,feedbackId:activeFeedback?.id||'',feedbackPrompt,requestDiagnostic,executionLockChars:executionLock.length};
+ settleAtmosphereSingle(atmosphereNotes[0],details.metadata,requestDiagnostic);
+ return {html:preparedHtml,feedbackId:activeFeedback?.id||'',feedbackPrompt,requestDiagnostic,executionLockChars:executionLock.length};
 }
 
 export function externalOwnerMesid(el){
