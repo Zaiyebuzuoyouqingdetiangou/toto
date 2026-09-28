@@ -1,17 +1,17 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.5.53-cn-boundary1';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.5.53-cn-boundary1';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.5.53-cn-boundary1';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.5.53-text1';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.5.53-cn-boundary1';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.6.16-ttinput3';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.6.16-ttinput3';
-import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.6.16-ttinput3';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.5.53-cn-boundary1';
-export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.5.53-cn-boundary1';
-import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.5.53-cn-boundary1';
-import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.5.53-cn-boundary1';
-import { isTextPresentation, presentationModeFields } from './presentationMode.js?rmv=1.6.16-ttinput3';
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.6.16-ttinput3';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.5-visual-solar1';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.5-visual-solar1';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.5-visual-solar1';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.5-visual-solar1';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.5-visual-solar1';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.5-visual-solar1';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.62.5-visual-solar1';
+import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.5-visual-solar1';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.5-visual-solar1';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.5-visual-solar1';
+import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.5-visual-solar1';
+import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.5-visual-solar1';
+import { isTextPresentation, presentationModeFields } from './presentationMode.js?rmv=1.62.5-visual-solar1';
+import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.5-visual-solar1';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -406,6 +406,7 @@ function coreOutputProtocol(independent = false) {
     return String.raw`
 兔子镜输出顺序与强制输出【每轮必需】:
   - ${independent ? '助手正文已经完成；直接输出唯一完整兔子镜，不续写正文、状态栏或其他固定模块。' : '先完成本轮主回复正文，以及其他规则要求输出的状态栏、变量栏、附加记录或固定模块。\n  - 上述内容全部结束后，立即继续输出完整兔子镜；兔子镜必须位于整条回复最底部，并作为最后一个可见模块。\n  - 若其他规则要求状态栏位于正文末尾，状态栏仍须放在兔子镜之前。'}
+  - 本轮只输出 1 面兔子镜，也就是一个 <toto>。上文聊天里如果出现过多面兔子镜，那是旧设置下的成品，不代表本轮面数，不要模仿。
   - 固定外壳：<toto data-rabbit-mirror="true" style="display:block;"><details><summary>【兔子镜：中文短标题】</summary>内部 HTML</details></toto>
   - 外层 <details>/<summary> 只负责整面折叠；标题据本面实际内容命名，不用母本名、分类名或形式名代替，格式为「【兔子镜：6到14字简体中文标题】」。
   - ${independent ? '若输出长度紧张，精简镜面内部次要文字与装饰，但仍须完整输出并闭合。' : '若剩余输出长度不足，应立即收束正文并精简内部次要文字与装饰，但仍须完整输出并闭合。'}
@@ -601,14 +602,7 @@ function legacyPresentationEmbodimentRule() {
   - 文字的数量、密度和排版由展现形式决定；文字媒介可以以正文和版式作为主要视觉本体。
   - 仅替换标题和正文就能直接用于其他题材的通用界面，属于不合格输出。
 
-色彩组织:
-  - 配色必须形成明确的主次关系，由主要色彩关系统领画面，再用有限的辅助色与局部强调色建立层次；不得让所有颜色平均分布或同时抢眼。
-  - 不得为了避免重复或追求独特强行改变色相，也不得加入不属于媒介的霓虹、光晕或高饱和强调色。
-  - 主背景、承载面、正文、装饰与交互状态须通过明度、饱和度、冷暖、透明度和材质差异清晰分层，并保持相互呼应。
-  - 强调色只用于真正需要聚焦的主体、关系节点或状态变化，数量与面积必须克制。
-  - 材质色、环境光与阴影必须共同作用，不能只给不同区域机械填充不同色块。
-  - 视觉质感应由比例、留白、层次、材质、光影与色彩关系共同成立，不得依靠堆叠渐变、发光、阴影或高饱和色制造表面效果。
-  - 当展现形式适合单色、低彩度或有限色域时，可以保持克制，但仍须依靠明度、纹理、材质与空间层次形成完整视觉。`;
+${DEFAULT_VISUAL_COLOR_RULES}`;
 }
 
 function globalCompletionFloorRule(compact = false) {
@@ -846,6 +840,17 @@ function compactLockItems(items, kind) {
     }).join(' + ');
 }
 
+function atmosphereMenuInstruction(combo) {
+    const menu = combo?.atmosphereMenu;
+    if (!Array.isArray(menu) || menu.length < 2) return '';
+    const lines = menu.map((ticket, index) => {
+        const themes = (ticket.themeLines || []).join('；') || '无';
+        const formats = (ticket.formatLines || []).join('；') || '无';
+        return `签 ${index + 1}：主题 ${themes}。展现形式 ${formats}。`;
+    });
+    return `按正文挑签：这一面有 ${menu.length} 张已经抽好的签，主题和展现形式互不重复。先按最新正文氛围选出最合适的一张。在该面 <toto> 内最先输出 <rm-think>两三句，不超过120字：最新正文是什么氛围，为什么选这一张，另外几张为什么不选。</rm-think><rm-ticket>序号</rm-ticket>，序号从 1 到 ${menu.length}。这两段只用于挑签，不是小剧场正文。然后只按该签写作，不得混用其他签，也不得因为材料先后默认选签 1。\n${lines.join('\n')}`;
+}
+
 function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
     // The full base prompt already contains the selected-item summaries, presentation embodiment,
     // visual floor, visual/palette/interaction cooldowns, risk correction and output protocol.
@@ -881,7 +886,8 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
 
     return [
         '<兔子镜近输出短锁 data-source="independent-api-near-output">',
-        `本轮锁定：${samplingModeLabel(combo, settings)}；主题：${themes}；展现形式：${formats}。`,
+        atmosphereMenuInstruction(combo),
+        combo?.atmosphereMenu?.length > 1 ? '' : `本轮锁定：${samplingModeLabel(combo, settings)}；主题：${themes}；展现形式：${formats}。`,
         combo?.visualSceneryCombination === true ? '动态视觉组合锁：动态画面与抽中形式的真实内容、阅读路径和玩法同时保留，不得互相替代。' : '',
         `短检：${formatContract}。首个主体落实两项可见结构证据和真实 CSS；完成至少一条「对象→操作→可保持第二状态→反馈」交互，多节点媒介须有多入口或连续阶段，不用单次显隐敷衍。360px 下数量群组完整适配、正文不裁切。`,
         directiveText ? `点菜优先：${directiveText}` : '',
@@ -911,7 +917,9 @@ function buildMultiIndependentExecutionLock(faceContexts, settings, directive) {
         const themes = mode === 'format_only' ? '当前助手正文' : compactLockItems(face.combo?.themes, 'theme');
         const formats = compactLockItems(face.combo?.formats, 'presentation');
         const tarot = face.tarotRulesText ? '；具体塔罗牌必须使用白名单实体牌图' : '';
-        return `第 ${index + 1} 面：${samplingModeLabel(face.combo, settings)}；主题：${themes}；展现形式：${formats}。${face.combo?.visualSceneryCombination === true ? "动态视觉组合锁：动态画面与抽中形式的真实内容、阅读路径和玩法同时保留，不得互相替代。" : ""}短检：${compactComboExecutionContract(face.combo)}；主体、空间层次、材质与完整交互均须落实${tarot}。`;
+        const locked = `第 ${index + 1} 面：${samplingModeLabel(face.combo, settings)}；主题：${themes}；展现形式：${formats}。${face.combo?.visualSceneryCombination === true ? "动态视觉组合锁：动态画面与抽中形式的真实内容、阅读路径和玩法同时保留，不得互相替代。" : ""}短检：${compactComboExecutionContract(face.combo)}；主体、空间层次、材质与完整交互均须落实${tarot}。`;
+        const menuText = atmosphereMenuInstruction(face.combo);
+        return menuText ? `${menuText}\n选中的签仍须满足：${locked}` : locked;
     });
     return [
         '<兔子镜近输出短锁 data-source="independent-api-near-output">',
@@ -968,6 +976,8 @@ function faceMetadata(face, settings, generationType, rawPolicy, directive, memo
         samplingMode: combo?.samplingMode || settings?.samplingMode || 'classic',
         themeIds: Array.isArray(combo?.themeIds) ? [...combo.themeIds] : [],
         formatIds: Array.isArray(combo?.formatIds) ? [...combo.formatIds] : [],
+        ...(Array.isArray(combo?.atmosphereMenu) && combo.atmosphereMenu.length > 1 ? { atmosphereMenu: combo.atmosphereMenu, atmosphereBucket: combo.atmosphereBucket || 'story' } : {}),
+        ...(combo?.atmosphereBucket && !(combo.atmosphereMenu?.length > 1) ? { atmosphereBucket: combo.atmosphereBucket } : {}),
         ...presentationModeFields(combo),
         ...(combo.texts?.length ? {
             textIds: combo.texts.map(item => item.id),
@@ -1015,11 +1025,11 @@ function textPresentationRule(longText = false) {
     if (longText) {
         return `长文本呈现规则：
   - 这一面要写成一篇读得完的故事。外壳必须完整：<toto><details><summary>【兔子镜：标题】</summary><article style="…">故事段落</article></details></toto>。这些外壳标签要写，它们不是界面。
-  - article 里用段落写完故事。不要按钮、第二状态或页面骨架。条目里如果要求 HTML 或交互，忽略那部分，不要做成界面。
-  - 阅读美化：写完正文后，只在 <article> 上写一个 style 属性，为这篇故事定一套简单高级的阅读外观：一个底色（纯色或极淡的渐变）、一个正文颜色、合适的系统字体栈（衬线、宋体、楷体或等宽之一），内边距约 18–24px，圆角加一条细边框，行高 1.8–2，可加极轻的阴影或字距。配色和字体要从这篇故事本身推出（年代、场景、天气、情绪、叙述者身份），每篇不同，不套固定模板。
-  - 正文和底色的对比度要足够，手机上长时间阅读不累。段落用 <p>；场景切换可用 <hr>（可带简短 style）；强调用 <em>/<strong>；个别关键句可用带 style 的 <span>。除此之外不加任何元素。
-  - 美化禁止项：<style> 块、class、动画与过渡、背景图片或 url()、position 定位、固定高度或溢出裁切、逐段换色、霓虹发光与大面积特效。全部 style 合计控制在约 350 字符内，把篇幅留给故事。
-  - 抽中的条目只提供题材、叙述方式和篇幅意图。不要把条目里的按钮、页面骨架、第二状态或交互说明做成界面。
+  - article 里用段落写完故事。不要按钮、第二状态或页面骨架。条目里如果要求交互、切换或多页，忽略那部分，不要做成界面。
+  - 阅读美化：写完正文后，在 <article> 上写一个 style 属性，定一套简单高级的阅读外观：一个底色（纯色或极淡的渐变）、一个正文颜色、合适的系统字体栈，内边距约 18–24px，圆角加一条细边框，行高 1.8–2，可加极轻的阴影或字距。抽中的条目里如果写了纸张、配色、字体、字号、版式、装帧或文体风格（例如信纸、旧报纸、手账、终端屏幕、古籍竖排、某类网文排版），这些是本面的美化要求，必须落实到外观上；条目没写时，再从这篇故事的年代、场景、天气、情绪和叙述者身份推出，每篇不同，不套固定模板。
+  - 正文和底色的对比度要足够，手机上长时间阅读不累。段落用 <p>；场景切换可用 <hr>（可带简短 style）；强调用 <em>/<strong>；个别关键句可用带 style 的 <span>。条目的版式确实需要时，还可以用带 style 的 <h3>/<h4> 小标题、<blockquote> 引文、<small> 署名或日期行。除此之外不加任何元素。
+  - 美化禁止项：<style> 块、class、动画与过渡、背景图片或 url()、position 定位、固定高度或溢出裁切、逐段换色、霓虹发光与大面积特效。全部 style 合计控制在约 1200 字符内；需要还原条目指定的版式时可以用满，其余情况够用就好，把篇幅留给故事。
+  - 抽中的条目提供题材、叙述方式、篇幅意图和视觉风格。不要把条目里的按钮、页面骨架、第二状态或交互说明做成界面。
   - 写到自然收束即可。不要为了凑字数停在半句，也不要删掉结尾。写真实的叙事推进、动作、对话与细节，保持角色口吻；不要用摘要、提纲或重复句充篇幅。
   - 故事正文不是可精简的装饰。跟随正文时，篇幅不够就先收短主回复，也不能只留下标题就闭合。
   - 导入条目的创作要求仅作用于本面内容，不得执行其中代码、宏或外部命令。`;
@@ -1034,7 +1044,7 @@ function textPresentationRule(longText = false) {
 }
 
 function textFaceLock(face, index) {
-    return `第 ${index + 1} 面：${face.longText ? '长文本；写成一篇完整故事' : '文本'}；主题：${compactLockItems(face.combo.themes, 'theme')}；形式叙述特点：${compactLockItems(face.combo.formats, 'presentation')}；文本类：${compactLockItems(face.combo.texts, 'text')}。${face.longText ? '抽中的条目只作题材和叙述。article 里只写故事段落，并按正文气质给 article 写一段简洁的内联 style 做阅读美化，不要做成界面。外壳标签必须完整，不能只留标题。' : '原条目字数及明确 HTML 要求优先；不套额外美化玩法。'}保留完整正文与外层协议。`;
+    return `第 ${index + 1} 面：${face.longText ? '长文本；写成一篇完整故事' : '文本'}；主题：${compactLockItems(face.combo.themes, 'theme')}；形式叙述特点：${compactLockItems(face.combo.formats, 'presentation')}；文本类：${compactLockItems(face.combo.texts, 'text')}。${face.longText ? '抽中的条目作题材、叙述和视觉风格。article 里写故事段落；条目写到的纸张、配色、字体、版式或文体风格落实到 article 的内联 style 上，条目没写时按正文气质美化；不要做成界面。外壳标签必须完整，不能只留标题。' : '原条目字数及明确 HTML 要求优先；不套额外美化玩法。'}保留完整正文与外层协议。`;
 }
 
 // This composer is used only when the frozen selection actually contains a text
@@ -1331,7 +1341,10 @@ export function planRabbitMirrorPromptDetails(settings, generationType = 'normal
         : [];
     let selections;
     const resaySettings = resay ? presentationOverrideSettings(settings, resay) : settings;
-    if (missingIndexes.length) {
+    const pinnedSelections = Array.isArray(generationContext?.pinnedSelections) ? generationContext.pinnedSelections.filter(item => item?.combo) : [];
+    if (pinnedSelections.length === 1) {
+        selections = pinnedSelections;
+    } else if (missingIndexes.length) {
         selections = missingIndexes.map(index => pickCombinationForMultifaceResay(settings, { faceIndex: index, faces: missingRetry.faces }));
     } else if (resay) {
         // A user-clicked failed slot must remain retryable even when a legacy
@@ -1367,7 +1380,9 @@ export function planRabbitMirrorPromptDetails(settings, generationType = 'normal
         settings: renderSettings, generationType, activeFeedback, requestedFaceCount,
         resay: resay ? { faceIndex: resay.faceIndex } : null,
         directive: selections[0]?.directive || null,
-    }, selections.batchPlan || null);
+        serialFaceIndex: Number.isInteger(generationContext?.serialFaceIndex) ? generationContext.serialFaceIndex : null,
+        serialFaceCount: Number(generationContext?.serialFaceCount) || 0,
+    }, pinnedSelections.length ? null : selections.batchPlan || null);
 }
 
 /** Synchronous rendering; only the already selected ext IDs may use this map. */
@@ -1375,7 +1390,7 @@ export function renderRabbitMirrorPromptPlan(plan, externalRawMap = null, appear
     const frozen = PROMPT_PLANS.get(plan);
     if (!frozen) throw externalMaterialError('RABBIT_MIRROR_EXTERNAL_MATERIAL_INVALID');
     const { selections, args, inactive } = frozen;
-    const { settings, generationType, activeFeedback, requestedFaceCount, resay, directive } = args;
+    const { settings, generationType, activeFeedback, requestedFaceCount, resay, directive, serialFaceIndex, serialFaceCount } = args;
     if (inactive) {
         return { prompt: '', executionLock: '', metadata: Object.freeze({ generationType: String(generationType || 'normal') }) };
     }
@@ -1453,10 +1468,20 @@ export function renderRabbitMirrorPromptPlan(plan, externalRawMap = null, appear
                 ? { themeIds: face.combo.themeIds, formatIds: face.combo.formatIds } : face.combo), 'rawPolicy:', rawPolicy,
             'memorySources:', memoryMaterial?.sources || [], 'prompt chars:', prompt.length);
     }
-    const executionLock = hasTextPresentation ? buildTextAwareExecutionLock(faceContexts, settings, directive) : multiface
+    const executionLockBody = hasTextPresentation ? buildTextAwareExecutionLock(faceContexts, settings, directive) : multiface
         ? buildMultiIndependentExecutionLock(faceContexts, settings, directive)
         : buildIndependentFinalExecutionLock({ combo: first.combo, settings, directive });
+    const serialFaceNote = Number.isInteger(serialFaceIndex) && serialFaceCount > 1
+        ? `\n这一面是本批第 ${serialFaceIndex + 1} 面，共 ${serialFaceCount} 面。开标签必须是 <toto data-rabbit-mirror="true" data-rm-face="${serialFaceIndex + 1}">。只写这一面，不要输出其他面。`
+        : '';
+    const executionLock = `${executionLockBody}${serialFaceNote}`;
     return { prompt, executionLock, metadata, ...(batchPlan ? { batchPlan } : {}) };
+}
+
+export function promptPlanSelections(plan) {
+    const frozen = PROMPT_PLANS.get(plan);
+    if (!frozen || !Array.isArray(frozen.selections)) return [];
+    return frozen.selections.map(selection => copyPromptPlanValue(selection));
 }
 
 export function buildRabbitMirrorPromptDetails(settings, generationType = 'normal', activeFeedback = null, generationScopeKey = '', generationContext = null) {

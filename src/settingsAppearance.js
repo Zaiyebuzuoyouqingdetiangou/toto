@@ -1,6 +1,6 @@
 // UI palettes from the user-provided Hearttrace source, by Toto.
 // Presentation only: no generation settings, Prompt, content storage, or network.
-import { closeTheaterFavoriteLibrary, closeTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.6.3-fav2';
+import { closeTheaterFavoriteLibrary, closeTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.62.5-visual-solar1';
 export const UI_THEMES = Object.freeze([
   {
     "id": "default",
@@ -132,6 +132,9 @@ export function applyAppearanceTheme(target, appearance) {
     }
 }
 
+// Tool panels (mirrorToolMenu.js) pick this up without importing this module.
+globalThis.__rabbitMirrorApplyAppearanceTheme = applyAppearanceTheme;
+
 function hexLuminance(hex) {
     const channel = offset => {
         const value = parseInt(hex.slice(offset, offset + 2), 16) / 255;
@@ -206,7 +209,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
         early:['settings','什么时候开始副 API 生成','这是可选项。默认等正文完成后，再生成兔子镜。'],
         image:['settings','镜面生图','把这一面里的角色与高光画面画出来。手动点击才调用模型。'],
         appearance:['settings','主题与外观','只改变这个设置面板的颜色，不影响小剧场画面。'],
-        faces:['play','每一面怎么呈现','先决定是 HTML 还是长文本，再决定一次出几面。'],
+        faces:['play','每一面怎么呈现','先决定是 HTML 还是长文本，再决定一次出几面，以及多面是一次请求还是逐面排队。'],
         draw:['play','怎么挑选题材和形式','先决定是一起抽题材与形式，还是只抽呈现形式。'],
         library:['play','导入小剧场世界书','导入你的题材或呈现模板。不导入，也可以使用内置玩法。'],
         favorites:['play','让喜欢的更常出现','收藏能提高抽取权重；不是锁定每轮都出现。'],
@@ -305,7 +308,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     move(get('rh_independent_include_character_summary').closest('label').parentElement,'chat');
     move(get('rh_independent_tag_filter_open').parentElement.parentElement,'tags');
     move('rh_advanced_page_worldinfo','books');move('rh_advanced_page_memory','memories');
-    move('rh_face_presentation_modes','faces');withNote('rh_multiface_enabled','faces');move('rh_multiface_count_row','faces');move('rh_multiface_help','faces');
+    move('rh_face_presentation_modes','faces');withNote('rh_multiface_enabled','faces');move('rh_multiface_count_row','faces');move('rh_multiface_help','faces');move('rh_multiface_dispatch_row','faces');
     withNote('rh_force_visual_scenery','drawing');withNote('rh_visual_scenery_combination','drawing');withNote('rh_enhanced_visual_drawing','drawing');move('rh_advanced_page_generation','draw');
     for(const key of ['visualText','drawing','writing','references','visualRules','replacement'])row('look',key);
     move('rh_appearance_reference','references');

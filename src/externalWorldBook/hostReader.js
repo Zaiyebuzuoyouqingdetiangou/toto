@@ -1,6 +1,6 @@
-import { detectWorldBookCapabilities, getHostRequestHeaders, requireHostHeaders } from './capabilities.js?rmv=1.5.53-cn-boundary1';
-import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.5.53-cn-boundary1';
-import { normalizeHostWorldBook } from './normalize.js?rmv=1.5.53-cn-boundary1';
+import { detectWorldBookCapabilities, getHostRequestHeaders, requireHostHeaders } from './capabilities.js?rmv=1.62.5-visual-solar1';
+import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.62.5-visual-solar1';
+import { normalizeHostWorldBook } from './normalize.js?rmv=1.62.5-visual-solar1';
 
 const DEFAULT_TIMEOUT_MS = 10000;
 

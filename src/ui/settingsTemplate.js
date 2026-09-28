@@ -1,8 +1,8 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.6.16-ttinput3';
-import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.5.53-cn-boundary1';
-import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.6';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.62.5-visual-solar1';
+import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.62.5-visual-solar1';
+import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.62.5-visual-solar1';
 
 export function buildRabbitMirrorSettingsDialogHtml() {
     return `
@@ -351,7 +351,13 @@ export function buildRabbitMirrorSettingsDialogHtml() {
                 </select>
               </label>
             </div>
-            <div id="rh_multiface_help" class="rabbit-mirror-subnote" style="margin:0 0 10px 26px;">一次请求，各面独立展示。所有面共用整批输出上限，面数更多时每面可用篇幅更少；上下文字符不是绘制额度。</div>
+            <div id="rh_multiface_help" class="rabbit-mirror-subnote" style="margin:0 0 10px 26px;">各面独立展示。一次请求时，所有面共用整批输出上限，面数更多每面篇幅更少；逐面排队则每一面各自用满最大输出。上下文字符不是绘制额度。</div>
+            <fieldset id="rh_multiface_dispatch_row" style="margin:0 0 12px 26px;padding:8px 10px;border:1px dashed color-mix(in srgb,currentColor 28%,transparent);border-radius:10px;">
+              <legend style="padding:0 6px;font-size:12px;">多面怎么发送（实验性）</legend>
+              <label style="display:flex;gap:8px;align-items:flex-start;margin:4px 0;"><input name="rh_multiface_dispatch" type="radio" value="single"> 一次请求出全部面</label>
+              <label style="display:flex;gap:8px;align-items:flex-start;margin:4px 0;"><input name="rh_multiface_dispatch" type="radio" value="serial"> 逐面排队，一面一次请求</label>
+              <p class="rabbit-mirror-subnote" style="margin:6px 0 0;">只对副 API 生效。签仍然先一次抽完，再按顺序一面发一次，不并行。某一面失败就跳过，已经生成的面留下。最后若少了面，开了自动重 roll 就用原来的签补缺的面；没开就那一格显示生成失败。跟随正文仍是原来的一次生成。每一面各自使用最大输出，不再挤在同一次回复里。</p>
+            </fieldset>
             <div id="rh_face_presentation_modes" style="display:grid;grid-template-columns:minmax(0,1fr);min-width:0;gap:8px;margin:10px 0;">
               <b>每一面怎么呈现</b>
               ${Array.from({length:5},(_,index)=>`<label data-rh-presentation-row="${index}" for="rh_face_mode_${index}" style="display:flex;gap:12px;align-items:center;justify-content:space-between;">
@@ -390,6 +396,16 @@ export function buildRabbitMirrorSettingsDialogHtml() {
               <button id="rh_writing_style_clear" class="menu_button" type="button" style="min-height:44px;">清空文风</button>
               <p id="rh_writing_style_status" role="status" aria-live="polite"></p>
             </div>
+            <fieldset style="margin:8px 0 12px;padding:8px 10px;border:1px dashed color-mix(in srgb,currentColor 28%,transparent);border-radius:10px;">
+              <legend style="padding:0 6px;font-size:12px;">抽签方式（实验性）</legend>
+              <label style="display:flex;gap:8px;align-items:flex-start;margin:4px 0;"><input name="rh_lottery_method" type="radio" value="random"> 本地纯随机</label>
+              <label style="display:flex;gap:8px;align-items:flex-start;margin:4px 0;"><input name="rh_lottery_method" type="radio" value="atmosphere"> 按正文挑签</label>
+              <div id="rh_atmosphere_percent_row">
+                <label for="rh_atmosphere_story_percent">贴正文 <output id="rh_atmosphere_story_percent_value">70</output>%，其余是平行线（if）</label>
+                <input id="rh_atmosphere_story_percent" type="range" min="0" max="100" step="5" value="70" style="width:100%;">
+              </div>
+              <p class="rabbit-mirror-subnote" style="margin:6px 0 0;">按正文挑签仍只发写作那一次请求。贴正文的面会先按权重抽好几张互不重复的签，模型按最新正文氛围选一张再写。平行线只从带 if 标签的主题里本地抽，不让模型按情节挑。近几轮用过的主题和展现形式会先冷却。改百分比只影响之后新抽的面。</p>
+            </fieldset>
             <label for="rh_sampling_mode" class="flex-container alignitemscenter" style="gap:8px;flex-wrap:wrap;margin:8px 0;">
               <span>抽取模式</span>
               <select id="rh_sampling_mode" class="text_pole" style="max-width:300px;">

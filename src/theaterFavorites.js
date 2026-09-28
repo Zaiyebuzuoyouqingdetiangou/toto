@@ -300,6 +300,7 @@ export async function saveTheaterFavorite(input) {
         const request = store.getAll();
         request.onsuccess = () => {
             const rows = (Array.isArray(request.result) ? request.result : []).map(normalizeRecord).filter(Boolean)
+                .filter(row => row.id !== record.id)
                 .sort((a, b) => Number(a.createdAt) - Number(b.createdAt));
             while (rows.length >= THEATER_FAVORITE_MAX_ITEMS) {
                 const oldest = rows.shift();
@@ -522,6 +523,109 @@ export async function openTheaterFavoriteViewer(id, hydrate) {
     return record;
 }
 
+// Only inspect the saved work, never chat history or the draw registry. Old
+// favorites are recognized on read without rewriting their HTML or identity.
+export const SOLAR_TERMS = Object.freeze(['立春', '雨水', '惊蛰', '春分', '清明', '谷雨', '立夏', '小满', '芒种', '夏至', '小暑', '大暑',
+    '立秋', '处暑', '白露', '秋分', '寒露', '霜降', '立冬', '小雪', '大雪', '冬至', '小寒', '大寒']);
+
+const SOLAR_TERM_PATTERN = new RegExp(SOLAR_TERMS.join('|'), 'u');
+const ORDINARY_SOLAR_WORDS = new Set(['雨水', '清明', '白露', '寒露', '小雪', '大雪', '小满']);
+const SOLAR_TRADITIONAL_CHARS = { 驚: '惊', 蟄: '蛰', 穀: '谷', 滿: '满', 種: '种', 處: '处', 節: '节', 氣: '气', 歲: '岁', 時: '时' };
+
+function normalizeSolarText(value = '') {
+    return String(value).replace(/&#(x[\da-f]+|\d+);?/gi, (entity, code) => {
+        const number = code[0].toLowerCase() === 'x' ? parseInt(code.slice(1), 16) : Number(code);
+        return number > 0 && number <= 0x10ffff ? String.fromCodePoint(number) : ' ';
+    }).replace(/&(?:nbsp|ensp|emsp|thinsp|ZeroWidthSpace);/gi, ' ')
+        .replace(/&[a-z][a-z\d]+;/gi, ' ')
+        .replace(/[驚蟄穀滿種處節氣歲時]/gu, char => SOLAR_TRADITIONAL_CHARS[char])
+        .replace(/[\s\u200b-\u200d\ufeff]+/gu, '');
+}
+
+function firstSolarTerm(value) {
+    return normalizeSolarText(value).match(SOLAR_TERM_PATTERN)?.[0] || '';
+}
+
+// This is text extraction only: nothing is inserted into the live document.
+function favoritePlainText(html = '') {
+    return String(html).replace(/<(?:[^>"']|"[^"]*"|'[^']*')*>/g, tag =>
+        /^<\/?(?:div|p|section|article|header|footer|h[1-6]|summary|li|dt|dd|td|th|tr|figcaption|caption|legend)\b/i.test(tag) ? '\n' : '');
+}
+
+export function solarTermOfFavorite(record) {
+    const inTitle = firstSolarTerm(record?.title || '');
+    if (inTitle) return inTitle;
+    const html = String(record?.html || '')
+        .replace(/<!--[\s\S]*?(?:-->|$)/g, '')
+        .replace(/<(style|script|template)\b[^>]*>[\s\S]*?(?:<\/\1\s*>|$)/gi, '');
+    // A named heading or standalone label is direct evidence, including split
+    // glyphs, vertical typesetting and traditional Chinese in existing works.
+    for (const heading of html.matchAll(/<(h[1-6]|summary|header|figcaption|caption|legend|dt)\b[^>]*>([\s\S]*?)<\/\1\s*>/gi)) {
+        const term = firstSolarTerm(favoritePlainText(heading[2]));
+        if (term) return term;
+    }
+    const text = favoritePlainText(html);
+    for (const line of text.split('\n')) {
+        const label = normalizeSolarText(line).replace(/^[\p{P}\p{S}]+|[\p{P}\p{S}]+$/gu, '');
+        if (SOLAR_TERMS.includes(label)) return label;
+    }
+    const normalized = normalizeSolarText(text);
+    if (/节气|岁时|物候|初候|二候|三候/.test(normalized)) return firstSolarTerm(normalized);
+    // Bare weather words and character names are not enough by themselves.
+    for (const match of normalized.matchAll(new RegExp(SOLAR_TERM_PATTERN.source, 'gu'))) {
+        if (!ORDINARY_SOLAR_WORDS.has(match[0])) return match[0];
+    }
+    return '';
+}
+
+export function solarTermProgress(rows) {
+    const collected = new Map();
+    for (const row of Array.isArray(rows) ? rows : []) {
+        const term = solarTermOfFavorite(row);
+        if (term && !collected.has(term)) collected.set(term, row);
+    }
+    return { total: SOLAR_TERMS.length, count: collected.size, collected };
+}
+
+function renderSolarTermProgress(rows, hydrate) {
+    const progress = solarTermProgress(rows);
+    const box = document.createElement('details');
+    box.setAttribute('data-rm-solar-terms', 'true');
+    box.style.cssText = 'margin:14px 0 0;padding:8px 10px;border:1px solid color-mix(in srgb,currentColor 12%,transparent);border-radius:10px;opacity:.9;';
+    const summary = document.createElement('summary');
+    summary.style.cssText = 'cursor:pointer;font-weight:600;font-size:11px;opacity:.8;';
+    summary.textContent = `二十四节气收集 ${progress.count}/${progress.total}`;
+    const bar = document.createElement('div');
+    bar.style.cssText = 'height:6px;margin:8px 0;border-radius:999px;background:color-mix(in srgb,currentColor 12%,transparent);overflow:hidden;';
+    const fill = document.createElement('div');
+    fill.style.cssText = `height:100%;width:${Math.round(progress.count / progress.total * 100)}%;background:currentColor;opacity:.55;border-radius:999px;`;
+    bar.append(fill);
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px;';
+    for (const term of SOLAR_TERMS) {
+        const row = progress.collected.get(term);
+        const cell = document.createElement(row ? 'button' : 'span');
+        cell.textContent = term;
+        cell.style.cssText = `display:flex;align-items:center;justify-content:center;min-height:32px;border-radius:8px;font:inherit;font-size:12px;border:1px solid ${row ? 'currentColor' : 'color-mix(in srgb,currentColor 14%,transparent)'};background:${row ? 'color-mix(in srgb,currentColor 12%,transparent)' : 'transparent'};color:inherit;opacity:${row ? 1 : .42};font-weight:${row ? 800 : 400};`;
+        if (row) {
+            cell.type = 'button';
+            cell.title = `打开「${theaterFavoriteDisplayTitle(row)}」`;
+            cell.style.cursor = 'pointer';
+            cell.addEventListener('click', () => {
+                void openTheaterFavoriteViewer(row.id, hydrate).catch(error => {
+                    globalThis.toastr?.warning?.(String(error?.message || '无法打开收藏。'));
+                });
+            });
+        }
+        grid.append(cell);
+    }
+    const hint = document.createElement('p');
+    hint.style.cssText = 'margin:8px 0 0;opacity:.62;font-size:11px;line-height:1.45;';
+    hint.textContent = '按收藏的标题和正文识别节气，标题不必写节气名。点亮的格子可以直接打开那一面。';
+    box.append(summary, bar, grid, hint);
+    return box;
+}
+
 export async function openTheaterFavoriteLibrary(hydrate) {
     const rows = await listTheaterFavorites();
     closeTheaterFavoriteLibrary();
@@ -584,7 +688,8 @@ export async function openTheaterFavoriteLibrary(hydrate) {
             }
         }
     }
-    card.append(header, note, list);
+    // 收藏列表是主体；节气进度放在最下方，默认收起。
+    card.append(header, note, list, renderSolarTermProgress(rows, hydrate));
     bindOverlayDismiss(overlay, closeTheaterFavoriteLibrary);
     const keydown = event => {
         if (event.key !== 'Escape') return;

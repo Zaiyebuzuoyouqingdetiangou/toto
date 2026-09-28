@@ -1,9 +1,10 @@
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.6.16-ttinput3';
-import { compactFormatDescriptors, isExternalSelectionId } from './selectionImageMetadata.js?rmv=1.6.4-creation1';
-import { getSettings, updateSettings } from './settings.js?rmv=1.6.16-ttinput3';
-import { getCurrentChatKey, resetFormatEligibleMisses } from './storage.js?rmv=1.6.16-ttinput3';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.5.53-cn-boundary1';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.53-cn-boundary1';
+import { applyAtmosphereNotes, compactAtmosphereMenu } from './atmosphereChoice.js?rmv=1.62.5-visual-solar1';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.5-visual-solar1';
+import { compactFormatDescriptors, isExternalSelectionId } from './selectionImageMetadata.js?rmv=1.62.5-visual-solar1';
+import { getSettings, updateSettings } from './settings.js?rmv=1.62.5-visual-solar1';
+import { getCurrentChatKey, resetFormatEligibleMisses } from './storage.js?rmv=1.62.5-visual-solar1';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.5-visual-solar1';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.5-visual-solar1';
 
 export const BLACKLIST_CHANGED_EVENT = 'rabbitmirror:blacklist-changed';
 export const RECIPE_RECORDED_EVENT = 'rabbitmirror:recipe-recorded';
@@ -412,6 +413,10 @@ function compactDirectiveCounts(metadata) {
         .map(key => [key, Math.min(1000, Math.max(1, Math.floor(Number(metadata[key]))))]));
 }
 
+function atmosphereChoiceValue(value, menuLength) {
+    return Number.isInteger(value) && value >= 0 && value < menuLength ? value : null;
+}
+
 function compactSelectionMetadata(metadata = {}, allowFaces = true) {
     const themeIds = compactIds(metadata?.themeIds).filter(id => THEME_BY_ID.has(id) || isExternalSelectionId(id));
     const formatIds = compactIds(compactIds(metadata?.formatIds).map(canonicalFormatId)).filter(id => FORMAT_BY_ID.has(id) || isExternalSelectionId(id));
@@ -430,11 +435,17 @@ function compactSelectionMetadata(metadata = {}, allowFaces = true) {
         .map(name => name.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 200)).filter(Boolean))];
     const hasExternalReferences = metadata?.hasExternalReferences === true || externalSources.length > 0
         || [...themeIds, ...formatIds].some(isExternalSelectionId);
+    const atmosphereMenu = compactAtmosphereMenu(metadata?.atmosphereMenu);
+    const atmosphereReason = String(metadata?.atmosphereReason || '').replace(/\s+/g, ' ').trim().slice(0, 300);
+    const atmosphereChoice = atmosphereChoiceValue(metadata?.atmosphereChoice, atmosphereMenu?.length || 0);
     if (!themeIds.length && !formatIds.length && !hasExternalReferences && !metadata?.textIds?.length
         && !isBlankLongTextSelection(metadata) && !metadata?.worldBookEntryId && !faces?.some(Boolean)) return null;
     return {
         themeIds,
         formatIds,
+        ...(atmosphereMenu ? { atmosphereMenu } : {}),
+        ...(atmosphereReason ? { atmosphereReason } : {}),
+        ...(atmosphereChoice != null ? { atmosphereChoice } : {}),
         ...(themeLabels.some(Boolean) ? { themeLabels } : {}),
         ...(formatLabels.some(Boolean) ? { formatLabels } : {}),
         ...(formatDescriptors.length ? { formatDescriptors } : {}),
@@ -488,7 +499,7 @@ function normalizeSwipeId(message, fallback = 0) {
 }
 
 export function recordRabbitMirrorRecipe({ chat = null, chatKey = '', messageIndex = -1, swipeId = 0, message = null, metadata = null, source = '' } = {}) {
-    const compact = compactSelectionMetadata(metadata);
+    const compact = compactSelectionMetadata(applyAtmosphereNotes(metadata, message?.mes || ''));
     const index = Number(messageIndex);
     if (!compact || !Number.isInteger(index) || index < 0) return false;
     const resolvedChatKey = String(chatKey || getCurrentChatKey(Array.isArray(chat) ? chat : null) || '').trim();
@@ -512,6 +523,9 @@ export function recordRabbitMirrorRecipe({ chat = null, chatKey = '', messageInd
         && String(existing.samplingMode || '') === compact.samplingMode
         && !!existing.userDirectiveApplied === compact.userDirectiveApplied
         && !!existing.forcedVisualScenery === compact.forcedVisualScenery
+        && String(existing.atmosphereReason || '') === String(compact.atmosphereReason || '')
+        && atmosphereChoiceValue(existing.atmosphereChoice, (existing.atmosphereMenu || []).length) === atmosphereChoiceValue(compact.atmosphereChoice, (compact.atmosphereMenu || []).length)
+        && JSON.stringify(existing.atmosphereMenu || null) === JSON.stringify(compact.atmosphereMenu || null)
         && String(existing.source || '') === sourceText
         && String(existing.messageFingerprint || '') === messageFingerprint;
     const facesUnchanged = JSON.stringify(existing?.faces || null) === JSON.stringify(compact.faces || null);

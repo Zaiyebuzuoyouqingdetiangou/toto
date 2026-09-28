@@ -1,11 +1,12 @@
-import { presentationModeFields } from './presentationMode.js?rmv=1.6.16-ttinput3';
+import { presentationModeFields } from './presentationMode.js?rmv=1.62.5-visual-solar1';
 import {
     commitPendingComboBatch,
     getCurrentChatKey,
     releasePendingComboBatch,
-} from './storage.js?rmv=1.6.16-ttinput3';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.6.16-ttinput3';
-import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, multifaceRecoveryWithinRawBudgets } from './multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
+} from './storage.js?rmv=1.62.5-visual-solar1';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.62.5-visual-solar1';
+import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, multifaceRecoveryWithinRawBudgets } from './multifaceProtocol.js?rmv=1.62.5-visual-solar1';
+import { atmosphereChoicesFromFaces, compactAtmosphereMenu } from './atmosphereChoice.js?rmv=1.62.5-visual-solar1';
 
 const SNAPSHOT_STORAGE_KEY = 'rabbit_mirror_theater:generation_snapshots:v1';
 const ACTIVE_ATTEMPT_STORAGE_KEY = 'rabbit_mirror_theater:active_generation_attempt:v1';
@@ -291,6 +292,8 @@ function copySelectionMetadata(metadata = null) {
     for (const key of ['customThemeCount', 'customFormatCount', 'customRequestCount']) {
         if (Number(metadata[key]) > 0) copy[key] = Math.min(1000, Math.max(1, Math.floor(Number(metadata[key]))));
     }
+    const atmosphereMenu = compactAtmosphereMenu(metadata.atmosphereMenu);
+    if (atmosphereMenu) copy.atmosphereMenu = atmosphereMenu;
     if (Array.isArray(metadata.faces)) {
         copy.faces = metadata.faces.slice(0, 5).map(face => ({
             faceIndex: Number(face?.faceIndex),
@@ -492,7 +495,8 @@ export function commitRabbitMirrorFollowBatch(batchId, chat, faceScans = [], exp
         || expectedOwner.swipeId !== owner.swipeId
         || expectedOwner.sourceHash !== owner.sourceHash) return false;
     if (hashText(owner.message.mes || '') !== owner.sourceHash || currentSwipeId(owner.message) !== owner.swipeId) return false;
-    const committed = commitPendingComboBatch(faceScans, { batchId: record.plan.batchId, identity: record.plan.identity, partial });
+    const chosenTickets = atmosphereChoicesFromFaces(owner.parsed?.faces || [], (record.plan.faces || []).map(face => face?.combo?.atmosphereMenu || null));
+    const committed = commitPendingComboBatch(faceScans, { batchId: record.plan.batchId, identity: record.plan.identity, partial, chosenTickets });
     if (!committed) return false;
     recordRabbitMirrorRecipe({
         chat,

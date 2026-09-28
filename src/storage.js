@@ -1,6 +1,7 @@
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.6.16-ttinput3';
-import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.5.53-cn-boundary1';
-import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.6';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.5-visual-solar1';
+import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.62.5-visual-solar1';
+import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.62.5-visual-solar1';
+import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.62.5-visual-solar1';
 
 const STORAGE_KEY = 'rabbit_mirror_theater:last_combo:v11';
 const PENDING_KEY = 'rabbit_mirror_theater:pending_combo:v11';
@@ -1273,6 +1274,22 @@ function normalizeFaceScan(value, faceIndex) {
     };
 }
 
+function applyChosenAtmosphereTickets(plan, chosenTickets) {
+    if (!Array.isArray(chosenTickets) || !plan?.faces) return;
+    chosenTickets.forEach((choice, index) => {
+        const combo = plan.faces[index]?.combo;
+        const menu = combo?.atmosphereMenu;
+        if (!combo || !Array.isArray(menu) || !Number.isInteger(choice) || choice < 0 || choice >= menu.length) return;
+        const ticket = menu[choice];
+        if (!Array.isArray(ticket?.themeIds) && !Array.isArray(ticket?.formatIds)) return;
+        combo.themeIds = (ticket.themeIds || []).filter(id => typeof id === 'string' && id);
+        combo.formatIds = (ticket.formatIds || []).filter(id => typeof id === 'string' && id);
+        combo.themeGroups = (ticket.themeGroups || []).filter(Boolean);
+        combo.formatGroups = (ticket.formatGroups || []).filter(Boolean);
+        combo.atmosphereResolved = true;
+    });
+}
+
 function batchHistoryPayload(plan, scans, beforeRaw) {
     let history;
     try {
@@ -1320,6 +1337,7 @@ export function commitPendingComboBatch(faceScans = [], expected = null) {
     const record = registry?.records.find(record => activeBatchRecordIsFresh(record) && planMatchesExpected(record.plan, expected));
     const plan = transient || record?.plan;
     if (!plan) return false;
+    applyChosenAtmosphereTickets(plan, expected.chosenTickets);
     if (!Array.isArray(faceScans) || faceScans.length !== plan.requestedFaceCount) return false;
     for (let index = 0; index < faceScans.length; index += 1) if (!Object.hasOwn(faceScans, index)) return false;
     const allowPartial = expected.partial === true;
@@ -1632,6 +1650,10 @@ export function commitPendingCombo(visualSignature = '', visualSkeleton = '', ri
             localStorage.removeItem(PENDING_KEY);
             return;
         }
+        if (Array.isArray(pending.atmosphereMenu) && pending.atmosphereMenu.length > 1 && pending.atmosphereResolved !== true) {
+            localStorage.removeItem(PENDING_KEY);
+            return;
+        }
 
         if (commitComboToHistory(pending, { visualSignature, visualSkeleton, riskFlags, paletteFingerprint, interactionFamily })) {
             localStorage.removeItem(PENDING_KEY);
@@ -1642,6 +1664,42 @@ export function commitPendingCombo(visualSignature = '', visualSkeleton = '', ri
 }
 
 // 兼容旧调用：0.31.21 起不再在 prompt 构建时直接写入“最近历史”，只暂存为 pending。
+export function retargetPendingAtmosphereFromHtml(html) {
+    try {
+        const raw = localStorage.getItem(PENDING_KEY);
+        if (!raw) return false;
+        const pending = JSON.parse(raw);
+        const menu = pending?.atmosphereMenu;
+        if (!Array.isArray(menu) || menu.length < 2) return false;
+        const choice = parseAtmosphereTicketIndex(html, menu.length);
+        if (choice == null) return false;
+        return retargetPendingAtmosphereTicket(choice);
+    } catch {
+        return false;
+    }
+}
+
+export function retargetPendingAtmosphereTicket(choice) {
+    try {
+        const raw = localStorage.getItem(PENDING_KEY);
+        if (!raw) return false;
+        const pending = JSON.parse(raw);
+        const menu = pending?.atmosphereMenu;
+        if (!pending || !Array.isArray(menu) || !Number.isInteger(choice) || choice < 0 || choice >= menu.length) return false;
+        const ticket = menu[choice];
+        pending.themeIds = (ticket.themeIds || []).filter(id => typeof id === 'string' && id);
+        pending.formatIds = (ticket.formatIds || []).filter(id => typeof id === 'string' && id);
+        pending.themeGroups = (ticket.themeGroups || []).filter(Boolean);
+        pending.formatGroups = (ticket.formatGroups || []).filter(Boolean);
+        pending.atmosphereResolved = true;
+        const payload = JSON.stringify(pending);
+        localStorage.setItem(PENDING_KEY, payload);
+        return localStorage.getItem(PENDING_KEY) === payload;
+    } catch {
+        return false;
+    }
+}
+
 export function setLastCombo(combo) {
     setPendingCombo(combo);
 }

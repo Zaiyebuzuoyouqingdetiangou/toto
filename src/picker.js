@@ -1,5 +1,5 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.5.53-cn-boundary1';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.53-cn-boundary1';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.5-visual-solar1';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.5-visual-solar1';
 import {
     getCurrentChatKey,
     getDirectiveScopedPick,
@@ -17,11 +17,11 @@ import {
     clearPendingComboBatch,
     createPendingComboBatchPlan,
     findPendingComboBatchPlan,
-} from './storage.js?rmv=1.6.16-ttinput3';
-import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.6.16-ttinput3';
-import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.5.53-cn-boundary1';
-import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.6.16-ttinput3';
-import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.5.53-text1';
+} from './storage.js?rmv=1.62.5-visual-solar1';
+import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.62.5-visual-solar1';
+import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.62.5-visual-solar1';
+import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.5-visual-solar1';
+import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.62.5-visual-solar1';
 import {
     chooseExternalSource,
     externalPoolActive,
@@ -31,7 +31,7 @@ import {
     getExternalPoolSnapshot,
     pickExternalItems,
     sourceMixModeIsExternalOnly,
-} from './externalWorldBook/externalPool.js?rmv=1.5.53-text1';
+} from './externalWorldBook/externalPool.js?rmv=1.62.5-visual-solar1';
 
 function randomUnit() {
     try {
@@ -968,17 +968,101 @@ function worldBookLotteryResult(settings, faceIndex, scopeKey, longText) {
     };
 }
 
-function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, themeCount, formatCount, recent, formalRecent, hardRecent, previousThemeFamilyKeys = [], previousFormatFamilyKeys = [], favoriteThemeIds, favoriteFormatIds, favoriteThemeMultipliers, favoriteFormatMultipliers, formatEligibleMisses, externalExcludedThemeIds = [], externalExcludedFormatIds = [], externalExcludedTextIds = [], faceIndex = 0, standaloneTextPool = null, presentationScopeKey = '' }) {
+function themeItemIsIf(item) {
+    return Array.isArray(item?.tags) && item.tags.some(tag => String(tag || '').trim().toLowerCase() === 'if');
+}
+
+function cooledPool(pool, blockedIds) {
+    const blocked = new Set((blockedIds || []).filter(Boolean));
+    const fresh = (pool || []).filter(item => item?.id && !blocked.has(item.id));
+    return fresh.length ? fresh : (pool || []).filter(item => item?.id);
+}
+
+function atmosphereMenuLine(item, summaryLimit = 0) {
+    const summary = String(item?.summary || '').replace(/\s+/g, ' ').trim();
+    const body = summaryLimit > 0 ? summary.slice(0, summaryLimit) : summary;
+    const head = `${item?.id || ''} ${item?.title || '未命名'}`.trim();
+    return body ? `${head}：${body}` : head;
+}
+
+function compactAtmosphereTicket(themes, formats) {
+    const listed = items => (items || []).filter(item => item?.id);
+    const themesListed = listed(themes);
+    const formatsListed = listed(formats);
+    return {
+        themeIds: themesListed.map(item => item.id),
+        formatIds: formatsListed.map(item => item.id),
+        themeGroups: themesListed.map(item => item.group).filter(Boolean),
+        formatGroups: formatsListed.map(item => item.group).filter(Boolean),
+        themeLines: themesListed.map(item => atmosphereMenuLine(item, 80)),
+        formatLines: formatsListed.map(item => atmosphereMenuLine(item, 80)),
+        themeFullLines: themesListed.map(item => atmosphereMenuLine(item)),
+        formatFullLines: formatsListed.map(item => atmosphereMenuLine(item)),
+    };
+}
+
+function atmosphereStoryPercent(settings) {
+    const value = Number(settings?.atmosphereStoryPercent);
+    return Number.isFinite(value) ? Math.max(0, Math.min(100, Math.round(value))) : 70;
+}
+
+function comboHeldIds(combo, key) {
+    const menu = combo?.atmosphereMenu;
+    if (Array.isArray(menu) && menu.length) return [...new Set(menu.flatMap(ticket => Array.isArray(ticket?.[key]) ? ticket[key] : []))];
+    return Array.isArray(combo?.[key]) ? combo[key] : [];
+}
+
+function drawAtmosphereBundle(args) {
+    const { settings, themePool, formatPool, faceIndex, presentationScopeKey, formalRecent, hardRecent } = args;
+    const formatOnly = settings.samplingMode === 'format_only';
+    const story = formatOnly || lotteryBucket(presentationScopeKey || 'atmosphere', faceIndex) < atmosphereStoryPercent(settings);
+    const blockedThemes = [...(formalRecent?.themeIds || []), ...(hardRecent?.themeIds || [])];
+    const blockedFormats = [...(formalRecent?.formatIds || []), ...(hardRecent?.formatIds || [])];
+    const drawTicket = (themes, formats) => applyDirectiveOrRandom({
+        ...args, themePool: themes, formatPool: formats, directive: null, lotteryMethodBypass: true,
+    });
+    if (!story) {
+        const ifPool = cooledPool((themePool || []).filter(themeItemIsIf), blockedThemes);
+        if (!ifPool.length) return null;
+        const ticket = drawTicket(ifPool, cooledPool(formatPool, blockedFormats));
+        if (!ticket || ticket.disabled || ticket.texts?.length || ticket.worldBookEntryId || !ticket.themes?.length) return null;
+        return { ...ticket, atmosphereBucket: 'if' };
+    }
+    const storyThemes = cooledPool((themePool || []).filter(item => formatOnly || !themeItemIsIf(item)), blockedThemes);
+    const storyFormats = cooledPool(formatPool, blockedFormats);
+    const usedThemes = new Set();
+    const usedFormats = new Set();
+    const tickets = [];
+    for (let index = 0; index < 4; index += 1) {
+        const themesLeft = storyThemes.filter(item => !usedThemes.has(item.id));
+        const formatsLeft = storyFormats.filter(item => !usedFormats.has(item.id));
+        if ((!formatOnly && !themesLeft.length) || !formatsLeft.length) break;
+        const ticket = drawTicket(formatOnly ? storyThemes : themesLeft, formatsLeft);
+        if (!ticket || ticket.disabled || ticket.texts?.length || ticket.worldBookEntryId) break;
+        const themeIds = (ticket.themes || []).map(item => item.id).filter(Boolean);
+        const formatIds = (ticket.formats || []).map(item => item.id).filter(Boolean);
+        if ((!formatOnly && !themeIds.length) || !formatIds.length) break;
+        if (themeIds.some(id => usedThemes.has(id)) || formatIds.some(id => usedFormats.has(id))) break;
+        tickets.push(ticket);
+        themeIds.forEach(id => usedThemes.add(id));
+        formatIds.forEach(id => usedFormats.add(id));
+    }
+    if (!tickets.length) return null;
+    const menu = tickets.length > 1 ? tickets.map(ticket => compactAtmosphereTicket(ticket.themes || [], ticket.formats || [])) : null;
+    return { ...tickets[0], atmosphereBucket: 'story', ...(menu ? { atmosphereMenu: menu } : {}) };
+}
+
+function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, themeCount, formatCount, recent, formalRecent, hardRecent, previousThemeFamilyKeys = [], previousFormatFamilyKeys = [], favoriteThemeIds, favoriteFormatIds, favoriteThemeMultipliers, favoriteFormatMultipliers, formatEligibleMisses, externalExcludedThemeIds = [], externalExcludedFormatIds = [], externalExcludedTextIds = [], faceIndex = 0, standaloneTextPool = null, presentationScopeKey = '', lotteryMethodBypass = false }) {
     if (directive?.disabled) return { disabled: true, directive };
     const requestedMode = requestedPresentationMode(settings, faceIndex);
     const autoLongText = requestedMode === 'auto' && autoFaceResolvesLongText(settings, faceIndex, presentationScopeKey);
     const longText = requestedMode === 'longtext' || autoLongText;
-    if (usesWorldBookLottery(settings, faceIndex, presentationScopeKey)) {
+    if (!lotteryMethodBypass && usesWorldBookLottery(settings, faceIndex, presentationScopeKey)) {
         return { ...worldBookLotteryResult(settings, faceIndex, presentationScopeKey, longText), directive };
     }
     const standaloneText = standaloneTextPool ?? usesStandaloneTextPool(settings, directive, themePool, formatPool, faceIndex, externalExcludedThemeIds, externalExcludedFormatIds);
     const textSettings = { ...settings, externalWorldBookRandomEnabled: true, externalWorldBookMixMode: 'external-only' };
-    if (standaloneText && settings.mode !== 'off') {
+    if (!lotteryMethodBypass && standaloneText && settings.mode !== 'off') {
         const texts = pickExternalItems(textSettings, 'text', 1, {
             randomUnit, hardExcludedIds: externalExcludedTextIds, avoidRepeat: settings.avoidRepeat,
             recentIds: recent.textIds || [], recentIdHits: recent.textIdHits || {},
@@ -988,6 +1072,15 @@ function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, th
             requestedPresentationMode: requestedMode, presentationMode: 'text',
             formatFairnessEligibleIds: [], formatFairnessSelectedIds: [] };
         if (longText) throw multiFacePlanningError('长文本没有可抽的主题、展现形式或已启用文本条目；请启用条目，或改回兔子镜已有条目。本次尚未发送请求。', 'BATCH_CANDIDATE_POOL_EXHAUSTED');
+    }
+    if (!lotteryMethodBypass && settings.lotteryMethod === 'atmosphere' && !directive?.hasThemeRequest && !directive?.hasFormatRequest) {
+        const drawn = drawAtmosphereBundle({
+            settings, directive, themePool, formatPool, themeCount, formatCount, recent, formalRecent, hardRecent,
+            previousThemeFamilyKeys, previousFormatFamilyKeys, favoriteThemeIds, favoriteFormatIds,
+            favoriteThemeMultipliers, favoriteFormatMultipliers, formatEligibleMisses, externalExcludedThemeIds,
+            externalExcludedFormatIds, externalExcludedTextIds, faceIndex, standaloneTextPool, presentationScopeKey,
+        });
+        if (drawn) return { ...drawn, directive };
     }
     if (requestedMode === 'text') settings = { ...settings, forceVisualScenery: false };
     const combineVisual = visualSceneryCombinationEnabled(settings);
@@ -1111,6 +1204,8 @@ function comboFromSelection(result, settings, recent, uiReviewFocus = null) {
         } : {}),
         uiReviewFocus: Array.isArray(uiReviewFocus) && uiReviewFocus.length ? [...uiReviewFocus] : pickUiReviewFocus(5),
         recentUiReviewFocus: recent.uiReviewFocus || [],
+        ...(result.atmosphereBucket ? { atmosphereBucket: result.atmosphereBucket } : {}),
+        ...(Array.isArray(result.atmosphereMenu) && result.atmosphereMenu.length > 1 ? { atmosphereMenu: result.atmosphereMenu } : {}),
     };
 }
 
@@ -1217,6 +1312,10 @@ function batchRandomSettingsKey(settings, total, favorites, exclusions, directiv
         formatsMax: settings.formatsMax,
         avoidRepeat: settings.avoidRepeat,
         cooldownRounds: settings.cooldownRounds || 10,
+        ...(settings.lotteryMethod === 'atmosphere' ? {
+            lotteryMethod: 'atmosphere',
+            atmosphereStoryPercent: atmosphereStoryPercent(settings),
+        } : {}),
         userDirectivePriority: !!settings.userDirectivePriority,
         forceVisualScenery: !!settings.forceVisualScenery,
         ...(visualSceneryCombinationEnabled(settings) ? { visualSceneryCombination: true } : {}),
@@ -1442,8 +1541,8 @@ function pickLiveCombinationBatch(settings, planning, faceCount, planningReason 
             throw multiFacePlanningError('多面抽取未得到完整的随机选题／形式；本次尚未发送请求。', 'BATCH_SELECTION_INCOMPLETE');
         }
         if (!isBlankLongTextSelection(combo) && !combo.themeIds.length && !combo.formatIds.length && snapshot.directive) combo.customDirective = true;
-        for (const id of combo.themeIds) if (!fixedThemes.has(id)) usedThemeIds.add(id);
-        for (const id of combo.formatIds) if (!fixedFormats.has(id)) usedFormatIds.add(id);
+        for (const id of comboHeldIds(combo, 'themeIds')) if (!fixedThemes.has(id)) usedThemeIds.add(id);
+        for (const id of comboHeldIds(combo, 'formatIds')) if (!fixedFormats.has(id)) usedFormatIds.add(id);
         (combo.textIds || []).forEach(id => usedTextIds.add(id));
         results.push(selected);
     }
@@ -1544,8 +1643,8 @@ export function pickCombinationBatch(settings, generationScopeKey = '', generati
 
     const first = planBatchFace(settings, snapshot, new Set(), new Set());
     const faces = [first.payload];
-    const usedThemeIds = new Set(first.payload.combo.themeIds);
-    const usedFormatIds = new Set(first.payload.combo.formatIds);
+    const usedThemeIds = new Set(comboHeldIds(first.payload.combo, 'themeIds'));
+    const usedFormatIds = new Set(comboHeldIds(first.payload.combo, 'formatIds'));
     const usedTextIds = new Set([...(snapshot.exclusions.textIds || []), ...(first.payload.combo.textIds || [])]);
     const wantsThemes = settings.samplingMode !== 'format_only';
     if (isBlankLongTextSelection(first.payload.combo) || first.payload.combo.textIds?.length || (usedFormatIds.size && (!wantsThemes || usedThemeIds.size))) {
@@ -1558,8 +1657,8 @@ export function pickCombinationBatch(settings, generationScopeKey = '', generati
             const next = planBatchFace(settings, snapshot, usedThemeIds, usedFormatIds, null, index, usedTextIds);
             if (!isBlankLongTextSelection(next.payload.combo) && !next.payload.combo.textIds?.length && (!next.payload.combo.formatIds.length || (wantsThemes && !next.payload.combo.themeIds.length))) break;
             faces.push(next.payload);
-            next.payload.combo.themeIds.forEach(id => usedThemeIds.add(id));
-            next.payload.combo.formatIds.forEach(id => usedFormatIds.add(id));
+            comboHeldIds(next.payload.combo, 'themeIds').forEach(id => usedThemeIds.add(id));
+            comboHeldIds(next.payload.combo, 'formatIds').forEach(id => usedFormatIds.add(id));
             (next.payload.combo.textIds || []).forEach(id => usedTextIds.add(id));
         }
     }

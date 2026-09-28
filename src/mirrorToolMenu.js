@@ -1,12 +1,15 @@
 // Tool controls stay attached to their owning face; only their menu is portalled.
-import { applyAppearanceTheme } from './settingsAppearance.js?rmv=1.6.16-ttinput3';
 
 // 镜面工具面板（挨打猫、维修兔、重说、抽签记录等）跟随设置里的「主题与外观」。
 // 选「跟随酒馆主题」时不改动任何颜色。
 export function themeMirrorToolPanel(panel) {
     if (!panel?.style) return;
     try {
-        applyAppearanceTheme(panel);
+        // settingsAppearance.js registers this hook when it loads; keeping this file
+        // import-free lets it be evaluated standalone (tests and early startup).
+        const applyTheme = globalThis.__rabbitMirrorApplyAppearanceTheme;
+        if (typeof applyTheme !== 'function') return;
+        applyTheme(panel);
         if (panel.dataset.rhTheme && panel.dataset.rhTheme !== 'host') panel.setAttribute('data-rh-tool-theme', 'true');
         else panel.removeAttribute('data-rh-tool-theme');
     } catch {}
