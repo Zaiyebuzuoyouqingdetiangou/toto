@@ -1,6 +1,6 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.62';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.62.1';
 import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.5.53-cn-boundary1';
 import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.6';
 
@@ -351,7 +351,7 @@ export function buildRabbitMirrorSettingsDialogHtml() {
                 </select>
               </label>
             </div>
-            <div id="rh_multiface_help" class="rabbit-mirror-subnote" style="margin:0 0 10px 26px;">一次请求，各面独立展示。所有面共用整批输出上限，面数更多时每面可用篇幅更少；上下文字符不是绘制额度。</div>
+            <div id="rh_multiface_help" class="rabbit-mirror-subnote" style="margin:0 0 10px 26px;">各面独立展示。一次请求时，所有面共用整批输出上限，面数更多每面篇幅更少；逐面排队则每一面各自用满最大输出。上下文字符不是绘制额度。</div>
             <fieldset id="rh_multiface_dispatch_row" style="margin:0 0 12px 26px;padding:8px 10px;border:1px dashed color-mix(in srgb,currentColor 28%,transparent);border-radius:10px;">
               <legend style="padding:0 6px;font-size:12px;">多面怎么发送（实验性）</legend>
               <label style="display:flex;gap:8px;align-items:flex-start;margin:4px 0;"><input name="rh_multiface_dispatch" type="radio" value="single"> 一次请求出全部面</label>
