@@ -1,11 +1,12 @@
-import { presentationModeFields } from './presentationMode.js?rmv=1.6.16-ttinput3';
+import { presentationModeFields } from './presentationMode.js?rmv=1.62';
 import {
     commitPendingComboBatch,
     getCurrentChatKey,
     releasePendingComboBatch,
-} from './storage.js?rmv=1.6.16-ttinput3';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.6.16-ttinput3';
+} from './storage.js?rmv=1.62';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.62';
 import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, multifaceRecoveryWithinRawBudgets } from './multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
+import { atmosphereChoicesFromFaces } from './atmosphereChoice.js?rmv=1.62';
 
 const SNAPSHOT_STORAGE_KEY = 'rabbit_mirror_theater:generation_snapshots:v1';
 const ACTIVE_ATTEMPT_STORAGE_KEY = 'rabbit_mirror_theater:active_generation_attempt:v1';
@@ -492,7 +493,8 @@ export function commitRabbitMirrorFollowBatch(batchId, chat, faceScans = [], exp
         || expectedOwner.swipeId !== owner.swipeId
         || expectedOwner.sourceHash !== owner.sourceHash) return false;
     if (hashText(owner.message.mes || '') !== owner.sourceHash || currentSwipeId(owner.message) !== owner.swipeId) return false;
-    const committed = commitPendingComboBatch(faceScans, { batchId: record.plan.batchId, identity: record.plan.identity, partial });
+    const chosenTickets = atmosphereChoicesFromFaces(owner.parsed?.faces || [], (record.plan.faces || []).map(face => face?.combo?.atmosphereMenu || null));
+    const committed = commitPendingComboBatch(faceScans, { batchId: record.plan.batchId, identity: record.plan.identity, partial, chosenTickets });
     if (!committed) return false;
     recordRabbitMirrorRecipe({
         chat,

@@ -3,15 +3,15 @@ import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.5.53
 import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.5.53-cn-boundary1';
 import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.5.53-text1';
 import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.5.53-cn-boundary1';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.6.16-ttinput3';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.6.16-ttinput3';
-import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.6.16-ttinput3';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.62';
+import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62';
 import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.5.53-cn-boundary1';
 export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.5.53-cn-boundary1';
 import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.5.53-cn-boundary1';
 import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.5.53-cn-boundary1';
-import { isTextPresentation, presentationModeFields } from './presentationMode.js?rmv=1.6.16-ttinput3';
-import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.6.16-ttinput3';
+import { isTextPresentation, presentationModeFields } from './presentationMode.js?rmv=1.62';
+import { DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62';
 
 function asText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -846,6 +846,17 @@ function compactLockItems(items, kind) {
     }).join(' + ');
 }
 
+function atmosphereMenuInstruction(combo) {
+    const menu = combo?.atmosphereMenu;
+    if (!Array.isArray(menu) || menu.length < 2) return '';
+    const lines = menu.map((ticket, index) => {
+        const themes = (ticket.themeLines || []).join('；') || '无';
+        const formats = (ticket.formatLines || []).join('；') || '无';
+        return `签 ${index + 1}：主题 ${themes}。展现形式 ${formats}。`;
+    });
+    return `按正文挑签：这一面有 ${menu.length} 张已经抽好的签，主题和展现形式互不重复。先按最新正文氛围选出最合适的一张。在该面 <toto> 内最先输出 <rm-ticket>序号</rm-ticket>，序号从 1 到 ${menu.length}。然后只按该签写作，不得混用其他签，也不得因为材料先后默认选签 1。\n${lines.join('\n')}`;
+}
+
 function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
     // The full base prompt already contains the selected-item summaries, presentation embodiment,
     // visual floor, visual/palette/interaction cooldowns, risk correction and output protocol.
@@ -881,7 +892,8 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
 
     return [
         '<兔子镜近输出短锁 data-source="independent-api-near-output">',
-        `本轮锁定：${samplingModeLabel(combo, settings)}；主题：${themes}；展现形式：${formats}。`,
+        atmosphereMenuInstruction(combo),
+        combo?.atmosphereMenu?.length > 1 ? '' : `本轮锁定：${samplingModeLabel(combo, settings)}；主题：${themes}；展现形式：${formats}。`,
         combo?.visualSceneryCombination === true ? '动态视觉组合锁：动态画面与抽中形式的真实内容、阅读路径和玩法同时保留，不得互相替代。' : '',
         `短检：${formatContract}。首个主体落实两项可见结构证据和真实 CSS；完成至少一条「对象→操作→可保持第二状态→反馈」交互，多节点媒介须有多入口或连续阶段，不用单次显隐敷衍。360px 下数量群组完整适配、正文不裁切。`,
         directiveText ? `点菜优先：${directiveText}` : '',
@@ -911,7 +923,9 @@ function buildMultiIndependentExecutionLock(faceContexts, settings, directive) {
         const themes = mode === 'format_only' ? '当前助手正文' : compactLockItems(face.combo?.themes, 'theme');
         const formats = compactLockItems(face.combo?.formats, 'presentation');
         const tarot = face.tarotRulesText ? '；具体塔罗牌必须使用白名单实体牌图' : '';
-        return `第 ${index + 1} 面：${samplingModeLabel(face.combo, settings)}；主题：${themes}；展现形式：${formats}。${face.combo?.visualSceneryCombination === true ? "动态视觉组合锁：动态画面与抽中形式的真实内容、阅读路径和玩法同时保留，不得互相替代。" : ""}短检：${compactComboExecutionContract(face.combo)}；主体、空间层次、材质与完整交互均须落实${tarot}。`;
+        const locked = `第 ${index + 1} 面：${samplingModeLabel(face.combo, settings)}；主题：${themes}；展现形式：${formats}。${face.combo?.visualSceneryCombination === true ? "动态视觉组合锁：动态画面与抽中形式的真实内容、阅读路径和玩法同时保留，不得互相替代。" : ""}短检：${compactComboExecutionContract(face.combo)}；主体、空间层次、材质与完整交互均须落实${tarot}。`;
+        const menuText = atmosphereMenuInstruction(face.combo);
+        return menuText ? `${menuText}\n选中的签仍须满足：${locked}` : locked;
     });
     return [
         '<兔子镜近输出短锁 data-source="independent-api-near-output">',
@@ -968,6 +982,8 @@ function faceMetadata(face, settings, generationType, rawPolicy, directive, memo
         samplingMode: combo?.samplingMode || settings?.samplingMode || 'classic',
         themeIds: Array.isArray(combo?.themeIds) ? [...combo.themeIds] : [],
         formatIds: Array.isArray(combo?.formatIds) ? [...combo.formatIds] : [],
+        ...(Array.isArray(combo?.atmosphereMenu) && combo.atmosphereMenu.length > 1 ? { atmosphereMenu: combo.atmosphereMenu, atmosphereBucket: combo.atmosphereBucket || 'story' } : {}),
+        ...(combo?.atmosphereBucket && !(combo.atmosphereMenu?.length > 1) ? { atmosphereBucket: combo.atmosphereBucket } : {}),
         ...presentationModeFields(combo),
         ...(combo.texts?.length ? {
             textIds: combo.texts.map(item => item.id),
@@ -1331,7 +1347,10 @@ export function planRabbitMirrorPromptDetails(settings, generationType = 'normal
         : [];
     let selections;
     const resaySettings = resay ? presentationOverrideSettings(settings, resay) : settings;
-    if (missingIndexes.length) {
+    const pinnedSelections = Array.isArray(generationContext?.pinnedSelections) ? generationContext.pinnedSelections.filter(item => item?.combo) : [];
+    if (pinnedSelections.length === 1) {
+        selections = pinnedSelections;
+    } else if (missingIndexes.length) {
         selections = missingIndexes.map(index => pickCombinationForMultifaceResay(settings, { faceIndex: index, faces: missingRetry.faces }));
     } else if (resay) {
         // A user-clicked failed slot must remain retryable even when a legacy
@@ -1367,7 +1386,9 @@ export function planRabbitMirrorPromptDetails(settings, generationType = 'normal
         settings: renderSettings, generationType, activeFeedback, requestedFaceCount,
         resay: resay ? { faceIndex: resay.faceIndex } : null,
         directive: selections[0]?.directive || null,
-    }, selections.batchPlan || null);
+        serialFaceIndex: Number.isInteger(generationContext?.serialFaceIndex) ? generationContext.serialFaceIndex : null,
+        serialFaceCount: Number(generationContext?.serialFaceCount) || 0,
+    }, pinnedSelections.length ? null : selections.batchPlan || null);
 }
 
 /** Synchronous rendering; only the already selected ext IDs may use this map. */
@@ -1375,7 +1396,7 @@ export function renderRabbitMirrorPromptPlan(plan, externalRawMap = null, appear
     const frozen = PROMPT_PLANS.get(plan);
     if (!frozen) throw externalMaterialError('RABBIT_MIRROR_EXTERNAL_MATERIAL_INVALID');
     const { selections, args, inactive } = frozen;
-    const { settings, generationType, activeFeedback, requestedFaceCount, resay, directive } = args;
+    const { settings, generationType, activeFeedback, requestedFaceCount, resay, directive, serialFaceIndex, serialFaceCount } = args;
     if (inactive) {
         return { prompt: '', executionLock: '', metadata: Object.freeze({ generationType: String(generationType || 'normal') }) };
     }
@@ -1453,10 +1474,20 @@ export function renderRabbitMirrorPromptPlan(plan, externalRawMap = null, appear
                 ? { themeIds: face.combo.themeIds, formatIds: face.combo.formatIds } : face.combo), 'rawPolicy:', rawPolicy,
             'memorySources:', memoryMaterial?.sources || [], 'prompt chars:', prompt.length);
     }
-    const executionLock = hasTextPresentation ? buildTextAwareExecutionLock(faceContexts, settings, directive) : multiface
+    const executionLockBody = hasTextPresentation ? buildTextAwareExecutionLock(faceContexts, settings, directive) : multiface
         ? buildMultiIndependentExecutionLock(faceContexts, settings, directive)
         : buildIndependentFinalExecutionLock({ combo: first.combo, settings, directive });
+    const serialFaceNote = Number.isInteger(serialFaceIndex) && serialFaceCount > 1
+        ? `\n这一面是本批第 ${serialFaceIndex + 1} 面，共 ${serialFaceCount} 面。开标签必须是 <toto data-rabbit-mirror="true" data-rm-face="${serialFaceIndex + 1}">。只写这一面，不要输出其他面。`
+        : '';
+    const executionLock = `${executionLockBody}${serialFaceNote}`;
     return { prompt, executionLock, metadata, ...(batchPlan ? { batchPlan } : {}) };
+}
+
+export function promptPlanSelections(plan) {
+    const frozen = PROMPT_PLANS.get(plan);
+    if (!frozen || !Array.isArray(frozen.selections)) return [];
+    return frozen.selections.map(selection => copyPromptPlanValue(selection));
 }
 
 export function buildRabbitMirrorPromptDetails(settings, generationType = 'normal', activeFeedback = null, generationScopeKey = '', generationContext = null) {

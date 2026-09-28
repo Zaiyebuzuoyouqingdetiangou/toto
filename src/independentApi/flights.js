@@ -1,9 +1,9 @@
 // Split from independentApi.js — flights.
 
-import { getSettings } from '../settings.js?rmv=1.6.16-ttinput3';
+import { getSettings } from '../settings.js?rmv=1.62';
 import { configuredAutomaticRerollIdleMs, configuredAutomaticRerollMax, stallTimeoutError } from '../automaticReroll.js?rmv=1.6';
-import { baseSlotOf } from './connection.js?rmv=1.6.16-ttinput3';
-import { automaticGenerationCutovers } from './lifecycle.js?rmv=1.6.16-ttinput3';
+import { baseSlotOf } from './connection.js?rmv=1.62';
+import { automaticGenerationCutovers } from './lifecycle.js?rmv=1.62';
 
 export const pending = new Map();
 // A failed automatic generation owns its exact chat+mesid+swipe+sourceHash until
@@ -199,13 +199,23 @@ export function advanceOperationEpochForBase(baseSlot='',reason='explicit-host-o
  return epoch;
 }
 
+function dispatchLeaseMaxConsumes(){
+ const settings=getSettings();
+ const faces=Number(settings?.rabbitMirrorFaceCount);
+ const faceCount=Number.isInteger(faces)&&faces>=2&&faces<=5?faces:1;
+ const serial=settings?.multifaceDispatch==='serial'&&faceCount>1;
+ const reroll=configuredAutomaticRerollMax(settings);
+ // 串行时每一面各占一次，缺面补发再共用原来的重 roll 次数。
+ return serial?faceCount+reroll:1+reroll;
+}
+
 export function reserveAutomaticDispatchLease(baseSlot='',sourceHash=''){
  const base=String(baseSlot||''); if(!base) return null;
  const epoch=operationEpochForBase(base);
  const key=`${base}\u0000${epoch}`;
  const leases=globalDispatchLeases();
  if(leases.has(key)) return null;
- const maxConsumes=1+configuredAutomaticRerollMax(getSettings());
+ const maxConsumes=dispatchLeaseMaxConsumes();
  const record={key,baseSlot:base,epoch,sourceHash:String(sourceHash||''),state:'reserved',consumeCount:0,maxConsumes,ts:Date.now()};
  leases.set(key,record);
  pruneDispatchLeaseState();
@@ -231,7 +241,7 @@ export function reserveAutomaticDispatchLease(baseSlot='',sourceHash=''){
 export function createManualDispatchLease(){
  let state='reserved';
  let consumeCount=0;
- const maxConsumes=1+configuredAutomaticRerollMax(getSettings());
+ const maxConsumes=dispatchLeaseMaxConsumes();
  return {
   consume(){ if(state==='released') return false; if(consumeCount>=maxConsumes) return false; consumeCount+=1; state='consumed'; return true; },
   release(){ if(state!=='reserved' || consumeCount>0) return false; state='released'; return true; },

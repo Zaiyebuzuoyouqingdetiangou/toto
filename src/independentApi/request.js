@@ -1,16 +1,16 @@
 // Split from independentApi.js — request.
 
 import { resolveBehaviorRuleText } from '../behaviorRules.js?rmv=1.5.53-cn-boundary1';
-import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.6.16-ttinput3';
+import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.62';
 import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.6.4-creation1';
-import { getSettings } from '../settings.js?rmv=1.6.16-ttinput3';
+import { getSettings } from '../settings.js?rmv=1.62';
 import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.6';
 import { independentGenerationTiming } from '../independentTiming.js?rmv=1.5.53-timing1';
 import {
     assertRabbitMirrorIndependentResponseBytes,
     assertRabbitMirrorIndependentResponseText,
     authorizeRabbitMirrorIndependentServiceRequest,
-} from '../independentSecurityGuard.js?rmv=1.6.16-ttinput3';
+} from '../independentSecurityGuard.js?rmv=1.62';
 import {
     parseIndependentAdvancedOptions,
     buildIndependentAdvancedCarrier,
@@ -19,24 +19,28 @@ import {
 import {
     buildRabbitMirrorPromptDetails,
     planRabbitMirrorPromptDetails,
+    promptPlanSelections,
     renderRabbitMirrorPromptPlan,
     prepareSelectedMemoryForPrompt,
     memoryRequestSettingsKey,
     assertMemoryRequestSettings,
-} from '../promptBuilder.js?rmv=1.6.16-ttinput3';
+} from '../promptBuilder.js?rmv=1.62';
 import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.5.53-text1';
 import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.5.53-cn-boundary1';
-import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.6.16-ttinput3';
-import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from '../multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.6.16-ttinput3';
+import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.62';
+import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText, createMultifaceFailureSlot } from '../multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
+import { parseAtmosphereTicketIndex, stripAtmosphereTicketTag, atmosphereChoicesFromFaces } from '../atmosphereChoice.js?rmv=1.62';
+import { isLocalPreflightFailure, isQuotaInsufficientFailure, configuredAutomaticRerollMax, automaticRerollEnabled } from '../automaticReroll.js?rmv=1.6';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.62';
 import {
     updateLatestVisualSignature,
     parseVisualFamilySkeleton,
     describeVisualFamilyDimensions,
     markPendingBatchAttempt,
     releasePendingComboBatch,
-} from '../storage.js?rmv=1.6.16-ttinput3';
-import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.6.16-ttinput3';
+    retargetPendingAtmosphereTicket,
+} from '../storage.js?rmv=1.62';
+import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.62';
 import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.5.53-cn-boundary1';
 import {
     EXTERNAL_SHELL_ATTR,
@@ -48,7 +52,7 @@ import {
     getContext,
     hashText,
 } from './runtime.js?rmv=1.6';
-import { operationEpochForBase } from './flights.js?rmv=1.6.16-ttinput3';
+import { operationEpochForBase } from './flights.js?rmv=1.62';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INDEPENDENT_MAX_APPROX_DEPTH,
@@ -63,7 +67,7 @@ import {
     normalizedConfiguredTemperature,
     readHistoryStore,
     readStore,
-} from './persistence.js?rmv=1.6.16-ttinput3';
+} from './persistence.js?rmv=1.62';
 import {
     API_PROFILE_ORDER,
     chatKey,
@@ -97,7 +101,7 @@ import {
     stageNextApiProfile,
     swipeId,
     validatedIndependentConnectionProfile,
-} from './connection.js?rmv=1.6.16-ttinput3';
+} from './connection.js?rmv=1.62';
 import {
     externalGeometryCycleSequence,
     externalGeometryLifecycleEpoch,
@@ -108,7 +112,7 @@ import {
     writeExternalGeometryCycleSequence,
     writeExternalGeometryLifecycleEpoch,
     writeExternalGeometryLifecycleReason,
-} from './geometry.js?rmv=1.6.16-ttinput3';
+} from './geometry.js?rmv=1.62';
 import {
     INDEPENDENT_REJECTED_PREVIEW_MAX_CHARS,
     INDEPENDENT_REJECTED_PREVIEW_MAX_ENTRIES,
@@ -123,8 +127,8 @@ import {
     writeExternalHostSyncIndex,
     writeIndependentRejectedPreviewChars,
     writeIndependentRejectedPreviewSequence,
-} from './mount.js?rmv=1.6.16-ttinput3';
-import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.6.16-ttinput3';
+} from './mount.js?rmv=1.62';
+import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.62';
 
 const NON_STREAM_PROFILE_BY_STREAM_PROFILE={
  chat_system_user_full:'chat_system_user_full_nostream',
@@ -1515,7 +1519,7 @@ export function wireIndependentRejectedFaceControls(host){
    independentRejectedFaceControlsWired.add(resay);
    resay.addEventListener('click',event=>{
     event.preventDefault(); event.stopPropagation();
-    void import('../outputSanitizer/toolsChrome.js?rmv=1.6.16-ttinput3').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+    void import('../outputSanitizer/toolsChrome.js?rmv=1.62').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
    },true);
   }
  }
@@ -1737,6 +1741,126 @@ function bindIndependentPromptBatch(owner,plan=null){
  assertIndependentPromptOwner(owner);
 }
 
+function settleAtmosphereSingle(html, metadata) {
+ const menu = metadata?.atmosphereMenu;
+ if (!Array.isArray(menu) || menu.length < 2) return html;
+ const choice = parseAtmosphereTicketIndex(html, menu.length);
+ if (choice == null) throw Object.assign(new Error('这一面没有选中菜单里的签。'), { code: 'ATMOSPHERE_TICKET_MISSING' });
+ retargetPendingAtmosphereTicket(choice);
+ return stripAtmosphereTicketTag(html);
+}
+
+function settleAtmosphereMultiface(prepared, metadata) {
+ const menus = (Array.isArray(metadata?.faces) && metadata.faces.length ? metadata.faces : [metadata]).map(face => face?.atmosphereMenu || null);
+ if (!menus.some(menu => Array.isArray(menu) && menu.length > 1)) return prepared;
+ const parsed = parseMultifaceOutput(prepared.html, { expectedCount: menus.length });
+ const choices = atmosphereChoicesFromFaces(parsed.faces || [], menus);
+ let html = String(prepared.html || '');
+ const failedFaces = Array.isArray(prepared.failedFaces) ? [...prepared.failedFaces] : [];
+ const faceScans = Array.isArray(prepared.faceScans) ? [...prepared.faceScans] : null;
+ choices.forEach((choice, index) => {
+  const menu = menus[index];
+  if (!Array.isArray(menu) || menu.length < 2 || choice != null) return;
+  if (failedFaces.some(face => face?.faceIndex === index)) return;
+  const slot = createMultifaceFailureSlot(index, 'atmosphere-ticket-missing');
+  const face = (parsed.faces || []).find(item => item.index === index);
+  if (face?.html && html.includes(face.html)) html = html.replace(face.html, slot);
+  else html += `\n${slot}`;
+  failedFaces.push({ faceIndex: index, status: 'failed', code: 'atmosphere-ticket-missing' });
+  if (faceScans) faceScans[index] = null;
+ });
+ const completedFaces = menus.length - failedFaces.length;
+ return { ...prepared, html: stripAtmosphereTicketTag(html), chosenTickets: choices, failedFaces, ...(faceScans ? { faceScans } : {}), completedFaces: Math.max(0, completedFaces) };
+}
+
+function wrapSerialFace(html, faceIndex) {
+ const ordinal = faceIndex + 1;
+ const text = String(html || '').trim();
+ if (/<toto\b/i.test(text)) {
+  if (/data-rm-face\s*=/.test(text)) return text.replace(/data-rm-face\s*=\s*["']\d+["']/, `data-rm-face="${ordinal}"`);
+  return text.replace(/<toto\b/i, `<toto data-rm-face="${ordinal}"`);
+ }
+ return `<toto data-rabbit-mirror="true" data-rm-face="${ordinal}">${text}</toto>`;
+}
+
+function serialFailureIsFatal(error, signal, hasSuccess) {
+ if (signal?.aborted || error?.name === 'AbortError' || error?.rabbitMirrorLocalAbort === true) return true;
+ const diagnostic = error?.rabbitMirrorRequestDiagnostic || {};
+ if (isQuotaInsufficientFailure(error, diagnostic)) return true;
+ if (!hasSuccess && isLocalPreflightFailure(error, diagnostic)) return true;
+ return false;
+}
+
+async function runIndependentSerialFaces({ ctx, index, msg, signal, requestOptions, promptPlan, details, st }) {
+ const selections = promptPlanSelections(promptPlan);
+ const faceCount = selections.length;
+ if (!faceCount || faceCount !== (Number(details.metadata?.faceCount) || faceCount)) {
+  throw Object.assign(new Error('逐面排队没有拿到完整的抽签计划；本次尚未发送请求。'), { code: 'MULTIFACE_PLAN_UNAVAILABLE', requestCount: 0 });
+ }
+ if (details.batchPlan && !markPendingBatchAttempt(details.batchPlan, { transient: true })) {
+  throw Object.assign(new Error('逐面排队无法登记这批抽签；本次尚未发送请求。'), { code: 'MULTIFACE_PLAN_UNAVAILABLE', requestCount: 0 });
+ }
+ requestOptions.onBatchPlan?.(details.batchPlan || null);
+ const htmlByFace = Array(faceCount).fill('');
+ const failed = new Set(Array.from({ length: faceCount }, (_, faceIndex) => faceIndex));
+ const choices = Array(faceCount).fill(null);
+ const acceptFace = (faceIndex, faceResult) => {
+  const menu = selections[faceIndex]?.combo?.atmosphereMenu;
+  let html = String(faceResult?.html || '');
+  if (Array.isArray(menu) && menu.length > 1) {
+   const choice = parseAtmosphereTicketIndex(html, menu.length);
+   if (choice == null) throw Object.assign(new Error(`第 ${faceIndex + 1} 面没有选中菜单里的签。`), { code: 'ATMOSPHERE_TICKET_MISSING' });
+   choices[faceIndex] = choice;
+   html = stripAtmosphereTicketTag(html);
+  }
+  if (!html) throw new Error(`第 ${faceIndex + 1} 面没有返回可显示的内容。`);
+  htmlByFace[faceIndex] = wrapSerialFace(html, faceIndex);
+  failed.delete(faceIndex);
+ };
+ const sendFace = faceIndex => callIndependentApi(ctx, index, msg, signal, {
+  ...requestOptions,
+  serialChild: true,
+  pinnedSelections: [selections[faceIndex]],
+  serialFaceIndex: faceIndex,
+  serialFaceCount: faceCount,
+  onBatchPlan() {},
+  onRequestSelection() {},
+ });
+ let fatalError = null;
+ for (const faceIndex of [...failed]) {
+  if (signal?.aborted) { fatalError = Object.assign(new Error('本轮生成已取消。'), { name: 'AbortError' }); break; }
+  try { acceptFace(faceIndex, await sendFace(faceIndex)); }
+  catch (error) {
+   if (serialFailureIsFatal(error, signal, htmlByFace.some(Boolean))) { fatalError = error; break; }
+  }
+ }
+ if (!fatalError && failed.size && automaticRerollEnabled(st)) {
+  const queue = [...failed];
+  let used = 0;
+  const budget = configuredAutomaticRerollMax(st);
+  while (queue.length && used < budget) {
+   if (signal?.aborted) { fatalError = Object.assign(new Error('本轮生成已取消。'), { name: 'AbortError' }); break; }
+   const faceIndex = queue.shift();
+   used += 1;
+   try { acceptFace(faceIndex, await sendFace(faceIndex)); }
+   catch (error) {
+    if (serialFailureIsFatal(error, signal, htmlByFace.some(Boolean))) { fatalError = error; break; }
+    if (failed.has(faceIndex)) queue.push(faceIndex);
+   }
+  }
+ }
+ if (fatalError && !htmlByFace.some(Boolean)) throw fatalError;
+ if (failed.size === faceCount) throw fatalError || Object.assign(new Error('逐面生成都没有完成。'), { code: 'multiface-all-failed' });
+ const failedFaces = [...failed].map(faceIndex => ({ faceIndex, status: 'failed', code: 'serial-face-failed' }));
+ return {
+  html: selections.map((_, faceIndex) => htmlByFace[faceIndex] || createMultifaceFailureSlot(faceIndex, 'serial-face-failed')).join('\n'),
+  faceScans: selections.map((_, faceIndex) => failed.has(faceIndex) ? null : { faceIndex, visualSignature: 'serial', visualSkeleton: '', riskFlags: [] }),
+  failedFaces, completedFaces: faceCount - failed.size, batchPlan: details.batchPlan || null, chosenTickets: choices,
+  requestDiagnostic: { faceCount, serialDispatch: true, partial: failed.size > 0, failedFaces, completedFaces: faceCount - failed.size, faces: details.metadata?.faces || [] },
+  executionLockChars: String(details.executionLock || '').length,
+ };
+}
+
 export async function callIndependentApi(ctx,index,msg,signal=null,requestOptions={}){
  const currentSettings=getSettings();
  const missingRetry=requestOptions.missingFaceRetry;
@@ -1793,6 +1917,8 @@ export async function callIndependentApi(ctx,index,msg,signal=null,requestOption
   batchIdentity:{mesid:index,swipeId:swipeId(msg),sourceHash:messageSourceFingerprint(msg)},
   ...(missingIndexes.length?{missingFaceRetry:{indexes:missingIndexes,faces:missingRetry.faces}}:{}),
   ...(resay?{multifaceResay:resay}:{}),
+  ...(Array.isArray(requestOptions.pinnedSelections)?{pinnedSelections:requestOptions.pinnedSelections}:{}),
+  ...(Number.isInteger(requestOptions.serialFaceIndex)?{serialFaceIndex:requestOptions.serialFaceIndex,serialFaceCount:Number(requestOptions.serialFaceCount)||0}:{}),
  };
  // Long text draws from the same pool as the other faces. Exact external retries
  // below still opt in from the saved IDs, even after settings change.
@@ -1804,7 +1930,7 @@ export async function callIndependentApi(ctx,index,msg,signal=null,requestOption
   ? missingIndexes.map(index=>missingRetry?.faces?.[index]).filter(Boolean)
   : [resay?.faces?.[resay?.faceIndex]].filter(Boolean);
  const externalResay=retryFaces.some(resayFace=>[...(Array.isArray(resayFace?.themeIds)?resayFace.themeIds:[]),...(Array.isArray(resayFace?.formatIds)?resayFace.formatIds:[]),...(Array.isArray(resayFace?.textIds)?resayFace.textIds:[])].some(id=>typeof id==='string'&&id.startsWith('ext:')));
- let details; let promptOwner=null; let characterWorldBookContext=null;
+ let details; let promptPlan=null; let promptOwner=null; let characterWorldBookContext=null;
  if(externalEnabled||externalResay||appearanceEnabled||memoryWorldBookEnabled||characterWorldBookEnabled||earlyBody){
   promptOwner=captureIndependentPromptOwner(ctx,index,msg,signal,requestOptions,generationScopeKey);
   // Settings are mutable objects. Freeze this opt-in before *any* asynchronous
@@ -1822,7 +1948,7 @@ export async function callIndependentApi(ctx,index,msg,signal=null,requestOption
    error.code='WORLD_BOOK_ENTRY_STATE_CONFLICT'; error.details={reason:'metadata-rebuild-required'};
    throw error;
   }
-  const plan=planRabbitMirrorPromptDetails(st,'independent',null,generationScopeKey,generationContext);
+  const plan=promptPlan=planRabbitMirrorPromptDetails(st,'independent',null,generationScopeKey,generationContext);
   const reference=plan.appearanceReference||{enabled:appearanceEnabled,revision:String(st.appearanceReferenceRevision||'')};
   bindIndependentPromptBatch(promptOwner,plan.batchPlan||null);
   let materials=null;let appearanceMaterial=null;let memoryMaterial;
@@ -1856,7 +1982,8 @@ export async function callIndependentApi(ctx,index,msg,signal=null,requestOption
   }
  }else{
   // Keep the builtin-only route synchronous: no hydration, raw read or second draw.
-  details=buildRabbitMirrorPromptDetails(st,'independent',null,generationScopeKey,generationContext);
+  promptPlan=planRabbitMirrorPromptDetails(st,'independent',null,generationScopeKey,generationContext);
+  details=renderRabbitMirrorPromptPlan(promptPlan);
   // The builtin route used to skip the final owner guard entirely. Capture the
   // same exact chat/message/swipe/source identity so the dispatch lease rechecks
   // the final body immediately before the one permitted paid request.
@@ -1872,6 +1999,9 @@ export async function callIndependentApi(ctx,index,msg,signal=null,requestOption
   return {skipped:true,reason:details.metadata?.disabled?'directive-disabled':'empty-prompt'};
  }
  if((!st.independentConnectionProfileId&&!st.independentApiBaseUrl)||!st.independentApiModel) throw Object.assign(new Error('独立 API 尚未完成酒馆连接与模型设置'),{code:'RABBIT_MIRROR_CONNECTION_UNCONFIGURED',requestCount:0});
+ if(st.multifaceDispatch==='serial' && faceCount>1 && !resay && !missingIndexes.length && requestOptions.serialChild!==true){
+  return runIndependentSerialFaces({ctx,index,msg,signal,requestOptions,promptPlan,details,st});
+ }
  const feedbackBlock=feedbackPrompt ? `
 
 ${feedbackPrompt}${feedbackFinalCheck?`
@@ -2071,9 +2201,10 @@ ${independentUserTail}`;
    throw error;
   }
   rememberApiProfile(st,profile);
-  const batchDiagnostic=prepared.failedFaces.length?{...requestDiagnostic,partial:true,completedFaces:prepared.completedFaces,failedFaces:prepared.failedFaces}:requestDiagnostic;
-  if(prepared.failedFaces.length) publishIndependentApiRequestDiagnostic(batchDiagnostic);
-  return {...prepared,feedbackId:activeFeedback?.id||'',feedbackPrompt,requestDiagnostic:batchDiagnostic,executionLockChars:executionLock.length,batchPlan:details.batchPlan};
+  const settled=settleAtmosphereMultiface(prepared,details.metadata);
+  const batchDiagnostic=settled.failedFaces?.length?{...requestDiagnostic,partial:true,completedFaces:settled.completedFaces,failedFaces:settled.failedFaces}:requestDiagnostic;
+  if(settled.failedFaces?.length) publishIndependentApiRequestDiagnostic(batchDiagnostic);
+  return {...settled,feedbackId:activeFeedback?.id||'',feedbackPrompt,requestDiagnostic:batchDiagnostic,executionLockChars:executionLock.length,batchPlan:details.batchPlan};
  }
  const inner=extractMirrorInner(raw);
  if(!inner){
@@ -2125,7 +2256,11 @@ ${independentUserTail}`;
  // RabbitMirror semantic boundary. HTTP 200 alone is not proof of a usable
  // parameter profile.
  rememberApiProfile(st,profile);
- return {html:preparedHtml,feedbackId:activeFeedback?.id||'',feedbackPrompt,requestDiagnostic,executionLockChars:executionLock.length};
+ if(requestOptions.serialChild===true){
+  return {html:preparedHtml,feedbackId:activeFeedback?.id||'',feedbackPrompt,requestDiagnostic,executionLockChars:executionLock.length};
+ }
+ const atmosphereHtml=settleAtmosphereSingle(preparedHtml,details.metadata);
+ return {html:atmosphereHtml,feedbackId:activeFeedback?.id||'',feedbackPrompt,requestDiagnostic,executionLockChars:executionLock.length};
 }
 
 export function externalOwnerMesid(el){

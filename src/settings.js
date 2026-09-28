@@ -1,10 +1,10 @@
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.6.16-ttinput3';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.62';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
 import { independentGenerationTiming } from './independentTiming.js?rmv=1.5.53-timing1';
 import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.6';
 import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.6';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.6.16-ttinput3';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.62';
 
 export const MODULE_NAME = 'rabbit_mirror_theater';
 
@@ -190,6 +190,9 @@ export const defaultSettings = Object.freeze({
     independentReadGlobalWorldInfo: false,
     independentWorldInfoDisabledBooks: [],
     samplingMode: 'classic',
+    // random：本地纯随机。atmosphere：按正文从已抽好的菜单里挑一张签。
+    lotteryMethod: 'random',
+    atmosphereStoryPercent: 70,
     rawPolicy: 'balanced',
     showCot: false,
     avoidRepeat: true,
@@ -204,6 +207,8 @@ export const defaultSettings = Object.freeze({
     presentationWorldviewLock: false,
     // 每轮生成的兔子镜面数（1～5）。默认 1，关闭多面不改旧单面路径。
     rabbitMirrorFaceCount: 1,
+    // single：一次请求出全部面。serial：副 API 逐面排队，一面一次。
+    multifaceDispatch: 'single',
     rabbitMirrorPresentationModes: ['html', 'html', 'html', 'html', 'html'],
     longTextSource: 'blank',
     // 自动呈现时，长文本所占百分比；其余为 HTML。0 表示仍按抽中的类别呈现。
@@ -418,6 +423,10 @@ export function getSettings() {
     delete settings.codeBlockRescueMode;
     delete settings.interactionRescueMode;
     if (!['classic', 'format_only'].includes(settings.samplingMode)) settings.samplingMode = defaultSettings.samplingMode;
+    if (!['random', 'atmosphere'].includes(settings.lotteryMethod)) settings.lotteryMethod = defaultSettings.lotteryMethod;
+    const storyPercent = Number(settings.atmosphereStoryPercent);
+    settings.atmosphereStoryPercent = Number.isFinite(storyPercent) ? Math.max(0, Math.min(100, Math.round(storyPercent))) : defaultSettings.atmosphereStoryPercent;
+    if (!['single', 'serial'].includes(settings.multifaceDispatch)) settings.multifaceDispatch = defaultSettings.multifaceDispatch;
     if (!['compact', 'balanced', 'full'].includes(settings.rawPolicy)) settings.rawPolicy = defaultSettings.rawPolicy;
     if (!Array.isArray(settings.memoryProviderIds)) settings.memoryProviderIds = [];
     settings.memoryProviderIds = settings.memoryProviderIds.map(value => {
@@ -527,6 +536,16 @@ export function updateSettings(patch) {
     if (Object.prototype.hasOwnProperty.call(safePatch, 'rabbitMirrorFaceCount')) {
         const faceCount = safePatch.rabbitMirrorFaceCount;
         safePatch.rabbitMirrorFaceCount = Number.isInteger(faceCount) && faceCount >= 2 && faceCount <= 5 ? faceCount : 1;
+    }
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'multifaceDispatch')) {
+        safePatch.multifaceDispatch = safePatch.multifaceDispatch === 'serial' ? 'serial' : 'single';
+    }
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'lotteryMethod')) {
+        safePatch.lotteryMethod = safePatch.lotteryMethod === 'atmosphere' ? 'atmosphere' : 'random';
+    }
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'atmosphereStoryPercent')) {
+        const storyPercent = Number(safePatch.atmosphereStoryPercent);
+        safePatch.atmosphereStoryPercent = Number.isFinite(storyPercent) ? Math.max(0, Math.min(100, Math.round(storyPercent))) : 70;
     }
     for (const key of ['independentReadCharacterCardSummary', 'independentReadPersonaSummary']) {
         if (Object.prototype.hasOwnProperty.call(safePatch, key)) safePatch[key] = safePatch[key] !== false;

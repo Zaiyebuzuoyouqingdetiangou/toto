@@ -1,7 +1,7 @@
-import { presentationModeFields } from './presentationMode.js?rmv=1.6.16-ttinput3';
-import { getCurrentChatKey, updateLatestVisualSignature } from './storage.js?rmv=1.6.16-ttinput3';
+import { presentationModeFields } from './presentationMode.js?rmv=1.62';
+import { getCurrentChatKey, retargetPendingAtmosphereFromHtml, updateLatestVisualSignature } from './storage.js?rmv=1.62';
 import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.5.53-cn-boundary1';
-import { getSettings } from './settings.js?rmv=1.6.16-ttinput3';
+import { getSettings } from './settings.js?rmv=1.62';
 import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.5.53-cn-boundary1';
 import {
     commitRabbitMirrorFollowBatch,
@@ -12,16 +12,16 @@ import {
     inspectRabbitMirrorGenerationSource,
     releaseRabbitMirrorFollowBatch,
     releaseRabbitMirrorFollowBatchAtMessage,
-} from './generationGuard.js?rmv=1.6.16-ttinput3';
+} from './generationGuard.js?rmv=1.62';
 import {
     clearSanitizedRabbitMirrorFaceProof,
     getSanitizedRabbitMirrorFaceProof,
     markSanitizedRabbitMirrorFace,
     rabbitMirrorMultifaceSourceHash,
-} from './multifaceProof.js?rmv=1.6.16-ttinput3';
+} from './multifaceProof.js?rmv=1.62';
 import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.5.53-cn-boundary1';
 import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.5.53-cn-boundary1';
-import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.6.16-ttinput3';
+import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.62';
 import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.5.53-cn-boundary1';
 
 export const FOLLOW_MULTIFACE_COMMITTED_EVENT = 'rabbit-mirror:follow-multiface-committed';
@@ -1359,7 +1359,7 @@ function templateSingleFollowRoot(template) {
 
 function loadFollowBatchSanitizer() {
     if (!followBatchSanitizerModulePromise) {
-        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.6.16-ttinput3').catch(error => {
+        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.62').catch(error => {
             followBatchSanitizerModulePromise = null;
             console.debug('[RabbitMirror] follow multiface sanitizer unavailable:', error);
             return null;
@@ -1719,6 +1719,8 @@ async function scanLatestAssistantMessage(mod) {
         ? result.interactionFamily
         : null;
     if (signature || skeleton || riskFlags.length || paletteFingerprint || interactionFamily) {
+        retargetPendingAtmosphereFromHtml(sourceForScan);
+        renderedToto.querySelectorAll?.('rm-ticket').forEach(node => node.remove());
         updateLatestVisualSignature(signature, skeleton, riskFlags, paletteFingerprint, interactionFamily);
         const feedbackResult = consumeInjectedFeedbackForSuccessfulRabbitMirror(message);
         if (feedbackResult?.consumed) {
