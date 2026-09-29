@@ -1,21 +1,23 @@
 // Split from independentApi.js — request.
 
-import { resolveBehaviorRuleText } from '../behaviorRules.js?rmv=1.62.20';
-import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.62.20';
-import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.62.20';
-import { getSettings } from '../settings.js?rmv=1.62.20';
-import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.62.20';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=1.62.20';
+import { claimGenerationEvidence, associateGenerationEvidence, generationEvidenceFor } from '../generationEvidence.js?rmv=1.62.21';
+
+import { resolveBehaviorRuleText } from '../behaviorRules.js?rmv=1.62.21';
+import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.62.21';
+import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.62.21';
+import { getSettings } from '../settings.js?rmv=1.62.21';
+import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.62.21';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=1.62.21';
 import {
     assertRabbitMirrorIndependentResponseBytes,
     assertRabbitMirrorIndependentResponseText,
     authorizeRabbitMirrorIndependentServiceRequest,
-} from '../independentSecurityGuard.js?rmv=1.62.20';
+} from '../independentSecurityGuard.js?rmv=1.62.21';
 import {
     parseIndependentAdvancedOptions,
     buildIndependentAdvancedCarrier,
     applyIndependentAdvancedExclusions,
-} from '../advancedRequestOptions.js?rmv=1.62.20';
+} from '../advancedRequestOptions.js?rmv=1.62.21';
 import {
     buildRabbitMirrorPromptDetails,
     planRabbitMirrorPromptDetails,
@@ -24,14 +26,14 @@ import {
     prepareSelectedMemoryForPrompt,
     memoryRequestSettingsKey,
     assertMemoryRequestSettings,
-} from '../promptBuilder.js?rmv=1.62.20';
-import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.62.20';
-import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.62.20';
-import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.62.20';
-import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText, createMultifaceFailureSlot } from '../multifaceProtocol.js?rmv=1.62.20';
-import { applyAtmosphereFields, atmosphereNotesFromHtml, stripAtmosphereChoiceMarkup } from '../atmosphereChoice.js?rmv=1.62.20';
-import { isLocalPreflightFailure, isQuotaInsufficientFailure, configuredAutomaticRerollMax, automaticRerollEnabled } from '../automaticReroll.js?rmv=1.62.20';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.62.20';
+} from '../promptBuilder.js?rmv=1.62.21';
+import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.62.21';
+import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.62.21';
+import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.62.21';
+import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText, createMultifaceFailureSlot } from '../multifaceProtocol.js?rmv=1.62.21';
+import { applyAtmosphereFields, atmosphereNotesFromHtml, stripAtmosphereChoiceMarkup } from '../atmosphereChoice.js?rmv=1.62.21';
+import { isLocalPreflightFailure, isQuotaInsufficientFailure, configuredAutomaticRerollMax, automaticRerollEnabled } from '../automaticReroll.js?rmv=1.62.21';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.62.21';
 import {
     updateLatestVisualSignature,
     parseVisualFamilySkeleton,
@@ -39,10 +41,11 @@ import {
     markPendingBatchAttempt,
     releasePendingComboBatch,
     retargetPendingAtmosphereTicket,
-} from '../storage.js?rmv=1.62.20';
-import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.62.20';
-import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.62.20';
+} from '../storage.js?rmv=1.62.21';
+import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.62.21';
+import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.62.21';
 import {
+    RUNTIME_VERSION,
     EXTERNAL_SHELL_ATTR,
     FOLLOW_EXTERNAL_ANCHOR_ATTR,
     FOLLOW_ORIGIN_ATTR,
@@ -51,8 +54,8 @@ import {
     byteLength,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.62.20';
-import { operationEpochForBase } from './flights.js?rmv=1.62.20';
+} from './runtime.js?rmv=1.62.21';
+import { operationEpochForBase } from './flights.js?rmv=1.62.21';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INDEPENDENT_MAX_APPROX_DEPTH,
@@ -67,7 +70,7 @@ import {
     normalizedConfiguredTemperature,
     readHistoryStore,
     readStore,
-} from './persistence.js?rmv=1.62.20';
+} from './persistence.js?rmv=1.62.21';
 import {
     API_PROFILE_ORDER,
     chatKey,
@@ -101,7 +104,7 @@ import {
     stageNextApiProfile,
     swipeId,
     validatedIndependentConnectionProfile,
-} from './connection.js?rmv=1.62.20';
+} from './connection.js?rmv=1.62.21';
 import {
     externalGeometryCycleSequence,
     externalGeometryLifecycleEpoch,
@@ -112,7 +115,7 @@ import {
     writeExternalGeometryCycleSequence,
     writeExternalGeometryLifecycleEpoch,
     writeExternalGeometryLifecycleReason,
-} from './geometry.js?rmv=1.62.20';
+} from './geometry.js?rmv=1.62.21';
 import {
     INDEPENDENT_REJECTED_PREVIEW_MAX_CHARS,
     INDEPENDENT_REJECTED_PREVIEW_MAX_ENTRIES,
@@ -127,8 +130,8 @@ import {
     writeExternalHostSyncIndex,
     writeIndependentRejectedPreviewChars,
     writeIndependentRejectedPreviewSequence,
-} from './mount.js?rmv=1.62.20';
-import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.62.20';
+} from './mount.js?rmv=1.62.21';
+import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.62.21';
 
 const NON_STREAM_PROFILE_BY_STREAM_PROFILE={
  chat_system_user_full:'chat_system_user_full_nostream',
@@ -729,6 +732,7 @@ async function requestIndependentConnectionProfileCompletion(runtime,profile,opt
  if(advancedCarrier&&Object.prototype.hasOwnProperty.call(advancedCarrier,'custom_include_body')) overrides.custom_include_body=body.custom_include_body;
  if(advancedCarrier&&Object.prototype.hasOwnProperty.call(advancedCarrier,'custom_exclude_body')) overrides.custom_exclude_body=body.custom_exclude_body;
  let serviceResult;
+ try { options.onEvidenceRequest?.({messages,maxTokens,options:{stream,extractData:true,includePreset:false,includeInstruct:false},overrides},'connection-manager'); } catch {}
  serviceResult=await service.sendRequest(profileId,messages,maxTokens,{
   stream,
   signal:options.signal||null,
@@ -939,6 +943,8 @@ export async function requestIndependentCompletion(st,systemPrompt,userPrompt,op
   return next;
  };
  const diagnosticContext=options.diagnosticContext && typeof options.diagnosticContext==='object' ? options.diagnosticContext : {};
+ const generationCapture=claimGenerationEvidence({version:RUNTIME_VERSION,profile:profile.name,owner:diagnosticContext,settings:st,faceIndex:options.evidenceFaceIndex,serial:options.evidenceSerial});
+ const onEvidenceRequest=generationCapture?(body,boundary)=>generationCapture.request(body,boundary):undefined;
  // Fixed scalars only. Never spread a parser payload/partialResult into a
  // persisted diagnostic or the external observer's metadata event.
  const transportSummary=(value={},fallback={})=>{
@@ -1010,6 +1016,8 @@ export async function requestIndependentCompletion(st,systemPrompt,userPrompt,op
   attempts.push({profile:profile.name,status:0,detail,kind:failureKind});
   const failureCategory=localPreflight?'local-preflight':responseBoundaryFailure?'response-boundary':profileAuthFailure?'authentication':rateLimited?'rate-limit':concurrencyFailure?'concurrency':connectionInterrupted?'network':'unknown';
   const failureTransport=transportSummary(error?.partialResult?.transport,{status:r?.status??reportedHttpStatus,contentType:connectionId?null:r?.headers?.get?.('content-type'),termination:localPreflight?'not-dispatched':(r?'stream-error':'fetch-error'),failureCategory});
+  if(error?.partialResult) generationCapture?.response({...error.partialResult,partial:true},failureTransport);
+  generationCapture?.fail('transport',error,{requestCount:localPreflight?0:1});
   if(failureTransport.status===null&&!localPreflight&&reportedHttpStatus)failureTransport.status=reportedHttpStatus;
   failureTransport.failureCategory=failureCategory;
   const requestDiagnostic=publishIndependentApiRequestDiagnostic({
@@ -1043,6 +1051,8 @@ export async function requestIndependentCompletion(st,systemPrompt,userPrompt,op
   const summary=transportSummary(error?.partialResult?.transport,{status:connectionId?null:r?.status,
    contentType:connectionId?null:r?.headers?.get?.('content-type'),termination:'local-abort'});
   summary.termination='local-abort';summary.endedNormally=false;summary.prematureClose=null;
+  if(error?.partialResult) generationCapture?.response({...error.partialResult,partial:true},summary);
+  generationCapture?.fail('cancelled',error);
   let requestCount=1;try{if(options.dispatchLease?.consumed?.()===false)requestCount=0;}catch{}
   const diagnostic=publishIndependentApiRequestDiagnostic({ok:false,status:summary.status,profile:profile.name,streamSent:profile.body?.stream!==false,
    requestCount,automaticProfileFallback:false,automaticRetry:false,semanticFailure:'local-cancel',transportCause:'local-cancel',nextProfile:'',
@@ -1056,7 +1066,7 @@ export async function requestIndependentCompletion(st,systemPrompt,userPrompt,op
    const advancedOptions=advancedSettings.independentAdvancedEnabled===true?parseIndependentAdvancedOptions(advancedSettings):null;
    if(advancedOptions?.excludedParams?.length) profile={...profile,body:applyIndependentAdvancedExclusions(profile.body,advancedOptions)};
    const runtime=await validatedIndependentConnectionProfile(connectionId);
-   const completed=await requestIndependentConnectionProfileCompletion(runtime,profile,{...options,advancedOptions,maxTokens:Number(st.independentApiMaxTokens)||12000});
+   const completed=await requestIndependentConnectionProfileCompletion(runtime,profile,{...options,onEvidenceRequest,advancedOptions,maxTokens:Number(st.independentApiMaxTokens)||12000});
    r=completed.response; result=completed.result;
   }catch(error){
    if(options.signal?.aborted){publishLocalCancellation(error);throw error;}
@@ -1072,7 +1082,7 @@ export async function requestIndependentCompletion(st,systemPrompt,userPrompt,op
    const advancedSettings=options.advancedSettings||st;
    const advancedOptions=advancedSettings.independentAdvancedEnabled===true?parseIndependentAdvancedOptions(advancedSettings):null;
    if(advancedOptions?.excludedParams?.length) profile={...profile,body:applyIndependentAdvancedExclusions(profile.body,advancedOptions)};
-   r=await fetchIndependentUrl(url,{method:'POST',headers:headers(st),body:JSON.stringify(profile.body),signal:options.signal,dispatchLease:options.dispatchLease,advancedOptions,assertAdvancedCurrent:options.assertAdvancedCurrent});
+   r=await fetchIndependentUrl(url,{method:'POST',headers:headers(st),body:JSON.stringify(profile.body),signal:options.signal,dispatchLease:options.dispatchLease,advancedOptions,assertAdvancedCurrent:options.assertAdvancedCurrent,onEvidenceRequest});
    options.onProgress?.('response-headers');
   }catch(error){
    if(options.signal?.aborted){publishLocalCancellation(error);throw error;}
@@ -1089,6 +1099,8 @@ export async function requestIndependentCompletion(st,systemPrompt,userPrompt,op
  }
  attempts.push({profile:profile.name,status:r.status,detail:String(result.raw||'').slice(0,280),kind:'response'});
  const responseTransport=transportSummary(result.transport,{status:connectionId?null:r.status,contentType:connectionId?null:result.contentType,termination:'eof-unconfirmed'});
+ generationCapture?.response(result,responseTransport,responseTransport.status);
+ associateGenerationEvidence(result,generationCapture);
  const diagnosticBase={
   ok:!!r.ok,
   status:responseTransport.status,
@@ -1519,7 +1531,7 @@ export function wireIndependentRejectedFaceControls(host){
    independentRejectedFaceControlsWired.add(resay);
    resay.addEventListener('click',event=>{
     event.preventDefault(); event.stopPropagation();
-    void import('../outputSanitizer/toolsChrome.js?rmv=1.62.20').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+    void import('../outputSanitizer/toolsChrome.js?rmv=1.62.21').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
    },true);
   }
  }
@@ -1717,7 +1729,7 @@ async function loadIndependentAppearanceReference(owner){
  let module;
  assertIndependentPromptOwner(owner);
  try{
-  try{module=await import('../appearanceReference.js?rmv=1.62.20');}
+  try{module=await import('../appearanceReference.js?rmv=1.62.21');}
   catch{
    const error=new Error('外观参考模块未能加载；本轮未发送请求，请刷新后重试或关闭外观参考。');
    error.code='RABBIT_MIRROR_APPEARANCE_MODULE_UNAVAILABLE';error.requestCount=0;throw error;
@@ -2168,7 +2180,9 @@ ${independentUserTail}`;
    return accepted;
   },
  } : originalLease;
- const {response:r,result,profile,attempts,requestDiagnostic,semanticError}=await requestIndependentCompletion(st,systemPrompt,userPrompt,{signal,manualRetry:requestOptions.manualRetry===true,automaticReroll:requestOptions.automaticReroll===true,diagnosticContext:requestSelectionDiagnostic,dispatchLease,onProgress:requestOptions.onProgress,earlyBodyOwner:requestOptions.earlyBodyOwner,advancedSettings,assertAdvancedCurrent});
+ const {response:r,result,profile,attempts,requestDiagnostic,semanticError}=await requestIndependentCompletion(st,systemPrompt,userPrompt,{signal,manualRetry:requestOptions.manualRetry===true,automaticReroll:requestOptions.automaticReroll===true,diagnosticContext:requestSelectionDiagnostic,dispatchLease,onProgress:requestOptions.onProgress,earlyBodyOwner:requestOptions.earlyBodyOwner,advancedSettings,assertAdvancedCurrent,evidenceFaceIndex:requestOptions.serialFaceIndex??resay?.faceIndex,evidenceSerial:requestOptions.serialChild===true});
+ const evidence=generationEvidenceFor(result);
+ try {
  if(semanticError){
   const error=new Error(semanticError);
   error.rabbitMirrorRequestDiagnostic=requestDiagnostic;
@@ -2201,7 +2215,7 @@ ${independentUserTail}`;
  const mirrorSource=stripAtmosphereChoiceMarkup(raw);
  if(faceCount>1){
   let prepared;
-  try{ prepared=prepareIndependentMultifaceResult(mirrorSource,details.metadata,requestDiagnostic,requestOptions); }
+  try{ prepared=prepareIndependentMultifaceResult(mirrorSource,details.metadata,requestDiagnostic,requestOptions); evidence?.processed(prepared.html,{stage:'after-sanitize',faceCount}); }
   catch(error){
    const detail=error?.rabbitMirrorMultifaceDiagnostic&&typeof error.rabbitMirrorMultifaceDiagnostic==='object'?error.rabbitMirrorMultifaceDiagnostic:{};
    const semantic=independentMultifaceFailureSemantic(error);
@@ -2213,6 +2227,8 @@ ${independentUserTail}`;
   const settled=settleAtmosphereMultiface(prepared,details.metadata,atmosphereNotes);
   const batchDiagnostic=settled.failedFaces?.length?{...requestDiagnostic,partial:true,completedFaces:settled.completedFaces,failedFaces:settled.failedFaces}:requestDiagnostic;
   if(settled.failedFaces?.length) publishIndependentApiRequestDiagnostic(batchDiagnostic);
+  evidence?.processed(settled.html,{stage:'ready-to-mount',faceCount,completedFaces:settled.completedFaces,failedFaces:settled.failedFaces||[]});
+  evidence?.finish({phase:'ready-to-mount',partial:!!settled.failedFaces?.length});
   return {...settled,feedbackId:activeFeedback?.id||'',feedbackPrompt,requestDiagnostic:batchDiagnostic,executionLockChars:executionLock.length,batchPlan:details.batchPlan};
  }
  const inner=extractMirrorInner(mirrorSource);
@@ -2222,8 +2238,10 @@ ${independentUserTail}`;
     const prose=salvageLongTextProse(mirrorSource);
     if(prose){
      const preparedHtml=prepareIndependentReadyHtml(salvagedLongTextFace(prose,0).inner);
+     evidence?.processed(preparedHtml,{stage:'after-sanitize',salvagedLongText:true});
      if(preparedHtml && independentMirrorBodyEvidence(preparedHtml)){
       rememberApiProfile(st,profile);
+      evidence?.finish({phase:'ready-to-mount',truncated:true});
       return {html:preparedHtml,truncated:true,feedbackId:activeFeedback?.id||'',feedbackPrompt,requestDiagnostic,executionLockChars:executionLock.length};
      }
     }
@@ -2256,6 +2274,7 @@ ${independentUserTail}`;
    throw new Error('独立 API 返回了只有标题或样式的空壳兔子镜；本次结果不会保存，也不会交给维修兔改写正文。请在挨打猫中使用“重说”。');
  }
  const preparedHtml=prepareIndependentReadyHtml(inner);
+ evidence?.processed(preparedHtml,{stage:'after-sanitize',faceCount:1});
  if(!preparedHtml || !independentMirrorBodyEvidence(preparedHtml)){
    republishIndependentSemanticFailure(requestDiagnostic,'post-sanitize-empty','',{responseChars:raw.length});
    throw new Error('⚠️ 独立 API 返回了完整结构，但经过安全净化后没有留下可用正文。本次结果不会保存；本轮只发送了 1 次生成请求，不会自动重发，请手动重新生成兔子镜。');
@@ -2266,10 +2285,13 @@ ${independentUserTail}`;
  // parameter profile.
  rememberApiProfile(st,profile);
  if(requestOptions.serialChild===true){
+  evidence?.finish({phase:'ready-to-mount',serial:true});
   return {html:preparedHtml,atmosphereNote:atmosphereNotes[0]||{choice:null,reason:''},feedbackId:activeFeedback?.id||'',feedbackPrompt,requestDiagnostic,executionLockChars:executionLock.length};
  }
  settleAtmosphereSingle(atmosphereNotes[0],details.metadata,requestDiagnostic);
+ evidence?.finish({phase:'ready-to-mount'});
  return {html:preparedHtml,feedbackId:activeFeedback?.id||'',feedbackPrompt,requestDiagnostic,executionLockChars:executionLock.length};
+ } catch(error) { evidence?.fail('postprocess',error); throw error; }
 }
 
 export function externalOwnerMesid(el){

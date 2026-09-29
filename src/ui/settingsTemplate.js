@@ -1,8 +1,8 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.62.20';
-import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.62.20';
-import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.62.20';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.62.21';
+import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.62.21';
+import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.62.21';
 
 export function buildRabbitMirrorSettingsDialogHtml() {
     return `
@@ -268,6 +268,19 @@ export function buildRabbitMirrorSettingsDialogHtml() {
               <button id="rh_external_transfer_open" class="menu_button" type="button">换设备：导出／导入整库</button>
             </div>
           </div>
+          <section id="rh_generation_evidence" style="margin-top:12px;padding:12px;border:1px solid currentColor;border-radius:10px;">
+            <strong>生成内容取证（独立 API）</strong>
+            <p>先记录下一次，再正常生成或重说一次，完成后导出。只记录这一次，不额外调用模型。</p>
+            <p>报告含本轮提示词、聊天内容、模型原文及挂载前 HTML；不采集连接密钥和请求头。仅保留在本页，刷新前请导出。</p>
+            <div class="flex-container flexGap5" style="flex-wrap:wrap;">
+              <button id="rh_generation_evidence_start" class="menu_button" type="button">记录下一次生成</button>
+              <button id="rh_generation_evidence_download" class="menu_button" type="button" disabled>导出报告</button>
+              <button id="rh_generation_evidence_copy" class="menu_button" type="button" disabled>复制报告</button>
+              <button id="rh_generation_evidence_clear" class="menu_button" type="button" disabled>清除记录</button>
+            </div>
+            <p id="rh_generation_evidence_status" role="status" aria-live="polite"></p>
+            <textarea id="rh_generation_evidence_output" class="text_pole" aria-label="生成内容取证报告" readonly spellcheck="false" hidden style="width:100%;min-height:220px;user-select:text;-webkit-user-select:text;"></textarea>
+          </section>
           <section id="rh_manual_entry_diag" style="margin-top:12px;padding:12px;border:1px solid currentColor;border-radius:10px;">
             <strong>手动生成没有外置框？</strong>
             <p>先开始记录，再回到聊天正常发送一条消息。角色回复后，回来结束记录并复制报告。没有兔子镜也能使用。</p>

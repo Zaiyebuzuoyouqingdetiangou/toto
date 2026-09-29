@@ -1,6 +1,6 @@
 // UI palettes from the user-provided Hearttrace source, by Toto.
 // Presentation only: no generation settings, Prompt, content storage, or network.
-import { closeTheaterFavoriteLibrary, closeTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.62.20';
+import { closeTheaterFavoriteLibrary, closeTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.62.21';
 export const UI_THEMES = Object.freeze([
   {
     "id": "default",
@@ -321,6 +321,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     move('rh_missing_shell_panel','mirror');
     move('rh_advanced_page_repair','mirror');
     note('mirror','每面兔子镜的标题旁都有版本箭头、收藏星标和兔子工具。挨打猫用于反馈和重说；维修兔用于检查、修复、复制本面 HTML；星标收藏当前这一版。');
+    move('rh_generation_evidence','diagnosis');
     move('rh_manual_entry_diag','diagnosis');
     move('rh_token_meter','usage');move(get('rh_copy_regex').closest('.rabbit-mirror-regex-helper'),'regex');
     move(get('rh_clear_last').parentElement,'cleanup');move(get('rh_external_diag_status').parentElement,'diagnosis');
