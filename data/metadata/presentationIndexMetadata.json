@@ -161,6 +161,102 @@
       "summaryOverride": "一件承载内容的纸或物在燃烧、晕开、褪色或溶解的过程中被读到：表层消失后，露出底下原本看不见的另一句话。"
     },
     {
+      "id": "10.2.17",
+      "group": "10",
+      "tags": [
+        "independent",
+        "visual"
+      ]
+    },
+    {
+      "id": "10.2.18",
+      "group": "10",
+      "tags": [
+        "independent",
+        "visual"
+      ]
+    },
+    {
+      "id": "10.2.19",
+      "group": "10",
+      "tags": [
+        "independent",
+        "visual"
+      ]
+    },
+    {
+      "id": "10.2.20",
+      "group": "10",
+      "tags": [
+        "independent",
+        "visual"
+      ]
+    },
+    {
+      "id": "10.2.21",
+      "group": "10",
+      "tags": [
+        "independent",
+        "visual"
+      ]
+    },
+    {
+      "id": "10.2.22",
+      "group": "10",
+      "tags": [
+        "independent",
+        "visual"
+      ]
+    },
+    {
+      "id": "10.2.23",
+      "group": "10",
+      "tags": [
+        "independent",
+        "visual"
+      ]
+    },
+    {
+      "id": "10.2.24",
+      "group": "10",
+      "tags": [
+        "independent",
+        "visual"
+      ]
+    },
+    {
+      "id": "10.2.25",
+      "group": "10",
+      "tags": [
+        "independent",
+        "visual"
+      ]
+    },
+    {
+      "id": "10.2.26",
+      "group": "10",
+      "tags": [
+        "independent",
+        "visual"
+      ]
+    },
+    {
+      "id": "10.2.27",
+      "group": "10",
+      "tags": [
+        "independent",
+        "visual"
+      ]
+    },
+    {
+      "id": "10.2.28",
+      "group": "10",
+      "tags": [
+        "independent",
+        "visual"
+      ]
+    },
+    {
       "id": "1.1",
       "group": "1",
       "tags": [
@@ -513,6 +609,46 @@
       "rawIndent": 2
     },
     {
+      "id": "1.10",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital",
+        "interactive",
+        "mystery"
+      ]
+    },
+    {
+      "id": "1.11",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital",
+        "interactive",
+        "mystery"
+      ]
+    },
+    {
+      "id": "1.12",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital",
+        "interactive",
+        "mystery"
+      ]
+    },
+    {
+      "id": "1.13",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital",
+        "interactive",
+        "mystery"
+      ]
+    },
+    {
       "id": "2.1",
       "group": "2",
       "tags": [
@@ -725,6 +861,30 @@
       ]
     },
     {
+      "id": "2.6",
+      "group": "2",
+      "tags": [
+        "independent",
+        "paper"
+      ]
+    },
+    {
+      "id": "2.7",
+      "group": "2",
+      "tags": [
+        "independent",
+        "paper"
+      ]
+    },
+    {
+      "id": "2.8",
+      "group": "2",
+      "tags": [
+        "independent",
+        "paper"
+      ]
+    },
+    {
       "id": "3.3",
       "group": "3",
       "tags": [
@@ -768,6 +928,46 @@
     },
     {
       "id": "3.6",
+      "group": "3",
+      "tags": [
+        "independent",
+        "analysis",
+        "academic",
+        "catalog"
+      ]
+    },
+    {
+      "id": "3.7",
+      "group": "3",
+      "tags": [
+        "independent",
+        "analysis",
+        "academic",
+        "catalog"
+      ]
+    },
+    {
+      "id": "3.8",
+      "group": "3",
+      "tags": [
+        "independent",
+        "analysis",
+        "academic",
+        "catalog"
+      ]
+    },
+    {
+      "id": "3.9",
+      "group": "3",
+      "tags": [
+        "independent",
+        "analysis",
+        "academic",
+        "catalog"
+      ]
+    },
+    {
+      "id": "3.10",
       "group": "3",
       "tags": [
         "independent",
@@ -1249,6 +1449,33 @@
       ]
     },
     {
+      "id": "6.1.2",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game",
+        "interactive"
+      ]
+    },
+    {
+      "id": "6.1.3",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game",
+        "interactive"
+      ]
+    },
+    {
+      "id": "6.1.4",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game",
+        "interactive"
+      ]
+    },
+    {
       "id": "6.2",
       "group": "6",
       "tags": [
@@ -1468,6 +1695,15 @@
       ]
     },
     {
+      "id": "6.3.7",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game",
+        "interactive"
+      ]
+    },
+    {
       "id": "6.4",
       "group": "6",
       "tags": [
@@ -1656,6 +1892,26 @@
       ]
     },
     {
+      "id": "6.5.9",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game",
+        "interactive",
+        "choice"
+      ]
+    },
+    {
+      "id": "6.5.10",
+      "group": "6",
+      "tags": [
+        "independent",
+        "game",
+        "interactive",
+        "choice"
+      ]
+    },
+    {
       "id": "6.5.bingo",
       "group": "6",
       "tags": [
@@ -1825,6 +2081,70 @@
       ]
     },
     {
+      "id": "7.7",
+      "group": "7",
+      "tags": [
+        "independent",
+        "forum"
+      ]
+    },
+    {
+      "id": "7.8",
+      "group": "7",
+      "tags": [
+        "independent",
+        "forum"
+      ]
+    },
+    {
+      "id": "7.9",
+      "group": "7",
+      "tags": [
+        "independent",
+        "forum"
+      ]
+    },
+    {
+      "id": "7.10",
+      "group": "7",
+      "tags": [
+        "independent",
+        "forum"
+      ]
+    },
+    {
+      "id": "7.11",
+      "group": "7",
+      "tags": [
+        "independent",
+        "forum"
+      ]
+    },
+    {
+      "id": "7.12",
+      "group": "7",
+      "tags": [
+        "independent",
+        "forum"
+      ]
+    },
+    {
+      "id": "7.13",
+      "group": "7",
+      "tags": [
+        "independent",
+        "forum"
+      ]
+    },
+    {
+      "id": "7.14",
+      "group": "7",
+      "tags": [
+        "independent",
+        "forum"
+      ]
+    },
+    {
       "id": "8.1",
       "group": "8",
       "tags": [
@@ -1890,6 +2210,22 @@
     },
     {
       "id": "8.7",
+      "group": "8",
+      "tags": [
+        "independent",
+        "meta"
+      ]
+    },
+    {
+      "id": "8.8",
+      "group": "8",
+      "tags": [
+        "independent",
+        "meta"
+      ]
+    },
+    {
+      "id": "8.9",
       "group": "8",
       "tags": [
         "independent",

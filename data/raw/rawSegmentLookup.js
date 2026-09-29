@@ -1,5 +1,5 @@
-import { RAW_THEMATIC_CATEGORIES } from './rawThematicCategories.js?rmv=1.62.5-visual-solar1';
-import { RAW_PRESENTATION_FORMATS } from './rawPresentationFormats.js?rmv=1.62.5-visual-solar1';
+import { RAW_THEMATIC_CATEGORIES } from './rawThematicCategories.js?rmv=1.62.17';
+import { RAW_PRESENTATION_FORMATS } from './rawPresentationFormats.js?rmv=1.62.17';
 
 function escapeRegExp(text) {
     return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -74,11 +74,35 @@ function collectSegment(lines, startIndex) {
     return segment.join('\n').trim();
 }
 
+// ⟪甲｜乙｜丙⟫ marks an option list whose order carries no meaning. Every lookup
+// returns it in a fresh random order joined with 、, so the model does not keep
+// picking whichever option happens to be written first.
+function randomIndex(limit) {
+    try {
+        const buffer = new Uint32Array(1);
+        globalThis.crypto.getRandomValues(buffer);
+        return buffer[0] % limit;
+    } catch {
+        return Math.floor(Math.random() * limit);
+    }
+}
+
+export function expandShuffledOptions(text) {
+    return String(text || '').replace(/⟪([^⟫]+)⟫/g, (_, body) => {
+        const options = body.split('｜').map(part => part.trim()).filter(Boolean);
+        for (let index = options.length - 1; index > 0; index -= 1) {
+            const swap = randomIndex(index + 1);
+            [options[index], options[swap]] = [options[swap], options[index]];
+        }
+        return options.join('、');
+    });
+}
+
 function findRawSegment(rawText, item) {
     const lines = String(rawText || '').split(/\r?\n/);
     const start = findStartLine(lines, item);
     const segment = collectSegment(lines, start);
-    return segment || item.raw || `【${item.id} ${item.title}】${item.summary || ''}`;
+    return expandShuffledOptions(segment || item.raw || `【${item.id} ${item.title}】${item.summary || ''}`);
 }
 
 export function resolveThemeRaw(item) {

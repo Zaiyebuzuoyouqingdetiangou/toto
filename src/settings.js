@@ -1,10 +1,10 @@
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.62.5-visual-solar1';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.62.17';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.62.5-visual-solar1';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.62.5-visual-solar1';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.62.5-visual-solar1';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.62.5-visual-solar1';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.62.17';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.62.17';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.62.17';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.62.17';
 
 export const MODULE_NAME = 'rabbit_mirror_theater';
 
@@ -200,6 +200,7 @@ export const defaultSettings = Object.freeze({
     independentReadGlobalWorldInfo: false,
     independentWorldInfoDisabledBooks: [],
     samplingMode: 'classic',
+    singlePairSampling: false,
     // random：本地纯随机。atmosphere：按正文从已抽好的菜单里挑一张签。
     lotteryMethod: 'random',
     atmosphereStoryPercent: 70,
@@ -434,6 +435,7 @@ export function getSettings() {
     delete settings.codeBlockRescueMode;
     delete settings.interactionRescueMode;
     if (!['classic', 'format_only'].includes(settings.samplingMode)) settings.samplingMode = defaultSettings.samplingMode;
+    settings.singlePairSampling = settings.singlePairSampling === true;
     if (!['random', 'atmosphere'].includes(settings.lotteryMethod)) settings.lotteryMethod = defaultSettings.lotteryMethod;
     const storyPercent = Number(settings.atmosphereStoryPercent);
     settings.atmosphereStoryPercent = Number.isFinite(storyPercent) ? Math.max(0, Math.min(100, Math.round(storyPercent))) : defaultSettings.atmosphereStoryPercent;

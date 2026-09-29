@@ -1650,3 +1650,8 @@ dialog[data-rm-theater-favorite-library] {
 }
 #chat :is(toto[data-rabbit-mirror="true"] > details, details[data-rabbit-mirror-external-details="true"]):has(> article:not([style])):not(:has(> :is(div, section, main, aside, nav, header, footer, figure, table, form, svg, canvas, iframe, style))):not(:has(> article :is(div, section, main, aside, nav, header, footer, figure, table, button, input, select, textarea, form, svg, canvas, img, video, iframe, style))) > article p{ margin:0 0 .85em !important; }
 #chat :is(toto[data-rabbit-mirror="true"] > details, details[data-rabbit-mirror-external-details="true"]):has(> article:not([style])):not(:has(> :is(div, section, main, aside, nav, header, footer, figure, table, form, svg, canvas, iframe, style))):not(:has(> article :is(div, section, main, aside, nav, header, footer, figure, table, button, input, select, textarea, form, svg, canvas, img, video, iframe, style))) > article p:last-child{ margin-bottom:0 !important; }
+
+/* 裸露的原生开关：有 label 的视觉隐藏；没有 label 的改成跟随文字颜色的小圆开关。 */
+#chat [data-rm-native-toggle="hidden"]{position:absolute !important;opacity:0 !important;width:1px !important;height:1px !important;margin:0 !important;pointer-events:none !important;}
+#chat [data-rm-native-toggle="styled"]{appearance:none !important;-webkit-appearance:none !important;width:20px !important;height:20px !important;margin:6px 0 !important;border:1.5px solid currentColor !important;border-radius:999px !important;background:transparent !important;opacity:.5;cursor:pointer;vertical-align:middle;transition:opacity .2s ease,background .2s ease;}
+#chat [data-rm-native-toggle="styled"]:checked{background:radial-gradient(circle,currentColor 0 36%,transparent 40%) !important;opacity:.85;}

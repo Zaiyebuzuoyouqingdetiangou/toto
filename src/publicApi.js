@@ -1,10 +1,10 @@
-import { createRabbitMirrorPublicAPI } from './publicApiCore.js?rmv=1.62.5-visual-solar1';
-import { getSettings, updateSettings } from './settings.js?rmv=1.62.5-visual-solar1';
-import { buildScriptUserPrompt } from './publicApiPrompt.js?rmv=1.62.5-visual-solar1';
+import { createRabbitMirrorPublicAPI } from './publicApiCore.js?rmv=1.62.17';
+import { getSettings, updateSettings } from './settings.js?rmv=1.62.17';
+import { buildScriptUserPrompt } from './publicApiPrompt.js?rmv=1.62.17';
 
 // Preserve the lightweight startup graph; host/network modules load only on use.
 export function installRabbitMirrorPublicAPI(isActive, target = globalThis) {
-    const connection = () => import('./independentApi/connection.js?rmv=1.62.5-visual-solar1');
+    const connection = () => import('./independentApi/connection.js?rmv=1.62.17');
     const captureContext = () => {
         const identity = ctx => String(ctx?.getCurrentChatId?.() ?? ctx?.chatId ?? ctx?.chatMetadata?.chat_id ?? '') + ':' + String(ctx?.characterId ?? '') + ':' + String(ctx?.groupId ?? '');
         const context = target.SillyTavern?.getContext?.();
@@ -21,12 +21,12 @@ export function installRabbitMirrorPublicAPI(isActive, target = globalThis) {
         async listProfiles() { return (await connection()).getIndependentConnectionProfiles().map(p => ({ id: String(p.id || ''), name: String(p.name || '') })); },
         async listModels() { return (await connection()).fetchIndependentModels(); },
         async listProviders() {
-            return (await import('./memoryScanner.js?rmv=1.62.5-visual-solar1')).scanMemoryPlugins().map(p => ({ id: p.id, name: p.name, readable: p.readable === true, selectedAllowed: p.selectedAllowed === true }));
+            return (await import('./memoryScanner.js?rmv=1.62.17')).scanMemoryPlugins().map(p => ({ id: p.id, name: p.name, readable: p.readable === true, selectedAllowed: p.selectedAllowed === true }));
         },
-        async listWorldBooks() { return (await import('./memoryWorldBook.js?rmv=1.62.5-visual-solar1')).listMemoryWorldBooks(); },
+        async listWorldBooks() { return (await import('./memoryWorldBook.js?rmv=1.62.17')).listMemoryWorldBooks(); },
         async readMemory(settings) {
             const assertContext = captureContext();
-            const module = await import('./memoryScanner.js?rmv=1.62.5-visual-solar1');
+            const module = await import('./memoryScanner.js?rmv=1.62.17');
             // Explicit script action includes the user's selected providers and bound book.
             // It does not alter the existing automatic independent-generation policy.
             const material = await module.prepareSelectedMemoryForPrompt(settings, { hasSharedMemoryTheme: true, generationType: 'script', maxChars: settings.memoryMaxChars });
@@ -34,7 +34,7 @@ export function installRabbitMirrorPublicAPI(isActive, target = globalThis) {
             return material;
         },
         async complete(settings, system, prompt, options) {
-            const runtime = await import('./independentApi/request.js?rmv=1.62.5-visual-solar1');
+            const runtime = await import('./independentApi/request.js?rmv=1.62.17');
             options.assertAdvancedCurrent();
             if (/【(?:当前聊天逐轮正文|当前角色卡|当前世界书、作者注释与实际扩展提示)/.test(system + prompt) || /<\/?兔子镜近输出短锁/.test(system + prompt)) throw Object.assign(new Error('输入包含保留的请求边界标记，请只传正文。'), { code: 'INVALID_ARGUMENT' });
             const userPrompt = buildScriptUserPrompt(prompt);

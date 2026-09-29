@@ -1,19 +1,19 @@
 // Split from outputSanitizer.js — toolsChrome.
 
-import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.62.5-visual-solar1';
-import { placeFacePager } from '../facePagerPlacement.js?rmv=1.62.5-visual-solar1';
-import { isTextPresentation } from '../presentationMode.js?rmv=1.62.5-visual-solar1';
-import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.62.5-visual-solar1';
-import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=1.62.5-visual-solar1';
-import { getCurrentChatKey } from '../storage.js?rmv=1.62.5-visual-solar1';
-import { getSanitizedRabbitMirrorFaceProof } from '../multifaceProof.js?rmv=1.62.5-visual-solar1';
+import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.62.17';
+import { placeFacePager } from '../facePagerPlacement.js?rmv=1.62.17';
+import { isTextPresentation } from '../presentationMode.js?rmv=1.62.17';
+import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.62.17';
+import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=1.62.17';
+import { getCurrentChatKey } from '../storage.js?rmv=1.62.17';
+import { getSanitizedRabbitMirrorFaceProof } from '../multifaceProof.js?rmv=1.62.17';
 import {
     captureTheaterFavoriteFromRoot,
     openTheaterFavoriteLibrary,
     toggleTheaterFavorite,
     isTheaterFavoriteHtml,
-} from '../theaterFavorites.js?rmv=1.62.5-visual-solar1';
-import { FACE_SWIPE_FULL_MESSAGE, faceSwipeBarIntent, fallbackFaceSwipeView, multifaceFacePagerView } from '../swipeVersions.js?rmv=1.62.5-visual-solar1';
+} from '../theaterFavorites.js?rmv=1.62.17';
+import { FACE_SWIPE_FULL_MESSAGE, faceSwipeBarIntent, fallbackFaceSwipeView, multifaceFacePagerView } from '../swipeVersions.js?rmv=1.62.17';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -22,8 +22,8 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from '../feedbackCat.js?rmv=1.62.5-visual-solar1';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.62.5-visual-solar1';
+} from '../feedbackCat.js?rmv=1.62.17';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.62.17';
 import {
     FAVORITE_MULTIPLIER_MAX,
     FAVORITE_MULTIPLIER_MIN,
@@ -45,7 +45,7 @@ import {
     setFavoriteMultiplier,
     toggleBlacklistItem,
     toggleFavoriteItem,
-} from '../blacklist.js?rmv=1.62.5-visual-solar1';
+} from '../blacklist.js?rmv=1.62.17';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -69,10 +69,10 @@ import {
     isInsideChatMessage,
     isMaintenanceRabbitEnabled,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.62.5-visual-solar1';
-import { getAvailableHostChat } from './scriptedInteractionRescue.js?rmv=1.62.5-visual-solar1';
-import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.62.5-visual-solar1';
-import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=1.62.5-visual-solar1';
+} from './runtime.js?rmv=1.62.17';
+import { getAvailableHostChat } from './scriptedInteractionRescue.js?rmv=1.62.17';
+import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.62.17';
+import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=1.62.17';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     FEEDBACK_HISTORY_EVENT,
@@ -92,8 +92,8 @@ import {
     rabbitMirrorLanguageBalance,
     scheduleCurrentHighConfidenceTextRepair,
     setMaintenanceRabbitState,
-} from './diagnostics.js?rmv=1.62.5-visual-solar1';
-import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=1.62.5-visual-solar1';
+} from './diagnostics.js?rmv=1.62.17';
+import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=1.62.17';
 import {
     MAINTENANCE_FINDING_STAGE_LABELS,
     beginMaintenanceRepairRun,
@@ -111,19 +111,19 @@ import {
     runMaintenanceRevealClipRepair,
     runMaintenanceUserRepair,
     triggerDiagnosticForMaintenanceRoot,
-} from './maintenanceInspect.js?rmv=1.62.5-visual-solar1';
+} from './maintenanceInspect.js?rmv=1.62.17';
 import {
     getRabbitMirrorFacePosition,
     installMaintenanceHorizontalClipOpenRescue,
     repairLegacyMaintenanceMobileStateRows,
-} from './layoutRescue.js?rmv=1.62.5-visual-solar1';
+} from './layoutRescue.js?rmv=1.62.17';
 import {
     getMessageIndexFromMirrorNode,
     installMaintenanceAutoSafeOpenPatrol,
     installManagedRabbitMirrorTools,
     pruneMaintenanceAutoSafeOpenBindings,
     scheduleMaintenanceAutoSafeForRoot,
-} from './lifecycle.js?rmv=1.62.5-visual-solar1';
+} from './lifecycle.js?rmv=1.62.17';
 
 let recipeOutsideCloseCleanup = null;
 
@@ -595,7 +595,7 @@ function rabbitMirrorExternalGenerationNotice(root, kind = 'maintenance') {
 const RESAY_CHOOSER_ATTR = 'data-rm-resay-chooser';
 
 const RESAY_PICK_MAX = Object.freeze({ theme: 3, format: 2 });
-const EXTERNAL_STORE_MODULE = '../externalWorldBook/store.js?rmv=1.62.5-visual-solar1';
+const EXTERNAL_STORE_MODULE = '../externalWorldBook/store.js?rmv=1.62.17';
 
 // 纯点菜里的题库点选。默认只显示已选项；点「浏览」才展开列表。
 // 来源可切换：内置题库（按大组浏览 / 搜索）或已导入并启用的母本库。
@@ -2289,7 +2289,7 @@ function beginHostWorkTiming(name){
 }
 
 function loadMirrorImageModule() {
-    if (!mirrorImageModule) mirrorImageModule = import('../imageUi.js?rmv=1.62.5-visual-solar1').catch(error => { mirrorImageModule = null; throw error; });
+    if (!mirrorImageModule) mirrorImageModule = import('../imageUi.js?rmv=1.62.17').catch(error => { mirrorImageModule = null; throw error; });
     return mirrorImageModule;
 }
 
@@ -2605,7 +2605,7 @@ function installUnifiedMirrorTools(root) {
     actions.push({ id: 'resay', label: '↻ 重说', run: (_event, opener) => openRabbitMirrorResayChooser(root, opener) });
     if (mirrorFaceCanContinue(root)) {
         actions.push({ id: 'continue', label: '✎ 续写', run: () => {
-            void import('../independentApi/mount.js?rmv=1.62.5-visual-solar1').then(module => module.continueIndependentLongText(root))
+            void import('../independentApi/mount.js?rmv=1.62.17').then(module => module.continueIndependentLongText(root))
                 .catch(() => globalThis.toastr?.error?.('续写没有写上，原来的正文还在。'));
         } });
     }
@@ -2628,7 +2628,7 @@ function installUnifiedMirrorTools(root) {
             .catch(() => globalThis.toastr?.warning?.('生图面板未能打开，请重新打开后再试。'));
     } });
     actions.push({ id: 'theater-favorite-library', label: '📖 打开收藏夹', run: () => {
-        void import('../independentApi.js?rmv=1.62.5-visual-solar1').then(module =>
+        void import('../independentApi.js?rmv=1.62.17').then(module =>
             openTheaterFavoriteLibrary((container, record) => module.hydrateIndependentFavoriteHtml(container, record)))
             .catch(error => globalThis.toastr?.warning?.(String(error?.message || '无法打开收藏夹。')));
     } });
@@ -2659,6 +2659,7 @@ function installMaintenanceRabbitsInScopeCore(scope, { allowGlobalRemoval = fals
         if (isTheaterFavoriteSurface(root) || !isInsideChatMessage(root)) return;
         armRabbitMirrorFirstUseInteraction(root);
         bindRevealedInteractionMemory(root);
+        tidyNativeToggles(root);
         // Migrate cached/serialized mirrors created by the short-lived inline reset
         // control. Recovery snapshots stay intact and remain reachable from Maintenance Rabbit.
         removeRabbitMirrorInteractionHomeControls(root);
@@ -2827,6 +2828,35 @@ export function refreshRecipeButtons() {
 }
 
 
+
+// 模型常用 checkbox / radio 做开关，却忘了隐藏原生控件，画面里就会冒出黑色小方块。
+// 有 label 能点的，把原生控件视觉隐藏（仍可通过 label 切换）；没有 label、
+// 控件本身就是唯一入口的，改成跟随文字颜色的圆形小开关，避免浏览器默认样式。
+// 模型已经自己隐藏或自定义了外观的控件不动。
+function tidyNativeToggles(root) {
+    if (!root?.querySelectorAll || typeof getComputedStyle !== 'function') return;
+    const inputs = root.querySelectorAll('input[type="checkbox"], input[type="radio"]');
+    for (const input of inputs) {
+        if (input.hasAttribute('data-rm-native-toggle')) continue;
+        if (input.closest(`[${TOOL_ENTRY_HOST_ATTR}]`)) continue;
+        let style;
+        try { style = getComputedStyle(input); } catch { continue; }
+        const appearance = String(style.appearance || style.webkitAppearance || '').toLowerCase();
+        const hiddenAlready = style.display === 'none' || style.visibility === 'hidden'
+            || Number(style.opacity) < 0.05 || appearance === 'none'
+            // 用计算样式判断尺寸：折叠在 <details> 里的控件没有布局尺寸，但计算样式仍然可读。
+            || parseFloat(style.width) <= 2 || parseFloat(style.height) <= 2;
+        if (hiddenAlready) continue;
+        const id = input.getAttribute('id');
+        let labelled = false;
+        if (id) {
+            try { labelled = !!root.querySelector(`label[for="${CSS.escape(id)}"]`); } catch { labelled = false; }
+        }
+        const wrapper = input.closest('label');
+        if (!labelled && wrapper && wrapper !== input && String(wrapper.textContent || '').trim()) labelled = true;
+        input.setAttribute('data-rm-native-toggle', labelled ? 'hidden' : 'styled');
+    }
+}
 
 export function refreshRabbitMirrorToolsInScope(scope, { historyRestoreLight = false } = {}) {
     if (!scope?.querySelectorAll) return;
