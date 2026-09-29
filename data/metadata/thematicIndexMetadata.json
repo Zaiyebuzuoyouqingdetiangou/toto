@@ -321,6 +321,14 @@
       "rawIndent": 2
     },
     {
+      "id": "B.8",
+      "group": "B",
+      "tags": [
+        "emotion",
+        "misread"
+      ]
+    },
+    {
       "id": "C.0",
       "group": "C",
       "tags": [
@@ -435,10 +443,44 @@
       ]
     },
     {
+      "id": "C.4",
+      "group": "C",
+      "tags": [
+        "daily",
+        "warmth",
+        "care"
+      ]
+    },
+    {
       "id": "D.0",
       "group": "D",
       "tags": [
         "profile"
+      ]
+    },
+    {
+      "id": "D.1",
+      "group": "D",
+      "tags": [
+        "profile",
+        "bystander"
+      ]
+    },
+    {
+      "id": "D.2",
+      "group": "D",
+      "tags": [
+        "profile",
+        "place",
+        "time"
+      ]
+    },
+    {
+      "id": "D.3",
+      "group": "D",
+      "tags": [
+        "profile",
+        "family"
       ]
     },
     {
@@ -538,6 +580,30 @@
       "group": "F",
       "tags": [
         "humor"
+      ]
+    },
+    {
+      "id": "F.4",
+      "group": "F",
+      "tags": [
+        "humor",
+        "parody"
+      ]
+    },
+    {
+      "id": "F.5",
+      "group": "F",
+      "tags": [
+        "humor",
+        "daily"
+      ]
+    },
+    {
+      "id": "F.6",
+      "group": "F",
+      "tags": [
+        "humor",
+        "parody"
       ]
     },
     {
@@ -1450,6 +1516,33 @@
       "tags": [
         "canon",
         "memory"
+      ]
+    },
+    {
+      "id": "I.2",
+      "group": "I",
+      "tags": [
+        "canon",
+        "memory",
+        "promise"
+      ]
+    },
+    {
+      "id": "I.3",
+      "group": "I",
+      "tags": [
+        "canon",
+        "memory",
+        "secret"
+      ]
+    },
+    {
+      "id": "I.4",
+      "group": "I",
+      "tags": [
+        "canon",
+        "memory",
+        "contrast"
       ]
     }
   ]

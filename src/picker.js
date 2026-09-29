@@ -1,5 +1,5 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.5-visual-solar1';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.5-visual-solar1';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.14';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.14';
 import {
     getCurrentChatKey,
     getDirectiveScopedPick,
@@ -17,11 +17,11 @@ import {
     clearPendingComboBatch,
     createPendingComboBatchPlan,
     findPendingComboBatchPlan,
-} from './storage.js?rmv=1.62.5-visual-solar1';
-import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.62.5-visual-solar1';
-import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.62.5-visual-solar1';
-import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.5-visual-solar1';
-import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.62.5-visual-solar1';
+} from './storage.js?rmv=1.62.14';
+import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.62.14';
+import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.62.14';
+import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.14';
+import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.62.14';
 import {
     chooseExternalSource,
     externalPoolActive,
@@ -31,7 +31,7 @@ import {
     getExternalPoolSnapshot,
     pickExternalItems,
     sourceMixModeIsExternalOnly,
-} from './externalWorldBook/externalPool.js?rmv=1.62.5-visual-solar1';
+} from './externalWorldBook/externalPool.js?rmv=1.62.14';
 
 function randomUnit() {
     try {
@@ -67,6 +67,8 @@ function clamp(value, min, max) {
 }
 
 function weightedThemeCount(settings) {
+    // 单主题元素 × 单展现形式：每一面只抽一个主题、一种形式。
+    if (settings?.singlePairSampling === true) return 1;
     const min = Number(settings.themesMin) || 1;
     const max = Number(settings.themesMax) || 3;
     const r = randomUnit();
@@ -75,6 +77,8 @@ function weightedThemeCount(settings) {
 }
 
 function weightedFormatCount(settings) {
+    // 单主题元素 × 单展现形式：每一面只抽一个主题、一种形式。
+    if (settings?.singlePairSampling === true) return 1;
     const min = Number(settings.formatsMin) || 1;
     const max = Number(settings.formatsMax) || 2;
     const count = randomUnit() < 0.85 ? 1 : 2;
@@ -1249,6 +1253,7 @@ function directiveScopeKey(directive, settings) {
         ...(visualSceneryCombinationEnabled(settings) ? ['visual-combination'] : []),
         settings.themesMin,
         settings.themesMax,
+        settings.singlePairSampling === true,
         settings.formatsMin,
         settings.formatsMax,
         settings.externalWorldBookRandomEnabled === true ? 'external-on' : 'external-off',
@@ -1308,6 +1313,7 @@ function batchRandomSettingsKey(settings, total, favorites, exclusions, directiv
         samplingMode: settings.samplingMode || 'classic',
         themesMin: settings.themesMin,
         themesMax: settings.themesMax,
+        singlePairSampling: settings.singlePairSampling === true,
         formatsMin: settings.formatsMin,
         formatsMax: settings.formatsMax,
         avoidRepeat: settings.avoidRepeat,

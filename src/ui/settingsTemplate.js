@@ -1,8 +1,8 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.62.5-visual-solar1';
-import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.62.5-visual-solar1';
-import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.62.5-visual-solar1';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.62.14';
+import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.62.14';
+import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.62.14';
 
 export function buildRabbitMirrorSettingsDialogHtml() {
     return `
@@ -354,9 +354,9 @@ export function buildRabbitMirrorSettingsDialogHtml() {
             <div id="rh_multiface_help" class="rabbit-mirror-subnote" style="margin:0 0 10px 26px;">各面独立展示。一次请求时，所有面共用整批输出上限，面数更多每面篇幅更少；逐面排队则每一面各自用满最大输出。上下文字符不是绘制额度。</div>
             <fieldset id="rh_multiface_dispatch_row" style="margin:0 0 12px 26px;padding:8px 10px;border:1px dashed color-mix(in srgb,currentColor 28%,transparent);border-radius:10px;">
               <legend style="padding:0 6px;font-size:12px;">多面怎么发送（实验性）</legend>
-              <label style="display:flex;gap:8px;align-items:flex-start;margin:4px 0;"><input name="rh_multiface_dispatch" type="radio" value="single"> 一次请求出全部面</label>
-              <label style="display:flex;gap:8px;align-items:flex-start;margin:4px 0;"><input name="rh_multiface_dispatch" type="radio" value="serial"> 逐面排队，一面一次请求</label>
-              <p class="rabbit-mirror-subnote" style="margin:6px 0 0;">只对副 API 生效。签仍然先一次抽完，再按顺序一面发一次，不并行。某一面失败就跳过，已经生成的面留下。最后若少了面，开了自动重 roll 就用原来的签补缺的面；没开就那一格显示生成失败。跟随正文仍是原来的一次生成。每一面各自使用最大输出，不再挤在同一次回复里。</p>
+              <label style="display:flex;gap:8px;align-items:flex-start;margin:4px 0;"><input name="rh_multiface_dispatch" type="radio" value="single"> <span>一次请求出全部面<small style="display:block;opacity:.72;font-size:12px;line-height:1.45;">一次 API 请求生成多面镜。</small></span></label>
+              <label style="display:flex;gap:8px;align-items:flex-start;margin:4px 0;"><input name="rh_multiface_dispatch" type="radio" value="serial"> <span>逐面排队，一面一次请求<small style="display:block;opacity:.72;font-size:12px;line-height:1.45;">独立 API 模式专有，多次 API 请求生成多面镜。</small></span></label>
+              
             </fieldset>
             <div id="rh_face_presentation_modes" style="display:grid;grid-template-columns:minmax(0,1fr);min-width:0;gap:8px;margin:10px 0;">
               <b>每一面怎么呈现</b>
@@ -413,6 +413,8 @@ export function buildRabbitMirrorSettingsDialogHtml() {
                 <option value="format_only">仅展现形式</option>
               </select>
             </label>
+            <label for="rh_single_pair_sampling" class="checkbox_label" style="margin:4px 0 2px;"><input id="rh_single_pair_sampling" type="checkbox"> 单主题元素 × 单展现形式</label>
+            <div class="rabbit-mirror-subnote" style="margin:0 0 8px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后每一面只抽 1 个主题元素和 1 种展现形式；关闭时偶尔会叠加 2–3 个主题或 2 种形式。</div>
             <label for="rh_raw_policy" class="flex-container alignitemscenter" style="gap:8px;flex-wrap:wrap;margin:8px 0;">
               <span>参考内容</span>
               <select id="rh_raw_policy" class="text_pole" style="max-width:320px;">

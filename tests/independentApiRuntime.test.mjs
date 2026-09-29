@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import vm from 'node:vm';
+const CURRENT_RUNTIME_STAMP = (() => { try { return readFileSync(new URL('../index.js', import.meta.url), 'utf8').match(/const RABBIT_MIRROR_RUNTIME_VERSION = '([^']+)'/)?.[1]; } catch { return undefined; } })();
 
 function loadRuntime() {
     const source = readFileSync(new URL('../src/independentApi/runtime.js', import.meta.url), 'utf8')
@@ -19,7 +20,7 @@ function loadRuntime() {
 
 test('independentApi runtime loads without flights, connection, or the barrel', () => {
     const loaded = loadRuntime();
-    assert.equal(loaded.RUNTIME_VERSION, '1.6');
+    assert.equal(loaded.RUNTIME_VERSION, CURRENT_RUNTIME_STAMP);
     assert.equal(loaded.MAX_INDEPENDENT_REQUEST_CHARS, 50000);
     assert.equal(typeof loaded.byteLength, 'function');
     assert.equal(typeof loaded.flightIdentity, 'undefined');
