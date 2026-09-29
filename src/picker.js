@@ -1,5 +1,5 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.16';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.16';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.17';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.17';
 import {
     getCurrentChatKey,
     getDirectiveScopedPick,
@@ -17,11 +17,11 @@ import {
     clearPendingComboBatch,
     createPendingComboBatchPlan,
     findPendingComboBatchPlan,
-} from './storage.js?rmv=1.62.16';
-import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.62.16';
-import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.62.16';
-import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.16';
-import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.62.16';
+} from './storage.js?rmv=1.62.17';
+import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.62.17';
+import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.62.17';
+import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.17';
+import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.62.17';
 import {
     chooseExternalSource,
     externalPoolActive,
@@ -31,7 +31,7 @@ import {
     getExternalPoolSnapshot,
     pickExternalItems,
     sourceMixModeIsExternalOnly,
-} from './externalWorldBook/externalPool.js?rmv=1.62.16';
+} from './externalWorldBook/externalPool.js?rmv=1.62.17';
 
 function randomUnit() {
     try {
@@ -229,17 +229,11 @@ function familySizeMap(items, familyKey) {
     return counts;
 }
 
-function balancedFamilyItemFactor(itemCount) {
-    // Item-level sampling otherwise gives a family one full ticket per child.
-    // Keep larger families richer, but reduce their total mass from n to n^0.45.
-    return 1 / Math.pow(Math.max(1, Number(itemCount) || 1), 0.55);
-}
-
 function immediateFamilySet(values) {
     return new Set((Array.isArray(values) ? values : []).map(value => String(value || '')).filter(Boolean));
 }
 
-// 1.6.10 公平抽取：按「大组 → 家族 → 条目」三层分配基础权重。
+// 主题继续按「大组 → 家族 → 条目」三层分配基础权重；展现形式单项等权。
 // 每层都按 1 + ln(规模) 增长：大组仍略占优，但 87 条的 IF 组不再按条目数线性霸榜，
 // 只有几个家族的大组（如色情与感官）也不会因为家族少而被稀释。
 // 还有下级条目的父项只是分类标题，权重降到 PARENT_ITEM_FACTOR，让具体子项更常出现。
@@ -305,7 +299,6 @@ function weightedSample(pool, count, recentIds = [], recentGroups = [], avoidRep
     const used = new Set();
     const usedFamilies = new Set();
     const usedGroups = new Set();
-    const baseWeights = hierarchyBaseWeights(candidates, formatFamilyKey).itemWeights;
     while (selected.length < count && used.size < candidates.length) {
         let available = candidates.filter(item => !used.has(item.id));
         // Maximise immediate-family avoidance instead of falling back all-or-nothing:
@@ -323,7 +316,9 @@ function weightedSample(pool, count, recentIds = [], recentGroups = [], avoidRep
         }
         const weighted = available
             .map(item => {
-                let weight = Number(baseWeights.get(item.id)) || balancedFamilyItemFactor(1);
+                // Equal base chance per eligible format, regardless of group,
+                // family size or parent/child depth. Existing preferences follow.
+                let weight = 1;
                 // IF 主题保留较强的大组软冷却；其余路线也加一层温和的大组轮换，
                 // 让近期少出现的大组自然补上来。
                 const groupHits = Number(recentGroupHitMap?.[item.group] || (groups.has(item.group) ? 1 : 0));
