@@ -1,7 +1,7 @@
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.14';
-import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.62.14';
-import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.62.14';
-import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.62.14';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.16';
+import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.62.16';
+import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.62.16';
+import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.62.16';
 
 const STORAGE_KEY = 'rabbit_mirror_theater:last_combo:v11';
 const PENDING_KEY = 'rabbit_mirror_theater:pending_combo:v11';
@@ -657,11 +657,9 @@ function normalizeInteractionFamily(value) {
     };
 }
 
-export function getRecentInteractionFamilies(limit = 5) {
-    return getComboHistory(limit)
-        .map(item => normalizeInteractionFamily(item?.interactionFamily))
-        .filter(Boolean)
-        .slice(-Math.max(0, Number(limit) || 5));
+export function getRecentInteractionFamilies(limit = 5, { preserveEmpty = false } = {}) {
+    const recent = getComboHistory(limit).map(item => normalizeInteractionFamily(item?.interactionFamily) || null);
+    return preserveEmpty ? recent : recent.filter(Boolean);
 }
 
 export function getRecentInteractionFamilyCounts(limit = 5) {

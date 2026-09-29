@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜小剧场",
   "loading_order": 100,
-  "js": "index.js?rmv=1.62.14",
-  "css": "style.css?rmv=1.62.14",
+  "js": "index.js?rmv=1.62.16",
+  "css": "style.css?rmv=1.62.16",
   "author": "Toto",
-  "version": "1.62.14",
+  "version": "1.62.16",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜小剧场测试候选：调整默认配色，修复节气收藏识别和收藏更新；尚未真机验证。"
+  "description": "兔子镜小剧场测试候选：修复按正文挑签，取消交互一刀切禁令并完善实际成品短期冷却；尚未真机验证。"
 }

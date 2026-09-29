@@ -1,10 +1,10 @@
-import { applyAtmosphereNotes, compactAtmosphereMenu } from './atmosphereChoice.js?rmv=1.62.14';
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.14';
-import { compactFormatDescriptors, isExternalSelectionId } from './selectionImageMetadata.js?rmv=1.62.14';
-import { getSettings, updateSettings } from './settings.js?rmv=1.62.14';
-import { getCurrentChatKey, resetFormatEligibleMisses } from './storage.js?rmv=1.62.14';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.14';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.14';
+import { applyAtmosphereNotes, compactAtmosphereMenu } from './atmosphereChoice.js?rmv=1.62.16';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.16';
+import { compactFormatDescriptors, isExternalSelectionId } from './selectionImageMetadata.js?rmv=1.62.16';
+import { getSettings, updateSettings } from './settings.js?rmv=1.62.16';
+import { getCurrentChatKey, resetFormatEligibleMisses } from './storage.js?rmv=1.62.16';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.16';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.16';
 
 export const BLACKLIST_CHANGED_EVENT = 'rabbitmirror:blacklist-changed';
 export const RECIPE_RECORDED_EVENT = 'rabbitmirror:recipe-recorded';

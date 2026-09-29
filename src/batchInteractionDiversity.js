@@ -1,29 +1,10 @@
 // Pure, bounded generation preferences. These are not output gates, candidate
 // filters or a menu of interaction components. Unknown/native mechanisms remain
 // free to be designed by the model; no mother-library text is inspected here.
-const FAMILY_LABELS = Object.freeze({
-    tabbed_radio_family: '并列标签／多按钮切页',
-    multi_control_panel_family: '多控件状态面板',
-    checkbox_reveal_family: '单入口显隐揭示',
-    multi_checkbox_family: '多点勾选／清单揭示',
-    inner_details_family: '内部折叠分层',
-    flip_card_family: '翻面／双面切换',
-});
+import { INTERACTION_FAMILY_LABELS as FAMILY_LABELS, recentInteractionCooldowns } from './interactionCooldown.js?rmv=1.62.16';
 
 function recentRepeatedFamilies(recentFamilies) {
-    const recent = Array.isArray(recentFamilies) ? recentFamilies.slice(-5) : [];
-    const counts = new Map();
-    for (const item of recent) {
-        if (Object.hasOwn(FAMILY_LABELS, item?.id)) counts.set(item.id, (counts.get(item.id) || 0) + 1);
-    }
-    const lastTwo = recent.slice(-2);
-    const repeatedLast = lastTwo.length === 2 && lastTwo[0]?.id === lastTwo[1]?.id ? lastTwo[1]?.id : '';
-    const recentTabbed = recent.slice(-3).some(item => item?.id === 'tabbed_radio_family');
-    return Object.keys(FAMILY_LABELS).filter(id => {
-        if (id === 'tabbed_radio_family' && recentTabbed) return true;
-        const threshold = id === 'tabbed_radio_family' || id === 'multi_control_panel_family' ? 2 : 3;
-        return (counts.get(id) || 0) >= threshold || repeatedLast === id;
-    }).slice(0, 2);
+    return recentInteractionCooldowns(recentFamilies).map(item => item.id);
 }
 
 /** Freeze at most five per-face comparisons before any external material read. */
