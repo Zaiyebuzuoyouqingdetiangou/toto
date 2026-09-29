@@ -1,7 +1,7 @@
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.19';
-import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.62.19';
-import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.62.19';
-import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.62.19';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.20';
+import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.62.20';
+import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.62.20';
+import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.62.20';
 
 const STORAGE_KEY = 'rabbit_mirror_theater:last_combo:v11';
 const PENDING_KEY = 'rabbit_mirror_theater:pending_combo:v11';
@@ -654,7 +654,6 @@ function normalizeInteractionFamily(value) {
         confidence: Math.max(0, Math.min(1, Number(value.confidence) || 0)),
         controlCount: Math.max(0, Math.min(99, Number(value.controlCount) || 0)),
         panelCount: Math.max(0, Math.min(99, Number(value.panelCount) || 0)),
-        ...(id === 'tabbed_radio_family' && value.textPanelSwitch === true ? { textPanelSwitch: true } : {}),
     };
 }
 

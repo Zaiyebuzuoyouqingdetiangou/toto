@@ -1,5 +1,5 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.19';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.19';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.20';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.20';
 import {
     getCurrentChatKey,
     getDirectiveScopedPick,
@@ -17,11 +17,11 @@ import {
     clearPendingComboBatch,
     createPendingComboBatchPlan,
     findPendingComboBatchPlan,
-} from './storage.js?rmv=1.62.19';
-import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.62.19';
-import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.62.19';
-import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.19';
-import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.62.19';
+} from './storage.js?rmv=1.62.20';
+import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.62.20';
+import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.62.20';
+import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.20';
+import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.62.20';
 import {
     chooseExternalSource,
     externalPoolActive,
@@ -31,7 +31,7 @@ import {
     getExternalPoolSnapshot,
     pickExternalItems,
     sourceMixModeIsExternalOnly,
-} from './externalWorldBook/externalPool.js?rmv=1.62.19';
+} from './externalWorldBook/externalPool.js?rmv=1.62.20';
 
 function randomUnit() {
     try {
@@ -1017,8 +1017,10 @@ function drawAtmosphereBundle(args) {
     const story = formatOnly || lotteryBucket(presentationScopeKey || 'atmosphere', faceIndex) < atmosphereStoryPercent(settings);
     const blockedThemes = [...(formalRecent?.themeIds || []), ...(hardRecent?.themeIds || [])];
     const blockedFormats = [...(formalRecent?.formatIds || []), ...(hardRecent?.formatIds || [])];
-    const drawTicket = (themes, formats) => applyDirectiveOrRandom({
+    const drawTicket = (themes, formats, usedThemeIds = [], usedFormatIds = []) => applyDirectiveOrRandom({
         ...args, themePool: themes, formatPool: formats, directive: null, lotteryMethodBypass: true,
+        externalExcludedThemeIds: [...(args.externalExcludedThemeIds || []), ...usedThemeIds],
+        externalExcludedFormatIds: [...(args.externalExcludedFormatIds || []), ...usedFormatIds],
     });
     if (!story) {
         const ifPool = cooledPool((themePool || []).filter(themeItemIsIf), blockedThemes);
@@ -1031,18 +1033,29 @@ function drawAtmosphereBundle(args) {
     const storyFormats = cooledPool(formatPool, blockedFormats);
     const usedThemes = new Set();
     const usedFormats = new Set();
+    const usedTickets = new Set();
     const tickets = [];
     for (let index = 0; index < 4; index += 1) {
         const themesLeft = storyThemes.filter(item => !usedThemes.has(item.id));
         const formatsLeft = storyFormats.filter(item => !usedFormats.has(item.id));
-        if ((!formatOnly && !themesLeft.length) || !formatsLeft.length) break;
-        const ticket = drawTicket(formatOnly ? storyThemes : themesLeft, formatsLeft);
+        const themeExclusions = new Set([...(args.externalExcludedThemeIds || []), ...usedThemes]);
+        const formatExclusions = new Set([...(args.externalExcludedFormatIds || []), ...usedFormats]);
+        if (!formatOnly && !randomCandidateAvailable(settings, 'theme', themesLeft, themeExclusions)) break;
+        const needsVariableFormat = !settings.forceVisualScenery || visualSceneryCombinationEnabled(settings);
+        if (needsVariableFormat && !randomCandidateAvailable(settings, 'format', formatsLeft, formatExclusions)) break;
+        const ticket = drawTicket(formatOnly ? storyThemes : themesLeft, formatsLeft, [...usedThemes], [...usedFormats]);
         if (!ticket || ticket.disabled || ticket.texts?.length || ticket.worldBookEntryId) break;
         const themeIds = (ticket.themes || []).map(item => item.id).filter(Boolean);
-        const formatIds = (ticket.formats || []).map(item => item.id).filter(Boolean);
-        if ((!formatOnly && !themeIds.length) || !formatIds.length) break;
+        const allFormatIds = (ticket.formats || []).map(item => item.id).filter(Boolean);
+        // Fixed scenery belongs to every candidate. Only the variable draw is
+        // consumed; otherwise the second ticket is mistaken for a duplicate.
+        const fixedFormatIds = new Set((ticket.forcedFormats || []).map(item => item.id));
+        const formatIds = allFormatIds.filter(id => !fixedFormatIds.has(id));
+        const signature = JSON.stringify([themeIds, allFormatIds]);
+        if ((!formatOnly && !themeIds.length) || !allFormatIds.length || usedTickets.has(signature)) break;
         if (themeIds.some(id => usedThemes.has(id)) || formatIds.some(id => usedFormats.has(id))) break;
         tickets.push(ticket);
+        usedTickets.add(signature);
         themeIds.forEach(id => usedThemes.add(id));
         formatIds.forEach(id => usedFormats.add(id));
     }
@@ -1503,7 +1516,7 @@ function addBatchInteractionDiversity(combos, settings) {
     // single-face/off/cache paths, and never infer a mechanism from raw content.
     if (!settings?.avoidRepeat || combos.length < 2 || combos.length > 5) return;
     const hints = planBatchInteractionDiversity(combos.length, {
-        enabled: true, recentFamilies: getRecentInteractionFamilies(5, { preserveEmpty: true }),
+        enabled: true, recentFamilies: getRecentInteractionFamilies(5),
         presentationModes: combos.map(combo => combo.presentationMode || 'html'),
     });
     if (hints) combos.forEach((combo, index) => { if (hints[index]) combo.interactionDiversity = hints[index]; });

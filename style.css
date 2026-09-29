@@ -438,8 +438,9 @@ toto[data-rabbit-mirror="true"] summary {
   vertical-align: middle !important;
   white-space: nowrap !important;
 }
-/* Runtime-only footer inside the current face; never fixed over chat content. */
-details > [data-rm-face-swipe-host][data-rm-face-swipe-position="bottom"] {
+/* The bottom pager is a runtime sibling after the face, outside its frame. */
+[data-rm-face-swipe-host][data-rm-face-swipe-position="bottom"] { display:none !important; }
+details + [data-rm-face-swipe-host][data-rm-face-swipe-position="bottom"] {
   display: flex !important;
   justify-content: flex-end !important;
   align-items: center !important;
@@ -455,16 +456,18 @@ details > [data-rm-face-swipe-host][data-rm-face-swipe-position="bottom"] {
   border-top: 1px solid color-mix(in srgb, currentColor 18%, transparent) !important;
   z-index: auto !important;
 }
-details:not([open]) > [data-rm-face-swipe-host][data-rm-face-swipe-position="bottom"] {
+details:not([open]) + [data-rm-face-swipe-host][data-rm-face-swipe-position="bottom"],
+details[hidden] + [data-rm-face-swipe-host][data-rm-face-swipe-position="bottom"],
+.rabbit-mirror-multiface-host > details:not([data-rm-face-current="true"]) + [data-rm-face-swipe-host][data-rm-face-swipe-position="bottom"] {
   display: none !important;
 }
-details > [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar button {
+details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar button {
   min-width: 44px !important;
   min-height: 44px !important;
   box-sizing: border-box !important;
 }
 @media (max-width: 720px) {
-  details > [data-rm-face-swipe-host][data-rm-face-swipe-position="bottom"] {
+  details + [data-rm-face-swipe-host][data-rm-face-swipe-position="bottom"] {
     justify-content: center !important;
   }
 }
@@ -1413,6 +1416,19 @@ details > [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
   overflow:auto;
 }
 @media (min-width:900px){
+  /* Keep the desktop artwork centered without a chat-width decorative frame.
+   * Mobile retains the existing external shell and its palette. */
+  #chat .rabbit-mirror-external-shell[data-rm-source][data-rm-placement="external"],
+  #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"][data-rm-shell-integrated="true"]{
+    background:transparent !important;
+    border:0 !important;
+    box-shadow:none !important;
+    padding:0 !important;
+  }
+  #chat details + [data-rm-face-swipe-host][data-rm-face-swipe-position="bottom"]{
+    max-width:min(100%,720px) !important;
+    margin-inline:auto !important;
+  }
   /* A phone-authored square grid must not grow to the entire desktop chat lane.
    * Bound only each mirror's outer reading surface: no zoom, font override,
    * grid reflow or new frame; authored smaller objects remain smaller. Keep the
@@ -1528,6 +1544,8 @@ html[data-rabbit-mirror-external-sampling-enabled="false"] [data-rabbit-mirror-r
 .rabbit-mirror-quick-start-body ol { padding-left:20px; margin:4px 0; }
 .rabbit-mirror-quick-start-body li { margin-bottom:7px; }
 .rabbit-mirror-update-button { min-height:44px; flex:0 0 auto; }
+.rabbit-mirror-update-version-group { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.rabbit-mirror-current-version { font-size:12px; opacity:.8; white-space:nowrap; }
 .rabbit-mirror-update-status { font-size:13px; line-height:1.6; overflow-wrap:anywhere; margin:6px 0; }
 #rh_update_reload[hidden], #rh_update_status[hidden] { display:none !important; }
 /* Guide-only layout. No chat, mirror or generated-content selectors. */

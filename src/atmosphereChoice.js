@@ -4,7 +4,7 @@ export function parseAtmosphereTicketIndex(html, menuLength) {
     const count = Number(menuLength);
     if (!Number.isInteger(count) || count < 2) return null;
     const text = String(html || '');
-    const match = text.match(/<rm-ticket>\s*(\d+)\s*<\/rm-ticket>/i) || text.match(/data-rm-ticket\s*=\s*["'](\d+)["']/i);
+    const match = text.match(/<rm-ticket(?:\s[^>]*)?>\s*(\d+)\s*<\/rm-ticket\s*>/i) || text.match(/data-rm-ticket\s*=\s*["'](\d+)["']/i);
     if (!match) return null;
     const index = Number(match[1]) - 1;
     if (!Number.isInteger(index) || index < 0 || index >= count) return null;
@@ -12,18 +12,18 @@ export function parseAtmosphereTicketIndex(html, menuLength) {
 }
 
 export function parseAtmosphereThink(html) {
-    const match = String(html || '').match(/<rm-think>([\s\S]*?)<\/rm-think>/i);
+    const match = String(html || '').match(/<rm-think(?:\s[^>]*)?>([\s\S]*?)<\/rm-think\s*>/i);
     if (!match) return '';
     return match[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, ATMOSPHERE_REASON_LIMIT);
 }
 
 export function stripAtmosphereTicketTag(html) {
-    return String(html || '').replace(/<rm-ticket>\s*\d+\s*<\/rm-ticket>/gi, '');
+    return String(html || '').replace(/<rm-ticket(?:\s[^>]*)?>\s*\d+\s*<\/rm-ticket\s*>/gi, '');
 }
 
 export function stripAtmosphereChoiceMarkup(html) {
     return stripAtmosphereTicketTag(html)
-        .replace(/<rm-think>[\s\S]*?<\/rm-think>/gi, '')
+        .replace(/<rm-think(?:\s[^>]*)?>[\s\S]*?<\/rm-think\s*>/gi, '')
         .replace(/\sdata-rm-ticket\s*=\s*["']\d+["']/gi, '');
 }
 

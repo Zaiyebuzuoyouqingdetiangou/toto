@@ -1,8 +1,6 @@
-// Preferences for the next generation only. Never reject, remove or retry a
-// completed work. Preserve empty history positions so unknown mechanisms age
-// out old observations just like recognized ones.
+// Interaction family policy restored from 1.5.53. These are generation hints, not output gates.
 export const INTERACTION_FAMILY_LABELS = Object.freeze({
-    tabbed_radio_family: '重复文字面板切换（横排标签／竖排折叠）',
+    tabbed_radio_family: '并列标签／多按钮切页',
     multi_control_panel_family: '多控件状态面板',
     checkbox_reveal_family: '单入口显隐揭示',
     multi_checkbox_family: '多点勾选／清单揭示',
@@ -11,19 +9,15 @@ export const INTERACTION_FAMILY_LABELS = Object.freeze({
 });
 
 export function recentInteractionCooldowns(recentFamilies) {
-    const recent = (Array.isArray(recentFamilies) ? recentFamilies : []).slice(-5);
-    const known = item => item && Object.hasOwn(INTERACTION_FAMILY_LABELS, item.id)
-        && Number(item.confidence ?? 1) >= 0.75
-        // Older scans only counted lookalike controls; they cannot prove prose switching.
-        && (item.id !== 'tabbed_radio_family' || item.textPanelSwitch === true) ? item.id : '';
-    const ids = recent.map(known);
+    const recent = Array.isArray(recentFamilies) ? recentFamilies.slice(-5) : [];
     const counts = new Map();
-    ids.forEach(id => { if (id) counts.set(id, (counts.get(id) || 0) + 1); });
-    const lastTwo = ids.slice(-2);
-    const repeatedLast = lastTwo.length === 2 && lastTwo[0] && lastTwo[0] === lastTwo[1] ? lastTwo[1] : '';
+    for (const item of recent) {
+        if (Object.hasOwn(INTERACTION_FAMILY_LABELS, item?.id)) counts.set(item.id, (counts.get(item.id) || 0) + 1);
+    }
+    const lastTwo = recent.slice(-2);
+    const repeatedLast = lastTwo.length === 2 && lastTwo[0]?.id === lastTwo[1]?.id ? lastTwo[1]?.id : '';
     return Object.keys(INTERACTION_FAMILY_LABELS).filter(id => {
-        // One tabbed work briefly cools its skeleton, not the sampled medium.
-        if (id === 'tabbed_radio_family') return ids.slice(-3).includes(id);
-        return (counts.get(id) || 0) >= (id === 'multi_control_panel_family' ? 2 : 3) || repeatedLast === id;
+        const threshold = id === 'tabbed_radio_family' || id === 'multi_control_panel_family' ? 2 : 3;
+        return (counts.get(id) || 0) >= threshold || repeatedLast === id;
     }).slice(0, 2).map(id => ({ id, label: INTERACTION_FAMILY_LABELS[id], count: counts.get(id) || 0 }));
 }

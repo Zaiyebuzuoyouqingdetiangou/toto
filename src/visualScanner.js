@@ -1,9 +1,8 @@
-import { inspectTextPanelSwitch } from './textPanelSwitch.js?rmv=1.62.19';
-import { presentationModeFields } from './presentationMode.js?rmv=1.62.19';
-import { getCurrentChatKey, retargetPendingAtmosphereFromHtml, updateLatestVisualSignature } from './storage.js?rmv=1.62.19';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.62.19';
-import { getSettings } from './settings.js?rmv=1.62.19';
-import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.62.19';
+import { presentationModeFields } from './presentationMode.js?rmv=1.62.20';
+import { getCurrentChatKey, retargetPendingAtmosphereFromHtml, updateLatestVisualSignature } from './storage.js?rmv=1.62.20';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.62.20';
+import { getSettings } from './settings.js?rmv=1.62.20';
+import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.62.20';
 import {
     commitRabbitMirrorFollowBatch,
     captureRabbitMirrorGenerationSnapshots,
@@ -13,17 +12,17 @@ import {
     inspectRabbitMirrorGenerationSource,
     releaseRabbitMirrorFollowBatch,
     releaseRabbitMirrorFollowBatchAtMessage,
-} from './generationGuard.js?rmv=1.62.19';
+} from './generationGuard.js?rmv=1.62.20';
 import {
     clearSanitizedRabbitMirrorFaceProof,
     getSanitizedRabbitMirrorFaceProof,
     markSanitizedRabbitMirrorFace,
     rabbitMirrorMultifaceSourceHash,
-} from './multifaceProof.js?rmv=1.62.19';
-import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.62.19';
-import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.62.19';
-import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.62.19';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.19';
+} from './multifaceProof.js?rmv=1.62.20';
+import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.62.20';
+import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.62.20';
+import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.62.20';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.20';
 
 export const FOLLOW_MULTIFACE_COMMITTED_EVENT = 'rabbit-mirror:follow-multiface-committed';
 export const FOLLOW_MULTIFACE_REJECTED_EVENT = 'rabbit-mirror:follow-multiface-rejected';
@@ -331,7 +330,6 @@ function interactionFamilyRecord(id = 'none', label = '未识别交互家族', c
         confidence: Math.max(0, Math.min(1, Number(confidence) || 0)),
         controlCount: Math.max(0, Number(details.controlCount) || 0),
         panelCount: Math.max(0, Number(details.panelCount) || 0),
-        ...(details.textPanelSwitch === true ? { textPanelSwitch: true } : {}),
     };
 }
 
@@ -357,21 +355,41 @@ function labelsForControls(root, controls = []) {
 
 function detectInteractionFamily(root, html = '') {
     const text = String(html || '');
+    const lower = text.toLowerCase();
     const innerDetailsCount = Math.max(0, count(/<details\b/gi, text) - 1);
     const rotateFlip = /rotate[xy]\s*\(\s*(?:-?180|180deg)/i.test(text)
         && /backface-visibility|transform-style\s*:\s*preserve-3d|perspective\s*:/i.test(text);
     if (rotateFlip) return interactionFamilyRecord('flip_card_family', '翻面／双面切换', 0.96, { controlCount: count(/<input\b/gi, text), panelCount: 2 });
 
-    const textPanels = inspectTextPanelSwitch(root);
-    if (textPanels) {
-        return interactionFamilyRecord('tabbed_radio_family', '重复文字面板切换（横排标签／竖排折叠）', 0.9, textPanels);
-    }
-
     const controls = root?.querySelectorAll
         ? [...root.querySelectorAll('input[type="radio"], input[type="checkbox"]')]
         : [];
+    const radios = controls.filter(input => String(input.type || '').toLowerCase() === 'radio');
     const checkboxes = controls.filter(input => String(input.type || '').toLowerCase() === 'checkbox');
     const checkedRules = count(/:checked\b/gi, text);
+
+    const groups = new Map();
+    for (const radio of radios) {
+        const key = String(radio.getAttribute('name') || '').trim() || `__ungrouped__:${radio.id || groups.size}`;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(radio);
+    }
+    const largestRadioGroup = [...groups.values()].sort((a, b) => b.length - a.length)[0] || [];
+    const groupLabels = labelsForControls(root, largestRadioGroup);
+    const sameLayerPanelSignal = /grid-area\s*:\s*1\s*\/\s*1|position\s*:\s*absolute[\s\S]{0,220}(?:opacity\s*:\s*0|visibility\s*:\s*hidden)/i.test(lower);
+    const tabLanguageSignal = /tab|tabs|panel|pane|频道|标签页|选项卡|结局\s*0?1|档位|模式\s*[一二三123]/i.test(`${lower} ${stripTags(text)}`);
+    if (largestRadioGroup.length >= 3 && groupLabels.length >= 3 && checkedRules >= 3) {
+        return interactionFamilyRecord('tabbed_radio_family', '并列标签／多按钮切页', sameLayerPanelSignal || tabLanguageSignal ? 0.99 : 0.94, {
+            controlCount: largestRadioGroup.length,
+            panelCount: Math.max(largestRadioGroup.length, checkedRules),
+        });
+    }
+    if (largestRadioGroup.length >= 2 && groupLabels.length >= 2 && checkedRules >= 2 && (sameLayerPanelSignal || tabLanguageSignal)) {
+        return interactionFamilyRecord('tabbed_radio_family', '并列标签／多按钮切页', 0.92, {
+            controlCount: largestRadioGroup.length,
+            panelCount: Math.max(largestRadioGroup.length, checkedRules),
+        });
+    }
     if (controls.length >= 3 && labelsForControls(root, controls).length >= 3 && checkedRules >= 2) {
         return interactionFamilyRecord('multi_control_panel_family', '多控件状态面板', 0.86, {
             controlCount: controls.length,
@@ -1269,7 +1287,7 @@ function templateSingleFollowRoot(template) {
 
 function loadFollowBatchSanitizer() {
     if (!followBatchSanitizerModulePromise) {
-        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.62.19').catch(error => {
+        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.62.20').catch(error => {
             followBatchSanitizerModulePromise = null;
             console.debug('[RabbitMirror] follow multiface sanitizer unavailable:', error);
             return null;
