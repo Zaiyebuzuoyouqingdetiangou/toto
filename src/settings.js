@@ -1,10 +1,10 @@
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.62.17';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.62.20';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.62.17';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.62.17';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.62.17';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.62.17';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.62.20';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.62.20';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.62.20';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.62.20';
 
 export const MODULE_NAME = 'rabbit_mirror_theater';
 
@@ -130,12 +130,15 @@ function canonicalFormatSettingId(value) {
     const id = String(value || '').trim();
     return LEGACY_FORMAT_ID_ALIASES[id] || id;
 }
+// Restored verbatim from 1.5.53. Both default injection paths share this text.
 export const DEFAULT_VISUAL_COLOR_RULES = String.raw`色彩组织:
-  - 从本轮场景、季节、物件与媒介推导主色、辅助色与强调色，建立主次和彼此呼应；主色不等于整面只用同一色相的深浅变化。
-  - 色彩可以清亮、浓郁、鲜艳、冷暖对照或柔和克制，按内容选择；不要把低饱和、灰褐、米色或单色当成默认高级感。
-  - 主体、背景、文字、装饰和交互状态用色相、明度、饱和度及材质形成清晰层次；需要时充分使用辅助色与强调色，保持文字可读。
-  - 材质、环境光与阴影共同塑造画面；渐变、发光、投影和高饱和色均可在适合媒介时使用，效果与面积随内容决定。
-  - 避重时可调整主辅色关系、冷暖、色相与彩度，不只替换一个背景色；用户明确指定的颜色，以及内容本就需要的单色或低彩度形式，继续尊重。`;
+  - 配色必须形成明确的主次关系，由主要色彩关系统领画面，再用有限的辅助色与局部强调色建立层次；不得让所有颜色平均分布或同时抢眼。
+  - 不得为了避免重复或追求独特强行改变色相，也不得加入不属于媒介的霓虹、光晕或高饱和强调色。
+  - 主背景、承载面、正文、装饰与交互状态须通过明度、饱和度、冷暖、透明度和材质差异清晰分层，并保持相互呼应。
+  - 强调色只用于真正需要聚焦的主体、关系节点或状态变化，数量与面积必须克制。
+  - 材质色、环境光与阴影必须共同作用，不能只给不同区域机械填充不同色块。
+  - 视觉质感应由比例、留白、层次、材质、光影与色彩关系共同成立，不得依靠堆叠渐变、发光、阴影或高饱和色制造表面效果。
+  - 当展现形式适合单色、低彩度或有限色域时，可以保持克制，但仍须依靠明度、纹理、材质与空间层次形成完整视觉。`;
 
 export const DEFAULT_VISUAL_PROMPT = String.raw`兔子镜默认视觉规则:
   - 不得以通用圆角面板、卡片列表、数据仪表盘或信息框作为默认主体，再向其中填入本轮内容。
@@ -146,15 +149,13 @@ export const DEFAULT_VISUAL_PROMPT = String.raw`兔子镜默认视觉规则:
 
 ${DEFAULT_VISUAL_COLOR_RULES}`;
 
-// Upgrade only the exact previous factory default. Any user-edited text stays intact.
-const PREVIOUS_DEFAULT_VISUAL_PROMPT = DEFAULT_VISUAL_PROMPT.replace(DEFAULT_VISUAL_COLOR_RULES, String.raw`色彩组织:
-  - 配色必须形成明确的主次关系，由主要色彩关系统领画面，再用有限的辅助色与局部强调色建立层次；不得让所有颜色平均分布或同时抢眼。
-  - 不得为了避免重复或追求独特强行改变色相，也不得加入不属于媒介的霓虹、光晕或高饱和强调色。
-  - 主背景、承载面、正文、装饰与交互状态须通过明度、饱和度、冷暖、透明度和材质差异清晰分层，并保持相互呼应。
-  - 强调色只用于真正需要聚焦的主体、关系节点或状态变化，数量与面积必须克制。
-  - 材质色、环境光与阴影必须共同作用，不能只给不同区域机械填充不同色块。
-  - 视觉质感应由比例、留白、层次、材质、光影与色彩关系共同成立，不得依靠堆叠渐变、发光、阴影或高饱和色制造表面效果。
-  - 当展现形式适合单色、低彩度或有限色域时，可以保持克制，但仍须依靠明度、纹理、材质与空间层次形成完整视觉。`);
+// Migrate only the exact superseded factory default; preserve all user edits.
+const SUPERSEDED_DEFAULT_VISUAL_PROMPT = DEFAULT_VISUAL_PROMPT.replace(DEFAULT_VISUAL_COLOR_RULES, String.raw`色彩组织:
+  - 从本轮场景、季节、物件与媒介推导主色、辅助色与强调色，建立主次和彼此呼应；主色不等于整面只用同一色相的深浅变化。
+  - 色彩可以清亮、浓郁、鲜艳、冷暖对照或柔和克制，按内容选择；不要把低饱和、灰褐、米色或单色当成默认高级感。
+  - 主体、背景、文字、装饰和交互状态用色相、明度、饱和度及材质形成清晰层次；需要时充分使用辅助色与强调色，保持文字可读。
+  - 材质、环境光与阴影共同塑造画面；渐变、发光、投影和高饱和色均可在适合媒介时使用，效果与面积随内容决定。
+  - 避重时可调整主辅色关系、冷暖、色相与彩度，不只替换一个背景色；用户明确指定的颜色，以及内容本就需要的单色或低彩度形式，继续尊重。`);
 
 function cloneDefaultSettings() {
     return typeof structuredClone === 'function'
@@ -427,7 +428,7 @@ export function getSettings() {
         return raw.replace(/\r\n?/g, '\n').slice(0, maxChars);
     };
     settings.visualPrompt = normalizeVisualSetting(settings.visualPrompt, DEFAULT_VISUAL_PROMPT, VISUAL_PROMPT_MAX_CHARS);
-    if (settings.visualPrompt === PREVIOUS_DEFAULT_VISUAL_PROMPT) settings.visualPrompt = DEFAULT_VISUAL_PROMPT;
+    if (settings.visualPrompt === SUPERSEDED_DEFAULT_VISUAL_PROMPT) settings.visualPrompt = DEFAULT_VISUAL_PROMPT;
     settings.visualExtraPrompt = normalizeVisualSetting(settings.visualExtraPrompt, '', VISUAL_EXTRA_PROMPT_MAX_CHARS);
     settings.visualAvoidPrompt = normalizeVisualSetting(settings.visualAvoidPrompt, '', VISUAL_AVOID_PROMPT_MAX_CHARS);
 

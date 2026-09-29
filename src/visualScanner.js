@@ -1,8 +1,8 @@
-import { presentationModeFields } from './presentationMode.js?rmv=1.62.17';
-import { getCurrentChatKey, retargetPendingAtmosphereFromHtml, updateLatestVisualSignature } from './storage.js?rmv=1.62.17';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.62.17';
-import { getSettings } from './settings.js?rmv=1.62.17';
-import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.62.17';
+import { presentationModeFields } from './presentationMode.js?rmv=1.62.20';
+import { getCurrentChatKey, retargetPendingAtmosphereFromHtml, updateLatestVisualSignature } from './storage.js?rmv=1.62.20';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.62.20';
+import { getSettings } from './settings.js?rmv=1.62.20';
+import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.62.20';
 import {
     commitRabbitMirrorFollowBatch,
     captureRabbitMirrorGenerationSnapshots,
@@ -12,17 +12,17 @@ import {
     inspectRabbitMirrorGenerationSource,
     releaseRabbitMirrorFollowBatch,
     releaseRabbitMirrorFollowBatchAtMessage,
-} from './generationGuard.js?rmv=1.62.17';
+} from './generationGuard.js?rmv=1.62.20';
 import {
     clearSanitizedRabbitMirrorFaceProof,
     getSanitizedRabbitMirrorFaceProof,
     markSanitizedRabbitMirrorFace,
     rabbitMirrorMultifaceSourceHash,
-} from './multifaceProof.js?rmv=1.62.17';
-import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.62.17';
-import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.62.17';
-import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.62.17';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.17';
+} from './multifaceProof.js?rmv=1.62.20';
+import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.62.20';
+import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.62.20';
+import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.62.20';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.20';
 
 export const FOLLOW_MULTIFACE_COMMITTED_EVENT = 'rabbit-mirror:follow-multiface-committed';
 export const FOLLOW_MULTIFACE_REJECTED_EVENT = 'rabbit-mirror:follow-multiface-rejected';
@@ -353,50 +353,6 @@ function labelsForControls(root, controls = []) {
     return [...labels];
 }
 
-function parallelTriggerEntryCount(root) {
-    if (!root?.querySelectorAll) return 0;
-    let best = 0;
-    const trigger = 'label, button, summary, input[type="checkbox"], input[type="radio"], a[href^="#"]';
-    let scanned = 0;
-    for (const parent of root.querySelectorAll('*')) {
-        if (++scanned > 900) break;
-        const kids = [...(parent.children || [])];
-        if (kids.length < 3) continue;
-        const groups = new Map();
-        for (const kid of kids) {
-            const signature = `${kid.tagName}|${String(kid.getAttribute?.('class') || '').trim().split(/\s+/).sort().join('.')}`;
-            if (!groups.has(signature)) groups.set(signature, []);
-            groups.get(signature).push(kid);
-        }
-        for (const members of groups.values()) {
-            if (members.length < 3 || members.length > 6) continue;
-            const withTrigger = members.filter(member => member.matches?.(trigger) || member.tagName === 'DETAILS' || member.querySelector?.(trigger));
-            if (withTrigger.length === members.length) best = Math.max(best, members.length);
-        }
-    }
-    return best;
-}
-
-function homogeneousTriggerCount(root) {
-    if (!root?.querySelectorAll) return 0;
-    const groups = new Map();
-    let scanned = 0;
-    for (const node of root.querySelectorAll('label, summary, button, a[href^="#"]')) {
-        if (++scanned > 400) break;
-        const classes = String(node.getAttribute?.('class') || '').trim().split(/\s+/).filter(Boolean).sort().join('.');
-        // 无 class 时用去掉数字和旋转/位移的内联样式作指纹，避免只靠微调角度或位置逃过识别。
-        const style = classes ? '' : String(node.getAttribute?.('style') || '').split(';')
-            .map(part => part.replace(/\s+/g, '').toLowerCase())
-            .filter(part => part && !/^(?:transform|rotate|translate|top|left|right|bottom|margin[\w-]*|z-index|order)\s*:/.test(part))
-            .map(part => part.replace(/[\d.]+/g, '#'))
-            .sort().join(';');
-        if (!classes && !style) continue;
-        const signature = `${node.tagName}|${classes}|${style}`;
-        groups.set(signature, (groups.get(signature) || 0) + 1);
-    }
-    return Math.max(0, ...groups.values());
-}
-
 function detectInteractionFamily(root, html = '') {
     const text = String(html || '');
     const lower = text.toLowerCase();
@@ -404,13 +360,6 @@ function detectInteractionFamily(root, html = '') {
     const rotateFlip = /rotate[xy]\s*\(\s*(?:-?180|180deg)/i.test(text)
         && /backface-visibility|transform-style\s*:\s*preserve-3d|perspective\s*:/i.test(text);
     if (rotateFlip) return interactionFamilyRecord('flip_card_family', '翻面／双面切换', 0.96, { controlCount: count(/<input\b/gi, text), panelCount: 2 });
-
-    // 同款触发器 ≥3：不管排成横排、竖排、时间轴节点还是胶布条，也不管用 label、summary 还是锚点，
-    // 都是「N 个同样的入口各展开一段」的骨架。先于其他家族判断，免得被 details 等家族截走。
-    const homogeneousTriggers = homogeneousTriggerCount(root);
-    if (homogeneousTriggers >= 3) {
-        return interactionFamilyRecord('tabbed_radio_family', '并列同构入口（同款触发器 ≥3）', 0.9, { controlCount: homogeneousTriggers, panelCount: homogeneousTriggers });
-    }
 
     const controls = root?.querySelectorAll
         ? [...root.querySelectorAll('input[type="radio"], input[type="checkbox"]')]
@@ -428,7 +377,7 @@ function detectInteractionFamily(root, html = '') {
     const largestRadioGroup = [...groups.values()].sort((a, b) => b.length - a.length)[0] || [];
     const groupLabels = labelsForControls(root, largestRadioGroup);
     const sameLayerPanelSignal = /grid-area\s*:\s*1\s*\/\s*1|position\s*:\s*absolute[\s\S]{0,220}(?:opacity\s*:\s*0|visibility\s*:\s*hidden)/i.test(lower);
-    const tabLanguageSignal = /tab|tabs|panel|pane|频道|标签页|选项卡|结局\s*0?1|档位|模式\s*[一二三123]|(?:线索|阶段|席|证物|档案|视角|章节?|幕|层)\s*[一二三四123４]/i.test(`${lower} ${stripTags(text)}`);
+    const tabLanguageSignal = /tab|tabs|panel|pane|频道|标签页|选项卡|结局\s*0?1|档位|模式\s*[一二三123]/i.test(`${lower} ${stripTags(text)}`);
     if (largestRadioGroup.length >= 3 && groupLabels.length >= 3 && checkedRules >= 3) {
         return interactionFamilyRecord('tabbed_radio_family', '并列标签／多按钮切页', sameLayerPanelSignal || tabLanguageSignal ? 0.99 : 0.94, {
             controlCount: largestRadioGroup.length,
@@ -440,27 +389,6 @@ function detectInteractionFamily(root, html = '') {
             controlCount: largestRadioGroup.length,
             panelCount: Math.max(largestRadioGroup.length, checkedRules),
         });
-    }
-    // 同一骨架的其他实现：同名 details 互斥组、:target 锚点切页、每项各自一个 checkbox 的并列按钮栏。
-    const exclusiveDetails = new Map();
-    for (const match of text.matchAll(/<details\b[^>]*\bname\s*=\s*["']([^"']+)["']/gi)) exclusiveDetails.set(match[1], (exclusiveDetails.get(match[1]) || 0) + 1);
-    const largestExclusive = Math.max(0, ...exclusiveDetails.values());
-    if (largestExclusive >= 2) {
-        return interactionFamilyRecord('tabbed_radio_family', '并列标签／多按钮切页', 0.9, { controlCount: largestExclusive, panelCount: largestExclusive });
-    }
-    const anchorTabs = count(/href\s*=\s*["']#[^"']+["']/gi, text);
-    const targetRules = count(/:target\b/gi, text);
-    if (anchorTabs >= 3 && targetRules >= 2 && (sameLayerPanelSignal || tabLanguageSignal)) {
-        return interactionFamilyRecord('tabbed_radio_family', '并列标签／多按钮切页', 0.88, { controlCount: anchorTabs, panelCount: targetRules });
-    }
-    if (checkboxes.length >= 2 && checkboxes.length <= 4 && checkedRules >= 2 && labelsForControls(root, checkboxes).length >= 2 && sameLayerPanelSignal && tabLanguageSignal) {
-        return interactionFamilyRecord('tabbed_radio_family', '并列标签／多按钮切页', 0.82, { controlCount: checkboxes.length, panelCount: checkedRules });
-    }
-    // 竖排同构条目：3–6 个同标签同 class 的兄弟块，每块各自带触发器（按钮、label、折叠、锚点）。
-    // 这是把切页骨架竖过来的写法，归入同一家族，让冷却能识别。
-    const parallelEntries = parallelTriggerEntryCount(root);
-    if (parallelEntries >= 3) {
-        return interactionFamilyRecord('tabbed_radio_family', '并列同构入口（横排切页／竖排条目）', 0.84, { controlCount: parallelEntries, panelCount: parallelEntries });
     }
     if (controls.length >= 3 && labelsForControls(root, controls).length >= 3 && checkedRules >= 2) {
         return interactionFamilyRecord('multi_control_panel_family', '多控件状态面板', 0.86, {
@@ -1359,7 +1287,7 @@ function templateSingleFollowRoot(template) {
 
 function loadFollowBatchSanitizer() {
     if (!followBatchSanitizerModulePromise) {
-        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.62.17').catch(error => {
+        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.62.20').catch(error => {
             followBatchSanitizerModulePromise = null;
             console.debug('[RabbitMirror] follow multiface sanitizer unavailable:', error);
             return null;

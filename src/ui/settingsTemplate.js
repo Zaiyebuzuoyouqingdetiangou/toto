@@ -1,8 +1,8 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.62.17';
-import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.62.17';
-import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.62.17';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.62.20';
+import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.62.20';
+import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.62.20';
 
 export function buildRabbitMirrorSettingsDialogHtml() {
     return `
@@ -34,7 +34,10 @@ export function buildRabbitMirrorSettingsDialogHtml() {
           <summary>新手指引</summary>
           <div class="rabbit-mirror-quick-start-body" role="region" aria-label="新手指引"><p role="status">展开后加载使用指引，不会修改设置。</p></div>
         </details>
-        <button id="rh_update_now" class="menu_button rabbit-mirror-update-button" type="button">检查并更新</button>
+        <div class="rabbit-mirror-update-version-group">
+          <span id="rh_current_version" class="rabbit-mirror-current-version">当前版本：${RUNTIME_VERSION}</span>
+          <button id="rh_update_now" class="menu_button rabbit-mirror-update-button" type="button">检查并更新</button>
+        </div>
       </div>
       <div id="rh_update_status" class="rabbit-mirror-update-status" role="status" aria-live="polite" hidden></div>
       <button id="rh_update_reload" class="menu_button" type="button" hidden>刷新并加载已安装版本</button>

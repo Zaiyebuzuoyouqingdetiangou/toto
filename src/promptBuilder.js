@@ -1,20 +1,19 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.17';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.17';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.17';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.17';
-import { recentInteractionCooldowns } from './interactionCooldown.js?rmv=1.62.17';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.17';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.17';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.62.17';
-import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.17';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.17';
-export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.17';
-import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.17';
-import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.17';
-import { isTextPresentation, presentationModeFields } from './presentationMode.js?rmv=1.62.17';
-import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.17';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.17';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.17';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.20';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.20';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.20';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.20';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.20';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.20';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.62.20';
+import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.20';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.20';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.20';
+import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.20';
+import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.20';
+import { isTextPresentation, presentationModeFields } from './presentationMode.js?rmv=1.62.20';
+import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.20';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.20';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.20';
 
 const THEME_ITEMS = new Map(THEMATIC_CATEGORIES.map(item => [item.id, item]));
 const FORMAT_ITEMS = new Map(PRESENTATION_FORMATS.map(item => [item.id, item]));
@@ -328,18 +327,55 @@ function recentRiskCorrection() {
 
 function interactionFamilyCooldownSnapshot(settings) {
     if (settings?.avoidRepeat === false) return null;
-    return recentInteractionCooldowns(getRecentInteractionFamilies(5, { preserveEmpty: true }))[0] || null;
+    const recent = getRecentInteractionFamilies(5);
+    if (!recent.length) return null;
+    const counts = recent.reduce((map, family) => {
+        map[family.id] = (map[family.id] || 0) + 1;
+        return map;
+    }, {});
+    const lastTwo = recent.slice(-2);
+    const repeatedLatest = lastTwo.length === 2 && lastTwo[0].id === lastTwo[1].id ? lastTwo[1].id : '';
+    const candidates = [
+        ['tabbed_radio_family', 2],
+        ['multi_control_panel_family', 2],
+        ['checkbox_reveal_family', 3],
+        ['multi_checkbox_family', 3],
+        ['inner_details_family', 3],
+        ['flip_card_family', 3],
+    ];
+    const target = candidates.find(([id, threshold]) => (counts[id] || 0) >= threshold || repeatedLatest === id)?.[0] || '';
+    if (!target) return null;
+
+    const descriptions = {
+        tabbed_radio_family: '并列标签／多按钮切页',
+        multi_control_panel_family: '多控件状态面板',
+        checkbox_reveal_family: '单入口显隐揭示',
+        multi_checkbox_family: '多点勾选／清单揭示',
+        inner_details_family: '内部折叠分层',
+        flip_card_family: '翻面／双面切换',
+    };
+    const exactBan = target === 'tabbed_radio_family'
+        ? '禁止再次使用多个同组 radio＋并列标签／按钮＋同位置 panel 切换正文；改变按钮数量仍算同一骨架。'
+        : `不得继续复用“${descriptions[target] || target}”作为主要交互骨架。`;
+    return {
+        target,
+        label: descriptions[target] || target,
+        count: counts[target] || 0,
+        exactBan,
+    };
 }
 
 function interactionFamilyCooldownRule(settings) {
     const snapshot = interactionFamilyCooldownSnapshot(settings);
     if (!snapshot) return '';
     return String.raw`
-交互形态冷却【由近期实际 HTML/CSS 识别；仅影响本轮构思】:
+交互形态冷却【由近期实际 HTML/CSS 识别；本轮强制换家族】:
   - 近期重复交互家族：${snapshot.label}（近五轮 ${snapshot.count} 次）。
-  - 本轮优先避让这一操作骨架，从当前媒介重新设计阅读路径和状态变化；横排标签改成竖排同款条目，或换成印章、便签、数字、颜色和按钮数量后仍各展开一段文字，不算变化。
-  - 冷却不禁止 radio、checkbox、details、标签或按钮，也不规定控件数量。明确点菜及媒介原生必要结构优先：播放器的曲目、书籍的章节、频道或分页可以保留；变化应落在具体内容、构图、物件行为与状态反馈，不能为避重删玩法或改写抽中的形式。
-  - 无需从固定组件清单轮换；未被识别的新交互完全允许。冷却随后续实际成品自然到期，不永久拉黑任何形式，不以重复为由丢弃成品或另发请求。`;
+  - ${snapshot.exactBan}
+  - 禁止仅更换标题、颜色、按钮文案、按钮数量或面板内容后继续复用同一操作路径。
+  - 本轮新的交互必须从本轮展现形式的真实使用方式、空间关系、物件行为、叙事推进与内容节奏中自行推导；不得从固定候选清单中挑选，也不得为了躲避冷却机械改套另一种常见组件。
+  - 未被现有识别器归类的新交互完全允许；交互家族名称只用于发现近期重复，不是生成模板或可选菜单。
+  - 交互数量服从内容；存在多个值得探索的内容节点时，须提供多个有效入口或连续阶段。内容天然单焦点时也须把至少一条链做深做完整，不得为“看起来复杂”堆叠无关控件。radio、checkbox、details 本身没有被永久禁止；只有在它们不再构成上述重复骨架、且媒介本体确实需要时才可使用。`;
 }
 
 function visualFamilyCooldownRule() {
@@ -453,8 +489,8 @@ function complexInteractiveCore() {
   - 内容承载优先于复杂度：含主要正文、长句、段落或关键反馈的节点及其承载父级必须参与正常文档流并由内容撑高；禁止用 position:absolute/fixed、固定 px/vh 高度、height:100%、transform 位移或 overflow:hidden/clip 作为正文承载骨架，只有纯装饰、短标签与图形层可脱离文档流。
   - 需要状态叠层时，优先使用能由内容撑高的 grid 同格叠层、正常流显隐或媒介内部明确可操作的滚动／分页；禁止让两个含长正文的状态以 absolute 叠放在固定画布内。若使用内部 details/summary 表示正反面或状态替换，打开后 summary 不得继续以 height:100% 占据整块面板并把后续状态推到裁切区；正面必须收起或退出占位，暗面须在同一媒介区域内可见，并提供可触摸的返回方式。输出前按 360px 手机窄屏自检，每个状态的最后一行必须仍位于所属卡片、画框或页面边界内。
   - 交互必须由真实可触发对象、对应状态机制与受控内容共同构成；第二状态须在内容、关系、结构、空间、视觉层级、材质、时间进程、观察方式、角色反应或后续可操作范围中的至少一项发生清晰且有意义的变化；不同操作不得无故得到完全相同的反馈。
-  - 交互形态、数量与阶段由本轮媒介的功能和内容决定。多节点内容应有值得探索的不同反馈，不堆无关入口；单焦点或一次性动作可以自然收束。播放器的曲目、书籍的章节、频道、分页和其他原生控件均可按需要使用，不规定横排、竖排或同款控件的数量。
-  - 不把“几个标签各展开一段文字”当作所有题材的默认答案；从媒介自身的物件行为、空间关系、阅读节奏与状态变化构思。连续重复由下方按实际成品触发的短期冷却处理，不为防重复永久禁用某种结构，也不削弱原有玩法。
+  - 存在多个值得探索的内容节点时，须提供多个有效入口或连续阶段，让不同操作获得不同的内容或状态反馈；不得把本来适合探索、分支或推进的媒介压缩成一次显隐后结束。
+  - 交互形态、规模与阶段须由本轮展现形式自身的结构、功能、使用方式与叙事产生；checkbox、翻面、弹窗、按钮组、标签页等仅在媒介天然适合时使用，不得作为默认骨架换皮复用；尤其禁止把“三枚并列按钮／标签→三块同位置正文切换”当成万能答案，除非本轮媒介天然就是频道、档位或分页系统且近期没有重复；非一次性动作的首次操作不得耗尽全部体验。
   - 仅变色、描边、阴影、轻微位移、伪选项、无关交互堆叠，或非一次性媒介中一次显隐后立即结束，不算完整交互。
   - 交互须真实存在并可触摸触发，hover/active 只能辅助，不能单独充当本轮必需的完整交互；装饰不得遮挡操作对象。仅当媒介天然需要分层阅读时才可使用内部 details；禁止 onclick/onmouseover/onmouseout 等事件属性与内联 JavaScript，必须使用宿主可保留的 HTML/CSS 状态机制构成状态与反馈。`;
 }
@@ -881,7 +917,7 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
     const visualPreferenceLock = compactVisualPreferenceExecutionLock(settings);
 
     const activeBans = [
-        interaction ? `交互优先避让「${interaction.label}」` : '',
+        interaction ? `交互避用「${interaction.label}」` : '',
         paletteCooldownLock,
         repeatedVisualDimensions.length ? `连续视觉项：${repeatedVisualDimensions.map(item => `${item.label}「${item.value}」×${item.streak}`).join('；')}；从媒介重做，不得只换色` : '',
     ].filter(Boolean);
@@ -909,7 +945,7 @@ function buildMultiIndependentExecutionLock(faceContexts, settings, directive) {
         ? truncateDirectiveText(directive.rawDirective, 240) : '';
     const visualPreferenceLock = compactVisualPreferenceExecutionLock(settings);
     const activeBans = [
-        interaction ? `交互优先避让「${interaction.label}」` : '', paletteCooldownLock,
+        interaction ? `交互避用「${interaction.label}」` : '', paletteCooldownLock,
         repeatedVisualDimensions.length ? `连续视觉项：${repeatedVisualDimensions.map(item => `${item.label}「${item.value}」×${item.streak}`).join('；')}；从媒介重做，不得只换色` : '',
     ].filter(Boolean);
     const faceLocks = faceContexts.map((face, index) => {
