@@ -1,5 +1,5 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.17';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.17';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.18';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.18';
 import {
     getCurrentChatKey,
     getDirectiveScopedPick,
@@ -17,11 +17,11 @@ import {
     clearPendingComboBatch,
     createPendingComboBatchPlan,
     findPendingComboBatchPlan,
-} from './storage.js?rmv=1.62.17';
-import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.62.17';
-import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.62.17';
-import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.17';
-import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.62.17';
+} from './storage.js?rmv=1.62.18';
+import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.62.18';
+import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.62.18';
+import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.18';
+import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.62.18';
 import {
     chooseExternalSource,
     externalPoolActive,
@@ -31,7 +31,7 @@ import {
     getExternalPoolSnapshot,
     pickExternalItems,
     sourceMixModeIsExternalOnly,
-} from './externalWorldBook/externalPool.js?rmv=1.62.17';
+} from './externalWorldBook/externalPool.js?rmv=1.62.18';
 
 function randomUnit() {
     try {
