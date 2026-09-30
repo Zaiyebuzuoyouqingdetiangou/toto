@@ -1,19 +1,19 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.23';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.23';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.23';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.23';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.23';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.23';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.62.23';
-import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.23';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.23';
-export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.23';
-import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.23';
-import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.23';
-import { isTextPresentation, presentationModeFields } from './presentationMode.js?rmv=1.62.23';
-import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.23';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.23';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.23';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.24';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.24';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.24';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.24';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.24';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.24';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.62.24';
+import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.24';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.24';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.24';
+import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.24';
+import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.24';
+import { isTextPresentation, presentationModeFields } from './presentationMode.js?rmv=1.62.24';
+import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.24';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.24';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.24';
 
 const THEME_ITEMS = new Map(THEMATIC_CATEGORIES.map(item => [item.id, item]));
 const FORMAT_ITEMS = new Map(PRESENTATION_FORMATS.map(item => [item.id, item]));
@@ -461,7 +461,7 @@ function tarotPhysicalImageRule(faceIndexes = []) {
 }
 
 function enhancedVisualDrawingRule() {
-    return '增强视觉绘制：把绘制投入优先用于本轮展现形式的主体轮廓、内部结构、材质与空间关系。鼓励按需组合安全内联 SVG 的路径与渐变、HTML/CSS 的层叠、遮罩、光影和动画，具体技术由媒介决定，不强制每轮使用 SVG 或动画。让主体占据清晰的视觉重心，以前中后景、遮挡、接缝和受光细节形成完整构图；渐变、投影和装饰服务于主体，不能代替主体绘制。适合运动的媒介，让动画表现对象的动作、结构、材质或关系；适合状态变化的媒介，让控件驱动对象本身的变化，并以文字辅助反馈。文字媒介仍保留完整正文与版式。主要正文和交互反馈进入正常文档流并由内容撑高；按 360px 手机宽度校验字号、行高与换行，最后一行不得被固定高度、transform 或 overflow 裁切。不固定配色或布局。';
+    return '增强视觉绘制：把绘制投入优先用于本轮展现形式的主体轮廓、内部结构、材质与空间关系。鼓励按需组合安全内联 SVG 的路径与渐变、HTML/CSS 的层叠、遮罩与光影，具体技术由媒介决定，不强制每轮使用 SVG。本面采用动态视觉时（含展现形式组合），动画要求统一以对应的动态视觉规则为准；增强负责提高同一画面的绘制质量，不另设动画要求。未采用动态视觉时，仍可按媒介需要使用 CSS 动画，不强制动画。让主体占据清晰的视觉重心，以前中后景、遮挡、接缝和受光细节形成完整构图；渐变、投影和装饰服务于主体，不能代替主体绘制。适合状态变化的媒介，让控件驱动对象本身的变化，并以文字辅助反馈。文字媒介仍保留完整正文与版式。主要正文和交互反馈进入正常文档流并由内容撑高；按 360px 手机宽度校验字号、行高与换行，最后一行不得被固定高度、transform 或 overflow 裁切。不固定配色或布局。';
 }
 
 function compactCreativeRule(enabled, formatOnly = false) {
