@@ -1,7 +1,7 @@
 // Pure, bounded generation preferences. These are not output gates, candidate
 // filters or a menu of interaction components. Unknown/native mechanisms remain
 // free to be designed by the model; no mother-library text is inspected here.
-import { INTERACTION_FAMILY_LABELS as FAMILY_LABELS, recentInteractionCooldowns } from './interactionCooldown.js?rmv=1.62.31';
+import { INTERACTION_FAMILY_LABELS as FAMILY_LABELS, recentInteractionCooldowns } from './interactionCooldown.js?rmv=1.62.33';
 
 function recentRepeatedFamilies(recentFamilies) {
     return recentInteractionCooldowns(recentFamilies).map(item => item.id);
@@ -41,12 +41,12 @@ export function buildBatchInteractionDiversityRule(combos, settings) {
             !Array.isArray(value.recentAvoidFamilyIds) || value.recentAvoidFamilyIds.length !== first.recentAvoidFamilyIds.length ||
             value.recentAvoidFamilyIds.some((id, at) => id !== first.recentAvoidFamilyIds[at])) return '';
     }
-    const recent = first.recentAvoidFamilyIds.map(id => FAMILY_LABELS[id]).join('、');
+    // Keep frozen history in the plan, but list it only in the shared cooldown
+    // rule. This block compares faces within the current batch.
     const opening = htmlIndices.length === combos.length
         ? `本批交互分散：从第 2 面起对照此前各面，必须改变重复的主交互操作路径与状态组织；只换标题、颜色、按钮文案或数量不算换。`
         : `本批交互分散：仅在第 ${htmlIndices.map(index => index + 1).join('、')} 面 HTML 作品之间对照，后面的 HTML 面必须改变重复的主交互操作路径与状态组织；文本面不参与交互比较。只换标题、颜色、按钮文案或数量不算换。`;
     return opening +
         `同一主交互家族尽量不超过 ${first.preferredMaxFamilyUses} 面。` +
-        (recent ? `近期使用的「${recent}」进入冷却；仅同款但对象与功能不同的正常控件保留。` : '') +
         '明确点菜、母本原有玩法和强制展现模式优先；可行机制不足时允许自然复用，不为凑种类另造控件，也不从固定组件菜单机械轮换。';
 }

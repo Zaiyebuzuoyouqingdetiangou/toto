@@ -60,6 +60,19 @@ function declarations(text) {
     });
     return values;
 }
+function visualStateValue(key, value) {
+    const text = String(value || '').trim().toLowerCase();
+    if (key === 'opacity') return text || '1';
+    if (!['transform', 'translate', 'rotate', 'scale'].includes(key)) return text;
+    if (!text || text === 'none') return 'none';
+    // Only normalise default identities; do not infer matrices or motion size.
+    const parts = text.split(/\s+/);
+    const zero = /^[+-]?(?:0+(?:\.0*)?|\.0+)(?:[a-z]+|%)?$/;
+    if (key === 'translate' && parts.length <= 3 && parts.every(part => zero.test(part))) return 'none';
+    if (key === 'rotate' && parts.length === 1 && zero.test(text)) return 'none';
+    if (key === 'scale' && parts.length <= 3 && parts.every(part => /^\+?1(?:\.0*)?$/.test(part))) return 'none';
+    return text;
+}
 function localRules(root) {
     const result = [];
     function walk(css, conditional = false, depth = 0) {
@@ -94,7 +107,7 @@ export function detectCompositionFingerprint(root) {
     const rules = localRules(root);
     if (rules.length >= 600 || query(root, 'style').length > 20 || query(root, 'style').some(node => String(node.textContent || '').length > 160000)) return {};
     const styles = new Map(), textCache = new Map(), drawingCache = new Map();
-    const ignored = node => matches(node, OMIT) || !!node?.closest?.('[data-rabbit-mirror-tool-entry-host],[data-rm-tool-storage]');
+    const ignored = node => matches(node, OMIT) || !!node?.closest?.(CONTROL) || !!node?.closest?.('[data-rabbit-mirror-tool-entry-host],[data-rm-tool-storage]');
     const style = node => {
         if (styles.has(node)) return styles.get(node);
         const value = {};
@@ -182,7 +195,9 @@ export function detectCompositionFingerprint(root) {
         if (!sources.length || !targets.length) { uncertainState = true; continue; }
         for (const target of targets) {
             if (ignored(target) || matches(target, CONTROL)) continue;
-            if (drawingStateTarget(target) && Object.keys(rule.values).some(key => VISUAL_CHANGE.test(key) && rule.values[key] !== (style(target)[key] || (key === 'opacity' ? '1' : '')))) visualState = true;
+            // A detached scan cannot establish that media/supports/container
+            // conditions apply. Keep the CSS, but do not use it as state proof.
+            if (!rule.conditional && drawingStateTarget(target) && Object.keys(rule.values).some(key => VISUAL_CHANGE.test(key) && visualStateValue(key, rule.values[key]) !== visualStateValue(key, style(target)[key]))) visualState = true;
             else if (prose(target) && Object.keys(rule.values).some(key => REVEAL.test(key))) {
                 textTargets.add(target); sources.forEach(source => controls.add(source));
             }

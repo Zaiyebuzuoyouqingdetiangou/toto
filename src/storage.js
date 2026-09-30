@@ -1,8 +1,8 @@
-import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords } from './compositionFingerprint.js?rmv=1.62.31';
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.31';
-import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.62.31';
-import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.62.31';
-import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.62.31';
+import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords } from './compositionFingerprint.js?rmv=1.62.33';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.33';
+import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.62.33';
+import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.62.33';
+import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.62.33';
 
 const STORAGE_KEY = 'rabbit_mirror_theater:last_combo:v11';
 const PENDING_KEY = 'rabbit_mirror_theater:pending_combo:v11';
@@ -452,11 +452,22 @@ export function getRecentIds(limit = 10) {
 }
 
 
+// Older scans could record real object states and contradictory missing/fake
+// interaction flags together. Align the risk view with family cooldown without
+// rewriting history or hiding unrelated drawing/motion risks.
+function historicalRiskFlags(item) {
+    const flags = Array.isArray(item?.riskFlags) ? item.riskFlags : [];
+    const objectStateChange = parseVisualFamilySkeleton(item?.visualSkeleton || '').operation_family === 'object_state_change';
+    return objectStateChange
+        ? flags.filter(flag => flag !== 'missing_interaction' && flag !== 'fake_interaction')
+        : flags;
+}
+
 export function getRecentRiskFlags(limit = 3) {
     const history = getComboHistory(limit);
     const flags = [];
     for (const item of history) {
-        if (Array.isArray(item?.riskFlags)) flags.push(...item.riskFlags);
+        flags.push(...historicalRiskFlags(item));
     }
     return [...new Set(flags)];
 }
@@ -465,7 +476,7 @@ export function getRecentRiskFlagCounts(limit = 3) {
     const history = getComboHistory(limit);
     const counts = {};
     for (const item of history) {
-        for (const flag of item?.riskFlags || []) {
+        for (const flag of historicalRiskFlags(item)) {
             counts[flag] = (counts[flag] || 0) + 1;
         }
     }
