@@ -1,10 +1,10 @@
 {
     "display_name": "兔子镜小剧场",
     "loading_order": 100,
-    "js": "index.js?rmv=1.62.36",
-    "css": "style.css?rmv=1.62.36",
+    "js": "index.js?rmv=1.62.37",
+    "css": "style.css?rmv=1.62.37",
     "author": "Toto",
-    "version": "1.62.36",
+    "version": "1.62.37",
     "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
     "auto_update": true,
     "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
         "disable": "onDisable",
         "clean": "onClean"
     },
-    "description": "兔子镜小剧场：主题 × 展现形式 × 交互三池抽取，48 条交互构造与24套氛围配色参考；保留五轮深色冷却、四候选、正文挑签与动态组合。"
+    "description": "兔子镜小剧场：主题 × 展现形式 × 交互三池抽取；交互编号索引与三档取材，内置深浅色阶组合参考；保留五轮深色冷却、四候选、正文挑签与动态组合。"
 }

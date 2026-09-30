@@ -1,4 +1,5 @@
-import { INTERACTION_RECIPES, INTERACTION_MECHANISMS } from '../data/structured/interactionIndex.js?rmv=1.62.36';
+import { resolveInteractionDetail, INTERACTION_MECHANISMS } from '../data/raw/rawInteractionRecipes.js?rmv=1.62.37';
+import { INTERACTION_RECIPES } from '../data/structured/interactionIndex.js?rmv=1.62.37';
 
 const BY_ID = new Map(INTERACTION_RECIPES.map(recipe => [recipe.id, recipe]));
 
@@ -82,7 +83,7 @@ export function diversifyBatchInteractionRecipes(combos, options = {}) {
     }
 }
 
-export function buildInteractionRecipeRule(faceContexts) {
+export function buildInteractionRecipeRule(faceContexts, rawPolicy = 'balanced') {
     const assignments = [];
     const mechanisms = new Set();
     for (const [index, face] of (faceContexts || []).entries()) {
@@ -91,19 +92,22 @@ export function buildInteractionRecipeRule(faceContexts) {
         for (const [ticketIndex, candidate] of candidates.entries()) {
             const recipe = interactionRecipeFor(candidate.combo);
             if (!recipe) continue;
-            mechanisms.add(recipe.mechanism);
             const scope = `第 ${index + 1} 面${face.atmosphereFaces ? `／仅选签 ${ticketIndex + 1} 时` : ''}`;
-            assignments.push(`${scope}：${recipe.id}「${recipe.title}」〔${recipe.mechanism}〕\n操作：${recipe.action}。\n可见结果：${recipe.result}。`);
+            let entry = `${scope}：${recipe.code}「${recipe.title}｜${recipe.summary}」`;
+            // Compact never resolves detailed material. Other policies resolve only drawn IDs.
+            if (rawPolicy !== 'compact') {
+                const detail = resolveInteractionDetail(recipe.id);
+                if (detail) entry += `\n操作：${detail.action}。\n可见结果：${detail.result}。`;
+                if (rawPolicy === 'full') mechanisms.add(recipe.mechanism);
+            }
+            assignments.push(entry);
         }
     }
     if (!assignments.length) return '';
+    const implementation = mechanisms.size ? `\n本轮实现依据（各列一次，标识符须面内唯一）：\n${[...mechanisms].map(key => `${key}：${INTERACTION_MECHANISMS[key]}`).join('\n')}` : '';
     return `交互构造库【第三抽取池；仅下列 HTML 面／选中签适用】：
-主题提供内容，原展现形式决定主体，交互签提供操作与状态的构造依据；三者共同成立。用户明确玩法和原形式固有功能优先，按它们映射操作对象，不为了交互签更换媒介。
-先用本轮具体物件、图中位置或原文证据替换下面的抽象对象，再组织初始画面、操作态和可返回的结果态。直接操作主体上的部位或证据；说明文字补充画面已经表现的关系，文字媒介仍保留其正文，不强行缩成摘要。按钮、翻页与折叠按用途保留，数量不限。
-${assignments.join('\n\n')}
-本轮用到的实现依据（每种只列一次；标识符是结构示意，实际须面内唯一）：
-${[...mechanisms].map(key => `${key}：${INTERACTION_MECHANISMS[key]}`).join('\n')}
-使用已有安全 HTML/CSS，不写 script、事件属性或借用宿主函数。触屏操作不可只依赖 hover；状态输入保留可聚焦入口和关联标签。普通 range/color 输入不会自动驱动其他 CSS；不伪称自由拖拽、实时物理、真正随机判定、录音或跨次持久化。复杂过程可用诚实标明的有限状态实现。`;
+把本签操作与可见结果落实到正文对应的主体、部位或证据；用户明确玩法与原形式固有功能优先，不为交互签更换媒介。
+${assignments.join('\n\n')}${implementation}`;
 }
 
 export function interactionExecutionReminder(combo) {

@@ -1,38 +1,73 @@
-import { GENERATION_PALETTES } from '../data/structured/generationPaletteIndex.js?rmv=1.62.36';
+import { COLOR_FAMILIES } from '../data/structured/generationPaletteIndex.js?rmv=1.62.37';
+import { COLOR_SCALES } from '../data/structured/generationColorScales.js?rmv=1.62.37';
+
+const BY_ID = new Map(COLOR_FAMILIES.map(item => [item.id, item]));
+
+function luminance(hex) {
+    const [r, g, b] = hex.slice(1).match(/../g).map(value => parseInt(value, 16) / 255)
+        .map(value => value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4);
+    return .2126 * r + .7152 * g + .0722 * b;
+}
+
+function readableInk(backgrounds, candidates) {
+    const contrasts = candidates.map(ink => ({ ink, ratio: Math.min(...backgrounds.map(background => {
+        const a = luminance(ink), b = luminance(background);
+        return (Math.max(a, b) + .05) / (Math.min(a, b) + .05);
+    })) }));
+    return (contrasts.find(item => item.ratio >= 4.5) || contrasts.sort((a, b) => b.ratio - a.ratio)[0]).ink;
+}
+
+export function composeGenerationPalette(familyId, companionId, brightness = 'light', surfaceId = familyId) {
+    const family = BY_ID.get(familyId), companion = BY_ID.get(companionId), surfaceFamily = BY_ID.get(surfaceId);
+    if (!family || !companion || !surfaceFamily) return null;
+    const mode = brightness === 'dark' ? 'dark' : 'light';
+    const scale = COLOR_SCALES[familyId][mode], support = COLOR_SCALES[companionId][mode], surface = COLOR_SCALES[surfaceId][mode];
+    const readingSurfaces = [surface[0], surface[2], surface[3], surface[4]];
+    // These are reference-token pairings, not a scanner or an acceptance gate on model output.
+    const text = readableInk(readingSurfaces, [surface[11], '#111111', '#FFFFFF']);
+    const muted = readableInk(readingSurfaces, [surface[10], text]);
+    const roles = Object.freeze({ background: surface[0], surface: surface[2], hover: surface[3], selected: surface[4],
+        text, muted, border: surface[6], accent: scale[8], accentHover: scale[9],
+        onAccent: readableInk([scale[8]], ['#FFFFFF', '#111111', '#000000']),
+        onAccentHover: readableInk([scale[9]], ['#FFFFFF', '#111111', '#000000']),
+        companion: support[8], onCompanion: readableInk([support[8]], ['#FFFFFF', '#111111', '#000000']),
+    });
+    return Object.freeze({ id: `radix-${familyId}-${surfaceId}-${companionId}-${mode}`, family: familyId,
+        surfaceFamily: surfaceId, companionFamily: companionId, brightness: mode,
+        title: `${family.title}·${surfaceFamily.title}底·${companion.title}点色`, mood: family.mood,
+        roles, scale, colors: Object.freeze([roles.background, roles.surface, text, roles.accent, roles.companion]),
+    });
+}
 
 export function selectGenerationPalettes(faceContexts, settings = {}, { darkCooldown = false } = {}) {
     const active = (faceContexts || []).filter(face => !face.textPresentation && !face.combo?.pureOrder);
     if (!active.length) return [];
-    const material = active.flatMap(face => face.atmosphereFaces || [face])
-        .flatMap(face => [...(face.combo?.themes || []), ...(face.combo?.formats || [])])
+    const candidates = active.flatMap(face => face.atmosphereFaces || [face]);
+    const material = candidates.flatMap(face => [...(face.combo?.themes || []), ...(face.combo?.formats || [])])
         .map(item => `${item.title || ''} ${item.summary || ''}`).join(' ');
-    const darkOnly = settings.darkVisualMode === true;
-    // No semantic guesses about hidden/current body: the model chooses by actual body.
-    // Rank form affinities, rotate the remaining families by local selection IDs.
-    const seed = active.flatMap(face => face.atmosphereFaces || [face])
-        .map(face => `${face.combo?.interactionRecipeId || ''}:${(face.combo?.formatIds || []).join(',')}`).join('|');
+    // The body is not guessed locally. The model still chooses using its actual current body.
+    const seed = candidates.map(face => `${face.combo?.interactionRecipeId || ''}:${(face.combo?.formatIds || []).join(',')}:${(face.combo?.themeIds || []).join(',')}`).join('|');
     let hash = 2166136261;
     for (const char of seed) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
-    const families = GENERATION_PALETTES.filter(item => item.brightness === (darkOnly ? 'dark' : 'light'));
-    const offset = (hash >>> 0) % families.length;
-    const ranked = families.map((item, index) => ({ item,
-        score: item.fit.split('|').filter(word => material.includes(word)).length,
-        order: (index + offset) % families.length,
+    const offset = (hash >>> 0) % COLOR_FAMILIES.length;
+    const ranked = COLOR_FAMILIES.map((item, index) => ({ item,
+        score: item.fit.filter(word => material.includes(word)).length,
+        order: (index + offset) % COLOR_FAMILIES.length,
     })).sort((a, b) => b.score - a.score || a.order - b.order);
-    const chosen = ranked.slice(0, 8).map(entry => entry.item);
-    // Ordinary mode may still use a dark reference when not cooling down. Only
-    // two references are dark so the menu doesn't recreate an all-dark default.
-    if (!darkOnly && !darkCooldown) for (const index of [6, 7]) {
-        chosen[index] = GENERATION_PALETTES.find(item => item.family === chosen[index].family && item.brightness === 'dark');
-    }
-    return chosen;
+    return ranked.slice(0, 8).map(({ item }, index) => {
+        const variant = ((hash >>> 0) + index * 13) >>> 0;
+        const support = item.companions[variant % item.companions.length];
+        const surface = [item.id, item.neutral, 'gray'][Math.floor(variant / 3) % 3];
+        const dark = settings.darkVisualMode === true || (!darkCooldown && index >= 6);
+        return composeGenerationPalette(item.id, support, dark ? 'dark' : 'light', surface);
+    });
 }
 
 export function buildGenerationPaletteRule(palettes, faceContexts) {
     if (!palettes?.length) return '';
     const numbers = (faceContexts || []).flatMap((face, index) => !face.textPresentation && !face.combo?.pureOrder ? [index + 1] : []);
-    return `生成配色参考【仅 HTML 第 ${numbers.join('、')} 面；是参考，不是固定皮肤】：
-先按实际最新正文的情绪、时代、天气和选中形式的材质，选择贴合的色彩关系；下面每行依次为背景／主要承载／正文／强调／陪衬。可以调整色相与明度，保留可读对比及背景、主体、阅读面之间的层次，不平均铺满所有颜色，不把高饱和强调色涂满大底。
-${palettes.map(item => `${item.id}「${item.title}」${item.brightness === 'dark' ? '深调' : '浅调'}·${item.mood}：${item.colors.join('／')}`).join('\n')}
-正文色用于所列背景和承载面；强调／陪衬用于物件、边缘与局部，不直接替代正文色。材质受光和阴影从主体颜色推导，有色暗部与亮部保持联系。用户明确配色、原媒介材质、深色模式和正在执行的五轮深色冷却优先于这些参考；冷却时大底与阅读面采用中高明度。近期具体配色避重仍执行；不以灰黑底冒充“高级”，也不把所有氛围统一成米白。`;
+    return `生成配色参考【仅 HTML 第 ${numbers.join('、')} 面；深浅色阶组合，不是固定皮肤】：
+按实际正文氛围与选中形式材质选用或调整；以下各行依次为背景／承载面／正文／次要文字／强调底＋其配字／陪衬底＋其配字。文字配对仅适用于对应实色底；改色、透明叠加或纹理后仍须保持普通文字对比至少 4.5:1。强调色用于物件与局部，明暗和冷暖围绕主体建立层次。
+${palettes.map(item => { const p = item.roles; return `${item.id}「${item.title}」${item.brightness === 'dark' ? '深调' : '浅调'}·${item.mood}：${p.background}／${p.surface}／${p.text}／${p.muted}／${p.accent}+${p.onAccent}／${p.companion}+${p.onCompanion}`; }).join('\n')}
+用户明确配色与原媒介材质优先；深色模式、五轮深色冷却及近期配色避重照常执行。可在同类色阶内延伸，不限于列出的组合。`;
 }
