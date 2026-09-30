@@ -1,4 +1,5 @@
-import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.62.37';
+import { generationPaletteFields } from './paletteRecipes.js?rmv=1.62.38';
+import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.62.38';
 
 // Local selection metadata only. Never derive presentation from model HTML.
 export function normalizePresentationModes(value) {
@@ -51,10 +52,10 @@ export function presentationModeFields(source) {
     // Batch parents never lend a face-specific flag to a sibling recipe.
     const combination = source?.visualSceneryCombination === true && source?.presentationMode !== 'text' && !(Array.isArray(source?.faces) && source.faces.length >= 2 && !Number.isInteger(source.faceIndex))
         ? { visualSceneryCombination: true } : {};
-    if (!source || !['html', 'text'].includes(source.presentationMode)) return { ...combination, ...interactionRecipeFields(source) };
+    if (!source || !['html', 'text'].includes(source.presentationMode)) return { ...combination, ...interactionRecipeFields(source), ...generationPaletteFields(source) };
     const fields = {
         ...combination,
-        ...interactionRecipeFields(source),
+        ...interactionRecipeFields(source), ...generationPaletteFields(source),
         requestedPresentationMode: ['auto', 'html', 'text', 'longtext'].includes(source.requestedPresentationMode)
             ? source.requestedPresentationMode : 'auto',
         presentationMode: source.presentationMode,

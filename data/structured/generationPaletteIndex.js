@@ -38,3 +38,35 @@ export const COLOR_FAMILIES = Object.freeze([
     family('amber', '琥珀', '温暖、光感', '秋|灯|黄昏|时间|钟', 'sand', 'blue|teal|plum'),
     family('orange', '杏橙', '温暖、鲜活', '料理|商店|秋|果', 'sand', 'teal|blue|violet'),
 ]);
+
+export const PALETTE_GROUP_LABELS = Object.freeze({
+    warm_neutral: '暖浅中性色（米白／米黄／奶油／燕麦）',
+    cool_neutral: '冷浅中性色（冷白／雾灰／银灰）',
+    dark_neutral: '深中性色（灰黑／炭灰）',
+    red: '红色系', pink: '粉色系', purple: '紫色系', blue: '蓝色系', cyan: '青色系',
+    green: '绿色系', yellow: '黄色系', orange: '橙色系', brown: '棕金色系',
+});
+const SCALE_GROUPS = Object.freeze({
+    gray:'neutral',mauve:'neutral',slate:'neutral',sage:'green',olive:'green',sand:'brown',
+    tomato:'red',red:'red',ruby:'red',crimson:'pink',pink:'pink',plum:'purple',purple:'purple',violet:'purple',
+    iris:'blue',indigo:'blue',blue:'blue',cyan:'cyan',teal:'cyan',jade:'green',green:'green',grass:'green',
+    brown:'brown',bronze:'brown',gold:'brown',sky:'blue',mint:'green',lime:'green',yellow:'yellow',amber:'orange',orange:'orange',
+});
+export function paletteScaleGroup(id, brightness) {
+    const group = SCALE_GROUPS[id];
+    if (group === 'neutral') return brightness === 'dark' ? 'dark_neutral' : 'cool_neutral';
+    if (group === 'brown' && brightness === 'light') return 'warm_neutral';
+    return group || '';
+}
+// Lightweight recipe index: no RGB scales are read while drawing. Append new
+// families/variants rather than reordering existing entries to keep display codes stable.
+export const GENERATION_PALETTE_INDEX = Object.freeze(COLOR_FAMILIES.flatMap(family =>
+    [...new Set([family.id, family.neutral, 'gray'])].flatMap(surface => family.companions.flatMap(companion =>
+        ['light', 'dark'].map(brightness => ({
+            id: `radix-${family.id}-${surface}-${companion}-${brightness}`,
+            family: family.id, surfaceFamily: surface, companionFamily: companion, brightness,
+            colorGroup: paletteScaleGroup(family.id, brightness), surfaceGroup: brightness === 'light' && ['brown','bronze','gold','sand','amber','yellow','orange'].includes(surface) ? 'warm_neutral' : paletteScaleGroup(surface, brightness),
+            title: `${family.title}主色／${COLOR_FAMILIES.find(x => x.id === surface).title}承载／${COLOR_FAMILIES.find(x => x.id === companion).title}陪衬`,
+            mood: family.mood, fit: family.fit,
+        })))))
+    .map((item, index) => Object.freeze({ ...item, code: `P.${String(index + 1).padStart(3, '0')}` })));

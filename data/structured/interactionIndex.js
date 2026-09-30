@@ -49,4 +49,8 @@ export const INTERACTION_RECIPES = Object.freeze([
     {"id":"motion-release","family":"motion","title":"触发与复位","mechanism":"toggle","fit":["花","烟花","机关","波","水","装置","舞台","动态"],"universal":false,"code":"I.46","summary":"点物件→触发短动作，复位后可再次触发"},
     {"id":"motion-focus","family":"motion","title":"多层动静对比","mechanism":"combine","fit":["风景","scenery","舞台","天体","装置","动态","场景"],"universal":false,"code":"I.47","summary":"分别点运动层→局部暂停或恢复以对照关系"},
     {"id":"scroll-panorama","family":"motion","title":"全景移步观察","mechanism":"scroll","fit":["风景","scenery","地图","场景","旅","城市","长卷"],"universal":false,"code":"I.48","summary":"横向滑动全景→沿连续空间逐段观察"}
-].map(item => Object.freeze({ ...item, fit: Object.freeze(item.fit) })));
+].map(item => Object.freeze({ ...item, fit: Object.freeze(item.fit),
+    effect: ['scroll-strip', 'scroll-panorama'].includes(item.id) ? 'spatial_scroll'
+        : ['object-hotspots','layer-discovery','evidence-mark','parallel-compare','overlay-evidence','marginal-notes','cross-reading'].includes(item.id) ? 'local_evidence'
+        : ['page-turn','branch-reading','folded-insert'].includes(item.id) ? 'reading_navigation' : 'object_state',
+})));

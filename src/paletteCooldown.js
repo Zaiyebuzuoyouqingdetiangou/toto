@@ -1,4 +1,5 @@
-import { getRecentPaletteCooldown, getActivePaletteCooldown } from './storage.js?rmv=1.62.37';
+import { paletteGroupLabels } from './paletteRecipes.js?rmv=1.62.38';
+import { getRecentPaletteCooldown, getActivePaletteCooldown, getRecentDiversityHistory } from './storage.js?rmv=1.62.38';
 
 const SAFE_PALETTE_LABEL_RE = /^(?:(?:低|中|高)明度)?(?:暖|冷|中性)?(?:红|橙|黄|绿|青|蓝|紫|粉|中性色)?(?:(?:低|中|高)饱和)?$/;
 
@@ -21,7 +22,7 @@ export function buildPaletteCooldownExecutionLock(settings) {
     return [palette, cooldown ? `普通模式深色冷却剩余 ${cooldown.remaining} 轮；本轮背景、主要承载面与正文阅读区采用中高明度，深色只作局部结构、物件或强调` : ''].filter(Boolean).join('；');
 }
 
-export function buildPaletteCooldownRule(settings) {
+export function buildPaletteCooldownRule(settings, { includeIndexedFamily = false } = {}) {
     const labels = recentPaletteLabels();
     const cooldown = ordinaryDarkCooldown(settings);
     const palette = labels.length ? `配色短冷却【近期三轮实际配色（含各轮多面），深浅一视同仁】：
@@ -30,5 +31,7 @@ export function buildPaletteCooldownRule(settings) {
     const dark = cooldown ? `普通模式深色冷却【剩余 ${cooldown.remaining} 轮；同批多面算一轮】：
   - 本轮各面的整体背景、主要承载面及正文阅读区域采用中高明度，禁止再次以大面积深色作为主底；深色可保留在局部物件、结构、阴影和强调中。
   - 这是当前冷却期的明暗要求，优先于一般的自由明暗与材质配色建议；具体色彩仍随媒介选择，不固定色板，不改变抽中的形式、主体绘制、动态和正常控件。` : '';
-    return [palette, dark].filter(Boolean).join('\n\n');
+    const groups = includeIndexedFamily ? paletteGroupLabels(getRecentDiversityHistory(3)) : [];
+    const family = groups.length ? `色族避重【近三轮抽中色族与已识别实际色族】：${groups.join('、')}。同族相近色一起避重，米白／米黄／奶油／燕麦视为同族；改变可变的主色调与主要承载，不以换色号或局部点色冒充变化。正文黑白字和必要局部颜色可正常使用；用户指定与原材质优先。` : '';
+    return [palette, family, dark].filter(Boolean).join('\n\n');
 }

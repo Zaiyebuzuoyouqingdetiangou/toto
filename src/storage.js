@@ -1,9 +1,10 @@
-import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.62.37';
-import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords } from './compositionFingerprint.js?rmv=1.62.37';
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.37';
-import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.62.37';
-import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.62.37';
-import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.62.37';
+import { generationPaletteFields } from './paletteRecipes.js?rmv=1.62.38';
+import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.62.38';
+import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords } from './compositionFingerprint.js?rmv=1.62.38';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.38';
+import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.62.38';
+import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.62.38';
+import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.62.38';
 
 const STORAGE_KEY = 'rabbit_mirror_theater:last_combo:v11';
 const PENDING_KEY = 'rabbit_mirror_theater:pending_combo:v11';
@@ -1348,8 +1349,8 @@ function applyChosenAtmosphereTickets(plan, chosenTickets) {
         combo.formatIds = (ticket.formatIds || []).filter(id => typeof id === 'string' && id);
         combo.themeGroups = (ticket.themeGroups || []).filter(Boolean);
         combo.formatGroups = (ticket.formatGroups || []).filter(Boolean);
-        delete combo.interactionRecipeId;
-        Object.assign(combo, interactionRecipeFields({ ...ticket, presentationMode: combo.presentationMode }));
+        delete combo.interactionRecipeId; delete combo.paletteRecipeId;
+        Object.assign(combo, interactionRecipeFields({ ...ticket, presentationMode: combo.presentationMode }), generationPaletteFields({ ...ticket, presentationMode: combo.presentationMode }));
         combo.atmosphereResolved = true;
     });
 }
@@ -1618,14 +1619,14 @@ export function visualHistoryTarget(node) {
 
 function compactHistoryCombo(combo) {
     const { themes, formats, texts, atmosphereMenu, pendingSession, pendingTs,
-        pendingScopeKey, pendingOrigin, pendingChatKey, pendingBaseline, worldBookExcerpt, recentUiReviewFocus, ...record } = combo || {};
+        pendingScopeKey, pendingOrigin, pendingChatKey, pendingBaseline, worldBookExcerpt, recentUiReviewFocus, paletteReferenceIds, ...record } = combo || {};
     return record;
 }
 
 export function createVisualHistorySelection(combo, scopeKey = '') {
     if (!combo || typeof combo !== 'object') return null;
     const menu = Array.isArray(combo.atmosphereMenu) ? combo.atmosphereMenu.map(ticket => ({
-        ...interactionRecipeFields({ ...ticket, presentationMode: combo.presentationMode }),
+        ...interactionRecipeFields({ ...ticket, presentationMode: combo.presentationMode }), ...generationPaletteFields({ ...ticket, presentationMode: combo.presentationMode }),
         themeIds: ticket.themeIds || [], formatIds: ticket.formatIds || [],
         themeGroups: ticket.themeGroups || [], formatGroups: ticket.formatGroups || [],
     })) : null;
@@ -1643,8 +1644,8 @@ export function resolveVisualHistorySelection(selection, choice) {
     if (!Array.isArray(menu) || menu.length < 2) return { ...selection };
     if (!Number.isInteger(choice) || choice < 0 || choice >= menu.length) return null;
     const ticket = menu[choice];
-    const resolved = { ...selection, interactionRecipeId: undefined, atmosphereResolved: true,
-        ...interactionRecipeFields({ ...ticket, presentationMode: selection.presentationMode }),
+    const resolved = { ...selection, interactionRecipeId: undefined, paletteRecipeId: undefined, atmosphereResolved: true,
+        ...interactionRecipeFields({ ...ticket, presentationMode: selection.presentationMode }), ...generationPaletteFields({ ...ticket, presentationMode: selection.presentationMode }),
         themeIds: [...(ticket.themeIds || [])], formatIds: [...(ticket.formatIds || [])],
         themeGroups: [...(ticket.themeGroups || [])], formatGroups: [...(ticket.formatGroups || [])] };
     resolved.signature = signatureOf(resolved);
@@ -1862,8 +1863,8 @@ export function retargetPendingAtmosphereTicket(choice) {
         pending.formatIds = (ticket.formatIds || []).filter(id => typeof id === 'string' && id);
         pending.themeGroups = (ticket.themeGroups || []).filter(Boolean);
         pending.formatGroups = (ticket.formatGroups || []).filter(Boolean);
-        delete pending.interactionRecipeId;
-        Object.assign(pending, interactionRecipeFields({ ...ticket, presentationMode: pending.presentationMode }));
+        delete pending.interactionRecipeId; delete pending.paletteRecipeId;
+        Object.assign(pending, interactionRecipeFields({ ...ticket, presentationMode: pending.presentationMode }), generationPaletteFields({ ...ticket, presentationMode: pending.presentationMode }));
         pending.atmosphereResolved = true;
         pending.signature = signatureOf(pending);
         const payload = JSON.stringify(pending);

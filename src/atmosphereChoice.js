@@ -1,4 +1,5 @@
-import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.62.37';
+import { generationPaletteFields } from './paletteRecipes.js?rmv=1.62.38';
+import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.62.38';
 
 const ATMOSPHERE_REASON_LIMIT = 300;
 
@@ -36,7 +37,7 @@ export function compactAtmosphereMenu(menu) {
     const ids = values => (Array.isArray(values) ? values : []).filter(id => typeof id === 'string' && id).slice(0, 6);
     const lines = (values, clean) => (Array.isArray(values) ? values : []).map(clean).filter(Boolean).slice(0, 6);
     return menu.slice(0, 4).map(ticket => ({
-        ...interactionRecipeFields(ticket),
+        ...interactionRecipeFields(ticket), ...generationPaletteFields(ticket),
         themeIds: ids(ticket?.themeIds),
         formatIds: ids(ticket?.formatIds),
         themeLines: lines(ticket?.themeLines, line),
@@ -83,8 +84,8 @@ export function applyAtmosphereFields(target, menu, note) {
     if (!Number.isInteger(choice) || choice < 0 || choice >= compact.length) return target;
     target.atmosphereChoice = choice;
     const ticket = menu[choice] || compact[choice];
-    delete target.interactionRecipeId;
-    Object.assign(target, interactionRecipeFields({ ...ticket, presentationMode: target.presentationMode }));
+    delete target.interactionRecipeId; delete target.paletteRecipeId;
+    Object.assign(target, interactionRecipeFields({ ...ticket, presentationMode: target.presentationMode }), generationPaletteFields({ ...ticket, presentationMode: target.presentationMode }));
     if (Array.isArray(ticket?.themeIds)) target.themeIds = ticket.themeIds.filter(id => typeof id === 'string' && id);
     if (Array.isArray(ticket?.formatIds)) target.formatIds = ticket.formatIds.filter(id => typeof id === 'string' && id);
     if (Array.isArray(ticket?.themeLines) && ticket.themeLines.length) target.themeLabels = ticket.themeLines.map(line => String(line));

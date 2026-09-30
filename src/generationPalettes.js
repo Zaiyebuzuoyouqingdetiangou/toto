@@ -1,5 +1,6 @@
-import { COLOR_FAMILIES } from '../data/structured/generationPaletteIndex.js?rmv=1.62.37';
-import { COLOR_SCALES } from '../data/structured/generationColorScales.js?rmv=1.62.37';
+import { paletteRecipeFor } from './paletteRecipes.js?rmv=1.62.38';
+import { COLOR_FAMILIES } from '../data/structured/generationPaletteIndex.js?rmv=1.62.38';
+import { COLOR_SCALES } from '../data/structured/generationColorScales.js?rmv=1.62.38';
 
 const BY_ID = new Map(COLOR_FAMILIES.map(item => [item.id, item]));
 
@@ -39,35 +40,28 @@ export function composeGenerationPalette(familyId, companionId, brightness = 'li
     });
 }
 
-export function selectGenerationPalettes(faceContexts, settings = {}, { darkCooldown = false } = {}) {
-    const active = (faceContexts || []).filter(face => !face.textPresentation && !face.combo?.pureOrder);
-    if (!active.length) return [];
-    const candidates = active.flatMap(face => face.atmosphereFaces || [face]);
-    const material = candidates.flatMap(face => [...(face.combo?.themes || []), ...(face.combo?.formats || [])])
-        .map(item => `${item.title || ''} ${item.summary || ''}`).join(' ');
-    // The body is not guessed locally. The model still chooses using its actual current body.
-    const seed = candidates.map(face => `${face.combo?.interactionRecipeId || ''}:${(face.combo?.formatIds || []).join(',')}:${(face.combo?.themeIds || []).join(',')}`).join('|');
-    let hash = 2166136261;
-    for (const char of seed) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
-    const offset = (hash >>> 0) % COLOR_FAMILIES.length;
-    const ranked = COLOR_FAMILIES.map((item, index) => ({ item,
-        score: item.fit.filter(word => material.includes(word)).length,
-        order: (index + offset) % COLOR_FAMILIES.length,
-    })).sort((a, b) => b.score - a.score || a.order - b.order);
-    return ranked.slice(0, 8).map(({ item }, index) => {
-        const variant = ((hash >>> 0) + index * 13) >>> 0;
-        const support = item.companions[variant % item.companions.length];
-        const surface = [item.id, item.neutral, 'gray'][Math.floor(variant / 3) % 3];
-        const dark = settings.darkVisualMode === true || (!darkCooldown && index >= 6);
-        return composeGenerationPalette(item.id, support, dark ? 'dark' : 'light', surface);
-    });
+export function selectGenerationPalettes(faceContexts) {
+    const selected = new Map();
+    for (const face of faceContexts || []) {
+        if (face.textPresentation || face.combo?.pureOrder) continue;
+        for (const candidate of face.atmosphereFaces || [face]) {
+            const index = paletteRecipeFor(candidate.combo);
+            if (!index || selected.has(index.id)) continue;
+            const detail = composeGenerationPalette(index.family, index.companionFamily, index.brightness, index.surfaceFamily);
+            if (detail) selected.set(index.id, Object.freeze({ ...detail, code: index.code }));
+        }
+    }
+    return [...selected.values()];
 }
 
 export function buildGenerationPaletteRule(palettes, faceContexts) {
     if (!palettes?.length) return '';
+    const assignments = (faceContexts || []).flatMap((face, i) => face.textPresentation || face.combo?.pureOrder ? []
+        : (face.atmosphereFaces || [face]).flatMap((candidate, k) => { const p = paletteRecipeFor(candidate.combo);
+            return p ? [`第 ${i + 1} 面${face.atmosphereFaces ? `／选签 ${k + 1}` : ''}：${p.code}`] : []; })).join('；');
     const numbers = (faceContexts || []).flatMap((face, index) => !face.textPresentation && !face.combo?.pureOrder ? [index + 1] : []);
     return `生成配色参考【仅 HTML 第 ${numbers.join('、')} 面；深浅色阶组合，不是固定皮肤】：
-按实际正文氛围与选中形式材质选用或调整；以下各行依次为背景／承载面／正文／次要文字／强调底＋其配字／陪衬底＋其配字。文字配对仅适用于对应实色底；改色、透明叠加或纹理后仍须保持普通文字对比至少 4.5:1。强调色用于物件与局部，明暗和冷暖围绕主体建立层次。
-${palettes.map(item => { const p = item.roles; return `${item.id}「${item.title}」${item.brightness === 'dark' ? '深调' : '浅调'}·${item.mood}：${p.background}／${p.surface}／${p.text}／${p.muted}／${p.accent}+${p.onAccent}／${p.companion}+${p.onCompanion}`; }).join('\n')}
-用户明确配色与原媒介材质优先；深色模式、五轮深色冷却及近期配色避重照常执行。可在同类色阶内延伸，不限于列出的组合。`;
+${assignments}。配色随同签执行，按实际正文氛围与原形式材质适配；以下各行依次为背景／承载面／正文／次要文字／强调底＋其配字／陪衬底＋其配字。文字配对仅适用于对应实色底；改色、透明叠加或纹理后仍须保持普通文字对比至少 4.5:1。强调色用于物件与局部，明暗和冷暖围绕主体建立层次。
+${palettes.map(item => { const p = item.roles; return `${item.code}「${item.title}」${item.brightness === 'dark' ? '深调' : '浅调'}·${item.mood}：${p.background}／${p.surface}／${p.text}／${p.muted}／${p.accent}+${p.onAccent}／${p.companion}+${p.onCompanion}`; }).join('\n')}
+用户明确配色与原媒介材质优先；深色模式、五轮深色冷却及近期配色避重照常执行。可在已抽色阶内延伸；已冷却色族不能靠换相近色号或只换强调色绕过。`;
 }

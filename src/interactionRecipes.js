@@ -1,5 +1,5 @@
-import { resolveInteractionDetail, INTERACTION_MECHANISMS } from '../data/raw/rawInteractionRecipes.js?rmv=1.62.37';
-import { INTERACTION_RECIPES } from '../data/structured/interactionIndex.js?rmv=1.62.37';
+import { resolveInteractionDetail, INTERACTION_MECHANISMS } from '../data/raw/rawInteractionRecipes.js?rmv=1.62.38';
+import { INTERACTION_RECIPES } from '../data/structured/interactionIndex.js?rmv=1.62.38';
 
 const BY_ID = new Map(INTERACTION_RECIPES.map(recipe => [recipe.id, recipe]));
 
@@ -28,16 +28,26 @@ export function eligibleInteractionRecipes(combo) {
 }
 
 export function selectInteractionRecipe(combo, { randomUnit = Math.random, recent = [], usedIds = [] } = {}) {
-    const eligible = eligibleInteractionRecipes(combo);
+    let eligible = eligibleInteractionRecipes(combo);
+    const textSwitchObserved = recent.some(record => /operation_family\s*:\s*(?:text_panel_switch|text_disclosure_stack)(?:；|$)/.test(record?.visualSkeleton || ''));
     if (!eligible.length) return null;
     const used = new Set(usedIds);
     const recentIds = new Set(recent.map(record => interactionRecipeFields(record).interactionRecipeId).filter(Boolean));
-    const recentFamilies = new Set([...recentIds].map(id => BY_ID.get(id)?.family).filter(Boolean));
+    const recentFamilies = new Set([...recentIds, ...usedIds].map(id => BY_ID.get(id)?.family).filter(Boolean));
+    if (textSwitchObserved) {
+        const freshPhysical = eligible.filter(recipe => ['object_state', 'spatial_scroll'].includes(recipe.effect)
+            && !recentIds.has(recipe.id) && !used.has(recipe.id) && !recentFamilies.has(recipe.family));
+        const nonPageAlternatives = eligible.filter(recipe => recipe.effect !== 'reading_navigation');
+        if (freshPhysical.length) eligible = freshPhysical;
+        else if (nonPageAlternatives.length) eligible = nonPageAlternatives;
+    }
     // Prefer genuinely unused recipes; exhaustion softens selection, never blocks generation.
     const unused = eligible.filter(recipe => !used.has(recipe.id));
     const pool = unused.length ? unused : eligible;
     const fresh = pool.filter(recipe => !recentIds.has(recipe.id));
-    const candidates = fresh.length ? fresh : pool;
+    const idCandidates = fresh.length ? fresh : pool;
+    const freshFamilies = idCandidates.filter(recipe => !recentFamilies.has(recipe.family));
+    const candidates = freshFamilies.length ? freshFamilies : idCandidates;
     const weights = candidates.map(recipe => (recipe.universal ? 1 : 3) * (recentFamilies.has(recipe.family) ? .35 : 1));
     const value = Number(randomUnit());
     let cursor = (Number.isFinite(value) ? Math.min(.999999999, Math.max(0, value)) : 0) * weights.reduce((a, b) => a + b, 0);
@@ -72,7 +82,7 @@ export function diversifyBatchInteractionRecipes(combos, options = {}) {
         if (!combo || combo.presentationMode === 'text' || combo.pureOrder) continue;
         const candidates = combo.atmosphereMenu?.length > 1 ? combo.atmosphereMenu : [combo];
         for (const candidate of candidates) {
-            if (usedIds.has(candidate.interactionRecipeId)) {
+            if (usedIds.has(candidate.interactionRecipeId) || [...usedIds].some(id => BY_ID.get(id)?.family === BY_ID.get(candidate.interactionRecipeId)?.family)) {
                 const source = candidate === combo ? combo : { ...combo, ...candidate,
                     formats: (candidate.formatFullLines || candidate.formatLines || []).map((title, index) => ({ id: candidate.formatIds?.[index], title })) };
                 const picked = selectInteractionRecipe(source, { ...options, usedIds: [...usedIds] });

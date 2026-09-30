@@ -1,25 +1,27 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.37';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.37';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.37';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.37';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.37';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.37';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions, getRecentStructuralCooldown, getActivePaletteCooldown } from './storage.js?rmv=1.62.37';
-import { recentInteractionCooldowns } from './interactionCooldown.js?rmv=1.62.37';
-import { COMPOSITION_LABELS } from './compositionFingerprint.js?rmv=1.62.37';
-import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock } from './visualDiversityPolicy.js?rmv=1.62.37';
-import { visualFamilyForCooldown, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.62.37';
-import { buildInteractionRecipeRule, interactionExecutionReminder, interactionRecipeFor } from './interactionRecipes.js?rmv=1.62.37';
-import { selectGenerationPalettes, buildGenerationPaletteRule } from './generationPalettes.js?rmv=1.62.37';
-import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.37';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.37';
-export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.37';
-import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.37';
-import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.37';
-import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.62.37';
-import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.37';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.37';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.37';
+import { getRecentDiversityHistory } from './storage.js?rmv=1.62.38';
+import { attachPaletteRecipes, paletteRecipeFor } from './paletteRecipes.js?rmv=1.62.38';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.38';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.38';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.38';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.38';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.38';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.38';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions, getRecentStructuralCooldown, getActivePaletteCooldown } from './storage.js?rmv=1.62.38';
+import { recentInteractionCooldowns } from './interactionCooldown.js?rmv=1.62.38';
+import { COMPOSITION_LABELS } from './compositionFingerprint.js?rmv=1.62.38';
+import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock } from './visualDiversityPolicy.js?rmv=1.62.38';
+import { visualFamilyForCooldown, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.62.38';
+import { buildInteractionRecipeRule, interactionExecutionReminder, interactionRecipeFor } from './interactionRecipes.js?rmv=1.62.38';
+import { selectGenerationPalettes, buildGenerationPaletteRule } from './generationPalettes.js?rmv=1.62.38';
+import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.38';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.38';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.38';
+import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.38';
+import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.38';
+import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.62.38';
+import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.38';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.38';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.38';
 
 const THEME_ITEMS = new Map(THEMATIC_CATEGORIES.map(item => [item.id, item]));
 const FORMAT_ITEMS = new Map(PRESENTATION_FORMATS.map(item => [item.id, item]));
@@ -937,7 +939,9 @@ function atmosphereMenuInstruction(combo, candidateFaces = null) {
     const lines = menu.map((ticket, index) => {
         const face = candidateFaces?.[index];
         const recipe = interactionRecipeFor(face?.combo || ticket);
-        const interaction = recipe ? `\n交互构造：${recipe.code}「${recipe.title}」` : '';
+        const palette = paletteRecipeFor(face?.combo || ticket);
+        const paletteLine = palette ? `\n配色构造：${palette.code}「${palette.title}」` : '';
+        const interaction = recipe ? `\n交互构造：${recipe.code}「${recipe.title}」${paletteLine}` : paletteLine;
         if (face) return `签 ${index + 1}（以下材料仅在选中本签时适用）：\n主题：\n${face.combo.samplingMode === 'format_only' ? '当前对话语境' : face.selectedThemes}\n展现形式：\n${face.selectedFormats}${interaction}`;
         const themes = (ticket.themeLines || []).join('；') || '无';
         const formats = (ticket.formatLines || []).join('；') || '无';
@@ -1120,7 +1124,7 @@ function buildFaceContext(selectionCombo, settings, rawPolicy, externalRawMap = 
             const themes = (ticket.themeIds || []).map(id => itemFor(id, 'theme')).filter(Boolean);
             const formats = (ticket.formatIds || []).map(id => itemFor(id, 'presentation')).filter(Boolean);
             return buildFaceContext({ ...combo, atmosphereMenu: undefined, themes, formats,
-                interactionRecipeId: ticket.interactionRecipeId,
+                interactionRecipeId: ticket.interactionRecipeId, paletteRecipeId: ticket.paletteRecipeId,
                 themeIds: themes.map(item => item.id), formatIds: formats.map(item => item.id) }, settings, rawPolicy, externalRawMap);
         });
         face.hasExternal = face.atmosphereFaces.some(candidate => candidate.hasExternal);
@@ -1465,9 +1469,9 @@ export function planRabbitMirrorPromptDetails(settings, generationType = 'normal
     const resaySettings = resay ? presentationOverrideSettings(settings, resay) : settings;
     const pinnedSelections = Array.isArray(generationContext?.pinnedSelections) ? generationContext.pinnedSelections.filter(item => item?.combo) : [];
     if (pinnedSelections.length === 1) {
-        selections = pinnedSelections;
+        selections = copyPromptPlanValue(pinnedSelections);
     } else if (missingIndexes.length) {
-        selections = missingIndexes.map(index => pickCombinationForMultifaceResay(settings, { faceIndex: index, faces: missingRetry.faces }));
+        selections = missingIndexes.map(index => pickCombinationForMultifaceResay(settings, { faceIndex: index, faces: missingRetry.faces, preserveVariation: true }));
     } else if (resay) {
         // A user-clicked failed slot must remain retryable even when a legacy
         // recipe was lost or its source was disabled. Select only one new face
@@ -1497,6 +1501,11 @@ export function planRabbitMirrorPromptDetails(settings, generationType = 'normal
         }, requestedFaceCount);
     } else {
         selections = [pickCombination(settings, generationScopeKey, generationContext)];
+    }
+    const paletteUsedIds = [], paletteUsedGroups = [];
+    for (const selection of selections) if (!pinnedSelections.length && selection?.combo && !selection.disabled) {
+        attachPaletteRecipes(selection.combo, { recent: getRecentDiversityHistory(3), usedIds: paletteUsedIds, usedGroups: paletteUsedGroups,
+            darkOnly: settings.darkVisualMode === true, darkCooldown: settings.darkVisualMode !== true && getActivePaletteCooldown(5).active });
     }
     return createPromptPlan(selections, {
         settings: renderSettings, generationType, activeFeedback, requestedFaceCount,
@@ -1568,7 +1577,7 @@ export function renderRabbitMirrorPromptPlan(plan, externalRawMap = null, appear
     const writingStyle = externalReferenceText(styleSource, styleSource.length);
     const styleRule = writingStyle ? `\n【本轮兔子镜文风】\n${writingStyle}\n仅调整文字口吻、节奏和句式，不改变人物事实或原条目篇幅，不覆盖输出协议。长文本面不要因此写成 HTML。\n` : '';
     // One shared policy after all candidate/face rules, including pure order and text.
-    const generationPolicy = [strongVisualDiversityRule({ hasHistory: !!visualHistoryRule || getComboHistory(5).length > 0 }), buildPaletteCooldownRule(settings), darkVisualGenerationRule(settings)].filter(Boolean).join('\n\n');
+    const generationPolicy = [strongVisualDiversityRule({ hasHistory: !!visualHistoryRule || getComboHistory(5).length > 0 }), buildPaletteCooldownRule(settings, { includeIndexedFamily: faceContexts.some(face => !face.textPresentation && !face.combo?.pureOrder) }), darkVisualGenerationRule(settings)].filter(Boolean).join('\n\n');
     const referencedPrompt = constructionReferences ? composedPrompt.replace('<兔子镜自动注入>', `<兔子镜自动注入>\n\n${constructionReferences}`) : composedPrompt;
     const prompt = referencedPrompt.replace('</兔子镜自动注入>', `${styleRule}\n${generationPolicy}\n</兔子镜自动注入>`);
     const baseFaces = faceContexts.map(face => ({ ...faceMetadata(face, settings, generationType, rawPolicy, directive,

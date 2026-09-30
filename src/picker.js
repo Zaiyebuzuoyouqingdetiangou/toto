@@ -1,5 +1,6 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.37';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.37';
+import { attachPaletteRecipes } from './paletteRecipes.js?rmv=1.62.38';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.38';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.38';
 import {
     getCurrentChatKey,
     getDirectiveScopedPick,
@@ -9,6 +10,7 @@ import {
     getRecentIds,
     getRecentInteractionFamilies,
     getRecentDiversityHistory,
+    getActivePaletteCooldown,
     recordGenerationAttempt,
     recordFormatEligibleMissRound,
     setDirectiveScopedPick,
@@ -18,12 +20,12 @@ import {
     clearPendingComboBatch,
     createPendingComboBatchPlan,
     findPendingComboBatchPlan,
-} from './storage.js?rmv=1.62.37';
-import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.62.37';
-import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.62.37';
-import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, visualSceneryEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.37';
-import { attachInteractionRecipes, diversifyBatchInteractionRecipes } from './interactionRecipes.js?rmv=1.62.37';
-import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.62.37';
+} from './storage.js?rmv=1.62.38';
+import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.62.38';
+import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.62.38';
+import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, visualSceneryEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.38';
+import { attachInteractionRecipes, diversifyBatchInteractionRecipes } from './interactionRecipes.js?rmv=1.62.38';
+import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.62.38';
 import {
     chooseExternalSource,
     externalPoolActive,
@@ -33,7 +35,7 @@ import {
     getExternalPoolSnapshot,
     pickExternalItems,
     sourceMixModeIsExternalOnly,
-} from './externalWorldBook/externalPool.js?rmv=1.62.37';
+} from './externalWorldBook/externalPool.js?rmv=1.62.38';
 
 function randomUnit() {
     try {
@@ -1237,7 +1239,16 @@ function comboFromSelection(result, settings, recent, uiReviewFocus = null) {
         ...(Array.isArray(result.atmosphereMenu) && result.atmosphereMenu.length > 1 ? { atmosphereMenu: result.atmosphereMenu } : {}),
     };
     if (combo.presentationMode === 'text' || combo.pureOrder) return combo;
-    return attachInteractionRecipes(combo, { randomUnit, recent: getRecentDiversityHistory(5) });
+    const previous = result.previousVariation ? [result.previousVariation] : [];
+    if (previous.length) {
+        delete combo.interactionRecipeId; delete combo.paletteRecipeId;
+        if (combo.atmosphereMenu) combo.atmosphereMenu = combo.atmosphereMenu.map(ticket => {
+            const next = { ...ticket }; delete next.interactionRecipeId; delete next.paletteRecipeId; return next;
+        });
+    }
+    attachInteractionRecipes(combo, { randomUnit, recent: [...getRecentDiversityHistory(5), ...previous] });
+    return attachPaletteRecipes(combo, { randomUnit, recent: [...getRecentDiversityHistory(3), ...previous],
+        darkOnly: settings.darkVisualMode === true, darkCooldown: settings.darkVisualMode !== true && getActivePaletteCooldown(5).active });
 }
 
 function rehydrateDirectiveCombo(cached, settings, recent) {
@@ -1253,7 +1264,7 @@ function rehydrateDirectiveCombo(cached, settings, recent) {
     if (texts.some(item => !item)) return null;
     return comboFromSelection({ themes, formats, ...(texts.length ? { texts } : {}),
         ...(isBlankLongTextSelection(cached) ? { themeIds: [], formatIds: [], textIds: [] } : {}),
-        ...presentationModeFields(cached) }, settings, recent, cached.uiReviewFocus);
+        ...presentationModeFields(cached), previousVariation: cached }, settings, recent, cached.uiReviewFocus);
 }
 
 function directiveRandomPreferenceScopeKey(settings) {
@@ -1536,6 +1547,9 @@ function addBatchInteractionDiversity(combos, settings) {
     if (combos.length < 2 || combos.length > 5) return;
     if (combos.some(combo => combo.presentationMode !== 'text' && !combo.pureOrder)) {
         diversifyBatchInteractionRecipes(combos, { randomUnit, recent: getRecentDiversityHistory(5) });
+        const usedIds = [], usedGroups = [], recent = getRecentDiversityHistory(3);
+        const darkOnly = settings.darkVisualMode === true, darkCooldown = !darkOnly && getActivePaletteCooldown(5).active;
+        for (const combo of combos) attachPaletteRecipes(combo, { randomUnit, recent, usedIds, usedGroups, darkOnly, darkCooldown, rerollUsed: true });
     }
     const hints = planBatchInteractionDiversity(combos.length, {
         enabled: true, recentFamilies: getRecentInteractionFamilies(5, { preserveEmpty: true }),
@@ -1650,7 +1664,7 @@ export function pickCombinationForMultifaceResay(settings, resay) {
     const texts = resolveIds(face?.textIds || [], [], 'text');
     if (!themes.length && !formats.length && !texts.length && !isBlankLongTextSelection(face) && !face?.worldBookEntryId) throw multiFacePlanningError('原面缺少可复用抽取记录；请重新选择整批生成。', 'BATCH_RESAY_RECIPE_INCOMPLETE');
     const selectedSettings = { ...settings, samplingMode: face.samplingMode || settings.samplingMode, forceVisualScenery: face.forcedVisualScenery === true, visualSceneryCombination: face.visualSceneryCombination === true };
-    return { combo: comboFromSelection({ themes, formats, ...(texts.length ? { texts } : {}), ...(isBlankLongTextSelection(face) ? { themeIds: [], formatIds: [], textIds: [] } : {}), ...presentationModeFields(face),
+    return { combo: comboFromSelection({ themes, formats, ...(texts.length ? { texts } : {}), ...(isBlankLongTextSelection(face) ? { themeIds: [], formatIds: [], textIds: [] } : {}), ...presentationModeFields(face), ...(resay.preserveVariation ? {} : { previousVariation: face }),
         ...(resay.presentationOverride === 'html' ? { presentationMode: 'html', requestedPresentationMode: 'html', blankLongText: false }
             : resay.presentationOverride === 'longtext' ? { presentationMode: 'text', requestedPresentationMode: 'longtext' } : {}) }, selectedSettings, getRecentIds(settings.cooldownRounds || 10)), directive: null, last: null };
 }
