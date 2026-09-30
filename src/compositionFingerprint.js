@@ -189,8 +189,21 @@ export function detectCompositionFingerprint(root) {
         }
     }
     if (visualState) result.operation_family = 'object_state_change';
-    else if (!uncertainState && controls.size >= 2 && textTargets.size >= 2) result.operation_family = 'text_panel_switch';
-    else {
+    else if (!uncertainState && controls.size >= 2 && textTargets.size >= 2) {
+        const sources = [...controls];
+        const type = node => String(node.getAttribute?.('type') || '').toLowerCase();
+        const name = sources[0].getAttribute?.('name');
+        const sameForm = sources.every(node => node.closest?.('form') === sources[0].closest?.('form'));
+        const exclusiveRadios = !!name && sameForm && sources.every(node => type(node) === 'radio' && node.getAttribute?.('name') === name);
+        const exclusiveTargets = sources.every(node => matches(node, 'a[href]'));
+        const separateDisclosures = sources.every(node => type(node) === 'checkbox') && [...textTargets].every(node => {
+            const s = style(node);
+            return !['absolute', 'fixed'].includes(s.position) && !s['grid-area'];
+        });
+        if (exclusiveRadios || exclusiveTargets) result.operation_family = 'text_panel_switch';
+        else if (separateDisclosures) result.operation_family = 'text_disclosure_stack';
+    }
+    if (!result.operation_family) {
         for (const parent of nodes) {
             const details = [...(parent.children || [])].filter(node => matches(node, 'details'));
             if (details.length < 2) continue;

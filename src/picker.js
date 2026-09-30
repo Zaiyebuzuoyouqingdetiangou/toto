@@ -1,5 +1,5 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.29';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.29';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.31';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.31';
 import {
     getCurrentChatKey,
     getDirectiveScopedPick,
@@ -17,11 +17,11 @@ import {
     clearPendingComboBatch,
     createPendingComboBatchPlan,
     findPendingComboBatchPlan,
-} from './storage.js?rmv=1.62.29';
-import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.62.29';
-import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.62.29';
-import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.29';
-import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.62.29';
+} from './storage.js?rmv=1.62.31';
+import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.62.31';
+import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.62.31';
+import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, visualSceneryEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.31';
+import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.62.31';
 import {
     chooseExternalSource,
     externalPoolActive,
@@ -31,7 +31,7 @@ import {
     getExternalPoolSnapshot,
     pickExternalItems,
     sourceMixModeIsExternalOnly,
-} from './externalWorldBook/externalPool.js?rmv=1.62.29';
+} from './externalWorldBook/externalPool.js?rmv=1.62.31';
 
 function randomUnit() {
     try {
@@ -1108,7 +1108,7 @@ function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, th
         });
         if (drawn) return { ...drawn, directive };
     }
-    if (requestedMode === 'text') settings = { ...settings, forceVisualScenery: false };
+    if (requestedMode === 'text') settings = { ...settings, forceVisualScenery: false, visualSceneryCombination: false };
     const combineVisual = visualSceneryCombinationEnabled(settings);
     // Only the new combination path excludes the already locked visual item.
     if (combineVisual) formatPool = formatPool.filter(item => item.id !== '10.2.2');
@@ -1185,7 +1185,7 @@ function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, th
     const pickedFormats = formatSample.selected.filter(item => item.externalKind !== 'text');
     const isText = requestedMode === 'text' || longText || texts.length > 0;
     const visualSceneryFormat = getVisualSceneryFormat();
-    const forcedFormats = !isText && settings.forceVisualScenery && visualSceneryFormat ? [visualSceneryFormat] : [];
+    const forcedFormats = !isText && visualSceneryEnabled(settings) && visualSceneryFormat ? [visualSceneryFormat] : [];
     const directiveFormats = directive?.formats || [];
     const directiveWantsVisualScenery = directiveFormats.some(item => item?.id === '10.2.2');
 
@@ -1219,7 +1219,7 @@ function comboFromSelection(result, settings, recent, uiReviewFocus = null) {
         formatGroups: result.formats.map(x => x.group).filter(Boolean),
         mode: settings.mode,
         samplingMode: settings.samplingMode || 'classic',
-        forcedVisualScenery: result.presentationMode !== 'text' && !!settings.forceVisualScenery,
+        forcedVisualScenery: result.presentationMode !== 'text' && visualSceneryEnabled(settings),
         ...presentationModeFields(result),
         ...(result.texts?.length ? { texts: result.texts, textIds: result.texts.map(item => item.id) } : {}),
         cooldownRounds: settings.cooldownRounds || 10,
@@ -1271,7 +1271,7 @@ function directiveScopeKey(directive, settings) {
     if (!directive?.rawDirective || !directive?.messageKey) return '';
     const config = [
         settings.samplingMode || 'classic',
-        settings.forceVisualScenery ? 'visual' : 'normal',
+        visualSceneryEnabled(settings) ? 'visual' : 'normal',
         ...(visualSceneryCombinationEnabled(settings) ? ['visual-combination'] : []),
         settings.themesMin,
         settings.themesMax,
@@ -1549,7 +1549,7 @@ function pickLiveCombinationBatch(settings, planning, faceCount, planningReason 
     const usedTextIds = new Set(snapshot.exclusions.textIds || []);
     const fixedThemes = new Set((snapshot.directive?.themes || []).map(item => item.id));
     const fixedFormats = new Set((snapshot.directive?.formats || []).map(item => item.id));
-    if (settings.forceVisualScenery) fixedFormats.add('10.2.2');
+    if (visualSceneryEnabled(settings)) fixedFormats.add('10.2.2');
     const needsRandomThemes = settings.samplingMode !== 'format_only' && !snapshot.directive?.hasThemeRequest;
     const needsRandomFormats = (!settings.forceVisualScenery || visualSceneryCombinationEnabled(settings)) && !snapshot.directive?.hasFormatRequest;
     const results = [];
@@ -1604,7 +1604,7 @@ export function buildPureOrderSelection(settings, order) {
         themes: [], formats: [],
         requestedPresentationMode: form,
         presentationMode: form === 'longtext' ? 'text' : 'html',
-    }, { ...settings, forceVisualScenery: false }, { uiReviewFocus: [] });
+    }, { ...settings, forceVisualScenery: false, visualSceneryCombination: false }, { uiReviewFocus: [] });
     combo.customDirective = true;
     combo.pureOrder = true;
     return { combo, directive, last: null };

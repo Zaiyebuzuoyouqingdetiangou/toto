@@ -34,7 +34,13 @@ export function hasExplicitTextFace(settings) {
 }
 
 export function visualSceneryCombinationEnabled(settings) {
-    return settings?.forceVisualScenery === true && settings?.visualSceneryCombination === true;
+    return settings?.visualSceneryCombination === true;
+}
+
+// A saved combination choice already includes the fixed scenery form. Interpret
+// legacy flags without rewriting settings merely because a dialog is opened.
+export function visualSceneryEnabled(settings) {
+    return settings?.forceVisualScenery === true || visualSceneryCombinationEnabled(settings);
 }
 
 // Optional fields keep old records and default Prompt plans byte-compatible.
