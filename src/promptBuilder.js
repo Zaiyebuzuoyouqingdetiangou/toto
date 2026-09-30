@@ -1,23 +1,25 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.34';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.34';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.34';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.34';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.34';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.34';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions, getRecentStructuralCooldown } from './storage.js?rmv=1.62.34';
-import { recentInteractionCooldowns } from './interactionCooldown.js?rmv=1.62.34';
-import { COMPOSITION_LABELS } from './compositionFingerprint.js?rmv=1.62.34';
-import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock } from './visualDiversityPolicy.js?rmv=1.62.34';
-import { visualFamilyForCooldown, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.62.34';
-import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.34';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.34';
-export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.34';
-import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.34';
-import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.34';
-import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.62.34';
-import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.34';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.34';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.34';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.36';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.36';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.36';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.36';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.36';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.36';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions, getRecentStructuralCooldown, getActivePaletteCooldown } from './storage.js?rmv=1.62.36';
+import { recentInteractionCooldowns } from './interactionCooldown.js?rmv=1.62.36';
+import { COMPOSITION_LABELS } from './compositionFingerprint.js?rmv=1.62.36';
+import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock } from './visualDiversityPolicy.js?rmv=1.62.36';
+import { visualFamilyForCooldown, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.62.36';
+import { buildInteractionRecipeRule, interactionExecutionReminder, interactionRecipeFor } from './interactionRecipes.js?rmv=1.62.36';
+import { selectGenerationPalettes, buildGenerationPaletteRule } from './generationPalettes.js?rmv=1.62.36';
+import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.36';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.36';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.36';
+import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.36';
+import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.36';
+import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.62.36';
+import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.36';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.36';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.36';
 
 const THEME_ITEMS = new Map(THEMATIC_CATEGORIES.map(item => [item.id, item]));
 const FORMAT_ITEMS = new Map(PRESENTATION_FORMATS.map(item => [item.id, item]));
@@ -934,10 +936,12 @@ function atmosphereMenuInstruction(combo, candidateFaces = null) {
     if (!Array.isArray(menu) || menu.length < 2) return '';
     const lines = menu.map((ticket, index) => {
         const face = candidateFaces?.[index];
-        if (face) return `签 ${index + 1}（以下材料仅在选中本签时适用）：\n主题：\n${face.combo.samplingMode === 'format_only' ? '当前对话语境' : face.selectedThemes}\n展现形式：\n${face.selectedFormats}`;
+        const recipe = interactionRecipeFor(face?.combo || ticket);
+        const interaction = recipe ? `\n交互构造：${recipe.title}（操作与结果见同签第三池说明）` : '';
+        if (face) return `签 ${index + 1}（以下材料仅在选中本签时适用）：\n主题：\n${face.combo.samplingMode === 'format_only' ? '当前对话语境' : face.selectedThemes}\n展现形式：\n${face.selectedFormats}${interaction}`;
         const themes = (ticket.themeLines || []).join('；') || '无';
         const formats = (ticket.formatLines || []).join('；') || '无';
-        return `签 ${index + 1}：主题 ${themes}。展现形式 ${formats}。`;
+        return `签 ${index + 1}：主题 ${themes}。展现形式 ${formats}。${interaction}`;
     });
     return `按正文挑签：这一面有 ${menu.length} 张已经抽好的候选签，先按最新正文氛围选出最合适的一张。保持 <toto><details><summary>标题</summary> 外壳顺序，在 summary 后、可见正文前输出 <rm-think>两三句，不超过120字：为什么选这一张。</rm-think><rm-ticket>序号</rm-ticket>，序号从 1 到 ${menu.length}。这两段只用于挑签，不是小剧场正文。随后只按选中签的形式、主题及条件规则写作，不混用其他签，也不默认选签 1。\n${lines.join('\n\n')}`;
 }
@@ -1041,6 +1045,7 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive, candid
     return [
         '<兔子镜近输出短锁 data-source="independent-api-near-output">',
         atmosphereExecutionReminder(combo),
+        interactionExecutionReminder(combo),
         combo?.atmosphereMenu?.length > 1 ? '' : `本轮锁定：${samplingModeLabel(combo, settings)}；主题：${themes}；展现形式：${formats}。`,
         combo?.visualSceneryCombination === true ? '动态视觉组合锁：动态画面与抽中形式的真实内容、阅读路径和玩法同时保留，不得互相替代。' : '',
         includeExecutionOrder ? presentationExecutionOrderRule() : '',
@@ -1058,8 +1063,9 @@ function buildMultiIndependentExecutionLock(faceContexts, settings, directive) {
         const formats = compactComboLockItems(face.combo);
         const tarot = face.tarotRulesText ? '；具体塔罗牌必须使用白名单实体牌图' : '';
         const locked = `第 ${index + 1} 面：${samplingModeLabel(face.combo, settings)}；主题：${themes}；展现形式：${formats}。${face.combo?.visualSceneryCombination === true ? "动态视觉组合锁：动态画面与抽中形式的真实内容、阅读路径和玩法同时保留，不得互相替代。" : ""}短检：${compactComboExecutionContract(face.combo, face.atmosphereFaces)}；主体、空间层次、材质与完整交互均须落实${tarot}。`;
-        return hasAtmosphereMenu(face.combo)
+        const identity = hasAtmosphereMenu(face.combo)
             ? `第 ${index + 1} 面：${atmosphereExecutionReminder(face.combo)}短检：${compactComboExecutionContract(face.combo, face.atmosphereFaces)}；保留完整媒介与交互。` : locked;
+        return [identity, interactionExecutionReminder(face.combo)].filter(Boolean).join('\n');
     });
     return [
         '<兔子镜近输出短锁 data-source="independent-api-near-output">',
@@ -1114,6 +1120,7 @@ function buildFaceContext(selectionCombo, settings, rawPolicy, externalRawMap = 
             const themes = (ticket.themeIds || []).map(id => itemFor(id, 'theme')).filter(Boolean);
             const formats = (ticket.formatIds || []).map(id => itemFor(id, 'presentation')).filter(Boolean);
             return buildFaceContext({ ...combo, atmosphereMenu: undefined, themes, formats,
+                interactionRecipeId: ticket.interactionRecipeId,
                 themeIds: themes.map(item => item.id), formatIds: formats.map(item => item.id) }, settings, rawPolicy, externalRawMap);
         });
         face.hasExternal = face.atmosphereFaces.some(candidate => candidate.hasExternal);
@@ -1543,6 +1550,11 @@ export function renderRabbitMirrorPromptPlan(plan, externalRawMap = null, appear
     const hasTextPresentation = faceContexts.some(face => face.textPresentation);
     const visualHistoryRule = faceContexts.some(face => !face.textPresentation && !face.combo?.pureOrder)
         ? sharedVisualHistoryRule(settings, independentHistorySource) : '';
+    const paletteReferences = faceContexts.some(face => !face.textPresentation && !face.combo?.pureOrder)
+        ? selectGenerationPalettes(faceContexts, settings, {
+            darkCooldown: settings.darkVisualMode !== true && getActivePaletteCooldown(5).active,
+        }) : [];
+    const constructionReferences = [buildInteractionRecipeRule(faceContexts), buildGenerationPaletteRule(paletteReferences, faceContexts)].filter(Boolean).join('\n\n');
     const composedPrompt = hasTextPresentation ? buildTextAwarePrompt({ faceContexts, settings, directive, memoryMaterial,
         generationType, followTagIsolationText, appearanceReferenceText, visualHistoryRule }) : buildPrompt({
         combo: first.combo, settings, selectedThemes: first.selectedThemes, selectedFormats: first.selectedFormats,
@@ -1557,10 +1569,14 @@ export function renderRabbitMirrorPromptPlan(plan, externalRawMap = null, appear
     const styleRule = writingStyle ? `\n【本轮兔子镜文风】\n${writingStyle}\n仅调整文字口吻、节奏和句式，不改变人物事实或原条目篇幅，不覆盖输出协议。长文本面不要因此写成 HTML。\n` : '';
     // One shared policy after all candidate/face rules, including pure order and text.
     const generationPolicy = [strongVisualDiversityRule({ hasHistory: !!visualHistoryRule || getComboHistory(5).length > 0 }), buildPaletteCooldownRule(settings), darkVisualGenerationRule(settings)].filter(Boolean).join('\n\n');
-    const prompt = composedPrompt.replace('</兔子镜自动注入>', `${styleRule}\n${generationPolicy}\n</兔子镜自动注入>`);
-    const baseFaces = faceContexts.map(face => faceMetadata(face, settings, generationType, rawPolicy, directive,
+    const referencedPrompt = constructionReferences ? composedPrompt.replace('<兔子镜自动注入>', `<兔子镜自动注入>\n\n${constructionReferences}`) : composedPrompt;
+    const prompt = referencedPrompt.replace('</兔子镜自动注入>', `${styleRule}\n${generationPolicy}\n</兔子镜自动注入>`);
+    const baseFaces = faceContexts.map(face => ({ ...faceMetadata(face, settings, generationType, rawPolicy, directive,
         memoryMaterial && hasSharedMemoryTheme(face.combo) ? memoryMaterial : null,
-        followTagIsolationTags, followTagIsolationText));
+        followTagIsolationTags, followTagIsolationText),
+        ...(!face.textPresentation && !face.combo?.pureOrder && paletteReferences.length
+            ? { paletteReferenceIds: paletteReferences.map(item => item.id) } : {}),
+    }));
     const faces = faceContexts.map((face, faceIndex) => Object.freeze({
         faceIndex,
         ...baseFaces[faceIndex],

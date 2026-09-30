@@ -1,3 +1,5 @@
+import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.62.36';
+
 // Local selection metadata only. Never derive presentation from model HTML.
 export function normalizePresentationModes(value) {
     // 旧的「文本」档并进长文本。已生成成品上的 presentationMode 仍用 text 表示散文，不在这里改。
@@ -49,9 +51,10 @@ export function presentationModeFields(source) {
     // Batch parents never lend a face-specific flag to a sibling recipe.
     const combination = source?.visualSceneryCombination === true && source?.presentationMode !== 'text' && !(Array.isArray(source?.faces) && source.faces.length >= 2 && !Number.isInteger(source.faceIndex))
         ? { visualSceneryCombination: true } : {};
-    if (!source || !['html', 'text'].includes(source.presentationMode)) return combination;
+    if (!source || !['html', 'text'].includes(source.presentationMode)) return { ...combination, ...interactionRecipeFields(source) };
     const fields = {
         ...combination,
+        ...interactionRecipeFields(source),
         requestedPresentationMode: ['auto', 'html', 'text', 'longtext'].includes(source.requestedPresentationMode)
             ? source.requestedPresentationMode : 'auto',
         presentationMode: source.presentationMode,

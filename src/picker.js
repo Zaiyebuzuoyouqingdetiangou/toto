@@ -1,5 +1,5 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.34';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.34';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.36';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.36';
 import {
     getCurrentChatKey,
     getDirectiveScopedPick,
@@ -8,6 +8,7 @@ import {
     getRecentGenerationAttemptIds,
     getRecentIds,
     getRecentInteractionFamilies,
+    getRecentDiversityHistory,
     recordGenerationAttempt,
     recordFormatEligibleMissRound,
     setDirectiveScopedPick,
@@ -17,11 +18,12 @@ import {
     clearPendingComboBatch,
     createPendingComboBatchPlan,
     findPendingComboBatchPlan,
-} from './storage.js?rmv=1.62.34';
-import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.62.34';
-import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.62.34';
-import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, visualSceneryEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.34';
-import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.62.34';
+} from './storage.js?rmv=1.62.36';
+import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.62.36';
+import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.62.36';
+import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, visualSceneryEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.36';
+import { attachInteractionRecipes, diversifyBatchInteractionRecipes } from './interactionRecipes.js?rmv=1.62.36';
+import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.62.36';
 import {
     chooseExternalSource,
     externalPoolActive,
@@ -31,7 +33,7 @@ import {
     getExternalPoolSnapshot,
     pickExternalItems,
     sourceMixModeIsExternalOnly,
-} from './externalWorldBook/externalPool.js?rmv=1.62.34';
+} from './externalWorldBook/externalPool.js?rmv=1.62.36';
 
 function randomUnit() {
     try {
@@ -1209,7 +1211,7 @@ function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, th
 }
 
 function comboFromSelection(result, settings, recent, uiReviewFocus = null) {
-    return {
+    const combo = {
         themes: result.themes,
         formats: result.formats,
         themeIds: result.themes.map(x => x.id),
@@ -1230,9 +1232,12 @@ function comboFromSelection(result, settings, recent, uiReviewFocus = null) {
         } : {}),
         uiReviewFocus: Array.isArray(uiReviewFocus) && uiReviewFocus.length ? [...uiReviewFocus] : pickUiReviewFocus(5),
         recentUiReviewFocus: recent.uiReviewFocus || [],
+        ...(result.pureOrder ? { pureOrder: true } : {}),
         ...(result.atmosphereBucket ? { atmosphereBucket: result.atmosphereBucket } : {}),
         ...(Array.isArray(result.atmosphereMenu) && result.atmosphereMenu.length > 1 ? { atmosphereMenu: result.atmosphereMenu } : {}),
     };
+    if (combo.presentationMode === 'text' || combo.pureOrder) return combo;
+    return attachInteractionRecipes(combo, { randomUnit, recent: getRecentDiversityHistory(5) });
 }
 
 function rehydrateDirectiveCombo(cached, settings, recent) {
@@ -1529,6 +1534,9 @@ function addBatchInteractionDiversity(combos, settings) {
     // New multi-face plans only. Do not read history or consume entropy in the
     // single-face/off/cache paths, and never infer a mechanism from raw content.
     if (combos.length < 2 || combos.length > 5) return;
+    if (combos.some(combo => combo.presentationMode !== 'text' && !combo.pureOrder)) {
+        diversifyBatchInteractionRecipes(combos, { randomUnit, recent: getRecentDiversityHistory(5) });
+    }
     const hints = planBatchInteractionDiversity(combos.length, {
         enabled: true, recentFamilies: getRecentInteractionFamilies(5, { preserveEmpty: true }),
         presentationModes: combos.map(combo => combo.presentationMode || 'html'),
@@ -1601,7 +1609,7 @@ export function buildPureOrderSelection(settings, order) {
         source: '重说纯点菜', rawDirective: text, messageKey: 'resay-pure-order', pureOrder: true,
     };
     const combo = comboFromSelection({
-        themes: [], formats: [],
+        themes: [], formats: [], pureOrder: true,
         requestedPresentationMode: form,
         presentationMode: form === 'longtext' ? 'text' : 'html',
     }, { ...settings, forceVisualScenery: false, visualSceneryCombination: false }, { uiReviewFocus: [] });
@@ -1642,7 +1650,9 @@ export function pickCombinationForMultifaceResay(settings, resay) {
     const texts = resolveIds(face?.textIds || [], [], 'text');
     if (!themes.length && !formats.length && !texts.length && !isBlankLongTextSelection(face) && !face?.worldBookEntryId) throw multiFacePlanningError('原面缺少可复用抽取记录；请重新选择整批生成。', 'BATCH_RESAY_RECIPE_INCOMPLETE');
     const selectedSettings = { ...settings, samplingMode: face.samplingMode || settings.samplingMode, forceVisualScenery: face.forcedVisualScenery === true, visualSceneryCombination: face.visualSceneryCombination === true };
-    return { combo: comboFromSelection({ themes, formats, ...(texts.length ? { texts } : {}), ...(isBlankLongTextSelection(face) ? { themeIds: [], formatIds: [], textIds: [] } : {}), ...presentationModeFields(face) }, selectedSettings, getRecentIds(settings.cooldownRounds || 10)), directive: null, last: null };
+    return { combo: comboFromSelection({ themes, formats, ...(texts.length ? { texts } : {}), ...(isBlankLongTextSelection(face) ? { themeIds: [], formatIds: [], textIds: [] } : {}), ...presentationModeFields(face),
+        ...(resay.presentationOverride === 'html' ? { presentationMode: 'html', requestedPresentationMode: 'html', blankLongText: false }
+            : resay.presentationOverride === 'longtext' ? { presentationMode: 'text', requestedPresentationMode: 'longtext' } : {}) }, selectedSettings, getRecentIds(settings.cooldownRounds || 10)), directive: null, last: null };
 }
 
 export function pickCombinationBatch(settings, generationScopeKey = '', generationContext = null, faceCount = 1) {
@@ -1694,13 +1704,13 @@ export function pickCombinationBatch(settings, generationScopeKey = '', generati
     }
     if (faces.length < 2) return finalizeBatchFallback(first, snapshot, scopeKey, identityKey, identity.chatKey);
 
+    addBatchInteractionDiversity(faces.map(face => face.combo), settings);
     const batchId = setPendingComboBatch(faces.map(item => item.combo), identity);
     if (!batchId || !batchFacesMatch(readPendingComboBatch({ batchId, identity }), faces, batchId)) {
         if (batchId) clearPendingComboBatch({ batchId, identity });
         console.warn('[RabbitMirror] Pending combo batch storage failed; preserving the selected first face.');
         return finalizeBatchFallback(first, snapshot, scopeKey, identityKey, identity.chatKey);
     }
-    addBatchInteractionDiversity(faces.map(face => face.combo), settings);
     const completeFaces = faces.map((face, faceIndex) => ({ ...face, batchId, faceIndex }));
     cachedBatchPlan = { identityKey, batchId, faces: cloneBatchPlan(completeFaces) };
     return cloneBatchPlan(completeFaces);

@@ -1,8 +1,9 @@
-import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords } from './compositionFingerprint.js?rmv=1.62.34';
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.34';
-import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.62.34';
-import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.62.34';
-import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.62.34';
+import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.62.36';
+import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords } from './compositionFingerprint.js?rmv=1.62.36';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.36';
+import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.62.36';
+import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.62.36';
+import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.62.36';
 
 const STORAGE_KEY = 'rabbit_mirror_theater:last_combo:v11';
 const PENDING_KEY = 'rabbit_mirror_theater:pending_combo:v11';
@@ -494,7 +495,7 @@ function isDarkPaletteTrigger(fingerprint) {
     if (!fingerprint || typeof fingerprint !== 'object') return false;
     const confidence = Number(fingerprint.confidence || 0);
     const darkAreaRatio = Number(fingerprint.darkAreaRatio || 0);
-    const averageLuminance = Number(fingerprint.averageLuminance || 255);
+    const averageLuminance = Number(fingerprint.averageLuminance ?? 255);
     return confidence >= 0.5
         && fingerprint.brightness === 'dark'
         && (darkAreaRatio >= 0.55 || averageLuminance <= 105);
@@ -677,12 +678,19 @@ export function getRepeatedPaletteFamily(window = 3, threshold = 2) {
 // 一次低明度主承载输出触发后续五轮冷却；冷却期内若再次命中则重新从五轮开始。
 export function getActivePaletteCooldown(rounds = 5) {
     const cooldownRounds = Math.max(1, Number(rounds) || 5);
-    const history = readHistory();
+    const history = getRecentDiversityHistory(cooldownRounds);
+    const completedRounds = new Map();
     for (let index = history.length - 1; index >= 0; index -= 1) {
-        const fingerprint = history[index]?.paletteFingerprint;
-        if (!isDarkPaletteTrigger(fingerprint)) continue;
-        const completedSinceTrigger = history.length - 1 - index;
-        if (completedSinceTrigger >= cooldownRounds) return { active: false, remaining: 0 };
+        const record = history[index];
+        const key = record?.diversityRound || record?.batchId || `legacy:${index}`;
+        if (!completedRounds.has(key)) completedRounds.set(key, null);
+        if (!completedRounds.get(key) && isDarkPaletteTrigger(record?.paletteFingerprint)) {
+            completedRounds.set(key, record.paletteFingerprint);
+        }
+    }
+    // Any dark face triggers its whole round; unknown completed rounds still count.
+    for (const [completedSinceTrigger, fingerprint] of [...completedRounds.values()].entries()) {
+        if (!fingerprint) continue;
         return {
             active: true,
             remaining: cooldownRounds - completedSinceTrigger,
@@ -1340,6 +1348,8 @@ function applyChosenAtmosphereTickets(plan, chosenTickets) {
         combo.formatIds = (ticket.formatIds || []).filter(id => typeof id === 'string' && id);
         combo.themeGroups = (ticket.themeGroups || []).filter(Boolean);
         combo.formatGroups = (ticket.formatGroups || []).filter(Boolean);
+        delete combo.interactionRecipeId;
+        Object.assign(combo, interactionRecipeFields({ ...ticket, presentationMode: combo.presentationMode }));
         combo.atmosphereResolved = true;
     });
 }
@@ -1615,6 +1625,7 @@ function compactHistoryCombo(combo) {
 export function createVisualHistorySelection(combo, scopeKey = '') {
     if (!combo || typeof combo !== 'object') return null;
     const menu = Array.isArray(combo.atmosphereMenu) ? combo.atmosphereMenu.map(ticket => ({
+        ...interactionRecipeFields({ ...ticket, presentationMode: combo.presentationMode }),
         themeIds: ticket.themeIds || [], formatIds: ticket.formatIds || [],
         themeGroups: ticket.themeGroups || [], formatGroups: ticket.formatGroups || [],
     })) : null;
@@ -1632,7 +1643,8 @@ export function resolveVisualHistorySelection(selection, choice) {
     if (!Array.isArray(menu) || menu.length < 2) return { ...selection };
     if (!Number.isInteger(choice) || choice < 0 || choice >= menu.length) return null;
     const ticket = menu[choice];
-    const resolved = { ...selection, atmosphereResolved: true,
+    const resolved = { ...selection, interactionRecipeId: undefined, atmosphereResolved: true,
+        ...interactionRecipeFields({ ...ticket, presentationMode: selection.presentationMode }),
         themeIds: [...(ticket.themeIds || [])], formatIds: [...(ticket.formatIds || [])],
         themeGroups: [...(ticket.themeGroups || [])], formatGroups: [...(ticket.formatGroups || [])] };
     resolved.signature = signatureOf(resolved);
@@ -1850,6 +1862,8 @@ export function retargetPendingAtmosphereTicket(choice) {
         pending.formatIds = (ticket.formatIds || []).filter(id => typeof id === 'string' && id);
         pending.themeGroups = (ticket.themeGroups || []).filter(Boolean);
         pending.formatGroups = (ticket.formatGroups || []).filter(Boolean);
+        delete pending.interactionRecipeId;
+        Object.assign(pending, interactionRecipeFields({ ...ticket, presentationMode: pending.presentationMode }));
         pending.atmosphereResolved = true;
         pending.signature = signatureOf(pending);
         const payload = JSON.stringify(pending);
