@@ -1,23 +1,23 @@
 // Split from independentApi.js — request.
 
-import { claimGenerationEvidence, associateGenerationEvidence, generationEvidenceFor } from '../generationEvidence.js?rmv=1.62.33';
+import { claimGenerationEvidence, associateGenerationEvidence, generationEvidenceFor } from '../generationEvidence.js?rmv=1.62.34';
 
-import { resolveBehaviorRuleText } from '../behaviorRules.js?rmv=1.62.33';
-import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.62.33';
-import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.62.33';
-import { getSettings } from '../settings.js?rmv=1.62.33';
-import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.62.33';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=1.62.33';
+import { resolveBehaviorRuleText } from '../behaviorRules.js?rmv=1.62.34';
+import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.62.34';
+import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.62.34';
+import { getSettings } from '../settings.js?rmv=1.62.34';
+import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.62.34';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=1.62.34';
 import {
     assertRabbitMirrorIndependentResponseBytes,
     assertRabbitMirrorIndependentResponseText,
     authorizeRabbitMirrorIndependentServiceRequest,
-} from '../independentSecurityGuard.js?rmv=1.62.33';
+} from '../independentSecurityGuard.js?rmv=1.62.34';
 import {
     parseIndependentAdvancedOptions,
     buildIndependentAdvancedCarrier,
     applyIndependentAdvancedExclusions,
-} from '../advancedRequestOptions.js?rmv=1.62.33';
+} from '../advancedRequestOptions.js?rmv=1.62.34';
 import {
     buildRabbitMirrorPromptDetails,
     planRabbitMirrorPromptDetails,
@@ -26,24 +26,24 @@ import {
     prepareSelectedMemoryForPrompt,
     memoryRequestSettingsKey,
     assertMemoryRequestSettings,
-} from '../promptBuilder.js?rmv=1.62.33';
-import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.62.33';
-import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.62.33';
-import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.62.33';
-import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText, createMultifaceFailureSlot } from '../multifaceProtocol.js?rmv=1.62.33';
-import { applyAtmosphereFields, atmosphereNotesFromHtml, stripAtmosphereChoiceMarkup } from '../atmosphereChoice.js?rmv=1.62.33';
-import { isLocalPreflightFailure, isQuotaInsufficientFailure, configuredAutomaticRerollMax, automaticRerollEnabled } from '../automaticReroll.js?rmv=1.62.33';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.62.33';
+} from '../promptBuilder.js?rmv=1.62.34';
+import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.62.34';
+import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.62.34';
+import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.62.34';
+import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText, createMultifaceFailureSlot } from '../multifaceProtocol.js?rmv=1.62.34';
+import { applyAtmosphereFields, atmosphereNotesFromHtml, stripAtmosphereChoiceMarkup } from '../atmosphereChoice.js?rmv=1.62.34';
+import { isLocalPreflightFailure, isQuotaInsufficientFailure, configuredAutomaticRerollMax, automaticRerollEnabled } from '../automaticReroll.js?rmv=1.62.34';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.62.34';
 import {
-    updateLatestVisualSignature,
+    createVisualHistorySelection,
+    resolveVisualHistorySelection,
     parseVisualFamilySkeleton,
     visualFamilyForCooldown,
     markPendingBatchAttempt,
     releasePendingComboBatch,
-    retargetPendingAtmosphereTicket,
-} from '../storage.js?rmv=1.62.33';
-import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.62.33';
-import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.62.33';
+} from '../storage.js?rmv=1.62.34';
+import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.62.34';
+import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.62.34';
 import {
     RUNTIME_VERSION,
     EXTERNAL_SHELL_ATTR,
@@ -54,8 +54,8 @@ import {
     byteLength,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.62.33';
-import { operationEpochForBase } from './flights.js?rmv=1.62.33';
+} from './runtime.js?rmv=1.62.34';
+import { operationEpochForBase } from './flights.js?rmv=1.62.34';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INDEPENDENT_MAX_APPROX_DEPTH,
@@ -70,7 +70,7 @@ import {
     normalizedConfiguredTemperature,
     readHistoryStore,
     readStore,
-} from './persistence.js?rmv=1.62.33';
+} from './persistence.js?rmv=1.62.34';
 import {
     API_PROFILE_ORDER,
     chatKey,
@@ -104,7 +104,7 @@ import {
     stageNextApiProfile,
     swipeId,
     validatedIndependentConnectionProfile,
-} from './connection.js?rmv=1.62.33';
+} from './connection.js?rmv=1.62.34';
 import {
     externalGeometryCycleSequence,
     externalGeometryLifecycleEpoch,
@@ -115,7 +115,7 @@ import {
     writeExternalGeometryCycleSequence,
     writeExternalGeometryLifecycleEpoch,
     writeExternalGeometryLifecycleReason,
-} from './geometry.js?rmv=1.62.33';
+} from './geometry.js?rmv=1.62.34';
 import {
     INDEPENDENT_REJECTED_PREVIEW_MAX_CHARS,
     INDEPENDENT_REJECTED_PREVIEW_MAX_ENTRIES,
@@ -130,8 +130,8 @@ import {
     writeExternalHostSyncIndex,
     writeIndependentRejectedPreviewChars,
     writeIndependentRejectedPreviewSequence,
-} from './mount.js?rmv=1.62.33';
-import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.62.33';
+} from './mount.js?rmv=1.62.34';
+import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.62.34';
 
 const NON_STREAM_PROFILE_BY_STREAM_PROFILE={
  chat_system_user_full:'chat_system_user_full_nostream',
@@ -1375,7 +1375,8 @@ function independentVisualHistoryContext({needsBackfill=false,slot='',manualRetr
  return {families,previous:family&&Object.keys(family).length?family:null};
 }
 
-export function commitIndependentVisualResult(inner=''){
+// Scan only. The accepted owner commits its selection and result together in mount.
+export function commitIndependentVisualResult(inner='', onScan=null){
  try{
   if(hasMultifaceMarkup(inner)){
    const parsed=parseMultifaceOutput(inner);
@@ -1383,13 +1384,13 @@ export function commitIndependentVisualResult(inner=''){
    let firstPalette=null;
    for(const face of parsed.faces){
     const scanned=scanRabbitMirrorHtml(wrapIndependentFace(face.inner,face.index),null)||{};
-    updateLatestVisualSignature(scanned.signature||'',scanned.skeleton||'',Array.isArray(scanned.riskFlags)?scanned.riskFlags:[],scanned.paletteFingerprint||null,scanned.interactionFamily||null);
+    onScan?.(scanned,face.index);
     if(!firstPalette) firstPalette=scanned.paletteFingerprint||null;
    }
    return firstPalette;
   }
   const scanned=scanRabbitMirrorHtml(wrappedIndependentMirrorHtml(inner),null)||{};
-  updateLatestVisualSignature(scanned.signature||'',scanned.skeleton||'',Array.isArray(scanned.riskFlags)?scanned.riskFlags:[],scanned.paletteFingerprint||null,scanned.interactionFamily||null);
+  onScan?.(scanned,0);
   return scanned.paletteFingerprint||null;
  }catch(error){ console.debug('[RabbitMirror] independent visual signature skipped:',error); return null; }
 }
@@ -1523,7 +1524,7 @@ export function wireIndependentRejectedFaceControls(host){
    independentRejectedFaceControlsWired.add(resay);
    resay.addEventListener('click',event=>{
     event.preventDefault(); event.stopPropagation();
-    void import('../outputSanitizer/toolsChrome.js?rmv=1.62.33').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+    void import('../outputSanitizer/toolsChrome.js?rmv=1.62.34').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
    },true);
   }
  }
@@ -1721,7 +1722,7 @@ async function loadIndependentAppearanceReference(owner){
  let module;
  assertIndependentPromptOwner(owner);
  try{
-  try{module=await import('../appearanceReference.js?rmv=1.62.33');}
+  try{module=await import('../appearanceReference.js?rmv=1.62.34');}
   catch{
    const error=new Error('外观参考模块未能加载；本轮未发送请求，请刷新后重试或关闭外观参考。');
    error.code='RABBIT_MIRROR_APPEARANCE_MODULE_UNAVAILABLE';error.requestCount=0;throw error;
@@ -1749,7 +1750,6 @@ function settleAtmosphereSingle(note, metadata, diagnostic) {
  const menu = metadata?.atmosphereMenu;
  if (!Array.isArray(menu) || menu.length < 2) return;
  if (note?.choice == null) throw Object.assign(new Error('这一面没有选中菜单里的签。'), { code: 'ATMOSPHERE_TICKET_MISSING' });
- retargetPendingAtmosphereTicket(note.choice);
  applyAtmosphereFields(diagnostic, menu, note);
 }
 
@@ -1862,9 +1862,13 @@ async function runIndependentSerialFaces({ ctx, index, msg, signal, requestOptio
  const failedFaces = [...failed].map(faceIndex => ({ faceIndex, status: 'failed', code: 'serial-face-failed' }));
  return {
   html: selections.map((_, faceIndex) => htmlByFace[faceIndex] || createMultifaceFailureSlot(faceIndex, 'serial-face-failed')).join('\n'),
-  faceScans: selections.map((_, faceIndex) => failed.has(faceIndex) ? null : { faceIndex, visualSignature: 'serial', visualSkeleton: '', riskFlags: [] }),
+  faceScans: selections.map((_, faceIndex) => {
+   if(failed.has(faceIndex))return null;
+   try{return {...scanRabbitMirrorHtml(htmlByFace[faceIndex],null),faceIndex};}
+   catch(error){console.debug('[RabbitMirror] serial visual scan skipped:',error);return {faceIndex,visualSignature:'',visualSkeleton:'',riskFlags:[]};}
+  }),
   failedFaces, completedFaces: faceCount - failed.size, batchPlan: details.batchPlan || null, chosenTickets: choices,
-  requestDiagnostic: { faceCount, serialDispatch: true, partial: failed.size > 0, failedFaces, completedFaces: faceCount - failed.size, faces: details.metadata?.faces || [] },
+  requestDiagnostic: { visualHistoryBatchId: details.batchPlan?.batchId || '', faceCount, serialDispatch: true, partial: failed.size > 0, failedFaces, completedFaces: faceCount - failed.size, faces: details.metadata?.faces || [] },
   executionLockChars: String(details.executionLock || '').length,
  };
 }
@@ -2001,6 +2005,9 @@ export async function callIndependentApi(ctx,index,msg,signal=null,requestOption
   bindIndependentPromptBatch(promptOwner,details.batchPlan||null);
  }
  const faceCount=Number(details.metadata?.faceCount)||1;
+ if(details.batchPlan && Array.isArray(details.metadata?.faces)){
+  details={...details,metadata:{...details.metadata,faces:details.metadata.faces.map((face,faceIndex)=>({...face,visualHistoryBatchId:details.batchPlan.batchId,visualHistoryFaceIndex:faceIndex}))}};
+ }
  const basePrompt=String(details.prompt||'').trim();
  const executionLock=String(details.executionLock||'').trim();
  if(details.metadata?.disabled || !basePrompt || !executionLock){
@@ -2116,7 +2123,11 @@ ${independentUserTail}`;
    characterWorldBook:characterWorldBookBlock.length,
   },
  });
+ const historySelection=faceCount===1 && requestOptions.serialChild!==true
+  ? createVisualHistorySelection(promptPlanSelections(promptPlan)[0]?.combo, generationScopeKey) : null;
  const requestSelectionDiagnostic={
+  ...(historySelection?{visualHistoryId:historySelection.historyId}:{}),
+  ...(details.batchPlan?{visualHistoryBatchId:details.batchPlan.batchId}:{}),
   chatKeyHash:hashText(chatKey(ctx)),
   mesid:Number(index),
   swipe:swipeId(msg),
@@ -2231,7 +2242,7 @@ ${independentUserTail}`;
      if(preparedHtml && independentMirrorBodyEvidence(preparedHtml)){
       rememberApiProfile(st,profile);
       evidence?.finish({phase:'ready-to-mount',truncated:true});
-      return {html:preparedHtml,truncated:true,feedbackId:activeFeedback?.id||'',feedbackPrompt,requestDiagnostic,executionLockChars:executionLock.length};
+      return {html:preparedHtml,historySelection:resolveVisualHistorySelection(historySelection,atmosphereNotes[0]?.choice),truncated:true,feedbackId:activeFeedback?.id||'',feedbackPrompt,requestDiagnostic,executionLockChars:executionLock.length};
      }
     }
    }
@@ -2278,8 +2289,9 @@ ${independentUserTail}`;
   return {html:preparedHtml,atmosphereNote:atmosphereNotes[0]||{choice:null,reason:''},feedbackId:activeFeedback?.id||'',feedbackPrompt,requestDiagnostic,executionLockChars:executionLock.length};
  }
  settleAtmosphereSingle(atmosphereNotes[0],details.metadata,requestDiagnostic);
+ const resolvedHistorySelection=resolveVisualHistorySelection(historySelection,atmosphereNotes[0]?.choice);
  evidence?.finish({phase:'ready-to-mount'});
- return {html:preparedHtml,feedbackId:activeFeedback?.id||'',feedbackPrompt,requestDiagnostic,executionLockChars:executionLock.length};
+ return {html:preparedHtml,historySelection:resolvedHistorySelection,feedbackId:activeFeedback?.id||'',feedbackPrompt,requestDiagnostic,executionLockChars:executionLock.length};
  } catch(error) { evidence?.fail('postprocess',error); throw error; }
 }
 

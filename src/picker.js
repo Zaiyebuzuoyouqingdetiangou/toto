@@ -1,5 +1,5 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.33';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.33';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.34';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.34';
 import {
     getCurrentChatKey,
     getDirectiveScopedPick,
@@ -17,11 +17,11 @@ import {
     clearPendingComboBatch,
     createPendingComboBatchPlan,
     findPendingComboBatchPlan,
-} from './storage.js?rmv=1.62.33';
-import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.62.33';
-import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.62.33';
-import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, visualSceneryEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.33';
-import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.62.33';
+} from './storage.js?rmv=1.62.34';
+import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.62.34';
+import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.62.34';
+import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, visualSceneryEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.34';
+import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.62.34';
 import {
     chooseExternalSource,
     externalPoolActive,
@@ -31,7 +31,7 @@ import {
     getExternalPoolSnapshot,
     pickExternalItems,
     sourceMixModeIsExternalOnly,
-} from './externalWorldBook/externalPool.js?rmv=1.62.33';
+} from './externalWorldBook/externalPool.js?rmv=1.62.34';
 
 function randomUnit() {
     try {
@@ -1472,7 +1472,7 @@ function finalizeBatchFallback(first, snapshot, scopeKey, identityKey, chatKey, 
         });
     }
     if (snapshot.directive && directiveCacheKey) setDirectiveScopedPick(chatKey, directiveCacheKey, first.payload.combo);
-    setLastCombo(first.payload.combo);
+    setLastCombo(first.payload.combo, scopeKey);
     recordGenerationAttempt(first.payload.combo, { chatKey, attemptId: scopeKey, directiveScoped: !!snapshot.directive });
     cachedPick = { scopeKey, payload: cloneBatchPlan(first.payload), batchFallbackKey: identityKey };
     return [cloneBatchPlan(first.payload)];
@@ -1492,7 +1492,7 @@ function batchPrioritySingle(settings, snapshot, scopeKey, identityKey, chatKey)
         : null;
     if (cachedCombo) {
         const payload = { combo: cachedCombo, last: snapshot.last, directive: snapshot.directive };
-        setLastCombo(cachedCombo);
+        setLastCombo(cachedCombo, scopeKey);
         recordGenerationAttempt(cachedCombo, { chatKey, attemptId: scopeKey, directiveScoped: true });
         cachedPick = { scopeKey, payload: cloneBatchPlan(payload), batchFallbackKey: identityKey };
         return [cloneBatchPlan(payload)];
@@ -1793,7 +1793,7 @@ export function pickCombination(settings, generationScopeKey = '', generationCon
         if (directive && directiveCacheKey) setDirectiveScopedPick(chatKey, directiveCacheKey, combo);
     }
 
-    setLastCombo(combo);
+    setLastCombo(combo, scopeKey);
     recordGenerationAttempt(combo, {
         chatKey,
         attemptId: scopeKey || `fallback:${Date.now().toString(36)}:${randomUnit().toString(36).slice(2, 8)}`,

@@ -1,15 +1,15 @@
 // Split from independentApi.js — faceSwipe.
 
-import { getSettings } from '../settings.js?rmv=1.62.33';
-import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.62.33';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.62.33';
-import { configuredAutomaticRerollMax } from '../automaticReroll.js?rmv=1.62.33';
-import { seedSwipeState, appendSuccessfulSwipe, faceSwipeStorageSlot, readFaceSwipe, mutateFaceSwipe } from '../swipeVersions.js?rmv=1.62.33';
-import { EPHEMERAL_FAILURE_ATTR, EPHEMERAL_FAILURE_BODY_ATTR, RUNTIME_VERSION } from './runtime.js?rmv=1.62.33';
-import { independentRecordWithinBudget, readStore, writePersistedOwner, writeStore } from './persistence.js?rmv=1.62.33';
-import { chatKey, saveRecordForSlot, savedIndependentRecordForOwner, swipeId } from './connection.js?rmv=1.62.33';
-import { hasMultifaceMarkup, wrapIndependentFace } from './request.js?rmv=1.62.33';
-import { externalFaceDetails, showIndependentUnsavedOutput } from './mount.js?rmv=1.62.33';
+import { getSettings } from '../settings.js?rmv=1.62.34';
+import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.62.34';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.62.34';
+import { configuredAutomaticRerollMax } from '../automaticReroll.js?rmv=1.62.34';
+import { seedSwipeState, appendSuccessfulSwipe, faceSwipeStorageSlot, readFaceSwipe, mutateFaceSwipe } from '../swipeVersions.js?rmv=1.62.34';
+import { EPHEMERAL_FAILURE_ATTR, EPHEMERAL_FAILURE_BODY_ATTR, RUNTIME_VERSION } from './runtime.js?rmv=1.62.34';
+import { independentRecordWithinBudget, readStore, writePersistedOwner, writeStore } from './persistence.js?rmv=1.62.34';
+import { chatKey, saveRecordForSlot, savedIndependentRecordForOwner, swipeId } from './connection.js?rmv=1.62.34';
+import { hasMultifaceMarkup, wrapIndependentFace } from './request.js?rmv=1.62.34';
+import { externalFaceDetails, showIndependentUnsavedOutput } from './mount.js?rmv=1.62.34';
 
 export function independentRerollMax(){ return configuredAutomaticRerollMax(getSettings()); }
 

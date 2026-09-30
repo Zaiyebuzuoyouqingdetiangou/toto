@@ -1,8 +1,8 @@
-import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords } from './compositionFingerprint.js?rmv=1.62.33';
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.33';
-import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.62.33';
-import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.62.33';
-import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.62.33';
+import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords } from './compositionFingerprint.js?rmv=1.62.34';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.34';
+import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.62.34';
+import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.62.34';
+import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.62.34';
 
 const STORAGE_KEY = 'rabbit_mirror_theater:last_combo:v11';
 const PENDING_KEY = 'rabbit_mirror_theater:pending_combo:v11';
@@ -1361,7 +1361,7 @@ function batchHistoryPayload(plan, scans, beforeRaw) {
         // Successful history is accounting, not a recovery source for a pending
         // prompt. Consumers use IDs, UI/interaction and visual fingerprints.
         // Preserve those fields while avoiding another copy of mother materials.
-        const { themes, formats, texts, ...accounting } = combo;
+        const accounting = compactHistoryCombo(combo);
         history.push({ ...accounting, signature: signatureOf(combo), ts: now, batchId: plan.batchId, faceIndex: face.faceIndex,
             visualSignature: scan.visualSignature || combo.visualSignature,
             visualSkeleton: scan.visualSkeleton || combo.visualSkeleton,
@@ -1582,12 +1582,113 @@ export function clearPendingComboBatch(expected = null) {
     } catch { return false; }
 }
 
-export function setPendingCombo(combo) {
+// Only trusted runtime code binds a rendered face to its completed history.
+// Weak keys do not retain detached DOM; no HTML or candidate menu is persisted here.
+const visualHistoryTargets = new WeakMap();
+let visualHistorySequence = 0;
+
+function historyReference(value) {
+    if (typeof value?.historyId === 'string' && value.historyId) return { historyId: value.historyId };
+    if (typeof value?.batchId === 'string' && value.batchId && Number.isInteger(value.faceIndex) && value.faceIndex >= 0 && value.faceIndex < 5) {
+        return { batchId: value.batchId, faceIndex: value.faceIndex };
+    }
+    return null;
+}
+
+export function bindVisualHistoryTarget(node, reference) {
+    if (!node || (typeof node !== 'object' && typeof node !== 'function')) return;
+    const ref = historyReference(reference);
+    if (ref) visualHistoryTargets.set(node, Object.freeze(ref));
+    else visualHistoryTargets.delete(node);
+}
+
+export function visualHistoryTarget(node) {
+    return visualHistoryTargets.get(node) || null;
+}
+
+function compactHistoryCombo(combo) {
+    const { themes, formats, texts, atmosphereMenu, pendingSession, pendingTs,
+        pendingScopeKey, pendingOrigin, pendingChatKey, pendingBaseline, worldBookExcerpt, recentUiReviewFocus, ...record } = combo || {};
+    return record;
+}
+
+export function createVisualHistorySelection(combo, scopeKey = '') {
+    if (!combo || typeof combo !== 'object') return null;
+    const menu = Array.isArray(combo.atmosphereMenu) ? combo.atmosphereMenu.map(ticket => ({
+        themeIds: ticket.themeIds || [], formatIds: ticket.formatIds || [],
+        themeGroups: ticket.themeGroups || [], formatGroups: ticket.formatGroups || [],
+    })) : null;
+    const frozenCombo = JSON.parse(JSON.stringify({ ...compactHistoryCombo(combo), ...(menu ? { atmosphereMenu: menu } : {}) }));
+    const used = new Set(readHistory().map(item => item?.historyId));
+    let historyId;
+    do { historyId = `${PENDING_SESSION_TOKEN}:visual:${++visualHistorySequence}`; } while (used.has(historyId));
+    return { ...frozenCombo, historyId,
+        pendingScopeKey: String(scopeKey || ''), pendingChatKey: getCurrentChatKey(), signature: signatureOf(frozenCombo) };
+}
+
+export function resolveVisualHistorySelection(selection, choice) {
+    if (!selection?.historyId) return null;
+    const menu = selection.atmosphereMenu;
+    if (!Array.isArray(menu) || menu.length < 2) return { ...selection };
+    if (!Number.isInteger(choice) || choice < 0 || choice >= menu.length) return null;
+    const ticket = menu[choice];
+    const resolved = { ...selection, atmosphereResolved: true,
+        themeIds: [...(ticket.themeIds || [])], formatIds: [...(ticket.formatIds || [])],
+        themeGroups: [...(ticket.themeGroups || [])], formatGroups: [...(ticket.formatGroups || [])] };
+    resolved.signature = signatureOf(resolved);
+    return resolved;
+}
+
+export function commitVisualHistorySelection(selection, scan = {}) {
+    if (!selection?.historyId || (selection.atmosphereMenu?.length > 1 && selection.atmosphereResolved !== true)) return false;
+    const committed = commitComboToHistory(compactHistoryCombo(selection), normalizeFaceScan(scan, scan?.faceIndex) || {}, { historyId: selection.historyId });
+    if (committed && selection.pendingScopeKey) {
+        try {
+            const raw = localStorage.getItem(PENDING_KEY), pending = JSON.parse(raw || 'null');
+            if (pending?.pendingScopeKey === selection.pendingScopeKey && pending.pendingSession === PENDING_SESSION_TOKEN && pending.pendingChatKey === selection.pendingChatKey && localStorage.getItem(PENDING_KEY) === raw) localStorage.removeItem(PENDING_KEY);
+        } catch {}
+    }
+    return committed;
+}
+
+function followSourceKey(message, chat) {
+    const index = Array.isArray(chat) ? chat.lastIndexOf(message) : -1;
+    return hashText(`${getCurrentChatKey(chat)}|${index}|${message?.swipe_id ?? 0}|${message?.mes || ''}`);
+}
+
+// The follow path has no request-result object. Match a completed source to its
+// pending chat and exclude the old assistant message present at prompt creation.
+export function commitFollowVisualHistory(message, chat, source, scan) {
+    if (!message || message.is_user || !Array.isArray(chat) || !chat.includes(message)) return null;
+    const sourceKey = followSourceKey(message, chat);
+    const existing = readHistory().find(item => item?.followSourceKey === sourceKey && item?.historyId);
+    if (existing) {
+        const ref = { historyId: existing.historyId };
+        return updateLatestVisualSignature(scan?.signature || '', scan?.skeleton || '', scan?.riskFlags || [], scan?.paletteFingerprint, scan?.interactionFamily, ref) ? ref : null;
+    }
+    try {
+        const raw = localStorage.getItem(PENDING_KEY), pending = JSON.parse(raw || 'null');
+        if (!pending || pending.pendingOrigin === 'independent' || pending.pendingSession !== PENDING_SESSION_TOKEN ||
+            Date.now() - Number(pending.pendingTs) > PENDING_MAX_AGE_MS || !Number.isFinite(Number(pending.pendingTs)) ||
+            pending.pendingChatKey !== getCurrentChatKey(chat) || pending.pendingBaseline === sourceKey) return null;
+        const choice = parseAtmosphereTicketIndex(source, pending.atmosphereMenu?.length || 0);
+        const resolved = resolveVisualHistorySelection(pending, choice);
+        if (!resolved) return null;
+        resolved.followSourceKey = sourceKey;
+        if (localStorage.getItem(PENDING_KEY) !== raw || !commitVisualHistorySelection(resolved, scan)) return null;
+        if (localStorage.getItem(PENDING_KEY) === raw) localStorage.removeItem(PENDING_KEY);
+        return { historyId: resolved.historyId };
+    } catch { return null; }
+}
+
+export function setPendingCombo(combo, scopeKey = '') {
     try {
         if (!combo) return;
         const pending = {
-            ...combo,
-            signature: signatureOf(combo),
+            ...createVisualHistorySelection(combo, scopeKey),
+            pendingOrigin: String(scopeKey).startsWith('independent:') ? 'independent' : 'follow',
+            pendingChatKey: getCurrentChatKey(),
+            pendingBaseline: (() => { const chat = resolveChat(); const message = [...chat].reverse().find(item => !item?.is_user); return message ? followSourceKey(message, chat) : ''; })(),
             pendingTs: Date.now(),
             pendingSession: PENDING_SESSION_TOKEN,
         };
@@ -1618,12 +1719,13 @@ function commitComboToHistory(combo, visual = {}, options = {}) {
     const { visualSignature = '', visualSkeleton = '', riskFlags = [], paletteFingerprint = null, interactionFamily = null } = visual || {};
     const batchId = String(options?.batchId || '');
     const faceIndex = options?.faceIndex;
+    const historyId = String(options?.historyId || '');
     let previousHistoryRaw = null;
     let historyPayload = '';
     try {
         let history;
-        if (batchId) {
-            if (!Number.isSafeInteger(faceIndex) || faceIndex < 0 || faceIndex > 4) return false;
+        if (batchId || historyId) {
+            if (batchId && (!Number.isSafeInteger(faceIndex) || faceIndex < 0 || faceIndex > 4)) return false;
             previousHistoryRaw = localStorage.getItem(STORAGE_KEY);
             // Parse the verified snapshot itself. readHistory intentionally masks
             // legacy read errors, which must not turn a batch read failure into []
@@ -1637,11 +1739,12 @@ function commitComboToHistory(combo, visual = {}, options = {}) {
         }
         // 已经在 history 里 → 视为提交成功，但绝不重复写入。
         if (batchId && historyHasBatchFace(history, batchId, faceIndex)) return true;
+        if (historyId && history.some(item => item?.historyId === historyId)) return true;
         const now = Date.now();
         const sig = combo.signature || signatureOf(combo);
         const last = history[history.length - 1];
         // 批次面带幂等键，不走签名去重分支：三面本就应各占一条。
-        if (!batchId && last?.signature === sig && now - Number(last?.ts || 0) < 120000) {
+        if (!batchId && !historyId && last?.signature === sig && now - Number(last?.ts || 0) < 120000) {
             if (visualSignature) last.visualSignature = String(visualSignature).slice(0, 280);
             if (visualSkeleton) last.visualSkeleton = String(visualSkeleton).slice(0, VISUAL_SKELETON_MAX_CHARS);
             if (Array.isArray(riskFlags) && riskFlags.length) last.riskFlags = [...new Set(riskFlags)].slice(0, 8);
@@ -1657,6 +1760,7 @@ function commitComboToHistory(combo, visual = {}, options = {}) {
             signature: sig,
             ts: now,
             ...(batchId ? { batchId, faceIndex: Number(faceIndex) } : {}),
+            ...(historyId ? { historyId } : {}),
             visualSignature: visualSignature ? String(visualSignature).slice(0, 280) : combo.visualSignature,
             visualSkeleton: visualSkeleton ? String(visualSkeleton).slice(0, VISUAL_SKELETON_MAX_CHARS) : combo.visualSkeleton,
             riskFlags: Array.isArray(riskFlags) ? [...new Set(riskFlags)].slice(0, 8) : [],
@@ -1664,12 +1768,12 @@ function commitComboToHistory(combo, visual = {}, options = {}) {
             interactionFamily: normalizeInteractionFamily(interactionFamily),
             visualSignatureTs: visualSignature || visualSkeleton || (Array.isArray(riskFlags) && riskFlags.length) || paletteFingerprint || normalizeInteractionFamily(interactionFamily) ? now : undefined,
         });
-        if (batchId) {
+        if (batchId || historyId) {
             historyPayload = JSON.stringify(history.slice(-MAX_STORED));
             if (localStorage.getItem(STORAGE_KEY) !== previousHistoryRaw) return false;
             localStorage.setItem(STORAGE_KEY, historyPayload);
             const confirmedRaw = localStorage.getItem(STORAGE_KEY);
-            if (confirmedRaw !== historyPayload || !historyHasBatchFace(JSON.parse(confirmedRaw), batchId, faceIndex)) {
+            if (confirmedRaw !== historyPayload || (batchId && !historyHasBatchFace(JSON.parse(confirmedRaw), batchId, faceIndex))) {
                 throw new Error('Batch history read-back mismatch');
             }
         } else {
@@ -1677,7 +1781,7 @@ function commitComboToHistory(combo, visual = {}, options = {}) {
         }
         return true;
     } catch (error) {
-        if (batchId && historyPayload) restoreOwnedStorageWrite(STORAGE_KEY, historyPayload, previousHistoryRaw);
+        if ((batchId || historyId) && historyPayload) restoreOwnedStorageWrite(STORAGE_KEY, historyPayload, previousHistoryRaw);
         console.warn('[RabbitMirror] Failed to write combo history:', error);
         return false;
     }
@@ -1695,7 +1799,7 @@ export function commitPendingCombo(visualSignature = '', visualSkeleton = '', ri
         //  2. 同会话内超过保守上限 —— 兜底，阈值远大于任何仍可能完成的生成；
         //  3. 缺少时间戳 —— 无从判断新旧，按不可信处理。
         // 命中任一条就丢弃，不写入历史：让一个从未生成过的组合进入冷却，比丢一条记录糟得多。
-        // 提交只由「某面兔子镜已渲染完成」触发，真正在途的请求不会走到这里。
+        // 此兼容入口只提交已解析的 pending；真实渲染扫描使用带归属的专用入口。
         const pendingSession = String(pending.pendingSession || '');
         const pendingAt = Number(pending.pendingTs);
         const staleSession = !!pendingSession && pendingSession !== PENDING_SESSION_TOKEN;
@@ -1705,13 +1809,14 @@ export function commitPendingCombo(visualSignature = '', visualSkeleton = '', ri
             return;
         }
         if (Array.isArray(pending.atmosphereMenu) && pending.atmosphereMenu.length > 1 && pending.atmosphereResolved !== true) {
-            localStorage.removeItem(PENDING_KEY);
-            return;
+            return false;
         }
 
-        if (commitComboToHistory(pending, { visualSignature, visualSkeleton, riskFlags, paletteFingerprint, interactionFamily })) {
-            localStorage.removeItem(PENDING_KEY);
+        if (commitVisualHistorySelection(pending, { visualSignature, visualSkeleton, riskFlags, paletteFingerprint, interactionFamily })) {
+            if (localStorage.getItem(PENDING_KEY) === raw) localStorage.removeItem(PENDING_KEY);
+            return true;
         }
+        return false;
     } catch (error) {
         console.warn('[RabbitMirror] Failed to commit pending combo:', error);
     }
@@ -1746,6 +1851,7 @@ export function retargetPendingAtmosphereTicket(choice) {
         pending.themeGroups = (ticket.themeGroups || []).filter(Boolean);
         pending.formatGroups = (ticket.formatGroups || []).filter(Boolean);
         pending.atmosphereResolved = true;
+        pending.signature = signatureOf(pending);
         const payload = JSON.stringify(pending);
         localStorage.setItem(PENDING_KEY, payload);
         return localStorage.getItem(PENDING_KEY) === payload;
@@ -1754,8 +1860,8 @@ export function retargetPendingAtmosphereTicket(choice) {
     }
 }
 
-export function setLastCombo(combo) {
-    setPendingCombo(combo);
+export function setLastCombo(combo, scopeKey = '') {
+    setPendingCombo(combo, scopeKey);
 }
 
 export function clearLastCombo() {
@@ -1787,22 +1893,31 @@ export function clearLastCombo() {
     } catch {}
 }
 
-export function updateLatestVisualSignature(visualSignature, visualSkeleton = '', riskFlags = [], paletteFingerprint = null, interactionFamily = null) {
-    if (!visualSignature && !visualSkeleton && !(Array.isArray(riskFlags) && riskFlags.length) && !paletteFingerprint && !normalizeInteractionFamily(interactionFamily)) return;
+// Compatibility name; an explicit completed owner is now required.
+export function updateLatestVisualSignature(visualSignature, visualSkeleton = '', riskFlags = [], paletteFingerprint = null, interactionFamily = null, reference = null) {
+    const ref = historyReference(reference);
+    if (!ref) return false;
+    let before = null, after = '';
     try {
-        commitPendingCombo(visualSignature, visualSkeleton, riskFlags, paletteFingerprint, interactionFamily);
-        const history = readHistory();
-        if (!history.length) return;
-        const last = history[history.length - 1];
-        if (visualSignature) last.visualSignature = String(visualSignature).slice(0, 280);
-        if (visualSkeleton) last.visualSkeleton = String(visualSkeleton).slice(0, VISUAL_SKELETON_MAX_CHARS);
-        if (Array.isArray(riskFlags) && riskFlags.length) last.riskFlags = [...new Set(riskFlags)].slice(0, 8);
-        if (paletteFingerprint && typeof paletteFingerprint === 'object') last.paletteFingerprint = paletteFingerprint;
-        const normalizedFamily = normalizeInteractionFamily(interactionFamily);
-        if (normalizedFamily) last.interactionFamily = normalizedFamily;
-        last.visualSignatureTs = Date.now();
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(-MAX_STORED)));
+        before = localStorage.getItem(STORAGE_KEY);
+        const parsed = JSON.parse(before === null ? '[]' : before);
+        const history = Array.isArray(parsed) ? parsed : parsed && typeof parsed === 'object' ? [parsed] : [];
+        const entry = history.find(item => ref.historyId ? item?.historyId === ref.historyId : item?.batchId === ref.batchId && item?.faceIndex === ref.faceIndex);
+        if (!entry) return false;
+        if (visualSignature) entry.visualSignature = String(visualSignature).slice(0, 280);
+        if (visualSkeleton) entry.visualSkeleton = String(visualSkeleton).slice(0, VISUAL_SKELETON_MAX_CHARS);
+        if (Array.isArray(riskFlags)) entry.riskFlags = [...new Set(riskFlags)].slice(0, 8);
+        if (paletteFingerprint && typeof paletteFingerprint === 'object') entry.paletteFingerprint = paletteFingerprint;
+        entry.interactionFamily = normalizeInteractionFamily(interactionFamily);
+        entry.visualSignatureTs = Date.now();
+        after = JSON.stringify(history.slice(-MAX_STORED));
+        if (localStorage.getItem(STORAGE_KEY) !== before) return false;
+        localStorage.setItem(STORAGE_KEY, after);
+        if (localStorage.getItem(STORAGE_KEY) !== after) throw new Error('Visual history read-back mismatch');
+        return true;
     } catch (error) {
-        console.warn('[RabbitMirror] Failed to store visual signature:', error);
+        if (after) restoreOwnedStorageWrite(STORAGE_KEY, after, before);
+        console.warn('[RabbitMirror] Failed to store owned visual signature:', error);
+        return false;
     }
 }

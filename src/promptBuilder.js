@@ -1,23 +1,23 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.33';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.33';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.33';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.33';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.33';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.33';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions, getRecentStructuralCooldown } from './storage.js?rmv=1.62.33';
-import { recentInteractionCooldowns } from './interactionCooldown.js?rmv=1.62.33';
-import { COMPOSITION_LABELS } from './compositionFingerprint.js?rmv=1.62.33';
-import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock } from './visualDiversityPolicy.js?rmv=1.62.33';
-import { visualFamilyForCooldown, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.62.33';
-import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.33';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.33';
-export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.33';
-import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.33';
-import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.33';
-import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.62.33';
-import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.33';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.33';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.33';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.34';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.34';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.34';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.34';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.34';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.34';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions, getRecentStructuralCooldown } from './storage.js?rmv=1.62.34';
+import { recentInteractionCooldowns } from './interactionCooldown.js?rmv=1.62.34';
+import { COMPOSITION_LABELS } from './compositionFingerprint.js?rmv=1.62.34';
+import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock } from './visualDiversityPolicy.js?rmv=1.62.34';
+import { visualFamilyForCooldown, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.62.34';
+import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.34';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.34';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.34';
+import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.34';
+import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.34';
+import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.62.34';
+import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.34';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.34';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.34';
 
 const THEME_ITEMS = new Map(THEMATIC_CATEGORIES.map(item => [item.id, item]));
 const FORMAT_ITEMS = new Map(PRESENTATION_FORMATS.map(item => [item.id, item]));
@@ -496,7 +496,7 @@ function tarotPhysicalImageRule(faceIndexes = []) {
 }
 
 function enhancedVisualDrawingRule() {
-    return '增强视觉绘制：先确定清晰的主体轮廓与阅读焦点，再建立前中后景、遮挡和留白；用真实 CSS 在实际可见的主体节点落实材质、接缝、光源、阴影与排版层级，并让交互前后出现有意义的内容或空间变化。背景渐变、外框阴影和说明文字不能代替主体绘制。主要正文和交互反馈进入正常文档流并由内容撑高；按 360px 手机宽度校验字号、行高与换行，最后一行不得被固定高度、transform 或 overflow 裁切。可自由组合 HTML、CSS 与安全内联 SVG。不固定配色或布局。本面采用动态视觉时（含展现形式组合），动画要求统一以对应的动态视觉规则为准，增强负责绘制质量。未采用动态视觉时，仍可按媒介需要使用 CSS 动画，不强制动画。';
+    return '增强视觉绘制：先确定清晰的主体轮廓与阅读焦点，再建立前中后景、遮挡和留白；用真实 CSS 在实际可见的主体节点落实材质、接缝、光源、阴影与排版层级，并让交互前后出现有意义的内容或空间变化。绘制具体人物时，让姿态、面部、发型或衣物构件承载角色特征；绘制物件时，让内部构造、边缘厚度、接合与使用痕迹承载识别度。按条目需要选择细节，实际画出这些部位及其关系，不能只画匿名几何轮廓，再用长文字代替主体内容。背景渐变、外框阴影和说明文字不能代替主体绘制。主要正文和交互反馈进入正常文档流并由内容撑高；按 360px 手机宽度校验字号、行高与换行，最后一行不得被固定高度、transform 或 overflow 裁切。可自由组合 HTML、CSS 与安全内联 SVG。不固定配色或布局。本面采用动态视觉时（含展现形式组合），动画要求统一以对应的动态视觉规则为准，增强负责绘制质量。未采用动态视觉时，仍可按媒介需要使用 CSS 动画，不强制动画。';
 }
 
 function mediumInteractionConstructionRule() {
@@ -683,7 +683,7 @@ ${DEFAULT_VISUAL_COLOR_RULES}`;
 }
 
 function globalCompletionFloorRule(compact = false) {
-    const rule = '展现形式与媒介本体决定具体长相。成品须主次清楚，比例、空间、材质、信息组织、细节与配色均服务本轮内容；不得把黑／深灰系统面板、蓝色科技 UI、浅暖纸面或通用圆角卡片当作默认高级感模板。';
+    const rule = '展现形式与媒介本体决定具体长相，先构成清楚可辨的主体与内容承载，再由比例、留白、遮挡、材质和排版组织主次。配色从该媒介出发，让背景、主体与阅读区域在明度、冷暖和材质受光上形成有意的关系；保留暗部色彩、中间调与局部高光，以不同材料的纹理、反射和边缘表现质感，不把所有区域压成接近的暗色块，也不把所有材料染成同一种米黄。普通模式按作品决定明暗，深色模式仅约束背景与阅读面的明度，仍保留上述色彩关系和完整玩法。文字媒介用其正文、字级与版式成立，图形媒介用实际绘制的对象成立；按钮、标签页与折叠按媒介功能使用，不能靠减少正常控件代替画面完成度。';
     return compact ? `全局视觉地板：${rule}` : `全局视觉地板【始终适用】：\n${rule}`;
 }
 

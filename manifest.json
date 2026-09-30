@@ -1,10 +1,10 @@
 {
     "display_name": "兔子镜小剧场",
     "loading_order": 100,
-    "js": "index.js?rmv=1.62.33",
-    "css": "style.css?rmv=1.62.33",
+    "js": "index.js?rmv=1.62.34",
+    "css": "style.css?rmv=1.62.34",
     "author": "Toto",
-    "version": "1.62.33",
+    "version": "1.62.34",
     "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
     "auto_update": true,
     "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
         "disable": "onDisable",
         "clean": "onClean"
     },
-    "description": "兔子镜小剧场：按实际画文布局与控件作用识别骨架，近五轮跨轮强避重；共用规则按作用范围只发送一次。"
+    "description": "兔子镜小剧场：选材与视觉历史按生成归属保存，共用主体绘制与配色层次要求；保留动态组合、正文挑签与正常控件。"
 }
