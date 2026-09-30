@@ -1,19 +1,19 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.21';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.21';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.21';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.21';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.21';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.21';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.62.21';
-import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.21';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.21';
-export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.21';
-import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.21';
-import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.21';
-import { isTextPresentation, presentationModeFields } from './presentationMode.js?rmv=1.62.21';
-import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.21';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.21';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.21';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.22';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.22';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.22';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.22';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.22';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.22';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.62.22';
+import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.22';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.22';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.22';
+import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.22';
+import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.22';
+import { isTextPresentation, presentationModeFields } from './presentationMode.js?rmv=1.62.22';
+import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.22';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.22';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.22';
 
 const THEME_ITEMS = new Map(THEMATIC_CATEGORIES.map(item => [item.id, item]));
 const FORMAT_ITEMS = new Map(PRESENTATION_FORMATS.map(item => [item.id, item]));
@@ -280,7 +280,8 @@ function shortVisualAvoidance(combo, limit = 3) {
     }).join('\n');
 }
 
-function recentRiskCorrection() {
+function recentRiskCorrection(settings) {
+    if (settings?.avoidRepeat === false) return '';
     const flags = getRecentRiskFlags(4);
     const counts = getRecentRiskFlagCounts(4);
     if (!flags.length) return '';
@@ -378,7 +379,8 @@ function interactionFamilyCooldownRule(settings) {
   - 交互数量服从内容；存在多个值得探索的内容节点时，须提供多个有效入口或连续阶段。内容天然单焦点时也须把至少一条链做深做完整，不得为“看起来复杂”堆叠无关控件。radio、checkbox、details 本身没有被永久禁止；只有在它们不再构成上述重复骨架、且媒介本体确实需要时才可使用。`;
 }
 
-function visualFamilyCooldownRule() {
+function visualFamilyCooldownRule(settings) {
+    if (settings?.avoidRepeat === false) return '';
     const repeated = getRepeatedVisualFamilyDimensions(3, 2);
     if (!repeated.length) return '';
     const repeatedText = repeated.map(item => `${item.label}「${item.value}」×${item.streak}`).join('；');
@@ -900,8 +902,8 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
     const formats = compactLockItems(combo?.formats, 'presentation');
     const formatContract = compactComboExecutionContract(combo);
     const interaction = interactionFamilyCooldownSnapshot(settings);
-    const repeatedVisualDimensions = getRepeatedVisualFamilyDimensions(3, 2);
-    const paletteCooldownLock = buildPaletteCooldownExecutionLock();
+    const repeatedVisualDimensions = settings?.avoidRepeat === false ? [] : getRepeatedVisualFamilyDimensions(3, 2);
+    const paletteCooldownLock = buildPaletteCooldownExecutionLock(settings);
     if (directive?.pureOrder === true || combo?.pureOrder === true) {
         return [
             '<兔子镜近输出短锁 data-source="independent-api-near-output">',
@@ -939,8 +941,8 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
 
 function buildMultiIndependentExecutionLock(faceContexts, settings, directive) {
     const interaction = interactionFamilyCooldownSnapshot(settings);
-    const repeatedVisualDimensions = getRepeatedVisualFamilyDimensions(3, 2);
-    const paletteCooldownLock = buildPaletteCooldownExecutionLock();
+    const repeatedVisualDimensions = settings?.avoidRepeat === false ? [] : getRepeatedVisualFamilyDimensions(3, 2);
+    const paletteCooldownLock = buildPaletteCooldownExecutionLock(settings);
     const directiveText = settings?.userDirectivePriority && directive?.rawDirective
         ? truncateDirectiveText(directive.rawDirective, 240) : '';
     const visualPreferenceLock = compactVisualPreferenceExecutionLock(settings);
@@ -1146,9 +1148,9 @@ function buildTextAwarePrompt({ faceContexts, settings, directive, memoryMateria
             globalCompletionFloorRule(), settings.enhancedVisualDrawing === true ? enhancedVisualDrawingRule() : '',
             face.visualSceneryMode ? (visualCombinationRule(face.combo) || visualScenerySceneFirstCore())
                 : (face.atmosphereFaces ? '以下通用交互规则仅用于选中非动态视觉签时；选中动态视觉签时执行该签的专用规则。\n' : '') + complexInteractiveCore(),
-            interactionFamilyCooldownRule(settings), buildPaletteCooldownRule(),
-            visualFamilyCooldownRule(), visualColorTruthRule(), presentationWorldviewLockRule(face.combo, settings),
-            settings.avoidRepeat ? `近期视觉避让:\n${shortVisualAvoidance(face.combo, 3)}` : '', recentRiskCorrection());
+            interactionFamilyCooldownRule(settings), buildPaletteCooldownRule(settings),
+            visualFamilyCooldownRule(settings), visualColorTruthRule(), presentationWorldviewLockRule(face.combo, settings),
+            settings.avoidRepeat ? `近期视觉避让:\n${shortVisualAvoidance(face.combo, 3)}` : '', recentRiskCorrection(settings));
         if (face.visualSceneryMode && !face.combo.visualSceneryCombination) local.push(VISUAL_SCENERY_RULES, visualSceneryInteractionLinkRule());
         if (face.tarotRulesText) local.push(tarotPhysicalImageRule([index + 1]), face.tarotRulesText);
         if (face.touchTheaterRulesText) local.push(face.touchTheaterRulesText);
@@ -1251,8 +1253,8 @@ ${selectedFormats}`);
     } else chunks.push(visualSceneryMode ? (visualCombinationRule(combo) || visualScenerySceneFirstCore()) : complexInteractiveCore());
     chunks.push(interactionFamilyCooldownRule(settings));
     if (multiface) chunks.push(buildBatchInteractionDiversityRule(faceContexts.map(face => face.combo), settings));
-    chunks.push(buildPaletteCooldownRule());
-    chunks.push(visualFamilyCooldownRule());
+    chunks.push(buildPaletteCooldownRule(settings));
+    chunks.push(visualFamilyCooldownRule(settings));
     chunks.push(visualColorTruthRule());
     chunks.push(stateBarIsolationRule());
     if (multiface) {
@@ -1267,7 +1269,7 @@ ${selectedFormats}`);
 近期视觉避让:
 ${multiface ? faceContexts.map((face, index) => `第 ${index + 1} 面:\n${shortVisualAvoidance(face.combo, 3)}`).join('\n') : shortVisualAvoidance(combo, 3)}`);
     }
-    chunks.push(recentRiskCorrection());
+    chunks.push(recentRiskCorrection(settings));
 
     if (multiface) {
         const visualFaces = faceContexts.map((face, index) => face.visualSceneryMode && !face.combo.visualSceneryCombination ? index : -1).filter(index => index >= 0);

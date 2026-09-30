@@ -1,8 +1,8 @@
-import { presentationModeFields } from './presentationMode.js?rmv=1.62.21';
-import { getCurrentChatKey, retargetPendingAtmosphereFromHtml, updateLatestVisualSignature } from './storage.js?rmv=1.62.21';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.62.21';
-import { getSettings } from './settings.js?rmv=1.62.21';
-import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.62.21';
+import { presentationModeFields } from './presentationMode.js?rmv=1.62.22';
+import { getCurrentChatKey, retargetPendingAtmosphereFromHtml, updateLatestVisualSignature } from './storage.js?rmv=1.62.22';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.62.22';
+import { getSettings } from './settings.js?rmv=1.62.22';
+import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.62.22';
 import {
     commitRabbitMirrorFollowBatch,
     captureRabbitMirrorGenerationSnapshots,
@@ -12,17 +12,17 @@ import {
     inspectRabbitMirrorGenerationSource,
     releaseRabbitMirrorFollowBatch,
     releaseRabbitMirrorFollowBatchAtMessage,
-} from './generationGuard.js?rmv=1.62.21';
+} from './generationGuard.js?rmv=1.62.22';
 import {
     clearSanitizedRabbitMirrorFaceProof,
     getSanitizedRabbitMirrorFaceProof,
     markSanitizedRabbitMirrorFace,
     rabbitMirrorMultifaceSourceHash,
-} from './multifaceProof.js?rmv=1.62.21';
-import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.62.21';
-import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.62.21';
-import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.62.21';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.21';
+} from './multifaceProof.js?rmv=1.62.22';
+import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.62.22';
+import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.62.22';
+import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.62.22';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.22';
 
 export const FOLLOW_MULTIFACE_COMMITTED_EVENT = 'rabbit-mirror:follow-multiface-committed';
 export const FOLLOW_MULTIFACE_REJECTED_EVENT = 'rabbit-mirror:follow-multiface-rejected';
@@ -854,14 +854,26 @@ function detectPaletteFingerprint(html, renderedToto = null) {
 }
 
 function detectSurfaceFamily(html, plain = '') {
-    const text = `${html || ''}\n${plain || ''}`.toLowerCase();
-    const base = detectBaseColor(html);
-    if (/纸|信笺|便签|票据|菜单|说明书|羊皮纸|报纸|签文|paper|newspaper|ticket|menu|manual|letter/i.test(text)) return 'surface: paper_or_document_surface';
-    if (/玻璃|磨砂|透明|backdrop-filter|blur\(|rgba\([^)]*0\.[0-9]/i.test(text)) return 'surface: glass_or_translucent_surface';
-    if (/金属|铁|铜|钢|铝|metal|chrome|silver|bronze/i.test(text)) return 'surface: metallic_or_hard_surface';
-    if (/木|布|织物|陶瓷|皮革|石|wood|fabric|ceramic|leather|stone/i.test(text)) return 'surface: physical_material_surface';
-    if (/radial-gradient|conic-gradient|linear-gradient|repeating-gradient/i.test(text)) return 'surface: gradient_or_light_surface';
-    if (/暗色|黑|夜|neon|霓虹|glow|发光|console|screen|屏幕|控制台|监控/i.test(text) || base.includes('暗色')) return 'surface: digital_dark_surface';
+    const source = String(html || '');
+    // CSS property names, classes and internal selection/planning tags are not
+    // evidence of a paper material (letter-spacing, tool-menu, rm-ticket).
+    const content = source.replace(/<!--[\s\S]*?-->/g, '')
+        .replace(/<(rm-think|rm-ticket)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, '');
+    const text = stripTags(content).toLowerCase();
+    const css = [
+        ...[...content.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map(match => match[1]),
+        ...[...content.matchAll(/\sstyle\s*=\s*(["'])([\s\S]*?)\1/gi)].map(match => match[2]),
+    ].join('\n');
+    const backgrounds = extractBackgroundValues(content).join('\n');
+    const base = detectBaseColor(content);
+    if (/纸|信笺|便签|票据|菜单|说明书|羊皮纸|报纸|签文|\b(?:paper|newspaper|tickets?|menus?|manuals?|letters?)\b/i.test(text)) return 'surface: paper_or_document_surface';
+    if (/玻璃|磨砂|透明|\b(?:glass|frosted|translucent)\b/i.test(text)
+        || /backdrop-filter\s*:\s*[^;}]*blur\(/i.test(css)
+        || /(?:rgba|hsla)\([^)]*,\s*(?:0?\.\d+|0)\s*\)/i.test(backgrounds)) return 'surface: glass_or_translucent_surface';
+    if (/金属|铁|铜|钢|铝|\b(?:metal|chrome|silver|bronze)\b/i.test(text)) return 'surface: metallic_or_hard_surface';
+    if (/木|布|织物|陶瓷|皮革|石|\b(?:wood|fabric|ceramic|leather|stone)\b/i.test(text)) return 'surface: physical_material_surface';
+    if (/radial-gradient|conic-gradient|linear-gradient|repeating-gradient/i.test(backgrounds)) return 'surface: gradient_or_light_surface';
+    if (/暗色|黑|夜|\b(?:neon|glow|console|screen)\b|霓虹|发光|屏幕|控制台|监控/i.test(text) || base.includes('暗色')) return 'surface: digital_dark_surface';
     if (base.includes('浅色')) return 'surface: light_plain_surface';
     return 'surface: mixed_or_unspecified_surface';
 }
@@ -877,11 +889,15 @@ function detectContourFamily(html, dom) {
 }
 
 function detectSpaceFamily(html, spatialSignalCount) {
-    const text = String(html || '');
-    if (spatialSignalCount >= 4) return 'space: layered_depth_or_spatial_scene';
+    // An SVG path is a shape, not a depth layer. Count positioned HTML layers
+    // separately from the broader drawing signals used by the quality scanner.
+    const text = String(html || '').replace(/<svg\b[^>]*>[\s\S]*?<\/svg>/gi, '');
+    const positionedLayers = count(/position\s*:\s*absolute/gi, text);
+    const depthLayers = count(/z-index\s*:/gi, text);
+    if (positionedLayers >= 3 || (positionedLayers >= 2 && depthLayers >= 2)) return 'space: layered_depth_or_spatial_scene';
     if (/display\s*:\s*grid|grid-template/i.test(text)) return 'space: grid_plane';
     if (/display\s*:\s*flex/i.test(text)) return 'space: flex_plane';
-    if (spatialSignalCount >= 2) return 'space: shallow_layered_surface';
+    if (positionedLayers > 0) return 'space: shallow_layered_surface';
     return 'space: flat_content_surface';
 }
 
@@ -1287,7 +1303,7 @@ function templateSingleFollowRoot(template) {
 
 function loadFollowBatchSanitizer() {
     if (!followBatchSanitizerModulePromise) {
-        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.62.21').catch(error => {
+        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.62.22').catch(error => {
             followBatchSanitizerModulePromise = null;
             console.debug('[RabbitMirror] follow multiface sanitizer unavailable:', error);
             return null;

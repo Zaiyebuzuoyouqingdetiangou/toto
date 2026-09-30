@@ -1,7 +1,7 @@
 import {
     getActivePaletteCooldown,
     getRepeatedPaletteFamily,
-} from './storage.js?rmv=1.62.21';
+} from './storage.js?rmv=1.62.22';
 
 const SAFE_PALETTE_LABEL_RE = /^(?:(?:低|中|高)明度)?(?:暖|冷|中性)?(?:红|橙|黄|绿|青|蓝|紫|粉|中性色)?(?:(?:低|中|高)饱和)?$/;
 
@@ -32,7 +32,8 @@ function normalizedDarkCooldown() {
     return { remaining: boundedInteger(dark.remaining, 1, 5) };
 }
 
-export function buildPaletteCooldownExecutionLock() {
+export function buildPaletteCooldownExecutionLock(settings) {
+    if (settings?.avoidRepeat === false) return '';
     const repeated = normalizedRepeatedPalette();
     const dark = normalizedDarkCooldown();
     return [
@@ -45,7 +46,8 @@ export function buildPaletteCooldownExecutionLock() {
     ].filter(Boolean).join('；');
 }
 
-export function buildPaletteCooldownRule() {
+export function buildPaletteCooldownRule(settings) {
+    if (settings?.avoidRepeat === false) return '';
     const repeated = normalizedRepeatedPalette();
     const dark = normalizedDarkCooldown();
     if (!repeated && !dark) return '';

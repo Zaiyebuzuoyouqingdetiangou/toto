@@ -1,7 +1,7 @@
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.21';
-import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.62.21';
-import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.62.21';
-import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.62.21';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.22';
+import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.62.22';
+import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.62.22';
+import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.62.22';
 
 const STORAGE_KEY = 'rabbit_mirror_theater:last_combo:v11';
 const PENDING_KEY = 'rabbit_mirror_theater:pending_combo:v11';
@@ -558,6 +558,14 @@ export function parseVisualFamilySkeleton(value = '') {
     return parsed;
 }
 
+// Space categories describe available drawing/layout techniques, not a repeated
+// composition. Keep them in diagnostics, but never cool down depth itself.
+export function visualFamilyForCooldown(family = {}) {
+    return Object.fromEntries(Object.entries(VISUAL_FAMILY_DIMENSION_LABELS)
+        .filter(([key]) => key !== 'space_family' && family?.[key])
+        .map(([key]) => [key, family[key]]));
+}
+
 export function describeVisualFamilyDimensions(family = {}) {
     if (!family || typeof family !== 'object') return '';
     return Object.entries(VISUAL_FAMILY_DIMENSION_LABELS)
@@ -583,7 +591,7 @@ export function getRepeatedVisualFamilyDimensions(window = 3, threshold = 2) {
     const span = Math.max(2, Number(window) || 3);
     const hits = Math.max(2, Number(threshold) || 2);
     const chronological = getComboHistory(span)
-        .map(item => parseVisualFamilySkeleton(item?.visualSkeleton || ''))
+        .map(item => visualFamilyForCooldown(parseVisualFamilySkeleton(item?.visualSkeleton || '')))
         .filter(family => Object.keys(family).length);
     if (chronological.length < hits) return [];
 

@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜小剧场",
   "loading_order": 100,
-  "js": "index.js?rmv=1.62.21",
-  "css": "style.css?rmv=1.62.21",
+  "js": "index.js?rmv=1.62.22",
+  "css": "style.css?rmv=1.62.22",
   "author": "Toto",
-  "version": "1.62.21",
+  "version": "1.62.22",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜小剧场：新增默认关闭的一次性独立 API 生成取证，导出同一次请求、模型可见原文和处理后 HTML；保留 1.62.20 生成与美化规则。"
+  "description": "兔子镜小剧场：修复避重复关闭后仍注入历史视觉冷却、CSS 字间距等被误认纸面、通用空间层次被冷却；保留发送顺序、正文挑签及视觉增强规则。"
 }
