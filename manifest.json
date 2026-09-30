@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜小剧场",
   "loading_order": 100,
-  "js": "index.js?rmv=1.62.22",
-  "css": "style.css?rmv=1.62.22",
+  "js": "index.js?rmv=1.62.23",
+  "css": "style.css?rmv=1.62.23",
   "author": "Toto",
-  "version": "1.62.22",
+  "version": "1.62.23",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜小剧场：修复避重复关闭后仍注入历史视觉冷却、CSS 字间距等被误认纸面、通用空间层次被冷却；保留发送顺序、正文挑签及视觉增强规则。"
+  "description": "兔子镜小剧场：合并候选签共用视觉规则，保留正文挑签；明确增强绘制与媒介状态联动，增加页面、安装版本和分支核对。"
 }

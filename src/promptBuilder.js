@@ -1,19 +1,19 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.22';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.22';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.22';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.22';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.22';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.22';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.62.22';
-import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.22';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.22';
-export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.22';
-import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.22';
-import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.22';
-import { isTextPresentation, presentationModeFields } from './presentationMode.js?rmv=1.62.22';
-import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.22';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.22';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.22';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.23';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.23';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.23';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.23';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.23';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.23';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.62.23';
+import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.23';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.23';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.23';
+import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.23';
+import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.23';
+import { isTextPresentation, presentationModeFields } from './presentationMode.js?rmv=1.62.23';
+import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.23';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.23';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.23';
 
 const THEME_ITEMS = new Map(THEMATIC_CATEGORIES.map(item => [item.id, item]));
 const FORMAT_ITEMS = new Map(PRESENTATION_FORMATS.map(item => [item.id, item]));
@@ -461,7 +461,7 @@ function tarotPhysicalImageRule(faceIndexes = []) {
 }
 
 function enhancedVisualDrawingRule() {
-    return '增强视觉绘制：先确定清晰的主体轮廓与阅读焦点，再建立前中后景、遮挡和留白；用真实 CSS 落实材质、接缝、光源、阴影与排版层级，并让交互前后出现有意义的内容或空间变化。主要正文和交互反馈必须进入正常文档流并由内容撑高；按 360px 手机宽度校验字号、行高与换行，最后一行不得被固定高度、transform 或 overflow 裁切。可自由组合 HTML、CSS 与安全内联 SVG，不要求固定布局或每轮使用 SVG。';
+    return '增强视觉绘制：把绘制投入优先用于本轮展现形式的主体轮廓、内部结构、材质与空间关系。鼓励按需组合安全内联 SVG 的路径与渐变、HTML/CSS 的层叠、遮罩、光影和动画，具体技术由媒介决定，不强制每轮使用 SVG 或动画。让主体占据清晰的视觉重心，以前中后景、遮挡、接缝和受光细节形成完整构图；渐变、投影和装饰服务于主体，不能代替主体绘制。适合运动的媒介，让动画表现对象的动作、结构、材质或关系；适合状态变化的媒介，让控件驱动对象本身的变化，并以文字辅助反馈。文字媒介仍保留完整正文与版式。主要正文和交互反馈进入正常文档流并由内容撑高；按 360px 手机宽度校验字号、行高与换行，最后一行不得被固定高度、transform 或 overflow 裁切。不固定配色或布局。';
 }
 
 function compactCreativeRule(enabled, formatOnly = false) {
@@ -507,7 +507,7 @@ function visualCombinationRule(combo) {
   - 主要动态画面根节点必须标记 data-rm-visual-scenery="true"，有可辨认的背景层、中景主体层与前景／叙事层；未操作时核心画面就完整可见。至少一条主动画和一条协同环境动画打开即循环；每面最多 1 条主连续动画 + 1 条辅助连续动画。
   - 主动画须有真实 @keyframes、可见元素 animation 与 infinite，打开 1 秒内产生肉眼可见的位移／缩放／旋转／形变／遮罩／流体／光影变化；只写 transition、动画名、SVG、微尘或低对比呼吸不算。动画承载真实的空间、关系或叙事变化；原有 transform 须保留，或由外层容器承载动画。
   - 辅助动画与主动画共同服务构图；禁止粒子群、批量重复动画节点及大面积 blur、filter、backdrop-filter。
-  - 交互依抽中的形式自然产生，须真实可触摸并改变内容、关系、结构、空间、材质、时间或观察方式；动态与交互不能互相替代。可以有该媒介需要的正文和控件，不能把正文降格为画面说明或删除其阅读路径。
+  - 交互依抽中的形式自然产生，控件状态须实际关联媒介本体中对应的可见对象。图形、装置或场景型媒介，操作应改变对象的形态、位置、关系、材质或观察状态；例如物品时间轴的阶段变化应体现在物件的磨损、结构或使用状态上，文字同步说明，不能仅切换下方段落。文字型媒介保留完整正文、阅读路径及其应有的翻阅或展开；这些例子不限定媒介。动态与交互不能互相替代。
   - 主要正文和反馈进入正常文档流，由内容撑高；纯装饰与短标签才可定位裁切。手机窄屏仍能读到各状态的最后一行。`;
 }
 
@@ -537,7 +537,7 @@ function visualSceneryInteractionLinkRule() {
     return String.raw`
 Visual Scenery 动态与交互:
   - 画面打开后必须通过完整、持续且肉眼可见的 CSS 动画成立，核心内容不得依赖用户操作才能出现。
-  - 完整交互链使内容、关系、结构、空间、材质、时间或观察方式产生明确、有意义的第二状态；动画与交互不能互相替代。
+  - 完整交互链让被操作的画面对象在形态、关系、结构、空间、材质、时间或观察方式上产生明确、有意义的第二状态；控件的状态选择器须实际作用于对应画面节点，反馈文字同步变化。持续动画与交互状态不能互相替代。
   - 交互须发生在画面本体内部，不得另加脱离场景的操作面板或大段说明；用户未操作时仍须具有完整构图、清晰主体与持续生命感。`;
 }
 
@@ -864,13 +864,36 @@ function atmosphereConditionalRules(face) {
     return face.atmosphereFaces.map((candidate, index) => {
         const rules = [
             presentationWorldviewLockRule(candidate.combo, face.settings),
-            candidate.visualSceneryMode ? (visualCombinationRule(candidate.combo) ||
-                [visualScenerySceneFirstCore(), VISUAL_SCENERY_RULES, visualSceneryInteractionLinkRule()].join('\n')) : '',
             candidate.tarotRulesText ? `本签凡展示具体塔罗牌，使用以下规则的白名单实体牌图。\n${candidate.tarotRulesText}` : '',
             candidate.touchTheaterRulesText,
         ].filter(Boolean);
         return rules.length ? `仅选中签 ${index + 1} 时适用，未选中时不执行：\n${rules.join('\n')}` : '';
     }).filter(Boolean).join('\n\n');
+}
+
+// Share identical mode instructions, not candidate materials. Every body keeps
+// its exact face/ticket scope; an unchosen ticket never supplies another's rules.
+function sharedHtmlModeRules(faces) {
+    const groups = new Map();
+    faces.forEach((face, faceIndex) => {
+        if (face.textPresentation) return;
+        (face.atmosphereFaces || [face]).forEach((candidate, ticketIndex) => {
+            const body = candidate.visualSceneryMode
+                ? (visualCombinationRule(candidate.combo) || [visualScenerySceneFirstCore(), VISUAL_SCENERY_RULES, visualSceneryInteractionLinkRule()].join('\n'))
+                : complexInteractiveCore();
+            if (!groups.has(body)) groups.set(body, new Map());
+            const scopes = groups.get(body);
+            if (!scopes.has(faceIndex)) scopes.set(faceIndex, []);
+            if (face.atmosphereFaces) scopes.get(faceIndex).push(ticketIndex + 1);
+        });
+    });
+    return [...groups].map(([body, scopes]) => {
+        if (faces.length === 1 && !faces[0].atmosphereFaces) return body;
+        const labels = [...scopes].map(([index, tickets]) => tickets.length
+            ? `第 ${index + 1} 面：仅选中签 ${tickets.join('、')} 时适用`
+            : `第 ${index + 1} 面`);
+        return `共用 HTML 模式规则【${labels.join('；')}】\n仅上述面与选中签执行；其他候选及文本面不执行。\n${body}`;
+    }).join('\n\n');
 }
 
 function faceBehaviorRuleBlock(settings, faces) {
@@ -1123,6 +1146,8 @@ function buildTextAwarePrompt({ faceContexts, settings, directive, memoryMateria
     chunks.push(sharedMemoryMaterialRule(memoryMaterial));
     if (independent) chunks.push(faceBehaviorRuleBlock(settings, faceContexts));
     chunks.push(stateBarIsolationRule());
+    if (htmlNumbers.length && settings.enhancedVisualDrawing === true) chunks.push(`增强仅作用于 HTML 面（第 ${htmlNumbers.join('、')} 面）：\n${enhancedVisualDrawingRule()}`);
+    chunks.push(sharedHtmlModeRules(faceContexts));
     faceContexts.forEach((face, index) => {
         const mode = face.combo.samplingMode || settings.samplingMode || 'classic';
         const local = [`【第 ${index + 1} 面｜${face.textPresentation ? '文本' : 'HTML'}｜输出 data-rm-face="${index + 1}"】`,
@@ -1145,13 +1170,10 @@ function buildTextAwarePrompt({ faceContexts, settings, directive, memoryMateria
         }
         local.push(directiveRule, compactCreativeRule(!!settings.creativeExpansionMode, mode === 'format_only'),
             settings.visualPromptEditingEnabled ? presentationEmbodimentRule() : legacyPresentationEmbodimentRule(),
-            globalCompletionFloorRule(), settings.enhancedVisualDrawing === true ? enhancedVisualDrawingRule() : '',
-            face.visualSceneryMode ? (visualCombinationRule(face.combo) || visualScenerySceneFirstCore())
-                : (face.atmosphereFaces ? '以下通用交互规则仅用于选中非动态视觉签时；选中动态视觉签时执行该签的专用规则。\n' : '') + complexInteractiveCore(),
+            globalCompletionFloorRule(),
             interactionFamilyCooldownRule(settings), buildPaletteCooldownRule(settings),
             visualFamilyCooldownRule(settings), visualColorTruthRule(), presentationWorldviewLockRule(face.combo, settings),
             settings.avoidRepeat ? `近期视觉避让:\n${shortVisualAvoidance(face.combo, 3)}` : '', recentRiskCorrection(settings));
-        if (face.visualSceneryMode && !face.combo.visualSceneryCombination) local.push(VISUAL_SCENERY_RULES, visualSceneryInteractionLinkRule());
         if (face.tarotRulesText) local.push(tarotPhysicalImageRule([index + 1]), face.tarotRulesText);
         if (face.touchTheaterRulesText) local.push(face.touchTheaterRulesText);
         local.push(atmosphereConditionalRules(face));
@@ -1241,16 +1263,7 @@ ${selectedFormats}`);
     if (settings?.enhancedVisualDrawing === true) {
         chunks.push(enhancedVisualDrawingRule());
     }
-    const combinationFaces = multiface ? faceContexts.filter(face => face.combo.visualSceneryCombination === true) : [];
-    if (faceContexts?.some(face => face.atmosphereFaces)) chunks.push('候选菜单中的动态视觉签只执行其条件专用规则，下面的通用交互核心用于其他签；不把某张候选的规则借给未选中的签。');
-    if (multiface) {
-        combinationFaces.forEach(face => chunks.push(`第 ${faceContexts.indexOf(face) + 1} 面：${visualCombinationRule(face.combo)}`));
-        const nonVisualFaces = faceContexts.map((face, index) => !face.visualSceneryMode ? index : -1).filter(index => index >= 0);
-        if (nonVisualFaces.length === faceContexts.length) chunks.push(complexInteractiveCore());
-        else if (nonVisualFaces.length) chunks.push(`通用交互规则仅作用于第 ${nonVisualFaces.map(index => index + 1).join('、')} 面：\n${complexInteractiveCore()}`);
-        const visualFaces = faceContexts.map((face, index) => face.visualSceneryMode && !face.combo.visualSceneryCombination ? index : -1).filter(index => index >= 0);
-        if (visualFaces.length) chunks.push(`Visual Scenery 局部覆盖：以下完整规则只作用于第 ${visualFaces.map(index => index + 1).join('、')} 面，其他面继续执行通用复杂交互核心。\n${visualScenerySceneFirstCore()}`);
-    } else chunks.push(visualSceneryMode ? (visualCombinationRule(combo) || visualScenerySceneFirstCore()) : complexInteractiveCore());
+    chunks.push(sharedHtmlModeRules(faceContexts || [{ combo, visualSceneryMode }]));
     chunks.push(interactionFamilyCooldownRule(settings));
     if (multiface) chunks.push(buildBatchInteractionDiversityRule(faceContexts.map(face => face.combo), settings));
     chunks.push(buildPaletteCooldownRule(settings));
@@ -1271,16 +1284,6 @@ ${multiface ? faceContexts.map((face, index) => `第 ${index + 1} 面:\n${shortV
     }
     chunks.push(recentRiskCorrection(settings));
 
-    if (multiface) {
-        const visualFaces = faceContexts.map((face, index) => face.visualSceneryMode && !face.combo.visualSceneryCombination ? index : -1).filter(index => index >= 0);
-        if (visualFaces.length) {
-            chunks.push(`以下 Visual Scenery 规则只作用于第 ${visualFaces.map(index => index + 1).join('、')} 面:\n${VISUAL_SCENERY_RULES}`);
-            chunks.push(`第 ${visualFaces.map(index => index + 1).join('、')} 面：${visualSceneryInteractionLinkRule()}`);
-        }
-    } else if (visualSceneryMode && !combo.visualSceneryCombination) {
-        chunks.push(VISUAL_SCENERY_RULES);
-        chunks.push(visualSceneryInteractionLinkRule());
-    }
     (faceContexts || []).forEach((face, index) => {
         const conditional = atmosphereConditionalRules(face);
         if (conditional) chunks.push(`第 ${index + 1} 面候选专用规则：\n${conditional}`);

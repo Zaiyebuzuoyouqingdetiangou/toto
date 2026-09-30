@@ -36,6 +36,60 @@ async function hostRequestHeaders() {
     return (await import('../../../../../script.js')).getRequestHeaders();
 }
 
+// Explicit diagnostic only. Read the currently served installation and the
+// host's registered branch; never checkout, pull, clear caches or reload here.
+export async function inspectRabbitMirrorVersion({ fetchImpl = globalThis.fetch.bind(globalThis), getHeaders,
+    moduleUrl = import.meta.url, pageVersion = globalThis.__rabbitMirrorRuntimeVersion,
+    uiVersion, apiVersion } = {}) {
+    const folder = ownExtensionFolder(moduleUrl);
+    const manifestUrl = new URL('../manifest.json', moduleUrl);
+    manifestUrl.searchParams.set('rm-check', String(Date.now()));
+    const version = value => typeof value === 'string' && /^[0-9][\w.+-]{0,79}$/.test(value) ? value : '';
+    const result = { folder, pageVersion: version(pageVersion), uiVersion: version(uiVersion),
+        apiVersion: version(apiVersion), installedVersion: '', branch: '', commit: '', installType: '', warnings: [] };
+    const checks = await Promise.allSettled([
+        (async () => {
+            const response = await fetchWithTimeout(fetchImpl, manifestUrl.href, { cache: 'no-store' }, 15000, '读取安装版本');
+            if (!response.ok) throw new Error('无法读取当前安装目录的 manifest');
+            const manifest = await response.json();
+            result.installedVersion = version(manifest?.version);
+            if (!result.installedVersion) throw new Error('安装文件未返回有效版本号');
+        })(),
+        (async () => {
+            const discovery = await fetchWithTimeout(fetchImpl, '/api/extensions/discover', { cache: 'no-store' }, 15000, '读取扩展列表');
+            if (!discovery.ok) throw new Error('宿主不支持读取安装列表');
+            const entries = await discovery.json();
+            const matches = Array.isArray(entries) ? entries.filter(e => e?.name === `third-party/${folder}`) : [];
+            const entry = matches.find(e => e.type === 'local') || matches.find(e => e.type === 'global');
+            if (!entry) throw new Error('宿主未识别当前安装目录');
+            result.installType = entry.type;
+            const headers = getHeaders ? await getHeaders() : await hostRequestHeaders();
+            const response = await fetchWithTimeout(fetchImpl, '/api/extensions/version', {
+                method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ extensionName: folder, global: entry.type === 'global' }),
+            }, 15000, '读取安装分支');
+            if (!response.ok) throw new Error('宿主未返回分支信息（不支持接口、非 Git 安装或仓库连接失败）');
+            const info = await response.json();
+            result.branch = typeof info?.currentBranchName === 'string' ? info.currentBranchName.slice(0, 160) : '';
+            result.commit = /^[a-f0-9]{7,64}$/i.test(info?.currentCommitHash || '') ? info.currentCommitHash.slice(0, 12) : '';
+            if (!result.branch) result.warnings.push('分支未知；可能为 ZIP 安装或宿主不提供 Git 信息');
+        })(),
+    ]);
+    checks.forEach(check => { if (check.status === 'rejected') result.warnings.push(String(check.reason?.message || '版本读取失败')); });
+    return result;
+}
+
+export function formatRabbitMirrorVersionStatus(result) {
+    const show = value => value || '未知';
+    const loaded = [result.pageVersion, result.uiVersion, result.apiVersion].filter(Boolean);
+    const known = [...loaded, result.installedVersion].filter(Boolean);
+    const mismatch = new Set(known).size > 1;
+    const hint = mismatch
+        ? '版本不一致。请结束生成并保存输入后整页刷新；若仍不一致，检查当前安装目录与分支。'
+        : known.length === 4 ? '页面与安装文件版本一致；请核对分支是否为你更新的目标分支。' : '部分版本未能读取，暂不能确认是否一致。';
+    return `页面入口：${show(result.pageVersion)}；设置模块：${show(result.uiVersion)}；生成模块：${show(result.apiVersion)}；安装文件：${show(result.installedVersion)}。安装目录：${result.folder}；分支：${show(result.branch)}${result.commit ? `（${result.commit}）` : ''}。${hint}${result.warnings.length ? ' ' + result.warnings.join('；') : ''}`;
+}
+
 export function requestRabbitMirrorUpdate({ fetchImpl = globalThis.fetch.bind(globalThis), getHeaders, moduleUrl = import.meta.url } = {}) {
     if (pending) return pending;
     pending = (async () => {
