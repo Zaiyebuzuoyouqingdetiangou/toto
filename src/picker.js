@@ -1,5 +1,5 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.26';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.26';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.29';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.29';
 import {
     getCurrentChatKey,
     getDirectiveScopedPick,
@@ -17,11 +17,11 @@ import {
     clearPendingComboBatch,
     createPendingComboBatchPlan,
     findPendingComboBatchPlan,
-} from './storage.js?rmv=1.62.26';
-import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.62.26';
-import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.62.26';
-import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.26';
-import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.62.26';
+} from './storage.js?rmv=1.62.29';
+import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.62.29';
+import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.62.29';
+import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.29';
+import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.62.29';
 import {
     chooseExternalSource,
     externalPoolActive,
@@ -31,7 +31,7 @@ import {
     getExternalPoolSnapshot,
     pickExternalItems,
     sourceMixModeIsExternalOnly,
-} from './externalWorldBook/externalPool.js?rmv=1.62.26';
+} from './externalWorldBook/externalPool.js?rmv=1.62.29';
 
 function randomUnit() {
     try {
@@ -288,7 +288,7 @@ function weightedSample(pool, count, recentIds = [], recentGroups = [], avoidRep
         if (filtered.length >= count) candidates = filtered;
     }
 
-    // 正式冷却历史仍按原设置执行。
+    // Random draws always receive the strong-diversity policy at public entry points.
     if (avoidRepeat) {
         const filtered = candidates.filter(x => !recent.has(x.id));
         if (filtered.length >= count) candidates = filtered;
@@ -301,6 +301,13 @@ function weightedSample(pool, count, recentIds = [], recentGroups = [], avoidRep
     const usedGroups = new Set();
     while (selected.length < count && used.size < candidates.length) {
         let available = candidates.filter(item => !used.has(item.id));
+        if (avoidRepeat) {
+            // Exhaust fresh IDs before reopening recent entries in a small pool.
+            const freshIds = available.filter(item => !recent.has(item.id) && !hardExcluded.has(item.id));
+            if (freshIds.length) available = freshIds;
+            const minHits = Math.min(...available.map(item => Number(recentFamilyHitMap?.[formatFamilyKey(item)] || 0)));
+            available = available.filter(item => Number(recentFamilyHitMap?.[formatFamilyKey(item)] || 0) === minHits);
+        }
         // Maximise immediate-family avoidance instead of falling back all-or-nothing:
         // consume every still-unseen fresh family first, then reopen an older family
         // only when it is needed to fill the remaining slots.
@@ -426,6 +433,13 @@ function weightedThemeSample(pool, count, recentIds = [], recentGroups = [], avo
     while (selected.length < targetCount) {
         let availableFamilies = familyList.filter(family => !usedFamilies.has(family.key));
         if (!availableFamilies.length) break;
+        if (avoidRepeat) {
+            const freshIds = availableFamilies.filter(family => family.items.some(item => !recent.has(item.id) && !hardExcluded.has(item.id)));
+            if (freshIds.length) availableFamilies = freshIds;
+            const hits = family => Number(recentFamilyHitMap?.[family.key] || (recentFamilySet.has(family.key) ? 1 : 0));
+            const minHits = Math.min(...availableFamilies.map(hits));
+            availableFamilies = availableFamilies.filter(family => hits(family) === minHits);
+        }
         const freshFamilies = availableFamilies.filter(family => !immediateFamilies.has(family.key));
         if (freshFamilies.length) availableFamilies = freshFamilies;
 
@@ -1514,9 +1528,9 @@ function liveBatchResult(plan, directive) {
 function addBatchInteractionDiversity(combos, settings) {
     // New multi-face plans only. Do not read history or consume entropy in the
     // single-face/off/cache paths, and never infer a mechanism from raw content.
-    if (!settings?.avoidRepeat || combos.length < 2 || combos.length > 5) return;
+    if (combos.length < 2 || combos.length > 5) return;
     const hints = planBatchInteractionDiversity(combos.length, {
-        enabled: true, recentFamilies: getRecentInteractionFamilies(5),
+        enabled: true, recentFamilies: getRecentInteractionFamilies(5, { preserveEmpty: true }),
         presentationModes: combos.map(combo => combo.presentationMode || 'html'),
     });
     if (hints) combos.forEach((combo, index) => { if (hints[index]) combo.interactionDiversity = hints[index]; });
@@ -1597,6 +1611,7 @@ export function buildPureOrderSelection(settings, order) {
 }
 
 export function pickCombinationForMultifaceResay(settings, resay) {
+    settings = { ...settings, avoidRepeat: true };
     if (!resay || !Number.isSafeInteger(resay.faceIndex) || resay.faceIndex < 0 ||
         !Array.isArray(resay.faces) || resay.faceIndex >= resay.faces.length || resay.faces.length > 5) {
         throw multiFacePlanningError('未找到要重新生成的兔子镜面；本次尚未发送请求。', 'BATCH_RESAY_FACE_MISSING');
@@ -1631,6 +1646,7 @@ export function pickCombinationForMultifaceResay(settings, resay) {
 }
 
 export function pickCombinationBatch(settings, generationScopeKey = '', generationContext = null, faceCount = 1) {
+    settings = { ...settings, avoidRepeat: true };
     // 单面严格早返回：不得读取、清除或触碰另一轮 pending batch。
     if (!Number.isSafeInteger(faceCount) || faceCount < 2 || faceCount > 5) return [pickCombination(settings, generationScopeKey, generationContext)];
 
@@ -1691,6 +1707,7 @@ export function pickCombinationBatch(settings, generationScopeKey = '', generati
 }
 
 export function pickCombination(settings, generationScopeKey = '', generationContext = null) {
+    settings = { ...settings, avoidRepeat: true };
     const scopeKey = normalizeGenerationScopeKey(generationScopeKey);
     if (scopeKey && cachedPick?.scopeKey === scopeKey) return cachedPick.payload;
 

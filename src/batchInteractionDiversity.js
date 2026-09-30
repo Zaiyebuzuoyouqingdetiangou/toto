@@ -1,7 +1,7 @@
 // Pure, bounded generation preferences. These are not output gates, candidate
 // filters or a menu of interaction components. Unknown/native mechanisms remain
 // free to be designed by the model; no mother-library text is inspected here.
-import { INTERACTION_FAMILY_LABELS as FAMILY_LABELS, recentInteractionCooldowns } from './interactionCooldown.js?rmv=1.62.26';
+import { INTERACTION_FAMILY_LABELS as FAMILY_LABELS, recentInteractionCooldowns } from './interactionCooldown.js?rmv=1.62.29';
 
 function recentRepeatedFamilies(recentFamilies) {
     return recentInteractionCooldowns(recentFamilies).map(item => item.id);
@@ -24,11 +24,11 @@ export function planBatchInteractionDiversity(faceCount, { enabled = false, rece
 
 /** Render once for the batch. Missing old hints are a no-op, never a failure. */
 export function buildBatchInteractionDiversityRule(combos, settings) {
-    if (!settings?.avoidRepeat || !Array.isArray(combos) || combos.length < 2 || combos.length > 5) return '';
+    if (!Array.isArray(combos) || combos.length < 2 || combos.length > 5) return '';
     const htmlIndices = combos.map((combo, index) => combo?.presentationMode === 'text' ? -1 : index).filter(index => index >= 0);
     if (htmlIndices.length < 2) return '';
     const first = combos[htmlIndices[0]]?.interactionDiversity;
-    if (!first || !Array.isArray(first.recentAvoidFamilyIds) || first.recentAvoidFamilyIds.length > 2 ||
+    if (!first || !Array.isArray(first.recentAvoidFamilyIds) || first.recentAvoidFamilyIds.length > Object.keys(FAMILY_LABELS).length ||
         first.recentAvoidFamilyIds.some(id => !Object.hasOwn(FAMILY_LABELS, id))) return '';
     const expected = planBatchInteractionDiversity(combos.length, { enabled: true, presentationModes: combos.map(combo => combo?.presentationMode || 'html') });
     for (const index of htmlIndices) {
@@ -43,10 +43,10 @@ export function buildBatchInteractionDiversityRule(combos, settings) {
     }
     const recent = first.recentAvoidFamilyIds.map(id => FAMILY_LABELS[id]).join('、');
     const opening = htmlIndices.length === combos.length
-        ? `本批交互分散：从第 2 面起对照此前各面，优先换主交互的操作路径与状态组织；只换标题、颜色、按钮文案或数量不算换。`
-        : `本批交互分散：仅在第 ${htmlIndices.map(index => index + 1).join('、')} 面 HTML 作品之间对照，后面的 HTML 面优先换主交互的操作路径与状态组织；文本面不参与交互比较。只换标题、颜色、按钮文案或数量不算换。`;
+        ? `本批交互分散：从第 2 面起对照此前各面，必须改变重复的主交互操作路径与状态组织；只换标题、颜色、按钮文案或数量不算换。`
+        : `本批交互分散：仅在第 ${htmlIndices.map(index => index + 1).join('、')} 面 HTML 作品之间对照，后面的 HTML 面必须改变重复的主交互操作路径与状态组织；文本面不参与交互比较。只换标题、颜色、按钮文案或数量不算换。`;
     return opening +
         `同一主交互家族尽量不超过 ${first.preferredMaxFamilyUses} 面。` +
-        (recent ? `近期高频的「${recent}」优先冷却。` : '') +
+        (recent ? `近期使用的「${recent}」进入冷却；仅同款但对象与功能不同的正常控件保留。` : '') +
         '明确点菜、母本原有玩法和强制展现模式优先；可行机制不足时允许自然复用，不为凑种类另造控件，也不从固定组件菜单机械轮换。';
 }

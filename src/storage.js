@@ -1,11 +1,12 @@
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.26';
-import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.62.26';
-import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.62.26';
-import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.62.26';
+import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords } from './compositionFingerprint.js?rmv=1.62.29';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.29';
+import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.62.29';
+import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.62.29';
+import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.62.29';
 
 const STORAGE_KEY = 'rabbit_mirror_theater:last_combo:v11';
 const PENDING_KEY = 'rabbit_mirror_theater:pending_combo:v11';
-const MAX_STORED = 20;
+const MAX_STORED = 25; // Five completed rounds of up to five faces.
 const ATTEMPT_STORAGE_KEY = 'rabbit_mirror_theater:generation_attempts:v1';
 const DIRECTIVE_PICK_STORAGE_KEY = 'rabbit_mirror_theater:directive_pick_cache:v1';
 const MAX_ATTEMPTS_PER_CHAT = 20;
@@ -402,6 +403,10 @@ export function getComboHistory(limit = 10) {
     return history.slice(-Math.max(0, Number(limit) || 10));
 }
 
+export function getRecentDiversityHistory(rounds = 5) {
+    return recentDiversityRecords(readHistory(), rounds);
+}
+
 export function getLastCombo() {
     const history = readHistory();
     return history[history.length - 1] || {};
@@ -469,10 +474,9 @@ export function getRecentRiskFlagCounts(limit = 3) {
 
 
 export function getRecentPaletteFingerprints(limit = 3) {
-    return getComboHistory(limit)
+    return getRecentDiversityHistory(limit)
         .map(item => item?.paletteFingerprint)
-        .filter(item => item && typeof item === 'object' && Number(item.confidence || 0) >= 0.35)
-        .slice(-Math.max(0, Number(limit) || 3));
+        .filter(item => item && typeof item === 'object' && Number(item.confidence || 0) >= 0.35);
 }
 
 function isDarkPaletteTrigger(fingerprint) {
@@ -523,18 +527,22 @@ export function describePaletteFamily(fingerprint) {
 // 这里只按时间距离返回近期真实配色，不决定下一轮该用什么颜色。
 export function getRecentPaletteCooldown(window = 3) {
     const span = Math.max(1, Number(window) || 3);
-    const recent = getRecentPaletteFingerprints(span).slice().reverse();
-    return recent.map((fingerprint, roundsAgo) => ({
-        fingerprint,
-        key: paletteFamilyKey(fingerprint),
-        label: describePaletteFamily(fingerprint),
-        roundsAgo,
-        strength: Math.max(1, span - roundsAgo),
-    })).filter(item => item.label);
+    const rounds = new Map();
+    return getRecentDiversityHistory(span).slice().reverse().map((item, index) => {
+        const round = item?.batchId || `legacy:${index}`;
+        if (!rounds.has(round)) rounds.set(round, rounds.size);
+        const roundsAgo = rounds.get(round), fingerprint = item?.paletteFingerprint;
+        if (!fingerprint || Number(fingerprint.confidence || 0) < 0.35) return null;
+        return { fingerprint, key: paletteFamilyKey(fingerprint), label: describePaletteFamily(fingerprint),
+            roundsAgo, strength: Math.max(1, span - roundsAgo) };
+    }).filter(item => item?.label);
 }
 
 
+
 const VISUAL_FAMILY_DIMENSION_LABELS = Object.freeze({
+    layout_family: '画文布局',
+    operation_family: '实际操作路径',
     surface_family: '主底盘／材质',
     contrast_family: '明暗关系',
     contour_family: '整体轮廓',
@@ -553,6 +561,7 @@ export function parseVisualFamilySkeleton(value = '') {
         const key = String(match[1] || '').trim();
         if (!Object.prototype.hasOwnProperty.call(VISUAL_FAMILY_DIMENSION_LABELS, key)) continue;
         const valueText = String(match[2] || '').trim();
+        if (['layout_family', 'operation_family'].includes(key) && !Object.hasOwn(COMPOSITION_LABELS, valueText)) continue;
         if (valueText) parsed[key] = valueText.slice(0, 120);
     }
     return parsed;
@@ -562,14 +571,18 @@ export function parseVisualFamilySkeleton(value = '') {
 // composition. Keep them in diagnostics, but never cool down depth itself.
 export function visualFamilyForCooldown(family = {}) {
     return Object.fromEntries(Object.entries(VISUAL_FAMILY_DIMENSION_LABELS)
-        .filter(([key]) => key !== 'space_family' && family?.[key])
+        .filter(([key]) => !['space_family', 'contrast_family'].includes(key) && family?.[key]
+            && !(key === 'operation_family' && family[key] === 'object_state_change')
+            && !(family.layout_family && ['reading_family', 'unit_family'].includes(key))
+            && !(key === 'contour_family' && family[key] === 'contour: cutout_or_irregular_shape')
+            && !(key === 'surface_family' && /^(?:surface:\s*)?(?:digital_dark_surface|gradient_or_light_surface)$/.test(family[key])))
         .map(([key]) => [key, family[key]]));
 }
 
 export function describeVisualFamilyDimensions(family = {}) {
     if (!family || typeof family !== 'object') return '';
     return Object.entries(VISUAL_FAMILY_DIMENSION_LABELS)
-        .map(([key, label]) => family[key] ? `${label}=${family[key]}` : '')
+        .map(([key, label]) => family[key] ? `${label}=${COMPOSITION_LABELS[family[key]] || family[key]}` : '')
         .filter(Boolean)
         .join('；');
 }
@@ -585,6 +598,23 @@ export function getRecentVisualFamilyCooldown(window = 3) {
             strength: Math.max(1, span - roundsAgo),
         }))
         .filter(item => Object.keys(item.family).length);
+}
+
+// Each of the last five completed rounds remains relevant even across A -> B.
+// Record positions include unknowns; an unknown face must not extend the window.
+export function getRecentStructuralCooldown(window = 5) {
+    const found = new Map();
+    for (const item of getRecentDiversityHistory(window)) {
+        const family = visualFamilyForCooldown(parseVisualFamilySkeleton(item?.visualSkeleton || ''));
+        for (const key of ['layout_family', 'operation_family']) {
+            const value = family[key];
+            if (!value || !Object.hasOwn(COMPOSITION_LABELS, value)) continue;
+            const identity = `${key}:${value}`;
+            const record = found.get(identity) || { key, value, label: COMPOSITION_LABELS[value], count: 0 };
+            record.count++; found.set(identity, record);
+        }
+    }
+    return [...found.values()];
 }
 
 export function getRepeatedVisualFamilyDimensions(window = 3, threshold = 2) {
@@ -666,8 +696,15 @@ function normalizeInteractionFamily(value) {
 }
 
 export function getRecentInteractionFamilies(limit = 5, { preserveEmpty = false } = {}) {
-    const recent = getComboHistory(limit).map(item => normalizeInteractionFamily(item?.interactionFamily) || null);
-    return preserveEmpty ? recent : recent.filter(Boolean);
+    const recent = getRecentDiversityHistory(limit).map((item, index) => {
+        const value = parseVisualFamilySkeleton(item?.visualSkeleton || '').operation_family === 'object_state_change'
+            ? null : normalizeInteractionFamily(item?.interactionFamily) || null;
+        // Round identity is transient prompt accounting; stored interaction data
+        // and owner identities retain their existing shape.
+        const diversityRound = item?.batchId || `legacy:${index}`;
+        return value ? { ...value, diversityRound } : preserveEmpty ? { diversityRound } : null;
+    });
+    return recent.filter(Boolean);
 }
 
 export function getRecentInteractionFamilyCounts(limit = 5) {
@@ -1273,7 +1310,7 @@ function normalizeFaceScan(value, faceIndex) {
         (value.faceIndex !== undefined && value.faceIndex !== faceIndex)) return null;
     return {
         visualSignature: String(value.visualSignature ?? value.signature ?? '').slice(0, 280),
-        visualSkeleton: String(value.visualSkeleton ?? value.skeleton ?? '').slice(0, 420),
+        visualSkeleton: String(value.visualSkeleton ?? value.skeleton ?? '').slice(0, VISUAL_SKELETON_MAX_CHARS),
         riskFlags: Array.isArray(value.riskFlags) ? [...new Set(value.riskFlags.map(String))].slice(0, 8) : [],
         paletteFingerprint: value.paletteFingerprint && typeof value.paletteFingerprint === 'object' ? value.paletteFingerprint : null,
         interactionFamily: normalizeInteractionFamily(value.interactionFamily),
@@ -1595,7 +1632,7 @@ function commitComboToHistory(combo, visual = {}, options = {}) {
         // 批次面带幂等键，不走签名去重分支：三面本就应各占一条。
         if (!batchId && last?.signature === sig && now - Number(last?.ts || 0) < 120000) {
             if (visualSignature) last.visualSignature = String(visualSignature).slice(0, 280);
-            if (visualSkeleton) last.visualSkeleton = String(visualSkeleton).slice(0, 420);
+            if (visualSkeleton) last.visualSkeleton = String(visualSkeleton).slice(0, VISUAL_SKELETON_MAX_CHARS);
             if (Array.isArray(riskFlags) && riskFlags.length) last.riskFlags = [...new Set(riskFlags)].slice(0, 8);
             if (paletteFingerprint && typeof paletteFingerprint === 'object') last.paletteFingerprint = paletteFingerprint;
             const normalizedFamily = normalizeInteractionFamily(interactionFamily);
@@ -1610,7 +1647,7 @@ function commitComboToHistory(combo, visual = {}, options = {}) {
             ts: now,
             ...(batchId ? { batchId, faceIndex: Number(faceIndex) } : {}),
             visualSignature: visualSignature ? String(visualSignature).slice(0, 280) : combo.visualSignature,
-            visualSkeleton: visualSkeleton ? String(visualSkeleton).slice(0, 420) : combo.visualSkeleton,
+            visualSkeleton: visualSkeleton ? String(visualSkeleton).slice(0, VISUAL_SKELETON_MAX_CHARS) : combo.visualSkeleton,
             riskFlags: Array.isArray(riskFlags) ? [...new Set(riskFlags)].slice(0, 8) : [],
             paletteFingerprint: paletteFingerprint && typeof paletteFingerprint === 'object' ? paletteFingerprint : undefined,
             interactionFamily: normalizeInteractionFamily(interactionFamily),
@@ -1747,7 +1784,7 @@ export function updateLatestVisualSignature(visualSignature, visualSkeleton = ''
         if (!history.length) return;
         const last = history[history.length - 1];
         if (visualSignature) last.visualSignature = String(visualSignature).slice(0, 280);
-        if (visualSkeleton) last.visualSkeleton = String(visualSkeleton).slice(0, 420);
+        if (visualSkeleton) last.visualSkeleton = String(visualSkeleton).slice(0, VISUAL_SKELETON_MAX_CHARS);
         if (Array.isArray(riskFlags) && riskFlags.length) last.riskFlags = [...new Set(riskFlags)].slice(0, 8);
         if (paletteFingerprint && typeof paletteFingerprint === 'object') last.paletteFingerprint = paletteFingerprint;
         const normalizedFamily = normalizeInteractionFamily(interactionFamily);

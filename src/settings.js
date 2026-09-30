@@ -1,10 +1,10 @@
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.62.26';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.62.29';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.62.26';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.62.26';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.62.26';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.62.26';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.62.29';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.62.29';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.62.29';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.62.29';
 
 export const MODULE_NAME = 'rabbit_mirror_theater';
 
@@ -207,7 +207,9 @@ export const defaultSettings = Object.freeze({
     atmosphereStoryPercent: 70,
     rawPolicy: 'balanced',
     showCot: false,
+    // Compatibility key: strong diversity is always active.
     avoidRepeat: true,
+    darkVisualMode: false,
     cooldownRounds: 10,
     blacklistEnabled: true,
     blacklistedThemeIds: [],
@@ -353,6 +355,8 @@ export function getSettings() {
     settings.themesMax = Number(settings.themesMax) || defaultSettings.themesMax;
     settings.formatsMin = Number(settings.formatsMin) || defaultSettings.formatsMin;
     settings.formatsMax = Number(settings.formatsMax) || defaultSettings.formatsMax;
+    settings.avoidRepeat = true;
+    settings.darkVisualMode = settings.darkVisualMode === true;
     settings.cooldownRounds = Math.max(1, Number(settings.cooldownRounds) || defaultSettings.cooldownRounds);
     settings.blacklistEnabled = settings.blacklistEnabled !== false;
     const normalizeSelectionIds = (value, mapId = id => id) => [...new Set((Array.isArray(value) ? value : []).map(id => mapId(String(id || '').trim())).filter(Boolean))].slice(0, 512);

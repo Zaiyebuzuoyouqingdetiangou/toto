@@ -10,7 +10,7 @@ const SETTINGS_KEYS = [
     'generationSource', 'independentGenerationTiming', 'samplingMode', 'lotteryMethod',
     'rawPolicy', 'rabbitMirrorFaceCount', 'rabbitMirrorPresentationModes', 'multifaceDispatch',
     'forceVisualScenery', 'visualSceneryCombination', 'enhancedVisualDrawing',
-    'visualPromptEditingEnabled', 'avoidRepeat', 'creativeExpansionMode',
+    'visualPromptEditingEnabled', 'darkVisualMode', 'avoidRepeat', 'creativeExpansionMode',
     'userDirectivePriority', 'presentationWorldviewLock', 'behaviorRuleMode',
     'independentContextMaxLayers', 'independentContextExcludedTags',
     'independentReadCharacterCardSummary', 'independentReadPersonaSummary',

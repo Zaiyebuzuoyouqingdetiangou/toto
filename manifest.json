@@ -1,17 +1,17 @@
 {
-  "display_name": "兔子镜小剧场",
-  "loading_order": 100,
-  "js": "index.js?rmv=1.62.26",
-  "css": "style.css?rmv=1.62.26",
-  "author": "Toto",
-  "version": "1.62.26",
-  "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
-  "auto_update": true,
-  "generate_interceptor": "rabbitMirrorGenerateInterceptor",
-  "minimum_client_version": "1.13.0",
-  "hooks": {
-    "disable": "onDisable",
-    "clean": "onClean"
-  },
-  "description": "兔子镜小剧场：调整展现形式执行衔接与视觉增强，保留正文挑签和基础规则；当前候选待实际生成效果验证。"
+    "display_name": "兔子镜小剧场",
+    "loading_order": 100,
+    "js": "index.js?rmv=1.62.29",
+    "css": "style.css?rmv=1.62.29",
+    "author": "Toto",
+    "version": "1.62.29",
+    "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
+    "auto_update": true,
+    "generate_interceptor": "rabbitMirrorGenerateInterceptor",
+    "minimum_client_version": "1.13.0",
+    "hooks": {
+        "disable": "onDisable",
+        "clean": "onClean"
+    },
+    "description": "兔子镜小剧场：按实际画文布局与控件作用识别骨架，近五轮跨轮强避重；共用规则按作用范围只发送一次。"
 }
