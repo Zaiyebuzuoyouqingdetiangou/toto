@@ -1,19 +1,19 @@
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.25';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.25';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.25';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.25';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.25';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.25';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.62.25';
-import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.25';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.25';
-export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.25';
-import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.25';
-import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.25';
-import { isTextPresentation, presentationModeFields } from './presentationMode.js?rmv=1.62.25';
-import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.25';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.25';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.25';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.26';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.26';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.26';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.26';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.26';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.26';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions } from './storage.js?rmv=1.62.26';
+import { buildPaletteCooldownExecutionLock, buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.26';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.26';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.26';
+import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.26';
+import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.26';
+import { isTextPresentation, presentationModeFields } from './presentationMode.js?rmv=1.62.26';
+import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.26';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.26';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.26';
 
 const THEME_ITEMS = new Map(THEMATIC_CATEGORIES.map(item => [item.id, item]));
 const FORMAT_ITEMS = new Map(PRESENTATION_FORMATS.map(item => [item.id, item]));
@@ -461,7 +461,7 @@ function tarotPhysicalImageRule(faceIndexes = []) {
 }
 
 function enhancedVisualDrawingRule() {
-    return '增强视觉绘制：把绘制投入优先用于本轮展现形式的主体轮廓、内部结构、材质与空间关系。鼓励按需组合安全内联 SVG 的路径与渐变、HTML/CSS 的层叠、遮罩与光影，具体技术由媒介决定，不强制每轮使用 SVG。本面采用动态视觉时（含展现形式组合），动画要求统一以对应的动态视觉规则为准；增强负责提高同一画面的绘制质量，不另设动画要求。未采用动态视觉时，仍可按媒介需要使用 CSS 动画，不强制动画。让主体占据清晰的视觉重心，以前中后景、遮挡、接缝和受光细节形成完整构图；渐变、投影和装饰服务于主体，不能代替主体绘制。适合状态变化的媒介，让控件驱动对象本身的变化，并以文字辅助反馈。文字媒介仍保留完整正文与版式。主要正文和交互反馈进入正常文档流并由内容撑高；按 360px 手机宽度校验字号、行高与换行，最后一行不得被固定高度、transform 或 overflow 裁切。不固定配色或布局。';
+    return '增强视觉绘制：沿用本轮展现形式已经确定的本体、内容承载和交互，继续精绘同一作品。把细节落实到实际可见的主体节点：依其轮廓与内部结构安排构件、比例和接合，以遮挡、透视与前后关系组织空间，让纹理、受光面、暗部和投影共同表现材质；各交互状态延续这些绘制细节。鼓励按需组合安全内联 SVG 的路径与渐变、HTML/CSS 的层叠、遮罩与光影，具体技术由媒介决定，不强制每轮使用 SVG。让主体本身承载精细度，背景渐变、外框阴影和增加说明文字不能代替主体绘制；正文、版式与细节仍服务于条目原意。本面采用动态视觉时（含展现形式组合），动画要求统一以对应的动态视觉规则为准；增强负责提高同一画面的绘制质量，不另设动画要求。未采用动态视觉时，仍可按媒介需要使用 CSS 动画，不强制动画。主要正文和反馈进入正常文档流并由内容撑高；按 360px 手机宽度校验完整可读。不固定配色或布局。';
 }
 
 function compactCreativeRule(enabled, formatOnly = false) {
@@ -578,10 +578,15 @@ function compactComboExecutionContract(combo) {
     return '锁定动态画面基底，与以下形式的内容、结构和玩法共同成立；' + compactPresentationExecutionContract(combo.formats.filter(item => item.id !== '10.2.2'));
 }
 
-function presentationFinalAcceptanceLock(combo) {
+function presentationExecutionOrderRule() {
+    return '形式执行顺序：依据本面实际采用的展现形式与条目原意，先落实可见本体及内容承载位置，再把操作对象、状态机制与反馈对应到这些结构，随后完成正文与绘制细节。用实际可见结构和使用过程核对形式是否成立；标题术语、说明文字或控件数量不能代替这一核对。';
+}
+
+function presentationFinalAcceptanceLock(combo, includeExecutionOrder = true) {
     return String.raw`
 最终成品短检【只在脑内执行】:
-  - 形式：${compactComboExecutionContract(combo)}。首个主体须以至少两项可见的轮廓／比例／空间／阅读／材质／排版证据呈现形式本体，真实 CSS 必须命中可见节点；不能只剩默认文字流、原生控件或通用卡片。
+${includeExecutionOrder ? presentationExecutionOrderRule() : ''}
+  - 形式：${compactComboExecutionContract(combo)}。首个主体、内容承载与操作反馈须对应本面条目，真实 CSS 必须命中可见节点。
   - 交互：必须有一条可触摸且可保持的完整链「对象→操作→第二状态→明确反馈」；动画、hover 与仅变色不能代替交互。
   - 手机：按 360px 检查人物、关系节点、图例等数量群组，整组完整适配且正文由内容撑高，不得裁掉最后一项。任一项失败先重构再输出。`;
 }
@@ -916,7 +921,7 @@ function faceBehaviorRuleBlock(settings, faces) {
     return rule ? `以下创作补充仅在${scopes.join('、')}时适用，其他候选不执行：\n${rule}` : '';
 }
 
-function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
+function buildIndependentFinalExecutionLock({ combo, settings, directive, includeExecutionOrder = true }) {
     // The full base prompt already contains the selected-item summaries, presentation embodiment,
     // visual floor, visual/palette/interaction cooldowns, risk correction and output protocol.
     // This near-output lock deliberately repeats only identities + currently active hard reminders.
@@ -952,7 +957,8 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive }) {
         atmosphereExecutionReminder(combo),
         combo?.atmosphereMenu?.length > 1 ? '' : `本轮锁定：${samplingModeLabel(combo, settings)}；主题：${themes}；展现形式：${formats}。`,
         combo?.visualSceneryCombination === true ? '动态视觉组合锁：动态画面与抽中形式的真实内容、阅读路径和玩法同时保留，不得互相替代。' : '',
-        `短检：${formatContract}。首个主体落实两项可见结构证据和真实 CSS；完成至少一条「对象→操作→可保持第二状态→反馈」交互，多节点媒介须有多入口或连续阶段，不用单次显隐敷衍。360px 下数量群组完整适配、正文不裁切。`,
+        includeExecutionOrder ? presentationExecutionOrderRule() : '',
+        `短检：${formatContract}。首个主体、内容承载与操作反馈须对应本面条目，真实 CSS 命中可见节点；完成「对象→操作→可保持第二状态→反馈」交互。360px 下数量群组完整适配、正文不裁切。`,
         directiveText ? `点菜优先：${directiveText}` : '',
         activeBans.length ? `近因避让：${activeBans.join('；')}。` : '',
         visualPreferenceLock ? `最终视觉偏好裁决：${visualPreferenceLock}；近期避让只负责脱离重复维度，不得覆盖这条视觉偏好。` : '',
@@ -985,6 +991,7 @@ function buildMultiIndependentExecutionLock(faceContexts, settings, directive) {
     return [
         '<兔子镜近输出短锁 data-source="independent-api-near-output">',
         `本轮必须按 data-rm-face="1" 至 "${faceContexts.length}" 顺序输出 ${faceContexts.length} 个平级、各自闭合的 <toto>；禁止单个 <toto> 内嵌多面。`,
+        presentationExecutionOrderRule(),
         ...faceLocks,
         directiveText ? `点菜优先：${directiveText}` : '',
         activeBans.length ? `全批近因避让：${activeBans.join('；')}。` : '',
@@ -1179,11 +1186,14 @@ function buildTextAwarePrompt({ faceContexts, settings, directive, memoryMateria
         local.push(atmosphereConditionalRules(face));
         if (settings.visualPromptEditingEnabled) local.push(editableVisualPromptRule(settings));
         local.push('交互返回：可重复交互须能自然切回，优先复用原控件；不强制每个状态另设返回，一次性动作可自然结束。');
-        if (!independent) local.push(presentationFinalAcceptanceLock(face.combo));
+        if (!independent) local.push(presentationFinalAcceptanceLock(face.combo, false));
         const preference = compactVisualPreferenceExecutionLock(settings);
         if (preference && !independent) local.push(`最终视觉偏好执行锁:\n  - ${preference}`);
         chunks.push(`<兔子镜HTML面规则 data-rm-face="${index + 1}">\n${local.filter(Boolean).join('\n\n')}\n</兔子镜HTML面规则>`);
     });
+    if (!independent && htmlNumbers.length) {
+        chunks.push(`以下形式执行顺序仅作用于 HTML 面（第 ${htmlNumbers.join('、')} 面）：\n${presentationExecutionOrderRule()}`);
+    }
     if (multiface && htmlNumbers.length) {
         chunks.push(`以下同批视觉与交互约束仅作用于 HTML 面（第 ${htmlNumbers.join('、')} 面）：
   - 从各面媒介重新确定不同的主体、视线入口、空间层级、材质与交互链；即使固定同一形式也不得复制 DOM 骨架后换皮。
@@ -1202,15 +1212,17 @@ function buildTextAwarePrompt({ faceContexts, settings, directive, memoryMateria
 
 function buildTextAwareExecutionLock(faceContexts, settings, directive) {
     const count = faceContexts.length;
+    const htmlNumbers = faceContexts.flatMap((face, index) => !face.textPresentation && !face.combo?.pureOrder && !directive?.pureOrder ? [index + 1] : []);
     const locks = faceContexts.map((face, index) => (face.combo?.pureOrder || directive?.pureOrder) ? pureOrderFaceLock(face, index)
         : face.textPresentation ? textFaceLock(face, index)
-        : `第 ${index + 1} 面 HTML 专用短锁：\n${buildIndependentFinalExecutionLock({ combo: face.combo, settings, directive })
+        : `第 ${index + 1} 面 HTML 专用短锁：\n${buildIndependentFinalExecutionLock({ combo: face.combo, settings, directive, includeExecutionOrder: false })
             .replace(/<\/?兔子镜近输出短锁[^>]*>/g, '')
             .replace('直接输出唯一完整 <toto>...</toto>，闭合后结束。', '本面输出独立完整 <toto>...</toto>，按本批面序继续。').trim()}`);
     return ['<兔子镜近输出短锁 data-source="independent-api-near-output">',
         `本轮输出恰好 ${count} 面，逐面遵循以下本地冻结模式与内容；所有面共用本次请求的输出上限。`,
+        htmlNumbers.length ? `以下形式执行顺序仅作用于 HTML 面（第 ${htmlNumbers.join('、')} 面）：\n${presentationExecutionOrderRule()}` : '',
         ...locks, count > 1 ? `按 data-rm-face="1" 至 "${count}" 顺序输出平级且各自闭合的 <toto>，只有最后一面闭合后结束，不追加面外文字。`
-            : '输出唯一完整 <toto>...</toto>，闭合后结束，不追加面外文字。', '</兔子镜近输出短锁>'].join('\n');
+            : '输出唯一完整 <toto>...</toto>，闭合后结束，不追加面外文字。', '</兔子镜近输出短锁>'].filter(Boolean).join('\n');
 }
 
 function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualSceneryMode, tarotRulesText, touchTheaterRulesText, directive, memoryMaterial, activeFeedback, generationType = 'normal', followTagIsolationText = '', faceContexts = null, externalReferences = false, appearanceReferenceText = '' }) {
@@ -1312,7 +1324,10 @@ ${multiface ? faceContexts.map((face, index) => `第 ${index + 1} 面:\n${shortV
     // API routes. Per-face checks must not reinstate a return for every state.
     chunks.push('交互返回：可重复交互须能自然切回，优先复用原控件；不强制每个状态另设返回，一次性动作可自然结束。');
     if (String(generationType || 'normal') !== 'independent') {
-        if (multiface) faceContexts.forEach((face, index) => chunks.push(`第 ${index + 1} 面最终形式验收:\n${presentationFinalAcceptanceLock(face.combo)}`));
+        if (multiface) {
+            chunks.push(`以下形式执行顺序逐面用于本批 HTML 面：\n${presentationExecutionOrderRule()}`);
+            faceContexts.forEach((face, index) => chunks.push(`第 ${index + 1} 面最终形式验收:\n${presentationFinalAcceptanceLock(face.combo, false)}`));
+        }
         else chunks.push(presentationFinalAcceptanceLock(combo));
     }
     chunks.push(htmlSafetyCore());
