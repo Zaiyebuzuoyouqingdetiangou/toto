@@ -1,10 +1,10 @@
 {
   "display_name": "兔子镜小剧场",
   "loading_order": 100,
-  "js": "index.js?rmv=1.62.24",
-  "css": "style.css?rmv=1.62.24",
+  "js": "index.js?rmv=1.62.25",
+  "css": "style.css?rmv=1.62.25",
   "author": "Toto",
-  "version": "1.62.24",
+  "version": "1.62.25",
   "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
   "auto_update": true,
   "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
     "disable": "onDisable",
     "clean": "onClean"
   },
-  "description": "兔子镜小剧场：动态视觉统一负责动画要求，视觉增强负责绘制质量；保留规则去重、正文挑签与版本核对。"
+  "description": "兔子镜小剧场：动态场景模式三选一，增强独立开启；修复更新页版本号与版本核对入口。"
 }

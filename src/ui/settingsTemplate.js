@@ -1,8 +1,8 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.62.24';
-import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.62.24';
-import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.62.24';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.62.25';
+import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.62.25';
+import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.62.25';
 
 export function buildRabbitMirrorSettingsDialogHtml() {
     return `
@@ -34,8 +34,8 @@ export function buildRabbitMirrorSettingsDialogHtml() {
           <summary>新手指引</summary>
           <div class="rabbit-mirror-quick-start-body" role="region" aria-label="新手指引"><p role="status">展开后加载使用指引，不会修改设置。</p></div>
         </details>
-        <div class="rabbit-mirror-update-version-group">
-          <span id="rh_current_version" class="rabbit-mirror-current-version">当前版本：${RUNTIME_VERSION}</span>
+        <div id="rh_update_version_group" class="rabbit-mirror-update-version-group">
+          <span id="rh_current_version" class="rabbit-mirror-current-version">当前页面版本：${RUNTIME_VERSION}</span>
           <button id="rh_update_now" class="menu_button rabbit-mirror-update-button" type="button">检查并更新</button>
           <button id="rh_version_check" class="menu_button rabbit-mirror-update-button" type="button">版本核对</button>
         </div>
@@ -452,12 +452,14 @@ export function buildRabbitMirrorSettingsDialogHtml() {
             </div>
             <label class="checkbox_label"><input id="rh_creative_expansion" type="checkbox"> 发散孵化模式</label>
             <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后会探索更随机、更跳脱的内容组合。</div>
-            <label class="checkbox_label"><input id="rh_force_visual_scenery" type="checkbox"> 动态视觉场景</label>
-            <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后，HTML 面固定保留动态视觉场景；文本面不受影响。</div>
-            <label class="checkbox_label"><input id="rh_visual_scenery_combination" type="checkbox"> 动态视觉同时组合其他展现形式</label>
-            <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">默认关闭。与动态视觉场景一起开启后，保留动态画面，同时按原数量和偏好抽取其他展现形式，保留它们的内容、阅读方式与玩法；文本面不受影响。</div>
+            <div id="rh_visual_scenery_modes" class="rh-ui-display-options" role="radiogroup" aria-label="动态场景模式" aria-describedby="rh_visual_scenery_mode_help">
+              <label class="rh-ui-choice"><input id="rh_visual_scenery_mode_ordinary" type="radio" name="rh_visual_scenery_mode" value="ordinary"><span><strong>普通抽取</strong><small>按原有数量和偏好抽取展现形式，不固定动态场景。</small></span></label>
+              <label class="rh-ui-choice"><input id="rh_visual_scenery_mode_scenery" type="radio" name="rh_visual_scenery_mode" value="scenery"><span><strong>动态场景</strong><small>固定使用动态视觉场景，按场景规则绘制画面与动画。</small></span></label>
+              <label class="rh-ui-choice"><input id="rh_visual_scenery_mode_combined" type="radio" name="rh_visual_scenery_mode" value="combined"><span><strong>动态场景＋其他形式</strong><small>包含动态场景规则，同时按原有数量和偏好抽取其他展现形式，保留它们的内容、阅读方式与玩法。</small></span></label>
+            </div>
+            <div id="rh_visual_scenery_mode_help" class="rabbit-mirror-subnote">三选一，仅影响 HTML 面；文本面不受影响。增强视觉绘制可独立开启。</div>
             <label for="rh_enhanced_visual_drawing" class="checkbox_label"><input id="rh_enhanced_visual_drawing" type="checkbox" aria-describedby="rh_enhanced_visual_drawing_help"> 增强视觉绘制</label>
-            <div id="rh_enhanced_visual_drawing_help" class="rabbit-mirror-subnote" style="margin:0 0 8px 26px;">加强画面细节、层次与互动；可与动态视觉场景一起开启。</div>
+            <div id="rh_enhanced_visual_drawing_help" class="rabbit-mirror-subnote" style="margin:0 0 8px 26px;">加强主体绘制、材质、光影与空间层次；采用动态场景时，动画统一按动态场景规则执行。</div>
             <label class="checkbox_label"><input id="rh_user_directive" type="checkbox"> 用户指令优先</label>
             <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后，可以自由点菜自己喜欢的任意内容。</div>
             <label class="checkbox_label"><input id="rh_worldview_lock" type="checkbox"> 展现形式世界观锁</label>

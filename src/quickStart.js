@@ -14,7 +14,7 @@ export const QUICK_START_GROUPS = [
         setting('cooldown', '10 轮冷却', '减少近期成功生成的重复主题、形式和整体观感。', '#rh_avoid_repeat', 'generation'),
     ] },
     { name: '视觉与个性化', items: [
-        setting('scenery', '动态视觉场景', '将展现形式固定为动态场景，一直出现动画可能会造成审美疲劳哦。', '#rh_force_visual_scenery', 'generation'),
+        setting('scenery', '动态场景模式', '普通抽取、动态场景、动态场景＋其他形式三选一；组合模式包含动态场景规则。', '#rh_visual_scenery_mode_scenery', 'generation'),
         setting('enhanced', '视觉效果增强 / 增强视觉绘制', '允许更丰富的绘制，不保证每次都更好看。', '#rh_enhanced_visual_drawing', 'generation'),
         setting('visual', '个人视觉偏好', '填写想要和不想要的画面效果；启用并保存后从后续生成生效。', '#rh_visual_extra_prompt', 'visual'),
         setting('visualrules', '通用视觉规则', '进阶修改视觉规则，也可以恢复默认。', '#rh_visual_prompt', 'visual'),
