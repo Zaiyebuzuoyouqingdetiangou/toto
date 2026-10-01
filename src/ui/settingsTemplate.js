@@ -1,8 +1,8 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.62.45';
-import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.62.45';
-import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.62.45';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.62.46';
+import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.62.46';
+import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.62.46';
 
 export function buildRabbitMirrorSettingsDialogHtml() {
     return `
@@ -458,12 +458,23 @@ export function buildRabbitMirrorSettingsDialogHtml() {
               <label class="rh-ui-choice"><input id="rh_visual_scenery_mode_combined" type="radio" name="rh_visual_scenery_mode" value="combined"><span><strong>动态场景＋其他形式</strong><small>包含动态场景规则，同时按原有数量和偏好抽取其他展现形式，保留它们的内容、阅读方式与玩法。</small></span></label>
             </div>
             <div id="rh_visual_scenery_mode_help" class="rabbit-mirror-subnote">三选一，仅影响 HTML 面；文本面不受影响。增强视觉绘制可独立开启。</div>
+            <div id="rh_visual_design_options">
+            <label for="rh_visual_design_mode">美化方式</label>
+            <select id="rh_visual_design_mode" class="text_pole" style="min-height:44px;" aria-describedby="rh_visual_design_mode_help">
+              <option value="reference1553">1.5.53 美化参照 · 模型原色</option>
+              <option value="guided1553">设计指导对照 · 模型原色</option>
+              <option value="current">沿用配色库／换色试用</option>
+            </select>
+            <div id="rh_visual_design_mode_help" class="rabbit-mirror-subnote">前两项由模型直接配色，适用于普通、动态与组合 HTML；对照项仅替换一段设计指导。切换后用于下一次生成。</div>
+            </div>
             <label for="rh_enhanced_visual_drawing" class="checkbox_label"><input id="rh_enhanced_visual_drawing" type="checkbox" aria-describedby="rh_enhanced_visual_drawing_help"> 增强视觉绘制</label>
             <div id="rh_enhanced_visual_drawing_help" class="rabbit-mirror-subnote" style="margin:0 0 8px 26px;">加强主体绘制、材质、光影与空间层次；采用动态场景时，动画统一按动态场景规则执行。</div>
             <label for="rh_dark_visual_mode" class="checkbox_label"><input id="rh_dark_visual_mode" type="checkbox" aria-describedby="rh_dark_visual_mode_help"> 深色模式</label>
             <div id="rh_dark_visual_mode_help" class="rabbit-mirror-subnote">新生成的所有镜面使用适合夜间阅读的深色背景；深色范围内仍强避重，保留形式与材质。独立生效，勾选即保存；已有作品不变。</div>
+            <div id="rh_palette_trial_options">
             <label for="rh_post_generation_recolor" class="checkbox_label"><input id="rh_post_generation_recolor" type="checkbox"> 生成后换色（试用）</label>
             <div class="rabbit-mirror-subnote">普通 HTML、动态场景与组合均适用。保留模型原色，在兔子工具中可切换；未提供换色信息的成品保持原样。关闭后新生成改回配色参考。</div>
+            </div>
             <label class="checkbox_label"><input id="rh_user_directive" type="checkbox"> 用户指令优先</label>
             <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后，可以自由点菜自己喜欢的任意内容。</div>
             <label class="checkbox_label"><input id="rh_worldview_lock" type="checkbox"> 展现形式世界观锁</label>
@@ -474,7 +485,7 @@ export function buildRabbitMirrorSettingsDialogHtml() {
           <div id="rh_advanced_page_visual" class="rh-advanced-page" data-title="个性化视觉提示词" style="display:none;">
             <div style="opacity:.82;font-size:12px;line-height:1.55;margin-bottom:9px;">这里可以直接写你喜欢或不喜欢的画面感觉。只有勾选下面的“启用视觉提示词编辑注入”后，保存的内容才会随生成兔子镜的请求发送。</div>
             <label class="checkbox_label" style="font-weight:700;"><input id="rh_visual_prompt_enabled" type="checkbox"> 启用视觉提示词编辑注入</label>
-            <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.76;font-size:12px;line-height:1.5;">默认关闭。关闭时已编辑内容仍保存在本地，但不会注入模型；下一面继续使用 1.3.20 原版视觉规则。开启后才切换到可编辑视觉层。</div>
+            <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.76;font-size:12px;line-height:1.5;">默认关闭。关闭时已编辑内容仍保存在本地，但不会注入模型；下一面按所选美化方式生成。开启后才切换到可编辑视觉层。</div>
             <div id="rh_visual_prompt_status" style="padding:7px 9px;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:8px;opacity:.82;font-size:11px;line-height:1.45;margin-bottom:10px;">当前：正在读取视觉提示词状态……</div>
             <label for="rh_visual_extra_prompt" style="display:block;font-weight:700;margin:8px 0 5px;">额外视觉偏好（可选）</label>
             <textarea id="rh_visual_extra_prompt" class="text_pole" rows="5" maxlength="${VISUAL_EXTRA_PROMPT_MAX_CHARS}" spellcheck="false" placeholder="例如：像真实纸张拼贴的小剧场，左上方来光，标题压在图像边缘，正文像杂志内页，近看能看到印刷网点和轻微裁切毛边。" style="width:100%;min-height:100px;resize:vertical;box-sizing:border-box;line-height:1.5;"></textarea>

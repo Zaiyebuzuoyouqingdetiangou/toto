@@ -1,10 +1,10 @@
 {
     "display_name": "兔子镜小剧场",
     "loading_order": 100,
-    "js": "index.js?rmv=1.62.45",
-    "css": "style.css?rmv=1.62.45",
+    "js": "index.js?rmv=1.62.46",
+    "css": "style.css?rmv=1.62.46",
     "author": "Toto",
-    "version": "1.62.45",
+    "version": "1.62.46",
     "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
     "auto_update": true,
     "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
         "disable": "onDisable",
         "clean": "onClean"
     },
-    "description": "兔子镜小剧场：逐面／逐签合并配色与冷却，精简重复生成规则；保留形式落地、增强绘制、四池随机与重说、视觉识别。新安装创作补充默认关闭，旧设置保留。"
+    "description": "兔子镜小剧场：1.5.53 美化核心参照与短设计指导对照，模型直接配色。保留形式、交互、深色冷却、CSS 保存及当前功能修复。"
 }

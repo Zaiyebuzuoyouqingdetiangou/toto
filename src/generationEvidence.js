@@ -1,7 +1,7 @@
 // Opt-in, one-request evidence. No storage, network, timers, live DOM reads or
 // random-number consumption. Observers can never affect generation outcomes.
-import { generationEvidenceTiming } from './generationTiming.js?rmv=1.62.45';
-import { roleColorEvidence } from './roleColorVariants.js?rmv=1.62.45';
+import { generationEvidenceTiming } from './generationTiming.js?rmv=1.62.46';
+import { roleColorEvidence } from './roleColorVariants.js?rmv=1.62.46';
 let armed = false;
 let current = null;
 let sequence = 0;
@@ -13,7 +13,7 @@ const SETTINGS_KEYS = [
     'rawPolicy', 'rabbitMirrorFaceCount', 'rabbitMirrorPresentationModes', 'multifaceDispatch',
     'forceVisualScenery', 'visualSceneryCombination', 'enhancedVisualDrawing',
     'visualPromptEditingEnabled', 'darkVisualMode', 'avoidRepeat', 'creativeExpansionMode',
-    'postGenerationRecolor',
+    'postGenerationRecolor', 'visualDesignMode',
     'userDirectivePriority', 'presentationWorldviewLock', 'behaviorRuleMode',
     'independentContextMaxLayers', 'independentContextExcludedTags',
     'independentReadCharacterCardSummary', 'independentReadPersonaSummary',
