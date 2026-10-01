@@ -1,7 +1,8 @@
 // Split from outputSanitizer.js — markup.
 
-import { getSettings } from '../settings.js?rmv=1.62.38';
-import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.62.38';
+import { getSettings } from '../settings.js?rmv=1.62.45';
+import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.62.45';
+import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.62.45';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     INTERACTION_HOME_ATTR,
@@ -13,7 +14,7 @@ import {
     clearMirrorTitleDisplayArtifacts,
     escapeRegExp,
     hashInteractionSignature,
-} from './runtime.js?rmv=1.62.38';
+} from './runtime.js?rmv=1.62.45';
 
 const TOTO_BLOCK_RE = /<toto\b[\s\S]*?<\/toto>/gi;
 
@@ -1609,7 +1610,7 @@ function repairMalformedCssDeclarations(cssText) {
 
 
 function repairPlainTextCssInHtml(htmlText) {
-    const html = String(htmlText || '');
+    const html = compileRoleColorVariants(String(htmlText || ''), { enabled: getSettings()?.postGenerationRecolor === true, acceptTemplate: validateRabbitMirrorTemplateStructuralBudget });
     // CSS 变量可能定义在主容器的 inline style 中、却在局部 <style> 中被引用。
     // 先从整条兔子镜收集变量，避免把原本可用的配色错误替换成 initial。
     const inheritedValues = collectCssCustomPropertyValuesFromHtml(html);
@@ -2258,6 +2259,7 @@ function restoreStandaloneKeyframesInHtml(html) {
 
 
 export function compactTotoBlock(block) {
+    block = compileRoleColorVariants(block, { enabled: getSettings()?.postGenerationRecolor === true, acceptTemplate: validateRabbitMirrorTemplateStructuralBudget });
     const preparedScope = prepareRabbitMirrorCssScope(restoreStandaloneKeyframesInHtml(repairMalformedRabbitMirrorMarkup(normalizeMirrorAttribute(stripCodeBlockTriggers(block)))));
     let html = preparedScope.html;
     const rawStyleTexts = [...html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)]
@@ -2332,7 +2334,7 @@ export function compactTotoBlock(block) {
         html = html.replace(`%%RHT_STYLE_${index}%%`, style);
     });
 
-    return html
+    const result = html
         .replace(CLASS_ATTR_RE, (match, quote, classValue) => {
             const kept = String(classValue || '')
                 .split(/\s+/)
@@ -2341,6 +2343,13 @@ export function compactTotoBlock(block) {
         })
         .replace(MULTI_BLANK_LINE_RE, '\n')
         .trim();
+    if (typeof document !== 'undefined' && result.includes('data-rm-color-variant')) {
+        const probe = document.createElement('template'); probe.innerHTML = result;
+        if (!validateRabbitMirrorMarkupLexicalBudget(result) || !validateRabbitMirrorTemplateStructuralBudget(probe)) {
+            return originalRoleColorHtml(result);
+        }
+    }
+    return result;
 }
 
 

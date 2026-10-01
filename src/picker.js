@@ -1,6 +1,6 @@
-import { attachPaletteRecipes } from './paletteRecipes.js?rmv=1.62.38';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.38';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.38';
+import { attachPaletteRecipes } from './paletteRecipes.js?rmv=1.62.45';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.45';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.45';
 import {
     getCurrentChatKey,
     getDirectiveScopedPick,
@@ -20,12 +20,12 @@ import {
     clearPendingComboBatch,
     createPendingComboBatchPlan,
     findPendingComboBatchPlan,
-} from './storage.js?rmv=1.62.38';
-import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.62.38';
-import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.62.38';
-import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, visualSceneryEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.38';
-import { attachInteractionRecipes, diversifyBatchInteractionRecipes } from './interactionRecipes.js?rmv=1.62.38';
-import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.62.38';
+} from './storage.js?rmv=1.62.45';
+import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.62.45';
+import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.62.45';
+import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, visualSceneryEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.45';
+import { attachInteractionRecipes, diversifyBatchInteractionRecipes } from './interactionRecipes.js?rmv=1.62.45';
+import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.62.45';
 import {
     chooseExternalSource,
     externalPoolActive,
@@ -35,7 +35,7 @@ import {
     getExternalPoolSnapshot,
     pickExternalItems,
     sourceMixModeIsExternalOnly,
-} from './externalWorldBook/externalPool.js?rmv=1.62.38';
+} from './externalWorldBook/externalPool.js?rmv=1.62.45';
 
 function randomUnit() {
     try {
@@ -1241,9 +1241,9 @@ function comboFromSelection(result, settings, recent, uiReviewFocus = null) {
     if (combo.presentationMode === 'text' || combo.pureOrder) return combo;
     const previous = result.previousVariation ? [result.previousVariation] : [];
     if (previous.length) {
-        delete combo.interactionRecipeId; delete combo.paletteRecipeId;
+        delete combo.interactionRecipeId; delete combo.interactionRecipeIds; delete combo.paletteRecipeId;
         if (combo.atmosphereMenu) combo.atmosphereMenu = combo.atmosphereMenu.map(ticket => {
-            const next = { ...ticket }; delete next.interactionRecipeId; delete next.paletteRecipeId; return next;
+            const next = { ...ticket }; delete next.interactionRecipeId; delete next.interactionRecipeIds; delete next.paletteRecipeId; return next;
         });
     }
     attachInteractionRecipes(combo, { randomUnit, recent: [...getRecentDiversityHistory(5), ...previous] });
@@ -1632,13 +1632,23 @@ export function buildPureOrderSelection(settings, order) {
     return { combo, directive, last: null };
 }
 
-export function pickCombinationForMultifaceResay(settings, resay) {
+export function pickCombinationForMultifaceResay(settings, resay, generationScopeKey = '', generationContext = null) {
     settings = { ...settings, avoidRepeat: true };
     if (!resay || !Number.isSafeInteger(resay.faceIndex) || resay.faceIndex < 0 ||
         !Array.isArray(resay.faces) || resay.faceIndex >= resay.faces.length || resay.faces.length > 5) {
         throw multiFacePlanningError('未找到要重新生成的兔子镜面；本次尚未发送请求。', 'BATCH_RESAY_FACE_MISSING');
     }
     const face = resay.faces[resay.faceIndex];
+    if (!resay.preserveVariation && !resay.preserveSelection && !resay.userPicked) {
+        const faceIndex = Number(settings.rabbitMirrorFaceCount) === 1 ? 0 : resay.faceIndex;
+        if (['html', 'longtext'].includes(resay.presentationOverride)) {
+            const modes = [...(settings.rabbitMirrorPresentationModes || [])];
+            modes[faceIndex] = resay.presentationOverride;
+            settings = { ...settings, rabbitMirrorPresentationModes: modes };
+        }
+        return pickCombination(settings, generationScopeKey, { ...(generationContext || {}),
+            previousVariation: face, faceIndex });
+    }
     if (Number(face?.customThemeCount || 0) > 0 || Number(face?.customFormatCount || 0) > 0 || Number(face?.customRequestCount || 0) > 0) {
         throw multiFacePlanningError('原面包含未入库的自定义点菜，仅凭面元数据无法安全还原；请重新选择整批生成。', 'BATCH_RESAY_CUSTOM_RECIPE');
     }
@@ -1651,7 +1661,7 @@ export function pickCombinationForMultifaceResay(settings, resay) {
                 const wanted = kind === 'format' ? canonicalFormatId(id) : id;
                 return pool.find(item => item.id === wanted);
             }
-            // Re-say is an exact selection, not another random draw. The ID-only
+            // Explicit original/picked selection or continuation is exact. The ID-only
             // constructor cannot prove membership: use the current eligible pool.
             if (!externalLibraries.some(library => library.ids.includes(id))) return null;
             return externalPoolItem(id, kind);
@@ -1742,7 +1752,8 @@ export function pickCombination(settings, generationScopeKey = '', generationCon
     const last = getLastCombo();
     const formalRecent = getRecentIds(settings.cooldownRounds || 10);
     const attemptRecent = getRecentGenerationAttemptIds(chatKey, settings.cooldownRounds || 10);
-    const recent = mergeRecent(formalRecent, attemptRecent);
+    const previous = generationContext?.previousVariation;
+    const recent = mergeRecent(mergeRecent(formalRecent, attemptRecent), previous || {});
     // 单请求多面：本批前面已选中的组合并入硬排除，与历史冷却走同一条过滤路径。
     // generationContext 不带这两个字段时（既有单面调用）结果与原来逐字相同。
     const batchExcludedThemeIds = Array.isArray(generationContext?.batchExcludedThemeIds)
@@ -1752,9 +1763,9 @@ export function pickCombination(settings, generationScopeKey = '', generationCon
         ? generationContext.batchExcludedFormatIds.map(value => String(value || '')).filter(Boolean)
         : [];
     const hardRecent = {
-        themeIds: [...(attemptRecent.themeIds || []), ...batchExcludedThemeIds],
-        formatIds: [...(attemptRecent.formatIds || []), ...batchExcludedFormatIds],
-        textIds: attemptRecent.textIds || [],
+        themeIds: [...(attemptRecent.themeIds || []), ...batchExcludedThemeIds, ...(previous?.themeIds || [])],
+        formatIds: [...(attemptRecent.formatIds || []), ...batchExcludedFormatIds, ...(previous?.formatIds || [])],
+        textIds: [...(attemptRecent.textIds || []), ...(previous?.textIds || [])],
     };
     const favorites = getFavoritesState(settings);
     const validFormatIds = PRESENTATION_FORMATS.map(item => String(item?.id || '')).filter(Boolean);
@@ -1764,6 +1775,18 @@ export function pickCombination(settings, generationScopeKey = '', generationCon
 
     let themePool = filterRandomThemePool(THEMATIC_CATEGORIES.filter(item => allowByMode(item, settings.mode)), settings);
     let formatPool = filterRandomFormatPool(PRESENTATION_FORMATS.filter(item => allowByMode(item, settings.mode)), settings);
+    if (previous) {
+        // Prefer a different family on an intentional redraw. A small/filtered
+        // pool softens this preference; it never reintroduces blacklisted items.
+        const freshPool = (pool, ids, family, count) => {
+            const held = new Set(ids || []), families = new Set([...held].map(family));
+            const freshFamily = pool.filter(item => !families.has(family(item)));
+            const freshId = pool.filter(item => !held.has(item.id));
+            return freshFamily.length >= count ? freshFamily : freshId.length ? freshId : pool;
+        };
+        themePool = freshPool(themePool, previous.themeIds, themeFamilyKey, themeCount);
+        formatPool = freshPool(formatPool, previous.formatIds, formatFamilyKey, formatCount);
+    }
     // Blacklist filtering is a real pool exclusion, not a Prompt instruction.
     // 1.3.69: 这两行原本写成 `!pool.length && blacklistEnabled === false` 才恢复整池。
     // 但 blacklistEnabled === false 时 filterRandomXxxPool 已经原样返回整池，池为空
@@ -1780,7 +1803,7 @@ export function pickCombination(settings, generationScopeKey = '', generationCon
 
     const directiveCacheKey = directiveScopeKey(directive, settings);
     let combo = null;
-    if (directive && directiveCacheKey) {
+    if (directive && directiveCacheKey && !previous) {
         combo = rehydrateDirectiveCombo(getDirectiveScopedPick(chatKey, directiveCacheKey), settings, recent);
     }
 
@@ -1795,8 +1818,8 @@ export function pickCombination(settings, generationScopeKey = '', generationCon
             recent,
             formalRecent,
             hardRecent,
-            previousThemeFamilyKeys: (last?.themeIds || []).map(themeFamilyKey),
-            previousFormatFamilyKeys: (last?.formatIds || []).map(formatFamilyKey),
+            previousThemeFamilyKeys: (previous?.themeIds || last?.themeIds || []).map(themeFamilyKey),
+            previousFormatFamilyKeys: (previous?.formatIds || last?.formatIds || []).map(formatFamilyKey),
             favoriteThemeIds: favorites.themeIds,
             favoriteFormatIds: favorites.formatIds,
             favoriteThemeMultipliers: favorites.themeMultipliers,
@@ -1806,7 +1829,7 @@ export function pickCombination(settings, generationScopeKey = '', generationCon
             faceIndex: Number.isSafeInteger(generationContext?.faceIndex) ? generationContext.faceIndex : 0,
             presentationScopeKey: scopeKey,
         });
-        combo = comboFromSelection(result, settings, recent);
+        combo = comboFromSelection({ ...result, ...(previous ? { previousVariation: previous } : {}) }, settings, recent);
         if (result.formatFairnessEligibleIds?.length) {
             recordFormatEligibleMissRound({
                 eligibleIds: result.formatFairnessEligibleIds,

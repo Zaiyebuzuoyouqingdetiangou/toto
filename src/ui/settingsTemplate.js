@@ -1,8 +1,8 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.62.38';
-import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.62.38';
-import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.62.38';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.62.45';
+import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.62.45';
+import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.62.45';
 
 export function buildRabbitMirrorSettingsDialogHtml() {
     return `
@@ -462,6 +462,8 @@ export function buildRabbitMirrorSettingsDialogHtml() {
             <div id="rh_enhanced_visual_drawing_help" class="rabbit-mirror-subnote" style="margin:0 0 8px 26px;">加强主体绘制、材质、光影与空间层次；采用动态场景时，动画统一按动态场景规则执行。</div>
             <label for="rh_dark_visual_mode" class="checkbox_label"><input id="rh_dark_visual_mode" type="checkbox" aria-describedby="rh_dark_visual_mode_help"> 深色模式</label>
             <div id="rh_dark_visual_mode_help" class="rabbit-mirror-subnote">新生成的所有镜面使用适合夜间阅读的深色背景；深色范围内仍强避重，保留形式与材质。独立生效，勾选即保存；已有作品不变。</div>
+            <label for="rh_post_generation_recolor" class="checkbox_label"><input id="rh_post_generation_recolor" type="checkbox"> 生成后换色（试用）</label>
+            <div class="rabbit-mirror-subnote">普通 HTML、动态场景与组合均适用。保留模型原色，在兔子工具中可切换；未提供换色信息的成品保持原样。关闭后新生成改回配色参考。</div>
             <label class="checkbox_label"><input id="rh_user_directive" type="checkbox"> 用户指令优先</label>
             <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后，可以自由点菜自己喜欢的任意内容。</div>
             <label class="checkbox_label"><input id="rh_worldview_lock" type="checkbox"> 展现形式世界观锁</label>

@@ -1,5 +1,7 @@
-// Opt-in, one-request evidence. No storage, network, timers, DOM reads or
+// Opt-in, one-request evidence. No storage, network, timers, live DOM reads or
 // random-number consumption. Observers can never affect generation outcomes.
+import { generationEvidenceTiming } from './generationTiming.js?rmv=1.62.45';
+import { roleColorEvidence } from './roleColorVariants.js?rmv=1.62.45';
 let armed = false;
 let current = null;
 let sequence = 0;
@@ -11,6 +13,7 @@ const SETTINGS_KEYS = [
     'rawPolicy', 'rabbitMirrorFaceCount', 'rabbitMirrorPresentationModes', 'multifaceDispatch',
     'forceVisualScenery', 'visualSceneryCombination', 'enhancedVisualDrawing',
     'visualPromptEditingEnabled', 'darkVisualMode', 'avoidRepeat', 'creativeExpansionMode',
+    'postGenerationRecolor',
     'userDirectivePriority', 'presentationWorldviewLock', 'behaviorRuleMode',
     'independentContextMaxLayers', 'independentContextExcludedTags',
     'independentReadCharacterCardSummary', 'independentReadPersonaSummary',
@@ -63,7 +66,8 @@ export function getGenerationEvidenceState() {
     return { armed, status: current?.status || 'idle', id: current?.id || '',
         mesid: current?.context?.owner?.mesid ?? null, hasReport: !!current,
         hasRequest: !!current?.request, hasResponse: !!current?.response,
-        hasProcessedHtml: !!current?.processed, complete: current?.status === 'complete' };
+        hasProcessedHtml: !!current?.processed, complete: current?.status === 'complete',
+        timing: generationEvidenceTiming(current) };
 }
 
 export function subscribeGenerationEvidence(listener) {
@@ -88,7 +92,7 @@ export function clearGenerationEvidence() {
 }
 
 export function exportGenerationEvidence() {
-    return current ? JSON.stringify(current, null, 2) : '';
+    return current ? JSON.stringify({ ...current, timing: generationEvidenceTiming(current) }, null, 2) : '';
 }
 
 export function claimGenerationEvidence({ version, profile, owner, settings, faceIndex, serial } = {}) {
@@ -133,7 +137,11 @@ export function claimGenerationEvidence({ version, profile, owner, settings, fac
             });
         },
         processed(html, detail = {}) {
-            return observe(() => { record.processed = { at: new Date().toISOString(), html: String(html ?? ''), detail: copy(detail) }; });
+            return observe(() => {
+                record.processed = { at: new Date().toISOString(), html: String(html ?? ''), detail: copy(detail) };
+                const variant = roleColorEvidence(html);
+                if (variant) record.colorMapping = copy(variant);
+            });
         },
         finish(detail = {}) {
             return observe(() => {

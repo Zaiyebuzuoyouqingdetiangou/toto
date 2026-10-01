@@ -1,5 +1,5 @@
-import { generationPaletteFields } from './paletteRecipes.js?rmv=1.62.38';
-import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.62.38';
+import { generationPaletteFields } from './paletteRecipes.js?rmv=1.62.45';
+import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.62.45';
 
 const ATMOSPHERE_REASON_LIMIT = 300;
 
@@ -84,7 +84,7 @@ export function applyAtmosphereFields(target, menu, note) {
     if (!Number.isInteger(choice) || choice < 0 || choice >= compact.length) return target;
     target.atmosphereChoice = choice;
     const ticket = menu[choice] || compact[choice];
-    delete target.interactionRecipeId; delete target.paletteRecipeId;
+    delete target.interactionRecipeId; delete target.interactionRecipeIds; delete target.paletteRecipeId;
     Object.assign(target, interactionRecipeFields({ ...ticket, presentationMode: target.presentationMode }), generationPaletteFields({ ...ticket, presentationMode: target.presentationMode }));
     if (Array.isArray(ticket?.themeIds)) target.themeIds = ticket.themeIds.filter(id => typeof id === 'string' && id);
     if (Array.isArray(ticket?.formatIds)) target.formatIds = ticket.formatIds.filter(id => typeof id === 'string' && id);

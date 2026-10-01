@@ -1,4 +1,4 @@
-import { GENERATION_PALETTE_INDEX, PALETTE_GROUP_LABELS } from '../data/structured/generationPaletteIndex.js?rmv=1.62.38';
+import { GENERATION_PALETTE_INDEX, PALETTE_GROUP_LABELS } from '../data/structured/generationPaletteIndex.js?rmv=1.62.45';
 const BY_ID = new Map(GENERATION_PALETTE_INDEX.map(item => [item.id, item]));
 
 export function paletteRecipeFor(source) {
@@ -13,7 +13,8 @@ export function observedPaletteGroup(record) {
     const p = record?.paletteFingerprint;
     if (!p || Number(p.confidence || 0) < .35 || !p.brightness) return '';
     const hue = p.hueFamily || 'neutral';
-    if (['light', 'mid'].includes(p.brightness) && p.saturation === 'low' && p.temperature === 'warm'
+    const paleWarm = Number.isFinite(p.averageChroma) && p.averageChroma <= .25 && Number(p.averageLuminance) >= 210;
+    if (['light', 'mid'].includes(p.brightness) && (p.saturation === 'low' || paleWarm) && p.temperature === 'warm'
         && ['neutral', 'yellow', 'orange'].includes(hue)) return 'warm_neutral';
     if (hue === 'neutral') return p.brightness === 'dark' ? 'dark_neutral' : 'cool_neutral';
     return Object.hasOwn(PALETTE_GROUP_LABELS, hue) ? hue : '';
@@ -41,9 +42,11 @@ export function selectPaletteRecipe(combo, { randomUnit = Math.random, recent = 
     const batchHits = item => Number(inBatch.has(item.colorGroup)) + Number(inBatch.has(item.surfaceGroup));
     const minBatchHits = Math.min(...pool.map(batchHits));
     pool = pool.filter(item => batchHits(item) === minBatchHits);
-    const material = [...(combo.themes || []), ...(combo.formats || [])].map(item => `${item.title || ''} ${item.summary || ''}`).join(' ');
-    const weights = pool.map(item => (1 + item.fit.filter(word => material.includes(word)).length * 2)
-        * (!darkOnly && !darkCooldown && item.brightness === 'light' ? 4 : 1));
+    const material = (combo.formats || []).map(item => `${item.title || ''} ${item.summary || ''}`).join(' ');
+    const atmosphere = (combo.themes || []).map(item => `${item.title || ''} ${item.summary || ''}`).join(' ');
+    const weights = pool.map(item => (1 + item.fit.filter(word => material.includes(word)).length * 3
+        + item.fit.filter(word => atmosphere.includes(word)).length)
+        * (!darkOnly && !darkCooldown && item.brightness === 'light' ? 8 : 1));
     const raw = Number(randomUnit()), roll = Number.isFinite(raw) ? Math.max(0, Math.min(.999999999, raw)) : 0;
     let cursor = roll * weights.reduce((sum, n) => sum + n, 0);
     return pool.find((_item, index) => (cursor -= weights[index]) < 0) || pool[pool.length - 1] || null;

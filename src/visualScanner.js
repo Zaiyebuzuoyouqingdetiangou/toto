@@ -1,10 +1,11 @@
-import { detectCompositionFingerprint, VISUAL_SKELETON_MAX_CHARS } from './compositionFingerprint.js?rmv=1.62.38';
-import { visualSceneryEnabled } from './presentationMode.js?rmv=1.62.38';
-import { presentationModeFields } from './presentationMode.js?rmv=1.62.38';
-import { getCurrentChatKey, commitFollowVisualHistory, bindVisualHistoryTarget } from './storage.js?rmv=1.62.38';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.62.38';
-import { getSettings } from './settings.js?rmv=1.62.38';
-import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.62.38';
+import { activeRoleColorHtml, bindRolePaletteCode } from './roleColorVariants.js?rmv=1.62.45';
+import { detectCompositionFingerprint, VISUAL_SKELETON_MAX_CHARS } from './compositionFingerprint.js?rmv=1.62.45';
+import { visualSceneryEnabled } from './presentationMode.js?rmv=1.62.45';
+import { presentationModeFields } from './presentationMode.js?rmv=1.62.45';
+import { getCurrentChatKey, commitFollowVisualHistory, bindVisualHistoryTarget } from './storage.js?rmv=1.62.45';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.62.45';
+import { getSettings } from './settings.js?rmv=1.62.45';
+import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.62.45';
 import {
     commitRabbitMirrorFollowBatch,
     captureRabbitMirrorGenerationSnapshots,
@@ -14,17 +15,17 @@ import {
     inspectRabbitMirrorGenerationSource,
     releaseRabbitMirrorFollowBatch,
     releaseRabbitMirrorFollowBatchAtMessage,
-} from './generationGuard.js?rmv=1.62.38';
+} from './generationGuard.js?rmv=1.62.45';
 import {
     clearSanitizedRabbitMirrorFaceProof,
     getSanitizedRabbitMirrorFaceProof,
     markSanitizedRabbitMirrorFace,
     rabbitMirrorMultifaceSourceHash,
-} from './multifaceProof.js?rmv=1.62.38';
-import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.62.38';
-import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.62.38';
-import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.62.38';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.38';
+} from './multifaceProof.js?rmv=1.62.45';
+import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.62.45';
+import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.62.45';
+import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.62.45';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.45';
 
 export const FOLLOW_MULTIFACE_COMMITTED_EVENT = 'rabbit-mirror:follow-multiface-committed';
 export const FOLLOW_MULTIFACE_REJECTED_EVENT = 'rabbit-mirror:follow-multiface-rejected';
@@ -725,6 +726,7 @@ function classifyPaletteSamples(samples, source = 'raw', mainBackgroundFound = f
     let totalWeight = 0;
     let luminanceSum = 0;
     let saturationSum = 0;
+    let chromaSum = 0;
     let darkWeight = 0;
     let lightWeight = 0;
     let chromaticWeight = 0;
@@ -742,6 +744,8 @@ function classifyPaletteSamples(samples, source = 'raw', mainBackgroundFound = f
         totalWeight += weight;
         luminanceSum += lum * weight;
         saturationSum += hsl.s * weight;
+        // HSL saturation alone makes near-white cream look highly saturated.
+        chromaSum += (Math.max(color.r, color.g, color.b) - Math.min(color.r, color.g, color.b)) / 255 * weight;
         if (lum < 105) darkWeight += weight;
         if (lum > 185) lightWeight += weight;
         if (hsl.s >= 0.12) {
@@ -782,6 +786,7 @@ function classifyPaletteSamples(samples, source = 'raw', mainBackgroundFound = f
         darkAreaRatio: Number(darkAreaRatio.toFixed(2)),
         lightAreaRatio: Number(lightAreaRatio.toFixed(2)),
         averageLuminance: Math.round(averageLuminance),
+        averageChroma: Number((chromaSum / totalWeight).toFixed(3)),
         confidence: Number(confidence.toFixed(2)),
         source,
     };
@@ -987,7 +992,7 @@ function detectInnerDetailsUsed(root, html = '') {
 }
 
 export function scanRabbitMirrorHtml(messageHtml, renderedToto = null) {
-    const match = String(messageHtml || '').match(TOTO_RE);
+    const match = activeRoleColorHtml(messageHtml).match(TOTO_RE);
     if (!match) return { signature: '', skeleton: '', riskFlags: [], paletteFingerprint: null, interactionFamily: interactionFamilyRecord() };
     const html = match[0];
     const plain = stripTags(html);
@@ -1312,7 +1317,7 @@ function templateSingleFollowRoot(template) {
 
 function loadFollowBatchSanitizer() {
     if (!followBatchSanitizerModulePromise) {
-        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.62.38').catch(error => {
+        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.62.45').catch(error => {
             followBatchSanitizerModulePromise = null;
             console.debug('[RabbitMirror] follow multiface sanitizer unavailable:', error);
             return null;
@@ -1367,7 +1372,7 @@ function prepareFollowFaces(set, sanitizer) {
         }
         // Rebuild from the proven source, including the same per-mirror CSS and
         // keyframe isolation as independent output, before the common sanitizer.
-        template.innerHTML = sanitizer.compactTotoBlock(String(sourceFace?.html || ''));
+        template.innerHTML = sanitizer.compactTotoBlock(bindRolePaletteCode(String(sourceFace?.html || ''), sourceFace.metadata));
         if (!sanitizer.sanitizeRabbitMirrorUntrustedTemplate(template)) {
             throw followMultifaceRejection('multiface-sanitizer-rejected', faceIndex + 1,
                 '这一面未通过安全净化；本批结果不会保存。');

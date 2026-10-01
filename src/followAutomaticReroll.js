@@ -1,14 +1,14 @@
-import { getSettings } from './settings.js?rmv=1.62.38';
-import { getCurrentChatKey } from './storage.js?rmv=1.62.38';
-import { getRabbitMirrorRecipe } from './blacklist.js?rmv=1.62.38';
-import { readFollowPartialResult, saveFollowCompletedRetryResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=1.62.38';
-import { markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.62.38';
-import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.62.38';
-import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.62.38';
-import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=1.62.38';
-import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.62.38';
-import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=1.62.38';
-import { presentationModeFields } from './presentationMode.js?rmv=1.62.38';
+import { getSettings } from './settings.js?rmv=1.62.45';
+import { getCurrentChatKey } from './storage.js?rmv=1.62.45';
+import { getRabbitMirrorRecipe } from './blacklist.js?rmv=1.62.45';
+import { readFollowPartialResult, saveFollowCompletedRetryResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=1.62.45';
+import { markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.62.45';
+import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.62.45';
+import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.62.45';
+import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=1.62.45';
+import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.62.45';
+import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=1.62.45';
+import { presentationModeFields } from './presentationMode.js?rmv=1.62.45';
 import {
     automaticRerollEnabled,
     automaticRerollStatusText,
@@ -18,9 +18,9 @@ import {
     isLocalPreflightFailure,
     shouldAutomaticReroll,
     stallTimeoutError,
-} from './automaticReroll.js?rmv=1.62.38';
-import { mergeMissingIndependentFaces, missingIndexesFromIndependentResult, recipesCoverMissing } from './missingFaceMerge.js?rmv=1.62.38';
-import { inspectRabbitMirrorGenerationSource, getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.62.38';
+} from './automaticReroll.js?rmv=1.62.45';
+import { mergeMissingIndependentFaces, missingIndexesFromIndependentResult, recipesCoverMissing } from './missingFaceMerge.js?rmv=1.62.45';
+import { inspectRabbitMirrorGenerationSource, getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.62.45';
 
 const inFlight = new Set();
 const consumeCounts = new Map();
@@ -144,7 +144,7 @@ async function requestFollowMissingFaces(ctx, index, missingIndexes, faces, deps
     try {
         if (plan.selectedExternalIds.length) { materials = await getSelectedExternalEntries(plan.selectedExternalIds); assertCurrent(); }
         if (plan.appearanceReference.enabled) {
-            const appearance = await import('./appearanceReference.js?rmv=1.62.38');
+            const appearance = await import('./appearanceReference.js?rmv=1.62.45');
             assertCurrent();
             appearanceMaterial = await appearance.loadAppearanceReferenceMaterial(plan.appearanceReference.revision);
             assertCurrent();

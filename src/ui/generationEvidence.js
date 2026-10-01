@@ -1,5 +1,6 @@
 import { armGenerationEvidence, cancelGenerationEvidenceArm, clearGenerationEvidence,
-    exportGenerationEvidence, getGenerationEvidenceState, subscribeGenerationEvidence } from '../generationEvidence.js?rmv=1.62.38';
+    exportGenerationEvidence, getGenerationEvidenceState, subscribeGenerationEvidence } from '../generationEvidence.js?rmv=1.62.45';
+import { formatGenerationElapsed } from '../generationTiming.js?rmv=1.62.45';
 
 let cleanup = null;
 
@@ -23,6 +24,9 @@ export function mountGenerationEvidenceUi(root, getSettings) {
             : state.status === 'capturing' ? `正在记录消息 ${state.mesid ?? '未知'}；请求${state.hasRequest ? '已捕获' : '尚未发出'}，回复${state.hasResponse ? '已收到' : '等待中'}。`
             : state.hasReport ? `${state.status === 'complete' ? '取证完成' : state.status === 'incomplete' ? '取证不完整，已保留现有证据' : '生成未完成，已保留现有证据'} · 消息 ${state.mesid ?? '未知'}。可导出或复制；下次生成不会覆盖。`
             : '未开启。记录只保留在本页，刷新前请导出。';
+        if (state.timing.requestToResponseMs !== null) {
+            status.textContent += ` 请求至回复结束：${formatGenerationElapsed(state.timing.requestToResponseMs)}。`;
+        }
         if (!state.hasReport || state.armed || renderedId !== state.id) {
             output.value = ''; output.hidden = true;
             if (url) { URL.revokeObjectURL(url); url = null; }
