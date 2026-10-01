@@ -1,10 +1,10 @@
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.62.47';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.62.48';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.62.47';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.62.47';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.62.47';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.62.47';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.62.48';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.62.48';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.62.48';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.62.48';
 
 export const MODULE_NAME = 'rabbit_mirror_theater';
 
@@ -210,7 +210,7 @@ export const defaultSettings = Object.freeze({
     // Compatibility key: strong diversity is always active.
     avoidRepeat: true,
     darkVisualMode: false,
-    postGenerationRecolor: true,
+    postGenerationRecolor: false, // Retired trial compatibility key; never generates variants.
     visualDesignMode: 'guided1553',
     cooldownRounds: 10,
     blacklistEnabled: true,
@@ -364,8 +364,8 @@ export function getSettings() {
     settings.formatsMax = Number(settings.formatsMax) || defaultSettings.formatsMax;
     settings.avoidRepeat = true;
     settings.darkVisualMode = settings.darkVisualMode === true;
-    settings.postGenerationRecolor = settings.postGenerationRecolor === true;
-    if (!['current', 'reference1553', 'guided1553'].includes(settings.visualDesignMode)) settings.visualDesignMode = 'guided1553';
+    settings.postGenerationRecolor = false;
+    if (!['reference1553', 'guided1553'].includes(settings.visualDesignMode)) settings.visualDesignMode = 'guided1553';
     settings.cooldownRounds = Math.max(1, Number(settings.cooldownRounds) || defaultSettings.cooldownRounds);
     settings.blacklistEnabled = settings.blacklistEnabled !== false;
     const normalizeSelectionIds = (value, mapId = id => id) => [...new Set((Array.isArray(value) ? value : []).map(id => mapId(String(id || '').trim())).filter(Boolean))].slice(0, 512);

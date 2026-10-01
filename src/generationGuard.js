@@ -1,12 +1,12 @@
-import { presentationModeFields } from './presentationMode.js?rmv=1.62.47';
+import { presentationModeFields } from './presentationMode.js?rmv=1.62.48';
 import {
     commitPendingComboBatch,
     getCurrentChatKey,
     releasePendingComboBatch,
-} from './storage.js?rmv=1.62.47';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.62.47';
-import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, multifaceRecoveryWithinRawBudgets } from './multifaceProtocol.js?rmv=1.62.47';
-import { atmosphereChoicesFromFaces, compactAtmosphereMenu } from './atmosphereChoice.js?rmv=1.62.47';
+} from './storage.js?rmv=1.62.48';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.62.48';
+import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, multifaceRecoveryWithinRawBudgets } from './multifaceProtocol.js?rmv=1.62.48';
+import { atmosphereChoicesFromFaces, compactAtmosphereMenu } from './atmosphereChoice.js?rmv=1.62.48';
 
 const SNAPSHOT_STORAGE_KEY = 'rabbit_mirror_theater:generation_snapshots:v1';
 const ACTIVE_ATTEMPT_STORAGE_KEY = 'rabbit_mirror_theater:active_generation_attempt:v1';

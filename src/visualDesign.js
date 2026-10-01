@@ -1,16 +1,16 @@
-// This comparison changes the HTML visual rules, not the generator or renderer.
-// Historical snapshots without this new setting retain their prior semantics.
+// Two model-original visual rules. Old saved/frozen trial settings migrate to
+// guidance at every generation entry; existing artwork/colour variants are kept.
 export function visualDesignMode(settings) {
-    return ['reference1553', 'guided1553'].includes(settings?.visualDesignMode)
-        ? settings.visualDesignMode : 'current';
+    return settings?.visualDesignMode === 'reference1553' ? 'reference1553' : 'guided1553';
 }
 
 export function usesModelOriginalColors(settings) {
-    return visualDesignMode(settings) !== 'current';
+    return true; // Both supported rules use the model's original colours.
 }
 
 export function postGenerationRecolorEnabled(settings) {
-    return !usesModelOriginalColors(settings) && settings?.postGenerationRecolor === true;
+    // Retained export for old callers; the generation trial has been retired.
+    return false;
 }
 
 // Work on the frozen sending copy only. Existing saved products and recipes
@@ -26,7 +26,7 @@ export function withoutPaletteRecipe(combo) {
 // Source: RabbitMirror-1.5.53-HOSTUIFIX1-FULL.zip, src/promptBuilder.js.
 export const REFERENCE_VISUAL_FLOOR = '展现形式与媒介本体决定具体长相。成品须主次清楚，比例、空间、材质、信息组织、细节与配色均服务本轮内容；不得把黑／深灰系统面板、蓝色科技 UI、浅暖纸面或通用圆角卡片当作默认高级感模板。';
 
-// The experiment replaces only the floor above. No second model request,
+// The new rules replace only the floor above. No second model request,
 // fixed style menu, example HTML, control quota or acceptance gate is added.
 export const GUIDED_VISUAL_FLOOR = '依本面已选展现形式与正文，先确定具体的视觉风格、主体焦点和阅读顺序，再写 HTML。让比例、留白、字级与字重拉开主次；背景、主体和文字形成清楚的明暗与冷暖关系，材质边缘、受光和阴影遵循同一空间。交互状态沿用这套设计并改变对应对象。具体颜色、构图与工艺由本面决定，只输出完成的成品。';
 

@@ -1,11 +1,11 @@
 // Split from independentApi.js — geometry.
-import { restoreRuntimeAnimationClone, ANIMATION_SUSPENDED_ATTR } from '../runtimeAnimationState.js?rmv=1.62.47';
+import { restoreRuntimeAnimationClone, ANIMATION_SUSPENDED_ATTR } from '../runtimeAnimationState.js?rmv=1.62.48';
 
-import { bindVisualHistoryTarget } from '../storage.js?rmv=1.62.47';
-import { presentationModeFields } from '../presentationMode.js?rmv=1.62.47';
-import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.62.47';
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorExternalPlacementParent } from '../hostCompatibility.js?rmv=1.62.47';
-import { getSettings } from '../settings.js?rmv=1.62.47';
+import { bindVisualHistoryTarget } from '../storage.js?rmv=1.62.48';
+import { presentationModeFields } from '../presentationMode.js?rmv=1.62.48';
+import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.62.48';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorExternalPlacementParent } from '../hostCompatibility.js?rmv=1.62.48';
+import { getSettings } from '../settings.js?rmv=1.62.48';
 import {
     cleanRabbitMirrorOutput,
     compactTotoBlock,
@@ -19,12 +19,12 @@ import {
     clearRabbitMirrorHorizontalClipArtifacts,
     sanitizeRabbitMirrorUntrustedTemplate,
     validateRabbitMirrorRecoveredStyleAssignments,
-} from '../outputSanitizer.js?rmv=1.62.47';
-import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.62.47';
-import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.62.47';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.62.47';
-import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.62.47';
-import { markSanitizedRabbitMirrorFace } from '../multifaceProof.js?rmv=1.62.47';
+} from '../outputSanitizer.js?rmv=1.62.48';
+import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.62.48';
+import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.62.48';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.62.48';
+import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.62.48';
+import { markSanitizedRabbitMirrorFace } from '../multifaceProof.js?rmv=1.62.48';
 import {
     EXTERNAL_SHELL_ATTR,
     FOLLOW_EXTERNAL_ANCHOR_ATTR,
@@ -39,8 +39,8 @@ import {
     getContext,
     hashText,
     independentMaintenanceLiveRepairLocked,
-} from './runtime.js?rmv=1.62.47';
-import { automaticDispatchAlreadyConsumed, automaticFailureStops, generationPolls, operationEpochForBase } from './flights.js?rmv=1.62.47';
+} from './runtime.js?rmv=1.62.48';
+import { automaticDispatchAlreadyConsumed, automaticFailureStops, generationPolls, operationEpochForBase } from './flights.js?rmv=1.62.48';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INTERACTION_STATE_MIGRATION_KEY,
@@ -49,7 +49,7 @@ import {
     persistedOwnerForMessage,
     readStore,
     writeStore,
-} from './persistence.js?rmv=1.62.47';
+} from './persistence.js?rmv=1.62.48';
 import {
     chatKey,
     copyIndependentOwnerLineage,
@@ -66,7 +66,7 @@ import {
     savedRecordMatchesObserved,
     slotSearchKeys,
     swipeId,
-} from './connection.js?rmv=1.62.47';
+} from './connection.js?rmv=1.62.48';
 import {
     EXTERNAL_GEOMETRY_SETTLE_STEPS_MS,
     allExternalHosts,
@@ -100,7 +100,7 @@ import {
     wrapIndependentFace,
     wrapPreparedIndependentFace,
     writeGeometryDataset,
-} from './request.js?rmv=1.62.47';
+} from './request.js?rmv=1.62.48';
 import {
     activeIndependentFlightForBase,
     automaticCutoverVersionToken,
@@ -123,20 +123,20 @@ import {
     serializeExternalFaceDetails,
     showMultifaceFace,
     stripIndependentTransientLayoutArtifacts,
-} from './mount.js?rmv=1.62.47';
+} from './mount.js?rmv=1.62.48';
 import {
     automaticHostGenerationRenderMatches,
     hasExistingFollowRabbitMirror,
     queueMessageSync,
     suppressesAutomaticGeneration,
-} from './earlyBody.js?rmv=1.62.47';
+} from './earlyBody.js?rmv=1.62.48';
 import {
     automaticGenerationCutovers,
     persistedInteractionMigrationHandle,
     persistedInteractionMigrationIdle,
     writePersistedInteractionMigrationHandle,
     writePersistedInteractionMigrationIdle,
-} from './lifecycle.js?rmv=1.62.47';
+} from './lifecycle.js?rmv=1.62.48';
 
 let externalGeometryFrame = 0;
 
@@ -2062,7 +2062,7 @@ export function renderExternalErrorBody(details,text=''){
   // second retry intent after the first click has entered loading or READY.
   const host=details.closest?.(`[${SOURCE_ATTR}="true"]`);
   if(!retry.isConnected || !details.contains?.(retry) || host?.dataset?.rmState!=='error') return;
-  void import('../outputSanitizer/toolsChrome.js?rmv=1.62.47').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+  void import('../outputSanitizer/toolsChrome.js?rmv=1.62.48').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
  },true);
  const cat=document.createElement('button');
  cat.type='button';
@@ -2571,35 +2571,10 @@ function applyExternalShellTintPalette(host,palette){
 
 function externalShellContrastText(color){
  if(!color) return {r:36,g:36,b:36,a:1};
- const metrics=externalShellColorMetrics(color);
- return metrics.luminance<.48 ? {r:248,g:248,b:248,a:1} : {r:42,g:42,b:42,a:1};
-}
-
-function externalShellWideTopBand(root){
- if(!root?.isConnected || typeof getComputedStyle!=='function') return null;
- let rootRect; try{ rootRect=root.getBoundingClientRect(); }catch{return null;}
- const width=Math.max(1,Number(rootRect?.width||0));
- const height=Math.max(1,Number(rootRect?.height||0));
- const candidates=[];
- for(const element of [...root.querySelectorAll?.('header,div,section,nav')||[]].slice(0,120)){
-  if(!element?.isConnected || element.closest?.('[data-rabbit-mirror-tool-entry-host]')) continue;
-  let style,rect; try{ style=getComputedStyle(element); rect=element.getBoundingClientRect(); }catch{continue;}
-  if(style.display==='none' || style.visibility==='hidden' || Number(style.opacity||1)<.08) continue;
-  const w=Math.max(0,Number(rect?.width||0)), h=Math.max(0,Number(rect?.height||0));
-  if(w<width*.58 || h<24 || h>Math.min(180,height*.34)) continue;
-  const topOffset=(Number(rect?.top||0)-Number(rootRect?.top||0))/height;
-  if(topOffset<-.03 || topOffset>.28) continue;
-  const background=parseExternalShellColor(style.backgroundColor);
-  const gradient=averageExternalShellColors(externalShellColorsFromText(style.backgroundImage));
-  const color=(background&&background.a>=.22)?background:gradient;
-  if(!color) continue;
-  const metrics=externalShellColorMetrics(color);
-  const coverage=Math.min(1.2,w/width);
-  const score=coverage*4 + Math.max(0,1-topOffset*3) + metrics.saturation*2.2 + Math.min(1,h/90);
-  candidates.push({color,score});
- }
- candidates.sort((a,b)=>b.score-a.score);
- return candidates[0]?.color||null;
+ const linear=value=>{const c=value/255;return c<=.04045?c/12.92:((c+.055)/1.055)**2.4;};
+ const luminance=.2126*linear(color.r)+.7152*linear(color.g)+.0722*linear(color.b);
+ return (1.05/(luminance+.05)) >= ((luminance+.05)/.05)
+  ? {r:255,g:255,b:255,a:1} : {r:0,g:0,b:0,a:1};
 }
 
 function clearExternalShellIntegration(host){
@@ -2625,7 +2600,9 @@ function applyExternalShellIntegration(host,palette=null){
  const visualGradient=averageExternalShellColors(externalShellColorsFromText(visualStyle?.backgroundImage));
  const surface=(bodyBackground&&bodyBackground.a>=.18?bodyBackground:null) || bodyGradient || (visualBackground&&visualBackground.a>=.18?visualBackground:null) || visualGradient || palette?.base || null;
  if(!surface) return false;
- const header=externalShellWideTopBand(visualRoot) || externalShellWideTopBand(body) || (palette?.colors||[]).filter(color=>externalShellColorMetrics(color).saturation>=.18).sort((a,b)=>externalShellColorMetrics(b).saturation-externalShellColorMetrics(a).saturation)[0] || surface;
+ // Continue the actual carrier surface. A red checkbox or isolated accent is
+ // not a title palette; never recolour the authored scene to match the chrome.
+ const header=surface;
  let border=parseExternalShellColor(bodyStyle?.borderTopColor) || parseExternalShellColor(visualStyle?.borderTopColor);
  if(!border || border.a<.12) border=mixExternalShellColors(surface,externalShellColorMetrics(surface).luminance>.55?{r:0,g:0,b:0}:{r:255,g:255,b:255},.22);
  let radius=Math.max(...String(bodyStyle?.borderRadius||visualStyle?.borderRadius||'0').split(/[\s\/]+/).map(value=>parseFloat(value)||0),0);

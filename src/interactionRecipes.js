@@ -1,5 +1,5 @@
-import { resolveInteractionDetail, INTERACTION_MECHANISMS } from '../data/raw/rawInteractionRecipes.js?rmv=1.62.47';
-import { INTERACTION_RECIPES } from '../data/structured/interactionIndex.js?rmv=1.62.47';
+import { resolveInteractionDetail, INTERACTION_MECHANISMS } from '../data/raw/rawInteractionRecipes.js?rmv=1.62.48';
+import { INTERACTION_RECIPES } from '../data/structured/interactionIndex.js?rmv=1.62.48';
 
 const BY_ID = new Map(INTERACTION_RECIPES.map(recipe => [recipe.id, recipe]));
 
