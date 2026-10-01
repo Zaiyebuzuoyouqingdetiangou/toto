@@ -1,25 +1,25 @@
-import { bindRolePaletteCode } from '../roleColorVariants.js?rmv=1.62.46';
+import { bindRolePaletteCode } from '../roleColorVariants.js?rmv=1.62.47';
 // Split from independentApi.js — request.
 
-import { claimGenerationEvidence, associateGenerationEvidence, generationEvidenceFor } from '../generationEvidence.js?rmv=1.62.46';
-import { createGenerationTimer } from '../generationTiming.js?rmv=1.62.46';
+import { claimGenerationEvidence, associateGenerationEvidence, generationEvidenceFor } from '../generationEvidence.js?rmv=1.62.47';
+import { createGenerationTimer } from '../generationTiming.js?rmv=1.62.47';
 
-import { resolveBehaviorRuleText } from '../behaviorRules.js?rmv=1.62.46';
-import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.62.46';
-import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.62.46';
-import { getSettings } from '../settings.js?rmv=1.62.46';
-import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.62.46';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=1.62.46';
+import { resolveBehaviorRuleText } from '../behaviorRules.js?rmv=1.62.47';
+import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.62.47';
+import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.62.47';
+import { getSettings } from '../settings.js?rmv=1.62.47';
+import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.62.47';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=1.62.47';
 import {
     assertRabbitMirrorIndependentResponseBytes,
     assertRabbitMirrorIndependentResponseText,
     authorizeRabbitMirrorIndependentServiceRequest,
-} from '../independentSecurityGuard.js?rmv=1.62.46';
+} from '../independentSecurityGuard.js?rmv=1.62.47';
 import {
     parseIndependentAdvancedOptions,
     buildIndependentAdvancedCarrier,
     applyIndependentAdvancedExclusions,
-} from '../advancedRequestOptions.js?rmv=1.62.46';
+} from '../advancedRequestOptions.js?rmv=1.62.47';
 import {
     buildRabbitMirrorPromptDetails,
     planRabbitMirrorPromptDetails,
@@ -28,14 +28,14 @@ import {
     prepareSelectedMemoryForPrompt,
     memoryRequestSettingsKey,
     assertMemoryRequestSettings,
-} from '../promptBuilder.js?rmv=1.62.46';
-import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.62.46';
-import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.62.46';
-import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.62.46';
-import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText, createMultifaceFailureSlot } from '../multifaceProtocol.js?rmv=1.62.46';
-import { applyAtmosphereFields, atmosphereNotesFromHtml, stripAtmosphereChoiceMarkup } from '../atmosphereChoice.js?rmv=1.62.46';
-import { isLocalPreflightFailure, isQuotaInsufficientFailure, configuredAutomaticRerollMax, automaticRerollEnabled } from '../automaticReroll.js?rmv=1.62.46';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.62.46';
+} from '../promptBuilder.js?rmv=1.62.47';
+import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.62.47';
+import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.62.47';
+import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.62.47';
+import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText, createMultifaceFailureSlot } from '../multifaceProtocol.js?rmv=1.62.47';
+import { applyAtmosphereFields, atmosphereNotesFromHtml, stripAtmosphereChoiceMarkup } from '../atmosphereChoice.js?rmv=1.62.47';
+import { isLocalPreflightFailure, isQuotaInsufficientFailure, configuredAutomaticRerollMax, automaticRerollEnabled } from '../automaticReroll.js?rmv=1.62.47';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.62.47';
 import {
     createVisualHistorySelection,
     resolveVisualHistorySelection,
@@ -43,9 +43,9 @@ import {
     visualFamilyForCooldown,
     markPendingBatchAttempt,
     releasePendingComboBatch,
-} from '../storage.js?rmv=1.62.46';
-import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.62.46';
-import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.62.46';
+} from '../storage.js?rmv=1.62.47';
+import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.62.47';
+import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.62.47';
 import {
     RUNTIME_VERSION,
     EXTERNAL_SHELL_ATTR,
@@ -56,8 +56,8 @@ import {
     byteLength,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.62.46';
-import { operationEpochForBase } from './flights.js?rmv=1.62.46';
+} from './runtime.js?rmv=1.62.47';
+import { operationEpochForBase } from './flights.js?rmv=1.62.47';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INDEPENDENT_MAX_APPROX_DEPTH,
@@ -72,7 +72,7 @@ import {
     normalizedConfiguredTemperature,
     readHistoryStore,
     readStore,
-} from './persistence.js?rmv=1.62.46';
+} from './persistence.js?rmv=1.62.47';
 import {
     API_PROFILE_ORDER,
     chatKey,
@@ -106,7 +106,7 @@ import {
     stageNextApiProfile,
     swipeId,
     validatedIndependentConnectionProfile,
-} from './connection.js?rmv=1.62.46';
+} from './connection.js?rmv=1.62.47';
 import {
     externalGeometryCycleSequence,
     externalGeometryLifecycleEpoch,
@@ -117,7 +117,7 @@ import {
     writeExternalGeometryCycleSequence,
     writeExternalGeometryLifecycleEpoch,
     writeExternalGeometryLifecycleReason,
-} from './geometry.js?rmv=1.62.46';
+} from './geometry.js?rmv=1.62.47';
 import {
     INDEPENDENT_REJECTED_PREVIEW_MAX_CHARS,
     INDEPENDENT_REJECTED_PREVIEW_MAX_ENTRIES,
@@ -132,8 +132,8 @@ import {
     writeExternalHostSyncIndex,
     writeIndependentRejectedPreviewChars,
     writeIndependentRejectedPreviewSequence,
-} from './mount.js?rmv=1.62.46';
-import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.62.46';
+} from './mount.js?rmv=1.62.47';
+import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.62.47';
 
 const NON_STREAM_PROFILE_BY_STREAM_PROFILE={
  chat_system_user_full:'chat_system_user_full_nostream',
@@ -951,6 +951,7 @@ export async function requestIndependentCompletion(st,systemPrompt,userPrompt,op
   // The guarded hand-off, not local validation/queueing, starts the clock.
   // Outside opt-in evidence only the elapsed scalar is retained.
   requestTimer.start();
+  options.onProgress?.('request-sent');
   generationCapture?.request(body,boundary);
  };
  // Fixed scalars only. Never spread a parser payload/partialResult into a
@@ -1038,8 +1039,8 @@ export async function requestIndependentCompletion(st,systemPrompt,userPrompt,op
    transport:failureTransport,requestElapsedMs,requestTimingEnd:'failure',
   });
   const retryHint=next
-   ? `；本轮只发送了 1 次生成请求，不会自动重发。点击“重新生成兔子镜”时可做一次诊断性尝试：只把 stream 改为 false，尝试：${next}`
-   : '；本轮只发送了 1 次生成请求，不会自动重发，请手动重试。';
+   ? `；本次传输尝试发送了 1 次生成请求。点击“重新生成兔子镜”时可做一次诊断性尝试：只把 stream 改为 false，尝试：${next}`
+   : '；本次传输尝试发送了 1 次生成请求。';
   const profileHint=profileAuthFailure
    ? '；宿主报告认证／访问被拒绝，请检查所选 Profile 的凭据引用和服务端权限；这不能仅凭错误认定 Secret 未保存。兔子镜不会读取或复制密钥'
    : rateLimited?'；上游报告频率／额度限制，可能包含并发限制；不会用关闭流式重试来规避限制'
@@ -1538,7 +1539,7 @@ export function wireIndependentRejectedFaceControls(host){
    independentRejectedFaceControlsWired.add(resay);
    resay.addEventListener('click',event=>{
     event.preventDefault(); event.stopPropagation();
-    void import('../outputSanitizer/toolsChrome.js?rmv=1.62.46').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+    void import('../outputSanitizer/toolsChrome.js?rmv=1.62.47').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
    },true);
   }
  }
@@ -1736,7 +1737,7 @@ async function loadIndependentAppearanceReference(owner){
  let module;
  assertIndependentPromptOwner(owner);
  try{
-  try{module=await import('../appearanceReference.js?rmv=1.62.46');}
+  try{module=await import('../appearanceReference.js?rmv=1.62.47');}
   catch{
    const error=new Error('外观参考模块未能加载；本轮未发送请求，请刷新后重试或关闭外观参考。');
    error.code='RABBIT_MIRROR_APPEARANCE_MODULE_UNAVAILABLE';error.requestCount=0;throw error;
@@ -2205,9 +2206,9 @@ ${independentUserTail}`;
    const exactNonStreamRetry=next && profileUsesStreaming(mode) && !profileUsesStreaming(next);
    const retryHint=next
     ? exactNonStreamRetry
-      ? `；本轮只发送了 1 次生成请求，不会自动重发。点击“重新生成兔子镜”时将仅把 stream 改为 false，其他消息结构、温度与输出字段保持不变，尝试：${next}`
-      : `；本轮只发送了 1 次生成请求，不会自动重发。点击“重新生成兔子镜”时将尝试下一兼容模式：${next}`
-    : '；本轮只发送了 1 次生成请求，不会自动重复请求，请手动重新生成兔子镜';
+      ? `；本次传输尝试发送了 1 次生成请求。点击“重新生成兔子镜”时将仅把 stream 改为 false，其他消息结构、温度与输出字段保持不变，尝试：${next}`
+      : `；本次传输尝试发送了 1 次生成请求。点击“重新生成兔子镜”时将尝试下一兼容模式：${next}`
+    : '；本次传输尝试发送了 1 次生成请求';
    const error=new Error(`独立 API 请求失败：HTTP ${r.status}${detail?` · ${detail}`:''}${mode?`；参数模式：${mode}`:''}${retryHint}`);
    error.rabbitMirrorRequestDiagnostic=requestDiagnostic;
    throw error;

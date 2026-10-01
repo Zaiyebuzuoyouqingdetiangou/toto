@@ -1673,3 +1673,11 @@ dialog[data-rm-theater-favorite-library] {
 #chat [data-rm-native-toggle="hidden"]{position:absolute !important;opacity:0 !important;width:1px !important;height:1px !important;margin:0 !important;pointer-events:none !important;}
 #chat [data-rm-native-toggle="styled"]{appearance:none !important;-webkit-appearance:none !important;width:20px !important;height:20px !important;margin:6px 0 !important;border:1.5px solid currentColor !important;border-radius:999px !important;background:transparent !important;opacity:.5;cursor:pointer;vertical-align:middle;transition:opacity .2s ease,background .2s ease;}
 #chat [data-rm-native-toggle="styled"]:checked{background:radial-gradient(circle,currentColor 0 36%,transparent 40%) !important;opacity:.85;}
+
+/* Runtime-only viewport/page pause. Removing the attribute restores author state. */
+[data-rm-animation-suspended],
+[data-rm-animation-suspended] *,
+[data-rm-animation-suspended]::before,
+[data-rm-animation-suspended]::after,
+[data-rm-animation-suspended] *::before,
+[data-rm-animation-suspended] *::after { animation-play-state: paused !important; }

@@ -1,8 +1,8 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.62.46';
-import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.62.46';
-import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.62.46';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.62.47';
+import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.62.47';
+import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.62.47';
 
 export function buildRabbitMirrorSettingsDialogHtml() {
     return `
@@ -151,7 +151,7 @@ export function buildRabbitMirrorSettingsDialogHtml() {
                 <label>自动重 roll 次数 <input id="rh_independent_automatic_reroll" class="text_pole" type="number" min="0" step="1" style="width:72px;"></label>
                 <label>无进度中止秒数 <input id="rh_independent_automatic_reroll_idle" class="text_pole" type="number" min="1" step="1" style="width:72px;"></label>
               </div>
-              <p style="opacity:.72;font-size:11px;line-height:1.5;margin:8px 0 0;">跟随正文 API 和副 API 共用。打开后，空回、报错、掉格式、净化失败或缺面会按次数再试，多面只补缺的面。无进度中止只作用于补发请求，不会中止正在写的正文。401 / 429 会重试；额度不足、发送前拦截、点停止、切聊天、正文被换掉不会。关闭后，除了手动重新生成正文或手动重说，都不会自动再生成兔子镜。</p>
+              <p style="opacity:.72;font-size:11px;line-height:1.5;margin:8px 0 0;">跟随正文 API 和副 API 共用。打开后，空回、报错、掉格式、净化失败或缺面会按次数再试，多面只补缺的面。手动重说只请求一次，失败后由你再次点按。副 API 首次返回前保留总等待上限，收到数据后才按无进度秒数中止；不会中止正在写的正文。401 / 429 会重试；额度不足、发送前拦截、点停止、切聊天、正文被换掉不会。关闭后，除了手动重新生成正文或手动重说，都不会自动再生成兔子镜。</p>
             </div>
             <div class="rh-independent-generation-params">
             <div class="flex-container" style="gap:8px;flex-wrap:wrap;align-items:center;padding:9px 10px;border:1px solid color-mix(in srgb,currentColor 14%,transparent);border-radius:9px;">
@@ -462,10 +462,10 @@ export function buildRabbitMirrorSettingsDialogHtml() {
             <label for="rh_visual_design_mode">美化方式</label>
             <select id="rh_visual_design_mode" class="text_pole" style="min-height:44px;" aria-describedby="rh_visual_design_mode_help">
               <option value="reference1553">1.5.53 美化参照 · 模型原色</option>
-              <option value="guided1553">设计指导对照 · 模型原色</option>
+              <option value="guided1553">设计指导 · 模型原色（推荐）</option>
               <option value="current">沿用配色库／换色试用</option>
             </select>
-            <div id="rh_visual_design_mode_help" class="rabbit-mirror-subnote">前两项由模型直接配色，适用于普通、动态与组合 HTML；对照项仅替换一段设计指导。切换后用于下一次生成。</div>
+            <div id="rh_visual_design_mode_help" class="rabbit-mirror-subnote">前两项由模型直接配色，适用于普通、动态与组合 HTML；推荐保留设计指导。切换后用于下一次生成。</div>
             </div>
             <label for="rh_enhanced_visual_drawing" class="checkbox_label"><input id="rh_enhanced_visual_drawing" type="checkbox" aria-describedby="rh_enhanced_visual_drawing_help"> 增强视觉绘制</label>
             <div id="rh_enhanced_visual_drawing_help" class="rabbit-mirror-subnote" style="margin:0 0 8px 26px;">加强主体绘制、材质、光影与空间层次；采用动态场景时，动画统一按动态场景规则执行。</div>
