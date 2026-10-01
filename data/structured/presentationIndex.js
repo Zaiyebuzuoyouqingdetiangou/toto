@@ -25,12 +25,12 @@ export const PRESENTATION_FORMATS = [
     "id": "10.2.2",
     "group": "10",
     "title": "Visual Scenery",
-    "summary": "纯粹利用 CSS 色块、渐变和动画，在屏幕上绘制出一幅极具氛围感的风景，用纯粹的视觉传递情绪。",
+    "summary": "按需要组合 HTML、内联 SVG 与 CSS，绘制主体可辨、空间连贯的动态场景；用主体或环境的持续动画传递氛围与情绪。",
     "tags": [
       "independent",
       "visual"
     ],
-    "raw": "* **10.2.2Visual Scenery**:纯粹利用 CSS 色块、渐变和动画，在屏幕上绘制出一幅极具氛围感的风景，用纯粹的视觉传递情绪。"
+    "raw": "* **10.2.2Visual Scenery**:按需要组合 HTML、内联 SVG 与 CSS，绘制主体可辨、空间连贯的动态场景；用主体或环境的持续动画传递氛围与情绪。"
   },
   {
     "id": "10.2.3",

@@ -1,5 +1,5 @@
-import { resolveInteractionDetail, INTERACTION_MECHANISMS } from '../data/raw/rawInteractionRecipes.js?rmv=1.62.49';
-import { INTERACTION_RECIPES } from '../data/structured/interactionIndex.js?rmv=1.62.49';
+import { resolveInteractionDetail, INTERACTION_MECHANISMS } from '../data/raw/rawInteractionRecipes.js?rmv=1.62.50';
+import { INTERACTION_RECIPES } from '../data/structured/interactionIndex.js?rmv=1.62.50';
 
 const BY_ID = new Map(INTERACTION_RECIPES.map(recipe => [recipe.id, recipe]));
 
@@ -19,25 +19,6 @@ export function interactionRecipeFor(source) {
     return interactionRecipesFor(source)[0] || null;
 }
 
-// Decide from this face/ticket's actual form, never a batch-wide UI setting.
-// Keep interactionRecipeFields unchanged: old saved recipes are still readable.
-function hasDynamicForm(source) {
-    return source?.formats?.some(item => item.id === '10.2.2' || /visual scenery/i.test(item.title || ''))
-        || source?.formatIds?.includes('10.2.2')
-        || [...(source?.formatFullLines || []), ...(source?.formatLines || [])].some(line => /visual scenery/i.test(line));
-}
-
-export function withoutDynamicInteractionRecipes(source) {
-    if (!source || typeof source !== 'object') return source;
-    const next = { ...source };
-    if (hasDynamicForm(source)) {
-        delete next.interactionRecipeId;
-        delete next.interactionRecipeIds;
-    }
-    if (Array.isArray(source.atmosphereMenu)) next.atmosphereMenu = source.atmosphereMenu.map(withoutDynamicInteractionRecipes);
-    return next;
-}
-
 function formText(combo) {
     // Theme words must not turn a book into a machine. Match only form material.
     const formats = combo?.formats || [];
@@ -48,7 +29,7 @@ function formText(combo) {
 }
 
 export function eligibleInteractionRecipes(combo) {
-    if (!combo || combo.presentationMode === 'text' || combo.pureOrder || hasDynamicForm(combo)) return [];
+    if (!combo || combo.presentationMode === 'text' || combo.pureOrder) return [];
     const text = formText(combo);
     return INTERACTION_RECIPES.filter(recipe => recipe.universal || recipe.fit.some(word => text.includes(word)));
 }
@@ -104,16 +85,12 @@ export function attachInteractionRecipes(combo, options = {}) {
         combo.atmosphereMenu = menu.map(ticket => {
             const formats = (ticket.formatFullLines || ticket.formatLines || []).map((title, index) => ({ id: ticket.formatIds?.[index], title }));
             const source = { ...combo, ...ticket, formats, atmosphereMenu: undefined };
-            if (hasDynamicForm(source)) return withoutDynamicInteractionRecipes(ticket);
             const held = interactionRecipesFor(source);
             const picked = held.length ? held : selectInteractionRecipes(source, { ...options, usedIds: [...usedIds] });
             picked.forEach(item => usedIds.add(item.id));
             return { ...ticket, ...interactionRecipeFields({ interactionRecipeIds: picked.map(item => item.id) }) };
         });
         // No ticket has been chosen. The first candidate must not masquerade as a result.
-        delete combo.interactionRecipeId;
-        delete combo.interactionRecipeIds;
-    } else if (hasDynamicForm(combo)) {
         delete combo.interactionRecipeId;
         delete combo.interactionRecipeIds;
     } else if (!interactionRecipeFor(combo)) {
@@ -129,11 +106,6 @@ export function diversifyBatchInteractionRecipes(combos, options = {}) {
         if (!combo || combo.presentationMode === 'text' || combo.pureOrder) continue;
         const candidates = combo.atmosphereMenu?.length > 1 ? combo.atmosphereMenu : [combo];
         for (const candidate of candidates) {
-            if (hasDynamicForm(candidate)) {
-                delete candidate.interactionRecipeId;
-                delete candidate.interactionRecipeIds;
-                continue;
-            }
             if (interactionRecipesFor(candidate).some(recipe => usedIds.has(recipe.id)
                 || [...usedIds].some(id => BY_ID.get(id)?.family === recipe.family))) {
                 const source = candidate === combo ? combo : { ...combo, ...candidate,
@@ -149,17 +121,10 @@ export function diversifyBatchInteractionRecipes(combos, options = {}) {
 export function buildInteractionRecipeRule(faceContexts, rawPolicy = 'balanced', constructionRule = '') {
     const assignments = [];
     const mechanisms = new Set();
-    const scopes = [];
     for (const [index, face] of (faceContexts || []).entries()) {
         if (face.textPresentation || face.combo?.pureOrder) continue;
         const candidates = face.atmosphereFaces || [face];
-        const applicable = candidates.map((candidate, ticketIndex) => ({ candidate, ticketIndex }))
-            .filter(({ candidate }) => !candidate.textPresentation && !candidate.combo?.pureOrder
-                && !candidate.visualSceneryMode && !hasDynamicForm(candidate.combo));
-        if (!applicable.length) continue;
-        scopes.push(`第 ${index + 1} 面 HTML${applicable.length < candidates.length
-            ? `／仅选签 ${applicable.map(({ ticketIndex }) => ticketIndex + 1).join('、')} 时` : ''}`);
-        for (const { ticketIndex, candidate } of applicable) {
+        for (const [ticketIndex, candidate] of candidates.entries()) {
             const scope = `第 ${index + 1} 面${face.atmosphereFaces ? `／仅选签 ${ticketIndex + 1} 时` : ''}`;
             for (const recipe of interactionRecipesFor(candidate.combo)) {
             let entry = `${scope}：${recipe.code}「${recipe.title}｜${recipe.summary}」`;
@@ -173,9 +138,10 @@ export function buildInteractionRecipeRule(faceContexts, rawPolicy = 'balanced',
             }
         }
     }
-    if (!scopes.length || (!assignments.length && !constructionRule)) return '';
+    const numbers = (faceContexts || []).flatMap((face, index) => !face.textPresentation && !face.combo?.pureOrder ? [index + 1] : []);
+    if (!numbers.length || (!assignments.length && !constructionRule)) return '';
     const construction = constructionRule
-        ? `共用适用规则【${scopes.join('；')}】\n${constructionRule}`
+        ? `共用适用规则【${numbers.map(number => `第 ${number} 面 HTML`).join('；')}】\n${constructionRule}`
         : '先构造展现形式本体，再把本签各项操作与可见结果安放到它实际具备的部件、内容区域和使用流程。各交互共同服务同一个媒介，不各自搭一张无关卡片；同一种交互可复用于多个对象，不限制控件数量。用户明确玩法与原形式固有功能优先，不为交互签更换媒介。';
     if (!assignments.length) return construction;
     const implementation = mechanisms.size ? `\n本轮实现依据（各列一次，标识符须面内唯一）：\n${[...mechanisms].map(key => `${key}：${INTERACTION_MECHANISMS[key]}`).join('\n')}` : '';
@@ -186,12 +152,9 @@ ${assignments.join('\n\n')}${implementation}`;
 
 export function interactionExecutionReminder(combo) {
     if (combo?.presentationMode === 'text' || combo?.pureOrder) return '';
-    if (combo?.atmosphereMenu?.length > 1 && combo.atmosphereMenu.every(hasDynamicForm)) return '';
-    if (combo?.atmosphereMenu?.some(ticket => !hasDynamicForm(ticket) && interactionRecipeFor(ticket))) {
-        if (combo.atmosphereMenu.some(hasDynamicForm)) return '第三池仅对附有交互构造的选中签执行：用本面主体完成操作与可见结果；动态签按其场景规则自然构造交互，不串用其他签。';
+    if (combo?.atmosphereMenu?.some(ticket => interactionRecipeFor(ticket))) {
         return '第三池同签执行：交互取选中签已抽好的构造，用本面主体完成操作与可见结果；不要串用未选签。';
     }
-    if (hasDynamicForm(combo)) return '';
     const recipes = interactionRecipesFor(combo);
     return recipes.length ? `第三池已锁定「${recipes.map(recipe => recipe.title).join('；')}」：各操作与结果落实到本面形式的实际部件，可在不同对象上复用。` : '';
 }

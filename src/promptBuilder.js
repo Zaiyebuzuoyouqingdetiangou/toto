@@ -1,28 +1,28 @@
-import { visualDesignMode, usesModelOriginalColors, withoutPaletteRecipe, REFERENCE_VISUAL_FLOOR, GUIDED_VISUAL_FLOOR, REFERENCE_VISUAL_DRAWING } from './visualDesign.js?rmv=1.62.49';
-import { getRecentDiversityHistory } from './storage.js?rmv=1.62.49';
-import { attachPaletteRecipes, paletteRecipeFor } from './paletteRecipes.js?rmv=1.62.49';
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.49';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.49';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.49';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.49';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.49';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.49';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions, getRecentStructuralCooldown, getActivePaletteCooldown } from './storage.js?rmv=1.62.49';
-import { recentInteractionCooldowns } from './interactionCooldown.js?rmv=1.62.49';
-import { COMPOSITION_LABELS } from './compositionFingerprint.js?rmv=1.62.49';
-import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock } from './visualDiversityPolicy.js?rmv=1.62.49';
-import { visualFamilyForCooldown, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.62.49';
-import { buildInteractionRecipeRule, interactionExecutionReminder, interactionRecipesFor, withoutDynamicInteractionRecipes } from './interactionRecipes.js?rmv=1.62.49';
-import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.62.49';
-import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.49';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.49';
-export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.49';
-import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.49';
-import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.49';
-import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.62.49';
-import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.49';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.49';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.49';
+import { visualDesignMode, usesModelOriginalColors, withoutPaletteRecipe, REFERENCE_VISUAL_FLOOR, GUIDED_VISUAL_FLOOR, REFERENCE_VISUAL_DRAWING } from './visualDesign.js?rmv=1.62.50';
+import { getRecentDiversityHistory } from './storage.js?rmv=1.62.50';
+import { attachPaletteRecipes, paletteRecipeFor } from './paletteRecipes.js?rmv=1.62.50';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.50';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.50';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.50';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.50';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.50';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.50';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions, getRecentStructuralCooldown, getActivePaletteCooldown } from './storage.js?rmv=1.62.50';
+import { recentInteractionCooldowns } from './interactionCooldown.js?rmv=1.62.50';
+import { COMPOSITION_LABELS } from './compositionFingerprint.js?rmv=1.62.50';
+import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock } from './visualDiversityPolicy.js?rmv=1.62.50';
+import { visualFamilyForCooldown, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.62.50';
+import { buildInteractionRecipeRule, interactionExecutionReminder, interactionRecipesFor } from './interactionRecipes.js?rmv=1.62.50';
+import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.62.50';
+import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.50';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.50';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.50';
+import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.50';
+import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.50';
+import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.62.50';
+import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.50';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.50';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.50';
 
 const THEME_ITEMS = new Map(THEMATIC_CATEGORIES.map(item => [item.id, item]));
 const FORMAT_ITEMS = new Map(PRESENTATION_FORMATS.map(item => [item.id, item]));
@@ -560,10 +560,10 @@ function visualCombinationRule(combo) {
     if (combo?.visualSceneryCombination !== true || isTextPresentation(combo)) return '';
     return String.raw`
 动态视觉组合【本面冻结：动态画面＋抽中的其他展现形式】:
-  - 保留动态视觉基底，同时完整实现本面抽中的其他展现形式；它们的内容、结构、阅读方式和交互玩法都必须真实出现，不能只剩标题、图标、背景装饰或几句说明。主题仍使用本面已抽中的题材。
+  - 保留动态视觉基底，同时完整实现本面抽中的其他展现形式；画面按需要组合 HTML、内联 SVG 与 CSS，动画作用于实际主体或环境层；它们的内容、结构、阅读方式和交互玩法都必须真实出现，不能只剩标题、图标、背景装饰或几句说明。主题仍使用本面已抽中的题材。
   - 抽中的形式决定内容的组织和使用方式，动态画面落实在该媒介自身的主体、空间、材质或叙事关系中；两者共同构成首个主要内容块。书信仍有完整书信、日志仍有实际记录、播放器仍有其媒介结构，例子不是固定模板；不得另套通用卡片后仅放一个会动的头图。
   - 主要动态画面根节点必须标记 data-rm-visual-scenery="true"，有可辨认的背景层、中景主体层与前景／叙事层；未操作时核心画面就完整可见。至少一条主动画和一条协同环境动画打开即循环；每面最多 1 条主连续动画 + 1 条辅助连续动画。
-  - 主动画须有真实 @keyframes、可见元素 animation 与 infinite，打开 1 秒内产生肉眼可见的位移／缩放／旋转／形变／遮罩／流体／光影变化；只写 transition、动画名、SVG、微尘或低对比呼吸不算。动画承载真实的空间、关系或叙事变化；原有 transform 须保留，或由外层容器承载动画。
+  - 主动画须有真实 @keyframes、可见元素 animation 与 infinite，打开 1 秒内产生肉眼可见的位移／缩放／旋转／形变／遮罩／流体／光影变化；只写 transition、动画名、静态 SVG、微尘或低对比呼吸不算。CSS 动画可作用于 HTML 或 SVG 的实际可见节点。动画承载真实的空间、关系或叙事变化；原有 transform 须保留，或由外层容器承载动画。
   - 辅助动画与主动画共同服务构图；禁止粒子群、批量重复动画节点及大面积 blur、filter、backdrop-filter。
   - 交互依抽中的形式自然产生，须真实可触摸并改变内容、关系、结构、空间、材质、时间或观察方式；动态与交互不能互相替代。可以有该媒介需要的正文和控件，不能把正文降格为画面说明或删除其阅读路径。
   - 主要正文和反馈进入正常文档流，由内容撑高；纯装饰与短标签才可定位裁切。手机窄屏仍能读到各状态的最后一行。`;
@@ -575,7 +575,7 @@ Visual Scenery 场景优先级【覆盖通用交互骨架的执行顺序】:
   - 本轮第一优先级是先让一幅完整动态场景本体成立，再把交互自然寄生在场景对象上；不得为了满足“复杂交互”先搭建按钮组、标签页、仪表盘、信息卡、播放器或说明面板。
   - 施工顺序：①建立手机宽度自适应舞台；②明确前中后景；③让主体或环境关系持续运动；④由场景决定触摸对象和探索阶段，操作改变空间、时间或人物关系，而非只追加文字。
   - 首个主要场景根节点必须标记 data-rm-visual-scenery="true"，方便插件只读验收；该属性不产生可见文字，也不得被当作标题或说明。
-  - 每面最多 1 条主连续动画 + 1 条辅助连续动画。主动画须有真实 @keyframes、可见元素 animation 与 infinite，打开 1 秒内产生肉眼可见的位移／缩放／旋转／形变／遮罩／流体／光影变化；只写 transition、动画名、SVG、微尘或低对比呼吸不算。
+  - 每面最多 1 条主连续动画 + 1 条辅助连续动画。主动画须有真实 @keyframes、可见元素 animation 与 infinite，打开 1 秒内产生肉眼可见的位移／缩放／旋转／形变／遮罩／流体／光影变化；只写 transition、动画名、静态 SVG、微尘或低对比呼吸不算。CSS 动画可作用于 HTML 或 SVG 的实际可见节点。
   - 辅助连续动画须是环境光／帘幕／影子／液面／雾雨／丝线／纸片／轨迹／前景遮挡之一，与主动画共同服务构图；禁止粒子群、批量重复动画节点及大面积 blur、filter、backdrop-filter。
   - 场景未操作时就必须完整、清晰、持续活动；交互只能推进、揭示或改变场景，不能作为显示核心画面的前置条件。
   - 允许场景画布中的纯装饰与短标签使用定位和裁切；主要正文与交互反馈仍须进入正常文档流并完整撑高，不能被固定高度或 overflow:hidden 截断。
@@ -1421,11 +1421,12 @@ function copyPromptPlanValue(value, withoutRaw = false) {
 }
 
 function createPromptPlan(selections, args, batchPlan = null, inactive = false) {
-    const sendingCombo = combo => withoutDynamicInteractionRecipes(usesModelOriginalColors(args.settings) ? withoutPaletteRecipe(combo) : combo);
-    const sendingSelections = selections.map(selection => ({ ...selection, combo: sendingCombo(selection.combo) }));
+    const sendingSelections = usesModelOriginalColors(args.settings)
+        ? selections.map(selection => ({ ...selection, combo: withoutPaletteRecipe(selection.combo) })) : selections;
     const snapshot = freezeDeep(copyPromptPlanValue(sendingSelections));
     const privateArgs = freezeDeep(copyPromptPlanValue(args));
-    const sendingBatch = batchPlan ? { ...batchPlan, faces: batchPlan.faces.map(face => ({ ...face, combo: sendingCombo(face.combo) })) } : null;
+    const sendingBatch = batchPlan && usesModelOriginalColors(args.settings)
+        ? { ...batchPlan, faces: batchPlan.faces.map(face => ({ ...face, combo: withoutPaletteRecipe(face.combo) })) } : batchPlan;
     const privateBatch = sendingBatch ? freezeDeep(copyPromptPlanValue(sendingBatch)) : null;
     const selectedExternalIds = [...new Set(snapshot.flatMap(selection => [
         ...(selection?.combo?.themes || []), ...(selection?.combo?.formats || []), ...(selection?.combo?.texts || []),
