@@ -7,7 +7,7 @@ export const AUTOMATIC_REROLL_STALL_CODE = 'RABBIT_MIRROR_INDEPENDENT_STALL_TIME
 
 export function stallTimeoutError(lastProgressAt = Date.now(), idleSeconds = AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS) {
     const seconds = normalizeAutomaticRerollIdleSeconds(idleSeconds);
-    const error = new Error(`兔子镜已连续 ${seconds} 秒没有新进度，已中止本轮并将自动重试缺的面。`);
+    const error = new Error(`兔子镜已连续 ${seconds} 秒没有新进度，已中止本次尝试；已出的镜面会保留。`);
     error.name = 'RabbitMirrorIndependentTimeoutError';
     error.code = AUTOMATIC_REROLL_STALL_CODE;
     error.allowAutomaticReroll = true;
@@ -71,6 +71,7 @@ export function isLocalPreflightFailure(error, diagnostic = {}) {
 
 export function shouldAutomaticReroll({
     enabled = true,
+    manualResay = false,
     complete = false,
     failedPosts = 0,
     max = AUTOMATIC_REROLL_DEFAULT,
@@ -80,7 +81,7 @@ export function shouldAutomaticReroll({
     preflight = false,
     quotaInsufficient = false,
 } = {}) {
-    if (enabled === false || complete || timedOut || cancelled || stale || preflight || quotaInsufficient) return false;
+    if (manualResay || enabled === false || complete || timedOut || cancelled || stale || preflight || quotaInsufficient) return false;
     const total = normalizeAutomaticRerollMax(max);
     if (total <= 0) return false;
     const failed = Math.max(0, Number(failedPosts) || 0);

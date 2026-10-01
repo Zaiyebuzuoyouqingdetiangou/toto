@@ -1,11 +1,12 @@
 // Split from outputSanitizer.js — lifecycle.
+import { untrackMirrorAnimations, pruneMirrorAnimationVisibility, destroyMirrorAnimationVisibility } from '../animationVisibility.js?rmv=1.62.53';
 
-import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.62.20';
-import { isRabbitMirrorManagedChatSurface, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.62.20';
-import { recordTtSurface, ttSurfaceNow, nextTtSurfaceClickSeq } from '../ttSurfaceDiagnostics.js?rmv=1.62.20';
-import { getSettings } from '../settings.js?rmv=1.62.20';
-import { getCurrentChatKey } from '../storage.js?rmv=1.62.20';
-import { RECIPE_RECORDED_EVENT } from '../blacklist.js?rmv=1.62.20';
+import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.62.53';
+import { isRabbitMirrorManagedChatSurface, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.62.53';
+import { recordTtSurface, ttSurfaceNow, nextTtSurfaceClickSeq } from '../ttSurfaceDiagnostics.js?rmv=1.62.53';
+import { getSettings } from '../settings.js?rmv=1.62.53';
+import { getCurrentChatKey } from '../storage.js?rmv=1.62.53';
+import { RECIPE_RECORDED_EVENT } from '../blacklist.js?rmv=1.62.53';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -20,14 +21,14 @@ import {
     hashInteractionSignature,
     isCurrentRuntime,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.62.20';
+} from './runtime.js?rmv=1.62.53';
 import {
     getAvailableHostChat,
     getExternalOwnerMessageIndex,
     getRabbitMirrorSummaryText,
     getRawAssistantMessageForRenderedRoot,
-} from './scriptedInteractionRescue.js?rmv=1.62.20';
-import { firstUseInteractionBindings } from './idsAndRearm.js?rmv=1.62.20';
+} from './scriptedInteractionRescue.js?rmv=1.62.53';
+import { firstUseInteractionBindings } from './idsAndRearm.js?rmv=1.62.53';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     MAINTENANCE_AUTO_SAFE_ATTR,
@@ -45,7 +46,7 @@ import {
     removeAllInteractionDiagnosticPanels,
     scheduleCurrentHighConfidenceTextRepair,
     stripMaintenanceRabbitGlyphs,
-} from './diagnostics.js?rmv=1.62.20';
+} from './diagnostics.js?rmv=1.62.53';
 import {
     cancelMaintenanceRepairRun,
     cancelMaintenanceRepairRuns,
@@ -55,9 +56,9 @@ import {
     rabbitMirrorInteractionRootFromTarget,
     rejectOversizedMaintenanceRepair,
     runMaintenanceSafeAutomaticRepairs,
-} from './maintenanceInspect.js?rmv=1.62.20';
-import { decodeHtmlEntities } from './markup.js?rmv=1.62.20';
-import { getRabbitMirrorFacePosition } from './layoutRescue.js?rmv=1.62.20';
+} from './maintenanceInspect.js?rmv=1.62.53';
+import { decodeHtmlEntities } from './markup.js?rmv=1.62.53';
+import { getRabbitMirrorFacePosition } from './layoutRescue.js?rmv=1.62.53';
 import {
     cancelStartupMaintenanceHistoryInstall,
     closeFeedbackCatMenu,
@@ -72,7 +73,7 @@ import {
     removeFeedbackCatsInChatDom,
     removeMaintenanceRabbitsInChatDom,
     toolOutsideCloseOwners,
-} from './toolsChrome.js?rmv=1.62.20';
+} from './toolsChrome.js?rmv=1.62.53';
 
 export let hostScriptModule = null;
 
@@ -911,6 +912,7 @@ export function installManagedRabbitMirrorTools() {
                 if (ownedScope.contains(entry.button) || [...releasedRoots].some(root => root.contains(entry.button))) entry.close();
             }
             for (const root of releasedRoots) {
+                untrackMirrorAnimations(root);
                 firstUseInteractionBindings.get(root)?.dispose?.();
                 const pending = maintenanceAutoSafePendingRoots.get(root);
                 if (pending?.timer) clearTimeout(pending.timer);
@@ -957,6 +959,7 @@ function installChatMutationObserver() {
     chatInstallObserver?.disconnect?.();
     observedChatInstallRoot = chatRoot;
     chatInstallObserver = new MutationObserver(mutations => {
+        if (mutations.some(mutation => [...(mutation.removedNodes || [])].some(node => node.nodeType === 1))) pruneMirrorAnimationVisibility();
         const perfEnd = globalThis.__rabbitMirrorPerfDiag?.begin?.('maintenance.mutationObserver', { records: mutations.length }, 8);
         if (outputHostGenerationLooksActive()) {
             perfEnd?.({ affectedMessages: 0, skippedStreaming: true });
@@ -1129,6 +1132,7 @@ export async function initOutputSanitizer() {
 
 
 export function destroyOutputSanitizer() {
+    destroyMirrorAnimationVisibility();
     managedRabbitMirrorToolsUnsubscribe?.();
     managedRabbitMirrorToolsUnsubscribe = null;
     unsubscribeOutputHostEvents();

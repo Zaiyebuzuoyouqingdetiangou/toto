@@ -1,6 +1,6 @@
 // UI palettes from the user-provided Hearttrace source, by Toto.
 // Presentation only: no generation settings, Prompt, content storage, or network.
-import { closeTheaterFavoriteLibrary, closeTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.62.20';
+import { closeTheaterFavoriteLibrary, closeTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.62.53';
 export const UI_THEMES = Object.freeze([
   {
     "id": "default",
@@ -309,7 +309,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     move(get('rh_independent_tag_filter_open').parentElement.parentElement,'tags');
     move('rh_advanced_page_worldinfo','books');move('rh_advanced_page_memory','memories');
     withNote('rh_multiface_enabled','faces');move('rh_multiface_count_row','faces');move('rh_multiface_help','faces');move('rh_multiface_dispatch_row','faces');move('rh_face_presentation_modes','faces');
-    withNote('rh_force_visual_scenery','drawing');withNote('rh_visual_scenery_combination','drawing');withNote('rh_enhanced_visual_drawing','drawing');move('rh_advanced_page_generation','draw');
+    move('rh_visual_scenery_modes','drawing');move('rh_visual_scenery_mode_help','drawing');move('rh_visual_design_options','drawing');withNote('rh_enhanced_visual_drawing','drawing');withNote('rh_dark_visual_mode','drawing');move('rh_advanced_page_generation','draw');
     for(const key of ['visualText','drawing','writing','references','visualRules','replacement'])row('look',key);
     move('rh_appearance_reference','references');
     move(get('rh_visual_prompt').closest('details'),'visualRules');
@@ -321,10 +321,12 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     move('rh_missing_shell_panel','mirror');
     move('rh_advanced_page_repair','mirror');
     note('mirror','每面兔子镜的标题旁都有版本箭头、收藏星标和兔子工具。挨打猫用于反馈和重说；维修兔用于检查、修复、复制本面 HTML；星标收藏当前这一版。');
+    move('rh_generation_evidence','diagnosis');
     move('rh_manual_entry_diag','diagnosis');
     move('rh_token_meter','usage');move(get('rh_copy_regex').closest('.rabbit-mirror-regex-helper'),'regex');
     move(get('rh_clear_last').parentElement,'cleanup');move(get('rh_external_diag_status').parentElement,'diagnosis');
-    for(const id of ['rh_update_now','rh_update_status','rh_update_reload'])move(id,'update');
+    move('rh_update_version_group','update');
+    for(const id of ['rh_update_status','rh_update_reload'])move(id,'update');
     const steps=[['先选生成方式','选择“跟随正文 API”，或“使用副 API”。使用副 API 时，再为兔子镜配置连接与模型。','mode','选择生成方式'],['选择兔子镜显示模式',`根据生成方式，选择正文下方、外置展示或跟随正文内嵌。外置展示时，${outer}跟随正文内嵌则是${inner}`,'display','选择兔子镜显示模式'],['回到聊天，发一条消息','保持“随聊天生成小剧场”开启。按选好的生成与显示模式使用兔子镜。']];
     steps.forEach(([title,desc,target,label],i)=>{const step=html('section','rh-ui-guide-step',`<span>${i+1}</span><div><h3>${title}</h3><p>${desc}</p></div>`);if(i===2)step.querySelector('p').dataset.rhTimingGuide='true';if(target){const link=button(label+' ›',()=>navigate(target),'rh-ui-text-link');link.dataset.rhRoute=target;step.lastElementChild.append(link);}body('help').append(step);});
     note('help','想换内容，去「玩法」。遇到显示问题，查看具体镜面上的工具。');

@@ -1,9 +1,10 @@
 // Split from outputSanitizer.js — diagnostics.
+import { restoreRuntimeAnimationClone } from '../runtimeAnimationState.js?rmv=1.62.53';
 
-import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.62.20';
-import { collectBoundedElementDescendants } from '../presentationQuality.js?rmv=1.62.20';
-import { collectRevealedClipHosts, shouldRelaxRevealedClipPanel, REVEALED_CLIP_RESCUE_ATTR } from '../revealedClipRepair.js?rmv=1.62.20';
-import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.62.20';
+import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.62.53';
+import { collectBoundedElementDescendants } from '../presentationQuality.js?rmv=1.62.53';
+import { collectRevealedClipHosts, shouldRelaxRevealedClipPanel, REVEALED_CLIP_RESCUE_ATTR } from '../revealedClipRepair.js?rmv=1.62.53';
+import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.62.53';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -22,7 +23,7 @@ import {
     isInsideChatMessage,
     isMaintenanceRabbitEnabled,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.62.20';
+} from './runtime.js?rmv=1.62.53';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     CHANNEL_DIAL_CYCLE_COUNT_ATTR,
@@ -55,7 +56,7 @@ import {
     WEBKIT_3D_FLIP_RESCUE_ATTR,
     passportDocumentRescueStates,
     unlabeledCheckedHostRescueStates,
-} from './checkedStateRescue.js?rmv=1.62.20';
+} from './checkedStateRescue.js?rmv=1.62.53';
 import {
     RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR,
     RENDERED_BUTTON_ADJACENT_HIDDEN_ITEM_ATTR,
@@ -82,7 +83,7 @@ import {
     renderedListDetailRescueStates,
     renderedMaskRevealRescueStates,
     renderedStateLayerRescueStates,
-} from './renderedStateRescue.js?rmv=1.62.20';
+} from './renderedStateRescue.js?rmv=1.62.53';
 import {
     RAW_RADIO_RESET_LAST_ATTR,
     RAW_RADIO_RESET_ROOT_ATTR,
@@ -93,7 +94,7 @@ import {
     getRabbitMirrorSummaryText,
     getRawAssistantMessageForRenderedRoot,
     rawSelfMutationRescueStates,
-} from './scriptedInteractionRescue.js?rmv=1.62.20';
+} from './scriptedInteractionRescue.js?rmv=1.62.53';
 import {
     REVERSIBLE_RADIO_LAST_ATTR,
     REVERSIBLE_RADIO_ROOT_ATTR,
@@ -104,13 +105,13 @@ import {
     findNestedDetailsPopupClippingCandidates,
     formatWebKit3DFlipEvidence,
     repairNestedDetailsPopupClipping,
-} from './fallbackRescue.js?rmv=1.62.20';
-import { RADIO_GROUP_RESCUE_ATTR, RADIO_GROUP_ROOT_ATTR } from './idsAndRearm.js?rmv=1.62.20';
+} from './fallbackRescue.js?rmv=1.62.53';
+import { RADIO_GROUP_RESCUE_ATTR, RADIO_GROUP_ROOT_ATTR } from './idsAndRearm.js?rmv=1.62.53';
 import {
     findFillInChoiceCandidates,
     findStaticChoiceSelectionCandidates,
     findStructuredStaticDisclosureCandidates,
-} from './choiceRescue.js?rmv=1.62.20';
+} from './choiceRescue.js?rmv=1.62.53';
 import {
     CODE_SHELL_SELECTOR,
     MAINTENANCE_QUARANTINED_SCRIPT_ATTR,
@@ -128,7 +129,7 @@ import {
     needsSanitize,
     normalizeMaintenanceSummaryText,
     parseTotoFragment,
-} from './maintenanceInspect.js?rmv=1.62.20';
+} from './maintenanceInspect.js?rmv=1.62.53';
 import {
     RABBIT_MIRROR_MAX_TEMPLATE_SOURCE_CHARS,
     RABBIT_MIRROR_SANITIZER_IMPORT_STRIPPED_ATTR,
@@ -141,7 +142,7 @@ import {
     sanitizeRabbitMirrorUntrustedTemplate,
     stripCssComments,
     validateRabbitMirrorTemplateStructuralBudget,
-} from './markup.js?rmv=1.62.20';
+} from './markup.js?rmv=1.62.53';
 import {
     HCLIP_REPORT_ATTR,
     VIEWPORT_LAYOUT_COUNT_ATTR,
@@ -149,14 +150,14 @@ import {
     inspectMaintenanceMobileLayout,
     inspectMaintenanceViewportLayout,
     maintenanceMobileLayoutIsPassportManaged,
-} from './layoutRescue.js?rmv=1.62.20';
-import { normalizeRabbitMirrorToolButton, rabbitMirrorTextPresentation } from './toolsChrome.js?rmv=1.62.20';
+} from './layoutRescue.js?rmv=1.62.53';
+import { normalizeRabbitMirrorToolButton, rabbitMirrorTextPresentation } from './toolsChrome.js?rmv=1.62.53';
 import {
     getMessageIndexFromMirrorNode,
     hostScriptModule,
     messageUsesDistinctDisplaySource,
     outputHostGenerationLooksActive,
-} from './lifecycle.js?rmv=1.62.20';
+} from './lifecycle.js?rmv=1.62.53';
 
 export const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
 
@@ -1897,6 +1898,37 @@ function diagnosticIndependentSelectionFields(value) {
 }
 
 
+// Explicit, one-shot diagnostics only. Exported HTML cannot retain the host's
+// cascade or actual container sizes; record those without repairing the page.
+export function diagnosticLayoutEvidence(root) {
+    if (!root?.querySelectorAll) return [];
+    const view = root.ownerDocument?.defaultView || globalThis;
+    const rootSize = diagnosticRect(root);
+    const lines = [`布局现场：window=${Number(view.innerWidth || 0)} document=${Number(root.ownerDocument?.documentElement?.clientWidth || 0)} visualViewport=${Number(view.visualViewport?.width || 0)} scale=${Number(view.visualViewport?.scale || 1)} mirror=${rootSize.width}×${rootSize.height}`];
+    const traversal = collectBoundedElementDescendants(root, 160);
+    if (traversal.exceeded) return [...lines, '布局现场：本次节点采样超出范围，子项尺寸未采集；完整源码仍见下方。'];
+    let count = 0;
+    for (const element of traversal.elements) {
+        if (element.closest?.('summary,[data-rabbit-mirror-tool-entry-host],svg')) continue;
+        const style = diagnosticComputedStyle(element), size = diagnosticRect(element);
+        if (!style || !size.width || !size.height || style.display === 'none') continue;
+        const vertical = /^(vertical|sideways)/.test(style.writingMode || '');
+        if (!/flex|grid/.test(style.display || '') && !(vertical && String(element.textContent || '').trim().length > 40)) continue;
+        const description = (node, computed) => {
+            const rect = diagnosticRect(node);
+            return `${diagnosticElementName(node)} box=${rect.width}×${rect.height} width=${computed.width || '?'} min=${computed.minWidth || '?'} max=${computed.maxWidth || '?'} flex=${computed.flex || '?'} wrap=${computed.flexWrap || '?'} direction=${computed.flexDirection || '?'} writing=${computed.writingMode || '?'} padding=${computed.paddingLeft || '0'}/${computed.paddingRight || '0'} font=${computed.fontSize || '?'} transform=${computed.transform || 'none'} zoom=${computed.zoom || 'normal'}`;
+        };
+        lines.push(`容器 ${description(element, style)}`);
+        const children = [...(element.children || [])].filter(child => !child.matches?.('style,script,input,template') && diagnosticRect(child).width > 0).slice(0, 4);
+        for (const child of children) {
+            const computed = diagnosticComputedStyle(child);
+            if (computed) lines.push(`  子项 ${description(child, computed)}`);
+        }
+        if (++count >= 8) break;
+    }
+    return lines;
+}
+
 function buildInteractionDiagnosticText(root, state, phase = 'capture complete') {
     const inputs = diagnosticQueryContentAll(root, 'input[type="checkbox"], input[type="radio"]').slice(0, 8);
     const labels = diagnosticQueryContentAll(root, 'label');
@@ -2056,6 +2088,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `label fallback=${root.dataset.rabbitMirrorLabelFallback || root.dataset.rabbitMirrorCheckedFallback || root.dataset.rabbitMirrorInteractionFallback || 'unknown'}`,
         '',
         '[9. 手机端排版／内容承载]',
+        ...diagnosticLayoutEvidence(root),
         `viewportWidth=${mobileLayout.viewportWidth || 0} narrow=${!!mobileLayout.narrowViewport} candidates=${mobileLayout.candidateCount || 0}`,
         `overflow=${mobileLayout.horizontalOverflowCount || 0} fixedWidth=${mobileLayout.fixedWidthCount || 0} grid=${mobileLayout.gridCount || 0} matrix=${mobileLayout.matrixCount || 0} flex=${mobileLayout.flexCount || 0}`,
         `multiColumn=${mobileLayout.multiColumnCount || 0} media=${mobileLayout.mediaCount || 0} stateContent=${mobileLayout.stateContentCount || 0} squeezedText=${mobileLayout.squeezedTextCount || 0} underfill=${mobileLayout.underfillCount || 0}`,
@@ -2199,7 +2232,7 @@ function buildRabbitMirrorCurrentFaceHtml(root) {
         throw new Error('这面 HTML 超出安全复制范围，未复制，也未截断内容。');
     }
     const template = document.createElement('template');
-    const clone = cloneRabbitMirrorFilteredNode(details);
+    const clone = restoreRuntimeAnimationClone(details, cloneRabbitMirrorFilteredNode(details));
     const originals = details.querySelectorAll('input, textarea, option');
     const copies = clone.querySelectorAll('input, textarea, option');
     originals.forEach((node, index) => {

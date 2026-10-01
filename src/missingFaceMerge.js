@@ -1,6 +1,6 @@
-import { parseMultifaceOutput, createMultifaceFailureSlot } from './multifaceProtocol.js?rmv=1.62.20';
-import { compactFormatDescriptors } from './selectionImageMetadata.js?rmv=1.62.20';
-import { isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.20';
+import { parseMultifaceOutput, createMultifaceFailureSlot } from './multifaceProtocol.js?rmv=1.62.53';
+import { compactFormatDescriptors } from './selectionImageMetadata.js?rmv=1.62.53';
+import { isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.53';
 
 function wrapIndependentFaceForMerge(inner, index) {
     return `<toto data-rabbit-mirror="true" data-rm-face="${index + 1}">${String(inner || '')}</toto>`;
@@ -28,6 +28,7 @@ function retryFaces(incomingHtml, count) {
 }
 
 const RETRY_SELECTION_FIELDS = Object.freeze([
+    'visualHistoryId', 'visualHistoryBatchId', 'visualHistoryFaceIndex',
     'samplingMode', 'themeIds', 'formatIds', 'textIds', 'themeLabels', 'formatLabels', 'textLabels',
     'requestedPresentationMode', 'presentationMode', 'blankLongText', 'forcedVisualScenery', 'visualSceneryCombination',
     'hasExternalReferences', 'externalSources', 'customThemeCount', 'customFormatCount', 'customRequestCount',

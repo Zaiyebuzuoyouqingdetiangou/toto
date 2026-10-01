@@ -86,6 +86,7 @@ function prepareRabbitMirrorIndependentRequest(bodyText = '') {
 function transportInit(init, bodyText, changed) {
     const next = { ...(init || {}) };
     delete next.rabbitMirrorDispatchLease;
+    delete next.rabbitMirrorRequestObserver;
     if (changed) next.body = bodyText;
     return next;
 }
@@ -392,6 +393,8 @@ export async function fetchRabbitMirrorIndependentCompletion(input, init) {
     // Validation and request-size failures happen before it; no source rewrite, Abort,
     // host render event or runtime cleanup can turn one consumed lease into another POST.
     consumeDispatchLease(init);
+    // Read-only observer receives an immutable string after the final guard.
+    try { init?.rabbitMirrorRequestObserver?.(prepared.bodyText); } catch {}
     const response = await Reflect.apply(fetchImpl, globalThis, [input, transportInit(init, prepared.bodyText, prepared.changed)]);
     return boundedResponse(response, MAX_INDEPENDENT_RESPONSE_BYTES);
 }

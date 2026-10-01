@@ -1,7 +1,8 @@
 // Split from outputSanitizer.js — checkedStateRescue.
+import { rememberRuntimeAnimationStyle } from '../runtimeAnimationState.js?rmv=1.62.53';
 
-import { escapeCssIdentifier, escapeRegExp, getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.62.20';
-import { getClassTokens, isCollapsedDimensionValue, parseCssStateSiblingAssignments } from './renderedStateRescue.js?rmv=1.62.20';
+import { escapeCssIdentifier, escapeRegExp, getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.62.53';
+import { getClassTokens, isCollapsedDimensionValue, parseCssStateSiblingAssignments } from './renderedStateRescue.js?rmv=1.62.53';
 import {
     capturePseudoStyleState,
     chooseMatchingRawRabbitMirrorRoot,
@@ -9,15 +10,15 @@ import {
     normalizeInteractionMatchText,
     resolveRenderedCounterpart,
     restorePseudoStyleState,
-} from './scriptedInteractionRescue.js?rmv=1.62.20';
+} from './scriptedInteractionRescue.js?rmv=1.62.53';
 import {
     REVERSIBLE_RADIO_BASELINE_ATTR,
     applyCheckedVisualFallback,
     inputHasAssociatedLabel,
     setRescuedCheckedState,
-} from './fallbackRescue.js?rmv=1.62.20';
-import { RADIO_GROUP_RESCUE_ATTR } from './idsAndRearm.js?rmv=1.62.20';
-import { diagnosticComputedStyle, maintenanceSafeComputedStyle } from './diagnostics.js?rmv=1.62.20';
+} from './fallbackRescue.js?rmv=1.62.53';
+import { RADIO_GROUP_RESCUE_ATTR } from './idsAndRearm.js?rmv=1.62.53';
+import { diagnosticComputedStyle, maintenanceSafeComputedStyle } from './diagnostics.js?rmv=1.62.53';
 import {
     checkedDeclarationCreatesContentReveal,
     checkedTargetCarriesResultContent,
@@ -25,14 +26,14 @@ import {
     isIndependentMaintenanceRoot,
     notifyIndependentRepairPersistence,
     resolveMaintenanceGeneratedClass,
-} from './maintenanceInspect.js?rmv=1.62.20';
-import { splitCssSelectorList } from './markup.js?rmv=1.62.20';
+} from './maintenanceInspect.js?rmv=1.62.53';
+import { splitCssSelectorList } from './markup.js?rmv=1.62.53';
 import {
     maintenanceMobileLayoutLengthPx,
     maintenanceMobileLayoutRect,
     maintenanceMobileLayoutTextLength,
     viewportLayoutHasAuthoredGridPlacement,
-} from './layoutRescue.js?rmv=1.62.20';
+} from './layoutRescue.js?rmv=1.62.53';
 
 const interactionInlineOverrideStates = new WeakMap();
 
@@ -2727,6 +2728,7 @@ export function refreshExclusiveStackedStateRescue(root) {
                     panel.style.setProperty('visibility', 'hidden', 'important');
                     panel.style.setProperty('pointer-events', 'none', 'important');
                     panel.style.setProperty('z-index', '0', 'important');
+                    rememberRuntimeAnimationStyle(panel);
                     panel.style.setProperty('animation-play-state', 'paused', 'important');
                 }
             } else {
@@ -3092,6 +3094,7 @@ export function applyCheckedRuleTextFallback(toto, input) {
                     value: target.style.getPropertyValue(property),
                     priority: target.style.getPropertyPriority(property),
                 });
+                rememberRuntimeAnimationStyle(target, property);
                 target.style.setProperty(property, value, 'important');
             }
         }
@@ -3117,7 +3120,7 @@ export function restoreInteractionInlineOverrides(input) {
         input?.removeAttribute?.(EXPANDED_OPACITY_RESCUE_ATTR);
         return;
     }
-    for (const record of records) {
+    for (const record of [...records].reverse()) {
         const { element, property, value, priority } = record;
         if (!element?.style) continue;
         if (value) element.style.setProperty(property, value, priority || '');
@@ -3164,6 +3167,7 @@ export function applyCheckedRuleInlineFallback(toto, input) {
                     value: target.style.getPropertyValue(property),
                     priority: target.style.getPropertyPriority(property),
                 });
+                rememberRuntimeAnimationStyle(target, property);
                 target.style.setProperty(property, value, 'important');
             }
         }

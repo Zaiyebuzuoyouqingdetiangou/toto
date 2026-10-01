@@ -1,15 +1,16 @@
 // Split from independentApi.js — faceSwipe.
 
-import { getSettings } from '../settings.js?rmv=1.62.20';
-import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.62.20';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.62.20';
-import { configuredAutomaticRerollMax } from '../automaticReroll.js?rmv=1.62.20';
-import { seedSwipeState, appendSuccessfulSwipe, faceSwipeStorageSlot, readFaceSwipe, mutateFaceSwipe } from '../swipeVersions.js?rmv=1.62.20';
-import { EPHEMERAL_FAILURE_ATTR, EPHEMERAL_FAILURE_BODY_ATTR, RUNTIME_VERSION } from './runtime.js?rmv=1.62.20';
-import { independentRecordWithinBudget, readStore, writePersistedOwner, writeStore } from './persistence.js?rmv=1.62.20';
-import { chatKey, saveRecordForSlot, savedIndependentRecordForOwner, swipeId } from './connection.js?rmv=1.62.20';
-import { hasMultifaceMarkup, wrapIndependentFace } from './request.js?rmv=1.62.20';
-import { externalFaceDetails, showIndependentUnsavedOutput } from './mount.js?rmv=1.62.20';
+import { getSettings } from '../settings.js?rmv=1.62.53';
+import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.62.53';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.62.53';
+import { configuredAutomaticRerollMax } from '../automaticReroll.js?rmv=1.62.53';
+import { seedSwipeState, appendSuccessfulSwipe, faceSwipeStorageSlot, readFaceSwipe, mutateFaceSwipe } from '../swipeVersions.js?rmv=1.62.53';
+import { EPHEMERAL_FAILURE_ATTR, EPHEMERAL_FAILURE_BODY_ATTR, RUNTIME_VERSION } from './runtime.js?rmv=1.62.53';
+import { independentRecordWithinBudget, readStore, writePersistedOwner, writeStore } from './persistence.js?rmv=1.62.53';
+import { chatKey, saveRecordForSlot, savedIndependentRecordForOwner, swipeId } from './connection.js?rmv=1.62.53';
+import { hasMultifaceMarkup, wrapIndependentFace } from './request.js?rmv=1.62.53';
+import { externalFaceDetails, showIndependentUnsavedOutput } from './mount.js?rmv=1.62.53';
+import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.62.53';
 
 export function independentRerollMax(){ return configuredAutomaticRerollMax(getSettings()); }
 
@@ -32,6 +33,7 @@ export function scrubSwipeDetailsHtml(html){
  template.innerHTML=source;
  const details=template.content.querySelector?.('details');
  if(!details) return source;
+ preserveIndependentFaceStyles(details);
  details.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay], [data-rm-ephemeral-failure-body], [data-rm-face-swipe-host], [data-rm-face-swipe-bar], [data-rm-face-swipe-delete], [data-rm-face-favorite-star]')?.forEach(node=>node.remove());
  details.querySelectorAll?.('[data-rm-ephemeral-failure-hidden]')?.forEach(node=>{ node.removeAttribute('data-rm-ephemeral-failure-hidden'); node.hidden=false; });
  details.removeAttribute?.(EPHEMERAL_FAILURE_ATTR);
@@ -43,10 +45,10 @@ export function faceDetailsListFromHtml(html){
  if(hasMultifaceMarkup(source)){
   const parsed=parseMultifaceOutput(source);
   if(!parsed.ok) return [];
-  return parsed.faces.map(face=>({index:face.index,detailsHtml:scrubSwipeDetailsHtml(face.details||face.inner||'')}));
+  return parsed.faces.map(face=>({index:face.index,detailsHtml:scrubSwipeDetailsHtml(face.inner||face.details||'')}));
  }
  const match=source.match(/<details\b[\s\S]*<\/details>/i);
- return match?[{index:0,detailsHtml:scrubSwipeDetailsHtml(match[0])}]:[];
+ return match?[{index:0,detailsHtml:scrubSwipeDetailsHtml(source)}]:[];
 }
 
 export function mergeFaceDetailsIntoHtml(recordHtml,faceIndex,detailsHtml){

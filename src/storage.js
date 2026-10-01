@@ -1,11 +1,14 @@
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.20';
-import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.62.20';
-import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.62.20';
-import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.62.20';
+import { generationPaletteFields } from './paletteRecipes.js?rmv=1.62.53';
+import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.62.53';
+import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords } from './compositionFingerprint.js?rmv=1.62.53';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.53';
+import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.62.53';
+import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.62.53';
+import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.62.53';
 
 const STORAGE_KEY = 'rabbit_mirror_theater:last_combo:v11';
 const PENDING_KEY = 'rabbit_mirror_theater:pending_combo:v11';
-const MAX_STORED = 20;
+const MAX_STORED = 25; // Five completed rounds of up to five faces.
 const ATTEMPT_STORAGE_KEY = 'rabbit_mirror_theater:generation_attempts:v1';
 const DIRECTIVE_PICK_STORAGE_KEY = 'rabbit_mirror_theater:directive_pick_cache:v1';
 const MAX_ATTEMPTS_PER_CHAT = 20;
@@ -402,6 +405,10 @@ export function getComboHistory(limit = 10) {
     return history.slice(-Math.max(0, Number(limit) || 10));
 }
 
+export function getRecentDiversityHistory(rounds = 5) {
+    return recentDiversityRecords(readHistory(), rounds);
+}
+
 export function getLastCombo() {
     const history = readHistory();
     return history[history.length - 1] || {};
@@ -447,11 +454,22 @@ export function getRecentIds(limit = 10) {
 }
 
 
+// Older scans could record real object states and contradictory missing/fake
+// interaction flags together. Align the risk view with family cooldown without
+// rewriting history or hiding unrelated drawing/motion risks.
+function historicalRiskFlags(item) {
+    const flags = Array.isArray(item?.riskFlags) ? item.riskFlags : [];
+    const objectStateChange = parseVisualFamilySkeleton(item?.visualSkeleton || '').operation_family === 'object_state_change';
+    return objectStateChange
+        ? flags.filter(flag => flag !== 'missing_interaction' && flag !== 'fake_interaction')
+        : flags;
+}
+
 export function getRecentRiskFlags(limit = 3) {
     const history = getComboHistory(limit);
     const flags = [];
     for (const item of history) {
-        if (Array.isArray(item?.riskFlags)) flags.push(...item.riskFlags);
+        flags.push(...historicalRiskFlags(item));
     }
     return [...new Set(flags)];
 }
@@ -460,7 +478,7 @@ export function getRecentRiskFlagCounts(limit = 3) {
     const history = getComboHistory(limit);
     const counts = {};
     for (const item of history) {
-        for (const flag of item?.riskFlags || []) {
+        for (const flag of historicalRiskFlags(item)) {
             counts[flag] = (counts[flag] || 0) + 1;
         }
     }
@@ -469,17 +487,16 @@ export function getRecentRiskFlagCounts(limit = 3) {
 
 
 export function getRecentPaletteFingerprints(limit = 3) {
-    return getComboHistory(limit)
+    return getRecentDiversityHistory(limit)
         .map(item => item?.paletteFingerprint)
-        .filter(item => item && typeof item === 'object' && Number(item.confidence || 0) >= 0.35)
-        .slice(-Math.max(0, Number(limit) || 3));
+        .filter(item => item && typeof item === 'object' && Number(item.confidence || 0) >= 0.35);
 }
 
 function isDarkPaletteTrigger(fingerprint) {
     if (!fingerprint || typeof fingerprint !== 'object') return false;
     const confidence = Number(fingerprint.confidence || 0);
     const darkAreaRatio = Number(fingerprint.darkAreaRatio || 0);
-    const averageLuminance = Number(fingerprint.averageLuminance || 255);
+    const averageLuminance = Number(fingerprint.averageLuminance ?? 255);
     return confidence >= 0.5
         && fingerprint.brightness === 'dark'
         && (darkAreaRatio >= 0.55 || averageLuminance <= 105);
@@ -523,18 +540,22 @@ export function describePaletteFamily(fingerprint) {
 // 这里只按时间距离返回近期真实配色，不决定下一轮该用什么颜色。
 export function getRecentPaletteCooldown(window = 3) {
     const span = Math.max(1, Number(window) || 3);
-    const recent = getRecentPaletteFingerprints(span).slice().reverse();
-    return recent.map((fingerprint, roundsAgo) => ({
-        fingerprint,
-        key: paletteFamilyKey(fingerprint),
-        label: describePaletteFamily(fingerprint),
-        roundsAgo,
-        strength: Math.max(1, span - roundsAgo),
-    })).filter(item => item.label);
+    const rounds = new Map();
+    return getRecentDiversityHistory(span).slice().reverse().map((item, index) => {
+        const round = item?.batchId || `legacy:${index}`;
+        if (!rounds.has(round)) rounds.set(round, rounds.size);
+        const roundsAgo = rounds.get(round), fingerprint = item?.paletteFingerprint;
+        if (!fingerprint || Number(fingerprint.confidence || 0) < 0.35) return null;
+        return { fingerprint, key: paletteFamilyKey(fingerprint), label: describePaletteFamily(fingerprint),
+            roundsAgo, strength: Math.max(1, span - roundsAgo) };
+    }).filter(item => item?.label);
 }
 
 
+
 const VISUAL_FAMILY_DIMENSION_LABELS = Object.freeze({
+    layout_family: '画文布局',
+    operation_family: '实际操作路径',
     surface_family: '主底盘／材质',
     contrast_family: '明暗关系',
     contour_family: '整体轮廓',
@@ -553,15 +574,28 @@ export function parseVisualFamilySkeleton(value = '') {
         const key = String(match[1] || '').trim();
         if (!Object.prototype.hasOwnProperty.call(VISUAL_FAMILY_DIMENSION_LABELS, key)) continue;
         const valueText = String(match[2] || '').trim();
+        if (['layout_family', 'operation_family'].includes(key) && !Object.hasOwn(COMPOSITION_LABELS, valueText)) continue;
         if (valueText) parsed[key] = valueText.slice(0, 120);
     }
     return parsed;
 }
 
+// Space categories describe available drawing/layout techniques, not a repeated
+// composition. Keep them in diagnostics, but never cool down depth itself.
+export function visualFamilyForCooldown(family = {}) {
+    return Object.fromEntries(Object.entries(VISUAL_FAMILY_DIMENSION_LABELS)
+        .filter(([key]) => !['space_family', 'contrast_family'].includes(key) && family?.[key]
+            && !(key === 'operation_family' && family[key] === 'object_state_change')
+            && !(family.layout_family && ['reading_family', 'unit_family'].includes(key))
+            && !(key === 'contour_family' && family[key] === 'contour: cutout_or_irregular_shape')
+            && !(key === 'surface_family' && /^(?:surface:\s*)?(?:digital_dark_surface|gradient_or_light_surface)$/.test(family[key])))
+        .map(([key]) => [key, family[key]]));
+}
+
 export function describeVisualFamilyDimensions(family = {}) {
     if (!family || typeof family !== 'object') return '';
     return Object.entries(VISUAL_FAMILY_DIMENSION_LABELS)
-        .map(([key, label]) => family[key] ? `${label}=${family[key]}` : '')
+        .map(([key, label]) => family[key] ? `${label}=${COMPOSITION_LABELS[family[key]] || family[key]}` : '')
         .filter(Boolean)
         .join('；');
 }
@@ -579,11 +613,28 @@ export function getRecentVisualFamilyCooldown(window = 3) {
         .filter(item => Object.keys(item.family).length);
 }
 
+// Each of the last five completed rounds remains relevant even across A -> B.
+// Record positions include unknowns; an unknown face must not extend the window.
+export function getRecentStructuralCooldown(window = 5) {
+    const found = new Map();
+    for (const item of getRecentDiversityHistory(window)) {
+        const family = visualFamilyForCooldown(parseVisualFamilySkeleton(item?.visualSkeleton || ''));
+        for (const key of ['layout_family', 'operation_family']) {
+            const value = family[key];
+            if (!value || !Object.hasOwn(COMPOSITION_LABELS, value)) continue;
+            const identity = `${key}:${value}`;
+            const record = found.get(identity) || { key, value, label: COMPOSITION_LABELS[value], count: 0 };
+            record.count++; found.set(identity, record);
+        }
+    }
+    return [...found.values()];
+}
+
 export function getRepeatedVisualFamilyDimensions(window = 3, threshold = 2) {
     const span = Math.max(2, Number(window) || 3);
     const hits = Math.max(2, Number(threshold) || 2);
     const chronological = getComboHistory(span)
-        .map(item => parseVisualFamilySkeleton(item?.visualSkeleton || ''))
+        .map(item => visualFamilyForCooldown(parseVisualFamilySkeleton(item?.visualSkeleton || '')))
         .filter(family => Object.keys(family).length);
     if (chronological.length < hits) return [];
 
@@ -628,12 +679,19 @@ export function getRepeatedPaletteFamily(window = 3, threshold = 2) {
 // 一次低明度主承载输出触发后续五轮冷却；冷却期内若再次命中则重新从五轮开始。
 export function getActivePaletteCooldown(rounds = 5) {
     const cooldownRounds = Math.max(1, Number(rounds) || 5);
-    const history = readHistory();
+    const history = getRecentDiversityHistory(cooldownRounds);
+    const completedRounds = new Map();
     for (let index = history.length - 1; index >= 0; index -= 1) {
-        const fingerprint = history[index]?.paletteFingerprint;
-        if (!isDarkPaletteTrigger(fingerprint)) continue;
-        const completedSinceTrigger = history.length - 1 - index;
-        if (completedSinceTrigger >= cooldownRounds) return { active: false, remaining: 0 };
+        const record = history[index];
+        const key = record?.diversityRound || record?.batchId || `legacy:${index}`;
+        if (!completedRounds.has(key)) completedRounds.set(key, null);
+        if (!completedRounds.get(key) && isDarkPaletteTrigger(record?.paletteFingerprint)) {
+            completedRounds.set(key, record.paletteFingerprint);
+        }
+    }
+    // Any dark face triggers its whole round; unknown completed rounds still count.
+    for (const [completedSinceTrigger, fingerprint] of [...completedRounds.values()].entries()) {
+        if (!fingerprint) continue;
         return {
             active: true,
             remaining: cooldownRounds - completedSinceTrigger,
@@ -658,8 +716,15 @@ function normalizeInteractionFamily(value) {
 }
 
 export function getRecentInteractionFamilies(limit = 5, { preserveEmpty = false } = {}) {
-    const recent = getComboHistory(limit).map(item => normalizeInteractionFamily(item?.interactionFamily) || null);
-    return preserveEmpty ? recent : recent.filter(Boolean);
+    const recent = getRecentDiversityHistory(limit).map((item, index) => {
+        const value = parseVisualFamilySkeleton(item?.visualSkeleton || '').operation_family === 'object_state_change'
+            ? null : normalizeInteractionFamily(item?.interactionFamily) || null;
+        // Round identity is transient prompt accounting; stored interaction data
+        // and owner identities retain their existing shape.
+        const diversityRound = item?.batchId || `legacy:${index}`;
+        return value ? { ...value, diversityRound } : preserveEmpty ? { diversityRound } : null;
+    });
+    return recent.filter(Boolean);
 }
 
 export function getRecentInteractionFamilyCounts(limit = 5) {
@@ -1265,7 +1330,7 @@ function normalizeFaceScan(value, faceIndex) {
         (value.faceIndex !== undefined && value.faceIndex !== faceIndex)) return null;
     return {
         visualSignature: String(value.visualSignature ?? value.signature ?? '').slice(0, 280),
-        visualSkeleton: String(value.visualSkeleton ?? value.skeleton ?? '').slice(0, 420),
+        visualSkeleton: String(value.visualSkeleton ?? value.skeleton ?? '').slice(0, VISUAL_SKELETON_MAX_CHARS),
         riskFlags: Array.isArray(value.riskFlags) ? [...new Set(value.riskFlags.map(String))].slice(0, 8) : [],
         paletteFingerprint: value.paletteFingerprint && typeof value.paletteFingerprint === 'object' ? value.paletteFingerprint : null,
         interactionFamily: normalizeInteractionFamily(value.interactionFamily),
@@ -1284,6 +1349,8 @@ function applyChosenAtmosphereTickets(plan, chosenTickets) {
         combo.formatIds = (ticket.formatIds || []).filter(id => typeof id === 'string' && id);
         combo.themeGroups = (ticket.themeGroups || []).filter(Boolean);
         combo.formatGroups = (ticket.formatGroups || []).filter(Boolean);
+        delete combo.interactionRecipeId; delete combo.interactionRecipeIds; delete combo.paletteRecipeId;
+        Object.assign(combo, interactionRecipeFields({ ...ticket, presentationMode: combo.presentationMode }), generationPaletteFields({ ...ticket, presentationMode: combo.presentationMode }));
         combo.atmosphereResolved = true;
     });
 }
@@ -1305,7 +1372,7 @@ function batchHistoryPayload(plan, scans, beforeRaw) {
         // Successful history is accounting, not a recovery source for a pending
         // prompt. Consumers use IDs, UI/interaction and visual fingerprints.
         // Preserve those fields while avoiding another copy of mother materials.
-        const { themes, formats, texts, ...accounting } = combo;
+        const accounting = compactHistoryCombo(combo);
         history.push({ ...accounting, signature: signatureOf(combo), ts: now, batchId: plan.batchId, faceIndex: face.faceIndex,
             visualSignature: scan.visualSignature || combo.visualSignature,
             visualSkeleton: scan.visualSkeleton || combo.visualSkeleton,
@@ -1526,12 +1593,115 @@ export function clearPendingComboBatch(expected = null) {
     } catch { return false; }
 }
 
-export function setPendingCombo(combo) {
+// Only trusted runtime code binds a rendered face to its completed history.
+// Weak keys do not retain detached DOM; no HTML or candidate menu is persisted here.
+const visualHistoryTargets = new WeakMap();
+let visualHistorySequence = 0;
+
+function historyReference(value) {
+    if (typeof value?.historyId === 'string' && value.historyId) return { historyId: value.historyId };
+    if (typeof value?.batchId === 'string' && value.batchId && Number.isInteger(value.faceIndex) && value.faceIndex >= 0 && value.faceIndex < 5) {
+        return { batchId: value.batchId, faceIndex: value.faceIndex };
+    }
+    return null;
+}
+
+export function bindVisualHistoryTarget(node, reference) {
+    if (!node || (typeof node !== 'object' && typeof node !== 'function')) return;
+    const ref = historyReference(reference);
+    if (ref) visualHistoryTargets.set(node, Object.freeze(ref));
+    else visualHistoryTargets.delete(node);
+}
+
+export function visualHistoryTarget(node) {
+    return visualHistoryTargets.get(node) || null;
+}
+
+function compactHistoryCombo(combo) {
+    const { themes, formats, texts, atmosphereMenu, pendingSession, pendingTs,
+        pendingScopeKey, pendingOrigin, pendingChatKey, pendingBaseline, worldBookExcerpt, recentUiReviewFocus, paletteReferenceIds, ...record } = combo || {};
+    return record;
+}
+
+export function createVisualHistorySelection(combo, scopeKey = '') {
+    if (!combo || typeof combo !== 'object') return null;
+    const menu = Array.isArray(combo.atmosphereMenu) ? combo.atmosphereMenu.map(ticket => ({
+        ...interactionRecipeFields({ ...ticket, presentationMode: combo.presentationMode }), ...generationPaletteFields({ ...ticket, presentationMode: combo.presentationMode }),
+        themeIds: ticket.themeIds || [], formatIds: ticket.formatIds || [],
+        themeGroups: ticket.themeGroups || [], formatGroups: ticket.formatGroups || [],
+    })) : null;
+    const frozenCombo = JSON.parse(JSON.stringify({ ...compactHistoryCombo(combo), ...(menu ? { atmosphereMenu: menu } : {}) }));
+    const used = new Set(readHistory().map(item => item?.historyId));
+    let historyId;
+    do { historyId = `${PENDING_SESSION_TOKEN}:visual:${++visualHistorySequence}`; } while (used.has(historyId));
+    return { ...frozenCombo, historyId,
+        pendingScopeKey: String(scopeKey || ''), pendingChatKey: getCurrentChatKey(), signature: signatureOf(frozenCombo) };
+}
+
+export function resolveVisualHistorySelection(selection, choice) {
+    if (!selection?.historyId) return null;
+    const menu = selection.atmosphereMenu;
+    if (!Array.isArray(menu) || menu.length < 2) return { ...selection };
+    if (!Number.isInteger(choice) || choice < 0 || choice >= menu.length) return null;
+    const ticket = menu[choice];
+    const resolved = { ...selection, interactionRecipeId: undefined, interactionRecipeIds: undefined, paletteRecipeId: undefined, atmosphereResolved: true,
+        ...interactionRecipeFields({ ...ticket, presentationMode: selection.presentationMode }), ...generationPaletteFields({ ...ticket, presentationMode: selection.presentationMode }),
+        themeIds: [...(ticket.themeIds || [])], formatIds: [...(ticket.formatIds || [])],
+        themeGroups: [...(ticket.themeGroups || [])], formatGroups: [...(ticket.formatGroups || [])] };
+    resolved.signature = signatureOf(resolved);
+    return resolved;
+}
+
+export function commitVisualHistorySelection(selection, scan = {}) {
+    if (!selection?.historyId || (selection.atmosphereMenu?.length > 1 && selection.atmosphereResolved !== true)) return false;
+    const committed = commitComboToHistory(compactHistoryCombo(selection), normalizeFaceScan(scan, scan?.faceIndex) || {}, { historyId: selection.historyId });
+    if (committed && selection.pendingScopeKey) {
+        try {
+            const raw = localStorage.getItem(PENDING_KEY), pending = JSON.parse(raw || 'null');
+            if (pending?.pendingScopeKey === selection.pendingScopeKey && pending.pendingSession === PENDING_SESSION_TOKEN && pending.pendingChatKey === selection.pendingChatKey && localStorage.getItem(PENDING_KEY) === raw) localStorage.removeItem(PENDING_KEY);
+        } catch {}
+    }
+    return committed;
+}
+
+function followSourceKey(message, chat) {
+    const index = Array.isArray(chat) ? chat.lastIndexOf(message) : -1;
+    return hashText(`${getCurrentChatKey(chat)}|${index}|${message?.swipe_id ?? 0}|${message?.mes || ''}`);
+}
+
+// The follow path has no request-result object. Match a completed source to its
+// pending chat and exclude the old assistant message present at prompt creation.
+export function commitFollowVisualHistory(message, chat, source, scan) {
+    if (!message || message.is_user || !Array.isArray(chat) || !chat.includes(message)) return null;
+    const sourceKey = followSourceKey(message, chat);
+    const existing = readHistory().find(item => item?.followSourceKey === sourceKey && item?.historyId);
+    if (existing) {
+        const ref = { historyId: existing.historyId };
+        return updateLatestVisualSignature(scan?.signature || '', scan?.skeleton || '', scan?.riskFlags || [], scan?.paletteFingerprint, scan?.interactionFamily, ref) ? ref : null;
+    }
+    try {
+        const raw = localStorage.getItem(PENDING_KEY), pending = JSON.parse(raw || 'null');
+        if (!pending || pending.pendingOrigin === 'independent' || pending.pendingSession !== PENDING_SESSION_TOKEN ||
+            Date.now() - Number(pending.pendingTs) > PENDING_MAX_AGE_MS || !Number.isFinite(Number(pending.pendingTs)) ||
+            pending.pendingChatKey !== getCurrentChatKey(chat) || pending.pendingBaseline === sourceKey) return null;
+        const choice = parseAtmosphereTicketIndex(source, pending.atmosphereMenu?.length || 0);
+        const resolved = resolveVisualHistorySelection(pending, choice);
+        if (!resolved) return null;
+        resolved.followSourceKey = sourceKey;
+        if (localStorage.getItem(PENDING_KEY) !== raw || !commitVisualHistorySelection(resolved, scan)) return null;
+        if (localStorage.getItem(PENDING_KEY) === raw) localStorage.removeItem(PENDING_KEY);
+        return { historyId: resolved.historyId };
+    } catch { return null; }
+}
+
+export function setPendingCombo(combo, scopeKey = '') {
     try {
         if (!combo) return;
         const pending = {
-            ...combo,
-            signature: signatureOf(combo),
+            ...createVisualHistorySelection(combo, scopeKey),
+            pendingOrigin: String(scopeKey).startsWith('independent:') ? 'independent' : 'follow',
+            pendingChatKey: getCurrentChatKey(),
+            pendingBaseline: (() => { const chat = resolveChat(); const message = [...chat].reverse().find(item => !item?.is_user); return message ? followSourceKey(message, chat) : ''; })(),
             pendingTs: Date.now(),
             pendingSession: PENDING_SESSION_TOKEN,
         };
@@ -1562,12 +1732,13 @@ function commitComboToHistory(combo, visual = {}, options = {}) {
     const { visualSignature = '', visualSkeleton = '', riskFlags = [], paletteFingerprint = null, interactionFamily = null } = visual || {};
     const batchId = String(options?.batchId || '');
     const faceIndex = options?.faceIndex;
+    const historyId = String(options?.historyId || '');
     let previousHistoryRaw = null;
     let historyPayload = '';
     try {
         let history;
-        if (batchId) {
-            if (!Number.isSafeInteger(faceIndex) || faceIndex < 0 || faceIndex > 4) return false;
+        if (batchId || historyId) {
+            if (batchId && (!Number.isSafeInteger(faceIndex) || faceIndex < 0 || faceIndex > 4)) return false;
             previousHistoryRaw = localStorage.getItem(STORAGE_KEY);
             // Parse the verified snapshot itself. readHistory intentionally masks
             // legacy read errors, which must not turn a batch read failure into []
@@ -1581,13 +1752,14 @@ function commitComboToHistory(combo, visual = {}, options = {}) {
         }
         // 已经在 history 里 → 视为提交成功，但绝不重复写入。
         if (batchId && historyHasBatchFace(history, batchId, faceIndex)) return true;
+        if (historyId && history.some(item => item?.historyId === historyId)) return true;
         const now = Date.now();
         const sig = combo.signature || signatureOf(combo);
         const last = history[history.length - 1];
         // 批次面带幂等键，不走签名去重分支：三面本就应各占一条。
-        if (!batchId && last?.signature === sig && now - Number(last?.ts || 0) < 120000) {
+        if (!batchId && !historyId && last?.signature === sig && now - Number(last?.ts || 0) < 120000) {
             if (visualSignature) last.visualSignature = String(visualSignature).slice(0, 280);
-            if (visualSkeleton) last.visualSkeleton = String(visualSkeleton).slice(0, 420);
+            if (visualSkeleton) last.visualSkeleton = String(visualSkeleton).slice(0, VISUAL_SKELETON_MAX_CHARS);
             if (Array.isArray(riskFlags) && riskFlags.length) last.riskFlags = [...new Set(riskFlags)].slice(0, 8);
             if (paletteFingerprint && typeof paletteFingerprint === 'object') last.paletteFingerprint = paletteFingerprint;
             const normalizedFamily = normalizeInteractionFamily(interactionFamily);
@@ -1601,19 +1773,20 @@ function commitComboToHistory(combo, visual = {}, options = {}) {
             signature: sig,
             ts: now,
             ...(batchId ? { batchId, faceIndex: Number(faceIndex) } : {}),
+            ...(historyId ? { historyId } : {}),
             visualSignature: visualSignature ? String(visualSignature).slice(0, 280) : combo.visualSignature,
-            visualSkeleton: visualSkeleton ? String(visualSkeleton).slice(0, 420) : combo.visualSkeleton,
+            visualSkeleton: visualSkeleton ? String(visualSkeleton).slice(0, VISUAL_SKELETON_MAX_CHARS) : combo.visualSkeleton,
             riskFlags: Array.isArray(riskFlags) ? [...new Set(riskFlags)].slice(0, 8) : [],
             paletteFingerprint: paletteFingerprint && typeof paletteFingerprint === 'object' ? paletteFingerprint : undefined,
             interactionFamily: normalizeInteractionFamily(interactionFamily),
             visualSignatureTs: visualSignature || visualSkeleton || (Array.isArray(riskFlags) && riskFlags.length) || paletteFingerprint || normalizeInteractionFamily(interactionFamily) ? now : undefined,
         });
-        if (batchId) {
+        if (batchId || historyId) {
             historyPayload = JSON.stringify(history.slice(-MAX_STORED));
             if (localStorage.getItem(STORAGE_KEY) !== previousHistoryRaw) return false;
             localStorage.setItem(STORAGE_KEY, historyPayload);
             const confirmedRaw = localStorage.getItem(STORAGE_KEY);
-            if (confirmedRaw !== historyPayload || !historyHasBatchFace(JSON.parse(confirmedRaw), batchId, faceIndex)) {
+            if (confirmedRaw !== historyPayload || (batchId && !historyHasBatchFace(JSON.parse(confirmedRaw), batchId, faceIndex))) {
                 throw new Error('Batch history read-back mismatch');
             }
         } else {
@@ -1621,7 +1794,7 @@ function commitComboToHistory(combo, visual = {}, options = {}) {
         }
         return true;
     } catch (error) {
-        if (batchId && historyPayload) restoreOwnedStorageWrite(STORAGE_KEY, historyPayload, previousHistoryRaw);
+        if ((batchId || historyId) && historyPayload) restoreOwnedStorageWrite(STORAGE_KEY, historyPayload, previousHistoryRaw);
         console.warn('[RabbitMirror] Failed to write combo history:', error);
         return false;
     }
@@ -1639,7 +1812,7 @@ export function commitPendingCombo(visualSignature = '', visualSkeleton = '', ri
         //  2. 同会话内超过保守上限 —— 兜底，阈值远大于任何仍可能完成的生成；
         //  3. 缺少时间戳 —— 无从判断新旧，按不可信处理。
         // 命中任一条就丢弃，不写入历史：让一个从未生成过的组合进入冷却，比丢一条记录糟得多。
-        // 提交只由「某面兔子镜已渲染完成」触发，真正在途的请求不会走到这里。
+        // 此兼容入口只提交已解析的 pending；真实渲染扫描使用带归属的专用入口。
         const pendingSession = String(pending.pendingSession || '');
         const pendingAt = Number(pending.pendingTs);
         const staleSession = !!pendingSession && pendingSession !== PENDING_SESSION_TOKEN;
@@ -1649,13 +1822,14 @@ export function commitPendingCombo(visualSignature = '', visualSkeleton = '', ri
             return;
         }
         if (Array.isArray(pending.atmosphereMenu) && pending.atmosphereMenu.length > 1 && pending.atmosphereResolved !== true) {
-            localStorage.removeItem(PENDING_KEY);
-            return;
+            return false;
         }
 
-        if (commitComboToHistory(pending, { visualSignature, visualSkeleton, riskFlags, paletteFingerprint, interactionFamily })) {
-            localStorage.removeItem(PENDING_KEY);
+        if (commitVisualHistorySelection(pending, { visualSignature, visualSkeleton, riskFlags, paletteFingerprint, interactionFamily })) {
+            if (localStorage.getItem(PENDING_KEY) === raw) localStorage.removeItem(PENDING_KEY);
+            return true;
         }
+        return false;
     } catch (error) {
         console.warn('[RabbitMirror] Failed to commit pending combo:', error);
     }
@@ -1689,7 +1863,10 @@ export function retargetPendingAtmosphereTicket(choice) {
         pending.formatIds = (ticket.formatIds || []).filter(id => typeof id === 'string' && id);
         pending.themeGroups = (ticket.themeGroups || []).filter(Boolean);
         pending.formatGroups = (ticket.formatGroups || []).filter(Boolean);
+        delete pending.interactionRecipeId; delete pending.interactionRecipeIds; delete pending.paletteRecipeId;
+        Object.assign(pending, interactionRecipeFields({ ...ticket, presentationMode: pending.presentationMode }), generationPaletteFields({ ...ticket, presentationMode: pending.presentationMode }));
         pending.atmosphereResolved = true;
+        pending.signature = signatureOf(pending);
         const payload = JSON.stringify(pending);
         localStorage.setItem(PENDING_KEY, payload);
         return localStorage.getItem(PENDING_KEY) === payload;
@@ -1698,8 +1875,8 @@ export function retargetPendingAtmosphereTicket(choice) {
     }
 }
 
-export function setLastCombo(combo) {
-    setPendingCombo(combo);
+export function setLastCombo(combo, scopeKey = '') {
+    setPendingCombo(combo, scopeKey);
 }
 
 export function clearLastCombo() {
@@ -1731,22 +1908,31 @@ export function clearLastCombo() {
     } catch {}
 }
 
-export function updateLatestVisualSignature(visualSignature, visualSkeleton = '', riskFlags = [], paletteFingerprint = null, interactionFamily = null) {
-    if (!visualSignature && !visualSkeleton && !(Array.isArray(riskFlags) && riskFlags.length) && !paletteFingerprint && !normalizeInteractionFamily(interactionFamily)) return;
+// Compatibility name; an explicit completed owner is now required.
+export function updateLatestVisualSignature(visualSignature, visualSkeleton = '', riskFlags = [], paletteFingerprint = null, interactionFamily = null, reference = null) {
+    const ref = historyReference(reference);
+    if (!ref) return false;
+    let before = null, after = '';
     try {
-        commitPendingCombo(visualSignature, visualSkeleton, riskFlags, paletteFingerprint, interactionFamily);
-        const history = readHistory();
-        if (!history.length) return;
-        const last = history[history.length - 1];
-        if (visualSignature) last.visualSignature = String(visualSignature).slice(0, 280);
-        if (visualSkeleton) last.visualSkeleton = String(visualSkeleton).slice(0, 420);
-        if (Array.isArray(riskFlags) && riskFlags.length) last.riskFlags = [...new Set(riskFlags)].slice(0, 8);
-        if (paletteFingerprint && typeof paletteFingerprint === 'object') last.paletteFingerprint = paletteFingerprint;
-        const normalizedFamily = normalizeInteractionFamily(interactionFamily);
-        if (normalizedFamily) last.interactionFamily = normalizedFamily;
-        last.visualSignatureTs = Date.now();
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(-MAX_STORED)));
+        before = localStorage.getItem(STORAGE_KEY);
+        const parsed = JSON.parse(before === null ? '[]' : before);
+        const history = Array.isArray(parsed) ? parsed : parsed && typeof parsed === 'object' ? [parsed] : [];
+        const entry = history.find(item => ref.historyId ? item?.historyId === ref.historyId : item?.batchId === ref.batchId && item?.faceIndex === ref.faceIndex);
+        if (!entry) return false;
+        if (visualSignature) entry.visualSignature = String(visualSignature).slice(0, 280);
+        if (visualSkeleton) entry.visualSkeleton = String(visualSkeleton).slice(0, VISUAL_SKELETON_MAX_CHARS);
+        if (Array.isArray(riskFlags)) entry.riskFlags = [...new Set(riskFlags)].slice(0, 8);
+        if (paletteFingerprint && typeof paletteFingerprint === 'object') entry.paletteFingerprint = paletteFingerprint;
+        entry.interactionFamily = normalizeInteractionFamily(interactionFamily);
+        entry.visualSignatureTs = Date.now();
+        after = JSON.stringify(history.slice(-MAX_STORED));
+        if (localStorage.getItem(STORAGE_KEY) !== before) return false;
+        localStorage.setItem(STORAGE_KEY, after);
+        if (localStorage.getItem(STORAGE_KEY) !== after) throw new Error('Visual history read-back mismatch');
+        return true;
     } catch (error) {
-        console.warn('[RabbitMirror] Failed to store visual signature:', error);
+        if (after) restoreOwnedStorageWrite(STORAGE_KEY, after, before);
+        console.warn('[RabbitMirror] Failed to store owned visual signature:', error);
+        return false;
     }
 }

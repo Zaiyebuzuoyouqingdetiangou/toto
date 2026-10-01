@@ -1,10 +1,10 @@
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.62.20';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.62.53';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.62.20';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.62.20';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.62.20';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.62.20';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.62.53';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.62.53';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.62.53';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.62.53';
 
 export const MODULE_NAME = 'rabbit_mirror_theater';
 
@@ -186,7 +186,7 @@ export const defaultSettings = Object.freeze({
     independentExcludedParams: [],
     independentContextMaxLayers: 20,
     independentContextExcludedTags: [...DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS],
-    behaviorRuleMode: 'always',
+    behaviorRuleMode: 'off',
     behaviorRuleText: null,
     independentEarlyBodyEnabled: false,
     independentEarlyBodyTags: [],
@@ -207,7 +207,11 @@ export const defaultSettings = Object.freeze({
     atmosphereStoryPercent: 70,
     rawPolicy: 'balanced',
     showCot: false,
+    // Compatibility key: strong diversity is always active.
     avoidRepeat: true,
+    darkVisualMode: false,
+    postGenerationRecolor: false, // Retired trial compatibility key; never generates variants.
+    visualDesignMode: 'guided1553',
     cooldownRounds: 10,
     blacklistEnabled: true,
     blacklistedThemeIds: [],
@@ -278,10 +282,15 @@ export const defaultSettings = Object.freeze({
 });
 
 export function getSettings() {
+    // A saved key does not prove a user touched the switch: earlier versions
+    // persisted default-filled settings. Only a missing extension is new.
+    const newInstallation = !Object.prototype.hasOwnProperty.call(extension_settings, MODULE_NAME);
     if (!extension_settings[MODULE_NAME] || typeof extension_settings[MODULE_NAME] !== 'object') {
         extension_settings[MODULE_NAME] = cloneDefaultSettings();
+        if (!newInstallation) extension_settings[MODULE_NAME].behaviorRuleMode = 'always';
     }
     const settings = extension_settings[MODULE_NAME];
+    if (!newInstallation && settings.behaviorRuleMode === undefined) settings.behaviorRuleMode = 'always';
     // Resolve missing/corrupt timing from the old flags before defaults fill it.
     settings.independentGenerationTiming = independentGenerationTiming(settings);
     const legacyRescueWasEnabled = !!(settings.plainTextRescueMode || settings.codeBlockRescueMode || settings.interactionRescueMode);
@@ -353,6 +362,10 @@ export function getSettings() {
     settings.themesMax = Number(settings.themesMax) || defaultSettings.themesMax;
     settings.formatsMin = Number(settings.formatsMin) || defaultSettings.formatsMin;
     settings.formatsMax = Number(settings.formatsMax) || defaultSettings.formatsMax;
+    settings.avoidRepeat = true;
+    settings.darkVisualMode = settings.darkVisualMode === true;
+    settings.postGenerationRecolor = false;
+    if (!['reference1553', 'guided1553'].includes(settings.visualDesignMode)) settings.visualDesignMode = 'guided1553';
     settings.cooldownRounds = Math.max(1, Number(settings.cooldownRounds) || defaultSettings.cooldownRounds);
     settings.blacklistEnabled = settings.blacklistEnabled !== false;
     const normalizeSelectionIds = (value, mapId = id => id) => [...new Set((Array.isArray(value) ? value : []).map(id => mapId(String(id || '').trim())).filter(Boolean))].slice(0, 512);

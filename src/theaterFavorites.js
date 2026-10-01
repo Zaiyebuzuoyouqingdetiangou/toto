@@ -1,3 +1,4 @@
+import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.62.53';
 const DB_NAME = 'rabbit_mirror_theater_favorites_v1';
 const STORE = 'favorites';
 const DB_VERSION = 1;
@@ -372,7 +373,7 @@ export function resolveTheaterFavoriteCaptureRoot(root) {
 export function captureTheaterFavoriteFromRoot(root, owner = {}) {
     const details = resolveTheaterFavoriteCaptureRoot(root);
     if (!details) return null;
-    const html = scrubTheaterFavoriteHtml(details.outerHTML);
+    const html = scrubTheaterFavoriteHtml(restoreRuntimeAnimationClone(details, details.cloneNode(true)).outerHTML);
     if (!html) return null;
     const title = theaterFavoriteTitleFromDetails(details) || String(details.querySelector?.(':scope > summary')?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 120);
     const character = currentTheaterFavoriteCharacter();

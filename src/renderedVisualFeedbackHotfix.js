@@ -1,5 +1,5 @@
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.62.20';
-import { updateLatestVisualSignature } from './storage.js?rmv=1.62.20';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.62.53';
+import { updateLatestVisualSignature, visualHistoryTarget } from './storage.js?rmv=1.62.53';
 
 const VERSION = '1.5.53';
 const HOST = '[data-rabbit-mirror-external-source]';
@@ -191,6 +191,7 @@ function sourceHtml(details) {
 
 function commit(host, details, expectedSeq=0) {
     if(!eligible(details,host)) return false;
+    const historyOwner=visualHistoryTarget(details); if(!historyOwner)return false;
     if(host?.dataset?.rmSource==='independent'&&expectedSeq>0&&(Number(hostSeq.get(host)||0)!==expectedSeq||expectedSeq!==seq||host!==latestHost)) return false;
     const html=sourceHtml(details); if(!html)return false;
     const key=`${ownerIndex(details,host)}|${host?.dataset?.rmKey||''}|${host?.dataset?.rmSourceHash||''}|${html.length}|${hash(html)}`;
@@ -198,7 +199,7 @@ function commit(host, details, expectedSeq=0) {
     const scan=scanRabbitMirrorHtml(html,host||details)||{}, profile=renderedProfile(details), palette=scan.paletteFingerprint&&typeof scan.paletteFingerprint==='object'?scan.paletteFingerprint:null;
     const skeleton=mergeSkeleton(scan.skeleton||'',palette,profile);
     const flags=[...new Set([...(profile.flags||[]),...(Array.isArray(scan.riskFlags)?scan.riskFlags:[])])].slice(0,8);
-    updateLatestVisualSignature(scan.signature||'',skeleton||scan.skeleton||'',flags,palette,scan.interactionFamily||null);
+    if(!updateLatestVisualSignature(scan.signature||'',skeleton||scan.skeleton||'',flags,palette,scan.interactionFamily||null,historyOwner))return false;
     seen.set(key,Date.now()); while(seen.size>48)seen.delete(seen.keys().next().value);
     globalThis.__rabbitMirrorRenderedVisualFeedbackLast={version:VERSION,ownerMesid:ownerIndex(details,host),source:String(host?.dataset?.rmSource||'inline'),brightness:String(palette?.brightness||''),darkAreaRatio:Number(palette?.darkAreaRatio||0),averageLuminance:Number(palette?.averageLuminance||0),renderedBoxes:profile.boxes.length,renderedSimilarity:Number(profile.allRatio.toFixed(3)),riskFlags:flags,skeleton,ts:Date.now()};
     console.debug('[RabbitMirror] rendered visual feedback committed:',globalThis.__rabbitMirrorRenderedVisualFeedbackLast);

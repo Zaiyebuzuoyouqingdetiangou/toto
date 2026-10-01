@@ -1,9 +1,10 @@
 // Split from ui.js — Prompt meter and latest independent request diagnostic.
 
-import { getSettings } from '../settings.js?rmv=1.62.20';
-import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from '../tokenMeter.js?rmv=1.62.20';
-import { API_REQUEST_DIAGNOSTIC_EVENT, getLastIndependentApiRequestDiagnostic } from '../independentApi.js?rmv=1.62.20';
-import { escapeHtml } from './runtime.js?rmv=1.62.20';
+import { getSettings } from '../settings.js?rmv=1.62.53';
+import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from '../tokenMeter.js?rmv=1.62.53';
+import { API_REQUEST_DIAGNOSTIC_EVENT, getLastIndependentApiRequestDiagnostic } from '../independentApi.js?rmv=1.62.53';
+import { escapeHtml } from './runtime.js?rmv=1.62.53';
+import { formatGenerationElapsed } from '../generationTiming.js?rmv=1.62.53';
 
 function independentApiProfileLabel(diagnostic) {
     if (!diagnostic?.profile) return '暂无记录';
@@ -58,10 +59,11 @@ function renderIndependentApiDiagnostic(diagnostic = getLastIndependentApiReques
     const requestedModel = String(diagnostic?.model || '').trim();
     const model = requestedModel ? `<br><b>请求指定模型：</b>${escapeHtml(requestedModel)}` : '';
     const selection = renderDiagnosticSelection(diagnostic);
+    const elapsed = diagnostic ? `<br><b>${diagnostic.requestTimingEnd === 'failure' ? '失败/取消前耗时' : '生成耗时'}：</b>${formatGenerationElapsed(diagnostic.requestElapsedMs)}${typeof diagnostic.requestElapsedMs === 'number' ? `（请求发出至${diagnostic.requestTimingEnd === 'failure' ? '失败/取消' : '回复结束'}，非模型纯推理时间）` : ''}` : '';
     const worldInfo = diagnostic?.globalWorldInfoEnabled
         ? `<br><b>世界书：</b>${diagnostic.globalWorldInfoCaptured ? `已带入 ${formatMeterNumber(diagnostic.globalWorldInfoEntries)}／${formatMeterNumber(diagnostic.globalWorldInfoTotalEntries || diagnostic.globalWorldInfoEntries)} 条，${formatMeterNumber(diagnostic.globalWorldInfoChars)} 字符${diagnostic.globalWorldInfoTruncated ? '（已按独立预算裁剪）' : ''}` : '本轮无可用条目'}`
         : '<br><b>世界书：</b>关闭';
-    target.html(`<b>最近请求：</b>${escapeHtml(text)}${escapeHtml(attempts)}${model}${selection}${worldInfo}`);
+    target.html(`<b>最近请求：</b>${escapeHtml(text)}${escapeHtml(attempts)}${elapsed}${model}${selection}${worldInfo}`);
 }
 
 

@@ -1,8 +1,8 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.62.20';
-import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.62.20';
-import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.62.20';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.62.53';
+import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.62.53';
+import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.62.53';
 
 export function buildRabbitMirrorSettingsDialogHtml() {
     return `
@@ -34,9 +34,10 @@ export function buildRabbitMirrorSettingsDialogHtml() {
           <summary>新手指引</summary>
           <div class="rabbit-mirror-quick-start-body" role="region" aria-label="新手指引"><p role="status">展开后加载使用指引，不会修改设置。</p></div>
         </details>
-        <div class="rabbit-mirror-update-version-group">
-          <span id="rh_current_version" class="rabbit-mirror-current-version">当前版本：${RUNTIME_VERSION}</span>
+        <div id="rh_update_version_group" class="rabbit-mirror-update-version-group">
+          <span id="rh_current_version" class="rabbit-mirror-current-version">当前页面版本：${RUNTIME_VERSION}</span>
           <button id="rh_update_now" class="menu_button rabbit-mirror-update-button" type="button">检查并更新</button>
+          <button id="rh_version_check" class="menu_button rabbit-mirror-update-button" type="button">版本核对</button>
         </div>
       </div>
       <div id="rh_update_status" class="rabbit-mirror-update-status" role="status" aria-live="polite" hidden></div>
@@ -150,7 +151,7 @@ export function buildRabbitMirrorSettingsDialogHtml() {
                 <label>自动重 roll 次数 <input id="rh_independent_automatic_reroll" class="text_pole" type="number" min="0" step="1" style="width:72px;"></label>
                 <label>无进度中止秒数 <input id="rh_independent_automatic_reroll_idle" class="text_pole" type="number" min="1" step="1" style="width:72px;"></label>
               </div>
-              <p style="opacity:.72;font-size:11px;line-height:1.5;margin:8px 0 0;">跟随正文 API 和副 API 共用。打开后，空回、报错、掉格式、净化失败或缺面会按次数再试，多面只补缺的面。无进度中止只作用于补发请求，不会中止正在写的正文。401 / 429 会重试；额度不足、发送前拦截、点停止、切聊天、正文被换掉不会。关闭后，除了手动重新生成正文或手动重说，都不会自动再生成兔子镜。</p>
+              <p style="opacity:.72;font-size:11px;line-height:1.5;margin:8px 0 0;">跟随正文 API 和副 API 共用。打开后，空回、报错、掉格式、净化失败或缺面会按次数再试，多面只补缺的面。手动重说只请求一次，失败后由你再次点按。副 API 首次返回前保留总等待上限，收到数据后才按无进度秒数中止；不会中止正在写的正文。401 / 429 会重试；额度不足、发送前拦截、点停止、切聊天、正文被换掉不会。关闭后，除了手动重新生成正文或手动重说，都不会自动再生成兔子镜。</p>
             </div>
             <div class="rh-independent-generation-params">
             <div class="flex-container" style="gap:8px;flex-wrap:wrap;align-items:center;padding:9px 10px;border:1px solid color-mix(in srgb,currentColor 14%,transparent);border-radius:9px;">
@@ -268,6 +269,19 @@ export function buildRabbitMirrorSettingsDialogHtml() {
               <button id="rh_external_transfer_open" class="menu_button" type="button">换设备：导出／导入整库</button>
             </div>
           </div>
+          <section id="rh_generation_evidence" style="margin-top:12px;padding:12px;border:1px solid currentColor;border-radius:10px;">
+            <strong>生成内容取证（独立 API）</strong>
+            <p>先记录下一次，再正常生成或重说一次，完成后导出。只记录这一次，不额外调用模型。</p>
+            <p>报告含本轮提示词、聊天内容、模型原文及挂载前 HTML；不采集连接密钥和请求头。仅保留在本页，刷新前请导出。</p>
+            <div class="flex-container flexGap5" style="flex-wrap:wrap;">
+              <button id="rh_generation_evidence_start" class="menu_button" type="button">记录下一次生成</button>
+              <button id="rh_generation_evidence_download" class="menu_button" type="button" disabled>导出报告</button>
+              <button id="rh_generation_evidence_copy" class="menu_button" type="button" disabled>复制报告</button>
+              <button id="rh_generation_evidence_clear" class="menu_button" type="button" disabled>清除记录</button>
+            </div>
+            <p id="rh_generation_evidence_status" role="status" aria-live="polite"></p>
+            <textarea id="rh_generation_evidence_output" class="text_pole" aria-label="生成内容取证报告" readonly spellcheck="false" hidden style="width:100%;min-height:220px;user-select:text;-webkit-user-select:text;"></textarea>
+          </section>
           <section id="rh_manual_entry_diag" style="margin-top:12px;padding:12px;border:1px solid currentColor;border-radius:10px;">
             <strong>手动生成没有外置框？</strong>
             <p>先开始记录，再回到聊天正常发送一条消息。角色回复后，回来结束记录并复制报告。没有兔子镜也能使用。</p>
@@ -438,24 +452,35 @@ export function buildRabbitMirrorSettingsDialogHtml() {
             </div>
             <label class="checkbox_label"><input id="rh_creative_expansion" type="checkbox"> 发散孵化模式</label>
             <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后会探索更随机、更跳脱的内容组合。</div>
-            <label class="checkbox_label"><input id="rh_force_visual_scenery" type="checkbox"> 动态视觉场景</label>
-            <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后，HTML 面固定保留动态视觉场景；文本面不受影响。</div>
-            <label class="checkbox_label"><input id="rh_visual_scenery_combination" type="checkbox"> 动态视觉同时组合其他展现形式</label>
-            <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">默认关闭。与动态视觉场景一起开启后，保留动态画面，同时按原数量和偏好抽取其他展现形式，保留它们的内容、阅读方式与玩法；文本面不受影响。</div>
+            <div id="rh_visual_scenery_modes" class="rh-ui-display-options" role="radiogroup" aria-label="动态场景模式" aria-describedby="rh_visual_scenery_mode_help">
+              <label class="rh-ui-choice"><input id="rh_visual_scenery_mode_ordinary" type="radio" name="rh_visual_scenery_mode" value="ordinary"><span><strong>普通抽取</strong><small>按原有数量和偏好抽取展现形式，不固定动态场景。</small></span></label>
+              <label class="rh-ui-choice"><input id="rh_visual_scenery_mode_scenery" type="radio" name="rh_visual_scenery_mode" value="scenery"><span><strong>动态场景</strong><small>固定使用动态视觉场景，按场景规则绘制画面与动画。</small></span></label>
+              <label class="rh-ui-choice"><input id="rh_visual_scenery_mode_combined" type="radio" name="rh_visual_scenery_mode" value="combined"><span><strong>动态场景＋其他形式</strong><small>包含动态场景规则，同时按原有数量和偏好抽取其他展现形式，保留它们的内容、阅读方式与玩法。</small></span></label>
+            </div>
+            <div id="rh_visual_scenery_mode_help" class="rabbit-mirror-subnote">三选一，仅影响 HTML 面；文本面不受影响。增强视觉绘制可独立开启。</div>
+            <div id="rh_visual_design_options">
+            <label for="rh_visual_design_mode">美化方式</label>
+            <select id="rh_visual_design_mode" class="text_pole" style="min-height:44px;" aria-describedby="rh_visual_design_mode_help">
+              <option value="guided1553">新美化规则（默认）</option>
+              <option value="reference1553">旧美化规则（1.5.53）</option>
+            </select>
+            <div id="rh_visual_design_mode_help" class="rabbit-mirror-subnote">之前莫名发现美化变丑了，原因还没完全找到，也没完全调回来，所以保留新旧两套规则。默认用新规则，切换后用于下一次生成。</div>
+            </div>
             <label for="rh_enhanced_visual_drawing" class="checkbox_label"><input id="rh_enhanced_visual_drawing" type="checkbox" aria-describedby="rh_enhanced_visual_drawing_help"> 增强视觉绘制</label>
-            <div id="rh_enhanced_visual_drawing_help" class="rabbit-mirror-subnote" style="margin:0 0 8px 26px;">加强画面细节、层次与互动；可与动态视觉场景一起开启。</div>
+            <div id="rh_enhanced_visual_drawing_help" class="rabbit-mirror-subnote" style="margin:0 0 8px 26px;">加强主体绘制、材质、光影与空间层次；采用动态场景时，动画统一按动态场景规则执行。</div>
+            <label for="rh_dark_visual_mode" class="checkbox_label"><input id="rh_dark_visual_mode" type="checkbox" aria-describedby="rh_dark_visual_mode_help"> 深色模式</label>
+            <div id="rh_dark_visual_mode_help" class="rabbit-mirror-subnote">新生成的所有镜面使用适合夜间阅读的深色背景；深色范围内仍强避重，保留形式与材质。独立生效，勾选即保存；已有作品不变。</div>
             <label class="checkbox_label"><input id="rh_user_directive" type="checkbox"> 用户指令优先</label>
             <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后，可以自由点菜自己喜欢的任意内容。</div>
             <label class="checkbox_label"><input id="rh_worldview_lock" type="checkbox"> 展现形式世界观锁</label>
             <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">保留展现形式功能与结构，只转换不合当前世界观的具体载体；开启时会提示把抽取模式切换为“仅展现形式”。</div>
-            <label class="checkbox_label"><input id="rh_avoid_repeat" type="checkbox"> 10轮冷却：避免重复主题/展现形式/整体观感</label>
-            <div class="rabbit-mirror-subnote" style="margin:-2px 0 2px 26px;opacity:.72;font-size:12px;line-height:1.45;">仅记录已经实际生成成功的兔子镜；用于避免连续复用相近的结构骨架与整体视觉家族。</div>
+            <div id="rh_strong_diversity_status" class="rabbit-mirror-subnote">默认强避重：主题、展现形式、配色与操作方式避免沿用近期成品。用户指定内容、形式所需材质及已开启的动态场景和增强绘制优先保留。</div>
           </div>
 
           <div id="rh_advanced_page_visual" class="rh-advanced-page" data-title="个性化视觉提示词" style="display:none;">
             <div style="opacity:.82;font-size:12px;line-height:1.55;margin-bottom:9px;">这里可以直接写你喜欢或不喜欢的画面感觉。只有勾选下面的“启用视觉提示词编辑注入”后，保存的内容才会随生成兔子镜的请求发送。</div>
             <label class="checkbox_label" style="font-weight:700;"><input id="rh_visual_prompt_enabled" type="checkbox"> 启用视觉提示词编辑注入</label>
-            <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.76;font-size:12px;line-height:1.5;">默认关闭。关闭时已编辑内容仍保存在本地，但不会注入模型；下一面继续使用 1.3.20 原版视觉规则。开启后才切换到可编辑视觉层。</div>
+            <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;opacity:.76;font-size:12px;line-height:1.5;">默认关闭。关闭时已编辑内容仍保存在本地，但不会注入模型；下一面按所选美化方式生成。开启后才切换到可编辑视觉层。</div>
             <div id="rh_visual_prompt_status" style="padding:7px 9px;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:8px;opacity:.82;font-size:11px;line-height:1.45;margin-bottom:10px;">当前：正在读取视觉提示词状态……</div>
             <label for="rh_visual_extra_prompt" style="display:block;font-weight:700;margin:8px 0 5px;">额外视觉偏好（可选）</label>
             <textarea id="rh_visual_extra_prompt" class="text_pole" rows="5" maxlength="${VISUAL_EXTRA_PROMPT_MAX_CHARS}" spellcheck="false" placeholder="例如：像真实纸张拼贴的小剧场，左上方来光，标题压在图像边缘，正文像杂志内页，近看能看到印刷网点和轻微裁切毛边。" style="width:100%;min-height:100px;resize:vertical;box-sizing:border-box;line-height:1.5;"></textarea>

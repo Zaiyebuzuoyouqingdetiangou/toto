@@ -1,5 +1,7 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.20';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.20';
+import { usesModelOriginalColors } from './visualDesign.js?rmv=1.62.53';
+import { attachPaletteRecipes } from './paletteRecipes.js?rmv=1.62.53';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.53';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.53';
 import {
     getCurrentChatKey,
     getDirectiveScopedPick,
@@ -8,6 +10,8 @@ import {
     getRecentGenerationAttemptIds,
     getRecentIds,
     getRecentInteractionFamilies,
+    getRecentDiversityHistory,
+    getActivePaletteCooldown,
     recordGenerationAttempt,
     recordFormatEligibleMissRound,
     setDirectiveScopedPick,
@@ -17,11 +21,12 @@ import {
     clearPendingComboBatch,
     createPendingComboBatchPlan,
     findPendingComboBatchPlan,
-} from './storage.js?rmv=1.62.20';
-import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.62.20';
-import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.62.20';
-import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.20';
-import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.62.20';
+} from './storage.js?rmv=1.62.53';
+import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.62.53';
+import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.62.53';
+import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, visualSceneryEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.53';
+import { attachInteractionRecipes, diversifyBatchInteractionRecipes } from './interactionRecipes.js?rmv=1.62.53';
+import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.62.53';
 import {
     chooseExternalSource,
     externalPoolActive,
@@ -31,7 +36,7 @@ import {
     getExternalPoolSnapshot,
     pickExternalItems,
     sourceMixModeIsExternalOnly,
-} from './externalWorldBook/externalPool.js?rmv=1.62.20';
+} from './externalWorldBook/externalPool.js?rmv=1.62.53';
 
 function randomUnit() {
     try {
@@ -288,7 +293,7 @@ function weightedSample(pool, count, recentIds = [], recentGroups = [], avoidRep
         if (filtered.length >= count) candidates = filtered;
     }
 
-    // 正式冷却历史仍按原设置执行。
+    // Random draws always receive the strong-diversity policy at public entry points.
     if (avoidRepeat) {
         const filtered = candidates.filter(x => !recent.has(x.id));
         if (filtered.length >= count) candidates = filtered;
@@ -301,6 +306,13 @@ function weightedSample(pool, count, recentIds = [], recentGroups = [], avoidRep
     const usedGroups = new Set();
     while (selected.length < count && used.size < candidates.length) {
         let available = candidates.filter(item => !used.has(item.id));
+        if (avoidRepeat) {
+            // Exhaust fresh IDs before reopening recent entries in a small pool.
+            const freshIds = available.filter(item => !recent.has(item.id) && !hardExcluded.has(item.id));
+            if (freshIds.length) available = freshIds;
+            const minHits = Math.min(...available.map(item => Number(recentFamilyHitMap?.[formatFamilyKey(item)] || 0)));
+            available = available.filter(item => Number(recentFamilyHitMap?.[formatFamilyKey(item)] || 0) === minHits);
+        }
         // Maximise immediate-family avoidance instead of falling back all-or-nothing:
         // consume every still-unseen fresh family first, then reopen an older family
         // only when it is needed to fill the remaining slots.
@@ -426,6 +438,13 @@ function weightedThemeSample(pool, count, recentIds = [], recentGroups = [], avo
     while (selected.length < targetCount) {
         let availableFamilies = familyList.filter(family => !usedFamilies.has(family.key));
         if (!availableFamilies.length) break;
+        if (avoidRepeat) {
+            const freshIds = availableFamilies.filter(family => family.items.some(item => !recent.has(item.id) && !hardExcluded.has(item.id)));
+            if (freshIds.length) availableFamilies = freshIds;
+            const hits = family => Number(recentFamilyHitMap?.[family.key] || (recentFamilySet.has(family.key) ? 1 : 0));
+            const minHits = Math.min(...availableFamilies.map(hits));
+            availableFamilies = availableFamilies.filter(family => hits(family) === minHits);
+        }
         const freshFamilies = availableFamilies.filter(family => !immediateFamilies.has(family.key));
         if (freshFamilies.length) availableFamilies = freshFamilies;
 
@@ -1094,7 +1113,7 @@ function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, th
         });
         if (drawn) return { ...drawn, directive };
     }
-    if (requestedMode === 'text') settings = { ...settings, forceVisualScenery: false };
+    if (requestedMode === 'text') settings = { ...settings, forceVisualScenery: false, visualSceneryCombination: false };
     const combineVisual = visualSceneryCombinationEnabled(settings);
     // Only the new combination path excludes the already locked visual item.
     if (combineVisual) formatPool = formatPool.filter(item => item.id !== '10.2.2');
@@ -1171,7 +1190,7 @@ function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, th
     const pickedFormats = formatSample.selected.filter(item => item.externalKind !== 'text');
     const isText = requestedMode === 'text' || longText || texts.length > 0;
     const visualSceneryFormat = getVisualSceneryFormat();
-    const forcedFormats = !isText && settings.forceVisualScenery && visualSceneryFormat ? [visualSceneryFormat] : [];
+    const forcedFormats = !isText && visualSceneryEnabled(settings) && visualSceneryFormat ? [visualSceneryFormat] : [];
     const directiveFormats = directive?.formats || [];
     const directiveWantsVisualScenery = directiveFormats.some(item => item?.id === '10.2.2');
 
@@ -1195,7 +1214,7 @@ function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, th
 }
 
 function comboFromSelection(result, settings, recent, uiReviewFocus = null) {
-    return {
+    const combo = {
         themes: result.themes,
         formats: result.formats,
         themeIds: result.themes.map(x => x.id),
@@ -1205,7 +1224,7 @@ function comboFromSelection(result, settings, recent, uiReviewFocus = null) {
         formatGroups: result.formats.map(x => x.group).filter(Boolean),
         mode: settings.mode,
         samplingMode: settings.samplingMode || 'classic',
-        forcedVisualScenery: result.presentationMode !== 'text' && !!settings.forceVisualScenery,
+        forcedVisualScenery: result.presentationMode !== 'text' && visualSceneryEnabled(settings),
         ...presentationModeFields(result),
         ...(result.texts?.length ? { texts: result.texts, textIds: result.texts.map(item => item.id) } : {}),
         cooldownRounds: settings.cooldownRounds || 10,
@@ -1216,9 +1235,22 @@ function comboFromSelection(result, settings, recent, uiReviewFocus = null) {
         } : {}),
         uiReviewFocus: Array.isArray(uiReviewFocus) && uiReviewFocus.length ? [...uiReviewFocus] : pickUiReviewFocus(5),
         recentUiReviewFocus: recent.uiReviewFocus || [],
+        ...(result.pureOrder ? { pureOrder: true } : {}),
         ...(result.atmosphereBucket ? { atmosphereBucket: result.atmosphereBucket } : {}),
         ...(Array.isArray(result.atmosphereMenu) && result.atmosphereMenu.length > 1 ? { atmosphereMenu: result.atmosphereMenu } : {}),
     };
+    if (combo.presentationMode === 'text' || combo.pureOrder) return combo;
+    const previous = result.previousVariation ? [result.previousVariation] : [];
+    if (previous.length) {
+        delete combo.interactionRecipeId; delete combo.interactionRecipeIds; delete combo.paletteRecipeId;
+        if (combo.atmosphereMenu) combo.atmosphereMenu = combo.atmosphereMenu.map(ticket => {
+            const next = { ...ticket }; delete next.interactionRecipeId; delete next.interactionRecipeIds; delete next.paletteRecipeId; return next;
+        });
+    }
+    attachInteractionRecipes(combo, { randomUnit, recent: [...getRecentDiversityHistory(5), ...previous] });
+    if (usesModelOriginalColors(settings)) return combo;
+    return attachPaletteRecipes(combo, { randomUnit, recent: [...getRecentDiversityHistory(3), ...previous],
+        darkOnly: settings.darkVisualMode === true, darkCooldown: settings.darkVisualMode !== true && getActivePaletteCooldown(5).active });
 }
 
 function rehydrateDirectiveCombo(cached, settings, recent) {
@@ -1234,7 +1266,7 @@ function rehydrateDirectiveCombo(cached, settings, recent) {
     if (texts.some(item => !item)) return null;
     return comboFromSelection({ themes, formats, ...(texts.length ? { texts } : {}),
         ...(isBlankLongTextSelection(cached) ? { themeIds: [], formatIds: [], textIds: [] } : {}),
-        ...presentationModeFields(cached) }, settings, recent, cached.uiReviewFocus);
+        ...presentationModeFields(cached), previousVariation: cached }, settings, recent, cached.uiReviewFocus);
 }
 
 function directiveRandomPreferenceScopeKey(settings) {
@@ -1257,7 +1289,7 @@ function directiveScopeKey(directive, settings) {
     if (!directive?.rawDirective || !directive?.messageKey) return '';
     const config = [
         settings.samplingMode || 'classic',
-        settings.forceVisualScenery ? 'visual' : 'normal',
+        visualSceneryEnabled(settings) ? 'visual' : 'normal',
         ...(visualSceneryCombinationEnabled(settings) ? ['visual-combination'] : []),
         settings.themesMin,
         settings.themesMax,
@@ -1458,7 +1490,7 @@ function finalizeBatchFallback(first, snapshot, scopeKey, identityKey, chatKey, 
         });
     }
     if (snapshot.directive && directiveCacheKey) setDirectiveScopedPick(chatKey, directiveCacheKey, first.payload.combo);
-    setLastCombo(first.payload.combo);
+    setLastCombo(first.payload.combo, scopeKey);
     recordGenerationAttempt(first.payload.combo, { chatKey, attemptId: scopeKey, directiveScoped: !!snapshot.directive });
     cachedPick = { scopeKey, payload: cloneBatchPlan(first.payload), batchFallbackKey: identityKey };
     return [cloneBatchPlan(first.payload)];
@@ -1478,7 +1510,7 @@ function batchPrioritySingle(settings, snapshot, scopeKey, identityKey, chatKey)
         : null;
     if (cachedCombo) {
         const payload = { combo: cachedCombo, last: snapshot.last, directive: snapshot.directive };
-        setLastCombo(cachedCombo);
+        setLastCombo(cachedCombo, scopeKey);
         recordGenerationAttempt(cachedCombo, { chatKey, attemptId: scopeKey, directiveScoped: true });
         cachedPick = { scopeKey, payload: cloneBatchPlan(payload), batchFallbackKey: identityKey };
         return [cloneBatchPlan(payload)];
@@ -1514,9 +1546,15 @@ function liveBatchResult(plan, directive) {
 function addBatchInteractionDiversity(combos, settings) {
     // New multi-face plans only. Do not read history or consume entropy in the
     // single-face/off/cache paths, and never infer a mechanism from raw content.
-    if (!settings?.avoidRepeat || combos.length < 2 || combos.length > 5) return;
+    if (combos.length < 2 || combos.length > 5) return;
+    if (combos.some(combo => combo.presentationMode !== 'text' && !combo.pureOrder)) {
+        diversifyBatchInteractionRecipes(combos, { randomUnit, recent: getRecentDiversityHistory(5) });
+        const usedIds = [], usedGroups = [], recent = getRecentDiversityHistory(3);
+        const darkOnly = settings.darkVisualMode === true, darkCooldown = !darkOnly && getActivePaletteCooldown(5).active;
+        for (const combo of combos) if (!usesModelOriginalColors(settings)) attachPaletteRecipes(combo, { randomUnit, recent, usedIds, usedGroups, darkOnly, darkCooldown, rerollUsed: true });
+    }
     const hints = planBatchInteractionDiversity(combos.length, {
-        enabled: true, recentFamilies: getRecentInteractionFamilies(5),
+        enabled: true, recentFamilies: getRecentInteractionFamilies(5, { preserveEmpty: true }),
         presentationModes: combos.map(combo => combo.presentationMode || 'html'),
     });
     if (hints) combos.forEach((combo, index) => { if (hints[index]) combo.interactionDiversity = hints[index]; });
@@ -1535,7 +1573,7 @@ function pickLiveCombinationBatch(settings, planning, faceCount, planningReason 
     const usedTextIds = new Set(snapshot.exclusions.textIds || []);
     const fixedThemes = new Set((snapshot.directive?.themes || []).map(item => item.id));
     const fixedFormats = new Set((snapshot.directive?.formats || []).map(item => item.id));
-    if (settings.forceVisualScenery) fixedFormats.add('10.2.2');
+    if (visualSceneryEnabled(settings)) fixedFormats.add('10.2.2');
     const needsRandomThemes = settings.samplingMode !== 'format_only' && !snapshot.directive?.hasThemeRequest;
     const needsRandomFormats = (!settings.forceVisualScenery || visualSceneryCombinationEnabled(settings)) && !snapshot.directive?.hasFormatRequest;
     const results = [];
@@ -1587,21 +1625,32 @@ export function buildPureOrderSelection(settings, order) {
         source: '重说纯点菜', rawDirective: text, messageKey: 'resay-pure-order', pureOrder: true,
     };
     const combo = comboFromSelection({
-        themes: [], formats: [],
+        themes: [], formats: [], pureOrder: true,
         requestedPresentationMode: form,
         presentationMode: form === 'longtext' ? 'text' : 'html',
-    }, { ...settings, forceVisualScenery: false }, { uiReviewFocus: [] });
+    }, { ...settings, forceVisualScenery: false, visualSceneryCombination: false }, { uiReviewFocus: [] });
     combo.customDirective = true;
     combo.pureOrder = true;
     return { combo, directive, last: null };
 }
 
-export function pickCombinationForMultifaceResay(settings, resay) {
+export function pickCombinationForMultifaceResay(settings, resay, generationScopeKey = '', generationContext = null) {
+    settings = { ...settings, avoidRepeat: true };
     if (!resay || !Number.isSafeInteger(resay.faceIndex) || resay.faceIndex < 0 ||
         !Array.isArray(resay.faces) || resay.faceIndex >= resay.faces.length || resay.faces.length > 5) {
         throw multiFacePlanningError('未找到要重新生成的兔子镜面；本次尚未发送请求。', 'BATCH_RESAY_FACE_MISSING');
     }
     const face = resay.faces[resay.faceIndex];
+    if (!resay.preserveVariation && !resay.preserveSelection && !resay.userPicked) {
+        const faceIndex = Number(settings.rabbitMirrorFaceCount) === 1 ? 0 : resay.faceIndex;
+        if (['html', 'longtext'].includes(resay.presentationOverride)) {
+            const modes = [...(settings.rabbitMirrorPresentationModes || [])];
+            modes[faceIndex] = resay.presentationOverride;
+            settings = { ...settings, rabbitMirrorPresentationModes: modes };
+        }
+        return pickCombination(settings, generationScopeKey, { ...(generationContext || {}),
+            previousVariation: face, faceIndex });
+    }
     if (Number(face?.customThemeCount || 0) > 0 || Number(face?.customFormatCount || 0) > 0 || Number(face?.customRequestCount || 0) > 0) {
         throw multiFacePlanningError('原面包含未入库的自定义点菜，仅凭面元数据无法安全还原；请重新选择整批生成。', 'BATCH_RESAY_CUSTOM_RECIPE');
     }
@@ -1614,7 +1663,7 @@ export function pickCombinationForMultifaceResay(settings, resay) {
                 const wanted = kind === 'format' ? canonicalFormatId(id) : id;
                 return pool.find(item => item.id === wanted);
             }
-            // Re-say is an exact selection, not another random draw. The ID-only
+            // Explicit original/picked selection or continuation is exact. The ID-only
             // constructor cannot prove membership: use the current eligible pool.
             if (!externalLibraries.some(library => library.ids.includes(id))) return null;
             return externalPoolItem(id, kind);
@@ -1627,10 +1676,13 @@ export function pickCombinationForMultifaceResay(settings, resay) {
     const texts = resolveIds(face?.textIds || [], [], 'text');
     if (!themes.length && !formats.length && !texts.length && !isBlankLongTextSelection(face) && !face?.worldBookEntryId) throw multiFacePlanningError('原面缺少可复用抽取记录；请重新选择整批生成。', 'BATCH_RESAY_RECIPE_INCOMPLETE');
     const selectedSettings = { ...settings, samplingMode: face.samplingMode || settings.samplingMode, forceVisualScenery: face.forcedVisualScenery === true, visualSceneryCombination: face.visualSceneryCombination === true };
-    return { combo: comboFromSelection({ themes, formats, ...(texts.length ? { texts } : {}), ...(isBlankLongTextSelection(face) ? { themeIds: [], formatIds: [], textIds: [] } : {}), ...presentationModeFields(face) }, selectedSettings, getRecentIds(settings.cooldownRounds || 10)), directive: null, last: null };
+    return { combo: comboFromSelection({ themes, formats, ...(texts.length ? { texts } : {}), ...(isBlankLongTextSelection(face) ? { themeIds: [], formatIds: [], textIds: [] } : {}), ...presentationModeFields(face), ...(resay.preserveVariation ? {} : { previousVariation: face }),
+        ...(resay.presentationOverride === 'html' ? { presentationMode: 'html', requestedPresentationMode: 'html', blankLongText: false }
+            : resay.presentationOverride === 'longtext' ? { presentationMode: 'text', requestedPresentationMode: 'longtext' } : {}) }, selectedSettings, getRecentIds(settings.cooldownRounds || 10)), directive: null, last: null };
 }
 
 export function pickCombinationBatch(settings, generationScopeKey = '', generationContext = null, faceCount = 1) {
+    settings = { ...settings, avoidRepeat: true };
     // 单面严格早返回：不得读取、清除或触碰另一轮 pending batch。
     if (!Number.isSafeInteger(faceCount) || faceCount < 2 || faceCount > 5) return [pickCombination(settings, generationScopeKey, generationContext)];
 
@@ -1678,19 +1730,20 @@ export function pickCombinationBatch(settings, generationScopeKey = '', generati
     }
     if (faces.length < 2) return finalizeBatchFallback(first, snapshot, scopeKey, identityKey, identity.chatKey);
 
+    addBatchInteractionDiversity(faces.map(face => face.combo), settings);
     const batchId = setPendingComboBatch(faces.map(item => item.combo), identity);
     if (!batchId || !batchFacesMatch(readPendingComboBatch({ batchId, identity }), faces, batchId)) {
         if (batchId) clearPendingComboBatch({ batchId, identity });
         console.warn('[RabbitMirror] Pending combo batch storage failed; preserving the selected first face.');
         return finalizeBatchFallback(first, snapshot, scopeKey, identityKey, identity.chatKey);
     }
-    addBatchInteractionDiversity(faces.map(face => face.combo), settings);
     const completeFaces = faces.map((face, faceIndex) => ({ ...face, batchId, faceIndex }));
     cachedBatchPlan = { identityKey, batchId, faces: cloneBatchPlan(completeFaces) };
     return cloneBatchPlan(completeFaces);
 }
 
 export function pickCombination(settings, generationScopeKey = '', generationContext = null) {
+    settings = { ...settings, avoidRepeat: true };
     const scopeKey = normalizeGenerationScopeKey(generationScopeKey);
     if (scopeKey && cachedPick?.scopeKey === scopeKey) return cachedPick.payload;
 
@@ -1701,7 +1754,8 @@ export function pickCombination(settings, generationScopeKey = '', generationCon
     const last = getLastCombo();
     const formalRecent = getRecentIds(settings.cooldownRounds || 10);
     const attemptRecent = getRecentGenerationAttemptIds(chatKey, settings.cooldownRounds || 10);
-    const recent = mergeRecent(formalRecent, attemptRecent);
+    const previous = generationContext?.previousVariation;
+    const recent = mergeRecent(mergeRecent(formalRecent, attemptRecent), previous || {});
     // 单请求多面：本批前面已选中的组合并入硬排除，与历史冷却走同一条过滤路径。
     // generationContext 不带这两个字段时（既有单面调用）结果与原来逐字相同。
     const batchExcludedThemeIds = Array.isArray(generationContext?.batchExcludedThemeIds)
@@ -1711,9 +1765,9 @@ export function pickCombination(settings, generationScopeKey = '', generationCon
         ? generationContext.batchExcludedFormatIds.map(value => String(value || '')).filter(Boolean)
         : [];
     const hardRecent = {
-        themeIds: [...(attemptRecent.themeIds || []), ...batchExcludedThemeIds],
-        formatIds: [...(attemptRecent.formatIds || []), ...batchExcludedFormatIds],
-        textIds: attemptRecent.textIds || [],
+        themeIds: [...(attemptRecent.themeIds || []), ...batchExcludedThemeIds, ...(previous?.themeIds || [])],
+        formatIds: [...(attemptRecent.formatIds || []), ...batchExcludedFormatIds, ...(previous?.formatIds || [])],
+        textIds: [...(attemptRecent.textIds || []), ...(previous?.textIds || [])],
     };
     const favorites = getFavoritesState(settings);
     const validFormatIds = PRESENTATION_FORMATS.map(item => String(item?.id || '')).filter(Boolean);
@@ -1723,6 +1777,18 @@ export function pickCombination(settings, generationScopeKey = '', generationCon
 
     let themePool = filterRandomThemePool(THEMATIC_CATEGORIES.filter(item => allowByMode(item, settings.mode)), settings);
     let formatPool = filterRandomFormatPool(PRESENTATION_FORMATS.filter(item => allowByMode(item, settings.mode)), settings);
+    if (previous) {
+        // Prefer a different family on an intentional redraw. A small/filtered
+        // pool softens this preference; it never reintroduces blacklisted items.
+        const freshPool = (pool, ids, family, count) => {
+            const held = new Set(ids || []), families = new Set([...held].map(family));
+            const freshFamily = pool.filter(item => !families.has(family(item)));
+            const freshId = pool.filter(item => !held.has(item.id));
+            return freshFamily.length >= count ? freshFamily : freshId.length ? freshId : pool;
+        };
+        themePool = freshPool(themePool, previous.themeIds, themeFamilyKey, themeCount);
+        formatPool = freshPool(formatPool, previous.formatIds, formatFamilyKey, formatCount);
+    }
     // Blacklist filtering is a real pool exclusion, not a Prompt instruction.
     // 1.3.69: 这两行原本写成 `!pool.length && blacklistEnabled === false` 才恢复整池。
     // 但 blacklistEnabled === false 时 filterRandomXxxPool 已经原样返回整池，池为空
@@ -1739,7 +1805,7 @@ export function pickCombination(settings, generationScopeKey = '', generationCon
 
     const directiveCacheKey = directiveScopeKey(directive, settings);
     let combo = null;
-    if (directive && directiveCacheKey) {
+    if (directive && directiveCacheKey && !previous) {
         combo = rehydrateDirectiveCombo(getDirectiveScopedPick(chatKey, directiveCacheKey), settings, recent);
     }
 
@@ -1754,8 +1820,8 @@ export function pickCombination(settings, generationScopeKey = '', generationCon
             recent,
             formalRecent,
             hardRecent,
-            previousThemeFamilyKeys: (last?.themeIds || []).map(themeFamilyKey),
-            previousFormatFamilyKeys: (last?.formatIds || []).map(formatFamilyKey),
+            previousThemeFamilyKeys: (previous?.themeIds || last?.themeIds || []).map(themeFamilyKey),
+            previousFormatFamilyKeys: (previous?.formatIds || last?.formatIds || []).map(formatFamilyKey),
             favoriteThemeIds: favorites.themeIds,
             favoriteFormatIds: favorites.formatIds,
             favoriteThemeMultipliers: favorites.themeMultipliers,
@@ -1765,7 +1831,7 @@ export function pickCombination(settings, generationScopeKey = '', generationCon
             faceIndex: Number.isSafeInteger(generationContext?.faceIndex) ? generationContext.faceIndex : 0,
             presentationScopeKey: scopeKey,
         });
-        combo = comboFromSelection(result, settings, recent);
+        combo = comboFromSelection({ ...result, ...(previous ? { previousVariation: previous } : {}) }, settings, recent);
         if (result.formatFairnessEligibleIds?.length) {
             recordFormatEligibleMissRound({
                 eligibleIds: result.formatFairnessEligibleIds,
@@ -1776,7 +1842,7 @@ export function pickCombination(settings, generationScopeKey = '', generationCon
         if (directive && directiveCacheKey) setDirectiveScopedPick(chatKey, directiveCacheKey, combo);
     }
 
-    setLastCombo(combo);
+    setLastCombo(combo, scopeKey);
     recordGenerationAttempt(combo, {
         chatKey,
         attemptId: scopeKey || `fallback:${Date.now().toString(36)}:${randomUnit().toString(36).slice(2, 8)}`,

@@ -1,9 +1,11 @@
 // Split from independentApi.js — geometry.
+import { restoreRuntimeAnimationClone, ANIMATION_SUSPENDED_ATTR } from '../runtimeAnimationState.js?rmv=1.62.53';
 
-import { presentationModeFields } from '../presentationMode.js?rmv=1.62.20';
-import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.62.20';
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorExternalPlacementParent } from '../hostCompatibility.js?rmv=1.62.20';
-import { getSettings } from '../settings.js?rmv=1.62.20';
+import { bindVisualHistoryTarget } from '../storage.js?rmv=1.62.53';
+import { presentationModeFields } from '../presentationMode.js?rmv=1.62.53';
+import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.62.53';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorExternalPlacementParent } from '../hostCompatibility.js?rmv=1.62.53';
+import { getSettings } from '../settings.js?rmv=1.62.53';
 import {
     cleanRabbitMirrorOutput,
     compactTotoBlock,
@@ -17,11 +19,12 @@ import {
     clearRabbitMirrorHorizontalClipArtifacts,
     sanitizeRabbitMirrorUntrustedTemplate,
     validateRabbitMirrorRecoveredStyleAssignments,
-} from '../outputSanitizer.js?rmv=1.62.20';
-import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.62.20';
-import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.62.20';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.62.20';
-import { markSanitizedRabbitMirrorFace } from '../multifaceProof.js?rmv=1.62.20';
+} from '../outputSanitizer.js?rmv=1.62.53';
+import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.62.53';
+import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.62.53';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.62.53';
+import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.62.53';
+import { markSanitizedRabbitMirrorFace } from '../multifaceProof.js?rmv=1.62.53';
 import {
     EXTERNAL_SHELL_ATTR,
     FOLLOW_EXTERNAL_ANCHOR_ATTR,
@@ -36,8 +39,8 @@ import {
     getContext,
     hashText,
     independentMaintenanceLiveRepairLocked,
-} from './runtime.js?rmv=1.62.20';
-import { automaticDispatchAlreadyConsumed, automaticFailureStops, generationPolls, operationEpochForBase } from './flights.js?rmv=1.62.20';
+} from './runtime.js?rmv=1.62.53';
+import { automaticDispatchAlreadyConsumed, automaticFailureStops, generationPolls, operationEpochForBase } from './flights.js?rmv=1.62.53';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INTERACTION_STATE_MIGRATION_KEY,
@@ -46,7 +49,7 @@ import {
     persistedOwnerForMessage,
     readStore,
     writeStore,
-} from './persistence.js?rmv=1.62.20';
+} from './persistence.js?rmv=1.62.53';
 import {
     chatKey,
     copyIndependentOwnerLineage,
@@ -63,7 +66,7 @@ import {
     savedRecordMatchesObserved,
     slotSearchKeys,
     swipeId,
-} from './connection.js?rmv=1.62.20';
+} from './connection.js?rmv=1.62.53';
 import {
     EXTERNAL_GEOMETRY_SETTLE_STEPS_MS,
     allExternalHosts,
@@ -97,7 +100,7 @@ import {
     wrapIndependentFace,
     wrapPreparedIndependentFace,
     writeGeometryDataset,
-} from './request.js?rmv=1.62.20';
+} from './request.js?rmv=1.62.53';
 import {
     activeIndependentFlightForBase,
     automaticCutoverVersionToken,
@@ -120,20 +123,20 @@ import {
     serializeExternalFaceDetails,
     showMultifaceFace,
     stripIndependentTransientLayoutArtifacts,
-} from './mount.js?rmv=1.62.20';
+} from './mount.js?rmv=1.62.53';
 import {
     automaticHostGenerationRenderMatches,
     hasExistingFollowRabbitMirror,
     queueMessageSync,
     suppressesAutomaticGeneration,
-} from './earlyBody.js?rmv=1.62.20';
+} from './earlyBody.js?rmv=1.62.53';
 import {
     automaticGenerationCutovers,
     persistedInteractionMigrationHandle,
     persistedInteractionMigrationIdle,
     writePersistedInteractionMigrationHandle,
     writePersistedInteractionMigrationIdle,
-} from './lifecycle.js?rmv=1.62.20';
+} from './lifecycle.js?rmv=1.62.53';
 
 let externalGeometryFrame = 0;
 
@@ -178,7 +181,7 @@ const PERSISTED_STATE_ARIA_ATTRS = ['aria-pressed','aria-selected','aria-expande
 
 const PERSISTED_RUNTIME_UI_SELECTOR = '[data-rabbit-mirror-tool-entry-host], [data-rm-face-swipe-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay], [data-rabbit-mirror-interaction-home], [data-rabbit-mirror-interaction-diagnostic], [data-rabbit-mirror-reference-note], [data-rm-ephemeral-failure-body], [data-rm-face-swipe-bar], [data-rm-face-swipe-delete], [data-rm-face-favorite-star]';
 
-const PERSISTED_STATE_ATTR_RE = /^(?:data-rm-(?:.*(?:active|selected|open|used|filled|touch-hover|pseudo-active|target-active)|checked-pseudo-rule-target|labeled-checked-verify-target|reversible-style-baseline|reversible-text-baseline|click-to-restore)|data-rabbit-mirror-(?:labeled-checked(?:-last|-verify|-verify-count)?|checked-text-rule-rescue|expanded-opacity-rescue|inert-action-active|radio-reset-last|stale-checked-inline-cleanup|deferred-interaction-rescue))$/i;
+const PERSISTED_STATE_ATTR_RE = /^(?:data-rm-(?:.*(?:active|selected|open|used|filled|touch-hover|pseudo-active|target-active)|checked-pseudo-rule-target|labeled-checked-verify-target|external-flow-root|reversible-style-baseline|reversible-text-baseline|click-to-restore)|data-rabbit-mirror-(?:labeled-checked(?:-last|-verify|-verify-count)?|checked-text-rule-rescue|expanded-opacity-rescue|inert-action-active|radio-reset-last|stale-checked-inline-cleanup|deferred-interaction-rescue))$/i;
 
 const externalPresentationMetadata = new WeakMap();
 
@@ -935,7 +938,7 @@ function parseIndependentDetailsRaw(html=''){
  try{
   const template=document.createElement('template');
   template.innerHTML=String(html||'');
-  return template.content.querySelector('details');
+  return preserveIndependentFaceStyles(template.content.querySelector('details'));
  }catch{return null;}
 }
 
@@ -1106,6 +1109,7 @@ export function scrubIndependentInteractionState(html='',baselineHtml=''){
  const details=parseIndependentDetailsRaw(html);
  if(!details) return String(html||'').trim();
  const baseline=parseIndependentDetailsRaw(baselineHtml)||parseIndependentDetailsRaw(html);
+ for(const node of [details,...details.querySelectorAll(`[${ANIMATION_SUSPENDED_ATTR}]`)]) node.removeAttribute(ANIMATION_SUSPENDED_ATTR);
  // Diagnostic panels are runtime-only UI. Persisting them serializes their DOM but
  // not their addEventListener handlers, producing visible but dead buttons after a
  // maintenance save/remount. Never allow them into an independent mirror record.
@@ -1391,24 +1395,9 @@ export function extractReadyDetails(html='',locallyPrepared=false){
   // into independent cache and then replay that repaired DOM on another device.
   // Strip only our own transient layout artifacts before rebuilding the live mirror.
   stripIndependentTransientLayoutArtifacts(details);
-  // Independent API outputs are allowed to place <style> as a sibling of <details>
-  // inside <toto>. The external renderer returns only the <details> node, so those
-  // sibling styles used to be discarded here. That leaves the scene with bare
-  // checkbox/text DOM, makes :checked interaction rules disappear, and prevents
-  // both native return labels and the maintenance rabbit from seeing a real route.
-  // Preserve only styles that belong to this prepared fragment by moving them
-  // inside the returned details. The CSS has already been per-mirror scoped by
-  // prepareIndependentReadyHtml(), so this cannot leak into neighboring messages.
-  const detachedStyles=[...template.content.querySelectorAll('style')]
-   .filter(style=>!details.contains(style));
-  if(detachedStyles.length){
-   const summary=details.querySelector(':scope > summary');
-   const reference=summary?.nextSibling || details.firstChild;
-   for(const style of detachedStyles){
-    if(reference) details.insertBefore(style,reference);
-    else details.append(style);
-   }
-  }
+  // The CSS has already passed local sanitization and per-mirror scoping.
+  // Use the same preservation rule as persistence and version extraction.
+  preserveIndependentFaceStyles(details);
   repairRabbitMirrorScopedClassAliasesInScope(details);
   repairLabelTargets(details);
   // Detached parsing preserves serializable rescue markers but has no runtime
@@ -1454,7 +1443,13 @@ export function mountExternalFaceDetails(host,key,source,html,{wasOpen=false,loc
  host.classList.toggle('rabbit-mirror-multiface-host',faces.length>1);
  showMultifaceFace(host,host.dataset.rmFaceView);
  stampExternalDetailsOwnership(host);
- for(const [index,details] of faces.entries()) markSanitizedRabbitMirrorFace(details,{faceIndex:index,faceCount:faces.length,sourceHash:String(host.dataset?.rmSourceHash||''),origin:String(source||'independent'),...externalFacePresentation(host,index)});
+ const owner=externalPresentationMetadata.get(host);
+ for(const [index,details] of faces.entries()){
+  markSanitizedRabbitMirrorFace(details,{faceIndex:index,faceCount:faces.length,sourceHash:String(host.dataset?.rmSourceHash||''),origin:String(source||'independent'),...externalFacePresentation(host,index)});
+  const faceOwner=Array.isArray(owner?.faces)?owner.faces[index]:owner;
+  const ref=faceOwner?.visualHistoryId?{historyId:faceOwner.visualHistoryId}:faceOwner?.visualHistoryBatchId?{batchId:faceOwner.visualHistoryBatchId,faceIndex:faceOwner.visualHistoryFaceIndex??index}:owner?.visualHistoryBatchId?{batchId:owner.visualHistoryBatchId,faceIndex:index}:null;
+  bindVisualHistoryTarget(details,source==='independent'?ref:null);
+ }
  return true;
 }
 
@@ -1503,7 +1498,13 @@ function externalFacePresentation(host,index){
 export function markMountedFaceProofs(host,source='independent',metadata=null){
  if(metadata) externalPresentationMetadata.set(host,metadata);
  const faces=completeReadyFaceDetails(host,host?.__rabbitMirrorIndependentSource||'');
- for(const [index,details] of faces.entries()) markSanitizedRabbitMirrorFace(details,{faceIndex:index,faceCount:faces.length,sourceHash:String(host.dataset?.rmSourceHash||''),origin:String(source||'independent'),...externalFacePresentation(host,index)});
+ const owner=externalPresentationMetadata.get(host);
+ for(const [index,details] of faces.entries()){
+  markSanitizedRabbitMirrorFace(details,{faceIndex:index,faceCount:faces.length,sourceHash:String(host.dataset?.rmSourceHash||''),origin:String(source||'independent'),...externalFacePresentation(host,index)});
+  const faceOwner=Array.isArray(owner?.faces)?owner.faces[index]:owner;
+  const ref=faceOwner?.visualHistoryId?{historyId:faceOwner.visualHistoryId}:faceOwner?.visualHistoryBatchId?{batchId:faceOwner.visualHistoryBatchId,faceIndex:faceOwner.visualHistoryFaceIndex??index}:owner?.visualHistoryBatchId?{batchId:owner.visualHistoryBatchId,faceIndex:index}:null;
+  bindVisualHistoryTarget(details,source==='independent'?ref:null);
+ }
  return faces.length;
 }
 // Diagnostics are optional and cannot change the operation's return or error.
@@ -1547,7 +1548,7 @@ function refreshExistingExternalDetailsCore(host,key,source='independent'){
 
 function prepareLocalDetailsClone(details){
  const template=document.createElement('template');
- const clone=cloneRabbitMirrorFilteredNode(details);
+ const clone=restoreRuntimeAnimationClone(details,cloneRabbitMirrorFilteredNode(details));
  clone.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]')?.remove?.();
  clone.querySelectorAll?.('[data-rm-face-swipe-host]')?.forEach(node=>node.remove());
  template.content.append(clone);
@@ -1594,7 +1595,7 @@ function scheduleExternalInteractionActivationAfterOpenPaint(host,details,onTogg
   // already full width. The existing rescue used to run only after a real
   // resize/orientation change, so most users never reached it. Reuse the same
   // guarded, author-sizing-aware repair once after the first open paint.
-  try{ rescueIndependentExternalAutoRootWidth(host,details); }
+  try{ releaseExternalFlowHeight(host,details); rescueIndependentExternalAutoRootWidth(host,details); }
   catch(error){ console.debug('[RabbitMirror] external auto-root width rescue skipped:',error); }
   if(activateExternalInteractionTools(host,details)){
    const boundToggle=onToggle||externalInteractionActivationHandlers.get(details);
@@ -1669,8 +1670,8 @@ export function ensureExternalTools(host){
  try{ if(details) repairRabbitMirrorPersistedExclusiveGridSpan(details); }catch(error){ console.debug('[RabbitMirror] persisted stacked-grid migration skipped:',error); }
  }
  // General layout rescue remains explicit Maintenance Rabbit work. The only
- // automatic write here is the guarded Safari auto-root correction scheduled
- // once after a pure-external mirror is actually opened.
+ // automatic layout work here is the guarded root width/flow-height correction
+ // scheduled once after an external mirror is actually opened.
  if(host.dataset?.rmFavorite==='true' || host.dataset?.rmSource==='favorite'){
   host.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-face-swipe-host], [data-rm-face-swipe-bar], [data-rm-face-swipe-delete], [data-rm-face-favorite-star]').forEach(node=>node.remove());
  }else{
@@ -1803,7 +1804,7 @@ export function readyRecordFromHost(host,observed,model=''){
  const batch=completeReadyFaceDetails(host,host?.__rabbitMirrorIndependentSource||'');
  const details=batch[0]||null;
  if(!details || !observed) return null;
- const clone=details.cloneNode(true);
+ const clone=restoreRuntimeAnimationClone(details,details.cloneNode(true));
  clone.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]')?.remove?.();
  clone.querySelectorAll?.('[data-rm-face-swipe-host]')?.forEach(node=>node.remove());
  clone.removeAttribute?.(DEFERRED_INTERACTION_RESCUE_ATTR);
@@ -1996,7 +1997,7 @@ export function prepareQuickResay(root,owner={}){
    || identity.host?.dataset.rmState!=='ready') return false;
   if(activeIndependentFlightForBase(proof.base)) return true;
   if(!resolveIndependentActionIdentity(root,owner)) return false;
-  return resayIndependentMirror(root,owner);
+  return resayIndependentMirror(root,owner,{mode:'fresh'});
  };
 }
 
@@ -2061,7 +2062,7 @@ export function renderExternalErrorBody(details,text=''){
   // second retry intent after the first click has entered loading or READY.
   const host=details.closest?.(`[${SOURCE_ATTR}="true"]`);
   if(!retry.isConnected || !details.contains?.(retry) || host?.dataset?.rmState!=='error') return;
-  void import('../outputSanitizer/toolsChrome.js?rmv=1.62.20').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+  void import('../outputSanitizer/toolsChrome.js?rmv=1.62.53').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
  },true);
  const cat=document.createElement('button');
  cat.type='button';
@@ -2570,35 +2571,10 @@ function applyExternalShellTintPalette(host,palette){
 
 function externalShellContrastText(color){
  if(!color) return {r:36,g:36,b:36,a:1};
- const metrics=externalShellColorMetrics(color);
- return metrics.luminance<.48 ? {r:248,g:248,b:248,a:1} : {r:42,g:42,b:42,a:1};
-}
-
-function externalShellWideTopBand(root){
- if(!root?.isConnected || typeof getComputedStyle!=='function') return null;
- let rootRect; try{ rootRect=root.getBoundingClientRect(); }catch{return null;}
- const width=Math.max(1,Number(rootRect?.width||0));
- const height=Math.max(1,Number(rootRect?.height||0));
- const candidates=[];
- for(const element of [...root.querySelectorAll?.('header,div,section,nav')||[]].slice(0,120)){
-  if(!element?.isConnected || element.closest?.('[data-rabbit-mirror-tool-entry-host]')) continue;
-  let style,rect; try{ style=getComputedStyle(element); rect=element.getBoundingClientRect(); }catch{continue;}
-  if(style.display==='none' || style.visibility==='hidden' || Number(style.opacity||1)<.08) continue;
-  const w=Math.max(0,Number(rect?.width||0)), h=Math.max(0,Number(rect?.height||0));
-  if(w<width*.58 || h<24 || h>Math.min(180,height*.34)) continue;
-  const topOffset=(Number(rect?.top||0)-Number(rootRect?.top||0))/height;
-  if(topOffset<-.03 || topOffset>.28) continue;
-  const background=parseExternalShellColor(style.backgroundColor);
-  const gradient=averageExternalShellColors(externalShellColorsFromText(style.backgroundImage));
-  const color=(background&&background.a>=.22)?background:gradient;
-  if(!color) continue;
-  const metrics=externalShellColorMetrics(color);
-  const coverage=Math.min(1.2,w/width);
-  const score=coverage*4 + Math.max(0,1-topOffset*3) + metrics.saturation*2.2 + Math.min(1,h/90);
-  candidates.push({color,score});
- }
- candidates.sort((a,b)=>b.score-a.score);
- return candidates[0]?.color||null;
+ const linear=value=>{const c=value/255;return c<=.04045?c/12.92:((c+.055)/1.055)**2.4;};
+ const luminance=.2126*linear(color.r)+.7152*linear(color.g)+.0722*linear(color.b);
+ return (1.05/(luminance+.05)) >= ((luminance+.05)/.05)
+  ? {r:255,g:255,b:255,a:1} : {r:0,g:0,b:0,a:1};
 }
 
 function clearExternalShellIntegration(host){
@@ -2624,7 +2600,9 @@ function applyExternalShellIntegration(host,palette=null){
  const visualGradient=averageExternalShellColors(externalShellColorsFromText(visualStyle?.backgroundImage));
  const surface=(bodyBackground&&bodyBackground.a>=.18?bodyBackground:null) || bodyGradient || (visualBackground&&visualBackground.a>=.18?visualBackground:null) || visualGradient || palette?.base || null;
  if(!surface) return false;
- const header=externalShellWideTopBand(visualRoot) || externalShellWideTopBand(body) || (palette?.colors||[]).filter(color=>externalShellColorMetrics(color).saturation>=.18).sort((a,b)=>externalShellColorMetrics(b).saturation-externalShellColorMetrics(a).saturation)[0] || surface;
+ // Continue the actual carrier surface. A red checkbox or isolated accent is
+ // not a title palette; never recolour the authored scene to match the chrome.
+ const header=surface;
  let border=parseExternalShellColor(bodyStyle?.borderTopColor) || parseExternalShellColor(visualStyle?.borderTopColor);
  if(!border || border.a<.12) border=mixExternalShellColors(surface,externalShellColorMetrics(surface).luminance>.55?{r:0,g:0,b:0}:{r:255,g:255,b:255},.22);
  let radius=Math.max(...String(bodyStyle?.borderRadius||visualStyle?.borderRadius||'0').split(/[\s\/]+/).map(value=>parseFloat(value)||0),0);
@@ -2728,6 +2706,42 @@ export function restoreIndependentContentWidthBaseline(element){
  element.removeAttribute(INDEPENDENT_CONTENT_WIDTH_RESCUE_ATTR);
  element.removeAttribute(INDEPENDENT_EXTERNAL_STAGE_NEUTRALIZED_ATTR);
  return true;
+}
+
+// A document-like outer body must size to its content, rather than trapping the
+// entire mirror in a fixed-height scroll box. Only inspect direct body carriers:
+// scenes with positioned content and nested device/map viewports stay authored.
+// A CSS marker leaves the original style and saved HTML intact; auto height also
+// handles later details/state expansion without observers or pixel-height caches.
+export function releaseExternalFlowHeight(host,targetDetails=null){
+ if(!host?.isConnected || host.dataset?.rmState!=='ready' || host.dataset?.rmPlacement!=='external' || typeof getComputedStyle!=='function') return 0;
+ const faces=targetDetails?.parentElement===host ? [targetDetails] : externalFaceDetails(host);
+ let changed=0;
+ const ignored=new Set(['SUMMARY','STYLE','SCRIPT','TEMPLATE','LINK','META','INPUT','LABEL','BUTTON']);
+ for(const details of faces){
+  if(!details?.open || !details.isConnected) continue;
+  for(const body of [...(details.children||[])]){
+   if(!/^(DIV|SECTION|ARTICLE|MAIN|ASIDE|FIGURE)$/.test(body.tagName||'') || body.hasAttribute('data-rm-external-flow-root')) continue;
+   const style=getComputedStyle(body);
+   if(['none','contents'].includes(style.display) || ['absolute','fixed'].includes(style.position)) continue;
+   const overflowY=style.overflowY||style.overflow;
+   if(!/^(auto|scroll|hidden|clip)$/.test(overflowY)) continue;
+   if(style.aspectRatio && style.aspectRatio!=='auto') continue;
+   if(style.scrollSnapType && style.scrollSnapType!=='none') continue;
+   if(/^(auto|scroll)$/.test(style.overflowX||style.overflow) && body.clientWidth>0 && body.scrollWidth>body.clientWidth+2) continue;
+   const children=[...(body.children||[])].filter(node=>!ignored.has(node.tagName));
+   const visible=children.map(node=>({node,style:getComputedStyle(node)})).filter(item=>item.style.display!=='none');
+   // A root mixing positioned artwork and flow captions can still be a fixed
+   // canvas. Do not collapse it simply because one caption has readable text.
+   if(visible.some(item=>['absolute','fixed'].includes(item.style.position))) continue;
+   const flowText=visible.some(item=>String(item.node.textContent||'').trim());
+   const directText=[...(body.childNodes||[])].some(node=>node.nodeType===3 && String(node.textContent||'').trim());
+   if(!flowText && !directText) continue;
+   body.setAttribute('data-rm-external-flow-root','true');
+   changed++;
+  }
+ }
+ return changed;
 }
 
 function independentExternalDirectContentRoot(details){
