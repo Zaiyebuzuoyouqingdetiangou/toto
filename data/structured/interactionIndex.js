@@ -48,9 +48,25 @@ export const INTERACTION_RECIPES = Object.freeze([
     {"id":"motion-speed","family":"motion","title":"离散档位","mechanism":"choice","fit":["机械","音乐","装置","钟","仪","动态","天气"],"universal":false,"code":"I.45","summary":"点速度档位→运动速度和装置读数同步改变"},
     {"id":"motion-release","family":"motion","title":"触发与复位","mechanism":"toggle","fit":["花","烟花","机关","波","水","装置","舞台","动态"],"universal":false,"code":"I.46","summary":"点物件→触发短动作，复位后可再次触发"},
     {"id":"motion-focus","family":"motion","title":"多层动静对比","mechanism":"combine","fit":["风景","scenery","舞台","天体","装置","动态","场景"],"universal":false,"code":"I.47","summary":"分别点运动层→局部暂停或恢复以对照关系"},
-    {"id":"scroll-panorama","family":"motion","title":"全景移步观察","mechanism":"scroll","fit":["风景","scenery","地图","场景","旅","城市","长卷"],"universal":false,"code":"I.48","summary":"横向滑动全景→沿连续空间逐段观察"}
+    {"id":"scroll-panorama","family":"motion","title":"全景移步观察","mechanism":"scroll","fit":["风景","scenery","地图","场景","旅","城市","长卷"],"universal":false,"code":"I.48","summary":"横向滑动全景→沿连续空间逐段观察"},
+    {"id":"curtain-part","family":"opening","title":"帘幕分合","mechanism":"toggle","fit":["帘","舞台","剧场","窗","scenery","风景"],"universal":false,"code":"I.49","summary":"点帘扣→两侧帘幕分开显露后景，再点合拢"},
+    {"id":"zipper-unseal","family":"opening","title":"封口拆合","mechanism":"toggle","fit":["包装","袋","信封","收纳","行李"],"universal":false,"code":"I.50","summary":"点封口→封边逐段分开，显出袋内物件"},
+    {"id":"stamp-imprint","family":"transform","title":"按印留痕","mechanism":"toggle","fit":["印","章","票","契约","证件","纸","信"],"universal":false,"code":"I.51","summary":"点印章→章体落下并在原纸面留下印痕，可复位"},
+    {"id":"thread-eyelets","family":"transform","title":"穿线引带","mechanism":"choice","fit":["绳","线","丝","衣","织","机关","工坊"],"universal":false,"code":"I.52","summary":"点穿引位置→线带沿孔位形成不同走向"},
+    {"id":"print-register","family":"comparison","title":"图层套准","mechanism":"choice","fit":["印","版","图","海报","胶片","证据","纸"],"universal":false,"code":"I.53","summary":"点套准刻度→重叠图层对齐或错位，显出重合细节"},
+    {"id":"measure-gauge","family":"comparison","title":"量规对位","mechanism":"choice","fit":["标本","仪","物件","机械","模型","工坊"],"universal":false,"code":"I.54","summary":"点测量位置→量规贴合物件，尺寸标记对应变化"},
+    {"id":"valve-route","family":"sequence","title":"闸门导流","mechanism":"choice","fit":["水","渠","管","装置","机械","工坊","scenery"],"universal":false,"code":"I.55","summary":"点闸位→闸门开合，水流沿对应通路到达容器"},
+    {"id":"relay-transfer","family":"sequence","title":"物件接力","mechanism":"choice","fit":["传递","物流","流水","机械","工坊","故事板","分镜"],"universal":false,"code":"I.56","summary":"点接力节点→同一物件交到下一位置，原位留下痕迹"},
+    {"id":"balance-scale","family":"combination","title":"天平称量","mechanism":"combine","fit":["天平","秤","交易","物件","工坊","仪"],"universal":false,"code":"I.57","summary":"点砝码→两端载荷累积，秤梁按预设组合倾斜"},
+    {"id":"weave-strips","family":"combination","title":"经纬编织","mechanism":"combine","fit":["织","绳","布","丝","衣","工坊"],"universal":false,"code":"I.58","summary":"点纬条→条带穿过经线，逐步形成交织纹样"},
+    {"id":"aperture-view","family":"exploration","title":"孔窗探看","mechanism":"choice","fit":["观察","镜","标本","图","档案","场景","scenery"],"universal":false,"code":"I.59","summary":"点孔窗位置→观察口移到局部，露出对应内层"},
+    {"id":"viewpoint-shift","family":"exploration","title":"移位看遮挡","mechanism":"choice","fit":["空间","场景","模型","舞台","建筑","scenery","风景"],"universal":false,"code":"I.60","summary":"点观察位置→前后层错位，显露原先被挡住的主体"},
+    {"id":"proof-corrections","family":"reading","title":"校样修订对照","mechanism":"combine","fit":["校样","稿","书","报","档案","文献"],"universal":false,"code":"I.61","summary":"点校记→原句保留并显出该处删改，可逐处复原"},
+    {"id":"stencil-reading","family":"reading","title":"镂空覆纸读线索","mechanism":"toggle","fit":["信","纸","档案","文献","证据","书"],"universal":false,"code":"I.62","summary":"点覆纸边→镂空纸对齐原文，露出对应线索"},
+    {"id":"cascade-release","family":"motion","title":"连锁释放","mechanism":"toggle","fit":["机关","骨牌","装置","机械","舞台","动态"],"universal":false,"code":"I.63","summary":"点起始构件→相邻部件按顺序传递动作，复位后重放"},
+    {"id":"pendulum-couple","family":"motion","title":"摆动相位对照","mechanism":"choice","fit":["摆","钟","仪","机械","装置","天体","动态"],"universal":false,"code":"I.64","summary":"点相位刻度→相邻摆体同相或交替摆动"}
 ].map(item => Object.freeze({ ...item, fit: Object.freeze(item.fit),
     effect: ['scroll-strip', 'scroll-panorama'].includes(item.id) ? 'spatial_scroll'
-        : ['object-hotspots','layer-discovery','evidence-mark','parallel-compare','overlay-evidence','marginal-notes','cross-reading'].includes(item.id) ? 'local_evidence'
+        : ['object-hotspots','layer-discovery','evidence-mark','parallel-compare','overlay-evidence','marginal-notes','cross-reading','proof-corrections','stencil-reading'].includes(item.id) ? 'local_evidence'
         : ['page-turn','branch-reading','folded-insert'].includes(item.id) ? 'reading_navigation' : 'object_state',
 })));

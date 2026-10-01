@@ -1399,7 +1399,7 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar :
 }
 /* Keep the generated body in the available lane, including browsers that use
  * an intrinsic-size ::details-content wrapper. Explicit inner card widths and
- * scene coordinates remain authored; wide material scrolls in the body. */
+ * scene coordinates remain authored; wide material uses its own local scroller. */
 #chat :is(details[data-rabbit-mirror-external-details="true"],toto[data-rabbit-mirror="true"] > details)::details-content{
   width:100%;
   min-width:0;
@@ -1425,9 +1425,15 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar :
   white-space:normal !important;
   overflow-wrap:anywhere;
 }
-#chat :is(details[data-rabbit-mirror-external-details="true"],toto[data-rabbit-mirror="true"] > details) > :is(div,section,article,main,aside,header,footer,nav,figure){
-  overflow:auto;
-  overscroll-behavior-inline:contain;
+/* Flow carriers expand with their content. Do not turn every generated root
+ * into a second scroll viewport: bounded scenes and native inner scrollers
+ * retain their own authored overflow. The marker is assigned once on opening. */
+#chat .rabbit-mirror-external-shell[data-rm-source][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"] > [data-rm-external-flow-root="true"]{
+  height:auto !important;
+  max-height:none !important;
+  block-size:auto !important;
+  max-block-size:none !important;
+  overflow:visible !important;
 }
 #chat .rabbit-mirror-external-shell[data-rm-source][data-rm-placement] > details[data-rabbit-mirror-external-details="true"] > :is(div,section,article,main,aside,header,footer,nav,figure),
 #chat toto[data-rabbit-mirror="true"] > details > :is(div,section,article,main,aside,header,footer,nav,figure){

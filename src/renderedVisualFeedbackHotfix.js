@@ -1,5 +1,5 @@
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.62.50';
-import { updateLatestVisualSignature, visualHistoryTarget } from './storage.js?rmv=1.62.50';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.62.51';
+import { updateLatestVisualSignature, visualHistoryTarget } from './storage.js?rmv=1.62.51';
 
 const VERSION = '1.5.53';
 const HOST = '[data-rabbit-mirror-external-source]';

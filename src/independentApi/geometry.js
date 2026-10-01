@@ -1,11 +1,11 @@
 // Split from independentApi.js — geometry.
-import { restoreRuntimeAnimationClone, ANIMATION_SUSPENDED_ATTR } from '../runtimeAnimationState.js?rmv=1.62.50';
+import { restoreRuntimeAnimationClone, ANIMATION_SUSPENDED_ATTR } from '../runtimeAnimationState.js?rmv=1.62.51';
 
-import { bindVisualHistoryTarget } from '../storage.js?rmv=1.62.50';
-import { presentationModeFields } from '../presentationMode.js?rmv=1.62.50';
-import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.62.50';
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorExternalPlacementParent } from '../hostCompatibility.js?rmv=1.62.50';
-import { getSettings } from '../settings.js?rmv=1.62.50';
+import { bindVisualHistoryTarget } from '../storage.js?rmv=1.62.51';
+import { presentationModeFields } from '../presentationMode.js?rmv=1.62.51';
+import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.62.51';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorExternalPlacementParent } from '../hostCompatibility.js?rmv=1.62.51';
+import { getSettings } from '../settings.js?rmv=1.62.51';
 import {
     cleanRabbitMirrorOutput,
     compactTotoBlock,
@@ -19,12 +19,12 @@ import {
     clearRabbitMirrorHorizontalClipArtifacts,
     sanitizeRabbitMirrorUntrustedTemplate,
     validateRabbitMirrorRecoveredStyleAssignments,
-} from '../outputSanitizer.js?rmv=1.62.50';
-import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.62.50';
-import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.62.50';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.62.50';
-import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.62.50';
-import { markSanitizedRabbitMirrorFace } from '../multifaceProof.js?rmv=1.62.50';
+} from '../outputSanitizer.js?rmv=1.62.51';
+import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.62.51';
+import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.62.51';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.62.51';
+import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.62.51';
+import { markSanitizedRabbitMirrorFace } from '../multifaceProof.js?rmv=1.62.51';
 import {
     EXTERNAL_SHELL_ATTR,
     FOLLOW_EXTERNAL_ANCHOR_ATTR,
@@ -39,8 +39,8 @@ import {
     getContext,
     hashText,
     independentMaintenanceLiveRepairLocked,
-} from './runtime.js?rmv=1.62.50';
-import { automaticDispatchAlreadyConsumed, automaticFailureStops, generationPolls, operationEpochForBase } from './flights.js?rmv=1.62.50';
+} from './runtime.js?rmv=1.62.51';
+import { automaticDispatchAlreadyConsumed, automaticFailureStops, generationPolls, operationEpochForBase } from './flights.js?rmv=1.62.51';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INTERACTION_STATE_MIGRATION_KEY,
@@ -49,7 +49,7 @@ import {
     persistedOwnerForMessage,
     readStore,
     writeStore,
-} from './persistence.js?rmv=1.62.50';
+} from './persistence.js?rmv=1.62.51';
 import {
     chatKey,
     copyIndependentOwnerLineage,
@@ -66,7 +66,7 @@ import {
     savedRecordMatchesObserved,
     slotSearchKeys,
     swipeId,
-} from './connection.js?rmv=1.62.50';
+} from './connection.js?rmv=1.62.51';
 import {
     EXTERNAL_GEOMETRY_SETTLE_STEPS_MS,
     allExternalHosts,
@@ -100,7 +100,7 @@ import {
     wrapIndependentFace,
     wrapPreparedIndependentFace,
     writeGeometryDataset,
-} from './request.js?rmv=1.62.50';
+} from './request.js?rmv=1.62.51';
 import {
     activeIndependentFlightForBase,
     automaticCutoverVersionToken,
@@ -123,20 +123,20 @@ import {
     serializeExternalFaceDetails,
     showMultifaceFace,
     stripIndependentTransientLayoutArtifacts,
-} from './mount.js?rmv=1.62.50';
+} from './mount.js?rmv=1.62.51';
 import {
     automaticHostGenerationRenderMatches,
     hasExistingFollowRabbitMirror,
     queueMessageSync,
     suppressesAutomaticGeneration,
-} from './earlyBody.js?rmv=1.62.50';
+} from './earlyBody.js?rmv=1.62.51';
 import {
     automaticGenerationCutovers,
     persistedInteractionMigrationHandle,
     persistedInteractionMigrationIdle,
     writePersistedInteractionMigrationHandle,
     writePersistedInteractionMigrationIdle,
-} from './lifecycle.js?rmv=1.62.50';
+} from './lifecycle.js?rmv=1.62.51';
 
 let externalGeometryFrame = 0;
 
@@ -181,7 +181,7 @@ const PERSISTED_STATE_ARIA_ATTRS = ['aria-pressed','aria-selected','aria-expande
 
 const PERSISTED_RUNTIME_UI_SELECTOR = '[data-rabbit-mirror-tool-entry-host], [data-rm-face-swipe-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay], [data-rabbit-mirror-interaction-home], [data-rabbit-mirror-interaction-diagnostic], [data-rabbit-mirror-reference-note], [data-rm-ephemeral-failure-body], [data-rm-face-swipe-bar], [data-rm-face-swipe-delete], [data-rm-face-favorite-star]';
 
-const PERSISTED_STATE_ATTR_RE = /^(?:data-rm-(?:.*(?:active|selected|open|used|filled|touch-hover|pseudo-active|target-active)|checked-pseudo-rule-target|labeled-checked-verify-target|reversible-style-baseline|reversible-text-baseline|click-to-restore)|data-rabbit-mirror-(?:labeled-checked(?:-last|-verify|-verify-count)?|checked-text-rule-rescue|expanded-opacity-rescue|inert-action-active|radio-reset-last|stale-checked-inline-cleanup|deferred-interaction-rescue))$/i;
+const PERSISTED_STATE_ATTR_RE = /^(?:data-rm-(?:.*(?:active|selected|open|used|filled|touch-hover|pseudo-active|target-active)|checked-pseudo-rule-target|labeled-checked-verify-target|external-flow-root|reversible-style-baseline|reversible-text-baseline|click-to-restore)|data-rabbit-mirror-(?:labeled-checked(?:-last|-verify|-verify-count)?|checked-text-rule-rescue|expanded-opacity-rescue|inert-action-active|radio-reset-last|stale-checked-inline-cleanup|deferred-interaction-rescue))$/i;
 
 const externalPresentationMetadata = new WeakMap();
 
@@ -1595,7 +1595,7 @@ function scheduleExternalInteractionActivationAfterOpenPaint(host,details,onTogg
   // already full width. The existing rescue used to run only after a real
   // resize/orientation change, so most users never reached it. Reuse the same
   // guarded, author-sizing-aware repair once after the first open paint.
-  try{ rescueIndependentExternalAutoRootWidth(host,details); }
+  try{ releaseExternalFlowHeight(host,details); rescueIndependentExternalAutoRootWidth(host,details); }
   catch(error){ console.debug('[RabbitMirror] external auto-root width rescue skipped:',error); }
   if(activateExternalInteractionTools(host,details)){
    const boundToggle=onToggle||externalInteractionActivationHandlers.get(details);
@@ -1670,8 +1670,8 @@ export function ensureExternalTools(host){
  try{ if(details) repairRabbitMirrorPersistedExclusiveGridSpan(details); }catch(error){ console.debug('[RabbitMirror] persisted stacked-grid migration skipped:',error); }
  }
  // General layout rescue remains explicit Maintenance Rabbit work. The only
- // automatic write here is the guarded Safari auto-root correction scheduled
- // once after a pure-external mirror is actually opened.
+ // automatic layout work here is the guarded root width/flow-height correction
+ // scheduled once after an external mirror is actually opened.
  if(host.dataset?.rmFavorite==='true' || host.dataset?.rmSource==='favorite'){
   host.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-face-swipe-host], [data-rm-face-swipe-bar], [data-rm-face-swipe-delete], [data-rm-face-favorite-star]').forEach(node=>node.remove());
  }else{
@@ -2062,7 +2062,7 @@ export function renderExternalErrorBody(details,text=''){
   // second retry intent after the first click has entered loading or READY.
   const host=details.closest?.(`[${SOURCE_ATTR}="true"]`);
   if(!retry.isConnected || !details.contains?.(retry) || host?.dataset?.rmState!=='error') return;
-  void import('../outputSanitizer/toolsChrome.js?rmv=1.62.50').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+  void import('../outputSanitizer/toolsChrome.js?rmv=1.62.51').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
  },true);
  const cat=document.createElement('button');
  cat.type='button';
@@ -2706,6 +2706,42 @@ export function restoreIndependentContentWidthBaseline(element){
  element.removeAttribute(INDEPENDENT_CONTENT_WIDTH_RESCUE_ATTR);
  element.removeAttribute(INDEPENDENT_EXTERNAL_STAGE_NEUTRALIZED_ATTR);
  return true;
+}
+
+// A document-like outer body must size to its content, rather than trapping the
+// entire mirror in a fixed-height scroll box. Only inspect direct body carriers:
+// scenes with positioned content and nested device/map viewports stay authored.
+// A CSS marker leaves the original style and saved HTML intact; auto height also
+// handles later details/state expansion without observers or pixel-height caches.
+export function releaseExternalFlowHeight(host,targetDetails=null){
+ if(!host?.isConnected || host.dataset?.rmState!=='ready' || host.dataset?.rmPlacement!=='external' || typeof getComputedStyle!=='function') return 0;
+ const faces=targetDetails?.parentElement===host ? [targetDetails] : externalFaceDetails(host);
+ let changed=0;
+ const ignored=new Set(['SUMMARY','STYLE','SCRIPT','TEMPLATE','LINK','META','INPUT','LABEL','BUTTON']);
+ for(const details of faces){
+  if(!details?.open || !details.isConnected) continue;
+  for(const body of [...(details.children||[])]){
+   if(!/^(DIV|SECTION|ARTICLE|MAIN|ASIDE|FIGURE)$/.test(body.tagName||'') || body.hasAttribute('data-rm-external-flow-root')) continue;
+   const style=getComputedStyle(body);
+   if(['none','contents'].includes(style.display) || ['absolute','fixed'].includes(style.position)) continue;
+   const overflowY=style.overflowY||style.overflow;
+   if(!/^(auto|scroll|hidden|clip)$/.test(overflowY)) continue;
+   if(style.aspectRatio && style.aspectRatio!=='auto') continue;
+   if(style.scrollSnapType && style.scrollSnapType!=='none') continue;
+   if(/^(auto|scroll)$/.test(style.overflowX||style.overflow) && body.clientWidth>0 && body.scrollWidth>body.clientWidth+2) continue;
+   const children=[...(body.children||[])].filter(node=>!ignored.has(node.tagName));
+   const visible=children.map(node=>({node,style:getComputedStyle(node)})).filter(item=>item.style.display!=='none');
+   // A root mixing positioned artwork and flow captions can still be a fixed
+   // canvas. Do not collapse it simply because one caption has readable text.
+   if(visible.some(item=>['absolute','fixed'].includes(item.style.position))) continue;
+   const flowText=visible.some(item=>String(item.node.textContent||'').trim());
+   const directText=[...(body.childNodes||[])].some(node=>node.nodeType===3 && String(node.textContent||'').trim());
+   if(!flowText && !directText) continue;
+   body.setAttribute('data-rm-external-flow-root','true');
+   changed++;
+  }
+ }
+ return changed;
 }
 
 function independentExternalDirectContentRoot(details){

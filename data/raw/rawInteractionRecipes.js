@@ -47,7 +47,23 @@ const DETAILS = Object.freeze({
     "motion-speed": Object.freeze({"action":"点已有装置的档位刻度，切换事先写好的速度","result":"运动速度与装置读数同步变化；是离散档位，不伪装连续 range 联动"}),
     "motion-release": Object.freeze({"action":"点对应物件触发一次短动作，取消状态后可再次触发","result":"动作作用在主体或环境上并有清晰结束状态，避免只有入口闪光"}),
     "motion-focus": Object.freeze({"action":"分别暂停场景里有意义的运动层，再恢复","result":"层之间的相对运动、遮挡或关系变得可观察，遵循已有动画性能规则"}),
-    "scroll-panorama": Object.freeze({"action":"手指滑动镜内全景，逐段观察空间","result":"前后段有连续地平线、路径或物件，静态可浏览，不依赖滚动事件脚本"})
+    "scroll-panorama": Object.freeze({"action":"手指滑动镜内全景，逐段观察空间","result":"前后段有连续地平线、路径或物件，静态可浏览，不依赖滚动事件脚本"}),
+    "curtain-part": Object.freeze({"action":"点实际帘扣，使连接在轨道上的帘幕向两侧收拢；再次点恢复","result":"帘褶、遮挡范围与后景一起改变，后景保持原位置，不另开文字页"}),
+    "zipper-unseal": Object.freeze({"action":"点封口端部打开已绘制的封边；再次点让两侧封边重新贴合","result":"袋口轮廓、封齿与内部物件的显露范围同步变化"}),
+    "stamp-imprint": Object.freeze({"action":"点章柄让章体落到纸面固定位置，再抬起并留下对应印痕；取消可复位","result":"印面与纸上图案方向对应，印痕留在具体材料上，动作不替换正文"}),
+    "thread-eyelets": Object.freeze({"action":"选择实际孔位或挂点，把线带切换到预先绘制的穿引路径","result":"端点保持连接，线带在孔位前后的遮挡顺序随路径变化，不承诺自由拖拽"}),
+    "print-register": Object.freeze({"action":"点材料边缘的套准刻度，将透明图层移到预设偏移位置","result":"套印边缘与图案局部真实重合或分离，保留底图和位置参照"}),
+    "measure-gauge": Object.freeze({"action":"选择物件上的测量部位，让量规两端对齐该处预设边界","result":"量规开口、引线和预先写好的刻度读数对应同一部位，不声称实时测量任意物体"}),
+    "valve-route": Object.freeze({"action":"选择闸门的预设位置，让闸板、通路和下游液面联动","result":"同一画面呈现实际流向、封闭支路与到达位置，保留可返回闸位"}),
+    "relay-transfer": Object.freeze({"action":"沿媒介内的接力位置前进或返回，同一可辨物件在各位置间移动","result":"承接部件与物件位置共同变化，前后节点保持可见，不用整页文字切换冒充传递"}),
+    "balance-scale": Object.freeze({"action":"独立加入或取回左右盘中的砝码，只实现写明的有限重量组合","result":"砝码留在对应秤盘，秤梁与两盘同向联动，平衡状态由已定义组合控制"}),
+    "weave-strips": Object.freeze({"action":"逐条加入或撤回纬条，使它穿过固定的经线","result":"交点按预先绘制的上下关系遮挡，纹样由实际条带构成，不靠文字报完成"}),
+    "aperture-view": Object.freeze({"action":"选择已有观察口的预设位置，使开口对准同一对象的不同部位","result":"窗口边缘、遮罩和内部细节对位，保留完整外壳参照，不把细节搬到独立说明卡"}),
+    "viewpoint-shift": Object.freeze({"action":"选择场景内有限的观察位置，让前景、中景与后景按不同幅度平移","result":"同一物件保持身份，遮挡关系随视点改变，不能只换背景颜色或文字"}),
+    "proof-corrections": Object.freeze({"action":"逐处开启校记，在原文位置并列呈现删改痕迹和修订内容","result":"原句位置与上下文保留，修订进入正常文档流；多处可同时比较，不另开全文面板"}),
+    "stencil-reading": Object.freeze({"action":"将有固定开孔的覆纸盖到原文上，或移开查看完整材料","result":"孔位对准预先选定的字句与原文位置，移开可回读上下文，不假装输入解密"}),
+    "cascade-release": Object.freeze({"action":"操作首个真实构件，用预设 CSS 动画延迟表现后续部件依次响应","result":"动作沿明确的接触或连接关系传播，结尾保留可读状态；取消开关恢复起点"}),
+    "pendulum-couple": Object.freeze({"action":"选择装置上的预设相位刻度，改变相邻摆体的运动时序","result":"摆幅与悬点保持，摆体之间的相对运动可见；只表现预制状态，不伪称物理模拟"})
 });
 
 export function resolveInteractionDetail(id) {
