@@ -1,11 +1,11 @@
-import { activeRoleColorHtml, bindRolePaletteCode } from './roleColorVariants.js?rmv=1.62.51';
-import { detectCompositionFingerprint, VISUAL_SKELETON_MAX_CHARS } from './compositionFingerprint.js?rmv=1.62.51';
-import { visualSceneryEnabled } from './presentationMode.js?rmv=1.62.51';
-import { presentationModeFields } from './presentationMode.js?rmv=1.62.51';
-import { getCurrentChatKey, commitFollowVisualHistory, bindVisualHistoryTarget } from './storage.js?rmv=1.62.51';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.62.51';
-import { getSettings } from './settings.js?rmv=1.62.51';
-import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.62.51';
+import { activeRoleColorHtml, bindRolePaletteCode } from './roleColorVariants.js?rmv=1.62.53';
+import { detectCompositionFingerprint, VISUAL_SKELETON_MAX_CHARS } from './compositionFingerprint.js?rmv=1.62.53';
+import { visualSceneryEnabled } from './presentationMode.js?rmv=1.62.53';
+import { presentationModeFields } from './presentationMode.js?rmv=1.62.53';
+import { getCurrentChatKey, commitFollowVisualHistory, bindVisualHistoryTarget } from './storage.js?rmv=1.62.53';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.62.53';
+import { getSettings } from './settings.js?rmv=1.62.53';
+import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.62.53';
 import {
     commitRabbitMirrorFollowBatch,
     captureRabbitMirrorGenerationSnapshots,
@@ -15,17 +15,17 @@ import {
     inspectRabbitMirrorGenerationSource,
     releaseRabbitMirrorFollowBatch,
     releaseRabbitMirrorFollowBatchAtMessage,
-} from './generationGuard.js?rmv=1.62.51';
+} from './generationGuard.js?rmv=1.62.53';
 import {
     clearSanitizedRabbitMirrorFaceProof,
     getSanitizedRabbitMirrorFaceProof,
     markSanitizedRabbitMirrorFace,
     rabbitMirrorMultifaceSourceHash,
-} from './multifaceProof.js?rmv=1.62.51';
-import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.62.51';
-import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.62.51';
-import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.62.51';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.51';
+} from './multifaceProof.js?rmv=1.62.53';
+import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.62.53';
+import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.62.53';
+import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.62.53';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.53';
 
 export const FOLLOW_MULTIFACE_COMMITTED_EVENT = 'rabbit-mirror:follow-multiface-committed';
 export const FOLLOW_MULTIFACE_REJECTED_EVENT = 'rabbit-mirror:follow-multiface-rejected';
@@ -561,7 +561,7 @@ function colorValueLuminance(value) {
 function extractBackgroundValues(html) {
     const values = [];
     const input = String(html || '');
-    const re = /background(?:-color)?\s*:\s*([^;"']+)/gi;
+    const re = /(?:^|[;{\s"'])background(?:-color|-image)?\s*:\s*([^;}"']+)/gi;
     let match;
     while ((match = re.exec(input))) {
         const value = String(match[1] || '').trim();
@@ -601,12 +601,45 @@ function detectContrastFamily(html) {
 }
 
 
+// Standard named sRGB colours: https://www.w3.org/TR/css-color-4/#named-colors
 const NAMED_PALETTE_COLORS = Object.freeze({
-    black: [0, 0, 0], white: [255, 255, 255], gray: [128, 128, 128], grey: [128, 128, 128],
-    red: [255, 0, 0], orange: [255, 165, 0], yellow: [255, 255, 0], green: [0, 128, 0],
-    cyan: [0, 255, 255], aqua: [0, 255, 255], blue: [0, 0, 255], navy: [0, 0, 128],
-    purple: [128, 0, 128], violet: [238, 130, 238], magenta: [255, 0, 255], pink: [255, 192, 203],
-    brown: [165, 42, 42], beige: [245, 245, 220], ivory: [255, 255, 240], teal: [0, 128, 128],
+    aliceblue: '#f0f8ff', antiquewhite: '#faebd7', aqua: '#00ffff', aquamarine: '#7fffd4',
+    azure: '#f0ffff', beige: '#f5f5dc', bisque: '#ffe4c4', black: '#000000',
+    blanchedalmond: '#ffebcd', blue: '#0000ff', blueviolet: '#8a2be2', brown: '#a52a2a',
+    burlywood: '#deb887', cadetblue: '#5f9ea0', chartreuse: '#7fff00', chocolate: '#d2691e',
+    coral: '#ff7f50', cornflowerblue: '#6495ed', cornsilk: '#fff8dc', crimson: '#dc143c',
+    cyan: '#00ffff', darkblue: '#00008b', darkcyan: '#008b8b', darkgoldenrod: '#b8860b',
+    darkgray: '#a9a9a9', darkgreen: '#006400', darkgrey: '#a9a9a9', darkkhaki: '#bdb76b',
+    darkmagenta: '#8b008b', darkolivegreen: '#556b2f', darkorange: '#ff8c00', darkorchid: '#9932cc',
+    darkred: '#8b0000', darksalmon: '#e9967a', darkseagreen: '#8fbc8f', darkslateblue: '#483d8b',
+    darkslategray: '#2f4f4f', darkslategrey: '#2f4f4f', darkturquoise: '#00ced1', darkviolet: '#9400d3',
+    deeppink: '#ff1493', deepskyblue: '#00bfff', dimgray: '#696969', dimgrey: '#696969',
+    dodgerblue: '#1e90ff', firebrick: '#b22222', floralwhite: '#fffaf0', forestgreen: '#228b22',
+    fuchsia: '#ff00ff', gainsboro: '#dcdcdc', ghostwhite: '#f8f8ff', gold: '#ffd700',
+    goldenrod: '#daa520', gray: '#808080', green: '#008000', greenyellow: '#adff2f',
+    grey: '#808080', honeydew: '#f0fff0', hotpink: '#ff69b4', indianred: '#cd5c5c',
+    indigo: '#4b0082', ivory: '#fffff0', khaki: '#f0e68c', lavender: '#e6e6fa',
+    lavenderblush: '#fff0f5', lawngreen: '#7cfc00', lemonchiffon: '#fffacd', lightblue: '#add8e6',
+    lightcoral: '#f08080', lightcyan: '#e0ffff', lightgoldenrodyellow: '#fafad2', lightgray: '#d3d3d3',
+    lightgreen: '#90ee90', lightgrey: '#d3d3d3', lightpink: '#ffb6c1', lightsalmon: '#ffa07a',
+    lightseagreen: '#20b2aa', lightskyblue: '#87cefa', lightslategray: '#778899', lightslategrey: '#778899',
+    lightsteelblue: '#b0c4de', lightyellow: '#ffffe0', lime: '#00ff00', limegreen: '#32cd32',
+    linen: '#faf0e6', magenta: '#ff00ff', maroon: '#800000', mediumaquamarine: '#66cdaa',
+    mediumblue: '#0000cd', mediumorchid: '#ba55d3', mediumpurple: '#9370db', mediumseagreen: '#3cb371',
+    mediumslateblue: '#7b68ee', mediumspringgreen: '#00fa9a', mediumturquoise: '#48d1cc', mediumvioletred: '#c71585',
+    midnightblue: '#191970', mintcream: '#f5fffa', mistyrose: '#ffe4e1', moccasin: '#ffe4b5',
+    navajowhite: '#ffdead', navy: '#000080', oldlace: '#fdf5e6', olive: '#808000',
+    olivedrab: '#6b8e23', orange: '#ffa500', orangered: '#ff4500', orchid: '#da70d6',
+    palegoldenrod: '#eee8aa', palegreen: '#98fb98', paleturquoise: '#afeeee', palevioletred: '#db7093',
+    papayawhip: '#ffefd5', peachpuff: '#ffdab9', peru: '#cd853f', pink: '#ffc0cb',
+    plum: '#dda0dd', powderblue: '#b0e0e6', purple: '#800080', rebeccapurple: '#663399',
+    red: '#ff0000', rosybrown: '#bc8f8f', royalblue: '#4169e1', saddlebrown: '#8b4513',
+    salmon: '#fa8072', sandybrown: '#f4a460', seagreen: '#2e8b57', seashell: '#fff5ee',
+    sienna: '#a0522d', silver: '#c0c0c0', skyblue: '#87ceeb', slateblue: '#6a5acd',
+    slategray: '#708090', slategrey: '#708090', snow: '#fffafa', springgreen: '#00ff7f',
+    steelblue: '#4682b4', tan: '#d2b48c', teal: '#008080', thistle: '#d8bfd8',
+    tomato: '#ff6347', turquoise: '#40e0d0', violet: '#ee82ee', wheat: '#f5deb3',
+    white: '#ffffff', whitesmoke: '#f5f5f5', yellow: '#ffff00', yellowgreen: '#9acd32',
 });
 
 function clamp(value, min, max) {
@@ -670,42 +703,92 @@ function parseCssColorToken(token) {
         return { r, g, b, a };
     }
 
-    const rgb = value.match(/^rgba?\(\s*([+-]?[0-9.]+)%?\s*[, ]\s*([+-]?[0-9.]+)%?\s*[, ]\s*([+-]?[0-9.]+)%?(?:\s*[,/]\s*([0-9.]+)%?)?\s*\)$/i);
-    if (rgb) {
-        const isPercent = /%/.test(value.split(/[,)\/]/).slice(0, 3).join(''));
-        const factor = isPercent ? 2.55 : 1;
-        const alphaRaw = rgb[4] === undefined ? 1 : Number(rgb[4]);
-        const alpha = rgb[4] !== undefined && value.includes(`${rgb[4]}%`) ? alphaRaw / 100 : alphaRaw;
-        return {
-            r: clamp(Number(rgb[1]) * factor, 0, 255),
-            g: clamp(Number(rgb[2]) * factor, 0, 255),
-            b: clamp(Number(rgb[3]) * factor, 0, 255),
-            a: clamp(Number.isFinite(alpha) ? alpha : 1, 0, 1),
+    const fn = value.match(/^(rgb|rgba|hsl|hsla)\((.*)\)$/s);
+    if (fn) {
+        const legacy = fn[2].includes(',');
+        if (legacy && fn[2].includes('/')) return null;
+        const parts = legacy ? fn[2].split(',').map(x => x.trim()) : fn[2].trim().split(/\s*\/\s*/);
+        if (legacy ? ![3, 4].includes(parts.length) : parts.length > 2) return null;
+        const channels = legacy ? parts.slice(0, 3) : parts[0].split(/\s+/);
+        const alphaToken = legacy ? parts[3] : parts[1];
+        if (channels.length !== 3) return null;
+        const component = token => {
+            if (token === 'none' && !legacy) return { n: 0, unit: '' };
+            const match = String(token).match(/^([+-]?(?:\d*\.\d+|\d+)(?:e[+-]?\d+)?)(%|deg|grad|rad|turn)?$/);
+            if (!match || !Number.isFinite(Number(match[1]))) return null;
+            return { n: Number(match[1]), unit: match[2] || '' };
         };
+        const c = channels.map(component), alpha = component(alphaToken ?? '1');
+        if (c.some(x => !x) || !alpha || !['', '%'].includes(alpha.unit)) return null;
+        const a = clamp(alpha.n / (alpha.unit === '%' ? 100 : 1), 0, 1);
+        if (fn[1].startsWith('rgb')) {
+            if (c.some(x => !['', '%'].includes(x.unit)) || (legacy && new Set(c.map(x => x.unit)).size > 1)) return null;
+            const [r, g, b] = c.map(x => clamp(x.n * (x.unit === '%' ? 255 / 100 : 1), 0, 255));
+            return { r, g, b, a };
+        }
+        const angleScale = { '': 1, deg: 1, grad: 0.9, rad: 180 / Math.PI, turn: 360 };
+        if (!Object.hasOwn(angleScale, c[0].unit) || c.slice(1).some(x => !['', '%'].includes(x.unit))
+            || (legacy && c.slice(1).some(x => x.unit !== '%'))) return null;
+        const [r, g, b] = hslToRgb(c[0].n * angleScale[c[0].unit], c[1].n / 100, c[2].n / 100);
+        return { r, g, b, a };
     }
 
-    const hsl = value.match(/^hsla?\(\s*([+-]?[0-9.]+)(?:deg)?\s*[, ]\s*([0-9.]+)%\s*[, ]\s*([0-9.]+)%(?:\s*[,/]\s*([0-9.]+)%?)?\s*\)$/i);
-    if (hsl) {
-        const [r, g, b] = hslToRgb(Number(hsl[1]), Number(hsl[2]) / 100, Number(hsl[3]) / 100);
-        const alphaRaw = hsl[4] === undefined ? 1 : Number(hsl[4]);
-        const alpha = hsl[4] !== undefined && value.includes(`${hsl[4]}%`) ? alphaRaw / 100 : alphaRaw;
-        return { r, g, b, a: clamp(Number.isFinite(alpha) ? alpha : 1, 0, 1) };
-    }
-
-    if (NAMED_PALETTE_COLORS[value]) {
-        const [r, g, b] = NAMED_PALETTE_COLORS[value];
-        return { r, g, b, a: 1 };
-    }
+    if (Object.hasOwn(NAMED_PALETTE_COLORS, value)) return parseCssColorToken(NAMED_PALETTE_COLORS[value]);
     return null;
 }
 
-function extractCssColors(value) {
-    const input = String(value || '').toLowerCase();
-    if (!input || input === 'none' || input === 'transparent') return [];
-    const tokenRe = /#[0-9a-f]{3,8}\b|rgba?\([^)]*\)|hsla?\([^)]*\)|\b(?:black|white|gray|grey|red|orange|yellow|green|cyan|aqua|blue|navy|purple|violet|magenta|pink|brown|beige|ivory|teal)\b/gi;
-    return [...input.matchAll(tokenRe)]
-        .map(match => parseCssColorToken(match[0]))
-        .filter(color => color && color.a >= 0.08);
+function paletteCssText(html) {
+    const source = String(html || '').replace(/<!--[\s\S]*?-->/g, '');
+    const tags = source.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '')
+        .match(/<[a-z][\w:-]*(?:[^>"']|"[^"]*"|'[^']*')*>/gi) || [];
+    const blocks = [
+        ...[...source.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map(match => match[1]),
+        ...tags.flatMap(tag => [...tag.matchAll(/\s([-\w:]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi)]
+            .filter(match => match[1].toLowerCase() === 'style')
+            .map(match => match[2] ?? match[3] ?? match[4])),
+    ];
+    // Keep declaration boundaries for the first inline variable, and never
+    // treat comments, content strings or visible prose as painted colours.
+    return blocks.map(block => `{${block}}`).join('\n')
+        .replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\/\*[\s\S]*?\*\//g, token => token.startsWith('/*') ? '' : '__rm_css_string__');
+}
+
+function cssFunctionEnd(value, opening) {
+    let depth = 1;
+    for (let i = opening + 1; i < value.length; i++) {
+        if (value[i] === '(') depth++;
+        else if (value[i] === ')' && --depth === 0) return i + 1;
+    }
+    return -1;
+}
+
+function extractCssColors(value, depth = 0) {
+    if (depth >= 32) return [];
+    const input = String(value || '').toLowerCase()
+        .replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\/\*[\s\S]*?\*\//g, token => token.startsWith('/*') ? '' : '__rm_css_string__');
+    const colors = [], re = /#[\w-]+|[-a-z_][\w-]*/g;
+    let match;
+    while ((match = re.exec(input))) {
+        if (match.index > 0 && /[\w-]/.test(input[match.index - 1])) continue;
+        let token = match[0];
+        if (input[re.lastIndex] === '(') {
+            const end = cssFunctionEnd(input, re.lastIndex);
+            if (end < 0) break;
+            if (/^(?:repeating-)?(?:linear|radial|conic)-gradient$/.test(token)) {
+                colors.push(...extractCssColors(input.slice(re.lastIndex + 1, end - 1), depth + 1));
+            } else {
+                // Unknown functions (e.g. color-mix, light-dark and URLs) are
+                // not a bag of equally weighted colour words or fallback ink.
+                const color = parseCssColorToken(input.slice(match.index, end));
+                if (color && color.a >= 0.08) colors.push(color);
+            }
+            re.lastIndex = end;
+        } else {
+            const color = parseCssColorToken(token);
+            if (color && color.a >= 0.08) colors.push(color);
+        }
+    }
+    return colors;
 }
 
 function hueFamilyOf(hue) {
@@ -794,7 +877,8 @@ function classifyPaletteSamples(samples, source = 'raw', mainBackgroundFound = f
 
 function findRenderedPaletteRoot(toto) {
     if (!toto?.querySelector) return toto || null;
-    const outerDetails = [...(toto.children || [])].find(child => child?.tagName === 'DETAILS') || toto.querySelector('details');
+    const outerDetails = toto.tagName === 'DETAILS' ? toto
+        : [...(toto.children || [])].find(child => child?.tagName === 'DETAILS') || toto.querySelector('details');
     if (!outerDetails) return toto;
     const directBody = [...(outerDetails.children || [])].find(child => !['SUMMARY', 'STYLE', 'SCRIPT'].includes(child?.tagName));
     return directBody || outerDetails;
@@ -817,7 +901,8 @@ function renderedPaletteFingerprint(toto) {
     const getStyle = view?.getComputedStyle?.bind(view) || globalThis.getComputedStyle?.bind(globalThis);
     if (typeof getStyle !== 'function') return null;
 
-    const rootArea = Math.max(1, elementArea(root));
+    const rootArea = elementArea(root);
+    if (!rootArea) return null; // Detached/closed faces have no measured palette; use the source fallback.
     const candidates = [root, ...root.querySelectorAll('div,section,article,main,aside,label,li,figure,svg')]
         .map((element, index) => ({ element, index, area: elementArea(element) }))
         .filter(item => item.index === 0 || item.area >= Math.max(64, rootArea * 0.015))
@@ -849,11 +934,71 @@ function renderedPaletteFingerprint(toto) {
     return classifyPaletteSamples(samples, 'rendered', mainBackgroundFound);
 }
 
+// Raw independent results are scanned before mounting, so computed styles are
+// unavailable. Resolve only locally unambiguous custom properties used by a
+// background. Unused tokens are not colour evidence; conflicting scopes stay
+// unknown until a rendered scan can observe the actual cascade.
+function rawPaletteVariableResolver(html) {
+    const css = paletteCssText(html);
+    const definitions = new Map();
+    for (const match of css.matchAll(/(?:^|[;{])\s*(--[\w-]+)\s*:\s*([^;}]+)/g)) {
+        const value = match[2].replace(/\s*!important\s*$/i, '').trim();
+        if (!definitions.has(match[1])) definitions.set(match[1], value);
+        else if (definitions.get(match[1]) !== value) definitions.set(match[1], null);
+    }
+    // A cycle invalidates its variables even when its edge is in an unused
+    // fallback. This remains a conservative local scan, not a cascade engine.
+    const cyclic = new Set(), visited = new Set(), visiting = [];
+    function visit(name) {
+        const at = visiting.indexOf(name);
+        if (at >= 0) { visiting.slice(at).forEach(key => cyclic.add(key)); return; }
+        if (visited.has(name) || visiting.length >= 32 || typeof definitions.get(name) !== 'string') return;
+        visiting.push(name);
+        for (const match of definitions.get(name).matchAll(/var\(\s*(--[\w-]+)/gi)) visit(match[1]);
+        visiting.pop(); visited.add(name);
+    }
+    for (const name of definitions.keys()) visit(name);
+    function resolve(value, trail = new Set()) {
+        let output = '', offset = 0;
+        const re = /var\(/gi;
+        let match;
+        while ((match = re.exec(value))) {
+            output += value.slice(offset, match.index);
+            let depth = 1, end = re.lastIndex, comma = -1;
+            for (; end < value.length && depth; end++) {
+                if (value[end] === '(') depth++;
+                else if (value[end] === ')') depth--;
+                else if (value[end] === ',' && depth === 1 && comma < 0) comma = end;
+            }
+            if (depth) return null;
+            const name = value.slice(re.lastIndex, comma < 0 ? end - 1 : comma).trim();
+            if (!/^--[\w-]+$/.test(name)) return null;
+            if (trail.has(name) || trail.size >= 32) return undefined;
+            // undefined means unknown scope/cascade, not missing/invalid. A
+            // fallback cannot resolve conflicting local definitions.
+            if (definitions.has(name) && definitions.get(name) === null) return undefined;
+            const raw = definitions.get(name);
+            let resolved;
+            if (raw === undefined || cyclic.has(name) || /^initial$/i.test(raw)) resolved = null;
+            else if (/^(?:inherit|unset|revert|revert-layer)$/i.test(raw)) resolved = undefined;
+            else resolved = resolve(raw, new Set([...trail, name]));
+            if (resolved === null && comma >= 0) resolved = resolve(value.slice(comma + 1, end - 1), trail);
+            if (resolved == null) return resolved;
+            output += resolved;
+            offset = end;
+            re.lastIndex = end;
+        }
+        return output + value.slice(offset);
+    }
+    return resolve;
+}
+
 function rawPaletteFingerprint(html) {
-    const values = extractBackgroundValues(html);
+    const values = extractBackgroundValues(paletteCssText(html));
+    const resolve = rawPaletteVariableResolver(html);
     const samples = [];
     values.slice(0, 24).forEach((value, index) => {
-        const colors = extractCssColors(value);
+        const colors = extractCssColors(/var\(/i.test(value) ? resolve(value) || '' : value);
         const baseWeight = index === 0 ? 5 : (index < 5 ? 1.5 : 0.7);
         colors.forEach(color => samples.push({ color, weight: baseWeight / Math.max(1, colors.length) }));
     });
@@ -1317,7 +1462,7 @@ function templateSingleFollowRoot(template) {
 
 function loadFollowBatchSanitizer() {
     if (!followBatchSanitizerModulePromise) {
-        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.62.51').catch(error => {
+        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.62.53').catch(error => {
             followBatchSanitizerModulePromise = null;
             console.debug('[RabbitMirror] follow multiface sanitizer unavailable:', error);
             return null;
