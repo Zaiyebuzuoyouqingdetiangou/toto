@@ -1,5 +1,5 @@
-import { resolveInteractionDetail, INTERACTION_MECHANISMS } from '../data/raw/rawInteractionRecipes.js?rmv=1.62.53';
-import { INTERACTION_RECIPES } from '../data/structured/interactionIndex.js?rmv=1.62.53';
+import { resolveInteractionDetail, INTERACTION_MECHANISMS } from '../data/raw/rawInteractionRecipes.js?rmv=1.62.57';
+import { INTERACTION_RECIPES } from '../data/structured/interactionIndex.js?rmv=1.62.57';
 
 const BY_ID = new Map(INTERACTION_RECIPES.map(recipe => [recipe.id, recipe]));
 
@@ -31,10 +31,14 @@ function formText(combo) {
 export function eligibleInteractionRecipes(combo) {
     if (!combo || combo.presentationMode === 'text' || combo.pureOrder) return [];
     const text = formText(combo);
-    return INTERACTION_RECIPES.filter(recipe => recipe.universal || recipe.fit.some(word => text.includes(word)));
+    const formats = combo.formats || [];
+    const pureScenery = formats.length > 0 && formats.every(item => item.id === '10.2.2');
+    return INTERACTION_RECIPES.filter(recipe => recipe.universal
+        || (pureScenery && recipe.sceneryCompatible)
+        || recipe.fit.some(word => text.includes(word)));
 }
 
-export function selectInteractionRecipe(combo, { randomUnit = Math.random, recent = [], usedIds = [], excludedFamilies = [] } = {}) {
+export function selectInteractionRecipe(combo, { randomUnit = Math.random, recent = [], usedIds = [], excludedFamilies = [], companionIds = [] } = {}) {
     let eligible = eligibleInteractionRecipes(combo).filter(recipe => !excludedFamilies.includes(recipe.family));
     const textSwitchObserved = recent.some(record => /operation_family\s*:\s*(?:text_panel_switch|text_disclosure_stack)(?:；|$)/.test(record?.visualSkeleton || ''));
     if (!eligible.length) return null;
@@ -47,6 +51,12 @@ export function selectInteractionRecipe(combo, { randomUnit = Math.random, recen
         const nonPageAlternatives = eligible.filter(recipe => recipe.effect !== 'reading_navigation');
         if (freshPhysical.length) eligible = freshPhysical;
         else if (nonPageAlternatives.length) eligible = nonPageAlternatives;
+    }
+    const companionGroups = new Set(companionIds.map(id => BY_ID.get(id)?.pairingGroup).filter(Boolean));
+    if (companionGroups.size) {
+        const complementary = eligible.filter(recipe => !companionGroups.has(recipe.pairingGroup));
+        // Exhaustion softens this preference; it never cancels a valid draw.
+        if (complementary.length) eligible = complementary;
     }
     // Prefer genuinely unused recipes; exhaustion softens selection, never blocks generation.
     const unused = eligible.filter(recipe => !used.has(recipe.id));
@@ -70,6 +80,7 @@ export function selectInteractionRecipes(combo, options = {}) {
     while (Number(random()) < (picked.length === 1 ? .75 : .3 / picked.length)) {
         const next = selectInteractionRecipe(combo, { ...options,
             usedIds: [...(options.usedIds || []), ...picked.map(item => item.id)],
+            companionIds: picked.map(item => item.id),
             excludedFamilies: picked.map(item => item.family) });
         if (!next) break;
         picked.push(next);

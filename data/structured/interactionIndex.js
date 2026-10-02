@@ -1,5 +1,25 @@
 // Stable IDs are persisted; I.xx codes and action → effect summaries are the lightweight draw index.
 // Construction details live separately and are resolved only for selected IDs after drawing.
+// Local selection metadata only; neither map adds text to the model prompt.
+// These new physical operations can supply the subject of an unconstrained
+// Visual Scenery. Concrete combined media still use their own keyword fit.
+const SCENERY_ADDITIONS = new Set([
+    'key-unlock', 'popup-rise', 'phase-change', 'tear-mend', 'filter-lens',
+    'mirror-compare', 'tide-level', 'hourglass-flip', 'jigsaw-place', 'chime-set',
+    'flashlight-sweep', 'breath-fog', 'wind-up', 'gear-train',
+]);
+
+// Similar visible operations across different families, not HTML mechanisms.
+// Only prefer a different operation while drawing companions for this face.
+const PAIRING_GROUPS = Object.freeze({
+    'before-after': 'time_comparison', 'time-object': 'time_comparison',
+    'assemble-parts': 'piece_assembly', 'jigsaw-place': 'piece_assembly',
+    'light-direction': 'light_inspection', 'flashlight-sweep': 'light_inspection',
+    'overlay-evidence': 'layer_evidence', 'layer-discovery': 'layer_evidence', 'filter-lens': 'layer_evidence',
+    'parallel-compare': 'linked_evidence', 'cross-reading': 'linked_evidence', 'evidence-mark': 'linked_evidence',
+    'peel-layer': 'cover_reveal', 'redaction-lift': 'cover_reveal',
+});
+
 export const INTERACTION_RECIPES = Object.freeze([
     {"id":"hinged-open","family":"opening","title":"铰接开合","mechanism":"toggle","fit":["盒","门","柜","窗","容器","机关"],"universal":false,"code":"I.01","summary":"点盖或把手→盖板转开显露内部，再点合上"},
     {"id":"sliding-open","family":"opening","title":"滑盖抽取","mechanism":"toggle","fit":["抽屉","盒","门","唱片","卡带","容器"],"universal":false,"code":"I.02","summary":"点拉手→滑盖或抽屉移开，内部物件显露"},
@@ -64,9 +84,27 @@ export const INTERACTION_RECIPES = Object.freeze([
     {"id":"proof-corrections","family":"reading","title":"校样修订对照","mechanism":"combine","fit":["校样","稿","书","报","档案","文献"],"universal":false,"code":"I.61","summary":"点校记→原句保留并显出该处删改，可逐处复原"},
     {"id":"stencil-reading","family":"reading","title":"镂空覆纸读线索","mechanism":"toggle","fit":["信","纸","档案","文献","证据","书"],"universal":false,"code":"I.62","summary":"点覆纸边→镂空纸对齐原文，露出对应线索"},
     {"id":"cascade-release","family":"motion","title":"连锁释放","mechanism":"toggle","fit":["机关","骨牌","装置","机械","舞台","动态"],"universal":false,"code":"I.63","summary":"点起始构件→相邻部件按顺序传递动作，复位后重放"},
-    {"id":"pendulum-couple","family":"motion","title":"摆动相位对照","mechanism":"choice","fit":["摆","钟","仪","机械","装置","天体","动态"],"universal":false,"code":"I.64","summary":"点相位刻度→相邻摆体同相或交替摆动"}
+    {"id":"pendulum-couple","family":"motion","title":"摆动相位对照","mechanism":"choice","fit":["摆","钟","仪","机械","装置","天体","动态"],"universal":false,"code":"I.64","summary":"点相位刻度→相邻摆体同相或交替摆动"},
+    {"id":"key-unlock","family":"opening","title":"钥匙开锁","mechanism":"toggle","fit":["锁","钥匙","宝箱","保险箱","匣","抽屉","机关"],"universal":false,"code":"I.65","summary":"插入钥匙转动→锁舌退回、盖面开启，再转回锁上"},
+    {"id":"popup-rise","family":"opening","title":"立体弹起","mechanism":"toggle","fit":["立体书","贺卡","明信片","纸艺","绘本","剪纸","舞台"],"universal":false,"code":"I.66","summary":"翻开页面→纸构件立起成形，合上时折回"},
+    {"id":"phase-change","family":"transform","title":"物态转变","mechanism":"choice","fit":["冰","蜡烛","墨迹","雪","融化","调酒","实验","料理","烹饪","食谱","菜谱"],"universal":false,"code":"I.67","summary":"选择温度或时间档→同一物质凝固、融化或晕开"},
+    {"id":"tear-mend","family":"transform","title":"撕开与缝补","mechanism":"toggle","fit":["信件","书信","信笺","布","照片","旗","海报","票","纸条","手账"],"universal":false,"code":"I.68","summary":"点裂口→物件被撕开分离，再点缝合或粘回"},
+    {"id":"filter-lens","family":"comparison","title":"滤片换看","mechanism":"choice","fit":["照片","地图","票据","画作","滤镜","胶片","底片","密信"],"universal":false,"code":"I.69","summary":"换上不同颜色的滤片→画面显出各自隐藏的一层"},
+    {"id":"mirror-compare","family":"comparison","title":"镜里镜外","mechanism":"toggle","fit":["镜","水面","车窗","倒影","玻璃","梳妆"],"universal":false,"code":"I.70","summary":"点镜面→镜中景象与镜外实景互换主次"},
+    {"id":"tide-level","family":"sequence","title":"水位涨落","mechanism":"choice","fit":["水面","水位","潮汐","雨","大海","海边","湖","河流","鱼缸"],"universal":false,"code":"I.71","summary":"选择时刻或潮位→水面升降，淹没或露出不同物件"},
+    {"id":"hourglass-flip","family":"sequence","title":"沙漏翻转","mechanism":"toggle","fit":["沙漏","计时","倒计时","等待","钟表"],"universal":false,"code":"I.72","summary":"点沙漏翻转→上下沙量互换，开始另一段计时"},
+    {"id":"jigsaw-place","family":"combination","title":"拼图归位","mechanism":"combine","fit":["拼图","碎片","地图","照片","拼贴","残片"],"universal":false,"code":"I.73","summary":"选择碎片放回空位→画面逐块补全"},
+    {"id":"chime-set","family":"combination","title":"编钟成调","mechanism":"combine","fit":["编钟","风铃","铃","乐器","乐谱","音乐","演奏"],"universal":false,"code":"I.74","summary":"敲击不同的钟或铃→组合点亮对应纹样"},
+    {"id":"flashlight-sweep","family":"exploration","title":"手电照看","mechanism":"choice","fit":["夜","洞","地窖","暗室","密室","探险","废墟","手电"],"universal":false,"code":"I.75","summary":"把光圈移到不同位置→照亮处显出该处物件"},
+    {"id":"breath-fog","family":"exploration","title":"呵气显字","mechanism":"toggle","fit":["窗","镜","玻璃","车窗","冬","雾"],"universal":false,"code":"I.76","summary":"点玻璃呵气→雾面上显出留下的字迹或指痕，再擦去"},
+    {"id":"footnote-link","family":"reading","title":"注码回指","mechanism":"choice","fit":["论文","报告","注释","学术","教材","古籍","书籍","档案","百科"],"universal":false,"code":"I.77","summary":"点正文注码→页脚对应注释亮起，并可回到原处"},
+    {"id":"redaction-lift","family":"reading","title":"揭开涂黑","mechanism":"toggle","fit":["档案","报告","证词","机密","报纸","新闻","公文","卷宗"],"universal":false,"code":"I.78","summary":"点涂黑段→墨条褪去露出原文，再点重新遮上"},
+    {"id":"wind-up","family":"motion","title":"上发条","mechanism":"choice","fit":["八音盒","发条","玩具","机关","怀表","钟表","音乐盒","人偶"],"universal":false,"code":"I.79","summary":"选择拧几圈→装置以相应幅度或时长运转"},
+    {"id":"gear-train","family":"motion","title":"齿轮联动","mechanism":"toggle","fit":["齿轮","机械","钟表","水车","磨坊","装置","机关","工坊","蒸汽"],"universal":false,"code":"I.80","summary":"拨动主齿轮→相连部件按比例转动，再拨停"}
 ].map(item => Object.freeze({ ...item, fit: Object.freeze(item.fit),
+    sceneryCompatible: SCENERY_ADDITIONS.has(item.id),
+    pairingGroup: PAIRING_GROUPS[item.id] || '',
     effect: ['scroll-strip', 'scroll-panorama'].includes(item.id) ? 'spatial_scroll'
-        : ['object-hotspots','layer-discovery','evidence-mark','parallel-compare','overlay-evidence','marginal-notes','cross-reading','proof-corrections','stencil-reading'].includes(item.id) ? 'local_evidence'
-        : ['page-turn','branch-reading','folded-insert'].includes(item.id) ? 'reading_navigation' : 'object_state',
+        : ['object-hotspots','layer-discovery','evidence-mark','parallel-compare','overlay-evidence','marginal-notes','cross-reading','proof-corrections','stencil-reading','filter-lens','flashlight-sweep','breath-fog','redaction-lift'].includes(item.id) ? 'local_evidence'
+        : ['page-turn','branch-reading','folded-insert','footnote-link'].includes(item.id) ? 'reading_navigation' : 'object_state',
 })));
