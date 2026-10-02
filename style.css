@@ -1386,6 +1386,40 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar :
   -webkit-text-fill-color:currentColor !important;
 }
 
+/* Placeholder chrome has no authored scene to sample. Pair its surface and
+ * text explicitly; never apply these defaults to completed mirrors. */
+#chat .rabbit-mirror-external-shell[data-rm-source][data-rm-placement] > details.rabbit-mirror-external-placeholder[data-rm-placeholder-theme]{
+  --rm-shell-bg:var(--SmartThemeBlurTintColor, #f7f7f8);
+  --rm-shell-text:var(--SmartThemeBodyColor, #242424);
+  --rm-shell-border:var(--SmartThemeBorderColor, #757575);
+  --rm-shell-surface:var(--rm-shell-bg);
+  --rm-shell-header-bg:var(--rm-shell-bg);
+  --rm-shell-header-text:var(--rm-shell-text);
+  background:var(--rm-shell-bg) !important;
+  color:var(--rm-shell-text) !important;
+  border-color:var(--rm-shell-border) !important;
+}
+#chat .rabbit-mirror-external-shell[data-rm-source][data-rm-placement] > details.rabbit-mirror-external-placeholder[data-rm-placeholder-theme="dark"]{
+  --rm-shell-bg:#202329;
+  --rm-shell-text:#eceef2;
+  --rm-shell-border:#636b78;
+  color-scheme:dark;
+}
+#chat .rabbit-mirror-external-shell[data-rm-source][data-rm-placement] > details.rabbit-mirror-external-placeholder[data-rm-placeholder-theme] > summary{
+  background:var(--rm-shell-bg) !important;
+  color:var(--rm-shell-text) !important;
+  -webkit-text-fill-color:currentColor !important;
+}
+#chat .rabbit-mirror-external-shell[data-rm-source][data-rm-placement] > details.rabbit-mirror-external-placeholder[data-rm-placeholder-theme] > .rabbit-mirror-external-placeholder-body{
+  color:var(--rm-shell-text) !important;
+  border-color:var(--rm-shell-border) !important;
+}
+#chat .rabbit-mirror-external-shell > details.rabbit-mirror-external-placeholder[data-rm-placeholder-theme] .rabbit-mirror-external-manual-action{
+  background:var(--rm-shell-bg) !important;
+  color:var(--rm-shell-text) !important;
+  border:1px solid var(--rm-shell-border) !important;
+}
+
 /* Layout containment is not decoration. Leave authored colors, borders and
  * radii alone; do not wrap each colored title in another padded frame. */
 #chat .rabbit-mirror-external-shell[data-rm-source][data-rm-placement] > details[data-rabbit-mirror-external-details="true"],

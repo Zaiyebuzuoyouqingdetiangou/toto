@@ -63,7 +63,23 @@ const DETAILS = Object.freeze({
     "proof-corrections": Object.freeze({"action":"逐处开启校记，在原文位置并列呈现删改痕迹和修订内容","result":"原句位置与上下文保留，修订进入正常文档流；多处可同时比较，不另开全文面板"}),
     "stencil-reading": Object.freeze({"action":"将有固定开孔的覆纸盖到原文上，或移开查看完整材料","result":"孔位对准预先选定的字句与原文位置，移开可回读上下文，不假装输入解密"}),
     "cascade-release": Object.freeze({"action":"操作首个真实构件，用预设 CSS 动画延迟表现后续部件依次响应","result":"动作沿明确的接触或连接关系传播，结尾保留可读状态；取消开关恢复起点"}),
-    "pendulum-couple": Object.freeze({"action":"选择装置上的预设相位刻度，改变相邻摆体的运动时序","result":"摆幅与悬点保持，摆体之间的相对运动可见；只表现预制状态，不伪称物理模拟"})
+    "pendulum-couple": Object.freeze({"action":"选择装置上的预设相位刻度，改变相邻摆体的运动时序","result":"摆幅与悬点保持，摆体之间的相对运动可见；只表现预制状态，不伪称物理模拟"}),
+    "key-unlock": Object.freeze({"action":"点钥匙或锁孔，钥匙转过一格使锁舌退回、盖面随之开启；再点转回上锁","result":"锁舌、钥匙角度与开口同时变化，锁着时也能看出锁的构造"}),
+    "popup-rise": Object.freeze({"action":"点页面开合，折好的纸构件沿折痕立起；再点合页折回","result":"立起后有前后层次与投影，合上时仍能看到折痕位置"}),
+    "phase-change": Object.freeze({"action":"选择物件旁的温度、火候或时间刻度，同一物质在几种状态间切换","result":"轮廓、透明度、流淌痕迹随状态变化，位置锚点不变"}),
+    "tear-mend": Object.freeze({"action":"点裂口处，物件沿不规则裂线分开；再点用线迹或胶带接回","result":"裂缝边缘、缺口与接合痕迹可见，接回后保留修补痕"}),
+    "filter-lens": Object.freeze({"action":"选择不同颜色的滤片覆盖到同一画面上，可取下复原","result":"每片滤色只让对应的一层图文显现，底图位置不变"}),
+    "mirror-compare": Object.freeze({"action":"点镜面或水面，让镜中景象放大到前景，再点回到镜外视角","result":"镜里镜外的同一对象有可对照的差异，镜框或水面边界保留"}),
+    "tide-level": Object.freeze({"action":"选择刻度上的时刻或潮位，水面高度随之变化","result":"被淹没与露出的物件随水位变化，水线与倒影一起移动"}),
+    "hourglass-flip": Object.freeze({"action":"点沙漏使其翻转，沙从另一端开始流下；再点翻回","result":"上下两端沙量与流沙状态改变，翻转角度可见"}),
+    "jigsaw-place": Object.freeze({"action":"逐一选择碎片使其落回原图空位，取消可拿出","result":"每块归位后图面连续，补全前后可见缺口变化"}),
+    "chime-set": Object.freeze({"action":"分别敲击不同的钟、铃或磬，可取消","result":"被敲的部件摆动发光，特定组合让器物上的纹样连成完整图样"}),
+    "flashlight-sweep": Object.freeze({"action":"选择光圈落点，暗处只在光圈内显出物件和痕迹","result":"光圈外保持昏暗，光圈内的物件、影子与短反馈对应所照之处"}),
+    "breath-fog": Object.freeze({"action":"点玻璃面呵出一层雾，再点擦净","result":"雾面上浮出原有字迹或指痕，擦净后玻璃后的景象重新清晰"}),
+    "footnote-link": Object.freeze({"action":"点正文中的注码，页脚相应注释高亮，从注释可回到正文位置","result":"注码与注释一一对应，正文版式保持完整"}),
+    "redaction-lift": Object.freeze({"action":"点被涂黑的段落，墨条揭开露出原文，再点遮回","result":"涂黑与原文位置一致，揭开前后的版面不跳动"}),
+    "wind-up": Object.freeze({"action":"选择发条圈数档位，装置以对应幅度运转","result":"圈数不同，运转的幅度、节奏或停止位置可见不同"}),
+    "gear-train": Object.freeze({"action":"点主齿轮使整组齿轮转动，再点停止","result":"相啮合的齿轮按大小以不同速度、方向转动，带动的部件同步变化"})
 });
 
 export function resolveInteractionDetail(id) {
