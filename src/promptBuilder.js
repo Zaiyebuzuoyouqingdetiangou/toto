@@ -1,28 +1,29 @@
-import { visualDesignMode, usesModelOriginalColors, withoutPaletteRecipe, REFERENCE_VISUAL_FLOOR, GUIDED_VISUAL_FLOOR, REFERENCE_VISUAL_DRAWING } from './visualDesign.js?rmv=1.62.57';
-import { getRecentDiversityHistory } from './storage.js?rmv=1.62.57';
-import { attachPaletteRecipes, paletteRecipeFor } from './paletteRecipes.js?rmv=1.62.57';
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.57';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.57';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.57';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.57';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.57';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.57';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions, getRecentStructuralCooldown, getActivePaletteCooldown } from './storage.js?rmv=1.62.57';
-import { recentInteractionCooldowns } from './interactionCooldown.js?rmv=1.62.57';
-import { COMPOSITION_LABELS } from './compositionFingerprint.js?rmv=1.62.57';
-import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock } from './visualDiversityPolicy.js?rmv=1.62.57';
-import { visualFamilyForCooldown, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.62.57';
-import { buildInteractionRecipeRule, interactionExecutionReminder, interactionRecipesFor } from './interactionRecipes.js?rmv=1.62.57';
-import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.62.57';
-import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.57';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.57';
-export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.57';
-import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.57';
-import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.57';
-import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.62.57';
-import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.57';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.57';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.57';
+import { visualDesignMode, usesModelOriginalColors, withoutPaletteRecipe, REFERENCE_VISUAL_FLOOR, GUIDED_VISUAL_FLOOR, REFERENCE_VISUAL_DRAWING } from './visualDesign.js?rmv=1.62.60';
+import { getRecentDiversityHistory } from './storage.js?rmv=1.62.60';
+import { attachPaletteRecipes, paletteRecipeFor } from './paletteRecipes.js?rmv=1.62.60';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.60';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.60';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.60';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.60';
+import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.60';
+import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.62.60';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.60';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions, getRecentStructuralCooldown, getActivePaletteCooldown } from './storage.js?rmv=1.62.60';
+import { recentInteractionCooldowns } from './interactionCooldown.js?rmv=1.62.60';
+import { COMPOSITION_LABELS } from './compositionFingerprint.js?rmv=1.62.60';
+import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock } from './visualDiversityPolicy.js?rmv=1.62.60';
+import { visualFamilyForCooldown, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.62.60';
+import { buildInteractionRecipeRule, interactionExecutionReminder, interactionRecipesFor } from './interactionRecipes.js?rmv=1.62.60';
+import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.62.60';
+import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.60';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.60';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.60';
+import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.60';
+import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.60';
+import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.62.60';
+import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.60';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.60';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.60';
 
 const THEME_ITEMS = new Map(THEMATIC_CATEGORIES.map(item => [item.id, item]));
 const FORMAT_ITEMS = new Map(PRESENTATION_FORMATS.map(item => [item.id, item]));
@@ -989,8 +990,10 @@ function atmosphereConditionalRules(face) {
 // its exact face/ticket scope; an unchosen ticket never supplies another's rules.
 function sharedHtmlModeRules(faces) {
     const groups = new Map();
+    const htmlNumbers = [];
     faces.forEach((face, faceIndex) => {
         if (face.textPresentation || face.combo?.pureOrder) return;
+        htmlNumbers.push(faceIndex + 1);
         (face.atmosphereFaces || [face]).forEach((candidate, ticketIndex) => {
             const body = candidate.visualSceneryMode
                 ? visualCombinationRule(candidate.combo)
@@ -1009,7 +1012,10 @@ function sharedHtmlModeRules(faces) {
             : `第 ${index + 1} 面`);
         return `共用 HTML 模式规则【${labels.join('；')}】\n仅上述面与选中签执行；其他候选及文本面不执行。\n${body}`;
     }).join('\n\n');
-    return modes;
+    const guidance = htmlNumbers.length
+        ? `视觉表达共用指导【仅第 ${htmlNumbers.join('、')} 面 HTML】\n以下指导不改变各面对应模式的动画、性能、安全与手机适配要求。\n${DYNAMIC_VISUAL_RULES.trim()}`
+        : '';
+    return [guidance, modes].filter(Boolean).join('\n\n');
 }
 
 function faceBehaviorRuleBlock(settings, faces) {

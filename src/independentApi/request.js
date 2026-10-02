@@ -1,25 +1,25 @@
-import { bindRolePaletteCode } from '../roleColorVariants.js?rmv=1.62.57';
+import { bindRolePaletteCode } from '../roleColorVariants.js?rmv=1.62.60';
 // Split from independentApi.js — request.
 
-import { claimGenerationEvidence, associateGenerationEvidence, generationEvidenceFor } from '../generationEvidence.js?rmv=1.62.57';
-import { createGenerationTimer } from '../generationTiming.js?rmv=1.62.57';
+import { claimGenerationEvidence, associateGenerationEvidence, generationEvidenceFor } from '../generationEvidence.js?rmv=1.62.60';
+import { createGenerationTimer } from '../generationTiming.js?rmv=1.62.60';
 
-import { resolveBehaviorRuleText } from '../behaviorRules.js?rmv=1.62.57';
-import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.62.57';
-import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.62.57';
-import { getSettings } from '../settings.js?rmv=1.62.57';
-import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.62.57';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=1.62.57';
+import { resolveBehaviorRuleText } from '../behaviorRules.js?rmv=1.62.60';
+import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.62.60';
+import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.62.60';
+import { getSettings } from '../settings.js?rmv=1.62.60';
+import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.62.60';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=1.62.60';
 import {
     assertRabbitMirrorIndependentResponseBytes,
     assertRabbitMirrorIndependentResponseText,
     authorizeRabbitMirrorIndependentServiceRequest,
-} from '../independentSecurityGuard.js?rmv=1.62.57';
+} from '../independentSecurityGuard.js?rmv=1.62.60';
 import {
     parseIndependentAdvancedOptions,
     buildIndependentAdvancedCarrier,
     applyIndependentAdvancedExclusions,
-} from '../advancedRequestOptions.js?rmv=1.62.57';
+} from '../advancedRequestOptions.js?rmv=1.62.60';
 import {
     buildRabbitMirrorPromptDetails,
     planRabbitMirrorPromptDetails,
@@ -28,14 +28,14 @@ import {
     prepareSelectedMemoryForPrompt,
     memoryRequestSettingsKey,
     assertMemoryRequestSettings,
-} from '../promptBuilder.js?rmv=1.62.57';
-import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.62.57';
-import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.62.57';
-import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.62.57';
-import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText, createMultifaceFailureSlot } from '../multifaceProtocol.js?rmv=1.62.57';
-import { applyAtmosphereFields, atmosphereNotesFromHtml, stripAtmosphereChoiceMarkup } from '../atmosphereChoice.js?rmv=1.62.57';
-import { isLocalPreflightFailure, isQuotaInsufficientFailure, configuredAutomaticRerollMax, automaticRerollEnabled } from '../automaticReroll.js?rmv=1.62.57';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.62.57';
+} from '../promptBuilder.js?rmv=1.62.60';
+import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.62.60';
+import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.62.60';
+import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.62.60';
+import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText, createMultifaceFailureSlot } from '../multifaceProtocol.js?rmv=1.62.60';
+import { applyAtmosphereFields, atmosphereNotesFromHtml, stripAtmosphereChoiceMarkup } from '../atmosphereChoice.js?rmv=1.62.60';
+import { isLocalPreflightFailure, isQuotaInsufficientFailure, configuredAutomaticRerollMax, automaticRerollEnabled } from '../automaticReroll.js?rmv=1.62.60';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.62.60';
 import {
     createVisualHistorySelection,
     resolveVisualHistorySelection,
@@ -43,9 +43,9 @@ import {
     visualFamilyForCooldown,
     markPendingBatchAttempt,
     releasePendingComboBatch,
-} from '../storage.js?rmv=1.62.57';
-import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.62.57';
-import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.62.57';
+} from '../storage.js?rmv=1.62.60';
+import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.62.60';
+import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.62.60';
 import {
     RUNTIME_VERSION,
     EXTERNAL_SHELL_ATTR,
@@ -56,8 +56,8 @@ import {
     byteLength,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.62.57';
-import { operationEpochForBase } from './flights.js?rmv=1.62.57';
+} from './runtime.js?rmv=1.62.60';
+import { operationEpochForBase } from './flights.js?rmv=1.62.60';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INDEPENDENT_MAX_APPROX_DEPTH,
@@ -72,7 +72,7 @@ import {
     normalizedConfiguredTemperature,
     readHistoryStore,
     readStore,
-} from './persistence.js?rmv=1.62.57';
+} from './persistence.js?rmv=1.62.60';
 import {
     API_PROFILE_ORDER,
     chatKey,
@@ -106,7 +106,7 @@ import {
     stageNextApiProfile,
     swipeId,
     validatedIndependentConnectionProfile,
-} from './connection.js?rmv=1.62.57';
+} from './connection.js?rmv=1.62.60';
 import {
     externalGeometryCycleSequence,
     externalGeometryLifecycleEpoch,
@@ -117,7 +117,7 @@ import {
     writeExternalGeometryCycleSequence,
     writeExternalGeometryLifecycleEpoch,
     writeExternalGeometryLifecycleReason,
-} from './geometry.js?rmv=1.62.57';
+} from './geometry.js?rmv=1.62.60';
 import {
     INDEPENDENT_REJECTED_PREVIEW_MAX_CHARS,
     INDEPENDENT_REJECTED_PREVIEW_MAX_ENTRIES,
@@ -132,8 +132,8 @@ import {
     writeExternalHostSyncIndex,
     writeIndependentRejectedPreviewChars,
     writeIndependentRejectedPreviewSequence,
-} from './mount.js?rmv=1.62.57';
-import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.62.57';
+} from './mount.js?rmv=1.62.60';
+import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.62.60';
 
 const NON_STREAM_PROFILE_BY_STREAM_PROFILE={
  chat_system_user_full:'chat_system_user_full_nostream',
@@ -698,6 +698,32 @@ function responsePayloadErrorText(payload){
  return String(error||'').trim();
 }
 
+function connectionProfileApiError(value,visibleText=''){
+ const structured=responsePayloadErrorText(value);
+ const visible=String(visibleText||'');
+ // Recognize the host's standalone error envelope, never error-related words
+ // inside an artwork or prose. Inspect assembled stream text only once.
+ const marked=/^\s*\[API\s*(?:错误|error)\](?:[ \t]*\r?\n|[ \t]*[:：])/i.test(visible)
+  && !/<(?:toto|details)\b/i.test(visible);
+ if(!structured && !marked) return null;
+ const raw=structured || visible;
+ const detail=raw
+  .replace(/(?:请求地址|request\s*url)\s*[:：][^\r\n]*/gi,'')
+  .replace(/https?:\/\/[^\s<>"']+/gi,'[地址已隐藏]')
+  .replace(/Bearer\s+\S+/gi,'Bearer [已隐藏]')
+  .replace(/\b(?:sk-[A-Za-z0-9_-]{10,}|AIza[A-Za-z0-9_-]{16,})\b/g,'[已隐藏凭据]')
+  .replace(/\b(?:api[_-]?key|access[_-]?token|password|secret)["']?\s*[:=]\s*["']?[^"'\s,;{}]+["']?/gi,'[已隐藏凭据]')
+  .replace(/\s+/g,' ').trim().slice(0,280);
+ const error=new Error(detail || '宿主返回了 API 错误。');
+ error.code='RABBIT_MIRROR_HOST_API_ERROR';
+ error.rabbitMirrorVisibleApiError=marked;
+ for(const candidate of [value?.status,value?.statusCode,value?.error?.status,value?.error?.statusCode]){
+  const status=Number(candidate);
+  if(Number.isInteger(status) && status>=400 && status<=599){error.status=status;break;}
+ }
+ return error;
+}
+
 async function requestIndependentConnectionProfileCompletion(runtime,profile,options){
  options=options||{};
  const service=runtime?.ctx?.ConnectionManagerRequestService;
@@ -866,6 +892,8 @@ async function requestIndependentConnectionProfileCompletion(runtime,profile,opt
   try{
    for await(const frame of generator){
     options.onProgress?.('connection-manager-frame');
+    const reportedError=connectionProfileApiError(frame);
+    if(reportedError) throw reportedError;
     observeFinish(frame);
     const incoming=textFromContent(frame?.text ?? frame?.content ?? '');
     if(incoming){
@@ -920,6 +948,13 @@ async function requestIndependentConnectionProfileCompletion(runtime,profile,opt
   observeFinish(serviceResult);
   text=textFromContent(serviceResult?.content ?? serviceResult);
   assertRabbitMirrorIndependentResponseText(serviceResult && typeof serviceResult==='object' ? serviceResult : text);
+ }
+ const reportedError=connectionProfileApiError(stream?null:serviceResult,text);
+ if(reportedError){
+  const evidenceText=reportedError.rabbitMirrorVisibleApiError?reportedError.message:text;
+  reportedError.partialResult={raw:evidenceText,payload:null,text:evidenceText,streamed:stream,contentType:'connection-manager',
+   transport:{...adapterTransport(),contentChars:evidenceText.length,endedNormally:false,prematureClose:null}};
+  throw reportedError;
  }
  const payload={choices:[{message:{content:text}}]};
  return {
@@ -1014,12 +1049,14 @@ export async function requestIndependentCompletion(st,systemPrompt,userPrompt,op
   // host wrapper erased the original stable error code. Unknown third-party
   // leases remain conservatively classified as one possible request.
   const localPreflight=codedLocalPreflight || (dispatchWasNotConsumed?error:null);
-  const connectionInterrupted=/(?:\bAbortError\b|operation was aborted|request aborted|socket (?:closed|hang up)|ECONNRESET|ERR_NETWORK|networkerror|load failed|failed to fetch)/i.test(classification);
+  const hostApiError=error?.code==='RABBIT_MIRROR_HOST_API_ERROR';
+  const connectionInterrupted=/(?:\bAbortError\b|operation was aborted|request aborted|socket (?:closed|hang up)|ECONNRESET|ERR_NETWORK|networkerror|load failed|failed to fetch)/i.test(classification)
+   || (hostApiError && /网络请求失败|网络连接失败|连接失败|服务暂时不可达/.test(classification));
   const rawDetail=String(error?.message||error||'网络连接失败')
    .replace(/Bearer\s+\S+/gi,'Bearer [已隐藏]')
    .replace(/\b(?:sk-[A-Za-z0-9_-]{10,}|AIza[A-Za-z0-9_-]{16,})\b/g,'[已隐藏凭据]')
    .slice(0,280);
-  const detail=connectionInterrupted?'连接在响应完成前中断（未收到完整响应）':rawDetail;
+  const detail=connectionInterrupted&&!hostApiError?'连接在响应完成前中断（未收到完整响应）':rawDetail;
   // Merely mentioning "secret" / "API key" is not authentication evidence.
   const profileAuthFailure=!!connectionId && ([401,403].includes(reportedHttpStatus)||/(?:\bunauthori[sz]ed\b|\bforbidden\b|\b(?:invalid|missing|incorrect|expired|revoked)[ _-]+(?:api[ _-]?key|access[ _-]?token|secret)\b|\b(?:api[ _-]?key|access[ _-]?token|secret)\b[^\n\r]{0,32}\b(?:invalid|missing|incorrect|expired|revoked|not\s+(?:set|found))\b)/i.test(classification));
   const rateLimited=reportedHttpStatus===429||/\brate[_ -]?limit(?:ed|ing)?\b|too many requests/i.test(classification);
@@ -1028,17 +1065,17 @@ export async function requestIndependentCompletion(st,systemPrompt,userPrompt,op
   // Never retry automatically: the upstream may already have started billing.
   // A streamed transport failure only stages an exact same-parameter non-stream
   // profile for the player's explicit retry.
-  const next=!localPreflight && profileUsesStreaming(profile.name) && !profileAuthFailure && !rateLimited && !concurrencyFailure && !responseBoundaryFailure
+  const next=!localPreflight && !hostApiError && profileUsesStreaming(profile.name) && !profileAuthFailure && !rateLimited && !concurrencyFailure && !responseBoundaryFailure
    ? stageCompatibility(`${kind}-stream-failure`,true)
    : '';
-  const failureKind=localPreflight?'local-preflight':(responseBoundaryFailure?'response-boundary':kind);
+  const failureKind=localPreflight?'local-preflight':(responseBoundaryFailure?'response-boundary':hostApiError?'host-api-error':kind);
   attempts.push({profile:profile.name,status:0,detail,kind:failureKind});
   const failureCategory=localPreflight?'local-preflight':responseBoundaryFailure?'response-boundary':profileAuthFailure?'authentication':rateLimited?'rate-limit':concurrencyFailure?'concurrency':connectionInterrupted?'network':'unknown';
   const failureTransport=transportSummary(error?.partialResult?.transport,{status:r?.status??reportedHttpStatus,contentType:connectionId?null:r?.headers?.get?.('content-type'),termination:localPreflight?'not-dispatched':(r?'stream-error':'fetch-error'),failureCategory});
-  if(error?.partialResult) generationCapture?.response({...error.partialResult,partial:true},failureTransport);
-  generationCapture?.fail('transport',error,{requestCount:localPreflight?0:1});
   if(failureTransport.status===null&&!localPreflight&&reportedHttpStatus)failureTransport.status=reportedHttpStatus;
   failureTransport.failureCategory=failureCategory;
+  if(error?.partialResult) generationCapture?.response({...error.partialResult,partial:true},failureTransport,failureTransport.status);
+  generationCapture?.fail('transport',error,{requestCount:localPreflight?0:1});
   const requestDiagnostic=publishIndependentApiRequestDiagnostic({
    ok:false,status:failureTransport.status,model:String(st.independentApiModel||''),baseUrl:independentDiagnosticBase(st),
    configuredTemperature:normalizedConfiguredTemperature(st),profile:profile.name,temperatureSent:Object.prototype.hasOwnProperty.call(profile.body||{},'temperature'),
@@ -1054,13 +1091,13 @@ export async function requestIndependentCompletion(st,systemPrompt,userPrompt,op
    ? '；宿主报告认证／访问被拒绝，请检查所选 Profile 的凭据引用和服务端权限；这不能仅凭错误认定 Secret 未保存。兔子镜不会读取或复制密钥'
    : rateLimited?'；上游报告频率／额度限制，可能包含并发限制；不会用关闭流式重试来规避限制'
     : concurrencyFailure?'；宿主或上游明确报告并发限制；提前生成会与正文同时请求，可关闭提前生成后在正文结束时使用'
-     : connectionId?'；宿主未公开可确认的失败原因，不能据此判断为 Secret 问题；请查看外部诊断的最近传输记录':'';
+     : hostApiError?'；宿主返回错误，未取得可用成品':connectionId?'；宿主未公开可确认的失败原因，不能据此判断为 Secret 问题；请查看外部诊断的最近传输记录':'';
   const wrapped=localPreflight
    ? new Error(`副 API 请求在发送前被安全检查拒绝：${rawDetail}；本轮未发送生成请求，也不会切换 nostream。`)
    : responseBoundaryFailure
     ? new Error(`副 API 响应被兔子镜安全上限停止：${rawDetail}；本轮已发送 1 次生成请求，不会自动重发，也不会切换 nostream。`)
-    : new Error(`副 API 网络／响应流失败：${detail}${profileHint}${retryHint}`);
-  if(localPreflight?.code || (responseBoundaryFailure && error?.code)) wrapped.code=String(localPreflight?.code||error.code);
+    : new Error(`${hostApiError?'副 API 返回错误':'副 API 网络／响应流失败'}：${detail}${profileHint}${retryHint}`);
+  if(localPreflight?.code || ((responseBoundaryFailure || hostApiError) && error?.code)) wrapped.code=String(localPreflight?.code||error.code);
   wrapped.rabbitMirrorRequestDiagnostic=requestDiagnostic;
   try{ wrapped.cause=error; }catch{}
   return wrapped;
@@ -1548,7 +1585,7 @@ export function wireIndependentRejectedFaceControls(host){
    independentRejectedFaceControlsWired.add(resay);
    resay.addEventListener('click',event=>{
     event.preventDefault(); event.stopPropagation();
-    void import('../outputSanitizer/toolsChrome.js?rmv=1.62.57').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+    void import('../outputSanitizer/toolsChrome.js?rmv=1.62.60').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
    },true);
   }
  }
@@ -1746,7 +1783,7 @@ async function loadIndependentAppearanceReference(owner){
  let module;
  assertIndependentPromptOwner(owner);
  try{
-  try{module=await import('../appearanceReference.js?rmv=1.62.57');}
+  try{module=await import('../appearanceReference.js?rmv=1.62.60');}
   catch{
    const error=new Error('外观参考模块未能加载；本轮未发送请求，请刷新后重试或关闭外观参考。');
    error.code='RABBIT_MIRROR_APPEARANCE_MODULE_UNAVAILABLE';error.requestCount=0;throw error;
@@ -2858,4 +2895,3 @@ export function computeExternalHostGeometryPlan(el,host){
   return {clear:true,mode:'stable-fallback'};
  }
 }
-

@@ -1,9 +1,9 @@
 // Split from independentApi.js — lifecycle.
 
-import { getSettings } from '../settings.js?rmv=1.62.57';
-import { SOURCE_ATTR, currentRuntime, getContext } from './runtime.js?rmv=1.62.57';
-import { LEGACY_GLOBAL_FLIGHT_KEYS, clearAutomaticFailureStops, pending } from './flights.js?rmv=1.62.57';
-import { migrateLegacyDeletedRecords } from './persistence.js?rmv=1.62.57';
+import { getSettings } from '../settings.js?rmv=1.62.60';
+import { SOURCE_ATTR, currentRuntime, getContext } from './runtime.js?rmv=1.62.60';
+import { LEGACY_GLOBAL_FLIGHT_KEYS, clearAutomaticFailureStops, pending } from './flights.js?rmv=1.62.60';
+import { migrateLegacyDeletedRecords } from './persistence.js?rmv=1.62.60';
 import {
     activeGlobalWorldInfoCapture,
     activeOwnerLockBatch,
@@ -13,16 +13,17 @@ import {
     writeActiveGlobalWorldInfoCapture,
     writeActiveOwnerLockBatch,
     writeActiveOwnerLockBatchDirty,
-} from './connection.js?rmv=1.62.57';
-import { isTheaterFavoriteHost, removeEmptyFollowExternalAnchors, removeEmptyInlineAnchors } from './request.js?rmv=1.62.57';
+} from './connection.js?rmv=1.62.60';
+import { isTheaterFavoriteHost, removeEmptyFollowExternalAnchors, removeEmptyInlineAnchors } from './request.js?rmv=1.62.60';
 import {
     activeRestorableHtmlCache,
     installExternalGeometryListeners,
     migratePersistedInteractionStateRecords,
     preparedReadyHtmlCache,
+    refreshExternalPlaceholderThemes,
     removeExternalGeometryListeners,
     writeActiveRestorableHtmlCache,
-} from './geometry.js?rmv=1.62.57';
+} from './geometry.js?rmv=1.62.60';
 import {
     abortFlight,
     automaticIndependentTiming,
@@ -50,7 +51,7 @@ import {
     restoreFollowInline,
     restoreMountedFollowSnapshots,
     runtimeMode,
-} from './mount.js?rmv=1.62.57';
+} from './mount.js?rmv=1.62.60';
 import {
     cancelEarlyBodyProbes,
     captureMountedIndependentPlaceholderIndices,
@@ -70,7 +71,7 @@ import {
     scheduleStartupHistorySync,
     settleMountedIndependentPlaceholders,
     unsubscribeHostEvents,
-} from './earlyBody.js?rmv=1.62.57';
+} from './earlyBody.js?rmv=1.62.60';
 
 export let observer = null;
 
@@ -163,6 +164,7 @@ export function writeManagedIndependentMessagesUnsubscribe(value){ managedIndepe
 
 async function reconfigureRuntime({coldStart=false}={}){
  if(!currentRuntime()) return;
+ refreshExternalPlaceholderThemes();
  reconcileManualTimingChange();
  const sequence=++runtimeConfigSequence;
  if([...automaticGenerationCutovers.values()].some(cutover=>[...(cutover.earlyBodies?.values()||[])].some(owner=>!owner.cancelled&&(owner.config!==earlyBodyConfigSignature()||earlyBodyCredentials.get(owner)!==String(getSettings().independentApiKey||''))))) cancelEarlyBodyProbes('early-settings-changed');
