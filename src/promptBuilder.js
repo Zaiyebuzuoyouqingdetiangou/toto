@@ -1,29 +1,29 @@
-import { visualDesignMode, usesModelOriginalColors, withoutPaletteRecipe, REFERENCE_VISUAL_FLOOR, GUIDED_VISUAL_FLOOR, REFERENCE_VISUAL_DRAWING } from './visualDesign.js?rmv=1.62.63';
-import { getRecentDiversityHistory } from './storage.js?rmv=1.62.63';
-import { attachPaletteRecipes, paletteRecipeFor } from './paletteRecipes.js?rmv=1.62.63';
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.63';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.63';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.63';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.63';
-import { VISUAL_SCENERY_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.63';
-import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.62.63';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.63';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions, getRecentStructuralCooldown, getActivePaletteCooldown } from './storage.js?rmv=1.62.63';
-import { recentInteractionCooldowns } from './interactionCooldown.js?rmv=1.62.63';
-import { COMPOSITION_LABELS } from './compositionFingerprint.js?rmv=1.62.63';
-import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock } from './visualDiversityPolicy.js?rmv=1.62.63';
-import { visualFamilyForCooldown, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.62.63';
-import { buildInteractionRecipeRule, interactionExecutionReminder, interactionRecipesFor } from './interactionRecipes.js?rmv=1.62.63';
-import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.62.63';
-import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.63';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.63';
-export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.63';
-import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.63';
-import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.63';
-import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.62.63';
-import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.63';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.63';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.63';
+import { visualDesignMode, usesModelOriginalColors, withoutPaletteRecipe, REFERENCE_VISUAL_FLOOR, GUIDED_VISUAL_FLOOR, REFERENCE_VISUAL_DRAWING } from './visualDesign.js?rmv=1.62.64';
+import { getRecentDiversityHistory } from './storage.js?rmv=1.62.64';
+import { attachPaletteRecipes, paletteRecipeFor } from './paletteRecipes.js?rmv=1.62.64';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.64';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.64';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.64';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.64';
+import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.64';
+import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.62.64';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.64';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions, getRecentStructuralCooldown, getActivePaletteCooldown } from './storage.js?rmv=1.62.64';
+import { recentInteractionCooldowns } from './interactionCooldown.js?rmv=1.62.64';
+import { COMPOSITION_LABELS } from './compositionFingerprint.js?rmv=1.62.64';
+import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock } from './visualDiversityPolicy.js?rmv=1.62.64';
+import { visualFamilyForCooldown, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.62.64';
+import { buildInteractionRecipeRule, interactionExecutionReminder, interactionRecipesFor } from './interactionRecipes.js?rmv=1.62.64';
+import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.62.64';
+import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.64';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.64';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.64';
+import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.64';
+import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.64';
+import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.62.64';
+import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.64';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.64';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.64';
 
 const THEME_ITEMS = new Map(THEMATIC_CATEGORIES.map(item => [item.id, item]));
 const FORMAT_ITEMS = new Map(PRESENTATION_FORMATS.map(item => [item.id, item]));
@@ -420,19 +420,27 @@ function sharedSpecialFormatRules(faces, settings) {
     })));
 }
 
-function sharedTextAwareBaseRules(faces, settings, directive, independent) {
-    return groupScopedRules(faces.flatMap((face, index) => {
+function sharedTextAwareBaseRules(faces, settings, directive, independent, split = false) {
+    const construction = [], finish = [], all = [];
+    faces.forEach((face, index) => {
         const scope = `第 ${index + 1} 面${face.textPresentation ? '文本' : 'HTML'}`;
         const mode = face.combo.samplingMode || settings.samplingMode || 'classic';
-        const rules = [userDirectivePriorityRule(activeUserDirective(settings, directive), face.textPresentation), visualColorTruthRule()];
-        if (face.textPresentation) rules.push(textPresentationRule(face.longText));
-        else rules.push(compactCreativeRule(!!settings.creativeExpansionMode, mode === 'format_only'),
-            settings.visualPromptEditingEnabled ? presentationEmbodimentRule() : legacyPresentationEmbodimentRule(),
-            globalCompletionFloorRule(false, settings), settings.visualPromptEditingEnabled ? editableVisualPromptRule(settings) : '',
-            '交互返回：可重复交互须能自然切回，优先复用原控件；不强制每个状态另设返回，一次性动作可自然结束。',
-            !independent && compactVisualPreferenceExecutionLock(settings) ? `最终视觉偏好执行锁:\n  - ${compactVisualPreferenceExecutionLock(settings)}` : '');
-        return rules.map(body => ({ body, scope }));
-    }));
+        const first = [userDirectivePriorityRule(activeUserDirective(settings, directive), face.textPresentation), visualColorTruthRule()];
+        const rest = [];
+        if (face.textPresentation) first.push(textPresentationRule(face.longText));
+        else {
+            first.push(compactCreativeRule(!!settings.creativeExpansionMode, mode === 'format_only'),
+                settings.visualPromptEditingEnabled ? presentationEmbodimentRule() : legacyPresentationEmbodimentRule());
+            rest.push(globalCompletionFloorRule(false, settings), settings.visualPromptEditingEnabled ? editableVisualPromptRule(settings) : '',
+                '交互返回：可重复交互须能自然切回，优先复用原控件；不强制每个状态另设返回，一次性动作可自然结束。',
+                !independent && compactVisualPreferenceExecutionLock(settings) ? `最终视觉偏好执行锁:\n  - ${compactVisualPreferenceExecutionLock(settings)}` : '');
+        }
+        const entries = rules => rules.map(body => ({ body, scope }));
+        construction.push(...entries(first));
+        finish.push(...entries(rest));
+        all.push(...entries([...first, ...rest]));
+    });
+    return split ? { construction: groupScopedRules(construction), finish: groupScopedRules(finish) } : groupScopedRules(all);
 }
 
 function sharedPaletteRules(faces, settings, palettes, split = false) {
@@ -559,30 +567,36 @@ function complexInteractiveCore() {
 }
 
 
-function visualCombinationRule(combo) {
+function visualCombinationRule(combo, stage = 'all') {
     if (combo?.visualSceneryCombination !== true || isTextPresentation(combo)) return '';
-    return String.raw`
+    const construction = String.raw`
 动态视觉组合【本面冻结：动态画面＋抽中的其他展现形式】:
   - 保留动态视觉基底，同时完整实现本面抽中的其他展现形式；画面按需要组合 HTML、内联 SVG 与 CSS，动画作用于实际主体或环境层；它们的内容、结构、阅读方式和交互玩法都必须真实出现，不能只剩标题、图标、背景装饰或几句说明。主题仍使用本面已抽中的题材。
-  - 抽中的形式决定内容的组织和使用方式，动态画面落实在该媒介自身的主体、空间、材质或叙事关系中；两者共同构成首个主要内容块。书信仍有完整书信、日志仍有实际记录、播放器仍有其媒介结构，例子不是固定模板；不得另套通用卡片后仅放一个会动的头图。
+  - 抽中的形式决定内容的组织和使用方式，动态画面落实在该媒介自身的主体、空间、材质或叙事关系中；两者共同构成首个主要内容块。书信仍有完整书信、日志仍有实际记录、播放器仍有其媒介结构，例子不是固定模板；不得另套通用卡片后仅放一个会动的头图。`;
+    const motion = String.raw`
+动态与交互硬要求:
   - 主要动态画面根节点必须标记 data-rm-visual-scenery="true"，有可辨认的背景层、中景主体层与前景／叙事层；未操作时核心画面就完整可见。至少一条主动画和一条协同环境动画打开即循环；每面最多 1 条主连续动画 + 1 条辅助连续动画。
   - 主动画须有真实 @keyframes、可见元素 animation 与 infinite，打开 1 秒内产生肉眼可见的位移／缩放／旋转／形变／遮罩／流体／光影变化；只写 transition、动画名、静态 SVG、微尘或低对比呼吸不算。CSS 动画可作用于 HTML 或 SVG 的实际可见节点。先确定本面景物、物件或关系的运动因果，例如落叶落花随风飘落、车辆行进与路面后移、命运红线牵引两端对象；例子只作启发，依正文和媒介选择，不固定套用。仅让整张文字卡片漂浮、无关法阵旋转或通用光点游走，不能充当主动画。原有 transform 须保留，或由外层容器承载动画。
   - 辅助动画来自同一场景，与主动画在方向、节奏或因果上呼应，使景物、事物或关系一起成立；禁止粒子群、批量重复动画节点及大面积 blur、filter、backdrop-filter。
   - 交互依抽中的形式自然产生，须真实可触摸并改变内容、关系、结构、空间、材质、时间或观察方式；动态与交互不能互相替代。可以有该媒介需要的正文和控件，不能把正文降格为画面说明或删除其阅读路径。
   - 主要正文和反馈进入正常文档流，由内容撑高；纯装饰与短标签才可定位裁切。手机窄屏仍能读到各状态的最后一行。`;
+    return stage === 'construction' ? construction : stage === 'motion' ? motion : construction + motion;
 }
 
-function visualScenerySceneFirstCore() {
-    return String.raw`
+function visualScenerySceneFirstCore(stage = 'all') {
+    const construction = String.raw`
 Visual Scenery 场景优先级【覆盖通用交互骨架的执行顺序】:
   - 本轮第一优先级是先让一幅完整动态场景本体成立，再把交互自然寄生在场景对象上；不得为了满足“复杂交互”先搭建按钮组、标签页、仪表盘、信息卡、播放器或说明面板。
   - 施工顺序：①建立手机宽度自适应舞台；②明确前中后景；③确定景物、物件或关系的运动因果，再让它持续发生，例如落叶落花随风飘落、车辆行进与路面后移、命运红线牵引两端对象；例子只作启发，依正文选择，不固定套用；④由场景决定触摸对象和探索阶段，操作改变空间、时间或人物关系，而非只追加文字。
-  - 首个主要场景根节点必须标记 data-rm-visual-scenery="true"，方便插件只读验收；该属性不产生可见文字，也不得被当作标题或说明。
+  - 首个主要场景根节点必须标记 data-rm-visual-scenery="true"，方便插件只读验收；该属性不产生可见文字，也不得被当作标题或说明。`;
+    const motion = String.raw`
+动态与交互硬要求:
   - 每面最多 1 条主连续动画 + 1 条辅助连续动画。主动画须有真实 @keyframes、可见元素 animation 与 infinite，打开 1 秒内产生肉眼可见的位移／缩放／旋转／形变／遮罩／流体／光影变化；只写 transition、动画名、静态 SVG、微尘或低对比呼吸不算。CSS 动画可作用于 HTML 或 SVG 的实际可见节点。
   - 辅助连续动画来自同一场景，与主动画在方向、节奏或因果上呼应，使景物、事物或关系一起成立。仅让整张文字卡片漂浮、无关法阵旋转或通用光点游走，不能充当主动画；禁止粒子群、批量重复动画节点及大面积 blur、filter、backdrop-filter。
   - 场景未操作时就必须完整、清晰、持续活动；交互只能推进、揭示或改变场景，不能作为显示核心画面的前置条件。
   - 允许场景画布中的纯装饰与短标签使用定位和裁切；主要正文与交互反馈仍须进入正常文档流并完整撑高，不能被固定高度或 overflow:hidden 截断。
   - 交互由媒介决定，不固定为一个热点或一条显隐链；不同对象须改变不同的场景关系，反馈文字辅助画面而非替代画面。同批各面不得重复“点画面→展开说明”的操作骨架，也不堆叠无关控件。`;
+    return stage === 'construction' ? construction : stage === 'motion' ? motion : construction + motion;
 }
 
 
@@ -616,7 +630,7 @@ function presentationEmbodimentRule() {
 展现形式落地【核心结构层；不可被视觉自定义覆盖】:
   - 先确定本轮采用的具体展现形式，再编写 HTML/CSS。
   - <details> 内首个主要内容块必须直接呈现该展现形式本体；外层容器只能负责显示边界，不能成为主要视觉。
-  - DOM 中必须实际出现能够构成该形式的形态、比例、空间关系、层叠方式、材质结构或排版结构；不得只用标题、标签、图标和说明文字宣称它是什么。
+  - DOM 中必须实际出现能够构成该形式的形态、比例、空间关系、层叠方式、材质结构或排版结构；不得只用标题、标签、图标和说明文字宣称它是什么。主体外轮廓和部件随物件或媒介成形，按需要通过错落、遮挡、厚薄与统一受光建立层次，不以同形矩形拼块代替。
   - 可根据本轮展现形式本体的需要，使用 Flex/Grid、定位、SVG、渐变、阴影、滤镜、clip-path、mask、transform、transition 与 CSS 动画等方式，构成空间、材质与视觉质感。
   - 动画必须让该展现形式中的主体、空间、材质或关系发生变化；交互必须作用于该形式内部真实存在的对象或结构。
   - 文字的数量、密度和排版由展现形式决定；文字媒介可以以正文和版式作为主要视觉本体。`;
@@ -691,7 +705,7 @@ function legacyPresentationEmbodimentRule() {
 展现形式落地:
   - 先确定本轮采用的具体展现形式，再编写 HTML/CSS。
   - <details> 内首个主要内容块必须直接呈现该展现形式本体；外层容器只能负责显示边界，不能成为主要视觉。
-  - DOM 中必须实际出现能够构成该形式的形态、比例、空间关系、层叠方式、材质结构或排版结构；不得只用标题、标签、图标和说明文字宣称它是什么。
+  - DOM 中必须实际出现能够构成该形式的形态、比例、空间关系、层叠方式、材质结构或排版结构；不得只用标题、标签、图标和说明文字宣称它是什么。主体外轮廓和部件随物件或媒介成形，按需要通过错落、遮挡、厚薄与统一受光建立层次，不以同形矩形拼块代替。
   - 可根据本轮展现形式本体的需要，使用 Flex/Grid、定位、SVG、渐变、阴影、滤镜、clip-path、mask、transform、transition 与 CSS 动画等方式，构成空间、材质与视觉质感。
   - 不得以通用圆角面板、卡片列表、数据仪表盘或信息框作为默认主体，再向其中填入本轮内容。
   - 当展现形式本身属于平面媒介时，其纸面、印刷面、画布、版式、纹理、边缘与承载内容可以直接构成主要视觉本体，不视为通用面板。
@@ -991,33 +1005,44 @@ function atmosphereConditionalRules(face) {
 // Share identical mode instructions, not candidate materials. Every body keeps
 // its exact face/ticket scope; an unchosen ticket never supplies another's rules.
 function sharedHtmlModeRules(faces, split = false) {
-    const groups = new Map();
+    const constructionGroups = new Map(), modeGroups = new Map();
     const htmlNumbers = [];
+    const add = (groups, body, faceIndex, ticketIndex, face) => {
+        if (!body) return;
+        if (!groups.has(body)) groups.set(body, new Map());
+        const scopes = groups.get(body);
+        if (!scopes.has(faceIndex)) scopes.set(faceIndex, []);
+        if (face.atmosphereFaces) scopes.get(faceIndex).push(ticketIndex + 1);
+    };
     faces.forEach((face, faceIndex) => {
         if (face.textPresentation || face.combo?.pureOrder) return;
         htmlNumbers.push(faceIndex + 1);
         (face.atmosphereFaces || [face]).forEach((candidate, ticketIndex) => {
-            const body = candidate.visualSceneryMode
-                ? visualCombinationRule(candidate.combo)
-                    || [visualScenerySceneFirstCore(), VISUAL_SCENERY_RULES, visualSceneryInteractionLinkRule()].join('\n')
+            const construction = candidate.visualSceneryMode
+                ? visualCombinationRule(candidate.combo, 'construction')
+                    || [visualScenerySceneFirstCore('construction'), VISUAL_SCENERY_CONSTRUCTION_RULES].join('\n')
+                : '';
+            const mode = candidate.visualSceneryMode
+                ? visualCombinationRule(candidate.combo, 'motion')
+                    || [visualScenerySceneFirstCore('motion'), VISUAL_SCENERY_MOTION_RULES, visualSceneryInteractionLinkRule()].join('\n')
                 : complexInteractiveCore();
-            if (!groups.has(body)) groups.set(body, new Map());
-            const scopes = groups.get(body);
-            if (!scopes.has(faceIndex)) scopes.set(faceIndex, []);
-            if (face.atmosphereFaces) scopes.get(faceIndex).push(ticketIndex + 1);
+            add(constructionGroups, construction, faceIndex, ticketIndex, face);
+            add(modeGroups, mode, faceIndex, ticketIndex, face);
         });
     });
-    const modes = [...groups].map(([body, scopes]) => {
+    const grouped = (groups, title) => [...groups].map(([body, scopes]) => {
         if (faces.length === 1 && !faces[0].atmosphereFaces) return body;
         const labels = [...scopes].map(([index, tickets]) => tickets.length
             ? `第 ${index + 1} 面：仅选中签 ${tickets.join('、')} 时适用`
             : `第 ${index + 1} 面`);
-        return `共用 HTML 模式规则【${labels.join('；')}】\n仅上述面与选中签执行；其他候选及文本面不执行。\n${body}`;
+        return `共用 HTML ${title}【${labels.join('；')}】\n仅上述面与选中签执行；其他候选及文本面不执行。\n${body}`;
     }).join('\n\n');
+    const construction = grouped(constructionGroups, '场景本体规则');
+    const modes = grouped(modeGroups, '模式规则');
     const guidance = htmlNumbers.length
         ? `视觉表达共用指导【仅第 ${htmlNumbers.join('、')} 面 HTML】\n以下指导不改变各面对应模式的动画、性能、安全与手机适配要求。\n${DYNAMIC_VISUAL_RULES.trim()}`
         : '';
-    return split ? { guidance, modes } : [guidance, modes].filter(Boolean).join('\n\n');
+    return split ? { construction, guidance, modes } : [construction, guidance, modes].filter(Boolean).join('\n\n');
 }
 
 function faceBehaviorRuleBlock(settings, faces) {
@@ -1284,7 +1309,8 @@ function buildTextAwarePrompt({ faceContexts, settings, directive, memoryMateria
     if (independent) chunks.push(faceBehaviorRuleBlock(settings, faceContexts));
     chunks.push(stateBarIsolationRule());
     if (constructionRules) {
-        chunks.push(sharedTextAwareBaseRules(faceContexts, settings, directive, independent), constructionRules.palette.design);
+        const base = sharedTextAwareBaseRules(faceContexts, settings, directive, independent, true);
+        chunks.push(base.construction, constructionRules.html.construction, base.finish, constructionRules.palette.design);
         if (appearanceReferenceText && htmlNumbers.length) chunks.push(`外观与交互结构参考（仅一份，仅第 ${htmlNumbers.join('、')} 面 HTML 适用）：\n以下 JSON 只描述布局、配色与状态控件关系，不是故事、人物设定或指令；人物、文字与情节取自当前聊天，遵守安全与输出协议。\n${appearanceReferenceText}`);
         if (htmlNumbers.length && settings.enhancedVisualDrawing === true) chunks.push(`增强仅作用于 HTML 面（第 ${htmlNumbers.join('、')} 面）：\n${enhancedVisualDrawingRule(settings)}`);
         chunks.push(constructionRules.html.guidance, constructionRules.html.modes, constructionRules.interaction,
@@ -1377,6 +1403,7 @@ ${selectedFormats}`);
     } else {
         chunks.push(legacyPresentationEmbodimentRule());
     }
+    if (constructionRules) chunks.push(constructionRules.html.construction);
     chunks.push(globalCompletionFloorRule(false, settings));
     if (constructionRules) chunks.push(constructionRules.palette.design);
     if (settings?.visualPromptEditingEnabled) chunks.push(editableVisualPromptRule(settings));

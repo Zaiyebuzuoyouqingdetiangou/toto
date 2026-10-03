@@ -1,11 +1,11 @@
-import { activeRoleColorHtml, bindRolePaletteCode } from './roleColorVariants.js?rmv=1.62.63';
-import { detectCompositionFingerprint, VISUAL_SKELETON_MAX_CHARS } from './compositionFingerprint.js?rmv=1.62.63';
-import { visualSceneryEnabled } from './presentationMode.js?rmv=1.62.63';
-import { presentationModeFields } from './presentationMode.js?rmv=1.62.63';
-import { getCurrentChatKey, commitFollowVisualHistory, bindVisualHistoryTarget } from './storage.js?rmv=1.62.63';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.62.63';
-import { getSettings } from './settings.js?rmv=1.62.63';
-import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.62.63';
+import { activeRoleColorHtml, bindRolePaletteCode } from './roleColorVariants.js?rmv=1.62.64';
+import { detectCompositionFingerprint, VISUAL_SKELETON_MAX_CHARS } from './compositionFingerprint.js?rmv=1.62.64';
+import { visualSceneryEnabled } from './presentationMode.js?rmv=1.62.64';
+import { presentationModeFields } from './presentationMode.js?rmv=1.62.64';
+import { getCurrentChatKey, commitFollowVisualHistory, bindVisualHistoryTarget } from './storage.js?rmv=1.62.64';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.62.64';
+import { getSettings } from './settings.js?rmv=1.62.64';
+import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.62.64';
 import {
     commitRabbitMirrorFollowBatch,
     captureRabbitMirrorGenerationSnapshots,
@@ -15,17 +15,17 @@ import {
     inspectRabbitMirrorGenerationSource,
     releaseRabbitMirrorFollowBatch,
     releaseRabbitMirrorFollowBatchAtMessage,
-} from './generationGuard.js?rmv=1.62.63';
+} from './generationGuard.js?rmv=1.62.64';
 import {
     clearSanitizedRabbitMirrorFaceProof,
     getSanitizedRabbitMirrorFaceProof,
     markSanitizedRabbitMirrorFace,
     rabbitMirrorMultifaceSourceHash,
-} from './multifaceProof.js?rmv=1.62.63';
-import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.62.63';
-import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.62.63';
-import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.62.63';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.63';
+} from './multifaceProof.js?rmv=1.62.64';
+import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.62.64';
+import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.62.64';
+import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.62.64';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.64';
 
 export const FOLLOW_MULTIFACE_COMMITTED_EVENT = 'rabbit-mirror:follow-multiface-committed';
 export const FOLLOW_MULTIFACE_REJECTED_EVENT = 'rabbit-mirror:follow-multiface-rejected';
@@ -875,13 +875,23 @@ function classifyPaletteSamples(samples, source = 'raw', mainBackgroundFound = f
     };
 }
 
+function paletteContentRoots(toto) {
+    if (!toto?.querySelector) return [];
+    const details = toto.tagName === 'DETAILS' ? toto
+        : [...(toto.children || [])].find(child => child?.tagName === 'DETAILS') || toto.querySelector('details');
+    const parent = details || toto;
+    const roots = [...(parent.children || [])].filter(node =>
+        !['SUMMARY', 'STYLE', 'SCRIPT', 'TEMPLATE', 'LINK', 'META', 'INPUT', 'BUTTON', 'LABEL', 'SELECT', 'TEXTAREA', 'RM-THINK', 'RM-TICKET'].includes(node.tagName)
+        && !node.hidden && !node.hasAttribute?.('data-rabbit-mirror-tool-entry-host'));
+    return roots.length ? roots : [parent];
+}
+
 function findRenderedPaletteRoot(toto) {
     if (!toto?.querySelector) return toto || null;
-    const outerDetails = toto.tagName === 'DETAILS' ? toto
-        : [...(toto.children || [])].find(child => child?.tagName === 'DETAILS') || toto.querySelector('details');
-    if (!outerDetails) return toto;
-    const directBody = [...(outerDetails.children || [])].find(child => !['SUMMARY', 'STYLE', 'SCRIPT'].includes(child?.tagName));
-    return directBody || outerDetails;
+    // A hidden radio or short introductory label is not the scene's carrier.
+    // This runs only inside the existing observation, without mounting or polling.
+    return paletteContentRoots(toto).map(node => ({ node, area: elementArea(node) }))
+        .sort((a, b) => b.area - a.area)[0]?.node || toto;
 }
 
 function elementArea(element) {
@@ -993,7 +1003,126 @@ function rawPaletteVariableResolver(html) {
     return resolve;
 }
 
-function rawPaletteFingerprint(html) {
+// Inspect only local, top-level rules. Conditional/layer rules are left for the
+// rendered observer; keyframes and pseudo-elements do not paint the carrier.
+function paletteSourceRules(root) {
+    const rules = [];
+    for (const element of root.querySelectorAll('style')) {
+        const css = String(element.textContent || '').replace(/\/\*[\s\S]*?\*\//g, '');
+        let start = 0, opening = -1, depth = 0, quote = '';
+        for (let i = 0; i < css.length; i++) {
+            const ch = css[i];
+            if (quote) { if (ch === '\\') i++; else if (ch === quote) quote = ''; continue; }
+            if (ch === '"' || ch === "'") { quote = ch; continue; }
+            if (ch === '{') { if (depth++ === 0) opening = i; }
+            else if (ch === '}' && depth && --depth === 0) {
+                const selector = css.slice(start, opening).trim();
+                if (selector && !selector.startsWith('@')) rules.push({ selector, declarations: paletteSourceDeclarations(css.slice(opening + 1, i)) });
+                start = i + 1;
+            } else if (!depth && ch === ';') start = i + 1;
+        }
+    }
+    return rules;
+}
+
+function paletteSourceDeclarations(text) {
+    const css = String(text || '').replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\/\*[\s\S]*?\*\//g,
+        token => token.startsWith('/*') ? '' : '__rm_css_string__');
+    return [...css.matchAll(/(?:^|;)\s*(background(?:-color|-image)?|display|visibility|opacity)\s*:\s*([^;{}]+)/gi)]
+        .map(match => ({ property: match[1].toLowerCase(), value: match[2].replace(/\s*!important\s*$/i, '').trim(),
+            important: /!important\s*$/i.test(match[2]) }));
+}
+
+function paletteSelectorWeight(selector) {
+    const simple = selector.replace(/\[[^\]]*\]/g, '.attribute');
+    return [(simple.match(/#[\w-]+/g) || []).length,
+        (simple.match(/\.[\w-]+|:[\w-]+/g) || []).length,
+        (simple.match(/(?:^|[\s>+~])[a-z][\w-]*/gi) || []).length];
+}
+
+function paletteBackgroundParts(value) {
+    const images = [], colors = [];
+    const functions = /[-a-z][\w-]*\(/gi;
+    let offset = 0, match;
+    while ((match = functions.exec(value))) {
+        const end = cssFunctionEnd(value, functions.lastIndex - 1);
+        if (end < 0) return { color: '', image: '' };
+        colors.push(value.slice(offset, match.index));
+        const token = value.slice(match.index, end);
+        (/^(?:rgba?|hsla?)\(/i.test(token) ? colors : images).push(token);
+        offset = end;
+        functions.lastIndex = end;
+    }
+    colors.push(value.slice(offset));
+    return { color: colors.join(' '), image: images.join(' ') };
+}
+
+function sourcePaletteFingerprint(html, root) {
+    if (!root?.querySelectorAll) return undefined;
+    const rules = paletteSourceRules(root), resolve = rawPaletteVariableResolver(html), cache = new WeakMap();
+    const properties = node => {
+        if (cache.has(node)) return cache.get(node);
+        const winners = new Map();
+        const add = (declarations, specificity) => {
+            for (const declaration of declarations) {
+                const rank = [Number(declaration.important), ...specificity];
+                const names = declaration.property === 'background' ? ['background-color', 'background-image'] : [declaration.property];
+                const value = /var\(/i.test(declaration.value) ? resolve(declaration.value) || '' : declaration.value;
+                const background = declaration.property === 'background' ? paletteBackgroundParts(value) : null;
+                for (const name of names) {
+                    const prior = winners.get(name);
+                    const different = prior ? rank.findIndex((n, i) => n !== prior.rank[i]) : -1;
+                    if (!prior || different < 0 || rank[different] > prior.rank[different]) winners.set(name, {
+                        value: background ? background[name === 'background-color' ? 'color' : 'image'] : value, rank });
+                }
+            }
+        };
+        for (const rule of rules) {
+            for (const selector of rule.selector.split(',')) {
+                // Avoid inventing specificity for functional selector lists.
+                if (/::|:(?:is|where|not|has)\(/i.test(selector)) continue;
+                try { if (node.matches(selector.trim())) add(rule.declarations, [0, ...paletteSelectorWeight(selector)]); } catch {}
+            }
+        }
+        add(paletteSourceDeclarations(node.getAttribute?.('style')), [1, 0, 0, 0]);
+        const values = Object.fromEntries([...winners].map(([key, item]) => [key, item.value]));
+        cache.set(node, values);
+        return values;
+    };
+    const visible = node => {
+        for (let current = node; current && root.contains(current); current = current.parentElement) {
+            if (current.hidden || current.matches('summary,rm-think,rm-ticket,[data-rabbit-mirror-tool-entry-host]')) return false;
+            const p = properties(current);
+            if (p.display === 'none' || p.visibility === 'hidden' || (p.opacity !== undefined && Number(p.opacity) < 0.05)) return false;
+        }
+        return true;
+    };
+    const roots = paletteContentRoots(root);
+    const nodes = [...new Set(roots.flatMap(node => [node, ...node.querySelectorAll('div,section,article,main,aside,figure,table,svg')]))].slice(0, 180);
+    // Prefer structural content over short labels; an unpainted wrapper lets
+    // its real child surface supply the colour. Outer details is a last resort.
+    const carriers = nodes.filter(node => /^(DIV|SECTION|ARTICLE|MAIN|ASIDE|FIGURE|TABLE|SVG)$/i.test(node.tagName));
+    carriers.push(...roots.filter(node => !carriers.includes(node)), root.querySelector('details'), root);
+    const painted = [];
+    for (const node of [...new Set(carriers)].filter(Boolean)) {
+        if (!visible(node)) continue;
+        const p = properties(node);
+        const colors = [...new Set([p['background-color'], p['background-image']].filter(Boolean))]
+            .flatMap(value => extractCssColors(/var\(/i.test(value) ? resolve(value) || '' : value));
+        if (colors.length) painted.push(colors);
+        if (painted.length >= 24) break;
+    }
+    if (!painted.length) return null;
+    const samples = painted.flatMap((colors, index) => colors.map(color => ({ color,
+        weight: (index === 0 ? 8 : 2 / Math.max(1, painted.length - 1)) / colors.length })));
+    return classifyPaletteSamples(samples, 'raw', true);
+}
+
+function rawPaletteFingerprint(html, sourceRoot = null) {
+    const matched = sourcePaletteFingerprint(html, sourceRoot || parseToto(html));
+    if (matched !== undefined) return matched;
+    // Non-DOM callers retain the legacy observation path. Browsers always use
+    // actual matched carriers above; unknown CSS remains unknown, not a colour.
     const values = extractBackgroundValues(paletteCssText(html));
     const resolve = rawPaletteVariableResolver(html);
     const samples = [];
@@ -1005,8 +1134,8 @@ function rawPaletteFingerprint(html) {
     return classifyPaletteSamples(samples, 'raw', values.length > 0);
 }
 
-function detectPaletteFingerprint(html, renderedToto = null) {
-    return renderedPaletteFingerprint(renderedToto) || rawPaletteFingerprint(html);
+function detectPaletteFingerprint(html, renderedToto = null, sourceRoot = null) {
+    return renderedPaletteFingerprint(renderedToto) || rawPaletteFingerprint(html, sourceRoot);
 }
 
 function detectSurfaceFamily(html, plain = '') {
@@ -1194,7 +1323,7 @@ export function scanRabbitMirrorHtml(messageHtml, renderedToto = null) {
         .join('；');
     const interactionFamily = detectInteractionFamily(root, html);
     const skeleton = buildVisualSkeleton(html, plain, { dom, repeated, spatialSignalCount, interactionFamily, composition });
-    const paletteFingerprint = detectPaletteFingerprint(html, renderedToto);
+    const paletteFingerprint = detectPaletteFingerprint(html, renderedToto, root);
     return { signature: summary.slice(0, 280), skeleton: skeleton.slice(0, VISUAL_SKELETON_MAX_CHARS), riskFlags, paletteFingerprint, interactionFamily };
 }
 
@@ -1462,7 +1591,7 @@ function templateSingleFollowRoot(template) {
 
 function loadFollowBatchSanitizer() {
     if (!followBatchSanitizerModulePromise) {
-        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.62.63').catch(error => {
+        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.62.64').catch(error => {
             followBatchSanitizerModulePromise = null;
             console.debug('[RabbitMirror] follow multiface sanitizer unavailable:', error);
             return null;
