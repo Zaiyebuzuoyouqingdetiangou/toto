@@ -1,11 +1,11 @@
 // Split from independentApi.js — geometry.
-import { restoreRuntimeAnimationClone, ANIMATION_SUSPENDED_ATTR } from '../runtimeAnimationState.js?rmv=1.62.61';
+import { restoreRuntimeAnimationClone, ANIMATION_SUSPENDED_ATTR } from '../runtimeAnimationState.js?rmv=1.62.63';
 
-import { bindVisualHistoryTarget } from '../storage.js?rmv=1.62.61';
-import { presentationModeFields } from '../presentationMode.js?rmv=1.62.61';
-import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.62.61';
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorExternalPlacementParent } from '../hostCompatibility.js?rmv=1.62.61';
-import { getSettings } from '../settings.js?rmv=1.62.61';
+import { bindVisualHistoryTarget } from '../storage.js?rmv=1.62.63';
+import { presentationModeFields } from '../presentationMode.js?rmv=1.62.63';
+import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.62.63';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorExternalPlacementParent } from '../hostCompatibility.js?rmv=1.62.63';
+import { getSettings } from '../settings.js?rmv=1.62.63';
 import {
     cleanRabbitMirrorOutput,
     compactTotoBlock,
@@ -19,12 +19,12 @@ import {
     clearRabbitMirrorHorizontalClipArtifacts,
     sanitizeRabbitMirrorUntrustedTemplate,
     validateRabbitMirrorRecoveredStyleAssignments,
-} from '../outputSanitizer.js?rmv=1.62.61';
-import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.62.61';
-import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.62.61';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.62.61';
-import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.62.61';
-import { markSanitizedRabbitMirrorFace } from '../multifaceProof.js?rmv=1.62.61';
+} from '../outputSanitizer.js?rmv=1.62.63';
+import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.62.63';
+import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.62.63';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.62.63';
+import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.62.63';
+import { markSanitizedRabbitMirrorFace } from '../multifaceProof.js?rmv=1.62.63';
 import {
     EXTERNAL_SHELL_ATTR,
     FOLLOW_EXTERNAL_ANCHOR_ATTR,
@@ -39,8 +39,8 @@ import {
     getContext,
     hashText,
     independentMaintenanceLiveRepairLocked,
-} from './runtime.js?rmv=1.62.61';
-import { automaticDispatchAlreadyConsumed, automaticFailureStops, generationPolls, operationEpochForBase } from './flights.js?rmv=1.62.61';
+} from './runtime.js?rmv=1.62.63';
+import { automaticDispatchAlreadyConsumed, automaticFailureStops, generationPolls, operationEpochForBase } from './flights.js?rmv=1.62.63';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INTERACTION_STATE_MIGRATION_KEY,
@@ -49,7 +49,7 @@ import {
     persistedOwnerForMessage,
     readStore,
     writeStore,
-} from './persistence.js?rmv=1.62.61';
+} from './persistence.js?rmv=1.62.63';
 import {
     chatKey,
     copyIndependentOwnerLineage,
@@ -66,7 +66,7 @@ import {
     savedRecordMatchesObserved,
     slotSearchKeys,
     swipeId,
-} from './connection.js?rmv=1.62.61';
+} from './connection.js?rmv=1.62.63';
 import {
     EXTERNAL_GEOMETRY_SETTLE_STEPS_MS,
     allExternalHosts,
@@ -100,7 +100,7 @@ import {
     wrapIndependentFace,
     wrapPreparedIndependentFace,
     writeGeometryDataset,
-} from './request.js?rmv=1.62.61';
+} from './request.js?rmv=1.62.63';
 import {
     activeIndependentFlightForBase,
     automaticCutoverVersionToken,
@@ -123,20 +123,20 @@ import {
     serializeExternalFaceDetails,
     showMultifaceFace,
     stripIndependentTransientLayoutArtifacts,
-} from './mount.js?rmv=1.62.61';
+} from './mount.js?rmv=1.62.63';
 import {
     automaticHostGenerationRenderMatches,
     hasExistingFollowRabbitMirror,
     queueMessageSync,
     suppressesAutomaticGeneration,
-} from './earlyBody.js?rmv=1.62.61';
+} from './earlyBody.js?rmv=1.62.63';
 import {
     automaticGenerationCutovers,
     persistedInteractionMigrationHandle,
     persistedInteractionMigrationIdle,
     writePersistedInteractionMigrationHandle,
     writePersistedInteractionMigrationIdle,
-} from './lifecycle.js?rmv=1.62.61';
+} from './lifecycle.js?rmv=1.62.63';
 
 let externalGeometryFrame = 0;
 
@@ -2062,7 +2062,7 @@ export function renderExternalErrorBody(details,text=''){
   // second retry intent after the first click has entered loading or READY.
   const host=details.closest?.(`[${SOURCE_ATTR}="true"]`);
   if(!retry.isConnected || !details.contains?.(retry) || host?.dataset?.rmState!=='error') return;
-  void import('../outputSanitizer/toolsChrome.js?rmv=1.62.61').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+  void import('../outputSanitizer/toolsChrome.js?rmv=1.62.63').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
  },true);
  const cat=document.createElement('button');
  cat.type='button';
@@ -2450,44 +2450,49 @@ function resolveExternalShellCssVars(value='',variables=new Map()){
  return String(value||'').replace(/var\(\s*(--[\w-]+)(?:\s*,\s*([^)]*))?\)/g,(_match,name,fallback)=>variables.get(name)||fallback||'');
 }
 
+function externalShellContentRoots(details){
+ return [...(details?.children||[])].filter(node=>
+  !['SUMMARY','STYLE','SCRIPT','TEMPLATE','LINK','META','INPUT','BUTTON','LABEL','SELECT','TEXTAREA'].includes(node.tagName)
+  && !node.hidden && !node.hasAttribute?.('data-rabbit-mirror-tool-entry-host')
+  && !/(?:^|;)\s*(?:display\s*:\s*none|visibility\s*:\s*hidden)\b/i.test(node.getAttribute?.('style')||''));
+}
+
 function externalShellSourcePalette(html=''){
  const source=String(html||'');
  if(!source || typeof document==='undefined') return null;
  try{
   const template=document.createElement('template'); template.innerHTML=source;
   const details=template.content.querySelector('details'); if(!details) return null;
-  const carrier=[...details.children].find(node=>!['SUMMARY','STYLE','SCRIPT','TEMPLATE','LINK','META'].includes(node.tagName)) || details;
   const styles=[...details.querySelectorAll('style')].map(style=>String(style.textContent||'')).join('\n');
-  const variables=new Map();
-  for(const match of styles.matchAll(/(--[\w-]+)\s*:\s*([^;}{]+)/g)) variables.set(match[1],match[2].trim());
-  const declarations=[];
-  const addDeclarations=text=>{
-   const sourceText=String(text||'');
-   for(const match of sourceText.matchAll(/background(?:-color)?\s*:\s*([^;}{]+)/gi)) declarations.push(resolveExternalShellCssVars(match[1],variables));
-   // Explicit background-color is the most reliable carrier color. Append it
-   // after shorthand/gradient declarations so it wins the source fallback.
-   for(const match of sourceText.matchAll(/background-color\s*:\s*([^;}{]+)/gi)) declarations.push(resolveExternalShellCssVars(match[1],variables));
-  };
-  addDeclarations(carrier.getAttribute?.('style')||'');
-  const selectors=[];
-  if(carrier.id) selectors.push(`#${carrier.id}`);
-  for(const cls of [...carrier.classList]) selectors.push(`.${cls}`);
-  selectors.push(String(carrier.tagName||'').toLowerCase());
   const rules=[...styles.matchAll(/([^{}]+)\{([^{}]*)\}/g)];
-  for(const rule of rules){
-   const selector=String(rule[1]||'');
-   if(selectors.some(token=>token && selector.includes(token))) addDeclarations(rule[2]);
-  }
-  if(!declarations.length){
-   addDeclarations(details.getAttribute?.('style')||'');
-   for(const rule of rules.slice(0,40)) addDeclarations(rule[2]);
-  }
-  for(let index=declarations.length-1;index>=0;index--){
-   const colors=externalShellColorsFromText(declarations[index]);
-   const base=averageExternalShellColors(colors);
-   if(base){
-    const paletteColors=[...colors,...externalShellColorsFromText(styles)].slice(0,240);
-    return {base,colors:paletteColors,source:'matched-background'};
+  const matches=(node,selector)=>{try{return !selector.includes('::') && node.matches(selector.trim());}catch{return false;}};
+  const roots=externalShellContentRoots(details);
+  const carriers=[...new Set(roots.flatMap(node=>[node,...node.querySelectorAll('div,section,article,main,figure')]))].slice(0,260);
+  carriers.push(details);
+  for(const carrier of carriers){
+   if(carrier.hidden || carrier.closest('summary,[data-rabbit-mirror-tool-entry-host]')) continue;
+   const variables=new Map();
+   const ancestors=[]; for(let node=carrier;node;node=node.parentElement) ancestors.unshift(node);
+   const addVariables=text=>{for(const match of String(text||'').matchAll(/(--[\w-]+)\s*:\s*([^;}{]+)/g)) variables.set(match[1],match[2].trim());};
+   for(const node of ancestors){
+    for(const rule of rules) if(matches(node,rule[1])) addVariables(rule[2]);
+    addVariables(node.getAttribute?.('style'));
+   }
+   const declarations=[];
+   const addDeclarations=text=>{
+    for(const match of String(text||'').matchAll(/(?:^|;)\s*background(?:-color|-image)?\s*:\s*([^;}{]+)/gi)){
+     declarations.push(resolveExternalShellCssVars(match[1],variables));
+    }
+   };
+   // Match the carrier itself. A descendant selector or similarly named class
+   // cannot supply its background; normal inline declarations take precedence.
+   for(const rule of rules) if(matches(carrier,rule[1])) addDeclarations(rule[2]);
+   addDeclarations(carrier.getAttribute?.('style'));
+   for(let index=declarations.length-1;index>=0;index--){
+    const colors=externalShellColorsFromText(declarations[index]);
+    const base=averageExternalShellColors(colors);
+    if(base) return {base,colors,source:'matched-background'};
+    if(/^(?:transparent|rgba?\(|hsla?\(|#[0-9a-f]{4,8}\b)/i.test(declarations[index].trim())) break;
    }
   }
   return null;
@@ -2503,7 +2508,7 @@ function renderedExternalShellPaletteFromRoot(root,areaBase=0,rootNode=null){
  const elements=[root,...root.querySelectorAll?.('*')||[]];
  for(const element of elements.slice(0,260)){
   if(!element?.isConnected || ['STYLE','SCRIPT','TEMPLATE','LINK','META'].includes(element.tagName)) continue;
-  if(element.closest?.('[data-rabbit-mirror-tool-entry-host]')) continue;
+  if(element.tagName==='DETAILS' || element.closest?.('summary,[data-rabbit-mirror-tool-entry-host]')) continue;
   let style,rect; try{ style=getComputedStyle(element); rect=element.getBoundingClientRect(); }catch{continue;}
   if(style.display==='none' || style.visibility==='hidden' || Number(style.opacity||1)<.08) continue;
   const rectArea=Math.max(0,Number(rect?.width||0))*Math.max(0,Number(rect?.height||0));
@@ -2564,7 +2569,7 @@ function clearExternalShellTint(host){
  host.removeAttribute('data-rm-shell-tinted');
  delete host.dataset.rmShellTintKey;
  delete host.dataset.rmShellPaletteSource;
- for(const property of ['--rm-shell-bg','--rm-shell-highlight','--rm-shell-border','--rm-shell-shadow','--rm-shell-accent','--rm-shell-inner-light','--rm-shell-text']) host.style.removeProperty(property);
+ for(const property of ['--rm-shell-bg','--rm-shell-highlight','--rm-shell-border','--rm-shell-shadow','--rm-shell-accent','--rm-shell-inner-light','--rm-shell-text','--rm-shell-surface','--rm-shell-header-bg','--rm-shell-header-text']) host.style.removeProperty(property);
 }
 
 function applyExternalShellTintPalette(host,palette){
@@ -2579,6 +2584,11 @@ function applyExternalShellTintPalette(host,palette){
  host.style.setProperty('--rm-shell-accent',externalShellRgba(tint.accent,.58));
  host.style.setProperty('--rm-shell-inner-light',externalShellRgba(tint.inner,.42));
  host.style.setProperty('--rm-shell-text',externalShellRgba(tint.text,1));
+ // Title-only chrome uses the actual sampled surface, also before first open
+ // and on source-only multi-face paths. Tint mixing is not its background.
+ host.style.setProperty('--rm-shell-surface',externalShellRgba(palette.base,1));
+ host.style.setProperty('--rm-shell-header-bg',externalShellRgba(palette.base,1));
+ host.style.setProperty('--rm-shell-header-text',externalShellRgba(externalShellContrastText(palette.base),1));
  return true;
 }
 
@@ -2601,7 +2611,7 @@ function applyExternalShellIntegration(host,palette=null){
  if(!host?.isConnected || host.dataset.rmSource!=='independent' || host.dataset.rmPlacement!=='external') return false;
  const details=host.querySelector?.(':scope > details[data-rabbit-mirror-external-details="true"], :scope > details');
  if(!details || typeof getComputedStyle!=='function') return false;
- const body=[...(details.children||[])].find(node=>!['SUMMARY','STYLE','SCRIPT','TEMPLATE','LINK','META'].includes(node?.tagName));
+ const body=externalShellContentRoots(details)[0];
  if(!body?.isConnected) return false;
  let bodyStyle=null; try{ bodyStyle=getComputedStyle(body); }catch{}
  const visual=independentPrimaryVisualShell(details);
@@ -2611,10 +2621,10 @@ function applyExternalShellIntegration(host,palette=null){
  const bodyGradient=averageExternalShellColors(externalShellColorsFromText(bodyStyle?.backgroundImage));
  const visualBackground=parseExternalShellColor(visualStyle?.backgroundColor);
  const visualGradient=averageExternalShellColors(externalShellColorsFromText(visualStyle?.backgroundImage));
- const surface=(bodyBackground&&bodyBackground.a>=.18?bodyBackground:null) || bodyGradient || (visualBackground&&visualBackground.a>=.18?visualBackground:null) || visualGradient || palette?.base || null;
+ const surface=palette?.base || (bodyBackground&&bodyBackground.a>=.18?bodyBackground:null) || bodyGradient || (visualBackground&&visualBackground.a>=.18?visualBackground:null) || visualGradient || null;
  if(!surface) return false;
- // Continue the actual carrier surface. A red checkbox or isolated accent is
- // not a title palette; never recolour the authored scene to match the chrome.
+ // The rendered primary visual already identifies the visible medium. Do not
+ // overwrite it with a surrounding stage or change any authored body styles.
  const header=surface;
  let border=parseExternalShellColor(bodyStyle?.borderTopColor) || parseExternalShellColor(visualStyle?.borderTopColor);
  if(!border || border.a<.12) border=mixExternalShellColors(surface,externalShellColorMetrics(surface).luminance>.55?{r:0,g:0,b:0}:{r:255,g:255,b:255},.22);
@@ -2623,17 +2633,15 @@ function applyExternalShellIntegration(host,palette=null){
  radius=Math.max(8,Math.min(28,radius||16));
  let borderWidth=Math.max(...String(bodyStyle?.borderWidth||visualStyle?.borderWidth||'0').split(/\s+/).map(value=>parseFloat(value)||0),0);
  borderWidth=Math.max(1,Math.min(4,borderWidth||1));
- host.setAttribute('data-rm-shell-integrated','true');
- host.style.setProperty('--rm-shell-surface',externalShellRgba(surface,.99));
- host.style.setProperty('--rm-shell-header-bg',externalShellRgba(header,.99));
+ host.removeAttribute('data-rm-shell-integrated');
+ host.style.setProperty('--rm-shell-surface',externalShellRgba(surface,1));
+ host.style.setProperty('--rm-shell-header-bg',externalShellRgba(header,1));
  host.style.setProperty('--rm-shell-header-text',externalShellRgba(externalShellContrastText(header),1));
  host.style.setProperty('--rm-shell-border',externalShellRgba(border,.88));
  host.style.setProperty('--rm-shell-radius',`${radius}px`);
  host.style.setProperty('--rm-shell-border-width',`${borderWidth}px`);
- // Only flatten the stage carrier when it is not itself the object-like medium.
- // Device/book/card objects keep their own top corners intact.
+ // Remove obsolete runtime markers without touching body corners or margins.
  host.querySelectorAll?.('[data-rm-shell-integrated-body="true"]').forEach(node=>node.removeAttribute('data-rm-shell-integrated-body'));
- if(!visual?.objectLike || body!==visualRoot) body.setAttribute('data-rm-shell-integrated-body','true');
  return true;
 }
 
@@ -2644,8 +2652,7 @@ function applyExternalShellTint(host,html=''){
  const palette=rendered||source;
  const tinted=applyExternalShellTintPalette(host,palette);
  // 1.4.30.5: pure-external title shell follows the rendered RabbitMirror surface again.
- // Reuse the existing integration path so header/border/radius are sampled from the
- // actual body instead of keeping a detached neutral/dark title strip.
+ // Reuse the sampling path for title border/radius only; the body has no plugin frame.
  const integrated=applyExternalShellIntegration(host,palette);
  if(!integrated) clearExternalShellIntegration(host);
  return tinted||integrated;

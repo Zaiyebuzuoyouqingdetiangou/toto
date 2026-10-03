@@ -1,4 +1,4 @@
-import { isRabbitMirrorManagedChatSurface, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.62.61';
+import { isRabbitMirrorManagedChatSurface, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.62.63';
 
 const TOUCH_THEATER_SELECTOR = '[data-rm-dai-sekkin-mode="true"], [data-rm-touch-theater="true"]';
 const TOUCH_ZONE_SELECTOR = 'label[data-rm-touch-zone]';
