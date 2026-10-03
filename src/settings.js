@@ -1,10 +1,10 @@
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.62.69';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.62.70';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.62.69';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.62.69';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.62.69';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.62.69';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.62.70';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.62.70';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.62.70';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.62.70';
 
 export const MODULE_NAME = 'rabbit_mirror_theater';
 
@@ -257,7 +257,6 @@ export const defaultSettings = Object.freeze({
     // 1C-1 only: hidden production gate. The UI does not expose this until external raw lookup exists.
     externalWorldBookRandomEnabled: false,
     externalWorldBookMixMode: 'builtin-only',
-    enhancedVisualDrawing: false,
     visualPromptEditingEnabled: false,
     visualPrompt: DEFAULT_VISUAL_PROMPT,
     visualExtraPrompt: '',
@@ -437,7 +436,6 @@ export function getSettings() {
     settings.externalWorldBookMixMode = ['builtin-only','builtin-preferred','balanced','external-preferred','external-only'].includes(settings.externalWorldBookMixMode)
         ? settings.externalWorldBookMixMode
         : 'builtin-only';
-    settings.enhancedVisualDrawing = settings.enhancedVisualDrawing === true;
     settings.visualSceneryCombination = settings.visualSceneryCombination === true;
     settings.imageEnabled = settings.imageEnabled === true;
     settings.imagePromptFormat = settings.imagePromptFormat === 'nai45-tags' ? 'nai45-tags' : 'nai5-natural';
@@ -560,9 +558,6 @@ export function updateSettings(patch) {
     if (Object.prototype.hasOwnProperty.call(safePatch, 'imagePromptFormat')) safePatch.imagePromptFormat = safePatch.imagePromptFormat === 'nai45-tags' ? 'nai45-tags' : 'nai5-natural';
     if (Object.prototype.hasOwnProperty.call(safePatch, 'visualSceneryCombination')) {
         safePatch.visualSceneryCombination = safePatch.visualSceneryCombination === true;
-    }
-    if (Object.prototype.hasOwnProperty.call(safePatch, 'enhancedVisualDrawing')) {
-        safePatch.enhancedVisualDrawing = safePatch.enhancedVisualDrawing === true;
     }
     if (Object.prototype.hasOwnProperty.call(safePatch, 'appearanceReferenceEnabled')) safePatch.appearanceReferenceEnabled = safePatch.appearanceReferenceEnabled === true;
     if (Object.prototype.hasOwnProperty.call(safePatch, 'appearanceReferenceRevision')) safePatch.appearanceReferenceRevision = /^[a-z\d-]{8,80}$/i.test(String(safePatch.appearanceReferenceRevision || '')) ? String(safePatch.appearanceReferenceRevision) : '';

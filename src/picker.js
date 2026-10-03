@@ -1,7 +1,7 @@
-import { usesModelOriginalColors } from './visualDesign.js?rmv=1.62.69';
-import { attachPaletteRecipes } from './paletteRecipes.js?rmv=1.62.69';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.69';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.69';
+import { usesModelOriginalColors } from './visualDesign.js?rmv=1.62.70';
+import { attachPaletteRecipes } from './paletteRecipes.js?rmv=1.62.70';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.70';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.70';
 import {
     getCurrentChatKey,
     getDirectiveScopedPick,
@@ -21,12 +21,12 @@ import {
     clearPendingComboBatch,
     createPendingComboBatchPlan,
     findPendingComboBatchPlan,
-} from './storage.js?rmv=1.62.69';
-import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.62.69';
-import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.62.69';
-import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, visualSceneryEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.69';
-import { attachInteractionRecipes, diversifyBatchInteractionRecipes } from './interactionRecipes.js?rmv=1.62.69';
-import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.62.69';
+} from './storage.js?rmv=1.62.70';
+import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.62.70';
+import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.62.70';
+import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, visualSceneryEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.70';
+import { attachInteractionRecipes, diversifyBatchInteractionRecipes } from './interactionRecipes.js?rmv=1.62.70';
+import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.62.70';
 import {
     chooseExternalSource,
     externalPoolActive,
@@ -36,7 +36,7 @@ import {
     getExternalPoolSnapshot,
     pickExternalItems,
     sourceMixModeIsExternalOnly,
-} from './externalWorldBook/externalPool.js?rmv=1.62.69';
+} from './externalWorldBook/externalPool.js?rmv=1.62.70';
 
 function randomUnit() {
     try {

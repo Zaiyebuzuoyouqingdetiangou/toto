@@ -28,8 +28,8 @@ export const REFERENCE_VISUAL_FLOOR = '展现形式与媒介本体决定具体�
 
 // The new rules replace only the floor above. No second model request,
 // fixed style menu, example HTML, control quota or acceptance gate is added.
-export const GUIDED_VISUAL_FLOOR = '依本面已选展现形式与正文，先确定具体的视觉风格、主体焦点和阅读顺序，再写 HTML。让比例、留白、字级与字重拉开主次；背景、主体和文字形成清楚的明暗与冷暖关系，材质边缘、受光和阴影遵循同一空间。交互状态沿用这套设计并改变对应对象。具体颜色、构图与工艺由本面决定，只输出完成的成品。';
+export const GUIDED_VISUAL_FLOOR = '依本面已选展现形式与正文，先确定视觉风格、主体焦点和阅读顺序，再写 HTML。比例、留白、字级与字重拉开主次，背景、主体和文字以明暗、冷暖相互衬托；具体颜色、构图与工艺由本面决定，只输出完成的成品。';
 
-// Restore the original construction wording; keep the user's exact later
-// technology sentence and the shared current mobile/document-flow rules.
-export const REFERENCE_VISUAL_DRAWING = '增强视觉绘制：先确定清晰的主体轮廓与阅读焦点，再建立前中后景、遮挡和留白；用真实 CSS 落实材质、接缝、光源、阴影与排版层级，并让交互前后出现有意义的内容或空间变化。可自由组合 HTML、CSS 与安全内联 SVG。不要求固定布局或每轮使用 SVG。';
+// Shared by both visual floors, once per HTML batch. Drawing no longer needs
+// a separate toggle; motion and document flow keep their existing shared rules.
+export const COMMON_VISUAL_DRAWING = '依展现形式绘出主体轮廓、部件连接与材质接缝，按需呈现前后遮挡，受光与投影一致；交互就地改变对应对象的内容或空间状态。可自由组合 HTML、CSS 与安全内联 SVG。不固定布局或强制 SVG。';

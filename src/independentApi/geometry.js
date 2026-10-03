@@ -1,11 +1,11 @@
 // Split from independentApi.js — geometry.
-import { restoreRuntimeAnimationClone, ANIMATION_SUSPENDED_ATTR } from '../runtimeAnimationState.js?rmv=1.62.69';
+import { restoreRuntimeAnimationClone, ANIMATION_SUSPENDED_ATTR } from '../runtimeAnimationState.js?rmv=1.62.70';
 
-import { bindVisualHistoryTarget } from '../storage.js?rmv=1.62.69';
-import { presentationModeFields } from '../presentationMode.js?rmv=1.62.69';
-import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.62.69';
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorExternalPlacementParent } from '../hostCompatibility.js?rmv=1.62.69';
-import { getSettings } from '../settings.js?rmv=1.62.69';
+import { bindVisualHistoryTarget } from '../storage.js?rmv=1.62.70';
+import { presentationModeFields } from '../presentationMode.js?rmv=1.62.70';
+import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.62.70';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorExternalPlacementParent } from '../hostCompatibility.js?rmv=1.62.70';
+import { getSettings } from '../settings.js?rmv=1.62.70';
 import {
     cleanRabbitMirrorOutput,
     compactTotoBlock,
@@ -19,12 +19,12 @@ import {
     clearRabbitMirrorHorizontalClipArtifacts,
     sanitizeRabbitMirrorUntrustedTemplate,
     validateRabbitMirrorRecoveredStyleAssignments,
-} from '../outputSanitizer.js?rmv=1.62.69';
-import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.62.69';
-import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.62.69';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.62.69';
-import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.62.69';
-import { markSanitizedRabbitMirrorFace } from '../multifaceProof.js?rmv=1.62.69';
+} from '../outputSanitizer.js?rmv=1.62.70';
+import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.62.70';
+import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.62.70';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.62.70';
+import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.62.70';
+import { markSanitizedRabbitMirrorFace } from '../multifaceProof.js?rmv=1.62.70';
 import {
     EXTERNAL_SHELL_ATTR,
     FOLLOW_EXTERNAL_ANCHOR_ATTR,
@@ -39,8 +39,8 @@ import {
     getContext,
     hashText,
     independentMaintenanceLiveRepairLocked,
-} from './runtime.js?rmv=1.62.69';
-import { automaticDispatchAlreadyConsumed, automaticFailureStops, generationPolls, operationEpochForBase } from './flights.js?rmv=1.62.69';
+} from './runtime.js?rmv=1.62.70';
+import { automaticDispatchAlreadyConsumed, automaticFailureStops, generationPolls, operationEpochForBase } from './flights.js?rmv=1.62.70';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INTERACTION_STATE_MIGRATION_KEY,
@@ -49,7 +49,7 @@ import {
     persistedOwnerForMessage,
     readStore,
     writeStore,
-} from './persistence.js?rmv=1.62.69';
+} from './persistence.js?rmv=1.62.70';
 import {
     chatKey,
     copyIndependentOwnerLineage,
@@ -66,7 +66,7 @@ import {
     savedRecordMatchesObserved,
     slotSearchKeys,
     swipeId,
-} from './connection.js?rmv=1.62.69';
+} from './connection.js?rmv=1.62.70';
 import {
     EXTERNAL_GEOMETRY_SETTLE_STEPS_MS,
     allExternalHosts,
@@ -100,7 +100,7 @@ import {
     wrapIndependentFace,
     wrapPreparedIndependentFace,
     writeGeometryDataset,
-} from './request.js?rmv=1.62.69';
+} from './request.js?rmv=1.62.70';
 import {
     activeIndependentFlightForBase,
     automaticCutoverVersionToken,
@@ -123,20 +123,20 @@ import {
     serializeExternalFaceDetails,
     showMultifaceFace,
     stripIndependentTransientLayoutArtifacts,
-} from './mount.js?rmv=1.62.69';
+} from './mount.js?rmv=1.62.70';
 import {
     automaticHostGenerationRenderMatches,
     hasExistingFollowRabbitMirror,
     queueMessageSync,
     suppressesAutomaticGeneration,
-} from './earlyBody.js?rmv=1.62.69';
+} from './earlyBody.js?rmv=1.62.70';
 import {
     automaticGenerationCutovers,
     persistedInteractionMigrationHandle,
     persistedInteractionMigrationIdle,
     writePersistedInteractionMigrationHandle,
     writePersistedInteractionMigrationIdle,
-} from './lifecycle.js?rmv=1.62.69';
+} from './lifecycle.js?rmv=1.62.70';
 
 let externalGeometryFrame = 0;
 
@@ -2062,7 +2062,7 @@ export function renderExternalErrorBody(details,text=''){
   // second retry intent after the first click has entered loading or READY.
   const host=details.closest?.(`[${SOURCE_ATTR}="true"]`);
   if(!retry.isConnected || !details.contains?.(retry) || host?.dataset?.rmState!=='error') return;
-  void import('../outputSanitizer/toolsChrome.js?rmv=1.62.69').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+  void import('../outputSanitizer/toolsChrome.js?rmv=1.62.70').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
  },true);
  const cat=document.createElement('button');
  cat.type='button';
@@ -2457,6 +2457,29 @@ function externalShellContentRoots(details){
   && !/(?:^|;)\s*(?:display\s*:\s*none|visibility\s*:\s*hidden)\b/i.test(node.getAttribute?.('style')||''));
 }
 
+function externalShellCarrierOrder(details){
+ const roots=externalShellContentRoots(details);
+ const structural=/^(DIV|SECTION|ARTICLE|MAIN|ASIDE|FIGURE|TABLE)$/;
+ const order=[];
+ for(const root of roots){
+  const chain=[root];
+  let node=root;
+  // An otherwise empty wrapper around one body is not the reading surface.
+  // Stop at a real page with several content regions: a long reply/card must
+  // not replace the page colour, as protected by the 1.62.65 repair.
+  for(let depth=0;depth<8;depth++){
+   const directText=[...(node.childNodes||[])].some(child=>child.nodeType===3 && String(child.textContent||'').trim());
+   const children=externalShellContentRoots(node);
+   const controls=[...(node.children||[])].some(child=>/^(BUTTON|LABEL|SELECT|TEXTAREA)$/.test(child.tagName)
+    && !child.hidden && !child.hasAttribute('data-rabbit-mirror-tool-entry-host'));
+   if(directText || controls || children.length!==1 || !structural.test(children[0].tagName)) break;
+   node=children[0];chain.unshift(node);
+  }
+  order.push(...chain);
+ }
+ return [...new Set(order)];
+}
+
 function externalShellSourcePalette(html=''){
  const source=String(html||'');
  if(!source || typeof document==='undefined') return null;
@@ -2467,7 +2490,7 @@ function externalShellSourcePalette(html=''){
   const rules=[...styles.matchAll(/([^{}]+)\{([^{}]*)\}/g)];
   const matches=(node,selector)=>{try{return !selector.includes('::') && node.matches(selector.trim());}catch{return false;}};
   const roots=externalShellContentRoots(details);
-  const carriers=[...new Set(roots.flatMap(node=>[node,...node.querySelectorAll('div,section,article,main,figure')]))].slice(0,260);
+  const carriers=[...new Set([...externalShellCarrierOrder(details),...roots.flatMap(node=>[node,...node.querySelectorAll('div,section,article,main,aside,figure,table')])])].slice(0,260);
   carriers.push(details);
   for(const carrier of carriers){
    if(carrier.hidden || carrier.closest('summary,[data-rabbit-mirror-tool-entry-host]')) continue;
@@ -2504,6 +2527,7 @@ function renderedExternalShellPaletteFromRoot(root,areaBase=0,rootNode=null){
  let rootRect; try{ rootRect=root.getBoundingClientRect(); }catch{return null;}
  const rootArea=Math.max(1,areaBase || (Number(rootRect?.width||0)*Math.max(1,Number(rootRect?.height||0))));
  const rootElement=rootNode || root;
+ const carrierOrder=externalShellCarrierOrder(root);
  const candidates=[];
  const elements=[root,...new Set([...externalShellContentRoots(root),...root.querySelectorAll?.('div,section,article,main,aside,figure,table,svg')||[]])];
  for(const element of elements.slice(0,260)){
@@ -2526,12 +2550,13 @@ function renderedExternalShellPaletteFromRoot(root,areaBase=0,rootNode=null){
   if(element===root) score+=2.8;
   if(element.tagName==='SUMMARY') continue;
   if(['SPAN','BUTTON','INPUT','LABEL','A','SVG','PATH'].includes(element.tagName)) score-=2.5;
-  candidates.push({color,score,coverage,gradientColors,depth});
+  const carrierIndex=carrierOrder.indexOf(element);
+  candidates.push({color,score,coverage,gradientColors,depth,carrierIndex:carrierIndex<0?carrierOrder.length:carrierIndex});
  }
  if(!candidates.length) return null;
- // A painted page owns the title colour. Only transparent wrappers let a
- // deeper carrier supply it; an internal reply/card cannot outrank its page.
- candidates.sort((a,b)=>a.depth-b.depth || b.score-a.score);
+ // The same body-first order is used before and after opening. Pages with
+ // multiple content regions still own their colour over any inner reply/card.
+ candidates.sort((a,b)=>a.carrierIndex-b.carrierIndex || a.depth-b.depth || b.score-a.score);
  const base=candidates[0].color;
  const allColors=candidates.flatMap(item=>[item.color,...(item.gradientColors||[])]);
  return {base,colors:allColors,source:'rendered-background'};
@@ -2599,10 +2624,12 @@ function externalShellContrastText(color){
   ? {r:255,g:255,b:255,a:1} : {r:0,g:0,b:0,a:1};
 }
 
-function clearExternalShellIntegration(host){
+function clearExternalShellIntegration(host,{keepPalette=false}={}){
  if(!host?.style) return;
  host.removeAttribute('data-rm-shell-integrated');
- for(const property of ['--rm-shell-surface','--rm-shell-header-bg','--rm-shell-header-text','--rm-shell-radius','--rm-shell-border-width']) host.style.removeProperty(property);
+ const properties=keepPalette ? ['--rm-shell-radius','--rm-shell-border-width']
+  : ['--rm-shell-surface','--rm-shell-header-bg','--rm-shell-header-text','--rm-shell-radius','--rm-shell-border-width'];
+ for(const property of properties) host.style.removeProperty(property);
  host.querySelectorAll?.('[data-rm-shell-integrated-body="true"]').forEach(node=>node.removeAttribute('data-rm-shell-integrated-body'));
 }
 
@@ -2653,7 +2680,7 @@ function applyExternalShellTint(host,html=''){
  // 1.4.30.5: pure-external title shell follows the rendered RabbitMirror surface again.
  // Reuse the sampling path for title border/radius only; the body has no plugin frame.
  const integrated=applyExternalShellIntegration(host,palette);
- if(!integrated) clearExternalShellIntegration(host);
+ if(!integrated) clearExternalShellIntegration(host,{keepPalette:tinted});
  return tinted||integrated;
 }
 

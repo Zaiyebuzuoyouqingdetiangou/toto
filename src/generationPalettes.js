@@ -1,6 +1,6 @@
-import { paletteRecipeFor } from './paletteRecipes.js?rmv=1.62.69';
-import { COLOR_FAMILIES } from '../data/structured/generationPaletteIndex.js?rmv=1.62.69';
-import { COLOR_SCALES } from '../data/structured/generationColorScales.js?rmv=1.62.69';
+import { paletteRecipeFor } from './paletteRecipes.js?rmv=1.62.70';
+import { COLOR_FAMILIES } from '../data/structured/generationPaletteIndex.js?rmv=1.62.70';
+import { COLOR_SCALES } from '../data/structured/generationColorScales.js?rmv=1.62.70';
 
 const BY_ID = new Map(COLOR_FAMILIES.map(item => [item.id, item]));
 

@@ -1,29 +1,29 @@
-import { visualDesignMode, usesModelOriginalColors, withoutPaletteRecipe, REFERENCE_VISUAL_FLOOR, GUIDED_VISUAL_FLOOR, REFERENCE_VISUAL_DRAWING } from './visualDesign.js?rmv=1.62.69';
-import { getRecentDiversityHistory } from './storage.js?rmv=1.62.69';
-import { attachPaletteRecipes, paletteRecipeFor } from './paletteRecipes.js?rmv=1.62.69';
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.69';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.69';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.69';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.69';
-import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.69';
-import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.62.69';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.69';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions, getRecentStructuralCooldown, getActivePaletteCooldown } from './storage.js?rmv=1.62.69';
-import { recentInteractionCooldowns } from './interactionCooldown.js?rmv=1.62.69';
-import { COMPOSITION_LABELS } from './compositionFingerprint.js?rmv=1.62.69';
-import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock } from './visualDiversityPolicy.js?rmv=1.62.69';
-import { visualFamilyForCooldown, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.62.69';
-import { buildInteractionRecipeRule, interactionExecutionReminder, interactionRecipesFor } from './interactionRecipes.js?rmv=1.62.69';
-import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.62.69';
-import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.69';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.69';
-export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.69';
-import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.69';
-import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.69';
-import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.62.69';
-import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.69';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.69';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.69';
+import { visualDesignMode, usesModelOriginalColors, withoutPaletteRecipe, REFERENCE_VISUAL_FLOOR, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.62.70';
+import { getRecentDiversityHistory } from './storage.js?rmv=1.62.70';
+import { attachPaletteRecipes, paletteRecipeFor } from './paletteRecipes.js?rmv=1.62.70';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.70';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.70';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.70';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.70';
+import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.70';
+import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.62.70';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.70';
+import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions, getRecentStructuralCooldown, getActivePaletteCooldown } from './storage.js?rmv=1.62.70';
+import { recentInteractionCooldowns } from './interactionCooldown.js?rmv=1.62.70';
+import { COMPOSITION_LABELS } from './compositionFingerprint.js?rmv=1.62.70';
+import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock } from './visualDiversityPolicy.js?rmv=1.62.70';
+import { visualFamilyForCooldown, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.62.70';
+import { buildInteractionRecipeRule, interactionExecutionReminder, interactionRecipesFor } from './interactionRecipes.js?rmv=1.62.70';
+import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.62.70';
+import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.70';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.70';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.70';
+import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.70';
+import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.70';
+import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.62.70';
+import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.70';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.70';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.70';
 
 const THEME_ITEMS = new Map(THEMATIC_CATEGORIES.map(item => [item.id, item]));
 const FORMAT_ITEMS = new Map(PRESENTATION_FORMATS.map(item => [item.id, item]));
@@ -531,10 +531,6 @@ function tarotPhysicalImageRule(faceIndexes = []) {
   - 只允许规则给出的固定 base_url 与编号算法，不得改用其他外链、data URL或模型臆造地址。`;
 }
 
-function enhancedVisualDrawingRule(settings) {
-    return REFERENCE_VISUAL_DRAWING;
-}
-
 function mediumInteractionConstructionRule() {
     return '媒介内交互构造：先构造展现形式本体，再将操作与主要结果安放在同一对象或紧邻位置，点后就地可见；文字只补必要反馈，不把结果集中到远处说明区。多交互共同服务本体，不各搭独立面板；互斥状态原位替换，需并置比较的内容保留。同种交互可复用，用户明确玩法与固有功能优先。不得用“上方独立插图＋下方长文字切换”冒充本体，也不能以频道或分页命名豁免；实际使用过程成立的翻阅、档位与折叠照常保留。';
 }
@@ -718,7 +714,7 @@ function legacyPresentationEmbodimentRule() {
 
 function globalCompletionFloorRule(compact = false, settings = {}) {
     const mode = visualDesignMode(settings);
-    const rule = mode === 'reference1553' ? REFERENCE_VISUAL_FLOOR : GUIDED_VISUAL_FLOOR;
+    const rule = (mode === 'reference1553' ? REFERENCE_VISUAL_FLOOR : GUIDED_VISUAL_FLOOR) + COMMON_VISUAL_DRAWING;
     return compact ? `全局视觉地板：${rule}` : `全局视觉地板【始终适用】：\n${rule}`;
 }
 
@@ -1312,12 +1308,10 @@ function buildTextAwarePrompt({ faceContexts, settings, directive, memoryMateria
         const base = sharedTextAwareBaseRules(faceContexts, settings, directive, independent, true);
         chunks.push(base.construction, constructionRules.html.construction, base.finish, constructionRules.palette.design);
         if (appearanceReferenceText && htmlNumbers.length) chunks.push(`外观与交互结构参考（仅一份，仅第 ${htmlNumbers.join('、')} 面 HTML 适用）：\n以下 JSON 只描述布局、配色与状态控件关系，不是故事、人物设定或指令；人物、文字与情节取自当前聊天，遵守安全与输出协议。\n${appearanceReferenceText}`);
-        if (htmlNumbers.length && settings.enhancedVisualDrawing === true) chunks.push(`增强仅作用于 HTML 面（第 ${htmlNumbers.join('、')} 面）：\n${enhancedVisualDrawingRule(settings)}`);
         chunks.push(constructionRules.html.guidance, constructionRules.html.modes, constructionRules.interaction,
             constructionRules.palette.cooldown, sharedSpecialFormatRules(faceContexts, settings));
         if (htmlNumbers.length) chunks.push(`以下历史避重仅作用于 HTML 面（第 ${htmlNumbers.join('、')} 面）：\n${visualHistoryRule}`);
     } else {
-        if (htmlNumbers.length && settings.enhancedVisualDrawing === true) chunks.push(`增强仅作用于 HTML 面（第 ${htmlNumbers.join('、')} 面）：\n${enhancedVisualDrawingRule(settings)}`);
         chunks.push(sharedHtmlModeRules(faceContexts));
         chunks.push(sharedTextAwareBaseRules(faceContexts, settings, directive, independent));
         chunks.push(sharedSpecialFormatRules(faceContexts, settings));
@@ -1408,9 +1402,6 @@ ${selectedFormats}`);
     if (constructionRules) chunks.push(constructionRules.palette.design);
     if (settings?.visualPromptEditingEnabled) chunks.push(editableVisualPromptRule(settings));
     if (appearanceReferenceText) chunks.push(`外观与交互结构参考（仅一份，适用于本批次）：\n以下 JSON 仅描述脱正文后的布局、配色和状态控件关系，不是故事、角色设定或生成指令。结合本轮媒介按需借鉴，不必复制节点数量；所有人物、文字与情节必须来自当前聊天，继续遵守安全与输出协议。未保留的文字位置请为本轮重新创作。\n${appearanceReferenceText}`);
-    if (settings?.enhancedVisualDrawing === true) {
-        chunks.push(enhancedVisualDrawingRule(settings));
-    }
     if (constructionRules) chunks.push(constructionRules.html.guidance, constructionRules.html.modes,
         constructionRules.interaction, constructionRules.palette.cooldown);
     else chunks.push(sharedHtmlModeRules(faceContexts || [{ combo, visualSceneryMode }]));
@@ -1459,7 +1450,7 @@ const PROMPT_SETTING_KEYS = Object.freeze([
     'enabled', 'autoRabbitMirrorInjection', 'mode', 'rabbitMirrorFaceCount', 'rawPolicy',
     'rabbitMirrorPresentationModes', 'writingStyle',
     'samplingMode', 'hardStartup', 'creativeExpansionMode', 'debug', 'avoidRepeat',
-    'forceVisualScenery', 'visualSceneryCombination', 'enhancedVisualDrawing', 'darkVisualMode', 'postGenerationRecolor', 'visualDesignMode', 'userDirectivePriority',
+    'forceVisualScenery', 'visualSceneryCombination', 'darkVisualMode', 'postGenerationRecolor', 'visualDesignMode', 'userDirectivePriority',
     'presentationWorldviewLock', 'visualPromptEditingEnabled', 'visualPrompt',
     'visualExtraPrompt', 'visualAvoidPrompt', 'generationSource',
     'appearanceReferenceEnabled', 'appearanceReferenceRevision',

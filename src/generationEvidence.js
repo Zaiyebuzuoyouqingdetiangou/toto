@@ -1,7 +1,7 @@
 // Opt-in, one-request evidence. No storage, network, timers, live DOM reads or
 // random-number consumption. Observers can never affect generation outcomes.
-import { generationEvidenceTiming } from './generationTiming.js?rmv=1.62.69';
-import { roleColorEvidence } from './roleColorVariants.js?rmv=1.62.69';
+import { generationEvidenceTiming } from './generationTiming.js?rmv=1.62.70';
+import { roleColorEvidence } from './roleColorVariants.js?rmv=1.62.70';
 let armed = false;
 let current = null;
 let sequence = 0;
@@ -11,8 +11,7 @@ let results = new WeakMap();
 const SETTINGS_KEYS = [
     'generationSource', 'independentGenerationTiming', 'samplingMode', 'lotteryMethod',
     'rawPolicy', 'rabbitMirrorFaceCount', 'rabbitMirrorPresentationModes', 'multifaceDispatch',
-    'forceVisualScenery', 'visualSceneryCombination', 'enhancedVisualDrawing',
-    'visualPromptEditingEnabled', 'darkVisualMode', 'avoidRepeat', 'creativeExpansionMode',
+    'forceVisualScenery', 'visualSceneryCombination', 'visualPromptEditingEnabled', 'darkVisualMode', 'avoidRepeat', 'creativeExpansionMode',
     'postGenerationRecolor', 'visualDesignMode',
     'userDirectivePriority', 'presentationWorldviewLock', 'behaviorRuleMode',
     'independentContextMaxLayers', 'independentContextExcludedTags',
