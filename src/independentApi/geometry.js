@@ -1,11 +1,11 @@
 // Split from independentApi.js — geometry.
-import { restoreRuntimeAnimationClone, ANIMATION_SUSPENDED_ATTR } from '../runtimeAnimationState.js?rmv=1.62.64';
+import { restoreRuntimeAnimationClone, ANIMATION_SUSPENDED_ATTR } from '../runtimeAnimationState.js?rmv=1.62.65';
 
-import { bindVisualHistoryTarget } from '../storage.js?rmv=1.62.64';
-import { presentationModeFields } from '../presentationMode.js?rmv=1.62.64';
-import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.62.64';
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorExternalPlacementParent } from '../hostCompatibility.js?rmv=1.62.64';
-import { getSettings } from '../settings.js?rmv=1.62.64';
+import { bindVisualHistoryTarget } from '../storage.js?rmv=1.62.65';
+import { presentationModeFields } from '../presentationMode.js?rmv=1.62.65';
+import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.62.65';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorExternalPlacementParent } from '../hostCompatibility.js?rmv=1.62.65';
+import { getSettings } from '../settings.js?rmv=1.62.65';
 import {
     cleanRabbitMirrorOutput,
     compactTotoBlock,
@@ -19,12 +19,12 @@ import {
     clearRabbitMirrorHorizontalClipArtifacts,
     sanitizeRabbitMirrorUntrustedTemplate,
     validateRabbitMirrorRecoveredStyleAssignments,
-} from '../outputSanitizer.js?rmv=1.62.64';
-import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.62.64';
-import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.62.64';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.62.64';
-import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.62.64';
-import { markSanitizedRabbitMirrorFace } from '../multifaceProof.js?rmv=1.62.64';
+} from '../outputSanitizer.js?rmv=1.62.65';
+import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.62.65';
+import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.62.65';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.62.65';
+import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.62.65';
+import { markSanitizedRabbitMirrorFace } from '../multifaceProof.js?rmv=1.62.65';
 import {
     EXTERNAL_SHELL_ATTR,
     FOLLOW_EXTERNAL_ANCHOR_ATTR,
@@ -39,8 +39,8 @@ import {
     getContext,
     hashText,
     independentMaintenanceLiveRepairLocked,
-} from './runtime.js?rmv=1.62.64';
-import { automaticDispatchAlreadyConsumed, automaticFailureStops, generationPolls, operationEpochForBase } from './flights.js?rmv=1.62.64';
+} from './runtime.js?rmv=1.62.65';
+import { automaticDispatchAlreadyConsumed, automaticFailureStops, generationPolls, operationEpochForBase } from './flights.js?rmv=1.62.65';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INTERACTION_STATE_MIGRATION_KEY,
@@ -49,7 +49,7 @@ import {
     persistedOwnerForMessage,
     readStore,
     writeStore,
-} from './persistence.js?rmv=1.62.64';
+} from './persistence.js?rmv=1.62.65';
 import {
     chatKey,
     copyIndependentOwnerLineage,
@@ -66,7 +66,7 @@ import {
     savedRecordMatchesObserved,
     slotSearchKeys,
     swipeId,
-} from './connection.js?rmv=1.62.64';
+} from './connection.js?rmv=1.62.65';
 import {
     EXTERNAL_GEOMETRY_SETTLE_STEPS_MS,
     allExternalHosts,
@@ -100,7 +100,7 @@ import {
     wrapIndependentFace,
     wrapPreparedIndependentFace,
     writeGeometryDataset,
-} from './request.js?rmv=1.62.64';
+} from './request.js?rmv=1.62.65';
 import {
     activeIndependentFlightForBase,
     automaticCutoverVersionToken,
@@ -123,20 +123,20 @@ import {
     serializeExternalFaceDetails,
     showMultifaceFace,
     stripIndependentTransientLayoutArtifacts,
-} from './mount.js?rmv=1.62.64';
+} from './mount.js?rmv=1.62.65';
 import {
     automaticHostGenerationRenderMatches,
     hasExistingFollowRabbitMirror,
     queueMessageSync,
     suppressesAutomaticGeneration,
-} from './earlyBody.js?rmv=1.62.64';
+} from './earlyBody.js?rmv=1.62.65';
 import {
     automaticGenerationCutovers,
     persistedInteractionMigrationHandle,
     persistedInteractionMigrationIdle,
     writePersistedInteractionMigrationHandle,
     writePersistedInteractionMigrationIdle,
-} from './lifecycle.js?rmv=1.62.64';
+} from './lifecycle.js?rmv=1.62.65';
 
 let externalGeometryFrame = 0;
 
@@ -2062,7 +2062,7 @@ export function renderExternalErrorBody(details,text=''){
   // second retry intent after the first click has entered loading or READY.
   const host=details.closest?.(`[${SOURCE_ATTR}="true"]`);
   if(!retry.isConnected || !details.contains?.(retry) || host?.dataset?.rmState!=='error') return;
-  void import('../outputSanitizer/toolsChrome.js?rmv=1.62.64').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+  void import('../outputSanitizer/toolsChrome.js?rmv=1.62.65').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
  },true);
  const cat=document.createElement('button');
  cat.type='button';
@@ -2505,13 +2505,14 @@ function renderedExternalShellPaletteFromRoot(root,areaBase=0,rootNode=null){
  const rootArea=Math.max(1,areaBase || (Number(rootRect?.width||0)*Math.max(1,Number(rootRect?.height||0))));
  const rootElement=rootNode || root;
  const candidates=[];
- const elements=[root,...root.querySelectorAll?.('*')||[]];
+ const elements=[root,...new Set([...externalShellContentRoots(root),...root.querySelectorAll?.('div,section,article,main,aside,figure,table,svg')||[]])];
  for(const element of elements.slice(0,260)){
   if(!element?.isConnected || ['STYLE','SCRIPT','TEMPLATE','LINK','META'].includes(element.tagName)) continue;
   if(element.tagName==='DETAILS' || element.closest?.('summary,[data-rabbit-mirror-tool-entry-host]')) continue;
   let style,rect; try{ style=getComputedStyle(element); rect=element.getBoundingClientRect(); }catch{continue;}
   if(style.display==='none' || style.visibility==='hidden' || Number(style.opacity||1)<.08) continue;
   const rectArea=Math.max(0,Number(rect?.width||0))*Math.max(0,Number(rect?.height||0));
+  if(rectArea<=0) continue;
   const background=parseExternalShellColor(style.backgroundColor);
   const gradientColors=externalShellColorsFromText(style.backgroundImage);
   const gradient=averageExternalShellColors(gradientColors);
@@ -2525,10 +2526,12 @@ function renderedExternalShellPaletteFromRoot(root,areaBase=0,rootNode=null){
   if(element===root) score+=2.8;
   if(element.tagName==='SUMMARY') continue;
   if(['SPAN','BUTTON','INPUT','LABEL','A','SVG','PATH'].includes(element.tagName)) score-=2.5;
-  candidates.push({color,score,coverage,gradientColors});
+  candidates.push({color,score,coverage,gradientColors,depth});
  }
  if(!candidates.length) return null;
- candidates.sort((a,b)=>b.score-a.score);
+ // A painted page owns the title colour. Only transparent wrappers let a
+ // deeper carrier supply it; an internal reply/card cannot outrank its page.
+ candidates.sort((a,b)=>a.depth-b.depth || b.score-a.score);
  const base=candidates[0].color;
  const allColors=candidates.flatMap(item=>[item.color,...(item.gradientColors||[])]);
  return {base,colors:allColors,source:'rendered-background'};
@@ -2537,11 +2540,7 @@ function renderedExternalShellPaletteFromRoot(root,areaBase=0,rootNode=null){
 function renderedExternalShellPalette(host){
  if(!host?.isConnected || typeof getComputedStyle!=='function') return null;
  const details=host.querySelector?.(':scope > details'); if(!details) return null;
- const visual=independentPrimaryVisualShell(details);
- if(visual?.element){
-  const visualPalette=renderedExternalShellPaletteFromRoot(visual.element,Number(visual.area||0),visual.element);
-  if(visualPalette?.base) return {...visualPalette,source:'rendered-primary-visual'};
- }
+ // Object geometry remains for sizing; title colour follows the page background.
  return renderedExternalShellPaletteFromRoot(details,0,details);
 }
 
