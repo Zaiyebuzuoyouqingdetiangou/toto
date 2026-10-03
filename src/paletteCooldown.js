@@ -1,5 +1,5 @@
-import { paletteGroupLabels } from './paletteRecipes.js?rmv=1.62.65';
-import { getRecentPaletteCooldown, getActivePaletteCooldown, getRecentDiversityHistory } from './storage.js?rmv=1.62.65';
+import { paletteGroupLabels } from './paletteRecipes.js?rmv=1.62.66';
+import { getRecentPaletteCooldown, getActivePaletteCooldown, getRecentDiversityHistory } from './storage.js?rmv=1.62.66';
 
 const SAFE_PALETTE_LABEL_RE = /^(?:(?:低|中|高)明度)?(?:暖|冷|中性)?(?:红|橙|黄|绿|青|蓝|紫|粉|中性色)?(?:(?:低|中|高)饱和)?$/;
 
