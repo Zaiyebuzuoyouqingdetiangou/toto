@@ -224,15 +224,6 @@
       ]
     },
     {
-      "id": "B.3.3",
-      "group": "B",
-      "tags": [
-        "emotion",
-        "style"
-      ],
-      "summaryOverride": "一种极具辨识度的网络情感表达模式。精髓在于“此地无银三百两”、刻意伪装的不在意、明明是爱偏要伪装成恨；用华丽的、带有宗教感或文学感的修辞包裹最直白的爱与执念，将深情描述为困境、诅咒或不得不承受的磨难。"
-    },
-    {
       "id": "B.4",
       "group": "B",
       "tags": [
@@ -321,11 +312,28 @@
       "rawIndent": 2
     },
     {
+      "id": "B.7.6",
+      "group": "B",
+      "tags": [
+        "independent",
+        "meta"
+      ],
+      "rawIndent": 2
+    },
+    {
       "id": "B.8",
       "group": "B",
       "tags": [
         "emotion",
         "misread"
+      ]
+    },
+    {
+      "id": "B.9",
+      "group": "B",
+      "tags": [
+        "canon",
+        "mystic"
       ]
     },
     {
@@ -340,14 +348,6 @@
       "group": "C",
       "tags": [
         "daily"
-      ]
-    },
-    {
-      "id": "C.1.1",
-      "group": "C",
-      "tags": [
-        "daily",
-        "ritual"
       ]
     },
     {
@@ -452,13 +452,6 @@
       ]
     },
     {
-      "id": "D.0",
-      "group": "D",
-      "tags": [
-        "profile"
-      ]
-    },
-    {
       "id": "D.1",
       "group": "D",
       "tags": [
@@ -473,14 +466,6 @@
         "profile",
         "place",
         "time"
-      ]
-    },
-    {
-      "id": "D.3",
-      "group": "D",
-      "tags": [
-        "profile",
-        "family"
       ]
     },
     {
@@ -555,6 +540,14 @@
       ]
     },
     {
+      "id": "E.9",
+      "group": "E",
+      "tags": [
+        "independent",
+        "meta"
+      ]
+    },
+    {
       "id": "F.0",
       "group": "F",
       "tags": [
@@ -569,41 +562,11 @@
       ]
     },
     {
-      "id": "F.2",
+      "id": "F.7",
       "group": "F",
       "tags": [
-        "humor"
-      ]
-    },
-    {
-      "id": "F.3",
-      "group": "F",
-      "tags": [
-        "humor"
-      ]
-    },
-    {
-      "id": "F.4",
-      "group": "F",
-      "tags": [
-        "humor",
-        "parody"
-      ]
-    },
-    {
-      "id": "F.5",
-      "group": "F",
-      "tags": [
-        "humor",
-        "daily"
-      ]
-    },
-    {
-      "id": "F.6",
-      "group": "F",
-      "tags": [
-        "humor",
-        "parody"
+        "independent",
+        "meta"
       ]
     },
     {
@@ -701,14 +664,6 @@
       "tags": [
         "if",
         "worldview"
-      ]
-    },
-    {
-      "id": "G.3.4",
-      "group": "G",
-      "tags": [
-        "if",
-        "style"
       ]
     },
     {
@@ -1543,6 +1498,22 @@
         "canon",
         "memory",
         "contrast"
+      ]
+    },
+    {
+      "id": "I.5",
+      "group": "I",
+      "tags": [
+        "canon",
+        "meta"
+      ]
+    },
+    {
+      "id": "I.6",
+      "group": "I",
+      "tags": [
+        "canon",
+        "meta"
       ]
     }
   ]
