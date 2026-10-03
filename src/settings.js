@@ -1,10 +1,10 @@
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.62.68';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.62.69';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.62.68';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.62.68';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.62.68';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.62.68';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.62.69';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.62.69';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.62.69';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.62.69';
 
 export const MODULE_NAME = 'rabbit_mirror_theater';
 
@@ -130,8 +130,8 @@ function canonicalFormatSettingId(value) {
     const id = String(value || '').trim();
     return LEGACY_FORMAT_ID_ALIASES[id] || id;
 }
-// Restored verbatim from 1.5.53. Both default injection paths share this text.
-export const DEFAULT_VISUAL_COLOR_RULES = String.raw`色彩组织:
+// Retain the exact previous factory text for migration; never rewrite user edits.
+const PREVIOUS_VISUAL_COLOR_RULES = String.raw`色彩组织:
   - 配色必须形成明确的主次关系，由主要色彩关系统领画面，再用有限的辅助色与局部强调色建立层次；不得让所有颜色平均分布或同时抢眼。
   - 不得为了避免重复或追求独特强行改变色相，也不得加入不属于媒介的霓虹、光晕或高饱和强调色。
   - 主背景、承载面、正文、装饰与交互状态须通过明度、饱和度、冷暖、透明度和材质差异清晰分层，并保持相互呼应。
@@ -139,6 +139,13 @@ export const DEFAULT_VISUAL_COLOR_RULES = String.raw`色彩组织:
   - 材质色、环境光与阴影必须共同作用，不能只给不同区域机械填充不同色块。
   - 视觉质感应由比例、留白、层次、材质、光影与色彩关系共同成立，不得依靠堆叠渐变、发光、阴影或高饱和色制造表面效果。
   - 当展现形式适合单色、低彩度或有限色域时，可以保持克制，但仍须依靠明度、纹理、材质与空间层次形成完整视觉。`;
+
+// Both default injection paths share these two narrowly revised colour clauses.
+export const DEFAULT_VISUAL_COLOR_RULES = PREVIOUS_VISUAL_COLOR_RULES
+    .replace('配色必须形成明确的主次关系，由主要色彩关系统领画面，再用有限的辅助色与局部强调色建立层次；不得让所有颜色平均分布或同时抢眼。',
+        '按本轮展现形式组织丰富而协调的色彩，让背景、主体与细节通过色相、明暗和冷暖相互衬托，整体保持主次。')
+    .replace('强调色只用于真正需要聚焦的主体、关系节点或状态变化，数量与面积必须克制。',
+        '物件自身的颜色可充分呈现；统一风格不等于统一色相，强调色用于聚焦主体、关系节点或状态变化。');
 
 export const DEFAULT_VISUAL_PROMPT = String.raw`兔子镜默认视觉规则:
   - 不得以通用圆角面板、卡片列表、数据仪表盘或信息框作为默认主体，再向其中填入本轮内容。
@@ -148,6 +155,8 @@ export const DEFAULT_VISUAL_PROMPT = String.raw`兔子镜默认视觉规则:
   - 仅替换标题和正文就能直接用于其他题材的通用界面，属于不合格输出。
 
 ${DEFAULT_VISUAL_COLOR_RULES}`;
+
+const PREVIOUS_DEFAULT_VISUAL_PROMPT = DEFAULT_VISUAL_PROMPT.replace(DEFAULT_VISUAL_COLOR_RULES, PREVIOUS_VISUAL_COLOR_RULES);
 
 // Migrate only the exact superseded factory default; preserve all user edits.
 const SUPERSEDED_DEFAULT_VISUAL_PROMPT = DEFAULT_VISUAL_PROMPT.replace(DEFAULT_VISUAL_COLOR_RULES, String.raw`色彩组织:
@@ -441,7 +450,7 @@ export function getSettings() {
         return raw.replace(/\r\n?/g, '\n').slice(0, maxChars);
     };
     settings.visualPrompt = normalizeVisualSetting(settings.visualPrompt, DEFAULT_VISUAL_PROMPT, VISUAL_PROMPT_MAX_CHARS);
-    if (settings.visualPrompt === SUPERSEDED_DEFAULT_VISUAL_PROMPT) settings.visualPrompt = DEFAULT_VISUAL_PROMPT;
+    if (settings.visualPrompt === SUPERSEDED_DEFAULT_VISUAL_PROMPT || settings.visualPrompt === PREVIOUS_DEFAULT_VISUAL_PROMPT) settings.visualPrompt = DEFAULT_VISUAL_PROMPT;
     settings.visualExtraPrompt = normalizeVisualSetting(settings.visualExtraPrompt, '', VISUAL_EXTRA_PROMPT_MAX_CHARS);
     settings.visualAvoidPrompt = normalizeVisualSetting(settings.visualAvoidPrompt, '', VISUAL_AVOID_PROMPT_MAX_CHARS);
 

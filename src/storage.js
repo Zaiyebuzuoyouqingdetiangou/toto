@@ -1,10 +1,10 @@
-import { generationPaletteFields } from './paletteRecipes.js?rmv=1.62.68';
-import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.62.68';
-import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords } from './compositionFingerprint.js?rmv=1.62.68';
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.68';
-import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.62.68';
-import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.62.68';
-import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.62.68';
+import { generationPaletteFields } from './paletteRecipes.js?rmv=1.62.69';
+import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.62.69';
+import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords } from './compositionFingerprint.js?rmv=1.62.69';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.69';
+import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.62.69';
+import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.62.69';
+import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.62.69';
 
 const STORAGE_KEY = 'rabbit_mirror_theater:last_combo:v11';
 const PENDING_KEY = 'rabbit_mirror_theater:pending_combo:v11';
@@ -582,13 +582,14 @@ export function parseVisualFamilySkeleton(value = '') {
 
 // Space categories describe available drawing/layout techniques, not a repeated
 // composition. Keep them in diagnostics, but never cool down depth itself.
+// An unspecified surface is likewise not evidence of repeated material.
 export function visualFamilyForCooldown(family = {}) {
     return Object.fromEntries(Object.entries(VISUAL_FAMILY_DIMENSION_LABELS)
         .filter(([key]) => !['space_family', 'contrast_family'].includes(key) && family?.[key]
             && !(key === 'operation_family' && family[key] === 'object_state_change')
             && !(family.layout_family && ['reading_family', 'unit_family'].includes(key))
             && !(key === 'contour_family' && family[key] === 'contour: cutout_or_irregular_shape')
-            && !(key === 'surface_family' && /^(?:surface:\s*)?(?:digital_dark_surface|gradient_or_light_surface)$/.test(family[key])))
+            && !(key === 'surface_family' && /^(?:surface:\s*)?(?:digital_dark_surface|gradient_or_light_surface|mixed_or_unspecified_surface)$/.test(family[key])))
         .map(([key]) => [key, family[key]]));
 }
 

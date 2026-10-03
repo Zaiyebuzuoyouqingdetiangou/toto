@@ -1,4 +1,4 @@
-import { sanitizeExternalTransportSummary as sanitizeTransportSummary, getRecentIndependentTransportDiagnostics, clearRecentIndependentTransportDiagnostics } from './transportDiagnostics.js?rmv=1.62.68';
+import { sanitizeExternalTransportSummary as sanitizeTransportSummary, getRecentIndependentTransportDiagnostics, clearRecentIndependentTransportDiagnostics } from './transportDiagnostics.js?rmv=1.62.69';
 
 const DIAG_VERSION = '1.5.53-ttperfdiag1';
 const MAX_ENTRIES = 1800;
