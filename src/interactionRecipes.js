@@ -1,12 +1,18 @@
-import { resolveInteractionDetail, INTERACTION_MECHANISMS } from '../data/raw/rawInteractionRecipes.js?rmv=1.62.70';
-import { INTERACTION_RECIPES } from '../data/structured/interactionIndex.js?rmv=1.62.70';
+import { resolveInteractionDetail, INTERACTION_MECHANISMS } from '../data/raw/rawInteractionRecipes.js?rmv=1.62.74';
+import { INTERACTION_RECIPES, INTERACTION_RECIPE_REPLACEMENTS } from '../data/structured/interactionIndex.js?rmv=1.62.74';
 
 const BY_ID = new Map(INTERACTION_RECIPES.map(recipe => [recipe.id, recipe]));
+
+function canonicalRecipeIds(values) {
+    return [...new Set(values.map(id => typeof id === 'string'
+        ? (Object.hasOwn(INTERACTION_RECIPE_REPLACEMENTS, id) ? INTERACTION_RECIPE_REPLACEMENTS[id] : id) : null)
+        .filter(id => BY_ID.has(id)))];
+}
 
 export function interactionRecipeFields(source) {
     if (source?.presentationMode === 'text' || source?.pureOrder === true) return {};
     const values = Array.isArray(source?.interactionRecipeIds) ? source.interactionRecipeIds : [source?.interactionRecipeId];
-    const ids = [...new Set(values.filter(id => BY_ID.has(id)))];
+    const ids = canonicalRecipeIds(values);
     // Keep the singular first-ID alias for old records and consumers.
     return ids.length ? { interactionRecipeId: ids[0], interactionRecipeIds: ids } : {};
 }
@@ -39,6 +45,8 @@ export function eligibleInteractionRecipes(combo) {
 }
 
 export function selectInteractionRecipe(combo, { randomUnit = Math.random, recent = [], usedIds = [], excludedFamilies = [], companionIds = [] } = {}) {
+    usedIds = canonicalRecipeIds(usedIds);
+    companionIds = canonicalRecipeIds(companionIds);
     let eligible = eligibleInteractionRecipes(combo).filter(recipe => !excludedFamilies.includes(recipe.family));
     const textSwitchObserved = recent.some(record => /operation_family\s*:\s*(?:text_panel_switch|text_disclosure_stack)(?:；|$)/.test(record?.visualSkeleton || ''));
     if (!eligible.length) return null;
@@ -97,7 +105,11 @@ export function attachInteractionRecipes(combo, options = {}) {
             const formats = (ticket.formatFullLines || ticket.formatLines || []).map((title, index) => ({ id: ticket.formatIds?.[index], title }));
             const source = { ...combo, ...ticket, formats, atmosphereMenu: undefined };
             const held = interactionRecipesFor(source);
-            const picked = held.length ? held : selectInteractionRecipes(source, { ...options, usedIds: [...usedIds] });
+            if (held.length) {
+                held.forEach(item => usedIds.add(item.id));
+                return { ...ticket };
+            }
+            const picked = selectInteractionRecipes(source, { ...options, usedIds: [...usedIds] });
             picked.forEach(item => usedIds.add(item.id));
             return { ...ticket, ...interactionRecipeFields({ interactionRecipeIds: picked.map(item => item.id) }) };
         });

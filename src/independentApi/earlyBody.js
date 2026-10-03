@@ -1,11 +1,11 @@
 // Split from independentApi.js — earlyBody.
 
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.62.70';
-import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.62.70';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.62.70';
-import { getSettings } from '../settings.js?rmv=1.62.70';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=1.62.70';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.62.70';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.62.74';
+import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.62.74';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.62.74';
+import { getSettings } from '../settings.js?rmv=1.62.74';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=1.62.74';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.62.74';
 import {
     MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE,
     assistantRowsInScanRange,
@@ -14,7 +14,7 @@ import {
     isMissingShellTargetFloor,
     normalizeMissingShellScanRange,
     shouldRestoreMissingIndependentRetryShell,
-} from './missingRetryShell.js?rmv=1.62.70';
+} from './missingRetryShell.js?rmv=1.62.74';
 import {
     INDEPENDENT_GENERATION_INTENTS_KEY,
     INDEPENDENT_GENERATION_INTENT_TYPES,
@@ -24,7 +24,7 @@ import {
     currentRuntime,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.62.70';
+} from './runtime.js?rmv=1.62.74';
 import {
     ACTIVE_GENERATION_WAIT_MS,
     FINAL_RENDER_POLL_INTERVAL_MS,
@@ -38,7 +38,7 @@ import {
     markAutomaticFailureStop,
     operationEpochForBase,
     pending,
-} from './flights.js?rmv=1.62.70';
+} from './flights.js?rmv=1.62.74';
 import {
     appendHistoryEntry,
     chatPersistenceSlot,
@@ -48,7 +48,7 @@ import {
     synchronizeIndependentChatPersistence,
     writePersistedOwner,
     writeStore,
-} from './persistence.js?rmv=1.62.70';
+} from './persistence.js?rmv=1.62.74';
 import {
     activeGlobalWorldInfoCapture,
     assistantMessages,
@@ -98,7 +98,7 @@ import {
     withOwnerLockStoreBatch,
     writeActiveGlobalWorldInfoCapture,
     writeHostModule,
-} from './connection.js?rmv=1.62.70';
+} from './connection.js?rmv=1.62.74';
 import {
     allExternalHosts,
     externalHosts,
@@ -106,7 +106,7 @@ import {
     removeEmptyFollowExternalAnchors,
     removeEmptyInlineAnchors,
     withExternalHostSyncIndex,
-} from './request.js?rmv=1.62.70';
+} from './request.js?rmv=1.62.74';
 import {
     beginHostWorkTiming,
     clearExternalHostFreshSourceState,
@@ -139,7 +139,7 @@ import {
     setPlaceholderSummary,
     usableReadyDetails,
     withRestorableHtmlCacheBatch,
-} from './geometry.js?rmv=1.62.70';
+} from './geometry.js?rmv=1.62.74';
 import {
     INDEPENDENT_INTENT_OWNER,
     abortFlight,
@@ -193,7 +193,7 @@ import {
     serializeExternalFaceDetails,
     stampAutomaticAuthorizationEpoch,
     withHistoricalRestoreLightPass,
-} from './mount.js?rmv=1.62.70';
+} from './mount.js?rmv=1.62.74';
 import {
     automaticGenerationCutovers,
     hostGenerationHintStartedAt,
@@ -218,7 +218,7 @@ import {
     writeStartupHistoryFallbackRoot,
     writeSyncRunning,
     writeSyncTimer,
-} from './lifecycle.js?rmv=1.62.70';
+} from './lifecycle.js?rmv=1.62.74';
 
 let earlyBodyParserPromise=null;
 
@@ -341,7 +341,7 @@ function settleEarlyBodyAtFinal(ctx,index){
 
 async function probeIndependentEarlyBody(packet,sequence){
  if(!earlyBodyPacketCurrent(packet)) return;
- if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.62.70')
+ if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.62.74')
   .then(module=>{earlyBodyParser=module;return module;}).catch(()=>{earlyBodyParserPromise=null;return null;});
  const parser=await earlyBodyParserPromise;
  if(!parser || sequence!==earlyBodyProbeSequence || !earlyBodyPacketCurrent(packet)) return;
