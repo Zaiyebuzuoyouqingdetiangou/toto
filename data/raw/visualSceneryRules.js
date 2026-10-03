@@ -1,4 +1,4 @@
-export const VISUAL_SCENERY_RULES = String.raw`
+export const VISUAL_SCENERY_CONSTRUCTION_RULES = String.raw`
 【Visual Scenery 动态画面本体】
 可从正文氛围、念头或联想自由生成风景、物件、空间或象征构图，不必复刻当前场景；亲密感官意味改为诗意化表达。
 
@@ -6,7 +6,9 @@ export const VISUAL_SCENERY_RULES = String.raw`
 生成前先从本轮正文中寻找最具有视觉表现力、叙事张力或情绪余韵的核心。核心可以取自正文中的任何内容，例如人物关系、动作、事物、情绪意象、回忆、想象、可能性、时间、空间或风景；例子仅用于启发，不构成范围限制。
 
 <details> 内首个主要内容块必须独立构成一幅构图完整、空间关系成立且持续动态的视觉画面，不得退化为横幅、装饰头图、背景板、简单空镜，或仅以 UI 卡片、信息面板、日志、报告、播放器和“静态画面加几个动点”代替。画面须围绕本轮叙事核心，按需要组合 HTML、内联 SVG 与 CSS，实际绘出主体轮廓、内部构件与空间关系，并用材质和光影形成层次；操作后先改变画面中对象的关系或状态，文字只作辅助反馈。不得让画面停留原状，只在下方展开大段文字来代替交互。
+`;
 
+export const VISUAL_SCENERY_MOTION_RULES = String.raw`
 至少一个占据明确视觉权重的主体、关系结构或环境层必须使用打开即运行的 CSS animation + @keyframes + infinite，并在 1 秒内产生肉眼可见的位移、旋转、缩放、形变、遮罩、流体或光影变化；仅微尘、小点、同色弱光、低对比闪烁或极慢小幅漂移不能单独算动画。应优先让叙事核心本身发生变化，并可与前景、背景、光影或象征元素协同运动，使整幅画面具有持续生命感。
 
 动画从本面景物、物件或关系的运动因果生长，例如落叶落花随风飘落、车辆行进与路面后移、命运红线牵引两端对象；例子只作启发，不固定套用。主体与环境在方向、节奏或因果上呼应；仅让整张文字卡片漂浮、无关法阵旋转或通用光点游走，不能充当主动画。已有 rotate/scale 等静态 transform 时须在关键帧中保留，或由外层容器承载动画。transition、hover、点击后变化或仅绘出静态 SVG 不能代替持续动画。
@@ -14,3 +16,6 @@ export const VISUAL_SCENERY_RULES = String.raw`
 【动态舞台落地】
 首个主要画面根节点必须写入 data-rm-visual-scenery="true"。画面必须具有可辨认的背景层、中景主体层与前景／叙事层；至少一条主动画和一条协同环境动画应在打开后立即循环运行。不得把“视频播放器外观”“播放按钮”“进度条”“静态海报加微粒”当作动态场景本体，也不得先搭通用卡片页面再把一张会动的头图放在上方。
 `;
+
+// Full text stays available to existing importers; the prompt places construction first.
+export const VISUAL_SCENERY_RULES = VISUAL_SCENERY_CONSTRUCTION_RULES + VISUAL_SCENERY_MOTION_RULES;

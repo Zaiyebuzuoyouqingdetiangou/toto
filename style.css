@@ -1330,8 +1330,8 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
   transform:translateY(1px) !important;
 }
 
-/* The mount carrier retains ownership/geometry only. Each face is the visible
- * frame, so its sibling pager cannot be painted inside that frame on mobile. */
+/* Pure external mode frames the title only. The carrier owns placement;
+ * authored body backgrounds, corners and margins remain independent. */
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"]{
   background:transparent !important;
   border:0 !important;
@@ -1339,32 +1339,18 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
   box-shadow:none !important;
   padding:0 !important;
 }
-#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"]{
-  border:var(--rm-shell-border-width, 1px) solid var(--rm-shell-border, rgba(0,0,0,.12)) !important;
-  border-radius:var(--rm-shell-radius, 18px) !important;
-  background:var(--rm-shell-surface, var(--rm-shell-bg, rgba(255,255,255,.97))) !important;
-  box-shadow:0 10px 26px var(--rm-shell-shadow, rgba(0,0,0,.10)) !important;
-  padding:0 !important;
-}
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"] > summary{
   width:100% !important;
   margin:0 !important;
-  border:0 !important;
-  box-shadow:none !important;
+  border:var(--rm-shell-border-width, 1px) solid var(--rm-shell-border, rgba(0,0,0,.12)) !important;
+  box-shadow:0 4px 12px var(--rm-shell-shadow, rgba(0,0,0,.08)) !important;
   background:var(--rm-shell-header-bg, var(--rm-shell-surface, var(--rm-shell-bg, transparent))) !important;
   color:var(--rm-shell-header-text, var(--rm-shell-text, inherit)) !important;
   -webkit-text-fill-color:currentColor !important;
-  border-radius:calc(var(--rm-shell-radius, 18px) - var(--rm-shell-border-width, 1px)) !important;
+  border-radius:var(--rm-shell-radius, 16px) !important;
 }
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"][open] > summary{
-  margin-bottom:0 !important;
-  border-radius:calc(var(--rm-shell-radius, 18px) - var(--rm-shell-border-width, 1px)) calc(var(--rm-shell-radius, 18px) - var(--rm-shell-border-width, 1px)) 0 0 !important;
-  border-bottom:var(--rm-shell-border-width, 1px) solid var(--rm-shell-border, rgba(0,0,0,.10)) !important;
-}
-#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"][data-rm-shell-integrated="true"] > details[data-rabbit-mirror-external-details="true"] > [data-rm-shell-integrated-body="true"]{
-  margin-top:0 !important;
-  border-top-left-radius:0 !important;
-  border-top-right-radius:0 !important;
+  margin-bottom:8px !important;
 }
 /* Pager colour is local to these runtime controls, independent of artwork and
  * host-theme ink. Keep native handlers and owner ancestry; do not wrap art. */
