@@ -6,7 +6,7 @@ import {
     escapeRegExp,
     getRabbitMirrorLocalStyleElements,
     hashInteractionSignature,
-} from './runtime.js?rmv=1.62.78';
+} from './runtime.js?rmv=1.62.80';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     DIRECT_ID_CLASS_STATE_RESCUE_ATTR,
@@ -22,20 +22,21 @@ import {
     repairMalformedNestedInteractiveLabels,
     repairRabbitMirrorSelectorPanelGridSpan,
     restoreInteractionInlineOverrides,
-} from './checkedStateRescue.js?rmv=1.62.78';
+} from './checkedStateRescue.js?rmv=1.62.80';
 import {
     RAW_SELF_MUTATION_RESCUE_ATTR,
     chooseMatchingRawRabbitMirrorRoot,
     getRawAssistantMessageForRenderedRoot,
-} from './scriptedInteractionRescue.js?rmv=1.62.78';
+} from './scriptedInteractionRescue.js?rmv=1.62.80';
 import {
     applyCheckedVisualFallback,
     inputHasMeaningfulCheckedSiblingRule,
     installIntelligentInteractionRescue,
-} from './fallbackRescue.js?rmv=1.62.78';
-import { INERT_ACTION_BUTTON_RESCUE_ATTR, INERT_ACTION_STATUS_ATTR } from './diagnostics.js?rmv=1.62.78';
-import { rehydrateRabbitMirrorMaintenanceRepairs } from './choiceRescue.js?rmv=1.62.78';
-import { maintenanceRepairRootBudget } from './maintenanceInspect.js?rmv=1.62.78';
+} from './fallbackRescue.js?rmv=1.62.80';
+import { INERT_ACTION_BUTTON_RESCUE_ATTR, INERT_ACTION_STATUS_ATTR } from './diagnostics.js?rmv=1.62.80';
+import { rehydrateRabbitMirrorMaintenanceRepairs } from './choiceRescue.js?rmv=1.62.80';
+import { maintenanceRepairRootBudget } from './maintenanceInspect.js?rmv=1.62.80';
+import { installBehaviorInteractions } from './behaviorInteractions.js?rmv=1.62.80';
 
 let interactionScopeCounter = 0;
 
@@ -133,7 +134,7 @@ function rewriteCssIdReferences(cssText, idMap) {
         // 典型模型输出：#d1:checked ~ label[for="d1"] div。
         // 过去只改写 #d1 与真实 label.for，遗漏了 style 文本中的 [for="d1"]，
         // 导致整条选择器永久失配。这里只处理明确承载 ID 引用的属性。
-        for (const attr of ['id', 'for', 'aria-controls', 'aria-labelledby', 'aria-describedby']) {
+        for (const attr of ['id', 'for', 'aria-controls', 'aria-labelledby', 'aria-describedby', 'popovertarget', 'commandfor']) {
             css = css.replace(
                 new RegExp(`(\\[\\s*${attr}\\s*=\\s*["'])${escaped}(["']\\s*\\])`, 'gi'),
                 `$1${newId}$2`,
@@ -207,7 +208,7 @@ function collectCurrentIdsToScope(toto, elementsById, mappedValues = new Set()) 
         if (id && !mappedValues.has(id)) idsToScope.add(id);
     });
 
-    toto.querySelectorAll('label[for], [href^="#"], [xlink\\:href^="#"], [aria-controls], [aria-labelledby], [aria-describedby]').forEach(el => {
+    toto.querySelectorAll('label[for], [href^="#"], [xlink\\:href^="#"], [aria-controls], [aria-labelledby], [aria-describedby], [popovertarget], [commandfor]').forEach(el => {
         const forValue = el.getAttribute('for');
         if (forValue && existingIds.has(forValue) && !mappedValues.has(forValue)) idsToScope.add(forValue);
         for (const attr of ['href', 'xlink:href']) {
@@ -215,7 +216,7 @@ function collectCurrentIdsToScope(toto, elementsById, mappedValues = new Set()) 
             const id = value?.startsWith('#') ? value.slice(1) : '';
             if (id && existingIds.has(id) && !mappedValues.has(id)) idsToScope.add(id);
         }
-        for (const attr of ['aria-controls', 'aria-labelledby', 'aria-describedby']) {
+        for (const attr of ['aria-controls', 'aria-labelledby', 'aria-describedby', 'popovertarget', 'commandfor']) {
             const value = el.getAttribute(attr);
             if (value) value.split(/\s+/).filter(Boolean).forEach(id => {
                 if (existingIds.has(id) && !mappedValues.has(id)) idsToScope.add(id);
@@ -450,7 +451,7 @@ function synchronizeInteractionReferences(toto, idMap, aliasMap = new Map()) {
         }
     });
 
-    for (const attr of ['aria-controls', 'aria-labelledby', 'aria-describedby']) {
+    for (const attr of ['aria-controls', 'aria-labelledby', 'aria-describedby', 'popovertarget', 'commandfor']) {
         toto.querySelectorAll(`[${attr}]`).forEach(el => {
             el.setAttribute(attr, replaceIdReferenceTokens(el.getAttribute(attr), idMap));
         });
@@ -646,6 +647,7 @@ export function scopeRabbitMirrorInteractionIds(toto, { installRescue = true } =
     const aliasMap = augmentInteractionReferenceAliases(toto, state.idMap);
     synchronizeInteractionReferences(toto, state.idMap, aliasMap);
     if (installRescue) {
+        installBehaviorInteractions(toto);
         installIntelligentInteractionRescue(toto);
         // Structural Grid result panels are safe to normalize once the scoped ids/labels
         // have been synchronized. This does not depend on viewport size or panel visibility.

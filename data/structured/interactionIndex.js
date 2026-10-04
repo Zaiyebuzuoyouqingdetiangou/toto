@@ -1,6 +1,6 @@
 // One draw entry per broad interaction class. Specific objects and controls follow the selected medium.
 // Flattened legacy IDs resolve saved selections/history only; retired templates never enter the draw pool.
-export const INTERACTION_RECIPE_REPLACEMENTS = Object.freeze({
+const LEGACY_INTERACTION_CLASSES = Object.freeze({
     "hinged-open": "open-reveal",
     "sliding-open": "open-reveal",
     "peel-layer": "open-reveal",
@@ -83,15 +83,47 @@ export const INTERACTION_RECIPE_REPLACEMENTS = Object.freeze({
     "stencil-reading": "explore-navigate"
 });
 
+// Read-only compatibility. Retired classes never enter the draw pool.
+const RETIRED = Object.freeze({
+ 'open-reveal':'object-transform','explore-navigate':'viewport-explore',
+ 'assemble-disassemble':'drag-combine','overlay-align':'drag-combine',
+ 'compare-correspond':'scene-switch','condition-linkage':'continuous-adjust',
+ 'combine-feedback':'accumulate','connect-transmit':'input-draw',
+ 'motion-control':'progress-control','trace-develop':'local-reveal',
+});
+const PRECISE_LEGACY = {
+ 'turn-over':'flip','page-turn':'scene-switch','popup-rise':'popup',
+ 'folded-insert':'fold','peel-layer':'local-reveal','redaction-lift':'local-reveal',
+ 'curtain-part':'local-reveal','transparent-layer':'layer-control','layer-discovery':'layer-control',
+ 'scroll-strip':'scroll-browse','scroll-panorama':'scroll-browse','shape-change':'object-transform',
+ 'unfold-object':'object-transform','hinged-open':'object-transform','sliding-open':'object-transform',
+ 'stack-collection':'accumulate','stamp-imprint':'accumulate','connect-stars':'input-draw',
+ 'thread-eyelets':'input-draw','flashlight-sweep':'pointer-follow',
+};
+export const INTERACTION_RECIPE_REPLACEMENTS = Object.freeze({
+ ...Object.fromEntries(Object.entries(LEGACY_INTERACTION_CLASSES).map(([old,broad])=>[old,PRECISE_LEGACY[old] || RETIRED[broad]])),
+ ...RETIRED,
+});
+
+// Observable behaviors, without a story template, palette or control-count quota.
 export const INTERACTION_RECIPES = Object.freeze([
-    {"id":"open-reveal","family":"opening","title":"开合显露","mechanism":"native","fit":["盒","门","柜","窗","容器","机关","锁","钥匙","宝箱","保险箱","匣","抽屉","唱片","卡带","票","签","卷","胶片","信","报纸","纸","帘","舞台","剧场","scenery","风景","封","包装","贴","标签","海报","袋","信封","收纳","行李","档案","报告","证词","机密","新闻","公文","卷宗","地图","折","书","扇","花","立体书","贺卡","明信片","纸艺","绘本","剪纸","卡","牌","照片","标本","证件","硬币","结构","模型","机械","人体","剖","房","屋","建筑","空间","箱","册","日记","报","杂志","画集","手账","相册"],"universal":false,"code":"I.01","summary":"操作本体→显露或收回另一面及内部内容","sceneryCompatible":true,"pairingGroup":"","effect":"object_state"},
-    {"id":"explore-navigate","family":"exploration","title":"浏览探查","mechanism":"native","fit":["天体","模型","机械","物件","雕","罗盘","轮","仪","地图","旅","轨","路线","棋","跑团","游戏","物流","星","月","周期","钟","传递","流水","工坊","故事板","分镜","照片","标本","信","画","收藏","观察","物品","背包","展","商店","柜","迷宫","分支","故事","小说","日记","剧本","城市","地标","地理","书","报","档案","文","手账","记录","册","菜单","校样","稿","文献","卷","胶片","相册","连环","画集","时间轴","风景","scenery","场景","长卷","镜","图","纸","证据","空间","舞台","建筑"],"universal":true,"code":"I.02","summary":"沿位置或分支查看→呈现对应空间与局部细节","sceneryCompatible":false,"pairingGroup":"","effect":"local_evidence"},
-    {"id":"assemble-disassemble","family":"assembly","title":"组装拆分","mechanism":"native","fit":["拼","机械","玩具","模型","烹饪","修","工坊","装配","服","装扮","衣","玩偶","人物","造型","搭配","收藏","标本","物品","堆","展","清单","织","绳","布","丝","拼图","碎片","地图","照片","拼贴","残片","物件","仪","装置","分层","信件","书信","信笺","旗","海报","票","纸条","手账"],"universal":false,"code":"I.03","summary":"组合或拆分部件→主体构成随之变化","sceneryCompatible":true,"pairingGroup":"","effect":"object_state"},
-    {"id":"overlay-align","family":"overlay","title":"叠合对位","mechanism":"native","fit":["线索","侦","照片","地图","档案","证据","图","票据","画作","滤镜","胶片","底片","密信","印","版","海报","纸","标本","仪","物件","机械","模型","工坊"],"universal":false,"code":"I.04","summary":"叠合或调整相对位置→显出重合、差异或对应","sceneryCompatible":true,"pairingGroup":"","effect":"object_state"},
-    {"id":"compare-correspond","family":"comparison","title":"对照比较","mechanism":"native","fit":["时间","照片","修","记忆","物品","历史","对照","年代","年轮","信","书","报","档案","文献","记录","日记","论文","报告","注释","学术","教材","古籍","书籍","百科","镜","水面","车窗","倒影","玻璃","梳妆"],"universal":true,"code":"I.05","summary":"选取对应内容→看清异同与前后变化","sceneryCompatible":true,"pairingGroup":"","effect":"local_evidence"},
-    {"id":"condition-linkage","family":"condition","title":"条件联动","mechanism":"native","fit":["情绪","花","生长","变形","天气","液","可视化","植物","生命","月相","周期","冰","蜡烛","墨迹","雪","融化","调酒","实验","料理","烹饪","食谱","菜谱","场景","风景","物件","舞台","摄影","光","scenery","夜","洞","地窖","暗室","密室","探险","废墟","手电","布","服","材质","装修","工艺","商店","季","雨","水面","水位","潮汐","大海","海边","湖","河流","鱼缸"],"universal":false,"code":"I.06","summary":"改变条件→同一主体及相关环境联动","sceneryCompatible":true,"pairingGroup":"","effect":"object_state"},
-    {"id":"combine-feedback","family":"combination","title":"组合反馈","mechanism":"native","fit":["锁","机关","谜","侦","游戏","跑团","实验","料理","烹饪","调","香","药","配方","饮","天平","秤","交易","物件","工坊","仪","编钟","风铃","铃","乐器","乐谱","音乐","演奏"],"universal":false,"code":"I.07","summary":"组合多项输入→产生对应的整体结果","sceneryCompatible":true,"pairingGroup":"","effect":"object_state"},
-    {"id":"connect-transmit","family":"connection","title":"连接传导","mechanism":"native","fit":["机械","电","线路","装置","机关","网络","关系","星图","人物","记忆","线索","绳","线","丝","衣","织","工坊","水","渠","管","scenery"],"universal":false,"code":"I.08","summary":"接通或断开关系→连接与关联对象共同响应","sceneryCompatible":false,"pairingGroup":"","effect":"object_state"},
-    {"id":"motion-control","family":"motion","title":"运行控制","mechanism":"native","fit":["机械","音乐","装置","钟","天体","scenery","动态","风景","舞台","场景","齿轮","钟表","水车","磨坊","机关","工坊","蒸汽","轨","仪","天气","八音盒","发条","玩具","怀表","音乐盒","人偶","花","烟花","波","水","骨牌","摆","沙漏","计时","倒计时","等待"],"universal":false,"code":"I.09","summary":"调节运动状态→实际对象改变运转方式","sceneryCompatible":true,"pairingGroup":"","effect":"object_state"},
-    {"id":"trace-develop","family":"trace","title":"留痕显影","mechanism":"native","fit":["印","章","票","契约","证件","纸","信","窗","镜","玻璃","车窗","冬","雾"],"universal":false,"code":"I.10","summary":"在表面施加或清除作用→留下或显出痕迹","sceneryCompatible":true,"pairingGroup":"","effect":"object_state"}
-].map(item => Object.freeze({ ...item, fit: Object.freeze(item.fit) })));
+ {id:'fold',title:'折叠',summary:'内容原位展开，再点收起；初始收起',mechanism:'fold',universal:true,effect:'reading_navigation',pairingGroup:'reading'},
+ {id:'popup',title:'弹窗',summary:'点击出现独立浮层，关闭后回到原处；初始关闭',mechanism:'popup',universal:true,effect:'local_evidence',pairingGroup:'reading'},
+ {id:'scene-switch',title:'整幕切换',summary:'当前画面换成另一页或下一幕，有明确返回；不能只切换长文字',mechanism:'screen',universal:true,effect:'scene_change',pairingGroup:'reading'},
+ {id:'trigger-effect',title:'触发效果',summary:'点击触发与内容有关的短动画，结束后可再次触发',mechanism:'effect',fit:['场景','舞台','烟花','灯','水','花','机关','装置','游戏','印'],sceneryCompatible:true,effect:'object_state',pairingGroup:'motion'},
+ {id:'flip',title:'翻面',summary:'同一物件翻到背面，再翻回正面；两面各有内容',mechanism:'flip',fit:['卡','牌','纸','照片','相册','证件','信','书','册','标本','硬币'],effect:'object_state',pairingGroup:'surface'},
+ {id:'drag-combine',title:'拖动与组合',summary:'物件随拖动真实移动、叠合、拼合或分离，可复原',mechanism:'drag',fit:['拼','碎片','图','照片','物件','装置','模型','工坊','玩具','纸','料理','服','收藏','仪'],sceneryCompatible:true,effect:'object_state',pairingGroup:'placement'},
+ {id:'continuous-adjust',title:'连续调节',summary:'调节幅度连续改变主体，途中有对应的中间状态',mechanism:'adjust',fit:['光','灯','水','仪','天气','场景','舞台','钟','机械','音乐','装置','料理','温度'],sceneryCompatible:true,effect:'object_state',pairingGroup:'continuous'},
+ {id:'local-reveal',title:'局部揭示',summary:'逐步移开遮挡，原位置露出下层画面，能够复原',mechanism:'reveal',universal:true,effect:'object_state',pairingGroup:'surface'},
+ {id:'viewport-explore',title:'视野操作',summary:'在同一主体内移动观察位置或放大细节，可以退回',mechanism:'view',fit:['图','地图','画','照片','场景','建筑','空间','模型','标本','展','镜','长卷'],sceneryCompatible:true,effect:'spatial_scroll',pairingGroup:'view'},
+ {id:'input-draw',title:'输入与绘制',summary:'输入文字或亲手描画，内容留在对象上并产生对应反馈，可清除',mechanism:'input',fit:['纸','信','书','册','图','画','星','线','手账','契约','机关','锁','游戏','乐谱'],sceneryCompatible:true,effect:'object_state',pairingGroup:'input'},
+ {id:'progress-control',title:'进程控制',summary:'控制真实运动的暂停、继续、进度或方向，不以静态说明代替',mechanism:'motion',fit:['机械','音乐','钟','装置','动态','轨','舞台','沙漏','天气','水','车','发条','摆'],sceneryCompatible:true,effect:'object_state',pairingGroup:'motion'},
+ {id:'scroll-browse',title:'连续滑动浏览',summary:'手指推动长卷、相册或场景连续移动，松手自然停靠',mechanism:'scroll',universal:true,effect:'spatial_scroll',pairingGroup:'view'},
+ {id:'hold-preview',title:'临时预览',summary:'按住时显现另一层或照亮局部，松开立即恢复',mechanism:'hold',universal:true,effect:'local_evidence',pairingGroup:'surface'},
+ {id:'layer-control',title:'图层控制',summary:'底图不换，各层可独立显隐并同时叠加，状态彼此独立',mechanism:'layers',universal:true,effect:'object_state',pairingGroup:'surface'},
+ {id:'object-transform',title:'物件开合与变形',summary:'盒盖、抽屉、纸张或部件真实开合、伸缩或转动，能复原',mechanism:'transform',fit:['盒','柜','门','窗','箱','匣','抽屉','纸','书','扇','花','模型','机械','装置','建筑','玩具','物件'],sceneryCompatible:true,effect:'object_state',pairingGroup:'surface'},
+ {id:'pointer-follow',title:'跟随反馈',summary:'触点移动时，光斑、线端或对应物件连续跟随',mechanism:'follow',fit:['光','灯','线','绳','图','镜','场景','舞台','仪','装置','星'],sceneryCompatible:true,effect:'object_state',pairingGroup:'continuous'},
+ {id:'reorder',title:'动态重排',summary:'移动卡片或物件改变实际排列，其余物件重新让位，可复原',mechanism:'reorder',fit:['卡','牌','图','照片','相册','拼','物件','标本','收藏','书','册','清单','分镜','工坊'],sceneryCompatible:true,effect:'object_state',pairingGroup:'placement'},
+ {id:'accumulate',title:'累积改变',summary:'每次操作保留此前变化，逐项点亮、取走或完成，并可撤回',mechanism:'accumulate',fit:['灯','星','花','拼','物件','收藏','图','清单','游戏','仪','装置','纸','印'],sceneryCompatible:true,effect:'object_state',pairingGroup:'input'},
+].map((item,index)=>Object.freeze({family:item.id,universal:false,sceneryCompatible:false,...item,
+ code:'I.'+String(index+1).padStart(2,'0'),fit:Object.freeze(item.fit || [])})));

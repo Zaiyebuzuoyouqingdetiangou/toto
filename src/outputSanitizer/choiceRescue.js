@@ -1,12 +1,14 @@
 // Split from outputSanitizer.js — choiceRescue.
 
+import { hasBehaviorInteractionControl, isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.62.80';
+
 import {
     FEEDBACK_CAT_ATTR,
     MAINTENANCE_RABBIT_ATTR,
     RECIPE_BUTTON_ATTR,
     TOOL_ENTRY_HOST_ATTR,
     escapeCssIdentifier,
-} from './runtime.js?rmv=1.62.78';
+} from './runtime.js?rmv=1.62.80';
 import {
     DETACHED_CHECKED_HAS_CONTROL_ATTR,
     DIRECT_ID_CLASS_STATE_RESCUE_ATTR,
@@ -14,7 +16,7 @@ import {
     HINTED_PSEUDO_RESCUE_ATTR,
     INLINE_PSEUDO_RESCUE_ATTR,
     interactionCapabilityStates,
-} from './checkedStateRescue.js?rmv=1.62.78';
+} from './checkedStateRescue.js?rmv=1.62.80';
 import {
     RENDERED_BUTTON_ADJACENT_HIDDEN_RESCUE_ATTR,
     RENDERED_CLICKABLE_ADJACENT_HIDDEN_RESCUE_ATTR,
@@ -24,13 +26,13 @@ import {
     findRenderedClickableAdjacentHiddenTarget,
     findRenderedClickableAdjacentPopupTarget,
     getClassTokens,
-} from './renderedStateRescue.js?rmv=1.62.78';
+} from './renderedStateRescue.js?rmv=1.62.80';
 import {
     RAW_SELF_MUTATION_RESCUE_ATTR,
     detectInteractionCapabilities,
     filterRabbitMirrorRuntimeText,
     isRabbitMirrorRuntimeTextTarget,
-} from './scriptedInteractionRescue.js?rmv=1.62.78';
+} from './scriptedInteractionRescue.js?rmv=1.62.80';
 import {
     DISABLED_ONLY_CHOICE_CONTROL_ATTR,
     DISABLED_ONLY_CHOICE_RESCUE_ATTR,
@@ -70,8 +72,8 @@ import {
     fillInChoiceRescueStates,
     staticChoiceSelectionRescueStates,
     structuredStaticDisclosureRescueStates,
-} from './diagnostics.js?rmv=1.62.78';
-import { maintenanceCheckedInteractionDepth } from './maintenanceInspect.js?rmv=1.62.78';
+} from './diagnostics.js?rmv=1.62.80';
+import { maintenanceCheckedInteractionDepth } from './maintenanceInspect.js?rmv=1.62.80';
 
 const STATIC_CHOICE_TITLE_RE = /^(?:选项|选择|方案|路线|分支|抉择|结局|行动|choice|option|route|path)\s*(?:[A-Z0-9一二三四五六七八九十]+)?\s*[:：·\-—]/i;
 
@@ -223,6 +225,7 @@ export function findStaticChoiceSelectionCandidates(root) {
     const candidates = [];
     const managedGroups = new Set((staticChoiceSelectionRescueStates.get(root)?.entries || []).map(entry => entry.group));
     for (const group of diagnosticQueryContentAll(root, 'div, section, article, main, ul, ol')) {
+        if (isBehaviorInteractionOwned(group)) continue;
         if (managedGroups.has(group)) continue;
         const managedAncestor = group.parentElement?.closest?.(`[${STATIC_CHOICE_SELECTION_RESCUE_ATTR}]`);
         if (managedAncestor && managedGroups.has(managedAncestor)) continue;
@@ -987,6 +990,7 @@ function inertActionStatusMessage(button) {
 
 function buttonHasKnownInteractionRoute(button, root) {
     if (!button || !root) return true;
+    if (hasBehaviorInteractionControl(root, button)) return true;
     if (diagnosticIsInternalUiNode(button) || button.closest?.('summary, form, label')) return true;
     if (button.disabled) return true;
     if (button.hasAttribute?.('onclick') || button.hasAttribute?.('onchange') || button.hasAttribute?.('oninput')) return true;

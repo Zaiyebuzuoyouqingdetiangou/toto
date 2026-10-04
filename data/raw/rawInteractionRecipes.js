@@ -1,27 +1,46 @@
-// Broad actions and visible feedback; the selected presentation supplies objects, appearance and controls.
-const DETAILS = Object.freeze({
-    "open-reveal": Object.freeze({"action":"通过本体原有的开合、翻面或层次关系查看内容，并能还原","result":"被遮挡的部位或内容在原对象处显露，开合状态与承载结构一致"}),
-    "explore-navigate": Object.freeze({"action":"在本体内选择部位、移动视点或沿路径浏览，支持返回","result":"位置、视角或局部细节真实变化，所见内容与原主体保持对应"}),
-    "assemble-disassemble": Object.freeze({"action":"添加、连接或拆开本体的组成部分，并能撤回操作","result":"部件的位置、连接与整体构成实际变化，部分与整体保持对应"}),
-    "overlay-align": Object.freeze({"action":"叠放相关图层或调整它们的相对位置，可分开查看","result":"重合与错位在原位置直接可见，并显出内容之间的关系"}),
-    "compare-correspond": Object.freeze({"action":"选择同一对象的不同时刻、状态或相互对应的内容进行比较","result":"对应关系与差异清楚可见，保留比较所需的参照"}),
-    "condition-linkage": Object.freeze({"action":"调整与内容有关的条件，使同一主体进入对应状态","result":"形态、材质或环境随条件发生相关变化，各部位的表现相互一致"}),
-    "combine-feedback": Object.freeze({"action":"选择或撤回相互作用的输入，观察不同组合产生的结果","result":"结果由当前组合共同决定，在对应主体上可见，并与各输入状态一致"}),
-    "connect-transmit": Object.freeze({"action":"建立、切换或断开对象之间的联系或通路","result":"连接准确落到对应对象，关联状态或传导过程沿实际关系变化"}),
-    "motion-control": Object.freeze({"action":"通过本体的操作入口调节与内容有关的运动","result":"实际运动对象的运行状态随操作改变，反馈与当前运动一致"}),
-    "trace-develop": Object.freeze({"action":"对内容中的表面施加作用，留下、显现或清除相关痕迹","result":"痕迹出现在受作用的位置，并与材料和操作过程对应"})
-});
-
-export function resolveInteractionDetail(id) {
-    return Object.prototype.hasOwnProperty.call(DETAILS, id) ? DETAILS[id] : null;
-}
-
+// Only drawn mechanisms are sent. Drivers act inside the annotated object;
+// generated scripts are never executed and no appearance is imposed.
 export const INTERACTION_MECHANISMS = Object.freeze({
-    "native": "依本面操作选择原生 checkbox、radio、details/summary 或滚动；label 指向唯一 id，互斥 radio 共用面内独立组名，以 :checked 或 [open] 联动实际对象；组合结果对应实际状态，切换可返回，滚动保留触屏操作。",
-    "toggle": "checkbox 保存开合状态，label for 指向唯一 id；input 放在所控对象之前的共同父层，以 :checked ~ .stage .part 改变实际部件；再次点击复原。",
-    "choice": "同一面的 radio 共享面内唯一 name，预设一个 checked；label for 对应各 id，以 #state:checked ~ .stage .part 改变物件或对应内容；提供可返回入口。",
-    "combine": "独立 checkbox 放在同一共同父层，后置主体；以 #a:checked ~ #b:checked ~ .stage 及单状态规则表示实际可枚举组合；取消选择能回退，不做未实现的实时运算。",
-    "disclosure": "使用原生 details/summary，以 details[open] 控制局部边缘或附页外观；正文和附页留在正常流，不依赖外部事件。",
-    "scroll": "镜内可横滚容器使用 max-width:100%;overflow-x:auto;scroll-snap-type:x proximity，子项 scroll-snap-align:start；触屏原生滚动，保留滚动线索与可聚焦入口。",
-    "motion": "checkbox :checked 联动主体 animation-play-state:running/paused，默认态可读；动效尊重 prefers-reduced-motion，并保留静态操作结果。"
+ fold:'原生 details/summary 初始不带 open；展开内容紧邻入口，再点收起。',
+ popup:'button popovertarget 对应本面唯一 id 的 div popover；内置关闭按钮 popovertargetaction="hide"，不预先展开。',
+ screen:'radio 配合 :checked 切换完整画面，只显示当前幕；下一幕内放返回入口，不能只切换说明段落。',
+ effect:'局部 data-rm-ui="effect" 内，button data-rm-fire 触发 data-rm-part 上真实关键帧，每次点击从头播放。',
+ flip:'checkbox :checked 驱动同一物件 rotateY；正背面背向隐藏，再点翻回，不能同时堆出两面。',
+ drag:'容器 data-rm-ui="drag"，可拖物件 data-rm-item="键"，可选同键 data-rm-slot 为吸附槽；button data-rm-reset 复原。',
+ adjust:'局部 data-rm-ui="adjust" 内放 range；驱动器更新 --rm-p(0～1)和 --rm-value，CSS须据此连续改变实际主体。',
+ reveal:'局部 data-rm-ui="reveal" 包住底图与 data-rm-cover 遮层；range 或横拖逐步揭开；button data-rm-reset 复原。',
+ view:'局部 data-rm-ui="view" 可滚动浏览 data-rm-part；range(min=1,max=3,step=.01)连续缩放该画面；button data-rm-reset 还原。',
+ input:'局部 data-rm-ui="input" 内用 input type="text"＋output，文字原位显示；可选 data-rm-answer 校验并用 [data-rm-match="true"] 显示反馈。绘制则用 data-rm-ui="draw"＋svg data-rm-canvas；button data-rm-reset 清除。',
+ motion:'局部 data-rm-ui="motion" 内 data-rm-part 保留真实动画；button data-rm-play 暂停/继续，range 调进度，可选 button data-rm-reverse 倒放；开场动画要求照常。',
+ scroll:'局部 overflow-x:auto＋scroll-snap-type:x proximity，子项 scroll-snap-align:start；原生触屏滚动，不自动跳页。',
+ hold:'局部 data-rm-ui="hold" 的 button data-rm-hold；按住设置 [data-rm-active="true"]，松开清除，CSS据此改变对应画面。',
+ layers:'每层各用独立 checkbox，以 :checked 改变对应图层显隐；底图保留，多个勾选可同时生效。',
+ transform:'checkbox :checked 改变实际部件的 transform/clip-path 等；转轴和连接跟随物件结构，再点复原。',
+ follow:'局部 data-rm-ui="follow" 内 CSS 用 --rm-x/--rm-y(像素)定位光斑或线端；触摸区 data-rm-surface，拖动连续更新坐标。',
+ reorder:'容器 data-rm-ui="reorder"，同父层各项 data-rm-item；拖放重排，项内可加 button data-rm-prev/data-rm-next；button data-rm-reset 复原。',
+ accumulate:'局部 data-rm-ui="accumulate" 内每项 button data-rm-step，点击切换自身 [data-rm-done="true"]；--rm-count 记录完成数，CSS改变对应实物；data-rm-reset 撤回全部。',
 });
+const DETAILS=Object.freeze({
+ fold:['展开或收起相邻内容','收起时内容隐藏且不占正文空间'],
+ popup:['打开后阅读，再关闭','浮层关闭后保留原来位置和主体状态'],
+ 'scene-switch':['进入下一幕并返回','场景主体与内容一起切换'],
+ 'trigger-effect':['点击本体触发一次变化','动画与被操作的对象有关，可重复触发'],
+ flip:['翻到物件背面再返回','正背面附着同一物件'],
+ 'drag-combine':['拖动物件，叠合或放入对应位置','位置与组合关系实际改变'],
+ 'continuous-adjust':['连续改变调节幅度','中间幅度对应中间画面状态'],
+ 'local-reveal':['逐步移开遮挡','下层画面沿操作位置显露'],
+ 'viewport-explore':['移动视野或放大后退回','观察同一主体的其他部分'],
+ 'input-draw':['输入或描画后查看反馈','留下实际文字或线条，可清除重来'],
+ 'progress-control':['操作运行中的对象','运动进度、方向或播放状态真实变化'],
+ 'scroll-browse':['滑动连续内容','视口随手指移动并自然停靠'],
+ 'hold-preview':['按住查看，松开恢复','临时画面只在按住时出现'],
+ 'layer-control':['分别打开或关闭不同层','图层可同时叠加，底图保持'],
+ 'object-transform':['打开或改变物件形态，再复原','部件位置与轮廓随之变化'],
+ 'pointer-follow':['在局部画面移动触点','对应部件连续跟随触点'],
+ reorder:['把物件移到新的次序','布局与排列顺序实际改变'],
+ accumulate:['连续操作多个物件，再撤回','前次变化保留，完成状态累积'],
+});
+export function resolveInteractionDetail(id){
+ const entry=Object.hasOwn(DETAILS,id) ? DETAILS[id] : null;
+ return entry ? {action:entry[0],result:entry[1]} : null;
+}

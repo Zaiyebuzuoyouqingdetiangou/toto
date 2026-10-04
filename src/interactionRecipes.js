@@ -1,5 +1,5 @@
-import { resolveInteractionDetail, INTERACTION_MECHANISMS } from '../data/raw/rawInteractionRecipes.js?rmv=1.62.78';
-import { INTERACTION_RECIPES, INTERACTION_RECIPE_REPLACEMENTS } from '../data/structured/interactionIndex.js?rmv=1.62.78';
+import { resolveInteractionDetail, INTERACTION_MECHANISMS } from '../data/raw/rawInteractionRecipes.js?rmv=1.62.80';
+import { INTERACTION_RECIPES, INTERACTION_RECIPE_REPLACEMENTS } from '../data/structured/interactionIndex.js?rmv=1.62.80';
 
 const BY_ID = new Map(INTERACTION_RECIPES.map(recipe => [recipe.id, recipe]));
 
@@ -151,12 +151,13 @@ export function buildInteractionRecipeRule(faceContexts, rawPolicy = 'balanced',
             const scope = `第 ${index + 1} 面${face.atmosphereFaces ? `／仅选签 ${ticketIndex + 1} 时` : ''}`;
             for (const recipe of interactionRecipesFor(candidate.combo)) {
             let entry = `${scope}：${recipe.code}「${recipe.title}｜${recipe.summary}」`;
-            // Compact never resolves detailed material. Other policies resolve only drawn IDs.
-            if (rawPolicy !== 'compact') {
+            // Summary already states action + result. Full alone adds detail;
+            // every policy still needs the selected executable contracts.
+            if (rawPolicy === 'full') {
                 const detail = resolveInteractionDetail(recipe.id);
                 if (detail) entry += `\n操作：${detail.action}。\n可见结果：${detail.result}。`;
-                if (rawPolicy === 'full') mechanisms.add(recipe.mechanism);
             }
+            mechanisms.add(recipe.mechanism);
             assignments.push(entry);
             }
         }
@@ -167,7 +168,7 @@ export function buildInteractionRecipeRule(faceContexts, rawPolicy = 'balanced',
         ? `共用适用规则【${numbers.map(number => `第 ${number} 面 HTML`).join('；')}】\n${constructionRule}`
         : '先构造展现形式本体，再把本签各项操作与可见结果安放到它实际具备的部件、内容区域和使用流程。各交互共同服务同一个媒介，不各自搭一张无关卡片；同一种交互可复用于多个对象，不限制控件数量。用户明确玩法与原形式固有功能优先，不为交互签更换媒介。';
     if (!assignments.length) return construction;
-    const implementation = mechanisms.size ? `\n本轮实现依据（各列一次，标识符须面内唯一）：\n${[...mechanisms].map(key => `${key}：${INTERACTION_MECHANISMS[key]}`).join('\n')}` : '';
+    const implementation = mechanisms.size ? `\n本轮实现依据（仅抽中项；标识限本面；不执行模型脚本）：\n${[...mechanisms].map(key => INTERACTION_MECHANISMS[key]).join('\n')}` : '';
     return `交互构造库【第三抽取池；仅下列 HTML 面／选中签适用】：
 ${construction}
 ${assignments.join('\n\n')}${implementation}`;
