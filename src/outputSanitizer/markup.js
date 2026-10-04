@@ -1,9 +1,9 @@
-import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.62.65';
+import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.62.82';
 // Split from outputSanitizer.js — markup.
 
-import { getSettings } from '../settings.js?rmv=1.62.65';
-import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.62.65';
-import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.62.65';
+import { getSettings } from '../settings.js?rmv=1.62.82';
+import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.62.82';
+import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.62.82';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     INTERACTION_HOME_ATTR,
@@ -15,7 +15,7 @@ import {
     clearMirrorTitleDisplayArtifacts,
     escapeRegExp,
     hashInteractionSignature,
-} from './runtime.js?rmv=1.62.65';
+} from './runtime.js?rmv=1.62.82';
 
 const TOTO_BLOCK_RE = /<toto\b[\s\S]*?<\/toto>/gi;
 
@@ -1978,9 +1978,11 @@ function visitSimpleCssClassTokens(selectorText, visitor) {
             output += char;
             continue;
         }
-        if (char === '.' && /[A-Za-z_]/.test(source[index + 1] || '')) {
+        // Read the whole literal identifier: generated classes can include
+        // Chinese names. A partial CSS rename would leave the DOM unmapped.
+        if (char === '.' && /[A-Za-z_\u0080-\uFFFF]/.test(source[index + 1] || '')) {
             let end = index + 2;
-            while (end < source.length && /[\w-]/.test(source[end])) end += 1;
+            while (end < source.length && /[\w\u0080-\uFFFF-]/.test(source[end])) end += 1;
             const className = source.slice(index + 1, end);
             const replacement = typeof visitor === 'function' ? visitor(className) : className;
             output += `.${replacement || className}`;

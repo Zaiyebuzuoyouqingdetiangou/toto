@@ -1,5 +1,4 @@
-import { paletteGroupLabels } from './paletteRecipes.js?rmv=1.62.65';
-import { getRecentPaletteCooldown, getActivePaletteCooldown, getRecentDiversityHistory } from './storage.js?rmv=1.62.65';
+import { getRecentPaletteCooldown, getActivePaletteCooldown } from './storage.js?rmv=1.62.82';
 
 const SAFE_PALETTE_LABEL_RE = /^(?:(?:低|中|高)明度)?(?:暖|冷|中性)?(?:红|橙|黄|绿|青|蓝|紫|粉|中性色)?(?:(?:低|中|高)饱和)?$/;
 
@@ -22,23 +21,9 @@ export function buildPaletteCooldownExecutionLock(settings) {
     return [palette, cooldown ? `普通模式深色冷却剩余 ${cooldown.remaining} 轮；本轮禁止再次使用大面积深色背景承载正文` : ''].filter(Boolean).join('；');
 }
 
-export function buildPaletteCooldownRule(settings, { includeIndexedFamily = false, compact = false } = {}) {
-    const labels = recentPaletteLabels();
+// Actual colours are listed once with completed selections by the composer.
+// This independent state keeps the existing five-round dark-mode exception.
+export function buildPaletteCooldownRule(settings) {
     const cooldown = ordinaryDarkCooldown(settings);
-    const groups = includeIndexedFamily ? paletteGroupLabels(getRecentDiversityHistory(3)) : [];
-    if (compact) {
-        return [
-            labels.length ? `近期三轮实际配色：${labels.join('、')}。` : '',
-            groups.length ? `近期三轮色族（抽中与实际识别）：${groups.join('、')}。` : '',
-            cooldown ? `普通模式深色冷却【剩余 ${cooldown.remaining} 轮；同批多面算一轮】：主要正文不得继续使用大面积深色底，深色只作局部结构或强调。` : '',
-        ].filter(Boolean).join('\n');
-    }
-    const palette = labels.length ? `配色短冷却【近期三轮实际配色（含各轮多面），深浅一视同仁】：
-  - 近期配色：${labels.map(label => `「${label}」`).join('、')}。本轮必须从选中形式的材质、环境和光线重新推导，改变可变的主色相、冷暖或饱和度关系，不得只调亮暗或换一处强调色。
-  - 用户明确配色与形式固有材质优先；在剩余可变部分避重，不为换色破坏材质，不机械轮换固定色板。${settings?.darkVisualMode === true ? '深色模式下仍保持低明度主背景与阅读承载，只在深色范围内形成差异。' : cooldown ? '明暗执行下方普通模式深色冷却，其余配色关系继续避重。' : '深色和浅色均可使用，不因前一面深色而禁止后续深色。'}` : '';
-    const dark = cooldown ? `普通模式深色冷却【剩余 ${cooldown.remaining} 轮；同批多面算一轮】：
-  - 主要正文不得继续使用大面积深色底，深色只作局部结构或强调。
-  - 用户明确配色优先；其余部分保持清晰对比，不永久禁色，也不机械轮换固定色板。` : '';
-    const family = groups.length ? `色族避重【近三轮抽中色族与已识别实际色族】：${groups.join('、')}。同族相近色一起避重，米白／米黄／奶油／燕麦视为同族；改变可变的主色调与主要承载，不以换色号或局部点色冒充变化。正文黑白字和必要局部颜色可正常使用；用户指定与原材质优先。` : '';
-    return [palette, family, dark].filter(Boolean).join('\n\n');
+    return cooldown ? `普通模式深色冷却【剩余 ${cooldown.remaining} 轮；同批多面算一轮】：主要正文不得继续使用大面积深色底，深色只作局部结构或强调；用户明确配色优先。` : '';
 }

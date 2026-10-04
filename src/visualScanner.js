@@ -1,11 +1,12 @@
-import { activeRoleColorHtml, bindRolePaletteCode } from './roleColorVariants.js?rmv=1.62.65';
-import { detectCompositionFingerprint, VISUAL_SKELETON_MAX_CHARS } from './compositionFingerprint.js?rmv=1.62.65';
-import { visualSceneryEnabled } from './presentationMode.js?rmv=1.62.65';
-import { presentationModeFields } from './presentationMode.js?rmv=1.62.65';
-import { getCurrentChatKey, commitFollowVisualHistory, bindVisualHistoryTarget } from './storage.js?rmv=1.62.65';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.62.65';
-import { getSettings } from './settings.js?rmv=1.62.65';
-import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.62.65';
+import { clamp, luminanceFromRgb, classifyPaletteSamples } from './paletteObservation.js?rmv=1.62.82';
+import { activeRoleColorHtml, bindRolePaletteCode } from './roleColorVariants.js?rmv=1.62.82';
+import { detectCompositionFingerprint, VISUAL_SKELETON_MAX_CHARS } from './compositionFingerprint.js?rmv=1.62.82';
+import { visualSceneryEnabled } from './presentationMode.js?rmv=1.62.82';
+import { presentationModeFields } from './presentationMode.js?rmv=1.62.82';
+import { getCurrentChatKey, commitFollowVisualHistory, bindVisualHistoryTarget } from './storage.js?rmv=1.62.82';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.62.82';
+import { getSettings } from './settings.js?rmv=1.62.82';
+import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.62.82';
 import {
     commitRabbitMirrorFollowBatch,
     captureRabbitMirrorGenerationSnapshots,
@@ -15,17 +16,17 @@ import {
     inspectRabbitMirrorGenerationSource,
     releaseRabbitMirrorFollowBatch,
     releaseRabbitMirrorFollowBatchAtMessage,
-} from './generationGuard.js?rmv=1.62.65';
+} from './generationGuard.js?rmv=1.62.82';
 import {
     clearSanitizedRabbitMirrorFaceProof,
     getSanitizedRabbitMirrorFaceProof,
     markSanitizedRabbitMirrorFace,
     rabbitMirrorMultifaceSourceHash,
-} from './multifaceProof.js?rmv=1.62.65';
-import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.62.65';
-import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.62.65';
-import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.62.65';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.65';
+} from './multifaceProof.js?rmv=1.62.82';
+import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.62.82';
+import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.62.82';
+import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.62.82';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.82';
 
 export const FOLLOW_MULTIFACE_COMMITTED_EVENT = 'rabbit-mirror:follow-multiface-committed';
 export const FOLLOW_MULTIFACE_REJECTED_EVENT = 'rabbit-mirror:follow-multiface-rejected';
@@ -455,8 +456,6 @@ function detectRepeatedUnitShape(root, html = '') {
     return ratio >= 0.42 && repeatedVisualProps >= 8;
 }
 
-
-
 function visualSceneryAuditExpected(html = '') {
     if (/data-rm-visual-scenery\s*=\s*["']true["']/i.test(String(html || ''))) return true;
     try { return visualSceneryEnabled(getSettings()); } catch { return false; }
@@ -516,8 +515,6 @@ function detectRiskFlags({ root, html, plain, dom, repeated, spatialSignalCount,
     return [...new Set(flags)];
 }
 
-
-
 function expandHexColor(hex) {
     const raw = String(hex || '').replace('#', '').trim();
     if (/^[0-9a-f]{3}$/i.test(raw)) {
@@ -525,10 +522,6 @@ function expandHexColor(hex) {
     }
     if (/^[0-9a-f]{6}$/i.test(raw)) return raw;
     return '';
-}
-
-function luminanceFromRgb(r, g, b) {
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
 function colorValueLuminance(value) {
@@ -642,10 +635,6 @@ const NAMED_PALETTE_COLORS = Object.freeze({
     white: '#ffffff', whitesmoke: '#f5f5f5', yellow: '#ffff00', yellowgreen: '#9acd32',
 });
 
-function clamp(value, min, max) {
-    return Math.min(max, Math.max(min, value));
-}
-
 function hslToRgb(h, s, l) {
     const hue = ((Number(h) % 360) + 360) % 360 / 360;
     const sat = clamp(Number(s), 0, 1);
@@ -666,25 +655,6 @@ function hslToRgb(h, s, l) {
         return p;
     };
     return [hue2rgb(hue + 1 / 3), hue2rgb(hue), hue2rgb(hue - 1 / 3)].map(x => Math.round(x * 255));
-}
-
-function rgbToHsl(r, g, b) {
-    const rr = clamp(Number(r), 0, 255) / 255;
-    const gg = clamp(Number(g), 0, 255) / 255;
-    const bb = clamp(Number(b), 0, 255) / 255;
-    const max = Math.max(rr, gg, bb);
-    const min = Math.min(rr, gg, bb);
-    const delta = max - min;
-    let h = 0;
-    if (delta) {
-        if (max === rr) h = 60 * (((gg - bb) / delta) % 6);
-        else if (max === gg) h = 60 * (((bb - rr) / delta) + 2);
-        else h = 60 * (((rr - gg) / delta) + 4);
-    }
-    if (h < 0) h += 360;
-    const l = (max + min) / 2;
-    const s = delta === 0 ? 0 : delta / (1 - Math.abs(2 * l - 1));
-    return { h, s, l };
 }
 
 function parseCssColorToken(token) {
@@ -791,88 +761,25 @@ function extractCssColors(value, depth = 0) {
     return colors;
 }
 
-function hueFamilyOf(hue) {
-    const h = ((Number(hue) % 360) + 360) % 360;
-    if (h < 15 || h >= 345) return 'red';
-    if (h < 45) return 'orange';
-    if (h < 70) return 'yellow';
-    if (h < 165) return 'green';
-    if (h < 200) return 'cyan';
-    if (h < 250) return 'blue';
-    if (h < 290) return 'purple';
-    return 'pink';
+
+
+function mainBackgroundSamples(backgroundColor, backgroundImage, resolve = value => value) {
+    // An image/gradient covers the base paint. Do not record an obscured base
+    // as the main colour; unreadable images remain unknown.
+    const image = String(backgroundImage || '').trim();
+    return extractCssColors(resolve(image && !/^(?:none|initial|unset|revert(?:-layer)?)$/i.test(image)
+        ? image : backgroundColor) || '');
 }
 
-function classifyPaletteSamples(samples, source = 'raw', mainBackgroundFound = false) {
-    const usable = (samples || []).filter(sample => sample?.color && Number(sample.weight) > 0);
-    if (!usable.length) return null;
-    let totalWeight = 0;
-    let luminanceSum = 0;
-    let saturationSum = 0;
-    let chromaSum = 0;
-    let darkWeight = 0;
-    let lightWeight = 0;
-    let chromaticWeight = 0;
-    let warmWeight = 0;
-    let coolWeight = 0;
-    const hueWeights = new Map();
-
-    for (const sample of usable) {
-        const color = sample.color;
-        const alpha = clamp(Number(color.a ?? 1), 0, 1);
-        const weight = Number(sample.weight) * Math.max(0.12, alpha);
-        if (!Number.isFinite(weight) || weight <= 0) continue;
-        const lum = luminanceFromRgb(color.r, color.g, color.b);
-        const hsl = rgbToHsl(color.r, color.g, color.b);
-        totalWeight += weight;
-        luminanceSum += lum * weight;
-        saturationSum += hsl.s * weight;
-        // HSL saturation alone makes near-white cream look highly saturated.
-        chromaSum += (Math.max(color.r, color.g, color.b) - Math.min(color.r, color.g, color.b)) / 255 * weight;
-        if (lum < 105) darkWeight += weight;
-        if (lum > 185) lightWeight += weight;
-        if (hsl.s >= 0.12) {
-            const chroma = weight * Math.max(0.25, hsl.s);
-            const family = hueFamilyOf(hsl.h);
-            chromaticWeight += chroma;
-            hueWeights.set(family, (hueWeights.get(family) || 0) + chroma);
-            if (['red', 'orange', 'yellow', 'pink'].includes(family)) warmWeight += chroma;
-            else if (['green', 'cyan', 'blue', 'purple'].includes(family)) coolWeight += chroma;
-        }
-    }
-    if (!totalWeight) return null;
-
-    const averageLuminance = luminanceSum / totalWeight;
-    const darkAreaRatio = darkWeight / totalWeight;
-    const lightAreaRatio = lightWeight / totalWeight;
-    const averageSaturation = saturationSum / totalWeight;
-    const brightness = darkAreaRatio >= 0.55 || averageLuminance < 102
-        ? 'dark'
-        : (lightAreaRatio >= 0.55 || averageLuminance > 184 ? 'light' : 'mid');
-
-    let hueFamily = 'neutral';
-    if (chromaticWeight >= totalWeight * 0.12 && hueWeights.size) {
-        hueFamily = [...hueWeights.entries()].sort((a, b) => b[1] - a[1])[0][0];
-    }
-    const saturation = averageSaturation < 0.26 ? 'low' : (averageSaturation < 0.56 ? 'medium' : 'high');
-    const temperature = warmWeight > coolWeight * 1.2
-        ? 'warm'
-        : (coolWeight > warmWeight * 1.2 ? 'cool' : 'neutral');
-    const baseConfidence = source === 'rendered' ? 0.58 : 0.38;
-    const confidence = clamp(baseConfidence + Math.min(0.22, usable.length * 0.025) + (mainBackgroundFound ? 0.14 : 0), 0, 0.96);
-
-    return {
-        brightness,
-        hueFamily,
-        saturation,
-        temperature,
-        darkAreaRatio: Number(darkAreaRatio.toFixed(2)),
-        lightAreaRatio: Number(lightAreaRatio.toFixed(2)),
-        averageLuminance: Math.round(averageLuminance),
-        averageChroma: Number((chromaSum / totalWeight).toFixed(3)),
-        confidence: Number(confidence.toFixed(2)),
-        source,
-    };
+function withMainPaletteColors(fingerprint, colors) {
+    if (!fingerprint) return null;
+    // Persist observed carrier colours, never an averaged/invented swatch.
+    // Translucent-only backgrounds need compositing evidence; leave unknown.
+    const mainColors = [...new Set((colors || []).filter(color => color.a === 1
+        && [color.r, color.g, color.b].every(Number.isFinite)).map(color => '#'
+        + [color.r, color.g, color.b].map(value => Math.round(clamp(value, 0, 255))
+            .toString(16).padStart(2, '0')).join('').toUpperCase()))];
+    return { ...fingerprint, mainColors };
 }
 
 function paletteContentRoots(toto) {
@@ -921,6 +828,7 @@ function renderedPaletteFingerprint(toto) {
 
     const samples = [];
     let mainBackgroundFound = false;
+    let mainColors = null;
     for (const item of candidates) {
         let style;
         try {
@@ -934,6 +842,7 @@ function renderedPaletteFingerprint(toto) {
             ...extractCssColors(style.backgroundImage),
         ];
         if (!colors.length) continue;
+        if (!mainColors) mainColors = mainBackgroundSamples(style.backgroundColor, style.backgroundImage);
         const isRoot = item.element === root;
         if (isRoot) mainBackgroundFound = true;
         const area = item.area || rootArea * 0.08;
@@ -941,7 +850,7 @@ function renderedPaletteFingerprint(toto) {
         const colorWeight = baseWeight / colors.length;
         colors.forEach(color => samples.push({ color, weight: colorWeight }));
     }
-    return classifyPaletteSamples(samples, 'rendered', mainBackgroundFound);
+    return withMainPaletteColors(classifyPaletteSamples(samples, 'rendered', mainBackgroundFound), mainColors);
 }
 
 // Raw independent results are scanned before mounting, so computed styles are
@@ -1028,7 +937,7 @@ function paletteSourceRules(root) {
 function paletteSourceDeclarations(text) {
     const css = String(text || '').replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\/\*[\s\S]*?\*\//g,
         token => token.startsWith('/*') ? '' : '__rm_css_string__');
-    return [...css.matchAll(/(?:^|;)\s*(background(?:-color|-image)?|display|visibility|opacity)\s*:\s*([^;{}]+)/gi)]
+    return [...css.matchAll(/(?:^|;)\s*(background(?:-color|-image)?|(?:-webkit-)?backdrop-filter|display|visibility|opacity)\s*:\s*([^;{}]+)/gi)]
         .map(match => ({ property: match[1].toLowerCase(), value: match[2].replace(/\s*!important\s*$/i, '').trim(),
             important: /!important\s*$/i.test(match[2]) }));
 }
@@ -1057,8 +966,7 @@ function paletteBackgroundParts(value) {
     return { color: colors.join(' '), image: images.join(' ') };
 }
 
-function sourcePaletteFingerprint(html, root) {
-    if (!root?.querySelectorAll) return undefined;
+function paletteSourceProperties(html, root) {
     const rules = paletteSourceRules(root), resolve = rawPaletteVariableResolver(html), cache = new WeakMap();
     const properties = node => {
         if (cache.has(node)) return cache.get(node);
@@ -1089,6 +997,12 @@ function sourcePaletteFingerprint(html, root) {
         cache.set(node, values);
         return values;
     };
+    return properties;
+}
+
+function sourcePaletteFingerprint(html, root, sourceProperties = null) {
+    if (!root?.querySelectorAll) return undefined;
+    const properties = sourceProperties || paletteSourceProperties(html, root), resolve = rawPaletteVariableResolver(html);
     const visible = node => {
         for (let current = node; current && root.contains(current); current = current.parentElement) {
             if (current.hidden || current.matches('summary,rm-think,rm-ticket,[data-rabbit-mirror-tool-entry-host]')) return false;
@@ -1104,22 +1018,27 @@ function sourcePaletteFingerprint(html, root) {
     const carriers = nodes.filter(node => /^(DIV|SECTION|ARTICLE|MAIN|ASIDE|FIGURE|TABLE|SVG)$/i.test(node.tagName));
     carriers.push(...roots.filter(node => !carriers.includes(node)), root.querySelector('details'), root);
     const painted = [];
+    let mainColors = null;
     for (const node of [...new Set(carriers)].filter(Boolean)) {
         if (!visible(node)) continue;
         const p = properties(node);
         const colors = [...new Set([p['background-color'], p['background-image']].filter(Boolean))]
             .flatMap(value => extractCssColors(/var\(/i.test(value) ? resolve(value) || '' : value));
-        if (colors.length) painted.push(colors);
+        if (colors.length) {
+            if (!mainColors) mainColors = mainBackgroundSamples(p['background-color'], p['background-image'],
+                value => /var\(/i.test(value) ? resolve(value) || '' : value);
+            painted.push(colors);
+        }
         if (painted.length >= 24) break;
     }
     if (!painted.length) return null;
     const samples = painted.flatMap((colors, index) => colors.map(color => ({ color,
         weight: (index === 0 ? 8 : 2 / Math.max(1, painted.length - 1)) / colors.length })));
-    return classifyPaletteSamples(samples, 'raw', true);
+    return withMainPaletteColors(classifyPaletteSamples(samples, 'raw', true), mainColors);
 }
 
-function rawPaletteFingerprint(html, sourceRoot = null) {
-    const matched = sourcePaletteFingerprint(html, sourceRoot || parseToto(html));
+function rawPaletteFingerprint(html, sourceRoot = null, sourceProperties = null) {
+    const matched = sourcePaletteFingerprint(html, sourceRoot || parseToto(html), sourceProperties);
     if (matched !== undefined) return matched;
     // Non-DOM callers retain the legacy observation path. Browsers always use
     // actual matched carriers above; unknown CSS remains unknown, not a colour.
@@ -1134,27 +1053,82 @@ function rawPaletteFingerprint(html, sourceRoot = null) {
     return classifyPaletteSamples(samples, 'raw', values.length > 0);
 }
 
-function detectPaletteFingerprint(html, renderedToto = null, sourceRoot = null) {
-    return renderedPaletteFingerprint(renderedToto) || rawPaletteFingerprint(html, sourceRoot);
+function detectPaletteFingerprint(html, renderedToto = null, sourceRoot = null, sourceProperties = null) {
+    return renderedPaletteFingerprint(renderedToto) || rawPaletteFingerprint(html, sourceRoot, sourceProperties);
 }
 
-function detectSurfaceFamily(html, plain = '') {
+// Material history must describe the carrier, not every decorative alpha stop,
+// badge, hidden panel or unused selector in the work. Reuse the palette's local
+// cascade reader; this runs during the existing scan, with no DOM writes/timers.
+function surfaceCarrierEvidence(html, root, sourceProperties = null) {
+    if (!root?.querySelectorAll) {
+        // Source-only callers cannot match stylesheet selectors. Stay local to
+        // the first structural carrier instead of promoting global CSS to fact.
+        const tags = [...String(html).replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '')
+            .matchAll(/<(div|section|article|main|aside|figure|table)\b([^>]*)>([^<]*)/gi)];
+        const chosen = tags.find(match => /\sstyle\s*=\s*(["'])[^"']*(?:background|backdrop-filter)\s*:/i.test(match[2])) || tags[0];
+        const css = chosen?.[2].match(/\sstyle\s*=\s*(["'])([\s\S]*?)\1/i)?.[2] || '';
+        const props = {};
+        for (const { property, value } of paletteSourceDeclarations(css)) {
+            if (property === 'background') {
+                const parts = paletteBackgroundParts(value);
+                props['background-color'] = parts.color; props['background-image'] = parts.image;
+            } else props[property] = value;
+        }
+        return { props, text: chosen?.[3] || '' };
+    }
+    const properties = sourceProperties || paletteSourceProperties(html, root);
+    const visible = node => {
+        for (let current = node; current && root.contains(current); current = current.parentElement) {
+            if (current.hidden || current.matches('summary,rm-think,rm-ticket,[data-rabbit-mirror-tool-entry-host]')) return false;
+            const p = properties(current);
+            if (p.display === 'none' || p.visibility === 'hidden' || (p.opacity !== undefined && Number(p.opacity) < 0.05)) return false;
+        }
+        return true;
+    };
+    const painted = p => extractCssColors(p['background-color']).length
+        || extractCssColors(p['background-image']).length || /blur\(/i.test(p['backdrop-filter'] || p['-webkit-backdrop-filter'] || '');
+    const roots = paletteContentRoots(root);
+    const nodes = [...new Set(roots.flatMap(node => [node, ...node.querySelectorAll('div,section,article,main,aside,figure,table,svg')]))].slice(0, 180);
+    const carriers = nodes.filter(node => /^(DIV|SECTION|ARTICLE|MAIN|ASIDE|FIGURE|TABLE|SVG)$/i.test(node.tagName));
+    carriers.push(...roots.filter(node => !carriers.includes(node)), root.querySelector('details'), root);
+    const candidates = [...new Set(carriers)].filter(node => node && visible(node));
+    const carrier = candidates.find(node => painted(properties(node))) || candidates[0];
+    if (!carrier) return { props: {}, text: '' };
+    // Read carrier-owned prose, not separately painted objects or controls.
+    let textNodes = 0;
+    const ownText = (node, depth = 0) => {
+        if (depth > 4 || textNodes >= 180) return '';
+        return [...(node.childNodes || [])].map(child => {
+            if (textNodes++ >= 180) return '';
+            if (child.nodeType === 3) return child.textContent || '';
+            if (child.nodeType !== 1 || !visible(child)
+                || child.matches('style,script,template,button,label,input,select,textarea')
+                || painted(properties(child))) return '';
+            return ownText(child, depth + 1);
+        }).join(' ');
+    };
+    return { props: properties(carrier), text: ownText(carrier) };
+}
+
+function detectSurfaceFamily(html, plain = '', sourceRoot = null, sourceProperties = null) {
     const source = String(html || '');
     // CSS property names, classes and internal selection/planning tags are not
     // evidence of a paper material (letter-spacing, tool-menu, rm-ticket).
     const content = source.replace(/<!--[\s\S]*?-->/g, '')
         .replace(/<(rm-think|rm-ticket)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, '');
-    const text = stripTags(content).toLowerCase();
-    const css = [
-        ...[...content.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map(match => match[1]),
-        ...[...content.matchAll(/\sstyle\s*=\s*(["'])([\s\S]*?)\1/gi)].map(match => match[2]),
-    ].join('\n');
-    const backgrounds = extractBackgroundValues(content).join('\n');
-    const base = detectBaseColor(content);
+    const { props, text: carrierText } = surfaceCarrierEvidence(content, sourceRoot || parseToto(content), sourceProperties);
+    const text = carrierText.toLowerCase();
+    const backgrounds = [props['background-color'], props['background-image']].filter(Boolean).join('\n');
+    const base = detectBaseColor(`background:${backgrounds};`);
+    const color = extractCssColors(props['background-color'])[0];
+    const imageColors = extractCssColors(props['background-image']);
+    const opaqueImage = imageColors.length > 0 && imageColors.every(item => item.a === 1);
+    const translucentCarrier = !opaqueImage && (color ? color.a < 1
+        : /blur\(/i.test(props['backdrop-filter'] || props['-webkit-backdrop-filter'] || ''));
     if (/纸|信笺|便签|票据|菜单|说明书|羊皮纸|报纸|签文|\b(?:paper|newspaper|tickets?|menus?|manuals?|letters?)\b/i.test(text)) return 'surface: paper_or_document_surface';
     if (/玻璃|磨砂|透明|\b(?:glass|frosted|translucent)\b/i.test(text)
-        || /backdrop-filter\s*:\s*[^;}]*blur\(/i.test(css)
-        || /(?:rgba|hsla)\([^)]*,\s*(?:0?\.\d+|0)\s*\)/i.test(backgrounds)) return 'surface: glass_or_translucent_surface';
+        || translucentCarrier) return 'surface: glass_or_translucent_surface';
     if (/金属|铁|铜|钢|铝|\b(?:metal|chrome|silver|bronze)\b/i.test(text)) return 'surface: metallic_or_hard_surface';
     if (/木|布|织物|陶瓷|皮革|石|\b(?:wood|fabric|ceramic|leather|stone)\b/i.test(text)) return 'surface: physical_material_surface';
     if (/radial-gradient|conic-gradient|linear-gradient|repeating-gradient/i.test(backgrounds)) return 'surface: gradient_or_light_surface';
@@ -1237,7 +1211,7 @@ function buildVisualSkeleton(html, plain, metrics) {
     const composition = metrics.composition;
     return [
         ...Object.entries(composition).map(([key, value]) => `${key}: ${value}`),
-        `surface_family: ${detectSurfaceFamily(html, plain)}`,
+        `surface_family: ${detectSurfaceFamily(html, plain, metrics.root, metrics.sourceProperties)}`,
         `contrast_family: ${detectContrastFamily(html)}`,
         `contour_family: ${detectContourFamily(html, metrics.dom)}`,
         `reading_family: ${detectReadingPath(html, metrics.spatialSignalCount)}`,
@@ -1322,8 +1296,9 @@ export function scanRabbitMirrorHtml(messageHtml, renderedToto = null) {
         .filter(Boolean)
         .join('；');
     const interactionFamily = detectInteractionFamily(root, html);
-    const skeleton = buildVisualSkeleton(html, plain, { dom, repeated, spatialSignalCount, interactionFamily, composition });
-    const paletteFingerprint = detectPaletteFingerprint(html, renderedToto, root);
+    const sourceProperties = root ? paletteSourceProperties(html, root) : null;
+    const skeleton = buildVisualSkeleton(html, plain, { root, sourceProperties, dom, repeated, spatialSignalCount, interactionFamily, composition });
+    const paletteFingerprint = detectPaletteFingerprint(html, renderedToto, root, sourceProperties);
     return { signature: summary.slice(0, 280), skeleton: skeleton.slice(0, VISUAL_SKELETON_MAX_CHARS), riskFlags, paletteFingerprint, interactionFamily };
 }
 
@@ -1591,7 +1566,7 @@ function templateSingleFollowRoot(template) {
 
 function loadFollowBatchSanitizer() {
     if (!followBatchSanitizerModulePromise) {
-        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.62.65').catch(error => {
+        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.62.82').catch(error => {
             followBatchSanitizerModulePromise = null;
             console.debug('[RabbitMirror] follow multiface sanitizer unavailable:', error);
             return null;

@@ -1,4 +1,5 @@
-import { GENERATION_PALETTE_INDEX, PALETTE_GROUP_LABELS } from '../data/structured/generationPaletteIndex.js?rmv=1.62.65';
+import { GENERATION_PALETTE_INDEX, PALETTE_GROUP_LABELS } from '../data/structured/generationPaletteIndex.js?rmv=1.62.82';
+import { classifyPaletteSamples } from './paletteObservation.js?rmv=1.62.82';
 const BY_ID = new Map(GENERATION_PALETTE_INDEX.map(item => [item.id, item]));
 
 export function paletteRecipeFor(source) {
@@ -18,6 +19,20 @@ export function observedPaletteGroup(record) {
         && ['neutral', 'yellow', 'orange'].includes(hue)) return 'warm_neutral';
     if (hue === 'neutral') return p.brightness === 'dark' ? 'dark_neutral' : 'cool_neutral';
     return Object.hasOwn(PALETTE_GROUP_LABELS, hue) ? hue : '';
+}
+export function observedPaletteFamilyLabels(record) {
+    const p = record?.paletteFingerprint;
+    if (!p || Number(p.confidence || 0) < .35 || !Array.isArray(p.mainColors)
+        || !p.mainColors.length || !p.mainColors.every(color => typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color))) return [];
+    // Reclassify only the already observed carrier colours, using the scanner's
+    // same pure classifier. Older aggregate fingerprints may include accents;
+    // neither those accents nor planned palettes describe the actual main face.
+    const observations = p.mainColors.map(hex => {
+        const [r, g, b] = hex.slice(1).match(/../g).map(channel => parseInt(channel, 16));
+        return classifyPaletteSamples([{ color: { r, g, b, a: 1 }, weight: 1 }], p.source || 'raw', true);
+    });
+    return [...new Set(observations.map(paletteFingerprint =>
+        PALETTE_GROUP_LABELS[observedPaletteGroup({ paletteFingerprint })]).filter(Boolean))];
 }
 export function recentPaletteGroups(recent = []) {
     return [...new Set(recent.flatMap(record => {

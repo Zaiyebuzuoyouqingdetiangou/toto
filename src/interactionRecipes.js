@@ -1,12 +1,18 @@
-import { resolveInteractionDetail, INTERACTION_MECHANISMS } from '../data/raw/rawInteractionRecipes.js?rmv=1.62.65';
-import { INTERACTION_RECIPES } from '../data/structured/interactionIndex.js?rmv=1.62.65';
+import { resolveInteractionDetail, INTERACTION_MECHANISMS } from '../data/raw/rawInteractionRecipes.js?rmv=1.62.82';
+import { INTERACTION_RECIPES, INTERACTION_RECIPE_REPLACEMENTS } from '../data/structured/interactionIndex.js?rmv=1.62.82';
 
 const BY_ID = new Map(INTERACTION_RECIPES.map(recipe => [recipe.id, recipe]));
+
+function canonicalRecipeIds(values) {
+    return [...new Set(values.map(id => typeof id === 'string'
+        ? (Object.hasOwn(INTERACTION_RECIPE_REPLACEMENTS, id) ? INTERACTION_RECIPE_REPLACEMENTS[id] : id) : null)
+        .filter(id => BY_ID.has(id)))];
+}
 
 export function interactionRecipeFields(source) {
     if (source?.presentationMode === 'text' || source?.pureOrder === true) return {};
     const values = Array.isArray(source?.interactionRecipeIds) ? source.interactionRecipeIds : [source?.interactionRecipeId];
-    const ids = [...new Set(values.filter(id => BY_ID.has(id)))];
+    const ids = canonicalRecipeIds(values);
     // Keep the singular first-ID alias for old records and consumers.
     return ids.length ? { interactionRecipeId: ids[0], interactionRecipeIds: ids } : {};
 }
@@ -39,6 +45,8 @@ export function eligibleInteractionRecipes(combo) {
 }
 
 export function selectInteractionRecipe(combo, { randomUnit = Math.random, recent = [], usedIds = [], excludedFamilies = [], companionIds = [] } = {}) {
+    usedIds = canonicalRecipeIds(usedIds);
+    companionIds = canonicalRecipeIds(companionIds);
     let eligible = eligibleInteractionRecipes(combo).filter(recipe => !excludedFamilies.includes(recipe.family));
     const textSwitchObserved = recent.some(record => /operation_family\s*:\s*(?:text_panel_switch|text_disclosure_stack)(?:；|$)/.test(record?.visualSkeleton || ''));
     if (!eligible.length) return null;
@@ -97,7 +105,11 @@ export function attachInteractionRecipes(combo, options = {}) {
             const formats = (ticket.formatFullLines || ticket.formatLines || []).map((title, index) => ({ id: ticket.formatIds?.[index], title }));
             const source = { ...combo, ...ticket, formats, atmosphereMenu: undefined };
             const held = interactionRecipesFor(source);
-            const picked = held.length ? held : selectInteractionRecipes(source, { ...options, usedIds: [...usedIds] });
+            if (held.length) {
+                held.forEach(item => usedIds.add(item.id));
+                return { ...ticket };
+            }
+            const picked = selectInteractionRecipes(source, { ...options, usedIds: [...usedIds] });
             picked.forEach(item => usedIds.add(item.id));
             return { ...ticket, ...interactionRecipeFields({ interactionRecipeIds: picked.map(item => item.id) }) };
         });
@@ -139,12 +151,13 @@ export function buildInteractionRecipeRule(faceContexts, rawPolicy = 'balanced',
             const scope = `第 ${index + 1} 面${face.atmosphereFaces ? `／仅选签 ${ticketIndex + 1} 时` : ''}`;
             for (const recipe of interactionRecipesFor(candidate.combo)) {
             let entry = `${scope}：${recipe.code}「${recipe.title}｜${recipe.summary}」`;
-            // Compact never resolves detailed material. Other policies resolve only drawn IDs.
-            if (rawPolicy !== 'compact') {
+            // Summary already states action + result. Full alone adds detail;
+            // every policy still needs the selected executable contracts.
+            if (rawPolicy === 'full') {
                 const detail = resolveInteractionDetail(recipe.id);
                 if (detail) entry += `\n操作：${detail.action}。\n可见结果：${detail.result}。`;
-                if (rawPolicy === 'full') mechanisms.add(recipe.mechanism);
             }
+            mechanisms.add(recipe.mechanism);
             assignments.push(entry);
             }
         }
@@ -155,10 +168,13 @@ export function buildInteractionRecipeRule(faceContexts, rawPolicy = 'balanced',
         ? `共用适用规则【${numbers.map(number => `第 ${number} 面 HTML`).join('；')}】\n${constructionRule}`
         : '先构造展现形式本体，再把本签各项操作与可见结果安放到它实际具备的部件、内容区域和使用流程。各交互共同服务同一个媒介，不各自搭一张无关卡片；同一种交互可复用于多个对象，不限制控件数量。用户明确玩法与原形式固有功能优先，不为交互签更换媒介。';
     if (!assignments.length) return construction;
-    const implementation = mechanisms.size ? `\n本轮实现依据（各列一次，标识符须面内唯一）：\n${[...mechanisms].map(key => `${key}：${INTERACTION_MECHANISMS[key]}`).join('\n')}` : '';
+    const resultConditions = { drag: 'placed=甲,乙', adjust: 'p>=0.6', reveal: 'p>=0.6', view: 'p>=0.6', input: 'match', reorder: 'order=甲,乙', accumulate: 'count>=2' };
+    const conditions = [...new Set([...mechanisms].map(key => resultConditions[key]).filter(Boolean))];
+    const results = conditions.length ? `\n阶段联动：在对应 data-rm-ui 内写实际结果节点 data-rm-result hidden，data-rm-when="${conditions.join('"或"')}"；驱动按状态显隐，复原同步。结果用景物、细节或后续控件承接。` : '';
+    const implementation = mechanisms.size ? `\n本轮实现依据（仅抽中项；标识限本面；不执行模型脚本）：\n${[...mechanisms].map(key => INTERACTION_MECHANISMS[key]).join('\n')}` : '';
     return `交互构造库【第三抽取池；仅下列 HTML 面／选中签适用】：
 ${construction}
-${assignments.join('\n\n')}${implementation}`;
+${assignments.join('\n\n')}${implementation}${results}`;
 }
 
 export function interactionExecutionReminder(combo) {

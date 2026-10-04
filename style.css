@@ -1332,24 +1332,33 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
 
 /* Pure external mode frames the title only. The carrier owns placement;
  * authored body backgrounds, corners and margins remain independent. */
-#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"]{
+#chat .rabbit-mirror-external-shell[data-rm-source][data-rm-placement="external"]{
   background:transparent !important;
   border:0 !important;
   border-radius:0 !important;
   box-shadow:none !important;
   padding:0 !important;
 }
-#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"] > summary{
+#chat .rabbit-mirror-external-shell[data-rm-source][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"]:not(.rabbit-mirror-external-placeholder){
+  background:transparent !important;
+  border:0 !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+  padding:0 !important;
+  backdrop-filter:none !important;
+  -webkit-backdrop-filter:none !important;
+}
+#chat .rabbit-mirror-external-shell[data-rm-source][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"] > summary{
   width:100% !important;
   margin:0 !important;
   border:var(--rm-shell-border-width, 1px) solid var(--rm-shell-border, rgba(0,0,0,.12)) !important;
   box-shadow:0 4px 12px var(--rm-shell-shadow, rgba(0,0,0,.08)) !important;
-  background:var(--rm-shell-header-bg, var(--rm-shell-surface, var(--rm-shell-bg, transparent))) !important;
+  background:var(--rm-shell-header-bg, var(--rm-shell-surface, var(--rm-shell-bg, var(--SmartThemeBlurTintColor, rgba(28,30,36,.92))))) !important;
   color:var(--rm-shell-header-text, var(--rm-shell-text, inherit)) !important;
   -webkit-text-fill-color:currentColor !important;
   border-radius:var(--rm-shell-radius, 16px) !important;
 }
-#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"][open] > summary{
+#chat .rabbit-mirror-external-shell[data-rm-source][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"][open] > summary{
   margin-bottom:8px !important;
 }
 /* Pager colour is local to these runtime controls, independent of artwork and
@@ -1726,6 +1735,17 @@ dialog[data-rm-theater-favorite-library] {
 }
 #chat :is(toto[data-rabbit-mirror="true"] > details, details[data-rabbit-mirror-external-details="true"]):has(> article:not([style])):not(:has(> :is(div, section, main, aside, nav, header, footer, figure, table, form, svg, canvas, iframe, style))):not(:has(> article :is(div, section, main, aside, nav, header, footer, figure, table, button, input, select, textarea, form, svg, canvas, img, video, iframe, style))) > article p{ margin:0 0 .85em !important; }
 #chat :is(toto[data-rabbit-mirror="true"] > details, details[data-rabbit-mirror-external-details="true"]):has(> article:not([style])):not(:has(> :is(div, section, main, aside, nav, header, footer, figure, table, form, svg, canvas, iframe, style))):not(:has(> article :is(div, section, main, aside, nav, header, footer, figure, table, button, input, select, textarea, form, svg, canvas, img, video, iframe, style))) > article p:last-child{ margin-bottom:0 !important; }
+/* Unstyled prose still needs a reading surface. In external mode that surface
+ * belongs to the article, separately from the framed title above it. */
+#chat .rabbit-mirror-external-shell[data-rm-source][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"]:has(> article:not([style])):not(:has(> :is(div, section, main, aside, nav, header, footer, figure, table, form, svg, canvas, iframe, style))) > article:not(:has(div, section, main, aside, nav, header, footer, figure, table, button, input, select, textarea, form, svg, canvas, img, video, iframe, style)){
+  --rm-text-card-fg:var(--SmartThemeBodyColor, #e8e8ec);
+  background:var(--SmartThemeBlurTintColor, rgba(28,30,36,.92)) !important;
+  color:var(--rm-text-card-fg) !important;
+  border:1px solid color-mix(in srgb, var(--rm-text-card-fg) 16%, transparent) !important;
+  border-radius:14px !important;
+  padding:12px 16px !important;
+  box-shadow:0 8px 22px rgba(0,0,0,.18) !important;
+}
 
 /* 裸露的原生开关：有 label 的视觉隐藏；没有 label 的改成跟随文字颜色的小圆开关。 */
 #chat [data-rm-native-toggle="hidden"]{position:absolute !important;opacity:0 !important;width:1px !important;height:1px !important;margin:0 !important;pointer-events:none !important;}

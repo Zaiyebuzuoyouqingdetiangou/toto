@@ -1,6 +1,8 @@
 // Split from outputSanitizer.js — renderedStateRescue.
 
-import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.62.65';
+import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.62.82';
+
+import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.62.82';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     PSEUDO_ACTIVE_ATTR,
@@ -8,7 +10,7 @@ import {
     REVERSIBLE_TARGET_CLOSE_ATTR,
     restoreInteractionInlineOverrides,
     reversibleTargetCloseStates,
-} from './checkedStateRescue.js?rmv=1.62.65';
+} from './checkedStateRescue.js?rmv=1.62.82';
 import {
     RAW_SELF_MUTATION_RESCUE_ATTR,
     applyPseudoStyleAssignments,
@@ -26,17 +28,17 @@ import {
     resolveElementChildIndexPath,
     restorePseudoStyleState,
     shouldIgnorePseudoToggleEvent,
-} from './scriptedInteractionRescue.js?rmv=1.62.65';
-import { TOUCH_HOVER_STYLE_ATTR, setRescuedCheckedState } from './fallbackRescue.js?rmv=1.62.65';
-import { interactionScopeStates } from './idsAndRearm.js?rmv=1.62.65';
-import { INTERACTION_DIAGNOSTIC_PANEL_ATTR } from './diagnostics.js?rmv=1.62.65';
+} from './scriptedInteractionRescue.js?rmv=1.62.82';
+import { TOUCH_HOVER_STYLE_ATTR, setRescuedCheckedState } from './fallbackRescue.js?rmv=1.62.82';
+import { interactionScopeStates } from './idsAndRearm.js?rmv=1.62.82';
+import { INTERACTION_DIAGNOSTIC_PANEL_ATTR } from './diagnostics.js?rmv=1.62.82';
 import {
     cssContainsUnsafeGeneratedResource,
     cssDeclarationBlockContainsUnsafeOverlayGeometry,
     sanitizeGeneratedCssDeclarationBlock,
     splitCssDeclarationList,
     splitCssSelectorList,
-} from './markup.js?rmv=1.62.65';
+} from './markup.js?rmv=1.62.82';
 
 export const RENDERED_STATE_LAYER_RESCUE_ATTR = 'data-rabbit-mirror-rendered-state-layer-rescue';
 
@@ -1323,6 +1325,7 @@ function isRenderedButtonAdjacentHiddenTarget(element, button) {
 
 
 export function findRenderedButtonAdjacentHiddenTarget(button) {
+    if (isBehaviorInteractionOwned(button) || button?.hasAttribute?.('popovertarget') || button?.hasAttribute?.('commandfor')) return null;
     let node = button?.nextElementSibling || null;
     for (let step = 0; node && step < 3; step += 1, node = node.nextElementSibling) {
         if (/^(?:style|script|template)$/i.test(node.tagName || '')) continue;
@@ -1955,6 +1958,7 @@ function isRenderedClickableAdjacentHiddenTarget(element, trigger) {
 
 
 export function findRenderedClickableAdjacentHiddenTarget(trigger) {
+    if (isBehaviorInteractionOwned(trigger)) return null;
     let node = trigger?.nextElementSibling || null;
     for (let step = 0; node && step < 3; step += 1, node = node.nextElementSibling) {
         if (/^(?:style|script|template)$/i.test(node.tagName || '')) continue;
@@ -2122,6 +2126,7 @@ function isRenderedClickableAdjacentPopupTarget(element, trigger) {
 
 
 export function findRenderedClickableAdjacentPopupTarget(trigger) {
+    if (isBehaviorInteractionOwned(trigger)) return null;
     let node = trigger?.nextElementSibling || null;
     for (let step = 0; node && step < 2; step += 1, node = node.nextElementSibling) {
         if (/^(?:style|script|template)$/i.test(node.tagName || '')) continue;
@@ -2355,6 +2360,7 @@ function findRenderedContainerInternalRevealEntries(root) {
     if (!root?.querySelectorAll) return [];
     const entries = [];
     for (const host of root.querySelectorAll('div, section, article, aside, figure')) {
+        if (isBehaviorInteractionOwned(host)) continue;
         if (host.closest?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`)) continue;
         const entry = buildRenderedContainerInternalRevealEntry(host);
         if (entry) entries.push(entry);
@@ -2452,6 +2458,7 @@ function findRenderedMaskRevealEntries(root) {
     const seenHosts = new Set();
 
     for (const hidden of root.querySelectorAll('div, section, article, aside, p, span')) {
+        if (isBehaviorInteractionOwned(hidden)) continue;
         if (!isRenderedMaskRevealHiddenTarget(hidden)) continue;
         const host = hidden.parentElement;
         if (!host || seenHosts.has(host) || host.hasAttribute?.(RAW_SELF_MUTATION_RESCUE_ATTR) || host.querySelector?.('input, label, button, select, textarea')) continue;

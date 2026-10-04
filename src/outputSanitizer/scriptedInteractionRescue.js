@@ -1,7 +1,9 @@
 // Split from outputSanitizer.js — scriptedInteractionRescue.
 
-import { getSettings } from '../settings.js?rmv=1.62.65';
-import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue } from '../bannedWords.js?rmv=1.62.65';
+import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.62.82';
+import { nativePopoverFallbackCount } from './nativePopoverFallback.js?rmv=1.62.82';
+import { getSettings } from '../settings.js?rmv=1.62.82';
+import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue } from '../bannedWords.js?rmv=1.62.82';
 import {
     FEEDBACK_CAT_ATTR,
     MAINTENANCE_RABBIT_ATTR,
@@ -18,7 +20,7 @@ import {
     getRabbitMirrorLocalStyleElements,
     getRenderedRabbitMirrorInteractionRoots,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.62.65';
+} from './runtime.js?rmv=1.62.82';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     DETACHED_CHECKED_HAS_RULE_COUNT_ATTR,
@@ -55,7 +57,7 @@ import {
     reversibleStyleBaselineStates,
     reversibleTextBaselineStates,
     syncCrossParentCheckedRuleFallback,
-} from './checkedStateRescue.js?rmv=1.62.65';
+} from './checkedStateRescue.js?rmv=1.62.82';
 import {
     EXISTING_INTERACTIVE_SELECTOR,
     PSEUDO_INTERACTION_HINT_RE,
@@ -77,8 +79,8 @@ import {
     resolveCheckedRelativeElementExpression,
     resolveScopedPseudoId,
     sanitizeRecoveredInteractionStyleAssignments,
-} from './renderedStateRescue.js?rmv=1.62.65';
-import { cancelLabeledCheckedTransitionVerification, setRescuedCheckedState } from './fallbackRescue.js?rmv=1.62.65';
+} from './renderedStateRescue.js?rmv=1.62.82';
+import { cancelLabeledCheckedTransitionVerification, setRescuedCheckedState } from './fallbackRescue.js?rmv=1.62.82';
 import {
     DISABLED_ONLY_CHOICE_RESCUE_ATTR,
     FILL_IN_CHOICE_COUNT_ATTR,
@@ -89,7 +91,7 @@ import {
     SELECTION_ONLY_FALLBACK_ATTR,
     STATIC_CHOICE_SELECTION_COUNT_ATTR,
     STRUCTURED_STATIC_DISCLOSURE_COUNT_ATTR,
-} from './diagnostics.js?rmv=1.62.65';
+} from './diagnostics.js?rmv=1.62.82';
 import {
     checkedDeclarationCreatesContentReveal,
     getRenderedMessageElement,
@@ -97,14 +99,14 @@ import {
     isIndependentMaintenanceRoot,
     maintenanceMessageSourceCandidates,
     normalizeMaintenanceSummaryText,
-} from './maintenanceInspect.js?rmv=1.62.65';
+} from './maintenanceInspect.js?rmv=1.62.82';
 import {
     decodeHtmlEntities,
     normalizeMirrorAttribute,
     rescueDamagedDataUriRabbitMirrorOutput,
     validateRabbitMirrorMarkupLexicalBudget,
-} from './markup.js?rmv=1.62.65';
-import { getMessageIndexFromMirrorNode, hostScriptModule, messageUsesDistinctDisplaySource } from './lifecycle.js?rmv=1.62.65';
+} from './markup.js?rmv=1.62.82';
+import { getMessageIndexFromMirrorNode, hostScriptModule, messageUsesDistinctDisplaySource } from './lifecycle.js?rmv=1.62.82';
 
 export const RAW_RADIO_RESET_RESCUE_ATTR = 'data-rabbit-mirror-radio-reset-rescue';
 
@@ -2661,6 +2663,8 @@ export function detectInteractionCapabilities(root) {
     const outerDetails = root.matches?.('details') ? root : root.querySelector(':scope > details');
     const nestedDetails = [...root.querySelectorAll('details')].filter(item => item !== outerDetails);
     const capabilities = {
+        behavior: inspectBehaviorRecovery(root).wired > 0,
+        nativePopover: nativePopoverFallbackCount(root) > 0,
         checked: !!root.querySelector('input[type="checkbox"], input[type="radio"]') || /:checked\b/i.test(cssText),
         hover: /:hover\b/i.test(cssText),
         details: nestedDetails.length > 0,

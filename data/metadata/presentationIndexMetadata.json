@@ -525,6 +525,15 @@
       "sourceTitle": "评论系统"
     },
     {
+      "id": "1.3.3.review.1",
+      "group": "1",
+      "tags": [
+        "humor",
+        "parody"
+      ],
+      "rawIndent": 2
+    },
+    {
       "id": "1.3.4",
       "group": "1",
       "tags": [
@@ -658,14 +667,6 @@
     },
     {
       "id": "2.1.1",
-      "group": "2",
-      "tags": [
-        "independent",
-        "paper"
-      ]
-    },
-    {
-      "id": "2.1.2",
       "group": "2",
       "tags": [
         "independent",
@@ -813,14 +814,6 @@
       ]
     },
     {
-      "id": "2.3.1",
-      "group": "2",
-      "tags": [
-        "independent",
-        "paper"
-      ]
-    },
-    {
       "id": "2.4",
       "group": "2",
       "tags": [
@@ -877,14 +870,6 @@
       ]
     },
     {
-      "id": "2.8",
-      "group": "2",
-      "tags": [
-        "independent",
-        "paper"
-      ]
-    },
-    {
       "id": "3.3",
       "group": "3",
       "tags": [
@@ -917,16 +902,6 @@
       ]
     },
     {
-      "id": "3.5",
-      "group": "3",
-      "tags": [
-        "independent",
-        "analysis",
-        "academic",
-        "historical"
-      ]
-    },
-    {
       "id": "3.6",
       "group": "3",
       "tags": [
@@ -934,62 +909,6 @@
         "analysis",
         "academic",
         "catalog"
-      ]
-    },
-    {
-      "id": "3.7",
-      "group": "3",
-      "tags": [
-        "independent",
-        "analysis",
-        "academic",
-        "catalog"
-      ]
-    },
-    {
-      "id": "3.8",
-      "group": "3",
-      "tags": [
-        "independent",
-        "analysis",
-        "academic",
-        "catalog"
-      ]
-    },
-    {
-      "id": "3.9",
-      "group": "3",
-      "tags": [
-        "independent",
-        "analysis",
-        "academic",
-        "catalog"
-      ]
-    },
-    {
-      "id": "3.10",
-      "group": "3",
-      "tags": [
-        "independent",
-        "analysis",
-        "academic",
-        "catalog"
-      ]
-    },
-    {
-      "id": "4.1",
-      "group": "4",
-      "tags": [
-        "independent",
-        "media"
-      ]
-    },
-    {
-      "id": "4.1.1",
-      "group": "4",
-      "tags": [
-        "independent",
-        "media"
       ]
     },
     {
@@ -1023,6 +942,14 @@
         "independent",
         "media"
       ]
+    },
+    {
+      "id": "4.2.4",
+      "group": "4",
+      "tags": [
+        "humor"
+      ],
+      "rawIndent": 2
     },
     {
       "id": "4.3",
@@ -1216,6 +1143,15 @@
         "independent",
         "literary",
         "poetry"
+      ],
+      "rawIndent": 2
+    },
+    {
+      "id": "4.5.6",
+      "group": "4",
+      "tags": [
+        "daily",
+        "ritual"
       ],
       "rawIndent": 2
     },
@@ -1424,14 +1360,6 @@
       ]
     },
     {
-      "id": "5.3.3.1",
-      "group": "5",
-      "tags": [
-        "canon",
-        "mystic"
-      ]
-    },
-    {
       "id": "6.1",
       "group": "6",
       "tags": [
@@ -1450,15 +1378,6 @@
     },
     {
       "id": "6.1.2",
-      "group": "6",
-      "tags": [
-        "independent",
-        "game",
-        "interactive"
-      ]
-    },
-    {
-      "id": "6.1.3",
       "group": "6",
       "tags": [
         "independent",
@@ -1980,6 +1899,25 @@
       ]
     },
     {
+      "id": "7.1.7",
+      "group": "7",
+      "tags": [
+        "emotion",
+        "style"
+      ],
+      "summaryOverride": "一种极具辨识度的网络情感表达模式。精髓在于“此地无银三百两”、刻意伪装的不在意、明明是爱偏要伪装成恨；用华丽的、带有宗教感或文学感的修辞包裹最直白的爱与执念，将深情描述为困境、诅咒或不得不承受的磨难。",
+      "rawIndent": 2
+    },
+    {
+      "id": "7.1.8",
+      "group": "7",
+      "tags": [
+        "if",
+        "style"
+      ],
+      "rawIndent": 2
+    },
+    {
       "id": "7.2",
       "group": "7",
       "tags": [
@@ -2031,6 +1969,14 @@
         "qa",
         "anonymous"
       ]
+    },
+    {
+      "id": "7.2.4",
+      "group": "7",
+      "tags": [
+        "humor"
+      ],
+      "rawIndent": 2
     },
     {
       "id": "7.3",
@@ -2169,47 +2115,7 @@
       ]
     },
     {
-      "id": "8.2",
-      "group": "8",
-      "tags": [
-        "canon",
-        "meta"
-      ]
-    },
-    {
-      "id": "8.3",
-      "group": "8",
-      "tags": [
-        "canon",
-        "meta"
-      ]
-    },
-    {
-      "id": "8.4",
-      "group": "8",
-      "tags": [
-        "independent",
-        "meta"
-      ]
-    },
-    {
-      "id": "8.5",
-      "group": "8",
-      "tags": [
-        "independent",
-        "meta"
-      ]
-    },
-    {
       "id": "8.6",
-      "group": "8",
-      "tags": [
-        "independent",
-        "meta"
-      ]
-    },
-    {
-      "id": "8.7",
       "group": "8",
       "tags": [
         "independent",

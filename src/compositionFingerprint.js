@@ -8,7 +8,7 @@ export const COMPOSITION_LABELS = Object.freeze({
     scene_beside_text: '画文并排：独立画区与正文分栏',
     separate_scene_text: '独立画区与外置正文分区（响应式方向不确定）',
     text_panel_switch: '同位置文字面板切换',
-    text_disclosure_stack: '同构文字条目逐项折叠展开',
+    text_disclosure_stack: '展开／收起文字',
     object_state_change: '控件作用于画面或物件状态',
 });
 
@@ -192,6 +192,9 @@ export function detectCompositionFingerprint(root) {
         } else continue; // native disclosures are inspected structurally below
         const targets = query(root, neutral.replace(/::(?:before|after)\b/g, ''));
         if (/:target/.test(rule.selector)) sources = sources.filter(link => targets.some(target => target.id && link.getAttribute('href') === `#${target.id}`));
+        // Dormant CSS has no operation to observe; it must not erase verified
+        // controls elsewhere. A partially matched route remains uncertain.
+        if (!sources.length && !targets.length) continue;
         if (!sources.length || !targets.length) { uncertainState = true; continue; }
         for (const target of targets) {
             if (ignored(target) || matches(target, CONTROL)) continue;
@@ -204,7 +207,7 @@ export function detectCompositionFingerprint(root) {
         }
     }
     if (visualState) result.operation_family = 'object_state_change';
-    else if (!uncertainState && controls.size >= 2 && textTargets.size >= 2) {
+    else if (!uncertainState && controls.size >= 1 && textTargets.size >= 1) {
         const sources = [...controls];
         const type = node => String(node.getAttribute?.('type') || '').toLowerCase();
         const name = sources[0].getAttribute?.('name');
@@ -215,13 +218,15 @@ export function detectCompositionFingerprint(root) {
             const s = style(node);
             return !['absolute', 'fixed'].includes(s.position) && !s['grid-area'];
         });
-        if (exclusiveRadios || exclusiveTargets) result.operation_family = 'text_panel_switch';
+        if (controls.size >= 2 && textTargets.size >= 2 && (exclusiveRadios || exclusiveTargets)) result.operation_family = 'text_panel_switch';
         else if (separateDisclosures) result.operation_family = 'text_disclosure_stack';
     }
     if (!result.operation_family) {
+        // The protocol/title fold is not an interaction inside the artwork.
+        const outerDetails = matches(root, 'details') ? root : query(root, 'details')[0];
         for (const parent of nodes) {
-            const details = [...(parent.children || [])].filter(node => matches(node, 'details'));
-            if (details.length < 2) continue;
+            const details = [...(parent.children || [])].filter(node => node !== outerDetails && matches(node, 'details'));
+            if (!details.length) continue;
             if (details.every(node => query(node, 'summary').length && !hasDrawing(node) && prose(node))) {
                 result.operation_family = 'text_disclosure_stack'; break;
             }

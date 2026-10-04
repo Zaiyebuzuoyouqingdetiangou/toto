@@ -1,8 +1,8 @@
 // Split from outputSanitizer.js — checkedStateRescue.
-import { rememberRuntimeAnimationStyle } from '../runtimeAnimationState.js?rmv=1.62.65';
+import { rememberRuntimeAnimationStyle } from '../runtimeAnimationState.js?rmv=1.62.82';
 
-import { escapeCssIdentifier, escapeRegExp, getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.62.65';
-import { getClassTokens, isCollapsedDimensionValue, parseCssStateSiblingAssignments } from './renderedStateRescue.js?rmv=1.62.65';
+import { escapeCssIdentifier, escapeRegExp, getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.62.82';
+import { getClassTokens, isCollapsedDimensionValue, parseCssStateSiblingAssignments } from './renderedStateRescue.js?rmv=1.62.82';
 import {
     capturePseudoStyleState,
     chooseMatchingRawRabbitMirrorRoot,
@@ -10,15 +10,15 @@ import {
     normalizeInteractionMatchText,
     resolveRenderedCounterpart,
     restorePseudoStyleState,
-} from './scriptedInteractionRescue.js?rmv=1.62.65';
+} from './scriptedInteractionRescue.js?rmv=1.62.82';
 import {
     REVERSIBLE_RADIO_BASELINE_ATTR,
     applyCheckedVisualFallback,
     inputHasAssociatedLabel,
     setRescuedCheckedState,
-} from './fallbackRescue.js?rmv=1.62.65';
-import { RADIO_GROUP_RESCUE_ATTR } from './idsAndRearm.js?rmv=1.62.65';
-import { diagnosticComputedStyle, maintenanceSafeComputedStyle } from './diagnostics.js?rmv=1.62.65';
+} from './fallbackRescue.js?rmv=1.62.82';
+import { RADIO_GROUP_RESCUE_ATTR } from './idsAndRearm.js?rmv=1.62.82';
+import { diagnosticComputedStyle, maintenanceSafeComputedStyle } from './diagnostics.js?rmv=1.62.82';
 import {
     checkedDeclarationCreatesContentReveal,
     checkedTargetCarriesResultContent,
@@ -26,14 +26,14 @@ import {
     isIndependentMaintenanceRoot,
     notifyIndependentRepairPersistence,
     resolveMaintenanceGeneratedClass,
-} from './maintenanceInspect.js?rmv=1.62.65';
-import { splitCssSelectorList } from './markup.js?rmv=1.62.65';
+} from './maintenanceInspect.js?rmv=1.62.82';
+import { splitCssSelectorList } from './markup.js?rmv=1.62.82';
 import {
     maintenanceMobileLayoutLengthPx,
     maintenanceMobileLayoutRect,
     maintenanceMobileLayoutTextLength,
     viewportLayoutHasAuthoredGridPlacement,
-} from './layoutRescue.js?rmv=1.62.65';
+} from './layoutRescue.js?rmv=1.62.82';
 
 const interactionInlineOverrideStates = new WeakMap();
 
@@ -1171,6 +1171,8 @@ function matchGenericLocalCheckedSelector(selector, input) {
         return {
             source: 'generic-local',
             subjectSelector: subject,
+            conditionSelector: /:checked\b/i.test(source.slice(0, match.index))
+                ? source.slice(0, match.index) + match[0].slice(0, match[0].indexOf(subject)) + subject : '',
             relation: match[2],
             rawTargetSelector: match[3],
         };
@@ -1287,9 +1289,14 @@ export function parseCheckedRulesFromText(toto, input) {
                 for (const needle of selectorNeedles) {
                     const selectorMatch = selector.match(needle.pattern);
                     if (!selectorMatch) continue;
+                    // A later control in A:checked ~ B:checked must not lose A.
+                    // Keep the original prefix for native matching; cleanup still
+                    // needs all branches, so evaluate it only when applying styles.
+                    const prefix = selector.slice(0, selectorMatch.index);
                     parsedRules.push({
                         source: needle.source,
                         subjectSelector: needle.subjectSelector,
+                        conditionSelector: /:checked\b/i.test(prefix) ? prefix + needle.subjectSelector : '',
                         relation: selectorMatch[1],
                         rawTargetSelector: selectorMatch[2],
                     });
@@ -1303,10 +1310,11 @@ export function parseCheckedRulesFromText(toto, input) {
                     const pseudoElement = parsedTarget.pseudoElement;
                     if (!targetSelector) continue;
                     // 同一条规则可能同时被 id/class 与通用 input 识别；按实际效果去重，保留先出现的精确路线。
-                    const key = `${parsedRule.relation}|${targetSelector}|${pseudoElement}|${JSON.stringify(styleMap)}`;
+                    const conditionSelector = parsedRule.conditionSelector || '';
+                    const key = `${conditionSelector}|${parsedRule.relation}|${targetSelector}|${pseudoElement}|${JSON.stringify(styleMap)}`;
                     if (seen.has(key)) continue;
                     seen.add(key);
-                    results.push({ source: parsedRule.source, subjectSelector: parsedRule.subjectSelector || '', relation: parsedRule.relation, targetSelector, pseudoElement, styleMap });
+                    results.push({ source: parsedRule.source, subjectSelector: parsedRule.subjectSelector || '', relation: parsedRule.relation, targetSelector, pseudoElement, styleMap, conditionSelector });
                 }
             }
         }
@@ -3069,6 +3077,12 @@ function getFollowingLocalContainerTargetsForCheckedRule(input, targetSelector) 
 }
 
 
+function checkedRuleConditionsMatch(input, rule) {
+    if (!rule.conditionSelector) return true;
+    try { return !!input?.matches?.(rule.conditionSelector); } catch { return false; }
+}
+
+
 export function applyCheckedRuleTextFallback(toto, input) {
     if (!toto || !input) return 0;
     restoreInteractionInlineOverrides(input);
@@ -3079,6 +3093,7 @@ export function applyCheckedRuleTextFallback(toto, input) {
     const routeKinds = new Set();
     const revealCandidates = new Map();
     for (const rule of parseCheckedRulesFromText(toto, input)) {
+        if (!checkedRuleConditionsMatch(input, rule)) continue;
         const targets = resolveTargetsForCheckedRule(toto, input, rule);
         for (const target of targets) {
             routeKinds.add(rule.source);

@@ -1,10 +1,12 @@
 // Split from outputSanitizer.js — diagnostics.
-import { restoreRuntimeAnimationClone } from '../runtimeAnimationState.js?rmv=1.62.65';
+import { nativePopoverFallbackCount, inspectNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.62.82';
+import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.62.82';
+import { restoreRuntimeAnimationClone } from '../runtimeAnimationState.js?rmv=1.62.82';
 
-import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.62.65';
-import { collectBoundedElementDescendants } from '../presentationQuality.js?rmv=1.62.65';
-import { collectRevealedClipHosts, shouldRelaxRevealedClipPanel, REVEALED_CLIP_RESCUE_ATTR } from '../revealedClipRepair.js?rmv=1.62.65';
-import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.62.65';
+import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.62.82';
+import { collectBoundedElementDescendants } from '../presentationQuality.js?rmv=1.62.82';
+import { collectRevealedClipHosts, shouldRelaxRevealedClipPanel, REVEALED_CLIP_RESCUE_ATTR } from '../revealedClipRepair.js?rmv=1.62.82';
+import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.62.82';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -23,7 +25,7 @@ import {
     isInsideChatMessage,
     isMaintenanceRabbitEnabled,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.62.65';
+} from './runtime.js?rmv=1.62.82';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     CHANNEL_DIAL_CYCLE_COUNT_ATTR,
@@ -56,7 +58,7 @@ import {
     WEBKIT_3D_FLIP_RESCUE_ATTR,
     passportDocumentRescueStates,
     unlabeledCheckedHostRescueStates,
-} from './checkedStateRescue.js?rmv=1.62.65';
+} from './checkedStateRescue.js?rmv=1.62.82';
 import {
     RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR,
     RENDERED_BUTTON_ADJACENT_HIDDEN_ITEM_ATTR,
@@ -83,7 +85,7 @@ import {
     renderedListDetailRescueStates,
     renderedMaskRevealRescueStates,
     renderedStateLayerRescueStates,
-} from './renderedStateRescue.js?rmv=1.62.65';
+} from './renderedStateRescue.js?rmv=1.62.82';
 import {
     RAW_RADIO_RESET_LAST_ATTR,
     RAW_RADIO_RESET_ROOT_ATTR,
@@ -94,7 +96,7 @@ import {
     getRabbitMirrorSummaryText,
     getRawAssistantMessageForRenderedRoot,
     rawSelfMutationRescueStates,
-} from './scriptedInteractionRescue.js?rmv=1.62.65';
+} from './scriptedInteractionRescue.js?rmv=1.62.82';
 import {
     REVERSIBLE_RADIO_LAST_ATTR,
     REVERSIBLE_RADIO_ROOT_ATTR,
@@ -105,13 +107,13 @@ import {
     findNestedDetailsPopupClippingCandidates,
     formatWebKit3DFlipEvidence,
     repairNestedDetailsPopupClipping,
-} from './fallbackRescue.js?rmv=1.62.65';
-import { RADIO_GROUP_RESCUE_ATTR, RADIO_GROUP_ROOT_ATTR } from './idsAndRearm.js?rmv=1.62.65';
+} from './fallbackRescue.js?rmv=1.62.82';
+import { RADIO_GROUP_RESCUE_ATTR, RADIO_GROUP_ROOT_ATTR } from './idsAndRearm.js?rmv=1.62.82';
 import {
     findFillInChoiceCandidates,
     findStaticChoiceSelectionCandidates,
     findStructuredStaticDisclosureCandidates,
-} from './choiceRescue.js?rmv=1.62.65';
+} from './choiceRescue.js?rmv=1.62.82';
 import {
     CODE_SHELL_SELECTOR,
     MAINTENANCE_QUARANTINED_SCRIPT_ATTR,
@@ -129,7 +131,7 @@ import {
     needsSanitize,
     normalizeMaintenanceSummaryText,
     parseTotoFragment,
-} from './maintenanceInspect.js?rmv=1.62.65';
+} from './maintenanceInspect.js?rmv=1.62.82';
 import {
     RABBIT_MIRROR_MAX_TEMPLATE_SOURCE_CHARS,
     RABBIT_MIRROR_SANITIZER_IMPORT_STRIPPED_ATTR,
@@ -142,7 +144,7 @@ import {
     sanitizeRabbitMirrorUntrustedTemplate,
     stripCssComments,
     validateRabbitMirrorTemplateStructuralBudget,
-} from './markup.js?rmv=1.62.65';
+} from './markup.js?rmv=1.62.82';
 import {
     HCLIP_REPORT_ATTR,
     VIEWPORT_LAYOUT_COUNT_ATTR,
@@ -150,14 +152,14 @@ import {
     inspectMaintenanceMobileLayout,
     inspectMaintenanceViewportLayout,
     maintenanceMobileLayoutIsPassportManaged,
-} from './layoutRescue.js?rmv=1.62.65';
-import { normalizeRabbitMirrorToolButton, rabbitMirrorTextPresentation } from './toolsChrome.js?rmv=1.62.65';
+} from './layoutRescue.js?rmv=1.62.82';
+import { normalizeRabbitMirrorToolButton, rabbitMirrorTextPresentation } from './toolsChrome.js?rmv=1.62.82';
 import {
     getMessageIndexFromMirrorNode,
     hostScriptModule,
     messageUsesDistinctDisplaySource,
     outputHostGenerationLooksActive,
-} from './lifecycle.js?rmv=1.62.65';
+} from './lifecycle.js?rmv=1.62.82';
 
 export const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
 
@@ -647,6 +649,8 @@ export function diagnosticRouteSummary(root) {
         checkedTextRule: root?.querySelectorAll?.(`[${CHECKED_TEXT_RULE_RESCUE_ATTR}]`)?.length || 0,
         missingCheckedClass: Number.parseInt(root?.getAttribute?.(MISSING_CHECKED_SUBJECT_CLASS_RESCUE_ATTR) || '0', 10) || 0,
         crossParentChecked: Number.parseInt(root?.getAttribute?.(CROSS_PARENT_CHECKED_ROOT_ATTR) || '0', 10) || 0,
+        behavior: inspectBehaviorRecovery(root).wired,
+        nativePopover: nativePopoverFallbackCount(root),
         checkedHasState: Number.parseInt(root?.getAttribute?.(CHECKED_HAS_STATE_RULE_COUNT_ATTR) || '0', 10) || 0,
         detachedCheckedHas: Number.parseInt(root?.getAttribute?.(DETACHED_CHECKED_HAS_RULE_COUNT_ATTR) || '0', 10) || 0,
         pairedCheckedState: Number.parseInt(root?.getAttribute?.(PAIRED_CHECKED_STATE_COUNT_ATTR) || '0', 10) || 0,
@@ -688,8 +692,18 @@ function diagnosticInferReason(root, inputs, targets, state = null) {
             && !target.closest?.(`[${TOOL_ENTRY_HOST_ATTR}], [data-rm-face-swipe-host]`)
             && !target.matches?.('[data-rabbit-mirror-title-flow-end="true"]'))) return '本面为文本模式：使用 HTML 排版阅读，不要求内部交互；外层收展与重说工具照常可用。';
     const routes = diagnosticRouteSummary(root);
+    const behavior = inspectBehaviorRecovery(root);
+    const popup = inspectNativePopoverFallback(root);
+    if (popup.missingTargets) return `有 ${popup.missingTargets} 个弹窗控件的本地目标缺失或不唯一，维修兔不能猜测目标。`;
+    if (behavior.incomplete || behavior.unmappedRanges) {
+        return `新交互仍有未接通项：缺控件或目标 ${behavior.incomplete} 组，滑杆未找到明确联动目标 ${behavior.unmappedRanges} 个；维修兔不会猜测目标或补写后续内容。`;
+    }
+    if (routes.nativePopover && !behavior.declared) return '旧版浏览器的本地弹窗显隐与关闭已接线；当前未实际点击验证，不代表浮层显示已验收。';
+    if (behavior.declared) {
+        return `新交互驱动 ${behavior.wired}/${behavior.declared} 组已接线；本次未操作这些真实控件，不能据此认定交互结果已实测通过。`;
+    }
     const depth = maintenanceCheckedInteractionDepth(root);
-    const routeCount = routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.stateSibling + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.focusToChecked + routes.checkedTextRule + routes.missingCheckedClass + routes.crossParentChecked + routes.checkedHasState + routes.detachedCheckedHas + routes.pairedCheckedState + routes.exclusiveStackedState + routes.channelDialCycle + routes.reversibleRadio + routes.expandedOpacity + routes.nestedCheckedContent + routes.containerReveal + routes.selfMutation + routes.classStateProgram + routes.scriptTimeline + routes.cssCommentRepair + routes.changeProgram + routes.focusWithinPersistent + routes.unlabeledChecked + routes.labeledCheckedVerify + routes.selectionFallback + routes.disabledChoice + routes.inertAction + routes.staticChoiceSelection + routes.structuredStaticDisclosure + routes.fillInChoice + routes.passportDocument + routes.decorativeOverlayPassThrough;
+    const routeCount = Number(routes.behavior || 0) + Number(routes.nativePopover || 0) + routes.adjacent + routes.layers + routes.labelInternal + routes.labelAdjacent + routes.maskReveal + routes.listDetail + routes.stateSibling + routes.buttonAdjacent + routes.clickableAdjacent + routes.clickablePopup + routes.checkedIdTarget + routes.focusToChecked + routes.checkedTextRule + routes.missingCheckedClass + routes.crossParentChecked + routes.checkedHasState + routes.detachedCheckedHas + routes.pairedCheckedState + routes.exclusiveStackedState + routes.channelDialCycle + routes.reversibleRadio + routes.expandedOpacity + routes.nestedCheckedContent + routes.containerReveal + routes.selfMutation + routes.classStateProgram + routes.scriptTimeline + routes.cssCommentRepair + routes.changeProgram + routes.focusWithinPersistent + routes.unlabeledChecked + routes.labeledCheckedVerify + routes.selectionFallback + routes.disabledChoice + routes.inertAction + routes.staticChoiceSelection + routes.structuredStaticDisclosure + routes.fillInChoice + routes.passportDocument + routes.decorativeOverlayPassThrough;
     const checkedInputs = inputs.filter(input => input.checked);
     const visibleTargets = targets.filter(target => {
         const style = diagnosticComputedStyle(target);
@@ -758,13 +772,13 @@ function diagnosticInferReason(root, inputs, targets, state = null) {
 export function captureInteractionDiagnosticSnapshot(root, state, label) {
     if (!root || !state) return;
     const targets = diagnosticCollectTargets(root).slice(0, 6);
-    const inputs = [...root.querySelectorAll('input[type="checkbox"], input[type="radio"]')].slice(0, 6);
+    const inputs = [...root.querySelectorAll('input[type="checkbox"], input[type="radio"], input[type="range"]')].slice(0, 8);
     const targetSummary = targets.map((target, index) => {
         const computed = diagnosticComputedStyle(target);
         const rect = diagnosticRect(target);
         return `${index}:${diagnosticElementName(target)} opacity=${computed?.opacity || '?'} display=${computed?.display || '?'} height=${rect.height}px`;
     }).join(' | ');
-    const inputSummary = inputs.map((input, index) => `${index}:${diagnosticElementName(input)}=${!!input.checked}`).join(' | ');
+    const inputSummary = inputs.map((input, index) => `${index}:${diagnosticElementName(input)}=${input.type === 'range' ? input.value : !!input.checked}`).join(' | ');
     state.snapshots.push(`${label} inputs[${inputSummary || 'none'}] targets[${targetSummary || 'none'}]`);
     if (state.snapshots.length > 6) state.snapshots.splice(0, state.snapshots.length - 6);
 }
@@ -1930,10 +1944,12 @@ export function diagnosticLayoutEvidence(root) {
 }
 
 function buildInteractionDiagnosticText(root, state, phase = 'capture complete') {
-    const inputs = diagnosticQueryContentAll(root, 'input[type="checkbox"], input[type="radio"]').slice(0, 8);
+    const inputs = diagnosticQueryContentAll(root, 'input, textarea').slice(0, 12);
     const labels = diagnosticQueryContentAll(root, 'label');
     const targets = diagnosticCollectTargets(root);
     const routes = diagnosticRouteSummary(root);
+    const behavior = inspectBehaviorRecovery(root);
+    const popup = inspectNativePopoverFallback(root);
     const checkedDepth = maintenanceCheckedInteractionDepth(root);
     const pseudoDepth = maintenancePseudoInteractionDepth(root);
     const reachability = maintenanceReachableInteractionEvidence(
@@ -2084,6 +2100,9 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `静态抉择选择 entries=${routes.staticChoiceSelection} listener=${routes.staticChoiceSelection ? 'true' : 'false'}`,
         `结构化静态分段 candidates=${structuredStaticDisclosureCandidateCount} entries=${routes.structuredStaticDisclosure} listener=${routes.structuredStaticDisclosure ? 'true' : 'false'}`,
         `填空候选恢复 candidates=${fillInChoiceCandidateCount} entries=${routes.fillInChoice} listener=${routes.fillInChoice ? 'true' : 'false'}`,
+        `新交互驱动 declared=${behavior.declared} 已接线=${behavior.wired} recovered=${behavior.recovered} 可恢复=${behavior.candidates} 缺控件或目标=${behavior.incomplete} 滑杆未映射=${behavior.unmappedRanges} types=${behavior.types.join(',') || '(无)'}` ,
+        '新交互状态仅为结构与监听器检查，不能据此认定交互结果已实测通过。',
+        `本地弹窗 原生=${popup.native} 已接线=${popup.wired} 待接线=${popup.unwired} 缺失或重复目标=${popup.missingTargets}（未自动点击真实控件）`,
         `iOS 3D翻面兼容 patches=${routes.webkit3dFlip} evidence=${formatWebKit3DFlipEvidence(root)}`,
         `label fallback=${root.dataset.rabbitMirrorLabelFallback || root.dataset.rabbitMirrorCheckedFallback || root.dataset.rabbitMirrorInteractionFallback || 'unknown'}`,
         '',
@@ -2125,7 +2144,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
     inputs.forEach((input, index) => {
         const label = diagnosticFindAssociatedLabel(root, input);
         lines.push(
-            `${index}: ${diagnosticElementName(input)} type=${input.type} checked=${!!input.checked}`,
+            `${index}: ${diagnosticElementName(input)} type=${input.type} ${input.type === 'range' ? `value=${input.value}` : `checked=${!!input.checked}`}`,
             `   label=${!!label} text="${diagnosticCompactText(label?.textContent, 68)}"`,
             `   attrs: route=${getRenderedInputRoute(input) || 'none'} adjacent=${input.getAttribute(RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR) || 'false'} layer=${input.getAttribute(RENDERED_STATE_LAYER_RESCUE_ATTR) || 'false'} labelInternal=${input.getAttribute(RENDERED_LABEL_INTERNAL_HIDDEN_RESCUE_ATTR) || 'false'} labelAdjacent=${input.getAttribute(RENDERED_LABEL_ADJACENT_RESULT_RESCUE_ATTR) || 'false'} idTarget=${input.getAttribute(RENDERED_CHECKED_ID_TARGET_RESCUE_ATTR) || 'false'} cssChecked=${input.getAttribute(CHECKED_TEXT_RULE_RESCUE_ATTR) || 'false'} detachedHas=${input.getAttribute(DETACHED_CHECKED_HAS_CONTROL_ATTR) || 'false'} focusWithinPersistent=${input.getAttribute(FOCUS_WITHIN_PERSISTENT_CONTROL_ATTR) || 'false'} radioGroup=${input.getAttribute(RADIO_GROUP_RESCUE_ATTR) || 'false'} expandedOpacity=${input.getAttribute(EXPANDED_OPACITY_RESCUE_ATTR) || 'false'} change=${input.getAttribute(CHANGE_PSEUDO_RESCUE_ATTR) || 'false'} unlabeledHost=${input.getAttribute(UNLABELED_CHECKED_CONTROL_RESCUE_ATTR) || 'false'} labeledVerified=${input.getAttribute(LABELED_CHECKED_VERIFY_CONTROL_ATTR) || 'false'}`,
         );
