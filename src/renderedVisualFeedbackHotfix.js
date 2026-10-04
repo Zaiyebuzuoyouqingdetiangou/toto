@@ -1,5 +1,5 @@
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.62.80';
-import { updateLatestVisualSignature, visualHistoryTarget } from './storage.js?rmv=1.62.80';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.62.82';
+import { updateLatestVisualSignature, visualHistoryTarget } from './storage.js?rmv=1.62.82';
 
 const VERSION = '1.5.53';
 const HOST = '[data-rabbit-mirror-external-source]';
@@ -180,7 +180,7 @@ function mergeSkeleton(base, palette, profile) {
     if(profile.repeated){f.unit_family='矩形信息块/卡片化条目';f.contour_family=profile.rounded?'contour: rounded_panel_cluster':'contour: repeated_rectangular_blocks';}
     if(profile.grid){f.reading_family='按网格分区扫描';f.space_family='space: grid_plane';}
     else if(profile.stack||profile.flat){f.reading_family='自上而下分段扫描';f.space_family='space: flat_content_surface';}
-    const order=['surface_family','contrast_family','contour_family','reading_family','unit_family','space_family','interaction_family','mood'];
+    const order=['layout_family','operation_family','surface_family','contrast_family','contour_family','reading_family','unit_family','space_family','interaction_family','mood'];
     return order.filter(k=>f[k]).map(k=>`${k}: ${f[k]}`).join('；');
 }
 

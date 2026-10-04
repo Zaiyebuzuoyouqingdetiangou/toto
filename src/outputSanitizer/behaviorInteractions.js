@@ -1,3 +1,6 @@
+import { updateBehaviorResults } from './behaviorResults.js?rmv=1.62.82';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.62.82';
+
 // Declarative, face-local behaviors. No generated code, global targets or timers.
 const roots = new WeakMap();
 const owners = new WeakMap();
@@ -8,6 +11,18 @@ const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const own = (group, selector) => [...group.querySelectorAll(selector)].filter(node => node.closest(GROUP) === group);
 const first = (group, selector) => own(group, selector)[0];
 const isButton = node => node?.matches?.('button, input[type="button"]') && !node.disabled;
+
+function refreshResults(state) {
+    const range = first(state.group, 'input[type="range"]');
+    updateBehaviorResults(state.group, {
+        changed: Boolean(state.changed), p: range ? rangeValue(range).p : (state.progress || 0),
+        active: state.group.getAttribute('data-rm-active') === 'true',
+        match: state.group.getAttribute('data-rm-match') === 'true',
+        count: own(state.group, 'button[data-rm-step]').filter(node => node.getAttribute('data-rm-done') === 'true').length,
+        order: own(state.group, '[data-rm-item]').map(node => node.getAttribute('data-rm-item')),
+        placed: [...state.placed].filter(node => state.group.contains(node)).map(node => node.getAttribute('data-rm-item')),
+    });
+}
 
 function rangeValue(input) {
     const min = input.min === '' ? 0 : finite(input.min);
@@ -38,6 +53,7 @@ function animations(state) {
 
 function reveal(state, p) {
     const value = clamp(p, 0, 1);
+    state.progress = value;
     style(state, state.group, '--rm-p', String(value));
     for (const cover of own(state.group, '[data-rm-cover]')) style(state, cover, 'clip-path', `inset(0 0 0 ${value * 100}%)`);
     const range = first(state.group, 'input[type="range"]');
@@ -54,13 +70,14 @@ function countSteps(state) {
     for (const step of steps) step.setAttribute('aria-pressed', String(step.getAttribute('data-rm-done') === 'true'));
 }
 
-function inputChange(state, input) {
+function inputChange(state, input, userAction = false) {
+    if (userAction) state.changed = true;
     const { group, type } = state;
     if (type === 'input' && input.matches('input:not([type]), input[type="text"], input[type="password"], textarea')) {
         for (const output of own(group, 'output')) output.textContent = input.value;
         if (group.hasAttribute('data-rm-answer')) group.setAttribute('data-rm-match', String(input.value === group.getAttribute('data-rm-answer')));
     }
-    if (!input.matches('input[type="range"]')) return;
+    if (!input.matches('input[type="range"]')) { refreshResults(state); return; }
     const { value, p } = rangeValue(input);
     if (type === 'adjust') {
         style(state, group, '--rm-p', String(p));
@@ -78,6 +95,7 @@ function inputChange(state, input) {
             if (duration > 0) animation.currentTime = finite(animation.effect?.getTiming?.().delay) + p * duration;
         }
     }
+    refreshResults(state);
 }
 
 function validGroup(group, type) {
@@ -94,7 +112,7 @@ function prepare(binding, group) {
     if (binding.groups.has(group)) return binding.groups.get(group);
     const type = group.getAttribute('data-rm-ui');
     if (!validGroup(group, type)) return null;
-    const state = { group, type, styles: new Map(), positions: new Map(), orders: new Map(), animations: new Set(), strokes: new Set() };
+    const state = { group, type, styles: new Map(), positions: new Map(), orders: new Map(), animations: new Set(), strokes: new Set(), placed: new Set(), changed: false, progress: 0 };
     binding.groups.set(group, state);
     owners.set(group, binding);
     const items = own(group, '[data-rm-item]');
@@ -114,6 +132,7 @@ function prepare(binding, group) {
         const range = first(group, 'input[type="range"]');
         if (range) inputChange(state, range);
     }
+    refreshResults(state);
     return state;
 }
 
@@ -133,14 +152,17 @@ export function isBehaviorInteractionOwned(node) {
 // are deliberately insufficient; cloned faces need their own listeners.
 export function hasBehaviorInteractionControl(root, button) {
     if (!isButton(button)) return false;
+    if (hasMobileInteractionControl(root, button)) return true;
     const state = stateFor(root, button);
     if (!state) return false;
     if (button.hasAttribute('data-rm-reset')) return true;
-    const attrs = { effect: ['fire'], motion: ['play', 'reverse'], hold: ['hold'], reorder: ['prev', 'next'], accumulate: ['step'] };
+    const attrs = { drag: ['place', 'return', 'move'], effect: ['fire'], motion: ['play', 'reverse'], hold: ['hold'], reorder: ['prev', 'next'], accumulate: ['step'] };
     return (attrs[state.type] || []).some(attr => button.hasAttribute(`data-rm-${attr}`));
 }
 
 function reset(state) {
+    state.changed = false;
+    state.placed.clear();
     for (const [node, properties] of state.styles) for (const [property, [value, priority]] of properties) {
         if (value) node.style.setProperty(property, value, priority);
         else node.style.removeProperty(property);
@@ -173,18 +195,28 @@ function reset(state) {
         for (const step of own(state.group, 'button[data-rm-step]')) step.removeAttribute('data-rm-done');
         countSteps(state);
     }
-    if (state.type === 'adjust') {
+    if (state.type === 'adjust' || state.type === 'view') {
         const range = first(state.group, 'input[type="range"]');
         if (range) inputChange(state, range);
     }
+    refreshResults(state);
 }
 
 function action(state, button) {
+    if (!state) return; // Mobile arrows/range buttons have their own local listener.
     if (button.hasAttribute('data-rm-reset')) { reset(state); return; }
-    if (state.type === 'effect' && button.hasAttribute('data-rm-fire')) {
-        for (const animation of animations(state)) { animation.currentTime = 0; animation.play(); }
+    if (state.type === 'drag') {
+        const item = button.closest('[data-rm-item]');
+        if (!item || item.closest(GROUP) !== state.group) return;
+        const changed = dragButton(state, item, button);
+        if (changed) state.changed = true;
+    } else if (state.type === 'effect' && button.hasAttribute('data-rm-fire')) {
+        const list = animations(state);
+        for (const animation of list) { animation.currentTime = 0; animation.play(); }
+        if (list.length) state.changed = true;
     } else if (state.type === 'motion') {
         const list = animations(state);
+        if (list.length) state.changed = true;
         if (button.hasAttribute('data-rm-play')) {
             const pause = list.some(animation => animation.playState === 'running');
             for (const animation of list) animation[pause ? 'pause' : 'play']();
@@ -206,15 +238,17 @@ function action(state, button) {
         if (done) button.removeAttribute('data-rm-done');
         else button.setAttribute('data-rm-done', 'true');
         countSteps(state);
+        state.changed = true;
     } else if (state.type === 'reorder') {
         const item = button.closest('[data-rm-item]');
         if (!item || item.closest(GROUP) !== state.group) return;
         const siblings = own(state.group, '[data-rm-item]').filter(node => node.parentElement === item.parentElement);
         const index = siblings.indexOf(item);
-        if (button.hasAttribute('data-rm-prev') && index > 0) item.parentElement.insertBefore(item, siblings[index - 1]);
-        if (button.hasAttribute('data-rm-next') && index < siblings.length - 1) item.parentElement.insertBefore(siblings[index + 1], item);
+        if (button.hasAttribute('data-rm-prev') && index > 0) { item.parentElement.insertBefore(item, siblings[index - 1]); state.changed = true; }
+        if (button.hasAttribute('data-rm-next') && index < siblings.length - 1) { item.parentElement.insertBefore(siblings[index + 1], item); state.changed = true; }
         button.focus?.({ preventScroll: true });
     }
+    refreshResults(state);
 }
 
 function localPoint(surface, event) {
@@ -234,6 +268,47 @@ function moveItem(state, item, x, y) {
     }
     position.x = x; position.y = y;
     style(state, item, 'translate', `calc(${position.base[0]} + ${x}px) calc(${position.base[1]} + ${y}px)`);
+}
+
+function matchingSlot(state, item) {
+    const key = item.getAttribute('data-rm-item');
+    const slots = own(state.group, '[data-rm-slot]').filter(node => key && node.getAttribute('data-rm-slot') === key);
+    return slots.length === 1 ? slots[0] : null;
+}
+
+function placeItem(state, item, slot) {
+    const box = slot.getBoundingClientRect(), current = item.getBoundingClientRect();
+    const groupBox = state.group.getBoundingClientRect();
+    const sx = groupBox.width ? state.group.clientWidth / groupBox.width : 1;
+    const sy = groupBox.height ? state.group.clientHeight / groupBox.height : 1;
+    const position = state.positions.get(item) || { x: 0, y: 0 };
+    moveItem(state, item, position.x + (box.left + box.width / 2 - current.left - current.width / 2) * sx,
+        position.y + (box.top + box.height / 2 - current.top - current.height / 2) * sy);
+    state.placed.add(item);
+    state.changed = true;
+}
+
+function dragButton(state, item, button) {
+    if (button.hasAttribute('data-rm-place')) {
+        const slot = matchingSlot(state, item);
+        if (!slot) return false;
+        placeItem(state, item, slot);
+        return true;
+    }
+    if (button.hasAttribute('data-rm-return')) {
+        if (!state.positions.has(item)) return false;
+        const saved = state.styles.get(item)?.get('translate');
+        if (saved?.[0]) item.style.setProperty('translate', ...saved);
+        else item.style.removeProperty('translate');
+        state.styles.get(item)?.delete('translate'); state.positions.delete(item); state.placed.delete(item);
+        return true;
+    }
+    const delta = { left: [-20, 0], right: [20, 0], up: [0, -20], down: [0, 20] }[button.getAttribute('data-rm-move')];
+    if (!delta) return false;
+    const position = state.positions.get(item) || { x: 0, y: 0 };
+    moveItem(state, item, position.x + delta[0], position.y + delta[1]);
+    state.placed.delete(item);
+    return true;
 }
 
 function drawPoint(session, event) {
@@ -260,13 +335,15 @@ function pointerMove(binding, event) {
     if (!binding.root.contains(state.group)) { finishPointer(binding, event, true); return; }
     if (state.type === 'drag' || state.type === 'reorder') {
         moveItem(state, item, session.x + (event.clientX - session.startX) * session.sx, session.y + (event.clientY - session.startY) * session.sy);
-    } else if (state.type === 'draw') drawPoint(session, event);
+        if (event.clientX !== session.startX || event.clientY !== session.startY) { state.changed = true; state.placed.delete(item); }
+    } else if (state.type === 'draw') { drawPoint(session, event); if (session.points > 1) state.changed = true; }
     else if (state.type === 'reveal') {
-        const point = localPoint(surface, event); reveal(state, point.x / Math.max(1, point.width));
+        const point = localPoint(surface, event); reveal(state, point.x / Math.max(1, point.width)); state.changed = true;
     } else if (state.type === 'follow') {
         const point = localPoint(surface, event);
-        style(state, state.group, '--rm-x', `${point.x}px`); style(state, state.group, '--rm-y', `${point.y}px`);
+        style(state, state.group, '--rm-x', `${point.x}px`); style(state, state.group, '--rm-y', `${point.y}px`); state.changed = true;
     }
+    refreshResults(state);
     if (event.cancelable) event.preventDefault();
 }
 
@@ -276,15 +353,16 @@ function finishPointer(binding, event, cancelled = false) {
     binding.pointer = null;
     const { state, item, surface } = session;
     if (state.type === 'hold') { state.group.removeAttribute('data-rm-active'); binding.holds.delete(state); }
-    if (item && cancelled) moveItem(state, item, session.x, session.y);
+    if (item && cancelled) {
+        moveItem(state, item, session.x, session.y);
+        state.changed = session.changedBefore;
+        if (session.wasPlaced) state.placed.add(item);
+    }
     if (item && !cancelled && state.type === 'drag') {
-        const slot = own(state.group, '[data-rm-slot]').find(node => node.getAttribute('data-rm-slot') === item.getAttribute('data-rm-item') && node.getAttribute('data-rm-slot'));
+        const slot = matchingSlot(state, item);
         if (slot) {
             const box = slot.getBoundingClientRect();
-            if (event.clientX >= box.left && event.clientX <= box.right && event.clientY >= box.top && event.clientY <= box.bottom) {
-                const current = item.getBoundingClientRect(), position = state.positions.get(item);
-                moveItem(state, item, position.x + (box.left + box.width / 2 - current.left - current.width / 2) * session.sx, position.y + (box.top + box.height / 2 - current.top - current.height / 2) * session.sy);
-            }
+            if (event.clientX >= box.left && event.clientX <= box.right && event.clientY >= box.top && event.clientY <= box.bottom) placeItem(state, item, slot);
         }
     }
     if (item && state.type === 'reorder') {
@@ -299,10 +377,12 @@ function finishPointer(binding, event, cancelled = false) {
                 const horizontal = Math.abs(box.left - origin.left) > Math.abs(box.top - origin.top);
                 const after = horizontal ? event.clientX > box.left + box.width / 2 : event.clientY > box.top + box.height / 2;
                 item.parentElement.insertBefore(item, after ? target.nextSibling : target);
+                state.changed = true;
             }
         }
         moveItem(state, item, session.x, session.y);
     }
+    refreshResults(state);
     try { surface.releasePointerCapture?.(session.id); } catch { /* Already released by the browser. */ }
 }
 
@@ -315,14 +395,17 @@ function pointerDown(binding, event) {
     if (type === 'hold') surface = event.target.closest('[data-rm-hold]');
     else {
         if (event.target.closest('button, input, textarea, select, a')) return;
-        if (type === 'drag' || type === 'reorder') surface = item = event.target.closest('[data-rm-item]');
+        if (type === 'drag' || type === 'reorder') {
+            surface = item = event.target.closest('[data-rm-item]');
+            if (event.pointerType === 'touch' && usesMobileInteractionButtons(binding.root, item)) return;
+        }
         else if (type === 'draw') surface = event.target.closest('svg[data-rm-canvas]');
         else if (type === 'follow') surface = event.target.closest('[data-rm-surface]');
         else if (type === 'reveal' && !first(group, 'input[type="range"]')) surface = first(group, '[data-rm-surface]') || group;
     }
     if (!surface || surface.closest(GROUP) !== group || (type === 'hold' && !isButton(surface))) return;
     const point = localPoint(group, event), position = state.positions.get(item);
-    const session = { state, surface, item, id: event.pointerId, startX: event.clientX, startY: event.clientY, x: position?.x || 0, y: position?.y || 0, sx: point.sx, sy: point.sy, box: item?.getBoundingClientRect() };
+    const session = { state, surface, item, changedBefore: state.changed, wasPlaced: state.placed.has(item), id: event.pointerId, startX: event.clientX, startY: event.clientY, x: position?.x || 0, y: position?.y || 0, sx: point.sx, sy: point.sy, box: item?.getBoundingClientRect() };
     binding.pointer = session;
     if (type === 'draw') {
         session.path = surface.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -330,24 +413,26 @@ function pointerDown(binding, event) {
         session.path.setAttribute('stroke-linecap', 'round'); session.path.setAttribute('pointer-events', 'none');
         session.points = 0; session.pathData = ''; state.strokes.add(session.path); surface.appendChild(session.path);
     }
-    if (type === 'hold') { group.setAttribute('data-rm-active', 'true'); binding.holds.add(state); }
+    if (type === 'hold') { group.setAttribute('data-rm-active', 'true'); binding.holds.add(state); state.changed = true; }
     try { surface.setPointerCapture?.(event.pointerId); } catch { /* Synthetic or no active pointer. */ }
     pointerMove(binding, event);
 }
 
 export function installBehaviorInteractions(root) {
-    if (!root?.addEventListener || roots.has(root)) return 0;
-    const binding = { root, groups: new WeakMap(), pointer: null, holds: new Set() };
+    if (!root?.addEventListener) return 0;
+    const existing = roots.get(root);
+    const binding = existing || { root, groups: new WeakMap(), pointer: null, holds: new Set() };
     roots.set(root, binding);
     const groups = [...root.querySelectorAll(GROUP)];
     if (root.matches?.(GROUP)) groups.unshift(root);
-    const count = groups.filter(group => prepare(binding, group)).length;
-    root.addEventListener('input', event => { const state = stateFor(root, event.target); if (state) inputChange(state, event.target); });
+    const count = groups.filter(group => !binding.groups.has(group) && prepare(binding, group)).length;
+    if (existing) return count;
+    root.addEventListener('input', event => { const state = stateFor(root, event.target); if (state) inputChange(state, event.target, true); });
     root.addEventListener('click', event => {
         const button = event.target.closest?.('button, input[type="button"]');
         if (!hasBehaviorInteractionControl(root, button)) return;
         const state = stateFor(root, button);
-        if (button.hasAttribute('data-rm-reset') && binding.pointer?.state === state) finishPointer(binding, {}, true);
+        if (state && button.hasAttribute('data-rm-reset') && binding.pointer?.state === state) finishPointer(binding, {}, true);
         event.preventDefault(); action(state, button);
     });
     root.addEventListener('pointerdown', event => pointerDown(binding, event));
@@ -358,23 +443,26 @@ export function installBehaviorInteractions(root) {
     root.addEventListener('keydown', event => {
         const state = stateFor(root, event.target);
         if (state?.type === 'hold' && event.target.matches('button[data-rm-hold]') && [' ', 'Enter'].includes(event.key)) {
-            event.preventDefault(); state.group.setAttribute('data-rm-active', 'true'); binding.holds.add(state);
+            event.preventDefault(); state.group.setAttribute('data-rm-active', 'true'); binding.holds.add(state); state.changed = true; refreshResults(state);
         }
         if (event.key === 'Escape' && binding.pointer) finishPointer(binding, event, true);
     });
     const releaseHold = event => {
         const state = stateFor(root, event.target);
         if (state?.type === 'hold' && (event.type === 'focusout' || [' ', 'Enter'].includes(event.key))) {
-            state.group.removeAttribute('data-rm-active'); binding.holds.delete(state);
+            state.group.removeAttribute('data-rm-active'); binding.holds.delete(state); refreshResults(state);
         }
     };
     root.addEventListener('keyup', releaseHold);
     root.addEventListener('focusout', releaseHold);
     root.addEventListener('toggle', event => {
-        if (event.target !== root || root.open) return;
-        if (binding.pointer) finishPointer(binding, {}, true);
-        for (const state of binding.holds) state.group.removeAttribute('data-rm-active');
-        binding.holds.clear();
-    });
+        const closed = event.target;
+        if (!closed?.matches?.('details') || closed.open || !root.contains(closed)) return;
+        if (binding.pointer && closed.contains(binding.pointer.state.group)) finishPointer(binding, {}, true);
+        for (const state of binding.holds) {
+            if (!closed.contains(state.group)) continue;
+            state.group.removeAttribute('data-rm-active'); refreshResults(state); binding.holds.delete(state);
+        }
+    }, true);
     return count;
 }

@@ -12,12 +12,12 @@ export const INTERACTION_MECHANISMS = Object.freeze({
  view:'局部 data-rm-ui="view" 可滚动浏览 data-rm-part；range(min=1,max=3,step=.01)连续缩放该画面；button data-rm-reset 还原。',
  input:'局部 data-rm-ui="input" 内用 input type="text"＋output，文字原位显示；可选 data-rm-answer 校验并用 [data-rm-match="true"] 显示反馈。绘制则用 data-rm-ui="draw"＋svg data-rm-canvas；button data-rm-reset 清除。',
  motion:'局部 data-rm-ui="motion" 内 data-rm-part 保留真实动画；button data-rm-play 暂停/继续，range 调进度，可选 button data-rm-reverse 倒放；开场动画要求照常。',
- scroll:'局部 overflow-x:auto＋scroll-snap-type:x proximity，子项 scroll-snap-align:start；原生触屏滚动，不自动跳页。',
+ scroll:'局部 overflow-x:auto＋scroll-snap-type:x proximity，子项 scroll-snap-align:start；手机由本地驱动补左右点按浏览，不自动跳页。',
  hold:'局部 data-rm-ui="hold" 的 button data-rm-hold；按住设置 [data-rm-active="true"]，松开清除，CSS据此改变对应画面。',
  layers:'每层各用独立 checkbox，以 :checked 改变对应图层显隐；底图保留，多个勾选可同时生效。',
  transform:'checkbox :checked 改变实际部件的 transform/clip-path 等；转轴和连接跟随物件结构，再点复原。',
  follow:'局部 data-rm-ui="follow" 内 CSS 用 --rm-x/--rm-y(像素)定位光斑或线端；触摸区 data-rm-surface，拖动连续更新坐标。',
- reorder:'容器 data-rm-ui="reorder"，同父层各项 data-rm-item；拖放重排，项内可加 button data-rm-prev/data-rm-next；button data-rm-reset 复原。',
+ reorder:'容器 data-rm-ui="reorder"，同父层各项 data-rm-item；拖放重排，项内 button data-rm-prev/data-rm-next 支持点按；button data-rm-reset 复原。',
  accumulate:'局部 data-rm-ui="accumulate" 内每项 button data-rm-step，点击切换自身 [data-rm-done="true"]；--rm-count 记录完成数，CSS改变对应实物；data-rm-reset 撤回全部。',
 });
 const DETAILS=Object.freeze({
@@ -29,7 +29,7 @@ const DETAILS=Object.freeze({
  'drag-combine':['拖动物件，叠合或放入对应位置','位置与组合关系实际改变'],
  'continuous-adjust':['连续改变调节幅度','中间幅度对应中间画面状态'],
  'local-reveal':['逐步移开遮挡','下层画面沿操作位置显露'],
- 'viewport-explore':['移动视野或放大后退回','观察同一主体的其他部分'],
+ 'viewport-explore':['移动视野或放大后退回','放大或移步发现主体内实际绘出的线索、细节与关系'],
  'input-draw':['输入或描画后查看反馈','留下实际文字或线条，可清除重来'],
  'progress-control':['操作运行中的对象','运动进度、方向或播放状态真实变化'],
  'scroll-browse':['滑动连续内容','视口随手指移动并自然停靠'],
@@ -37,7 +37,7 @@ const DETAILS=Object.freeze({
  'layer-control':['分别打开或关闭不同层','图层可同时叠加，底图保持'],
  'object-transform':['打开或改变物件形态，再复原','部件位置与轮廓随之变化'],
  'pointer-follow':['在局部画面移动触点','对应部件连续跟随触点'],
- reorder:['把物件移到新的次序','布局与排列顺序实际改变'],
+ reorder:['把物件移到新的次序','次序变化带来不同的拼合关系或内容结果'],
  accumulate:['连续操作多个物件，再撤回','前次变化保留，完成状态累积'],
 });
 export function resolveInteractionDetail(id){

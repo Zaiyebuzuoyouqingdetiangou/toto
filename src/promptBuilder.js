@@ -1,26 +1,26 @@
-import { visualDesignMode, usesModelOriginalColors, withoutPaletteRecipe, REFERENCE_VISUAL_FLOOR, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.62.80';
-import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=1.62.80';
-import { attachPaletteRecipes, paletteRecipeFor } from './paletteRecipes.js?rmv=1.62.80';
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.80';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.80';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.80';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.80';
-import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.80';
-import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.62.80';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.80';
-import { getComboHistory, getActivePaletteCooldown } from './storage.js?rmv=1.62.80';
-import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock } from './visualDiversityPolicy.js?rmv=1.62.80';
-import { buildInteractionRecipeRule, interactionExecutionReminder, interactionRecipesFor } from './interactionRecipes.js?rmv=1.62.80';
-import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.62.80';
-import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.80';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.80';
-export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.80';
-import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.80';
-import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.80';
-import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.62.80';
-import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.80';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.80';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.80';
+import { visualDesignMode, usesModelOriginalColors, withoutPaletteRecipe, REFERENCE_VISUAL_FLOOR, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.62.82';
+import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=1.62.82';
+import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=1.62.82';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.82';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.82';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.82';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.82';
+import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.82';
+import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.62.82';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.82';
+import { getComboHistory, getActivePaletteCooldown } from './storage.js?rmv=1.62.82';
+import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock } from './visualDiversityPolicy.js?rmv=1.62.82';
+import { buildInteractionRecipeRule, interactionExecutionReminder, interactionRecipesFor } from './interactionRecipes.js?rmv=1.62.82';
+import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.62.82';
+import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.82';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.82';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.82';
+import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.82';
+import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.82';
+import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.62.82';
+import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.82';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.82';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.82';
 
 const THEME_ITEMS = new Map(THEMATIC_CATEGORIES.map(item => [item.id, item]));
 const FORMAT_ITEMS = new Map(PRESENTATION_FORMATS.map(item => [item.id, item]));
@@ -301,7 +301,8 @@ function sharedVisualHistoryRule({ textOnly = false } = {}) {
         const colors = Array.isArray(observed) ? [...new Set(observed
             .filter(value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value))
             .map(value => value.toUpperCase()))].join('/') : '';
-        const mainColor = `主色 ${colors || (Array.isArray(observed) ? '未识别' : '未记录')}`;
+        const families = colors ? observedPaletteFamilyLabels(item).join('、') : '';
+        const mainColor = `主色 ${colors || (Array.isArray(observed) ? '未识别' : '未记录')}${families ? `〔${families}〕` : ''}`;
         if (textOnly) return mainColor;
         return `主题 ${ids(item.themeIds) || '未记录'} × 形式 ${ids(item.formatIds) || '未记录'}`
             + `｜骨架 ${shortHistorySkeleton(item)}｜交互 ${interactions || '未记录'}｜${mainColor}`;
@@ -448,7 +449,7 @@ function tarotPhysicalImageRule(faceIndexes = []) {
 }
 
 function mediumInteractionConstructionRule() {
-    return '媒介内交互构造：先构造展现形式本体，再将操作与主要结果安放在同一对象或紧邻位置，点后就地可见；文字只补必要反馈，不把结果集中到远处说明区。多交互共同服务本体，不各搭独立面板；互斥状态原位替换，需并置比较的内容保留。同种交互可复用，用户明确玩法与固有功能优先。不得用“上方独立插图＋下方长文字切换”冒充本体，也不能以频道或分页命名豁免；实际使用过程成立的翻阅、档位与折叠照常保留。';
+    return '媒介内交互构造：先构造展现形式本体，再将操作与主要结果安放在同一对象或紧邻位置，点后就地可见；须带来内容相关的发现、对象反应或后续选择。缩放有细节可发现，重排改变关系或结果，不能只改尺寸、位置或数字。文字只补必要反馈，不把结果集中到远处说明区。多交互共同服务本体，不各搭独立面板；互斥状态原位替换，需并置比较的内容保留。同种交互可复用，用户明确玩法与固有功能优先。不得用“上方独立插图＋下方长文字切换”冒充本体，也不能以频道或分页命名豁免；实际使用过程成立的翻阅、档位与折叠照常保留。';
 }
 
 function compactCreativeRule(enabled, formatOnly = false) {

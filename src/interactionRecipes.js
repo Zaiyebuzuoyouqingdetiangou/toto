@@ -1,5 +1,5 @@
-import { resolveInteractionDetail, INTERACTION_MECHANISMS } from '../data/raw/rawInteractionRecipes.js?rmv=1.62.80';
-import { INTERACTION_RECIPES, INTERACTION_RECIPE_REPLACEMENTS } from '../data/structured/interactionIndex.js?rmv=1.62.80';
+import { resolveInteractionDetail, INTERACTION_MECHANISMS } from '../data/raw/rawInteractionRecipes.js?rmv=1.62.82';
+import { INTERACTION_RECIPES, INTERACTION_RECIPE_REPLACEMENTS } from '../data/structured/interactionIndex.js?rmv=1.62.82';
 
 const BY_ID = new Map(INTERACTION_RECIPES.map(recipe => [recipe.id, recipe]));
 
@@ -168,10 +168,13 @@ export function buildInteractionRecipeRule(faceContexts, rawPolicy = 'balanced',
         ? `共用适用规则【${numbers.map(number => `第 ${number} 面 HTML`).join('；')}】\n${constructionRule}`
         : '先构造展现形式本体，再把本签各项操作与可见结果安放到它实际具备的部件、内容区域和使用流程。各交互共同服务同一个媒介，不各自搭一张无关卡片；同一种交互可复用于多个对象，不限制控件数量。用户明确玩法与原形式固有功能优先，不为交互签更换媒介。';
     if (!assignments.length) return construction;
+    const resultConditions = { drag: 'placed=甲,乙', adjust: 'p>=0.6', reveal: 'p>=0.6', view: 'p>=0.6', input: 'match', reorder: 'order=甲,乙', accumulate: 'count>=2' };
+    const conditions = [...new Set([...mechanisms].map(key => resultConditions[key]).filter(Boolean))];
+    const results = conditions.length ? `\n阶段联动：在对应 data-rm-ui 内写实际结果节点 data-rm-result hidden，data-rm-when="${conditions.join('"或"')}"；驱动按状态显隐，复原同步。结果用景物、细节或后续控件承接。` : '';
     const implementation = mechanisms.size ? `\n本轮实现依据（仅抽中项；标识限本面；不执行模型脚本）：\n${[...mechanisms].map(key => INTERACTION_MECHANISMS[key]).join('\n')}` : '';
     return `交互构造库【第三抽取池；仅下列 HTML 面／选中签适用】：
 ${construction}
-${assignments.join('\n\n')}${implementation}`;
+${assignments.join('\n\n')}${implementation}${results}`;
 }
 
 export function interactionExecutionReminder(combo) {

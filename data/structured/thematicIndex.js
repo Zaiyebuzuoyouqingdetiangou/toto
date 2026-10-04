@@ -442,6 +442,17 @@ export const THEMATIC_CATEGORIES = [
     "raw": "- **B.9 潜意识关键词**：展现 {{char}} 当前剧情中潜意识里高频出现的关键词，并进行深度心理分析。"
   },
   {
+    "id": "B.10",
+    "group": "B",
+    "title": "未说出口的亲密渴望",
+    "summary": "直接呈现 {{char}} 对 {{user}} 的心动、吸引与想要亲近的念头。",
+    "tags": [
+      "emotion",
+      "intimacy"
+    ],
+    "raw": "- **B.10 未说出口的亲密渴望**：直接呈现 {{char}} 对 {{user}} 的心动、吸引与想要亲近的念头。"
+  },
+  {
     "id": "C.0",
     "group": "C",
     "title": "综合/日常",

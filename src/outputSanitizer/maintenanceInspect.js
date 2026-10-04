@@ -1,10 +1,12 @@
 // Split from outputSanitizer.js — maintenanceInspect.
 
-import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.62.80';
-import { getCurrentChatKey } from '../storage.js?rmv=1.62.80';
-import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.62.80';
-import { getRabbitMirrorGenerationSnapshot } from '../generationGuard.js?rmv=1.62.80';
-import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules } from '../presentationQuality.js?rmv=1.62.80';
+import { nativePopoverFallbackCount, inspectNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.62.82';
+import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.62.82';
+import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.62.82';
+import { getCurrentChatKey } from '../storage.js?rmv=1.62.82';
+import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.62.82';
+import { getRabbitMirrorGenerationSnapshot } from '../generationGuard.js?rmv=1.62.82';
+import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules } from '../presentationQuality.js?rmv=1.62.82';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -18,7 +20,7 @@ import {
     hashInteractionSignature,
     isInsideChatMessage,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.62.80';
+} from './runtime.js?rmv=1.62.82';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     CHANNEL_DIAL_CYCLE_COUNT_ATTR,
@@ -54,8 +56,8 @@ import {
     parseMissingCheckedSubjectClassRules,
     resolveTargetsForCheckedRule,
     restoreIndependentNativeCheckedInteraction,
-} from './checkedStateRescue.js?rmv=1.62.80';
-import { getClassTokens, isCollapsedDimensionValue, normalizeStylePropertyName } from './renderedStateRescue.js?rmv=1.62.80';
+} from './checkedStateRescue.js?rmv=1.62.82';
+import { getClassTokens, isCollapsedDimensionValue, normalizeStylePropertyName } from './renderedStateRescue.js?rmv=1.62.82';
 import {
     RAW_RADIO_RESET_RESCUE_ATTR,
     RAW_SELF_MUTATION_RESCUE_ATTR,
@@ -69,7 +71,7 @@ import {
     getRawAssistantMessageForRenderedRoot,
     installRawMessageRadioResetProgramRescue,
     normalizeInteractionMatchText,
-} from './scriptedInteractionRescue.js?rmv=1.62.80';
+} from './scriptedInteractionRescue.js?rmv=1.62.82';
 import {
     REVERSIBLE_RADIO_ROOT_ATTR,
     TOUCH_HOVER_ATTR,
@@ -87,14 +89,14 @@ import {
     repairMarkdownCorruptedCssComments,
     repairNestedDetailsPopupClipping,
     scheduleMaintenanceLabeledCheckedProbe,
-} from './fallbackRescue.js?rmv=1.62.80';
+} from './fallbackRescue.js?rmv=1.62.82';
 import {
     RADIO_GROUP_ROOT_ATTR,
     activateRabbitMirrorInteractionRescue,
     inspectSanitizedRadioGroupLoss,
     rearmRabbitMirrorSerializedInteractionRoot,
     scopeRabbitMirrorInteractionIds,
-} from './idsAndRearm.js?rmv=1.62.80';
+} from './idsAndRearm.js?rmv=1.62.82';
 import {
     DISABLED_ONLY_CHOICE_RESCUE_ATTR,
     FEEDBACK_CAT_MENU_ATTR,
@@ -154,7 +156,7 @@ import {
     repairRevealedDrawerClipping,
     setMaintenanceRabbitState,
     stripMaintenanceRabbitGlyphs,
-} from './diagnostics.js?rmv=1.62.80';
+} from './diagnostics.js?rmv=1.62.82';
 import {
     findDisabledOnlyChoiceGroupCandidates,
     findFillInChoiceCandidates,
@@ -169,7 +171,7 @@ import {
     installStaticChoiceSelectionFallback,
     installStructuredStaticDisclosureFallback,
     rehydrateRabbitMirrorMaintenanceRepairs,
-} from './choiceRescue.js?rmv=1.62.80';
+} from './choiceRescue.js?rmv=1.62.82';
 import {
     FENCED_BLOCK_RE,
     RABBIT_MIRROR_SANITIZER_STYLE_DROP_ATTR,
@@ -188,7 +190,7 @@ import {
     validateRabbitMirrorMarkupLexicalBudget,
     wrapNakedHtmlAsToto,
     wrapTrailingNakedHtml,
-} from './markup.js?rmv=1.62.80';
+} from './markup.js?rmv=1.62.82';
 import {
     getRabbitMirrorFacePosition,
     independentMaintenanceHost,
@@ -203,13 +205,13 @@ import {
     maintenanceMobileLayoutRect,
     maintenanceMobileLayoutTextLength,
     shouldRunMaintenanceMobileLayoutRescue,
-} from './layoutRescue.js?rmv=1.62.80';
+} from './layoutRescue.js?rmv=1.62.82';
 import {
     containRabbitMirrorTitleToolFloat,
     installMaintenanceRabbitForRoot,
     rabbitMirrorTextPresentation,
     refreshRabbitMirrorToolsInScope,
-} from './toolsChrome.js?rmv=1.62.80';
+} from './toolsChrome.js?rmv=1.62.82';
 import {
     TRANSIENT_RERENDER_REASONING_ENVELOPE_RE,
     followMaintenanceRepairRecipes,
@@ -221,7 +223,7 @@ import {
     maintenanceRepairTimers,
     messageContainsReasoningEnvelope,
     messageUsesDistinctDisplaySource,
-} from './lifecycle.js?rmv=1.62.80';
+} from './lifecycle.js?rmv=1.62.82';
 
 let rabbitMirrorInteractionResetInstanceCounter = 0;
 
@@ -254,7 +256,7 @@ const rabbitMirrorInteractionResetSourceSignatures = new WeakMap();
 const rabbitMirrorInteractionResetBudgetSkips = new WeakMap();
 
 
-const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.22';
+const MAINTENANCE_RESCUE_MODULE_VERSION = 'v2.24';
 
 // 维修兔内部急救登记表。这里登记的是已经存在并经过实际案例验证的旧急救能力，
 // 维修兔只负责按用户选择调度，不复制、不删减各急救器原有逻辑。
@@ -296,6 +298,8 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
         const recoveredProgramCountAfter = recoveredInlineStateProgramCount(target);
         const rawScriptTimelineCountAfter = Number.parseInt(target.getAttribute?.(RAW_SCRIPT_TIMELINE_ROOT_ATTR) || '0', 10) || 0;
         const rawScriptTimelineRepairCount = Math.max(0, rawScriptTimelineCountAfter - rawScriptTimelineCountBefore);
+        const behaviorAfter = inspectBehaviorRecovery(target);
+        const behaviorWiredCount = behaviorAfter.wired + nativePopoverFallbackCount(target);
         const radioGroupCountAfter = Number.parseInt(target.getAttribute?.(RADIO_GROUP_ROOT_ATTR) || '0', 10) || 0;
         const radioGroupRepairCount = Math.max(0, radioGroupCountAfter - radioGroupCountBefore);
         const overlayRepairCount = Math.max(0, overlayCountAfter - overlayCountBefore);
@@ -332,7 +336,8 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
         const meaningfulCheckedRoute = depthAfter.meaningfulCheckedRuleCount > 0
             && depthAfter.unresolvedCheckedRuleCount === 0
             && !depthAfter.checkedSelectionOnly;
-        const genuinelyRescued = selectionFallbackCount > 0
+        const genuinelyRescued = behaviorWiredCount > 0
+            || selectionFallbackCount > 0
             || disabledChoiceRepairCount > 0
             || inertActionRepairCount > 0
             || staticChoiceRepairCount > 0
@@ -370,7 +375,7 @@ const MAINTENANCE_RESCUE_LIBRARY = Object.freeze([
             .map(item => item.trim())
             .filter(item => item && item !== 'none');
         // 不再把“调用了总入口”冒充为“命中了一条急救路线”；选择样式专用结构只有在安全补出分支提示后才算修复。
-        return genuinelyRescued ? Math.max(routes.length, disabledChoiceRepairCount, inertActionRepairCount, staticChoiceRepairCount, structuredStaticDisclosureRepairCount, fillInChoiceRepairCount, disabledChoiceCount, inertActionCount, staticChoiceCount, structuredStaticDisclosureCount, fillInChoiceCount, overlayRepairCount, rawHoverRepairCount, recoveredProgramRepairCount, recoveredProgramCountAfter, rawScriptTimelineRepairCount, rawScriptTimelineCountAfter, radioGroupRepairCount, radioGroupCountAfter, crossParentCheckedCount, labeledCheckedVerifyCount, checkedHasStateCount, detachedCheckedHasCount, pairedCheckedStateCount, exclusiveStackedStateCount, channelDialCycleCount, reversibleCheckedCount, nestedCheckedContentCount, focusWithinPersistentCount) : 0;
+        return genuinelyRescued ? Math.max(behaviorWiredCount, routes.length, disabledChoiceRepairCount, inertActionRepairCount, staticChoiceRepairCount, structuredStaticDisclosureRepairCount, fillInChoiceRepairCount, disabledChoiceCount, inertActionCount, staticChoiceCount, structuredStaticDisclosureCount, fillInChoiceCount, overlayRepairCount, rawHoverRepairCount, recoveredProgramRepairCount, recoveredProgramCountAfter, rawScriptTimelineRepairCount, rawScriptTimelineCountAfter, radioGroupRepairCount, radioGroupCountAfter, crossParentCheckedCount, labeledCheckedVerifyCount, checkedHasStateCount, detachedCheckedHasCount, pairedCheckedStateCount, exclusiveStackedStateCount, channelDialCycleCount, reversibleCheckedCount, nestedCheckedContentCount, focusWithinPersistentCount) : 0;
     } },
 ]);
 
@@ -709,7 +714,9 @@ export function maintenanceReachableInteractionEvidence(root, routeSummary, chec
             return true;
         }).length;
 
-    const installedInteractionRouteCount = Number(routeSummary.adjacent || 0)
+    const installedInteractionRouteCount = Number(routeSummary.behavior || 0)
+        + Number(routeSummary.nativePopover || 0)
+        + Number(routeSummary.adjacent || 0)
         + Number(routeSummary.layers || 0)
         + Number(routeSummary.labelInternal || 0)
         + Number(routeSummary.labelAdjacent || 0)
@@ -778,7 +785,16 @@ function maintenanceKnownInteractionEvidence(root, full, code) {
     const checkedDepth = maintenanceCheckedInteractionDepth(root);
     const pseudoDepth = maintenancePseudoInteractionDepth(root);
     const routeSummary = diagnosticRouteSummary(root);
-    const otherRouteCount = routeSummary.adjacent + routeSummary.layers + routeSummary.labelInternal + routeSummary.labelAdjacent
+    const behavior = inspectBehaviorRecovery(root);
+    const popup = inspectNativePopoverFallback(root);
+    const nativePopoverMissingCount = popup.missingTargets;
+    const nativePopoverUnwiredCount = popup.unwired;
+    const behaviorRecoveryCandidateCount = behavior.candidates;
+    const behaviorIncompleteCount = behavior.incomplete;
+    const behaviorUnmappedRangeCount = behavior.unmappedRanges;
+    const behaviorUnwiredCount = behavior.unwired;
+    const behaviorWiredCount = behavior.wired;
+    const otherRouteCount = Number(routeSummary.behavior || 0) + Number(routeSummary.nativePopover || 0) + routeSummary.adjacent + routeSummary.layers + routeSummary.labelInternal + routeSummary.labelAdjacent
         + routeSummary.maskReveal + routeSummary.listDetail + routeSummary.stateSibling + routeSummary.buttonAdjacent
         + routeSummary.clickableAdjacent + routeSummary.clickablePopup + routeSummary.checkedIdTarget + routeSummary.focusToChecked
         + routeSummary.checkedTextRule + routeSummary.crossParentChecked + routeSummary.checkedHasState + routeSummary.detachedCheckedHas + routeSummary.pairedCheckedState + routeSummary.expandedOpacity
@@ -866,7 +882,7 @@ function maintenanceKnownInteractionEvidence(root, full, code) {
     const unscopedControls = (full.inputCount > 0 || full.buttonCount > 0)
         && root.dataset?.rabbitMirrorInteractionScoped !== 'true';
     const reachability = maintenanceReachableInteractionEvidence(root, routeSummary, checkedDepth, pseudoDepth, raw);
-    return { checkedControlsLost, stateControlsLost: !!full.stateControlsLost, strippedStateProgram, lostInlineStatePrograms, recoveredInlineStatePrograms, decorativeOverlayCandidateCount, touchHoverMissing, unscopedControls, missingCheckedSubjectClassCandidateCount, missingCheckedSubjectClassRescueCount, missingCheckedSubjectClassMissingCount, radioGroupLossCandidateCount, radioGroupRescueCount, selectionOnlyRepairCandidateCount, disabledOnlyChoiceCandidateCount, inertActionButtonCandidateCount, staticChoiceSelectionCandidateCount, staticChoiceSelectionRescueCount, structuredStaticDisclosureCandidateCount, structuredStaticDisclosureRescueCount, fillInChoiceCandidateCount, fillInChoiceRescueCount, focusWithinPersistentCandidateCount, focusWithinPersistentRescueCount, focusWithinPersistentMissingCount, rawScriptTimelineCandidateCount, rawScriptTimelineRescueCount, rawScriptTimelineMissingCount, crossParentCheckedRuleCandidateCount, crossParentCheckedRuleVerifiedCount, checkedHasStateRuleCandidateCount, checkedHasStateRuleRescueCount, checkedHasStateRuleMissingCount, detachedCheckedHasRuleCandidateCount, detachedCheckedHasRuleRescueCount, detachedCheckedHasRuleMissingCount, pairedCheckedStateCandidateCount, pairedCheckedStateRescueCount, pairedCheckedStateMissingCount, exclusiveStackedStateCandidateCount, exclusiveStackedStateRescueCount, exclusiveStackedStateMissingCount, channelDialCycleCandidateCount, channelDialCycleRescueCount, channelDialCycleMissingCount, oneWayCheckedResultCandidateCount, reversibleCheckedResultRescueCount, pseudoVisualOnly, raw, ...scopeEvidence, ...checkedDepth, ...pseudoDepth, ...reachability };
+    return { nativePopoverMissingCount, nativePopoverUnwiredCount, behaviorRecoveryCandidateCount, behaviorIncompleteCount, behaviorUnmappedRangeCount, behaviorUnwiredCount, behaviorWiredCount, checkedControlsLost, stateControlsLost: !!full.stateControlsLost, strippedStateProgram, lostInlineStatePrograms, recoveredInlineStatePrograms, decorativeOverlayCandidateCount, touchHoverMissing, unscopedControls, missingCheckedSubjectClassCandidateCount, missingCheckedSubjectClassRescueCount, missingCheckedSubjectClassMissingCount, radioGroupLossCandidateCount, radioGroupRescueCount, selectionOnlyRepairCandidateCount, disabledOnlyChoiceCandidateCount, inertActionButtonCandidateCount, staticChoiceSelectionCandidateCount, staticChoiceSelectionRescueCount, structuredStaticDisclosureCandidateCount, structuredStaticDisclosureRescueCount, fillInChoiceCandidateCount, fillInChoiceRescueCount, focusWithinPersistentCandidateCount, focusWithinPersistentRescueCount, focusWithinPersistentMissingCount, rawScriptTimelineCandidateCount, rawScriptTimelineRescueCount, rawScriptTimelineMissingCount, crossParentCheckedRuleCandidateCount, crossParentCheckedRuleVerifiedCount, checkedHasStateRuleCandidateCount, checkedHasStateRuleRescueCount, checkedHasStateRuleMissingCount, detachedCheckedHasRuleCandidateCount, detachedCheckedHasRuleRescueCount, detachedCheckedHasRuleMissingCount, pairedCheckedStateCandidateCount, pairedCheckedStateRescueCount, pairedCheckedStateMissingCount, exclusiveStackedStateCandidateCount, exclusiveStackedStateRescueCount, exclusiveStackedStateMissingCount, channelDialCycleCandidateCount, channelDialCycleRescueCount, channelDialCycleMissingCount, oneWayCheckedResultCandidateCount, reversibleCheckedResultRescueCount, pseudoVisualOnly, raw, ...scopeEvidence, ...checkedDepth, ...pseudoDepth, ...reachability };
 }
 
 
@@ -1394,6 +1410,28 @@ function buildMaintenanceFindings(root, {
     const findings = [];
     const add = finding => findings.push(createMaintenanceFinding(finding));
 
+    if (Number(interaction.nativePopoverUnwiredCount) > 0) {
+        add({
+            id: 'native-popover-fallback-missing', stage: 'interaction', mode: 'interaction',
+            label: '本地弹窗结构完整，但浏览器缺少原生弹窗能力；可接上打开、关闭与返回焦点',
+            evidence: [`nativePopoverUnwiredCount=${interaction.nativePopoverUnwiredCount}`], confidence: 1,
+        });
+    }
+    if (Number(interaction.behaviorRecoveryCandidateCount) > 0) {
+        add({
+            id: 'range-cover-mapping-missing', stage: 'interaction', mode: 'interaction',
+            label: '滑杆与同一局部画面的唯一遮罩尚未联动；可恢复已有遮罩的连续揭示与返回',
+            evidence: [`behaviorRecoveryCandidateCount=${interaction.behaviorRecoveryCandidateCount}`], confidence: 0.98,
+        });
+    }
+    if (Number(interaction.behaviorUnwiredCount) > Number(interaction.behaviorIncompleteCount)) {
+        add({
+            id: 'behavior-listeners-missing', stage: 'interaction', mode: 'interaction',
+            label: '新交互结构存在，但当前副本尚未接上本地驱动',
+            evidence: [`behaviorUnwiredCount=${interaction.behaviorUnwiredCount}`], confidence: 1,
+        });
+    }
+
     const sanitizerDroppedStyleCount = Number.parseInt(root?.getAttribute?.(RABBIT_MIRROR_SANITIZER_STYLE_DROP_ATTR) || '0', 10) || 0;
     if (sanitizerDroppedStyleCount > 0) {
         add({
@@ -1915,6 +1953,9 @@ function inspectMaintenanceRabbit(root) {
     }
 
     const unknownReasons = [];
+    if (Number(interaction.nativePopoverMissingCount) > 0) unknownReasons.push('弹窗控件指向的本地目标缺失或不唯一，无法安全修复');
+    if (Number(interaction.behaviorIncompleteCount) > 0) unknownReasons.push('新交互缺少对应控件或目标，无法在不猜测内容的情况下补全');
+    if (Number(interaction.behaviorUnmappedRangeCount) > 0) unknownReasons.push('仍有滑杆未找到明确的局部联动目标，不能认定维修成功');
     if (full.sourceTruncationNoticeInstalled) unknownReasons.push('原始输出缺少正文，已显示截断说明；缺失内容需要重新生成');
     if (full.severeStructureLoss && !full.rawToto) unknownReasons.push('渲染结构明显缺失，但未命中安全修复类型');
     if (full.controlsLost && full.checkedCount === 0 && full.rawInlineEvents === 0) unknownReasons.push('交互控件丢失，无法确认原始状态逻辑');
@@ -1940,7 +1981,9 @@ function inspectMaintenanceRabbit(root) {
             languageBalance,
         };
     }
-    const healthyReason = partialInspection
+    const healthyReason = Number(interaction.behaviorWiredCount) > 0
+        ? '新交互驱动已接线；未发现明确结构缺失，实际操作效果仍需确认'
+        : partialInspection
         ? '未发现可确认异常（部分巡逻项目已安全跳过）'
         : (full.activeCount > 0 && full.checkedCount === 0 ? '原生按压／长按交互完整，未发现高置信异常' : '未发现高置信异常');
     return {
@@ -3970,7 +4013,7 @@ export async function runMaintenanceNarrowFaceRepair(root, button) {
         if (rejectOversizedMaintenanceRepair(root, button, '窄面电击')) return false;
         if (!maintenanceRepairRunIsCurrent(repairRun)) return false;
         setMaintenanceRabbitState(button, MAINTENANCE_STATES.checking, '⚡ 正在重新测量并恢复这面兔子镜的宽度');
-        const adapter = await import('../independentApi.js?rmv=1.62.80');
+        const adapter = await import('../independentApi.js?rmv=1.62.82');
         // Loading the adapter is the sole async boundary. Never apply a delayed
         // click to a new chat, Swipe, source revision, face or replacement node.
         if (!root.isConnected || !details.isConnected || !button.isConnected

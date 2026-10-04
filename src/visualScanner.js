@@ -1,11 +1,12 @@
-import { activeRoleColorHtml, bindRolePaletteCode } from './roleColorVariants.js?rmv=1.62.80';
-import { detectCompositionFingerprint, VISUAL_SKELETON_MAX_CHARS } from './compositionFingerprint.js?rmv=1.62.80';
-import { visualSceneryEnabled } from './presentationMode.js?rmv=1.62.80';
-import { presentationModeFields } from './presentationMode.js?rmv=1.62.80';
-import { getCurrentChatKey, commitFollowVisualHistory, bindVisualHistoryTarget } from './storage.js?rmv=1.62.80';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.62.80';
-import { getSettings } from './settings.js?rmv=1.62.80';
-import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.62.80';
+import { clamp, luminanceFromRgb, classifyPaletteSamples } from './paletteObservation.js?rmv=1.62.82';
+import { activeRoleColorHtml, bindRolePaletteCode } from './roleColorVariants.js?rmv=1.62.82';
+import { detectCompositionFingerprint, VISUAL_SKELETON_MAX_CHARS } from './compositionFingerprint.js?rmv=1.62.82';
+import { visualSceneryEnabled } from './presentationMode.js?rmv=1.62.82';
+import { presentationModeFields } from './presentationMode.js?rmv=1.62.82';
+import { getCurrentChatKey, commitFollowVisualHistory, bindVisualHistoryTarget } from './storage.js?rmv=1.62.82';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.62.82';
+import { getSettings } from './settings.js?rmv=1.62.82';
+import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.62.82';
 import {
     commitRabbitMirrorFollowBatch,
     captureRabbitMirrorGenerationSnapshots,
@@ -15,17 +16,17 @@ import {
     inspectRabbitMirrorGenerationSource,
     releaseRabbitMirrorFollowBatch,
     releaseRabbitMirrorFollowBatchAtMessage,
-} from './generationGuard.js?rmv=1.62.80';
+} from './generationGuard.js?rmv=1.62.82';
 import {
     clearSanitizedRabbitMirrorFaceProof,
     getSanitizedRabbitMirrorFaceProof,
     markSanitizedRabbitMirrorFace,
     rabbitMirrorMultifaceSourceHash,
-} from './multifaceProof.js?rmv=1.62.80';
-import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.62.80';
-import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.62.80';
-import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.62.80';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.80';
+} from './multifaceProof.js?rmv=1.62.82';
+import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.62.82';
+import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.62.82';
+import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.62.82';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.82';
 
 export const FOLLOW_MULTIFACE_COMMITTED_EVENT = 'rabbit-mirror:follow-multiface-committed';
 export const FOLLOW_MULTIFACE_REJECTED_EVENT = 'rabbit-mirror:follow-multiface-rejected';
@@ -455,8 +456,6 @@ function detectRepeatedUnitShape(root, html = '') {
     return ratio >= 0.42 && repeatedVisualProps >= 8;
 }
 
-
-
 function visualSceneryAuditExpected(html = '') {
     if (/data-rm-visual-scenery\s*=\s*["']true["']/i.test(String(html || ''))) return true;
     try { return visualSceneryEnabled(getSettings()); } catch { return false; }
@@ -516,8 +515,6 @@ function detectRiskFlags({ root, html, plain, dom, repeated, spatialSignalCount,
     return [...new Set(flags)];
 }
 
-
-
 function expandHexColor(hex) {
     const raw = String(hex || '').replace('#', '').trim();
     if (/^[0-9a-f]{3}$/i.test(raw)) {
@@ -525,10 +522,6 @@ function expandHexColor(hex) {
     }
     if (/^[0-9a-f]{6}$/i.test(raw)) return raw;
     return '';
-}
-
-function luminanceFromRgb(r, g, b) {
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
 function colorValueLuminance(value) {
@@ -642,10 +635,6 @@ const NAMED_PALETTE_COLORS = Object.freeze({
     white: '#ffffff', whitesmoke: '#f5f5f5', yellow: '#ffff00', yellowgreen: '#9acd32',
 });
 
-function clamp(value, min, max) {
-    return Math.min(max, Math.max(min, value));
-}
-
 function hslToRgb(h, s, l) {
     const hue = ((Number(h) % 360) + 360) % 360 / 360;
     const sat = clamp(Number(s), 0, 1);
@@ -666,25 +655,6 @@ function hslToRgb(h, s, l) {
         return p;
     };
     return [hue2rgb(hue + 1 / 3), hue2rgb(hue), hue2rgb(hue - 1 / 3)].map(x => Math.round(x * 255));
-}
-
-function rgbToHsl(r, g, b) {
-    const rr = clamp(Number(r), 0, 255) / 255;
-    const gg = clamp(Number(g), 0, 255) / 255;
-    const bb = clamp(Number(b), 0, 255) / 255;
-    const max = Math.max(rr, gg, bb);
-    const min = Math.min(rr, gg, bb);
-    const delta = max - min;
-    let h = 0;
-    if (delta) {
-        if (max === rr) h = 60 * (((gg - bb) / delta) % 6);
-        else if (max === gg) h = 60 * (((bb - rr) / delta) + 2);
-        else h = 60 * (((rr - gg) / delta) + 4);
-    }
-    if (h < 0) h += 360;
-    const l = (max + min) / 2;
-    const s = delta === 0 ? 0 : delta / (1 - Math.abs(2 * l - 1));
-    return { h, s, l };
 }
 
 function parseCssColorToken(token) {
@@ -791,89 +761,7 @@ function extractCssColors(value, depth = 0) {
     return colors;
 }
 
-function hueFamilyOf(hue) {
-    const h = ((Number(hue) % 360) + 360) % 360;
-    if (h < 15 || h >= 345) return 'red';
-    if (h < 45) return 'orange';
-    if (h < 70) return 'yellow';
-    if (h < 165) return 'green';
-    if (h < 200) return 'cyan';
-    if (h < 250) return 'blue';
-    if (h < 290) return 'purple';
-    return 'pink';
-}
 
-function classifyPaletteSamples(samples, source = 'raw', mainBackgroundFound = false) {
-    const usable = (samples || []).filter(sample => sample?.color && Number(sample.weight) > 0);
-    if (!usable.length) return null;
-    let totalWeight = 0;
-    let luminanceSum = 0;
-    let saturationSum = 0;
-    let chromaSum = 0;
-    let darkWeight = 0;
-    let lightWeight = 0;
-    let chromaticWeight = 0;
-    let warmWeight = 0;
-    let coolWeight = 0;
-    const hueWeights = new Map();
-
-    for (const sample of usable) {
-        const color = sample.color;
-        const alpha = clamp(Number(color.a ?? 1), 0, 1);
-        const weight = Number(sample.weight) * Math.max(0.12, alpha);
-        if (!Number.isFinite(weight) || weight <= 0) continue;
-        const lum = luminanceFromRgb(color.r, color.g, color.b);
-        const hsl = rgbToHsl(color.r, color.g, color.b);
-        totalWeight += weight;
-        luminanceSum += lum * weight;
-        saturationSum += hsl.s * weight;
-        // HSL saturation alone makes near-white cream look highly saturated.
-        chromaSum += (Math.max(color.r, color.g, color.b) - Math.min(color.r, color.g, color.b)) / 255 * weight;
-        if (lum < 105) darkWeight += weight;
-        if (lum > 185) lightWeight += weight;
-        if (hsl.s >= 0.12) {
-            const chroma = weight * Math.max(0.25, hsl.s);
-            const family = hueFamilyOf(hsl.h);
-            chromaticWeight += chroma;
-            hueWeights.set(family, (hueWeights.get(family) || 0) + chroma);
-            if (['red', 'orange', 'yellow', 'pink'].includes(family)) warmWeight += chroma;
-            else if (['green', 'cyan', 'blue', 'purple'].includes(family)) coolWeight += chroma;
-        }
-    }
-    if (!totalWeight) return null;
-
-    const averageLuminance = luminanceSum / totalWeight;
-    const darkAreaRatio = darkWeight / totalWeight;
-    const lightAreaRatio = lightWeight / totalWeight;
-    const averageSaturation = saturationSum / totalWeight;
-    const brightness = darkAreaRatio >= 0.55 || averageLuminance < 102
-        ? 'dark'
-        : (lightAreaRatio >= 0.55 || averageLuminance > 184 ? 'light' : 'mid');
-
-    let hueFamily = 'neutral';
-    if (chromaticWeight >= totalWeight * 0.12 && hueWeights.size) {
-        hueFamily = [...hueWeights.entries()].sort((a, b) => b[1] - a[1])[0][0];
-    }
-    const saturation = averageSaturation < 0.26 ? 'low' : (averageSaturation < 0.56 ? 'medium' : 'high');
-    const temperature = warmWeight > coolWeight * 1.2
-        ? 'warm'
-        : (coolWeight > warmWeight * 1.2 ? 'cool' : 'neutral');
-    const baseConfidence = source === 'rendered' ? 0.58 : 0.38;
-    const confidence = clamp(baseConfidence + Math.min(0.22, usable.length * 0.025) + (mainBackgroundFound ? 0.14 : 0), 0, 0.96);
-
-    return {
-        brightness,
-        hueFamily,
-        saturation,
-        temperature,
-        darkAreaRatio: Number(darkAreaRatio.toFixed(2)),
-        lightAreaRatio: Number(lightAreaRatio.toFixed(2)),
-        averageLuminance: Math.round(averageLuminance),
-        averageChroma: Number((chromaSum / totalWeight).toFixed(3)),
-        confidence: Number(confidence.toFixed(2)),
-        source,
-    };
-}
 
 function mainBackgroundSamples(backgroundColor, backgroundImage, resolve = value => value) {
     // An image/gradient covers the base paint. Do not record an obscured base
@@ -1678,7 +1566,7 @@ function templateSingleFollowRoot(template) {
 
 function loadFollowBatchSanitizer() {
     if (!followBatchSanitizerModulePromise) {
-        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.62.80').catch(error => {
+        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.62.82').catch(error => {
             followBatchSanitizerModulePromise = null;
             console.debug('[RabbitMirror] follow multiface sanitizer unavailable:', error);
             return null;
