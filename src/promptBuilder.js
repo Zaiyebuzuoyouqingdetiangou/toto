@@ -1,29 +1,26 @@
-import { visualDesignMode, usesModelOriginalColors, withoutPaletteRecipe, REFERENCE_VISUAL_FLOOR, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.62.74';
-import { getRecentDiversityHistory } from './storage.js?rmv=1.62.74';
-import { attachPaletteRecipes, paletteRecipeFor } from './paletteRecipes.js?rmv=1.62.74';
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.74';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.74';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.74';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.74';
-import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.74';
-import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.62.74';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.74';
-import { getComboHistory, getRecentRiskFlags, getRecentRiskFlagCounts, getRecentInteractionFamilies, getRepeatedVisualFamilyDimensions, getRecentStructuralCooldown, getActivePaletteCooldown } from './storage.js?rmv=1.62.74';
-import { recentInteractionCooldowns } from './interactionCooldown.js?rmv=1.62.74';
-import { COMPOSITION_LABELS } from './compositionFingerprint.js?rmv=1.62.74';
-import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock } from './visualDiversityPolicy.js?rmv=1.62.74';
-import { visualFamilyForCooldown, parseVisualFamilySkeleton, describeVisualFamilyDimensions } from './storage.js?rmv=1.62.74';
-import { buildInteractionRecipeRule, interactionExecutionReminder, interactionRecipesFor } from './interactionRecipes.js?rmv=1.62.74';
-import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.62.74';
-import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.74';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.74';
-export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.74';
-import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.74';
-import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.74';
-import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.62.74';
-import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.74';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.74';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.74';
+import { visualDesignMode, usesModelOriginalColors, withoutPaletteRecipe, REFERENCE_VISUAL_FLOOR, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.62.77';
+import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=1.62.77';
+import { attachPaletteRecipes, paletteRecipeFor } from './paletteRecipes.js?rmv=1.62.77';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.77';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.77';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.77';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.77';
+import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.77';
+import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.62.77';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.77';
+import { getComboHistory, getActivePaletteCooldown } from './storage.js?rmv=1.62.77';
+import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock } from './visualDiversityPolicy.js?rmv=1.62.77';
+import { buildInteractionRecipeRule, interactionExecutionReminder, interactionRecipesFor } from './interactionRecipes.js?rmv=1.62.77';
+import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.62.77';
+import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.77';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.77';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.77';
+import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.77';
+import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.77';
+import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.62.77';
+import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.77';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.77';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.77';
 
 const THEME_ITEMS = new Map(THEMATIC_CATEGORIES.map(item => [item.id, item]));
 const FORMAT_ITEMS = new Map(PRESENTATION_FORMATS.map(item => [item.id, item]));
@@ -273,130 +270,50 @@ function isTouchTheaterRelated(combo) {
     return (combo?.formats || []).some(item => ['6.2.1.1.e', '6.2.1.2'].includes(String(item?.id || '')));
 }
 
-function shortVisualAvoidance(combo, limit = 5, seenDimensions = new Set()) {
-    const recent = getComboHistory(limit).slice(-limit);
+// Sending history is a compact record of completed selections, not a second
+// design brief. Local diagnostics/selection accounting remain in storage.
+function shortHistorySkeleton(item) {
+    const family = visualFamilyForCooldown(parseVisualFamilySkeleton(item?.visualSkeleton || ''));
+    const labels = {
+        scene_above_text: '上方画面，下方文字',
+        text_above_scene: '上方文字，下方画面',
+        scene_beside_text: '画面与文字并排',
+        separate_scene_text: '画面与文字分区',
+        text_panel_switch: '选项切换同一位置的长文',
+        text_disclosure_stack: '同类文字条目逐项展开',
+    };
+    return ['layout_family', 'operation_family'].map(key => labels[family[key]]).filter(Boolean).join('；') || '未识别';
+}
+
+function sharedVisualHistoryRule({ textOnly = false } = {}) {
+    const recent = getRecentDiversityHistory(textOnly ? 3 : 5);
     if (!recent.length) return '';
-    return recent.map(item => {
-        const themes = (item.themeIds || []).join(' + ');
-        const formats = (item.formatIds || []).filter(id => id !== '10.2.2').join(' + ');
-        const family = describeVisualFamilyDimensions(Object.fromEntries(Object.entries(visualFamilyForCooldown(parseVisualFamilySkeleton(item.visualSkeleton || ''))).filter(([key, value]) => {
-            if (['layout_family', 'operation_family'].includes(key)) return false;
-            const identity = `${key}:${value}`;
-            if (seenDimensions.has(identity)) return false;
-            seenDimensions.add(identity); return true;
-        })));
-        return [themes ? `近期主题：${themes}` : '', formats ? `近期展现形式：${formats}` : '',
-            family ? `实际构图：${family}` : ''].filter(Boolean).join('；');
-    }).filter(Boolean).map((line, index) => `${index + 1}. ${line}。`).join('\n');
-}
-
-function recentRiskCorrection(settings) {
-    const flags = getRecentRiskFlags(4);
-    const counts = getRecentRiskFlagCounts(4);
-    if (!flags.length) return '';
-    const lines = [];
-
-    const hasRepeatedStructure = flags.some(flag => [
-        'same_block_stack',
-        'same_grid_card_risk',
-        'catalog_page_risk',
-        'info_page_degrade',
-        'flat_vertical_flow',
-        'repeated_unit_shape',
-    ].includes(flag));
-    if (hasRepeatedStructure) {
-        lines.push('近期真实输出的内容承载骨架或阅读路径过于相似。本轮必须改变主视觉结构、空间组织与内容寄生方式；在所选形式允许时脱离相似信息块的堆叠，不删除形式必需的正文和版式。');
-    }
-
-    const hasWeakMedia = flags.some(flag => ['weak_media_body', 'weak_spatial_complexity', 'missing_visual_program'].includes(flag));
-    if (hasWeakMedia) {
-        lines.push('近期真实输出的媒介本体偏弱。本轮必须让 DOM/CSS 直接呈现可辨认的媒介轮廓、该形式所需的空间或版式结构与视觉锚点，而不是把媒介名只写在标题里。');
-    }
-    if (flags.includes('missing_visual_program')) {
-        lines.push('近期真实输出出现浏览器默认文字流或原生控件裸露。本轮先完成作用于可见节点的布局、材质、排版与交互状态 CSS，再输出正文；不得用通用卡片补壳。');
-    }
-
-    const hasWeakInteraction = flags.some(flag => ['missing_interaction', 'fake_interaction', 'visual_promise_unfulfilled'].includes(flag));
-    if (hasWeakInteraction) {
-        lines.push('近期真实输出缺少有效交互，或只有悬停、位移、变色和装饰性操作入口。本轮必须先建立可保持的状态机制，再写触发入口与受控对象；触发前后须出现不同的内容、空间、构图或状态。');
-    }
-
-    const hasWeakVisualScenery = flags.some(flag => ['visual_scenery_marker_missing', 'weak_visual_scenery_motion', 'weak_visual_scenery_layers'].includes(flag));
-    if (hasWeakVisualScenery && visualSceneryEnabled(settings)) {
-        lines.push('近期动态视觉场景退化为静态页面、弱动效或单层头图。本轮必须先完成有前中后景的完整舞台，让主要主体与环境层在打开后立即持续运动，再把一条可保持交互寄生于场景对象；不得用播放器外观、进度条、微粒或静态卡片冒充动态画面。');
-    }
-
-    if ((counts.same_block_stack || 0) >= 2 || (counts.info_page_degrade || 0) >= 2 || (counts.flat_vertical_flow || 0) >= 2) {
-        lines.push('连续重复风险偏高。本轮必须在所选形式允许的范围内显著改变重复的阅读或操作路径，保留用户指定与形式成立所必需的结构，不为换骨架丢失条目玩法。');
-    }
-
-    if (!lines.length) return '';
-    return `\n真实视觉纠偏【由插件扫描实际 HTML/CSS 后触发，只给抽象方向】:\n${lines.map(x => `  - "${x}"`).join('\n')}`;
-}
-
-
-function interactionFamilyCooldownSnapshot(settings) {
-    const items = recentInteractionCooldowns(getRecentInteractionFamilies(5, { preserveEmpty: true }));
-    if (!items.length) return null;
-    const exactBan = items.some(item => item.id === 'tabbed_radio_family')
-        ? '不得再次用多个同组 radio＋并列标签／按钮只切换同位置的长文字面板；改变按钮数量仍算同一路径。'
-        : '';
-    return { items, label: items.map(item => item.label).join('、'),
-        count: items.reduce((sum, item) => sum + item.count, 0), exactBan };
-}
-
-function interactionFamilyCooldownRule(settings) {
-    const snapshot = interactionFamilyCooldownSnapshot(settings);
-    if (!snapshot) return '';
-    return String.raw`
-交互形态冷却【由近期实际 HTML/CSS 识别；强避重但保留原生功能】:
-  - 近五轮出现的交互家族：${snapshot.items.map(item => `${item.label}×${item.count}`).join('；')}；间隔出现仍保留，不只冷却最近一面。
-${snapshot.exactBan ? `  - ${snapshot.exactBan}\n` : ''}  - 冷却上述家族中相同对象与相同操作过程的重复路径；交互数量服从内容，正常装置控件和形式固有玩法保留。家族名称不是候选菜单，允许未被识别的新交互；从本轮媒介的使用方式推导变化，不机械换另一种组件。`;
-}
-
-function visualFamilyCooldownRule(settings) {
-    const repeated = getRepeatedVisualFamilyDimensions(3, 2).filter(item => !['layout_family', 'operation_family'].includes(item.key));
-    if (!repeated.length) return '';
-    const repeatedText = repeated.map(item => `${item.label}「${item.value}」×${item.streak}`).join('；');
-    return String.raw`
-视觉短冷却【补充近期重复维度】:
-  - 连续重复：${repeatedText}。
-  - 按共用强避重要求改变可变的重复项；未重复维度自由，不机械轮换固定模板。`;
-}
-
-function sharedVisualHistoryRule(settings, independentHistorySource = null) {
-    const structure = getRecentStructuralCooldown(5);
-    const extra = typeof independentHistorySource === 'function'
-        ? independentHistorySource({ needsBackfill: structure.length === 0 }) || {} : {};
-    const families = [...(Array.isArray(extra.families) ? extra.families : []), ...(extra.previous ? [extra.previous] : [])];
-    const structuralKeys = new Set(structure.map(item => `${item.key}:${item.value}`));
-    const seenDimensions = new Set(getRepeatedVisualFamilyDimensions(3, 2)
-        .filter(item => !['layout_family', 'operation_family'].includes(item.key)).map(item => `${item.key}:${item.value}`));
-    const reference = shortVisualAvoidance(null, 5, seenDimensions);
-    const supplemental = [];
-    for (const candidate of families) {
-        const family = visualFamilyForCooldown(candidate);
-        const remaining = {};
-        for (const [key, value] of Object.entries(family)) {
-            const identity = `${key}:${value}`;
-            if (['layout_family', 'operation_family'].includes(key)) {
-                if (Object.hasOwn(COMPOSITION_LABELS, value) && !structuralKeys.has(identity)) {
-                    structuralKeys.add(identity); structure.push({ key, value, label: COMPOSITION_LABELS[value], count: null });
-                }
-            } else if (!seenDimensions.has(identity)) {
-                seenDimensions.add(identity); remaining[key] = value;
-            }
-        }
-        const description = describeVisualFamilyDimensions(remaining);
-        if (description) supplemental.push(description);
-    }
-    if (!getComboHistory(5).length && !structure.length && !supplemental.length && !extra.previous) return '';
-    const records = structure.length ? `近期结构记录【最近五轮已完成镜面（同批多面一起比较），不因中间换过其他骨架而清零】：\n  - ${structure.map(item => `${item.label}${item.count === null ? '（旧成品或重说补充识别）' : `（${item.count}次）`}`).join('；')}。\n  - A→B 后仍避开 A 与 B，按共用强避重要求改变可变骨架。` : '';
-    return [records, interactionFamilyCooldownRule(settings), visualFamilyCooldownRule(settings),
-        reference ? `近期选材与视觉参考（共用一份）：\n${reference}` : '',
-        supplemental.length ? `旧成品补充观察（近期至多五面，仅补充未记录维度）：${supplemental.join('；')}。` : '',
-        extra.previous ? '本次为同面手动重说：上一版观察已合并到以上记录，作为最高短期冷却；在保留用户指定、固有材质与功能的前提下改变可变骨架。' : '',
-        recentRiskCorrection(settings)].filter(Boolean).join('\n\n');
+    const rounds = new Map();
+    recent.forEach((item, index) => {
+        const key = item?.diversityRound || item?.batchId || `legacy:${index}`;
+        if (!rounds.has(key)) rounds.set(key, []);
+        rounds.get(key).push(item || {});
+    });
+    const ids = values => Array.isArray(values) ? values.map(asText).filter(Boolean).join('、') : '';
+    const face = item => {
+        const interactions = interactionRecipesFor(item).map(recipe => recipe.code).join('、');
+        const observed = item.paletteFingerprint?.mainColors;
+        const colors = Array.isArray(observed) ? [...new Set(observed
+            .filter(value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value))
+            .map(value => value.toUpperCase()))].join('/') : '';
+        const mainColor = `主色 ${colors || (Array.isArray(observed) ? '未识别' : '未记录')}`;
+        if (textOnly) return mainColor;
+        return `主题 ${ids(item.themeIds) || '未记录'} × 形式 ${ids(item.formatIds) || '未记录'}`
+            + `｜骨架 ${shortHistorySkeleton(item)}｜交互 ${interactions || '未记录'}｜${mainColor}`;
+    };
+    const lines = [...rounds.values()].map((items, index) => {
+        const ordered = items.slice().sort((a, b) => (a.faceIndex ?? 0) - (b.faceIndex ?? 0));
+        const contents = ordered.length === 1 ? face(ordered[0]) : ordered
+            .map((item, faceIndex) => `面${Number.isInteger(item.faceIndex) ? item.faceIndex + 1 : faceIndex + 1}〔${face(item)}〕`).join('；');
+        return `${index + 1}：${contents}`;
+    });
+    const scope = textOnly ? '近三轮阅读主色' : '近五轮；主色参考近三轮；文本面仅参考选材与阅读配色';
+    return `近期记录【${scope}】：\n${lines.join('\n')}`;
 }
 
 // Only equal rule bodies are shared. Materials and per-face/ticket identities
@@ -466,9 +383,8 @@ function sharedPaletteRules(faces, settings, palettes, split = false) {
     });
     const darkMode = darkVisualGenerationRule(settings);
     const execution = references
-        ? '用户明确配色与原媒介材质优先；本面实际用色也要避开上方已列的近期配色与色族，并执行有效的深色冷却，不只换色号或强调色。必要局部色与黑白正文照常保留。' : '';
-    const textExecution = !references && !htmlFaces && cooldown ? '长文本只在阅读配色上避开上方近期配色，正文保持清晰易读。' : '';
-    const common = [cooldown, darkMode, execution, textExecution].filter(Boolean).join('\n');
+        ? '用户明确配色与原媒介材质优先；本面实际用色参照共用记录，并执行有效的深色冷却；必要局部色与黑白正文照常保留。' : '';
+    const common = [cooldown, darkMode, execution].filter(Boolean).join('\n');
     const heading = htmlFaces ? '配色共用要求【本次所有面；文本面仅阅读配色】' : '配色共用要求【本次均为文本面，仅阅读配色】';
     const design = [references, fallback].filter(Boolean).join('\n\n');
     const cooldownRule = common ? `${heading}：\n${common}` : '';
@@ -532,7 +448,7 @@ function tarotPhysicalImageRule(faceIndexes = []) {
 }
 
 function mediumInteractionConstructionRule() {
-    return '媒介内交互构造：先构造展现形式本体，入口依实际部件与阅读结构设计，可辨可点；操作改变对应对象，相关部件随之响应，结果原位或紧邻可见，文字仅补必要反馈。多项交互在同一本体上分别实现抽中的操作效果，不按交互名称拆标签页或独立面板，不以文字切换代替物件、空间或关系的变化。互斥状态原位替换，比较保留参照；同种交互可复用，用户明确玩法与形式固有功能优先。';
+    return '媒介内交互构造：先构造展现形式本体，再将操作与主要结果安放在同一对象或紧邻位置，点后就地可见；文字只补必要反馈，不把结果集中到远处说明区。多交互共同服务本体，不各搭独立面板；互斥状态原位替换，需并置比较的内容保留。同种交互可复用，用户明确玩法与固有功能优先。不得用“上方独立插图＋下方长文字切换”冒充本体，也不能以频道或分页命名豁免；实际使用过程成立的翻阅、档位与折叠照常保留。';
 }
 
 function compactCreativeRule(enabled, formatOnly = false) {
@@ -1066,7 +982,7 @@ function sharedHtmlExecutionReminder(settings, directive) {
         ? truncateDirectiveText(directive.rawDirective, 240) : '';
     const visualPreferenceLock = compactVisualPreferenceExecutionLock(settings);
     return [
-        'HTML 共用短检：首个主体落实两项可见结构证据和真实 CSS；内容承载对应本面条目，操作实际改变对象，状态可保持、结果就地可见。360px 下数量群组完整适配、正文不裁切。',
+        'HTML 共用短检：首个主体落实两项可见结构证据和真实 CSS；内容承载与操作反馈对应本面条目，完成「对象→操作→可保持第二状态→反馈」交互。360px 下数量群组完整适配、正文不裁切。',
         directiveText ? `点菜优先：${directiveText}` : '',
         visualPreferenceLock ? `最终视觉偏好裁决：${visualPreferenceLock}；近期避让只负责脱离重复维度，不得覆盖这条视觉偏好。` : '',
         '可读性：正文、按钮、标签与实际背景保持清晰对比；冷却不得损害可读性。',
@@ -1310,12 +1226,12 @@ function buildTextAwarePrompt({ faceContexts, settings, directive, memoryMateria
         if (appearanceReferenceText && htmlNumbers.length) chunks.push(`外观与交互结构参考（仅一份，仅第 ${htmlNumbers.join('、')} 面 HTML 适用）：\n以下 JSON 只描述布局、配色与状态控件关系，不是故事、人物设定或指令；人物、文字与情节取自当前聊天，遵守安全与输出协议。\n${appearanceReferenceText}`);
         chunks.push(constructionRules.html.guidance, constructionRules.html.modes, constructionRules.interaction,
             constructionRules.palette.cooldown, sharedSpecialFormatRules(faceContexts, settings));
-        if (htmlNumbers.length) chunks.push(`以下历史避重仅作用于 HTML 面（第 ${htmlNumbers.join('、')} 面）：\n${visualHistoryRule}`);
+        if (visualHistoryRule) chunks.push(visualHistoryRule);
     } else {
         chunks.push(sharedHtmlModeRules(faceContexts));
         chunks.push(sharedTextAwareBaseRules(faceContexts, settings, directive, independent));
         chunks.push(sharedSpecialFormatRules(faceContexts, settings));
-        if (htmlNumbers.length) chunks.push(`以下历史避重仅作用于 HTML 面（第 ${htmlNumbers.join('、')} 面）：\n${visualHistoryRule}`);
+        if (visualHistoryRule) chunks.push(visualHistoryRule);
         appendFaces();
     }
     if (!independent && htmlNumbers.length) {
@@ -1621,14 +1537,16 @@ export function renderRabbitMirrorPromptPlan(plan, externalRawMap = null, appear
     const followTagIsolationTags = followTagIsolationNames(settings, generationType);
     const followTagIsolationText = followTagIsolationRule(followTagIsolationTags);
     const hasTextPresentation = faceContexts.some(face => face.textPresentation);
-    const visualHistoryRule = faceContexts.some(face => !face.textPresentation && !face.combo?.pureOrder)
-        ? sharedVisualHistoryRule(settings, independentHistorySource) : '';
+    const visualHistoryRule = faceContexts.some(face => !face.combo?.pureOrder)
+        ? sharedVisualHistoryRule({ textOnly: faceContexts.every(face => face.textPresentation || face.combo?.pureOrder) }) : '';
     const paletteReferences = !usesModelOriginalColors(settings) && faceContexts.some(face => !face.textPresentation && !face.combo?.pureOrder)
         ? selectGenerationPalettes(faceContexts, settings, {
             darkCooldown: settings.darkVisualMode !== true && getActivePaletteCooldown(5).active,
         }) : [];
     const htmlFacesPresent = faceContexts.some(face => !face.textPresentation && !face.combo?.pureOrder);
-    const generationPolicy = strongVisualDiversityRule({ hasHistory: !!visualHistoryRule || getComboHistory(5).length > 0, textOnly: !htmlFacesPresent });
+    const generationPolicy = strongVisualDiversityRule({ hasHistory: !!visualHistoryRule || getComboHistory(5).length > 0, textOnly: !htmlFacesPresent,
+        hasRecentTextPanelSwitch: htmlFacesPresent && getRecentDiversityHistory(5).some(item => !isTextPresentation(item)
+            && parseVisualFamilySkeleton(item?.visualSkeleton || '').operation_family === 'text_panel_switch') });
     const constructionRules = htmlFacesPresent ? {
         interaction: buildInteractionRecipeRule(faceContexts, rawPolicy, mediumInteractionConstructionRule()),
         palette: sharedPaletteRules(faceContexts, settings, paletteReferences, true),

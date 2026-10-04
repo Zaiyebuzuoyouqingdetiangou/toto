@@ -1,11 +1,11 @@
-import { activeRoleColorHtml, bindRolePaletteCode } from './roleColorVariants.js?rmv=1.62.74';
-import { detectCompositionFingerprint, VISUAL_SKELETON_MAX_CHARS } from './compositionFingerprint.js?rmv=1.62.74';
-import { visualSceneryEnabled } from './presentationMode.js?rmv=1.62.74';
-import { presentationModeFields } from './presentationMode.js?rmv=1.62.74';
-import { getCurrentChatKey, commitFollowVisualHistory, bindVisualHistoryTarget } from './storage.js?rmv=1.62.74';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.62.74';
-import { getSettings } from './settings.js?rmv=1.62.74';
-import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.62.74';
+import { activeRoleColorHtml, bindRolePaletteCode } from './roleColorVariants.js?rmv=1.62.77';
+import { detectCompositionFingerprint, VISUAL_SKELETON_MAX_CHARS } from './compositionFingerprint.js?rmv=1.62.77';
+import { visualSceneryEnabled } from './presentationMode.js?rmv=1.62.77';
+import { presentationModeFields } from './presentationMode.js?rmv=1.62.77';
+import { getCurrentChatKey, commitFollowVisualHistory, bindVisualHistoryTarget } from './storage.js?rmv=1.62.77';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.62.77';
+import { getSettings } from './settings.js?rmv=1.62.77';
+import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.62.77';
 import {
     commitRabbitMirrorFollowBatch,
     captureRabbitMirrorGenerationSnapshots,
@@ -15,17 +15,17 @@ import {
     inspectRabbitMirrorGenerationSource,
     releaseRabbitMirrorFollowBatch,
     releaseRabbitMirrorFollowBatchAtMessage,
-} from './generationGuard.js?rmv=1.62.74';
+} from './generationGuard.js?rmv=1.62.77';
 import {
     clearSanitizedRabbitMirrorFaceProof,
     getSanitizedRabbitMirrorFaceProof,
     markSanitizedRabbitMirrorFace,
     rabbitMirrorMultifaceSourceHash,
-} from './multifaceProof.js?rmv=1.62.74';
-import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.62.74';
-import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.62.74';
-import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.62.74';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.74';
+} from './multifaceProof.js?rmv=1.62.77';
+import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.62.77';
+import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.62.77';
+import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.62.77';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.77';
 
 export const FOLLOW_MULTIFACE_COMMITTED_EVENT = 'rabbit-mirror:follow-multiface-committed';
 export const FOLLOW_MULTIFACE_REJECTED_EVENT = 'rabbit-mirror:follow-multiface-rejected';
@@ -875,6 +875,25 @@ function classifyPaletteSamples(samples, source = 'raw', mainBackgroundFound = f
     };
 }
 
+function mainBackgroundSamples(backgroundColor, backgroundImage, resolve = value => value) {
+    // An image/gradient covers the base paint. Do not record an obscured base
+    // as the main colour; unreadable images remain unknown.
+    const image = String(backgroundImage || '').trim();
+    return extractCssColors(resolve(image && !/^(?:none|initial|unset|revert(?:-layer)?)$/i.test(image)
+        ? image : backgroundColor) || '');
+}
+
+function withMainPaletteColors(fingerprint, colors) {
+    if (!fingerprint) return null;
+    // Persist observed carrier colours, never an averaged/invented swatch.
+    // Translucent-only backgrounds need compositing evidence; leave unknown.
+    const mainColors = [...new Set((colors || []).filter(color => color.a === 1
+        && [color.r, color.g, color.b].every(Number.isFinite)).map(color => '#'
+        + [color.r, color.g, color.b].map(value => Math.round(clamp(value, 0, 255))
+            .toString(16).padStart(2, '0')).join('').toUpperCase()))];
+    return { ...fingerprint, mainColors };
+}
+
 function paletteContentRoots(toto) {
     if (!toto?.querySelector) return [];
     const details = toto.tagName === 'DETAILS' ? toto
@@ -921,6 +940,7 @@ function renderedPaletteFingerprint(toto) {
 
     const samples = [];
     let mainBackgroundFound = false;
+    let mainColors = null;
     for (const item of candidates) {
         let style;
         try {
@@ -934,6 +954,7 @@ function renderedPaletteFingerprint(toto) {
             ...extractCssColors(style.backgroundImage),
         ];
         if (!colors.length) continue;
+        if (!mainColors) mainColors = mainBackgroundSamples(style.backgroundColor, style.backgroundImage);
         const isRoot = item.element === root;
         if (isRoot) mainBackgroundFound = true;
         const area = item.area || rootArea * 0.08;
@@ -941,7 +962,7 @@ function renderedPaletteFingerprint(toto) {
         const colorWeight = baseWeight / colors.length;
         colors.forEach(color => samples.push({ color, weight: colorWeight }));
     }
-    return classifyPaletteSamples(samples, 'rendered', mainBackgroundFound);
+    return withMainPaletteColors(classifyPaletteSamples(samples, 'rendered', mainBackgroundFound), mainColors);
 }
 
 // Raw independent results are scanned before mounting, so computed styles are
@@ -1109,18 +1130,23 @@ function sourcePaletteFingerprint(html, root, sourceProperties = null) {
     const carriers = nodes.filter(node => /^(DIV|SECTION|ARTICLE|MAIN|ASIDE|FIGURE|TABLE|SVG)$/i.test(node.tagName));
     carriers.push(...roots.filter(node => !carriers.includes(node)), root.querySelector('details'), root);
     const painted = [];
+    let mainColors = null;
     for (const node of [...new Set(carriers)].filter(Boolean)) {
         if (!visible(node)) continue;
         const p = properties(node);
         const colors = [...new Set([p['background-color'], p['background-image']].filter(Boolean))]
             .flatMap(value => extractCssColors(/var\(/i.test(value) ? resolve(value) || '' : value));
-        if (colors.length) painted.push(colors);
+        if (colors.length) {
+            if (!mainColors) mainColors = mainBackgroundSamples(p['background-color'], p['background-image'],
+                value => /var\(/i.test(value) ? resolve(value) || '' : value);
+            painted.push(colors);
+        }
         if (painted.length >= 24) break;
     }
     if (!painted.length) return null;
     const samples = painted.flatMap((colors, index) => colors.map(color => ({ color,
         weight: (index === 0 ? 8 : 2 / Math.max(1, painted.length - 1)) / colors.length })));
-    return classifyPaletteSamples(samples, 'raw', true);
+    return withMainPaletteColors(classifyPaletteSamples(samples, 'raw', true), mainColors);
 }
 
 function rawPaletteFingerprint(html, sourceRoot = null, sourceProperties = null) {
@@ -1652,7 +1678,7 @@ function templateSingleFollowRoot(template) {
 
 function loadFollowBatchSanitizer() {
     if (!followBatchSanitizerModulePromise) {
-        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.62.74').catch(error => {
+        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.62.77').catch(error => {
             followBatchSanitizerModulePromise = null;
             console.debug('[RabbitMirror] follow multiface sanitizer unavailable:', error);
             return null;

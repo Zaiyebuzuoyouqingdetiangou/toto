@@ -1,8 +1,11 @@
 // Shared generation policy, emitted once after composing all faces/candidates.
 // These are creative requirements, not parser gates or automatic retry triggers.
-export function strongVisualDiversityRule({ hasHistory = false, textOnly = false } = {}) {
-    if (textOnly) return `默认强避重【本次均为文本面】：保留用户指定与已启用能力；题材表达与阅读配色${hasHistory ? '避开近期重复' : '依正文独立构思'}，不新增交互或动画。`;
-    return `默认强避重【每次生成、同批各面均执行】：保留用户指定、视觉偏好、形式固有特征与已启用能力；换主题、形式或交互编号不算变化，可变的实际画文分区、内容承载与操作路径${hasHistory ? '须脱离近期及同批重复' : '依正文独立构思，同批形成差异'}；媒介需要的分页、频道、折叠照常使用，控件数量不限，文本面不新增交互或动画。`;
+export function strongVisualDiversityRule({ hasHistory = false, textOnly = false, hasRecentTextPanelSwitch = false } = {}) {
+    const basis = hasHistory ? '参考近期选材与实际主色' : '依正文独立构思';
+    if (textOnly || !hasHistory) return `避重：${basis}，同批及相邻轮优先变化，允许部分复用；用户指定、固有功能与材质优先。${textOnly ? '文本面只调整题材与阅读配色，不新增交互或动画。' : ''}`;
+    return 'HTML 面避重：参考近期实际主色；主题、形式和交互编号可部分复用，但近期重复的页面布局与操作方式必须改变。仅换名称、按钮数量、颜色或编号不算变化。'
+        + (hasRecentTextPanelSwitch ? '本轮严禁再次采用“并列入口仅切换同位长文”。' : '')
+        + '用户指定优先；保留展现形式必需的功能与材质，不得以此为由复刻整套结构。';
 }
 
 export function darkVisualGenerationRule(settings) {
@@ -13,8 +16,7 @@ export function darkVisualGenerationRule(settings) {
   - 保留形式的固有结构、材质纹理与原有玩法，通过夜间环境、染色材质或低明度同类材料表达；不能把所有媒介都改成终端面板。长文本仍只做原有阅读美化，不添加 HTML 面的交互或动画。`;
 }
 
-export function visualDiversityExecutionLock(settings, { textOnly = false } = {}) {
-    if (textOnly) return '强避重短锁：阅读配色按上文共用历史避重；用户指定与材质优先。';
-    return '强避重短锁：交互避用、结构与配色按上文共用历史执行；用户指定、固有功能和材质优先，保留各面已启用能力。' +
-        (settings?.darkVisualMode === true ? '深色模式仅约束明暗，其余构造、绘制与交互要求共用。' : '');
+export function visualDiversityExecutionLock() {
+    // The shared ledger and its one execution sentence are already sent once.
+    return '';
 }

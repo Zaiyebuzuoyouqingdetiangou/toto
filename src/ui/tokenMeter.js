@@ -1,10 +1,10 @@
 // Split from ui.js — Prompt meter and latest independent request diagnostic.
 
-import { getSettings } from '../settings.js?rmv=1.62.74';
-import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from '../tokenMeter.js?rmv=1.62.74';
-import { API_REQUEST_DIAGNOSTIC_EVENT, getLastIndependentApiRequestDiagnostic } from '../independentApi.js?rmv=1.62.74';
-import { escapeHtml } from './runtime.js?rmv=1.62.74';
-import { formatGenerationElapsed } from '../generationTiming.js?rmv=1.62.74';
+import { getSettings } from '../settings.js?rmv=1.62.77';
+import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from '../tokenMeter.js?rmv=1.62.77';
+import { API_REQUEST_DIAGNOSTIC_EVENT, getLastIndependentApiRequestDiagnostic } from '../independentApi.js?rmv=1.62.77';
+import { escapeHtml } from './runtime.js?rmv=1.62.77';
+import { formatGenerationElapsed } from '../generationTiming.js?rmv=1.62.77';
 
 function independentApiProfileLabel(diagnostic) {
     if (!diagnostic?.profile) return '暂无记录';
