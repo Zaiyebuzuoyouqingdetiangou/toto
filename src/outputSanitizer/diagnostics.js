@@ -1,12 +1,15 @@
 // Split from outputSanitizer.js — diagnostics.
-import { nativePopoverFallbackCount, inspectNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.62.82';
-import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.62.82';
-import { restoreRuntimeAnimationClone } from '../runtimeAnimationState.js?rmv=1.62.82';
+import { interactionSamplingDiagnostic } from '../interactionSampling.js?rmv=1.62.90';
+import { RADIO_BRANCH_COUNT_ATTR } from './radioBranchRepair.js?rmv=1.62.90';
+import { findUnmappedNavigationButtons } from './choiceRescue.js?rmv=1.62.90';
+import { nativePopoverFallbackCount, inspectNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.62.90';
+import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.62.90';
+import { restoreRuntimeAnimationClone } from '../runtimeAnimationState.js?rmv=1.62.90';
 
-import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.62.82';
-import { collectBoundedElementDescendants } from '../presentationQuality.js?rmv=1.62.82';
-import { collectRevealedClipHosts, shouldRelaxRevealedClipPanel, REVEALED_CLIP_RESCUE_ATTR } from '../revealedClipRepair.js?rmv=1.62.82';
-import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.62.82';
+import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.62.90';
+import { collectBoundedElementDescendants } from '../presentationQuality.js?rmv=1.62.90';
+import { collectRevealedClipHosts, shouldRelaxRevealedClipPanel, REVEALED_CLIP_RESCUE_ATTR } from '../revealedClipRepair.js?rmv=1.62.90';
+import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.62.90';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -25,7 +28,7 @@ import {
     isInsideChatMessage,
     isMaintenanceRabbitEnabled,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.62.82';
+} from './runtime.js?rmv=1.62.90';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     CHANNEL_DIAL_CYCLE_COUNT_ATTR,
@@ -58,7 +61,7 @@ import {
     WEBKIT_3D_FLIP_RESCUE_ATTR,
     passportDocumentRescueStates,
     unlabeledCheckedHostRescueStates,
-} from './checkedStateRescue.js?rmv=1.62.82';
+} from './checkedStateRescue.js?rmv=1.62.90';
 import {
     RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR,
     RENDERED_BUTTON_ADJACENT_HIDDEN_ITEM_ATTR,
@@ -85,7 +88,7 @@ import {
     renderedListDetailRescueStates,
     renderedMaskRevealRescueStates,
     renderedStateLayerRescueStates,
-} from './renderedStateRescue.js?rmv=1.62.82';
+} from './renderedStateRescue.js?rmv=1.62.90';
 import {
     RAW_RADIO_RESET_LAST_ATTR,
     RAW_RADIO_RESET_ROOT_ATTR,
@@ -96,7 +99,7 @@ import {
     getRabbitMirrorSummaryText,
     getRawAssistantMessageForRenderedRoot,
     rawSelfMutationRescueStates,
-} from './scriptedInteractionRescue.js?rmv=1.62.82';
+} from './scriptedInteractionRescue.js?rmv=1.62.90';
 import {
     REVERSIBLE_RADIO_LAST_ATTR,
     REVERSIBLE_RADIO_ROOT_ATTR,
@@ -107,13 +110,13 @@ import {
     findNestedDetailsPopupClippingCandidates,
     formatWebKit3DFlipEvidence,
     repairNestedDetailsPopupClipping,
-} from './fallbackRescue.js?rmv=1.62.82';
-import { RADIO_GROUP_RESCUE_ATTR, RADIO_GROUP_ROOT_ATTR } from './idsAndRearm.js?rmv=1.62.82';
+} from './fallbackRescue.js?rmv=1.62.90';
+import { RADIO_GROUP_RESCUE_ATTR, RADIO_GROUP_ROOT_ATTR } from './idsAndRearm.js?rmv=1.62.90';
 import {
     findFillInChoiceCandidates,
     findStaticChoiceSelectionCandidates,
     findStructuredStaticDisclosureCandidates,
-} from './choiceRescue.js?rmv=1.62.82';
+} from './choiceRescue.js?rmv=1.62.90';
 import {
     CODE_SHELL_SELECTOR,
     MAINTENANCE_QUARANTINED_SCRIPT_ATTR,
@@ -131,7 +134,7 @@ import {
     needsSanitize,
     normalizeMaintenanceSummaryText,
     parseTotoFragment,
-} from './maintenanceInspect.js?rmv=1.62.82';
+} from './maintenanceInspect.js?rmv=1.62.90';
 import {
     RABBIT_MIRROR_MAX_TEMPLATE_SOURCE_CHARS,
     RABBIT_MIRROR_SANITIZER_IMPORT_STRIPPED_ATTR,
@@ -144,7 +147,7 @@ import {
     sanitizeRabbitMirrorUntrustedTemplate,
     stripCssComments,
     validateRabbitMirrorTemplateStructuralBudget,
-} from './markup.js?rmv=1.62.82';
+} from './markup.js?rmv=1.62.90';
 import {
     HCLIP_REPORT_ATTR,
     VIEWPORT_LAYOUT_COUNT_ATTR,
@@ -152,14 +155,14 @@ import {
     inspectMaintenanceMobileLayout,
     inspectMaintenanceViewportLayout,
     maintenanceMobileLayoutIsPassportManaged,
-} from './layoutRescue.js?rmv=1.62.82';
-import { normalizeRabbitMirrorToolButton, rabbitMirrorTextPresentation } from './toolsChrome.js?rmv=1.62.82';
+} from './layoutRescue.js?rmv=1.62.90';
+import { normalizeRabbitMirrorToolButton, rabbitMirrorTextPresentation } from './toolsChrome.js?rmv=1.62.90';
 import {
     getMessageIndexFromMirrorNode,
     hostScriptModule,
     messageUsesDistinctDisplaySource,
     outputHostGenerationLooksActive,
-} from './lifecycle.js?rmv=1.62.82';
+} from './lifecycle.js?rmv=1.62.90';
 
 export const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
 
@@ -687,6 +690,9 @@ export function diagnosticRouteSummary(root) {
 
 
 function diagnosticInferReason(root, inputs, targets, state = null) {
+    if (/:failed$/.test(root.getAttribute?.(LABELED_CHECKED_VERIFY_LAST_ATTR) || '')
+        || /@label-click[^;]*:failed$/.test(state?.controlEvidenceBeforeProbe || ''))
+        return '控件状态变化未带来可验证的正文变化；不能据已有可见正文判定交互恢复。';
     if (rabbitMirrorTextPresentation(root) && !inputs.length
         && !targets.some(target => !diagnosticIsInternalUiNode(target)
             && !target.closest?.(`[${TOOL_ENTRY_HOST_ATTR}], [data-rm-face-swipe-host]`)
@@ -755,7 +761,7 @@ function diagnosticInferReason(root, inputs, targets, state = null) {
     const sandboxProbeAttempted = diagnosticEvents.some(item => /maintenance-sandbox-probe:/i.test(String(item || '')));
     const labeledProbeLast = String(root.getAttribute?.(LABELED_CHECKED_VERIFY_LAST_ATTR) || '');
     if (/maintenance-sandbox-probe-observe:verified/i.test(labeledProbeLast)) {
-        return '维修兔已在隐藏隔离副本中切换有 label 的 checkbox，并观察到 checked 状态与第二层内容真实变化；当前页面的真实控件未被操作。';
+        return '维修兔已在隐藏隔离副本中验证一条有 label 控件的状态与正文变化；其余分支未据此计为通过，当前页面真实控件未被操作。';
     }
     if (sandboxProbeAttempted && !inputInteractionObserved) {
         return '全链路诊断只在隐藏隔离副本中尝试动态验证；本次未形成高置信第二状态证据，当前页面真实控件未被操作。';
@@ -1667,8 +1673,8 @@ ${styleTexts}`;
     const relevantThRenderCount = maintenanceRelevantThRenderNodes(root, body, relevantCodeShellNodes).length;
     const relevantHighlightedCount = maintenanceRelevantSourceNodes(root, body, 'code.hljs,[data-highlighted="yes"]').length;
     const mirrorCount = getRenderedRabbitMirrorInteractionRoots(body).filter(node => !diagnosticIsInternalUiNode(node)).length;
-    const scopedCount = diagnosticQueryContentAll(body, '[data-rabbit-mirror-interaction-scoped="true"]').length;
-    const rescuedCount = diagnosticQueryContentAll(body, '[data-rabbit-mirror-interaction-rescued="true"]').length;
+    const scopedCount = diagnosticQueryContentAll(body, '[data-rabbit-mirror-interaction-scoped="true"]').length + Number(body?.getAttribute?.('data-rabbit-mirror-interaction-scoped') === 'true');
+    const rescuedCount = diagnosticQueryContentAll(body, '[data-rabbit-mirror-interaction-rescued="true"]').length + Number(body?.getAttribute?.('data-rabbit-mirror-interaction-rescued') === 'true');
     let maintenanceModuleVersion = '';
     let maintenanceModuleMode = '';
     let maintenanceSourceAttempted = false;
@@ -1679,6 +1685,7 @@ ${styleTexts}`;
     let maintenanceResolvedCount = 0;
     let maintenanceRemainingCount = 0;
     const maintenanceModuleNodes = [...(body?.querySelectorAll?.('[data-rabbit-mirror-maintenance-modules]') || [])].reverse();
+    if (body?.hasAttribute?.('data-rabbit-mirror-maintenance-modules')) maintenanceModuleNodes.push(body);
     for (const node of maintenanceModuleNodes) {
         try {
             const payload = JSON.parse(node.getAttribute('data-rabbit-mirror-maintenance-modules') || '{}');
@@ -1992,6 +1999,9 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         independentRequest ? `首面选材名称：themes=${Array.isArray(independentRequest.themeLabels) ? independentRequest.themeLabels.join(' + ') : '(无)'} formats=${Array.isArray(independentRequest.formatLabels) ? independentRequest.formatLabels.join(' + ') : '(无)'}` : '',
         ...diagnosticIndependentSelectionFields(independentRequest),
         '',
+        '[0a. 当前镜面 VS 交互方案记录]',
+        interactionSamplingDiagnostic(root),
+        '',
         '[1. HTML／Markdown 输入层]',
         `原始源含HTML=${full.rawHtml} 含toto=${full.rawToto} 含三反引号=${full.rawFence}`,
         `显示层仍含转义标签=${full.renderedEscapedTags}`,
@@ -2030,7 +2040,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `interactionScoped=${full.scopedCount} interactionRescued=${full.rescuedCount}`,
         `maintenanceVersion=${full.maintenanceModuleVersion || '(无)'} mode=${full.maintenanceModuleMode || '(无)'}`,
         `findings=${full.maintenanceFindingCount || 0} repairOrder=${full.maintenanceRepairOrder || '(无)'}`,
-        `verifiedResolved=${full.maintenanceResolvedCount || 0} verifiedRemaining=${full.maintenanceRemainingCount || 0}`,
+        `verifiedResolved=${full.maintenanceResolvedCount || 0} verifiedRemaining=${full.maintenanceRemainingCount || 0}（结构复核，不等于逐项操作通过）`,
         `sourceRepair attempted=${!!full.maintenanceSourceAttempted} changed=${!!full.maintenanceSourceChanged}`,
         `sourceRepair reason=${full.maintenanceSourceReason || '(无)'}`,
         '',
@@ -2072,6 +2082,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `叠层正文互斥 entries=${routes.exclusiveStackedState} listener=${routes.exclusiveStackedState ? 'true' : 'false'}`,
         `频道旋钮循环 entries=${routes.channelDialCycle} listener=${routes.channelDialCycle ? 'true' : 'false'}`,
         `单向checked回退 entries=${routes.reversibleChecked} listener=${routes.reversibleChecked ? 'true' : 'false'}`,
+        `分离单选组连接 groups=${root.getAttribute?.(RADIO_BRANCH_COUNT_ATTR) || 0} 无目标导航按钮=${findUnmappedNavigationButtons(root).length}`,
         `radio同组恢复 groups=${routes.radioGroups} listener=${routes.radioGroups ? 'true' : 'false'}`,
         `radio可逆返回 groups=${routes.reversibleRadio} listener=${routes.reversibleRadio ? 'true' : 'false'} last=${root.getAttribute?.(REVERSIBLE_RADIO_LAST_ATTR) || '(尚未再次点按已选项)'}`,
         `radio取消程序恢复 entries=${routes.radioReset} listener=${routes.radioReset ? 'true' : 'false'} last=${root.getAttribute?.(RAW_RADIO_RESET_LAST_ATTR) || '(尚未点击验证)'}`,

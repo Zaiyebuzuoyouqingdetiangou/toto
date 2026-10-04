@@ -1,6 +1,6 @@
 // UI palettes from the user-provided Hearttrace source, by Toto.
 // Presentation only: no generation settings, Prompt, content storage, or network.
-import { closeTheaterFavoriteLibrary, closeTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.62.82';
+import { closeTheaterFavoriteLibrary, closeTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.62.90';
 export const UI_THEMES = Object.freeze([
   {
     "id": "default",
@@ -309,7 +309,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     move(get('rh_independent_tag_filter_open').parentElement.parentElement,'tags');
     move('rh_advanced_page_worldinfo','books');move('rh_advanced_page_memory','memories');
     withNote('rh_multiface_enabled','faces');move('rh_multiface_count_row','faces');move('rh_multiface_help','faces');move('rh_multiface_dispatch_row','faces');move('rh_face_presentation_modes','faces');
-    move('rh_visual_scenery_modes','drawing');move('rh_visual_scenery_mode_help','drawing');move('rh_visual_design_options','drawing');withNote('rh_dark_visual_mode','drawing');move('rh_advanced_page_generation','draw');
+    move('rh_visual_scenery_modes','drawing');move('rh_visual_scenery_mode_help','drawing');withNote('rh_dark_visual_mode','drawing');move('rh_advanced_page_generation','draw');
     for(const key of ['visualText','drawing','writing','references','visualRules','replacement'])row('look',key);
     move('rh_appearance_reference','references');
     move(get('rh_visual_prompt').closest('details'),'visualRules');

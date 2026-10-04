@@ -1,8 +1,8 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.62.82';
-import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.62.82';
-import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.62.82';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.62.90';
+import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.62.90';
+import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.62.90';
 
 export function buildRabbitMirrorSettingsDialogHtml() {
     return `
@@ -458,14 +458,6 @@ export function buildRabbitMirrorSettingsDialogHtml() {
               <label class="rh-ui-choice"><input id="rh_visual_scenery_mode_combined" type="radio" name="rh_visual_scenery_mode" value="combined"><span><strong>动态场景＋其他形式</strong><small>包含动态场景规则，同时按原有数量和偏好抽取其他展现形式，保留它们的内容、阅读方式与玩法。</small></span></label>
             </div>
             <div id="rh_visual_scenery_mode_help" class="rabbit-mirror-subnote">三选一，仅影响 HTML 面；文本面不受影响。主体绘制、材质与光影已纳入通用美化规则。</div>
-            <div id="rh_visual_design_options">
-            <label for="rh_visual_design_mode">美化方式</label>
-            <select id="rh_visual_design_mode" class="text_pole" style="min-height:44px;" aria-describedby="rh_visual_design_mode_help">
-              <option value="guided1553">新美化规则（默认）</option>
-              <option value="reference1553">旧美化规则（1.5.53）</option>
-            </select>
-            <div id="rh_visual_design_mode_help" class="rabbit-mirror-subnote">之前莫名发现美化变丑了，原因还没完全找到，也没完全调回来，所以保留新旧两套规则。默认用新规则，切换后用于下一次生成。</div>
-            </div>
             <label for="rh_dark_visual_mode" class="checkbox_label"><input id="rh_dark_visual_mode" type="checkbox" aria-describedby="rh_dark_visual_mode_help"> 深色模式</label>
             <div id="rh_dark_visual_mode_help" class="rabbit-mirror-subnote">新生成的所有镜面使用适合夜间阅读的深色背景；深色范围内仍强避重，保留形式与材质。独立生效，勾选即保存；已有作品不变。</div>
             <label class="checkbox_label"><input id="rh_user_directive" type="checkbox"> 用户指令优先</label>

@@ -1,25 +1,25 @@
-import { bindRolePaletteCode } from '../roleColorVariants.js?rmv=1.62.82';
+import { bindRolePaletteCode } from '../roleColorVariants.js?rmv=1.62.90';
 // Split from independentApi.js — request.
 
-import { claimGenerationEvidence, associateGenerationEvidence, generationEvidenceFor } from '../generationEvidence.js?rmv=1.62.82';
-import { createGenerationTimer } from '../generationTiming.js?rmv=1.62.82';
+import { claimGenerationEvidence, associateGenerationEvidence, generationEvidenceFor } from '../generationEvidence.js?rmv=1.62.90';
+import { createGenerationTimer } from '../generationTiming.js?rmv=1.62.90';
 
-import { resolveBehaviorRuleText } from '../behaviorRules.js?rmv=1.62.82';
-import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.62.82';
-import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.62.82';
-import { getSettings } from '../settings.js?rmv=1.62.82';
-import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.62.82';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=1.62.82';
+import { resolveBehaviorRuleText } from '../behaviorRules.js?rmv=1.62.90';
+import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.62.90';
+import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.62.90';
+import { getSettings } from '../settings.js?rmv=1.62.90';
+import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.62.90';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=1.62.90';
 import {
     assertRabbitMirrorIndependentResponseBytes,
     assertRabbitMirrorIndependentResponseText,
     authorizeRabbitMirrorIndependentServiceRequest,
-} from '../independentSecurityGuard.js?rmv=1.62.82';
+} from '../independentSecurityGuard.js?rmv=1.62.90';
 import {
     parseIndependentAdvancedOptions,
     buildIndependentAdvancedCarrier,
     applyIndependentAdvancedExclusions,
-} from '../advancedRequestOptions.js?rmv=1.62.82';
+} from '../advancedRequestOptions.js?rmv=1.62.90';
 import {
     buildRabbitMirrorPromptDetails,
     planRabbitMirrorPromptDetails,
@@ -28,14 +28,14 @@ import {
     prepareSelectedMemoryForPrompt,
     memoryRequestSettingsKey,
     assertMemoryRequestSettings,
-} from '../promptBuilder.js?rmv=1.62.82';
-import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.62.82';
-import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.62.82';
-import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.62.82';
-import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText, createMultifaceFailureSlot } from '../multifaceProtocol.js?rmv=1.62.82';
-import { applyAtmosphereFields, atmosphereNotesFromHtml, stripAtmosphereChoiceMarkup } from '../atmosphereChoice.js?rmv=1.62.82';
-import { isLocalPreflightFailure, isQuotaInsufficientFailure, configuredAutomaticRerollMax, automaticRerollEnabled } from '../automaticReroll.js?rmv=1.62.82';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.62.82';
+} from '../promptBuilder.js?rmv=1.62.90';
+import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.62.90';
+import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.62.90';
+import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.62.90';
+import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText, createMultifaceFailureSlot } from '../multifaceProtocol.js?rmv=1.62.90';
+import { applyAtmosphereFields, atmosphereNotesFromHtml, stripAtmosphereChoiceMarkup } from '../atmosphereChoice.js?rmv=1.62.90';
+import { isLocalPreflightFailure, isQuotaInsufficientFailure, configuredAutomaticRerollMax, automaticRerollEnabled } from '../automaticReroll.js?rmv=1.62.90';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.62.90';
 import {
     createVisualHistorySelection,
     resolveVisualHistorySelection,
@@ -43,9 +43,9 @@ import {
     visualFamilyForCooldown,
     markPendingBatchAttempt,
     releasePendingComboBatch,
-} from '../storage.js?rmv=1.62.82';
-import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.62.82';
-import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.62.82';
+} from '../storage.js?rmv=1.62.90';
+import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.62.90';
+import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.62.90';
 import {
     RUNTIME_VERSION,
     EXTERNAL_SHELL_ATTR,
@@ -56,8 +56,8 @@ import {
     byteLength,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.62.82';
-import { operationEpochForBase } from './flights.js?rmv=1.62.82';
+} from './runtime.js?rmv=1.62.90';
+import { operationEpochForBase } from './flights.js?rmv=1.62.90';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INDEPENDENT_MAX_APPROX_DEPTH,
@@ -72,7 +72,7 @@ import {
     normalizedConfiguredTemperature,
     readHistoryStore,
     readStore,
-} from './persistence.js?rmv=1.62.82';
+} from './persistence.js?rmv=1.62.90';
 import {
     API_PROFILE_ORDER,
     chatKey,
@@ -106,7 +106,7 @@ import {
     stageNextApiProfile,
     swipeId,
     validatedIndependentConnectionProfile,
-} from './connection.js?rmv=1.62.82';
+} from './connection.js?rmv=1.62.90';
 import {
     externalGeometryCycleSequence,
     externalGeometryLifecycleEpoch,
@@ -117,7 +117,7 @@ import {
     writeExternalGeometryCycleSequence,
     writeExternalGeometryLifecycleEpoch,
     writeExternalGeometryLifecycleReason,
-} from './geometry.js?rmv=1.62.82';
+} from './geometry.js?rmv=1.62.90';
 import {
     INDEPENDENT_REJECTED_PREVIEW_MAX_CHARS,
     INDEPENDENT_REJECTED_PREVIEW_MAX_ENTRIES,
@@ -132,8 +132,8 @@ import {
     writeExternalHostSyncIndex,
     writeIndependentRejectedPreviewChars,
     writeIndependentRejectedPreviewSequence,
-} from './mount.js?rmv=1.62.82';
-import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.62.82';
+} from './mount.js?rmv=1.62.90';
+import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.62.90';
 
 const NON_STREAM_PROFILE_BY_STREAM_PROFILE={
  chat_system_user_full:'chat_system_user_full_nostream',
@@ -279,7 +279,7 @@ function mergeIndependentStreamText(current='',incoming=''){
 }
 
 function incrementalIndependentStreamState(kind='sse'){
- const state={kind,payload:null,text:'',rawChunks:[],lineBuffer:'',dataLines:[],done:false,finishReason:'unknown',jsonMessages:0,sawSse:false};
+ const state={kind,payload:null,text:'',rawChunks:[],lineBuffer:'',scanOffset:0,dataLines:[],done:false,finishReason:'unknown',jsonMessages:0,sawSse:false};
  const consumeJson=data=>{
   const value=String(data||'').trim();
   if(!value) return true;
@@ -313,16 +313,18 @@ function incrementalIndependentStreamState(kind='sse'){
  const drainLines=final=>{
   while(state.lineBuffer){
    let end=-1; let width=1;
-   for(let i=0;i<state.lineBuffer.length;i+=1){
+   // A long JSON line can span many chunks; scan only the newly arrived tail.
+   for(let i=state.scanOffset;i<state.lineBuffer.length;i+=1){
     if(state.lineBuffer[i]==='\n'){ end=i; break; }
     if(state.lineBuffer[i]==='\r'){
-     if(i===state.lineBuffer.length-1 && !final) return;
+     if(i===state.lineBuffer.length-1 && !final){state.scanOffset=i;return;}
      end=i; width=state.lineBuffer[i+1]==='\n'?2:1; break;
     }
    }
-   if(end<0){ if(final){ consumeLine(state.lineBuffer); state.lineBuffer=''; } return; }
+   if(end<0){state.scanOffset=state.lineBuffer.length;if(final){consumeLine(state.lineBuffer);state.lineBuffer='';state.scanOffset=0;}return;}
    consumeLine(state.lineBuffer.slice(0,end));
    state.lineBuffer=state.lineBuffer.slice(end+width);
+   state.scanOffset=0;
   }
  };
  return {
@@ -335,7 +337,9 @@ function incrementalIndependentStreamState(kind='sse'){
 async function readApiResponse(response,{expectedStream=false,signal=null,onProgress=null}={}){
  const contentType=String(response.headers?.get?.('content-type')||'').toLowerCase();
  const declaredStreamKind=/text\/event-stream/.test(contentType)?'sse':(/application\/(?:x-)?ndjson/.test(contentType)?'ndjson':'');
- const streamKind=declaredStreamKind || (expectedStream?'auto':'');
+ // Relays sometimes retain an SSE header while returning JSON/NDJSON.
+ // Sniff frames from the same body rather than trusting the MIME alone.
+ const streamKind=(declaredStreamKind || expectedStream)?'auto':'';
  const reader=typeof response.body?.getReader==='function' ? response.body.getReader() : null;
  let receivedBytes=0; let reachedEof=false;
  const transport=(parsed,state={},error=null,exact=true)=>{
@@ -371,7 +375,7 @@ async function readApiResponse(response,{expectedStream=false,signal=null,onProg
  const finalize=(parsed,state={})=>{
   // Some relays return ordinary (including pretty-printed) JSON even when
   // stream=true. Decode that same already-read body; never make a second read.
-  if(!state.sawSse && !declaredStreamKind){
+  if(!state.sawSse){
    try{parsed.payload=JSON.parse(parsed.raw);parsed.text=mergeIndependentStreamPayload('',parsed.payload);parsed.parserFormat='json';parsed.streamed=false;}
    catch{if(!streamKind){parsed.text=String(parsed.raw||'').trim();parsed.parserFormat='text';parsed.streamed=false;}}
   }
@@ -429,7 +433,7 @@ async function readApiResponse(response,{expectedStream=false,signal=null,onProg
    incremental.push(decoder.decode());
    const parsed=finalize(incremental.finish(),incremental.state);
    if(!parsed.text&&parsed.parserFormat!=='json'){
-    const fallback=streamKind==='ndjson' || (streamKind==='auto'&&!/^\s*(?:data|event|id|retry)\s*:/m.test(parsed.raw))?parseNdjsonPayload(parsed.raw):parseSsePayload(parsed.raw);
+    const fallback=!/^\s*(?:data|event|id|retry)\s*:/m.test(parsed.raw)?parseNdjsonPayload(parsed.raw):parseSsePayload(parsed.raw);
     parsed.payload=parsed.payload||fallback.payload; parsed.text=fallback.text;
    }
    return {...parsed,contentType,transport:transport(parsed,incremental.state)};
@@ -563,7 +567,7 @@ function nextCompatibilityProfileName(currentProfile='',preferNonStreaming=false
  }
  const start=Math.max(-1,API_PROFILE_ORDER.indexOf(current));
  const tail=API_PROFILE_ORDER.slice(start+1);
- return tail[0]||'';
+ return tail.find(name=>profileUsesStreaming(name)===profileUsesStreaming(current))||'';
 }
 
 function stageManualNonStreamRetry(st,currentProfile='',reason=''){
@@ -654,7 +658,7 @@ export function republishIndependentTerminalFailure(ctx,index,msg,sourceHash,bas
 
 
 function compactRemoteError(status,raw=''){
- const source=String(raw||'');
+ const source=safeIndependentErrorDetail(raw);
  if(Number(status)===429 || /rate[_ -]?limit|too many requests|限流|请求过多/i.test(source)){
    return '副 API 当前触发频率／额度限制（HTTP 429）。插件不会自动换参数或重复请求，请稍后手动重试。';
  }
@@ -687,6 +691,22 @@ function retryableParameterError(status,result){
  return strong500.test(text);
 }
 
+function unsupportedIndependentStreaming(value=''){
+ const text=String(value||'').slice(0,4000);
+ return /\b(?:stream|streaming)\b[\s"':=]*(?:(?:parameter|mode|option|value|true|is|are|currently)[\s"':=]*){0,4}(?:unsupported|not\s+(?:supported|allowed|accepted)|must\s+be\s+false)\b|\b(?:unsupported|not\s+supported|does\s+not\s+support)\s+(?:the\s+)?(?:stream|streaming)\b|(?:不支持|不允许)(?:开启|使用)?(?:流式|stream\b)|(?:流式|stream\b)(?:模式|输出|参数)?(?:暂时|暂|目前|当前)?(?:不支持|不允许)/i.test(text);
+}
+
+function independentResponseFailure(message,diagnostic,phase='response'){
+ const codes={'empty-stream':'EMPTY_RESPONSE','empty-content':'EMPTY_RESPONSE','unparsed-stream':'UNPARSED_RESPONSE',
+  'error-payload':'UPSTREAM_ERROR','gateway-timeout':'GATEWAY_TIMEOUT','parameter-error':'PARAMETER_ERROR',
+  'incomplete-mirror':'INCOMPLETE_MIRROR','truncated-output':'TRUNCATED_OUTPUT'};
+ const error=new Error(message);
+ error.code=`RABBIT_MIRROR_${codes[diagnostic?.semanticFailure]||'HTTP_ERROR'}`;
+ error.rabbitMirrorFailurePhase=phase;
+ error.rabbitMirrorRequestDiagnostic=diagnostic;
+ return error;
+}
+
 function responsePayloadErrorText(payload){
  const error=payload?.error;
  if(!error) return '';
@@ -698,6 +718,16 @@ function responsePayloadErrorText(payload){
  return String(error||'').trim();
 }
 
+function safeIndependentErrorDetail(value){
+ return String(value||'')
+  .replace(/(?:请求地址|request\s*url)\s*[:：][^\r\n]*/gi,'')
+  .replace(/https?:\/\/[^\s<>"']+/gi,'[地址已隐藏]')
+  .replace(/Bearer\s+\S+/gi,'Bearer [已隐藏]')
+  .replace(/\b(?:sk-[A-Za-z0-9_-]{10,}|AIza[A-Za-z0-9_-]{16,})\b/g,'[已隐藏凭据]')
+  .replace(/\b(?:api[_-]?key|access[_-]?token|password|secret)["']?\s*[:=]\s*["']?[^"'\s,;{}]+["']?/gi,'[已隐藏凭据]')
+  .replace(/\s+/g,' ').trim().slice(0,280);
+}
+
 function connectionProfileApiError(value,visibleText=''){
  const structured=responsePayloadErrorText(value);
  const visible=String(visibleText||'');
@@ -707,13 +737,7 @@ function connectionProfileApiError(value,visibleText=''){
   && !/<(?:toto|details)\b/i.test(visible);
  if(!structured && !marked) return null;
  const raw=structured || visible;
- const detail=raw
-  .replace(/(?:请求地址|request\s*url)\s*[:：][^\r\n]*/gi,'')
-  .replace(/https?:\/\/[^\s<>"']+/gi,'[地址已隐藏]')
-  .replace(/Bearer\s+\S+/gi,'Bearer [已隐藏]')
-  .replace(/\b(?:sk-[A-Za-z0-9_-]{10,}|AIza[A-Za-z0-9_-]{16,})\b/g,'[已隐藏凭据]')
-  .replace(/\b(?:api[_-]?key|access[_-]?token|password|secret)["']?\s*[:=]\s*["']?[^"'\s,;{}]+["']?/gi,'[已隐藏凭据]')
-  .replace(/\s+/g,' ').trim().slice(0,280);
+ const detail=safeIndependentErrorDetail(raw);
  const error=new Error(detail || '宿主返回了 API 错误。');
  error.code='RABBIT_MIRROR_HOST_API_ERROR';
  error.rabbitMirrorVisibleApiError=marked;
@@ -748,6 +772,22 @@ async function requestIndependentConnectionProfileCompletion(runtime,profile,opt
    try{return /^https?:$/.test(new URL(normalizeIndependentConnectionText(item?.url,2000)).protocol);}catch{return false;}
   });
   if(!ownProxy) throw independentConnectionProfilePreflightError('提前生成未发送：兔子镜所选 Profile 与当前正文连接不同，且没有保存独立 Secret 引用或有效代理。宿主会回退到当前正文的密钥，无法确认凭据归属。请先在 Connection Manager 为兔子镜 Profile 绑定并保存自己的 Secret，再切回正文连接；兔子镜不会读取或复制密钥。','profile-secret-unbound');
+ }
+ // The host's Custom adapter assumes SSE whenever stream=true and discards
+ // ordinary JSON/NDJSON. Reuse our existing guarded same-origin Profile route
+ // for this OpenAI-compatible family, then decode the SAME Response. The
+ // backend still resolves the selected secret_id; no keys or global hooks.
+ // Native provider adapters retain the host's provider-specific conversion.
+ if(runtime?.apiMap?.source==='custom'){
+  const response=await fetchIndependentUrl('/chat/completions',{
+   method:'POST',settings:{...options.settings,independentConnectionProfileId:profileId},
+   body:JSON.stringify(rawBody),signal:options.signal,dispatchLease:options.dispatchLease,
+   advancedOptions:options.advancedOptions,assertAdvancedCurrent:options.assertAdvancedCurrent,
+   onEvidenceRequest:body=>options.onEvidenceRequest?.(body,'connection-profile-response'),
+  });
+  options.onProgress?.('response-headers');
+  const result=await readApiResponse(response,{expectedStream:rawBody.stream!==false,signal:options.signal,onProgress:options.onProgress});
+  return {response,result};
  }
  const advancedCarrier=options.advancedOptions?buildIndependentAdvancedCarrier(options.advancedOptions,{source:runtime?.apiMap?.source,apiFormat:runtime?.profile?.['custom-api-format']}):null;
  if(options.advancedOptions?.excludedParams?.length) rawBody=applyIndependentAdvancedExclusions(rawBody,options.advancedOptions);
@@ -785,7 +825,7 @@ async function requestIndependentConnectionProfileCompletion(runtime,profile,opt
  };
  const adapterTransport=(termination='host-complete')=>({status:null,contentType:null,parserFormat:'host-adapter',receivedBytes:null,receivedBytesExact:false,
   contentChars:text.length,finishReason,terminalObserved:!['unknown','other'].includes(finishReason),readerReachedEof:null,
-  termination,endedNormally:termination==='host-complete',prematureClose:termination==='host-complete'?false:(termination==='stream-error'?true:null)});
+  termination,endedNormally:termination==='host-complete'?(!['unknown','other'].includes(finishReason)?true:(text.trim()?null:false)):false,prematureClose:termination==='stream-error'?true:null});
  // Validate only newly observed stream data. Re-serializing the cumulative
  // response on every token is O(n²); the exact final object is still checked
  // once after normal or recoverable stream termination.
@@ -1052,21 +1092,17 @@ export async function requestIndependentCompletion(st,systemPrompt,userPrompt,op
   const hostApiError=error?.code==='RABBIT_MIRROR_HOST_API_ERROR';
   const connectionInterrupted=/(?:\bAbortError\b|operation was aborted|request aborted|socket (?:closed|hang up)|ECONNRESET|ERR_NETWORK|networkerror|load failed|failed to fetch)/i.test(classification)
    || (hostApiError && /网络请求失败|网络连接失败|连接失败|服务暂时不可达/.test(classification));
-  const rawDetail=String(error?.message||error||'网络连接失败')
-   .replace(/Bearer\s+\S+/gi,'Bearer [已隐藏]')
-   .replace(/\b(?:sk-[A-Za-z0-9_-]{10,}|AIza[A-Za-z0-9_-]{16,})\b/g,'[已隐藏凭据]')
-   .slice(0,280);
+  const rawDetail=safeIndependentErrorDetail(error?.message||error||'网络连接失败');
   const detail=connectionInterrupted&&!hostApiError?'连接在响应完成前中断（未收到完整响应）':rawDetail;
   // Merely mentioning "secret" / "API key" is not authentication evidence.
   const profileAuthFailure=!!connectionId && ([401,403].includes(reportedHttpStatus)||/(?:\bunauthori[sz]ed\b|\bforbidden\b|\b(?:invalid|missing|incorrect|expired|revoked)[ _-]+(?:api[ _-]?key|access[ _-]?token|secret)\b|\b(?:api[ _-]?key|access[ _-]?token|secret)\b[^\n\r]{0,32}\b(?:invalid|missing|incorrect|expired|revoked|not\s+(?:set|found))\b)/i.test(classification));
   const rateLimited=reportedHttpStatus===429||/\brate[_ -]?limit(?:ed|ing)?\b|too many requests/i.test(classification);
   const concurrencyFailure=/\b(?:concurrent|concurrency|parallel)\b[^\n\r]{0,60}\b(?:limit|exceeded|not allowed|not supported)\b|already (?:generating|processing a request)|generation (?:already )?in progress/i.test(classification);
   const responseBoundaryFailure=/RABBIT_MIRROR_RESPONSE_TOO_(?:LARGE|COMPLEX)/.test(classification);
-  // Never retry automatically: the upstream may already have started billing.
-  // A streamed transport failure only stages an exact same-parameter non-stream
-  // profile for the player's explicit retry.
-  const next=!localPreflight && !hostApiError && profileUsesStreaming(profile.name) && !profileAuthFailure && !rateLimited && !concurrencyFailure && !responseBoundaryFailure
-   ? stageCompatibility(`${kind}-stream-failure`,true)
+  // A timeout/disconnect is not evidence that streaming is unsupported.
+  // Only an explicit stream-parameter rejection stages a one-shot twin.
+  const next=!localPreflight && profileUsesStreaming(profile.name) && !profileAuthFailure && !rateLimited && !concurrencyFailure && !responseBoundaryFailure && unsupportedIndependentStreaming(classification)
+   ? stageCompatibility('stream-explicitly-unsupported',true)
    : '';
   const failureKind=localPreflight?'local-preflight':(responseBoundaryFailure?'response-boundary':hostApiError?'host-api-error':kind);
   attempts.push({profile:profile.name,status:0,detail,kind:failureKind});
@@ -1124,7 +1160,7 @@ export async function requestIndependentCompletion(st,systemPrompt,userPrompt,op
    const advancedOptions=advancedSettings.independentAdvancedEnabled===true?parseIndependentAdvancedOptions(advancedSettings):null;
    if(advancedOptions?.excludedParams?.length) profile={...profile,body:applyIndependentAdvancedExclusions(profile.body,advancedOptions)};
    const runtime=await validatedIndependentConnectionProfile(connectionId);
-   const completed=await requestIndependentConnectionProfileCompletion(runtime,profile,{...options,onEvidenceRequest,advancedOptions,maxTokens:Number(st.independentApiMaxTokens)||12000});
+   const completed=await requestIndependentConnectionProfileCompletion(runtime,profile,{...options,settings:st,onEvidenceRequest,advancedOptions,maxTokens:Number(st.independentApiMaxTokens)||12000});
    r=completed.response; result=completed.result;
   }catch(error){
    if(options.signal?.aborted){publishLocalCancellation(error);throw error;}
@@ -1156,6 +1192,13 @@ export async function requestIndependentCompletion(st,systemPrompt,userPrompt,op
   }
  }
  const requestElapsedMs=requestTimer.finish();
+ // Some hosts return their error envelope as visible content in HTTP 200.
+ // Classify it before artwork extraction on both response reception paths.
+ if(r.ok){
+  const reported=connectionProfileApiError(null,result.text);
+  if(reported){reported.partialResult={...result,raw:reported.message,text:reported.message,payload:null,
+   transport:{...result.transport,endedNormally:false,prematureClose:null}};throw transportFailure(reported,'transport-body');}
+ }
  attempts.push({profile:profile.name,status:r.status,detail:String(result.raw||'').slice(0,280),kind:'response'});
  const responseTransport=transportSummary(result.transport,{status:connectionId?null:r.status,contentType:connectionId?null:result.contentType,termination:'eof-unconfirmed'});
  generationCapture?.response(result,responseTransport,responseTransport.status);
@@ -1189,7 +1232,7 @@ export async function requestIndependentCompletion(st,systemPrompt,userPrompt,op
  const payloadError=responsePayloadErrorText(result.payload);
   if(payloadError){
    const compatibility=retryableParameterError(400,result);
-   const next=compatibility?stageCompatibility('http-200-parameter-error',false):'';
+   const next=compatibility?stageCompatibility('http-200-parameter-error',unsupportedIndependentStreaming(payloadError)):'';
    const requestDiagnostic=publishIndependentApiRequestDiagnostic({...diagnosticBase,ok:false,semanticFailure:'error-payload',nextProfile:next});
    const suffix=next?`；本轮不会自动再次请求。点击“重新生成兔子镜”时将尝试下一兼容模式：${next}`:'；本轮不会自动再次请求，请手动重试。';
    return {response:r,result,profile:profile.name,attempts,requestDiagnostic,semanticError:`副 API 返回错误：${compactRemoteError(200,payloadError||result.raw||'')||'未知上游错误'}${suffix}`};
@@ -1200,16 +1243,12 @@ export async function requestIndependentCompletion(st,systemPrompt,userPrompt,op
   }
   const raw=String(result.raw||'').trim();
   if(!raw && profileUsesStreaming(profile.name)){
-   const next=stageCompatibility('empty-stream',true);
-   const requestDiagnostic=publishIndependentApiRequestDiagnostic({...diagnosticBase,ok:false,semanticFailure:'empty-stream',nextProfile:next});
-   const suffix=next?`点击“重新生成兔子镜”时将只关闭 stream 并尝试：${next}。`:'请手动重新生成兔子镜。';
-   return {response:r,result,profile:profile.name,attempts,requestDiagnostic,semanticError:`副 API 返回了空的流式响应。本轮只发送了 1 次生成请求，不会自动切换参数再次请求；${suffix}`};
+   const requestDiagnostic=publishIndependentApiRequestDiagnostic({...diagnosticBase,ok:false,semanticFailure:'empty-stream',nextProfile:''});
+   return {response:r,result,profile:profile.name,attempts,requestDiagnostic,semanticError:'副 API 返回了空的流式响应。本轮只发送了 1 次生成请求，不会自动切换参数再次请求；请手动重新生成兔子镜。'};
   }
   if(result.streamed){
-   const next=stageCompatibility('unparsed-stream',true);
-   const requestDiagnostic=publishIndependentApiRequestDiagnostic({...diagnosticBase,ok:false,semanticFailure:'unparsed-stream',nextProfile:next});
-   const suffix=next?`手动重新生成时将只关闭 stream 并尝试：${next}`:'请手动重试';
-   return {response:r,result,profile:profile.name,attempts,requestDiagnostic,semanticError:`副 API 已返回流式数据，但兔子镜没有解析到正文。为避免重复计费，本轮不会自动再次请求；${suffix}。`};
+   const requestDiagnostic=publishIndependentApiRequestDiagnostic({...diagnosticBase,ok:false,semanticFailure:'unparsed-stream',nextProfile:''});
+   return {response:r,result,profile:profile.name,attempts,requestDiagnostic,semanticError:'副 API 已返回流式数据，但兔子镜没有解析到正文。本轮只发送了 1 次生成请求，不会自动再次请求；请手动重试。'};
   }
   const requestDiagnostic=publishIndependentApiRequestDiagnostic({...diagnosticBase,ok:false,semanticFailure:'empty-content',nextProfile:''});
   return {response:r,result,profile:profile.name,attempts,requestDiagnostic,semanticError:'副 API 返回 HTTP 200，但没有解析到正文。本轮只发送了 1 次生成请求，不会自动再次请求；请手动重新生成兔子镜。'};
@@ -1218,15 +1257,11 @@ export async function requestIndependentCompletion(st,systemPrompt,userPrompt,op
  let semanticFailure='';
  if(Number(r.status)===524){
   semanticFailure='gateway-timeout';
-  // HTTP 524 proves that this paid attempt reached the upstream path but the
-  // gateway did not finish it. Never auto-send a second request. For the
-  // player's explicit resay, stage only the exact same profile with stream
-  // disabled; if that succeeds, rememberApiProfile() will persist it.
-  next=stageCompatibility('http-524-gateway-timeout',true);
+  // A gateway timeout does not establish a stream incompatibility.
  }
  if(!next && retryableParameterError(r.status,result)){
   semanticFailure=semanticFailure||'parameter-error';
-  next=stageCompatibility(`http-${Number(r.status||0)}-parameter-error`,false);
+  next=stageCompatibility(`http-${Number(r.status||0)}-parameter-error`,unsupportedIndependentStreaming(responsePayloadErrorText(result.payload)||result.raw));
  }
  const requestDiagnostic=publishIndependentApiRequestDiagnostic({...diagnosticBase,ok:false,semanticFailure,nextProfile:next});
  return {response:r,result,profile:profile.name,attempts,requestDiagnostic,semanticError:''};
@@ -1585,7 +1620,7 @@ export function wireIndependentRejectedFaceControls(host){
    independentRejectedFaceControlsWired.add(resay);
    resay.addEventListener('click',event=>{
     event.preventDefault(); event.stopPropagation();
-    void import('../outputSanitizer/toolsChrome.js?rmv=1.62.82').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+    void import('../outputSanitizer/toolsChrome.js?rmv=1.62.90').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
    },true);
   }
  }
@@ -1783,7 +1818,7 @@ async function loadIndependentAppearanceReference(owner){
  let module;
  assertIndependentPromptOwner(owner);
  try{
-  try{module=await import('../appearanceReference.js?rmv=1.62.82');}
+  try{module=await import('../appearanceReference.js?rmv=1.62.90');}
   catch{
    const error=new Error('外观参考模块未能加载；本轮未发送请求，请刷新后重试或关闭外观参考。');
    error.code='RABBIT_MIRROR_APPEARANCE_MODULE_UNAVAILABLE';error.requestCount=0;throw error;
@@ -2240,11 +2275,7 @@ ${independentUserTail}`;
  const {response:r,result,profile,attempts,requestDiagnostic,semanticError}=await requestIndependentCompletion(st,systemPrompt,userPrompt,{signal,manualRetry:requestOptions.manualRetry===true,automaticReroll:requestOptions.automaticReroll===true,diagnosticContext:requestSelectionDiagnostic,dispatchLease,onProgress:requestOptions.onProgress,earlyBodyOwner:requestOptions.earlyBodyOwner,advancedSettings,assertAdvancedCurrent,evidenceFaceIndex:requestOptions.serialFaceIndex??resay?.faceIndex,evidenceSerial:requestOptions.serialChild===true});
  const evidence=generationEvidenceFor(result);
  try {
- if(semanticError){
-  const error=new Error(semanticError);
-  error.rabbitMirrorRequestDiagnostic=requestDiagnostic;
-  throw error;
- }
+ if(semanticError) throw independentResponseFailure(semanticError,requestDiagnostic);
  if(!r.ok){
    const detail=compactRemoteError(r.status,result.raw||'');
    const mode=String(profile||'');
@@ -2255,9 +2286,7 @@ ${independentUserTail}`;
       ? `；本次传输尝试发送了 1 次生成请求。点击“重新生成兔子镜”时将仅把 stream 改为 false，其他消息结构、温度与输出字段保持不变，尝试：${next}`
       : `；本次传输尝试发送了 1 次生成请求。点击“重新生成兔子镜”时将尝试下一兼容模式：${next}`
     : '；本次传输尝试发送了 1 次生成请求';
-   const error=new Error(`独立 API 请求失败：HTTP ${r.status}${detail?` · ${detail}`:''}${mode?`；参数模式：${mode}`:''}${retryHint}`);
-   error.rabbitMirrorRequestDiagnostic=requestDiagnostic;
-   throw error;
+   throw independentResponseFailure(`独立 API 请求失败：HTTP ${r.status}${detail?` · ${detail}`:''}${mode?`；参数模式：${mode}`:''}${retryHint}`,requestDiagnostic,'transport');
  }
  const raw=String(result.text||'').trim();
  if(!raw){
@@ -2310,20 +2339,13 @@ ${independentUserTail}`;
    const finish=transportFinish&&transportFinish!=='unknown'?transportFinish:responseFinishReason(result.payload);
    const configuredMax=Number(st.independentApiMaxTokens)||12000;
    if(/length|max_tokens|MAX_TOKENS/i.test(finish)){
-     republishIndependentSemanticFailure(requestDiagnostic,'truncated-output','',{finishReason:finish,responseChars:raw.length});
+     const diagnostic=republishIndependentSemanticFailure(requestDiagnostic,'truncated-output','',{finishReason:finish,responseChars:raw.length});
      const recommendation=configuredMax<8192?'；建议把“最大输出”提高到至少 8192 后重新生成':'';
-     throw new Error(`独立 API 已返回内容，但兔子镜在输出完成前被截断（finish_reason: ${finish}）。当前最大输出设置：${configuredMax}${recommendation}；参数模式：${profile}`);
+     throw independentResponseFailure(`独立 API 已返回内容，但兔子镜在输出完成前被截断（finish_reason: ${finish}）。当前最大输出设置：${configuredMax}${recommendation}；参数模式：${profile}`,diagnostic,'output');
    }
-   // HTTP 200 is not enough to prove a usable profile. A streamed response can
-   // end with a syntactically incomplete mirror even though the HTTP transport
-   // succeeded. Stage exactly the same request with stream=false for the next
-   // explicit resay; never issue that second paid request automatically.
-   const next=stageManualNonStreamRetry(st,profile,'http-200-incomplete-mirror');
-   republishIndependentSemanticFailure(requestDiagnostic,'incomplete-mirror',next,{finishReason:finish,responseChars:raw.length});
-   const retryHint=next
-    ? `；下一次重试（已开启的自动重试，或手动点击“重新生成兔子镜”）将仅把 stream 改为 false，其他消息结构、温度与输出字段保持不变，尝试：${next}`
-    : '；如仍失败，请手动重新生成兔子镜';
-   throw new Error(`独立 API 调用成功，但返回内容不是完整兔子镜${finish?`（finish_reason: ${finish}）`:''}；参数模式：${profile}${retryHint}`);
+   // Incomplete artwork is not evidence of a streaming incompatibility.
+   const diagnostic=republishIndependentSemanticFailure(requestDiagnostic,'incomplete-mirror','',{finishReason:finish,responseChars:raw.length});
+   throw independentResponseFailure(`独立 API 已返回内容，但不是完整兔子镜${finish?`（finish_reason: ${finish}）`:''}；参数模式：${profile}；请手动重新生成兔子镜`,diagnostic,'output');
  }
   assertIndependentMarkupComplexityWithDiagnostic(inner,'inner',requestDiagnostic);
  if(!independentMirrorBodyEvidence(inner)){
@@ -2349,7 +2371,7 @@ ${independentUserTail}`;
  const resolvedHistorySelection=resolveVisualHistorySelection(historySelection,atmosphereNotes[0]?.choice);
  evidence?.finish({phase:'ready-to-mount'});
  return {html:preparedHtml,historySelection:resolvedHistorySelection,feedbackId:activeFeedback?.id||'',feedbackPrompt,requestDiagnostic,executionLockChars:executionLock.length};
- } catch(error) { evidence?.fail('postprocess',error); throw error; }
+ } catch(error) { evidence?.fail(error?.rabbitMirrorFailurePhase||'postprocess',error); throw error; }
 }
 
 export function externalOwnerMesid(el){

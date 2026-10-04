@@ -1,26 +1,28 @@
-import { visualDesignMode, usesModelOriginalColors, withoutPaletteRecipe, REFERENCE_VISUAL_FLOOR, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.62.82';
-import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=1.62.82';
-import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=1.62.82';
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.82';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.82';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.82';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.82';
-import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.82';
-import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.62.82';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.82';
-import { getComboHistory, getActivePaletteCooldown } from './storage.js?rmv=1.62.82';
-import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock } from './visualDiversityPolicy.js?rmv=1.62.82';
-import { buildInteractionRecipeRule, interactionExecutionReminder, interactionRecipesFor } from './interactionRecipes.js?rmv=1.62.82';
-import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.62.82';
-import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.82';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.82';
-export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.82';
-import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.82';
-import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.82';
-import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.62.82';
-import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.82';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.82';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.82';
+import { INTERACTION_SAMPLING_RULE } from './interactionSampling.js?rmv=1.62.90';
+import { usesModelOriginalColors, withoutPaletteRecipe, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.62.90';
+import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=1.62.90';
+import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=1.62.90';
+import { isNearWhitePalette } from './paletteObservation.js?rmv=1.62.90';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.90';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.90';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.90';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.90';
+import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.90';
+import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.62.90';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.90';
+import { getComboHistory, getActivePaletteCooldown } from './storage.js?rmv=1.62.90';
+import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock } from './visualDiversityPolicy.js?rmv=1.62.90';
+import { withoutInteractionRecipe, observedInteractionRecipesFor } from './interactionRecipes.js?rmv=1.62.90';
+import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.62.90';
+import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.90';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.90';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.90';
+import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.90';
+import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.90';
+import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.62.90';
+import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.90';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.90';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.90';
 
 const THEME_ITEMS = new Map(THEMATIC_CATEGORIES.map(item => [item.id, item]));
 const FORMAT_ITEMS = new Map(PRESENTATION_FORMATS.map(item => [item.id, item]));
@@ -285,7 +287,7 @@ function shortHistorySkeleton(item) {
     return ['layout_family', 'operation_family'].map(key => labels[family[key]]).filter(Boolean).join('；') || '未识别';
 }
 
-function sharedVisualHistoryRule({ textOnly = false } = {}) {
+function sharedVisualHistoryRule({ textOnly = false, darkVisualMode = false } = {}) {
     const recent = getRecentDiversityHistory(textOnly ? 3 : 5);
     if (!recent.length) return '';
     const rounds = new Map();
@@ -296,13 +298,13 @@ function sharedVisualHistoryRule({ textOnly = false } = {}) {
     });
     const ids = values => Array.isArray(values) ? values.map(asText).filter(Boolean).join('、') : '';
     const face = item => {
-        const interactions = interactionRecipesFor(item).map(recipe => recipe.code).join('、');
+        const interactions = observedInteractionRecipesFor(item).map(recipe => recipe.title).join('、');
         const observed = item.paletteFingerprint?.mainColors;
         const colors = Array.isArray(observed) ? [...new Set(observed
             .filter(value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value))
             .map(value => value.toUpperCase()))].join('/') : '';
         const families = colors ? observedPaletteFamilyLabels(item).join('、') : '';
-        const mainColor = `主色 ${colors || (Array.isArray(observed) ? '未识别' : '未记录')}${families ? `〔${families}〕` : ''}`;
+        const mainColor = `主色 ${colors || (Array.isArray(observed) ? '未识别' : '未记录')}${families ? `〔${families}〕` : ''}${!textOnly && isNearWhitePalette(item.paletteFingerprint) ? '〔近白浅底〕' : ''}`;
         if (textOnly) return mainColor;
         return `主题 ${ids(item.themeIds) || '未记录'} × 形式 ${ids(item.formatIds) || '未记录'}`
             + `｜骨架 ${shortHistorySkeleton(item)}｜交互 ${interactions || '未记录'}｜${mainColor}`;
@@ -314,7 +316,11 @@ function sharedVisualHistoryRule({ textOnly = false } = {}) {
         return `${index + 1}：${contents}`;
     });
     const scope = textOnly ? '近三轮阅读主色' : '近五轮；主色参考近三轮；文本面仅参考选材与阅读配色';
-    return `近期记录【${scope}】：\n${lines.join('\n')}`;
+    const paleRounds = [...rounds.values()].slice(-3).filter(items => items.some(item =>
+        item.presentationMode !== 'text' && isNearWhitePalette(item.paletteFingerprint))).length;
+    const paleReminder = !textOnly && !darkVisualMode && paleRounds >= 2
+        ? '\nHTML面近三轮反复近白浅底：按本体材质改变主体与承载面的明暗、彩度关系，避免只换浅底色相；用户指定与必要单色优先。' : '';
+    return `近期记录【${scope}】：\n${lines.join('\n')}${paleReminder}`;
 }
 
 // Only equal rule bodies are shared. Materials and per-face/ticket identities
@@ -449,7 +455,11 @@ function tarotPhysicalImageRule(faceIndexes = []) {
 }
 
 function mediumInteractionConstructionRule() {
-    return '媒介内交互构造：先构造展现形式本体，再将操作与主要结果安放在同一对象或紧邻位置，点后就地可见；须带来内容相关的发现、对象反应或后续选择。缩放有细节可发现，重排改变关系或结果，不能只改尺寸、位置或数字。文字只补必要反馈，不把结果集中到远处说明区。多交互共同服务本体，不各搭独立面板；互斥状态原位替换，需并置比较的内容保留。同种交互可复用，用户明确玩法与固有功能优先。不得用“上方独立插图＋下方长文字切换”冒充本体，也不能以频道或分页命名豁免；实际使用过程成立的翻阅、档位与折叠照常保留。';
+    return String.raw`交互构造【由展现形式决定】：
+  - 由展现形式的结构、功能与内容形成“本体对象→操作→可保持的状态变化与有意义的反馈→按需继续或返回”；有多个探索节点时提供连续阶段或不同结果，非一次性玩法不能一次显隐就结束。
+  - 操作须支持触屏，hover/active 仅辅助；正文与反馈由本体对应区域完整承载、清晰可读可达。仅变色、描边等装饰或选中效果不算完整交互。
+  - 保留外层整面开合；禁止内部 details/summary 及展开／收起正文的替代结构；禁止并列按钮／标签仅轮换同位置正文，改名或改数量也算。真实物件开合、翻页与不同功能按钮按实际行为区分。
+${INTERACTION_SAMPLING_RULE}`;
 }
 
 function compactCreativeRule(enabled, formatOnly = false) {
@@ -474,7 +484,7 @@ function complexInteractiveCore() {
     return String.raw`
 复杂交互视觉核心:
   - 先构造展现形式本体：让其形态、部件、内容区域与使用方式在首屏实际成立；主题提供内容，交互与配色服务这个媒介，不能仅用标题或头图命名后另接通用切文字页面。
-  - 按本签交互构造落实可触摸对象、可保持状态和有意义的可见反馈；操作改变它所属的物件、空间、关系或阅读状态。原形式固有玩法保留，按钮与折叠按实际用途使用，不按数量判断复杂度。
+  - 操作和反馈对应本体用途与内容，改变物件、空间、关系或阅读状态，不按控件数量判断复杂度。
   - 文字按媒介需要写：图形、装置与场景由可见构造承担表达，文字作必要标签、对白或反馈；书信、记录等文字媒介保留其应有内容，不给所有 HTML 面套长篇故事，也不为凑复杂度追加说明。
   - 装饰不得遮挡操作。使用宿主可保留的 HTML/CSS 状态机制，不用事件属性或内联 JavaScript；hover/active 仅辅助，不代替触摸操作。`;
 }
@@ -541,7 +551,7 @@ ${htmlFaces && !htmlFaces.length ? '' : `  ${htmlFaces ? `仅 HTML 第 ${htmlFac
 function presentationEmbodimentRule() {
     return String.raw`
 展现形式落地【核心结构层；不可被视觉自定义覆盖】:
-  - 先确定本轮采用的具体展现形式，再编写 HTML/CSS。
+  - 先落实展现形式；美化与交互服务其结构、材质、版式与使用过程，使本体更真实可信。
   - <details> 内首个主要内容块必须直接呈现该展现形式本体；外层容器只能负责显示边界，不能成为主要视觉。
   - DOM 中必须实际出现能够构成该形式的形态、比例、空间关系、层叠方式、材质结构或排版结构；不得只用标题、标签、图标和说明文字宣称它是什么。主体外轮廓和部件随物件或媒介成形，按需要通过错落、遮挡、厚薄与统一受光建立层次，不以同形矩形拼块代替。
   - 可根据本轮展现形式本体的需要，使用 Flex/Grid、定位、SVG、渐变、阴影、滤镜、clip-path、mask、transform、transition 与 CSS 动画等方式，构成空间、材质与视觉质感。
@@ -616,7 +626,7 @@ ${includeExecutionOrder ? presentationExecutionOrderRule() : ''}
 function legacyPresentationEmbodimentRule() {
     return String.raw`
 展现形式落地:
-  - 先确定本轮采用的具体展现形式，再编写 HTML/CSS。
+  - 先落实展现形式；美化与交互服务其结构、材质、版式与使用过程，使本体更真实可信。
   - <details> 内首个主要内容块必须直接呈现该展现形式本体；外层容器只能负责显示边界，不能成为主要视觉。
   - DOM 中必须实际出现能够构成该形式的形态、比例、空间关系、层叠方式、材质结构或排版结构；不得只用标题、标签、图标和说明文字宣称它是什么。主体外轮廓和部件随物件或媒介成形，按需要通过错落、遮挡、厚薄与统一受光建立层次，不以同形矩形拼块代替。
   - 可根据本轮展现形式本体的需要，使用 Flex/Grid、定位、SVG、渐变、阴影、滤镜、clip-path、mask、transform、transition 与 CSS 动画等方式，构成空间、材质与视觉质感。
@@ -630,8 +640,7 @@ function legacyPresentationEmbodimentRule() {
 }
 
 function globalCompletionFloorRule(compact = false, settings = {}) {
-    const mode = visualDesignMode(settings);
-    const rule = (mode === 'reference1553' ? REFERENCE_VISUAL_FLOOR : GUIDED_VISUAL_FLOOR) + COMMON_VISUAL_DRAWING;
+    const rule = GUIDED_VISUAL_FLOOR + COMMON_VISUAL_DRAWING;
     return compact ? `全局视觉地板：${rule}` : `全局视觉地板【始终适用】：\n${rule}`;
 }
 
@@ -886,14 +895,12 @@ function atmosphereMenuInstruction(combo, candidateFaces = null) {
     if (!Array.isArray(menu) || menu.length < 2) return '';
     const lines = menu.map((ticket, index) => {
         const face = candidateFaces?.[index];
-        const recipes = interactionRecipesFor(face?.combo || ticket);
         const palette = paletteRecipeFor(face?.combo || ticket);
         const paletteLine = palette ? `\n配色构造：${palette.code}「${palette.title}」` : '';
-        const interaction = recipes.length ? `\n交互构造：${recipes.map(recipe => `${recipe.code}「${recipe.title}」`).join('；')}${paletteLine}` : paletteLine;
-        if (face) return `签 ${index + 1}（以下材料仅在选中本签时适用）：\n主题：\n${face.combo.samplingMode === 'format_only' ? '当前对话语境' : face.selectedThemes}\n展现形式：\n${face.selectedFormats}${interaction}`;
+        if (face) return `签 ${index + 1}（以下材料仅在选中本签时适用）：\n主题：\n${face.combo.samplingMode === 'format_only' ? '当前对话语境' : face.selectedThemes}\n展现形式：\n${face.selectedFormats}${paletteLine}`;
         const themes = (ticket.themeLines || []).join('；') || '无';
         const formats = (ticket.formatLines || []).join('；') || '无';
-        return `签 ${index + 1}：主题 ${themes}。展现形式 ${formats}。${interaction}`;
+        return `签 ${index + 1}：主题 ${themes}。展现形式 ${formats}。${paletteLine}`;
     });
     return `按正文挑签：这一面有 ${menu.length} 张已经抽好的候选签，先按最新正文氛围选出最合适的一张。保持 <toto><details><summary>标题</summary> 外壳顺序，在 summary 后、可见正文前输出 <rm-think>两三句，不超过120字：为什么选这一张。</rm-think><rm-ticket>序号</rm-ticket>，序号从 1 到 ${menu.length}。这两段只用于挑签，不是小剧场正文。随后只按选中签的形式、主题及条件规则写作，不混用其他签，也不默认选签 1。\n${lines.join('\n\n')}`;
 }
@@ -1015,7 +1022,6 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive, candid
         combo?.visualSceneryCombination === true ? '动态视觉组合锁：动态画面与抽中形式的真实内容、阅读路径和玩法同时保留，不得互相替代。' : '',
         includeExecutionOrder ? presentationExecutionOrderRule() : '',
         `本面短检：${formatContract}。`,
-        interactionExecutionReminder(combo),
         includeCommonRules ? sharedHtmlExecutionReminder(settings, directive) : '',
         executionPolicy,
         '直接输出唯一完整 <toto>...</toto>，闭合后结束。',
@@ -1032,7 +1038,7 @@ function buildMultiIndependentExecutionLock(faceContexts, settings, directive, e
         const locked = `第 ${index + 1} 面：${samplingModeLabel(face.combo, settings)}；主题：${themes}；展现形式：${formats}。${face.combo?.visualSceneryCombination === true ? "动态视觉组合锁：动态画面与抽中形式的真实内容、阅读路径和玩法同时保留，不得互相替代。" : ""}短检：${compactComboExecutionContract(face.combo, face.atmosphereFaces)}；主体、空间层次、材质与完整交互均须落实${tarot}。`;
         const identity = hasAtmosphereMenu(face.combo)
             ? `第 ${index + 1} 面：${atmosphereExecutionReminder(face.combo)}短检：${compactComboExecutionContract(face.combo, face.atmosphereFaces)}；保留完整媒介与交互。` : locked;
-        return [identity, interactionExecutionReminder(face.combo)].filter(Boolean).join('\n');
+        return identity;
     });
     return [
         '<兔子镜近输出短锁 data-source="independent-api-near-output">',
@@ -1088,7 +1094,7 @@ function buildFaceContext(selectionCombo, settings, rawPolicy, externalRawMap = 
             const themes = (ticket.themeIds || []).map(id => itemFor(id, 'theme')).filter(Boolean);
             const formats = (ticket.formatIds || []).map(id => itemFor(id, 'presentation')).filter(Boolean);
             return buildFaceContext({ ...combo, atmosphereMenu: undefined, themes, formats,
-                interactionRecipeId: ticket.interactionRecipeId, interactionRecipeIds: ticket.interactionRecipeIds, paletteRecipeId: ticket.paletteRecipeId,
+                paletteRecipeId: ticket.paletteRecipeId,
                 themeIds: themes.map(item => item.id), formatIds: formats.map(item => item.id) }, settings, rawPolicy, externalRawMap);
         });
         face.hasExternal = face.atmosphereFaces.some(candidate => candidate.hasExternal);
@@ -1384,12 +1390,14 @@ function copyPromptPlanValue(value, withoutRaw = false) {
 }
 
 function createPromptPlan(selections, args, batchPlan = null, inactive = false) {
-    const sendingSelections = usesModelOriginalColors(args.settings)
-        ? selections.map(selection => ({ ...selection, combo: withoutPaletteRecipe(selection.combo) })) : selections;
+    // Old saved recipes remain readable; only the new sending copy drops the
+    // retired interaction plan, including frozen candidates and pending batches.
+    const sendingCombo = combo => withoutInteractionRecipe(usesModelOriginalColors(args.settings) ? withoutPaletteRecipe(combo) : combo);
+    const sendingSelections = selections.map(selection => ({ ...selection, combo: sendingCombo(selection.combo) }));
     const snapshot = freezeDeep(copyPromptPlanValue(sendingSelections));
     const privateArgs = freezeDeep(copyPromptPlanValue(args));
-    const sendingBatch = batchPlan && usesModelOriginalColors(args.settings)
-        ? { ...batchPlan, faces: batchPlan.faces.map(face => ({ ...face, combo: withoutPaletteRecipe(face.combo) })) } : batchPlan;
+    const sendingBatch = batchPlan
+        ? { ...batchPlan, faces: batchPlan.faces.map(face => ({ ...face, combo: sendingCombo(face.combo) })) } : batchPlan;
     const privateBatch = sendingBatch ? freezeDeep(copyPromptPlanValue(sendingBatch)) : null;
     const selectedExternalIds = [...new Set(snapshot.flatMap(selection => [
         ...(selection?.combo?.themes || []), ...(selection?.combo?.formats || []), ...(selection?.combo?.texts || []),
@@ -1539,7 +1547,7 @@ export function renderRabbitMirrorPromptPlan(plan, externalRawMap = null, appear
     const followTagIsolationText = followTagIsolationRule(followTagIsolationTags);
     const hasTextPresentation = faceContexts.some(face => face.textPresentation);
     const visualHistoryRule = faceContexts.some(face => !face.combo?.pureOrder)
-        ? sharedVisualHistoryRule({ textOnly: faceContexts.every(face => face.textPresentation || face.combo?.pureOrder) }) : '';
+        ? sharedVisualHistoryRule({ textOnly: faceContexts.every(face => face.textPresentation || face.combo?.pureOrder), darkVisualMode: settings.darkVisualMode }) : '';
     const paletteReferences = !usesModelOriginalColors(settings) && faceContexts.some(face => !face.textPresentation && !face.combo?.pureOrder)
         ? selectGenerationPalettes(faceContexts, settings, {
             darkCooldown: settings.darkVisualMode !== true && getActivePaletteCooldown(5).active,
@@ -1551,7 +1559,8 @@ export function renderRabbitMirrorPromptPlan(plan, externalRawMap = null, appear
         hasRecentTextDisclosure: htmlFacesPresent && getRecentDiversityHistory(5).some(item => !isTextPresentation(item)
             && parseVisualFamilySkeleton(item?.visualSkeleton || '').operation_family === 'text_disclosure_stack') });
     const constructionRules = htmlFacesPresent ? {
-        interaction: buildInteractionRecipeRule(faceContexts, rawPolicy, mediumInteractionConstructionRule()),
+        interaction: groupScopedRules(faceContexts.flatMap((face, index) => face.textPresentation || face.combo?.pureOrder ? []
+            : [{ scope: `第 ${index + 1} 面 HTML`, body: mediumInteractionConstructionRule() }])),
         palette: sharedPaletteRules(faceContexts, settings, paletteReferences, true),
         html: sharedHtmlModeRules(faceContexts, true), diversity: generationPolicy,
     } : null;

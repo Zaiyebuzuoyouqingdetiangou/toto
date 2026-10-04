@@ -1,21 +1,24 @@
 // Split from ui.js — Prompt meter and latest independent request diagnostic.
 
-import { getSettings } from '../settings.js?rmv=1.62.82';
-import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from '../tokenMeter.js?rmv=1.62.82';
-import { API_REQUEST_DIAGNOSTIC_EVENT, getLastIndependentApiRequestDiagnostic } from '../independentApi.js?rmv=1.62.82';
-import { escapeHtml } from './runtime.js?rmv=1.62.82';
-import { formatGenerationElapsed } from '../generationTiming.js?rmv=1.62.82';
+import { getSettings } from '../settings.js?rmv=1.62.90';
+import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from '../tokenMeter.js?rmv=1.62.90';
+import { API_REQUEST_DIAGNOSTIC_EVENT, getLastIndependentApiRequestDiagnostic } from '../independentApi.js?rmv=1.62.90';
+import { escapeHtml } from './runtime.js?rmv=1.62.90';
+import { formatGenerationElapsed } from '../generationTiming.js?rmv=1.62.90';
 
 function independentApiProfileLabel(diagnostic) {
     if (!diagnostic?.profile) return '暂无记录';
     const numericStatus = Number(diagnostic.status || 0);
-    const status = diagnostic.ok
-        ? '成功'
-        : numericStatus > 0
-            ? `失败 HTTP ${numericStatus}`
-            : diagnostic.transportCause === 'connection-interrupted'
-                ? '连接中断（未收到完整响应）'
-                : '未收到 HTTP 响应';
+    const failures = {'empty-stream':'空响应', 'empty-content':'未返回正文', 'unparsed-stream':'响应未解析出正文',
+        'error-payload':'上游返回错误', 'host-api-error':'宿主返回 API 错误', 'incomplete-mirror':'成品不完整',
+        'truncated-output':'输出被截断', 'empty-mirror-body':'成品正文为空', 'post-sanitize-empty':'净化后正文为空',
+        'gateway-timeout':'网关超时', 'parameter-error':'请求参数被拒绝', 'local-preflight':'发送前检查未通过'};
+    const failure = failures[diagnostic.semanticFailure];
+    const status = diagnostic.ok ? '成功'
+        : failure ? `${failure}${numericStatus > 0 ? `（HTTP ${numericStatus}）` : ''}`
+        : numericStatus > 0 ? `失败 HTTP ${numericStatus}`
+        : diagnostic.transportCause === 'connection-interrupted' ? '连接中断（未收到完整响应）'
+        : '未收到 HTTP 响应';
     const temp = diagnostic.temperatureSent ? `温度 ${Number(diagnostic.configuredTemperature ?? 0.8)}` : '默认温度';
     const stream = diagnostic.streamSent ? '流式' : '非流式';
     return `${status}｜${temp}｜${stream}`;

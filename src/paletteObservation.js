@@ -1,6 +1,18 @@
 // Pure observed-colour classification shared by source scanning and compact
 // history. No DOM, palette lottery, stored state or generated colour is read.
 
+export function isNearWhitePalette(fingerprint) {
+    if (!fingerprint || !(Number(fingerprint.confidence) >= .5)) return false;
+    // Translucent-only carriers have no known opaque main colour. Their raw
+    // white channels cannot prove a near-white surface over an unknown host.
+    if (!Array.isArray(fingerprint.mainColors) || !fingerprint.mainColors.some(color =>
+        typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color))) return false;
+    const values = ['averageLuminance', 'averageChroma', 'lightAreaRatio'].map(key => fingerprint[key]);
+    if (!values.every(value => typeof value === 'number' && Number.isFinite(value))) return false;
+    const [luminance, chroma, lightArea] = values;
+    return luminance >= 225 && luminance <= 255 && chroma >= 0 && chroma <= .12 && lightArea >= .8 && lightArea <= 1;
+}
+
 export function clamp(value, min, max) {
     return Math.min(max, Math.max(min, value));
 }
