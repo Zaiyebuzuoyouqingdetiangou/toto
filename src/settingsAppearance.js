@@ -1,6 +1,6 @@
 // UI palettes from the user-provided Hearttrace source, by Toto.
 // Presentation only: no generation settings, Prompt, content storage, or network.
-import { closeTheaterFavoriteLibrary, closeTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.62.85';
+import { closeTheaterFavoriteLibrary, closeTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.62.86';
 export const UI_THEMES = Object.freeze([
   {
     "id": "default",

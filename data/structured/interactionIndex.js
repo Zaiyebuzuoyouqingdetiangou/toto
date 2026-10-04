@@ -1,5 +1,4 @@
-// One draw entry per broad interaction class. Specific objects and controls follow the selected medium.
-// Flattened legacy IDs resolve saved selections/history only; retired templates never enter the draw pool.
+// Legacy ID aliases and observed behavior labels only. No eligibility, weights or generation choices.
 const LEGACY_INTERACTION_CLASSES = Object.freeze({
     "hinged-open": "open-reveal",
     "sliding-open": "open-reveal",
@@ -83,7 +82,7 @@ const LEGACY_INTERACTION_CLASSES = Object.freeze({
     "stencil-reading": "explore-navigate"
 });
 
-// Read-only compatibility. Retired classes never enter the draw pool.
+// Read-only compatibility for saved works and observations.
 const RETIRED = Object.freeze({
  'open-reveal':'object-transform','explore-navigate':'viewport-explore',
  'assemble-disassemble':'drag-combine','overlay-align':'drag-combine',
@@ -105,25 +104,24 @@ export const INTERACTION_RECIPE_REPLACEMENTS = Object.freeze({
  ...RETIRED,
 });
 
-// Observable behaviors, without a story template, palette or control-count quota.
-export const INTERACTION_RECIPES = Object.freeze([
- {id:'fold',title:'折叠',summary:'内容原位展开，再点收起；初始收起',mechanism:'fold',universal:true,effect:'reading_navigation',pairingGroup:'reading'},
- {id:'popup',title:'弹窗',summary:'点击出现独立浮层，关闭后回到原处；初始关闭',mechanism:'popup',universal:true,effect:'local_evidence',pairingGroup:'reading'},
- {id:'scene-switch',title:'整幕切换',summary:'当前画面换成另一页或下一幕，有明确返回；不能只切换长文字',mechanism:'screen',universal:true,effect:'scene_change',pairingGroup:'reading'},
- {id:'trigger-effect',title:'触发效果',summary:'点击触发与内容有关的短动画，结束后可再次触发',mechanism:'effect',fit:['场景','舞台','烟花','灯','水','花','机关','装置','游戏','印'],sceneryCompatible:true,effect:'object_state',pairingGroup:'motion'},
- {id:'flip',title:'翻面',summary:'同一物件翻到背面，再翻回正面；两面各有内容',mechanism:'flip',fit:['卡','牌','纸','照片','相册','证件','信','书','册','标本','硬币'],effect:'object_state',pairingGroup:'surface'},
- {id:'drag-combine',title:'拖动与组合',summary:'物件随拖动真实移动、叠合、拼合或分离，可复原',mechanism:'drag',fit:['拼','碎片','图','照片','物件','装置','模型','工坊','玩具','纸','料理','服','收藏','仪'],sceneryCompatible:true,effect:'object_state',pairingGroup:'placement'},
- {id:'continuous-adjust',title:'连续调节',summary:'调节幅度连续改变主体，途中有对应的中间状态',mechanism:'adjust',fit:['光','灯','水','仪','天气','场景','舞台','钟','机械','音乐','装置','料理','温度'],sceneryCompatible:true,effect:'object_state',pairingGroup:'continuous'},
- {id:'local-reveal',title:'局部揭示',summary:'逐步移开遮挡，原位置露出下层画面，能够复原',mechanism:'reveal',universal:true,effect:'object_state',pairingGroup:'surface'},
- {id:'viewport-explore',title:'视野操作',summary:'在同一主体内移动观察位置或放大细节，可以退回',mechanism:'view',fit:['图','地图','画','照片','场景','建筑','空间','模型','标本','展','镜','长卷'],sceneryCompatible:true,effect:'spatial_scroll',pairingGroup:'view'},
- {id:'input-draw',title:'输入与绘制',summary:'输入文字或亲手描画，内容留在对象上并产生对应反馈，可清除',mechanism:'input',fit:['纸','信','书','册','图','画','星','线','手账','契约','机关','锁','游戏','乐谱'],sceneryCompatible:true,effect:'object_state',pairingGroup:'input'},
- {id:'progress-control',title:'进程控制',summary:'控制真实运动的暂停、继续、进度或方向，不以静态说明代替',mechanism:'motion',fit:['机械','音乐','钟','装置','动态','轨','舞台','沙漏','天气','水','车','发条','摆'],sceneryCompatible:true,effect:'object_state',pairingGroup:'motion'},
- {id:'scroll-browse',title:'连续滑动浏览',summary:'手指推动长卷、相册或场景连续移动，松手自然停靠',mechanism:'scroll',universal:true,effect:'spatial_scroll',pairingGroup:'view'},
- {id:'hold-preview',title:'临时预览',summary:'按住时显现另一层或照亮局部，松开立即恢复',mechanism:'hold',universal:true,effect:'local_evidence',pairingGroup:'surface'},
- {id:'layer-control',title:'图层控制',summary:'底图不换，各层可独立显隐并同时叠加，状态彼此独立',mechanism:'layers',universal:true,effect:'object_state',pairingGroup:'surface'},
- {id:'object-transform',title:'物件开合与变形',summary:'盒盖、抽屉、纸张或部件真实开合、伸缩或转动，能复原',mechanism:'transform',fit:['盒','柜','门','窗','箱','匣','抽屉','纸','书','扇','花','模型','机械','装置','建筑','玩具','物件'],sceneryCompatible:true,effect:'object_state',pairingGroup:'surface'},
- {id:'pointer-follow',title:'跟随反馈',summary:'触点移动时，光斑、线端或对应物件连续跟随',mechanism:'follow',fit:['光','灯','线','绳','图','镜','场景','舞台','仪','装置','星'],sceneryCompatible:true,effect:'object_state',pairingGroup:'continuous'},
- {id:'reorder',title:'动态重排',summary:'移动卡片或物件改变实际排列，其余物件重新让位，可复原',mechanism:'reorder',fit:['卡','牌','图','照片','相册','拼','物件','标本','收藏','书','册','清单','分镜','工坊'],sceneryCompatible:true,effect:'object_state',pairingGroup:'placement'},
- {id:'accumulate',title:'累积改变',summary:'每次操作保留此前变化，逐项点亮、取走或完成，并可撤回',mechanism:'accumulate',fit:['灯','星','花','拼','物件','收藏','图','清单','游戏','仪','装置','纸','印'],sceneryCompatible:true,effect:'object_state',pairingGroup:'input'},
-].map((item,index)=>Object.freeze({family:item.id,universal:false,sceneryCompatible:false,...item,
- code:'I.'+String(index+1).padStart(2,'0'),fit:Object.freeze(item.fit || [])})));
+// These labels decode old archives and observed output; they are never sampled.
+export const INTERACTION_HISTORY_TYPES = Object.freeze([
+    Object.freeze({"id":"fold","title":"折叠","summary":"内容原位展开，再点收起；初始收起","code":"I.01"}),
+    Object.freeze({"id":"popup","title":"弹窗","summary":"点击出现独立浮层，关闭后回到原处；初始关闭","code":"I.02"}),
+    Object.freeze({"id":"scene-switch","title":"整幕切换","summary":"当前画面换成另一页或下一幕，有明确返回；不能只切换长文字","code":"I.03"}),
+    Object.freeze({"id":"trigger-effect","title":"触发效果","summary":"点击触发与内容有关的短动画，结束后可再次触发","code":"I.04"}),
+    Object.freeze({"id":"flip","title":"翻面","summary":"同一物件翻到背面，再翻回正面；两面各有内容","code":"I.05"}),
+    Object.freeze({"id":"drag-combine","title":"拖动与组合","summary":"物件随拖动真实移动、叠合、拼合或分离，可复原","code":"I.06"}),
+    Object.freeze({"id":"continuous-adjust","title":"连续调节","summary":"调节幅度连续改变主体，途中有对应的中间状态","code":"I.07"}),
+    Object.freeze({"id":"local-reveal","title":"局部揭示","summary":"逐步移开遮挡，原位置露出下层画面，能够复原","code":"I.08"}),
+    Object.freeze({"id":"viewport-explore","title":"视野操作","summary":"在同一主体内移动观察位置或放大细节，可以退回","code":"I.09"}),
+    Object.freeze({"id":"input-draw","title":"输入与绘制","summary":"输入文字或亲手描画，内容留在对象上并产生对应反馈，可清除","code":"I.10"}),
+    Object.freeze({"id":"progress-control","title":"进程控制","summary":"控制真实运动的暂停、继续、进度或方向，不以静态说明代替","code":"I.11"}),
+    Object.freeze({"id":"scroll-browse","title":"连续滑动浏览","summary":"手指推动长卷、相册或场景连续移动，松手自然停靠","code":"I.12"}),
+    Object.freeze({"id":"hold-preview","title":"临时预览","summary":"按住时显现另一层或照亮局部，松开立即恢复","code":"I.13"}),
+    Object.freeze({"id":"layer-control","title":"图层控制","summary":"底图不换，各层可独立显隐并同时叠加，状态彼此独立","code":"I.14"}),
+    Object.freeze({"id":"object-transform","title":"物件开合与变形","summary":"盒盖、抽屉、纸张或部件真实开合、伸缩或转动，能复原","code":"I.15"}),
+    Object.freeze({"id":"pointer-follow","title":"跟随反馈","summary":"触点移动时，光斑、线端或对应物件连续跟随","code":"I.16"}),
+    Object.freeze({"id":"reorder","title":"动态重排","summary":"移动卡片或物件改变实际排列，其余物件重新让位，可复原","code":"I.17"}),
+    Object.freeze({"id":"accumulate","title":"累积改变","summary":"每次操作保留此前变化，逐项点亮、取走或完成，并可撤回","code":"I.18"}),
+]);
