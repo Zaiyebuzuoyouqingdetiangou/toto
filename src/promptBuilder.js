@@ -1,27 +1,28 @@
-import { visualDesignMode, usesModelOriginalColors, withoutPaletteRecipe, REFERENCE_VISUAL_FLOOR, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.62.86';
-import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=1.62.86';
-import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=1.62.86';
-import { isNearWhitePalette } from './paletteObservation.js?rmv=1.62.86';
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.86';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.86';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.86';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.86';
-import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.86';
-import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.62.86';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.86';
-import { getComboHistory, getActivePaletteCooldown } from './storage.js?rmv=1.62.86';
-import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock } from './visualDiversityPolicy.js?rmv=1.62.86';
-import { withoutInteractionRecipe, observedInteractionRecipesFor } from './interactionRecipes.js?rmv=1.62.86';
-import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.62.86';
-import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.86';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.86';
-export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.86';
-import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.86';
-import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.86';
-import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.62.86';
-import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.86';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.86';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.86';
+import { INTERACTION_SAMPLING_RULE } from './interactionSampling.js?rmv=1.62.88';
+import { usesModelOriginalColors, withoutPaletteRecipe, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.62.88';
+import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=1.62.88';
+import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=1.62.88';
+import { isNearWhitePalette } from './paletteObservation.js?rmv=1.62.88';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.88';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.88';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.88';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.88';
+import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.88';
+import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.62.88';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.88';
+import { getComboHistory, getActivePaletteCooldown } from './storage.js?rmv=1.62.88';
+import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock } from './visualDiversityPolicy.js?rmv=1.62.88';
+import { withoutInteractionRecipe, observedInteractionRecipesFor } from './interactionRecipes.js?rmv=1.62.88';
+import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.62.88';
+import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.88';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.88';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.88';
+import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.88';
+import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.88';
+import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.62.88';
+import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.88';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.88';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.88';
 
 const THEME_ITEMS = new Map(THEMATIC_CATEGORIES.map(item => [item.id, item]));
 const FORMAT_ITEMS = new Map(PRESENTATION_FORMATS.map(item => [item.id, item]));
@@ -461,7 +462,8 @@ function mediumInteractionConstructionRule() {
   - 存在多个值得探索的内容节点时，须提供多个有效入口或连续阶段，让不同操作获得不同的内容或状态反馈；不得把适合探索、分支或推进的媒介压缩成一次显隐后结束。
   - 交互形态、规模与阶段须由本轮展现形式自身的结构、功能、使用方式与叙事产生，不得从固定候选清单反推玩法或复用默认控件骨架；非一次性动作的首次操作不得耗尽全部体验。
   - 仅变色、描边、阴影、轻微位移、伪选项、无关交互堆叠，或非一次性媒介中一次显隐后立即结束，不算完整交互。操作须可触摸触发，hover/active 只能辅助。
-  - 除外层整面开合外，禁止内部 details/summary 及展开／收起正文的替代结构；禁止并列按钮／标签仅轮换同位置正文，改名或改数量也算。条目若含这些做法，保留其内容与展现形式，改用本体其他真实操作；物件开合、实际翻页与不同功能按钮按实际行为区分。`;
+  - 除外层整面开合外，禁止内部 details/summary 及展开／收起正文的替代结构；禁止并列按钮／标签仅轮换同位置正文，改名或改数量也算。条目若含这些做法，保留其内容与展现形式，改用本体其他真实操作；物件开合、实际翻页与不同功能按钮按实际行为区分。
+${INTERACTION_SAMPLING_RULE}`;
 }
 
 function compactCreativeRule(enabled, formatOnly = false) {
@@ -642,8 +644,7 @@ function legacyPresentationEmbodimentRule() {
 }
 
 function globalCompletionFloorRule(compact = false, settings = {}) {
-    const mode = visualDesignMode(settings);
-    const rule = (mode === 'reference1553' ? REFERENCE_VISUAL_FLOOR : GUIDED_VISUAL_FLOOR) + COMMON_VISUAL_DRAWING;
+    const rule = GUIDED_VISUAL_FLOOR + COMMON_VISUAL_DRAWING;
     return compact ? `全局视觉地板：${rule}` : `全局视觉地板【始终适用】：\n${rule}`;
 }
 
