@@ -444,13 +444,13 @@ export const THEMATIC_CATEGORIES = [
   {
     "id": "B.10",
     "group": "B",
-    "title": "未说出口的亲密渴望",
-    "summary": "直接呈现 {{char}} 对 {{user}} 的心动、吸引与想要亲近的念头。",
+    "title": "未说出口的nsfw渴望",
+    "summary": "直接呈现 {{char}} 对 {{user}} 的直白热烈的nsfw的念头。",
     "tags": [
       "emotion",
       "intimacy"
     ],
-    "raw": "- **B.10 未说出口的亲密渴望**：直接呈现 {{char}} 对 {{user}} 的心动、吸引与想要亲近的念头。"
+    "raw": "- **B.10 未说出口的nsfw渴望**：直接呈现 {{char}} 对 {{user}} 的直白热烈的nsfw的念头。"
   },
   {
     "id": "C.0",
