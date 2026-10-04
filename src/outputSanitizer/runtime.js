@@ -1,8 +1,8 @@
 // Split from outputSanitizer.js — runtime.
 
-import { getSettings } from '../settings.js?rmv=1.62.83';
+import { getSettings } from '../settings.js?rmv=1.62.85';
 
-export const RUNTIME_VERSION = '1.62.83';
+export const RUNTIME_VERSION = '1.62.85';
 
 export const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 

@@ -1,7 +1,11 @@
-import { resolveInteractionDetail, INTERACTION_MECHANISMS } from '../data/raw/rawInteractionRecipes.js?rmv=1.62.83';
-import { INTERACTION_RECIPES, INTERACTION_RECIPE_REPLACEMENTS } from '../data/structured/interactionIndex.js?rmv=1.62.83';
+import { INTERACTION_MECHANISMS } from '../data/raw/rawInteractionRecipes.js?rmv=1.62.85';
+import { INTERACTION_RECIPES, INTERACTION_RECIPE_REPLACEMENTS } from '../data/structured/interactionIndex.js?rmv=1.62.85';
 
 const BY_ID = new Map(INTERACTION_RECIPES.map(recipe => [recipe.id, recipe]));
+
+// Generation policy only. Keep all 18 IDs and runtime mechanisms readable for
+// old works, frozen plans, repair and actual-effect history.
+export const FORM_INTERACTION_CONSTRUCTION = '交互先从展现形式的结构、功能、使用方式与叙事推导，操作和反馈融入本体；不得从固定候选清单反推玩法。操作须带来内容相关的发现、反应或后续，运行支持仅供已构思的操作按需采用。除外层整面开合外，禁止内部 details/summary 及展开／收起正文的替代结构；禁止并列按钮／标签仅轮换同位置正文，改名或改数量也算。条目或参考若含这些做法，保留其内容与展现形式，改用本体其他真实操作。';
 
 function canonicalRecipeIds(values) {
     return [...new Set(values.map(id => typeof id === 'string'
@@ -52,9 +56,9 @@ export function eligibleInteractionRecipes(combo) {
     const text = formText(combo);
     const formats = combo.formats || [];
     const pureScenery = formats.length > 0 && formats.every(item => item.id === '10.2.2');
-    return INTERACTION_RECIPES.filter(recipe => recipe.universal
+    return INTERACTION_RECIPES.filter(recipe => recipe.id !== 'fold' && (recipe.universal
         || (pureScenery && recipe.sceneryCompatible)
-        || recipe.fit.some(word => text.includes(word)));
+        || recipe.fit.some(word => text.includes(word))));
 }
 
 export function selectInteractionRecipe(combo, { randomUnit = Math.random, recent = [], usedIds = [], excludedFamilies = [], companionIds = [] } = {}) {
@@ -155,46 +159,32 @@ export function diversifyBatchInteractionRecipes(combos, options = {}) {
 }
 
 export function buildInteractionRecipeRule(faceContexts, rawPolicy = 'balanced', constructionRule = '') {
-    const assignments = [];
+    // Keep the draw in local metadata, but do not prescribe it to a face or
+    // candidate. Deduplicated wiring is a capability reference, not a play menu.
     const mechanisms = new Set();
-    for (const [index, face] of (faceContexts || []).entries()) {
+    for (const face of faceContexts || []) {
         if (face.textPresentation || face.combo?.pureOrder) continue;
         const candidates = face.atmosphereFaces || [face];
-        for (const [ticketIndex, candidate] of candidates.entries()) {
-            const scope = `第 ${index + 1} 面${face.atmosphereFaces ? `／仅选签 ${ticketIndex + 1} 时` : ''}`;
+        for (const candidate of candidates) {
             for (const recipe of interactionRecipesFor(candidate.combo)) {
-            let entry = `${scope}：${recipe.code}「${recipe.title}｜${recipe.summary}」`;
-            // Summary already states action + result. Full alone adds detail;
-            // every policy still needs the selected executable contracts.
-            if (rawPolicy === 'full') {
-                const detail = resolveInteractionDetail(recipe.id);
-                if (detail) entry += `\n操作：${detail.action}。\n可见结果：${detail.result}。`;
-            }
-            mechanisms.add(recipe.mechanism);
-            assignments.push(entry);
+                if (recipe.id !== 'fold') mechanisms.add(recipe.mechanism);
             }
         }
     }
     const numbers = (faceContexts || []).flatMap((face, index) => !face.textPresentation && !face.combo?.pureOrder ? [index + 1] : []);
-    if (!numbers.length || (!assignments.length && !constructionRule)) return '';
-    const construction = constructionRule
-        ? `共用适用规则【${numbers.map(number => `第 ${number} 面 HTML`).join('；')}】\n${constructionRule}`
-        : '交互优先从展现形式自身的用途与内容推导，操作和反馈融入本体；抽中交互仅作按需补充。操作须带来内容相关的发现、反应或后续。按实际效果避重，保留媒介必要的按钮、分页和折叠。';
-    if (!assignments.length) return construction;
+    if (!numbers.length) return '';
+    const construction = `共用适用规则【${numbers.map(number => `第 ${number} 面 HTML`).join('；')}】\n${constructionRule || FORM_INTERACTION_CONSTRUCTION}`;
     const resultConditions = { drag: 'placed=甲,乙', adjust: 'p>=0.6', reveal: 'p>=0.6', view: 'p>=0.6', input: 'match', reorder: 'order=甲,乙', accumulate: 'count>=2' };
     const conditions = [...new Set([...mechanisms].map(key => resultConditions[key]).filter(Boolean))];
     const results = conditions.length ? `\n阶段联动：采用对应构造时，在 data-rm-ui 内写实际结果节点 data-rm-result hidden，data-rm-when="${conditions.join('"或"')}"；驱动按状态显隐，复原同步。结果用景物、细节或后续控件承接。` : '';
-    const implementation = mechanisms.size ? `\n补充实现依据（采用时适用；标识限本面；不执行模型脚本）：\n${[...mechanisms].map(key => INTERACTION_MECHANISMS[key]).join('\n')}` : '';
-    return `交互构造库【按需补充；仅下列 HTML 面／选中签适用】：
+    const implementation = mechanisms.size ? `\n局部运行支持（按需采用，不限定玩法；标识限本面；不执行模型脚本）：\n${[...mechanisms].map(key => INTERACTION_MECHANISMS[key]).join('\n')}` : '';
+    return `交互构造库【先构思本体操作，再参考实现】：
 ${construction}
-${assignments.join('\n\n')}${implementation}${results}`;
+${implementation}${results}`;
 }
 
 export function interactionExecutionReminder(combo) {
-    if (combo?.presentationMode === 'text' || combo?.pureOrder) return '';
-    if (combo?.atmosphereMenu?.some(ticket => interactionRecipeFor(ticket))) {
-        return '交互依本面形式用途与内容实现；补充构造仅参考选中签，操作与结果融入本体。';
-    }
-    const recipes = interactionRecipesFor(combo);
-    return recipes.length ? `交互依本面形式用途与内容实现；「${recipes.map(recipe => recipe.title).join('；')}」仅作补充，操作与结果融入本体。` : '';
+    // Compatibility export: final checks are shared by the prompt builder.
+    // Repeating sampled recipe names near output would override form-led design.
+    return '';
 }

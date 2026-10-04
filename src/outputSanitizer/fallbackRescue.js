@@ -1,6 +1,7 @@
 // Split from outputSanitizer.js — fallbackRescue.
+import { RADIO_BRANCH_CONTROL_ATTR, installRadioBranchRepair, applyRadioBranchState, radioBranchVerificationTargets } from './radioBranchRepair.js?rmv=1.62.85';
 
-import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.62.83';
+import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.62.85';
 
 import {
     FEEDBACK_CAT_ATTR,
@@ -8,7 +9,7 @@ import {
     TOOL_ENTRY_HOST_ATTR,
     escapeRegExp,
     getRabbitMirrorLocalStyleElements,
-} from './runtime.js?rmv=1.62.83';
+} from './runtime.js?rmv=1.62.85';
 import {
     CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR,
     CROSS_PARENT_CHECKED_VERIFIED_ATTR,
@@ -90,7 +91,7 @@ import {
     webKit3DFlipInlineStates,
     webKit3DFlipRescueStates,
     webKit3DFlipStyleStates,
-} from './checkedStateRescue.js?rmv=1.62.83';
+} from './checkedStateRescue.js?rmv=1.62.85';
 import {
     EXISTING_INTERACTIVE_SELECTOR,
     RENDERED_BUTTON_ADJACENT_HIDDEN_RESCUE_ATTR,
@@ -117,7 +118,7 @@ import {
     isCollapsedDimensionValue,
     normalizeStylePropertyName,
     parseCssStateSiblingAssignments,
-} from './renderedStateRescue.js?rmv=1.62.83';
+} from './renderedStateRescue.js?rmv=1.62.85';
 import {
     chooseMatchingRawRabbitMirrorRoot,
     detectInteractionCapabilities,
@@ -133,7 +134,7 @@ import {
     installRawMessageSelfMutationRescue,
     preparePseudoTrigger,
     shouldIgnorePseudoToggleEvent,
-} from './scriptedInteractionRescue.js?rmv=1.62.83';
+} from './scriptedInteractionRescue.js?rmv=1.62.85';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     FILL_IN_CHOICE_BLANK_ATTR,
@@ -145,15 +146,15 @@ import {
     diagnosticFindClippingAncestor,
     maintenanceSafeComputedStyle,
     mobileInlineAnnotationRescueStates,
-} from './diagnostics.js?rmv=1.62.83';
-import { installStaticChoiceSelectionFallback } from './choiceRescue.js?rmv=1.62.83';
+} from './diagnostics.js?rmv=1.62.85';
+import { installStaticChoiceSelectionFallback } from './choiceRescue.js?rmv=1.62.85';
 import {
     checkedDeclarationCreatesContentReveal,
     checkedTargetCarriesResultContent,
     pseudoStateTargetSelector,
-} from './maintenanceInspect.js?rmv=1.62.83';
-import { splitCssSelectorList } from './markup.js?rmv=1.62.83';
-import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutResolveCheckedTargets } from './layoutRescue.js?rmv=1.62.83';
+} from './maintenanceInspect.js?rmv=1.62.85';
+import { splitCssSelectorList } from './markup.js?rmv=1.62.85';
+import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutResolveCheckedTargets } from './layoutRescue.js?rmv=1.62.85';
 
 const NESTED_DETAILS_FALLBACK_HANDLER_PROP = '__rabbitMirrorNestedDetailsFallbackHandler';
 
@@ -915,6 +916,7 @@ export function repairMarkdownCorruptedCssComments(root) {
 
 
 export function applyCheckedVisualFallback(root, input) {
+    if (applyRadioBranchState(root, input)) return;
     // Once an exclusive stacked-state route owns a radio scene, do not let the generic
     // class-local checked fallback re-apply broad sibling styles on top of it. This also
     // covers the inferred baseline/close radio whose raw shared-class CSS can otherwise
@@ -1011,6 +1013,8 @@ function restoreReversibleRadioBaseline(root, group) {
 }
 
 
+const radioBranchReturnEvents = new WeakSet();
+
 export function installReversibleRadioGroupFallback(root) {
     if (!root?.querySelectorAll) return 0;
     const radios = [...root.querySelectorAll('input[type="radio"]')].filter(radio => !radio.disabled);
@@ -1080,6 +1084,7 @@ export function installReversibleRadioGroupFallback(root) {
             const group = state.groups.get(key);
             if (!group) return;
             event.preventDefault();
+            if (radio.hasAttribute(RADIO_BRANCH_CONTROL_ATTR)) radioBranchReturnEvents.add(event);
             restoreReversibleRadioBaseline(root, group);
         };
         root.addEventListener('click', state.onClick, true);
@@ -1241,6 +1246,7 @@ function checkedSelectorTargetsInputState(selector, input) {
 
 
 export function inputHasMeaningfulCheckedSiblingRule(root, input) {
+    if (radioBranchVerificationTargets(root, input).length) return true;
     if (!root?.querySelectorAll || !input?.matches) return false;
 
     // 优先走 CSSOM，能正确进入 @media / @supports 等嵌套规则；
@@ -1996,6 +2002,7 @@ export function installIntelligentInteractionRescue(root) {
     // 模型偶尔在 CSS 中写出 .trigger:checked，却忘记把 trigger class 放到唯一的隐藏控件上。
     // 仅在原始源码中可证明“补上该 class 后，当前 label 控件会命中有正文的局部状态规则”时恢复。
     installMissingCheckedSubjectClassRescue(root);
+    installRadioBranchRepair(root);
 
     const capabilities = detectInteractionCapabilities(root);
     const preferNativeChecked = root.getAttribute?.(INDEPENDENT_NATIVE_CHECKED_RESTORE_ATTR) === 'true';
@@ -2334,7 +2341,7 @@ function checkedVerificationDeclarationCarriesSecondState(property, value, pseud
 
 function collectLabeledCheckedVerificationTargets(root, input) {
     if (!root || !input) return [];
-    const entries = [];
+    const entries = radioBranchVerificationTargets(root, input).map(target => ({ target, pseudoElement: '', secondState: true }));
     const entriesByKey = new Map();
     for (const rule of parseCheckedRulesFromText(root, input)) {
         const meaningful = (rule.styleMap || []).some(([property, value]) => (
@@ -2620,8 +2627,23 @@ function applyMaintenanceSandboxCheckedState(root, input, nextChecked) {
 }
 
 
+const maintenanceSandboxProbeSequences = new WeakMap();
+
+export function invalidateMaintenanceLabeledCheckedProbe(root) {
+    const sequence = (maintenanceSandboxProbeSequences.get(root) || 0) + 1;
+    maintenanceSandboxProbeSequences.set(root, sequence);
+    root.removeAttribute(LABELED_CHECKED_VERIFY_LAST_ATTR);
+    return sequence;
+}
+
 export function scheduleMaintenanceLabeledCheckedProbe(root, diagnosticState) {
     if (!root?.querySelectorAll) return 0;
+    const prior = String(root.getAttribute?.(LABELED_CHECKED_VERIFY_LAST_ATTR) || '');
+    if (diagnosticState && /@label-click[^;]*:failed$/.test(prior)) {
+        diagnosticState.controlEvidenceBeforeProbe = prior;
+        diagnosticState.events?.push?.(`maintenance-sandbox-probe:prior-control-failure=${prior}`);
+    }
+    const sequence = invalidateMaintenanceLabeledCheckedProbe(root);
     const renderedStateInputs = root.querySelectorAll('input[type="checkbox"], input[type="radio"]').length;
     const rawMessage = getRawAssistantMessageForRenderedRoot(root);
     const rawRoot = chooseMatchingRawRabbitMirrorRoot(rawMessage, root);
@@ -2647,6 +2669,7 @@ export function scheduleMaintenanceLabeledCheckedProbe(root, diagnosticState) {
     // 会把真正有效的跨父层兜底误测成 changed=0。先清理可识别的持久化兜底痕迹，
     // 再按副本当前 checked 状态重新建立一份只属于沙盒的可逆记录。
     clearPersistedCheckedInlineArtifacts(sandboxRoot, sandboxStateInputs);
+    installRadioBranchRepair(sandboxRoot);
     for (const stateInput of sandboxStateInputs) {
         if (stateInput.checked) applyCheckedVisualFallback(sandboxRoot, stateInput);
         else restoreInteractionInlineOverrides(stateInput);
@@ -2691,13 +2714,15 @@ export function scheduleMaintenanceLabeledCheckedProbe(root, diagnosticState) {
     diagnosticState?.events?.push?.(`maintenance-sandbox-probe:scheduled target=${diagnosticElementName(input)} intended=${intended};真实控件未操作`);
 
     setTimeout(() => {
-        if (!sandbox.host.isConnected || !input.isConnected) return;
+        if (!sandbox.host.isConnected || !input.isConnected || !root.isConnected
+            || maintenanceSandboxProbeSequences.get(root) !== sequence) return;
         const applied = applyMaintenanceSandboxCheckedState(sandboxRoot, input, intended);
         diagnosticState?.events?.push?.(`maintenance-sandbox-probe:state-set checked=${input.checked} applied=${applied};无click/change/input事件`);
     }, 30);
 
     setTimeout(() => {
-        if (!sandbox.host.isConnected || !input.isConnected) return;
+        if (!sandbox.host.isConnected || !input.isConnected || !root.isConnected
+            || maintenanceSandboxProbeSequences.get(root) !== sequence) return;
         const matched = recordLabeledCheckedVerification(sandboxRoot, input, verification, intended, 'maintenance-sandbox-probe-observe', false);
         const evidence = String(sandboxRoot.getAttribute?.(LABELED_CHECKED_VERIFY_LAST_ATTR) || '');
         if (evidence) root.setAttribute?.(LABELED_CHECKED_VERIFY_LAST_ATTR, evidence);
@@ -2840,6 +2865,7 @@ function installInteractionLabelFallback(toto) {
 
     // 使用捕获阶段，避免主题或其他插件在内部 stopPropagation 后导致 label 完全点不开。
     toto.addEventListener('click', (event) => {
+        if (radioBranchReturnEvents.has(event)) return;
         const label = event.target?.closest?.('label');
         if (!label || !toto.contains(label)) return;
 
@@ -2906,6 +2932,8 @@ function installInteractionLabelFallback(toto) {
         // 仅在状态被回滚时补发一次 input/change，不造成正常环境的双重切换。
         setTimeout(() => {
             if (!input.isConnected || input.checked === intendedChecked) return;
+            if (input.type === 'radio' && input.hasAttribute(RADIO_BRANCH_CONTROL_ATTR)
+                && [...toto.querySelectorAll('input[type="radio"]')].some(other => other !== input && other.name === input.name && other.checked)) return;
             if (input.type === 'radio') {
                 const radioName = String(input.name || '');
                 const group = [];

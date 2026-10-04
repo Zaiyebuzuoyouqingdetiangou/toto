@@ -18,10 +18,6 @@ export function shouldRelaxRevealedClipPanel({
     const clipsY = /(?:hidden|clip)/.test(String(overflowY || '').toLowerCase());
     const scrollH = Number(scrollHeight) || 0;
     const clientH = Number(clientHeight) || 0;
-    const maxH = Number(maxHeightPx);
-    const height = Number(heightPx);
-    if (Number.isFinite(maxH) && maxH > 0 && maxH < 4000 && scrollH > maxH + 2) return true;
-    if (Number.isFinite(height) && height > 0 && height < 4000 && scrollH > height + 4) return true;
     return clipsY && scrollH > clientH + 4;
 }
 
