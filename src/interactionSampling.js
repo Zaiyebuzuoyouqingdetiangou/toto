@@ -1,14 +1,14 @@
-// VS-inspired interaction-plan experiment, not a catalogue of reusable plays.
+// VS-inspired joint-design experiment, not a catalogue of reusable plays.
 // One completion reports a small distribution, selects a plan and implements it.
 // Selection is model-reported, not a locally enforced random draw. The record is
 // optional diagnostic evidence, never a generation gate or an interaction test.
-export const INTERACTION_SAMPLING_RULE = `交互候选【VS 试验】：为本面已抽中的展现形式临时生成 3 个合理、实际操作结果不同的短方案，各用一句写清本体对象、操作与反馈，并给出自然生成该方案的估计概率 p（0～1，非质量分）。从完整可能性中取样，包含较少见但适配的方案；按这些概率归一化抽取一个，不默认取最高概率。先在本面最外层 details 的 data-rm-vs 属性写合法 JSON：{"c":[["短方案",0.1],…],"pick":1}（c 为三项，pick 从1起，属性引号按 HTML 转义），随后只实现选中方案。候选与概率不显示、不变成界面选项；不重抽主题或展现形式。`;
+export const INTERACTION_SAMPLING_RULE = `整体设计候选【VS 试验】：正文挑签先选定一签，未选中签不展开设计。遵循本面已确定展现形式的落地与美化要求，临时生成 3 个合理、构图及操作结果不同的短方案，各用一句写清本体层次、材质配色、操作与反馈，避免同构换色，并给出自然生成该方案的估计概率 p（0～1，非质量分）。从完整可能性中取样，包含较少见但适配的方案；按这些概率归一化抽取一个，不默认取最高概率。先在本面最外层 details 的 data-rm-vs 属性写合法 JSON：{"c":[["短方案",0.1],…],"pick":1}（c 为三项，pick 从1起，属性引号按 HTML 转义），随后只实现选中方案。候选与概率不显示、不变成界面选项；不重抽主题或展现形式。`;
 
 export function interactionSamplingDiagnostic(root) {
     let raw;
     try { raw = root?.getAttribute?.('data-rm-vs'); } catch { /* optional evidence */ }
-    if (!raw) return 'VS 交互候选：无记录（旧作品或模型未提供；不据此判断交互质量）。';
-    const invalid = 'VS 交互候选：记录无效；保留成品，不重试，不据此判断交互质量。';
+    if (!raw) return 'VS 方案候选：无记录（旧作品或模型未提供；不据此判断成品质量）。';
+    const invalid = 'VS 方案候选：记录无效；保留成品，不重试，不据此判断成品质量。';
     if (typeof raw !== 'string' || raw.length > 8192) return invalid;
     let record;
     try { record = JSON.parse(raw); } catch { return invalid; }
@@ -24,5 +24,5 @@ export function interactionSamplingDiagnostic(root) {
         const shortPlan = plan.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 240);
         return `  ${index + 1}. p=${probability} ${shortPlan}`;
     });
-    return [`VS 交互候选：模型自报 ${record.c.length} 项，选中=${record.pick}；不是本地严格概率抽样，不代表差异或交互已实现。`, ...lines].join('\n');
+    return [`VS 方案候选：模型自报 ${record.c.length} 项，选中=${record.pick}；不是本地严格概率抽样，不代表设计差异或交互已实现。`, ...lines].join('\n');
 }
