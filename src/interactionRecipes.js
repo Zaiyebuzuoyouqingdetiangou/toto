@@ -1,5 +1,5 @@
-import { resolveInteractionDetail, INTERACTION_MECHANISMS } from '../data/raw/rawInteractionRecipes.js?rmv=1.62.82';
-import { INTERACTION_RECIPES, INTERACTION_RECIPE_REPLACEMENTS } from '../data/structured/interactionIndex.js?rmv=1.62.82';
+import { resolveInteractionDetail, INTERACTION_MECHANISMS } from '../data/raw/rawInteractionRecipes.js?rmv=1.62.83';
+import { INTERACTION_RECIPES, INTERACTION_RECIPE_REPLACEMENTS } from '../data/structured/interactionIndex.js?rmv=1.62.83';
 
 const BY_ID = new Map(INTERACTION_RECIPES.map(recipe => [recipe.id, recipe]));
 
@@ -19,6 +19,19 @@ export function interactionRecipeFields(source) {
 
 export function interactionRecipesFor(source) {
     return (interactionRecipeFields(source).interactionRecipeIds || []).map(id => BY_ID.get(id));
+}
+
+export function observedInteractionRecipesFor(source) {
+    if (source?.presentationMode === 'text' || source?.pureOrder === true) return [];
+    const observed = source?.interactionFamily;
+    if (Array.isArray(observed?.observedRecipeIds)) {
+        return canonicalRecipeIds(observed.observedRecipeIds).map(id => BY_ID.get(id));
+    }
+    // Old records have only a coarse scan. Do not reinterpret generic radio or
+    // checkbox controls as pages/layers, and never fall back to unused plans.
+    const legacy = { inner_details_family: 'fold', flip_card_family: 'flip', popover_family: 'popup' };
+    const id = Number(observed?.confidence) >= .8 && Object.hasOwn(legacy, observed?.id) ? legacy[observed.id] : null;
+    return id ? [BY_ID.get(id)] : [];
 }
 
 export function interactionRecipeFor(source) {
@@ -51,7 +64,7 @@ export function selectInteractionRecipe(combo, { randomUnit = Math.random, recen
     const textSwitchObserved = recent.some(record => /operation_family\s*:\s*(?:text_panel_switch|text_disclosure_stack)(?:；|$)/.test(record?.visualSkeleton || ''));
     if (!eligible.length) return null;
     const used = new Set(usedIds);
-    const recentIds = new Set(recent.flatMap(record => interactionRecipeFields(record).interactionRecipeIds || []));
+    const recentIds = new Set(recent.flatMap(record => observedInteractionRecipesFor(record).map(recipe => recipe.id)));
     const recentFamilies = new Set([...recentIds, ...usedIds].map(id => BY_ID.get(id)?.family).filter(Boolean));
     if (textSwitchObserved) {
         const freshPhysical = eligible.filter(recipe => ['object_state', 'spatial_scroll'].includes(recipe.effect)
@@ -166,13 +179,13 @@ export function buildInteractionRecipeRule(faceContexts, rawPolicy = 'balanced',
     if (!numbers.length || (!assignments.length && !constructionRule)) return '';
     const construction = constructionRule
         ? `共用适用规则【${numbers.map(number => `第 ${number} 面 HTML`).join('；')}】\n${constructionRule}`
-        : '先构造展现形式本体，再把本签各项操作与可见结果安放到它实际具备的部件、内容区域和使用流程。各交互共同服务同一个媒介，不各自搭一张无关卡片；同一种交互可复用于多个对象，不限制控件数量。用户明确玩法与原形式固有功能优先，不为交互签更换媒介。';
+        : '交互优先从展现形式自身的用途与内容推导，操作和反馈融入本体；抽中交互仅作按需补充。操作须带来内容相关的发现、反应或后续。按实际效果避重，保留媒介必要的按钮、分页和折叠。';
     if (!assignments.length) return construction;
     const resultConditions = { drag: 'placed=甲,乙', adjust: 'p>=0.6', reveal: 'p>=0.6', view: 'p>=0.6', input: 'match', reorder: 'order=甲,乙', accumulate: 'count>=2' };
     const conditions = [...new Set([...mechanisms].map(key => resultConditions[key]).filter(Boolean))];
-    const results = conditions.length ? `\n阶段联动：在对应 data-rm-ui 内写实际结果节点 data-rm-result hidden，data-rm-when="${conditions.join('"或"')}"；驱动按状态显隐，复原同步。结果用景物、细节或后续控件承接。` : '';
-    const implementation = mechanisms.size ? `\n本轮实现依据（仅抽中项；标识限本面；不执行模型脚本）：\n${[...mechanisms].map(key => INTERACTION_MECHANISMS[key]).join('\n')}` : '';
-    return `交互构造库【第三抽取池；仅下列 HTML 面／选中签适用】：
+    const results = conditions.length ? `\n阶段联动：采用对应构造时，在 data-rm-ui 内写实际结果节点 data-rm-result hidden，data-rm-when="${conditions.join('"或"')}"；驱动按状态显隐，复原同步。结果用景物、细节或后续控件承接。` : '';
+    const implementation = mechanisms.size ? `\n补充实现依据（采用时适用；标识限本面；不执行模型脚本）：\n${[...mechanisms].map(key => INTERACTION_MECHANISMS[key]).join('\n')}` : '';
+    return `交互构造库【按需补充；仅下列 HTML 面／选中签适用】：
 ${construction}
 ${assignments.join('\n\n')}${implementation}${results}`;
 }
@@ -180,8 +193,8 @@ ${assignments.join('\n\n')}${implementation}${results}`;
 export function interactionExecutionReminder(combo) {
     if (combo?.presentationMode === 'text' || combo?.pureOrder) return '';
     if (combo?.atmosphereMenu?.some(ticket => interactionRecipeFor(ticket))) {
-        return '第三池同签执行：交互取选中签已抽好的构造，用本面主体完成操作与可见结果；不要串用未选签。';
+        return '交互依本面形式用途与内容实现；补充构造仅参考选中签，操作与结果融入本体。';
     }
     const recipes = interactionRecipesFor(combo);
-    return recipes.length ? `第三池已锁定「${recipes.map(recipe => recipe.title).join('；')}」：各操作与结果落实到本面形式的实际部件，可在不同对象上复用。` : '';
+    return recipes.length ? `交互依本面形式用途与内容实现；「${recipes.map(recipe => recipe.title).join('；')}」仅作补充，操作与结果融入本体。` : '';
 }

@@ -1,10 +1,10 @@
-import { generationPaletteFields } from './paletteRecipes.js?rmv=1.62.82';
-import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.62.82';
-import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords } from './compositionFingerprint.js?rmv=1.62.82';
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.82';
-import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.62.82';
-import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.62.82';
-import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.62.82';
+import { generationPaletteFields } from './paletteRecipes.js?rmv=1.62.83';
+import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.62.83';
+import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords } from './compositionFingerprint.js?rmv=1.62.83';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.83';
+import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.62.83';
+import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.62.83';
+import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.62.83';
 
 const STORAGE_KEY = 'rabbit_mirror_theater:last_combo:v11';
 const PENDING_KEY = 'rabbit_mirror_theater:pending_combo:v11';
@@ -706,8 +706,12 @@ export function getActivePaletteCooldown(rounds = 5) {
 function normalizeInteractionFamily(value) {
     if (!value || typeof value !== 'object') return undefined;
     const id = String(value.id || '').trim();
-    if (!id || id === 'none') return undefined;
+    if (!id) return undefined;
+    const observed = Array.isArray(value.observedRecipeIds)
+        ? interactionRecipeFields({ interactionRecipeIds: value.observedRecipeIds }).interactionRecipeIds || [] : null;
+    if (id === 'none' && !observed) return undefined;
     return {
+        ...(observed ? { observedRecipeIds: observed } : {}),
         id: id.slice(0, 80),
         label: String(value.label || id).slice(0, 120),
         confidence: Math.max(0, Math.min(1, Number(value.confidence) || 0)),
@@ -718,8 +722,9 @@ function normalizeInteractionFamily(value) {
 
 export function getRecentInteractionFamilies(limit = 5, { preserveEmpty = false } = {}) {
     const recent = getRecentDiversityHistory(limit).map((item, index) => {
-        const value = parseVisualFamilySkeleton(item?.visualSkeleton || '').operation_family === 'object_state_change'
-            ? null : normalizeInteractionFamily(item?.interactionFamily) || null;
+        const observed = normalizeInteractionFamily(item?.interactionFamily);
+        const value = parseVisualFamilySkeleton(item?.visualSkeleton || '').operation_family === 'object_state_change' || observed?.id === 'none'
+            ? null : observed || null;
         // Round identity is transient prompt accounting; stored interaction data
         // and owner identities retain their existing shape.
         const diversityRound = item?.batchId || `legacy:${index}`;
