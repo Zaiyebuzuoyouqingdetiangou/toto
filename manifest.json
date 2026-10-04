@@ -1,10 +1,10 @@
 {
     "display_name": "兔子镜小剧场",
     "loading_order": 100,
-    "js": "index.js?rmv=1.62.88",
-    "css": "style.css?rmv=1.62.88",
+    "js": "index.js?rmv=1.62.90",
+    "css": "style.css?rmv=1.62.90",
     "author": "Toto",
-    "version": "1.62.88",
+    "version": "1.62.90",
     "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
     "auto_update": true,
     "generate_interceptor": "rabbitMirrorGenerateInterceptor",
@@ -13,5 +13,5 @@
         "disable": "onDisable",
         "clean": "onClean"
     },
-    "description": "兔子镜小剧场：新旧美化规则，模型原色；完整重说菜单统一快速路径，动态画面目标与外置标题／分页修复。"
+    "description": "兔子镜小剧场：展现形式优先、视觉增强与三候选交互；副 API 同次响应兼容接收、快速重说与维修。"
 }

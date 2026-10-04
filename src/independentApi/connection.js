@@ -1,25 +1,25 @@
 // Split from independentApi.js — connection.
 
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages } from '../hostCompatibility.js?rmv=1.62.88';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages } from '../hostCompatibility.js?rmv=1.62.90';
 import {
     WORLD_INFO_BOOK_NAME_MAX_CHARS,
     getSettings,
     normalizeIndependentContextExcludedTags,
     updateSettings,
-} from '../settings.js?rmv=1.62.88';
-import { fetchRabbitMirrorIndependentCompletion } from '../independentSecurityGuard.js?rmv=1.62.88';
-import { buildIndependentAdvancedCarrier, applyIndependentAdvancedExclusions } from '../advancedRequestOptions.js?rmv=1.62.88';
-import { describeBatchPlanFailure } from '../externalWorldBook/errors.js?rmv=1.62.88';
-import { describeRabbitMirrorStorageUsage, getCurrentChatKey } from '../storage.js?rmv=1.62.88';
-import { rememberIndependentTransportDiagnostic } from '../transportDiagnostics.js?rmv=1.62.88';
+} from '../settings.js?rmv=1.62.90';
+import { fetchRabbitMirrorIndependentCompletion } from '../independentSecurityGuard.js?rmv=1.62.90';
+import { buildIndependentAdvancedCarrier, applyIndependentAdvancedExclusions } from '../advancedRequestOptions.js?rmv=1.62.90';
+import { describeBatchPlanFailure } from '../externalWorldBook/errors.js?rmv=1.62.90';
+import { describeRabbitMirrorStorageUsage, getCurrentChatKey } from '../storage.js?rmv=1.62.90';
+import { rememberIndependentTransportDiagnostic } from '../transportDiagnostics.js?rmv=1.62.90';
 import {
     CONTEXT_TOTAL_BUDGET,
     CONTEXT_TRANSCRIPT_BUDGET,
     RUNTIME_VERSION,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.62.88';
-import { HOST_GENERATION_EVENT_HINT_MS, operationEpochForBase } from './flights.js?rmv=1.62.88';
+} from './runtime.js?rmv=1.62.90';
+import { HOST_GENERATION_EVENT_HINT_MS, operationEpochForBase } from './flights.js?rmv=1.62.90';
 import {
     OWNER_LOCK_STORE_KEY,
     apiProfileKey,
@@ -31,12 +31,12 @@ import {
     writeApiProfileStore,
     writePersistedOwner,
     writeStore,
-} from './persistence.js?rmv=1.62.88';
+} from './persistence.js?rmv=1.62.90';
 import {
     hasExplicitSourceReplacementEvidence,
     independentStoredHtmlLightRestorable,
     independentStoredHtmlRestorable,
-} from './geometry.js?rmv=1.62.88';
+} from './geometry.js?rmv=1.62.90';
 import {
     activeIndependentFlightForBase,
     messageSourceRevisions,
@@ -44,13 +44,13 @@ import {
     passiveObservedIdentity,
     runtimeMode,
     showIndependentUnsavedOutput,
-} from './mount.js?rmv=1.62.88';
+} from './mount.js?rmv=1.62.90';
 import {
     hostGenerationHintStartedAt,
     hostGenerationInProgress,
     writeHostGenerationHintStartedAt,
     writeHostGenerationInProgress,
-} from './lifecycle.js?rmv=1.62.88';
+} from './lifecycle.js?rmv=1.62.90';
 
 export const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 
@@ -97,6 +97,9 @@ export const API_PROFILE_ORDER = [
 ];
 
 const DEGRADED_PROFILE_RECHECK_MS = 6 * 60 * 60 * 1000;
+
+// Old nostream memories were earned after ambiguous timeouts/empty replies.
+const STREAM_COMPATIBILITY_SCHEMA = 1;
 
 const STAGED_PROFILE_TTL_MS = 20 * 60 * 1000;
 
@@ -198,7 +201,9 @@ export function getRememberedApiProfile(st){
  // no-temp or user-only fallback forever.
  if(!record || typeof record!=='object' || Number(record.schema)!==API_PROFILE_SCHEMA) return '';
  if(Math.abs(Number(record.temperature)-normalizedConfiguredTemperature(st))>0.0001) return '';
- if(profileIsDegraded(record.profile) && Date.now()-Number(record.ts||0)>DEGRADED_PROFILE_RECHECK_MS) return '';
+ if(!profileUsesStreaming(record.profile) && Number(record.streamCompatibilitySchema)!==STREAM_COMPATIBILITY_SCHEMA) return '';
+ const since=Number(record.compatibilitySince||record.ts||0);
+ if(profileIsDegraded(record.profile) && Date.now()-since>=DEGRADED_PROFILE_RECHECK_MS) return '';
  return API_PROFILE_ORDER.includes(String(record.profile||'')) ? String(record.profile||'') : '';
 }
 
@@ -261,7 +266,14 @@ export function rememberApiProfile(st,profile){
  // A semantically valid RabbitMirror response proves this profile works. Clear
  // any staged manual-retry candidate so future automatic mirrors stay one-shot
  // on the proven profile.
- store[key]={schema:API_PROFILE_SCHEMA,profile:String(profile),temperature:normalizedConfiguredTemperature(st),ts:Date.now(),runtime:RUNTIME_VERSION};
+ const current=store[key]; const now=Date.now();
+ const priorSince=Number(current?.compatibilitySince||current?.ts||0);
+ const same=current?.profile===String(profile) && Number(current.schema)===API_PROFILE_SCHEMA
+  && Number(current.streamCompatibilitySchema)===STREAM_COMPATIBILITY_SCHEMA
+  && Math.abs(Number(current.temperature)-normalizedConfiguredTemperature(st))<=0.0001;
+ const compatibilitySince=same && priorSince>0 && now-priorSince<DEGRADED_PROFILE_RECHECK_MS?priorSince:now;
+ store[key]={schema:API_PROFILE_SCHEMA,profile:String(profile),temperature:normalizedConfiguredTemperature(st),ts:now,
+  compatibilitySince,streamCompatibilitySchema:STREAM_COMPATIBILITY_SCHEMA,runtime:RUNTIME_VERSION};
  const entries=Object.entries(store).sort((a,b)=>Number(b[1]?.ts||b[1]?.nextTs||0)-Number(a[1]?.ts||a[1]?.nextTs||0));
  writeApiProfileStore(Object.fromEntries(entries.slice(0,80)));
 }
@@ -585,7 +597,7 @@ function independentConnectionPayload(runtime,proxyPresets=[]){
   if(apiMap.source==='minimax') payload.minimax_endpoint=apiUrl;
  }
  const proxyName=normalizeIndependentConnectionText(profile?.proxy,240);
- if(proxyName && proxyName.toLowerCase()!=='none'){
+ if(apiMap.source!=='custom' && proxyName && proxyName.toLowerCase()!=='none'){
   const proxy=(Array.isArray(proxyPresets)?proxyPresets:[]).find(item=>String(item?.name||'')===proxyName);
   if(!proxy) throw independentModelListError(`酒馆连接指定的代理「${proxyName}」无法安全解析；已停止远端拉取。`,'MODEL_LIST_PROFILE_PROXY');
   const proxyUrl=normalizeIndependentConnectionText(proxy?.url,2000);
@@ -2093,7 +2105,7 @@ export async function fetchIndependentUrl(url,options={}){
  const st=options.settings && typeof options.settings==='object' ? options.settings : getSettings();
  const connectionId=normalizeIndependentConnectionText(st?.independentConnectionProfileId,160);
  const connectionRuntime=connectionId?await validatedIndependentConnectionProfile(connectionId):null;
- const proxyPresets=connectionRuntime?await independentConnectionProxyPresets():[];
+ const proxyPresets=connectionRuntime && connectionRuntime.apiMap.source!=='custom'?await independentConnectionProxyPresets():[];
  const connectionPayload=connectionRuntime?independentConnectionPayload(connectionRuntime,proxyPresets):null;
  const customUrl=connectionRuntime?'':customApiBaseFromUrl(url);
  if(!connectionRuntime && !customUrl) throw new Error('独立 API 地址无效');
@@ -2110,7 +2122,9 @@ export async function fetchIndependentUrl(url,options={}){
    options.assertAdvancedCurrent?.();
    return await fetchRabbitMirrorIndependentCompletion(ST_CUSTOM_GENERATE_ENDPOINT,{
     method:'POST',credentials:'same-origin',headers:requestHeaders,signal:options.signal,
-    body:JSON.stringify({...remoteBody,...connectionPayload,...advancedCarrier,stream:remoteBody.stream!==false}),rabbitMirrorDispatchLease:options.dispatchLease,rabbitMirrorRequestObserver:options.onEvidenceRequest,
+    body:JSON.stringify({...remoteBody,...connectionPayload,
+     custom_prompt_post_processing:connectionRuntime.profile?.['prompt-post-processing'],use_sysprompt:true,
+     ...advancedCarrier,stream:remoteBody.stream!==false}),rabbitMirrorDispatchLease:options.dispatchLease,rabbitMirrorRequestObserver:options.onEvidenceRequest,
    });
   }
   if(method==='GET' && /\/models(?:\?|$)/i.test(String(url))){

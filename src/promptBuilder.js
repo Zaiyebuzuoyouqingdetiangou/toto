@@ -1,28 +1,28 @@
-import { INTERACTION_SAMPLING_RULE } from './interactionSampling.js?rmv=1.62.88';
-import { usesModelOriginalColors, withoutPaletteRecipe, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.62.88';
-import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=1.62.88';
-import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=1.62.88';
-import { isNearWhitePalette } from './paletteObservation.js?rmv=1.62.88';
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.88';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.88';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.88';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.88';
-import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.88';
-import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.62.88';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.88';
-import { getComboHistory, getActivePaletteCooldown } from './storage.js?rmv=1.62.88';
-import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock } from './visualDiversityPolicy.js?rmv=1.62.88';
-import { withoutInteractionRecipe, observedInteractionRecipesFor } from './interactionRecipes.js?rmv=1.62.88';
-import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.62.88';
-import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.88';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.88';
-export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.88';
-import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.88';
-import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.88';
-import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.62.88';
-import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.88';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.88';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.88';
+import { INTERACTION_SAMPLING_RULE } from './interactionSampling.js?rmv=1.62.90';
+import { usesModelOriginalColors, withoutPaletteRecipe, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.62.90';
+import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=1.62.90';
+import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=1.62.90';
+import { isNearWhitePalette } from './paletteObservation.js?rmv=1.62.90';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.90';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.90';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.90';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.90';
+import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES } from '../data/raw/visualSceneryRules.js?rmv=1.62.90';
+import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.62.90';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.90';
+import { getComboHistory, getActivePaletteCooldown } from './storage.js?rmv=1.62.90';
+import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock } from './visualDiversityPolicy.js?rmv=1.62.90';
+import { withoutInteractionRecipe, observedInteractionRecipesFor } from './interactionRecipes.js?rmv=1.62.90';
+import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.62.90';
+import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.90';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.90';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.90';
+import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.90';
+import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.90';
+import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.62.90';
+import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.90';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.90';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.90';
 
 const THEME_ITEMS = new Map(THEMATIC_CATEGORIES.map(item => [item.id, item]));
 const FORMAT_ITEMS = new Map(PRESENTATION_FORMATS.map(item => [item.id, item]));
@@ -456,13 +456,9 @@ function tarotPhysicalImageRule(faceIndexes = []) {
 
 function mediumInteractionConstructionRule() {
     return String.raw`交互构造【由展现形式决定】：
-  - 除最外层折叠外，每轮必须实际存在至少一组从本轮叙事核心、媒介本体或画面内部关系自然生长的完整交互链：可操作对象→明确操作→可识别且可保持的状态变化→对应的内容、关系或结构反馈→可继续推进、分支、组合、切换或返回。
-  - 交互产生、替换或推进后的主要正文与关键反馈，须由本轮展现形式自身的内容区域完整承载，并在对应状态中保持可读、可达；不得因裁切、遮挡或脱离所属区域而显示不全。
-  - 交互必须由真实可触发对象、对应状态机制与受控内容共同构成；第二状态须在内容、关系、结构、空间、视觉层级、材质、时间进程、观察方式、角色反应或后续可操作范围中的至少一项发生清晰且有意义的变化；不同操作不得无故得到完全相同的反馈。
-  - 存在多个值得探索的内容节点时，须提供多个有效入口或连续阶段，让不同操作获得不同的内容或状态反馈；不得把适合探索、分支或推进的媒介压缩成一次显隐后结束。
-  - 交互形态、规模与阶段须由本轮展现形式自身的结构、功能、使用方式与叙事产生，不得从固定候选清单反推玩法或复用默认控件骨架；非一次性动作的首次操作不得耗尽全部体验。
-  - 仅变色、描边、阴影、轻微位移、伪选项、无关交互堆叠，或非一次性媒介中一次显隐后立即结束，不算完整交互。操作须可触摸触发，hover/active 只能辅助。
-  - 除外层整面开合外，禁止内部 details/summary 及展开／收起正文的替代结构；禁止并列按钮／标签仅轮换同位置正文，改名或改数量也算。条目若含这些做法，保留其内容与展现形式，改用本体其他真实操作；物件开合、实际翻页与不同功能按钮按实际行为区分。
+  - 由展现形式的结构、功能与内容形成“本体对象→操作→可保持的状态变化与有意义的反馈→按需继续或返回”；有多个探索节点时提供连续阶段或不同结果，非一次性玩法不能一次显隐就结束。
+  - 操作须支持触屏，hover/active 仅辅助；正文与反馈由本体对应区域完整承载、清晰可读可达。仅变色、描边等装饰或选中效果不算完整交互。
+  - 保留外层整面开合；禁止内部 details/summary 及展开／收起正文的替代结构；禁止并列按钮／标签仅轮换同位置正文，改名或改数量也算。真实物件开合、翻页与不同功能按钮按实际行为区分。
 ${INTERACTION_SAMPLING_RULE}`;
 }
 

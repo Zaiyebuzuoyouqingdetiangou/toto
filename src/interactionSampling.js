@@ -2,7 +2,7 @@
 // One completion reports a small distribution, selects a plan and implements it.
 // Selection is model-reported, not a locally enforced random draw. The record is
 // optional diagnostic evidence, never a generation gate or an interaction test.
-export const INTERACTION_SAMPLING_RULE = `交互候选【VS 试验】：为本面已抽中的展现形式临时生成 5 个合理、实际操作结果不同的短方案，各用一句写清本体对象、操作与反馈，并给出自然生成该方案的估计概率 p（0～1，非质量分）。从完整可能性中取样，包含较少见但适配的方案；按这些概率归一化抽取一个，不默认取最高概率。先在本面最外层 details 的 data-rm-vs 属性写合法 JSON：{"c":[["短方案",0.1],…],"pick":1}（c 为五项，pick 从1起，属性引号按 HTML 转义），随后只实现选中方案。候选与概率不显示、不变成界面选项；不重抽主题或展现形式。`;
+export const INTERACTION_SAMPLING_RULE = `交互候选【VS 试验】：为本面已抽中的展现形式临时生成 3 个合理、实际操作结果不同的短方案，各用一句写清本体对象、操作与反馈，并给出自然生成该方案的估计概率 p（0～1，非质量分）。从完整可能性中取样，包含较少见但适配的方案；按这些概率归一化抽取一个，不默认取最高概率。先在本面最外层 details 的 data-rm-vs 属性写合法 JSON：{"c":[["短方案",0.1],…],"pick":1}（c 为三项，pick 从1起，属性引号按 HTML 转义），随后只实现选中方案。候选与概率不显示、不变成界面选项；不重抽主题或展现形式。`;
 
 export function interactionSamplingDiagnostic(root) {
     let raw;
@@ -12,7 +12,9 @@ export function interactionSamplingDiagnostic(root) {
     if (typeof raw !== 'string' || raw.length > 8192) return invalid;
     let record;
     try { record = JSON.parse(raw); } catch { return invalid; }
-    if (!record || !Array.isArray(record.c) || record.c.length !== 5
+    // Three candidates for new work; keep reading the five-candidate records
+    // already emitted by 1.62.88. This remains diagnostic-only.
+    if (!record || !Array.isArray(record.c) || ![3, 5].includes(record.c.length)
         || !Number.isInteger(record.pick) || record.pick < 1 || record.pick > record.c.length) return invalid;
     if (record.c.some(item => !Array.isArray(item) || item.length !== 2
         || typeof item[0] !== 'string' || !item[0].trim()
