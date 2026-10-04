@@ -32,4 +32,4 @@ export const GUIDED_VISUAL_FLOOR = '依本面已选展现形式与正文，先�
 
 // Shared by both visual floors, once per HTML batch. Drawing no longer needs
 // a separate toggle; motion and document flow keep their existing shared rules.
-export const COMMON_VISUAL_DRAWING = '依展现形式绘出主体轮廓、部件连接与材质接缝，按需呈现前后遮挡，受光与投影一致；交互就地改变对应对象的内容或空间状态。可自由组合 HTML、CSS 与安全内联 SVG。不固定布局或强制 SVG。';
+export const COMMON_VISUAL_DRAWING = '必须用 HTML/CSS 或安全内联 SVG 依展现形式绘出主体轮廓、部件连接与材质接缝，按需呈现前后遮挡，受光与投影一致；交互就地改变对应对象的内容或空间状态。不固定布局，不强制 SVG。';

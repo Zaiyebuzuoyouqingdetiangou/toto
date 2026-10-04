@@ -1,6 +1,6 @@
 // Split from outputSanitizer.js — layoutRescue.
 
-import { collectBoundedElementDescendants, semanticEnsembleScalePlan } from '../presentationQuality.js?rmv=1.62.77';
+import { collectBoundedElementDescendants, semanticEnsembleScalePlan } from '../presentationQuality.js?rmv=1.62.78';
 import {
     FEEDBACK_CAT_ATTR,
     MAINTENANCE_RABBIT_ATTR,
@@ -8,7 +8,7 @@ import {
     RECIPE_BUTTON_ATTR,
     TOOL_ENTRY_HOST_ATTR,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.62.77';
+} from './runtime.js?rmv=1.62.78';
 import {
     EXCLUSIVE_STACKED_STATE_PANEL_ATTR,
     MOBILE_INLINE_ANNOTATION_MIRROR_ATTR,
@@ -24,13 +24,13 @@ import {
     parseCheckedRulesFromText,
     repairRabbitMirrorSelectorPanelGridSpan,
     resolveTargetsForCheckedRule,
-} from './checkedStateRescue.js?rmv=1.62.77';
-import { getClassTokens } from './renderedStateRescue.js?rmv=1.62.77';
+} from './checkedStateRescue.js?rmv=1.62.78';
+import { getClassTokens } from './renderedStateRescue.js?rmv=1.62.78';
 import {
     ensurePassportDocumentRescueStyle,
     findRenderedPassportDocumentCandidates,
     markRenderedPassportDocumentCandidate,
-} from './scriptedInteractionRescue.js?rmv=1.62.77';
+} from './scriptedInteractionRescue.js?rmv=1.62.78';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     INDEPENDENT_MOBILE_SPATIAL_CANVAS_ATTR,
@@ -88,7 +88,7 @@ import {
     mobileLayoutRescueStates,
     mobileMatrixPreserveStates,
     rabbitMirrorFacePositionHints,
-} from './diagnostics.js?rmv=1.62.77';
+} from './diagnostics.js?rmv=1.62.78';
 
 let mobileLayoutScopeCounter = 0;
 

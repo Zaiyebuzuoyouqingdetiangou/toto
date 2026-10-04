@@ -1,10 +1,11 @@
 // Shared generation policy, emitted once after composing all faces/candidates.
 // These are creative requirements, not parser gates or automatic retry triggers.
-export function strongVisualDiversityRule({ hasHistory = false, textOnly = false, hasRecentTextPanelSwitch = false } = {}) {
+export function strongVisualDiversityRule({ hasHistory = false, textOnly = false, hasRecentTextPanelSwitch = false, hasRecentTextDisclosure = false } = {}) {
     const basis = hasHistory ? '参考近期选材与实际主色' : '依正文独立构思';
     if (textOnly || !hasHistory) return `避重：${basis}，同批及相邻轮优先变化，允许部分复用；用户指定、固有功能与材质优先。${textOnly ? '文本面只调整题材与阅读配色，不新增交互或动画。' : ''}`;
-    return 'HTML 面避重：近三轮主色及同族相近色一并避重，改变主要承载面的主色调，只换色号或点缀色不算；用户指定、固有材质和必要局部色保留；；主题、形式和交互编号可部分复用，但近期重复的页面布局与操作方式必须改变。仅换名称、按钮数量、颜色或编号不算变化。'
+    return 'HTML 面避重：近三轮实际主色及同族相近色必须避开；只换色号或点缀色不算。主题、形式和交互编号可部分复用，但近期重复的页面布局与操作方式必须改变。仅换名称、按钮数量、颜色或编号不算变化。'
         + (hasRecentTextPanelSwitch ? '本轮严禁再次采用“并列入口仅切换同位长文”。' : '')
+        + (hasRecentTextDisclosure ? '本轮严禁再以展开／收起文字充当主交互。' : '')
         + '用户指定优先；保留展现形式必需的功能与材质，不得以此为由复刻整套结构。';
 }
 
