@@ -180,8 +180,15 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     const vault = make('div', 'rh-ui-source'); vault.hidden = true;
     vault.append(...root.children); root.append(vault);
     const window = make('div', 'rh-ui-window');
-    const head = html('header', 'rh-ui-head', '<span class="rh-ui-logo" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M10 16C4 2 11 1 14 14M18 14C20 1 27 2 23 16M9 16c-7 11 3 15 9 14s13-8 5-14c-4-3-10-3-14 0Z"/><path d="M12 22h1m6 0h1m-6 4 2 1 2-1"/></svg></span><div><strong>兔子镜</strong><small>RABBIT MIRROR · 小剧场</small></div>');
+    const head = html('header', 'rh-ui-head', '<span class="rh-ui-logo" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M10 16C4 2 11 1 14 14M18 14C20 1 27 2 23 16M9 16c-7 11 3 15 9 14s13-8 5-14c-4-3-10-3-14 0Z"/><path d="M12 22h1m6 0h1m-6 4 2 1 2-1"/></svg></span><div class="rh-ui-title"><strong>兔子镜</strong><small>RABBIT MIRROR · 小剧场</small></div>');
     const close = button('×', () => setOpen(false), 'rh-ui-close'); close.setAttribute('aria-label', '关闭兔子镜'); head.append(close);
+    const versionRow = make('div', 'rh-ui-version-row');
+    const subtitle = head.querySelector('small');
+    subtitle.replaceWith(versionRow);
+    versionRow.append(subtitle);
+    void import('./mirrorUpdateMenu.js?rmv=1.62.95').then(mod => {
+        if (versionRow.isConnected) mod.mountSettingsUpdateChrome(versionRow);
+    }).catch(error => console.warn('[RabbitMirror] 设置标题的更新检测没有挂上', error));
     const searchbar = make('div', 'rh-ui-searchbar');
     const back = button('‹ 返回', () => goBack(), 'rh-ui-back'); back.id = 'rh_ui_back';
     const search = make('input', 'rh-ui-search'); search.type = 'search'; search.placeholder = '搜索功能，如：多面、世界书'; search.setAttribute('aria-label', '搜索兔子镜功能');

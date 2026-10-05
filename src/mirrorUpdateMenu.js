@@ -67,7 +67,7 @@ function sectionBlock(section) {
     return block;
 }
 
-function fillReadme(body, result) {
+function fillReadme(body, result, { full = false } = {}) {
     body.replaceChildren();
     if (!result?.ok) {
         const fail = document.createElement('p');
@@ -77,8 +77,12 @@ function fillReadme(body, result) {
     }
     const current = runningRabbitMirrorVersion();
     const newer = result.sections.filter(section => section.version && isNewerRabbitMirrorVersion(section.version, current));
-    const show = (newer.length ? newer : result.sections.slice(0, 1)).slice(0, 12);
-    if (!newer.length) {
+    const show = full ? result.sections : (newer.length ? newer : result.sections.slice(0, 1)).slice(0, 12);
+    if (full && result.sections.length > 1) {
+        const hint = document.createElement('p');
+        hint.textContent = `共 ${result.sections.length} 个版本，向下滚动查看更早更新`;
+        body.append(hint);
+    } else if (!full && !newer.length) {
         const note = document.createElement('p');
         note.textContent = 'README 里还没有比当前版本更高的条目，下面是这次读到的最新说明。';
         body.append(note);
@@ -100,7 +104,7 @@ function ensureSheet() {
     const overlay = document.createElement('div');
     overlay.setAttribute('data-rm-update-sheet', 'true');
     overlay.setAttribute('role', 'presentation');
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:10080;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;background:rgba(0,0,0,.45);';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:2147483600;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;background:rgba(0,0,0,.45);';
     const card = document.createElement('section');
     card.setAttribute('role', 'dialog');
     card.setAttribute('aria-modal', 'true');
@@ -179,16 +183,99 @@ async function runApply(apply, close, body) {
     }
 }
 
-async function openUpdateLog() {
+async function openRabbitMirrorChangelog({ mode = 'view' } = {}) {
     const overlay = ensureSheet();
     const body = overlay.querySelector('[data-rm-update-sheet-body]');
     const title = overlay.querySelector('[data-rm-update-sheet-title]');
+    const apply = overlay.querySelector('[data-rm-update-sheet-apply]');
+    const updateMode = mode === 'update';
+    apply.hidden = !updateMode;
+    apply.style.setProperty('display', updateMode ? 'block' : 'none', 'important');
     const snap = getRabbitMirrorUpdateSnapshot();
-    title.textContent = snap.remoteVersion ? `发现新版本 ${snap.remoteVersion}` : '发现新版本';
+    title.textContent = updateMode
+        ? (snap.remoteVersion ? `发现新版本 ${snap.remoteVersion}` : '发现新版本')
+        : '更新日志';
     body.textContent = '正在读取 README…';
     const readme = await loadRabbitMirrorReadme({ remoteUrl: snap.remoteUrl, remoteBranch: snap.remoteBranch });
     if (!overlay.isConnected) return;
-    fillReadme(body, readme);
+    fillReadme(body, readme, { full: !updateMode });
+}
+
+const scrollIcon = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M7 4h8a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3z"/><path d="M7 4v13a3 3 0 0 0 3 3"/><path d="M10 8h5M10 12h5"/></svg>';
+
+function paintSettingsChrome(row, snap) {
+    const badge = row.querySelector('[data-rm-settings-badge]');
+    const action = row.querySelector('[data-rm-settings-update]');
+    const version = runningRabbitMirrorVersion();
+    if (badge) badge.textContent = version ? `v${version}` : '版本未知';
+    if (!action) return;
+    const checking = snap.status === 'checking' || applying;
+    action.disabled = checking || snap.status === 'latest';
+    if (snap.status === 'available') {
+        action.textContent = applying ? '更新中…' : '有更新';
+        action.title = '发现扩展更新，点击查看更新日志';
+        action.dataset.rmSettingsMode = 'update';
+    } else if (snap.status === 'latest') {
+        action.textContent = '已是最新';
+        action.title = '当前版本已是最新';
+        action.dataset.rmSettingsMode = 'latest';
+    } else if (checking) {
+        action.textContent = '检测中…';
+        action.title = '正在检测更新';
+        action.dataset.rmSettingsMode = 'checking';
+    } else {
+        action.textContent = '检测更新';
+        action.title = snap.status === 'unknown' ? '上次检测失败，点击重新检测' : '检测兔子镜是否有新版本';
+        action.dataset.rmSettingsMode = 'check';
+    }
+}
+
+export function mountSettingsUpdateChrome(row) {
+    if (!row || row.querySelector('[data-rm-settings-update]')) return;
+    const badge = document.createElement('span');
+    badge.className = 'rh-ui-version-badge';
+    badge.dataset.rmSettingsBadge = 'true';
+    const action = document.createElement('button');
+    action.type = 'button';
+    action.className = 'rh-ui-version-update';
+    action.dataset.rmSettingsUpdate = 'true';
+    const log = document.createElement('button');
+    log.type = 'button';
+    log.className = 'rh-ui-version-log';
+    log.title = '查看更新日志';
+    log.setAttribute('aria-label', '查看更新日志');
+    log.innerHTML = scrollIcon;
+    row.append(badge, action, log);
+    const render = () => { if (row.isConnected) paintSettingsChrome(row, getRabbitMirrorUpdateSnapshot()); };
+    const unsubscribe = subscribeRabbitMirrorUpdate(render);
+    const root = row.parentElement;
+    const observer = new MutationObserver(() => {
+        if (!row.isConnected) { unsubscribe(); observer.disconnect(); }
+    });
+    if (root) observer.observe(root, { childList: true, subtree: true });
+    render();
+    action.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (action.dataset.rmSettingsMode === 'update') {
+            void openRabbitMirrorChangelog({ mode: 'update' });
+            return;
+        }
+        if (action.dataset.rmSettingsMode !== 'check') return;
+        void (async () => {
+            const snap = await checkRabbitMirrorUpdate({ force: true });
+            if (!row.isConnected) return;
+            if (snap.status === 'latest') globalThis.toastr?.info?.('当前已是最新');
+            else if (snap.status === 'unknown') globalThis.toastr?.warning?.(snap.message || '没能完成检测，请稍后再试。');
+            else if (snap.status === 'available') globalThis.toastr?.info?.(snap.remoteVersion ? `发现新版本 ${snap.remoteVersion}` : '发现新版本');
+        })();
+    });
+    log.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        void openRabbitMirrorChangelog({ mode: 'view' });
+    });
+    void checkRabbitMirrorUpdate();
 }
 
 function mountMirrorUpdateRow(panel) {
@@ -233,7 +320,7 @@ function mountMirrorUpdateRow(panel) {
     available.addEventListener('click', event => {
         event.preventDefault();
         event.stopPropagation();
-        void openUpdateLog();
+        void openRabbitMirrorChangelog({ mode: 'update' });
     });
     void checkRabbitMirrorUpdate();
 }

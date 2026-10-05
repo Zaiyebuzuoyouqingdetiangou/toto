@@ -1,4 +1,4 @@
-// User-triggered only. The host owns Git/permissions; never reset, delete or reinstall.
+// 用户点了更新之后才动安装。git pull 被本地改动挡住时，改为用 GitHub 版本覆盖，和预设备忘录一样。
 let pending = null;
 export function ownExtensionFolder(moduleUrl = import.meta.url) {
     // TauriTavern 等宿主可能在路径前加前缀，只要求末尾是 third-party/<目录>/src/extensionUpdater.js。
@@ -11,7 +11,7 @@ export function ownExtensionFolder(moduleUrl = import.meta.url) {
 function failure(status) {
     if (status === 401 || status === 403) return '酒馆拒绝更新权限。全局安装可能需要管理员操作；此按钮不能绕过权限。';
     if (status === 404 || status === 405) return '当前酒馆没有提供此更新接口，或安装目录不存在。请使用宿主更新功能或安装包。';
-    return '宿主更新失败。可能是仓库连接失败、非 Git 安装或本地文件冲突；请检查宿主日志。没有自动重试或重装。';
+    return '宿主更新失败。可能是仓库连接失败、非 Git 安装或本地文件冲突；请检查宿主日志。';
 }
 // 旧版没有超时：宿主的 git 拉取卡住时，按钮一直处于处理中，之后再点也没有反应。
 async function fetchWithTimeout(fetchImpl, url, init, ms, label) {
@@ -107,7 +107,14 @@ export function requestRabbitMirrorUpdate({ fetchImpl = globalThis.fetch.bind(gl
             method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' },
             body: JSON.stringify({ extensionName: folder, global: entry.type === 'global' }),
         }, 180000, '宿主更新');
-        if (!response.ok) throw new Error(failure(response.status));
+        if (!response.ok) {
+            let detail = '';
+            try { detail = (await response.text()).trim(); } catch {}
+            const error = new Error(failure(response.status));
+            error.status = response.status;
+            error.detail = detail;
+            throw error;
+        }
         const result = await response.json();
         if (typeof result?.isUpToDate !== 'boolean') throw new Error('宿主返回了未识别的更新结果，请检查扩展版本后再操作；不会自动重复更新。');
         return { status: result.isUpToDate ? 'current' : 'updated' };
@@ -424,11 +431,44 @@ export function setupRabbitMirrorExtensionReloadWatch() {
     } catch {}
 }
 
-function resolveUpdateExtensionFn() {
-    if (typeof globalThis.updateExtension === 'function') return globalThis.updateExtension.bind(globalThis);
+function resolveHostFn(name) {
+    if (typeof globalThis[name] === 'function') return globalThis[name].bind(globalThis);
     const helper = globalThis.TavernHelper;
-    if (typeof helper?.updateExtension === 'function') return helper.updateExtension.bind(helper);
+    if (typeof helper?.[name] === 'function') return helper[name].bind(helper);
     return null;
+}
+
+function resolveUpdateExtensionFn() {
+    return resolveHostFn('updateExtension');
+}
+
+function looksLikeGitPullBlocked(error, status = 0, detail = '') {
+    const text = `${detail} ${error instanceof Error ? error.message : String(error || '')}`;
+    return status === 500 || error?.status === 500 || /not valid JSON|Unexpected token|Internal Server Error/i.test(text);
+}
+
+async function overwriteFromGithub(folder) {
+    const reinstallFn = resolveHostFn('reinstallExtension');
+    if (!reinstallFn) {
+        throw new Error('更新失败：本地扩展目录有改动，酒馆无法 git pull。当前环境没有 GitHub 覆盖安装。');
+    }
+    globalThis.toastr?.info?.('git pull 被本地改动挡住了，改为用 GitHub 版本覆盖…');
+    const response = await reinstallFn(folder);
+    if (response?.ok === true) {
+        globalThis.toastr?.success?.('已强制覆盖为 GitHub 版本，正在刷新页面…');
+        reloadTavernPage();
+        return { ok: true, overwritten: true };
+    }
+    const status = typeof response?.status === 'number' ? response.status : 0;
+    let detail = '';
+    try { if (typeof response?.text === 'function') detail = (await response.text()).trim(); } catch {}
+    throw new Error(detail || (status ? `GitHub 覆盖失败 (HTTP ${status})` : 'GitHub 覆盖失败'));
+}
+
+function finishUpdated() {
+    globalThis.toastr?.success?.('兔子镜已更新，正在刷新页面…');
+    reloadTavernPage();
+    return { ok: true };
 }
 
 export async function applyRabbitMirrorUpdateAndReload(options = {}) {
@@ -437,31 +477,32 @@ export async function applyRabbitMirrorUpdateAndReload(options = {}) {
         publish({ status: check.status === 'unknown' ? 'unknown' : 'latest' });
         return { ok: true, skipped: true, message: check.status === 'unknown' ? (check.message || '没能确认远程版本，没有发送更新。') : '当前已是最新版本，无需更新' };
     }
+    let folder = '';
+    try { folder = ownExtensionFolder(options.moduleUrl); } catch (error) { throw error; }
     const updateFn = resolveUpdateExtensionFn();
     if (updateFn) {
-        let folder = '';
-        try { folder = ownExtensionFolder(options.moduleUrl); } catch (error) {
+        try {
+            const response = await updateFn(folder);
+            if (response?.ok === true) return finishUpdated();
+            const status = typeof response?.status === 'number' ? response.status : 0;
+            let detail = '';
+            try { if (typeof response?.text === 'function') detail = (await response.text()).trim(); } catch {}
+            if (looksLikeGitPullBlocked(null, status, detail)) return overwriteFromGithub(folder);
+            throw new Error(detail || failure(status));
+        } catch (error) {
+            if (looksLikeGitPullBlocked(error, error?.status, error?.detail)) return overwriteFromGithub(folder);
             throw error;
         }
-        const response = await updateFn(folder);
-        if (response?.ok === true) {
-            globalThis.toastr?.success?.('兔子镜已更新，正在刷新页面…');
-            reloadTavernPage();
-            return { ok: true };
-        }
-        const detail = response && typeof response.text === 'function' ? (await response.text()).trim() : '';
-        const status = typeof response?.status === 'number' ? response.status : 0;
-        if (status === 500 || /not valid JSON|Internal Server Error/i.test(detail)) {
-            throw new Error('更新失败：本地扩展目录有改动，酒馆无法 git pull。请先处理本地改动，再点更新。不会自动重装。');
-        }
-        throw new Error(detail || failure(status));
     }
-    const result = await requestRabbitMirrorUpdate(options);
-    if (result.status === 'current') {
-        publish({ status: 'latest' });
-        return { ok: true, skipped: true, message: '宿主确认当前安装已同步，没有新的文件可拉取。' };
+    try {
+        const result = await requestRabbitMirrorUpdate(options);
+        if (result.status === 'current') {
+            publish({ status: 'latest' });
+            return { ok: true, skipped: true, message: '宿主确认当前安装已同步，没有新的文件可拉取。' };
+        }
+        return finishUpdated();
+    } catch (error) {
+        if (looksLikeGitPullBlocked(error, error?.status, error?.detail)) return overwriteFromGithub(folder);
+        throw error;
     }
-    globalThis.toastr?.success?.('兔子镜已更新，正在刷新页面…');
-    reloadTavernPage();
-    return { ok: true };
 }
