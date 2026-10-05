@@ -13,6 +13,18 @@ export function isNearWhitePalette(fingerprint) {
     return luminance >= 225 && luminance <= 255 && chroma >= 0 && chroma <= .12 && lightArea >= .8 && lightArea <= 1;
 }
 
+// Interior reading surfaces are a separate observation, not a replacement for
+// the outer carrier or a claim about measured screen coverage.
+export function isNearWhiteContentSurface(fingerprint) {
+    const colors = fingerprint?.contentSurfaceColors;
+    if (!(Number(fingerprint?.confidence) >= .5) || !Array.isArray(colors) || !colors.length || colors.length > 4) return false;
+    return colors.every(hex => {
+        if (typeof hex !== 'string' || !/^#[0-9a-f]{6}$/i.test(hex)) return false;
+        const [r, g, b] = hex.slice(1).match(/../g).map(channel => parseInt(channel, 16));
+        return luminanceFromRgb(r, g, b) >= 225 && (Math.max(r, g, b) - Math.min(r, g, b)) / 255 <= .12;
+    });
+}
+
 export function clamp(value, min, max) {
     return Math.min(max, Math.max(min, value));
 }

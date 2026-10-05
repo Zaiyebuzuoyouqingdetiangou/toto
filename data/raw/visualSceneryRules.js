@@ -2,7 +2,7 @@
 export const VISUAL_SCENERY_EXPRESSION_RULE = '从正文氛围、情绪与联想自由构思；风景、动物、人物、物件、空间及抽象意象均可独立成景，表达对象与形态不限。可呈现回忆、想象、未来愿景或其他可能性，不必复刻当前场景，也不要求人物出镜；亲密感官意味作诗意化表达。';
 
 // Qualify the existing three-plan VS only after the visual construction/beauty stages.
-export const VISUAL_SCENERY_VS_GUIDANCE = '本面 VS 三条短方案从视觉主体、空间构图与动态过程探索不同表达，不固定类型；仍只实现所选一条。';
+export const VISUAL_SCENERY_VS_GUIDANCE = '本面 VS 三条短方案从视觉主体、空间构图与动态过程探索不同表达，不固定类型。';
 
 export const VISUAL_SCENERY_CONSTRUCTION_RULES = String.raw`
 【Visual Scenery 动态画面本体】

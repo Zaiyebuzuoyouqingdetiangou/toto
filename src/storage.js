@@ -1,10 +1,10 @@
-import { generationPaletteFields } from './paletteRecipes.js?rmv=1.62.93';
-import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.62.93';
-import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords } from './compositionFingerprint.js?rmv=1.62.93';
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.93';
-import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.62.93';
-import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.62.93';
-import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.62.93';
+import { generationPaletteFields } from './paletteRecipes.js?rmv=1.62.94';
+import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.62.94';
+import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords, observedOperationFamiliesFor } from './compositionFingerprint.js?rmv=1.62.94';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.94';
+import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.62.94';
+import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.62.94';
+import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.62.94';
 
 const STORAGE_KEY = 'rabbit_mirror_theater:last_combo:v11';
 const PENDING_KEY = 'rabbit_mirror_theater:pending_combo:v11';
@@ -459,7 +459,7 @@ export function getRecentIds(limit = 10) {
 // rewriting history or hiding unrelated drawing/motion risks.
 function historicalRiskFlags(item) {
     const flags = Array.isArray(item?.riskFlags) ? item.riskFlags : [];
-    const objectStateChange = parseVisualFamilySkeleton(item?.visualSkeleton || '').operation_family === 'object_state_change';
+    const objectStateChange = observedOperationFamiliesFor(item).includes('object_state_change');
     return objectStateChange
         ? flags.filter(flag => flag !== 'missing_interaction' && flag !== 'fake_interaction')
         : flags;
@@ -556,6 +556,7 @@ export function getRecentPaletteCooldown(window = 3) {
 const VISUAL_FAMILY_DIMENSION_LABELS = Object.freeze({
     layout_family: '画文布局',
     operation_family: '实际操作路径',
+    operation_families: '并存操作路径',
     surface_family: '主底盘／材质',
     contrast_family: '明暗关系',
     contour_family: '整体轮廓',
@@ -574,6 +575,11 @@ export function parseVisualFamilySkeleton(value = '') {
         const key = String(match[1] || '').trim();
         if (!Object.prototype.hasOwnProperty.call(VISUAL_FAMILY_DIMENSION_LABELS, key)) continue;
         const valueText = String(match[2] || '').trim();
+        if (key === 'operation_families') {
+            const operations = observedOperationFamiliesFor({ visualSkeleton: `operation_families: ${valueText}` });
+            if (operations.length) parsed[key] = operations.join(',');
+            continue;
+        }
         if (['layout_family', 'operation_family'].includes(key) && !Object.hasOwn(COMPOSITION_LABELS, valueText)) continue;
         if (valueText) parsed[key] = valueText.slice(0, 120);
     }
@@ -585,7 +591,7 @@ export function parseVisualFamilySkeleton(value = '') {
 // An unspecified surface is likewise not evidence of repeated material.
 export function visualFamilyForCooldown(family = {}) {
     return Object.fromEntries(Object.entries(VISUAL_FAMILY_DIMENSION_LABELS)
-        .filter(([key]) => !['space_family', 'contrast_family'].includes(key) && family?.[key]
+        .filter(([key]) => !['space_family', 'contrast_family', 'operation_families'].includes(key) && family?.[key]
             && !(key === 'operation_family' && family[key] === 'object_state_change')
             && !(family.layout_family && ['reading_family', 'unit_family'].includes(key))
             && !(key === 'contour_family' && family[key] === 'contour: cutout_or_irregular_shape')
@@ -596,7 +602,9 @@ export function visualFamilyForCooldown(family = {}) {
 export function describeVisualFamilyDimensions(family = {}) {
     if (!family || typeof family !== 'object') return '';
     return Object.entries(VISUAL_FAMILY_DIMENSION_LABELS)
-        .map(([key, label]) => family[key] ? `${label}=${COMPOSITION_LABELS[family[key]] || family[key]}` : '')
+        .map(([key, label]) => family[key] ? `${label}=${key === 'operation_families'
+            ? observedOperationFamiliesFor({ visualSkeleton: `operation_families: ${family[key]}` }).map(value => COMPOSITION_LABELS[value]).join('、')
+            : COMPOSITION_LABELS[family[key]] || family[key]}` : '')
         .filter(Boolean)
         .join('；');
 }
@@ -620,8 +628,9 @@ export function getRecentStructuralCooldown(window = 5) {
     const found = new Map();
     for (const item of getRecentDiversityHistory(window)) {
         const family = visualFamilyForCooldown(parseVisualFamilySkeleton(item?.visualSkeleton || ''));
-        for (const key of ['layout_family', 'operation_family']) {
-            const value = family[key];
+        const dimensions = [ ['layout_family', family.layout_family], ...observedOperationFamiliesFor(item)
+            .filter(value => value !== 'object_state_change').map(value => ['operation_family', value]) ];
+        for (const [key, value] of dimensions) {
             if (!value || !Object.hasOwn(COMPOSITION_LABELS, value)) continue;
             const identity = `${key}:${value}`;
             const record = found.get(identity) || { key, value, label: COMPOSITION_LABELS[value], count: 0 };
@@ -723,7 +732,10 @@ function normalizeInteractionFamily(value) {
 export function getRecentInteractionFamilies(limit = 5, { preserveEmpty = false } = {}) {
     const recent = getRecentDiversityHistory(limit).map((item, index) => {
         const observed = normalizeInteractionFamily(item?.interactionFamily);
-        const value = parseVisualFamilySkeleton(item?.visualSkeleton || '').operation_family === 'object_state_change' || observed?.id === 'none'
+        const operations = observedOperationFamiliesFor(item);
+        const objectOnly = operations.includes('object_state_change')
+            && !operations.some(value => value === 'text_panel_switch' || value === 'text_disclosure_stack');
+        const value = objectOnly || observed?.id === 'none'
             ? null : observed || null;
         // Round identity is transient prompt accounting; stored interaction data
         // and owner identities retain their existing shape.
