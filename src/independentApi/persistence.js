@@ -1,8 +1,8 @@
 // Split from independentApi.js — persistence.
 
-import { presentationModeFields } from '../presentationMode.js?rmv=1.62.96';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.62.96';
-import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.62.96';
+import { presentationModeFields } from '../presentationMode.js?rmv=1.62.97';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.62.97';
+import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.62.97';
 import {
     FACE_SWIPE_FULL_MESSAGE,
     FACE_SWIPE_MAX,
@@ -14,8 +14,8 @@ import {
     readFaceSwipe,
     mutateFaceSwipe,
     multifaceFacePagerView,
-} from '../swipeVersions.js?rmv=1.62.96';
-import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=1.62.96';
+} from '../swipeVersions.js?rmv=1.62.97';
+import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=1.62.97';
 import {
     clearEphemeralFaceFailure,
     hasEphemeralFaceFailure,
@@ -25,7 +25,7 @@ import {
     independentSwipeSlot,
     seedIndependentFaceSwipesFromIdentity,
     writeIndependentOwnerHtml,
-} from './faceSwipe.js?rmv=1.62.96';
+} from './faceSwipe.js?rmv=1.62.97';
 import {
     API_PROFILE_STORE_KEY,
     assistantMessages,
@@ -41,8 +41,8 @@ import {
     savedIndependentRecordForOwner,
     setOwnerLockForBase,
     swipeId,
-} from './connection.js?rmv=1.62.96';
-import { stampExternalDetailsOwnership } from './request.js?rmv=1.62.96';
+} from './connection.js?rmv=1.62.97';
+import { stampExternalDetailsOwnership } from './request.js?rmv=1.62.97';
 import {
     copyIndependentReplacementReceipt,
     ensureExternalTools,
@@ -53,8 +53,8 @@ import {
     normalizeSavedInteractionRecord,
     recoverSavedRecord,
     replaceExternalMultifaceFace,
-} from './geometry.js?rmv=1.62.96';
-import { externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace } from './mount.js?rmv=1.62.96';
+} from './geometry.js?rmv=1.62.97';
+import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace } from './mount.js?rmv=1.62.97';
 
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 
@@ -94,6 +94,22 @@ export const INDEPENDENT_MAX_DATA_URI_CHARS = 192000;
 
 let storageWarningShown = false;
 
+// Current-chat recovery only. This is not durable storage and must never make
+// readStore() report a successful disk write. Weak keys release unloaded chats.
+const sessionChatOwners = new WeakMap();
+
+function sessionOwners(ctx,create=false){
+ const chat=ctx?.chat;
+ if(!Array.isArray(chat)) return null;
+ const key=chatKey(ctx);
+ let entry=sessionChatOwners.get(chat);
+ if(entry?.key!==key){
+  if(!create) return null;
+  entry={key,owners:{}}; sessionChatOwners.set(chat,entry);
+ }
+ return entry.owners;
+}
+
 export function independentRecordWithinBudget(value){
  if(!value?.html) return false;
  const html=String(value.html||''); const initial=String(value.initialHtml||'');
@@ -122,10 +138,10 @@ function compactOutputStore(value){
 
 export function writeStore(v){
  const compacted=compactOutputStore(v);
- try { localStorage.setItem(STORE_KEY, JSON.stringify(compacted)); return true; }
+ try { localStorage.setItem(STORE_KEY, JSON.stringify(compacted)); try{ clearSavedIndependentOutputNotices(); }catch{} return true; }
  catch {
   const entries=Object.entries(compacted).sort((a,b)=>Number(b[1]?.ts||0)-Number(a[1]?.ts||0));
-  while(entries.length>1){ entries.pop(); try{ localStorage.setItem(STORE_KEY,JSON.stringify(Object.fromEntries(entries))); warnStorageTrimmed(); return true; }catch{} }
+  while(entries.length>1){ entries.pop(); try{ localStorage.setItem(STORE_KEY,JSON.stringify(Object.fromEntries(entries))); try{ clearSavedIndependentOutputNotices(); }catch{} warnStorageTrimmed(); return true; }catch{} }
   warnStorageTrimmed(); return false;
  }
 }
@@ -239,14 +255,22 @@ function remountIndependentFaceFromHtml(identity,html,faceIndex){
 function commitIndependentFaceVersion(identity,mutator){
  if(!identity) return {ok:false,reason:'missing'};
  const faceIndex=independentSwipeFaceIndex(identity);
- const result=mutateFaceSwipe(independentSwipeSlot(identity),faceIndex,mutator);
+ const slot=independentSwipeSlot(identity);
+ const previous=readFaceSwipe(slot,faceIndex);
+ const result=mutator(previous);
  if(!result?.ok) return result;
  const entry=currentSwipeEntry(result.state);
  const existing=savedIndependentRecordForOwner(identity.ctx,identity.index,identity.msg,readStore());
  const merged=mergeFaceDetailsIntoHtml(existing?.html||identity.host?.__rabbitMirrorIndependentSource||entry.html,faceIndex,entry.html);
- if(!merged || !writeIndependentOwnerHtml(identity,merged)) return {ok:false,reason:'persist',state:result.state};
- remountIndependentFaceFromHtml(identity,merged,faceIndex);
- return result;
+ if(!merged || !independentRecordWithinBudget({...existing,html:merged})) return {ok:false,reason:'persist',state:previous};
+ // A valid existing version is a local display action, not a disk transaction.
+ // Do not advance the pager before a successful mount; a refused write must
+ // not prevent that mount or leave the DOM showing a different version.
+ if(!remountIndependentFaceFromHtml(identity,merged,faceIndex)) return {ok:false,reason:'mount',state:previous};
+ const committed=mutateFaceSwipe(slot,faceIndex,()=>result);
+ writeIndependentOwnerHtml(identity,merged);
+ try{ refreshRabbitMirrorToolsInScope(identity.host); }catch{}
+ return committed;
 }
 
 export function independentFaceSwipeView(root,owner={}){
@@ -437,23 +461,33 @@ function parseChatOwnerKey(value=''){
 export function persistedOwnerForMessage(ctx,index,msg){
  const key=chatOwnerKey(index,swipeId(msg)); if(!key) return null;
  const metadata=chatMetadataObject(ctx); const raw=metadata?.[CHAT_OUTPUT_METADATA_KEY]?.owners?.[key];
- if(!raw||typeof raw!=='object') return null;
- if(raw.deleted===true) return {deleted:true,ts:Number(raw.ts||0),runtime:String(raw.runtime||RUNTIME_VERSION)};
- return compactChatPersistedRecord(raw);
+ const session=sessionOwners(ctx)?.[key];
+ // Explicit removal wins, including when its localStorage write was refused.
+ if(raw?.deleted===true || session?.deleted===true){
+  const removed=raw?.deleted===true?raw:session;
+  return {deleted:true,ts:Number(removed.ts||0),runtime:String(removed.runtime||RUNTIME_VERSION)};
+ }
+ const newest=session && (!raw || Number(session.ts||0)>Number(raw.ts||0)
+  || (Number(session.ts||0)===Number(raw.ts||0)
+   && Number(session.ownerLineage?.observedAt||0)>=Number(raw.ownerLineage?.observedAt||0)))?session:raw;
+ return newest&&typeof newest==='object'?compactChatPersistedRecord(newest):null;
 }
 
 export function writePersistedOwner(ctx,index,msg,value,{overwrite=true}={}){
  const metadata=chatMetadataObject(ctx); const ownerKey=chatOwnerKey(index,swipeId(msg));
- if(!metadata||!ownerKey) return false;
- let state=metadata[CHAT_OUTPUT_METADATA_KEY];
+ if(!ownerKey) return false;
+ const session=sessionOwners(ctx,true);
+ let state=metadata?.[CHAT_OUTPUT_METADATA_KEY];
  if(!state||typeof state!=='object'||!state.owners||typeof state.owners!=='object') state=emptyChatOutputMetadata();
- const existing=state.owners?.[ownerKey];
+ const existing=session?.[ownerKey]||state.owners?.[ownerKey];
  if(!overwrite && existing) return false;
  let next=null;
  if(value?.deleted===true) next={deleted:true,ts:Number(value.ts||Date.now()),runtime:RUNTIME_VERSION};
  else next=compactChatPersistedRecord(value);
  if(!next) return false;
- if(existing && JSON.stringify(existing)===JSON.stringify(next)) return false;
+ if(session) session[ownerKey]=next;
+ if(!metadata) return !!session;
+ if(state.owners?.[ownerKey] && JSON.stringify(state.owners[ownerKey])===JSON.stringify(next)) return false;
  state.version=CHAT_OUTPUT_METADATA_SCHEMA; state.owners[ownerKey]=next; metadata[CHAT_OUTPUT_METADATA_KEY]=state; saveChatOutputMetadata(ctx); return true;
 }
 

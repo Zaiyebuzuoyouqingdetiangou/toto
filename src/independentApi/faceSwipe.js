@@ -1,16 +1,16 @@
 // Split from independentApi.js — faceSwipe.
 
-import { getSettings } from '../settings.js?rmv=1.62.96';
-import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.62.96';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.62.96';
-import { configuredAutomaticRerollMax } from '../automaticReroll.js?rmv=1.62.96';
-import { seedSwipeState, appendSuccessfulSwipe, faceSwipeStorageSlot, readFaceSwipe, mutateFaceSwipe } from '../swipeVersions.js?rmv=1.62.96';
-import { EPHEMERAL_FAILURE_ATTR, EPHEMERAL_FAILURE_BODY_ATTR, RUNTIME_VERSION } from './runtime.js?rmv=1.62.96';
-import { independentRecordWithinBudget, readStore, writePersistedOwner, writeStore } from './persistence.js?rmv=1.62.96';
-import { chatKey, saveRecordForSlot, savedIndependentRecordForOwner, swipeId } from './connection.js?rmv=1.62.96';
-import { hasMultifaceMarkup, wrapIndependentFace } from './request.js?rmv=1.62.96';
-import { externalFaceDetails, showIndependentUnsavedOutput } from './mount.js?rmv=1.62.96';
-import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.62.96';
+import { getSettings } from '../settings.js?rmv=1.62.97';
+import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.62.97';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.62.97';
+import { configuredAutomaticRerollMax } from '../automaticReroll.js?rmv=1.62.97';
+import { seedSwipeState, appendSuccessfulSwipe, faceSwipeStorageSlot, readFaceSwipe, mutateFaceSwipe } from '../swipeVersions.js?rmv=1.62.97';
+import { EPHEMERAL_FAILURE_ATTR, EPHEMERAL_FAILURE_BODY_ATTR, RUNTIME_VERSION } from './runtime.js?rmv=1.62.97';
+import { independentRecordWithinBudget, readStore, writePersistedOwner, writeStore } from './persistence.js?rmv=1.62.97';
+import { chatKey, saveRecordForSlot, savedIndependentRecordForOwner, swipeId } from './connection.js?rmv=1.62.97';
+import { hasMultifaceMarkup, wrapIndependentFace } from './request.js?rmv=1.62.97';
+import { attachIndependentUnsavedNotices, externalFaceDetails, passiveObservedIdentity, showIndependentUnsavedOutput } from './mount.js?rmv=1.62.97';
+import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.62.97';
 
 export function independentRerollMax(){ return configuredAutomaticRerollMax(getSettings()); }
 
@@ -169,15 +169,20 @@ export function writeIndependentOwnerHtml(identity,html){
  if(!identity||!html) return false;
  const store=readStore();
  const existing=savedIndependentRecordForOwner(identity.ctx,identity.index,identity.msg,store)||{};
- const next={...existing,html,ts:Date.now(),runtime:RUNTIME_VERSION,ownerLineage:null};
- if(!independentRecordWithinBudget(next)){ showIndependentUnsavedOutput(next); return false; }
+ const observed=passiveObservedIdentity(identity.ctx,identity.index,identity.msg);
+ const next={...existing,html,sourceHash:observed.sourceHash,bodyHash:observed.bodyHash,
+  ts:Math.max(Date.now(),Number(existing.ts||0)+1),runtime:RUNTIME_VERSION,ownerLineage:null};
+ if(!independentRecordWithinBudget(next)){ showIndependentUnsavedOutput(next,identity.slot); return false; }
  saveRecordForSlot(store,identity.slot,next);
- if(!writeStore(store)){ showIndependentUnsavedOutput(next); return false; }
+ // Preserve the accepted version in this chat even if browser storage refuses
+ // it. Current-session display and durable persistence are separate outcomes.
  writePersistedOwner(identity.ctx,identity.index,identity.msg,next,{overwrite:true});
  if(identity.host){
   identity.host.__rabbitMirrorIndependentSource=html;
   identity.host.dataset.rmSourceHash=String(identity.host.dataset.rmSourceHash||existing.sourceHash||'');
  }
+ if(!writeStore(store) || String(readStore()?.[identity.slot]?.html||'')!==html) showIndependentUnsavedOutput(next,identity.slot);
+ if(identity.host) attachIndependentUnsavedNotices(identity.host,identity.slot,next);
  return true;
 }
 
