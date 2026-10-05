@@ -1,10 +1,10 @@
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.62.91';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.62.92';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.62.91';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.62.91';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.62.91';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.62.91';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.62.92';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.62.92';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.62.92';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.62.92';
 
 export const MODULE_NAME = 'rabbit_mirror_theater';
 

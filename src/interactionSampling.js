@@ -2,7 +2,7 @@
 // One completion reports a small distribution, selects a plan and implements it.
 // Selection is model-reported, not a locally enforced random draw. The record is
 // optional diagnostic evidence, never a generation gate or an interaction test.
-export const INTERACTION_SAMPLING_RULE = `整体设计候选【VS 试验】：正文挑签先选定一签，未选中签不展开设计。遵循本面已确定展现形式的落地与美化要求，临时生成 3 个合理、构图及操作结果不同的短方案，各用一句写清本体层次、材质配色、操作与反馈，避免同构换色，并给出自然生成该方案的估计概率 p（0～1，非质量分）。从完整可能性中取样，包含较少见但适配的方案；按这些概率归一化抽取一个，不默认取最高概率。先在本面最外层 details 的 data-rm-vs 属性写合法 JSON：{"c":[["短方案",0.1],…],"pick":1}（c 为三项，pick 从1起，属性引号按 HTML 转义），随后只实现选中方案。候选与概率不显示、不变成界面选项；不重抽主题或展现形式。`;
+export const INTERACTION_SAMPLING_RULE = `整体设计候选【VS 试验】：正文挑签先选定一签，未选中签不展开设计。遵循本面已确定展现形式的落地与美化要求，结合近期成品记录探索不同设计，临时生成 3 个合理、构图及操作结果不同的短方案，各用一句写清本体层次、材质配色、操作与反馈，避免同构换色，并给出自然生成该方案的估计概率 p（0～1，非质量分）。从完整可能性中取样，包含较少见但适配的方案；按这些概率归一化抽取一个，不默认取最高概率。先在本面最外层 details 的 data-rm-vs 属性写合法 JSON：{"c":[["短方案",0.1],…],"pick":1}（c 为三项，pick 从1起，属性引号按 HTML 转义），随后只实现选中方案，将其最有辨识度的本体构造、视觉层次与操作反馈落实到本体对应部位。候选与概率不显示、不变成界面选项；不重抽主题或展现形式。`;
 
 export function interactionSamplingDiagnostic(root) {
     let raw;
