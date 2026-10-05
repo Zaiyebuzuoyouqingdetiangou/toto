@@ -239,11 +239,19 @@ function paintSettingsChrome(row, snap) {
         action.textContent = '检测中…';
         action.title = '正在检测更新';
         action.dataset.rmSettingsMode = 'checking';
+    } else if (snap.status === 'unknown') {
+        action.textContent = '检测失败';
+        action.title = snap.message || '网络不好，没能完成检测。点击再试一次。';
+        action.dataset.rmSettingsMode = 'check';
     } else {
         action.textContent = '检测更新';
-        action.title = snap.status === 'unknown' ? '上次检测失败，点击重新检测' : '检测兔子镜是否有新版本';
+        action.title = '检测兔子镜是否有新版本';
         action.dataset.rmSettingsMode = 'check';
     }
+}
+
+export function refreshRabbitMirrorUpdateOnOpen() {
+    void checkRabbitMirrorUpdate({ force: true });
 }
 
 export function mountSettingsUpdateChrome(row) {

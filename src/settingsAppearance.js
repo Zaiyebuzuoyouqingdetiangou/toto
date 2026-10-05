@@ -443,6 +443,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
             if(typeof root.showModal==='function'){if(!root.open)root.showModal();}
             else root.setAttribute('open','');
             trackViewport();applyTheme();paint();close.focus({preventScroll:true});
+            void import('./mirrorUpdateMenu.js?rmv=1.62.95').then(mod => mod.refreshRabbitMirrorUpdateOnOpen()).catch(error => console.warn('[RabbitMirror] 打开设置时没能检测更新', error));
         }else{
             closeTheaterFavoriteViewer();
             closeTheaterFavoriteLibrary();
