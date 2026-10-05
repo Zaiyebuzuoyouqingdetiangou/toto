@@ -1,5 +1,5 @@
-import { generationPaletteFields } from './paletteRecipes.js?rmv=1.62.97';
-import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.62.97';
+import { generationPaletteFields } from './paletteRecipes.js?rmv=1.62.98';
+import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.62.98';
 
 const ATMOSPHERE_REASON_LIMIT = 300;
 
