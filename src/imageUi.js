@@ -1,6 +1,6 @@
-import { getSettings } from './settings.js?rmv=1.62.98';
-import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=1.62.98';
-import { loadMirrorImage, saveMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft } from './imageStore.js?rmv=1.62.98';
+import { getSettings } from './settings.js?rmv=1.62.99';
+import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=1.62.99';
+import { loadMirrorImage, saveMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft } from './imageStore.js?rmv=1.62.99';
 
 // The lock lives beyond a panel's lifetime. Closing, reopening or aborting a UI
 // cannot release a provider reservation before its Promise actually settles.

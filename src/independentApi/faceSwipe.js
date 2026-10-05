@@ -1,16 +1,16 @@
 // Split from independentApi.js — faceSwipe.
 
-import { getSettings } from '../settings.js?rmv=1.62.98';
-import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.62.98';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.62.98';
-import { configuredAutomaticRerollMax } from '../automaticReroll.js?rmv=1.62.98';
-import { seedSwipeState, appendSuccessfulSwipe, faceSwipeStorageSlot, readFaceSwipe, mutateFaceSwipe } from '../swipeVersions.js?rmv=1.62.98';
-import { EPHEMERAL_FAILURE_ATTR, EPHEMERAL_FAILURE_BODY_ATTR, RUNTIME_VERSION } from './runtime.js?rmv=1.62.98';
-import { independentRecordWithinBudget, readStore, writePersistedOwner, writeStore } from './persistence.js?rmv=1.62.98';
-import { chatKey, saveRecordForSlot, savedIndependentRecordForOwner, swipeId } from './connection.js?rmv=1.62.98';
-import { hasMultifaceMarkup, wrapIndependentFace } from './request.js?rmv=1.62.98';
-import { attachIndependentUnsavedNotices, externalFaceDetails, passiveObservedIdentity, showIndependentUnsavedOutput } from './mount.js?rmv=1.62.98';
-import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.62.98';
+import { getSettings } from '../settings.js?rmv=1.62.99';
+import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.62.99';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.62.99';
+import { configuredAutomaticRerollMax } from '../automaticReroll.js?rmv=1.62.99';
+import { seedSwipeState, appendSuccessfulSwipe, faceSwipeStorageSlot, readFaceSwipe, mutateFaceSwipe, restoreFaceSwipeSnapshot } from '../swipeVersions.js?rmv=1.62.99';
+import { EPHEMERAL_FAILURE_ATTR, EPHEMERAL_FAILURE_BODY_ATTR, RUNTIME_VERSION } from './runtime.js?rmv=1.62.99';
+import { independentRecordWithinBudget, readStore, writePersistedOwner, writeStore } from './persistence.js?rmv=1.62.99';
+import { chatKey, saveRecordForSlot, savedIndependentRecordForOwner, swipeId } from './connection.js?rmv=1.62.99';
+import { hasMultifaceMarkup, wrapIndependentFace } from './request.js?rmv=1.62.99';
+import { attachIndependentUnsavedNotices, externalFaceDetails, passiveObservedIdentity, showIndependentUnsavedOutput } from './mount.js?rmv=1.62.99';
+import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.62.99';
 
 export function independentRerollMax(){ return configuredAutomaticRerollMax(getSettings()); }
 
@@ -108,9 +108,11 @@ export function seedNeighborIndependentFaceSwipes(ctx,index,msg,currentSlot){
 export function seedIndependentFaceSwipesFromIdentity(identity){
  const slot=independentSwipeSlot(identity);
  if(!slot) return;
+ const saved=savedIndependentRecordForOwner(identity.ctx,identity.index,identity.msg,readStore());
+ if(saved?.faceSwipes) restoreFaceSwipeSnapshot(slot,saved.faceSwipes);
  const existing=readFaceSwipe(slot,independentSwipeFaceIndex(identity));
  if(existing.versions.length) return;
- const html=savedIndependentRecordForOwner(identity.ctx,identity.index,identity.msg,readStore())?.html
+ const html=saved?.html
   || identity.host?.__rabbitMirrorIndependentSource
   || '';
  if(html) seedIndependentFaceSwipes(slot,html);

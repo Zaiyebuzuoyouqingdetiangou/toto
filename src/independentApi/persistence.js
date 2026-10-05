@@ -1,8 +1,8 @@
 // Split from independentApi.js — persistence.
 
-import { presentationModeFields } from '../presentationMode.js?rmv=1.62.98';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.62.98';
-import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.62.98';
+import { presentationModeFields } from '../presentationMode.js?rmv=1.62.99';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.62.99';
+import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.62.99';
 import {
     FACE_SWIPE_FULL_MESSAGE,
     FACE_SWIPE_MAX,
@@ -14,8 +14,10 @@ import {
     readFaceSwipe,
     mutateFaceSwipe,
     multifaceFacePagerView,
-} from '../swipeVersions.js?rmv=1.62.98';
-import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=1.62.98';
+    snapshotFaceSwipes, compactSwipeState, restoreFaceSwipeSnapshot,
+    faceSwipeSnapshotStored, loadFaceSwipeArchive, saveFaceSwipeArchive,
+} from '../swipeVersions.js?rmv=1.62.99';
+import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=1.62.99';
 import {
     clearEphemeralFaceFailure,
     hasEphemeralFaceFailure,
@@ -25,7 +27,7 @@ import {
     independentSwipeSlot,
     seedIndependentFaceSwipesFromIdentity,
     writeIndependentOwnerHtml,
-} from './faceSwipe.js?rmv=1.62.98';
+} from './faceSwipe.js?rmv=1.62.99';
 import {
     API_PROFILE_STORE_KEY,
     assistantMessages,
@@ -38,11 +40,12 @@ import {
     normalizeIndependentConnectionText,
     observeMessageSourceRevision,
     saveRecordForSlot,
+    savedRecordMatchesObserved,
     savedIndependentRecordForOwner,
     setOwnerLockForBase,
     swipeId,
-} from './connection.js?rmv=1.62.98';
-import { stampExternalDetailsOwnership } from './request.js?rmv=1.62.98';
+} from './connection.js?rmv=1.62.99';
+import { stampExternalDetailsOwnership } from './request.js?rmv=1.62.99';
 import {
     copyIndependentReplacementReceipt,
     ensureExternalTools,
@@ -53,8 +56,8 @@ import {
     normalizeSavedInteractionRecord,
     recoverSavedRecord,
     replaceExternalMultifaceFace,
-} from './geometry.js?rmv=1.62.98';
-import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace } from './mount.js?rmv=1.62.98';
+} from './geometry.js?rmv=1.62.99';
+import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=1.62.99';
 
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 
@@ -130,7 +133,10 @@ function compactOutputStore(value){
  const entries=Object.entries(value&&typeof value==='object'?value:{}).filter(([,item])=>independentRecordWithinBudget(item)).sort((a,b)=>Number(b[1]?.ts||0)-Number(a[1]?.ts||0));
  const next={};
  for(const [key,item] of entries.slice(0,120)){
-  next[key]=item;
+  // Full stacks live in their archive/chat metadata, not duplicated into the
+  // bounded current-output cache on every passive reconciliation.
+  const current={...item};delete current.faceSwipes;
+  next[key]=current;
   if(byteLength(JSON.stringify(next))>OUTPUT_STORE_BUDGET_BYTES){ delete next[key]; warnStorageTrimmed(); }
  }
  return next;
@@ -389,6 +395,7 @@ function compactChatPersistedRecord(value){
   ? diagnostic.faces.map((face,faceIndex)=>({faceIndex, samplingMode:String(face?.samplingMode||''), themeIds:Array.isArray(face?.themeIds)?face.themeIds.map(String).slice(0,12):[], formatIds:Array.isArray(face?.formatIds)?face.formatIds.map(String).slice(0,12):[], themeLabels:Array.isArray(face?.themeLabels)?face.themeLabels.map(String).slice(0,12):[], formatLabels:Array.isArray(face?.formatLabels)?face.formatLabels.map(String).slice(0,12):[], forcedVisualScenery:face?.forcedVisualScenery===true,...compactExternalSourceNote(face),...presentationModeFields(face),...compactDirectiveCounts(face)}))
   : null;
  return {
+  ...(value.faceSwipes ? {faceSwipes:Object.fromEntries(Object.entries(value.faceSwipes).filter(([key])=>/^[0-4]$/.test(key)).map(([key,state])=>[key,compactSwipeState(state)]))}:{}),
   html:String(record.html||''), initialHtml:initialHtml && initialHtml!==String(record.html||'') ? initialHtml : '', sourceHash:String(record.sourceHash||''), bodyHash:String(record.bodyHash||''),
   displayHash:String(record.displayHash||''), reasoningHash:String(record.reasoningHash||''), ts:Number(record.ts||Date.now()),
   model:String(record.model||''), runtime:String(record.runtime||RUNTIME_VERSION), executionLockChars:Number(record.executionLockChars||0),
@@ -473,6 +480,48 @@ export function persistedOwnerForMessage(ctx,index,msg){
  return newest&&typeof newest==='object'?compactChatPersistedRecord(newest):null;
 }
 
+const historyHydrations=new WeakMap();
+function historyLoadsFor(ctx){
+ if(!Array.isArray(ctx?.chat)) return new Map();
+ let loads=historyHydrations.get(ctx.chat);
+ if(!loads){loads=new Map();historyHydrations.set(ctx.chat,loads);}
+ return loads;
+}
+
+export function independentHistoryLoaded(ctx,index,msg){
+ return !globalThis.indexedDB || historyLoadsFor(ctx).get(messageBaseSlotKey(ctx,index,msg))?.done===true;
+}
+
+export function restoreIndependentHistory(ctx,index,msg){
+ const base=messageBaseSlotKey(ctx,index,msg), loads=historyLoadsFor(ctx);
+ if(loads.has(base)) return loads.get(base).promise;
+ const entry={done:false,promise:null}; loads.set(base,entry);
+ const observed=observeMessageSourceRevision(ctx,index,msg);
+ entry.promise=loadFaceSwipeArchive(base).then(row=>{
+  // Never apply a late database read to a different body, Swipe or chat.
+  const live=getContext();
+  if(live.chat!==ctx.chat || live.chat?.[index]!==msg || messageBaseSlotKey(live,index,msg)!==base
+   || observeMessageSourceRevision(live,index,msg).sourceHash!==observed.sourceHash) return;
+  const current=persistedOwnerForMessage(ctx,index,msg);
+  if(current?.deleted) return;
+  if(row?.record?.deleted){
+   if(!current || Number(row.record.ts)>=Number(current.ts)) writePersistedOwner(ctx,index,msg,row.record);
+   return;
+  }
+  if(current?.faceSwipes && savedRecordMatchesObserved(current,observed)) restoreFaceSwipeSnapshot(base,current.faceSwipes);
+  if(!row?.record?.html || !savedRecordMatchesObserved(row.record,observed)) return;
+  restoreFaceSwipeSnapshot(base,row.states);
+  const stored=savedIndependentRecordForOwner(ctx,index,msg,readStore(),observed);
+  if(!stored || Number(row.record.ts)>=Number(stored.ts)){
+   const restored=compactChatPersistedRecord({...row.record,faceSwipes:snapshotFaceSwipes(base)});
+   if(!restored) return;
+   writePersistedOwner(ctx,index,msg,restored);
+   const store=readStore();saveRecordForSlot(store,observed.slot,restored);writeStore(store);
+  }
+ }).catch(()=>{}).finally(()=>{entry.done=true;});
+ return entry.promise;
+}
+
 export function writePersistedOwner(ctx,index,msg,value,{overwrite=true}={}){
  const metadata=chatMetadataObject(ctx); const ownerKey=chatOwnerKey(index,swipeId(msg));
  if(!ownerKey) return false;
@@ -483,9 +532,22 @@ export function writePersistedOwner(ctx,index,msg,value,{overwrite=true}={}){
  if(!overwrite && existing) return false;
  let next=null;
  if(value?.deleted===true) next={deleted:true,ts:Number(value.ts||Date.now()),runtime:RUNTIME_VERSION};
- else next=compactChatPersistedRecord(value);
+ else {
+  const base=messageBaseSlotKey(ctx,index,msg);
+  if(value.faceSwipes || existing?.faceSwipes) restoreFaceSwipeSnapshot(base,value.faceSwipes||existing.faceSwipes);
+  next=compactChatPersistedRecord({...value,faceSwipes:snapshotFaceSwipes(base)});
+ }
  if(!next) return false;
  if(session) session[ownerKey]=next;
+ const base=messageBaseSlotKey(ctx,index,msg);
+ const savedSlot=chatPersistenceSlot(ctx,index,swipeId(msg),next);
+ void saveFaceSwipeArchive(base,next).then(({saved,row})=>{
+  // Only a completed, read-back archive transaction can dismiss a current-work
+  // warning when the separate localStorage cache refused the same record.
+  if(saved) clearSavedIndependentOutputNotices({...readStore(),[savedSlot]:row.record});
+  if(saved || faceSwipeSnapshotStored(base,row.states)) clearIndependentHistorySaveNotice(savedSlot,row.states);
+  else if(Object.values(row.states).some(state=>state.versions?.length>1)) showIndependentUnsavedOutput(next,savedSlot,{history:row.states,historySlot:base});
+ }).catch(()=>{});
  if(!metadata) return !!session;
  if(state.owners?.[ownerKey] && JSON.stringify(state.owners[ownerKey])===JSON.stringify(next)) return false;
  state.version=CHAT_OUTPUT_METADATA_SCHEMA; state.owners[ownerKey]=next; metadata[CHAT_OUTPUT_METADATA_KEY]=state; saveChatOutputMetadata(ctx); return true;

@@ -1,11 +1,11 @@
 // Split from independentApi.js — earlyBody.
 
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.62.98';
-import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.62.98';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.62.98';
-import { getSettings } from '../settings.js?rmv=1.62.98';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=1.62.98';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.62.98';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.62.99';
+import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.62.99';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.62.99';
+import { getSettings } from '../settings.js?rmv=1.62.99';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=1.62.99';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.62.99';
 import {
     MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE,
     assistantRowsInScanRange,
@@ -14,7 +14,7 @@ import {
     isMissingShellTargetFloor,
     normalizeMissingShellScanRange,
     shouldRestoreMissingIndependentRetryShell,
-} from './missingRetryShell.js?rmv=1.62.98';
+} from './missingRetryShell.js?rmv=1.62.99';
 import {
     INDEPENDENT_GENERATION_INTENTS_KEY,
     INDEPENDENT_GENERATION_INTENT_TYPES,
@@ -24,7 +24,7 @@ import {
     currentRuntime,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.62.98';
+} from './runtime.js?rmv=1.62.99';
 import {
     ACTIVE_GENERATION_WAIT_MS,
     FINAL_RENDER_POLL_INTERVAL_MS,
@@ -38,17 +38,19 @@ import {
     markAutomaticFailureStop,
     operationEpochForBase,
     pending,
-} from './flights.js?rmv=1.62.98';
+} from './flights.js?rmv=1.62.99';
 import {
     appendHistoryEntry,
     chatPersistenceSlot,
     normalizeHistoryEntry,
     persistedOwnerForMessage,
+    independentHistoryLoaded,
+    restoreIndependentHistory,
     readStore,
     synchronizeIndependentChatPersistence,
     writePersistedOwner,
     writeStore,
-} from './persistence.js?rmv=1.62.98';
+} from './persistence.js?rmv=1.62.99';
 import {
     activeGlobalWorldInfoCapture,
     assistantMessages,
@@ -98,7 +100,7 @@ import {
     withOwnerLockStoreBatch,
     writeActiveGlobalWorldInfoCapture,
     writeHostModule,
-} from './connection.js?rmv=1.62.98';
+} from './connection.js?rmv=1.62.99';
 import {
     allExternalHosts,
     externalHosts,
@@ -106,7 +108,7 @@ import {
     removeEmptyFollowExternalAnchors,
     removeEmptyInlineAnchors,
     withExternalHostSyncIndex,
-} from './request.js?rmv=1.62.98';
+} from './request.js?rmv=1.62.99';
 import {
     beginHostWorkTiming,
     clearExternalHostFreshSourceState,
@@ -139,7 +141,7 @@ import {
     setPlaceholderSummary,
     usableReadyDetails,
     withRestorableHtmlCacheBatch,
-} from './geometry.js?rmv=1.62.98';
+} from './geometry.js?rmv=1.62.99';
 import {
     INDEPENDENT_INTENT_OWNER,
     abortFlight,
@@ -193,7 +195,7 @@ import {
     serializeExternalFaceDetails,
     stampAutomaticAuthorizationEpoch,
     withHistoricalRestoreLightPass,
-} from './mount.js?rmv=1.62.98';
+} from './mount.js?rmv=1.62.99';
 import {
     automaticGenerationCutovers,
     hostGenerationHintStartedAt,
@@ -218,7 +220,7 @@ import {
     writeStartupHistoryFallbackRoot,
     writeSyncRunning,
     writeSyncTimer,
-} from './lifecycle.js?rmv=1.62.98';
+} from './lifecycle.js?rmv=1.62.99';
 
 let earlyBodyParserPromise=null;
 
@@ -341,7 +343,7 @@ function settleEarlyBodyAtFinal(ctx,index){
 
 async function probeIndependentEarlyBody(packet,sequence){
  if(!earlyBodyPacketCurrent(packet)) return;
- if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.62.98')
+ if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.62.99')
   .then(module=>{earlyBodyParser=module;return module;}).catch(()=>{earlyBodyParserPromise=null;return null;});
  const parser=await earlyBodyParserPromise;
  if(!parser || sequence!==earlyBodyProbeSequence || !earlyBodyPacketCurrent(packet)) return;
@@ -1001,6 +1003,9 @@ function remountVisibleFloorFromCache(index){
  if(!isRabbitMirrorEligibleAssistantMessage(msg)) return false;
  const el=messageElement(index);
  if(!el?.isConnected) return false;
+ if(!independentHistoryLoaded(ctx,index,msg)){
+  void restoreIndependentHistory(ctx,index,msg).then(()=>queueMessageSync([index]));return false;
+ }
  const observed=passiveObservedIdentity(ctx,index,msg);
  const key=recordKey(ctx,index,msg);
  const existing=collapseDuplicateIdentityHosts(el,key,'independent',observed.sourceHash);
@@ -1101,6 +1106,9 @@ function syncMessagesCore(indices=null){
     : assistantMessages(ctx);
    for(const {m,i} of rows){
      const el=messageElement(i); if(!el) continue;
+     if(mode!=='off' && !independentHistoryLoaded(ctx,i,m)){
+      void restoreIndependentHistory(ctx,i,m).then(()=>queueMessageSync([i]));continue;
+     }
      if(mode!=='off') restoreFollowMirrorFromMessageSource(el,m);
      if(mode==='off') { externalHosts(el).forEach(n=>n.remove()); continue; }
      if(mode==='independent'){
