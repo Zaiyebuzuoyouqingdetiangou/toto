@@ -239,6 +239,21 @@ export function detectCompositionFingerprint(root) {
             && Object.hasOwn(rule.values, key)) baseline = rule.values[key];
         return baseline;
     };
+    // A label may own both a short trigger and an independently hidden result.
+    // Keep ignoring the trigger/selection decoration; inspect only a bound,
+    // substantial text result with explicit hidden -> visible CSS evidence.
+    const labelTextResult = (target, values, sources) => {
+        const label = target.closest?.('label');
+        if (!label || label === target || matches(target, CONTROL)
+            || target.closest?.('button,summary,[data-rabbit-mirror-tool-entry-host],[data-rm-tool-storage]')
+            || text(target).length < 40 || query(target, 'svg,img,canvas,video,input,button,select,textarea').length) return false;
+        if (!sources.some(source => label.contains(source) || (source.id && label.getAttribute('for') === source.id))) return false;
+        const baseline = style(target);
+        if (['absolute', 'fixed'].includes(baseline.position) || baseline['grid-area']) return false;
+        return (visualBaseline(target, 'display', values.display) === 'none' && !!values.display && values.display !== 'none')
+            || (visualBaseline(target, 'visibility', values.visibility) === 'hidden' && values.visibility === 'visible')
+            || (visualBaseline(target, 'opacity', values.opacity) === '0' && Number(values.opacity) > 0);
+    };
     for (const rule of rules) {
         if (!STATE.test(rule.selector)) continue;
         let sources = [], targets = [], conjunctive = false;
@@ -258,12 +273,16 @@ export function detectCompositionFingerprint(root) {
         // than being split into independently usable entries.
         if (keys.length > 1 && conjunctive) continue;
         const affected = keys.map(key => {
-            if (!groups.has(key)) groups.set(key, { sources: new Set(), textTargets: new Set(), mixedTargets: new Set(), visual: false });
+            if (!groups.has(key)) groups.set(key, { sources: new Set(), textTargets: new Set(), labelTextTargets: new Set(), mixedTargets: new Set(), visual: false });
             const group = groups.get(key);
             sources.filter(source => controlGroup(source) === key).forEach(source => group.sources.add(source));
             return group;
         });
         for (const target of targets) {
+            if (labelTextResult(target, rule.values, sources)) {
+                affected.forEach(group => group.labelTextTargets.add(target));
+                continue;
+            }
             if (ignored(target) || matches(target, CONTROL)) continue;
             const changed = Object.keys(rule.values).filter(key => VISUAL_CHANGE.test(key)
                 && visualStateValue(key, rule.values[key]) !== visualStateValue(key, visualBaseline(target, key, rule.values[key])));
@@ -287,6 +306,9 @@ export function detectCompositionFingerprint(root) {
             else group.visual = true;
         }
         if (group.visual) { operations.add('object_state_change'); continue; }
+        // Results inside separate normal-flow labels open locally, not in one
+        // shared panel. Preserve that distinction even for exclusive radios.
+        if (group.labelTextTargets.size) operations.add('text_disclosure_stack');
         const { sources: controls, textTargets } = group;
         if (!controls.size || !textTargets.size) continue;
         const sources = [...controls];

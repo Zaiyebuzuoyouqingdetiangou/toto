@@ -1,25 +1,26 @@
-import { bindRolePaletteCode } from '../roleColorVariants.js?rmv=1.62.99';
+import { bindRolePaletteCode } from '../roleColorVariants.js?rmv=1.62.100';
+import { designSamplingChecksFromHtml } from '../interactionSampling.js?rmv=1.62.100';
 // Split from independentApi.js — request.
 
-import { claimGenerationEvidence, associateGenerationEvidence, generationEvidenceFor } from '../generationEvidence.js?rmv=1.62.99';
-import { createGenerationTimer } from '../generationTiming.js?rmv=1.62.99';
+import { claimGenerationEvidence, associateGenerationEvidence, generationEvidenceFor } from '../generationEvidence.js?rmv=1.62.100';
+import { createGenerationTimer } from '../generationTiming.js?rmv=1.62.100';
 
-import { resolveBehaviorRuleText } from '../behaviorRules.js?rmv=1.62.99';
-import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.62.99';
-import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.62.99';
-import { getSettings } from '../settings.js?rmv=1.62.99';
-import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.62.99';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=1.62.99';
+import { resolveBehaviorRuleText } from '../behaviorRules.js?rmv=1.62.100';
+import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.62.100';
+import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.62.100';
+import { getSettings } from '../settings.js?rmv=1.62.100';
+import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.62.100';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=1.62.100';
 import {
     assertRabbitMirrorIndependentResponseBytes,
     assertRabbitMirrorIndependentResponseText,
     authorizeRabbitMirrorIndependentServiceRequest,
-} from '../independentSecurityGuard.js?rmv=1.62.99';
+} from '../independentSecurityGuard.js?rmv=1.62.100';
 import {
     parseIndependentAdvancedOptions,
     buildIndependentAdvancedCarrier,
     applyIndependentAdvancedExclusions,
-} from '../advancedRequestOptions.js?rmv=1.62.99';
+} from '../advancedRequestOptions.js?rmv=1.62.100';
 import {
     buildRabbitMirrorPromptDetails,
     planRabbitMirrorPromptDetails,
@@ -28,14 +29,14 @@ import {
     prepareSelectedMemoryForPrompt,
     memoryRequestSettingsKey,
     assertMemoryRequestSettings,
-} from '../promptBuilder.js?rmv=1.62.99';
-import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.62.99';
-import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.62.99';
-import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.62.99';
-import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText, createMultifaceFailureSlot } from '../multifaceProtocol.js?rmv=1.62.99';
-import { applyAtmosphereFields, atmosphereNotesFromHtml, stripAtmosphereChoiceMarkup } from '../atmosphereChoice.js?rmv=1.62.99';
-import { isLocalPreflightFailure, isQuotaInsufficientFailure, configuredAutomaticRerollMax, automaticRerollEnabled } from '../automaticReroll.js?rmv=1.62.99';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.62.99';
+} from '../promptBuilder.js?rmv=1.62.100';
+import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.62.100';
+import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.62.100';
+import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.62.100';
+import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText, createMultifaceFailureSlot } from '../multifaceProtocol.js?rmv=1.62.100';
+import { applyAtmosphereFields, atmosphereNotesFromHtml, stripAtmosphereChoiceMarkup } from '../atmosphereChoice.js?rmv=1.62.100';
+import { isLocalPreflightFailure, isQuotaInsufficientFailure, configuredAutomaticRerollMax, automaticRerollEnabled } from '../automaticReroll.js?rmv=1.62.100';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.62.100';
 import {
     createVisualHistorySelection,
     resolveVisualHistorySelection,
@@ -43,9 +44,9 @@ import {
     visualFamilyForCooldown,
     markPendingBatchAttempt,
     releasePendingComboBatch,
-} from '../storage.js?rmv=1.62.99';
-import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.62.99';
-import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.62.99';
+} from '../storage.js?rmv=1.62.100';
+import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.62.100';
+import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.62.100';
 import {
     RUNTIME_VERSION,
     EXTERNAL_SHELL_ATTR,
@@ -56,8 +57,8 @@ import {
     byteLength,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.62.99';
-import { operationEpochForBase } from './flights.js?rmv=1.62.99';
+} from './runtime.js?rmv=1.62.100';
+import { operationEpochForBase } from './flights.js?rmv=1.62.100';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INDEPENDENT_MAX_APPROX_DEPTH,
@@ -72,7 +73,7 @@ import {
     normalizedConfiguredTemperature,
     readHistoryStore,
     readStore,
-} from './persistence.js?rmv=1.62.99';
+} from './persistence.js?rmv=1.62.100';
 import {
     API_PROFILE_ORDER,
     chatKey,
@@ -106,7 +107,7 @@ import {
     stageNextApiProfile,
     swipeId,
     validatedIndependentConnectionProfile,
-} from './connection.js?rmv=1.62.99';
+} from './connection.js?rmv=1.62.100';
 import {
     externalGeometryCycleSequence,
     externalGeometryLifecycleEpoch,
@@ -117,7 +118,7 @@ import {
     writeExternalGeometryCycleSequence,
     writeExternalGeometryLifecycleEpoch,
     writeExternalGeometryLifecycleReason,
-} from './geometry.js?rmv=1.62.99';
+} from './geometry.js?rmv=1.62.100';
 import {
     INDEPENDENT_REJECTED_PREVIEW_MAX_CHARS,
     INDEPENDENT_REJECTED_PREVIEW_MAX_ENTRIES,
@@ -132,8 +133,8 @@ import {
     writeExternalHostSyncIndex,
     writeIndependentRejectedPreviewChars,
     writeIndependentRejectedPreviewSequence,
-} from './mount.js?rmv=1.62.99';
-import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.62.99';
+} from './mount.js?rmv=1.62.100';
+import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.62.100';
 
 const NON_STREAM_PROFILE_BY_STREAM_PROFILE={
  chat_system_user_full:'chat_system_user_full_nostream',
@@ -1620,7 +1621,7 @@ export function wireIndependentRejectedFaceControls(host){
    independentRejectedFaceControlsWired.add(resay);
    resay.addEventListener('click',event=>{
     event.preventDefault(); event.stopPropagation();
-    void import('../outputSanitizer/toolsChrome.js?rmv=1.62.99').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+    void import('../outputSanitizer/toolsChrome.js?rmv=1.62.100').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
    },true);
   }
  }
@@ -1818,7 +1819,7 @@ async function loadIndependentAppearanceReference(owner){
  let module;
  assertIndependentPromptOwner(owner);
  try{
-  try{module=await import('../appearanceReference.js?rmv=1.62.99');}
+  try{module=await import('../appearanceReference.js?rmv=1.62.100');}
   catch{
    const error=new Error('外观参考模块未能加载；本轮未发送请求，请刷新后重试或关闭外观参考。');
    error.code='RABBIT_MIRROR_APPEARANCE_MODULE_UNAVAILABLE';error.requestCount=0;throw error;
@@ -1908,6 +1909,7 @@ async function runIndependentSerialFaces({ ctx, index, msg, signal, requestOptio
  const htmlByFace = Array(faceCount).fill('');
  const failed = new Set(Array.from({ length: faceCount }, (_, faceIndex) => faceIndex));
  const choices = Array(faceCount).fill(null);
+ const designSelectionChecks = [];
  const acceptFace = (faceIndex, faceResult) => {
   const menu = selections[faceIndex]?.combo?.atmosphereMenu;
   let html = stripAtmosphereChoiceMarkup(faceResult?.html || '');
@@ -1918,6 +1920,8 @@ async function runIndependentSerialFaces({ ctx, index, msg, signal, requestOptio
    applyAtmosphereFields(details.metadata?.faces?.[faceIndex], menu, note);
   }
   if (!html) throw new Error(`第 ${faceIndex + 1} 面没有返回可显示的内容。`);
+  const designCheck = faceResult?.requestDiagnostic?.designSelectionChecks?.[0];
+  if (designCheck) designSelectionChecks.push({ ...designCheck, faceIndex });
   htmlByFace[faceIndex] = wrapSerialFace(html, faceIndex);
   failed.delete(faceIndex);
  };
@@ -1964,7 +1968,7 @@ async function runIndependentSerialFaces({ ctx, index, msg, signal, requestOptio
    catch(error){console.debug('[RabbitMirror] serial visual scan skipped:',error);return {faceIndex,visualSignature:'',visualSkeleton:'',riskFlags:[]};}
   }),
   failedFaces, completedFaces: faceCount - failed.size, batchPlan: details.batchPlan || null, chosenTickets: choices,
-  requestDiagnostic: { visualHistoryBatchId: details.batchPlan?.batchId || '', faceCount, serialDispatch: true, partial: failed.size > 0, failedFaces, completedFaces: faceCount - failed.size, faces: details.metadata?.faces || [] },
+  requestDiagnostic: { visualHistoryBatchId: details.batchPlan?.batchId || '', faceCount, serialDispatch: true, partial: failed.size > 0, failedFaces, completedFaces: faceCount - failed.size, faces: details.metadata?.faces || [], ...(designSelectionChecks.length ? { designSelectionChecks } : {}) },
   executionLockChars: String(details.executionLock || '').length,
  };
 }
@@ -2228,6 +2232,7 @@ ${independentUserTail}`;
   operationEpoch:Math.max(1,Number(requestOptions.dispatchLease?.epoch)||operationEpochForBase(messageBaseSlotKey(ctx,index,msg))),
   ...(faceCount>1?{faceCount,faces:details.metadata.faces}:{}),
   samplingMode:String(details.metadata?.samplingMode||''),
+  ...(details.metadata?.designCandidatePick?{designCandidatePick:details.metadata.designCandidatePick}:{}),
   ...(details.metadata?.hasExternalReferences?{hasExternalReferences:true,externalSources:details.metadata.externalSources||[]}:{}),
   themeIds:Array.isArray(details.metadata?.themeIds)?details.metadata.themeIds:[],
   formatIds:Array.isArray(details.metadata?.formatIds)?details.metadata.formatIds:[],
@@ -2272,7 +2277,8 @@ ${independentUserTail}`;
    return accepted;
   },
  } : originalLease;
- const {response:r,result,profile,attempts,requestDiagnostic,semanticError}=await requestIndependentCompletion(st,systemPrompt,userPrompt,{signal,manualRetry:requestOptions.manualRetry===true,automaticReroll:requestOptions.automaticReroll===true,diagnosticContext:requestSelectionDiagnostic,dispatchLease,onProgress:requestOptions.onProgress,earlyBodyOwner:requestOptions.earlyBodyOwner,advancedSettings,assertAdvancedCurrent,evidenceFaceIndex:requestOptions.serialFaceIndex??resay?.faceIndex,evidenceSerial:requestOptions.serialChild===true});
+ const {response:r,result,profile,attempts,requestDiagnostic:transportDiagnostic,semanticError}=await requestIndependentCompletion(st,systemPrompt,userPrompt,{signal,manualRetry:requestOptions.manualRetry===true,automaticReroll:requestOptions.automaticReroll===true,diagnosticContext:requestSelectionDiagnostic,dispatchLease,onProgress:requestOptions.onProgress,earlyBodyOwner:requestOptions.earlyBodyOwner,advancedSettings,assertAdvancedCurrent,evidenceFaceIndex:requestOptions.serialFaceIndex??resay?.faceIndex,evidenceSerial:requestOptions.serialChild===true});
+ let requestDiagnostic=transportDiagnostic;
  const evidence=generationEvidenceFor(result);
  try {
  if(semanticError) throw independentResponseFailure(semanticError,requestDiagnostic);
@@ -2294,6 +2300,8 @@ ${independentUserTail}`;
    throw new Error(`独立 API 调用成功，但未解析到正文（返回字段：${keys||'无'}；参数模式：${profile}）`);
  }
    assertIndependentMarkupComplexityWithDiagnostic(raw,'raw',requestDiagnostic);
+ const designSelectionChecks=designSamplingChecksFromHtml(raw,details.metadata);
+ if(designSelectionChecks.length) requestDiagnostic=publishIndependentApiRequestDiagnostic({...requestDiagnostic,designSelectionChecks});
  const atmosphereMenus=faceCount>1
   ? (Array.isArray(details.metadata?.faces)?details.metadata.faces:[]).map(face=>face?.atmosphereMenu||null)
   : [details.metadata?.atmosphereMenu||null];

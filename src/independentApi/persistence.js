@@ -1,8 +1,8 @@
 // Split from independentApi.js — persistence.
 
-import { presentationModeFields } from '../presentationMode.js?rmv=1.62.99';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.62.99';
-import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.62.99';
+import { presentationModeFields } from '../presentationMode.js?rmv=1.62.100';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.62.100';
+import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.62.100';
 import {
     FACE_SWIPE_FULL_MESSAGE,
     FACE_SWIPE_MAX,
@@ -16,8 +16,8 @@ import {
     multifaceFacePagerView,
     snapshotFaceSwipes, compactSwipeState, restoreFaceSwipeSnapshot,
     faceSwipeSnapshotStored, loadFaceSwipeArchive, saveFaceSwipeArchive,
-} from '../swipeVersions.js?rmv=1.62.99';
-import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=1.62.99';
+} from '../swipeVersions.js?rmv=1.62.100';
+import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=1.62.100';
 import {
     clearEphemeralFaceFailure,
     hasEphemeralFaceFailure,
@@ -27,7 +27,7 @@ import {
     independentSwipeSlot,
     seedIndependentFaceSwipesFromIdentity,
     writeIndependentOwnerHtml,
-} from './faceSwipe.js?rmv=1.62.99';
+} from './faceSwipe.js?rmv=1.62.100';
 import {
     API_PROFILE_STORE_KEY,
     assistantMessages,
@@ -44,8 +44,8 @@ import {
     savedIndependentRecordForOwner,
     setOwnerLockForBase,
     swipeId,
-} from './connection.js?rmv=1.62.99';
-import { stampExternalDetailsOwnership } from './request.js?rmv=1.62.99';
+} from './connection.js?rmv=1.62.100';
+import { stampExternalDetailsOwnership } from './request.js?rmv=1.62.100';
 import {
     copyIndependentReplacementReceipt,
     ensureExternalTools,
@@ -56,8 +56,8 @@ import {
     normalizeSavedInteractionRecord,
     recoverSavedRecord,
     replaceExternalMultifaceFace,
-} from './geometry.js?rmv=1.62.99';
-import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=1.62.99';
+} from './geometry.js?rmv=1.62.100';
+import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=1.62.100';
 
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 
