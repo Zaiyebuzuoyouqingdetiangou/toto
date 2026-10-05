@@ -1610,11 +1610,6 @@ html[data-rabbit-mirror-external-sampling-enabled="false"] [data-rabbit-mirror-r
 .rabbit-mirror-quick-start-body button { min-height:44px; }
 .rabbit-mirror-quick-start-body ol { padding-left:20px; margin:4px 0; }
 .rabbit-mirror-quick-start-body li { margin-bottom:7px; }
-.rabbit-mirror-update-button { min-height:44px; flex:0 0 auto; }
-.rabbit-mirror-update-version-group { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
-.rabbit-mirror-current-version { font-size:12px; opacity:.8; white-space:nowrap; }
-.rabbit-mirror-update-status { font-size:13px; line-height:1.6; overflow-wrap:anywhere; margin:6px 0; }
-#rh_update_reload[hidden], #rh_update_status[hidden] { display:none !important; }
 /* Guide-only layout. No chat, mirror or generated-content selectors. */
 #rh_quick_start { --rh-guide-accent:var(--SmartThemeQuoteColor,currentColor); --rh-guide-soft:color-mix(in srgb,currentColor 7%,transparent); }
 #rh_quick_start > summary { color:var(--rh-guide-accent); }
