@@ -454,7 +454,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     listen(root,'cancel',event=>{
         if(event.target!==root)return;
         event.preventDefault();
-        if(doc.querySelector('[data-rm-theater-favorite-viewer],[data-rm-theater-favorite-library]'))return;
+        if(doc.querySelector('[data-rm-theater-favorite-viewer],[data-rm-theater-favorite-library],[data-rm-update-sheet]'))return;
         setOpen(false);
     });
     for(const [key,name] of Object.entries(tabNames)){const tab=button(name,()=>{history=[];navigate(key,false);});tab.dataset.rhTab=key;tab.setAttribute('role','tab');tabs.append(tab);}
@@ -464,13 +464,13 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     listen(root,'change',()=>sync());
     listen(root,'click',e=>{
         if(e.target!==root)return;
-        if(doc.querySelector('[data-rm-theater-favorite-viewer],[data-rm-theater-favorite-library]'))return;
+        if(doc.querySelector('[data-rm-theater-favorite-viewer],[data-rm-theater-favorite-library],[data-rm-update-sheet]'))return;
         setOpen(false);
     });
     listen(root,'keydown',e=>{
         if(e.target.closest?.('dialog')!==root)return;
         if(e.key==='Escape'){
-            if(doc.querySelector('[data-rm-theater-favorite-viewer],[data-rm-theater-favorite-library]')){e.preventDefault();return;}
+            if(doc.querySelector('[data-rm-theater-favorite-viewer],[data-rm-theater-favorite-library],[data-rm-update-sheet]')){e.preventDefault();return;}
             e.preventDefault();setOpen(false);
         }
         if(e.key!=='Tab')return;

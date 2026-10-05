@@ -90,9 +90,14 @@ function fillReadme(body, result, { full = false } = {}) {
     for (const section of show) body.append(sectionBlock(section));
 }
 
-function onSheetKey(event) {
-    if (event.key !== 'Escape' || applying || !sheet?.isConnected) return;
+function closeSheet() {
+    if (!sheet?.isConnected || applying) return;
     sheet.remove();
+}
+
+function onSheetKey(event) {
+    if (event.key !== 'Escape') return;
+    closeSheet();
 }
 
 function ensureSheet() {
@@ -101,10 +106,9 @@ function ensureSheet() {
         document.addEventListener('keydown', onSheetKey);
     }
     if (sheet?.isConnected) return sheet;
-    const overlay = document.createElement('div');
+    const overlay = document.createElement('dialog');
     overlay.setAttribute('data-rm-update-sheet', 'true');
-    overlay.setAttribute('role', 'presentation');
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:2147483600;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;background:rgba(0,0,0,.45);';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:2147483647;width:100vw;height:100vh;max-width:none;max-height:none;margin:0;border:0;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;background:rgba(0,0,0,.45);color:inherit;';
     const card = document.createElement('section');
     card.setAttribute('role', 'dialog');
     card.setAttribute('aria-modal', 'true');
@@ -127,18 +131,22 @@ function ensureSheet() {
     const apply = document.createElement('button');
     apply.type = 'button';
     apply.dataset.rmUpdateSheetApply = 'true';
-    apply.textContent = '更新';
+    apply.textContent = '确认更新';
     apply.style.cssText = `${buttonStyle}margin-top:0;flex:1;border-color:var(--SmartThemeQuoteColor,#c47a3a);`;
     actions.append(close, apply);
     card.append(title, body, actions);
     overlay.append(card);
+    overlay.addEventListener('cancel', event => {
+        event.preventDefault();
+        closeSheet();
+    });
     overlay.addEventListener('pointerdown', event => {
-        if (event.target === overlay && !applying) overlay.remove();
+        if (event.target === overlay) closeSheet();
     });
     close.addEventListener('click', event => {
         event.preventDefault();
         event.stopPropagation();
-        if (!applying) overlay.remove();
+        closeSheet();
     });
     apply.addEventListener('click', event => {
         event.preventDefault();
@@ -146,6 +154,14 @@ function ensureSheet() {
         void runApply(apply, close, body);
     });
     document.body.append(overlay);
+    try {
+        // 插件设置本身是 showModal 的顶层对话框，普通节点再高的 z-index 也在它下面。
+        if (typeof overlay.showModal === 'function' && !overlay.open) overlay.showModal();
+    } catch (error) {
+        const settings = document.getElementById('rabbit_mirror_theater_settings');
+        if (settings?.open) settings.append(overlay);
+        console.warn('[RabbitMirror] 更新日志没能单独盖住插件面板', error);
+    }
     themeMirrorToolPanel(card);
     sheet = overlay;
     return overlay;
@@ -167,7 +183,7 @@ async function runApply(apply, close, body) {
             applying = false;
             apply.disabled = false;
             close.disabled = false;
-            apply.textContent = '更新';
+            apply.textContent = '确认更新';
             wait.remove();
             return;
         }
@@ -176,7 +192,7 @@ async function runApply(apply, close, body) {
         applying = false;
         apply.disabled = false;
         close.disabled = false;
-        apply.textContent = '更新';
+        apply.textContent = '确认更新';
         wait.remove();
         const message = String(error?.message || '更新失败，请检查宿主日志。');
         globalThis.toastr?.error?.(message);
@@ -265,9 +281,12 @@ export function mountSettingsUpdateChrome(row) {
         void (async () => {
             const snap = await checkRabbitMirrorUpdate({ force: true });
             if (!row.isConnected) return;
+            if (snap.status === 'available') {
+                void openRabbitMirrorChangelog({ mode: 'update' });
+                return;
+            }
             if (snap.status === 'latest') globalThis.toastr?.info?.('当前已是最新');
             else if (snap.status === 'unknown') globalThis.toastr?.warning?.(snap.message || '没能完成检测，请稍后再试。');
-            else if (snap.status === 'available') globalThis.toastr?.info?.(snap.remoteVersion ? `发现新版本 ${snap.remoteVersion}` : '发现新版本');
         })();
     });
     log.addEventListener('click', event => {
@@ -312,9 +331,12 @@ function mountMirrorUpdateRow(panel) {
         void (async () => {
             const snap = await checkRabbitMirrorUpdate({ force: true });
             if (!host.isConnected) return;
+            if (snap.status === 'available') {
+                void openRabbitMirrorChangelog({ mode: 'update' });
+                return;
+            }
             if (snap.status === 'latest') globalThis.toastr?.info?.('当前已是最新');
             else if (snap.status === 'unknown') globalThis.toastr?.warning?.(snap.message || '没能完成检测，请稍后再试。');
-            else if (snap.status === 'available') globalThis.toastr?.info?.(snap.remoteVersion ? `发现新版本 ${snap.remoteVersion}` : '发现新版本');
         })();
     });
     available.addEventListener('click', event => {
