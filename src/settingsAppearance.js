@@ -1,6 +1,6 @@
 // UI palettes from the user-provided Hearttrace source, by Toto.
 // Presentation only: no generation settings, Prompt, content storage, or network.
-import { closeTheaterFavoriteLibrary, closeTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.62.91';
+import { closeTheaterFavoriteLibrary, closeTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.62.95';
 export const UI_THEMES = Object.freeze([
   {
     "id": "default",
@@ -180,8 +180,15 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     const vault = make('div', 'rh-ui-source'); vault.hidden = true;
     vault.append(...root.children); root.append(vault);
     const window = make('div', 'rh-ui-window');
-    const head = html('header', 'rh-ui-head', '<span class="rh-ui-logo" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M10 16C4 2 11 1 14 14M18 14C20 1 27 2 23 16M9 16c-7 11 3 15 9 14s13-8 5-14c-4-3-10-3-14 0Z"/><path d="M12 22h1m6 0h1m-6 4 2 1 2-1"/></svg></span><div><strong>兔子镜</strong><small>RABBIT MIRROR · 小剧场</small></div>');
+    const head = html('header', 'rh-ui-head', '<span class="rh-ui-logo" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M10 16C4 2 11 1 14 14M18 14C20 1 27 2 23 16M9 16c-7 11 3 15 9 14s13-8 5-14c-4-3-10-3-14 0Z"/><path d="M12 22h1m6 0h1m-6 4 2 1 2-1"/></svg></span><div class="rh-ui-title"><strong>兔子镜</strong><small>RABBIT MIRROR · 小剧场</small></div>');
     const close = button('×', () => setOpen(false), 'rh-ui-close'); close.setAttribute('aria-label', '关闭兔子镜'); head.append(close);
+    const versionRow = make('div', 'rh-ui-version-row');
+    const subtitle = head.querySelector('small');
+    subtitle.replaceWith(versionRow);
+    versionRow.append(subtitle);
+    void import('./mirrorUpdateMenu.js?rmv=1.62.95').then(mod => {
+        if (versionRow.isConnected) mod.mountSettingsUpdateChrome(versionRow);
+    }).catch(error => console.warn('[RabbitMirror] 设置标题的更新检测没有挂上', error));
     const searchbar = make('div', 'rh-ui-searchbar');
     const back = button('‹ 返回', () => goBack(), 'rh-ui-back'); back.id = 'rh_ui_back';
     const search = make('input', 'rh-ui-search'); search.type = 'search'; search.placeholder = '搜索功能，如：多面、世界书'; search.setAttribute('aria-label', '搜索兔子镜功能');
@@ -228,7 +235,6 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
         diagnosis:['tools','检查宿主与连接问题','记录情况、查看诊断报告。'],
         cleanup:['tools','清理与恢复','分别处理抽签记录、当前注入与设置。'],
         help:['tools','第一次使用兔子镜','先确定生成方式和显示模式，再回到聊天开始使用。'],
-        update:['tools','版本与更新','检查插件版本，或加载已经安装的版本。'],
     };
     const panels = new Map();
     for (const [key,[tab,title,desc]] of Object.entries(definitions)) {
@@ -274,7 +280,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
         ['faces','每一面怎么呈现','先选形式，再决定一次出几面。常用 1–3 面。'],
         ['draw','怎么挑选题材和形式'],['look','调整画面与写法',null,'palette'],
         ['library','导入小剧场世界书',null,'book'],['theaterFavorites','回看收藏的兔子镜'],['favorites','让喜欢的更常出现'],['blacklist','不想抽到哪些内容']])row('play',key,title,desc,glyph);
-    for(const key of ['help','mirror','usage','diagnosis','regex','cleanup','update'])row('tools',key);
+    for(const key of ['help','mirror','usage','diagnosis','regex','cleanup'])row('tools',key);
     const choice = (input,title,description,extra='') => {
         const old = input.closest('label'); const label = make('label','rh-ui-choice');
         label.append(input); const text=make('span','');text.append(make('strong','',title),make('small','',description));if(extra)text.append(make('em','',extra));label.append(text);
@@ -325,8 +331,6 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     move('rh_manual_entry_diag','diagnosis');
     move('rh_token_meter','usage');move(get('rh_copy_regex').closest('.rabbit-mirror-regex-helper'),'regex');
     move(get('rh_clear_last').parentElement,'cleanup');move(get('rh_external_diag_status').parentElement,'diagnosis');
-    move('rh_update_version_group','update');
-    for(const id of ['rh_update_status','rh_update_reload'])move(id,'update');
     const steps=[['先选生成方式','选择“跟随正文 API”，或“使用副 API”。使用副 API 时，再为兔子镜配置连接与模型。','mode','选择生成方式'],['选择兔子镜显示模式',`根据生成方式，选择正文下方、外置展示或跟随正文内嵌。外置展示时，${outer}跟随正文内嵌则是${inner}`,'display','选择兔子镜显示模式'],['回到聊天，发一条消息','保持“随聊天生成小剧场”开启。按选好的生成与显示模式使用兔子镜。']];
     steps.forEach(([title,desc,target,label],i)=>{const step=html('section','rh-ui-guide-step',`<span>${i+1}</span><div><h3>${title}</h3><p>${desc}</p></div>`);if(i===2)step.querySelector('p').dataset.rhTimingGuide='true';if(target){const link=button(label+' ›',()=>navigate(target),'rh-ui-text-link');link.dataset.rhRoute=target;step.lastElementChild.append(link);}body('help').append(step);});
     note('help','想换内容，去「玩法」。遇到显示问题，查看具体镜面上的工具。');
@@ -439,6 +443,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
             if(typeof root.showModal==='function'){if(!root.open)root.showModal();}
             else root.setAttribute('open','');
             trackViewport();applyTheme();paint();close.focus({preventScroll:true});
+            void import('./mirrorUpdateMenu.js?rmv=1.62.95').then(mod => mod.refreshRabbitMirrorUpdateOnOpen()).catch(error => console.warn('[RabbitMirror] 打开设置时没能检测更新', error));
         }else{
             closeTheaterFavoriteViewer();
             closeTheaterFavoriteLibrary();
@@ -450,7 +455,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     listen(root,'cancel',event=>{
         if(event.target!==root)return;
         event.preventDefault();
-        if(doc.querySelector('[data-rm-theater-favorite-viewer],[data-rm-theater-favorite-library]'))return;
+        if(doc.querySelector('[data-rm-theater-favorite-viewer],[data-rm-theater-favorite-library],[data-rm-update-sheet]'))return;
         setOpen(false);
     });
     for(const [key,name] of Object.entries(tabNames)){const tab=button(name,()=>{history=[];navigate(key,false);});tab.dataset.rhTab=key;tab.setAttribute('role','tab');tabs.append(tab);}
@@ -460,13 +465,13 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     listen(root,'change',()=>sync());
     listen(root,'click',e=>{
         if(e.target!==root)return;
-        if(doc.querySelector('[data-rm-theater-favorite-viewer],[data-rm-theater-favorite-library]'))return;
+        if(doc.querySelector('[data-rm-theater-favorite-viewer],[data-rm-theater-favorite-library],[data-rm-update-sheet]'))return;
         setOpen(false);
     });
     listen(root,'keydown',e=>{
         if(e.target.closest?.('dialog')!==root)return;
         if(e.key==='Escape'){
-            if(doc.querySelector('[data-rm-theater-favorite-viewer],[data-rm-theater-favorite-library]')){e.preventDefault();return;}
+            if(doc.querySelector('[data-rm-theater-favorite-viewer],[data-rm-theater-favorite-library],[data-rm-update-sheet]')){e.preventDefault();return;}
             e.preventDefault();setOpen(false);
         }
         if(e.key!=='Tab')return;

@@ -1,4 +1,4 @@
-// User-triggered only. The host owns Git/permissions; never reset, delete or reinstall.
+// 用户点了更新之后才动安装。git pull 被本地改动挡住时，改为用 GitHub 版本覆盖，和预设备忘录一样。
 let pending = null;
 export function ownExtensionFolder(moduleUrl = import.meta.url) {
     // TauriTavern 等宿主可能在路径前加前缀，只要求末尾是 third-party/<目录>/src/extensionUpdater.js。
@@ -11,7 +11,7 @@ export function ownExtensionFolder(moduleUrl = import.meta.url) {
 function failure(status) {
     if (status === 401 || status === 403) return '酒馆拒绝更新权限。全局安装可能需要管理员操作；此按钮不能绕过权限。';
     if (status === 404 || status === 405) return '当前酒馆没有提供此更新接口，或安装目录不存在。请使用宿主更新功能或安装包。';
-    return '宿主更新失败。可能是仓库连接失败、非 Git 安装或本地文件冲突；请检查宿主日志。没有自动重试或重装。';
+    return '宿主更新失败。可能是仓库连接失败、非 Git 安装或本地文件冲突；请检查宿主日志。';
 }
 // 旧版没有超时：宿主的 git 拉取卡住时，按钮一直处于处理中，之后再点也没有反应。
 async function fetchWithTimeout(fetchImpl, url, init, ms, label) {
@@ -107,10 +107,402 @@ export function requestRabbitMirrorUpdate({ fetchImpl = globalThis.fetch.bind(gl
             method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' },
             body: JSON.stringify({ extensionName: folder, global: entry.type === 'global' }),
         }, 180000, '宿主更新');
-        if (!response.ok) throw new Error(failure(response.status));
+        if (!response.ok) {
+            let detail = '';
+            try { detail = (await response.text()).trim(); } catch {}
+            const error = new Error(failure(response.status));
+            error.status = response.status;
+            error.detail = detail;
+            throw error;
+        }
         const result = await response.json();
         if (typeof result?.isUpToDate !== 'boolean') throw new Error('宿主返回了未识别的更新结果，请检查扩展版本后再操作；不会自动重复更新。');
         return { status: result.isUpToDate ? 'current' : 'updated' };
     })().finally(() => { pending = null; });
     return pending;
+}
+
+// 和预设备忘录一样：只拿仓库 manifest 的版本号和当前页面比。
+// 同版本内容差、本地 git dirty、远端暂时读失败都不当成「有更新」。
+const HOMEPAGE = 'https://github.com/Zaiyebuzuoyouqingdetiangou/toto';
+const RAW_MANIFEST = 'https://raw.githubusercontent.com/Zaiyebuzuoyouqingdetiangou/toto/main/manifest.json';
+const CDN_MANIFEST = 'https://cdn.jsdelivr.net/gh/Zaiyebuzuoyouqingdetiangou/toto@main/manifest.json';
+const RAW_README = 'https://raw.githubusercontent.com/Zaiyebuzuoyouqingdetiangou/toto/main/README.md';
+const CDN_README = 'https://cdn.jsdelivr.net/gh/Zaiyebuzuoyouqingdetiangou/toto@main/README.md';
+const UPDATE_CHECK_THROTTLE_MS = 30_000;
+const LOADED_VERSION_KEY = '__rabbitMirrorLoadedVersion';
+const RELOAD_GUARD_KEY = 'rabbitMirrorReloadedVersion';
+
+let updateCheckSequence = 0;
+let lastUpdateCheckAt = 0;
+let checkingPromise = null;
+let reloadWatchInstalled = false;
+let updateState = { status: 'idle', remoteVersion: '', remoteUrl: HOMEPAGE, remoteBranch: 'main', message: '' };
+const updateListeners = new Set();
+
+function validVersion(value) {
+    return typeof value === 'string' && /^[0-9][\w.+-]{0,79}$/.test(value) ? value : '';
+}
+
+export function runningRabbitMirrorVersion() {
+    return validVersion(globalThis.__rabbitMirrorRuntimeVersion);
+}
+
+export function compareRabbitMirrorVersions(a, b) {
+    const parse = value => String(value || '').trim().replace(/^v/i, '').split('.').map(part => parseInt(part, 10) || 0);
+    const left = parse(a);
+    const right = parse(b);
+    const length = Math.max(left.length, right.length);
+    for (let index = 0; index < length; index += 1) {
+        const delta = (left[index] ?? 0) - (right[index] ?? 0);
+        if (delta) return delta;
+    }
+    return 0;
+}
+
+export function isNewerRabbitMirrorVersion(latest, current) {
+    return compareRabbitMirrorVersions(latest, current) > 0;
+}
+
+function snapshot() {
+    return { ...updateState };
+}
+
+function publish(next) {
+    updateState = { ...updateState, ...next };
+    for (const listener of updateListeners) {
+        try { listener(snapshot()); } catch {}
+    }
+}
+
+export function getRabbitMirrorUpdateSnapshot() {
+    return snapshot();
+}
+
+export function subscribeRabbitMirrorUpdate(listener) {
+    updateListeners.add(listener);
+    return () => updateListeners.delete(listener);
+}
+
+function parseGithubRepo(remoteUrl) {
+    const match = String(remoteUrl || '').trim().match(/github\.com[/:]([^/]+)\/([^/.]+?)(?:\.git)?\/?$/i);
+    if (!match) return null;
+    return { owner: match[1], repo: match[2] };
+}
+
+function remoteFileUrl(remoteUrl, fileName, branch, cdn) {
+    const parsed = parseGithubRepo(remoteUrl);
+    if (!parsed) return '';
+    const safeBranch = String(branch || '').trim() || 'main';
+    const file = String(fileName || '').replace(/^\//, '');
+    return cdn
+        ? `https://cdn.jsdelivr.net/gh/${parsed.owner}/${parsed.repo}@${safeBranch}/${file}`
+        : `https://raw.githubusercontent.com/${parsed.owner}/${parsed.repo}/${safeBranch}/${file}`;
+}
+
+function uniqueUrls(urls) {
+    return [...new Set(urls.filter(Boolean))];
+}
+
+async function readJson(response) {
+    try {
+        const text = (await response.text()).trim();
+        if (!text || (text[0] !== '{' && text[0] !== '[')) return null;
+        return JSON.parse(text);
+    } catch {
+        return null;
+    }
+}
+
+async function fetchManifestVersionFromUrl(url, fetchImpl) {
+    try {
+        const response = await fetchWithTimeout(fetchImpl, `${url}${url.includes('?') ? '&' : '?'}_=${Date.now()}`, { cache: 'no-store' }, 12000, '读取远程版本');
+        if (!response.ok) return '';
+        const data = await readJson(response);
+        return validVersion(data?.version);
+    } catch {
+        return '';
+    }
+}
+
+async function tryReadInstallInfo(moduleUrl) {
+    const fn = typeof globalThis.getExtensionInstallationInfo === 'function'
+        ? globalThis.getExtensionInstallationInfo
+        : globalThis.TavernHelper?.getExtensionStatus;
+    if (typeof fn !== 'function') return null;
+    let folder = '';
+    try { folder = ownExtensionFolder(moduleUrl); } catch { return null; }
+    try {
+        return await Promise.race([
+            fn(folder),
+            new Promise(resolve => { setTimeout(() => resolve(null), 5000); }),
+        ]);
+    } catch {
+        return null;
+    }
+}
+
+async function fetchRemoteManifestVersion(info, fetchImpl) {
+    const branch = String(info?.current_branch_name || '').trim() || 'main';
+    const urls = uniqueUrls([
+        remoteFileUrl(info?.remote_url, 'manifest.json', branch, false),
+        remoteFileUrl(info?.remote_url, 'manifest.json', branch, true),
+        RAW_MANIFEST,
+        CDN_MANIFEST,
+    ]);
+    for (const url of urls) {
+        const version = await fetchManifestVersionFromUrl(url, fetchImpl);
+        if (version) return version;
+    }
+    return '';
+}
+
+function rememberRemote(info, remoteVersion) {
+    return {
+        remoteVersion: remoteVersion || '',
+        remoteUrl: info?.remote_url || HOMEPAGE,
+        remoteBranch: String(info?.current_branch_name || '').trim() || 'main',
+    };
+}
+
+export async function checkRabbitMirrorUpdate({ force = false, fetchImpl = globalThis.fetch.bind(globalThis), moduleUrl = import.meta.url } = {}) {
+    if (updateState.status === 'checking' && checkingPromise) return checkingPromise;
+    const now = Date.now();
+    if (!force && updateState.status !== 'unknown' && now - lastUpdateCheckAt < UPDATE_CHECK_THROTTLE_MS) return snapshot();
+    const sequence = ++updateCheckSequence;
+    lastUpdateCheckAt = now;
+    publish({ status: 'checking', message: '' });
+    checkingPromise = (async () => {
+        try {
+            const info = await tryReadInstallInfo(moduleUrl);
+            const remoteVersion = await fetchRemoteManifestVersion(info, fetchImpl);
+            if (sequence !== updateCheckSequence) return snapshot();
+            if (!remoteVersion) {
+                publish({ status: 'unknown', message: '没能读到远程版本。请检查网络后再点「检测更新」。', ...rememberRemote(info, '') });
+                return snapshot();
+            }
+            const current = runningRabbitMirrorVersion();
+            publish({
+                status: isNewerRabbitMirrorVersion(remoteVersion, current) ? 'available' : 'latest',
+                message: '',
+                ...rememberRemote(info, remoteVersion),
+            });
+            return snapshot();
+        } catch (error) {
+            if (sequence === updateCheckSequence) {
+                publish({ status: 'unknown', message: String(error?.message || '没能完成检测，请稍后再试。') });
+            }
+            return snapshot();
+        } finally {
+            checkingPromise = null;
+        }
+    })();
+    return checkingPromise;
+}
+
+const headingPattern = /^(#{1,3})\s+v?(\d+\.\d+(?:\.\d+)*)(?:\s*[：:·\-—]\s*|\s+)(.*)$/;
+const quoteHeadingPattern = /^>\s+\*\*v?(\d+\.\d+(?:\.\d+)*)(?:\s*[：:·\-—]\s*|\s+)(.+?)\*\*/;
+
+export function parseReadmeChangelog(text) {
+    const sections = [];
+    let current = null;
+    const push = () => {
+        if (!current) return;
+        const items = [];
+        for (const raw of current.lines) {
+            let line = raw.replace(/^\s*>\s?/, '').trim();
+            if (!line || line === '---') continue;
+            line = line.replace(/^[-*]\s+/, '').replace(/^\*\*(.+)\*\*$/, '$1').trim();
+            if (line) items.push(line);
+        }
+        if (current.version || items.length) sections.push({ version: current.version, title: current.title, items });
+    };
+    for (const line of String(text || '').split(/\r?\n/)) {
+        const heading = line.match(headingPattern);
+        const quote = !heading && line.match(quoteHeadingPattern);
+        if (heading || quote) {
+            push();
+            const version = validVersion((heading || quote)[heading ? 2 : 1]);
+            const title = String((heading ? heading[3] : quote[2]) || '').replace(/\*\*/g, '').trim();
+            current = { version, title, lines: [] };
+            continue;
+        }
+        if (current) current.lines.push(line);
+    }
+    push();
+    return sections.sort((a, b) => compareRabbitMirrorVersions(b.version, a.version));
+}
+
+async function fetchText(url, fetchImpl, label) {
+    const response = await fetchWithTimeout(fetchImpl, `${url}${url.includes('?') ? '&' : '?'}_=${Date.now()}`, { cache: 'no-store' }, 15000, label);
+    if (!response.ok) return '';
+    const text = await response.text();
+    const trimmed = text.trim();
+    if (!trimmed || trimmed.startsWith('<')) return '';
+    return text;
+}
+
+export async function loadRabbitMirrorReadme({ fetchImpl = globalThis.fetch.bind(globalThis), moduleUrl = import.meta.url, remoteUrl, remoteBranch } = {}) {
+    const branch = String(remoteBranch || updateState.remoteBranch || 'main').trim() || 'main';
+    const repo = remoteUrl || updateState.remoteUrl || HOMEPAGE;
+    const installed = new URL('../README.md', moduleUrl);
+    installed.searchParams.set('rm-check', String(Date.now()));
+    const urls = uniqueUrls([
+        remoteFileUrl(repo, 'README.md', branch, false),
+        remoteFileUrl(repo, 'README.md', branch, true),
+        RAW_README,
+        CDN_README,
+        installed.href,
+    ]);
+    for (const url of urls) {
+        try {
+            const text = await fetchText(url, fetchImpl, '读取更新说明');
+            if (!text) continue;
+            const sections = parseReadmeChangelog(text);
+            if (sections.length) return { ok: true, sections };
+            const items = text.trim().split(/\n+/).map(line => line.trim()).filter(Boolean).slice(0, 40);
+            if (items.length) return { ok: true, sections: [{ version: '', title: 'README', items }] };
+        } catch {}
+    }
+    return { ok: false, sections: [], message: '没能读到 README。请检查网络后再打开一次。' };
+}
+
+export function reloadTavernPage(delayMs = 800) {
+    globalThis.setTimeout(() => {
+        try {
+            if (typeof globalThis.triggerSlash === 'function') {
+                globalThis.triggerSlash('/reload-page');
+                return;
+            }
+        } catch {}
+        try { globalThis.location?.reload(); } catch {}
+    }, delayMs);
+}
+
+export async function fetchInstalledManifestVersion({ fetchImpl = globalThis.fetch.bind(globalThis), moduleUrl = import.meta.url } = {}) {
+    try {
+        const url = new URL('../manifest.json', moduleUrl);
+        url.searchParams.set('rm-check', String(Date.now()));
+        const response = await fetchWithTimeout(fetchImpl, url.href, { cache: 'no-store' }, 15000, '读取安装版本');
+        if (!response.ok) return '';
+        const manifest = await readJson(response);
+        return validVersion(manifest?.version);
+    } catch {
+        return '';
+    }
+}
+
+export async function checkRabbitMirrorManifestBump({ silent = false, fetchImpl, moduleUrl } = {}) {
+    const installed = await fetchInstalledManifestVersion({ fetchImpl, moduleUrl });
+    if (!installed) return false;
+    const loaded = validVersion(globalThis[LOADED_VERSION_KEY]) || runningRabbitMirrorVersion();
+    if (!isNewerRabbitMirrorVersion(installed, loaded)) {
+        globalThis[LOADED_VERSION_KEY] = installed;
+        try { globalThis.sessionStorage?.removeItem(RELOAD_GUARD_KEY); } catch {}
+        return false;
+    }
+    const guard = `${loaded}->${installed}`;
+    try {
+        if (globalThis.sessionStorage?.getItem(RELOAD_GUARD_KEY) === guard) return false;
+        globalThis.sessionStorage?.setItem(RELOAD_GUARD_KEY, guard);
+    } catch {}
+    if (!silent) globalThis.toastr?.info?.('兔子镜已更新，正在刷新页面…', '兔子镜');
+    reloadTavernPage();
+    return true;
+}
+
+export function setupRabbitMirrorExtensionReloadWatch() {
+    if (reloadWatchInstalled) return;
+    reloadWatchInstalled = true;
+    const version = runningRabbitMirrorVersion();
+    if (version) globalThis[LOADED_VERSION_KEY] = version;
+    const handler = () => { void checkRabbitMirrorManifestBump(); };
+    const events = globalThis.tavern_events;
+    if (typeof globalThis.eventOn === 'function' && events?.EXTENSION_SETTINGS_LOADED) {
+        globalThis.eventOn(events.EXTENSION_SETTINGS_LOADED, handler);
+        return;
+    }
+    try {
+        const context = globalThis.SillyTavern?.getContext?.();
+        const eventType = context?.eventTypes?.EXTENSION_SETTINGS_LOADED;
+        if (context?.eventSource && eventType && typeof context.eventSource.on === 'function') {
+            context.eventSource.on(eventType, handler);
+        }
+    } catch {}
+}
+
+function resolveHostFn(name) {
+    if (typeof globalThis[name] === 'function') return globalThis[name].bind(globalThis);
+    const helper = globalThis.TavernHelper;
+    if (typeof helper?.[name] === 'function') return helper[name].bind(helper);
+    return null;
+}
+
+function resolveUpdateExtensionFn() {
+    return resolveHostFn('updateExtension');
+}
+
+function looksLikeGitPullBlocked(error, status = 0, detail = '') {
+    const text = `${detail} ${error instanceof Error ? error.message : String(error || '')}`;
+    return status === 500 || error?.status === 500 || /not valid JSON|Unexpected token|Internal Server Error/i.test(text);
+}
+
+async function overwriteFromGithub(folder) {
+    const reinstallFn = resolveHostFn('reinstallExtension');
+    if (!reinstallFn) {
+        throw new Error('更新失败：本地扩展目录有改动，酒馆无法 git pull。当前环境没有 GitHub 覆盖安装。');
+    }
+    globalThis.toastr?.info?.('git pull 被本地改动挡住了，改为用 GitHub 版本覆盖…');
+    const response = await reinstallFn(folder);
+    if (response?.ok === true) {
+        globalThis.toastr?.success?.('已强制覆盖为 GitHub 版本，正在刷新页面…');
+        reloadTavernPage();
+        return { ok: true, overwritten: true };
+    }
+    const status = typeof response?.status === 'number' ? response.status : 0;
+    let detail = '';
+    try { if (typeof response?.text === 'function') detail = (await response.text()).trim(); } catch {}
+    throw new Error(detail || (status ? `GitHub 覆盖失败 (HTTP ${status})` : 'GitHub 覆盖失败'));
+}
+
+function finishUpdated() {
+    globalThis.toastr?.success?.('兔子镜已更新，正在刷新页面…');
+    reloadTavernPage();
+    return { ok: true };
+}
+
+export async function applyRabbitMirrorUpdateAndReload(options = {}) {
+    const check = await checkRabbitMirrorUpdate({ ...options, force: true });
+    if (check.status !== 'available') {
+        publish({ status: check.status === 'unknown' ? 'unknown' : 'latest' });
+        return { ok: true, skipped: true, message: check.status === 'unknown' ? (check.message || '没能确认远程版本，没有发送更新。') : '当前已是最新版本，无需更新' };
+    }
+    let folder = '';
+    try { folder = ownExtensionFolder(options.moduleUrl); } catch (error) { throw error; }
+    const updateFn = resolveUpdateExtensionFn();
+    if (updateFn) {
+        try {
+            const response = await updateFn(folder);
+            if (response?.ok === true) return finishUpdated();
+            const status = typeof response?.status === 'number' ? response.status : 0;
+            let detail = '';
+            try { if (typeof response?.text === 'function') detail = (await response.text()).trim(); } catch {}
+            if (looksLikeGitPullBlocked(null, status, detail)) return overwriteFromGithub(folder);
+            throw new Error(detail || failure(status));
+        } catch (error) {
+            if (looksLikeGitPullBlocked(error, error?.status, error?.detail)) return overwriteFromGithub(folder);
+            throw error;
+        }
+    }
+    try {
+        const result = await requestRabbitMirrorUpdate(options);
+        if (result.status === 'current') {
+            publish({ status: 'latest' });
+            return { ok: true, skipped: true, message: '宿主确认当前安装已同步，没有新的文件可拉取。' };
+        }
+        return finishUpdated();
+    } catch (error) {
+        if (looksLikeGitPullBlocked(error, error?.status, error?.detail)) return overwriteFromGithub(folder);
+        throw error;
+    }
 }

@@ -1,12 +1,12 @@
-import { clamp, luminanceFromRgb, classifyPaletteSamples } from './paletteObservation.js?rmv=1.62.91';
-import { activeRoleColorHtml, bindRolePaletteCode } from './roleColorVariants.js?rmv=1.62.91';
-import { detectCompositionFingerprint, VISUAL_SKELETON_MAX_CHARS } from './compositionFingerprint.js?rmv=1.62.91';
-import { visualSceneryEnabled } from './presentationMode.js?rmv=1.62.91';
-import { presentationModeFields } from './presentationMode.js?rmv=1.62.91';
-import { getCurrentChatKey, commitFollowVisualHistory, bindVisualHistoryTarget } from './storage.js?rmv=1.62.91';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.62.91';
-import { getSettings } from './settings.js?rmv=1.62.91';
-import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.62.91';
+import { clamp, luminanceFromRgb, classifyPaletteSamples } from './paletteObservation.js?rmv=1.62.95';
+import { activeRoleColorHtml, bindRolePaletteCode } from './roleColorVariants.js?rmv=1.62.95';
+import { detectCompositionFingerprint, VISUAL_SKELETON_MAX_CHARS } from './compositionFingerprint.js?rmv=1.62.95';
+import { visualSceneryEnabled } from './presentationMode.js?rmv=1.62.95';
+import { presentationModeFields } from './presentationMode.js?rmv=1.62.95';
+import { getCurrentChatKey, commitFollowVisualHistory, bindVisualHistoryTarget } from './storage.js?rmv=1.62.95';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.62.95';
+import { getSettings } from './settings.js?rmv=1.62.95';
+import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.62.95';
 import {
     commitRabbitMirrorFollowBatch,
     captureRabbitMirrorGenerationSnapshots,
@@ -16,17 +16,17 @@ import {
     inspectRabbitMirrorGenerationSource,
     releaseRabbitMirrorFollowBatch,
     releaseRabbitMirrorFollowBatchAtMessage,
-} from './generationGuard.js?rmv=1.62.91';
+} from './generationGuard.js?rmv=1.62.95';
 import {
     clearSanitizedRabbitMirrorFaceProof,
     getSanitizedRabbitMirrorFaceProof,
     markSanitizedRabbitMirrorFace,
     rabbitMirrorMultifaceSourceHash,
-} from './multifaceProof.js?rmv=1.62.91';
-import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.62.91';
-import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.62.91';
-import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.62.91';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.91';
+} from './multifaceProof.js?rmv=1.62.95';
+import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.62.95';
+import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.62.95';
+import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.62.95';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.95';
 
 export const FOLLOW_MULTIFACE_COMMITTED_EVENT = 'rabbit-mirror:follow-multiface-committed';
 export const FOLLOW_MULTIFACE_REJECTED_EVENT = 'rabbit-mirror:follow-multiface-rejected';
@@ -771,7 +771,7 @@ function cssFunctionEnd(value, opening) {
     return -1;
 }
 
-function extractCssColors(value, depth = 0) {
+function extractCssColors(value, depth = 0, minimumAlpha = 0.08) {
     if (depth >= 32) return [];
     const input = String(value || '').toLowerCase()
         .replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\/\*[\s\S]*?\*\//g, token => token.startsWith('/*') ? '' : '__rm_css_string__');
@@ -784,17 +784,18 @@ function extractCssColors(value, depth = 0) {
             const end = cssFunctionEnd(input, re.lastIndex);
             if (end < 0) break;
             if (/^(?:repeating-)?(?:linear|radial|conic)-gradient$/.test(token)) {
-                colors.push(...extractCssColors(input.slice(re.lastIndex + 1, end - 1), depth + 1));
+                colors.push(...extractCssColors(input.slice(re.lastIndex + 1, end - 1), depth + 1, minimumAlpha));
             } else {
                 // Unknown functions (e.g. color-mix, light-dark and URLs) are
                 // not a bag of equally weighted colour words or fallback ink.
                 const color = parseCssColorToken(input.slice(match.index, end));
-                if (color && color.a >= 0.08) colors.push(color);
+                if (color && color.a >= minimumAlpha) colors.push(color);
             }
             re.lastIndex = end;
         } else {
-            const color = parseCssColorToken(token);
-            if (color && color.a >= 0.08) colors.push(color);
+            const color = token === 'transparent' && minimumAlpha === 0
+                ? { r: 0, g: 0, b: 0, a: 0 } : parseCssColorToken(token);
+            if (color && color.a >= minimumAlpha) colors.push(color);
         }
     }
     return colors;
@@ -802,23 +803,141 @@ function extractCssColors(value, depth = 0) {
 
 
 
-function mainBackgroundSamples(backgroundColor, backgroundImage, resolve = value => value) {
-    // An image/gradient covers the base paint. Do not record an obscured base
-    // as the main colour; unreadable images remain unknown.
-    const image = String(backgroundImage || '').trim();
-    return extractCssColors(resolve(image && !/^(?:none|initial|unset|revert(?:-layer)?)$/i.test(image)
-        ? image : backgroundColor) || '');
+function sparsePaletteTexture(layer, backgroundSize, index) {
+    const sizes = String(backgroundSize || '').split(',');
+    const size = sizes[index % sizes.length]?.trim().match(/^(\d+(?:\.\d+)?)px\s+(\d+(?:\.\d+)?)px$/i);
+    if (!size || size.slice(1).some(value => Number(value) < 8 || Number(value) > 32)
+        || !/^(?:repeating-)?(?:linear|radial)-gradient\(/i.test(layer)) return false;
+    const limit = Math.min(2, Number(size[1]) / 8, Number(size[2]) / 8);
+    const pieces = [], body = layer.slice(layer.indexOf('(') + 1, -1);
+    let start = 0, depth = 0;
+    for (let i = 0; i <= body.length; i++) {
+        if (body[i] === '(') depth++;
+        else if (body[i] === ')') depth--;
+        if (i === body.length || (body[i] === ',' && !depth)) { pieces.push(body.slice(start, i).trim()); start = i + 1; }
+    }
+    let paintedEnd = -1;
+    const transparentStarts = [];
+    for (const piece of pieces) {
+        const stop = piece.match(/^(#[\w-]+|(?:rgba?|hsla?)\([^()]*\)|[a-z]+)\s+(.+)$/i);
+        if (!stop) {
+            if (extractCssColors(piece, 0, 0).length) return false;
+            continue;
+        }
+        const color = stop[1].toLowerCase() === 'transparent' ? { a: 0 } : parseCssColorToken(stop[1]);
+        if (!color) continue; // Gradient direction/shape, not a colour stop.
+        const positions = stop[2].split(/\s+/).map(value => value.match(/^(\d+(?:\.\d+)?)px$/i));
+        if (!positions.length || positions.some(value => !value)) return false;
+        if (color.a === 0) transparentStarts.push(Number(positions[0][1]));
+        else {
+            const end = Math.max(...positions.map(value => Number(value[1])));
+            if (end > limit) return false;
+            paintedEnd = Math.max(paintedEnd, end);
+        }
+    }
+    return paintedEnd >= 0 && transparentStarts.some(start => Math.abs(start - paintedEnd) < 0.01);
 }
 
-function withMainPaletteColors(fingerprint, colors) {
-    if (!fingerprint) return null;
-    // Persist observed carrier colours, never an averaged/invented swatch.
-    // Translucent-only backgrounds need compositing evidence; leave unknown.
-    const mainColors = [...new Set((colors || []).filter(color => color.a === 1
+function mainBackgroundSamples(backgroundColor, backgroundImage, resolve = value => value, backgroundSize = '') {
+    const image = String(resolve(backgroundImage) || '').trim();
+    const foreground = [];
+    if (image && !/^(?:none|initial|unset|revert(?:-layer)?)$/i.test(image)) {
+        // CSS image layers run from front to back. Only a small tiled texture
+        // with short hard stops can safely omit its ink from the main colours.
+        // A wide transparent gradient keeps its opaque stops AND the base.
+        // URLs/unknown functions cannot prove whether the base is exposed.
+        let offset = 0, index = 0;
+        while (offset < image.length) {
+            const remaining = image.slice(offset).replace(/^[\s,]+/, '');
+            if (!remaining) break;
+            offset = image.length - remaining.length;
+            const gradient = remaining.match(/^(?:repeating-)?(?:linear|radial|conic)-gradient\(/i);
+            if (!gradient) return foreground;
+            const end = cssFunctionEnd(image, offset + gradient[0].length - 1);
+            if (end < 0) return foreground;
+            const layer = image.slice(offset, end);
+            if (/\b(?:var|color|color-mix|light-dark|lab|lch|oklab|oklch|device-cmyk)\s*\(|\bcurrentcolor\b/i.test(layer)) return foreground;
+            const stops = extractCssColors(layer, 0, 0);
+            if (!stops.length) return foreground;
+            if (stops.every(color => color.a === 1)) return [...foreground, ...stops];
+            if (!sparsePaletteTexture(layer, resolve(backgroundSize), index)) foreground.push(...stops);
+            offset = end;
+            index++;
+        }
+    }
+    // A translucent base over an unknown host remains unproven; the caller
+    // retains only opaque colours instead of inventing a composited swatch.
+    return [...foreground, ...extractCssColors(resolve(backgroundColor) || '')];
+}
+
+function opaquePaletteHexColors(colors) {
+    return [...new Set((colors || []).filter(color => color.a === 1
         && [color.r, color.g, color.b].every(Number.isFinite)).map(color => '#'
         + [color.r, color.g, color.b].map(value => Math.round(clamp(value, 0, 255))
             .toString(16).padStart(2, '0')).join('').toUpperCase()))];
-    return { ...fingerprint, mainColors };
+}
+
+function withMainPaletteColors(fingerprint, colors, contentSurfaceColors = [], contentSurfaceSource = '') {
+    if (!fingerprint) return null;
+    // Keep the existing aggregate classification/cooldown and outer carrier.
+    // Inner reading surfaces are separate evidence, never a guessed area share.
+    return { ...fingerprint, mainColors: opaquePaletteHexColors(colors),
+        ...(contentSurfaceColors.length ? { contentSurfaceColors, contentSurfaceSource } : {}) };
+}
+
+function paletteContentTextCounter(visible) {
+    const cache = new WeakMap();
+    let visits = 0, exhausted = false;
+    const length = (node, depth = 0) => {
+        if (exhausted || !node) return 0;
+        if (cache.has(node)) return cache.get(node);
+        if (depth > 64 || ++visits > 1200) { exhausted = true; return 0; }
+        if (!visible(node) || (depth > 0 && node.tagName === 'DETAILS' && !node.hasAttribute('open'))
+            || node.closest?.('summary,style,script,template,button,label,input,select,textarea,nav,rm-think,rm-ticket,[data-rabbit-mirror-tool-entry-host]')) return 0;
+        const compactLength = value => String(value || '').replace(/\s+/g, '').length;
+        const children = [...(node.children || [])];
+        const ownLength = node.childNodes
+            ? [...node.childNodes].filter(child => child.nodeType === 3).reduce((sum, child) => sum + compactLength(child.textContent), 0)
+            : Math.max(0, compactLength(node.textContent) - children.reduce((sum, child) => sum + compactLength(child.textContent), 0));
+        const total = ownLength + children.reduce((sum, child) => sum + length(child, depth + 1), 0);
+        if (exhausted) return 0;
+        cache.set(node, total);
+        return total;
+    };
+    return length;
+}
+
+function contentSurfacePaletteColors(primary, candidates, properties, visible, measuredRootArea = 0) {
+    if (!primary) return [];
+    const textLength = paletteContentTextCounter(visible), totalText = textLength(primary);
+    if (totalText < 80) return [];
+    const chosen = [], colors = new Set();
+    for (const node of candidates) {
+        if (node === primary || !primary.contains(node) || !/^(DIV|SECTION|ARTICLE|MAIN|ASIDE|TABLE)$/.test(node.tagName)
+            || !visible(node) || chosen.some(parent => parent.contains(node))) continue;
+        // Source evidence proves a substantial part of the readable content,
+        // not pixel coverage. Rendered evidence additionally requires a real
+        // sizeable box, excluding tiny cards even when they contain long text.
+        if (measuredRootArea && elementArea(node) < measuredRootArea * 0.22) continue;
+        if (textLength(node) < Math.max(80, totalText * 0.35)) continue;
+        let opaqueSurface = true;
+        for (let ancestor = node; ancestor?.nodeType === 1; ancestor = ancestor.parentElement) {
+            const alpha = properties(ancestor).opacity;
+            if ((alpha !== undefined && alpha !== '' && Number(alpha) < 1)
+                || (ancestor !== primary && primary.contains(ancestor) && ancestor.tagName === 'DETAILS' && !ancestor.hasAttribute('open'))) {
+                opaqueSurface = false; break;
+            }
+        }
+        if (!opaqueSurface) continue;
+        const p = properties(node);
+        const swatches = opaquePaletteHexColors(mainBackgroundSamples(p['background-color'], p['background-image'], value => value, p['background-size']));
+        if (!swatches.length) continue;
+        chosen.push(node);
+        swatches.forEach(color => colors.add(color));
+        // Do not truncate a varied surface into a misleading all-pale subset.
+        if (colors.size > 4) return [];
+    }
+    return [...colors];
 }
 
 function paletteContentRoots(toto) {
@@ -868,20 +987,35 @@ function renderedPaletteFingerprint(toto) {
     const samples = [];
     let mainBackgroundFound = false;
     let mainColors = null;
-    for (const item of candidates) {
-        let style;
-        try {
-            style = getStyle(item.element);
-        } catch {
-            continue;
+    let primary = null;
+    const styleCache = new WeakMap();
+    const properties = element => {
+        if (!styleCache.has(element)) {
+            let style;
+            try { style = getStyle(element); } catch {}
+            styleCache.set(element, style || {});
         }
-        if (!style || style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity || 1) < 0.05) continue;
+        return styleCache.get(element);
+    };
+    const visible = element => {
+        for (let node = element; node && root.contains(node); node = node.parentElement) {
+            const style = properties(node);
+            if (node.hidden || style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity || 1) < 0.05) return false;
+        }
+        return true;
+    };
+    for (const item of candidates) {
+        const style = properties(item.element);
+        if (!visible(item.element)) continue;
         const colors = [
             ...extractCssColors(style.backgroundColor),
             ...extractCssColors(style.backgroundImage),
         ];
         if (!colors.length) continue;
-        if (!mainColors) mainColors = mainBackgroundSamples(style.backgroundColor, style.backgroundImage);
+        if (!mainColors) {
+            mainColors = mainBackgroundSamples(style.backgroundColor, style.backgroundImage, value => value, style.backgroundSize);
+            primary = item.element;
+        }
         const isRoot = item.element === root;
         if (isRoot) mainBackgroundFound = true;
         const area = item.area || rootArea * 0.08;
@@ -889,7 +1023,12 @@ function renderedPaletteFingerprint(toto) {
         const colorWeight = baseWeight / colors.length;
         colors.forEach(color => samples.push({ color, weight: colorWeight }));
     }
-    return withMainPaletteColors(classifyPaletteSamples(samples, 'rendered', mainBackgroundFound), mainColors);
+    const surfaces = contentSurfacePaletteColors(primary, candidates.map(item => item.element), element => {
+        const style = properties(element);
+        return { 'background-color': style.backgroundColor, 'background-image': style.backgroundImage,
+            'background-size': style.backgroundSize, opacity: style.opacity };
+    }, visible, rootArea);
+    return withMainPaletteColors(classifyPaletteSamples(samples, 'rendered', mainBackgroundFound), mainColors, surfaces, 'rendered-geometry');
 }
 
 // Raw independent results are scanned before mounting, so computed styles are
@@ -976,7 +1115,7 @@ function paletteSourceRules(root) {
 function paletteSourceDeclarations(text) {
     const css = String(text || '').replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\/\*[\s\S]*?\*\//g,
         token => token.startsWith('/*') ? '' : '__rm_css_string__');
-    return [...css.matchAll(/(?:^|;)\s*(background(?:-color|-image)?|(?:-webkit-)?backdrop-filter|display|visibility|opacity)\s*:\s*([^;{}]+)/gi)]
+    return [...css.matchAll(/(?:^|;)\s*(background(?:-color|-image|-size)?|(?:-webkit-)?backdrop-filter|display|visibility|opacity)\s*:\s*([^;{}]+)/gi)]
         .map(match => ({ property: match[1].toLowerCase(), value: match[2].replace(/\s*!important\s*$/i, '').trim(),
             important: /!important\s*$/i.test(match[2]) }));
 }
@@ -1013,14 +1152,14 @@ function paletteSourceProperties(html, root) {
         const add = (declarations, specificity) => {
             for (const declaration of declarations) {
                 const rank = [Number(declaration.important), ...specificity];
-                const names = declaration.property === 'background' ? ['background-color', 'background-image'] : [declaration.property];
+                const names = declaration.property === 'background' ? ['background-color', 'background-image', 'background-size'] : [declaration.property];
                 const value = /var\(/i.test(declaration.value) ? resolve(declaration.value) || '' : declaration.value;
                 const background = declaration.property === 'background' ? paletteBackgroundParts(value) : null;
                 for (const name of names) {
                     const prior = winners.get(name);
                     const different = prior ? rank.findIndex((n, i) => n !== prior.rank[i]) : -1;
                     if (!prior || different < 0 || rank[different] > prior.rank[different]) winners.set(name, {
-                        value: background ? background[name === 'background-color' ? 'color' : 'image'] : value, rank });
+                        value: background ? (name === 'background-size' ? 'auto' : background[name === 'background-color' ? 'color' : 'image']) : value, rank });
                 }
             }
         };
@@ -1058,14 +1197,18 @@ function sourcePaletteFingerprint(html, root, sourceProperties = null) {
     carriers.push(...roots.filter(node => !carriers.includes(node)), root.querySelector('details'), root);
     const painted = [];
     let mainColors = null;
+    let primary = null;
     for (const node of [...new Set(carriers)].filter(Boolean)) {
         if (!visible(node)) continue;
         const p = properties(node);
         const colors = [...new Set([p['background-color'], p['background-image']].filter(Boolean))]
             .flatMap(value => extractCssColors(/var\(/i.test(value) ? resolve(value) || '' : value));
         if (colors.length) {
-            if (!mainColors) mainColors = mainBackgroundSamples(p['background-color'], p['background-image'],
-                value => /var\(/i.test(value) ? resolve(value) || '' : value);
+            if (!mainColors) {
+                mainColors = mainBackgroundSamples(p['background-color'], p['background-image'],
+                    value => /var\(/i.test(value) ? resolve(value) || '' : value, p['background-size']);
+                primary = node;
+            }
             painted.push(colors);
         }
         if (painted.length >= 24) break;
@@ -1073,7 +1216,8 @@ function sourcePaletteFingerprint(html, root, sourceProperties = null) {
     if (!painted.length) return null;
     const samples = painted.flatMap((colors, index) => colors.map(color => ({ color,
         weight: (index === 0 ? 8 : 2 / Math.max(1, painted.length - 1)) / colors.length })));
-    return withMainPaletteColors(classifyPaletteSamples(samples, 'raw', true), mainColors);
+    const surfaces = contentSurfacePaletteColors(primary, carriers, properties, visible);
+    return withMainPaletteColors(classifyPaletteSamples(samples, 'raw', true), mainColors, surfaces, 'raw-structure');
 }
 
 function rawPaletteFingerprint(html, sourceRoot = null, sourceProperties = null) {
@@ -1606,7 +1750,7 @@ function templateSingleFollowRoot(template) {
 
 function loadFollowBatchSanitizer() {
     if (!followBatchSanitizerModulePromise) {
-        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.62.91').catch(error => {
+        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.62.95').catch(error => {
             followBatchSanitizerModulePromise = null;
             console.debug('[RabbitMirror] follow multiface sanitizer unavailable:', error);
             return null;

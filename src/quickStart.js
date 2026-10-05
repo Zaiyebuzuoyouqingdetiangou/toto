@@ -58,7 +58,7 @@ export const QUICK_START_GROUPS = [
         mirror('chain', '生成全链路诊断', '在出问题的镜面中查看生成与维修链路。', '该镜面 → 维修兔 → 生成全链路诊断'),
         setting('hostdiag', '宿主性能诊断', '检查宿主、其他扩展和网络，与内部诊断分开。', '#rh_external_diag_start'),
         setting('clear', '清理与恢复', '分别清除抽签冷却、当前注入或恢复默认；先确认范围。', '#rh_clear_last'),
-        setting('update', '检查并更新', '通过宿主更新当前扩展所登记的 git 仓库。安装通道为官方仓库 Zaiyebuzuoyouqingdetiangou/toto。权限或非 Git 安装仍可能受限。', '#rh_update_now'),
+        mirror('update', '检测更新', '在镜面工具菜单里检测新版本。有更新时点「有更新」阅读 README 更新日志，确认后再更新并刷新酒馆。', '该镜面标题 → 工具菜单 → 检测更新'),
     ] },
 ];
 export const QUICK_START_STEPS = {

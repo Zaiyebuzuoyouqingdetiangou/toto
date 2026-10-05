@@ -18,6 +18,27 @@ const bindings = new WeakMap();
 const fits = new WeakMap();
 let activeMenu = null;
 const logo = '<svg viewBox="0 0 32 32" width="27" height="27" style="display:block!important;width:27px!important;height:27px!important;flex:none!important;fill:none!important;stroke:currentColor!important;pointer-events:none!important" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M10 16C4 2 11 1 14 14M18 14C20 1 27 2 23 16M9 16c-7 11 3 15 9 14s13-8 5-14c-4-3-10-3-14 0Z"/><path d="M12 22h1m6 0h1m-6 4 2 1 2-1"/></svg>';
+const plainLogoButtonStyle = 'all:initial!important;position:relative!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;width:36px!important;height:36px!important;box-sizing:border-box!important;border:1px solid currentColor!important;border-radius:10px!important;background:transparent!important;color:inherit!important;cursor:pointer!important;flex:0 0 auto!important;pointer-events:auto!important;touch-action:manipulation!important;-webkit-tap-highlight-color:transparent!important;';
+const updateLogoButtonStyle = 'all:initial!important;position:relative!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;width:36px!important;height:36px!important;box-sizing:border-box!important;border:1.5px solid #d06a2b!important;border-radius:10px!important;background:#fff6ee!important;color:#c45c1a!important;box-shadow:0 0 0 2px #d06a2b33!important;cursor:pointer!important;flex:0 0 auto!important;pointer-events:auto!important;touch-action:manipulation!important;-webkit-tap-highlight-color:transparent!important;';
+
+// 有新版本时标题栏兔子要能直接看出来，不用先打开菜单。
+export function paintToolMenuUpdateIcon(button, available) {
+    if (!button?.style) return;
+    button.style.cssText = available ? updateLogoButtonStyle : plainLogoButtonStyle;
+    button.querySelector('[data-rm-update-dot]')?.remove();
+    if (!available) {
+        button.title = '兔子镜工具';
+        button.setAttribute('aria-label', '兔子镜工具');
+        return;
+    }
+    const dot = document.createElement('span');
+    dot.setAttribute('data-rm-update-dot', 'true');
+    dot.setAttribute('aria-hidden', 'true');
+    dot.style.cssText = 'position:absolute!important;top:2px!important;right:2px!important;width:8px!important;height:8px!important;border-radius:99px!important;background:#e23d2b!important;box-shadow:0 0 0 1.5px #fff!important;pointer-events:none!important;';
+    button.append(dot);
+    button.title = '兔子镜有新版本';
+    button.setAttribute('aria-label', '兔子镜工具，有新版本');
+}
 
 export function fitMirrorToolPanel(panel, button, preferredWidth = 340) {
     themeMirrorToolPanel(panel);
@@ -111,7 +132,8 @@ export function installMirrorToolMenu(root, host, actions, beforeOpen) {
         button.setAttribute('aria-expanded', 'false');
         button.title = '兔子镜工具';
         button.innerHTML = logo;
-        button.style.cssText = 'all:initial!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;width:36px!important;height:36px!important;box-sizing:border-box!important;border:1px solid currentColor!important;border-radius:10px!important;background:transparent!important;color:inherit!important;cursor:pointer!important;flex:0 0 auto!important;pointer-events:auto!important;touch-action:manipulation!important;-webkit-tap-highlight-color:transparent!important;';
+        paintToolMenuUpdateIcon(button, false);
+        globalThis.__rabbitMirrorPaintUpdateIcon?.(button);
         host.append(button);
         state = { root, actions, button, beforeOpen };
         bindings.set(host, state);
@@ -138,10 +160,18 @@ export function installMirrorToolMenu(root, host, actions, beforeOpen) {
                 });
                 panel.append(item);
             }
+            // 版本检测插在「关闭」前面，和工具菜单同一面，不再另开设置页。
+            globalThis.__rabbitMirrorDecorateToolMenu?.(panel);
             document.body.append(panel);
             button.setAttribute('aria-expanded', 'true');
             const outside = event => { if (!panel.contains(event.target) && !button.contains(event.target)) closeMenu(); };
-            const key = event => { if (event.key === 'Escape') { closeMenu(); button.focus(); } };
+            const key = event => {
+                if (event.key !== 'Escape') return;
+                // 更新日志开着时，第一次 Esc 只关日志，菜单留在下面。
+                if (document.querySelector('[data-rm-update-sheet]')) return;
+                closeMenu();
+                button.focus();
+            };
             activeMenu = { panel, button, outside, key };
             document.addEventListener('pointerdown', outside, true);
             document.addEventListener('keydown', key, true);

@@ -12,6 +12,20 @@ export const COMPOSITION_LABELS = Object.freeze({
     object_state_change: '控件作用于画面或物件状态',
 });
 
+const OPERATION_FAMILIES = ['text_panel_switch', 'text_disclosure_stack', 'object_state_change'];
+
+// Structural observations and legacy recipes are separate evidence. A coarse
+// radio label or an unused recipe must never imply a text-only operation.
+export function observedOperationFamiliesFor(record) {
+    if (record?.presentationMode === 'text' || record?.pureOrder === true) return [];
+    const values = [];
+    for (const part of String(record?.visualSkeleton || '').split('；')) {
+        const match = part.match(/^\s*operation_famil(?:y|ies)\s*:\s*(.*?)\s*$/);
+        if (match) values.push(...match[1].split(',').map(value => value.trim()));
+    }
+    return OPERATION_FAMILIES.filter(value => values.includes(value));
+}
+
 // A multi-face completion is one generation round. Legacy records lacking a
 // batch key each count as one round; unknown records still consume recency.
 export function recentDiversityRecords(history, rounds = 5) {
@@ -99,6 +113,32 @@ function localRules(root) {
     return result;
 }
 
+function checkedRoute(root, selector) {
+    if (/:not\([^)]*:checked/.test(selector)) return null; // reset, not another entry
+    const requirements = [];
+    const collect = text => {
+        for (const match of text.matchAll(/:checked\b/g)) {
+            requirements.push(query(root, text.slice(0, match.index).replace(/:checked\b/g, '').trim()));
+        }
+        return text.replace(/:checked\b/g, '');
+    };
+    let neutral = selector.replace(/:has\(([^()]*)\)/g, (all, content) => {
+        if (!/:checked\b/.test(content)) return all;
+        collect(content); return '';
+    });
+    // Retain every conjunct. An unsupported nested :has or a missing required
+    // control is unknown; never salvage just its first checked condition.
+    if (/:has\(/.test(neutral)) return null;
+    neutral = collect(neutral);
+    if (!requirements.length || requirements.some(items => !items.length)) return null;
+    const sources = [...new Set(requirements.flat())];
+    const forced = requirements.filter(items => items.length === 1).map(items => items[0]);
+    if (forced.some((source, index) => matches(source, 'input[type="radio"]') && source.name
+        && forced.slice(index + 1).some(other => other !== source && matches(other, 'input[type="radio"]')
+            && other.name === source.name && other.closest?.('form') === source.closest?.('form')))) return null;
+    return { sources, targets: query(root, neutral.replace(/::(?:before|after)\b/g, '')), conjunctive: requirements.length > 1 };
+}
+
 export function detectCompositionFingerprint(root) {
     if (!root?.querySelectorAll) return {};
     const nodes = [root, ...query(root, '*')];
@@ -178,36 +218,77 @@ export function detectCompositionFingerprint(root) {
         if (result.layout_family) break;
     }
 
-    const textTargets = new Set(), controls = new Set(); let visualState = false, uncertainState = false;
+    const groups = new Map(), radioGroups = [], operations = new Set();
+    const controlGroup = source => {
+        if (matches(source, 'a[href]')) return 'anchors';
+        if (!matches(source, 'input[type="radio"]') || !source.getAttribute('name')) return source;
+        const name = source.getAttribute('name'), form = source.closest?.('form');
+        let group = radioGroups.find(item => item.name === name && item.form === form);
+        if (!group) { group = { name, form }; radioGroups.push(group); }
+        return group;
+    };
+    const visualBaseline = (target, key, next) => {
+        const current = style(target)[key];
+        // Rendered exports can contain the runtime's active inline branch. Its
+        // marked, matching override is not the authored resting state.
+        if (target.getAttribute?.('data-rm-labeled-checked-verify-target') !== 'true'
+            || visualStateValue(key, declarations(target.getAttribute?.('style'))[key]) !== visualStateValue(key, next)) return current;
+        let baseline;
+        for (const rule of rules) if (!rule.conditional && !STATE.test(rule.selector)
+            && !/::|:(?:hover|focus|active|has)\b/.test(rule.selector) && matches(target, rule.selector)
+            && Object.hasOwn(rule.values, key)) baseline = rule.values[key];
+        return baseline;
+    };
     for (const rule of rules) {
         if (!STATE.test(rule.selector)) continue;
-        let neutral = rule.selector, sources = [];
-        const has = neutral.match(/:has\(([^()]*)\:checked\)/);
-        if (has) { sources = query(root, has[1]); neutral = neutral.replace(has[0], ''); }
-        else if (/:checked/.test(neutral)) {
-            if (/:not\([^)]*:checked/.test(neutral)) continue; // reset rule
-            sources = query(root, neutral.split(':checked')[0]); neutral = neutral.replace(/:checked/g, '');
-        } else if (/:target/.test(neutral)) {
-            neutral = neutral.replace(/:target/g, ''); sources = query(root, 'a[href]');
+        let sources = [], targets = [], conjunctive = false;
+        if (/:checked/.test(rule.selector)) {
+            const route = checkedRoute(root, rule.selector);
+            if (!route) continue;
+            ({ sources, targets, conjunctive } = route);
+        } else if (/:target/.test(rule.selector)) {
+            targets = query(root, rule.selector.replace(/:target/g, '').replace(/::(?:before|after)\b/g, ''));
+            sources = query(root, 'a[href]').filter(link => targets.some(target => target.id && link.getAttribute('href') === `#${target.id}`));
         } else continue; // native disclosures are inspected structurally below
-        const targets = query(root, neutral.replace(/::(?:before|after)\b/g, ''));
-        if (/:target/.test(rule.selector)) sources = sources.filter(link => targets.some(target => target.id && link.getAttribute('href') === `#${target.id}`));
-        // Dormant CSS has no operation to observe; it must not erase verified
-        // controls elsewhere. A partially matched route remains uncertain.
-        if (!sources.length && !targets.length) continue;
-        if (!sources.length || !targets.length) { uncertainState = true; continue; }
+        // A broken/decorative rule contributes no evidence of its own; it does
+        // not erase a separate, fully bound operation elsewhere in the face.
+        if (!sources.length || !targets.length || rule.conditional) continue;
+        const keys = [...new Set(sources.map(controlGroup))];
+        // Mixed conjunctive controls remain one unresolved condition, rather
+        // than being split into independently usable entries.
+        if (keys.length > 1 && conjunctive) continue;
+        const affected = keys.map(key => {
+            if (!groups.has(key)) groups.set(key, { sources: new Set(), textTargets: new Set(), mixedTargets: new Set(), visual: false });
+            const group = groups.get(key);
+            sources.filter(source => controlGroup(source) === key).forEach(source => group.sources.add(source));
+            return group;
+        });
         for (const target of targets) {
             if (ignored(target) || matches(target, CONTROL)) continue;
-            // A detached scan cannot establish that media/supports/container
-            // conditions apply. Keep the CSS, but do not use it as state proof.
-            if (!rule.conditional && drawingStateTarget(target) && Object.keys(rule.values).some(key => VISUAL_CHANGE.test(key) && visualStateValue(key, rule.values[key]) !== visualStateValue(key, style(target)[key]))) visualState = true;
+            const changed = Object.keys(rule.values).filter(key => VISUAL_CHANGE.test(key)
+                && visualStateValue(key, rule.values[key]) !== visualStateValue(key, visualBaseline(target, key, rule.values[key])));
+            if (drawingStateTarget(target) && changed.length) {
+                // An illustrated page among ordinary prose pages is still a
+                // page. Moving its drawing itself remains an object operation.
+                const mixedPage = changed.every(key => /^(?:display|visibility|opacity)$/.test(key))
+                    && [...(target.children || [])].some(prose);
+                affected.forEach(group => { if (mixedPage) group.mixedTargets.add(target); else group.visual = true; });
+            }
             else if (prose(target) && Object.keys(rule.values).some(key => REVEAL.test(key))) {
-                textTargets.add(target); sources.forEach(source => controls.add(source));
+                affected.forEach(group => group.textTargets.add(target));
             }
         }
     }
-    if (visualState) result.operation_family = 'object_state_change';
-    else if (!uncertainState && controls.size >= 1 && textTargets.size >= 1) {
+    for (const group of groups.values()) {
+        if (group.mixedTargets.size) {
+            const proseRadioGroup = group.textTargets.size >= 2
+                && [...group.sources].every(source => matches(source, 'input[type="radio"]') && source.getAttribute('name'));
+            if (proseRadioGroup) group.mixedTargets.forEach(target => group.textTargets.add(target));
+            else group.visual = true;
+        }
+        if (group.visual) { operations.add('object_state_change'); continue; }
+        const { sources: controls, textTargets } = group;
+        if (!controls.size || !textTargets.size) continue;
         const sources = [...controls];
         const type = node => String(node.getAttribute?.('type') || '').toLowerCase();
         const name = sources[0].getAttribute?.('name');
@@ -218,19 +299,22 @@ export function detectCompositionFingerprint(root) {
             const s = style(node);
             return !['absolute', 'fixed'].includes(s.position) && !s['grid-area'];
         });
-        if (controls.size >= 2 && textTargets.size >= 2 && (exclusiveRadios || exclusiveTargets)) result.operation_family = 'text_panel_switch';
-        else if (separateDisclosures) result.operation_family = 'text_disclosure_stack';
+        if (controls.size >= 2 && textTargets.size >= 2 && (exclusiveRadios || exclusiveTargets)) operations.add('text_panel_switch');
+        else if (separateDisclosures) operations.add('text_disclosure_stack');
     }
-    if (!result.operation_family) {
+    {
         // The protocol/title fold is not an interaction inside the artwork.
         const outerDetails = matches(root, 'details') ? root : query(root, 'details')[0];
         for (const parent of nodes) {
             const details = [...(parent.children || [])].filter(node => node !== outerDetails && matches(node, 'details'));
             if (!details.length) continue;
             if (details.every(node => query(node, 'summary').length && !hasDrawing(node) && prose(node))) {
-                result.operation_family = 'text_disclosure_stack'; break;
+                operations.add('text_disclosure_stack'); break;
             }
         }
     }
+    const observed = OPERATION_FAMILIES.filter(value => operations.has(value));
+    if (observed.length) result.operation_family = operations.has('object_state_change') ? 'object_state_change' : observed[0];
+    if (observed.length > 1) result.operation_families = observed.join(',');
     return result;
 }
