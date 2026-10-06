@@ -1,4 +1,4 @@
-import { listExternalLibraryEntryChoices, reclassifyExternalLibraryEntries } from './store.js?rmv=1.65.5';
+import { listExternalLibraryEntryChoices, reclassifyExternalLibraryEntries } from './store.js?rmv=1.65.6';
 
 const LABELS = { theme: '主题元素', format: '展现形式', text: '纯文本', auxiliary: '辅助片段', pending: '待确认', mixed: '混合型', ignore: '忽略' };
 const PAGE_SIZE = 50;
