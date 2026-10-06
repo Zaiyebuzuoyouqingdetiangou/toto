@@ -1,4 +1,4 @@
-import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.62.103';
+import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.62.104';
 const DB_NAME = 'rabbit_mirror_theater_favorites_v1';
 const STORE = 'favorites';
 const DB_VERSION = 1;

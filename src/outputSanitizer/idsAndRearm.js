@@ -6,7 +6,7 @@ import {
     escapeRegExp,
     getRabbitMirrorLocalStyleElements,
     hashInteractionSignature,
-} from './runtime.js?rmv=1.62.103';
+} from './runtime.js?rmv=1.62.104';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     DIRECT_ID_CLASS_STATE_RESCUE_ATTR,
@@ -22,24 +22,24 @@ import {
     repairMalformedNestedInteractiveLabels,
     repairRabbitMirrorSelectorPanelGridSpan,
     restoreInteractionInlineOverrides,
-} from './checkedStateRescue.js?rmv=1.62.103';
+} from './checkedStateRescue.js?rmv=1.62.104';
 import {
     RAW_SELF_MUTATION_RESCUE_ATTR,
     chooseMatchingRawRabbitMirrorRoot,
     getRawAssistantMessageForRenderedRoot,
-} from './scriptedInteractionRescue.js?rmv=1.62.103';
+} from './scriptedInteractionRescue.js?rmv=1.62.104';
 import {
     applyCheckedVisualFallback,
     inputHasMeaningfulCheckedSiblingRule,
     installIntelligentInteractionRescue,
-} from './fallbackRescue.js?rmv=1.62.103';
-import { INERT_ACTION_BUTTON_RESCUE_ATTR, INERT_ACTION_STATUS_ATTR } from './diagnostics.js?rmv=1.62.103';
-import { rehydrateRabbitMirrorMaintenanceRepairs } from './choiceRescue.js?rmv=1.62.103';
-import { maintenanceRepairRootBudget } from './maintenanceInspect.js?rmv=1.62.103';
-import { recoverBehaviorInteractions } from './behaviorRecovery.js?rmv=1.62.103';
-import { installMobileInteractionControls } from './mobileInteractionControls.js?rmv=1.62.103';
-import { installNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.62.103';
-import { installBehaviorInteractions } from './behaviorInteractions.js?rmv=1.62.103';
+} from './fallbackRescue.js?rmv=1.62.104';
+import { INERT_ACTION_BUTTON_RESCUE_ATTR, INERT_ACTION_STATUS_ATTR } from './diagnostics.js?rmv=1.62.104';
+import { rehydrateRabbitMirrorMaintenanceRepairs } from './choiceRescue.js?rmv=1.62.104';
+import { maintenanceRepairRootBudget } from './maintenanceInspect.js?rmv=1.62.104';
+import { recoverBehaviorInteractions } from './behaviorRecovery.js?rmv=1.62.104';
+import { installMobileInteractionControls } from './mobileInteractionControls.js?rmv=1.62.104';
+import { installNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.62.104';
+import { installBehaviorInteractions } from './behaviorInteractions.js?rmv=1.62.104';
 
 let interactionScopeCounter = 0;
 
