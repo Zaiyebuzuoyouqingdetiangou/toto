@@ -1,12 +1,12 @@
-import { clamp, luminanceFromRgb, classifyPaletteSamples } from './paletteObservation.js?rmv=1.64';
-import { activeRoleColorHtml, bindRolePaletteCode } from './roleColorVariants.js?rmv=1.64';
-import { detectCompositionFingerprint, VISUAL_SKELETON_MAX_CHARS } from './compositionFingerprint.js?rmv=1.64';
-import { visualSceneryEnabled } from './presentationMode.js?rmv=1.64';
-import { presentationModeFields } from './presentationMode.js?rmv=1.64';
-import { getCurrentChatKey, commitFollowVisualHistory, bindVisualHistoryTarget } from './storage.js?rmv=1.64';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.64';
-import { getSettings } from './settings.js?rmv=1.64';
-import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.64';
+import { clamp, luminanceFromRgb, classifyPaletteSamples } from './paletteObservation.js?rmv=1.65.1';
+import { activeRoleColorHtml, bindRolePaletteCode } from './roleColorVariants.js?rmv=1.65.1';
+import { detectCompositionFingerprint, VISUAL_SKELETON_MAX_CHARS } from './compositionFingerprint.js?rmv=1.65.1';
+import { visualSceneryEnabled } from './presentationMode.js?rmv=1.65.1';
+import { presentationModeFields } from './presentationMode.js?rmv=1.65.1';
+import { getCurrentChatKey, commitFollowVisualHistory, bindVisualHistoryTarget } from './storage.js?rmv=1.65.1';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.65.1';
+import { getSettings } from './settings.js?rmv=1.65.1';
+import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.65.1';
 import {
     commitRabbitMirrorFollowBatch,
     captureRabbitMirrorGenerationSnapshots,
@@ -16,17 +16,17 @@ import {
     inspectRabbitMirrorGenerationSource,
     releaseRabbitMirrorFollowBatch,
     releaseRabbitMirrorFollowBatchAtMessage,
-} from './generationGuard.js?rmv=1.64';
+} from './generationGuard.js?rmv=1.65.1';
 import {
     clearSanitizedRabbitMirrorFaceProof,
     getSanitizedRabbitMirrorFaceProof,
     markSanitizedRabbitMirrorFace,
     rabbitMirrorMultifaceSourceHash,
-} from './multifaceProof.js?rmv=1.64';
-import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.64';
-import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.64';
-import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.64';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.64';
+} from './multifaceProof.js?rmv=1.65.1';
+import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.65.1';
+import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.65.1';
+import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.65.1';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.65.1';
 
 export const FOLLOW_MULTIFACE_COMMITTED_EVENT = 'rabbit-mirror:follow-multiface-committed';
 export const FOLLOW_MULTIFACE_REJECTED_EVENT = 'rabbit-mirror:follow-multiface-rejected';
@@ -1750,7 +1750,7 @@ function templateSingleFollowRoot(template) {
 
 function loadFollowBatchSanitizer() {
     if (!followBatchSanitizerModulePromise) {
-        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.64').catch(error => {
+        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.65.1').catch(error => {
             followBatchSanitizerModulePromise = null;
             console.debug('[RabbitMirror] follow multiface sanitizer unavailable:', error);
             return null;

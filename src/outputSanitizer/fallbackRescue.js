@@ -1,7 +1,7 @@
 // Split from outputSanitizer.js — fallbackRescue.
-import { RADIO_BRANCH_CONTROL_ATTR, installRadioBranchRepair, applyRadioBranchState, radioBranchVerificationTargets } from './radioBranchRepair.js?rmv=1.64';
+import { RADIO_BRANCH_CONTROL_ATTR, installRadioBranchRepair, applyRadioBranchState, radioBranchVerificationTargets } from './radioBranchRepair.js?rmv=1.65.1';
 
-import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.64';
+import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.65.1';
 
 import {
     FEEDBACK_CAT_ATTR,
@@ -9,7 +9,7 @@ import {
     TOOL_ENTRY_HOST_ATTR,
     escapeRegExp,
     getRabbitMirrorLocalStyleElements,
-} from './runtime.js?rmv=1.64';
+} from './runtime.js?rmv=1.65.1';
 import {
     CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR,
     CROSS_PARENT_CHECKED_VERIFIED_ATTR,
@@ -91,7 +91,7 @@ import {
     webKit3DFlipInlineStates,
     webKit3DFlipRescueStates,
     webKit3DFlipStyleStates,
-} from './checkedStateRescue.js?rmv=1.64';
+} from './checkedStateRescue.js?rmv=1.65.1';
 import {
     EXISTING_INTERACTIVE_SELECTOR,
     RENDERED_BUTTON_ADJACENT_HIDDEN_RESCUE_ATTR,
@@ -118,7 +118,7 @@ import {
     isCollapsedDimensionValue,
     normalizeStylePropertyName,
     parseCssStateSiblingAssignments,
-} from './renderedStateRescue.js?rmv=1.64';
+} from './renderedStateRescue.js?rmv=1.65.1';
 import {
     chooseMatchingRawRabbitMirrorRoot,
     detectInteractionCapabilities,
@@ -134,7 +134,7 @@ import {
     installRawMessageSelfMutationRescue,
     preparePseudoTrigger,
     shouldIgnorePseudoToggleEvent,
-} from './scriptedInteractionRescue.js?rmv=1.64';
+} from './scriptedInteractionRescue.js?rmv=1.65.1';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     FILL_IN_CHOICE_BLANK_ATTR,
@@ -146,15 +146,15 @@ import {
     diagnosticFindClippingAncestor,
     maintenanceSafeComputedStyle,
     mobileInlineAnnotationRescueStates,
-} from './diagnostics.js?rmv=1.64';
-import { installStaticChoiceSelectionFallback } from './choiceRescue.js?rmv=1.64';
+} from './diagnostics.js?rmv=1.65.1';
+import { installStaticChoiceSelectionFallback } from './choiceRescue.js?rmv=1.65.1';
 import {
     checkedDeclarationCreatesContentReveal,
     checkedTargetCarriesResultContent,
     pseudoStateTargetSelector,
-} from './maintenanceInspect.js?rmv=1.64';
-import { splitCssSelectorList } from './markup.js?rmv=1.64';
-import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutResolveCheckedTargets } from './layoutRescue.js?rmv=1.64';
+} from './maintenanceInspect.js?rmv=1.65.1';
+import { splitCssSelectorList } from './markup.js?rmv=1.65.1';
+import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutResolveCheckedTargets } from './layoutRescue.js?rmv=1.65.1';
 
 const NESTED_DETAILS_FALLBACK_HANDLER_PROP = '__rabbitMirrorNestedDetailsFallbackHandler';
 
@@ -2432,9 +2432,14 @@ function recordLabeledCheckedVerification(root, input, verification, intended, p
     const after = verification.targets.map(entry => captureLabeledCheckedTargetState(entry));
     const changedFlags = after.map((snapshot, index) => labeledCheckedTargetStateChanged(verification.before[index], snapshot));
     const changedCount = changedFlags.filter(Boolean).length;
-    const secondStateTargetCount = verification.targets.filter(entry => entry.secondState).length;
+    // 只在开关自己的 label 里变化（按钮变色、提示文字切换）属于选中反馈，不算第二状态。
+    const insideOwnLabel = entry => {
+        const node = entry?.target || entry?.node || entry?.element;
+        return !!node && (node === input || (verification.labels || []).some(label => label === node || label.contains?.(node)));
+    };
+    const secondStateTargetCount = verification.targets.filter(entry => entry.secondState && !insideOwnLabel(entry)).length;
     const secondStateChangedCount = verification.targets.reduce((count, entry, index) => (
-        count + (entry.secondState && changedFlags[index] ? 1 : 0)
+        count + (entry.secondState && !insideOwnLabel(entry) && changedFlags[index] ? 1 : 0)
     ), 0);
     const checkedMatched = !!input.checked === !!intended;
     const visualMatched = secondStateTargetCount > 0 && secondStateChangedCount > 0;

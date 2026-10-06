@@ -1,7 +1,7 @@
 // Opt-in, one-request evidence. No storage, network, timers, live DOM reads or
 // random-number consumption. Observers can never affect generation outcomes.
-import { generationEvidenceTiming } from './generationTiming.js?rmv=1.64';
-import { roleColorEvidence } from './roleColorVariants.js?rmv=1.64';
+import { generationEvidenceTiming } from './generationTiming.js?rmv=1.65.1';
+import { roleColorEvidence } from './roleColorVariants.js?rmv=1.65.1';
 let armed = false;
 let current = null;
 let sequence = 0;

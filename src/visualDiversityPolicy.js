@@ -17,7 +17,10 @@ export function darkVisualGenerationRule(settings) {
   - 保留形式的固有结构、材质纹理与原有玩法，通过夜间环境、染色材质或低明度同类材料表达；不能把所有媒介都改成终端面板。长文本仍只做原有阅读美化，不添加 HTML 面的交互或动画。`;
 }
 
-export function visualDiversityExecutionLock(_settings, { textRevealRotation = false } = {}) {
-    // The shared ledger is sent once; only an active rotation is repeated here, closest to output.
-    return textRevealRotation ? '本轮换口味：整面交互作用在同一个主体上（可以分几步），不让每个条目各配一个开关。' : '';
+export function visualDiversityExecutionLock(_settings, { textRevealRotation = false, noButtonRow = false } = {}) {
+    // The shared ledger is sent once; only active, concrete reminders are repeated here, closest to output.
+    return [
+        noButtonRow ? '本面媒介本身没有成排按钮：主交互不用一排同款按钮或标签切换内容，交互落在媒介自己的部件上。' : '',
+        textRevealRotation ? '本轮换口味：整面交互作用在同一个主体上（可以分几步），不让每个条目各配一个开关。' : '',
+    ].filter(Boolean).join('\n');
 }

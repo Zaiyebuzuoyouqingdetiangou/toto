@@ -1,5 +1,5 @@
-import { updateBehaviorResults } from './behaviorResults.js?rmv=1.64';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.64';
+import { updateBehaviorResults } from './behaviorResults.js?rmv=1.65.1';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.65.1';
 
 // Declarative, face-local behaviors. No generated code, global targets or timers.
 const roots = new WeakMap();
@@ -418,7 +418,28 @@ function pointerDown(binding, event) {
     pointerMove(binding, event);
 }
 
+// 模型常把插件标识写漏 rm 前缀（data-item、data-ui="drag"）。只在声明了已知类型的局部里
+// 补上标准标识，原属性保留；不猜测目标，不新增内容。
+const BEHAVIOR_TYPES = new Set(['effect', 'drag', 'adjust', 'reveal', 'view', 'input', 'draw', 'motion', 'hold', 'follow', 'reorder', 'accumulate', 'scroll']);
+const BEHAVIOR_ALIASES = ['item', 'slot', 'reset', 'fire', 'part', 'step', 'hold', 'surface', 'cover', 'canvas', 'play', 'reverse', 'prev', 'next', 'answer'];
+function normalizeBehaviorAliases(root) {
+    if (!root?.querySelectorAll) return;
+    for (const node of root.querySelectorAll('[data-ui]:not([data-rm-ui])')) {
+        const type = String(node.getAttribute('data-ui') || '').trim().toLowerCase();
+        if (BEHAVIOR_TYPES.has(type)) node.setAttribute('data-rm-ui', type);
+    }
+    for (const group of root.querySelectorAll('[data-rm-ui]')) {
+        for (const name of BEHAVIOR_ALIASES) {
+            for (const node of [group, ...group.querySelectorAll(`[data-${name}]`)]) {
+                if (!node.hasAttribute?.(`data-${name}`) || node.hasAttribute(`data-rm-${name}`)) continue;
+                node.setAttribute(`data-rm-${name}`, node.getAttribute(`data-${name}`));
+            }
+        }
+    }
+}
+
 export function installBehaviorInteractions(root) {
+    try { normalizeBehaviorAliases(root); } catch { /* aliases are best effort */ }
     if (!root?.addEventListener) return 0;
     const existing = roots.get(root);
     const binding = existing || { root, groups: new WeakMap(), pointer: null, holds: new Set() };

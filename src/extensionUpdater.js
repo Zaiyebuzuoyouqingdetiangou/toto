@@ -302,6 +302,8 @@ export async function checkRabbitMirrorUpdate({ force = false, fetchImpl = globa
 
 const headingPattern = /^(#{1,3})\s+v?(\d+\.\d+(?:\.\d+)*)(?:\s*[：:·\-—]\s*|\s+)(.*)$/;
 const quoteHeadingPattern = /^>\s+\*\*v?(\d+\.\d+(?:\.\d+)*)(?:\s*[：:·\-—]\s*|\s+)(.+?)\*\*/;
+// “# 兔子镜小剧场 1.65.1” 这种名称在前、版本在后的标题。
+const titledHeadingPattern = /^(#{1,3})\s+(.+?)\s+v?(\d+\.\d+(?:\.\d+)*)\s*$/;
 
 export function parseReadmeChangelog(text) {
     const sections = [];
@@ -312,7 +314,7 @@ export function parseReadmeChangelog(text) {
         for (const raw of current.lines) {
             let line = raw.replace(/^\s*>\s?/, '').trim();
             if (!line || line === '---') continue;
-            line = line.replace(/^[-*]\s+/, '').replace(/^\*\*(.+)\*\*$/, '$1').trim();
+            line = line.replace(/^#{1,6}\s+/, '').replace(/^[-*]\s+/, '').replace(/^\*\*(.+)\*\*$/, '$1').trim();
             if (line) items.push(line);
         }
         if (current.version || items.length) sections.push({ version: current.version, title: current.title, items });
@@ -320,10 +322,11 @@ export function parseReadmeChangelog(text) {
     for (const line of String(text || '').split(/\r?\n/)) {
         const heading = line.match(headingPattern);
         const quote = !heading && line.match(quoteHeadingPattern);
-        if (heading || quote) {
+        const titled = !heading && !quote && line.match(titledHeadingPattern);
+        if (heading || quote || titled) {
             push();
-            const version = validVersion((heading || quote)[heading ? 2 : 1]);
-            const title = String((heading ? heading[3] : quote[2]) || '').replace(/\*\*/g, '').trim();
+            const version = validVersion(heading ? heading[2] : quote ? quote[1] : titled[3]);
+            const title = String((heading ? heading[3] : quote ? quote[2] : titled[2]) || '').replace(/\*\*/g, '').trim();
             current = { version, title, lines: [] };
             continue;
         }
