@@ -1,7 +1,8 @@
-import { getSettings } from './settings.js?rmv=1.66.0';
-import { generateMirrorImage } from './baibaiImage.js?rmv=1.66.0';
-import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.66.0';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.66.0';
+import { getSettings } from './settings.js?rmv=1.66.5';
+import { generateMirrorImage } from './baibaiImage.js?rmv=1.66.5';
+import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.66.5';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.66.5';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.66.5';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -93,12 +94,34 @@ function anyWaiterConnected(key) {
     return false;
 }
 
-function startJob(key, prompt) {
+// 设置了生图 LLM API 时，由它按这一面的内容另写正式的画面提示词；没写出来就用小剧场里那段线索。
+async function planWithImageLlm(frame) {
+    const details = frame?.closest?.('details');
+    const bridge = globalThis.__rabbitMirrorIndependentActionsV1;
+    const target = details && typeof bridge?.prepareImageTarget === 'function' ? bridge.prepareImageTarget(details) : null;
+    if (!target?.plan) return null;
+    try {
+        const plan = await target.plan({}, { builtin: true });
+        return plan && String(plan.prompt || plan.flatPrompt || plan.nl || '').trim() ? plan : null;
+    } catch (error) {
+        console.warn('[RabbitMirror] 生图 LLM 没有写出画面提示词，改用小剧场里的画面线索', error);
+        return null;
+    }
+}
+
+function startJob(key, prompt, frame) {
     const existing = inflight.get(key);
     if (existing) return existing;
     const job = (async () => {
         const settings = getSettings();
-        const record = await generateMirrorImage({
+        const planned = imageLlmConfigured(settings) ? await planWithImageLlm(frame) : null;
+        const record = await generateMirrorImage(planned ? {
+            prompt: String(planned.prompt || planned.flatPrompt || planned.nl || ''),
+            flatPrompt: String(planned.flatPrompt || planned.prompt || ''),
+            nl: String(planned.nl || ''),
+            characters: Array.isArray(planned.characters) ? planned.characters : [],
+            promptFormat: settings.imagePromptFormat,
+        } : {
             prompt,
             flatPrompt: prompt,
             nl: prompt,
@@ -136,7 +159,7 @@ async function fillFrame(root, frame) {
     if (!nodes) { nodes = new Set(); waiters.set(key, nodes); }
     nodes.add(frame);
     try {
-        const record = await startJob(key, prompt);
+        const record = await startJob(key, prompt, frame);
         if (frame.isConnected) paint(frame, record);
     } catch (error) {
         const code = error?.code;

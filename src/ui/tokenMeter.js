@@ -1,16 +1,16 @@
 // Split from ui.js — Prompt meter and latest independent request diagnostic.
 
-import { getSettings } from '../settings.js?rmv=1.66.0';
-import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from '../tokenMeter.js?rmv=1.66.0';
-import { API_REQUEST_DIAGNOSTIC_EVENT, getLastIndependentApiRequestDiagnostic } from '../independentApi.js?rmv=1.66.0';
-import { escapeHtml } from './runtime.js?rmv=1.66.0';
-import { formatGenerationElapsed } from '../generationTiming.js?rmv=1.66.0';
+import { getSettings } from '../settings.js?rmv=1.66.5';
+import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from '../tokenMeter.js?rmv=1.66.5';
+import { API_REQUEST_DIAGNOSTIC_EVENT, getLastIndependentApiRequestDiagnostic } from '../independentApi.js?rmv=1.66.5';
+import { escapeHtml } from './runtime.js?rmv=1.66.5';
+import { formatGenerationElapsed } from '../generationTiming.js?rmv=1.66.5';
 
 function independentApiProfileLabel(diagnostic) {
     if (!diagnostic?.profile) return '暂无记录';
     const numericStatus = Number(diagnostic.status || 0);
     const failures = {'empty-stream':'空响应', 'empty-content':'未返回正文', 'unparsed-stream':'响应未解析出正文',
-        'error-payload':'上游返回错误', 'host-api-error':'宿主返回 API 错误', 'incomplete-mirror':'成品不完整',
+        'error-payload':'上游返回错误', 'host-api-error':'宿主返回 API 错误', 'incomplete-mirror':'成品不完整', 'empty-response':'模型返回空内容',
         'truncated-output':'输出被截断', 'empty-mirror-body':'成品正文为空', 'post-sanitize-empty':'净化后正文为空',
         'gateway-timeout':'网关超时', 'parameter-error':'请求参数被拒绝', 'local-preflight':'发送前检查未通过'};
     const failure = failures[diagnostic.semanticFailure];
