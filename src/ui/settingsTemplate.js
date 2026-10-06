@@ -1,8 +1,8 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.65.9';
-import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.65.9';
-import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.65.9';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.66.0';
+import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.66.0';
+import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.66.0';
 
 export function buildRabbitMirrorSettingsDialogHtml() {
     return `
@@ -436,6 +436,8 @@ export function buildRabbitMirrorSettingsDialogHtml() {
             <div class="rabbit-mirror-subnote" style="margin:-4px 0 8px 0;opacity:.72;font-size:12px;line-height:1.45;">控制随机生成时使用的参考内容多少。默认使用“均衡”。</div>
             <div id="rh_image_settings">
               <label class="checkbox_label"><input id="rh_image_enabled" type="checkbox"> 启用镜面生图</label>
+              <label class="checkbox_label"><input id="rh_builtin_image" type="checkbox"> 启用小剧场内置生图（实验性）</label>
+              <p>默认关闭。开启后，小剧场仍按原来的方式做界面。只有这一面本来会用色块或 SVG 画人物、场景时，才改成图框并写一段画面提示词；生成结束后自动调用一次柏宝绘，把图填进去。不需要画面的面不会生图，也不另请副 API 构思。需要柏宝绘已经连好。</p>
               <p>默认关闭。从每面的小兔子工具入口打开「生图」。首次点击生成时，使用当前副 API 构思一次，再调用柏宝绘出图一次；查看、编辑不调用模型。</p>
               <label>提示词格式 <select id="rh_image_prompt_format" class="text_pole"><option value="nai5-natural">自然语言＋标签（NAI 5）</option><option value="nai45-tags">标签（NAI 4.5）</option></select></label>
               <label for="rh_image_composition">生图构图方式</label><select id="rh_image_composition" class="text_pole" style="min-height:44px;"><option value="scene">场景插画</option><option value="auto">按展现形式演绎／长文本高光</option></select>

@@ -1,33 +1,33 @@
-import { INTERACTION_SAMPLING_RULE, designCandidatePick, drawDesignCandidate } from './interactionSampling.js?rmv=1.65.9';
-import { driverContractLines, drawDriverOffer, interactionMethodNames, normalizeDriverOffer } from './interactionMethods.js?rmv=1.65.9';
-import { drawUsageOffer, normalizeUsageOffer } from './interactionUsageOffer.js?rmv=1.65.9';
-import { recentInteractionMethods } from './interactionMethodLedger.js?rmv=1.65.9';
-import { usesModelOriginalColors, withoutPaletteRecipe, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.65.9';
-import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=1.65.9';
-import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=1.65.9';
-import { isNearWhitePalette, isNearWhiteContentSurface } from './paletteObservation.js?rmv=1.65.9';
-import { observedOperationFamiliesFor } from './compositionFingerprint.js?rmv=1.65.9';
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.65.9';
-import { expandShuffledOptions } from '../data/raw/rawSegmentLookup.js?rmv=1.65.9';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.65.9';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.65.9';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.65.9';
-import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES, VISUAL_SCENERY_EXPRESSION_RULE, VISUAL_SCENERY_VS_GUIDANCE } from '../data/raw/visualSceneryRules.js?rmv=1.65.9';
-import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.65.9';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.65.9';
-import { getComboHistory, getActivePaletteCooldown } from './storage.js?rmv=1.65.9';
-import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock, recentPaletteExecutionReminder } from './visualDiversityPolicy.js?rmv=1.65.9';
-import { withoutInteractionRecipe, observedInteractionRecipesFor } from './interactionRecipes.js?rmv=1.65.9';
-import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.65.9';
-import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.65.9';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.65.9';
-export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.65.9';
-import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.65.9';
-import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.65.9';
-import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.65.9';
-import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.65.9';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.65.9';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.65.9';
+import { INTERACTION_SAMPLING_RULE, designCandidatePick, drawDesignCandidate } from './interactionSampling.js?rmv=1.66.0';
+import { driverContractLines, drawDriverOffer, interactionMethodNames, normalizeDriverOffer } from './interactionMethods.js?rmv=1.66.0';
+import { drawUsageOffer, normalizeUsageOffer } from './interactionUsageOffer.js?rmv=1.66.0';
+import { recentInteractionMethods } from './interactionMethodLedger.js?rmv=1.66.0';
+import { usesModelOriginalColors, withoutPaletteRecipe, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.66.0';
+import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=1.66.0';
+import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=1.66.0';
+import { isNearWhitePalette, isNearWhiteContentSurface } from './paletteObservation.js?rmv=1.66.0';
+import { observedOperationFamiliesFor } from './compositionFingerprint.js?rmv=1.66.0';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.66.0';
+import { expandShuffledOptions } from '../data/raw/rawSegmentLookup.js?rmv=1.66.0';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.66.0';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.66.0';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.66.0';
+import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES, VISUAL_SCENERY_EXPRESSION_RULE, VISUAL_SCENERY_VS_GUIDANCE } from '../data/raw/visualSceneryRules.js?rmv=1.66.0';
+import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.66.0';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.66.0';
+import { getComboHistory, getActivePaletteCooldown } from './storage.js?rmv=1.66.0';
+import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock, recentPaletteExecutionReminder } from './visualDiversityPolicy.js?rmv=1.66.0';
+import { withoutInteractionRecipe, observedInteractionRecipesFor } from './interactionRecipes.js?rmv=1.66.0';
+import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.66.0';
+import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.66.0';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.66.0';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.66.0';
+import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.66.0';
+import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.66.0';
+import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.66.0';
+import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.66.0';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.66.0';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.66.0';
 
 const THEME_ITEMS = new Map(THEMATIC_CATEGORIES.map(item => [item.id, item]));
 const FORMAT_ITEMS = new Map(PRESENTATION_FORMATS.map(item => [item.id, item]));
@@ -1037,7 +1037,14 @@ function sharedHtmlExecutionReminder(settings, directive) {
     ].filter(Boolean).join('\n');
 }
 
-function buildIndependentFinalExecutionLock({ combo, settings, directive, candidateFaces = null, includeExecutionOrder = true, includeCommonRules = true, executionPolicy = '' }) {
+function builtinImageFrameRule(settings) {
+    if (settings?.builtinImageEnabled !== true) return '';
+    return `内置生图：界面、按钮和文字照旧。只有这一面本来要用色块或 SVG 画人物或场景时，才不要画，改成下面这一个图框，并把那一幕写成一段可直接绘制的描述。不需要画面、或长文本面，不要放图框。
+<figure data-rm-draw-frame="1" style="display:block;width:100%;margin:0;aspect-ratio:4/3;overflow:hidden;border-radius:12px;"><p data-rm-draw-prompt="1" hidden>人物、动作、场景、光线</p></figure>
+标题和按钮留在图框外。hidden 里只写画面。`;
+}
+
+function buildIndependentFinalExecutionLock({ combo, settings, directive, candidateFaces = null, includeExecutionOrder = true, includeCommonRules = true, executionPolicy = '', includeBuiltinImage = true }) {
     // The full base prompt already contains the selected-item summaries, presentation embodiment,
     // visual floor, visual/palette/interaction cooldowns, risk correction and output protocol.
     // This near-output lock deliberately repeats only identities + currently active hard reminders.
@@ -1050,6 +1057,7 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive, candid
             '<兔子镜近输出短锁 data-source="independent-api-near-output">',
             pureOrderFaceLock({ longText: combo?.requestedPresentationMode === 'longtext' }, 0),
             `点菜优先：${truncateDirectiveText(directive?.rawDirective || '', 2000)}`,
+            includeBuiltinImage && combo?.requestedPresentationMode !== 'longtext' ? builtinImageFrameRule(settings) : '',
             '直接输出唯一完整 <toto>...</toto>，闭合后结束。',
             '</兔子镜近输出短锁>',
         ].filter(Boolean).join('\n');
@@ -1062,6 +1070,7 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive, candid
         `本面短检：${formatContract}。`,
         includeCommonRules ? sharedHtmlExecutionReminder(settings, directive) : '',
         executionPolicy,
+        includeBuiltinImage && combo?.requestedPresentationMode !== 'longtext' ? builtinImageFrameRule(settings) : '',
         '直接输出唯一完整 <toto>...</toto>，闭合后结束。',
         '</兔子镜近输出短锁>',
     ].filter(Boolean).join('\n');
@@ -1086,6 +1095,7 @@ function buildMultiIndependentExecutionLock(faceContexts, settings, directive, e
         sharedHtmlExecutionReminder(settings, directive),
         '各面须在亮度、色系、材质、轮廓、阅读路径、交互家族与第二状态中形成可见差异；明暗服从深色模式与用户偏好，不以统一系统卡兜底。',
         executionPolicy,
+        builtinImageFrameRule(settings),
         `只有第 ${faceContexts.length} 面闭合后才结束，不得少面、合并、追加面外文字。`,
         '</兔子镜近输出短锁>',
     ].filter(Boolean).join('\n');
@@ -1304,14 +1314,14 @@ function buildTextAwareExecutionLock(faceContexts, settings, directive, executio
     const htmlNumbers = faceContexts.flatMap((face, index) => !face.textPresentation && !face.combo?.pureOrder && !directive?.pureOrder ? [index + 1] : []);
     const locks = faceContexts.map((face, index) => (face.combo?.pureOrder || directive?.pureOrder) ? pureOrderFaceLock(face, index)
         : face.textPresentation ? textFaceLock(face, index)
-        : `第 ${index + 1} 面 HTML 专用短锁：\n${buildIndependentFinalExecutionLock({ combo: face.combo, settings, directive, candidateFaces: face.atmosphereFaces, includeExecutionOrder: false, includeCommonRules: false })
+        : `第 ${index + 1} 面 HTML 专用短锁：\n${buildIndependentFinalExecutionLock({ combo: face.combo, settings, directive, candidateFaces: face.atmosphereFaces, includeExecutionOrder: false, includeCommonRules: false, includeBuiltinImage: false })
             .replace(/<\/?兔子镜近输出短锁[^>]*>/g, '')
             .replace('直接输出唯一完整 <toto>...</toto>，闭合后结束。', '本面输出独立完整 <toto>...</toto>，按本批面序继续。').trim()}`);
     return ['<兔子镜近输出短锁 data-source="independent-api-near-output">',
         `本轮输出恰好 ${count} 面，逐面遵循以下本地冻结模式与内容；所有面共用本次请求的输出上限。`,
         htmlNumbers.length ? `以下形式执行顺序仅作用于 HTML 面（第 ${htmlNumbers.join('、')} 面）：\n${presentationExecutionOrderRule()}` : '',
         htmlNumbers.length ? `以下共用短检仅用于第 ${htmlNumbers.join('、')} 面 HTML：\n${sharedHtmlExecutionReminder(settings, directive)}` : '',
-        ...locks, executionPolicy, count > 1 ? `按 data-rm-face="1" 至 "${count}" 顺序输出平级且各自闭合的 <toto>，只有最后一面闭合后结束，不追加面外文字。`
+        ...locks, executionPolicy, htmlNumbers.length ? builtinImageFrameRule(settings) : '', count > 1 ? `按 data-rm-face="1" 至 "${count}" 顺序输出平级且各自闭合的 <toto>，只有最后一面闭合后结束，不追加面外文字。`
             : '输出唯一完整 <toto>...</toto>，闭合后结束，不追加面外文字。', '</兔子镜近输出短锁>'].filter(Boolean).join('\n');
 }
 
@@ -1324,7 +1334,7 @@ function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualS
         chunks.push('<兔子镜自动注入>');
         chunks.push(visibleChineseHardLock(), userDirectivePriorityRule(directive),
             '这一面没有抽签。按用户要求做 HTML 界面。不要套通用交互模板、动态视觉、母本玩法或上一轮页面。用户没写的交互和装饰不要自行加。',
-            htmlSafetyCore(), stateBarIsolationRule(), followTagIsolationText, coreOutputProtocol(independent, settings.hardStartup !== false), '</兔子镜自动注入>');
+            htmlSafetyCore(), stateBarIsolationRule(), independent ? '' : builtinImageFrameRule(settings), followTagIsolationText, coreOutputProtocol(independent, settings.hardStartup !== false), '</兔子镜自动注入>');
         return chunks.filter(Boolean).join('\n\n').trim();
     }
     chunks.push('<兔子镜自动注入>');
@@ -1386,6 +1396,7 @@ ${selectedFormats}`);
         else chunks.push(presentationFinalAcceptanceLock(combo, true, faceContexts?.[0]?.atmosphereFaces));
     }
     chunks.push(htmlSafetyCore());
+    if (!independent) chunks.push(builtinImageFrameRule(settings));
     const visualPreferenceLock = compactVisualPreferenceExecutionLock(settings);
     // Main/current API receives the visual preference lock here, next to the final output protocol.
     // Independent API receives the same lock only in its dedicated executionLock below, so it is
@@ -1414,7 +1425,7 @@ const PROMPT_SETTING_KEYS = Object.freeze([
     'forceVisualScenery', 'visualSceneryCombination', 'darkVisualMode', 'postGenerationRecolor', 'visualDesignMode', 'userDirectivePriority',
     'presentationWorldviewLock', 'visualPromptEditingEnabled', 'visualPrompt',
     'visualExtraPrompt', 'visualAvoidPrompt', 'generationSource',
-    'appearanceReferenceEnabled', 'appearanceReferenceRevision',
+    'appearanceReferenceEnabled', 'appearanceReferenceRevision', 'builtinImageEnabled',
     'behaviorRuleMode', 'behaviorRuleText',
     'followTagIsolationEnabled', 'independentContextExcludedTags',
     'memoryScanEnabled', 'memoryProviderIds', 'memoryMaxChars', 'memoryWorldBookEnabled', 'memoryWorldBookId',

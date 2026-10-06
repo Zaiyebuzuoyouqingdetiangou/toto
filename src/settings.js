@@ -1,10 +1,10 @@
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.65.9';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.66.0';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.65.9';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.65.9';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.65.9';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.65.9';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.66.0';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.66.0';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.66.0';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.66.0';
 
 export const MODULE_NAME = 'rabbit_mirror_theater';
 
@@ -276,6 +276,7 @@ export const defaultSettings = Object.freeze({
     forceVisualScenery: false,
     visualSceneryCombination: false,
     imageEnabled: false,
+    builtinImageEnabled: false,
     imagePromptFormat: 'nai5-natural',
     imageCompositionMode: 'scene',
     memoryScanEnabled: false,
@@ -443,6 +444,7 @@ export function getSettings() {
         : 'builtin-only';
     settings.visualSceneryCombination = settings.visualSceneryCombination === true;
     settings.imageEnabled = settings.imageEnabled === true;
+    settings.builtinImageEnabled = settings.builtinImageEnabled === true;
     settings.imagePromptFormat = settings.imagePromptFormat === 'nai45-tags' ? 'nai45-tags' : 'nai5-natural';
     settings.visualPromptEditingEnabled = !!settings.visualPromptEditingEnabled;
     settings.appearanceReferenceEnabled = settings.appearanceReferenceEnabled === true;
@@ -545,6 +547,7 @@ export function updateSettings(patch) {
             : 'builtin-only';
     }
     if (Object.prototype.hasOwnProperty.call(safePatch, 'imageEnabled')) safePatch.imageEnabled = safePatch.imageEnabled === true;
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'builtinImageEnabled')) safePatch.builtinImageEnabled = safePatch.builtinImageEnabled === true;
     if (Object.prototype.hasOwnProperty.call(safePatch, 'longTextSource')) safePatch.longTextSource = ['blank', 'text', 'mixed'].includes(safePatch.longTextSource) ? safePatch.longTextSource : 'blank';
     if (Object.prototype.hasOwnProperty.call(safePatch, 'autoLongTextPercent')) {
         const autoPercent = Number(safePatch.autoLongTextPercent);

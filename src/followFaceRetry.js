@@ -1,14 +1,14 @@
-import { presentationModeFields } from './presentationMode.js?rmv=1.65.9';
-import { getSettings } from './settings.js?rmv=1.65.9';
-import { getCurrentChatKey } from './storage.js?rmv=1.65.9';
-import { getRabbitMirrorRecipe } from './blacklist.js?rmv=1.65.9';
-import { readFollowPartialResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=1.65.9';
-import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.65.9';
-import { parseMultifaceOutput, MULTIFACE_FAILURE_ATTR } from './multifaceProtocol.js?rmv=1.65.9';
-import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.65.9';
-import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=1.65.9';
-import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.65.9';
-import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=1.65.9';
+import { presentationModeFields } from './presentationMode.js?rmv=1.66.0';
+import { getSettings } from './settings.js?rmv=1.66.0';
+import { getCurrentChatKey } from './storage.js?rmv=1.66.0';
+import { getRabbitMirrorRecipe } from './blacklist.js?rmv=1.66.0';
+import { readFollowPartialResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=1.66.0';
+import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.66.0';
+import { parseMultifaceOutput, MULTIFACE_FAILURE_ATTR } from './multifaceProtocol.js?rmv=1.66.0';
+import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.66.0';
+import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=1.66.0';
+import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.66.0';
+import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=1.66.0';
 
 const active = new WeakSet();
 const fail = message => { const error=new Error(message);error.rabbitMirrorFollowRetry=true;throw error; };
@@ -73,7 +73,7 @@ export async function retryFollowFace(root, suppliedOwner, deps) {
         try {
             if(plan.selectedExternalIds.length){materials=await getSelectedExternalEntries(plan.selectedExternalIds);assertCurrent();}
             if(plan.appearanceReference.enabled){
-                const appearance=await import('./appearanceReference.js?rmv=1.65.9');assertCurrent();
+                const appearance=await import('./appearanceReference.js?rmv=1.66.0');assertCurrent();
                 appearanceMaterial=await appearance.loadAppearanceReferenceMaterial(plan.appearanceReference.revision);assertCurrent();
             }
             if(plan.memoryWorldBook?.enabled){
