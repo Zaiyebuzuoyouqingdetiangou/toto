@@ -1,7 +1,7 @@
-import { usesModelOriginalColors } from './visualDesign.js?rmv=1.62.104';
-import { attachPaletteRecipes } from './paletteRecipes.js?rmv=1.62.104';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.104';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.104';
+import { usesModelOriginalColors } from './visualDesign.js?rmv=1.63';
+import { attachPaletteRecipes } from './paletteRecipes.js?rmv=1.63';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.63';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.63';
 import {
     getCurrentChatKey,
     getDirectiveScopedPick,
@@ -21,11 +21,11 @@ import {
     clearPendingComboBatch,
     createPendingComboBatchPlan,
     findPendingComboBatchPlan,
-} from './storage.js?rmv=1.62.104';
-import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.62.104';
-import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.62.104';
-import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, visualSceneryEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.62.104';
-import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.62.104';
+} from './storage.js?rmv=1.63';
+import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.63';
+import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.63';
+import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, visualSceneryEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.63';
+import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.63';
 import {
     chooseExternalSource,
     externalPoolActive,
@@ -35,7 +35,7 @@ import {
     getExternalPoolSnapshot,
     pickExternalItems,
     sourceMixModeIsExternalOnly,
-} from './externalWorldBook/externalPool.js?rmv=1.62.104';
+} from './externalWorldBook/externalPool.js?rmv=1.63';
 
 function randomUnit() {
     try {
@@ -1246,7 +1246,7 @@ function comboFromSelection(result, settings, recent, uiReviewFocus = null) {
     }
     if (usesModelOriginalColors(settings)) return combo;
     return attachPaletteRecipes(combo, { randomUnit, recent: [...getRecentDiversityHistory(3), ...previous],
-        darkOnly: settings.darkVisualMode === true, darkCooldown: settings.darkVisualMode !== true && getActivePaletteCooldown(2).active });
+        darkOnly: settings.darkVisualMode === true, darkCooldown: settings.darkVisualMode !== true && getActivePaletteCooldown(3).active });
 }
 
 function rehydrateDirectiveCombo(cached, settings, recent) {
@@ -1545,7 +1545,7 @@ function addBatchInteractionDiversity(combos, settings) {
     if (combos.length < 2 || combos.length > 5) return;
     if (combos.some(combo => combo.presentationMode !== 'text' && !combo.pureOrder)) {
         const usedIds = [], usedGroups = [], recent = getRecentDiversityHistory(3);
-        const darkOnly = settings.darkVisualMode === true, darkCooldown = !darkOnly && getActivePaletteCooldown(2).active;
+        const darkOnly = settings.darkVisualMode === true, darkCooldown = !darkOnly && getActivePaletteCooldown(3).active;
         for (const combo of combos) if (!usesModelOriginalColors(settings)) attachPaletteRecipes(combo, { randomUnit, recent, usedIds, usedGroups, darkOnly, darkCooldown, rerollUsed: true });
     }
     const hints = planBatchInteractionDiversity(combos.length, {

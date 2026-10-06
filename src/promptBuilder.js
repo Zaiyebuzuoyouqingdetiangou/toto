@@ -1,29 +1,29 @@
-import { INTERACTION_SAMPLING_RULE, designCandidatePick, drawDesignCandidate } from './interactionSampling.js?rmv=1.62.104';
-import { usesModelOriginalColors, withoutPaletteRecipe, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.62.104';
-import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=1.62.104';
-import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=1.62.104';
-import { isNearWhitePalette, isNearWhiteContentSurface } from './paletteObservation.js?rmv=1.62.104';
-import { observedOperationFamiliesFor } from './compositionFingerprint.js?rmv=1.62.104';
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.62.104';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.62.104';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.62.104';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.62.104';
-import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES, VISUAL_SCENERY_EXPRESSION_RULE, VISUAL_SCENERY_VS_GUIDANCE } from '../data/raw/visualSceneryRules.js?rmv=1.62.104';
-import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.62.104';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.62.104';
-import { getComboHistory, getActivePaletteCooldown } from './storage.js?rmv=1.62.104';
-import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock } from './visualDiversityPolicy.js?rmv=1.62.104';
-import { withoutInteractionRecipe, observedInteractionRecipesFor } from './interactionRecipes.js?rmv=1.62.104';
-import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.62.104';
-import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.62.104';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.62.104';
-export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.62.104';
-import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.62.104';
-import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.62.104';
-import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.62.104';
-import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.62.104';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.62.104';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.62.104';
+import { INTERACTION_SAMPLING_RULE, designCandidatePick, drawDesignCandidate } from './interactionSampling.js?rmv=1.63';
+import { usesModelOriginalColors, withoutPaletteRecipe, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.63';
+import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=1.63';
+import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=1.63';
+import { isNearWhitePalette, isNearWhiteContentSurface } from './paletteObservation.js?rmv=1.63';
+import { observedOperationFamiliesFor } from './compositionFingerprint.js?rmv=1.63';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.63';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.63';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.63';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.63';
+import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES, VISUAL_SCENERY_EXPRESSION_RULE, VISUAL_SCENERY_VS_GUIDANCE } from '../data/raw/visualSceneryRules.js?rmv=1.63';
+import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.63';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.63';
+import { getComboHistory, getActivePaletteCooldown } from './storage.js?rmv=1.63';
+import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock } from './visualDiversityPolicy.js?rmv=1.63';
+import { withoutInteractionRecipe, observedInteractionRecipesFor } from './interactionRecipes.js?rmv=1.63';
+import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.63';
+import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.63';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.63';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.63';
+import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.63';
+import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.63';
+import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.63';
+import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.63';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.63';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.63';
 
 const THEME_ITEMS = new Map(THEMATIC_CATEGORIES.map(item => [item.id, item]));
 const FORMAT_ITEMS = new Map(PRESENTATION_FORMATS.map(item => [item.id, item]));
@@ -340,7 +340,7 @@ function sharedVisualHistoryRule({ textOnly = false, darkVisualMode = false } = 
     const paleRounds = [...rounds.values()].slice(-3).filter(items => items.some(item =>
         item.presentationMode !== 'text' && (isNearWhitePalette(item.paletteFingerprint) || isNearWhiteContentSurface(item.paletteFingerprint)))).length;
     const paleReminder = !textOnly && !darkVisualMode && paleRounds >= 2
-        ? `\nHTML面近三轮有 ${paleRounds} 轮为近白浅底（米黄、浅紫白、冷白、浅绿白都算同一类）：本轮主背景与主承载不再用近白浅底，不论色相；用户指定与必要单色优先。` : '';
+        ? `\nHTML面近三轮有 ${paleRounds} 轮为近白浅底（米黄、浅紫白、冷白、浅绿白都算同一类）：本轮主背景与主承载不再用近白浅底，不论色相，改用浅而明显带色相的底色或中等明度底色；用户指定与必要单色优先。` : '';
     return `近期记录【${scope}】：\n${lines.join('\n')}${paleReminder}`;
 }
 
@@ -575,7 +575,7 @@ function presentationEmbodimentRule() {
     return String.raw`
 展现形式落地【核心结构层；不可被视觉自定义覆盖】:
   - 先落实展现形式；美化与交互服务其结构、材质、版式与使用过程，使本体更真实可信。
-  - <details> 内首个主要内容块必须直接呈现该展现形式本体；外层容器只能负责显示边界，不能成为主要视觉。
+  - <details> 内首个主要内容块必须直接呈现该展现形式本体；兔子镜外壳已由插件提供，不在本体外再套装饰框或边框容器。
   - DOM 中必须实际出现能够构成该形式的形态、比例、空间关系、层叠方式、材质结构或排版结构；不得只用标题、标签、图标和说明文字宣称它是什么。主体外轮廓和部件随物件或媒介成形，按需要通过错落、遮挡、厚薄与统一受光建立层次，不以同形矩形拼块代替。
   - 可根据本轮展现形式本体的需要，使用 Flex/Grid、定位、SVG、渐变、阴影、滤镜、clip-path、mask、transform、transition 与 CSS 动画等方式，构成空间、材质与视觉质感。
   - 动画必须让该展现形式中的主体、空间、材质或关系发生变化；交互必须作用于该形式内部真实存在的对象或结构。
@@ -650,7 +650,7 @@ function legacyPresentationEmbodimentRule() {
     return String.raw`
 展现形式落地:
   - 先落实展现形式；美化与交互服务其结构、材质、版式与使用过程，使本体更真实可信。
-  - <details> 内首个主要内容块必须直接呈现该展现形式本体；外层容器只能负责显示边界，不能成为主要视觉。
+  - <details> 内首个主要内容块必须直接呈现该展现形式本体；兔子镜外壳已由插件提供，不在本体外再套装饰框或边框容器。
   - DOM 中必须实际出现能够构成该形式的形态、比例、空间关系、层叠方式、材质结构或排版结构；不得只用标题、标签、图标和说明文字宣称它是什么。主体外轮廓和部件随物件或媒介成形，按需要通过错落、遮挡、厚薄与统一受光建立层次，不以同形矩形拼块代替。
   - 可根据本轮展现形式本体的需要，使用 Flex/Grid、定位、SVG、渐变、阴影、滤镜、clip-path、mask、transform、transition 与 CSS 动画等方式，构成空间、材质与视觉质感。
   - 不得以通用圆角面板、卡片列表、数据仪表盘或信息框作为默认主体，再向其中填入本轮内容。
@@ -1525,7 +1525,7 @@ export function planRabbitMirrorPromptDetails(settings, generationType = 'normal
     const paletteUsedIds = [], paletteUsedGroups = [];
     for (const selection of selections) if (!usesModelOriginalColors(settings) && !pinnedSelections.length && selection?.combo && !selection.disabled) {
         attachPaletteRecipes(selection.combo, { recent: getRecentDiversityHistory(3), usedIds: paletteUsedIds, usedGroups: paletteUsedGroups,
-            darkOnly: settings.darkVisualMode === true, darkCooldown: settings.darkVisualMode !== true && getActivePaletteCooldown(2).active });
+            darkOnly: settings.darkVisualMode === true, darkCooldown: settings.darkVisualMode !== true && getActivePaletteCooldown(3).active });
     }
     return createPromptPlan(selections, {
         settings: renderSettings, generationType, activeFeedback, requestedFaceCount,
@@ -1582,14 +1582,12 @@ export function renderRabbitMirrorPromptPlan(plan, externalRawMap = null, appear
         ? sharedVisualHistoryRule({ textOnly: faceContexts.every(face => face.textPresentation || face.combo?.pureOrder), darkVisualMode: settings.darkVisualMode }) : '';
     const paletteReferences = !usesModelOriginalColors(settings) && faceContexts.some(face => !face.textPresentation && !face.combo?.pureOrder)
         ? selectGenerationPalettes(faceContexts, settings, {
-            darkCooldown: settings.darkVisualMode !== true && getActivePaletteCooldown(2).active,
+            darkCooldown: settings.darkVisualMode !== true && getActivePaletteCooldown(3).active,
         }) : [];
     const htmlFacesPresent = faceContexts.some(face => !face.textPresentation && !face.combo?.pureOrder);
     const generationPolicy = strongVisualDiversityRule({ hasHistory: !!visualHistoryRule || getComboHistory(5).length > 0, textOnly: !htmlFacesPresent,
-        hasRecentTextPanelSwitch: htmlFacesPresent && getRecentDiversityHistory(5).some(item => !isTextPresentation(item)
-            && observedOperationFamiliesFor(item).includes('text_panel_switch')),
-        hasRecentTextDisclosure: htmlFacesPresent && getRecentDiversityHistory(5).some(item => !isTextPresentation(item)
-            && observedOperationFamiliesFor(item).includes('text_disclosure_stack')) });
+        textRevealRotation: htmlFacesPresent && getRecentDiversityHistory(3).filter(item => !isTextPresentation(item)
+            && observedOperationFamiliesFor(item).some(family => family === 'text_panel_switch' || family === 'text_disclosure_stack')).length >= 2 });
     const constructionRules = htmlFacesPresent ? {
         interaction: groupScopedRules(faceContexts.flatMap((face, index) => face.textPresentation || face.combo?.pureOrder ? []
             : [{ scope: `第 ${index + 1} 面 HTML`, body: mediumInteractionConstructionRule() }]))

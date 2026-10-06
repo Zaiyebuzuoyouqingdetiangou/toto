@@ -1,7 +1,7 @@
 // Split from outputSanitizer.js — fallbackRescue.
-import { RADIO_BRANCH_CONTROL_ATTR, installRadioBranchRepair, applyRadioBranchState, radioBranchVerificationTargets } from './radioBranchRepair.js?rmv=1.62.104';
+import { RADIO_BRANCH_CONTROL_ATTR, installRadioBranchRepair, applyRadioBranchState, radioBranchVerificationTargets } from './radioBranchRepair.js?rmv=1.63';
 
-import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.62.104';
+import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.63';
 
 import {
     FEEDBACK_CAT_ATTR,
@@ -9,7 +9,7 @@ import {
     TOOL_ENTRY_HOST_ATTR,
     escapeRegExp,
     getRabbitMirrorLocalStyleElements,
-} from './runtime.js?rmv=1.62.104';
+} from './runtime.js?rmv=1.63';
 import {
     CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR,
     CROSS_PARENT_CHECKED_VERIFIED_ATTR,
@@ -91,7 +91,7 @@ import {
     webKit3DFlipInlineStates,
     webKit3DFlipRescueStates,
     webKit3DFlipStyleStates,
-} from './checkedStateRescue.js?rmv=1.62.104';
+} from './checkedStateRescue.js?rmv=1.63';
 import {
     EXISTING_INTERACTIVE_SELECTOR,
     RENDERED_BUTTON_ADJACENT_HIDDEN_RESCUE_ATTR,
@@ -118,7 +118,7 @@ import {
     isCollapsedDimensionValue,
     normalizeStylePropertyName,
     parseCssStateSiblingAssignments,
-} from './renderedStateRescue.js?rmv=1.62.104';
+} from './renderedStateRescue.js?rmv=1.63';
 import {
     chooseMatchingRawRabbitMirrorRoot,
     detectInteractionCapabilities,
@@ -134,7 +134,7 @@ import {
     installRawMessageSelfMutationRescue,
     preparePseudoTrigger,
     shouldIgnorePseudoToggleEvent,
-} from './scriptedInteractionRescue.js?rmv=1.62.104';
+} from './scriptedInteractionRescue.js?rmv=1.63';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     FILL_IN_CHOICE_BLANK_ATTR,
@@ -146,15 +146,15 @@ import {
     diagnosticFindClippingAncestor,
     maintenanceSafeComputedStyle,
     mobileInlineAnnotationRescueStates,
-} from './diagnostics.js?rmv=1.62.104';
-import { installStaticChoiceSelectionFallback } from './choiceRescue.js?rmv=1.62.104';
+} from './diagnostics.js?rmv=1.63';
+import { installStaticChoiceSelectionFallback } from './choiceRescue.js?rmv=1.63';
 import {
     checkedDeclarationCreatesContentReveal,
     checkedTargetCarriesResultContent,
     pseudoStateTargetSelector,
-} from './maintenanceInspect.js?rmv=1.62.104';
-import { splitCssSelectorList } from './markup.js?rmv=1.62.104';
-import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutResolveCheckedTargets } from './layoutRescue.js?rmv=1.62.104';
+} from './maintenanceInspect.js?rmv=1.63';
+import { splitCssSelectorList } from './markup.js?rmv=1.63';
+import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutResolveCheckedTargets } from './layoutRescue.js?rmv=1.63';
 
 const NESTED_DETAILS_FALLBACK_HANDLER_PROP = '__rabbitMirrorNestedDetailsFallbackHandler';
 
