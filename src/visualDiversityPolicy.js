@@ -5,7 +5,7 @@ export function strongVisualDiversityRule({ hasHistory = false, textOnly = false
     if (textOnly || !hasHistory) return `避重：${basis}，同批及相邻轮优先变化，允许部分复用；用户指定、固有功能与材质优先。${textOnly ? '文本面只调整题材与阅读配色，不新增交互或动画。' : ''}`;
     return 'HTML 面避重：近三轮实际主色及同族相近色必须避开；背景与主承载须换色族，改深浅、饱和或点缀色不算。主题、形式和交互编号可部分复用，但近期重复的页面布局与操作方式必须改变。仅换名称、按钮数量、颜色或编号不算变化。'
         // 不长期禁止：近三轮有两轮属于这一类时才换一次口味，之后照常可用。
-        + (textRevealRotation ? '近三轮有两轮的主交互属于「多个入口各显示一段文字」（切页、折叠、并列开关都算同一类）：本轮改为直接操作媒介自身的部件，结果改变媒介本身；之后这类写法照常可以用。' : '')
+        + (textRevealRotation ? '近三轮有两轮的主交互属于「多个入口各显示一段文字」（切页、折叠、并列开关都算同一类）：本轮改为直接操作媒介自身的部件，结果改变媒介本身，整面交互作用在同一个主体上，不让每个条目各配一个开关；之后这类写法照常可以用。' : '')
         + '用户指定优先；保留必要固有色、功能与材质，材质不豁免整面用色与结构避重。';
 }
 
@@ -17,7 +17,7 @@ export function darkVisualGenerationRule(settings) {
   - 保留形式的固有结构、材质纹理与原有玩法，通过夜间环境、染色材质或低明度同类材料表达；不能把所有媒介都改成终端面板。长文本仍只做原有阅读美化，不添加 HTML 面的交互或动画。`;
 }
 
-export function visualDiversityExecutionLock() {
-    // The shared ledger and its one execution sentence are already sent once.
-    return '';
+export function visualDiversityExecutionLock(_settings, { textRevealRotation = false } = {}) {
+    // The shared ledger is sent once; only an active rotation is repeated here, closest to output.
+    return textRevealRotation ? '本轮换口味：整面交互作用在同一个主体上（可以分几步），不让每个条目各配一个开关。' : '';
 }

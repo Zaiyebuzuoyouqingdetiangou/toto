@@ -1,7 +1,7 @@
-import { usesModelOriginalColors } from './visualDesign.js?rmv=1.63.6';
-import { attachPaletteRecipes } from './paletteRecipes.js?rmv=1.63.6';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.63.6';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.63.6';
+import { usesModelOriginalColors } from './visualDesign.js?rmv=1.63.7';
+import { attachPaletteRecipes } from './paletteRecipes.js?rmv=1.63.7';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.63.7';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.63.7';
 import {
     getCurrentChatKey,
     getDirectiveScopedPick,
@@ -21,11 +21,11 @@ import {
     clearPendingComboBatch,
     createPendingComboBatchPlan,
     findPendingComboBatchPlan,
-} from './storage.js?rmv=1.63.6';
-import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.63.6';
-import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.63.6';
-import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, visualSceneryEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.63.6';
-import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.63.6';
+} from './storage.js?rmv=1.63.7';
+import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.63.7';
+import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.63.7';
+import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, visualSceneryEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.63.7';
+import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.63.7';
 import {
     chooseExternalSource,
     externalPoolActive,
@@ -35,7 +35,7 @@ import {
     getExternalPoolSnapshot,
     pickExternalItems,
     sourceMixModeIsExternalOnly,
-} from './externalWorldBook/externalPool.js?rmv=1.63.6';
+} from './externalWorldBook/externalPool.js?rmv=1.63.7';
 
 function randomUnit() {
     try {

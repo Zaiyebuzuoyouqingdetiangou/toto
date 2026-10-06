@@ -1,29 +1,29 @@
-import { INTERACTION_SAMPLING_RULE, designCandidatePick, drawDesignCandidate } from './interactionSampling.js?rmv=1.63.6';
-import { usesModelOriginalColors, withoutPaletteRecipe, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.63.6';
-import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=1.63.6';
-import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=1.63.6';
-import { isNearWhitePalette, isNearWhiteContentSurface } from './paletteObservation.js?rmv=1.63.6';
-import { observedOperationFamiliesFor } from './compositionFingerprint.js?rmv=1.63.6';
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.63.6';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.63.6';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.63.6';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.63.6';
-import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES, VISUAL_SCENERY_EXPRESSION_RULE, VISUAL_SCENERY_VS_GUIDANCE } from '../data/raw/visualSceneryRules.js?rmv=1.63.6';
-import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.63.6';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.63.6';
-import { getComboHistory, getActivePaletteCooldown } from './storage.js?rmv=1.63.6';
-import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock } from './visualDiversityPolicy.js?rmv=1.63.6';
-import { withoutInteractionRecipe, observedInteractionRecipesFor } from './interactionRecipes.js?rmv=1.63.6';
-import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.63.6';
-import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.63.6';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.63.6';
-export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.63.6';
-import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.63.6';
-import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.63.6';
-import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.63.6';
-import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.63.6';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.63.6';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.63.6';
+import { INTERACTION_SAMPLING_RULE, designCandidatePick, drawDesignCandidate } from './interactionSampling.js?rmv=1.63.7';
+import { usesModelOriginalColors, withoutPaletteRecipe, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.63.7';
+import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=1.63.7';
+import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=1.63.7';
+import { isNearWhitePalette, isNearWhiteContentSurface } from './paletteObservation.js?rmv=1.63.7';
+import { observedOperationFamiliesFor } from './compositionFingerprint.js?rmv=1.63.7';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.63.7';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.63.7';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.63.7';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.63.7';
+import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES, VISUAL_SCENERY_EXPRESSION_RULE, VISUAL_SCENERY_VS_GUIDANCE } from '../data/raw/visualSceneryRules.js?rmv=1.63.7';
+import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.63.7';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.63.7';
+import { getComboHistory, getActivePaletteCooldown } from './storage.js?rmv=1.63.7';
+import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock } from './visualDiversityPolicy.js?rmv=1.63.7';
+import { withoutInteractionRecipe, observedInteractionRecipesFor } from './interactionRecipes.js?rmv=1.63.7';
+import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.63.7';
+import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.63.7';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.63.7';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.63.7';
+import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.63.7';
+import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.63.7';
+import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.63.7';
+import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.63.7';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.63.7';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.63.7';
 
 const THEME_ITEMS = new Map(THEMATIC_CATEGORIES.map(item => [item.id, item]));
 const FORMAT_ITEMS = new Map(PRESENTATION_FORMATS.map(item => [item.id, item]));
@@ -1585,9 +1585,10 @@ export function renderRabbitMirrorPromptPlan(plan, externalRawMap = null, appear
             darkCooldown: settings.darkVisualMode !== true && getActivePaletteCooldown(3).active,
         }) : [];
     const htmlFacesPresent = faceContexts.some(face => !face.textPresentation && !face.combo?.pureOrder);
+    const textRevealRotation = htmlFacesPresent && getRecentDiversityHistory(3).filter(item => !isTextPresentation(item)
+            && observedOperationFamiliesFor(item).some(family => family === 'text_panel_switch' || family === 'text_disclosure_stack')).length >= 2;
     const generationPolicy = strongVisualDiversityRule({ hasHistory: !!visualHistoryRule || getComboHistory(5).length > 0, textOnly: !htmlFacesPresent,
-        textRevealRotation: htmlFacesPresent && getRecentDiversityHistory(3).filter(item => !isTextPresentation(item)
-            && observedOperationFamiliesFor(item).some(family => family === 'text_panel_switch' || family === 'text_disclosure_stack')).length >= 2 });
+        textRevealRotation });
     const constructionRules = htmlFacesPresent ? {
         interaction: groupScopedRules(faceContexts.flatMap((face, index) => face.textPresentation || face.combo?.pureOrder ? []
             : [{ scope: `第 ${index + 1} 面 HTML`, body: mediumInteractionConstructionRule() }]))
@@ -1647,7 +1648,7 @@ export function renderRabbitMirrorPromptPlan(plan, externalRawMap = null, appear
                 ? { themeIds: face.combo.themeIds, formatIds: face.combo.formatIds } : face.combo), 'rawPolicy:', rawPolicy,
             'memorySources:', memoryMaterial?.sources || [], 'prompt chars:', prompt.length);
     }
-    const executionPolicy = visualDiversityExecutionLock(settings, { textOnly: !htmlFacesPresent });
+    const executionPolicy = visualDiversityExecutionLock(settings, { textOnly: !htmlFacesPresent, textRevealRotation });
     const nearOutputPolicy = htmlFacesPresent ? executionPolicy : '';
     const executionLockBody = hasTextPresentation ? buildTextAwareExecutionLock(faceContexts, settings, directive, nearOutputPolicy) : multiface
         ? buildMultiIndependentExecutionLock(faceContexts, settings, directive, nearOutputPolicy)
