@@ -1,4 +1,4 @@
-import { recentDiversityRecords } from './compositionFingerprint.js?rmv=1.65.3';
+import { recentDiversityRecords } from './compositionFingerprint.js?rmv=1.65.4';
 // Keep the 1.5.53 family definitions. Recent use now enters default strong diversity, never output gates.
 export const INTERACTION_FAMILY_LABELS = Object.freeze({
     tabbed_radio_family: '并列标签／多按钮切页',

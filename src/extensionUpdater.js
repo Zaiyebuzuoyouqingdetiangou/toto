@@ -302,7 +302,7 @@ export async function checkRabbitMirrorUpdate({ force = false, fetchImpl = globa
 
 const headingPattern = /^(#{1,3})\s+v?(\d+\.\d+(?:\.\d+)*)(?:\s*[：:·\-—]\s*|\s+)(.*)$/;
 const quoteHeadingPattern = /^>\s+\*\*v?(\d+\.\d+(?:\.\d+)*)(?:\s*[：:·\-—]\s*|\s+)(.+?)\*\*/;
-// “# 兔子镜小剧场 1.65.3” 这种名称在前、版本在后的标题。
+// “# 兔子镜小剧场 1.65.4” 这种名称在前、版本在后的标题。
 const titledHeadingPattern = /^(#{1,3})\s+(.+?)\s+v?(\d+\.\d+(?:\.\d+)*)\s*$/;
 
 export function parseReadmeChangelog(text) {

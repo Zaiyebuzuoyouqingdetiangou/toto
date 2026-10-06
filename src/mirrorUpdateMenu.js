@@ -1,7 +1,7 @@
 // 版本更新放在镜面工具菜单底部，不再单独开设置页。
 // 有新版本时点「有更新」才去读仓库 README；更新成功后的刷新和预设备忘录一样。
 
-import { paintToolMenuUpdateIcon, themeMirrorToolPanel } from './mirrorToolMenu.js?rmv=1.65.3';
+import { paintToolMenuUpdateIcon, themeMirrorToolPanel } from './mirrorToolMenu.js?rmv=1.65.4';
 import {
     applyRabbitMirrorUpdateAndReload,
     checkRabbitMirrorUpdate,
@@ -11,7 +11,7 @@ import {
     runningRabbitMirrorVersion,
     setupRabbitMirrorExtensionReloadWatch,
     subscribeRabbitMirrorUpdate,
-} from './extensionUpdater.js?rmv=1.65.3';
+} from './extensionUpdater.js?rmv=1.65.4';
 
 const buttonStyle = 'display:block;width:100%;min-height:44px;margin-top:8px;padding:10px 12px;text-align:left;white-space:normal;border:1px solid var(--SmartThemeBorderColor,#bbb);border-radius:10px;background-color:#243044;background-image:linear-gradient(var(--SmartThemeBlurTintColor,#243044),var(--SmartThemeBlurTintColor,#243044));color:inherit;font:inherit;cursor:pointer;box-sizing:border-box;';
 let sheet = null;
