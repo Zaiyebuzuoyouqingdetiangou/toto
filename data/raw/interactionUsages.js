@@ -60,4 +60,7 @@ export const CORE_USAGES = Object.freeze([
     { keywords: ['抽签', '签筒', '求签'], usages: ['摇签筒', '掉出一支签', '展开签文'] },
     { keywords: ['契约', '协议', '合同', '界限清单'], usages: ['逐条勾选', '签名', '按手印', '盖章'] },
     { keywords: ['Visual Scenery', '动态视觉'], usages: ['凑近看', '拨开遮挡', '改变光线', '推动时间'] },
+    { keywords: ['AO3', 'Archive of Our Own'], usages: ['点 Kudos', '加入书签', '展开全部标签', '切换整篇与分章', '翻到下一章', '展开评论区', '查看作品统计', '点进作者主页', '展开内容警告'] },
+    { keywords: ['Lofter', 'LOFTER'], usages: ['点喜欢', '推荐', '展开长文', '看合集', '翻到下一篇', '点开评论'] },
+    { keywords: ['微博', '超话'], usages: ['展开全文', '点开评论', '转发', '看热搜', '点进超话'] },
 ]);
