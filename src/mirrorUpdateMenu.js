@@ -1,7 +1,7 @@
 // 版本更新放在镜面工具菜单底部，不再单独开设置页。
 // 有新版本时点「有更新」才去读仓库 README；更新成功后的刷新和预设备忘录一样。
 
-import { paintToolMenuUpdateIcon, themeMirrorToolPanel } from './mirrorToolMenu.js?rmv=1.62.95';
+import { paintToolMenuUpdateIcon, themeMirrorToolPanel } from './mirrorToolMenu.js?rmv=1.65.6';
 import {
     applyRabbitMirrorUpdateAndReload,
     checkRabbitMirrorUpdate,
@@ -11,7 +11,7 @@ import {
     runningRabbitMirrorVersion,
     setupRabbitMirrorExtensionReloadWatch,
     subscribeRabbitMirrorUpdate,
-} from './extensionUpdater.js?rmv=1.62.95';
+} from './extensionUpdater.js?rmv=1.65.6';
 
 const buttonStyle = 'display:block;width:100%;min-height:44px;margin-top:8px;padding:10px 12px;text-align:left;white-space:normal;border:1px solid var(--SmartThemeBorderColor,#bbb);border-radius:10px;background-color:#243044;background-image:linear-gradient(var(--SmartThemeBlurTintColor,#243044),var(--SmartThemeBlurTintColor,#243044));color:inherit;font:inherit;cursor:pointer;box-sizing:border-box;';
 let sheet = null;
@@ -20,24 +20,26 @@ let sheetKeyInstalled = false;
 
 function paintRow(row, snap) {
     const check = row.querySelector('[data-rm-update-check]');
-    const available = row.querySelector('[data-rm-update-available]');
-    const version = row.querySelector('[data-rm-update-version]');
+    if (!check) return;
     const checking = snap.status === 'checking';
-    const current = runningRabbitMirrorVersion();
-    if (version) version.textContent = current ? `当前 v${current}` : '当前版本未知';
+    const available = snap.status === 'available';
     check.disabled = checking || applying;
+    check.dataset.rmUpdateMode = available ? 'update' : 'check';
+    if (available) {
+        check.textContent = snap.remoteVersion ? `↑ 有更新 · ${snap.remoteVersion}` : '↑ 有更新';
+        check.title = '查看更新日志';
+        check.style.setProperty('border-color', 'var(--SmartThemeQuoteColor,#c47a3a)', 'important');
+        check.style.setProperty('font-weight', '600', 'important');
+        return;
+    }
     check.textContent = checking ? '检测中…' : '↻ 检测更新';
     check.title = snap.status === 'latest'
         ? '当前已是最新，再点一次可重新检测'
         : snap.status === 'unknown'
-            ? '上次检测失败，点击重新检测'
+            ? (snap.message || '上次检测失败，点击重新检测')
             : '检测兔子镜是否有新版本';
-    const show = snap.status === 'available';
-    available.hidden = !show;
-    available.style.setProperty('display', show ? 'block' : 'none', 'important');
-    available.disabled = applying;
-    available.textContent = snap.remoteVersion ? `↑ 有更新 · ${snap.remoteVersion}` : '↑ 有更新';
-    available.title = '查看更新日志';
+    check.style.removeProperty('border-color');
+    check.style.removeProperty('font-weight');
 }
 
 function sectionBlock(section) {
@@ -309,20 +311,11 @@ function mountMirrorUpdateRow(panel) {
     if (!panel || panel.querySelector('[data-rm-update-host]')) return;
     const host = document.createElement('div');
     host.dataset.rmUpdateHost = 'true';
-    const version = document.createElement('div');
-    version.dataset.rmUpdateVersion = 'true';
-    version.style.cssText = 'margin-top:10px;font-size:12px;line-height:1.4;opacity:.75;';
-    const available = document.createElement('button');
-    available.type = 'button';
-    available.dataset.rmUpdateAvailable = 'true';
-    available.style.cssText = `${buttonStyle}border-color:var(--SmartThemeQuoteColor,#c47a3a);font-weight:600;`;
-    available.hidden = true;
-    available.style.setProperty('display', 'none', 'important');
     const check = document.createElement('button');
     check.type = 'button';
     check.dataset.rmUpdateCheck = 'true';
     check.style.cssText = buttonStyle;
-    host.append(version, available, check);
+    host.append(check);
     const close = panel.querySelector('[data-rm-tool-choice="close"]');
     if (close) panel.insertBefore(host, close);
     else panel.append(host);
@@ -336,21 +329,16 @@ function mountMirrorUpdateRow(panel) {
     check.addEventListener('click', event => {
         event.preventDefault();
         event.stopPropagation();
+        if (check.dataset.rmUpdateMode === 'update') {
+            void openRabbitMirrorChangelog({ mode: 'update' });
+            return;
+        }
         void (async () => {
             const snap = await checkRabbitMirrorUpdate({ force: true });
             if (!host.isConnected) return;
-            if (snap.status === 'available') {
-                void openRabbitMirrorChangelog({ mode: 'update' });
-                return;
-            }
             if (snap.status === 'latest') globalThis.toastr?.info?.('当前已是最新');
             else if (snap.status === 'unknown') globalThis.toastr?.warning?.(snap.message || '没能完成检测，请稍后再试。');
         })();
-    });
-    available.addEventListener('click', event => {
-        event.preventDefault();
-        event.stopPropagation();
-        void openRabbitMirrorChangelog({ mode: 'update' });
     });
     void checkRabbitMirrorUpdate();
 }

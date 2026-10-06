@@ -1,7 +1,7 @@
 // Opt-in, one-request evidence. No storage, network, timers, live DOM reads or
 // random-number consumption. Observers can never affect generation outcomes.
-import { generationEvidenceTiming } from './generationTiming.js?rmv=1.62.95';
-import { roleColorEvidence } from './roleColorVariants.js?rmv=1.62.95';
+import { generationEvidenceTiming } from './generationTiming.js?rmv=1.65.6';
+import { roleColorEvidence } from './roleColorVariants.js?rmv=1.65.6';
 let armed = false;
 let current = null;
 let sequence = 0;
@@ -90,8 +90,60 @@ export function clearGenerationEvidence() {
     notify();
 }
 
+// VS 承诺与实际骨架对照：只读、只记录，不重试、不改成品。启发式结果，仅供排查。
+function readVsAttribute(html) {
+    const match = String(html || '').match(/data-rm-vs=(["'])([\s\S]*?)\1/);
+    if (!match) return null;
+    const text = match[2].replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+    try { return JSON.parse(text); } catch { return { unparsable: true }; }
+}
+
+function observedSkeletonHint(html) {
+    const source = String(html || '');
+    let radioGroups = [], checkboxes = 0, labels = 0;
+    try {
+        const doc = new DOMParser().parseFromString(source, 'text/html');
+        const groups = new Map();
+        for (const input of doc.querySelectorAll('input[type="radio"]')) {
+            const name = input.getAttribute('name') || '';
+            groups.set(name, (groups.get(name) || 0) + 1);
+        }
+        radioGroups = [...groups.values()];
+        checkboxes = doc.querySelectorAll('input[type="checkbox"]').length;
+        labels = doc.querySelectorAll('label').length;
+    } catch {
+        const names = [...source.matchAll(/type=["']radio["'][^>]*name=["']([^"']+)|name=["']([^"']+)["'][^>]*type=["']radio/gi)].map(m => m[1] || m[2]);
+        const groups = new Map(); for (const name of names) groups.set(name, (groups.get(name) || 0) + 1);
+        radioGroups = [...groups.values()];
+        checkboxes = (source.match(/type=["']checkbox/gi) || []).length;
+        labels = (source.match(/<label\b/gi) || []).length;
+    }
+    const largestRadioGroup = Math.max(0, ...radioGroups);
+    const hint = largestRadioGroup >= 3 && labels >= 3 ? 'parallel_choice_group'
+        : checkboxes >= 3 && labels >= 3 ? 'parallel_toggle_group' : 'other';
+    return { hint, largestRadioGroup, checkboxes, labels };
+}
+
+function vsCheckFor(report) {
+    const raw = report?.response?.text || '';
+    const vs = readVsAttribute(raw);
+    if (!vs) return { present: false };
+    const pick = Number(vs.pick);
+    const candidates = Array.isArray(vs.c) ? vs.c : [];
+    const promised = Number.isInteger(pick) && candidates[pick - 1] ? String(candidates[pick - 1][0] || '') : '';
+    const observed = observedSkeletonHint(report?.processed?.html || raw);
+    const methods = Array.isArray(vs.m) && Number.isInteger(pick) && Array.isArray(vs.m[pick - 1]) ? vs.m[pick - 1].filter(item => typeof item === 'string') : [];
+    return {
+        present: true, pick: Number.isInteger(pick) ? pick : null, promised, methods,
+        observed,
+        // 并列同组选项（≥3）在多数情况下就是“并列入口切换同位内容”。仅为提示，不判定成品失败。
+        possibleMismatch: observed.hint !== 'other',
+        note: '启发式对照，仅记录，不重试；需结合成品确认。',
+    };
+}
+
 export function exportGenerationEvidence() {
-    return current ? JSON.stringify({ ...current, timing: generationEvidenceTiming(current) }, null, 2) : '';
+    return current ? JSON.stringify({ ...current, vsCheck: vsCheckFor(current), timing: generationEvidenceTiming(current) }, null, 2) : '';
 }
 
 export function claimGenerationEvidence({ version, profile, owner, settings, faceIndex, serial } = {}) {

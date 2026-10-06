@@ -254,7 +254,9 @@ function preflight(source, stats) {
  * expectedCount is omitted only for persisted-content inference (2..5).
  * Ordinal is an unprivileged local-plan reference, never an owner/batch identity.
  */
-export function parseMultifaceOutput(raw, { expectedCount, allowProse = false } = {}) {
+// Stored display may reuse a title/content; structural framing and every safety
+// budget still apply. Fresh generation callers keep the strict default.
+export function parseMultifaceOutput(raw, { expectedCount, allowProse = false, storedDisplay = false } = {}) {
     const stats = { chars: typeof raw === 'string' ? raw.length : 0, bytes: 0, tags: 0, attributes: 0, maxDepth: 0, cssChars: 0, cssRules: 0, dataUriChars: 0 };
     const faces = [];
     const errors = [];
@@ -324,7 +326,7 @@ export function parseMultifaceOutput(raw, { expectedCount, allowProse = false } 
                 }
                 const inner = raw.slice(active.innerStart, tag.start);
                 const duplicate = faces.findIndex(face => face.inner.trim() === inner.trim());
-                if (duplicate >= 0) {
+                if (duplicate >= 0 && !storedDisplay) {
                     faces.splice(duplicate, 1);
                     fail(protocolError('duplicate-face-content', active.start, '多面返回了完全相同的内容。'));
                     break;
@@ -332,7 +334,7 @@ export function parseMultifaceOutput(raw, { expectedCount, allowProse = false } 
                 const summaryHtml = raw.slice(active.summaryStart, active.summaryEnd);
                 const summaryKey = normalizedSummaryText(summaryHtml);
                 const duplicateSummary = seenSummaries.get(summaryKey);
-                if (duplicateSummary !== undefined) {
+                if (duplicateSummary !== undefined && !storedDisplay) {
                     const duplicateIndex = faces.findIndex(face => face.index === duplicateSummary);
                     if (duplicateIndex >= 0) faces.splice(duplicateIndex, 1);
                     fail(protocolError('duplicate-face-summary', active.start, '多面标题在规范化后重复；每面必须使用不同标题。'));

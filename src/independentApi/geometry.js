@@ -1,11 +1,11 @@
 // Split from independentApi.js — geometry.
-import { restoreRuntimeAnimationClone, ANIMATION_SUSPENDED_ATTR } from '../runtimeAnimationState.js?rmv=1.62.95';
+import { restoreRuntimeAnimationClone, ANIMATION_SUSPENDED_ATTR } from '../runtimeAnimationState.js?rmv=1.65.6';
 
-import { bindVisualHistoryTarget } from '../storage.js?rmv=1.62.95';
-import { presentationModeFields } from '../presentationMode.js?rmv=1.62.95';
-import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.62.95';
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorExternalPlacementParent } from '../hostCompatibility.js?rmv=1.62.95';
-import { getSettings } from '../settings.js?rmv=1.62.95';
+import { bindVisualHistoryTarget } from '../storage.js?rmv=1.65.6';
+import { presentationModeFields } from '../presentationMode.js?rmv=1.65.6';
+import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.65.6';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorExternalPlacementParent } from '../hostCompatibility.js?rmv=1.65.6';
+import { getSettings } from '../settings.js?rmv=1.65.6';
 import {
     cleanRabbitMirrorOutput,
     compactTotoBlock,
@@ -19,12 +19,12 @@ import {
     clearRabbitMirrorHorizontalClipArtifacts,
     sanitizeRabbitMirrorUntrustedTemplate,
     validateRabbitMirrorRecoveredStyleAssignments,
-} from '../outputSanitizer.js?rmv=1.62.95';
-import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.62.95';
-import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.62.95';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.62.95';
-import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.62.95';
-import { markSanitizedRabbitMirrorFace } from '../multifaceProof.js?rmv=1.62.95';
+} from '../outputSanitizer.js?rmv=1.65.6';
+import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.65.6';
+import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.65.6';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.65.6';
+import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.65.6';
+import { markSanitizedRabbitMirrorFace } from '../multifaceProof.js?rmv=1.65.6';
 import {
     EXTERNAL_SHELL_ATTR,
     FOLLOW_EXTERNAL_ANCHOR_ATTR,
@@ -39,8 +39,8 @@ import {
     getContext,
     hashText,
     independentMaintenanceLiveRepairLocked,
-} from './runtime.js?rmv=1.62.95';
-import { automaticDispatchAlreadyConsumed, automaticFailureStops, generationPolls, operationEpochForBase } from './flights.js?rmv=1.62.95';
+} from './runtime.js?rmv=1.65.6';
+import { automaticDispatchAlreadyConsumed, automaticFailureStops, generationPolls, operationEpochForBase } from './flights.js?rmv=1.65.6';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INTERACTION_STATE_MIGRATION_KEY,
@@ -49,7 +49,7 @@ import {
     persistedOwnerForMessage,
     readStore,
     writeStore,
-} from './persistence.js?rmv=1.62.95';
+} from './persistence.js?rmv=1.65.6';
 import {
     chatKey,
     copyIndependentOwnerLineage,
@@ -66,7 +66,7 @@ import {
     savedRecordMatchesObserved,
     slotSearchKeys,
     swipeId,
-} from './connection.js?rmv=1.62.95';
+} from './connection.js?rmv=1.65.6';
 import {
     EXTERNAL_GEOMETRY_SETTLE_STEPS_MS,
     allExternalHosts,
@@ -100,7 +100,7 @@ import {
     wrapIndependentFace,
     wrapPreparedIndependentFace,
     writeGeometryDataset,
-} from './request.js?rmv=1.62.95';
+} from './request.js?rmv=1.65.6';
 import {
     activeIndependentFlightForBase,
     automaticCutoverVersionToken,
@@ -123,20 +123,20 @@ import {
     serializeExternalFaceDetails,
     showMultifaceFace,
     stripIndependentTransientLayoutArtifacts,
-} from './mount.js?rmv=1.62.95';
+} from './mount.js?rmv=1.65.6';
 import {
     automaticHostGenerationRenderMatches,
     hasExistingFollowRabbitMirror,
     queueMessageSync,
     suppressesAutomaticGeneration,
-} from './earlyBody.js?rmv=1.62.95';
+} from './earlyBody.js?rmv=1.65.6';
 import {
     automaticGenerationCutovers,
     persistedInteractionMigrationHandle,
     persistedInteractionMigrationIdle,
     writePersistedInteractionMigrationHandle,
     writePersistedInteractionMigrationIdle,
-} from './lifecycle.js?rmv=1.62.95';
+} from './lifecycle.js?rmv=1.65.6';
 
 let externalGeometryFrame = 0;
 
@@ -1304,14 +1304,14 @@ export function prepareStoredIndependentRecordHtml(record,slot){
  // This seam is reached only after the caller has selected and validated the
 // owning saved result. No startup readStore scan parses or hashes all records.
  if(hasMultifaceMarkup(record.html) && Array.isArray(record.textReplacementReceipts)){
-  const parsed=parseMultifaceOutput(record.html);
+  const parsed=parseMultifaceOutput(record.html,{storedDisplay:true});
   if(!parsed.ok) return '';
   const faces=parsed.faces.map(face=>({index:face.index,inner:prepareIndependentReadyHtml(face.inner,
    record.textReplacementReceipts[face.index],`${slot}#face:${face.index}`)}));
   if(faces.some(face=>!face.inner)) return '';
   return faces.map(face=>wrapPreparedIndependentFace(face.inner,face.index)).join('\n');
  }
- return prepareIndependentReadyHtml(record.html,record.textReplacementReceipt,slot);
+ return prepareIndependentReadyHtml(record.html,record.textReplacementReceipt,slot,false,true);
 }
 
 export function sanitizeIndependentReadyFragment(html='',textAlreadyFiltered=false){
@@ -1326,22 +1326,22 @@ export function sanitizeIndependentReadyFragment(html='',textAlreadyFiltered=fal
 }
 
 
-export function prepareIndependentReadyHtml(html='',savedReceipt=null,ownerSlot='',locallyPrepared=false){
+export function prepareIndependentReadyHtml(html='',savedReceipt=null,ownerSlot='',locallyPrepared=false,storedDisplay=false){
  const source=String(html||'').trim();
  try{ assertIndependentMarkupComplexity(source); }catch{return '';}
  const bannedWords=getSettings()?.rabbitMirrorBannedWords;
  const bannedFingerprint=hashText(Array.isArray(bannedWords)?JSON.stringify(bannedWords):'');
  const provenance=locallyPrepared?'prepared':savedReceipt?`record:${ownerSlot}:${JSON.stringify(copyIndependentReplacementReceipt(savedReceipt))}`:'raw';
- const cacheKey=`${RUNTIME_VERSION}:${bannedFingerprint}:${provenance}:${source.length}:${hashText(source)}`;
+ const cacheKey=`${RUNTIME_VERSION}:${bannedFingerprint}:${provenance}:${storedDisplay?'stored:':''}${source.length}:${hashText(source)}`;
  if(preparedReadyHtmlCache.has(cacheKey)) return preparedReadyHtmlCache.get(cacheKey);
  const textAlreadyFiltered=locallyPrepared || matchesRabbitMirrorTextReplacementReceipt(savedReceipt,String(html||''),bannedWords||[],ownerSlot);
  if(hasMultifaceMarkup(source)){
-  const parsed=parseMultifaceOutput(source);
+  const parsed=parseMultifaceOutput(source,{storedDisplay:storedDisplay||locallyPrepared});
   if(!parsed.ok) return '';
   const preparedFaces=parsed.faces.map(face=>({index:face.index,inner:prepareIndependentReadyHtml(face.inner,null,'',textAlreadyFiltered)}));
   if(preparedFaces.some(face=>!face.inner)) return '';
   const prepared=preparedFaces.map(face=>wrapPreparedIndependentFace(face.inner,face.index)).join('\n');
-  if(!parseMultifaceOutput(prepared,{expectedCount:parsed.faces.length}).ok) return '';
+  if(!parseMultifaceOutput(prepared,{expectedCount:parsed.faces.length,storedDisplay:storedDisplay||locallyPrepared}).ok) return '';
   try{ assertIndependentMarkupComplexity(prepared); }catch{return '';}
   cachePreparedReadyHtml(cacheKey,prepared);
   cachePreparedReadyHtml(`${RUNTIME_VERSION}:${bannedFingerprint}:prepared:${prepared.length}:${hashText(prepared)}`,prepared);
@@ -1421,7 +1421,7 @@ function extractReadyFaceDetails(html='',locallyPrepared=false){
   const details=extractReadyDetails(html,locallyPrepared);
   return details?[details]:[];
  }
- const parsed=parseMultifaceOutput(html);
+ const parsed=parseMultifaceOutput(html,{storedDisplay:locallyPrepared});
  if(!parsed.ok) return [];
  const faces=parsed.faces.map(face=>extractReadyDetails(face.inner,locallyPrepared));
  if(faces.some(details=>!usableReadyDetails(details))) return [];
@@ -1988,7 +1988,7 @@ function installQuickStartButton(host,body){
  body.append(document.createElement('br'),button);
 }
 
-export function prepareQuickResay(root,owner={}){
+export function prepareQuickResay(root,owner={},options={}){
  const identity=resolveIndependentActionIdentity(root,owner);
  if(!identity || identity.host?.dataset.rmState!=='ready') return null;
  const proof=quickActionOwner(identity.ctx,identity.index,identity.msg);
@@ -1997,7 +1997,7 @@ export function prepareQuickResay(root,owner={}){
    || identity.host?.dataset.rmState!=='ready') return false;
   if(activeIndependentFlightForBase(proof.base)) return true;
   if(!resolveIndependentActionIdentity(root,owner)) return false;
-  return resayIndependentMirror(root,owner,{mode:'fresh'});
+  return resayIndependentMirror(root,owner,{mode:'fresh',...options});
  };
 }
 
@@ -2062,7 +2062,7 @@ export function renderExternalErrorBody(details,text=''){
   // second retry intent after the first click has entered loading or READY.
   const host=details.closest?.(`[${SOURCE_ATTR}="true"]`);
   if(!retry.isConnected || !details.contains?.(retry) || host?.dataset?.rmState!=='error') return;
-  void import('../outputSanitizer/toolsChrome.js?rmv=1.62.95').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+  void import('../outputSanitizer/toolsChrome.js?rmv=1.65.6').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
  },true);
  const cat=document.createElement('button');
  cat.type='button';
@@ -2172,7 +2172,7 @@ export function independentStoredHtmlLightRestorable(html=''){
  if(!source || byteLength(source)>INDEPENDENT_HTML_BUDGET_BYTES) return false;
  try{ assertIndependentMarkupComplexity(source); }catch{return false;}
  if(hasMultifaceMarkup(source)){
-  const parsed=parseMultifaceOutput(source);
+  const parsed=parseMultifaceOutput(source,{storedDisplay:true});
   return parsed.ok && parsed.faces.every(face=>independentStoredHtmlLightRestorable(face.inner));
  }
  return /<details\b[^>]*>[\s\S]*?<summary\b[^>]*>[\s\S]*?<\/summary\s*>[\s\S]*?<\/details\s*>/i.test(source)
@@ -2185,7 +2185,7 @@ export function independentStoredHtmlRestorable(html=''){
  if(!independentStoredHtmlLightRestorable(source)) return false;
  if(activeRestorableHtmlCache?.has(source)) return activeRestorableHtmlCache.get(source)===true;
  if(hasMultifaceMarkup(source)){
-  const parsed=parseMultifaceOutput(source);
+  const parsed=parseMultifaceOutput(source,{storedDisplay:true});
   const valid=parsed.ok && parsed.faces.every(face=>independentStoredHtmlRestorable(face.inner));
   activeRestorableHtmlCache?.set(source,valid);
   return valid;

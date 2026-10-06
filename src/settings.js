@@ -1,10 +1,10 @@
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.62.95';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.65.6';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.62.95';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.62.95';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.62.95';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.62.95';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.65.6';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.65.6';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.65.6';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.65.6';
 
 export const MODULE_NAME = 'rabbit_mirror_theater';
 
@@ -154,11 +154,9 @@ export const DEFAULT_VISUAL_COLOR_RULES = PREVIOUS_82_VISUAL_COLOR_RULES
         '避重可变化主辅色关系、冷暖与彩度；媒介必要的单色、低彩度仍可保留，以明度、纹理、材质与空间层次完成视觉。');
 
 export const DEFAULT_VISUAL_PROMPT = String.raw`兔子镜默认视觉规则:
-  - 不得以通用圆角面板、卡片列表、数据仪表盘或信息框作为默认主体，再向其中填入本轮内容。
+  - 不得以通用圆角面板、卡片列表、数据仪表盘或信息框作为默认主体，再向其中填入本轮内容；仅替换标题和正文就能用于其他题材的通用界面不合格。
   - 当展现形式本身属于平面媒介时，其纸面、印刷面、画布、版式、纹理、边缘与承载内容可以直接构成主要视觉本体，不视为通用面板。
   - 主背景、主要承载面、文字、边界、阴影、发光和强调色，必须配合该形式实际采用的材质、环境和光线；不得预设固定的界面配色组合。
-  - 标题和情绪词只能影响已经成立的画面本体，不能单独触发预设的界面底盘、警报结构或科技仪表盘。
-  - 仅替换标题和正文就能直接用于其他题材的通用界面，属于不合格输出。
 
 ${DEFAULT_VISUAL_COLOR_RULES}`;
 

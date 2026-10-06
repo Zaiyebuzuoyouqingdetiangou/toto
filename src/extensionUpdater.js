@@ -1,4 +1,4 @@
-// 用户点了更新之后才动安装。git pull 被本地改动挡住时，改为用 GitHub 版本覆盖，和预设备忘录一样。
+// 用户点了更新之后才动安装。检测只看当前分支；git pull 被本地改动挡住时，只有 main 才用 GitHub 覆盖。
 let pending = null;
 export function ownExtensionFolder(moduleUrl = import.meta.url) {
     // TauriTavern 等宿主可能在路径前加前缀，只要求末尾是 third-party/<目录>/src/extensionUpdater.js。
@@ -125,10 +125,7 @@ export function requestRabbitMirrorUpdate({ fetchImpl = globalThis.fetch.bind(gl
 // 和预设备忘录一样：只拿仓库 manifest 的版本号和当前页面比。
 // 同版本内容差、本地 git dirty、远端暂时读失败都不当成「有更新」。
 const HOMEPAGE = 'https://github.com/Zaiyebuzuoyouqingdetiangou/toto';
-const RAW_MANIFEST = 'https://raw.githubusercontent.com/Zaiyebuzuoyouqingdetiangou/toto/main/manifest.json';
-const CDN_MANIFEST = 'https://cdn.jsdelivr.net/gh/Zaiyebuzuoyouqingdetiangou/toto@main/manifest.json';
-const RAW_README = 'https://raw.githubusercontent.com/Zaiyebuzuoyouqingdetiangou/toto/main/README.md';
-const CDN_README = 'https://cdn.jsdelivr.net/gh/Zaiyebuzuoyouqingdetiangou/toto@main/README.md';
+const FALLBACK_BRANCH = 'main';
 const UPDATE_CHECK_THROTTLE_MS = 30_000;
 const LOADED_VERSION_KEY = '__rabbitMirrorLoadedVersion';
 const RELOAD_GUARD_KEY = 'rabbitMirrorReloadedVersion';
@@ -193,7 +190,7 @@ function parseGithubRepo(remoteUrl) {
 function remoteFileUrl(remoteUrl, fileName, branch, cdn) {
     const parsed = parseGithubRepo(remoteUrl);
     if (!parsed) return '';
-    const safeBranch = String(branch || '').trim() || 'main';
+    const safeBranch = encodeURIComponent(String(branch || '').trim() || FALLBACK_BRANCH);
     const file = String(fileName || '').replace(/^\//, '');
     return cdn
         ? `https://cdn.jsdelivr.net/gh/${parsed.owner}/${parsed.repo}@${safeBranch}/${file}`
@@ -242,13 +239,16 @@ async function tryReadInstallInfo(moduleUrl) {
     }
 }
 
+function currentBranchName(info) {
+    return String(info?.current_branch_name || info?.currentBranchName || '').trim();
+}
+
 async function fetchRemoteManifestVersion(info, fetchImpl) {
-    const branch = String(info?.current_branch_name || '').trim() || 'main';
+    const branch = currentBranchName(info) || FALLBACK_BRANCH;
+    const repo = info?.remote_url || info?.remoteUrl || HOMEPAGE;
     const urls = uniqueUrls([
-        remoteFileUrl(info?.remote_url, 'manifest.json', branch, false),
-        remoteFileUrl(info?.remote_url, 'manifest.json', branch, true),
-        RAW_MANIFEST,
-        CDN_MANIFEST,
+        remoteFileUrl(repo, 'manifest.json', branch, false),
+        remoteFileUrl(repo, 'manifest.json', branch, true),
     ]);
     for (const url of urls) {
         const version = await fetchManifestVersionFromUrl(url, fetchImpl);
@@ -260,8 +260,8 @@ async function fetchRemoteManifestVersion(info, fetchImpl) {
 function rememberRemote(info, remoteVersion) {
     return {
         remoteVersion: remoteVersion || '',
-        remoteUrl: info?.remote_url || HOMEPAGE,
-        remoteBranch: String(info?.current_branch_name || '').trim() || 'main',
+        remoteUrl: info?.remote_url || info?.remoteUrl || HOMEPAGE,
+        remoteBranch: currentBranchName(info) || FALLBACK_BRANCH,
     };
 }
 
@@ -302,6 +302,8 @@ export async function checkRabbitMirrorUpdate({ force = false, fetchImpl = globa
 
 const headingPattern = /^(#{1,3})\s+v?(\d+\.\d+(?:\.\d+)*)(?:\s*[：:·\-—]\s*|\s+)(.*)$/;
 const quoteHeadingPattern = /^>\s+\*\*v?(\d+\.\d+(?:\.\d+)*)(?:\s*[：:·\-—]\s*|\s+)(.+?)\*\*/;
+// “# 兔子镜小剧场 1.65.5” 这种名称在前、版本在后的标题。
+const titledHeadingPattern = /^(#{1,3})\s+(.+?)\s+v?(\d+\.\d+(?:\.\d+)*)\s*$/;
 
 export function parseReadmeChangelog(text) {
     const sections = [];
@@ -312,7 +314,7 @@ export function parseReadmeChangelog(text) {
         for (const raw of current.lines) {
             let line = raw.replace(/^\s*>\s?/, '').trim();
             if (!line || line === '---') continue;
-            line = line.replace(/^[-*]\s+/, '').replace(/^\*\*(.+)\*\*$/, '$1').trim();
+            line = line.replace(/^#{1,6}\s+/, '').replace(/^[-*]\s+/, '').replace(/^\*\*(.+)\*\*$/, '$1').trim();
             if (line) items.push(line);
         }
         if (current.version || items.length) sections.push({ version: current.version, title: current.title, items });
@@ -320,10 +322,11 @@ export function parseReadmeChangelog(text) {
     for (const line of String(text || '').split(/\r?\n/)) {
         const heading = line.match(headingPattern);
         const quote = !heading && line.match(quoteHeadingPattern);
-        if (heading || quote) {
+        const titled = !heading && !quote && line.match(titledHeadingPattern);
+        if (heading || quote || titled) {
             push();
-            const version = validVersion((heading || quote)[heading ? 2 : 1]);
-            const title = String((heading ? heading[3] : quote[2]) || '').replace(/\*\*/g, '').trim();
+            const version = validVersion(heading ? heading[2] : quote ? quote[1] : titled[3]);
+            const title = String((heading ? heading[3] : quote ? quote[2] : titled[2]) || '').replace(/\*\*/g, '').trim();
             current = { version, title, lines: [] };
             continue;
         }
@@ -350,8 +353,6 @@ export async function loadRabbitMirrorReadme({ fetchImpl = globalThis.fetch.bind
     const urls = uniqueUrls([
         remoteFileUrl(repo, 'README.md', branch, false),
         remoteFileUrl(repo, 'README.md', branch, true),
-        RAW_README,
-        CDN_README,
         installed.href,
     ]);
     for (const url of urls) {
@@ -471,6 +472,15 @@ function finishUpdated() {
     return { ok: true };
 }
 
+function localChangesMessage(branch) {
+    return `更新失败：本地扩展目录有改动，酒馆无法 git pull。当前分支是 ${branch}，只有 main 才会用 GitHub 覆盖。请先处理本地改动后再更新。`;
+}
+
+function afterPullBlocked(branch, folder) {
+    if (branch === 'main') return overwriteFromGithub(folder);
+    throw new Error(localChangesMessage(branch));
+}
+
 export async function applyRabbitMirrorUpdateAndReload(options = {}) {
     const check = await checkRabbitMirrorUpdate({ ...options, force: true });
     if (check.status !== 'available') {
@@ -479,6 +489,7 @@ export async function applyRabbitMirrorUpdateAndReload(options = {}) {
     }
     let folder = '';
     try { folder = ownExtensionFolder(options.moduleUrl); } catch (error) { throw error; }
+    const branch = updateState.remoteBranch || FALLBACK_BRANCH;
     const updateFn = resolveUpdateExtensionFn();
     if (updateFn) {
         try {
@@ -487,10 +498,10 @@ export async function applyRabbitMirrorUpdateAndReload(options = {}) {
             const status = typeof response?.status === 'number' ? response.status : 0;
             let detail = '';
             try { if (typeof response?.text === 'function') detail = (await response.text()).trim(); } catch {}
-            if (looksLikeGitPullBlocked(null, status, detail)) return overwriteFromGithub(folder);
+            if (looksLikeGitPullBlocked(null, status, detail)) return afterPullBlocked(branch, folder);
             throw new Error(detail || failure(status));
         } catch (error) {
-            if (looksLikeGitPullBlocked(error, error?.status, error?.detail)) return overwriteFromGithub(folder);
+            if (looksLikeGitPullBlocked(error, error?.status, error?.detail)) return afterPullBlocked(branch, folder);
             throw error;
         }
     }
@@ -502,7 +513,7 @@ export async function applyRabbitMirrorUpdateAndReload(options = {}) {
         }
         return finishUpdated();
     } catch (error) {
-        if (looksLikeGitPullBlocked(error, error?.status, error?.detail)) return overwriteFromGithub(folder);
+        if (looksLikeGitPullBlocked(error, error?.status, error?.detail)) return afterPullBlocked(branch, folder);
         throw error;
     }
 }

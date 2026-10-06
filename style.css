@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=1.62.95');
+@import url('./settings-ui.css?rmv=1.65.6');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -1606,7 +1606,7 @@ html[data-rabbit-mirror-external-sampling-enabled="false"] [data-rabbit-mirror-r
 .rabbit-mirror-quick-start { flex:1 1 180px; min-width:0; }
 .rabbit-mirror-quick-start[open] { flex-basis:100%; }
 .rabbit-mirror-quick-start > summary { min-height:44px; padding:10px 8px; cursor:pointer; box-sizing:border-box; }
-.rabbit-mirror-quick-start-body { font-size:14px; line-height:1.65; padding:0 8px 8px; overflow-wrap:anywhere; }
+.rabbit-mirror-quick-start-body { font-size:14px; line-height:1.65.5; padding:0 8px 8px; overflow-wrap:anywhere; }
 .rabbit-mirror-quick-start-body button { min-height:44px; }
 .rabbit-mirror-quick-start-body ol { padding-left:20px; margin:4px 0; }
 .rabbit-mirror-quick-start-body li { margin-bottom:7px; }

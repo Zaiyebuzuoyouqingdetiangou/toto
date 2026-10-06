@@ -1,9 +1,9 @@
-import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.62.95';
+import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.65.6';
 // Split from outputSanitizer.js — markup.
 
-import { getSettings } from '../settings.js?rmv=1.62.95';
-import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.62.95';
-import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.62.95';
+import { getSettings } from '../settings.js?rmv=1.65.6';
+import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.65.6';
+import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.65.6';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     INTERACTION_HOME_ATTR,
@@ -15,7 +15,7 @@ import {
     clearMirrorTitleDisplayArtifacts,
     escapeRegExp,
     hashInteractionSignature,
-} from './runtime.js?rmv=1.62.95';
+} from './runtime.js?rmv=1.65.6';
 
 const TOTO_BLOCK_RE = /<toto\b[\s\S]*?<\/toto>/gi;
 
@@ -652,7 +652,12 @@ export function sanitizeRabbitMirrorUntrustedTemplate(template) {
         for (const attribute of [...element.attributes]) {
             const name = String(attribute.name || '').toLowerCase();
             const value = String(attribute.value || '');
-            if (RABBIT_MIRROR_INTERNAL_MODEL_ATTRS.has(name)
+            // HTML parsing can retain quotes as part of a malformed attribute
+            // name (for example JSON escaped with \" instead of &quot;).
+            // Remove that attribute, not the complete artwork; otherwise the
+            // serialized face later fails the strict multiface boundary.
+            if (!name || /[\u0000-\u0020\u007f"'`<>=/]/u.test(name)
+                || RABBIT_MIRROR_INTERNAL_MODEL_ATTRS.has(name)
                 || RABBIT_MIRROR_OWNER_MODEL_ATTR_RE.test(name)
                 || /^on[a-z]+$/.test(name)
                 || name === 'srcdoc'
@@ -2406,5 +2411,4 @@ export function cloneMessageForTransientRerender(message) {
         return { ...message };
     }
 }
-
 
