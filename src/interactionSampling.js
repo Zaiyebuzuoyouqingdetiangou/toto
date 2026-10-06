@@ -2,7 +2,7 @@
 // ordinal BEFORE the completion; it cannot inspect ungenerated candidates. The
 // reported probabilities are evidence, not weights for this local draw. Compliance
 // and implementation remain model-dependent. Nothing here gates output or retries.
-export const INTERACTION_SAMPLING_RULE = `整体设计候选【VS 试验】：正文挑签先选定一签。依本面展现形式与近期记录，构思 3 个具体可实现的整体短方案，每条一句写清本体构成、操作部位、哪个部件从何种状态变为何种状态、结果出现在哪里；从媒介在现实中的结构与用法出发，文字随状态变化出现，不以几个条目各对应一段文字作为方案。每条先写这个媒介现实中的使用过程（至少两步，后一步建立在前一步的结果上；可取用下方真实用法，也可另选），再另列交互方式标签；三条的主要用法互不相同。结构依次为：方案 1 只有一个主体，直接点按或拖动主体本身让它一步步变化；方案 2 整个媒介一起切换状态，不分条目，切换后的状态里还有能继续操作的真实部件；方案 3 自由。三条须有实质差异，不仅换名称、颜色或正文；各附概率 p（0～1）仅作记录，实现序号由程序指定。先用 HTML/CSS 建立部件及前后状态再填内容；选中高亮、图标抖动或文字切页不能冒充承诺的变化。在外层 details 的 data-rm-vs 写合法 JSON：c 为三项 [短方案,p]，m 为三项交互方式列表，pick 为指定序号，引号按 HTML 转义。候选不显示为菜单，不重抽选材。`;
+export const INTERACTION_SAMPLING_RULE = `整体设计候选【VS 试验】：正文挑签先选定一签。依本面展现形式与近期记录，构思 3 个具体可实现的整体短方案，每条一句写清本体构成、操作部位、哪个部件从何种状态变为何种状态、结果出现在哪里；从媒介在现实中的结构与用法出发，文字随状态变化出现，不以几个条目各对应一段文字作为方案。每条先写这个媒介现实中的使用过程（至少两步，后一步建立在前一步的结果上；可取用下方真实用法，也可另选），再另列交互方式标签；画面上要出现的每个控件（播放键、按键、开关、旋钮等）都写出按下后的结果，没有结果的控件不画；三条的主要用法互不相同。结构依次为：方案 1 只有一个主体，直接点按或拖动主体本身让它一步步变化；方案 2 整个媒介一起切换状态，不分条目，切换后的状态里还有能继续操作的真实部件；方案 3 自由。三条须有实质差异，不仅换名称、颜色或正文；各附概率 p（0～1）仅作记录，实现序号由程序指定。先用 HTML/CSS 建立部件及前后状态再填内容；选中高亮、图标抖动或文字切页不能冒充承诺的变化。在外层 details 的 data-rm-vs 写合法 JSON：c 为三项 [短方案,p]，m 为三项交互方式列表，pick 为指定序号，引号按 HTML 转义。候选不显示为菜单，不重抽选材。`;
 
 export function designCandidatePick(value) {
     return Number.isInteger(value) && value >= 1 && value <= 3 ? value : null;

@@ -1,25 +1,25 @@
-import { paletteRecipeFor } from '../paletteRecipes.js?rmv=1.65.7';
-import { recordInteractionMethods } from '../interactionMethodLedger.js?rmv=1.65.7';
-import { roleColorFaces, setRoleColorVariant, inspectRoleColorReadability } from '../roleColorVariants.js?rmv=1.65.7';
-import { interactionRecipesFor } from '../interactionRecipes.js?rmv=1.65.7';
+import { paletteRecipeFor } from '../paletteRecipes.js?rmv=1.65.9';
+import { recordInteractionMethods } from '../interactionMethodLedger.js?rmv=1.65.9';
+import { roleColorFaces, setRoleColorVariant, inspectRoleColorReadability } from '../roleColorVariants.js?rmv=1.65.9';
+import { interactionRecipesFor } from '../interactionRecipes.js?rmv=1.65.9';
 // Split from outputSanitizer.js — toolsChrome.
-import { trackMirrorAnimations, pruneMirrorAnimationVisibility } from '../animationVisibility.js?rmv=1.65.7';
+import { trackMirrorAnimations, pruneMirrorAnimationVisibility } from '../animationVisibility.js?rmv=1.65.9';
 
-import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.65.7';
-import { installMirrorUpdateMenuHook } from '../mirrorUpdateMenu.js?rmv=1.65.7';
-import { placeFacePager, facePagerDetails, removeFacePager, cleanupFacePagers } from '../facePagerPlacement.js?rmv=1.65.7';
-import { isTextPresentation } from '../presentationMode.js?rmv=1.65.7';
-import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.65.7';
-import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=1.65.7';
-import { getCurrentChatKey } from '../storage.js?rmv=1.65.7';
-import { getSanitizedRabbitMirrorFaceProof } from '../multifaceProof.js?rmv=1.65.7';
+import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.65.9';
+import { installMirrorUpdateMenuHook } from '../mirrorUpdateMenu.js?rmv=1.65.9';
+import { placeFacePager, facePagerDetails, removeFacePager, cleanupFacePagers } from '../facePagerPlacement.js?rmv=1.65.9';
+import { isTextPresentation } from '../presentationMode.js?rmv=1.65.9';
+import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.65.9';
+import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=1.65.9';
+import { getCurrentChatKey } from '../storage.js?rmv=1.65.9';
+import { getSanitizedRabbitMirrorFaceProof } from '../multifaceProof.js?rmv=1.65.9';
 import {
     captureTheaterFavoriteFromRoot,
     openTheaterFavoriteLibrary,
     toggleTheaterFavorite,
     isTheaterFavoriteHtml,
-} from '../theaterFavorites.js?rmv=1.65.7';
-import { FACE_SWIPE_FULL_MESSAGE, faceSwipeBarIntent, fallbackFaceSwipeView, multifaceFacePagerView } from '../swipeVersions.js?rmv=1.65.7';
+} from '../theaterFavorites.js?rmv=1.65.9';
+import { FACE_SWIPE_FULL_MESSAGE, faceSwipeBarIntent, fallbackFaceSwipeView, multifaceFacePagerView } from '../swipeVersions.js?rmv=1.65.9';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -28,8 +28,8 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from '../feedbackCat.js?rmv=1.65.7';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.65.7';
+} from '../feedbackCat.js?rmv=1.65.9';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.65.9';
 import {
     FAVORITE_MULTIPLIER_MAX,
     FAVORITE_MULTIPLIER_MIN,
@@ -51,7 +51,7 @@ import {
     setFavoriteMultiplier,
     toggleBlacklistItem,
     toggleFavoriteItem,
-} from '../blacklist.js?rmv=1.65.7';
+} from '../blacklist.js?rmv=1.65.9';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -75,10 +75,10 @@ import {
     isInsideChatMessage,
     isMaintenanceRabbitEnabled,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.65.7';
-import { getAvailableHostChat } from './scriptedInteractionRescue.js?rmv=1.65.7';
-import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.65.7';
-import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=1.65.7';
+} from './runtime.js?rmv=1.65.9';
+import { getAvailableHostChat } from './scriptedInteractionRescue.js?rmv=1.65.9';
+import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.65.9';
+import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=1.65.9';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     FEEDBACK_HISTORY_EVENT,
@@ -98,8 +98,8 @@ import {
     rabbitMirrorLanguageBalance,
     scheduleCurrentHighConfidenceTextRepair,
     setMaintenanceRabbitState,
-} from './diagnostics.js?rmv=1.65.7';
-import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=1.65.7';
+} from './diagnostics.js?rmv=1.65.9';
+import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=1.65.9';
 import {
     MAINTENANCE_FINDING_STAGE_LABELS,
     beginMaintenanceRepairRun,
@@ -117,19 +117,19 @@ import {
     runMaintenanceRevealClipRepair,
     runMaintenanceUserRepair,
     triggerDiagnosticForMaintenanceRoot,
-} from './maintenanceInspect.js?rmv=1.65.7';
+} from './maintenanceInspect.js?rmv=1.65.9';
 import {
     getRabbitMirrorFacePosition,
     installMaintenanceHorizontalClipOpenRescue,
     repairLegacyMaintenanceMobileStateRows,
-} from './layoutRescue.js?rmv=1.65.7';
+} from './layoutRescue.js?rmv=1.65.9';
 import {
     getMessageIndexFromMirrorNode,
     installMaintenanceAutoSafeOpenPatrol,
     installManagedRabbitMirrorTools,
     pruneMaintenanceAutoSafeOpenBindings,
     scheduleMaintenanceAutoSafeForRoot,
-} from './lifecycle.js?rmv=1.65.7';
+} from './lifecycle.js?rmv=1.65.9';
 
 installMirrorUpdateMenuHook();
 
@@ -603,7 +603,7 @@ function rabbitMirrorExternalGenerationNotice(root, kind = 'maintenance') {
 const RESAY_CHOOSER_ATTR = 'data-rm-resay-chooser';
 
 const RESAY_PICK_MAX = Object.freeze({ theme: 3, format: 2 });
-const EXTERNAL_STORE_MODULE = '../externalWorldBook/store.js?rmv=1.65.7';
+const EXTERNAL_STORE_MODULE = '../externalWorldBook/store.js?rmv=1.65.9';
 
 // 纯点菜里的题库点选。默认只显示已选项；点「浏览」才展开列表。
 // 来源可切换：内置题库（按大组浏览 / 搜索）或已导入并启用的母本库。
@@ -2318,7 +2318,7 @@ function beginHostWorkTiming(name){
 }
 
 function loadMirrorImageModule() {
-    if (!mirrorImageModule) mirrorImageModule = import('../imageUi.js?rmv=1.65.7').catch(error => { mirrorImageModule = null; throw error; });
+    if (!mirrorImageModule) mirrorImageModule = import('../imageUi.js?rmv=1.65.9').catch(error => { mirrorImageModule = null; throw error; });
     return mirrorImageModule;
 }
 
@@ -2648,7 +2648,7 @@ function installUnifiedMirrorTools(root) {
     actions.push({ id: 'resay', label: '↻ 重说', run: (_event, opener) => openRabbitMirrorResayChooser(root, opener) });
     if (mirrorFaceCanContinue(root)) {
         actions.push({ id: 'continue', label: '✎ 续写', run: () => {
-            void import('../independentApi/mount.js?rmv=1.65.7').then(module => module.continueIndependentLongText(root))
+            void import('../independentApi/mount.js?rmv=1.65.9').then(module => module.continueIndependentLongText(root))
                 .catch(() => globalThis.toastr?.error?.('续写没有写上，原来的正文还在。'));
         } });
     }
@@ -2671,7 +2671,7 @@ function installUnifiedMirrorTools(root) {
             .catch(() => globalThis.toastr?.warning?.('生图面板未能打开，请重新打开后再试。'));
     } });
     actions.push({ id: 'theater-favorite-library', label: '📖 打开收藏夹', run: () => {
-        void import('../independentApi.js?rmv=1.65.7').then(module =>
+        void import('../independentApi.js?rmv=1.65.9').then(module =>
             openTheaterFavoriteLibrary((container, record) => module.hydrateIndependentFavoriteHtml(container, record)))
             .catch(error => globalThis.toastr?.warning?.(String(error?.message || '无法打开收藏夹。')));
     } });
@@ -2712,6 +2712,7 @@ function installMaintenanceRabbitsInScopeCore(scope, { allowGlobalRemoval = fals
         containBodyPositioning(root);
         bridgeCrossParentChecked(root);
         hideSecondStateByDefault(root);
+        wireInertPlayButtons(root);
         try { recordInteractionMethods(root.matches?.('details') ? root : root.querySelector?.('details')); } catch { /* ledger is best effort */ }
         // Migrate cached/serialized mirrors created by the short-lived inline reset
         // control. Recovery snapshots stay intact and remain reachable from Maintenance Rabbit.
@@ -3112,6 +3113,75 @@ function hideSecondStateByDefault(root) {
     style.textContent = [...new Set(rules)].join('\n');
     // 放在最前面：同等选择器时让模型自己的规则仍能覆盖；勾选规则选择器更具体，优先级本来就更高。
     details.insertBefore(style, details.querySelector(':scope > summary')?.nextSibling || details.firstChild);
+}
+
+// 播放器的播放／暂停键画出来了却没接任何东西（脚本被去掉，也没有 checkbox）。
+// 画面里本来就有在动的动画时，把这个键接成“暂停／继续这些动画”：只控制已有动画，不补写内容。
+// 插件驱动的进程控制（data-rm-ui="motion"）、label 开关和工具栏都不碰；画面里没有动画就不接。
+const PLAY_GLYPH = /^(?:▶|►|⏵|▷|⏯|⏸|❚❚|‖|\|\||播放|暂停|继续|play|pause)$/i;
+const PLAY_LABEL = /播放|暂停|play|pause/i;
+const PLAYBACK_BOUND = new WeakSet();
+function hasRunningAnimation(node) {
+    const nodes = [node, ...node.querySelectorAll('*')].slice(0, 400);
+    return nodes.some(item => {
+        try { const style = getComputedStyle(item); return style.animationName && style.animationName !== 'none'; } catch { return false; }
+    });
+}
+
+function wireInertPlayButtons(root) {
+    if (!root?.querySelectorAll || typeof getComputedStyle !== 'function') return;
+    const details = root.matches?.('details') ? root : root.querySelector('details');
+    if (!details) return;
+    const candidates = [...details.querySelectorAll('button, [role="button"], span, div, a, i, b, em')].filter(node => {
+        if (PLAYBACK_BOUND.has(node) || node.closest('summary, label, [data-rm-ui], [data-rabbit-mirror-tool-entry-host]')) return false;
+        if (node.matches('input, label') || node.children.length > 1) return false;
+        const text = String(node.textContent || '').replace(/\s+/g, '').trim();
+        const aria = `${node.getAttribute('aria-label') || ''} ${node.getAttribute('title') || ''}`;
+        return (text && text.length <= 4 && PLAY_GLYPH.test(text)) || (!text && PLAY_LABEL.test(aria));
+    }).filter(node => !candidatesContain(node));
+    if (!candidates.length) return;
+    let style = details.querySelector(':scope > style[data-rm-playback-style]');
+    for (const button of candidates) {
+        let container = button.parentElement;
+        while (container && container !== details && !hasRunningAnimation(container)) container = container.parentElement;
+        if (!container || !hasRunningAnimation(container)) continue;
+        if (!style) {
+            style = details.ownerDocument.createElement('style');
+            style.setAttribute('data-rm-playback-style', 'true');
+            style.textContent = '[data-rm-playback="paused"],[data-rm-playback="paused"] *{animation-play-state:paused!important}';
+            details.appendChild(style);
+        }
+        PLAYBACK_BOUND.add(button);
+        if (!container.hasAttribute('data-rm-playback')) container.setAttribute('data-rm-playback', 'playing');
+        const glyphOnly = !button.children.length && PLAY_GLYPH.test(String(button.textContent || '').trim());
+        const paint = () => {
+            const paused = container.getAttribute('data-rm-playback') === 'paused';
+            button.setAttribute('aria-pressed', paused ? 'false' : 'true');
+            // 正在播放时显示“暂停”，暂停时显示“播放”，和真实播放器一致。
+            if (glyphOnly) button.textContent = paused ? '▶' : '⏸';
+        };
+        button.setAttribute('role', 'button');
+        button.setAttribute('tabindex', '0');
+        button.style.cursor = 'pointer';
+        const toggle = event => {
+            if (event.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault?.();
+            event.stopPropagation?.();
+            container.setAttribute('data-rm-playback', container.getAttribute('data-rm-playback') === 'paused' ? 'playing' : 'paused');
+            paint();
+        };
+        button.addEventListener('click', toggle);
+        button.addEventListener('keydown', toggle);
+        paint();
+    }
+}
+
+// 同一个按钮里嵌套的子元素也会被选中，只保留最外层那一个。
+function candidatesContain(node) {
+    const parent = node.parentElement;
+    if (!parent) return false;
+    const text = String(parent.textContent || '').replace(/\s+/g, '').trim();
+    return parent.matches('button, [role="button"]') && PLAY_GLYPH.test(text);
 }
 
 function tidyNativeToggles(root) {

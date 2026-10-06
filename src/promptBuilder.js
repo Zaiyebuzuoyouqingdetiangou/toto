@@ -1,33 +1,33 @@
-import { INTERACTION_SAMPLING_RULE, designCandidatePick, drawDesignCandidate } from './interactionSampling.js?rmv=1.65.7';
-import { driverContractLines, drawDriverOffer, interactionMethodNames, normalizeDriverOffer } from './interactionMethods.js?rmv=1.65.7';
-import { drawUsageOffer, normalizeUsageOffer } from './interactionUsageOffer.js?rmv=1.65.7';
-import { recentInteractionMethods } from './interactionMethodLedger.js?rmv=1.65.7';
-import { usesModelOriginalColors, withoutPaletteRecipe, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.65.7';
-import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=1.65.7';
-import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=1.65.7';
-import { isNearWhitePalette, isNearWhiteContentSurface } from './paletteObservation.js?rmv=1.65.7';
-import { observedOperationFamiliesFor } from './compositionFingerprint.js?rmv=1.65.7';
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.65.7';
-import { expandShuffledOptions } from '../data/raw/rawSegmentLookup.js?rmv=1.65.7';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.65.7';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.65.7';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.65.7';
-import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES, VISUAL_SCENERY_EXPRESSION_RULE, VISUAL_SCENERY_VS_GUIDANCE } from '../data/raw/visualSceneryRules.js?rmv=1.65.7';
-import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.65.7';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.65.7';
-import { getComboHistory, getActivePaletteCooldown } from './storage.js?rmv=1.65.7';
-import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock, recentPaletteExecutionReminder } from './visualDiversityPolicy.js?rmv=1.65.7';
-import { withoutInteractionRecipe, observedInteractionRecipesFor } from './interactionRecipes.js?rmv=1.65.7';
-import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.65.7';
-import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.65.7';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.65.7';
-export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.65.7';
-import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.65.7';
-import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.65.7';
-import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.65.7';
-import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.65.7';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.65.7';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.65.7';
+import { INTERACTION_SAMPLING_RULE, designCandidatePick, drawDesignCandidate } from './interactionSampling.js?rmv=1.65.9';
+import { driverContractLines, drawDriverOffer, interactionMethodNames, normalizeDriverOffer } from './interactionMethods.js?rmv=1.65.9';
+import { drawUsageOffer, normalizeUsageOffer } from './interactionUsageOffer.js?rmv=1.65.9';
+import { recentInteractionMethods } from './interactionMethodLedger.js?rmv=1.65.9';
+import { usesModelOriginalColors, withoutPaletteRecipe, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.65.9';
+import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=1.65.9';
+import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=1.65.9';
+import { isNearWhitePalette, isNearWhiteContentSurface } from './paletteObservation.js?rmv=1.65.9';
+import { observedOperationFamiliesFor } from './compositionFingerprint.js?rmv=1.65.9';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.65.9';
+import { expandShuffledOptions } from '../data/raw/rawSegmentLookup.js?rmv=1.65.9';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.65.9';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.65.9';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.65.9';
+import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES, VISUAL_SCENERY_EXPRESSION_RULE, VISUAL_SCENERY_VS_GUIDANCE } from '../data/raw/visualSceneryRules.js?rmv=1.65.9';
+import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.65.9';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.65.9';
+import { getComboHistory, getActivePaletteCooldown } from './storage.js?rmv=1.65.9';
+import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock, recentPaletteExecutionReminder } from './visualDiversityPolicy.js?rmv=1.65.9';
+import { withoutInteractionRecipe, observedInteractionRecipesFor } from './interactionRecipes.js?rmv=1.65.9';
+import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.65.9';
+import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.65.9';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.65.9';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.65.9';
+import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.65.9';
+import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.65.9';
+import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.65.9';
+import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.65.9';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.65.9';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.65.9';
 
 const THEME_ITEMS = new Map(THEMATIC_CATEGORIES.map(item => [item.id, item]));
 const FORMAT_ITEMS = new Map(PRESENTATION_FORMATS.map(item => [item.id, item]));
@@ -1028,7 +1028,7 @@ function sharedHtmlExecutionReminder(settings, directive) {
     const visualPreferenceLock = compactVisualPreferenceExecutionLock(settings);
     return [
         'HTML 共用短检：首个主体落实两项可见结构证据和真实 CSS；内容承载与操作反馈对应本面条目，完成「对象→操作→可保持第二状态→反馈」交互。360px 下数量群组完整适配、正文不裁切。',
-        '用得出：去掉提示文字也知道从哪里操作；至少走完两步真实的使用过程。',
+        '用得出：去掉提示文字也知道从哪里操作；画出来的每个控件都要做出按下后的结果（例如播放键让唱片转、进度走、歌词滚动），不打算实现的控件就不要画；至少走完两步真实的使用过程。',
         '认得出：去掉标题和栏目名后，仍能一眼认出这是什么媒介；交互作用在媒介自己的部件上。',
         '结果位置：多个节点时，选中后的结果出现在该节点自身的位置，或者直接改变主体（棋子走到那一格、那一格翻开、指针转过去），不汇总到同一块面板；几处结果同时打开时不能互相遮挡文字，挡得住就改成一次只开一处。',
         directiveText ? `点菜优先：${directiveText}` : '',
