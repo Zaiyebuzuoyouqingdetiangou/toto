@@ -1,4 +1,4 @@
-import { classifyPaletteSamples } from './paletteObservation.js?rmv=1.65.6';
+import { classifyPaletteSamples } from './paletteObservation.js?rmv=1.65.7';
 
 const HUE_FAMILY_LABELS = Object.freeze({
     red: '红色族', orange: '橙色族', yellow: '黄色族', green: '绿色族', cyan: '青色族',
@@ -15,17 +15,19 @@ export function recentPaletteExecutionReminder(recent = [], settings = {}) {
         const palette = item.paletteFingerprint;
         if (!Number.isFinite(Number(palette?.confidence)) || Number(palette.confidence) < .35) return [];
         const validColor = color => typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color);
-        const main = Array.isArray(palette.mainColors) && palette.mainColors.every(validColor) ? palette.mainColors : [];
+        // 只看主背景和第一个主承载面；按钮、强调色等点缀不计入，否则一轮就会带进好几个色族。
+        const main = Array.isArray(palette.mainColors) && palette.mainColors.every(validColor) ? palette.mainColors.slice(0, 1) : [];
         const surfaces = Number(palette?.confidence) >= .5 && Array.isArray(palette?.contentSurfaceColors)
-            ? palette.contentSurfaceColors.slice(0, 4).filter(validColor) : [];
+            ? palette.contentSurfaceColors.slice(0, 1).filter(validColor) : [];
         return [...new Set([...main, ...surfaces])].map(hex => {
             const [r, g, b] = hex.slice(1).match(/../g).map(value => parseInt(value, 16));
             const observed = classifyPaletteSamples([{ color: { r, g, b, a: 1 }, weight: 1 }], palette.source || 'raw', true);
-            return HUE_FAMILY_LABELS[observed?.hueFamily];
+            // 黑白灰不进色族禁令：白纸、黑底等是很多媒介的固有材质，近白浅底另有提醒负责。
+            return observed?.hueFamily === 'neutral' ? '' : HUE_FAMILY_LABELS[observed?.hueFamily];
         }).filter(Boolean);
     }))];
     if (!families.length) return '';
-    return `HTML 面配色短检：近三轮主背景／内容承载已用「${families.join('、')}」；上述每个色族的全部深浅都须避开，本轮主背景与主承载改用其他色族，换深浅、饱和或点缀不算。用户明确配色优先；保留必要固有色和材质结构，材质不豁免整面避重。${settings.darkVisualMode === true ? '在深色范围内换色族，不改亮。' : ''}`;
+    return `HTML 面配色短检：近三轮主背景／主承载用过「${families.join('、')}」；同一色族的深色和浅色算同一种（深橙、浅橙都是橙色族），本轮主背景与主承载换用其他色族，只换深浅、饱和或点缀不算。用户明确配色与形式固有材质优先。${settings.darkVisualMode === true ? '在深色范围内换色族，不改亮。' : ''}`;
 }
 
 // Shared generation policy, emitted once after composing all faces/candidates.

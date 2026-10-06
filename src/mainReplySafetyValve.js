@@ -1,7 +1,8 @@
 // 安全阀（仅自动生成）：正文异常时不自动生成兔子镜，避免浪费额度。
 // 只看正文本身，不改正文；手动生成不受影响。判定都偏保守：需要多个信号同时出现，
 // 或者整段很短、只有报错／拒答／空内容提示，避免误伤剧情里正常出现的“抱歉”“超时”。
-const NOTIFIED = new Set();
+// 按消息本身去重：流式输出时正文长度一直在变，不能用长度当去重依据。
+const NOTIFIED = new WeakMap();
 const STATUS_CODE = /\b(?:400|401|403|408|413|429|500|502|503|504|520|521|522|523|524|529)\b/;
 const ERROR_EN = /(?:\berror\b|too many requests|rate.?limit|quota|resource.?exhausted|service unavailable|bad gateway|gateway time-?out|timed? ?out|upstream|internal server error|overloaded|unauthorized|forbidden|cloudflare)/i;
 const ERROR_CN = /(?:请求失败|请求过多|请求过于频繁|请求太频繁|频率限制|限流|服务繁忙|负载过高|余额不足|额度不足|配额|无可用渠道|上游|接口错误|服务器错误|状态码|错误码)/;
@@ -27,12 +28,13 @@ function unclosedWrapper(raw) {
 }
 
 // 返回异常原因；正常返回空串。
-export function mainReplyAbnormalReason(message) {
+export function mainReplyAbnormalReason(message, { partial = false } = {}) {
     if (!message) return '';
     const raw = String(message.mes || '');
     if (message.extra?.error || message.extra?.api_error) return '宿主标记为错误';
     const text = plainText(raw);
-    if (text.length < 30 || (text.length < 80 && EMPTY_HINT.test(text))) return '正文未返回内容或过短';
+    // 提前生成阶段正文还在写，短不代表异常；只在正文完成后判断“过短”。
+    if (!partial && (text.length < 30 || (text.length < 80 && EMPTY_HINT.test(text)))) return '正文未返回内容或过短';
     const signals = [STATUS_CODE, ERROR_EN, ERROR_CN].filter(pattern => pattern.test(text)).length;
     if (ERROR_START.test(text.slice(0, 40)) || ERROR_START.test(raw.trim().slice(0, 40))
         || (text.length < 1500 && signals >= 2) || (text.length < 150 && signals >= 1)) return '正文像是接口报错（如 429/524）';
@@ -44,8 +46,10 @@ export function mainReplyAbnormalReason(message) {
 }
 
 export function notifySafetyValve(message, reason) {
-    const key = `${message?.send_date || ''}:${String(message?.mes || '').length}:${reason}`;
-    if (NOTIFIED.has(key)) return;
-    NOTIFIED.add(key);
+    if (!message || typeof message !== 'object') return;
+    const shown = NOTIFIED.get(message) || new Set();
+    if (shown.has(reason)) return;
+    shown.add(reason);
+    NOTIFIED.set(message, shown);
     try { globalThis.toastr?.info?.(`${reason}，本轮兔子镜不自动生成；需要时可手动生成。`, '兔子镜安全阀'); } catch { /* ignore */ }
 }
