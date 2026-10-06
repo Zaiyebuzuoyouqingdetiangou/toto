@@ -1,24 +1,25 @@
-import { paletteRecipeFor } from '../paletteRecipes.js?rmv=1.63.8';
-import { roleColorFaces, setRoleColorVariant, inspectRoleColorReadability } from '../roleColorVariants.js?rmv=1.63.8';
-import { interactionRecipesFor } from '../interactionRecipes.js?rmv=1.63.8';
+import { paletteRecipeFor } from '../paletteRecipes.js?rmv=1.64';
+import { recordInteractionMethods } from '../interactionMethodLedger.js?rmv=1.64';
+import { roleColorFaces, setRoleColorVariant, inspectRoleColorReadability } from '../roleColorVariants.js?rmv=1.64';
+import { interactionRecipesFor } from '../interactionRecipes.js?rmv=1.64';
 // Split from outputSanitizer.js — toolsChrome.
-import { trackMirrorAnimations, pruneMirrorAnimationVisibility } from '../animationVisibility.js?rmv=1.63.8';
+import { trackMirrorAnimations, pruneMirrorAnimationVisibility } from '../animationVisibility.js?rmv=1.64';
 
-import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.63.8';
-import { installMirrorUpdateMenuHook } from '../mirrorUpdateMenu.js?rmv=1.63.8';
-import { placeFacePager, facePagerDetails, removeFacePager, cleanupFacePagers } from '../facePagerPlacement.js?rmv=1.63.8';
-import { isTextPresentation } from '../presentationMode.js?rmv=1.63.8';
-import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.63.8';
-import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=1.63.8';
-import { getCurrentChatKey } from '../storage.js?rmv=1.63.8';
-import { getSanitizedRabbitMirrorFaceProof } from '../multifaceProof.js?rmv=1.63.8';
+import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.64';
+import { installMirrorUpdateMenuHook } from '../mirrorUpdateMenu.js?rmv=1.64';
+import { placeFacePager, facePagerDetails, removeFacePager, cleanupFacePagers } from '../facePagerPlacement.js?rmv=1.64';
+import { isTextPresentation } from '../presentationMode.js?rmv=1.64';
+import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.64';
+import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=1.64';
+import { getCurrentChatKey } from '../storage.js?rmv=1.64';
+import { getSanitizedRabbitMirrorFaceProof } from '../multifaceProof.js?rmv=1.64';
 import {
     captureTheaterFavoriteFromRoot,
     openTheaterFavoriteLibrary,
     toggleTheaterFavorite,
     isTheaterFavoriteHtml,
-} from '../theaterFavorites.js?rmv=1.63.8';
-import { FACE_SWIPE_FULL_MESSAGE, faceSwipeBarIntent, fallbackFaceSwipeView, multifaceFacePagerView } from '../swipeVersions.js?rmv=1.63.8';
+} from '../theaterFavorites.js?rmv=1.64';
+import { FACE_SWIPE_FULL_MESSAGE, faceSwipeBarIntent, fallbackFaceSwipeView, multifaceFacePagerView } from '../swipeVersions.js?rmv=1.64';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -27,8 +28,8 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from '../feedbackCat.js?rmv=1.63.8';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.63.8';
+} from '../feedbackCat.js?rmv=1.64';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.64';
 import {
     FAVORITE_MULTIPLIER_MAX,
     FAVORITE_MULTIPLIER_MIN,
@@ -50,7 +51,7 @@ import {
     setFavoriteMultiplier,
     toggleBlacklistItem,
     toggleFavoriteItem,
-} from '../blacklist.js?rmv=1.63.8';
+} from '../blacklist.js?rmv=1.64';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -74,10 +75,10 @@ import {
     isInsideChatMessage,
     isMaintenanceRabbitEnabled,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.63.8';
-import { getAvailableHostChat } from './scriptedInteractionRescue.js?rmv=1.63.8';
-import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.63.8';
-import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=1.63.8';
+} from './runtime.js?rmv=1.64';
+import { getAvailableHostChat } from './scriptedInteractionRescue.js?rmv=1.64';
+import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.64';
+import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=1.64';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     FEEDBACK_HISTORY_EVENT,
@@ -97,8 +98,8 @@ import {
     rabbitMirrorLanguageBalance,
     scheduleCurrentHighConfidenceTextRepair,
     setMaintenanceRabbitState,
-} from './diagnostics.js?rmv=1.63.8';
-import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=1.63.8';
+} from './diagnostics.js?rmv=1.64';
+import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=1.64';
 import {
     MAINTENANCE_FINDING_STAGE_LABELS,
     beginMaintenanceRepairRun,
@@ -116,19 +117,19 @@ import {
     runMaintenanceRevealClipRepair,
     runMaintenanceUserRepair,
     triggerDiagnosticForMaintenanceRoot,
-} from './maintenanceInspect.js?rmv=1.63.8';
+} from './maintenanceInspect.js?rmv=1.64';
 import {
     getRabbitMirrorFacePosition,
     installMaintenanceHorizontalClipOpenRescue,
     repairLegacyMaintenanceMobileStateRows,
-} from './layoutRescue.js?rmv=1.63.8';
+} from './layoutRescue.js?rmv=1.64';
 import {
     getMessageIndexFromMirrorNode,
     installMaintenanceAutoSafeOpenPatrol,
     installManagedRabbitMirrorTools,
     pruneMaintenanceAutoSafeOpenBindings,
     scheduleMaintenanceAutoSafeForRoot,
-} from './lifecycle.js?rmv=1.63.8';
+} from './lifecycle.js?rmv=1.64';
 
 let recipeOutsideCloseCleanup = null;
 
@@ -600,7 +601,7 @@ function rabbitMirrorExternalGenerationNotice(root, kind = 'maintenance') {
 const RESAY_CHOOSER_ATTR = 'data-rm-resay-chooser';
 
 const RESAY_PICK_MAX = Object.freeze({ theme: 3, format: 2 });
-const EXTERNAL_STORE_MODULE = '../externalWorldBook/store.js?rmv=1.63.8';
+const EXTERNAL_STORE_MODULE = '../externalWorldBook/store.js?rmv=1.64';
 
 // 纯点菜里的题库点选。默认只显示已选项；点「浏览」才展开列表。
 // 来源可切换：内置题库（按大组浏览 / 搜索）或已导入并启用的母本库。
@@ -2310,7 +2311,7 @@ function beginHostWorkTiming(name){
 }
 
 function loadMirrorImageModule() {
-    if (!mirrorImageModule) mirrorImageModule = import('../imageUi.js?rmv=1.63.8').catch(error => { mirrorImageModule = null; throw error; });
+    if (!mirrorImageModule) mirrorImageModule = import('../imageUi.js?rmv=1.64').catch(error => { mirrorImageModule = null; throw error; });
     return mirrorImageModule;
 }
 
@@ -2640,7 +2641,7 @@ function installUnifiedMirrorTools(root) {
     actions.push({ id: 'resay', label: '↻ 重说', run: (_event, opener) => openRabbitMirrorResayChooser(root, opener) });
     if (mirrorFaceCanContinue(root)) {
         actions.push({ id: 'continue', label: '✎ 续写', run: () => {
-            void import('../independentApi/mount.js?rmv=1.63.8').then(module => module.continueIndependentLongText(root))
+            void import('../independentApi/mount.js?rmv=1.64').then(module => module.continueIndependentLongText(root))
                 .catch(() => globalThis.toastr?.error?.('续写没有写上，原来的正文还在。'));
         } });
     }
@@ -2663,7 +2664,7 @@ function installUnifiedMirrorTools(root) {
             .catch(() => globalThis.toastr?.warning?.('生图面板未能打开，请重新打开后再试。'));
     } });
     actions.push({ id: 'theater-favorite-library', label: '📖 打开收藏夹', run: () => {
-        void import('../independentApi.js?rmv=1.63.8').then(module =>
+        void import('../independentApi.js?rmv=1.64').then(module =>
             openTheaterFavoriteLibrary((container, record) => module.hydrateIndependentFavoriteHtml(container, record)))
             .catch(error => globalThis.toastr?.warning?.(String(error?.message || '无法打开收藏夹。')));
     } });
@@ -2702,6 +2703,8 @@ function installMaintenanceRabbitsInScopeCore(scope, { allowGlobalRemoval = fals
         bringOpenedStateToFront(root);
         unwrapDecorativeFrame(root);
         containBodyPositioning(root);
+        bridgeCrossParentChecked(root);
+        try { recordInteractionMethods(root.matches?.('details') ? root : root.querySelector?.('details')); } catch { /* ledger is best effort */ }
         // Migrate cached/serialized mirrors created by the short-lived inline reset
         // control. Recovery snapshots stay intact and remain reachable from Maintenance Rabbit.
         removeRabbitMirrorInteractionHomeControls(root);
@@ -2998,6 +3001,72 @@ function containBodyPositioning(root) {
         if (position !== 'static') continue;
         body.setAttribute(BODY_CONTAINED_ATTR, 'true');
         body.style.setProperty('position', 'relative');
+    }
+}
+
+// 跨层 checked 接线：CSS 写的是「开关:checked ~ 目标」，但目标并不是开关的后续兄弟
+// （开关被包在另一个容器里），这条规则永远不会生效，点了开关只有按钮自己变色。
+// 这里不改模型的 CSS，只补一份等价规则：开关勾选时在整面 details 上挂一个标记，
+// 由标记驱动同样的声明。目标本来就是兄弟的规则不处理。
+const XCHECK_BOUND = new WeakSet();
+function splitCssBlocks(css) {
+    const out = [];
+    const text = String(css || '').replace(/\/\*[\s\S]*?\*\//g, '');
+    const re = /([^{}@]+)\{([^{}]*)\}/g;
+    let match;
+    while ((match = re.exec(text))) out.push({ selectors: match[1].trim(), body: match[2].trim() });
+    return out;
+}
+
+function bridgeCrossParentChecked(root) {
+    if (!root?.querySelector) return;
+    const details = root.matches?.('details') ? root : root.querySelector('details');
+    if (!details || details.querySelector(':scope > style[data-rm-xchecked-bridge]')) return;
+    const scope = details.getAttribute('data-rabbit-mirror-css-scope');
+    const css = [...details.querySelectorAll('style')].map(style => style.textContent).join('\n');
+    const bridges = new Map();
+    const rules = [];
+    for (const { selectors, body } of splitCssBlocks(css)) {
+        if (!body || !selectors.includes(':checked')) continue;
+        for (const raw of selectors.split(',')) {
+            const match = raw.trim().match(/^(.*?)((?:input)?[.#][\w-]+):checked\s*([~+])\s*(.+)$/);
+            if (!match || /:not\(/.test(match[0])) continue;
+            const [, prefix, controlSel, combinator, rest] = match;
+            let control, targets;
+            try {
+                control = details.querySelector(controlSel);
+                targets = details.querySelectorAll(rest);
+            } catch { continue; }
+            if (!control?.matches?.('input[type="checkbox"], input[type="radio"]') || !targets.length) continue;
+            const first = rest.trim().split(/\s+|>/)[0];
+            let siblingHit = false;
+            try {
+                let node = control.nextElementSibling;
+                while (node) {
+                    if (node.matches(first)) { siblingHit = true; break; }
+                    if (combinator === '+') break;
+                    node = node.nextElementSibling;
+                }
+            } catch { siblingHit = true; }
+            if (siblingHit) continue;
+            if (!bridges.has(control)) bridges.set(control, `data-rm-xchecked-${bridges.size + 1}`);
+            const key = bridges.get(control);
+            const head = scope && /data-rabbit-mirror-css-scope/.test(prefix)
+                ? `[data-rabbit-mirror-css-scope="${scope}"][${key}]`
+                : `details[${key}]`;
+            rules.push(`${head} ${rest}{${body}}`);
+        }
+    }
+    if (!rules.length) return;
+    const style = details.ownerDocument.createElement('style');
+    style.setAttribute('data-rm-xchecked-bridge', 'true');
+    style.textContent = rules.join('\n');
+    details.appendChild(style);
+    const sync = () => { for (const [control, key] of bridges) details.toggleAttribute(key, !!control.checked); };
+    sync();
+    if (!XCHECK_BOUND.has(details)) {
+        XCHECK_BOUND.add(details);
+        details.addEventListener('change', sync, true);
     }
 }
 

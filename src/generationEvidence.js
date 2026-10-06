@@ -1,7 +1,7 @@
 // Opt-in, one-request evidence. No storage, network, timers, live DOM reads or
 // random-number consumption. Observers can never affect generation outcomes.
-import { generationEvidenceTiming } from './generationTiming.js?rmv=1.63.8';
-import { roleColorEvidence } from './roleColorVariants.js?rmv=1.63.8';
+import { generationEvidenceTiming } from './generationTiming.js?rmv=1.64';
+import { roleColorEvidence } from './roleColorVariants.js?rmv=1.64';
 let armed = false;
 let current = null;
 let sequence = 0;
@@ -132,8 +132,9 @@ function vsCheckFor(report) {
     const candidates = Array.isArray(vs.c) ? vs.c : [];
     const promised = Number.isInteger(pick) && candidates[pick - 1] ? String(candidates[pick - 1][0] || '') : '';
     const observed = observedSkeletonHint(report?.processed?.html || raw);
+    const methods = Array.isArray(vs.m) && Number.isInteger(pick) && Array.isArray(vs.m[pick - 1]) ? vs.m[pick - 1].filter(item => typeof item === 'string') : [];
     return {
-        present: true, pick: Number.isInteger(pick) ? pick : null, promised,
+        present: true, pick: Number.isInteger(pick) ? pick : null, promised, methods,
         observed,
         // 并列同组选项（≥3）在多数情况下就是“并列入口切换同位内容”。仅为提示，不判定成品失败。
         possibleMismatch: observed.hint !== 'other',
