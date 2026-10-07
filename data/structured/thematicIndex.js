@@ -12,12 +12,12 @@ export const THEMATIC_CATEGORIES = [
   {
     "id": "A.1",
     "group": "A",
-    "title": "官能色情 (Physical Erotica)",
+    "title": "官能描写 (Physical Erotica)",
     "summary": "聚焦物理性爱、动作与反应。",
     "tags": [
       "adult"
     ],
-    "raw": "- **A.1 官能色情 (Physical Erotica)**: 聚焦物理性爱、动作与反应。"
+    "raw": "- **A.1 官能描写 (Physical Erotica)**: 聚焦物理性爱、动作与反应。"
   },
   {
     "id": "A.1.1",

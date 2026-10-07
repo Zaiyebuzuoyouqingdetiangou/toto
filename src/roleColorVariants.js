@@ -1,8 +1,8 @@
-import { GENERATION_PALETTE_INDEX } from '../data/structured/generationPaletteIndex.js?rmv=1.66.8';
-import { composeGenerationPalette } from './generationPalettes.js?rmv=1.66.8';
-import { preserveIndependentFaceStyles } from './independentApi/faceStyles.js?rmv=1.66.8';
-import { paletteRecipeFor } from './paletteRecipes.js?rmv=1.66.8';
-import { atmosphereNoteFromHtml } from './atmosphereChoice.js?rmv=1.66.8';
+import { GENERATION_PALETTE_INDEX } from '../data/structured/generationPaletteIndex.js?rmv=1.67.4';
+import { composeGenerationPalette } from './generationPalettes.js?rmv=1.67.4';
+import { preserveIndependentFaceStyles } from './independentApi/faceStyles.js?rmv=1.67.4';
+import { paletteRecipeFor } from './paletteRecipes.js?rmv=1.67.4';
+import { atmosphereNoteFromHtml } from './atmosphereChoice.js?rmv=1.67.4';
 
 // The contract is deliberately confined to colour values. No stored template,
 // selector, owner, executable HTML or arbitrary style is replayed by the tools.

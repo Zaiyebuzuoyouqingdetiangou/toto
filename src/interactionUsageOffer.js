@@ -1,6 +1,6 @@
 // 抽完展现形式后，按形式所属的媒介大类从真实用法索引里强随机抽 3 项，避开近期给过的用法。
 // 只有这 3 项进入 Prompt；索引本身不发送。由出题计划冻结，重说与逐面子请求沿用同一份。
-import { CORE_USAGES, USAGE_CATEGORIES, USAGE_GROUP_FALLBACK } from '../data/raw/interactionUsages.js?rmv=1.66.8';
+import { CORE_USAGES, USAGE_CATEGORIES, USAGE_FORMAT_OVERRIDES, USAGE_GROUP_FALLBACK } from '../data/raw/interactionUsages.js?rmv=1.67.4';
 
 const OFFER_SIZE = 3;
 const RECENT_KEY = 'rabbitMirrorUsageRecent';
@@ -27,6 +27,8 @@ function shuffled(list) {
 
 export function usageCategoriesForCombo(combo) {
     const formats = [...(combo?.formats || []), ...(combo?.texts || [])];
+    const overridden = [...new Set(formats.flatMap(item => USAGE_FORMAT_OVERRIDES[String(item?.id || '')] || []))].filter(key => USAGE_CATEGORIES[key]);
+    if (overridden.length) return overridden.slice(0, 2);
     const text = formats.map(item => `${item?.title || ''} ${item?.summary || ''}`).join(' ');
     const scored = Object.entries(USAGE_CATEGORIES)
         .map(([key, category]) => [key, category.keywords.filter(word => text.includes(word)).length])

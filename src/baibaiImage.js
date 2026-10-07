@@ -1,3 +1,5 @@
+import { generateViaChatu8 } from './chatu8Image.js?rmv=1.67.4';
+import { getSettings } from './settings.js?rmv=1.67.4';
 function failure(code, message) { return Object.assign(new Error(message), { code }); }
 
 function imageApi() {
@@ -28,6 +30,8 @@ export function getImageCharacters({ floor } = {}) {
 }
 
 export async function generateMirrorImage(plan, { signal, onProgress, character, size, assertCurrent } = {}) {
+    // 生图渠道选了智绘姬时，交给智绘姬；否则沿用柏宝绘。
+    if (getSettings().imageBackend === 'chatu8') return generateViaChatu8(plan, { signal, size, assertCurrent });
     const api = imageApi();
     const status = api.getBackendStatus();
     if (!status.configured) throw failure('not_configured', status.reason || '柏宝绘连接尚未配置完成。');

@@ -1,8 +1,8 @@
-import { getSettings } from './settings.js?rmv=1.66.8';
-import { generateMirrorImage } from './baibaiImage.js?rmv=1.66.8';
-import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.66.8';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.66.8';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.66.8';
+import { getSettings } from './settings.js?rmv=1.67.4';
+import { generateMirrorImage } from './baibaiImage.js?rmv=1.67.4';
+import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.4';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.4';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.4';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -78,13 +78,32 @@ function paint(frame, record) {
     return true;
 }
 
-function note(frame, text) {
-    if (frame.querySelector?.('[data-rm-draw-status]')) return;
-    const line = frame.ownerDocument.createElement('p');
-    line.setAttribute('data-rm-draw-status', '1');
+function note(frame, text, root = null) {
+    frame.querySelector?.('[data-rm-draw-status]')?.remove();
+    const doc = frame.ownerDocument;
+    const box = doc.createElement('div');
+    box.setAttribute('data-rm-draw-status', '1');
+    box.style.cssText = 'margin:0;padding:12px;font-size:12px;line-height:1.45;display:grid;gap:8px;align-content:center;height:100%;box-sizing:border-box;';
+    const line = doc.createElement('p');
     line.textContent = text;
-    line.style.cssText = 'margin:0;padding:12px;font-size:12px;line-height:1.45;opacity:.72;';
-    frame.append(line);
+    line.style.cssText = 'margin:0;opacity:.72;';
+    box.append(line);
+    if (root) {
+        // 失败后由用户决定要不要再画一次；只在点击时发一次请求，不自动重试。
+        const row = doc.createElement('div');
+        row.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
+        const button = (label, run) => {
+            const node = doc.createElement('button');
+            node.type = 'button';
+            node.textContent = label;
+            node.style.cssText = 'padding:5px 10px;border-radius:8px;border:1px solid currentColor;background:transparent;color:inherit;font-size:12px;cursor:pointer;';
+            node.addEventListener('click', event => { event.preventDefault(); event.stopPropagation(); run(node); });
+            return node;
+        };
+        row.append(button('重新生图', () => { const prompt = readPrompt(frame); failed.delete(storageKey(root, frame, prompt)); box.remove(); void fillFrame(root, frame); }));
+        box.append(row);
+    }
+    frame.append(box);
 }
 
 function anyWaiterConnected(key) {
@@ -101,7 +120,8 @@ async function planWithImageLlm(frame) {
     const target = details && typeof bridge?.prepareImageTarget === 'function' ? bridge.prepareImageTarget(details) : null;
     if (!target?.plan) return null;
     try {
-        const plan = await target.plan({}, { builtin: true });
+        const focus = readPrompt(frame);
+        const plan = await target.plan(focus ? { focus } : {}, { builtin: true });
         return plan && String(plan.prompt || plan.flatPrompt || plan.nl || '').trim() ? plan : null;
     } catch (error) {
         console.warn('[RabbitMirror] 生图 LLM 没有写出画面提示词，改用小剧场里的画面线索', error);
@@ -147,12 +167,12 @@ async function fillFrame(root, frame) {
     const key = storageKey(root, frame, prompt);
     const saved = readSaved(key);
     if (saved.broken) {
-        note(frame, '这一面的画面存档读不出来，没有重新生图。');
+        note(frame, '这一面的画面存档读不出来，没有重新生图。', root);
         return;
     }
     if (saved.record && paint(frame, saved.record)) return;
     if (failed.has(key)) {
-        note(frame, '这一面的画面这次没有画成。');
+        note(frame, '这一面的画面这次没有画成。', root);
         return;
     }
     let nodes = waiters.get(key);
@@ -165,8 +185,8 @@ async function fillFrame(root, frame) {
         const code = error?.code;
         if (code === 'not_configured' || code === 'unsupported_api' || code === 'invalid_args' || code === 'invalid_result') failed.add(key);
         if (frame.isConnected) note(frame, code === 'not_configured' || code === 'unsupported_api'
-            ? '柏宝绘还没连好，这一面先留着提示词。'
-            : '这一面的画面这次没有画成。');
+            ? `${String(error?.message || '生图渠道还没连好')}这一面先留着提示词。`
+            : '这一面的画面这次没有画成。', root);
         console.warn('[RabbitMirror] 内置生图没有填进图框', error);
     } finally {
         nodes.delete(frame);
@@ -176,11 +196,6 @@ async function fillFrame(root, frame) {
 
 export function fillBuiltinImageFrames(root) {
     if (getSettings().builtinImageEnabled !== true || !root?.querySelectorAll) return;
-    const seen = new Set();
-    for (const frame of root.querySelectorAll('[data-rm-draw-frame]')) {
-        const face = frame.closest?.('details') || frame.closest?.('toto') || root;
-        if (seen.has(face)) continue;
-        seen.add(face);
-        void fillFrame(root, frame);
-    }
+    // 一面里有几个图框就画几张（比如分镜每格一张），每个图框各自存档、各自重试。
+    for (const frame of root.querySelectorAll('[data-rm-draw-frame]')) void fillFrame(root, frame);
 }

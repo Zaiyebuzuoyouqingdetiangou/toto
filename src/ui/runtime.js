@@ -1,7 +1,7 @@
 // Split from ui.js — runtime.
 
-export const SETTINGS_UI_VERSION = '1.66.8';
-export const RUNTIME_VERSION = '1.66.8';
+export const SETTINGS_UI_VERSION = '1.67.4';
+export const RUNTIME_VERSION = '1.67.4';
 
 export function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
