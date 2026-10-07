@@ -1,8 +1,8 @@
 // Split from outputSanitizer.js — checkedStateRescue.
-import { rememberRuntimeAnimationStyle } from '../runtimeAnimationState.js?rmv=1.67.10';
+import { rememberRuntimeAnimationStyle } from '../runtimeAnimationState.js?rmv=1.67.11';
 
-import { escapeCssIdentifier, escapeRegExp, getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.67.10';
-import { getClassTokens, isCollapsedDimensionValue, parseCssStateSiblingAssignments } from './renderedStateRescue.js?rmv=1.67.10';
+import { escapeCssIdentifier, escapeRegExp, getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.67.11';
+import { getClassTokens, isCollapsedDimensionValue, parseCssStateSiblingAssignments } from './renderedStateRescue.js?rmv=1.67.11';
 import {
     capturePseudoStyleState,
     chooseMatchingRawRabbitMirrorRoot,
@@ -10,15 +10,15 @@ import {
     normalizeInteractionMatchText,
     resolveRenderedCounterpart,
     restorePseudoStyleState,
-} from './scriptedInteractionRescue.js?rmv=1.67.10';
+} from './scriptedInteractionRescue.js?rmv=1.67.11';
 import {
     REVERSIBLE_RADIO_BASELINE_ATTR,
     applyCheckedVisualFallback,
     inputHasAssociatedLabel,
     setRescuedCheckedState,
-} from './fallbackRescue.js?rmv=1.67.10';
-import { RADIO_GROUP_RESCUE_ATTR } from './idsAndRearm.js?rmv=1.67.10';
-import { diagnosticComputedStyle, maintenanceSafeComputedStyle } from './diagnostics.js?rmv=1.67.10';
+} from './fallbackRescue.js?rmv=1.67.11';
+import { RADIO_GROUP_RESCUE_ATTR } from './idsAndRearm.js?rmv=1.67.11';
+import { diagnosticComputedStyle, maintenanceSafeComputedStyle } from './diagnostics.js?rmv=1.67.11';
 import {
     checkedDeclarationCreatesContentReveal,
     checkedTargetCarriesResultContent,
@@ -26,14 +26,14 @@ import {
     isIndependentMaintenanceRoot,
     notifyIndependentRepairPersistence,
     resolveMaintenanceGeneratedClass,
-} from './maintenanceInspect.js?rmv=1.67.10';
-import { splitCssSelectorList } from './markup.js?rmv=1.67.10';
+} from './maintenanceInspect.js?rmv=1.67.11';
+import { splitCssSelectorList } from './markup.js?rmv=1.67.11';
 import {
     maintenanceMobileLayoutLengthPx,
     maintenanceMobileLayoutRect,
     maintenanceMobileLayoutTextLength,
     viewportLayoutHasAuthoredGridPlacement,
-} from './layoutRescue.js?rmv=1.67.10';
+} from './layoutRescue.js?rmv=1.67.11';
 
 const interactionInlineOverrideStates = new WeakMap();
 

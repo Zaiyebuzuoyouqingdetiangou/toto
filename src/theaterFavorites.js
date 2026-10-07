@@ -1,5 +1,5 @@
-import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.67.10';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.67.10';
+import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.67.11';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.67.11';
 const DB_NAME = 'rabbit_mirror_theater_favorites_v1';
 const STORE = 'favorites';
 const DB_VERSION = 1;
