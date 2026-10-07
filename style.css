@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=1.67.18');
+@import url('./settings-ui.css?rmv=1.67.11');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -1770,13 +1770,3 @@ dialog[data-rm-theater-favorite-library] {
 [data-rm-animation-suspended]::after,
 [data-rm-animation-suspended] *::before,
 [data-rm-animation-suspended] *::after { animation-play-state: paused !important; }
-
-/* 标题栏的三角箭头全部去掉（外置框、跟随正文和独立 API 都一样）；点标题照常展开或收起。 */
-#chat summary[data-rm-title-chrome="true"]::before,
-#chat details[open] > summary[data-rm-title-chrome="true"]::before {
-  content: none !important;
-  display: none !important;
-  border: 0 !important;
-  width: 0 !important;
-  margin: 0 !important;
-}

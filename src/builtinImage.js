@@ -1,8 +1,8 @@
-import { getSettings } from './settings.js?rmv=1.67.18';
-import { generateMirrorImage } from './baibaiImage.js?rmv=1.67.18';
-import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.18';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.18';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.18';
+import { getSettings } from './settings.js?rmv=1.67.11';
+import { generateMirrorImage } from './baibaiImage.js?rmv=1.67.11';
+import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.11';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.11';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.11';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -62,8 +62,6 @@ function readSaved(key) {
 }
 
 function frameImageSize(frame) {
-    // 情侣头像：一张横向双人图，之后左右各裁一个方形头像。
-    if (frame?.getAttribute?.('data-rm-draw-pair') === 'avatar') return 'landscape';
     const width = frame.clientWidth;
     const height = frame.clientHeight;
     if (Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0) {
@@ -100,109 +98,7 @@ function paint(frame, record) {
     }
     fitFrameImage(image, record);
     image.src = url;
-    if (frame.getAttribute?.('data-rm-draw-pair') === 'avatar') paintAvatarPair(frame, image, url);
     return true;
-}
-
-// 情侣头像：同一张图左右两半各显示成一个方形头像，下面各有「保存」，裁成正方形图片。
-function paintAvatarPair(frame, image, url) {
-    const doc = frame.ownerDocument;
-    image.style.setProperty('display', 'none', 'important');
-    frame.style.setProperty('aspect-ratio', 'auto', 'important');
-    frame.style.setProperty('height', 'auto', 'important');
-    frame.style.setProperty('overflow', 'visible', 'important');
-    frame.querySelector?.('[data-rm-draw-pair-view]')?.remove();
-    const view = doc.createElement('div');
-    view.setAttribute('data-rm-draw-pair-view', '1');
-    view.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;';
-    for (const side of ['left', 'right']) {
-        const cell = doc.createElement('div');
-        cell.style.cssText = 'display:grid;gap:6px;justify-items:center;min-width:0;';
-        const tile = doc.createElement('div');
-        tile.setAttribute('role', 'img');
-        tile.setAttribute('aria-label', side === 'left' ? '左边的头像' : '右边的头像');
-        tile.style.cssText = `width:100%;aspect-ratio:1/1;border-radius:18px;background-image:url("${url.replace(/"/g, '%22')}");`
-            + `background-size:200% auto;background-repeat:no-repeat;background-position:${side === 'left' ? '0%' : '100%'} 50%;box-shadow:0 4px 14px rgba(0,0,0,.18);`;
-        const save = doc.createElement('button');
-        save.type = 'button';
-        save.textContent = side === 'left' ? '保存左边' : '保存右边';
-        save.style.cssText = 'min-height:32px;padding:4px 12px;border-radius:999px;border:1px solid currentColor;background:transparent;color:inherit;font-size:12px;cursor:pointer;';
-        save.addEventListener('click', event => {
-            event.preventDefault();
-            event.stopPropagation();
-            void saveAvatarHalf(url, side, doc);
-        });
-        cell.append(tile, save);
-        view.append(cell);
-    }
-    frame.append(view);
-}
-
-function loadImageForCrop(url, doc) {
-    return new Promise((resolve, reject) => {
-        const img = new (doc.defaultView?.Image || Image)();
-        if (!/^(data:|blob:)/i.test(url)) img.crossOrigin = 'anonymous';
-        img.onload = () => resolve(img);
-        img.onerror = () => reject(new Error('图片读不出来'));
-        img.src = url;
-    });
-}
-
-async function saveAvatarHalf(url, side, doc) {
-    let dataUrl = '';
-    try {
-        const img = await loadImageForCrop(url, doc);
-        const width = img.naturalWidth;
-        const height = img.naturalHeight;
-        const size = Math.max(1, Math.floor(Math.min(width / 2, height)));
-        const startX = (side === 'left' ? 0 : width / 2) + (width / 2 - size) / 2;
-        const startY = (height - size) / 2;
-        const canvas = doc.createElement('canvas');
-        canvas.width = size;
-        canvas.height = size;
-        canvas.getContext('2d').drawImage(img, startX, startY, size, size, 0, 0, size, size);
-        dataUrl = canvas.toDataURL('image/png');
-    } catch (error) {
-        console.warn('[RabbitMirror] 头像裁剪失败，改为打开原图', error);
-    }
-    showAvatarSaveSheet(dataUrl || url, !!dataUrl, side, doc);
-}
-
-// 电脑上直接下载；手机和 TT 里下载按钮可能无效，所以同时把图片放大显示，可以长按保存。
-function showAvatarSaveSheet(src, cropped, side, doc) {
-    doc.querySelector('[data-rm-avatar-save]')?.remove();
-    const overlay = doc.createElement('div');
-    overlay.setAttribute('data-rm-avatar-save', 'true');
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:2147483600;background:rgba(8,10,14,.72);display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;';
-    const card = doc.createElement('div');
-    card.style.cssText = 'display:grid;gap:12px;justify-items:center;width:min(360px,100%);padding:18px;border-radius:20px;box-sizing:border-box;'
-        + 'background:var(--SmartThemeBlurTintColor,#1f2229);color:var(--SmartThemeBodyColor,#eee);text-align:center;';
-    const img = doc.createElement('img');
-    img.src = src;
-    img.alt = side === 'left' ? '左边的头像' : '右边的头像';
-    img.style.cssText = 'width:100%;max-width:300px;aspect-ratio:1/1;object-fit:cover;border-radius:18px;';
-    const hint = doc.createElement('div');
-    hint.style.cssText = 'font-size:12px;opacity:.75;line-height:1.5;';
-    hint.textContent = cropped ? '手机上可以长按图片保存；电脑上点「下载」。' : '没能裁成方形，这是原图；可以长按或右键保存后自行裁剪。';
-    const row = doc.createElement('div');
-    row.style.cssText = 'display:flex;gap:8px;';
-    const download = doc.createElement('a');
-    download.href = src;
-    download.download = `兔子镜头像-${side === 'left' ? '左' : '右'}.png`;
-    download.textContent = '下载';
-    download.className = 'menu_button';
-    download.style.cssText = 'min-height:34px;padding:6px 16px;text-decoration:none;';
-    const close = doc.createElement('button');
-    close.type = 'button';
-    close.className = 'menu_button';
-    close.textContent = '关闭';
-    close.style.cssText = 'min-height:34px;padding:6px 16px;';
-    close.addEventListener('click', () => overlay.remove());
-    overlay.addEventListener('click', event => { if (event.target === overlay) overlay.remove(); });
-    row.append(download, close);
-    card.append(img, hint, row);
-    overlay.append(card);
-    doc.body.append(overlay);
 }
 
 function note(frame, text, root = null) {

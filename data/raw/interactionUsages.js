@@ -58,7 +58,7 @@ export const USAGE_FORMAT_OVERRIDES = Object.freeze({
     '4.2': ['radio_tv'], '4.3.1': ['show'], '4.3.6.1': ['show'], '4.5.1.1': ['novel'],
     '4.5.3': ['ritual'], '4.5.6': ['ritual'], '5.3.2.1': ['ritual'], '5.3.2.4': ['ritual'], '5.3.2.5': ['ritual'], '5.3.3': ['ritual'],
     '5.5': ['novel'], '1.3.3.1.2': ['video'],
-    '5.1.1.7': ['painting'], '5.1.1.8': ['photo'], '5.1.1.9': ['videogame'], '5.1.1.10': ['letter'], '5.1.1.11': ['photo'], '5.1.1.12': ['comic'], '5.1.1.13': ['painting'], '5.1.1.14': ['social'], '5.1.1.15': ['painting'],
+    '5.1.1.7': ['painting'], '5.1.1.8': ['photo'], '5.1.1.9': ['videogame'], '5.1.1.10': ['letter'], '5.1.1.11': ['photo'], '5.1.1.12': ['comic'],
     '6.5.11': ['boardgame'], '6.5.12': ['card'], '6.5.13': ['boardgame'], '6.5.14': ['container'], '6.5.15': ['nature'], '6.5.16': ['nature'], '6.5.17': ['food'], '6.5.18': ['boardgame'], '6.5.19': ['container'],
     '6.4': ['wear'], '6.4.2': ['wear'], '6.4.3': ['wear'], '6.4.4': ['wear'], '6.4.5': ['wear'], '6.4.6': ['space'], '6.4.7': ['videogame', 'wear'],
     '6.5.1.1': ['ritual'], '6.5.2': ['show'], '6.5.4.3': ['show'], '6.5.6': ['machine'], '6.5.7': ['exam'], '6.5.8': ['machine'], '6.6': ['card'], '5.2.4': ['music'], '6.2.1.1': ['videogame'], '2.1.12': ['album'], '1.3.3.6.ecard': ['letter'],
@@ -145,7 +145,4 @@ export const CORE_USAGES = Object.freeze([
     { keywords: ["料理小游戏"], usages: ["切菜", "下锅翻炒", "调味", "摆盘端上"] },
     { keywords: ["猜拳", "比大小"], usages: ["出拳", "掷骰子", "揭晓胜负", "输的人接受惩罚"] },
     { keywords: ["密码箱"], usages: ["转动数字转盘", "对照线索", "试一组密码", "打开箱子"] },
-    { keywords: ["同人图约稿", "约稿"], usages: ["翻看需求单", "对比草稿与成稿", "提一条修改意见", "确认交付"] },
-    { keywords: ["情侣头像", "头像"], usages: ["把两张头像拼在一起", "换上新头像", "看对方的反应", "保存图片"] },
-    { keywords: ["插画作品投稿页", "插画网站"], usages: ["点开大图", "收藏作品", "展开标签", "翻到评论区"] },
 ]);

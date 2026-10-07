@@ -1,6 +1,5 @@
-import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.67.18';
-import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=1.67.18';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.67.18';
+import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.67.11';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.67.11';
 const DB_NAME = 'rabbit_mirror_theater_favorites_v1';
 const STORE = 'favorites';
 const DB_VERSION = 1;
@@ -17,34 +16,6 @@ function byteLength(value = '') {
 
 function notifyChanged() {
     try { document.dispatchEvent(new CustomEvent(THEATER_FAVORITES_CHANGED_EVENT)); } catch {}
-    void refreshContinuationCandidates();
-}
-
-// 续篇候选：只取能读出原展现形式的收藏，记下标题、形式和一句梗概，不保留 HTML。
-function continuationGist(html) {
-    const text = String(html || '')
-        .replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<summary[\s\S]*?<\/summary>/gi, ' ')
-        .replace(/<[^>]+>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ').replace(/\s+/g, ' ').trim();
-    return text.slice(0, 60);
-}
-
-function continuationFormatId(html) {
-    const match = /data-rm-face-recipe="([^"]*)"/i.exec(String(html || ''));
-    if (!match) return '';
-    try {
-        const recipe = JSON.parse(match[1].replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&'));
-        return Array.isArray(recipe?.formatIds) && recipe.formatIds.length ? String(recipe.formatIds[0]) : '';
-    } catch { return ''; }
-}
-
-export async function refreshContinuationCandidates() {
-    try {
-        const rows = await listTheaterFavorites();
-        setContinuationCandidates(rows.map(row => ({
-            id: row.id, title: theaterFavoriteDisplayTitle(row).slice(0, 60), formatId: continuationFormatId(row.html),
-            gist: continuationGist(row.html), characterId: String(row.characterId || ''),
-        })).filter(row => row.formatId));
-    } catch { /* 收藏夹不可用时就不出现续篇 */ }
 }
 
 function firstNonEmpty(values) {
@@ -422,8 +393,6 @@ export function captureTheaterFavoriteFromRoot(root, owner = {}) {
 }
 
 let viewer = null;
-// 最近一次打开收藏夹时用的挂载函数；从里程碑卡片直接打开收藏夹时沿用它。
-let lastHydrate = null;
 let library = null;
 
 function overlayParent() {
@@ -660,304 +629,70 @@ function renderSolarTermProgress(rows, hydrate) {
     return box;
 }
 
-
-// 收藏夹：每一面收藏是一块「镜片」，镜片的颜色取自那一面自己的主色；其余界面安静地跟随兔子镜主题。
-// 手机上是铺满屏幕的抽屉，电脑上是居中的面板；只用 dialog、flex/grid 与普通事件，酒馆网页、手机浏览器和 TT 都能打开。
-const FAVORITE_VIEW_KEY = 'rabbitMirrorFavoriteView';
-const LIBRARY_STYLE = `
-[data-rm-fav-shelf]{--fav-gap:12px;display:flex;flex-direction:column;gap:12px;color:var(--rh-text,var(--SmartThemeBodyColor,#34495d));font-size:14px;line-height:1.5}
-[data-rm-fav-shelf] button{font:inherit;color:inherit;cursor:pointer}
-[data-rm-fav-shelf] button:focus-visible,[data-rm-fav-shelf] input:focus-visible{outline:2px solid var(--rh-primary,var(--SmartThemeQuoteColor,#ce729c));outline-offset:2px}
-.rm-fav-head{display:flex;align-items:center;gap:10px}
-.rm-fav-title{flex:1;min-width:0;margin:0;font-size:19px;font-weight:800;letter-spacing:.02em}
-.rm-fav-count{font-size:13px;font-weight:600;color:var(--rh-muted,inherit);margin-left:6px}
-.rm-fav-text-btn{min-height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--rh-border,rgba(127,127,127,.35));background:transparent}
-.rm-fav-close{width:40px;height:40px;border-radius:50%;border:0;background:color-mix(in srgb,currentColor 8%,transparent);font-size:20px;line-height:1}
-.rm-fav-tools{display:flex;flex-direction:column;gap:8px}
-.rm-fav-search{width:100%;box-sizing:border-box;min-height:42px;padding:0 14px;border-radius:12px;border:1px solid var(--rh-border,rgba(127,127,127,.35));background:var(--rh-field,transparent);color:inherit;font:inherit}
-.rm-fav-chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
-.rm-fav-chips::-webkit-scrollbar{display:none}
-.rm-fav-chip{flex:0 0 auto;min-height:34px;padding:0 13px;border-radius:999px;border:1px solid var(--rh-border,rgba(127,127,127,.35));background:transparent;font-size:13px;white-space:nowrap}
-.rm-fav-chip[aria-pressed="true"]{background:var(--rh-primary,#ce729c);border-color:var(--rh-primary,#ce729c);color:#fff;font-weight:700}
-.rm-fav-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--fav-gap)}
-.rm-fav-item{position:relative;display:flex;flex-direction:column;gap:7px;min-width:0}
-.rm-fav-plate{position:relative;display:block;width:100%;aspect-ratio:1/1;border:0;padding:0;border-radius:18px 18px 6px 18px;overflow:hidden;
-  background:linear-gradient(160deg,color-mix(in srgb,var(--plate) 82%,#fff) 0%,var(--plate) 46%,color-mix(in srgb,var(--plate) 70%,#000) 100%);
-  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--plate) 60%,#fff),0 6px 16px color-mix(in srgb,var(--plate) 28%,transparent)}
-.rm-fav-plate::before{content:"";position:absolute;inset:-30% -60% auto auto;width:70%;height:160%;transform:rotate(28deg);background:linear-gradient(90deg,transparent,rgba(255,255,255,.34),transparent);pointer-events:none}
-.rm-fav-plate-date{position:absolute;left:10px;bottom:9px;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;background:rgba(255,255,255,.78);color:#2b2b2b}
-.rm-fav-name{margin:0;font-size:14px;font-weight:700;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
-.rm-fav-meta{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--rh-muted,inherit);min-height:28px}
-.rm-fav-meta span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rm-fav-more{flex:0 0 auto;width:30px;height:28px;border-radius:8px;border:0;background:transparent;font-size:16px;line-height:1;opacity:.7}
-.rm-fav-confirm{display:flex;gap:6px}
-.rm-fav-confirm button{flex:1;min-height:34px;border-radius:10px;border:1px solid var(--rh-border,rgba(127,127,127,.35));background:transparent;font-size:12px}
-.rm-fav-confirm .rm-fav-danger{border-color:#c0504d;color:#c0504d;font-weight:700}
-.rm-fav-empty{padding:34px 12px;text-align:center;color:var(--rh-muted,inherit);font-size:13px;line-height:1.7}
-.rm-fav-empty strong{display:block;font-size:15px;color:var(--rh-text,inherit);margin-bottom:4px}
-.rm-fav-row{display:flex;align-items:center;gap:8px}
-.rm-fav-row .rm-fav-search{flex:1;min-width:0}
-.rm-fav-view{display:flex;flex:0 0 auto;padding:3px;border-radius:12px;border:1px solid var(--rh-border,rgba(127,127,127,.35))}
-.rm-fav-view button{min-height:34px;padding:0 11px;border:0;border-radius:9px;background:transparent;font-size:13px}
-.rm-fav-view button[aria-pressed="true"]{background:color-mix(in srgb,var(--rh-primary,#ce729c) 16%,transparent);color:var(--rh-primary,#ce729c);font-weight:700}
-.rm-fav-list{display:flex;flex-direction:column}
-.rm-fav-line{display:flex;align-items:center;gap:12px;min-height:56px;padding:6px 2px;border-bottom:1px solid color-mix(in srgb,currentColor 10%,transparent)}
-.rm-fav-line-open{flex:1;min-width:0;display:flex;align-items:center;gap:12px;border:0;background:transparent;padding:4px 0;text-align:left}
-.rm-fav-swatch{flex:0 0 auto;width:30px;height:30px;border-radius:9px 9px 3px 9px;background:linear-gradient(160deg,color-mix(in srgb,var(--plate) 80%,#fff),var(--plate) 55%,color-mix(in srgb,var(--plate) 72%,#000));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--plate) 60%,#fff)}
-.rm-fav-line-text{flex:1;min-width:0;display:flex;flex-direction:column}
-.rm-fav-line-title{font-weight:700;font-size:14px;line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rm-fav-line-meta{font-size:12px;color:var(--rh-muted,inherit);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rm-fav-line .rm-fav-confirm{flex:0 0 auto}
-@media (min-width:640px){.rm-fav-grid{grid-template-columns:repeat(3,minmax(0,1fr))}[data-rm-fav-shelf]{--fav-gap:16px}}
-@media (min-width:900px){.rm-fav-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
-@media (prefers-reduced-motion:no-preference){.rm-fav-plate{transition:transform .18s ease}.rm-fav-plate:active{transform:scale(.97)}}
-`;
-
-function favoritePlateColor(html) {
-    const text = String(html || '');
-    const match = /background(?:-color)?\s*:\s*(#[0-9a-f]{6}\b|#[0-9a-f]{3}\b)/i.exec(text)
-        || /linear-gradient\([^)]*?(#[0-9a-f]{6}\b)/i.exec(text);
-    if (!match) return '';
-    let hex = match[1].toLowerCase();
-    if (hex.length === 4) hex = `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`;
-    return hex;
-}
-
-function favoriteDateText(ts) {
-    const date = new Date(Number(ts) || Date.now());
-    return `${date.getMonth() + 1}月${date.getDate()}日`;
-}
-
 export async function openTheaterFavoriteLibrary(hydrate) {
-    if (typeof hydrate === 'function') lastHydrate = hydrate; else hydrate = lastHydrate;
     const rows = await listTheaterFavorites();
     closeTheaterFavoriteLibrary();
     const { overlay, card } = overlayCard('兔子镜收藏夹');
     overlay.setAttribute('data-rm-theater-favorite-library', 'true');
-    // 手机：铺满的抽屉；电脑：居中的较宽面板。
-    const narrow = (globalThis.innerWidth || 1024) < 640;
-    overlay.style.alignItems = narrow ? 'stretch' : 'center';
-    if (narrow) overlay.style.padding = 'max(10px,env(safe-area-inset-top)) 0 0 0';
-    card.style.cssText += narrow
-        ? ';width:100%;max-width:none;max-height:none;height:100%;border-radius:22px 22px 0 0;padding:16px 14px max(18px,env(safe-area-inset-bottom));'
-        : ';width:min(860px,calc(100vw - 48px));max-height:min(86vh,calc(100dvh - 64px));border-radius:22px;padding:22px 24px;';
-    card.style.background = 'var(--rh-bg,var(--SmartThemeBlurTintColor,#f5f4fb))';
-    const style = document.createElement('style');
-    style.textContent = LIBRARY_STYLE;
-    const shelf = document.createElement('div');
-    shelf.setAttribute('data-rm-fav-shelf', 'true');
-
-    const head = document.createElement('div');
-    head.className = 'rm-fav-head';
-    const title = document.createElement('h2');
-    title.className = 'rm-fav-title';
-    title.textContent = '收藏夹';
-    const count = document.createElement('span');
-    count.className = 'rm-fav-count';
-    count.textContent = rows.length ? `${rows.length} 面` : '';
-    title.append(count);
+    const header = document.createElement('div');
+    header.style.cssText = 'display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:10px;';
+    const title = document.createElement('strong');
+    title.textContent = '兔子镜收藏夹';
+    title.style.cssText = 'min-width:0;font-size:15px;';
     const close = document.createElement('button');
     close.type = 'button';
-    close.className = 'rm-fav-close';
-    close.textContent = '×';
-    close.setAttribute('aria-label', '关闭收藏夹');
+    close.className = 'menu_button';
+    close.textContent = '关闭';
     close.addEventListener('click', () => closeTheaterFavoriteLibrary());
-    head.append(title, close);
-    shelf.append(head);
-
-    const grid = document.createElement('div');
-    grid.className = 'rm-fav-grid';
-    let query = '';
-    let character = '';
-    let view = 'grid';
-    try { view = globalThis.localStorage?.getItem(FAVORITE_VIEW_KEY) === 'list' ? 'list' : 'grid'; } catch { view = 'grid'; }
-    if (!rows.length) {
-        const empty = document.createElement('div');
-        empty.className = 'rm-fav-empty';
-        empty.innerHTML = '<strong>这里还空着</strong>点兔子镜标题旁的 ☆，喜欢的那一面就会收进来。';
-        shelf.append(empty);
+    header.append(title, close);
+    const note = document.createElement('p');
+    note.style.cssText = 'margin:0 0 10px;opacity:.7;font-size:11px;line-height:1.45;';
+    note.textContent = '按角色卡分组回看已收藏成品。打开时保留交互，不写入主楼 Prompt。旧收藏没有角色信息时归入「未分类」。';
+    const list = document.createElement('div');
+    const groups = groupTheaterFavoritesByCharacter(rows);
+    if (!groups.length) {
+        const empty = document.createElement('p');
+        empty.style.cssText = 'margin:0;opacity:.7;font-size:12px;';
+        empty.textContent = '还没有成品收藏。点标题旁的星标，或在工具菜单打开收藏夹。';
+        list.append(empty);
     } else {
-        const tools = document.createElement('div');
-        tools.className = 'rm-fav-tools';
-        const search = document.createElement('input');
-        search.type = 'search';
-        search.className = 'rm-fav-search';
-        search.placeholder = '按标题找一面';
-        search.setAttribute('aria-label', '按标题搜索收藏');
-        search.addEventListener('input', () => { query = search.value.trim().toLowerCase(); paint(); });
-        // 两种排列：缩略图（镜片）或标题列表；记住上次的选择。
-        const viewSwitch = document.createElement('div');
-        viewSwitch.className = 'rm-fav-view';
-        viewSwitch.setAttribute('role', 'group');
-        viewSwitch.setAttribute('aria-label', '排列方式');
-        for (const [key, label] of [['grid', '缩略图'], ['list', '列表']]) {
-            const option = document.createElement('button');
-            option.type = 'button';
-            option.textContent = label;
-            option.setAttribute('aria-pressed', String(view === key));
-            option.addEventListener('click', () => {
-                view = key;
-                try { globalThis.localStorage?.setItem(FAVORITE_VIEW_KEY, key); } catch { /* best effort */ }
-                viewSwitch.querySelectorAll('button').forEach(other => other.setAttribute('aria-pressed', String(other === option)));
-                paint();
-            });
-            viewSwitch.append(option);
-        }
-        const searchRow = document.createElement('div');
-        searchRow.className = 'rm-fav-row';
-        searchRow.append(search, viewSwitch);
-        tools.append(searchRow);
-        const groups = groupTheaterFavoritesByCharacter(rows);
-        if (groups.length > 1) {
-            const chips = document.createElement('div');
-            chips.className = 'rm-fav-chips';
-            chips.setAttribute('role', 'group');
-            chips.setAttribute('aria-label', '按角色筛选');
-            const chip = (label, key) => {
-                const node = document.createElement('button');
-                node.type = 'button';
-                node.className = 'rm-fav-chip';
-                node.textContent = label;
-                node.setAttribute('aria-pressed', String(character === key));
-                node.addEventListener('click', () => {
-                    character = key;
-                    chips.querySelectorAll('.rm-fav-chip').forEach(other => other.setAttribute('aria-pressed', String(other === node)));
-                    paint();
+        for (const group of groups) {
+            const heading = document.createElement('div');
+            heading.style.cssText = 'font-weight:800;font-size:12px;margin:10px 0 4px;opacity:.88;';
+            heading.textContent = `${group.characterName}（${group.items.length}）`;
+            list.append(heading);
+            for (const item of group.items) {
+                const row = document.createElement('div');
+                row.style.cssText = 'display:flex;align-items:center;gap:7px;padding:7px 0;border-bottom:1px solid color-mix(in srgb,currentColor 10%,transparent);';
+                const label = document.createElement('span');
+                label.style.cssText = 'min-width:0;flex:1;overflow-wrap:anywhere;';
+                label.textContent = theaterFavoriteDisplayTitle(item);
+                const open = document.createElement('button');
+                open.type = 'button';
+                open.className = 'menu_button';
+                open.textContent = '打开';
+                open.style.minHeight = '28px';
+                open.addEventListener('click', () => {
+                    void openTheaterFavoriteViewer(item.id, hydrate).catch(error => {
+                        globalThis.toastr?.warning?.(String(error?.message || '无法打开收藏。'));
+                    });
                 });
-                return node;
-            };
-            chips.append(chip(`全部 ${rows.length}`, ''));
-            for (const group of groups) chips.append(chip(`${group.characterName} ${group.items.length}`, group.characterName));
-            tools.append(chips);
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.className = 'menu_button';
+                remove.textContent = '删除';
+                remove.style.minHeight = '28px';
+                remove.addEventListener('click', () => {
+                    void deleteTheaterFavorite(item.id).then(() => openTheaterFavoriteLibrary(hydrate))
+                        .catch(error => globalThis.toastr?.warning?.(String(error?.message || '删除失败。')));
+                });
+                row.append(label, open, remove);
+                list.append(row);
+            }
         }
-        shelf.append(tools, grid);
     }
-
-    const plateFor = item => {
-        const wrap = document.createElement('div');
-        wrap.className = 'rm-fav-item';
-        const plate = document.createElement('button');
-        plate.type = 'button';
-        plate.className = 'rm-fav-plate';
-        plate.style.setProperty('--plate', favoritePlateColor(item.html) || 'var(--rh-primary,#ce729c)');
-        plate.setAttribute('aria-label', `打开「${theaterFavoriteDisplayTitle(item)}」`);
-        const date = document.createElement('span');
-        date.className = 'rm-fav-plate-date';
-        date.textContent = favoriteDateText(item.createdAt);
-        plate.append(date);
-        plate.addEventListener('click', () => {
-            void openTheaterFavoriteViewer(item.id, hydrate).catch(error => globalThis.toastr?.warning?.(String(error?.message || '无法打开收藏。')));
-        });
-        const name = document.createElement('p');
-        name.className = 'rm-fav-name';
-        name.textContent = theaterFavoriteDisplayTitle(item);
-        const meta = document.createElement('div');
-        meta.className = 'rm-fav-meta';
-        const who = document.createElement('span');
-        who.textContent = item.characterName || '未分类';
-        const more = document.createElement('button');
-        more.type = 'button';
-        more.className = 'rm-fav-more';
-        more.textContent = '⋯';
-        more.setAttribute('aria-label', '更多操作');
-        more.addEventListener('click', () => {
-            // 删除要再确认一次，避免误触。
-            meta.replaceChildren();
-            const confirm = document.createElement('div');
-            confirm.className = 'rm-fav-confirm';
-            confirm.style.flex = '1';
-            const keep = document.createElement('button');
-            keep.type = 'button';
-            keep.textContent = '保留';
-            keep.addEventListener('click', () => { meta.replaceChildren(who, more); });
-            const remove = document.createElement('button');
-            remove.type = 'button';
-            remove.className = 'rm-fav-danger';
-            remove.textContent = '删除这一面';
-            remove.addEventListener('click', () => {
-                void deleteTheaterFavorite(item.id).then(() => openTheaterFavoriteLibrary(hydrate))
-                    .catch(error => globalThis.toastr?.warning?.(String(error?.message || '删除失败。')));
-            });
-            confirm.append(keep, remove);
-            meta.append(confirm);
-            keep.focus?.();
-        });
-        meta.append(who, more);
-        wrap.append(plate, name, meta);
-        return wrap;
-    };
-
-    const lineFor = item => {
-        const line = document.createElement('div');
-        line.className = 'rm-fav-line';
-        const open = document.createElement('button');
-        open.type = 'button';
-        open.className = 'rm-fav-line-open';
-        open.setAttribute('aria-label', `打开「${theaterFavoriteDisplayTitle(item)}」`);
-        const swatch = document.createElement('span');
-        swatch.className = 'rm-fav-swatch';
-        swatch.style.setProperty('--plate', favoritePlateColor(item.html) || 'var(--rh-primary,#ce729c)');
-        const text = document.createElement('span');
-        text.className = 'rm-fav-line-text';
-        const name = document.createElement('span');
-        name.className = 'rm-fav-line-title';
-        name.textContent = theaterFavoriteDisplayTitle(item);
-        const meta = document.createElement('span');
-        meta.className = 'rm-fav-line-meta';
-        meta.textContent = `${favoriteDateText(item.createdAt)}　${item.characterName || '未分类'}`;
-        text.append(name, meta);
-        open.append(swatch, text);
-        open.addEventListener('click', () => {
-            void openTheaterFavoriteViewer(item.id, hydrate).catch(error => globalThis.toastr?.warning?.(String(error?.message || '无法打开收藏。')));
-        });
-        const more = document.createElement('button');
-        more.type = 'button';
-        more.className = 'rm-fav-more';
-        more.textContent = '⋯';
-        more.setAttribute('aria-label', '更多操作');
-        more.addEventListener('click', () => {
-            more.remove();
-            const confirm = document.createElement('div');
-            confirm.className = 'rm-fav-confirm';
-            const keep = document.createElement('button');
-            keep.type = 'button';
-            keep.textContent = '保留';
-            keep.addEventListener('click', () => { confirm.remove(); line.append(more); });
-            const remove = document.createElement('button');
-            remove.type = 'button';
-            remove.className = 'rm-fav-danger';
-            remove.textContent = '删除';
-            remove.addEventListener('click', () => {
-                void deleteTheaterFavorite(item.id).then(() => openTheaterFavoriteLibrary(hydrate))
-                    .catch(error => globalThis.toastr?.warning?.(String(error?.message || '删除失败。')));
-            });
-            confirm.append(keep, remove);
-            line.append(confirm);
-            keep.focus?.();
-        });
-        line.append(open, more);
-        return line;
-    };
-
-    function paint() {
-        grid.className = view === 'list' ? 'rm-fav-list' : 'rm-fav-grid';
-        grid.replaceChildren();
-        const visible = rows.filter(item => (!character || (item.characterName || '未分类') === character)
-            && (!query || theaterFavoriteDisplayTitle(item).toLowerCase().includes(query)));
-        if (!visible.length) {
-            const none = document.createElement('div');
-            none.className = 'rm-fav-empty';
-            none.style.gridColumn = '1 / -1';
-            none.textContent = '没有找到这一面，换个词试试。';
-            grid.append(none);
-            return;
-        }
-        for (const item of visible) grid.append(view === 'list' ? lineFor(item) : plateFor(item));
-    }
-    if (rows.length) paint();
-    // 节气收集放在最下面，默认收起。
-    shelf.append(renderSolarTermProgress(rows, hydrate));
-    card.append(style, shelf);
+    // 收藏列表是主体；节气进度放在最下方，默认收起。
+    card.append(header, note, list, renderSolarTermProgress(rows, hydrate));
     bindOverlayDismiss(overlay, closeTheaterFavoriteLibrary);
     const keydown = event => {
         if (event.key !== 'Escape') return;
@@ -971,6 +706,3 @@ export async function openTheaterFavoriteLibrary(hydrate) {
     library = { overlay, keydown };
     return rows;
 }
-
-setContinuationCharacterResolver(() => { try { return String(currentTheaterFavoriteCharacter()?.characterId || ''); } catch { return ''; } });
-setTimeout(() => { void refreshContinuationCandidates(); }, 0);

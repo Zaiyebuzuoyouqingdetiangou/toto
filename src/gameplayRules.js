@@ -35,5 +35,5 @@ const GAMEPLAY_RULES = Object.freeze({
 export function gameplayRuleFor(item) {
     const id = item?.id;
     if (!Object.hasOwn(GAMEPLAY_RULES, id)) return '';
-    return `玩法落实：操作先检查对象的当前状态与条件，改变对象后再产生对应结果。${GAMEPLAY_RULES[id]}图文切页不能代替这些变化；设计候选也须保留此玩法，用现有安全状态机制实现。走到最后一步时，给一个只属于这一面的结尾（一句话、一枚印章或一个小物件）。`;
+    return `玩法落实：操作先检查对象的当前状态与条件，改变对象后再产生对应结果。${GAMEPLAY_RULES[id]}图文切页不能代替这些变化；设计候选也须保留此玩法，用现有安全状态机制实现。`;
 }
