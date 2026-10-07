@@ -1,33 +1,34 @@
-import { INTERACTION_SAMPLING_RULE, designCandidatePick, drawDesignCandidate } from './interactionSampling.js?rmv=1.67.7';
-import { driverContractLines, drawDriverOffer, interactionMethodNames, normalizeDriverOffer } from './interactionMethods.js?rmv=1.67.7';
-import { drawUsageOffer, normalizeUsageOffer } from './interactionUsageOffer.js?rmv=1.67.7';
-import { recentInteractionMethods } from './interactionMethodLedger.js?rmv=1.67.7';
-import { usesModelOriginalColors, withoutPaletteRecipe, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.67.7';
-import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=1.67.7';
-import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=1.67.7';
-import { isNearWhitePalette, isNearWhiteContentSurface } from './paletteObservation.js?rmv=1.67.7';
-import { observedOperationFamiliesFor } from './compositionFingerprint.js?rmv=1.67.7';
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.67.7';
-import { expandShuffledOptions } from '../data/raw/rawSegmentLookup.js?rmv=1.67.7';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.67.7';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.67.7';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.67.7';
-import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES, VISUAL_SCENERY_EXPRESSION_RULE, VISUAL_SCENERY_VS_GUIDANCE } from '../data/raw/visualSceneryRules.js?rmv=1.67.7';
-import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.67.7';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.67.7';
-import { getComboHistory, getActivePaletteCooldown } from './storage.js?rmv=1.67.7';
-import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock, recentPaletteExecutionReminder } from './visualDiversityPolicy.js?rmv=1.67.7';
-import { withoutInteractionRecipe, observedInteractionRecipesFor } from './interactionRecipes.js?rmv=1.67.7';
-import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.67.7';
-import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.67.7';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.67.7';
-export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.67.7';
-import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.67.7';
-import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.67.7';
-import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.67.7';
-import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.67.7';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.67.7';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.67.7';
+import { INTERACTION_SAMPLING_RULE, designCandidatePick, drawDesignCandidate } from './interactionSampling.js?rmv=1.67.8';
+import { driverContractLines, drawDriverOffer, interactionMethodNames, normalizeDriverOffer } from './interactionMethods.js?rmv=1.67.8';
+import { drawUsageOffer, normalizeUsageOffer } from './interactionUsageOffer.js?rmv=1.67.8';
+import { recentInteractionMethods } from './interactionMethodLedger.js?rmv=1.67.8';
+import { gameplayRuleFor } from './gameplayRules.js?rmv=1.67.8';
+import { usesModelOriginalColors, withoutPaletteRecipe, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.67.8';
+import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=1.67.8';
+import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=1.67.8';
+import { isNearWhitePalette, isNearWhiteContentSurface } from './paletteObservation.js?rmv=1.67.8';
+import { observedOperationFamiliesFor } from './compositionFingerprint.js?rmv=1.67.8';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.67.8';
+import { expandShuffledOptions } from '../data/raw/rawSegmentLookup.js?rmv=1.67.8';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.67.8';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.67.8';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.67.8';
+import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES, VISUAL_SCENERY_EXPRESSION_RULE, VISUAL_SCENERY_VS_GUIDANCE } from '../data/raw/visualSceneryRules.js?rmv=1.67.8';
+import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.67.8';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.67.8';
+import { getComboHistory, getActivePaletteCooldown } from './storage.js?rmv=1.67.8';
+import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock, recentPaletteExecutionReminder } from './visualDiversityPolicy.js?rmv=1.67.8';
+import { withoutInteractionRecipe, observedInteractionRecipesFor } from './interactionRecipes.js?rmv=1.67.8';
+import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.67.8';
+import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.67.8';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.67.8';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.67.8';
+import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.67.8';
+import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.67.8';
+import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.67.8';
+import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.67.8';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.67.8';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.67.8';
 
 const THEME_ITEMS = new Map(THEMATIC_CATEGORIES.map(item => [item.id, item]));
 const FORMAT_ITEMS = new Map(PRESENTATION_FORMATS.map(item => [item.id, item]));
@@ -134,7 +135,7 @@ function fullTextMaterial(item, externalRawMap, kind = 'text') {
         .replace(/\bdata-/gi, 'data·');
 }
 
-function compactItemLine(item, kind, summaryMax = 170, rawSnippet = '', index = 0, textPresentation = false, longText = false) {
+function compactItemLine(item, kind, summaryMax = 170, rawSnippet = '', index = 0, textPresentation = false, longText = false, gameplayEnabled = true) {
     const id = item?.id || '?';
     const title = item?.title || '未命名';
     const tags = Array.isArray(item?.tags) && item.tags.length ? `；tags: ${item.tags.slice(0, 4).join(',')}` : '';
@@ -148,10 +149,11 @@ function compactItemLine(item, kind, summaryMax = 170, rawSnippet = '', index = 
             : '；执行：辅助展现形式，只补充主形式的阅读路径、交互或材质，不得争夺首个主体或把两者折中成通用卡片。'
         : '；执行：须落成一项可辨认的剧情证据，不得只写标题或漏掉。';
     const supplement = rawSnippet ? `\n  母本补充：${rawSnippet}` : '';
-    return `- 【${id} ${title}】${summary ? `：${truncate(summary, summaryMax)}` : ''}${tags}${note}${supplement}`;
+    const gameplay = gameplayEnabled && kind === 'presentation' && !textPresentation && !longText ? gameplayRuleFor(item) : '';
+    return `- 【${id} ${title}】${summary ? `：${truncate(summary, summaryMax)}` : ''}${tags}${note}${supplement}${gameplay ? `\n  ${gameplay}` : ''}`;
 }
 
-function formatItemsWithRawPolicy(items, kind, rawPolicy, externalRawMap = null, textPresentation = false, preserveOriginal = false) {
+function formatItemsWithRawPolicy(items, kind, rawPolicy, externalRawMap = null, textPresentation = false, preserveOriginal = false, gameplayEnabled = true) {
     if (!Array.isArray(items) || !items.length) return { text: '- 无', retrievedChars: 0, retrievedItems: 0 };
     const profile = rawPolicyProfile(rawPolicy);
     let remaining = kind === 'presentation' || kind === 'text' ? profile.presentationTotal : profile.themeTotal;
@@ -172,7 +174,7 @@ function formatItemsWithRawPolicy(items, kind, rawPolicy, externalRawMap = null,
             retrievedChars += rawSnippet.length;
             retrievedItems += 1;
         }
-        return compactItemLine(item, kind, profile.summaryMax, rawSnippet, index, textPresentation, preserveOriginal);
+        return compactItemLine(item, kind, profile.summaryMax, rawSnippet, index, textPresentation, preserveOriginal, gameplayEnabled);
     });
 
     return { text: lines.join('\n'), retrievedChars, retrievedItems };
@@ -1129,7 +1131,7 @@ function buildFaceContext(selectionCombo, settings, rawPolicy, externalRawMap = 
     } : selectionCombo;
     const selectedThemeResult = formatItemsWithRawPolicy(combo.themes, 'theme', rawPolicy, externalRawMap, textPresentation, longText);
     const combination = combo.visualSceneryCombination === true && !textPresentation;
-    const selectedFormatResult = formatItemsWithRawPolicy(combination ? combo.formats.filter(item => item.id !== '10.2.2') : combo.formats, 'presentation', rawPolicy, externalRawMap, textPresentation, longText);
+    const selectedFormatResult = formatItemsWithRawPolicy(combination ? combo.formats.filter(item => item.id !== '10.2.2') : combo.formats, 'presentation', rawPolicy, externalRawMap, textPresentation, longText, combo.pureOrder !== true);
     if (combination) selectedFormatResult.text = '- 【10.2.2 Visual Scenery】锁定动态视觉基底；与以下实际展现形式共同成立，具体执行本面的动态视觉组合规则。\n' + selectedFormatResult.text;
     const selectedTextResult = formatItemsWithRawPolicy(combo.texts, 'text', rawPolicy, externalRawMap);
     const face = {

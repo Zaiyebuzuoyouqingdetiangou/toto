@@ -1,7 +1,7 @@
 // Pure, bounded generation preferences. These are not output gates, candidate
 // filters or a menu of interaction components. Unknown/native mechanisms remain
 // free to be designed by the model; no mother-library text is inspected here.
-import { INTERACTION_FAMILY_LABELS as FAMILY_LABELS, recentInteractionCooldowns } from './interactionCooldown.js?rmv=1.67.7';
+import { INTERACTION_FAMILY_LABELS as FAMILY_LABELS, recentInteractionCooldowns } from './interactionCooldown.js?rmv=1.67.8';
 
 function recentRepeatedFamilies(recentFamilies) {
     return recentInteractionCooldowns(recentFamilies).map(item => item.id);

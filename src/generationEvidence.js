@@ -1,7 +1,8 @@
 // Opt-in, one-request evidence. No storage, network, timers, live DOM reads or
 // random-number consumption. Observers can never affect generation outcomes.
-import { generationEvidenceTiming } from './generationTiming.js?rmv=1.67.7';
-import { roleColorEvidence } from './roleColorVariants.js?rmv=1.67.7';
+import { generationEvidenceTiming } from './generationTiming.js?rmv=1.67.8';
+import { roleColorEvidence } from './roleColorVariants.js?rmv=1.67.8';
+import { interactionMethodsFromRecord } from './interactionMethodLedger.js?rmv=1.67.8';
 let armed = false;
 let current = null;
 let sequence = 0;
@@ -132,7 +133,7 @@ function vsCheckFor(report) {
     const candidates = Array.isArray(vs.c) ? vs.c : [];
     const promised = Number.isInteger(pick) && candidates[pick - 1] ? String(candidates[pick - 1][0] || '') : '';
     const observed = observedSkeletonHint(report?.processed?.html || raw);
-    const methods = Array.isArray(vs.m) && Number.isInteger(pick) && Array.isArray(vs.m[pick - 1]) ? vs.m[pick - 1].filter(item => typeof item === 'string') : [];
+    const methods = interactionMethodsFromRecord(vs);
     return {
         present: true, pick: Number.isInteger(pick) ? pick : null, promised, methods,
         observed,
