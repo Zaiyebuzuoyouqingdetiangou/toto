@@ -1,10 +1,10 @@
-import { applyAtmosphereNotes, compactAtmosphereMenu } from './atmosphereChoice.js?rmv=1.66.8';
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.66.8';
-import { compactFormatDescriptors, isExternalSelectionId } from './selectionImageMetadata.js?rmv=1.66.8';
-import { getSettings, updateSettings } from './settings.js?rmv=1.66.8';
-import { getCurrentChatKey, resetFormatEligibleMisses } from './storage.js?rmv=1.66.8';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.66.8';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.66.8';
+import { applyAtmosphereNotes, compactAtmosphereMenu } from './atmosphereChoice.js?rmv=1.67.18';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.67.18';
+import { compactFormatDescriptors, isExternalSelectionId } from './selectionImageMetadata.js?rmv=1.67.18';
+import { getSettings, updateSettings } from './settings.js?rmv=1.67.18';
+import { getCurrentChatKey, resetFormatEligibleMisses } from './storage.js?rmv=1.67.18';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.67.18';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.67.18';
 
 export const BLACKLIST_CHANGED_EVENT = 'rabbitmirror:blacklist-changed';
 export const RECIPE_RECORDED_EVENT = 'rabbitmirror:recipe-recorded';
@@ -28,6 +28,9 @@ const LEGACY_AMBIGUOUS_FORMAT_ID = '1.3.3';
 export const LEGACY_FORMAT_ID_ALIASES = Object.freeze({ '5.1.1.7': '10.2.10', '11.2.1': '2.1.12' });
 export function canonicalFormatId(id) {
     const value = String(id || '').trim();
+    // A current catalog ID is authoritative. Some retired IDs were later reused
+    // (5.1.1.7 is now 电影海报); a legacy alias must not replace an explicit pick.
+    if (FORMAT_BY_ID.has(value)) return value;
     return Object.prototype.hasOwnProperty.call(LEGACY_FORMAT_ID_ALIASES, value) ? LEGACY_FORMAT_ID_ALIASES[value] : value;
 }
 const LEGACY_AMBIGUOUS_FORMAT_TARGET_IDS = ['1.3.3.platform', '1.3.3.review'];

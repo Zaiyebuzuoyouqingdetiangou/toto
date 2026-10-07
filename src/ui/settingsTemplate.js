@@ -1,8 +1,8 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.66.8';
-import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.66.8';
-import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.66.8';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.67.18';
+import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.67.18';
+import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.67.18';
 
 export function buildRabbitMirrorSettingsDialogHtml() {
     return `
@@ -438,6 +438,11 @@ export function buildRabbitMirrorSettingsDialogHtml() {
               <label class="checkbox_label"><input id="rh_image_enabled" type="checkbox"> 启用镜面生图</label>
               <label class="checkbox_label"><input id="rh_builtin_image" type="checkbox"> 启用小剧场内置生图（实验性）</label>
               <p>默认关闭。开启后，小剧场仍按原来的方式做界面。只有这一面本来会用色块或 SVG 画人物、场景时，才改成图框并写一段画面提示词；生成结束后自动调用一次柏宝绘，把图填进去。不需要画面的面不会生图，也不另请副 API 构思。需要柏宝绘已经连好。</p>
+              <div class="flex-container" style="gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0 2px;">
+                <label for="rh_image_backend" style="font-weight:700;font-size:12px;">生图渠道</label>
+                <select id="rh_image_backend" class="text_pole" style="flex:1;min-width:140px;"><option value="baibai">柏宝绘</option><option value="chatu8">智绘姬</option></select>
+              </div>
+              <div id="rh_image_backend_status" style="opacity:.68;font-size:11px;line-height:1.45;margin-bottom:6px;">沿用所选渠道里已经配好的模型、接口和出图设置。</div>
               <details id="rh_image_llm_block" style="margin:8px 0;padding:9px 10px;border:1px solid color-mix(in srgb,currentColor 16%,transparent);border-radius:9px;">
                 <summary style="cursor:pointer;font-weight:700;font-size:12px;">生图 LLM API</summary>
                 <div style="display:grid;gap:7px;padding-top:8px;">

@@ -1,3 +1,5 @@
+import { chatu8Status, generateViaChatu8 } from './chatu8Image.js?rmv=1.67.18';
+import { getSettings } from './settings.js?rmv=1.67.18';
 function failure(code, message) { return Object.assign(new Error(message), { code }); }
 
 function imageApi() {
@@ -11,6 +13,11 @@ function imageApi() {
 
 export function getImageBackendStatus() {
     try {
+        if (getSettings().imageBackend === 'chatu8') {
+            const status = chatu8Status();
+            return { available: status.configured === true, configured: status.configured === true,
+                backend: `st-chatu8:${status.mode || ''}`, supportsCharacters: false, reason: String(status.reason || '') };
+        }
         const status = imageApi().getBackendStatus();
         return { available: true, configured: status.configured === true, backend: status.backend, model: status.model, supportsCharacters: status.supportsCharacters === true, reason: String(status.reason || '') };
     } catch (error) {
@@ -19,6 +26,7 @@ export function getImageBackendStatus() {
 }
 
 export function getImageCharacters({ floor } = {}) {
+    if (getSettings().imageBackend === 'chatu8') return [];
     const api = imageApi();
     if (api.capabilities?.characterLibrary !== true || typeof api.getCharacters !== 'function') return [];
     const snapshot = api.getCharacters(Number.isSafeInteger(floor) && floor >= 0 ? { floor } : {});
@@ -28,6 +36,8 @@ export function getImageCharacters({ floor } = {}) {
 }
 
 export async function generateMirrorImage(plan, { signal, onProgress, character, size, assertCurrent } = {}) {
+    // 生图渠道选了智绘姬时，交给智绘姬；否则沿用柏宝绘。
+    if (getSettings().imageBackend === 'chatu8') return generateViaChatu8(plan, { signal, size, assertCurrent });
     const api = imageApi();
     const status = api.getBackendStatus();
     if (!status.configured) throw failure('not_configured', status.reason || '柏宝绘连接尚未配置完成。');

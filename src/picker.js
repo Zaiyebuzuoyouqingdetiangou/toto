@@ -1,7 +1,7 @@
-import { usesModelOriginalColors } from './visualDesign.js?rmv=1.66.8';
-import { attachPaletteRecipes } from './paletteRecipes.js?rmv=1.66.8';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.66.8';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.66.8';
+import { usesModelOriginalColors } from './visualDesign.js?rmv=1.67.18';
+import { attachPaletteRecipes } from './paletteRecipes.js?rmv=1.67.18';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.67.18';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.67.18';
 import {
     getCurrentChatKey,
     getDirectiveScopedPick,
@@ -21,11 +21,11 @@ import {
     clearPendingComboBatch,
     createPendingComboBatchPlan,
     findPendingComboBatchPlan,
-} from './storage.js?rmv=1.66.8';
-import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.66.8';
-import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.66.8';
-import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, visualSceneryEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.66.8';
-import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.66.8';
+} from './storage.js?rmv=1.67.18';
+import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.67.18';
+import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.67.18';
+import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, visualSceneryEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.67.18';
+import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.67.18';
 import {
     chooseExternalSource,
     externalPoolActive,
@@ -35,7 +35,7 @@ import {
     getExternalPoolSnapshot,
     pickExternalItems,
     sourceMixModeIsExternalOnly,
-} from './externalWorldBook/externalPool.js?rmv=1.66.8';
+} from './externalWorldBook/externalPool.js?rmv=1.67.18';
 
 function randomUnit() {
     try {
@@ -703,6 +703,16 @@ function itemHaystack(item) {
 }
 
 function matchOne(pool, query) {
+    // Catalog numbers are identities, not fuzzy text: 1.11 must stay distinct
+    // from 1.1.1. Also accept the copied "ID title" label without dropping dots.
+    const explicitId = String(query || '').trim().match(/^[`*_【\[]*([A-Za-z0-9]+(?:[._:-][A-Za-z0-9]+)*)(?=$|[\s`*_】\]：:])/i)?.[1];
+    if (explicitId) {
+        const exact = pool.find(item => String(item.id).toLowerCase() === explicitId.toLowerCase());
+        if (exact) return exact;
+        // An unknown complete number remains the user's custom request; never
+        // silently replace it with a shorter prefix from the builtin catalog.
+        if (/^(?:\d+|[A-Za-z])(?:\.[A-Za-z0-9]+)+$/.test(explicitId)) return null;
+    }
     const q = normalizeText(query);
     if (!q) return null;
 

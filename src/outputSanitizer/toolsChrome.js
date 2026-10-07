@@ -1,25 +1,25 @@
-import { paletteRecipeFor } from '../paletteRecipes.js?rmv=1.66.8';
-import { recordInteractionMethods } from '../interactionMethodLedger.js?rmv=1.66.8';
-import { roleColorFaces, setRoleColorVariant, inspectRoleColorReadability } from '../roleColorVariants.js?rmv=1.66.8';
-import { interactionRecipesFor } from '../interactionRecipes.js?rmv=1.66.8';
+import { paletteRecipeFor } from '../paletteRecipes.js?rmv=1.67.18';
+import { recordInteractionMethods } from '../interactionMethodLedger.js?rmv=1.67.18';
+import { roleColorFaces, setRoleColorVariant, inspectRoleColorReadability } from '../roleColorVariants.js?rmv=1.67.18';
+import { interactionRecipesFor } from '../interactionRecipes.js?rmv=1.67.18';
 // Split from outputSanitizer.js — toolsChrome.
-import { trackMirrorAnimations, pruneMirrorAnimationVisibility } from '../animationVisibility.js?rmv=1.66.8';
+import { trackMirrorAnimations, pruneMirrorAnimationVisibility } from '../animationVisibility.js?rmv=1.67.18';
 
-import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.66.8';
-import { installMirrorUpdateMenuHook } from '../mirrorUpdateMenu.js?rmv=1.66.8';
-import { placeFacePager, facePagerDetails, removeFacePager, cleanupFacePagers } from '../facePagerPlacement.js?rmv=1.66.8';
-import { isTextPresentation } from '../presentationMode.js?rmv=1.66.8';
-import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.66.8';
-import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=1.66.8';
-import { getCurrentChatKey } from '../storage.js?rmv=1.66.8';
-import { getSanitizedRabbitMirrorFaceProof } from '../multifaceProof.js?rmv=1.66.8';
+import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.67.18';
+import { installMirrorUpdateMenuHook } from '../mirrorUpdateMenu.js?rmv=1.67.18';
+import { placeFacePager, facePagerDetails, removeFacePager, cleanupFacePagers } from '../facePagerPlacement.js?rmv=1.67.18';
+import { isTextPresentation } from '../presentationMode.js?rmv=1.67.18';
+import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.67.18';
+import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=1.67.18';
+import { getCurrentChatKey } from '../storage.js?rmv=1.67.18';
+import { getSanitizedRabbitMirrorFaceProof } from '../multifaceProof.js?rmv=1.67.18';
 import {
     captureTheaterFavoriteFromRoot,
     openTheaterFavoriteLibrary,
     toggleTheaterFavorite,
     isTheaterFavoriteHtml,
-} from '../theaterFavorites.js?rmv=1.66.8';
-import { FACE_SWIPE_FULL_MESSAGE, faceSwipeBarIntent, fallbackFaceSwipeView, multifaceFacePagerView } from '../swipeVersions.js?rmv=1.66.8';
+} from '../theaterFavorites.js?rmv=1.67.18';
+import { FACE_SWIPE_FULL_MESSAGE, faceSwipeBarIntent, fallbackFaceSwipeView, multifaceFacePagerView } from '../swipeVersions.js?rmv=1.67.18';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -28,8 +28,8 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from '../feedbackCat.js?rmv=1.66.8';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.66.8';
+} from '../feedbackCat.js?rmv=1.67.18';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.67.18';
 import {
     FAVORITE_MULTIPLIER_MAX,
     FAVORITE_MULTIPLIER_MIN,
@@ -51,7 +51,7 @@ import {
     setFavoriteMultiplier,
     toggleBlacklistItem,
     toggleFavoriteItem,
-} from '../blacklist.js?rmv=1.66.8';
+} from '../blacklist.js?rmv=1.67.18';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -75,15 +75,16 @@ import {
     isInsideChatMessage,
     isMaintenanceRabbitEnabled,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.66.8';
-import { getAvailableHostChat } from './scriptedInteractionRescue.js?rmv=1.66.8';
-import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.66.8';
-import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=1.66.8';
+} from './runtime.js?rmv=1.67.18';
+import { getAvailableHostChat } from './scriptedInteractionRescue.js?rmv=1.67.18';
+import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.67.18';
+import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=1.67.18';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     FEEDBACK_HISTORY_EVENT,
     FEEDBACK_RESAY_EVENT,
     MAINTENANCE_MENU_ATTR,
+    MAINTENANCE_MIRROR_IDENTITY_ATTR,
     MAINTENANCE_REASON_ATTR,
     MAINTENANCE_STATES,
     MAINTENANCE_STATE_ATTR,
@@ -98,8 +99,8 @@ import {
     rabbitMirrorLanguageBalance,
     scheduleCurrentHighConfidenceTextRepair,
     setMaintenanceRabbitState,
-} from './diagnostics.js?rmv=1.66.8';
-import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=1.66.8';
+} from './diagnostics.js?rmv=1.67.18';
+import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=1.67.18';
 import {
     MAINTENANCE_FINDING_STAGE_LABELS,
     beginMaintenanceRepairRun,
@@ -117,25 +118,29 @@ import {
     runMaintenanceRevealClipRepair,
     runMaintenanceUserRepair,
     triggerDiagnosticForMaintenanceRoot,
-} from './maintenanceInspect.js?rmv=1.66.8';
+} from './maintenanceInspect.js?rmv=1.67.18';
 import {
     getRabbitMirrorFacePosition,
     installMaintenanceHorizontalClipOpenRescue,
     repairLegacyMaintenanceMobileStateRows,
-} from './layoutRescue.js?rmv=1.66.8';
+} from './layoutRescue.js?rmv=1.67.18';
 import {
     getMessageIndexFromMirrorNode,
     installMaintenanceAutoSafeOpenPatrol,
     installManagedRabbitMirrorTools,
     pruneMaintenanceAutoSafeOpenBindings,
     scheduleMaintenanceAutoSafeForRoot,
-} from './lifecycle.js?rmv=1.66.8';
+} from './lifecycle.js?rmv=1.67.18';
 
 installMirrorUpdateMenuHook();
 
 let recipeOutsideCloseCleanup = null;
 
 let maintenanceOutsideCloseCleanup = null;
+
+// Only the explicitly opened manual result panel receives live feedback. No
+// observer, background polling, saved marker or new repair run is introduced.
+let maintenanceResultPanel = null;
 
 let feedbackOutsideCloseCleanup = null;
 
@@ -165,10 +170,72 @@ let startupMaintenanceFallbackHandler = null;
 
 
 export function closeMaintenanceRabbitMenu() {
+    maintenanceResultPanel = null;
     try { maintenanceOutsideCloseCleanup?.(); } catch {}
     maintenanceOutsideCloseCleanup = null;
     toolOutsideCloseOwners.delete('maintenance');
     document.querySelectorAll?.(`[${MAINTENANCE_MENU_ATTR}]`)?.forEach(panel => panel.remove());
+}
+
+function maintenanceResultContext(root, knownIndex = getMessageIndexFromMirrorNode(root)) {
+    const index = knownIndex;
+    const message = getAvailableHostChat()?.[index];
+    const swipe = Number.isInteger(message?.swipe_id) ? message.swipe_id : 0;
+    return { chat: getCurrentChatKey(), index, swipe,
+        source: message?.mes, display: message?.extra?.display_text ?? message?.display_text,
+        selected: message?.swipes?.[swipe] };
+}
+
+export function updateMaintenanceRabbitMenuState(button, state, reason) {
+    const feedback = maintenanceResultPanel;
+    if (!feedback?.panel?.isConnected || !button) return;
+    const context = maintenanceResultContext(feedback.root, feedback.context.index);
+    if (Object.keys(feedback.context).some(key => feedback.context[key] !== context[key])) {
+        closeMaintenanceRabbitMenu();
+        return;
+    }
+    if (feedback.face?.source === 'independent' && (!feedback.face.host.isConnected
+        || String(feedback.face.host.dataset?.rmKey || '') !== feedback.ownerKey
+        || String(feedback.face.host.dataset?.rmSourceHash || '') !== feedback.sourceHash)) {
+        closeMaintenanceRabbitMenu();
+        return;
+    }
+    let belongs = button === feedback.button || feedback.root.contains?.(button);
+    if (!belongs && feedback.face?.source === 'independent') {
+        const face = getRabbitMirrorFacePosition(button);
+        belongs = face?.source === 'independent' && face.host === feedback.face.host
+            && face.faceIndex === feedback.face.faceIndex
+            && String(face.host.dataset?.rmKey || '') === feedback.ownerKey
+            && String(face.host.dataset?.rmSourceHash || '') === feedback.sourceHash;
+    }
+    if (!belongs && feedback.face?.source !== 'independent') {
+        // Source repair can replace a follow-mode DOM. Its existing local mirror
+        // identity plus the unchanged message context keeps feedback on that face.
+        const identity = feedback.root.getAttribute?.(MAINTENANCE_MIRROR_IDENTITY_ATTR);
+        const owner = button.closest?.(`[${MAINTENANCE_MIRROR_IDENTITY_ATTR}]`);
+        belongs = !!identity && owner?.getAttribute(MAINTENANCE_MIRROR_IDENTITY_ATTR) === identity
+            && getMessageIndexFromMirrorNode(owner) === feedback.context.index;
+    }
+    if (!belongs) return;
+    feedback.status.textContent = maintenanceMenuProblemText(state, reason);
+    feedback.status.setAttribute('data-rm-maintenance-result-state', state);
+}
+
+function keepMaintenanceResultPanel(panel, root, button) {
+    const status = panel.querySelector('[data-rm-maintenance-problem-text]');
+    if (!status) return;
+    panel.querySelectorAll('[data-rm-maintenance-action]').forEach(item => {
+        if (item.getAttribute('data-rm-maintenance-action') !== 'close') item.remove();
+    });
+    panel.querySelector('[data-rm-copy-html-status]')?.remove();
+    panel.querySelector('.rabbit-mirror-maintenance-menu-title').textContent = '🐇 本面维修结果';
+    status.setAttribute('role', 'status');
+    status.setAttribute('aria-live', 'polite');
+    status.textContent = '正在处理当前镜面…';
+    const face = getRabbitMirrorFacePosition(root);
+    maintenanceResultPanel = { panel, status, root, button, face, context: maintenanceResultContext(root),
+        ownerKey: String(face?.host?.dataset?.rmKey || ''),
+        sourceHash: String(face?.host?.dataset?.rmSourceHash || '') };
 }
 
 
@@ -603,7 +670,7 @@ function rabbitMirrorExternalGenerationNotice(root, kind = 'maintenance') {
 const RESAY_CHOOSER_ATTR = 'data-rm-resay-chooser';
 
 const RESAY_PICK_MAX = Object.freeze({ theme: 3, format: 2 });
-const EXTERNAL_STORE_MODULE = '../externalWorldBook/store.js?rmv=1.66.8';
+const EXTERNAL_STORE_MODULE = '../externalWorldBook/store.js?rmv=1.67.18';
 
 // 纯点菜里的题库点选。默认只显示已选项；点「浏览」才展开列表。
 // 来源可切换：内置题库（按大组浏览 / 搜索）或已导入并启用的母本库。
@@ -1815,8 +1882,14 @@ function showMaintenanceRabbitMenu(root, button) {
             void copyRabbitMirrorCurrentFaceHtml(root, event.target.closest('[data-rm-maintenance-action]'), panel);
             return;
         }
-        closeMaintenanceRabbitMenu();
-        if (action === 'close') return;
+        if (action === 'close') { closeMaintenanceRabbitMenu(); return; }
+        if (['interaction', 'auto', 'patrol', 'text', 'source', 'style', 'all', 'narrow-width', 'reveal-clip'].includes(action)) {
+            keepMaintenanceResultPanel(panel, root, button);
+        } else closeMaintenanceRabbitMenu();
+        if (!root?.isConnected || !button?.isConnected) {
+            failMaintenanceRabbit(button, '当前镜面已经更新，请重新打开维修兔');
+            return;
+        }
         if (action === 'narrow-width') {
             void runMaintenanceNarrowFaceRepair(root, button);
             return;
@@ -2318,7 +2391,7 @@ function beginHostWorkTiming(name){
 }
 
 function loadMirrorImageModule() {
-    if (!mirrorImageModule) mirrorImageModule = import('../imageUi.js?rmv=1.66.8').catch(error => { mirrorImageModule = null; throw error; });
+    if (!mirrorImageModule) mirrorImageModule = import('../imageUi.js?rmv=1.67.18').catch(error => { mirrorImageModule = null; throw error; });
     return mirrorImageModule;
 }
 
@@ -2648,7 +2721,7 @@ function installUnifiedMirrorTools(root) {
     actions.push({ id: 'resay', label: '↻ 重说', run: (_event, opener) => openRabbitMirrorResayChooser(root, opener) });
     if (mirrorFaceCanContinue(root)) {
         actions.push({ id: 'continue', label: '✎ 续写', run: () => {
-            void import('../independentApi/mount.js?rmv=1.66.8').then(module => module.continueIndependentLongText(root))
+            void import('../independentApi/mount.js?rmv=1.67.18').then(module => module.continueIndependentLongText(root))
                 .catch(() => globalThis.toastr?.error?.('续写没有写上，原来的正文还在。'));
         } });
     }
@@ -2671,7 +2744,7 @@ function installUnifiedMirrorTools(root) {
             .catch(() => globalThis.toastr?.warning?.('生图面板未能打开，请重新打开后再试。'));
     } });
     actions.push({ id: 'theater-favorite-library', label: '📖 打开收藏夹', run: () => {
-        void import('../independentApi.js?rmv=1.66.8').then(module =>
+        void import('../independentApi.js?rmv=1.67.18').then(module =>
             openTheaterFavoriteLibrary((container, record) => module.hydrateIndependentFavoriteHtml(container, record)))
             .catch(error => globalThis.toastr?.warning?.(String(error?.message || '无法打开收藏夹。')));
     } });
@@ -2684,7 +2757,7 @@ function installUnifiedMirrorTools(root) {
     void loadMirrorImageModule().then(module => { if (root.isConnected) return module.mountMirrorImage(root); })
         .catch(() => {});
     if (getSettings().builtinImageEnabled === true && root.querySelector?.('[data-rm-draw-frame]')) {
-        void import('../builtinImage.js?rmv=1.66.8').then(module => {
+        void import('../builtinImage.js?rmv=1.67.18').then(module => {
             if (root.isConnected) module.fillBuiltinImageFrames(root);
         }).catch(() => {});
     }
@@ -3226,4 +3299,3 @@ export function refreshRabbitMirrorToolsInScope(scope, { historyRestoreLight = f
     if (!historyRestoreLight) repairLegacyMaintenanceMobileStateRows(scope);
     installMaintenanceRabbitsInScope(scope, { historyRestoreLight });
 }
-

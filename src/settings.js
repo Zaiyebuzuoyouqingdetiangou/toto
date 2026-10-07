@@ -1,10 +1,10 @@
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.66.8';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.67.18';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.66.8';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.66.8';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.66.8';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.66.8';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.67.18';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.67.18';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.67.18';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.67.18';
 
 export const MODULE_NAME = 'rabbit_mirror_theater';
 
@@ -279,6 +279,7 @@ export const defaultSettings = Object.freeze({
     builtinImageEnabled: false,
     imagePromptFormat: 'nai5-natural',
     imageCompositionMode: 'scene',
+    imageBackend: 'baibai',
     imageLlmEnabled: false,
     imageLlmProfileId: '',
     imageLlmBaseUrl: '',
@@ -452,6 +453,7 @@ export function getSettings() {
     settings.visualSceneryCombination = settings.visualSceneryCombination === true;
     settings.imageEnabled = settings.imageEnabled === true;
     settings.imageLlmEnabled = settings.imageLlmEnabled === true;
+    settings.imageBackend = settings.imageBackend === 'chatu8' ? 'chatu8' : 'baibai';
     for (const key of ['imageLlmProfileId', 'imageLlmBaseUrl', 'imageLlmKey', 'imageLlmModel']) settings[key] = typeof settings[key] === 'string' ? settings[key] : '';
     settings.imageLlmTemperature = Number.isFinite(Number(settings.imageLlmTemperature)) ? Math.min(2, Math.max(0, Number(settings.imageLlmTemperature))) : 0.8;
     settings.imageLlmMaxTokens = Number(settings.imageLlmMaxTokens) > 0 ? Math.min(64000, Math.round(Number(settings.imageLlmMaxTokens))) : 4096;

@@ -24,7 +24,10 @@ function cleanMethods(list) {
 
 export function interactionMethodsFromRecord(record) {
     if (!record || !Array.isArray(record.m) || !Number.isInteger(record.pick)) return [];
-    return cleanMethods(record.m[record.pick - 1]);
+    if (record.pick < 1 || record.pick > record.m.length) return [];
+    const selected = record.m[record.pick - 1];
+    // 同一候选既可能自报单个标签，也可能自报标签数组；仍只读取 pick 指定的那项。
+    return cleanMethods(typeof selected === 'string' ? [selected] : selected);
 }
 
 // 挂载时调用；同一面只记一次（按归属键或 VS 原文），重新挂载不会把旧面重新排到最新。

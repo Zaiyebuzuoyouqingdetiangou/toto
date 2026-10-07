@@ -1,4 +1,4 @@
-import { getRecentPaletteCooldown, getActivePaletteCooldown } from './storage.js?rmv=1.66.8';
+import { getRecentPaletteCooldown, getActivePaletteCooldown } from './storage.js?rmv=1.67.18';
 
 const SAFE_PALETTE_LABEL_RE = /^(?:(?:低|中|高)明度)?(?:暖|冷|中性)?(?:红|橙|黄|绿|青|蓝|紫|粉|中性色)?(?:(?:低|中|高)饱和)?$/;
 

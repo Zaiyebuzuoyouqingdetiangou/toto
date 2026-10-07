@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=1.66.8');
+@import url('./settings-ui.css?rmv=1.67.18');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -609,6 +609,22 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
 #chat details[open] > summary[data-rm-title-chrome="true"]::before {
   transform: rotate(90deg) !important;
   margin-top: 0.42em !important;
+}
+/* External titles remain native summaries: hide only their disclosure marks,
+ * keeping click/keyboard collapse and authored controls inside the scene. */
+#chat .rabbit-mirror-external-shell[data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"] > summary {
+  list-style: none !important;
+}
+#chat .rabbit-mirror-external-shell[data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"] > summary::-webkit-details-marker {
+  display: none !important;
+}
+#chat .rabbit-mirror-external-shell[data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"] > summary::marker {
+  content: none !important;
+  font-size: 0 !important;
+}
+#chat .rabbit-mirror-external-shell[data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"] > summary[data-rm-title-chrome="true"]::before {
+  content: none !important;
+  display: none !important;
 }
 #chat span[data-rm-title-label] {
   flex: 0 1 auto !important;
@@ -1754,3 +1770,13 @@ dialog[data-rm-theater-favorite-library] {
 [data-rm-animation-suspended]::after,
 [data-rm-animation-suspended] *::before,
 [data-rm-animation-suspended] *::after { animation-play-state: paused !important; }
+
+/* 标题栏的三角箭头全部去掉（外置框、跟随正文和独立 API 都一样）；点标题照常展开或收起。 */
+#chat summary[data-rm-title-chrome="true"]::before,
+#chat details[open] > summary[data-rm-title-chrome="true"]::before {
+  content: none !important;
+  display: none !important;
+  border: 0 !important;
+  width: 0 !important;
+  margin: 0 !important;
+}

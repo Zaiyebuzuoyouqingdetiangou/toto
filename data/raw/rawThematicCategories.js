@@ -3,7 +3,7 @@ export const RAW_THEMATIC_CATEGORIES = String.raw`
 
 ### 🟥 A. 色情与感官 (Erotica & Sensuality)
 - **A.0 综合/其他 (General NSFW)**: 广义性爱场景。
-- **A.1 官能色情 (Physical Erotica)**: 聚焦物理性爱、动作与反应。
+- **A.1 官能描写 (Physical Erotica)**: 聚焦物理性爱、动作与反应。
   - **A.1.1 感官游戏**: 利用温度、材质、味觉等进行感官剥夺或超载。
     - **A.1.1.1 感官遮断 (Sensory Deprivation)**: 系统性剥夺一种或多种感官（如蒙眼、耳塞、触觉束缚），迫使注意力集中于未被剥夺的感官，从而极度放大残余感官接收到的刺激与快感。
   - **A.1.2 恋物癖**: 对 {{user}} 的特定物品产生强烈性欲。

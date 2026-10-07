@@ -1,34 +1,35 @@
-import { SETTINGS_UI_VERSION, RUNTIME_VERSION, escapeHtml, isCurrentRuntime } from './ui/runtime.js?rmv=1.66.8';
-import { fetchImageLlmModels, imageLlmStatusText, importCurrentConnectionForImageLlm, listImageLlmProfiles, selectImageLlmProfile } from './imageLlm.js?rmv=1.66.8';
-import { buildRabbitMirrorSettingsDialogHtml, buildWorldInfoPromptModalHtml, buildTagFilterModalHtml } from './ui/settingsTemplate.js?rmv=1.66.8';
-import { attachIndependentApiDiagnosticListener, attachTokenMeterListener, renderIndependentApiDiagnostic, renderTokenMeter } from './ui/tokenMeter.js?rmv=1.66.8';
-import { attachWorldInfoBooksListener, clearCollapsedAllWorldInfoBookRows, clearPulledWorldInfoBooks, installWorldInfoBookVisibilityObserver, pullAllWorldInfoBooks, renderWorldInfoBookSettings, resetWorldInfoBookUiState } from './ui/worldInfoBooks.js?rmv=1.66.8';
-import { mountGenerationEvidenceUi, destroyGenerationEvidenceUi } from './ui/generationEvidence.js?rmv=1.66.8';
-import { installTtDiagnosticEntry } from './ui/ttDiagnostics.js?rmv=1.66.8';
+import { SETTINGS_UI_VERSION, RUNTIME_VERSION, escapeHtml, isCurrentRuntime } from './ui/runtime.js?rmv=1.67.18';
+import { chatu8Status } from './chatu8Image.js?rmv=1.67.18';
+import { fetchImageLlmModels, imageLlmStatusText, importCurrentConnectionForImageLlm, listImageLlmProfiles, selectImageLlmProfile } from './imageLlm.js?rmv=1.67.18';
+import { buildRabbitMirrorSettingsDialogHtml, buildWorldInfoPromptModalHtml, buildTagFilterModalHtml } from './ui/settingsTemplate.js?rmv=1.67.18';
+import { attachIndependentApiDiagnosticListener, attachTokenMeterListener, renderIndependentApiDiagnostic, renderTokenMeter } from './ui/tokenMeter.js?rmv=1.67.18';
+import { attachWorldInfoBooksListener, clearCollapsedAllWorldInfoBookRows, clearPulledWorldInfoBooks, installWorldInfoBookVisibilityObserver, pullAllWorldInfoBooks, renderWorldInfoBookSettings, resetWorldInfoBookUiState } from './ui/worldInfoBooks.js?rmv=1.67.18';
+import { mountGenerationEvidenceUi, destroyGenerationEvidenceUi } from './ui/generationEvidence.js?rmv=1.67.18';
+import { installTtDiagnosticEntry } from './ui/ttDiagnostics.js?rmv=1.67.18';
 
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.66.8';
-import { listHostWorldBooks, readHostWorldBook } from './externalWorldBook/hostReader.js?rmv=1.66.8';
-import { refreshFacePagerPositions } from './facePagerPlacement.js?rmv=1.66.8';
-import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, RABBIT_MIRROR_BANNED_WORD_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, normalizeRabbitMirrorBannedWords, updateSettings, resetSettings } from './settings.js?rmv=1.66.8';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS } from './independentRequestBudget.js?rmv=1.66.8';
-import { clearLastCombo, getCurrentChatKey } from './storage.js?rmv=1.66.8';
-import { normalizeEarlyBodyTags } from './earlyBodyTags.js?rmv=1.66.8';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.66.8';
-import { applyRabbitMirrorHostSurface } from './hostCompatibility.js?rmv=1.66.8';
-import { DEFAULT_BEHAVIOR_RULE_TEXT, resolveBehaviorRuleText } from './behaviorRules.js?rmv=1.66.8';
-import { clearRecentIndependentTransportDiagnostics } from './transportDiagnostics.js?rmv=1.66.8';
-import { parseIndependentAdvancedOptions } from './advancedRequestOptions.js?rmv=1.66.8';
-import { parseRabbitMirrorReplacementLines, formatRabbitMirrorReplacementLines } from './bannedWords.js?rmv=1.66.8';
-import { clearRabbitMirrorPrompt, startManualEntryDiagnostic, stopManualEntryDiagnostic, getManualEntryDiagnosticState } from './injector.js?rmv=1.66.8';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.66.8';
-import { configureMaintenanceAutoSafeMode, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.66.8';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.66.8';
-import { fetchIndependentModels, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentModelListDiagnostic, hydrateIndependentFavoriteHtml, importCurrentSillyTavernConnection, listMissingIndependentRetryFloors, refreshRabbitMirrorGenerationMode, resyncMissingIndependentRetryShells, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.66.8';
-import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.66.8';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.66.8';
-import { THEATER_FAVORITES_CHANGED_EVENT, deleteTheaterFavorite, groupTheaterFavoritesByCharacter, listTheaterFavorites, openTheaterFavoriteLibrary, openTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.66.8';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.67.18';
+import { listHostWorldBooks, readHostWorldBook } from './externalWorldBook/hostReader.js?rmv=1.67.18';
+import { refreshFacePagerPositions } from './facePagerPlacement.js?rmv=1.67.18';
+import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, RABBIT_MIRROR_BANNED_WORD_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, normalizeRabbitMirrorBannedWords, updateSettings, resetSettings } from './settings.js?rmv=1.67.18';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS } from './independentRequestBudget.js?rmv=1.67.18';
+import { clearLastCombo, getCurrentChatKey } from './storage.js?rmv=1.67.18';
+import { normalizeEarlyBodyTags } from './earlyBodyTags.js?rmv=1.67.18';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.67.18';
+import { applyRabbitMirrorHostSurface } from './hostCompatibility.js?rmv=1.67.18';
+import { DEFAULT_BEHAVIOR_RULE_TEXT, resolveBehaviorRuleText } from './behaviorRules.js?rmv=1.67.18';
+import { clearRecentIndependentTransportDiagnostics } from './transportDiagnostics.js?rmv=1.67.18';
+import { parseIndependentAdvancedOptions } from './advancedRequestOptions.js?rmv=1.67.18';
+import { parseRabbitMirrorReplacementLines, formatRabbitMirrorReplacementLines } from './bannedWords.js?rmv=1.67.18';
+import { clearRabbitMirrorPrompt, startManualEntryDiagnostic, stopManualEntryDiagnostic, getManualEntryDiagnosticState } from './injector.js?rmv=1.67.18';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.67.18';
+import { configureMaintenanceAutoSafeMode, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.67.18';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.67.18';
+import { fetchIndependentModels, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentModelListDiagnostic, hydrateIndependentFavoriteHtml, importCurrentSillyTavernConnection, listMissingIndependentRetryFloors, refreshRabbitMirrorGenerationMode, resyncMissingIndependentRetryShells, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.67.18';
+import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.67.18';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.67.18';
+import { THEATER_FAVORITES_CHANGED_EVENT, deleteTheaterFavorite, groupTheaterFavoritesByCharacter, listTheaterFavorites, openTheaterFavoriteLibrary, openTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.67.18';
 
-import { mountSettingsAppearance, destroySettingsAppearance } from './settingsAppearance.js?rmv=1.66.8';
+import { mountSettingsAppearance, destroySettingsAppearance } from './settingsAppearance.js?rmv=1.67.18';
 
 let uiMountRetryTimer = 0;
 let uiMountRetryCount = 0;
@@ -77,6 +78,14 @@ function renderImageLlmProfiles(settings = getSettings()) {
     select.empty().append($('<option>').val('').text(rows.length ? '选择一个已配置的酒馆连接' : '没有可复用的酒馆连接（需要 SillyTavern 1.18.0 及以上）'));
     for (const row of rows) select.append($('<option>').val(row.id).text([row.name, row.model, row.api].filter(Boolean).join(' · ')));
     if (current && rows.some(row => row.id === current)) select.val(current);
+}
+
+function renderImageBackendStatus(settings = getSettings()) {
+    const line = $('#rh_image_backend_status');
+    if (!line.length) return;
+    if (settings.imageBackend !== 'chatu8') { line.text('沿用柏宝绘里已经配好的模型、接口和出图设置。'); return; }
+    const status = chatu8Status();
+    line.text(status.configured ? `智绘姬已就绪（模式：${status.mode}），沿用智绘姬里已经配好的模型、接口和出图设置。` : status.reason);
 }
 
 function renderVisualPromptStatus(settings = getSettings()) {
@@ -288,7 +297,7 @@ async function refreshMemoryWorldBookDirectory() {
     memoryWorldBookDirectoryBusy = true;
     renderMemoryWorldBookBinding();
     try {
-        const { listMemoryWorldBooks, normalizeMemoryWorldBookId } = await import('./memoryWorldBook.js?rmv=1.66.8');
+        const { listMemoryWorldBooks, normalizeMemoryWorldBookId } = await import('./memoryWorldBook.js?rmv=1.67.18');
         if (!isAlive()) return;
         const books = await listMemoryWorldBooks();
         if (!isAlive()) return;
@@ -328,7 +337,7 @@ function memoryTestMessage(result) {
 export function initRabbitMirrorUI() {
     if (!isCurrentRuntime()) return;
     // 扩展面板里更新后，磁盘 manifest 变新就刷新酒馆，避免还停在旧页面。
-    void import('./extensionUpdater.js?rmv=1.66.8')
+    void import('./extensionUpdater.js?rmv=1.67.18')
         .then(updater => updater.setupRabbitMirrorExtensionReloadWatch())
         .catch(error => console.warn('[RabbitMirror] 更新后自动刷新没有挂上', error));
     const finishUiInit = globalThis.__rabbitMirrorPerfDiag?.begin?.('ui.initCall', { retry: uiMountRetryCount }, 0);
@@ -614,6 +623,8 @@ export function initRabbitMirrorUI() {
     $(`input[name="rh_visual_scenery_mode"][value="${visualSceneryMode}"]`).prop('checked', true);
     checked('#rh_image_enabled', settings.imageEnabled);
     checked('#rh_builtin_image', settings.builtinImageEnabled === true);
+    $('#rh_image_backend').val(settings.imageBackend === 'chatu8' ? 'chatu8' : 'baibai');
+    renderImageBackendStatus(settings);
     checked('#rh_image_llm_enabled', settings.imageLlmEnabled === true);
     $('#rh_image_llm_base').val(settings.imageLlmBaseUrl || '');
     $('#rh_image_llm_key').val(settings.imageLlmKey || '');
@@ -724,7 +735,7 @@ export function initRabbitMirrorUI() {
         if (!revision) return;
         const sequence = appearanceFileSequence;
         try {
-            const module = await import('./appearanceReference.js?rmv=1.66.8');
+            const module = await import('./appearanceReference.js?rmv=1.67.18');
             if (!appearanceOwnerIsCurrent() || !appearanceUIOwner.open || sequence !== appearanceFileSequence || appearanceSaving) return;
             await module.loadAppearanceReferenceMaterial(revision);
             if (!appearanceOwnerIsCurrent() || !appearanceUIOwner.open || sequence !== appearanceFileSequence || appearanceSaving || getSettings().appearanceReferenceRevision !== revision) return;
@@ -775,7 +786,7 @@ export function initRabbitMirrorUI() {
         const retainRevision = String(getSettings().appearanceReferenceRevision || '');
         let raw = String($('#rh_appearance_reference_input').val() || '');
         try {
-            const module = await import('./appearanceReference.js?rmv=1.66.8');
+            const module = await import('./appearanceReference.js?rmv=1.67.18');
             if (!appearanceOwnerIsCurrent()) return;
             if (String(getSettings().appearanceReferenceRevision || '') !== retainRevision) {
                 appearanceStatus('参考关联已改变，本次保存已停止；未写入摘要，也未覆盖当前设置。请核对当前关联后再保存。');
@@ -859,7 +870,7 @@ export function initRabbitMirrorUI() {
         if (!quickStart.open || guideLoading || guideCleanup || guideDisposed) return;
         guideLoading = true;
         try {
-            const module = await import('./quickStart.js?rmv=1.66.8');
+            const module = await import('./quickStart.js?rmv=1.67.18');
             if (guideDisposed || !quickStart.isConnected || !isCurrentRuntime()) return;
             guideCleanup = module.mountRabbitMirrorQuickStart({
                 root: document.getElementById('rabbit_mirror_theater_settings'),
@@ -1678,6 +1689,7 @@ export function initRabbitMirrorUI() {
         scheduleSettingsToolsRefresh();
     });
     $('#rh_builtin_image').on('change', e => updateSettings({ builtinImageEnabled: e.target.checked === true }));
+    $('#rh_image_backend').on('change', e => { updateSettings({ imageBackend: e.target.value === 'chatu8' ? 'chatu8' : 'baibai' }); renderImageBackendStatus(); });
     // 生图 LLM：独立的“写画面提示词”连接，和副 API 分开保存。
     const refreshImageLlmStatus = () => $('#rh_image_llm_status').text(imageLlmStatusText(getSettings()));
     $('#rh_image_llm_enabled').on('change', e => { updateSettings({ imageLlmEnabled: e.target.checked === true }); refreshImageLlmStatus(); });
@@ -1754,7 +1766,7 @@ export function initRabbitMirrorUI() {
     $('#rh_image_status_refresh').on('click', async () => {
         const output = document.getElementById('rh_image_provider_status');
         try {
-            const { getImageBackendStatus } = await import('./baibaiImage.js?rmv=1.66.8');
+            const { getImageBackendStatus } = await import('./baibaiImage.js?rmv=1.67.18');
             const status = await getImageBackendStatus();
             output.textContent = status.configured ? `柏宝绘已连接 · ${status.backend || ''} ${status.model || ''}` : (status.reason || '柏宝绘尚未配置，请先安装并配置柏宝绘。');
         } catch { output.textContent = '无法读取柏宝绘连接，请检查插件是否已加载并完成配置。'; }
@@ -1850,7 +1862,7 @@ export function initRabbitMirrorUI() {
             for (const key of Object.keys(libraryEntryViews)) document.getElementById(key).disabled = true;
             button.textContent = '正在加载…';
             try {
-                const module = await import('./externalWorldBook/importWizard.js?rmv=1.66.8');
+                const module = await import('./externalWorldBook/importWizard.js?rmv=1.67.18');
                 if (!isCurrentRuntime() || !button.isConnected) return;
                 module.openExternalWorldBookImportWizard?.({ initialView });
             } catch (error) {
@@ -2099,7 +2111,7 @@ export function initRabbitMirrorUI() {
             if (page === 'books') renderWorldInfoBookSettings({ current: true, all: false });
             if (page === 'preferences') { renderBlacklistSettings(); renderFavoriteSettings(); void renderTheaterFavoriteSettings(); }
             if (page === 'library') {
-                void import('./externalWorldBook/importWizard.js?rmv=1.66.8').then(module => {
+                void import('./externalWorldBook/importWizard.js?rmv=1.67.18').then(module => {
                     module.mountMotherLibraryManager?.(document.getElementById('rh_external_inline_manage'));
                 });
             }
