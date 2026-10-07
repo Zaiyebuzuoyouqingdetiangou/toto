@@ -1,10 +1,10 @@
-import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt, destroyIndependentGenerationIntentBridge, initIndependentGenerationIntentBridge, prewarmRabbitMirrorGenerationRuntime } from './src/injector.js?rmv=1.67.18';
-import { clearLastCombo } from './src/storage.js?rmv=1.67.18';
-import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.67.18';
-import { getSettings, updateSettings } from './src/settings.js?rmv=1.67.18';
-import { installRabbitMirrorPublicAPI } from './src/publicApi.js?rmv=1.67.18';
-import { initRabbitMirrorIndependentSecurityGuard, destroyRabbitMirrorIndependentSecurityGuard } from './src/independentSecurityGuard.js?rmv=1.67.18';
-import { initRabbitMirrorHostCompatibility, isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface, getRabbitMirrorEarlyBootstrap, getRabbitMirrorHostCompatibilityStatus } from './src/hostCompatibility.js?rmv=1.67.18';
+import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt, destroyIndependentGenerationIntentBridge, initIndependentGenerationIntentBridge, prewarmRabbitMirrorGenerationRuntime } from './src/injector.js?rmv=1.67.11';
+import { clearLastCombo } from './src/storage.js?rmv=1.67.11';
+import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.67.11';
+import { getSettings, updateSettings } from './src/settings.js?rmv=1.67.11';
+import { installRabbitMirrorPublicAPI } from './src/publicApi.js?rmv=1.67.11';
+import { initRabbitMirrorIndependentSecurityGuard, destroyRabbitMirrorIndependentSecurityGuard } from './src/independentSecurityGuard.js?rmv=1.67.11';
+import { initRabbitMirrorHostCompatibility, isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface, getRabbitMirrorEarlyBootstrap, getRabbitMirrorHostCompatibilityStatus } from './src/hostCompatibility.js?rmv=1.67.11';
 
 // TT requires ownership registration before its first projection, not after the
 // deferred DOM runtime loads. This bridge has no network, timers or heavy imports.
@@ -13,8 +13,8 @@ initRabbitMirrorHostCompatibility();
 // SecurityFix2 leaves only the prompt interceptor and request guard in the parser-critical
 // graph. The 1.8 MiB UI/sanitizer/independent runtime graph is imported after the host has
 // received a paint/idle opportunity, or immediately after explicit RabbitMirror intent.
-const GOLDEN_MERGE_VERSION = '1.67.18';
-const RABBIT_MIRROR_RUNTIME_VERSION = '1.67.18';
+const GOLDEN_MERGE_VERSION = '1.67.11';
+const RABBIT_MIRROR_RUNTIME_VERSION = '1.67.11';
 const earlyBootstrap = getRabbitMirrorEarlyBootstrap();
 let runtimeCancelled = earlyBootstrap?.cancelled === true || (!!globalThis.__rabbitMirrorTtBootstrap && !earlyBootstrap);
 let runtimeClaimed = !runtimeCancelled;
@@ -24,6 +24,8 @@ const runtimeIsActive = () => !runtimeCancelled && (earlyBootstrap
 const disposePublicAPI = runtimeIsActive() ? installRabbitMirrorPublicAPI(runtimeIsActive) : null;
 let deferredRuntimePromise = null;
 let deferredRuntimeModules = null;
+let deferredStartingModules = null;
+const deferredModuleInitializations = new Map();
 let deferredBootTimer = 0;
 let deferredIdleHandle = 0;
 let deferredTtBootTimer = 0;
@@ -73,32 +75,68 @@ function captureDeferredBootBoundary() {
     } catch {}
 }
 
+function canCleanDeferredModule() {
+    const current = globalThis.__rabbitMirrorEnsureDeferredCoreRuntime;
+    return (!current || current === ensureDeferredCoreRuntime) && (earlyBootstrap
+        ? globalThis.__rabbitMirrorTtBootstrap === earlyBootstrap
+        : !globalThis.__rabbitMirrorTtBootstrap);
+}
+
+function initializeDeferredModule(name, module, initialize, destroy) {
+    if (deferredModuleInitializations.has(name)) return deferredModuleInitializations.get(name);
+    const cleanup = () => {
+        if (!canCleanDeferredModule()) return;
+        try { module[destroy]?.(); }
+        catch (error) { console.warn(`[RabbitMirror] ${name} startup cleanup failed:`, error); }
+    };
+    const task = Promise.resolve().then(async () => {
+        if (!runtimeIsActive()) return;
+        try {
+            await module[initialize]?.({ isActive: runtimeIsActive });
+            if (!runtimeIsActive()) cleanup();
+        } catch (error) {
+            cleanup();
+            throw error;
+        }
+    }).catch(error => {
+        if (deferredModuleInitializations.get(name) === task) deferredModuleInitializations.delete(name);
+        throw error;
+    });
+    deferredModuleInitializations.set(name, task);
+    return task;
+}
+
 async function ensureDeferredCoreRuntime(reason = 'scheduled-idle') {
     if (!runtimeIsActive()) return null;
     if (deferredRuntimeModules) return deferredRuntimeModules;
     if (deferredRuntimePromise) return deferredRuntimePromise;
     deferredRuntimePromise = Promise.all([
-        import('./src/outputSanitizer.js?rmv=1.67.18'),
-        import('./src/visualScanner.js?rmv=1.67.18'),
-        import('./src/independentApi.js?rmv=1.67.18'),
-        import('./src/touchTheater.js?rmv=1.67.18'),
-        import('./src/ui.js?rmv=1.67.18'),
-        import('./src/composerClearance.js?rmv=1.67.18'),
+        import('./src/outputSanitizer.js?rmv=1.67.11'),
+        import('./src/visualScanner.js?rmv=1.67.11'),
+        import('./src/independentApi.js?rmv=1.67.11'),
+        import('./src/touchTheater.js?rmv=1.67.11'),
+        import('./src/ui.js?rmv=1.67.11'),
+        import('./src/composerClearance.js?rmv=1.67.11'),
     ]).then(async ([output, visual, independent, touch, ui, clearance]) => {
         if (!runtimeIsActive()) return null;
-        deferredRuntimeModules = { output, visual, independent, touch, ui, clearance };
-        output.initOutputSanitizer?.();
-        visual.initVisualScanner?.();
-        await independent.initIndependentRabbitMirror?.({ isActive: runtimeIsActive });
-        if (!runtimeIsActive()) {
-            // Our ordinary disable already releases resources. If superseded,
-            // never run selector/global-based cleanup against the new owner.
-            if (!earlyBootstrap || globalThis.__rabbitMirrorTtBootstrap === earlyBootstrap) independent.destroyIndependentRabbitMirror?.();
-            return null;
-        }
-        touch.initTouchTheaterBridge?.();
-        ui.initRabbitMirrorUI?.();
-        clearance.initRabbitMirrorComposerClearance?.();
+        const modules = { output, visual, independent, touch, ui, clearance };
+        // Loaded modules remain available to disable/cleanup, but do not imply
+        // readiness. Keep successful/pending initializers when another one fails.
+        deferredStartingModules = modules;
+        await Promise.all([
+            initializeDeferredModule('output', output, 'initOutputSanitizer', 'destroyOutputSanitizer'),
+            initializeDeferredModule('visual', visual, 'initVisualScanner', 'destroyVisualScanner'),
+            initializeDeferredModule('independent', independent, 'initIndependentRabbitMirror', 'destroyIndependentRabbitMirror'),
+        ]);
+        if (!runtimeIsActive()) return null;
+        await initializeDeferredModule('touch', touch, 'initTouchTheaterBridge', 'destroyTouchTheaterBridge');
+        if (!runtimeIsActive()) return null;
+        await initializeDeferredModule('ui', ui, 'initRabbitMirrorUI', 'destroyRabbitMirrorUI');
+        if (!runtimeIsActive()) return null;
+        await initializeDeferredModule('clearance', clearance, 'initRabbitMirrorComposerClearance', 'destroyRabbitMirrorComposerClearance');
+        if (!runtimeIsActive()) return null;
+        deferredRuntimeModules = modules;
+        deferredStartingModules = null;
         console.log(`[RabbitMirror] deferred core ready (${reason}) via ${GOLDEN_MERGE_VERSION}`);
         return deferredRuntimeModules;
     }).catch(error => {
@@ -321,7 +359,7 @@ function loadOptional(name, specifier, init) {
 }
 
 function loadProfileSelector() {
-    return ensureDeferredCoreRuntime('settings-intent').then(modules => loadOptional('profileSelector', './src/independentProfileSelectorHotfix.js?rmv=1.67.18', mod => {
+    return ensureDeferredCoreRuntime('settings-intent').then(modules => loadOptional('profileSelector', './src/independentProfileSelectorHotfix.js?rmv=1.67.11', mod => {
         mod.initRabbitMirrorIndependentProfileSelectorHotfix?.({
             getSettings,
             updateSettings,
@@ -337,13 +375,13 @@ function loadMirrorVisualCompat() {
     // stable idle boundary or by an explicit RabbitMirror settings/maintenance action.
     if (!deferredRuntimeModules) return Promise.resolve(null);
     return Promise.all([
-        loadOptional('checkedSelectorRepair', './src/checkedSelectorRepair.js?rmv=1.67.18', mod => mod.initRabbitMirrorCheckedSelectorRepair?.()),
-        loadOptional('renderedVisualFeedback', './src/renderedVisualFeedbackHotfix.js?rmv=1.67.18', mod => mod.initRabbitMirrorRenderedVisualFeedbackHotfix?.()),
+        loadOptional('checkedSelectorRepair', './src/checkedSelectorRepair.js?rmv=1.67.11', mod => mod.initRabbitMirrorCheckedSelectorRepair?.()),
+        loadOptional('renderedVisualFeedback', './src/renderedVisualFeedbackHotfix.js?rmv=1.67.11', mod => mod.initRabbitMirrorRenderedVisualFeedbackHotfix?.()),
     ]);
 }
 
 function loadMaintenanceCompat() {
-    return ensureDeferredCoreRuntime('maintenance-intent').then(() => loadOptional('maintenanceRecommendation', './src/maintenanceRecommendationHotfix.js?rmv=1.67.18', mod => mod.initRabbitMirrorMaintenanceRecommendationHotfix?.()));
+    return ensureDeferredCoreRuntime('maintenance-intent').then(() => loadOptional('maintenanceRecommendation', './src/maintenanceRecommendationHotfix.js?rmv=1.67.11', mod => mod.initRabbitMirrorMaintenanceRecommendationHotfix?.()));
 }
 
 function mobileLike() {
@@ -353,7 +391,7 @@ function mobileLike() {
 
 function loadMobileModalCompat() {
     if (!mobileLike()) return Promise.resolve(null);
-    return ensureDeferredCoreRuntime('mobile-settings-intent').then(() => loadOptional('mobileModal', './src/mobileModalHotfix.js?rmv=1.67.18', mod => mod.initRabbitMirrorMobileModalHotfix?.()));
+    return ensureDeferredCoreRuntime('mobile-settings-intent').then(() => loadOptional('mobileModal', './src/mobileModalHotfix.js?rmv=1.67.11', mod => mod.initRabbitMirrorMobileModalHotfix?.()));
 }
 
 function isRabbitMirrorSurface(target) {
@@ -449,7 +487,7 @@ async function ensureExternalDiagnostics() {
     if (externalDiagnosticsApi) return externalDiagnosticsApi;
     if (externalDiagnosticsPromise) return externalDiagnosticsPromise;
     const revision = ++externalDiagnosticsOperationRevision;
-    const loadPromise = import('./src/externalDiagnostics.js?rmv=1.67.18').then(mod => {
+    const loadPromise = import('./src/externalDiagnostics.js?rmv=1.67.11').then(mod => {
         if (!runtimeIsActive() || !externalDiagnosticsDesiredEnabled || revision !== externalDiagnosticsOperationRevision) return null;
         externalDiagnosticsModule = mod;
         externalDiagnosticsApi = mod.initRabbitMirrorExternalDiagnostics?.() || null;
@@ -471,7 +509,7 @@ function disableExternalDiagnostics() {
 }
 
 function clearDeferredGenerationSnapshots() {
-    void import('./src/generationGuard.js?rmv=1.67.18')
+    void import('./src/generationGuard.js?rmv=1.67.11')
         .then(mod => {
             // Disable may await this import while a newer installation takes
             // ownership. Do not clear that owner's shared snapshot/attempt keys.
@@ -542,12 +580,16 @@ export function onDisable() {
     destroyFeedbackCatPromptSync();
     destroyIndependentGenerationIntentBridge({ clearIntents: true });
     clearRabbitMirrorPrompt();
-    deferredRuntimeModules?.ui?.destroyRabbitMirrorUI?.();
-    deferredRuntimeModules?.clearance?.destroyRabbitMirrorComposerClearance?.();
-    deferredRuntimeModules?.output?.destroyOutputSanitizer?.();
-    deferredRuntimeModules?.visual?.destroyVisualScanner?.();
-    deferredRuntimeModules?.independent?.destroyIndependentRabbitMirror?.();
-    deferredRuntimeModules?.touch?.destroyTouchTheaterBridge?.();
+    const modules = deferredRuntimeModules || deferredStartingModules;
+    modules?.ui?.destroyRabbitMirrorUI?.();
+    modules?.clearance?.destroyRabbitMirrorComposerClearance?.();
+    modules?.output?.destroyOutputSanitizer?.();
+    modules?.visual?.destroyVisualScanner?.();
+    modules?.independent?.destroyIndependentRabbitMirror?.();
+    modules?.touch?.destroyTouchTheaterBridge?.();
+    deferredRuntimeModules = null;
+    deferredStartingModules = null;
+    deferredModuleInitializations.clear();
     destroyRabbitMirrorIndependentSecurityGuard();
     if (globalThis.rabbitMirrorGenerateInterceptor === rabbitMirrorGenerateInterceptor ||
         globalThis.rabbitMirrorGenerateInterceptor === earlyBootstrap?.interceptor) delete globalThis.rabbitMirrorGenerateInterceptor;
