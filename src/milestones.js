@@ -59,11 +59,11 @@ function showMilestoneCard(count, firstAt) {
         return node;
     };
     row.append(
-        button('翻翻纪念册', () => {
+        button('打开收藏夹', () => {
             card.remove();
-            void Promise.all([import('./theaterFavorites.js?rmv=1.67.13'), import('./independentApi.js?rmv=1.67.13')])
-                .then(([favorites, api]) => favorites.openTheaterFavoriteAlbum((container, record) => api.hydrateIndependentFavoriteHtml(container, record)))
-                .catch(() => globalThis.toastr?.warning?.('纪念册暂时打不开，可以从工具菜单的收藏夹里进入。'));
+            void Promise.all([import('./theaterFavorites.js?rmv=1.67.18'), import('./independentApi.js?rmv=1.67.18')])
+                .then(([favorites, api]) => favorites.openTheaterFavoriteLibrary((container, record) => api.hydrateIndependentFavoriteHtml(container, record)))
+                .catch(() => globalThis.toastr?.warning?.('收藏夹暂时打不开，可以从工具菜单里进入。'));
         }),
         button('收下', () => card.remove()),
     );
