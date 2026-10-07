@@ -1,5 +1,5 @@
-import { generateViaChatu8 } from './chatu8Image.js?rmv=1.67.6';
-import { getSettings } from './settings.js?rmv=1.67.6';
+import { generateViaChatu8 } from './chatu8Image.js?rmv=1.67.7';
+import { getSettings } from './settings.js?rmv=1.67.7';
 function failure(code, message) { return Object.assign(new Error(message), { code }); }
 
 function imageApi() {

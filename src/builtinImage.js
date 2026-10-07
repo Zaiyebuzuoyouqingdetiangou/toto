@@ -1,8 +1,8 @@
-import { getSettings } from './settings.js?rmv=1.67.6';
-import { generateMirrorImage } from './baibaiImage.js?rmv=1.67.6';
-import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.6';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.6';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.6';
+import { getSettings } from './settings.js?rmv=1.67.7';
+import { generateMirrorImage } from './baibaiImage.js?rmv=1.67.7';
+import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.7';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.7';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.7';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -60,10 +60,24 @@ function readSaved(key) {
     catch { return { broken: true }; }
 }
 
-function fitFrameImage(image) {
-    // Keep the generated frame/layout; show the whole image without stretching or cropping.
-    // Apply in place to restored images too, without regenerating or replacing their nodes.
-    image.style.setProperty('object-fit', 'contain', 'important');
+function frameImageSize(frame) {
+    const width = frame.clientWidth;
+    const height = frame.clientHeight;
+    if (Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0) {
+        return width >= height ? 'landscape' : 'portrait';
+    }
+    // Hidden frames can still declare their intended shape. Unknown geometry keeps the backend default.
+    const view = frame.ownerDocument?.defaultView;
+    const ratio = String(view?.getComputedStyle?.(frame)?.aspectRatio
+        || frame.style?.getPropertyValue('aspect-ratio') || '').trim().replace(/^auto\s+/, '');
+    const parts = ratio.split('/').map(part => Number(part.trim()));
+    if (parts.length > 2 || parts.some(value => !Number.isFinite(value) || value <= 0)) return undefined;
+    return parts[0] >= (parts[1] || 1) ? 'landscape' : 'portrait';
+}
+
+function fitFrameImage(image, record) {
+    // Only newly generated records opt into filling the frame; legacy saves retain their display policy.
+    image.style.setProperty('object-fit', record?.builtinImageFit === 'cover' ? 'cover' : 'contain', 'important');
     image.style.setProperty('object-position', 'center', 'important');
 }
 
@@ -81,7 +95,7 @@ function paint(frame, record) {
         image.style.cssText = 'display:block;width:100%;height:100%;';
         frame.prepend(image);
     }
-    fitFrameImage(image);
+    fitFrameImage(image, record);
     image.src = url;
     return true;
 }
@@ -141,9 +155,10 @@ function startJob(key, prompt, frame) {
     const existing = inflight.get(key);
     if (existing) return existing;
     const job = (async () => {
+        const size = frameImageSize(frame);
         const settings = getSettings();
         const planned = imageLlmConfigured(settings) ? await planWithImageLlm(frame) : null;
-        const record = await generateMirrorImage(planned ? {
+        const generated = await generateMirrorImage(planned ? {
             prompt: String(planned.prompt || planned.flatPrompt || planned.nl || ''),
             flatPrompt: String(planned.flatPrompt || planned.prompt || ''),
             nl: String(planned.nl || ''),
@@ -157,8 +172,10 @@ function startJob(key, prompt, frame) {
             promptFormat: settings.imagePromptFormat,
         }, {
             character: characterGroup(),
+            size,
             assertCurrent: () => anyWaiterConnected(key),
         });
+        const record = { ...generated, builtinImageFit: 'cover' };
         try { saveMirrorImage(key, record); }
         catch (error) { console.warn('[RabbitMirror] 内置生图已画成，但没能写入本机存档', error); }
         return record;
@@ -170,10 +187,7 @@ function startJob(key, prompt, frame) {
 
 async function fillFrame(root, frame) {
     const existingImage = frame.querySelector?.('img[data-rm-draw-result][src]');
-    if (existingImage) {
-        fitFrameImage(existingImage);
-        return;
-    }
+    if (existingImage) return;
     const prompt = readPrompt(frame);
     if (!prompt) return;
     const key = storageKey(root, frame, prompt);

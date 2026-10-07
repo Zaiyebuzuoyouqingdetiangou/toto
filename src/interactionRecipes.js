@@ -1,5 +1,5 @@
 // Read-only legacy recipe decoding and observed behavior history. No draw pool or generation templates.
-import { INTERACTION_HISTORY_TYPES, INTERACTION_RECIPE_REPLACEMENTS } from '../data/structured/interactionIndex.js?rmv=1.67.6';
+import { INTERACTION_HISTORY_TYPES, INTERACTION_RECIPE_REPLACEMENTS } from '../data/structured/interactionIndex.js?rmv=1.67.7';
 
 const BY_ID = new Map(INTERACTION_HISTORY_TYPES.map(recipe => [recipe.id, recipe]));
 
