@@ -1,5 +1,6 @@
-import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.67.11';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.67.11';
+import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.67.13';
+import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=1.67.13';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.67.13';
 const DB_NAME = 'rabbit_mirror_theater_favorites_v1';
 const STORE = 'favorites';
 const DB_VERSION = 1;
@@ -16,6 +17,34 @@ function byteLength(value = '') {
 
 function notifyChanged() {
     try { document.dispatchEvent(new CustomEvent(THEATER_FAVORITES_CHANGED_EVENT)); } catch {}
+    void refreshContinuationCandidates();
+}
+
+// 续篇候选：只取能读出原展现形式的收藏，记下标题、形式和一句梗概，不保留 HTML。
+function continuationGist(html) {
+    const text = String(html || '')
+        .replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<summary[\s\S]*?<\/summary>/gi, ' ')
+        .replace(/<[^>]+>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ').replace(/\s+/g, ' ').trim();
+    return text.slice(0, 60);
+}
+
+function continuationFormatId(html) {
+    const match = /data-rm-face-recipe="([^"]*)"/i.exec(String(html || ''));
+    if (!match) return '';
+    try {
+        const recipe = JSON.parse(match[1].replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&'));
+        return Array.isArray(recipe?.formatIds) && recipe.formatIds.length ? String(recipe.formatIds[0]) : '';
+    } catch { return ''; }
+}
+
+export async function refreshContinuationCandidates() {
+    try {
+        const rows = await listTheaterFavorites();
+        setContinuationCandidates(rows.map(row => ({
+            id: row.id, title: theaterFavoriteDisplayTitle(row).slice(0, 60), formatId: continuationFormatId(row.html),
+            gist: continuationGist(row.html), characterId: String(row.characterId || ''),
+        })).filter(row => row.formatId));
+    } catch { /* 收藏夹不可用时就不出现续篇 */ }
 }
 
 function firstNonEmpty(values) {
@@ -393,6 +422,8 @@ export function captureTheaterFavoriteFromRoot(root, owner = {}) {
 }
 
 let viewer = null;
+// 最近一次打开收藏夹时用的挂载函数；从里程碑卡片直接打开纪念册时沿用它。
+let lastHydrate = null;
 let library = null;
 
 function overlayParent() {
@@ -629,7 +660,96 @@ function renderSolarTermProgress(rows, hydrate) {
     return box;
 }
 
+// 纪念册：把收藏按日期从早到晚排成一本可以翻页的册子。第一页是封面，之后每页一面。
+function albumDateText(ts) {
+    const date = new Date(Number(ts) || Date.now());
+    return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+}
+
+export async function openTheaterFavoriteAlbum(hydrate) {
+    if (typeof hydrate === 'function') lastHydrate = hydrate; else hydrate = lastHydrate;
+    const rows = (await listTheaterFavorites()).slice().sort((a, b) => Number(a.createdAt) - Number(b.createdAt));
+    closeTheaterFavoriteLibrary();
+    const { overlay, card } = overlayCard('兔子镜纪念册');
+    overlay.setAttribute('data-rm-theater-favorite-library', 'true');
+    let page = rows.length;
+    const body = document.createElement('div');
+    body.style.cssText = 'display:grid;gap:12px;text-align:center;min-height:220px;align-content:center;padding:8px 2px;';
+    const nav = document.createElement('div');
+    nav.style.cssText = 'display:flex;gap:8px;align-items:center;justify-content:space-between;margin-top:10px;';
+    const prev = document.createElement('button');
+    const next = document.createElement('button');
+    const counter = document.createElement('span');
+    for (const [button, label] of [[prev, '‹ 上一页'], [next, '下一页 ›']]) {
+        button.type = 'button';
+        button.className = 'menu_button';
+        button.textContent = label;
+        button.style.minHeight = '34px';
+    }
+    counter.style.cssText = 'font-size:12px;opacity:.7;';
+    const top = document.createElement('div');
+    top.style.cssText = 'display:flex;gap:8px;align-items:center;justify-content:space-between;';
+    const heading = document.createElement('strong');
+    heading.textContent = '兔子镜纪念册';
+    heading.style.fontSize = '15px';
+    const back = document.createElement('button');
+    back.type = 'button';
+    back.className = 'menu_button';
+    back.textContent = '回到收藏夹';
+    back.addEventListener('click', () => { void openTheaterFavoriteLibrary(hydrate); });
+    top.append(heading, back);
+    const text = (tag, value, css) => { const node = document.createElement(tag); node.textContent = value; node.style.cssText = css; return node; };
+    const paint = () => {
+        body.replaceChildren();
+        if (!rows.length) {
+            body.append(text('p', '还没有收藏。点标题旁的星标收下喜欢的那一面，它就会出现在这里。', 'margin:0;opacity:.75;font-size:13px;line-height:1.6;'));
+        } else if (page === 0) {
+            body.append(
+                text('div', '🐰', 'font-size:40px;line-height:1;'),
+                text('div', '兔子镜纪念册', 'font-size:18px;font-weight:800;'),
+                text('div', `收着 ${rows.length} 面，从 ${albumDateText(rows[0].createdAt)} 开始`, 'font-size:12px;opacity:.75;line-height:1.6;'),
+            );
+        } else {
+            const item = rows[page - 1];
+            const open = document.createElement('button');
+            open.type = 'button';
+            open.className = 'menu_button';
+            open.textContent = '打开这一面';
+            open.style.cssText = 'justify-self:center;min-height:36px;padding:6px 16px;';
+            open.addEventListener('click', () => {
+                void openTheaterFavoriteViewer(item.id, hydrate).catch(error => globalThis.toastr?.warning?.(String(error?.message || '无法打开收藏。')));
+            });
+            body.append(
+                text('div', albumDateText(item.createdAt), 'font-size:12px;letter-spacing:.08em;opacity:.65;'),
+                text('div', theaterFavoriteDisplayTitle(item), 'font-size:17px;font-weight:800;line-height:1.45;overflow-wrap:anywhere;'),
+                text('div', item.characterName ? `和 ${item.characterName}` : '', 'font-size:12px;opacity:.7;'),
+                open,
+            );
+        }
+        prev.disabled = page <= 0;
+        next.disabled = page >= rows.length;
+        counter.textContent = rows.length ? (page === 0 ? '封面' : `${page} / ${rows.length}`) : '';
+    };
+    prev.addEventListener('click', () => { if (page > 0) { page -= 1; paint(); } });
+    next.addEventListener('click', () => { if (page < rows.length) { page += 1; paint(); } });
+    nav.append(prev, counter, next);
+    card.append(top, body, nav);
+    paint();
+    bindOverlayDismiss(overlay, closeTheaterFavoriteLibrary);
+    const keydown = event => {
+        if (event.key === 'Escape') { event.preventDefault(); event.stopImmediatePropagation(); if (viewer) closeTheaterFavoriteViewer(); else closeTheaterFavoriteLibrary(); return; }
+        if (viewer) return;
+        if (event.key === 'ArrowLeft' && page > 0) { page -= 1; paint(); }
+        if (event.key === 'ArrowRight' && page < rows.length) { page += 1; paint(); }
+    };
+    document.addEventListener('keydown', keydown, true);
+    presentOverlay(overlay);
+    library = { overlay, keydown };
+    return rows;
+}
+
 export async function openTheaterFavoriteLibrary(hydrate) {
+    if (typeof hydrate === 'function') lastHydrate = hydrate; else hydrate = lastHydrate;
     const rows = await listTheaterFavorites();
     closeTheaterFavoriteLibrary();
     const { overlay, card } = overlayCard('兔子镜收藏夹');
@@ -644,7 +764,16 @@ export async function openTheaterFavoriteLibrary(hydrate) {
     close.className = 'menu_button';
     close.textContent = '关闭';
     close.addEventListener('click', () => closeTheaterFavoriteLibrary());
-    header.append(title, close);
+    const albumButton = document.createElement('button');
+    albumButton.type = 'button';
+    albumButton.className = 'menu_button';
+    albumButton.textContent = '纪念册';
+    albumButton.disabled = !rows.length;
+    albumButton.addEventListener('click', () => { void openTheaterFavoriteAlbum(hydrate); });
+    const headerButtons = document.createElement('div');
+    headerButtons.style.cssText = 'display:flex;gap:6px;flex:0 0 auto;';
+    headerButtons.append(albumButton, close);
+    header.append(title, headerButtons);
     const note = document.createElement('p');
     note.style.cssText = 'margin:0 0 10px;opacity:.7;font-size:11px;line-height:1.45;';
     note.textContent = '按角色卡分组回看已收藏成品。打开时保留交互，不写入主楼 Prompt。旧收藏没有角色信息时归入「未分类」。';
@@ -706,3 +835,6 @@ export async function openTheaterFavoriteLibrary(hydrate) {
     library = { overlay, keydown };
     return rows;
 }
+
+setContinuationCharacterResolver(() => { try { return String(currentTheaterFavoriteCharacter()?.characterId || ''); } catch { return ''; } });
+setTimeout(() => { void refreshContinuationCandidates(); }, 0);
