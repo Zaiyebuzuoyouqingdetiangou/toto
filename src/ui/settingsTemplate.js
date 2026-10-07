@@ -1,8 +1,8 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.65.7';
-import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.65.7';
-import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.65.7';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.66.8';
+import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.66.8';
+import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.66.8';
 
 export function buildRabbitMirrorSettingsDialogHtml() {
     return `
@@ -436,6 +436,40 @@ export function buildRabbitMirrorSettingsDialogHtml() {
             <div class="rabbit-mirror-subnote" style="margin:-4px 0 8px 0;opacity:.72;font-size:12px;line-height:1.45;">控制随机生成时使用的参考内容多少。默认使用“均衡”。</div>
             <div id="rh_image_settings">
               <label class="checkbox_label"><input id="rh_image_enabled" type="checkbox"> 启用镜面生图</label>
+              <label class="checkbox_label"><input id="rh_builtin_image" type="checkbox"> 启用小剧场内置生图（实验性）</label>
+              <p>默认关闭。开启后，小剧场仍按原来的方式做界面。只有这一面本来会用色块或 SVG 画人物、场景时，才改成图框并写一段画面提示词；生成结束后自动调用一次柏宝绘，把图填进去。不需要画面的面不会生图，也不另请副 API 构思。需要柏宝绘已经连好。</p>
+              <details id="rh_image_llm_block" style="margin:8px 0;padding:9px 10px;border:1px solid color-mix(in srgb,currentColor 16%,transparent);border-radius:9px;">
+                <summary style="cursor:pointer;font-weight:700;font-size:12px;">生图 LLM API</summary>
+                <div style="display:grid;gap:7px;padding-top:8px;">
+                  <label class="checkbox_label"><input id="rh_image_llm_enabled" type="checkbox"> 启用生图 LLM API</label>
+                  <p style="opacity:.72;font-size:11px;line-height:1.5;margin:0;">设置后，手动生图和内置生图的提示词都由它来写。不设置时：手动生图由副 API 单独请求一次；内置生图的提示词在生成小剧场时由副 API 一并写好，不另外请求。</p>
+                  <div class="flex-container" style="gap:7px;flex-wrap:wrap;align-items:center;">
+                    <button id="rh_image_llm_import_current" class="menu_button" type="button" style="font-weight:700;">从酒馆当前连接一键配置</button>
+                    <span id="rh_image_llm_status" style="opacity:.72;font-size:11px;line-height:1.4;">尚未配置</span>
+                  </div>
+                  <div style="font-weight:700;font-size:12px;margin-top:2px;">连接配置</div>
+                  <div class="flex-container" style="gap:6px;align-items:center;flex-wrap:nowrap;">
+                    <select id="rh_image_llm_profile_select" class="text_pole" style="flex:1;min-width:0;" aria-label="生图 LLM 使用的酒馆连接"><option value="">选择一个已配置的酒馆连接</option></select>
+                    <button id="rh_image_llm_profile_refresh" class="menu_button" type="button" title="刷新连接列表" aria-label="刷新连接列表">↻</button>
+                  </div>
+                  <div style="opacity:.66;font-size:11px;line-height:1.45;">可直接指定任意可复用的 Chat Completion 配置；切换后只保存 profile ID / 模型，不复制酒馆 Secrets。</div>
+                  <details>
+                    <summary style="cursor:pointer;font-size:11px;opacity:.7;">手动 OpenAI 兼容接口</summary>
+                    <div style="display:grid;gap:6px;padding-top:7px;">
+                      <input id="rh_image_llm_base" class="text_pole" type="text" inputmode="url" autocapitalize="off" spellcheck="false" placeholder="API 地址">
+                      <input id="rh_image_llm_key" class="text_pole" type="password" autocomplete="off" placeholder="API Key">
+                      <button id="rh_image_llm_use_manual" class="menu_button" type="button">改用这组手动接口</button>
+                    </div>
+                  </details>
+                  <div class="flex-container" style="gap:7px;flex-wrap:wrap;"><button id="rh_image_llm_models" class="menu_button" type="button">拉取模型</button></div>
+                  <select id="rh_image_llm_model_select" class="text_pole" aria-label="生图 LLM 模型列表"><option value="">拉取后可从列表选择</option></select>
+                  <input id="rh_image_llm_model" class="text_pole" type="text" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="模型 ID，也可以直接手动填写">
+                  <div class="flex-container" style="gap:8px;flex-wrap:wrap;align-items:center;">
+                    <label>温度 <input id="rh_image_llm_temperature" class="text_pole" type="number" min="0" max="2" step="0.1" style="width:82px;"></label>
+                    <label>最大输出 <input id="rh_image_llm_max_tokens" class="text_pole" type="number" min="256" max="64000" step="256" style="width:110px;"></label>
+                  </div>
+                </div>
+              </details>
               <p>默认关闭。从每面的小兔子工具入口打开「生图」。首次点击生成时，使用当前副 API 构思一次，再调用柏宝绘出图一次；查看、编辑不调用模型。</p>
               <label>提示词格式 <select id="rh_image_prompt_format" class="text_pole"><option value="nai5-natural">自然语言＋标签（NAI 5）</option><option value="nai45-tags">标签（NAI 4.5）</option></select></label>
               <label for="rh_image_composition">生图构图方式</label><select id="rh_image_composition" class="text_pole" style="min-height:44px;"><option value="scene">场景插画</option><option value="auto">按展现形式演绎／长文本高光</option></select>

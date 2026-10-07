@@ -1,4 +1,4 @@
-import { listHostWorldBooks, readHostWorldBook } from './externalWorldBook/hostReader.js?rmv=1.65.7';
+import { listHostWorldBooks, readHostWorldBook } from './externalWorldBook/hostReader.js?rmv=1.66.8';
 
 const MAX_MEMORY_CHARS = 6000;
 const MAX_MEMORY_ENTRIES = 24;

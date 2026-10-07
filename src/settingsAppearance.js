@@ -1,6 +1,6 @@
 // UI palettes from the user-provided Hearttrace source, by Toto.
 // Presentation only: no generation settings, Prompt, content storage, or network.
-import { closeTheaterFavoriteLibrary, closeTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.65.7';
+import { closeTheaterFavoriteLibrary, closeTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.66.8';
 export const UI_THEMES = Object.freeze([
   {
     "id": "default",
@@ -186,7 +186,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     const subtitle = head.querySelector('small');
     subtitle.replaceWith(versionRow);
     versionRow.append(subtitle);
-    void import('./mirrorUpdateMenu.js?rmv=1.65.7').then(mod => {
+    void import('./mirrorUpdateMenu.js?rmv=1.66.8').then(mod => {
         if (versionRow.isConnected) mod.mountSettingsUpdateChrome(versionRow);
     }).catch(error => console.warn('[RabbitMirror] 设置标题的更新检测没有挂上', error));
     const searchbar = make('div', 'rh-ui-searchbar');
@@ -214,7 +214,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
         books:['settings','使用世界书资料','复用当前聊天本轮已激活的资料，不重新抽取世界书。'],
         memories:['settings','加入共同回忆','让抽到的回忆类内容，有合适的过往资料可参考。'],
         early:['settings','什么时候开始副 API 生成','这是可选项。默认等正文完成后，再生成兔子镜。'],
-        image:['settings','镜面生图','把这一面里的角色与高光画面画出来。手动点击才调用模型。'],
+        image:['settings','镜面生图','可手动生图。实验性内置生图只在本来要画画面时，把色块换成提示词并自动出图。'],
         appearance:['settings','主题与外观','只改变这个设置面板的颜色，不影响小剧场画面。'],
         faces:['play','每一面怎么呈现','先决定是 HTML 还是长文本，再决定一次出几面，以及多面是一次请求还是逐面排队。'],
         draw:['play','怎么挑选题材和形式','先决定是一起抽题材与形式，还是只抽呈现形式。'],
@@ -273,7 +273,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     const connectionNudge=row('settings','connection','还没有配置副 API 模型','选择连接和模型，供兔子镜单独使用。','memory');
     const displayRow=row('settings','display','兔子镜显示模式');
     row('settings','reroll','自动重 roll','空回、报错或缺面时自动再试。关闭后只在手动重说或重新生成正文时再出兔子镜。');
-    row('settings','image','镜面生图','连接柏宝绘、选择提示词格式。','palette');
+    row('settings','image','镜面生图','连接柏宝绘。可手动生图；实验性内置生图只在本来要画画面时，把色块换成提示词并自动出图。','palette');
     move('rh_image_settings','image');
     row('settings','appearance','主题与外观','调整这个面板的颜色。','palette');row('settings','read','它可以参考什么','聊天正文、角色资料、世界书和共同回忆。','memory');
     for(const [key,title,desc,glyph] of [
@@ -443,7 +443,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
             if(typeof root.showModal==='function'){if(!root.open)root.showModal();}
             else root.setAttribute('open','');
             trackViewport();applyTheme();paint();close.focus({preventScroll:true});
-            void import('./mirrorUpdateMenu.js?rmv=1.65.7').then(mod => mod.refreshRabbitMirrorUpdateOnOpen()).catch(error => console.warn('[RabbitMirror] 打开设置时没能检测更新', error));
+            void import('./mirrorUpdateMenu.js?rmv=1.66.8').then(mod => mod.refreshRabbitMirrorUpdateOnOpen()).catch(error => console.warn('[RabbitMirror] 打开设置时没能检测更新', error));
         }else{
             closeTheaterFavoriteViewer();
             closeTheaterFavoriteLibrary();

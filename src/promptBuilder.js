@@ -1,33 +1,33 @@
-import { INTERACTION_SAMPLING_RULE, designCandidatePick, drawDesignCandidate } from './interactionSampling.js?rmv=1.65.7';
-import { driverContractLines, drawDriverOffer, interactionMethodNames, normalizeDriverOffer } from './interactionMethods.js?rmv=1.65.7';
-import { drawUsageOffer, normalizeUsageOffer } from './interactionUsageOffer.js?rmv=1.65.7';
-import { recentInteractionMethods } from './interactionMethodLedger.js?rmv=1.65.7';
-import { usesModelOriginalColors, withoutPaletteRecipe, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.65.7';
-import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=1.65.7';
-import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=1.65.7';
-import { isNearWhitePalette, isNearWhiteContentSurface } from './paletteObservation.js?rmv=1.65.7';
-import { observedOperationFamiliesFor } from './compositionFingerprint.js?rmv=1.65.7';
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.65.7';
-import { expandShuffledOptions } from '../data/raw/rawSegmentLookup.js?rmv=1.65.7';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.65.7';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.65.7';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.65.7';
-import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES, VISUAL_SCENERY_EXPRESSION_RULE, VISUAL_SCENERY_VS_GUIDANCE } from '../data/raw/visualSceneryRules.js?rmv=1.65.7';
-import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.65.7';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.65.7';
-import { getComboHistory, getActivePaletteCooldown } from './storage.js?rmv=1.65.7';
-import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock, recentPaletteExecutionReminder } from './visualDiversityPolicy.js?rmv=1.65.7';
-import { withoutInteractionRecipe, observedInteractionRecipesFor } from './interactionRecipes.js?rmv=1.65.7';
-import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.65.7';
-import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.65.7';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.65.7';
-export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.65.7';
-import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.65.7';
-import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.65.7';
-import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.65.7';
-import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.65.7';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.65.7';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.65.7';
+import { INTERACTION_SAMPLING_RULE, designCandidatePick, drawDesignCandidate } from './interactionSampling.js?rmv=1.66.8';
+import { driverContractLines, drawDriverOffer, interactionMethodNames, normalizeDriverOffer } from './interactionMethods.js?rmv=1.66.8';
+import { drawUsageOffer, normalizeUsageOffer } from './interactionUsageOffer.js?rmv=1.66.8';
+import { recentInteractionMethods } from './interactionMethodLedger.js?rmv=1.66.8';
+import { usesModelOriginalColors, withoutPaletteRecipe, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.66.8';
+import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=1.66.8';
+import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=1.66.8';
+import { isNearWhitePalette, isNearWhiteContentSurface } from './paletteObservation.js?rmv=1.66.8';
+import { observedOperationFamiliesFor } from './compositionFingerprint.js?rmv=1.66.8';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.66.8';
+import { expandShuffledOptions } from '../data/raw/rawSegmentLookup.js?rmv=1.66.8';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.66.8';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.66.8';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.66.8';
+import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES, VISUAL_SCENERY_EXPRESSION_RULE, VISUAL_SCENERY_VS_GUIDANCE } from '../data/raw/visualSceneryRules.js?rmv=1.66.8';
+import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.66.8';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.66.8';
+import { getComboHistory, getActivePaletteCooldown } from './storage.js?rmv=1.66.8';
+import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock, recentPaletteExecutionReminder } from './visualDiversityPolicy.js?rmv=1.66.8';
+import { withoutInteractionRecipe, observedInteractionRecipesFor } from './interactionRecipes.js?rmv=1.66.8';
+import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.66.8';
+import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.66.8';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.66.8';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.66.8';
+import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.66.8';
+import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.66.8';
+import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.66.8';
+import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.66.8';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.66.8';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.66.8';
 
 const THEME_ITEMS = new Map(THEMATIC_CATEGORIES.map(item => [item.id, item]));
 const FORMAT_ITEMS = new Map(PRESENTATION_FORMATS.map(item => [item.id, item]));
@@ -1028,7 +1028,7 @@ function sharedHtmlExecutionReminder(settings, directive) {
     const visualPreferenceLock = compactVisualPreferenceExecutionLock(settings);
     return [
         'HTML 共用短检：首个主体落实两项可见结构证据和真实 CSS；内容承载与操作反馈对应本面条目，完成「对象→操作→可保持第二状态→反馈」交互。360px 下数量群组完整适配、正文不裁切。',
-        '用得出：去掉提示文字也知道从哪里操作；至少走完两步真实的使用过程。',
+        '用得出：去掉提示文字也知道从哪里操作；画出来的每个控件都要做出按下后的结果（例如播放键让唱片转、进度走、歌词滚动），不打算实现的控件就不要画；至少走完两步真实的使用过程。',
         '认得出：去掉标题和栏目名后，仍能一眼认出这是什么媒介；交互作用在媒介自己的部件上。',
         '结果位置：多个节点时，选中后的结果出现在该节点自身的位置，或者直接改变主体（棋子走到那一格、那一格翻开、指针转过去），不汇总到同一块面板；几处结果同时打开时不能互相遮挡文字，挡得住就改成一次只开一处。',
         directiveText ? `点菜优先：${directiveText}` : '',
@@ -1037,7 +1037,21 @@ function sharedHtmlExecutionReminder(settings, directive) {
     ].filter(Boolean).join('\n');
 }
 
-function buildIndependentFinalExecutionLock({ combo, settings, directive, candidateFaces = null, includeExecutionOrder = true, includeCommonRules = true, executionPolicy = '' }) {
+// 与 imageLlm.js 的判断一致；这里内联，避免出题模块牵入连接与网络相关模块。
+function imageLlmReady(settings) {
+    return settings?.imageLlmEnabled === true
+        && !!(String(settings.imageLlmProfileId || '').trim() || String(settings.imageLlmBaseUrl || '').trim())
+        && !!String(settings.imageLlmModel || '').trim();
+}
+
+function builtinImageFrameRule(settings) {
+    if (settings?.builtinImageEnabled !== true) return '';
+    return `内置生图：界面、按钮和文字照旧。只有这一面本来要用色块或 SVG 画人物或场景时，才不要画，改成下面这一个图框，${imageLlmReady(settings) ? '并在框里留一两句这一幕的画面线索（正式提示词由生图 LLM 另写）。' : '并把那一幕写成一段可直接绘制的描述。'}不需要画面、或长文本面，不要放图框。
+<figure data-rm-draw-frame="1" style="display:block;width:100%;margin:0;aspect-ratio:4/3;overflow:hidden;border-radius:12px;"><p data-rm-draw-prompt="1" hidden>人物、动作、场景、光线</p></figure>
+标题和按钮留在图框外。${imageLlmReady(settings) ? 'hidden 里用一两句写这一幕的画面线索，正式提示词由生图 LLM 另写。' : 'hidden 里只写画面。'}`;
+}
+
+function buildIndependentFinalExecutionLock({ combo, settings, directive, candidateFaces = null, includeExecutionOrder = true, includeCommonRules = true, executionPolicy = '', includeBuiltinImage = true }) {
     // The full base prompt already contains the selected-item summaries, presentation embodiment,
     // visual floor, visual/palette/interaction cooldowns, risk correction and output protocol.
     // This near-output lock deliberately repeats only identities + currently active hard reminders.
@@ -1050,6 +1064,7 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive, candid
             '<兔子镜近输出短锁 data-source="independent-api-near-output">',
             pureOrderFaceLock({ longText: combo?.requestedPresentationMode === 'longtext' }, 0),
             `点菜优先：${truncateDirectiveText(directive?.rawDirective || '', 2000)}`,
+            includeBuiltinImage && combo?.requestedPresentationMode !== 'longtext' ? builtinImageFrameRule(settings) : '',
             '直接输出唯一完整 <toto>...</toto>，闭合后结束。',
             '</兔子镜近输出短锁>',
         ].filter(Boolean).join('\n');
@@ -1062,6 +1077,7 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive, candid
         `本面短检：${formatContract}。`,
         includeCommonRules ? sharedHtmlExecutionReminder(settings, directive) : '',
         executionPolicy,
+        includeBuiltinImage && combo?.requestedPresentationMode !== 'longtext' ? builtinImageFrameRule(settings) : '',
         '直接输出唯一完整 <toto>...</toto>，闭合后结束。',
         '</兔子镜近输出短锁>',
     ].filter(Boolean).join('\n');
@@ -1086,6 +1102,7 @@ function buildMultiIndependentExecutionLock(faceContexts, settings, directive, e
         sharedHtmlExecutionReminder(settings, directive),
         '各面须在亮度、色系、材质、轮廓、阅读路径、交互家族与第二状态中形成可见差异；明暗服从深色模式与用户偏好，不以统一系统卡兜底。',
         executionPolicy,
+        builtinImageFrameRule(settings),
         `只有第 ${faceContexts.length} 面闭合后才结束，不得少面、合并、追加面外文字。`,
         '</兔子镜近输出短锁>',
     ].filter(Boolean).join('\n');
@@ -1304,14 +1321,14 @@ function buildTextAwareExecutionLock(faceContexts, settings, directive, executio
     const htmlNumbers = faceContexts.flatMap((face, index) => !face.textPresentation && !face.combo?.pureOrder && !directive?.pureOrder ? [index + 1] : []);
     const locks = faceContexts.map((face, index) => (face.combo?.pureOrder || directive?.pureOrder) ? pureOrderFaceLock(face, index)
         : face.textPresentation ? textFaceLock(face, index)
-        : `第 ${index + 1} 面 HTML 专用短锁：\n${buildIndependentFinalExecutionLock({ combo: face.combo, settings, directive, candidateFaces: face.atmosphereFaces, includeExecutionOrder: false, includeCommonRules: false })
+        : `第 ${index + 1} 面 HTML 专用短锁：\n${buildIndependentFinalExecutionLock({ combo: face.combo, settings, directive, candidateFaces: face.atmosphereFaces, includeExecutionOrder: false, includeCommonRules: false, includeBuiltinImage: false })
             .replace(/<\/?兔子镜近输出短锁[^>]*>/g, '')
             .replace('直接输出唯一完整 <toto>...</toto>，闭合后结束。', '本面输出独立完整 <toto>...</toto>，按本批面序继续。').trim()}`);
     return ['<兔子镜近输出短锁 data-source="independent-api-near-output">',
         `本轮输出恰好 ${count} 面，逐面遵循以下本地冻结模式与内容；所有面共用本次请求的输出上限。`,
         htmlNumbers.length ? `以下形式执行顺序仅作用于 HTML 面（第 ${htmlNumbers.join('、')} 面）：\n${presentationExecutionOrderRule()}` : '',
         htmlNumbers.length ? `以下共用短检仅用于第 ${htmlNumbers.join('、')} 面 HTML：\n${sharedHtmlExecutionReminder(settings, directive)}` : '',
-        ...locks, executionPolicy, count > 1 ? `按 data-rm-face="1" 至 "${count}" 顺序输出平级且各自闭合的 <toto>，只有最后一面闭合后结束，不追加面外文字。`
+        ...locks, executionPolicy, htmlNumbers.length ? builtinImageFrameRule(settings) : '', count > 1 ? `按 data-rm-face="1" 至 "${count}" 顺序输出平级且各自闭合的 <toto>，只有最后一面闭合后结束，不追加面外文字。`
             : '输出唯一完整 <toto>...</toto>，闭合后结束，不追加面外文字。', '</兔子镜近输出短锁>'].filter(Boolean).join('\n');
 }
 
@@ -1324,7 +1341,7 @@ function buildPrompt({ combo, settings, selectedThemes, selectedFormats, visualS
         chunks.push('<兔子镜自动注入>');
         chunks.push(visibleChineseHardLock(), userDirectivePriorityRule(directive),
             '这一面没有抽签。按用户要求做 HTML 界面。不要套通用交互模板、动态视觉、母本玩法或上一轮页面。用户没写的交互和装饰不要自行加。',
-            htmlSafetyCore(), stateBarIsolationRule(), followTagIsolationText, coreOutputProtocol(independent, settings.hardStartup !== false), '</兔子镜自动注入>');
+            htmlSafetyCore(), stateBarIsolationRule(), independent ? '' : builtinImageFrameRule(settings), followTagIsolationText, coreOutputProtocol(independent, settings.hardStartup !== false), '</兔子镜自动注入>');
         return chunks.filter(Boolean).join('\n\n').trim();
     }
     chunks.push('<兔子镜自动注入>');
@@ -1386,6 +1403,7 @@ ${selectedFormats}`);
         else chunks.push(presentationFinalAcceptanceLock(combo, true, faceContexts?.[0]?.atmosphereFaces));
     }
     chunks.push(htmlSafetyCore());
+    if (!independent) chunks.push(builtinImageFrameRule(settings));
     const visualPreferenceLock = compactVisualPreferenceExecutionLock(settings);
     // Main/current API receives the visual preference lock here, next to the final output protocol.
     // Independent API receives the same lock only in its dedicated executionLock below, so it is
@@ -1414,7 +1432,7 @@ const PROMPT_SETTING_KEYS = Object.freeze([
     'forceVisualScenery', 'visualSceneryCombination', 'darkVisualMode', 'postGenerationRecolor', 'visualDesignMode', 'userDirectivePriority',
     'presentationWorldviewLock', 'visualPromptEditingEnabled', 'visualPrompt',
     'visualExtraPrompt', 'visualAvoidPrompt', 'generationSource',
-    'appearanceReferenceEnabled', 'appearanceReferenceRevision',
+    'appearanceReferenceEnabled', 'appearanceReferenceRevision', 'builtinImageEnabled',
     'behaviorRuleMode', 'behaviorRuleText',
     'followTagIsolationEnabled', 'independentContextExcludedTags',
     'memoryScanEnabled', 'memoryProviderIds', 'memoryMaxChars', 'memoryWorldBookEnabled', 'memoryWorldBookId',
