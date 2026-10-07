@@ -1,15 +1,15 @@
 // Split from outputSanitizer.js — diagnostics.
-import { interactionSamplingDiagnostic, designSamplingChecksDiagnostic } from '../interactionSampling.js?rmv=1.67.8';
-import { RADIO_BRANCH_COUNT_ATTR } from './radioBranchRepair.js?rmv=1.67.8';
-import { findUnmappedNavigationButtons } from './choiceRescue.js?rmv=1.67.8';
-import { nativePopoverFallbackCount, inspectNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.67.8';
-import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.67.8';
-import { restoreRuntimeAnimationClone } from '../runtimeAnimationState.js?rmv=1.67.8';
+import { interactionSamplingDiagnostic, designSamplingChecksDiagnostic } from '../interactionSampling.js?rmv=1.67.10';
+import { RADIO_BRANCH_COUNT_ATTR } from './radioBranchRepair.js?rmv=1.67.10';
+import { findUnmappedNavigationButtons } from './choiceRescue.js?rmv=1.67.10';
+import { nativePopoverFallbackCount, inspectNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.67.10';
+import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.67.10';
+import { restoreRuntimeAnimationClone } from '../runtimeAnimationState.js?rmv=1.67.10';
 
-import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.67.8';
-import { collectBoundedElementDescendants } from '../presentationQuality.js?rmv=1.67.8';
-import { collectRevealedClipHosts, shouldRelaxRevealedClipPanel, REVEALED_CLIP_RESCUE_ATTR } from '../revealedClipRepair.js?rmv=1.67.8';
-import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.67.8';
+import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.67.10';
+import { collectBoundedElementDescendants } from '../presentationQuality.js?rmv=1.67.10';
+import { collectRevealedClipHosts, shouldRelaxRevealedClipPanel, REVEALED_CLIP_RESCUE_ATTR } from '../revealedClipRepair.js?rmv=1.67.10';
+import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.67.10';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -28,7 +28,7 @@ import {
     isInsideChatMessage,
     isMaintenanceRabbitEnabled,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.67.8';
+} from './runtime.js?rmv=1.67.10';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     CHANNEL_DIAL_CYCLE_COUNT_ATTR,
@@ -61,7 +61,7 @@ import {
     WEBKIT_3D_FLIP_RESCUE_ATTR,
     passportDocumentRescueStates,
     unlabeledCheckedHostRescueStates,
-} from './checkedStateRescue.js?rmv=1.67.8';
+} from './checkedStateRescue.js?rmv=1.67.10';
 import {
     RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR,
     RENDERED_BUTTON_ADJACENT_HIDDEN_ITEM_ATTR,
@@ -88,7 +88,7 @@ import {
     renderedListDetailRescueStates,
     renderedMaskRevealRescueStates,
     renderedStateLayerRescueStates,
-} from './renderedStateRescue.js?rmv=1.67.8';
+} from './renderedStateRescue.js?rmv=1.67.10';
 import {
     RAW_RADIO_RESET_LAST_ATTR,
     RAW_RADIO_RESET_ROOT_ATTR,
@@ -99,7 +99,7 @@ import {
     getRabbitMirrorSummaryText,
     getRawAssistantMessageForRenderedRoot,
     rawSelfMutationRescueStates,
-} from './scriptedInteractionRescue.js?rmv=1.67.8';
+} from './scriptedInteractionRescue.js?rmv=1.67.10';
 import {
     REVERSIBLE_RADIO_LAST_ATTR,
     REVERSIBLE_RADIO_ROOT_ATTR,
@@ -110,13 +110,13 @@ import {
     findNestedDetailsPopupClippingCandidates,
     formatWebKit3DFlipEvidence,
     repairNestedDetailsPopupClipping,
-} from './fallbackRescue.js?rmv=1.67.8';
-import { RADIO_GROUP_RESCUE_ATTR, RADIO_GROUP_ROOT_ATTR } from './idsAndRearm.js?rmv=1.67.8';
+} from './fallbackRescue.js?rmv=1.67.10';
+import { RADIO_GROUP_RESCUE_ATTR, RADIO_GROUP_ROOT_ATTR } from './idsAndRearm.js?rmv=1.67.10';
 import {
     findFillInChoiceCandidates,
     findStaticChoiceSelectionCandidates,
     findStructuredStaticDisclosureCandidates,
-} from './choiceRescue.js?rmv=1.67.8';
+} from './choiceRescue.js?rmv=1.67.10';
 import {
     CODE_SHELL_SELECTOR,
     MAINTENANCE_QUARANTINED_SCRIPT_ATTR,
@@ -134,7 +134,7 @@ import {
     needsSanitize,
     normalizeMaintenanceSummaryText,
     parseTotoFragment,
-} from './maintenanceInspect.js?rmv=1.67.8';
+} from './maintenanceInspect.js?rmv=1.67.10';
 import {
     RABBIT_MIRROR_MAX_TEMPLATE_SOURCE_CHARS,
     RABBIT_MIRROR_SANITIZER_IMPORT_STRIPPED_ATTR,
@@ -147,7 +147,7 @@ import {
     sanitizeRabbitMirrorUntrustedTemplate,
     stripCssComments,
     validateRabbitMirrorTemplateStructuralBudget,
-} from './markup.js?rmv=1.67.8';
+} from './markup.js?rmv=1.67.10';
 import {
     HCLIP_REPORT_ATTR,
     VIEWPORT_LAYOUT_COUNT_ATTR,
@@ -155,14 +155,14 @@ import {
     inspectMaintenanceMobileLayout,
     inspectMaintenanceViewportLayout,
     maintenanceMobileLayoutIsPassportManaged,
-} from './layoutRescue.js?rmv=1.67.8';
-import { normalizeRabbitMirrorToolButton, rabbitMirrorTextPresentation } from './toolsChrome.js?rmv=1.67.8';
+} from './layoutRescue.js?rmv=1.67.10';
+import { normalizeRabbitMirrorToolButton, rabbitMirrorTextPresentation, updateMaintenanceRabbitMenuState } from './toolsChrome.js?rmv=1.67.10';
 import {
     getMessageIndexFromMirrorNode,
     hostScriptModule,
     messageUsesDistinctDisplaySource,
     outputHostGenerationLooksActive,
-} from './lifecycle.js?rmv=1.67.8';
+} from './lifecycle.js?rmv=1.67.10';
 
 export const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
 
@@ -422,8 +422,6 @@ export const MAINTENANCE_STATES = Object.freeze({ idle: 'idle', checking: 'check
 const INTERACTION_DIAGNOSTIC_VERSION = `${RUNTIME_VERSION}-FULL-CHAIN`;
 
 const DIAGNOSTIC_WAIT_TIMEOUT_MS = 45000;
-
-const DIAGNOSTIC_SOURCE_LIMIT = 60000;
 
 export const interactionDiagnosticStates = new WeakMap();
 
@@ -2182,45 +2180,35 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
 }
 
 
-function diagnosticLimitSource(text, maxLength = DIAGNOSTIC_SOURCE_LIMIT) {
-    let source = String(text || '');
-    source = source
-        .replace(/data:[^"'<>\s]{240,}/gi, match => `${match.slice(0, 72)}…[资源内容已省略]`)
-        .replace(/[A-Za-z0-9+/]{600,}={0,2}/g, '[超长编码内容已省略]');
-    if (source.length <= maxLength) return source;
-    return `${source.slice(0, maxLength)}\n<!-- 已截断：原长度 ${source.length} 字符 -->`;
-}
-
-
 function getDiagnosticRawSource(root) {
     const rawMessage = getRawAssistantMessageForRenderedRoot(root);
     const rawRoot = chooseMatchingRawRabbitMirrorRoot(rawMessage, root);
-    if (rawRoot?.outerHTML) return diagnosticLimitSource(rawRoot.outerHTML);
+    if (rawRoot?.outerHTML) return rawRoot.outerHTML;
     const match = String(rawMessage || '').match(TOTO_BLOCK_SINGLE_RE);
-    return diagnosticLimitSource(match?.[0] || rawMessage || '（未能从宿主聊天数据中取得原始兔子镜源码）');
+    return String(match?.[0] || rawMessage || '（未能从宿主聊天数据中取得用于本面诊断的源代码）');
 }
 
 
 function getDiagnosticRenderedSource(root) {
     try {
         const clone = root.cloneNode(true);
-        if (clone.matches?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`)) return '（当前根节点为诊断面板，无法复制兔子镜）';
+        if (clone.matches?.(`[${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`)) return '（当前根节点为诊断面板，无法导出兔子镜）';
         clone.querySelectorAll?.(`[data-rm-image-region], [data-rm-image-portal], [${INTERACTION_DIAGNOSTIC_PANEL_ATTR}]`).forEach(panel => panel.remove());
-        return diagnosticLimitSource(clone.outerHTML || '（无法序列化实际渲染代码）');
+        return clone.outerHTML || '（无法序列化实际渲染代码）';
     } catch {
         return '（无法序列化实际渲染代码）';
     }
 }
 
 
-function buildInteractionDiagnosticClipboardText(root, state) {
+function buildInteractionDiagnosticReportText(root, state) {
     const report = state.report || buildInteractionDiagnosticText(root, state, 'capture complete');
     return [
         report,
         '',
-        '[隐私提醒] 以下源码包含当前这一条兔子镜中的文字内容；请确认后再发送给他人。超长资源与编码内容会自动省略。',
+        '[隐私提醒] 以下诊断代码包含兔子镜中的文字和资源内容；请确认后再发送给他人。报告不截断，不会自动上传。',
         '',
-        '[原始兔子镜源码]',
+        '[用于本面诊断的源代码（沿用当前面匹配，可能经过规范化）]',
         getDiagnosticRawSource(root),
         '',
         '[实际渲染代码]',
@@ -2228,27 +2216,6 @@ function buildInteractionDiagnosticClipboardText(root, state) {
     ].join('\n');
 }
 
-
-async function copyDiagnosticText(text) {
-    try {
-        await navigator.clipboard.writeText(text);
-        return true;
-    } catch {
-        try {
-            const textarea = document.createElement('textarea');
-            textarea.value = text;
-            textarea.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;';
-            document.body.appendChild(textarea);
-            textarea.focus();
-            textarea.select();
-            const ok = document.execCommand('copy');
-            textarea.remove();
-            return !!ok;
-        } catch {
-            return false;
-        }
-    }
-}
 
 // Explicit menu action only: export one live face, never its message/raw-source
 // owner. The detached clone is sanitized but never mounted or executed.
@@ -2430,50 +2397,63 @@ export function createOneShotInteractionDiagnosticPanel(root, state) {
     heading.style.cssText = 'font-weight:800;color:#fde047;margin-bottom:8px;';
 
     const privacy = document.createElement('div');
-    privacy.textContent = '点击异常消息即可诊断：支持交互失效、代码块、纯文字源码与显示源冲突。复制时会附带该条源码与实际渲染代码；不会自动上传。';
+    privacy.textContent = '点击异常消息即可诊断：支持交互失效、代码块、纯文字源码与显示源冲突。下载完整 TXT 报告，附带用于本面诊断的源代码与实际渲染代码，不截断；不会自动上传。';
     privacy.style.cssText = 'color:#cbd5e1;margin-bottom:8px;font-size:10px;';
 
     const actions = document.createElement('div');
     actions.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;';
-    const copyButton = document.createElement('button');
-    copyButton.type = 'button';
-    copyButton.textContent = '复制诊断＋代码';
+    const downloadButton = document.createElement('button');
+    downloadButton.type = 'button';
+    downloadButton.textContent = '下载完整报告';
     const closeButton = document.createElement('button');
     closeButton.type = 'button';
     closeButton.textContent = '关闭报告';
     const retryButton = document.createElement('button');
     retryButton.type = 'button';
     retryButton.textContent = '重新诊断';
-    for (const button of [copyButton, closeButton, retryButton]) {
+    for (const button of [downloadButton, closeButton, retryButton]) {
         button.style.cssText = 'cursor:pointer;padding:5px 10px;border:1px solid #fde047;border-radius:5px;background:#1f2937;color:#fff;';
     }
-    actions.append(copyButton, closeButton, retryButton);
+    actions.append(downloadButton, closeButton, retryButton);
+
+    const downloadStatus = document.createElement('div');
+    downloadStatus.setAttribute('role', 'status');
+    downloadStatus.setAttribute('data-rm-diagnostic-download-status', 'true');
+    downloadStatus.style.cssText = 'margin-bottom:8px;white-space:pre-wrap;overflow-wrap:anywhere;';
 
     const pre = document.createElement('pre');
     pre.textContent = '正在检查当前消息的代码恢复链与交互状态，请稍候约半秒……';
     pre.style.cssText = 'margin:0;white-space:pre-wrap;word-break:break-word;color:#f3f4f6;background:transparent;border:0;padding:0;';
-    panel.append(heading, privacy, actions, pre);
+    panel.append(heading, privacy, actions, downloadStatus, pre);
 
     const outerDetails = root.matches?.('details') ? root : root.querySelector(':scope > details');
     (outerDetails || root).appendChild(panel);
-    Object.assign(state, { panel, pre, copyButton, closeButton, retryButton });
+    Object.assign(state, { panel, pre, downloadButton, closeButton, retryButton });
 
-    copyButton.addEventListener('click', async event => {
+    downloadButton.addEventListener('click', event => {
         event.preventDefault();
         event.stopPropagation();
-        const original = copyButton.textContent;
-        copyButton.textContent = '正在整理源码…';
+        if (downloadButton.disabled) return;
+        downloadButton.disabled = true;
+        downloadStatus.textContent = '正在整理完整报告…';
+        let url, link;
         try {
-            const text = buildInteractionDiagnosticClipboardText(root, state);
-            const ok = await copyDiagnosticText(text);
-            copyButton.textContent = ok ? '已复制' : '复制失败，请截图';
+            const text = buildInteractionDiagnosticReportText(root, state);
+            url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
+            link = document.createElement('a');
+            link.href = url;
+            link.download = '兔子镜-全链路诊断报告.txt';
+            link.textContent = '保存完整诊断报告';
+            panel.appendChild(link);
+            link.click();
+            downloadStatus.textContent = '已请求下载完整 TXT 报告，请在浏览器或宿主的下载／保存界面查看。';
         } catch (error) {
-            const message = String(error?.message || error || 'unknown copy error');
-            copyButton.textContent = '整理失败，请截图';
-            if (state.pre?.isConnected && !state.report) state.pre.textContent = `诊断整理失败：${message}`;
-            console.debug('[RabbitMirror] diagnostic clipboard build failed:', error);
+            downloadStatus.textContent = `报告下载失败：${String(error?.message || error || '无法创建文件')}。可再次点击下载；当前报告仍保留。`;
+            console.debug('[RabbitMirror] diagnostic report download failed:', error);
         } finally {
-            setTimeout(() => { if (copyButton.isConnected) copyButton.textContent = original; }, 1400);
+            link?.remove();
+            if (url) setTimeout(() => URL.revokeObjectURL(url), 60000);
+            downloadButton.disabled = false;
         }
     });
     closeButton.addEventListener('click', event => {
@@ -2533,7 +2513,7 @@ export function finalizeOneShotInteractionDiagnostic(root, state) {
             '[诊断内部错误]',
             message,
             '',
-            '诊断本身发生异常，当前页面真实控件未因此被操作。请复制本报告发送给开发者。',
+            '诊断本身发生异常，当前页面真实控件未因此被操作。请下载完整报告发送给开发者。',
         ].join('\n');
         if (state.pre?.isConnected) state.pre.textContent = state.report;
         const button = root?.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`);
@@ -2671,6 +2651,8 @@ export function setMaintenanceRabbitState(button, state, reason = '') {
     button.title = maintenanceRabbitTitle(state, decoratedReason);
     button.setAttribute('aria-label', button.title);
     normalizeRabbitMirrorToolButton(button);
+    try { updateMaintenanceRabbitMenuState(button, state, decoratedReason); }
+    catch (error) { console.debug('[RabbitMirror] maintenance result display skipped:', error); }
 }
 
 
@@ -2746,10 +2728,6 @@ export function triggerInteractionDiagnosticOnce() {
         return false;
     }
 }
-
-
-
-
 
 
 

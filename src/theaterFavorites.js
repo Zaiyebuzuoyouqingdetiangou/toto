@@ -1,4 +1,5 @@
-import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.67.8';
+import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.67.10';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.67.10';
 const DB_NAME = 'rabbit_mirror_theater_favorites_v1';
 const STORE = 'favorites';
 const DB_VERSION = 1;
@@ -425,6 +426,7 @@ function overlayCard(label) {
     const overlay = document.createElement('dialog');
     overlay.setAttribute('aria-label', label);
     overlay.style.cssText = 'position:fixed;inset:0;width:auto;height:auto;max-width:none;max-height:none;margin:0;padding:max(16px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));box-sizing:border-box;border:0;background:rgba(8,10,14,.62);display:flex;align-items:center;justify-content:center;z-index:10070;';
+    applyAppearanceTheme(overlay);
     const card = document.createElement('div');
     card.setAttribute('data-rm-theater-favorite-card', 'true');
     card.style.cssText = 'width:min(720px,calc(100vw - 24px));max-height:min(88vh,calc(100dvh - 48px));overflow:auto;background:var(--SmartThemeBlurTintColor,#202226);color:var(--SmartThemeBodyColor,#ddd);border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:18px;box-shadow:0 22px 70px rgba(0,0,0,.42);padding:14px;box-sizing:border-box;position:relative;isolation:isolate;';

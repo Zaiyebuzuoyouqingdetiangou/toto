@@ -1,12 +1,13 @@
-import { getSettings } from './settings.js?rmv=1.67.8';
-import { generateMirrorImage } from './baibaiImage.js?rmv=1.67.8';
-import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.8';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.8';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.8';
+import { getSettings } from './settings.js?rmv=1.67.10';
+import { generateMirrorImage } from './baibaiImage.js?rmv=1.67.10';
+import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.10';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.10';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.10';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
 const waiters = new Map();
+const progress = new Map();
 // 没连上柏宝绘时不要在每次刷新里反复请求。刷新页面后可以再试。
 const failed = new Set();
 
@@ -135,15 +136,21 @@ function anyWaiterConnected(key) {
     return false;
 }
 
+function reportProgress(key, text) {
+    if (progress.get(key) === text) return;
+    progress.set(key, text);
+    for (const frame of waiters.get(key) || []) if (frame.isConnected) note(frame, text);
+}
+
 // 设置了生图 LLM API 时，由它按这一面的内容另写正式的画面提示词；没写出来就用小剧场里那段线索。
-async function planWithImageLlm(frame) {
+async function planWithImageLlm(frame, onProgress) {
     const details = frame?.closest?.('details');
     const bridge = globalThis.__rabbitMirrorIndependentActionsV1;
     const target = details && typeof bridge?.prepareImageTarget === 'function' ? bridge.prepareImageTarget(details) : null;
     if (!target?.plan) return null;
     try {
         const focus = readPrompt(frame);
-        const plan = await target.plan(focus ? { focus } : {}, { builtin: true });
+        const plan = await target.plan(focus ? { focus } : {}, { builtin: true, onProgress });
         return plan && String(plan.prompt || plan.flatPrompt || plan.nl || '').trim() ? plan : null;
     } catch (error) {
         console.warn('[RabbitMirror] 生图 LLM 没有写出画面提示词，改用小剧场里的画面线索', error);
@@ -157,7 +164,15 @@ function startJob(key, prompt, frame) {
     const job = (async () => {
         const size = frameImageSize(frame);
         const settings = getSettings();
-        const planned = imageLlmConfigured(settings) ? await planWithImageLlm(frame) : null;
+        const withLlm = imageLlmConfigured(settings);
+        if (withLlm) reportProgress(key, '生图 LLM 正在构思画面提示词…');
+        const planned = withLlm ? await planWithImageLlm(frame, phase => {
+            if (phase === 'response-chunk' || phase === 'connection-manager-frame') {
+                reportProgress(key, '生图 LLM 正在返回画面提示词…');
+            }
+        }) : null;
+        const provider = settings.imageBackend === 'chatu8' ? '智绘姬' : '柏宝绘';
+        reportProgress(key, `${withLlm ? planned ? '提示词已完成，' : '沿用本面画面线索，' : ''}正在交给${provider}生图…`);
         const generated = await generateMirrorImage(planned ? {
             prompt: String(planned.prompt || planned.flatPrompt || planned.nl || ''),
             flatPrompt: String(planned.flatPrompt || planned.prompt || ''),
@@ -174,6 +189,10 @@ function startJob(key, prompt, frame) {
             character: characterGroup(),
             size,
             assertCurrent: () => anyWaiterConnected(key),
+            onProgress: event => {
+                const phase = { queued: '排队中', generating: '绘制中', 'queued-remote': '远端排队中', retrying: '按渠道规则重试中', saving: '保存中' }[event?.phase];
+                if (phase) reportProgress(key, `${provider}：${phase}…`);
+            },
         });
         const record = { ...generated, builtinImageFit: 'cover' };
         try { saveMirrorImage(key, record); }
@@ -181,7 +200,10 @@ function startJob(key, prompt, frame) {
         return record;
     })();
     inflight.set(key, job);
-    job.finally(() => { if (inflight.get(key) === job) inflight.delete(key); });
+    const cleanup = () => {
+        if (inflight.get(key) === job) { inflight.delete(key); progress.delete(key); }
+    };
+    job.then(cleanup, cleanup);
     return job;
 }
 
@@ -204,6 +226,7 @@ async function fillFrame(root, frame) {
     let nodes = waiters.get(key);
     if (!nodes) { nodes = new Set(); waiters.set(key, nodes); }
     nodes.add(frame);
+    if (progress.has(key)) note(frame, progress.get(key));
     try {
         const record = await startJob(key, prompt, frame);
         if (frame.isConnected) paint(frame, record);

@@ -1,6 +1,8 @@
-import { getSettings } from './settings.js?rmv=1.67.8';
-import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=1.67.8';
-import { loadMirrorImage, saveMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft } from './imageStore.js?rmv=1.67.8';
+import { getSettings } from './settings.js?rmv=1.67.10';
+import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=1.67.10';
+import { loadMirrorImage, saveMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft } from './imageStore.js?rmv=1.67.10';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.67.10';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.10';
 
 // The lock lives beyond a panel's lifetime. Closing, reopening or aborting a UI
 // cannot release a provider reservation before its Promise actually settles.
@@ -125,7 +127,10 @@ function closePanel() {
     if (!panel) return;
     const previous = panel;
     panel = null;
-    try { previous.cleanup(); } finally { previous.host.remove(); }
+    try { previous.cleanup(); } finally {
+        try { if (previous.host.open && typeof previous.host.close === 'function') previous.host.close(); } catch {}
+        previous.host.remove();
+    }
     try { previous.onClose?.(); } catch (error) { console.debug('[RabbitMirror] image panel tool restore skipped:', error); }
     if (previous.opener?.isConnected) previous.opener.focus();
 }
@@ -136,23 +141,29 @@ export function openMirrorImagePanel(root, { opener = null, onClose = null } = {
     const doc = root.ownerDocument;
     const target = targetFor(root);
     const state = target ? stored(target.key) : {};
-    const host = el(doc, 'div', '', { 'data-rm-image-portal': '', 'data-rm-tool-ui': 'true' });
-    host.style.cssText = 'position:fixed;inset:0;z-index:2147483646;background:#0007;display:flex;align-items:center;justify-content:center;padding:8px;box-sizing:border-box;';
+    const host = el(doc, 'dialog', '', { 'data-rm-image-portal': '', 'data-rm-tool-ui': 'true', 'aria-label': '兔子镜生图' });
+    host.style.cssText = 'position:fixed;inset:0;margin:0;border:0;max-width:none;max-height:none;min-width:0;min-height:0;z-index:2147483646;background:#0007;display:flex;align-items:center;justify-content:center;padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));box-sizing:border-box;overflow:hidden;';
+    applyAppearanceTheme(host);
+    const style = el(doc, 'style');
+    style.textContent = 'dialog[data-rm-image-portal]::backdrop{background:transparent}[data-rm-image-portal] button,[data-rm-image-portal] input,[data-rm-image-portal] textarea,[data-rm-image-portal] select{box-sizing:border-box;font:inherit;color:var(--rh-text,var(--SmartThemeBodyColor,#34495d));background:var(--rh-field,var(--rh-card,var(--SmartThemeBlurTintColor,#fff)));border:1px solid var(--rh-border,var(--SmartThemeBorderColor,#cfdae5));border-radius:8px}[data-rm-image-portal] button{min-height:42px;padding:8px 12px;white-space:normal;cursor:pointer}[data-rm-image-portal] button:disabled{opacity:.55;cursor:default}[data-rm-image-portal] a{color:var(--rh-primary,var(--SmartThemeQuoteColor,#ce729c))}[data-rm-image-portal] fieldset{min-width:0;border:1px solid var(--rh-border,var(--SmartThemeBorderColor,#cfdae5));border-radius:10px}';
+    host.append(style);
     const box = el(doc, 'section', '', { role: 'dialog', 'aria-modal': 'true', 'aria-label': '兔子镜生图', tabindex: '-1' });
-    box.style.cssText = 'width:620px;max-width:100%;max-height:100%;min-height:0;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;box-sizing:border-box;padding:16px;border-radius:18px;background:var(--SmartThemeBlurTintColor,#fff);color:var(--SmartThemeBodyColor,#34495d);border:1px solid var(--SmartThemeBorderColor,#cfdae5);display:flex;flex-direction:column;gap:12px;';
-    const heading = el(doc, 'header'); heading.style.cssText = 'display:flex;align-items:center;gap:12px;';
+    box.style.cssText = 'width:620px;max-width:100%;max-height:100%;min-width:0;min-height:0;overflow:hidden;box-sizing:border-box;padding:16px;border-radius:18px;background:var(--rh-bg,var(--SmartThemeBlurTintColor,#fff));color:var(--rh-text,var(--SmartThemeBodyColor,#34495d));border:1px solid var(--rh-border,var(--SmartThemeBorderColor,#cfdae5));display:flex;flex-direction:column;gap:12px;font:16px/1.5 sans-serif;';
+    const heading = el(doc, 'header'); heading.style.cssText = 'display:flex;align-items:center;gap:12px;flex:0 0 auto;';
     const title = el(doc, 'strong', target?.title || '兔子镜生图'); title.style.cssText = 'flex:1;overflow-wrap:anywhere;';
     const close = el(doc, 'button', '关闭', { type: 'button', 'data-rm-image-action': 'close' });
     close.addEventListener('click', closePanel); heading.append(title, close);
     const status = el(doc, 'p', state.error || (!target ? '这面兔子镜暂时无法绑定保存位置。请重新打开当前聊天中的已保存镜面；本次不会发起请求。' : '首次生成：构思一次，再出图一次。编辑、查看和保存草稿不调用模型。'), { role: 'status', 'aria-live': 'polite' });
-    const notice = el(doc, 'p', '重新构思：仅调用一次副 API。按当前提示词绘制：仅调用一次柏宝绘。柏宝绘内部重试按其原有规则执行。');
+    const planningLabel = () => imageLlmConfigured(getSettings()) ? '生图 LLM' : '副 API';
+    const drawingLabel = () => getSettings().imageBackend === 'chatu8' ? '智绘姬' : '柏宝绘';
+    const notice = el(doc, 'p', `重新构思：仅调用一次${planningLabel()}。按当前提示词绘制：仅调用一次${drawingLabel()}。`);
     const preview = el(doc, 'div');
     const fields = el(doc, 'div'); fields.style.cssText = 'display:grid;gap:12px;';
     const inputs = {};
     function field(name, label, tag = 'textarea') {
         const wrap = el(doc, 'label', label); wrap.style.cssText = 'display:grid;gap:5px;';
         const input = el(doc, tag, '', { 'data-rm-image-field': name });
-        input.style.cssText = 'width:100%;min-width:0;box-sizing:border-box;font:inherit;color:inherit;background:var(--SmartThemeBlurTintColor,#fff);border:1px solid var(--SmartThemeBorderColor,#b8c5d6);border-radius:8px;padding:8px;';
+        input.style.cssText = 'width:100%;min-width:0;box-sizing:border-box;font:inherit;padding:8px;';
         if (tag === 'textarea') { input.rows = 3; input.style.resize = 'vertical'; }
         inputs[name] = input; wrap.append(input); fields.append(wrap); return input;
     }
@@ -164,7 +175,7 @@ export function openMirrorImagePanel(root, { opener = null, onClose = null } = {
     field('prompt', '画面标签'); field('nl', '画面描述'); field('flatPrompt', '完整通用提示词（不支持独立人物字段的后端使用）');
     const characters = el(doc, 'div'); characters.style.cssText = 'display:grid;gap:12px;'; fields.append(characters);
     const size = field('size', '画幅', 'select');
-    size.append(el(doc, 'option', '沿用柏宝绘默认', { value: '' }), el(doc, 'option', '竖向', { value: 'portrait' }), el(doc, 'option', '横向', { value: 'landscape' }));
+    size.append(el(doc, 'option', '沿用生图渠道默认', { value: '' }), el(doc, 'option', '竖向', { value: 'portrait' }), el(doc, 'option', '横向', { value: 'landscape' }));
     const send = el(doc, 'details'); send.append(el(doc, 'summary', '本次发送预览'));
     const sendPreview = el(doc, 'pre'); sendPreview.style.cssText = 'white-space:pre-wrap;overflow-wrap:anywhere;'; send.append(sendPreview);
     const actions = el(doc, 'div'); actions.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
@@ -174,7 +185,10 @@ export function openMirrorImagePanel(root, { opener = null, onClose = null } = {
         b.style.cssText = 'font:inherit;min-height:42px;white-space:normal;padding:8px 12px;';
         b.addEventListener('click', fn); actions.append(b); buttons[name] = b; return b;
     }
-    box.append(heading, status, notice, actions, preview, fields, send); host.append(box); doc.body.append(host);
+    const scroll = el(doc, 'div', '', { 'data-rm-image-scroll': '' });
+    scroll.style.cssText = 'min-height:0;min-width:0;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;display:flex;flex-direction:column;gap:12px;';
+    scroll.append(status, notice, actions, preview, fields, send);
+    box.append(heading, scroll); host.append(box); doc.body.append(host);
     let backend = null;
     let characterInputs = [];
     let localRecord = state.record;
@@ -248,11 +262,11 @@ export function openMirrorImagePanel(root, { opener = null, onClose = null } = {
         try {
             if (kind !== 'reconceive') {
                 const connection = await getImageBackendStatus();
-                if (!connection.configured) { status.textContent = '柏宝绘尚未连接，请先完成它的连接配置。本次没有发起模型请求。'; return; }
+                if (!connection.configured) { status.textContent = `${drawingLabel()}尚未连接，请先完成它的连接配置。本次没有发起模型请求。`; return; }
             }
             let draft = readDraft();
             if (kind !== 'draw') {
-                status.textContent = '正在构思画面（一次副 API 请求）…';
+                status.textContent = `正在构思画面（一次${planningLabel()}请求）…`;
                 const publicCharacters = await getImageCharacters({ floor: target.floor });
                 draft = await target.plan({ publicCharacters, promptFormat: format.value, compositionMode: composition.value }, { signal: controller.signal });
                 // Draft persistence is local only. A failed draft save must not
@@ -262,15 +276,15 @@ export function openMirrorImagePanel(root, { opener = null, onClose = null } = {
             }
             if (kind === 'reconceive') {
                 if (!host.isConnected && panel?.target?.key === target.key) panel.receive(localRecord, draft);
-                status.textContent = '构思完成。请检查提示词，点击生图才会调用柏宝绘。'; return;
+                status.textContent = `构思完成。请检查提示词，点击生图才会调用${drawingLabel()}。`; return;
             }
             if (!current(target)) throw new Error('target_changed');
             if (controller.signal.aborted) throw new Error('aborted');
             if (kind === 'draw') { try { rememberDraft(target.key, draft); } catch { /* Retain exact edited draft in this page even if storage is full. */ } }
-            status.textContent = '正在调用柏宝绘（一次生图调用）…';
+            status.textContent = `正在调用${drawingLabel()}（一次生图调用）…`;
             const record = await generateMirrorImage(draft, { signal: controller.signal, character: target.group,
                 ...(size.value ? { size: size.value } : {}), assertCurrent: target.assertCurrent,
-                onProgress: progress => { if (host.isConnected) status.textContent = '柏宝绘：' + ({ queued:'排队中', generating:'绘制中', 'queued-remote':'远端排队中', retrying:'按柏宝绘规则重试中', saving:'保存中' }[progress?.phase] || '处理中'); } });
+                onProgress: progress => { if (host.isConnected) status.textContent = drawingLabel() + '：' + ({ queued:'排队中', generating:'绘制中', 'queued-remote':'远端排队中', retrying:'按生图渠道规则重试中', saving:'保存中' }[progress?.phase] || '处理中'); } });
             // Even after a chat switch, save only under the frozen original key.
             const pending = pendingSaves.get(target.key) || { records: [], target };
             pending.records.push(record); pendingSaves.set(target.key, pending);
@@ -286,7 +300,7 @@ export function openMirrorImagePanel(root, { opener = null, onClose = null } = {
             if (current(target) && root.isConnected) { mountedRoots.delete(root); mountMirrorImage(root); }
         } catch (error) {
             // Never display arbitrary provider error bodies (may contain secrets).
-            status.textContent = error?.message === 'target_changed' ? '聊天或镜面已变化，未继续生图。' : controller.signal.aborted ? '已请求取消；本次调用结算完成后才能再次生成。原图保留。' : '本次未完成。请检查副 API／柏宝绘连接或提示词；原图保留，没有自动补发。';
+            status.textContent = error?.message === 'target_changed' ? '聊天或镜面已变化，未继续生图。' : controller.signal.aborted ? '已请求取消；本次调用结算完成后才能再次生成。原图保留。' : `本次未完成。请检查${planningLabel()}／${drawingLabel()}连接或提示词；原图保留，没有自动补发。`;
         } finally {
             jobs.delete(target.key); notify();
         }
@@ -327,7 +341,7 @@ export function openMirrorImagePanel(root, { opener = null, onClose = null } = {
         host.style.width = `${viewport?.width || view.innerWidth}px`; host.style.height = `${viewport?.height || view.innerHeight}px`;
     }
     function keydown(event) {
-        if (event.key === 'Escape') { event.preventDefault(); closePanel(); }
+        if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closePanel(); }
         if (event.key === 'Tab') {
             const focusable = [...box.querySelectorAll('button,input,textarea,select,a[href]')].filter(node => !node.disabled && !node.hidden && node.getClientRects().length);
             const first = focusable[0], last = focusable.at(-1);
@@ -337,6 +351,8 @@ export function openMirrorImagePanel(root, { opener = null, onClose = null } = {
     }
     doc.defaultView.addEventListener('resize', fit); doc.defaultView.visualViewport?.addEventListener('resize', fit); doc.defaultView.visualViewport?.addEventListener('scroll', fit);
     host.addEventListener('keydown', keydown);
+    host.addEventListener('cancel', event => { event.preventDefault(); event.stopPropagation(); closePanel(); });
+    host.addEventListener('click', event => { if (event.target === host) closePanel(); event.stopPropagation(); });
     panel = { host, target, opener, onClose, renderState, receive: (record, draft) => { localRecord = record; fillDraft(draft); showRecord(record); }, cleanup: () => {
         doc.defaultView.removeEventListener('resize', fit); doc.defaultView.visualViewport?.removeEventListener('resize', fit); doc.defaultView.visualViewport?.removeEventListener('scroll', fit);
     } };
@@ -344,6 +360,21 @@ export function openMirrorImagePanel(root, { opener = null, onClose = null } = {
     if (pending) localRecord = pendingImage(target.key, localRecord);
     const latestDraft = state.draft && (!localRecord || Number(state.draft.updatedAt || 0) >= Date.parse(localRecord.generatedAt || ''))
         ? state.draft : localRecord?.promptMetadata || localRecord || state.draft || {};
-    fillDraft(latestDraft); showRecord(localRecord); renderState(); fit(); close.focus();
+    fillDraft(latestDraft); showRecord(localRecord); renderState();
+    let modalOpened = false;
+    try {
+        if (typeof host.showModal === 'function') { host.showModal(); modalOpened = true; }
+    } catch { /* Older hosts may expose an unusable dialog API. */ }
+    if (!modalOpened) {
+        // A body sibling of an active modal is inert. Keep fallback UI in its
+        // active subtree on WebViews without a working top-layer dialog API.
+        const active = [...doc.querySelectorAll('dialog[open]')].reverse().find(node => {
+            if (node === host) return false;
+            try { return node.matches(':modal'); } catch { return true; }
+        });
+        (active || doc.body).append(host);
+        host.setAttribute('open', '');
+    }
+    fit(); close.focus();
     Promise.resolve().then(() => getImageBackendStatus()).then(value => { backend = value; if (host.isConnected) { updatePreview(); renderState(); } }).catch(() => {});
 }

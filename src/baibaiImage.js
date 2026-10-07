@@ -1,5 +1,5 @@
-import { generateViaChatu8 } from './chatu8Image.js?rmv=1.67.8';
-import { getSettings } from './settings.js?rmv=1.67.8';
+import { chatu8Status, generateViaChatu8 } from './chatu8Image.js?rmv=1.67.10';
+import { getSettings } from './settings.js?rmv=1.67.10';
 function failure(code, message) { return Object.assign(new Error(message), { code }); }
 
 function imageApi() {
@@ -13,6 +13,11 @@ function imageApi() {
 
 export function getImageBackendStatus() {
     try {
+        if (getSettings().imageBackend === 'chatu8') {
+            const status = chatu8Status();
+            return { available: status.configured === true, configured: status.configured === true,
+                backend: `st-chatu8:${status.mode || ''}`, supportsCharacters: false, reason: String(status.reason || '') };
+        }
         const status = imageApi().getBackendStatus();
         return { available: true, configured: status.configured === true, backend: status.backend, model: status.model, supportsCharacters: status.supportsCharacters === true, reason: String(status.reason || '') };
     } catch (error) {
@@ -21,6 +26,7 @@ export function getImageBackendStatus() {
 }
 
 export function getImageCharacters({ floor } = {}) {
+    if (getSettings().imageBackend === 'chatu8') return [];
     const api = imageApi();
     if (api.capabilities?.characterLibrary !== true || typeof api.getCharacters !== 'function') return [];
     const snapshot = api.getCharacters(Number.isSafeInteger(floor) && floor >= 0 ? { floor } : {});
