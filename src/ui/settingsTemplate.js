@@ -1,8 +1,8 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.66.5';
-import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.66.5';
-import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.66.5';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.66.8';
+import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.66.8';
+import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.66.8';
 
 export function buildRabbitMirrorSettingsDialogHtml() {
     return `
@@ -447,6 +447,12 @@ export function buildRabbitMirrorSettingsDialogHtml() {
                     <button id="rh_image_llm_import_current" class="menu_button" type="button" style="font-weight:700;">从酒馆当前连接一键配置</button>
                     <span id="rh_image_llm_status" style="opacity:.72;font-size:11px;line-height:1.4;">尚未配置</span>
                   </div>
+                  <div style="font-weight:700;font-size:12px;margin-top:2px;">连接配置</div>
+                  <div class="flex-container" style="gap:6px;align-items:center;flex-wrap:nowrap;">
+                    <select id="rh_image_llm_profile_select" class="text_pole" style="flex:1;min-width:0;" aria-label="生图 LLM 使用的酒馆连接"><option value="">选择一个已配置的酒馆连接</option></select>
+                    <button id="rh_image_llm_profile_refresh" class="menu_button" type="button" title="刷新连接列表" aria-label="刷新连接列表">↻</button>
+                  </div>
+                  <div style="opacity:.66;font-size:11px;line-height:1.45;">可直接指定任意可复用的 Chat Completion 配置；切换后只保存 profile ID / 模型，不复制酒馆 Secrets。</div>
                   <details>
                     <summary style="cursor:pointer;font-size:11px;opacity:.7;">手动 OpenAI 兼容接口</summary>
                     <div style="display:grid;gap:6px;padding-top:7px;">

@@ -1,8 +1,8 @@
-import { getSettings } from './settings.js?rmv=1.66.5';
-import { generateMirrorImage } from './baibaiImage.js?rmv=1.66.5';
-import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.66.5';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.66.5';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.66.5';
+import { getSettings } from './settings.js?rmv=1.66.8';
+import { generateMirrorImage } from './baibaiImage.js?rmv=1.66.8';
+import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.66.8';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.66.8';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.66.8';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();

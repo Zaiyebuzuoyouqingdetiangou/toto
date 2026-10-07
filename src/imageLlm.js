@@ -1,8 +1,8 @@
 // 生图 LLM：专门用来“写画面提示词”的独立文字模型连接，和兔子镜副 API 分开配置。
 // 只替换连接与模型（酒馆 Connection Profile 或手动 OpenAI 兼容接口），请求方式沿用副 API 的同一套传输。
-import { getSettings, updateSettings } from './settings.js?rmv=1.66.5';
-import { getContext } from './independentApi/runtime.js?rmv=1.66.5';
-import { fetchIndependentModels, normalizeIndependentConnectionText, validatedIndependentConnectionProfile } from './independentApi/connection.js?rmv=1.66.5';
+import { getSettings, updateSettings } from './settings.js?rmv=1.66.8';
+import { getContext } from './independentApi/runtime.js?rmv=1.66.8';
+import { fetchIndependentModels, getIndependentConnectionProfiles, normalizeIndependentConnectionText, validatedIndependentConnectionProfile } from './independentApi/connection.js?rmv=1.66.8';
 
 export function imageLlmConfigured(settings = getSettings()) {
     return settings?.imageLlmEnabled === true
@@ -52,6 +52,25 @@ export async function importCurrentConnectionForImageLlm() {
         imageLlmModel: String(current.imageLlmProfileId || '') === selectedId && current.imageLlmModel ? current.imageLlmModel : model,
     });
     return { id: selectedId, name: normalizeIndependentConnectionText(selected?.profile?.name, 180) || '当前连接', model };
+}
+
+// 和副 API 的“连接配置”一样：列出酒馆里所有可复用的 Chat Completion 连接。
+export function listImageLlmProfiles() {
+    try { return getIndependentConnectionProfiles(); } catch { return []; }
+}
+
+export async function selectImageLlmProfile(profileId) {
+    const id = normalizeIndependentConnectionText(profileId, 160);
+    if (!id) return null;
+    const selected = await validatedIndependentConnectionProfile(id, getContext());
+    const model = normalizeIndependentConnectionText(selected?.profile?.model, 240);
+    const current = getSettings();
+    updateSettings({
+        imageLlmEnabled: true,
+        imageLlmProfileId: id,
+        imageLlmModel: String(current.imageLlmProfileId || '') === id && current.imageLlmModel ? current.imageLlmModel : model,
+    });
+    return { id, name: normalizeIndependentConnectionText(selected?.profile?.name, 180) || '酒馆连接', model };
 }
 
 export async function fetchImageLlmModels() {
