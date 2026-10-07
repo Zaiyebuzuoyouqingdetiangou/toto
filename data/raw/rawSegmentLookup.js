@@ -1,5 +1,5 @@
-import { RAW_THEMATIC_CATEGORIES } from './rawThematicCategories.js?rmv=1.67.4';
-import { RAW_PRESENTATION_FORMATS } from './rawPresentationFormats.js?rmv=1.67.4';
+import { RAW_THEMATIC_CATEGORIES } from './rawThematicCategories.js?rmv=1.67.6';
+import { RAW_PRESENTATION_FORMATS } from './rawPresentationFormats.js?rmv=1.67.6';
 
 function escapeRegExp(text) {
     return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

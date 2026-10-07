@@ -1,8 +1,8 @@
 // 生图 LLM：专门用来“写画面提示词”的独立文字模型连接，和兔子镜副 API 分开配置。
 // 只替换连接与模型（酒馆 Connection Profile 或手动 OpenAI 兼容接口），请求方式沿用副 API 的同一套传输。
-import { getSettings, updateSettings } from './settings.js?rmv=1.67.4';
-import { getContext } from './independentApi/runtime.js?rmv=1.67.4';
-import { fetchIndependentModels, getIndependentConnectionProfiles, normalizeIndependentConnectionText, validatedIndependentConnectionProfile } from './independentApi/connection.js?rmv=1.67.4';
+import { getSettings, updateSettings } from './settings.js?rmv=1.67.6';
+import { getContext } from './independentApi/runtime.js?rmv=1.67.6';
+import { fetchIndependentModels, getIndependentConnectionProfiles, normalizeIndependentConnectionText, validatedIndependentConnectionProfile } from './independentApi/connection.js?rmv=1.67.6';
 
 export function imageLlmConfigured(settings = getSettings()) {
     return settings?.imageLlmEnabled === true

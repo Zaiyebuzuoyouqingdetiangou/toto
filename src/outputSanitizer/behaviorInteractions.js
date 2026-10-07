@@ -1,5 +1,5 @@
-import { updateBehaviorResults } from './behaviorResults.js?rmv=1.67.4';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.67.4';
+import { updateBehaviorResults } from './behaviorResults.js?rmv=1.67.6';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.67.6';
 
 // Declarative, face-local behaviors. No generated code, global targets or timers.
 const roots = new WeakMap();

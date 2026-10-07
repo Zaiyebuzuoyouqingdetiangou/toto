@@ -1,8 +1,8 @@
-import { getSettings } from './settings.js?rmv=1.67.4';
-import { generateMirrorImage } from './baibaiImage.js?rmv=1.67.4';
-import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.4';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.4';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.4';
+import { getSettings } from './settings.js?rmv=1.67.6';
+import { generateMirrorImage } from './baibaiImage.js?rmv=1.67.6';
+import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.6';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.6';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.6';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -60,6 +60,13 @@ function readSaved(key) {
     catch { return { broken: true }; }
 }
 
+function fitFrameImage(image) {
+    // Keep the generated frame/layout; show the whole image without stretching or cropping.
+    // Apply in place to restored images too, without regenerating or replacing their nodes.
+    image.style.setProperty('object-fit', 'contain', 'important');
+    image.style.setProperty('object-position', 'center', 'important');
+}
+
 function paint(frame, record) {
     const url = safeImageUrl(record?.url || record?.path || record?.dataUrl);
     if (!url) return false;
@@ -71,9 +78,10 @@ function paint(frame, record) {
         image = frame.ownerDocument.createElement('img');
         image.setAttribute('data-rm-draw-result', '1');
         image.alt = '这一面的画面';
-        image.style.cssText = 'display:block;width:100%;height:100%;object-fit:cover;';
+        image.style.cssText = 'display:block;width:100%;height:100%;';
         frame.prepend(image);
     }
+    fitFrameImage(image);
     image.src = url;
     return true;
 }
@@ -161,7 +169,11 @@ function startJob(key, prompt, frame) {
 }
 
 async function fillFrame(root, frame) {
-    if (frame.querySelector?.('img[data-rm-draw-result][src]')) return;
+    const existingImage = frame.querySelector?.('img[data-rm-draw-result][src]');
+    if (existingImage) {
+        fitFrameImage(existingImage);
+        return;
+    }
     const prompt = readPrompt(frame);
     if (!prompt) return;
     const key = storageKey(root, frame, prompt);
