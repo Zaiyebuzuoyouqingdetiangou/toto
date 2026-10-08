@@ -1,15 +1,15 @@
 // Split from outputSanitizer.js — diagnostics.
-import { interactionSamplingDiagnostic, designSamplingChecksDiagnostic } from '../interactionSampling.js?rmv=1.67.24';
-import { RADIO_BRANCH_COUNT_ATTR } from './radioBranchRepair.js?rmv=1.67.24';
-import { findUnmappedNavigationButtons } from './choiceRescue.js?rmv=1.67.24';
-import { nativePopoverFallbackCount, inspectNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.67.24';
-import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.67.24';
-import { restoreRuntimeAnimationClone } from '../runtimeAnimationState.js?rmv=1.67.24';
+import { interactionSamplingDiagnostic, designSamplingChecksDiagnostic } from '../interactionSampling.js?rmv=1.67.26';
+import { RADIO_BRANCH_COUNT_ATTR } from './radioBranchRepair.js?rmv=1.67.26';
+import { findUnmappedNavigationButtons } from './choiceRescue.js?rmv=1.67.26';
+import { nativePopoverFallbackCount, inspectNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.67.26';
+import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.67.26';
+import { restoreRuntimeAnimationClone } from '../runtimeAnimationState.js?rmv=1.67.26';
 
-import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.67.24';
-import { collectBoundedElementDescendants } from '../presentationQuality.js?rmv=1.67.24';
-import { collectRevealedClipHosts, shouldRelaxRevealedClipPanel, REVEALED_CLIP_RESCUE_ATTR } from '../revealedClipRepair.js?rmv=1.67.24';
-import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.67.24';
+import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.67.26';
+import { collectBoundedElementDescendants } from '../presentationQuality.js?rmv=1.67.26';
+import { collectRevealedClipHosts, shouldRelaxRevealedClipPanel, REVEALED_CLIP_RESCUE_ATTR } from '../revealedClipRepair.js?rmv=1.67.26';
+import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.67.26';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -28,7 +28,7 @@ import {
     isInsideChatMessage,
     isMaintenanceRabbitEnabled,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.67.24';
+} from './runtime.js?rmv=1.67.26';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     CHANNEL_DIAL_CYCLE_COUNT_ATTR,
@@ -61,7 +61,7 @@ import {
     WEBKIT_3D_FLIP_RESCUE_ATTR,
     passportDocumentRescueStates,
     unlabeledCheckedHostRescueStates,
-} from './checkedStateRescue.js?rmv=1.67.24';
+} from './checkedStateRescue.js?rmv=1.67.26';
 import {
     RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR,
     RENDERED_BUTTON_ADJACENT_HIDDEN_ITEM_ATTR,
@@ -88,7 +88,7 @@ import {
     renderedListDetailRescueStates,
     renderedMaskRevealRescueStates,
     renderedStateLayerRescueStates,
-} from './renderedStateRescue.js?rmv=1.67.24';
+} from './renderedStateRescue.js?rmv=1.67.26';
 import {
     RAW_RADIO_RESET_LAST_ATTR,
     RAW_RADIO_RESET_ROOT_ATTR,
@@ -99,7 +99,7 @@ import {
     getRabbitMirrorSummaryText,
     getRawAssistantMessageForRenderedRoot,
     rawSelfMutationRescueStates,
-} from './scriptedInteractionRescue.js?rmv=1.67.24';
+} from './scriptedInteractionRescue.js?rmv=1.67.26';
 import {
     REVERSIBLE_RADIO_LAST_ATTR,
     REVERSIBLE_RADIO_ROOT_ATTR,
@@ -110,13 +110,13 @@ import {
     findNestedDetailsPopupClippingCandidates,
     formatWebKit3DFlipEvidence,
     repairNestedDetailsPopupClipping,
-} from './fallbackRescue.js?rmv=1.67.24';
-import { RADIO_GROUP_RESCUE_ATTR, RADIO_GROUP_ROOT_ATTR } from './idsAndRearm.js?rmv=1.67.24';
+} from './fallbackRescue.js?rmv=1.67.26';
+import { RADIO_GROUP_RESCUE_ATTR, RADIO_GROUP_ROOT_ATTR } from './idsAndRearm.js?rmv=1.67.26';
 import {
     findFillInChoiceCandidates,
     findStaticChoiceSelectionCandidates,
     findStructuredStaticDisclosureCandidates,
-} from './choiceRescue.js?rmv=1.67.24';
+} from './choiceRescue.js?rmv=1.67.26';
 import {
     CODE_SHELL_SELECTOR,
     MAINTENANCE_QUARANTINED_SCRIPT_ATTR,
@@ -134,7 +134,7 @@ import {
     needsSanitize,
     normalizeMaintenanceSummaryText,
     parseTotoFragment,
-} from './maintenanceInspect.js?rmv=1.67.24';
+} from './maintenanceInspect.js?rmv=1.67.26';
 import {
     RABBIT_MIRROR_MAX_TEMPLATE_SOURCE_CHARS,
     RABBIT_MIRROR_SANITIZER_IMPORT_STRIPPED_ATTR,
@@ -147,7 +147,7 @@ import {
     sanitizeRabbitMirrorUntrustedTemplate,
     stripCssComments,
     validateRabbitMirrorTemplateStructuralBudget,
-} from './markup.js?rmv=1.67.24';
+} from './markup.js?rmv=1.67.26';
 import {
     HCLIP_REPORT_ATTR,
     VIEWPORT_LAYOUT_COUNT_ATTR,
@@ -155,14 +155,14 @@ import {
     inspectMaintenanceMobileLayout,
     inspectMaintenanceViewportLayout,
     maintenanceMobileLayoutIsPassportManaged,
-} from './layoutRescue.js?rmv=1.67.24';
-import { normalizeRabbitMirrorToolButton, rabbitMirrorTextPresentation, updateMaintenanceRabbitMenuState } from './toolsChrome.js?rmv=1.67.24';
+} from './layoutRescue.js?rmv=1.67.26';
+import { normalizeRabbitMirrorToolButton, rabbitMirrorTextPresentation, updateMaintenanceRabbitMenuState } from './toolsChrome.js?rmv=1.67.26';
 import {
     getMessageIndexFromMirrorNode,
     hostScriptModule,
     messageUsesDistinctDisplaySource,
     outputHostGenerationLooksActive,
-} from './lifecycle.js?rmv=1.67.24';
+} from './lifecycle.js?rmv=1.67.26';
 
 export const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
 
@@ -1067,6 +1067,14 @@ function maintenanceTextClippingEvidence(element, root) {
         || !!clippingAncestor?.vertical;
     // 滚动字幕会故意把 nowrap 文本移出裁切窗口；这是媒介动画，不是文字丢失。
     if (horizontal && !vertical && clipsX && maintenanceHasIntentionalMarquee(element)) horizontal = false;
+    // 弹幕行本身在动（或它所在的轨道在动），横向伸出去是滚动效果，不是文字丢失。
+    if (horizontal && !vertical && noWrap) {
+        for (let node = element, depth = 0; node && node !== root && depth < 3; node = node.parentElement, depth += 1) {
+            const style = maintenanceSafeComputedStyle(node);
+            const animationName = String(style?.animationName || '').trim().toLowerCase();
+            if (animationName && animationName !== 'none') { horizontal = false; break; }
+        }
+    }
     if (!horizontal && !vertical) return null;
 
     // Automatic repair is intentionally narrower than the maintenance-rabbit
@@ -1133,6 +1141,8 @@ export function findMaintenanceTextClippingCandidates(root, limit = 24, { highCo
     const elements = [root, ...root.querySelectorAll('*')];
     for (const element of elements) {
         if (seen.has(element)) continue;
+        // 标题栏的两行截断是插件自己的标题样式（给右侧工具按钮留位置），不是模型排版被裁。
+        if (element.closest?.('[data-rm-title-label], [data-rm-title-chrome] > [data-rabbit-mirror-tool-entry-host]')) continue;
         if (highConfidenceOnly && !maintenanceHasPotentialAutomaticTextClip(element, root, ancestorStyles)) continue;
         const evidence = maintenanceTextClippingEvidence(element, root);
         if (!evidence) continue;

@@ -1,12 +1,12 @@
 // Split from independentApi.js — earlyBody.
 
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.67.24';
-import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.67.24';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.67.24';
-import { getSettings } from '../settings.js?rmv=1.67.24';
-import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.67.24';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=1.67.24';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.67.24';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.67.26';
+import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.67.26';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.67.26';
+import { getSettings } from '../settings.js?rmv=1.67.26';
+import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.67.26';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=1.67.26';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.67.26';
 import {
     MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE,
     assistantRowsInScanRange,
@@ -15,7 +15,7 @@ import {
     isMissingShellTargetFloor,
     normalizeMissingShellScanRange,
     shouldRestoreMissingIndependentRetryShell,
-} from './missingRetryShell.js?rmv=1.67.24';
+} from './missingRetryShell.js?rmv=1.67.26';
 import {
     INDEPENDENT_GENERATION_INTENTS_KEY,
     INDEPENDENT_GENERATION_INTENT_TYPES,
@@ -25,7 +25,7 @@ import {
     currentRuntime,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.67.24';
+} from './runtime.js?rmv=1.67.26';
 import {
     ACTIVE_GENERATION_WAIT_MS,
     FINAL_RENDER_POLL_INTERVAL_MS,
@@ -39,7 +39,7 @@ import {
     markAutomaticFailureStop,
     operationEpochForBase,
     pending,
-} from './flights.js?rmv=1.67.24';
+} from './flights.js?rmv=1.67.26';
 import {
     appendHistoryEntry,
     chatPersistenceSlot,
@@ -51,7 +51,7 @@ import {
     synchronizeIndependentChatPersistence,
     writePersistedOwner,
     writeStore,
-} from './persistence.js?rmv=1.67.24';
+} from './persistence.js?rmv=1.67.26';
 import {
     activeGlobalWorldInfoCapture,
     assistantMessages,
@@ -101,7 +101,7 @@ import {
     withOwnerLockStoreBatch,
     writeActiveGlobalWorldInfoCapture,
     writeHostModule,
-} from './connection.js?rmv=1.67.24';
+} from './connection.js?rmv=1.67.26';
 import {
     allExternalHosts,
     externalHosts,
@@ -109,7 +109,7 @@ import {
     removeEmptyFollowExternalAnchors,
     removeEmptyInlineAnchors,
     withExternalHostSyncIndex,
-} from './request.js?rmv=1.67.24';
+} from './request.js?rmv=1.67.26';
 import {
     beginHostWorkTiming,
     clearExternalHostFreshSourceState,
@@ -142,7 +142,7 @@ import {
     setPlaceholderSummary,
     usableReadyDetails,
     withRestorableHtmlCacheBatch,
-} from './geometry.js?rmv=1.67.24';
+} from './geometry.js?rmv=1.67.26';
 import {
     INDEPENDENT_INTENT_OWNER,
     abortFlight,
@@ -196,7 +196,7 @@ import {
     serializeExternalFaceDetails,
     stampAutomaticAuthorizationEpoch,
     withHistoricalRestoreLightPass,
-} from './mount.js?rmv=1.67.24';
+} from './mount.js?rmv=1.67.26';
 import {
     automaticGenerationCutovers,
     hostGenerationHintStartedAt,
@@ -221,7 +221,7 @@ import {
     writeStartupHistoryFallbackRoot,
     writeSyncRunning,
     writeSyncTimer,
-} from './lifecycle.js?rmv=1.67.24';
+} from './lifecycle.js?rmv=1.67.26';
 
 let earlyBodyParserPromise=null;
 
@@ -344,7 +344,7 @@ function settleEarlyBodyAtFinal(ctx,index){
 
 async function probeIndependentEarlyBody(packet,sequence){
  if(!earlyBodyPacketCurrent(packet)) return;
- if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.67.24')
+ if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.67.26')
   .then(module=>{earlyBodyParser=module;return module;}).catch(()=>{earlyBodyParserPromise=null;return null;});
  const parser=await earlyBodyParserPromise;
  if(!parser || sequence!==earlyBodyProbeSequence || !earlyBodyPacketCurrent(packet)) return;
@@ -1182,7 +1182,7 @@ function syncMessagesCore(indices=null){
        // a retry control could be reached.
        if(keep?.dataset?.rmAwaitingFreshSource==='true' && keep.dataset.rmFreshSourceStatus==='error'){
          clearExternalHostFreshSourceState(keep);
-         keep=ensureExternalUi(el,key,'独立 API 生成失败。可直接重新生成兔子镜，或打开挨打猫后重说。','error','independent',sourceHash);
+         keep=ensureExternalUi(el,key,'独立 API 生成失败。可直接重新生成兔子镜，或在兔子镜工具里点「↻ 重说」。','error','independent',sourceHash);
        }
        if(keep?.dataset?.rmState==='ready' && !usableReadyDetails(keep.querySelector?.(':scope > details'))){ keep.remove(); keep=null; }
        // A mounted ready mirror may seed the stable owner only while its stamped

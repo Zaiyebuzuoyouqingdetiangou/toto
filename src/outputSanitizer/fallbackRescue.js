@@ -1,7 +1,7 @@
 // Split from outputSanitizer.js — fallbackRescue.
-import { RADIO_BRANCH_CONTROL_ATTR, installRadioBranchRepair, applyRadioBranchState, radioBranchVerificationTargets } from './radioBranchRepair.js?rmv=1.67.24';
+import { RADIO_BRANCH_CONTROL_ATTR, installRadioBranchRepair, applyRadioBranchState, radioBranchVerificationTargets } from './radioBranchRepair.js?rmv=1.67.26';
 
-import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.67.24';
+import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.67.26';
 
 import {
     FEEDBACK_CAT_ATTR,
@@ -9,7 +9,7 @@ import {
     TOOL_ENTRY_HOST_ATTR,
     escapeRegExp,
     getRabbitMirrorLocalStyleElements,
-} from './runtime.js?rmv=1.67.24';
+} from './runtime.js?rmv=1.67.26';
 import {
     CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR,
     CROSS_PARENT_CHECKED_VERIFIED_ATTR,
@@ -65,6 +65,7 @@ import {
     clearPersistedCheckedInlineArtifacts,
     clearUncheckedRadioCheckedInlineArtifacts,
     crossParentCheckedCandidateFingerprint,
+    crossParentCheckedCandidateVerified,
     findCrossParentCheckedRuleFallbackCandidates,
     focusWithinPersistentRescueStates,
     installChannelDialCycleRescue,
@@ -91,7 +92,7 @@ import {
     webKit3DFlipInlineStates,
     webKit3DFlipRescueStates,
     webKit3DFlipStyleStates,
-} from './checkedStateRescue.js?rmv=1.67.24';
+} from './checkedStateRescue.js?rmv=1.67.26';
 import {
     EXISTING_INTERACTIVE_SELECTOR,
     RENDERED_BUTTON_ADJACENT_HIDDEN_RESCUE_ATTR,
@@ -118,7 +119,7 @@ import {
     isCollapsedDimensionValue,
     normalizeStylePropertyName,
     parseCssStateSiblingAssignments,
-} from './renderedStateRescue.js?rmv=1.67.24';
+} from './renderedStateRescue.js?rmv=1.67.26';
 import {
     chooseMatchingRawRabbitMirrorRoot,
     detectInteractionCapabilities,
@@ -134,7 +135,7 @@ import {
     installRawMessageSelfMutationRescue,
     preparePseudoTrigger,
     shouldIgnorePseudoToggleEvent,
-} from './scriptedInteractionRescue.js?rmv=1.67.24';
+} from './scriptedInteractionRescue.js?rmv=1.67.26';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     FILL_IN_CHOICE_BLANK_ATTR,
@@ -146,15 +147,15 @@ import {
     diagnosticFindClippingAncestor,
     maintenanceSafeComputedStyle,
     mobileInlineAnnotationRescueStates,
-} from './diagnostics.js?rmv=1.67.24';
-import { installStaticChoiceSelectionFallback } from './choiceRescue.js?rmv=1.67.24';
+} from './diagnostics.js?rmv=1.67.26';
+import { installStaticChoiceSelectionFallback } from './choiceRescue.js?rmv=1.67.26';
 import {
     checkedDeclarationCreatesContentReveal,
     checkedTargetCarriesResultContent,
     pseudoStateTargetSelector,
-} from './maintenanceInspect.js?rmv=1.67.24';
-import { splitCssSelectorList } from './markup.js?rmv=1.67.24';
-import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutResolveCheckedTargets } from './layoutRescue.js?rmv=1.67.24';
+} from './maintenanceInspect.js?rmv=1.67.26';
+import { splitCssSelectorList } from './markup.js?rmv=1.67.26';
+import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutResolveCheckedTargets } from './layoutRescue.js?rmv=1.67.26';
 
 const NESTED_DETAILS_FALLBACK_HANDLER_PROP = '__rabbitMirrorNestedDetailsFallbackHandler';
 
@@ -2820,8 +2821,79 @@ export function scheduleMaintenanceLabeledCheckedProbe(root, diagnosticState) {
     setTimeout(() => {
         sandbox.destroy();
         diagnosticState?.events?.push?.('maintenance-sandbox-probe:destroyed;隐藏副本已删除');
+        // 上面只实测了一个控件。跨父层兜底若装在多个控件上，其余控件此前永远停在“未验证”，
+        // 维修兔每次都报“仍检测到”。这里逐个在新的隐藏副本里补测，真实控件仍不操作。
+        verifyRemainingCrossParentInputs(root, sequence, diagnosticState);
     }, 310);
     return 1;
+}
+
+function prepareMaintenanceProbeSandbox(root) {
+    const sandbox = createMaintenanceLabeledCheckedProbeSandbox(root);
+    if (!sandbox) return null;
+    const sandboxRoot = sandbox.root;
+    const inputs = [...sandboxRoot.querySelectorAll('input[type="checkbox"], input[type="radio"]')];
+    clearPersistedCheckedInlineArtifacts(sandboxRoot, inputs);
+    installRadioBranchRepair(sandboxRoot);
+    for (const stateInput of inputs) {
+        if (stateInput.checked) applyCheckedVisualFallback(sandboxRoot, stateInput);
+        else restoreInteractionInlineOverrides(stateInput);
+        stateInput.setAttribute('aria-pressed', stateInput.checked ? 'true' : 'false');
+    }
+    if (sandboxRoot.querySelector(`[${EXCLUSIVE_STACKED_STATE_CONTROL_ATTR}]`)) installExclusiveStackedStateRescue(sandboxRoot);
+    return { sandbox, sandboxRoot, inputs };
+}
+
+function verifyRemainingCrossParentInputs(root, sequence, diagnosticState) {
+    if (!root?.isConnected || maintenanceSandboxProbeSequences.get(root) !== sequence) return;
+    const liveInputs = [...root.querySelectorAll('input[type="checkbox"], input[type="radio"]')];
+    const pending = findCrossParentCheckedRuleFallbackCandidates(root)
+        .filter(candidate => candidate.input.hasAttribute(CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR)
+            && !crossParentCheckedCandidateVerified(candidate))
+        .slice(0, 8);
+    const next = index => {
+        if (index >= pending.length) {
+            if (root.isConnected) globalThis.__rabbitMirrorRefreshCrossParentVerdict?.(root);
+            return;
+        }
+        if (!root.isConnected || maintenanceSandboxProbeSequences.get(root) !== sequence) return;
+        const candidate = pending[index];
+        const liveIndex = liveInputs.indexOf(candidate.input);
+        const prepared = liveIndex >= 0 ? prepareMaintenanceProbeSandbox(root) : null;
+        const input = prepared?.inputs[liveIndex];
+        if (!prepared || !input) { prepared?.sandbox.destroy(); next(index + 1); return; }
+        const { sandbox, sandboxRoot } = prepared;
+        // 已选中的 radio 先切到同组另一项，再切回来测，否则“选中已选项”什么也证明不了。
+        let intended = input.type === 'radio' ? true : !input.checked;
+        if (input.type === 'radio' && input.checked) {
+            const other = prepared.inputs.find(node => node !== input && node.type === 'radio' && node.name && node.name === input.name);
+            if (!other) { sandbox.destroy(); next(index + 1); return; }
+            applyMaintenanceSandboxCheckedState(sandboxRoot, other, true);
+            restoreInteractionInlineOverrides(input);
+            input.setAttribute('aria-pressed', 'false');
+        }
+        const verification = prepareLabeledCheckedVerification(sandboxRoot, input);
+        if (!verification.targets.some(entry => entry.secondState)) { sandbox.destroy(); next(index + 1); return; }
+        setTimeout(() => {
+            if (!sandbox.host.isConnected || !root.isConnected) { sandbox.destroy(); return; }
+            applyMaintenanceSandboxCheckedState(sandboxRoot, input, intended);
+            setTimeout(() => {
+                try {
+                    const matched = sandbox.host.isConnected
+                        && recordLabeledCheckedVerification(sandboxRoot, input, verification, intended, 'maintenance-sandbox-probe-observe', false);
+                    const liveCandidate = findCrossParentCheckedRuleFallbackCandidates(root).find(item => item.input === candidate.input);
+                    if (matched && liveCandidate) {
+                        candidate.input.setAttribute(CROSS_PARENT_CHECKED_VERIFIED_ATTR, crossParentCheckedCandidateFingerprint(liveCandidate));
+                    }
+                    diagnosticState?.events?.push?.(`maintenance-sandbox-probe:cross-parent ${diagnosticElementName(candidate.input)} matched=${!!matched}`);
+                } finally {
+                    sandbox.destroy();
+                    next(index + 1);
+                }
+            }, 120);
+        }, 30);
+    };
+    next(0);
 }
 
 

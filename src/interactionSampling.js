@@ -39,7 +39,11 @@ export function drawDesignCandidate({ slots = 3 } = {}) {
 
 function readSamplingRecord(root) {
     let raw;
-    try { raw = root?.getAttribute?.('data-rm-vs'); } catch { return { status: 'missing' }; }
+    try {
+        // 模型有时把记录写在 details 里面第一层的容器上，而不是 details 本身；也照样读。
+        raw = root?.getAttribute?.('data-rm-vs')
+            || root?.querySelector?.(':scope > :not(summary)[data-rm-vs], :scope > * > [data-rm-vs]')?.getAttribute?.('data-rm-vs');
+    } catch { return { status: 'missing' }; }
     if (!raw) return { status: 'missing' };
     const invalid = { status: 'invalid' };
     if (typeof raw !== 'string' || raw.length > 8192) return invalid;

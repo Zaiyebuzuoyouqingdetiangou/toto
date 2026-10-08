@@ -1,9 +1,9 @@
 // Split from independentApi.js — flights.
 
-import { getSettings } from '../settings.js?rmv=1.67.24';
-import { configuredAutomaticRerollIdleMs, configuredAutomaticRerollMax, stallTimeoutError } from '../automaticReroll.js?rmv=1.67.24';
-import { baseSlotOf } from './connection.js?rmv=1.67.24';
-import { automaticGenerationCutovers } from './lifecycle.js?rmv=1.67.24';
+import { getSettings } from '../settings.js?rmv=1.67.26';
+import { configuredAutomaticRerollIdleMs, configuredAutomaticRerollMax, stallTimeoutError } from '../automaticReroll.js?rmv=1.67.26';
+import { baseSlotOf } from './connection.js?rmv=1.67.26';
+import { automaticGenerationCutovers } from './lifecycle.js?rmv=1.67.26';
 
 export const pending = new Map();
 // A failed automatic generation owns its exact chat+mesid+swipe+sourceHash until
@@ -113,7 +113,7 @@ export function createIndependentRequestDeadline(controller,onTimeout,options={}
   if(absoluteTimer) clearTimeout(absoluteTimer);
   idleTimer=0; absoluteTimer=0;
   const stall=kind==='stall';
-  const error=stall?stallTimeoutError(lastProgressAt, idleWait/1000):new Error('独立 API 已达到 20 分钟总等待上限，已停止本次等待。可在挨打猫中重说；本轮不会自动重新发送付费请求。');
+  const error=stall?stallTimeoutError(lastProgressAt, idleWait/1000):new Error('独立 API 已达到 20 分钟总等待上限，已停止本次等待。可在兔子镜工具里点「↻ 重说」；本轮不会自动重新发送付费请求。');
   if(!stall){
    error.name='RabbitMirrorIndependentTimeoutError';
    error.code='RABBIT_MIRROR_INDEPENDENT_ABSOLUTE_TIMEOUT';

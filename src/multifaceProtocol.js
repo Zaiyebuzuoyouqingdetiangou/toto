@@ -27,7 +27,7 @@ export function createMultifaceFailureSlot(faceIndex, code = 'incomplete-face') 
     if (!Number.isInteger(faceIndex) || faceIndex < 0 || faceIndex > 4) throw new RangeError('Invalid face index');
     const safeCode = String(code || '').replace(/[^a-z0-9-]/gi, '').slice(0, 80) || 'incomplete-face';
     const ordinal = faceIndex + 1;
-    return `<toto data-rabbit-mirror="true" data-rm-face="${ordinal}"><details ${MULTIFACE_FAILURE_ATTR}="${safeCode}"><summary>【兔子镜：第 ${ordinal} 面未完成】</summary><p>这一面未通过检查，其他成功面已保留。原因：${safeCode}。</p><p>不会自动补发请求。如需重试，请使用这一面的挨打猫「重说」，只重新生成这一面。</p></details></toto>`;
+    return `<toto data-rabbit-mirror="true" data-rm-face="${ordinal}"><details ${MULTIFACE_FAILURE_ATTR}="${safeCode}"><summary>【兔子镜：第 ${ordinal} 面未完成】</summary><p>这一面未通过检查，其他成功面已保留。原因：${safeCode}。</p><p>不会自动补发请求。如需重试，请使用这一面工具里的「↻ 重说」，只重新生成这一面。</p></details></toto>`;
 }
 
 /** Retain only frames already proved by the strict parser; never repair or
