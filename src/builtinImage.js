@@ -1,8 +1,8 @@
-import { getSettings } from './settings.js?rmv=1.67.32';
-import { generateMirrorImage } from './baibaiImage.js?rmv=1.67.32';
-import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.32';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.32';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.32';
+import { getSettings } from './settings.js?rmv=1.67.33';
+import { generateMirrorImage } from './baibaiImage.js?rmv=1.67.33';
+import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.33';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.33';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.33';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -270,6 +270,22 @@ function ensureFrameBox(frame) {
     if (!style.aspectRatio && computed.aspectRatio === 'auto' && !style.height) style.setProperty('aspect-ratio', '4 / 3');
     if (computed.overflow === 'visible') style.setProperty('overflow', 'hidden');
     if (!style.borderRadius && computed.borderTopLeftRadius === '0px') style.setProperty('border-radius', '12px');
+}
+
+// 关掉内置生图只是不再画新图：已经画好、存在本机的图照样放回图框，不发任何请求。
+export function restoreSavedBuiltinImages(root) {
+    if (!root?.querySelectorAll) return 0;
+    let restored = 0;
+    for (const frame of root.querySelectorAll('[data-rm-draw-frame]')) {
+        if (frame.querySelector?.('img[data-rm-draw-result][src]')) continue;
+        const prompt = readPrompt(frame);
+        if (!prompt) continue;
+        const saved = readSaved(storageKey(root, frame, prompt));
+        if (!saved.record) continue;
+        ensureFrameBox(frame);
+        if (paint(frame, saved.record)) restored += 1;
+    }
+    return restored;
 }
 
 export function fillBuiltinImageFrames(root) {

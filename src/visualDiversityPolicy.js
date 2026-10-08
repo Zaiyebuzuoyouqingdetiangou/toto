@@ -1,4 +1,4 @@
-import { classifyPaletteSamples } from './paletteObservation.js?rmv=1.67.32';
+import { classifyPaletteSamples } from './paletteObservation.js?rmv=1.67.33';
 
 const HUE_FAMILY_LABELS = Object.freeze({
     red: '红色族', orange: '橙色族', yellow: '黄色族', green: '绿色族', cyan: '青色族',
@@ -54,18 +54,18 @@ export function darkVisualGenerationRule(settings) {
   - 保留形式的固有结构、材质纹理与原有玩法，通过夜间环境、染色材质或低明度同类材料表达；不能把所有媒介都改成终端面板。长文本仍只做原有阅读美化，不添加 HTML 面的交互或动画。`;
 }
 
-// 柔和浅色的举例色：每个色族都有一串，每次只随机拿几个不同色族的放进说明，
-// 避开近三轮用过的色族和上一次给过的颜色，免得模型总挑写在前面的那几个。
+// 柔和浅色的举例色：莫兰迪灰调色与干净的浅色两类，每个色族各有一串。每次只随机拿几个不同色族的放进说明，
+// 两类都会出现，避开近三轮用过的色族和上一次给过的颜色，免得模型总挑写在前面的那几个。米黄类不放进来。
 const SOFT_TONE_POOL = Object.freeze({
-    red: ['豆沙红', '灰玫红', '干枯玫瑰', '砖灰红', '旧胭脂'],
-    orange: ['杏灰', '陶土橘', '奶茶橘', '焦糖灰', '柿子灰'],
-    yellow: ['燕麦', '芥末灰黄', '稻草黄', '奶油灰黄', '旧纸黄'],
-    green: ['灰豆绿', '鼠尾草绿', '橄榄灰', '苔藓灰绿', '抹茶灰'],
-    cyan: ['雾青', '灰青', '石青灰', '湖水灰绿', '青瓷灰'],
-    blue: ['雾蓝', '雾霾蓝', '灰牛仔蓝', '烟灰蓝', '远山蓝'],
-    purple: ['雾紫', '藕荷紫', '灰丁香', '烟紫', '薰衣草灰'],
-    pink: ['灰粉', '藕粉', '脏粉', '胭脂灰粉', '樱花灰'],
-    neutral: ['浅驼', '卡其灰', '亚麻', '鸽灰', '暖灰', '象牙灰'],
+    red: { muted: ['豆沙红', '灰玫红', '干枯玫瑰', '砖灰红', '旧胭脂'], light: ['浅玫瑰', '淡珊瑚红'] },
+    orange: { muted: ['杏灰', '陶土橘', '赭石灰', '焦糖灰', '柿子灰'], light: ['浅杏', '蜜桃橘', '浅珊瑚'] },
+    yellow: { muted: ['芥末灰黄', '姜黄灰', '旧铜黄灰', '苔黄灰'], light: ['淡柠黄', '柠檬浅黄'] },
+    green: { muted: ['灰豆绿', '鼠尾草绿', '橄榄灰', '苔藓灰绿', '抹茶灰'], light: ['薄荷绿', '浅豆绿', '嫩芽绿'] },
+    cyan: { muted: ['雾青', '灰青', '石青灰', '湖水灰绿', '青瓷灰'], light: ['冰川青', '浅水青', '浅湖蓝'] },
+    blue: { muted: ['雾蓝', '雾霾蓝', '灰牛仔蓝', '烟灰蓝', '远山蓝'], light: ['浅天蓝', '婴儿蓝', '浅矢车菊蓝'] },
+    purple: { muted: ['雾紫', '藕荷紫', '灰丁香', '烟紫', '薰衣草灰'], light: ['淡紫', '浅香芋紫', '浅丁香紫'] },
+    pink: { muted: ['灰粉', '藕粉', '脏粉', '胭脂灰粉', '樱花灰'], light: ['浅粉', '樱花粉', '蜜桃粉', '芭蕾粉'] },
+    neutral: { muted: ['鸽灰', '雾灰', '水泥灰', '银灰', '烟灰'], light: [] },
 });
 const SOFT_TONE_RECENT_KEY = 'rabbitMirrorSoftToneExamplesRecent';
 const SOFT_TONE_EXAMPLE_COUNT = 4;
@@ -96,8 +96,12 @@ export function drawSoftToneExamples({ avoidFamilies = [] } = {}) {
     const allFamilies = Object.keys(SOFT_TONE_POOL);
     const open = allFamilies.filter(key => !avoidFamilies.includes(key));
     const families = softShuffled(open.length >= SOFT_TONE_EXAMPLE_COUNT ? open : allFamilies).slice(0, SOFT_TONE_EXAMPLE_COUNT);
-    const picks = families.map(key => {
-        const colors = SOFT_TONE_POOL[key];
+    // 先给每个色族定是灰调还是浅色，保证四个里两类都有。
+    const kinds = families.map((key, index) => SOFT_TONE_POOL[key].light.length ? (index % 2 ? 'muted' : 'light') : 'muted');
+    const shuffledKinds = softShuffled(kinds);
+    const picks = families.map((key, index) => {
+        const kind = SOFT_TONE_POOL[key][shuffledKinds[index]].length ? shuffledKinds[index] : 'muted';
+        const colors = SOFT_TONE_POOL[key][kind];
         const fresh = colors.filter(color => !recent.includes(color));
         return softShuffled(fresh.length ? fresh : colors)[0];
     });
@@ -110,7 +114,7 @@ export function softLightVisualGenerationRule(settings, { avoidFamilies = [] } =
     if (settings?.visualToneMode !== 'soft' || settings?.darkVisualMode === true) return '';
     const examples = drawSoftToneExamples({ avoidFamilies });
     return `柔和浅色模式【本次所有新生成镜面，包括长文本】：
-  - 背景与主要承载面用中高明度、低饱和、带一点灰的颜色：任何色相调灰调浅都可以，例如${examples.join('、')}，只是举例，按本面题材自己定色；不用纯白，也不用高饱和的大面积色块或深色铺底；主体部件可用中等明度的灰调色。
+  - 背景与主要承载面用柔和的浅色：莫兰迪那种带一点灰的低饱和色，或干净的浅色（浅粉、浅蓝这一类），任何色相都可以，例如${examples.join('、')}，只是举例，按本面题材自己定色；米黄、米白、奶油色、羊皮纸黄这类暖黄纸色不算柔和浅色，不作主背景和主承载，信纸、日记、旧书这类纸张也换成其他柔和的颜色表现纸感；不用纯白，也不用高饱和的大面积色块或深色铺底；主体部件可用中等明度的灰调色。
   - 主次靠明暗与冷暖拉开，不靠鲜艳；正文用同色相的深灰或深褐，对比清楚；可操作的部件用一处稍深或稍暖的同调强调色，一眼看出能点。
   - 仍须强避重：在柔和浅色范围内换色族与冷暖，不改艳也不改暗；形式自带的标志色保留，调灰后使用。长文本只做阅读配色，不添加交互或动画。`;
 }
@@ -122,6 +126,7 @@ export function visualDiversityExecutionLock(_settings, { textRevealRotation = f
         flipRotation ? '近三面的交互多是翻面、展开或切页：本面主交互换成会直接改变画面的操作（按住、刮开、累积点亮、重排、描画、拖动、滑杆等，可用提供的插件写法），翻面和展开最多作辅助。' : '',
         slideRotation ? '近三面的主交互多是滑杆或拖动：本面主交互不用滑杆、进度条和拖动，换成点按、按住、刮开、累积点亮、重排、描画或整体切换状态等，滑杆和拖动最多作辅助。' : '',
         textRevealRotation ? '本轮换口味：整面交互作用在同一个主体上（可以分几步），不让每个条目各配一个开关。' : '',
+        softTone ? '柔和浅色：主背景与主承载不用米黄、米白、奶油色、羊皮纸这类暖黄纸色，纸张类媒介也换成其他柔和的颜色。' : '',
         paleBan && softTone ? '本轮浅底换一种明显带色相的浅（近三轮已两次接近纯白），不用接近纯白的底，仍保持柔和浅色。' : '',
         paleBan && !softTone ? '本轮主背景与主承载不用米白、米黄或其他近白浅底（近三轮已出现两次），媒介本身是白纸白底时用纸张以外的部分拉开颜色。' : '',
         paletteReminder,

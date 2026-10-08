@@ -6,7 +6,7 @@ import {
     escapeRegExp,
     getRabbitMirrorLocalStyleElements,
     hashInteractionSignature,
-} from './runtime.js?rmv=1.67.32';
+} from './runtime.js?rmv=1.67.33';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     DIRECT_ID_CLASS_STATE_RESCUE_ATTR,
@@ -22,25 +22,25 @@ import {
     repairMalformedNestedInteractiveLabels,
     repairRabbitMirrorSelectorPanelGridSpan,
     restoreInteractionInlineOverrides,
-} from './checkedStateRescue.js?rmv=1.67.32';
+} from './checkedStateRescue.js?rmv=1.67.33';
 import {
     RAW_SELF_MUTATION_RESCUE_ATTR,
     chooseMatchingRawRabbitMirrorRoot,
     getRawAssistantMessageForRenderedRoot,
-} from './scriptedInteractionRescue.js?rmv=1.67.32';
+} from './scriptedInteractionRescue.js?rmv=1.67.33';
 import {
     applyCheckedVisualFallback,
     inputHasMeaningfulCheckedSiblingRule,
     installIntelligentInteractionRescue,
-} from './fallbackRescue.js?rmv=1.67.32';
-import { INERT_ACTION_BUTTON_RESCUE_ATTR, INERT_ACTION_STATUS_ATTR } from './diagnostics.js?rmv=1.67.32';
-import { rehydrateRabbitMirrorMaintenanceRepairs } from './choiceRescue.js?rmv=1.67.32';
-import { maintenanceRepairRootBudget } from './maintenanceInspect.js?rmv=1.67.32';
-import { recoverBehaviorInteractions } from './behaviorRecovery.js?rmv=1.67.32';
-import { installRangeStageRescue, installRangeValueAttributeMirror } from './rangeStageRescue.js?rmv=1.67.32';
-import { installMobileInteractionControls } from './mobileInteractionControls.js?rmv=1.67.32';
-import { installNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.67.32';
-import { installBehaviorInteractions } from './behaviorInteractions.js?rmv=1.67.32';
+} from './fallbackRescue.js?rmv=1.67.33';
+import { INERT_ACTION_BUTTON_RESCUE_ATTR, INERT_ACTION_STATUS_ATTR } from './diagnostics.js?rmv=1.67.33';
+import { rehydrateRabbitMirrorMaintenanceRepairs } from './choiceRescue.js?rmv=1.67.33';
+import { maintenanceRepairRootBudget } from './maintenanceInspect.js?rmv=1.67.33';
+import { recoverBehaviorInteractions } from './behaviorRecovery.js?rmv=1.67.33';
+import { installRangeStageRescue, installRangeValueAttributeMirror } from './rangeStageRescue.js?rmv=1.67.33';
+import { installMobileInteractionControls } from './mobileInteractionControls.js?rmv=1.67.33';
+import { installNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.67.33';
+import { installBehaviorInteractions } from './behaviorInteractions.js?rmv=1.67.33';
 
 let interactionScopeCounter = 0;
 

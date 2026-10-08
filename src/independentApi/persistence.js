@@ -1,8 +1,8 @@
 // Split from independentApi.js — persistence.
 
-import { presentationModeFields } from '../presentationMode.js?rmv=1.67.32';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.67.32';
-import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.67.32';
+import { presentationModeFields } from '../presentationMode.js?rmv=1.67.33';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.67.33';
+import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.67.33';
 import {
     FACE_SWIPE_FULL_MESSAGE,
     FACE_SWIPE_MAX,
@@ -17,8 +17,9 @@ import {
     snapshotFaceSwipes, compactSwipeState, restoreFaceSwipeSnapshot,
     faceSwipeSnapshotStored, loadFaceSwipeArchive, saveFaceSwipeArchive,
     remapFaceSwipeSlots, remapFaceSwipeArchive, faceSwipeArchiveRemapSettled,
-} from '../swipeVersions.js?rmv=1.67.32';
-import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=1.67.32';
+} from '../swipeVersions.js?rmv=1.67.33';
+import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=1.67.33';
+import { remapMirrorImageSlots } from '../imageStore.js?rmv=1.67.33';
 import {
     clearEphemeralFaceFailure,
     hasEphemeralFaceFailure,
@@ -28,7 +29,7 @@ import {
     independentSwipeSlot,
     seedIndependentFaceSwipesFromIdentity,
     writeIndependentOwnerHtml,
-} from './faceSwipe.js?rmv=1.67.32';
+} from './faceSwipe.js?rmv=1.67.33';
 import {
     API_PROFILE_STORE_KEY,
     assistantMessages,
@@ -46,8 +47,8 @@ import {
     setOwnerLockForBase,
     swipeId,
     remapOwnerLockSlots,
-} from './connection.js?rmv=1.67.32';
-import { stampExternalDetailsOwnership } from './request.js?rmv=1.67.32';
+} from './connection.js?rmv=1.67.33';
+import { stampExternalDetailsOwnership } from './request.js?rmv=1.67.33';
 import {
     copyIndependentReplacementReceipt,
     ensureExternalTools,
@@ -58,8 +59,8 @@ import {
     normalizeSavedInteractionRecord,
     recoverSavedRecord,
     replaceExternalMultifaceFace,
-} from './geometry.js?rmv=1.67.32';
-import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=1.67.32';
+} from './geometry.js?rmv=1.67.33';
+import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=1.67.33';
 
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 
@@ -793,6 +794,9 @@ export function reconcileIndependentChatOwners(ctx=getContext(),options={}){
   try{ const history=readHistoryStore(); const plan=remapSlotKeyedObject(history.slots,mapSlot,retargetList); if(plan.changed){ writeHistoryStore({...history,slots:plan.next}); result.changed=true; } }catch(error){ console.warn('[RabbitMirror] 历史记录对号失败：',error); }
   try{ if(remapOwnerLockSlots(mapSlot)) result.changed=true; }catch(error){ console.warn('[RabbitMirror] 归属锁对号失败：',error); }
   try{ if(remapFaceSwipeSlots(mapSlot)) result.changed=true; }catch(error){ console.warn('[RabbitMirror] 版本栈对号失败：',error); }
+  // 插图（内置生图与手动生图）也按楼层号存在本机，跟着一起搬；被删楼层的图留着不删。
+  // 插图只存在本机，不计入聊天文件的对号次数。
+  try{ remapMirrorImageSlots(key,mapper); }catch(error){ console.warn('[RabbitMirror] 插图对号失败：',error); }
   if(options.kind==='swipe'){
    // 归属标记里的 swipe 号也跟着改。
    const msg=chat[Number(options.messageId)];

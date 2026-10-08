@@ -1,7 +1,7 @@
 // 智绘姬（st-chatu8）生图渠道：通过酒馆事件把提示词交给智绘姬，按请求编号接回图片。
 // 直接沿用智绘姬里已经配好的模型、接口和出图设置；不改它的全局设置，不加数量限制，不截短提示词，
 // 结果不明时不自动重发。只取消兔子镜自己的等待，不影响智绘姬里的其他任务。
-import { getContext } from './independentApi/runtime.js?rmv=1.67.32';
+import { getContext } from './independentApi/runtime.js?rmv=1.67.33';
 
 const SUPPORTED_MODES = new Set(['sd', 'novelai', 'comfyui', 'banana', 'runninghub']);
 
