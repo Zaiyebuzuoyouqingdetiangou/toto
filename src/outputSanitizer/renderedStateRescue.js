@@ -1,8 +1,8 @@
 // Split from outputSanitizer.js — renderedStateRescue.
 
-import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.67.22';
+import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.67.24';
 
-import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.67.22';
+import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.67.24';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     PSEUDO_ACTIVE_ATTR,
@@ -10,7 +10,7 @@ import {
     REVERSIBLE_TARGET_CLOSE_ATTR,
     restoreInteractionInlineOverrides,
     reversibleTargetCloseStates,
-} from './checkedStateRescue.js?rmv=1.67.22';
+} from './checkedStateRescue.js?rmv=1.67.24';
 import {
     RAW_SELF_MUTATION_RESCUE_ATTR,
     applyPseudoStyleAssignments,
@@ -28,17 +28,17 @@ import {
     resolveElementChildIndexPath,
     restorePseudoStyleState,
     shouldIgnorePseudoToggleEvent,
-} from './scriptedInteractionRescue.js?rmv=1.67.22';
-import { TOUCH_HOVER_STYLE_ATTR, setRescuedCheckedState } from './fallbackRescue.js?rmv=1.67.22';
-import { interactionScopeStates } from './idsAndRearm.js?rmv=1.67.22';
-import { INTERACTION_DIAGNOSTIC_PANEL_ATTR } from './diagnostics.js?rmv=1.67.22';
+} from './scriptedInteractionRescue.js?rmv=1.67.24';
+import { TOUCH_HOVER_STYLE_ATTR, setRescuedCheckedState } from './fallbackRescue.js?rmv=1.67.24';
+import { interactionScopeStates } from './idsAndRearm.js?rmv=1.67.24';
+import { INTERACTION_DIAGNOSTIC_PANEL_ATTR } from './diagnostics.js?rmv=1.67.24';
 import {
     cssContainsUnsafeGeneratedResource,
     cssDeclarationBlockContainsUnsafeOverlayGeometry,
     sanitizeGeneratedCssDeclarationBlock,
     splitCssDeclarationList,
     splitCssSelectorList,
-} from './markup.js?rmv=1.67.22';
+} from './markup.js?rmv=1.67.24';
 
 export const RENDERED_STATE_LAYER_RESCUE_ATTR = 'data-rabbit-mirror-rendered-state-layer-rescue';
 
@@ -223,6 +223,8 @@ export function dispatchRescuedInputState(input) {
 }
 
 
+const reversibleTargetHandledEvents = new WeakSet();
+
 export function installReversibleTargetClose(target, input, root) {
     if (!target?.addEventListener || !input || !root?.contains?.(target)) return false;
     const existing = reversibleTargetCloseStates.get(target);
@@ -235,9 +237,13 @@ export function installReversibleTargetClose(target, input, root) {
     if (target.hasAttribute(REVERSIBLE_TARGET_CLOSE_ATTR)) target.removeAttribute(REVERSIBLE_TARGET_CLOSE_ATTR);
 
     const onClick = event => {
+        // 结果层套着结果层（刮刮乐：揭开的区域里又有下一步）时，一次点按只退回最里面那一层；
+        // 外层不再跟着一起收起，否则点一下正文就会整面退回最开始。
+        if (reversibleTargetHandledEvents.has(event)) return;
         if (!input.checked) return;
         const nestedInteractive = event.target?.closest?.(EXISTING_INTERACTIVE_SELECTOR);
         if (nestedInteractive && nestedInteractive !== target && target.contains?.(nestedInteractive)) return;
+        reversibleTargetHandledEvents.add(event);
         const selection = globalThis.getSelection?.();
         if (selection && !selection.isCollapsed && String(selection).trim()) return;
         event.preventDefault();

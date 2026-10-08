@@ -1,35 +1,35 @@
-import { INTERACTION_SAMPLING_RULE, designCandidatePick, drawDesignCandidate } from './interactionSampling.js?rmv=1.67.22';
-import { driverContractLines, drawDriverOffer, interactionMethodNames, normalizeDriverOffer } from './interactionMethods.js?rmv=1.67.22';
-import { drawUsageOffer, normalizeUsageOffer } from './interactionUsageOffer.js?rmv=1.67.22';
-import { drawContinuation, normalizeContinuation } from './continuationCache.js?rmv=1.67.22';
-import { recentInteractionMethods } from './interactionMethodLedger.js?rmv=1.67.22';
-import { gameplayRuleFor } from './gameplayRules.js?rmv=1.67.22';
-import { usesModelOriginalColors, withoutPaletteRecipe, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.67.22';
-import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=1.67.22';
-import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=1.67.22';
-import { isNearWhitePalette, isNearWhiteContentSurface } from './paletteObservation.js?rmv=1.67.22';
-import { observedOperationFamiliesFor, observedMechanismsFor } from './compositionFingerprint.js?rmv=1.67.22';
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.67.22';
-import { expandShuffledOptions } from '../data/raw/rawSegmentLookup.js?rmv=1.67.22';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.67.22';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.67.22';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.67.22';
-import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES, VISUAL_SCENERY_EXPRESSION_RULE, VISUAL_SCENERY_VS_GUIDANCE } from '../data/raw/visualSceneryRules.js?rmv=1.67.22';
-import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.67.22';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.67.22';
-import { getComboHistory, getActivePaletteCooldown } from './storage.js?rmv=1.67.22';
-import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock, recentPaletteExecutionReminder } from './visualDiversityPolicy.js?rmv=1.67.22';
-import { withoutInteractionRecipe, observedInteractionRecipesFor } from './interactionRecipes.js?rmv=1.67.22';
-import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.67.22';
-import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.67.22';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.67.22';
-export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.67.22';
-import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.67.22';
-import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.67.22';
-import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.67.22';
-import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.67.22';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.67.22';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.67.22';
+import { INTERACTION_SAMPLING_RULE, designCandidatePick, drawDesignCandidate } from './interactionSampling.js?rmv=1.67.24';
+import { driverContractLines, drawDriverOffer, interactionMethodNames, normalizeDriverOffer } from './interactionMethods.js?rmv=1.67.24';
+import { drawUsageOffer, normalizeUsageOffer } from './interactionUsageOffer.js?rmv=1.67.24';
+import { drawContinuation, normalizeContinuation } from './continuationCache.js?rmv=1.67.24';
+import { recentInteractionMethods } from './interactionMethodLedger.js?rmv=1.67.24';
+import { gameplayRuleFor } from './gameplayRules.js?rmv=1.67.24';
+import { usesModelOriginalColors, withoutPaletteRecipe, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.67.24';
+import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=1.67.24';
+import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=1.67.24';
+import { isNearWhitePalette, isNearWhiteContentSurface } from './paletteObservation.js?rmv=1.67.24';
+import { observedOperationFamiliesFor, observedMechanismsFor } from './compositionFingerprint.js?rmv=1.67.24';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.67.24';
+import { expandShuffledOptions } from '../data/raw/rawSegmentLookup.js?rmv=1.67.24';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.67.24';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.67.24';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.67.24';
+import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES, VISUAL_SCENERY_EXPRESSION_RULE, VISUAL_SCENERY_VS_GUIDANCE } from '../data/raw/visualSceneryRules.js?rmv=1.67.24';
+import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.67.24';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.67.24';
+import { getComboHistory, getActivePaletteCooldown } from './storage.js?rmv=1.67.24';
+import { strongVisualDiversityRule, darkVisualGenerationRule, visualDiversityExecutionLock, recentPaletteExecutionReminder } from './visualDiversityPolicy.js?rmv=1.67.24';
+import { withoutInteractionRecipe, observedInteractionRecipesFor } from './interactionRecipes.js?rmv=1.67.24';
+import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.67.24';
+import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.67.24';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.67.24';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.67.24';
+import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.67.24';
+import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.67.24';
+import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.67.24';
+import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.67.24';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.67.24';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.67.24';
 
 const THEME_ITEMS = new Map(THEMATIC_CATEGORIES.map(item => [item.id, item]));
 const FORMAT_ITEMS = new Map(PRESENTATION_FORMATS.map(item => [item.id, item]));
@@ -1051,14 +1051,15 @@ function builtinImageFrameRule(settings) {
     if (settings?.builtinImageEnabled !== true) return '';
     const imagePromptByLlm = settings.builtinImageLlmReady === true;
     // 没有生图 LLM 时，提示词由这次请求顺手写好：按用户选的提示词格式写，并逐个写出场人物的稳定外貌。
+    // 图框的宽度、比例、圆角写在模板里，防止画面被乱裁；插件只在模型漏写时兜底。
     const tagsOnly = settings.imagePromptFormat === 'nai45-tags';
     const directPrompt = tagsOnly
-        ? 'hidden 里只写英文逗号分隔的短标签：人数、构图与镜头距离、每个人当下的衣着动作和视线、场景物件、光线；不写中文、长句、质量词或画师名。'
-        : 'hidden 里写一段连贯的画面描述：构图与镜头距离、每个人当下的衣着动作和视线、场景物件、光源方向；不写对白、质量词或画师名。';
-    const directCharacters = `出场人物每人再放一行 <p data-rm-draw-char="原名" hidden>${tagsOnly ? '该人物稳定外貌的英文短标签' : '该人物稳定外貌'}</p>（发色、发型、瞳色、肤色、体型等，只依据角色资料，未知不编）。`;
-    return `内置生图：界面、按钮和文字照旧。只有这一面本来要用色块或 SVG 画人物或场景时（视频的播放画面与封面、照片、插画、头像这些本来就是一幅画的位置也算），才不要画，改成下面这样的图框（画面不止一幅时，比如分镜每格，每幅各放一个；画面要随交互改变的，比如换装、捏脸、化妆、布置房间，仍用 SVG/CSS 画，不放图框），${imagePromptByLlm ? '并在框里留一两句这一幕的画面线索（正式提示词由生图 LLM 另写）。' : '并把同一瞬间的具体人物动作、视线与物件关系、场景光线写成可绘制描述。'}不需要画面、或长文本面，不要放图框。
-<figure data-rm-draw-frame="1" style="display:block;width:100%;margin:0;aspect-ratio:4/3;overflow:hidden;border-radius:12px;"><p data-rm-draw-prompt="1" hidden>人物、动作、场景、光线</p></figure>
-标题和按钮留在图框外。${imagePromptByLlm ? 'hidden 里用一两句写这一幕的画面线索，正式提示词由生图 LLM 另写。' : directPrompt + directCharacters}`;
+        ? 'hidden 里只写英文逗号分隔的短标签：人数、构图镜头、各人衣着动作视线、场景物件、光线，不写中文长句、质量词、画师名。'
+        : 'hidden 里写一段连贯画面描述：构图镜头、各人衣着动作视线、场景物件、光源方向，不写对白、质量词、画师名。';
+    const directCharacters = `出场人物每人再加 <p data-rm-draw-char="原名" hidden>${tagsOnly ? '稳定外貌英文短标签' : '稳定外貌'}</p>（发色、发型、瞳色、肤色、体型，只按角色资料，未知不编）。`;
+    return `内置生图：只有本来要用色块或 SVG 画人物、场景的位置（含视频画面与封面、照片、插画、头像）改放图框，多幅（如分镜）各放一个；随交互变化的画面（换装、捏脸、化妆、布置房间）仍用 SVG/CSS 画，不需要画面的面不放。标题、按钮、文字留在框外。
+<figure data-rm-draw-frame="1" style="display:block;width:100%;margin:0;aspect-ratio:4/3;overflow:hidden;border-radius:12px;"><p data-rm-draw-prompt="1" hidden>画面</p></figure>
+${imagePromptByLlm ? 'hidden 里用一两句写这一幕的画面线索，正式提示词由生图 LLM 另写。' : directPrompt + directCharacters}`;
 }
 
 function buildIndependentFinalExecutionLock({ combo, settings, directive, candidateFaces = null, includeExecutionOrder = true, includeCommonRules = true, executionPolicy = '', includeBuiltinImage = true }) {
@@ -1084,7 +1085,7 @@ function buildIndependentFinalExecutionLock({ combo, settings, directive, candid
         atmosphereExecutionReminder(combo),
         combo?.atmosphereMenu?.length > 1 ? '' : `本轮锁定：${samplingModeLabel(combo, settings)}；主题：${themes}；展现形式：${formats}。`,
         includeExecutionOrder ? presentationExecutionOrderRule() : '',
-        `本面短检：${formatContract}。`,
+        `本面短检：${String(formatContract || '').replace(/[。；;，,\s]+$/u, '')}。`,
         includeCommonRules ? sharedHtmlExecutionReminder(settings, directive) : '',
         executionPolicy,
         includeBuiltinImage && combo?.requestedPresentationMode !== 'longtext' ? builtinImageFrameRule(settings) : '',

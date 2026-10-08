@@ -1,8 +1,8 @@
-import { getSettings } from './settings.js?rmv=1.67.22';
-import { generateMirrorImage } from './baibaiImage.js?rmv=1.67.22';
-import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.22';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.22';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.22';
+import { getSettings } from './settings.js?rmv=1.67.24';
+import { generateMirrorImage } from './baibaiImage.js?rmv=1.67.24';
+import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.24';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.24';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.24';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -258,8 +258,25 @@ async function fillFrame(root, frame) {
     }
 }
 
+// 图框的基本外形由插件补上，提示词里只给模型最短的写法；模型自己写了的样式一律保留。
+function ensureFrameBox(frame) {
+    const style = frame?.style;
+    if (!style) return;
+    let computed = null;
+    try { computed = getComputedStyle(frame); } catch { computed = null; }
+    if (!computed) return;
+    if (computed.display === 'inline') style.setProperty('display', 'block');
+    if (!style.margin && computed.marginLeft === '40px') style.setProperty('margin', '0');
+    if (!style.aspectRatio && computed.aspectRatio === 'auto' && !style.height) style.setProperty('aspect-ratio', '4 / 3');
+    if (computed.overflow === 'visible') style.setProperty('overflow', 'hidden');
+    if (!style.borderRadius && computed.borderTopLeftRadius === '0px') style.setProperty('border-radius', '12px');
+}
+
 export function fillBuiltinImageFrames(root) {
     if (getSettings().builtinImageEnabled !== true || !root?.querySelectorAll) return;
     // 一面里有几个图框就画几张（比如分镜每格一张），每个图框各自存档、各自重试。
-    for (const frame of root.querySelectorAll('[data-rm-draw-frame]')) void fillFrame(root, frame);
+    for (const frame of root.querySelectorAll('[data-rm-draw-frame]')) {
+        ensureFrameBox(frame);
+        void fillFrame(root, frame);
+    }
 }

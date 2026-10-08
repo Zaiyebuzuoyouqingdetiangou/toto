@@ -1,7 +1,7 @@
 // Split from outputSanitizer.js — fallbackRescue.
-import { RADIO_BRANCH_CONTROL_ATTR, installRadioBranchRepair, applyRadioBranchState, radioBranchVerificationTargets } from './radioBranchRepair.js?rmv=1.67.22';
+import { RADIO_BRANCH_CONTROL_ATTR, installRadioBranchRepair, applyRadioBranchState, radioBranchVerificationTargets } from './radioBranchRepair.js?rmv=1.67.24';
 
-import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.67.22';
+import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.67.24';
 
 import {
     FEEDBACK_CAT_ATTR,
@@ -9,7 +9,7 @@ import {
     TOOL_ENTRY_HOST_ATTR,
     escapeRegExp,
     getRabbitMirrorLocalStyleElements,
-} from './runtime.js?rmv=1.67.22';
+} from './runtime.js?rmv=1.67.24';
 import {
     CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR,
     CROSS_PARENT_CHECKED_VERIFIED_ATTR,
@@ -91,7 +91,7 @@ import {
     webKit3DFlipInlineStates,
     webKit3DFlipRescueStates,
     webKit3DFlipStyleStates,
-} from './checkedStateRescue.js?rmv=1.67.22';
+} from './checkedStateRescue.js?rmv=1.67.24';
 import {
     EXISTING_INTERACTIVE_SELECTOR,
     RENDERED_BUTTON_ADJACENT_HIDDEN_RESCUE_ATTR,
@@ -118,7 +118,7 @@ import {
     isCollapsedDimensionValue,
     normalizeStylePropertyName,
     parseCssStateSiblingAssignments,
-} from './renderedStateRescue.js?rmv=1.67.22';
+} from './renderedStateRescue.js?rmv=1.67.24';
 import {
     chooseMatchingRawRabbitMirrorRoot,
     detectInteractionCapabilities,
@@ -134,7 +134,7 @@ import {
     installRawMessageSelfMutationRescue,
     preparePseudoTrigger,
     shouldIgnorePseudoToggleEvent,
-} from './scriptedInteractionRescue.js?rmv=1.67.22';
+} from './scriptedInteractionRescue.js?rmv=1.67.24';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     FILL_IN_CHOICE_BLANK_ATTR,
@@ -146,15 +146,15 @@ import {
     diagnosticFindClippingAncestor,
     maintenanceSafeComputedStyle,
     mobileInlineAnnotationRescueStates,
-} from './diagnostics.js?rmv=1.67.22';
-import { installStaticChoiceSelectionFallback } from './choiceRescue.js?rmv=1.67.22';
+} from './diagnostics.js?rmv=1.67.24';
+import { installStaticChoiceSelectionFallback } from './choiceRescue.js?rmv=1.67.24';
 import {
     checkedDeclarationCreatesContentReveal,
     checkedTargetCarriesResultContent,
     pseudoStateTargetSelector,
-} from './maintenanceInspect.js?rmv=1.67.22';
-import { splitCssSelectorList } from './markup.js?rmv=1.67.22';
-import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutResolveCheckedTargets } from './layoutRescue.js?rmv=1.67.22';
+} from './maintenanceInspect.js?rmv=1.67.24';
+import { splitCssSelectorList } from './markup.js?rmv=1.67.24';
+import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutResolveCheckedTargets } from './layoutRescue.js?rmv=1.67.24';
 
 const NESTED_DETAILS_FALLBACK_HANDLER_PROP = '__rabbitMirrorNestedDetailsFallbackHandler';
 
@@ -1895,6 +1895,78 @@ function installDecorativeOverlayPassThrough(root) {
 }
 
 
+// 刮刮乐、封条、幕布一类“铺满容器的遮盖层本身就是可点控件”：模型常把它写成
+// position:absolute + 四边 0，而容器的高度只来自被它盖住、尚未显示的结果层。
+// 结果层 display:none 时容器塌成 0 高，遮盖层也跟着只剩一两像素，用户点不到，下一步永远走不了。
+// 只在“绝对定位、四边贴齐、自身有文字、容器已渲染但几乎为 0 高”时，给容器补一个最小高度；
+// 容器被隐藏时跳过，等状态变化后再检查。不改模型的 CSS，不碰没有塌陷的结构。
+const COLLAPSED_COVER_CONTROL_ATTR = 'data-rabbit-mirror-collapsed-cover-rescue';
+const collapsedCoverControlStates = new WeakMap();
+
+function isFullInsetComputed(style) {
+    return ['top', 'right', 'bottom', 'left'].every(side => /^-?0(?:\.0+)?px$/.test(String(style?.[side] || '')));
+}
+
+function collapsedCoverNeededHeight(control, style) {
+    let needed = (Number.parseFloat(style.paddingTop) || 0) + (Number.parseFloat(style.paddingBottom) || 0);
+    for (const child of control.children || []) {
+        const rect = child.getBoundingClientRect?.();
+        if (!rect) continue;
+        let childStyle = null;
+        try { childStyle = getComputedStyle(child); } catch { childStyle = null; }
+        if (childStyle && (childStyle.position === 'absolute' || childStyle.position === 'fixed' || childStyle.display === 'none')) continue;
+        needed += rect.height + (Number.parseFloat(childStyle?.marginTop) || 0) + (Number.parseFloat(childStyle?.marginBottom) || 0);
+    }
+    if (!control.children?.length) needed += 24;
+    return needed;
+}
+
+export function repairCollapsedCoverControls(root) {
+    if (!root?.querySelectorAll || typeof getComputedStyle !== 'function') return 0;
+    let repaired = 0;
+    for (const control of root.querySelectorAll('label[for], button, [role="button"]')) {
+        if (control.closest?.(`[${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}]`)) continue;
+        if (!String(control.textContent || '').trim()) continue;
+        let style = null;
+        try { style = getComputedStyle(control); } catch { style = null; }
+        if (!style || style.position !== 'absolute' || !isFullInsetComputed(style)) continue;
+        if (style.display === 'none' || style.visibility === 'hidden') continue;
+        const rect = control.getBoundingClientRect();
+        if (rect.height > 6) continue;
+        const container = control.offsetParent;
+        if (!container || container === root || !root.contains(container) || container.matches?.('details, summary, toto, body')) continue;
+        const box = container.getBoundingClientRect();
+        if (box.width < 40) continue;
+        if (container.clientHeight > 6) continue;
+        const needed = Math.ceil(Math.max(collapsedCoverNeededHeight(control, style) + 24, 120));
+        if (Number.parseFloat(container.style.getPropertyValue('min-height')) >= needed) continue;
+        container.style.setProperty('min-height', `${Math.min(needed, 360)}px`, 'important');
+        container.setAttribute(COLLAPSED_COVER_CONTROL_ATTR, 'true');
+        repaired += 1;
+    }
+    return repaired;
+}
+
+function installCollapsedCoverControlRescue(root) {
+    if (!root?.addEventListener) return 0;
+    const repaired = repairCollapsedCoverControls(root);
+    if (collapsedCoverControlStates.has(root)) return repaired;
+    let queued = false;
+    const recheck = () => {
+        if (queued) return;
+        queued = true;
+        const run = () => { queued = false; if (root.isConnected) repairCollapsedCoverControls(root); };
+        if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(run));
+        else setTimeout(run, 32);
+    };
+    root.addEventListener('change', recheck, true);
+    root.addEventListener('toggle', recheck, true);
+    root.addEventListener('click', recheck, false);
+    collapsedCoverControlStates.set(root, recheck);
+    return repaired;
+}
+
+
 function localPanelLayoutRule(root, element, kind, declarations) {
     let scope = localPanelLayoutScopes.get(root);
     if (!scope) {
@@ -1998,6 +2070,8 @@ export function installIntelligentInteractionRescue(root) {
     // 低透明度、无文字、无交互后代的全覆盖纹理层在部分 WebView 中会截获触摸；
     // 只对高置信装饰层开启点击穿透，不处理真正的遮罩交互。
     installDecorativeOverlayPassThrough(root);
+    // 铺满容器的遮盖层控件（刮刮乐银漆、封条等）随容器塌成 0 高时补回可点的高度。
+    installCollapsedCoverControlRescue(root);
 
     // 模型偶尔在 CSS 中写出 .trigger:checked，却忘记把 trigger class 放到唯一的隐藏控件上。
     // 仅在原始源码中可证明“补上该 class 后，当前 label 控件会命中有正文的局部状态规则”时恢复。

@@ -1,15 +1,15 @@
 // Compatibility barrel. Callers may keep importing outputSanitizer.js.
-export { repairRabbitMirrorPersistedExclusiveGridSpan, repairRabbitMirrorSelectorPanelGridSpan } from './outputSanitizer/checkedStateRescue.js?rmv=1.67.22';
-export { validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer/renderedStateRescue.js?rmv=1.67.22';
+export { repairRabbitMirrorPersistedExclusiveGridSpan, repairRabbitMirrorSelectorPanelGridSpan } from './outputSanitizer/checkedStateRescue.js?rmv=1.67.24';
+export { validateRabbitMirrorRecoveredStyleAssignments } from './outputSanitizer/renderedStateRescue.js?rmv=1.67.24';
 export {
     isolateRabbitMirrorInteractionIds,
     rearmRabbitMirrorSerializedInteractionRoot,
     activateRabbitMirrorInteractionRescue,
     armRabbitMirrorFirstUseInteraction,
     repairRabbitMirrorScopedClassAliasesInScope,
-} from './outputSanitizer/idsAndRearm.js?rmv=1.67.22';
-export { triggerInteractionDiagnosticOnce } from './outputSanitizer/diagnostics.js?rmv=1.67.22';
-export { rehydrateRabbitMirrorMaintenanceRepairs } from './outputSanitizer/choiceRescue.js?rmv=1.67.22';
+} from './outputSanitizer/idsAndRearm.js?rmv=1.67.24';
+export { triggerInteractionDiagnosticOnce } from './outputSanitizer/diagnostics.js?rmv=1.67.24';
+export { rehydrateRabbitMirrorMaintenanceRepairs } from './outputSanitizer/choiceRescue.js?rmv=1.67.24';
 export {
     validateRabbitMirrorMarkupLexicalBudget,
     validateRabbitMirrorTemplateStructuralBudget,
@@ -19,17 +19,17 @@ export {
     rescuePlainTextRabbitMirrorOutput,
     compactTotoBlock,
     cleanRabbitMirrorOutput,
-} from './outputSanitizer/markup.js?rmv=1.67.22';
+} from './outputSanitizer/markup.js?rmv=1.67.24';
 export {
     getRabbitMirrorFacePosition,
     activateRabbitMirrorIndependentMobileSpatialRescue,
     clearRabbitMirrorHorizontalClipArtifacts,
     installMaintenanceHorizontalClipRescue,
-} from './outputSanitizer/layoutRescue.js?rmv=1.67.22';
+} from './outputSanitizer/layoutRescue.js?rmv=1.67.24';
 export {
     refreshMaintenanceRabbits,
     refreshFeedbackCats,
     refreshRecipeButtons,
     refreshRabbitMirrorToolsInScope,
-} from './outputSanitizer/toolsChrome.js?rmv=1.67.22';
-export { configureMaintenanceAutoSafeMode, initOutputSanitizer, destroyOutputSanitizer } from './outputSanitizer/lifecycle.js?rmv=1.67.22';
+} from './outputSanitizer/toolsChrome.js?rmv=1.67.24';
+export { configureMaintenanceAutoSafeMode, initOutputSanitizer, destroyOutputSanitizer } from './outputSanitizer/lifecycle.js?rmv=1.67.24';
