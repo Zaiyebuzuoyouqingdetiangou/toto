@@ -2,7 +2,7 @@
 // 用 `:has(input[value="2"]:checked)` 之类的规则去切换。滑杆没有 checked 状态，这种规则永远不生效，
 // 拖动滑杆什么也不变。这里只在“编号段落与滑杆取值一一对应、且这些段落默认是隐藏的”时接上：
 // 滑到几就显示第几段，其余段落收起。不写任何新内容，不执行模型脚本。
-import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.67.33';
+import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.67.34';
 const RESCUE_ATTR = 'data-rabbit-mirror-range-stage-rescue';
 const STAGE_ATTR = 'data-rm-range-stage';
 const states = new WeakMap();
@@ -130,6 +130,83 @@ export function installRangeValueAttributeMirror(root) {
         input.addEventListener('change', sync);
         input.setAttribute(VALUE_ATTR_RESCUE, 'true');
         sync();
+        installed += 1;
+    }
+    return installed;
+}
+
+// 还有一种：模型写了一根 disabled 的滑杆（停在最大值），下面一排同款条目全部摆出来，
+// 说是“拖动推进”，其实点不了、一打开就已经全部展开。只在“滑杆格数和条目数正好相等、
+// 条目是同一种写法、全部默认可见”时接上：滑杆放开，从第一格开始，滑到第几格就显示到第几条。
+// 不写新内容，只决定已有条目显示到哪一条。
+const PROGRESS_ATTR = 'data-rabbit-mirror-range-progress-rescue';
+const PROGRESS_ROW_ATTR = 'data-rm-range-progress-row';
+const progressStates = new WeakMap();
+
+function visibleRow(element) {
+    try {
+        const style = getComputedStyle(element);
+        return style.display !== 'none' && style.visibility !== 'hidden';
+    } catch { return false; }
+}
+
+function progressRowsFor(input, count) {
+    let scope = input.parentElement;
+    for (let depth = 0; scope && depth < 4; depth += 1, scope = scope.parentElement) {
+        if (scope.matches?.('details, summary, body, toto')) break;
+        const found = [];
+        for (const container of scope.querySelectorAll('*')) {
+            if (container.contains(input) || container.closest('[data-rm-ui]')) continue;
+            const rows = [...container.children];
+            if (rows.length !== count) continue;
+            const signature = rows[0].tagName + '|' + String(rows[0].getAttribute('class') || '').trim();
+            if (!String(rows[0].getAttribute('class') || '').trim()) continue;
+            if (rows.some(row => row.tagName + '|' + String(row.getAttribute('class') || '').trim() !== signature
+                || String(row.textContent || '').replace(/\s+/g, '').length < 12
+                || row.querySelector('input, button, select, textarea, label, details, summary, [role="button"]')
+                || !visibleRow(row))) continue;
+            found.push(rows);
+        }
+        if (found.length === 1) return found[0];
+        if (found.length > 1) return null;
+    }
+    return null;
+}
+
+function applyProgress(state) {
+    const value = Math.round(Number(state.input.value));
+    state.rows.forEach((row, index) => {
+        if (index <= value - state.min) row.style.removeProperty('display');
+        else row.style.setProperty('display', 'none', 'important');
+        row.setAttribute(PROGRESS_ROW_ATTR, index <= value - state.min ? 'shown' : 'waiting');
+    });
+}
+
+export function installDisabledRangeProgressRescue(root) {
+    if (!root?.querySelectorAll) return 0;
+    let installed = 0;
+    for (const input of root.querySelectorAll('input[type="range"][disabled]')) {
+        if (progressStates.has(input) || input.closest('[data-rm-ui]')) continue;
+        if (input.hasAttribute('oninput') || input.hasAttribute('onchange')) continue;
+        const min = Number(input.getAttribute('min') ?? 0);
+        const max = Number(input.getAttribute('max') ?? 100);
+        const step = Number(input.getAttribute('step') || 1);
+        if (!Number.isInteger(min) || !Number.isInteger(max) || step !== 1) continue;
+        const count = max - min + 1;
+        if (count < 2 || count > 8) continue;
+        const rows = progressRowsFor(input, count);
+        if (!rows) continue;
+        const state = { input, rows, min };
+        progressStates.set(input, state);
+        input.disabled = false;
+        input.removeAttribute('disabled');
+        input.value = String(min);
+        input.setAttribute('value', String(min));
+        const update = () => applyProgress(state);
+        input.addEventListener('input', update);
+        input.addEventListener('change', update);
+        input.setAttribute(PROGRESS_ATTR, String(count));
+        applyProgress(state);
         installed += 1;
     }
     return installed;
