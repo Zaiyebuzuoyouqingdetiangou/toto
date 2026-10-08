@@ -1,8 +1,8 @@
-import { getSettings } from './settings.js?rmv=1.67.11';
-import { generateMirrorImage } from './baibaiImage.js?rmv=1.67.11';
-import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.11';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.11';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.11';
+import { getSettings } from './settings.js?rmv=1.67.22';
+import { generateMirrorImage } from './baibaiImage.js?rmv=1.67.22';
+import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.22';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.22';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.22';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -42,6 +42,15 @@ function readPrompt(frame) {
     text = String(text || '').replace(/\s+/g, ' ').trim();
     if (text.length < 4) return '';
     return text.slice(0, 800);
+}
+
+// 图框里逐个写的出场人物外貌：<p data-rm-draw-char="原名" hidden>外貌</p>。
+function readCharacters(frame) {
+    const nodes = [...(frame.querySelectorAll?.('[data-rm-draw-char]') || [])].slice(0, 4);
+    return nodes.map(node => ({
+        name: String(node.getAttribute('data-rm-draw-char') || '').replace(/\s+/g, ' ').trim().slice(0, 40),
+        text: String(node.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 300),
+    })).filter(person => person.name && person.text.length >= 2);
 }
 
 function storageKey(root, frame, prompt) {
@@ -179,13 +188,19 @@ function startJob(key, prompt, frame) {
             nl: String(planned.nl || ''),
             characters: Array.isArray(planned.characters) ? planned.characters : [],
             promptFormat: settings.imagePromptFormat,
-        } : {
-            prompt,
-            flatPrompt: prompt,
-            nl: prompt,
-            characters: [],
-            promptFormat: settings.imagePromptFormat,
-        }, {
+        } : (() => {
+            // 没有生图 LLM：按提示词格式分开填，标签写法不再把同一句话当成自然语言再发一次。
+            const tagsOnly = settings.imagePromptFormat === 'nai45-tags';
+            const people = readCharacters(frame);
+            const appearance = people.map(person => tagsOnly ? person.text : `${person.name}：${person.text}`).join(tagsOnly ? ', ' : '；');
+            return {
+                prompt,
+                flatPrompt: appearance ? `${prompt}${tagsOnly ? ', ' : '。'}${appearance}` : prompt,
+                nl: tagsOnly ? '' : prompt,
+                characters: people.map(person => ({ name: person.name, tag: tagsOnly ? person.text : '', nl: tagsOnly ? '' : person.text })),
+                promptFormat: settings.imagePromptFormat,
+            };
+        })(), {
             character: characterGroup(),
             size,
             assertCurrent: () => anyWaiterConnected(key),

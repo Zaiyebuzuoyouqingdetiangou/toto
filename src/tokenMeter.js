@@ -1,4 +1,4 @@
-import { presentationModeFields } from './presentationMode.js?rmv=1.67.11';
+import { presentationModeFields } from './presentationMode.js?rmv=1.67.22';
 const TOKEN_METER_STORAGE_KEY = 'rabbit_mirror_theater:token_meter:v1';
 const TOKEN_METER_SOURCE_STORAGE_KEYS = Object.freeze({
     follow: 'rabbit_mirror_theater:token_meter:follow:v1',

@@ -1,6 +1,6 @@
 // 抽完展现形式后，按形式所属的媒介大类从真实用法索引里强随机抽 3 项，避开近期给过的用法。
 // 只有这 3 项进入 Prompt；索引本身不发送。由出题计划冻结，重说与逐面子请求沿用同一份。
-import { CORE_USAGES, USAGE_CATEGORIES, USAGE_FORMAT_OVERRIDES, USAGE_GROUP_FALLBACK } from '../data/raw/interactionUsages.js?rmv=1.67.11';
+import { CORE_USAGES, USAGE_CATEGORIES, USAGE_FORMAT_OVERRIDES, USAGE_GROUP_FALLBACK } from '../data/raw/interactionUsages.js?rmv=1.67.22';
 
 const OFFER_SIZE = 3;
 const RECENT_KEY = 'rabbitMirrorUsageRecent';
@@ -51,15 +51,22 @@ function comboText(combo) {
     return [...(combo?.formats || []), ...(combo?.texts || [])].map(item => `${item?.title || ''} ${item?.summary || ''}`).join(' ');
 }
 
-export function drawUsageOffer(combo) {
+const FLIP_OPEN_USAGE = /翻|展开|打开|掀|揭开|拆开/;
+
+export function drawUsageOffer(combo, { avoidFlip = false } = {}) {
     const keys = usageCategoriesForCombo(combo);
-    const pool = [...new Set(keys.flatMap(key => USAGE_CATEGORIES[key]?.usages || []))];
+    const allUsages = [...new Set(keys.flatMap(key => USAGE_CATEGORIES[key]?.usages || []))];
+    // 近期总是翻面／展开时，这一面不再提供翻、开、揭一类的用法（除非整类都是这种）。
+    const nonFlip = allUsages.filter(item => !FLIP_OPEN_USAGE.test(item));
+    const pool = avoidFlip && nonFlip.length >= 3 ? nonFlip : allUsages;
     if (!pool.length) return null;
     let recent = [];
     try { recent = JSON.parse(globalThis.localStorage?.getItem(RECENT_KEY) || '[]'); } catch { recent = []; }
     const text = comboText(combo);
     // 形式自带核心玩法时，先从核心用法里取 1 个（同样随机、避开近期）。
-    const corePool = [...new Set(CORE_USAGES.filter(entry => entry.keywords.some(word => text.includes(word))).flatMap(entry => entry.usages))];
+    const coreAll = [...new Set(CORE_USAGES.filter(entry => entry.keywords.some(word => text.includes(word))).flatMap(entry => entry.usages))];
+    const coreNonFlip = coreAll.filter(item => !FLIP_OPEN_USAGE.test(item));
+    const corePool = avoidFlip && coreNonFlip.length ? coreNonFlip : coreAll;
     const coreFresh = corePool.filter(item => !recent.includes(item));
     const core = corePool.length ? shuffled(coreFresh.length ? coreFresh : corePool).slice(0, 1) : [];
     const rest = pool.filter(item => !core.includes(item));

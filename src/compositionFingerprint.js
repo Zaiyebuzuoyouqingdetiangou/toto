@@ -139,7 +139,55 @@ function checkedRoute(root, selector) {
     return { sources, targets: query(root, neutral.replace(/::(?:before|after)\b/g, '')), conjunctive: requirements.length > 1 };
 }
 
+// 实际用到的交互机制（只看成品结构，不看模型自报）：用于发现“总是翻面／展开／切页”的模板化。
+// 不受下方体积上限影响，大面也照样记录。
+export function observedMechanismsFor(record) {
+    if (record?.presentationMode === 'text' || record?.pureOrder === true) return [];
+    for (const part of String(record?.visualSkeleton || '').split('；')) {
+        const match = part.match(/^\s*mechanisms\s*:\s*(.*?)\s*$/);
+        if (match) return match[1].split(',').map(value => value.trim()).filter(Boolean);
+    }
+    return [];
+}
+
+function detectMechanisms(root, operationText = '') {
+    const found = new Set();
+    const css = query(root, 'style').slice(0, 20).map(node => String(node.textContent || '').slice(0, 160000)).join('\n').replace(/\/\*[\s\S]*?\*\//g, '');
+    const inline = query(root, '[style]').slice(0, 800).map(node => String(node.getAttribute?.('style') || '')).join(';');
+    if (/rotate[XY]\(\s*-?180(?:deg)?\s*\)|rotate3d\([^)]*,\s*-?180deg\s*\)|backface-visibility\s*:\s*hidden/i.test(`${css};${inline}`)) found.add('flip');
+    const outer = matches(root, 'details') ? root : query(root, 'details')[0];
+    if (query(root, 'details').some(node => node !== outer)) found.add('expand');
+    for (const match of css.matchAll(/([^{}]*:checked[^{}]*)\{([^{}]*)\}/g)) {
+        const body = match[2];
+        if (/display\s*:\s*(?!none)[a-z-]+|max-height|grid-template-rows|visibility\s*:\s*visible/i.test(body)) found.add('expand');
+        if (/translate|(?:^|[;\s])(?:left|top|right|bottom)\s*:/i.test(body) && !/180/.test(body)) found.add('move');
+        if (/rotate\(\s*-?(?!180)\d|rotate\s*:/i.test(body)) found.add('turn');
+        if (/scale/i.test(body)) found.add('zoom');
+    }
+    if (/text_panel_switch/.test(operationText)) found.add('page');
+    if (/text_disclosure_stack/.test(operationText)) found.add('expand');
+    const radioNames = new Map();
+    for (const node of query(root, 'input[type="radio"][name]')) radioNames.set(node.getAttribute('name'), (radioNames.get(node.getAttribute('name')) || 0) + 1);
+    if ([...radioNames.values()].some(count => count >= 3)) found.add('page');
+    if (query(root, '[popover]').length) found.add('popover');
+    if (query(root, 'input[type="range"]').length) found.add('adjust');
+    if (query(root, 'input[type="text"],textarea').length) found.add('input');
+    for (const node of query(root, '[data-rm-ui]')) {
+        const type = String(node.getAttribute?.('data-rm-ui') || '').trim().toLowerCase();
+        if (/^[a-z]{2,12}$/.test(type)) found.add(type);
+    }
+    return [...found].slice(0, 8);
+}
+
 export function detectCompositionFingerprint(root) {
+    if (!root?.querySelectorAll) return {};
+    const core = detectCompositionFingerprintCore(root);
+    let mechanisms = [];
+    try { mechanisms = detectMechanisms(root, `${core.operation_family || ''},${core.operation_families || ''}`); } catch { mechanisms = []; }
+    return mechanisms.length ? { ...core, mechanisms: mechanisms.join(',') } : core;
+}
+
+function detectCompositionFingerprintCore(root) {
     if (!root?.querySelectorAll) return {};
     const nodes = [root, ...query(root, '*')];
     // Bound work, not artwork acceptance. Unrecognised/large faces still render.

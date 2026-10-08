@@ -1,4 +1,4 @@
-import { classifyPaletteSamples } from './paletteObservation.js?rmv=1.67.11';
+import { classifyPaletteSamples } from './paletteObservation.js?rmv=1.67.22';
 
 const HUE_FAMILY_LABELS = Object.freeze({
     red: '红色族', orange: '橙色族', yellow: '黄色族', green: '绿色族', cyan: '青色族',
@@ -49,10 +49,11 @@ export function darkVisualGenerationRule(settings) {
   - 保留形式的固有结构、材质纹理与原有玩法，通过夜间环境、染色材质或低明度同类材料表达；不能把所有媒介都改成终端面板。长文本仍只做原有阅读美化，不添加 HTML 面的交互或动画。`;
 }
 
-export function visualDiversityExecutionLock(_settings, { textRevealRotation = false, noButtonRow = false, paleBan = false, paletteReminder = '' } = {}) {
+export function visualDiversityExecutionLock(_settings, { textRevealRotation = false, flipRotation = false, noButtonRow = false, paleBan = false, paletteReminder = '' } = {}) {
     // The shared ledger is sent once; only active, concrete reminders are repeated here, closest to output.
     return [
         noButtonRow ? '本面媒介本身没有成排按钮：主交互不用一排同款按钮或标签切换内容，交互落在媒介自己的部件上。' : '',
+        flipRotation ? '近三面的交互多是翻面、展开或切页：本面主交互换成会直接改变画面的操作（拖动、滑杆调节、按住、刮开、累积点亮、重排、描画等，可用提供的插件写法），翻面和展开最多作辅助。' : '',
         textRevealRotation ? '本轮换口味：整面交互作用在同一个主体上（可以分几步），不让每个条目各配一个开关。' : '',
         paleBan ? '本轮主背景与主承载不用米白、米黄或其他近白浅底（近三轮已出现两次），媒介本身是白纸白底时用纸张以外的部分拉开颜色。' : '',
         paletteReminder,
