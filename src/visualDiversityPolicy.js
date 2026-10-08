@@ -1,4 +1,4 @@
-import { classifyPaletteSamples } from './paletteObservation.js?rmv=1.67.34';
+import { classifyPaletteSamples } from './paletteObservation.js?rmv=1.67.36';
 
 const HUE_FAMILY_LABELS = Object.freeze({
     red: '红色族', orange: '橙色族', yellow: '黄色族', green: '绿色族', cyan: '青色族',
@@ -54,20 +54,40 @@ export function darkVisualGenerationRule(settings) {
   - 保留形式的固有结构、材质纹理与原有玩法，通过夜间环境、染色材质或低明度同类材料表达；不能把所有媒介都改成终端面板。长文本仍只做原有阅读美化，不添加 HTML 面的交互或动画。`;
 }
 
-// 柔和浅色的举例色：莫兰迪灰调色与干净的浅色两类，每个色族各有一串。每次只随机拿几个不同色族的放进说明，
-// 两类都会出现，避开近三轮用过的色族和上一次给过的颜色，免得模型总挑写在前面的那几个。米黄类不放进来。
-const SOFT_TONE_POOL = Object.freeze({
-    red: { muted: ['豆沙红', '灰玫红', '干枯玫瑰', '砖灰红', '旧胭脂'], light: ['浅玫瑰', '淡珊瑚红'] },
-    orange: { muted: ['杏灰', '陶土橘', '赭石灰', '焦糖灰', '柿子灰'], light: ['浅杏', '蜜桃橘', '浅珊瑚'] },
-    yellow: { muted: ['芥末灰黄', '姜黄灰', '旧铜黄灰', '苔黄灰'], light: ['淡柠黄', '柠檬浅黄'] },
-    green: { muted: ['灰豆绿', '鼠尾草绿', '橄榄灰', '苔藓灰绿', '抹茶灰'], light: ['薄荷绿', '浅豆绿', '嫩芽绿'] },
-    cyan: { muted: ['雾青', '灰青', '石青灰', '湖水灰绿', '青瓷灰'], light: ['冰川青', '浅水青', '浅湖蓝'] },
-    blue: { muted: ['雾蓝', '雾霾蓝', '灰牛仔蓝', '烟灰蓝', '远山蓝'], light: ['浅天蓝', '婴儿蓝', '浅矢车菊蓝'] },
-    purple: { muted: ['雾紫', '藕荷紫', '灰丁香', '烟紫', '薰衣草灰'], light: ['淡紫', '浅香芋紫', '浅丁香紫'] },
-    pink: { muted: ['灰粉', '藕粉', '脏粉', '胭脂灰粉', '樱花灰'], light: ['浅粉', '樱花粉', '蜜桃粉', '芭蕾粉'] },
-    neutral: { muted: ['鸽灰', '雾灰', '水泥灰', '银灰', '烟灰'], light: [] },
-});
+// 柔和浅色里的几种风格。每轮随机抽一种（避开最近两轮用过的），只把这一种的一句说明和四个举例色发出去；
+// 举例色避开近三轮用过的色族和上次给过的颜色，免得模型总挑写在前面的那几个。米黄类一律不放进来。
+// 每个颜色记着所属色族，用来和近期实际主色避重。
+const SOFT_TONE_STYLES = Object.freeze([
+    { id: 'morandi', name: '莫兰迪灰调', desc: '每种颜色都掺一点灰，低饱和、安静、高级', colors: [
+        ['豆沙红', 'red'], ['灰玫红', 'red'], ['干枯玫瑰', 'red'], ['杏灰', 'orange'], ['珊瑚灰', 'orange'], ['芥末灰黄', 'yellow'],
+        ['灰豆绿', 'green'], ['鼠尾草绿', 'green'], ['橄榄灰', 'green'], ['雾青', 'cyan'], ['青瓷灰', 'cyan'], ['雾蓝', 'blue'],
+        ['雾霾蓝', 'blue'], ['烟灰蓝', 'blue'], ['雾紫', 'purple'], ['藕荷紫', 'purple'], ['灰丁香', 'purple'], ['灰粉', 'pink'],
+        ['藕粉', 'pink'], ['脏粉', 'pink'], ['鸽灰', 'neutral'], ['水泥灰', 'neutral']] },
+    { id: 'pastel', name: '干净浅色', desc: '干净透亮的浅色，不掺灰，轻盈柔软', colors: [
+        ['浅玫瑰', 'red'], ['浅杏', 'orange'], ['蜜桃橘', 'orange'], ['淡柠黄', 'yellow'], ['薄荷绿', 'green'], ['嫩芽绿', 'green'],
+        ['冰川青', 'cyan'], ['浅水青', 'cyan'], ['婴儿蓝', 'blue'], ['浅天蓝', 'blue'], ['淡紫', 'purple'], ['浅香芋紫', 'purple'],
+        ['浅粉', 'pink'], ['樱花粉', 'pink'], ['蜜桃粉', 'pink'], ['芭蕾粉', 'pink']] },
+    { id: 'chinese', name: '浅色传统色', desc: '只取浅淡的中国传统色，像瓷器、织物、古画的底色', colors: [
+        ['水红', 'red'], ['桃夭', 'pink'], ['粉红藕', 'pink'], ['藕荷', 'purple'], ['丁香', 'purple'], ['月白', 'blue'],
+        ['缥色', 'blue'], ['天青', 'cyan'], ['天水碧', 'cyan'], ['鸭卵青', 'cyan'], ['葱青', 'green'], ['苍色', 'neutral']] },
+    { id: 'airy', name: '清透空气感', desc: '大量带一点蓝或青的浅底，像有风、有光，干净通透', colors: [
+        ['天空浅蓝', 'blue'], ['玻璃蓝', 'blue'], ['玻璃青', 'cyan'], ['浅海青', 'cyan'], ['晨雾白蓝', 'blue'], ['薄荷水绿', 'green'],
+        ['浅樱粉', 'pink'], ['淡雾紫', 'purple']] },
+    { id: 'watercolor', name: '水彩晕染', desc: '浅色像水彩一样淡淡晕开，边缘柔和；可用很浅的同色晕染做底，正文放在颜色平稳的一块上', colors: [
+        ['水彩粉', 'pink'], ['浅玫瑰晕', 'red'], ['杏色晕', 'orange'], ['浅绿晕', 'green'], ['青色水痕', 'cyan'], ['淡蓝水痕', 'blue'],
+        ['淡紫晕', 'purple']] },
+    { id: 'pearl', name: '珍珠贝母', desc: '带一点粉、一点蓝紫光泽的珍珠色浅底，温柔、微微梦幻；光泽用很淡的渐变表现，不用亮片和大块高光', colors: [
+        ['珍珠粉', 'pink'], ['贝壳粉', 'pink'], ['贝母蓝', 'blue'], ['珠光紫', 'purple'], ['月光青', 'cyan'], ['珠光杏', 'orange'],
+        ['珍珠灰', 'neutral']] },
+    { id: 'spring', name: '春日花色', desc: '花季的浅色，明亮但不艳', colors: [
+        ['樱花粉', 'pink'], ['海棠浅红', 'red'], ['丁香紫', 'purple'], ['嫩芽绿', 'green'], ['新柳青', 'cyan'], ['浅杏', 'orange'],
+        ['迎春浅黄', 'yellow'], ['勿忘我蓝', 'blue']] },
+    { id: 'frost', name: '冰雪雾凇', desc: '清冷干净的冰雪色，像霜、冰面和雾凇', colors: [
+        ['冰蓝', 'blue'], ['霜白蓝', 'blue'], ['雾凇青', 'cyan'], ['浅银灰', 'neutral'], ['冰紫', 'purple'], ['寒梅浅粉', 'pink'],
+        ['冰薄荷', 'green']] },
+]);
 const SOFT_TONE_RECENT_KEY = 'rabbitMirrorSoftToneExamplesRecent';
+const SOFT_TONE_STYLE_RECENT_KEY = 'rabbitMirrorSoftToneStyleRecent';
 const SOFT_TONE_EXAMPLE_COUNT = 4;
 
 function softRandomIndex(limit) {
@@ -89,34 +109,43 @@ function softShuffled(list) {
     return copy;
 }
 
+function readRecentList(key) {
+    try {
+        const value = JSON.parse(globalThis.localStorage?.getItem(key) || '[]');
+        return Array.isArray(value) ? value : [];
+    } catch { return []; }
+}
+
 export function drawSoftToneExamples({ avoidFamilies = [] } = {}) {
-    let recent = [];
-    try { recent = JSON.parse(globalThis.localStorage?.getItem(SOFT_TONE_RECENT_KEY) || '[]'); } catch { recent = []; }
-    if (!Array.isArray(recent)) recent = [];
-    const allFamilies = Object.keys(SOFT_TONE_POOL);
-    const open = allFamilies.filter(key => !avoidFamilies.includes(key));
-    const families = softShuffled(open.length >= SOFT_TONE_EXAMPLE_COUNT ? open : allFamilies).slice(0, SOFT_TONE_EXAMPLE_COUNT);
-    // 先给每个色族定是灰调还是浅色，保证四个里两类都有。
-    const kinds = families.map((key, index) => SOFT_TONE_POOL[key].light.length ? (index % 2 ? 'muted' : 'light') : 'muted');
-    const shuffledKinds = softShuffled(kinds);
-    const picks = families.map((key, index) => {
-        const kind = SOFT_TONE_POOL[key][shuffledKinds[index]].length ? shuffledKinds[index] : 'muted';
-        const colors = SOFT_TONE_POOL[key][kind];
-        const fresh = colors.filter(color => !recent.includes(color));
-        return softShuffled(fresh.length ? fresh : colors)[0];
-    });
-    try { globalThis.localStorage?.setItem(SOFT_TONE_RECENT_KEY, JSON.stringify([...recent.filter(color => !picks.includes(color)), ...picks].slice(-24))); } catch { /* best effort */ }
-    return picks;
+    const recentStyles = readRecentList(SOFT_TONE_STYLE_RECENT_KEY);
+    const freshStyles = SOFT_TONE_STYLES.filter(style => !recentStyles.includes(style.id));
+    const style = softShuffled(freshStyles.length ? freshStyles : SOFT_TONE_STYLES)[0];
+    const recent = readRecentList(SOFT_TONE_RECENT_KEY);
+    // 每个色族先挑一个颜色，再取四个不同色族；近期用过的色族排到最后，不够时才用。
+    const byFamily = new Map();
+    for (const [name, family] of softShuffled(style.colors)) {
+        const current = byFamily.get(family);
+        if (!current || (recent.includes(current) && !recent.includes(name))) byFamily.set(family, name);
+    }
+    const families = softShuffled([...byFamily.keys()]);
+    const ordered = [...families.filter(key => !avoidFamilies.includes(key)), ...families.filter(key => avoidFamilies.includes(key))];
+    const picks = ordered.slice(0, SOFT_TONE_EXAMPLE_COUNT).map(key => byFamily.get(key));
+    try {
+        globalThis.localStorage?.setItem(SOFT_TONE_RECENT_KEY, JSON.stringify([...recent.filter(color => !picks.includes(color)), ...picks].slice(-24)));
+        globalThis.localStorage?.setItem(SOFT_TONE_STYLE_RECENT_KEY, JSON.stringify([...recentStyles.filter(id => id !== style.id), style.id].slice(-2)));
+    } catch { /* best effort */ }
+    return { style: style.name, desc: style.desc, examples: picks };
 }
 
 // 柔和浅色模式：与深色模式对称，只在选了这一档时发送。
 export function softLightVisualGenerationRule(settings, { avoidFamilies = [] } = {}) {
     if (settings?.visualToneMode !== 'soft' || settings?.darkVisualMode === true) return '';
-    const examples = drawSoftToneExamples({ avoidFamilies });
+    const { style, desc, examples } = drawSoftToneExamples({ avoidFamilies });
     return `柔和浅色模式【本次所有新生成镜面，包括长文本】：
-  - 背景与主要承载面用柔和的浅色：莫兰迪那种带一点灰的低饱和色，或干净的浅色（浅粉、浅蓝这一类），任何色相都可以，例如${examples.join('、')}，只是举例，按本面题材自己定色；米黄、米白、奶油色、羊皮纸黄这类暖黄纸色不算柔和浅色，不作主背景和主承载，信纸、日记、旧书这类纸张也换成其他柔和的颜色表现纸感；不用纯白，也不用高饱和的大面积色块或深色铺底；主体部件可用中等明度的灰调色。
+  - 本轮风格：${style}——${desc}。例如${examples.join('、')}，只是举例，按本面题材在这种风格里自己定色。
+  - 背景与主要承载面用柔和的浅色；米黄、米白、奶油色、羊皮纸黄这类暖黄纸色不作主背景和主承载，信纸、日记、旧书这类纸张也换成其他柔和的颜色表现纸感；不用纯白，也不用高饱和的大面积色块或深色铺底；主体部件可用中等明度的颜色。
   - 主次靠明暗与冷暖拉开，不靠鲜艳；正文用同色相的深灰或深褐，对比清楚；可操作的部件用一处稍深或稍暖的同调强调色，一眼看出能点。
-  - 仍须强避重：在柔和浅色范围内换色族与冷暖，不改艳也不改暗；形式自带的标志色保留，调灰后使用。长文本只做阅读配色，不添加交互或动画。`;
+  - 仍须强避重：在柔和浅色范围内换色族与冷暖，不改艳也不改暗；形式自带的标志色保留，调柔后使用。长文本只做阅读配色，不添加交互或动画。`;
 }
 
 export function visualDiversityExecutionLock(_settings, { textRevealRotation = false, flipRotation = false, slideRotation = false, noButtonRow = false, paleBan = false, softTone = false, paletteReminder = '' } = {}) {

@@ -1,7 +1,7 @@
-import { usesModelOriginalColors } from './visualDesign.js?rmv=1.67.34';
-import { attachPaletteRecipes } from './paletteRecipes.js?rmv=1.67.34';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.67.34';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.67.34';
+import { usesModelOriginalColors } from './visualDesign.js?rmv=1.67.36';
+import { attachPaletteRecipes } from './paletteRecipes.js?rmv=1.67.36';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.67.36';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.67.36';
 import {
     getCurrentChatKey,
     getDirectiveScopedPick,
@@ -21,11 +21,11 @@ import {
     clearPendingComboBatch,
     createPendingComboBatchPlan,
     findPendingComboBatchPlan,
-} from './storage.js?rmv=1.67.34';
-import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.67.34';
-import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.67.34';
-import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, visualSceneryEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.67.34';
-import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.67.34';
+} from './storage.js?rmv=1.67.36';
+import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.67.36';
+import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.67.36';
+import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, visualSceneryEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.67.36';
+import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.67.36';
 import {
     chooseExternalSource,
     externalPoolActive,
@@ -35,7 +35,7 @@ import {
     getExternalPoolSnapshot,
     pickExternalItems,
     sourceMixModeIsExternalOnly,
-} from './externalWorldBook/externalPool.js?rmv=1.67.34';
+} from './externalWorldBook/externalPool.js?rmv=1.67.36';
 
 function randomUnit() {
     try {
