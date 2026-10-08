@@ -1,10 +1,10 @@
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.67.28';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.67.32';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.67.28';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.67.28';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.67.28';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.67.28';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.67.32';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.67.32';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.67.32';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.67.32';
 
 export const MODULE_NAME = 'rabbit_mirror_theater';
 
@@ -12,6 +12,7 @@ export const VISUAL_PROMPT_MAX_CHARS = 5000;
 export const VISUAL_EXTRA_PROMPT_MAX_CHARS = 1000;
 export const VISUAL_AVOID_PROMPT_MAX_CHARS = 1000;
 export const WORLD_INFO_BOOK_NAME_MAX_CHARS = 512;
+export const VISUAL_TONE_MODES = Object.freeze(['normal', 'soft', 'dark']);
 export const INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT = 32;
 // Keep startup normalization scalar-only; loading host world-book readers is a user action.
 function normalizeMemoryWorldBookSettingId(value) {
@@ -223,7 +224,8 @@ export const defaultSettings = Object.freeze({
     showCot: false,
     // Compatibility key: strong diversity is always active.
     avoidRepeat: true,
-    darkVisualMode: false,
+    darkVisualMode: false, // 由 visualToneMode 推出：只有选「深色」时为 true，保留给原有判断用。
+    visualToneMode: 'normal', // 色调模式三选一：normal 普通／soft 柔和浅色／dark 深色。
     postGenerationRecolor: false, // Retired trial compatibility key; never generates variants.
     visualDesignMode: 'guided1553', // Compatibility key; old choices converge on the retained enhanced rules.
     cooldownRounds: 10,
@@ -323,6 +325,8 @@ export function getSettings() {
         settings.presentationDefaultsMigration = 1;
         try { saveSettingsDebounced(); } catch {}
     }
+    // 旧版只有深色开关：开过深色的升级后是「深色」，其余是「普通」。必须在默认值回填之前判断。
+    if (settings.visualToneMode === undefined) settings.visualToneMode = settings.darkVisualMode === true ? 'dark' : 'normal';
     for (const [key, value] of Object.entries(defaultSettings)) {
         if (settings[key] === undefined) settings[key] = value;
     }
@@ -385,7 +389,8 @@ export function getSettings() {
     settings.formatsMin = Number(settings.formatsMin) || defaultSettings.formatsMin;
     settings.formatsMax = Number(settings.formatsMax) || defaultSettings.formatsMax;
     settings.avoidRepeat = true;
-    settings.darkVisualMode = settings.darkVisualMode === true;
+    if (!VISUAL_TONE_MODES.includes(settings.visualToneMode)) settings.visualToneMode = settings.darkVisualMode === true ? 'dark' : 'normal';
+    settings.darkVisualMode = settings.visualToneMode === 'dark';
     settings.postGenerationRecolor = false;
     settings.visualDesignMode = 'guided1553';
     settings.cooldownRounds = Math.max(1, Number(settings.cooldownRounds) || defaultSettings.cooldownRounds);
@@ -511,6 +516,14 @@ export function updateSettings(patch) {
     const settings = getSettings();
     const safePatch = patch && typeof patch === 'object' ? { ...patch } : {};
     if (Object.prototype.hasOwnProperty.call(safePatch, 'visualDesignMode')) safePatch.visualDesignMode = 'guided1553';
+    // 色调模式与旧深色开关保持一致：新写法以 visualToneMode 为准，旧调用只改深色开关时跟着换算。
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'visualToneMode')) {
+        safePatch.visualToneMode = VISUAL_TONE_MODES.includes(safePatch.visualToneMode) ? safePatch.visualToneMode : 'normal';
+        safePatch.darkVisualMode = safePatch.visualToneMode === 'dark';
+    } else if (Object.prototype.hasOwnProperty.call(safePatch, 'darkVisualMode')) {
+        safePatch.darkVisualMode = safePatch.darkVisualMode === true;
+        safePatch.visualToneMode = safePatch.darkVisualMode ? 'dark' : (settings.visualToneMode === 'dark' ? 'normal' : settings.visualToneMode);
+    }
     if (Object.prototype.hasOwnProperty.call(safePatch, 'independentGenerationTiming')) {
         safePatch.independentGenerationTiming = independentGenerationTiming({ ...settings, ...safePatch });
     }

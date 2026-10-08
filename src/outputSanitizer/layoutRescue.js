@@ -1,6 +1,6 @@
 // Split from outputSanitizer.js — layoutRescue.
 
-import { collectBoundedElementDescendants, semanticEnsembleScalePlan } from '../presentationQuality.js?rmv=1.67.28';
+import { collectBoundedElementDescendants, semanticEnsembleScalePlan } from '../presentationQuality.js?rmv=1.67.32';
 import {
     FEEDBACK_CAT_ATTR,
     MAINTENANCE_RABBIT_ATTR,
@@ -8,7 +8,7 @@ import {
     RECIPE_BUTTON_ATTR,
     TOOL_ENTRY_HOST_ATTR,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.67.28';
+} from './runtime.js?rmv=1.67.32';
 import {
     EXCLUSIVE_STACKED_STATE_PANEL_ATTR,
     MOBILE_INLINE_ANNOTATION_MIRROR_ATTR,
@@ -24,13 +24,13 @@ import {
     parseCheckedRulesFromText,
     repairRabbitMirrorSelectorPanelGridSpan,
     resolveTargetsForCheckedRule,
-} from './checkedStateRescue.js?rmv=1.67.28';
-import { getClassTokens } from './renderedStateRescue.js?rmv=1.67.28';
+} from './checkedStateRescue.js?rmv=1.67.32';
+import { getClassTokens } from './renderedStateRescue.js?rmv=1.67.32';
 import {
     ensurePassportDocumentRescueStyle,
     findRenderedPassportDocumentCandidates,
     markRenderedPassportDocumentCandidate,
-} from './scriptedInteractionRescue.js?rmv=1.67.28';
+} from './scriptedInteractionRescue.js?rmv=1.67.32';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     INDEPENDENT_MOBILE_SPATIAL_CANVAS_ATTR,
@@ -88,7 +88,7 @@ import {
     mobileLayoutRescueStates,
     mobileMatrixPreserveStates,
     rabbitMirrorFacePositionHints,
-} from './diagnostics.js?rmv=1.67.28';
+} from './diagnostics.js?rmv=1.67.32';
 
 let mobileLayoutScopeCounter = 0;
 
@@ -2035,6 +2035,17 @@ function inspectSemanticEnsembleFits(root) {
         if (host.querySelector?.('button,input,select,textarea,details,summary,[role="button"],[role="tab"]')) continue;
         const units = hclipSemanticEnsembleUnits(host);
         if (units.length < 3 || units.length > 8) continue;
+        // 弹幕／飘字层：铺在画面上、不接收点击的绝对定位层，里面一行行不换行的字本来就是飘出边外再被裁掉的。
+        // 把它整体缩小只会让画面上的弹幕错位，并且缩完后又被当成新的“定宽过宽”反复报。
+        const hostStyle = hclipSafeStyle(host);
+        const overlayLayer = String(hostStyle?.position || '').toLowerCase() === 'absolute'
+            && String(hostStyle?.pointerEvents || '').toLowerCase() === 'none';
+        const driftingLines = units.filter(unit => {
+            const unitStyle = hclipSafeStyle(unit);
+            return String(unitStyle?.position || '').toLowerCase() === 'absolute'
+                && /^(?:nowrap|pre)$/.test(String(unitStyle?.whiteSpace || '').toLowerCase());
+        }).length;
+        if (overlayLayer || driftingLines * 2 > units.length) continue;
         const hostRect = hclipSafeRect(host);
         if (!hostRect || hostRect.width <= 0 || hostRect.height <= 0) continue;
         let farRight = Number(hostRect.right || 0);

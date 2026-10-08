@@ -1,15 +1,15 @@
 // Split from outputSanitizer.js — diagnostics.
-import { interactionSamplingDiagnostic, designSamplingChecksDiagnostic } from '../interactionSampling.js?rmv=1.67.28';
-import { RADIO_BRANCH_COUNT_ATTR } from './radioBranchRepair.js?rmv=1.67.28';
-import { findUnmappedNavigationButtons } from './choiceRescue.js?rmv=1.67.28';
-import { nativePopoverFallbackCount, inspectNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.67.28';
-import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.67.28';
-import { restoreRuntimeAnimationClone } from '../runtimeAnimationState.js?rmv=1.67.28';
+import { interactionSamplingDiagnostic, designSamplingChecksDiagnostic } from '../interactionSampling.js?rmv=1.67.32';
+import { RADIO_BRANCH_COUNT_ATTR } from './radioBranchRepair.js?rmv=1.67.32';
+import { findUnmappedNavigationButtons } from './choiceRescue.js?rmv=1.67.32';
+import { nativePopoverFallbackCount, inspectNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.67.32';
+import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.67.32';
+import { restoreRuntimeAnimationClone } from '../runtimeAnimationState.js?rmv=1.67.32';
 
-import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.67.28';
-import { collectBoundedElementDescendants } from '../presentationQuality.js?rmv=1.67.28';
-import { collectRevealedClipHosts, shouldRelaxRevealedClipPanel, REVEALED_CLIP_RESCUE_ATTR } from '../revealedClipRepair.js?rmv=1.67.28';
-import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.67.28';
+import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.67.32';
+import { collectBoundedElementDescendants } from '../presentationQuality.js?rmv=1.67.32';
+import { collectRevealedClipHosts, shouldRelaxRevealedClipPanel, REVEALED_CLIP_RESCUE_ATTR } from '../revealedClipRepair.js?rmv=1.67.32';
+import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.67.32';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -28,7 +28,7 @@ import {
     isInsideChatMessage,
     isMaintenanceRabbitEnabled,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.67.28';
+} from './runtime.js?rmv=1.67.32';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     CHANNEL_DIAL_CYCLE_COUNT_ATTR,
@@ -61,7 +61,7 @@ import {
     WEBKIT_3D_FLIP_RESCUE_ATTR,
     passportDocumentRescueStates,
     unlabeledCheckedHostRescueStates,
-} from './checkedStateRescue.js?rmv=1.67.28';
+} from './checkedStateRescue.js?rmv=1.67.32';
 import {
     RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR,
     RENDERED_BUTTON_ADJACENT_HIDDEN_ITEM_ATTR,
@@ -88,7 +88,7 @@ import {
     renderedListDetailRescueStates,
     renderedMaskRevealRescueStates,
     renderedStateLayerRescueStates,
-} from './renderedStateRescue.js?rmv=1.67.28';
+} from './renderedStateRescue.js?rmv=1.67.32';
 import {
     RAW_RADIO_RESET_LAST_ATTR,
     RAW_RADIO_RESET_ROOT_ATTR,
@@ -99,7 +99,7 @@ import {
     getRabbitMirrorSummaryText,
     getRawAssistantMessageForRenderedRoot,
     rawSelfMutationRescueStates,
-} from './scriptedInteractionRescue.js?rmv=1.67.28';
+} from './scriptedInteractionRescue.js?rmv=1.67.32';
 import {
     REVERSIBLE_RADIO_LAST_ATTR,
     REVERSIBLE_RADIO_ROOT_ATTR,
@@ -110,13 +110,13 @@ import {
     findNestedDetailsPopupClippingCandidates,
     formatWebKit3DFlipEvidence,
     repairNestedDetailsPopupClipping,
-} from './fallbackRescue.js?rmv=1.67.28';
-import { RADIO_GROUP_RESCUE_ATTR, RADIO_GROUP_ROOT_ATTR } from './idsAndRearm.js?rmv=1.67.28';
+} from './fallbackRescue.js?rmv=1.67.32';
+import { RADIO_GROUP_RESCUE_ATTR, RADIO_GROUP_ROOT_ATTR } from './idsAndRearm.js?rmv=1.67.32';
 import {
     findFillInChoiceCandidates,
     findStaticChoiceSelectionCandidates,
     findStructuredStaticDisclosureCandidates,
-} from './choiceRescue.js?rmv=1.67.28';
+} from './choiceRescue.js?rmv=1.67.32';
 import {
     CODE_SHELL_SELECTOR,
     MAINTENANCE_QUARANTINED_SCRIPT_ATTR,
@@ -134,7 +134,7 @@ import {
     needsSanitize,
     normalizeMaintenanceSummaryText,
     parseTotoFragment,
-} from './maintenanceInspect.js?rmv=1.67.28';
+} from './maintenanceInspect.js?rmv=1.67.32';
 import {
     RABBIT_MIRROR_MAX_TEMPLATE_SOURCE_CHARS,
     RABBIT_MIRROR_SANITIZER_IMPORT_STRIPPED_ATTR,
@@ -147,7 +147,7 @@ import {
     sanitizeRabbitMirrorUntrustedTemplate,
     stripCssComments,
     validateRabbitMirrorTemplateStructuralBudget,
-} from './markup.js?rmv=1.67.28';
+} from './markup.js?rmv=1.67.32';
 import {
     HCLIP_REPORT_ATTR,
     VIEWPORT_LAYOUT_COUNT_ATTR,
@@ -155,14 +155,14 @@ import {
     inspectMaintenanceMobileLayout,
     inspectMaintenanceViewportLayout,
     maintenanceMobileLayoutIsPassportManaged,
-} from './layoutRescue.js?rmv=1.67.28';
-import { normalizeRabbitMirrorToolButton, rabbitMirrorTextPresentation, updateMaintenanceRabbitMenuState } from './toolsChrome.js?rmv=1.67.28';
+} from './layoutRescue.js?rmv=1.67.32';
+import { normalizeRabbitMirrorToolButton, rabbitMirrorTextPresentation, updateMaintenanceRabbitMenuState } from './toolsChrome.js?rmv=1.67.32';
 import {
     getMessageIndexFromMirrorNode,
     hostScriptModule,
     messageUsesDistinctDisplaySource,
     outputHostGenerationLooksActive,
-} from './lifecycle.js?rmv=1.67.28';
+} from './lifecycle.js?rmv=1.67.32';
 
 export const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
 
@@ -2689,6 +2689,10 @@ export function maintenanceInteractionScopeEvidence(root) {
     let duplicateIds = 0;
     let brokenLocalLabels = 0;
     let checkedCssIdSelectors = 0;
+    const orphanLabels = explicitLabels.filter(label => {
+        const control = label.control;
+        return !control || !root?.contains?.(control);
+    }).length;
 
     for (const input of controls) {
         const id = String(input.id || '').trim();
@@ -2702,7 +2706,13 @@ export function maintenanceInteractionScopeEvidence(root) {
         const explicitLabel = explicitLabels.find(label => label.getAttribute('for') === id);
         const wrappingValid = !!wrappingLabel && wrappingLabel.control === input;
         const explicitValid = !!explicitLabel && explicitLabel.control === input;
-        if (!wrappingValid && !explicitValid) brokenLocalLabels += 1;
+        if (wrappingValid || explicitValid) continue;
+        // 由可见按钮组代为驱动的隐藏单选，本来就没有 label，不是 ID 失配。
+        if (input.hasAttribute?.('data-rm-radio-proxy-target')) continue;
+        // 完全没有任何 label 指向它、本面也没有指错地方的 label 时，重新隔离 ID 修不了什么，
+        // 不能报成“可维修”让人点了没反应。
+        if (!wrappingLabel && !explicitLabel && !orphanLabels) continue;
+        brokenLocalLabels += 1;
     }
 
     const cssText = [...(root?.querySelectorAll?.('style') || [])].map(style => String(style.textContent || '')).join('\n');

@@ -21,6 +21,7 @@ function after(node) {
 
 function toolbar(binding, target, kind, inside = false) {
     let bar = inside ? [...target.children].find(node => node.getAttribute(BAR) === kind) : after(target);
+    if (bar?.getAttribute(BAR) !== kind && binding.reuseOnly) return null;
     if (bar?.getAttribute(BAR) !== kind) {
         bar = target.ownerDocument.createElement('span');
         bar.setAttribute(BAR, kind);
@@ -40,6 +41,7 @@ function toolbar(binding, target, kind, inside = false) {
 
 function control(binding, bar, name, label, text, target, action, driverAttribute) {
     let button = [...bar.querySelectorAll('button')].find(node => node.getAttribute(ACTION) === name);
+    if (!button && binding.reuseOnly) return null;
     if (!button) {
         button = bar.ownerDocument.createElement('button');
         button.setAttribute('type', 'button');
@@ -69,6 +71,7 @@ function horizontalCandidate(node) {
 function scrollControls(binding, target) {
     if (!target.parentElement || binding.root.contains(binding.scrolls.get(target)?.bar)) return false;
     const bar = toolbar(binding, target, 'scroll');
+    if (!bar) return false;
     const move = direction => {
         const distance = Math.max(1, target.clientWidth * 0.85) * direction;
         if (typeof target.scrollBy === 'function') target.scrollBy({ left: distance, behavior: 'smooth' });
@@ -76,8 +79,10 @@ function scrollControls(binding, target) {
     };
     const previous = control(binding, bar, 'scroll-prev', '向左浏览', '←', target, () => move(-1));
     const next = control(binding, bar, 'scroll-next', '向右浏览', '→', target, () => move(1));
+    if (!previous || !next) return false;
     binding.scrolls.set(target, { bar, previous, next });
     binding.surfaces.add(target);
+    if (binding.reuseOnly) return true;
     // Retain native vertical browsing and pinch zoom; horizontal navigation has buttons.
     target.style.setProperty('touch-action', 'pan-y pinch-zoom', 'important');
     return true;
@@ -94,12 +99,16 @@ function stepRange(input, direction) {
     const { min, max } = rangeLimits(input), before = input.value;
     const any = input.getAttribute('step') === 'any';
     const method = direction > 0 ? 'stepUp' : 'stepDown';
+    const authoredStep = numeric(input.getAttribute('step') || '', 1);
+    // 0～1、步长 0.01 这类滑杆点一下只动 1%，按钮等于没用；超过 20 格时按约 1/20 的整数倍步长走。
+    const coarse = !any && authoredStep > 0 && (max - min) / authoredStep > 20
+        ? Math.ceil(((max - min) / 20) / authoredStep - 1e-9) * authoredStep : 0;
     let native = false;
     if (!any && typeof input[method] === 'function') {
-        try { input[method](); native = true; } catch { /* Old WebViews can omit numeric stepping. */ }
+        try { input[method](coarse ? Math.round(coarse / authoredStep) : 1); native = true; } catch { /* Old WebViews can omit numeric stepping. */ }
     }
     if (!native) {
-        const authored = numeric(input.getAttribute('step') || '', 1);
+        const authored = coarse || authoredStep;
         const step = any ? (max - min) / 20 : authored > 0 ? authored : 1;
         const current = numeric(input.value, min);
         const base = input.hasAttribute('min') ? min : numeric(input.getAttribute('value') || '', 0);
@@ -117,8 +126,10 @@ function stepRange(input, direction) {
 function rangeControls(binding, target) {
     if (!target.parentElement || binding.root.contains(binding.ranges.get(target)?.bar)) return false;
     const bar = toolbar(binding, target, 'range');
+    if (!bar) return false;
     const less = control(binding, bar, 'range-less', '减少', '−', target, () => stepRange(target, -1));
     const more = control(binding, bar, 'range-more', '增加', '＋', target, () => stepRange(target, 1));
+    if (!less || !more) return false;
     binding.ranges.set(target, { bar, less, more });
     binding.surfaces.add(target);
     return true;
@@ -126,7 +137,7 @@ function rangeControls(binding, target) {
 
 function itemControls(binding, group) {
     const type = group.getAttribute('data-rm-ui');
-    if (type !== 'reorder' && type !== 'drag') return 0;
+    if (binding.reuseOnly || (type !== 'reorder' && type !== 'drag')) return 0;
     let added = 0;
     for (const item of own(group, '[data-rm-item]')) {
         if (item.contains(binding.items.get(item)) || item.namespaceURI && item.namespaceURI !== 'http://www.w3.org/1999/xhtml' || item.matches('input, button, textarea, select, img')) continue;
@@ -178,10 +189,15 @@ export function usesMobileInteractionButtons(root, item) {
 }
 
 export function installMobileInteractionControls(root) {
-    if (!root?.addEventListener || !touchHost(root)) return 0;
+    if (!root?.addEventListener) return 0;
+    // 手机上生成并保存过的面，换到电脑打开时会带着这些 −／＋、←／→ 按钮。
+    // 电脑上不新增按钮，但已经存在的要接上，不能留一排点了没反应的按钮。
+    const touch = touchHost(root);
+    if (!touch && !root.querySelector(`[${BAR}] button[${ACTION}]`)) return 0;
     let binding = bindings.get(root);
+    if (binding) binding.reuseOnly = binding.reuseOnly && !touch;
     if (!binding) {
-        binding = { root, surfaces: new WeakSet(), actions: new WeakMap(), scrolls: new Map(), ranges: new Map(), items: new WeakMap() };
+        binding = { root, reuseOnly: !touch, surfaces: new WeakSet(), actions: new WeakMap(), scrolls: new Map(), ranges: new Map(), items: new WeakMap() };
         bindings.set(root, binding);
         root.addEventListener('click', event => {
             // The face driver is installed first and resets values without emitting input.

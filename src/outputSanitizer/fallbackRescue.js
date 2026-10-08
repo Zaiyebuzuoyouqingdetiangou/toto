@@ -1,7 +1,7 @@
 // Split from outputSanitizer.js — fallbackRescue.
-import { RADIO_BRANCH_CONTROL_ATTR, installRadioBranchRepair, applyRadioBranchState, radioBranchVerificationTargets } from './radioBranchRepair.js?rmv=1.67.28';
+import { RADIO_BRANCH_CONTROL_ATTR, installRadioBranchRepair, applyRadioBranchState, applyRadioProxyState, radioBranchVerificationTargets } from './radioBranchRepair.js?rmv=1.67.32';
 
-import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.67.28';
+import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.67.32';
 
 import {
     FEEDBACK_CAT_ATTR,
@@ -9,7 +9,7 @@ import {
     TOOL_ENTRY_HOST_ATTR,
     escapeRegExp,
     getRabbitMirrorLocalStyleElements,
-} from './runtime.js?rmv=1.67.28';
+} from './runtime.js?rmv=1.67.32';
 import {
     CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR,
     CROSS_PARENT_CHECKED_VERIFIED_ATTR,
@@ -92,7 +92,7 @@ import {
     webKit3DFlipInlineStates,
     webKit3DFlipRescueStates,
     webKit3DFlipStyleStates,
-} from './checkedStateRescue.js?rmv=1.67.28';
+} from './checkedStateRescue.js?rmv=1.67.32';
 import {
     EXISTING_INTERACTIVE_SELECTOR,
     RENDERED_BUTTON_ADJACENT_HIDDEN_RESCUE_ATTR,
@@ -119,7 +119,7 @@ import {
     isCollapsedDimensionValue,
     normalizeStylePropertyName,
     parseCssStateSiblingAssignments,
-} from './renderedStateRescue.js?rmv=1.67.28';
+} from './renderedStateRescue.js?rmv=1.67.32';
 import {
     chooseMatchingRawRabbitMirrorRoot,
     detectInteractionCapabilities,
@@ -135,7 +135,7 @@ import {
     installRawMessageSelfMutationRescue,
     preparePseudoTrigger,
     shouldIgnorePseudoToggleEvent,
-} from './scriptedInteractionRescue.js?rmv=1.67.28';
+} from './scriptedInteractionRescue.js?rmv=1.67.32';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     FILL_IN_CHOICE_BLANK_ATTR,
@@ -147,15 +147,15 @@ import {
     diagnosticFindClippingAncestor,
     maintenanceSafeComputedStyle,
     mobileInlineAnnotationRescueStates,
-} from './diagnostics.js?rmv=1.67.28';
-import { installStaticChoiceSelectionFallback } from './choiceRescue.js?rmv=1.67.28';
+} from './diagnostics.js?rmv=1.67.32';
+import { installStaticChoiceSelectionFallback } from './choiceRescue.js?rmv=1.67.32';
 import {
     checkedDeclarationCreatesContentReveal,
     checkedTargetCarriesResultContent,
     pseudoStateTargetSelector,
-} from './maintenanceInspect.js?rmv=1.67.28';
-import { splitCssSelectorList } from './markup.js?rmv=1.67.28';
-import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutResolveCheckedTargets } from './layoutRescue.js?rmv=1.67.28';
+} from './maintenanceInspect.js?rmv=1.67.32';
+import { splitCssSelectorList } from './markup.js?rmv=1.67.32';
+import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutResolveCheckedTargets } from './layoutRescue.js?rmv=1.67.32';
 
 const NESTED_DETAILS_FALLBACK_HANDLER_PROP = '__rabbitMirrorNestedDetailsFallbackHandler';
 
@@ -918,6 +918,8 @@ export function repairMarkdownCorruptedCssComments(root) {
 
 export function applyCheckedVisualFallback(root, input) {
     if (applyRadioBranchState(root, input)) return;
+    // 可见按钮组代驱隐藏单选：先把隐藏那一组切过去，按钮自己的变色规则照常往下走。
+    applyRadioProxyState(root, input);
     // Once an exclusive stacked-state route owns a radio scene, do not let the generic
     // class-local checked fallback re-apply broad sibling styles on top of it. This also
     // covers the inferred baseline/close radio whose raw shared-class CSS can otherwise

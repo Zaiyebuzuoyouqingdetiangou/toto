@@ -1,12 +1,12 @@
 // Split from independentApi.js — earlyBody.
 
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.67.28';
-import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.67.28';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.67.28';
-import { getSettings } from '../settings.js?rmv=1.67.28';
-import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.67.28';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=1.67.28';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.67.28';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.67.32';
+import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.67.32';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.67.32';
+import { getSettings } from '../settings.js?rmv=1.67.32';
+import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.67.32';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=1.67.32';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.67.32';
 import {
     MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE,
     assistantRowsInScanRange,
@@ -15,7 +15,7 @@ import {
     isMissingShellTargetFloor,
     normalizeMissingShellScanRange,
     shouldRestoreMissingIndependentRetryShell,
-} from './missingRetryShell.js?rmv=1.67.28';
+} from './missingRetryShell.js?rmv=1.67.32';
 import {
     INDEPENDENT_GENERATION_INTENTS_KEY,
     INDEPENDENT_GENERATION_INTENT_TYPES,
@@ -25,7 +25,7 @@ import {
     currentRuntime,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.67.28';
+} from './runtime.js?rmv=1.67.32';
 import {
     ACTIVE_GENERATION_WAIT_MS,
     FINAL_RENDER_POLL_INTERVAL_MS,
@@ -39,7 +39,7 @@ import {
     markAutomaticFailureStop,
     operationEpochForBase,
     pending,
-} from './flights.js?rmv=1.67.28';
+} from './flights.js?rmv=1.67.32';
 import {
     appendHistoryEntry,
     chatPersistenceSlot,
@@ -52,7 +52,9 @@ import {
     writePersistedOwner,
     writeStore,
     reconcileIndependentChatOwners,
-} from './persistence.js?rmv=1.67.28';
+    rememberChatMessageOrder,
+    checkOwnerRemapEpoch,
+} from './persistence.js?rmv=1.67.32';
 import {
     activeGlobalWorldInfoCapture,
     assistantMessages,
@@ -102,7 +104,7 @@ import {
     withOwnerLockStoreBatch,
     writeActiveGlobalWorldInfoCapture,
     writeHostModule,
-} from './connection.js?rmv=1.67.28';
+} from './connection.js?rmv=1.67.32';
 import {
     allExternalHosts,
     externalHosts,
@@ -110,7 +112,7 @@ import {
     removeEmptyFollowExternalAnchors,
     removeEmptyInlineAnchors,
     withExternalHostSyncIndex,
-} from './request.js?rmv=1.67.28';
+} from './request.js?rmv=1.67.32';
 import {
     beginHostWorkTiming,
     clearExternalHostFreshSourceState,
@@ -143,7 +145,7 @@ import {
     setPlaceholderSummary,
     usableReadyDetails,
     withRestorableHtmlCacheBatch,
-} from './geometry.js?rmv=1.67.28';
+} from './geometry.js?rmv=1.67.32';
 import {
     INDEPENDENT_INTENT_OWNER,
     abortFlight,
@@ -197,7 +199,7 @@ import {
     serializeExternalFaceDetails,
     stampAutomaticAuthorizationEpoch,
     withHistoricalRestoreLightPass,
-} from './mount.js?rmv=1.67.28';
+} from './mount.js?rmv=1.67.32';
 import {
     automaticGenerationCutovers,
     hostGenerationHintStartedAt,
@@ -222,7 +224,7 @@ import {
     writeStartupHistoryFallbackRoot,
     writeSyncRunning,
     writeSyncTimer,
-} from './lifecycle.js?rmv=1.67.28';
+} from './lifecycle.js?rmv=1.67.32';
 
 let earlyBodyParserPromise=null;
 
@@ -345,7 +347,7 @@ function settleEarlyBodyAtFinal(ctx,index){
 
 async function probeIndependentEarlyBody(packet,sequence){
  if(!earlyBodyPacketCurrent(packet)) return;
- if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.67.28')
+ if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.67.32')
   .then(module=>{earlyBodyParser=module;return module;}).catch(()=>{earlyBodyParserPromise=null;return null;});
  const parser=await earlyBodyParserPromise;
  if(!parser || sequence!==earlyBodyProbeSequence || !earlyBodyPacketCurrent(packet)) return;
@@ -1941,24 +1943,6 @@ function syncUpdatedIndependentMessage(payload){
  if(Number.isInteger(id)&&id>=0) queueMessageSync([id]);
 }
 
-// 删除事件之后稍等再对号：酒馆删当前 swipe 时会先发事件再换正文；连续删几次也只对一次号。
-// 正在生成或还在切换时隔几秒再试，最多试十次；换了聊天就作废。
-let ownerReconcileTimer=0;
-function scheduleOwnerReconcile(reason,attempt=0){
- clearTimeout(ownerReconcileTimer);
- const sequence=runtimeConfigSequence;
- const chat=getContext()?.chat;
- const owner=chatKey(getContext());
- ownerReconcileTimer=setTimeout(()=>{
-  ownerReconcileTimer=0;
-  const ctx=getContext();
-  if(sequence!==runtimeConfigSequence||!currentRuntime()||ctx?.chat!==chat||chatKey(ctx)!==owner) return;
-  const result=reconcileIndependentChatOwners(ctx,{reason});
-  if(result==='changed') scheduleStartupHistorySync(sequence);
-  else if(result==='later'&&attempt<10) scheduleOwnerReconcile(reason,attempt+1);
- },attempt?3000:1200);
-}
-
 export async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSequence){
  unsubscribeHostEvents();
  const mode=runtimeMode(); if(mode==='off'||mode==='inline') return;
@@ -1981,14 +1965,32 @@ export async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSe
      es?.on?.(et.MESSAGE_UPDATED,syncUpdatedIndependentMessage);
      hostSubscriptions.push({es,event:et.MESSAGE_UPDATED,handler:syncUpdatedIndependentMessage});
     }
-    // 删楼层、删 swipe、重新生成最后一条都会触发删除事件：按正文把兔子镜记录重新对号，
-    // 对不上任何楼层的从聊天文件里移除。只有真的改了记录才重新挂载一次，不发请求。
-    for(const event of new Set([et.MESSAGE_DELETED,et.MESSAGE_SWIPE_DELETED].filter(Boolean))){
-     const handler=()=>scheduleOwnerReconcile(String(event));
-     es?.on?.(event,handler); hostSubscriptions.push({es,event,handler});
+    // 删楼层、删 swipe、重新生成最后一条都会触发删除事件：把兔子镜的楼层号跟着消息改过来，
+    // 被删消息的兔子镜从聊天文件里移除。删除事件发出时酒馆已经删完，这里立即处理，赶在酒馆保存聊天之前。
+    // 只有真的改了记录才重新挂载一次，不发请求。
+    const afterOwnerReconcile=(result,sequence)=>{
+     if(!result?.changed) return;
+     void Promise.resolve(result.settled).then(()=>{ if(sequence===runtimeConfigSequence&&currentRuntime()) scheduleStartupHistorySync(sequence); });
+    };
+    if(et.MESSAGE_DELETED){
+     const handler=()=>afterOwnerReconcile(reconcileIndependentChatOwners(getContext(),{kind:'message'}),runtimeConfigSequence);
+     es?.on?.(et.MESSAGE_DELETED,handler); hostSubscriptions.push({es,event:et.MESSAGE_DELETED,handler});
     }
+    if(et.MESSAGE_SWIPE_DELETED){
+     const handler=payload=>afterOwnerReconcile(reconcileIndependentChatOwners(getContext(),{kind:'swipe',messageId:Number(payload?.messageId),swipeId:Number(payload?.swipeId)}),runtimeConfigSequence);
+     es?.on?.(et.MESSAGE_SWIPE_DELETED,handler); hostSubscriptions.push({es,event:et.MESSAGE_SWIPE_DELETED,handler});
+    }
+    // 楼层有增减、换聊天时记下每层是哪条消息，删除时靠它对号。
+    const rememberOrder=()=>rememberChatMessageOrder(getContext());
+    for(const event of new Set([et.CHAT_CHANGED,et.MESSAGE_SENT,et.MESSAGE_RECEIVED,et.USER_MESSAGE_RENDERED,et.CHARACTER_MESSAGE_RENDERED,
+     et.MESSAGE_SWIPED,et.MESSAGE_EDITED,et.MESSAGE_UPDATED,et.GENERATION_STARTED,et.GENERATION_ENDED,et.GENERATION_STOPPED,et.MORE_MESSAGES_LOADED].filter(Boolean))){
+     es?.on?.(event,rememberOrder); hostSubscriptions.push({es,event,handler:rememberOrder});
+    }
+    rememberOrder();
    for(const event of new Set(fullSyncEvents)){
       const handler=()=>{
+        // 先核对本机按楼层号存的缓存是否过时，再做历史同步。
+        try{ checkOwnerRemapEpoch(getContext()); }catch{}
         writeHostGenerationInProgress(false); writeHostGenerationHintStartedAt(0); clearScheduledGeneration(); cancelAllIndependentFlights('chat-changed'); clearIndependentRejectedFacePreviews(); messageSourceRevisions.clear(); writeActiveGlobalWorldInfoCapture(null);
         globalThis[INDEPENDENT_GENERATION_INTENTS_KEY]=[];
         globalThis[INDEPENDENT_GENERATION_STOPS_KEY]=[];

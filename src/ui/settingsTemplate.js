@@ -1,8 +1,8 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.67.28';
-import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.67.28';
-import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.67.28';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.67.32';
+import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.67.32';
+import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.67.32';
 
 export function buildRabbitMirrorSettingsDialogHtml() {
     return `
@@ -490,8 +490,11 @@ export function buildRabbitMirrorSettingsDialogHtml() {
               <label class="rh-ui-choice"><input id="rh_visual_scenery_mode_combined" type="radio" name="rh_visual_scenery_mode" value="combined"><span><strong>动态场景＋其他形式</strong><small>包含动态场景规则，同时按原有数量和偏好抽取其他展现形式，保留它们的内容、阅读方式与玩法。</small></span></label>
             </div>
             <div id="rh_visual_scenery_mode_help" class="rabbit-mirror-subnote">三选一，仅影响 HTML 面；文本面不受影响。主体绘制、材质与光影已纳入通用美化规则。</div>
-            <label for="rh_dark_visual_mode" class="checkbox_label"><input id="rh_dark_visual_mode" type="checkbox" aria-describedby="rh_dark_visual_mode_help"> 深色模式</label>
-            <div id="rh_dark_visual_mode_help" class="rabbit-mirror-subnote">新生成的所有镜面使用适合夜间阅读的深色背景；深色范围内仍强避重，保留形式与材质。独立生效，勾选即保存；已有作品不变。</div>
+            <div id="rh_visual_tone_row">
+              <label for="rh_visual_tone_mode">色调模式</label>
+              <select id="rh_visual_tone_mode" class="text_pole" style="min-height:44px;max-width:100%;" aria-describedby="rh_visual_tone_mode_help"><option value="normal">普通</option><option value="soft">柔和浅色</option><option value="dark">深色</option></select>
+              <div id="rh_visual_tone_mode_help" class="rabbit-mirror-subnote">三选一，选中即保存，从下一次生成起生效；已有作品不变。普通：颜色不限，照常强避重。柔和浅色：低饱和、带一点灰的浅色系，在浅色范围里换色避重。深色：适合夜间阅读的深色背景，在深色范围里换色避重。</div>
+            </div>
             <label class="checkbox_label"><input id="rh_user_directive" type="checkbox"> 用户指令优先</label>
             <div class="rabbit-mirror-subnote" style="margin:-2px 0 6px 26px;opacity:.72;font-size:12px;line-height:1.45;">开启后，可以自由点菜自己喜欢的任意内容。</div>
             <label class="checkbox_label"><input id="rh_worldview_lock" type="checkbox"> 展现形式世界观锁</label>

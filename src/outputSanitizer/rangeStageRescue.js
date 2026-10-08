@@ -2,6 +2,7 @@
 // 用 `:has(input[value="2"]:checked)` 之类的规则去切换。滑杆没有 checked 状态，这种规则永远不生效，
 // 拖动滑杆什么也不变。这里只在“编号段落与滑杆取值一一对应、且这些段落默认是隐藏的”时接上：
 // 滑到几就显示第几段，其余段落收起。不写任何新内容，不执行模型脚本。
+import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.67.32';
 const RESCUE_ATTR = 'data-rabbit-mirror-range-stage-rescue';
 const STAGE_ATTR = 'data-rm-range-stage';
 const states = new WeakMap();
@@ -72,6 +73,63 @@ export function installRangeStageRescue(root) {
         input.addEventListener('change', update);
         input.setAttribute(RESCUE_ATTR, String(stages.size));
         apply(state);
+        installed += 1;
+    }
+    return installed;
+}
+
+// 另一种常见写法：`.box:has(#slider[value="2"]) .t1 { display:none }`。
+// CSS 里的 [value="2"] 读的是 HTML 属性，拖动滑杆只改“当前值”不改属性，所以规则永远停在初始那一档。
+// 只有本面自己的样式确实用 [value=…] 指向这根滑杆时，才在拖动时把当前值同步回属性，
+// 让模型原本写好的规则自己生效；不改任何样式，不猜目标。
+const VALUE_ATTR_RESCUE = 'data-rabbit-mirror-range-value-attr-rescue';
+const valueMirrors = new WeakSet();
+
+function valueAttributeHeads(root) {
+    const heads = [];
+    for (const style of getRabbitMirrorLocalStyleElements(root)) {
+        const css = String(style.textContent || '').replace(/\/\*[\s\S]*?\*\//g, '');
+        const blockRe = /([^{}]+)\{[^{}]*\}/g;
+        let match;
+        while ((match = blockRe.exec(css))) {
+            const selectorText = match[1];
+            if (!/\[\s*value\s*[~|^$*]?=/i.test(selectorText)) continue;
+            const attrRe = /\[\s*value\s*[~|^$*]?=/gi;
+            let attr;
+            while ((attr = attrRe.exec(selectorText))) {
+                let start = attr.index;
+                while (start > 0 && !/[\s>+~(,]/.test(selectorText[start - 1])) start -= 1;
+                const head = selectorText.slice(start, attr.index).replace(/:checked\b/gi, '').trim();
+                if (head && head !== '*' && !heads.includes(head)) heads.push(head);
+            }
+        }
+    }
+    return heads;
+}
+
+function headTargetsInput(head, input) {
+    try { return input.matches(head); } catch { return false; }
+}
+
+export function installRangeValueAttributeMirror(root) {
+    if (!root?.querySelectorAll) return 0;
+    const ranges = [...root.querySelectorAll('input[type="range"]')]
+        .filter(input => !valueMirrors.has(input) && !input.disabled);
+    if (!ranges.length) return 0;
+    const heads = valueAttributeHeads(root);
+    if (!heads.length) return 0;
+    let installed = 0;
+    for (const input of ranges) {
+        if (!heads.some(head => headTargetsInput(head, input))) continue;
+        valueMirrors.add(input);
+        const sync = () => {
+            const value = String(input.value);
+            if (input.getAttribute('value') !== value) input.setAttribute('value', value);
+        };
+        input.addEventListener('input', sync);
+        input.addEventListener('change', sync);
+        input.setAttribute(VALUE_ATTR_RESCUE, 'true');
+        sync();
         installed += 1;
     }
     return installed;

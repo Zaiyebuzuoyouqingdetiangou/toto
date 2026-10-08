@@ -1,8 +1,8 @@
 // Split from independentApi.js — persistence.
 
-import { presentationModeFields } from '../presentationMode.js?rmv=1.67.28';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.67.28';
-import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.67.28';
+import { presentationModeFields } from '../presentationMode.js?rmv=1.67.32';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.67.32';
+import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.67.32';
 import {
     FACE_SWIPE_FULL_MESSAGE,
     FACE_SWIPE_MAX,
@@ -16,9 +16,9 @@ import {
     multifaceFacePagerView,
     snapshotFaceSwipes, compactSwipeState, restoreFaceSwipeSnapshot,
     faceSwipeSnapshotStored, loadFaceSwipeArchive, saveFaceSwipeArchive,
-    writeFaceSwipe, emptySwipeState,
-} from '../swipeVersions.js?rmv=1.67.28';
-import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=1.67.28';
+    remapFaceSwipeSlots, remapFaceSwipeArchive, faceSwipeArchiveRemapSettled,
+} from '../swipeVersions.js?rmv=1.67.32';
+import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=1.67.32';
 import {
     clearEphemeralFaceFailure,
     hasEphemeralFaceFailure,
@@ -28,7 +28,7 @@ import {
     independentSwipeSlot,
     seedIndependentFaceSwipesFromIdentity,
     writeIndependentOwnerHtml,
-} from './faceSwipe.js?rmv=1.67.28';
+} from './faceSwipe.js?rmv=1.67.32';
 import {
     API_PROFILE_STORE_KEY,
     assistantMessages,
@@ -45,10 +45,9 @@ import {
     savedIndependentRecordForOwner,
     setOwnerLockForBase,
     swipeId,
-    hostGenerationLooksActive,
-    messageSourceFingerprint,
-} from './connection.js?rmv=1.67.28';
-import { stampExternalDetailsOwnership } from './request.js?rmv=1.67.28';
+    remapOwnerLockSlots,
+} from './connection.js?rmv=1.67.32';
+import { stampExternalDetailsOwnership } from './request.js?rmv=1.67.32';
 import {
     copyIndependentReplacementReceipt,
     ensureExternalTools,
@@ -59,8 +58,8 @@ import {
     normalizeSavedInteractionRecord,
     recoverSavedRecord,
     replaceExternalMultifaceFace,
-} from './geometry.js?rmv=1.67.28';
-import { activeIndependentFlightForBase, clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=1.67.28';
+} from './geometry.js?rmv=1.67.32';
+import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=1.67.32';
 
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 
@@ -372,8 +371,6 @@ export function hasIndependentSwipeInitial(root){
  return !!currentSwipeEntry(readFaceSwipe(independentSwipeSlot(identity),independentSwipeFaceIndex(identity)))?.initialHtml;
 }
 
-const TOMBSTONE_HASH_RE=/^[0-9a-z]{1,64}$/i;
-
 function emptyChatOutputMetadata(){ return {version:CHAT_OUTPUT_METADATA_SCHEMA,owners:{}}; }
 
 function chatMetadataObject(ctx=getContext()){
@@ -432,9 +429,12 @@ function normalizeChatOutputMetadata(value){
  const owners=value&&typeof value==='object'&&value.owners&&typeof value.owners==='object'?value.owners:{};
  for(const [key,raw] of Object.entries(owners)){
   if(!/^\d+:\d+$/.test(String(key||'')) || !raw || typeof raw!=='object') continue;
-  if(raw.deleted===true){ next.owners[key]={deleted:true,ts:Number(raw.ts||0),runtime:String(raw.runtime||RUNTIME_VERSION),...(TOMBSTONE_HASH_RE.test(String(raw.sourceHash||''))?{sourceHash:String(raw.sourceHash)}:{})}; continue; }
+  if(raw.deleted===true){ next.owners[key]={deleted:true,ts:Number(raw.ts||0),runtime:String(raw.runtime||RUNTIME_VERSION)}; continue; }
   const record=compactChatPersistedRecord(raw); if(record) next.owners[key]=record;
  }
+ // 删楼层后对号的次数：聊天文件和本机各记一份，对不上时说明本机缓存的楼层号已过时（见 checkOwnerRemapEpoch）。
+ const epoch=Math.floor(Number(value?.remapEpoch)||0);
+ if(epoch>0) next.remapEpoch=epoch;
  return next;
 }
 
@@ -502,7 +502,7 @@ export function restoreIndependentHistory(ctx,index,msg){
  if(loads.has(base)) return loads.get(base).promise;
  const entry={done:false,promise:null}; loads.set(base,entry);
  const observed=observeMessageSourceRevision(ctx,index,msg);
- entry.promise=loadFaceSwipeArchive(base).then(row=>{
+ entry.promise=faceSwipeArchiveRemapSettled().then(()=>loadFaceSwipeArchive(base)).then(row=>{
   // Never apply a late database read to a different body, Swipe or chat.
   const live=getContext();
   if(live.chat!==ctx.chat || live.chat?.[index]!==msg || messageBaseSlotKey(live,index,msg)!==base
@@ -510,9 +510,6 @@ export function restoreIndependentHistory(ctx,index,msg){
   const current=persistedOwnerForMessage(ctx,index,msg);
   if(current?.deleted) return;
   if(row?.record?.deleted){
-   // 存档里的“已删除”若记着正文指纹，必须是这一层的正文才算数：楼层前移后，原住户的删除标记不能压到新住户身上。
-   const tombHash=String(row.record.sourceHash||'');
-   if(tombHash && tombHash!==observed.sourceHash) return;
    if(!current || Number(row.record.ts)>=Number(current.ts)) writePersistedOwner(ctx,index,msg,row.record);
    return;
   }
@@ -539,11 +536,7 @@ export function writePersistedOwner(ctx,index,msg,value,{overwrite=true}={}){
  const existing=session?.[ownerKey]||state.owners?.[ownerKey];
  if(!overwrite && existing) return false;
  let next=null;
- if(value?.deleted===true){
-  // 记下被删兔子镜所在正文的指纹：楼层前移时，这个“已删除”标记要跟着那层正文走，不能留在原楼层号上压住别人的兔子镜。
-  const sourceHash=String(value.sourceHash||messageSourceFingerprint(msg)||'');
-  next={deleted:true,ts:Number(value.ts||Date.now()),runtime:RUNTIME_VERSION,...(sourceHash?{sourceHash}:{})};
- }
+ if(value?.deleted===true) next={deleted:true,ts:Number(value.ts||Date.now()),runtime:RUNTIME_VERSION};
  else {
   const base=messageBaseSlotKey(ctx,index,msg);
   if(value.faceSwipes || existing?.faceSwipes) restoreFaceSwipeSnapshot(base,value.faceSwipes||existing.faceSwipes);
@@ -661,165 +654,199 @@ export function apiProfileKey(st){ const connectionId=normalizeIndependentConnec
 export function normalizedConfiguredTemperature(st){ const value=Number(st?.independentApiTemperature); return Number.isFinite(value)?Math.max(0,Math.min(2,value)):0.8; }
 
 // ---------------------------------------------------------------------------
-// 删楼层／删 swipe 之后，按正文把兔子镜记录重新对号。
-// 聊天文件里的记录按“楼层号:swipe 号”存。删掉中间楼层后，后面的楼层整体前移，
+// 删楼层／删 swipe 之后，把兔子镜的楼层号跟着改过来。
+// 聊天文件里的兔子镜按“楼层号:swipe 号”存。删掉中间楼层后后面的楼层整体前移，
 // 记录却还挂在旧楼层号上：前移的楼层找不到自己的兔子镜，被删楼层的记录也一直留在文件里。
-// 这里只做两件事：
-//   1. 记录能唯一对上某个现存楼层（含 swipe）的正文时，把它连同版本一起搬到那个楼层号下；
-//   2. 对不上任何现存正文的记录，从聊天文件里拿掉（它的楼层已经被删了）。
-// 有歧义（两层正文一样）、没有正文指纹的旧“已删除”标记、正文与 swipe 不一致（酒馆还在切换）、
-// 正在生成中，一律原样不动。收藏夹、插图记录、图片文件都不在这里处理。
+// 这里按“是哪一条消息”来对号，而不是按正文：删除前记下每个楼层是哪条消息，删除后看每条消息现在在第几层。
+// 被删消息的兔子镜移除；留下的跟着消息搬到新楼层号，版本栈、存档、历史、归属锁一起搬。
+// 记不清删除前的顺序时（例如中间插入过没有通知的消息），这次什么也不改。
+// 收藏夹、插图记录、图片文件都不在这里处理。
 
-function ownerRecordHashes(raw){
- if(!raw||typeof raw!=='object') return [];
- if(raw.deleted===true) return TOMBSTONE_HASH_RE.test(String(raw.sourceHash||''))?[String(raw.sourceHash)]:[];
- const lineage=copyIndependentOwnerLineage(raw.ownerLineage);
- // 楼层上还留着这面兔子镜的归属标记时，也用它认领：正文改过、指纹对不上的楼层不会被当成已删除。
- return [...new Set([raw.sourceHash,raw.bodyHash,lineage?.acceptedBodyHash,lineage?.id?`lineage:${lineage.id}`:''].map(value=>String(value||'')).filter(Boolean))];
+const chatOrderSnapshots=new WeakMap();
+
+// 记下当前聊天每个楼层是哪条消息。只要楼层有增减或换聊天就该调用；很便宜。
+export function rememberChatMessageOrder(ctx=getContext()){
+ const chat=Array.isArray(ctx?.chat)?ctx.chat:null;
+ if(!chat) return;
+ chatOrderSnapshots.set(chat,{key:chatKey(ctx),refs:chat.slice()});
 }
 
-// 每个楼层每个 swipe 的正文指纹。当前 swipe 同时认 mes 和 swipes[当前]，两者本来就应一致。
-function messageSwipeHashes(msg){
- if(!msg||typeof msg!=='object') return [];
- const current=swipeId(msg);
- const swipes=Array.isArray(msg.swipes)?msg.swipes:null;
- if(!swipes||!swipes.length) return [{swipe:current,hashes:[messageSourceFingerprint(msg)]}];
- return swipes.map((text,swipe)=>({swipe,hashes:[...new Set(swipe===current
-  ?[messageSourceFingerprint(msg),hashText(String(text??''))]
-  :[hashText(String(text??''))])]}));
-}
-
-// 酒馆删除当前 swipe 时，会先改 swipe_id 再换正文；这段时间里 mes 和 swipes[swipe_id] 对不上，不能拿来对号。
-function chatSwipesSettled(chat){
- return chat.every(msg=>{
-  if(!msg||typeof msg!=='object'||!Array.isArray(msg.swipes)||!msg.swipes.length) return true;
-  const current=swipeId(msg);
-  return current<msg.swipes.length&&String(msg.swipes[current]??'')===String(msg.mes??'');
- });
-}
-
-// 纯计算，不改任何东西。
-export function planIndependentOwnerReconcile(chat,owners,{allowRemove=true,maxMiddleRemovals=24}={}){
- const occupant=new Map(); const positions=new Map();
- const list=Array.isArray(chat)?chat:[];
- list.forEach((msg,index)=>{
-  const marker=msg?.extra?.rabbitMirrorOwnerLineage;
-  const markerKey=marker&&marker.revoked!==true&&typeof marker.id==='string'&&marker.id&&Number.isInteger(marker.swipe)?`lineage:${marker.id}`:'';
-  for(const {swipe,hashes:bodyHashes} of messageSwipeHashes(msg)){
-   const hashes=markerKey&&marker.swipe===swipe?[...bodyHashes,markerKey]:bodyHashes;
-   const key=`${index}:${swipe}`;
-   occupant.set(key,new Set(hashes.filter(Boolean)));
-   for(const hash of hashes){
-    if(!hash) continue;
-    if(!positions.has(hash)) positions.set(hash,new Set());
-    positions.get(hash).add(key);
-   }
-  }
- });
- const entries=Object.entries(owners&&typeof owners==='object'?owners:{}).filter(([key,raw])=>/^\d+:\d+$/.test(key)&&raw&&typeof raw==='object');
- const inPlace=new Set(), stuck=new Set(), orphans=new Set(); const wants=new Map();
- for(const [key,raw] of entries){
-  const hashes=ownerRecordHashes(raw);
-  // 没有正文指纹的旧“已删除”标记认不出主人，原地保留；但楼层号已超出聊天长度的，那层肯定没了，
-  // 留着反而会压住以后落在这个楼层号上的新兔子镜，所以一并拿掉。
-  if(!hashes.length){ (Number(key.split(':')[0])>=list.length?orphans:stuck).add(key); continue; }
-  const here=occupant.get(key);
-  if(here&&hashes.some(hash=>here.has(hash))){ inPlace.add(key); continue; }
-  const targets=[...new Set(hashes.flatMap(hash=>[...(positions.get(hash)||[])]))];
-  if(targets.length===1) wants.set(key,targets[0]);
-  else if(!targets.length) orphans.add(key);
-  else stuck.add(key);
+function messageDeletionMapper(ctx){
+ const chat=ctx.chat; const snapshot=chatOrderSnapshots.get(chat);
+ if(!snapshot||snapshot.key!==chatKey(ctx)) return null;
+ // 聊天被清空（例如酒馆重新加载聊天的中途）时不算删除，绝不据此清掉整段记录。
+ if(!chat.length) return null;
+ const now=new Map(chat.map((msg,index)=>[msg,index]));
+ // 酒馆的每种删除都只删掉连续的一段（中间一段或末尾）。被删的楼层不连续，多半不是正常删除，这次不改。
+ const removedAt=snapshot.refs.map((ref,index)=>now.has(ref)?-1:index).filter(index=>index>=0);
+ if(removedAt.length&&removedAt[removedAt.length-1]-removedAt[0]+1!==removedAt.length) return null;
+ // 留下的旧消息必须保持原来的先后顺序；没见过的消息只能出现在末尾（删除前刚收到、还没记下的）。
+ let last=-1;
+ for(const ref of snapshot.refs){
+  if(!now.has(ref)) continue;
+  const index=now.get(ref);
+  if(index<=last) return null;
+  last=index;
  }
- // 拿掉的条件：允许拿掉；楼层号已超出聊天长度的（删掉的是末尾）总是可以；
- // 中间位置一次超过上限时多半不正常，这次只搬不删。
- const middle=[...orphans].filter(key=>Number(key.split(':')[0])<list.length);
- const removed=new Set(allowRemove?[...orphans].filter(key=>Number(key.split(':')[0])>=list.length||middle.length<=maxMiddleRemovals):[]);
- for(const key of orphans) if(!removed.has(key)) stuck.add(key);
- const moves=new Map([...wants]);
- // 同一目标被多条记录争抢、或目标键被留在原地的记录占着时，取消这次搬动；反复检查直到稳定。
- for(let round=0;round<entries.length+2;round+=1){
-  let changed=false;
-  const targetCount=new Map();
-  for(const target of moves.values()) targetCount.set(target,(targetCount.get(target)||0)+1);
-  for(const [source,target] of [...moves]){
-   const occupiedByStayer=(inPlace.has(target)||stuck.has(target))&&target!==source;
-   if(targetCount.get(target)>1||occupiedByStayer){ moves.delete(source); stuck.add(source); changed=true; }
-  }
-  if(!changed) break;
- }
- return {moves,removed,inPlace,stuck,orphans};
+ const known=new Set(snapshot.refs);
+ let unknownSeen=false;
+ for(const msg of chat){ if(!known.has(msg)) unknownSeen=true; else if(unknownSeen) return null; }
+ // 末尾有没记下的新消息、同时前面又删了消息时，新消息的楼层号也前移了，但它原来在第几层记不清，这次不改。
+ if(unknownSeen&&snapshot.refs.some(ref=>!now.has(ref))) return null;
+ const oldLength=snapshot.refs.length;
+ return (index,swipe)=>{
+  if(index>=oldLength) return `${index}:${swipe}`;
+  const next=now.get(snapshot.refs[index]);
+  return next===undefined?null:`${next}:${swipe}`;
+ };
+}
+
+function swipeDeletionMapper(ctx,messageId,deletedSwipe){
+ const msg=ctx.chat?.[messageId];
+ if(!msg||!Number.isInteger(messageId)||!Number.isInteger(deletedSwipe)||deletedSwipe<0) return null;
+ return (index,swipe)=>index!==messageId?`${index}:${swipe}`
+  :swipe===deletedSwipe?null:swipe>deletedSwipe?`${index}:${swipe-1}`:`${index}:${swipe}`;
 }
 
 function retargetOwnerRecord(raw,targetKey){
- if(!raw||raw.deleted===true) return raw;
+ if(!raw||typeof raw!=='object'||raw.deleted===true) return raw;
  const [index,swipe]=String(targetKey).split(':').map(Number);
  const lineage=copyIndependentOwnerLineage(raw.ownerLineage);
- return lineage?{...raw,ownerLineage:{...lineage,mesid:index,swipe}}:{...raw};
+ return lineage?{...raw,ownerLineage:{...lineage,mesid:index,swipe}}:raw;
 }
 
-function remapOwners(owners,plan){
- const next={};
- const movingSources=new Set(plan.moves.keys());
- for(const [key,raw] of Object.entries(owners||{})){
-  if(plan.removed.has(key)||movingSources.has(key)) continue;
-  next[key]=raw;
+// 返回新的 owners 对象；有任何冲突返回 null（宁可不改）。
+function remapOwnerMap(owners,mapper){
+ const next={}; let changed=false;
+ const kept=[]; const moved=[];
+ for(const [ownerKey,raw] of Object.entries(owners||{})){
+  const match=/^(\d+):(\d+)$/.exec(ownerKey);
+  if(!match){ kept.push([ownerKey,raw]); continue; }
+  const target=mapper(Number(match[1]),Number(match[2]));
+  if(target===ownerKey){ kept.push([ownerKey,raw]); continue; }
+  changed=true;
+  if(target) moved.push([target,retargetOwnerRecord(raw,target)]);
  }
- for(const [source,target] of plan.moves){
-  if(owners?.[source]) next[target]=retargetOwnerRecord(owners[source],target);
- }
- return next;
+ for(const [ownerKey,raw] of kept) next[ownerKey]=raw;
+ for(const [ownerKey,raw] of moved){ if(Object.prototype.hasOwnProperty.call(next,ownerKey)) return null; next[ownerKey]=raw; }
+ return {next,changed};
 }
 
-// 返回 'changed'、'unchanged' 或 'later'（正在生成或酒馆还在切换 swipe，稍后再试）。
-export function reconcileIndependentChatOwners(ctx=getContext(),{reason=''}={}){
+function remapSlotKeyedObject(object,mapSlot,retarget=value=>value){
+ const next={}; const moved=[]; let changed=false;
+ for(const [slot,value] of Object.entries(object||{})){
+  const target=mapSlot(slot);
+  if(target===slot){ if(!Object.prototype.hasOwnProperty.call(next,slot)) next[slot]=value; continue; }
+  changed=true;
+  if(target) moved.push([target,retarget(value,target)]);
+ }
+ for(const [slot,value] of moved) next[slot]=value;
+ return {next,changed};
+}
+
+// options: {kind:'message'} 或 {kind:'swipe', messageId, swipeId}。
+// 返回 {changed, settled}：settled 是本地存档改完的 Promise，重新挂载要等它。
+export function reconcileIndependentChatOwners(ctx=getContext(),options={}){
+ const result={changed:false,settled:Promise.resolve()};
+ try{
+  const chat=Array.isArray(ctx?.chat)?ctx.chat:null;
+  if(!chat) return result;
+  const mapper=options.kind==='swipe'
+   ?swipeDeletionMapper(ctx,Number(options.messageId),Number(options.swipeId))
+   :messageDeletionMapper(ctx);
+  if(!mapper){ rememberChatMessageOrder(ctx); return result; }
+  const key=chatKey(ctx);
+  const mapSlot=slot=>{
+   const text=String(slot||'');
+   if(!text.startsWith(`${key}:`)) return text;
+   const match=/^(\d+):(\d+)(:[^:]*)?$/.exec(text.slice(key.length+1));
+   if(!match) return text;
+   const target=mapper(Number(match[1]),Number(match[2]));
+   return target===null?null:`${key}:${target}${match[3]||''}`;
+  };
+  // 先把聊天文件里的记录（和本次会话里的副本）算好，有冲突就整体放弃。
+  const metadata=chatMetadataObject(ctx);
+  const state=metadata?.[CHAT_OUTPUT_METADATA_KEY];
+  const ownersPlan=state&&typeof state==='object'&&state.owners&&typeof state.owners==='object'?remapOwnerMap(state.owners,mapper):{next:null,changed:false};
+  const session=sessionOwners(ctx);
+  const sessionPlan=session?remapOwnerMap(session,mapper):{next:null,changed:false};
+  if(ownersPlan===null||sessionPlan===null){
+   console.warn('[RabbitMirror] 删除后对号发现冲突，这次不改任何记录。');
+   rememberChatMessageOrder(ctx);
+   return result;
+  }
+  if(ownersPlan.changed){ state.owners=ownersPlan.next; result.changed=true; }
+  // 只要动了楼层号（聊天文件或本机缓存任何一处），就把对号次数加一，聊天文件和本机同时记下。
+  const bumpEpoch=()=>{
+   if(!state||typeof state!=='object') return;
+   state.remapEpoch=Math.floor(Number(state.remapEpoch)||0)+1;
+   metadata[CHAT_OUTPUT_METADATA_KEY]=state; saveChatOutputMetadata(ctx);
+   writeLocalRemapEpoch(key,state.remapEpoch);
+  };
+  if(sessionPlan.changed){ for(const ownerKey of Object.keys(session)) delete session[ownerKey]; Object.assign(session,sessionPlan.next); result.changed=true; }
+  // 浏览器本地的几份缓存各改一次；任何一份失败都不影响聊天文件里已经改好的记录（显示时还会按正文核对）。
+  // 本地缓存里的记录也带着楼层号（归属信息），搬家时一并改掉。
+  const ownerKeyOfSlot=slot=>{ const match=/:(\d+):(\d+)(?::[^:]*)?$/.exec(String(slot||'')); return match?`${match[1]}:${match[2]}`:''; };
+  const retargetValue=(value,slot)=>{ const ownerKey=ownerKeyOfSlot(slot); return ownerKey?retargetOwnerRecord(value,ownerKey):value; };
+  const retargetList=(list,slot)=>Array.isArray(list)?list.map(entry=>retargetValue(entry,slot)):list;
+  try{ const plan=remapSlotKeyedObject(readStore(),mapSlot,retargetValue); if(plan.changed){ writeStore(plan.next); result.changed=true; } }catch(error){ console.warn('[RabbitMirror] 输出缓存对号失败：',error); }
+  try{ const history=readHistoryStore(); const plan=remapSlotKeyedObject(history.slots,mapSlot,retargetList); if(plan.changed){ writeHistoryStore({...history,slots:plan.next}); result.changed=true; } }catch(error){ console.warn('[RabbitMirror] 历史记录对号失败：',error); }
+  try{ if(remapOwnerLockSlots(mapSlot)) result.changed=true; }catch(error){ console.warn('[RabbitMirror] 归属锁对号失败：',error); }
+  try{ if(remapFaceSwipeSlots(mapSlot)) result.changed=true; }catch(error){ console.warn('[RabbitMirror] 版本栈对号失败：',error); }
+  if(options.kind==='swipe'){
+   // 归属标记里的 swipe 号也跟着改。
+   const msg=chat[Number(options.messageId)];
+   // msg.extra 可能就是 swipe_info 里某一项的同一个对象，去重后每个标记只改一次。
+   const extras=new Set([msg?.extra,...(Array.isArray(msg?.swipe_info)?msg.swipe_info.map(info=>info?.extra):[])].filter(Boolean));
+   for(const extra of extras){
+    const marker=extra?.rabbitMirrorOwnerLineage;
+    if(!marker||marker.revoked===true||!Number.isInteger(marker.swipe)) continue;
+    const target=mapper(Number(options.messageId),marker.swipe);
+    if(target) marker.swipe=Number(target.split(':')[1]);
+   }
+  }
+  historyLoadsFor(ctx).clear();
+  result.settled=remapFaceSwipeArchive(key,mapSlot,(record,slot)=>{
+   const match=/:(\d+):(\d+)$/.exec(String(slot||''));
+   return match?retargetOwnerRecord(record,`${match[1]}:${match[2]}`):record;
+  }).catch(error=>{ console.warn('[RabbitMirror] 版本存档对号失败：',error); });
+  if(result.changed){ bumpEpoch(); console.info(`[RabbitMirror] 删除${options.kind==='swipe'?' swipe':'楼层'}后已把兔子镜对到新楼层号。`); }
+ }catch(error){
+  console.warn('[RabbitMirror] 删除后对号失败：',error);
+ }finally{
+  rememberChatMessageOrder(ctx);
+ }
+ return result;
+}
+
+const OWNER_REMAP_EPOCH_KEY='rabbit_mirror_owner_remap_epoch_v1';
+function readLocalRemapEpochs(){ try{ const value=JSON.parse(localStorage.getItem(OWNER_REMAP_EPOCH_KEY)||'{}'); return value&&typeof value==='object'?value:{}; }catch{ return {}; } }
+function writeLocalRemapEpoch(key,epoch){
+ try{ const all=readLocalRemapEpochs(); all[key]=Math.floor(Number(epoch)||0); localStorage.setItem(OWNER_REMAP_EPOCH_KEY,JSON.stringify(all)); }catch{}
+}
+
+// 打开聊天时调用。聊天文件里记的对号次数和本机不同，说明本机的版本栈、存档、归属锁还按旧楼层号放着：
+// 可能是本机删了楼层但酒馆没来得及保存，也可能是在别的设备上删过楼层。这时清掉本机这几份按楼层号存的缓存，
+// 版本以聊天文件里的为准（聊天文件里每面兔子镜都带着自己的版本）。两边相同（包括从没对过号）时什么也不做。
+export function checkOwnerRemapEpoch(ctx=getContext()){
  try{
   const metadata=chatMetadataObject(ctx);
-  const chat=Array.isArray(ctx?.chat)?ctx.chat:null;
-  if(!metadata||!chat||!chat.length) return 'unchanged';
-  const state=metadata[CHAT_OUTPUT_METADATA_KEY];
-  if(!state||typeof state!=='object'||!state.owners||typeof state.owners!=='object') return 'unchanged';
-  if(hostGenerationLooksActive()||!chatSwipesSettled(chat)) return 'later';
+  if(!metadata||!Array.isArray(ctx?.chat)) return false;
   const key=chatKey(ctx);
-  const plan=planIndependentOwnerReconcile(chat,state.owners);
-  if(!plan.moves.size&&!plan.removed.size) return 'unchanged';
-  const bases=[...plan.moves.keys(),...plan.moves.values(),...plan.removed].map(ownerKey=>`${key}:${ownerKey}`);
-  if(bases.some(base=>activeIndependentFlightForBase(base))) return 'later';
-  // 版本栈跟着记录一起搬：先全部读出来，再清掉旧位置，最后写到新位置。
-  const faceStates=new Map([...plan.moves.keys()].map(source=>[source,snapshotFaceSwipes(`${key}:${source}`)]));
-  state.owners=remapOwners(state.owners,plan);
-  const session=sessionOwners(ctx);
-  if(session){
-   const remapped=remapOwners({...session},plan);
-   for(const ownerKey of Object.keys(session)) delete session[ownerKey];
-   Object.assign(session,remapped);
-  }
-  const loads=historyLoadsFor(ctx);
-  // 搬走的旧位置和被删楼层的位置：清掉本地版本栈，免得以后落在这个楼层号上的新兔子镜翻到别人的旧版本。
-  for(const ownerKey of [...plan.moves.keys(),...plan.removed]){
-   const base=`${key}:${ownerKey}`;
-   for(let face=0;face<5;face+=1) writeFaceSwipe(base,face,emptySwipeState());
-   loads.delete(base); clearOwnerLockForBase(base);
-  }
-  for(const [source,target] of plan.moves){
-   const base=`${key}:${target}`;
-   const states=faceStates.get(source)||{};
-   for(let face=0;face<5;face+=1) writeFaceSwipe(base,face,states[face]||emptySwipeState());
-   loads.delete(base); clearOwnerLockForBase(base);
-   const record=state.owners[target];
-   // 浏览器里的版本存档也换成搬过来的这一份，免得新位置读到原住户的存档。
-   if(record) void saveFaceSwipeArchive(base,record).catch(()=>{});
-   const [index,swipe]=target.split(':').map(Number);
-   const msg=chat[index];
-   const lineage=copyIndependentOwnerLineage(record?.ownerLineage);
-   const marker=msg?.extra?.rabbitMirrorOwnerLineage;
-   if(lineage&&marker&&marker.revoked!==true&&marker.id===lineage.id&&swipeId(msg)===swipe) marker.swipe=swipe;
-  }
-  metadata[CHAT_OUTPUT_METADATA_KEY]=state;
-  saveChatOutputMetadata(ctx);
-  console.info(`[RabbitMirror] 删除后重新对号（${reason||'delete'}）：搬动 ${plan.moves.size} 条，移除 ${plan.removed.size} 条。`);
-  return 'changed';
+  const fileEpoch=Math.floor(Number(metadata[CHAT_OUTPUT_METADATA_KEY]?.remapEpoch)||0);
+  const localEpoch=Math.floor(Number(readLocalRemapEpochs()[key])||0);
+  if(fileEpoch===localEpoch) return false;
+  const prefix=`${key}:`;
+  const dropChat=slot=>String(slot||'').startsWith(prefix)&&/^\d+:\d+(?::[^:]*)?$/.test(String(slot).slice(prefix.length))?null:slot;
+  try{ remapFaceSwipeSlots(dropChat); }catch{}
+  try{ remapOwnerLockSlots(dropChat); }catch{}
+  void remapFaceSwipeArchive(key,dropChat).catch(()=>{});
+  historyLoadsFor(ctx).clear();
+  writeLocalRemapEpoch(key,fileEpoch);
+  console.info('[RabbitMirror] 这个聊天在别处删过楼层（或上次删除没来得及保存），已改用聊天文件里的兔子镜版本。');
+  return true;
  }catch(error){
-  console.warn('[RabbitMirror] 删除后重新对号失败，记录保持原样：',error);
-  return 'unchanged';
+  console.warn('[RabbitMirror] 对号次数检查失败：',error);
+  return false;
  }
 }
