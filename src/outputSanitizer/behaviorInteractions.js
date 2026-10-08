@@ -1,5 +1,5 @@
-import { updateBehaviorResults } from './behaviorResults.js?rmv=1.67.11';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.67.11';
+import { updateBehaviorResults } from './behaviorResults.js?rmv=1.67.36';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.67.36';
 
 // Declarative, face-local behaviors. No generated code, global targets or timers.
 const roots = new WeakMap();
@@ -55,7 +55,12 @@ function reveal(state, p) {
     const value = clamp(p, 0, 1);
     state.progress = value;
     style(state, state.group, '--rm-p', String(value));
-    for (const cover of own(state.group, '[data-rm-cover]')) style(state, cover, 'clip-path', `inset(0 0 0 ${value * 100}%)`);
+    const down = state.group.getAttribute('data-rm-reveal-dir') === 'down';
+    for (const cover of own(state.group, '[data-rm-cover]')) style(state, cover, 'clip-path', down ? `inset(${value * 100}% 0 0 0)` : `inset(0 0 0 ${value * 100}%)`);
+    for (const node of own(state.group, '[data-rm-range-var]')) {
+        const name = String(node.getAttribute('data-rm-range-var') || '');
+        if (/^--[\w-]+$/.test(name)) style(state, node, name, `${Math.round(value * 100)}%`);
+    }
     const range = first(state.group, 'input[type="range"]');
     if (range) {
         const min = range.min === '' ? 0 : finite(range.min);

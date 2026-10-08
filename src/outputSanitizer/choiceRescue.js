@@ -1,7 +1,7 @@
 // Split from outputSanitizer.js — choiceRescue.
-import { RAW_SCRIPT_TIMELINE_RESCUE_ATTR } from './checkedStateRescue.js?rmv=1.67.11';
+import { RAW_SCRIPT_TIMELINE_RESCUE_ATTR } from './checkedStateRescue.js?rmv=1.67.36';
 
-import { hasBehaviorInteractionControl, isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.67.11';
+import { hasBehaviorInteractionControl, isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.67.36';
 
 import {
     FEEDBACK_CAT_ATTR,
@@ -9,7 +9,7 @@ import {
     RECIPE_BUTTON_ATTR,
     TOOL_ENTRY_HOST_ATTR,
     escapeCssIdentifier,
-} from './runtime.js?rmv=1.67.11';
+} from './runtime.js?rmv=1.67.36';
 import {
     DETACHED_CHECKED_HAS_CONTROL_ATTR,
     DIRECT_ID_CLASS_STATE_RESCUE_ATTR,
@@ -17,7 +17,7 @@ import {
     HINTED_PSEUDO_RESCUE_ATTR,
     INLINE_PSEUDO_RESCUE_ATTR,
     interactionCapabilityStates,
-} from './checkedStateRescue.js?rmv=1.67.11';
+} from './checkedStateRescue.js?rmv=1.67.36';
 import {
     RENDERED_BUTTON_ADJACENT_HIDDEN_RESCUE_ATTR,
     RENDERED_CLICKABLE_ADJACENT_HIDDEN_RESCUE_ATTR,
@@ -27,13 +27,13 @@ import {
     findRenderedClickableAdjacentHiddenTarget,
     findRenderedClickableAdjacentPopupTarget,
     getClassTokens,
-} from './renderedStateRescue.js?rmv=1.67.11';
+} from './renderedStateRescue.js?rmv=1.67.36';
 import {
     RAW_SELF_MUTATION_RESCUE_ATTR,
     detectInteractionCapabilities,
     filterRabbitMirrorRuntimeText,
     isRabbitMirrorRuntimeTextTarget,
-} from './scriptedInteractionRescue.js?rmv=1.67.11';
+} from './scriptedInteractionRescue.js?rmv=1.67.36';
 import {
     DISABLED_ONLY_CHOICE_CONTROL_ATTR,
     DISABLED_ONLY_CHOICE_RESCUE_ATTR,
@@ -73,8 +73,8 @@ import {
     fillInChoiceRescueStates,
     staticChoiceSelectionRescueStates,
     structuredStaticDisclosureRescueStates,
-} from './diagnostics.js?rmv=1.67.11';
-import { maintenanceCheckedInteractionDepth } from './maintenanceInspect.js?rmv=1.67.11';
+} from './diagnostics.js?rmv=1.67.36';
+import { maintenanceCheckedInteractionDepth } from './maintenanceInspect.js?rmv=1.67.36';
 
 const STATIC_CHOICE_TITLE_RE = /^(?:选项|选择|方案|路线|分支|抉择|结局|行动|choice|option|route|path)\s*(?:[A-Z0-9一二三四五六七八九十]+)?\s*[:：·\-—]/i;
 
@@ -1027,12 +1027,26 @@ export function findUnmappedNavigationButtons(root) {
         && /^(?:切回|返回|收听|播放|切换|上一|下一)/.test(diagnosticCompactText(button.textContent || '', 80)));
 }
 
+// 按钮的 class 若出现在 :focus/:active/:focus-within 状态规则里，点按本身就有画面变化，不算“没反应”。
+function buttonHasPressStateRule(root, button) {
+    const classes = [...(button.classList || [])].filter(Boolean);
+    if (!classes.length) return false;
+    const css = [...(root.querySelectorAll?.('style') || [])].map(node => node.textContent || '').join('\n');
+    return classes.some(name => new RegExp(`\\.${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:[.:#\\[][^{,]*)?:(?:focus|active|focus-within|focus-visible)\\b`).test(css));
+}
+
 export function findInertActionButtonCandidates(root) {
     if (!root?.querySelectorAll) return [];
     return diagnosticQueryContentAll(root, 'button').filter(button => {
         if (buttonHasKnownInteractionRoute(button, root)) return false;
         const text = diagnosticCompactText(button.textContent || button.getAttribute?.('aria-label') || '', 180);
-        return text.length >= 2 && INERT_ACTION_BUTTON_TEXT_RE.test(text);
+        if (text.length < 2) return false;
+        if (INERT_ACTION_BUTTON_TEXT_RE.test(text)) return true;
+        // 画在画面里、写着字、却没有任何结果的按钮（如“申请同居契约”）同样按“已记录”处理；
+        // 带按下状态样式的按钮和过长的段落式按钮不碰。
+        // 赞同、评论、收藏、分享这类平台自带的装饰按钮是界面的一部分，不当成“没写结果”。
+        if (/(?:赞|评论|收藏|分享|转发|关注|喜欢|投币|弹幕|回复|举报|更多|[▲▼💬⭐↗❤👍])/u.test(text)) return false;
+        return text.length <= 24 && !buttonHasPressStateRule(root, button);
     });
 }
 

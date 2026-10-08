@@ -33,7 +33,8 @@ export function interactionMethodsFromRecord(record) {
 // 挂载时调用；同一面只记一次（按归属键或 VS 原文），重新挂载不会把旧面重新排到最新。
 export function recordInteractionMethods(details) {
     if (!details?.getAttribute) return;
-    const raw = details.getAttribute('data-rm-vs');
+    // 模型有时把记录写在 details 里面第一层的容器上，而不是 details 本身。
+    const raw = details.getAttribute('data-rm-vs') || details.querySelector?.(':scope > :not(summary)[data-rm-vs], :scope > * > [data-rm-vs]')?.getAttribute('data-rm-vs');
     if (!raw || raw.length > 8192) return;
     let record;
     try { record = JSON.parse(raw); } catch { return; }

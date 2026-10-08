@@ -15,7 +15,7 @@ export const QUICK_START_GROUPS = [
     ] },
     { name: '视觉与个性化', items: [
         setting('scenery', '动态场景模式', '普通抽取、动态场景、动态场景＋其他形式三选一；组合模式包含动态场景规则。', '#rh_visual_scenery_mode_scenery', 'generation'),
-        setting('dark', '深色模式', '新生成的所有镜面保持深色阅读背景；深色内仍避重，勾选即保存。', '#rh_dark_visual_mode', 'generation'),
+        setting('dark', '色调模式', '普通、柔和浅色、深色三选一；新生成的镜面按所选色调配色，范围内仍避重，选中即保存。', '#rh_visual_tone_mode', 'generation'),
         setting('visual', '个人视觉偏好', '填写想要和不想要的画面效果；启用并保存后从后续生成生效。', '#rh_visual_extra_prompt', 'visual'),
         setting('visualrules', '通用视觉规则', '进阶修改视觉规则，也可以恢复默认。', '#rh_visual_prompt', 'visual'),
     ] },

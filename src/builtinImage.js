@@ -1,8 +1,8 @@
-import { getSettings } from './settings.js?rmv=1.67.11';
-import { generateMirrorImage } from './baibaiImage.js?rmv=1.67.11';
-import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.11';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.11';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.11';
+import { getSettings } from './settings.js?rmv=1.67.36';
+import { generateMirrorImage } from './baibaiImage.js?rmv=1.67.36';
+import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.36';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.36';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.36';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -42,6 +42,15 @@ function readPrompt(frame) {
     text = String(text || '').replace(/\s+/g, ' ').trim();
     if (text.length < 4) return '';
     return text.slice(0, 800);
+}
+
+// 图框里逐个写的出场人物外貌：<p data-rm-draw-char="原名" hidden>外貌</p>。
+function readCharacters(frame) {
+    const nodes = [...(frame.querySelectorAll?.('[data-rm-draw-char]') || [])].slice(0, 4);
+    return nodes.map(node => ({
+        name: String(node.getAttribute('data-rm-draw-char') || '').replace(/\s+/g, ' ').trim().slice(0, 40),
+        text: String(node.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 300),
+    })).filter(person => person.name && person.text.length >= 2);
 }
 
 function storageKey(root, frame, prompt) {
@@ -179,13 +188,19 @@ function startJob(key, prompt, frame) {
             nl: String(planned.nl || ''),
             characters: Array.isArray(planned.characters) ? planned.characters : [],
             promptFormat: settings.imagePromptFormat,
-        } : {
-            prompt,
-            flatPrompt: prompt,
-            nl: prompt,
-            characters: [],
-            promptFormat: settings.imagePromptFormat,
-        }, {
+        } : (() => {
+            // 没有生图 LLM：按提示词格式分开填，标签写法不再把同一句话当成自然语言再发一次。
+            const tagsOnly = settings.imagePromptFormat === 'nai45-tags';
+            const people = readCharacters(frame);
+            const appearance = people.map(person => tagsOnly ? person.text : `${person.name}：${person.text}`).join(tagsOnly ? ', ' : '；');
+            return {
+                prompt,
+                flatPrompt: appearance ? `${prompt}${tagsOnly ? ', ' : '。'}${appearance}` : prompt,
+                nl: tagsOnly ? '' : prompt,
+                characters: people.map(person => ({ name: person.name, tag: tagsOnly ? person.text : '', nl: tagsOnly ? '' : person.text })),
+                promptFormat: settings.imagePromptFormat,
+            };
+        })(), {
             character: characterGroup(),
             size,
             assertCurrent: () => anyWaiterConnected(key),
@@ -243,8 +258,41 @@ async function fillFrame(root, frame) {
     }
 }
 
+// 图框的基本外形由插件补上，提示词里只给模型最短的写法；模型自己写了的样式一律保留。
+function ensureFrameBox(frame) {
+    const style = frame?.style;
+    if (!style) return;
+    let computed = null;
+    try { computed = getComputedStyle(frame); } catch { computed = null; }
+    if (!computed) return;
+    if (computed.display === 'inline') style.setProperty('display', 'block');
+    if (!style.margin && computed.marginLeft === '40px') style.setProperty('margin', '0');
+    if (!style.aspectRatio && computed.aspectRatio === 'auto' && !style.height) style.setProperty('aspect-ratio', '4 / 3');
+    if (computed.overflow === 'visible') style.setProperty('overflow', 'hidden');
+    if (!style.borderRadius && computed.borderTopLeftRadius === '0px') style.setProperty('border-radius', '12px');
+}
+
+// 关掉内置生图只是不再画新图：已经画好、存在本机的图照样放回图框，不发任何请求。
+export function restoreSavedBuiltinImages(root) {
+    if (!root?.querySelectorAll) return 0;
+    let restored = 0;
+    for (const frame of root.querySelectorAll('[data-rm-draw-frame]')) {
+        if (frame.querySelector?.('img[data-rm-draw-result][src]')) continue;
+        const prompt = readPrompt(frame);
+        if (!prompt) continue;
+        const saved = readSaved(storageKey(root, frame, prompt));
+        if (!saved.record) continue;
+        ensureFrameBox(frame);
+        if (paint(frame, saved.record)) restored += 1;
+    }
+    return restored;
+}
+
 export function fillBuiltinImageFrames(root) {
     if (getSettings().builtinImageEnabled !== true || !root?.querySelectorAll) return;
     // 一面里有几个图框就画几张（比如分镜每格一张），每个图框各自存档、各自重试。
-    for (const frame of root.querySelectorAll('[data-rm-draw-frame]')) void fillFrame(root, frame);
+    for (const frame of root.querySelectorAll('[data-rm-draw-frame]')) {
+        ensureFrameBox(frame);
+        void fillFrame(root, frame);
+    }
 }

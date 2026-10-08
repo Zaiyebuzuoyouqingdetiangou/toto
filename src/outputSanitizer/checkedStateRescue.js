@@ -1,8 +1,8 @@
 // Split from outputSanitizer.js — checkedStateRescue.
-import { rememberRuntimeAnimationStyle } from '../runtimeAnimationState.js?rmv=1.67.11';
+import { rememberRuntimeAnimationStyle } from '../runtimeAnimationState.js?rmv=1.67.36';
 
-import { escapeCssIdentifier, escapeRegExp, getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.67.11';
-import { getClassTokens, isCollapsedDimensionValue, parseCssStateSiblingAssignments } from './renderedStateRescue.js?rmv=1.67.11';
+import { escapeCssIdentifier, escapeRegExp, getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.67.36';
+import { getClassTokens, isCollapsedDimensionValue, parseCssStateSiblingAssignments } from './renderedStateRescue.js?rmv=1.67.36';
 import {
     capturePseudoStyleState,
     chooseMatchingRawRabbitMirrorRoot,
@@ -10,15 +10,15 @@ import {
     normalizeInteractionMatchText,
     resolveRenderedCounterpart,
     restorePseudoStyleState,
-} from './scriptedInteractionRescue.js?rmv=1.67.11';
+} from './scriptedInteractionRescue.js?rmv=1.67.36';
 import {
     REVERSIBLE_RADIO_BASELINE_ATTR,
     applyCheckedVisualFallback,
     inputHasAssociatedLabel,
     setRescuedCheckedState,
-} from './fallbackRescue.js?rmv=1.67.11';
-import { RADIO_GROUP_RESCUE_ATTR } from './idsAndRearm.js?rmv=1.67.11';
-import { diagnosticComputedStyle, maintenanceSafeComputedStyle } from './diagnostics.js?rmv=1.67.11';
+} from './fallbackRescue.js?rmv=1.67.36';
+import { RADIO_GROUP_RESCUE_ATTR } from './idsAndRearm.js?rmv=1.67.36';
+import { diagnosticComputedStyle, maintenanceSafeComputedStyle } from './diagnostics.js?rmv=1.67.36';
 import {
     checkedDeclarationCreatesContentReveal,
     checkedTargetCarriesResultContent,
@@ -26,14 +26,14 @@ import {
     isIndependentMaintenanceRoot,
     notifyIndependentRepairPersistence,
     resolveMaintenanceGeneratedClass,
-} from './maintenanceInspect.js?rmv=1.67.11';
-import { splitCssSelectorList } from './markup.js?rmv=1.67.11';
+} from './maintenanceInspect.js?rmv=1.67.36';
+import { splitCssSelectorList } from './markup.js?rmv=1.67.36';
 import {
     maintenanceMobileLayoutLengthPx,
     maintenanceMobileLayoutRect,
     maintenanceMobileLayoutTextLength,
     viewportLayoutHasAuthoredGridPlacement,
-} from './layoutRescue.js?rmv=1.67.11';
+} from './layoutRescue.js?rmv=1.67.36';
 
 const interactionInlineOverrideStates = new WeakMap();
 
@@ -1326,13 +1326,24 @@ export function parseCheckedRulesFromText(toto, input) {
 function getSiblingTargetsForCheckedRule(input, relation, targetSelector) {
     const targets = [];
     if (!input?.parentElement || !targetSelector) return targets;
+    // `input:checked ~ .box .pane` 的目标是兄弟 .box 里面的 .pane：先认兄弟，再往里找。
+    // 以前只拿整串去比兄弟本身，永远对不上，于是退到整面按 class 找，三组开关会互相把别组的面板也藏起来。
+    const { head, rest } = splitHeadSelector(String(targetSelector));
+    const collect = sibling => {
+        try {
+            if (sibling.matches(targetSelector)) { targets.push(sibling); return; }
+            if (rest && sibling.matches(head)) {
+                for (const target of sibling.querySelectorAll(rest.startsWith('>') ? `:scope ${rest}` : rest)) targets.push(target);
+            }
+        } catch { /* invalid generated selector */ }
+    };
     let node = input.nextElementSibling;
     if (relation === '+') {
-        if (node?.matches?.(targetSelector)) targets.push(node);
+        if (node) collect(node);
         return targets;
     }
     while (node) {
-        if (node.matches?.(targetSelector)) targets.push(node);
+        collect(node);
         node = node.nextElementSibling;
     }
     return targets;
@@ -1443,6 +1454,27 @@ function separatedRadioPanelMapping(root, input, rule) {
     return mapping;
 }
 
+function getHoistedSiblingTargetsForCheckedRule(root, input, rule) {
+    const relation = String(rule?.relation || '').trim();
+    const selector = String(rule?.targetSelector || '').trim();
+    if (!['+', '~'].includes(relation) || !selector || /[{}]/.test(selector)) return [];
+    let ancestor = input.parentElement;
+    for (let depth = 0; ancestor && ancestor !== root && depth < 3; depth += 1, ancestor = ancestor.parentElement) {
+        if (ancestor.matches?.('details, summary')) break;
+        const parent = ancestor.parentElement;
+        if (!parent || !root.contains(parent)) break;
+        let found = [];
+        ancestor.setAttribute('data-rm-hoist-probe', '1');
+        try { found = [...parent.querySelectorAll(`:scope > [data-rm-hoist-probe] ${relation} ${selector}`)]; }
+        catch { found = []; }
+        finally { ancestor.removeAttribute('data-rm-hoist-probe'); }
+        found = found.filter(target => target !== input && !target.contains(input) && root.contains(target));
+        if (found.length) return found.slice(0, 24);
+    }
+    return [];
+}
+
+
 function getProvableCrossParentTargetsForCheckedRule(root, input, rule) {
     if (!root?.querySelectorAll || !input || !rule) return [];
     if (rule.source === 'id') return getCrossContainerTargetsForCheckedRule(root, rule.targetSelector);
@@ -1459,6 +1491,11 @@ function getProvableCrossParentTargetsForCheckedRule(root, input, rule) {
     let subjects = [];
     try { subjects = [...root.querySelectorAll(subjectSelector)]; } catch { return []; }
     if (subjects.length !== 1 || subjects[0] !== input || !inputHasAssociatedLabel(root, input)) return [];
+
+    // 常见写法：开关被包在一个小容器里（如 .toggle-wrap），CSS 却按“开关后面的兄弟”去找目标。
+    // 唯一的开关往上找最多三层，哪一层的后续兄弟里能按原选择器命中，就把那一层当作开关的位置。
+    const hoisted = getHoistedSiblingTargetsForCheckedRule(root, input, rule);
+    if (hoisted.length) return hoisted;
 
     const targets = getCrossContainerTargetsForCheckedRule(root, rule.targetSelector);
     if (targets.length !== 1) return [];
@@ -1563,6 +1600,39 @@ function getAdjacentSiblingChainTargetsForCheckedRule(input, relation, targetSel
 }
 
 
+function splitHeadSelector(selector) {
+    let depth = 0;
+    for (let index = 0; index < selector.length; index += 1) {
+        const char = selector[index];
+        if (char === '[' || char === '(') depth += 1;
+        else if (char === ']' || char === ')') depth = Math.max(0, depth - 1);
+        else if (!depth && (char === ' ' || char === '>')) {
+            return { head: selector.slice(0, index).trim(), rest: selector.slice(index).trim() };
+        }
+    }
+    return { head: selector.trim(), rest: '' };
+}
+
+// 模型本想把开关包进 label（`.chip-wrap input:checked + .chip`），实际却把开关放在外面、用 for 关联。
+// 这时把那个唯一的 label 当作开关所在位置：label 的第一个子元素就是“开关后面的兄弟”。
+function getForLabelProxyTargetsForCheckedRule(root, input, rule) {
+    if (String(rule?.relation || '').trim() !== '+' || !input?.id || input.closest?.('label')) return [];
+    const selector = String(rule?.targetSelector || '').trim();
+    if (!selector || /[,+~{}]/.test(selector)) return [];
+    const labels = [...root.querySelectorAll('label[for]')].filter(label => label.getAttribute('for') === input.id);
+    if (labels.length !== 1) return [];
+    const first = labels[0].firstElementChild;
+    const { head, rest } = splitHeadSelector(selector);
+    try {
+        if (!first?.matches?.(head)) return [];
+        if (!rest) return [first];
+        return [...first.querySelectorAll(rest.startsWith('>') ? `:scope ${rest}` : rest)];
+    } catch {
+        return [];
+    }
+}
+
+
 export function resolveTargetsForCheckedRule(root, input, rule) {
     if (!root || !input || !rule) return [];
     let targets = getSiblingTargetsForCheckedRule(input, rule.relation, rule.targetSelector);
@@ -1605,6 +1675,8 @@ export function resolveTargetsForCheckedRule(root, input, rule) {
         targets = getCrossContainerTargetsForCheckedRule(root, rule.targetSelector);
         if (targets.length) return targets;
     }
+    targets = getForLabelProxyTargetsForCheckedRule(root, input, rule);
+    if (targets.length) return targets;
     // Another common model typo collapses an intended descendant selector into a
     // same-element class conjunction (`.paper.manuscript` instead of `.paper .manuscript`).
     // Only recover the unique, content-bearing hidden descendant when the checked

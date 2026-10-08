@@ -434,7 +434,7 @@ export function saveFaceSwipeArchive(slot, record) {
     // Compare data, not model claims. Repeated passive syncs do not rewrite IDB.
     const signature = JSON.stringify(row);
     if (prior?.signature === signature) return prior.promise;
-    const promise = (prior?.promise || loadFaceSwipeArchive(base)).then(async () => {
+    const promise = archiveRemapGate.then(() => prior?.promise || loadFaceSwipeArchive(base)).then(async () => {
         if (JSON.stringify(archiveSaved.get(base)) === signature) return { saved: true, row };
         const readback = await archiveTransaction('readwrite', (store, done) => {
             store.put(row);
@@ -449,4 +449,88 @@ export function saveFaceSwipeArchive(slot, record) {
     });
     archiveWrites.set(base, { signature, promise });
     return promise;
+}
+
+// 楼层或 swipe 被删、楼层号前移时，把版本栈的楼层号一起改过来。
+// mapSlot(slot) 返回新的 slot、原样的 slot，或 null（那层已删除）。一次读写，不逐条写入。
+export function remapFaceSwipeSlots(mapSlot) {
+    if (typeof mapSlot !== 'function') return false;
+    const store = readStore();
+    const next = { schema: STORE_SCHEMA, faces: {} };
+    const moved = [];
+    let changed = false;
+    for (const [key, value] of Object.entries(store.faces || {})) {
+        const split = key.lastIndexOf('\u0000');
+        const slot = split >= 0 ? key.slice(0, split) : key;
+        const suffix = split >= 0 ? key.slice(split) : '';
+        const target = mapSlot(slot);
+        if (target === slot) { if (!(key in next.faces)) next.faces[key] = value; continue; }
+        changed = true;
+        durableStacks.delete(key);
+        if (target) moved.push([`${target}${suffix}`, value]);
+    }
+    for (const [key, value] of moved) { durableStacks.delete(key); next.faces[key] = value; }
+    if (!changed) return false;
+    memoryStore = null;
+    return writeStore(next);
+}
+
+// 楼层号搬家进行中时返回它的 Promise；读存档的一方（不是写存档的一方）先等它，免得读到搬家前别的楼层的存档。
+// 注意：不能让 loadFaceSwipeArchive 本身等它——搬家要先等手头的写入完成，而写入内部会调用读取，会互相等死。
+export function faceSwipeArchiveRemapSettled() {
+    return archiveRemapGate;
+}
+
+// 同样改 IndexedDB 里的版本存档。retargetRecord(record, newSlot) 用来改记录里的楼层号。
+// 开始前先作废这个聊天的存档缓存，并让之后的读写排在搬家之后；只读出真的要搬的那几行。
+let archiveRemapGate = Promise.resolve();
+export function remapFaceSwipeArchive(prefix, mapSlot, retargetRecord = record => record) {
+    if (typeof mapSlot !== 'function' || !prefix) return Promise.resolve(false);
+    const range = typeof IDBKeyRange !== 'undefined' ? IDBKeyRange.bound(`${prefix}:`, `${prefix}:\uffff`) : null;
+    if (!range) return Promise.resolve(false);
+    const mine = `${prefix}:`;
+    const pendingWrites = [];
+    for (const cache of [archiveLoads, archiveSaved, archiveWrites]) {
+        for (const key of [...cache.keys()]) {
+            if (!String(key).startsWith(mine)) continue;
+            if (cache === archiveWrites && cache.get(key)?.promise) pendingWrites.push(cache.get(key).promise);
+            cache.delete(key);
+        }
+    }
+    const run = archiveRemapGate.then(() => Promise.allSettled(pendingWrites)).then(() => archiveTransaction('readwrite', (store, done) => {
+        const keysRequest = store.getAllKeys(range);
+        keysRequest.onsuccess = () => {
+            const moves = [];
+            for (const key of Array.isArray(keysRequest.result) ? keysRequest.result : []) {
+                const slot = String(key || '');
+                const target = mapSlot(slot);
+                if (target !== slot) moves.push({ slot, target });
+            }
+            if (!moves.length) { done(true); return; }
+            const rows = new Map();
+            let pending = moves.length;
+            for (const { slot } of moves) {
+                const get = store.get(slot);
+                get.onsuccess = () => {
+                    rows.set(slot, get.result || null);
+                    pending -= 1;
+                    if (pending) return;
+                    // 全部读完再删、再写，链式前移（6→4、4→2）也不会互相覆盖。
+                    for (const { slot: from } of moves) store.delete(from);
+                    for (const { slot: from, target } of moves) {
+                        const row = rows.get(from);
+                        if (target && row) store.put({ ...row, slot: target, record: retargetRecord(row.record, target) });
+                    }
+                    done(true);
+                };
+            }
+        };
+    })).then(result => {
+        for (const cache of [archiveLoads, archiveSaved, archiveWrites]) {
+            for (const key of [...cache.keys()]) if (String(key).startsWith(mine)) cache.delete(key);
+        }
+        return result === true;
+    });
+    archiveRemapGate = run.catch(() => false);
+    return run;
 }

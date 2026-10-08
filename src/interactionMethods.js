@@ -7,7 +7,7 @@ export const DRIVER_METHODS = Object.freeze({
     popup: { names: ['弹窗'], how: 'button popovertarget 指向本面 div popover，内置 popovertargetaction="hide" 关闭钮，不预先展开' },
     effect: { names: ['触发效果', '逐字显现', '盖章印记'], how: 'data-rm-ui="effect" 内 button data-rm-fire 触发 data-rm-part 的关键帧，每次从头播放' },
     drag: { names: ['拖动与组合', '投放收纳'], how: 'data-rm-ui="drag"，物件 data-rm-item="键"，可选同键 data-rm-slot 吸附槽，button data-rm-reset 复原' },
-    adjust: { names: ['连续调节', '旋转拨盘', '时间推进', '牵引拉动'], how: 'data-rm-ui="adjust" 内放 range，CSS 用 --rm-p(0～1) 连续改变主体' },
+    adjust: { names: ['连续调节', '旋转拨盘'], how: 'data-rm-ui="adjust" 内放 range，CSS 用 --rm-p(0～1) 连续改变主体' },
     reveal: { names: ['局部揭示', '刮擦揭开', '对照滑块'], how: 'data-rm-ui="reveal" 包住底图与 data-rm-cover 遮层，range 或横拖逐步揭开，data-rm-reset 复原' },
     view: { names: ['视野操作'], how: 'data-rm-ui="view" 内 data-rm-part 可滚动浏览，range(1～3) 连续缩放，data-rm-reset 还原' },
     draw: { names: ['手绘描画'], how: 'data-rm-ui="draw" 内 svg data-rm-canvas 供手指描画，button data-rm-reset 清除' },
@@ -46,13 +46,20 @@ export function normalizeDriverOffer(value) {
     return keys.length ? Object.freeze(keys) : null;
 }
 
-export function drawDriverOffer() {
+// 这几种驱动都靠滑杆或拖动来操作。一次最多给一种，免得写法清单里一半都是滑杆；
+// 近期滑杆、拖动用得多时一种也不给。
+const SLIDE_DRIVERS = new Set(['adjust', 'drag', 'reveal', 'view', 'motion']);
+
+export function drawDriverOffer({ avoidSlide = false } = {}) {
     let recent = [];
     try { recent = JSON.parse(globalThis.localStorage?.getItem(RECENT_KEY) || '[]'); } catch { recent = []; }
-    const all = Object.keys(DRIVER_METHODS);
+    const all = Object.keys(DRIVER_METHODS).filter(key => !avoidSlide || !SLIDE_DRIVERS.has(key));
     const fresh = all.filter(key => !recent.includes(key));
     const pool = fresh.length >= OFFER_SIZE ? fresh : all;
-    const offer = shuffled(pool).slice(0, OFFER_SIZE);
+    // 滑杆／拖动这一族整体只占一个抽签位，抽中了再从族里随机挑一种。
+    const slides = pool.filter(key => SLIDE_DRIVERS.has(key));
+    const units = [...pool.filter(key => !SLIDE_DRIVERS.has(key)), ...(slides.length ? [''] : [])];
+    const offer = shuffled(units).slice(0, OFFER_SIZE).map(key => key || shuffled(slides)[0]);
     try { globalThis.localStorage?.setItem(RECENT_KEY, JSON.stringify(offer)); } catch { /* best effort */ }
     return Object.freeze(offer);
 }

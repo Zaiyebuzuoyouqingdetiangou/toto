@@ -1,6 +1,6 @@
 // Split from outputSanitizer.js — layoutRescue.
 
-import { collectBoundedElementDescendants, semanticEnsembleScalePlan } from '../presentationQuality.js?rmv=1.67.11';
+import { collectBoundedElementDescendants, semanticEnsembleScalePlan } from '../presentationQuality.js?rmv=1.67.36';
 import {
     FEEDBACK_CAT_ATTR,
     MAINTENANCE_RABBIT_ATTR,
@@ -8,7 +8,7 @@ import {
     RECIPE_BUTTON_ATTR,
     TOOL_ENTRY_HOST_ATTR,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.67.11';
+} from './runtime.js?rmv=1.67.36';
 import {
     EXCLUSIVE_STACKED_STATE_PANEL_ATTR,
     MOBILE_INLINE_ANNOTATION_MIRROR_ATTR,
@@ -24,13 +24,13 @@ import {
     parseCheckedRulesFromText,
     repairRabbitMirrorSelectorPanelGridSpan,
     resolveTargetsForCheckedRule,
-} from './checkedStateRescue.js?rmv=1.67.11';
-import { getClassTokens } from './renderedStateRescue.js?rmv=1.67.11';
+} from './checkedStateRescue.js?rmv=1.67.36';
+import { getClassTokens } from './renderedStateRescue.js?rmv=1.67.36';
 import {
     ensurePassportDocumentRescueStyle,
     findRenderedPassportDocumentCandidates,
     markRenderedPassportDocumentCandidate,
-} from './scriptedInteractionRescue.js?rmv=1.67.11';
+} from './scriptedInteractionRescue.js?rmv=1.67.36';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     INDEPENDENT_MOBILE_SPATIAL_CANVAS_ATTR,
@@ -88,7 +88,7 @@ import {
     mobileLayoutRescueStates,
     mobileMatrixPreserveStates,
     rabbitMirrorFacePositionHints,
-} from './diagnostics.js?rmv=1.67.11';
+} from './diagnostics.js?rmv=1.67.36';
 
 let mobileLayoutScopeCounter = 0;
 
@@ -1165,6 +1165,56 @@ function maintenanceMobileLayoutUnderfillCandidate(element, style = null, refere
 }
 
 
+// scrollWidth 会被藏起来的浮层、透明说明框、几像素的描边撑大，这些用户看不到，也不是“挤压”。
+// 只有看得见的文字或图片真的伸出了这个盒子，才算横向溢出。
+function maintenanceMobileLayoutVisibleOverflow(element, rect) {
+    if (!rect || element.closest?.('svg')) return false;
+    const clientWidth = Number(element.clientWidth || 0);
+    const extra = Number(element.scrollWidth || 0) - clientWidth;
+    if (extra < Math.max(8, clientWidth * 0.06)) return false;
+    const hiddenCache = new Map();
+    const invisible = node => {
+        for (let current = node; current && current !== element.parentElement; current = current.parentElement) {
+            if (hiddenCache.has(current)) { if (hiddenCache.get(current)) return true; continue; }
+            let hidden = false;
+            try {
+                const style = getComputedStyle(current);
+                hidden = style.visibility === 'hidden' || style.display === 'none' || Number.parseFloat(style.opacity || '1') <= 0.05;
+            } catch { hidden = false; }
+            hiddenCache.set(current, hidden);
+            if (hidden) return true;
+        }
+        return false;
+    };
+    const outside = box => box && box.width > 0 && box.height > 0 && (box.right > rect.right + 3 || box.left < rect.left - 3);
+    try {
+        const walker = element.ownerDocument.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+        const range = element.ownerDocument.createRange();
+        for (let node = walker.nextNode(), count = 0; node && count < 300; node = walker.nextNode(), count += 1) {
+            if (!String(node.nodeValue || '').trim() || invisible(node.parentElement)) continue;
+            range.selectNodeContents(node);
+            if ([...range.getClientRects()].some(outside)) return true;
+        }
+        for (const media of element.querySelectorAll('img, svg, canvas, video, figure')) {
+            if (!invisible(media) && outside(media.getBoundingClientRect())) return true;
+        }
+    } catch {
+        return true;
+    }
+    return false;
+}
+
+function maintenanceMobileLayoutClippedByAncestor(element, root, viewportWidth) {
+    for (let current = element.parentElement; current && current !== root.parentElement; current = current.parentElement) {
+        let style = null;
+        try { style = getComputedStyle(current); } catch { style = null; }
+        if (!style || !/^(?:hidden|clip|auto|scroll)$/.test(String(style.overflowX || '').toLowerCase())) continue;
+        const box = current.getBoundingClientRect();
+        if (box.left >= -3 && box.right <= viewportWidth + 3) return true;
+    }
+    return false;
+}
+
 export function inspectMaintenanceMobileLayout(root) {
     const empty = {
         candidateCount: 0,
@@ -1239,7 +1289,14 @@ export function inspectMaintenanceMobileLayout(root) {
         const overflowsViewport = !!rect && (rect.left < -3 || rect.right > viewportWidth + 3);
         const decorativeOverflow = maintenanceMobileLayoutIsDecorativeOverflow(element, style);
         const passportManaged = maintenanceMobileLayoutIsPassportManaged(element);
-        if (!decorativeOverflow && !passportManaged && (overflowsSelf || overflowsViewport)) buckets.horizontalOverflow.add(element);
+        // 作者自己用 overflow:hidden/clip 裁掉的（弹幕、轮播、滑动面板）不算挤压；
+        // 伸出屏幕但被外层裁掉、用户看不到的也不算。
+        const selfClips = /^(?:hidden|clip)$/.test(String(style.overflowX || '').toLowerCase());
+        // 地图钉、关系图节点这类绝对定位的小圆点，旁边的名字本来就画在点外面。
+        const markerCaption = String(style.position || '') === 'absolute' && clientWidth < 48;
+        const visibleSelfOverflow = overflowsSelf && !selfClips && !markerCaption && maintenanceMobileLayoutVisibleOverflow(element, rect);
+        const visibleViewportOverflow = overflowsViewport && !maintenanceMobileLayoutClippedByAncestor(element, root, viewportWidth);
+        if (!decorativeOverflow && !passportManaged && (visibleSelfOverflow || visibleViewportOverflow)) buckets.horizontalOverflow.add(element);
 
         const minWidth = maintenanceMobileLayoutLengthPx(style.minWidth, referenceWidth);
         const fixedWidth = maintenanceMobileLayoutLengthPx(style.width, referenceWidth);
@@ -1978,6 +2035,17 @@ function inspectSemanticEnsembleFits(root) {
         if (host.querySelector?.('button,input,select,textarea,details,summary,[role="button"],[role="tab"]')) continue;
         const units = hclipSemanticEnsembleUnits(host);
         if (units.length < 3 || units.length > 8) continue;
+        // 弹幕／飘字层：铺在画面上、不接收点击的绝对定位层，里面一行行不换行的字本来就是飘出边外再被裁掉的。
+        // 把它整体缩小只会让画面上的弹幕错位，并且缩完后又被当成新的“定宽过宽”反复报。
+        const hostStyle = hclipSafeStyle(host);
+        const overlayLayer = String(hostStyle?.position || '').toLowerCase() === 'absolute'
+            && String(hostStyle?.pointerEvents || '').toLowerCase() === 'none';
+        const driftingLines = units.filter(unit => {
+            const unitStyle = hclipSafeStyle(unit);
+            return String(unitStyle?.position || '').toLowerCase() === 'absolute'
+                && /^(?:nowrap|pre)$/.test(String(unitStyle?.whiteSpace || '').toLowerCase());
+        }).length;
+        if (overlayLayer || driftingLines * 2 > units.length) continue;
         const hostRect = hclipSafeRect(host);
         if (!hostRect || hostRect.width <= 0 || hostRect.height <= 0) continue;
         let farRight = Number(hostRect.right || 0);

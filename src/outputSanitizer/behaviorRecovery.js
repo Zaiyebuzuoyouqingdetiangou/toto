@@ -1,6 +1,6 @@
 // Recover only a source-authored, unambiguous local control/cover relationship.
 // Never invent a target, result text, generated script or page-global listener.
-import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.67.11';
+import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.67.36';
 
 const GROUP = '[data-rm-ui]';
 const RECOVERED = 'data-rm-behavior-recovered';
@@ -15,15 +15,44 @@ function inlineValue(node, property) {
     return String(node.getAttribute?.('style') || '').match(new RegExp(`(?:^|;)\\s*${property}\\s*:\\s*([^;]+)`, 'i'))?.[1]?.trim().toLowerCase() || '';
 }
 
+// 遮层的定位常写在局部 <style> 的类名里而不是内联 style；挂载后读计算样式补判一次。
+function computedFullCover(node) {
+    if (typeof getComputedStyle !== 'function' || !node?.isConnected) return null;
+    try {
+        const css = getComputedStyle(node);
+        if (css.position !== 'absolute') return null;
+        const zero = value => /^0(?:\.0+)?px$/.test(String(value || ''));
+        const full = ['top', 'right', 'bottom', 'left'].every(side => zero(css[side]));
+        return { full, clip: /clip-path|all/.test(String(css.transitionProperty || '')), passive: css.pointerEvents === 'none' };
+    } catch { return null; }
+}
+
 function looksLikeCover(node) {
     if (!node?.parentElement || node.matches('input,button,label,summary,img,svg,script,style')) return false;
     const identity = `${node.getAttribute('id') || ''} ${node.getAttribute('class') || ''}`;
+    if (!/(?:mask|cover|curtain|遮罩|封纸)/i.test(identity) || node.parentElement.children.length <= 1) return false;
     const absolute = inlineValue(node, 'position') === 'absolute';
     const full = inlineValue(node, 'width') === '100%' && inlineValue(node, 'height') === '100%';
     const clip = /clip-path/.test(inlineValue(node, 'transition'));
-    return /(?:mask|cover|curtain|遮罩|封纸)/i.test(identity) && absolute && full
-        && (clip || inlineValue(node, 'pointer-events') === 'none')
-        && node.parentElement.children.length > 1;
+    if (absolute && full && (clip || inlineValue(node, 'pointer-events') === 'none')) return true;
+    const computed = computedFullCover(node);
+    return Boolean(computed?.full && (computed.clip || computed.passive));
+}
+
+// 模型常在承载物上写一个百分比变量（如 style="--p: 0%"），让焦边、水痕跟着进度走；
+// 原本由已被宿主删掉的 oninput 更新。只登记遮层所在承载物上的这类变量，交给揭示驱动同步。
+function markProgressVariables(group, target) {
+    for (let node = target.parentElement; node && node !== group.parentElement; node = node.parentElement) {
+        const declared = String(node.getAttribute?.('style') || '').match(/(?:^|;)\s*(--[\w-]+)\s*:\s*-?[\d.]+%\s*(?:;|$)/);
+        if (!declared) continue;
+        node.setAttribute('data-rm-range-var', declared[1]);
+        // 跟着这个变量走的焦边若是自上而下的渐变，遮层也改成自上而下揭开，两者方向一致。
+        const name = declared[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const scope = group.closest?.('details') || group;
+        const css = [...scope.querySelectorAll('style')].map(sheet => sheet.textContent || '').join('\n');
+        if (new RegExp(`to bottom[^;{}]*var\\(\\s*${name}\\s*\\)`).test(css)) group.setAttribute('data-rm-reveal-dir', 'down');
+        return;
+    }
 }
 
 function authoredHandler(input) {
@@ -73,6 +102,7 @@ export function recoverBehaviorInteractions(root) {
         group.setAttribute('data-rm-ui', 'reveal');
         group.setAttribute(RECOVERED, 'range-cover');
         target.setAttribute('data-rm-cover', '');
+        markProgressVariables(group, target);
         count++;
     }
     return count;
