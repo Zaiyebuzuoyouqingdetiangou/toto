@@ -1,5 +1,7 @@
-import { chatu8Status, generateViaChatu8 } from './chatu8Image.js?rmv=1.67.36';
-import { getSettings } from './settings.js?rmv=1.67.36';
+import { chatu8Status, generateViaChatu8 } from './chatu8Image.js?rmv=1.67.37';
+import { getSettings } from './settings.js?rmv=1.67.37';
+import { getContext } from './independentApi/runtime.js?rmv=1.67.37';
+import { getChatu8ImageCharacters } from './imageCharacterPresets.js?rmv=1.67.37';
 function failure(code, message) { return Object.assign(new Error(message), { code }); }
 
 function imageApi() {
@@ -26,7 +28,7 @@ export function getImageBackendStatus() {
 }
 
 export function getImageCharacters({ floor } = {}) {
-    if (getSettings().imageBackend === 'chatu8') return [];
+    if (getSettings().imageBackend === 'chatu8') return getChatu8ImageCharacters(getContext());
     const api = imageApi();
     if (api.capabilities?.characterLibrary !== true || typeof api.getCharacters !== 'function') return [];
     const snapshot = api.getCharacters(Number.isSafeInteger(floor) && floor >= 0 ? { floor } : {});
@@ -47,7 +49,8 @@ export async function generateMirrorImage(plan, { signal, onProgress, character,
     // Capture an explicit group: never let a queued provider request choose a later chat.
     if (typeof character !== 'string' || !character.trim()) throw failure('invalid_args', '缺少当前画面的图库归属，请重新打开这一面。');
     const tagsOnly = plan?.promptFormat === 'nai45-tags';
-    const request = { prompt, nl: tagsOnly ? '' : String(plan?.nl || ''), save: true, character };
+    // 单提示词后端的自然语言字段也使用已绑定外貌的完整画面。
+    const request = { prompt, nl: tagsOnly ? '' : String(status.supportsCharacters ? plan?.nl || '' : plan?.flatPrompt || plan?.nl || ''), save: true, character };
     const plannedMetadata = {
         prompt: String(plan?.prompt || ''), nl: String(plan?.nl || ''),
         flatPrompt: String(plan?.flatPrompt || ''), characters,

@@ -1,35 +1,35 @@
-import { INTERACTION_SAMPLING_RULE, designCandidatePick, drawDesignCandidate } from './interactionSampling.js?rmv=1.67.36';
-import { driverContractLines, drawDriverOffer, interactionMethodNames, normalizeDriverOffer } from './interactionMethods.js?rmv=1.67.36';
-import { drawUsageOffer, normalizeUsageOffer } from './interactionUsageOffer.js?rmv=1.67.36';
-import { drawContinuation, normalizeContinuation } from './continuationCache.js?rmv=1.67.36';
-import { recentInteractionMethods } from './interactionMethodLedger.js?rmv=1.67.36';
-import { gameplayRuleFor } from './gameplayRules.js?rmv=1.67.36';
-import { usesModelOriginalColors, withoutPaletteRecipe, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.67.36';
-import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=1.67.36';
-import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=1.67.36';
-import { isNearWhitePalette, isNearWhiteContentSurface } from './paletteObservation.js?rmv=1.67.36';
-import { observedOperationFamiliesFor, observedMechanismsFor } from './compositionFingerprint.js?rmv=1.67.36';
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.67.36';
-import { expandShuffledOptions } from '../data/raw/rawSegmentLookup.js?rmv=1.67.36';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.67.36';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.67.36';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.67.36';
-import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES, VISUAL_SCENERY_EXPRESSION_RULE, VISUAL_SCENERY_VS_GUIDANCE } from '../data/raw/visualSceneryRules.js?rmv=1.67.36';
-import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.67.36';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.67.36';
-import { getComboHistory, getActivePaletteCooldown } from './storage.js?rmv=1.67.36';
-import { strongVisualDiversityRule, darkVisualGenerationRule, softLightVisualGenerationRule, visualDiversityExecutionLock, recentPaletteExecutionReminder, recentPaletteHueFamilies } from './visualDiversityPolicy.js?rmv=1.67.36';
-import { withoutInteractionRecipe, observedInteractionRecipesFor } from './interactionRecipes.js?rmv=1.67.36';
-import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.67.36';
-import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.67.36';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.67.36';
-export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.67.36';
-import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.67.36';
-import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.67.36';
-import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.67.36';
-import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.67.36';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.67.36';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.67.36';
+import { INTERACTION_SAMPLING_RULE, designCandidatePick, drawDesignCandidate } from './interactionSampling.js?rmv=1.67.37';
+import { driverContractLines, drawDriverOffer, interactionMethodNames, normalizeDriverOffer } from './interactionMethods.js?rmv=1.67.37';
+import { drawUsageOffer, normalizeUsageOffer } from './interactionUsageOffer.js?rmv=1.67.37';
+import { drawContinuation, normalizeContinuation } from './continuationCache.js?rmv=1.67.37';
+import { recentInteractionMethods } from './interactionMethodLedger.js?rmv=1.67.37';
+import { gameplayRuleFor } from './gameplayRules.js?rmv=1.67.37';
+import { usesModelOriginalColors, withoutPaletteRecipe, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.67.37';
+import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=1.67.37';
+import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=1.67.37';
+import { isNearWhitePalette, isNearWhiteContentSurface } from './paletteObservation.js?rmv=1.67.37';
+import { observedOperationFamiliesFor, observedMechanismsFor } from './compositionFingerprint.js?rmv=1.67.37';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.67.37';
+import { expandShuffledOptions } from '../data/raw/rawSegmentLookup.js?rmv=1.67.37';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.67.37';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.67.37';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.67.37';
+import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES, VISUAL_SCENERY_EXPRESSION_RULE, VISUAL_SCENERY_VS_GUIDANCE } from '../data/raw/visualSceneryRules.js?rmv=1.67.37';
+import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.67.37';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.67.37';
+import { getComboHistory, getActivePaletteCooldown } from './storage.js?rmv=1.67.37';
+import { strongVisualDiversityRule, darkVisualGenerationRule, softLightVisualGenerationRule, visualDiversityExecutionLock, recentPaletteExecutionReminder, recentPaletteHueFamilies } from './visualDiversityPolicy.js?rmv=1.67.37';
+import { withoutInteractionRecipe, observedInteractionRecipesFor } from './interactionRecipes.js?rmv=1.67.37';
+import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.67.37';
+import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.67.37';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.67.37';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.67.37';
+import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.67.37';
+import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.67.37';
+import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.67.37';
+import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.67.37';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.67.37';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.67.37';
 
 const THEME_ITEMS = new Map(THEMATIC_CATEGORIES.map(item => [item.id, item]));
 const FORMAT_ITEMS = new Map(PRESENTATION_FORMATS.map(item => [item.id, item]));
@@ -1060,7 +1060,7 @@ function builtinImageFrameRule(settings) {
     const directPrompt = tagsOnly
         ? 'hidden 里只写英文逗号分隔的短标签：人数、构图镜头、各人衣着动作视线、场景物件、光线，不写中文长句、质量词、画师名。'
         : 'hidden 里写一段连贯画面描述：构图镜头、各人衣着动作视线、场景物件、光源方向，不写对白、质量词、画师名。';
-    const directCharacters = `出场人物每人再加 <p data-rm-draw-char="原名" hidden>${tagsOnly ? '稳定外貌英文短标签' : '稳定外貌'}</p>（发色、发型、瞳色、肤色、体型，只按角色资料，未知不编）。`;
+    const directCharacters = `出场人物每人再加 <p data-rm-draw-char="原名" hidden>${tagsOnly ? '稳定外貌英文短标签' : '稳定外貌'}</p>（性别、发色、发长与发型、瞳色、肤色、体型，只按角色资料，未知不编）。`;
     return `内置生图：只有本来要用色块或 SVG 画人物、场景的位置（含视频画面与封面、照片、插画、头像）改放图框，多幅（如分镜）各放一个；随交互变化的画面（换装、捏脸、化妆、布置房间）仍用 SVG/CSS 画，不需要画面的面不放。标题、按钮、文字留在框外。
 <figure data-rm-draw-frame="1" style="display:block;width:100%;margin:0;aspect-ratio:4/3;overflow:hidden;border-radius:12px;"><p data-rm-draw-prompt="1" hidden>画面</p></figure>
 ${imagePromptByLlm ? 'hidden 里用一两句写这一幕的画面线索，正式提示词由生图 LLM 另写。' : directPrompt + directCharacters}`;
