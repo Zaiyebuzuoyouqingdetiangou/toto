@@ -1,15 +1,15 @@
-import { getSettings } from './settings.js?rmv=1.67.36';
-import { generateMirrorImage } from './baibaiImage.js?rmv=1.67.36';
-import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.36';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.36';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.36';
+import { getSettings } from './settings.js?rmv=1.67.37';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.67.37';
+import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.37';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.37';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.37';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
 const waiters = new Map();
 const progress = new Map();
 // 没连上柏宝绘时不要在每次刷新里反复请求。刷新页面后可以再试。
-const failed = new Set();
+const failed = new Map();
 
 function safeImageUrl(value) {
     const text = String(value || '');
@@ -151,19 +151,33 @@ function reportProgress(key, text) {
     for (const frame of waiters.get(key) || []) if (frame.isConnected) note(frame, text);
 }
 
-// 设置了生图 LLM API 时，由它按这一面的内容另写正式的画面提示词；没写出来就用小剧场里那段线索。
+async function imageCharacters(floor) {
+    try { return await getImageCharacters({ floor }); }
+    catch (error) {
+        console.warn('[RabbitMirror] 生图角色库暂不可用，保留本面已有角色资料', error);
+        return [];
+    }
+}
+
+function planningFailure() {
+    return Object.assign(new Error('生图 LLM 未完成画面规划，本次未调用生图。请检查生图 LLM 设置后点“重新生图”。'), { code: 'image_plan_failed' });
+}
+
+// 简短线索不是完整提示词，规划失败时保留图框，不继续花费绘图额度。
 async function planWithImageLlm(frame, onProgress) {
-    const details = frame?.closest?.('details');
-    const bridge = globalThis.__rabbitMirrorIndependentActionsV1;
-    const target = details && typeof bridge?.prepareImageTarget === 'function' ? bridge.prepareImageTarget(details) : null;
-    if (!target?.plan) return null;
     try {
+        const details = frame?.closest?.('details');
+        const bridge = globalThis.__rabbitMirrorIndependentActionsV1;
+        const target = details && typeof bridge?.prepareImageTarget === 'function' ? bridge.prepareImageTarget(details) : null;
+        if (!target?.plan) throw planningFailure();
         const focus = readPrompt(frame);
-        const plan = await target.plan(focus ? { focus } : {}, { builtin: true, onProgress });
-        return plan && String(plan.prompt || plan.flatPrompt || plan.nl || '').trim() ? plan : null;
+        const publicCharacters = await imageCharacters(target.floor);
+        const plan = await target.plan({ focus, publicCharacters }, { builtin: true, onProgress });
+        if (!plan || !String(plan.prompt || plan.flatPrompt || plan.nl || '').trim()) throw planningFailure();
+        return plan;
     } catch (error) {
-        console.warn('[RabbitMirror] 生图 LLM 没有写出画面提示词，改用小剧场里的画面线索', error);
-        return null;
+        console.warn('[RabbitMirror] 生图 LLM 规划未完成，保留图框且不调用绘图', error);
+        throw planningFailure();
     }
 }
 
@@ -181,10 +195,10 @@ function startJob(key, prompt, frame) {
             }
         }) : null;
         const provider = settings.imageBackend === 'chatu8' ? '智绘姬' : '柏宝绘';
-        reportProgress(key, `${withLlm ? planned ? '提示词已完成，' : '沿用本面画面线索，' : ''}正在交给${provider}生图…`);
+        reportProgress(key, `${withLlm ? '提示词已完成，' : ''}正在交给${provider}生图…`);
         const generated = await generateMirrorImage(planned ? {
             prompt: String(planned.prompt || planned.flatPrompt || planned.nl || ''),
-            flatPrompt: String(planned.flatPrompt || planned.prompt || ''),
+            flatPrompt: String(planned.flatPrompt || ''),
             nl: String(planned.nl || ''),
             characters: Array.isArray(planned.characters) ? planned.characters : [],
             promptFormat: settings.imagePromptFormat,
@@ -192,10 +206,11 @@ function startJob(key, prompt, frame) {
             // 没有生图 LLM：按提示词格式分开填，标签写法不再把同一句话当成自然语言再发一次。
             const tagsOnly = settings.imagePromptFormat === 'nai45-tags';
             const people = readCharacters(frame);
-            const appearance = people.map(person => tagsOnly ? person.text : `${person.name}：${person.text}`).join(tagsOnly ? ', ' : '；');
+            // 不用残缺预设覆盖完整外貌；单提示词也逐人具名，不匿名混拼。
+            const appearance = people.map(person => `${person.name}: ${person.text}`).join('\n');
             return {
                 prompt,
-                flatPrompt: appearance ? `${prompt}${tagsOnly ? ', ' : '。'}${appearance}` : prompt,
+                flatPrompt: appearance ? `${prompt}\n${appearance}` : prompt,
                 nl: tagsOnly ? '' : prompt,
                 characters: people.map(person => ({ name: person.name, tag: tagsOnly ? person.text : '', nl: tagsOnly ? '' : person.text })),
                 promptFormat: settings.imagePromptFormat,
@@ -235,7 +250,7 @@ async function fillFrame(root, frame) {
     }
     if (saved.record && paint(frame, saved.record)) return;
     if (failed.has(key)) {
-        note(frame, '这一面的画面这次没有画成。', root);
+        note(frame, failed.get(key), root);
         return;
     }
     let nodes = waiters.get(key);
@@ -247,10 +262,11 @@ async function fillFrame(root, frame) {
         if (frame.isConnected) paint(frame, record);
     } catch (error) {
         const code = error?.code;
-        if (code === 'not_configured' || code === 'unsupported_api' || code === 'invalid_args' || code === 'invalid_result') failed.add(key);
-        if (frame.isConnected) note(frame, code === 'not_configured' || code === 'unsupported_api'
+        const message = code === 'image_plan_failed' ? planningFailure().message : code === 'not_configured' || code === 'unsupported_api'
             ? `${String(error?.message || '生图渠道还没连好')}这一面先留着提示词。`
-            : '这一面的画面这次没有画成。', root);
+            : '这一面的画面这次没有画成。';
+        if (['not_configured', 'unsupported_api', 'invalid_args', 'invalid_result', 'image_plan_failed'].includes(code)) failed.set(key, message);
+        if (frame.isConnected) note(frame, message, root);
         console.warn('[RabbitMirror] 内置生图没有填进图框', error);
     } finally {
         nodes.delete(frame);
