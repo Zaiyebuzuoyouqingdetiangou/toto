@@ -1,21 +1,23 @@
 // Split from independentApi.js — earlyBody.
+import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.67.42';
 
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.67.39';
-import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.67.39';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.67.39';
-import { getSettings } from '../settings.js?rmv=1.67.39';
-import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.67.39';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=1.67.39';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.67.39';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.67.42';
+import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.67.42';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.67.42';
+import { getSettings } from '../settings.js?rmv=1.67.42';
+import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.67.42';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=1.67.42';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.67.42';
 import {
     MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE,
+    INDEPENDENT_HISTORY_READ_ERROR_MESSAGE,
     assistantRowsInScanRange,
     formatMissingShellReport,
     hasUsableAssistantBody,
     isMissingShellTargetFloor,
     normalizeMissingShellScanRange,
     shouldRestoreMissingIndependentRetryShell,
-} from './missingRetryShell.js?rmv=1.67.39';
+} from './missingRetryShell.js?rmv=1.67.42';
 import {
     INDEPENDENT_GENERATION_INTENTS_KEY,
     INDEPENDENT_GENERATION_INTENT_TYPES,
@@ -25,7 +27,7 @@ import {
     currentRuntime,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.67.39';
+} from './runtime.js?rmv=1.67.42';
 import {
     ACTIVE_GENERATION_WAIT_MS,
     FINAL_RENDER_POLL_INTERVAL_MS,
@@ -39,13 +41,14 @@ import {
     markAutomaticFailureStop,
     operationEpochForBase,
     pending,
-} from './flights.js?rmv=1.67.39';
+} from './flights.js?rmv=1.67.42';
 import {
     appendHistoryEntry,
     chatPersistenceSlot,
     normalizeHistoryEntry,
     persistedOwnerForMessage,
     independentHistoryLoaded,
+    independentHistoryReadState,
     restoreIndependentHistory,
     readStore,
     synchronizeIndependentChatPersistence,
@@ -54,7 +57,7 @@ import {
     reconcileIndependentChatOwners,
     rememberChatMessageOrder,
     checkOwnerRemapEpoch,
-} from './persistence.js?rmv=1.67.39';
+} from './persistence.js?rmv=1.67.42';
 import {
     activeGlobalWorldInfoCapture,
     assistantMessages,
@@ -104,7 +107,7 @@ import {
     withOwnerLockStoreBatch,
     writeActiveGlobalWorldInfoCapture,
     writeHostModule,
-} from './connection.js?rmv=1.67.39';
+} from './connection.js?rmv=1.67.42';
 import {
     allExternalHosts,
     externalHosts,
@@ -112,7 +115,7 @@ import {
     removeEmptyFollowExternalAnchors,
     removeEmptyInlineAnchors,
     withExternalHostSyncIndex,
-} from './request.js?rmv=1.67.39';
+} from './request.js?rmv=1.67.42';
 import {
     beginHostWorkTiming,
     clearExternalHostFreshSourceState,
@@ -145,7 +148,7 @@ import {
     setPlaceholderSummary,
     usableReadyDetails,
     withRestorableHtmlCacheBatch,
-} from './geometry.js?rmv=1.67.39';
+} from './geometry.js?rmv=1.67.42';
 import {
     INDEPENDENT_INTENT_OWNER,
     abortFlight,
@@ -199,7 +202,7 @@ import {
     serializeExternalFaceDetails,
     stampAutomaticAuthorizationEpoch,
     withHistoricalRestoreLightPass,
-} from './mount.js?rmv=1.67.39';
+} from './mount.js?rmv=1.67.42';
 import {
     automaticGenerationCutovers,
     hostGenerationHintStartedAt,
@@ -224,7 +227,7 @@ import {
     writeStartupHistoryFallbackRoot,
     writeSyncRunning,
     writeSyncTimer,
-} from './lifecycle.js?rmv=1.67.39';
+} from './lifecycle.js?rmv=1.67.42';
 
 let earlyBodyParserPromise=null;
 
@@ -347,7 +350,7 @@ function settleEarlyBodyAtFinal(ctx,index){
 
 async function probeIndependentEarlyBody(packet,sequence){
  if(!earlyBodyPacketCurrent(packet)) return;
- if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.67.39')
+ if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.67.42')
   .then(module=>{earlyBodyParser=module;return module;}).catch(()=>{earlyBodyParserPromise=null;return null;});
  const parser=await earlyBodyParserPromise;
  if(!parser || sequence!==earlyBodyProbeSequence || !earlyBodyPacketCurrent(packet)) return;
@@ -1030,9 +1033,7 @@ function remountVisibleFloorFromCache(index){
  if(!isRabbitMirrorEligibleAssistantMessage(msg)) return false;
  const el=messageElement(index);
  if(!el?.isConnected) return false;
- if(!independentHistoryLoaded(ctx,index,msg)){
-  void restoreIndependentHistory(ctx,index,msg).then(()=>queueMessageSync([index]));return false;
- }
+ if(waitForIndependentHistory(ctx,index,msg)) return false;
  const observed=passiveObservedIdentity(ctx,index,msg);
  const key=recordKey(ctx,index,msg);
  const existing=collapseDuplicateIdentityHosts(el,key,'independent',observed.sourceHash);
@@ -1109,6 +1110,29 @@ function hasScheduledIndependentGeneration(index){
  return !!poll && !poll.cancelled;
 }
 
+// Read completion only refreshes the original owner. Repeated managed-surface
+// mounts share one waiter and must not create an error shell while IDB is pending.
+const historySyncWaiters=new WeakMap();
+function waitForIndependentHistory(ctx,index,msg){
+ if(independentHistoryLoaded(ctx,index,msg)) return false;
+ const base=messageBaseSlotKey(ctx,index,msg), sourceHash=messageSourceFingerprint(msg);
+ const existing=historySyncWaiters.get(msg);
+ if(existing?.base===base && existing.sourceHash===sourceHash) return true;
+ const entry={base,sourceHash}; historySyncWaiters.set(msg,entry);
+ void restoreIndependentHistory(ctx,index,msg).then(()=>{
+  const live=getContext();
+  if(currentRuntime() && live.chat===ctx.chat && live.chat?.[index]===msg
+   && messageBaseSlotKey(live,index,msg)===base && messageSourceFingerprint(msg)===sourceHash)
+   queueMessageSync([index]);
+ }).catch(()=>{}).finally(()=>{if(historySyncWaiters.get(msg)===entry) historySyncWaiters.delete(msg);});
+ return true;
+}
+
+function missingIndependentHistoryMessage(ctx,index,msg){
+ return independentHistoryReadState(ctx,index,msg)==='error'
+  ? INDEPENDENT_HISTORY_READ_ERROR_MESSAGE : MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE;
+}
+
 function syncMessagesCore(indices=null){
  if(!currentRuntime() || syncRunning) return;
  writeSyncRunning(true);
@@ -1133,9 +1157,7 @@ function syncMessagesCore(indices=null){
     : assistantMessages(ctx);
    for(const {m,i} of rows){
      const el=messageElement(i); if(!el) continue;
-     if(mode!=='off' && !independentHistoryLoaded(ctx,i,m)){
-      void restoreIndependentHistory(ctx,i,m).then(()=>queueMessageSync([i]));continue;
-     }
+     if(mode!=='off' && waitForIndependentHistory(ctx,i,m)) continue;
      if(mode!=='off') restoreFollowMirrorFromMessageSource(el,m);
      if(mode==='off') { externalHosts(el).forEach(n=>n.remove()); continue; }
      if(mode==='independent'){
@@ -1248,7 +1270,7 @@ function syncMessagesCore(indices=null){
           markAutomaticFailureStop(slot,sourceHash,'missing-external-shell',{
            baseSlot,
            operationEpoch:operationEpochForBase(baseSlot),
-           message:MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE,
+           message:missingIndependentHistoryMessage(ctx,i,m),
            code:'missing-external-shell',
           });
          }
@@ -1271,7 +1293,7 @@ function syncMessagesCore(indices=null){
           const live=currentGenerationIdentity(i);
           const failure=automaticFailureStopFor(slot,sourceHash);
           keep=(live?.slot===slot && live.sourceHash===sourceHash ? renderAutomaticFailureStop(i,live,failure) : null)
-           || ensureExternalUi(el,key,failure?.message||MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE,'error','independent',sourceHash);
+           || ensureExternalUi(el,key,failure?.message||missingIndependentHistoryMessage(ctx,i,m),'error','independent',sourceHash);
           if(keep){
            keep.hidden=false;
            keep.dataset.rmMissingShellRetry=failure?.code==='missing-external-shell'?'true':'false';
@@ -1571,6 +1593,8 @@ function restoreMissingIndependentRetryOnElement(el,index){
  const ctx=getContext();
  const m=ctx.chat?.[index];
  if(!isRabbitMirrorEligibleAssistantMessage(m) || !hasUsableAssistantBody(m)) return null;
+ if(waitForIndependentHistory(ctx,index,m)) return null;
+ const missingMessage=missingIndependentHistoryMessage(ctx,index,m);
  const followMirror=hasExistingFollowRabbitMirror(ctx,index,m);
  const persisted=persistedOwnerForMessage(ctx,index,m);
  const observed=passiveObservedIdentity(ctx,index,m);
@@ -1595,7 +1619,7 @@ function restoreMissingIndependentRetryOnElement(el,index){
    markAutomaticFailureStop(observed.slot,observed.sourceHash,'missing-external-shell',{
     baseSlot,
     operationEpoch:operationEpochForBase(baseSlot),
-    message:MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE,
+    message:missingMessage,
     code:'missing-external-shell',
    });
   }
@@ -1617,10 +1641,10 @@ function restoreMissingIndependentRetryOnElement(el,index){
  markAutomaticFailureStop(observed.slot,observed.sourceHash,'missing-external-shell',{
   baseSlot,
   operationEpoch:operationEpochForBase(baseSlot),
-  message:MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE,
+  message:missingMessage,
   code:'missing-external-shell',
  });
- const host=ensureExternalUi(el,key,MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE,'error','independent',observed.sourceHash);
+ const host=ensureExternalUi(el,key,missingMessage,'error','independent',observed.sourceHash);
  if(host){
   host.hidden=false;
   host.dataset.rmMissingShellRetry='true';
@@ -2197,7 +2221,7 @@ export function captureMountedIndependentRecords(){
   if(!details) continue;
   let html=String(host.__rabbitMirrorIndependentSource||'').trim();
   if(!html || (externalFaceDetails(host).length>1 && !hasMultifaceMarkup(html))){
-   const clone=details.cloneNode(true);
+   const clone=restoreRabbitMirrorAvatarClone(details,details.cloneNode(true));
    clone.querySelector?.(':scope > summary > [data-rabbit-mirror-tool-entry-host]')?.remove?.();
    html=externalFaceDetails(host).length>1 ? serializeExternalFaceDetails(host) : clone.outerHTML;
   }

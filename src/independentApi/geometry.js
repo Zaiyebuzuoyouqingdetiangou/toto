@@ -1,11 +1,11 @@
 // Split from independentApi.js — geometry.
-import { restoreRuntimeAnimationClone, ANIMATION_SUSPENDED_ATTR } from '../runtimeAnimationState.js?rmv=1.67.39';
+import { restoreRuntimeAnimationClone, ANIMATION_SUSPENDED_ATTR } from '../runtimeAnimationState.js?rmv=1.67.42';
 
-import { bindVisualHistoryTarget } from '../storage.js?rmv=1.67.39';
-import { presentationModeFields } from '../presentationMode.js?rmv=1.67.39';
-import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.67.39';
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorExternalPlacementParent } from '../hostCompatibility.js?rmv=1.67.39';
-import { getSettings } from '../settings.js?rmv=1.67.39';
+import { bindVisualHistoryTarget } from '../storage.js?rmv=1.67.42';
+import { presentationModeFields } from '../presentationMode.js?rmv=1.67.42';
+import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.67.42';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorExternalPlacementParent } from '../hostCompatibility.js?rmv=1.67.42';
+import { getSettings } from '../settings.js?rmv=1.67.42';
 import {
     cleanRabbitMirrorOutput,
     compactTotoBlock,
@@ -19,13 +19,14 @@ import {
     clearRabbitMirrorHorizontalClipArtifacts,
     sanitizeRabbitMirrorUntrustedTemplate,
     validateRabbitMirrorRecoveredStyleAssignments,
-} from '../outputSanitizer.js?rmv=1.67.39';
-import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.67.39';
-import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.67.39';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.67.39';
-import { repairDesignCandidateAttributeQuotes } from '../interactionSampling.js?rmv=1.67.39';
-import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.67.39';
-import { markSanitizedRabbitMirrorFace } from '../multifaceProof.js?rmv=1.67.39';
+} from '../outputSanitizer.js?rmv=1.67.42';
+import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.67.42';
+import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.67.42';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.67.42';
+import { repairDesignCandidateAttributeQuotes } from '../interactionSampling.js?rmv=1.67.42';
+import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.67.42';
+import { MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE, INDEPENDENT_HISTORY_READ_ERROR_MESSAGE } from './missingRetryShell.js?rmv=1.67.42';
+import { markSanitizedRabbitMirrorFace } from '../multifaceProof.js?rmv=1.67.42';
 import {
     EXTERNAL_SHELL_ATTR,
     FOLLOW_EXTERNAL_ANCHOR_ATTR,
@@ -40,8 +41,8 @@ import {
     getContext,
     hashText,
     independentMaintenanceLiveRepairLocked,
-} from './runtime.js?rmv=1.67.39';
-import { automaticDispatchAlreadyConsumed, automaticFailureStops, generationPolls, operationEpochForBase } from './flights.js?rmv=1.67.39';
+} from './runtime.js?rmv=1.67.42';
+import { automaticDispatchAlreadyConsumed, automaticFailureStops, generationPolls, operationEpochForBase } from './flights.js?rmv=1.67.42';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INTERACTION_STATE_MIGRATION_KEY,
@@ -50,7 +51,7 @@ import {
     persistedOwnerForMessage,
     readStore,
     writeStore,
-} from './persistence.js?rmv=1.67.39';
+} from './persistence.js?rmv=1.67.42';
 import {
     chatKey,
     copyIndependentOwnerLineage,
@@ -67,7 +68,7 @@ import {
     savedRecordMatchesObserved,
     slotSearchKeys,
     swipeId,
-} from './connection.js?rmv=1.67.39';
+} from './connection.js?rmv=1.67.42';
 import {
     EXTERNAL_GEOMETRY_SETTLE_STEPS_MS,
     allExternalHosts,
@@ -101,7 +102,7 @@ import {
     wrapIndependentFace,
     wrapPreparedIndependentFace,
     writeGeometryDataset,
-} from './request.js?rmv=1.67.39';
+} from './request.js?rmv=1.67.42';
 import {
     activeIndependentFlightForBase,
     automaticCutoverVersionToken,
@@ -119,25 +120,26 @@ import {
     messageIndexForExternalHost,
     orphanExternalHostTimers,
     resayIndependentMirror,
+    recoverSavedIndependentMirror,
     resolveIndependentActionIdentity,
     runtimeMode,
     serializeExternalFaceDetails,
     showMultifaceFace,
     stripIndependentTransientLayoutArtifacts,
-} from './mount.js?rmv=1.67.39';
+} from './mount.js?rmv=1.67.42';
 import {
     automaticHostGenerationRenderMatches,
     hasExistingFollowRabbitMirror,
     queueMessageSync,
     suppressesAutomaticGeneration,
-} from './earlyBody.js?rmv=1.67.39';
+} from './earlyBody.js?rmv=1.67.42';
 import {
     automaticGenerationCutovers,
     persistedInteractionMigrationHandle,
     persistedInteractionMigrationIdle,
     writePersistedInteractionMigrationHandle,
     writePersistedInteractionMigrationIdle,
-} from './lifecycle.js?rmv=1.67.39';
+} from './lifecycle.js?rmv=1.67.42';
 
 let externalGeometryFrame = 0;
 
@@ -1222,45 +1224,10 @@ export function normalizeSavedInteractionRecord(record,slot=''){
 }
 
 export function migratePersistedInteractionStateRecords(){
- try{ if(localStorage.getItem(INTERACTION_STATE_MIGRATION_KEY)==='done') return false; }catch{}
- if(persistedInteractionMigrationHandle || persistedInteractionMigrationIdle) return false;
- const store=readStore(); const entries=Object.entries(store); let cursor=0; let changed=false;
- const finish=()=>{
-  writePersistedInteractionMigrationHandle(0); writePersistedInteractionMigrationIdle(false);
-  if(changed) writeStore(store);
-  try{ localStorage.setItem(INTERACTION_STATE_MIGRATION_KEY,'done'); }catch{}
- };
- const runSlice=(deadline)=>{
-  writePersistedInteractionMigrationHandle(0); writePersistedInteractionMigrationIdle(false);
-  let handled=0;
-  while(cursor<entries.length && handled<2 && (!deadline?.timeRemaining || deadline.timeRemaining()>3)){
-   const [slot,record]=entries[cursor++]; handled+=1;
-   if(!record?.html) continue;
-   // Old localStorage is untrusted input. Reject by byte/lexical/structure limits
-   // before normalizeSavedInteractionRecord can reach template.innerHTML.
-   if(!independentStoredHtmlLightRestorable(record.html)){
-    delete store[slot]; changed=true; continue;
-   }
-   const safeRecord=record.initialHtml && !independentStoredHtmlLightRestorable(record.initialHtml)
-    ? {...record,initialHtml:''}
-    : record;
-   const normalized=normalizeSavedInteractionRecord(safeRecord,slot);
-   if(String(normalized.html||'')!==String(record.html||'') || String(normalized.initialHtml||'')!==String(record.initialHtml||'')){
-    store[slot]=normalized; changed=true;
-   }
-  }
-  if(cursor>=entries.length){ finish(); return; }
-  scheduleSlice(false);
- };
- const scheduleSlice=(initial=true)=>{
-  if(typeof requestIdleCallback==='function'){
-   writePersistedInteractionMigrationIdle(true);
-   writePersistedInteractionMigrationHandle(requestIdleCallback(runSlice,{timeout:initial?4000:1200}));
-  }else{
-   writePersistedInteractionMigrationHandle(setTimeout(()=>runSlice(null),initial?2500:32));
-  }
- };
- scheduleSlice(true);
+ // Kept as a compatibility entry point for hot updates. Rewriting the whole
+ // historical store here deleted older/oversized records and could overwrite
+ // a new save made while a migration slice was queued. Per-owner restoration
+ // already normalizes an accepted copy; startup must leave original bytes alone.
  return false;
 }
 
@@ -1848,7 +1815,7 @@ export function inlineRabbitMirrorDetails(el){
 
 export function mirrorSemanticFingerprint(details){
  if(!isRabbitMirrorDetails(details)) return '';
- const clone=details.cloneNode(true);
+ const clone=restoreRuntimeAnimationClone(details,details.cloneNode(true));
  clone.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-face-swipe-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay], [data-rabbit-mirror-resay-status]')?.forEach(node=>node.remove());
  const text=String(clone.textContent||'').replace(/\s+/g,' ').trim();
  if(text.length<12) return '';
@@ -2052,6 +2019,14 @@ export function renderExternalErrorBody(details,text=''){
  body.append(message);
  const actions=document.createElement('div');
  actions.className='rabbit-mirror-external-error-actions';
+ const recover=document.createElement('button');
+ recover.type='button';
+ recover.className='rabbit-mirror-external-error-action';
+ recover.textContent='找回旧兔子镜';
+ recover.setAttribute('data-rm-external-history-recover','true');
+ const recoveryStatus=document.createElement('div');
+ recoveryStatus.setAttribute('role','status');
+ recoveryStatus.setAttribute('data-rm-external-history-status','true');
  const retry=document.createElement('button');
  retry.type='button';
  retry.className='rabbit-mirror-external-error-action rabbit-mirror-external-error-retry';
@@ -2062,8 +2037,24 @@ export function renderExternalErrorBody(details,text=''){
   // A queued compatibility click may outlive this error body. It is not a
   // second retry intent after the first click has entered loading or READY.
   const host=details.closest?.(`[${SOURCE_ATTR}="true"]`);
-  if(!retry.isConnected || !details.contains?.(retry) || host?.dataset?.rmState!=='error') return;
-  void import('../outputSanitizer/toolsChrome.js?rmv=1.67.39').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+  if(retry.disabled || !retry.isConnected || !details.contains?.(retry) || host?.dataset?.rmState!=='error') return;
+  void import('../outputSanitizer/toolsChrome.js?rmv=1.67.42').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+ },true);
+ recover.addEventListener('click',async event=>{
+  event.preventDefault(); event.stopPropagation();
+  const host=details.closest?.(`[${SOURCE_ATTR}="true"]`);
+  if(recover.disabled || !recover.isConnected || !details.contains?.(recover) || host?.dataset?.rmState!=='error') return;
+  recover.disabled=true; retry.disabled=true;
+  recoveryStatus.textContent='正在查找这条回复原来的兔子镜……不会调用模型。';
+  try{
+   const outcome=await recoverSavedIndependentMirror(host);
+   if(outcome?.status==='restored') globalThis.toastr?.success?.(outcome.message);
+   else if(recoveryStatus.isConnected) recoveryStatus.textContent=outcome?.message||'未找到可恢复副本，未重新生成。';
+  }catch{
+   if(recoveryStatus.isConnected) recoveryStatus.textContent='旧存档读取未完成，请稍后重试；未调用模型。';
+  }finally{
+   if(recover.isConnected){recover.disabled=false;retry.disabled=false;}
+  }
  },true);
  const cat=document.createElement('button');
  cat.type='button';
@@ -2078,10 +2069,19 @@ export function renderExternalErrorBody(details,text=''){
   if(feedback){ feedback.click(); return; }
   globalThis.toastr?.warning?.('挨打猫当前未启用，可先使用“重新生成兔子镜”。');
  },true);
- actions.append(retry,cat);
- body.append(actions);
+ actions.append(recover,retry,cat);
+ body.append(actions,recoveryStatus);
  details.setAttribute('open','');
  return body;
+}
+
+export function externalPlaceholderTitle(state,text=''){
+ if(state==='manual') return '【兔子镜：等待手动生成】';
+ if(state==='loading') return '【兔子镜：正在生成中……】';
+ if(text===INDEPENDENT_HISTORY_READ_ERROR_MESSAGE) return '【兔子镜：旧存档暂时无法读取】';
+ if(text===MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE || String(text).startsWith('这条还没有兔子镜。'))
+  return '【兔子镜：旧镜面待恢复】';
+ return '【兔子镜：生成失败】';
 }
 
 function applyExternalPlaceholderTheme(details){
@@ -2103,7 +2103,7 @@ export function fallbackExternalDetails(state,text=''){
  const summary=document.createElement('summary');
  const label=document.createElement('span');
  label.setAttribute('data-rabbit-mirror-external-summary-label','true');
- label.textContent=state==='manual'?'【兔子镜：等待手动生成】':state==='loading'?'【兔子镜：正在生成中……】':'【兔子镜：生成失败】';
+ label.textContent=externalPlaceholderTitle(state,text);
  summary.append(label);
  details.append(summary);
  if(state==='error') renderExternalErrorBody(details,text);

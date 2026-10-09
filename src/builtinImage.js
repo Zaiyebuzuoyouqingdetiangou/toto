@@ -1,8 +1,10 @@
-import { getSettings } from './settings.js?rmv=1.67.39';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.67.39';
-import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.39';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.39';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.39';
+import { getSettings } from './settings.js?rmv=1.67.42';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.67.42';
+import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.42';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.42';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.42';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.67.42';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.42';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -92,6 +94,7 @@ function fitFrameImage(image, record) {
 }
 
 function paint(frame, record) {
+    if (isRabbitMirrorLinkedAvatarFrame(frame)) return false;
     const url = safeImageUrl(record?.url || record?.path || record?.dataUrl);
     if (!url) return false;
     const promptNode = frame.querySelector?.('[data-rm-draw-prompt]');
@@ -111,6 +114,7 @@ function paint(frame, record) {
 }
 
 function note(frame, text, root = null) {
+    if (isRabbitMirrorLinkedAvatarFrame(frame)) return;
     frame.querySelector?.('[data-rm-draw-status]')?.remove();
     const doc = frame.ownerDocument;
     const box = doc.createElement('div');
@@ -141,14 +145,29 @@ function note(frame, text, root = null) {
 function anyWaiterConnected(key) {
     const nodes = waiters.get(key);
     if (!nodes) return false;
-    for (const node of nodes) if (node.isConnected) return true;
+    for (const waiter of nodes) if (waiter.frame.isConnected && waiter.isCurrent() && !isRabbitMirrorLinkedAvatarFrame(waiter.frame)) return true;
     return false;
+}
+
+function imageRequestOwner() {
+    const context = getContext();
+    const chat = context?.chat;
+    const identity = rabbitMirrorAvatarPromptIdentity(context);
+    return () => {
+        const settings = getSettings(), current = getContext();
+        return settings.builtinImageEnabled === true && settings.enabled !== false && settings.mode !== 'off'
+            && current?.chat === chat && rabbitMirrorAvatarPromptIdentity(current) === identity;
+    };
+}
+
+function staleImageRequest() {
+    return Object.assign(new Error('聊天、人物或生图设置已变化，本次未继续请求。'), { code: 'stale_owner' });
 }
 
 function reportProgress(key, text) {
     if (progress.get(key) === text) return;
     progress.set(key, text);
-    for (const frame of waiters.get(key) || []) if (frame.isConnected) note(frame, text);
+    for (const { frame, isCurrent } of waiters.get(key) || []) if (frame.isConnected && isCurrent()) note(frame, text);
 }
 
 async function imageCharacters(floor) {
@@ -164,7 +183,7 @@ function planningFailure() {
 }
 
 // 简短线索不是完整提示词，规划失败时保留图框，不继续花费绘图额度。
-async function planWithImageLlm(frame, onProgress, promptFormat) {
+async function planWithImageLlm(frame, onProgress, promptFormat, isCurrent) {
     try {
         const details = frame?.closest?.('details');
         const bridge = globalThis.__rabbitMirrorIndependentActionsV1;
@@ -172,28 +191,33 @@ async function planWithImageLlm(frame, onProgress, promptFormat) {
         if (!target?.plan) throw planningFailure();
         const focus = readPrompt(frame);
         const publicCharacters = await imageCharacters(target.floor);
+        if (!isCurrent()) throw staleImageRequest();
         const plan = await target.plan({ focus, publicCharacters, promptFormat }, { builtin: true, onProgress });
         if (!plan || !String(plan.prompt || plan.flatPrompt || plan.nl || '').trim()) throw planningFailure();
         return plan;
     } catch (error) {
+        if (error?.code === 'stale_owner') throw error;
         console.warn('[RabbitMirror] 生图 LLM 规划未完成，保留图框且不调用绘图', error);
         throw planningFailure();
     }
 }
 
-function startJob(key, prompt, frame) {
+function startJob(key, prompt, frame, isCurrent) {
     const existing = inflight.get(key);
-    if (existing) return existing;
+    if (existing?.isCurrent()) return existing.job;
+    const entry = { job: null, isCurrent };
     const job = (async () => {
+        if (!isCurrent()) throw staleImageRequest();
         const size = frameImageSize(frame);
         const settings = { ...getSettings() };
         const withLlm = imageLlmConfigured(settings);
         if (withLlm) reportProgress(key, '生图 LLM 正在构思画面提示词…');
         const planned = withLlm ? await planWithImageLlm(frame, phase => {
-            if (phase === 'response-chunk' || phase === 'connection-manager-frame') {
+            if (isCurrent() && (phase === 'response-chunk' || phase === 'connection-manager-frame')) {
                 reportProgress(key, '生图 LLM 正在返回画面提示词…');
             }
-        }, settings.imagePromptFormat) : null;
+        }, settings.imagePromptFormat, isCurrent) : null;
+        if (!isCurrent()) throw staleImageRequest();
         const provider = settings.imageBackend === 'chatu8' ? '智绘姬' : '柏宝绘';
         reportProgress(key, `${withLlm ? '提示词已完成，' : ''}正在交给${provider}生图…`);
         const generated = await generateMirrorImage(planned ? {
@@ -218,26 +242,33 @@ function startJob(key, prompt, frame) {
         })(), {
             character: characterGroup(),
             size,
-            assertCurrent: () => anyWaiterConnected(key),
+            assertCurrent: () => isCurrent() && anyWaiterConnected(key),
             onProgress: event => {
                 const phase = { queued: '排队中', generating: '绘制中', 'queued-remote': '远端排队中', retrying: '按渠道规则重试中', saving: '保存中' }[event?.phase];
-                if (phase) reportProgress(key, `${provider}：${phase}…`);
+                if (phase && isCurrent()) reportProgress(key, `${provider}：${phase}…`);
             },
         });
         const record = { ...generated, builtinImageFit: 'cover' };
-        try { saveMirrorImage(key, record); }
+        try { if (inflight.get(key) === entry) saveMirrorImage(key, record); }
         catch (error) { console.warn('[RabbitMirror] 内置生图已画成，但没能写入本机存档', error); }
         return record;
     })();
-    inflight.set(key, job);
+    entry.job = job;
+    inflight.set(key, entry);
     const cleanup = () => {
-        if (inflight.get(key) === job) { inflight.delete(key); progress.delete(key); }
+        if (inflight.get(key) === entry) { inflight.delete(key); progress.delete(key); }
     };
     job.then(cleanup, cleanup);
     return job;
 }
 
 async function fillFrame(root, frame) {
+    const isCurrent = imageRequestOwner();
+    // A saved pair may still be hydrating on reload. Resolve that local-only
+    // bridge before an avatar placeholder can spend a drawing request.
+    if (await prepareRabbitMirrorAvatarFrame(frame)) return;
+    if (!isCurrent() || !frame.isConnected) return;
+    ensureFrameBox(frame);
     const existingImage = frame.querySelector?.('img[data-rm-draw-result][src]');
     if (existingImage) return;
     const prompt = readPrompt(frame);
@@ -255,13 +286,15 @@ async function fillFrame(root, frame) {
     }
     let nodes = waiters.get(key);
     if (!nodes) { nodes = new Set(); waiters.set(key, nodes); }
-    nodes.add(frame);
+    const waiter = { frame, isCurrent };
+    nodes.add(waiter);
     if (progress.has(key)) note(frame, progress.get(key));
     try {
-        const record = await startJob(key, prompt, frame);
-        if (frame.isConnected) paint(frame, record);
+        const record = await startJob(key, prompt, frame, isCurrent);
+        if (isCurrent() && frame.isConnected) paint(frame, record);
     } catch (error) {
         const code = error?.code;
+        if (code === 'stale_owner' || !isCurrent()) return;
         const message = code === 'image_plan_failed' ? planningFailure().message : code === 'not_configured' || code === 'unsupported_api'
             ? `${String(error?.message || '生图渠道还没连好')}这一面先留着提示词。`
             : '这一面的画面这次没有画成。';
@@ -269,7 +302,7 @@ async function fillFrame(root, frame) {
         if (frame.isConnected) note(frame, message, root);
         console.warn('[RabbitMirror] 内置生图没有填进图框', error);
     } finally {
-        nodes.delete(frame);
+        nodes.delete(waiter);
         if (!nodes.size) waiters.delete(key);
     }
 }
@@ -293,6 +326,7 @@ export function restoreSavedBuiltinImages(root) {
     if (!root?.querySelectorAll) return 0;
     let restored = 0;
     for (const frame of root.querySelectorAll('[data-rm-draw-frame]')) {
+        if (isRabbitMirrorLinkedAvatarFrame(frame)) continue;
         if (frame.querySelector?.('img[data-rm-draw-result][src]')) continue;
         const prompt = readPrompt(frame);
         if (!prompt) continue;
@@ -308,7 +342,7 @@ export function fillBuiltinImageFrames(root) {
     if (getSettings().builtinImageEnabled !== true || !root?.querySelectorAll) return;
     // 一面里有几个图框就画几张（比如分镜每格一张），每个图框各自存档、各自重试。
     for (const frame of root.querySelectorAll('[data-rm-draw-frame]')) {
-        ensureFrameBox(frame);
+        if (isRabbitMirrorLinkedAvatarFrame(frame)) continue;
         void fillFrame(root, frame);
     }
 }

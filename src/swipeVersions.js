@@ -371,17 +371,17 @@ const archiveLoads = new Map();
 const archiveWrites = new Map();
 const archiveSaved = new Map();
 
-function archiveTransaction(mode, work) {
-    if (!globalThis.indexedDB) return Promise.resolve(null);
+function archiveTransaction(mode, work, { readStatus = false, timeoutMs = 2500 } = {}) {
+    if (!globalThis.indexedDB) return Promise.resolve(readStatus ? { ok: true, value: null } : null);
     return new Promise(resolve => {
         let db, tx, finished = false, value = null;
-        const finish = result => {
+        const finish = (result, ok = false) => {
             if (finished) return; finished = true;
             clearTimeout(timer);
             try { db?.close(); } catch {}
-            resolve(result);
+            resolve(readStatus ? { ok, value: result } : result);
         };
-        const timer = setTimeout(() => { try { tx?.abort(); } catch {} finish(null); }, 2500);
+        const timer = setTimeout(() => { try { tx?.abort(); } catch {} finish(null); }, timeoutMs);
         try {
             const request = globalThis.indexedDB.open(ARCHIVE_DB, 1);
             request.onupgradeneeded = () => {
@@ -394,7 +394,7 @@ function archiveTransaction(mode, work) {
                 db.onversionchange = () => db.close();
                 try {
                     tx = db.transaction('owners', mode);
-                    tx.oncomplete = () => finish(value);
+                    tx.oncomplete = () => finish(value, true);
                     tx.onerror = tx.onabort = () => finish(null);
                     work(tx.objectStore('owners'), result => { value = result; });
                 } catch { finish(null); }
@@ -404,23 +404,48 @@ function archiveTransaction(mode, work) {
 }
 
 export function faceSwipeArchiveLoaded(slot) {
-    return !globalThis.indexedDB || archiveLoads.get(faceSwipeStorageSlot(slot))?.done === true;
+    const state = faceSwipeArchiveReadState(slot);
+    return state === 'ready' || state === 'error';
 }
 
-export function loadFaceSwipeArchive(slot) {
+export function faceSwipeArchiveReadState(slot) {
+    if (!globalThis.indexedDB) return 'ready';
+    return archiveLoads.get(faceSwipeStorageSlot(slot))?.state || 'idle';
+}
+
+export function loadFaceSwipeArchive(slot, { retry = false } = {}) {
     const base = faceSwipeStorageSlot(slot);
-    if (archiveLoads.has(base)) return archiveLoads.get(base).done ? Promise.resolve(archiveSaved.get(base) || null) : archiveLoads.get(base).promise;
-    const entry = { done: false, promise: null };
+    const previous = archiveLoads.get(base);
+    // Passive synchronization is bounded. Only an explicit recovery action may
+    // retry a settled failed/empty read; simultaneous recovery clicks share it.
+    if (previous && (!previous.done || !retry)) return previous.done
+        ? Promise.resolve(previous.state === 'ready' ? archiveSaved.get(base) || null : null)
+        : previous.promise;
+    const cachedBeforeRead = archiveSaved.get(base);
+    const entry = { done: false, state: 'loading', promise: null };
     entry.promise = archiveTransaction('readonly', (store, done) => {
         const request = store.get(base); request.onsuccess = () => done(request.result || null);
-    }).then(row => {
+    }, { readStatus: true, timeoutMs: retry ? 10000 : 2500 }).then(result => {
         entry.done = true;
-        if (row?.slot !== base || row?.schema !== 1) return null;
+        // A remap invalidates the whole read. Do not resurrect its previous slot.
+        if (archiveLoads.get(base) !== entry) return null;
+        if (!result.ok) { entry.state = 'error'; return null; }
+        entry.state = 'ready';
+        let row = result.value;
+        // A newer committed local write (including a tombstone) wins over a
+        // read that began before it. Recovery must never roll that write back.
+        if (archiveSaved.get(base) !== cachedBeforeRead) row = archiveSaved.get(base) || null;
+        if (!row) { archiveSaved.delete(base); return null; }
+        if (row.slot !== base || row.schema !== 1) { entry.state = 'error'; return null; }
         archiveSaved.set(base, row);
         for (const [index, state] of Object.entries(row.states || {})) {
             if (/^[0-4]$/.test(index)) durableStacks.set(faceSwipeKey(base, Number(index)), stackSignature(state));
         }
         return row;
+    }).catch(() => {
+        entry.done = true;
+        if (archiveLoads.get(base) === entry) entry.state = 'error';
+        return null;
     });
     archiveLoads.set(base, entry);
     return entry.promise;

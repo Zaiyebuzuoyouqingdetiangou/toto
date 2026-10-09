@@ -1,9 +1,9 @@
-import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.67.39';
+import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.67.42';
 // Split from outputSanitizer.js — markup.
 
-import { getSettings } from '../settings.js?rmv=1.67.39';
-import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.67.39';
-import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.67.39';
+import { getSettings } from '../settings.js?rmv=1.67.42';
+import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.67.42';
+import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.67.42';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     INTERACTION_HOME_ATTR,
@@ -15,7 +15,7 @@ import {
     clearMirrorTitleDisplayArtifacts,
     escapeRegExp,
     hashInteractionSignature,
-} from './runtime.js?rmv=1.67.39';
+} from './runtime.js?rmv=1.67.42';
 
 const TOTO_BLOCK_RE = /<toto\b[\s\S]*?<\/toto>/gi;
 
@@ -52,6 +52,7 @@ const RABBIT_MIRROR_BLOCKED_RENDER_SELECTOR = 'script, iframe, object, embed, li
 const RABBIT_MIRROR_NETWORK_URL_ATTRS = new Set(['href', 'src', 'xlink:href', 'poster', 'background']);
 
 const RABBIT_MIRROR_INTERNAL_MODEL_ATTRS = new Set([
+    'data-rm-avatar-rendered',
     REVERSIBLE_STYLE_BASELINE_ATTR,
     REVERSIBLE_TEXT_BASELINE_ATTR,
     RAW_SELF_MUTATION_HTML_BASELINE_ATTR,
@@ -610,6 +611,13 @@ export function sanitizeRabbitMirrorUntrustedTemplate(template) {
     clearMirrorTitleDisplayArtifacts(template.content);
 
     template.content.querySelectorAll(RABBIT_MIRROR_BLOCKED_RENDER_SELECTOR).forEach(node => node.remove());
+    // Runtime-only avatar overlays must not turn into saved/model-authored art.
+    // A linked authored <img> keeps its semantic slot but not copied local bytes.
+    for (const avatar of template.content.querySelectorAll('[data-rm-avatar-rendered]')) {
+        if (avatar.getAttribute('data-rm-avatar-rendered') === 'image' && avatar.tagName?.toLowerCase() === 'img') {
+            for (const attribute of ['src', 'srcset', 'sizes', 'data-rm-avatar-rendered']) avatar.removeAttribute(attribute);
+        } else avatar.remove();
+    }
     // Local attribution is rebuilt from exact-owner metadata, never model HTML.
     template.content.querySelectorAll(`[${EXTERNAL_REFERENCE_NOTE_ATTR}]`).forEach(node => node.remove());
     unwrapGeneratedForms(template);
@@ -674,6 +682,12 @@ export function sanitizeRabbitMirrorUntrustedTemplate(template) {
                 || name === 'ping'
                 || (name === 'open' && element.tagName?.toLowerCase() === 'dialog')) {
                 element.removeAttribute(attribute.name);
+                continue;
+            }
+            // Only the semantic identity marker is authored. Linked image state
+            // is installed locally after mounting, never accepted from model HTML.
+            if (name === 'data-rm-avatar') {
+                if (value !== 'char' && value !== 'user') element.removeAttribute(attribute.name);
                 continue;
             }
             // Local popover/command attributes are validated as a linked set after all generic attributes are stripped.

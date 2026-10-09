@@ -1,6 +1,6 @@
-import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.67.39';
-import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=1.67.39';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.67.39';
+import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.67.42';
+import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=1.67.42';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.67.42';
 const DB_NAME = 'rabbit_mirror_theater_favorites_v1';
 const STORE = 'favorites';
 const DB_VERSION = 1;

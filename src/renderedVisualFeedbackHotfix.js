@@ -1,5 +1,6 @@
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.67.39';
-import { updateLatestVisualSignature, visualHistoryTarget } from './storage.js?rmv=1.67.39';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.67.42';
+import { updateLatestVisualSignature, visualHistoryTarget } from './storage.js?rmv=1.67.42';
+import { restoreRabbitMirrorAvatarClone } from './chatAvatars.js?rmv=1.67.42';
 
 const VERSION = '1.5.53';
 const HOST = '[data-rabbit-mirror-external-source]';
@@ -185,7 +186,7 @@ function mergeSkeleton(base, palette, profile) {
 }
 
 function sourceHtml(details) {
-    try { const clone=details.cloneNode(true); clone.querySelectorAll?.(TOOL)?.forEach(n=>n.remove()); return `<toto data-rabbit-mirror="true" style="display:block;">${clone.outerHTML}</toto>`; }
+    try { const clone=restoreRabbitMirrorAvatarClone(details,details.cloneNode(true)); clone.querySelectorAll?.(TOOL)?.forEach(n=>n.remove()); return `<toto data-rabbit-mirror="true" style="display:block;">${clone.outerHTML}</toto>`; }
     catch { return ''; }
 }
 
