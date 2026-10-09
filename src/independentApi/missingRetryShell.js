@@ -9,7 +9,9 @@ export const MISSING_SHELL_SCAN_RANGE_ALL = 'all';
 
 export const MISSING_SHELL_SCAN_RANGE_OPTIONS = [10, 20, 'all'];
 
-export const MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE = '这条还没有兔子镜。上次可能因网络中断或页面退出没有挂上外壳，不会自动再发请求。确认正文后可点击“重新生成兔子镜”。';
+export const MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE = '暂未找到与这条回复对应的已保存兔子镜。请先点击“找回旧兔子镜”重新读取已有存档，不会调用模型。确认没有旧作品后，再选择重新生成。';
+
+export const INDEPENDENT_HISTORY_READ_ERROR_MESSAGE = '旧存档暂时无法读取，不能据此判断以前没有生成成功。请点击“找回旧兔子镜”重新读取已有存档；不会调用模型。';
 
 export function normalizeMissingShellScanRange(value) {
     if (value === MISSING_SHELL_SCAN_RANGE_ALL || value === Infinity) return MISSING_SHELL_SCAN_RANGE_ALL;

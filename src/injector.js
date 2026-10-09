@@ -1,17 +1,18 @@
 import { eventSource, event_types, setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
 import * as hostRuntime from '../../../../../script.js';
-import { MODULE_NAME, getSettings } from './settings.js?rmv=1.67.39';
+import { MODULE_NAME, getSettings } from './settings.js?rmv=1.67.42';
 import {
     buildFeedbackCatFinalCheck,
     buildFeedbackCatPrompt,
     clearFeedbackCatExtensionPrompt,
     getActiveFeedbackForCurrentChat,
     markFeedbackCatInjected,
-} from './feedbackCat.js?rmv=1.67.39';
-import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.67.39';
-import { getCurrentChatKey, markPendingBatchAttempt, releasePendingComboBatch } from './storage.js?rmv=1.67.39';
-import { describeExternalWorldBookPreflightFailure } from './externalWorldBook/errors.js?rmv=1.67.39';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.67.39';
+} from './feedbackCat.js?rmv=1.67.42';
+import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.67.42';
+import { getCurrentChatKey, markPendingBatchAttempt, releasePendingComboBatch } from './storage.js?rmv=1.67.42';
+import { describeExternalWorldBookPreflightFailure } from './externalWorldBook/errors.js?rmv=1.67.42';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.67.42';
+import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.42';
 
 const INJECT_KEY = `${MODULE_NAME}:auto_injection`;
 
@@ -744,7 +745,7 @@ export function destroyIndependentGenerationIntentBridge({ clearIntents = false 
 
 function loadPromptBuilder() {
     if (!promptBuilderPromise) {
-        promptBuilderPromise = import('./promptBuilder.js?rmv=1.67.39').catch(error => {
+        promptBuilderPromise = import('./promptBuilder.js?rmv=1.67.42').catch(error => {
             promptBuilderPromise = null;
             throw error;
         });
@@ -754,7 +755,7 @@ function loadPromptBuilder() {
 
 function loadGenerationGuard() {
     if (!generationGuardPromise) {
-        generationGuardPromise = import('./generationGuard.js?rmv=1.67.39').catch(error => {
+        generationGuardPromise = import('./generationGuard.js?rmv=1.67.42').catch(error => {
             generationGuardPromise = null;
             throw error;
         });
@@ -797,6 +798,7 @@ function captureFollowPrefetchOwner(chat, sequence) {
 
 function followPrefetchOwnerMismatch(owner, chat) {
     if (!owner || owner.sequence !== generationInvocationSequence) return 'generation-replaced';
+    if (owner.avatarIdentity !== undefined && owner.avatarIdentity !== rabbitMirrorAvatarPromptIdentity(currentIndependentIntentContext())) return 'avatar-identity-changed';
     if (owner.chatKey !== getCurrentChatKey(chat)) return 'chat-changed';
     if (owner.host && currentIndependentIntentContext().chat !== owner.host.messages) return 'host-chat-replaced';
     for (const [name, snapshot] of [['input', owner.input], ['host', owner.host]]) {
@@ -895,7 +897,7 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
         generationSource: settings.generationSource, mode: settings.mode,
     } : null;
     const materialEnabled = externalEnabled || appearanceEnabled || memoryWorldBookEnabled;
-    const prefetchOwner = materialEnabled ? captureFollowPrefetchOwner(_chat, generationInvocationSequence) : null;
+    let prefetchOwner = materialEnabled ? captureFollowPrefetchOwner(_chat, generationInvocationSequence) : null;
     const assertAppearanceOwner = () => {
         if (!appearanceEnabled) return;
         const current = getSettings();
@@ -929,14 +931,26 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
     let appearanceMaterial;
     let memoryMaterial;
     let externalStage = 'runtime';
+    let avatarAwaited = false;
     try {
+        const avatarOwner = prefetchOwner || captureFollowPrefetchOwner(_chat, generationInvocationSequence);
+        const avatarIdentity = rabbitMirrorAvatarPromptIdentity(currentIndependentIntentContext());
+        const avatarReady = prepareRabbitMirrorAvatarPrompt();
+        if (avatarReady) {
+            prefetchOwner = avatarOwner;
+            prefetchOwner.avatarIdentity = avatarIdentity;
+            avatarAwaited = true;
+            externalStage = 'avatar-ready';
+            try { await avatarReady; } finally { assertFollowPrefetchOwner(prefetchOwner, _chat); }
+            externalStage = 'runtime';
+        }
         if (materialEnabled) {
             assertFollowPrefetchOwner(prefetchOwner, _chat);
             assertAppearanceOwner();
             assertMemoryOwner();
             let repository;
             if (externalEnabled) {
-                repository = await import('./externalWorldBook/store.js?rmv=1.67.39');
+                repository = await import('./externalWorldBook/store.js?rmv=1.67.42');
                 assertFollowPrefetchOwner(prefetchOwner, _chat);
                 externalStage = 'index';
                 await repository.hydrateExternalPoolMetadata();
@@ -959,7 +973,7 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
             }
             if (frozenPlan.appearanceReference.enabled) {
                 externalStage = 'appearance-read';
-                const appearance = await import('./appearanceReference.js?rmv=1.67.39');
+                const appearance = await import('./appearanceReference.js?rmv=1.67.42');
                 assertFollowPrefetchOwner(prefetchOwner, _chat); assertAppearanceOwner();
                 appearanceMaterial = await appearance.loadAppearanceReferenceMaterial(frozenPlan.appearanceReference.revision);
                 assertFollowPrefetchOwner(prefetchOwner, _chat); assertAppearanceOwner();
@@ -980,7 +994,7 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
             promptDetails = buildRabbitMirrorPromptDetails(settings, type, null, generationScopeKey, generationContext);
         }
     } catch (error) {
-        if (!materialEnabled) throw error;
+        if (!materialEnabled && !avatarAwaited) throw error;
         if (frozenPlan?.batchPlan) releasePendingComboBatch({ batchId: frozenPlan.batchPlan.batchId, identity: frozenPlan.batchPlan.identity });
         // A stale completion must not erase a newer interceptor's installed prompt.
         if (!prefetchOwner || prefetchOwner.sequence === generationInvocationSequence) {
@@ -999,7 +1013,7 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
         appearanceMaterial = null;
         memoryMaterial = null;
     }
-    if (materialEnabled) lastFollowExternalPreflightFailure = null;
+    if (materialEnabled || avatarAwaited) lastFollowExternalPreflightFailure = null;
     attachRabbitMirrorGenerationSelection(promptDetails.metadata);
     const basePrompt = promptDetails.prompt;
     if (!basePrompt) {

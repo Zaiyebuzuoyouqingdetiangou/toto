@@ -1,14 +1,14 @@
-import { getSettings } from './settings.js?rmv=1.67.39';
-import { getCurrentChatKey } from './storage.js?rmv=1.67.39';
-import { getRabbitMirrorRecipe } from './blacklist.js?rmv=1.67.39';
-import { readFollowPartialResult, saveFollowCompletedRetryResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=1.67.39';
-import { markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.67.39';
-import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.67.39';
-import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.67.39';
-import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=1.67.39';
-import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.67.39';
-import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=1.67.39';
-import { presentationModeFields } from './presentationMode.js?rmv=1.67.39';
+import { getSettings } from './settings.js?rmv=1.67.42';
+import { getCurrentChatKey } from './storage.js?rmv=1.67.42';
+import { getRabbitMirrorRecipe } from './blacklist.js?rmv=1.67.42';
+import { readFollowPartialResult, saveFollowCompletedRetryResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=1.67.42';
+import { markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.67.42';
+import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.67.42';
+import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.67.42';
+import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=1.67.42';
+import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.67.42';
+import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=1.67.42';
+import { presentationModeFields } from './presentationMode.js?rmv=1.67.42';
 import {
     automaticRerollEnabled,
     automaticRerollStatusText,
@@ -18,9 +18,10 @@ import {
     isLocalPreflightFailure,
     shouldAutomaticReroll,
     stallTimeoutError,
-} from './automaticReroll.js?rmv=1.67.39';
-import { mergeMissingIndependentFaces, missingIndexesFromIndependentResult, recipesCoverMissing } from './missingFaceMerge.js?rmv=1.67.39';
-import { inspectRabbitMirrorGenerationSource, getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.67.39';
+} from './automaticReroll.js?rmv=1.67.42';
+import { mergeMissingIndependentFaces, missingIndexesFromIndependentResult, recipesCoverMissing } from './missingFaceMerge.js?rmv=1.67.42';
+import { inspectRabbitMirrorGenerationSource, getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.67.42';
+import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.42';
 
 const inFlight = new Set();
 const consumeCounts = new Map();
@@ -108,12 +109,14 @@ async function requestFollowMissingFaces(ctx, index, missingIndexes, faces, deps
         : {};
     let appearanceOwner = { enabled: settings.appearanceReferenceEnabled === true, revision: String(settings.appearanceReferenceRevision || '') };
     let memorySettingsKey = '';
+    const avatarIdentity = rabbitMirrorAvatarPromptIdentity(ctx);
     if (settings.memoryScanEnabled === true && settings.memoryWorldBookEnabled === true && String(settings.memoryWorldBookId || '').trim()) {
         memorySettingsKey = memoryRequestSettingsKey(settings, 'independent');
     }
     const assertCurrent = () => {
         const current = deps.getContext();
-        if (current.chat !== ctx.chat || current.chat?.[index] !== message || getCurrentChatKey(current.chat) !== getCurrentChatKey(ctx.chat)
+        if (rabbitMirrorAvatarPromptIdentity(current) !== avatarIdentity
+            || current.chat !== ctx.chat || current.chat?.[index] !== message || getCurrentChatKey(current.chat) !== getCurrentChatKey(ctx.chat)
             || (Number.isInteger(message.swipe_id) ? message.swipe_id : -1) !== (Number.isInteger(current.chat?.[index]?.swipe_id) ? current.chat[index].swipe_id : -1)
             || rabbitMirrorMultifaceSourceHash(current.chat?.[index]?.mes || '') !== rabbitMirrorMultifaceSourceHash(message.mes || '')
             || getSettings().generationSource !== 'follow' || getSettings().enabled === false || getSettings().autoRabbitMirrorInjection === false
@@ -135,6 +138,8 @@ async function requestFollowMissingFaces(ctx, index, missingIndexes, faces, deps
         if (memorySettingsKey) assertMemoryRequestSettings(getSettings(), memorySettingsKey, 'independent');
     };
     assertCurrent();
+    const avatarReady = prepareRabbitMirrorAvatarPrompt();
+    if (avatarReady) { await avatarReady; assertCurrent(); }
     if (useRecipes && missingIndexes.some(faceIndex => [...(faces[faceIndex]?.themeIds || []), ...(faces[faceIndex]?.formatIds || []), ...(faces[faceIndex]?.textIds || [])].some(id => String(id).startsWith('ext:')))) {
         await hydrateExternalPoolMetadata();
         assertCurrent();
@@ -144,7 +149,7 @@ async function requestFollowMissingFaces(ctx, index, missingIndexes, faces, deps
     try {
         if (plan.selectedExternalIds.length) { materials = await getSelectedExternalEntries(plan.selectedExternalIds); assertCurrent(); }
         if (plan.appearanceReference.enabled) {
-            const appearance = await import('./appearanceReference.js?rmv=1.67.39');
+            const appearance = await import('./appearanceReference.js?rmv=1.67.42');
             assertCurrent();
             appearanceMaterial = await appearance.loadAppearanceReferenceMaterial(plan.appearanceReference.revision);
             assertCurrent();
