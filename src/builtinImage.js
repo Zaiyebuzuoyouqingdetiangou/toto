@@ -1,8 +1,8 @@
-import { getSettings } from './settings.js?rmv=1.67.37';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.67.37';
-import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.37';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.37';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.37';
+import { getSettings } from './settings.js?rmv=1.67.39';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.67.39';
+import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.39';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.39';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.39';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -49,7 +49,7 @@ function readCharacters(frame) {
     const nodes = [...(frame.querySelectorAll?.('[data-rm-draw-char]') || [])].slice(0, 4);
     return nodes.map(node => ({
         name: String(node.getAttribute('data-rm-draw-char') || '').replace(/\s+/g, ' ').trim().slice(0, 40),
-        text: String(node.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 300),
+        text: String(node.textContent || '').replace(/\s+/g, ' ').trim(),
     })).filter(person => person.name && person.text.length >= 2);
 }
 
@@ -164,7 +164,7 @@ function planningFailure() {
 }
 
 // 简短线索不是完整提示词，规划失败时保留图框，不继续花费绘图额度。
-async function planWithImageLlm(frame, onProgress) {
+async function planWithImageLlm(frame, onProgress, promptFormat) {
     try {
         const details = frame?.closest?.('details');
         const bridge = globalThis.__rabbitMirrorIndependentActionsV1;
@@ -172,7 +172,7 @@ async function planWithImageLlm(frame, onProgress) {
         if (!target?.plan) throw planningFailure();
         const focus = readPrompt(frame);
         const publicCharacters = await imageCharacters(target.floor);
-        const plan = await target.plan({ focus, publicCharacters }, { builtin: true, onProgress });
+        const plan = await target.plan({ focus, publicCharacters, promptFormat }, { builtin: true, onProgress });
         if (!plan || !String(plan.prompt || plan.flatPrompt || plan.nl || '').trim()) throw planningFailure();
         return plan;
     } catch (error) {
@@ -186,14 +186,14 @@ function startJob(key, prompt, frame) {
     if (existing) return existing;
     const job = (async () => {
         const size = frameImageSize(frame);
-        const settings = getSettings();
+        const settings = { ...getSettings() };
         const withLlm = imageLlmConfigured(settings);
         if (withLlm) reportProgress(key, '生图 LLM 正在构思画面提示词…');
         const planned = withLlm ? await planWithImageLlm(frame, phase => {
             if (phase === 'response-chunk' || phase === 'connection-manager-frame') {
                 reportProgress(key, '生图 LLM 正在返回画面提示词…');
             }
-        }) : null;
+        }, settings.imagePromptFormat) : null;
         const provider = settings.imageBackend === 'chatu8' ? '智绘姬' : '柏宝绘';
         reportProgress(key, `${withLlm ? '提示词已完成，' : ''}正在交给${provider}生图…`);
         const generated = await generateMirrorImage(planned ? {

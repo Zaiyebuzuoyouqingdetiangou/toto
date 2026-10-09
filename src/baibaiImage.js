@@ -1,7 +1,8 @@
-import { chatu8Status, generateViaChatu8 } from './chatu8Image.js?rmv=1.67.37';
-import { getSettings } from './settings.js?rmv=1.67.37';
-import { getContext } from './independentApi/runtime.js?rmv=1.67.37';
-import { getChatu8ImageCharacters } from './imageCharacterPresets.js?rmv=1.67.37';
+import { chatu8Status, generateViaChatu8 } from './chatu8Image.js?rmv=1.67.39';
+import { getSettings } from './settings.js?rmv=1.67.39';
+import { getContext } from './independentApi/runtime.js?rmv=1.67.39';
+import { getChatu8ImageCharacters } from './imageCharacterPresets.js?rmv=1.67.39';
+import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.67.39';
 function failure(code, message) { return Object.assign(new Error(message), { code }); }
 
 function imageApi() {
@@ -44,13 +45,14 @@ export async function generateMirrorImage(plan, { signal, onProgress, character,
     const status = api.getBackendStatus();
     if (!status.configured) throw failure('not_configured', status.reason || '柏宝绘连接尚未配置完成。');
     const characters = Array.isArray(plan?.characters) ? plan.characters.map(person => ({ name: String(person.name || ''), tag: String(person.tag || ''), nl: String(person.nl || '') })) : [];
-    const prompt = String(status.supportsCharacters ? plan?.prompt || '' : plan?.flatPrompt || (characters.length ? '' : plan?.prompt || '')).trim();
-    if (!prompt) throw failure('invalid_args', '当前后端需要完整的画面提示词；请编辑或重新构思。');
+    const prompt = status.supportsCharacters ? String(plan?.prompt || '').trim() : buildSingleImagePrompt(plan);
+    const hasScene = [plan?.flatPrompt, plan?.nl, plan?.prompt].some(value => typeof value === 'string' && value.trim());
+    if (!prompt || (!status.supportsCharacters && !hasScene)) throw failure('invalid_args', '当前后端需要完整的画面提示词；请编辑或重新构思。');
     // Capture an explicit group: never let a queued provider request choose a later chat.
     if (typeof character !== 'string' || !character.trim()) throw failure('invalid_args', '缺少当前画面的图库归属，请重新打开这一面。');
     const tagsOnly = plan?.promptFormat === 'nai45-tags';
     // 单提示词后端的自然语言字段也使用已绑定外貌的完整画面。
-    const request = { prompt, nl: tagsOnly ? '' : String(status.supportsCharacters ? plan?.nl || '' : plan?.flatPrompt || plan?.nl || ''), save: true, character };
+    const request = { prompt, nl: tagsOnly ? '' : String(status.supportsCharacters ? plan?.nl || '' : prompt), save: true, character };
     const plannedMetadata = {
         prompt: String(plan?.prompt || ''), nl: String(plan?.nl || ''),
         flatPrompt: String(plan?.flatPrompt || ''), characters,

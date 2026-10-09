@@ -1,7 +1,8 @@
 // 智绘姬（st-chatu8）生图渠道：通过酒馆事件把提示词交给智绘姬，按请求编号接回图片。
 // 直接沿用智绘姬里已经配好的模型、接口和出图设置；不改它的全局设置，不加数量限制，不截短提示词，
 // 结果不明时不自动重发。只取消兔子镜自己的等待，不影响智绘姬里的其他任务。
-import { getContext } from './independentApi/runtime.js?rmv=1.67.37';
+import { getContext } from './independentApi/runtime.js?rmv=1.67.39';
+import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.67.39';
 
 const SUPPORTED_MODES = new Set(['sd', 'novelai', 'comfyui', 'banana', 'runninghub']);
 
@@ -107,18 +108,8 @@ async function persistImage(image) {
 export async function generateViaChatu8(plan, { signal, size, assertCurrent } = {}) {
     const status = chatu8Status();
     if (!status.configured) throw failure('not_configured', status.reason);
-    // 完整 flatPrompt 已绑定人物，不再追加两组匿名外貌；旧计划逐人具名回退。
-    const flatPrompt = String(plan?.flatPrompt || '').trim();
-    const tagsOnly = plan?.promptFormat === 'nai45-tags';
-    const people = flatPrompt ? [] : (Array.isArray(plan?.characters) ? plan.characters : [])
-        .map((person, index) => {
-            const tag = String(person?.tag || '').trim();
-            const appearance = tagsOnly ? tag : String(person?.nl || '').trim() || tag;
-            const name = String(person?.name || '').trim() || `人物 ${index + 1}`;
-            return appearance ? `${name}: ${appearance}` : '';
-        }).filter(Boolean);
-    const base = String(plan?.prompt || plan?.nl || '').trim();
-    const prompt = flatPrompt || [base, ...people].filter(Boolean).join('\n');
+    // 智绘姬只接收一个 prompt；完整场景和每个人的已知外貌都须在其中。
+    const prompt = buildSingleImagePrompt(plan);
     if (!prompt) throw failure('invalid_args', '当前画面没有提示词；请编辑或重新构思。');
     if (signal?.aborted) throw failure('aborted', '生图已取消。');
     if (typeof assertCurrent === 'function' && assertCurrent() === false) throw failure('stale_owner', '聊天或镜面已经变化，未发送生图请求。');

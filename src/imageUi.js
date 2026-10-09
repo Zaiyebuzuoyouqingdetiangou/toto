@@ -1,8 +1,9 @@
-import { getSettings } from './settings.js?rmv=1.67.37';
-import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=1.67.37';
-import { loadMirrorImage, saveMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft } from './imageStore.js?rmv=1.67.37';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.67.37';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.37';
+import { getSettings } from './settings.js?rmv=1.67.39';
+import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=1.67.39';
+import { loadMirrorImage, saveMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft } from './imageStore.js?rmv=1.67.39';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.67.39';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.39';
+import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.67.39';
 
 // The lock lives beyond a panel's lifetime. Closing, reopening or aborting a UI
 // cannot release a provider reservation before its Promise actually settles.
@@ -216,9 +217,11 @@ export function openMirrorImagePanel(root, { opener = null, onClose = null } = {
     function updatePreview() {
         const draft = readDraft();
         const supports = backend?.supportsCharacters === true;
-        sendPreview.textContent = JSON.stringify({ prompt: supports ? draft.prompt : (draft.flatPrompt || (draft.characters.length ? '请补全完整通用提示词，当前不会发送。' : draft.prompt)),
-            nl: draft.promptFormat === 'nai5-natural' ? draft.nl : '',
-            ...(supports ? { characters: draft.characters.map(person => draft.promptFormat === 'nai45-tags' ? { name: person.name, tag: person.tag } : person) } : {}), ...(size.value ? { size: size.value } : {}) }, null, 2);
+        const singlePrompt = buildSingleImagePrompt(draft);
+        const chatu = getSettings().imageBackend === 'chatu8';
+        sendPreview.textContent = JSON.stringify({ prompt: supports ? draft.prompt : singlePrompt,
+            ...(!chatu ? { nl: draft.promptFormat === 'nai45-tags' ? '' : supports ? draft.nl : singlePrompt } : {}),
+            ...(supports && draft.characters.length ? { characters: draft.characters.map(person => draft.promptFormat === 'nai45-tags' ? { ...person, nl: '' } : person) } : {}), ...(size.value ? { size: size.value } : {}) }, null, 2);
     }
     function showRecord(record) {
         preview.replaceChildren();
