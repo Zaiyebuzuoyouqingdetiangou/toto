@@ -1,6 +1,6 @@
 // 抽完展现形式后，按形式所属的媒介大类从真实用法索引里强随机抽 3 项，避开近期给过的用法。
 // 只有这 3 项进入 Prompt；索引本身不发送。由出题计划冻结，重说与逐面子请求沿用同一份。
-import { CORE_USAGES, USAGE_CATEGORIES, USAGE_FORMAT_OVERRIDES, USAGE_GROUP_FALLBACK } from '../data/raw/interactionUsages.js?rmv=1.67.37';
+import { CORE_USAGES, USAGE_CATEGORIES, USAGE_FORMAT_OVERRIDES, USAGE_GROUP_FALLBACK } from '../data/raw/interactionUsages.js?rmv=1.67.39';
 
 const OFFER_SIZE = 3;
 const RECENT_KEY = 'rabbitMirrorUsageRecent';

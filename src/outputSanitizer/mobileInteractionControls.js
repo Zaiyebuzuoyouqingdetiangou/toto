@@ -1,4 +1,5 @@
-// Touch-host alternatives stay inside the face; no document listeners or polling.
+// Touch-host alternatives and authored gallery dots stay inside the face;
+// no document listeners or polling.
 const bindings = new WeakMap();
 const controlOwners = new WeakMap();
 const GROUP = '[data-rm-ui]';
@@ -39,9 +40,9 @@ function toolbar(binding, target, kind, inside = false) {
     return bar;
 }
 
-function control(binding, bar, name, label, text, target, action, driverAttribute) {
+function control(binding, bar, name, label, text, target, action, driverAttribute, allowCreate = false) {
     let button = [...bar.querySelectorAll('button')].find(node => node.getAttribute(ACTION) === name);
-    if (!button && binding.reuseOnly) return null;
+    if (!button && binding.reuseOnly && !allowCreate) return null;
     if (!button) {
         button = bar.ownerDocument.createElement('button');
         button.setAttribute('type', 'button');
@@ -66,6 +67,78 @@ function horizontalCandidate(node) {
     const inline = node.style.getPropertyValue('overflow-x') || node.style.getPropertyValue('overflow').split(/\s+/)[0];
     const overflow = computed?.overflowX || inline;
     return /^(auto|scroll)$/.test(overflow) || node.getAttribute('data-rm-ui') === 'scroll';
+}
+
+// An authored snap gallery can contain an apparent pager made only of empty
+// decorative spans. Bind those exact dots to its existing slides on all hosts;
+// do not infer pages from ordinary overflowing text or invent new content.
+function galleryControls(binding, target) {
+    if (binding.root.contains(binding.scrolls.get(target)?.bar)
+        && binding.scrolls.get(target).kind === 'gallery') return false;
+    const view = target.ownerDocument?.defaultView;
+    let computed;
+    try { computed = view?.getComputedStyle?.(target); } catch { return false; }
+    if (!/^x\b/.test(computed?.scrollSnapType || '') || computed.display !== 'flex'
+        || computed.flexDirection !== 'row' || computed.direction === 'rtl'
+        || target.clientWidth <= 0 || target.scrollWidth <= target.clientWidth + 2) return false;
+    const slides = [...target.children].filter(node => !node.matches('style, script, template'));
+    if (slides.length < 2 || !slides.every(node => {
+        const style = view.getComputedStyle(node);
+        const width = parseFloat(style.width) || 0;
+        return /\bstart\b/.test(style.scrollSnapAlign || '')
+            && width >= target.clientWidth * 0.8 && width <= target.clientWidth * 1.2;
+    })) return false;
+    const oldBar = after(target)?.getAttribute(BAR) === 'scroll' ? after(target) : null;
+    const bar = oldBar ? after(oldBar) : after(target);
+    if (!bar || !bar.matches('div, nav, span') || bar.children.length !== slides.length) return false;
+    const restored = bar.getAttribute(BAR) === 'gallery';
+    const markers = [...bar.children].map(node => restored && node.matches(`button[${ACTION}]`)
+        && node.children.length === 1 ? node.children[0] : node);
+    const appearances = [];
+    for (const marker of markers) {
+        if (!marker.matches('span, i') || marker.children.length || String(marker.textContent || '').trim()
+            || marker.matches('[role], [tabindex], [onclick], [popovertarget]')) return false;
+        const style = view.getComputedStyle(marker);
+        const width = parseFloat(style.width) || 0, height = parseFloat(style.height) || 0;
+        if (width <= 0 || width > 24 || height <= 0 || height > 12) return false;
+        appearances.push({ width: `${width}px`, height: `${height}px`, background: style.backgroundColor,
+            radius: style.borderRadius });
+    }
+    // The widest authored dot denotes the selected photo. Preserve its palette
+    // and shape, including when a serialized gallery was saved on another page.
+    const restoredIndex = restored ? [...bar.children].findIndex(node => node.getAttribute('aria-pressed') === 'true') : -1;
+    const activeIndex = restoredIndex >= 0 ? restoredIndex : appearances.reduce((best, item, index) =>
+        parseFloat(item.width) > parseFloat(appearances[best].width) ? index : best, 0);
+    const active = appearances[activeIndex], inactive = appearances.find((_, index) => index !== activeIndex);
+    bar.setAttribute(BAR, 'gallery');
+    const buttons = markers.map((marker, index) => {
+        const button = control(binding, bar, `gallery-${index}`, `查看第 ${index + 1} 张照片`, '', target, () => {
+            const box = target.getBoundingClientRect(), slide = slides[index].getBoundingClientRect();
+            const scale = target.offsetWidth > 0 ? box.width / target.offsetWidth : 1;
+            if (!(scale > 0)) return;
+            const left = numeric(target.scrollLeft, 0) + (slide.left - box.left) / scale - (target.clientLeft || 0);
+            try {
+                if (typeof target.scrollTo !== 'function') throw new Error('scrollTo unavailable');
+                target.scrollTo({ left, top: target.scrollTop, behavior: 'auto' });
+            } catch { target.scrollLeft = left; }
+        }, undefined, true);
+        for (const [key, value] of Object.entries({ display: 'inline-flex', 'align-items': 'center',
+            'justify-content': 'center', border: '0', background: 'transparent', padding: '6px',
+            'min-width': '36px', 'min-height': '32px', 'box-sizing': 'border-box' })) button.style.setProperty(key, value);
+        marker.style.setProperty('display', 'block');
+        marker.style.setProperty('height', appearances[index].height);
+        marker.style.setProperty('border-radius', appearances[index].radius);
+        if (marker.parentElement !== button) button.appendChild(marker);
+        return button;
+    });
+    if (oldBar) {
+        oldBar.remove();
+        if (target.style.getPropertyValue('touch-action') === 'pan-y pinch-zoom') target.style.removeProperty('touch-action');
+    }
+    binding.scrolls.set(target, { kind: 'gallery', bar, buttons, markers, slides, active, inactive });
+    binding.surfaces.add(bar);
+    binding.surfaces.add(target);
+    return true;
 }
 
 function scrollControls(binding, target) {
@@ -164,8 +237,21 @@ function itemControls(binding, group) {
 }
 
 function sync(binding) {
-    for (const [target, { bar, previous, next }] of binding.scrolls) {
+    for (const [target, state] of binding.scrolls) {
         if (!binding.root.contains(target)) { binding.scrolls.delete(target); continue; }
+        const { bar, previous, next } = state;
+        if (state.kind === 'gallery') {
+            const left = target.getBoundingClientRect().left;
+            const selected = state.slides.reduce((best, slide, index) =>
+                Math.abs(slide.getBoundingClientRect().left - left) < Math.abs(state.slides[best].getBoundingClientRect().left - left) ? index : best, 0);
+            state.buttons.forEach((button, index) => {
+                button.setAttribute('aria-pressed', String(index === selected));
+                const appearance = index === selected ? state.active : state.inactive;
+                state.markers[index].style.setProperty('width', appearance.width);
+                state.markers[index].style.setProperty('background-color', appearance.background);
+            });
+            continue;
+        }
         const overflow = target.scrollWidth > target.clientWidth + 2;
         bar.style.setProperty('display', overflow ? 'inline-flex' : 'none');
         previous.disabled = !overflow || numeric(target.scrollLeft, 0) <= 1;
@@ -193,7 +279,9 @@ export function installMobileInteractionControls(root) {
     // 手机上生成并保存过的面，换到电脑打开时会带着这些 −／＋、←／→ 按钮。
     // 电脑上不新增按钮，但已经存在的要接上，不能留一排点了没反应的按钮。
     const touch = touchHost(root);
-    if (!touch && !root.querySelector(`[${BAR}] button[${ACTION}]`)) return 0;
+    const galleryHint = [...root.querySelectorAll('style')].some(node => /scroll-snap-type\s*:\s*x\b/i.test(node.textContent || ''))
+        || !!root.querySelector('[style*="scroll-snap-type"]');
+    if (!touch && !galleryHint && !root.querySelector(`[${BAR}] button[${ACTION}]`)) return 0;
     let binding = bindings.get(root);
     if (binding) binding.reuseOnly = binding.reuseOnly && !touch;
     if (!binding) {
@@ -218,11 +306,21 @@ export function installMobileInteractionControls(root) {
         root.addEventListener('scroll', () => sync(binding), { capture: true, passive: true });
         root.addEventListener('input', () => sync(binding));
         root.addEventListener('change', () => sync(binding));
-        root.addEventListener('toggle', () => sync(binding), true);
+        root.addEventListener('toggle', () => {
+            // A detached or collapsed snapshot has no measurable slide widths.
+            // Retry only on opening this face, never by polling old chat history.
+            if (galleryHint && root.isConnected && (root.matches('details') ? root.open : root.querySelector('details')?.open)) {
+                for (const node of root.querySelectorAll('[style], [class], [data-rm-ui]')) if (horizontalCandidate(node)) galleryControls(binding, node);
+            }
+            sync(binding);
+        }, true);
     }
     let added = 0;
     // Only a bounded local rescan on mount/repair, never document-wide observation.
-    for (const node of root.querySelectorAll('[style], [class], [data-rm-ui]')) if (horizontalCandidate(node)) added += Number(scrollControls(binding, node));
+    for (const node of root.querySelectorAll('[style], [class], [data-rm-ui]')) if (horizontalCandidate(node)) {
+        if (galleryControls(binding, node)) added++;
+        else added += Number(scrollControls(binding, node));
+    }
     for (const input of root.querySelectorAll('input[type="range"]')) added += Number(rangeControls(binding, input));
     const groups = [...root.querySelectorAll(GROUP)];
     if (root.matches?.(GROUP)) groups.unshift(root);
