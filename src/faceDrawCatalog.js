@@ -1,7 +1,7 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.67.45';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.67.45';
-import { filterRandomThemePool, filterRandomFormatPool } from './blacklist.js?rmv=1.67.45';
-import { listExternalLibraries, listExternalLibraryEntryChoices, listExternalLibraryTitleIndex } from './externalWorldBook/store.js?rmv=1.67.45';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.67.48';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.67.48';
+import { filterRandomThemePool, filterRandomFormatPool } from './blacklist.js?rmv=1.67.48';
+import { listExternalLibraries, listExternalLibraryEntryChoices, listExternalLibraryTitleIndex } from './externalWorldBook/store.js?rmv=1.67.48';
 
 const GROUPS = {
     theme: { A: '色情与感官', B: '心理 / 情感暗流', C: '温馨 / 日常', D: '世界观 / 侧写', E: '荒诞 / 超现实', F: '幽默 / 搞笑', G: '平行时空 / IF 线', H: '悬疑 / 怪谈', I: '本世界观 / 当前篇章' },

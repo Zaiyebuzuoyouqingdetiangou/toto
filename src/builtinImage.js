@@ -1,10 +1,10 @@
-import { getSettings } from './settings.js?rmv=1.67.45';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.67.45';
-import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.45';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.45';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.45';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.67.45';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.45';
+import { getSettings } from './settings.js?rmv=1.67.48';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.67.48';
+import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.48';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.48';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.48';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.67.48';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.48';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -178,6 +178,51 @@ async function imageCharacters(floor) {
     }
 }
 
+// 没开生图 LLM 时，外貌原来只靠兔子镜模型顺手写的一句；用户在柏宝绘角色库／智绘姬角色预设里配好的外貌没用上。
+// 这里按原名把角色库里唯一对得上的那份外貌放在前面，模型写的接在后面（两边都留，不互相覆盖）；
+// 模型漏写了外貌、但画面里点了角色卡或 Persona 的名字时，也从角色库补上这个人。
+function uniqueLibrary(list) {
+    const counts = new Map();
+    for (const person of list) counts.set(person.name, (counts.get(person.name) || 0) + 1);
+    return new Map(list.filter(person => person.name && counts.get(person.name) === 1).map(person => [person.name, person]));
+}
+
+function mergeAppearance(library, modelText, tagsOnly) {
+    const base = tagsOnly ? String(library?.tag || library?.nl || '') : String(library?.nl || library?.tag || '');
+    if (!base.trim()) return modelText;
+    if (!modelText) return base.trim();
+    if (tagsOnly) {
+        const seen = new Set();
+        return [...base.split(','), ...modelText.split(',')].map(part => part.trim()).filter(part => {
+            const key = part.toLowerCase();
+            if (!part || seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        }).join(', ');
+    }
+    return modelText.includes(base.trim()) ? modelText : `${base.trim()}; ${modelText}`;
+}
+
+async function withLibraryAppearance(people, prompt, frame, tagsOnly) {
+    const details = frame?.closest?.('details');
+    const floorValue = Number(details?.dataset?.rabbitMirrorOwnerMesid);
+    const floor = Number.isSafeInteger(floorValue) && floorValue >= 0 ? floorValue : undefined;
+    const raw = await imageCharacters(floor);
+    const library = uniqueLibrary((Array.isArray(raw) ? raw : []).map(person => ({
+        name: String(person?.name || '').trim(), tag: String(person?.tag || '').trim(), nl: String(person?.nl || '').trim(),
+    })).filter(person => person.name && (person.tag || person.nl)));
+    if (!library.size) return people;
+    const merged = people.map(person => ({ ...person, text: mergeAppearance(library.get(person.name), person.text, tagsOnly) }));
+    const ctx = getContext();
+    const owners = [characterGroup(), String(ctx?.name1 || globalThis.name1 || '').trim()].filter(Boolean);
+    for (const name of owners) {
+        if (merged.length >= 4 || merged.some(person => person.name === name)) continue;
+        if (!library.has(name) || !String(prompt || '').includes(name)) continue;
+        merged.push({ name, text: mergeAppearance(library.get(name), '', tagsOnly) });
+    }
+    return merged.filter(person => person.text);
+}
+
 function planningFailure() {
     return Object.assign(new Error('生图 LLM 未完成画面规划，本次未调用生图。请检查生图 LLM 设置后点“重新生图”。'), { code: 'image_plan_failed' });
 }
@@ -226,11 +271,12 @@ function startJob(key, prompt, frame, isCurrent) {
             nl: String(planned.nl || ''),
             characters: Array.isArray(planned.characters) ? planned.characters : [],
             promptFormat: settings.imagePromptFormat,
-        } : (() => {
+        } : await (async () => {
             // 没有生图 LLM：按提示词格式分开填，标签写法不再把同一句话当成自然语言再发一次。
             const tagsOnly = settings.imagePromptFormat === 'nai45-tags';
-            const people = readCharacters(frame);
-            // 不用残缺预设覆盖完整外貌；单提示词也逐人具名，不匿名混拼。
+            const people = await withLibraryAppearance(readCharacters(frame), prompt, frame, tagsOnly);
+            if (!isCurrent()) throw staleImageRequest();
+            // 角色库外貌在前、模型写的在后，两边都保留；单提示词也逐人具名，不匿名混拼。
             const appearance = people.map(person => `${person.name}: ${person.text}`).join('\n');
             return {
                 prompt,

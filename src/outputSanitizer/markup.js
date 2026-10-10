@@ -1,9 +1,9 @@
-import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.67.45';
+import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.67.48';
 // Split from outputSanitizer.js — markup.
 
-import { getSettings } from '../settings.js?rmv=1.67.45';
-import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.67.45';
-import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.67.45';
+import { getSettings } from '../settings.js?rmv=1.67.48';
+import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.67.48';
+import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.67.48';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     INTERACTION_HOME_ATTR,
@@ -15,7 +15,7 @@ import {
     clearMirrorTitleDisplayArtifacts,
     escapeRegExp,
     hashInteractionSignature,
-} from './runtime.js?rmv=1.67.45';
+} from './runtime.js?rmv=1.67.48';
 
 const TOTO_BLOCK_RE = /<toto\b[\s\S]*?<\/toto>/gi;
 
@@ -202,7 +202,8 @@ export function cssContainsUnsafeGeneratedResource(value = '') {
     const css = decodeCssEscapesForSecurity(value).replace(/\/\*[\s\S]*?\*\//g, '');
     if (!css.trim()) return false;
     if (/\@import\b/i.test(css)) return true;
-    if (/(?:expression\s*\(|-moz-binding\s*:|behavior\s*:)/i.test(css)) return true;
+    // behavior: 前面要有边界，scroll-behavior / overscroll-behavior 是正常属性。
+    if (/(?:expression\s*\(|-moz-binding\s*:|(?:^|[;{\s])behavior\s*:)/i.test(css)) return true;
 
     const urlRe = /url\(\s*(['"]?)([\s\S]*?)\1\s*\)/gi;
     let match;
@@ -324,11 +325,9 @@ export function cssDeclarationBlockContainsUnsafeOverlayGeometry(value = '', { a
 
     if (position === 'fixed') return fullInset || (viewportWidth && viewportHeight);
     if (position === 'sticky') return viewportWidth && viewportHeight;
-    // 镜面作者在自身内容里建立了定位上下文时，width/height:100% 的 absolute 层
-    // 只是贴住镜内最近定位祖先的叠放面板（事件层、3D 翻页卡、全屏详情页），
-    // 它的包含块在镜面内部。只有“四边全贴 + 超高 z-index”的整张覆盖广告形态
-    // 才继续视为危险；fixed/sticky 永远按上面的旧规则清理。
-    if (allowContainedAbsoluteStack) return fullInset && highZ;
+    // 镜面作者在自身内容里建立了定位上下文时，absolute 层（事件层、3D 翻页卡、全屏详情页）
+    // 的包含块就在镜面内部，再高的 z-index 也盖不出镜面，这里不清理；fixed/sticky 永远按上面的旧规则清理。
+    if (allowContainedAbsoluteStack) return false;
     return (viewportWidth && viewportHeight) || (fullInset && highZ);
 }
 
@@ -512,13 +511,16 @@ export function validateRabbitMirrorMarkupLexicalBudget(value = '') {
     const source = String(value || '');
     if (!source || source.length > RABBIT_MIRROR_MAX_TEMPLATE_SOURCE_CHARS) return false;
     const lower = source.toLowerCase();
+    // 每个 data: 只做一次正则查找，不逐字符测试（一张 150 KB 的图以前要几十毫秒）。
+    const dataUriEnd = /[\s"'<>)]/g;
     let dataIndex = lower.indexOf('data:');
     while (dataIndex >= 0) {
-        let end = dataIndex + 5;
         const hardLimit = dataIndex + RABBIT_MIRROR_MAX_TEMPLATE_DATA_URI_CHARS + 6;
-        const limit = Math.min(source.length, hardLimit);
-        while (end < limit && !/[\s"'<>)]/.test(source[end])) end += 1;
-        if (hardLimit <= source.length && end >= hardLimit && !/[\s"'<>)]/.test(source[end] || '')) return false;
+        dataUriEnd.lastIndex = dataIndex + 5;
+        const stop = dataUriEnd.exec(source);
+        const end = stop ? stop.index : source.length;
+        const over = end > hardLimit || (end === hardLimit && hardLimit === source.length);
+        if (hardLimit <= source.length && over) return false;
         dataIndex = lower.indexOf('data:', Math.max(end, dataIndex + 5));
     }
 
@@ -531,7 +533,8 @@ export function validateRabbitMirrorMarkupLexicalBudget(value = '') {
         const closing = !!match[1]; const name = String(match[2] || '').toLowerCase(); const tail = String(match[3] || '');
         if (closing) depth = Math.max(0, depth - 1);
         else {
-            const attrMatches = tail.match(/\s+[a-z_:][-a-z0-9_:.]*(?:\s*=)?/gi);
+            // 只数属性本身，不把 style="…" 里以空格分开的每个词也当成属性（以前把属性数多算了三到五倍）。
+            const attrMatches = tail.match(/\s+[a-z_:][-a-z0-9_:.]*(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))?/gi);
             attributes += attrMatches?.length || 0;
             if (attributes > RABBIT_MIRROR_MAX_TEMPLATE_ATTRIBUTES) return false;
             if (!voidTags.has(name) && !/\/\s*$/.test(tail)) {
@@ -2323,8 +2326,9 @@ export function compactTotoBlock(block) {
         .replace(/[ \t]+$/gm, '');
 
     // 3. 只删除标签之间的结构空白，尽量不碰属性文案。
+    // 只折叠含换行的标签间空白；<b>Alice</b> <i>said</i> 之间的单个空格要留着。
     html = html
-        .replace(/>\s+</g, '><')
+        .replace(/>[ \t]*\n\s*</g, '><')
         .replace(/\n(?=<)/g, '')
         .replace(/>\n/g, '>');
 
@@ -2353,7 +2357,8 @@ export function compactTotoBlock(block) {
 
     // 6. 还原 <style>。
     styleSlots.forEach((style, index) => {
-        html = html.replace(`%%RHT_STYLE_${index}%%`, style);
+        // 用函数回填：样式里的 $' $& 之类不能被当成替换模式。
+        html = html.replace(`%%RHT_STYLE_${index}%%`, () => style);
     });
 
     const result = html

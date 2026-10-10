@@ -1,19 +1,20 @@
 import { eventSource, event_types, setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
 import * as hostRuntime from '../../../../../script.js';
-import { MODULE_NAME, getSettings } from './settings.js?rmv=1.67.45';
-import { faceDrawNeedsExternal } from './faceDrawRules.js?rmv=1.67.45';
+import { MODULE_NAME, getSettings } from './settings.js?rmv=1.67.48';
+import { extension_settings } from '../../../../extensions.js';
+import { faceDrawNeedsExternal } from './faceDrawRules.js?rmv=1.67.48';
 import {
     buildFeedbackCatFinalCheck,
     buildFeedbackCatPrompt,
     clearFeedbackCatExtensionPrompt,
     getActiveFeedbackForCurrentChat,
     markFeedbackCatInjected,
-} from './feedbackCat.js?rmv=1.67.45';
-import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.67.45';
-import { getCurrentChatKey, markPendingBatchAttempt, releasePendingComboBatch } from './storage.js?rmv=1.67.45';
-import { describeExternalWorldBookPreflightFailure } from './externalWorldBook/errors.js?rmv=1.67.45';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.67.45';
-import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.45';
+} from './feedbackCat.js?rmv=1.67.48';
+import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.67.48';
+import { getCurrentChatKey, markPendingBatchAttempt, releasePendingComboBatch } from './storage.js?rmv=1.67.48';
+import { describeExternalWorldBookPreflightFailure } from './externalWorldBook/errors.js?rmv=1.67.48';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.67.48';
+import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.48';
 
 const INJECT_KEY = `${MODULE_NAME}:auto_injection`;
 
@@ -315,6 +316,9 @@ function cancelIndependentEarlyIntent(reason = 'host-operation-replaced') {
 }
 
 function recordIndependentEarlyToken(text) {
+    // 每个流式 token 都会进来一次；没开副 API 提前生成时先看一眼原始设置就返回，不做整份设置规范化。
+    const raw = extension_settings?.[MODULE_NAME];
+    if (raw && (raw.generationSource !== 'independent' || raw.independentEarlyBodyEnabled !== true) && !globalThis[INDEPENDENT_EARLY_PACKET_KEY]) return;
     const ctx = currentIndependentIntentContext();
     const settings = getSettings();
     if (!independentEarlyIntentEnabled(settings, ctx)) {
@@ -787,7 +791,7 @@ export function destroyIndependentGenerationIntentBridge({ clearIntents = false 
 
 function loadPromptBuilder() {
     if (!promptBuilderPromise) {
-        promptBuilderPromise = import('./promptBuilder.js?rmv=1.67.45').catch(error => {
+        promptBuilderPromise = import('./promptBuilder.js?rmv=1.67.48').catch(error => {
             promptBuilderPromise = null;
             throw error;
         });
@@ -797,7 +801,7 @@ function loadPromptBuilder() {
 
 function loadGenerationGuard() {
     if (!generationGuardPromise) {
-        generationGuardPromise = import('./generationGuard.js?rmv=1.67.45').catch(error => {
+        generationGuardPromise = import('./generationGuard.js?rmv=1.67.48').catch(error => {
             generationGuardPromise = null;
             throw error;
         });
@@ -992,7 +996,7 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
             assertMemoryOwner();
             let repository;
             if (externalEnabled) {
-                repository = await import('./externalWorldBook/store.js?rmv=1.67.45');
+                repository = await import('./externalWorldBook/store.js?rmv=1.67.48');
                 assertFollowPrefetchOwner(prefetchOwner, _chat);
                 externalStage = 'index';
                 await repository.hydrateExternalPoolMetadata();
@@ -1015,7 +1019,7 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
             }
             if (frozenPlan.appearanceReference.enabled) {
                 externalStage = 'appearance-read';
-                const appearance = await import('./appearanceReference.js?rmv=1.67.45');
+                const appearance = await import('./appearanceReference.js?rmv=1.67.48');
                 assertFollowPrefetchOwner(prefetchOwner, _chat); assertAppearanceOwner();
                 appearanceMaterial = await appearance.loadAppearanceReferenceMaterial(frozenPlan.appearanceReference.revision);
                 assertFollowPrefetchOwner(prefetchOwner, _chat); assertAppearanceOwner();
@@ -1036,7 +1040,14 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
             promptDetails = buildRabbitMirrorPromptDetails(settings, type, null, generationScopeKey, generationContext);
         }
     } catch (error) {
-        if (!materialEnabled && !avatarAwaited) throw error;
+        if (!materialEnabled && !avatarAwaited) {
+            // 抽签或出题失败时，上一轮装进去的提示词必须先撤掉，否则宿主照常发请求，把上一轮的题重复注入。
+            if (!prefetchOwner || prefetchOwner.sequence === generationInvocationSequence) {
+                clearRabbitMirrorPrompt('selection-failed', type);
+                globalThis.toastr?.warning?.(`${String(error?.message || error)} 本轮未注入兔子镜。`);
+            }
+            throw error;
+        }
         if (frozenPlan?.batchPlan) releasePendingComboBatch({ batchId: frozenPlan.batchPlan.batchId, identity: frozenPlan.batchPlan.identity });
         // A stale completion must not erase a newer interceptor's installed prompt.
         if (!prefetchOwner || prefetchOwner.sequence === generationInvocationSequence) {

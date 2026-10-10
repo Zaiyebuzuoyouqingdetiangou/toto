@@ -1,9 +1,9 @@
 // Split from outputSanitizer.js — scriptedInteractionRescue.
 
-import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.67.45';
-import { nativePopoverFallbackCount } from './nativePopoverFallback.js?rmv=1.67.45';
-import { getSettings } from '../settings.js?rmv=1.67.45';
-import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue } from '../bannedWords.js?rmv=1.67.45';
+import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.67.48';
+import { nativePopoverFallbackCount } from './nativePopoverFallback.js?rmv=1.67.48';
+import { getSettings } from '../settings.js?rmv=1.67.48';
+import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue } from '../bannedWords.js?rmv=1.67.48';
 import {
     FEEDBACK_CAT_ATTR,
     MAINTENANCE_RABBIT_ATTR,
@@ -20,7 +20,7 @@ import {
     getRabbitMirrorLocalStyleElements,
     getRenderedRabbitMirrorInteractionRoots,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.67.45';
+} from './runtime.js?rmv=1.67.48';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     DETACHED_CHECKED_HAS_RULE_COUNT_ATTR,
@@ -57,7 +57,7 @@ import {
     reversibleStyleBaselineStates,
     reversibleTextBaselineStates,
     syncCrossParentCheckedRuleFallback,
-} from './checkedStateRescue.js?rmv=1.67.45';
+} from './checkedStateRescue.js?rmv=1.67.48';
 import {
     EXISTING_INTERACTIVE_SELECTOR,
     PSEUDO_INTERACTION_HINT_RE,
@@ -79,8 +79,8 @@ import {
     resolveCheckedRelativeElementExpression,
     resolveScopedPseudoId,
     sanitizeRecoveredInteractionStyleAssignments,
-} from './renderedStateRescue.js?rmv=1.67.45';
-import { cancelLabeledCheckedTransitionVerification, setRescuedCheckedState } from './fallbackRescue.js?rmv=1.67.45';
+} from './renderedStateRescue.js?rmv=1.67.48';
+import { cancelLabeledCheckedTransitionVerification, setRescuedCheckedState } from './fallbackRescue.js?rmv=1.67.48';
 import {
     DISABLED_ONLY_CHOICE_RESCUE_ATTR,
     FILL_IN_CHOICE_COUNT_ATTR,
@@ -91,7 +91,7 @@ import {
     SELECTION_ONLY_FALLBACK_ATTR,
     STATIC_CHOICE_SELECTION_COUNT_ATTR,
     STRUCTURED_STATIC_DISCLOSURE_COUNT_ATTR,
-} from './diagnostics.js?rmv=1.67.45';
+} from './diagnostics.js?rmv=1.67.48';
 import {
     checkedDeclarationCreatesContentReveal,
     getRenderedMessageElement,
@@ -99,14 +99,15 @@ import {
     isIndependentMaintenanceRoot,
     maintenanceMessageSourceCandidates,
     normalizeMaintenanceSummaryText,
-} from './maintenanceInspect.js?rmv=1.67.45';
+} from './maintenanceInspect.js?rmv=1.67.48';
 import {
     decodeHtmlEntities,
     normalizeMirrorAttribute,
     rescueDamagedDataUriRabbitMirrorOutput,
     validateRabbitMirrorMarkupLexicalBudget,
-} from './markup.js?rmv=1.67.45';
-import { getMessageIndexFromMirrorNode, hostScriptModule, messageUsesDistinctDisplaySource } from './lifecycle.js?rmv=1.67.45';
+    RABBIT_MIRROR_MAX_TEMPLATE_SOURCE_CHARS,
+} from './markup.js?rmv=1.67.48';
+import { getMessageIndexFromMirrorNode, hostScriptModule, messageUsesDistinctDisplaySource } from './lifecycle.js?rmv=1.67.48';
 
 export const RAW_RADIO_RESET_RESCUE_ATTR = 'data-rabbit-mirror-radio-reset-rescue';
 
@@ -735,10 +736,24 @@ export function getRawAssistantMessageForRenderedRoot(root) {
 }
 
 
+// 同一条原始消息在一次打开里会被十来个修复器各解析一遍（同一个字符串）。这里记住最近几条的解析结果；
+// 消息被编辑或换 swipe 后字符串不同，自然不命中。所有调用方只读这些节点，不改。
+const RAW_ROOT_CACHE_MAX = 4;
+const rawRootCache = new Map();
 function collectRawRabbitMirrorRoots(rawHtml) {
     if (!rawHtml || typeof document === 'undefined') return [];
+    const cached = rawRootCache.get(rawHtml);
+    if (cached) { rawRootCache.delete(rawHtml); rawRootCache.set(rawHtml, cached); return cached; }
+    const roots = collectRawRabbitMirrorRootsUncached(rawHtml);
+    rawRootCache.set(rawHtml, roots);
+    if (rawRootCache.size > RAW_ROOT_CACHE_MAX) rawRootCache.delete(rawRootCache.keys().next().value);
+    return roots;
+}
+
+function collectRawRabbitMirrorRootsUncached(rawHtml) {
     try {
-        if (!validateRabbitMirrorMarkupLexicalBudget(rawHtml)) return [];
+        // 解码前的字符串不会被解析，只做长度门槛；解码后的那份才做完整的词法预算检查。
+        if (String(rawHtml).length > RABBIT_MIRROR_MAX_TEMPLATE_SOURCE_CHARS) return [];
         // 原始消息可能含会截断 inline style 的未编码 SVG Data URI。
         // 先在字符串层移除损坏的背景声明，再交给 template 解析；否则后续安全事件回读也会失去真实 DOM 路径。
         const prepared = rescueDamagedDataUriRabbitMirrorOutput(

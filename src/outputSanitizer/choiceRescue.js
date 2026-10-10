@@ -1,7 +1,7 @@
 // Split from outputSanitizer.js — choiceRescue.
-import { RAW_SCRIPT_TIMELINE_RESCUE_ATTR } from './checkedStateRescue.js?rmv=1.67.45';
+import { RAW_SCRIPT_TIMELINE_RESCUE_ATTR } from './checkedStateRescue.js?rmv=1.67.48';
 
-import { hasBehaviorInteractionControl, isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.67.45';
+import { hasBehaviorInteractionControl, isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.67.48';
 
 import {
     FEEDBACK_CAT_ATTR,
@@ -9,7 +9,7 @@ import {
     RECIPE_BUTTON_ATTR,
     TOOL_ENTRY_HOST_ATTR,
     escapeCssIdentifier,
-} from './runtime.js?rmv=1.67.45';
+} from './runtime.js?rmv=1.67.48';
 import {
     DETACHED_CHECKED_HAS_CONTROL_ATTR,
     DIRECT_ID_CLASS_STATE_RESCUE_ATTR,
@@ -17,7 +17,7 @@ import {
     HINTED_PSEUDO_RESCUE_ATTR,
     INLINE_PSEUDO_RESCUE_ATTR,
     interactionCapabilityStates,
-} from './checkedStateRescue.js?rmv=1.67.45';
+} from './checkedStateRescue.js?rmv=1.67.48';
 import {
     RENDERED_BUTTON_ADJACENT_HIDDEN_RESCUE_ATTR,
     RENDERED_CLICKABLE_ADJACENT_HIDDEN_RESCUE_ATTR,
@@ -27,13 +27,13 @@ import {
     findRenderedClickableAdjacentHiddenTarget,
     findRenderedClickableAdjacentPopupTarget,
     getClassTokens,
-} from './renderedStateRescue.js?rmv=1.67.45';
+} from './renderedStateRescue.js?rmv=1.67.48';
 import {
     RAW_SELF_MUTATION_RESCUE_ATTR,
     detectInteractionCapabilities,
     filterRabbitMirrorRuntimeText,
     isRabbitMirrorRuntimeTextTarget,
-} from './scriptedInteractionRescue.js?rmv=1.67.45';
+} from './scriptedInteractionRescue.js?rmv=1.67.48';
 import {
     DISABLED_ONLY_CHOICE_CONTROL_ATTR,
     DISABLED_ONLY_CHOICE_RESCUE_ATTR,
@@ -73,8 +73,8 @@ import {
     fillInChoiceRescueStates,
     staticChoiceSelectionRescueStates,
     structuredStaticDisclosureRescueStates,
-} from './diagnostics.js?rmv=1.67.45';
-import { maintenanceCheckedInteractionDepth } from './maintenanceInspect.js?rmv=1.67.45';
+} from './diagnostics.js?rmv=1.67.48';
+import { maintenanceCheckedInteractionDepth } from './maintenanceInspect.js?rmv=1.67.48';
 
 const STATIC_CHOICE_TITLE_RE = /^(?:选项|选择|方案|路线|分支|抉择|结局|行动|choice|option|route|path)\s*(?:[A-Z0-9一二三四五六七八九十]+)?\s*[:：·\-—]/i;
 

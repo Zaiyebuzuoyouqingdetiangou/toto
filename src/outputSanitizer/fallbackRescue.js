@@ -1,7 +1,7 @@
 // Split from outputSanitizer.js — fallbackRescue.
-import { RADIO_BRANCH_CONTROL_ATTR, installRadioBranchRepair, applyRadioBranchState, applyRadioProxyState, radioBranchVerificationTargets } from './radioBranchRepair.js?rmv=1.67.45';
+import { RADIO_BRANCH_CONTROL_ATTR, installRadioBranchRepair, applyRadioBranchState, applyRadioProxyState, radioBranchVerificationTargets } from './radioBranchRepair.js?rmv=1.67.48';
 
-import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.67.45';
+import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.67.48';
 
 import {
     FEEDBACK_CAT_ATTR,
@@ -9,7 +9,7 @@ import {
     TOOL_ENTRY_HOST_ATTR,
     escapeRegExp,
     getRabbitMirrorLocalStyleElements,
-} from './runtime.js?rmv=1.67.45';
+} from './runtime.js?rmv=1.67.48';
 import {
     CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR,
     CROSS_PARENT_CHECKED_VERIFIED_ATTR,
@@ -63,6 +63,7 @@ import {
     applyCheckedRuleInlineFallback,
     applyCheckedRuleTextFallback,
     clearPersistedCheckedInlineArtifacts,
+    CHECKED_TEXT_RULE_RESCUE_ATTR,
     clearUncheckedRadioCheckedInlineArtifacts,
     crossParentCheckedCandidateFingerprint,
     crossParentCheckedCandidateVerified,
@@ -92,7 +93,7 @@ import {
     webKit3DFlipInlineStates,
     webKit3DFlipRescueStates,
     webKit3DFlipStyleStates,
-} from './checkedStateRescue.js?rmv=1.67.45';
+} from './checkedStateRescue.js?rmv=1.67.48';
 import {
     EXISTING_INTERACTIVE_SELECTOR,
     RENDERED_BUTTON_ADJACENT_HIDDEN_RESCUE_ATTR,
@@ -119,7 +120,7 @@ import {
     isCollapsedDimensionValue,
     normalizeStylePropertyName,
     parseCssStateSiblingAssignments,
-} from './renderedStateRescue.js?rmv=1.67.45';
+} from './renderedStateRescue.js?rmv=1.67.48';
 import {
     chooseMatchingRawRabbitMirrorRoot,
     detectInteractionCapabilities,
@@ -135,7 +136,7 @@ import {
     installRawMessageSelfMutationRescue,
     preparePseudoTrigger,
     shouldIgnorePseudoToggleEvent,
-} from './scriptedInteractionRescue.js?rmv=1.67.45';
+} from './scriptedInteractionRescue.js?rmv=1.67.48';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     FILL_IN_CHOICE_BLANK_ATTR,
@@ -147,15 +148,15 @@ import {
     diagnosticFindClippingAncestor,
     maintenanceSafeComputedStyle,
     mobileInlineAnnotationRescueStates,
-} from './diagnostics.js?rmv=1.67.45';
-import { installStaticChoiceSelectionFallback } from './choiceRescue.js?rmv=1.67.45';
+} from './diagnostics.js?rmv=1.67.48';
+import { installStaticChoiceSelectionFallback } from './choiceRescue.js?rmv=1.67.48';
 import {
     checkedDeclarationCreatesContentReveal,
     checkedTargetCarriesResultContent,
     pseudoStateTargetSelector,
-} from './maintenanceInspect.js?rmv=1.67.45';
-import { splitCssSelectorList } from './markup.js?rmv=1.67.45';
-import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutResolveCheckedTargets } from './layoutRescue.js?rmv=1.67.45';
+} from './maintenanceInspect.js?rmv=1.67.48';
+import { splitCssSelectorList } from './markup.js?rmv=1.67.48';
+import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutResolveCheckedTargets } from './layoutRescue.js?rmv=1.67.48';
 
 const NESTED_DETAILS_FALLBACK_HANDLER_PROP = '__rabbitMirrorNestedDetailsFallbackHandler';
 
@@ -1616,13 +1617,29 @@ function detachUnlabeledCheckedHostEntry(state) {
 }
 
 
+// 没有 name 的一排 radio：浏览器里各自成组，模型写成标签页时却是想要“只选一个”。
+// 只把和它同一排的那几个当成一组（同一个父容器；radio 包在 label 里时看 label 的父容器），整面其他 radio 不动。
+function namelessRadioHost(input) {
+    const label = input?.closest?.('label');
+    return (label ? label.parentElement : input?.parentElement) || null;
+}
+
+function sameRadioGroup(item, input) {
+    if (item === input) return true;
+    const name = String(input?.name || '');
+    if (name) return String(item?.name || '') === name;
+    if (String(item?.name || '')) return false;
+    const host = namelessRadioHost(input);
+    return !!host && namelessRadioHost(item) === host;
+}
+
 export function setRescuedCheckedState(root, input, nextChecked) {
     if (!input || input.disabled) return false;
     const previous = !!input.checked;
     if (input.type === 'radio') {
         const radioName = String(input.name || '');
         const group = [...root.querySelectorAll('input[type="radio"]')]
-            .filter(item => !radioName || item.name === radioName);
+            .filter(item => sameRadioGroup(item, input));
         group.filter(item => item !== input).forEach(item => {
             item.checked = false;
             restoreInteractionInlineOverrides(item);
@@ -2577,7 +2594,7 @@ function scheduleLabeledCheckedTransitionVerification(root, input, verification,
                 const radioName = String(input.name || '');
                 const newerSelectionExists = [...root.querySelectorAll('input[type="radio"]')]
                     .some(item => item !== input
-                        && (!radioName || String(item.name || '') === radioName)
+                        && sameRadioGroup(item, input)
                         && item.checked);
                 // A later click selected another radio in the same group. This verification belongs
                 // to the older click and must never reclaim the group or re-apply its old panel.
@@ -2629,6 +2646,12 @@ function installLabeledCheckedVerificationFallback(root) {
         // reveal styles saved by an older runtime. At this point verification ownership has
         // been marked on controls/targets, so it is safe to remove those exact stale branches.
         clearUncheckedRadioCheckedInlineArtifacts(root);
+        // 收藏、版本记录保存的是带内联样式的 HTML，但不保存 checked：重新挂载时勾选框是关的、
+        // 展开样式却还在，第一次点击会把这份“已展开”当成原状记下来，面板就再也关不上。未勾选的
+        // checkbox 上这类维修写入的 !important 残留，这里一并清掉。
+        const staleCheckboxes = [...root.querySelectorAll('input[type="checkbox"]')]
+            .filter(input => !input.checked && (input.hasAttribute(CHECKED_TEXT_RULE_RESCUE_ATTR) || input.hasAttribute(LABELED_CHECKED_VERIFY_CONTROL_ATTR)));
+        if (staleCheckboxes.length) clearPersistedCheckedInlineArtifacts(root, staleCheckboxes);
     } else {
         root.removeAttribute(LABELED_CHECKED_VERIFY_ROOT_ATTR);
         root.removeAttribute(LABELED_CHECKED_VERIFY_LAST_ATTR);
@@ -2681,7 +2704,7 @@ function sanitizeMaintenanceProbeClone(clone) {
 }
 
 
-function createMaintenanceLabeledCheckedProbeSandbox(root) {
+export function createMaintenanceLabeledCheckedProbeSandbox(root) {
     if (!root?.cloneNode || typeof document === 'undefined' || !document.body) return null;
     const shell = root.closest?.('toto') || root;
     const rootPath = maintenanceProbeElementPath(shell, root);
@@ -2719,7 +2742,7 @@ function applyMaintenanceSandboxCheckedState(root, input, nextChecked) {
     if (input.type === 'radio') {
         const radioName = String(input.name || '');
         [...root.querySelectorAll('input[type="radio"]')]
-            .filter(item => item !== input && (!radioName || item.name === radioName))
+            .filter(item => item !== input && sameRadioGroup(item, input))
             .forEach(item => { item.checked = false; });
         input.checked = true;
     } else {
@@ -3063,15 +3086,17 @@ function installInteractionLabelFallback(toto) {
         if (input.hasAttribute(PAIRED_CHECKED_STATE_CONTROL_ATTR)) return;
 
         // 浏览器/主题层有时不会可靠触发隐藏 input；只在当前兔子镜内手动完成一次。
-        event.preventDefault();
-        const previous = !!input.checked;
+        // 直接点在看得见的 input 自己身上时，浏览器在派发 click 之前已经把 checked 翻过来了；
+        // 这时不能再 preventDefault（会被浏览器翻回去），“点击前的状态”也要按翻转前来算。
+        const directInput = event.target === input || input.contains?.(event.target);
+        if (!directInput) event.preventDefault();
+        const previous = directInput ? !input.checked : !!input.checked;
         const intendedChecked = input.type === 'radio' ? true : !previous;
         if (input.type === 'radio') {
             // 将同组切换作为一个原子操作：取消所有旧点击的延迟验证，撤回旧分支，
             // 再只启用当前分支。否则旧 radio 的 +240ms 验证可能把自己重新勾上。
-            const radioName = String(input.name || '');
-            const group = [...toto.querySelectorAll('input[type="radio"]')]
-                .filter(item => !radioName || String(item.name || '') === radioName);
+            // 没有 name 的 radio 只和同一排的算一组，不能把整面所有 radio 都当成同组取消掉。
+            const group = [...toto.querySelectorAll('input[type="radio"]')].filter(item => sameRadioGroup(item, input));
             for (const item of group) {
                 cancelLabeledCheckedTransitionVerification(item);
                 if (item !== input) item.checked = false;
@@ -3080,7 +3105,8 @@ function installInteractionLabelFallback(toto) {
             }
             clearUncheckedRadioCheckedInlineArtifacts(toto, group.filter(item => item !== input));
             input.checked = true;
-        } else {
+        } else if (!directInput) {
+            // 直接点在勾选框上时浏览器已经翻好了，这里再翻一次就会翻回去。
             input.checked = !input.checked;
         }
         const actionIntent = {};
@@ -3096,7 +3122,8 @@ function installInteractionLabelFallback(toto) {
         // 不只依赖后续冒泡 change；部分 WebView 会延迟或吞掉合成事件。
         applyRenderedLabelInternalHiddenEntries(toto);
 
-        if (previous !== input.checked) {
+        // 直接点在 input 上时浏览器自己会发 input/change，不再重复发。
+        if (previous !== input.checked && !directInput) {
             input.dispatchEvent(new Event('input', { bubbles: true }));
             input.dispatchEvent(new Event('change', { bubbles: true }));
         }
@@ -3114,12 +3141,12 @@ function installInteractionLabelFallback(toto) {
             if (labelStateIntents.get(input) !== actionIntent || !toto.isConnected || !toto.contains(input)
                 || !input.isConnected || input.checked === intendedChecked) return;
             if (input.type === 'radio'
-                && [...toto.querySelectorAll('input[type="radio"]')].some(other => other !== input && other.name === input.name && other.checked)) return;
+                && [...toto.querySelectorAll('input[type="radio"]')].some(other => other !== input && sameRadioGroup(other, input) && other.checked)) return;
             if (input.type === 'radio') {
                 const radioName = String(input.name || '');
                 const group = [];
                 for (const item of toto.querySelectorAll('input[type="radio"]')) {
-                    if (radioName && String(item.name || '') !== radioName) continue;
+                    if (!sameRadioGroup(item, input)) continue;
                     group.push(item);
                     if (item === input) continue;
                     cancelLabeledCheckedTransitionVerification(item);

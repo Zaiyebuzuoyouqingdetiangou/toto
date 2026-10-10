@@ -1,26 +1,26 @@
-import { paletteRecipeFor } from '../paletteRecipes.js?rmv=1.67.45';
-import { recordInteractionMethods } from '../interactionMethodLedger.js?rmv=1.67.45';
-import { roleColorFaces, setRoleColorVariant, inspectRoleColorReadability } from '../roleColorVariants.js?rmv=1.67.45';
-import { interactionRecipesFor } from '../interactionRecipes.js?rmv=1.67.45';
+import { paletteRecipeFor } from '../paletteRecipes.js?rmv=1.67.48';
+import { recordInteractionMethods } from '../interactionMethodLedger.js?rmv=1.67.48';
+import { roleColorFaces, setRoleColorVariant, inspectRoleColorReadability } from '../roleColorVariants.js?rmv=1.67.48';
+import { interactionRecipesFor } from '../interactionRecipes.js?rmv=1.67.48';
 // Split from outputSanitizer.js — toolsChrome.
-import { trackMirrorAnimations, pruneMirrorAnimationVisibility } from '../animationVisibility.js?rmv=1.67.45';
+import { trackMirrorAnimations, pruneMirrorAnimationVisibility } from '../animationVisibility.js?rmv=1.67.48';
 
-import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.67.45';
-import { installMirrorUpdateMenuHook } from '../mirrorUpdateMenu.js?rmv=1.67.45';
-import { placeFacePager, facePagerDetails, removeFacePager, cleanupFacePagers } from '../facePagerPlacement.js?rmv=1.67.45';
-import { isTextPresentation } from '../presentationMode.js?rmv=1.67.45';
-import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.67.45';
-import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=1.67.45';
-import { getCurrentChatKey } from '../storage.js?rmv=1.67.45';
-import { getSanitizedRabbitMirrorFaceProof } from '../multifaceProof.js?rmv=1.67.45';
-import { bindRabbitMirrorAvatarRoot } from '../chatAvatars.js?rmv=1.67.45';
+import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.67.48';
+import { installMirrorUpdateMenuHook } from '../mirrorUpdateMenu.js?rmv=1.67.48';
+import { placeFacePager, facePagerDetails, removeFacePager, cleanupFacePagers } from '../facePagerPlacement.js?rmv=1.67.48';
+import { isTextPresentation } from '../presentationMode.js?rmv=1.67.48';
+import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.67.48';
+import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=1.67.48';
+import { getCurrentChatKey } from '../storage.js?rmv=1.67.48';
+import { getSanitizedRabbitMirrorFaceProof } from '../multifaceProof.js?rmv=1.67.48';
+import { bindRabbitMirrorAvatarRoot } from '../chatAvatars.js?rmv=1.67.48';
 import {
     captureTheaterFavoriteFromRoot,
     openTheaterFavoriteLibrary,
     toggleTheaterFavorite,
     isTheaterFavoriteHtml,
-} from '../theaterFavorites.js?rmv=1.67.45';
-import { FACE_SWIPE_FULL_MESSAGE, faceSwipeBarIntent, fallbackFaceSwipeView, multifaceFacePagerView } from '../swipeVersions.js?rmv=1.67.45';
+} from '../theaterFavorites.js?rmv=1.67.48';
+import { FACE_SWIPE_FULL_MESSAGE, faceSwipeBarIntent, fallbackFaceSwipeView, multifaceFacePagerView } from '../swipeVersions.js?rmv=1.67.48';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -29,8 +29,8 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from '../feedbackCat.js?rmv=1.67.45';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.67.45';
+} from '../feedbackCat.js?rmv=1.67.48';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.67.48';
 import {
     FAVORITE_MULTIPLIER_MAX,
     FAVORITE_MULTIPLIER_MIN,
@@ -52,7 +52,7 @@ import {
     setFavoriteMultiplier,
     toggleBlacklistItem,
     toggleFavoriteItem,
-} from '../blacklist.js?rmv=1.67.45';
+} from '../blacklist.js?rmv=1.67.48';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -76,10 +76,11 @@ import {
     isInsideChatMessage,
     isMaintenanceRabbitEnabled,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.67.45';
-import { getAvailableHostChat } from './scriptedInteractionRescue.js?rmv=1.67.45';
-import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.67.45';
-import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=1.67.45';
+} from './runtime.js?rmv=1.67.48';
+import { getAvailableHostChat } from './scriptedInteractionRescue.js?rmv=1.67.48';
+import { ORPHAN_STATE_ATTR, attachOrphanStateToggle, isOrphanStateWired, rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.67.48';
+import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.67.48';
+import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=1.67.48';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     FEEDBACK_HISTORY_EVENT,
@@ -100,8 +101,8 @@ import {
     rabbitMirrorLanguageBalance,
     scheduleCurrentHighConfidenceTextRepair,
     setMaintenanceRabbitState,
-} from './diagnostics.js?rmv=1.67.45';
-import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=1.67.45';
+} from './diagnostics.js?rmv=1.67.48';
+import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=1.67.48';
 import {
     MAINTENANCE_FINDING_STAGE_LABELS,
     beginMaintenanceRepairRun,
@@ -119,19 +120,19 @@ import {
     runMaintenanceRevealClipRepair,
     runMaintenanceUserRepair,
     triggerDiagnosticForMaintenanceRoot,
-} from './maintenanceInspect.js?rmv=1.67.45';
+} from './maintenanceInspect.js?rmv=1.67.48';
 import {
     getRabbitMirrorFacePosition,
     installMaintenanceHorizontalClipOpenRescue,
     repairLegacyMaintenanceMobileStateRows,
-} from './layoutRescue.js?rmv=1.67.45';
+} from './layoutRescue.js?rmv=1.67.48';
 import {
     getMessageIndexFromMirrorNode,
     installMaintenanceAutoSafeOpenPatrol,
     installManagedRabbitMirrorTools,
     pruneMaintenanceAutoSafeOpenBindings,
     scheduleMaintenanceAutoSafeForRoot,
-} from './lifecycle.js?rmv=1.67.45';
+} from './lifecycle.js?rmv=1.67.48';
 
 installMirrorUpdateMenuHook();
 
@@ -671,7 +672,7 @@ function rabbitMirrorExternalGenerationNotice(root, kind = 'maintenance') {
 const RESAY_CHOOSER_ATTR = 'data-rm-resay-chooser';
 
 const RESAY_PICK_MAX = Object.freeze({ theme: 3, format: 2 });
-const EXTERNAL_STORE_MODULE = '../externalWorldBook/store.js?rmv=1.67.45';
+const EXTERNAL_STORE_MODULE = '../externalWorldBook/store.js?rmv=1.67.48';
 
 // 纯点菜里的题库点选。默认只显示已选项；点「浏览」才展开列表。
 // 来源可切换：内置题库（按大组浏览 / 搜索）或已导入并启用的母本库。
@@ -2392,7 +2393,7 @@ function beginHostWorkTiming(name){
 }
 
 function loadMirrorImageModule() {
-    if (!mirrorImageModule) mirrorImageModule = import('../imageUi.js?rmv=1.67.45').catch(error => { mirrorImageModule = null; throw error; });
+    if (!mirrorImageModule) mirrorImageModule = import('../imageUi.js?rmv=1.67.48').catch(error => { mirrorImageModule = null; throw error; });
     return mirrorImageModule;
 }
 
@@ -2449,10 +2450,10 @@ function runFavoriteStarToggle(star, fallbackRoot, event) {
     star.dataset.rmFavoriteBusy = 'true';
     star.dataset.rmFavoriteHydrate = String((Number(star.dataset.rmFavoriteHydrate) || 0) + 1);
     paintFavoriteStar(star, next);
-    void toggleTheaterFavorite(captured).then(result => {
+    void toggleTheaterFavorite(captured, next ? 'add' : 'remove').then(result => {
         if (star.dataset.rmFavoriteSeq !== seq) return;
         paintFavoriteStar(star, result.favorited);
-        globalThis.toastr?.success?.(result.favorited ? '已收入兔子镜收藏夹。' : '已取消收藏。');
+        globalThis.toastr?.success?.(result.already ? '这一面已经在收藏夹里了，没有重复收藏。' : result.favorited ? '已收入兔子镜收藏夹。' : '已取消收藏。');
     }).catch(error => {
         if (star.dataset.rmFavoriteSeq !== seq) return;
         paintFavoriteStar(star, !next);
@@ -2722,7 +2723,7 @@ function installUnifiedMirrorTools(root) {
     actions.push({ id: 'resay', label: '↻ 重说', run: (_event, opener) => openRabbitMirrorResayChooser(root, opener) });
     if (mirrorFaceCanContinue(root)) {
         actions.push({ id: 'continue', label: '✎ 续写', run: () => {
-            void import('../independentApi/mount.js?rmv=1.67.45').then(module => module.continueIndependentLongText(root))
+            void import('../independentApi/mount.js?rmv=1.67.48').then(module => module.continueIndependentLongText(root))
                 .catch(() => globalThis.toastr?.error?.('续写没有写上，原来的正文还在。'));
         } });
     }
@@ -2745,7 +2746,7 @@ function installUnifiedMirrorTools(root) {
             .catch(() => globalThis.toastr?.warning?.('生图面板未能打开，请重新打开后再试。'));
     } });
     actions.push({ id: 'theater-favorite-library', label: '📖 打开收藏夹', run: () => {
-        void import('../independentApi.js?rmv=1.67.45').then(module =>
+        void import('../independentApi.js?rmv=1.67.48').then(module =>
             openTheaterFavoriteLibrary((container, record) => module.hydrateIndependentFavoriteHtml(container, record)))
             .catch(error => globalThis.toastr?.warning?.(String(error?.message || '无法打开收藏夹。')));
     } });
@@ -2760,7 +2761,7 @@ function installUnifiedMirrorTools(root) {
     if (root.querySelector?.('[data-rm-draw-frame]')) {
         // 开着内置生图：补画缺的图；关着：只把本机已存的图放回去，不请求生图。
         const drawNew = getSettings().builtinImageEnabled === true;
-        void import('../builtinImage.js?rmv=1.67.45').then(module => {
+        void import('../builtinImage.js?rmv=1.67.48').then(module => {
             if (!root.isConnected) return;
             if (drawNew) module.fillBuiltinImageFrames(root);
             else module.restoreSavedBuiltinImages(root);
@@ -2977,8 +2978,6 @@ export function refreshRecipeButtons() {
 // 只有状态类、没有触发器：CSS 写了 .主体.状态 { … }，页面上却没有任何东西会加上这个状态类
 // （模型按网页习惯写了“点击加类名”，脚本又被去掉）。这里只把开关接上：点主体切换该类。
 // 翻面后的样子与内容都是模型自己写的，不补写任何内容；已有触发器或已带该类的不动。
-const ORPHAN_STATE_ATTR = 'data-rm-orphan-state-wired';
-const ORPHAN_STATE_WIRED = new WeakSet();
 const ORPHAN_STATE_NAME = /(?:^|-)(?:flipped|flip|active|open|opened|show|shown|reveal|revealed|lit|playing|expanded|turned|toggled|selected|on)$/i;
 
 function orphanStatePairs(root) {
@@ -3001,7 +3000,7 @@ function orphanStatePairs(root) {
 
 function wireOrphanStateClasses(root) {
     if (!root?.querySelectorAll || root.querySelector?.('input[type="checkbox"], input[type="radio"]')) return 0;
-    let wired = 0;
+    let wired = rearmOrphanStateWiring(root);
     for (const [base, states] of orphanStatePairs(root)) {
         let targets;
         try { targets = [...root.querySelectorAll('.' + base.split('.').map(name => CSS.escape(name)).join('.'))]; } catch { continue; }
@@ -3012,20 +3011,8 @@ function wireOrphanStateClasses(root) {
             try { present = [...root.querySelectorAll('.' + CSS.escape(state))].some(node => node.getAttribute(ORPHAN_STATE_ATTR) !== state); } catch { present = true; }
             if (present) continue;
             for (const target of targets) {
-                if (target.closest?.(`[${TOOL_ENTRY_HOST_ATTR}]`) || ORPHAN_STATE_WIRED.has(target)) continue;
-                ORPHAN_STATE_WIRED.add(target);
-                target.setAttribute(ORPHAN_STATE_ATTR, state);
-                target.setAttribute('role', 'button');
-                target.setAttribute('tabindex', '0');
-                target.style.cursor = 'pointer';
-                const toggle = event => {
-                    if (event.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ') return;
-                    event.preventDefault?.();
-                    target.classList.toggle(state);
-                };
-                target.addEventListener('click', toggle);
-                target.addEventListener('keydown', toggle);
-                wired += 1;
+                if (target.closest?.(`[${TOOL_ENTRY_HOST_ATTR}]`) || isOrphanStateWired(target)) continue;
+                if (attachOrphanStateToggle(target, state)) wired += 1;
             }
         }
     }
@@ -3177,7 +3164,16 @@ function hideSecondStateByDefault(root) {
     const css = [...details.querySelectorAll('style')].filter(style => !style.hasAttribute('data-rm-second-state-default'))
         .map(style => style.textContent).join('\n');
     const rules = [];
-    for (const { selectors, body } of splitCssBlocks(css)) {
+    const blocks = splitCssBlocks(css);
+    // 模型自己用普通规则（不带 :checked）把某块设成显示的，说明它本来就该露着（比如列表／网格切换），不要藏。
+    const shownByDefault = new Set();
+    for (const { selectors, body } of blocks) {
+        if (/:checked/i.test(selectors) || !/display\s*:\s*(?!none)[a-z-]+/i.test(body)) continue;
+        for (const raw of selectors.split(',')) {
+            try { for (const node of details.querySelectorAll(raw.trim())) shownByDefault.add(node); } catch { /* 选择器不合法就跳过 */ }
+        }
+    }
+    for (const { selectors, body } of blocks) {
         if (!/display\s*:\s*(?!none)[a-z-]+/i.test(body) || /display\s*:\s*none/i.test(body)) continue;
         for (const raw of selectors.split(',')) {
             const match = raw.trim().match(/^(.*?)((?:input)?[.#\[][^\s:~+>]*?):checked\s*([~+])\s*(.+)$/);
@@ -3186,7 +3182,7 @@ function hideSecondStateByDefault(root) {
             let control, targets;
             try { control = details.querySelector(controlSel); targets = [...details.querySelectorAll(rest)]; } catch { continue; }
             if (!control?.matches?.('input[type="checkbox"], input[type="radio"]') || control.checked || !targets.length) continue;
-            const visible = targets.filter(node => { try { return getComputedStyle(node).display !== 'none'; } catch { return false; } });
+            const visible = targets.filter(node => { try { return getComputedStyle(node).display !== 'none' && !shownByDefault.has(node); } catch { return false; } });
             if (!visible.length) continue;
             // 作用域属性写两次：压过模型自己写的默认显示规则，但仍弱于（或等同而排在前面的）勾选规则。
             const head = scope && /data-rabbit-mirror-css-scope/.test(prefix)

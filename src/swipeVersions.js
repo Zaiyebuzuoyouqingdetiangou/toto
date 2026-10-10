@@ -280,6 +280,9 @@ export function compactFaceSwipeStoreForQuota(limits = [40, 20, 10, 5, 1]) {
         for (const [index, [key, state]] of stacks.entries()) {
             if (index < limit || !backedUp(key, state)) next.faces[key] = compactSwipeState(state);
         }
+        // 只缩本机快照，内存里那份保持完整：被缩掉的都已经存进了 IndexedDB 版本存档，
+        // 内存里要是也换成缩过的，这一面再重说就会从 1/1 起栈，把存档里的旧版本覆盖掉。
+        // 之后的写入由 writeStore 自己按同样规则缩快照，不会一直报额度不足。
         if (writeLocalSnapshot(next)) return true;
     }
     return false;
@@ -469,11 +472,51 @@ export function saveFaceSwipeArchive(slot, record) {
         if (saved) {
             archiveSaved.set(base, row);
             for (const [index, state] of Object.entries(row.states)) durableStacks.set(faceSwipeKey(base, Number(index)), stackSignature(state));
+            try { pruneFaceSwipeArchive(archiveChatPrefix(base)); } catch {}
         }
         return { saved, row };
     });
     archiveWrites.set(base, { signature, promise });
     return promise;
+}
+
+// 版本存档按「聊天:楼层:swipe」一行一行放在 IndexedDB 里；聊天删掉、改名以后没有人来删这些行，只会越积越多。
+// 这里只在本机记下每个聊天最近一次写存档的时间；某次写成功后，顺手把「不是当前聊天、而且半年没写过
+// （或者超出最近 60 个聊天之外最旧的）」那些聊天的行整段删掉。一次范围删除，不读行内容；当前聊天永远不删。
+// 聊天文件里每面镜子本来就带着自己的版本，这里删的只是本机的一份副本。
+const ARCHIVE_TOUCH_KEY = 'rabbit_mirror_resay_archive_touch_v1';
+const ARCHIVE_CHAT_TTL_MS = 180 * 24 * 3600 * 1000;
+const ARCHIVE_CHAT_LIMIT = 60;
+let archivePrunedAt = 0;
+function archiveChatPrefix(base) { const match = /^(.*):\d+:\d+$/.exec(String(base || '')); return match ? match[1] : ''; }
+function readArchiveTouches() {
+    try { const value = JSON.parse(globalThis.localStorage?.getItem(ARCHIVE_TOUCH_KEY) || '{}'); return value && typeof value === 'object' && !Array.isArray(value) ? value : {}; } catch { return {}; }
+}
+function writeArchiveTouches(value) { try { globalThis.localStorage?.setItem(ARCHIVE_TOUCH_KEY, JSON.stringify(value)); } catch {} }
+function pruneFaceSwipeArchive(currentPrefix) {
+    if (!currentPrefix || !globalThis.indexedDB || typeof IDBKeyRange === 'undefined') return;
+    const now = Date.now();
+    const touches = readArchiveTouches();
+    touches[currentPrefix] = now;
+    writeArchiveTouches(touches);
+    if (now - archivePrunedAt < 60000) return;
+    const others = Object.entries(touches).filter(([prefix]) => prefix !== currentPrefix)
+        .sort((a, b) => Number(a[1] || 0) - Number(b[1] || 0));
+    const victims = others.filter(([, ts], i) => now - Number(ts || 0) > ARCHIVE_CHAT_TTL_MS || others.length - i > ARCHIVE_CHAT_LIMIT).map(([prefix]) => prefix);
+    if (!victims.length) return;
+    archivePrunedAt = now;
+    for (const prefix of victims) for (const cache of [archiveLoads, archiveSaved, archiveWrites]) {
+        for (const key of [...cache.keys()]) if (String(key).startsWith(`${prefix}:`)) cache.delete(key);
+    }
+    archiveRemapGate = archiveRemapGate.then(() => archiveTransaction('readwrite', (store, done) => {
+        for (const prefix of victims) store.delete(IDBKeyRange.bound(`${prefix}:`, `${prefix}:\uffff`));
+        done(true);
+    })).then(ok => {
+        if (ok !== true) return;
+        const next = readArchiveTouches();
+        for (const prefix of victims) delete next[prefix];
+        writeArchiveTouches(next);
+    }).catch(() => {});
 }
 
 // 楼层或 swipe 被删、楼层号前移时，把版本栈的楼层号一起改过来。

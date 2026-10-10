@@ -1,8 +1,8 @@
 import {
     buildFavoriteAtlas, deleteFavoriteAtlas, favoriteAtlasProgress, parseAtlasSlots,
     listFavoriteAtlases, saveFavoriteAtlas, setAtlasSelection,
-} from './favoriteAtlases.js?rmv=1.67.45';
-import { createFavoriteAtlasDraftGenerator } from './favoriteAtlasGeneration.js?rmv=1.67.45';
+} from './favoriteAtlases.js?rmv=1.67.48';
+import { createFavoriteAtlasDraftGenerator } from './favoriteAtlasGeneration.js?rmv=1.67.48';
 
 const STYLE = `
 [data-rm-favorite-atlases]{margin-top:16px;font-size:14px;line-height:1.6;min-width:0;max-width:100%;overflow-wrap:anywhere}
@@ -157,8 +157,10 @@ export function createFavoriteAtlasPanel({ favorites, openFavorite, displayTitle
         };
         let drafts = (previous?.slots || []).map(editableSlot);
         const failDraft = error => { localStatus.textContent = error?.code === 'ABORTED' ? '已停止生成，当前草稿已保留。' : `未完成：${error?.message || error}`; };
+        // 名称和别名都空的格子等于删掉；这里和保存时传的格子 id 要按同一份列表来，不然 id 会串行。
+        const liveDrafts = () => drafts.filter(slot => slot.label.trim() || (slot.originalAliases ?? slot.aliases.split(/[,，、;；|\r\n]+/).map(word => word.trim()).filter(Boolean)).length);
         function slotText() {
-            return drafts.map(slot => {
+            return liveDrafts().map(slot => {
                 if (/[|\r\n\0]/.test(slot.label)) throw new Error('格子名称请使用单行文字，不含竖线。');
                 // Saving an untouched field preserves aliases containing a comma.
                 // Separators apply only when the user actually edits that field.
@@ -272,7 +274,7 @@ export function createFavoriteAtlasPanel({ favorites, openFavorite, displayTitle
                 // An association may have been changed while this editor stayed
                 // open. Preserve its latest committed value when saving text.
                 const latest = previous ? atlases.find(item => item.id === previous.id) : null;
-                const atlas = buildFavoriteAtlas({ name: name.value, slotsText: slotText(), slotIds: drafts.map(slot => slot.id), previous: latest });
+                const atlas = buildFavoriteAtlas({ name: name.value, slotsText: slotText(), slotIds: liveDrafts().map(slot => slot.id), previous: latest });
                 void update(atlas, () => { session.cancel(); activeEditor = null; editor.replaceChildren(); });
             } catch (error) { failDraft(error); }
         });

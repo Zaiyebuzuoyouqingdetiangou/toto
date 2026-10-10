@@ -1,11 +1,11 @@
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.67.45';
-import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.67.45';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.67.48';
+import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.67.48';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.67.45';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.67.45';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.67.45';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.67.45';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.67.48';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.67.48';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.67.48';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.67.48';
 
 export const MODULE_NAME = 'rabbit_mirror_theater';
 
@@ -330,6 +330,10 @@ export function getSettings() {
     }
     // 旧版只有深色开关：开过深色的升级后是「深色」，其余是「普通」。必须在默认值回填之前判断。
     if (settings.visualToneMode === undefined) settings.visualToneMode = settings.darkVisualMode === true ? 'dark' : 'normal';
+    // 这几条旧版迁移也必须在默认值回填之前判断，放在后面永远不会触发。
+    if (settings.showCot === undefined && settings.showWonderland !== undefined) settings.showCot = !!settings.showWonderland;
+    if (settings.autoRabbitMirrorInjection === undefined) settings.autoRabbitMirrorInjection = settings.enabled !== false;
+    if (settings.maintenanceRabbitEnabled === undefined) settings.maintenanceRabbitEnabled = legacyRescueWasEnabled || defaultSettings.maintenanceRabbitEnabled;
     for (const [key, value] of Object.entries(defaultSettings)) {
         if (settings[key] === undefined) settings[key] = value;
     }
@@ -375,9 +379,6 @@ export function getSettings() {
     settings.independentReadCharacterCardSummary = settings.independentReadCharacterCardSummary !== false;
     settings.independentReadPersonaSummary = settings.independentReadPersonaSummary !== false;
 
-    if (settings.showCot === undefined && settings.showWonderland !== undefined) {
-        settings.showCot = !!settings.showWonderland;
-    }
     if (settings.showWonderland !== undefined) delete settings.showWonderland;
     if (settings.forceInteractiveMode !== undefined) delete settings.forceInteractiveMode;
     if (settings.uiAudit !== undefined) delete settings.uiAudit;
@@ -442,10 +443,6 @@ export function getSettings() {
     settings.imageCompositionMode = settings.imageCompositionMode === 'auto' ? 'auto' : 'scene';
     const faceCount = settings.rabbitMirrorFaceCount;
     settings.rabbitMirrorFaceCount = Number.isInteger(faceCount) && faceCount >= 2 && faceCount <= 5 ? faceCount : 1;
-    if (settings.autoRabbitMirrorInjection === undefined) settings.autoRabbitMirrorInjection = settings.enabled !== false;
-    if (settings.maintenanceRabbitEnabled === undefined) {
-        settings.maintenanceRabbitEnabled = legacyRescueWasEnabled || defaultSettings.maintenanceRabbitEnabled;
-    }
     settings.maintenanceRabbitEnabled = !!settings.maintenanceRabbitEnabled;
     settings.maintenanceRabbitAutoSafeConsent = settings.maintenanceRabbitAutoSafeConsent === true;
     settings.maintenanceRabbitAutoSafeEnabled = settings.maintenanceRabbitAutoSafeConsent === true

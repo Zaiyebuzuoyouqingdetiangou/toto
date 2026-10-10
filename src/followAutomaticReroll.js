@@ -1,14 +1,14 @@
-import { getSettings } from './settings.js?rmv=1.67.45';
-import { getCurrentChatKey } from './storage.js?rmv=1.67.45';
-import { getRabbitMirrorRecipe } from './blacklist.js?rmv=1.67.45';
-import { readFollowPartialResult, saveFollowCompletedRetryResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=1.67.45';
-import { markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.67.45';
-import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.67.45';
-import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.67.45';
-import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=1.67.45';
-import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.67.45';
-import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=1.67.45';
-import { presentationModeFields } from './presentationMode.js?rmv=1.67.45';
+import { getSettings } from './settings.js?rmv=1.67.48';
+import { getCurrentChatKey } from './storage.js?rmv=1.67.48';
+import { getRabbitMirrorRecipe } from './blacklist.js?rmv=1.67.48';
+import { readFollowPartialResult, saveFollowCompletedRetryResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=1.67.48';
+import { markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.67.48';
+import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.67.48';
+import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.67.48';
+import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=1.67.48';
+import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.67.48';
+import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=1.67.48';
+import { presentationModeFields } from './presentationMode.js?rmv=1.67.48';
 import {
     automaticRerollEnabled,
     automaticRerollStatusText,
@@ -18,10 +18,10 @@ import {
     isLocalPreflightFailure,
     shouldAutomaticReroll,
     stallTimeoutError,
-} from './automaticReroll.js?rmv=1.67.45';
-import { mergeMissingIndependentFaces, missingIndexesFromIndependentResult, recipesCoverMissing } from './missingFaceMerge.js?rmv=1.67.45';
-import { inspectRabbitMirrorGenerationSource, getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.67.45';
-import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.45';
+} from './automaticReroll.js?rmv=1.67.48';
+import { mergeMissingIndependentFaces, missingIndexesFromIndependentResult, recipesCoverMissing } from './missingFaceMerge.js?rmv=1.67.48';
+import { inspectRabbitMirrorGenerationSource, getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.67.48';
+import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.48';
 
 const inFlight = new Set();
 const consumeCounts = new Map();
@@ -35,7 +35,7 @@ function connectionIdentity(ctx) {
 
 function ownerKey(ctx, index) {
     const message = ctx?.chat?.[index];
-    return `${getCurrentChatKey(ctx?.chat || [])}\u0000${index}\u0000${Number.isInteger(message?.swipe_id) ? message.swipe_id : -1}\u0000${rabbitMirrorMultifaceSourceHash(message?.mes || '')}`;
+    return `${getCurrentChatKey(ctx?.chat || [])}\u0000${index}\u0000${Number.isInteger(message?.swipe_id) ? message.swipe_id : -1}\u0000${rabbitMirrorMessageSourceHash(message)}`;
 }
 
 function wrapFace(inner, index) {
@@ -118,7 +118,7 @@ async function requestFollowMissingFaces(ctx, index, missingIndexes, faces, deps
         if (rabbitMirrorAvatarPromptIdentity(current) !== avatarIdentity
             || current.chat !== ctx.chat || current.chat?.[index] !== message || getCurrentChatKey(current.chat) !== getCurrentChatKey(ctx.chat)
             || (Number.isInteger(message.swipe_id) ? message.swipe_id : -1) !== (Number.isInteger(current.chat?.[index]?.swipe_id) ? current.chat[index].swipe_id : -1)
-            || rabbitMirrorMultifaceSourceHash(current.chat?.[index]?.mes || '') !== rabbitMirrorMultifaceSourceHash(message.mes || '')
+            || rabbitMirrorMessageSourceHash(current.chat?.[index]) !== rabbitMirrorMessageSourceHash(message)
             || getSettings().generationSource !== 'follow' || getSettings().enabled === false || getSettings().autoRabbitMirrorInjection === false
             || connectionIdentity(current) !== connectionIdentity(ctx) || current.generateRaw !== generate) {
             const error = new Error('正文、连接或聊天已变化；本次不写入结果。');
@@ -144,12 +144,13 @@ async function requestFollowMissingFaces(ctx, index, missingIndexes, faces, deps
         await hydrateExternalPoolMetadata();
         assertCurrent();
     }
-    const plan = planRabbitMirrorPromptDetails(settings, 'independent', null, `follow-reroll:${index}:${missingIndexes.join(',')}`, generationContext);
+    // 作用域键要带聊天和这条消息的指纹，否则另一个聊天的同楼层会沿用缓存里的选题。
+    const plan = planRabbitMirrorPromptDetails(settings, 'independent', null, `follow-reroll:${getCurrentChatKey(ctx.chat)}:${rabbitMirrorMultifaceSourceHash(String(ctx.chat?.[index]?.mes || ''))}:${index}:${missingIndexes.join(',')}`, generationContext);
     let materials = null, appearanceMaterial = null, memoryMaterial, prompt;
     try {
         if (plan.selectedExternalIds.length) { materials = await getSelectedExternalEntries(plan.selectedExternalIds); assertCurrent(); }
         if (plan.appearanceReference.enabled) {
-            const appearance = await import('./appearanceReference.js?rmv=1.67.45');
+            const appearance = await import('./appearanceReference.js?rmv=1.67.48');
             assertCurrent();
             appearanceMaterial = await appearance.loadAppearanceReferenceMaterial(plan.appearanceReference.revision);
             assertCurrent();
@@ -212,10 +213,14 @@ function mountFollowRetryHtml(ctx, index, html, deps) {
     }
     const roots = el ? [...el.querySelectorAll('toto[data-rabbit-mirror="true"]')] : [];
     parsed.faces.forEach(face => {
-        const template = document.createElement('template');
-        template.innerHTML = face.html;
-        const replacement = template.content.querySelector('toto[data-rabbit-mirror="true"]') || template.content.firstElementChild;
-        if (!replacement) return;
+        // 模型回来的 HTML 必须先过净化，和手动重试、外置壳那条路一样；没有净化函数就不挂到页面上。
+        if (typeof deps.extractReadyDetails !== 'function') return;
+        const details = deps.extractReadyDetails(face.inner);
+        if (!details) return;
+        const replacement = document.createElement('toto');
+        replacement.setAttribute('data-rabbit-mirror', 'true');
+        replacement.setAttribute('data-rm-face', String(face.index + 1));
+        replacement.append(details);
         isolateRabbitMirrorInteractionIds(replacement);
         markSanitizedRabbitMirrorFace(replacement, {
             origin: 'follow', faceIndex: face.index, faceCount: parsed.faces.length,
@@ -278,7 +283,7 @@ export async function maybeAutomaticFollowReroll(index, deps) {
             const live = deps.getContext();
             const message = live.chat?.[index];
             if (message) {
-                const owner = { chatKey: getCurrentChatKey(live.chat), messageIndex: index, swipeId: Number.isInteger(message.swipe_id) ? message.swipe_id : -1, sourceHash: rabbitMirrorMultifaceSourceHash(message.mes || ''), message };
+                const owner = { chatKey: getCurrentChatKey(live.chat), messageIndex: index, swipeId: Number.isInteger(message.swipe_id) ? message.swipe_id : -1, sourceHash: rabbitMirrorMessageSourceHash(message), message };
                 if (!missingIndexes.length) saveFollowCompletedRetryResult(live.chat, index, owner, retainedHtml, getSettings()?.rabbitMirrorBannedWords || []);
                 else {
                     const current = readFollowPartialResult(live.chat, index);
