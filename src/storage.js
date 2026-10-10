@@ -1,16 +1,18 @@
-import { generationPaletteFields } from './paletteRecipes.js?rmv=1.67.42-face-atlas-test7';
-import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.67.42-face-atlas-test7';
-import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords, observedOperationFamiliesFor } from './compositionFingerprint.js?rmv=1.67.42-face-atlas-test7';
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.67.42-face-atlas-test7';
-import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.67.42-face-atlas-test7';
-import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.67.42-face-atlas-test7';
-import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.67.42-face-atlas-test7';
+import { generationPaletteFields } from './paletteRecipes.js?rmv=1.67.45';
+import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.67.45';
+import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords, observedOperationFamiliesFor } from './compositionFingerprint.js?rmv=1.67.45';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.67.45';
+import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.67.45';
+import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.67.45';
+import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.67.45';
 
 const STORAGE_KEY = 'rabbit_mirror_theater:last_combo:v11';
 const PENDING_KEY = 'rabbit_mirror_theater:pending_combo:v11';
 const MAX_STORED = 25; // Five completed rounds of up to five faces.
 const FACE_DRAW_CURSOR_KEY = 'rabbit_mirror_theater:face_draw_cursors:v1';
 const ATTEMPT_STORAGE_KEY = 'rabbit_mirror_theater:generation_attempts:v1';
+// 「顺序轮播」取消后，本机留着的轮播进度用不上了，加载时清掉一次（只在没有进行中的旧计划需要时才会再写入）。
+try { globalThis.localStorage?.removeItem?.(FACE_DRAW_CURSOR_KEY); } catch { /* best effort */ }
 const DIRECTIVE_PICK_STORAGE_KEY = 'rabbit_mirror_theater:directive_pick_cache:v1';
 const MAX_ATTEMPTS_PER_CHAT = 20;
 const MAX_DIRECTIVE_PICKS_PER_CHAT = 24;

@@ -46,13 +46,24 @@ export function getExternalPoolRevision() { return snapshotRevision; }
 export function externalPoolMetadataForLibrary(library, entries = []) {
     const libraryId = cleanId(library?.libraryId, 1024);
     const light = buildExternalPoolSnapshot([{ libraryId, enabled: true }], new Map([[libraryId, entries]]));
+    const themeIds = [...(light.themesByLibrary[0]?.ids || [])];
+    const formatIds = [...(light.formatsByLibrary[0]?.ids || [])];
+    const textIds = light.textCount ? [...light.textsByLibrary[0].ids] : [];
+    // 轻量标题索引：和内置库一样，列目录、选范围只看“编号 + 标题”，选中后才去读正文。
+    const included = new Set([...themeIds, ...formatIds, ...textIds]);
+    const titles = {};
+    for (const row of Array.isArray(entries) ? entries : []) {
+        const id = String(row?.externalId || '');
+        if (included.has(id)) titles[id] = String(row.localTitle || row.sourceTitle || '未命名条目').slice(0, 80);
+    }
     return {
         libraryId,
         schemaVersion: EXTERNAL_POOL_METADATA_VERSION,
         enabled: library?.enabled === true,
-        themeIds: [...(light.themesByLibrary[0]?.ids || [])],
-        formatIds: [...(light.formatsByLibrary[0]?.ids || [])],
-        ...(light.textCount ? { textIds: [...light.textsByLibrary[0].ids] } : {}),
+        themeIds,
+        formatIds,
+        ...(textIds.length ? { textIds } : {}),
+        titles,
     };
 }
 

@@ -6,7 +6,7 @@ import {
     escapeRegExp,
     getRabbitMirrorLocalStyleElements,
     hashInteractionSignature,
-} from './runtime.js?rmv=1.67.42-face-atlas-test7';
+} from './runtime.js?rmv=1.67.45';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     DIRECT_ID_CLASS_STATE_RESCUE_ATTR,
@@ -22,25 +22,26 @@ import {
     repairMalformedNestedInteractiveLabels,
     repairRabbitMirrorSelectorPanelGridSpan,
     restoreInteractionInlineOverrides,
-} from './checkedStateRescue.js?rmv=1.67.42-face-atlas-test7';
+} from './checkedStateRescue.js?rmv=1.67.45';
 import {
     RAW_SELF_MUTATION_RESCUE_ATTR,
     chooseMatchingRawRabbitMirrorRoot,
     getRawAssistantMessageForRenderedRoot,
-} from './scriptedInteractionRescue.js?rmv=1.67.42-face-atlas-test7';
+} from './scriptedInteractionRescue.js?rmv=1.67.45';
 import {
     applyCheckedVisualFallback,
     inputHasMeaningfulCheckedSiblingRule,
     installIntelligentInteractionRescue,
-} from './fallbackRescue.js?rmv=1.67.42-face-atlas-test7';
-import { INERT_ACTION_BUTTON_RESCUE_ATTR, INERT_ACTION_STATUS_ATTR } from './diagnostics.js?rmv=1.67.42-face-atlas-test7';
-import { rehydrateRabbitMirrorMaintenanceRepairs } from './choiceRescue.js?rmv=1.67.42-face-atlas-test7';
-import { maintenanceRepairRootBudget } from './maintenanceInspect.js?rmv=1.67.42-face-atlas-test7';
-import { recoverBehaviorInteractions } from './behaviorRecovery.js?rmv=1.67.42-face-atlas-test7';
-import { installDisabledRangeProgressRescue, installRangeStageRescue, installRangeValueAttributeMirror } from './rangeStageRescue.js?rmv=1.67.42-face-atlas-test7';
-import { installMobileInteractionControls } from './mobileInteractionControls.js?rmv=1.67.42-face-atlas-test7';
-import { installNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.67.42-face-atlas-test7';
-import { installBehaviorInteractions } from './behaviorInteractions.js?rmv=1.67.42-face-atlas-test7';
+} from './fallbackRescue.js?rmv=1.67.45';
+import { INERT_ACTION_BUTTON_RESCUE_ATTR, INERT_ACTION_STATUS_ATTR } from './diagnostics.js?rmv=1.67.45';
+import { rehydrateRabbitMirrorMaintenanceRepairs } from './choiceRescue.js?rmv=1.67.45';
+import { maintenanceRepairRootBudget } from './maintenanceInspect.js?rmv=1.67.45';
+import { recoverBehaviorInteractions } from './behaviorRecovery.js?rmv=1.67.45';
+import { installDisabledRangeProgressRescue, installRangeStageRescue, installRangeValueAttributeMirror } from './rangeStageRescue.js?rmv=1.67.45';
+import { installMobileInteractionControls } from './mobileInteractionControls.js?rmv=1.67.45';
+import { installNextStepHighlightRescue } from './nextStepHighlightRescue.js?rmv=1.67.45';
+import { installNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.67.45';
+import { installBehaviorInteractions } from './behaviorInteractions.js?rmv=1.67.45';
 
 let interactionScopeCounter = 0;
 
@@ -651,6 +652,7 @@ export function scopeRabbitMirrorInteractionIds(toto, { installRescue = true } =
     const aliasMap = augmentInteractionReferenceAliases(toto, state.idMap);
     synchronizeInteractionReferences(toto, state.idMap, aliasMap);
     if (installRescue) {
+        installNextStepHighlightRescue(toto);
         recoverBehaviorInteractions(toto);
         installDisabledRangeProgressRescue(toto);
         installRangeStageRescue(toto);

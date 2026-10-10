@@ -11,16 +11,24 @@ function newId(prefix) {
     return `${prefix}_${globalThis.crypto?.randomUUID?.() || `${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`}`;
 }
 
-export function parseAtlasSlots(text, previous = []) {
+// slotIds 与文本逐行对应（可省略）：编辑器里改了格子名称时，凭原来的格子 id 保住手动关联，
+// 不因为名字变了就当成新格子。只认 previous 里真实存在、且没被别的行用掉的 id。
+export function parseAtlasSlots(text, previous = [], slotIds = []) {
     const byLabel = new Map(previous.map(slot => [key(slot.label), slot]));
+    const previousIds = new Set(previous.map(slot => slot.id));
+    const usedIds = new Set();
     const seen = new Set();
     return String(text || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean).map((line, index) => {
         const [label, ...aliases] = line.split('|').map(clean);
         if (!label) throw new Error(`第 ${index + 1} 行缺少格子名称。`);
         if (seen.has(key(label))) throw new Error(`格子「${label}」重复了，请使用不同名称。`);
         seen.add(key(label));
-        const old = byLabel.get(key(label));
-        return { id: old?.id || newId('slot'), label, keywords: unique([label, ...aliases].filter(Boolean)) };
+        const carried = slotIds[index];
+        const byName = byLabel.get(key(label))?.id;
+        const id = carried && previousIds.has(carried) && !usedIds.has(carried) ? carried
+            : byName && !usedIds.has(byName) ? byName : newId('slot');
+        usedIds.add(id);
+        return { id, label, keywords: unique([label, ...aliases].filter(Boolean)) };
     });
 }
 
@@ -28,9 +36,9 @@ export function atlasSlotsText(slots) {
     return slots.map(slot => [slot.label, ...slot.keywords.filter(word => key(word) !== key(slot.label))].join(' | ')).join('\n');
 }
 
-export function buildFavoriteAtlas({ id, name, slotsText, previous = null }) {
+export function buildFavoriteAtlas({ id, name, slotsText, slotIds = [], previous = null }) {
     if (!clean(name)) throw new Error('请填写图鉴名称。');
-    const slots = parseAtlasSlots(slotsText, previous?.slots || []);
+    const slots = parseAtlasSlots(slotsText, previous?.slots || [], slotIds);
     if (!slots.length) throw new Error('请至少填写一个格子。');
     const selections = {};
     for (const slot of slots) {

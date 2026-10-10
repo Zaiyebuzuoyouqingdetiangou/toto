@@ -1,16 +1,16 @@
 // Split from outputSanitizer.js — diagnostics.
-import { interactionSamplingDiagnostic, designSamplingChecksDiagnostic } from '../interactionSampling.js?rmv=1.67.42-face-atlas-test7';
-import { RADIO_BRANCH_COUNT_ATTR } from './radioBranchRepair.js?rmv=1.67.42-face-atlas-test7';
-import { findUnmappedNavigationButtons } from './choiceRescue.js?rmv=1.67.42-face-atlas-test7';
-import { nativePopoverFallbackCount, inspectNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.67.42-face-atlas-test7';
-import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.67.42-face-atlas-test7';
-import { restoreRuntimeAnimationClone } from '../runtimeAnimationState.js?rmv=1.67.42-face-atlas-test7';
-import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.67.42-face-atlas-test7';
+import { interactionSamplingDiagnostic, designSamplingChecksDiagnostic } from '../interactionSampling.js?rmv=1.67.45';
+import { RADIO_BRANCH_COUNT_ATTR } from './radioBranchRepair.js?rmv=1.67.45';
+import { findUnmappedNavigationButtons } from './choiceRescue.js?rmv=1.67.45';
+import { nativePopoverFallbackCount, inspectNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.67.45';
+import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.67.45';
+import { restoreRuntimeAnimationClone } from '../runtimeAnimationState.js?rmv=1.67.45';
+import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.67.45';
 
-import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.67.42-face-atlas-test7';
-import { collectBoundedElementDescendants } from '../presentationQuality.js?rmv=1.67.42-face-atlas-test7';
-import { collectRevealedClipHosts, shouldRelaxRevealedClipPanel, REVEALED_CLIP_RESCUE_ATTR } from '../revealedClipRepair.js?rmv=1.67.42-face-atlas-test7';
-import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.67.42-face-atlas-test7';
+import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.67.45';
+import { collectBoundedElementDescendants } from '../presentationQuality.js?rmv=1.67.45';
+import { collectRevealedClipHosts, shouldRelaxRevealedClipPanel, REVEALED_CLIP_RESCUE_ATTR } from '../revealedClipRepair.js?rmv=1.67.45';
+import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.67.45';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -29,7 +29,7 @@ import {
     isInsideChatMessage,
     isMaintenanceRabbitEnabled,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.67.42-face-atlas-test7';
+} from './runtime.js?rmv=1.67.45';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     CHANNEL_DIAL_CYCLE_COUNT_ATTR,
@@ -62,7 +62,7 @@ import {
     WEBKIT_3D_FLIP_RESCUE_ATTR,
     passportDocumentRescueStates,
     unlabeledCheckedHostRescueStates,
-} from './checkedStateRescue.js?rmv=1.67.42-face-atlas-test7';
+} from './checkedStateRescue.js?rmv=1.67.45';
 import {
     RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR,
     RENDERED_BUTTON_ADJACENT_HIDDEN_ITEM_ATTR,
@@ -89,7 +89,7 @@ import {
     renderedListDetailRescueStates,
     renderedMaskRevealRescueStates,
     renderedStateLayerRescueStates,
-} from './renderedStateRescue.js?rmv=1.67.42-face-atlas-test7';
+} from './renderedStateRescue.js?rmv=1.67.45';
 import {
     RAW_RADIO_RESET_LAST_ATTR,
     RAW_RADIO_RESET_ROOT_ATTR,
@@ -100,7 +100,7 @@ import {
     getRabbitMirrorSummaryText,
     getRawAssistantMessageForRenderedRoot,
     rawSelfMutationRescueStates,
-} from './scriptedInteractionRescue.js?rmv=1.67.42-face-atlas-test7';
+} from './scriptedInteractionRescue.js?rmv=1.67.45';
 import {
     REVERSIBLE_RADIO_LAST_ATTR,
     REVERSIBLE_RADIO_ROOT_ATTR,
@@ -111,13 +111,13 @@ import {
     findNestedDetailsPopupClippingCandidates,
     formatWebKit3DFlipEvidence,
     repairNestedDetailsPopupClipping,
-} from './fallbackRescue.js?rmv=1.67.42-face-atlas-test7';
-import { RADIO_GROUP_RESCUE_ATTR, RADIO_GROUP_ROOT_ATTR } from './idsAndRearm.js?rmv=1.67.42-face-atlas-test7';
+} from './fallbackRescue.js?rmv=1.67.45';
+import { RADIO_GROUP_RESCUE_ATTR, RADIO_GROUP_ROOT_ATTR } from './idsAndRearm.js?rmv=1.67.45';
 import {
     findFillInChoiceCandidates,
     findStaticChoiceSelectionCandidates,
     findStructuredStaticDisclosureCandidates,
-} from './choiceRescue.js?rmv=1.67.42-face-atlas-test7';
+} from './choiceRescue.js?rmv=1.67.45';
 import {
     CODE_SHELL_SELECTOR,
     MAINTENANCE_QUARANTINED_SCRIPT_ATTR,
@@ -135,7 +135,7 @@ import {
     needsSanitize,
     normalizeMaintenanceSummaryText,
     parseTotoFragment,
-} from './maintenanceInspect.js?rmv=1.67.42-face-atlas-test7';
+} from './maintenanceInspect.js?rmv=1.67.45';
 import {
     RABBIT_MIRROR_MAX_TEMPLATE_SOURCE_CHARS,
     RABBIT_MIRROR_SANITIZER_IMPORT_STRIPPED_ATTR,
@@ -148,7 +148,7 @@ import {
     sanitizeRabbitMirrorUntrustedTemplate,
     stripCssComments,
     validateRabbitMirrorTemplateStructuralBudget,
-} from './markup.js?rmv=1.67.42-face-atlas-test7';
+} from './markup.js?rmv=1.67.45';
 import {
     HCLIP_REPORT_ATTR,
     VIEWPORT_LAYOUT_COUNT_ATTR,
@@ -156,14 +156,14 @@ import {
     inspectMaintenanceMobileLayout,
     inspectMaintenanceViewportLayout,
     maintenanceMobileLayoutIsPassportManaged,
-} from './layoutRescue.js?rmv=1.67.42-face-atlas-test7';
-import { normalizeRabbitMirrorToolButton, rabbitMirrorTextPresentation, updateMaintenanceRabbitMenuState } from './toolsChrome.js?rmv=1.67.42-face-atlas-test7';
+} from './layoutRescue.js?rmv=1.67.45';
+import { normalizeRabbitMirrorToolButton, rabbitMirrorTextPresentation, updateMaintenanceRabbitMenuState } from './toolsChrome.js?rmv=1.67.45';
 import {
     getMessageIndexFromMirrorNode,
     hostScriptModule,
     messageUsesDistinctDisplaySource,
     outputHostGenerationLooksActive,
-} from './lifecycle.js?rmv=1.67.42-face-atlas-test7';
+} from './lifecycle.js?rmv=1.67.45';
 
 export const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
 
@@ -2235,6 +2235,19 @@ function buildInteractionDiagnosticReportText(root, state) {
 // Explicit menu action only: export one live face, never its message/raw-source
 // owner. The detached clone is sanitized but never mounted or executed.
 
+// 内置生图／插图画进图框后是一整段 base64 图片，常常超过模板里单个 data: 地址的上限，
+// 以前整面因此被判成“超出安全导出范围”。导出时这类栅格图片先换成占位标记，
+// 结构检查与安全检查照旧走，过了以后再把原图放回去；不截断，也不改动页面上的图。
+const EXPORT_RASTER_IMAGE_RE = /^data:image\/(?:png|jpe?g|webp|gif);base64,[a-z\d+/=\s]+$/i;
+const EXPORT_RASTER_IMAGE_MAX_CHARS = 16 * 1024 * 1024;
+const EXPORT_IMAGE_MARK = 'data-rm-export-image';
+
+function exportRasterImageSource(node) {
+    if (node?.tagName !== 'IMG') return '';
+    const src = String(node.getAttribute?.('src') || '');
+    return src.length > 1024 && src.length <= EXPORT_RASTER_IMAGE_MAX_CHARS && EXPORT_RASTER_IMAGE_RE.test(src) ? src : '';
+}
+
 function buildRabbitMirrorCurrentFaceHtml(root) {
     const details = root?.matches?.('details') ? root
         : root?.matches?.(MIRROR_TOTO_SELECTOR) ? root.querySelector(':scope > details') : null;
@@ -2259,7 +2272,8 @@ function buildRabbitMirrorCurrentFaceHtml(root) {
         let children;
         return {
             source: node, omitted, nodeType: omitted ? 8 : node.nodeType,
-            tagName: omitted ? '' : node.tagName, attributes: omitted ? [] : node.attributes,
+            tagName: omitted ? '' : node.tagName,
+            attributes: omitted ? [] : exportRasterImageSource(node) ? [...node.attributes].filter(attr => attr.name !== 'src') : node.attributes,
             textContent: !omitted && node.tagName === 'STYLE' ? node.textContent : '',
             get childNodes() {
                 return children ||= omitted ? [] : [...(selectedChildren || node.content?.childNodes || node.childNodes || [])].map(child => exportView(child));
@@ -2274,10 +2288,16 @@ function buildRabbitMirrorCurrentFaceHtml(root) {
         throw new Error('这面 HTML 超出安全导出范围，未复制或下载，也未截断内容。');
     }
     const template = document.createElement('template');
-    const copies = new Map(), omittedCopies = [];
+    const copies = new Map(), omittedCopies = [], exportImages = [];
     const copyNode = item => {
         const copy = item.omitted ? document.createComment('rm-export-tool')
             : item.source.nodeType === 3 ? cloneRabbitMirrorFilteredNode(item.source) : item.source.cloneNode(false);
+        const image = item.omitted ? '' : exportRasterImageSource(item.source);
+        if (image && copy.nodeType === 1) {
+            copy.removeAttribute('src');
+            copy.setAttribute(EXPORT_IMAGE_MARK, String(exportImages.length));
+            exportImages.push(image);
+        }
         copies.set(item.source, copy);
         if (item.omitted) omittedCopies.push(copy);
         return copy;
@@ -2315,10 +2335,17 @@ function buildRabbitMirrorCurrentFaceHtml(root) {
     if (!sanitizeRabbitMirrorUntrustedTemplate(template)) {
         throw new Error('这面 HTML 未通过安全复制检查；当前页面没有改变。');
     }
-    const html = template.innerHTML;
-    if (!html || html.length > RABBIT_MIRROR_MAX_TEMPLATE_SOURCE_CHARS) {
+    if (!template.innerHTML || template.innerHTML.length > RABBIT_MIRROR_MAX_TEMPLATE_SOURCE_CHARS) {
         throw new Error('这面 HTML 超出安全导出范围，未复制或下载，也未截断内容。');
     }
+    // 安全检查通过后，把图片原样放回；被安全检查删掉的图片不会再补回来。
+    for (const node of template.content.querySelectorAll(`img[${EXPORT_IMAGE_MARK}]`)) {
+        const image = exportImages[Number(node.getAttribute(EXPORT_IMAGE_MARK))];
+        node.removeAttribute(EXPORT_IMAGE_MARK);
+        if (image) node.setAttribute('src', image);
+    }
+    for (const node of template.content.querySelectorAll(`[${EXPORT_IMAGE_MARK}]`)) node.removeAttribute(EXPORT_IMAGE_MARK);
+    const html = template.innerHTML;
     return '<!doctype html>\n<html lang="zh-CN"><head><meta charset="utf-8">'
         + '<meta name="viewport" content="width=device-width,initial-scale=1">'
         + '<title>兔子镜小剧场</title></head><body>\n' + html + '\n</body></html>';

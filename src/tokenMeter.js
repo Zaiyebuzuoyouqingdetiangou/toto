@@ -1,4 +1,4 @@
-import { presentationModeFields } from './presentationMode.js?rmv=1.67.42-face-atlas-test7';
+import { presentationModeFields } from './presentationMode.js?rmv=1.67.45';
 const TOKEN_METER_STORAGE_KEY = 'rabbit_mirror_theater:token_meter:v1';
 const TOKEN_METER_SOURCE_STORAGE_KEYS = Object.freeze({
     follow: 'rabbit_mirror_theater:token_meter:follow:v1',

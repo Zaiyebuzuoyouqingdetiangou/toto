@@ -1,9 +1,9 @@
-import { getSettings, updateSettings } from './settings.js?rmv=1.67.42-face-atlas-test7';
-import { FACE_DRAW_KINDS, FACE_DRAW_LABELS, normalizeFaceDrawRule, normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.67.42-face-atlas-test7';
-import { loadFaceDrawCatalog, faceCategorySelection, toggleFaceCategory, toggleFaceItem } from './faceDrawCatalog.js?rmv=1.67.42-face-atlas-test7';
+import { getSettings, updateSettings } from './settings.js?rmv=1.67.45';
+import { FACE_DRAW_KINDS, FACE_DRAW_LABELS, normalizeFaceDrawRule, normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.67.45';
+import { loadFaceDrawCatalog, faceCategorySelection, toggleFaceCategory, toggleFaceItem } from './faceDrawCatalog.js?rmv=1.67.45';
 
 const owners = new WeakMap();
-const MODE_LABELS = { none: '不追加', random: '随机抽取', sequence: '顺序轮播' };
+const MODE_LABELS = { none: '不追加', random: '随机抽取' };
 const STYLE = `
 .rh-face-draw{--fd-line:var(--rh-border,#bccabf);--fd-accent:var(--rh-primary,#416d48);box-sizing:border-box;min-width:0;width:100%;max-width:100%;border:1px solid var(--fd-line);border-radius:12px;padding:0 14px;margin:0 0 14px;background:var(--rh-card,transparent);overflow-wrap:anywhere;text-align:left;font-size:13px;line-height:1.6}
 .rh-face-draw *{box-sizing:border-box;min-width:0;max-width:100%}
@@ -188,7 +188,12 @@ function createController(owner, index, rule) {
             section.renderSelection();
             if (!resident) {
                 const fields = el(doc, 'div', null, 'rh-fd-fields');
-                fields.append(selectField(doc, '抽取方式', Object.entries(MODE_LABELS), lane.mode, value => { lane.mode = value; c.changed(); section.renderControls(); }).label);
+                fields.append(selectField(doc, '抽取方式', Object.entries(MODE_LABELS), lane.mode, value => {
+                    lane.mode = value;
+                    // 切到「不追加」后数量框会隐藏；藏起来的格子里留着的错误不该再挡住保存。
+                    if (value === 'none') for (const field of ['min', 'max', 'range']) { c.invalidNumbers.delete(`${section.kind}:${field}`); c.numberDrafts.delete(`${section.kind}:${field}`); }
+                    c.changed(); section.renderControls();
+                }).label);
                 if (lane.mode !== 'none') {
                     fields.append(selectField(doc, '抽取范围', [['all', '全部可用条目'], ['selected', '只在勾选范围']], lane.scope, value => { lane.scope = value; section.editing = value === 'selected'; c.changed(); section.renderControls(); }).label);
                     for (const field of ['min', 'max']) {
@@ -206,7 +211,6 @@ function createController(owner, index, rule) {
                     }
                 }
                 controls.append(fields);
-                if (lane.mode === 'sequence') controls.append(el(doc, 'p', '顺序按下方分类与条目目录依次轮播。生成成功并保存后才前进；失败重试继续本次选择。', 'rh-fd-note'));
             }
             const filters = el(doc, 'div', null, 'rh-fd-fields');
             filters.append(selectField(doc, '来源', [['all', '内置 + 已启用外置库'], ['builtin', '内置'], ['external', '已启用外置库']], section.source, value => { section.source = value; section.renderTree(); }).label);
@@ -303,7 +307,9 @@ function createController(owner, index, rule) {
     nameFields.append(name.label, button(doc, '保存当前搭配', () => {
         if (c.invalidNumbers.size) { status.textContent = '请先修正追加数量。'; return; }
         if (!c.presetName.trim()) { status.textContent = '请给这套搭配填写名称。'; name.input.focus(); return; }
-        const presets = normalizeFaceDrawPresets(owner.getSettings().rabbitMirrorFaceDrawPresets);
+        // 同名搭配直接覆盖，连点两下不会多出一份。
+        const presets = normalizeFaceDrawPresets(owner.getSettings().rabbitMirrorFaceDrawPresets)
+            .filter(preset => preset.name !== c.presetName.trim());
         const id = globalThis.crypto?.randomUUID?.() || `face-${Date.now()}-${Math.random().toString(36).slice(2)}`;
         presets.push({ id, name: c.presetName.trim(), rule: normalizeFaceDrawRule(c.draft) });
         try { owner.updateSettings({ rabbitMirrorFaceDrawPresets: presets }); for (const controller of owner.controllers.values()) controller.renderPresets(); status.textContent = '搭配已保存。本面的修改仍需点击「保存本面」生效。'; }
@@ -319,6 +325,22 @@ function createController(owner, index, rule) {
             if (!preset) { status.textContent = '请先选择一套搭配。'; return; }
             replaceDraft(preset.rule); status.textContent = '已套用到本面草稿，呈现方式未改变。点击「保存本面」后生效。';
         }));
+        // 删除要再点一次确认；只删搭配本身，已经套用到各面的规则不受影响。
+        let armedId = '';
+        const remove = button(doc, '删除这套搭配', () => {
+            const id = field.input.value;
+            const preset = normalizeFaceDrawPresets(owner.getSettings().rabbitMirrorFaceDrawPresets).find(item => item.id === id);
+            if (!preset) { status.textContent = '请先选择要删除的搭配。'; return; }
+            if (armedId !== id) { armedId = id; remove.textContent = `再点一次删除「${preset.name}」`; return; }
+            const next = normalizeFaceDrawPresets(owner.getSettings().rabbitMirrorFaceDrawPresets).filter(item => item.id !== id);
+            try {
+                owner.updateSettings({ rabbitMirrorFaceDrawPresets: next });
+                for (const controller of owner.controllers.values()) controller.renderPresets();
+                status.textContent = `已删除搭配「${preset.name}」。已经套用到各面的规则不受影响。`;
+            } catch (error) { status.textContent = `删除搭配失败：${String(error?.message || error)}`; }
+        });
+        field.input.addEventListener('change', () => { armedId = ''; remove.textContent = '删除这套搭配'; });
+        if (presets.length) presetFields.append(remove);
     };
     presetDetails.append(presetBody); body.append(presetDetails);
     c.status = status; c.headingState = headingState; c.replaceDraft = replaceDraft;

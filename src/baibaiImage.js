@@ -1,8 +1,8 @@
-import { chatu8Status, generateViaChatu8 } from './chatu8Image.js?rmv=1.67.42-face-atlas-test7';
-import { getSettings } from './settings.js?rmv=1.67.42-face-atlas-test7';
-import { getContext } from './independentApi/runtime.js?rmv=1.67.42-face-atlas-test7';
-import { getChatu8ImageCharacters } from './imageCharacterPresets.js?rmv=1.67.42-face-atlas-test7';
-import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.67.42-face-atlas-test7';
+import { chatu8Status, generateViaChatu8 } from './chatu8Image.js?rmv=1.67.45';
+import { getSettings } from './settings.js?rmv=1.67.45';
+import { getContext } from './independentApi/runtime.js?rmv=1.67.45';
+import { getChatu8ImageCharacters } from './imageCharacterPresets.js?rmv=1.67.45';
+import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.67.45';
 function failure(code, message) { return Object.assign(new Error(message), { code }); }
 
 function imageApi() {

@@ -9,7 +9,8 @@ export function normalizeFaceDrawLane(value = {}) {
     const min = count(value?.min, 1);
     return {
         requiredIds: ids(value?.requiredIds),
-        mode: ['none', 'random', 'sequence'].includes(value?.mode) ? value.mode : 'none',
+        // 「顺序轮播」已取消：以前存成顺序轮播的，一律按随机抽取处理（范围仍是用户设定的范围）。
+        mode: value?.mode === 'sequence' ? 'random' : ['none', 'random'].includes(value?.mode) ? value.mode : 'none',
         scope: value?.scope === 'selected' ? 'selected' : 'all',
         categoryIds: ids(value?.categoryIds),
         itemIds: ids(value?.itemIds),

@@ -1,8 +1,8 @@
 import {
     buildFavoriteAtlas, deleteFavoriteAtlas, favoriteAtlasProgress, parseAtlasSlots,
     listFavoriteAtlases, saveFavoriteAtlas, setAtlasSelection,
-} from './favoriteAtlases.js?rmv=1.67.42-face-atlas-test7';
-import { createFavoriteAtlasDraftGenerator } from './favoriteAtlasGeneration.js?rmv=1.67.42-face-atlas-test7';
+} from './favoriteAtlases.js?rmv=1.67.45';
+import { createFavoriteAtlasDraftGenerator } from './favoriteAtlasGeneration.js?rmv=1.67.45';
 
 const STYLE = `
 [data-rm-favorite-atlases]{margin-top:16px;font-size:14px;line-height:1.6;min-width:0;max-width:100%;overflow-wrap:anywhere}
@@ -100,15 +100,16 @@ export function createFavoriteAtlasPanel({ favorites, openFavorite, displayTitle
         if (busy) return;
         busy = true;
         root.setAttribute('aria-busy', 'true');
-        const controls = [...root.querySelectorAll('button,input,textarea')].map(control => [control, control.disabled]);
-        controls.forEach(([control]) => { control.disabled = true; });
+        // 只锁住此刻可用的控件，结束时只放开自己锁住的；草稿生成同时在锁控件时，两边互不把对方的状态写回去。
+        const controls = [...root.querySelectorAll('button,input,textarea')].filter(control => !control.disabled);
+        controls.forEach(control => { control.disabled = true; });
         status.textContent = '正在保存…';
         try { await work(); completed(); }
         catch (error) { fail(error); }
         finally {
             busy = false;
             root.removeAttribute('aria-busy');
-            controls.forEach(([control, disabled]) => { if (control.isConnected) control.disabled = disabled; });
+            controls.forEach(control => { if (control.isConnected) control.disabled = false; });
         }
     }
     function update(atlas, completed) {
@@ -152,7 +153,7 @@ export function createFavoriteAtlasPanel({ favorites, openFavorite, displayTitle
         const preview = node('div', '', 'rm-atlas-draft-preview');
         const editableSlot = slot => {
             const originalAliases = slot.keywords.filter(word => word !== slot.label);
-            return { label: slot.label, aliases: originalAliases.join('，'), originalAliases };
+            return { id: slot.id, label: slot.label, aliases: originalAliases.join('，'), originalAliases };
         };
         let drafts = (previous?.slots || []).map(editableSlot);
         const failDraft = error => { localStatus.textContent = error?.code === 'ABORTED' ? '已停止生成，当前草稿已保留。' : `未完成：${error?.message || error}`; };
@@ -225,8 +226,8 @@ export function createFavoriteAtlasPanel({ favorites, openFavorite, displayTitle
             if (!name.value.trim()) { failDraft(new Error('请先填写图鉴名称。')); name.focus(); return; }
             session.generating = true;
             form.setAttribute('aria-busy', 'true');
-            const controls = [...form.querySelectorAll('button,input,textarea')].filter(control => control !== cancel).map(control => [control, control.disabled]);
-            controls.forEach(([control]) => { control.disabled = true; });
+            const controls = [...form.querySelectorAll('button,input,textarea')].filter(control => control !== cancel && !control.disabled);
+            controls.forEach(control => { control.disabled = true; });
             localStatus.textContent = '正在识别相关条目并生成草稿…';
             let observer;
             if (typeof MutationObserver === 'function' && root.isConnected) {
@@ -256,7 +257,7 @@ export function createFavoriteAtlasPanel({ favorites, openFavorite, displayTitle
                 observer?.disconnect(); session.generating = false;
                 if (!session.closed && activeEditor === session) {
                     form.removeAttribute('aria-busy');
-                    controls.forEach(([control, disabled]) => { if (control.isConnected) control.disabled = disabled; });
+                    controls.forEach(control => { if (control.isConnected) control.disabled = false; });
                     save.disabled = drafts.length === 0;
                 }
             }
@@ -271,7 +272,7 @@ export function createFavoriteAtlasPanel({ favorites, openFavorite, displayTitle
                 // An association may have been changed while this editor stayed
                 // open. Preserve its latest committed value when saving text.
                 const latest = previous ? atlases.find(item => item.id === previous.id) : null;
-                const atlas = buildFavoriteAtlas({ name: name.value, slotsText: slotText(), previous: latest });
+                const atlas = buildFavoriteAtlas({ name: name.value, slotsText: slotText(), slotIds: drafts.map(slot => slot.id), previous: latest });
                 void update(atlas, () => { session.cancel(); activeEditor = null; editor.replaceChildren(); });
             } catch (error) { failDraft(error); }
         });

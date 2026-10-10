@@ -42,6 +42,8 @@ function incompleteMainReplyMarkup(raw) {
                 const close = new RegExp(`^ {0,3}${fence[1][0]}{${fence[1].length},}[\\t ]*\\r?$`, 'gm');
                 close.lastIndex = fenceStart.lastIndex;
                 const end = close.exec(raw);
+                // 剧情里常用 ~~~ 第二天 ~~~、~~~~~~ 当分隔线；波浪线没有配对时按普通文字处理，不算截断。
+                if (!end && fence[1][0] === '~') { cursor = fenceStart.lastIndex; continue; }
                 if (!end) return '正文结构未完整（代码块未闭合，疑似截断）';
                 cursor = end.index + end[0].length;
                 continue;
@@ -91,6 +93,11 @@ function incompleteMainReplyMarkup(raw) {
             if (quote) { if (char === quote) quote = ''; }
             else if (char === '"' || char === "'") quote = char;
             else if (char === '>') break;
+        }
+        // 标签里少写了一个引号时，后面还有 > 就以第一个 > 收尾；只有真的写到结尾都没有 > 才算断在标签里。
+        if (end === raw.length && quote) {
+            const fallback = raw.indexOf('>', tagStart.lastIndex);
+            if (fallback >= 0) end = fallback;
         }
         if (end === raw.length) {
             if (pending.has(name) && !closing) pending.set(name, pending.get(name) + 1);

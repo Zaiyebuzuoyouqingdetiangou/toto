@@ -1,10 +1,10 @@
-import { getSettings } from './settings.js?rmv=1.67.42-face-atlas-test7';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.67.42-face-atlas-test7';
-import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.42-face-atlas-test7';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.42-face-atlas-test7';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.42-face-atlas-test7';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.67.42-face-atlas-test7';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.42-face-atlas-test7';
+import { getSettings } from './settings.js?rmv=1.67.45';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.67.45';
+import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.45';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.45';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.45';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.67.45';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.45';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -294,7 +294,11 @@ async function fillFrame(root, frame) {
         if (isCurrent() && frame.isConnected) paint(frame, record);
     } catch (error) {
         const code = error?.code;
-        if (code === 'stale_owner' || !isCurrent()) return;
+        if (code === 'stale_owner' || !isCurrent()) {
+            // 归属变了就不画；图框还在页面上时留一个“重新生图”，不让它一直停在“绘制中…”。
+            if (frame.isConnected) note(frame, '这一面的画面这次没有画成。', root);
+            return;
+        }
         const message = code === 'image_plan_failed' ? planningFailure().message : code === 'not_configured' || code === 'unsupported_api'
             ? `${String(error?.message || '生图渠道还没连好')}这一面先留着提示词。`
             : '这一面的画面这次没有画成。';

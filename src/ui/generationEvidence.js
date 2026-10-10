@@ -1,6 +1,6 @@
 import { armGenerationEvidence, cancelGenerationEvidenceArm, clearGenerationEvidence,
-    exportGenerationEvidence, getGenerationEvidenceState, subscribeGenerationEvidence } from '../generationEvidence.js?rmv=1.67.42-face-atlas-test7';
-import { formatGenerationElapsed } from '../generationTiming.js?rmv=1.67.42-face-atlas-test7';
+    exportGenerationEvidence, getGenerationEvidenceState, subscribeGenerationEvidence } from '../generationEvidence.js?rmv=1.67.45';
+import { formatGenerationElapsed } from '../generationTiming.js?rmv=1.67.45';
 
 let cleanup = null;
 
