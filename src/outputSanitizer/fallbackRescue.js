@@ -1,7 +1,7 @@
 // Split from outputSanitizer.js — fallbackRescue.
-import { RADIO_BRANCH_CONTROL_ATTR, installRadioBranchRepair, applyRadioBranchState, applyRadioProxyState, radioBranchVerificationTargets } from './radioBranchRepair.js?rmv=1.67.42-face-atlas-test6';
+import { RADIO_BRANCH_CONTROL_ATTR, installRadioBranchRepair, applyRadioBranchState, applyRadioProxyState, radioBranchVerificationTargets } from './radioBranchRepair.js?rmv=1.67.42-face-atlas-test7';
 
-import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.67.42-face-atlas-test6';
+import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.67.42-face-atlas-test7';
 
 import {
     FEEDBACK_CAT_ATTR,
@@ -9,7 +9,7 @@ import {
     TOOL_ENTRY_HOST_ATTR,
     escapeRegExp,
     getRabbitMirrorLocalStyleElements,
-} from './runtime.js?rmv=1.67.42-face-atlas-test6';
+} from './runtime.js?rmv=1.67.42-face-atlas-test7';
 import {
     CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR,
     CROSS_PARENT_CHECKED_VERIFIED_ATTR,
@@ -92,7 +92,7 @@ import {
     webKit3DFlipInlineStates,
     webKit3DFlipRescueStates,
     webKit3DFlipStyleStates,
-} from './checkedStateRescue.js?rmv=1.67.42-face-atlas-test6';
+} from './checkedStateRescue.js?rmv=1.67.42-face-atlas-test7';
 import {
     EXISTING_INTERACTIVE_SELECTOR,
     RENDERED_BUTTON_ADJACENT_HIDDEN_RESCUE_ATTR,
@@ -119,7 +119,7 @@ import {
     isCollapsedDimensionValue,
     normalizeStylePropertyName,
     parseCssStateSiblingAssignments,
-} from './renderedStateRescue.js?rmv=1.67.42-face-atlas-test6';
+} from './renderedStateRescue.js?rmv=1.67.42-face-atlas-test7';
 import {
     chooseMatchingRawRabbitMirrorRoot,
     detectInteractionCapabilities,
@@ -135,7 +135,7 @@ import {
     installRawMessageSelfMutationRescue,
     preparePseudoTrigger,
     shouldIgnorePseudoToggleEvent,
-} from './scriptedInteractionRescue.js?rmv=1.67.42-face-atlas-test6';
+} from './scriptedInteractionRescue.js?rmv=1.67.42-face-atlas-test7';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     FILL_IN_CHOICE_BLANK_ATTR,
@@ -147,15 +147,15 @@ import {
     diagnosticFindClippingAncestor,
     maintenanceSafeComputedStyle,
     mobileInlineAnnotationRescueStates,
-} from './diagnostics.js?rmv=1.67.42-face-atlas-test6';
-import { installStaticChoiceSelectionFallback } from './choiceRescue.js?rmv=1.67.42-face-atlas-test6';
+} from './diagnostics.js?rmv=1.67.42-face-atlas-test7';
+import { installStaticChoiceSelectionFallback } from './choiceRescue.js?rmv=1.67.42-face-atlas-test7';
 import {
     checkedDeclarationCreatesContentReveal,
     checkedTargetCarriesResultContent,
     pseudoStateTargetSelector,
-} from './maintenanceInspect.js?rmv=1.67.42-face-atlas-test6';
-import { splitCssSelectorList } from './markup.js?rmv=1.67.42-face-atlas-test6';
-import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutResolveCheckedTargets } from './layoutRescue.js?rmv=1.67.42-face-atlas-test6';
+} from './maintenanceInspect.js?rmv=1.67.42-face-atlas-test7';
+import { splitCssSelectorList } from './markup.js?rmv=1.67.42-face-atlas-test7';
+import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutResolveCheckedTargets } from './layoutRescue.js?rmv=1.67.42-face-atlas-test7';
 
 const NESTED_DETAILS_FALLBACK_HANDLER_PROP = '__rabbitMirrorNestedDetailsFallbackHandler';
 
@@ -171,6 +171,9 @@ export const REVERSIBLE_RADIO_LAST_ATTR = 'data-rabbit-mirror-reversible-radio-l
 export const REVERSIBLE_RADIO_BASELINE_ATTR = 'data-rm-reversible-radio-initial-checked';
 
 const reversibleRadioGroupStates = new WeakMap();
+// The zero-delay WebView correction belongs to one exact label action. A newer
+// choice or an explicit return invalidates it even when no verifier was needed.
+const labelStateIntents = new WeakMap();
 
 
 let localPanelLayoutSequence = 0;
@@ -997,6 +1000,7 @@ function restoreReversibleRadioBaseline(root, group) {
     const changedRadios = [];
     for (const radio of group.radios) {
         if (!radio?.isConnected || !root.contains?.(radio)) continue;
+        cancelLabeledCheckedTransitionVerification(radio);
         const shouldCheck = group.baselineChecked.has(radio);
         if (!!radio.checked !== shouldCheck) {
             radio.checked = shouldCheck;
@@ -1017,6 +1021,23 @@ function restoreReversibleRadioBaseline(root, group) {
 
 
 const radioBranchReturnEvents = new WeakSet();
+
+function hasReachableRadioBaseline(root, group) {
+    for (const radio of group.baselineChecked) {
+        if (radio.disabled || !root.contains(radio)) continue;
+        const controls = [radio, ...associatedLabelsForInput(root, radio)];
+        if (controls.some(control => {
+            if (control.closest?.('[hidden],[inert],[aria-disabled="true"]')) return false;
+            const rect = control.getBoundingClientRect?.();
+            if (!rect || rect.width <= 0 || rect.height <= 0) return false;
+            for (let node = control; node && root.contains(node); node = node.parentElement) {
+                if (getRenderedStyleSnapshot(node).hidden) return false;
+            }
+            return getComputedStyle(control).pointerEvents !== 'none';
+        })) return true;
+    }
+    return false;
+}
 
 export function installReversibleRadioGroupFallback(root) {
     if (!root?.querySelectorAll) return 0;
@@ -1086,8 +1107,11 @@ export function installReversibleRadioGroupFallback(root) {
             const key = reversibleRadioGroupKey(radio);
             const group = state.groups.get(key);
             if (!group) return;
+            // A normal tab/stepper with its own reachable reset is already
+            // reversible. Repeated selection must not briefly jump to baseline.
+            if (hasReachableRadioBaseline(root, group)) return;
             event.preventDefault();
-            if (radio.hasAttribute(RADIO_BRANCH_CONTROL_ATTR)) radioBranchReturnEvents.add(event);
+            radioBranchReturnEvents.add(event);
             restoreReversibleRadioBaseline(root, group);
         };
         root.addEventListener('click', state.onClick, true);
@@ -2531,6 +2555,7 @@ function recordLabeledCheckedVerification(root, input, verification, intended, p
 
 
 export function cancelLabeledCheckedTransitionVerification(input) {
+    labelStateIntents.delete(input);
     const state = labeledCheckedVerificationStates.get(input);
     if (!state) return;
     state.sequence = (state.sequence || 0) + 1;
@@ -3058,6 +3083,8 @@ function installInteractionLabelFallback(toto) {
         } else {
             input.checked = !input.checked;
         }
+        const actionIntent = {};
+        labelStateIntents.set(input, actionIntent);
 
         // 在部分移动端 WebView 中，晚到的 <style> 即使被补上 !important，
         // 也可能未稳定覆盖元素原有的内联 display:none。这里直接按真实 :checked
@@ -3084,8 +3111,9 @@ function installInteractionLabelFallback(toto) {
         // 使 checkbox 刚被急救器设为 true 又立刻回到 false。下一任务强制确认本次意图，
         // 仅在状态被回滚时补发一次 input/change，不造成正常环境的双重切换。
         setTimeout(() => {
-            if (!input.isConnected || input.checked === intendedChecked) return;
-            if (input.type === 'radio' && input.hasAttribute(RADIO_BRANCH_CONTROL_ATTR)
+            if (labelStateIntents.get(input) !== actionIntent || !toto.isConnected || !toto.contains(input)
+                || !input.isConnected || input.checked === intendedChecked) return;
+            if (input.type === 'radio'
                 && [...toto.querySelectorAll('input[type="radio"]')].some(other => other !== input && other.name === input.name && other.checked)) return;
             if (input.type === 'radio') {
                 const radioName = String(input.name || '');

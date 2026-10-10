@@ -17,11 +17,11 @@ const between = (source, start, end) => {
 
 // Run the actual request/serial orchestration, owner checks, prompt planner and
 // selection registry. The absent host and provider/DOM postprocessing are boundaries.
-async function fixture({ count = 3, retry = 0, beforeTransport, afterTransport } = {}) {
+async function fixture({ count = 3, retry = 0, beforeTransport, afterTransport, scanFace, maxRequestChars = 1000000 } = {}) {
     const rt = createRuntime(root);
     const config = await rt.load('src/settings.js');
     const modules = {};
-    for (const file of ['promptBuilder', 'presentationMode', 'faceDrawRules', 'automaticReroll', 'independentTiming', 'atmosphereChoice', 'multifaceProtocol', 'storage'])
+    for (const file of ['promptBuilder', 'presentationMode', 'faceDrawRules', 'automaticReroll', 'independentTiming', 'atmosphereChoice', 'multifaceProtocol', 'storage', 'serialPaletteContext'])
         Object.assign(modules, await rt.load(`src/${file}.js`));
     const ctx = { chatId: 'quota-parity', chat: [{ is_user: false, mes: 'The completed story remains unchanged.', swipe_id: 0 }] };
     rt.context.SillyTavern.getContext = () => ctx;
@@ -41,6 +41,7 @@ async function fixture({ count = 3, retry = 0, beforeTransport, afterTransport }
     const h = { settings, config, ctx, posts, recipes, batches, lease, controller, setBatch: value => { activeBatch = value; }, advanceEpoch: () => epoch++,
         releaseBatch: () => modules.releasePendingComboBatch(activeBatch) };
     const sandbox = { Date, console, ...modules,
+        API_PROFILE_ORDER: ['chat_system_user_full'], getRememberedApiProfile: () => '',
         getSettings: config.getSettings, getContext: () => ctx, chatKey: () => 'chat:quota-parity',
         swipeId: message => message.swipe_id, messageSourceFingerprint: message => message.mes,
         messageBaseSlotKey: () => 'slot', operationEpochForBase: () => epoch, hashText: String,
@@ -50,16 +51,18 @@ async function fixture({ count = 3, retry = 0, beforeTransport, afterTransport }
         getExternalPoolHydrationStatus: () => ({ hydrated: true }),
         independentLocalPreflightFailure: cause => cause, describeExternalWorldBookPreflightFailure: cause => ({ message: cause.message, code: cause.code }),
         independentVisualHistoryContext: () => null,
-        configuredIndependentMaxRequestChars: () => 1000000, globalWorldInfoSnapshotFor: () => null, globalWorldInfoContextView: () => ({}),
+        configuredIndependentMaxRequestChars: () => typeof maxRequestChars === 'function' ? maxRequestChars() : maxRequestChars, globalWorldInfoSnapshotFor: () => null, globalWorldInfoContextView: () => ({}),
         contextBundle: () => ({ text: ctx.chat[0].mes, targetVisibleChars: ctx.chat[0].mes.length }), recordRabbitMirrorIndependentPrompt() {}, promptSectionBreakdown: () => [], resolveBehaviorRuleText: () => '',
         independentBatchPlanPreflightError: code => Object.assign(new Error(code), { code, requestCount: 0 }),
         generationEvidenceFor: () => null, assertIndependentMarkupComplexityWithDiagnostic() {}, designSamplingChecksFromHtml: () => [],
         extractMirrorInner: raw => raw.replace(/^<toto[^>]*>/, '').replace(/<\/toto>$/, ''), independentMirrorBodyEvidence: value => value.includes('<p>'),
-        prepareIndependentReadyHtml: value => value, bindRolePaletteCode: value => value, rememberApiProfile() {}, scanRabbitMirrorHtml: () => ({}),
+        prepareIndependentReadyHtml: value => value, bindRolePaletteCode: value => value, rememberApiProfile() {}, scanRabbitMirrorHtml: scanFace || (() => ({})),
         async requestIndependentCompletion(st, system, user, options) {
             await beforeTransport?.(h, options);
             assert.equal(options.dispatchLease.consume(), true, 'only the owned request may consume the lease');
-            const entry = { face: options.evidenceFaceIndex, diagnostic: copy(options.diagnosticContext), system, user };
+            const profile = sandbox.independentRequestProfiles(st, system, user)[0];
+            const entry = { face: options.evidenceFaceIndex, diagnostic: copy(options.diagnosticContext), system, user,
+                body: copy(profile.body) };
             posts.push(entry);
             await afterTransport?.(h, entry);
             return { response: { ok: true }, result: { text: `<toto><details><summary>Face ${entry.face + 1}</summary><p>Complete content for face ${entry.face + 1}.</p></details></toto>` },
@@ -67,6 +70,7 @@ async function fixture({ count = 3, retry = 0, beforeTransport, afterTransport }
         },
     };
     vm.createContext(sandbox);
+    vm.runInContext(between(request, 'function independentRequestProfiles(', '\nfunction nextCompatibilityProfileName('), sandbox);
     vm.runInContext(between(request, 'function independentPromptOwnerPreflightError()', '\nexport function externalOwnerMesid('), sandbox);
     h.call = (options = {}) => sandbox.callIndependentApi(ctx, 0, ctx.chat[0], controller.signal, {
         dispatchLease: lease, isPromptOwnerCurrent: () => true, currentBatchPlan: () => activeBatch,
@@ -187,6 +191,88 @@ test('each serial face keeps its individual HTML or long-text presentation', asy
     const result = await h.call();
     assert.deepEqual(h.posts.map(x => x.diagnostic.requestedPresentationMode), ['html', 'longtext', 'html']);
     assert.equal(result.completedFaces, 3);
+});
+
+const observedColors = ['#123a70', '#6e2856', '#256341'];
+const paletteScan = (html, scans) => {
+    const faceIndex = Number(html.match(/data-rm-face="(\d+)"/)[1]) - 1;
+    scans.push(faceIndex);
+    return { paletteFingerprint: { confidence: .8, mainColors: [observedColors[faceIndex]], source: 'raw' } };
+};
+const paletteContext = user => user.match(/【本批已完成镜面的配色】[^\n]+/)?.[0] || '';
+
+test('later serial requests observe accepted sibling colors once, without changing pinned selections or request count', async () => {
+    const scans = [], scansAtPost = [];
+    const h = await fixture({ scanFace: html => paletteScan(html, scans),
+        beforeTransport: () => scansAtPost.push(scans.length) });
+    const result = await h.call();
+    assert.deepEqual(scansAtPost, [0, 1, 2], 'scan a completed face before preparing the next child');
+    assert.deepEqual(scans, [0, 1, 2], 'reuse existing end-of-batch scans rather than adding scans');
+    assert.equal(paletteContext(h.posts[0].user), '');
+    assert.match(paletteContext(h.posts[1].user), /第1面.*#123a70/);
+    assert.doesNotMatch(paletteContext(h.posts[1].user), /#6e2856|#256341/);
+    assert.match(paletteContext(h.posts[2].user), /第1面.*#123a70.*第2面.*#6e2856/);
+    for (const post of h.posts) {
+        assert.equal(post.body.messages.find(message => message.role === 'user').content, post.user,
+            'the real provider payload builder must retain the final serial reminder');
+        assert.equal(post.body.messages.find(message => message.role === 'system').content, post.system);
+    }
+    assert.equal(result.completedFaces, 3);
+    assert.deepEqual(h.posts.map(entry => entry.diagnostic.themeIds), [['C.1'], ['C.2'], ['C.3']]);
+    assert.deepEqual(copy(result.faceScans).map(scan => scan.paletteFingerprint.mainColors[0]), observedColors);
+    assert.equal(JSON.stringify(result.requestDiagnostic).includes('#123a70'), false, 'no new observed palette diagnostic payload');
+    const other = await fixture({ scanFace: html => paletteScan(html, []) });
+    await other.call();
+    assert.equal(paletteContext(other.posts[0].user), '', 'no sibling context leaks into another batch');
+});
+
+test('a serial failed face is not a color observation; its configured retry sees completed siblings only', async () => {
+    const scans = [];
+    const h = await fixture({ retry: 1, scanFace: html => paletteScan(html, scans), afterTransport(h, entry) {
+        if (entry.face === 1 && h.posts.length === 2) throw Object.assign(new Error('provider failed'), { requestCount: 1 });
+    } });
+    const result = await h.call();
+    assert.deepEqual(h.posts.map(entry => entry.face), [0, 1, 2, 1]);
+    assert.deepEqual(scans, [0, 2, 1]);
+    assert.doesNotMatch(paletteContext(h.posts[2].user), /第2面|#6e2856/);
+    assert.match(paletteContext(h.posts[3].user), /第1面.*#123a70.*第3面.*#256341/);
+    assert.equal(result.completedFaces, 3);
+});
+
+test('long-text serial faces neither receive nor contribute sibling palette constraints', async () => {
+    const h = await fixture({ scanFace: html => paletteScan(html, []) });
+    h.config.updateSettings({ rabbitMirrorPresentationModes: ['html', 'longtext', 'html'] });
+    await h.call();
+    assert.equal(paletteContext(h.posts[1].user), '');
+    assert.match(paletteContext(h.posts[2].user), /第1面.*#123a70/);
+    assert.doesNotMatch(paletteContext(h.posts[2].user), /第2面|#6e2856/);
+});
+
+test('repeated actual palettes remain accepted without forcing extra requests', async () => {
+    let scanCount = 0;
+    const h = await fixture({ retry: 2, scanFace() {
+        scanCount++;
+        return { paletteFingerprint: { confidence: .8, mainColors: ['#123a70'], source: 'raw' } };
+    } });
+    const result = await h.call();
+    assert.equal(result.completedFaces, 3);
+    assert.equal(h.posts.length, 3);
+    assert.equal(scanCount, 3);
+});
+
+test('serial palette observations remain inside the existing complete-request character budget', async () => {
+    const normal = await fixture({ scanFace: html => paletteScan(html, []) });
+    await normal.call();
+    const second = normal.posts[1];
+    const budget = second.system.length + second.user.length - 20;
+    let budgetCalls = 0;
+    const limited = await fixture({ retry: 2, scanFace: html => paletteScan(html, []),
+        maxRequestChars: () => ++budgetCalls === 1 ? 1000000 : budget });
+    const result = await limited.call();
+    assert.equal(limited.posts.length, 1, 'the compact observation must not bypass the old size guard');
+    assert.equal(result.completedFaces, 1);
+    assert.equal(result.requestDiagnostic.terminalErrorCode, 'RABBIT_MIRROR_REQUEST_TOO_LARGE');
+    assert.equal(limited.mayRetry(result), false);
 });
 
 function resayFixture({ errorCard = true, faceIndex = -1, form = 'html' } = {}) {

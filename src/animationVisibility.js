@@ -1,4 +1,4 @@
-import { ANIMATION_SUSPENDED_ATTR } from './runtimeAnimationState.js?rmv=1.67.42-face-atlas-test6';
+import { ANIMATION_SUSPENDED_ATTR } from './runtimeAnimationState.js?rmv=1.67.42-face-atlas-test7';
 
 // One observer, no scroll handler, per-frame scan or polling. CSS supplies the
 // temporary pause; releasing it restores authored/checked/reduced-motion rules.

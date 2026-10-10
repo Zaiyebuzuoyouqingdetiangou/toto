@@ -1,16 +1,16 @@
 // Split from outputSanitizer.js — diagnostics.
-import { interactionSamplingDiagnostic, designSamplingChecksDiagnostic } from '../interactionSampling.js?rmv=1.67.42-face-atlas-test6';
-import { RADIO_BRANCH_COUNT_ATTR } from './radioBranchRepair.js?rmv=1.67.42-face-atlas-test6';
-import { findUnmappedNavigationButtons } from './choiceRescue.js?rmv=1.67.42-face-atlas-test6';
-import { nativePopoverFallbackCount, inspectNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.67.42-face-atlas-test6';
-import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.67.42-face-atlas-test6';
-import { restoreRuntimeAnimationClone } from '../runtimeAnimationState.js?rmv=1.67.42-face-atlas-test6';
-import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.67.42-face-atlas-test6';
+import { interactionSamplingDiagnostic, designSamplingChecksDiagnostic } from '../interactionSampling.js?rmv=1.67.42-face-atlas-test7';
+import { RADIO_BRANCH_COUNT_ATTR } from './radioBranchRepair.js?rmv=1.67.42-face-atlas-test7';
+import { findUnmappedNavigationButtons } from './choiceRescue.js?rmv=1.67.42-face-atlas-test7';
+import { nativePopoverFallbackCount, inspectNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.67.42-face-atlas-test7';
+import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.67.42-face-atlas-test7';
+import { restoreRuntimeAnimationClone } from '../runtimeAnimationState.js?rmv=1.67.42-face-atlas-test7';
+import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.67.42-face-atlas-test7';
 
-import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.67.42-face-atlas-test6';
-import { collectBoundedElementDescendants } from '../presentationQuality.js?rmv=1.67.42-face-atlas-test6';
-import { collectRevealedClipHosts, shouldRelaxRevealedClipPanel, REVEALED_CLIP_RESCUE_ATTR } from '../revealedClipRepair.js?rmv=1.67.42-face-atlas-test6';
-import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.67.42-face-atlas-test6';
+import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.67.42-face-atlas-test7';
+import { collectBoundedElementDescendants } from '../presentationQuality.js?rmv=1.67.42-face-atlas-test7';
+import { collectRevealedClipHosts, shouldRelaxRevealedClipPanel, REVEALED_CLIP_RESCUE_ATTR } from '../revealedClipRepair.js?rmv=1.67.42-face-atlas-test7';
+import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.67.42-face-atlas-test7';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -29,7 +29,7 @@ import {
     isInsideChatMessage,
     isMaintenanceRabbitEnabled,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.67.42-face-atlas-test6';
+} from './runtime.js?rmv=1.67.42-face-atlas-test7';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     CHANNEL_DIAL_CYCLE_COUNT_ATTR,
@@ -62,7 +62,7 @@ import {
     WEBKIT_3D_FLIP_RESCUE_ATTR,
     passportDocumentRescueStates,
     unlabeledCheckedHostRescueStates,
-} from './checkedStateRescue.js?rmv=1.67.42-face-atlas-test6';
+} from './checkedStateRescue.js?rmv=1.67.42-face-atlas-test7';
 import {
     RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR,
     RENDERED_BUTTON_ADJACENT_HIDDEN_ITEM_ATTR,
@@ -89,7 +89,7 @@ import {
     renderedListDetailRescueStates,
     renderedMaskRevealRescueStates,
     renderedStateLayerRescueStates,
-} from './renderedStateRescue.js?rmv=1.67.42-face-atlas-test6';
+} from './renderedStateRescue.js?rmv=1.67.42-face-atlas-test7';
 import {
     RAW_RADIO_RESET_LAST_ATTR,
     RAW_RADIO_RESET_ROOT_ATTR,
@@ -100,7 +100,7 @@ import {
     getRabbitMirrorSummaryText,
     getRawAssistantMessageForRenderedRoot,
     rawSelfMutationRescueStates,
-} from './scriptedInteractionRescue.js?rmv=1.67.42-face-atlas-test6';
+} from './scriptedInteractionRescue.js?rmv=1.67.42-face-atlas-test7';
 import {
     REVERSIBLE_RADIO_LAST_ATTR,
     REVERSIBLE_RADIO_ROOT_ATTR,
@@ -111,13 +111,13 @@ import {
     findNestedDetailsPopupClippingCandidates,
     formatWebKit3DFlipEvidence,
     repairNestedDetailsPopupClipping,
-} from './fallbackRescue.js?rmv=1.67.42-face-atlas-test6';
-import { RADIO_GROUP_RESCUE_ATTR, RADIO_GROUP_ROOT_ATTR } from './idsAndRearm.js?rmv=1.67.42-face-atlas-test6';
+} from './fallbackRescue.js?rmv=1.67.42-face-atlas-test7';
+import { RADIO_GROUP_RESCUE_ATTR, RADIO_GROUP_ROOT_ATTR } from './idsAndRearm.js?rmv=1.67.42-face-atlas-test7';
 import {
     findFillInChoiceCandidates,
     findStaticChoiceSelectionCandidates,
     findStructuredStaticDisclosureCandidates,
-} from './choiceRescue.js?rmv=1.67.42-face-atlas-test6';
+} from './choiceRescue.js?rmv=1.67.42-face-atlas-test7';
 import {
     CODE_SHELL_SELECTOR,
     MAINTENANCE_QUARANTINED_SCRIPT_ATTR,
@@ -135,7 +135,7 @@ import {
     needsSanitize,
     normalizeMaintenanceSummaryText,
     parseTotoFragment,
-} from './maintenanceInspect.js?rmv=1.67.42-face-atlas-test6';
+} from './maintenanceInspect.js?rmv=1.67.42-face-atlas-test7';
 import {
     RABBIT_MIRROR_MAX_TEMPLATE_SOURCE_CHARS,
     RABBIT_MIRROR_SANITIZER_IMPORT_STRIPPED_ATTR,
@@ -148,7 +148,7 @@ import {
     sanitizeRabbitMirrorUntrustedTemplate,
     stripCssComments,
     validateRabbitMirrorTemplateStructuralBudget,
-} from './markup.js?rmv=1.67.42-face-atlas-test6';
+} from './markup.js?rmv=1.67.42-face-atlas-test7';
 import {
     HCLIP_REPORT_ATTR,
     VIEWPORT_LAYOUT_COUNT_ATTR,
@@ -156,14 +156,14 @@ import {
     inspectMaintenanceMobileLayout,
     inspectMaintenanceViewportLayout,
     maintenanceMobileLayoutIsPassportManaged,
-} from './layoutRescue.js?rmv=1.67.42-face-atlas-test6';
-import { normalizeRabbitMirrorToolButton, rabbitMirrorTextPresentation, updateMaintenanceRabbitMenuState } from './toolsChrome.js?rmv=1.67.42-face-atlas-test6';
+} from './layoutRescue.js?rmv=1.67.42-face-atlas-test7';
+import { normalizeRabbitMirrorToolButton, rabbitMirrorTextPresentation, updateMaintenanceRabbitMenuState } from './toolsChrome.js?rmv=1.67.42-face-atlas-test7';
 import {
     getMessageIndexFromMirrorNode,
     hostScriptModule,
     messageUsesDistinctDisplaySource,
     outputHostGenerationLooksActive,
-} from './lifecycle.js?rmv=1.67.42-face-atlas-test6';
+} from './lifecycle.js?rmv=1.67.42-face-atlas-test7';
 
 export const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
 
@@ -2239,33 +2239,9 @@ function buildRabbitMirrorCurrentFaceHtml(root) {
     const details = root?.matches?.('details') ? root
         : root?.matches?.(MIRROR_TOTO_SELECTOR) ? root.querySelector(':scope > details') : null;
     if (!details?.isConnected || !isRabbitMirrorDetails(details)) {
-        throw new Error('当前镜面已离开页面，请重新打开这一面的维修兔后复制。');
+        throw new Error('当前镜面已离开页面，请重新打开这一面的维修兔后导出。');
     }
-    if (!validateRabbitMirrorTemplateStructuralBudget({ content: { childNodes: [details] } })) {
-        throw new Error('这面 HTML 超出安全复制范围，未复制，也未截断内容。');
-    }
-    const template = document.createElement('template');
-    const clone = restoreRuntimeAnimationClone(details, cloneRabbitMirrorFilteredNode(details));
-    const originals = details.querySelectorAll('input, textarea, option');
-    const copies = clone.querySelectorAll('input, textarea, option');
-    originals.forEach((node, index) => {
-        const copy = copies[index];
-        if (node.matches('input[type="checkbox"], input[type="radio"]')) copy.toggleAttribute('checked', !!node.checked);
-        else if (node.matches('option')) copy.toggleAttribute('selected', !!node.selected);
-        else if (node.matches('textarea')) copy.textContent = node.value;
-        else if (!node.matches('input[type="password"], input[type="file"]')) copy.setAttribute('value', node.value);
-    });
-    // A normal inline face may keep its local stylesheet/scope on the <toto>
-    // wrapper. Clone only that shell and direct styles, not sibling prose/faces.
-    if (root !== details) {
-        const shell = root.cloneNode(false);
-        for (const child of root.children) {
-            if (child === details) shell.appendChild(clone);
-            else if (child.matches('style')) shell.appendChild(child.cloneNode(true));
-        }
-        template.content.appendChild(shell);
-    } else template.content.appendChild(clone);
-    template.content.querySelectorAll([
+    const excluded = [
         '[data-rm-image-region]', '[data-rm-image-portal]',
         `[${TOOL_ENTRY_HOST_ATTR}]`, '[data-rm-face-swipe-host]', `[${MAINTENANCE_RABBIT_ATTR}]`, `[${FEEDBACK_CAT_ATTR}]`,
         `[${RECIPE_BUTTON_ATTR}]`, `[${RESAY_ATTR}]`, `[${MAINTENANCE_MENU_ATTR}]`,
@@ -2273,7 +2249,60 @@ function buildRabbitMirrorCurrentFaceHtml(root) {
         `[${EXTERNAL_REFERENCE_NOTE_ATTR}]`, `[${INTERACTION_HOME_ATTR}]`,
         '[data-rabbit-mirror-maintenance-checked-sandbox]', '[data-rabbit-mirror-title-flow-end]',
         `template[${MAINTENANCE_QUARANTINED_SCRIPT_ATTR}]`,
-    ].join(',')).forEach(node => node.remove());
+    ].join(',');
+    // Validate the same one-face projection that will be exported. Tool panels
+    // and their hidden test copies are not authored content. Represent them as
+    // empty comments before the existing budget check, without cloning or walking
+    // their descendants. Keep every other node/attribute under the original limits.
+    function exportView(node, selectedChildren = null) {
+        const omitted = node !== root && node !== details && node.matches?.(excluded);
+        let children;
+        return {
+            source: node, omitted, nodeType: omitted ? 8 : node.nodeType,
+            tagName: omitted ? '' : node.tagName, attributes: omitted ? [] : node.attributes,
+            textContent: !omitted && node.tagName === 'STYLE' ? node.textContent : '',
+            get childNodes() {
+                return children ||= omitted ? [] : [...(selectedChildren || node.content?.childNodes || node.childNodes || [])].map(child => exportView(child));
+            },
+        };
+    }
+    // A normal inline face may keep its local stylesheet/scope on the <toto>
+    // wrapper. Select only that shell and direct styles, not sibling prose/faces.
+    const view = exportView(root, root !== details
+        ? [...root.children].filter(child => child === details || child.matches('style')) : null);
+    if (!validateRabbitMirrorTemplateStructuralBudget({ content: { childNodes: [view] } })) {
+        throw new Error('这面 HTML 超出安全导出范围，未复制或下载，也未截断内容。');
+    }
+    const template = document.createElement('template');
+    const copies = new Map(), omittedCopies = [];
+    const copyNode = item => {
+        const copy = item.omitted ? document.createComment('rm-export-tool')
+            : item.source.nodeType === 3 ? cloneRabbitMirrorFilteredNode(item.source) : item.source.cloneNode(false);
+        copies.set(item.source, copy);
+        if (item.omitted) omittedCopies.push(copy);
+        return copy;
+    };
+    const clone = copyNode(view), stack = [[view, clone]];
+    while (stack.length) {
+        const [item, copy] = stack.pop();
+        for (const child of item.childNodes) {
+            const childCopy = copyNode(child);
+            (copy.content || copy).appendChild(childCopy);
+            stack.push([child, childCopy]);
+        }
+    }
+    // Empty placeholders preserve source/clone child positions for the existing
+    // animation/avatar restoration. Remove them only after restoring provenance.
+    restoreRuntimeAnimationClone(details, copies.get(details));
+    omittedCopies.forEach(node => node.remove());
+    for (const [node, copy] of copies) {
+        if (!node.matches?.('input, textarea, option') || copy.nodeType !== 1) continue;
+        if (node.matches('input[type="checkbox"], input[type="radio"]')) copy.toggleAttribute('checked', !!node.checked);
+        else if (node.matches('option')) copy.toggleAttribute('selected', !!node.selected);
+        else if (node.matches('textarea')) copy.textContent = node.value;
+        else if (!node.matches('input[type="password"], input[type="file"]')) copy.setAttribute('value', node.value);
+    }
+    template.content.appendChild(clone);
     // Remove only diagnostic bookkeeping from the detached export. Functional
     // rescue markers/CSS remain intact; live DOM and saved source are untouched.
     const diagnosticAttributes = [
@@ -2288,7 +2317,7 @@ function buildRabbitMirrorCurrentFaceHtml(root) {
     }
     const html = template.innerHTML;
     if (!html || html.length > RABBIT_MIRROR_MAX_TEMPLATE_SOURCE_CHARS) {
-        throw new Error('这面 HTML 超出安全复制范围，未复制，也未截断内容。');
+        throw new Error('这面 HTML 超出安全导出范围，未复制或下载，也未截断内容。');
     }
     return '<!doctype html>\n<html lang="zh-CN"><head><meta charset="utf-8">'
         + '<meta name="viewport" content="width=device-width,initial-scale=1">'

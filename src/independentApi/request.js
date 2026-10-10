@@ -1,28 +1,28 @@
-import { bindRolePaletteCode } from '../roleColorVariants.js?rmv=1.67.42-face-atlas-test6';
-import { faceDrawNeedsExternal } from '../faceDrawRules.js?rmv=1.67.42-face-atlas-test6';
-import { designSamplingChecksFromHtml } from '../interactionSampling.js?rmv=1.67.42-face-atlas-test6';
+import { bindRolePaletteCode } from '../roleColorVariants.js?rmv=1.67.42-face-atlas-test7';
+import { faceDrawNeedsExternal } from '../faceDrawRules.js?rmv=1.67.42-face-atlas-test7';
+import { designSamplingChecksFromHtml } from '../interactionSampling.js?rmv=1.67.42-face-atlas-test7';
 // Split from independentApi.js — request.
 
-import { claimGenerationEvidence, associateGenerationEvidence, generationEvidenceFor } from '../generationEvidence.js?rmv=1.67.42-face-atlas-test6';
-import { createGenerationTimer } from '../generationTiming.js?rmv=1.67.42-face-atlas-test6';
+import { claimGenerationEvidence, associateGenerationEvidence, generationEvidenceFor } from '../generationEvidence.js?rmv=1.67.42-face-atlas-test7';
+import { createGenerationTimer } from '../generationTiming.js?rmv=1.67.42-face-atlas-test7';
 
-import { resolveBehaviorRuleText } from '../behaviorRules.js?rmv=1.67.42-face-atlas-test6';
-import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.67.42-face-atlas-test6';
-import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.67.42-face-atlas-test6';
-import { getSettings } from '../settings.js?rmv=1.67.42-face-atlas-test6';
-import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.67.42-face-atlas-test6';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=1.67.42-face-atlas-test6';
-import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from '../chatAvatarPromptReady.js?rmv=1.67.42-face-atlas-test6';
+import { resolveBehaviorRuleText } from '../behaviorRules.js?rmv=1.67.42-face-atlas-test7';
+import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.67.42-face-atlas-test7';
+import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.67.42-face-atlas-test7';
+import { getSettings } from '../settings.js?rmv=1.67.42-face-atlas-test7';
+import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.67.42-face-atlas-test7';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=1.67.42-face-atlas-test7';
+import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from '../chatAvatarPromptReady.js?rmv=1.67.42-face-atlas-test7';
 import {
     assertRabbitMirrorIndependentResponseBytes,
     assertRabbitMirrorIndependentResponseText,
     authorizeRabbitMirrorIndependentServiceRequest,
-} from '../independentSecurityGuard.js?rmv=1.67.42-face-atlas-test6';
+} from '../independentSecurityGuard.js?rmv=1.67.42-face-atlas-test7';
 import {
     parseIndependentAdvancedOptions,
     buildIndependentAdvancedCarrier,
     applyIndependentAdvancedExclusions,
-} from '../advancedRequestOptions.js?rmv=1.67.42-face-atlas-test6';
+} from '../advancedRequestOptions.js?rmv=1.67.42-face-atlas-test7';
 import {
     buildRabbitMirrorPromptDetails,
     planRabbitMirrorPromptDetails,
@@ -31,14 +31,15 @@ import {
     prepareSelectedMemoryForPrompt,
     memoryRequestSettingsKey,
     assertMemoryRequestSettings,
-} from '../promptBuilder.js?rmv=1.67.42-face-atlas-test6';
-import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.67.42-face-atlas-test6';
-import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.67.42-face-atlas-test6';
-import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.67.42-face-atlas-test6';
-import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText, createMultifaceFailureSlot } from '../multifaceProtocol.js?rmv=1.67.42-face-atlas-test6';
-import { applyAtmosphereFields, atmosphereNotesFromHtml, stripAtmosphereChoiceMarkup } from '../atmosphereChoice.js?rmv=1.67.42-face-atlas-test6';
-import { isLocalPreflightFailure, isQuotaInsufficientFailure, configuredAutomaticRerollMax, automaticRerollEnabled } from '../automaticReroll.js?rmv=1.67.42-face-atlas-test6';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.67.42-face-atlas-test6';
+} from '../promptBuilder.js?rmv=1.67.42-face-atlas-test7';
+import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.67.42-face-atlas-test7';
+import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.67.42-face-atlas-test7';
+import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.67.42-face-atlas-test7';
+import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText, createMultifaceFailureSlot } from '../multifaceProtocol.js?rmv=1.67.42-face-atlas-test7';
+import { applyAtmosphereFields, atmosphereNotesFromHtml, stripAtmosphereChoiceMarkup } from '../atmosphereChoice.js?rmv=1.67.42-face-atlas-test7';
+import { isLocalPreflightFailure, isQuotaInsufficientFailure, configuredAutomaticRerollMax, automaticRerollEnabled } from '../automaticReroll.js?rmv=1.67.42-face-atlas-test7';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.67.42-face-atlas-test7';
+import { serialPaletteExecutionReminder } from '../serialPaletteContext.js?rmv=1.67.42-face-atlas-test7';
 import {
     createVisualHistorySelection,
     resolveVisualHistorySelection,
@@ -47,9 +48,9 @@ import {
     markPendingBatchAttempt,
     findPendingComboBatchPlan,
     releasePendingComboBatch,
-} from '../storage.js?rmv=1.67.42-face-atlas-test6';
-import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.67.42-face-atlas-test6';
-import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.67.42-face-atlas-test6';
+} from '../storage.js?rmv=1.67.42-face-atlas-test7';
+import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.67.42-face-atlas-test7';
+import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.67.42-face-atlas-test7';
 import {
     RUNTIME_VERSION,
     EXTERNAL_SHELL_ATTR,
@@ -60,8 +61,8 @@ import {
     byteLength,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.67.42-face-atlas-test6';
-import { operationEpochForBase } from './flights.js?rmv=1.67.42-face-atlas-test6';
+} from './runtime.js?rmv=1.67.42-face-atlas-test7';
+import { operationEpochForBase } from './flights.js?rmv=1.67.42-face-atlas-test7';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INDEPENDENT_MAX_APPROX_DEPTH,
@@ -76,7 +77,7 @@ import {
     normalizedConfiguredTemperature,
     readHistoryStore,
     readStore,
-} from './persistence.js?rmv=1.67.42-face-atlas-test6';
+} from './persistence.js?rmv=1.67.42-face-atlas-test7';
 import {
     API_PROFILE_ORDER,
     chatKey,
@@ -110,7 +111,7 @@ import {
     stageNextApiProfile,
     swipeId,
     validatedIndependentConnectionProfile,
-} from './connection.js?rmv=1.67.42-face-atlas-test6';
+} from './connection.js?rmv=1.67.42-face-atlas-test7';
 import {
     externalGeometryCycleSequence,
     externalGeometryLifecycleEpoch,
@@ -121,7 +122,7 @@ import {
     writeExternalGeometryCycleSequence,
     writeExternalGeometryLifecycleEpoch,
     writeExternalGeometryLifecycleReason,
-} from './geometry.js?rmv=1.67.42-face-atlas-test6';
+} from './geometry.js?rmv=1.67.42-face-atlas-test7';
 import {
     INDEPENDENT_REJECTED_PREVIEW_MAX_CHARS,
     INDEPENDENT_REJECTED_PREVIEW_MAX_ENTRIES,
@@ -136,8 +137,8 @@ import {
     writeExternalHostSyncIndex,
     writeIndependentRejectedPreviewChars,
     writeIndependentRejectedPreviewSequence,
-} from './mount.js?rmv=1.67.42-face-atlas-test6';
-import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.67.42-face-atlas-test6';
+} from './mount.js?rmv=1.67.42-face-atlas-test7';
+import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.67.42-face-atlas-test7';
 
 const NON_STREAM_PROFILE_BY_STREAM_PROFILE={
  chat_system_user_full:'chat_system_user_full_nostream',
@@ -1624,7 +1625,7 @@ export function wireIndependentRejectedFaceControls(host){
    independentRejectedFaceControlsWired.add(resay);
    resay.addEventListener('click',event=>{
     event.preventDefault(); event.stopPropagation();
-    void import('../outputSanitizer/toolsChrome.js?rmv=1.67.42-face-atlas-test6').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+    void import('../outputSanitizer/toolsChrome.js?rmv=1.67.42-face-atlas-test7').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
    },true);
   }
  }
@@ -1823,7 +1824,7 @@ async function loadIndependentAppearanceReference(owner){
  let module;
  assertIndependentPromptOwner(owner);
  try{
-  try{module=await import('../appearanceReference.js?rmv=1.67.42-face-atlas-test6');}
+  try{module=await import('../appearanceReference.js?rmv=1.67.42-face-atlas-test7');}
   catch{
    const error=new Error('外观参考模块未能加载；本轮未发送请求，请刷新后重试或关闭外观参考。');
    error.code='RABBIT_MIRROR_APPEARANCE_MODULE_UNAVAILABLE';error.requestCount=0;throw error;
@@ -1923,6 +1924,7 @@ async function runIndependentSerialFaces({ ctx, index, msg, signal, requestOptio
  assertParentCurrent();
  requestOptions.onRequestSelection?.({ faceCount, faces: details.metadata?.faces || [], serialDispatch: true });
  const htmlByFace = Array(faceCount).fill('');
+ const faceScans = Array(faceCount).fill(null);
  const failed = new Set(Array.from({ length: faceCount }, (_, faceIndex) => faceIndex));
  const choices = Array(faceCount).fill(null);
  const designSelectionChecks = [];
@@ -1940,6 +1942,13 @@ async function runIndependentSerialFaces({ ctx, index, msg, signal, requestOptio
   if (designCheck) designSelectionChecks.push({ ...designCheck, faceIndex });
   htmlByFace[faceIndex] = wrapSerialFace(html, faceIndex);
   failed.delete(faceIndex);
+  // Reuse the existing per-face scan, but observe a completed face before the
+  // next request instead of waiting until the entire serial batch has finished.
+  try { faceScans[faceIndex] = { ...scanRabbitMirrorHtml(htmlByFace[faceIndex], null), faceIndex }; }
+  catch (error) {
+   console.debug('[RabbitMirror] serial visual scan skipped:', error);
+   faceScans[faceIndex] = { faceIndex, visualSignature: '', visualSkeleton: '', riskFlags: [] };
+  }
  };
  const sendFace = async faceIndex => {
   assertParentCurrent();
@@ -1957,6 +1966,12 @@ async function runIndependentSerialFaces({ ctx, index, msg, signal, requestOptio
   pinnedSelections: [selections[faceIndex]],
   serialFaceIndex: faceIndex,
   serialFaceCount: faceCount,
+  serialPaletteObservations: faceScans.flatMap((scan, index) => scan ? [{
+   faceIndex: index,
+   presentationMode: details.metadata?.faces?.[index]?.presentationMode,
+   pureOrder: details.metadata?.faces?.[index]?.pureOrder === true,
+   paletteFingerprint: scan.paletteFingerprint,
+  }] : []),
   onBatchPlan() {},
   onRequestSelection() {},
   });
@@ -2004,11 +2019,7 @@ async function runIndependentSerialFaces({ ctx, index, msg, signal, requestOptio
  const failedFaces = [...failed].map(faceIndex => ({ faceIndex, status: 'failed', code: 'serial-face-failed' }));
  return {
   html: selections.map((_, faceIndex) => htmlByFace[faceIndex] || createMultifaceFailureSlot(faceIndex, 'serial-face-failed')).join('\n'),
-  faceScans: selections.map((_, faceIndex) => {
-   if(failed.has(faceIndex))return null;
-   try{return {...scanRabbitMirrorHtml(htmlByFace[faceIndex],null),faceIndex};}
-   catch(error){console.debug('[RabbitMirror] serial visual scan skipped:',error);return {faceIndex,visualSignature:'',visualSkeleton:'',riskFlags:[]};}
-  }),
+  faceScans,
   failedFaces, completedFaces: faceCount - failed.size, batchPlan: details.batchPlan || null, chosenTickets: choices,
   requestDiagnostic: { visualHistoryBatchId: details.batchPlan?.batchId || '', faceCount, serialDispatch: true, partial: failed.size > 0, failedFaces, completedFaces: faceCount - failed.size, faces: details.metadata?.faces || [], ...stoppedDiagnostic, ...(designSelectionChecks.length ? { designSelectionChecks } : {}) },
   executionLockChars: String(details.executionLock || '').length,
@@ -2163,7 +2174,7 @@ export async function callIndependentApi(ctx,index,msg,signal=null,requestOption
   details={...details,metadata:{...details.metadata,faces:details.metadata.faces.map((face,faceIndex)=>({...face,visualHistoryBatchId:details.batchPlan.batchId,visualHistoryFaceIndex:faceIndex}))}};
  }
  const basePrompt=String(details.prompt||'').trim();
- const executionLock=String(details.executionLock||'').trim();
+ let executionLock=String(details.executionLock||'').trim();
  if(details.metadata?.disabled || !basePrompt || !executionLock){
   requestOptions.onBatchPlan?.(null);
   if(promptOwner) assertIndependentPromptOwner(promptOwner);
@@ -2173,6 +2184,13 @@ export async function callIndependentApi(ctx,index,msg,signal=null,requestOption
  if(st.multifaceDispatch==='serial' && faceCount>1 && !resay && !missingIndexes.length && requestOptions.serialChild!==true){
   return runIndependentSerialFaces({ctx,index,msg,signal,requestOptions,promptPlan,promptOwner,details,st});
  }
+ const serialPaletteReminder=requestOptions.serialChild===true
+  ? serialPaletteExecutionReminder(requestOptions.serialPaletteObservations, {
+   faceIndex: requestOptions.serialFaceIndex, faceCount: requestOptions.serialFaceCount,
+   presentationMode: details.metadata?.presentationMode, pureOrder: details.metadata?.pureOrder === true,
+  }, st) : '';
+ // Include the compact reminder in the same existing request/context budget.
+ if(serialPaletteReminder) executionLock+=`\n${serialPaletteReminder}`;
  const feedbackBlock=feedbackPrompt ? `
 
 ${feedbackPrompt}${feedbackFinalCheck?`

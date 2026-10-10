@@ -1,5 +1,5 @@
-import { generationPaletteFields } from './paletteRecipes.js?rmv=1.67.42-face-atlas-test6';
-import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.67.42-face-atlas-test6';
+import { generationPaletteFields } from './paletteRecipes.js?rmv=1.67.42-face-atlas-test7';
+import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.67.42-face-atlas-test7';
 
 const ATMOSPHERE_REASON_LIMIT = 300;
 

@@ -1,8 +1,8 @@
 // Recover only a complete, keyed duplicate radio group with existing CSS panels.
 // No content, button meaning, or branch order is inferred from prose.
-import { clearUncheckedRadioCheckedInlineArtifacts, parseCheckedRulesFromText, resolveTargetsForCheckedRule, restoreInteractionInlineOverrides } from './checkedStateRescue.js?rmv=1.67.42-face-atlas-test6';
-import { applyCheckedVisualFallback, inputHasAssociatedLabel } from './fallbackRescue.js?rmv=1.67.42-face-atlas-test6';
-import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.67.42-face-atlas-test6';
+import { clearUncheckedRadioCheckedInlineArtifacts, parseCheckedRulesFromText, resolveTargetsForCheckedRule, restoreInteractionInlineOverrides } from './checkedStateRescue.js?rmv=1.67.42-face-atlas-test7';
+import { applyCheckedVisualFallback, inputHasAssociatedLabel } from './fallbackRescue.js?rmv=1.67.42-face-atlas-test7';
+import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.67.42-face-atlas-test7';
 
 export const RADIO_BRANCH_COUNT_ATTR = 'data-rabbit-mirror-radio-branch-count';
 export const RADIO_BRANCH_CONTROL_ATTR = 'data-rm-radio-branch-control';
