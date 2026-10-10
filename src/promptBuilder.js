@@ -1,36 +1,37 @@
-import { INTERACTION_SAMPLING_RULE, designCandidatePick, drawDesignCandidate } from './interactionSampling.js?rmv=1.67.42';
-import { driverContractLines, drawDriverOffer, interactionMethodNames, normalizeDriverOffer } from './interactionMethods.js?rmv=1.67.42';
-import { drawUsageOffer, normalizeUsageOffer } from './interactionUsageOffer.js?rmv=1.67.42';
-import { drawContinuation, normalizeContinuation } from './continuationCache.js?rmv=1.67.42';
-import { recentInteractionMethods } from './interactionMethodLedger.js?rmv=1.67.42';
-import { gameplayRuleFor } from './gameplayRules.js?rmv=1.67.42';
-import { usesModelOriginalColors, withoutPaletteRecipe, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.67.42';
-import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=1.67.42';
-import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=1.67.42';
-import { isNearWhitePalette, isNearWhiteContentSurface } from './paletteObservation.js?rmv=1.67.42';
-import { observedOperationFamiliesFor, observedMechanismsFor } from './compositionFingerprint.js?rmv=1.67.42';
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.67.42';
-import { expandShuffledOptions } from '../data/raw/rawSegmentLookup.js?rmv=1.67.42';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.67.42';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.67.42';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.67.42';
-import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES, VISUAL_SCENERY_EXPRESSION_RULE, VISUAL_SCENERY_VS_GUIDANCE } from '../data/raw/visualSceneryRules.js?rmv=1.67.42';
-import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.67.42';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.67.42';
-import { getComboHistory, getActivePaletteCooldown } from './storage.js?rmv=1.67.42';
-import { strongVisualDiversityRule, darkVisualGenerationRule, softLightVisualGenerationRule, visualDiversityExecutionLock, recentPaletteExecutionReminder, recentPaletteHueFamilies } from './visualDiversityPolicy.js?rmv=1.67.42';
-import { withoutInteractionRecipe, observedInteractionRecipesFor } from './interactionRecipes.js?rmv=1.67.42';
-import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.67.42';
-import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.67.42';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.67.42';
-export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.67.42';
-import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.67.42';
-import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.67.42';
-import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.67.42';
-import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.67.42';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.67.42';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.67.42';
-import { rabbitMirrorAvatarPromptRule } from './chatAvatars.js?rmv=1.67.42';
+import { INTERACTION_SAMPLING_RULE, designCandidatePick, drawDesignCandidate } from './interactionSampling.js?rmv=1.67.42-face-atlas-test1';
+import { driverContractLines, drawDriverOffer, interactionMethodNames, normalizeDriverOffer } from './interactionMethods.js?rmv=1.67.42-face-atlas-test1';
+import { drawUsageOffer, normalizeUsageOffer } from './interactionUsageOffer.js?rmv=1.67.42-face-atlas-test1';
+import { drawContinuation, normalizeContinuation } from './continuationCache.js?rmv=1.67.42-face-atlas-test1';
+import { recentInteractionMethods } from './interactionMethodLedger.js?rmv=1.67.42-face-atlas-test1';
+import { gameplayRuleFor } from './gameplayRules.js?rmv=1.67.42-face-atlas-test1';
+import { usesModelOriginalColors, withoutPaletteRecipe, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.67.42-face-atlas-test1';
+import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=1.67.42-face-atlas-test1';
+import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=1.67.42-face-atlas-test1';
+import { isNearWhitePalette, isNearWhiteContentSurface } from './paletteObservation.js?rmv=1.67.42-face-atlas-test1';
+import { observedOperationFamiliesFor, observedMechanismsFor } from './compositionFingerprint.js?rmv=1.67.42-face-atlas-test1';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.67.42-face-atlas-test1';
+import { expandShuffledOptions } from '../data/raw/rawSegmentLookup.js?rmv=1.67.42-face-atlas-test1';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.67.42-face-atlas-test1';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.67.42-face-atlas-test1';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.67.42-face-atlas-test1';
+import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES, VISUAL_SCENERY_EXPRESSION_RULE, VISUAL_SCENERY_VS_GUIDANCE } from '../data/raw/visualSceneryRules.js?rmv=1.67.42-face-atlas-test1';
+import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.67.42-face-atlas-test1';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.67.42-face-atlas-test1';
+import { getComboHistory, getActivePaletteCooldown } from './storage.js?rmv=1.67.42-face-atlas-test1';
+import { strongVisualDiversityRule, darkVisualGenerationRule, softLightVisualGenerationRule, visualDiversityExecutionLock, recentPaletteExecutionReminder, recentPaletteHueFamilies } from './visualDiversityPolicy.js?rmv=1.67.42-face-atlas-test1';
+import { withoutInteractionRecipe, observedInteractionRecipesFor } from './interactionRecipes.js?rmv=1.67.42-face-atlas-test1';
+import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.67.42-face-atlas-test1';
+import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.67.42-face-atlas-test1';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.67.42-face-atlas-test1';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.67.42-face-atlas-test1';
+import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.67.42-face-atlas-test1';
+import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.67.42-face-atlas-test1';
+import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.67.42-face-atlas-test1';
+import { faceDrawMetadataFields } from './faceDrawRules.js?rmv=1.67.42-face-atlas-test1';
+import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.67.42-face-atlas-test1';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.67.42-face-atlas-test1';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.67.42-face-atlas-test1';
+import { rabbitMirrorAvatarPromptRule } from './chatAvatars.js?rmv=1.67.42-face-atlas-test1';
 
 const THEME_ITEMS = new Map(THEMATIC_CATEGORIES.map(item => [item.id, item]));
 const FORMAT_ITEMS = new Map(PRESENTATION_FORMATS.map(item => [item.id, item]));
@@ -1153,7 +1154,7 @@ function buildFaceContext(selectionCombo, settings, rawPolicy, externalRawMap = 
         selectedThemeResult, selectedFormatResult,
         selectedThemes: selectedThemeResult.text,
         selectedFormats: selectedFormatResult.text,
-        visualSceneryMode: !textPresentation && combo?.pureOrder !== true && !!(visualSceneryEnabled(settings) || hasVisualScenery(combo)),
+        visualSceneryMode: !textPresentation && combo?.pureOrder !== true && !!((combo?.faceDrawConfigured !== true && visualSceneryEnabled(settings)) || hasVisualScenery(combo)),
         tarotRulesText: !textPresentation && isTarotRelated(combo) ? expandShuffledOptions(TAROT_IMAGE_RULES) : '',
         touchTheaterRulesText: !textPresentation && isTouchTheaterRelated(combo) ? TOUCH_THEATER_RULES : '',
     };
@@ -1189,6 +1190,7 @@ function faceMetadata(face, settings, generationType, rawPolicy, directive, memo
         generationType: String(generationType || 'normal'), rawPolicy,
         strongDiversity: true, darkVisualMode: settings?.darkVisualMode === true,
         samplingMode: combo?.samplingMode || settings?.samplingMode || 'classic',
+        ...faceDrawMetadataFields(combo),
         themeIds: Array.isArray(combo?.themeIds) ? [...combo.themeIds] : [],
         formatIds: Array.isArray(combo?.formatIds) ? [...combo.formatIds] : [],
         ...(Array.isArray(combo?.atmosphereMenu) && combo.atmosphereMenu.length > 1 ? { atmosphereMenu: combo.atmosphereMenu, atmosphereBucket: combo.atmosphereBucket || 'story' } : {}),
@@ -1263,8 +1265,9 @@ function textFaceLock(face, index) {
     return `第 ${index + 1} 面：${face.longText ? '长文本；写成一篇完整故事' : '文本'}；主题：${compactLockItems(face.combo.themes, 'theme')}；形式叙述特点：${compactLockItems(face.combo.formats, 'presentation')}；文本类：${compactLockItems(face.combo.texts, 'text')}。${face.longText ? '抽中的条目作题材、叙述和视觉风格。article 里写故事段落；条目写到的纸张、配色、字体、版式或文体风格落实到 article 的内联 style 上，条目没写时按正文气质美化；不要做成界面。外壳标签必须完整，不能只留标题。' : '原条目字数及明确 HTML 要求优先；不套额外美化玩法。'}保留完整正文与外层协议。`;
 }
 
-// This composer is used only when the frozen selection actually contains a text
-// face. Keeping the legacy composer below intact preserves inactive prompt bytes.
+// Text materials can also belong to an explicitly configured HTML face. Keep
+// those materials in its own scope without changing the requested presentation.
+// The legacy composer preserves prompt bytes for unconfigured HTML-only draws.
 function buildTextAwarePrompt({ faceContexts, settings, directive, memoryMaterial, generationType, followTagIsolationText, appearanceReferenceText, visualHistoryRule, constructionRules = null }) {
     const independent = generationType === 'independent';
     const multiface = faceContexts.length > 1;
@@ -1708,7 +1711,7 @@ export function renderRabbitMirrorPromptPlan(plan, externalRawMap = null, appear
         palette: sharedPaletteRules(faceContexts, settings, paletteReferences, true),
         html: sharedHtmlModeRules(faceContexts, true), diversity: generationPolicy,
     } : null;
-    const composedPrompt = hasTextPresentation ? buildTextAwarePrompt({ faceContexts, settings, directive, memoryMaterial,
+    const composedPrompt = (hasTextPresentation || faceContexts.some(face => face.combo?.faceDrawConfigured === true && face.combo.texts?.length)) ? buildTextAwarePrompt({ faceContexts, settings, directive, memoryMaterial,
         generationType, followTagIsolationText, appearanceReferenceText, visualHistoryRule, constructionRules }) : buildPrompt({
         combo: first.combo, settings, selectedThemes: first.selectedThemes, selectedFormats: first.selectedFormats,
         visualSceneryMode: first.visualSceneryMode, tarotRulesText: first.tarotRulesText,

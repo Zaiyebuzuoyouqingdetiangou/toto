@@ -1,14 +1,15 @@
-import { generationPaletteFields } from './paletteRecipes.js?rmv=1.67.42';
-import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.67.42';
-import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords, observedOperationFamiliesFor } from './compositionFingerprint.js?rmv=1.67.42';
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.67.42';
-import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.67.42';
-import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.67.42';
-import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.67.42';
+import { generationPaletteFields } from './paletteRecipes.js?rmv=1.67.42-face-atlas-test1';
+import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.67.42-face-atlas-test1';
+import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords, observedOperationFamiliesFor } from './compositionFingerprint.js?rmv=1.67.42-face-atlas-test1';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.67.42-face-atlas-test1';
+import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.67.42-face-atlas-test1';
+import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.67.42-face-atlas-test1';
+import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.67.42-face-atlas-test1';
 
 const STORAGE_KEY = 'rabbit_mirror_theater:last_combo:v11';
 const PENDING_KEY = 'rabbit_mirror_theater:pending_combo:v11';
 const MAX_STORED = 25; // Five completed rounds of up to five faces.
+const FACE_DRAW_CURSOR_KEY = 'rabbit_mirror_theater:face_draw_cursors:v1';
 const ATTEMPT_STORAGE_KEY = 'rabbit_mirror_theater:generation_attempts:v1';
 const DIRECTIVE_PICK_STORAGE_KEY = 'rabbit_mirror_theater:directive_pick_cache:v1';
 const MAX_ATTEMPTS_PER_CHAT = 20;
@@ -17,6 +18,63 @@ const ATTEMPT_TTL_MS = 12 * 60 * 60 * 1000;
 const DIRECTIVE_PICK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const FORMAT_ELIGIBLE_MISS_STORAGE_KEY = 'rabbit_mirror_theater:format_eligible_misses:v1';
 const FORMAT_ELIGIBLE_MISS_CAP = 320;
+
+function faceDrawCursorIdentity(step) {
+    if (!step || typeof step.chatKey !== 'string' || !step.chatKey || step.chatKey.length > 1024
+        || !Number.isInteger(step.faceIndex) || step.faceIndex < 0 || step.faceIndex > 4
+        || !['theme', 'format', 'text'].includes(step.kind) || !/^[a-f0-9]{32}$/.test(step.signature || '')) throw new Error('Invalid face draw cursor identity');
+    return JSON.stringify([step.chatKey, step.faceIndex, step.kind]);
+}
+
+function parseFaceDrawCursors(raw) {
+    if (raw === null) return {};
+    const value = JSON.parse(raw);
+    if (value?.version !== 1 || !value.cursors || typeof value.cursors !== 'object' || Array.isArray(value.cursors)
+        || Object.values(value.cursors).some(row => !row || !/^[a-f0-9]{32}$/.test(row.signature || '')
+            || !Number.isSafeInteger(row.cursor) || row.cursor < 0 || !Number.isSafeInteger(row.epoch) || row.epoch < 1)) throw new Error('Invalid face draw cursor storage');
+    return value.cursors;
+}
+
+export function readFaceDrawCursorState(identity) {
+    try {
+        const row = parseFaceDrawCursors(localStorage.getItem(FACE_DRAW_CURSOR_KEY))[faceDrawCursorIdentity(identity)];
+        return row?.signature === identity.signature ? { cursor: row.cursor, epoch: row.epoch }
+            : { cursor: 0, epoch: (row?.epoch || 0) + 1 };
+    } catch (cause) {
+        const error = new Error('本机的逐面轮播进度无法读取；不会重置进度或发送请求。', { cause });
+        error.code = 'MULTIFACE_PLAN_UNAVAILABLE'; error.reasonCode = 'FACE_DRAW_CURSOR_UNAVAILABLE'; error.requestCount = 0;
+        throw error;
+    }
+}
+
+export function readFaceDrawCursor(identity) { return readFaceDrawCursorState(identity).cursor; }
+
+// Called only alongside a successful history commit. Keep each frozen cursor
+// monotonic: retrying or concurrently committing the same selection is idempotent.
+function faceDrawCursorChanges(combos) {
+    const states = combos.flatMap(combo => combo?.faceDrawState ? [combo.faceDrawState] : []);
+    if (!states.length) return [];
+    const before = localStorage.getItem(FACE_DRAW_CURSOR_KEY);
+    const cursors = parseFaceDrawCursors(before);
+    for (const state of states) {
+        if (state.version !== 1 || !Array.isArray(state.steps) || state.steps.length > 3) throw new Error('Invalid face draw state');
+        for (const step of state.steps) {
+            const key = faceDrawCursorIdentity(step);
+            if (!Number.isSafeInteger(step.cursor) || step.cursor < 0 || !Number.isSafeInteger(step.next)
+                || step.next < step.cursor || step.next - step.cursor > 16
+                || !Number.isSafeInteger(step.epoch) || step.epoch < 1) throw new Error('Invalid face draw advance');
+            const previous = cursors[key];
+            // An old stored face can be retried after the user changes its
+            // configuration. Its old epoch must never replace the newer cursor.
+            if (previous && step.epoch < previous.epoch) continue;
+            if (previous && step.epoch === previous.epoch && step.signature !== previous.signature) continue;
+            cursors[key] = { signature: step.signature, epoch: step.epoch,
+                cursor: previous?.signature === step.signature && previous.epoch === step.epoch ? Math.max(previous.cursor, step.next) : step.next };
+        }
+    }
+    const after = JSON.stringify({ version: 1, cursors });
+    return after === before ? [] : [{ key: FACE_DRAW_CURSOR_KEY, before, after }];
+}
 
 function normalizeFormatEligibleMisses(raw, validFormatIds = []) {
     const valid = new Set((validFormatIds || []).map(id => String(id || '').trim()).filter(Boolean));
@@ -824,7 +882,8 @@ function validBatchCombo(combo) {
     if (combo.blankLongText !== undefined && !isBlankLongTextSelection(combo)) return false;
     // A selected text source must retain its actual mode; otherwise compact
     // accounting would discard its IDs and the original face could not recover.
-    if (combo.textIds?.length && combo.presentationMode !== 'text') return false;
+    if (combo.textIds?.length && combo.presentationMode !== 'text'
+        && !(combo.faceDrawConfigured === true && combo.presentationMode === 'html')) return false;
     for (const key of ['themeIds', 'formatIds', ...(combo.textIds !== undefined ? ['textIds'] : [])]) {
         if (!Array.isArray(combo[key]) || combo[key].length > 16) return false;
         for (let index = 0; index < combo[key].length; index += 1) {
@@ -1436,6 +1495,8 @@ export function commitPendingComboBatch(faceScans = [], expected = null) {
     const pityAfter = batchPityCommittedPayload(plan, pityBefore, scans);
     if (historyAfter === null || pityAfter === null) return false;
     const changes = [];
+    try { changes.push(...faceDrawCursorChanges(plan.faces.filter(face => scans[face.faceIndex]).map(face => face.combo))); }
+    catch { return false; }
     if (historyAfter !== historyBefore) changes.push({ key: STORAGE_KEY, before: historyBefore, after: historyAfter });
     if (pityAfter !== (pityBefore || '{}')) changes.push({ key: FORMAT_ELIGIBLE_MISS_STORAGE_KEY, before: pityBefore, after: pityAfter });
     if (record) changes.push({ key: record.storageKey, before: registry.rawByKey[record.storageKey], after: registryWithoutRecord(registry, record) });
@@ -1751,11 +1812,12 @@ function commitComboToHistory(combo, visual = {}, options = {}) {
     const batchId = String(options?.batchId || '');
     const faceIndex = options?.faceIndex;
     const historyId = String(options?.historyId || '');
+    const hasDrawCursor = !!combo.faceDrawState;
     let previousHistoryRaw = null;
     let historyPayload = '';
     try {
         let history;
-        if (batchId || historyId) {
+        if (batchId || historyId || hasDrawCursor) {
             if (batchId && (!Number.isSafeInteger(faceIndex) || faceIndex < 0 || faceIndex > 4)) return false;
             previousHistoryRaw = localStorage.getItem(STORAGE_KEY);
             // Parse the verified snapshot itself. readHistory intentionally masks
@@ -1775,7 +1837,7 @@ function commitComboToHistory(combo, visual = {}, options = {}) {
         const sig = combo.signature || signatureOf(combo);
         const last = history[history.length - 1];
         // 批次面带幂等键，不走签名去重分支：三面本就应各占一条。
-        if (!batchId && !historyId && last?.signature === sig && now - Number(last?.ts || 0) < 120000) {
+        if (!batchId && !historyId && !hasDrawCursor && last?.signature === sig && now - Number(last?.ts || 0) < 120000) {
             if (visualSignature) last.visualSignature = String(visualSignature).slice(0, 280);
             if (visualSkeleton) last.visualSkeleton = String(visualSkeleton).slice(0, VISUAL_SKELETON_MAX_CHARS);
             if (Array.isArray(riskFlags) && riskFlags.length) last.riskFlags = [...new Set(riskFlags)].slice(0, 8);
@@ -1799,7 +1861,13 @@ function commitComboToHistory(combo, visual = {}, options = {}) {
             interactionFamily: normalizeInteractionFamily(interactionFamily),
             visualSignatureTs: visualSignature || visualSkeleton || (Array.isArray(riskFlags) && riskFlags.length) || paletteFingerprint || normalizeInteractionFamily(interactionFamily) ? now : undefined,
         });
-        if (batchId || historyId) {
+        if (hasDrawCursor) {
+            historyPayload = JSON.stringify(history.slice(-MAX_STORED));
+            return writeOwnedTransaction([
+                { key: STORAGE_KEY, before: previousHistoryRaw, after: historyPayload },
+                ...faceDrawCursorChanges([combo]),
+            ]);
+        } else if (batchId || historyId) {
             historyPayload = JSON.stringify(history.slice(-MAX_STORED));
             if (localStorage.getItem(STORAGE_KEY) !== previousHistoryRaw) return false;
             localStorage.setItem(STORAGE_KEY, historyPayload);

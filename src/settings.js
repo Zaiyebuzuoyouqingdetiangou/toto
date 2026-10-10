@@ -1,10 +1,11 @@
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.67.42';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.67.42-face-atlas-test1';
+import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.67.42-face-atlas-test1';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.67.42';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.67.42';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.67.42';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.67.42';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.67.42-face-atlas-test1';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.67.42-face-atlas-test1';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.67.42-face-atlas-test1';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.67.42-face-atlas-test1';
 
 export const MODULE_NAME = 'rabbit_mirror_theater';
 
@@ -242,6 +243,8 @@ export const defaultSettings = Object.freeze({
     // single：一次请求出全部面。serial：副 API 逐面排队，一面一次。
     multifaceDispatch: 'single',
     rabbitMirrorPresentationModes: ['html', 'html', 'html', 'html', 'html'],
+    rabbitMirrorFaceDrawRules: normalizeFaceDrawRules(),
+    rabbitMirrorFaceDrawPresets: [],
     longTextSource: 'blank',
     // 自动呈现时，长文本所占百分比；其余为 HTML。0 表示仍按抽中的类别呈现。
     autoLongTextPercent: 0,
@@ -422,6 +425,8 @@ export function getSettings() {
     // 只接受数字 1～5；任何异常值（NaN、字符串、0、负数、超界）都回落到 1，
     // 保证旧设置升级与畸形写入都不会意外开启多面。
     settings.rabbitMirrorPresentationModes = normalizePresentationModes(settings.rabbitMirrorPresentationModes);
+    settings.rabbitMirrorFaceDrawRules = normalizeFaceDrawRules(settings.rabbitMirrorFaceDrawRules);
+    settings.rabbitMirrorFaceDrawPresets = normalizeFaceDrawPresets(settings.rabbitMirrorFaceDrawPresets);
     settings.longTextSource = ['blank', 'text', 'mixed'].includes(settings.longTextSource) ? settings.longTextSource : 'blank';
     const autoPercent = Number(settings.autoLongTextPercent);
     settings.autoLongTextPercent = Number.isFinite(autoPercent) ? Math.max(0, Math.min(100, Math.round(autoPercent))) : 0;
@@ -599,6 +604,8 @@ export function updateSettings(patch) {
     if (Object.prototype.hasOwnProperty.call(safePatch, 'rabbitMirrorPresentationModes')) {
         safePatch.rabbitMirrorPresentationModes = normalizePresentationModes(safePatch.rabbitMirrorPresentationModes);
     }
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'rabbitMirrorFaceDrawRules')) safePatch.rabbitMirrorFaceDrawRules = normalizeFaceDrawRules(safePatch.rabbitMirrorFaceDrawRules);
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'rabbitMirrorFaceDrawPresets')) safePatch.rabbitMirrorFaceDrawPresets = normalizeFaceDrawPresets(safePatch.rabbitMirrorFaceDrawPresets);
     if (Object.prototype.hasOwnProperty.call(safePatch, 'rabbitMirrorFaceCount')) {
         const faceCount = safePatch.rabbitMirrorFaceCount;
         safePatch.rabbitMirrorFaceCount = Number.isInteger(faceCount) && faceCount >= 2 && faceCount <= 5 ? faceCount : 1;

@@ -1,11 +1,13 @@
-import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.67.42';
-import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=1.67.42';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.67.42';
+import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.67.42-face-atlas-test1';
+import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=1.67.42-face-atlas-test1';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.67.42-face-atlas-test1';
+import { createFavoriteAtlasPanel } from './favoriteAtlasesUi.js?rmv=1.67.42-face-atlas-test1';
 const DB_NAME = 'rabbit_mirror_theater_favorites_v1';
 const STORE = 'favorites';
 const DB_VERSION = 1;
 export const THEATER_FAVORITES_CHANGED_EVENT = 'rabbitmirror:theater-favorites-changed';
-export const THEATER_FAVORITE_MAX_ITEMS = 80;
+// Collections are user archives: never evict an older mirror to save a new one.
+export const THEATER_FAVORITE_MAX_ITEMS = Infinity;
 export const THEATER_FAVORITE_MAX_HTML_BYTES = 400 * 1024;
 export const UNCATEGORIZED_CHARACTER_NAME = '未分类';
 
@@ -136,7 +138,7 @@ function runStore(mode, work) {
             reject(tx.error || new Error('收藏夹事务已中止。'));
         };
         try { result = work(store, value => { result = value; }); }
-        catch (error) { reject(error); }
+        catch (error) { try { tx.abort(); db.close(); } catch {} reject(error); }
     }));
 }
 
@@ -327,20 +329,12 @@ export async function saveTheaterFavorite(input) {
         createdAt: Date.now(),
     });
     if (!record) throw new Error('收藏内容无法保存。');
-    await runStore('readwrite', (store, done) => {
-        const request = store.getAll();
-        request.onsuccess = () => {
-            const rows = (Array.isArray(request.result) ? request.result : []).map(normalizeRecord).filter(Boolean)
-                .filter(row => row.id !== record.id)
-                .sort((a, b) => Number(a.createdAt) - Number(b.createdAt));
-            while (rows.length >= THEATER_FAVORITE_MAX_ITEMS) {
-                const oldest = rows.shift();
-                if (oldest?.id) store.delete(oldest.id);
-            }
-            store.put(record);
-            done(record);
-        };
-    });
+    try {
+        await runStore('readwrite', store => store.put(record));
+    } catch (error) {
+        if (error?.name === 'QuotaExceededError') throw new Error('本机存储空间不足，这面未收藏；已有收藏和图鉴保持不变。请先导出需要保留的内容，再自行清理空间。');
+        throw error;
+    }
     notifyChanged();
     return record;
 }
@@ -447,8 +441,9 @@ export function closeTheaterFavoriteViewer() {
 
 export function closeTheaterFavoriteLibrary() {
     if (!library) return;
-    const { overlay, keydown } = library;
+    const { overlay, keydown, onFavoritesChanged } = library;
     document.removeEventListener('keydown', keydown, true);
+    document.removeEventListener(THEATER_FAVORITES_CHANGED_EVENT, onFavoritesChanged);
     dismissOverlay(overlay);
     library = null;
 }
@@ -778,7 +773,7 @@ function favoriteDateText(ts) {
 
 export async function openTheaterFavoriteLibrary(hydrate) {
     if (typeof hydrate === 'function') lastHydrate = hydrate; else hydrate = lastHydrate;
-    const rows = await listTheaterFavorites();
+    let rows = await listTheaterFavorites();
     closeTheaterFavoriteLibrary();
     const { overlay, card } = overlayCard('兔子镜收藏夹');
     overlay.setAttribute('data-rm-theater-favorite-library', 'true');
@@ -1022,7 +1017,14 @@ export async function openTheaterFavoriteLibrary(hydrate) {
         overlay.addEventListener('close', () => resize.disconnect(), { once: true });
     }
     // 节气收集放在最下面，默认收起。
-    shelf.append(renderSolarTermProgress(rows, hydrate));
+    const solarTerms = document.createElement('div');
+    solarTerms.append(renderSolarTermProgress(rows, hydrate));
+    const atlases = createFavoriteAtlasPanel({
+        favorites: rows,
+        openFavorite: id => openTheaterFavoriteViewer(id, hydrate),
+        displayTitle: theaterFavoriteDisplayTitle,
+    });
+    shelf.append(solarTerms, atlases);
     card.append(style, shelf);
     bindOverlayDismiss(overlay, closeTheaterFavoriteLibrary);
     const keydown = event => {
@@ -1034,7 +1036,18 @@ export async function openTheaterFavoriteLibrary(hydrate) {
     };
     document.addEventListener('keydown', keydown, true);
     presentOverlay(overlay);
-    library = { overlay, keydown };
+    const onFavoritesChanged = () => {
+        void listTheaterFavorites().then(next => {
+            if (library?.overlay !== overlay) return;
+            rows = next;
+            count.textContent = rows.length ? `${rows.length} 面` : '';
+            paint();
+            solarTerms.replaceChildren(renderSolarTermProgress(rows, hydrate));
+            atlases.setFavorites(rows);
+        }).catch(error => globalThis.toastr?.warning?.(String(error?.message || '收藏更新失败。')));
+    };
+    document.addEventListener(THEATER_FAVORITES_CHANGED_EVENT, onFavoritesChanged);
+    library = { overlay, keydown, onFavoritesChanged };
     return rows;
 }
 

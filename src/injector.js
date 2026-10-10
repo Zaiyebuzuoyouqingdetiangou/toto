@@ -1,18 +1,19 @@
 import { eventSource, event_types, setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
 import * as hostRuntime from '../../../../../script.js';
-import { MODULE_NAME, getSettings } from './settings.js?rmv=1.67.42';
+import { MODULE_NAME, getSettings } from './settings.js?rmv=1.67.42-face-atlas-test1';
+import { faceDrawNeedsExternal } from './faceDrawRules.js?rmv=1.67.42-face-atlas-test1';
 import {
     buildFeedbackCatFinalCheck,
     buildFeedbackCatPrompt,
     clearFeedbackCatExtensionPrompt,
     getActiveFeedbackForCurrentChat,
     markFeedbackCatInjected,
-} from './feedbackCat.js?rmv=1.67.42';
-import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.67.42';
-import { getCurrentChatKey, markPendingBatchAttempt, releasePendingComboBatch } from './storage.js?rmv=1.67.42';
-import { describeExternalWorldBookPreflightFailure } from './externalWorldBook/errors.js?rmv=1.67.42';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.67.42';
-import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.42';
+} from './feedbackCat.js?rmv=1.67.42-face-atlas-test1';
+import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.67.42-face-atlas-test1';
+import { getCurrentChatKey, markPendingBatchAttempt, releasePendingComboBatch } from './storage.js?rmv=1.67.42-face-atlas-test1';
+import { describeExternalWorldBookPreflightFailure } from './externalWorldBook/errors.js?rmv=1.67.42-face-atlas-test1';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.67.42-face-atlas-test1';
+import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.42-face-atlas-test1';
 
 const INJECT_KEY = `${MODULE_NAME}:auto_injection`;
 
@@ -745,7 +746,7 @@ export function destroyIndependentGenerationIntentBridge({ clearIntents = false 
 
 function loadPromptBuilder() {
     if (!promptBuilderPromise) {
-        promptBuilderPromise = import('./promptBuilder.js?rmv=1.67.42').catch(error => {
+        promptBuilderPromise = import('./promptBuilder.js?rmv=1.67.42-face-atlas-test1').catch(error => {
             promptBuilderPromise = null;
             throw error;
         });
@@ -755,7 +756,7 @@ function loadPromptBuilder() {
 
 function loadGenerationGuard() {
     if (!generationGuardPromise) {
-        generationGuardPromise = import('./generationGuard.js?rmv=1.67.42').catch(error => {
+        generationGuardPromise = import('./generationGuard.js?rmv=1.67.42-face-atlas-test1').catch(error => {
             generationGuardPromise = null;
             throw error;
         });
@@ -885,7 +886,7 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
     const generationScopeKey = createGenerationScopeKey(type);
     const explicitTextFace = Array.isArray(settings.rabbitMirrorPresentationModes)
         && settings.rabbitMirrorPresentationModes.slice(0, Math.min(5, Math.max(1, Number(settings.rabbitMirrorFaceCount) || 1))).includes('text');
-    const externalEnabled = (settings.externalWorldBookRandomEnabled === true && settings.externalWorldBookMixMode !== 'builtin-only') || explicitTextFace;
+    const externalEnabled = (settings.externalWorldBookRandomEnabled === true && settings.externalWorldBookMixMode !== 'builtin-only') || explicitTextFace || faceDrawNeedsExternal(settings);
     const appearanceEnabled = settings.appearanceReferenceEnabled === true;
     const appearanceRequest = { enabled: appearanceEnabled, revision: String(settings.appearanceReferenceRevision || '') };
     const memoryWorldBookEnabled = settings.memoryScanEnabled === true && settings.memoryWorldBookEnabled === true && !!String(settings.memoryWorldBookId || '').trim();
@@ -950,7 +951,7 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
             assertMemoryOwner();
             let repository;
             if (externalEnabled) {
-                repository = await import('./externalWorldBook/store.js?rmv=1.67.42');
+                repository = await import('./externalWorldBook/store.js?rmv=1.67.42-face-atlas-test1');
                 assertFollowPrefetchOwner(prefetchOwner, _chat);
                 externalStage = 'index';
                 await repository.hydrateExternalPoolMetadata();
@@ -973,7 +974,7 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
             }
             if (frozenPlan.appearanceReference.enabled) {
                 externalStage = 'appearance-read';
-                const appearance = await import('./appearanceReference.js?rmv=1.67.42');
+                const appearance = await import('./appearanceReference.js?rmv=1.67.42-face-atlas-test1');
                 assertFollowPrefetchOwner(prefetchOwner, _chat); assertAppearanceOwner();
                 appearanceMaterial = await appearance.loadAppearanceReferenceMaterial(frozenPlan.appearanceReference.revision);
                 assertFollowPrefetchOwner(prefetchOwner, _chat); assertAppearanceOwner();
