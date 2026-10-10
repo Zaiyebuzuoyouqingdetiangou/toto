@@ -10,8 +10,6 @@ const ERROR_START = /^(?:error|错误|报错|请求失败|api ?error|\{\s*"error
 const EMPTY_HINT = /(?:未返回|无内容|没有内容|内容为空|空回复|空响应|no content|empty response|^null$|^undefined$)/i;
 const REFUSAL_START = /^(?:抱歉|对不起|很抱歉|非常抱歉|我很抱歉|sorry|i'?m sorry|i am sorry|i apologi[sz]e|i can'?t|i cannot|i'?m unable|i am unable|as an ai|作为(?:一个)?(?:ai|人工智能|语言模型))/i;
 const REFUSAL_WORDS = /(?:无法|不能|不可以|不便|拒绝|政策|规定|准则|安全|can'?t|cannot|unable|not able|won'?t|policy|guidelines|content)/i;
-// 酒馆预设里正文外层一般是 <content>；只认它和 <details>，其他标签名在状态栏等处可能合法地出现，容易误伤。
-const WRAPPER_TAGS = ['content', 'details'];
 
 function plainText(raw) {
     return String(raw || '').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -28,16 +26,6 @@ function htmlApiErrorHeader(raw) {
         || (/\bcloudflare\b/i.test(header) && /(?:too many requests|rate.?limit|service unavailable|bad gateway|gateway time-?out|timed? ?out|timeout|overloaded)/i.test(header));
 }
 
-function unclosedWrapper(raw) {
-    for (const tag of WRAPPER_TAGS) {
-        const name = tag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const open = (raw.match(new RegExp(`<${name}(?:\\s[^>]*)?>`, 'gi')) || []).length;
-        const close = (raw.match(new RegExp(`</${name}\\s*>`, 'gi')) || []).length;
-        if (open > close) return tag;
-    }
-    return '';
-}
-
 // 返回异常原因；正常返回空串。
 export function mainReplyAbnormalReason(message, { partial = false } = {}) {
     if (!message) return '';
@@ -50,9 +38,9 @@ export function mainReplyAbnormalReason(message, { partial = false } = {}) {
     if (ERROR_START.test(text.slice(0, 40)) || ERROR_START.test(raw.trim().slice(0, 40)) || htmlApiErrorHeader(raw)
         || (text.length < 1500 && signals >= 2) || (text.length < 150 && signals >= 1)) return '正文像是接口报错（如 429/524）';
     if (text.length < 400 && REFUSAL_START.test(text) && REFUSAL_WORDS.test(text)) return '正文是模型拒答或道歉';
-    if ((raw.match(/```/g) || []).length % 2 === 1) return '正文疑似截断（代码块未闭合）';
-    const wrapper = unclosedWrapper(raw);
-    if (wrapper) return `正文疑似截断（<${wrapper}> 标签未闭合）`;
+    // 正文可包含预设标签、正则处理后的标记、代码示例或不完整的 HTML。
+    // 标签/围栏计数不能证明模型被截断，也不能否定宿主已确认的生成结束。
+    // 是否仍在生成由宿主生命周期判断；此处不补标签、不修改正文。
     return '';
 }
 

@@ -1,7 +1,7 @@
-import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.67.42-face-atlas-test3';
-import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=1.67.42-face-atlas-test3';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.67.42-face-atlas-test3';
-import { createFavoriteAtlasPanel } from './favoriteAtlasesUi.js?rmv=1.67.42-face-atlas-test3';
+import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.67.42-face-atlas-test4';
+import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=1.67.42-face-atlas-test4';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.67.42-face-atlas-test4';
+import { createFavoriteAtlasPanel } from './favoriteAtlasesUi.js?rmv=1.67.42-face-atlas-test4';
 const DB_NAME = 'rabbit_mirror_theater_favorites_v1';
 const STORE = 'favorites';
 const DB_VERSION = 1;

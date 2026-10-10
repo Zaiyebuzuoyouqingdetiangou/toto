@@ -1,4 +1,4 @@
-import { classifyPaletteSamples } from './paletteObservation.js?rmv=1.67.42-face-atlas-test3';
+import { classifyPaletteSamples } from './paletteObservation.js?rmv=1.67.42-face-atlas-test4';
 
 const HUE_FAMILY_LABELS = Object.freeze({
     red: '红色族', orange: '橙色族', yellow: '黄色族', green: '绿色族', cyan: '青色族',

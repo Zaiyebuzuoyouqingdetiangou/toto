@@ -1,5 +1,5 @@
-import { RAW_THEMATIC_CATEGORIES } from './rawThematicCategories.js?rmv=1.67.42-face-atlas-test3';
-import { RAW_PRESENTATION_FORMATS } from './rawPresentationFormats.js?rmv=1.67.42-face-atlas-test3';
+import { RAW_THEMATIC_CATEGORIES } from './rawThematicCategories.js?rmv=1.67.42-face-atlas-test4';
+import { RAW_PRESENTATION_FORMATS } from './rawPresentationFormats.js?rmv=1.67.42-face-atlas-test4';
 
 function escapeRegExp(text) {
     return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

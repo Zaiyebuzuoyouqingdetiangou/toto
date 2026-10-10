@@ -1,4 +1,4 @@
-import { presentationModeFields } from './presentationMode.js?rmv=1.67.42-face-atlas-test3';
+import { presentationModeFields } from './presentationMode.js?rmv=1.67.42-face-atlas-test4';
 const sanitizedFaceProofs = new WeakMap();
 
 export function rabbitMirrorMultifaceSourceHash(text = '') {

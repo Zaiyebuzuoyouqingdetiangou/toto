@@ -1,6 +1,6 @@
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.67.42-face-atlas-test3';
-import { updateLatestVisualSignature, visualHistoryTarget } from './storage.js?rmv=1.67.42-face-atlas-test3';
-import { restoreRabbitMirrorAvatarClone } from './chatAvatars.js?rmv=1.67.42-face-atlas-test3';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.67.42-face-atlas-test4';
+import { updateLatestVisualSignature, visualHistoryTarget } from './storage.js?rmv=1.67.42-face-atlas-test4';
+import { restoreRabbitMirrorAvatarClone } from './chatAvatars.js?rmv=1.67.42-face-atlas-test4';
 
 const VERSION = '1.5.53';
 const HOST = '[data-rabbit-mirror-external-source]';
