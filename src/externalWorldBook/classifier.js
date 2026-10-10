@@ -1,5 +1,5 @@
-import { entryIdentity } from './selectionState.js?rmv=1.67.42-face-atlas-test2';
-import { buildExternalEntrySummary } from './summary.js?rmv=1.67.42-face-atlas-test2';
+import { entryIdentity } from './selectionState.js?rmv=1.67.42-face-atlas-test3';
+import { buildExternalEntrySummary } from './summary.js?rmv=1.67.42-face-atlas-test3';
 
 export const EXTERNAL_WORLD_BOOK_CLASSIFICATION = Object.freeze({
     THEME: 'theme',

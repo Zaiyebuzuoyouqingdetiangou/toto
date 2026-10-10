@@ -1,10 +1,10 @@
-import { getSettings } from './settings.js?rmv=1.67.42-face-atlas-test2';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.67.42-face-atlas-test2';
-import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.42-face-atlas-test2';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.42-face-atlas-test2';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.42-face-atlas-test2';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.67.42-face-atlas-test2';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.42-face-atlas-test2';
+import { getSettings } from './settings.js?rmv=1.67.42-face-atlas-test3';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.67.42-face-atlas-test3';
+import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.42-face-atlas-test3';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.42-face-atlas-test3';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.42-face-atlas-test3';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.67.42-face-atlas-test3';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.42-face-atlas-test3';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();

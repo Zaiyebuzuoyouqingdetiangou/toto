@@ -1,8 +1,8 @@
 // Split from ui.js — TT diagnostic entry.
 
-import { startTtSurfaceDiagnostics, stopTtSurfaceDiagnostics, isTtSurfaceDiagnosticsActive, buildTtSurfaceReport, recordTtSurface, registerTtSurfaceCleanup, nextTtSurfaceClickSeq } from '../ttSurfaceDiagnostics.js?rmv=1.67.42-face-atlas-test2';
-import { getRabbitMirrorHostCompatibilityStatus } from '../hostCompatibility.js?rmv=1.67.42-face-atlas-test2';
-import { RUNTIME_VERSION, isCurrentRuntime } from './runtime.js?rmv=1.67.42-face-atlas-test2';
+import { startTtSurfaceDiagnostics, stopTtSurfaceDiagnostics, isTtSurfaceDiagnosticsActive, buildTtSurfaceReport, recordTtSurface, registerTtSurfaceCleanup, nextTtSurfaceClickSeq } from '../ttSurfaceDiagnostics.js?rmv=1.67.42-face-atlas-test3';
+import { getRabbitMirrorHostCompatibilityStatus } from '../hostCompatibility.js?rmv=1.67.42-face-atlas-test3';
+import { RUNTIME_VERSION, isCurrentRuntime } from './runtime.js?rmv=1.67.42-face-atlas-test3';
 
 let retainedTtDiagnosticReport = '';
 
