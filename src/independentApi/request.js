@@ -1,28 +1,28 @@
-import { bindRolePaletteCode } from '../roleColorVariants.js?rmv=1.67.48';
-import { faceDrawNeedsExternal } from '../faceDrawRules.js?rmv=1.67.48';
-import { designSamplingChecksFromHtml } from '../interactionSampling.js?rmv=1.67.48';
+import { bindRolePaletteCode } from '../roleColorVariants.js?rmv=1.67.50';
+import { faceDrawNeedsExternal } from '../faceDrawRules.js?rmv=1.67.50';
+import { designSamplingChecksFromHtml } from '../interactionSampling.js?rmv=1.67.50';
 // Split from independentApi.js — request.
 
-import { claimGenerationEvidence, associateGenerationEvidence, generationEvidenceFor } from '../generationEvidence.js?rmv=1.67.48';
-import { createGenerationTimer } from '../generationTiming.js?rmv=1.67.48';
+import { claimGenerationEvidence, associateGenerationEvidence, generationEvidenceFor } from '../generationEvidence.js?rmv=1.67.50';
+import { createGenerationTimer } from '../generationTiming.js?rmv=1.67.50';
 
-import { resolveBehaviorRuleText } from '../behaviorRules.js?rmv=1.67.48';
-import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.67.48';
-import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.67.48';
-import { getSettings } from '../settings.js?rmv=1.67.48';
-import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.67.48';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=1.67.48';
-import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from '../chatAvatarPromptReady.js?rmv=1.67.48';
+import { resolveBehaviorRuleText } from '../behaviorRules.js?rmv=1.67.50';
+import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.67.50';
+import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.67.50';
+import { getSettings } from '../settings.js?rmv=1.67.50';
+import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.67.50';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=1.67.50';
+import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from '../chatAvatarPromptReady.js?rmv=1.67.50';
 import {
     assertRabbitMirrorIndependentResponseBytes,
     assertRabbitMirrorIndependentResponseText,
     authorizeRabbitMirrorIndependentServiceRequest,
-} from '../independentSecurityGuard.js?rmv=1.67.48';
+} from '../independentSecurityGuard.js?rmv=1.67.50';
 import {
     parseIndependentAdvancedOptions,
     buildIndependentAdvancedCarrier,
     applyIndependentAdvancedExclusions,
-} from '../advancedRequestOptions.js?rmv=1.67.48';
+} from '../advancedRequestOptions.js?rmv=1.67.50';
 import {
     buildRabbitMirrorPromptDetails,
     planRabbitMirrorPromptDetails,
@@ -31,15 +31,15 @@ import {
     prepareSelectedMemoryForPrompt,
     memoryRequestSettingsKey,
     assertMemoryRequestSettings,
-} from '../promptBuilder.js?rmv=1.67.48';
-import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.67.48';
-import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.67.48';
-import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.67.48';
-import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText, createMultifaceFailureSlot } from '../multifaceProtocol.js?rmv=1.67.48';
-import { applyAtmosphereFields, atmosphereNotesFromHtml, stripAtmosphereChoiceMarkup } from '../atmosphereChoice.js?rmv=1.67.48';
-import { isLocalPreflightFailure, isQuotaInsufficientFailure, configuredAutomaticRerollMax, automaticRerollEnabled } from '../automaticReroll.js?rmv=1.67.48';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.67.48';
-import { serialPaletteExecutionReminder } from '../serialPaletteContext.js?rmv=1.67.48';
+} from '../promptBuilder.js?rmv=1.67.50';
+import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.67.50';
+import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.67.50';
+import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.67.50';
+import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText, createMultifaceFailureSlot } from '../multifaceProtocol.js?rmv=1.67.50';
+import { applyAtmosphereFields, atmosphereNotesFromHtml, stripAtmosphereChoiceMarkup } from '../atmosphereChoice.js?rmv=1.67.50';
+import { isLocalPreflightFailure, isQuotaInsufficientFailure, configuredAutomaticRerollMax, automaticRerollEnabled } from '../automaticReroll.js?rmv=1.67.50';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.67.50';
+import { serialPaletteExecutionReminder } from '../serialPaletteContext.js?rmv=1.67.50';
 import {
     createVisualHistorySelection,
     resolveVisualHistorySelection,
@@ -48,9 +48,9 @@ import {
     markPendingBatchAttempt,
     findPendingComboBatchPlan,
     releasePendingComboBatch,
-} from '../storage.js?rmv=1.67.48';
-import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.67.48';
-import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.67.48';
+} from '../storage.js?rmv=1.67.50';
+import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.67.50';
+import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.67.50';
 import {
     RUNTIME_VERSION,
     EXTERNAL_SHELL_ATTR,
@@ -61,8 +61,8 @@ import {
     byteLength,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.67.48';
-import { operationEpochForBase } from './flights.js?rmv=1.67.48';
+} from './runtime.js?rmv=1.67.50';
+import { operationEpochForBase } from './flights.js?rmv=1.67.50';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INDEPENDENT_MAX_APPROX_DEPTH,
@@ -77,7 +77,7 @@ import {
     normalizedConfiguredTemperature,
     readHistoryStore,
     readStore,
-} from './persistence.js?rmv=1.67.48';
+} from './persistence.js?rmv=1.67.50';
 import {
     API_PROFILE_ORDER,
     chatKey,
@@ -111,7 +111,7 @@ import {
     stageNextApiProfile,
     swipeId,
     validatedIndependentConnectionProfile,
-} from './connection.js?rmv=1.67.48';
+} from './connection.js?rmv=1.67.50';
 import {
     externalGeometryCycleSequence,
     externalGeometryLifecycleEpoch,
@@ -122,7 +122,7 @@ import {
     writeExternalGeometryCycleSequence,
     writeExternalGeometryLifecycleEpoch,
     writeExternalGeometryLifecycleReason,
-} from './geometry.js?rmv=1.67.48';
+} from './geometry.js?rmv=1.67.50';
 import {
     INDEPENDENT_REJECTED_PREVIEW_MAX_CHARS,
     INDEPENDENT_REJECTED_PREVIEW_MAX_ENTRIES,
@@ -137,8 +137,8 @@ import {
     writeExternalHostSyncIndex,
     writeIndependentRejectedPreviewChars,
     writeIndependentRejectedPreviewSequence,
-} from './mount.js?rmv=1.67.48';
-import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.67.48';
+} from './mount.js?rmv=1.67.50';
+import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.67.50';
 
 const NON_STREAM_PROFILE_BY_STREAM_PROFILE={
  chat_system_user_full:'chat_system_user_full_nostream',
@@ -1561,6 +1561,18 @@ function cacheIndependentRejectedFacePreview(html=''){
 
 function independentRejectedFaceReason(code=''){
  const reason=String(code||'');
+ const serial={
+  'serial-http-error':'副 API 拒绝了这一面的请求（HTTP 4xx，常见于中转站内容过滤或这一面请求太长）',
+  'serial-auth':'副 API 的密钥或权限被拒绝','serial-rate-limited':'副 API 限流（429），稍后重说即可',
+  'serial-upstream-error':'副 API 服务端出错或网关超时，稍后重说即可','serial-quota':'副 API 额度不足',
+  'serial-model-refusal':'副 API 的模型拒绝写这一面','serial-empty-response':'模型没有返回任何文字（常见于内容安全拦截）',
+  'serial-truncated':'输出达到“最大输出”上限被截断，可以调高最大输出后重说','serial-incomplete':'返回的不是完整兔子镜（结构没写完）',
+  'serial-empty-face':'返回里没有可显示的内容','serial-unparsed':'接口返回了，但没解析出正文',
+  'serial-local-preflight':'发送前检查没通过（比如这一面超出请求预算），没有发送请求','serial-network':'网络连接中断',
+  'serial-not-sent':'前面遇到不能继续的错误，这一面没有发送','atmosphere-ticket-missing':'模型没有选中候选签',
+  'serial-face-failed':'逐面生成没有完成（没有记录到具体原因）',
+ }[reason];
+ if(serial) return serial;
  if(/(?:unclosed|incomplete|face-count|missing-face|post-sanitize-protocol)/.test(reason)) return '响应没有完整生成这一面或结构未闭合';
  if(reason==='multiface-empty-face') return '只有标题或样式，没有可用正文';
  if(/(?:post-sanitize-empty|sanitizer-rejected|sanitized-invalid)/.test(reason)) return '安全净化后没有留下完整可用内容';
@@ -1625,7 +1637,7 @@ export function wireIndependentRejectedFaceControls(host){
    independentRejectedFaceControlsWired.add(resay);
    resay.addEventListener('click',event=>{
     event.preventDefault(); event.stopPropagation();
-    void import('../outputSanitizer/toolsChrome.js?rmv=1.67.48').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+    void import('../outputSanitizer/toolsChrome.js?rmv=1.67.50').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
    },true);
   }
  }
@@ -1824,7 +1836,7 @@ async function loadIndependentAppearanceReference(owner){
  let module;
  assertIndependentPromptOwner(owner);
  try{
-  try{module=await import('../appearanceReference.js?rmv=1.67.48');}
+  try{module=await import('../appearanceReference.js?rmv=1.67.50');}
   catch{
    const error=new Error('外观参考模块未能加载；本轮未发送请求，请刷新后重试或关闭外观参考。');
    error.code='RABBIT_MIRROR_APPEARANCE_MODULE_UNAVAILABLE';error.requestCount=0;throw error;
@@ -1902,13 +1914,39 @@ function serialRemoteRejection(error) {
  return '';
 }
 
+// 逐面生成里某一面失败时，记下它真正的原因（只记代码，不记接口返回的原文，免得带出密钥等信息）。
+function serialFaceFailureCode(error){
+ const d=error?.rabbitMirrorRequestDiagnostic||{}; const code=String(error?.code||''); const sem=String(d.semanticFailure||'');
+ const status=Number(d?.transport?.status ?? d?.status ?? error?.status ?? 0);
+ const message=String(error?.message||'');
+ if(code==='ATMOSPHERE_TICKET_MISSING') return 'atmosphere-ticket-missing';
+ if(isQuotaInsufficientFailure(error,d)) return 'serial-quota';
+ if(status===429) return 'serial-rate-limited';
+ if(status===401||status===403) return 'serial-auth';
+ if(status>=500||code==='RABBIT_MIRROR_GATEWAY_TIMEOUT') return 'serial-upstream-error';
+ if(status>=400) return 'serial-http-error';
+ if(sem==='model-refusal') return 'serial-model-refusal';
+ if(sem==='empty-response'||code==='RABBIT_MIRROR_EMPTY_RESPONSE') return 'serial-empty-response';
+ if(sem==='truncated-output'||code==='RABBIT_MIRROR_TRUNCATED_OUTPUT') return 'serial-truncated';
+ if(sem==='incomplete-mirror'||code==='RABBIT_MIRROR_INCOMPLETE_MIRROR') return 'serial-incomplete';
+ if(/只有标题或样式的空壳/.test(message)) return 'multiface-empty-face';
+ if(/安全净化后没有留下可用正文/.test(message)) return 'multiface-post-sanitize-empty';
+ if(/没有返回可显示的内容/.test(message)) return 'serial-empty-face';
+ if(/未解析到正文/.test(message)) return 'serial-unparsed';
+ if(isLocalPreflightFailure(error,d)) return 'serial-local-preflight';
+ if(/网络|network|fetch|连接/i.test(message)) return 'serial-network';
+ return 'serial-face-failed';
+}
+
 function serialFailureIsFatal(error, signal, hasSuccess = false) {
  if (signal?.aborted || error?.name === 'AbortError' || error?.rabbitMirrorLocalAbort === true) return true;
  const diagnostic = error?.rabbitMirrorRequestDiagnostic || {};
  if (isQuotaInsufficientFailure(error, diagnostic)) return true;
  // 密钥错、模型不存在、参数不对：换一面再发也是同样的结果，不要一面面地重复付费失败。
  const status = Number(diagnostic?.transport?.status ?? diagnostic?.status ?? error?.status ?? 0);
- if (diagnostic?.transport?.failureCategory === 'authentication' || diagnostic?.failureCategory === 'authentication' || [400, 401, 403, 404, 422].includes(status)) return true;
+ if (diagnostic?.transport?.failureCategory === 'authentication' || diagnostic?.failureCategory === 'authentication' || [401, 403].includes(status)) return true;
+ // 400/404/422 也可能只是这一面被中转站内容过滤或这一面太长：已经有面成功时只算这一面失败，后面的面照常生成。
+ if (!hasSuccess && [400, 404, 422].includes(status)) return true;
  // 消息或生成归属已经变了：后面的面一律不再发。
  if (error?.name === 'RabbitMirrorPromptOwnerPreflightError' || String(error?.code || '') === 'RABBIT_MIRROR_DISPATCH_LEASE_REJECTED') return true;
  // 其他本地预检失败（比如只有这一面超出请求预算）：前面已经有面成功时只跳过这一面，后面的面照常生成。
@@ -1994,10 +2032,12 @@ async function runIndependentSerialFaces({ ctx, index, msg, signal, requestOptio
   return result;
  };
  let fatalError = null;
+ const faceFailures = new Map();
  for (const faceIndex of [...failed]) {
   if (signal?.aborted) { fatalError = Object.assign(new Error('本轮生成已取消。'), { name: 'AbortError' }); break; }
   try { acceptFace(faceIndex, await sendFace(faceIndex)); }
   catch (error) {
+   faceFailures.set(faceIndex, serialFaceFailureCode(error));
    if (serialFailureIsFatal(error, signal, htmlByFace.some(Boolean))) { fatalError = error; break; }
   }
  }
@@ -2014,8 +2054,10 @@ async function runIndependentSerialFaces({ ctx, index, msg, signal, requestOptio
    used += 1;
    try { acceptFace(faceIndex, await sendFace(faceIndex)); }
    catch (error) {
+    faceFailures.set(faceIndex, serialFaceFailureCode(error));
     if (serialFailureIsFatal(error, signal, htmlByFace.some(Boolean))) { fatalError = error; break; }
-    if (failed.has(faceIndex)) queue.push(faceIndex);
+    // 本地预检没过（比如这一面超出请求预算）每次都会一样，不再排回去占用自动重试次数。
+    if (failed.has(faceIndex) && !isLocalPreflightFailure(error, error?.rabbitMirrorRequestDiagnostic || {})) queue.push(faceIndex);
    }
   }
  }
@@ -2031,9 +2073,9 @@ async function runIndependentSerialFaces({ ctx, index, msg, signal, requestOptio
     ? 'insufficient-quota' : serialRemoteRejection(fatalError) || 'local-preflight',
   terminalErrorCode: String(fatalError.code || fatalError.name || 'serial-stopped'),
  } : {};
- const failedFaces = [...failed].map(faceIndex => ({ faceIndex, status: 'failed', code: 'serial-face-failed' }));
+ const failedFaces = [...failed].map(faceIndex => ({ faceIndex, status: 'failed', code: faceFailures.get(faceIndex) || (fatalError ? 'serial-not-sent' : 'serial-face-failed') }));
  return {
-  html: selections.map((_, faceIndex) => htmlByFace[faceIndex] || createMultifaceFailureSlot(faceIndex, 'serial-face-failed')).join('\n'),
+  html: selections.map((_, faceIndex) => htmlByFace[faceIndex] || createIndependentMultifaceFailureSlot(faceIndex, failedFaces.find(item => item.faceIndex === faceIndex))).join('\n'),
   faceScans,
   failedFaces, completedFaces: faceCount - failed.size, batchPlan: details.batchPlan || null, chosenTickets: choices,
   requestDiagnostic: { visualHistoryBatchId: details.batchPlan?.batchId || '', faceCount, serialDispatch: true, partial: failed.size > 0, failedFaces, completedFaces: faceCount - failed.size, faces: details.metadata?.faces || [], ...stoppedDiagnostic, ...(designSelectionChecks.length ? { designSelectionChecks } : {}) },

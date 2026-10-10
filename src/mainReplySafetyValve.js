@@ -44,6 +44,8 @@ function incompleteMainReplyMarkup(raw) {
                 const end = close.exec(raw);
                 // 剧情里常用 ~~~ 第二天 ~~~、~~~~~~ 当分隔线；波浪线没有配对时按普通文字处理，不算截断。
                 if (!end && fence[1][0] === '~') { cursor = fenceStart.lastIndex; continue; }
+                // 没配对的 ``` 后面还有 </content>（如 ```</content>），说明正文已写完：只把这串反引号当普通文字。
+                if (!end && /<\/content\s*>/i.test(raw.slice(cursor))) { cursor += fence[0].length - fence[2].length; continue; }
                 if (!end) return '正文结构未完整（代码块未闭合，疑似截断）';
                 cursor = end.index + end[0].length;
                 continue;
@@ -62,7 +64,7 @@ function incompleteMainReplyMarkup(raw) {
                     codeRuns.get(length).indexes.push(match.index);
                 }
                 inlineBreaks = { indexes: [], next: 0 };
-                for (const match of raw.matchAll(/^[\t ]*\r?$|^ {0,3}(?:`{3,}|~{3,})[^\r\n]*$/gm)) {
+                for (const match of raw.matchAll(/^[\t ]*\r?$|^ {0,3}(?:`{3,}|~{3,})[^\r\n]*$|<\/(?:content|details)\s*>/gim)) {
                     inlineBreaks.indexes.push(match.index);
                 }
             }
@@ -92,13 +94,16 @@ function incompleteMainReplyMarkup(raw) {
             const char = raw[end];
             if (quote) { if (char === quote) quote = ''; }
             else if (char === '"' || char === "'") quote = char;
-            else if (char === '>') break;
+            else if (char === '>' || char === '<') break;
         }
         // 标签里少写了一个引号时，后面还有 > 就以第一个 > 收尾；只有真的写到结尾都没有 > 才算断在标签里。
         if (end === raw.length && quote) {
-            const fallback = raw.indexOf('>', tagStart.lastIndex);
-            if (fallback >= 0) end = fallback;
+            const next = /[<>]/g; next.lastIndex = tagStart.lastIndex;
+            const fallback = next.exec(raw);
+            if (fallback) end = fallback.index;
         }
+        // 正文里的“a<b 则……”不是标签：在 > 之前先碰到 < 就按普通文字处理，不吞掉后面的 </content>。
+        if (raw[end] === '<') { cursor += 1; continue; }
         if (end === raw.length) {
             if (pending.has(name) && !closing) pending.set(name, pending.get(name) + 1);
             break;
@@ -106,14 +111,16 @@ function incompleteMainReplyMarkup(raw) {
         const selfClosing = raw[end - 1] === '/';
         cursor = end + 1;
         if (pending.has(name)) {
-            if (closing) pending.set(name, Math.max(0, pending.get(name) - 1));
+            // <content> 不会嵌套：思考或正文里提到“<content>”时只多算一次开标签，以最后一个 </content> 为准。
+            if (closing) pending.set(name, name === 'content' ? 0 : Math.max(0, pending.get(name) - 1));
             else if (!selfClosing) pending.set(name, pending.get(name) + 1);
         }
         if (!closing && !selfClosing && opaque.has(name)) {
             const close = new RegExp(`</${name}\\s*>`, 'gi');
             close.lastIndex = cursor;
             const match = close.exec(raw);
-            cursor = match ? match.index + match[0].length : raw.length;
+            // 正文里随手写的 <code>/<pre> 没有收尾时只当普通文字，不能一路跳到结尾把 </content> 也吞掉。
+            if (match) cursor = match.index + match[0].length;
         }
     }
     for (const [name, count] of pending) if (count > 0) return `正文结构未完整（<${name}> 标签未闭合，疑似截断）`;
@@ -134,7 +141,18 @@ export function mainReplyAbnormalReason(message, { partial = false } = {}) {
     if (text.length < 400 && REFUSAL_START.test(text) && REFUSAL_WORDS.test(text)) return '正文是模型拒答或道歉';
     // Only final, stable source may be checked for closure. A streaming prefix
     // can legitimately be missing its closing tag; manual requests skip this gate.
-    return partial ? '' : incompleteMainReplyMarkup(raw);
+    return partial ? '' : incompleteMainReplyMarkup(bodyScopedSource(raw));
+}
+
+// 正文用 <content> 包着并且已经写到最后一个 </content> 时，只检查到这里为止：
+// 后面的状态栏、小总结写得不规范（details 拼错、代码块收尾不在单独一行）不代表正文被截断，不该拦兔子镜。
+function bodyScopedSource(raw) {
+    let last = null;
+    for (const match of raw.matchAll(/<\/content\s*>/gi)) last = match;
+    if (!last || !/<content(?=[\s>])/i.test(raw.slice(0, last.index))) return raw;
+    // 收尾之后又开了一段 <content>（正文分两段写）时，照旧整段检查。
+    if (/<content(?=[\s>])/i.test(raw.slice(last.index + last[0].length))) return raw;
+    return raw.slice(0, last.index + last[0].length);
 }
 
 export function notifySafetyValve(message, reason) {

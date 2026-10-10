@@ -1,8 +1,8 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.67.48';
-import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.67.48';
-import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.67.48';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.67.50';
+import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.67.50';
+import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.67.50';
 
 export function buildRabbitMirrorSettingsDialogHtml() {
     return `
@@ -564,7 +564,7 @@ export function buildRabbitMirrorSettingsDialogHtml() {
               <button id="rh_early_body_scan" class="menu_button" type="button" style="min-height:44px;">扫描当前聊天可选标签</button>
               <div id="rh_early_body_candidates" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
               <button id="rh_early_body_save" class="menu_button" type="button" style="min-height:44px;margin-top:8px;">保存当前聊天设置</button>
-              <div style="font-size:12px;line-height:1.6;margin-top:8px;">这里选的是要读取的正文，不是上面的过滤标签。所有选中标签完整闭合且内容可见后，可在状态栏等尾部仍输出时先请求兔子镜；仍最多一次请求，主回复结束后展示。未闭合、工具调用或无法确认时，仍等正文结束。切换聊天不会沿用此设置。</div>
+              <div style="font-size:12px;line-height:1.6;margin-top:8px;">这里选的是要读取的正文，不是下面的过滤标签。所有选中标签完整闭合且内容可见后，可在状态栏等尾部仍输出时先请求兔子镜（尾部若是下面过滤掉的标签，写得乱或没写完也不影响）；仍最多一次请求，主回复结束后展示。未闭合、工具调用或无法确认时，仍等正文结束。切换聊天不会沿用此设置。</div>
               <div id="rh_early_body_status" role="status" aria-live="polite" style="font-size:12px;line-height:1.6;"></div>
             </details>
             <div style="padding:10px 11px;margin-bottom:12px;border:1px solid color-mix(in srgb,currentColor 14%,transparent);border-radius:12px;background:color-mix(in srgb,currentColor 5%,transparent);">
@@ -587,6 +587,7 @@ export function buildRabbitMirrorSettingsDialogHtml() {
               <label class="checkbox_label" style="margin-top:8px;"><input id="rh_follow_tag_isolation" type="checkbox"> 跟随当前 API：禁止兔子镜参考所选标签</label>
               <div class="rabbit-mirror-subnote" style="margin:3px 0 0 26px;opacity:.72;font-size:11px;line-height:1.5;">仅要求兔子镜跳过所选标签内容；如需彻底过滤，请使用独立 API。</div>
               <div class="rabbit-mirror-subnote" style="margin:6px 0 0;opacity:.72;font-size:11px;line-height:1.5;">独立 API 会在发送前从副 API 临时上下文副本中过滤并跳过所选标签内容；原酒馆正文始终不修改。</div>
+              <div class="rabbit-mirror-subnote" style="margin:6px 0 0;opacity:.72;font-size:11px;line-height:1.5;">过滤只决定“发给兔子镜的内容里不带这些标签”，不会让兔子镜提前开始。想在正文写完、状态栏还在输出时就开始生成，请打开上面的「正文标签闭合后提前生成」并填正文标签（如 content）。</div>
             </div>
             <div style="padding:10px 11px;margin-bottom:12px;border:1px solid color-mix(in srgb,currentColor 14%,transparent);border-radius:12px;background:color-mix(in srgb,currentColor 5%,transparent);">
               <label class="checkbox_label" style="font-weight:700;"><input id="rh_independent_read_global_world_info" type="checkbox"> 读取本轮已激活的世界书</label>

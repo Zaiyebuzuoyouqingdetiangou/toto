@@ -1,6 +1,6 @@
-import { getSettings, updateSettings } from './settings.js?rmv=1.67.48';
-import { FACE_DRAW_KINDS, FACE_DRAW_LABELS, normalizeFaceDrawRule, normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.67.48';
-import { loadFaceDrawCatalog, faceCategorySelection, toggleFaceCategory, toggleFaceItem } from './faceDrawCatalog.js?rmv=1.67.48';
+import { getSettings, updateSettings } from './settings.js?rmv=1.67.50';
+import { FACE_DRAW_KINDS, FACE_DRAW_LABELS, normalizeFaceDrawRule, normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.67.50';
+import { loadFaceDrawCatalog, faceCategorySelection, toggleFaceCategory, toggleFaceItem } from './faceDrawCatalog.js?rmv=1.67.50';
 
 const owners = new WeakMap();
 const MODE_LABELS = { none: '不追加', random: '随机抽取' };
@@ -288,6 +288,16 @@ function createController(owner, index, rule) {
                     if (item && !item.blocked) continue;
                     const row = el(doc, 'div', null, 'rh-fd-invalid rh-fd-warning');
                     row.append(el(doc, 'span', `${FACE_DRAW_LABELS[kind]} · ${field === 'requiredIds' ? '常驻' : '范围'}：${item?.title || id}（${item?.blocked ? '与黑名单冲突' : '目录中暂不可用'}，选择仍保留）`), button(doc, '移除此选择', () => { lane[field] = lane[field].filter(value => value !== id); c.changed(); c.renderCatalog(); })); warnings.append(row);
+                }
+            }
+            if (c.draft.enabled && lane.mode !== 'none' && lane.min > 0) {
+                const required = new Set(lane.requiredIds);
+                const inRange = categories.flatMap(category => category.items.map(item => ({ item, category })))
+                    .filter(({ item, category }) => lane.scope !== 'selected' || lane.itemIds.includes(item.id) || lane.categoryIds.includes(category.id));
+                const usable = new Set(inRange.filter(({ item }) => !item.blocked && !required.has(item.id)).map(({ item }) => item.id)).size;
+                if (usable < lane.min) {
+                    const pinned = inRange.filter(({ item }) => required.has(item.id)).length;
+                    warnings.append(el(doc, 'p', `${FACE_DRAW_LABELS[kind]}：抽取范围里能追加的只有 ${usable} 项，少于“最少追加 ${lane.min} 项”${pinned ? `（范围里有 ${pinned} 项已经是常驻，常驻的不会再被抽一次）` : lane.scope === 'selected' && !lane.itemIds.length && !lane.categoryIds.length ? '（还没有勾选范围）' : ''}。这样生成时会报错、不发送；只想用常驻就把「抽取方式」改成「不追加」，否则请勾选范围或改成「全部可用条目」。`, 'rh-fd-warning'));
                 }
             }
             if (lane.requiredIds.length + (lane.mode === 'none' ? 0 : lane.max) > 16) warnings.append(el(doc, 'p', `${FACE_DRAW_LABELS[kind]}常驻加追加可能超过现有单面单类 16 项的保存格式上限。这里保留你的选择，请减少本次出场数以免生成前校验失败。候选范围不受这个数量影响。`, 'rh-fd-warning'));

@@ -1,5 +1,5 @@
-import { FACE_DRAW_KINDS, FACE_DRAW_LABELS, faceDrawCategoryId } from './faceDrawRules.js?rmv=1.67.48';
-import { externalPoolItem } from './externalWorldBook/externalPool.js?rmv=1.67.48';
+import { FACE_DRAW_KINDS, FACE_DRAW_LABELS, faceDrawCategoryId } from './faceDrawRules.js?rmv=1.67.50';
+import { externalPoolItem } from './externalWorldBook/externalPool.js?rmv=1.67.50';
 
 // Compact, synchronous identity of ID-only settings/catalogs. Four independent
 // 32-bit accumulators avoid storing large imported names in every frozen plan.
@@ -35,6 +35,31 @@ function catalogFor(kind, builtins, snapshot) {
     return [...builtins, ...external].filter(item => item?.id);
 }
 
+function builtinsFor(kind, builtinThemes, builtinFormats) {
+    return kind === 'theme' ? builtinThemes : kind === 'format' ? builtinFormats : [];
+}
+
+// 说清楚“为什么范围里一项都抽不出来”，并告诉用户怎么改。
+const FIX_HINT = '如果只想用常驻的内容，把「其余内容怎么抽」的「抽取方式」改成「不追加」；想再随机加几项，就点「选择范围」勾上别的分类或条目，或把「抽取范围」改成「全部可用条目」。改完点「保存本面」。';
+function shortfallReason(lane, kind, builtins, externalSnapshot, blocked, requiredIds) {
+    if (lane.scope !== 'selected') return `这一类可用的条目已经全部是常驻或在黑名单里。${FIX_HINT}`;
+    const pickedCount = lane.itemIds.length + lane.categoryIds.length;
+    if (!pickedCount) return `可能是「其余内容怎么抽」开了「随机抽取」、抽取范围是「只在勾选范围」，但「选择范围」里还没有勾任何分类或条目${requiredIds.size ? '（只勾了常驻）' : ''}。${FIX_HINT}`;
+    const full = catalogFor(kind, builtins, externalSnapshot);
+    const categories = new Set(lane.categoryIds), items = new Set(lane.itemIds);
+    const inRange = full.filter(item => items.has(item.id) || categories.has(faceDrawCategoryId(item)));
+    const asRequired = inRange.filter(item => requiredIds.has(item.id)).length;
+    const asBlocked = inRange.filter(item => !requiredIds.has(item.id) && blocked.has(item.id)).length;
+    const knownIds = new Set(full.map(item => item.id));
+    const missing = lane.itemIds.filter(id => !knownIds.has(id)).length
+        + lane.categoryIds.filter(id => !full.some(item => faceDrawCategoryId(item) === id)).length;
+    const parts = [];
+    if (asRequired) parts.push(`${asRequired} 项同时也勾成了常驻（常驻的不会再被抽一次）`);
+    if (asBlocked) parts.push(`${asBlocked} 项在黑名单里`);
+    if (missing) parts.push(`${missing} 项在目录里找不到（外置库可能没启用、没重建索引或改了分类）`);
+    return `「选择范围」里勾的${parts.length ? `：${parts.join('，')}` : '条目现在都不可用'}。${FIX_HINT}`;
+}
+
 /** Only the supplied eligible catalogs are consulted. No raw reads or writes. */
 export function drawFaceRule({ rule, faceIndex = 0, chatKey, builtinThemes = [], builtinFormats = [], externalSnapshot,
     blockedThemeIds = [], blockedFormatIds = [], randomUnit = Math.random, readCursor, presentationMode = 'html', requestedMode = 'html' }) {
@@ -58,7 +83,7 @@ export function drawFaceRule({ rule, faceIndex = 0, chatKey, builtinThemes = [],
         let picked = [];
         if (lane.mode !== 'none') {
             const capacity = Math.min(pool.length, 16 - required.length);
-            if (lane.min > capacity) failure(faceIndex, kind, `当前范围内可追加 ${capacity} 项，但至少需要 ${lane.min} 项。请调整数量或启用范围内的条目。`, 'FACE_DRAW_POOL_EXHAUSTED');
+            if (lane.min > capacity) failure(faceIndex, kind, `当前范围内可追加 ${capacity} 项，但至少需要 ${lane.min} 项。${shortfallReason(lane, kind, builtinsFor(kind, builtinThemes, builtinFormats), externalSnapshot, blocked, requiredIds)}`, 'FACE_DRAW_POOL_EXHAUSTED');
             const count = randomCount(lane.min, Math.min(lane.max, capacity), randomUnit);
             if (count && lane.mode === 'sequence') {
                 const signature = faceDrawFingerprint({ requiredIds: lane.requiredIds, min: lane.min, max: lane.max, ids: pool.map(item => item.id) });

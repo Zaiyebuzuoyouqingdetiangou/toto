@@ -1,4 +1,4 @@
-import { recentPaletteHueFamilies } from './visualDiversityPolicy.js?rmv=1.67.48';
+import { recentPaletteHueFamilies } from './visualDiversityPolicy.js?rmv=1.67.50';
 
 const FAMILY_NAMES = Object.freeze({ red: '红', orange: '橙', yellow: '黄', green: '绿', cyan: '青', blue: '蓝', purple: '紫', pink: '粉' });
 const validColor = color => typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color);

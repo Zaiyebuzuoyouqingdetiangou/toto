@@ -1,13 +1,13 @@
 // Split from independentApi.js — earlyBody.
-import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.67.48';
+import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.67.50';
 
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.67.48';
-import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.67.48';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.67.48';
-import { getSettings } from '../settings.js?rmv=1.67.48';
-import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.67.48';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=1.67.48';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.67.48';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.67.50';
+import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.67.50';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.67.50';
+import { getSettings } from '../settings.js?rmv=1.67.50';
+import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.67.50';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=1.67.50';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.67.50';
 import {
     MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE,
     INDEPENDENT_HISTORY_READ_ERROR_MESSAGE,
@@ -17,7 +17,7 @@ import {
     isMissingShellTargetFloor,
     normalizeMissingShellScanRange,
     shouldRestoreMissingIndependentRetryShell,
-} from './missingRetryShell.js?rmv=1.67.48';
+} from './missingRetryShell.js?rmv=1.67.50';
 import {
     INDEPENDENT_GENERATION_INTENTS_KEY,
     INDEPENDENT_GENERATION_INTENT_TYPES,
@@ -27,7 +27,7 @@ import {
     currentRuntime,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.67.48';
+} from './runtime.js?rmv=1.67.50';
 import {
     ACTIVE_GENERATION_WAIT_MS,
     FINAL_RENDER_POLL_INTERVAL_MS,
@@ -41,7 +41,7 @@ import {
     markAutomaticFailureStop,
     operationEpochForBase,
     pending,
-} from './flights.js?rmv=1.67.48';
+} from './flights.js?rmv=1.67.50';
 import {
     appendHistoryEntry,
     chatPersistenceSlot,
@@ -57,7 +57,7 @@ import {
     reconcileIndependentChatOwners,
     rememberChatMessageOrder,
     checkOwnerRemapEpoch,
-} from './persistence.js?rmv=1.67.48';
+} from './persistence.js?rmv=1.67.50';
 import {
     activeGlobalWorldInfoCapture,
     assistantMessages,
@@ -107,7 +107,7 @@ import {
     withOwnerLockStoreBatch,
     writeActiveGlobalWorldInfoCapture,
     writeHostModule,
-} from './connection.js?rmv=1.67.48';
+} from './connection.js?rmv=1.67.50';
 import {
     allExternalHosts,
     externalHosts,
@@ -115,7 +115,7 @@ import {
     removeEmptyFollowExternalAnchors,
     removeEmptyInlineAnchors,
     withExternalHostSyncIndex,
-} from './request.js?rmv=1.67.48';
+} from './request.js?rmv=1.67.50';
 import {
     beginHostWorkTiming,
     clearExternalHostFreshSourceState,
@@ -148,7 +148,7 @@ import {
     setPlaceholderSummary,
     usableReadyDetails,
     withRestorableHtmlCacheBatch,
-} from './geometry.js?rmv=1.67.48';
+} from './geometry.js?rmv=1.67.50';
 import {
     INDEPENDENT_INTENT_OWNER,
     abortFlight,
@@ -202,7 +202,7 @@ import {
     serializeExternalFaceDetails,
     stampAutomaticAuthorizationEpoch,
     withHistoricalRestoreLightPass,
-} from './mount.js?rmv=1.67.48';
+} from './mount.js?rmv=1.67.50';
 import {
     automaticGenerationCutovers,
     hostGenerationHintStartedAt,
@@ -227,7 +227,7 @@ import {
     writeStartupHistoryFallbackRoot,
     writeSyncRunning,
     writeSyncTimer,
-} from './lifecycle.js?rmv=1.67.48';
+} from './lifecycle.js?rmv=1.67.50';
 
 let earlyBodyParserPromise=null;
 
@@ -317,9 +317,15 @@ export function earlyBodyOwnerCurrent(owner,{visibility=false}={}){
   try{if(typeof ctx.canPerformToolCalls!=='function'||ctx.canPerformToolCalls(owner.type)!==false)return false;}catch{return false;}
   source=`${String(processor.continueMessage||'')}${String(processor.result||'')}`;
  }
- const snapshot=earlyBodyParser?.extractClosedBodySnapshot(source,owner.tags);
+ const snapshot=earlyBodyParser?.extractClosedBodySnapshot(source,owner.tags,{opaqueTailTags:earlyBodyOpaqueTailTags(owner.tags)});
  if(!snapshot || snapshot.signature!==owner.signature) return false;
  return !visibility || !!earlyBodyVisibleProjection(snapshot,owner.index,owner.message,source);
+}
+
+// 「跳过的标签」里除正文标签以外的那些：正文闭合后跟在后面的这些标签不再挡住提前生成。
+function earlyBodyOpaqueTailTags(tags){
+ const body=new Set((tags||[]).map(tag=>String(tag).toLowerCase()));
+ return new Set([...independentContextExcludedTagSet()].map(tag=>String(tag).toLowerCase()).filter(tag=>!body.has(tag)));
 }
 
 export function assertEarlyBodyOwner(owner){
@@ -350,7 +356,7 @@ function settleEarlyBodyAtFinal(ctx,index){
 
 async function probeIndependentEarlyBody(packet,sequence){
  if(!earlyBodyPacketCurrent(packet)) return;
- if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.67.48')
+ if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.67.50')
   .then(module=>{earlyBodyParser=module;return module;}).catch(()=>{earlyBodyParserPromise=null;return null;});
  const parser=await earlyBodyParserPromise;
  if(!parser || sequence!==earlyBodyProbeSequence || !earlyBodyPacketCurrent(packet)) return;
@@ -364,7 +370,7 @@ async function probeIndependentEarlyBody(packet,sequence){
   cancelEarlyBodyOwner(existing,'new-host-operation');
  }
  const settings=getSettings(); const tags=parser.normalizeEarlyBodyTags(settings.independentEarlyBodyTags);
- const snapshot=parser.extractClosedBodySnapshot(packet.text,tags);
+ const snapshot=parser.extractClosedBodySnapshot(packet.text,tags,{opaqueTailTags:earlyBodyOpaqueTailTags(tags)});
  const visible=earlyBodyVisibleProjection(snapshot,packet.index,packet.message,packet.text);
  if(!snapshot || !visible || hasExistingFollowRabbitMirror(ctx,packet.index,packet.message)) return;
  const cutover=ensureAutomaticGenerationCutover(ctx);

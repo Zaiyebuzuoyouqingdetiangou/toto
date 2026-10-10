@@ -1,11 +1,11 @@
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.67.48';
-import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.67.48';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.67.50';
+import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.67.50';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.67.48';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.67.48';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.67.48';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.67.48';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.67.50';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.67.50';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.67.50';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.67.50';
 
 export const MODULE_NAME = 'rabbit_mirror_theater';
 
@@ -14,7 +14,7 @@ export const VISUAL_EXTRA_PROMPT_MAX_CHARS = 1000;
 export const VISUAL_AVOID_PROMPT_MAX_CHARS = 1000;
 export const WORLD_INFO_BOOK_NAME_MAX_CHARS = 512;
 export const VISUAL_TONE_MODES = Object.freeze(['normal', 'soft', 'dark']);
-export const INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT = 32;
+export const INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT = 128;
 // Keep startup normalization scalar-only; loading host world-book readers is a user action.
 function normalizeMemoryWorldBookSettingId(value) {
     return typeof value === 'string' && value.length <= 1000 && !/[\u0000\r\n]/.test(value)

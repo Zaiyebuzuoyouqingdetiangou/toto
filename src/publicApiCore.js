@@ -16,7 +16,7 @@ const connectionFields = {
     independentApiTemperature: num(0, 2), independentApiMaxTokens: num(512, 64000, true),
     independentMaxRequestChars: num(8000, 2000000, true),
     independentContextMaxLayers: num(1, 200, true),
-    independentContextExcludedTags: list(32, 100),
+    independentContextExcludedTags: list(128, 100) /* 与 settings.js 的 INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT 保持一致 */,
     independentReadCharacterCardSummary: bool, independentReadPersonaSummary: bool,
 };
 const memoryFields = {
