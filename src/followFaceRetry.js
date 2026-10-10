@@ -1,15 +1,15 @@
-import { presentationModeFields } from './presentationMode.js?rmv=1.67.42-face-atlas-test4';
-import { getSettings } from './settings.js?rmv=1.67.42-face-atlas-test4';
-import { getCurrentChatKey } from './storage.js?rmv=1.67.42-face-atlas-test4';
-import { getRabbitMirrorRecipe } from './blacklist.js?rmv=1.67.42-face-atlas-test4';
-import { readFollowPartialResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=1.67.42-face-atlas-test4';
-import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.67.42-face-atlas-test4';
-import { parseMultifaceOutput, MULTIFACE_FAILURE_ATTR } from './multifaceProtocol.js?rmv=1.67.42-face-atlas-test4';
-import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.67.42-face-atlas-test4';
-import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=1.67.42-face-atlas-test4';
-import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.67.42-face-atlas-test4';
-import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=1.67.42-face-atlas-test4';
-import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.42-face-atlas-test4';
+import { presentationModeFields } from './presentationMode.js?rmv=1.67.42-face-atlas-test5';
+import { getSettings } from './settings.js?rmv=1.67.42-face-atlas-test5';
+import { getCurrentChatKey } from './storage.js?rmv=1.67.42-face-atlas-test5';
+import { getRabbitMirrorRecipe } from './blacklist.js?rmv=1.67.42-face-atlas-test5';
+import { readFollowPartialResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=1.67.42-face-atlas-test5';
+import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.67.42-face-atlas-test5';
+import { parseMultifaceOutput, MULTIFACE_FAILURE_ATTR } from './multifaceProtocol.js?rmv=1.67.42-face-atlas-test5';
+import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.67.42-face-atlas-test5';
+import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=1.67.42-face-atlas-test5';
+import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.67.42-face-atlas-test5';
+import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=1.67.42-face-atlas-test5';
+import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.42-face-atlas-test5';
 
 const active = new WeakSet();
 const fail = message => { const error=new Error(message);error.rabbitMirrorFollowRetry=true;throw error; };
@@ -78,7 +78,7 @@ export async function retryFollowFace(root, suppliedOwner, deps) {
         try {
             if(plan.selectedExternalIds.length){materials=await getSelectedExternalEntries(plan.selectedExternalIds);assertCurrent();}
             if(plan.appearanceReference.enabled){
-                const appearance=await import('./appearanceReference.js?rmv=1.67.42-face-atlas-test4');assertCurrent();
+                const appearance=await import('./appearanceReference.js?rmv=1.67.42-face-atlas-test5');assertCurrent();
                 appearanceMaterial=await appearance.loadAppearanceReferenceMaterial(plan.appearanceReference.revision);assertCurrent();
             }
             if(plan.memoryWorldBook?.enabled){

@@ -26,6 +26,93 @@ function htmlApiErrorHeader(raw) {
         || (/\bcloudflare\b/i.test(header) && /(?:too many requests|rate.?limit|service unavailable|bad gateway|gateway time-?out|timed? ?out|timeout|overloaded)/i.test(header));
 }
 
+// Inspect source syntax, not rendered DOM (browsers auto-close missing tags).
+// This is only a completion hint; it never sanitizes or repairs the main reply.
+function incompleteMainReplyMarkup(raw) {
+    const pending = new Map([['content', 0], ['details', 0]]);
+    const opaque = new Set(['script', 'style', 'textarea', 'title', 'xmp', 'pre', 'code']);
+    const tagStart = /<(\/?)([a-z][a-z0-9:._-]*)(?=[\s/>])/iy;
+    const fenceStart = / {0,3}(`{3,}|~{3,})([^\r\n]*)/y;
+    let cursor = 0, codeRuns = null, inlineBreaks = null;
+    while (cursor < raw.length) {
+        if (cursor === 0 || raw[cursor - 1] === '\n') {
+            fenceStart.lastIndex = cursor;
+            const fence = fenceStart.exec(raw);
+            if (fence && (fence[1][0] !== '`' || !fence[2].includes('`'))) {
+                const close = new RegExp(`^ {0,3}${fence[1][0]}{${fence[1].length},}[\\t ]*\\r?$`, 'gm');
+                close.lastIndex = fenceStart.lastIndex;
+                const end = close.exec(raw);
+                if (!end) return '正文结构未完整（代码块未闭合，疑似截断）';
+                cursor = end.index + end[0].length;
+                continue;
+            }
+        }
+        if (raw[cursor] === '\\') { cursor += 2; continue; }
+        if (raw[cursor] === '`') {
+            // Index runs once so many unmatched code markers cannot cause
+            // repeated whole-tail scans. Inline code requires equal run sizes
+            // within a block; blank lines and fenced blocks take precedence.
+            if (!codeRuns) {
+                codeRuns = new Map();
+                for (const match of raw.matchAll(/`+/g)) {
+                    const length = match[0].length;
+                    if (!codeRuns.has(length)) codeRuns.set(length, { indexes: [], next: 0 });
+                    codeRuns.get(length).indexes.push(match.index);
+                }
+                inlineBreaks = { indexes: [], next: 0 };
+                for (const match of raw.matchAll(/^[\t ]*\r?$|^ {0,3}(?:`{3,}|~{3,})[^\r\n]*$/gm)) {
+                    inlineBreaks.indexes.push(match.index);
+                }
+            }
+            let end = cursor + 1;
+            while (raw[end] === '`') end += 1;
+            const length = end - cursor, runs = codeRuns.get(length);
+            while (runs && runs.next < runs.indexes.length && runs.indexes[runs.next] <= cursor) runs.next += 1;
+            while (inlineBreaks.next < inlineBreaks.indexes.length && inlineBreaks.indexes[inlineBreaks.next] <= cursor) inlineBreaks.next += 1;
+            const blockEnd = inlineBreaks.indexes[inlineBreaks.next] ?? raw.length;
+            cursor = runs && runs.next < runs.indexes.length && runs.indexes[runs.next] < blockEnd
+                ? runs.indexes[runs.next++] + length : end;
+            continue;
+        }
+        if (raw.startsWith('<!--', cursor) || raw.startsWith('<![CDATA[', cursor)) {
+            const cdata = raw.startsWith('<![CDATA[', cursor), close = cdata ? ']]>' : '-->';
+            const end = raw.indexOf(close, cursor + (cdata ? 9 : 4));
+            cursor = end < 0 ? raw.length : end + close.length;
+            continue;
+        }
+        if (raw[cursor] !== '<') { cursor += 1; continue; }
+        tagStart.lastIndex = cursor;
+        const tag = tagStart.exec(raw);
+        if (!tag) { cursor += 1; continue; }
+        const name = tag[2].toLowerCase(), closing = !!tag[1];
+        let end = tagStart.lastIndex, quote = '';
+        for (; end < raw.length; end += 1) {
+            const char = raw[end];
+            if (quote) { if (char === quote) quote = ''; }
+            else if (char === '"' || char === "'") quote = char;
+            else if (char === '>') break;
+        }
+        if (end === raw.length) {
+            if (pending.has(name) && !closing) pending.set(name, pending.get(name) + 1);
+            break;
+        }
+        const selfClosing = raw[end - 1] === '/';
+        cursor = end + 1;
+        if (pending.has(name)) {
+            if (closing) pending.set(name, Math.max(0, pending.get(name) - 1));
+            else if (!selfClosing) pending.set(name, pending.get(name) + 1);
+        }
+        if (!closing && !selfClosing && opaque.has(name)) {
+            const close = new RegExp(`</${name}\\s*>`, 'gi');
+            close.lastIndex = cursor;
+            const match = close.exec(raw);
+            cursor = match ? match.index + match[0].length : raw.length;
+        }
+    }
+    for (const [name, count] of pending) if (count > 0) return `正文结构未完整（<${name}> 标签未闭合，疑似截断）`;
+    return '';
+}
+
 // 返回异常原因；正常返回空串。
 export function mainReplyAbnormalReason(message, { partial = false } = {}) {
     if (!message) return '';
@@ -38,10 +125,9 @@ export function mainReplyAbnormalReason(message, { partial = false } = {}) {
     if (ERROR_START.test(text.slice(0, 40)) || ERROR_START.test(raw.trim().slice(0, 40)) || htmlApiErrorHeader(raw)
         || (text.length < 1500 && signals >= 2) || (text.length < 150 && signals >= 1)) return '正文像是接口报错（如 429/524）';
     if (text.length < 400 && REFUSAL_START.test(text) && REFUSAL_WORDS.test(text)) return '正文是模型拒答或道歉';
-    // 正文可包含预设标签、正则处理后的标记、代码示例或不完整的 HTML。
-    // 标签/围栏计数不能证明模型被截断，也不能否定宿主已确认的生成结束。
-    // 是否仍在生成由宿主生命周期判断；此处不补标签、不修改正文。
-    return '';
+    // Only final, stable source may be checked for closure. A streaming prefix
+    // can legitimately be missing its closing tag; manual requests skip this gate.
+    return partial ? '' : incompleteMainReplyMarkup(raw);
 }
 
 export function notifySafetyValve(message, reason) {

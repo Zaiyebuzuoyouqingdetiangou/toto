@@ -1,8 +1,8 @@
 // Split from outputSanitizer.js — runtime.
 
-import { getSettings } from '../settings.js?rmv=1.67.42-face-atlas-test4';
+import { getSettings } from '../settings.js?rmv=1.67.42-face-atlas-test5';
 
-export const RUNTIME_VERSION = '1.67.42-face-atlas-test4';
+export const RUNTIME_VERSION = '1.67.42-face-atlas-test5';
 
 export const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 

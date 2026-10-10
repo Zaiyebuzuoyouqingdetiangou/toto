@@ -1,6 +1,6 @@
 // Split from outputSanitizer.js — layoutRescue.
 
-import { collectBoundedElementDescendants, semanticEnsembleScalePlan } from '../presentationQuality.js?rmv=1.67.42-face-atlas-test4';
+import { collectBoundedElementDescendants, semanticEnsembleScalePlan } from '../presentationQuality.js?rmv=1.67.42-face-atlas-test5';
 import {
     FEEDBACK_CAT_ATTR,
     MAINTENANCE_RABBIT_ATTR,
@@ -8,7 +8,7 @@ import {
     RECIPE_BUTTON_ATTR,
     TOOL_ENTRY_HOST_ATTR,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.67.42-face-atlas-test4';
+} from './runtime.js?rmv=1.67.42-face-atlas-test5';
 import {
     EXCLUSIVE_STACKED_STATE_PANEL_ATTR,
     MOBILE_INLINE_ANNOTATION_MIRROR_ATTR,
@@ -24,13 +24,13 @@ import {
     parseCheckedRulesFromText,
     repairRabbitMirrorSelectorPanelGridSpan,
     resolveTargetsForCheckedRule,
-} from './checkedStateRescue.js?rmv=1.67.42-face-atlas-test4';
-import { getClassTokens } from './renderedStateRescue.js?rmv=1.67.42-face-atlas-test4';
+} from './checkedStateRescue.js?rmv=1.67.42-face-atlas-test5';
+import { getClassTokens } from './renderedStateRescue.js?rmv=1.67.42-face-atlas-test5';
 import {
     ensurePassportDocumentRescueStyle,
     findRenderedPassportDocumentCandidates,
     markRenderedPassportDocumentCandidate,
-} from './scriptedInteractionRescue.js?rmv=1.67.42-face-atlas-test4';
+} from './scriptedInteractionRescue.js?rmv=1.67.42-face-atlas-test5';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     INDEPENDENT_MOBILE_SPATIAL_CANVAS_ATTR,
@@ -88,7 +88,7 @@ import {
     mobileLayoutRescueStates,
     mobileMatrixPreserveStates,
     rabbitMirrorFacePositionHints,
-} from './diagnostics.js?rmv=1.67.42-face-atlas-test4';
+} from './diagnostics.js?rmv=1.67.42-face-atlas-test5';
 
 let mobileLayoutScopeCounter = 0;
 

@@ -1,6 +1,6 @@
-import { detectWorldBookCapabilities, getHostRequestHeaders, requireHostHeaders } from './capabilities.js?rmv=1.67.42-face-atlas-test4';
-import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.67.42-face-atlas-test4';
-import { normalizeHostWorldBook } from './normalize.js?rmv=1.67.42-face-atlas-test4';
+import { detectWorldBookCapabilities, getHostRequestHeaders, requireHostHeaders } from './capabilities.js?rmv=1.67.42-face-atlas-test5';
+import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.67.42-face-atlas-test5';
+import { normalizeHostWorldBook } from './normalize.js?rmv=1.67.42-face-atlas-test5';
 
 const DEFAULT_TIMEOUT_MS = 10000;
 

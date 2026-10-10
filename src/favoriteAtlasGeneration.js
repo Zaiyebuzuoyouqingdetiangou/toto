@@ -62,8 +62,8 @@ export function parseAtlasDraftResponse(value, catalog) {
 
 async function currentCatalog() {
     const [{ getSettings }, { loadFaceDrawCatalog }] = await Promise.all([
-        import('./settings.js?rmv=1.67.42-face-atlas-test4'),
-        import('./faceDrawCatalog.js?rmv=1.67.42-face-atlas-test4'),
+        import('./settings.js?rmv=1.67.42-face-atlas-test5'),
+        import('./faceDrawCatalog.js?rmv=1.67.42-face-atlas-test5'),
     ]);
     return loadFaceDrawCatalog(getSettings());
 }

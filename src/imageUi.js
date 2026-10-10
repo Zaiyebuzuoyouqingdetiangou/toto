@@ -1,9 +1,9 @@
-import { getSettings } from './settings.js?rmv=1.67.42-face-atlas-test4';
-import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=1.67.42-face-atlas-test4';
-import { loadMirrorImage, saveMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft } from './imageStore.js?rmv=1.67.42-face-atlas-test4';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.67.42-face-atlas-test4';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.42-face-atlas-test4';
-import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.67.42-face-atlas-test4';
+import { getSettings } from './settings.js?rmv=1.67.42-face-atlas-test5';
+import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=1.67.42-face-atlas-test5';
+import { loadMirrorImage, saveMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft } from './imageStore.js?rmv=1.67.42-face-atlas-test5';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.67.42-face-atlas-test5';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.42-face-atlas-test5';
+import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.67.42-face-atlas-test5';
 
 // The lock lives beyond a panel's lifetime. Closing, reopening or aborting a UI
 // cannot release a provider reservation before its Promise actually settles.

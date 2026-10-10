@@ -1,13 +1,13 @@
 // Split from independentApi.js — earlyBody.
-import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.67.42-face-atlas-test4';
+import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.67.42-face-atlas-test5';
 
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.67.42-face-atlas-test4';
-import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.67.42-face-atlas-test4';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.67.42-face-atlas-test4';
-import { getSettings } from '../settings.js?rmv=1.67.42-face-atlas-test4';
-import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.67.42-face-atlas-test4';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=1.67.42-face-atlas-test4';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.67.42-face-atlas-test4';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.67.42-face-atlas-test5';
+import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.67.42-face-atlas-test5';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.67.42-face-atlas-test5';
+import { getSettings } from '../settings.js?rmv=1.67.42-face-atlas-test5';
+import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.67.42-face-atlas-test5';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=1.67.42-face-atlas-test5';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.67.42-face-atlas-test5';
 import {
     MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE,
     INDEPENDENT_HISTORY_READ_ERROR_MESSAGE,
@@ -17,7 +17,7 @@ import {
     isMissingShellTargetFloor,
     normalizeMissingShellScanRange,
     shouldRestoreMissingIndependentRetryShell,
-} from './missingRetryShell.js?rmv=1.67.42-face-atlas-test4';
+} from './missingRetryShell.js?rmv=1.67.42-face-atlas-test5';
 import {
     INDEPENDENT_GENERATION_INTENTS_KEY,
     INDEPENDENT_GENERATION_INTENT_TYPES,
@@ -27,7 +27,7 @@ import {
     currentRuntime,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.67.42-face-atlas-test4';
+} from './runtime.js?rmv=1.67.42-face-atlas-test5';
 import {
     ACTIVE_GENERATION_WAIT_MS,
     FINAL_RENDER_POLL_INTERVAL_MS,
@@ -41,7 +41,7 @@ import {
     markAutomaticFailureStop,
     operationEpochForBase,
     pending,
-} from './flights.js?rmv=1.67.42-face-atlas-test4';
+} from './flights.js?rmv=1.67.42-face-atlas-test5';
 import {
     appendHistoryEntry,
     chatPersistenceSlot,
@@ -57,7 +57,7 @@ import {
     reconcileIndependentChatOwners,
     rememberChatMessageOrder,
     checkOwnerRemapEpoch,
-} from './persistence.js?rmv=1.67.42-face-atlas-test4';
+} from './persistence.js?rmv=1.67.42-face-atlas-test5';
 import {
     activeGlobalWorldInfoCapture,
     assistantMessages,
@@ -107,7 +107,7 @@ import {
     withOwnerLockStoreBatch,
     writeActiveGlobalWorldInfoCapture,
     writeHostModule,
-} from './connection.js?rmv=1.67.42-face-atlas-test4';
+} from './connection.js?rmv=1.67.42-face-atlas-test5';
 import {
     allExternalHosts,
     externalHosts,
@@ -115,7 +115,7 @@ import {
     removeEmptyFollowExternalAnchors,
     removeEmptyInlineAnchors,
     withExternalHostSyncIndex,
-} from './request.js?rmv=1.67.42-face-atlas-test4';
+} from './request.js?rmv=1.67.42-face-atlas-test5';
 import {
     beginHostWorkTiming,
     clearExternalHostFreshSourceState,
@@ -148,7 +148,7 @@ import {
     setPlaceholderSummary,
     usableReadyDetails,
     withRestorableHtmlCacheBatch,
-} from './geometry.js?rmv=1.67.42-face-atlas-test4';
+} from './geometry.js?rmv=1.67.42-face-atlas-test5';
 import {
     INDEPENDENT_INTENT_OWNER,
     abortFlight,
@@ -202,7 +202,7 @@ import {
     serializeExternalFaceDetails,
     stampAutomaticAuthorizationEpoch,
     withHistoricalRestoreLightPass,
-} from './mount.js?rmv=1.67.42-face-atlas-test4';
+} from './mount.js?rmv=1.67.42-face-atlas-test5';
 import {
     automaticGenerationCutovers,
     hostGenerationHintStartedAt,
@@ -227,7 +227,7 @@ import {
     writeStartupHistoryFallbackRoot,
     writeSyncRunning,
     writeSyncTimer,
-} from './lifecycle.js?rmv=1.67.42-face-atlas-test4';
+} from './lifecycle.js?rmv=1.67.42-face-atlas-test5';
 
 let earlyBodyParserPromise=null;
 
@@ -350,7 +350,7 @@ function settleEarlyBodyAtFinal(ctx,index){
 
 async function probeIndependentEarlyBody(packet,sequence){
  if(!earlyBodyPacketCurrent(packet)) return;
- if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.67.42-face-atlas-test4')
+ if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.67.42-face-atlas-test5')
   .then(module=>{earlyBodyParser=module;return module;}).catch(()=>{earlyBodyParserPromise=null;return null;});
  const parser=await earlyBodyParserPromise;
  if(!parser || sequence!==earlyBodyProbeSequence || !earlyBodyPacketCurrent(packet)) return;
@@ -781,7 +781,9 @@ function holdAbnormalAutomaticReply(ctx,index){
  return true;
 }
 function finalizeAutomaticHostGeneration(ctx,index,reason='host-final-render',sourceStabilityConfirmed=true,sourceStableSince=0){
- if(holdAbnormalAutomaticReply(ctx,index)) return false;
+ // A next-normal handoff can arrive before the previous reply's final source
+ // update. Let the existing stability poll check that reply before judging it.
+ if(sourceStabilityConfirmed===true && holdAbnormalAutomaticReply(ctx,index)) return false;
  if(!settleAutomaticHostGeneration(ctx,index,reason)) return false;
  writeHostGenerationInProgress(false);
  writeHostGenerationHintStartedAt(0);

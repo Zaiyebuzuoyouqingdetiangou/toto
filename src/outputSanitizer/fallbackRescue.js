@@ -1,7 +1,7 @@
 // Split from outputSanitizer.js — fallbackRescue.
-import { RADIO_BRANCH_CONTROL_ATTR, installRadioBranchRepair, applyRadioBranchState, applyRadioProxyState, radioBranchVerificationTargets } from './radioBranchRepair.js?rmv=1.67.42-face-atlas-test4';
+import { RADIO_BRANCH_CONTROL_ATTR, installRadioBranchRepair, applyRadioBranchState, applyRadioProxyState, radioBranchVerificationTargets } from './radioBranchRepair.js?rmv=1.67.42-face-atlas-test5';
 
-import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.67.42-face-atlas-test4';
+import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.67.42-face-atlas-test5';
 
 import {
     FEEDBACK_CAT_ATTR,
@@ -9,7 +9,7 @@ import {
     TOOL_ENTRY_HOST_ATTR,
     escapeRegExp,
     getRabbitMirrorLocalStyleElements,
-} from './runtime.js?rmv=1.67.42-face-atlas-test4';
+} from './runtime.js?rmv=1.67.42-face-atlas-test5';
 import {
     CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR,
     CROSS_PARENT_CHECKED_VERIFIED_ATTR,
@@ -92,7 +92,7 @@ import {
     webKit3DFlipInlineStates,
     webKit3DFlipRescueStates,
     webKit3DFlipStyleStates,
-} from './checkedStateRescue.js?rmv=1.67.42-face-atlas-test4';
+} from './checkedStateRescue.js?rmv=1.67.42-face-atlas-test5';
 import {
     EXISTING_INTERACTIVE_SELECTOR,
     RENDERED_BUTTON_ADJACENT_HIDDEN_RESCUE_ATTR,
@@ -119,7 +119,7 @@ import {
     isCollapsedDimensionValue,
     normalizeStylePropertyName,
     parseCssStateSiblingAssignments,
-} from './renderedStateRescue.js?rmv=1.67.42-face-atlas-test4';
+} from './renderedStateRescue.js?rmv=1.67.42-face-atlas-test5';
 import {
     chooseMatchingRawRabbitMirrorRoot,
     detectInteractionCapabilities,
@@ -135,7 +135,7 @@ import {
     installRawMessageSelfMutationRescue,
     preparePseudoTrigger,
     shouldIgnorePseudoToggleEvent,
-} from './scriptedInteractionRescue.js?rmv=1.67.42-face-atlas-test4';
+} from './scriptedInteractionRescue.js?rmv=1.67.42-face-atlas-test5';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     FILL_IN_CHOICE_BLANK_ATTR,
@@ -147,15 +147,15 @@ import {
     diagnosticFindClippingAncestor,
     maintenanceSafeComputedStyle,
     mobileInlineAnnotationRescueStates,
-} from './diagnostics.js?rmv=1.67.42-face-atlas-test4';
-import { installStaticChoiceSelectionFallback } from './choiceRescue.js?rmv=1.67.42-face-atlas-test4';
+} from './diagnostics.js?rmv=1.67.42-face-atlas-test5';
+import { installStaticChoiceSelectionFallback } from './choiceRescue.js?rmv=1.67.42-face-atlas-test5';
 import {
     checkedDeclarationCreatesContentReveal,
     checkedTargetCarriesResultContent,
     pseudoStateTargetSelector,
-} from './maintenanceInspect.js?rmv=1.67.42-face-atlas-test4';
-import { splitCssSelectorList } from './markup.js?rmv=1.67.42-face-atlas-test4';
-import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutResolveCheckedTargets } from './layoutRescue.js?rmv=1.67.42-face-atlas-test4';
+} from './maintenanceInspect.js?rmv=1.67.42-face-atlas-test5';
+import { splitCssSelectorList } from './markup.js?rmv=1.67.42-face-atlas-test5';
+import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutResolveCheckedTargets } from './layoutRescue.js?rmv=1.67.42-face-atlas-test5';
 
 const NESTED_DETAILS_FALLBACK_HANDLER_PROP = '__rabbitMirrorNestedDetailsFallbackHandler';
 

@@ -1,9 +1,9 @@
 // Split from independentApi.js — flights.
 
-import { getSettings } from '../settings.js?rmv=1.67.42-face-atlas-test4';
-import { configuredAutomaticRerollIdleMs, configuredAutomaticRerollMax, stallTimeoutError } from '../automaticReroll.js?rmv=1.67.42-face-atlas-test4';
-import { baseSlotOf } from './connection.js?rmv=1.67.42-face-atlas-test4';
-import { automaticGenerationCutovers } from './lifecycle.js?rmv=1.67.42-face-atlas-test4';
+import { getSettings } from '../settings.js?rmv=1.67.42-face-atlas-test5';
+import { configuredAutomaticRerollIdleMs, configuredAutomaticRerollMax, stallTimeoutError } from '../automaticReroll.js?rmv=1.67.42-face-atlas-test5';
+import { baseSlotOf } from './connection.js?rmv=1.67.42-face-atlas-test5';
+import { automaticGenerationCutovers } from './lifecycle.js?rmv=1.67.42-face-atlas-test5';
 
 export const pending = new Map();
 // A failed automatic generation owns its exact chat+mesid+swipe+sourceHash until
