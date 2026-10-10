@@ -1,38 +1,38 @@
 // Split from independentApi.js — mount.
-import { restoreRuntimeAnimationClone } from '../runtimeAnimationState.js?rmv=1.67.42-face-atlas-test1';
-import { faceDrawMetadataFields } from '../faceDrawRules.js?rmv=1.67.42-face-atlas-test1';
+import { restoreRuntimeAnimationClone } from '../runtimeAnimationState.js?rmv=1.67.42-face-atlas-test2';
+import { faceDrawMetadataFields } from '../faceDrawRules.js?rmv=1.67.42-face-atlas-test2';
 
-import { presentationModeFields, isBlankLongTextSelection } from '../presentationMode.js?rmv=1.67.42-face-atlas-test1';
-import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.67.42-face-atlas-test1';
-import { getSettings } from '../settings.js?rmv=1.67.42-face-atlas-test1';
-import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.67.42-face-atlas-test1';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=1.67.42-face-atlas-test1';
-import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.67.42-face-atlas-test1';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.67.42-face-atlas-test1';
+import { presentationModeFields, isBlankLongTextSelection } from '../presentationMode.js?rmv=1.67.42-face-atlas-test2';
+import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.67.42-face-atlas-test2';
+import { getSettings } from '../settings.js?rmv=1.67.42-face-atlas-test2';
+import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.67.42-face-atlas-test2';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=1.67.42-face-atlas-test2';
+import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.67.42-face-atlas-test2';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.67.42-face-atlas-test2';
 import {
     cleanRabbitMirrorOutput,
     refreshRabbitMirrorToolsInScope,
     isolateRabbitMirrorInteractionIds,
     rearmRabbitMirrorSerializedInteractionRoot,
     armRabbitMirrorFirstUseInteraction,
-} from '../outputSanitizer.js?rmv=1.67.42-face-atlas-test1';
-import { matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.67.42-face-atlas-test1';
-import { parseMultifaceOutput, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR } from '../multifaceProtocol.js?rmv=1.67.42-face-atlas-test1';
-import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from '../multifaceProof.js?rmv=1.67.42-face-atlas-test1';
+} from '../outputSanitizer.js?rmv=1.67.42-face-atlas-test2';
+import { matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.67.42-face-atlas-test2';
+import { parseMultifaceOutput, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR } from '../multifaceProtocol.js?rmv=1.67.42-face-atlas-test2';
+import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from '../multifaceProof.js?rmv=1.67.42-face-atlas-test2';
 import {
     FOLLOW_MULTIFACE_COMMITTED_EVENT,
     FOLLOW_MULTIFACE_REJECTED_EVENT,
     FOLLOW_GENERATION_SETTLED_EVENT,
     getRabbitMirrorFollowBatchFailure,
-} from '../visualScanner.js?rmv=1.67.42-face-atlas-test1';
-import { commitVisualHistorySelection, commitPendingComboBatch, releasePendingComboBatch } from '../storage.js?rmv=1.67.42-face-atlas-test1';
+} from '../visualScanner.js?rmv=1.67.42-face-atlas-test2';
+import { commitVisualHistorySelection, commitPendingComboBatch, releasePendingComboBatch } from '../storage.js?rmv=1.67.42-face-atlas-test2';
 import {
     consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror,
     getActiveFeedbackForCurrentChat,
     markFeedbackCatInjected,
-} from '../feedbackCat.js?rmv=1.67.42-face-atlas-test1';
-import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from '../blacklist.js?rmv=1.67.42-face-atlas-test1';
-import { readFollowPartialResult, followPartialResultFaceOwnerKey } from '../followPartialResults.js?rmv=1.67.42-face-atlas-test1';
+} from '../feedbackCat.js?rmv=1.67.42-face-atlas-test2';
+import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from '../blacklist.js?rmv=1.67.42-face-atlas-test2';
+import { readFollowPartialResult, followPartialResultFaceOwnerKey } from '../followPartialResults.js?rmv=1.67.42-face-atlas-test2';
 import {
     shouldAutomaticReroll,
     automaticRerollStatusText,
@@ -42,13 +42,13 @@ import {
     isQuotaInsufficientFailure,
     isLocalPreflightFailure,
     configuredAutomaticRerollIdleMs,
-} from '../automaticReroll.js?rmv=1.67.42-face-atlas-test1';
+} from '../automaticReroll.js?rmv=1.67.42-face-atlas-test2';
 import {
     mergeMissingIndependentFaces,
     mergeRetrySelectionDiagnostic,
     missingIndexesFromIndependentResult,
     recipesCoverMissing,
-} from '../missingFaceMerge.js?rmv=1.67.42-face-atlas-test1';
+} from '../missingFaceMerge.js?rmv=1.67.42-face-atlas-test2';
 import {
     FACE_SWIPE_FULL_MESSAGE,
     canAppendSwipe,
@@ -59,7 +59,7 @@ import {
     mutateFaceSwipe,
     faceSwipeSnapshotStored,
     saveFaceSwipeArchive,
-} from '../swipeVersions.js?rmv=1.67.42-face-atlas-test1';
+} from '../swipeVersions.js?rmv=1.67.42-face-atlas-test2';
 import {
     ACTION_BRIDGE_KEY,
     CONTEXT_TOTAL_BUDGET,
@@ -79,7 +79,7 @@ import {
     getContext,
     hashText,
     independentMaintenanceLiveRepairLocked,
-} from './runtime.js?rmv=1.67.42-face-atlas-test1';
+} from './runtime.js?rmv=1.67.42-face-atlas-test2';
 import {
     ACTIVE_GENERATION_WAIT_MS,
     FINAL_RENDER_CONFIRMATION_TTL_MS,
@@ -106,7 +106,7 @@ import {
     operationEpochForBase,
     pending,
     reserveAutomaticDispatchLease,
-} from './flights.js?rmv=1.67.42-face-atlas-test1';
+} from './flights.js?rmv=1.67.42-face-atlas-test2';
 import {
     HISTORY_PANEL_ATTR,
     INDEPENDENT_RECORD_BUDGET_BYTES,
@@ -127,7 +127,7 @@ import {
     restoreIndependentFaceSwipeInitial,
     writePersistedOwner,
     writeStore,
-} from './persistence.js?rmv=1.67.42-face-atlas-test1';
+} from './persistence.js?rmv=1.67.42-face-atlas-test2';
 import {
     appendIndependentFaceSwipe,
     faceDetailsListFromHtml,
@@ -139,7 +139,7 @@ import {
     seedIndependentFaceSwipes,
     seedNeighborIndependentFaceSwipes,
     showEphemeralFaceFailure,
-} from './faceSwipe.js?rmv=1.67.42-face-atlas-test1';
+} from './faceSwipe.js?rmv=1.67.42-face-atlas-test2';
 import {
     INDEPENDENT_OWNER_OBSERVATION,
     assistantMessages,
@@ -178,7 +178,7 @@ import {
     setOwnerLockForBase,
     slotSearchKeys,
     swipeId,
-} from './connection.js?rmv=1.67.42-face-atlas-test1';
+} from './connection.js?rmv=1.67.42-face-atlas-test2';
 import {
     allExternalHosts,
     assertIndependentMarkupComplexityWithDiagnostic,
@@ -203,7 +203,7 @@ import {
     wrapIndependentFace,
     wrapPreparedIndependentFace,
     wrappedIndependentMirrorHtml,
-} from './request.js?rmv=1.67.42-face-atlas-test1';
+} from './request.js?rmv=1.67.42-face-atlas-test2';
 import {
     DEFERRED_INTERACTION_RESCUE_ATTR,
     INDEPENDENT_CONTENT_WIDTH_BASELINE_ATTR,
@@ -264,7 +264,7 @@ import {
     showIndependentResayStatus,
     transferExternalTools,
     usableReadyDetails,
-} from './geometry.js?rmv=1.67.42-face-atlas-test1';
+} from './geometry.js?rmv=1.67.42-face-atlas-test2';
 import {
     assertEarlyBodyOwner,
     automaticHostGenerationMayUseTools,
@@ -278,7 +278,7 @@ import {
     scheduleStartupHistorySync,
     suppressesAutomaticGeneration,
     unlockAutomaticGenerationCutover,
-} from './earlyBody.js?rmv=1.67.42-face-atlas-test1';
+} from './earlyBody.js?rmv=1.67.42-face-atlas-test2';
 import {
     automaticGenerationCutovers,
     backgroundLifecycleListenersInstalled,
@@ -300,7 +300,7 @@ import {
     writeHostGenerationInProgress,
     writeIndependentActionBridge,
     writeLastAppliedIndependentTiming,
-} from './lifecycle.js?rmv=1.67.42-face-atlas-test1';
+} from './lifecycle.js?rmv=1.67.42-face-atlas-test2';
 
 let generationSequence = 0;
 
@@ -1903,7 +1903,7 @@ export async function generateFor(index,msg,force=false,sourceAware=true,multifa
    if(!independentRecordWithinBudget(completed)) throw independentMarkupLimitError('record-bytes',byteLength(completed.html),INDEPENDENT_RECORD_BUDGET_BYTES);
    bindIndependentRecordContinuity(settledCtx,index,settledMsg,completed,null,{completed:true});
    recordRabbitMirrorRecipe({ chat:settledCtx.chat, chatKey:chatKey(settledCtx), messageIndex:index, swipeId:swipeId(settledMsg), message:settledMsg, metadata:result?.requestDiagnostic||null, source:'independent' });
-   void import('../milestones.js?rmv=1.67.42-face-atlas-test1').then(module=>module.recordMirrorMilestone(`${settledSlot}:${completed.ts}`)).catch(()=>{});
+   void import('../milestones.js?rmv=1.67.42-face-atlas-test2').then(module=>module.recordMirrorMilestone(`${settledSlot}:${completed.ts}`)).catch(()=>{});
    const recipeDiagnostic=result?.requestDiagnostic||null;
    if(force && multifaceResay){
     const resayFaceIndex=Number.isInteger(multifaceResay?.faceIndex)?multifaceResay.faceIndex:0;
@@ -2038,7 +2038,7 @@ export async function generateFor(index,msg,force=false,sourceAware=true,multifa
      const faceIndex=Number.isInteger(multifaceResay?.faceIndex)?multifaceResay.faceIndex:0;
      const overlayRoot=externalFaceDetails(currentHost)[currentHost && externalFaceDetails(currentHost).length>1?faceIndex:0]||currentHost;
      showEphemeralFaceFailure(currentHost,faceIndex,failureMessage,
-      ()=>{ void import('../outputSanitizer/toolsChrome.js?rmv=1.67.42-face-atlas-test1').then(module=>module.openRabbitMirrorResayChooser(overlayRoot)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。')); },
+      ()=>{ void import('../outputSanitizer/toolsChrome.js?rmv=1.67.42-face-atlas-test2').then(module=>module.openRabbitMirrorResayChooser(overlayRoot)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。')); },
       ()=>{ applyIndependentFaceSwipe(overlayRoot,readFaceSwipe(independentSwipeSlot(failedIdentity),faceIndex).currentIndex); }
      );
     }else{
@@ -2068,7 +2068,7 @@ export async function generateFor(index,msg,force=false,sourceAware=true,multifa
   const diagnostic=independentDiagnostic(err,result);
   const failedPosts=Math.max(0, Number(dispatchLease?.consumeCount?.()||0));
   flight.automaticRerollCount=failedPosts;
-  return shouldAutomaticReroll({
+  return diagnostic.serialStopped!==true && shouldAutomaticReroll({
    manualResay,
    complete:!missing.length,
    failedPosts,
@@ -2499,7 +2499,7 @@ export function resayIndependentMirror(root,owner={},options={}){
    globalThis.toastr?.warning?.('跟随正文只能按这一面原来的选题重试失败面，不能在这里重新抽一张。');
    return true;
   }
-  void import('../followFaceRetry.js?rmv=1.67.42-face-atlas-test1').then(({retryFollowFace})=>retryFollowFace(root,owner,{
+  void import('../followFaceRetry.js?rmv=1.67.42-face-atlas-test2').then(({retryFollowFace})=>retryFollowFace(root,owner,{
    getContext,hostBusy:hostGenerationLooksActive,maxRequestChars:configuredIndependentMaxRequestChars(getSettings()),resayNote:note,presentationOverride:form,
    resolveOwner:target=>{
     const host=target?.closest?.('[data-rabbit-mirror-external-source="true"][data-rm-source="follow"]');
@@ -2578,7 +2578,11 @@ export function resayIndependentMirror(root,owner={},options={}){
   }
  }else if(mode==='fresh'){
   if(identity.faceIndex>=0) multifaceResay=withForm({faceIndex:identity.faceIndex,faces,retryFailedFace:true,freshSelection:true});
-  else if(form) singlePresentationResay=withForm({faceIndex:0,faces:[],freshSelection:true,retryFailedFace:true});
+  // An empty error card represents the failed generation, not its first face.
+  // Retry the configured batch; an existing one-face artwork still accepts an
+  // explicit presentation change, and a failed slot above stays a single resay.
+  else if(form && !(identity.host?.dataset?.rmState==='error' && !saved?.html
+    && Number(getSettings().rabbitMirrorFaceCount)>1)) singlePresentationResay=withForm({faceIndex:0,faces:[],freshSelection:true,retryFailedFace:true});
  }else if(mode==='original'){
   if(identity.faceIndex>=0){
    if(!hasRecipe){
@@ -2989,12 +2993,12 @@ async function requestMirrorImagePlan(target,input={},options={}){
  target.assertCurrent();
  const current=getSettings();
  if(current.imageEnabled!==true && !(options.builtin===true && current.builtinImageEnabled===true)) throw new Error('请先在兔子镜设置中开启手动生图。');
- const {imageLlmSettings}=await import('../imageLlm.js?rmv=1.67.42-face-atlas-test1');
+ const {imageLlmSettings}=await import('../imageLlm.js?rmv=1.67.42-face-atlas-test2');
  // 配置了生图 LLM 时，画面规划改由它来写；否则沿用副 API。
  const st=imageLlmSettings({...current,independentExcludedParams:Array.isArray(current.independentExcludedParams)?[...current.independentExcludedParams]:current.independentExcludedParams});
  if((!st.independentConnectionProfileId&&!st.independentApiBaseUrl)||!st.independentApiModel)
   throw new Error('请先完成兔子镜副 API（或生图 LLM）连接和模型设置；尚未发送请求。');
- const {buildImagePlanningPrompt,parseImagePlan}=await import('../imagePlan.js?rmv=1.67.42-face-atlas-test1');
+ const {buildImagePlanningPrompt,parseImagePlan}=await import('../imagePlan.js?rmv=1.67.42-face-atlas-test2');
  target.assertCurrent();
  const focus=String(input.focus||'').trim();
  const promptFormat=(input.promptFormat||st.imagePromptFormat)==='nai45-tags'?'nai45-tags':'nai5-natural';
@@ -3118,7 +3122,7 @@ function handleFollowMultifaceRejected(event){
  const failure=getRabbitMirrorFollowBatchFailure(ctx?.chat,index);
  if(!failure || failure.batchId!==event?.detail?.batchId) return false;
  queueMessageSync([index]);
- void import('../followAutomaticReroll.js?rmv=1.67.42-face-atlas-test1').then(({maybeAutomaticFollowReroll})=>maybeAutomaticFollowReroll(index,followAutomaticRerollDeps()));
+ void import('../followAutomaticReroll.js?rmv=1.67.42-face-atlas-test2').then(({maybeAutomaticFollowReroll})=>maybeAutomaticFollowReroll(index,followAutomaticRerollDeps()));
  return true;
 }
 
@@ -3126,12 +3130,12 @@ function handleFollowGenerationSettled(event){
  const index=Number(event?.detail?.messageIndex);
  if(!Number.isInteger(index)||index<0) return false;
  if(event?.detail?.cancelled===true){
-  void import('../followAutomaticReroll.js?rmv=1.67.42-face-atlas-test1').then(({markFollowAutomaticRerollCancelled})=>{
+  void import('../followAutomaticReroll.js?rmv=1.67.42-face-atlas-test2').then(({markFollowAutomaticRerollCancelled})=>{
    markFollowAutomaticRerollCancelled(getContext(),index);
   });
   return true;
  }
- void import('../followAutomaticReroll.js?rmv=1.67.42-face-atlas-test1').then(({maybeAutomaticFollowReroll})=>maybeAutomaticFollowReroll(index,followAutomaticRerollDeps()));
+ void import('../followAutomaticReroll.js?rmv=1.67.42-face-atlas-test2').then(({maybeAutomaticFollowReroll})=>maybeAutomaticFollowReroll(index,followAutomaticRerollDeps()));
  return true;
 }
 

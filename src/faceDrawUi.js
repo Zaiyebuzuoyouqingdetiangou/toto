@@ -1,31 +1,41 @@
-import { getSettings, updateSettings } from './settings.js?rmv=1.67.42-face-atlas-test1';
-import { FACE_DRAW_KINDS, FACE_DRAW_LABELS, normalizeFaceDrawRule, normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.67.42-face-atlas-test1';
-import { loadFaceDrawCatalog, faceCategorySelection, toggleFaceCategory, toggleFaceItem } from './faceDrawCatalog.js?rmv=1.67.42-face-atlas-test1';
+import { getSettings, updateSettings } from './settings.js?rmv=1.67.42-face-atlas-test2';
+import { FACE_DRAW_KINDS, FACE_DRAW_LABELS, normalizeFaceDrawRule, normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.67.42-face-atlas-test2';
+import { loadFaceDrawCatalog, faceCategorySelection, toggleFaceCategory, toggleFaceItem } from './faceDrawCatalog.js?rmv=1.67.42-face-atlas-test2';
 
 const owners = new WeakMap();
 const MODE_LABELS = { none: '不追加', random: '随机抽取', sequence: '顺序轮播' };
 const STYLE = `
-.rh-face-draw{box-sizing:border-box;min-width:0;width:100%;max-width:100%;border:1px solid currentColor;border-radius:9px;padding:0 10px;margin:0 0 8px;overflow-wrap:anywhere;text-align:left;font-size:13px;line-height:1.6}
+.rh-face-draw{--fd-line:var(--rh-border,#bccabf);--fd-accent:var(--rh-primary,#416d48);box-sizing:border-box;min-width:0;width:100%;max-width:100%;border:1px solid var(--fd-line);border-radius:12px;padding:0 14px;margin:0 0 14px;background:var(--rh-card,transparent);overflow-wrap:anywhere;text-align:left;font-size:13px;line-height:1.6}
 .rh-face-draw *{box-sizing:border-box;min-width:0;max-width:100%}
 .rh-face-draw[hidden],.rh-face-draw [hidden]{display:none!important}
-.rh-face-draw summary{cursor:pointer;min-height:44px;padding:10px 0;white-space:normal;overflow-wrap:anywhere}
-.rh-face-draw .rh-fd-body{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;padding-bottom:12px}
+.rh-face-draw summary{cursor:pointer;min-height:44px;padding:12px 0;white-space:normal;overflow-wrap:anywhere;font-weight:600}
+.rh-face-draw>summary small{display:block;margin-left:16px;font-size:12px;font-weight:400;opacity:.78}
+.rh-face-draw .rh-fd-body{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;padding-bottom:14px}
 .rh-face-draw .rh-fd-note{margin:0;opacity:.85;font-size:12px;line-height:1.6}
 .rh-face-draw .rh-fd-check{display:flex;align-items:flex-start;gap:8px;min-height:44px;margin:0;padding:8px 0;white-space:normal;cursor:pointer}
 .rh-face-draw input[type=checkbox]{flex:0 0 auto;width:18px;height:18px;margin:3px 0 0}
-.rh-face-draw button{min-height:44px;padding:8px 10px;white-space:normal;overflow-wrap:anywhere;cursor:pointer;border-radius:7px;font:inherit;line-height:1.45;color:inherit;background:transparent;border:1px solid currentColor}
+.rh-face-draw button{min-height:44px;padding:8px 12px;white-space:normal;overflow-wrap:anywhere;cursor:pointer;border-radius:8px;font:inherit;line-height:1.45;color:inherit;background:transparent;border:1px solid var(--fd-line);transition:background-color .15s}
+.rh-face-draw button:hover{background:color-mix(in srgb,var(--fd-accent) 7%,transparent)}
+.rh-face-draw button.rh-fd-primary,#rabbit_mirror_theater_settings .rh-face-draw button.rh-fd-primary{background:var(--rh-text,#284333);color:var(--rh-card,#fff);border-color:var(--rh-text,#284333);font-weight:600}
+.rh-face-draw button.rh-fd-link{border-color:transparent;text-decoration:underline;text-underline-offset:3px;padding-inline:0}
 .rh-face-draw button:disabled{opacity:.55;cursor:default}
 .rh-face-draw button:active{opacity:.75}
 .rh-face-draw :is(button,select,input):focus-visible,.rh-face-draw summary:focus-visible{outline:2px solid currentColor;outline-offset:2px}
 .rh-face-draw .rh-fd-tabs,.rh-face-draw .rh-fd-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.rh-face-draw .rh-fd-tabs button{flex:1 1 110px}
-.rh-face-draw .rh-fd-tabs button[aria-pressed=true]{font-weight:700;box-shadow:inset 0 -3px currentColor}
+.rh-face-draw .rh-fd-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px;border-bottom:1px solid var(--fd-line)}
+.rh-face-draw .rh-fd-tabs button{border:0;border-radius:0;padding:10px 3px}
+.rh-face-draw .rh-fd-tabs button[aria-pressed=true]{font-weight:700;box-shadow:inset 0 -3px var(--fd-accent)}
 .rh-face-draw .rh-fd-fields{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}
 .rh-face-draw .rh-fd-fields>label{display:grid;gap:4px;flex:1 1 140px;margin:0;white-space:normal}
 .rh-face-draw .rh-fd-fields select,.rh-face-draw .rh-fd-fields input:not([type=checkbox]){width:100%;min-height:44px;margin:0;padding:8px;font:inherit;color:inherit}
-.rh-face-draw .rh-fd-section{display:block;min-width:0;border-top:1px solid currentColor;padding-top:10px}
+.rh-face-draw .rh-fd-section{display:grid;gap:10px;min-width:0;border-top:1px solid var(--fd-line);padding-top:14px}
+.rh-face-draw .rh-fd-section:first-of-type{border-top:0;padding-top:0}
+.rh-face-draw .rh-fd-section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.rh-face-draw .rh-fd-selection{margin:0;padding:9px 11px;background:var(--rh-bg,transparent);border-radius:8px;font-size:12px;overflow-wrap:anywhere}
+.rh-face-draw .rh-fd-catalog{display:grid;gap:10px}
+.rh-face-draw .rh-fd-advanced{border-top:1px solid var(--fd-line)}
 .rh-face-draw .rh-fd-section h4{font:inherit;font-weight:700;margin:0}
-.rh-face-draw .rh-fd-category{border-top:1px solid currentColor;min-width:0}
+.rh-face-draw .rh-fd-category{border-top:1px solid var(--fd-line);min-width:0}
 .rh-face-draw .rh-fd-category-head{display:flex;align-items:center;gap:8px}
 .rh-face-draw .rh-fd-category-head>label{flex:0 0 28px;display:flex;align-items:center;min-height:44px;margin:0}
 .rh-face-draw .rh-fd-category-head>button{flex:1;border:0;text-align:left;display:flex;gap:8px;justify-content:space-between;align-items:center;padding-left:0}
@@ -37,6 +47,7 @@ const STYLE = `
 .rh-face-draw .rh-fd-invalid{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 .rh-face-draw .rh-fd-invalid span{flex:1 1 130px}
 .rh-face-draw .rh-fd-status{min-height:1.6em;white-space:normal;overflow-wrap:anywhere}
+@media(prefers-reduced-motion:reduce){.rh-face-draw button{transition:none}}
 `;
 
 function el(doc, tag, text, className = '') {
@@ -101,24 +112,27 @@ function createOwner(container, dependencies) {
 function createController(owner, index, rule) {
     const { doc } = owner;
     const details = el(doc, 'details', null, 'rh-face-draw'); details.dataset.rhFaceDraw = String(index);
-    const heading = el(doc, 'summary', '常驻与随机 / 轮播（可选）');
+    const heading = el(doc, 'summary', '本面抽取设置');
+    const headingState = el(doc, 'small', ''); heading.append(headingState);
     const body = el(doc, 'div', null, 'rh-fd-body'); details.append(heading, body);
     const c = { index, owner, details, draft: normalizeFaceDrawRule(rule), saved: JSON.stringify(normalizeFaceDrawRule(rule)), dirty: false, sections: [], invalidNumbers: new Set(), numberDrafts: new Map(), presetName: '' };
     const status = el(doc, 'div', '', 'rh-fd-status'); status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
-    const info = el(doc, 'p', '', 'rh-fd-note');
-    const enabled = checkbox(doc, '启用本面的常驻与随机 / 轮播', c.draft.enabled, value => { c.draft.enabled = value; c.changed(); });
-    body.append(enabled.label, el(doc, 'p', '只影响本面。主题元素、展现形式、纯文本各自独立：可以常驻展现形式，同时随机或轮播主题元素；也可以只使用展现形式。关闭并保存后沿用原抽取设置。', 'rh-fd-note'), info);
-    const quickModes = el(doc, 'div', null, 'rh-fd-fields');
-    const quickSelects = new Map();
+    const enabled = checkbox(doc, '为这一面单独设置抽取', c.draft.enabled, value => { c.draft.enabled = value; c.changed(); });
+    body.append(enabled.label);
+    const tabs = el(doc, 'div', null, 'rh-fd-tabs'); tabs.setAttribute('aria-label', `第 ${index + 1} 面的内容类别`);
+    let activeKind = 'theme';
     for (const kind of FACE_DRAW_KINDS) {
-        const field = selectField(doc, `${FACE_DRAW_LABELS[kind]} · 常驻之外`, Object.entries(MODE_LABELS), c.draft[kind].mode, value => {
-            c.draft[kind].mode = value; c.changed(); for (const section of c.sections) section.renderControls();
-        }); quickSelects.set(kind, field.input); quickModes.append(field.label);
+        const tab = button(doc, FACE_DRAW_LABELS[kind], () => {
+            activeKind = kind;
+            for (const node of tabs.children) node.setAttribute('aria-pressed', String(node.dataset.kind === kind));
+            for (const section of c.sections) { section.kind = kind; section.editing = false; section.renderControls(); }
+        });
+        tab.dataset.kind = kind; tab.setAttribute('aria-pressed', String(kind === activeKind)); tabs.append(tab);
     }
-    body.append(quickModes);
+    body.append(tabs);
     c.changed = () => {
-        c.dirty = true; info.textContent = summary(c.draft); status.textContent = '本面有未保存的修改。';
-        for (const kind of FACE_DRAW_KINDS) quickSelects.get(kind).value = c.draft[kind].mode;
+        c.dirty = true; status.textContent = '本面有未保存的修改。';
+        headingState.textContent = `${summary(c.draft)} · 未保存`;
         renderWarnings();
     };
     function replaceDraft(next) {
@@ -134,6 +148,7 @@ function createController(owner, index, rule) {
         const recipient = owner.controllers.get(targetIndex);
         if (recipient) {
             recipient.replaceDraft(rules[targetIndex]); recipient.saved = JSON.stringify(rules[targetIndex]); recipient.dirty = false;
+            recipient.headingState.textContent = rules[targetIndex].enabled ? summary(rules[targetIndex]) : '沿用原抽取设置';
             recipient.status.textContent = targetIndex === index ? '本面设置已保存，下一次新抽取时生效。' : `已复制第 ${index + 1} 面的搭配；本面的呈现方式未改变。`;
         }
         if (targetIndex !== index) status.textContent = `已复制并保存到第 ${targetIndex + 1} 面，呈现方式未改变。`;
@@ -141,31 +156,44 @@ function createController(owner, index, rule) {
     }
 
     function createSection(resident) {
-        const node = el(doc, 'details', null, 'rh-fd-section');
-        const sectionHeading = el(doc, 'summary', resident ? '常驻：每次必须出现' : '随机与轮播：选择范围与数量');
+        const node = el(doc, 'section', null, 'rh-fd-section');
+        const sectionHeading = el(doc, 'div', null, 'rh-fd-section-head');
+        sectionHeading.append(el(doc, 'strong', resident ? '常驻内容' : '其余内容怎么抽'));
         const sectionBody = el(doc, 'div', null, 'rh-fd-body');
         node.append(sectionHeading, sectionBody);
-        sectionBody.append(el(doc, 'p', resident ? '勾选本面每次必出的内容。' : '每一类单独设置。不追加时，只使用该类的常驻项。', 'rh-fd-note'));
-        const tabs = el(doc, 'div', null, 'rh-fd-tabs'); tabs.setAttribute('aria-label', resident ? '常驻类别' : '随机与轮播类别');
-        const controls = el(doc, 'div'), tree = el(doc, 'div');
-        sectionBody.append(tabs, controls, tree); body.append(node);
-        const section = { resident, kind: 'theme', source: 'all', query: '', expanded: new Set(), node, tree, controls };
-        for (const kind of FACE_DRAW_KINDS) {
-            const tab = button(doc, FACE_DRAW_LABELS[kind], () => { section.kind = kind; section.renderControls(); });
-            tab.dataset.kind = kind; tabs.append(tab);
-        }
+        const selection = el(doc, 'p', '', 'rh-fd-selection');
+        const controls = el(doc, 'div'), catalog = el(doc, 'div', null, 'rh-fd-catalog'), tree = el(doc, 'div');
+        sectionBody.append(controls, selection, catalog); body.append(node);
+        const section = { resident, kind: activeKind, source: 'all', query: '', expanded: new Set(), node, tree, controls, editing: false };
+        const edit = button(doc, resident ? '选择常驻' : '选择范围', () => {
+            section.editing = !section.editing; section.renderControls();
+            if (!owner.catalog && !owner.loading) owner.load();
+        }); sectionHeading.append(edit);
+        section.renderSelection = () => {
+            const lane = c.draft[section.kind], categories = owner.catalog?.[section.kind] || [];
+            const titles = new Map(categories.flatMap(category => category.items).map(item => [item.id, item.title]));
+            const ids = resident ? lane.requiredIds : lane.itemIds;
+            const labels = [...(!resident ? lane.categoryIds.map(id => categories.find(category => category.id === id)?.title || id).map(name => `${name}（整类）`) : []), ...ids.map(id => titles.get(id) || id)];
+            selection.textContent = resident ? (labels.length ? `每次必出：${labels.join('、')}` : '未选常驻，可只使用下面的随机或轮播。')
+                : lane.mode === 'none' ? '不再追加，只使用本类的常驻内容。'
+                : lane.scope === 'all' ? '从本类全部可用条目中抽取。' : (labels.length ? `抽取范围：${labels.join('、')}` : '还没有选择范围，请勾选分类或条目。');
+        };
         section.renderControls = () => {
-            for (const tab of tabs.children) tab.setAttribute('aria-pressed', String(tab.dataset.kind === section.kind));
             controls.replaceChildren();
             const lane = c.draft[section.kind];
+            const canEdit = resident || (lane.mode !== 'none' && lane.scope === 'selected');
+            edit.hidden = !canEdit; edit.textContent = section.editing ? '收起选择' : resident ? '选择常驻' : '选择范围';
+            edit.setAttribute('aria-expanded', String(section.editing && canEdit));
+            catalog.hidden = !section.editing || !canEdit;
+            section.renderSelection();
             if (!resident) {
                 const fields = el(doc, 'div', null, 'rh-fd-fields');
-                fields.append(selectField(doc, '追加方式', Object.entries(MODE_LABELS), lane.mode, value => { lane.mode = value; c.changed(); section.renderControls(); }).label);
+                fields.append(selectField(doc, '抽取方式', Object.entries(MODE_LABELS), lane.mode, value => { lane.mode = value; c.changed(); section.renderControls(); }).label);
                 if (lane.mode !== 'none') {
-                    fields.append(selectField(doc, '抽取范围', [['all', '全部可用条目'], ['selected', '只在勾选范围']], lane.scope, value => { lane.scope = value; c.changed(); section.renderControls(); }).label);
+                    fields.append(selectField(doc, '抽取范围', [['all', '全部可用条目'], ['selected', '只在勾选范围']], lane.scope, value => { lane.scope = value; section.editing = value === 'selected'; c.changed(); section.renderControls(); }).label);
                     for (const field of ['min', 'max']) {
                         const key = `${section.kind}:${field}`;
-                        const number = inputField(doc, field === 'min' ? '每次至少追加' : '每次最多追加', c.numberDrafts.get(key) ?? lane[field], value => {
+                        const number = inputField(doc, field === 'min' ? '最少追加（项）' : '最多追加（项）', c.numberDrafts.get(key) ?? lane[field], value => {
                             c.numberDrafts.set(key, value);
                             const parsed = Number(value);
                             if (value.trim() === '' || !Number.isSafeInteger(parsed) || parsed < 0) c.invalidNumbers.add(key);
@@ -179,19 +207,18 @@ function createController(owner, index, rule) {
                 }
                 controls.append(fields);
                 if (lane.mode === 'sequence') controls.append(el(doc, 'p', '顺序按下方分类与条目目录依次轮播。生成成功并保存后才前进；失败重试继续本次选择。', 'rh-fd-note'));
-                if (lane.scope === 'all' && lane.mode !== 'none') controls.append(el(doc, 'p', '使用内置与已启用外置库的本类条目，遵守黑名单。要限定分类或单个条目，请选「只在勾选范围」。', 'rh-fd-note'));
             }
             const filters = el(doc, 'div', null, 'rh-fd-fields');
             filters.append(selectField(doc, '来源', [['all', '内置 + 已启用外置库'], ['builtin', '内置'], ['external', '已启用外置库']], section.source, value => { section.source = value; section.renderTree(); }).label);
             filters.append(inputField(doc, '查找', section.query, value => { section.query = value; section.renderTree(); }, 'search').label);
-            controls.append(filters);
-            filters.hidden = !resident && (lane.mode === 'none' || lane.scope === 'all');
+            catalog.replaceChildren(filters, tree, button(doc, '刷新条目目录', () => owner.load()));
             section.renderTree();
         };
         section.renderTree = () => {
+            section.renderSelection();
             const focused = tree.contains(doc.activeElement) ? doc.activeElement?.dataset?.fdFocus : '';
             tree.replaceChildren(); const lane = c.draft[section.kind];
-            if (!resident && (lane.mode === 'none' || lane.scope === 'all')) return;
+            if (!section.editing || (!resident && (lane.mode === 'none' || lane.scope === 'all'))) return;
             if (owner.loading) { tree.append(el(doc, 'p', '正在读取条目目录…', 'rh-fd-note')); return; }
             if (!owner.catalog) return;
             const query = section.query.trim().toLocaleLowerCase('zh-Hans-CN');
@@ -263,13 +290,14 @@ function createController(owner, index, rule) {
         }
     }
     const actions = el(doc, 'div', null, 'rh-fd-actions');
-    const saveButton = button(doc, '保存本面', () => save()); saveButton.dataset.faceDrawSave = String(index);
-    actions.append(saveButton, button(doc, '刷新条目目录', () => owner.load())); body.append(actions);
+    const saveButton = button(doc, '保存本面', () => save()); saveButton.dataset.faceDrawSave = String(index); saveButton.classList.add('rh-fd-primary');
+    actions.append(saveButton); body.append(actions, status);
     const copyFields = el(doc, 'div', null, 'rh-fd-fields');
     const copySelect = selectField(doc, '复制到另一面', Array.from({ length: 5 }, (_, i) => i).filter(i => i !== index).map(i => [String(i), `第 ${i + 1} 面`]), String(index === 0 ? 1 : 0), () => {});
-    copyFields.append(copySelect.label, button(doc, '复制并保存', () => save(Number(copySelect.input.value)))); body.append(copyFields);
-    const presetDetails = el(doc, 'details'); presetDetails.append(el(doc, 'summary', '保存搭配 / 套用已保存搭配（可选）'));
+    copyFields.append(copySelect.label, button(doc, '复制并保存', () => save(Number(copySelect.input.value))));
+    const presetDetails = el(doc, 'details', null, 'rh-fd-advanced'); presetDetails.append(el(doc, 'summary', '复制本面 / 保存搭配'));
     const presetBody = el(doc, 'div', null, 'rh-fd-body'); presetBody.append(el(doc, 'p', '搭配是这套勾选与抽取规则的副本。套用后仍可单独修改，不会联动其他面，也不会改变 HTML / 长文本的呈现方式。', 'rh-fd-note'));
+    presetBody.append(copyFields);
     const nameFields = el(doc, 'div', null, 'rh-fd-fields');
     const name = inputField(doc, '搭配名称', '', value => { c.presetName = value; });
     nameFields.append(name.label, button(doc, '保存当前搭配', () => {
@@ -292,16 +320,17 @@ function createController(owner, index, rule) {
             replaceDraft(preset.rule); status.textContent = '已套用到本面草稿，呈现方式未改变。点击「保存本面」后生效。';
         }));
     };
-    presetDetails.append(presetBody); body.append(presetDetails, status);
-    c.status = status; c.replaceDraft = replaceDraft;
+    presetDetails.append(presetBody); body.append(presetDetails);
+    c.status = status; c.headingState = headingState; c.replaceDraft = replaceDraft;
     c.renderCatalog = () => { for (const section of c.sections) section.renderTree(); renderWarnings(); };
     c.refresh = next => {
         const normalized = normalizeFaceDrawRule(next), key = JSON.stringify(normalized);
         if (!c.dirty && key !== c.saved) { replaceDraft(normalized); c.dirty = false; c.saved = key; status.textContent = ''; }
-        info.textContent = summary(c.draft); c.renderPresets();
+        if (!c.dirty) headingState.textContent = normalized.enabled ? summary(normalized) : '沿用原抽取设置';
+        c.renderPresets();
     };
     details.addEventListener('toggle', () => { if (details.open && !owner.catalog && !owner.loading) owner.load(); });
-    info.textContent = summary(c.draft); c.renderPresets(); renderWarnings();
+    c.renderPresets(); renderWarnings();
     return c;
 }
 

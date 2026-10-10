@@ -1,8 +1,8 @@
-import { GENERATION_PALETTE_INDEX } from '../data/structured/generationPaletteIndex.js?rmv=1.67.42-face-atlas-test1';
-import { composeGenerationPalette } from './generationPalettes.js?rmv=1.67.42-face-atlas-test1';
-import { preserveIndependentFaceStyles } from './independentApi/faceStyles.js?rmv=1.67.42-face-atlas-test1';
-import { paletteRecipeFor } from './paletteRecipes.js?rmv=1.67.42-face-atlas-test1';
-import { atmosphereNoteFromHtml } from './atmosphereChoice.js?rmv=1.67.42-face-atlas-test1';
+import { GENERATION_PALETTE_INDEX } from '../data/structured/generationPaletteIndex.js?rmv=1.67.42-face-atlas-test2';
+import { composeGenerationPalette } from './generationPalettes.js?rmv=1.67.42-face-atlas-test2';
+import { preserveIndependentFaceStyles } from './independentApi/faceStyles.js?rmv=1.67.42-face-atlas-test2';
+import { paletteRecipeFor } from './paletteRecipes.js?rmv=1.67.42-face-atlas-test2';
+import { atmosphereNoteFromHtml } from './atmosphereChoice.js?rmv=1.67.42-face-atlas-test2';
 
 // The contract is deliberately confined to colour values. No stored template,
 // selector, owner, executable HTML or arbitrary style is replayed by the tools.

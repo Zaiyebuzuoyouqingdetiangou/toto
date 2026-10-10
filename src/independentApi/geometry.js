@@ -1,11 +1,11 @@
 // Split from independentApi.js — geometry.
-import { restoreRuntimeAnimationClone, ANIMATION_SUSPENDED_ATTR } from '../runtimeAnimationState.js?rmv=1.67.42-face-atlas-test1';
+import { restoreRuntimeAnimationClone, ANIMATION_SUSPENDED_ATTR } from '../runtimeAnimationState.js?rmv=1.67.42-face-atlas-test2';
 
-import { bindVisualHistoryTarget } from '../storage.js?rmv=1.67.42-face-atlas-test1';
-import { presentationModeFields } from '../presentationMode.js?rmv=1.67.42-face-atlas-test1';
-import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.67.42-face-atlas-test1';
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorExternalPlacementParent } from '../hostCompatibility.js?rmv=1.67.42-face-atlas-test1';
-import { getSettings } from '../settings.js?rmv=1.67.42-face-atlas-test1';
+import { bindVisualHistoryTarget } from '../storage.js?rmv=1.67.42-face-atlas-test2';
+import { presentationModeFields } from '../presentationMode.js?rmv=1.67.42-face-atlas-test2';
+import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.67.42-face-atlas-test2';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorExternalPlacementParent } from '../hostCompatibility.js?rmv=1.67.42-face-atlas-test2';
+import { getSettings } from '../settings.js?rmv=1.67.42-face-atlas-test2';
 import {
     cleanRabbitMirrorOutput,
     compactTotoBlock,
@@ -19,14 +19,14 @@ import {
     clearRabbitMirrorHorizontalClipArtifacts,
     sanitizeRabbitMirrorUntrustedTemplate,
     validateRabbitMirrorRecoveredStyleAssignments,
-} from '../outputSanitizer.js?rmv=1.67.42-face-atlas-test1';
-import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.67.42-face-atlas-test1';
-import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.67.42-face-atlas-test1';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.67.42-face-atlas-test1';
-import { repairDesignCandidateAttributeQuotes } from '../interactionSampling.js?rmv=1.67.42-face-atlas-test1';
-import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.67.42-face-atlas-test1';
-import { MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE, INDEPENDENT_HISTORY_READ_ERROR_MESSAGE } from './missingRetryShell.js?rmv=1.67.42-face-atlas-test1';
-import { markSanitizedRabbitMirrorFace } from '../multifaceProof.js?rmv=1.67.42-face-atlas-test1';
+} from '../outputSanitizer.js?rmv=1.67.42-face-atlas-test2';
+import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.67.42-face-atlas-test2';
+import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.67.42-face-atlas-test2';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.67.42-face-atlas-test2';
+import { repairDesignCandidateAttributeQuotes } from '../interactionSampling.js?rmv=1.67.42-face-atlas-test2';
+import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.67.42-face-atlas-test2';
+import { MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE, INDEPENDENT_HISTORY_READ_ERROR_MESSAGE } from './missingRetryShell.js?rmv=1.67.42-face-atlas-test2';
+import { markSanitizedRabbitMirrorFace } from '../multifaceProof.js?rmv=1.67.42-face-atlas-test2';
 import {
     EXTERNAL_SHELL_ATTR,
     FOLLOW_EXTERNAL_ANCHOR_ATTR,
@@ -41,8 +41,8 @@ import {
     getContext,
     hashText,
     independentMaintenanceLiveRepairLocked,
-} from './runtime.js?rmv=1.67.42-face-atlas-test1';
-import { automaticDispatchAlreadyConsumed, automaticFailureStops, generationPolls, operationEpochForBase } from './flights.js?rmv=1.67.42-face-atlas-test1';
+} from './runtime.js?rmv=1.67.42-face-atlas-test2';
+import { automaticDispatchAlreadyConsumed, automaticFailureStops, generationPolls, operationEpochForBase } from './flights.js?rmv=1.67.42-face-atlas-test2';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INTERACTION_STATE_MIGRATION_KEY,
@@ -51,7 +51,7 @@ import {
     persistedOwnerForMessage,
     readStore,
     writeStore,
-} from './persistence.js?rmv=1.67.42-face-atlas-test1';
+} from './persistence.js?rmv=1.67.42-face-atlas-test2';
 import {
     chatKey,
     copyIndependentOwnerLineage,
@@ -68,7 +68,7 @@ import {
     savedRecordMatchesObserved,
     slotSearchKeys,
     swipeId,
-} from './connection.js?rmv=1.67.42-face-atlas-test1';
+} from './connection.js?rmv=1.67.42-face-atlas-test2';
 import {
     EXTERNAL_GEOMETRY_SETTLE_STEPS_MS,
     allExternalHosts,
@@ -102,7 +102,7 @@ import {
     wrapIndependentFace,
     wrapPreparedIndependentFace,
     writeGeometryDataset,
-} from './request.js?rmv=1.67.42-face-atlas-test1';
+} from './request.js?rmv=1.67.42-face-atlas-test2';
 import {
     activeIndependentFlightForBase,
     automaticCutoverVersionToken,
@@ -126,20 +126,20 @@ import {
     serializeExternalFaceDetails,
     showMultifaceFace,
     stripIndependentTransientLayoutArtifacts,
-} from './mount.js?rmv=1.67.42-face-atlas-test1';
+} from './mount.js?rmv=1.67.42-face-atlas-test2';
 import {
     automaticHostGenerationRenderMatches,
     hasExistingFollowRabbitMirror,
     queueMessageSync,
     suppressesAutomaticGeneration,
-} from './earlyBody.js?rmv=1.67.42-face-atlas-test1';
+} from './earlyBody.js?rmv=1.67.42-face-atlas-test2';
 import {
     automaticGenerationCutovers,
     persistedInteractionMigrationHandle,
     persistedInteractionMigrationIdle,
     writePersistedInteractionMigrationHandle,
     writePersistedInteractionMigrationIdle,
-} from './lifecycle.js?rmv=1.67.42-face-atlas-test1';
+} from './lifecycle.js?rmv=1.67.42-face-atlas-test2';
 
 let externalGeometryFrame = 0;
 
@@ -2038,7 +2038,7 @@ export function renderExternalErrorBody(details,text=''){
   // second retry intent after the first click has entered loading or READY.
   const host=details.closest?.(`[${SOURCE_ATTR}="true"]`);
   if(retry.disabled || !retry.isConnected || !details.contains?.(retry) || host?.dataset?.rmState!=='error') return;
-  void import('../outputSanitizer/toolsChrome.js?rmv=1.67.42-face-atlas-test1').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+  void import('../outputSanitizer/toolsChrome.js?rmv=1.67.42-face-atlas-test2').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
  },true);
  recover.addEventListener('click',async event=>{
   event.preventDefault(); event.stopPropagation();

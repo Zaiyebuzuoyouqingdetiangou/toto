@@ -1,6 +1,6 @@
 // In-memory provenance only: generated data attributes cannot impersonate a
 // runtime override. Restore on detached copies, never mutate the live controls.
-import { restoreRabbitMirrorAvatarClone } from './chatAvatars.js?rmv=1.67.42-face-atlas-test1';
+import { restoreRabbitMirrorAvatarClone } from './chatAvatars.js?rmv=1.67.42-face-atlas-test2';
 const authoredAnimationStyles = new WeakMap();
 export const ANIMATION_SUSPENDED_ATTR = 'data-rm-animation-suspended';
 
