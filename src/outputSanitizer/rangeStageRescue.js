@@ -2,7 +2,7 @@
 // 用 `:has(input[value="2"]:checked)` 之类的规则去切换。滑杆没有 checked 状态，这种规则永远不生效，
 // 拖动滑杆什么也不变。这里只在“编号段落与滑杆取值一一对应、且这些段落默认是隐藏的”时接上：
 // 滑到几就显示第几段，其余段落收起。不写任何新内容，不执行模型脚本。
-import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.67.55';
+import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.67.57';
 const RESCUE_ATTR = 'data-rabbit-mirror-range-stage-rescue';
 const STAGE_ATTR = 'data-rm-range-stage';
 const states = new WeakMap();
@@ -214,6 +214,75 @@ export function installDisabledRangeProgressRescue(root) {
         input.addEventListener('change', update);
         input.setAttribute(PROGRESS_ATTR, String(count));
         applyProgress(state);
+        installed += 1;
+    }
+    return installed;
+}
+
+// 没接线的滑杆调一层叠加层的浓淡：模型写了一根滑杆（“拖动调整显影层”之类），旁边画面上盖着一层
+// 半透明叠加层，却忘了把两者连起来（脚本被删，或者根本没写），拖了什么也不变。
+// 只在非常明确时接上：滑杆不在插件写法里、没有别的修复接管过它；从滑杆往外最多四层的同一张卡片里
+// 只有这一根滑杆，并且恰好只有一层“绝对定位铺满、不挡点击、没有文字”的叠加层。拖动时只改这层的不透明度
+// （滑到最左完全看不见，最右完全显出来），不写任何内容，不改别的样式。
+const LAYER_RESCUE_ATTR = 'data-rabbit-mirror-range-layer-rescue';
+const LAYER_TARGET_ATTR = 'data-rm-range-layer';
+const layerStates = new WeakMap();
+const LAYER_NAME_RE = /(?:layer|overlay|lens|tint|filter|glow|heat|veil|haze|shade|detail|fog|mist|stain|层|透镜|滤镜|显影)/i;
+
+function passiveOverlay(node, input) {
+    if (!node?.parentElement || node.contains(input) || node.closest('[data-rm-ui]')) return false;
+    if (node.matches('input,button,label,summary,select,textarea,img,svg,figure,style,script,[data-rm-draw-frame]')) return false;
+    const identity = `${node.getAttribute('id') || ''} ${node.getAttribute('class') || ''}`;
+    if (!LAYER_NAME_RE.test(identity)) return false;
+    if (String(node.textContent || '').trim()) return false;
+    let css;
+    try { css = getComputedStyle(node); } catch { return false; }
+    if (css.position !== 'absolute' || css.pointerEvents !== 'none' || css.display === 'none') return false;
+    const zero = value => /^0(?:\.0+)?px$/.test(String(value || ''));
+    return ['top', 'right', 'bottom', 'left'].every(side => zero(css[side]));
+}
+
+function findLayerTarget(input) {
+    let container = input.parentElement;
+    for (let depth = 0; container && depth < 4; depth += 1, container = container.parentElement) {
+        if (container.matches?.('details, summary, body')) break;
+        if (container.querySelectorAll('input[type="range"]').length !== 1) return null;
+        const layers = [...container.querySelectorAll('[class], [id]')].filter(node => passiveOverlay(node, input));
+        if (layers.length > 1) return null;
+        if (layers.length === 1) return layers[0];
+    }
+    return null;
+}
+
+function applyLayer(state) {
+    const min = Number(state.input.min === '' ? 0 : state.input.min);
+    const max = Number(state.input.max === '' ? 100 : state.input.max);
+    const value = Number(state.input.value);
+    const p = max > min ? Math.max(0, Math.min(1, (value - min) / (max - min))) : 0;
+    state.target.style.setProperty('opacity', p.toFixed(3), 'important');
+}
+
+export function installOrphanRangeLayerRescue(root) {
+    if (!root?.querySelectorAll || typeof getComputedStyle !== 'function') return 0;
+    let installed = 0;
+    for (const input of root.querySelectorAll('input[type="range"]')) {
+        if (layerStates.has(input) || input.disabled || input.closest('[data-rm-ui]')) continue;
+        if (input.hasAttribute('oninput') || input.hasAttribute('onchange') || states.has(input)) continue;
+        if ([...input.attributes].some(attr => /^data-rabbit-mirror-.*(?:rescue|program)/.test(attr.name) && attr.name !== LAYER_RESCUE_ATTR)) continue;
+        // 已经接过线又被克隆／重新挂载的：按标记认回目标，不重新猜。
+        const marked = input.hasAttribute(LAYER_RESCUE_ATTR)
+            ? [...root.querySelectorAll(`[${LAYER_TARGET_ATTR}]`)].find(node => node.getAttribute(LAYER_TARGET_ATTR) === input.getAttribute(LAYER_RESCUE_ATTR)) : null;
+        const target = marked || findLayerTarget(input);
+        if (!target) continue;
+        const key = input.getAttribute(LAYER_RESCUE_ATTR) || `l${Math.random().toString(36).slice(2, 8)}`;
+        input.setAttribute(LAYER_RESCUE_ATTR, key);
+        target.setAttribute(LAYER_TARGET_ATTR, key);
+        const state = { input, target };
+        layerStates.set(input, state);
+        const update = () => applyLayer(state);
+        input.addEventListener('input', update);
+        input.addEventListener('change', update);
+        applyLayer(state);
         installed += 1;
     }
     return installed;

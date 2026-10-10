@@ -1,37 +1,37 @@
-import { INTERACTION_SAMPLING_RULE, designCandidatePick, drawDesignCandidate } from './interactionSampling.js?rmv=1.67.55';
-import { driverContractLines, drawDriverOffer, interactionMethodNames, normalizeDriverOffer } from './interactionMethods.js?rmv=1.67.55';
-import { drawUsageOffer, normalizeUsageOffer } from './interactionUsageOffer.js?rmv=1.67.55';
-import { drawContinuation, normalizeContinuation } from './continuationCache.js?rmv=1.67.55';
-import { recentInteractionMethods } from './interactionMethodLedger.js?rmv=1.67.55';
-import { gameplayRuleFor } from './gameplayRules.js?rmv=1.67.55';
-import { usesModelOriginalColors, withoutPaletteRecipe, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.67.55';
-import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=1.67.55';
-import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=1.67.55';
-import { isNearWhitePalette, isNearWhiteContentSurface } from './paletteObservation.js?rmv=1.67.55';
-import { observedOperationFamiliesFor, observedMechanismsFor } from './compositionFingerprint.js?rmv=1.67.55';
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.67.55';
-import { expandShuffledOptions } from '../data/raw/rawSegmentLookup.js?rmv=1.67.55';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.67.55';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.67.55';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.67.55';
-import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES, VISUAL_SCENERY_EXPRESSION_RULE, VISUAL_SCENERY_VS_GUIDANCE } from '../data/raw/visualSceneryRules.js?rmv=1.67.55';
-import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.67.55';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.67.55';
-import { getComboHistory, getActivePaletteCooldown } from './storage.js?rmv=1.67.55';
-import { strongVisualDiversityRule, darkVisualGenerationRule, softLightVisualGenerationRule, visualDiversityExecutionLock, recentPaletteExecutionReminder, recentPaletteHueFamilies } from './visualDiversityPolicy.js?rmv=1.67.55';
-import { withoutInteractionRecipe, observedInteractionRecipesFor } from './interactionRecipes.js?rmv=1.67.55';
-import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.67.55';
-import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.67.55';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.67.55';
-export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.67.55';
-import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.67.55';
-import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.67.55';
-import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.67.55';
-import { faceDrawMetadataFields } from './faceDrawRules.js?rmv=1.67.55';
-import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.67.55';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.67.55';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.67.55';
-import { rabbitMirrorAvatarPromptRule } from './chatAvatars.js?rmv=1.67.55';
+import { INTERACTION_SAMPLING_RULE, designCandidatePick, drawDesignCandidate } from './interactionSampling.js?rmv=1.67.57';
+import { driverContractLines, drawDriverOffer, interactionMethodNames, normalizeDriverOffer } from './interactionMethods.js?rmv=1.67.57';
+import { drawUsageOffer, normalizeUsageOffer } from './interactionUsageOffer.js?rmv=1.67.57';
+import { drawContinuation, normalizeContinuation } from './continuationCache.js?rmv=1.67.57';
+import { recentInteractionMethods } from './interactionMethodLedger.js?rmv=1.67.57';
+import { gameplayRuleFor } from './gameplayRules.js?rmv=1.67.57';
+import { usesModelOriginalColors, withoutPaletteRecipe, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.67.57';
+import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=1.67.57';
+import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=1.67.57';
+import { isNearWhitePalette, isNearWhiteContentSurface } from './paletteObservation.js?rmv=1.67.57';
+import { observedOperationFamiliesFor, observedMechanismsFor } from './compositionFingerprint.js?rmv=1.67.57';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.67.57';
+import { expandShuffledOptions } from '../data/raw/rawSegmentLookup.js?rmv=1.67.57';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.67.57';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.67.57';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.67.57';
+import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES, VISUAL_SCENERY_EXPRESSION_RULE, VISUAL_SCENERY_VS_GUIDANCE } from '../data/raw/visualSceneryRules.js?rmv=1.67.57';
+import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.67.57';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.67.57';
+import { getComboHistory, getActivePaletteCooldown } from './storage.js?rmv=1.67.57';
+import { strongVisualDiversityRule, darkVisualGenerationRule, softLightVisualGenerationRule, visualDiversityExecutionLock, recentPaletteExecutionReminder, recentPaletteHueFamilies } from './visualDiversityPolicy.js?rmv=1.67.57';
+import { withoutInteractionRecipe, observedInteractionRecipesFor } from './interactionRecipes.js?rmv=1.67.57';
+import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.67.57';
+import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.67.57';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.67.57';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.67.57';
+import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.67.57';
+import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.67.57';
+import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.67.57';
+import { faceDrawMetadataFields } from './faceDrawRules.js?rmv=1.67.57';
+import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.67.57';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.67.57';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.67.57';
+import { rabbitMirrorAvatarPromptRule } from './chatAvatars.js?rmv=1.67.57';
 
 const THEME_ITEMS = new Map(THEMATIC_CATEGORIES.map(item => [item.id, item]));
 const FORMAT_ITEMS = new Map(PRESENTATION_FORMATS.map(item => [item.id, item]));
@@ -509,7 +509,7 @@ function mediumInteractionConstructionRule(driverOffer = []) {
         : '';
     const samplingRule = INTERACTION_SAMPLING_RULE;
     return String.raw`交互构造【由展现形式决定】：
-  - 交互就是这个媒介在现实中的使用过程：入口放在真实的部件上，不靠说明文字也知道怎么操作；形成“本体对象→操作→可保持的状态变化与有意义的反馈→按需继续或返回”，至少走两步，后一步建立在前一步的结果上。每面至少两种不同的交互（如按住＋切换、刮开＋翻页、拖动＋点亮），第二种也要真实改变画面或内容，不能只是装饰或重复同一种操作。有多个探索节点时提供连续阶段或不同结果，非一次性玩法不能一次显隐就结束。
+  - 交互就是这个媒介在现实中的使用过程：入口放在真实的部件上，不靠说明文字也知道怎么操作；形成“本体对象→操作→可保持的状态变化与有意义的反馈→按需继续或返回”，至少走两步，后一步建立在前一步的结果上。每面至少两种不同的交互（如按住＋切换、刮开＋翻页、拖动＋点亮），第二种也要真实改变画面或内容，不能只是装饰或重复同一种操作。滑杆只用下面提供的插件写法，自己写的拖了没反应，不要画。有多个探索节点时提供连续阶段或不同结果，非一次性玩法不能一次显隐就结束。
   - 操作须支持触屏，hover/active 仅辅助；正文与反馈由本体对应区域完整承载、清晰可读可达。仅变色、描边等装饰或选中效果不算完整交互；画面里的按钮和开关都要能用，不放装饰按钮，不写 disabled。
   - 可重复交互须能自然切回，优先复用原控件，一次性动作可自然结束；保留外层整面开合，真实物件开合、翻页与不同功能按钮按实际行为区分。
 ${driverBlock}${samplingRule}`;
