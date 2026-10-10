@@ -2,10 +2,10 @@
 // （点 label／按钮、拖滑杆、开合内层 details），比较操作前后的画面快照；没有任何变化的就是“点了没反应”。
 // 副本里会重新接上和真实页面一样的修复，所以修好的控件在副本里也能动。
 // 真实页面上的控件一个不碰；结果只写回一个属性，供维修兔的结论和诊断引用。
-import { createMaintenanceLabeledCheckedProbeSandbox, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.67.55';
-import { rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.67.55';
-import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.67.55';
-import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=1.67.55';
+import { createMaintenanceLabeledCheckedProbeSandbox, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.67.57';
+import { rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.67.57';
+import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.67.57';
+import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=1.67.57';
 
 export const GENERIC_PROBE_RESULT_ATTR = 'data-rabbit-mirror-generic-probe';
 const TOOL_SELECTOR = '[data-rabbit-mirror-tool-entry-host],[data-rabbit-mirror-diagnostic-panel],.rabbit-mirror-maintenance-menu,[data-rm-face-swipe-host],[data-rm-image-region],[data-rm-mobile-controls],[data-rabbit-mirror-maintenance-rabbit],[data-rabbit-mirror-feedback-cat]';
