@@ -1,7 +1,7 @@
-import { getCurrentChatKey } from './storage.js?rmv=1.67.42';
-import { parseMultifaceOutput, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR } from './multifaceProtocol.js?rmv=1.67.42';
-import { rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.67.42';
-import { createRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=1.67.42';
+import { getCurrentChatKey } from './storage.js?rmv=1.67.55';
+import { parseMultifaceOutput, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR } from './multifaceProtocol.js?rmv=1.67.55';
+import { rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.67.55';
+import { createRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=1.67.55';
 
 const KEY = 'rabbit_mirror_follow_partial_results_v1';
 const MAX_CHARS = 768 * 1024;
@@ -85,10 +85,21 @@ function persistRecord(record) {
     // overflow rather than silently deleting another message's accepted faces.
     // An unreadable/over-limit store must never be replaced with an empty one.
     if (!previous) return false;
-    const next = previous.filter(item => !sameOwner(item, identity)).concat(record);
-    if (next.length > MAX_RECORDS) return false;
-    const raw = JSON.stringify(next);
-    if (raw.length > MAX_CHARS * 2) return false;
+    let next = previous.filter(item => !sameOwner(item, identity)).concat(record);
+    // 真的满了才腾地方（以前满了以后所有新的都存不进去）；没满一条都不删。
+    // 腾的顺序：别的聊天在前、只缺面的在前（重试补齐的那种这里是唯一一份，最后才动）、旧的在前。
+    const oldestFirst = () => [...next].filter(item => item !== record).sort((a, b) =>
+        (a.chatKey === identity.chatKey) - (b.chatKey === identity.chatKey)
+        || (a.completedAfterRetry === true) - (b.completedAfterRetry === true)
+        || Number(a.ts || 0) - Number(b.ts || 0));
+    let raw = JSON.stringify(next);
+    while ((next.length > MAX_RECORDS || raw.length > MAX_CHARS * 2) && next.length > 1) {
+        const victim = oldestFirst()[0];
+        if (!victim) break;
+        next = next.filter(item => item !== victim);
+        raw = JSON.stringify(next);
+    }
+    if (next.length > MAX_RECORDS || raw.length > MAX_CHARS * 2) return false;
     try {
         localStorage.setItem(KEY, raw);
         if (localStorage.getItem(KEY) !== raw) return false;

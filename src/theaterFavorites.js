@@ -1,11 +1,13 @@
-import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.67.42';
-import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=1.67.42';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.67.42';
+import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.67.55';
+import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=1.67.55';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.67.55';
+import { createFavoriteAtlasPanel } from './favoriteAtlasesUi.js?rmv=1.67.55';
 const DB_NAME = 'rabbit_mirror_theater_favorites_v1';
 const STORE = 'favorites';
 const DB_VERSION = 1;
 export const THEATER_FAVORITES_CHANGED_EVENT = 'rabbitmirror:theater-favorites-changed';
-export const THEATER_FAVORITE_MAX_ITEMS = 80;
+// Collections are user archives: never evict an older mirror to save a new one.
+export const THEATER_FAVORITE_MAX_ITEMS = Infinity;
 export const THEATER_FAVORITE_MAX_HTML_BYTES = 400 * 1024;
 export const UNCATEGORIZED_CHARACTER_NAME = '未分类';
 
@@ -15,9 +17,15 @@ function byteLength(value = '') {
     catch { return unescape(encodeURIComponent(text)).length; }
 }
 
+// 收藏变动后只读一次库：续篇候选和设置页列表都用这一份；读不出来时照旧发不带列表的事件。
 function notifyChanged() {
-    try { document.dispatchEvent(new CustomEvent(THEATER_FAVORITES_CHANGED_EVENT)); } catch {}
-    void refreshContinuationCandidates();
+    contentIndexPromise = null;
+    void listTheaterFavorites().then(rows => {
+        setContinuationCandidatesFromRows(rows);
+        try { document.dispatchEvent(new CustomEvent(THEATER_FAVORITES_CHANGED_EVENT, { detail: { rows } })); } catch {}
+    }).catch(() => {
+        try { document.dispatchEvent(new CustomEvent(THEATER_FAVORITES_CHANGED_EVENT)); } catch {}
+    });
 }
 
 // 续篇候选：只取能读出原展现形式的收藏，记下标题、形式和一句梗概，不保留 HTML。
@@ -37,13 +45,16 @@ function continuationFormatId(html) {
     } catch { return ''; }
 }
 
-export async function refreshContinuationCandidates() {
+function setContinuationCandidatesFromRows(rows) {
+    setContinuationCandidates((Array.isArray(rows) ? rows : []).map(row => ({
+        id: row.id, title: theaterFavoriteDisplayTitle(row).slice(0, 60), formatId: continuationFormatId(row.html),
+        gist: continuationGist(row.html), characterId: String(row.characterId || ''),
+    })).filter(row => row.formatId));
+}
+
+export async function refreshContinuationCandidates(rows) {
     try {
-        const rows = await listTheaterFavorites();
-        setContinuationCandidates(rows.map(row => ({
-            id: row.id, title: theaterFavoriteDisplayTitle(row).slice(0, 60), formatId: continuationFormatId(row.html),
-            gist: continuationGist(row.html), characterId: String(row.characterId || ''),
-        })).filter(row => row.formatId));
+        setContinuationCandidatesFromRows(Array.isArray(rows) ? rows : await listTheaterFavorites());
     } catch { /* 收藏夹不可用时就不出现续篇 */ }
 }
 
@@ -136,7 +147,7 @@ function runStore(mode, work) {
             reject(tx.error || new Error('收藏夹事务已中止。'));
         };
         try { result = work(store, value => { result = value; }); }
-        catch (error) { reject(error); }
+        catch (error) { try { tx.abort(); db.close(); } catch {} reject(error); }
     }));
 }
 
@@ -161,6 +172,7 @@ function normalizeRecord(value) {
         characterId,
         characterName,
         createdAt: Number(value.createdAt) || Date.now(),
+        ...(value.contentKey ? { contentKey: String(value.contentKey).slice(0, 80) } : {}),
     };
 }
 
@@ -226,15 +238,23 @@ export function theaterFavoriteTitleFromDetails(details) {
     return sanitizeTheaterFavoriteTitle(summary.textContent);
 }
 
+// 标题要从整份 HTML 里解析出来，一份收藏最大 400KB；按记录对象缓存，收藏夹每敲一个字不再重新解析几百份。
+const displayTitleCache = new WeakMap();
 export function theaterFavoriteDisplayTitle(record) {
+    if (record && typeof record === 'object') {
+        const cached = displayTitleCache.get(record);
+        if (cached && cached.html === record.html && cached.title === record.title) return cached.value;
+    }
     const html = String(record?.html || '').trim();
+    let value = '';
     if (html && typeof document !== 'undefined') {
         const template = document.createElement('template');
         template.innerHTML = html;
-        const fromHtml = theaterFavoriteTitleFromDetails(template.content.querySelector('details') || template.content);
-        if (fromHtml) return fromHtml;
+        value = theaterFavoriteTitleFromDetails(template.content.querySelector('details') || template.content) || '';
     }
-    return sanitizeTheaterFavoriteTitle(record?.title) || '未命名兔子镜';
+    value = value || sanitizeTheaterFavoriteTitle(record?.title) || '未命名兔子镜';
+    if (record && typeof record === 'object') displayTitleCache.set(record, { html: record.html, title: record.title, value });
+    return value;
 }
 
 function unwrapTheaterFavoriteTitleChrome(scope) {
@@ -306,6 +326,63 @@ export function theaterFavoriteToggleId(html) {
     return `toggle_${hashFavoriteHtml(scrubbed)}`.slice(0, 80);
 }
 
+// 「是不是同一面」按内容认，不按整段 HTML：打开一面时插件会给控件 id 加一段每次不同的前缀，
+// 点过的开关、展开状态、手机上加的 ＋／－ 按钮也会让 HTML 变；这些都不改这一面写了什么。
+// 所以取标题和正文的全部文字（包括还没展开的部分）去掉空白算指纹；文字太少（纯图画面）时再加上去掉 id/class 后的结构。
+const FAVORITE_CONTENT_NOISE_SELECTOR = [
+    '[data-rm-mobile-controls]',
+    'span[role="group"][aria-label="逐步调节"]',
+    'span[role="group"][aria-label="左右浏览"]',
+    'span[role="group"][aria-label="点按操作"]',
+    'style', 'script', 'template', 'noscript',
+].join(', ');
+const contentKeyMemo = new Map();
+export function theaterFavoriteContentKey(html) {
+    const source = String(html || '').trim();
+    if (!source || typeof document === 'undefined') return '';
+    const memo = contentKeyMemo.get(source);
+    if (memo) return memo;
+    const template = document.createElement('template');
+    template.innerHTML = source;
+    stripTheaterFavoriteRuntimeUi(template.content);
+    template.content.querySelectorAll(FAVORITE_CONTENT_NOISE_SELECTOR).forEach(node => node.remove());
+    const text = String(template.content.textContent || '').replace(/\s+/g, '');
+    let key = `c_${hashFavoriteHtml(text)}_${text.length}`;
+    if (text.length < 40) {
+        const shape = [...template.content.querySelectorAll('*')].map(node => {
+            const src = node.getAttribute?.('src') || node.getAttribute?.('href') || '';
+            return `${node.tagName}${src ? `=${src.length}:${hashFavoriteHtml(src)}` : ''}`;
+        }).join(',');
+        key += `_${hashFavoriteHtml(shape)}`;
+    }
+    contentKeyMemo.set(source, key);
+    if (contentKeyMemo.size > 64) contentKeyMemo.delete(contentKeyMemo.keys().next().value);
+    return key;
+}
+
+function recordContentKey(row) {
+    if (!row?.html) return '';
+    return String(row.contentKey || '') || theaterFavoriteContentKey(row.html);
+}
+
+// 内容指纹 → 收藏编号列表。收藏变动时作废；星标亮不亮、收藏前查重都用它，不必每颗星都把整库解析一遍。
+let contentIndexPromise = null;
+function favoriteContentIndex() {
+    if (!contentIndexPromise) {
+        contentIndexPromise = listTheaterFavorites().then(rows => {
+            const index = new Map();
+            for (const row of rows) {
+                const key = recordContentKey(row);
+                if (!key) continue;
+                if (!index.has(key)) index.set(key, []);
+                index.get(key).push(row.id);
+            }
+            return index;
+        }).catch(error => { contentIndexPromise = null; throw error; });
+    }
+    return contentIndexPromise;
+}
+
 export async function saveTheaterFavorite(input) {
     const html = scrubTheaterFavoriteHtml(input?.html);
     if (!html) throw new Error('没有可收藏的兔子镜内容。');
@@ -327,20 +404,12 @@ export async function saveTheaterFavorite(input) {
         createdAt: Date.now(),
     });
     if (!record) throw new Error('收藏内容无法保存。');
-    await runStore('readwrite', (store, done) => {
-        const request = store.getAll();
-        request.onsuccess = () => {
-            const rows = (Array.isArray(request.result) ? request.result : []).map(normalizeRecord).filter(Boolean)
-                .filter(row => row.id !== record.id)
-                .sort((a, b) => Number(a.createdAt) - Number(b.createdAt));
-            while (rows.length >= THEATER_FAVORITE_MAX_ITEMS) {
-                const oldest = rows.shift();
-                if (oldest?.id) store.delete(oldest.id);
-            }
-            store.put(record);
-            done(record);
-        };
-    });
+    try {
+        await runStore('readwrite', store => store.put(record));
+    } catch (error) {
+        if (error?.name === 'QuotaExceededError') throw new Error('本机存储空间不足，这面未收藏；已有收藏和图鉴保持不变。请先导出需要保留的内容，再自行清理空间。');
+        throw error;
+    }
     notifyChanged();
     return record;
 }
@@ -353,23 +422,109 @@ export async function deleteTheaterFavorite(id) {
     return true;
 }
 
-export async function toggleTheaterFavorite(input) {
+// 星标切换：按内容查重。intent='add'（星本来是空的，用户要收藏）时，已经收藏过同一面就不再存，直接报已收藏；
+// intent='remove'（星亮着，用户要取消）时，把内容相同的几份一起删掉。不传 intent 时按库里有没有自动决定。
+// 查和写在同一个事务里；记录里存下内容指纹，以后查重不用再解析。
+export async function toggleTheaterFavorite(input, intent = 'auto') {
     const captured = input && typeof input === 'object' ? input : null;
     const html = scrubTheaterFavoriteHtml(captured?.html);
     if (!html) throw new Error('当前没有可收藏的兔子镜。');
-    const id = theaterFavoriteToggleId(html);
-    const existing = await getTheaterFavorite(id);
-    if (existing) {
-        await deleteTheaterFavorite(id);
-        return { favorited: false, id };
+    const id = `toggle_${hashFavoriteHtml(html)}`.slice(0, 80);
+    if (byteLength(html) > THEATER_FAVORITE_MAX_HTML_BYTES) throw new Error('这面兔子镜超过收藏夹单条体积上限，未写入。');
+    const contentKey = theaterFavoriteContentKey(html);
+    const character = currentTheaterFavoriteCharacter();
+    const record = normalizeRecord({
+        id, title: captured?.title, mode: captured?.mode, html, chatKey: captured?.chatKey,
+        mesid: captured?.mesid, swipe: captured?.swipe, sourceHash: captured?.sourceHash,
+        characterId: captured?.characterId || character.characterId,
+        characterName: captured?.characterName || character.characterName,
+        createdAt: Date.now(), contentKey,
+    });
+    if (!record) throw new Error('收藏内容无法保存。');
+    let knownIds = [];
+    try { knownIds = (await favoriteContentIndex()).get(contentKey) || []; } catch { knownIds = []; }
+    let favorited = false;
+    let removedIds = [];
+    let alreadyIds = [];
+    try {
+        await runStore('readwrite', (store, done) => {
+            const candidates = [...new Set([id, ...knownIds])];
+            const found = [];
+            let pending = candidates.length;
+            const finish = () => {
+                if (found.length && intent === 'add') { favorited = true; alreadyIds = found; }
+                else if (found.length) { for (const key of found) store.delete(key); favorited = false; removedIds = found; }
+                else if (intent === 'remove') favorited = false;
+                else { store.put(record); favorited = true; }
+                done(favorited);
+            };
+            for (const key of candidates) {
+                const probe = store.get(key);
+                probe.onsuccess = () => {
+                    const row = probe.result;
+                    // 编号相同的直接算；按内容指纹找来的，再核一次指纹，免得索引过期误删。
+                    if (row && (key === id || recordContentKey(row) === contentKey)) found.push(key);
+                    pending -= 1;
+                    if (!pending) finish();
+                };
+            }
+        });
+    } catch (error) {
+        if (error?.name === 'QuotaExceededError') throw new Error('本机存储空间不足，这面未收藏；已有收藏和图鉴保持不变。请先导出需要保留的内容，再自行清理空间。');
+        throw error;
     }
-    await saveTheaterFavorite({ ...captured, html, id });
-    return { favorited: true, id };
+    if (removedIds.length || (favorited && !alreadyIds.length)) notifyChanged();
+    return { favorited, id: alreadyIds[0] || (favorited ? id : (removedIds[0] || id)), removed: removedIds.length, already: alreadyIds.length > 0 };
 }
 
 export async function isTheaterFavoriteHtml(html) {
-    const id = theaterFavoriteToggleId(html);
-    return !!(await getTheaterFavorite(id));
+    const scrubbed = scrubTheaterFavoriteHtml(html);
+    if (!scrubbed) return false;
+    try {
+        const index = await favoriteContentIndex();
+        if (index.has(theaterFavoriteContentKey(scrubbed))) return true;
+    } catch { /* 索引读不出来时退回按编号查 */ }
+    return !!(await getTheaterFavorite(`toggle_${hashFavoriteHtml(scrubbed)}`.slice(0, 80)));
+}
+
+// 收藏夹里内容完全相同的几份：每组留最早收的那一份，其余删掉；图鉴里手动关联到被删那份的，改指向留下的那份。
+export async function findDuplicateTheaterFavorites(rows) {
+    const list = Array.isArray(rows) ? rows : await listTheaterFavorites();
+    const groups = new Map();
+    for (const row of list) {
+        const key = recordContentKey(row);
+        if (!key) continue;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(row);
+    }
+    const remap = new Map();
+    for (const group of groups.values()) {
+        if (group.length < 2) continue;
+        group.sort((a, b) => Number(a.createdAt) - Number(b.createdAt));
+        for (const extra of group.slice(1)) remap.set(extra.id, group[0].id);
+    }
+    return remap;
+}
+
+export async function removeDuplicateTheaterFavorites() {
+    const remap = await findDuplicateTheaterFavorites();
+    if (!remap.size) return 0;
+    await runStore('readwrite', store => { for (const id of remap.keys()) store.delete(id); });
+    try {
+        const atlases = await import('./favoriteAtlases.js?rmv=1.67.55');
+        for (const atlas of await atlases.listFavoriteAtlases()) {
+            let changed = false;
+            const selections = {};
+            for (const [slotId, ids] of Object.entries(atlas.selections || {})) {
+                const next = [...new Set((ids || []).map(id => remap.get(id) || id))];
+                if (next.length !== (ids || []).length || next.some((id, i) => id !== ids[i])) changed = true;
+                selections[slotId] = next;
+            }
+            if (changed) await atlases.saveFavoriteAtlas({ ...atlas, selections, updatedAt: Date.now() });
+        }
+    } catch (error) { console.debug('[RabbitMirror] atlas remap after dedupe failed:', error); }
+    notifyChanged();
+    return remap.size;
 }
 
 function isTheaterFavoritePlaceholder(details) {
@@ -447,8 +602,10 @@ export function closeTheaterFavoriteViewer() {
 
 export function closeTheaterFavoriteLibrary() {
     if (!library) return;
-    const { overlay, keydown } = library;
+    const { overlay, keydown, onFavoritesChanged } = library;
     document.removeEventListener('keydown', keydown, true);
+    document.removeEventListener(THEATER_FAVORITES_CHANGED_EVENT, onFavoritesChanged);
+    thumbObserver?.disconnect?.(); thumbObserver = null;
     dismissOverlay(overlay);
     library = null;
 }
@@ -778,7 +935,7 @@ function favoriteDateText(ts) {
 
 export async function openTheaterFavoriteLibrary(hydrate) {
     if (typeof hydrate === 'function') lastHydrate = hydrate; else hydrate = lastHydrate;
-    const rows = await listTheaterFavorites();
+    let rows = await listTheaterFavorites();
     closeTheaterFavoriteLibrary();
     const { overlay, card } = overlayCard('兔子镜收藏夹');
     overlay.setAttribute('data-rm-theater-favorite-library', 'true');
@@ -815,6 +972,36 @@ export async function openTheaterFavoriteLibrary(hydrate) {
 
     const grid = document.createElement('div');
     grid.className = 'rm-fav-grid';
+    // 一键去重：只在真的有内容完全相同的几份时出现；要再点一次确认。
+    const dedupeBar = document.createElement('div');
+    dedupeBar.className = 'rm-fav-row';
+    dedupeBar.hidden = true;
+    dedupeBar.style.cssText = 'align-items:center;gap:8px;font-size:12px;opacity:.9;margin:2px 0 8px;';
+    const dedupeText = document.createElement('span');
+    dedupeText.style.cssText = 'flex:1;min-width:0;';
+    const dedupeButton = document.createElement('button');
+    dedupeButton.type = 'button';
+    dedupeButton.className = 'rm-fav-chip';
+    dedupeBar.append(dedupeText, dedupeButton);
+    let dedupeArmed = false;
+    const refreshDedupe = () => {
+        void findDuplicateTheaterFavorites(rows).then(remap => {
+            if (library?.overlay && library.overlay !== overlay) return;
+            dedupeArmed = false;
+            dedupeBar.hidden = !remap.size;
+            dedupeText.textContent = remap.size ? `有 ${remap.size} 份是重复收藏（和另一份内容完全相同）。` : '';
+            dedupeButton.textContent = '去掉重复';
+        }).catch(() => { dedupeBar.hidden = true; });
+    };
+    dedupeButton.addEventListener('click', () => {
+        if (!dedupeArmed) { dedupeArmed = true; dedupeButton.textContent = '再点一次确认（每组留最早那份）'; return; }
+        dedupeButton.disabled = true;
+        void removeDuplicateTheaterFavorites().then(removed => {
+            globalThis.toastr?.success?.(removed ? `已去掉 ${removed} 份重复收藏。` : '没有重复的收藏。');
+        }).catch(error => globalThis.toastr?.warning?.(String(error?.message || '去重失败，收藏没有改变。')))
+            .finally(() => { dedupeButton.disabled = false; });
+    });
+    if (rows.length > 1) refreshDedupe();
     let query = '';
     let character = '';
     let view = 'grid';
@@ -832,7 +1019,12 @@ export async function openTheaterFavoriteLibrary(hydrate) {
         search.className = 'rm-fav-search';
         search.placeholder = '按标题找一面';
         search.setAttribute('aria-label', '按标题搜索收藏');
-        search.addEventListener('input', () => { query = search.value.trim().toLowerCase(); paint(); });
+        let searchTimer = 0;
+        search.addEventListener('input', () => {
+            query = search.value.trim().toLowerCase();
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(paint, 160);
+        });
         // 两种排列：缩略图（镜片）或标题列表；记住上次的选择。
         const viewSwitch = document.createElement('div');
         viewSwitch.className = 'rm-fav-view';
@@ -878,7 +1070,7 @@ export async function openTheaterFavoriteLibrary(hydrate) {
             for (const group of groups) chips.append(chip(`${group.characterName} ${group.items.length}`, group.characterName));
             tools.append(chips);
         }
-        shelf.append(tools, grid);
+        shelf.append(tools, dedupeBar, grid);
     }
 
     const plateFor = item => {
@@ -1022,7 +1214,14 @@ export async function openTheaterFavoriteLibrary(hydrate) {
         overlay.addEventListener('close', () => resize.disconnect(), { once: true });
     }
     // 节气收集放在最下面，默认收起。
-    shelf.append(renderSolarTermProgress(rows, hydrate));
+    const solarTerms = document.createElement('div');
+    solarTerms.append(renderSolarTermProgress(rows, hydrate));
+    const atlases = createFavoriteAtlasPanel({
+        favorites: rows,
+        openFavorite: id => openTheaterFavoriteViewer(id, hydrate),
+        displayTitle: theaterFavoriteDisplayTitle,
+    });
+    shelf.append(solarTerms, atlases);
     card.append(style, shelf);
     bindOverlayDismiss(overlay, closeTheaterFavoriteLibrary);
     const keydown = event => {
@@ -1034,7 +1233,19 @@ export async function openTheaterFavoriteLibrary(hydrate) {
     };
     document.addEventListener('keydown', keydown, true);
     presentOverlay(overlay);
-    library = { overlay, keydown };
+    const onFavoritesChanged = () => {
+        void listTheaterFavorites().then(next => {
+            if (library?.overlay !== overlay) return;
+            rows = next;
+            count.textContent = rows.length ? `${rows.length} 面` : '';
+            paint();
+            refreshDedupe();
+            solarTerms.replaceChildren(renderSolarTermProgress(rows, hydrate));
+            atlases.setFavorites(rows);
+        }).catch(error => globalThis.toastr?.warning?.(String(error?.message || '收藏更新失败。')));
+    };
+    document.addEventListener(THEATER_FAVORITES_CHANGED_EVENT, onFavoritesChanged);
+    library = { overlay, keydown, onFavoritesChanged };
     return rows;
 }
 

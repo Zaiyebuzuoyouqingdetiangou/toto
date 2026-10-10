@@ -811,8 +811,9 @@ export function initFeedbackCatPromptSync(enabledReader = () => true) {
 }
 
 export function destroyFeedbackCatPromptSync() {
-    if (feedbackCatChatChangedHandler && eventSource?.off && event_types?.CHAT_CHANGED) {
-        try { eventSource.off(event_types.CHAT_CHANGED, feedbackCatChatChangedHandler); } catch {}
+    if (feedbackCatChatChangedHandler && event_types?.CHAT_CHANGED) {
+        const remove = eventSource?.removeListener || eventSource?.off;
+        try { remove?.call(eventSource, event_types.CHAT_CHANGED, feedbackCatChatChangedHandler); } catch {}
     }
     feedbackCatChatChangedHandler = null;
     clearFeedbackCatExtensionPrompt();

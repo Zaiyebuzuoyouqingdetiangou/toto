@@ -1,4 +1,4 @@
-import { isRabbitMirrorManagedChatSurface, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.67.42';
+import { isRabbitMirrorManagedChatSurface, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.67.55';
 
 const TOUCH_THEATER_SELECTOR = '[data-rm-dai-sekkin-mode="true"], [data-rm-touch-theater="true"]';
 const TOUCH_ZONE_SELECTOR = 'label[data-rm-touch-zone]';
@@ -317,7 +317,8 @@ function forceTouchNeutralState(theater, input = null) {
 function allowNextMysteryInputActivation(input) {
     if (!input) return;
     pendingMysteryInputActivations.add(input);
-    try { globalThis.queueMicrotask?.(() => pendingMysteryInputActivations.delete(input)); } catch {}
+    // label 触发 input 的那次合成 click 在当前事件派发完之后才到，微任务太早；用宏任务放行。
+    setTimeout(() => pendingMysteryInputActivations.delete(input), 0);
 }
 
 function blockUntrustedMysteryActivation(event, theater, target) {

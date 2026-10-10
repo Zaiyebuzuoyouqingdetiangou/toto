@@ -1,25 +1,25 @@
 // Split from independentApi.js — connection.
 
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages } from '../hostCompatibility.js?rmv=1.67.42';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages } from '../hostCompatibility.js?rmv=1.67.55';
 import {
     WORLD_INFO_BOOK_NAME_MAX_CHARS,
     getSettings,
     normalizeIndependentContextExcludedTags,
     updateSettings,
-} from '../settings.js?rmv=1.67.42';
-import { fetchRabbitMirrorIndependentCompletion } from '../independentSecurityGuard.js?rmv=1.67.42';
-import { buildIndependentAdvancedCarrier, applyIndependentAdvancedExclusions } from '../advancedRequestOptions.js?rmv=1.67.42';
-import { describeBatchPlanFailure } from '../externalWorldBook/errors.js?rmv=1.67.42';
-import { describeRabbitMirrorStorageUsage, getCurrentChatKey } from '../storage.js?rmv=1.67.42';
-import { rememberIndependentTransportDiagnostic } from '../transportDiagnostics.js?rmv=1.67.42';
+} from '../settings.js?rmv=1.67.55';
+import { fetchRabbitMirrorIndependentCompletion } from '../independentSecurityGuard.js?rmv=1.67.55';
+import { buildIndependentAdvancedCarrier, applyIndependentAdvancedExclusions } from '../advancedRequestOptions.js?rmv=1.67.55';
+import { describeBatchPlanFailure } from '../externalWorldBook/errors.js?rmv=1.67.55';
+import { describeRabbitMirrorStorageUsage, getCurrentChatKey } from '../storage.js?rmv=1.67.55';
+import { rememberIndependentTransportDiagnostic } from '../transportDiagnostics.js?rmv=1.67.55';
 import {
     CONTEXT_TOTAL_BUDGET,
     CONTEXT_TRANSCRIPT_BUDGET,
     RUNTIME_VERSION,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.67.42';
-import { HOST_GENERATION_EVENT_HINT_MS, operationEpochForBase } from './flights.js?rmv=1.67.42';
+} from './runtime.js?rmv=1.67.55';
+import { HOST_GENERATION_EVENT_HINT_MS, operationEpochForBase } from './flights.js?rmv=1.67.55';
 import {
     OWNER_LOCK_STORE_KEY,
     apiProfileKey,
@@ -31,12 +31,12 @@ import {
     writeApiProfileStore,
     writePersistedOwner,
     writeStore,
-} from './persistence.js?rmv=1.67.42';
+} from './persistence.js?rmv=1.67.55';
 import {
     hasExplicitSourceReplacementEvidence,
     independentStoredHtmlLightRestorable,
     independentStoredHtmlRestorable,
-} from './geometry.js?rmv=1.67.42';
+} from './geometry.js?rmv=1.67.55';
 import {
     activeIndependentFlightForBase,
     messageSourceRevisions,
@@ -44,13 +44,13 @@ import {
     passiveObservedIdentity,
     runtimeMode,
     showIndependentUnsavedOutput,
-} from './mount.js?rmv=1.67.42';
+} from './mount.js?rmv=1.67.55';
 import {
     hostGenerationHintStartedAt,
     hostGenerationInProgress,
     writeHostGenerationHintStartedAt,
     writeHostGenerationInProgress,
-} from './lifecycle.js?rmv=1.67.42';
+} from './lifecycle.js?rmv=1.67.55';
 
 export const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 
@@ -153,7 +153,7 @@ const INDEPENDENT_TAG_SCAN_MAX_NODES=20000;
 
 const INDEPENDENT_TAG_SCAN_MAX_TEXT_CHARS=256000;
 
-const INDEPENDENT_TAG_SCAN_MAX_UNIQUE_TAGS=100;
+const INDEPENDENT_TAG_SCAN_MAX_UNIQUE_TAGS=128;
 
 const INDEPENDENT_TAG_SCAN_STANDARD_TAGS=new Set(`a abbr address area article aside audio b base bdi bdo blockquote body br button canvas caption cite code col colgroup data datalist dd del details dfn dialog div dl dt em embed fieldset figcaption figure footer form h1 h2 h3 h4 h5 h6 head header hgroup hr html i iframe img input ins kbd label legend li link main map mark menu meta meter nav noscript object ol optgroup option output p picture pre progress q rp rt ruby s samp script search section select slot small source span strong style sub summary sup table tbody td template textarea tfoot th thead time title tr track u ul var video wbr`.split(' '));
 
@@ -1885,6 +1885,43 @@ function independentPersonaContext(ctx){
  return Object.keys(view).length ? safeJson(view,2500) : '';
 }
 
+// 角色卡、Persona 只给前 2200 字；很多卡的外貌写在后面被截掉，开了内置生图（且没有生图 LLM 另读全文）时，
+// 图框里的人物外貌就只能“未知不编”。这里只把截掉部分里讲外貌的原句捡回来（最多 600 字），不补别的内容。
+const APPEARANCE_LINE_RE=/外貌|外形|外表|长相|容貌|样貌|相貌|五官|发色|头发|发型|长发|短发|卷发|直发|马尾|刘海|发尾|瞳|眼睛|眼眸|眸|肤色|皮肤|肤|身高|身材|体型|个子|痣|疤|胎记|appearance|hair|eyes?\b|skin|height|build/i;
+function appearanceBeyondClip(value,limit){
+ const text=String(value??'').replace(/\r\n?/g,'\n').trim();
+ if(text.length<=limit) return '';
+ const rest=text.slice(Math.max(0,limit-120));
+ const picked=[];let used=0;
+ for(const raw of rest.match(/[^。；;！!？?\n]+[。；;！!？?]?/g)||[]){
+  const line=raw.replace(/\s+/g,' ').trim();
+  if(!line||line.length<4||!APPEARANCE_LINE_RE.test(line)) continue;
+  const clipped=line.slice(0,220);
+  if(used+clipped.length>600) break;
+  picked.push(clipped);used+=clipped.length;
+ }
+ return picked.join(' ');
+}
+function builtinImageAppearanceBlock(ctx,char,settings){
+ if(settings?.builtinImageEnabled!==true) return '';
+ const llmReady=settings.imageLlmEnabled===true
+  &&!!(String(settings.imageLlmProfileId||'').trim()||String(settings.imageLlmBaseUrl||'').trim())
+  &&!!String(settings.imageLlmModel||'').trim();
+ if(llmReady) return '';
+ const rows=[];
+ if(char&&settings.independentReadCharacterCardSummary!==false){
+  const data=char?.data&&typeof char.data==='object'?char.data:{};
+  const description=[char.description,data.description].map(value=>String(value??'').trim()).find(Boolean)||'';
+  const lines=appearanceBeyondClip(description,2200);
+  if(lines) rows.push(`${String(char.name||data.name||'角色').trim()}：${lines}`);
+ }
+ if(settings.independentReadPersonaSummary!==false){
+  const lines=appearanceBeyondClip(ctx?.powerUserSettings?.persona_description||globalThis.power_user?.persona_description||ctx?.personaDescription||'',2200);
+  if(lines) rows.push(`${String(ctx?.name1||globalThis.name1||'Persona').trim()}：${lines}`);
+ }
+ return rows.length?`【摘要后面被截掉的外貌原句（只供图框人物外貌）】\n${safeJson(rows,1400)}`:'';
+}
+
 export function contextBundle(ctx,targetIndex,globalWorldInfoSnapshot=null,preparedGlobalWorldInfoView=null,budgetOverride=CONTEXT_TOTAL_BUDGET,readVisible=null){
  const chat=Array.isArray(ctx.chat)?ctx.chat:[];
  const char=ctx.characters?.[ctx.characterId] || ctx.character || null;
@@ -1897,6 +1934,8 @@ export function contextBundle(ctx,targetIndex,globalWorldInfoSnapshot=null,prepa
  const referenceParts=[];
  if(charJson) referenceParts.push(`【当前角色卡摘要】\n${charJson}`);
  if(personaJson) referenceParts.push(`【当前 Persona 摘要】\n${personaJson}`);
+ const appearanceJson=builtinImageAppearanceBlock(ctx,char,settings);
+ if(appearanceJson) referenceParts.push(appearanceJson);
  const referenceBlock=referenceParts.length?`\n\n${referenceParts.join('\n\n')}`:'';
  const fixedSuffix=`${referenceBlock}${capturedWorldInfoBlock}`;
  const transcriptHeader='【当前聊天逐轮正文】\n';

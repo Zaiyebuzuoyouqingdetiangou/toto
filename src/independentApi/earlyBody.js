@@ -1,13 +1,13 @@
 // Split from independentApi.js — earlyBody.
-import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.67.42';
+import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.67.55';
 
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.67.42';
-import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.67.42';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.67.42';
-import { getSettings } from '../settings.js?rmv=1.67.42';
-import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.67.42';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=1.67.42';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.67.42';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.67.55';
+import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.67.55';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.67.55';
+import { getSettings } from '../settings.js?rmv=1.67.55';
+import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.67.55';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=1.67.55';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.67.55';
 import {
     MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE,
     INDEPENDENT_HISTORY_READ_ERROR_MESSAGE,
@@ -17,7 +17,7 @@ import {
     isMissingShellTargetFloor,
     normalizeMissingShellScanRange,
     shouldRestoreMissingIndependentRetryShell,
-} from './missingRetryShell.js?rmv=1.67.42';
+} from './missingRetryShell.js?rmv=1.67.55';
 import {
     INDEPENDENT_GENERATION_INTENTS_KEY,
     INDEPENDENT_GENERATION_INTENT_TYPES,
@@ -27,7 +27,7 @@ import {
     currentRuntime,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.67.42';
+} from './runtime.js?rmv=1.67.55';
 import {
     ACTIVE_GENERATION_WAIT_MS,
     FINAL_RENDER_POLL_INTERVAL_MS,
@@ -41,7 +41,7 @@ import {
     markAutomaticFailureStop,
     operationEpochForBase,
     pending,
-} from './flights.js?rmv=1.67.42';
+} from './flights.js?rmv=1.67.55';
 import {
     appendHistoryEntry,
     chatPersistenceSlot,
@@ -57,7 +57,7 @@ import {
     reconcileIndependentChatOwners,
     rememberChatMessageOrder,
     checkOwnerRemapEpoch,
-} from './persistence.js?rmv=1.67.42';
+} from './persistence.js?rmv=1.67.55';
 import {
     activeGlobalWorldInfoCapture,
     assistantMessages,
@@ -107,7 +107,7 @@ import {
     withOwnerLockStoreBatch,
     writeActiveGlobalWorldInfoCapture,
     writeHostModule,
-} from './connection.js?rmv=1.67.42';
+} from './connection.js?rmv=1.67.55';
 import {
     allExternalHosts,
     externalHosts,
@@ -115,7 +115,7 @@ import {
     removeEmptyFollowExternalAnchors,
     removeEmptyInlineAnchors,
     withExternalHostSyncIndex,
-} from './request.js?rmv=1.67.42';
+} from './request.js?rmv=1.67.55';
 import {
     beginHostWorkTiming,
     clearExternalHostFreshSourceState,
@@ -148,7 +148,7 @@ import {
     setPlaceholderSummary,
     usableReadyDetails,
     withRestorableHtmlCacheBatch,
-} from './geometry.js?rmv=1.67.42';
+} from './geometry.js?rmv=1.67.55';
 import {
     INDEPENDENT_INTENT_OWNER,
     abortFlight,
@@ -202,7 +202,7 @@ import {
     serializeExternalFaceDetails,
     stampAutomaticAuthorizationEpoch,
     withHistoricalRestoreLightPass,
-} from './mount.js?rmv=1.67.42';
+} from './mount.js?rmv=1.67.55';
 import {
     automaticGenerationCutovers,
     hostGenerationHintStartedAt,
@@ -227,7 +227,7 @@ import {
     writeStartupHistoryFallbackRoot,
     writeSyncRunning,
     writeSyncTimer,
-} from './lifecycle.js?rmv=1.67.42';
+} from './lifecycle.js?rmv=1.67.55';
 
 let earlyBodyParserPromise=null;
 
@@ -317,9 +317,15 @@ export function earlyBodyOwnerCurrent(owner,{visibility=false}={}){
   try{if(typeof ctx.canPerformToolCalls!=='function'||ctx.canPerformToolCalls(owner.type)!==false)return false;}catch{return false;}
   source=`${String(processor.continueMessage||'')}${String(processor.result||'')}`;
  }
- const snapshot=earlyBodyParser?.extractClosedBodySnapshot(source,owner.tags);
+ const snapshot=earlyBodyParser?.extractClosedBodySnapshot(source,owner.tags,{opaqueTailTags:earlyBodyOpaqueTailTags(owner.tags)});
  if(!snapshot || snapshot.signature!==owner.signature) return false;
  return !visibility || !!earlyBodyVisibleProjection(snapshot,owner.index,owner.message,source);
+}
+
+// 「跳过的标签」里除正文标签以外的那些：正文闭合后跟在后面的这些标签不再挡住提前生成。
+function earlyBodyOpaqueTailTags(tags){
+ const body=new Set((tags||[]).map(tag=>String(tag).toLowerCase()));
+ return new Set([...independentContextExcludedTagSet()].map(tag=>String(tag).toLowerCase()).filter(tag=>!body.has(tag)));
 }
 
 export function assertEarlyBodyOwner(owner){
@@ -350,7 +356,7 @@ function settleEarlyBodyAtFinal(ctx,index){
 
 async function probeIndependentEarlyBody(packet,sequence){
  if(!earlyBodyPacketCurrent(packet)) return;
- if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.67.42')
+ if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.67.55')
   .then(module=>{earlyBodyParser=module;return module;}).catch(()=>{earlyBodyParserPromise=null;return null;});
  const parser=await earlyBodyParserPromise;
  if(!parser || sequence!==earlyBodyProbeSequence || !earlyBodyPacketCurrent(packet)) return;
@@ -364,7 +370,7 @@ async function probeIndependentEarlyBody(packet,sequence){
   cancelEarlyBodyOwner(existing,'new-host-operation');
  }
  const settings=getSettings(); const tags=parser.normalizeEarlyBodyTags(settings.independentEarlyBodyTags);
- const snapshot=parser.extractClosedBodySnapshot(packet.text,tags);
+ const snapshot=parser.extractClosedBodySnapshot(packet.text,tags,{opaqueTailTags:earlyBodyOpaqueTailTags(tags)});
  const visible=earlyBodyVisibleProjection(snapshot,packet.index,packet.message,packet.text);
  if(!snapshot || !visible || hasExistingFollowRabbitMirror(ctx,packet.index,packet.message)) return;
  const cutover=ensureAutomaticGenerationCutover(ctx);
@@ -781,7 +787,9 @@ function holdAbnormalAutomaticReply(ctx,index){
  return true;
 }
 function finalizeAutomaticHostGeneration(ctx,index,reason='host-final-render',sourceStabilityConfirmed=true,sourceStableSince=0){
- if(holdAbnormalAutomaticReply(ctx,index)) return false;
+ // A next-normal handoff can arrive before the previous reply's final source
+ // update. Let the existing stability poll check that reply before judging it.
+ if(sourceStabilityConfirmed===true && holdAbnormalAutomaticReply(ctx,index)) return false;
  if(!settleAutomaticHostGeneration(ctx,index,reason)) return false;
  writeHostGenerationInProgress(false);
  writeHostGenerationHintStartedAt(0);
@@ -1110,6 +1118,15 @@ function hasScheduledIndependentGeneration(index){
  return !!poll && !poll.cancelled;
 }
 
+// Final host paint is followed by an existing settlement window before the
+// per-message poll exists. Passive history recovery must not mark that live
+// owner as a failed historical lookup in the gap. This grants no authorization.
+function hasPendingIndependentHostSettlement(ctx,index){
+ if(!automaticIndependentTiming()) return false;
+ const owner=automaticGenerationCutovers.get(chatKey(ctx))?.activeHostGeneration;
+ return !!owner?.settleTimer && automaticHostGenerationRenderMatches(ctx,index,owner);
+}
+
 // Read completion only refreshes the original owner. Repeated managed-surface
 // mounts share one waiter and must not create an error shell while IDB is pending.
 const historySyncWaiters=new WeakMap();
@@ -1240,7 +1257,7 @@ function syncMessagesCore(indices=null){
        const isActiveGenerationTarget=i===activeGenerationIndex;
        const automaticGenerationSuppressed=suppressesAutomaticGeneration(ctx,i) || hasExistingFollowRabbitMirror(ctx,i,m);
        const quickWaiting=quickWaitingCandidate(ctx,i);
-       const scheduledGeneration=hasScheduledIndependentGeneration(i);
+       const scheduledGeneration=hasScheduledIndependentGeneration(i) || hasPendingIndependentHostSettlement(ctx,i);
 
        // Never repaint an old mirror over a newly regenerated/swiped正文. A
        // record is eligible only for the exact current source fingerprint.
@@ -1609,7 +1626,7 @@ function restoreMissingIndependentRetryOnElement(el,index){
  const generationActive=hostGenerationLooksActive();
  const tailIndex=Array.isArray(ctx.chat)?ctx.chat.length-1:-1;
  const key=recordKey(ctx,index,m);
- const scheduledGeneration=hasScheduledIndependentGeneration(index);
+ const scheduledGeneration=hasScheduledIndependentGeneration(index) || hasPendingIndependentHostSettlement(ctx,index);
  const errorHost=hosts.find(host=>host.dataset.rmState==='error')||null;
  if(errorHost && !hasReady){
   errorHost.hidden=false;

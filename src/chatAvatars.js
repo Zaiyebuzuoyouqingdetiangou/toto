@@ -1,9 +1,9 @@
 // Optional, local-only avatar consumer. Model markers describe a role, never an
 // image URL, an owner, or permission to replace arbitrary artwork.
-import { getSettings } from './settings.js?rmv=1.67.42';
-import { getCurrentChatKey } from './storage.js?rmv=1.67.42';
-import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.67.42';
-import { subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.67.42';
+import { getSettings } from './settings.js?rmv=1.67.55';
+import { getCurrentChatKey } from './storage.js?rmv=1.67.55';
+import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.67.55';
+import { subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.67.55';
 
 const MARKERS = '[data-rm-avatar="char"], [data-rm-avatar="user"]';
 const FACES = 'toto, details[data-rabbit-mirror-external-details]';
@@ -107,7 +107,7 @@ function rootOwner(root, origin) {
         // Host ownership attrs are emitted locally only after sanitization.
         if (!getSanitizedRabbitMirrorFaceProof(root) && !getSanitizedRabbitMirrorFaceProof(details)) return null;
         const sourceHash = host.getAttribute('data-rm-source-hash');
-        if (sourceHash && sourceHash !== rabbitMirrorMultifaceSourceHash(String(message.mes || ''))) return null;
+        if (sourceHash && sourceHash !== rabbitMirrorMessageSourceHash(message)) return null;
     } else {
         if (!messageNode) return null;
         // A scoped DOM class or a nearby name is not evidence. The exact

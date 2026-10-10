@@ -23,7 +23,8 @@ export function isAutomaticRerollStall(error) {
 export function normalizeAutomaticRerollMax(value) {
     const n = Math.round(Number(value));
     if (!Number.isFinite(n)) return AUTOMATIC_REROLL_DEFAULT;
-    return Math.max(AUTOMATIC_REROLL_MIN, n);
+    // 每次自动重试都是一次付费请求，上限封在 10。
+    return Math.min(10, Math.max(AUTOMATIC_REROLL_MIN, n));
 }
 
 export function automaticRerollEnabled(settings) {

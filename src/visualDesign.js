@@ -28,4 +28,4 @@ export const GUIDED_VISUAL_FLOOR = '依本面已选展现形式与正文，先�
 
 // Retained visual enhancement, once per HTML batch. Drawing no longer needs
 // a separate toggle; motion and document flow keep their existing shared rules.
-export const COMMON_VISUAL_DRAWING = '必须用 HTML/CSS 或安全内联 SVG 依展现形式绘出主体轮廓、部件连接与材质接缝，首个主体内部分出远近层次（底层、主体、近处细节），层与层之间有遮挡或投影，受光与投影一致；这些层都在本体之内，不在外面另套框。图形、装置与场景类的面首屏以画面为主，可见文字控制在三四百字以内，书信、日志、论坛等文字媒介不受此限；交互就地改变对应对象的内容或空间状态。不固定布局，不强制 SVG。';
+export const COMMON_VISUAL_DRAWING = '图形、装置与场景类的面：用 HTML/CSS 或安全内联 SVG 依展现形式绘出主体轮廓、部件连接与材质接缝，首个主体内部分出远近层次（底层、主体、近处细节），层与层之间有遮挡或投影，受光一致，这些层都在本体之内；首屏以画面为主，可见文字控制在三四百字以内。书信、日志、论坛等文字媒介以正文和版式为本体，不强求立体层次，文字量不受此限。不固定布局，不强制 SVG。';

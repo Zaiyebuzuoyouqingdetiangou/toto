@@ -1,7 +1,7 @@
-import { EXTERNAL_WORLD_BOOK_CLASSIFICATION } from './classifier.js?rmv=1.67.42';
-import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.67.42';
-import { entryIdentity } from './selectionState.js?rmv=1.67.42';
-import { EXTERNAL_POOL_METADATA_VERSION, externalPoolMetadataForLibrary, getExternalPoolRevision, getExternalPoolSnapshot, removeExternalPoolLibrary, setExternalPoolMetadataSnapshot, upsertExternalPoolLibrary, validExternalPoolMetadata } from './externalPool.js?rmv=1.67.42';
+import { EXTERNAL_WORLD_BOOK_CLASSIFICATION } from './classifier.js?rmv=1.67.55';
+import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.67.55';
+import { entryIdentity } from './selectionState.js?rmv=1.67.55';
+import { EXTERNAL_POOL_METADATA_VERSION, externalPoolMetadataForLibrary, getExternalPoolRevision, getExternalPoolSnapshot, removeExternalPoolLibrary, setExternalPoolMetadataSnapshot, upsertExternalPoolLibrary, validExternalPoolMetadata } from './externalPool.js?rmv=1.67.55';
 
 export const EXTERNAL_WORLD_BOOK_DB_NAME = 'rabbitmirror_external_worldbooks';
 export const EXTERNAL_WORLD_BOOK_DB_VERSION = 2;
@@ -358,6 +358,59 @@ export async function listExternalLibraryEntryChoices(libraryId, options = {}) {
     }
 }
 
+// 逐面抽取目录、收藏图鉴草稿用：一次读出所有已启用库的“编号 + 标题”。
+// 优先用轻量索引里的标题；旧库的索引还没有标题时，对这本库只顺序读一遍（不再按页反复从头读），
+// 只留下编号、标题、分类，不保留正文。
+export async function listExternalLibraryTitleIndex(options = {}) {
+    const db = await openExternalLibraryDatabase(options);
+    try {
+        const head = db.transaction([STORE_LIBRARIES, STORE_POOL_METADATA], 'readonly');
+        const headDone = transactionPromise(head);
+        const [libraries, metadata] = await Promise.all([
+            requestPromise(head.objectStore(STORE_LIBRARIES).getAll()),
+            requestPromise(head.objectStore(STORE_POOL_METADATA).getAll()),
+            headDone,
+        ]);
+        const byLibrary = new Map((metadata || []).map(record => [record?.libraryId, record]));
+        const result = [];
+        for (const library of (libraries || []).filter(item => item?.enabled === true)) {
+            const record = byLibrary.get(library.libraryId);
+            if (validExternalPoolMetadata(record, library.libraryId) && record.titles && typeof record.titles === 'object') {
+                const entries = [];
+                for (const [classification, ids] of [['theme', record.themeIds], ['format', record.formatIds], ['text', record.textIds || []]]) {
+                    for (const externalId of ids) entries.push({ externalId, classification, title: String(record.titles[externalId] || externalId) });
+                }
+                result.push({ library, entries });
+                continue;
+            }
+            const transaction = db.transaction([STORE_ENTRIES], 'readonly');
+            const done = transactionPromise(transaction);
+            done.catch(() => {});
+            const entries = await new Promise((resolve, reject) => {
+                const rows = [];
+                const request = transaction.objectStore(STORE_ENTRIES).index(INDEX_ENTRIES_BY_LIBRARY).openCursor(library.libraryId);
+                request.onerror = () => reject(request.error || new Error('Entry title read failed'));
+                request.onsuccess = () => {
+                    const cursor = request.result;
+                    if (!cursor) { resolve(rows); return; }
+                    const choice = externalEntryChoice(cursor.value || {});
+                    if (cursor.value?.libraryId === library.libraryId && choice.enabled && choice.selectable) {
+                        rows.push({ externalId: choice.externalId, classification: choice.classification, title: choice.title.slice(0, 80) });
+                    }
+                    cursor.continue();
+                };
+            });
+            await done;
+            result.push({ library, entries });
+        }
+        return result;
+    } catch (error) {
+        throw wrapStorageError(error, '无法读取外置库目录；已保存内容未修改。');
+    } finally {
+        try { db.close(); } catch {}
+    }
+}
+
 export async function setExternalLibraryEntryEnabled(libraryId, externalId, enabled, options = {}) {
     const db = await openExternalLibraryDatabase(options);
     let transaction;
@@ -387,6 +440,12 @@ export async function setExternalLibraryEntryEnabled(libraryId, externalId, enab
         const ids = (metadata[field] || []).filter(id => id !== externalId);
         if (next.enabled) ids.push(externalId);
         const nextMetadata = { ...metadata, enabled: library.enabled === true, [field]: ids };
+        // 已有标题索引时，新勾选的条目把标题也补进去；旧索引没有标题就保持原样（目录会顺序读一遍补齐）。
+        if (metadata.titles && typeof metadata.titles === 'object') {
+            nextMetadata.titles = { ...metadata.titles };
+            if (next.enabled) nextMetadata.titles[externalId] = externalEntryChoice(next).title.slice(0, 80);
+            else delete nextMetadata.titles[externalId];
+        }
         const nextLibrary = { ...library, updatedAt: now };
         entries.put(next);
         metadataStore.put(nextMetadata);

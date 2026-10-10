@@ -77,7 +77,12 @@ function rawTextClosingEnd(text, start, name) {
     while ((cursor = text.indexOf('<', cursor)) >= 0) {
         if (text[cursor + 1] !== '/') { cursor++; continue; }
         let end = cursor + 2, index = 0;
-        while (index < name.length && (text.charCodeAt(end + index) | 32) === name.charCodeAt(index)) index++;
+        while (index < name.length) {
+            // 只把 A–Z 折成小写；直接 |32 会把 “_” 变成别的字符，<status_bar> 这类名字就永远对不上收尾。
+            const code = text.charCodeAt(end + index);
+            if ((code >= 65 && code <= 90 ? code | 32 : code) !== name.charCodeAt(index)) break;
+            index++;
+        }
         if (index !== name.length) { cursor += 2; continue; }
         end += name.length;
         while (isSpace(text[end])) end++;
@@ -95,7 +100,7 @@ function rawTextClosingEnd(text, start, name) {
  * A null result after dispatch is NOT permission to dispatch again. Callers must
  * keep their existing once-per-operation latch and revalidate before committing.
  */
-export function extractClosedBodySnapshot(text, tags) {
+export function extractClosedBodySnapshot(text, tags, { opaqueTailTags = null } = {}) {
     const tagNames = normalizeEarlyBodyTags(tags);
     if (typeof text !== 'string' || !text.length || text.length > EARLY_BODY_MAX_SOURCE_CHARS || !tagNames.length) return null;
     const wanted = new Set(tagNames);
@@ -197,6 +202,12 @@ export function extractClosedBodySnapshot(text, tags) {
             // HTML raw-text semantics: text resembling tags inside these elements
             // is not another body. A trailing slash does not close a non-void
             // raw-text element. No script/style content is interpreted.
+            cursor = rawTextClosingEnd(text, cursor, tag.name);
+            continue;
+        }
+        // 正文外面的“跳过的标签”（思考、状态栏、小总结之类）整段跳过、不逐层检查：
+        // 思考里提到 <content>、状态栏写得乱都不影响正文；跳到它的收尾，还没收尾就到结尾（继续等）。
+        if (opaqueTailTags?.has?.(tag.name) && !wanted.has(tag.name) && !tag.selfClosing && selectedDepth === 0) {
             cursor = rawTextClosingEnd(text, cursor, tag.name);
             continue;
         }

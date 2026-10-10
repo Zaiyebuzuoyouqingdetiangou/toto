@@ -16,6 +16,10 @@ export function prepareRabbitMirrorAvatarPrompt() {
     } catch { return null; }
 }
 
+// 人设列表翻页、筛选或重绘时，“当前选中”的那个元素会暂时不在页面上；这时沿用上次看到的值，
+// 只有真的换了人设（出现另一个选中项）才算变化，避免生图、重试被无故中止。
+let lastSelectedPersona = '';
+
 // The existing producers own cancellation. Include Persona changes in their
 // identity guard during this extra await without depending on bridge internals.
 export function rabbitMirrorAvatarPromptIdentity(context) {
@@ -25,6 +29,8 @@ export function rabbitMirrorAvatarPromptIdentity(context) {
     try { chat = context?.getCurrentChatId?.() ?? chat; } catch { /* Host fallback. */ }
     try { selectedPersona = globalThis.document?.querySelector?.('#user_avatar_block .avatar-container.selected')?.getAttribute?.('data-avatar-id') || ''; }
     catch { /* Some hosts expose only the Persona in their context. */ }
+    if (selectedPersona) lastSelectedPersona = selectedPersona;
+    else selectedPersona = lastSelectedPersona;
     return JSON.stringify([context?.characterId, character?.avatar || character?.data?.avatar,
         context?.name2 || character?.name || character?.data?.name, chat, context?.groupId, context?.name1,
         context?.personaId, context?.persona_id, context?.currentPersonaId, context?.user_avatar,

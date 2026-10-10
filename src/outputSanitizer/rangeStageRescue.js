@@ -2,7 +2,7 @@
 // 用 `:has(input[value="2"]:checked)` 之类的规则去切换。滑杆没有 checked 状态，这种规则永远不生效，
 // 拖动滑杆什么也不变。这里只在“编号段落与滑杆取值一一对应、且这些段落默认是隐藏的”时接上：
 // 滑到几就显示第几段，其余段落收起。不写任何新内容，不执行模型脚本。
-import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.67.42';
+import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.67.55';
 const RESCUE_ATTR = 'data-rabbit-mirror-range-stage-rescue';
 const STAGE_ATTR = 'data-rm-range-stage';
 const states = new WeakMap();
@@ -185,7 +185,8 @@ function applyProgress(state) {
 export function installDisabledRangeProgressRescue(root) {
     if (!root?.querySelectorAll) return 0;
     let installed = 0;
-    for (const input of root.querySelectorAll('input[type="range"][disabled]')) {
+    // 已经修过一次的面（复制、收藏、隐藏副本里重新接线）滑杆不再是 disabled，但带着修复标记和条目标记；按标记重新接上。
+    for (const input of root.querySelectorAll(`input[type="range"][disabled], input[type="range"][${PROGRESS_ATTR}]`)) {
         if (progressStates.has(input) || input.closest('[data-rm-ui]')) continue;
         if (input.hasAttribute('oninput') || input.hasAttribute('onchange')) continue;
         const min = Number(input.getAttribute('min') ?? 0);
@@ -194,14 +195,20 @@ export function installDisabledRangeProgressRescue(root) {
         if (!Number.isInteger(min) || !Number.isInteger(max) || step !== 1) continue;
         const count = max - min + 1;
         if (count < 2 || count > 8) continue;
-        const rows = progressRowsFor(input, count);
+        let rows = null;
+        if (input.hasAttribute(PROGRESS_ATTR)) {
+            let scope = input.parentElement;
+            for (let depth = 0; scope && depth < 4 && !rows; depth += 1, scope = scope.parentElement) {
+                const marked = [...scope.querySelectorAll(`[${PROGRESS_ROW_ATTR}]`)];
+                if (marked.length === count && marked.every(row => row.parentElement === marked[0].parentElement)) rows = marked;
+            }
+        } else rows = progressRowsFor(input, count);
         if (!rows) continue;
         const state = { input, rows, min };
         progressStates.set(input, state);
         input.disabled = false;
         input.removeAttribute('disabled');
-        input.value = String(min);
-        input.setAttribute('value', String(min));
+        if (!input.hasAttribute(PROGRESS_ATTR)) { input.value = String(min); input.setAttribute('value', String(min)); }
         const update = () => applyProgress(state);
         input.addEventListener('input', update);
         input.addEventListener('change', update);

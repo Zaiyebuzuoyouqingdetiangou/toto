@@ -1,10 +1,11 @@
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.67.42';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.67.55';
+import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.67.55';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.67.42';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.67.42';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.67.42';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.67.42';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.67.55';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.67.55';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.67.55';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.67.55';
 
 export const MODULE_NAME = 'rabbit_mirror_theater';
 
@@ -13,7 +14,7 @@ export const VISUAL_EXTRA_PROMPT_MAX_CHARS = 1000;
 export const VISUAL_AVOID_PROMPT_MAX_CHARS = 1000;
 export const WORLD_INFO_BOOK_NAME_MAX_CHARS = 512;
 export const VISUAL_TONE_MODES = Object.freeze(['normal', 'soft', 'dark']);
-export const INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT = 32;
+export const INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT = 128;
 // Keep startup normalization scalar-only; loading host world-book readers is a user action.
 function normalizeMemoryWorldBookSettingId(value) {
     return typeof value === 'string' && value.length <= 1000 && !/[\u0000\r\n]/.test(value)
@@ -242,6 +243,8 @@ export const defaultSettings = Object.freeze({
     // single：一次请求出全部面。serial：副 API 逐面排队，一面一次。
     multifaceDispatch: 'single',
     rabbitMirrorPresentationModes: ['html', 'html', 'html', 'html', 'html'],
+    rabbitMirrorFaceDrawRules: normalizeFaceDrawRules(),
+    rabbitMirrorFaceDrawPresets: [],
     longTextSource: 'blank',
     // 自动呈现时，长文本所占百分比；其余为 HTML。0 表示仍按抽中的类别呈现。
     autoLongTextPercent: 0,
@@ -327,6 +330,10 @@ export function getSettings() {
     }
     // 旧版只有深色开关：开过深色的升级后是「深色」，其余是「普通」。必须在默认值回填之前判断。
     if (settings.visualToneMode === undefined) settings.visualToneMode = settings.darkVisualMode === true ? 'dark' : 'normal';
+    // 这几条旧版迁移也必须在默认值回填之前判断，放在后面永远不会触发。
+    if (settings.showCot === undefined && settings.showWonderland !== undefined) settings.showCot = !!settings.showWonderland;
+    if (settings.autoRabbitMirrorInjection === undefined) settings.autoRabbitMirrorInjection = settings.enabled !== false;
+    if (settings.maintenanceRabbitEnabled === undefined) settings.maintenanceRabbitEnabled = legacyRescueWasEnabled || defaultSettings.maintenanceRabbitEnabled;
     for (const [key, value] of Object.entries(defaultSettings)) {
         if (settings[key] === undefined) settings[key] = value;
     }
@@ -372,9 +379,6 @@ export function getSettings() {
     settings.independentReadCharacterCardSummary = settings.independentReadCharacterCardSummary !== false;
     settings.independentReadPersonaSummary = settings.independentReadPersonaSummary !== false;
 
-    if (settings.showCot === undefined && settings.showWonderland !== undefined) {
-        settings.showCot = !!settings.showWonderland;
-    }
     if (settings.showWonderland !== undefined) delete settings.showWonderland;
     if (settings.forceInteractiveMode !== undefined) delete settings.forceInteractiveMode;
     if (settings.uiAudit !== undefined) delete settings.uiAudit;
@@ -422,6 +426,8 @@ export function getSettings() {
     // 只接受数字 1～5；任何异常值（NaN、字符串、0、负数、超界）都回落到 1，
     // 保证旧设置升级与畸形写入都不会意外开启多面。
     settings.rabbitMirrorPresentationModes = normalizePresentationModes(settings.rabbitMirrorPresentationModes);
+    settings.rabbitMirrorFaceDrawRules = normalizeFaceDrawRules(settings.rabbitMirrorFaceDrawRules);
+    settings.rabbitMirrorFaceDrawPresets = normalizeFaceDrawPresets(settings.rabbitMirrorFaceDrawPresets);
     settings.longTextSource = ['blank', 'text', 'mixed'].includes(settings.longTextSource) ? settings.longTextSource : 'blank';
     const autoPercent = Number(settings.autoLongTextPercent);
     settings.autoLongTextPercent = Number.isFinite(autoPercent) ? Math.max(0, Math.min(100, Math.round(autoPercent))) : 0;
@@ -437,10 +443,6 @@ export function getSettings() {
     settings.imageCompositionMode = settings.imageCompositionMode === 'auto' ? 'auto' : 'scene';
     const faceCount = settings.rabbitMirrorFaceCount;
     settings.rabbitMirrorFaceCount = Number.isInteger(faceCount) && faceCount >= 2 && faceCount <= 5 ? faceCount : 1;
-    if (settings.autoRabbitMirrorInjection === undefined) settings.autoRabbitMirrorInjection = settings.enabled !== false;
-    if (settings.maintenanceRabbitEnabled === undefined) {
-        settings.maintenanceRabbitEnabled = legacyRescueWasEnabled || defaultSettings.maintenanceRabbitEnabled;
-    }
     settings.maintenanceRabbitEnabled = !!settings.maintenanceRabbitEnabled;
     settings.maintenanceRabbitAutoSafeConsent = settings.maintenanceRabbitAutoSafeConsent === true;
     settings.maintenanceRabbitAutoSafeEnabled = settings.maintenanceRabbitAutoSafeConsent === true
@@ -599,6 +601,8 @@ export function updateSettings(patch) {
     if (Object.prototype.hasOwnProperty.call(safePatch, 'rabbitMirrorPresentationModes')) {
         safePatch.rabbitMirrorPresentationModes = normalizePresentationModes(safePatch.rabbitMirrorPresentationModes);
     }
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'rabbitMirrorFaceDrawRules')) safePatch.rabbitMirrorFaceDrawRules = normalizeFaceDrawRules(safePatch.rabbitMirrorFaceDrawRules);
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'rabbitMirrorFaceDrawPresets')) safePatch.rabbitMirrorFaceDrawPresets = normalizeFaceDrawPresets(safePatch.rabbitMirrorFaceDrawPresets);
     if (Object.prototype.hasOwnProperty.call(safePatch, 'rabbitMirrorFaceCount')) {
         const faceCount = safePatch.rabbitMirrorFaceCount;
         safePatch.rabbitMirrorFaceCount = Number.isInteger(faceCount) && faceCount >= 2 && faceCount <= 5 ? faceCount : 1;

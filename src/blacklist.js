@@ -1,10 +1,11 @@
-import { applyAtmosphereNotes, compactAtmosphereMenu } from './atmosphereChoice.js?rmv=1.67.42';
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.67.42';
-import { compactFormatDescriptors, isExternalSelectionId } from './selectionImageMetadata.js?rmv=1.67.42';
-import { getSettings, updateSettings } from './settings.js?rmv=1.67.42';
-import { getCurrentChatKey, resetFormatEligibleMisses } from './storage.js?rmv=1.67.42';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.67.42';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.67.42';
+import { applyAtmosphereNotes, compactAtmosphereMenu } from './atmosphereChoice.js?rmv=1.67.55';
+import { faceDrawMetadataFields } from './faceDrawRules.js?rmv=1.67.55';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.67.55';
+import { compactFormatDescriptors, isExternalSelectionId } from './selectionImageMetadata.js?rmv=1.67.55';
+import { getSettings, updateSettings } from './settings.js?rmv=1.67.55';
+import { getCurrentChatKey, resetFormatEligibleMisses } from './storage.js?rmv=1.67.55';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.67.55';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.67.55';
 
 export const BLACKLIST_CHANGED_EVENT = 'rabbitmirror:blacklist-changed';
 export const RECIPE_RECORDED_EVENT = 'rabbitmirror:recipe-recorded';
@@ -454,6 +455,7 @@ function compactSelectionMetadata(metadata = {}, allowFaces = true) {
         ...(formatDescriptors.length ? { formatDescriptors } : {}),
         ...(hasExternalReferences ? { hasExternalReferences: true, externalSources } : {}),
         ...presentationModeFields(metadata),
+        ...faceDrawMetadataFields(metadata),
         ...compactDirectiveCounts(metadata),
         samplingMode: String(metadata?.samplingMode || 'classic'),
         userDirectiveApplied: !!metadata?.userDirectiveApplied,
@@ -520,6 +522,7 @@ export function recordRabbitMirrorRecipe({ chat = null, chatKey = '', messageInd
         && JSON.stringify(existing.formatLabels || []) === JSON.stringify(compact.formatLabels || [])
         && JSON.stringify(existing.formatDescriptors || []) === JSON.stringify(compact.formatDescriptors || [])
         && JSON.stringify(presentationModeFields(existing)) === JSON.stringify(presentationModeFields(compact))
+        && JSON.stringify(faceDrawMetadataFields(existing)) === JSON.stringify(faceDrawMetadataFields(compact))
         && JSON.stringify(compactDirectiveCounts(existing)) === JSON.stringify(compactDirectiveCounts(compact))
         && JSON.stringify(existing.externalSources || []) === JSON.stringify(compact.externalSources || [])
         && !!existing.hasExternalReferences === !!compact.hasExternalReferences
@@ -557,7 +560,8 @@ function recipeView(record, faceIndex, includeExternalOnly) {
     if (!Number.isInteger(faceIndex) || faceIndex < 0 || faceIndex >= record.faces.length) return null;
     const face = compactSelectionMetadata(record.faces[faceIndex], false);
     const { requestedPresentationMode, presentationMode, blankLongText, textIds, textLabels,
-        themeLabels, formatDescriptors, formatLabels, customThemeCount, customFormatCount, customRequestCount, ...batchRecord } = record;
+        themeLabels, formatDescriptors, formatLabels, customThemeCount, customFormatCount, customRequestCount,
+        faceDrawConfigured, faceDrawState, ...batchRecord } = record;
     return face ? decorateRecipe({ ...batchRecord, hasExternalReferences: false, externalSources: [], ...face, faceIndex }, includeExternalOnly) : null;
 }
 

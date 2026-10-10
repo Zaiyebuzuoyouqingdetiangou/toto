@@ -1,5 +1,5 @@
-import { updateBehaviorResults } from './behaviorResults.js?rmv=1.67.42';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.67.42';
+import { updateBehaviorResults } from './behaviorResults.js?rmv=1.67.55';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.67.55';
 
 // Declarative, face-local behaviors. No generated code, global targets or timers.
 const roots = new WeakMap();
@@ -71,7 +71,14 @@ function reveal(state, p) {
 
 function countSteps(state) {
     const steps = own(state.group, 'button[data-rm-step]');
-    style(state, state.group, '--rm-count', String(steps.filter(node => node.getAttribute('data-rm-done') === 'true').length));
+    const completed = steps.filter(node => node.getAttribute('data-rm-done') === 'true').length;
+    style(state, state.group, '--rm-count', String(completed));
+    // A leaf group's result may be a sibling of its buttons. Mirror completion
+    // onto their common group so authored descendant CSS can reveal that result.
+    // Containers with nested behaviors retain button/count state only: marking
+    // their ancestor done would also reveal an unfinished nested result via CSS.
+    if (steps.length > 0 && completed === steps.length && !state.group.querySelector(GROUP)) state.group.setAttribute('data-rm-done', 'true');
+    else state.group.removeAttribute('data-rm-done');
     for (const step of steps) step.setAttribute('aria-pressed', String(step.getAttribute('data-rm-done') === 'true'));
 }
 
@@ -195,7 +202,7 @@ function reset(state) {
     }
     if (state.type === 'reveal') reveal(state, 0);
     if (state.type === 'view') { state.group.scrollLeft = 0; state.group.scrollTop = 0; style(state, state.group, 'overflow', 'auto'); }
-    if (state.type === 'hold') { state.group.removeAttribute('data-rm-active'); owners.get(state.group)?.holds.delete(state); }
+    if (state.type === 'hold') { setHoldActive(state, null, false); owners.get(state.group)?.holds.delete(state); }
     if (state.type === 'accumulate') {
         for (const step of own(state.group, 'button[data-rm-step]')) step.removeAttribute('data-rm-done');
         countSteps(state);
@@ -357,7 +364,7 @@ function finishPointer(binding, event, cancelled = false) {
     if (!session || (event.pointerId != null && session.id !== event.pointerId)) return;
     binding.pointer = null;
     const { state, item, surface } = session;
-    if (state.type === 'hold') { state.group.removeAttribute('data-rm-active'); binding.holds.delete(state); }
+    if (state.type === 'hold') { setHoldActive(state, null, false); binding.holds.delete(state); }
     if (item && cancelled) {
         moveItem(state, item, session.x, session.y);
         state.changed = session.changedBefore;
@@ -391,6 +398,18 @@ function finishPointer(binding, event, cancelled = false) {
     try { surface.releasePointerCapture?.(session.id); } catch { /* Already released by the browser. */ }
 }
 
+// 按住时，外层 data-rm-ui="hold" 容器和按下的那个按钮都带 data-rm-active="true"：
+// 模型写 [data-rm-ui="hold"][data-rm-active] … 或 button[data-rm-hold][data-rm-active] ~ … 都能生效；松开时两处一起撤掉。
+function setHoldActive(state, button, on) {
+    if (on) {
+        state.group.setAttribute('data-rm-active', 'true');
+        if (button?.matches?.('[data-rm-hold]')) button.setAttribute('data-rm-active', 'true');
+        return;
+    }
+    state.group.removeAttribute('data-rm-active');
+    for (const node of state.group.querySelectorAll('[data-rm-hold][data-rm-active]')) node.removeAttribute('data-rm-active');
+}
+
 function pointerDown(binding, event) {
     if (binding.pointer || event.isPrimary === false || (event.button != null && event.button !== 0)) return;
     const state = stateFor(binding.root, event.target);
@@ -418,7 +437,7 @@ function pointerDown(binding, event) {
         session.path.setAttribute('stroke-linecap', 'round'); session.path.setAttribute('pointer-events', 'none');
         session.points = 0; session.pathData = ''; state.strokes.add(session.path); surface.appendChild(session.path);
     }
-    if (type === 'hold') { group.setAttribute('data-rm-active', 'true'); binding.holds.add(state); state.changed = true; }
+    if (type === 'hold') { setHoldActive(state, surface, true); binding.holds.add(state); state.changed = true; }
     try { surface.setPointerCapture?.(event.pointerId); } catch { /* Synthetic or no active pointer. */ }
     pointerMove(binding, event);
 }
@@ -469,14 +488,14 @@ export function installBehaviorInteractions(root) {
     root.addEventListener('keydown', event => {
         const state = stateFor(root, event.target);
         if (state?.type === 'hold' && event.target.matches('button[data-rm-hold]') && [' ', 'Enter'].includes(event.key)) {
-            event.preventDefault(); state.group.setAttribute('data-rm-active', 'true'); binding.holds.add(state); state.changed = true; refreshResults(state);
+            event.preventDefault(); setHoldActive(state, event.target, true); binding.holds.add(state); state.changed = true; refreshResults(state);
         }
         if (event.key === 'Escape' && binding.pointer) finishPointer(binding, event, true);
     });
     const releaseHold = event => {
         const state = stateFor(root, event.target);
         if (state?.type === 'hold' && (event.type === 'focusout' || [' ', 'Enter'].includes(event.key))) {
-            state.group.removeAttribute('data-rm-active'); binding.holds.delete(state); refreshResults(state);
+            setHoldActive(state, null, false); binding.holds.delete(state); refreshResults(state);
         }
     };
     root.addEventListener('keyup', releaseHold);
@@ -487,7 +506,7 @@ export function installBehaviorInteractions(root) {
         if (binding.pointer && closed.contains(binding.pointer.state.group)) finishPointer(binding, {}, true);
         for (const state of binding.holds) {
             if (!closed.contains(state.group)) continue;
-            state.group.removeAttribute('data-rm-active'); refreshResults(state); binding.holds.delete(state);
+            setHoldActive(state, null, false); refreshResults(state); binding.holds.delete(state);
         }
     }, true);
     return count;

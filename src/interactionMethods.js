@@ -12,7 +12,7 @@ export const DRIVER_METHODS = Object.freeze({
     view: { names: ['视野操作'], how: 'data-rm-ui="view" 内 data-rm-part 可滚动浏览，range(1～3) 连续缩放，data-rm-reset 还原' },
     draw: { names: ['手绘描画'], how: 'data-rm-ui="draw" 内 svg data-rm-canvas 供手指描画，button data-rm-reset 清除' },
     motion: { names: ['进程控制'], how: 'data-rm-ui="motion" 内 data-rm-part 保留真实动画，button data-rm-play 暂停继续，range 调进度' },
-    hold: { names: ['临时预览'], how: 'data-rm-ui="hold" 的 button data-rm-hold，按住时为 [data-rm-active="true"]，CSS 据此改变画面' },
+    hold: { names: ['临时预览'], how: 'data-rm-ui="hold" 的 button data-rm-hold，按住时容器和按钮都带 [data-rm-active="true"]，CSS 据此改变画面' },
     follow: { names: ['跟随反馈'], how: 'data-rm-ui="follow" 内 data-rm-surface 为触摸区，CSS 用 --rm-x/--rm-y 定位光斑或线端' },
     reorder: { names: ['动态重排'], how: 'data-rm-ui="reorder"，同父层各项 data-rm-item，项内 button data-rm-prev/data-rm-next，data-rm-reset 复原' },
     accumulate: { names: ['累积改变'], how: 'data-rm-ui="accumulate" 内每项 button data-rm-step 切换 [data-rm-done="true"]，--rm-count 计数，data-rm-reset 撤回' },

@@ -20,21 +20,124 @@ function after(node) {
     return children[children.indexOf(node) + 1] || null;
 }
 
+const BAR_FOR = 'data-rm-mobile-for';
+const BAR_LABEL = { scroll: '左右浏览', range: '逐步调节' };
+const STRUCTURAL_SELECTOR = /[+~]|:(?:nth-(?:last-)?child|nth-(?:last-)?of-type|first-child|last-child|only-child|empty)\b|:has\(/;
+const PLACE_CLIMB = 4;
+
+// 控件在本面里的序号（滑杆按滑杆数，其它不数我们自己加的按钮条），只用于认回“往上放了几层”的那种按钮条。
+function controlOrdinal(binding, target, kind) {
+    if (kind === 'range') return [...binding.root.querySelectorAll('input[type="range"]')].indexOf(target);
+    // 标题栏里的工具按钮、我们自己加的按钮条都不数，序号才不会随插件按钮的增减而变。
+    return [...binding.root.querySelectorAll('*')].filter(node => !node.closest(`[${BAR}], summary`)).indexOf(target);
+}
+
+// 紧跟在 node 后面的那一串按钮条（同一行两根滑杆都往外放时，会排成一串）。
+function barRunAfter(node) {
+    const run = [];
+    for (let next = after(node); next && (next.hasAttribute(BAR) || barMatches(next, 'range') || barMatches(next, 'scroll')); next = after(next)) run.push(next);
+    return run;
+}
+
+function barMatches(node, kind) {
+    if (!node) return false;
+    if (node.getAttribute(BAR) === kind) return true;
+    // 保存再打开后个别面上这个属性丢了，只剩 role/aria-label；认回来并补上属性，免得再加一条。
+    if (node.tagName === 'SPAN' && node.getAttribute('role') === 'group' && node.getAttribute('aria-label') === BAR_LABEL[kind]) {
+        node.setAttribute(BAR, kind);
+        return true;
+    }
+    return false;
+}
+
+// 本面样式里会被“多出一个兄弟”影响的选择器：`#r + .fill`、`:nth-child`、`:last-child`、`:has(> input)` 等。
+function structuralSelectors(binding) {
+    if (binding.structural) return binding.structural;
+    const out = [];
+    for (const style of binding.root.querySelectorAll('style')) {
+        const css = String(style.textContent || '').replace(/\/\*[\s\S]*?\*\//g, '');
+        for (const [, head] of css.matchAll(/([^{}]+)\{[^{}]*\}/g)) for (const selector of head.split(',')) {
+            const text = selector.trim();
+            if (!text || !STRUCTURAL_SELECTOR.test(text)) continue;
+            try { binding.root.querySelector(text); out.push(text); } catch { /* 解析不了的选择器 */ }
+        }
+    }
+    binding.structural = out;
+    return out;
+}
+
+function matchedSet(root, selectors) {
+    const set = new Set();
+    for (const selector of selectors) { try { for (const node of root.querySelectorAll(selector)) set.add(node); } catch {} }
+    return set;
+}
+
+function layoutSensitive(parent) {
+    let style;
+    try { style = parent.ownerDocument.defaultView.getComputedStyle(parent); } catch { return false; }
+    return (/grid/.test(style.display) && style.gridTemplateColumns !== 'none')
+        || (/flex/.test(style.display) && /^row/.test(style.flexDirection));
+}
+
+// 把按钮条放在目标后面；如果放进去会改变本面结构选择器的命中、或者挤进固定列数的网格／横向 flex 行，
+// 就往上一层放（最多四层）。四层内都放不下就不加这组按钮。
+function placeAfter(binding, target, bar) {
+    const root = binding.root;
+    const selectors = structuralSelectors(binding);
+    const before = selectors.length ? matchedSet(root, selectors) : null;
+    let anchor = target;
+    for (let depth = 0; anchor && anchor !== root && anchor.parentElement; depth += 1, anchor = anchor.parentElement) {
+        if (depth >= PLACE_CLIMB) break;
+        const parent = anchor.parentElement;
+        // 已经有别的按钮条排在这里时接在它们后面，不插到前面去，各自的位置才稳定。
+        const slot = depth > 0 ? (barRunAfter(anchor).pop() || anchor) : anchor;
+        if (parent === root || parent.matches('summary')) { parent.insertBefore(bar, slot.nextSibling); return depth; }
+        if (layoutSensitive(parent)) continue;
+        parent.insertBefore(bar, slot.nextSibling);
+        if (!before) return depth;
+        const after = matchedSet(root, selectors);
+        if (after.size === before.size && [...after].every(node => before.has(node))) return depth;
+        bar.remove();
+    }
+    return -1;
+}
+
+// 紧跟在控件后面的那条直接认；往上放过的那条带着控件序号，序号对得上才认（别把同一行里别的滑杆的条认成自己的）。
+function findBar(binding, target, kind) {
+    let ordinal = null;
+    let anchor = target;
+    for (let depth = 0; anchor && anchor !== binding.root && depth <= PLACE_CLIMB; depth += 1, anchor = anchor.parentElement) {
+        const run = depth === 0 ? [after(anchor)].filter(Boolean) : barRunAfter(anchor);
+        for (const candidate of run) {
+            if (!barMatches(candidate, kind)) continue;
+            const owner = candidate.getAttribute(BAR_FOR);
+            if (owner === null) { if (depth === 0) return candidate; continue; }
+            if (ordinal === null) ordinal = controlOrdinal(binding, target, kind);
+            if (Number(owner) === ordinal) return candidate;
+        }
+    }
+    return null;
+}
+
 function toolbar(binding, target, kind, inside = false) {
-    let bar = inside ? [...target.children].find(node => node.getAttribute(BAR) === kind) : after(target);
-    if (bar?.getAttribute(BAR) !== kind && binding.reuseOnly) return null;
-    if (bar?.getAttribute(BAR) !== kind) {
+    let bar = inside ? [...target.children].find(node => node.getAttribute(BAR) === kind) : findBar(binding, target, kind);
+    if (!bar && binding.reuseOnly) return null;
+    if (!bar) {
         bar = target.ownerDocument.createElement('span');
         bar.setAttribute(BAR, kind);
         bar.setAttribute('role', 'group');
-        bar.setAttribute('aria-label', kind === 'scroll' ? '左右浏览' : kind === 'range' ? '逐步调节' : '点按操作');
+        bar.setAttribute('aria-label', BAR_LABEL[kind] || '点按操作');
         bar.style.setProperty('display', 'inline-flex');
         bar.style.setProperty('flex-wrap', 'wrap');
         bar.style.setProperty('align-items', 'center');
         bar.style.setProperty('gap', '6px');
         bar.style.setProperty('margin', '4px 0');
         if (inside) target.appendChild(bar);
-        else target.parentElement?.insertBefore(bar, target.nextSibling);
+        else {
+            const depth = placeAfter(binding, target, bar);
+            if (depth < 0) return null;
+            if (depth > 0) bar.setAttribute(BAR_FOR, String(controlOrdinal(binding, target, kind)));
+        }
     }
     binding.surfaces.add(bar);
     return bar;
@@ -42,6 +145,11 @@ function toolbar(binding, target, kind, inside = false) {
 
 function control(binding, bar, name, label, text, target, action, driverAttribute, allowCreate = false) {
     let button = [...bar.querySelectorAll('button')].find(node => node.getAttribute(ACTION) === name);
+    // 保存后动作标记丢了的旧按钮，按无障碍标签认回来并补上标记，不另加一个。
+    if (!button) {
+        button = [...bar.querySelectorAll('button')].find(node => !node.hasAttribute(ACTION) && node.getAttribute('aria-label') === label) || null;
+        if (button) button.setAttribute(ACTION, name);
+    }
     if (!button && binding.reuseOnly && !allowCreate) return null;
     if (!button) {
         button = bar.ownerDocument.createElement('button');
@@ -281,11 +389,12 @@ export function installMobileInteractionControls(root) {
     const touch = touchHost(root);
     const galleryHint = [...root.querySelectorAll('style')].some(node => /scroll-snap-type\s*:\s*x\b/i.test(node.textContent || ''))
         || !!root.querySelector('[style*="scroll-snap-type"]');
-    if (!touch && !galleryHint && !root.querySelector(`[${BAR}] button[${ACTION}]`)) return 0;
+    // 按钮条外层的标记可能在保存后丢了，只认按钮自己的动作标记。
+    if (!touch && !galleryHint && !root.querySelector(`button[${ACTION}], span[role="group"][aria-label="${BAR_LABEL.range}"] button, span[role="group"][aria-label="${BAR_LABEL.scroll}"] button`)) return 0;
     let binding = bindings.get(root);
     if (binding) binding.reuseOnly = binding.reuseOnly && !touch;
     if (!binding) {
-        binding = { root, reuseOnly: !touch, surfaces: new WeakSet(), actions: new WeakMap(), scrolls: new Map(), ranges: new Map(), items: new WeakMap() };
+        binding = { root, reuseOnly: !touch, structural: null, surfaces: new WeakSet(), actions: new WeakMap(), scrolls: new Map(), ranges: new Map(), items: new WeakMap() };
         bindings.set(root, binding);
         root.addEventListener('click', event => {
             // The face driver is installed first and resets values without emitting input.

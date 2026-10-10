@@ -1,8 +1,8 @@
 // Split from independentApi.js — persistence.
 
-import { presentationModeFields } from '../presentationMode.js?rmv=1.67.42';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.67.42';
-import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.67.42';
+import { presentationModeFields } from '../presentationMode.js?rmv=1.67.55';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.67.55';
+import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.67.55';
 import {
     FACE_SWIPE_FULL_MESSAGE,
     FACE_SWIPE_MAX,
@@ -17,9 +17,9 @@ import {
     snapshotFaceSwipes, compactSwipeState, restoreFaceSwipeSnapshot,
     faceSwipeSnapshotStored, loadFaceSwipeArchive, saveFaceSwipeArchive, faceSwipeArchiveReadState,
     remapFaceSwipeSlots, remapFaceSwipeArchive, faceSwipeArchiveRemapSettled,
-} from '../swipeVersions.js?rmv=1.67.42';
-import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=1.67.42';
-import { remapMirrorImageSlots } from '../imageStore.js?rmv=1.67.42';
+} from '../swipeVersions.js?rmv=1.67.55';
+import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=1.67.55';
+import { remapMirrorImageSlots } from '../imageStore.js?rmv=1.67.55';
 import {
     clearEphemeralFaceFailure,
     hasEphemeralFaceFailure,
@@ -29,7 +29,7 @@ import {
     independentSwipeSlot,
     seedIndependentFaceSwipesFromIdentity,
     writeIndependentOwnerHtml,
-} from './faceSwipe.js?rmv=1.67.42';
+} from './faceSwipe.js?rmv=1.67.55';
 import {
     API_PROFILE_STORE_KEY,
     assistantMessages,
@@ -47,8 +47,8 @@ import {
     setOwnerLockForBase,
     swipeId,
     remapOwnerLockSlots,
-} from './connection.js?rmv=1.67.42';
-import { stampExternalDetailsOwnership } from './request.js?rmv=1.67.42';
+} from './connection.js?rmv=1.67.55';
+import { stampExternalDetailsOwnership } from './request.js?rmv=1.67.55';
 import {
     copyIndependentReplacementReceipt,
     ensureExternalTools,
@@ -59,8 +59,8 @@ import {
     normalizeSavedInteractionRecord,
     recoverSavedRecord,
     replaceExternalMultifaceFace,
-} from './geometry.js?rmv=1.67.42';
-import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=1.67.42';
+} from './geometry.js?rmv=1.67.55';
+import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=1.67.55';
 
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 
@@ -135,12 +135,15 @@ export function readStore(){ try { const v=JSON.parse(localStorage.getItem(STORE
 function compactOutputStore(value){
  const entries=Object.entries(value&&typeof value==='object'?value:{}).filter(([,item])=>independentRecordWithinBudget(item)).sort((a,b)=>Number(b[1]?.ts||0)-Number(a[1]?.ts||0));
  const next={};
+ // 累计每条自己的字节数，不在循环里反复把整个对象序列化（原来是 120 次 × 1.6MB，手机上会卡）。
+ let used=2;
  for(const [key,item] of entries.slice(0,120)){
   // Full stacks live in their archive/chat metadata, not duplicated into the
   // bounded current-output cache on every passive reconciliation.
   const current={...item};delete current.faceSwipes;
-  next[key]=current;
-  if(byteLength(JSON.stringify(next))>OUTPUT_STORE_BUDGET_BYTES){ delete next[key]; warnStorageTrimmed(); }
+  const cost=byteLength(JSON.stringify(key))+byteLength(JSON.stringify(current))+2;
+  if(used+cost>OUTPUT_STORE_BUDGET_BYTES){ warnStorageTrimmed(); continue; }
+  next[key]=current; used+=cost;
  }
  return next;
 }
@@ -173,11 +176,13 @@ function compactHistoryStore(value){
  }
  flattened.sort((a,b)=>Number(b.entry?.ts||0)-Number(a.entry?.ts||0));
  const next=emptyHistoryStore();
+ let used=byteLength(JSON.stringify(next));
  for(const {slot,entry} of flattened.slice(0,70)){
   const list=next.slots[slot]||(next.slots[slot]=[]);
   if(list.length>=10) continue;
-  list.push(entry);
-  if(byteLength(JSON.stringify(next))>HISTORY_STORE_BUDGET_BYTES){ list.pop(); if(!list.length) delete next.slots[slot]; warnStorageTrimmed(); }
+  const cost=byteLength(JSON.stringify(entry))+(list.length?1:byteLength(JSON.stringify(slot))+4);
+  if(used+cost>HISTORY_STORE_BUDGET_BYTES){ if(!list.length) delete next.slots[slot]; warnStorageTrimmed(); continue; }
+  list.push(entry); used+=cost;
  }
  for(const list of Object.values(next.slots)) list.sort((a,b)=>Number(a?.ts||0)-Number(b?.ts||0));
  return next;
@@ -430,7 +435,7 @@ function normalizeChatOutputMetadata(value){
  const owners=value&&typeof value==='object'&&value.owners&&typeof value.owners==='object'?value.owners:{};
  for(const [key,raw] of Object.entries(owners)){
   if(!/^\d+:\d+$/.test(String(key||'')) || !raw || typeof raw!=='object') continue;
-  if(raw.deleted===true){ next.owners[key]={deleted:true,ts:Number(raw.ts||0),runtime:String(raw.runtime||RUNTIME_VERSION)}; continue; }
+  if(raw.deleted===true){ next.owners[key]={deleted:true,ts:Number(raw.ts||0),runtime:String(raw.runtime||RUNTIME_VERSION),sourceHash:String(raw.sourceHash||'')}; continue; }
   const record=compactChatPersistedRecord(raw); if(record) next.owners[key]=record;
  }
  // 删楼层后对号的次数：聊天文件和本机各记一份，对不上时说明本机缓存的楼层号已过时（见 checkOwnerRemapEpoch）。
@@ -478,7 +483,7 @@ export function persistedOwnerForMessage(ctx,index,msg){
  // Explicit removal wins, including when its localStorage write was refused.
  if(raw?.deleted===true || session?.deleted===true){
   const removed=raw?.deleted===true?raw:session;
-  return {deleted:true,ts:Number(removed.ts||0),runtime:String(removed.runtime||RUNTIME_VERSION)};
+  return {deleted:true,ts:Number(removed.ts||0),runtime:String(removed.runtime||RUNTIME_VERSION),sourceHash:String(removed.sourceHash||'')};
  }
  const newest=session && (!raw || Number(session.ts||0)>Number(raw.ts||0)
   || (Number(session.ts||0)===Number(raw.ts||0)
@@ -520,7 +525,10 @@ export function restoreIndependentHistory(ctx,index,msg,{retry=false}={}){
   const current=persistedOwnerForMessage(ctx,index,msg);
   if(current?.deleted) return;
   if(row?.record?.deleted){
-   if(!current || Number(row.record.ts)>=Number(current.ts)) writePersistedOwner(ctx,index,msg,row.record);
+   // 墓碑没记正文指纹、或指纹和当前正文不一致时，不往聊天文件里写：这一行可能是楼层搬家没成功时留下的、属于别的消息。
+   const tombHash=String(row.record.sourceHash||'');
+   if(tombHash && (tombHash===observed.sourceHash || tombHash===observed.bodyHash)
+    && (!current || Number(row.record.ts)>=Number(current.ts))) writePersistedOwner(ctx,index,msg,row.record);
    return;
   }
   if(current?.faceSwipes && savedRecordMatchesObserved(current,observed)) restoreFaceSwipeSnapshot(base,current.faceSwipes);
@@ -548,7 +556,7 @@ export function writePersistedOwner(ctx,index,msg,value,{overwrite=true}={}){
  const existing=session?.[ownerKey]||state.owners?.[ownerKey];
  if(!overwrite && existing) return false;
  let next=null;
- if(value?.deleted===true) next={deleted:true,ts:Number(value.ts||Date.now()),runtime:RUNTIME_VERSION};
+ if(value?.deleted===true) next={deleted:true,ts:Number(value.ts||Date.now()),runtime:RUNTIME_VERSION,sourceHash:String(value.sourceHash||existing?.sourceHash||existing?.bodyHash||'')};
  else {
   const base=messageBaseSlotKey(ctx,index,msg);
   if(value.faceSwipes || existing?.faceSwipes) restoreFaceSwipeSnapshot(base,value.faceSwipes||existing.faceSwipes);
@@ -851,6 +859,8 @@ export function checkOwnerRemapEpoch(ctx=getContext()){
   const fileEpoch=Math.floor(Number(metadata[CHAT_OUTPUT_METADATA_KEY]?.remapEpoch)||0);
   const localEpoch=Math.floor(Number(readLocalRemapEpochs()[key])||0);
   if(fileEpoch===localEpoch) return false;
+  // 两个方向都要清：聊天文件比本机新 = 别的设备删过楼层；本机比聊天文件新 = 本机删了楼层但酒馆没保存，
+  // 文件里楼层还是删之前的样子，本机按删后楼层号放的缓存反而对不上（元数据和聊天是一起存的，不会只存一半）。
   const prefix=`${key}:`;
   const dropChat=slot=>String(slot||'').startsWith(prefix)&&/^\d+:\d+(?::[^:]*)?$/.test(String(slot).slice(prefix.length))?null:slot;
   try{ remapFaceSwipeSlots(dropChat); }catch{}

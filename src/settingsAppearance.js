@@ -1,8 +1,8 @@
 // UI palettes from the user-provided Hearttrace source, by Toto.
 // Presentation only: no generation settings, Prompt, content storage, or network.
-import { closeTheaterFavoriteLibrary, closeTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.67.42';
-import { UI_THEMES, APPEARANCE_STORAGE_KEY, paletteKeys, normalizeAppearance, applyAppearanceTheme } from './appearanceTheme.js?rmv=1.67.42';
-export { UI_THEMES, APPEARANCE_STORAGE_KEY, normalizeAppearance, applyAppearanceTheme } from './appearanceTheme.js?rmv=1.67.42';
+import { closeTheaterFavoriteLibrary, closeTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.67.55';
+import { UI_THEMES, APPEARANCE_STORAGE_KEY, paletteKeys, normalizeAppearance, applyAppearanceTheme } from './appearanceTheme.js?rmv=1.67.55';
+export { UI_THEMES, APPEARANCE_STORAGE_KEY, normalizeAppearance, applyAppearanceTheme } from './appearanceTheme.js?rmv=1.67.55';
 const colorLabels = ['背景', '卡片底色', '正文', '辅助文字', '主色', '辅助色', '边框'];
 const mounts = new WeakMap();
 // Keep the existing public theme hook for older consumers.
@@ -51,7 +51,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     const subtitle = head.querySelector('small');
     subtitle.replaceWith(versionRow);
     versionRow.append(subtitle);
-    void import('./mirrorUpdateMenu.js?rmv=1.67.42').then(mod => {
+    void import('./mirrorUpdateMenu.js?rmv=1.67.55').then(mod => {
         if (versionRow.isConnected) mod.mountSettingsUpdateChrome(versionRow);
     }).catch(error => console.warn('[RabbitMirror] 设置标题的更新检测没有挂上', error));
     const searchbar = make('div', 'rh-ui-searchbar');
@@ -308,7 +308,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
             if(typeof root.showModal==='function'){if(!root.open)root.showModal();}
             else root.setAttribute('open','');
             trackViewport();applyTheme();paint();close.focus({preventScroll:true});
-            void import('./mirrorUpdateMenu.js?rmv=1.67.42').then(mod => mod.refreshRabbitMirrorUpdateOnOpen()).catch(error => console.warn('[RabbitMirror] 打开设置时没能检测更新', error));
+            void import('./mirrorUpdateMenu.js?rmv=1.67.55').then(mod => mod.refreshRabbitMirrorUpdateOnOpen()).catch(error => console.warn('[RabbitMirror] 打开设置时没能检测更新', error));
         }else{
             closeTheaterFavoriteViewer();
             closeTheaterFavoriteLibrary();
@@ -345,12 +345,13 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     });
     const menu=get('extensionsMenu');
     get('rabbit_mirror_wand_bootstrap')?.remove();
-    const entry=make('button','list-group-item flex-container flexGap5');
-    entry.type='button';
+    const entry=make('div','list-group-item flex-container flexGap5');
+    entry.setAttribute('role','button');entry.tabIndex=0;
     entry.id='rabbit_mirror_wand_entry';
     entry.style.cssText='background:transparent;background-color:transparent;color:inherit;border:0;box-shadow:none;appearance:none;-webkit-appearance:none;';
-    entry.innerHTML='<span class="rabbit-mirror-wand-icon" aria-hidden="true"><svg viewBox="0 0 32 32" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M10 16C4 2 11 1 14 14M18 14C20 1 27 2 23 16M9 16c-7 11 3 15 9 14s13-8 5-14c-4-3-10-3-14 0Z"/><path d="M12 22h1m6 0h1m-6 4 2 1 2-1"/></svg></span><span>兔子镜</span>';
+    entry.innerHTML='<span class="extensionsMenuExtensionButton rabbit-mirror-wand-icon" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M10 16C4 2 11 1 14 14M18 14C20 1 27 2 23 16M9 16c-7 11 3 15 9 14s13-8 5-14c-4-3-10-3-14 0Z"/><path d="M12 22h1m6 0h1m-6 4 2 1 2-1"/></svg></span><span>兔子镜</span>';
     entry.setAttribute('aria-haspopup','dialog');entry.setAttribute('aria-controls',root.id);
+    listen(entry,'keydown',event=>{if(event.key!=='Enter'&&event.key!==' ')return;event.preventDefault();if(!event.repeat)entry.click();});
     listen(entry,'click',()=>setOpen(true));
     menu?.append(entry);
     const requiredControls=[...root.querySelectorAll('input[id],select[id],textarea[id]')].map(n=>n.id);
