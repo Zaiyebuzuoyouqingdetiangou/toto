@@ -1,6 +1,6 @@
 // Split from independentApi.js — runtime.
 
-export const RUNTIME_VERSION = '1.67.42-face-atlas-test5';
+export const RUNTIME_VERSION = '1.67.42-face-atlas-test6';
 
 export const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
 

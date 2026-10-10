@@ -1,19 +1,19 @@
 import { eventSource, event_types, setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
 import * as hostRuntime from '../../../../../script.js';
-import { MODULE_NAME, getSettings } from './settings.js?rmv=1.67.42-face-atlas-test5';
-import { faceDrawNeedsExternal } from './faceDrawRules.js?rmv=1.67.42-face-atlas-test5';
+import { MODULE_NAME, getSettings } from './settings.js?rmv=1.67.42-face-atlas-test6';
+import { faceDrawNeedsExternal } from './faceDrawRules.js?rmv=1.67.42-face-atlas-test6';
 import {
     buildFeedbackCatFinalCheck,
     buildFeedbackCatPrompt,
     clearFeedbackCatExtensionPrompt,
     getActiveFeedbackForCurrentChat,
     markFeedbackCatInjected,
-} from './feedbackCat.js?rmv=1.67.42-face-atlas-test5';
-import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.67.42-face-atlas-test5';
-import { getCurrentChatKey, markPendingBatchAttempt, releasePendingComboBatch } from './storage.js?rmv=1.67.42-face-atlas-test5';
-import { describeExternalWorldBookPreflightFailure } from './externalWorldBook/errors.js?rmv=1.67.42-face-atlas-test5';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.67.42-face-atlas-test5';
-import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.42-face-atlas-test5';
+} from './feedbackCat.js?rmv=1.67.42-face-atlas-test6';
+import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.67.42-face-atlas-test6';
+import { getCurrentChatKey, markPendingBatchAttempt, releasePendingComboBatch } from './storage.js?rmv=1.67.42-face-atlas-test6';
+import { describeExternalWorldBookPreflightFailure } from './externalWorldBook/errors.js?rmv=1.67.42-face-atlas-test6';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.67.42-face-atlas-test6';
+import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.42-face-atlas-test6';
 
 const INJECT_KEY = `${MODULE_NAME}:auto_injection`;
 
@@ -200,6 +200,33 @@ function cancelReplacedIndependentManualIntents(type) {
 // Host generation starts before a new user message is appended. Keep that
 // exact boundary until MESSAGE_SENT, rather than treating an old reply as new.
 let independentManualHostStart = null;
+let independentSwipeHostStart = null;
+
+// ST removes the assistant being swiped from coreChat before calling prompt
+// interceptors. Capture its raw owner at START; a prompt ending in a user row
+// is not enough to identify or authorize a replacement response.
+function beginIndependentSwipeHostGeneration(type, _options, dryRun = false) {
+    const normalizedType = String(type || 'normal').trim().toLowerCase() || 'normal';
+    if (dryRun || !INDEPENDENT_GENERATION_INTENT_TYPES.has(normalizedType)) return;
+    independentSwipeHostStart = null;
+    const settings = getSettings();
+    if (normalizedType !== 'swipe' || settings.enabled === false || settings.autoRabbitMirrorInjection === false
+        || settings.mode === 'off' || settings.generationSource !== 'independent'
+        || independentGenerationTiming(settings) !== 'auto') return;
+    const chat = currentIndependentIntentChat(), index = chat.length - 1, message = chat[index];
+    if (!isIndependentEligibleAssistantMessage(message)) return;
+    independentSwipeHostStart = { chat, chatKey: String(getCurrentChatKey(chat) || ''), index, message,
+        swipe: Number(message.swipe_id ?? message.swipeId ?? 0) || 0, startedAt: Date.now() };
+}
+
+function currentIndependentSwipeHostStart(ctx = currentIndependentIntentContext()) {
+    const start = independentSwipeHostStart;
+    return start && start.chat === ctx.chat && start.chatKey === String(getCurrentChatKey(ctx.chat) || '')
+        && start.index === ctx.chat.length - 1 && ctx.chat[start.index] === start.message
+        && start.swipe === (Number(start.message.swipe_id ?? start.message.swipeId ?? 0) || 0)
+        && Date.now() - start.startedAt <= INDEPENDENT_GENERATION_INTENT_TTL_MS ? start : null;
+}
+
 function beginIndependentManualHostGeneration(type, _options, dryRun = false) {
     const settings = getSettings();
     const normalizedType = String(type || 'normal').trim().toLowerCase() || 'normal';
@@ -639,12 +666,13 @@ function recordIndependentGenerationIntent(chat, type = '', earlySelectionKey = 
         if (changed) globalThis[INDEPENDENT_GENERATION_INTENTS_KEY] = next;
         return null;
     }
-    const tailIndex = messages.length - 1;
-    const tail = tailIndex >= 0 ? messages[tailIndex] : null;
+    const hostContext = currentIndependentIntentContext();
+    const swipeStart = normalizedType === 'swipe' ? currentIndependentSwipeHostStart(hostContext) : null;
+    const tailIndex = swipeStart ? swipeStart.index : messages.length - 1;
+    const tail = swipeStart ? swipeStart.message : tailIndex >= 0 ? messages[tailIndex] : null;
     if (!tail || typeof tail?.is_user !== 'boolean') return null;
     // Host prompt transforms may clone or alter `_chat`. When the same tail exists in
     // SillyTavern's current raw chat, anchor the proof to that raw正文 instead.
-    const hostContext = currentIndependentIntentContext();
     const rawTail = hostContext.chat?.[tailIndex];
     const hostTail = Array.isArray(hostContext.chat) ? hostContext.chat.at(-1) : messages.at(-1);
     const toolTail = Array.isArray(hostTail?.extra?.tool_invocations) && hostTail.extra.tool_invocations.length > 0;
@@ -669,9 +697,12 @@ function recordIndependentGenerationIntent(chat, type = '', earlySelectionKey = 
         tailSwipeId: Number(proofTail?.swipe_id ?? proofTail?.swipeId ?? 0) || 0,
         [INDEPENDENT_INTENT_OWNER]: Object.freeze({
             chat: Array.isArray(hostContext.chat) ? hostContext.chat : messages,
-            tail: proofTail, message: null, index: -1, swipe: 0, receivedAt: 0, renderedAt: 0,
+            tail: proofTail, message: swipeStart ? proofTail : null,
+            index: swipeStart ? tailIndex : -1, swipe: swipeStart ? swipeStart.swipe : 0,
+            receivedAt: 0, renderedAt: 0,
         }),
     });
+    if (swipeStart) independentSwipeHostStart = null;
     // Revoke only unfinished or exact same-operation proof. Completed replies
     // from this chat may still be waiting for the deferred runtime and must not
     // disappear merely because the user starts a second message.
@@ -683,6 +714,7 @@ function recordIndependentGenerationIntent(chat, type = '', earlySelectionKey = 
 
 function clearIndependentGenerationIntents() {
     independentManualHostStart = null;
+    independentSwipeHostStart = null;
     cancelIndependentEarlyIntent('chat-changed');
     globalThis[INDEPENDENT_GENERATION_INTENTS_KEY] = [];
     globalThis[INDEPENDENT_GENERATION_STOPS_KEY] = [];
@@ -695,13 +727,21 @@ export function initIndependentGenerationIntentBridge() {
     try { globalThis[INDEPENDENT_GENERATION_INTENT_BRIDGE_CLEANUP_KEY]?.(); } catch {}
     destroyIndependentGenerationIntentBridge();
     const bindings = [
-        [event_types?.GENERATION_STARTED, beginIndependentManualHostGeneration],
+        [event_types?.GENERATION_STARTED, (...args) => {
+            beginIndependentSwipeHostGeneration(...args);
+            beginIndependentManualHostGeneration(...args);
+        }],
         [event_types?.MESSAGE_SENT, bindIndependentManualUserMessage],
         // END/STOP carries no message owner. Only the exact previously bound
         // operation may use END to reconcile its non-tool/final-render proof.
-        [event_types?.GENERATION_ENDED, () => { independentManualHostStart = null; markIndependentGenerationIntentTerminal('generation-ended'); }],
+        [event_types?.GENERATION_ENDED, () => {
+            independentManualHostStart = null;
+            independentSwipeHostStart = null;
+            markIndependentGenerationIntentTerminal('generation-ended');
+        }],
         [event_types?.GENERATION_STOPPED, () => {
             independentManualHostStart = null;
+            independentSwipeHostStart = null;
             markIndependentGenerationIntentTerminal('generation-stopped');
             cancelIndependentEarlyIntent('host-stopped');
         }],
@@ -725,6 +765,7 @@ export function initIndependentGenerationIntentBridge() {
 export function destroyIndependentGenerationIntentBridge({ clearIntents = false } = {}) {
     stopManualEntryDiagnostic();
     independentManualHostStart = null;
+    independentSwipeHostStart = null;
     cancelIndependentCoreRuntimeWake();
     if (globalThis[INDEPENDENT_EARLY_PACKET_KEY]) cancelIndependentEarlyIntent('bridge-destroyed');
     for (const { event, handler } of independentIntentBridgeSubscriptions) {
@@ -746,7 +787,7 @@ export function destroyIndependentGenerationIntentBridge({ clearIntents = false 
 
 function loadPromptBuilder() {
     if (!promptBuilderPromise) {
-        promptBuilderPromise = import('./promptBuilder.js?rmv=1.67.42-face-atlas-test5').catch(error => {
+        promptBuilderPromise = import('./promptBuilder.js?rmv=1.67.42-face-atlas-test6').catch(error => {
             promptBuilderPromise = null;
             throw error;
         });
@@ -756,7 +797,7 @@ function loadPromptBuilder() {
 
 function loadGenerationGuard() {
     if (!generationGuardPromise) {
-        generationGuardPromise = import('./generationGuard.js?rmv=1.67.42-face-atlas-test5').catch(error => {
+        generationGuardPromise = import('./generationGuard.js?rmv=1.67.42-face-atlas-test6').catch(error => {
             generationGuardPromise = null;
             throw error;
         });
@@ -951,7 +992,7 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
             assertMemoryOwner();
             let repository;
             if (externalEnabled) {
-                repository = await import('./externalWorldBook/store.js?rmv=1.67.42-face-atlas-test5');
+                repository = await import('./externalWorldBook/store.js?rmv=1.67.42-face-atlas-test6');
                 assertFollowPrefetchOwner(prefetchOwner, _chat);
                 externalStage = 'index';
                 await repository.hydrateExternalPoolMetadata();
@@ -974,7 +1015,7 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
             }
             if (frozenPlan.appearanceReference.enabled) {
                 externalStage = 'appearance-read';
-                const appearance = await import('./appearanceReference.js?rmv=1.67.42-face-atlas-test5');
+                const appearance = await import('./appearanceReference.js?rmv=1.67.42-face-atlas-test6');
                 assertFollowPrefetchOwner(prefetchOwner, _chat); assertAppearanceOwner();
                 appearanceMaterial = await appearance.loadAppearanceReferenceMaterial(frozenPlan.appearanceReference.revision);
                 assertFollowPrefetchOwner(prefetchOwner, _chat); assertAppearanceOwner();

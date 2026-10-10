@@ -1,13 +1,13 @@
 // Split from outputSanitizer.js — lifecycle.
-import { untrackMirrorAnimations, pruneMirrorAnimationVisibility, destroyMirrorAnimationVisibility } from '../animationVisibility.js?rmv=1.67.42-face-atlas-test5';
+import { untrackMirrorAnimations, pruneMirrorAnimationVisibility, destroyMirrorAnimationVisibility } from '../animationVisibility.js?rmv=1.67.42-face-atlas-test6';
 
-import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.67.42-face-atlas-test5';
-import { isRabbitMirrorManagedChatSurface, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.67.42-face-atlas-test5';
-import { recordTtSurface, ttSurfaceNow, nextTtSurfaceClickSeq } from '../ttSurfaceDiagnostics.js?rmv=1.67.42-face-atlas-test5';
-import { getSettings } from '../settings.js?rmv=1.67.42-face-atlas-test5';
-import { getCurrentChatKey } from '../storage.js?rmv=1.67.42-face-atlas-test5';
-import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.67.42-face-atlas-test5';
-import { RECIPE_RECORDED_EVENT } from '../blacklist.js?rmv=1.67.42-face-atlas-test5';
+import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.67.42-face-atlas-test6';
+import { isRabbitMirrorManagedChatSurface, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.67.42-face-atlas-test6';
+import { recordTtSurface, ttSurfaceNow, nextTtSurfaceClickSeq } from '../ttSurfaceDiagnostics.js?rmv=1.67.42-face-atlas-test6';
+import { getSettings } from '../settings.js?rmv=1.67.42-face-atlas-test6';
+import { getCurrentChatKey } from '../storage.js?rmv=1.67.42-face-atlas-test6';
+import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.67.42-face-atlas-test6';
+import { RECIPE_RECORDED_EVENT } from '../blacklist.js?rmv=1.67.42-face-atlas-test6';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -22,14 +22,14 @@ import {
     hashInteractionSignature,
     isCurrentRuntime,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.67.42-face-atlas-test5';
+} from './runtime.js?rmv=1.67.42-face-atlas-test6';
 import {
     getAvailableHostChat,
     getExternalOwnerMessageIndex,
     getRabbitMirrorSummaryText,
     getRawAssistantMessageForRenderedRoot,
-} from './scriptedInteractionRescue.js?rmv=1.67.42-face-atlas-test5';
-import { firstUseInteractionBindings } from './idsAndRearm.js?rmv=1.67.42-face-atlas-test5';
+} from './scriptedInteractionRescue.js?rmv=1.67.42-face-atlas-test6';
+import { firstUseInteractionBindings } from './idsAndRearm.js?rmv=1.67.42-face-atlas-test6';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     MAINTENANCE_AUTO_SAFE_ATTR,
@@ -47,7 +47,7 @@ import {
     removeAllInteractionDiagnosticPanels,
     scheduleCurrentHighConfidenceTextRepair,
     stripMaintenanceRabbitGlyphs,
-} from './diagnostics.js?rmv=1.67.42-face-atlas-test5';
+} from './diagnostics.js?rmv=1.67.42-face-atlas-test6';
 import {
     cancelMaintenanceRepairRun,
     cancelMaintenanceRepairRuns,
@@ -57,9 +57,9 @@ import {
     rabbitMirrorInteractionRootFromTarget,
     rejectOversizedMaintenanceRepair,
     runMaintenanceSafeAutomaticRepairs,
-} from './maintenanceInspect.js?rmv=1.67.42-face-atlas-test5';
-import { decodeHtmlEntities } from './markup.js?rmv=1.67.42-face-atlas-test5';
-import { getRabbitMirrorFacePosition } from './layoutRescue.js?rmv=1.67.42-face-atlas-test5';
+} from './maintenanceInspect.js?rmv=1.67.42-face-atlas-test6';
+import { decodeHtmlEntities } from './markup.js?rmv=1.67.42-face-atlas-test6';
+import { getRabbitMirrorFacePosition } from './layoutRescue.js?rmv=1.67.42-face-atlas-test6';
 import {
     cancelStartupMaintenanceHistoryInstall,
     closeFeedbackCatMenu,
@@ -74,7 +74,7 @@ import {
     removeFeedbackCatsInChatDom,
     removeMaintenanceRabbitsInChatDom,
     toolOutsideCloseOwners,
-} from './toolsChrome.js?rmv=1.67.42-face-atlas-test5';
+} from './toolsChrome.js?rmv=1.67.42-face-atlas-test6';
 
 export let hostScriptModule = null;
 

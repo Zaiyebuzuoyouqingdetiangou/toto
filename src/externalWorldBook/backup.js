@@ -1,6 +1,6 @@
-import { ExternalWorldBookError } from './errors.js?rmv=1.67.42-face-atlas-test5';
-import { externalEntryId, externalEntryStableIdentity, externalLibraryIdForBook, openExternalLibraryDatabase } from './store.js?rmv=1.67.42-face-atlas-test5';
-import { EXTERNAL_POOL_METADATA_VERSION, externalPoolMetadataForLibrary, upsertExternalPoolLibraries } from './externalPool.js?rmv=1.67.42-face-atlas-test5';
+import { ExternalWorldBookError } from './errors.js?rmv=1.67.42-face-atlas-test6';
+import { externalEntryId, externalEntryStableIdentity, externalLibraryIdForBook, openExternalLibraryDatabase } from './store.js?rmv=1.67.42-face-atlas-test6';
+import { EXTERNAL_POOL_METADATA_VERSION, externalPoolMetadataForLibrary, upsertExternalPoolLibraries } from './externalPool.js?rmv=1.67.42-face-atlas-test6';
 
 export const EXTERNAL_BACKUP_FORMAT = 'RabbitMirror.ExternalLibraries';
 export const EXTERNAL_BACKUP_VERSION = 1;

@@ -12,8 +12,8 @@ export {
     getLastIndependentModelListDiagnostic,
     fetchIndependentModels,
     testIndependentConnection,
-} from './independentApi/connection.js?rmv=1.67.42-face-atlas-test5';
-export { remeasureRabbitMirrorFaceGeometry, undoRabbitMirrorFaceAutoWidth, repairRabbitMirrorFaceAutoWidth } from './independentApi/geometry.js?rmv=1.67.42-face-atlas-test5';
-export { hydrateIndependentFavoriteHtml } from './independentApi/mount.js?rmv=1.67.42-face-atlas-test5';
-export { listMissingIndependentRetryFloors, resyncMissingIndependentRetryShells } from './independentApi/earlyBody.js?rmv=1.67.42-face-atlas-test5';
-export { refreshRabbitMirrorGenerationMode, initIndependentRabbitMirror, destroyIndependentRabbitMirror } from './independentApi/lifecycle.js?rmv=1.67.42-face-atlas-test5';
+} from './independentApi/connection.js?rmv=1.67.42-face-atlas-test6';
+export { remeasureRabbitMirrorFaceGeometry, undoRabbitMirrorFaceAutoWidth, repairRabbitMirrorFaceAutoWidth } from './independentApi/geometry.js?rmv=1.67.42-face-atlas-test6';
+export { hydrateIndependentFavoriteHtml } from './independentApi/mount.js?rmv=1.67.42-face-atlas-test6';
+export { listMissingIndependentRetryFloors, resyncMissingIndependentRetryShells } from './independentApi/earlyBody.js?rmv=1.67.42-face-atlas-test6';
+export { refreshRabbitMirrorGenerationMode, initIndependentRabbitMirror, destroyIndependentRabbitMirror } from './independentApi/lifecycle.js?rmv=1.67.42-face-atlas-test6';

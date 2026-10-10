@@ -1,13 +1,13 @@
 // Split from independentApi.js — earlyBody.
-import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.67.42-face-atlas-test5';
+import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.67.42-face-atlas-test6';
 
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.67.42-face-atlas-test5';
-import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.67.42-face-atlas-test5';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.67.42-face-atlas-test5';
-import { getSettings } from '../settings.js?rmv=1.67.42-face-atlas-test5';
-import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.67.42-face-atlas-test5';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=1.67.42-face-atlas-test5';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.67.42-face-atlas-test5';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.67.42-face-atlas-test6';
+import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.67.42-face-atlas-test6';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.67.42-face-atlas-test6';
+import { getSettings } from '../settings.js?rmv=1.67.42-face-atlas-test6';
+import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.67.42-face-atlas-test6';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=1.67.42-face-atlas-test6';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.67.42-face-atlas-test6';
 import {
     MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE,
     INDEPENDENT_HISTORY_READ_ERROR_MESSAGE,
@@ -17,7 +17,7 @@ import {
     isMissingShellTargetFloor,
     normalizeMissingShellScanRange,
     shouldRestoreMissingIndependentRetryShell,
-} from './missingRetryShell.js?rmv=1.67.42-face-atlas-test5';
+} from './missingRetryShell.js?rmv=1.67.42-face-atlas-test6';
 import {
     INDEPENDENT_GENERATION_INTENTS_KEY,
     INDEPENDENT_GENERATION_INTENT_TYPES,
@@ -27,7 +27,7 @@ import {
     currentRuntime,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.67.42-face-atlas-test5';
+} from './runtime.js?rmv=1.67.42-face-atlas-test6';
 import {
     ACTIVE_GENERATION_WAIT_MS,
     FINAL_RENDER_POLL_INTERVAL_MS,
@@ -41,7 +41,7 @@ import {
     markAutomaticFailureStop,
     operationEpochForBase,
     pending,
-} from './flights.js?rmv=1.67.42-face-atlas-test5';
+} from './flights.js?rmv=1.67.42-face-atlas-test6';
 import {
     appendHistoryEntry,
     chatPersistenceSlot,
@@ -57,7 +57,7 @@ import {
     reconcileIndependentChatOwners,
     rememberChatMessageOrder,
     checkOwnerRemapEpoch,
-} from './persistence.js?rmv=1.67.42-face-atlas-test5';
+} from './persistence.js?rmv=1.67.42-face-atlas-test6';
 import {
     activeGlobalWorldInfoCapture,
     assistantMessages,
@@ -107,7 +107,7 @@ import {
     withOwnerLockStoreBatch,
     writeActiveGlobalWorldInfoCapture,
     writeHostModule,
-} from './connection.js?rmv=1.67.42-face-atlas-test5';
+} from './connection.js?rmv=1.67.42-face-atlas-test6';
 import {
     allExternalHosts,
     externalHosts,
@@ -115,7 +115,7 @@ import {
     removeEmptyFollowExternalAnchors,
     removeEmptyInlineAnchors,
     withExternalHostSyncIndex,
-} from './request.js?rmv=1.67.42-face-atlas-test5';
+} from './request.js?rmv=1.67.42-face-atlas-test6';
 import {
     beginHostWorkTiming,
     clearExternalHostFreshSourceState,
@@ -148,7 +148,7 @@ import {
     setPlaceholderSummary,
     usableReadyDetails,
     withRestorableHtmlCacheBatch,
-} from './geometry.js?rmv=1.67.42-face-atlas-test5';
+} from './geometry.js?rmv=1.67.42-face-atlas-test6';
 import {
     INDEPENDENT_INTENT_OWNER,
     abortFlight,
@@ -202,7 +202,7 @@ import {
     serializeExternalFaceDetails,
     stampAutomaticAuthorizationEpoch,
     withHistoricalRestoreLightPass,
-} from './mount.js?rmv=1.67.42-face-atlas-test5';
+} from './mount.js?rmv=1.67.42-face-atlas-test6';
 import {
     automaticGenerationCutovers,
     hostGenerationHintStartedAt,
@@ -227,7 +227,7 @@ import {
     writeStartupHistoryFallbackRoot,
     writeSyncRunning,
     writeSyncTimer,
-} from './lifecycle.js?rmv=1.67.42-face-atlas-test5';
+} from './lifecycle.js?rmv=1.67.42-face-atlas-test6';
 
 let earlyBodyParserPromise=null;
 
@@ -350,7 +350,7 @@ function settleEarlyBodyAtFinal(ctx,index){
 
 async function probeIndependentEarlyBody(packet,sequence){
  if(!earlyBodyPacketCurrent(packet)) return;
- if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.67.42-face-atlas-test5')
+ if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.67.42-face-atlas-test6')
   .then(module=>{earlyBodyParser=module;return module;}).catch(()=>{earlyBodyParserPromise=null;return null;});
  const parser=await earlyBodyParserPromise;
  if(!parser || sequence!==earlyBodyProbeSequence || !earlyBodyPacketCurrent(packet)) return;
@@ -1112,6 +1112,15 @@ function hasScheduledIndependentGeneration(index){
  return !!poll && !poll.cancelled;
 }
 
+// Final host paint is followed by an existing settlement window before the
+// per-message poll exists. Passive history recovery must not mark that live
+// owner as a failed historical lookup in the gap. This grants no authorization.
+function hasPendingIndependentHostSettlement(ctx,index){
+ if(!automaticIndependentTiming()) return false;
+ const owner=automaticGenerationCutovers.get(chatKey(ctx))?.activeHostGeneration;
+ return !!owner?.settleTimer && automaticHostGenerationRenderMatches(ctx,index,owner);
+}
+
 // Read completion only refreshes the original owner. Repeated managed-surface
 // mounts share one waiter and must not create an error shell while IDB is pending.
 const historySyncWaiters=new WeakMap();
@@ -1242,7 +1251,7 @@ function syncMessagesCore(indices=null){
        const isActiveGenerationTarget=i===activeGenerationIndex;
        const automaticGenerationSuppressed=suppressesAutomaticGeneration(ctx,i) || hasExistingFollowRabbitMirror(ctx,i,m);
        const quickWaiting=quickWaitingCandidate(ctx,i);
-       const scheduledGeneration=hasScheduledIndependentGeneration(i);
+       const scheduledGeneration=hasScheduledIndependentGeneration(i) || hasPendingIndependentHostSettlement(ctx,i);
 
        // Never repaint an old mirror over a newly regenerated/swiped正文. A
        // record is eligible only for the exact current source fingerprint.
@@ -1611,7 +1620,7 @@ function restoreMissingIndependentRetryOnElement(el,index){
  const generationActive=hostGenerationLooksActive();
  const tailIndex=Array.isArray(ctx.chat)?ctx.chat.length-1:-1;
  const key=recordKey(ctx,index,m);
- const scheduledGeneration=hasScheduledIndependentGeneration(index);
+ const scheduledGeneration=hasScheduledIndependentGeneration(index) || hasPendingIndependentHostSettlement(ctx,index);
  const errorHost=hosts.find(host=>host.dataset.rmState==='error')||null;
  if(errorHost && !hasReady){
   errorHost.hidden=false;

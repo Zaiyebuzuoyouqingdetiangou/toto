@@ -1,7 +1,7 @@
 // Split from ui.js — runtime.
 
-export const SETTINGS_UI_VERSION = '1.67.42-face-atlas-test5';
-export const RUNTIME_VERSION = '1.67.42-face-atlas-test5';
+export const SETTINGS_UI_VERSION = '1.67.42-face-atlas-test6';
+export const RUNTIME_VERSION = '1.67.42-face-atlas-test6';
 
 export function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;

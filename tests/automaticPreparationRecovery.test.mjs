@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
+import { mainReplyAbnormalReason } from '../src/mainReplySafetyValve.js';
 
 const sources = Object.fromEntries(['earlyBody', 'mount', 'geometry', 'flights', 'missingRetryShell'].map(name =>
     [name, readFileSync(new URL(`../src/independentApi/${name}.js`, import.meta.url), 'utf8')]));
@@ -59,7 +60,18 @@ function harness() {
         generationPolls: polls, pending: new Map(), automaticFailureStops: failures,
         operationEpochForBase: () => epoch, automaticDispatchAlreadyConsumed: () => consumed,
         activeIndependentFlightForBase: () => null, hasExistingFollowRabbitMirror: () => false,
-        automaticHostGenerationRenderMatches: () => false, externalHostGenerationActivity: () => ({ active: false }),
+        externalHostGenerationActivity: () => ({ active: false }),
+        lastAssistantMessage: c => ({ i: 0, m: c.chat[0] }),
+        deferredIndependentGenerationIntents: () => [], boundIndependentIntentOwner: () => null,
+        independentHistoryLoaded: () => true, independentHistoryReadState: () => 'loaded',
+        ensureAutomaticGenerationCutover: () => cutover, hostModule: { event_types: { GENERATION_ENDED: 'GENERATION_ENDED' } },
+        automaticHostGenerationMayUseTools: () => false,
+        holdAbnormalAutomaticReply: (c, i) => !!mainReplyAbnormalReason(c.chat[i]),
+        writeHostGenerationInProgress() {}, writeHostGenerationHintStartedAt() {}, clearGenerationPlaceholderPoll() {},
+        finishGlobalWorldInfoCapture() {}, claimDeferredIndependentGenerationIntent: () => false,
+        quickAuthorizationOwners: new WeakMap(), quickIntentOwners: new WeakMap(), quickStartOwners: new WeakSet(),
+        advanceOperationEpochForBase: () => ++epoch, ensureGenerationPlaceholderForIndex() {}, queueMessageSync() {},
+        hasGenerationWorkFor: () => false, HOST_FINAL_PROOF_WAIT_MS: 12000,
         hostGenerationLooksActive: () => false, hostGenerationActivity: () => ({ strong: false, weak: false }),
         flightIdentity: (slot, hash) => `${slot}/${hash}`, baseSlotOf: () => 'chat:0:0', AUTOMATIC_FAILURE_STOP_LIMIT: 320,
         SOURCE_STABLE_WAIT_MS: 1400, FINAL_RENDER_SOURCE_STABLE_WAIT_MS: 520, FINAL_RENDER_POLL_INTERVAL_MS: 120,
@@ -87,13 +99,19 @@ function harness() {
     };
     const context = vm.createContext(sandbox);
     for (const [file, names] of Object.entries({
-        earlyBody: ['suppressesAutomaticGeneration', 'syncMessagesCore', 'restoreMissingIndependentRetryOnElement'],
+        earlyBody: ['suppressesAutomaticGeneration', 'automaticHostGenerationRenderMatches', 'waitForIndependentHistory', 'missingIndependentHistoryMessage', 'syncMessagesCore', 'restoreMissingIndependentRetryOnElement'],
         mount: ['generationPollKey', 'generationWaitPollDelay', 'refreshUnpaidAutomaticAuthorization', 'scheduleMessageGeneration'],
         geometry: ['quickWaitingCandidate'],
         flights: ['automaticFailureKey', 'automaticFailureStopFor', 'markAutomaticFailureStop'],
         missingRetryShell: ['shouldRestoreMissingIndependentRetryShell', 'hasUsableAssistantBody', 'isMissingShellTargetFloor'],
     })) for (const name of names) install(context, file, name);
     install(context, 'earlyBody', 'hasScheduledIndependentGeneration', true);
+    install(context, 'earlyBody', 'hasPendingIndependentHostSettlement', true);
+    for (const name of ['clearAutomaticHostGenerationSettlement', 'automaticHostRenderProof', 'automaticHostSettlementActivity',
+        'refreshAutomaticHostGenerationEvidence', 'automaticHostGenerationSettlementCandidate', 'settleAutomaticHostGeneration',
+        'unlockAutomaticGenerationCutover', 'activateAuthorizedAutomaticGeneration', 'finalizeAutomaticHostGeneration',
+        'scheduleAutomaticHostGenerationSettlement']) install(context, 'earlyBody', name);
+    for (const name of ['automaticAuthorizationLineage', 'stampAutomaticAuthorizationEpoch']) install(context, 'mount', name);
     return { context, time, ctx, message, cutover, polls, failures, paints, element, identity,
         host: () => host, dispatches: () => dispatched,
         removeHost() { host = null; },
@@ -103,10 +121,46 @@ function harness() {
         error() { paint(element, identity().slot, 'old terminal card', 'error', 'independent', ctx.chat[0].mes); },
         fail() { context.markAutomaticFailureStop(identity().slot, identity().sourceHash, 'network', { baseSlot: 'chat:0:0', operationEpoch: epoch, message: 'network' }); },
         changeEpoch() { epoch++; },
+        settling() {
+            cutover.authorized.clear();
+            message.mes = '<content>新版本正文已经完整结束，这是一段用于验证最终回复归属和请求次数的原创测试文本。</content>';
+            cutover.activeHostGeneration = { chat: 'chat', chatRef: ctx.chat, type: 'swipe', phase: 0,
+                startChatLength: 1, startTailIndex: 0, startTailRole: 'assistant', phaseBaselineIndex: 0, phaseBaselineToken: 'previous body',
+                settleTimer: 1, terminalSeen: true, terminalReason: 'GENERATION_ENDED', terminalAt: time.Date.now(),
+                tentativeRender: { index: 0, phase: 0, chat: ctx.chat, message, swipe: message.swipe_id, token: message.mes, at: time.Date.now() } };
+        },
     };
 }
 
 for (const entry of ['sync', 'restore']) {
+    test(`${entry}: final render, passive recovery, settlement and generation dispatch run once in order`, () => {
+        const h = harness(); h.settling();
+        h.context.scheduleAutomaticHostGenerationSettlement();
+        h.time.advance(120); h[entry]();
+        assert.equal(h.failures.size, 0);
+        assert.equal(h.dispatches(), 0);
+        h.time.advance(2000);
+        assert.equal(h.dispatches(), 1);
+        h.time.advance(2000);
+        assert.equal(h.dispatches(), 1, 'passive recovery cannot add a second generation');
+    });
+    test(`${entry}: a new swipe awaiting host settlement is not historical missing output`, () => {
+        const h = harness(); h.settling();
+        h[entry]();
+        assert.equal(h.failures.size, 0, 'passive recovery must not manufacture a terminal failure before settlement');
+        assert.equal(h.paints.some(p => p.state === 'error'), false);
+        assert.equal(h.dispatches(), 0, 'pending completion never grants a paid request');
+        h.cutover.activeHostGeneration = null;
+        h[entry]();
+        assert.equal(h.failures.size, 1, 'a genuinely abandoned operation still exposes recovery');
+    });
+    test(`${entry}: an owner bound to a different swipe cannot hide this missing-output card`, () => {
+        const h = harness(); h.settling();
+        h.cutover.activeHostGeneration.tentativeRender.swipe++;
+        h[entry]();
+        assert.equal(h.failures.size, 1);
+        assert.equal(h.dispatches(), 0);
+    });
     test(`${entry}: a body postprocess before the generation poll does not create a terminal failure`, () => {
         const h = harness(); h.start(); h.message.mes += ' postprocessed';
         h[entry]();

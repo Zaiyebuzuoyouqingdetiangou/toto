@@ -1,16 +1,16 @@
 // Split from independentApi.js — faceSwipe.
 
-import { getSettings } from '../settings.js?rmv=1.67.42-face-atlas-test5';
-import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.67.42-face-atlas-test5';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.67.42-face-atlas-test5';
-import { configuredAutomaticRerollMax } from '../automaticReroll.js?rmv=1.67.42-face-atlas-test5';
-import { seedSwipeState, appendSuccessfulSwipe, faceSwipeStorageSlot, readFaceSwipe, mutateFaceSwipe, restoreFaceSwipeSnapshot } from '../swipeVersions.js?rmv=1.67.42-face-atlas-test5';
-import { EPHEMERAL_FAILURE_ATTR, EPHEMERAL_FAILURE_BODY_ATTR, RUNTIME_VERSION } from './runtime.js?rmv=1.67.42-face-atlas-test5';
-import { independentRecordWithinBudget, readStore, writePersistedOwner, writeStore } from './persistence.js?rmv=1.67.42-face-atlas-test5';
-import { chatKey, saveRecordForSlot, savedIndependentRecordForOwner, swipeId } from './connection.js?rmv=1.67.42-face-atlas-test5';
-import { hasMultifaceMarkup, wrapIndependentFace } from './request.js?rmv=1.67.42-face-atlas-test5';
-import { attachIndependentUnsavedNotices, externalFaceDetails, passiveObservedIdentity, showIndependentUnsavedOutput } from './mount.js?rmv=1.67.42-face-atlas-test5';
-import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.67.42-face-atlas-test5';
+import { getSettings } from '../settings.js?rmv=1.67.42-face-atlas-test6';
+import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.67.42-face-atlas-test6';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.67.42-face-atlas-test6';
+import { configuredAutomaticRerollMax } from '../automaticReroll.js?rmv=1.67.42-face-atlas-test6';
+import { seedSwipeState, appendSuccessfulSwipe, faceSwipeStorageSlot, readFaceSwipe, mutateFaceSwipe, restoreFaceSwipeSnapshot } from '../swipeVersions.js?rmv=1.67.42-face-atlas-test6';
+import { EPHEMERAL_FAILURE_ATTR, EPHEMERAL_FAILURE_BODY_ATTR, RUNTIME_VERSION } from './runtime.js?rmv=1.67.42-face-atlas-test6';
+import { independentRecordWithinBudget, readStore, writePersistedOwner, writeStore } from './persistence.js?rmv=1.67.42-face-atlas-test6';
+import { chatKey, saveRecordForSlot, savedIndependentRecordForOwner, swipeId } from './connection.js?rmv=1.67.42-face-atlas-test6';
+import { hasMultifaceMarkup, wrapIndependentFace } from './request.js?rmv=1.67.42-face-atlas-test6';
+import { attachIndependentUnsavedNotices, externalFaceDetails, passiveObservedIdentity, showIndependentUnsavedOutput } from './mount.js?rmv=1.67.42-face-atlas-test6';
+import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.67.42-face-atlas-test6';
 
 export function independentRerollMax(){ return configuredAutomaticRerollMax(getSettings()); }
 

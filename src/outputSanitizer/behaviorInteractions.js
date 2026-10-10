@@ -1,5 +1,5 @@
-import { updateBehaviorResults } from './behaviorResults.js?rmv=1.67.42-face-atlas-test5';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.67.42-face-atlas-test5';
+import { updateBehaviorResults } from './behaviorResults.js?rmv=1.67.42-face-atlas-test6';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.67.42-face-atlas-test6';
 
 // Declarative, face-local behaviors. No generated code, global targets or timers.
 const roots = new WeakMap();
@@ -71,7 +71,14 @@ function reveal(state, p) {
 
 function countSteps(state) {
     const steps = own(state.group, 'button[data-rm-step]');
-    style(state, state.group, '--rm-count', String(steps.filter(node => node.getAttribute('data-rm-done') === 'true').length));
+    const completed = steps.filter(node => node.getAttribute('data-rm-done') === 'true').length;
+    style(state, state.group, '--rm-count', String(completed));
+    // A leaf group's result may be a sibling of its buttons. Mirror completion
+    // onto their common group so authored descendant CSS can reveal that result.
+    // Containers with nested behaviors retain button/count state only: marking
+    // their ancestor done would also reveal an unfinished nested result via CSS.
+    if (steps.length > 0 && completed === steps.length && !state.group.querySelector(GROUP)) state.group.setAttribute('data-rm-done', 'true');
+    else state.group.removeAttribute('data-rm-done');
     for (const step of steps) step.setAttribute('aria-pressed', String(step.getAttribute('data-rm-done') === 'true'));
 }
 

@@ -1,9 +1,9 @@
-import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.67.42-face-atlas-test5';
+import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.67.42-face-atlas-test6';
 // Split from outputSanitizer.js — markup.
 
-import { getSettings } from '../settings.js?rmv=1.67.42-face-atlas-test5';
-import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.67.42-face-atlas-test5';
-import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.67.42-face-atlas-test5';
+import { getSettings } from '../settings.js?rmv=1.67.42-face-atlas-test6';
+import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.67.42-face-atlas-test6';
+import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.67.42-face-atlas-test6';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     INTERACTION_HOME_ATTR,
@@ -15,7 +15,7 @@ import {
     clearMirrorTitleDisplayArtifacts,
     escapeRegExp,
     hashInteractionSignature,
-} from './runtime.js?rmv=1.67.42-face-atlas-test5';
+} from './runtime.js?rmv=1.67.42-face-atlas-test6';
 
 const TOTO_BLOCK_RE = /<toto\b[\s\S]*?<\/toto>/gi;
 
