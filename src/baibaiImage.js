@@ -1,8 +1,8 @@
-import { chatu8Status, generateViaChatu8 } from './chatu8Image.js?rmv=1.67.50';
-import { getSettings } from './settings.js?rmv=1.67.50';
-import { getContext } from './independentApi/runtime.js?rmv=1.67.50';
-import { getChatu8ImageCharacters } from './imageCharacterPresets.js?rmv=1.67.50';
-import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.67.50';
+import { chatu8Status, generateViaChatu8 } from './chatu8Image.js?rmv=1.67.55';
+import { getSettings } from './settings.js?rmv=1.67.55';
+import { getContext } from './independentApi/runtime.js?rmv=1.67.55';
+import { getChatu8ImageCharacters } from './imageCharacterPresets.js?rmv=1.67.55';
+import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.67.55';
 function failure(code, message) { return Object.assign(new Error(message), { code }); }
 
 function imageApi() {

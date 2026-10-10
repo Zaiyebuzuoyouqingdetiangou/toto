@@ -2,10 +2,10 @@
 // （点 label／按钮、拖滑杆、开合内层 details），比较操作前后的画面快照；没有任何变化的就是“点了没反应”。
 // 副本里会重新接上和真实页面一样的修复，所以修好的控件在副本里也能动。
 // 真实页面上的控件一个不碰；结果只写回一个属性，供维修兔的结论和诊断引用。
-import { createMaintenanceLabeledCheckedProbeSandbox, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.67.50';
-import { rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.67.50';
-import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.67.50';
-import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=1.67.50';
+import { createMaintenanceLabeledCheckedProbeSandbox, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.67.55';
+import { rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.67.55';
+import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.67.55';
+import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=1.67.55';
 
 export const GENERIC_PROBE_RESULT_ATTR = 'data-rabbit-mirror-generic-probe';
 const TOOL_SELECTOR = '[data-rabbit-mirror-tool-entry-host],[data-rabbit-mirror-diagnostic-panel],.rabbit-mirror-maintenance-menu,[data-rm-face-swipe-host],[data-rm-image-region],[data-rm-mobile-controls],[data-rabbit-mirror-maintenance-rabbit],[data-rabbit-mirror-feedback-cat]';
@@ -127,6 +127,8 @@ function activate(details, control) {
         try { element.click(); } catch { fire(element, 'click'); }
         return 'done';
     }
+    // 「按住」类按钮：按下时才有变化、松手就复原。先按下，看完画面再松开（见下面的 hold 处理）。
+    if (element.matches?.('[data-rm-hold]')) { fire(element, 'pointerdown', { button: 0, isPrimary: true, pointerId: 1 }); return 'hold'; }
     fire(element, 'pointerdown'); fire(element, 'pointerup');
     try { element.click(); } catch { fire(element, 'click'); }
     return 'done';
@@ -172,7 +174,9 @@ export function runMaintenanceGenericProbe(root) {
             tested += 1;
             if (outcome === 'dead') { dead.push(controlName(control.element)); continue; }
             try { void details.offsetHeight; } catch {}
-            if (snapshot(details) !== before) continue;
+            const changed = snapshot(details) !== before;
+            if (outcome === 'hold') fire(control.element, 'pointerup', { button: 0, isPrimary: true, pointerId: 1 });
+            if (changed) continue;
             // 只是鼠标变手形的元素：可能只是悬停效果（副本里的模拟点击不会触发 :hover），不能据此判它“点了没反应”。
             if (control.kind === 'pointer') { tested -= 1; uncertain += 1; continue; }
             dead.push(controlName(control.element));

@@ -1,7 +1,7 @@
-import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.67.50';
-import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=1.67.50';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.67.50';
-import { createFavoriteAtlasPanel } from './favoriteAtlasesUi.js?rmv=1.67.50';
+import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.67.55';
+import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=1.67.55';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.67.55';
+import { createFavoriteAtlasPanel } from './favoriteAtlasesUi.js?rmv=1.67.55';
 const DB_NAME = 'rabbit_mirror_theater_favorites_v1';
 const STORE = 'favorites';
 const DB_VERSION = 1;
@@ -511,7 +511,7 @@ export async function removeDuplicateTheaterFavorites() {
     if (!remap.size) return 0;
     await runStore('readwrite', store => { for (const id of remap.keys()) store.delete(id); });
     try {
-        const atlases = await import('./favoriteAtlases.js?rmv=1.67.50');
+        const atlases = await import('./favoriteAtlases.js?rmv=1.67.55');
         for (const atlas of await atlases.listFavoriteAtlases()) {
             let changed = false;
             const selections = {};

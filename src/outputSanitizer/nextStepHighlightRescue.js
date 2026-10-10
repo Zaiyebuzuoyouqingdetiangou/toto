@@ -2,8 +2,8 @@
 // 选中第 2 项时点亮第 3 个……于是按下去的那个按钮不亮，旁边的亮了，看起来像点错、点了没反应。
 // 只在一组单选里每一项都恰好点亮另一项、没有任何一项点亮自己时，把高亮改回“按下的那个按钮自己”。
 // 只改本面样式里这几条选择器的目标，不改颜色、不改内容。
-import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.67.50';
-import { splitCssSelectorList } from './markup.js?rmv=1.67.50';
+import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.67.55';
+import { splitCssSelectorList } from './markup.js?rmv=1.67.55';
 
 const RESCUE_ATTR = 'data-rabbit-mirror-next-step-highlight-rescue';
 const PAIR_RE = /(?:#([\w-]+)|\[\s*id\s*=\s*["']?([\w-]+)["']?\s*\])\s*:checked\s*~\s*([^{}]*?)label\[\s*for\s*=\s*["']?([\w-]+)["']?\s*\]\s*$/;
