@@ -1,8 +1,8 @@
-import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.67.61';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.67.61';
-import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.67.61';
-import { behaviorCssMentions, hasBehaviorStateClasses, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.67.61';
-import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.67.61';
+import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.67.62';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.67.62';
+import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.67.62';
+import { behaviorCssMentions, hasBehaviorStateClasses, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.67.62';
+import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.67.62';
 
 // Declarative, face-local behaviors. No generated code, global targets or timers.
 const roots = new WeakMap();
@@ -582,11 +582,15 @@ function syncState(state) {
         }
     } else if (type === 'pick' || type === 'roll') {
         if (state.picked) group.setAttribute('data-rm-picked', state.picked); else group.removeAttribute('data-rm-picked');
+        // 模型的样式按容器上的某个属性值切换（如 .sheet[data-scale="2"] …）时，选中的键同步写进这个属性。
+        const pickAttr = String(group.getAttribute('data-rm-pick-attr') || '');
+        const validAttr = /^(?:data-(?!rm-|rabbit)[\w-]+|aria-[\w-]+)$/.test(pickAttr);
+        if (validAttr && state.picked && group.getAttribute(pickAttr) !== state.picked) group.setAttribute(pickAttr, state.picked);
         for (const control of own(group, '[data-rm-pick]')) {
             const on = Boolean(state.picked) && String(control.getAttribute('data-rm-pick') || '').trim() === state.picked;
             control.setAttribute('aria-pressed', String(on));
             setFlag(control, 'data-rm-active', on);
-            mark(state, control, on, ['data-rm-active', 'aria-pressed', 'data-rm-picked']);
+            mark(state, control, on, ['data-rm-active', 'aria-pressed', 'data-rm-picked', validAttr ? pickAttr : '']);
         }
     } else if (type === 'pager') {
         const total = state.pages.length;

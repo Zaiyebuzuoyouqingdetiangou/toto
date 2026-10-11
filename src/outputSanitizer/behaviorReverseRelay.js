@@ -3,17 +3,17 @@
 // 就试着把这一块认成插件的「翻面／开关」或「多选一」，由插件按状态类去切换。
 // 和正向接力一样：先在隔离副本里改好标识再实测，没反应的变少、原来能用的仍能用，才在真实页面上照做；
 // 只认样式里确实写了的状态类，不补内容、不猜目标；含勾选框、单选、滑杆、内层折叠的区域不碰（那是老修复器的地盘）。
-import { collectGenericProbeControls, openGenericProbeSandbox, probeGenericControls } from './maintenanceGenericProbe.js?rmv=1.67.61';
-import { installBehaviorInteractions } from './behaviorInteractions.js?rmv=1.67.61';
-import { hasBehaviorStateClasses } from './behaviorStateMirror.js?rmv=1.67.61';
-import { rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.67.61';
-import { INERT_ACTION_BUTTON_RESCUE_ATTR } from './diagnostics.js?rmv=1.67.61';
-import { applyReversePatch, authoredElements, behaviorFaceTextKey, elementSignature, rememberReversePatches } from './behaviorRelayMemory.js?rmv=1.67.61';
+import { collectGenericProbeControls, openGenericProbeSandbox, probeGenericControls } from './maintenanceGenericProbe.js?rmv=1.67.62';
+import { installBehaviorInteractions } from './behaviorInteractions.js?rmv=1.67.62';
+import { behaviorStyleText, hasBehaviorStateClasses } from './behaviorStateMirror.js?rmv=1.67.62';
+import { rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.67.62';
+import { INERT_ACTION_BUTTON_RESCUE_ATTR } from './diagnostics.js?rmv=1.67.62';
+import { applyReversePatch, authoredElements, behaviorFaceTextKey, elementSignature, rememberReversePatches } from './behaviorRelayMemory.js?rmv=1.67.62';
 
 export const BEHAVIOR_REVERSE_ATTR = 'data-rabbit-mirror-behavior-reverse-relayed';
 const NODE_TAG = 'data-rm-rev-node';
 const BUDGET_MS = 1500;
-const BLOCKING = 'input[type="checkbox"], input[type="radio"], input[type="range"], details, label[for], [data-rm-ui], [data-rm-released]';
+const BLOCKING = 'input[type="checkbox"], input[type="radio"], input[type="range"], details, label[for], [data-rm-released]';
 
 function faceDetails(root) {
     return root?.matches?.('details') ? root : root?.querySelector?.('details');
@@ -51,10 +51,82 @@ function commonAncestor(nodes) {
 const firstClass = node => String(node?.getAttribute?.('class') || '').split(/\s+/).filter(Boolean)[0] || '';
 const isControlLike = node => node.matches?.('button, [role="button"], a[href]') || false;
 
+// 样式里“容器带某个属性值时，里面某个类的部件变样”的写法：
+// .sheet[data-scale="2"] .stage-2 { … } → 容器 .sheet、属性 data-scale、值 2、部件类 stage-2。
+const PROGRAM_ATTR = /^(?:data-(?!rm-|rabbit)[\w-]+|aria-[\w-]+)$/;
+function splitCompounds(selector) {
+    const parts = [];
+    let depth = 0, current = '';
+    for (const char of selector) {
+        if (char === '[') depth += 1;
+        if (char === ']') depth = Math.max(0, depth - 1);
+        if (!depth && /[\s>+~]/.test(char)) { if (current) parts.push(current); current = ''; continue; }
+        current += char;
+    }
+    if (current) parts.push(current);
+    return parts;
+}
+function attributePrograms(toto) {
+    const text = behaviorStyleText(toto);
+    const programs = [];
+    for (const match of text.matchAll(/([^{}@;]+)\{/g)) {
+        for (const selector of match[1].split(',')) {
+            const compounds = splitCompounds(selector.trim());
+            compounds.forEach((compound, index) => {
+                const holder = [...compound.matchAll(/([.#])([A-Za-z_][\w-]*)/g)].map(item => `${item[1]}${item[2]}`);
+                if (!holder.length || index === compounds.length - 1) return;
+                for (const attrMatch of compound.matchAll(/\[\s*([\w-]+)\s*=\s*["']?([^"'\]]+)["']?\s*\]/g)) {
+                    if (!PROGRAM_ATTR.test(attrMatch[1])) continue;
+                    const targets = compounds.slice(index + 1).flatMap(part => [...part.matchAll(/\.([A-Za-z_][\w-]*)/g)].map(item => item[1]));
+                    programs.push({ holder, attr: attrMatch[1], value: attrMatch[2].trim(), targets });
+                }
+            });
+        }
+    }
+    return programs;
+}
+const matchesTokens = (node, tokens) => tokens.every(token => token[0] === '#' ? node.id === token.slice(1) : node.classList?.contains(token.slice(1)));
+
+// 一排按钮各自对应容器属性的一个值（样式里写了，却没东西去改这个属性）。
+function inferAttributePrograms(toto, details, deadNodes, claimed) {
+    const programs = attributePrograms(toto);
+    if (!programs.length) return [];
+    const groups = new Map();
+    for (const control of deadNodes) {
+        if (claimed.has(control) || control.matches('label, input, summary')) continue;
+        for (const program of programs) {
+            if (!program.targets.some(name => control.classList?.contains(name))) continue;
+            let holder = control.parentElement;
+            while (holder && holder !== details && !matchesTokens(holder, program.holder)) holder = holder.parentElement;
+            if (!holder || holder === details || !details.contains(holder)) continue;
+            const key = `${program.attr}`;
+            if (!groups.has(holder)) groups.set(holder, new Map());
+            const byAttr = groups.get(holder);
+            if (!byAttr.has(key)) byAttr.set(key, new Map());
+            const values = byAttr.get(key);
+            if (![...values.values()].includes(program.value) && !values.has(control)) values.set(control, program.value);
+            break;
+        }
+    }
+    const patches = [];
+    for (const [holder, byAttr] of groups) {
+        for (const [attr, values] of byAttr) {
+            if (values.size < 2 || !safeGroup(details, holder)) continue;
+            const controls = [...values.keys()];
+            const keys = controls.map(control => values.get(control));
+            const current = String(holder.getAttribute(attr) || '');
+            patches.push({ type: 'pick', group: holder, controls, panels: [], keys, attr, picked: keys.indexOf(current) });
+            controls.forEach(control => claimed.add(control));
+        }
+    }
+    return patches;
+}
+
 // 由死控件推出插件标识（只读真实页面，不改它）。返回 [{ type, group, controls, panels, picked }]
 function infer(toto, details, deadNodes) {
-    const patches = [];
     const claimed = new Set();
+    // 先认“按钮改容器属性值”的写法（样式里写得最明确），再认状态类。
+    const patches = inferAttributePrograms(toto, details, deadNodes, claimed);
     for (const control of deadNodes) {
         if (claimed.has(control) || control.matches('label, input, summary') || control.closest('[data-rm-ui], [data-rm-released]')) continue;
         // 多选一：同一排同款按钮，配上同样多块写了状态类的同款面板。
@@ -141,7 +213,8 @@ export function reverseRelayDeadHandwrittenControls(root) {
     const inferred = infer(toto, details, dead);
     if (!inferred.length) return 0;
     const indexOf = node => liveNodes.indexOf(node);
-    const patches = inferred.map(patch => ({ type: patch.type, group: indexOf(patch.group), controls: patch.controls.map(indexOf), panels: patch.panels.map(indexOf), picked: patch.picked }))
+    const patches = inferred.map(patch => ({ type: patch.type, group: indexOf(patch.group), controls: patch.controls.map(indexOf), panels: patch.panels.map(indexOf), picked: patch.picked,
+        ...(patch.keys ? { keys: patch.keys, attr: patch.attr } : {}) }))
         .filter(patch => patch.group >= 0 && patch.controls.every(index => index >= 0) && patch.panels.every(index => index >= 0));
     if (!patches.length) return 0;
     const second = openGenericProbeSandbox(root, (clone, cloneDetails) => {

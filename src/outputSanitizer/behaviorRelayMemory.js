@@ -154,9 +154,12 @@ export function applyReversePatch(nodes, patch) {
             const node = nodes[index];
             for (const name of [...(node?.classList || [])]) if (AUTHORED_STATE.test(name)) node.classList.remove(name);
         }
-        patch.controls.forEach((index, order) => nodes[index]?.setAttribute('data-rm-pick', String(order + 1)));
-        patch.panels.forEach((index, order) => nodes[index]?.setAttribute('data-rm-show', String(order + 1)));
-        if (patch.picked >= 0) group.setAttribute('data-rm-picked', String(patch.picked + 1));
+        // 按属性值切换的那种：各按钮的键就是样式里写的属性值，容器记下要同步的属性名。
+        const key = order => Array.isArray(patch.keys) ? String(patch.keys[order]) : String(order + 1);
+        patch.controls.forEach((index, order) => nodes[index]?.setAttribute('data-rm-pick', key(order)));
+        patch.panels.forEach((index, order) => nodes[index]?.setAttribute('data-rm-show', key(order)));
+        if (patch.attr) group.setAttribute('data-rm-pick-attr', patch.attr);
+        if (patch.picked >= 0) group.setAttribute('data-rm-picked', key(patch.picked));
     } else for (const index of patch.controls) nodes[index]?.setAttribute('data-rm-toggle', '');
     return true;
 }

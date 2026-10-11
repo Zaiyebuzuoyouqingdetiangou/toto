@@ -8,6 +8,10 @@ const STATE_CLASSES = new Set([
 ]);
 const indexes = new WeakMap();
 
+export function behaviorStyleText(root) {
+    return styleText(root);
+}
+
 function styleText(root) {
     const scope = root?.closest?.('toto') || root;
     return [...(scope?.querySelectorAll?.('style') || [])].map(node => String(node.textContent || '')).join('\n').replace(/\/\*[\s\S]*?\*\//g, '');
