@@ -1,9 +1,9 @@
 // Split from independentApi.js — flights.
 
-import { getSettings } from '../settings.js?rmv=1.67.75';
-import { configuredAutomaticRerollIdleMs, configuredAutomaticRerollMax, stallTimeoutError } from '../automaticReroll.js?rmv=1.67.75';
-import { baseSlotOf } from './connection.js?rmv=1.67.75';
-import { automaticGenerationCutovers } from './lifecycle.js?rmv=1.67.75';
+import { getSettings } from '../settings.js?rmv=1.67.78';
+import { configuredAutomaticRerollIdleMs, configuredAutomaticRerollMax, stallTimeoutError } from '../automaticReroll.js?rmv=1.67.78';
+import { baseSlotOf } from './connection.js?rmv=1.67.78';
+import { automaticGenerationCutovers } from './lifecycle.js?rmv=1.67.78';
 
 export const pending = new Map();
 // A failed automatic generation owns its exact chat+mesid+swipe+sourceHash until
@@ -62,6 +62,15 @@ export function automaticFailureStopFor(slot='',sourceHash=''){
 }
 
 export function hasAutomaticFailureStop(slot='',sourceHash=''){ return !!automaticFailureStopFor(slot,sourceHash); }
+
+// 「缺壳卡」只是“本机没找到这条回复的成品”，这一轮并没有发过请求。它不能拦住随后正常授权的自动生成：
+// 以前正文一结束、生成流水线还没登记上，同步先挂了缺壳卡，这条回复的自动生成就被它永久挡住。
+export const MISSING_SHELL_STOP_CODE='missing-external-shell';
+export function isMissingShellStop(failure){ return !!failure && String(failure.code||'')===MISSING_SHELL_STOP_CODE; }
+export function blockingAutomaticFailureStopFor(slot='',sourceHash=''){
+ const failure=automaticFailureStopFor(slot,sourceHash);
+ return failure && !isMissingShellStop(failure)?failure:null;
+}
 
 export function markAutomaticFailureStop(slot='',sourceHash='',reason='',details={}){
  const key=automaticFailureKey(slot,sourceHash); if(!key) return null;

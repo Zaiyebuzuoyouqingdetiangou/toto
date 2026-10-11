@@ -3,12 +3,12 @@
 // 就在另一份副本里把这一块整块“退还”（撤掉插件接线、标识原样保留），让老修复器整套去修，再测一次。
 // 退还后：原来能用的控件仍然能用，而且没反应的变少了（不算只加了“已点击”提示的那种），才在真实页面上照做；
 // 否则保持插件接线不动。真实页面上的控件在确认之前一个不碰。
-import { collectGenericProbeControls, openGenericProbeSandbox, probeGenericControls } from './maintenanceGenericProbe.js?rmv=1.67.75';
-import { releaseBehaviorGroup } from './behaviorInteractions.js?rmv=1.67.75';
-import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.67.75';
-import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=1.67.75';
-import { INERT_ACTION_BUTTON_RESCUE_ATTR } from './diagnostics.js?rmv=1.67.75';
-import { behaviorRelayFaceKey, behaviorRelayGroupIndex, rememberBehaviorRelay } from './behaviorRelayMemory.js?rmv=1.67.75';
+import { collectGenericProbeControls, openGenericProbeSandbox, probeGenericControls } from './maintenanceGenericProbe.js?rmv=1.67.78';
+import { releaseBehaviorGroup } from './behaviorInteractions.js?rmv=1.67.78';
+import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.67.78';
+import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=1.67.78';
+import { INERT_ACTION_BUTTON_RESCUE_ATTR } from './diagnostics.js?rmv=1.67.78';
+import { behaviorRelayFaceKey, behaviorRelayGroupIndex, rememberBehaviorRelay } from './behaviorRelayMemory.js?rmv=1.67.78';
 
 export const BEHAVIOR_RELAY_ATTR = 'data-rabbit-mirror-behavior-relayed';
 const GROUP_TAG = 'data-rm-relay-group';
@@ -33,8 +33,12 @@ function tagClone(details) {
 }
 
 // 每个区域里每个控件的实测结果：{ groupIndex: Map(nodeTag → { outcome, inert }) }
-function measure(opened, started) {
-    const controls = collectGenericProbeControls(opened).filter(control => control.element.closest(`[${GROUP_TAG}]`));
+// only 给了时只测这些编号的区域（点了没反应时只接力被点的那一块，别把整面都测一遍）。
+function measure(opened, started, only = null) {
+    const controls = collectGenericProbeControls(opened).filter(control => {
+        const group = control.element.closest(`[${GROUP_TAG}]`);
+        return group && (!only || only.includes(group.getAttribute(GROUP_TAG)));
+    });
     const { outcomes } = probeGenericControls(opened.details, controls, started, RELAY_BUDGET_MS);
     const byGroup = new Map();
     for (const [control, outcome] of outcomes) {
@@ -62,17 +66,20 @@ function improved(before, after) {
 }
 
 // 返回在真实页面上交给老修复器的区域数；副本建不起来或没有需要接力的区域时返回 0。
-export function relayDeadBehaviorGroups(root) {
+// onlyGroup 给了时只处理这一块（点了没反应时的即时接力）。
+export function relayDeadBehaviorGroups(root, { onlyGroup = null } = {}) {
     const liveDetails = faceDetails(root);
     const liveGroups = pluginGroups(liveDetails);
     if (!liveGroups.length) return 0;
+    const only = onlyGroup ? [String(liveGroups.indexOf(onlyGroup))] : null;
+    if (only && only[0] === '-1') return 0;
     const started = Date.now();
     let candidates = [];
     let before = null;
     const first = openGenericProbeSandbox(root, (toto, details) => tagClone(details));
     if (!first) return 0;
     try {
-        before = measure(first, started);
+        before = measure(first, started, only);
         candidates = [...before].filter(([, nodes]) => [...nodes.values()].some(item => item.outcome === 'dead')).map(([group]) => group);
     } catch (error) {
         console.debug('[RabbitMirror] behavior relay probe failed:', error);
@@ -89,7 +96,7 @@ export function relayDeadBehaviorGroups(root) {
     });
     if (!second) return 0;
     try {
-        const after = measure(second, Date.now());
+        const after = measure(second, Date.now(), only);
         accepted = candidates.filter(group => improved(before.get(group), after.get(group)));
     } catch (error) {
         console.debug('[RabbitMirror] behavior relay verify failed:', error);
@@ -121,4 +128,15 @@ export function relayDeadBehaviorGroups(root) {
     try { activateRabbitMirrorInteractionRescue(toto); } catch (error) { console.debug('[RabbitMirror] behavior relay rescue failed:', error); }
     root.setAttribute(BEHAVIOR_RELAY_ATTR, String((Number(root.getAttribute(BEHAVIOR_RELAY_ATTR)) || 0) + relayed));
     return relayed;
+}
+
+// 点了没反应时的即时接力：真实页面上某个插件区域里的控件被点了却什么都没变，就只对这一块做一次接力
+// （副本里实测 → 退还给老修复器再测 → 变好了才在真实页面照做，和维修兔「修交互」同一套流程）。
+// 每块只试一次；试过的记在元素上，不重复开副本。
+const tried = new WeakSet();
+export function relayBehaviorGroupOnDemand(root, group) {
+    if (!group?.isConnected || tried.has(group) || group.hasAttribute('data-rm-released')) return 0;
+    tried.add(group);
+    try { return relayDeadBehaviorGroups(root, { onlyGroup: group }); }
+    catch (error) { console.debug('[RabbitMirror] on-demand behavior relay failed:', error); return 0; }
 }

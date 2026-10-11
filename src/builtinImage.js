@@ -1,10 +1,10 @@
-import { getSettings } from './settings.js?rmv=1.67.75';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.67.75';
-import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.75';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.75';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.75';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.67.75';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.75';
+import { getSettings } from './settings.js?rmv=1.67.78';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.67.78';
+import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.78';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.78';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.78';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.67.78';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.78';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -218,15 +218,8 @@ function mergeAppearance(library, modelText, tagsOnly) {
     const base = tagsOnly ? String(library?.tag || library?.nl || '') : String(library?.nl || '');
     if (!base.trim()) return modelText;
     if (!modelText) return base.trim();
-    if (tagsOnly) {
-        const seen = new Set();
-        return [...base.split(','), ...modelText.split(',')].map(part => part.trim()).filter(part => {
-            const key = part.toLowerCase();
-            if (!part || seen.has(key)) return false;
-            seen.add(key);
-            return true;
-        }).join(', ');
-    }
+    // 标签写法：角色库配了就只用角色库，不和模型写的标签混拼（混拼会出现同义重复和互相打架的标签）。
+    if (tagsOnly) return base.trim();
     return modelText.includes(base.trim()) ? modelText : `${base.trim()}; ${modelText}`;
 }
 
@@ -302,7 +295,9 @@ function startJob(key, prompt, frame, isCurrent) {
         } : await (async () => {
             // 没有生图 LLM：按提示词格式分开填，标签写法不再把同一句话当成自然语言再发一次。
             const tagsOnly = settings.imagePromptFormat === 'nai45-tags';
-            const tagOf = person => mergeTagLists(person.libraryTag, person.modelTag);
+            // 人物标签栏：角色库里配了标签就只用角色库（用户自己写的，最准）；模型另写的标签只给角色库里没有的人。
+            // 两边混在一起会出现 1girl 和 1 girl、pale skin 和 snow-white skin、冷脸和笑脸这种重复或打架的标签。
+            const tagOf = person => String(person.libraryTag || '').trim() || mergeTagLists(person.modelTag);
             // 每个人至少要有这种写法用得上的外貌：标签写法看标签，NAI 5 看自然语言或标签，空的人不发。
             const people = (await withLibraryAppearance(readCharacters(frame), prompt, frame, tagsOnly))
                 .filter(person => tagsOnly ? String(person.text || '').trim() : String(person.text || '').trim() || tagOf(person));
