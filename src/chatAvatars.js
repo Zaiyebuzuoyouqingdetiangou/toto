@@ -1,9 +1,9 @@
 // Optional, local-only avatar consumer. Model markers describe a role, never an
 // image URL, an owner, or permission to replace arbitrary artwork.
-import { getSettings } from './settings.js?rmv=1.67.86';
-import { getCurrentChatKey } from './storage.js?rmv=1.67.86';
-import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.67.86';
-import { subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.67.86';
+import { getSettings } from './settings.js?rmv=1.67.89';
+import { getCurrentChatKey } from './storage.js?rmv=1.67.89';
+import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.67.89';
+import { subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.67.89';
 
 const MARKERS = '[data-rm-avatar="char"], [data-rm-avatar="user"], [data-rm-sticker]';
 const STICKER_KEY = /^[^\u0000-\u001f"'<>`=·・]{1,40}[·・][^\u0000-\u001f"'<>`=]{1,40}$/u;
@@ -84,6 +84,20 @@ function markerUrl(node, pair) {
     if (node.hasAttribute('data-rm-sticker')) return pair.stickers.get(stickerKey(node.getAttribute('data-rm-sticker'))) || '';
     return pair[node.getAttribute('data-rm-avatar')] || '';
 }
+// The main chat teaches [表情:名字·表情名]; accept that text form as the same request.
+const STICKER_TEXT_TOKEN = /\[表情[:：]\s*([^\]\n·・]{1,40}?)\s*[·・]\s*([^\]\n]{1,40}?)\s*\]/gu;
+export function resolveRabbitMirrorStickerToken(token) {
+    try {
+        const api = globalThis.HearttraceStickers;
+        if (api?.apiVersion !== 1 || typeof api.resolve !== 'function') return '';
+        const row = api.resolve(token);
+        return row ? stickerKey(row.key || '') : '';
+    } catch { return ''; }
+}
+function messageHasStickerToken(source, key) {
+    for (const match of String(source || '').matchAll(STICKER_TEXT_TOKEN)) if (resolveRabbitMirrorStickerToken(match[0]) === key) return true;
+    return false;
+}
 function escapeRegExp(value) { return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
 // Called by every formal prompt path, without initializing the DOM consumer or
@@ -92,7 +106,10 @@ export function rabbitMirrorAvatarPromptRule(settings) {
     if (settings?.enabled === false || settings?.mode === 'off') return '';
     const pair = currentPair();
     if (!pair) return '';
-    const stickerRule = pair.stickerList.length ? `\n【可用的表情包】\n小剧场里若出现本来就会发表情包的场景（聊天软件、私信、群聊、弹幕、评论区等），可以在原本放表情图片的位置写 <img data-rm-sticker="名字·表情名" alt="表情名">，由本地换成心迹回廊里做好的表情包。只能用下面列出的，名字和表情名照抄：${pair.stickerList.map(row => row.meaning ? `${row.key}（${row.meaning}）` : row.key).join('、')}。按谁在发选对应名字的表情；“双人·”“其他·”两边都能发。不写图片 URL、base64 或脚本，不为它们创建 data-rm-draw-frame／生图占位；场景里没人发表情就不加，不要硬塞。\n` : '';
+    const stickerRule = pair.stickerList.length ? `\n【可用的表情包】\n心迹回廊里已经给当前角色和用户做好了表情包图片，本地会自动显示：${pair.stickerList.map(row => row.meaning ? `${row.key}（${row.meaning}）` : row.key).join('、')}。\n`
+        + '- 设计里只要有人在发消息、发帖或评论（聊天界面、私信、群聊、朋友圈／微博／论坛帖子、评论区、弹幕、短信、留言条等），就在合适的发言里至少用一个表情包；原本想写“发了个表情”、用 emoji 充当表情，或写「表情包轰炸」之类的说明时，也换成真正的表情包。\n'
+        + '- 写法：<img data-rm-sticker="名字·表情名" alt="表情名">，名字和表情名照上面的清单抄；谁发就用谁的，“双人·”“其他·”谁都能发，用户也可以发角色的表情。用 width/height 或 style 控制成聊天表情图的大小。\n'
+        + '- 不写图片 URL、base64 或脚本，不为它们创建 data-rm-draw-frame／生图占位，也不要写 [表情:…] 文字暗号。设计里完全没有发言或表情位置时不加。\n' : '';
     if (!pair.char && !pair.user) return stickerRule;
     const roles = [pair.char ? '当前角色用 data-rm-avatar="char"' : '', pair.user ? '当前用户用 data-rm-avatar="user"' : ''].filter(Boolean).join('；');
     return stickerRule + `\n【已有头像的本地显示】\n任何题材或场景中，若原设计本就含当前角色／用户的头像位置，${roles}，标在原头像 img 或头像容器上，保留原形状、尺寸及原有后备内容，由本地替换图片。不要额外增加头像框，不输出头像 URL、base64 或脚本；不要为这些头像创建 data-rm-draw-frame／生图占位。NPC、插画主体、照片内容、商品及装饰图片不得标成这两个头像。没有头像位置就不添加。\n`;
@@ -158,7 +175,8 @@ function rootOwner(root, origin) {
                 if (!key) return null;
                 const [name, face] = key.split('·').map(escapeRegExp);
                 const quoted = `${name}[·・]${face}`;
-                if (!new RegExp(`data-rm-sticker\\s*=\\s*(?:"\\s*${quoted}\\s*"|'\\s*${quoted}\\s*')`, 'u').test(String(message.mes || ''))) return null;
+                if (!new RegExp(`data-rm-sticker\\s*=\\s*(?:"\\s*${quoted}\\s*"|'\\s*${quoted}\\s*')`, 'u').test(String(message.mes || ''))
+                    && !messageHasStickerToken(message.mes, key)) return null;
                 continue;
             }
             const role = marker.getAttribute('data-rm-avatar');

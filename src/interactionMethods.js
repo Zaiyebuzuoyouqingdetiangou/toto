@@ -102,13 +102,16 @@ export function normalizeDriverOffer(value) {
 const SLIDE_DRIVERS = new Set(['adjust', 'drag', 'reveal', 'view', 'motion', 'turn']);
 // 近期翻面、展开、切页用得多时，这几种（翻面、多选一、翻页）先不提供。
 const FLIP_DRIVERS = new Set(['toggle', 'pick', 'pager']);
+// 近期一排按钮切换内容（标签页、分页按钮）用得多时，多选一和翻页这两种先不提供。
+const TAB_DRIVERS = new Set(['pick', 'pager']);
 
 // usages：这一面抽到的真实用法。用法里认得出的动作先配上对应写法（滑杆／拖动一族仍只占一个位置），
 // 其余位置随机补齐、避开上一面给过的；related 是这个媒介大类的全部用法，补位优先挑其中用得上的写法。
-export function drawDriverOffer({ avoidSlide = false, avoidFlip = false, usages = [], related = [] } = {}) {
+export function drawDriverOffer({ avoidSlide = false, avoidFlip = false, avoidTabs = false, usages = [], related = [] } = {}) {
     let recent = [];
     try { recent = JSON.parse(globalThis.localStorage?.getItem(RECENT_KEY) || '[]'); } catch { recent = []; }
-    const all = Object.keys(DRIVER_METHODS).filter(key => (!avoidSlide || !SLIDE_DRIVERS.has(key)) && (!avoidFlip || !FLIP_DRIVERS.has(key)));
+    const all = Object.keys(DRIVER_METHODS).filter(key => (!avoidSlide || !SLIDE_DRIVERS.has(key)) && (!avoidFlip || !FLIP_DRIVERS.has(key))
+        && (!avoidTabs || !TAB_DRIVERS.has(key)));
     const matched = [];
     for (const [key] of matchDriversToUsages(usages, all)) {
         if (SLIDE_DRIVERS.has(key) && matched.some(item => SLIDE_DRIVERS.has(item))) continue;

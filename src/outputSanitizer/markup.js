@@ -1,9 +1,9 @@
-import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.67.86';
+import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.67.89';
 // Split from outputSanitizer.js — markup.
 
-import { getSettings } from '../settings.js?rmv=1.67.86';
-import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.67.86';
-import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.67.86';
+import { getSettings } from '../settings.js?rmv=1.67.89';
+import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.67.89';
+import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.67.89';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     INTERACTION_HOME_ATTR,
@@ -15,7 +15,7 @@ import {
     clearMirrorTitleDisplayArtifacts,
     escapeRegExp,
     hashInteractionSignature,
-} from './runtime.js?rmv=1.67.86';
+} from './runtime.js?rmv=1.67.89';
 
 const TOTO_BLOCK_RE = /<toto\b[\s\S]*?<\/toto>/gi;
 
@@ -605,6 +605,40 @@ export function rabbitMirrorTemplateHasAuthoredPositioningContext(template) {
 }
 
 
+// 心迹回廊的主聊天教的是 [表情:名字·表情名] 文字暗号。小剧场里若照写，只在
+// 心迹回廊能认出这个表情时换成 <img data-rm-sticker>，图片由本机再换上；认不出的原样留着。
+const HEARTTRACE_STICKER_TEXT = /\[表情[:：]\s*([^\]\n·・]{1,40}?)\s*[·・]\s*([^\]\n]{1,40}?)\s*\]/gu;
+const HEARTTRACE_STICKER_KEY = /^[^\u0000-\u001f"'<>`=·・]{1,40}·[^\u0000-\u001f"'<>`=]{1,40}$/u;
+function convertHearttraceStickerText(root) {
+    let api = null;
+    try { api = globalThis.HearttraceStickers; } catch { return; }
+    if (api?.apiVersion !== 1 || typeof api.resolve !== 'function' || !root?.ownerDocument) return;
+    const doc = root.ownerDocument, walker = doc.createTreeWalker(root, 4);
+    const nodes = [];
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        if (node.nodeValue.includes('[表情') && !node.parentElement?.closest('script, style, textarea, code, pre, title, option')) nodes.push(node);
+    }
+    for (const node of nodes) {
+        const value = node.nodeValue, fragment = doc.createDocumentFragment();
+        let last = 0, hits = 0;
+        for (const match of value.matchAll(HEARTTRACE_STICKER_TEXT)) {
+            let key = '';
+            try { key = String(api.resolve(match[0])?.key || '').trim(); } catch { key = ''; }
+            if (!HEARTTRACE_STICKER_KEY.test(key)) continue;
+            if (match.index > last) fragment.append(doc.createTextNode(value.slice(last, match.index)));
+            const image = doc.createElement('img');
+            image.setAttribute('data-rm-sticker', key);
+            image.setAttribute('alt', key.split('·')[1]);
+            image.setAttribute('style', 'width:96px;height:96px;object-fit:contain;vertical-align:middle');
+            fragment.append(image);
+            last = match.index + match[0].length; hits++;
+        }
+        if (!hits) continue;
+        if (last < value.length) fragment.append(doc.createTextNode(value.slice(last)));
+        node.replaceWith(fragment);
+    }
+}
+
 export function sanitizeRabbitMirrorUntrustedTemplate(template) {
     if (!template?.content?.querySelectorAll) return false;
     // Fail closed before any broad selector walk. This prevents model-produced tag,
@@ -614,6 +648,7 @@ export function sanitizeRabbitMirrorUntrustedTemplate(template) {
     clearMirrorTitleDisplayArtifacts(template.content);
 
     template.content.querySelectorAll(RABBIT_MIRROR_BLOCKED_RENDER_SELECTOR).forEach(node => node.remove());
+    convertHearttraceStickerText(template.content);
     // Runtime-only avatar overlays must not turn into saved/model-authored art.
     // A linked authored <img> keeps its semantic slot but not copied local bytes.
     for (const avatar of template.content.querySelectorAll('[data-rm-avatar-rendered]')) {

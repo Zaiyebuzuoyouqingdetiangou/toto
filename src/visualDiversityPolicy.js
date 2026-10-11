@@ -1,4 +1,4 @@
-import { classifyPaletteSamples } from './paletteObservation.js?rmv=1.67.86';
+import { classifyPaletteSamples } from './paletteObservation.js?rmv=1.67.89';
 
 const HUE_FAMILY_LABELS = Object.freeze({
     red: '红色族', orange: '橙色族', yellow: '黄色族', green: '绿色族', cyan: '青色族',
@@ -148,11 +148,12 @@ export function softLightVisualGenerationRule(settings, { avoidFamilies = [] } =
   - 仍须强避重：在柔和浅色范围内换色族与冷暖，不改艳也不改暗；形式自带的标志色保留，调柔后使用。长文本只做阅读配色，不添加交互或动画。`;
 }
 
-export function visualDiversityExecutionLock(_settings, { textRevealRotation = false, flipRotation = false, slideRotation = false, noButtonRow = false, paleBan = false, softTone = false, paletteReminder = '' } = {}) {
+export function visualDiversityExecutionLock(_settings, { textRevealRotation = false, flipRotation = false, slideRotation = false, tabRotation = false, noButtonRow = false, paleBan = false, softTone = false, paletteReminder = '' } = {}) {
     // The shared ledger is sent once; only active, concrete reminders are repeated here, closest to output.
     return [
         noButtonRow ? '本面媒介本身没有成排按钮：主交互不用一排同款按钮或标签切换内容，交互落在媒介自己的部件上。' : '',
         flipRotation ? '近三面的交互多是翻面、展开或切页：本面主交互换成会直接改变画面的操作（按住、刮开、累积点亮、重排、描画、拖动、滑杆等，可用提供的插件写法），翻面和展开最多作辅助。' : '',
+        tabRotation ? '近三面多次用了一排按钮切换不同内容（标签页、分页按钮）：本面不用成排按钮或标签切换内容，换成直接作用在物件上的操作。' : '',
         slideRotation ? '近三面的主交互多是滑杆或拖动：本面主交互不用滑杆、进度条和拖动，换成点按、按住、刮开、累积点亮、重排、描画或整体切换状态等，滑杆和拖动最多作辅助。' : '',
         textRevealRotation ? '本轮换口味：整面交互作用在同一个主体上（可以分几步），不让每个条目各配一个开关。' : '',
         softTone ? '柔和浅色：主背景与主承载不用米黄、米白、奶油色、羊皮纸这类暖黄纸色，纸张类媒介也换成其他柔和的颜色。' : '',

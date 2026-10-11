@@ -1,37 +1,37 @@
-import { INTERACTION_SAMPLING_RULE, designCandidatePick, drawDesignCandidate } from './interactionSampling.js?rmv=1.67.86';
-import { driverContractLines, drawDriverOffer, interactionMethodNames, matchDriversToUsages, normalizeDriverOffer } from './interactionMethods.js?rmv=1.67.86';
-import { drawUsageOffer, normalizeUsageOffer, relatedUsagesForCombo } from './interactionUsageOffer.js?rmv=1.67.86';
-import { drawContinuation, normalizeContinuation } from './continuationCache.js?rmv=1.67.86';
-import { recentInteractionMethods } from './interactionMethodLedger.js?rmv=1.67.86';
-import { gameplayRuleFor } from './gameplayRules.js?rmv=1.67.86';
-import { usesModelOriginalColors, withoutPaletteRecipe, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.67.86';
-import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=1.67.86';
-import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=1.67.86';
-import { isNearWhitePalette, isNearWhiteContentSurface } from './paletteObservation.js?rmv=1.67.86';
-import { observedOperationFamiliesFor, observedMechanismsFor } from './compositionFingerprint.js?rmv=1.67.86';
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.67.86';
-import { expandShuffledOptions } from '../data/raw/rawSegmentLookup.js?rmv=1.67.86';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.67.86';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.67.86';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.67.86';
-import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES, VISUAL_SCENERY_EXPRESSION_RULE, VISUAL_SCENERY_VS_GUIDANCE } from '../data/raw/visualSceneryRules.js?rmv=1.67.86';
-import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.67.86';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.67.86';
-import { getComboHistory, getActivePaletteCooldown } from './storage.js?rmv=1.67.86';
-import { strongVisualDiversityRule, darkVisualGenerationRule, softLightVisualGenerationRule, visualDiversityExecutionLock, recentPaletteExecutionReminder, recentPaletteHueFamilies } from './visualDiversityPolicy.js?rmv=1.67.86';
-import { withoutInteractionRecipe, observedInteractionRecipesFor } from './interactionRecipes.js?rmv=1.67.86';
-import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.67.86';
-import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.67.86';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.67.86';
-export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.67.86';
-import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.67.86';
-import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.67.86';
-import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.67.86';
-import { faceDrawMetadataFields } from './faceDrawRules.js?rmv=1.67.86';
-import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.67.86';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.67.86';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.67.86';
-import { rabbitMirrorAvatarPromptRule } from './chatAvatars.js?rmv=1.67.86';
+import { INTERACTION_SAMPLING_RULE, designCandidatePick, drawDesignCandidate } from './interactionSampling.js?rmv=1.67.89';
+import { driverContractLines, drawDriverOffer, interactionMethodNames, matchDriversToUsages, normalizeDriverOffer } from './interactionMethods.js?rmv=1.67.89';
+import { drawUsageOffer, normalizeUsageOffer, relatedUsagesForCombo } from './interactionUsageOffer.js?rmv=1.67.89';
+import { drawContinuation, normalizeContinuation } from './continuationCache.js?rmv=1.67.89';
+import { recentInteractionMethods } from './interactionMethodLedger.js?rmv=1.67.89';
+import { gameplayRuleFor } from './gameplayRules.js?rmv=1.67.89';
+import { usesModelOriginalColors, withoutPaletteRecipe, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.67.89';
+import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=1.67.89';
+import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=1.67.89';
+import { isNearWhitePalette, isNearWhiteContentSurface } from './paletteObservation.js?rmv=1.67.89';
+import { observedOperationFamiliesFor, observedMechanismsFor } from './compositionFingerprint.js?rmv=1.67.89';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.67.89';
+import { expandShuffledOptions } from '../data/raw/rawSegmentLookup.js?rmv=1.67.89';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.67.89';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.67.89';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.67.89';
+import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES, VISUAL_SCENERY_EXPRESSION_RULE, VISUAL_SCENERY_VS_GUIDANCE } from '../data/raw/visualSceneryRules.js?rmv=1.67.89';
+import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.67.89';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.67.89';
+import { getComboHistory, getActivePaletteCooldown } from './storage.js?rmv=1.67.89';
+import { strongVisualDiversityRule, darkVisualGenerationRule, softLightVisualGenerationRule, visualDiversityExecutionLock, recentPaletteExecutionReminder, recentPaletteHueFamilies } from './visualDiversityPolicy.js?rmv=1.67.89';
+import { withoutInteractionRecipe, observedInteractionRecipesFor } from './interactionRecipes.js?rmv=1.67.89';
+import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.67.89';
+import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.67.89';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.67.89';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.67.89';
+import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.67.89';
+import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.67.89';
+import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.67.89';
+import { faceDrawMetadataFields } from './faceDrawRules.js?rmv=1.67.89';
+import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.67.89';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.67.89';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.67.89';
+import { rabbitMirrorAvatarPromptRule } from './chatAvatars.js?rmv=1.67.89';
 
 const THEME_ITEMS = new Map(THEMATIC_CATEGORIES.map(item => [item.id, item]));
 const FORMAT_ITEMS = new Map(PRESENTATION_FORMATS.map(item => [item.id, item]));
@@ -1520,6 +1520,18 @@ function recentSlideDragRotation() {
     }
 }
 
+// 近三面有两面用了「一排按钮切换不同内容」（标签页、分页按钮、多选一切换），哪怕同时还有别的交互，本轮也换口味：
+// 不提供多选一、翻页两种插件写法，并在短锁里提醒本面不用一排按钮切内容。之后照常可以用。
+const TAB_MECHANISMS = new Set(['pick', 'pager', 'page']);
+function recentTabRowRotation() {
+    try {
+        return getRecentDiversityHistory(3).filter(item => !isTextPresentation(item)
+            && observedMechanismsFor(item).some(name => TAB_MECHANISMS.has(name))).length >= 2;
+    } catch {
+        return false;
+    }
+}
+
 function recentTextRevealRotation() {
     try {
         return getRecentDiversityHistory(3).filter(item => !isTextPresentation(item)
@@ -1535,6 +1547,7 @@ function createPromptPlan(selections, args, batchPlan = null, inactive = false) 
     const sendingCombo = combo => withoutInteractionRecipe(usesModelOriginalColors(args.settings) ? withoutPaletteRecipe(combo) : combo);
     const flipRotation = !inactive && recentFlipExpandRotation();
     const slideRotation = !inactive && !flipRotation && recentSlideDragRotation();
+    const tabRotation = !inactive && !flipRotation && recentTabRowRotation();
     const sendingSelections = selections.map(selection => {
         const { designCandidatePick: pinnedPick, driverOffer: pinnedOffer, usageOffer: pinnedUsage, continuation: pinnedContinuation, ...rest } = selection;
         const baseEligible = !inactive && !selection.disabled && selection.combo && !isTextPresentation(selection.combo) && !selection.combo.pureOrder;
@@ -1549,7 +1562,7 @@ function createPromptPlan(selections, args, batchPlan = null, inactive = false) 
         // 先抽真实用法，再按用法配插件写法（写法跟着用法走）。
         const usageOffer = eligible ? normalizeUsageOffer(pinnedUsage) || drawUsageOffer(combo, { avoidFlip: flipRotation, avoidSlide: slideRotation }) : null;
         return { ...rest, combo, ...(eligible ? { designCandidatePick: designCandidatePick(pinnedPick) || drawDesignCandidate({ slots: flipRotation ? 1 : recentTextRevealRotation() || !hasNativeButtonRow(combo) ? 2 : 3 }),
-            driverOffer: normalizeDriverOffer(pinnedOffer) || drawDriverOffer({ avoidSlide: slideRotation, avoidFlip: flipRotation, usages: usageOffer?.usages || [], related: relatedUsagesForCombo(combo) }),
+            driverOffer: normalizeDriverOffer(pinnedOffer) || drawDriverOffer({ avoidSlide: slideRotation, avoidFlip: flipRotation, avoidTabs: tabRotation, usages: usageOffer?.usages || [], related: relatedUsagesForCombo(combo) }),
             usageOffer,
             ...(continuedFormat ? { continuation } : {}) } : {}) };
     });
@@ -1790,7 +1803,8 @@ export function renderRabbitMirrorPromptPlan(plan, externalRawMap = null, appear
             'memorySources:', memoryMaterial?.sources || [], 'prompt chars:', prompt.length);
     }
     const executionPolicy = visualDiversityExecutionLock(settings, { textOnly: !htmlFacesPresent, textRevealRotation, flipRotation: htmlFacesPresent && recentFlipExpandRotation(),
-        slideRotation: htmlFacesPresent && !recentFlipExpandRotation() && recentSlideDragRotation(), paleBan: htmlFacesPresent && lastPaleLock, softTone: settings.visualToneMode === 'soft',
+        slideRotation: htmlFacesPresent && !recentFlipExpandRotation() && recentSlideDragRotation(),
+        tabRotation: htmlFacesPresent && !recentFlipExpandRotation() && recentTabRowRotation(), paleBan: htmlFacesPresent && lastPaleLock, softTone: settings.visualToneMode === 'soft',
         paletteReminder: generationType === 'independent' ? paletteReminder : '',
         noButtonRow: htmlFacesPresent && !faceContexts.some(face => hasNativeButtonRow(face.combo)) });
     const nearOutputPolicy = htmlFacesPresent ? executionPolicy : '';

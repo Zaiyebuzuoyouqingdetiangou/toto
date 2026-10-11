@@ -1,10 +1,10 @@
-import { getSettings } from './settings.js?rmv=1.67.86';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.67.86';
-import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.86';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.86';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.86';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.67.86';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.86';
+import { getSettings } from './settings.js?rmv=1.67.89';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.67.89';
+import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.89';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.89';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.89';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.67.89';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.89';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -112,10 +112,40 @@ function frameImageSize(frame) {
     return parts[0] >= (parts[1] || 1) ? 'landscape' : 'portrait';
 }
 
+// 图框比例和画出来的图差太多时（比如图框是一条很扁的横幅，图是 3:2），铺满会把人头、手切掉。
+// 这时不再裁：图框改成跟图一样的比例、高度跟着图走，整张图完整显示；图框的边框、圆角等其余样式不动。
+const FIT_CROP_TOLERANCE = 1.15;
+function unfitFrameToImage(frame, image) {
+    const naturalWidth = image.naturalWidth, naturalHeight = image.naturalHeight;
+    const width = frame.clientWidth, height = frame.clientHeight;
+    if (!(naturalWidth > 0 && naturalHeight > 0 && width > 0 && height > 0)) return false;
+    const imageRatio = naturalWidth / naturalHeight, frameRatio = width / height;
+    if (Math.max(imageRatio / frameRatio, frameRatio / imageRatio) <= FIT_CROP_TOLERANCE) return false;
+    frame.setAttribute('data-rm-draw-fit', 'image');
+    frame.style.setProperty('height', 'auto', 'important');
+    frame.style.setProperty('min-height', '0', 'important');
+    frame.style.setProperty('max-height', 'none', 'important');
+    frame.style.setProperty('aspect-ratio', `${naturalWidth} / ${naturalHeight}`, 'important');
+    image.style.setProperty('height', '100%', 'important');
+    return true;
+}
+
 function fitFrameImage(image, record) {
     // Only newly generated records opt into filling the frame; legacy saves retain their display policy.
-    image.style.setProperty('object-fit', record?.builtinImageFit === 'cover' ? 'cover' : 'contain', 'important');
+    const cover = record?.builtinImageFit === 'cover';
+    image.style.setProperty('object-fit', cover ? 'cover' : 'contain', 'important');
     image.style.setProperty('object-position', 'center', 'important');
+    const frame = image.closest?.('[data-rm-draw-frame]');
+    if (!cover || !frame) return;
+    const check = () => {
+        try {
+            if (frame.clientWidth > 0 && frame.clientHeight > 0) { unfitFrameToImage(frame, image); return; }
+            // 镜面折叠着量不到尺寸：等它展开时再量一次。
+            frame.closest?.('details')?.addEventListener('toggle', () => { try { unfitFrameToImage(frame, image); } catch {} }, { once: true });
+        } catch { /* 量不到就照旧铺满 */ }
+    };
+    if (image.complete && image.naturalWidth) check();
+    image.addEventListener('load', check, { once: true });
 }
 
 function paint(frame, record) {
