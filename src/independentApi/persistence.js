@@ -1,8 +1,8 @@
 // Split from independentApi.js — persistence.
 
-import { presentationModeFields } from '../presentationMode.js?rmv=1.67.82';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.67.82';
-import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.67.82';
+import { presentationModeFields } from '../presentationMode.js?rmv=1.67.85';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.67.85';
+import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.67.85';
 import {
     FACE_SWIPE_FULL_MESSAGE,
     FACE_SWIPE_MAX,
@@ -17,9 +17,9 @@ import {
     snapshotFaceSwipes, compactSwipeState, restoreFaceSwipeSnapshot,
     faceSwipeSnapshotStored, loadFaceSwipeArchive, saveFaceSwipeArchive, faceSwipeArchiveReadState,
     remapFaceSwipeSlots, remapFaceSwipeArchive, faceSwipeArchiveRemapSettled,
-} from '../swipeVersions.js?rmv=1.67.82';
-import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=1.67.82';
-import { remapMirrorImageSlots } from '../imageStore.js?rmv=1.67.82';
+} from '../swipeVersions.js?rmv=1.67.85';
+import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=1.67.85';
+import { remapMirrorImageSlots } from '../imageStore.js?rmv=1.67.85';
 import {
     clearEphemeralFaceFailure,
     hasEphemeralFaceFailure,
@@ -29,7 +29,7 @@ import {
     independentSwipeSlot,
     seedIndependentFaceSwipesFromIdentity,
     writeIndependentOwnerHtml,
-} from './faceSwipe.js?rmv=1.67.82';
+} from './faceSwipe.js?rmv=1.67.85';
 import {
     API_PROFILE_STORE_KEY,
     assistantMessages,
@@ -47,8 +47,10 @@ import {
     setOwnerLockForBase,
     swipeId,
     remapOwnerLockSlots,
-} from './connection.js?rmv=1.67.82';
-import { stampExternalDetailsOwnership } from './request.js?rmv=1.67.82';
+    hostGenerationLooksActive,
+    legacyChatKey,
+} from './connection.js?rmv=1.67.85';
+import { stampExternalDetailsOwnership } from './request.js?rmv=1.67.85';
 import {
     copyIndependentReplacementReceipt,
     ensureExternalTools,
@@ -59,8 +61,8 @@ import {
     normalizeSavedInteractionRecord,
     recoverSavedRecord,
     replaceExternalMultifaceFace,
-} from './geometry.js?rmv=1.67.82';
-import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=1.67.82';
+} from './geometry.js?rmv=1.67.85';
+import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=1.67.85';
 
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 
@@ -76,9 +78,13 @@ const CHAT_OUTPUT_METADATA_SCHEMA = 2;
 
 export const HISTORY_PANEL_ATTR = 'data-rabbit-mirror-history-panel';
 
-const OUTPUT_STORE_BUDGET_BYTES = 1600000;
+// 本机两份缓存的目标大小（成品缓存、旧版本备份）。超过目标的部分只留「还不能确认已进聊天文件」的那些，
+// 上限仍是以前的大小：最坏情况和以前一样，不会更占地方。
+const OUTPUT_STORE_BUDGET_BYTES = 800000;
+const OUTPUT_STORE_CEILING_BYTES = 1600000;
 
-const HISTORY_STORE_BUDGET_BYTES = 1750000;
+const HISTORY_STORE_BUDGET_BYTES = 500000;
+const HISTORY_STORE_CEILING_BYTES = 1750000;
 
 export const INDEPENDENT_HTML_BUDGET_BYTES = 512 * 1024;
 
@@ -132,26 +138,104 @@ function warnStorageTrimmed(){
 
 export function readStore(){ try { const v=JSON.parse(localStorage.getItem(STORE_KEY)||'{}'); return v&&typeof v==='object'?v:{}; } catch { return {}; } }
 
+// 缓存条目的位置：chat:楼层:swipe:正文指纹（chat 里可能带冒号，从右边拆）。
+function parseSlotKey(slot){
+ const match=/^(.+):(\d+):(\d+):([0-9a-z]+)$/.exec(String(slot||''));
+ return match?{chat:match[1],index:Number(match[2]),swipe:Number(match[3]),sourceHash:match[4]}:null;
+}
+
+// 聊天数据里这一层（楼层:swipe）记的成品，不看当前 swipe 号，直接按键读；聊天文件里和本会话里的都看，取新的。
+function rawOwnerForKey(ctx,index,swipe){
+ const key=chatOwnerKey(index,swipe); if(!key) return null;
+ const raw=chatMetadataObject(ctx)?.[CHAT_OUTPUT_METADATA_KEY]?.owners?.[key];
+ const session=sessionOwners(ctx)?.[key];
+ if(raw?.deleted===true || session?.deleted===true) return {deleted:true};
+ const newest=session && (!raw || Number(session.ts||0)>=Number(raw.ts||0))?session:raw;
+ return newest&&typeof newest==='object'?newest:null;
+}
+
+// 一条本机缓存能不能确认「聊天数据里已经有它」：
+//   covered     ——当前聊天这一层的成品和它一样（或同一段正文已有更新的成品），或这一层已被删除：删掉本机这份不会丢东西；
+//   unconfirmed ——当前聊天，但聊天数据里没有它（可能还没来得及存，或聊天没加载完）：不能删；
+//   foreign     ——别的聊天，这里看不到它的聊天数据：只给每个聊天最新的那一条留着，更早的那些聊天早已保存过。
+function cacheCoverage(ctx,slot,record){
+ const parsed=parseSlotKey(slot);
+ if(!parsed || !Array.isArray(ctx?.chat)) return 'foreign';
+ let mine=false;
+ try{ mine=parsed.chat===chatKey(ctx) || parsed.chat===legacyChatKey(ctx); }catch{ mine=false; }
+ if(!mine) return 'foreign';
+ const owner=rawOwnerForKey(ctx,parsed.index,parsed.swipe);
+ if(!owner) return 'unconfirmed';
+ if(owner.deleted) return 'covered';
+ if(String(owner.html||'')===String(record?.html||'')) return 'covered';
+ if(String(owner.sourceHash||'')===String(record?.sourceHash||parsed.sourceHash) && Number(owner.ts||0)>=Number(record?.ts||0)) return 'covered';
+ return 'unconfirmed';
+}
+
+// 每个聊天最新的那条缓存（别的聊天只有这一条可能还没进聊天文件）。
+function newestPerChat(items){
+ const newest=new Map();
+ for(const {key,ts} of items){
+  const chat=parseSlotKey(key)?.chat||key;
+  const current=newest.get(chat);
+  if(!current || ts>current.ts) newest.set(chat,{key,ts});
+ }
+ return newest;
+}
+
 function compactOutputStore(value){
  const entries=Object.entries(value&&typeof value==='object'?value:{}).filter(([,item])=>independentRecordWithinBudget(item)).sort((a,b)=>Number(b[1]?.ts||0)-Number(a[1]?.ts||0));
  const next={};
+ let ctx=null; try{ ctx=getContext(); }catch{ ctx=null; }
+ const kept=entries.slice(0,120);
+ const newest=newestPerChat(kept.map(([key,item])=>({key,ts:Number(item?.ts||0)})));
  // 累计每条自己的字节数，不在循环里反复把整个对象序列化（原来是 120 次 × 1.6MB，手机上会卡）。
  let used=2;
- for(const [key,item] of entries.slice(0,120)){
+ for(const [key,item] of kept){
   // Full stacks live in their archive/chat metadata, not duplicated into the
   // bounded current-output cache on every passive reconciliation.
   const current={...item};delete current.faceSwipes;
   const cost=byteLength(JSON.stringify(key))+byteLength(JSON.stringify(current))+2;
-  if(used+cost>OUTPUT_STORE_BUDGET_BYTES){ warnStorageTrimmed(); continue; }
+  if(used+cost>OUTPUT_STORE_BUDGET_BYTES){
+   // 超出目标：只留还不能确认已进聊天文件的（当前聊天里没对上的、别的聊天最新的一条），且不超过上限。
+   const coverage=cacheCoverage(ctx,key,item);
+   const protect=coverage==='unconfirmed' || (coverage==='foreign' && newest.get(parseSlotKey(key)?.chat||key)?.key===key);
+   if(!protect) continue;
+   if(used+cost>OUTPUT_STORE_CEILING_BYTES){ warnStorageTrimmed(); continue; }
+  }
   next[key]=current; used+=cost;
  }
  return next;
+}
+
+// 本机存储满了、当前成品写不进去时，先从兔子镜自己的「旧版本备份」里腾地方：最旧的先删，每轮删四分之一，
+// 删一轮试写一次，写进去就停。旧版本备份只是本机多存的一份，聊天记录里的成品和版本存档都不动。
+function freeHistoryRoomFor(serialized){
+ let history;
+ try{ history=readHistoryStore(); }catch{ return false; }
+ const flattened=[];
+ for(const [slot,entries] of Object.entries(history.slots||{})) for(const entry of (Array.isArray(entries)?entries:[])) flattened.push({slot,entry});
+ if(!flattened.length) return false;
+ flattened.sort((a,b)=>Number(b.entry?.ts||0)-Number(a.entry?.ts||0));
+ while(flattened.length){
+  flattened.splice(Math.max(0,flattened.length-Math.ceil(flattened.length/4)));
+  const retry=emptyHistoryStore();
+  for(const {slot,entry} of flattened) (retry.slots[slot]||(retry.slots[slot]=[])).push(entry);
+  for(const list of Object.values(retry.slots)) list.sort((a,b)=>Number(a?.ts||0)-Number(b?.ts||0));
+  try{
+   if(flattened.length) localStorage.setItem(HISTORY_STORE_KEY,JSON.stringify(retry));
+   else localStorage.removeItem(HISTORY_STORE_KEY);
+  }catch{ continue; }
+  try{ localStorage.setItem(STORE_KEY,serialized); warnStorageTrimmed(); return true; }catch{}
+ }
+ return false;
 }
 
 export function writeStore(v){
  const compacted=compactOutputStore(v);
  try { localStorage.setItem(STORE_KEY, JSON.stringify(compacted)); try{ clearSavedIndependentOutputNotices(); }catch{} return true; }
  catch {
+  if(freeHistoryRoomFor(JSON.stringify(compacted))){ try{ clearSavedIndependentOutputNotices(); }catch{} return true; }
   const entries=Object.entries(compacted).sort((a,b)=>Number(b[1]?.ts||0)-Number(a[1]?.ts||0));
   while(entries.length>1){ entries.pop(); try{ localStorage.setItem(STORE_KEY,JSON.stringify(Object.fromEntries(entries))); try{ clearSavedIndependentOutputNotices(); }catch{} warnStorageTrimmed(); return true; }catch{} }
   warnStorageTrimmed(); return false;
@@ -168,6 +252,8 @@ export function readHistoryStore(){
  return emptyHistoryStore();
 }
 
+// 旧版本备份超出目标时：成品缓存或聊天数据里已经有同样内容的，删掉不丢东西；每一层最新的那份、而且哪里都没有的，留到上限；
+// 更早的版本只是用来回退的，超出目标就不留。
 function compactHistoryStore(value){
  const normalized=value&&typeof value==='object'?value:emptyHistoryStore();
  const flattened=[];
@@ -176,12 +262,21 @@ function compactHistoryStore(value){
  }
  flattened.sort((a,b)=>Number(b.entry?.ts||0)-Number(a.entry?.ts||0));
  const next=emptyHistoryStore();
+ let ctx=null; try{ ctx=getContext(); }catch{ ctx=null; }
+ let outputs=null;
+ const outputHtmlFor=slot=>{ if(!outputs){ try{ outputs=readStore(); }catch{ outputs={}; } } return String(outputs?.[slot]?.html||''); };
+ const newestForSlot=new Map();
+ for(const {slot,entry} of flattened) if(!newestForSlot.has(slot)) newestForSlot.set(slot,entry);
  let used=byteLength(JSON.stringify(next));
  for(const {slot,entry} of flattened.slice(0,70)){
   const list=next.slots[slot]||(next.slots[slot]=[]);
   if(list.length>=10) continue;
   const cost=byteLength(JSON.stringify(entry))+(list.length?1:byteLength(JSON.stringify(slot))+4);
-  if(used+cost>HISTORY_STORE_BUDGET_BYTES){ if(!list.length) delete next.slots[slot]; warnStorageTrimmed(); continue; }
+  if(used+cost>HISTORY_STORE_BUDGET_BYTES){
+   const covered=outputHtmlFor(slot)===String(entry.html||'') || cacheCoverage(ctx,slot,entry)==='covered';
+   const protect=!covered && newestForSlot.get(slot)===entry;
+   if(!protect || used+cost>HISTORY_STORE_CEILING_BYTES){ if(!list.length) delete next.slots[slot]; if(protect) warnStorageTrimmed(); continue; }
+  }
   list.push(entry); used+=cost;
  }
  for(const list of Object.values(next.slots)) list.sort((a,b)=>Number(a?.ts||0)-Number(b?.ts||0));
@@ -461,9 +556,52 @@ function saveChatOutputMetadata(ctx=getContext()){
  //
  // The chatMetadata object is live and has already been updated by the caller.
  // RabbitMirror also keeps an immediate localStorage fallback. The host's next
- // ordinary, user-owned chat save may persist this metadata naturally; RabbitMirror
- // itself does not initiate a chat save.
+ // ordinary, user-owned chat save may persist this metadata naturally. The only
+ // exception is requestSafeChatSave(): after a new mirror is produced it asks the
+ // host's debounced metadata save, and only once the same, fully loaded chat is
+ // idle (no host generation, same chat array/metadata/key, target message intact).
  return true;
+}
+
+// 新成品写进聊天数据以后，请酒馆「稍后存一次」（saveMetadataDebounced，心迹回廊用的也是它），
+// 让聊天文件尽早拿到这一版，不用等你下次发消息。安全条件（任一不满足就不请求，照旧等酒馆自己保存）：
+//   - 酒馆不在生成正文；生成中就每隔几秒再看一次，最多等两分钟；
+//   - 还是写入时那条聊天：同一份聊天数组、同一份聊天信息、聊天标识不变；
+//   - 聊天加载完整：有消息，条数不比写入时少，写入的那一层还在原位。
+// 几秒内的多次请求合成一次。
+const SAFE_SAVE_DELAY_MS=2500;
+const SAFE_SAVE_RETRY_MS=4000;
+const SAFE_SAVE_GIVE_UP_MS=120000;
+let safeSaveTimer=null;
+let safeSaveRequest=null;
+export function requestSafeChatSave(ctx,index,msg){
+ if(typeof ctx?.saveMetadataDebounced!=='function' || !Array.isArray(ctx?.chat) || !ctx.chat.length) return false;
+ const metadata=chatMetadataObject(ctx);
+ if(!metadata || ctx.chat[Number(index)]!==msg) return false;
+ const request={chat:ctx.chat,metadata,key:chatKey(ctx),length:ctx.chat.length,index:Number(index),msg,since:Date.now()};
+ // 换了聊天以后，上一条聊天的请求作废；同一条聊天的多次请求只留最新一次。
+ safeSaveRequest=request;
+ if(safeSaveTimer) clearTimeout(safeSaveTimer);
+ safeSaveTimer=setTimeout(runSafeChatSave,SAFE_SAVE_DELAY_MS);
+ return true;
+}
+function runSafeChatSave(){
+ safeSaveTimer=null;
+ const request=safeSaveRequest; if(!request) return;
+ let live=null;
+ try{ live=getContext(); }catch{ live=null; }
+ const sameChat=!!live && live.chat===request.chat && chatMetadataObject(live)===request.metadata && chatKey(live)===request.key;
+ const loaded=sameChat && live.chat.length>=request.length && live.chat[request.index]===request.msg;
+ if(!sameChat || !loaded){ safeSaveRequest=null; return; }
+ let generating=true;
+ try{ generating=hostGenerationLooksActive(); }catch{ generating=true; }
+ if(generating){
+  if(Date.now()-request.since<SAFE_SAVE_GIVE_UP_MS) safeSaveTimer=setTimeout(runSafeChatSave,SAFE_SAVE_RETRY_MS);
+  else safeSaveRequest=null;
+  return;
+ }
+ safeSaveRequest=null;
+ try{ live.saveMetadataDebounced(); }catch(error){ console.debug('[RabbitMirror] 稍后保存聊天的请求没有发出：',error); }
 }
 
 function chatOwnerKey(index,swipe=0){

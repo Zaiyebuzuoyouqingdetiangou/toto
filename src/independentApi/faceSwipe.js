@@ -1,16 +1,16 @@
 // Split from independentApi.js — faceSwipe.
 
-import { getSettings } from '../settings.js?rmv=1.67.82';
-import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.67.82';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.67.82';
-import { configuredAutomaticRerollMax } from '../automaticReroll.js?rmv=1.67.82';
-import { seedSwipeState, appendSuccessfulSwipe, faceSwipeStorageSlot, readFaceSwipe, mutateFaceSwipe, restoreFaceSwipeSnapshot } from '../swipeVersions.js?rmv=1.67.82';
-import { EPHEMERAL_FAILURE_ATTR, EPHEMERAL_FAILURE_BODY_ATTR, RUNTIME_VERSION } from './runtime.js?rmv=1.67.82';
-import { independentRecordWithinBudget, readStore, writePersistedOwner, writeStore } from './persistence.js?rmv=1.67.82';
-import { chatKey, saveRecordForSlot, savedIndependentRecordForOwner, swipeId } from './connection.js?rmv=1.67.82';
-import { hasMultifaceMarkup, wrapIndependentFace } from './request.js?rmv=1.67.82';
-import { attachIndependentUnsavedNotices, externalFaceDetails, passiveObservedIdentity, showIndependentUnsavedOutput } from './mount.js?rmv=1.67.82';
-import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.67.82';
+import { getSettings } from '../settings.js?rmv=1.67.85';
+import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.67.85';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.67.85';
+import { configuredAutomaticRerollMax } from '../automaticReroll.js?rmv=1.67.85';
+import { seedSwipeState, appendSuccessfulSwipe, faceSwipeStorageSlot, readFaceSwipe, mutateFaceSwipe, restoreFaceSwipeSnapshot } from '../swipeVersions.js?rmv=1.67.85';
+import { EPHEMERAL_FAILURE_ATTR, EPHEMERAL_FAILURE_BODY_ATTR, RUNTIME_VERSION } from './runtime.js?rmv=1.67.85';
+import { independentRecordWithinBudget, readStore, requestSafeChatSave, writePersistedOwner, writeStore } from './persistence.js?rmv=1.67.85';
+import { chatKey, saveRecordForSlot, savedIndependentRecordForOwner, swipeId } from './connection.js?rmv=1.67.85';
+import { hasMultifaceMarkup, wrapIndependentFace } from './request.js?rmv=1.67.85';
+import { attachIndependentUnsavedNotices, externalFaceDetails, passiveObservedIdentity, showIndependentUnsavedOutput } from './mount.js?rmv=1.67.85';
+import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.67.85';
 
 export function independentRerollMax(){ return configuredAutomaticRerollMax(getSettings()); }
 
@@ -179,6 +179,7 @@ export function writeIndependentOwnerHtml(identity,html){
  // Preserve the accepted version in this chat even if browser storage refuses
  // it. Current-session display and durable persistence are separate outcomes.
  writePersistedOwner(identity.ctx,identity.index,identity.msg,next,{overwrite:true});
+ requestSafeChatSave(identity.ctx,identity.index,identity.msg);
  if(identity.host){
   identity.host.__rabbitMirrorIndependentSource=html;
   identity.host.dataset.rmSourceHash=String(identity.host.dataset.rmSourceHash||existing.sourceHash||'');
