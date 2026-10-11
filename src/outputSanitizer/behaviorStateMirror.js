@@ -7,6 +7,7 @@ const STATE_CLASSES = new Set([
     'playing', 'matched', 'paired', 'correct', 'unlocked', 'solved', 'chosen', 'picked', 'turned', 'lifted', 'glow', 'reveal',
 ]);
 const indexes = new WeakMap();
+export const isBehaviorStateClass = name => STATE_CLASSES.has(String(name || '').toLowerCase());
 
 export function behaviorStyleText(root) {
     return styleText(root);

@@ -1,8 +1,8 @@
-import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.67.79';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.67.79';
-import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.67.79';
-import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.67.79';
-import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.67.79';
+import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.67.81';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.67.81';
+import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.67.81';
+import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.67.81';
+import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.67.81';
 
 // Declarative, face-local behaviors. No generated code, global targets or timers.
 const roots = new WeakMap();
@@ -53,6 +53,7 @@ function refreshResults(state) {
         const active = state.type === 'hold' ? state.group.getAttribute('data-rm-active') === 'true' : (state.on?.size || 0) > 0;
         setBehaviorNodeVisible(adopted, active);
     }
+    applyStateOverrides(state);
 }
 
 // data-rm-show 能用的键：通用状态词，加上各类驱动当前的键（开着的词、选中的键、当前页、格号、按过的键、连上的键）。
@@ -97,6 +98,253 @@ function saveStyle(state, node, property) {
 function style(state, node, property, value) {
     saveStyle(state, node, property);
     node.style.setProperty(property, value);
+    if (node === state.group && property.startsWith('--rm-')) for (const user of varUsers(state, property)) {
+        saveStyle(state, user, property);
+        user.style.setProperty(property, value);
+    }
+}
+
+// ——— 插件写法和模型手写样式之间的“桥”：插件把状态改对了、画面却没跟上时，自己去找结果 ———
+
+// 本面自己的样式规则（浏览器解析好的，含 @media 里的）。
+function localRules(root) {
+    const scope = root?.closest?.('toto') || root;
+    const rules = [];
+    const walk = list => {
+        for (const rule of list || []) {
+            if (typeof rule.selectorText === 'string' && rule.style) rules.push(rule);
+            else if (rule.cssRules) walk(rule.cssRules);
+        }
+    };
+    for (const node of scope?.querySelectorAll?.('style') || []) { try { walk(node.sheet?.cssRules); } catch { /* 跨域或未解析 */ } }
+    return rules;
+}
+
+// 桥一：区域外的元素也在用插件写的变量（如兄弟元素 style="--time-p: calc(var(--rm-p, .25))"）。
+// CSS 变量只往里层传、不往旁边传，这些元素收不到。同一个值也写到用它的元素身上；
+// 只写在用它的元素上、不写公共祖先，别的区域里的元素不碰，包着别的区域的元素也不碰。
+const MAX_VAR_USERS = 40;
+const PSEUDO_STRIP = /::?[\w-]+(?:\([^()]*\))?/g;
+function varUsers(state, property) {
+    state.varUsers ||= new Map();
+    if (state.varUsers.has(property)) return state.varUsers.get(property);
+    const list = [];
+    state.varUsers.set(property, list);
+    const { group } = state;
+    const scope = group.closest('details') || state.root;
+    if (!scope?.querySelectorAll) return list;
+    const needle = new RegExp(`var\\(\\s*${property.replace(/-/g, '\\-')}\\s*[,)]`);
+    const accept = node => {
+        if (!node?.style || list.length >= MAX_VAR_USERS || list.includes(node)) return;
+        if (node === group || group.contains(node) || (node !== scope && !scope.contains(node))) return;
+        if (node.closest(GROUP)) return;
+        if ([...node.querySelectorAll(GROUP)].some(other => other !== group && !group.contains(other))) return;
+        list.push(node);
+    };
+    for (const node of [scope, ...scope.querySelectorAll('[style*="--rm-"]')]) if (needle.test(node.getAttribute?.('style') || '')) accept(node);
+    for (const rule of localRules(state.root)) {
+        if (!needle.test(rule.style.cssText)) continue;
+        const selector = rule.selectorText.replace(PSEUDO_STRIP, '').trim();
+        if (!selector) continue;
+        try { if (scope.matches(selector)) accept(scope); } catch { continue; }
+        try { for (const node of scope.querySelectorAll(selector)) accept(node); } catch { /* 选择器读不懂就跳过 */ }
+    }
+    return list;
+}
+
+// 桥二：样式里写了“进入某状态时”的规则（[data-rm-active="true"] .glow{opacity:1}、.card.flipped .inner{…}），
+// 可目标元素自己的内联样式写了同一项（style="opacity:.4"），规则永远压不过内联，状态到了画面也不变。
+// 只对“因为状态变化才新匹配上”的元素生效：一开始就匹配的不动，保持模型原本的样子；状态撤掉时恢复内联原值。
+const STATE_ATTR_NEEDLE = /\[\s*(?:data-rm-(?:on|active|picked|index|match|miss|done|seq|current|paired|armed|placed|angle-turned)|aria-pressed)\b/;
+const STATE_ATTR_STRIP = /\[\s*(?:data-rm-(?:on|active|picked|index|match|miss|done|seq|current|paired|armed|placed|angle-turned)|aria-pressed)\b[^\]]*\]/g;
+const OVERRIDE_SKIP_PROPERTY = /^(?:--rm-|touch-action$|cursor$|outline)/;
+function stateRules(state) {
+    if (state.stateRules) return state.stateRules;
+    const { group } = state;
+    const scope = group.closest('details') || state.root;
+    const lone = scope?.querySelectorAll ? scope.querySelectorAll(GROUP).length <= 1 : true;
+    const found = [];
+    for (const rule of localRules(state.root)) {
+        const text = rule.selectorText;
+        if (!text || text.includes('(') || text.includes('::')) continue;
+        let mine = false;
+        for (const selector of text.split(',')) for (const compound of compoundsOf(selector.trim())) {
+            const hasAttr = STATE_ATTR_NEEDLE.test(compound);
+            const classes = [...compound.matchAll(/\.([A-Za-z_][\w-]*)/g)].map(match => match[1]).filter(isBehaviorStateClass);
+            if (!hasAttr && !classes.length) continue;
+            let base = compound.replace(STATE_ATTR_STRIP, '');
+            for (const name of classes) base = base.replace(new RegExp(`\\.${name}(?![\\w-])`), '');
+            base = base.trim();
+            if (!base) { if (hasAttr && lone) mine = true; continue; }
+            try { if (group.matches(base) || own(group, base).length) mine = true; } catch { /* 读不懂就不算 */ }
+        }
+        if (mine) found.push(rule);
+    }
+    state.stateRules = found;
+    return found;
+}
+function applyStateOverrides(state) {
+    const rules = stateRules(state);
+    if (!rules.length) return;
+    const scope = state.group.closest('details') || state.root;
+    const matched = rule => { try { return [...scope.querySelectorAll(rule.selectorText)]; } catch { return []; } };
+    if (!state.ruleBaseline) {
+        // 起始样子在第一次同步时记下（区域外的目标也在这时记下“一开始是否已处于这个状态”）。
+        state.ruleBaseline = new Map(rules.map(rule => [rule, new Set(matched(rule))]));
+        outsideStateLinks(state);
+        return;
+    }
+    const wanted = new Map();
+    const want = (node, property, value, priority = '') => {
+        if (!wanted.has(node)) wanted.set(node, new Map());
+        wanted.get(node).set(property, [value, priority]);
+    };
+    // 桥二乙：规则写成「区域处于某状态时，里面的 .xx 变化」，可 .xx 其实画在区域外面（按住按钮在下面一排、
+    // 发光的药盅在上面的画面里），后代选择器永远对不上。区域进入这个状态时，把规则直接写到外面那几个元素上，撤掉时恢复。
+    for (const link of outsideStateLinks(state)) {
+        let active = false;
+        try { active = state.group.matches(link.chain); } catch { active = false; }
+        if (!active || link.baseline) continue;
+        for (const node of link.targets) {
+            if (!node.isConnected || node.hasAttribute('data-rm-show') || node.hasAttribute('data-rm-result-active')) continue;
+            for (let index = 0; index < link.rule.style.length; index += 1) {
+                const property = link.rule.style[index];
+                if (OVERRIDE_SKIP_PROPERTY.test(property)) continue;
+                want(node, property, link.rule.style.getPropertyValue(property), link.rule.style.getPropertyPriority(property));
+            }
+        }
+    }
+    for (const rule of rules) {
+        const baseline = state.ruleBaseline.get(rule);
+        for (const node of matched(rule)) {
+            if (baseline?.has(node) || !node.style || node.hasAttribute('data-rm-show') || node.hasAttribute('data-rm-result-active')) continue;
+            for (let index = 0; index < rule.style.length; index += 1) {
+                const property = rule.style[index];
+                if (OVERRIDE_SKIP_PROPERTY.test(property) || rule.style.getPropertyPriority(property) === 'important') continue;
+                const saved = state.styles.get(node)?.get(property);
+                const inline = saved ? saved[0] : node.style.getPropertyValue(property);
+                const priority = saved ? saved[1] : node.style.getPropertyPriority(property);
+                if (!inline || priority === 'important') continue;
+                want(node, property, rule.style.getPropertyValue(property));
+            }
+        }
+    }
+    state.overrides ||= new Map();
+    for (const [node, properties] of state.overrides) for (const property of [...properties]) {
+        if (wanted.get(node)?.has(property)) continue;
+        unstyle(state, node, [property]);
+        properties.delete(property);
+    }
+    for (const [node, properties] of wanted) {
+        if (!state.overrides.has(node)) state.overrides.set(node, new Set());
+        for (const [property, [value, priority]] of properties) {
+            if (node.style.getPropertyValue(property) !== value || node.style.getPropertyPriority(property) !== priority) {
+                saveStyle(state, node, property);
+                node.style.setProperty(property, value, priority);
+            }
+            state.overrides.get(node).add(property);
+        }
+    }
+}
+
+// 状态规则里「区域状态 + 后代」这一段，后代全落在区域外面的：记下区域要满足的整条前缀和外面的目标。
+// 只认纯后代关系（不含 > + ~）、后代写了类名或 id、外面最多 12 个、区域里面一个都对不上的。
+function outsideStateLinks(state) {
+    if (state.outsideLinks) return state.outsideLinks;
+    const links = [];
+    state.outsideLinks = links;
+    const { group } = state;
+    const scope = group.closest('details') || state.root;
+    if (!scope?.querySelectorAll) return links;
+    for (const rule of stateRules(state)) {
+        for (const part of rule.selectorText.split(',')) {
+            const selector = part.trim();
+            if (/[>+~]/.test(selector.replace(/\[[^\]]*\]/g, ''))) continue;
+            const compounds = compoundsOf(selector);
+            for (let index = 0; index < compounds.length - 1; index += 1) {
+                if (!STATE_ATTR_NEEDLE.test(compounds[index])) continue;
+                const chain = compounds.slice(0, index + 1).join(' ');
+                const tail = compounds.slice(index + 1).join(' ');
+                if (!/[.#][A-Za-z_]/.test(tail)) continue;
+                let baseChain = compounds.slice(0, index).concat(compounds[index].replace(STATE_ATTR_STRIP, '') || '*').join(' ');
+                try { if (!group.matches(baseChain)) continue; } catch { continue; }
+                let targets = [];
+                try { targets = [...scope.querySelectorAll(tail)]; } catch { continue; }
+                if (!targets.length || targets.length > 12 || targets.some(node => group.contains(node))) continue;
+                if (targets.some(node => node.closest(GROUP))) continue;
+                let baseline = false;
+                try { baseline = group.matches(chain); } catch { baseline = false; }
+                links.push({ rule, chain, targets, baseline });
+                break;
+            }
+        }
+    }
+    return links;
+}
+
+// 桥三（兜底）：点了没反应就自己找结果。每块区域第一次被真正操作时，比一比这一面操作前后的样子：
+// 插件这一下改了状态、画面却一点没变（插件自己补的描边、一直在跑的动画不算），说明插件和这一面的写法没接上，
+// 就把这一块交给即时接力——副本里实测老修复器能不能让它动起来，能才在真实页面换过去。每块只查一次。
+const VERIFY_DELAY_MS = 260;
+const VERIFY_MAX_NODES = 600;
+const VERIFY_SKIP = '[data-rabbit-mirror-tool-entry-host],[data-rabbit-mirror-diagnostic-panel],.rabbit-mirror-maintenance-menu,[data-rm-face-swipe-host],[data-rm-image-region],[data-rm-mobile-controls],[data-rabbit-mirror-maintenance-rabbit],[data-rabbit-mirror-feedback-cat],svg[data-rm-lines]';
+function pluginFingerprint(group) {
+    const parts = [];
+    let count = 0;
+    for (const node of [group, ...group.querySelectorAll('*')]) {
+        if (count++ > VERIFY_MAX_NODES) break;
+        for (const attr of node.attributes || []) parts.push(attr.name, attr.value);
+        parts.push('|');
+    }
+    return parts.join('\u0001');
+}
+function visibleState(scope, skip) {
+    const view = scope?.ownerDocument?.defaultView;
+    if (!view?.getComputedStyle || !scope.isConnected) return null;
+    const origin = scope.getBoundingClientRect();
+    const map = new Map();
+    let count = 0;
+    for (const node of [scope, ...scope.querySelectorAll('*')]) {
+        if (count++ > VERIFY_MAX_NODES) break;
+        if (node === skip || node.closest(VERIFY_SKIP) || node.hasAttribute(FEEDBACK_ATTR)) continue;
+        let css;
+        try { css = view.getComputedStyle(node); } catch { continue; }
+        const rect = node.getBoundingClientRect();
+        // 一直在跑的动画每一刻的变换都不同，不拿来比。
+        const moving = css.animationName && css.animationName !== 'none';
+        map.set(node, [css.display, css.visibility, moving ? '' : Number(css.opacity).toFixed(2), moving ? '' : `${css.transform}${css.rotate}${css.scale}${css.translate}`,
+            css.clipPath, css.filter, css.backgroundColor, String(css.backgroundImage || '').slice(0, 240), css.color, css.fill, css.stroke, css.animationName,
+            moving ? '' : `${Math.round(rect.width)},${Math.round(rect.height)},${Math.round(rect.left - origin.left)},${Math.round(rect.top - origin.top)}`,
+            node.childElementCount ? '' : String(node.textContent || '').slice(0, 80)].join('\u0001'));
+    }
+    return map;
+}
+function sameLook(before, after) {
+    if (before.size !== after.size) return false;
+    for (const [node, value] of after) if (before.get(node) !== value) return false;
+    return true;
+}
+function beginVerify(state, control, replay = false) {
+    if (state.verified || state.verifying || !state.root?.isConnected) return null;
+    if (control?.hasAttribute?.('data-rm-reset') || control?.getAttribute?.('aria-disabled') === 'true') return null;
+    const scope = state.group.closest('details') || state.root;
+    let before = null, plugin = '';
+    try { before = visibleState(scope, control); plugin = pluginFingerprint(state.group); } catch { return null; }
+    if (!before) return null;
+    state.verifying = true;
+    return () => setTimeout(() => {
+        state.verifying = false;
+        const { group, root } = state;
+        if (!group.isConnected || !group.matches(GROUP)) return;
+        // 已经松手、或这一下插件也没改状态（翻到头、本来就在原位）：这次不算，下次再看。
+        if (state.type === 'hold' && group.getAttribute('data-rm-active') !== 'true') return;
+        if (pluginFingerprint(group) === plugin) return;
+        let after = null;
+        try { after = visibleState(scope, control); } catch { return; }
+        if (!after) return;
+        state.verified = true;
+        if (sameLook(before, after)) relayGroupLater(root, group, replay ? control : null);
+    }, VERIFY_DELAY_MS);
 }
 
 function animations(state) {
@@ -126,6 +374,35 @@ function reveal(state, p) {
     }
 }
 
+// 触发效果的部件本身写成 display:none（模型原本用脚本先显示、再挂上 data-rm-active 播动画，比如盖章弹出的通行证），
+// 插件只会重播已有的动画，藏着的部件没有动画可播，点了就没反应。触发时把这类藏着的部件显示出来；
+// 样式里写了 [data-rm-active] 的，每次触发重新挂一次，让入场动画从头播。复位时藏回去、撤掉标记。
+function fireParts(state) {
+    const parts = own(state.group, '[data-rm-part]');
+    const css = behaviorCssMentions(state.root, ['data-rm-active']);
+    let changed = false;
+    state.firedParts ||= new Set();
+    for (const part of parts) {
+        if (!part.style) continue;
+        const hidden = part.style.getPropertyValue('display') === 'none' && !part.hasAttribute('data-rm-result-active') && String(part.textContent || '').trim();
+        if (hidden || state.firedParts.has(part)) {
+            if (hidden) { setBehaviorNodeVisible(part, true); state.firedParts.add(part); changed = true; }
+        }
+        if (css && (state.firedParts.has(part) || !part.getAnimations?.().length)) {
+            part.removeAttribute('data-rm-active');
+            void part.offsetWidth;
+            part.setAttribute('data-rm-active', 'true');
+            changed = true;
+        }
+    }
+    return changed;
+}
+function resetFiredParts(state) {
+    for (const part of own(state.group, '[data-rm-part][data-rm-active]')) part.removeAttribute('data-rm-active');
+    for (const part of state.firedParts || []) if (part.isConnected) setBehaviorNodeVisible(part, false);
+    state.firedParts?.clear();
+}
+
 function countSteps(state) {
     const steps = own(state.group, '[data-rm-step]');
     const completed = steps.filter(node => node.getAttribute('data-rm-done') === 'true').length;
@@ -145,12 +422,13 @@ function countSteps(state) {
 
 function inputChange(state, input, userAction = false) {
     if (userAction) state.changed = true;
+    const verify = userAction ? beginVerify(state, input) : null;
     const { group, type } = state;
     if (type === 'input' && input.matches('input:not([type]), input[type="text"], input[type="password"], textarea')) {
         for (const output of own(group, 'output')) output.textContent = input.value;
         if (group.hasAttribute('data-rm-answer')) group.setAttribute('data-rm-match', String(input.value === group.getAttribute('data-rm-answer')));
     }
-    if (!input.matches('input[type="range"]')) { refreshResults(state); return; }
+    if (!input.matches('input[type="range"]')) { refreshResults(state); verify?.(); return; }
     const { value, p } = rangeValue(input);
     if (type === 'adjust') {
         style(state, group, '--rm-p', String(p));
@@ -169,6 +447,7 @@ function inputChange(state, input, userAction = false) {
         }
     }
     refreshResults(state);
+    verify?.();
 }
 
 function validGroup(group, type) {
@@ -330,6 +609,7 @@ function reset(state) {
         else node.style.removeProperty(property);
     }
     state.styles.clear();
+    state.overrides?.clear();
     state.positions.clear();
     for (const [parent, order] of state.orders) {
         // Restore the original layout slots, retaining new children and all nodes/listeners.
@@ -351,6 +631,7 @@ function reset(state) {
         state.group.removeAttribute('data-rm-match');
     }
     if (state.type === 'reveal') reveal(state, 0);
+    if (state.type === 'effect') resetFiredParts(state);
     if (state.type === 'view') { state.group.scrollLeft = 0; state.group.scrollTop = 0; style(state, state.group, 'overflow', 'auto'); }
     if (state.type === 'hold') { setHoldActive(state, null, false); owners.get(state.group)?.holds.delete(state); }
     if (state.type === 'accumulate') {
@@ -368,6 +649,7 @@ function reset(state) {
 function action(state, button) {
     if (!state) return; // Mobile arrows/range buttons have their own local listener.
     if (button.hasAttribute('data-rm-reset')) { reset(state); return; }
+    const verify = beginVerify(state, button, true);
     if (state.type === 'drag') {
         const item = button.closest('[data-rm-item]');
         if (!item || item.closest(GROUP) !== state.group) return;
@@ -377,6 +659,7 @@ function action(state, button) {
         const list = animations(state);
         for (const animation of list) { animation.currentTime = 0; animation.play(); }
         if (list.length) state.changed = true;
+        if (fireParts(state)) state.changed = true;
     } else if (state.type === 'motion') {
         const list = animations(state);
         if (list.length) state.changed = true;
@@ -414,6 +697,7 @@ function action(state, button) {
         if (statefulAction(state, button)) state.changed = true;
     }
     refreshResults(state);
+    verify?.();
 }
 
 // ——— 状态类驱动：toggle 开关／翻面、pick 多选一、pager 翻页、roll 随机抽取、connect 连线、turn 拨盘、sequence 顺序解锁 ———
@@ -434,7 +718,8 @@ function unstyle(state, node, properties) {
 function mark(state, node, on, needles) {
     if (!node?.style) return;
     mirrorBehaviorState(state.root, node, on);
-    const quiet = behaviorCssMentions(state.root, needles) || hasBehaviorStateClasses(state.root, node);
+    // 接力实测的副本里不补描边：要看的是这一面自己有没有反应，插件补的描边不算。
+    const quiet = behaviorCssMentions(state.root, needles) || hasBehaviorStateClasses(state.root, node) || Boolean(state.group.closest('[data-rm-quiet-feedback]'));
     if (quiet) return;
     if (on) {
         style(state, node, 'outline', '2px solid currentColor'); style(state, node, 'outline-offset', '2px');
@@ -1036,7 +1321,11 @@ function pointerDown(binding, event) {
         session.cx = rect.left + rect.width / 2; session.cy = rect.top + rect.height / 2;
         session.last = pointerAngle(session, event); session.turned = 0; session.angleBefore = state.angle;
     }
-    if (type === 'hold') { setHoldActive(state, surface, true); binding.holds.add(state); state.changed = true; }
+    if (type === 'hold') {
+        const verify = beginVerify(state, surface);
+        setHoldActive(state, surface, true); binding.holds.add(state); state.changed = true;
+        verify?.();
+    }
     try { surface.setPointerCapture?.(event.pointerId); } catch { /* Synthetic or no active pointer. */ }
     pointerMove(binding, event);
 }
@@ -1118,10 +1407,12 @@ function looksLikeControl(target) {
 function scheduleOnDemandRelay(root, target) {
     const state = stateFor(root, target);
     if (!state || !looksLikeControl(target)) return;
-    const group = state.group;
+    relayGroupLater(root, state.group, target.closest?.('button, [role="button"]') || null);
+}
+function relayGroupLater(root, group, control = null) {
     const run = () => {
         if (!group.isConnected || !root.isConnected) return;
-        void import('./behaviorRelay.js?rmv=1.67.79').then(module => module.relayBehaviorGroupOnDemand(root, group)).catch(() => {});
+        void import('./behaviorRelay.js?rmv=1.67.81').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
     };
     const idle = globalThis.requestIdleCallback;
     if (typeof idle === 'function') idle(run, { timeout: 800 }); else setTimeout(run, 120);
