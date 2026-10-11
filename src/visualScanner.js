@@ -1,12 +1,12 @@
-import { clamp, luminanceFromRgb, classifyPaletteSamples } from './paletteObservation.js?rmv=1.67.57';
-import { activeRoleColorHtml, bindRolePaletteCode } from './roleColorVariants.js?rmv=1.67.57';
-import { detectCompositionFingerprint, VISUAL_SKELETON_MAX_CHARS } from './compositionFingerprint.js?rmv=1.67.57';
-import { visualSceneryEnabled } from './presentationMode.js?rmv=1.67.57';
-import { presentationModeFields } from './presentationMode.js?rmv=1.67.57';
-import { getCurrentChatKey, commitFollowVisualHistory, bindVisualHistoryTarget } from './storage.js?rmv=1.67.57';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.67.57';
-import { getSettings } from './settings.js?rmv=1.67.57';
-import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.67.57';
+import { clamp, luminanceFromRgb, classifyPaletteSamples } from './paletteObservation.js?rmv=1.67.67';
+import { activeRoleColorHtml, bindRolePaletteCode } from './roleColorVariants.js?rmv=1.67.67';
+import { detectCompositionFingerprint, VISUAL_SKELETON_MAX_CHARS } from './compositionFingerprint.js?rmv=1.67.67';
+import { visualSceneryEnabled } from './presentationMode.js?rmv=1.67.67';
+import { presentationModeFields } from './presentationMode.js?rmv=1.67.67';
+import { getCurrentChatKey, commitFollowVisualHistory, bindVisualHistoryTarget } from './storage.js?rmv=1.67.67';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.67.67';
+import { getSettings } from './settings.js?rmv=1.67.67';
+import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.67.67';
 import {
     commitRabbitMirrorFollowBatch,
     captureRabbitMirrorGenerationSnapshots,
@@ -16,16 +16,16 @@ import {
     inspectRabbitMirrorGenerationSource,
     releaseRabbitMirrorFollowBatch,
     releaseRabbitMirrorFollowBatchAtMessage,
-} from './generationGuard.js?rmv=1.67.57';
+} from './generationGuard.js?rmv=1.67.67';
 import {
     clearSanitizedRabbitMirrorFaceProof,
     getSanitizedRabbitMirrorFaceProof,
     markSanitizedRabbitMirrorFace,
-    rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.67.57';
-import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.67.57';
-import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.67.57';
-import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.67.57';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.67.57';
+    rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.67.67';
+import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.67.67';
+import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.67.67';
+import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.67.67';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.67.67';
 
 export const FOLLOW_MULTIFACE_COMMITTED_EVENT = 'rabbit-mirror:follow-multiface-committed';
 export const FOLLOW_MULTIFACE_REJECTED_EVENT = 'rabbit-mirror:follow-multiface-rejected';
@@ -318,7 +318,9 @@ function detectEffectiveInteraction(html = '') {
     const checkedRoute = hasCheckInput && hasMeaningfulStateRule(text, ':checked');
     const targetRoute = /href\s*=\s*["']#[^"']+["']/i.test(text) && hasMeaningfulStateRule(text, ':target');
     const popoverRoute = /\bpopovertarget\s*=|\bcommandfor\s*=/i.test(text) && /\bpopover(?:\s|=|>)/i.test(text);
-    return innerDetails || checkedRoute || targetRoute || popoverRoute;
+    // 插件驱动写法本身就是有效交互（由驱动接线，不靠 :checked）。
+    const driverRoute = /\bdata-(?:rm-)?ui\s*=\s*["']?(?:effect|drag|adjust|reveal|view|input|draw|motion|hold|follow|reorder|accumulate|toggle|pick|pager|roll|connect|turn|sequence)\b/i.test(text);
+    return innerDetails || checkedRoute || targetRoute || popoverRoute || driverRoute;
 }
 
 function detectInteractionSignals(html = '', plain = '') {
@@ -443,10 +445,17 @@ function observedRecipeIds(root, family) {
         input: ['input-draw', ['input, textarea', 'output']],
         draw: ['input-draw', ['svg[data-rm-canvas]']],
         motion: ['progress-control', ['[data-rm-part]', 'button[data-rm-play], button[data-rm-reverse], input[type="range"]']],
-        hold: ['hold-preview', ['button[data-rm-hold]']],
+        hold: ['hold-preview', ['[data-rm-hold]']],
         follow: ['pointer-follow', ['[data-rm-surface]']],
         reorder: ['reorder', ['[data-rm-item]']],
-        accumulate: ['accumulate', ['button[data-rm-step]']],
+        accumulate: ['accumulate', ['[data-rm-step]']],
+        toggle: ['flip', []],
+        pick: ['scene-switch', ['[data-rm-pick]']],
+        pager: ['scene-switch', ['[data-rm-page]']],
+        roll: ['random-roll', ['[data-rm-roll]', '[data-rm-show]']],
+        connect: ['connect-pair', ['[data-rm-end]']],
+        turn: ['turn-dial', ['[data-rm-knob]']],
+        sequence: ['sequence-lock', ['[data-rm-code]']],
     };
     for (const group of root.querySelectorAll('[data-rm-ui]')) {
         const type = group.getAttribute('data-rm-ui');
@@ -1749,7 +1758,7 @@ function templateSingleFollowRoot(template) {
 
 function loadFollowBatchSanitizer() {
     if (!followBatchSanitizerModulePromise) {
-        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.67.57').catch(error => {
+        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.67.67').catch(error => {
             followBatchSanitizerModulePromise = null;
             console.debug('[RabbitMirror] follow multiface sanitizer unavailable:', error);
             return null;

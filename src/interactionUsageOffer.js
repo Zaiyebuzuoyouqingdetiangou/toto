@@ -1,6 +1,7 @@
 // 抽完展现形式后，按形式所属的媒介大类从真实用法索引里强随机抽 3 项，避开近期给过的用法。
 // 只有这 3 项进入 Prompt；索引本身不发送。由出题计划冻结，重说与逐面子请求沿用同一份。
-import { CORE_USAGES, USAGE_CATEGORIES, USAGE_FORMAT_OVERRIDES, USAGE_GROUP_FALLBACK } from '../data/raw/interactionUsages.js?rmv=1.67.57';
+import { CORE_USAGES, USAGE_CATEGORIES, USAGE_FORMAT_OVERRIDES, USAGE_GROUP_FALLBACK } from '../data/raw/interactionUsages.js?rmv=1.67.67';
+import { FORMAT_USAGES } from '../data/raw/formatUsages.js?rmv=1.67.67';
 
 const OFFER_SIZE = 3;
 const RECENT_KEY = 'rabbitMirrorUsageRecent';
@@ -65,16 +66,24 @@ export function drawUsageOffer(combo, { avoidFlip = false, avoidSlide = false } 
     let recent = [];
     try { recent = JSON.parse(globalThis.localStorage?.getItem(RECENT_KEY) || '[]'); } catch { recent = []; }
     const text = comboText(combo);
-    // 形式自带核心玩法时，先从核心用法里取 1 个（同样随机、避开近期）。
-    const coreAll = [...new Set(CORE_USAGES.filter(entry => entry.keywords.some(word => text.includes(word))).flatMap(entry => entry.usages))];
+    // 形式自带核心玩法时，先从核心用法里取（同样随机、避开近期）。
+    // 这一面的形式有专属用法时，专属用法就是它的核心玩法：先取 2 项，大类里再取 1 项。
+    const formatAll = [...new Set([...(combo?.formats || []), ...(combo?.texts || [])].flatMap(item => FORMAT_USAGES[String(item?.id || '')] || []))];
+    const coreAll = formatAll.length ? formatAll : [...new Set(CORE_USAGES.filter(entry => entry.keywords.some(word => text.includes(word))).flatMap(entry => entry.usages))];
+    const coreCount = formatAll.length ? 2 : 1;
     const coreNonFlip = coreAll.filter(item => !avoided(item));
     const corePool = (avoidFlip || avoidSlide) && coreNonFlip.length ? coreNonFlip : coreAll;
     const coreFresh = corePool.filter(item => !recent.includes(item));
-    const core = corePool.length ? shuffled(coreFresh.length ? coreFresh : corePool).slice(0, 1) : [];
+    const core = corePool.length ? shuffled(coreFresh.length >= coreCount ? coreFresh : corePool).slice(0, coreCount) : [];
     const rest = pool.filter(item => !core.includes(item));
     const fresh = rest.filter(item => !recent.includes(item));
     const source = fresh.length >= OFFER_SIZE - core.length ? fresh : rest;
     const usages = [...core, ...shuffled(source).slice(0, OFFER_SIZE - core.length)];
     try { globalThis.localStorage?.setItem(RECENT_KEY, JSON.stringify([...recent.filter(item => !usages.includes(item)), ...usages].slice(-RECENT_LIMIT))); } catch { /* best effort */ }
     return Object.freeze({ labels: Object.freeze(keys.map(key => USAGE_CATEGORIES[key].label)), usages: Object.freeze(usages) });
+}
+
+// 这一面形式所属大类的全部用法（不发给模型）：写法补位时优先挑这个媒介里常用到的那几类写法。
+export function relatedUsagesForCombo(combo) {
+    return [...new Set(usageCategoriesForCombo(combo).flatMap(key => USAGE_CATEGORIES[key]?.usages || []))];
 }

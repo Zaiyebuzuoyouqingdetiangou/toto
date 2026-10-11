@@ -1,8 +1,8 @@
-import { chatu8Status, generateViaChatu8 } from './chatu8Image.js?rmv=1.67.57';
-import { getSettings } from './settings.js?rmv=1.67.57';
-import { getContext } from './independentApi/runtime.js?rmv=1.67.57';
-import { getChatu8ImageCharacters } from './imageCharacterPresets.js?rmv=1.67.57';
-import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.67.57';
+import { chatu8Status, generateViaChatu8 } from './chatu8Image.js?rmv=1.67.67';
+import { getSettings } from './settings.js?rmv=1.67.67';
+import { getContext } from './independentApi/runtime.js?rmv=1.67.67';
+import { getChatu8ImageCharacters } from './imageCharacterPresets.js?rmv=1.67.67';
+import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.67.67';
 function failure(code, message) { return Object.assign(new Error(message), { code }); }
 
 function imageApi() {
@@ -52,7 +52,10 @@ export async function generateMirrorImage(plan, { signal, onProgress, character,
     if (typeof character !== 'string' || !character.trim()) throw failure('invalid_args', '缺少当前画面的图库归属，请重新打开这一面。');
     const tagsOnly = plan?.promptFormat === 'nai45-tags';
     // 单提示词后端的自然语言字段也使用已绑定外貌的完整画面。
-    const request = { prompt, nl: tagsOnly ? '' : String(status.supportsCharacters ? plan?.nl || '' : prompt), save: true, character };
+    // 自然语言和提示词是同一段话时只发一份（没开生图 LLM 时两者相同，以前会把同一段画面描述发两遍）。
+    const nlText = tagsOnly ? '' : String(status.supportsCharacters ? plan?.nl || '' : prompt);
+    const same = (a, b) => String(a || '').replace(/\s+/g, ' ').trim() === String(b || '').replace(/\s+/g, ' ').trim();
+    const request = { prompt, nl: nlText && same(nlText, prompt) ? '' : nlText, save: true, character };
     const plannedMetadata = {
         prompt: String(plan?.prompt || ''), nl: String(plan?.nl || ''),
         flatPrompt: String(plan?.flatPrompt || ''), characters,

@@ -1,8 +1,8 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.67.57';
-import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.67.57';
-import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.67.57';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.67.67';
+import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.67.67';
+import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.67.67';
 
 export function buildRabbitMirrorSettingsDialogHtml() {
     return `
@@ -428,12 +428,12 @@ export function buildRabbitMirrorSettingsDialogHtml() {
             <label for="rh_raw_policy" class="flex-container alignitemscenter" style="gap:8px;flex-wrap:wrap;margin:8px 0;">
               <span>参考内容</span>
               <select id="rh_raw_policy" class="text_pole" style="max-width:320px;">
-                <option value="compact">精简：Prompt 较短，Token 较少</option>
-                <option value="balanced">均衡：Prompt 长度适中（默认）</option>
-                <option value="full">完整：Prompt 较长，参考内容更多</option>
+                <option value="compact">精简：只发摘要，Token 最少</option>
+                <option value="balanced">均衡：摘要＋原文开头（默认）</option>
+                <option value="full">完整：摘要＋原文全文，不截断</option>
               </select>
             </label>
-            <div class="rabbit-mirror-subnote" style="margin:-4px 0 8px 0;opacity:.72;font-size:12px;line-height:1.45;">控制随机生成时使用的参考内容多少。默认使用“均衡”。</div>
+            <div class="rabbit-mirror-subnote" style="margin:-4px 0 8px 0;opacity:.72;font-size:12px;line-height:1.45;">控制抽中的主题和展现形式随请求带上多少原文。精简每条只发摘要；均衡再带原文开头（主题每条约 180 字、展现形式每条约 360 字）；完整把抽中条目的原文一字不落全部发出，Prompt 会更长。</div>
             <div id="rh_image_settings">
               <label class="checkbox_label"><input id="rh_image_enabled" type="checkbox"> 启用镜面生图</label>
               <label class="checkbox_label"><input id="rh_builtin_image" type="checkbox"> 启用小剧场内置生图（实验性）</label>
