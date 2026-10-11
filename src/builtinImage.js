@@ -1,10 +1,10 @@
-import { getSettings } from './settings.js?rmv=1.67.67';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.67.67';
-import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.67';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.67';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.67';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.67.67';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.67';
+import { getSettings } from './settings.js?rmv=1.67.70';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.67.70';
+import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.70';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.70';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.70';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.67.70';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.70';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -46,13 +46,38 @@ function readPrompt(frame) {
     return text.slice(0, 800);
 }
 
+// NAI 5（自然语言＋标签）：图框里另写的一行英文短标签，进标签栏；自然语言画面进自然语言栏，两栏不再塞同一段话。
+function readTags(frame) {
+    const node = frame.querySelector?.('[data-rm-draw-tags]');
+    return String(node ? node.textContent : '').replace(/\s+/g, ' ').trim().slice(0, 600);
+}
+
 // 图框里逐个写的出场人物外貌：<p data-rm-draw-char="原名" hidden>外貌</p>。
+// NAI 5 时另写的 <p data-rm-draw-char-tags="原名" hidden>简短外貌英文标签</p>，按原名配给同一个人，进人物的标签栏。
 function readCharacters(frame) {
+    const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
+    const tags = new Map();
+    for (const node of frame.querySelectorAll?.('[data-rm-draw-char-tags]') || []) {
+        const name = clean(node.getAttribute('data-rm-draw-char-tags')).slice(0, 40);
+        const text = clean(node.textContent).slice(0, 300);
+        if (name && text && !tags.has(name)) tags.set(name, text);
+    }
     const nodes = [...(frame.querySelectorAll?.('[data-rm-draw-char]') || [])].slice(0, 4);
-    return nodes.map(node => ({
-        name: String(node.getAttribute('data-rm-draw-char') || '').replace(/\s+/g, ' ').trim().slice(0, 40),
-        text: String(node.textContent || '').replace(/\s+/g, ' ').trim(),
-    })).filter(person => person.name && person.text.length >= 2);
+    return nodes.map(node => {
+        const name = clean(node.getAttribute('data-rm-draw-char')).slice(0, 40);
+        return { name, text: clean(node.textContent), modelTag: tags.get(name) || '' };
+    }).filter(person => person.name && (person.text.length >= 2 || person.modelTag));
+}
+
+// 逗号标签合并：前面的优先，大小写不同的同一标签只留一个。
+function mergeTagLists(...lists) {
+    const seen = new Set();
+    return lists.flatMap(list => String(list || '').split(',')).map(part => part.trim()).filter(part => {
+        const key = part.toLowerCase();
+        if (!part || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    }).join(', ');
 }
 
 function storageKey(root, frame, prompt) {
@@ -99,6 +124,7 @@ function paint(frame, record) {
     if (!url) return false;
     const promptNode = frame.querySelector?.('[data-rm-draw-prompt]');
     if (promptNode) promptNode.hidden = true;
+    hideFrameExtraMedia(frame);
     frame.querySelector?.('[data-rm-draw-status]')?.remove();
     let image = frame.querySelector?.('img[data-rm-draw-result]');
     if (!image) {
@@ -188,7 +214,8 @@ function uniqueLibrary(list) {
 }
 
 function mergeAppearance(library, modelText, tagsOnly) {
-    const base = tagsOnly ? String(library?.tag || library?.nl || '') : String(library?.nl || library?.tag || '');
+    // NAI 5：角色库的英文标签另放进标签栏，这里只合并自然语言外貌；角色库只有标签时，标签栏照样用上。
+    const base = tagsOnly ? String(library?.tag || library?.nl || '') : String(library?.nl || '');
     if (!base.trim()) return modelText;
     if (!modelText) return base.trim();
     if (tagsOnly) {
@@ -212,15 +239,15 @@ async function withLibraryAppearance(people, prompt, frame, tagsOnly) {
         name: String(person?.name || '').trim(), tag: String(person?.tag || '').trim(), nl: String(person?.nl || '').trim(),
     })).filter(person => person.name && (person.tag || person.nl)));
     if (!library.size) return people;
-    const merged = people.map(person => ({ ...person, text: mergeAppearance(library.get(person.name), person.text, tagsOnly) }));
+    const merged = people.map(person => ({ ...person, text: mergeAppearance(library.get(person.name), person.text, tagsOnly), libraryTag: String(library.get(person.name)?.tag || '') }));
     const ctx = getContext();
     const owners = [characterGroup(), String(ctx?.name1 || globalThis.name1 || '').trim()].filter(Boolean);
     for (const name of owners) {
         if (merged.length >= 4 || merged.some(person => person.name === name)) continue;
         if (!library.has(name) || !String(prompt || '').includes(name)) continue;
-        merged.push({ name, text: mergeAppearance(library.get(name), '', tagsOnly) });
+        merged.push({ name, text: mergeAppearance(library.get(name), '', tagsOnly), libraryTag: String(library.get(name)?.tag || '') });
     }
-    return merged.filter(person => person.text);
+    return merged.filter(person => person.text || person.libraryTag || person.modelTag);
 }
 
 function planningFailure() {
@@ -278,12 +305,18 @@ function startJob(key, prompt, frame, isCurrent) {
             const people = await withLibraryAppearance(readCharacters(frame), prompt, frame, tagsOnly);
             if (!isCurrent()) throw staleImageRequest();
             // 角色库外貌在前、模型写的在后，两边都保留；单提示词也逐人具名，不匿名混拼。
-            const appearance = people.map(person => `${person.name}: ${person.text}`).join('\n');
+            // 单提示词后端按「原名: 自然语言外貌; 标签」逐人具名，和 buildSingleImagePrompt 的写法一致，不重复同一人。
+            // NAI 5 人物标签栏：角色库的标签在前，模型照角色卡、世界书写的简短外貌标签补在后面。
+            const tagOf = person => mergeTagLists(person.libraryTag, person.modelTag);
+            const appearanceOf = person => tagsOnly ? person.text : [...new Set([person.text, tagOf(person)].filter(Boolean))].join('; ');
+            const appearance = people.map(person => `${person.name}: ${appearanceOf(person)}`).join('\n');
+            // NAI 5：标签栏放模型另写的英文短标签，自然语言栏放画面描述；旧镜面没写标签时仍只发画面描述这一份。
+            const tags = tagsOnly ? '' : readTags(frame);
             return {
-                prompt,
+                prompt: tags || prompt,
                 flatPrompt: appearance ? `${prompt}\n${appearance}` : prompt,
                 nl: tagsOnly ? '' : prompt,
-                characters: people.map(person => ({ name: person.name, tag: tagsOnly ? person.text : '', nl: tagsOnly ? '' : person.text })),
+                characters: people.map(person => ({ name: person.name, tag: tagsOnly ? person.text : tagOf(person), nl: tagsOnly ? '' : person.text })),
                 promptFormat: settings.imagePromptFormat,
             };
         })(), {
@@ -358,10 +391,23 @@ async function fillFrame(root, frame) {
     }
 }
 
+// 模型有时在图框里另放一张图（比如外链的塔罗牌原图），和画好的图挤在同一个框里各占一半。
+// 图框只显示画好的图：框里别的图片、视频不显示，只加一个运行时标记，原文不删。
+const FRAME_EXTRA_MEDIA = 'img:not([data-rm-draw-result]), picture, video';
+function hideFrameExtraMedia(frame) {
+    for (const node of frame.querySelectorAll?.(FRAME_EXTRA_MEDIA) || []) {
+        if (node.closest('[data-rm-draw-status]')) continue;
+        if (node.matches('img') && node.closest('picture')) continue;
+        node.setAttribute('data-rm-draw-extra', 'true');
+        node.style.setProperty('display', 'none', 'important');
+    }
+}
+
 // 图框的基本外形由插件补上，提示词里只给模型最短的写法；模型自己写了的样式一律保留。
 function ensureFrameBox(frame) {
     const style = frame?.style;
     if (!style) return;
+    hideFrameExtraMedia(frame);
     let computed = null;
     try { computed = getComputedStyle(frame); } catch { computed = null; }
     if (!computed) return;
@@ -394,6 +440,7 @@ export function fillBuiltinImageFrames(root) {
     // 一面里有几个图框就画几张（比如分镜每格一张），每个图框各自存档、各自重试。
     for (const frame of root.querySelectorAll('[data-rm-draw-frame]')) {
         if (isRabbitMirrorLinkedAvatarFrame(frame)) continue;
+        hideFrameExtraMedia(frame);
         void fillFrame(root, frame);
     }
 }
