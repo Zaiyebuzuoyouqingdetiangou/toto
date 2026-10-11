@@ -1,10 +1,10 @@
-import { getSettings } from './settings.js?rmv=1.67.71';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.67.71';
-import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.71';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.71';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.71';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.67.71';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.71';
+import { getSettings } from './settings.js?rmv=1.67.75';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.67.75';
+import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.75';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.75';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.75';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.67.75';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.75';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -302,19 +302,22 @@ function startJob(key, prompt, frame, isCurrent) {
         } : await (async () => {
             // 没有生图 LLM：按提示词格式分开填，标签写法不再把同一句话当成自然语言再发一次。
             const tagsOnly = settings.imagePromptFormat === 'nai45-tags';
-            const people = await withLibraryAppearance(readCharacters(frame), prompt, frame, tagsOnly);
+            const tagOf = person => mergeTagLists(person.libraryTag, person.modelTag);
+            // 每个人至少要有这种写法用得上的外貌：标签写法看标签，NAI 5 看自然语言或标签，空的人不发。
+            const people = (await withLibraryAppearance(readCharacters(frame), prompt, frame, tagsOnly))
+                .filter(person => tagsOnly ? String(person.text || '').trim() : String(person.text || '').trim() || tagOf(person));
             if (!isCurrent()) throw staleImageRequest();
             // 角色库外貌在前、模型写的在后，两边都保留；单提示词也逐人具名，不匿名混拼。
             // 单提示词后端按「原名: 自然语言外貌; 标签」逐人具名，和 buildSingleImagePrompt 的写法一致，不重复同一人。
             // NAI 5 人物标签栏：角色库的标签在前，模型照角色卡、世界书写的简短外貌标签补在后面。
-            const tagOf = person => mergeTagLists(person.libraryTag, person.modelTag);
             const appearanceOf = person => tagsOnly ? person.text : [...new Set([person.text, tagOf(person)].filter(Boolean))].join('; ');
             const appearance = people.map(person => `${person.name}: ${appearanceOf(person)}`).join('\n');
             // NAI 5：标签栏放模型另写的英文短标签，自然语言栏放画面描述；旧镜面没写标签时仍只发画面描述这一份。
             const tags = tagsOnly ? '' : readTags(frame);
             return {
                 prompt: tags || prompt,
-                flatPrompt: appearance ? `${prompt}\n${appearance}` : prompt,
+                // 只收一段提示词的渠道：NAI 5 先放场景标签，再放自然语言画面，最后逐人外貌。
+                flatPrompt: [tags, prompt, appearance].filter(Boolean).join('\n'),
                 nl: tagsOnly ? '' : prompt,
                 characters: people.map(person => ({ name: person.name, tag: tagsOnly ? person.text : tagOf(person), nl: tagsOnly ? '' : person.text })),
                 promptFormat: settings.imagePromptFormat,

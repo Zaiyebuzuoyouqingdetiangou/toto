@@ -1,8 +1,8 @@
-import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.67.71';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.67.71';
-import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.67.71';
-import { behaviorCssMentions, hasBehaviorStateClasses, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.67.71';
-import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.67.71';
+import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.67.75';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.67.75';
+import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.67.75';
+import { behaviorCssMentions, hasBehaviorStateClasses, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.67.75';
+import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.67.75';
 
 // Declarative, face-local behaviors. No generated code, global targets or timers.
 const roots = new WeakMap();
@@ -57,6 +57,13 @@ function stateKeys(state) {
     if (state.changed) keys.add('changed');
     for (const name of ['active', 'match', 'done', 'miss']) if (group.getAttribute(`data-rm-${name}`) === 'true') keys.add(name);
     for (const key of state.on || []) { keys.add(key); if (key === 'on') keys.add('true'); }
+    // 拖放：已经放进对应槽的物件，它的键就是当前状态（data-rm-show="键" 放进去才显示）；放进任意一件时还有 placed。
+    for (const node of state.placed || []) {
+        if (!group.contains(node)) continue;
+        keys.add('placed');
+        const key = String(node.getAttribute('data-rm-item') || '').trim();
+        if (key) keys.add(key);
+    }
     if (state.picked) keys.add(state.picked);
     if (state.type === 'pager' && state.pages?.length) {
         keys.add(String(state.index));
@@ -233,6 +240,7 @@ export function hasBehaviorInteractionControl(root, button) {
 function reset(state) {
     state.changed = false;
     state.placed.clear();
+    for (const node of own(state.group, '[data-rm-placed]')) node.removeAttribute('data-rm-placed');
     for (const [node, properties] of state.styles) for (const [property, [value, priority]] of properties) {
         if (value) node.style.setProperty(property, value, priority);
         else node.style.removeProperty(property);
@@ -360,6 +368,11 @@ function clearStaleFeedback(group) {
         if (!node.hasAttribute?.(FEEDBACK_ATTR)) continue;
         node.style.removeProperty('outline'); node.style.removeProperty('outline-offset');
         node.removeAttribute(FEEDBACK_ATTR);
+    }
+    // 存档或副本里留下的“已投入”变淡：重新接线时状态从头开始，样子也恢复。
+    for (const node of group.querySelectorAll('[data-rm-placed]')) {
+        if (node.style.getPropertyValue('opacity') === '0.55') node.style.removeProperty('opacity');
+        node.removeAttribute('data-rm-placed');
     }
 }
 
@@ -712,7 +725,31 @@ function matchingSlot(state, item) {
     return slots.length === 1 ? slots[0] : null;
 }
 
+// 槽里自己写了“放进去才显示”的内容（data-rm-show 用这件物件的键或 placed）：物件算投进去了，
+// 但不盖到槽上（盖上去会把刚显示的内容挡住），留在原处并变淡，表示已经投入；放回或复位后恢复。
+function slotShowsOwnResult(slot, item) {
+    const key = String(item.getAttribute('data-rm-item') || '').trim();
+    return [...slot.querySelectorAll('[data-rm-show]')].some(node => behaviorShowTokens(node).some(token => token === key || token === 'placed'));
+}
+
+function restoreItemStyle(state, item, property) {
+    const saved = state.styles.get(item)?.get(property);
+    if (!saved) return;
+    if (saved[0]) item.style.setProperty(property, saved[0], saved[1] || '');
+    else item.style.removeProperty(property);
+    state.styles.get(item).delete(property);
+}
+
 function placeItem(state, item, slot) {
+    if (slotShowsOwnResult(slot, item)) {
+        restoreItemStyle(state, item, 'translate');
+        state.positions.delete(item);
+        style(state, item, 'opacity', '0.55');
+        item.setAttribute('data-rm-placed', 'true');
+        state.placed.add(item);
+        state.changed = true;
+        return;
+    }
     const box = slot.getBoundingClientRect(), current = item.getBoundingClientRect();
     const groupBox = state.group.getBoundingClientRect();
     const sx = groupBox.width ? state.group.clientWidth / groupBox.width : 1;
@@ -732,11 +769,11 @@ function dragButton(state, item, button) {
         return true;
     }
     if (button.hasAttribute('data-rm-return')) {
-        if (!state.positions.has(item)) return false;
-        const saved = state.styles.get(item)?.get('translate');
-        if (saved?.[0]) item.style.setProperty('translate', ...saved);
-        else item.style.removeProperty('translate');
-        state.styles.get(item)?.delete('translate'); state.positions.delete(item); state.placed.delete(item);
+        if (!state.positions.has(item) && !state.placed.has(item)) return false;
+        restoreItemStyle(state, item, 'translate');
+        restoreItemStyle(state, item, 'opacity');
+        item.removeAttribute('data-rm-placed');
+        state.positions.delete(item); state.placed.delete(item);
         return true;
     }
     const delta = { left: [-20, 0], right: [20, 0], up: [0, -20], down: [0, 20] }[button.getAttribute('data-rm-move')];
@@ -771,7 +808,11 @@ function pointerMove(binding, event) {
     if (!binding.root.contains(state.group)) { finishPointer(binding, event, true); return; }
     if (state.type === 'drag' || state.type === 'reorder') {
         moveItem(state, item, session.x + (event.clientX - session.startX) * session.sx, session.y + (event.clientY - session.startY) * session.sy);
-        if (event.clientX !== session.startX || event.clientY !== session.startY) { state.changed = true; state.placed.delete(item); }
+        if (event.clientX !== session.startX || event.clientY !== session.startY) {
+            state.changed = true; state.placed.delete(item);
+            // 已投入（变淡）的物件又被拖起来：先恢复原样，放下时再按槽重新判断。
+            if (item.hasAttribute('data-rm-placed')) { restoreItemStyle(state, item, 'opacity'); item.removeAttribute('data-rm-placed'); }
+        }
     } else if (state.type === 'draw') { drawPoint(session, event); if (session.points > 1) state.changed = true; }
     else if (state.type === 'reveal') {
         const point = localPoint(surface, event); reveal(state, point.x / Math.max(1, point.width)); state.changed = true;
@@ -809,7 +850,11 @@ function finishPointer(binding, event, cancelled = false) {
     if (item && cancelled) {
         moveItem(state, item, session.x, session.y);
         state.changed = session.changedBefore;
-        if (session.wasPlaced) state.placed.add(item);
+        if (session.wasPlaced) {
+            state.placed.add(item);
+            const slot = matchingSlot(state, item);
+            if (slot && slotShowsOwnResult(slot, item) && !item.hasAttribute('data-rm-placed')) { style(state, item, 'opacity', '0.55'); item.setAttribute('data-rm-placed', 'true'); }
+        }
     }
     if (item && !cancelled && state.type === 'drag') {
         const slot = matchingSlot(state, item);

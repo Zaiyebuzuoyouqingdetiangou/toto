@@ -56,7 +56,7 @@ export const USAGE_GROUP_FALLBACK = Object.freeze({"1":["social"],"2":["diary"],
 // 个别形式的标题和简介里没有能判断媒介的词，直接指定它属于哪一类。
 export const USAGE_FORMAT_OVERRIDES = Object.freeze({
     '4.2': ['radio_tv'], '4.3.1': ['show'], '4.3.6.1': ['show'], '4.5.1.1': ['novel'],
-    '4.5.3': ['ritual'], '4.5.6': ['ritual'], '5.3.2.1': ['ritual'], '5.3.2.4': ['ritual'], '5.3.2.5': ['ritual'], '5.3.3': ['ritual'],
+    '4.5.3': ['ritual'], '4.5.6': ['ritual'], '5.3.1.1': ['card'], '5.3.2.1': ['ritual'], '5.3.2.4': ['ritual'], '5.3.2.5': ['ritual'], '5.3.3': ['ritual'],
     '5.5': ['novel'], '1.3.3.1.2': ['video'],
     '5.1.1.7': ['painting'], '5.1.1.8': ['photo'], '5.1.1.9': ['videogame'], '5.1.1.10': ['letter'], '5.1.1.11': ['photo'], '5.1.1.12': ['comic'], '5.1.1.13': ['painting'], '2.17': ['letter'], '2.17.1': ['machine'], '2.17.2': ['mapchart'], '2.17.3': ['letter'], '2.17.4': ['music'], '2.17.5': ['mapchart'], '2.17.6': ['container'], '5.1.1.15': ['painting'],
     '6.5.11': ['boardgame'], '6.5.12': ['card'], '6.5.13': ['boardgame'], '6.5.14': ['container'], '6.5.15': ['nature'], '6.5.16': ['nature'], '6.5.17': ['food'], '6.5.18': ['boardgame'], '6.5.19': ['container'],
