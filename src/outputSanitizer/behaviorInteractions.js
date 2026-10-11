@@ -1,8 +1,8 @@
-import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.67.78';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.67.78';
-import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.67.78';
-import { behaviorCssMentions, hasBehaviorStateClasses, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.67.78';
-import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.67.78';
+import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.67.79';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.67.79';
+import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.67.79';
+import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.67.79';
+import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.67.79';
 
 // Declarative, face-local behaviors. No generated code, global targets or timers.
 const roots = new WeakMap();
@@ -48,6 +48,11 @@ function refreshResults(state) {
         placed: [...state.placed].filter(node => state.group.contains(node)).map(node => node.getAttribute('data-rm-item')),
     });
     updateBehaviorShows(state.group, stateKeys(state), (node, active) => mirrorBehaviorState(state.root, node, active));
+    const adopted = adoptHiddenResult(state);
+    if (adopted?.isConnected) {
+        const active = state.type === 'hold' ? state.group.getAttribute('data-rm-active') === 'true' : (state.on?.size || 0) > 0;
+        setBehaviorNodeVisible(adopted, active);
+    }
 }
 
 // data-rm-show 能用的键：通用状态词，加上各类驱动当前的键（开着的词、选中的键、当前页、格号、按过的键、连上的键）。
@@ -179,6 +184,75 @@ function enableControl(node) {
     if (!node.style?.getPropertyValue('cursor')) node.style?.setProperty('cursor', 'pointer');
 }
 
+// 开关的“属性程序”：本面样式里有 [属性="值"] 后代选择器，后代落在这个开关区域里，而页面上没有任何元素带这个属性值。
+const PROGRAM_SKIP = /^(?:data-rabbit-mirror|data-rm-(?:ui|on|active|picked|index|match|miss|done|seq|show|result|when|toggle|pick|hold|item|slot|part|page|released|feedback|mirrored))/;
+function compoundsOf(selector) {
+    const parts = []; let depth = 0, current = '';
+    for (const char of selector) {
+        if (char === '[') depth += 1;
+        if (char === ']') depth = Math.max(0, depth - 1);
+        if (!depth && /[\s>+~]/.test(char)) { if (current) parts.push(current); current = ''; continue; }
+        current += char;
+    }
+    if (current) parts.push(current);
+    return parts;
+}
+function toggleAttributeProgram(state) {
+    if (state.attrProgram !== undefined) return state.attrProgram;
+    state.attrProgram = null;
+    const { group } = state;
+    const scope = group.closest('details') || state.root;
+    const text = behaviorStyleText(state.root);
+    for (const match of text.matchAll(/([^{}@;]+)\{/g)) {
+        for (const selector of match[1].split(',')) {
+            const compounds = compoundsOf(selector.trim());
+            for (let index = 0; index < compounds.length - 1; index += 1) {
+                const compound = compounds[index];
+                const attr = /\[\s*([\w-]+)\s*=\s*["']?([^"'\]]+)["']?\s*\]/.exec(compound);
+                if (!attr || PROGRAM_SKIP.test(attr[1])) continue;
+                // 这个复合选择器里除了属性，只允许是区域自己的类名或 id。
+                const rest = compound.replace(/\[[^\]]*\]/g, '');
+                const tokens = [...rest.matchAll(/([.#])([A-Za-z_][\w-]*)/g)];
+                if (rest.replace(/([.#])([A-Za-z_][\w-]*)/g, '').trim()) continue;
+                if (tokens.some(([, kind, name]) => kind === '.' ? !group.classList.contains(name) : group.id !== name)) continue;
+                const value = attr[2].trim();
+                try { if (scope.querySelector(`[${attr[1]}="${CSS.escape(value)}"]`)) continue; } catch { continue; }
+                const tail = compounds.slice(index + 1).join(' ');
+                let inside = false;
+                try { inside = !!group.querySelector(tail); } catch { inside = false; }
+                if (!inside) continue;
+                state.attrProgram = { attr: attr[1], value, original: group.getAttribute(attr[1]) };
+                return state.attrProgram;
+            }
+        }
+    }
+    return null;
+}
+
+// 按住／开关区域里没有写“按住时显示什么”，样式也不回应它的状态，而紧挨着它后面有一块内联 display:none 的内容：
+// 这块就是它的结果（模型原本写了脚本去显示它，脚本被拿掉了）。按住或开着时显示，松开或关上时藏回去。
+function adoptHiddenResult(state) {
+    if (state.adopted !== undefined) return state.adopted;
+    state.adopted = null;
+    const { group, type } = state;
+    if (!['hold', 'toggle'].includes(type)) return null;
+    if (own(group, '[data-rm-show], [data-rm-result]').length) return null;
+    if (type === 'toggle' && (toggleAttributeProgram(state) || behaviorCssMentions(state.root, ['data-rm-on']))) return null;
+    if (type === 'hold' && behaviorCssMentions(state.root, ['data-rm-active'])) return null;
+    const details = group.closest('details');
+    let anchor = group;
+    for (let level = 0; level < 3 && anchor && anchor !== details; level += 1, anchor = anchor.parentElement) {
+        for (let sibling = anchor.nextElementSibling; sibling; sibling = sibling.nextElementSibling) {
+            if (sibling.matches?.(GROUP) || sibling.querySelector?.(GROUP)) break;
+            if (sibling.style?.getPropertyValue('display') === 'none' && String(sibling.textContent || '').trim()) {
+                state.adopted = sibling;
+                return sibling;
+            }
+        }
+    }
+    return null;
+}
+
 function prepare(binding, group) {
     if (binding.groups.has(group)) return binding.groups.get(group);
     const type = group.getAttribute('data-rm-ui');
@@ -212,8 +286,18 @@ function prepare(binding, group) {
 
 function stateFor(root, target) {
     const binding = roots.get(root);
-    const group = target?.closest?.(GROUP);
+    const group = target?.closest?.(GROUP) || remoteToggleGroup(root, target);
     return binding && group && root.contains(group) ? prepare(binding, group) : null;
+}
+
+// 开关按钮写在开关区域外面（区域只包住了卡牌，按钮放在下面一排）：这一面只有一个开关区域时，
+// 区域外的 data-rm-toggle 按钮就归它管，点了和点区域本身一样。
+function remoteToggleGroup(root, target) {
+    const control = target?.closest?.('[data-rm-toggle]');
+    if (!control || control.closest(GROUP) || !root?.querySelectorAll) return null;
+    const scope = control.closest('details') || root;
+    const toggles = [...scope.querySelectorAll('[data-rm-ui="toggle"]')].filter(node => root.contains(node));
+    return toggles.length === 1 ? toggles[0] : null;
 }
 
 export function isBehaviorInteractionOwned(node) {
@@ -478,7 +562,11 @@ function snapTurn(state) {
 function statefulAction(state, control) {
     const { group, type } = state;
     if (type === 'toggle') {
-        const key = control.hasAttribute('data-rm-toggle') ? behaviorToggleKey(control.getAttribute('data-rm-toggle')) : 'on';
+        const remote = control.hasAttribute('data-rm-toggle') && !group.contains(control);
+        // 区域外的按钮：区域里没写自己的开关部件时，它和点区域本身一样翻默认的 on。
+        const key = control.hasAttribute('data-rm-toggle') && !(remote && !own(group, '[data-rm-toggle]').length)
+            ? behaviorToggleKey(control.getAttribute('data-rm-toggle')) : 'on';
+        if (remote) (state.remotes ||= new Set()).add(control);
         if (state.on.has(key)) state.on.delete(key); else state.on.add(key);
         return true;
     }
@@ -588,6 +676,14 @@ function syncState(state) {
         const groupOn = single.size <= 1 ? tokens.length > 0 : false;
         mirrorBehaviorState(state.root, group, groupOn);
         if (!controls.length && group.getAttribute('role') === 'button') group.setAttribute('aria-pressed', String(groupOn));
+        for (const remote of state.remotes || []) remote.setAttribute('aria-pressed', String(tokens.length > 0));
+        // 样式按某个属性值翻转（如 [data-rm-state="reverse"] .card-inner），却没东西去改这个属性：开着时把它写到区域上。
+        const program = toggleAttributeProgram(state);
+        if (program) {
+            if (tokens.length > 0) { if (group.getAttribute(program.attr) !== program.value) group.setAttribute(program.attr, program.value); }
+            else if (program.original === null) group.removeAttribute(program.attr);
+            else if (group.getAttribute(program.attr) !== program.original) group.setAttribute(program.attr, program.original);
+        }
         // 只有一个开关时，CSS 里写成 .inner.flipped 之类的子元素也跟着变。
         if (single.size <= 1) for (const node of own(group, '[class]').slice(0, 40)) {
             if (!node.hasAttribute('data-rm-toggle') && !node.hasAttribute('data-rm-show')) mirrorBehaviorState(state.root, node, groupOn);
@@ -972,6 +1068,16 @@ export function releaseBehaviorGroup(root, group) {
         for (const name of ['data-rm-current', 'data-rm-paired', 'data-rm-armed', 'data-rm-edge']) node.removeAttribute?.(name);
     }
     for (const svg of group.querySelectorAll('svg[data-rm-lines]')) svg.remove();
+    // 区域外接管过的结果块、写到区域上的属性程序：退还时恢复成模型原来的样子。
+    if (state?.adopted?.isConnected) {
+        const node = state.adopted;
+        for (const name of ['data-rm-result-active', 'data-rm-result-display', 'data-rm-result-display-priority', 'hidden']) node.removeAttribute(name);
+        node.style.setProperty('display', 'none');
+    }
+    if (state?.attrProgram) {
+        if (state.attrProgram.original === null) group.removeAttribute(state.attrProgram.attr);
+        else group.setAttribute(state.attrProgram.attr, state.attrProgram.original);
+    }
     for (const name of STATE_ATTRS) group.removeAttribute(name);
     group.setAttribute(RELEASED_ATTR, type || 'unknown');
     group.removeAttribute('data-rm-ui');
@@ -1015,7 +1121,7 @@ function scheduleOnDemandRelay(root, target) {
     const group = state.group;
     const run = () => {
         if (!group.isConnected || !root.isConnected) return;
-        void import('./behaviorRelay.js?rmv=1.67.78').then(module => module.relayBehaviorGroupOnDemand(root, group)).catch(() => {});
+        void import('./behaviorRelay.js?rmv=1.67.79').then(module => module.relayBehaviorGroupOnDemand(root, group)).catch(() => {});
     };
     const idle = globalThis.requestIdleCallback;
     if (typeof idle === 'function') idle(run, { timeout: 800 }); else setTimeout(run, 120);
