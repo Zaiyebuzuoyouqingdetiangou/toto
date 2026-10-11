@@ -1,8 +1,8 @@
-import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.67.75';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.67.75';
-import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.67.75';
-import { behaviorCssMentions, hasBehaviorStateClasses, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.67.75';
-import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.67.75';
+import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.67.78';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.67.78';
+import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.67.78';
+import { behaviorCssMentions, hasBehaviorStateClasses, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.67.78';
+import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.67.78';
 
 // Declarative, face-local behaviors. No generated code, global targets or timers.
 const roots = new WeakMap();
@@ -998,6 +998,29 @@ function containerToggle(root, target) {
     return state;
 }
 
+// 点在插件区域里一个像控件的东西上（按钮、label、role=button、鼠标手形），插件却不认识它：
+// 这一块多半是模型写法没对上。等这一下点击完全结束后，只对这一块做一次“退还给老修复器”的即时接力。
+const RELAY_CONTROL = 'button, [role="button"], label, summary, a, [data-rm-item], [data-rm-step]';
+function looksLikeControl(target) {
+    if (!target?.closest) return false;
+    const node = target.closest(RELAY_CONTROL);
+    if (node) return node;
+    let cursor = '';
+    try { cursor = target.ownerDocument?.defaultView?.getComputedStyle?.(target)?.cursor || ''; } catch {}
+    return cursor === 'pointer' ? target : false;
+}
+function scheduleOnDemandRelay(root, target) {
+    const state = stateFor(root, target);
+    if (!state || !looksLikeControl(target)) return;
+    const group = state.group;
+    const run = () => {
+        if (!group.isConnected || !root.isConnected) return;
+        void import('./behaviorRelay.js?rmv=1.67.78').then(module => module.relayBehaviorGroupOnDemand(root, group)).catch(() => {});
+    };
+    const idle = globalThis.requestIdleCallback;
+    if (typeof idle === 'function') idle(run, { timeout: 800 }); else setTimeout(run, 120);
+}
+
 export function installBehaviorInteractions(root) {
     // 维修兔以前确认过“老修复器修不好、插件能接”的手写块，打开时先写上插件标识（反向接力）。
     try { applyRememberedReversePatches(root); } catch { /* 记忆读不到就照常 */ }
@@ -1022,7 +1045,7 @@ export function installBehaviorInteractions(root) {
             event.preventDefault(); action(state, button);
             return;
         }
-        if (button) return;
+        if (button) { scheduleOnDemandRelay(root, button); return; }
         const found = genericControl(root, event.target);
         if (found) {
             // label 被点时浏览器会再替它点一次里面的输入框；那一次不算第二下。
@@ -1033,7 +1056,8 @@ export function installBehaviorInteractions(root) {
             return;
         }
         const toggle = containerToggle(root, event.target);
-        if (toggle) action(toggle, toggle.group);
+        if (toggle) { action(toggle, toggle.group); return; }
+        scheduleOnDemandRelay(root, event.target);
     });
     root.addEventListener('pointerdown', event => pointerDown(binding, event));
     root.addEventListener('pointermove', event => pointerMove(binding, event));
