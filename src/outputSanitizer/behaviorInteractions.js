@@ -1,8 +1,8 @@
-import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.67.62';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.67.62';
-import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.67.62';
-import { behaviorCssMentions, hasBehaviorStateClasses, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.67.62';
-import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.67.62';
+import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.67.67';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.67.67';
+import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.67.67';
+import { behaviorCssMentions, hasBehaviorStateClasses, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.67.67';
+import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.67.67';
 
 // Declarative, face-local behaviors. No generated code, global targets or timers.
 const roots = new WeakMap();
@@ -30,6 +30,11 @@ const isControl = node => Boolean(node?.matches) && !node.disabled && node.getAt
     && !node.matches('input:not([type="button"]), textarea, select');
 const mod = (value, size) => ((value % size) + size) % size;
 const words = value => String(value || '').split(/[\s,，、]+/).map(word => word.trim()).filter(Boolean);
+// 开关的键：不写、或写成 true／yes 这类“是否开关”的布尔值时，一律当默认键 on（模型常写 data-rm-toggle="true"）。
+export const behaviorToggleKey = value => {
+    const key = String(value ?? '').trim();
+    return !key || /^(?:true|yes)$/i.test(key) ? 'on' : key;
+};
 
 function refreshResults(state) {
     if (STATEFUL.has(state.type)) syncState(state);
@@ -51,7 +56,7 @@ function stateKeys(state) {
     const keys = new Set();
     if (state.changed) keys.add('changed');
     for (const name of ['active', 'match', 'done', 'miss']) if (group.getAttribute(`data-rm-${name}`) === 'true') keys.add(name);
-    for (const key of state.on || []) keys.add(key);
+    for (const key of state.on || []) { keys.add(key); if (key === 'on') keys.add('true'); }
     if (state.picked) keys.add(state.picked);
     if (state.type === 'pager' && state.pages?.length) {
         keys.add(String(state.index));
@@ -394,7 +399,7 @@ function knobRotation(knob) {
 function prepareStateful(state) {
     const { group, type } = state;
     if (type === 'toggle') {
-        state.on = new Set(words(group.getAttribute('data-rm-on')));
+        state.on = new Set(words(group.getAttribute('data-rm-on')).map(behaviorToggleKey));
         if (!own(group, '[data-rm-toggle]').length) {
             enableControl(group);
             if (!group.hasAttribute('aria-pressed') && group.getAttribute('role') === 'button') group.setAttribute('aria-pressed', 'false');
@@ -460,7 +465,7 @@ function snapTurn(state) {
 function statefulAction(state, control) {
     const { group, type } = state;
     if (type === 'toggle') {
-        const key = control.hasAttribute('data-rm-toggle') ? (String(control.getAttribute('data-rm-toggle') || '').trim() || 'on') : 'on';
+        const key = control.hasAttribute('data-rm-toggle') ? behaviorToggleKey(control.getAttribute('data-rm-toggle')) : 'on';
         if (state.on.has(key)) state.on.delete(key); else state.on.add(key);
         return true;
     }
@@ -566,7 +571,7 @@ function syncState(state) {
         const tokens = [...state.on];
         if (tokens.length) group.setAttribute('data-rm-on', tokens.join(' ')); else group.removeAttribute('data-rm-on');
         const controls = own(group, '[data-rm-toggle]');
-        const single = new Set(controls.map(node => String(node.getAttribute('data-rm-toggle') || '').trim() || 'on'));
+        const single = new Set(controls.map(node => behaviorToggleKey(node.getAttribute('data-rm-toggle'))));
         const groupOn = single.size <= 1 ? tokens.length > 0 : false;
         mirrorBehaviorState(state.root, group, groupOn);
         if (!controls.length && group.getAttribute('role') === 'button') group.setAttribute('aria-pressed', String(groupOn));
@@ -575,7 +580,7 @@ function syncState(state) {
             if (!node.hasAttribute('data-rm-toggle') && !node.hasAttribute('data-rm-show')) mirrorBehaviorState(state.root, node, groupOn);
         }
         for (const control of controls) {
-            const on = state.on.has(String(control.getAttribute('data-rm-toggle') || '').trim() || 'on');
+            const on = state.on.has(behaviorToggleKey(control.getAttribute('data-rm-toggle')));
             control.setAttribute('aria-pressed', String(on));
             setFlag(control, 'data-rm-active', on);
             mark(state, control, on, ['data-rm-on', 'data-rm-active', 'aria-pressed', 'data-rm-show']);

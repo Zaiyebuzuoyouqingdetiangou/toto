@@ -1,8 +1,8 @@
 // Split from outputSanitizer.js — runtime.
 
-import { getSettings } from '../settings.js?rmv=1.67.62';
+import { getSettings } from '../settings.js?rmv=1.67.67';
 
-export const RUNTIME_VERSION = '1.67.62';
+export const RUNTIME_VERSION = '1.67.67';
 
 export const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
@@ -67,6 +67,9 @@ summary span[${MIRROR_TITLE_PART_ATTR}]::after {
     content: none !important;
 }
 summary span[${MIRROR_TITLE_PART_ATTR}] > span[${MIRROR_TITLE_SOURCE_ATTR}][${MIRROR_TITLE_SOURCE_ATTR}] {
+    display: none !important;
+}
+summary [data-rabbit-mirror-title-extra][data-rabbit-mirror-title-extra] {
     display: none !important;
 }
 #chat summary[${TITLE_CHROME_ATTR}][${TITLE_CHROME_ATTR}],
@@ -334,6 +337,7 @@ export function clearMirrorTitleDisplayArtifacts(root) {
     root?.querySelectorAll?.(`span[${MIRROR_TITLE_PREFIX_ATTR}]`).forEach(node => {
         if (!node.textContent) node.remove();
     });
+    root?.querySelectorAll?.('[data-rabbit-mirror-title-extra]').forEach(node => node.removeAttribute('data-rabbit-mirror-title-extra'));
 }
 
 

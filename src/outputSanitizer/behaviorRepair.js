@@ -125,7 +125,11 @@ function companions(root, type, markers) {
     if (type === 'roll') return orphan(root, '[data-rm-show]');
     if (type === 'pager') return orphan(root, '[data-rm-prev], [data-rm-next], [data-rm-goto]');
     if (type === 'toggle') {
-        const keys = new Set(markers.map(node => String(node.getAttribute('data-rm-toggle') || '').trim() || 'on'));
+        const keys = new Set(markers.map(node => {
+            const key = String(node.getAttribute('data-rm-toggle') || '').trim();
+            return !key || /^(?:true|yes)$/i.test(key) ? 'on' : key;
+        }));
+        if (keys.has('on')) keys.add('true');
         return orphan(root, '[data-rm-show]').filter(node => showTokens(node).some(token => keys.has(token)));
     }
     return [];

@@ -1,7 +1,7 @@
-import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.67.62';
-import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=1.67.62';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.67.62';
-import { createFavoriteAtlasPanel } from './favoriteAtlasesUi.js?rmv=1.67.62';
+import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.67.67';
+import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=1.67.67';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.67.67';
+import { createFavoriteAtlasPanel } from './favoriteAtlasesUi.js?rmv=1.67.67';
 const DB_NAME = 'rabbit_mirror_theater_favorites_v1';
 const STORE = 'favorites';
 const DB_VERSION = 1;
@@ -271,6 +271,7 @@ function unwrapTheaterFavoriteTitleChrome(scope) {
         part.replaceWith(part.ownerDocument.createTextNode(text));
     });
     scope.querySelectorAll('[data-rm-title-chrome]').forEach(node => node.removeAttribute('data-rm-title-chrome'));
+    scope.querySelectorAll('[data-rabbit-mirror-title-extra]').forEach(node => node.removeAttribute('data-rabbit-mirror-title-extra'));
     scope.querySelectorAll('details[open]').forEach(node => node.removeAttribute('open'));
 }
 
@@ -511,7 +512,7 @@ export async function removeDuplicateTheaterFavorites() {
     if (!remap.size) return 0;
     await runStore('readwrite', store => { for (const id of remap.keys()) store.delete(id); });
     try {
-        const atlases = await import('./favoriteAtlases.js?rmv=1.67.62');
+        const atlases = await import('./favoriteAtlases.js?rmv=1.67.67');
         for (const atlas of await atlases.listFavoriteAtlases()) {
             let changed = false;
             const selections = {};
