@@ -1,11 +1,12 @@
 // Optional, local-only avatar consumer. Model markers describe a role, never an
 // image URL, an owner, or permission to replace arbitrary artwork.
-import { getSettings } from './settings.js?rmv=1.67.85';
-import { getCurrentChatKey } from './storage.js?rmv=1.67.85';
-import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.67.85';
-import { subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.67.85';
+import { getSettings } from './settings.js?rmv=1.67.86';
+import { getCurrentChatKey } from './storage.js?rmv=1.67.86';
+import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.67.86';
+import { subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.67.86';
 
-const MARKERS = '[data-rm-avatar="char"], [data-rm-avatar="user"]';
+const MARKERS = '[data-rm-avatar="char"], [data-rm-avatar="user"], [data-rm-sticker]';
+const STICKER_KEY = /^[^\u0000-\u001f"'<>`=·・]{1,40}[·・][^\u0000-\u001f"'<>`=]{1,40}$/u;
 const FACES = 'toto, details[data-rabbit-mirror-external-details]';
 const trusted = new WeakSet();
 const origins = new WeakMap();
@@ -21,7 +22,7 @@ function currentOrigin() {
 function sameOrigin(a, b) { return !!a && !!b && a.key === b.key && a.character === b.character && a.chat === b.chat; }
 function boundOwnerIsCurrent(bound, origin, message, pair, root = null) {
     if (!bound || !sameOrigin(bound, origin) || (bound.message && bound.message !== message)
-        || (bound.scope && pair && bound.scope !== pair.scope)) return false;
+        || (bound.scope && pair?.scope && bound.scope !== pair.scope)) return false;
     const clone = bound.cloneSource;
     if (!clone) return true;
     return origin.chat[clone.index] === message && String(message?.mes || '') === clone.source
@@ -39,16 +40,51 @@ function imageUrl(value) {
     } catch { /* A missing or unsupported image keeps the original avatar. */ }
     return '';
 }
-function currentPair() {
+function stickerKey(value) {
+    const key = String(value || '').trim().replace(/・/gu, '·');
+    return STICKER_KEY.test(key) ? key : '';
+}
+// 心迹回廊的表情包：只读本地快照，key 是“名字·表情名”，不接受模型给的地址。
+function currentStickers() {
     try {
-        const api = globalThis.HearttraceAvatars;
+        const api = globalThis.HearttraceStickers;
         if (api?.apiVersion !== 1 || typeof api.getCurrent !== 'function') return null;
-        const pair = api.getCurrent();
-        if (pair?.version !== 1 || typeof pair.scope !== 'string' || !pair.scope || pair.revision == null) return null;
-        const char = imageUrl(pair.char?.url), user = imageUrl(pair.user?.url);
-        return char || user ? { scope: pair.scope, revision: String(pair.revision), char, user } : null;
+        const snapshot = api.getCurrent();
+        if (snapshot?.version !== 1 || !Array.isArray(snapshot.stickers)) return null;
+        const map = new Map(), list = [];
+        for (const row of snapshot.stickers.slice(0, 200)) {
+            const key = stickerKey(row?.key), url = imageUrl(row?.url);
+            if (!key || !url || map.has(key)) continue;
+            map.set(key, url);
+            list.push({ key, meaning: typeof row.meaning === 'string' ? row.meaning.replace(/[\n\r<>]/gu, ' ').trim().slice(0, 60) : '' });
+        }
+        return map.size ? { map, list } : null;
     } catch { return null; }
 }
+function currentPair() {
+    try {
+        let avatars = null;
+        const api = globalThis.HearttraceAvatars;
+        if (api?.apiVersion === 1 && typeof api.getCurrent === 'function') {
+            const pair = api.getCurrent();
+            if (pair?.version === 1 && typeof pair.scope === 'string' && pair.scope && pair.revision != null) {
+                const char = imageUrl(pair.char?.url), user = imageUrl(pair.user?.url);
+                if (char || user) avatars = { scope: pair.scope, revision: String(pair.revision), char, user };
+            }
+        }
+        const stickers = currentStickers();
+        if (!avatars && !stickers) return null;
+        // scope stays the avatar scope ('' with stickers only); stickers follow the chat origin.
+        return { scope: avatars?.scope || '', revision: avatars?.revision || '', char: avatars?.char || '', user: avatars?.user || '',
+            stickers: stickers?.map || new Map(), stickerList: stickers?.list || [] };
+    } catch { return null; }
+}
+function markerUrl(node, pair) {
+    if (!pair || !node?.getAttribute) return '';
+    if (node.hasAttribute('data-rm-sticker')) return pair.stickers.get(stickerKey(node.getAttribute('data-rm-sticker'))) || '';
+    return pair[node.getAttribute('data-rm-avatar')] || '';
+}
+function escapeRegExp(value) { return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
 // Called by every formal prompt path, without initializing the DOM consumer or
 // serializing the pair. Absent integration preserves previous prompt bytes.
@@ -56,8 +92,10 @@ export function rabbitMirrorAvatarPromptRule(settings) {
     if (settings?.enabled === false || settings?.mode === 'off') return '';
     const pair = currentPair();
     if (!pair) return '';
+    const stickerRule = pair.stickerList.length ? `\n【可用的表情包】\n小剧场里若出现本来就会发表情包的场景（聊天软件、私信、群聊、弹幕、评论区等），可以在原本放表情图片的位置写 <img data-rm-sticker="名字·表情名" alt="表情名">，由本地换成心迹回廊里做好的表情包。只能用下面列出的，名字和表情名照抄：${pair.stickerList.map(row => row.meaning ? `${row.key}（${row.meaning}）` : row.key).join('、')}。按谁在发选对应名字的表情；“双人·”“其他·”两边都能发。不写图片 URL、base64 或脚本，不为它们创建 data-rm-draw-frame／生图占位；场景里没人发表情就不加，不要硬塞。\n` : '';
+    if (!pair.char && !pair.user) return stickerRule;
     const roles = [pair.char ? '当前角色用 data-rm-avatar="char"' : '', pair.user ? '当前用户用 data-rm-avatar="user"' : ''].filter(Boolean).join('；');
-    return `\n【已有头像的本地显示】\n任何题材或场景中，若原设计本就含当前角色／用户的头像位置，${roles}，标在原头像 img 或头像容器上，保留原形状、尺寸及原有后备内容，由本地替换图片。不要额外增加头像框，不输出头像 URL、base64 或脚本；不要为这些头像创建 data-rm-draw-frame／生图占位。NPC、插画主体、照片内容、商品及装饰图片不得标成这两个头像。没有头像位置就不添加。\n`;
+    return stickerRule + `\n【已有头像的本地显示】\n任何题材或场景中，若原设计本就含当前角色／用户的头像位置，${roles}，标在原头像 img 或头像容器上，保留原形状、尺寸及原有后备内容，由本地替换图片。不要额外增加头像框，不输出头像 URL、base64 或脚本；不要为这些头像创建 data-rm-draw-frame／生图占位。NPC、插画主体、照片内容、商品及装饰图片不得标成这两个头像。没有头像位置就不添加。\n`;
 }
 
 // Local sanitizer/host-render handoff. A model provenance attr is insufficient:
@@ -115,6 +153,14 @@ function rootOwner(root, origin) {
         const markers = [...(root.matches(MARKERS) ? [root] : []), ...root.querySelectorAll(MARKERS)];
         if (!markers.length) return null;
         for (const marker of markers) {
+            if (marker.hasAttribute('data-rm-sticker')) {
+                const key = stickerKey(marker.getAttribute('data-rm-sticker'));
+                if (!key) return null;
+                const [name, face] = key.split('·').map(escapeRegExp);
+                const quoted = `${name}[·・]${face}`;
+                if (!new RegExp(`data-rm-sticker\\s*=\\s*(?:"\\s*${quoted}\\s*"|'\\s*${quoted}\\s*')`, 'u').test(String(message.mes || ''))) return null;
+                continue;
+            }
             const role = marker.getAttribute('data-rm-avatar');
             const pattern = new RegExp(`data-rm-avatar\\s*=\\s*(?:"${role}"|'${role}'|${role}(?=[\\s>/]))`, 'i');
             if (!pattern.test(String(message.mes || ''))) return null;
@@ -125,7 +171,7 @@ function rootOwner(root, origin) {
 
 export function isRabbitMirrorLinkedAvatarFrame(frame) {
     const marker = frame?.closest?.(MARKERS), root = provenRoot(marker), origin = currentOrigin(), pair = currentPair();
-    if (!marker || !root || !pair || !pair[marker.getAttribute('data-rm-avatar')]) return false;
+    if (!marker || !root || !pair || !markerUrl(marker, pair)) return false;
     const message = rootOwner(root, origin), bound = origins.get(root);
     return !!message && (!bound || boundOwnerIsCurrent(bound, origin, message, pair, root));
 }
@@ -192,7 +238,7 @@ export function initRabbitMirrorChatAvatars({ isActive = () => true } = {}) {
     destroyRabbitMirrorChatAvatars();
     if (!globalThis.document || !isActive()) return;
     const roots = new Set(), pending = new Set(), applied = new Map(), cleanups = [];
-    let observer = null, unsubscribe = null, bridge = null, queued = false, scanTimer = 0, scanCursor = null;
+    let observer = null, unsubscribe = null, bridge = null, stickerUnsubscribe = null, stickerBridge = null, queued = false, scanTimer = 0, scanCursor = null;
     let stopped = false, pair = null, origin = null;
     const live = () => !stopped && active === runtime && isActive();
     function restore(node) {
@@ -205,7 +251,7 @@ export function initRabbitMirrorChatAvatars({ isActive = () => true } = {}) {
     }
     function restoreRoot(root) { for (const [node, value] of applied) if (value.root === root) restore(node); }
     function restoreAll() { for (const node of [...applied.keys()]) restore(node); }
-    function apply(node, root, url) {
+    function apply(node, root, url, fit = 'cover') {
         if (node.namespaceURI !== 'http://www.w3.org/1999/xhtml' || ['SCRIPT', 'STYLE', 'TEMPLATE', 'INPUT'].includes(node.tagName)) return;
         const previous = applied.get(node);
         if (previous?.url === url && previous.root === root && (previous.overlay ? previous.overlay.parentNode === node : node.getAttribute('src') === url)) return;
@@ -222,7 +268,7 @@ export function initRabbitMirrorChatAvatars({ isActive = () => true } = {}) {
             overlay.setAttribute('data-rm-avatar-rendered', 'true');
             overlay.setAttribute('alt', ''); overlay.setAttribute('aria-hidden', 'true');
             overlay.setAttribute('draggable', 'false');
-            overlay.style.cssText = 'position:absolute!important;inset:0!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;min-width:0!important;min-height:0!important;object-fit:cover!important;border-radius:inherit!important;pointer-events:none!important;display:block!important;z-index:1!important;margin:0!important;padding:0!important;';
+            overlay.style.cssText = `position:absolute!important;inset:0!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;min-width:0!important;min-height:0!important;object-fit:${fit}!important;border-radius:inherit!important;pointer-events:none!important;display:block!important;z-index:1!important;margin:0!important;padding:0!important;`;
             overlay.src = url;
             if (globalThis.getComputedStyle?.(node)?.position === 'static' || !globalThis.getComputedStyle) {
                 record.originalStyle = node.getAttribute('style');
@@ -255,8 +301,8 @@ export function initRabbitMirrorChatAvatars({ isActive = () => true } = {}) {
             // Nested avatar markers never layer two different people together.
             const parent = node.parentElement?.closest(MARKERS);
             if (parent && root.contains(parent)) continue;
-            const url = pair[node.getAttribute('data-rm-avatar')];
-            if (url) { seen.add(node); apply(node, root, url); }
+            const url = markerUrl(node, pair);
+            if (url) { seen.add(node); apply(node, root, url, node.hasAttribute('data-rm-sticker') ? 'contain' : 'cover'); }
         }
         for (const [node, value] of applied) if (value.root === root && !seen.has(node)) restore(node);
     }
@@ -311,7 +357,7 @@ export function initRabbitMirrorChatAvatars({ isActive = () => true } = {}) {
                     }
                 }
             });
-            observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-rm-avatar', 'mesid', 'data-rm-owner-chat', 'data-rm-owner-swipe'] });
+            observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-rm-avatar', 'data-rm-sticker', 'mesid', 'data-rm-owner-chat', 'data-rm-owner-swipe'] });
         }
         scanMounted();
     }
@@ -331,6 +377,12 @@ export function initRabbitMirrorChatAvatars({ isActive = () => true } = {}) {
             unsubscribe = null; bridge = nextBridge;
             try { if (bridge?.apiVersion === 1 && typeof bridge.subscribe === 'function') unsubscribe = bridge.subscribe(sync); } catch {}
         }
+        const nextStickers = globalThis.HearttraceStickers;
+        if (stickerBridge !== nextStickers) {
+            try { stickerUnsubscribe?.(); } catch {}
+            stickerUnsubscribe = null; stickerBridge = nextStickers;
+            try { if (stickerBridge?.apiVersion === 1 && typeof stickerBridge.subscribe === 'function') stickerUnsubscribe = stickerBridge.subscribe(sync); } catch {}
+        }
         readState(); connectChat();
         for (const root of roots) queue(root);
     }
@@ -347,6 +399,7 @@ export function initRabbitMirrorChatAvatars({ isActive = () => true } = {}) {
         stopped = true; observer?.disconnect();
         if (scanTimer) clearTimeout(scanTimer);
         try { unsubscribe?.(); } catch {}
+        try { stickerUnsubscribe?.(); } catch {}
         for (const cleanup of cleanups) { try { cleanup(); } catch {} }
         restoreAll(); roots.clear(); pending.clear();
     } };
@@ -357,6 +410,8 @@ export function initRabbitMirrorChatAvatars({ isActive = () => true } = {}) {
     };
     on(globalThis, 'hearttrace:avatars-ready', sync);
     on(globalThis, 'hearttrace:avatars-changed', sync);
+    on(globalThis, 'hearttrace:stickers-ready', sync);
+    on(globalThis, 'hearttrace:stickers-changed', sync);
     on(document, 'change', event => {
         if (event.target?.closest?.('#rabbit_mirror_theater_settings')) queueMicrotask(sync);
     });

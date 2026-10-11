@@ -1,9 +1,9 @@
-import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.67.85';
+import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.67.86';
 // Split from outputSanitizer.js — markup.
 
-import { getSettings } from '../settings.js?rmv=1.67.85';
-import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.67.85';
-import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.67.85';
+import { getSettings } from '../settings.js?rmv=1.67.86';
+import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.67.86';
+import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.67.86';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     INTERACTION_HOME_ATTR,
@@ -15,7 +15,7 @@ import {
     clearMirrorTitleDisplayArtifacts,
     escapeRegExp,
     hashInteractionSignature,
-} from './runtime.js?rmv=1.67.85';
+} from './runtime.js?rmv=1.67.86';
 
 const TOTO_BLOCK_RE = /<toto\b[\s\S]*?<\/toto>/gi;
 
@@ -691,6 +691,11 @@ export function sanitizeRabbitMirrorUntrustedTemplate(template) {
             // is installed locally after mounting, never accepted from model HTML.
             if (name === 'data-rm-avatar') {
                 if (value !== 'char' && value !== 'user') element.removeAttribute(attribute.name);
+                continue;
+            }
+            // 心迹回廊表情包：只认“名字·表情名”这一种短标记，图片由本地换上。
+            if (name === 'data-rm-sticker') {
+                if (!/^\s*[^\u0000-\u001f"'<>`=·・]{1,40}[·・][^\u0000-\u001f"'<>`=]{1,40}\s*$/u.test(value)) element.removeAttribute(attribute.name);
                 continue;
             }
             // Local popover/command attributes are validated as a linked set after all generic attributes are stripped.
