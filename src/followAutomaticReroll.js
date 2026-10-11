@@ -1,14 +1,14 @@
-import { getSettings } from './settings.js?rmv=1.67.81';
-import { getCurrentChatKey } from './storage.js?rmv=1.67.81';
-import { getRabbitMirrorRecipe } from './blacklist.js?rmv=1.67.81';
-import { readFollowPartialResult, saveFollowCompletedRetryResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=1.67.81';
-import { markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.67.81';
-import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.67.81';
-import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.67.81';
-import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=1.67.81';
-import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.67.81';
-import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=1.67.81';
-import { presentationModeFields } from './presentationMode.js?rmv=1.67.81';
+import { getSettings } from './settings.js?rmv=1.67.82';
+import { getCurrentChatKey } from './storage.js?rmv=1.67.82';
+import { getRabbitMirrorRecipe } from './blacklist.js?rmv=1.67.82';
+import { readFollowPartialResult, saveFollowCompletedRetryResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=1.67.82';
+import { markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.67.82';
+import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.67.82';
+import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.67.82';
+import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=1.67.82';
+import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.67.82';
+import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=1.67.82';
+import { presentationModeFields } from './presentationMode.js?rmv=1.67.82';
 import {
     automaticRerollEnabled,
     automaticRerollStatusText,
@@ -18,10 +18,10 @@ import {
     isLocalPreflightFailure,
     shouldAutomaticReroll,
     stallTimeoutError,
-} from './automaticReroll.js?rmv=1.67.81';
-import { mergeMissingIndependentFaces, missingIndexesFromIndependentResult, recipesCoverMissing } from './missingFaceMerge.js?rmv=1.67.81';
-import { inspectRabbitMirrorGenerationSource, getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.67.81';
-import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.81';
+} from './automaticReroll.js?rmv=1.67.82';
+import { mergeMissingIndependentFaces, missingIndexesFromIndependentResult, recipesCoverMissing } from './missingFaceMerge.js?rmv=1.67.82';
+import { inspectRabbitMirrorGenerationSource, getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.67.82';
+import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.82';
 
 const inFlight = new Set();
 const consumeCounts = new Map();
@@ -150,7 +150,7 @@ async function requestFollowMissingFaces(ctx, index, missingIndexes, faces, deps
     try {
         if (plan.selectedExternalIds.length) { materials = await getSelectedExternalEntries(plan.selectedExternalIds); assertCurrent(); }
         if (plan.appearanceReference.enabled) {
-            const appearance = await import('./appearanceReference.js?rmv=1.67.81');
+            const appearance = await import('./appearanceReference.js?rmv=1.67.82');
             assertCurrent();
             appearanceMaterial = await appearance.loadAppearanceReferenceMaterial(plan.appearanceReference.revision);
             assertCurrent();

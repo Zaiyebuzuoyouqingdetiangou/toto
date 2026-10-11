@@ -1,8 +1,8 @@
-import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.67.81';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.67.81';
-import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.67.81';
-import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.67.81';
-import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.67.81';
+import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.67.82';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.67.82';
+import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.67.82';
+import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.67.82';
+import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.67.82';
 
 // Declarative, face-local behaviors. No generated code, global targets or timers.
 const roots = new WeakMap();
@@ -403,6 +403,63 @@ function resetFiredParts(state) {
     state.firedParts?.clear();
 }
 
+// 桥四：部件的状态写在部件自己身上（按钮的 data-rm-done、data-rm-active），样式却写在它外层那张卡片上
+// （.archive-card[data-rm-done="true"] .locked-layer{display:none}），卡片永远收不到。
+// 样式里写了「类名或 id ＋ 这个状态属性」、部件自己又不是这一类时，把同一个状态写到部件外层最近的那张卡片上（不含区域本身）；
+// 卡片里只要有一个部件处于这个状态就算；状态撤掉时恢复卡片原来写的值。
+const UP_STATE = /\[\s*(data-rm-(?:done|active|on))\s*(?:=\s*["']?([^"'\]]*)["']?)?\s*\]/;
+function ancestorStateRules(state) {
+    if (state.ancestorRules) return state.ancestorRules;
+    const list = [], seen = new Set();
+    state.ancestorRules = list;
+    for (const rule of localRules(state.root)) {
+        const text = rule.selectorText || '';
+        if (!text.includes('data-rm-')) continue;
+        for (const part of text.split(',')) for (const compound of compoundsOf(part.trim())) {
+            const match = UP_STATE.exec(compound);
+            if (!match) continue;
+            const base = compound.replace(STATE_ATTR_STRIP, '').trim();
+            if (!base || !/[.#][A-Za-z_]/.test(base) || base.includes('data-rm-') || base.includes('(')) continue;
+            const value = match[2] === undefined ? 'true' : match[2].trim();
+            if (value === 'false' || value === '') continue;
+            const id = `${match[1]}|${value}|${base}`;
+            if (seen.has(id)) continue;
+            seen.add(id);
+            list.push({ attr: match[1], value, base });
+        }
+    }
+    return list;
+}
+function mirrorStateUp(state, control, attr, controls) {
+    const rules = ancestorStateRules(state).filter(rule => rule.attr === attr);
+    if (!rules.length || !control?.parentElement) return;
+    for (const { value, base } of rules) {
+        try { if (control.matches(base)) continue; } catch { continue; }
+        let holder = null;
+        for (let node = control.parentElement; node && node !== state.group; node = node.parentElement) {
+            try { if (node.matches(base)) { holder = node; break; } } catch { break; }
+        }
+        if (!holder || !state.group.contains(holder)) continue;
+        state.upMirrors ||= new Map();
+        if (!state.upMirrors.has(holder)) state.upMirrors.set(holder, new Map());
+        const saved = state.upMirrors.get(holder);
+        if (!saved.has(attr)) saved.set(attr, holder.getAttribute(attr));
+        const on = [...holder.querySelectorAll(controls)].some(node => node.closest(GROUP) === state.group && node.getAttribute(attr) === 'true');
+        if (on) { if (holder.getAttribute(attr) !== value) holder.setAttribute(attr, value); }
+        else {
+            const original = saved.get(attr);
+            if (original === null) holder.removeAttribute(attr);
+            else if (holder.getAttribute(attr) !== original) holder.setAttribute(attr, original);
+        }
+    }
+}
+function restoreStateUp(state) {
+    for (const [holder, saved] of state.upMirrors || []) for (const [attr, original] of saved) {
+        if (original === null) holder.removeAttribute(attr); else holder.setAttribute(attr, original);
+    }
+    state.upMirrors?.clear();
+}
+
 function countSteps(state) {
     const steps = own(state.group, '[data-rm-step]');
     const completed = steps.filter(node => node.getAttribute('data-rm-done') === 'true').length;
@@ -417,6 +474,7 @@ function countSteps(state) {
         const done = step.getAttribute('data-rm-done') === 'true';
         step.setAttribute('aria-pressed', String(done));
         mark(state, step, done, ['data-rm-done', 'aria-pressed']);
+        mirrorStateUp(state, step, 'data-rm-done', '[data-rm-step]');
     }
 }
 
@@ -978,6 +1036,7 @@ function syncState(state) {
             control.setAttribute('aria-pressed', String(on));
             setFlag(control, 'data-rm-active', on);
             mark(state, control, on, ['data-rm-on', 'data-rm-active', 'aria-pressed', 'data-rm-show']);
+            mirrorStateUp(state, control, 'data-rm-active', '[data-rm-toggle]');
         }
     } else if (type === 'pick' || type === 'roll') {
         if (state.picked) group.setAttribute('data-rm-picked', state.picked); else group.removeAttribute('data-rm-picked');
@@ -990,6 +1049,7 @@ function syncState(state) {
             control.setAttribute('aria-pressed', String(on));
             setFlag(control, 'data-rm-active', on);
             mark(state, control, on, ['data-rm-active', 'aria-pressed', 'data-rm-picked', validAttr ? pickAttr : '']);
+            mirrorStateUp(state, control, 'data-rm-active', '[data-rm-pick]');
         }
     } else if (type === 'pager') {
         const total = state.pages.length;
@@ -1363,6 +1423,7 @@ export function releaseBehaviorGroup(root, group) {
         for (const name of ['data-rm-result-active', 'data-rm-result-display', 'data-rm-result-display-priority', 'hidden']) node.removeAttribute(name);
         node.style.setProperty('display', 'none');
     }
+    if (state) restoreStateUp(state);
     if (state?.attrProgram) {
         if (state.attrProgram.original === null) group.removeAttribute(state.attrProgram.attr);
         else group.setAttribute(state.attrProgram.attr, state.attrProgram.original);
@@ -1412,7 +1473,7 @@ function scheduleOnDemandRelay(root, target) {
 function relayGroupLater(root, group, control = null) {
     const run = () => {
         if (!group.isConnected || !root.isConnected) return;
-        void import('./behaviorRelay.js?rmv=1.67.81').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
+        void import('./behaviorRelay.js?rmv=1.67.82').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
     };
     const idle = globalThis.requestIdleCallback;
     if (typeof idle === 'function') idle(run, { timeout: 800 }); else setTimeout(run, 120);
