@@ -124,4 +124,8 @@ export const INTERACTION_HISTORY_TYPES = Object.freeze([
     Object.freeze({"id":"pointer-follow","title":"跟随反馈","summary":"触点移动时，光斑、线端或对应物件连续跟随","code":"I.16"}),
     Object.freeze({"id":"reorder","title":"动态重排","summary":"移动卡片或物件改变实际排列，其余物件重新让位，可复原","code":"I.17"}),
     Object.freeze({"id":"accumulate","title":"累积改变","summary":"每次操作保留此前变化，逐项点亮、取走或完成，并可撤回","code":"I.18"}),
+    Object.freeze({"id":"random-roll","title":"随机抽取","summary":"抽签、掷骰或抽卡，每次随机落到一个结果，可以再抽","code":"I.19"}),
+    Object.freeze({"id":"connect-pair","title":"配对连线","summary":"先后点两端连起线索或配对，连对留线，全部连完有结果","code":"I.20"}),
+    Object.freeze({"id":"turn-dial","title":"旋转拨盘","summary":"拖转或点按转钮，指向不同刻度，对准时有结果","code":"I.21"}),
+    Object.freeze({"id":"sequence-lock","title":"顺序解锁","summary":"按正确顺序点击各键，按错重来，按对解锁","code":"I.22"}),
 ]);

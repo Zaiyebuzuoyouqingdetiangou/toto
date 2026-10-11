@@ -1,6 +1,7 @@
 // Recover only a source-authored, unambiguous local control/cover relationship.
 // Never invent a target, result text, generated script or page-global listener.
-import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.67.57';
+import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.67.59';
+import { behaviorTypeFits } from './behaviorRepair.js?rmv=1.67.59';
 
 const GROUP = '[data-rm-ui]';
 const RECOVERED = 'data-rm-behavior-recovered';
@@ -112,24 +113,28 @@ export function recoverBehaviorInteractions(root) {
 // native browser rendering has been observed. WeakMap ownership ignores stale
 // serialized markers and makes detached clones report unwired until activated.
 export function inspectBehaviorRecovery(root) {
-    const result = { declared: 0, wired: 0, recovered: 0, candidates: 0, incomplete: 0, unwired: 0, unmappedRanges: 0, types: [] };
+    const result = { declared: 0, wired: 0, recovered: 0, classRepaired: 0, candidates: 0, incomplete: 0, unwired: 0, unmappedRanges: 0, types: [] };
     if (!root?.querySelectorAll) return result;
     const requirements = {
         effect: ['[data-rm-part]', 'button[data-rm-fire]'], drag: ['[data-rm-item]'],
         adjust: ['input[type="range"]'], reveal: ['[data-rm-cover]'], view: ['[data-rm-part]', 'input[type="range"]'],
         input: ['input:not([type]), input[type="text"], input[type="password"], textarea', 'output'],
         draw: ['svg[data-rm-canvas]'], motion: ['[data-rm-part]', 'button[data-rm-play], button[data-rm-reverse], input[type="range"]'],
-        hold: ['button[data-rm-hold]'], follow: ['[data-rm-surface]'], reorder: ['[data-rm-item]'], accumulate: ['button[data-rm-step]'],
+        hold: ['[data-rm-hold]'], follow: ['[data-rm-surface]'], reorder: ['[data-rm-item]'], accumulate: ['[data-rm-step]'],
+        toggle: [], pick: ['[data-rm-pick]'], pager: ['[data-rm-page]'], roll: ['[data-rm-roll]', '[data-rm-show]'],
+        connect: ['[data-rm-end]'], turn: ['[data-rm-knob]'], sequence: ['[data-rm-code]'],
     };
     for (const group of groups(root)) {
         const type = group.getAttribute('data-rm-ui');
         result.declared++;
         if (!result.types.includes(type)) result.types.push(type);
         if (group.hasAttribute(RECOVERED)) result.recovered++;
+        if (['type', 'scope', 'orphan'].includes(group.getAttribute(RECOVERED))) result.classRepaired++;
         if (isBehaviorInteractionOwned(group)) result.wired++;
         else result.unwired++;
         if (!requirements[type] || requirements[type].some(selector => !own(group, selector).length)
-            || (type === 'reorder' && own(group, '[data-rm-item]').length < 2)) result.incomplete++;
+            || (type === 'reorder' && own(group, '[data-rm-item]').length < 2)
+            || (['pager', 'connect'].includes(type) && !behaviorTypeFits(group, type))) result.incomplete++;
     }
     result.candidates = findBehaviorRecoveryCandidates(root).length;
     result.unmappedRanges = [...root.querySelectorAll('input[type="range"]')].filter(input =>

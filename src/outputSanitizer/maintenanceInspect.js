@@ -1,18 +1,18 @@
 // Split from outputSanitizer.js — maintenanceInspect.
-import { RADIO_BRANCH_COUNT_ATTR, findRadioBranchCandidates } from './radioBranchRepair.js?rmv=1.67.57';
-import { runMaintenanceGenericProbe, describeGenericProbe } from './maintenanceGenericProbe.js?rmv=1.67.57';
-import { cancelLabeledCheckedTransitionVerification, invalidateMaintenanceLabeledCheckedProbe } from './fallbackRescue.js?rmv=1.67.57';
-import { LABELED_CHECKED_VERIFY_LAST_ATTR } from './checkedStateRescue.js?rmv=1.67.57';
-import { findUnmappedNavigationButtons } from './choiceRescue.js?rmv=1.67.57';
+import { RADIO_BRANCH_COUNT_ATTR, findRadioBranchCandidates } from './radioBranchRepair.js?rmv=1.67.59';
+import { runMaintenanceGenericProbe, describeGenericProbe } from './maintenanceGenericProbe.js?rmv=1.67.59';
+import { cancelLabeledCheckedTransitionVerification, invalidateMaintenanceLabeledCheckedProbe } from './fallbackRescue.js?rmv=1.67.59';
+import { LABELED_CHECKED_VERIFY_LAST_ATTR } from './checkedStateRescue.js?rmv=1.67.59';
+import { findUnmappedNavigationButtons } from './choiceRescue.js?rmv=1.67.59';
 
-import { nativePopoverFallbackCount, inspectNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.67.57';
-import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.67.57';
-import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.67.57';
-import { getCurrentChatKey } from '../storage.js?rmv=1.67.57';
-import { bindRabbitMirrorAvatarRoot, restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.67.57';
-import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.67.57';
-import { getRabbitMirrorGenerationSnapshot } from '../generationGuard.js?rmv=1.67.57';
-import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules } from '../presentationQuality.js?rmv=1.67.57';
+import { nativePopoverFallbackCount, inspectNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.67.59';
+import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.67.59';
+import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.67.59';
+import { getCurrentChatKey } from '../storage.js?rmv=1.67.59';
+import { bindRabbitMirrorAvatarRoot, restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.67.59';
+import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.67.59';
+import { getRabbitMirrorGenerationSnapshot } from '../generationGuard.js?rmv=1.67.59';
+import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules } from '../presentationQuality.js?rmv=1.67.59';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -26,7 +26,7 @@ import {
     hashInteractionSignature,
     isInsideChatMessage,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.67.57';
+} from './runtime.js?rmv=1.67.59';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     CHANNEL_DIAL_CYCLE_COUNT_ATTR,
@@ -62,8 +62,8 @@ import {
     parseMissingCheckedSubjectClassRules,
     resolveTargetsForCheckedRule,
     restoreIndependentNativeCheckedInteraction,
-} from './checkedStateRescue.js?rmv=1.67.57';
-import { getClassTokens, isCollapsedDimensionValue, normalizeStylePropertyName } from './renderedStateRescue.js?rmv=1.67.57';
+} from './checkedStateRescue.js?rmv=1.67.59';
+import { getClassTokens, isCollapsedDimensionValue, normalizeStylePropertyName } from './renderedStateRescue.js?rmv=1.67.59';
 import {
     RAW_RADIO_RESET_RESCUE_ATTR,
     RAW_SELF_MUTATION_RESCUE_ATTR,
@@ -77,7 +77,7 @@ import {
     getRawAssistantMessageForRenderedRoot,
     installRawMessageRadioResetProgramRescue,
     normalizeInteractionMatchText,
-} from './scriptedInteractionRescue.js?rmv=1.67.57';
+} from './scriptedInteractionRescue.js?rmv=1.67.59';
 import {
     REVERSIBLE_RADIO_ROOT_ATTR,
     TOUCH_HOVER_ATTR,
@@ -95,14 +95,14 @@ import {
     repairMarkdownCorruptedCssComments,
     repairNestedDetailsPopupClipping,
     scheduleMaintenanceLabeledCheckedProbe,
-} from './fallbackRescue.js?rmv=1.67.57';
+} from './fallbackRescue.js?rmv=1.67.59';
 import {
     RADIO_GROUP_ROOT_ATTR,
     activateRabbitMirrorInteractionRescue,
     inspectSanitizedRadioGroupLoss,
     rearmRabbitMirrorSerializedInteractionRoot,
     scopeRabbitMirrorInteractionIds,
-} from './idsAndRearm.js?rmv=1.67.57';
+} from './idsAndRearm.js?rmv=1.67.59';
 import {
     DISABLED_ONLY_CHOICE_RESCUE_ATTR,
     FEEDBACK_CAT_MENU_ATTR,
@@ -162,7 +162,7 @@ import {
     repairRevealedDrawerClipping,
     setMaintenanceRabbitState,
     stripMaintenanceRabbitGlyphs,
-} from './diagnostics.js?rmv=1.67.57';
+} from './diagnostics.js?rmv=1.67.59';
 import {
     findDisabledOnlyChoiceGroupCandidates,
     findFillInChoiceCandidates,
@@ -177,7 +177,7 @@ import {
     installStaticChoiceSelectionFallback,
     installStructuredStaticDisclosureFallback,
     rehydrateRabbitMirrorMaintenanceRepairs,
-} from './choiceRescue.js?rmv=1.67.57';
+} from './choiceRescue.js?rmv=1.67.59';
 import {
     FENCED_BLOCK_RE,
     RABBIT_MIRROR_SANITIZER_STYLE_DROP_ATTR,
@@ -196,7 +196,7 @@ import {
     validateRabbitMirrorMarkupLexicalBudget,
     wrapNakedHtmlAsToto,
     wrapTrailingNakedHtml,
-} from './markup.js?rmv=1.67.57';
+} from './markup.js?rmv=1.67.59';
 import {
     getRabbitMirrorFacePosition,
     independentMaintenanceHost,
@@ -211,13 +211,13 @@ import {
     maintenanceMobileLayoutRect,
     maintenanceMobileLayoutTextLength,
     shouldRunMaintenanceMobileLayoutRescue,
-} from './layoutRescue.js?rmv=1.67.57';
+} from './layoutRescue.js?rmv=1.67.59';
 import {
     containRabbitMirrorTitleToolFloat,
     installMaintenanceRabbitForRoot,
     rabbitMirrorTextPresentation,
     refreshRabbitMirrorToolsInScope,
-} from './toolsChrome.js?rmv=1.67.57';
+} from './toolsChrome.js?rmv=1.67.59';
 import {
     TRANSIENT_RERENDER_REASONING_ENVELOPE_RE,
     followMaintenanceRepairRecipes,
@@ -229,7 +229,7 @@ import {
     maintenanceRepairTimers,
     messageContainsReasoningEnvelope,
     messageUsesDistinctDisplaySource,
-} from './lifecycle.js?rmv=1.67.57';
+} from './lifecycle.js?rmv=1.67.59';
 
 let rabbitMirrorInteractionResetInstanceCounter = 0;
 
@@ -938,7 +938,7 @@ function maintenanceKnownInteractionEvidence(root, full, code) {
     const unscopedControls = (full.inputCount > 0 || full.buttonCount > 0)
         && root.dataset?.rabbitMirrorInteractionScoped !== 'true';
     const reachability = maintenanceReachableInteractionEvidence(root, routeSummary, checkedDepth, pseudoDepth, raw);
-    return { radioBranchCandidateCount, radioBranchRepairCount, unmappedNavigationButtonCount, nativePopoverMissingCount, nativePopoverUnwiredCount, behaviorRecoveryCandidateCount, behaviorIncompleteCount, behaviorUnmappedRangeCount, behaviorUnwiredCount, behaviorWiredCount, checkedControlsLost, stateControlsLost: !!full.stateControlsLost, strippedStateProgram, lostInlineStatePrograms, recoveredInlineStatePrograms, decorativeOverlayCandidateCount, touchHoverMissing, unscopedControls, missingCheckedSubjectClassCandidateCount, missingCheckedSubjectClassRescueCount, missingCheckedSubjectClassMissingCount, radioGroupLossCandidateCount, radioGroupRescueCount, selectionOnlyRepairCandidateCount, disabledOnlyChoiceCandidateCount, inertActionButtonCandidateCount, staticChoiceSelectionCandidateCount, staticChoiceSelectionRescueCount, structuredStaticDisclosureCandidateCount, structuredStaticDisclosureRescueCount, fillInChoiceCandidateCount, fillInChoiceRescueCount, focusWithinPersistentCandidateCount, focusWithinPersistentRescueCount, focusWithinPersistentMissingCount, rawScriptTimelineCandidateCount, rawScriptTimelineRescueCount, rawScriptTimelineMissingCount, crossParentCheckedRuleCandidateCount, crossParentCheckedRuleVerifiedCount, checkedHasStateRuleCandidateCount, checkedHasStateRuleRescueCount, checkedHasStateRuleMissingCount, detachedCheckedHasRuleCandidateCount, detachedCheckedHasRuleRescueCount, detachedCheckedHasRuleMissingCount, pairedCheckedStateCandidateCount, pairedCheckedStateRescueCount, pairedCheckedStateMissingCount, exclusiveStackedStateCandidateCount, exclusiveStackedStateRescueCount, exclusiveStackedStateMissingCount, channelDialCycleCandidateCount, channelDialCycleRescueCount, channelDialCycleMissingCount, oneWayCheckedResultCandidateCount, reversibleCheckedResultRescueCount, pseudoVisualOnly, raw, ...scopeEvidence, ...checkedDepth, ...pseudoDepth, ...reachability };
+    return { behaviorRecoveredCount: behavior.classRepaired, radioBranchCandidateCount, radioBranchRepairCount, unmappedNavigationButtonCount, nativePopoverMissingCount, nativePopoverUnwiredCount, behaviorRecoveryCandidateCount, behaviorIncompleteCount, behaviorUnmappedRangeCount, behaviorUnwiredCount, behaviorWiredCount, checkedControlsLost, stateControlsLost: !!full.stateControlsLost, strippedStateProgram, lostInlineStatePrograms, recoveredInlineStatePrograms, decorativeOverlayCandidateCount, touchHoverMissing, unscopedControls, missingCheckedSubjectClassCandidateCount, missingCheckedSubjectClassRescueCount, missingCheckedSubjectClassMissingCount, radioGroupLossCandidateCount, radioGroupRescueCount, selectionOnlyRepairCandidateCount, disabledOnlyChoiceCandidateCount, inertActionButtonCandidateCount, staticChoiceSelectionCandidateCount, staticChoiceSelectionRescueCount, structuredStaticDisclosureCandidateCount, structuredStaticDisclosureRescueCount, fillInChoiceCandidateCount, fillInChoiceRescueCount, focusWithinPersistentCandidateCount, focusWithinPersistentRescueCount, focusWithinPersistentMissingCount, rawScriptTimelineCandidateCount, rawScriptTimelineRescueCount, rawScriptTimelineMissingCount, crossParentCheckedRuleCandidateCount, crossParentCheckedRuleVerifiedCount, checkedHasStateRuleCandidateCount, checkedHasStateRuleRescueCount, checkedHasStateRuleMissingCount, detachedCheckedHasRuleCandidateCount, detachedCheckedHasRuleRescueCount, detachedCheckedHasRuleMissingCount, pairedCheckedStateCandidateCount, pairedCheckedStateRescueCount, pairedCheckedStateMissingCount, exclusiveStackedStateCandidateCount, exclusiveStackedStateRescueCount, exclusiveStackedStateMissingCount, channelDialCycleCandidateCount, channelDialCycleRescueCount, channelDialCycleMissingCount, oneWayCheckedResultCandidateCount, reversibleCheckedResultRescueCount, pseudoVisualOnly, raw, ...scopeEvidence, ...checkedDepth, ...pseudoDepth, ...reachability };
 }
 
 
@@ -2058,7 +2058,7 @@ function inspectMaintenanceRabbit(root) {
         };
     }
     const healthyReason = Number(interaction.behaviorWiredCount) > 0
-        ? '新交互驱动已接线；未发现明确结构缺失，实际操作效果仍需确认'
+        ? `新交互驱动已接线${Number(interaction.behaviorRecoveredCount) > 0 ? `（其中 ${Number(interaction.behaviorRecoveredCount)} 处写错的插件写法已按类补齐）` : ''}；未发现明确结构缺失，实际操作效果仍需确认`
         : partialInspection
         ? '未发现可确认异常（部分巡逻项目已安全跳过）'
         : (full.activeCount > 0 && full.checkedCount === 0 ? '原生按压／长按交互完整，未发现高置信异常' : '未发现高置信异常');
@@ -4123,7 +4123,7 @@ export async function runMaintenanceNarrowFaceRepair(root, button) {
         if (rejectOversizedMaintenanceRepair(root, button, '窄面电击')) return false;
         if (!maintenanceRepairRunIsCurrent(repairRun)) return false;
         setMaintenanceRabbitState(button, MAINTENANCE_STATES.checking, '⚡ 正在重新测量并恢复这面兔子镜的宽度');
-        const adapter = await import('../independentApi.js?rmv=1.67.57');
+        const adapter = await import('../independentApi.js?rmv=1.67.59');
         // Loading the adapter is the sole async boundary. Never apply a delayed
         // click to a new chat, Swipe, source revision, face or replacement node.
         if (!root.isConnected || !details.isConnected || !button.isConnected

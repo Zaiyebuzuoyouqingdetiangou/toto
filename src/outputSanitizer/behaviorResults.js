@@ -75,6 +75,48 @@ function visibility(node, saved, active) {
     }
 }
 
+// data-rm-show="键"：容器当前状态里含这个键时显示；"!键" 表示不含时显示；可写多个，空格或逗号分隔。
+// 键来自驱动状态（on 词、选中的键、当前页、格号、changed／active／done／match），由驱动传入。
+// 显示节点本身也是驱动容器时，它归外层容器管。
+function showOwner(node) {
+    return node.matches?.('[data-rm-ui]') ? node.parentElement?.closest?.('[data-rm-ui]') : node.closest?.('[data-rm-ui]');
+}
+
+export function behaviorShowTokens(node) {
+    return String(node?.getAttribute?.('data-rm-show') || '').split(/[\s,，、]+/).map(token => token.trim()).filter(Boolean);
+}
+
+// 翻页等驱动直接显隐某个节点，沿用同一套“记住原 display、隐藏时 display:none !important”的做法。
+export function setBehaviorNodeVisible(node, active) {
+    if (!node?.style) return false;
+    const saved = results.get(node) || remember(node);
+    const before = node.getAttribute('data-rm-result-active');
+    visibility(node, saved, Boolean(active));
+    return before !== String(Boolean(active));
+}
+
+export function ownBehaviorShows(group) {
+    if (!group?.querySelectorAll) return [];
+    return [...group.querySelectorAll('[data-rm-show]')].filter(node => showOwner(node) === group && node.style);
+}
+
+export function updateBehaviorShows(group, keys = new Set(), onChange = null) {
+    let count = 0;
+    for (const node of ownBehaviorShows(group)) {
+        const tokens = behaviorShowTokens(node);
+        if (!tokens.length) continue;
+        const positive = tokens.filter(token => !token.startsWith('!'));
+        const negative = tokens.filter(token => token.startsWith('!')).map(token => token.slice(1)).filter(Boolean);
+        const active = (!positive.length || positive.some(token => keys.has(token))) && negative.every(token => !keys.has(token));
+        const saved = results.get(node) || remember(node);
+        const before = node.getAttribute('data-rm-result-active');
+        visibility(node, saved, active);
+        if (onChange && before !== String(active)) onChange(node, active);
+        count++;
+    }
+    return count;
+}
+
 export function updateBehaviorResults(group, values = {}) {
     if (!group?.querySelectorAll) return 0;
     let count = 0;

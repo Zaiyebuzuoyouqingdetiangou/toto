@@ -2,10 +2,10 @@
 // （点 label／按钮、拖滑杆、开合内层 details），比较操作前后的画面快照；没有任何变化的就是“点了没反应”。
 // 副本里会重新接上和真实页面一样的修复，所以修好的控件在副本里也能动。
 // 真实页面上的控件一个不碰；结果只写回一个属性，供维修兔的结论和诊断引用。
-import { createMaintenanceLabeledCheckedProbeSandbox, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.67.57';
-import { rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.67.57';
-import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.67.57';
-import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=1.67.57';
+import { createMaintenanceLabeledCheckedProbeSandbox, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.67.59';
+import { rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.67.59';
+import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.67.59';
+import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=1.67.59';
 
 export const GENERIC_PROBE_RESULT_ATTR = 'data-rabbit-mirror-generic-probe';
 const TOOL_SELECTOR = '[data-rabbit-mirror-tool-entry-host],[data-rabbit-mirror-diagnostic-panel],.rabbit-mirror-maintenance-menu,[data-rm-face-swipe-host],[data-rm-image-region],[data-rm-mobile-controls],[data-rabbit-mirror-maintenance-rabbit],[data-rabbit-mirror-feedback-cat]';
@@ -46,7 +46,7 @@ function snapshot(details) {
         let style;
         try { style = getComputedStyle(element); } catch { continue; }
         const rect = element.getBoundingClientRect();
-        parts.push(`${rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && Number(style.opacity) > 0.05 ? 1 : 0}${style.transform}${style.clipPath}${Number(style.opacity).toFixed(2)}${style.backgroundColor}${style.color}${Math.round(rect.height)}${element.checked ? 'c' : ''}${element.open ? 'o' : ''}`);
+        parts.push(`${rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && Number(style.opacity) > 0.05 ? 1 : 0}${style.transform}${style.rotate}${style.clipPath}${Number(style.opacity).toFixed(2)}${style.backgroundColor}${style.color}${style.outlineStyle}${Math.round(rect.height)}${element.checked ? 'c' : ''}${element.open ? 'o' : ''}`);
     }
     return hash(parts.join('|'));
 }
@@ -127,6 +127,10 @@ function activate(details, control) {
         try { element.click(); } catch { fire(element, 'click'); }
         return 'done';
     }
+    // 停用的按钮（如翻到第一页时的“上一页”）本来就不该有反应，不算“点了没反应”。
+    if (element.disabled || element.getAttribute?.('aria-disabled') === 'true') return 'skip';
+    // 已经选中的那一项（多选一、翻页页码）再点一次本来就不变，和已选中的单选一样跳过。
+    if (element.matches?.('[data-rm-pick][data-rm-active="true"], [data-rm-goto][data-rm-active="true"]')) return 'skip';
     // 「按住」类按钮：按下时才有变化、松手就复原。先按下，看完画面再松开（见下面的 hold 处理）。
     if (element.matches?.('[data-rm-hold]')) { fire(element, 'pointerdown', { button: 0, isPrimary: true, pointerId: 1 }); return 'hold'; }
     fire(element, 'pointerdown'); fire(element, 'pointerup');
