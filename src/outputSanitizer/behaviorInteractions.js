@@ -1,7 +1,8 @@
-import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.67.59';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.67.59';
-import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.67.59';
-import { behaviorCssMentions, hasBehaviorStateClasses, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.67.59';
+import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.67.61';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.67.61';
+import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.67.61';
+import { behaviorCssMentions, hasBehaviorStateClasses, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.67.61';
+import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.67.61';
 
 // Declarative, face-local behaviors. No generated code, global targets or timers.
 const roots = new WeakMap();
@@ -890,6 +891,39 @@ function pointerDown(binding, event) {
     pointerMove(binding, event);
 }
 
+// 接力：插件修复修不好的这一块整块退还给老修复器。先把驱动对它做过的事全部撤掉（状态、内联样式、
+// 同步上的类、兜底描边、显隐、连线），再去掉 data-rm-ui，留下 data-rm-released 记号，之后打开、克隆都不再接插件。
+const RELEASED_ATTR = 'data-rm-released';
+const STATE_ATTRS = ['data-rm-on', 'data-rm-picked', 'data-rm-index', 'data-rm-active', 'data-rm-match', 'data-rm-miss', 'data-rm-done', 'data-rm-seq', 'data-rm-angle-turned'];
+export function releaseBehaviorGroup(root, group) {
+    if (!group?.matches?.(GROUP)) return false;
+    const type = group.getAttribute('data-rm-ui');
+    const binding = roots.get(root);
+    const state = binding?.groups.get(group);
+    if (state) {
+        if (binding.pointer?.state === state) finishPointer(binding, {}, true);
+        binding.holds.delete(state); binding.connects.delete(state);
+        try { reset(state); } catch (error) { console.debug('[RabbitMirror] release reset failed:', error); }
+        binding.groups.delete(group);
+    }
+    owners.delete(group);
+    for (const node of [group, ...group.querySelectorAll('*')]) {
+        if (node !== group && node.matches?.(GROUP)) continue;
+        if (node.hasAttribute?.('data-rm-result-active')) {
+            setBehaviorNodeVisible(node, true);
+            node.removeAttribute('data-rm-result-active'); node.removeAttribute('data-rm-result-display'); node.removeAttribute('data-rm-result-display-priority');
+        }
+        if (node.hasAttribute?.('data-rm-mirrored')) mirrorBehaviorState(state?.root || root, node, false);
+        if (node.hasAttribute?.(FEEDBACK_ATTR)) { node.style.removeProperty('outline'); node.style.removeProperty('outline-offset'); node.removeAttribute(FEEDBACK_ATTR); }
+        for (const name of ['data-rm-current', 'data-rm-paired', 'data-rm-armed', 'data-rm-edge']) node.removeAttribute?.(name);
+    }
+    for (const svg of group.querySelectorAll('svg[data-rm-lines]')) svg.remove();
+    for (const name of STATE_ATTRS) group.removeAttribute(name);
+    group.setAttribute(RELEASED_ATTR, type || 'unknown');
+    group.removeAttribute('data-rm-ui');
+    return true;
+}
+
 // 写错的插件标识（类型别名、漏 rm 前缀、类型与部件对不上、容器没包住按钮、只写部件没写容器）
 // 由 behaviorRepair 按类补齐；这里只负责接线。
 function genericControl(root, target) {
@@ -911,7 +945,11 @@ function containerToggle(root, target) {
 }
 
 export function installBehaviorInteractions(root) {
+    // 维修兔以前确认过“老修复器修不好、插件能接”的手写块，打开时先写上插件标识（反向接力）。
+    try { applyRememberedReversePatches(root); } catch { /* 记忆读不到就照常 */ }
     try { repairBehaviorDeclarations(root); } catch (error) { console.debug('[RabbitMirror] behavior repair skipped:', error); }
+    // 维修兔以前确认过“插件修不好、老修复器能修”的块，打开时直接交给老修复器。
+    try { applyRememberedBehaviorRelay(root); } catch { /* 记忆读不到就照常接插件 */ }
     if (!root?.addEventListener) return 0;
     const existing = roots.get(root);
     const binding = existing || { root, groups: new WeakMap(), pointer: null, swipe: null, holds: new Set(), connects: new Set() };

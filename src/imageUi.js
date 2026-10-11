@@ -1,9 +1,9 @@
-import { getSettings } from './settings.js?rmv=1.67.59';
-import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=1.67.59';
-import { loadMirrorImage, saveMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft } from './imageStore.js?rmv=1.67.59';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.67.59';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.59';
-import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.67.59';
+import { getSettings } from './settings.js?rmv=1.67.61';
+import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=1.67.61';
+import { loadMirrorImage, saveMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft } from './imageStore.js?rmv=1.67.61';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.67.61';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.61';
+import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.67.61';
 
 // The lock lives beyond a panel's lifetime. Closing, reopening or aborting a UI
 // cannot release a provider reservation before its Promise actually settles.

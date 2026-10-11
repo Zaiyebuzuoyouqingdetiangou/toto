@@ -6,7 +6,8 @@
 // 只在本面局部里补标识：不新增内容、不猜目标、不碰含有勾选框／滑杆／内层折叠的区域（它们有各自的修复）。
 const GROUP = '[data-rm-ui]';
 const RECOVERED = 'data-rm-behavior-recovered';
-const UI = '[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-diagnostic-panel], [data-rm-mobile-controls]';
+// 已交给老修复器（接力）的区域，插件修复不再碰：不补标识、不认类型、不收编散落的部件。
+const UI = '[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-diagnostic-panel], [data-rm-mobile-controls], [data-rm-released]';
 
 export const BEHAVIOR_DRIVER_TYPES = Object.freeze(['effect', 'drag', 'adjust', 'reveal', 'view', 'input', 'draw', 'motion', 'hold', 'follow', 'reorder', 'accumulate',
     'toggle', 'pick', 'pager', 'roll', 'connect', 'turn', 'sequence']);
@@ -93,7 +94,7 @@ function safeContainer(root, node, allowed = null) {
     if (!node || node === root || !root.contains(node) || node.closest(UI)) return false;
     if (node.matches('toto, details, summary, body, html') || node.closest('summary')) return false;
     if (!node.closest('details')) return false;
-    for (const inner of node.querySelectorAll('input[type="range"], input[type="checkbox"], input[type="radio"], details, label[for], [data-rm-ui]')) {
+    for (const inner of node.querySelectorAll('input[type="range"], input[type="checkbox"], input[type="radio"], details, label[for], [data-rm-ui], [data-rm-released]')) {
         if (allowed?.contains(inner)) continue;
         return false;
     }

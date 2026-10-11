@@ -2,10 +2,10 @@
 // （点 label／按钮、拖滑杆、开合内层 details），比较操作前后的画面快照；没有任何变化的就是“点了没反应”。
 // 副本里会重新接上和真实页面一样的修复，所以修好的控件在副本里也能动。
 // 真实页面上的控件一个不碰；结果只写回一个属性，供维修兔的结论和诊断引用。
-import { createMaintenanceLabeledCheckedProbeSandbox, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.67.59';
-import { rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.67.59';
-import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.67.59';
-import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=1.67.59';
+import { createMaintenanceLabeledCheckedProbeSandbox, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.67.61';
+import { rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.67.61';
+import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.67.61';
+import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=1.67.61';
 
 export const GENERIC_PROBE_RESULT_ATTR = 'data-rabbit-mirror-generic-probe';
 const TOOL_SELECTOR = '[data-rabbit-mirror-tool-entry-host],[data-rabbit-mirror-diagnostic-panel],.rabbit-mirror-maintenance-menu,[data-rm-face-swipe-host],[data-rm-image-region],[data-rm-mobile-controls],[data-rabbit-mirror-maintenance-rabbit],[data-rabbit-mirror-feedback-cat]';
@@ -138,20 +138,21 @@ function activate(details, control) {
     return 'done';
 }
 
-// 返回 { tested, dead: [名称…], skipped, truncated }；无法建立副本时返回 null。
-export function runMaintenanceGenericProbe(root) {
+// 建一份隐藏隔离副本并接上和真实页面一样的修复链。beforeRearm(toto) 可在接线前改动副本（接力测试用）。
+// 返回 { sandbox, details, toto }；建不起来返回 null。用完要 sandbox.destroy()。
+export function openGenericProbeSandbox(root, beforeRearm = null) {
     if (!root?.isConnected || typeof getComputedStyle !== 'function') return null;
     const sandbox = createMaintenanceLabeledCheckedProbeSandbox(root);
     if (!sandbox) return null;
-    const started = Date.now();
     try {
         const sandboxRoot = sandbox.root;
         const details = sandboxRoot.matches?.('details') ? sandboxRoot : sandboxRoot.querySelector?.('details');
-        if (!details) return null;
+        if (!details) { sandbox.destroy(); return null; }
         details.open = true;
         const toto = sandboxRoot.closest?.('toto') || sandboxRoot;
         // 副本是克隆出来的：“已修过”的标记还在，监听却没有了。先去掉这些标记、清掉未勾选开关上留下的旧内联样式，
         // 再接上和真实页面一样的修复链；接不上也照样测，只是结论会偏严。
+        try { beforeRearm?.(toto, details); } catch (error) { console.debug('[RabbitMirror] probe sandbox prepare failed:', error); }
         try { rearmRabbitMirrorSerializedInteractionRoot(toto); } catch {}
         try {
             const unchecked = [...toto.querySelectorAll('input[type="checkbox"], input[type="radio"]')].filter(input => !input.checked);
@@ -161,29 +162,61 @@ export function runMaintenanceGenericProbe(root) {
         // 工具栏链接的那几种线（内层整页 details 的「轻触返回」、只有状态类的翻面开关）克隆后监听会丢，按属性接回。
         try { installNestedDetailsReplacementContainment(toto); } catch {}
         try { rearmOrphanStateWiring(toto); } catch {}
-        // 副本外壳本身是 pointer-events:none（且 inert、在屏幕外），会被里面所有元素继承；
-        // 收集控件时临时放开外壳，才能看出哪些元素是本面自己写了 pointer-events:none 的纯装饰。
-        try { sandbox.host?.style?.setProperty('pointer-events', 'auto', 'important'); } catch {}
-        let controls;
-        try { controls = collectControls(details); } finally {
-            try { sandbox.host?.style?.setProperty('pointer-events', 'none', 'important'); } catch {}
-        }
+        return { sandbox, details, toto };
+    } catch (error) {
+        try { sandbox.destroy(); } catch {}
+        console.debug('[RabbitMirror] probe sandbox failed:', error);
+        return null;
+    }
+}
+
+export function collectGenericProbeControls(opened) {
+    const { sandbox, details } = opened;
+    // 副本外壳本身是 pointer-events:none（且 inert、在屏幕外），会被里面所有元素继承；
+    // 收集控件时临时放开外壳，才能看出哪些元素是本面自己写了 pointer-events:none 的纯装饰。
+    try { sandbox.host?.style?.setProperty('pointer-events', 'auto', 'important'); } catch {}
+    try { return collectControls(details); } finally {
+        try { sandbox.host?.style?.setProperty('pointer-events', 'none', 'important'); } catch {}
+    }
+}
+
+// 逐个操作控件，比较操作前后的画面。返回每个控件的结果：'live'（有变化）、'dead'、'skip'、'uncertain'；超时的不在结果里。
+export function probeGenericControls(details, controls, started = Date.now(), budget = TIME_BUDGET_MS) {
+    const outcomes = new Map();
+    let truncated = false;
+    for (const control of controls) {
+        if (Date.now() - started > budget) { truncated = true; break; }
+        const before = snapshot(details);
+        const outcome = activate(details, control);
+        if (outcome === 'skip') { outcomes.set(control, 'skip'); continue; }
+        if (outcome === 'dead') { outcomes.set(control, 'dead'); continue; }
+        try { void details.offsetHeight; } catch {}
+        const changed = snapshot(details) !== before;
+        if (outcome === 'hold') fire(control.element, 'pointerup', { button: 0, isPrimary: true, pointerId: 1 });
+        if (changed) { outcomes.set(control, 'live'); continue; }
+        // 只是鼠标变手形的元素：可能只是悬停效果（副本里的模拟点击不会触发 :hover），不能据此判它“点了没反应”。
+        outcomes.set(control, control.kind === 'pointer' ? 'uncertain' : 'dead');
+    }
+    return { outcomes, truncated };
+}
+
+export { controlName as genericProbeControlName };
+
+// 返回 { tested, dead: [名称…], skipped, truncated }；无法建立副本时返回 null。
+export function runMaintenanceGenericProbe(root) {
+    const started = Date.now();
+    const opened = openGenericProbeSandbox(root);
+    if (!opened) return null;
+    try {
+        const controls = collectGenericProbeControls(opened);
+        const { outcomes, truncated } = probeGenericControls(opened.details, controls, started);
         const dead = [];
-        let tested = 0, skipped = 0, uncertain = 0, truncated = false;
-        for (const control of controls) {
-            if (Date.now() - started > TIME_BUDGET_MS) { truncated = true; break; }
-            const before = snapshot(details);
-            const outcome = activate(details, control);
+        let tested = 0, skipped = 0, uncertain = 0;
+        for (const [control, outcome] of outcomes) {
             if (outcome === 'skip') { skipped += 1; continue; }
+            if (outcome === 'uncertain') { uncertain += 1; continue; }
             tested += 1;
-            if (outcome === 'dead') { dead.push(controlName(control.element)); continue; }
-            try { void details.offsetHeight; } catch {}
-            const changed = snapshot(details) !== before;
-            if (outcome === 'hold') fire(control.element, 'pointerup', { button: 0, isPrimary: true, pointerId: 1 });
-            if (changed) continue;
-            // 只是鼠标变手形的元素：可能只是悬停效果（副本里的模拟点击不会触发 :hover），不能据此判它“点了没反应”。
-            if (control.kind === 'pointer') { tested -= 1; uncertain += 1; continue; }
-            dead.push(controlName(control.element));
+            if (outcome === 'dead') dead.push(controlName(control.element));
         }
         const result = { tested, dead, skipped, uncertain, truncated, total: controls.length };
         try { root.setAttribute(GENERIC_PROBE_RESULT_ATTR, JSON.stringify(result)); } catch {}
@@ -192,7 +225,7 @@ export function runMaintenanceGenericProbe(root) {
         console.debug('[RabbitMirror] generic probe failed:', error);
         return null;
     } finally {
-        try { sandbox.destroy(); } catch {}
+        try { opened.sandbox.destroy(); } catch {}
     }
 }
 
