@@ -1,25 +1,25 @@
 // Split from independentApi.js — connection.
 
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages } from '../hostCompatibility.js?rmv=1.67.79';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages } from '../hostCompatibility.js?rmv=1.67.81';
 import {
     WORLD_INFO_BOOK_NAME_MAX_CHARS,
     getSettings,
     normalizeIndependentContextExcludedTags,
     updateSettings,
-} from '../settings.js?rmv=1.67.79';
-import { fetchRabbitMirrorIndependentCompletion } from '../independentSecurityGuard.js?rmv=1.67.79';
-import { buildIndependentAdvancedCarrier, applyIndependentAdvancedExclusions } from '../advancedRequestOptions.js?rmv=1.67.79';
-import { describeBatchPlanFailure } from '../externalWorldBook/errors.js?rmv=1.67.79';
-import { describeRabbitMirrorStorageUsage, getCurrentChatKey } from '../storage.js?rmv=1.67.79';
-import { rememberIndependentTransportDiagnostic } from '../transportDiagnostics.js?rmv=1.67.79';
+} from '../settings.js?rmv=1.67.81';
+import { fetchRabbitMirrorIndependentCompletion } from '../independentSecurityGuard.js?rmv=1.67.81';
+import { buildIndependentAdvancedCarrier, applyIndependentAdvancedExclusions } from '../advancedRequestOptions.js?rmv=1.67.81';
+import { describeBatchPlanFailure } from '../externalWorldBook/errors.js?rmv=1.67.81';
+import { describeRabbitMirrorStorageUsage, getCurrentChatKey } from '../storage.js?rmv=1.67.81';
+import { rememberIndependentTransportDiagnostic } from '../transportDiagnostics.js?rmv=1.67.81';
 import {
     CONTEXT_TOTAL_BUDGET,
     CONTEXT_TRANSCRIPT_BUDGET,
     RUNTIME_VERSION,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.67.79';
-import { HOST_GENERATION_EVENT_HINT_MS, operationEpochForBase } from './flights.js?rmv=1.67.79';
+} from './runtime.js?rmv=1.67.81';
+import { HOST_GENERATION_EVENT_HINT_MS, operationEpochForBase } from './flights.js?rmv=1.67.81';
 import {
     OWNER_LOCK_STORE_KEY,
     apiProfileKey,
@@ -31,12 +31,12 @@ import {
     writeApiProfileStore,
     writePersistedOwner,
     writeStore,
-} from './persistence.js?rmv=1.67.79';
+} from './persistence.js?rmv=1.67.81';
 import {
     hasExplicitSourceReplacementEvidence,
     independentStoredHtmlLightRestorable,
     independentStoredHtmlRestorable,
-} from './geometry.js?rmv=1.67.79';
+} from './geometry.js?rmv=1.67.81';
 import {
     activeIndependentFlightForBase,
     messageSourceRevisions,
@@ -44,13 +44,13 @@ import {
     passiveObservedIdentity,
     runtimeMode,
     showIndependentUnsavedOutput,
-} from './mount.js?rmv=1.67.79';
+} from './mount.js?rmv=1.67.81';
 import {
     hostGenerationHintStartedAt,
     hostGenerationInProgress,
     writeHostGenerationHintStartedAt,
     writeHostGenerationInProgress,
-} from './lifecycle.js?rmv=1.67.79';
+} from './lifecycle.js?rmv=1.67.81';
 
 export const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 
@@ -1610,6 +1610,11 @@ export function liveVisibleIndependentMessageText(index,excludedTags=new Set()){
    const computed=typeof globalThis.getComputedStyle==='function'?globalThis.getComputedStyle(ancestor):null;
    if(String(computed?.display||'').toLowerCase()==='none' || ['hidden','collapse'].includes(String(computed?.visibility||'').toLowerCase())) return {available:true,text:''};
   }
+  // 正文整段画在内嵌页面里（美化卡、前端卡常见）时，外面一个字也读不到：外面确实读不到字时，才去读同源内嵌页面里用户看得到的字。
+  // 外面有字时不读，免得把状态栏之类的内嵌页面也算进正文。
+  let framesTried=false;
+  const styleOf=node=>{ const view=node?.ownerDocument?.defaultView||globalThis; return typeof view?.getComputedStyle==='function'?view.getComputedStyle(node):null; };
+  for(;;){
   while(stack.length && examined<600 && chars<8000){
    const {node,depth}=stack.pop(); examined+=1;
    if(depth>32) continue;
@@ -1628,7 +1633,7 @@ export function liveVisibleIndependentMessageText(index,excludedTags=new Set()){
    const inline=String(node.getAttribute?.('style')||'');
    if(/(?:^|;)\s*(?:display\s*:\s*none|visibility\s*:\s*hidden|content-visibility\s*:\s*hidden|opacity\s*:\s*0(?:\D|$))\b/i.test(inline)) continue;
    if(typeof globalThis.getComputedStyle==='function'){
-    const computed=globalThis.getComputedStyle(node);
+    const computed=styleOf(node);
     if(['none'].includes(String(computed?.display||'').toLowerCase())
      || ['hidden','collapse'].includes(String(computed?.visibility||'').toLowerCase())
      || String(computed?.contentVisibility||'').toLowerCase()==='hidden'
@@ -1642,6 +1647,19 @@ export function liveVisibleIndependentMessageText(index,excludedTags=new Set()){
    }
    if(blockTags.has(node.tagName) && parts.length) parts.push('\n');
    for(let child=children.length-1;child>=0;child-=1) stack.push({node:children[child],depth:depth+1});
+  }
+  if(framesTried || parts.join('').trim() || filteredExcludedTagChars>0) break;
+  framesTried=true;
+  parts.length=0; examined=0; chars=0;
+  for(const frame of [...body.querySelectorAll('iframe')].reverse()){
+   if(frame.closest(blockedSelector)) continue;
+   const frameStyle=styleOf(frame);
+   if(String(frameStyle?.display||'').toLowerCase()==='none' || ['hidden','collapse'].includes(String(frameStyle?.visibility||'').toLowerCase())) continue;
+   let inner=null;
+   try{ inner=frame.contentDocument?.body||null; }catch{ inner=null; }
+   if(inner) stack.push({node:inner,depth:1});
+  }
+  if(!stack.length) break;
   }
   return {available:true,text:parts.join('').replace(/[ \t]+\n/g,'\n').replace(/\n[ \t]+/g,'\n').replace(/[ \t]{2,}/g,' ').replace(/\n{3,}/g,'\n\n').trim(),filteredExcludedTagChars,filteredExcludedTags:[...filteredExcludedTags]};
  }catch{return {available:true,text:''};}

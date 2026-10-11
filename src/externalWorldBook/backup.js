@@ -1,6 +1,6 @@
-import { ExternalWorldBookError } from './errors.js?rmv=1.67.79';
-import { externalEntryId, externalEntryStableIdentity, externalLibraryIdForBook, openExternalLibraryDatabase } from './store.js?rmv=1.67.79';
-import { EXTERNAL_POOL_METADATA_VERSION, externalPoolMetadataForLibrary, upsertExternalPoolLibraries } from './externalPool.js?rmv=1.67.79';
+import { ExternalWorldBookError } from './errors.js?rmv=1.67.81';
+import { externalEntryId, externalEntryStableIdentity, externalLibraryIdForBook, openExternalLibraryDatabase } from './store.js?rmv=1.67.81';
+import { EXTERNAL_POOL_METADATA_VERSION, externalPoolMetadataForLibrary, upsertExternalPoolLibraries } from './externalPool.js?rmv=1.67.81';
 
 export const EXTERNAL_BACKUP_FORMAT = 'RabbitMirror.ExternalLibraries';
 export const EXTERNAL_BACKUP_VERSION = 1;

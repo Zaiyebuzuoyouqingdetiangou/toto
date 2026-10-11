@@ -1,7 +1,7 @@
 // Split from outputSanitizer.js — fallbackRescue.
-import { RADIO_BRANCH_CONTROL_ATTR, installRadioBranchRepair, applyRadioBranchState, applyRadioProxyState, radioBranchVerificationTargets } from './radioBranchRepair.js?rmv=1.67.79';
+import { RADIO_BRANCH_CONTROL_ATTR, installRadioBranchRepair, applyRadioBranchState, applyRadioProxyState, radioBranchVerificationTargets } from './radioBranchRepair.js?rmv=1.67.81';
 
-import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.67.79';
+import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.67.81';
 
 import {
     FEEDBACK_CAT_ATTR,
@@ -9,7 +9,7 @@ import {
     TOOL_ENTRY_HOST_ATTR,
     escapeRegExp,
     getRabbitMirrorLocalStyleElements,
-} from './runtime.js?rmv=1.67.79';
+} from './runtime.js?rmv=1.67.81';
 import {
     CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR,
     CROSS_PARENT_CHECKED_VERIFIED_ATTR,
@@ -93,7 +93,7 @@ import {
     webKit3DFlipInlineStates,
     webKit3DFlipRescueStates,
     webKit3DFlipStyleStates,
-} from './checkedStateRescue.js?rmv=1.67.79';
+} from './checkedStateRescue.js?rmv=1.67.81';
 import {
     EXISTING_INTERACTIVE_SELECTOR,
     RENDERED_BUTTON_ADJACENT_HIDDEN_RESCUE_ATTR,
@@ -120,7 +120,7 @@ import {
     isCollapsedDimensionValue,
     normalizeStylePropertyName,
     parseCssStateSiblingAssignments,
-} from './renderedStateRescue.js?rmv=1.67.79';
+} from './renderedStateRescue.js?rmv=1.67.81';
 import {
     chooseMatchingRawRabbitMirrorRoot,
     detectInteractionCapabilities,
@@ -136,7 +136,7 @@ import {
     installRawMessageSelfMutationRescue,
     preparePseudoTrigger,
     shouldIgnorePseudoToggleEvent,
-} from './scriptedInteractionRescue.js?rmv=1.67.79';
+} from './scriptedInteractionRescue.js?rmv=1.67.81';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     FILL_IN_CHOICE_BLANK_ATTR,
@@ -148,15 +148,15 @@ import {
     diagnosticFindClippingAncestor,
     maintenanceSafeComputedStyle,
     mobileInlineAnnotationRescueStates,
-} from './diagnostics.js?rmv=1.67.79';
-import { installStaticChoiceSelectionFallback } from './choiceRescue.js?rmv=1.67.79';
+} from './diagnostics.js?rmv=1.67.81';
+import { installStaticChoiceSelectionFallback } from './choiceRescue.js?rmv=1.67.81';
 import {
     checkedDeclarationCreatesContentReveal,
     checkedTargetCarriesResultContent,
     pseudoStateTargetSelector,
-} from './maintenanceInspect.js?rmv=1.67.79';
-import { splitCssSelectorList } from './markup.js?rmv=1.67.79';
-import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutResolveCheckedTargets } from './layoutRescue.js?rmv=1.67.79';
+} from './maintenanceInspect.js?rmv=1.67.81';
+import { splitCssSelectorList } from './markup.js?rmv=1.67.81';
+import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutResolveCheckedTargets } from './layoutRescue.js?rmv=1.67.81';
 
 const NESTED_DETAILS_FALLBACK_HANDLER_PROP = '__rabbitMirrorNestedDetailsFallbackHandler';
 
@@ -2623,6 +2623,28 @@ function scheduleLabeledCheckedTransitionVerification(root, input, verification,
 }
 
 
+// 存档里带着“勾选时”的维修内联样式（!important），打开时勾选框又是勾上的：这时把它取消勾选，
+// 原生样式不再生效，那份内联却还压着，画面就卡在勾选的样子（丝帕揭开后盖不回去）。
+// 勾选框被取消、单选换了一项时，把这几个控件“勾选时”留下的维修内联清掉；只清和它自己的勾选规则完全一致的那几项。
+const uncheckedCleanupRoots = new WeakSet();
+function installUncheckedInlineCleanup(root) {
+    if (!root?.addEventListener || uncheckedCleanupRoots.has(root)) return;
+    uncheckedCleanupRoots.add(root);
+    const sweep = input => {
+        if (!root.isConnected || !root.contains(input)) return;
+        if (input.type === 'radio') clearUncheckedRadioCheckedInlineArtifacts(root);
+        else if (!input.checked) clearPersistedCheckedInlineArtifacts(root, [input]);
+    };
+    root.addEventListener('change', event => {
+        const input = event.target;
+        if (!input?.matches?.('input[type="checkbox"], input[type="radio"]')) return;
+        if (input.type === 'checkbox' && input.checked) return;
+        // 等这一下的核对、补样式都做完再清，免得被随后补上的样式又盖回去。
+        setTimeout(() => sweep(input), 0);
+        setTimeout(() => sweep(input), 600);
+    }, false);
+}
+
 function installLabeledCheckedVerificationFallback(root) {
     if (!root?.querySelectorAll) return 0;
     let count = 0;
@@ -2652,6 +2674,7 @@ function installLabeledCheckedVerificationFallback(root) {
         const staleCheckboxes = [...root.querySelectorAll('input[type="checkbox"]')]
             .filter(input => !input.checked && (input.hasAttribute(CHECKED_TEXT_RULE_RESCUE_ATTR) || input.hasAttribute(LABELED_CHECKED_VERIFY_CONTROL_ATTR)));
         if (staleCheckboxes.length) clearPersistedCheckedInlineArtifacts(root, staleCheckboxes);
+        installUncheckedInlineCleanup(root);
     } else {
         root.removeAttribute(LABELED_CHECKED_VERIFY_ROOT_ATTR);
         root.removeAttribute(LABELED_CHECKED_VERIFY_LAST_ATTR);

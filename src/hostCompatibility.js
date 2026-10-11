@@ -1,5 +1,5 @@
-import { recordTtSurface, ttSurfaceNow } from './ttSurfaceDiagnostics.js?rmv=1.67.79';
-import { createRabbitMirrorHostCompatibility as createHostCompatibility } from './hostCompatibilityCore.js?rmv=1.67.79';
+import { recordTtSurface, ttSurfaceNow } from './ttSurfaceDiagnostics.js?rmv=1.67.81';
+import { createRabbitMirrorHostCompatibility as createHostCompatibility } from './hostCompatibilityCore.js?rmv=1.67.81';
 
 const COHORT = '1.5.58-fork1';
 const rootUrl = new URL('../', import.meta.url).href;

@@ -1,13 +1,13 @@
 // Split from independentApi.js — earlyBody.
-import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.67.79';
+import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.67.81';
 
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.67.79';
-import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.67.79';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.67.79';
-import { getSettings } from '../settings.js?rmv=1.67.79';
-import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.67.79';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=1.67.79';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.67.79';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.67.81';
+import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.67.81';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.67.81';
+import { getSettings } from '../settings.js?rmv=1.67.81';
+import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.67.81';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=1.67.81';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.67.81';
 import {
     MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE,
     INDEPENDENT_HISTORY_READ_ERROR_MESSAGE,
@@ -17,7 +17,7 @@ import {
     isMissingShellTargetFloor,
     normalizeMissingShellScanRange,
     shouldRestoreMissingIndependentRetryShell,
-} from './missingRetryShell.js?rmv=1.67.79';
+} from './missingRetryShell.js?rmv=1.67.81';
 import {
     INDEPENDENT_GENERATION_INTENTS_KEY,
     INDEPENDENT_GENERATION_INTENT_TYPES,
@@ -27,7 +27,7 @@ import {
     currentRuntime,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.67.79';
+} from './runtime.js?rmv=1.67.81';
 import {
     ACTIVE_GENERATION_WAIT_MS,
     FINAL_RENDER_POLL_INTERVAL_MS,
@@ -43,12 +43,14 @@ import {
     markAutomaticFailureStop,
     operationEpochForBase,
     pending,
-} from './flights.js?rmv=1.67.79';
+} from './flights.js?rmv=1.67.81';
 import {
     appendHistoryEntry,
     chatPersistenceSlot,
     normalizeHistoryEntry,
     persistedOwnerForMessage,
+    earliestMirrorEvidenceFloor,
+    floorMirrorEvidence,
     independentHistoryLoaded,
     independentHistoryReadState,
     restoreIndependentHistory,
@@ -59,7 +61,7 @@ import {
     reconcileIndependentChatOwners,
     rememberChatMessageOrder,
     checkOwnerRemapEpoch,
-} from './persistence.js?rmv=1.67.79';
+} from './persistence.js?rmv=1.67.81';
 import {
     activeGlobalWorldInfoCapture,
     assistantMessages,
@@ -109,7 +111,7 @@ import {
     withOwnerLockStoreBatch,
     writeActiveGlobalWorldInfoCapture,
     writeHostModule,
-} from './connection.js?rmv=1.67.79';
+} from './connection.js?rmv=1.67.81';
 import {
     allExternalHosts,
     externalHosts,
@@ -117,7 +119,7 @@ import {
     removeEmptyFollowExternalAnchors,
     removeEmptyInlineAnchors,
     withExternalHostSyncIndex,
-} from './request.js?rmv=1.67.79';
+} from './request.js?rmv=1.67.81';
 import {
     beginHostWorkTiming,
     clearExternalHostFreshSourceState,
@@ -150,7 +152,7 @@ import {
     setPlaceholderSummary,
     usableReadyDetails,
     withRestorableHtmlCacheBatch,
-} from './geometry.js?rmv=1.67.79';
+} from './geometry.js?rmv=1.67.81';
 import {
     INDEPENDENT_INTENT_OWNER,
     abortFlight,
@@ -204,7 +206,7 @@ import {
     serializeExternalFaceDetails,
     stampAutomaticAuthorizationEpoch,
     withHistoricalRestoreLightPass,
-} from './mount.js?rmv=1.67.79';
+} from './mount.js?rmv=1.67.81';
 import {
     automaticGenerationCutovers,
     hostGenerationHintStartedAt,
@@ -229,7 +231,7 @@ import {
     writeStartupHistoryFallbackRoot,
     writeSyncRunning,
     writeSyncTimer,
-} from './lifecycle.js?rmv=1.67.79';
+} from './lifecycle.js?rmv=1.67.81';
 
 let earlyBodyParserPromise=null;
 
@@ -358,7 +360,7 @@ function settleEarlyBodyAtFinal(ctx,index){
 
 async function probeIndependentEarlyBody(packet,sequence){
  if(!earlyBodyPacketCurrent(packet)) return;
- if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.67.79')
+ if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.67.81')
   .then(module=>{earlyBodyParser=module;return module;}).catch(()=>{earlyBodyParserPromise=null;return null;});
  const parser=await earlyBodyParserPromise;
  if(!parser || sequence!==earlyBodyProbeSequence || !earlyBodyPacketCurrent(packet)) return;
@@ -679,11 +681,15 @@ function automaticHostGenerationSettlementCandidate(ctx,{externalActive=false}={
 const MISSING_SHELL_SETTLE_GRACE_MS=45000;
 const recentHostGenerationEnds=new Map();
 function noteHostGenerationEnd(chat){ if(chat) recentHostGenerationEnds.set(String(chat),Date.now()); }
+// 宿主生成的登记偶尔会因为中途停止、报错没收尾而一直留着；只在宿主确实还在生成、或登记不久时才算“还在进行”，
+// 免得最后一条回复永远既没有兔子镜、也没有重试卡。
+const HOST_GENERATION_HOLD_MAX_MS=180000;
 export function automaticPipelineHoldsFloor(ctx,index){
  if(!automaticIndependentTiming()) return false;
  const last=lastAssistantMessage(ctx); if(!last || last.i!==Number(index)) return false;
  const key=chatKey(ctx);
- if(automaticGenerationCutovers.get(key)?.activeHostGeneration) return true;
+ const owner=automaticGenerationCutovers.get(key)?.activeHostGeneration;
+ if(owner && (hostGenerationLooksActive() || Date.now()-Number(owner.startedAt||0)<HOST_GENERATION_HOLD_MAX_MS)) return true;
  const endedAt=Number(recentHostGenerationEnds.get(key)||0);
  return endedAt>0 && Date.now()-endedAt<MISSING_SHELL_SETTLE_GRACE_MS;
 }
@@ -1168,6 +1174,13 @@ function missingIndependentHistoryMessage(ctx,index,msg){
   ? INDEPENDENT_HISTORY_READ_ERROR_MESSAGE : MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE;
 }
 
+// 缺外壳卡只挂在“这层应当有兔子镜”的楼层：这个聊天里已经有兔子镜痕迹、且这层不早于最早那层；
+// 旧存档读不出来时没法判断，照旧挂卡。从没生成过兔子镜的聊天不挂。
+function missingShellHasEvidence(ctx,index,msg,evidenceFloor){
+ if(evidenceFloor>=0 && Number(index)>=evidenceFloor) return true;
+ return independentHistoryReadState(ctx,index,msg)==='error';
+}
+
 function syncMessagesCore(indices=null){
  if(!currentRuntime() || syncRunning) return;
  writeSyncRunning(true);
@@ -1187,6 +1200,7 @@ function syncMessagesCore(indices=null){
     const recentRetryIndices=mode==='independent'
      ? new Set(assistantRowsInScanRange(assistantMessages(ctx), normalizeMissingShellScanRange(st.missingShellScanRange)).map(row=>Number(row.i)).filter(n=>Number.isInteger(n)&&n>=0))
      : null;
+    const mirrorEvidenceFloor=mode==='independent' ? earliestMirrorEvidenceFloor(ctx,store) : -1;
     const rows=allowed
      ? [...allowed].sort((a,b)=>a-b).map(i=>({m:ctx.chat?.[i],i})).filter(({m})=>isRabbitMirrorEligibleAssistantMessage(m))
     : assistantMessages(ctx);
@@ -1290,7 +1304,7 @@ function syncMessagesCore(indices=null){
         // That flag correctly blocks automatic POST, but must not block the
         // retry card that sits under this assistant reply. Never POST here.
         const followMirror=hasExistingFollowRabbitMirror(ctx,i,m);
-        const isTargetFloor=isMissingShellTargetFloor(i,{recentIndices:recentRetryIndices,syncedIndices:allowed});
+        const isTargetFloor=isMissingShellTargetFloor(i,{recentIndices:recentRetryIndices,syncedIndices:allowed}) && missingShellHasEvidence(ctx,i,m,mirrorEvidenceFloor);
         if(!saved?.html && (!keep || keep.dataset?.rmState==='loading') && !activeBaseFlight && !persistedSuppressed && !followMirror
          && !automaticFailureStopFor(slot,sourceHash)
          && shouldRestoreMissingIndependentRetryShell({
@@ -1386,6 +1400,33 @@ function syncMessagesCore(indices=null){
          placeExternalHost(el,keep,keep.dataset.rmKey||key,'independent');
          if(mountedReadyPassiveSourceDrift) clearExternalHostFreshSourceState(keep);
          refreshExistingExternalDetails(keep,key,'independent');
+       }
+       // 兜底：这一层自己生成过兔子镜（有归属标记或存档），走完上面以后却什么都没挂上（成品没恢复出来、也没给卡），
+       // 就挂一张缺壳卡，至少留下「找回旧兔子镜／重新生成」的入口。不发请求，正在生成、删过的、正文模式的都不挂。
+       if(!externalHosts(el).some(node=>node.dataset.rmSource==='independent' && node.isConnected)
+        && !activeBaseFlight && !persistedSuppressed && !followMirror
+        && shouldRestoreMissingIndependentRetryShell({
+         timing:independentGenerationTiming(st),
+         hasFollowMirror:followMirror,
+         isTargetFloor:floorMirrorEvidence(ctx,i,m,store),
+         hasMessageBody:hasUsableAssistantBody(m),
+         isActiveGenerationTarget,
+         quickWaiting,
+         hasScheduledGeneration:scheduledGeneration,
+        })){
+        if(!automaticFailureStopFor(slot,sourceHash)) markAutomaticFailureStop(slot,sourceHash,'missing-external-shell',{
+         baseSlot,
+         operationEpoch:operationEpochForBase(baseSlot),
+         message:missingIndependentHistoryMessage(ctx,i,m),
+         code:'missing-external-shell',
+        });
+        const failure=automaticFailureStopFor(slot,sourceHash);
+        const card=ensureExternalUi(el,key,failure?.message||missingIndependentHistoryMessage(ctx,i,m),'error','independent',sourceHash);
+        if(card){
+         card.hidden=false;
+         card.dataset.rmMissingShellRetry=failure?.code==='missing-external-shell'?'true':'false';
+         placeExternalHost(el,card,card.dataset.rmKey||key,'independent');
+        }
        }
      } else {
        // Generation-source changes affect only future replies. Keep completed
@@ -1668,7 +1709,7 @@ function restoreMissingIndependentRetryOnElement(el,index){
   hasHost:hasReady || !!(keep && keep.dataset.rmState==='loading' && activeBaseFlight),
   hasActiveFlight:!!activeBaseFlight,
   hasFollowMirror:followMirror,
-  isTargetFloor:true,
+  isTargetFloor:missingShellHasEvidence(ctx,index,m,earliestMirrorEvidenceFloor(ctx,store)),
   hasMessageBody:true,
   isActiveGenerationTarget:generationActive && index===tailIndex,
   quickWaiting:quickWaitingCandidate(ctx,index),
@@ -1696,8 +1737,10 @@ export function listMissingIndependentRetryFloors(){
  if(runtimeMode()!=='independent') return {range,floors:[],text:'当前不是独立 API，不会扫描缺壳楼层。'};
  const store=readStore();
  const floors=[];
+ const evidenceFloor=earliestMirrorEvidenceFloor(ctx,store);
  for(const {m,i} of assistantRowsInScanRange(assistantMessages(ctx),range)){
   if(!hasUsableAssistantBody(m) || hasExistingFollowRabbitMirror(ctx,i,m)) continue;
+  if(!missingShellHasEvidence(ctx,i,m,evidenceFloor)) continue;
   const persisted=persistedOwnerForMessage(ctx,i,m);
   if(persisted?.deleted) continue;
   const observed=passiveObservedIdentity(ctx,i,m);

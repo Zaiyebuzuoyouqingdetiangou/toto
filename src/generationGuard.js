@@ -1,12 +1,12 @@
-import { presentationModeFields } from './presentationMode.js?rmv=1.67.79';
+import { presentationModeFields } from './presentationMode.js?rmv=1.67.81';
 import {
     commitPendingComboBatch,
     getCurrentChatKey,
     releasePendingComboBatch,
-} from './storage.js?rmv=1.67.79';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.67.79';
-import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, multifaceRecoveryWithinRawBudgets } from './multifaceProtocol.js?rmv=1.67.79';
-import { atmosphereChoicesFromFaces, compactAtmosphereMenu } from './atmosphereChoice.js?rmv=1.67.79';
+} from './storage.js?rmv=1.67.81';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.67.81';
+import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, multifaceRecoveryWithinRawBudgets } from './multifaceProtocol.js?rmv=1.67.81';
+import { atmosphereChoicesFromFaces, compactAtmosphereMenu } from './atmosphereChoice.js?rmv=1.67.81';
 
 const SNAPSHOT_STORAGE_KEY = 'rabbit_mirror_theater:generation_snapshots:v1';
 const ACTIVE_ATTEMPT_STORAGE_KEY = 'rabbit_mirror_theater:active_generation_attempt:v1';
@@ -499,7 +499,7 @@ export function commitRabbitMirrorFollowBatch(batchId, chat, faceScans = [], exp
     const committed = commitPendingComboBatch(faceScans, { batchId: record.plan.batchId, identity: record.plan.identity, partial, chosenTickets });
     if (!committed) return false;
     // 跟随正文的成功一面也计入里程碑（同一条消息的同一个版本只计一次）。
-    void import('./milestones.js?rmv=1.67.79').then(module => module.recordMirrorMilestone(`follow:${record.chatKey}:${owner.messageIndex}:${owner.swipeId}:${owner.sourceHash}`)).catch(() => {});
+    void import('./milestones.js?rmv=1.67.81').then(module => module.recordMirrorMilestone(`follow:${record.chatKey}:${owner.messageIndex}:${owner.swipeId}:${owner.sourceHash}`)).catch(() => {});
     recordRabbitMirrorRecipe({
         chat,
         chatKey: record.chatKey,
