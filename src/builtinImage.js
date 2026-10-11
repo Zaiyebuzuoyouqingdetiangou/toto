@@ -1,10 +1,10 @@
-import { getSettings } from './settings.js?rmv=1.67.70';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.67.70';
-import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.70';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.70';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.70';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.67.70';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.70';
+import { getSettings } from './settings.js?rmv=1.67.71';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.67.71';
+import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.71';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.71';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.71';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.67.71';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.71';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -398,6 +398,21 @@ function hideFrameExtraMedia(frame) {
     for (const node of frame.querySelectorAll?.(FRAME_EXTRA_MEDIA) || []) {
         if (node.closest('[data-rm-draw-status]')) continue;
         if (node.matches('img') && node.closest('picture')) continue;
+        node.setAttribute('data-rm-draw-extra', 'true');
+        node.style.setProperty('display', 'none', 'important');
+    }
+    // 模型有时把图框自己写成 display:none，再在旁边放一张外链图顶替（比如塔罗牌原图），画好的图就永远看不到。
+    // 图框只被它自己的普通内联 display:none 藏住时让它显示；交互驱动或 !important 状态规则管着的图框不碰。
+    const style = frame.style;
+    if (style && style.getPropertyValue('display') === 'none' && style.getPropertyPriority('display') !== 'important'
+        && !frame.hasAttribute('data-rm-result-active') && !frame.hasAttribute('data-rm-show') && !frame.closest?.('[hidden]')) {
+        style.setProperty('display', 'block');
+        frame.setAttribute('data-rm-draw-unhidden', 'true');
+    }
+    // 和图框并排、直接放在同一层的外链图片，是顶替画面的那张，不显示。
+    for (const node of frame.parentElement?.children || []) {
+        if (node === frame || !node.matches?.('img') || node.hasAttribute('data-rm-draw-result')) continue;
+        if (!/^https?:/i.test(String(node.getAttribute('src') || '').trim())) continue;
         node.setAttribute('data-rm-draw-extra', 'true');
         node.style.setProperty('display', 'none', 'important');
     }

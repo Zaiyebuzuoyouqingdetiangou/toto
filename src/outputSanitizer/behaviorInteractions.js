@@ -1,8 +1,8 @@
-import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.67.70';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.67.70';
-import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.67.70';
-import { behaviorCssMentions, hasBehaviorStateClasses, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.67.70';
-import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.67.70';
+import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.67.71';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.67.71';
+import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.67.71';
+import { behaviorCssMentions, hasBehaviorStateClasses, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.67.71';
+import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.67.71';
 
 // Declarative, face-local behaviors. No generated code, global targets or timers.
 const roots = new WeakMap();
