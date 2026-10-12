@@ -1,5 +1,5 @@
-import { behaviorShowTokens, ownBehaviorShows } from './behaviorResults.js?rmv=1.68.9';
-import { behaviorStyleText } from './behaviorStateMirror.js?rmv=1.68.9';
+import { behaviorShowTokens, ownBehaviorShows } from './behaviorResults.js?rmv=1.68.10';
+import { behaviorStyleText } from './behaviorStateMirror.js?rmv=1.68.10';
 
 // 插件写法「方言表」：模型写的插件交互，意思对、写法和标准不一样的那些情况，集中在这里认。
 // 每一条只做三件事：怎么认出来、按什么标准写法去理解、诊断里怎么说。不新增内容、不猜目标。
@@ -47,7 +47,10 @@ export function motionOutsideControls(group) {
     const scope = faceScopeOf(group);
     if (!scope?.querySelectorAll) return empty;
     if ([...scope.querySelectorAll('[data-rm-ui="motion"]')].length !== 1) return empty;
-    const outside = selector => [...scope.querySelectorAll(selector)].filter(node => !node.closest(GROUP) && !node.closest(FACE_TOOL_UI));
+    // 已经有人管的不收：模型自己写了 oninput 的、老修复器接管过的（带 rescue／program 标记或在已退还区域里）。
+    const taken = node => [...(node.attributes || [])].some(attribute => /^on[a-z]+$/i.test(attribute.name) || /^data-rabbit-mirror-.*(?:rescue|program)/.test(attribute.name))
+        || node.closest('[data-rm-released], [data-rm-mobile-controls]');
+    const outside = selector => [...scope.querySelectorAll(selector)].filter(node => !node.closest(GROUP) && !node.closest(FACE_TOOL_UI) && !taken(node));
     const buttons = own(group, '[data-rm-play], [data-rm-reverse]').length ? [] : outside('button[data-rm-play], button[data-rm-reverse]');
     const ranges = own(group, 'input[type="range"]').length ? [] : outside('input[type="range"]');
     return { buttons, ranges: ranges.length === 1 ? ranges : [] };
@@ -251,8 +254,9 @@ export function inspectBehaviorDialect(root) {
                 try { if (!authoredAnimations(group).length) used.add('motion-numeric'); } catch {}
             }
         }
-        for (const button of own(group, 'button, [role="button"]')) {
-            if (CONTROL_ATTRS.some(name => button.hasAttribute(`data-rm-${name}`))) continue;
+        // 按钮上不认识的标识：只在这个区域一个认识的控件都没有时才报（有认识的控件时，多出来的标识多半是装饰）。
+        const recognized = own(group, CONTROL_ATTRS.map(name => `[data-rm-${name}]`).join(', ')).length > 0;
+        for (const button of recognized ? [] : own(group, 'button, [role="button"]')) {
             const odd = [...button.attributes].map(attribute => attribute.name)
                 .filter(name => name.startsWith('data-rm-') && !RUNTIME_ATTR.test(name) && !KNOWN_PART_ATTRS.has(name.slice(8)));
             for (const name of odd) if (!result.unknown.includes(name)) result.unknown.push(name);

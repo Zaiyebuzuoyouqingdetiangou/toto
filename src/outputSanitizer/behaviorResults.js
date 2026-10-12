@@ -103,11 +103,15 @@ export function ownBehaviorShows(group) {
 // 交还给模型自己的 CSS 管的显示节点：撤掉驱动加的隐藏（恢复原 display、去掉 hidden），以后不再管它。
 export function releaseBehaviorShow(node) {
     if (!node?.style) return false;
-    const saved = results.get(node) || remember(node);
-    visibility(node, saved, true);
-    node.removeAttribute('data-rm-result-active');
+    // 驱动从没管过它（没有记录、也没有存档里带来的隐藏标记）：一个字都不动，模型写的内联样式照旧。
+    const touched = results.has(node) || node.hasAttribute('data-rm-result-active');
+    if (touched) {
+        const saved = results.get(node) || remember(node);
+        visibility(node, saved, true);
+        node.removeAttribute('data-rm-result-active');
+    }
     node.setAttribute('data-rm-show-author', 'true');
-    return true;
+    return touched;
 }
 
 export function updateBehaviorShows(group, keys = new Set(), onChange = null, released = null) {

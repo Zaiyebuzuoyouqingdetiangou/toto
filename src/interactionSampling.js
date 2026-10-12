@@ -104,8 +104,9 @@ export function interactionSamplingDiagnostic(root) {
     if (!parsed.record) return invalid;
     const { record } = parsed;
     const lines = record.c.map(([plan, probability], index) => {
-        const shortPlan = plan.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 240);
-        return `  ${index + 1}. p=${probability} ${shortPlan}`;
+        // 方案文字是模型写的剧情，报告里只记长度，不带正文。
+        const length = plan.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().length;
+        return `  ${index + 1}. p=${probability} 字×${length}`;
     });
     return [`VS 方案候选：模型自报 ${record.c.length} 项，选中=${record.pick}；本段未核对程序指定，不代表设计差异或交互已实现。`, ...lines].join('\n');
 }

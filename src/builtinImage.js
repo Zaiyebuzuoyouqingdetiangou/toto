@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.68.9';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.68.9';
-import { findBuiltinImageKeyFromOtherChat, loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.68.9';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.68.9';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.68.9';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.68.9';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.68.9';
-import { noteRecentDrawScene } from './recentDrawScenes.js?rmv=1.68.9';
+import { getSettings } from './settings.js?rmv=1.68.10';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.68.10';
+import { findBuiltinImageKeyFromOtherChat, loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.68.10';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.68.10';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.68.10';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.68.10';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.68.10';
+import { noteRecentDrawScene } from './recentDrawScenes.js?rmv=1.68.10';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -410,9 +410,10 @@ async function fillFrame(root, frame) {
     const waiter = { frame, isCurrent };
     nodes.add(waiter);
     if (progress.has(key)) note(frame, progress.get(key));
-    if (!inflight.has(key)) noteRecentDrawScene(frame);
     try {
         const record = await startJob(key, prompt, frame, isCurrent);
+        // 真画成了才记这一幕（同一张图的多个等待者记的是同一段，不会重复）。
+        noteRecentDrawScene(frame);
         if (isCurrent() && frame.isConnected) paint(frame, record);
     } catch (error) {
         const code = error?.code;

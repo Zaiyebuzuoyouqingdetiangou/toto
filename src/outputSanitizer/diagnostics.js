@@ -1,17 +1,18 @@
 // Split from outputSanitizer.js — diagnostics.
-import { interactionSamplingDiagnostic, designSamplingChecksDiagnostic } from '../interactionSampling.js?rmv=1.68.9';
-import { RADIO_BRANCH_COUNT_ATTR } from './radioBranchRepair.js?rmv=1.68.9';
-import { findUnmappedNavigationButtons } from './choiceRescue.js?rmv=1.68.9';
-import { nativePopoverFallbackCount, inspectNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.68.9';
-import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.68.9';
-import { describeBehaviorDialect, dialectLabels, inspectBehaviorDialect } from './behaviorDialect.js?rmv=1.68.9';
-import { restoreRuntimeAnimationClone } from '../runtimeAnimationState.js?rmv=1.68.9';
-import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.68.9';
+import { interactionSamplingDiagnostic, designSamplingChecksDiagnostic } from '../interactionSampling.js?rmv=1.68.10';
+import { maskFaceText, skeletonizeRabbitMirrorHtml } from './writingSkeleton.js?rmv=1.68.10';
+import { RADIO_BRANCH_COUNT_ATTR } from './radioBranchRepair.js?rmv=1.68.10';
+import { findUnmappedNavigationButtons } from './choiceRescue.js?rmv=1.68.10';
+import { nativePopoverFallbackCount, inspectNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.68.10';
+import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.68.10';
+import { describeBehaviorDialect, dialectLabels, inspectBehaviorDialect } from './behaviorDialect.js?rmv=1.68.10';
+import { restoreRuntimeAnimationClone } from '../runtimeAnimationState.js?rmv=1.68.10';
+import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.68.10';
 
-import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.68.9';
-import { collectBoundedElementDescendants } from '../presentationQuality.js?rmv=1.68.9';
-import { collectRevealedClipHosts, shouldRelaxRevealedClipPanel, REVEALED_CLIP_RESCUE_ATTR } from '../revealedClipRepair.js?rmv=1.68.9';
-import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.68.9';
+import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.68.10';
+import { collectBoundedElementDescendants } from '../presentationQuality.js?rmv=1.68.10';
+import { collectRevealedClipHosts, shouldRelaxRevealedClipPanel, REVEALED_CLIP_RESCUE_ATTR } from '../revealedClipRepair.js?rmv=1.68.10';
+import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.68.10';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -30,7 +31,7 @@ import {
     isInsideChatMessage,
     isMaintenanceRabbitEnabled,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.68.9';
+} from './runtime.js?rmv=1.68.10';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     CHANNEL_DIAL_CYCLE_COUNT_ATTR,
@@ -63,7 +64,7 @@ import {
     WEBKIT_3D_FLIP_RESCUE_ATTR,
     passportDocumentRescueStates,
     unlabeledCheckedHostRescueStates,
-} from './checkedStateRescue.js?rmv=1.68.9';
+} from './checkedStateRescue.js?rmv=1.68.10';
 import {
     RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR,
     RENDERED_BUTTON_ADJACENT_HIDDEN_ITEM_ATTR,
@@ -90,7 +91,7 @@ import {
     renderedListDetailRescueStates,
     renderedMaskRevealRescueStates,
     renderedStateLayerRescueStates,
-} from './renderedStateRescue.js?rmv=1.68.9';
+} from './renderedStateRescue.js?rmv=1.68.10';
 import {
     RAW_RADIO_RESET_LAST_ATTR,
     RAW_RADIO_RESET_ROOT_ATTR,
@@ -101,7 +102,7 @@ import {
     getRabbitMirrorSummaryText,
     getRawAssistantMessageForRenderedRoot,
     rawSelfMutationRescueStates,
-} from './scriptedInteractionRescue.js?rmv=1.68.9';
+} from './scriptedInteractionRescue.js?rmv=1.68.10';
 import {
     REVERSIBLE_RADIO_LAST_ATTR,
     REVERSIBLE_RADIO_ROOT_ATTR,
@@ -112,13 +113,13 @@ import {
     findNestedDetailsPopupClippingCandidates,
     formatWebKit3DFlipEvidence,
     repairNestedDetailsPopupClipping,
-} from './fallbackRescue.js?rmv=1.68.9';
-import { RADIO_GROUP_RESCUE_ATTR, RADIO_GROUP_ROOT_ATTR } from './idsAndRearm.js?rmv=1.68.9';
+} from './fallbackRescue.js?rmv=1.68.10';
+import { RADIO_GROUP_RESCUE_ATTR, RADIO_GROUP_ROOT_ATTR } from './idsAndRearm.js?rmv=1.68.10';
 import {
     findFillInChoiceCandidates,
     findStaticChoiceSelectionCandidates,
     findStructuredStaticDisclosureCandidates,
-} from './choiceRescue.js?rmv=1.68.9';
+} from './choiceRescue.js?rmv=1.68.10';
 import {
     CODE_SHELL_SELECTOR,
     MAINTENANCE_QUARANTINED_SCRIPT_ATTR,
@@ -136,7 +137,7 @@ import {
     needsSanitize,
     normalizeMaintenanceSummaryText,
     parseTotoFragment,
-} from './maintenanceInspect.js?rmv=1.68.9';
+} from './maintenanceInspect.js?rmv=1.68.10';
 import {
     RABBIT_MIRROR_MAX_TEMPLATE_SOURCE_CHARS,
     RABBIT_MIRROR_SANITIZER_IMPORT_STRIPPED_ATTR,
@@ -149,7 +150,7 @@ import {
     sanitizeRabbitMirrorUntrustedTemplate,
     stripCssComments,
     validateRabbitMirrorTemplateStructuralBudget,
-} from './markup.js?rmv=1.68.9';
+} from './markup.js?rmv=1.68.10';
 import {
     HCLIP_REPORT_ATTR,
     VIEWPORT_LAYOUT_COUNT_ATTR,
@@ -157,14 +158,14 @@ import {
     inspectMaintenanceMobileLayout,
     inspectMaintenanceViewportLayout,
     maintenanceMobileLayoutIsPassportManaged,
-} from './layoutRescue.js?rmv=1.68.9';
-import { normalizeRabbitMirrorToolButton, rabbitMirrorTextPresentation, updateMaintenanceRabbitMenuState } from './toolsChrome.js?rmv=1.68.9';
+} from './layoutRescue.js?rmv=1.68.10';
+import { normalizeRabbitMirrorToolButton, rabbitMirrorTextPresentation, updateMaintenanceRabbitMenuState } from './toolsChrome.js?rmv=1.68.10';
 import {
     getMessageIndexFromMirrorNode,
     hostScriptModule,
     messageUsesDistinctDisplaySource,
     outputHostGenerationLooksActive,
-} from './lifecycle.js?rmv=1.68.9';
+} from './lifecycle.js?rmv=1.68.10';
 
 export const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
 
@@ -1999,7 +2000,8 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
     const structuredStaticDisclosureCandidateCount = findStructuredStaticDisclosureCandidates(root).length;
     const fillInChoiceCandidateCount = findFillInChoiceCandidates(root)
         .reduce((sum, candidate) => sum + Number(candidate.blanks?.length || 0), 0);
-    const title = diagnosticCompactText(root.querySelector('summary')?.textContent, 64);
+    // 报告里不带正文：标题、文字节选都只写长度（写法骨架）。
+    const title = maskFaceText(root.querySelector('summary')?.textContent);
     const code = diagnosticCodeRescueSummary(root);
     const full = diagnosticFullChainSummary(root, code);
     const independentRequest = diagnosticIndependentApiRequestSnapshot();
@@ -2043,7 +2045,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `原始源码主体缺失=${!!full.rawSourceBodyMissing} 空结构壳=${!!full.rawBodyEmptyShell} CSS中途截断=${!!full.rawCssTruncated} 截断说明=${!!full.sourceTruncationNoticeInstalled}`,
         `原始主体 文本=${full.rawBodyTextLength ?? 0} 元素=${full.rawBodyElementCount ?? 0} 语义/媒体=${full.rawBodySemanticElementCount ?? 0} 视觉程序=${full.rawBodyVisualProgramCount ?? 0}`,
         `展开后主体缺失=${full.visibleBodyMissing} 空结构壳=${!!full.renderedBodyEmptyShell} 主体子节点=${full.renderedBodyElementCount ?? 0} 文本=${full.renderedBodyTextLength ?? 0}`,
-        `可见语言 英文主导=${!!full.languageForeignDominant} 中文字符=${full.languageHanChars ?? 0} 英文字母=${full.languageLatinLetters ?? 0} 英文词≈${full.languageForeignWordCount ?? 0} 示例=${Array.isArray(full.languageForeignWords) && full.languageForeignWords.length ? full.languageForeignWords.slice(0, 8).join('/') : '(无)'}`,
+        `可见语言 英文主导=${!!full.languageForeignDominant} 中文字符=${full.languageHanChars ?? 0} 英文字母=${full.languageLatinLetters ?? 0} 英文词≈${full.languageForeignWordCount ?? 0} 示例=${Array.isArray(full.languageForeignWords) && full.languageForeignWords.length ? `(${full.languageForeignWords.length} 个英文词，报告不带正文)` : '(无)'}`,
         '',
         '[3. CSS 能力层]',
         `rules≈${full.cssRuleCount} keyframes=${full.animationCount}`,
@@ -2191,7 +2193,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         const label = diagnosticFindAssociatedLabel(root, input);
         lines.push(
             `${index}: ${diagnosticElementName(input)} type=${input.type} ${input.type === 'range' ? `value=${input.value}` : `checked=${!!input.checked}`}`,
-            `   label=${!!label} text="${diagnosticCompactText(label?.textContent, 68)}"`,
+            `   label=${!!label} text="${maskFaceText(label?.textContent)}"`,
             `   attrs: route=${getRenderedInputRoute(input) || 'none'} adjacent=${input.getAttribute(RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR) || 'false'} layer=${input.getAttribute(RENDERED_STATE_LAYER_RESCUE_ATTR) || 'false'} labelInternal=${input.getAttribute(RENDERED_LABEL_INTERNAL_HIDDEN_RESCUE_ATTR) || 'false'} labelAdjacent=${input.getAttribute(RENDERED_LABEL_ADJACENT_RESULT_RESCUE_ATTR) || 'false'} idTarget=${input.getAttribute(RENDERED_CHECKED_ID_TARGET_RESCUE_ATTR) || 'false'} cssChecked=${input.getAttribute(CHECKED_TEXT_RULE_RESCUE_ATTR) || 'false'} detachedHas=${input.getAttribute(DETACHED_CHECKED_HAS_CONTROL_ATTR) || 'false'} focusWithinPersistent=${input.getAttribute(FOCUS_WITHIN_PERSISTENT_CONTROL_ATTR) || 'false'} radioGroup=${input.getAttribute(RADIO_GROUP_RESCUE_ATTR) || 'false'} expandedOpacity=${input.getAttribute(EXPANDED_OPACITY_RESCUE_ATTR) || 'false'} change=${input.getAttribute(CHANGE_PSEUDO_RESCUE_ATTR) || 'false'} unlabeledHost=${input.getAttribute(UNLABELED_CHECKED_CONTROL_RESCUE_ATTR) || 'false'} labeledVerified=${input.getAttribute(LABELED_CHECKED_VERIFY_CONTROL_ATTR) || 'false'}`,
         );
     });
@@ -2204,7 +2206,7 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         const parentRect = diagnosticRect(target.parentElement);
         const clipping = diagnosticFindClippingAncestor(target, root);
         lines.push(
-            `${index}: ${diagnosticElementName(target)} text="${diagnosticCompactText(target.textContent, 70)}"`,
+            `${index}: ${diagnosticElementName(target)} text="${maskFaceText(target.textContent)}"`,
             `   inline: opacity=${getInlineStyleValue(target, 'opacity') || '(empty)'} display=${getInlineStyleValue(target, 'display') || '(empty)'} visibility=${getInlineStyleValue(target, 'visibility') || '(empty)'} transform=${getInlineStyleValue(target, 'transform') || '(empty)'} height=${getInlineStyleValue(target, 'height') || '(empty)'} maxHeight=${getInlineStyleValue(target, 'max-height') || '(empty)'}`,
             `   computed: opacity=${computed?.opacity || '?'} display=${computed?.display || '?'} visibility=${computed?.visibility || '?'} height=${rect.height}px parentHeight=${parentRect.height}px`,
             `   clipping: ${clipping || '未发现明显裁切祖先'}`,
@@ -2243,13 +2245,13 @@ function buildInteractionDiagnosticReportText(root, state) {
     return [
         report,
         '',
-        '[隐私提醒] 以下诊断代码包含兔子镜中的文字和资源内容；请确认后再发送给他人。报告不截断，不会自动上传。',
+        '[写法骨架] 以下两段代码已把所有文字换成占位（字×长度），图片、链接地址和模型写的画面提示词也已去掉，只留结构、标识和 CSS；可以直接发给作者当样本。报告不截断，不会自动上传。',
         '',
-        '[用于本面诊断的源代码（沿用当前面匹配，可能经过规范化）]',
-        getDiagnosticRawSource(root),
+        '[用于本面诊断的源代码骨架（沿用当前面匹配，可能经过规范化）]',
+        skeletonizeRabbitMirrorHtml(getDiagnosticRawSource(root)),
         '',
-        '[实际渲染代码]',
-        getDiagnosticRenderedSource(root),
+        '[实际渲染代码骨架]',
+        skeletonizeRabbitMirrorHtml(getDiagnosticRenderedSource(root)),
     ].join('\n');
 }
 
@@ -2492,14 +2494,14 @@ export function createOneShotInteractionDiagnosticPanel(root, state) {
     heading.style.cssText = 'font-weight:800;color:#fde047;margin-bottom:8px;';
 
     const privacy = document.createElement('div');
-    privacy.textContent = '点击异常消息即可诊断：支持交互失效、代码块、纯文字源码与显示源冲突。下载完整 TXT 报告，附带用于本面诊断的源代码与实际渲染代码，不截断；不会自动上传。';
+    privacy.textContent = '点击异常消息即可诊断：支持交互失效、代码块、纯文字源码与显示源冲突。下载的 TXT 报告只带写法骨架：文字全换成占位，只留结构、标识和 CSS，不含聊天内容；不截断，不会自动上传。';
     privacy.style.cssText = 'color:#cbd5e1;margin-bottom:8px;font-size:10px;';
 
     const actions = document.createElement('div');
     actions.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;';
     const downloadButton = document.createElement('button');
     downloadButton.type = 'button';
-    downloadButton.textContent = '下载完整报告';
+    downloadButton.textContent = '下载写法骨架报告';
     const closeButton = document.createElement('button');
     closeButton.type = 'button';
     closeButton.textContent = '关闭报告';
@@ -2530,19 +2532,19 @@ export function createOneShotInteractionDiagnosticPanel(root, state) {
         event.stopPropagation();
         if (downloadButton.disabled) return;
         downloadButton.disabled = true;
-        downloadStatus.textContent = '正在整理完整报告…';
+        downloadStatus.textContent = '正在整理写法骨架报告…';
         let url, link;
         try {
             const text = buildInteractionDiagnosticReportText(root, state);
             url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
             link = document.createElement('a');
             link.href = url;
-            link.download = '兔子镜-全链路诊断报告.txt';
+            link.download = '兔子镜-写法骨架报告.txt';
             link.target = '_blank'; link.rel = 'noopener';
-            link.textContent = '保存完整诊断报告';
+            link.textContent = '保存写法骨架报告';
             panel.appendChild(link);
             link.click();
-            downloadStatus.textContent = '已请求下载完整 TXT 报告，请在浏览器或宿主的下载／保存界面查看。';
+            downloadStatus.textContent = '已请求下载写法骨架 TXT 报告（不含聊天内容），请在浏览器或宿主的下载／保存界面查看。';
         } catch (error) {
             downloadStatus.textContent = `报告下载失败：${String(error?.message || error || '无法创建文件')}。可再次点击下载；当前报告仍保留。`;
             console.debug('[RabbitMirror] diagnostic report download failed:', error);
@@ -2609,7 +2611,7 @@ export function finalizeOneShotInteractionDiagnostic(root, state) {
             '[诊断内部错误]',
             message,
             '',
-            '诊断本身发生异常，当前页面真实控件未因此被操作。请下载完整报告发送给开发者。',
+            '诊断本身发生异常，当前页面真实控件未因此被操作。请下载写法骨架报告发送给开发者。',
         ].join('\n');
         if (state.pre?.isConnected) state.pre.textContent = state.report;
         const button = root?.querySelector?.(`[${MAINTENANCE_RABBIT_ATTR}]`);
