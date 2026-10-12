@@ -1,9 +1,9 @@
-import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.68.10';
+import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.68.11';
 // Split from outputSanitizer.js — markup.
 
-import { getSettings } from '../settings.js?rmv=1.68.10';
-import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.68.10';
-import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.68.10';
+import { getSettings } from '../settings.js?rmv=1.68.11';
+import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.68.11';
+import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.68.11';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     INTERACTION_HOME_ATTR,
@@ -15,7 +15,7 @@ import {
     clearMirrorTitleDisplayArtifacts,
     escapeRegExp,
     hashInteractionSignature,
-} from './runtime.js?rmv=1.68.10';
+} from './runtime.js?rmv=1.68.11';
 
 const TOTO_BLOCK_RE = /<toto\b[\s\S]*?<\/toto>/gi;
 
@@ -653,6 +653,19 @@ export function rabbitMirrorTemplateHasAuthoredPositioningContext(template) {
 }
 
 
+const WELL_FORMED_ATTRIBUTE_NAME = /^[a-z_:][\w:.-]*$/i;
+export function stripMalformedAttributeNames(root) {
+    let removed = 0;
+    for (const element of root?.querySelectorAll?.('*') || []) {
+        for (const attribute of [...element.attributes]) {
+            if (WELL_FORMED_ATTRIBUTE_NAME.test(attribute.name)) continue;
+            element.removeAttribute(attribute.name);
+            removed += 1;
+        }
+    }
+    return removed;
+}
+
 export function sanitizeRabbitMirrorUntrustedTemplate(template) {
     if (!template?.content?.querySelectorAll) return false;
     // Fail closed before any broad selector walk. This prevents model-produced tag,
@@ -662,6 +675,9 @@ export function sanitizeRabbitMirrorUntrustedTemplate(template) {
     clearMirrorTitleDisplayArtifacts(template.content);
 
     template.content.querySelectorAll(RABBIT_MIRROR_BLOCKED_RENDER_SELECTOR).forEach(node => node.remove());
+    // 模型在双引号属性里又写双引号（data-rm-vs="{"c":…}"）时，后半截文字会被解析成一个个属性名，
+    // 正文就这样挂在元素上。跟随模式拿到的是已解析的 DOM，只能在这里把这些属性整个去掉；独立模式在解析前已转义。
+    stripMalformedAttributeNames(template.content);
     // SVG 动画能在净化之后把链接、图片地址改成别的（点了跳到脚本地址、偷偷请求外部图片）：
     // 只拿掉改 href／src／事件这类属性的动画，改颜色、位置、透明度的动画照常保留。
     for (const animation of template.content.querySelectorAll('animate, set, animateTransform, animateMotion, discard')) {

@@ -97,8 +97,13 @@ export function designSamplingChecksDiagnostic(checks) {
     ].join('\n');
 }
 
-export function interactionSamplingDiagnostic(root) {
-    const parsed = readSamplingRecord(root);
+// fallbackRoot：渲染出来的 DOM 读不到记录时（跟随模式下引号没来得及转义），再读一次按原始消息重新解析的那份。
+export function interactionSamplingDiagnostic(root, fallbackRoot = null) {
+    let parsed = readSamplingRecord(root);
+    if (parsed.status !== 'recorded' && fallbackRoot) {
+        const again = readSamplingRecord(fallbackRoot);
+        if (again.status === 'recorded') parsed = again;
+    }
     if (parsed.status === 'missing') return 'VS 方案候选：无记录（旧作品或模型未提供；不据此判断成品质量）。';
     const invalid = 'VS 方案候选：记录无效；保留成品，不重试，不据此判断成品质量。';
     if (!parsed.record) return invalid;

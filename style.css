@@ -1776,5 +1776,5 @@ dialog[data-rm-theater-favorite-library] {
   margin: 0 !important;
 }
 
-/* 1.68.10：表情包功能已移除；之前生成的小剧场里留下的空表情图不显示。 */
+/* 1.68.11：表情包功能已移除；之前生成的小剧场里留下的空表情图不显示。 */
 toto img[data-rm-sticker]:not([src]), [data-rabbit-mirror-external-source] img[data-rm-sticker]:not([src]) { display: none !important; }

@@ -223,6 +223,24 @@ try {
     assert.ok(/data-rm-vs="字×\d+"/.test(skeleton) && /src="https:…"/.test(skeleton) && /href="#top"/.test(skeleton) && /content:""/.test(skeleton) && /url\(\)/.test(skeleton), `地址与记录已去掉：${skeleton}`); checks++;
     assert.ok(!/tool-entry-host/.test(skeleton), '插件工具不进骨架'); checks++;
 
+    // 7. 双引号里再写双引号的 data-rm-vs：解析前转义回去能读到记录；已解析的 DOM 里零碎属性名要去掉
+    const broken = `<toto data-rabbit-mirror="true"><details open data-rm-vs="{"c":[["方案一的剧情",0.5],["方案二",0.3],["方案三",0.2]],"m":[["点按","切换"],["按住","翻面"],["拖动","点亮"]],"pick":1}"><summary>【兔子镜：测试】</summary><p>字</p></details></toto>`;
+    const quoteCheck = await page.evaluate(async ({ broken, query }) => {
+        const sampling = await import('/src/interactionSampling.js?' + query);
+        const markup = await import('/src/outputSanitizer/markup.js?' + query);
+        const repaired = document.createElement('template');
+        repaired.innerHTML = sampling.repairDesignCandidateAttributeQuotes(broken);
+        const parsed = document.createElement('template');
+        parsed.innerHTML = broken;
+        const junkBefore = [...parsed.content.querySelector('details').attributes].map(a => a.name).filter(n => !/^[a-z_:][\w:.-]*$/i.test(n)).length;
+        markup.stripMalformedAttributeNames(parsed.content);
+        const junkAfter = [...parsed.content.querySelector('details').attributes].map(a => a.name).filter(n => !/^[a-z_:][\w:.-]*$/i.test(n)).length;
+        return { diag: sampling.interactionSamplingDiagnostic(parsed.content.querySelector('details'), repaired.content.querySelector('details')), junkBefore, junkAfter,
+            leak: /方案一/.test(parsed.content.querySelector('details').outerHTML) };
+    }, { broken, query });
+    assert.match(quoteCheck.diag, /模型自报 3 项，选中=1/, quoteCheck.diag); checks++;
+    assert.ok(quoteCheck.junkBefore > 0 && quoteCheck.junkAfter === 0 && !quoteCheck.leak, JSON.stringify(quoteCheck)); checks++;
+
     assert.deepEqual(errors, []);
     console.log(`behaviorDialect browser checks passed: ${checks}`);
 } finally {
