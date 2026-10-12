@@ -1,8 +1,8 @@
 // Split from outputSanitizer.js — renderedStateRescue.
 
-import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.67.94';
+import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.67.95';
 
-import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.67.94';
+import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.67.95';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     PSEUDO_ACTIVE_ATTR,
@@ -10,7 +10,7 @@ import {
     REVERSIBLE_TARGET_CLOSE_ATTR,
     restoreInteractionInlineOverrides,
     reversibleTargetCloseStates,
-} from './checkedStateRescue.js?rmv=1.67.94';
+} from './checkedStateRescue.js?rmv=1.67.95';
 import {
     RAW_SELF_MUTATION_RESCUE_ATTR,
     applyPseudoStyleAssignments,
@@ -28,17 +28,17 @@ import {
     resolveElementChildIndexPath,
     restorePseudoStyleState,
     shouldIgnorePseudoToggleEvent,
-} from './scriptedInteractionRescue.js?rmv=1.67.94';
-import { TOUCH_HOVER_STYLE_ATTR, setRescuedCheckedState } from './fallbackRescue.js?rmv=1.67.94';
-import { interactionScopeStates } from './idsAndRearm.js?rmv=1.67.94';
-import { INTERACTION_DIAGNOSTIC_PANEL_ATTR } from './diagnostics.js?rmv=1.67.94';
+} from './scriptedInteractionRescue.js?rmv=1.67.95';
+import { TOUCH_HOVER_STYLE_ATTR, setRescuedCheckedState } from './fallbackRescue.js?rmv=1.67.95';
+import { interactionScopeStates } from './idsAndRearm.js?rmv=1.67.95';
+import { INTERACTION_DIAGNOSTIC_PANEL_ATTR } from './diagnostics.js?rmv=1.67.95';
 import {
     cssContainsUnsafeGeneratedResource,
     cssDeclarationBlockContainsUnsafeOverlayGeometry,
     sanitizeGeneratedCssDeclarationBlock,
     splitCssDeclarationList,
     splitCssSelectorList,
-} from './markup.js?rmv=1.67.94';
+} from './markup.js?rmv=1.67.95';
 
 export const RENDERED_STATE_LAYER_RESCUE_ATTR = 'data-rabbit-mirror-rendered-state-layer-rescue';
 
@@ -725,7 +725,14 @@ function isLabelInternalHiddenCandidate(element, input, label) {
             .map(node => String(node.textContent || '').replace(/\s+/g, ' ').trim())
             .join(' ')
         : '';
-    const triggerHint = ADJACENT_HIDDEN_TRIGGER_HINT_RE.test(leadingText);
+    // 触发字样也认「确认／提交」这类按钮常用词；或者前面那块本身画成了按钮（类名带 btn／button）。
+    const leadingNodes = directAfterInput
+        ? children.slice(inputIndex + 1, elementIndex).filter(node => !isExplicitlyHiddenStateLayer(node))
+        : [];
+    const buttonLike = leadingNodes.length > 0 && leadingNodes.length <= 2 && leadingText.length <= 40
+        && leadingNodes.some(node => /(?:^|[-_\s])(?:btn|button)(?:$|[-_\s])/i.test(String(node.getAttribute?.('class') || '')));
+    const triggerHint = ADJACENT_HIDDEN_TRIGGER_HINT_RE.test(leadingText)
+        || CLICKABLE_ADJACENT_HIDDEN_TRIGGER_HINT_RE.test(leadingText) || buttonLike;
     const displayNone = getInlineStyleValue(element, 'display').toLowerCase() === 'none';
     const position = getInlineStyleValue(element, 'position').toLowerCase();
     const positionedPopup = position === 'absolute' || position === 'fixed';
