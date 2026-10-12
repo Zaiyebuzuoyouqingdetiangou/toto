@@ -61,6 +61,17 @@ const SAMPLES = {
           <button data-rm-knob>扭</button>
           <div class="card" data-rm-show="card-a">甲卡</div><div class="card" data-rm-show="card-b">乙卡</div>
         </div></details>`,
+    // AO3 字号滑杆：调节区域只包住滑杆，正文在外面用 var(--rm-p) 算字号；正文里还夹着一张翻面卡（别的插件区域）。
+    varOutside: `<details open><summary>区域外用变量</summary>
+        <style>.body{font-size:calc(10px + 10px * var(--rm-p, 0))}</style>
+        <div data-rm-ui="adjust" style="--rm-p: 0;"><input type="range" min="0" max="1" step="0.1" value="0"></div>
+        <div class="body"><p>正文</p><div data-rm-ui="toggle"><div data-rm-toggle="true" role="button">翻面卡</div></div></div>
+        </details>`,
+    // 问卷朱批：揭示区域把 data-rm-cover 写在滑杆自己身上；盖章效果的显示条件写成 effect。
+    rangeCoverEffect: `<details open><summary>滑杆当遮罩、效果用词</summary>
+        <div data-rm-ui="reveal"><input type="range" min="0" max="100" value="0" data-rm-cover="1" style="clip-path: inset(0px 0px 0px 82%);"><div data-rm-show="done">朱批</div></div>
+        <div data-rm-ui="effect"><button data-rm-fire="1">盖章</button><div data-rm-part="1" data-rm-show="effect">印</div><div data-rm-show="!effect">未盖</div></div>
+        </details>`,
     // 方言表也认不出的写法：诊断要点名，驱动不猜。
     unknownWriting: `<details open><summary>认不出的写法</summary>
         <div data-rm-ui="turn" data-rm-stops="2"><button data-rm-knob>扭</button><div data-rm-show="left">左</div><div data-rm-show="right">右</div></div>
@@ -161,6 +172,26 @@ try {
     diag = await report();
     assert.deepEqual(diag.unmatched, []); assert.ok(diag.dialects.includes('author-css-show')); checks++;
     assert.equal(await page.evaluate(() => document.querySelectorAll('[data-rm-show-author="true"]').length), 2); checks++;
+
+    // 3c. 区域外用变量：滑杆一动，外面正文的字号跟着变（里面夹着的翻面卡不影响）
+    await mount(SAMPLES.varOutside);
+    const fontSize = () => page.evaluate(() => getComputedStyle(document.querySelector('.body')).fontSize);
+    assert.equal(await fontSize(), '10px');
+    await page.locator('input[type=range]').fill('1');
+    assert.equal(await fontSize(), '20px', '区域外用 var(--rm-p) 的正文跟着滑杆变'); checks++;
+
+    // 3d. 滑杆当遮罩、效果用词
+    await mount(SAMPLES.rangeCoverEffect);
+    const clip = () => page.evaluate(() => getComputedStyle(document.querySelector('input[type=range]')).clipPath);
+    assert.equal(await clip(), 'none', '存档里留下的自我裁切去掉'); checks++;
+    await page.locator('input[type=range]').fill('100');
+    assert.equal(await clip(), 'none', '拖到底滑杆自己不被裁掉');
+    assert.ok((await shown()).includes('done'), '拖到底朱批出来'); checks++;
+    assert.ok((await shown()).includes('!effect') && !(await shown()).includes('effect'));
+    await page.locator('[data-rm-fire]').click();
+    assert.ok((await shown()).includes('effect') && !(await shown()).includes('!effect'), '按下盖章，写成 effect 的印出来'); checks++;
+    diag = await report();
+    assert.deepEqual(diag.unmatched, []); assert.ok(diag.dialects.includes('effect-any-show') && diag.dialects.includes('range-as-cover')); checks++;
 
     // 4. 认不出的写法：诊断点名
     await mount(SAMPLES.unknownWriting);

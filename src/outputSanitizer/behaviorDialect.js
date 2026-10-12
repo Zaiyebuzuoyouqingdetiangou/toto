@@ -1,5 +1,5 @@
-import { behaviorShowTokens, ownBehaviorShows } from './behaviorResults.js?rmv=1.68.13';
-import { behaviorStyleText } from './behaviorStateMirror.js?rmv=1.68.13';
+import { behaviorShowTokens, ownBehaviorShows } from './behaviorResults.js?rmv=1.68.14';
+import { behaviorStyleText } from './behaviorStateMirror.js?rmv=1.68.14';
 
 // 插件写法「方言表」：模型写的插件交互，意思对、写法和标准不一样的那些情况，集中在这里认。
 // 每一条只做三件事：怎么认出来、按什么标准写法去理解、诊断里怎么说。不新增内容、不猜目标。
@@ -11,6 +11,8 @@ export const BEHAVIOR_DIALECTS = Object.freeze([
     { id: 'motion-numeric', label: '动画区域没写真正的动画', note: '部件只用 --pos、left 这类数值摆好了位置：滑杆按比例前进后退，播放钮从起点放一遍。' },
     { id: 'named-single-toggle', label: '唯一的开关起了名字，内容却写 on／!on', note: '这个开关开着就算 on。' },
     { id: 'turn-prefixed-stops', label: '旋钮档位写成 item0、stop1 这种「名字＋号码」', note: '同一名字的号码对上当前档位；号码从 1 起、最大正好是档位数时按第几档算。' },
+    { id: 'effect-any-show', label: '一次性效果区域的显示条件写成 effect、fired、stamp 这类词', note: '效果区域只有「按过」和「没按过」两种状态：按过以后，写什么词的内容都显示，「!词」的内容藏起来。' },
+    { id: 'range-as-cover', label: '揭示区域把遮罩标识写在滑杆自己身上', note: '滑杆不当遮罩裁掉，拖到底照常显示揭开后的内容。' },
     { id: 'author-css-show', label: '显示条件认不出，但模型自己写了 CSS 按状态管显隐', note: '驱动不再强行藏这些内容，交给模型的 CSS 按 data-rm-index、data-rm-on 这些状态显示。' },
 ]);
 
@@ -107,6 +109,12 @@ function remoteTogglesOf(group) {
 // 驱动算显示状态时调用：按方言表补上的状态键。keys 是驱动已经算好的键，直接往里加。
 export function addDialectStateKeys(state, keys) {
     const { group } = state;
+    if (state.type === 'effect' && state.changed) {
+        for (const node of ownBehaviorShows(group)) for (const token of behaviorShowTokens(node)) {
+            const key = token.replace(/^!/, '');
+            if (key && !COMMON_KEYS.includes(key)) keys.add(key);
+        }
+    }
     if (state.type === 'toggle' && state.on?.size && !keys.has('on')) {
         const named = toggleNames(group, state.remotes || []);
         if (named.size === 1 && !named.has('on') && state.on.has([...named][0])) { keys.add('on'); keys.add('true'); }
@@ -194,6 +202,7 @@ export function reachableBehaviorKeys(group) {
             break;
         }
         case 'reveal': ['reveal', 'revealed', 'full', 'open'].forEach(key => keys.add(key)); break;
+        case 'effect': for (const node of ownBehaviorShows(group)) for (const token of behaviorShowTokens(node)) keys.add(token.replace(/^!/, '')); break;
         case 'sequence': values(group, 'data-rm-code').forEach(key => keys.add(key)); break;
         case 'connect': values(group, 'data-rm-end').forEach(key => keys.add(key)); break;
         case 'drag': case 'reorder': values(group, 'data-rm-item').forEach(key => keys.add(key)); break;
@@ -254,6 +263,8 @@ export function inspectBehaviorDialect(root) {
             if (remoteTogglesOf(group).length && !own(group, '[data-rm-toggle]').length) used.add('remote-toggle');
         }
         if (type === 'turn' && prefixedNumbers(group).size) used.add('turn-prefixed-stops');
+        if (type === 'effect' && ownBehaviorShows(group).some(node => behaviorShowTokens(node).some(token => !COMMON_KEYS.includes(token.replace(/^!/, ''))))) used.add('effect-any-show');
+        if (type === 'reveal' && own(group, '[data-rm-cover]').some(cover => cover.matches('input, button, label') || cover.querySelector('input[type="range"]'))) used.add('range-as-cover');
         if (type === 'motion') {
             const adopted = motionOutsideControls(group);
             if (adopted.buttons.length || adopted.ranges.length) used.add('remote-motion');
