@@ -1,9 +1,9 @@
-import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.68.8';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.68.8';
-import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.68.8';
-import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.68.8';
-import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.68.8';
-import { addDialectStateKeys, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup } from './behaviorDialect.js?rmv=1.68.8';
+import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.68.13';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.68.13';
+import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.68.13';
+import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.68.13';
+import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.68.13';
+import { addDialectStateKeys, authorManagedShows, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup } from './behaviorDialect.js?rmv=1.68.13';
 
 export { behaviorToggleKey, motionOutsideControls };
 
@@ -36,7 +36,7 @@ const words = value => String(value || '').split(/[\s,，、]+/).map(word => wor
 
 function refreshResults(state) {
     if (STATEFUL.has(state.type)) syncState(state);
-    const range = first(state.group, 'input[type="range"]');
+    const range = state.type === 'motion' ? motionRange(state) : first(state.group, 'input[type="range"]');
     updateBehaviorResults(state.group, {
         changed: Boolean(state.changed), p: range ? rangeValue(range).p : (state.progress || 0),
         active: state.group.getAttribute('data-rm-active') === 'true',
@@ -45,7 +45,13 @@ function refreshResults(state) {
         order: own(state.group, '[data-rm-item]').map(node => node.getAttribute('data-rm-item')),
         placed: [...state.placed].filter(node => state.group.contains(node)).map(node => node.getAttribute('data-rm-item')),
     });
-    updateBehaviorShows(state.group, stateKeys(state), (node, active) => mirrorBehaviorState(state.root, node, active));
+    // 显示条件认不出、模型自己的 CSS 却按状态管着显隐的节点，交给 CSS（方言表 author-css-show）。
+    const showCount = ownBehaviorShows(state.group).length;
+    if (!state.authorShows || state.authorShowCount !== showCount) {
+        state.authorShowCount = showCount;
+        try { state.authorShows = authorManagedShows(state.root, state.group); } catch { state.authorShows = new Set(); }
+    }
+    updateBehaviorShows(state.group, stateKeys(state), (node, active) => mirrorBehaviorState(state.root, node, active), state.authorShows);
     const adopted = adoptHiddenResult(state);
     if (adopted?.isConnected) {
         const active = state.type === 'hold' ? state.group.getAttribute('data-rm-active') === 'true' : (state.on?.size || 0) > 0;
@@ -659,6 +665,7 @@ function stateFor(root, target) {
 // 动画区域里的部件没写真正的动画（只用 --pos、left 这类数值摆好了位置）：进度滑杆和播放钮按这些数值
 // 来回放——滑杆在模型写的初始位置时画面就是模型写的样子，往两边拖按比例前进或退回。只改这些数值，可复位。
 const MOTION_NUMERIC = new Set(['left', 'right', 'top', 'bottom', 'width', 'height']);
+const MOTION_VAR = /^(?:x|y|p|t|pos|position|left|top|offset|progress|dist|distance|shift|move|run|step|frame|angle|rot|rotate|deg|i)(?:[-_]?\d+|[-_][a-z]+)?$/i;
 function motionTargets(state) {
     if (state.motionTargets) return state.motionTargets;
     const targets = [];
@@ -667,7 +674,8 @@ function motionTargets(state) {
         for (let index = 0; index < (inline?.length || 0); index += 1) {
             const property = inline[index];
             if (!property.startsWith('--') && !MOTION_NUMERIC.has(property)) continue;
-            if (property.startsWith('--rm-')) continue;
+            // 自定义变量只认名字像位置、进度、角度的（--pos、--x、--progress、--angle…），颜色、字号这类不动。
+            if (property.startsWith('--rm-') || (property.startsWith('--') && !MOTION_VAR.test(property.slice(2)))) continue;
             const saved = state.styles.get(part)?.get(property);
             const raw = String(saved ? saved[0] : inline.getPropertyValue(property)).trim();
             const match = raw.match(/^(-?\d*\.?\d+)(%|px)?$/);
@@ -694,7 +702,9 @@ function motionPositions(state, p, range = null) {
     const targets = motionTargets(state);
     if (!targets.length) return false;
     const start = motionStartOf(state, range);
-    const factor = start > 0.05 ? clamp(p, 0, 1) / start : clamp(p, 0, 1);
+    // 滑杆在模型写的初始位置时画面就是模型写的样子：初始位置不在最左时按比例缩放；
+    // 滑杆本来就在最左（value=0）时按原样起步、往右再往前走，不把所有数值压成 0。
+    const factor = Math.min(4, start > 0.05 ? clamp(p, 0, 1) / start : 1 + clamp(p, 0, 1));
     for (const target of targets) {
         let value = target.base * factor;
         if (target.unit === '%') value = clamp(value, Math.min(0, target.base), Math.max(100, target.base));
@@ -790,6 +800,13 @@ function reset(state) {
         if (input.matches('input[type="range"]')) input.value = input.defaultValue || (input.min === '' ? '0' : input.min);
         else if (state.type === 'input') input.value = '';
     }
+    if (state.type === 'motion') {
+        // 数值回放正在走的先停下，区域外收编的滑杆和播放钮也一起复位。
+        if (state.motionReplay) { state.motionReplay.stop = true; state.motionReplay = null; }
+        const remote = motionRange(state);
+        if (remote && !state.group.contains(remote)) remote.value = remote.defaultValue || (remote.min === '' ? '0' : remote.min);
+        for (const button of [...own(state.group, '[data-rm-play], [data-rm-reverse]'), ...motionOutsideControls(state.group).buttons]) button.setAttribute('aria-pressed', 'false');
+    }
     if (state.type === 'input') {
         for (const output of own(state.group, 'output')) output.textContent = '';
         state.group.removeAttribute('data-rm-match');
@@ -827,7 +844,7 @@ function action(state, button) {
     } else if (state.type === 'motion') {
         const list = animations(state);
         if (list.length) state.changed = true;
-        else if (motionReplay(state, button)) { state.changed = true; return; }
+        else if (motionReplay(state, button)) { state.changed = true; refreshResults(state); verify?.(); return; }
         if (button.hasAttribute('data-rm-play')) {
             const pause = list.some(animation => animation.playState === 'running');
             for (const animation of list) animation[pause ? 'pause' : 'play']();
@@ -1621,7 +1638,7 @@ function scheduleOnDemandRelay(root, target) {
 function relayGroupLater(root, group, control = null) {
     const run = () => {
         if (!group.isConnected || !root.isConnected) return;
-        void import('./behaviorRelay.js?rmv=1.68.8').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
+        void import('./behaviorRelay.js?rmv=1.68.13').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
     };
     const idle = globalThis.requestIdleCallback;
     if (typeof idle === 'function') idle(run, { timeout: 800 }); else setTimeout(run, 120);
