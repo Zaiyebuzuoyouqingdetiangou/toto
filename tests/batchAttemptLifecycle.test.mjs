@@ -21,7 +21,7 @@ const abort = between('export function abortFlight(', '\nexport function cancelF
 const release = source.includes('function releaseIndependentFlightBatches(')
     ? between('function releaseIndependentFlightBatches(', '\nexport function abortFlight(') : '';
 
-async function harness(provider, max = 0, { realMerge = false, failReleaseOnce = false } = {}) {
+async function harness(provider, max = 0, { realMerge = false, failReleaseOnce = false, heldCommits = null } = {}) {
     const store = createStore([['other:content', 'preserve']]);
     const runtime = createRuntime(root, { store });
     const storage = await runtime.load('src/storage.js');
@@ -68,6 +68,14 @@ async function harness(provider, max = 0, { realMerge = false, failReleaseOnce =
             if (result.batchPlan) {
                 assert.equal(storage.commitPendingComboBatch(result.batchPlan.faces.map((_, faceIndex) => ({ faceIndex })), result.batchPlan), true, 'reservation survives until successful commit');
             }
+            // 1.68.2: merged reroll results carry no batchPlan; the first plan is held for history.
+            if (!result.batchPlan && flight.historyBatch && heldCommits) {
+                const count = flight.historyBatch.requestedFaceCount;
+                const missing = new Set(missingIndexesFromIndependentResult(result, count));
+                const scans = Array.from({ length: count }, (_, faceIndex) => missing.has(faceIndex) ? null : { faceIndex });
+                heldCommits.push(storage.commitPendingComboBatch(scans, { batchId: flight.historyBatch.batchId, identity: flight.historyBatch.identity, partial: scans.some(scan => !scan) }));
+                flight.historyBatch = null;
+            }
             results.push(result); return result;
         },
         settleCancelledIndependentFlightUi: () => { flight.uiSettled = true; },
@@ -75,7 +83,7 @@ async function harness(provider, max = 0, { realMerge = false, failReleaseOnce =
         canReroll: () => calls <= max && !flight.cancelled && !flight.timedOut,
         messageElement: () => null, independentRerollMax: () => max,
         missingIndexesFromIndependentResult: realMerge ? missingIndexesFromIndependentResult : result => result.missing || [],
-        globalFlights: () => new Map(), queueMessageSync() {},
+        globalFlights: () => new Map(), queueMessageSync() {}, independentDiagnostic: () => ({}),
     };
     const context = vm.createContext(sandbox);
     const done = vm.runInContext(`(async()=>{${release}${abort}\nglobalThis.cancel=()=>abortFlight(flight);${dispatch}${reroll}${task}\nreturn await task;})()`, context);
@@ -156,6 +164,36 @@ test('partial two-face result merges the single missing face and preserves the r
     assert.ok(h.results[0].html.includes(first));
     assert.match(h.results[0].html, /补齐内容/);
     assert.equal(h.results[0].completedFaces, 2); h.assertReleased();
+});
+
+test('reroll keeps the first plan until the merged result records both faces in history', async () => {
+    const first = '<toto data-rabbit-mirror="true" data-rm-face="1"><details><summary>保留一面</summary><p>原有内容</p></details></toto>';
+    const failed = '<toto data-rabbit-mirror="true" data-rm-face="2"><details data-rabbit-mirror-face-failure="incomplete-face"><summary>第2面未完成</summary></details></toto>';
+    const heldCommits = [];
+    const h = await harness(x => {
+        if (x.calls === 1) return { batchPlan: reserve(x), html: first + failed, failedFaces: [{ faceIndex: 1 }], completedFaces: 1 };
+        x.options.onBatchPlan(null);
+        return { html: '<details><summary>新二面</summary><p>补齐内容</p></details>' };
+    }, 1, { realMerge: true, heldCommits });
+    await h.done;
+    assert.deepEqual(heldCommits, [true], 'first plan survives the reroll and commits once');
+    const history = JSON.parse(h.store.getItem('rabbit_mirror_theater:last_combo:v11') || '[]');
+    assert.deepEqual(history.map(item => item.faceIndex), [0, 1]);
+    assert.equal(new Set(history.map(item => item.batchId)).size, 1, 'both faces count as one round');
+    h.assertReleased();
+});
+
+test('reroll that fails afterwards keeps the earlier face and still releases the held first plan', async () => {
+    const heldCommits = [];
+    const h = await harness(x => {
+        if (x.calls === 1) return { batchPlan: reserve(x), html: '<toto data-rabbit-mirror="true" data-rm-face="1"><details><summary>a</summary></details></toto>', failedFaces: [{ faceIndex: 1 }], completedFaces: 1 };
+        throw new Error('network');
+    }, 1, { realMerge: true, heldCommits });
+    await h.done;
+    assert.deepEqual(heldCommits, [true]);
+    const history = JSON.parse(h.store.getItem('rabbit_mirror_theater:last_combo:v11') || '[]');
+    assert.deepEqual(history.map(item => item.faceIndex), [0], 'only the face that actually exists is recorded');
+    h.assertReleased();
 });
 
 test('a failed release is retried at the flight cleanup boundary with the same identity', async () => {

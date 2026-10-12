@@ -1,14 +1,14 @@
-import { getSettings } from './settings.js?rmv=1.68.1';
-import { getCurrentChatKey } from './storage.js?rmv=1.68.1';
-import { getRabbitMirrorRecipe } from './blacklist.js?rmv=1.68.1';
-import { readFollowPartialResult, saveFollowCompletedRetryResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=1.68.1';
-import { markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.68.1';
-import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.68.1';
-import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.68.1';
-import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=1.68.1';
-import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.68.1';
-import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=1.68.1';
-import { presentationModeFields } from './presentationMode.js?rmv=1.68.1';
+import { getSettings } from './settings.js?rmv=1.68.2';
+import { getCurrentChatKey } from './storage.js?rmv=1.68.2';
+import { getRabbitMirrorRecipe } from './blacklist.js?rmv=1.68.2';
+import { readFollowPartialResult, saveFollowCompletedRetryResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=1.68.2';
+import { markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.68.2';
+import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.68.2';
+import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.68.2';
+import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=1.68.2';
+import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.68.2';
+import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=1.68.2';
+import { presentationModeFields } from './presentationMode.js?rmv=1.68.2';
 import {
     automaticRerollEnabled,
     automaticRerollStatusText,
@@ -20,10 +20,11 @@ import {
     isLocalPreflightFailure,
     shouldAutomaticReroll,
     stallTimeoutError,
-} from './automaticReroll.js?rmv=1.68.1';
-import { mergeMissingIndependentFaces, missingIndexesFromIndependentResult, recipesCoverMissing } from './missingFaceMerge.js?rmv=1.68.1';
-import { inspectRabbitMirrorGenerationSource, getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.68.1';
-import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.68.1';
+} from './automaticReroll.js?rmv=1.68.2';
+import { mergeMissingIndependentFaces, missingIndexesFromIndependentResult, recipesCoverMissing } from './missingFaceMerge.js?rmv=1.68.2';
+import { inspectRabbitMirrorGenerationSource, getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.68.2';
+import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.68.2';
+import { followRetryCombo, recordFollowRetriedFaces } from './followRetryHistory.js?rmv=1.68.2';
 
 const inFlight = new Set();
 const consumeCounts = new Map();
@@ -152,7 +153,7 @@ async function requestFollowMissingFaces(ctx, index, missingIndexes, faces, deps
     try {
         if (plan.selectedExternalIds.length) { materials = await getSelectedExternalEntries(plan.selectedExternalIds); assertCurrent(); }
         if (plan.appearanceReference.enabled) {
-            const appearance = await import('./appearanceReference.js?rmv=1.68.1');
+            const appearance = await import('./appearanceReference.js?rmv=1.68.2');
             assertCurrent();
             appearanceMaterial = await appearance.loadAppearanceReferenceMaterial(plan.appearanceReference.revision);
             assertCurrent();
@@ -210,7 +211,7 @@ async function requestFollowMissingFaces(ctx, index, missingIndexes, faces, deps
         try { return deps.extractReadyDetails(face.inner || face.details || '')?.outerHTML || ''; } catch { return ''; }
     };
     const html = parsed.faces.map((face, local) => wrapFace(filtered(face), local)).join('\n');
-    return { html, failedFaces: parsed.faces.length < count ? Array.from({ length: count - parsed.faces.length }, (_, local) => ({ faceIndex: parsed.faces.length + local, status: 'failed', code: 'incomplete-face' })) : [] };
+    return { html, metadata: prompt.metadata || null, failedFaces: parsed.faces.length < count ? Array.from({ length: count - parsed.faces.length }, (_, local) => ({ faceIndex: parsed.faces.length + local, status: 'failed', code: 'incomplete-face' })) : [] };
 }
 
 function mountFollowRetryHtml(ctx, index, html, deps) {
@@ -296,6 +297,7 @@ export async function maybeAutomaticFollowReroll(index, deps) {
                 continue;
             }
             consumeCounts.set(key, posts + 1);
+            const askedIndexes = missingIndexes;
             const merged = retainedHtml && missingIndexes.length
                 ? mergeMissingIndependentFaces(retainedHtml, expected, missingIndexes, incoming)
                 : incoming;
@@ -319,6 +321,14 @@ export async function maybeAutomaticFollowReroll(index, deps) {
                     }
                 }
                 mountFollowRetryHtml(live, index, retainedHtml, deps);
+                // 补回来的面记进避重（按这次实际发出的抽签记录；没有就用原记录）。
+                const combos = {};
+                askedIndexes.forEach((faceIndex, local) => {
+                    if (missingIndexes.includes(faceIndex)) return;
+                    const combo = followRetryCombo(incoming.metadata, local, faces[faceIndex]);
+                    if (combo) combos[faceIndex] = combo;
+                });
+                void recordFollowRetriedFaces({ chat: live.chat, index, message, html: retainedHtml, combos });
             }
         }
         return !missingIndexes.length;

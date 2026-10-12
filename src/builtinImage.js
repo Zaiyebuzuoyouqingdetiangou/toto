@@ -1,10 +1,10 @@
-import { getSettings } from './settings.js?rmv=1.68.1';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.68.1';
-import { findBuiltinImageKeyFromOtherChat, loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.68.1';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.68.1';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.68.1';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.68.1';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.68.1';
+import { getSettings } from './settings.js?rmv=1.68.2';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.68.2';
+import { findBuiltinImageKeyFromOtherChat, loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.68.2';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.68.2';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.68.2';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.68.2';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.68.2';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();

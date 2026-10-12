@@ -1,37 +1,37 @@
-import { INTERACTION_SAMPLING_RULE, designCandidatePick, drawDesignCandidate } from './interactionSampling.js?rmv=1.68.1';
-import { driverContractLines, drawDriverOffer, interactionMethodNames, matchDriversToUsages, normalizeDriverOffer } from './interactionMethods.js?rmv=1.68.1';
-import { drawUsageOffer, normalizeUsageOffer, relatedUsagesForCombo } from './interactionUsageOffer.js?rmv=1.68.1';
-import { drawContinuation, normalizeContinuation } from './continuationCache.js?rmv=1.68.1';
-import { recentInteractionMethods } from './interactionMethodLedger.js?rmv=1.68.1';
-import { gameplayRuleFor } from './gameplayRules.js?rmv=1.68.1';
-import { usesModelOriginalColors, withoutPaletteRecipe, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.68.1';
-import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=1.68.1';
-import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=1.68.1';
-import { isNearWhitePalette, isNearWhiteContentSurface } from './paletteObservation.js?rmv=1.68.1';
-import { observedOperationFamiliesFor, observedMechanismsFor } from './compositionFingerprint.js?rmv=1.68.1';
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.68.1';
-import { expandShuffledOptions } from '../data/raw/rawSegmentLookup.js?rmv=1.68.1';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.68.1';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.68.1';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.68.1';
-import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES, VISUAL_SCENERY_EXPRESSION_RULE, VISUAL_SCENERY_VS_GUIDANCE } from '../data/raw/visualSceneryRules.js?rmv=1.68.1';
-import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.68.1';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.68.1';
-import { getComboHistory, getActivePaletteCooldown } from './storage.js?rmv=1.68.1';
-import { strongVisualDiversityRule, darkVisualGenerationRule, softLightVisualGenerationRule, visualDiversityExecutionLock, recentPaletteExecutionReminder, recentPaletteHueFamilies } from './visualDiversityPolicy.js?rmv=1.68.1';
-import { withoutInteractionRecipe, observedInteractionRecipesFor } from './interactionRecipes.js?rmv=1.68.1';
-import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.68.1';
-import { buildPaletteCooldownRule } from './paletteCooldown.js?rmv=1.68.1';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.68.1';
-export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.68.1';
-import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.68.1';
-import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.68.1';
-import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.68.1';
-import { faceDrawMetadataFields } from './faceDrawRules.js?rmv=1.68.1';
-import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.68.1';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.68.1';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.68.1';
-import { rabbitMirrorAvatarPromptRule } from './chatAvatars.js?rmv=1.68.1';
+import { INTERACTION_SAMPLING_RULE, designCandidatePick, drawDesignCandidate } from './interactionSampling.js?rmv=1.68.2';
+import { driverContractLines, drawDriverOffer, interactionMethodNames, matchDriversToUsages, normalizeDriverOffer } from './interactionMethods.js?rmv=1.68.2';
+import { drawUsageOffer, normalizeUsageOffer, relatedUsagesForCombo } from './interactionUsageOffer.js?rmv=1.68.2';
+import { drawContinuation, normalizeContinuation } from './continuationCache.js?rmv=1.68.2';
+import { recentInteractionMethods } from './interactionMethodLedger.js?rmv=1.68.2';
+import { gameplayRuleFor } from './gameplayRules.js?rmv=1.68.2';
+import { usesModelOriginalColors, withoutPaletteRecipe, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.68.2';
+import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=1.68.2';
+import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=1.68.2';
+import { isNearWhitePalette, isNearWhiteContentSurface } from './paletteObservation.js?rmv=1.68.2';
+import { observedOperationFamiliesFor, observedMechanismsFor } from './compositionFingerprint.js?rmv=1.68.2';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.68.2';
+import { expandShuffledOptions } from '../data/raw/rawSegmentLookup.js?rmv=1.68.2';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.68.2';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.68.2';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.68.2';
+import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES, VISUAL_SCENERY_EXPRESSION_RULE, VISUAL_SCENERY_VS_GUIDANCE } from '../data/raw/visualSceneryRules.js?rmv=1.68.2';
+import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.68.2';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.68.2';
+import { getComboHistory, getActivePaletteCooldown, retargetSingleAttemptFormat } from './storage.js?rmv=1.68.2';
+import { strongVisualDiversityRule, darkVisualGenerationRule, softLightVisualGenerationRule, visualDiversityExecutionLock, recentPaletteExecutionReminder, recentPaletteHueFamilies, describeHueFamilies } from './visualDiversityPolicy.js?rmv=1.68.2';
+import { withoutInteractionRecipe, observedInteractionRecipesFor } from './interactionRecipes.js?rmv=1.68.2';
+import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.68.2';
+import { buildPaletteCooldownRule, buildPaletteCooldownExecutionLock } from './paletteCooldown.js?rmv=1.68.2';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.68.2';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.68.2';
+import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.68.2';
+import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.68.2';
+import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.68.2';
+import { faceDrawMetadataFields } from './faceDrawRules.js?rmv=1.68.2';
+import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.68.2';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.68.2';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.68.2';
+import { rabbitMirrorAvatarPromptRule } from './chatAvatars.js?rmv=1.68.2';
 
 const THEME_ITEMS = new Map(THEMATIC_CATEGORIES.map(item => [item.id, item]));
 const FORMAT_ITEMS = new Map(PRESENTATION_FORMATS.map(item => [item.id, item]));
@@ -445,8 +445,10 @@ function sharedPaletteRules(faces, settings, palettes, split = false) {
     });
     let softAvoid = [];
     if (settings.visualToneMode === 'soft') { try { softAvoid = recentPaletteHueFamilies(getRecentDiversityHistory(3)); } catch { softAvoid = []; } }
+    // 主色族按真实面序号指定：混合批次里文本面占了位置时，不能把 HTML 面的色族写到文本面上。
+    const softFaceNumbers = faces.flatMap((face, index) => !face.textPresentation && !face.combo?.pureOrder ? [index + 1] : []);
     const darkMode = darkVisualGenerationRule(settings) || softLightVisualGenerationRule(settings, { avoidFamilies: softAvoid,
-        faceCount: faces.filter(face => !face.textPresentation && !face.combo?.pureOrder).length || 1 });
+        faceCount: softFaceNumbers.length || 1, faceNumbers: faces.length > 1 ? softFaceNumbers : [] });
     const execution = references
         ? '用户明确配色与原媒介材质优先；本面实际用色参照共用记录，并执行有效的深色冷却；必要局部色与黑白正文照常保留。' : '';
     const common = [cooldown, darkMode, execution].filter(Boolean).join('\n');
@@ -1500,10 +1502,14 @@ function hasNativeButtonRow(combo) {
 const TEMPLATE_MECHANISMS = new Set(['flip', 'expand', 'page', 'toggle', 'pick', 'pager']);
 const RICH_MECHANISMS = new Set(['drag', 'adjust', 'reveal', 'hold', 'follow', 'reorder', 'accumulate', 'draw', 'motion', 'effect', 'view', 'scroll', 'input', 'popover',
     'roll', 'connect', 'turn', 'sequence']);
+// 「近三面」按最近三面 HTML 成品算，不是近三轮的全部面：多面模式一轮就有好几面，
+// 按轮取会把十几面都算进来，两面命中就触发，几条换口味几乎每轮同时生效。
+function recentHtmlFaces(limit = 3) {
+    return getRecentDiversityHistory(limit).filter(item => !isTextPresentation(item)).slice(-limit);
+}
 function recentFlipExpandRotation() {
     try {
-        return getRecentDiversityHistory(3).filter(item => {
-            if (isTextPresentation(item)) return false;
+        return recentHtmlFaces(3).filter(item => {
             const used = observedMechanismsFor(item);
             return used.some(name => TEMPLATE_MECHANISMS.has(name)) && !used.some(name => RICH_MECHANISMS.has(name));
         }).length >= 2;
@@ -1517,8 +1523,7 @@ function recentFlipExpandRotation() {
 const SLIDE_MECHANISMS = new Set(['adjust', 'drag', 'turn']);
 function recentSlideDragRotation() {
     try {
-        return getRecentDiversityHistory(3).filter(item => !isTextPresentation(item)
-            && observedMechanismsFor(item).some(name => SLIDE_MECHANISMS.has(name))).length >= 2;
+        return recentHtmlFaces(3).filter(item => observedMechanismsFor(item).some(name => SLIDE_MECHANISMS.has(name))).length >= 2;
     } catch {
         return false;
     }
@@ -1529,8 +1534,7 @@ function recentSlideDragRotation() {
 const TAB_MECHANISMS = new Set(['pick', 'pager', 'page']);
 function recentTabRowRotation() {
     try {
-        return getRecentDiversityHistory(3).filter(item => !isTextPresentation(item)
-            && observedMechanismsFor(item).some(name => TAB_MECHANISMS.has(name))).length >= 2;
+        return recentHtmlFaces(3).filter(item => observedMechanismsFor(item).some(name => TAB_MECHANISMS.has(name))).length >= 2;
     } catch {
         return false;
     }
@@ -1538,11 +1542,38 @@ function recentTabRowRotation() {
 
 function recentTextRevealRotation() {
     try {
-        return getRecentDiversityHistory(3).filter(item => !isTextPresentation(item)
-            && observedOperationFamiliesFor(item).some(family => family === 'text_panel_switch' || family === 'text_disclosure_stack')).length >= 2;
+        // 「近三轮有两轮」：按轮算，同一轮多面命中只算一轮。
+        const rounds = new Set();
+        getRecentDiversityHistory(3).forEach((item, index) => {
+            if (!isTextPresentation(item) && observedOperationFamiliesFor(item).some(family => family === 'text_panel_switch' || family === 'text_disclosure_stack')) {
+                rounds.add(item?.diversityRound || item?.batchId || `legacy:${index}`);
+            }
+        });
+        return rounds.size >= 2;
     } catch {
         return false;
     }
+}
+
+// 独立请求自己提供的本机成品信息（只在独立 API 渲染时有）：
+// 手动重新生成时同一位置上一版的布局与主色；没有任何避重记录时，本机近几次成品的布局。
+function independentHistoryNotes(source, { includePrevious = false } = {}) {
+    if (!source || typeof source !== 'object') return { previousVersion: '', backfillRecords: [] };
+    let previousVersion = '';
+    if (includePrevious && (source.previousSkeleton || source.previousPalette)) {
+        const layout = source.previousSkeleton ? shortHistorySkeleton({ visualSkeleton: source.previousSkeleton }) : '';
+        const hues = source.previousPalette ? describeHueFamilies(recentPaletteHueFamilies([{ presentationMode: 'html', paletteFingerprint: source.previousPalette }])) : [];
+        const parts = [layout && layout !== '未识别' ? `布局与操作是「${layout}」` : '', hues.length ? `主背景／主承载用的是「${hues.join('、')}」` : ''].filter(Boolean);
+        if (parts.length) previousVersion = `这次是重新生成：同一位置上一版${parts.join('，')}。本次换掉这些，不只改颜色深浅、文字或按钮数量；用户明确指定的配色与形式固有材质照常保留。`;
+    }
+    const backfillRecords = Array.isArray(source.recent)
+        ? source.recent.filter(item => item && (item.visualSkeleton || item.paletteFingerprint)).map(item => ({ presentationMode: 'html', visualSkeleton: String(item.visualSkeleton || ''), paletteFingerprint: item.paletteFingerprint || null }))
+        : [];
+    return { previousVersion, backfillRecords };
+}
+
+function continuedCombo(combo, format) {
+    return { ...combo, formats: [format], formatIds: [format.id], formatGroups: [format.group].filter(Boolean) };
 }
 
 function createPromptPlan(selections, args, batchPlan = null, inactive = false) {
@@ -1559,7 +1590,7 @@ function createPromptPlan(selections, args, batchPlan = null, inactive = false) 
         const continuation = baseEligible && !args?.noContinuation && !selection.combo.customDirective && !selection.combo.userPicked
             ? normalizeContinuation(pinnedContinuation) || drawContinuation(id => FORMAT_ITEMS.has(id)) : null;
         const continuedFormat = continuation ? FORMAT_ITEMS.get(continuation.formatId) : null;
-        const combo = continuedFormat ? sendingCombo({ ...selection.combo, formats: [continuedFormat], formatIds: [continuedFormat.id] }) : sendingCombo(selection.combo);
+        const combo = continuedFormat ? sendingCombo(continuedCombo(selection.combo, continuedFormat)) : sendingCombo(selection.combo);
         const eligible = !inactive && !selection.disabled && combo && !isTextPresentation(combo) && !combo.pureOrder;
         // Freeze once with the selected materials, after their lottery. Serial
         // children reuse this value; a fresh re-say gets a fresh assignment.
@@ -1572,8 +1603,14 @@ function createPromptPlan(selections, args, batchPlan = null, inactive = false) 
     });
     const snapshot = freezeDeep(copyPromptPlanValue(sendingSelections));
     const privateArgs = freezeDeep(copyPromptPlanValue(args));
+    // 续篇换成了收藏原作的形式：批次计划也记实际发出去的形式，冷却和避重才记得对。
+    // 带签单的面以模型选中的签为准，不在这里改。
     const sendingBatch = batchPlan
-        ? { ...batchPlan, faces: batchPlan.faces.map(face => ({ ...face, combo: sendingCombo(face.combo) })) } : batchPlan;
+        ? { ...batchPlan, faces: batchPlan.faces.map((face, index) => {
+            const continuedFormat = sendingSelections[index]?.continuation && !face.combo?.atmosphereMenu
+                ? FORMAT_ITEMS.get(sendingSelections[index].continuation.formatId) : null;
+            return { ...face, combo: sendingCombo(continuedFormat ? continuedCombo(face.combo, continuedFormat) : face.combo) };
+        }) } : batchPlan;
     const privateBatch = sendingBatch ? freezeDeep(copyPromptPlanValue(sendingBatch)) : null;
     const selectedExternalIds = [...new Set(snapshot.flatMap(selection => [
         ...(selection?.combo?.themes || []), ...(selection?.combo?.formats || []), ...(selection?.combo?.texts || []),
@@ -1674,7 +1711,7 @@ export function planRabbitMirrorPromptDetails(settings, generationType = 'normal
         attachPaletteRecipes(selection.combo, { recent: getRecentDiversityHistory(3), usedIds: paletteUsedIds, usedGroups: paletteUsedGroups,
             darkOnly: settings.darkVisualMode === true, darkCooldown: settings.darkVisualMode !== true && getActivePaletteCooldown(3).active });
     }
-    return createPromptPlan(selections, {
+    const plan = createPromptPlan(selections, {
         settings: renderSettings, generationType, activeFeedback, requestedFaceCount,
         resay: resay ? { faceIndex: resay.faceIndex } : null,
         noContinuation: !!(resay && (resay.preserveSelection || resay.userPicked || resay.preserveVariation || resay.singleFaceRecipe)),
@@ -1682,6 +1719,13 @@ export function planRabbitMirrorPromptDetails(settings, generationType = 'normal
         serialFaceIndex: Number.isInteger(generationContext?.serialFaceIndex) ? generationContext.serialFaceIndex : null,
         serialFaceCount: Number(generationContext?.serialFaceCount) || 0,
     }, pinnedSelections.length ? null : selections.batchPlan || null);
+    // 单面新抽到续篇时，冷却记录改成实际用的形式（批次在计划里已经改好）。
+    const sent = plan.selections?.[0];
+    if (generationScopeKey && !plan.batchPlan && plan.selections?.length === 1 && !pinnedSelections.length && !missingIndexes.length
+        && sent?.continuation && sent.combo?.formatIds?.length) {
+        try { retargetSingleAttemptFormat(generationScopeKey, sent.combo); } catch { /* 只影响冷却记录 */ }
+    }
+    return plan;
 }
 
 /** Synchronous rendering; only the already selected ext IDs may use this map. */
@@ -1736,11 +1780,25 @@ export function renderRabbitMirrorPromptPlan(plan, externalRawMap = null, appear
             darkCooldown: settings.darkVisualMode !== true && getActivePaletteCooldown(3).active,
         }) : [];
     const htmlFacesPresent = faceContexts.some(face => !face.textPresentation && !face.combo?.pureOrder);
-    const paletteReminder = htmlFacesPresent ? recentPaletteExecutionReminder(getRecentDiversityHistory(3), settings) : '';
+    const recentForPalette = getRecentDiversityHistory(3);
+    let historyNotes = { previousVersion: '', backfillRecords: [] };
+    if (htmlFacesPresent && typeof independentHistorySource === 'function') {
+        try {
+            historyNotes = independentHistoryNotes(independentHistorySource({ needsBackfill: !getRecentDiversityHistory(5).length }),
+                { includePrevious: !multiface && !resay });
+        } catch { historyNotes = { previousVersion: '', backfillRecords: [] }; }
+    }
+    // 没有任何避重记录时（新装、清空过），用本机近几次成品补上配色短检和布局提醒。
+    const paletteSource = recentForPalette.length ? recentForPalette : historyNotes.backfillRecords.slice(0, 3);
+    const paletteReminder = htmlFacesPresent ? recentPaletteExecutionReminder(paletteSource, settings) : '';
+    const backfillLayouts = recentForPalette.length ? [] : [...new Set(historyNotes.backfillRecords.map(item => shortHistorySkeleton(item)).filter(text => text && text !== '未识别'))].slice(0, 3);
+    const backfillNote = backfillLayouts.length ? `本机近几次成品的布局与操作：${backfillLayouts.join('｜')}；本轮换别的。` : '';
+    // 近输出的配色短锁：色族短检已经点名的色族不再换一种叫法重复。
+    const paletteLock = htmlFacesPresent && generationType === 'independent'
+        ? buildPaletteCooldownExecutionLock(settings, { skipHueFamilies: recentPaletteHueFamilies(paletteSource) }) : '';
     const driverOfferUnion = [...new Set(faceContexts.flatMap(face => face.driverOffer || []))];
     const usageUnion = [...new Set(faceContexts.flatMap(face => face.usageOffer?.usages || []))];
-    const textRevealRotation = htmlFacesPresent && getRecentDiversityHistory(3).filter(item => !isTextPresentation(item)
-            && observedOperationFamiliesFor(item).some(family => family === 'text_panel_switch' || family === 'text_disclosure_stack')).length >= 2;
+    const textRevealRotation = htmlFacesPresent && recentTextRevealRotation();
     const generationPolicy = [strongVisualDiversityRule({ hasHistory: !!visualHistoryRule || getComboHistory(5).length > 0, textOnly: !htmlFacesPresent,
         textRevealRotation }), generationType === 'independent' ? '' : paletteReminder].filter(Boolean).join('\n');
     const constructionRules = htmlFacesPresent ? {
@@ -1810,6 +1868,7 @@ export function renderRabbitMirrorPromptPlan(plan, externalRawMap = null, appear
         slideRotation: htmlFacesPresent && !recentFlipExpandRotation() && recentSlideDragRotation(),
         tabRotation: htmlFacesPresent && !recentFlipExpandRotation() && recentTabRowRotation(), paleBan: htmlFacesPresent && lastPaleLock, softTone: settings.visualToneMode === 'soft',
         paletteReminder: generationType === 'independent' ? paletteReminder : '',
+        paletteLock, previousVersion: [historyNotes.previousVersion, backfillNote].filter(Boolean).join('\n'),
         noButtonRow: htmlFacesPresent && !faceContexts.some(face => hasNativeButtonRow(face.combo)) });
     const nearOutputPolicy = htmlFacesPresent ? executionPolicy : '';
     const executionLockBody = hasTextPresentation ? buildTextAwareExecutionLock(faceContexts, settings, directive, nearOutputPolicy) : multiface

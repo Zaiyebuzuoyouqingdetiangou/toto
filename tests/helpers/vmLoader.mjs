@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import vm from 'node:vm';
 
 export const FIXED_NOW = 1789375200000;
@@ -63,7 +64,8 @@ export function createRuntime(root, { store = createStore(), fetch } = {}) {
                 }, { context, identifier: file });
             } else throw new Error(`Unexpected host dependency: ${file}`);
         } else {
-            module = new vm.SourceTextModule(readFileSync(file, 'utf8'), { context, identifier: file });
+            module = new vm.SourceTextModule(readFileSync(file, 'utf8'), { context, identifier: file,
+                initializeImportMeta(meta) { meta.url = pathToFileURL(file).href; } });
         }
         cache.set(file, module);
         return module;

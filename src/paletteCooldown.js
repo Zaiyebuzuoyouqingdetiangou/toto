@@ -1,9 +1,9 @@
-import { getRecentPaletteCooldown, getActivePaletteCooldown } from './storage.js?rmv=1.68.1';
+import { getRecentPaletteCooldown, getActivePaletteCooldown } from './storage.js?rmv=1.68.2';
 
 const SAFE_PALETTE_LABEL_RE = /^(?:(?:低|中|高)明度)?(?:暖|冷|中性)?(?:红|橙|黄|绿|青|蓝|紫|粉|中性色)?(?:(?:低|中|高)饱和)?$/;
 
-function recentPaletteLabels() {
-    return [...new Set(getRecentPaletteCooldown(3).map(item => String(item?.label || '').trim())
+function recentPaletteLabels(skipHueFamilies = new Set()) {
+    return [...new Set(getRecentPaletteCooldown(3).filter(item => !skipHueFamilies.has(item?.fingerprint?.hueFamily)).map(item => String(item?.label || '').trim())
         .filter(label => label && label.length <= 24 && SAFE_PALETTE_LABEL_RE.test(label)))];
 }
 
@@ -13,8 +13,9 @@ function ordinaryDarkCooldown(settings) {
     return cooldown.active ? cooldown : null;
 }
 
-export function buildPaletteCooldownExecutionLock(settings) {
-    const labels = recentPaletteLabels();
+// 近输出短锁里的配色一句。skipHueFamilies：同一短锁里「色族短检」已经点名的色族，这里不再用另一套叫法重复一遍。
+export function buildPaletteCooldownExecutionLock(settings, { skipHueFamilies = [] } = {}) {
+    const labels = recentPaletteLabels(new Set(Array.isArray(skipHueFamilies) ? skipHueFamilies : []));
     const cooldown = ordinaryDarkCooldown(settings);
     const palette = labels.length ? `近期配色「${labels.join('、')}」强避重；用户指定与材质所需颜色保留，在其余主辅色关系中实际变化，不只换强调色` +
         (settings?.darkVisualMode === true ? '；深色范围内避重，不把低明度本身禁用' : settings?.visualToneMode === 'soft' ? '；柔和浅色范围内避重' : cooldown ? '' : '；明暗不单独禁用') : '';
