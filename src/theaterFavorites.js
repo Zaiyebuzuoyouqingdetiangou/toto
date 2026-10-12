@@ -1,7 +1,7 @@
-import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.67.93';
-import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=1.67.93';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.67.93';
-import { createFavoriteAtlasPanel } from './favoriteAtlasesUi.js?rmv=1.67.93';
+import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.67.94';
+import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=1.67.94';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.67.94';
+import { createFavoriteAtlasPanel } from './favoriteAtlasesUi.js?rmv=1.67.94';
 const DB_NAME = 'rabbit_mirror_theater_favorites_v1';
 const STORE = 'favorites';
 const DB_VERSION = 1;
@@ -512,7 +512,7 @@ export async function removeDuplicateTheaterFavorites() {
     if (!remap.size) return 0;
     await runStore('readwrite', store => { for (const id of remap.keys()) store.delete(id); });
     try {
-        const atlases = await import('./favoriteAtlases.js?rmv=1.67.93');
+        const atlases = await import('./favoriteAtlases.js?rmv=1.67.94');
         for (const atlas of await atlases.listFavoriteAtlases()) {
             let changed = false;
             const selections = {};
@@ -683,9 +683,8 @@ export async function openTheaterFavoriteViewer(id, hydrate) {
     header.append(title, actions);
     const note = document.createElement('p');
     note.style.cssText = 'margin:0 0 10px;opacity:.7;font-size:11px;line-height:1.45;';
-    note.textContent = record.characterName
-        ? `角色卡：${record.characterName}。收藏走本机净化与挂载，不写入主楼 Prompt。`
-        : '收藏走本机净化与挂载，不写入主楼 Prompt，也不接入七日历坐标。';
+    note.textContent = record.characterName ? `角色卡：${record.characterName}` : '';
+    if (!note.textContent) note.hidden = true;
     const stage = document.createElement('div');
     stage.setAttribute('data-rm-theater-favorite-stage', 'true');
     card.append(header, note, stage);
