@@ -1,14 +1,14 @@
-import { getSettings } from './settings.js?rmv=1.68.2';
-import { getCurrentChatKey } from './storage.js?rmv=1.68.2';
-import { getRabbitMirrorRecipe } from './blacklist.js?rmv=1.68.2';
-import { readFollowPartialResult, saveFollowCompletedRetryResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=1.68.2';
-import { markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.68.2';
-import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.68.2';
-import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.68.2';
-import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=1.68.2';
-import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.68.2';
-import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=1.68.2';
-import { presentationModeFields } from './presentationMode.js?rmv=1.68.2';
+import { getSettings } from './settings.js?rmv=1.68.3';
+import { getCurrentChatKey } from './storage.js?rmv=1.68.3';
+import { getRabbitMirrorRecipe } from './blacklist.js?rmv=1.68.3';
+import { readFollowPartialResult, saveFollowCompletedRetryResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=1.68.3';
+import { markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.68.3';
+import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.68.3';
+import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.68.3';
+import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=1.68.3';
+import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.68.3';
+import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=1.68.3';
+import { presentationModeFields } from './presentationMode.js?rmv=1.68.3';
 import {
     automaticRerollEnabled,
     automaticRerollStatusText,
@@ -20,11 +20,11 @@ import {
     isLocalPreflightFailure,
     shouldAutomaticReroll,
     stallTimeoutError,
-} from './automaticReroll.js?rmv=1.68.2';
-import { mergeMissingIndependentFaces, missingIndexesFromIndependentResult, recipesCoverMissing } from './missingFaceMerge.js?rmv=1.68.2';
-import { inspectRabbitMirrorGenerationSource, getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.68.2';
-import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.68.2';
-import { followRetryCombo, recordFollowRetriedFaces } from './followRetryHistory.js?rmv=1.68.2';
+} from './automaticReroll.js?rmv=1.68.3';
+import { mergeMissingIndependentFaces, missingIndexesFromIndependentResult, recipesCoverMissing } from './missingFaceMerge.js?rmv=1.68.3';
+import { inspectRabbitMirrorGenerationSource, getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.68.3';
+import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.68.3';
+import { followRetryCombo, recordFollowRetriedFaces } from './followRetryHistory.js?rmv=1.68.3';
 
 const inFlight = new Set();
 const consumeCounts = new Map();
@@ -153,7 +153,7 @@ async function requestFollowMissingFaces(ctx, index, missingIndexes, faces, deps
     try {
         if (plan.selectedExternalIds.length) { materials = await getSelectedExternalEntries(plan.selectedExternalIds); assertCurrent(); }
         if (plan.appearanceReference.enabled) {
-            const appearance = await import('./appearanceReference.js?rmv=1.68.2');
+            const appearance = await import('./appearanceReference.js?rmv=1.68.3');
             assertCurrent();
             appearanceMaterial = await appearance.loadAppearanceReferenceMaterial(plan.appearanceReference.revision);
             assertCurrent();
@@ -307,8 +307,11 @@ export async function maybeAutomaticFollowReroll(index, deps) {
             const message = live.chat?.[index];
             if (message) {
                 const owner = { chatKey: getCurrentChatKey(live.chat), messageIndex: index, swipeId: Number.isInteger(message.swipe_id) ? message.swipe_id : -1, sourceHash: rabbitMirrorMessageSourceHash(message), message };
-                if (!missingIndexes.length) saveFollowCompletedRetryResult(live.chat, index, owner, retainedHtml, getSettings()?.rabbitMirrorBannedWords || []);
-                else {
+                // 只给真正存下来的面记避重；没存住的面以后还会再补，到时候再记。
+                const savedFaces = new Set();
+                if (!missingIndexes.length) {
+                    if (saveFollowCompletedRetryResult(live.chat, index, owner, retainedHtml, getSettings()?.rabbitMirrorBannedWords || [])) askedIndexes.forEach(faceIndex => savedFaces.add(faceIndex));
+                } else {
                     let current = readFollowPartialResult(live.chat, index);
                     if (current) {
                         for (const faceIndex of missing.filter(item => !missingIndexes.includes(item))) {
@@ -317,6 +320,7 @@ export async function maybeAutomaticFollowReroll(index, deps) {
                             // 每存好一面，记录就变了：下一面要拿新的记录去比，不然只有第一面存得进去。
                             const replaced = html ? replaceFollowPartialResultFace(live.chat, index, owner, { expectedHtml: current.html, faceIndex, html, appliedRules: getSettings()?.rabbitMirrorBannedWords || [] }) : null;
                             if (replaced) current = (replaced && typeof replaced === 'object' && typeof replaced.html === 'string') ? replaced : (readFollowPartialResult(live.chat, index) || current);
+                            if (replaced && askedIndexes.includes(faceIndex)) savedFaces.add(faceIndex);
                         }
                     }
                 }
@@ -324,11 +328,11 @@ export async function maybeAutomaticFollowReroll(index, deps) {
                 // 补回来的面记进避重（按这次实际发出的抽签记录；没有就用原记录）。
                 const combos = {};
                 askedIndexes.forEach((faceIndex, local) => {
-                    if (missingIndexes.includes(faceIndex)) return;
+                    if (missingIndexes.includes(faceIndex) || !savedFaces.has(faceIndex)) return;
                     const combo = followRetryCombo(incoming.metadata, local, faces[faceIndex]);
                     if (combo) combos[faceIndex] = combo;
                 });
-                void recordFollowRetriedFaces({ chat: live.chat, index, message, html: retainedHtml, combos });
+                if (Object.keys(combos).length) void recordFollowRetriedFaces({ chat: live.chat, index, message, html: retainedHtml, combos });
             }
         }
         return !missingIndexes.length;

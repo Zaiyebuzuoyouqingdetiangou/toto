@@ -1,9 +1,9 @@
-import { usesModelOriginalColors } from './visualDesign.js?rmv=1.68.2';
-import { faceDrawRule, hasFaceDrawRules, normalizeFaceDrawRules } from './faceDrawRules.js?rmv=1.68.2';
-import { drawFaceRule, faceDrawFingerprint } from './faceDrawEngine.js?rmv=1.68.2';
-import { attachPaletteRecipes } from './paletteRecipes.js?rmv=1.68.2';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.68.2';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.68.2';
+import { usesModelOriginalColors } from './visualDesign.js?rmv=1.68.3';
+import { faceDrawRule, hasFaceDrawRules, normalizeFaceDrawRules } from './faceDrawRules.js?rmv=1.68.3';
+import { drawFaceRule, faceDrawFingerprint } from './faceDrawEngine.js?rmv=1.68.3';
+import { attachPaletteRecipes } from './paletteRecipes.js?rmv=1.68.3';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.68.3';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.68.3';
 import {
     getCurrentChatKey,
     getDirectiveScopedPick,
@@ -24,11 +24,11 @@ import {
     createPendingComboBatchPlan,
     findPendingComboBatchPlan,
     readFaceDrawCursorState,
-} from './storage.js?rmv=1.68.2';
-import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.68.2';
-import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.68.2';
-import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, visualSceneryEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.68.2';
-import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.68.2';
+} from './storage.js?rmv=1.68.3';
+import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.68.3';
+import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.68.3';
+import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, visualSceneryEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.68.3';
+import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.68.3';
 import {
     chooseExternalSource,
     externalPoolActive,
@@ -38,7 +38,7 @@ import {
     getExternalPoolSnapshot,
     pickExternalItems,
     sourceMixModeIsExternalOnly,
-} from './externalWorldBook/externalPool.js?rmv=1.68.2';
+} from './externalWorldBook/externalPool.js?rmv=1.68.3';
 
 function randomUnit() {
     try {
@@ -434,6 +434,17 @@ function weightedThemeSample(pool, count, recentIds = [], recentGroups = [], avo
     const usedFamilies = new Set();
     const usedGroups = new Set();
     const targetCount = Math.max(0, Math.min(Number(count) || 0, familyList.length));
+    // 家族里实际参与第二步抽取的条目与它们的权重（与下面抽具体条目时完全一致）。
+    const familyItemStage = family => {
+        let itemCandidates = [...family.items];
+        if (avoidRepeat) {
+            const freshItems = itemCandidates.filter(item => !recent.has(item.id));
+            if (freshItems.length) itemCandidates = freshItems;
+        }
+        const baseWeight = item => (Number(themeItemWeights.get(item.id)) || 1) * (!avoidRepeat || !recent.has(item.id) ? 1 : 0.12);
+        const favoriteWeight = item => baseWeight(item) * (favorites.has(item.id) ? favoriteMultiplierFor(item.id, favorites, favoriteMultipliers) : 1);
+        return { itemCandidates, baseWeight, favoriteWeight };
+    };
 
     while (selected.length < targetCount) {
         let availableFamilies = familyList.filter(family => !usedFamilies.has(family.key));
@@ -448,31 +459,41 @@ function weightedThemeSample(pool, count, recentIds = [], recentGroups = [], avo
         const freshFamilies = availableFamilies.filter(family => !immediateFamilies.has(family.key));
         if (freshFamilies.length) availableFamilies = freshFamilies;
 
-        const family = pickWeightedEntry(availableFamilies, entry => {
-            let weight = Number(themeFamilyWeights.get(entry.key)) || themeFamilyBaseWeight(entry.items.length);
+        // 每个家族：不含收藏时的家族权重（含近期冷却、同批同组避让），以及家族里每一项「本来的机会」。
+        const plans = new Map(availableFamilies.map(entry => {
+            const base = Number(themeFamilyWeights.get(entry.key)) || themeFamilyBaseWeight(entry.items.length);
+            let weight = base;
             if (usedGroups.has(String(entry.group || ''))) weight *= SAME_GROUP_IN_DRAW_FACTOR;
             const groupHits = Number(recentGroupHitMap?.[entry.group] || (recentGroupSet.has(entry.group) ? 1 : 0));
             const familyHits = Number(recentFamilyHitMap?.[entry.key] || (recentFamilySet.has(entry.key) ? 1 : 0));
             if (avoidRepeat && groupHits) weight *= recentDiversityFactor(groupHits, 0.35);
             if (avoidRepeat && familyHits) weight *= recentDiversityFactor(familyHits, 0.25);
-            weight *= favoriteThemeFamilyFactor(entry.items, favorites, favoriteMultipliers);
-            return weight;
+            const { itemCandidates, baseWeight } = familyItemStage(entry);
+            const itemTotal = itemCandidates.reduce((sum, item) => sum + baseWeight(item), 0) || 1;
+            return [entry, { base, weight, itemCandidates, natural: item => weight * baseWeight(item) / itemTotal }];
+        }));
+        // 收藏 ×N：这一项的机会至少是本轮可抽的普通一项平均机会的 N 倍；本来机会就高于平均的，按本来的机会乘 N。
+        // 以前倍率只乘在条目自己身上，大家族里的子项本来机会只有单项的几分之一，设 ×3 反而不如别处设 ×1 的。
+        // 近期冷却、同批同组避让照样作用在收藏上（按家族当前被压低的比例一起压低）。
+        const candidateCount = [...plans.values()].reduce((sum, plan) => sum + plan.itemCandidates.length, 0) || 1;
+        const averageItem = [...plans.values()].reduce((sum, plan) => sum + plan.base, 0) / candidateCount;
+        const itemWeight = (plan, item) => {
+            const natural = plan.natural(item);
+            if (!favorites.has(item.id)) return natural;
+            const multiplier = favoriteMultiplierFor(item.id, favorites, favoriteMultipliers);
+            const cooled = plan.base > 0 ? plan.weight / plan.base : 1;
+            return multiplier * Math.max(natural, averageItem * cooled);
+        };
+        const family = pickWeightedEntry(availableFamilies, entry => {
+            const plan = plans.get(entry);
+            return plan.itemCandidates.reduce((sum, item) => sum + itemWeight(plan, item), 0) || plan.weight;
         });
         if (!family) break;
         usedFamilies.add(family.key);
         usedGroups.add(String(family.group || ''));
 
-        let itemCandidates = [...family.items];
-        if (avoidRepeat) {
-            const freshItems = itemCandidates.filter(item => !recent.has(item.id));
-            if (freshItems.length) itemCandidates = freshItems;
-        }
-
-        const chosen = pickWeightedEntry(itemCandidates, item => {
-            let weight = (Number(themeItemWeights.get(item.id)) || 1) * (!avoidRepeat || !recent.has(item.id) ? 1 : 0.12);
-            if (favorites.has(item.id)) weight *= favoriteMultiplierFor(item.id, favorites, favoriteMultipliers);
-            return weight;
-        });
+        const plan = plans.get(family);
+        const chosen = pickWeightedEntry(plan.itemCandidates, item => itemWeight(plan, item));
         if (chosen) selected.push(chosen);
     }
 

@@ -232,3 +232,46 @@ test('follow retry helper records recovered faces from the metadata actually sen
     assert.match(history[0].diversityRound, /^follow-retry:/);
     assert.equal(helper.followRetryCombo(null, 0, { themeIds: ['fallback'] }).themeIds[0], 'fallback');
 });
+
+test('follow retry faces join the original batch round when the partial result knows it', async () => {
+    const { store, runtime } = await runtimeWith();
+    const partial = await runtime.load('src/followPartialResults.js');
+    const helper = await runtime.load('src/followRetryHistory.js');
+    const storage = await runtime.load('src/storage.js');
+    const proof = await runtime.load('src/multifaceProof.js');
+    const protocol = await runtime.load('src/multifaceProtocol.js');
+    const failed = protocol.createMultifaceFailureSlot(1, 'incomplete-face');
+    const first = '<toto data-rabbit-mirror="true" data-rm-face="1"><details><summary>一</summary></details></toto>';
+    const chat = [{ is_user: false, mes: '正文', swipe_id: 0 }];
+    const owner = { chatKey: storage.getCurrentChatKey(chat), messageIndex: 0, swipeId: 0, sourceHash: proof.rabbitMirrorMultifaceSourceHash(chat[0].mes), message: chat[0] };
+    assert.equal(partial.saveFollowPartialResult(chat, 0, owner, `${first}\n${failed}`, [{ faceIndex: 1, status: 'failed', code: 'incomplete-face' }], [], 'batch-origin'), true);
+    assert.equal(partial.readFollowPartialResult(chat, 0).historyRound, 'batch-origin');
+    const html = `${first}\n<toto data-rabbit-mirror="true" data-rm-face="2"><details><summary>二</summary><p>补回</p></details></toto>`;
+    assert.ok(partial.saveFollowCompletedRetryResult(chat, 0, owner, html, []));
+    assert.equal(partial.readFollowPartialResult(chat, 0).historyRound, 'batch-origin', 'kept after completion');
+    const recorded = await helper.recordFollowRetriedFaces({ chat, index: 0, message: chat[0], html,
+        combos: { 1: { themeIds: ['t'], formatIds: ['f'], presentationMode: 'html' } }, scanHtml: () => ({ signature: 's' }) });
+    assert.equal(recorded, 1);
+    const history = JSON.parse(store.getItem(HISTORY));
+    assert.equal(history[0].batchId, 'batch-origin');
+    assert.equal(history[0].faceIndex, 1);
+    assert.equal('diversityRound' in history[0], false);
+});
+
+test('favorite x3 inside a large theme family appears more often than a single-item favorite at x1', async () => {
+    const { runtime } = await runtimeWith();
+    const settingsModule = await runtime.load('src/settings.js');
+    const picker = await runtime.load('src/picker.js');
+    const storage = await runtime.load('src/storage.js');
+    const x1 = ['B.0', 'B.1', 'B.4'], x3 = ['A.2.1', 'A.1.1', 'B.7.1'];
+    settingsModule.updateSettings({ favoriteThemeIds: [...x1, ...x3], rabbitMirrorFaceCount: 1,
+        favoriteThemeMultipliers: Object.fromEntries([...x1.map(id => [id, 1]), ...x3.map(id => [id, 3])]) });
+    const count = new Map();
+    for (let index = 0; index < 700; index += 1) {
+        const result = picker.pickCombination(settingsModule.getSettings(), `follow:fav-${index}`, {});
+        for (const id of (result?.combo || result)?.themeIds || []) count.set(id, (count.get(id) || 0) + 1);
+        storage.commitPendingCombo('', '', [], null, null);
+    }
+    const total = ids => ids.reduce((sum, id) => sum + (count.get(id) || 0), 0);
+    assert.ok(total(x3) > total(x1) * 1.15, `x3 ${total(x3)} vs x1 ${total(x1)}`);
+});

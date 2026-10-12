@@ -1,6 +1,8 @@
-import { getCurrentChatKey, commitRetriedFaceHistory } from './storage.js?rmv=1.68.2';
-import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.68.2';
-import { recipeFromSelectionMetadata } from './blacklist.js?rmv=1.68.2';
+import { getCurrentChatKey, commitRetriedFaceHistory } from './storage.js?rmv=1.68.3';
+import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.68.3';
+import { recipeFromSelectionMetadata } from './blacklist.js?rmv=1.68.3';
+import { readFollowPartialResult } from './followPartialResults.js?rmv=1.68.3';
+import { rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.68.3';
 
 // 跟随模式自动补发、手动重试单面补回来的面，以前不进避重记录：配色、布局、交互都没记，
 // 下一轮可能撞色撞交互。这里在补回的面保存好之后，按实际发出去的抽签记录逐面补记。
@@ -21,18 +23,23 @@ export async function recordFollowRetriedFaces({ chat, index, message, html, com
         if (!parsed.faces?.length) return 0;
         // 扫描器按需加载（它连着宿主模块），记账失败也不影响补回的面。
         let scan = typeof scanHtml === 'function' ? scanHtml : null;
-        if (!scan) { try { scan = (await import('./visualScanner.js?rmv=1.68.2')).scanRabbitMirrorHtml; } catch { scan = null; } }
+        if (!scan) { try { scan = (await import('./visualScanner.js?rmv=1.68.3')).scanRabbitMirrorHtml; } catch { scan = null; } }
         const chatKey = getCurrentChatKey(chat);
         const swipeId = Number.isInteger(message?.swipe_id) ? message.swipe_id : -1;
         if (!chatKey || !Number.isInteger(index) || index < 0) return 0;
-        const roundKey = `follow-retry:${chatKey}:${index}:${swipeId}`;
+        // 原批次编号（部分成功时随结果保存）：补回的面记成原批次的那一面，和先出的面同一轮。
+        // 没有时（整批没出、旧记录）按这条回复本身单独记一轮；带上正文指纹，删掉重生成的同楼层不会撞上。
+        const batchId = String(readFollowPartialResult(chat, index)?.historyRound || '');
+        let sourceHash = '';
+        try { sourceHash = String(rabbitMirrorMessageSourceHash(message) || ''); } catch { sourceHash = ''; }
+        const roundKey = `follow-retry:${chatKey}:${index}:${swipeId}:${sourceHash.slice(0, 24)}`;
         let recorded = 0;
         for (const faceIndex of faceIndexes) {
             const face = parsed.faces.find(item => item.index === faceIndex);
             if (!face?.inner) continue;
             let scanned = null;
             try { scanned = scan ? scan(`<toto data-rabbit-mirror="true" data-rm-face="${faceIndex + 1}">${face.inner}</toto>`, null) : null; } catch { scanned = null; }
-            if (commitRetriedFaceHistory(combos[faceIndex], scanned || {}, { roundKey, faceIndex })) recorded += 1;
+            if (commitRetriedFaceHistory(combos[faceIndex], scanned || {}, { roundKey, faceIndex, batchId })) recorded += 1;
         }
         return recorded;
     } catch (error) {

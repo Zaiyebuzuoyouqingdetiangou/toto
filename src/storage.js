@@ -1,10 +1,10 @@
-import { generationPaletteFields } from './paletteRecipes.js?rmv=1.68.2';
-import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.68.2';
-import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords, observedOperationFamiliesFor } from './compositionFingerprint.js?rmv=1.68.2';
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.68.2';
-import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.68.2';
-import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.68.2';
-import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.68.2';
+import { generationPaletteFields } from './paletteRecipes.js?rmv=1.68.3';
+import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.68.3';
+import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords, observedOperationFamiliesFor } from './compositionFingerprint.js?rmv=1.68.3';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.68.3';
+import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.68.3';
+import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.68.3';
+import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.68.3';
 
 const STORAGE_KEY = 'rabbit_mirror_theater:last_combo:v11';
 const PENDING_KEY = 'rabbit_mirror_theater:pending_combo:v11';
@@ -1964,10 +1964,12 @@ function commitComboToHistory(combo, visual = {}, options = {}) {
 // 跟随模式补发／重试补回来的面：原批次早已按"缺这几面"提交过，这里把补回的面单独记进避重。
 // 同一条回复补回的面共用一个轮次键（diversityRound），按"轮次键:面序号"去重，重复调用不会多记。
 const RETRIED_FACE_HISTORY_FIELDS = ['themeIds', 'formatIds', 'themeGroups', 'formatGroups', 'samplingMode', 'pureOrder', 'forcedVisualScenery'];
-export function commitRetriedFaceHistory(combo, scan = {}, { roundKey = '', faceIndex = 0 } = {}) {
-    const round = String(roundKey || '').trim().slice(0, 240);
-    if (!round || !combo || typeof combo !== 'object' || !Number.isSafeInteger(faceIndex) || faceIndex < 0 || faceIndex > 4) return false;
-    const record = { diversityRound: round, ...presentationModeFields(combo) };
+export function commitRetriedFaceHistory(combo, scan = {}, { roundKey = '', faceIndex = 0, batchId = '' } = {}) {
+    // batchId：知道原批次时直接记成原批次的那一面（和先出的面同一轮，按「批次:面」去重）。
+    const batch = String(batchId || '').trim();
+    const round = batch || String(roundKey || '').trim().slice(0, 240);
+    if (!round || batch.length > 256 || !combo || typeof combo !== 'object' || !Number.isSafeInteger(faceIndex) || faceIndex < 0 || faceIndex > 4) return false;
+    const record = { ...(batch ? {} : { diversityRound: round }), ...presentationModeFields(combo) };
     for (const key of RETRIED_FACE_HISTORY_FIELDS) {
         const value = combo[key];
         if (Array.isArray(value)) record[key] = value.filter(item => typeof item === 'string' && item).slice(0, 12);
@@ -1981,7 +1983,7 @@ export function commitRetriedFaceHistory(combo, scan = {}, { roundKey = '', face
         riskFlags: Array.isArray(value.riskFlags) ? value.riskFlags.map(String) : [],
         paletteFingerprint: value.paletteFingerprint && typeof value.paletteFingerprint === 'object' ? value.paletteFingerprint : null,
         interactionFamily: value.interactionFamily || null,
-    }, { historyId: `${round}:${faceIndex}` });
+    }, batch ? { batchId: batch, faceIndex } : { historyId: `${round}:${faceIndex}` });
 }
 
 export function commitPendingCombo(visualSignature = '', visualSkeleton = '', riskFlags = [], paletteFingerprint = null, interactionFamily = null) {
