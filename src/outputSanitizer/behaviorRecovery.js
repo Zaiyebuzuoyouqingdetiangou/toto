@@ -1,7 +1,7 @@
 // Recover only a source-authored, unambiguous local control/cover relationship.
 // Never invent a target, result text, generated script or page-global listener.
-import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.68.5';
-import { behaviorTypeFits } from './behaviorRepair.js?rmv=1.68.5';
+import { isBehaviorInteractionOwned, motionOutsideControls } from './behaviorInteractions.js?rmv=1.68.6';
+import { behaviorTypeFits } from './behaviorRepair.js?rmv=1.68.6';
 
 const GROUP = '[data-rm-ui]';
 const RECOVERED = 'data-rm-behavior-recovered';
@@ -124,20 +124,25 @@ export function inspectBehaviorRecovery(root) {
         toggle: [], pick: ['[data-rm-pick]'], pager: ['[data-rm-page]'], roll: ['[data-rm-roll]', '[data-rm-show]'],
         connect: ['[data-rm-end]'], turn: ['[data-rm-knob]'], sequence: ['[data-rm-code]'],
     };
+    const adoptedRanges = new Set();
     for (const group of groups(root)) {
         const type = group.getAttribute('data-rm-ui');
+        const adopted = type === 'motion' ? motionOutsideControls(group) : null;
+        adopted?.ranges.forEach(range => adoptedRanges.add(range));
+        const hasOwn = selector => own(group, selector).length
+            || (adopted && selector.includes('data-rm-play') && (adopted.buttons.length || adopted.ranges.length));
         result.declared++;
         if (!result.types.includes(type)) result.types.push(type);
         if (group.hasAttribute(RECOVERED)) result.recovered++;
         if (['type', 'scope', 'orphan'].includes(group.getAttribute(RECOVERED))) result.classRepaired++;
         if (isBehaviorInteractionOwned(group)) result.wired++;
         else result.unwired++;
-        if (!requirements[type] || requirements[type].some(selector => !own(group, selector).length)
+        if (!requirements[type] || requirements[type].some(selector => !hasOwn(selector))
             || (type === 'reorder' && own(group, '[data-rm-item]').length < 2)
             || (['pager', 'connect'].includes(type) && !behaviorTypeFits(group, type))) result.incomplete++;
     }
     result.candidates = findBehaviorRecoveryCandidates(root).length;
     result.unmappedRanges = [...root.querySelectorAll('input[type="range"]')].filter(input =>
-        !input.closest(GROUP) && !input.closest(UI) && !authoredHandler(input)).length;
+        !input.closest(GROUP) && !input.closest(UI) && !adoptedRanges.has(input) && !authoredHandler(input)).length;
     return result;
 }

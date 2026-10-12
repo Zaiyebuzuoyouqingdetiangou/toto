@@ -1,8 +1,8 @@
-import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.68.5';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.68.5';
-import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.68.5';
-import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.68.5';
-import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.68.5';
+import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.68.6';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.68.6';
+import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.68.6';
+import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.68.6';
+import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.68.6';
 
 // Declarative, face-local behaviors. No generated code, global targets or timers.
 const roots = new WeakMap();
@@ -500,10 +500,15 @@ function inputChange(state, input, userAction = false) {
             style(state, part, 'scale', String(clamp(value, 0.1, 10)));
         }
     } else if (type === 'motion') {
-        for (const animation of animations(state)) {
+        const list = animations(state);
+        for (const animation of list) {
             const timing = animation.effect?.getComputedTiming?.();
             const duration = finite(timing?.activeDuration, finite(timing?.duration));
             if (duration > 0) animation.currentTime = finite(animation.effect?.getTiming?.().delay) + p * duration;
+        }
+        if (!list.length) {
+            if (state.motionReplay) { state.motionReplay.stop = true; state.motionReplay = null; }
+            motionPositions(state, p, input);
         }
     }
     refreshResults(state);
@@ -644,7 +649,7 @@ function prepare(binding, group) {
 
 function stateFor(root, target) {
     const binding = roots.get(root);
-    const group = target?.closest?.(GROUP) || remoteToggleGroup(root, target);
+    const group = target?.closest?.(GROUP) || remoteToggleGroup(root, target) || remoteMotionGroup(root, target);
     return binding && group && root.contains(group) ? prepare(binding, group) : null;
 }
 
@@ -656,6 +661,121 @@ function remoteToggleGroup(root, target) {
     const scope = control.closest('details') || root;
     const toggles = [...scope.querySelectorAll('[data-rm-ui="toggle"]')].filter(node => root.contains(node));
     return toggles.length === 1 ? toggles[0] : null;
+}
+
+// 播放钮、进度滑杆写在动画区域外面（区域只包住了画面，按钮和滑杆放在下面一排）：这一面只有一个动画区域、
+// 区域里自己没写这类控件时，区域外没归属的就归它管，和区域里的一样用。滑杆只认唯一的那一个。
+const FACE_TOOL_UI = '[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-diagnostic-panel]';
+function faceScopeOf(node) {
+    let scope = node?.closest?.('details') || null;
+    for (let outer = scope?.parentElement?.closest?.('details'); outer; outer = outer.parentElement?.closest?.('details')) scope = outer;
+    return scope || node?.parentElement || null;
+}
+export function motionOutsideControls(group) {
+    const empty = { buttons: [], ranges: [] };
+    if (group?.getAttribute?.('data-rm-ui') !== 'motion') return empty;
+    const scope = faceScopeOf(group);
+    if (!scope?.querySelectorAll) return empty;
+    if ([...scope.querySelectorAll('[data-rm-ui="motion"]')].length !== 1) return empty;
+    const outside = selector => [...scope.querySelectorAll(selector)].filter(node => !node.closest(GROUP) && !node.closest(FACE_TOOL_UI));
+    const buttons = own(group, '[data-rm-play], [data-rm-reverse]').length ? [] : outside('button[data-rm-play], button[data-rm-reverse]');
+    const ranges = own(group, 'input[type="range"]').length ? [] : outside('input[type="range"]');
+    return { buttons, ranges: ranges.length === 1 ? ranges : [] };
+}
+function remoteMotionGroup(root, target) {
+    const control = target?.closest?.('button[data-rm-play], button[data-rm-reverse], input[type="range"]');
+    if (!control || control.closest(GROUP) || !root?.querySelectorAll) return null;
+    const scope = faceScopeOf(control);
+    const motions = scope ? [...scope.querySelectorAll('[data-rm-ui="motion"]')].filter(node => root.contains(node)) : [];
+    if (motions.length !== 1) return null;
+    const { buttons, ranges } = motionOutsideControls(motions[0]);
+    return buttons.includes(control) || ranges.includes(control) ? motions[0] : null;
+}
+
+// 动画区域里的部件没写真正的动画（只用 --pos、left 这类数值摆好了位置）：进度滑杆和播放钮按这些数值
+// 来回放——滑杆在模型写的初始位置时画面就是模型写的样子，往两边拖按比例前进或退回。只改这些数值，可复位。
+const MOTION_NUMERIC = new Set(['left', 'right', 'top', 'bottom', 'width', 'height']);
+function motionTargets(state) {
+    if (state.motionTargets) return state.motionTargets;
+    const targets = [];
+    for (const part of own(state.group, '[data-rm-part]')) {
+        const inline = part.style;
+        for (let index = 0; index < (inline?.length || 0); index += 1) {
+            const property = inline[index];
+            if (!property.startsWith('--') && !MOTION_NUMERIC.has(property)) continue;
+            if (property.startsWith('--rm-')) continue;
+            const saved = state.styles.get(part)?.get(property);
+            const raw = String(saved ? saved[0] : inline.getPropertyValue(property)).trim();
+            const match = raw.match(/^(-?\d*\.?\d+)(%|px)?$/);
+            if (match) targets.push({ node: part, property, base: Number(match[1]), unit: match[2] || '' });
+        }
+    }
+    state.motionTargets = targets;
+    return targets;
+}
+function motionStartOf(state, range) {
+    if (state.motionStart !== undefined) return state.motionStart;
+    let start = 1;
+    if (range) {
+        const min = range.min === '' ? 0 : finite(range.min);
+        const max = Math.max(min, range.max === '' ? 100 : finite(range.max, 100));
+        const authored = range.getAttribute('value');
+        const value = authored === null || authored === '' ? (min + max) / 2 : clamp(finite(authored, min), min, max);
+        start = max > min ? (value - min) / (max - min) : 1;
+    }
+    state.motionStart = start;
+    return start;
+}
+function motionPositions(state, p, range = null) {
+    const targets = motionTargets(state);
+    if (!targets.length) return false;
+    const start = motionStartOf(state, range);
+    const factor = start > 0.05 ? clamp(p, 0, 1) / start : clamp(p, 0, 1);
+    for (const target of targets) {
+        let value = target.base * factor;
+        if (target.unit === '%') value = clamp(value, Math.min(0, target.base), Math.max(100, target.base));
+        style(state, target.node, target.property, `${Math.round(value * 100) / 100}${target.unit}`);
+    }
+    return true;
+}
+function motionRange(state) {
+    return first(state.group, 'input[type="range"]') || motionOutsideControls(state.group).ranges[0] || null;
+}
+function motionReplay(state, button) {
+    if (!motionTargets(state).length) return false;
+    const range = motionRange(state);
+    if (state.motionReplay) {
+        state.motionReplay.stop = true;
+        state.motionReplay = null;
+        button.setAttribute('aria-pressed', 'false');
+        return true;
+    }
+    const reverse = button.hasAttribute('data-rm-reverse');
+    const run = { stop: false };
+    state.motionReplay = run;
+    button.setAttribute('aria-pressed', 'true');
+    const view = state.group.ownerDocument?.defaultView || globalThis;
+    const frame = typeof view.requestAnimationFrame === 'function' ? view.requestAnimationFrame.bind(view) : callback => setTimeout(() => callback(Date.now()), 16);
+    const duration = 2400;
+    let begin = null;
+    const tick = now => {
+        if (run.stop || !state.group.isConnected) return;
+        if (begin === null) begin = now;
+        const t = clamp((now - begin) / duration, 0, 1);
+        const eased = 1 - Math.pow(1 - t, 2);
+        const p = reverse ? 1 - eased : eased;
+        if (range) {
+            const min = range.min === '' ? 0 : finite(range.min);
+            const max = Math.max(min, range.max === '' ? 100 : finite(range.max, 100));
+            range.value = String(Math.round(min + p * (max - min)));
+        }
+        motionPositions(state, p, range);
+        refreshResults(state);
+        if (t < 1) frame(tick);
+        else { if (state.motionReplay === run) state.motionReplay = null; button.setAttribute('aria-pressed', 'false'); }
+    };
+    frame(tick);
+    return true;
 }
 
 export function isBehaviorInteractionOwned(node) {
@@ -743,6 +863,7 @@ function action(state, button) {
     } else if (state.type === 'motion') {
         const list = animations(state);
         if (list.length) state.changed = true;
+        else if (motionReplay(state, button)) { state.changed = true; return; }
         if (button.hasAttribute('data-rm-play')) {
             const pause = list.some(animation => animation.playState === 'running');
             for (const animation of list) animation[pause ? 'pause' : 'play']();
@@ -1536,7 +1657,7 @@ function scheduleOnDemandRelay(root, target) {
 function relayGroupLater(root, group, control = null) {
     const run = () => {
         if (!group.isConnected || !root.isConnected) return;
-        void import('./behaviorRelay.js?rmv=1.68.5').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
+        void import('./behaviorRelay.js?rmv=1.68.6').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
     };
     const idle = globalThis.requestIdleCallback;
     if (typeof idle === 'function') idle(run, { timeout: 800 }); else setTimeout(run, 120);
