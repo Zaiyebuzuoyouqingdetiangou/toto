@@ -109,12 +109,17 @@ const TAB_DRIVERS = new Set(['pick', 'pager']);
 // 交互大分类：同一类本质上是同一种操作，只是写法不同。每面给的 3 种写法各来自不同大类，
 // 一类最多出一种；随机补位按大类抽（每类机会相同），抽中了再从类里挑一种写法。
 export const DRIVER_FAMILIES = Object.freeze({
-    drag: { label: '拖动', drivers: ['adjust', 'reveal', 'motion', 'turn', 'drag', 'view', 'follow', 'draw'] },
-    page: { label: '翻页切换', drivers: ['pager', 'pick', 'reorder'] },
+    drag: { label: '拖动', drivers: ['adjust', 'reveal', 'motion', 'turn', 'drag', 'view', 'follow', 'draw', 'reorder'] },
+    page: { label: '翻页', drivers: ['pager'] },
+    choose: { label: '选择切换', drivers: ['pick'] },
     fold: { label: '折叠开合', drivers: ['toggle'] },
     popup: { label: '弹窗', drivers: ['popup'] },
     hold: { label: '按住', drivers: ['hold'] },
-    tap: { label: '点按触发', drivers: ['effect', 'accumulate', 'sequence', 'roll', 'connect', 'input'] },
+    fire: { label: '触发效果', drivers: ['effect'] },
+    collect: { label: '收集累积', drivers: ['accumulate'] },
+    puzzle: { label: '解谜对位', drivers: ['sequence', 'connect'] },
+    input: { label: '输入', drivers: ['input'] },
+    random: { label: '随机抽取', drivers: ['roll'] },
 });
 export function driverFamilyOf(key) {
     return Object.keys(DRIVER_FAMILIES).find(family => DRIVER_FAMILIES[family].drivers.includes(key)) || key;
