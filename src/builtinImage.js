@@ -1,10 +1,10 @@
-import { getSettings } from './settings.js?rmv=1.67.93';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.67.93';
-import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.93';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.93';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.93';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.67.93';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.93';
+import { getSettings } from './settings.js?rmv=1.67.94';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.67.94';
+import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.94';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.94';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.94';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.67.94';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.94';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -83,10 +83,12 @@ function mergeTagLists(...lists) {
 function storageKey(root, frame, prompt) {
     const details = frame.closest?.('details');
     const ctx = getContext();
-    const chat = details?.dataset?.rabbitMirrorOwnerChat
+    // 收藏夹里打开的那一面不属于当前聊天：用收藏时记下的聊天、楼层和 swipe 找回当时画好的图。
+    const image = details?.dataset || {};
+    const chat = image.rmImageOwnerChat || details?.dataset?.rabbitMirrorOwnerChat
         || String(ctx.getCurrentChatId?.() ?? ctx.chatId ?? '');
-    const mes = details?.dataset?.rabbitMirrorOwnerMesid ?? '';
-    const swipe = details?.dataset?.rabbitMirrorOwnerSwipe ?? '';
+    const mes = image.rmImageOwnerMesid ?? details?.dataset?.rabbitMirrorOwnerMesid ?? '';
+    const swipe = image.rmImageOwnerSwipe ?? details?.dataset?.rabbitMirrorOwnerSwipe ?? '';
     const frames = [...(root.querySelectorAll?.('[data-rm-draw-frame]') || [])];
     const index = Math.max(0, frames.indexOf(frame));
     return `builtin:${chat}:${mes}:${swipe}:${index}:${hashText(prompt)}`;
@@ -470,8 +472,20 @@ export function restoreSavedBuiltinImages(root) {
         if (frame.querySelector?.('img[data-rm-draw-result][src]')) continue;
         const prompt = readPrompt(frame);
         if (!prompt) continue;
-        const saved = readSaved(storageKey(root, frame, prompt));
-        if (!saved.record) continue;
+        let saved = readSaved(storageKey(root, frame, prompt));
+        // 收藏的是多面里的某一面时，图框在原来那条消息里的序号可能和收藏里不同：同一段提示词按序号挨个找。
+        if (!saved.record && frame.closest?.('details')?.dataset?.rmImageOwnerChat) {
+            const base = storageKey(root, frame, prompt).split(':');
+            for (let index = 0; index < 16 && !saved.record; index += 1) {
+                base[base.length - 2] = String(index);
+                saved = readSaved(base.join(':'));
+            }
+        }
+        if (!saved.record) {
+            // 找不到存下的图时，不留一个破图标在那里。
+            for (const broken of frame.querySelectorAll?.('img[data-rm-draw-result]:not([src])') || []) broken.remove();
+            continue;
+        }
         ensureFrameBox(frame);
         if (paint(frame, saved.record)) restored += 1;
     }
