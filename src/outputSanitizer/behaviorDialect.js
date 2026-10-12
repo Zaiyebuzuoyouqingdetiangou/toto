@@ -1,4 +1,5 @@
-import { behaviorShowTokens, ownBehaviorShows } from './behaviorResults.js?rmv=1.68.8';
+import { behaviorShowTokens, ownBehaviorShows } from './behaviorResults.js?rmv=1.68.9';
+import { behaviorStyleText } from './behaviorStateMirror.js?rmv=1.68.9';
 
 // 插件写法「方言表」：模型写的插件交互，意思对、写法和标准不一样的那些情况，集中在这里认。
 // 每一条只做三件事：怎么认出来、按什么标准写法去理解、诊断里怎么说。不新增内容、不猜目标。
@@ -10,6 +11,7 @@ export const BEHAVIOR_DIALECTS = Object.freeze([
     { id: 'motion-numeric', label: '动画区域没写真正的动画', note: '部件只用 --pos、left 这类数值摆好了位置：滑杆按比例前进后退，播放钮从起点放一遍。' },
     { id: 'named-single-toggle', label: '唯一的开关起了名字，内容却写 on／!on', note: '这个开关开着就算 on。' },
     { id: 'turn-prefixed-stops', label: '旋钮档位写成 item0、stop1 这种「名字＋号码」', note: '同一名字的号码对上当前档位；号码从 1 起、最大正好是档位数时按第几档算。' },
+    { id: 'author-css-show', label: '显示条件认不出，但模型自己写了 CSS 按状态管显隐', note: '驱动不再强行藏这些内容，交给模型的 CSS 按 data-rm-index、data-rm-on 这些状态显示。' },
 ]);
 
 const GROUP = '[data-rm-ui]';
@@ -115,6 +117,34 @@ export function addDialectStateKeys(state, keys) {
     return keys;
 }
 
+// —— author-css-show ——
+// 驱动写到容器上的状态属性；模型的 CSS 只要按其中任意一个来写显隐，状态一变 CSS 就能跟上。
+const STATE_ATTR_NEEDLES = ['data-rm-index', 'data-rm-on', 'data-rm-picked', 'data-rm-active', 'data-rm-done', 'data-rm-match', 'data-rm-angle', 'data-rm-seq', '--rm-'];
+const DISPLAY_RULE = /\b(?:display|visibility|opacity|max-height|height|clip-path|transform)\s*:/i;
+function cssShowsToken(text, token) {
+    const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pattern = new RegExp(`\\[data-rm-show\\s*=\\s*(?:"${escaped}"|'${escaped}'|${escaped})\\s*\\][^{}]*\\{([^}]*)\\}`, 'g');
+    for (const match of text.matchAll(pattern)) if (DISPLAY_RULE.test(match[1])) return true;
+    return false;
+}
+// 这个容器里：显示条件全都对不上、但模型的 CSS 按状态管着它显隐的那些节点。
+export function authorManagedShows(root, group) {
+    const managed = new Set();
+    const reachable = reachableBehaviorKeys(group);
+    if (!reachable) return managed;
+    let text = null;
+    for (const node of ownBehaviorShows(group)) {
+        const tokens = behaviorShowTokens(node).map(token => token.replace(/^!/, '')).filter(Boolean);
+        if (!tokens.length || tokens.some(token => reachable.has(token))) continue;
+        if (text === null) {
+            text = behaviorStyleText(root);
+            if (!STATE_ATTR_NEEDLES.some(needle => text.includes(needle))) return managed;
+        }
+        if (tokens.some(token => cssShowsToken(text, token))) managed.add(node);
+    }
+    return managed;
+}
+
 // ——— 诊断：哪些写法对不上（静态检查，不点真实控件）———
 
 const COMMON_KEYS = ['changed', 'active', 'match', 'done', 'miss', 'placed'];
@@ -198,8 +228,10 @@ export function inspectBehaviorDialect(root) {
     for (const group of groups) {
         const type = group.getAttribute('data-rm-ui');
         const reachable = reachableBehaviorKeys(group);
+        const managed = authorManagedShows(root, group);
+        if (managed.size) used.add('author-css-show');
         if (reachable) {
-            for (const node of ownBehaviorShows(group)) for (const token of behaviorShowTokens(node)) {
+            for (const node of ownBehaviorShows(group)) for (const token of managed.has(node) ? [] : behaviorShowTokens(node)) {
                 const key = token.startsWith('!') ? token.slice(1) : token;
                 if (key && !reachable.has(key) && !result.unmatched.some(item => item.type === type && item.token === token)) result.unmatched.push({ type, token });
             }

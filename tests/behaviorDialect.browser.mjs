@@ -52,6 +52,15 @@ const SAMPLES = {
           <button data-rm-knob>扭</button>
           <div data-rm-show="stop1">一档</div><div data-rm-show="stop2">二档</div><div data-rm-show="stop3">三档</div>
         </div></details>`,
+    // 扭蛋机的另一种写法：档位内容标成 card-a／card-b（不是号码），但模型自己写了 CSS 按 data-rm-index 显示。
+    authorCss: `<details open><summary>模型自己的 CSS 管显示</summary>
+        <style>.card[data-rm-show]{display:none}
+        [data-rm-index="0"] .card[data-rm-show="card-a"]{display:block}
+        [data-rm-index="1"] .card[data-rm-show="card-b"]{display:block}</style>
+        <div data-rm-ui="turn" data-rm-stops="2" data-rm-index="0">
+          <button data-rm-knob>扭</button>
+          <div class="card" data-rm-show="card-a">甲卡</div><div class="card" data-rm-show="card-b">乙卡</div>
+        </div></details>`,
     // 方言表也认不出的写法：诊断要点名，驱动不猜。
     unknownWriting: `<details open><summary>认不出的写法</summary>
         <div data-rm-ui="turn" data-rm-stops="2"><button data-rm-knob>扭</button><div data-rm-show="left">左</div><div data-rm-show="right">右</div></div>
@@ -140,6 +149,19 @@ try {
         assert.deepEqual(diag.unmatched, []); assert.ok(diag.dialects.includes('turn-prefixed-stops')); checks++;
     }
 
+    // 3b. 模型自己的 CSS 管显示：驱动让开
+    await mount(SAMPLES.authorCss);
+    assert.deepEqual(await shown(), ['card-a']);
+    await page.locator('[data-rm-knob]').click();
+    await page.waitForTimeout(80);
+    assert.deepEqual(await shown(), ['card-b'], '驱动不强行藏，CSS 按 data-rm-index 显示乙卡'); checks++;
+    await page.locator('[data-rm-knob]').click();
+    await page.waitForTimeout(80);
+    assert.deepEqual(await shown(), ['card-a']); checks++;
+    diag = await report();
+    assert.deepEqual(diag.unmatched, []); assert.ok(diag.dialects.includes('author-css-show')); checks++;
+    assert.equal(await page.evaluate(() => document.querySelectorAll('[data-rm-show-author="true"]').length), 2); checks++;
+
     // 4. 认不出的写法：诊断点名
     await mount(SAMPLES.unknownWriting);
     diag = await report();
@@ -148,6 +170,24 @@ try {
     assert.equal(diag.orphans.length, 1);
     assert.equal(diag.staticMotion, 1);
     assert.match(await page.evaluate(() => dialect.describeBehaviorDialect(dialect.inspectBehaviorDialect(document.querySelector('details')))), /显示条件对不上/); checks++;
+
+    // 4b. 隐藏副本通用实测：旋钮转了、内容却一张没出来的，要点名「只有按钮变了」
+    await page.evaluate(async query => {
+        window.probe = await import('/src/outputSanitizer/maintenanceGenericProbe.js?' + query);
+    }, query);
+    await page.evaluate(html => { document.body.innerHTML = html; }, SAMPLES.unknownWriting);
+    await page.evaluate(() => behavior.installBehaviorInteractions(document.querySelector('details')));
+    let probed = await page.evaluate(() => probe.runMaintenanceGenericProbe(document.querySelector('details')));
+    assert.ok(probed && probed.tested >= 2, JSON.stringify(probed));
+    assert.ok(probed.feedbackOnly.some(name => /扭/.test(name)), `旋钮只转了自己：${JSON.stringify(probed)}`); checks++;
+    assert.match(await page.evaluate(() => probe.describeGenericProbe(JSON.parse(document.querySelector('details').getAttribute('data-rabbit-mirror-generic-probe')))), /只有按钮自己变了/); checks++;
+    // 写对了的扭蛋机：内容有变化，不点名
+    await page.evaluate(html => { document.body.innerHTML = html; behavior.installBehaviorInteractions(document.querySelector('details')); }, SAMPLES.turnPrefixed);
+    probed = await page.evaluate(() => probe.runMaintenanceGenericProbe(document.querySelector('details')));
+    assert.deepEqual(probed.feedbackOnly, [], JSON.stringify(probed)); assert.deepEqual(probed.dead, []); checks++;
+    await page.evaluate(html => { document.body.innerHTML = html; behavior.installBehaviorInteractions(document.querySelector('details')); }, SAMPLES.namedToggle);
+    probed = await page.evaluate(() => probe.runMaintenanceGenericProbe(document.querySelector('details')));
+    assert.deepEqual(probed.feedbackOnly, [], JSON.stringify(probed)); assert.deepEqual(probed.dead, []); checks++;
 
     // 5. 白昼／夜间切换：切到夜间后，维修兔隐藏副本切回白天要验证通过
     await page.evaluate(async query => {

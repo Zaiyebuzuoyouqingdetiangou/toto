@@ -100,9 +100,20 @@ export function ownBehaviorShows(group) {
     return [...group.querySelectorAll('[data-rm-show]')].filter(node => showOwner(node) === group && node.style);
 }
 
-export function updateBehaviorShows(group, keys = new Set(), onChange = null) {
+// 交还给模型自己的 CSS 管的显示节点：撤掉驱动加的隐藏（恢复原 display、去掉 hidden），以后不再管它。
+export function releaseBehaviorShow(node) {
+    if (!node?.style) return false;
+    const saved = results.get(node) || remember(node);
+    visibility(node, saved, true);
+    node.removeAttribute('data-rm-result-active');
+    node.setAttribute('data-rm-show-author', 'true');
+    return true;
+}
+
+export function updateBehaviorShows(group, keys = new Set(), onChange = null, released = null) {
     let count = 0;
     for (const node of ownBehaviorShows(group)) {
+        if (released?.has(node)) { if (node.getAttribute('data-rm-show-author') !== 'true') releaseBehaviorShow(node); continue; }
         const tokens = behaviorShowTokens(node);
         if (!tokens.length) continue;
         const positive = tokens.filter(token => !token.startsWith('!'));

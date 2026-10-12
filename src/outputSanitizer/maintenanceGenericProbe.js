@@ -2,10 +2,11 @@
 // （点 label／按钮、拖滑杆、开合内层 details），比较操作前后的画面快照；没有任何变化的就是“点了没反应”。
 // 副本里会重新接上和真实页面一样的修复，所以修好的控件在副本里也能动。
 // 真实页面上的控件一个不碰；结果只写回一个属性，供维修兔的结论和诊断引用。
-import { createMaintenanceLabeledCheckedProbeSandbox, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.68.8';
-import { rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.68.8';
-import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.68.8';
-import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=1.68.8';
+import { createMaintenanceLabeledCheckedProbeSandbox, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.68.9';
+import { rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.68.9';
+import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.68.9';
+import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=1.68.9';
+import { remoteMotionGroup, remoteToggleGroup } from './behaviorDialect.js?rmv=1.68.9';
 
 export const GENERIC_PROBE_RESULT_ATTR = 'data-rabbit-mirror-generic-probe';
 const TOOL_SELECTOR = '[data-rabbit-mirror-tool-entry-host],[data-rabbit-mirror-diagnostic-panel],.rabbit-mirror-maintenance-menu,[data-rm-face-swipe-host],[data-rm-image-region],[data-rm-mobile-controls],[data-rabbit-mirror-maintenance-rabbit],[data-rabbit-mirror-feedback-cat]';
@@ -46,7 +47,37 @@ function snapshot(details) {
         let style;
         try { style = getComputedStyle(element); } catch { continue; }
         const rect = element.getBoundingClientRect();
-        parts.push(`${rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && Number(style.opacity) > 0.05 ? 1 : 0}${style.transform}${style.rotate}${style.clipPath}${Number(style.opacity).toFixed(2)}${style.backgroundColor}${style.color}${style.outlineStyle}${Math.round(rect.height)}${element.checked ? 'c' : ''}${element.open ? 'o' : ''}`);
+        // 位置也算：只靠 --pos／left 挪动的部件（赛马、进度条）只有位置在变，高度和变换都不变。
+        parts.push(`${rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && Number(style.opacity) > 0.05 ? 1 : 0}${style.transform}${style.rotate}${style.clipPath}${Number(style.opacity).toFixed(2)}${style.backgroundColor}${style.backgroundImage}${style.filter}${style.color}${style.outlineStyle}${Math.round(rect.left)},${Math.round(rect.top)},${Math.round(rect.height)}${element.checked ? 'c' : ''}${element.open ? 'o' : ''}`);
+    }
+    return hash(parts.join('|'));
+}
+
+// ——— 插件区域的「内容」快照：只看区域里的内容，不看按钮本身 ———
+// 旋钮转了、按钮变色了，可道具卡一张都没出来——整面快照会说「有变化」，其实内容没变。
+// 对插件区域再量一次：去掉所有控件（按钮、滑杆、label 这些和它们里面的东西）之后剩下的部分有没有变。
+const PROBE_CONTROL = 'button, [role="button"], input, select, textarea, label, summary, [data-rm-knob], [data-rm-hold], [data-rm-toggle], [data-rm-pick], [data-rm-fire], [data-rm-play], [data-rm-reverse], [data-rm-step], [data-rm-roll], [data-rm-end], [data-rm-code], [data-rm-goto], [data-rm-prev], [data-rm-next]';
+// 区域里驱动「能改」的内容：有这些才有资格说「内容没变化」；一个都没有的区域（只有按钮）不下这个结论。
+const PROBE_CONTENT = '[data-rm-show], [data-rm-result], [data-rm-part], [data-rm-page], [data-rm-cover], [data-rm-item], [data-rm-canvas], [data-rm-surface], output';
+function probeGroupOf(details, element) {
+    const group = element.closest?.('[data-rm-ui]');
+    if (group) return group.getAttribute('data-rm-ui') === 'scroll' ? null : group;
+    try { return remoteToggleGroup(details, element) || remoteMotionGroup(details, element); } catch { return null; }
+}
+function probeGroupHasContent(group) {
+    return [...group.querySelectorAll(PROBE_CONTENT)].some(node => node.closest('[data-rm-ui]') === group && !node.closest(PROBE_CONTROL));
+}
+function contentSnapshot(group) {
+    const parts = [];
+    let count = 0;
+    for (const element of group.querySelectorAll('*')) {
+        if (count++ > MAX_SNAPSHOT_NODES) break;
+        if (element.closest(TOOL_SELECTOR) || element.closest(PROBE_CONTROL)) continue;
+        let style;
+        try { style = getComputedStyle(element); } catch { continue; }
+        const rect = element.getBoundingClientRect();
+        const text = [...element.childNodes].filter(node => node.nodeType === 3).map(node => node.nodeValue).join('').trim().slice(0, 200);
+        parts.push(`${rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity) > 0.05 ? 1 : 0}${style.transform}${style.rotate}${style.clipPath}${Number(style.opacity).toFixed(2)}${style.backgroundColor}${style.color}${Math.round(rect.left)},${Math.round(rect.top)},${Math.round(rect.height)}${element.open ? 'o' : ''}${text}`);
     }
     return hash(parts.join('|'));
 }
@@ -183,23 +214,41 @@ export function collectGenericProbeControls(opened) {
 }
 
 // 逐个操作控件，比较操作前后的画面。返回每个控件的结果：'live'（有变化）、'dead'、'skip'、'uncertain'；超时的不在结果里。
+// feedbackOnly：插件区域里的控件，操作后整面有变化、区域里的内容却没变（只有按钮自己变了）。
+// 这种在接力判断里仍算 'live'（老修复器也修不了内容），只在维修兔结论和诊断里点名。
 export function probeGenericControls(details, controls, started = Date.now(), budget = TIME_BUDGET_MS) {
     const outcomes = new Map();
+    const feedbackOnly = new Set();
+    const contentChanged = new Map();
     let truncated = false;
     for (const control of controls) {
         if (Date.now() - started > budget) { truncated = true; break; }
+        const group = probeGroupOf(details, control.element);
+        const watch = group && probeGroupHasContent(group) ? group : null;
         const before = snapshot(details);
+        const contentBefore = watch ? contentSnapshot(watch) : 0;
+        // 播放钮按下去动画才开始走，第一帧要等下一次重绘，当场量不到；驱动会立刻把按钮标成 aria-pressed，以此为准。
+        const pressedBefore = control.element.getAttribute?.('aria-pressed');
         const outcome = activate(details, control);
         if (outcome === 'skip') { outcomes.set(control, 'skip'); continue; }
         if (outcome === 'dead') { outcomes.set(control, 'dead'); continue; }
         try { void details.offsetHeight; } catch {}
-        const changed = snapshot(details) !== before;
+        const playPressed = control.element.matches?.('[data-rm-play], [data-rm-reverse]') && control.element.getAttribute('aria-pressed') !== pressedBefore;
+        const changed = snapshot(details) !== before || playPressed;
+        const contentMoved = watch ? contentSnapshot(watch) !== contentBefore || playPressed : changed;
         if (outcome === 'hold') fire(control.element, 'pointerup', { button: 0, isPrimary: true, pointerId: 1 });
-        if (changed) { outcomes.set(control, 'live'); continue; }
+        if (watch) contentChanged.set(watch, (contentChanged.get(watch) || false) || contentMoved);
+        if (changed) {
+            outcomes.set(control, 'live');
+            if (watch && !contentMoved) feedbackOnly.add(control);
+            continue;
+        }
         // 只是鼠标变手形的元素：可能只是悬停效果（副本里的模拟点击不会触发 :hover），不能据此判它“点了没反应”。
         outcomes.set(control, control.kind === 'pointer' ? 'uncertain' : 'dead');
     }
-    return { outcomes, truncated };
+    // 同一个区域里只要有一个控件改到了内容，别的控件「只改了按钮」就不算问题（比如已选中的那一项、翻到头的翻页）。
+    for (const control of [...feedbackOnly]) if (contentChanged.get(probeGroupOf(details, control.element))) feedbackOnly.delete(control);
+    return { outcomes, truncated, feedbackOnly };
 }
 
 export { controlName as genericProbeControlName };
@@ -211,16 +260,18 @@ export function runMaintenanceGenericProbe(root) {
     if (!opened) return null;
     try {
         const controls = collectGenericProbeControls(opened);
-        const { outcomes, truncated } = probeGenericControls(opened.details, controls, started);
+        const { outcomes, truncated, feedbackOnly } = probeGenericControls(opened.details, controls, started);
         const dead = [];
+        const contentStill = [];
         let tested = 0, skipped = 0, uncertain = 0;
         for (const [control, outcome] of outcomes) {
             if (outcome === 'skip') { skipped += 1; continue; }
             if (outcome === 'uncertain') { uncertain += 1; continue; }
             tested += 1;
             if (outcome === 'dead') dead.push(controlName(control.element));
+            else if (feedbackOnly.has(control)) contentStill.push(controlName(control.element));
         }
-        const result = { tested, dead, skipped, uncertain, truncated, total: controls.length };
+        const result = { tested, dead, feedbackOnly: contentStill, skipped, uncertain, truncated, total: controls.length };
         try { root.setAttribute(GENERIC_PROBE_RESULT_ATTR, JSON.stringify(result)); } catch {}
         return result;
     } catch (error) {
@@ -234,7 +285,9 @@ export function runMaintenanceGenericProbe(root) {
 export function describeGenericProbe(result) {
     if (!result) return '';
     if (!result.tested) return '';
-    if (!result.dead.length) return `实测：副本里操作了 ${result.tested} 个控件，画面都有变化`;
+    const still = Array.isArray(result.feedbackOnly) ? result.feedbackOnly : [];
+    const stillText = still.length ? `；另有 ${still.length} 个按下后只有按钮自己变了、区域里的内容没变化：${[...new Set(still)].slice(0, 5).map(name => `「${name}」`).join('')}${still.length > 5 ? '…' : ''}` : '';
+    if (!result.dead.length) return `实测：副本里操作了 ${result.tested} 个控件，${still.length ? '画面有变化' : '画面都有变化'}${stillText}`;
     const names = [...new Set(result.dead)].slice(0, 5).map(name => `「${name}」`).join('');
-    return `实测：${result.tested} 个控件里有 ${result.dead.length} 个操作后画面没有变化：${names}${result.dead.length > 5 ? '…' : ''}${result.truncated ? '（时间有限，未测完）' : ''}`;
+    return `实测：${result.tested} 个控件里有 ${result.dead.length} 个操作后画面没有变化：${names}${result.dead.length > 5 ? '…' : ''}${stillText}${result.truncated ? '（时间有限，未测完）' : ''}`;
 }
