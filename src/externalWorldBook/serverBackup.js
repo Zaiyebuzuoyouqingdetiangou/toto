@@ -1,0 +1,135 @@
+// 母本库的「酒馆备份」：在酒馆自己的用户文件夹（user/files）里存一份整库迁移文件。
+// 本地数据库被清掉（例如宿主更新时清了网页数据）以后，可以从这份备份一键恢复。
+// 只在导入、启用、改分类、删除等用户操作之后才写；启动时不打开本地库，除非用户开着母本库抽签。
+// 不经过模型，不发到酒馆以外的地方。
+import { getHostRequestHeaders } from './capabilities.js?rmv=1.68.4';
+import { exportExternalLibraryBackup, importExternalLibraryBackup, parseExternalLibraryBackup, validateExternalLibraryBackup, EXTERNAL_BACKUP_FORMAT, EXTERNAL_BACKUP_VERSION, EXTERNAL_BACKUP_MAX_BYTES } from './backup.js?rmv=1.68.4';
+import { listExternalLibraries } from './store.js?rmv=1.68.4';
+
+export const MOTHER_LIBRARY_SERVER_BACKUP_NAME = 'rabbitmirror-mother-libraries.json';
+const SAVE_DELAY_MS = 2500;
+const STATUS_KEY = 'rabbit_mirror_mother_library_server_backup:v1';
+
+let timer = 0;
+let saving = null;
+let pendingDeleted = new Set();
+let lastStatus = null;
+
+function readStatus() {
+    if (lastStatus) return lastStatus;
+    try { lastStatus = JSON.parse(globalThis.localStorage?.getItem(STATUS_KEY) || 'null'); } catch { lastStatus = null; }
+    return lastStatus;
+}
+function writeStatus(status) {
+    lastStatus = status;
+    try { globalThis.localStorage?.setItem(STATUS_KEY, JSON.stringify(status)); } catch { /* 只是显示用 */ }
+    try { globalThis.dispatchEvent?.(new CustomEvent('rabbitmirror:mother-library-backup', { detail: status })); } catch { /* ignore */ }
+}
+export function getMotherLibraryServerBackupStatus() { return readStatus(); }
+
+function backupUrl() { return `/user/files/${MOTHER_LIBRARY_SERVER_BACKUP_NAME}`; }
+
+function base64Utf8(text) {
+    const bytes = new TextEncoder().encode(String(text || ''));
+    let binary = '';
+    for (let index = 0; index < bytes.length; index += 0x8000) binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
+    return btoa(binary);
+}
+
+/** 读酒馆里的备份；没有备份返回 null，读不到（宿主不支持、网络问题）抛错。 */
+export async function readMotherLibraryServerBackup({ fetchImpl = globalThis.fetch } = {}) {
+    if (typeof fetchImpl !== 'function') throw new Error('当前环境不能读取酒馆文件。');
+    const response = await fetchImpl(`${backupUrl()}?t=${Date.now()}`, { cache: 'no-store', credentials: 'same-origin' });
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error(`读取酒馆备份失败（${response.status}）。`);
+    const text = await response.text();
+    if (!text.trim()) return null;
+    // 有的宿主对不存在的文件返回首页 HTML：不是 JSON 就当没有备份。
+    if (!/^\s*[{﻿]/.test(text)) return null;
+    return parseExternalLibraryBackup(text);
+}
+
+async function uploadBackup(backup, { fetchImpl = globalThis.fetch, headerProvider = getHostRequestHeaders } = {}) {
+    const text = JSON.stringify(backup);
+    if (text.length > EXTERNAL_BACKUP_MAX_BYTES) throw new Error('母本库太大（超过 32 MiB），这次没有存进酒馆备份；可以用「一键导出」手动保存。');
+    const headers = await headerProvider();
+    if (!headers) throw new Error('当前环境不能往酒馆里存文件。');
+    const response = await fetchImpl('/api/files/upload', {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: MOTHER_LIBRARY_SERVER_BACKUP_NAME, data: base64Utf8(text) }),
+    });
+    if (!response.ok) throw new Error(`存进酒馆备份失败（${response.status}）。`);
+}
+
+/**
+ * 把本机的母本库存进酒馆备份。合并规则：本机有的以本机为准；酒馆备份里有、本机没有的库保留
+ * （另一台设备导入的、或本机数据被清掉还没恢复的），除非是在本机上明确删除的。
+ * 所以本机被清空后先导入新库，也不会把酒馆里的旧库覆盖掉。
+ */
+export async function saveMotherLibraryServerBackup({ deletedLibraryIds = [], fetchImpl, headerProvider } = {}) {
+    const deleted = new Set([...pendingDeleted, ...deletedLibraryIds].map(String));
+    const local = validateExternalLibraryBackup(JSON.parse((await exportExternalLibraryBackup()).text));
+    let server = null;
+    try { server = await readMotherLibraryServerBackup({ fetchImpl }); } catch { server = null; }
+    const localIds = new Set(local.libraries.map(item => item.library.libraryId));
+    const kept = (server?.libraries || []).filter(item => !localIds.has(item.library.libraryId) && !deleted.has(item.library.libraryId));
+    const merged = validateExternalLibraryBackup({ format: EXTERNAL_BACKUP_FORMAT, version: EXTERNAL_BACKUP_VERSION, exportedAt: Date.now(),
+        libraries: [...local.libraries, ...kept] });
+    await uploadBackup(merged, { fetchImpl, headerProvider });
+    for (const id of deleted) pendingDeleted.delete(id);
+    const status = { ok: true, savedAt: merged.exportedAt, libraryCount: merged.libraries.length,
+        entryCount: merged.libraries.reduce((sum, item) => sum + item.entries.length, 0), keptFromServer: kept.length };
+    writeStatus(status);
+    return status;
+}
+
+/** 本地库发生用户操作后调用：稍等一会儿合并成一次保存，失败只记状态，不打扰正在做的事。 */
+export function scheduleMotherLibraryServerBackup({ deletedLibraryIds = [] } = {}) {
+    for (const id of deletedLibraryIds) pendingDeleted.add(String(id));
+    if (typeof document === 'undefined' || typeof globalThis.fetch !== 'function') return;
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => {
+        timer = 0;
+        const run = async () => {
+            try { await saveMotherLibraryServerBackup(); }
+            catch (error) {
+                writeStatus({ ok: false, failedAt: Date.now(), message: String(error?.message || error || '存进酒馆备份失败。'), savedAt: readStatus()?.savedAt || 0 });
+                console.warn('[RabbitMirror] 母本库酒馆备份没有存上', error);
+            }
+        };
+        saving = (saving || Promise.resolve()).then(run, run).finally(() => { saving = null; });
+    }, SAVE_DELAY_MS);
+}
+
+/** 从酒馆备份恢复：只补本机没有的库，本机已有的保留不动（和导入迁移文件一样）。 */
+export async function restoreMotherLibrariesFromServerBackup({ fetchImpl } = {}) {
+    const backup = await readMotherLibraryServerBackup({ fetchImpl });
+    if (!backup || !backup.libraries.length) return { importedLibraries: 0, importedEntries: 0, skippedLibraries: 0, empty: true };
+    return importExternalLibraryBackup(backup, { skipServerBackup: true });
+}
+
+/** 本机一本库都没有、酒馆备份里有：返回备份概况，用来提示一键恢复；否则返回 null。 */
+export async function findRestorableMotherLibraryBackup({ fetchImpl } = {}) {
+    const local = await listExternalLibraries();
+    if (local.length) return null;
+    let backup = null;
+    try { backup = await readMotherLibraryServerBackup({ fetchImpl }); } catch { return null; }
+    if (!backup?.libraries?.length) return null;
+    return { libraryCount: backup.libraries.length, entryCount: backup.libraries.reduce((sum, item) => sum + item.entries.length, 0),
+        exportedAt: backup.exportedAt, names: backup.libraries.slice(0, 3).map(item => String(item.library.displayName || '')).filter(Boolean) };
+}
+
+let startupChecked = false;
+/** 启动后（只在开着母本库抽签时）看一次：本机母本库空了、酒馆里有备份，就提示去恢复。 */
+export async function checkMotherLibraryServerBackupOnStartup({ open } = {}) {
+    if (startupChecked) return;
+    startupChecked = true;
+    try {
+        const found = await findRestorableMotherLibraryBackup();
+        if (!found) return;
+        const text = `本机的母本库是空的，但酒馆里有一份备份（${found.libraryCount} 本、${found.entryCount} 条）。点这里去恢复。`;
+        globalThis.toastr?.info?.(text, '兔子镜母本库', { timeOut: 0, extendedTimeOut: 0, closeButton: true, tapToDismiss: true,
+            onclick: () => { try { open?.(); } catch { /* ignore */ } } });
+    } catch (error) { console.debug('[RabbitMirror] mother library backup startup check skipped', error); }
+}

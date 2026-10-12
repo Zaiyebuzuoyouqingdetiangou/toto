@@ -1,7 +1,7 @@
-import { EXTERNAL_WORLD_BOOK_CLASSIFICATION } from './classifier.js?rmv=1.68.3';
-import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.68.3';
-import { entryIdentity } from './selectionState.js?rmv=1.68.3';
-import { EXTERNAL_POOL_METADATA_VERSION, externalPoolMetadataForLibrary, getExternalPoolRevision, getExternalPoolSnapshot, removeExternalPoolLibrary, setExternalPoolMetadataSnapshot, upsertExternalPoolLibrary, validExternalPoolMetadata } from './externalPool.js?rmv=1.68.3';
+import { EXTERNAL_WORLD_BOOK_CLASSIFICATION } from './classifier.js?rmv=1.68.4';
+import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.68.4';
+import { entryIdentity } from './selectionState.js?rmv=1.68.4';
+import { EXTERNAL_POOL_METADATA_VERSION, externalPoolMetadataForLibrary, getExternalPoolRevision, getExternalPoolSnapshot, removeExternalPoolLibrary, setExternalPoolMetadataSnapshot, upsertExternalPoolLibrary, validExternalPoolMetadata } from './externalPool.js?rmv=1.68.4';
 
 export const EXTERNAL_WORLD_BOOK_DB_NAME = 'rabbitmirror_external_worldbooks';
 export const EXTERNAL_WORLD_BOOK_DB_VERSION = 2;
@@ -18,6 +18,15 @@ let hydratedRevision = -1;
 let hydrationStatus = Object.freeze({ hydrated: false, metadataRebuildRequired: Object.freeze([]), enabledMetadataRebuildRequired: Object.freeze([]) });
 
 export function getExternalPoolHydrationStatus() { return hydrationStatus; }
+
+// 用户改动母本库并且已经写进本地库以后：稍后把整库存一份进酒馆备份（失败不影响本地操作）。
+// 测试或自定义数据库（options.indexedDBFactory）不触发。
+function noteLibraryChanged(options = {}, detail = {}) {
+    if (options?.indexedDBFactory || options?.skipServerBackup === true) return;
+    void import('./serverBackup.js?rmv=1.68.4')
+        .then(module => module.scheduleMotherLibraryServerBackup(detail))
+        .catch(() => {});
+}
 
 function invalidateMetadataHydration() {
     hydratedRevision = -1;
@@ -268,6 +277,7 @@ export async function saveExternalLibrarySnapshot(snapshot, options = {}) {
         await transactionPromise(transaction);
         upsertExternalPoolLibrary(library, snapshot.entries || []);
         invalidateMetadataHydration();
+        noteLibraryChanged(options);
         return library;
     } catch (error) {
         try { db.close(); } catch {}
@@ -459,6 +469,7 @@ export async function setExternalLibraryEntryEnabled(libraryId, externalId, enab
             ...(nextMetadata.textIds || []).map(id => ({ externalId: id, classification: 'text', enabled: true, userConfirmed: true })),
         ]);
         invalidateMetadataHydration();
+        noteLibraryChanged(options);
         return externalEntryChoice(next);
     } catch (error) {
         try { transaction?.abort(); } catch {}
@@ -550,6 +561,7 @@ export async function reclassifyExternalLibraryEntries(libraryId, selection, cla
             ...(metadata.textIds || []).map(externalId => ({ externalId, classification: 'text', enabled: true, userConfirmed: true })),
         ]);
         invalidateMetadataHydration();
+        noteLibraryChanged(options);
         return { changedCount: changed.length, selectedCount };
     } catch (error) {
         try { transaction?.abort(); } catch {}
@@ -581,6 +593,7 @@ export async function setExternalLibraryEnabled(libraryId, enabled, options = {}
         ] : [];
         upsertExternalPoolLibrary(next, entries);
         invalidateMetadataHydration();
+        noteLibraryChanged(options);
         return next;
     } catch (error) {
         throw wrapStorageError(error, '无法更新外部世界书启用状态。');
@@ -602,6 +615,7 @@ export async function deleteExternalLibrary(libraryId, options = {}) {
         await transactionPromise(transaction);
         removeExternalPoolLibrary(libraryId);
         invalidateMetadataHydration();
+        noteLibraryChanged(options, { deletedLibraryIds: [String(libraryId)] });
         return true;
     } catch (error) {
         throw wrapStorageError(error, '无法删除外部世界书本地索引。');
