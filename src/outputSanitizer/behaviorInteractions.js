@@ -1,8 +1,11 @@
-import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.68.7';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.68.7';
-import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.68.7';
-import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.68.7';
-import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.68.7';
+import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.68.8';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.68.8';
+import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.68.8';
+import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.68.8';
+import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.68.8';
+import { addDialectStateKeys, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup } from './behaviorDialect.js?rmv=1.68.8';
+
+export { behaviorToggleKey, motionOutsideControls };
 
 // Declarative, face-local behaviors. No generated code, global targets or timers.
 const roots = new WeakMap();
@@ -30,11 +33,6 @@ const isControl = node => Boolean(node?.matches) && !node.disabled && node.getAt
     && !node.matches('input:not([type="button"]), textarea, select');
 const mod = (value, size) => ((value % size) + size) % size;
 const words = value => String(value || '').split(/[\s,，、]+/).map(word => word.trim()).filter(Boolean);
-// 开关的键：不写、或写成 true／yes 这类“是否开关”的布尔值时，一律当默认键 on（模型常写 data-rm-toggle="true"）。
-export const behaviorToggleKey = value => {
-    const key = String(value ?? '').trim();
-    return !key || /^(?:true|yes)$/i.test(key) ? 'on' : key;
-};
 
 function refreshResults(state) {
     if (STATEFUL.has(state.type)) syncState(state);
@@ -63,12 +61,6 @@ function stateKeys(state) {
     if (state.changed) keys.add('changed');
     for (const name of ['active', 'match', 'done', 'miss']) if (group.getAttribute(`data-rm-${name}`) === 'true') keys.add(name);
     for (const key of state.on || []) { keys.add(key); if (key === 'on') keys.add('true'); }
-    // 开关只有一个、却起了名字（data-rm-toggle="turn"），显示条件写的是 on／!on：这个开关开着就算 on。
-    if (state.type === 'toggle' && state.on?.size && !keys.has('on')) {
-        const named = new Set([...own(group, '[data-rm-toggle]'), ...(state.remotes || [])]
-            .map(control => behaviorToggleKey(control.getAttribute('data-rm-toggle'))));
-        if (named.size === 1 && !named.has('on') && state.on.has([...named][0])) { keys.add('on'); keys.add('true'); }
-    }
     // 拖放：已经放进对应槽的物件，它的键就是当前状态（data-rm-show="键" 放进去才显示）；放进任意一件时还有 placed。
     for (const node of state.placed || []) {
         if (!group.contains(node)) continue;
@@ -82,28 +74,13 @@ function stateKeys(state) {
         const name = String(state.pages[state.index - 1]?.getAttribute('data-rm-page') || '').trim();
         if (name) keys.add(name);
     }
-    if (state.type === 'turn' && state.stops) {
-        keys.add(String(state.stopIndex));
-        // 显示条件写成 item0／item1、stop1／stop2 这种「前缀＋档位号」：按同一前缀的号码对上当前档位。
-        // 号码从 1 起、最大正好是档位数时按第几档算（1 开头），否则按 0 开头。
-        const numbered = new Map();
-        for (const node of ownBehaviorShows(group)) for (const token of behaviorShowTokens(node)) {
-            const match = /^!?([a-z_-]*[a-z_-])(\d{1,2})$/i.exec(token);
-            if (!match) continue;
-            const list = numbered.get(match[1]) || [];
-            list.push(Number(match[2]));
-            numbered.set(match[1], list);
-        }
-        for (const [prefix, numbers] of numbered) {
-            const oneBased = Math.min(...numbers) === 1 && Math.max(...numbers) === state.stops;
-            keys.add(`${prefix}${state.stopIndex + (oneBased ? 1 : 0)}`);
-        }
-    }
+    if (state.type === 'turn' && state.stops) keys.add(String(state.stopIndex));
     // 揭示：揭到底（九成以上）时，「揭开后才显示」的内容出来。模型常写 data-rm-show="reveal"／"revealed"／"done"，都认。
     if (state.type === 'reveal' && (state.progress || 0) >= 0.9) for (const key of ['reveal', 'revealed', 'done', 'full', 'open']) keys.add(key);
     for (const key of state.entered || []) keys.add(key);
     for (const [, , key] of state.pairs || []) keys.add(key);
-    return keys;
+    // 意思对、写法不标准的显示条件（见 behaviorDialect.js 的方言表）。
+    return addDialectStateKeys(state, keys);
 }
 
 function rangeValue(input) {
@@ -371,9 +348,13 @@ function beginVerify(state, control, replay = false) {
     }, VERIFY_DELAY_MS);
 }
 
+const isTransition = animation => typeof animation?.transitionProperty === 'string'
+    || (typeof CSSTransition !== 'undefined' && animation instanceof CSSTransition);
 function animations(state) {
     const found = own(state.group, '[data-rm-part]').flatMap(part => part.getAnimations?.({ subtree: true }) || []);
     for (const animation of found) {
+        // 过渡（transition）不是模型写的动画，只是位置改变时的补间；当成动画去拨时间会把画面卡在半路。
+        if (isTransition(animation)) continue;
         const target = animation.effect?.target;
         if (target?.closest?.(GROUP) === state.group) state.animations.add(animation);
     }
@@ -673,45 +654,6 @@ function stateFor(root, target) {
     const binding = roots.get(root);
     const group = target?.closest?.(GROUP) || remoteToggleGroup(root, target) || remoteMotionGroup(root, target);
     return binding && group && root.contains(group) ? prepare(binding, group) : null;
-}
-
-// 开关按钮写在开关区域外面（区域只包住了卡牌，按钮放在下面一排）：这一面只有一个开关区域时，
-// 区域外的 data-rm-toggle 按钮就归它管，点了和点区域本身一样。
-function remoteToggleGroup(root, target) {
-    const control = target?.closest?.('[data-rm-toggle]');
-    if (!control || control.closest(GROUP) || !root?.querySelectorAll) return null;
-    const scope = control.closest('details') || root;
-    const toggles = [...scope.querySelectorAll('[data-rm-ui="toggle"]')].filter(node => root.contains(node));
-    return toggles.length === 1 ? toggles[0] : null;
-}
-
-// 播放钮、进度滑杆写在动画区域外面（区域只包住了画面，按钮和滑杆放在下面一排）：这一面只有一个动画区域、
-// 区域里自己没写这类控件时，区域外没归属的就归它管，和区域里的一样用。滑杆只认唯一的那一个。
-const FACE_TOOL_UI = '[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-diagnostic-panel]';
-function faceScopeOf(node) {
-    let scope = node?.closest?.('details') || null;
-    for (let outer = scope?.parentElement?.closest?.('details'); outer; outer = outer.parentElement?.closest?.('details')) scope = outer;
-    return scope || node?.parentElement || null;
-}
-export function motionOutsideControls(group) {
-    const empty = { buttons: [], ranges: [] };
-    if (group?.getAttribute?.('data-rm-ui') !== 'motion') return empty;
-    const scope = faceScopeOf(group);
-    if (!scope?.querySelectorAll) return empty;
-    if ([...scope.querySelectorAll('[data-rm-ui="motion"]')].length !== 1) return empty;
-    const outside = selector => [...scope.querySelectorAll(selector)].filter(node => !node.closest(GROUP) && !node.closest(FACE_TOOL_UI));
-    const buttons = own(group, '[data-rm-play], [data-rm-reverse]').length ? [] : outside('button[data-rm-play], button[data-rm-reverse]');
-    const ranges = own(group, 'input[type="range"]').length ? [] : outside('input[type="range"]');
-    return { buttons, ranges: ranges.length === 1 ? ranges : [] };
-}
-function remoteMotionGroup(root, target) {
-    const control = target?.closest?.('button[data-rm-play], button[data-rm-reverse], input[type="range"]');
-    if (!control || control.closest(GROUP) || !root?.querySelectorAll) return null;
-    const scope = faceScopeOf(control);
-    const motions = scope ? [...scope.querySelectorAll('[data-rm-ui="motion"]')].filter(node => root.contains(node)) : [];
-    if (motions.length !== 1) return null;
-    const { buttons, ranges } = motionOutsideControls(motions[0]);
-    return buttons.includes(control) || ranges.includes(control) ? motions[0] : null;
 }
 
 // 动画区域里的部件没写真正的动画（只用 --pos、left 这类数值摆好了位置）：进度滑杆和播放钮按这些数值
@@ -1679,7 +1621,7 @@ function scheduleOnDemandRelay(root, target) {
 function relayGroupLater(root, group, control = null) {
     const run = () => {
         if (!group.isConnected || !root.isConnected) return;
-        void import('./behaviorRelay.js?rmv=1.68.7').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
+        void import('./behaviorRelay.js?rmv=1.68.8').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
     };
     const idle = globalThis.requestIdleCallback;
     if (typeof idle === 'function') idle(run, { timeout: 800 }); else setTimeout(run, 120);
