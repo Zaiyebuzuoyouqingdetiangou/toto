@@ -1,13 +1,13 @@
 // Split from independentApi.js — earlyBody.
-import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.67.95';
+import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.68.1';
 
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.67.95';
-import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.67.95';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.67.95';
-import { getSettings } from '../settings.js?rmv=1.67.95';
-import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.67.95';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=1.67.95';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.67.95';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.68.1';
+import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.68.1';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.68.1';
+import { getSettings } from '../settings.js?rmv=1.68.1';
+import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.68.1';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=1.68.1';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.68.1';
 import {
     MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE,
     INDEPENDENT_HISTORY_READ_ERROR_MESSAGE,
@@ -17,7 +17,7 @@ import {
     isMissingShellTargetFloor,
     normalizeMissingShellScanRange,
     shouldRestoreMissingIndependentRetryShell,
-} from './missingRetryShell.js?rmv=1.67.95';
+} from './missingRetryShell.js?rmv=1.68.1';
 import {
     INDEPENDENT_GENERATION_INTENTS_KEY,
     INDEPENDENT_GENERATION_INTENT_TYPES,
@@ -27,7 +27,7 @@ import {
     currentRuntime,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.67.95';
+} from './runtime.js?rmv=1.68.1';
 import {
     ACTIVE_GENERATION_WAIT_MS,
     FINAL_RENDER_POLL_INTERVAL_MS,
@@ -43,7 +43,7 @@ import {
     markAutomaticFailureStop,
     operationEpochForBase,
     pending,
-} from './flights.js?rmv=1.67.95';
+} from './flights.js?rmv=1.68.1';
 import {
     appendHistoryEntry,
     chatPersistenceSlot,
@@ -61,7 +61,7 @@ import {
     reconcileIndependentChatOwners,
     rememberChatMessageOrder,
     checkOwnerRemapEpoch,
-} from './persistence.js?rmv=1.67.95';
+} from './persistence.js?rmv=1.68.1';
 import {
     activeGlobalWorldInfoCapture,
     assistantMessages,
@@ -111,7 +111,7 @@ import {
     withOwnerLockStoreBatch,
     writeActiveGlobalWorldInfoCapture,
     writeHostModule,
-} from './connection.js?rmv=1.67.95';
+} from './connection.js?rmv=1.68.1';
 import {
     allExternalHosts,
     externalHosts,
@@ -119,7 +119,7 @@ import {
     removeEmptyFollowExternalAnchors,
     removeEmptyInlineAnchors,
     withExternalHostSyncIndex,
-} from './request.js?rmv=1.67.95';
+} from './request.js?rmv=1.68.1';
 import {
     beginHostWorkTiming,
     clearExternalHostFreshSourceState,
@@ -152,7 +152,7 @@ import {
     setPlaceholderSummary,
     usableReadyDetails,
     withRestorableHtmlCacheBatch,
-} from './geometry.js?rmv=1.67.95';
+} from './geometry.js?rmv=1.68.1';
 import {
     INDEPENDENT_INTENT_OWNER,
     abortFlight,
@@ -206,7 +206,7 @@ import {
     serializeExternalFaceDetails,
     stampAutomaticAuthorizationEpoch,
     withHistoricalRestoreLightPass,
-} from './mount.js?rmv=1.67.95';
+} from './mount.js?rmv=1.68.1';
 import {
     automaticGenerationCutovers,
     hostGenerationHintStartedAt,
@@ -231,7 +231,7 @@ import {
     writeStartupHistoryFallbackRoot,
     writeSyncRunning,
     writeSyncTimer,
-} from './lifecycle.js?rmv=1.67.95';
+} from './lifecycle.js?rmv=1.68.1';
 
 let earlyBodyParserPromise=null;
 
@@ -360,7 +360,7 @@ function settleEarlyBodyAtFinal(ctx,index){
 
 async function probeIndependentEarlyBody(packet,sequence){
  if(!earlyBodyPacketCurrent(packet)) return;
- if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.67.95')
+ if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.68.1')
   .then(module=>{earlyBodyParser=module;return module;}).catch(()=>{earlyBodyParserPromise=null;return null;});
  const parser=await earlyBodyParserPromise;
  if(!parser || sequence!==earlyBodyProbeSequence || !earlyBodyPacketCurrent(packet)) return;
@@ -1184,6 +1184,12 @@ function manualFillAllowed(ctx,index){
 }
 function missingShellHasEvidence(ctx,index,msg,evidenceFloor){
  if(manualFillAllowed(ctx,index)) return true;
+ // 手动时机下，没生成过兔子镜的楼层多半是你自己跳过的：只认这一层自己的痕迹，不再给它挂「找不到已保存兔子镜」的卡。
+ // 想给这些楼层补，用设置里的「重新检查缺壳楼层」。
+ if(independentGenerationTiming(getSettings())==='manual'){
+  try{ if(floorMirrorEvidence(ctx,index,msg)) return true; }catch{}
+  return independentHistoryReadState(ctx,index,msg)==='error';
+ }
  if(evidenceFloor>=0 && Number(index)>=evidenceFloor) return true;
  return independentHistoryReadState(ctx,index,msg)==='error';
 }
@@ -1795,7 +1801,7 @@ function nodeMessageIndex(node){
  return Number.isInteger(id)&&id>=0?id:null;
 }
 
-function removedMutationIndices(records){
+function removedMutationIndices(records,{structuralOnly=false}={}){
  const found=new Set();
  for(const rec of records){
    const target=rec.target?.nodeType===1?rec.target:rec.target?.parentElement;
@@ -1812,7 +1818,9 @@ function removedMutationIndices(records){
         continue;
       }
       if(el.closest?.(`[${SOURCE_ATTR}]`)) continue;
-     if(targetId!==null){
+     // 正文流式输出时，酒馆每来一段字就把整段正文换一遍，里面的普通元素都会被“移除”：
+     // 这时只认整条消息和兔子镜外壳被移除，不再因为普通正文变化每 0.12 秒把整个聊天同步一遍。
+     if(targetId!==null && !structuralOnly){
        found.add(targetId);
        continue;
      }
@@ -2013,7 +2021,7 @@ export function installObserverIfNeeded({skipHistoricalProbe=false}={}){
      // replace an older message wrapper or its external RabbitMirror shell when
      // a new reply starts. Recover only those exact owner ids, with no chat-wide
      // traversal and no generation call.
-     const removed=removedMutationIndices(records);
+     const removed=removedMutationIndices(records,{structuralOnly:true});
      for(const id of removed){ if(!messageElement(id)) markExternalHostsAwaitingOwner(id); }
      if(removed.size) queueMessageSync(removed);
      end?.({affectedMessages:removed.size,removedMessages:removed.size,skippedStreaming:true,boundedOwnerRecovery:true});
@@ -2087,7 +2095,7 @@ export async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSe
     // 被删消息的兔子镜从聊天文件里移除。删除事件发出时酒馆已经删完，这里立即处理，赶在酒馆保存聊天之前。
     // 只有真的改了记录才重新挂载一次，不发请求。
     const afterOwnerReconcile=(result,sequence)=>{
-     if(!result?.changed) return;
+     if(!result?.changed && !result?.hostsRestamped) return;
      void Promise.resolve(result.settled).then(()=>{ if(sequence===runtimeConfigSequence&&currentRuntime()) scheduleStartupHistorySync(sequence); });
     };
     if(et.MESSAGE_DELETED){

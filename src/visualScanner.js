@@ -1,12 +1,12 @@
-import { clamp, luminanceFromRgb, classifyPaletteSamples } from './paletteObservation.js?rmv=1.67.95';
-import { activeRoleColorHtml, bindRolePaletteCode } from './roleColorVariants.js?rmv=1.67.95';
-import { detectCompositionFingerprint, VISUAL_SKELETON_MAX_CHARS } from './compositionFingerprint.js?rmv=1.67.95';
-import { visualSceneryEnabled } from './presentationMode.js?rmv=1.67.95';
-import { presentationModeFields } from './presentationMode.js?rmv=1.67.95';
-import { getCurrentChatKey, commitFollowVisualHistory, bindVisualHistoryTarget } from './storage.js?rmv=1.67.95';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.67.95';
-import { getSettings } from './settings.js?rmv=1.67.95';
-import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.67.95';
+import { clamp, luminanceFromRgb, classifyPaletteSamples } from './paletteObservation.js?rmv=1.68.1';
+import { activeRoleColorHtml, bindRolePaletteCode } from './roleColorVariants.js?rmv=1.68.1';
+import { detectCompositionFingerprint, VISUAL_SKELETON_MAX_CHARS } from './compositionFingerprint.js?rmv=1.68.1';
+import { visualSceneryEnabled } from './presentationMode.js?rmv=1.68.1';
+import { presentationModeFields } from './presentationMode.js?rmv=1.68.1';
+import { getCurrentChatKey, commitFollowVisualHistory, bindVisualHistoryTarget } from './storage.js?rmv=1.68.1';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.68.1';
+import { getSettings } from './settings.js?rmv=1.68.1';
+import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.68.1';
 import {
     commitRabbitMirrorFollowBatch,
     captureRabbitMirrorGenerationSnapshots,
@@ -16,16 +16,16 @@ import {
     inspectRabbitMirrorGenerationSource,
     releaseRabbitMirrorFollowBatch,
     releaseRabbitMirrorFollowBatchAtMessage,
-} from './generationGuard.js?rmv=1.67.95';
+} from './generationGuard.js?rmv=1.68.1';
 import {
     clearSanitizedRabbitMirrorFaceProof,
     getSanitizedRabbitMirrorFaceProof,
     markSanitizedRabbitMirrorFace,
-    rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.67.95';
-import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.67.95';
-import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.67.95';
-import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.67.95';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.67.95';
+    rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.68.1';
+import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.68.1';
+import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.68.1';
+import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.68.1';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.68.1';
 
 export const FOLLOW_MULTIFACE_COMMITTED_EVENT = 'rabbit-mirror:follow-multiface-committed';
 export const FOLLOW_MULTIFACE_REJECTED_EVENT = 'rabbit-mirror:follow-multiface-rejected';
@@ -1758,7 +1758,7 @@ function templateSingleFollowRoot(template) {
 
 function loadFollowBatchSanitizer() {
     if (!followBatchSanitizerModulePromise) {
-        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.67.95').catch(error => {
+        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.68.1').catch(error => {
             followBatchSanitizerModulePromise = null;
             console.debug('[RabbitMirror] follow multiface sanitizer unavailable:', error);
             return null;
@@ -2207,6 +2207,7 @@ export async function initVisualScanner({ isActive = () => true } = {}) {
         };
         const scheduleScan = (payload = null, eventName = '') => {
             globalThis.__rabbitMirrorPerfDiag?.mark?.('visualScanner.scheduleScan');
+            try { delete globalThis.__rabbitMirrorFollowScanPending; } catch {}
             const messageIndex = generationMessageIndex(payload);
             const eventChat = mod?.chat || globalThis.chat;
             const ownerKey = Number.isInteger(messageIndex) ? terminalFollowOwnerKey(eventChat, messageIndex) : '';
@@ -2256,6 +2257,15 @@ export async function initVisualScanner({ isActive = () => true } = {}) {
         }
         const generationEvents = [eventTypes.MESSAGE_RECEIVED, eventTypes.GENERATION_STOPPED, eventTypes.GENERATION_ENDED].filter(Boolean);
         for (const eventName of [...new Set(generationEvents)]) subscribe(eventName, payload => scheduleScan(payload, eventName));
+        // 加载前刚有一条跟随生成（页面刚打开就发了消息）：它的结束事件已经错过了，这里补一次收尾。
+        // 还在生成就不管，结束事件会照常过来。
+        const pending = globalThis.__rabbitMirrorFollowScanPending;
+        const liveChat = mod?.chat || globalThis.chat;
+        if (pending && pending.chat === liveChat && Date.now() - Number(pending.at || 0) < 15 * 60 * 1000 && mod?.is_send_press !== true) {
+            const lastIndex = Array.isArray(liveChat) ? liveChat.length - 1 : -1;
+            if (lastIndex >= 0 && !liveChat[lastIndex]?.is_user) scheduleScan(lastIndex, eventTypes.GENERATION_ENDED);
+            else { try { delete globalThis.__rabbitMirrorFollowScanPending; } catch {} }
+        }
         // CHAT_CHANGED and MESSAGE_UPDATED can fire while a long history/reply is
         // still arriving. Final rendered/received/end events own the settled scan;
         // never rescan a growing正文 on every token or an empty chat boundary.

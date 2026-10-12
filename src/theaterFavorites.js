@@ -1,7 +1,8 @@
-import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.67.95';
-import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=1.67.95';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.67.95';
-import { createFavoriteAtlasPanel } from './favoriteAtlasesUi.js?rmv=1.67.95';
+import { expandHtmlDocumentCodeBlocks } from './outputSanitizer/markup.js?rmv=1.68.1';
+import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.68.1';
+import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=1.68.1';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.68.1';
+import { createFavoriteAtlasPanel } from './favoriteAtlasesUi.js?rmv=1.68.1';
 const DB_NAME = 'rabbit_mirror_theater_favorites_v1';
 const STORE = 'favorites';
 const DB_VERSION = 1;
@@ -216,6 +217,7 @@ const FAVORITE_RUNTIME_UI_SELECTOR = [
     '[data-rm-face-swipe-bar]',
     '[data-rm-face-swipe-delete]',
     '[data-rm-face-favorite-star]',
+    '[data-rabbit-mirror-source-truncation-notice]',
 ].join(', ');
 
 export function sanitizeTheaterFavoriteTitle(title) {
@@ -240,10 +242,23 @@ export function theaterFavoriteTitleFromDetails(details) {
 
 // 标题要从整份 HTML 里解析出来，一份收藏最大 400KB；按记录对象缓存，收藏夹每敲一个字不再重新解析几百份。
 const displayTitleCache = new WeakMap();
+// 每次读收藏夹都会得到新的记录对象，上面那份缓存总是对不上，点一次星就要把所有收藏的 HTML 重新解析一遍。
+// 再按收藏编号记一份（编号、收藏时间、HTML 长度和开头、标题都一样才算同一份）。
+const displayTitleByIdCache = new Map();
+function displayTitleStamp(record) {
+    const html = String(record?.html || '');
+    return `${record?.createdAt || ''}|${record?.updatedAt || ''}|${html.length}|${html.slice(0, 200)}|${record?.title || ''}`;
+}
+
 export function theaterFavoriteDisplayTitle(record) {
     if (record && typeof record === 'object') {
         const cached = displayTitleCache.get(record);
         if (cached && cached.html === record.html && cached.title === record.title) return cached.value;
+        const byId = record.id ? displayTitleByIdCache.get(record.id) : null;
+        if (byId && byId.stamp === displayTitleStamp(record)) {
+            displayTitleCache.set(record, { html: record.html, title: record.title, value: byId.value });
+            return byId.value;
+        }
     }
     const html = String(record?.html || '').trim();
     let value = '';
@@ -253,7 +268,13 @@ export function theaterFavoriteDisplayTitle(record) {
         value = theaterFavoriteTitleFromDetails(template.content.querySelector('details') || template.content) || '';
     }
     value = value || sanitizeTheaterFavoriteTitle(record?.title) || '未命名兔子镜';
-    if (record && typeof record === 'object') displayTitleCache.set(record, { html: record.html, title: record.title, value });
+    if (record && typeof record === 'object') {
+        displayTitleCache.set(record, { html: record.html, title: record.title, value });
+        if (record.id) {
+            if (displayTitleByIdCache.size > 3000) displayTitleByIdCache.clear();
+            displayTitleByIdCache.set(record.id, { stamp: displayTitleStamp(record), value });
+        }
+    }
     return value;
 }
 
@@ -278,6 +299,13 @@ function unwrapTheaterFavoriteTitleChrome(scope) {
 export function stripTheaterFavoriteRuntimeUi(scope) {
     if (!scope?.querySelectorAll) return;
     scope.querySelectorAll(FAVORITE_RUNTIME_UI_SELECTOR).forEach(node => node.remove());
+    // 「这一版失败」遮罩藏起来的正文要放回来，不然收藏里这一面是空的。
+    scope.querySelectorAll('[data-rm-ephemeral-failure-hidden]').forEach(node => {
+        node.removeAttribute('data-rm-ephemeral-failure-hidden');
+        node.hidden = false;
+    });
+    if (scope.matches?.('details')) scope.removeAttribute('data-rm-ephemeral-failure');
+    scope.querySelectorAll('details[data-rm-ephemeral-failure]').forEach(node => node.removeAttribute('data-rm-ephemeral-failure'));
     unwrapTheaterFavoriteTitleChrome(scope);
 }
 
@@ -510,20 +538,20 @@ export async function findDuplicateTheaterFavorites(rows) {
 export async function removeDuplicateTheaterFavorites() {
     const remap = await findDuplicateTheaterFavorites();
     if (!remap.size) return 0;
-    await runStore('readwrite', store => { for (const id of remap.keys()) store.delete(id); });
-    try {
-        const atlases = await import('./favoriteAtlases.js?rmv=1.67.95');
-        for (const atlas of await atlases.listFavoriteAtlases()) {
-            let changed = false;
-            const selections = {};
-            for (const [slotId, ids] of Object.entries(atlas.selections || {})) {
-                const next = [...new Set((ids || []).map(id => remap.get(id) || id))];
-                if (next.length !== (ids || []).length || next.some((id, i) => id !== ids[i])) changed = true;
-                selections[slotId] = next;
-            }
-            if (changed) await atlases.saveFavoriteAtlas({ ...atlas, selections, updatedAt: Date.now() });
+    // 先把图鉴里指向要删那几份的格子改指向留下的那份，改成功了再删收藏；
+    // 以前先删后改，图鉴改失败（比如另一个页面占着）时，那些格子就默默变空了。
+    const atlases = await import('./favoriteAtlases.js?rmv=1.68.1');
+    for (const atlas of await atlases.listFavoriteAtlases()) {
+        let changed = false;
+        const selections = {};
+        for (const [slotId, ids] of Object.entries(atlas.selections || {})) {
+            const next = [...new Set((ids || []).map(id => remap.get(id) || id))];
+            if (next.length !== (ids || []).length || next.some((id, i) => id !== ids[i])) changed = true;
+            selections[slotId] = next;
         }
-    } catch (error) { console.debug('[RabbitMirror] atlas remap after dedupe failed:', error); }
+        if (changed) await atlases.saveFavoriteAtlas({ ...atlas, selections, updatedAt: Date.now() });
+    }
+    await runStore('readwrite', store => { for (const id of remap.keys()) store.delete(id); });
     notifyChanged();
     return remap.size;
 }
@@ -882,7 +910,7 @@ function favoritePlateColor(html) {
 // 动画停在 1 秒处（淡入已经完成），不跑动，滚到附近时才载入。
 const THUMB_WIDTH = 420;
 function favoriteThumbDocument(html) {
-    let body = String(html || '');
+    let body = expandHtmlDocumentCodeBlocks(String(html || ''));
     try {
         const template = document.createElement('template');
         template.innerHTML = body;

@@ -1,9 +1,9 @@
 // Split from independentApi.js — flights.
 
-import { getSettings } from '../settings.js?rmv=1.67.95';
-import { configuredAutomaticRerollIdleMs, configuredAutomaticRerollMax, stallTimeoutError } from '../automaticReroll.js?rmv=1.67.95';
-import { baseSlotOf } from './connection.js?rmv=1.67.95';
-import { automaticGenerationCutovers } from './lifecycle.js?rmv=1.67.95';
+import { getSettings } from '../settings.js?rmv=1.68.1';
+import { configuredAutomaticRerollIdleMs, configuredAutomaticRerollMax, stallTimeoutError } from '../automaticReroll.js?rmv=1.68.1';
+import { baseSlotOf } from './connection.js?rmv=1.68.1';
+import { automaticGenerationCutovers } from './lifecycle.js?rmv=1.68.1';
 
 export const pending = new Map();
 // A failed automatic generation owns its exact chat+mesid+swipe+sourceHash until
@@ -144,6 +144,13 @@ export function createIndependentRequestDeadline(controller,onTimeout,options={}
   lastProgressAt=Date.now();
   // A non-stream response/first token has no observable interim progress.
   // Keep the absolute deadline; only actual chunks can start the silence timer.
+  if(kind==='serial-face-start'){
+   // 逐面生成换到下一面：总上限从这一面重新算。
+   if(idleTimer) clearTimeout(idleTimer); idleTimer=0;
+   if(absoluteTimer) clearTimeout(absoluteTimer);
+   absoluteTimer=setTimeout(()=>fail('absolute'),absoluteWait);
+   return true;
+  }
   if(kind==='request-sent'){ if(idleTimer) clearTimeout(idleTimer); idleTimer=0; }
   else if(kind!=='response-headers') armIdle();
   return true;

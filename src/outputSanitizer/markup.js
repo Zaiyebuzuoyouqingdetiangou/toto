@@ -1,9 +1,9 @@
-import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.67.95';
+import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.68.1';
 // Split from outputSanitizer.js — markup.
 
-import { getSettings } from '../settings.js?rmv=1.67.95';
-import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.67.95';
-import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.67.95';
+import { getSettings } from '../settings.js?rmv=1.68.1';
+import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.68.1';
+import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.68.1';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     INTERACTION_HOME_ATTR,
@@ -15,7 +15,7 @@ import {
     clearMirrorTitleDisplayArtifacts,
     escapeRegExp,
     hashInteractionSignature,
-} from './runtime.js?rmv=1.67.95';
+} from './runtime.js?rmv=1.68.1';
 
 const TOTO_BLOCK_RE = /<toto\b[\s\S]*?<\/toto>/gi;
 
@@ -160,7 +160,9 @@ function decodeSvgDataImagePayload(raw = '') {
             if (typeof globalThis.atob !== 'function') return '';
             return globalThis.atob(payload);
         }
-        return decodeURIComponent(payload);
+        // 浏览器把单独的 % 当普通字符（常见 width='100%'），decodeURIComponent 却会报错；
+        // 以前因此把整条噪点纹理背景当不安全删掉。先把单独的 % 写成 %25 再解码，解出来的内容照样逐项检查。
+        return decodeURIComponent(payload.replace(/%(?![0-9a-f]{2})/gi, '%25'));
     } catch {
         return '';
     }
@@ -211,9 +213,21 @@ export function cssContainsUnsafeGeneratedResource(value = '') {
         if (!isAllowedGeneratedResourceValue(match[2])) return true;
     }
 
-    const imageSetRe = /(?:-webkit-)?image-set\s*\(([\s\S]*?)\)/gi;
+    // image-set(...)：按括号配对取完整内容（以前取到第一个右括号就停，前面放一个渐变就能把后面的外链藏过去）；
+    // 里面的每个引号字符串都要是允许的图片；用 var() 从别处取值的看不出是什么，直接不要。
+    const imageSetRe = /(?:-webkit-)?image-set\s*\(/gi;
     while ((match = imageSetRe.exec(css))) {
-        const body = String(match[1] || '');
+        let depth = 1, index = match.index + match[0].length, quote = '';
+        const start = index;
+        for (; index < css.length && depth > 0; index += 1) {
+            const char = css[index];
+            if (quote) { if (char === '\\') index += 1; else if (char === quote) quote = ''; continue; }
+            if (char === '"' || char === "'") quote = char;
+            else if (char === '(') depth += 1;
+            else if (char === ')') depth -= 1;
+        }
+        const body = css.slice(start, Math.max(start, index - 1));
+        if (/\bvar\s*\(/i.test(body)) return true;
         const quotedRe = /(['"])([\s\S]*?)\1/g;
         let quoted;
         while ((quoted = quotedRe.exec(body))) {
@@ -345,7 +359,8 @@ export function sanitizeGeneratedCssDeclarationBlock(value = '', options) {
         if (!trimmed) continue;
         if (/^\@import\b/i.test(trimmed)) continue;
         if (cssContainsUnsafeGeneratedResource(trimmed)) continue;
-        kept.push(trimmed);
+        // position:fixed 会相对整个酒馆窗口定位，能盖住酒馆界面；兔子镜里一律改成 absolute，只在兔子镜范围里叠放。
+        kept.push(trimmed.replace(/^(position\s*:\s*)fixed\b/i, '$1absolute'));
     }
     let cleaned = kept.join(';');
     if (cleaned && !/;\s*$/.test(cleaned)) cleaned += ';';
@@ -369,6 +384,25 @@ function stripGeneratedCssImportRules(value = '') {
     return transformCssRuleList(source, selector => selector);
 }
 
+
+// 一段文字里最后一个不在引号、括号里的分号的位置（没有就是 -1）。
+function lastTopLevelCssSemicolon(text = '') {
+    let last = -1, depth = 0, quote = '', escaped = false;
+    for (let index = 0; index < text.length; index += 1) {
+        const char = text[index];
+        if (quote) {
+            if (escaped) escaped = false;
+            else if (char === '\\') escaped = true;
+            else if (char === quote) quote = '';
+            continue;
+        }
+        if (char === '"' || char === "'") quote = char;
+        else if (char === '(') depth += 1;
+        else if (char === ')') depth = Math.max(0, depth - 1);
+        else if (char === ';' && depth === 0) last = index;
+    }
+    return last;
+}
 
 export function sanitizeGeneratedStyleSheet(value = '', options) {
     const original = String(value || '');
@@ -407,12 +441,26 @@ export function sanitizeGeneratedStyleSheet(value = '', options) {
         }
         if (char === '{') {
             if (stack.length) stack[stack.length - 1].hasChild = true;
-            stack.push({ start: index + 1, hasChild: false });
+            stack.push({ start: index + 1, open: index, hasChild: false, children: [] });
             continue;
         }
         if (char === '}' && stack.length) {
             const frame = stack.pop();
+            if (stack.length) stack[stack.length - 1].children.push({ open: frame.open, close: index });
             if (!frame.hasChild) spans.push({ start: frame.start, end: index });
+            else {
+                // 外层规则里自己也写了声明、又套了子规则（CSS 嵌套写法）：外层自己的声明也要逐条清理。
+                // 以前只清最里层，外层里有一个外链图片时，最后的整份检查会把整个 <style> 删掉，整面没了样式。
+                let cursor = frame.start;
+                for (const child of frame.children) {
+                    const run = source.slice(cursor, child.open);
+                    const cut = lastTopLevelCssSemicolon(run);
+                    if (cut >= 0 && run.slice(0, cut + 1).includes(':')) spans.push({ start: cursor, end: cursor + cut + 1, own: true });
+                    cursor = child.close + 1;
+                }
+                const tail = source.slice(cursor, index);
+                if (tail.includes(':')) spans.push({ start: cursor, end: index, own: true });
+            }
         }
     }
 
@@ -614,6 +662,14 @@ export function sanitizeRabbitMirrorUntrustedTemplate(template) {
     clearMirrorTitleDisplayArtifacts(template.content);
 
     template.content.querySelectorAll(RABBIT_MIRROR_BLOCKED_RENDER_SELECTOR).forEach(node => node.remove());
+    // SVG 动画能在净化之后把链接、图片地址改成别的（点了跳到脚本地址、偷偷请求外部图片）：
+    // 只拿掉改 href／src／事件这类属性的动画，改颜色、位置、透明度的动画照常保留。
+    for (const animation of template.content.querySelectorAll('animate, set, animateTransform, animateMotion, discard')) {
+        const target = String(animation.getAttribute('attributeName') || '').trim().toLowerCase();
+        if (/(?:^|:)(?:href|src)$|^on|^style$/.test(target)) animation.remove();
+    }
+    // <img name="querySelector"> 这类名字会盖掉网页自带的 document 功能，挂着这一面时整页出错：图片等不需要 name，去掉。
+    for (const named of template.content.querySelectorAll('img[name], embed[name], object[name], form[name]')) named.removeAttribute('name');
     // Runtime-only avatar overlays must not turn into saved/model-authored art.
     // A linked authored <img> keeps its semantic slot but not copied local bytes.
     for (const avatar of template.content.querySelectorAll('[data-rm-avatar-rendered]')) {
@@ -1028,6 +1084,62 @@ export function looksLikeCompleteHtmlBlock(text) {
     const theaterSignal = /兔子镜|小剧场|互动区|海龟汤|剖面图|Layer|视觉|展现形式|summary|details/i.test(html);
     const enoughTags = (html.match(/<\/(?:div|p|span|h[1-6]|section|article)>/gi) || []).length >= 3;
     return htmlSignal && (theaterSignal || enoughTags);
+}
+
+
+// 模型有时把整页网页（<!DOCTYPE html><html>…）写进兔子镜里的代码块。聊天里靠酒馆助手把它当网页显示，
+// 收藏里没有这一层，就只剩一串代码。这里把它拆成「样式 + 页面正文」放回兔子镜里，后面照常净化、限定范围。
+// 只认完整网页（有 <html> 或 DOCTYPE），普通代码示例不动；脚本不会执行（解析后直接丢掉）。
+const HTML_DOCUMENT_CODE_RE = /^\s*(?:<!doctype\s+html[^>]*>\s*)?<html\b[\s\S]*<\/html>\s*$/i;
+
+export function htmlDocumentToFaceFragment(raw) {
+    const text = stripOneCodeFence(String(raw || '')).replace(/^﻿/, '').trim();
+    if (!HTML_DOCUMENT_CODE_RE.test(text) || typeof DOMParser !== 'function') return '';
+    let doc;
+    try { doc = new DOMParser().parseFromString(text, 'text/html'); } catch { return ''; }
+    if (!doc?.body) return '';
+    const css = [...doc.querySelectorAll('style')].map(style => String(style.textContent || '')).join('\n')
+        // 写给整页的 html／body／:root 规则，改成写给这一块。
+        .replace(/(^|[\s,{}>+~(])(?:html|body|:root)(?=[\s,{.:#\[>+~)]|$)/gi, '$1.rm-doc-body')
+        // 整页撑满一屏的高度，放在兔子镜里只会撑出一大片空白。
+        .replace(/(?:min-)?height\s*:\s*100(?:d|s|l)?vh\s*(?:!important)?\s*;?/gi, '');
+    doc.querySelectorAll('script, style, link, meta, title, noscript, base').forEach(node => node.remove());
+    const body = String(doc.body.innerHTML || '').trim();
+    if (!body && !css.trim()) return '';
+    const wrapper = doc.createElement('div');
+    wrapper.className = ['rm-doc-body', String(doc.body.getAttribute('class') || '').trim()].filter(Boolean).join(' ');
+    const bodyStyle = String(doc.body.getAttribute('style') || '').trim();
+    if (bodyStyle) wrapper.setAttribute('style', bodyStyle);
+    return wrapper.outerHTML.replace(/<\/div>$/, `${css.trim() ? `<style>${css}</style>` : ''}${body}</div>`);
+}
+
+// 收藏里存下的兔子镜：把里面「整页网页代码块」换成能看的样子（酒馆助手留下的外壳一起换掉）。没有就原样返回。
+export function expandHtmlDocumentCodeBlocks(html) {
+    const source = String(html || '');
+    if (!/&lt;(?:!doctype|html\b)|<pre\b[^>]*>[\s\S]*?<!doctype/i.test(source) || typeof document === 'undefined') return source;
+    try {
+        const template = document.createElement('template');
+        template.innerHTML = source;
+        let changed = false;
+        for (const pre of [...template.content.querySelectorAll('pre')]) {
+            if (!pre.parentNode) continue;
+            const clone = pre.cloneNode(true);
+            clone.querySelectorAll('button, .copy_code, .code-copy, .codeblock-header, .code_block_header, .toolbar, .hljs-button').forEach(node => node.remove());
+            const fragment = htmlDocumentToFaceFragment(clone.textContent || '');
+            if (!fragment) continue;
+            const target = pre.closest('.TH-render') || pre;
+            const holder = document.createElement('template');
+            holder.innerHTML = fragment;
+            target.replaceWith(holder.content);
+            changed = true;
+        }
+        if (!changed) return source;
+        const box = document.createElement('div');
+        box.append(template.content);
+        return box.innerHTML;
+    } catch {
+        return source;
+    }
 }
 
 
@@ -1827,6 +1939,48 @@ function readCssAtRuleKeyword(statementText) {
 }
 
 
+const GLOBAL_ESCAPING_AT_RULES = new Set(['scope', 'property', 'font-face']);
+
+// 嵌套写法里的子规则：`&:hover`、`& .x`、`.x` 这些都还在外层规则里面，留着；
+// `:has(&)`、`:not(&)` 这类把 & 放进括号里的，和紧跟 & 的兄弟选择器（`& + *`），目标可能在兔子镜外面，整条不要。
+function nestedCssSelectorEscapesScope(selector = '') {
+    const text = String(selector || '').trim();
+    if (!text) return false;
+    if (/:has\(/i.test(text) || /^[+~]/.test(text) || /^\|\|/.test(text)) return true;
+    let depth = 0;
+    for (const char of text) {
+        if (char === '(') depth += 1;
+        else if (char === ')') depth = Math.max(0, depth - 1);
+        else if (char === '&' && depth > 0) return true;
+    }
+    return /^&[^\s>+~]*\s*[+~]/.test(text);
+}
+
+function sanitizeNestedCssRuleBody(body = '') {
+    const source = String(body || '');
+    if (!source.includes('{')) return source;
+    let output = '';
+    let cursor = 0;
+    while (cursor < source.length) {
+        const delimiter = findCssTopLevelDelimiter(source, cursor);
+        if (delimiter.index < 0) { output += source.slice(cursor); break; }
+        if (delimiter.char === ';') { output += source.slice(cursor, delimiter.index + 1); cursor = delimiter.index + 1; continue; }
+        const closeIndex = findCssMatchingBrace(source, delimiter.index);
+        if (closeIndex < 0) { output += source.slice(cursor); break; }
+        const rawPrelude = source.slice(cursor, delimiter.index);
+        const prelude = rawPrelude.trim();
+        const inner = source.slice(delimiter.index + 1, closeIndex);
+        if (prelude.startsWith('@')) {
+            const atName = readCssAtRuleKeyword(prelude);
+            if (!GLOBAL_ESCAPING_AT_RULES.has(atName)) output += `${rawPrelude}{${atName.endsWith('keyframes') ? inner : sanitizeNestedCssRuleBody(inner)}}`;
+        } else if (!splitCssSelectorList(prelude).some(nestedCssSelectorEscapesScope)) {
+            output += `${rawPrelude}{${sanitizeNestedCssRuleBody(inner)}}`;
+        }
+        cursor = closeIndex + 1;
+    }
+    return output;
+}
+
 function transformCssRuleList(cssText, selectorTransform) {
     const source = String(cssText || '');
     const recursiveAtRules = new Set(['media', 'supports', 'container', 'layer', 'document', 'starting-style', 'scope']);
@@ -1866,6 +2020,12 @@ function transformCssRuleList(cssText, selectorTransform) {
             // CSS at-keyword 允许转义（例如 @\6d edia）。复用同一解析器，避免通过
             // 转义 @media/@supports 绕过递归 selector scope。
             const atName = readCssAtRuleKeyword(prelude);
+            // @scope 能把规则指到 body 上，@property／@font-face 是整页生效的注册：都能跳出兔子镜，整段不要。
+            if (GLOBAL_ESCAPING_AT_RULES.has(atName)) {
+                output += leading;
+                cursor = closeIndex + 1;
+                continue;
+            }
             const isKeyframes = atName.endsWith('keyframes');
             const transformedBody = !isKeyframes && recursiveAtRules.has(atName)
                 ? transformCssRuleList(body, selectorTransform)
@@ -1875,7 +2035,7 @@ function transformCssRuleList(cssText, selectorTransform) {
             const transformedPrelude = typeof selectorTransform === 'function'
                 ? selectorTransform(prelude)
                 : prelude;
-            output += `${leading}${transformedPrelude}${trailing}{${body}}`;
+            output += `${leading}${transformedPrelude}${trailing}{${sanitizeNestedCssRuleBody(body)}}`;
         }
         cursor = closeIndex + 1;
     }
@@ -2145,7 +2305,15 @@ function selectorStartsWithSafeRabbitMirrorScope(selectorText, scopeSelector) {
     const remainder = selector.slice(scoped[0].length);
     // 当前 scope 自身、其后代/子级或同元素 compound selector 都不会逃出镜面；
     // 兄弟/column combinator 则能把目标指向 scope 外，必须继续在外层再套一次 scope。
-    return !/^\s*(?:[+~]|\|\|)/.test(remainder);
+    // 作用域后面先接伪类（`:not(.z)`）再接兄弟选择器也一样：先跳过同一元素上的这串条件再判断。
+    let index = 0, depth = 0;
+    for (; index < remainder.length; index += 1) {
+        const char = remainder[index];
+        if (char === '(' || char === '[') depth += 1;
+        else if (char === ')' || char === ']') depth = Math.max(0, depth - 1);
+        else if (!depth && (/[\s>+~,]/.test(char) || (char === '|' && remainder[index + 1] === '|'))) break;
+    }
+    return !/^\s*(?:[+~]|\|\|)/.test(remainder.slice(index));
 }
 
 

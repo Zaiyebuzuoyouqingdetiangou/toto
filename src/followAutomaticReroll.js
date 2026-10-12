@@ -1,27 +1,29 @@
-import { getSettings } from './settings.js?rmv=1.67.95';
-import { getCurrentChatKey } from './storage.js?rmv=1.67.95';
-import { getRabbitMirrorRecipe } from './blacklist.js?rmv=1.67.95';
-import { readFollowPartialResult, saveFollowCompletedRetryResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=1.67.95';
-import { markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.67.95';
-import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.67.95';
-import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.67.95';
-import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=1.67.95';
-import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.67.95';
-import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=1.67.95';
-import { presentationModeFields } from './presentationMode.js?rmv=1.67.95';
+import { getSettings } from './settings.js?rmv=1.68.1';
+import { getCurrentChatKey } from './storage.js?rmv=1.68.1';
+import { getRabbitMirrorRecipe } from './blacklist.js?rmv=1.68.1';
+import { readFollowPartialResult, saveFollowCompletedRetryResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=1.68.1';
+import { markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.68.1';
+import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.68.1';
+import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.68.1';
+import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=1.68.1';
+import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.68.1';
+import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=1.68.1';
+import { presentationModeFields } from './presentationMode.js?rmv=1.68.1';
 import {
     automaticRerollEnabled,
     automaticRerollStatusText,
     configuredAutomaticRerollIdleMs,
     configuredAutomaticRerollMax,
+    isAutomaticRerollStall,
     isQuotaInsufficientFailure,
+    isNonRetryableRequestFailure,
     isLocalPreflightFailure,
     shouldAutomaticReroll,
     stallTimeoutError,
-} from './automaticReroll.js?rmv=1.67.95';
-import { mergeMissingIndependentFaces, missingIndexesFromIndependentResult, recipesCoverMissing } from './missingFaceMerge.js?rmv=1.67.95';
-import { inspectRabbitMirrorGenerationSource, getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.67.95';
-import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.95';
+} from './automaticReroll.js?rmv=1.68.1';
+import { mergeMissingIndependentFaces, missingIndexesFromIndependentResult, recipesCoverMissing } from './missingFaceMerge.js?rmv=1.68.1';
+import { inspectRabbitMirrorGenerationSource, getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.68.1';
+import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.68.1';
 
 const inFlight = new Set();
 const consumeCounts = new Map();
@@ -150,7 +152,7 @@ async function requestFollowMissingFaces(ctx, index, missingIndexes, faces, deps
     try {
         if (plan.selectedExternalIds.length) { materials = await getSelectedExternalEntries(plan.selectedExternalIds); assertCurrent(); }
         if (plan.appearanceReference.enabled) {
-            const appearance = await import('./appearanceReference.js?rmv=1.67.95');
+            const appearance = await import('./appearanceReference.js?rmv=1.68.1');
             assertCurrent();
             appearanceMaterial = await appearance.loadAppearanceReferenceMaterial(plan.appearanceReference.revision);
             assertCurrent();
@@ -191,11 +193,23 @@ async function requestFollowMissingFaces(ctx, index, missingIndexes, faces, deps
     const raw = await raceIdle(generate({ prompt: authorized.messages, api: ctx.mainApi, quietToLoud: false, trimNames: false }), configuredAutomaticRerollIdleMs(getSettings()));
     assertCurrent();
     assertRabbitMirrorIndependentResponseText(raw);
-    const parsed = parseMultifaceOutput(String(raw || ''), { expectedCount: count });
+    // 只缺一面时不能带 expectedCount（多面解析只认 2～5），模型也常不写面序号；
+    // 不处理的话补回来的这一面总被当成结构不完整丢掉，请求却已经花了钱。
+    let source = String(raw || '');
+    if (count === 1 && !/\bdata-rm-face\s*=/i.test(source)) {
+        if (/<toto\b[^>]*\bdata-rabbit-mirror\b/i.test(source)) source = source.replace(/<toto\b(?=[^>]*\bdata-rabbit-mirror\b)/i, '<toto data-rm-face="1"');
+        else if (/^\s*<details\b/i.test(source)) source = wrapFace(source.trim(), 0);
+    }
+    const parsed = parseMultifaceOutput(source, count > 1 ? { expectedCount: count } : {});
     if (!parsed.ok && !(count === 1 && parsed.faces.length === 1 && parsed.faces[0].index === 0)) {
         throw new Error('补发结果结构不完整；已出的面会保留。');
     }
-    const html = parsed.faces.map((face, local) => wrapFace(face.details || face.inner || '', local)).join('\n');
+    // 先按本机规则过一遍（屏蔽词、净化），和手动重试一样；以前外置显示时直接挂原文，屏蔽词原样显示。
+    const filtered = face => {
+        if (typeof deps.extractReadyDetails !== 'function') return face.details || face.inner || '';
+        try { return deps.extractReadyDetails(face.inner || face.details || '')?.outerHTML || ''; } catch { return ''; }
+    };
+    const html = parsed.faces.map((face, local) => wrapFace(filtered(face), local)).join('\n');
     return { html, failedFaces: parsed.faces.length < count ? Array.from({ length: count - parsed.faces.length }, (_, local) => ({ faceIndex: parsed.faces.length + local, status: 'failed', code: 'incomplete-face' })) : [] };
 }
 
@@ -271,6 +285,13 @@ export async function maybeAutomaticFollowReroll(index, deps) {
             } catch (error) {
                 if (error?.stale || error?.cancelled || isLocalPreflightFailure(error) || isQuotaInsufficientFailure(error)) break;
                 consumeCounts.set(key, posts + 1);
+                // 等太久：上一次请求其实还在跑（中途停不下来），再发一次就是重复花钱，到此为止。
+                if (isAutomaticRerollStall(error)) {
+                    globalThis.toastr?.warning?.('兔子镜补发等了太久，已停止自动补发，免得重复花费；已出的面会保留，需要时可以手动重试。');
+                    break;
+                }
+                // 密钥不对、被限流、参数不对：再发一次结果一样。
+                if (isNonRetryableRequestFailure(error)) break;
                 if (isQuotaInsufficientFailure(error, { message: error?.message }) || /insufficient[_ -]?quota|额度不足/i.test(String(error?.message || ''))) break;
                 continue;
             }
@@ -286,12 +307,14 @@ export async function maybeAutomaticFollowReroll(index, deps) {
                 const owner = { chatKey: getCurrentChatKey(live.chat), messageIndex: index, swipeId: Number.isInteger(message.swipe_id) ? message.swipe_id : -1, sourceHash: rabbitMirrorMessageSourceHash(message), message };
                 if (!missingIndexes.length) saveFollowCompletedRetryResult(live.chat, index, owner, retainedHtml, getSettings()?.rabbitMirrorBannedWords || []);
                 else {
-                    const current = readFollowPartialResult(live.chat, index);
+                    let current = readFollowPartialResult(live.chat, index);
                     if (current) {
                         for (const faceIndex of missing.filter(item => !missingIndexes.includes(item))) {
                             const parsed = parseMultifaceOutput(retainedHtml, { expectedCount: expected });
                             const html = parsed.faces[faceIndex]?.html;
-                            if (html) replaceFollowPartialResultFace(live.chat, index, owner, { expectedHtml: current.html, faceIndex, html, appliedRules: getSettings()?.rabbitMirrorBannedWords || [] });
+                            // 每存好一面，记录就变了：下一面要拿新的记录去比，不然只有第一面存得进去。
+                            const replaced = html ? replaceFollowPartialResultFace(live.chat, index, owner, { expectedHtml: current.html, faceIndex, html, appliedRules: getSettings()?.rabbitMirrorBannedWords || [] }) : null;
+                            if (replaced) current = (replaced && typeof replaced === 'object' && typeof replaced.html === 'string') ? replaced : (readFollowPartialResult(live.chat, index) || current);
                         }
                     }
                 }

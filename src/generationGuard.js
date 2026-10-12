@@ -1,12 +1,12 @@
-import { presentationModeFields } from './presentationMode.js?rmv=1.67.95';
+import { presentationModeFields } from './presentationMode.js?rmv=1.68.1';
 import {
     commitPendingComboBatch,
     getCurrentChatKey,
     releasePendingComboBatch,
-} from './storage.js?rmv=1.67.95';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.67.95';
-import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, multifaceRecoveryWithinRawBudgets } from './multifaceProtocol.js?rmv=1.67.95';
-import { atmosphereChoicesFromFaces, compactAtmosphereMenu } from './atmosphereChoice.js?rmv=1.67.95';
+} from './storage.js?rmv=1.68.1';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.68.1';
+import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, multifaceRecoveryWithinRawBudgets } from './multifaceProtocol.js?rmv=1.68.1';
+import { atmosphereChoicesFromFaces, compactAtmosphereMenu } from './atmosphereChoice.js?rmv=1.68.1';
 
 const SNAPSHOT_STORAGE_KEY = 'rabbit_mirror_theater:generation_snapshots:v1';
 const ACTIVE_ATTEMPT_STORAGE_KEY = 'rabbit_mirror_theater:active_generation_attempt:v1';
@@ -396,6 +396,11 @@ export function registerRabbitMirrorFollowBatch(chat, attemptId, plan, metadata 
             deleteFollowRecord(current.batchId, { release: true });
         }
     }
+    // 生成中途换了聊天、上游报错没生成消息时，登记会一直留着；满 8 条后多面跟随就悄悄不注入了。
+    // 登记前先清掉超过半小时的旧登记（那么久的生成早就结束了）。
+    for (const current of [...activeFollowBatches.values()]) {
+        if (Date.now() - Number(current.startedAt || 0) > SNAPSHOT_TTL_MS) deleteFollowRecord(current.batchId, { release: true });
+    }
     if (activeFollowBatches.size >= MAX_ACTIVE_FOLLOW_BATCHES) return false;
     activeFollowBatches.set(record.batchId, record);
     return true;
@@ -499,7 +504,7 @@ export function commitRabbitMirrorFollowBatch(batchId, chat, faceScans = [], exp
     const committed = commitPendingComboBatch(faceScans, { batchId: record.plan.batchId, identity: record.plan.identity, partial, chosenTickets });
     if (!committed) return false;
     // 跟随正文的成功一面也计入里程碑（同一条消息的同一个版本只计一次）。
-    void import('./milestones.js?rmv=1.67.95').then(module => module.recordMirrorMilestone(`follow:${record.chatKey}:${owner.messageIndex}:${owner.swipeId}:${owner.sourceHash}`)).catch(() => {});
+    void import('./milestones.js?rmv=1.68.1').then(module => module.recordMirrorMilestone(`follow:${record.chatKey}:${owner.messageIndex}:${owner.swipeId}:${owner.sourceHash}`)).catch(() => {});
     recordRabbitMirrorRecipe({
         chat,
         chatKey: record.chatKey,

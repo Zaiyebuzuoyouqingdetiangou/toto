@@ -1,20 +1,20 @@
 import { eventSource, event_types, setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
 import * as hostRuntime from '../../../../../script.js';
-import { MODULE_NAME, getSettings } from './settings.js?rmv=1.67.95';
+import { MODULE_NAME, getSettings } from './settings.js?rmv=1.68.1';
 import { extension_settings } from '../../../../extensions.js';
-import { faceDrawNeedsExternal } from './faceDrawRules.js?rmv=1.67.95';
+import { faceDrawNeedsExternal } from './faceDrawRules.js?rmv=1.68.1';
 import {
     buildFeedbackCatFinalCheck,
     buildFeedbackCatPrompt,
     clearFeedbackCatExtensionPrompt,
     getActiveFeedbackForCurrentChat,
     markFeedbackCatInjected,
-} from './feedbackCat.js?rmv=1.67.95';
-import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.67.95';
-import { getCurrentChatKey, markPendingBatchAttempt, releasePendingComboBatch } from './storage.js?rmv=1.67.95';
-import { describeExternalWorldBookPreflightFailure } from './externalWorldBook/errors.js?rmv=1.67.95';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.67.95';
-import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.95';
+} from './feedbackCat.js?rmv=1.68.1';
+import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.68.1';
+import { getCurrentChatKey, markPendingBatchAttempt, releasePendingComboBatch } from './storage.js?rmv=1.68.1';
+import { describeExternalWorldBookPreflightFailure } from './externalWorldBook/errors.js?rmv=1.68.1';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.68.1';
+import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.68.1';
 
 const INJECT_KEY = `${MODULE_NAME}:auto_injection`;
 
@@ -290,7 +290,8 @@ function recordIndependentManualIntent(type, { reuse = false } = {}) {
         type: normalizedType, chatKey, chat, tail, tailIndex, tailRole,
         tailSwipe: Number(tail.swipe_id ?? tail.swipeId ?? 0) || 0,
         tailSource: String(tail.mes || ''), index: -1, message: null, swipe: 0, cancelled: false, consumed: false };
-    globalThis[INDEPENDENT_MANUAL_INTENTS_KEY] = [...previous, intent];
+    // 已经作废的不再留着；总数也设个上限。以前只增不减，长聊天里每个字都要把这几百条翻一遍。
+    globalThis[INDEPENDENT_MANUAL_INTENTS_KEY] = [...previous.filter(item => !item.cancelled), intent].slice(-60);
     recordManualEntryDiagnostic('manual-record', {result:'created', type:normalizedType, index:tailIndex});
     scheduleIndependentCoreRuntimeWake();
     notifyIndependentManualIntent(intent);
@@ -791,7 +792,7 @@ export function destroyIndependentGenerationIntentBridge({ clearIntents = false 
 
 function loadPromptBuilder() {
     if (!promptBuilderPromise) {
-        promptBuilderPromise = import('./promptBuilder.js?rmv=1.67.95').catch(error => {
+        promptBuilderPromise = import('./promptBuilder.js?rmv=1.68.1').catch(error => {
             promptBuilderPromise = null;
             throw error;
         });
@@ -801,7 +802,7 @@ function loadPromptBuilder() {
 
 function loadGenerationGuard() {
     if (!generationGuardPromise) {
-        generationGuardPromise = import('./generationGuard.js?rmv=1.67.95').catch(error => {
+        generationGuardPromise = import('./generationGuard.js?rmv=1.68.1').catch(error => {
             generationGuardPromise = null;
             throw error;
         });
@@ -996,7 +997,7 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
             assertMemoryOwner();
             let repository;
             if (externalEnabled) {
-                repository = await import('./externalWorldBook/store.js?rmv=1.67.95');
+                repository = await import('./externalWorldBook/store.js?rmv=1.68.1');
                 assertFollowPrefetchOwner(prefetchOwner, _chat);
                 externalStage = 'index';
                 await repository.hydrateExternalPoolMetadata();
@@ -1019,7 +1020,7 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
             }
             if (frozenPlan.appearanceReference.enabled) {
                 externalStage = 'appearance-read';
-                const appearance = await import('./appearanceReference.js?rmv=1.67.95');
+                const appearance = await import('./appearanceReference.js?rmv=1.68.1');
                 assertFollowPrefetchOwner(prefetchOwner, _chat); assertAppearanceOwner();
                 appearanceMaterial = await appearance.loadAppearanceReferenceMaterial(frozenPlan.appearanceReference.revision);
                 assertFollowPrefetchOwner(prefetchOwner, _chat); assertAppearanceOwner();
@@ -1111,4 +1112,10 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
         metadata: promptDetails.metadata,
     });
     if (activeFeedback && feedbackPrompt) markFeedbackCatInjected(activeFeedback, type, feedbackPrompt);
+    // 跟随模式：页面刚打开时，负责收尾的那部分（避重记录、挨打猫扣轮次、缺面自动补发）可能还没加载，
+    // 这一条回复就会被漏掉。先记下「有一条等着收尾」，再提前把它叫醒；加载好后会补处理这一条。
+    try {
+        globalThis.__rabbitMirrorFollowScanPending = { chat: _chat, at: Date.now() };
+        scheduleIndependentCoreRuntimeWake();
+    } catch { /* 叫不醒就等它自己加载 */ }
 }

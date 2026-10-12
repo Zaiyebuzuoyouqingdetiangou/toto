@@ -1,11 +1,11 @@
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.67.95';
-import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.67.95';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.68.1';
+import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.68.1';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.67.95';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.67.95';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.67.95';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.67.95';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.68.1';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.68.1';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.68.1';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.68.1';
 
 export const MODULE_NAME = 'rabbit_mirror_theater';
 
@@ -640,4 +640,16 @@ export function resetSettings() {
     extension_settings[MODULE_NAME] = cloneDefaultSettings();
     syncExternalReferenceVisibility(extension_settings[MODULE_NAME]);
     saveSettingsDebounced();
+}
+
+// 「恢复默认设置」后马上要刷新页面：酒馆的存盘要等约 1 秒才真正执行，刷新会把它打断，设置原样不变。
+// 这里先立刻存一次（拿不到立即存盘时就等存盘时间过去），再刷新。
+export async function resetSettingsAndSaveNow() {
+    resetSettings();
+    try {
+        const host = await import('../../../../../script.js');
+        if (typeof host?.saveSettings === 'function') { await host.saveSettings(); return true; }
+    } catch { /* 拿不到就用下面的等待 */ }
+    await new Promise(resolve => setTimeout(resolve, 1800));
+    return true;
 }

@@ -36,9 +36,37 @@ export function loadMirrorImage(key) {
 export function saveMirrorImage(key, record) {
     const previous = loadMirrorImage(key);
     const current = storedRecord(record);
-    const history = previous ? [...previous.history, storedRecord(previous)] : [];
+    // 旧版本只留最近 4 张；整张图存在本机（data:）的旧版本只留最近一张，免得重画几次就把本机空间占满。
+    const history = (previous ? [...previous.history, storedRecord(previous)] : [])
+        .slice(-4)
+        .filter((entry, index, list) => index === list.length - 1 || !String(entry?.url || '').startsWith('data:'))
+        .map((entry, index, list) => {
+            if (index === list.length - 1 || !entry || typeof entry !== 'object') return entry;
+            const { dataUrl: ignoredDataUrl, ...rest } = entry;
+            return rest;
+        });
     write(key, 'images', { version: 1, current, history });
     return { ...current, history };
+}
+
+// 聊天开了分支或改了名，聊天名变了，画好的图还存在旧名字下。同一楼层、同一 swipe、同一图框、
+// 同一段提示词的图就是那一张：找到就直接放回，不再花钱重画。只读，不搬也不删。
+export function findBuiltinImageKeyFromOtherChat(key) {
+    const storage = globalThis.localStorage;
+    const parts = String(key || '').split(':');
+    if (!storage || parts[0] !== 'builtin' || parts.length < 6 || !parts[parts.length - 1]) return '';
+    const suffix = `:${parts.slice(-4).join(':')}`;
+    const imagesPrefix = `${PREFIX}images:`;
+    const head = `${imagesPrefix}builtin:`;
+    const own = storageKey(key, 'images');
+    try {
+        for (let i = 0; i < storage.length; i += 1) {
+            const name = storage.key(i);
+            if (!name || name === own || !name.startsWith(head) || !name.endsWith(suffix)) continue;
+            return name.slice(imagesPrefix.length);
+        }
+    } catch { /* 读不到就当没有 */ }
+    return '';
 }
 
 export function loadMirrorImageDraft(key) { return read(key, 'draft'); }

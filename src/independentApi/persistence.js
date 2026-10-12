@@ -1,8 +1,8 @@
 // Split from independentApi.js — persistence.
 
-import { presentationModeFields } from '../presentationMode.js?rmv=1.67.95';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.67.95';
-import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.67.95';
+import { presentationModeFields } from '../presentationMode.js?rmv=1.68.1';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.68.1';
+import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.68.1';
 import {
     FACE_SWIPE_FULL_MESSAGE,
     FACE_SWIPE_MAX,
@@ -17,9 +17,9 @@ import {
     snapshotFaceSwipes, compactSwipeState, restoreFaceSwipeSnapshot,
     faceSwipeSnapshotStored, loadFaceSwipeArchive, saveFaceSwipeArchive, faceSwipeArchiveReadState,
     remapFaceSwipeSlots, remapFaceSwipeArchive, faceSwipeArchiveRemapSettled,
-} from '../swipeVersions.js?rmv=1.67.95';
-import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=1.67.95';
-import { remapMirrorImageSlots } from '../imageStore.js?rmv=1.67.95';
+} from '../swipeVersions.js?rmv=1.68.1';
+import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=1.68.1';
+import { remapMirrorImageSlots } from '../imageStore.js?rmv=1.68.1';
 import {
     clearEphemeralFaceFailure,
     hasEphemeralFaceFailure,
@@ -29,7 +29,7 @@ import {
     independentSwipeSlot,
     seedIndependentFaceSwipesFromIdentity,
     writeIndependentOwnerHtml,
-} from './faceSwipe.js?rmv=1.67.95';
+} from './faceSwipe.js?rmv=1.68.1';
 import {
     API_PROFILE_STORE_KEY,
     assistantMessages,
@@ -49,8 +49,8 @@ import {
     remapOwnerLockSlots,
     hostGenerationLooksActive,
     legacyChatKey,
-} from './connection.js?rmv=1.67.95';
-import { stampExternalDetailsOwnership } from './request.js?rmv=1.67.95';
+} from './connection.js?rmv=1.68.1';
+import { stampExternalDetailsOwnership, restampExternalHostsAfterMessageDeletion } from './request.js?rmv=1.68.1';
 import {
     copyIndependentReplacementReceipt,
     ensureExternalTools,
@@ -61,8 +61,8 @@ import {
     normalizeSavedInteractionRecord,
     recoverSavedRecord,
     replaceExternalMultifaceFace,
-} from './geometry.js?rmv=1.67.95';
-import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=1.67.95';
+} from './geometry.js?rmv=1.68.1';
+import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=1.68.1';
 
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 
@@ -208,6 +208,29 @@ function compactOutputStore(value){
  return next;
 }
 
+// 别处写不进去（比如记一笔抽签账）要腾地方时用：只删已经确认进了聊天数据的本机缓存，
+// 别的聊天每个留最新一条，当前聊天里还没对上的一条都不删。保留 keep 条可删的里最新的那些。
+function compactCoveredOutputsForQuota(keep=40){
+ let ctx=null; try{ ctx=getContext(); }catch{ ctx=null; }
+ let parsed;
+ try{ parsed=JSON.parse(localStorage.getItem(STORE_KEY)||'{}'); }catch{ return false; }
+ if(!parsed || typeof parsed!=='object' || Array.isArray(parsed)) return false;
+ const entries=Object.entries(parsed).sort((a,b)=>Number(b[1]?.ts||0)-Number(a[1]?.ts||0));
+ const newest=newestPerChat(entries.map(([key,item])=>({key,ts:Number(item?.ts||0)})));
+ const next={}; let spare=0; let removed=0;
+ for(const [key,item] of entries){
+  const coverage=cacheCoverage(ctx,key,item);
+  const protect=coverage==='unconfirmed' || (coverage==='foreign' && newest.get(parseSlotKey(key)?.chat||key)?.key===key);
+  if(protect){ next[key]=item; continue; }
+  if(spare<Math.max(0,Number(keep)||0)){ next[key]=item; spare+=1; continue; }
+  removed+=1;
+ }
+ if(!removed) return false;
+ try{ localStorage.setItem(STORE_KEY,JSON.stringify(next)); return true; }catch{ return false; }
+}
+// storage.js 不能直接引用这里（会绕成循环引用），经全局挂一个入口给它用。
+globalThis.__rabbitMirrorCompactCoveredOutputsForQuota=compactCoveredOutputsForQuota;
+
 // 本机存储满了、当前成品写不进去时，先从兔子镜自己的「旧版本备份」里腾地方：最旧的先删，每轮删四分之一，
 // 删一轮试写一次，写进去就停。旧版本备份只是本机多存的一份，聊天记录里的成品和版本存档都不动。
 function freeHistoryRoomFor(serialized){
@@ -340,6 +363,8 @@ export function historyEntriesForSlot(slot){
 function remountIndependentFaceFromHtml(identity,html,faceIndex){
  const host=identity?.host;
  if(!host?.isConnected) return false;
+ // 换版本、重说完成都会整面换掉：记一下次数，正在进行的维修发现次数变了就停下，不会修到另一版上去。
+ host.dataset.rmFaceRemountEpoch=String((Number(host.dataset.rmFaceRemountEpoch)||0)+1);
  const faces=externalFaceDetails(host);
  if(faces.length>1){
   if(!replaceExternalMultifaceFace(host,identity.key,'independent',html,faceIndex,true)) return false;
@@ -1002,7 +1027,18 @@ export function reconcileIndependentChatOwners(ctx=getContext(),options={}){
    const match=/:(\d+):(\d+)$/.exec(String(slot||''));
    return match?retargetOwnerRecord(record,`${match[1]}:${match[2]}`):record;
   }).catch(error=>{ console.warn('[RabbitMirror] 版本存档对号失败：',error); });
-  if(result.changed){ bumpEpoch(); console.info(`[RabbitMirror] 删除${options.kind==='swipe'?' swipe':'楼层'}后已把兔子镜对到新楼层号。`); }
+  if(options.kind!=='swipe'){
+   // 页面上已经挂着的外壳也跟着改号（只改页面，不发请求）。
+   // 只动页面上的外壳，不算改了记录，不增加对号次数。
+   try{ result.hostsRestamped=restampExternalHostsAfterMessageDeletion(mapSlot); }catch(error){ console.warn('[RabbitMirror] 外壳对号失败：',error); }
+  }
+  if(result.changed){
+   bumpEpoch();
+   // 对号后的楼层号要尽快进聊天文件：酒馆删楼层时可能先存了聊天、后发删除事件，那份文件里还是旧楼层号；
+   // 等到下次打开聊天，对号次数对不上，本机这份按新楼层号放的版本反而会被当成旧的清掉。
+   // 走同一个安全存盘（聊天加载完、没在生成、还是同一个聊天才存，否则稍后再试）。
+   try{ const last=ctx.chat.length-1; if(last>=0) requestSafeChatSave(ctx,last,ctx.chat[last]); }catch{}
+   console.info(`[RabbitMirror] 删除${options.kind==='swipe'?' swipe':'楼层'}后已把兔子镜对到新楼层号。`); }
  }catch(error){
   console.warn('[RabbitMirror] 删除后对号失败：',error);
  }finally{

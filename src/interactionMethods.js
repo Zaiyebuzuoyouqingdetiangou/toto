@@ -16,7 +16,7 @@ export const DRIVER_METHODS = Object.freeze({
     effect: { names: ['触发效果', '逐字显现', '盖章印记'], how: 'data-rm-ui="effect" 内 button data-rm-fire 触发 data-rm-part 的关键帧，每次从头播放' },
     drag: { names: ['拖动与组合', '投放收纳'], how: 'data-rm-ui="drag"，物件 data-rm-item="键"，可选同键 data-rm-slot 吸附槽，button data-rm-reset 复原' },
     adjust: { names: ['连续调节', '调光调色'], how: 'data-rm-ui="adjust" 内放 range，CSS 用 --rm-p(0～1) 连续改变主体' },
-    reveal: { names: ['局部揭示', '刮擦揭开', '对照滑块'], how: 'data-rm-ui="reveal" 包住底图与 data-rm-cover 遮层，range 或横拖逐步揭开，data-rm-reset 复原' },
+    reveal: { names: ['局部揭示', '刮擦揭开', '对照滑块'], how: 'data-rm-ui="reveal" 包住底图与 data-rm-cover 遮层，range（从最左开始）或横拖逐步揭开，揭到底时 data-rm-show="done" 的内容出现，data-rm-reset 复原' },
     view: { names: ['视野操作'], how: 'data-rm-ui="view" 内 data-rm-part 可滚动浏览，range(1～3) 连续缩放，data-rm-reset 还原' },
     draw: { names: ['手绘描画'], how: 'data-rm-ui="draw" 内 svg data-rm-canvas 供手指描画，button data-rm-reset 清除' },
     motion: { names: ['进程控制'], how: 'data-rm-ui="motion" 内 data-rm-part 保留真实动画，button data-rm-play 暂停继续，range 调进度' },

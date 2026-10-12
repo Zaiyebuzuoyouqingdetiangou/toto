@@ -1,7 +1,7 @@
 // Split from outputSanitizer.js — fallbackRescue.
-import { RADIO_BRANCH_CONTROL_ATTR, installRadioBranchRepair, applyRadioBranchState, applyRadioProxyState, radioBranchVerificationTargets } from './radioBranchRepair.js?rmv=1.67.95';
+import { RADIO_BRANCH_CONTROL_ATTR, installRadioBranchRepair, applyRadioBranchState, applyRadioProxyState, radioBranchVerificationTargets } from './radioBranchRepair.js?rmv=1.68.1';
 
-import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.67.95';
+import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.68.1';
 
 import {
     FEEDBACK_CAT_ATTR,
@@ -9,7 +9,7 @@ import {
     TOOL_ENTRY_HOST_ATTR,
     escapeRegExp,
     getRabbitMirrorLocalStyleElements,
-} from './runtime.js?rmv=1.67.95';
+} from './runtime.js?rmv=1.68.1';
 import {
     CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR,
     CROSS_PARENT_CHECKED_VERIFIED_ATTR,
@@ -93,7 +93,7 @@ import {
     webKit3DFlipInlineStates,
     webKit3DFlipRescueStates,
     webKit3DFlipStyleStates,
-} from './checkedStateRescue.js?rmv=1.67.95';
+} from './checkedStateRescue.js?rmv=1.68.1';
 import {
     EXISTING_INTERACTIVE_SELECTOR,
     RENDERED_BUTTON_ADJACENT_HIDDEN_RESCUE_ATTR,
@@ -120,7 +120,7 @@ import {
     isCollapsedDimensionValue,
     normalizeStylePropertyName,
     parseCssStateSiblingAssignments,
-} from './renderedStateRescue.js?rmv=1.67.95';
+} from './renderedStateRescue.js?rmv=1.68.1';
 import {
     chooseMatchingRawRabbitMirrorRoot,
     detectInteractionCapabilities,
@@ -136,7 +136,7 @@ import {
     installRawMessageSelfMutationRescue,
     preparePseudoTrigger,
     shouldIgnorePseudoToggleEvent,
-} from './scriptedInteractionRescue.js?rmv=1.67.95';
+} from './scriptedInteractionRescue.js?rmv=1.68.1';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     FILL_IN_CHOICE_BLANK_ATTR,
@@ -148,15 +148,15 @@ import {
     diagnosticFindClippingAncestor,
     maintenanceSafeComputedStyle,
     mobileInlineAnnotationRescueStates,
-} from './diagnostics.js?rmv=1.67.95';
-import { installStaticChoiceSelectionFallback } from './choiceRescue.js?rmv=1.67.95';
+} from './diagnostics.js?rmv=1.68.1';
+import { installStaticChoiceSelectionFallback } from './choiceRescue.js?rmv=1.68.1';
 import {
     checkedDeclarationCreatesContentReveal,
     checkedTargetCarriesResultContent,
     pseudoStateTargetSelector,
-} from './maintenanceInspect.js?rmv=1.67.95';
-import { splitCssSelectorList } from './markup.js?rmv=1.67.95';
-import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutResolveCheckedTargets } from './layoutRescue.js?rmv=1.67.95';
+} from './maintenanceInspect.js?rmv=1.68.1';
+import { splitCssSelectorList } from './markup.js?rmv=1.68.1';
+import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutResolveCheckedTargets } from './layoutRescue.js?rmv=1.68.1';
 
 const NESTED_DETAILS_FALLBACK_HANDLER_PROP = '__rabbitMirrorNestedDetailsFallbackHandler';
 
@@ -1965,10 +1965,11 @@ function collapsedCoverNeededHeight(control, style) {
     return needed;
 }
 
-export function repairCollapsedCoverControls(root) {
+export function repairCollapsedCoverControls(root, candidates = null) {
     if (!root?.querySelectorAll || typeof getComputedStyle !== 'function') return 0;
     let repaired = 0;
-    for (const control of root.querySelectorAll('label[for], button, [role="button"]')) {
+    for (const control of candidates || root.querySelectorAll('label[for], button, [role="button"]')) {
+        if (!control?.isConnected || !root.contains(control)) continue;
         if (control.closest?.(`[${TOOL_ENTRY_HOST_ATTR}], [${MAINTENANCE_RABBIT_ATTR}], [${FEEDBACK_CAT_ATTR}]`)) continue;
         if (!String(control.textContent || '').trim()) continue;
         let style = null;
@@ -1995,11 +1996,19 @@ function installCollapsedCoverControlRescue(root) {
     if (!root?.addEventListener) return 0;
     const repaired = repairCollapsedCoverControls(root);
     if (collapsedCoverControlStates.has(root)) return repaired;
+    // 每次点击后的复查只看「整块铺满、绝对定位」的那几个按钮（样式决定，打开时找一次），
+    // 不再每点一下就把整面所有按钮的样式和尺寸都量一遍。
+    const coverCandidates = [];
+    for (const control of root.querySelectorAll('label[for], button, [role="button"]')) {
+        let style = null;
+        try { style = getComputedStyle(control); } catch { style = null; }
+        if (style && style.position === 'absolute' && isFullInsetComputed(style)) coverCandidates.push(control);
+    }
     let queued = false;
     const recheck = () => {
-        if (queued) return;
+        if (queued || !coverCandidates.length) return;
         queued = true;
-        const run = () => { queued = false; if (root.isConnected) repairCollapsedCoverControls(root); };
+        const run = () => { queued = false; if (root.isConnected) repairCollapsedCoverControls(root, coverCandidates); };
         if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(run));
         else setTimeout(run, 32);
     };

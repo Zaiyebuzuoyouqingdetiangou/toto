@@ -435,7 +435,11 @@ export function installMobileInteractionControls(root) {
     if (root.matches?.(GROUP)) groups.unshift(root);
     for (const group of groups) {
         added += itemControls(binding, group);
-        for (const surface of own(group, '[data-rm-surface], [data-rm-hold], svg[data-rm-canvas]')) binding.surfaces.add(surface);
+        for (const surface of own(group, '[data-rm-surface], [data-rm-hold], svg[data-rm-canvas], [data-rm-knob]')) binding.surfaces.add(surface);
+        // 翻页区横划翻页、整块当刮擦面的揭示区：手势不能再冒泡给酒馆，否则酒馆会同时把这条回复左右滑切换（最后一条还会重新生成）。
+        const type = String(group.getAttribute('data-rm-ui') || '').trim().toLowerCase();
+        if (type === 'pager') binding.surfaces.add(group);
+        if (type === 'reveal' && !own(group, '[data-rm-surface]').length && !group.querySelector('input[type="range"]')) binding.surfaces.add(group);
     }
     sync(binding);
     return added;

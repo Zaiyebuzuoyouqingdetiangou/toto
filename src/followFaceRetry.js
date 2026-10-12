@@ -1,17 +1,18 @@
-import { presentationModeFields } from './presentationMode.js?rmv=1.67.95';
-import { getSettings } from './settings.js?rmv=1.67.95';
-import { getCurrentChatKey } from './storage.js?rmv=1.67.95';
-import { getRabbitMirrorRecipe } from './blacklist.js?rmv=1.67.95';
-import { readFollowPartialResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=1.67.95';
-import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.67.95';
-import { parseMultifaceOutput, MULTIFACE_FAILURE_ATTR } from './multifaceProtocol.js?rmv=1.67.95';
-import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.67.95';
-import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=1.67.95';
-import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.67.95';
-import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=1.67.95';
-import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.95';
+import { presentationModeFields } from './presentationMode.js?rmv=1.68.1';
+import { getSettings } from './settings.js?rmv=1.68.1';
+import { getCurrentChatKey } from './storage.js?rmv=1.68.1';
+import { getRabbitMirrorRecipe } from './blacklist.js?rmv=1.68.1';
+import { readFollowPartialResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=1.68.1';
+import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.68.1';
+import { parseMultifaceOutput, MULTIFACE_FAILURE_ATTR } from './multifaceProtocol.js?rmv=1.68.1';
+import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.68.1';
+import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=1.68.1';
+import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.68.1';
+import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=1.68.1';
+import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.68.1';
 
 const active = new WeakSet();
+const FOLLOW_FACE_RETRY_MAX_WAIT_MS = 10 * 60 * 1000;
 const fail = message => { const error=new Error(message);error.rabbitMirrorFollowRetry=true;throw error; };
 function connectionIdentity(ctx) {
     const settings=ctx?.chatCompletionSettings||{};
@@ -78,7 +79,7 @@ export async function retryFollowFace(root, suppliedOwner, deps) {
         try {
             if(plan.selectedExternalIds.length){materials=await getSelectedExternalEntries(plan.selectedExternalIds);assertCurrent();}
             if(plan.appearanceReference.enabled){
-                const appearance=await import('./appearanceReference.js?rmv=1.67.95');assertCurrent();
+                const appearance=await import('./appearanceReference.js?rmv=1.68.1');assertCurrent();
                 appearanceMaterial=await appearance.loadAppearanceReferenceMaterial(plan.appearanceReference.revision);assertCurrent();
             }
             if(plan.memoryWorldBook?.enabled){
@@ -107,7 +108,12 @@ export async function retryFollowFace(root, suppliedOwner, deps) {
         // that option by temporarily mutating global model settings.
         let consumed=false;
         const authorized=authorizeRabbitMirrorIndependentServiceRequest({messages,stream:false},{consume(){assertCurrent();if(consumed)return false;consumed=true;return true;}});
-        const raw=await generate({prompt:authorized.messages,api:ctx.mainApi,quietToLoud:false,trimNames:false});
+        // 宿主一直不回时，最多等 10 分钟：到点就放开这条回复，可以再点重试（以前一直卡着，只能刷新页面）。
+        let retryTimer=0;
+        const raw=await Promise.race([
+         generate({prompt:authorized.messages,api:ctx.mainApi,quietToLoud:false,trimNames:false}),
+         new Promise((_,reject)=>{ retryTimer=setTimeout(()=>reject(new Error('等了 10 分钟还没有回音，已停止等待；之后就算有结果也不会用。可以再试一次。')),FOLLOW_FACE_RETRY_MAX_WAIT_MS); }),
+        ]).finally(()=>{ if(retryTimer) clearTimeout(retryTimer); });
         assertCurrent();
         assertRabbitMirrorIndependentResponseText(raw);
         const parsed=parseMultifaceOutput(String(raw||''));

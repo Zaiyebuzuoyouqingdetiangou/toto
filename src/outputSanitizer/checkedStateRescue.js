@@ -1,8 +1,8 @@
 // Split from outputSanitizer.js — checkedStateRescue.
-import { rememberRuntimeAnimationStyle } from '../runtimeAnimationState.js?rmv=1.67.95';
+import { rememberRuntimeAnimationStyle } from '../runtimeAnimationState.js?rmv=1.68.1';
 
-import { escapeCssIdentifier, escapeRegExp, getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.67.95';
-import { getClassTokens, isCollapsedDimensionValue, parseCssStateSiblingAssignments } from './renderedStateRescue.js?rmv=1.67.95';
+import { escapeCssIdentifier, escapeRegExp, getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.68.1';
+import { getClassTokens, isCollapsedDimensionValue, parseCssStateSiblingAssignments } from './renderedStateRescue.js?rmv=1.68.1';
 import {
     capturePseudoStyleState,
     chooseMatchingRawRabbitMirrorRoot,
@@ -10,15 +10,15 @@ import {
     normalizeInteractionMatchText,
     resolveRenderedCounterpart,
     restorePseudoStyleState,
-} from './scriptedInteractionRescue.js?rmv=1.67.95';
+} from './scriptedInteractionRescue.js?rmv=1.68.1';
 import {
     REVERSIBLE_RADIO_BASELINE_ATTR,
     applyCheckedVisualFallback,
     inputHasAssociatedLabel,
     setRescuedCheckedState,
-} from './fallbackRescue.js?rmv=1.67.95';
-import { RADIO_GROUP_RESCUE_ATTR } from './idsAndRearm.js?rmv=1.67.95';
-import { diagnosticComputedStyle, maintenanceSafeComputedStyle } from './diagnostics.js?rmv=1.67.95';
+} from './fallbackRescue.js?rmv=1.68.1';
+import { RADIO_GROUP_RESCUE_ATTR } from './idsAndRearm.js?rmv=1.68.1';
+import { diagnosticComputedStyle, maintenanceSafeComputedStyle } from './diagnostics.js?rmv=1.68.1';
 import {
     checkedDeclarationCreatesContentReveal,
     checkedTargetCarriesResultContent,
@@ -26,14 +26,14 @@ import {
     isIndependentMaintenanceRoot,
     notifyIndependentRepairPersistence,
     resolveMaintenanceGeneratedClass,
-} from './maintenanceInspect.js?rmv=1.67.95';
-import { splitCssSelectorList } from './markup.js?rmv=1.67.95';
+} from './maintenanceInspect.js?rmv=1.68.1';
+import { splitCssSelectorList } from './markup.js?rmv=1.68.1';
 import {
     maintenanceMobileLayoutLengthPx,
     maintenanceMobileLayoutRect,
     maintenanceMobileLayoutTextLength,
     viewportLayoutHasAuthoredGridPlacement,
-} from './layoutRescue.js?rmv=1.67.95';
+} from './layoutRescue.js?rmv=1.68.1';
 
 const interactionInlineOverrideStates = new WeakMap();
 
@@ -77,6 +77,9 @@ const DETACHED_CHECKED_HAS_ROOT_ATTR = 'data-rabbit-mirror-detached-checked-has-
 export const DETACHED_CHECKED_HAS_RULE_COUNT_ATTR = 'data-rabbit-mirror-detached-checked-has-rules';
 
 export const DETACHED_CHECKED_HAS_CONTROL_ATTR = 'data-rm-detached-checked-has-control';
+// 桥接规则只作用在这些已经核对过、确实在 host 里面的目标上（以前只写目标选择器，host 丢了，
+// 目标写成 div 这种标签名时，勾一下整面所有 div 都被强制显示）。
+const DETACHED_CHECKED_HAS_TARGET_ATTR = 'data-rm-detached-checked-has-target';
 
 const detachedCheckedHasRescueStates = new WeakMap();
 
@@ -313,8 +316,39 @@ export const webKit3DFlipStyleStates = new WeakMap();
 export const webKit3DFlipInlineStates = new WeakMap();
 
 
+// 按分号拆声明，但不拆括号和引号里面的分号（`url("data:image/svg+xml;utf8,…")`、`url(data:image/png;base64,…)`）。
+function splitCssDeclarationsOutsideFunctions(text) {
+    const parts = [];
+    let depth = 0, quote = '', start = 0;
+    for (let i = 0; i < text.length; i += 1) {
+        const ch = text[i];
+        if (quote) {
+            if (ch === '\\') { i += 1; continue; }
+            if (ch === quote) quote = '';
+            continue;
+        }
+        if (ch === '"' || ch === "'") quote = ch;
+        else if (ch === '(') depth += 1;
+        else if (ch === ')') depth = Math.max(0, depth - 1);
+        else if (ch === ';' && depth === 0) { parts.push(text.slice(start, i)); start = i + 1; }
+    }
+    parts.push(text.slice(start));
+    return parts;
+}
+
 export function addImportantToDeclarationBlock(blockText) {
-    return String(blockText || '').replace(
+    const source = String(blockText || '');
+    // 值里带括号或引号时（data URI 图片里常有分号），逐条拆开再加 !important，免得把图片地址从中间劈开。
+    if (/[("']/.test(source)) {
+        return splitCssDeclarationsOutsideFunctions(source).map(part => {
+            const match = /^(\s*)([a-z-]+)\s*:\s*([\s\S]*?)(\s*!important\s*)?\s*$/i.exec(part);
+            if (!match) return part;
+            const cleanValue = String(match[3] || '').trim();
+            if (!cleanValue) return part;
+            return `${match[1]}${match[2]}: ${cleanValue} !important`;
+        }).join(';');
+    }
+    return source.replace(
         /(^|;)\s*([a-z-]+)\s*:\s*([^;{}]+?)(\s*!important\s*)?(?=;|$)/gi,
         (match, separator, property, value) => {
             const cleanValue = String(value || '').trim().replace(/\s*!important\s*$/i, '');
@@ -1168,11 +1202,13 @@ function matchGenericLocalCheckedSelector(selector, input) {
         } catch {
             continue;
         }
+        const genericPrefix = source.slice(0, match.index) + match[0].slice(0, match[0].indexOf(subject));
         return {
             source: 'generic-local',
             subjectSelector: subject,
             conditionSelector: /:checked\b/i.test(source.slice(0, match.index))
-                ? source.slice(0, match.index) + match[0].slice(0, match[0].indexOf(subject)) + subject : '',
+                ? genericPrefix + subject : '',
+            contextSelector: genericPrefix.trim() ? genericPrefix + subject : '',
             relation: match[2],
             rawTargetSelector: match[3],
         };
@@ -1276,7 +1312,15 @@ export function parseCheckedRulesFromText(toto, input) {
             const selectors = String(match[1] || '').split(',').map(v => v.trim()).filter(Boolean);
             const declarations = String(match[2] || '');
             const styleMap = [];
-            declarations.replace(/(^|;)\s*([a-z-]+)\s*:\s*([^;{}]+?)(\s*!important\s*)?(?=;|$)/gi,
+            if (/[("']/.test(declarations)) {
+                // 值里有括号或引号（data URI 图片里常带分号）：按不在括号、引号里的分号拆，免得把图片地址劈成半截写到内联上。
+                for (const part of splitCssDeclarationsOutsideFunctions(declarations)) {
+                    const parsed = /^\s*([a-z-]+)\s*:\s*([\s\S]+?)\s*$/i.exec(part);
+                    if (!parsed) continue;
+                    const cleanValue = String(parsed[2] || '').trim().replace(/\s*!important\s*$/i, '');
+                    if (parsed[1] && cleanValue) styleMap.push([parsed[1], cleanValue]);
+                }
+            } else declarations.replace(/(^|;)\s*([a-z-]+)\s*:\s*([^;{}]+?)(\s*!important\s*)?(?=;|$)/gi,
                 (_m, _sep, property, value) => {
                     const cleanValue = String(value || '').trim().replace(/\s*!important\s*$/i, '');
                     if (property && cleanValue) styleMap.push([property, cleanValue]);
@@ -1297,6 +1341,7 @@ export function parseCheckedRulesFromText(toto, input) {
                         source: needle.source,
                         subjectSelector: needle.subjectSelector,
                         conditionSelector: /:checked\b/i.test(prefix) ? prefix + needle.subjectSelector : '',
+                        contextSelector: prefix.trim() ? prefix + needle.subjectSelector : '',
                         relation: selectorMatch[1],
                         rawTargetSelector: selectorMatch[2],
                     });
@@ -1314,7 +1359,7 @@ export function parseCheckedRulesFromText(toto, input) {
                     const key = `${conditionSelector}|${parsedRule.relation}|${targetSelector}|${pseudoElement}|${JSON.stringify(styleMap)}`;
                     if (seen.has(key)) continue;
                     seen.add(key);
-                    results.push({ source: parsedRule.source, subjectSelector: parsedRule.subjectSelector || '', relation: parsedRule.relation, targetSelector, pseudoElement, styleMap, conditionSelector });
+                    results.push({ source: parsedRule.source, subjectSelector: parsedRule.subjectSelector || '', relation: parsedRule.relation, targetSelector, pseudoElement, styleMap, conditionSelector, contextSelector: parsedRule.contextSelector || '' });
                 }
             }
         }
@@ -1992,8 +2037,10 @@ export function parseDetachedCheckedHasRules(root) {
                 if (!condition) continue;
 
                 const hostSelector = normalizeDetachedCheckedHasSelector(selector.slice(0, condition.index));
+                const afterCondition = selector.slice(condition.index + condition[0].length).trim();
+                const childOnly = /^>/.test(afterCondition);
                 const targetSelector = normalizeDetachedCheckedHasSelector(
-                    selector.slice(condition.index + condition[0].length).trim().replace(/^[>+~]\s*/, ''),
+                    afterCondition.replace(/^[>+~]\s*/, ''),
                 );
                 const controlSelector = String(condition[1] || '').replace(/\s+/g, '');
                 if (!hostSelector || !targetSelector || !controlSelector) continue;
@@ -2003,7 +2050,9 @@ export function parseDetachedCheckedHasRules(root) {
                 const controls = queryDetachedCheckedHasElements(root, controlSelector)
                     .filter(control => control.matches?.('input[type="checkbox"], input[type="radio"]') && !control.disabled);
                 const targets = queryDetachedCheckedHasElements(root, targetSelector)
-                    .filter(target => hosts.some(host => host === target || host.contains?.(target)));
+                    .filter(target => hosts.some(host => (childOnly
+                        ? target.parentElement === host
+                        : host === target || host.contains?.(target))));
                 if (!hosts.length || hosts.length > 8 || !controls.length || controls.length > 12 || !targets.length || targets.length > 24) continue;
 
                 // 原生 :has() 只有在 input 位于 host 内部时才会命中。当前控件全部位于 host 外，
@@ -2051,6 +2100,7 @@ export function installDetachedCheckedHasFallback(root) {
             detachedCheckedHasRescueStates.delete(root);
         }
         rescueStyle?.remove();
+        for (const marked of root.querySelectorAll(`[${DETACHED_CHECKED_HAS_TARGET_ATTR}]`)) marked.removeAttribute(DETACHED_CHECKED_HAS_TARGET_ATTR);
         root.removeAttribute(DETACHED_CHECKED_HAS_ROOT_ATTR);
         root.removeAttribute(DETACHED_CHECKED_HAS_RULE_COUNT_ATTR);
         return 0;
@@ -2082,8 +2132,16 @@ export function installDetachedCheckedHasFallback(root) {
         rescueStyle.setAttribute(DETACHED_CHECKED_HAS_RESCUE_STYLE_ATTR, 'true');
         root.appendChild(rescueStyle);
     }
+    for (const marked of root.querySelectorAll(`[${DETACHED_CHECKED_HAS_TARGET_ATTR}]`)) marked.removeAttribute(DETACHED_CHECKED_HAS_TARGET_ATTR);
+    rules.forEach((rule, index) => {
+        for (const target of rule.targets || []) {
+            const tokens = new Set(String(target.getAttribute(DETACHED_CHECKED_HAS_TARGET_ATTR) || '').split(/\s+/).filter(Boolean));
+            tokens.add(`s${index}`);
+            target.setAttribute(DETACHED_CHECKED_HAS_TARGET_ATTR, [...tokens].join(' '));
+        }
+    });
     rescueStyle.textContent = rules.map((rule, index) => (
-        `[${DETACHED_CHECKED_HAS_ROOT_ATTR}~="s${index}"] ${rule.targetSelector} {${rule.declarations}}`
+        `[${DETACHED_CHECKED_HAS_ROOT_ATTR}~="s${index}"] [${DETACHED_CHECKED_HAS_TARGET_ATTR}~="s${index}"] {${rule.declarations}}`
     )).join('\n');
 
     const perControlCount = new Map();
@@ -3149,6 +3207,16 @@ function getFollowingLocalContainerTargetsForCheckedRule(input, targetSelector) 
 }
 
 
+// 规则前面写着外层条件（比如 `.opt.correct input:checked + span` 和 `.opt.wrong input:checked + span`）：
+// 原生 CSS 只套用外层对得上的那条。兜底以前不看外层，两条都套上，最后一条说了算（点对的答案也变红）。
+// 只在至少有一条外层对得上时才把对不上的排除；一条都对不上（模型写错了外层）时照旧全部兜底。
+function checkedRuleContextMatch(input, rule) {
+    const selector = String(rule?.contextSelector || '')
+        .replace(/:(?:hover|focus-within|focus-visible|focus|active|target)\b/gi, '').trim();
+    if (!selector) return null;
+    try { return !!input?.matches?.(selector); } catch { return null; }
+}
+
 function checkedRuleConditionsMatch(input, rule) {
     if (!rule.conditionSelector) return true;
     try { return !!input?.matches?.(rule.conditionSelector); } catch { return false; }
@@ -3164,8 +3232,11 @@ export function applyCheckedRuleTextFallback(toto, input) {
     const pseudoEntries = [];
     const routeKinds = new Set();
     const revealCandidates = new Map();
-    for (const rule of parseCheckedRulesFromText(toto, input)) {
-        if (!checkedRuleConditionsMatch(input, rule)) continue;
+    const parsedRules = parseCheckedRulesFromText(toto, input).filter(rule => checkedRuleConditionsMatch(input, rule));
+    const contextResults = parsedRules.map(rule => checkedRuleContextMatch(input, rule));
+    const someContextMatches = contextResults.some(result => result === true);
+    for (const [ruleIndex, rule] of parsedRules.entries()) {
+        if (someContextMatches && contextResults[ruleIndex] === false) continue;
         const targets = resolveTargetsForCheckedRule(toto, input, rule);
         for (const target of targets) {
             routeKinds.add(rule.source);

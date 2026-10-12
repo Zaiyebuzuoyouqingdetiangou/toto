@@ -63,6 +63,17 @@ export function isQuotaInsufficientFailure(error, diagnostic = {}) {
     return /insufficient[_ -]?quota|exceeded[_ -]?quota|quota[_ -]?exceeded|billing[_ -]?hard[_ -]?limit|payment required|\bHTTP 402\b|余额不足|额度不足|账户额度|credit(?:s)? (?:exhausted|depleted|exceeded)/i.test(text);
 }
 
+// 密钥不对、没有权限、被限流、参数或模型不对：马上再发一次结果一样，只会多花一次钱（限流时还会越试越严）。
+export function isNonRetryableRequestFailure(error, diagnostic = {}) {
+    const status = Number(diagnostic?.transport?.status ?? diagnostic?.status ?? error?.status ?? error?.statusCode ?? 0);
+    if ([400, 401, 403, 404, 422, 429].includes(status)) return true;
+    const category = String(diagnostic?.transport?.failureCategory || diagnostic?.failureCategory || '');
+    if (category === 'authentication' || category === 'rate-limit') return true;
+    if (status) return false;
+    return /\b(?:401|403|429)\b|unauthori[sz]ed|forbidden|invalid[_ -]?api[_ -]?key|incorrect[_ -]?api[_ -]?key|rate[_ -]?limit|too many requests/i
+        .test(String(error?.message || ''));
+}
+
 export function isLocalPreflightFailure(error, diagnostic = {}) {
     if (Number(diagnostic?.requestCount) === 0 || Number(error?.requestCount) === 0) return true;
     const text = `${error?.code || ''} ${diagnostic?.semanticFailure || ''} ${diagnostic?.transportCause || ''} ${diagnostic?.failureCategory || ''}`;

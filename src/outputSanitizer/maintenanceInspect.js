@@ -1,20 +1,20 @@
 // Split from outputSanitizer.js — maintenanceInspect.
-import { RADIO_BRANCH_COUNT_ATTR, findRadioBranchCandidates } from './radioBranchRepair.js?rmv=1.67.95';
-import { runMaintenanceGenericProbe, describeGenericProbe } from './maintenanceGenericProbe.js?rmv=1.67.95';
-import { cancelLabeledCheckedTransitionVerification, invalidateMaintenanceLabeledCheckedProbe } from './fallbackRescue.js?rmv=1.67.95';
-import { LABELED_CHECKED_VERIFY_LAST_ATTR } from './checkedStateRescue.js?rmv=1.67.95';
-import { findUnmappedNavigationButtons } from './choiceRescue.js?rmv=1.67.95';
+import { RADIO_BRANCH_COUNT_ATTR, findRadioBranchCandidates } from './radioBranchRepair.js?rmv=1.68.1';
+import { runMaintenanceGenericProbe, describeGenericProbe } from './maintenanceGenericProbe.js?rmv=1.68.1';
+import { cancelLabeledCheckedTransitionVerification, invalidateMaintenanceLabeledCheckedProbe } from './fallbackRescue.js?rmv=1.68.1';
+import { LABELED_CHECKED_VERIFY_LAST_ATTR } from './checkedStateRescue.js?rmv=1.68.1';
+import { findUnmappedNavigationButtons } from './choiceRescue.js?rmv=1.68.1';
 
-import { nativePopoverFallbackCount, inspectNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.67.95';
-import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.67.95';
-import { BEHAVIOR_RELAY_ATTR, relayDeadBehaviorGroups } from './behaviorRelay.js?rmv=1.67.95';
-import { BEHAVIOR_REVERSE_ATTR, reverseRelayDeadHandwrittenControls } from './behaviorReverseRelay.js?rmv=1.67.95';
-import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.67.95';
-import { getCurrentChatKey } from '../storage.js?rmv=1.67.95';
-import { bindRabbitMirrorAvatarRoot, restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.67.95';
-import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.67.95';
-import { getRabbitMirrorGenerationSnapshot } from '../generationGuard.js?rmv=1.67.95';
-import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules } from '../presentationQuality.js?rmv=1.67.95';
+import { nativePopoverFallbackCount, inspectNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.68.1';
+import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.68.1';
+import { BEHAVIOR_RELAY_ATTR, relayDeadBehaviorGroups } from './behaviorRelay.js?rmv=1.68.1';
+import { BEHAVIOR_REVERSE_ATTR, reverseRelayDeadHandwrittenControls } from './behaviorReverseRelay.js?rmv=1.68.1';
+import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.68.1';
+import { getCurrentChatKey } from '../storage.js?rmv=1.68.1';
+import { bindRabbitMirrorAvatarRoot, restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.68.1';
+import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.68.1';
+import { getRabbitMirrorGenerationSnapshot } from '../generationGuard.js?rmv=1.68.1';
+import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules } from '../presentationQuality.js?rmv=1.68.1';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -28,7 +28,7 @@ import {
     hashInteractionSignature,
     isInsideChatMessage,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.67.95';
+} from './runtime.js?rmv=1.68.1';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     CHANNEL_DIAL_CYCLE_COUNT_ATTR,
@@ -64,8 +64,8 @@ import {
     parseMissingCheckedSubjectClassRules,
     resolveTargetsForCheckedRule,
     restoreIndependentNativeCheckedInteraction,
-} from './checkedStateRescue.js?rmv=1.67.95';
-import { getClassTokens, isCollapsedDimensionValue, normalizeStylePropertyName } from './renderedStateRescue.js?rmv=1.67.95';
+} from './checkedStateRescue.js?rmv=1.68.1';
+import { getClassTokens, isCollapsedDimensionValue, normalizeStylePropertyName } from './renderedStateRescue.js?rmv=1.68.1';
 import {
     RAW_RADIO_RESET_RESCUE_ATTR,
     RAW_SELF_MUTATION_RESCUE_ATTR,
@@ -79,7 +79,7 @@ import {
     getRawAssistantMessageForRenderedRoot,
     installRawMessageRadioResetProgramRescue,
     normalizeInteractionMatchText,
-} from './scriptedInteractionRescue.js?rmv=1.67.95';
+} from './scriptedInteractionRescue.js?rmv=1.68.1';
 import {
     REVERSIBLE_RADIO_ROOT_ATTR,
     TOUCH_HOVER_ATTR,
@@ -97,14 +97,14 @@ import {
     repairMarkdownCorruptedCssComments,
     repairNestedDetailsPopupClipping,
     scheduleMaintenanceLabeledCheckedProbe,
-} from './fallbackRescue.js?rmv=1.67.95';
+} from './fallbackRescue.js?rmv=1.68.1';
 import {
     RADIO_GROUP_ROOT_ATTR,
     activateRabbitMirrorInteractionRescue,
     inspectSanitizedRadioGroupLoss,
     rearmRabbitMirrorSerializedInteractionRoot,
     scopeRabbitMirrorInteractionIds,
-} from './idsAndRearm.js?rmv=1.67.95';
+} from './idsAndRearm.js?rmv=1.68.1';
 import {
     DISABLED_ONLY_CHOICE_RESCUE_ATTR,
     FEEDBACK_CAT_MENU_ATTR,
@@ -164,7 +164,9 @@ import {
     repairRevealedDrawerClipping,
     setMaintenanceRabbitState,
     stripMaintenanceRabbitGlyphs,
-} from './diagnostics.js?rmv=1.67.95';
+    MAINTENANCE_STATE_ATTR,
+    MAINTENANCE_REASON_ATTR,
+} from './diagnostics.js?rmv=1.68.1';
 import {
     findDisabledOnlyChoiceGroupCandidates,
     findFillInChoiceCandidates,
@@ -179,7 +181,7 @@ import {
     installStaticChoiceSelectionFallback,
     installStructuredStaticDisclosureFallback,
     rehydrateRabbitMirrorMaintenanceRepairs,
-} from './choiceRescue.js?rmv=1.67.95';
+} from './choiceRescue.js?rmv=1.68.1';
 import {
     FENCED_BLOCK_RE,
     RABBIT_MIRROR_SANITIZER_STYLE_DROP_ATTR,
@@ -198,7 +200,7 @@ import {
     validateRabbitMirrorMarkupLexicalBudget,
     wrapNakedHtmlAsToto,
     wrapTrailingNakedHtml,
-} from './markup.js?rmv=1.67.95';
+} from './markup.js?rmv=1.68.1';
 import {
     getRabbitMirrorFacePosition,
     independentMaintenanceHost,
@@ -213,13 +215,13 @@ import {
     maintenanceMobileLayoutRect,
     maintenanceMobileLayoutTextLength,
     shouldRunMaintenanceMobileLayoutRescue,
-} from './layoutRescue.js?rmv=1.67.95';
+} from './layoutRescue.js?rmv=1.68.1';
 import {
     containRabbitMirrorTitleToolFloat,
     installMaintenanceRabbitForRoot,
     rabbitMirrorTextPresentation,
     refreshRabbitMirrorToolsInScope,
-} from './toolsChrome.js?rmv=1.67.95';
+} from './toolsChrome.js?rmv=1.68.1';
 import {
     TRANSIENT_RERENDER_REASONING_ENVELOPE_RE,
     followMaintenanceRepairRecipes,
@@ -231,7 +233,7 @@ import {
     maintenanceRepairTimers,
     messageContainsReasoningEnvelope,
     messageUsesDistinctDisplaySource,
-} from './lifecycle.js?rmv=1.67.95';
+} from './lifecycle.js?rmv=1.68.1';
 
 let rabbitMirrorInteractionResetInstanceCounter = 0;
 
@@ -2852,7 +2854,8 @@ function captureMaintenanceRepairOrigin(root) {
     const mirrorIdentity = ownerKey
         ? `${ownerKey}${Number.isInteger(faceIndex) ? `:face:${faceIndex}` : ''}`
         : followMaintenanceMirrorIdentity(root);
-    return Object.freeze({ chatKey, index, swipe, sourceHash, mirrorIdentity, ownerKey, faceIndex });
+    const remountEpoch = ownerKey ? String(host?.dataset?.rmFaceRemountEpoch || '0') : '';
+    return Object.freeze({ chatKey, index, swipe, sourceHash, mirrorIdentity, ownerKey, faceIndex, remountEpoch });
 }
 
 
@@ -2874,6 +2877,8 @@ function maintenanceRepairOriginIsCurrent(origin) {
         const host = [...(document.querySelectorAll?.('[data-rabbit-mirror-external-source="true"][data-rm-source="independent"]') || [])]
             .find(candidate => String(candidate?.dataset?.rmKey || '') === origin.ownerKey);
         if (!host?.isConnected || !Number.isInteger(origin.faceIndex)) return false;
+        // 维修途中切了版本或重说完成：这一面已经换成另一版，维修到此为止。
+        if (String(host.dataset?.rmFaceRemountEpoch || '0') !== String(origin.remountEpoch || '0')) return false;
         const currentSourceHash = String(host.dataset?.rmSourceHash || '');
         const faces = [...(host.children || [])].filter(child => child?.matches?.('details') && isRabbitMirrorDetails(child));
         const currentFace = faces[origin.faceIndex];
@@ -3255,6 +3260,22 @@ function captureMaintenancePreRepairSnapshot(root) {
 }
 
 
+// 跟随模式（非副 API）的面：维修前存下的那一份可以从「恢复到初始」退回去；
+// 退回时把这面记下的维修配方一起删掉，免得宿主重绘时又把修坏的结果重放一遍。
+export function hasMaintenancePreRepairSnapshot(root) {
+    if (!root || isIndependentMaintenanceRoot(root)) return false;
+    try { return !!maintenancePreRepairSnapshots.get(maintenanceSnapshotKey(root))?.node; } catch { return false; }
+}
+
+export function restoreMaintenancePreRepairSnapshotAndForget(root, button) {
+    if (!hasMaintenancePreRepairSnapshot(root)) return false;
+    let recipeKey = '';
+    try { recipeKey = followMaintenanceRepairKey(root); } catch { recipeKey = ''; }
+    const restored = restoreMaintenancePreRepairSnapshot(root, button);
+    if (restored && recipeKey) followMaintenanceRepairRecipes.delete(recipeKey);
+    return restored;
+}
+
 function restoreMaintenancePreRepairSnapshot(root, button) {
     const key = maintenanceSnapshotKey(root);
     const snapshot = maintenancePreRepairSnapshots.get(key);
@@ -3526,6 +3547,24 @@ export function maintenanceRepairPlanLabel(plan) {
 }
 
 
+// 修完反而多出新问题、或有维修模块中途出错时，这一版不存：页面上照样看得到，刷新后回到维修前。
+// 以前不管修好修坏都存进聊天记录，之前修好的那一版就被盖掉了。
+function maintenanceRepairUnsafeToPersist({ introduced = [], failedModules = [] } = {}) {
+    return (introduced?.length || 0) > 0 || (failedModules?.length || 0) > 0;
+}
+
+function noteMaintenanceRepairNotPersisted(button, introduced = [], failedModules = []) {
+    if (!button) return;
+    const state = button.getAttribute(MAINTENANCE_STATE_ATTR) || MAINTENANCE_STATES.unknown;
+    const reason = String(button.getAttribute(MAINTENANCE_REASON_ATTR) || '').trim();
+    const why = introduced.length
+        ? `修完多出 ${introduced.length} 项新问题（${introduced.map(item => item.label).filter(Boolean).join('、')}）`
+        : `${failedModules.length} 个维修模块中途出错`;
+    button.removeAttribute(MAINTENANCE_REPAIR_ATTR);
+    setMaintenanceRabbitState(button, state === MAINTENANCE_STATES.idle || state === MAINTENANCE_STATES.healthy ? MAINTENANCE_STATES.unknown : state,
+        `${reason ? `${reason}；` : ''}${why}，这次结果没有保存，刷新后会回到维修前`);
+}
+
 function compareMaintenanceFindings(beforeFindings, afterFindings) {
     const beforeMap = new Map((beforeFindings || []).map(finding => [maintenanceFindingKey(finding), finding]));
     const afterMap = new Map((afterFindings || []).map(finding => [maintenanceFindingKey(finding), finding]));
@@ -3638,8 +3677,9 @@ function runMaintenanceAutomaticRepairPlan(root, button, repairRun) {
             return;
         }
         const afterInspection = inspectMaintenanceRabbit(liveRoot);
-        for (const finding of afterInspection.findings || []) discoveredFindings.set(maintenanceFindingKey(finding), finding);
+        // 先用维修前（和维修过程中发现）的问题去比，再把修后的问题记进去；以前先记再比，「新出现的问题」永远是空的。
         const comparison = compareMaintenanceFindings([...discoveredFindings.values()], afterInspection.findings || []);
+        for (const finding of afterInspection.findings || []) discoveredFindings.set(maintenanceFindingKey(finding), finding);
         aggregate.findingsAfter = maintenanceFindingSnapshot(afterInspection.findings || []);
         aggregate.verification = {
             resolved: maintenanceFindingSnapshot(comparison.resolved),
@@ -3691,6 +3731,11 @@ function runMaintenanceAutomaticRepairPlan(root, button, repairRun) {
             );
         }
 
+        if (maintenanceRepairUnsafeToPersist({ introduced: comparison.introduced, failedModules })) {
+            noteMaintenanceRepairNotPersisted(liveButton, comparison.introduced, failedModules);
+            finishMaintenanceRepairRun(repairRun);
+            return;
+        }
         const persistenceOk = notifyIndependentRepairPersistence(liveRoot);
         if (isIndependentMaintenanceRoot(liveRoot) && !persistenceOk) {
             finishMaintenanceRepairRun(repairRun);
@@ -3950,7 +3995,7 @@ export function runMaintenanceSafeAutomaticRepairs(root, button) {
     } else {
         setMaintenanceRabbitState(button, inspection.state, inspection.reason || '自动巡逻未发现需要安全修复的问题');
     }
-    if (repaired > 0) notifyIndependentRepairPersistence(root);
+    if (repaired > 0 && !failedModules.length) notifyIndependentRepairPersistence(root);
     return { repaired, modules, failedModules, inspection };
     } finally {
         finishMaintenanceRepairRun(repairRun);
@@ -4099,7 +4144,9 @@ export function runMaintenanceUserRepair(root, button, mode) {
                     }
                     setMaintenanceRabbitState(afterButton, MAINTENANCE_STATES.idle, `维修路线已执行${autoNote}${layoutNote}，请实际确认是否恢复正常`);
                 }
-                notifyIndependentRepairPersistence(afterRoot);
+                const introduced = compareMaintenanceFindings(inspection?.findings || [], after.findings || []).introduced;
+                if (maintenanceRepairUnsafeToPersist({ introduced, failedModules })) noteMaintenanceRepairNotPersisted(afterButton, introduced, failedModules);
+                else notifyIndependentRepairPersistence(afterRoot);
                 finishMaintenanceRepairRun(repairRun);
             }, liveButton);
         };
@@ -4131,7 +4178,7 @@ export async function runMaintenanceNarrowFaceRepair(root, button) {
         if (rejectOversizedMaintenanceRepair(root, button, '窄面电击')) return false;
         if (!maintenanceRepairRunIsCurrent(repairRun)) return false;
         setMaintenanceRabbitState(button, MAINTENANCE_STATES.checking, '⚡ 正在重新测量并恢复这面兔子镜的宽度');
-        const adapter = await import('../independentApi.js?rmv=1.67.95');
+        const adapter = await import('../independentApi.js?rmv=1.68.1');
         // Loading the adapter is the sole async boundary. Never apply a delayed
         // click to a new chat, Swipe, source revision, face or replacement node.
         if (!root.isConnected || !details.isConnected || !button.isConnected
@@ -4530,7 +4577,10 @@ function sanitizeCodeBlocksInScope(root, force = false) {
             const cleaned = cleanRabbitMirrorOutput(raw);
             const match = cleaned.match(TOTO_BLOCK_SINGLE_RE);
             replacement = match ? parseTotoFragment(match[0]) : null;
-        } else if (looksLikeCompleteHtmlBlock(raw)) {
+        } else if (looksLikeCompleteHtmlBlock(raw)
+            // 兔子镜外面的代码块：只有长得像兔子镜（有 details 和 summary）才当成没包好的兔子镜接回来；
+            // 同一条消息里你要的普通 HTML 示例代码块原样留着，不再被渲染成卡片。
+            && (insideRabbitMirror || /<details\b[\s\S]*<summary\b/i.test(raw))) {
             // 已经在兔子镜 details 里面时，只把代码块内容变成真实 HTML，避免再套一层小剧场。
             replacement = insideRabbitMirror
                 ? parseHtmlFragment(compactTotoBlock(raw))

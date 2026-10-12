@@ -1,28 +1,29 @@
-import { bindRolePaletteCode } from '../roleColorVariants.js?rmv=1.67.95';
-import { faceDrawNeedsExternal } from '../faceDrawRules.js?rmv=1.67.95';
-import { designSamplingChecksFromHtml } from '../interactionSampling.js?rmv=1.67.95';
+import { bindRolePaletteCode } from '../roleColorVariants.js?rmv=1.68.1';
+import { faceDrawNeedsExternal } from '../faceDrawRules.js?rmv=1.68.1';
+import { designSamplingChecksFromHtml } from '../interactionSampling.js?rmv=1.68.1';
 // Split from independentApi.js — request.
 
-import { claimGenerationEvidence, associateGenerationEvidence, generationEvidenceFor } from '../generationEvidence.js?rmv=1.67.95';
-import { createGenerationTimer } from '../generationTiming.js?rmv=1.67.95';
+import { claimGenerationEvidence, associateGenerationEvidence, generationEvidenceFor } from '../generationEvidence.js?rmv=1.68.1';
+import { createGenerationTimer } from '../generationTiming.js?rmv=1.68.1';
+import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.68.1';
 
-import { resolveBehaviorRuleText } from '../behaviorRules.js?rmv=1.67.95';
-import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.67.95';
-import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.67.95';
-import { getSettings } from '../settings.js?rmv=1.67.95';
-import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.67.95';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=1.67.95';
-import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from '../chatAvatarPromptReady.js?rmv=1.67.95';
+import { resolveBehaviorRuleText } from '../behaviorRules.js?rmv=1.68.1';
+import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.68.1';
+import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.68.1';
+import { getSettings } from '../settings.js?rmv=1.68.1';
+import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.68.1';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=1.68.1';
+import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from '../chatAvatarPromptReady.js?rmv=1.68.1';
 import {
     assertRabbitMirrorIndependentResponseBytes,
     assertRabbitMirrorIndependentResponseText,
     authorizeRabbitMirrorIndependentServiceRequest,
-} from '../independentSecurityGuard.js?rmv=1.67.95';
+} from '../independentSecurityGuard.js?rmv=1.68.1';
 import {
     parseIndependentAdvancedOptions,
     buildIndependentAdvancedCarrier,
     applyIndependentAdvancedExclusions,
-} from '../advancedRequestOptions.js?rmv=1.67.95';
+} from '../advancedRequestOptions.js?rmv=1.68.1';
 import {
     buildRabbitMirrorPromptDetails,
     planRabbitMirrorPromptDetails,
@@ -31,15 +32,15 @@ import {
     prepareSelectedMemoryForPrompt,
     memoryRequestSettingsKey,
     assertMemoryRequestSettings,
-} from '../promptBuilder.js?rmv=1.67.95';
-import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.67.95';
-import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.67.95';
-import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.67.95';
-import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText, createMultifaceFailureSlot } from '../multifaceProtocol.js?rmv=1.67.95';
-import { applyAtmosphereFields, atmosphereNotesFromHtml, stripAtmosphereChoiceMarkup } from '../atmosphereChoice.js?rmv=1.67.95';
-import { isLocalPreflightFailure, isQuotaInsufficientFailure, configuredAutomaticRerollMax, automaticRerollEnabled } from '../automaticReroll.js?rmv=1.67.95';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.67.95';
-import { serialPaletteExecutionReminder } from '../serialPaletteContext.js?rmv=1.67.95';
+} from '../promptBuilder.js?rmv=1.68.1';
+import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.68.1';
+import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.68.1';
+import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.68.1';
+import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText, createMultifaceFailureSlot } from '../multifaceProtocol.js?rmv=1.68.1';
+import { applyAtmosphereFields, atmosphereNotesFromHtml, stripAtmosphereChoiceMarkup } from '../atmosphereChoice.js?rmv=1.68.1';
+import { isLocalPreflightFailure, isQuotaInsufficientFailure, configuredAutomaticRerollMax, automaticRerollEnabled } from '../automaticReroll.js?rmv=1.68.1';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.68.1';
+import { serialPaletteExecutionReminder } from '../serialPaletteContext.js?rmv=1.68.1';
 import {
     createVisualHistorySelection,
     resolveVisualHistorySelection,
@@ -48,9 +49,9 @@ import {
     markPendingBatchAttempt,
     findPendingComboBatchPlan,
     releasePendingComboBatch,
-} from '../storage.js?rmv=1.67.95';
-import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.67.95';
-import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.67.95';
+} from '../storage.js?rmv=1.68.1';
+import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.68.1';
+import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.68.1';
 import {
     RUNTIME_VERSION,
     EXTERNAL_SHELL_ATTR,
@@ -61,8 +62,8 @@ import {
     byteLength,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.67.95';
-import { operationEpochForBase } from './flights.js?rmv=1.67.95';
+} from './runtime.js?rmv=1.68.1';
+import { operationEpochForBase } from './flights.js?rmv=1.68.1';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INDEPENDENT_MAX_APPROX_DEPTH,
@@ -77,7 +78,7 @@ import {
     normalizedConfiguredTemperature,
     readHistoryStore,
     readStore,
-} from './persistence.js?rmv=1.67.95';
+} from './persistence.js?rmv=1.68.1';
 import {
     API_PROFILE_ORDER,
     chatKey,
@@ -111,7 +112,7 @@ import {
     stageNextApiProfile,
     swipeId,
     validatedIndependentConnectionProfile,
-} from './connection.js?rmv=1.67.95';
+} from './connection.js?rmv=1.68.1';
 import {
     externalGeometryCycleSequence,
     externalGeometryLifecycleEpoch,
@@ -122,7 +123,7 @@ import {
     writeExternalGeometryCycleSequence,
     writeExternalGeometryLifecycleEpoch,
     writeExternalGeometryLifecycleReason,
-} from './geometry.js?rmv=1.67.95';
+} from './geometry.js?rmv=1.68.1';
 import {
     INDEPENDENT_REJECTED_PREVIEW_MAX_CHARS,
     INDEPENDENT_REJECTED_PREVIEW_MAX_ENTRIES,
@@ -137,8 +138,8 @@ import {
     writeExternalHostSyncIndex,
     writeIndependentRejectedPreviewChars,
     writeIndependentRejectedPreviewSequence,
-} from './mount.js?rmv=1.67.95';
-import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.67.95';
+} from './mount.js?rmv=1.68.1';
+import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.68.1';
 
 const NON_STREAM_PROFILE_BY_STREAM_PROFILE={
  chat_system_user_full:'chat_system_user_full_nostream',
@@ -1657,7 +1658,7 @@ export function wireIndependentRejectedFaceControls(host){
    independentRejectedFaceControlsWired.add(resay);
    resay.addEventListener('click',event=>{
     event.preventDefault(); event.stopPropagation();
-    void import('../outputSanitizer/toolsChrome.js?rmv=1.67.95').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+    void import('../outputSanitizer/toolsChrome.js?rmv=1.68.1').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
    },true);
   }
  }
@@ -1856,7 +1857,7 @@ async function loadIndependentAppearanceReference(owner){
  let module;
  assertIndependentPromptOwner(owner);
  try{
-  try{module=await import('../appearanceReference.js?rmv=1.67.95');}
+  try{module=await import('../appearanceReference.js?rmv=1.68.1');}
   catch{
    const error=new Error('外观参考模块未能加载；本轮未发送请求，请刷新后重试或关闭外观参考。');
    error.code='RABBIT_MIRROR_APPEARANCE_MODULE_UNAVAILABLE';error.requestCount=0;throw error;
@@ -2017,6 +2018,15 @@ async function runIndependentSerialFaces({ ctx, index, msg, signal, requestOptio
   if (designCheck) designSelectionChecks.push({ ...designCheck, faceIndex });
   htmlByFace[faceIndex] = wrapSerialFace(html, faceIndex);
   failed.delete(faceIndex);
+  // 每出一面就告诉外层：之后这一轮如果因为等太久被中止，已经出好（已经付费）的面不会跟着丢。
+  try {
+   requestOptions.onSerialPartial?.({
+    faceCount,
+    missing: [...failed],
+    html: selections.map((_, index) => htmlByFace[index]
+     || createIndependentMultifaceFailureSlot(index, { faceIndex: index, status: 'failed', code: 'serial-not-sent' })).join('\n'),
+   });
+  } catch (error) { console.debug('[RabbitMirror] serial partial report skipped:', error); }
   // Reuse the existing per-face scan, but observe a completed face before the
   // next request instead of waiting until the entire serial batch has finished.
   try { faceScans[faceIndex] = { ...scanRabbitMirrorHtml(htmlByFace[faceIndex], null), faceIndex }; }
@@ -2027,6 +2037,8 @@ async function runIndependentSerialFaces({ ctx, index, msg, signal, requestOptio
  };
  const sendFace = async faceIndex => {
   assertParentCurrent();
+  // 逐面生成的 20 分钟总上限按每一面算，不再把几面加起来算（慢模型 5 面会超）。
+  requestOptions.onProgress?.('serial-face-start');
   const result = await callIndependentApi(ctx, index, msg, signal, {
   ...requestOptions,
   // A pinned child has no batch of its own. Keep its publication separate from
@@ -2628,14 +2640,71 @@ export function externalHostsByIdentityKey(key='',source='',currentChat=chatKey(
  );
 }
 
+// 外壳实际挂在哪一层楼下：在楼层里面就是那一层；普通电脑版外置壳挂在楼层后面（同一层级），往前找最近的楼层。
+// 托管聊天界面（TT 等）可能把外壳放到别处，那里不按位置判断，返回 null。
+export function physicalExternalHostOwner(host){
+ if(!host?.isConnected) return null;
+ const inside=host.closest?.('.mes');
+ if(inside) return inside;
+ if(globalThis.__TAURITAVERN__) return null;
+ try{ if(isRabbitMirrorManagedChatSurface()) return null; }catch{ return null; }
+ for(let cur=host,depth=0;cur&&depth<4;cur=cur.parentElement,depth+=1){
+  for(let sib=cur.previousElementSibling;sib;sib=sib.previousElementSibling){
+   if(sib.matches?.('.mes')) return sib;
+  }
+ }
+ return null;
+}
+
+// 删掉中间楼层后，酒馆给后面每层改了楼层号；页面上已挂着的兔子镜外壳也跟着改号，
+// 否则别的楼层会按旧号把它认走（两面合到一起、挪到别的楼层）。被删那条消息留下的外壳直接移走。
+// mapSlot 与聊天记录对号用的是同一套映射，不发请求、不改存档。
+export function restampExternalHostsAfterMessageDeletion(mapSlot){
+ if(typeof mapSlot!=='function' || typeof document==='undefined') return 0;
+ let currentChat='';
+ try{ currentChat=chatKey(getContext()); }catch{ return 0; }
+ if(!currentChat) return 0;
+ let changed=0;
+ for(const host of [...(document.querySelectorAll?.(`[${SOURCE_ATTR}]`)||[])]){
+  if(String(host.dataset?.rmOwnerChat||'')!==currentChat) continue;
+  const oldText=String(host.dataset?.rmOwnerMesid ?? host.dataset?.rmExternalOwnerMessage ?? '');
+  const old=Number(oldText);
+  if(!oldText || !Number.isInteger(old) || old<0) continue;
+  const swipe=Number(host.dataset?.rmOwnerSwipe);
+  let target;
+  try{ target=mapSlot(`${currentChat}:${old}:${Number.isInteger(swipe)&&swipe>=0?swipe:0}`); }catch{ continue; }
+  if(target===null){ host.remove(); changed+=1; continue; }
+  const match=/:(\d+):(\d+)$/.exec(String(target||''));
+  if(!match || Number(match[1])===old) continue;
+  const next=String(Number(match[1]));
+  host.dataset.rmOwnerMesid=next;
+  host.dataset.rmExternalOwnerMessage=next;
+  const key=String(host.dataset?.rmKey||'');
+  if(key){
+   try{ const mappedKey=mapSlot(key); if(typeof mappedKey==='string' && mappedKey) host.dataset.rmKey=mappedKey; }catch{}
+  }
+  host.setAttribute('aria-label',`第 ${next} 条回复的兔子镜`);
+  stampExternalDetailsOwnership(host);
+  changed+=1;
+ }
+ return changed;
+}
+
 export function externalHosts(el){
  if(!el) return [];
  const mesid=externalOwnerMesid(el);
  const currentChat=chatKey(getContext());
  const descendants=[...(el.querySelectorAll?.(`[${SOURCE_ATTR}]`)||[])];
+ const checkPlacement=!!el.matches?.('.mes');
  const owned=mesid ? indexedExternalHostsByMesid(mesid).filter(node=>{
    const ownerChat=String(node.dataset.rmOwnerChat||'');
-   return !ownerChat || ownerChat===currentChat;
+   if(ownerChat && ownerChat!==currentChat) return false;
+   // 号对上了、位置却明明挂在另一层楼下：那是别的楼层的兔子镜（楼层号还没跟上），不能认走。
+   if(checkPlacement){
+    const physical=physicalExternalHostOwner(node);
+    if(physical && physical!==el) return false;
+   }
+   return true;
  }) : [];
  return [...new Set([...descendants,...owned])];
 }

@@ -134,7 +134,7 @@ let updateCheckSequence = 0;
 let lastUpdateCheckAt = 0;
 let checkingPromise = null;
 let reloadWatchInstalled = false;
-let updateState = { status: 'idle', remoteVersion: '', remoteUrl: HOMEPAGE, remoteBranch: 'main', message: '' };
+let updateState = { status: 'idle', remoteVersion: '', remoteUrl: HOMEPAGE, remoteBranch: 'main', remoteBranchKnown: false, message: '' };
 const updateListeners = new Set();
 
 function validVersion(value) {
@@ -262,6 +262,8 @@ function rememberRemote(info, remoteVersion) {
         remoteVersion: remoteVersion || '',
         remoteUrl: info?.remote_url || info?.remoteUrl || HOMEPAGE,
         remoteBranch: currentBranchName(info) || FALLBACK_BRANCH,
+        // 只有真的从酒馆读到了分支名，才算知道自己在 main 上；读不到时不做覆盖重装。
+        remoteBranchKnown: !!currentBranchName(info),
     };
 }
 
@@ -453,7 +455,7 @@ async function overwriteFromGithub(folder) {
     if (!reinstallFn) {
         throw new Error('更新失败：本地扩展目录有改动，酒馆无法 git pull。当前环境没有 GitHub 覆盖安装。');
     }
-    globalThis.toastr?.info?.('git pull 被本地改动挡住了，改为用 GitHub 版本覆盖…');
+    globalThis.toastr?.info?.('正在用 GitHub 版本覆盖重装兔子镜…');
     const response = await reinstallFn(folder);
     if (response?.ok === true) {
         globalThis.toastr?.success?.('已强制覆盖为 GitHub 版本，正在刷新页面…');
@@ -476,9 +478,26 @@ function localChangesMessage(branch) {
     return `更新失败：本地扩展目录有改动，酒馆无法 git pull。当前分支是 ${branch}，只有 main 才会用 GitHub 覆盖。请先处理本地改动后再更新。`;
 }
 
-function afterPullBlocked(branch, folder) {
-    if (branch === 'main') return overwriteFromGithub(folder);
-    throw new Error(localChangesMessage(branch));
+// 酒馆更新失败时，不管是本地有改动、目录不是 git 仓库，还是酒馆服务器连不上 GitHub，都回同一个 500。
+// 以前一律当成「本地改动」直接覆盖重装；服务器连不上 GitHub 时会卸掉却装不回来。
+// 现在只在确实在 main 分支上、并且用户点了确认时才覆盖重装，否则什么都不改。
+function gitDetailShowsLocalChanges(detail) {
+    return /local changes|would be overwritten|commit your changes|stash them|uncommitted|untracked working tree/i.test(String(detail || ''));
+}
+
+function afterPullBlocked(branch, folder, detail = '') {
+    if (branch !== 'main' || updateState.remoteBranchKnown !== true) {
+        if (gitDetailShowsLocalChanges(detail)) throw new Error(localChangesMessage(branch));
+        throw new Error('更新失败：酒馆没能拉取新版本（可能是本地扩展目录有改动，也可能是酒馆所在的服务器连不上 GitHub）。兔子镜没有做任何改动。');
+    }
+    const sure = gitDetailShowsLocalChanges(detail);
+    const question = sure
+        ? '酒馆没能更新：本地扩展目录有改动。\n\n要用 GitHub 上的版本覆盖重装吗？本地改动会被丢掉。\n\n选「取消」则什么都不改。'
+        : '酒馆没能完成更新。可能是本地扩展目录有改动，也可能是酒馆所在的服务器连不上 GitHub。\n\n要用 GitHub 版本覆盖重装吗？如果服务器连不上 GitHub，重装会失败，兔子镜可能被卸载，需要重新安装。\n\n选「取消」则什么都不改。';
+    let confirmed = false;
+    try { confirmed = globalThis.confirm?.(question) === true; } catch { confirmed = false; }
+    if (!confirmed) throw new Error('已取消覆盖重装，兔子镜没有做任何改动。');
+    return overwriteFromGithub(folder);
 }
 
 export async function applyRabbitMirrorUpdateAndReload(options = {}) {
@@ -498,10 +517,10 @@ export async function applyRabbitMirrorUpdateAndReload(options = {}) {
             const status = typeof response?.status === 'number' ? response.status : 0;
             let detail = '';
             try { if (typeof response?.text === 'function') detail = (await response.text()).trim(); } catch {}
-            if (looksLikeGitPullBlocked(null, status, detail)) return afterPullBlocked(branch, folder);
+            if (looksLikeGitPullBlocked(null, status, detail)) return afterPullBlocked(branch, folder, detail);
             throw new Error(detail || failure(status));
         } catch (error) {
-            if (looksLikeGitPullBlocked(error, error?.status, error?.detail)) return afterPullBlocked(branch, folder);
+            if (looksLikeGitPullBlocked(error, error?.status, error?.detail)) return afterPullBlocked(branch, folder, `${error?.detail || ''} ${error?.message || ''}`);
             throw error;
         }
     }
@@ -513,7 +532,7 @@ export async function applyRabbitMirrorUpdateAndReload(options = {}) {
         }
         return finishUpdated();
     } catch (error) {
-        if (looksLikeGitPullBlocked(error, error?.status, error?.detail)) return afterPullBlocked(branch, folder);
+        if (looksLikeGitPullBlocked(error, error?.status, error?.detail)) return afterPullBlocked(branch, folder, `${error?.detail || ''} ${error?.message || ''}`);
         throw error;
     }
 }
