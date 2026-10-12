@@ -10,16 +10,16 @@ export const DRIVER_METHODS = Object.freeze({
     pager: { names: ['翻页阅读', '逐页推进'], how: 'data-rm-ui="pager"，每页 data-rm-page，data-rm-prev／data-rm-next 翻页（也可左右划），只显示当前页，容器带 [data-rm-index="页码"]' },
     roll: { names: ['随机抽取', '抽签掷骰'], how: 'data-rm-ui="roll"，每个结果 data-rm-show="键"，点 data-rm-roll 随机显示其中一个，不连着重复' },
     connect: { names: ['配对连线', '线索连接'], how: 'data-rm-ui="connect"，成对的两端 data-rm-end 写同一个键，先后点两端连上线，连上的带 [data-rm-paired]，全部连完容器带 [data-rm-done]' },
-    turn: { names: ['旋转拨盘', '转盘对位'], how: 'data-rm-ui="turn"，转钮 data-rm-knob 可拖转也可点按，容器写 data-rm-stops="格数" 时按格停并带 [data-rm-index]，写 data-rm-answer="格号" 对准时带 [data-rm-match]' },
+    turn: { names: ['旋转拨盘', '转盘对位'], how: 'data-rm-ui="turn"，转钮 data-rm-knob 可拖转也可点按，容器写 data-rm-stops="格数" 时按格停并带 [data-rm-index]，写 data-rm-answer="格号" 对准时带 [data-rm-match]，停在第几格（从 0 数）时 data-rm-show="格号" 的内容出现' },
     sequence: { names: ['顺序解锁', '按序点亮'], how: 'data-rm-ui="sequence"，各键 data-rm-code="键"，容器 data-rm-answer="键1,键2,…"，按过的键带 [data-rm-done]，按对顺序容器带 [data-rm-match]，按错带 [data-rm-miss] 并重来' },
     input: { names: ['输入口令', '填写回应'], how: 'data-rm-ui="input" 内放文本框和 output（实时显示输入），容器写 data-rm-answer="答案" 时答对带 [data-rm-match]' },
-    effect: { names: ['触发效果', '逐字显现', '盖章印记'], how: 'data-rm-ui="effect" 内 button data-rm-fire 触发 data-rm-part 的关键帧，每次从头播放' },
+    effect: { names: ['触发效果', '逐字显现', '盖章印记'], how: 'data-rm-ui="effect" 内 button data-rm-fire 触发 data-rm-part 的关键帧，每次从头播放，按过后 data-rm-show="changed" 的内容出现' },
     drag: { names: ['拖动与组合', '投放收纳'], how: 'data-rm-ui="drag"，物件 data-rm-item="键"，可选同键 data-rm-slot 吸附槽，button data-rm-reset 复原' },
     adjust: { names: ['连续调节', '调光调色'], how: 'data-rm-ui="adjust" 内放 range，CSS 用 --rm-p(0～1) 连续改变主体' },
-    reveal: { names: ['局部揭示', '刮擦揭开', '对照滑块'], how: 'data-rm-ui="reveal" 包住底图与 data-rm-cover 遮层，range（从最左开始）或横拖逐步揭开，揭到底时 data-rm-show="done" 的内容出现，data-rm-reset 复原' },
+    reveal: { names: ['局部揭示', '刮擦揭开', '对照滑块'], how: 'data-rm-ui="reveal" 包住底图与 data-rm-cover 遮层，range（从最左开始）或横拖逐步揭开，揭到底时 data-rm-show="done" 的内容出现，data-rm-reset 复原；data-rm-cover 写在盖住内容的那层上，不写在 range 上' },
     view: { names: ['视野操作'], how: 'data-rm-ui="view" 内 data-rm-part 可滚动浏览，range(1～3) 连续缩放，data-rm-reset 还原' },
     draw: { names: ['手绘描画'], how: 'data-rm-ui="draw" 内 svg data-rm-canvas 供手指描画，button data-rm-reset 清除' },
-    motion: { names: ['进程控制'], how: 'data-rm-ui="motion" 内 data-rm-part 保留真实动画，button data-rm-play 暂停继续，range 调进度' },
+    motion: { names: ['进程控制'], how: 'data-rm-ui="motion" 内 data-rm-part 要有 @keyframes 动画（只写静态样式时没东西可播），button data-rm-play 暂停继续，range 调进度' },
     hold: { names: ['临时预览'], how: 'data-rm-ui="hold" 的 button data-rm-hold，按住时容器和按钮都带 [data-rm-active="true"]，CSS 据此改变画面，或用 data-rm-show="active" 显示预览层' },
     follow: { names: ['跟随反馈'], how: 'data-rm-ui="follow" 内 data-rm-surface 为触摸区，CSS 用 --rm-x/--rm-y 定位光斑或线端' },
     reorder: { names: ['动态重排'], how: 'data-rm-ui="reorder"，同父层各项 data-rm-item，项内 button data-rm-prev/data-rm-next，data-rm-reset 复原' },
@@ -38,13 +38,14 @@ const USAGE_DRIVER_RULES = Object.freeze([
     ['reveal', /刮|揭开|揭起|揭晓|划过|哈气|掀(?!起盖头)|撕(?!成|毁)|擦(?!拭镜片)|拨开|显影|涂黑|被涂掉|划掉|抹|被盖住|割开/],
     ['draw', /画(符|圈|一|出|下|上)|^画|描|涂(?!改)|写字|签名|签上|手写|圈出|划线|落笔|上色|晕染|批注|写想法|在.*写|抄下/, /^(看|查看|点开|翻|调整|移开|展开|擦掉|读|对照|找到|收藏|播放|放大|点亮)/],
     ['input', /^(输入|打出|填|搜索(?!历史)|备注|改名|重命名|给它取名|取名|回复(?!可见)|评论|留言|写(评价|留言|短评|差评)|发(一条)?(段评|弹幕)|作答|念出|修改|引用|提一个问题|喊出|提交)/],
-    ['motion', /播放|暂停|倍速|进度|快进|回放|倒放|循环|唱针|放映|运转|计时|沙漏|等待|等它|看它|等(云|潮)|读条/],
+    // 进程控制只给「拖进度、快进、倍速」这类真要拨时间的用法；单纯播放／暂停／回放用开关写更稳（见下面 toggle）。
+    ['motion', /进度|倍速|快进|倒放|读条|拖动时间轴/],
     ['view', /拖动视角|放大|缩放|双指|细节|大图|地图|街景|取景|望远|放大镜/],
     ['follow', /照亮|手电|追着光|探照|跟着|光斑|灯笼|光源|举灯/],
     ['reorder', /排序|排好|排开|排成|排列|重排|置顶|调换|按.*顺序|按时间线|按年份|按日期|交换位置/],
     ['drag', /拖|放进|放入|放回|放上|放置|塞|投进|移动|移到|摆|拼(起|上|好|成|合|单)|贴(上|到)|叠(放|好|起|上)|抽出|取出|拿起|拿出|推开|拉开|推回|倒入|倒出|装进|夹进|收进|挂(起|上|回)|插(进|入|上|回)|粘|递|捡起|拾起/],
     ['accumulate', /勾选|打勾|点赞|收集|集齐|盖(章|印|邮戳|纪念章|上)|按手印|打卡|签到|一件件|一针一针|记一笔|标记|收藏|计算|算分|加砝码|续杯|加料|加入|关注|打分|评分|打星|点喜欢|Kudos|投月票|加精|^加点|加一条|解锁(一|隐藏)/],
-    ['toggle', /翻面|翻过来|翻转|翻牌|翻开(?!夹层|卷宗)|翻到.*背面|翻到画背面|开关|开灯|关灯|打开|合上|关上|开窗|拉窗帘|点亮|点燃|吹灭|展开|收起|对折|折(一下|起|好|回)|折痕|戴|取下|穿上|脱下|系(上|紧|好|回)|替对方系|扣上|解开|开机|关机|倒扣|倒转|倒过来|披上|卷起|拆开|撬开|剥开|掰|摊开|抖开|摘下/],
+    ['toggle', /播放|暂停|回放|放映|唱针|翻面|翻过来|翻转|翻牌|翻开(?!夹层|卷宗)|翻到.*背面|翻到画背面|开关|开灯|关灯|打开|合上|关上|开窗|拉窗帘|点亮|点燃|吹灭|展开|收起|对折|折(一下|起|好|回)|折痕|戴|取下|穿上|脱下|系(上|紧|好|回)|替对方系|扣上|解开|开机|关机|倒扣|倒转|倒过来|披上|卷起|拆开|撬开|剥开|掰|摊开|抖开|摘下/],
     ['pager', /翻页|翻到|翻回|翻看|翻开|下一(页|章|张|首|格|幕|条|版|个|集|步|站|题|篇|句)|跳过|上一(页|章|张|首|集)|左右滑|跳到|跳回|切歌|换台|切到|翻.*记录|翻阅|逐行|逐条阅读/],
     ['pick', /选|挑|切换|换(一|上)|筛选|分类|指认|投票|投出|只看|设为|模式|按热度|按销量|规格|口味|出示|指出|岔路|^同意|^驳回|存档|读档/],
     ['popup', /^点开|关掉弹窗|关闭键|菜单|详情|资料|主页|属性|提示|说明|目录|版规|小传|脚注|附录|索引|条款|搜索历史/],
@@ -118,8 +119,9 @@ export function drawDriverOffer({ avoidSlide = false, avoidFlip = false, avoidTa
         matched.push(key);
         if (matched.length >= OFFER_SIZE) break;
     }
-    const hasSlide = matched.some(key => SLIDE_DRIVERS.has(key));
-    const allRest = all.filter(key => !matched.includes(key) && !(hasSlide && SLIDE_DRIVERS.has(key)));
+    // 滑杆／拖动这一族只在展现形式的用法里真写了「拖、刮、转、调」时才给；随机补位不补这一族。
+    // 这类写法要拖的东西和要变的内容分开写、模型最容易写歪，不是形式要的就不拿来凑数。
+    const allRest = all.filter(key => !matched.includes(key) && !SLIDE_DRIVERS.has(key));
     // 补位先从这个媒介常用动作对应的写法里挑（够数时），不够再放开到全部。
     const near = new Set(related.flatMap(usage => driversForUsage(usage).slice(0, 1)));
     const nearRest = allRest.filter(key => near.has(key));
@@ -127,10 +129,7 @@ export function drawDriverOffer({ avoidSlide = false, avoidFlip = false, avoidTa
     const fresh = rest.filter(key => !recent.includes(key));
     const need = OFFER_SIZE - matched.length;
     const pool = fresh.length >= need ? fresh : rest;
-    // 滑杆／拖动这一族整体只占一个抽签位，抽中了再从族里随机挑一种。
-    const slides = pool.filter(key => SLIDE_DRIVERS.has(key));
-    const units = [...pool.filter(key => !SLIDE_DRIVERS.has(key)), ...(slides.length ? [''] : [])];
-    const offer = [...matched, ...shuffled(units).slice(0, need).map(key => key || shuffled(slides)[0])];
+    const offer = [...matched, ...shuffled(pool).slice(0, need)];
     try { globalThis.localStorage?.setItem(RECENT_KEY, JSON.stringify(offer)); } catch { /* best effort */ }
     return Object.freeze(offer);
 }

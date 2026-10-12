@@ -1,9 +1,9 @@
-import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.68.13';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.68.13';
-import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.68.13';
-import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.68.13';
-import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.68.13';
-import { addDialectStateKeys, authorManagedShows, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup } from './behaviorDialect.js?rmv=1.68.13';
+import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.68.15';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.68.15';
+import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.68.15';
+import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.68.15';
+import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.68.15';
+import { addDialectStateKeys, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup } from './behaviorDialect.js?rmv=1.68.15';
 
 export { behaviorToggleKey, motionOutsideControls };
 
@@ -131,6 +131,11 @@ function localRules(root) {
 // CSS 变量只往里层传、不往旁边传，这些元素收不到。同一个值也写到用它的元素身上；
 // 只写在用它的元素上、不写公共祖先，别的区域里的元素不碰，包着别的区域的元素也不碰。
 const MAX_VAR_USERS = 40;
+// 驱动会往容器上写的变量，以及会写它的区域类型。
+const VAR_WRITERS = Object.freeze({
+    '--rm-p': ['reveal', 'adjust', 'turn'], '--rm-value': ['adjust'], '--rm-count': ['accumulate', 'connect', 'sequence'],
+    '--rm-index': ['pager'], '--rm-pages': ['pager'], '--rm-angle': ['turn'], '--rm-x': ['follow'], '--rm-y': ['follow'],
+});
 const PSEUDO_STRIP = /::?[\w-]+(?:\([^()]*\))?/g;
 function varUsers(state, property) {
     state.varUsers ||= new Map();
@@ -145,9 +150,18 @@ function varUsers(state, property) {
         if (!node?.style || list.length >= MAX_VAR_USERS || list.includes(node)) return;
         if (node === group || group.contains(node) || (node !== scope && !scope.contains(node))) return;
         if (node.closest(GROUP)) return;
-        if ([...node.querySelectorAll(GROUP)].some(other => other !== group && !group.contains(other))) return;
+        // 这个元素里还包着别的插件区域时：别的区域自己也写这个变量（会被我们的值盖住继承），
+        // 或者它里面有元素按这个变量画，就不往外传；别的区域跟这个变量无关（比如正文里夹着一张翻面卡）照常传。
+        const others = [...node.querySelectorAll(GROUP)].filter(other => other !== group && !group.contains(other));
+        if (others.some(other => (VAR_WRITERS[property] || []).includes(other.getAttribute('data-rm-ui')) || ruleUsesVarInside(other))) return;
         list.push(node);
     };
+    const usingRules = localRules(state.root).filter(rule => needle.test(rule.style.cssText));
+    const ruleUsesVarInside = other => usingRules.some(rule => {
+        const selector = rule.selectorText.replace(PSEUDO_STRIP, '').trim();
+        if (!selector) return false;
+        try { return other.matches(selector) || !!other.querySelector(selector); } catch { return false; }
+    }) || [other, ...other.querySelectorAll('[style*="--rm-"]')].some(item => needle.test(item.getAttribute?.('style') || ''));
     for (const node of [scope, ...scope.querySelectorAll('[style*="--rm-"]')]) if (needle.test(node.getAttribute?.('style') || '')) accept(node);
     for (const rule of localRules(state.root)) {
         if (!needle.test(rule.style.cssText)) continue;
@@ -357,6 +371,13 @@ function beginVerify(state, control, replay = false) {
 const isTransition = animation => typeof animation?.transitionProperty === 'string'
     || (typeof CSSTransition !== 'undefined' && animation instanceof CSSTransition);
 function animations(state) {
+    // 动画区域里没写真正的动画、也没有可挪的位置数值，部件里是一排细条（音轨波形）：给细条补一段可暂停的起伏（方言表 motion-equalizer）。
+    if (state.type === 'motion' && !state.equalizerChecked) {
+        state.equalizerChecked = true;
+        if (!motionTargets(state).length) {
+            try { motionEqualizerAnimations(state.group, own(state.group, '[data-rm-part]')); } catch { /* 补不上就照旧 */ }
+        }
+    }
     const found = own(state.group, '[data-rm-part]').flatMap(part => part.getAnimations?.({ subtree: true }) || []);
     for (const animation of found) {
         // 过渡（transition）不是模型写的动画，只是位置改变时的补间；当成动画去拨时间会把画面卡在半路。
@@ -372,7 +393,15 @@ function reveal(state, p) {
     state.progress = value;
     style(state, state.group, '--rm-p', String(value));
     const down = state.group.getAttribute('data-rm-reveal-dir') === 'down';
-    for (const cover of own(state.group, '[data-rm-cover]')) style(state, cover, 'clip-path', down ? `inset(${value * 100}% 0 0 0)` : `inset(0 0 0 ${value * 100}%)`);
+    for (const cover of own(state.group, '[data-rm-cover]')) {
+        // 模型把 data-rm-cover 写在滑杆自己身上（或包住滑杆的那层）：那不是盖住内容的遮罩，裁了滑杆就拖不到了。
+        if (cover.matches('input, button, label') || cover.querySelector('input[type="range"]')) {
+            // 以前版本裁过它、又跟着存档存下来的 inset 裁切，一并去掉。
+            if (/^inset\(/.test(cover.style.getPropertyValue('clip-path'))) cover.style.removeProperty('clip-path');
+            continue;
+        }
+        style(state, cover, 'clip-path', down ? `inset(${value * 100}% 0 0 0)` : `inset(0 0 0 ${value * 100}%)`);
+    }
     for (const node of own(state.group, '[data-rm-range-var]')) {
         const name = String(node.getAttribute('data-rm-range-var') || '');
         if (/^--[\w-]+$/.test(name)) style(state, node, name, `${Math.round(value * 100)}%`);
@@ -640,6 +669,8 @@ function prepare(binding, group) {
     for (const control of own(group, `${CONTROL_SELECTOR}, [data-rm-hold]`)) enableControl(control);
     if (type === 'view') style(state, group, 'overflow', 'auto');
     if (type === 'effect') for (const animation of animations(state)) { animation.pause(); animation.currentTime = 0; }
+    // 音轨波形补动画要在接线时就补上（暂停在开头），维修兔和诊断才看得到它能动。
+    if (type === 'motion') animations(state);
     if (type === 'accumulate') countSteps(state);
     if (STATEFUL.has(type)) prepareStateful(state);
     if (['adjust', 'view', 'reveal'].includes(type)) {
@@ -679,6 +710,8 @@ function motionTargets(state) {
             const saved = state.styles.get(part)?.get(property);
             const raw = String(saved ? saved[0] : inline.getPropertyValue(property)).trim();
             const match = raw.match(/^(-?\d*\.?\d+)(%|px)?$/);
+            // 宽高只认百分比（进度条那种）；写死像素的宽高是部件本身的尺寸，按比例放大只会把它撑变形（波形条、唱片）。
+            if (match && (property === 'width' || property === 'height') && match[2] !== '%') continue;
             if (match) targets.push({ node: part, property, base: Number(match[1]), unit: match[2] || '' });
         }
     }
@@ -841,6 +874,8 @@ function action(state, button) {
         for (const animation of list) { animation.currentTime = 0; animation.play(); }
         if (list.length) state.changed = true;
         if (fireParts(state)) state.changed = true;
+        // 区域里写了「按下后显示」的内容时，按下本身就是状态变化（见方言表 effect-any-show）。
+        if (ownBehaviorShows(state.group).length) state.changed = true;
     } else if (state.type === 'motion') {
         const list = animations(state);
         if (list.length) state.changed = true;
@@ -1638,7 +1673,7 @@ function scheduleOnDemandRelay(root, target) {
 function relayGroupLater(root, group, control = null) {
     const run = () => {
         if (!group.isConnected || !root.isConnected) return;
-        void import('./behaviorRelay.js?rmv=1.68.13').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
+        void import('./behaviorRelay.js?rmv=1.68.15').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
     };
     const idle = globalThis.requestIdleCallback;
     if (typeof idle === 'function') idle(run, { timeout: 800 }); else setTimeout(run, 120);

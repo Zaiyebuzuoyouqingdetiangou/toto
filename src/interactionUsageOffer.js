@@ -1,7 +1,7 @@
 // 抽完展现形式后，按形式所属的媒介大类从真实用法索引里强随机抽 3 项，避开近期给过的用法。
 // 只有这 3 项进入 Prompt；索引本身不发送。由出题计划冻结，重说与逐面子请求沿用同一份。
-import { CORE_USAGES, USAGE_CATEGORIES, USAGE_FORMAT_OVERRIDES, USAGE_GROUP_FALLBACK } from '../data/raw/interactionUsages.js?rmv=1.68.13';
-import { FORMAT_USAGES } from '../data/raw/formatUsages.js?rmv=1.68.13';
+import { CORE_USAGES, USAGE_CATEGORIES, USAGE_FORMAT_OVERRIDES, USAGE_GROUP_FALLBACK } from '../data/raw/interactionUsages.js?rmv=1.68.15';
+import { FORMAT_USAGES } from '../data/raw/formatUsages.js?rmv=1.68.15';
 
 const OFFER_SIZE = 3;
 const RECENT_KEY = 'rabbitMirrorUsageRecent';
@@ -70,7 +70,8 @@ export function drawUsageOffer(combo, { avoidFlip = false, avoidSlide = false } 
     // 这一面的形式有专属用法时，专属用法就是它的核心玩法：先取 2 项，大类里再取 1 项。
     const formatAll = [...new Set([...(combo?.formats || []), ...(combo?.texts || [])].flatMap(item => FORMAT_USAGES[String(item?.id || '')] || []))];
     const coreAll = formatAll.length ? formatAll : [...new Set(CORE_USAGES.filter(entry => entry.keywords.some(word => text.includes(word))).flatMap(entry => entry.usages))];
-    const coreCount = formatAll.length ? 2 : 1;
+    // 展现形式自己写了玩法时优先照形式来：够 3 项就全用形式自己的，不再从大类里掺一项。
+    const coreCount = formatAll.length >= OFFER_SIZE ? OFFER_SIZE : formatAll.length ? formatAll.length : 1;
     const coreNonFlip = coreAll.filter(item => !avoided(item));
     const corePool = (avoidFlip || avoidSlide) && coreNonFlip.length ? coreNonFlip : coreAll;
     const coreFresh = corePool.filter(item => !recent.includes(item));

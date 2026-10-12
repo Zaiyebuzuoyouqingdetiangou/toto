@@ -118,8 +118,9 @@ function walk(node, keys) {
         const tag = element.tagName.toLowerCase();
         if (tag === 'script' || tag === 'iframe' || tag === 'object' || tag === 'embed') { element.remove(); continue; }
         if (element.matches?.(TOOL_UI)) { element.remove(); continue; }
-        // 插件后来补进去的整块样式（手机排版规则等）只留一个标记，不占篇幅。
-        if (tag === 'style' && [...element.attributes].some(attribute => attribute.name.startsWith('data-rabbit-mirror-'))) {
+        // 插件自己新建的整块样式（手机排版规则、维修补丁）只留一个标记，不占篇幅。
+        // 模型自己写的 <style> 被修复器打过标记（比如 iOS 翻面兼容）的仍是模型的写法，照常保留。
+        if (tag === 'style' && element.matches('[data-rabbit-mirror-mobile-layout-rescue], [data-rabbit-mirror-maintenance-patch], [data-rabbit-mirror-local-panel-layout]')) {
             element.textContent = '/* 插件补的样式，略 */';
             continue;
         }

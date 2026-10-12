@@ -2,11 +2,11 @@
 // （点 label／按钮、拖滑杆、开合内层 details），比较操作前后的画面快照；没有任何变化的就是“点了没反应”。
 // 副本里会重新接上和真实页面一样的修复，所以修好的控件在副本里也能动。
 // 真实页面上的控件一个不碰；结果只写回一个属性，供维修兔的结论和诊断引用。
-import { createMaintenanceLabeledCheckedProbeSandbox, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.68.13';
-import { rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.68.13';
-import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.68.13';
-import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=1.68.13';
-import { remoteMotionGroup, remoteToggleGroup } from './behaviorDialect.js?rmv=1.68.13';
+import { createMaintenanceLabeledCheckedProbeSandbox, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.68.15';
+import { rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.68.15';
+import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.68.15';
+import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=1.68.15';
+import { remoteMotionGroup, remoteToggleGroup } from './behaviorDialect.js?rmv=1.68.15';
 
 export const GENERIC_PROBE_RESULT_ATTR = 'data-rabbit-mirror-generic-probe';
 const TOOL_SELECTOR = '[data-rabbit-mirror-tool-entry-host],[data-rabbit-mirror-diagnostic-panel],.rabbit-mirror-maintenance-menu,[data-rm-face-swipe-host],[data-rm-image-region],[data-rm-mobile-controls],[data-rabbit-mirror-maintenance-rabbit],[data-rabbit-mirror-feedback-cat]';
@@ -38,12 +38,14 @@ function hash(text) {
 }
 
 // 画面快照：每个元素的显隐、透明度、变换、背景、高度、勾选与展开状态，加上整面文字。
-function snapshot(details) {
+// ignore：这次操作的控件本身（滑杆被裁、被挪这类只发生在滑杆自己身上的变化不算画面有反应）。
+function snapshot(details, ignore = null) {
     const parts = [String(details.innerText || '').slice(0, 20000)];
     let count = 0;
     for (const element of details.querySelectorAll('*')) {
         if (count++ > MAX_SNAPSHOT_NODES) break;
         if (element.closest(TOOL_SELECTOR)) continue;
+        if (ignore && (element === ignore || ignore.contains(element))) continue;
         let style;
         try { style = getComputedStyle(element); } catch { continue; }
         const rect = element.getBoundingClientRect();
@@ -225,7 +227,8 @@ export function probeGenericControls(details, controls, started = Date.now(), bu
         if (Date.now() - started > budget) { truncated = true; break; }
         const group = probeGroupOf(details, control.element);
         const watch = group && probeGroupHasContent(group) ? group : null;
-        const before = snapshot(details);
+        const ignore = control.kind === 'range' ? control.element : null;
+        const before = snapshot(details, ignore);
         const contentBefore = watch ? contentSnapshot(watch) : 0;
         // 播放钮按下去动画才开始走，第一帧要等下一次重绘，当场量不到；驱动会立刻把按钮标成 aria-pressed，以此为准。
         const pressedBefore = control.element.getAttribute?.('aria-pressed');
@@ -234,7 +237,7 @@ export function probeGenericControls(details, controls, started = Date.now(), bu
         if (outcome === 'dead') { outcomes.set(control, 'dead'); continue; }
         try { void details.offsetHeight; } catch {}
         const playPressed = control.element.matches?.('[data-rm-play], [data-rm-reverse]') && control.element.getAttribute('aria-pressed') !== pressedBefore;
-        const changed = snapshot(details) !== before || playPressed;
+        const changed = snapshot(details, ignore) !== before || playPressed;
         const contentMoved = watch ? contentSnapshot(watch) !== contentBefore || playPressed : changed;
         if (outcome === 'hold') fire(control.element, 'pointerup', { button: 0, isPrimary: true, pointerId: 1 });
         if (watch) contentChanged.set(watch, (contentChanged.get(watch) || false) || contentMoved);
