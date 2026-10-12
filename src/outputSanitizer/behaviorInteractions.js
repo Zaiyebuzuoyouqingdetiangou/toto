@@ -1,8 +1,8 @@
-import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.68';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.68';
-import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.68';
-import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.68';
-import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.68';
+import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.68.1';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.68.1';
+import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.68.1';
+import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.68.1';
+import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.68.1';
 
 // Declarative, face-local behaviors. No generated code, global targets or timers.
 const roots = new WeakMap();
@@ -77,6 +77,8 @@ function stateKeys(state) {
         if (name) keys.add(name);
     }
     if (state.type === 'turn' && state.stops) keys.add(String(state.stopIndex));
+    // 揭示：揭到底（九成以上）时，「揭开后才显示」的内容出来。模型常写 data-rm-show="reveal"／"revealed"／"done"，都认。
+    if (state.type === 'reveal' && (state.progress || 0) >= 0.9) for (const key of ['reveal', 'revealed', 'done', 'full', 'open']) keys.add(key);
     for (const key of state.entered || []) keys.add(key);
     for (const [, , key] of state.pairs || []) keys.add(key);
     return keys;
@@ -628,6 +630,12 @@ function prepare(binding, group) {
     if (STATEFUL.has(type)) prepareStateful(state);
     if (['adjust', 'view', 'reveal'].includes(type)) {
         const range = first(group, 'input[type="range"]');
+        // 揭示用的滑杆一打开就停在最右（已经揭到底），往右拖不动，揭开后的内容也没机会出来：从最左开始。
+        if (range && type === 'reveal' && own(group, '[data-rm-cover]').length && !group.closest('[data-rm-quiet-feedback]')) {
+            const { value } = rangeValue(range);
+            const max = range.max === '' ? 100 : finite(range.max, 100);
+            if (value >= max) range.value = String(range.min === '' ? 0 : finite(range.min));
+        }
         if (range) inputChange(state, range);
     }
     refreshResults(state);
@@ -1528,7 +1536,7 @@ function scheduleOnDemandRelay(root, target) {
 function relayGroupLater(root, group, control = null) {
     const run = () => {
         if (!group.isConnected || !root.isConnected) return;
-        void import('./behaviorRelay.js?rmv=1.68').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
+        void import('./behaviorRelay.js?rmv=1.68.1').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
     };
     const idle = globalThis.requestIdleCallback;
     if (typeof idle === 'function') idle(run, { timeout: 800 }); else setTimeout(run, 120);
