@@ -275,6 +275,14 @@
       ]
     },
     {
+      "id": "10.2.31",
+      "group": "10",
+      "tags": [
+        "independent",
+        "visual"
+      ]
+    },
+    {
       "id": "1.1",
       "group": "1",
       "tags": [
@@ -739,6 +747,32 @@
       ]
     },
     {
+      "id": "1.21",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital",
+        "visual"
+      ]
+    },
+    {
+      "id": "1.22",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital"
+      ]
+    },
+    {
+      "id": "1.23",
+      "group": "1",
+      "tags": [
+        "independent",
+        "digital",
+        "meta"
+      ]
+    },
+    {
       "id": "2.1",
       "group": "2",
       "tags": [
@@ -924,6 +958,15 @@
       ],
       "aliases": [
         "翻各种物品 / 窥探式翻找"
+      ]
+    },
+    {
+      "id": "2.4.3",
+      "group": "2",
+      "tags": [
+        "independent",
+        "physical",
+        "object"
       ]
     },
     {

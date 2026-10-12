@@ -1,37 +1,38 @@
-import { INTERACTION_SAMPLING_RULE, designCandidatePick, drawDesignCandidate } from './interactionSampling.js?rmv=1.68.4';
-import { driverContractLines, drawDriverOffer, interactionMethodNames, matchDriversToUsages, normalizeDriverOffer } from './interactionMethods.js?rmv=1.68.4';
-import { drawUsageOffer, normalizeUsageOffer, relatedUsagesForCombo } from './interactionUsageOffer.js?rmv=1.68.4';
-import { drawContinuation, normalizeContinuation } from './continuationCache.js?rmv=1.68.4';
-import { recentInteractionMethods } from './interactionMethodLedger.js?rmv=1.68.4';
-import { gameplayRuleFor } from './gameplayRules.js?rmv=1.68.4';
-import { usesModelOriginalColors, withoutPaletteRecipe, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.68.4';
-import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=1.68.4';
-import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=1.68.4';
-import { isNearWhitePalette, isNearWhiteContentSurface } from './paletteObservation.js?rmv=1.68.4';
-import { observedOperationFamiliesFor, observedMechanismsFor } from './compositionFingerprint.js?rmv=1.68.4';
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.68.4';
-import { expandShuffledOptions } from '../data/raw/rawSegmentLookup.js?rmv=1.68.4';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.68.4';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.68.4';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.68.4';
-import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES, VISUAL_SCENERY_EXPRESSION_RULE, VISUAL_SCENERY_VS_GUIDANCE } from '../data/raw/visualSceneryRules.js?rmv=1.68.4';
-import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.68.4';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.68.4';
-import { getComboHistory, getActivePaletteCooldown, retargetSingleAttemptFormat } from './storage.js?rmv=1.68.4';
-import { strongVisualDiversityRule, darkVisualGenerationRule, softLightVisualGenerationRule, visualDiversityExecutionLock, recentPaletteExecutionReminder, recentPaletteHueFamilies, describeHueFamilies } from './visualDiversityPolicy.js?rmv=1.68.4';
-import { withoutInteractionRecipe, observedInteractionRecipesFor } from './interactionRecipes.js?rmv=1.68.4';
-import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.68.4';
-import { buildPaletteCooldownRule, buildPaletteCooldownExecutionLock } from './paletteCooldown.js?rmv=1.68.4';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.68.4';
-export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.68.4';
-import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.68.4';
-import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.68.4';
-import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.68.4';
-import { faceDrawMetadataFields } from './faceDrawRules.js?rmv=1.68.4';
-import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.68.4';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.68.4';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.68.4';
-import { rabbitMirrorAvatarPromptRule } from './chatAvatars.js?rmv=1.68.4';
+import { INTERACTION_SAMPLING_RULE, designCandidatePick, drawDesignCandidate } from './interactionSampling.js?rmv=1.68.8';
+import { driverContractLines, drawDriverOffer, interactionMethodNames, matchDriversToUsages, normalizeDriverOffer } from './interactionMethods.js?rmv=1.68.8';
+import { drawUsageOffer, normalizeUsageOffer, relatedUsagesForCombo } from './interactionUsageOffer.js?rmv=1.68.8';
+import { drawContinuation, normalizeContinuation } from './continuationCache.js?rmv=1.68.8';
+import { recentInteractionMethods } from './interactionMethodLedger.js?rmv=1.68.8';
+import { gameplayRuleFor } from './gameplayRules.js?rmv=1.68.8';
+import { usesModelOriginalColors, withoutPaletteRecipe, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=1.68.8';
+import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=1.68.8';
+import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=1.68.8';
+import { isNearWhitePalette, isNearWhiteContentSurface } from './paletteObservation.js?rmv=1.68.8';
+import { observedOperationFamiliesFor, observedMechanismsFor } from './compositionFingerprint.js?rmv=1.68.8';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=1.68.8';
+import { expandShuffledOptions } from '../data/raw/rawSegmentLookup.js?rmv=1.68.8';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=1.68.8';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=1.68.8';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=1.68.8';
+import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES, VISUAL_SCENERY_EXPRESSION_RULE, VISUAL_SCENERY_VS_GUIDANCE } from '../data/raw/visualSceneryRules.js?rmv=1.68.8';
+import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=1.68.8';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay } from './picker.js?rmv=1.68.8';
+import { getComboHistory, getActivePaletteCooldown, retargetSingleAttemptFormat } from './storage.js?rmv=1.68.8';
+import { strongVisualDiversityRule, darkVisualGenerationRule, softLightVisualGenerationRule, visualDiversityExecutionLock, recentPaletteExecutionReminder, recentPaletteHueFamilies, describeHueFamilies } from './visualDiversityPolicy.js?rmv=1.68.8';
+import { withoutInteractionRecipe, observedInteractionRecipesFor } from './interactionRecipes.js?rmv=1.68.8';
+import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=1.68.8';
+import { buildPaletteCooldownRule, buildPaletteCooldownExecutionLock } from './paletteCooldown.js?rmv=1.68.8';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=1.68.8';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=1.68.8';
+import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=1.68.8';
+import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=1.68.8';
+import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=1.68.8';
+import { faceDrawMetadataFields } from './faceDrawRules.js?rmv=1.68.8';
+import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=1.68.8';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.68.8';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.68.8';
+import { rabbitMirrorAvatarPromptRule } from './chatAvatars.js?rmv=1.68.8';
+import { recentDrawScenes } from './recentDrawScenes.js?rmv=1.68.8';
 
 const THEME_ITEMS = new Map(THEMATIC_CATEGORIES.map(item => [item.id, item]));
 const FORMAT_ITEMS = new Map(PRESENTATION_FORMATS.map(item => [item.id, item]));
@@ -1075,6 +1076,12 @@ function imageLlmReady(settings) {
         && !!String(settings.imageLlmModel || '').trim();
 }
 
+// 这个聊天最近几张真正画过的图的动作（英文短标签摘要）。没有记录时不加这句。
+function recentDrawNote() {
+    const scenes = recentDrawScenes(3);
+    return scenes.length ? `这个聊天最近几张图画过：${scenes.map(item => `「${item}」`).join('')}；这次换一个动作和构图，这一面写的恰好就是那一刻时除外。` : '';
+}
+
 function builtinImageFrameRule(settings) {
     if (settings?.builtinImageEnabled !== true) return '';
     const imagePromptByLlm = settings.builtinImageLlmReady === true;
@@ -1091,6 +1098,7 @@ function builtinImageFrameRule(settings) {
     return `内置生图：本来要用色块或 SVG 画人物、场景的位置（视频画面与封面、照片、插画、头像）改放图框，多幅各放一个；随交互变化的画面（换装、捏脸、布置房间）仍用 SVG/CSS，没有画面需要的面不放；标题、按钮、文字留在框外。
 <figure data-rm-draw-frame="1" style="display:block;width:100%;margin:0;aspect-ratio:4/3;overflow:hidden;border-radius:12px;"><p data-rm-draw-prompt="1" hidden>画面</p></figure>
 图框里只放这些 hidden 段落，不放别的图片、外链图或文字，画好的图会自动填进去；图框本身不要隐藏，需要画面的地方不另放外链图片顶替。
+画哪一幕：画这一面自己写到的场面（这个形式里那张画像、照片、镜头拍到的、信里写的那一刻），不默认照搬正文最新一段人物正在做的动作；一次出多面时，各面选不同的时刻、动作和构图。${recentDrawNote()}
 ${imagePromptByLlm ? 'hidden 里用一两句写这一幕的画面线索，正式提示词由生图 LLM 另写。' : directPrompt + directCharacters}`;
 }
 

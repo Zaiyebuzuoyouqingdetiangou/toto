@@ -1,8 +1,8 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.68.4';
-import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.68.4';
-import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.68.4';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.68.8';
+import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.68.8';
+import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.68.8';
 
 export function buildRabbitMirrorSettingsDialogHtml() {
     return `
@@ -226,6 +226,8 @@ export function buildRabbitMirrorSettingsDialogHtml() {
         <div class="rabbit-mirror-section-content">
           <div class="rabbit-mirror-regex-helper">
             <div style="font-weight:600;margin-bottom:6px;">不发送兔子镜正则</div>
+            <label class="checkbox_label" style="min-height:44px;"><input id="rh_strip_old_mirrors" type="checkbox"> 发送前自动去掉聊天记录里的旧兔子镜（推荐）</label>
+            <div style="opacity:.72;font-size:12px;line-height:1.5;margin:0 0 8px 26px;">兔子镜自己处理，不用配正则；本轮要写的新兔子镜不受影响。首次启动时也会替你把下面这条正则配好，两者同时开着也没关系。</div>
             <div data-rh-no-send-regex-status style="opacity:.82;font-size:12px;margin-bottom:8px;">正在检测酒馆 Regex 配置…</div>
             <div class="flex-container" style="gap:7px;flex-wrap:wrap;">
               <button class="menu_button rh_regex_configure" type="button">一键配置正则</button>

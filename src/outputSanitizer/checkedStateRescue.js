@@ -1,8 +1,8 @@
 // Split from outputSanitizer.js — checkedStateRescue.
-import { rememberRuntimeAnimationStyle } from '../runtimeAnimationState.js?rmv=1.68.4';
+import { rememberRuntimeAnimationStyle } from '../runtimeAnimationState.js?rmv=1.68.8';
 
-import { escapeCssIdentifier, escapeRegExp, getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.68.4';
-import { getClassTokens, isCollapsedDimensionValue, parseCssStateSiblingAssignments } from './renderedStateRescue.js?rmv=1.68.4';
+import { escapeCssIdentifier, escapeRegExp, getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.68.8';
+import { getClassTokens, isCollapsedDimensionValue, parseCssStateSiblingAssignments } from './renderedStateRescue.js?rmv=1.68.8';
 import {
     capturePseudoStyleState,
     chooseMatchingRawRabbitMirrorRoot,
@@ -10,15 +10,15 @@ import {
     normalizeInteractionMatchText,
     resolveRenderedCounterpart,
     restorePseudoStyleState,
-} from './scriptedInteractionRescue.js?rmv=1.68.4';
+} from './scriptedInteractionRescue.js?rmv=1.68.8';
 import {
     REVERSIBLE_RADIO_BASELINE_ATTR,
     applyCheckedVisualFallback,
     inputHasAssociatedLabel,
     setRescuedCheckedState,
-} from './fallbackRescue.js?rmv=1.68.4';
-import { RADIO_GROUP_RESCUE_ATTR } from './idsAndRearm.js?rmv=1.68.4';
-import { diagnosticComputedStyle, maintenanceSafeComputedStyle } from './diagnostics.js?rmv=1.68.4';
+} from './fallbackRescue.js?rmv=1.68.8';
+import { RADIO_GROUP_RESCUE_ATTR } from './idsAndRearm.js?rmv=1.68.8';
+import { diagnosticComputedStyle, maintenanceSafeComputedStyle } from './diagnostics.js?rmv=1.68.8';
 import {
     checkedDeclarationCreatesContentReveal,
     checkedTargetCarriesResultContent,
@@ -26,14 +26,14 @@ import {
     isIndependentMaintenanceRoot,
     notifyIndependentRepairPersistence,
     resolveMaintenanceGeneratedClass,
-} from './maintenanceInspect.js?rmv=1.68.4';
-import { splitCssSelectorList } from './markup.js?rmv=1.68.4';
+} from './maintenanceInspect.js?rmv=1.68.8';
+import { splitCssSelectorList } from './markup.js?rmv=1.68.8';
 import {
     maintenanceMobileLayoutLengthPx,
     maintenanceMobileLayoutRect,
     maintenanceMobileLayoutTextLength,
     viewportLayoutHasAuthoredGridPlacement,
-} from './layoutRescue.js?rmv=1.68.4';
+} from './layoutRescue.js?rmv=1.68.8';
 
 const interactionInlineOverrideStates = new WeakMap();
 
@@ -3268,6 +3268,27 @@ export function applyCheckedRuleTextFallback(toto, input) {
         input.setAttribute(CHECKED_TEXT_RULE_RESCUE_ATTR, [...routeKinds].join(','));
     }
     return records.length + pseudoDeclarationCount;
+}
+
+
+// 维修兔隐藏副本用：真实镜面里兜底改写前的内联值只记在 WeakMap 里，克隆带不过去。
+// 例：正文原本写着 style="display:none"，选中后被兜底改成 display:block!important，
+// 副本里取消选中时就不知道该退回 display:none，误报"切换没有变化"。这里把原值交给副本。
+// 同一元素同一属性被多个控件改过时，优先取不带 !important 的那条（更可能是模型原写）。
+export function interactionInlineOverrideBaselines(root) {
+    const baselines = new Map();
+    if (!root?.querySelectorAll) return [];
+    for (const input of root.querySelectorAll('input[type="checkbox"], input[type="radio"]')) {
+        for (const record of interactionInlineOverrideStates.get(input) || []) {
+            if (!record?.element || !root.contains(record.element)) continue;
+            const key = record.element;
+            let byProperty = baselines.get(key);
+            if (!byProperty) baselines.set(key, byProperty = new Map());
+            const prior = byProperty.get(record.property);
+            if (!prior || (prior.priority === 'important' && record.priority !== 'important')) byProperty.set(record.property, record);
+        }
+    }
+    return [...baselines.values()].flatMap(map => [...map.values()]);
 }
 
 

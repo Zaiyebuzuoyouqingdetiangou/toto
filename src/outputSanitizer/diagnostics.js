@@ -1,16 +1,17 @@
 // Split from outputSanitizer.js — diagnostics.
-import { interactionSamplingDiagnostic, designSamplingChecksDiagnostic } from '../interactionSampling.js?rmv=1.68.4';
-import { RADIO_BRANCH_COUNT_ATTR } from './radioBranchRepair.js?rmv=1.68.4';
-import { findUnmappedNavigationButtons } from './choiceRescue.js?rmv=1.68.4';
-import { nativePopoverFallbackCount, inspectNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.68.4';
-import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.68.4';
-import { restoreRuntimeAnimationClone } from '../runtimeAnimationState.js?rmv=1.68.4';
-import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.68.4';
+import { interactionSamplingDiagnostic, designSamplingChecksDiagnostic } from '../interactionSampling.js?rmv=1.68.8';
+import { RADIO_BRANCH_COUNT_ATTR } from './radioBranchRepair.js?rmv=1.68.8';
+import { findUnmappedNavigationButtons } from './choiceRescue.js?rmv=1.68.8';
+import { nativePopoverFallbackCount, inspectNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.68.8';
+import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.68.8';
+import { describeBehaviorDialect, dialectLabels, inspectBehaviorDialect } from './behaviorDialect.js?rmv=1.68.8';
+import { restoreRuntimeAnimationClone } from '../runtimeAnimationState.js?rmv=1.68.8';
+import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.68.8';
 
-import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.68.4';
-import { collectBoundedElementDescendants } from '../presentationQuality.js?rmv=1.68.4';
-import { collectRevealedClipHosts, shouldRelaxRevealedClipPanel, REVEALED_CLIP_RESCUE_ATTR } from '../revealedClipRepair.js?rmv=1.68.4';
-import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.68.4';
+import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.68.8';
+import { collectBoundedElementDescendants } from '../presentationQuality.js?rmv=1.68.8';
+import { collectRevealedClipHosts, shouldRelaxRevealedClipPanel, REVEALED_CLIP_RESCUE_ATTR } from '../revealedClipRepair.js?rmv=1.68.8';
+import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.68.8';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -29,7 +30,7 @@ import {
     isInsideChatMessage,
     isMaintenanceRabbitEnabled,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.68.4';
+} from './runtime.js?rmv=1.68.8';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     CHANNEL_DIAL_CYCLE_COUNT_ATTR,
@@ -62,7 +63,7 @@ import {
     WEBKIT_3D_FLIP_RESCUE_ATTR,
     passportDocumentRescueStates,
     unlabeledCheckedHostRescueStates,
-} from './checkedStateRescue.js?rmv=1.68.4';
+} from './checkedStateRescue.js?rmv=1.68.8';
 import {
     RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR,
     RENDERED_BUTTON_ADJACENT_HIDDEN_ITEM_ATTR,
@@ -89,7 +90,7 @@ import {
     renderedListDetailRescueStates,
     renderedMaskRevealRescueStates,
     renderedStateLayerRescueStates,
-} from './renderedStateRescue.js?rmv=1.68.4';
+} from './renderedStateRescue.js?rmv=1.68.8';
 import {
     RAW_RADIO_RESET_LAST_ATTR,
     RAW_RADIO_RESET_ROOT_ATTR,
@@ -100,7 +101,7 @@ import {
     getRabbitMirrorSummaryText,
     getRawAssistantMessageForRenderedRoot,
     rawSelfMutationRescueStates,
-} from './scriptedInteractionRescue.js?rmv=1.68.4';
+} from './scriptedInteractionRescue.js?rmv=1.68.8';
 import {
     REVERSIBLE_RADIO_LAST_ATTR,
     REVERSIBLE_RADIO_ROOT_ATTR,
@@ -111,13 +112,13 @@ import {
     findNestedDetailsPopupClippingCandidates,
     formatWebKit3DFlipEvidence,
     repairNestedDetailsPopupClipping,
-} from './fallbackRescue.js?rmv=1.68.4';
-import { RADIO_GROUP_RESCUE_ATTR, RADIO_GROUP_ROOT_ATTR } from './idsAndRearm.js?rmv=1.68.4';
+} from './fallbackRescue.js?rmv=1.68.8';
+import { RADIO_GROUP_RESCUE_ATTR, RADIO_GROUP_ROOT_ATTR } from './idsAndRearm.js?rmv=1.68.8';
 import {
     findFillInChoiceCandidates,
     findStaticChoiceSelectionCandidates,
     findStructuredStaticDisclosureCandidates,
-} from './choiceRescue.js?rmv=1.68.4';
+} from './choiceRescue.js?rmv=1.68.8';
 import {
     CODE_SHELL_SELECTOR,
     MAINTENANCE_QUARANTINED_SCRIPT_ATTR,
@@ -135,7 +136,7 @@ import {
     needsSanitize,
     normalizeMaintenanceSummaryText,
     parseTotoFragment,
-} from './maintenanceInspect.js?rmv=1.68.4';
+} from './maintenanceInspect.js?rmv=1.68.8';
 import {
     RABBIT_MIRROR_MAX_TEMPLATE_SOURCE_CHARS,
     RABBIT_MIRROR_SANITIZER_IMPORT_STRIPPED_ATTR,
@@ -148,7 +149,7 @@ import {
     sanitizeRabbitMirrorUntrustedTemplate,
     stripCssComments,
     validateRabbitMirrorTemplateStructuralBudget,
-} from './markup.js?rmv=1.68.4';
+} from './markup.js?rmv=1.68.8';
 import {
     HCLIP_REPORT_ATTR,
     VIEWPORT_LAYOUT_COUNT_ATTR,
@@ -156,14 +157,14 @@ import {
     inspectMaintenanceMobileLayout,
     inspectMaintenanceViewportLayout,
     maintenanceMobileLayoutIsPassportManaged,
-} from './layoutRescue.js?rmv=1.68.4';
-import { normalizeRabbitMirrorToolButton, rabbitMirrorTextPresentation, updateMaintenanceRabbitMenuState } from './toolsChrome.js?rmv=1.68.4';
+} from './layoutRescue.js?rmv=1.68.8';
+import { normalizeRabbitMirrorToolButton, rabbitMirrorTextPresentation, updateMaintenanceRabbitMenuState } from './toolsChrome.js?rmv=1.68.8';
 import {
     getMessageIndexFromMirrorNode,
     hostScriptModule,
     messageUsesDistinctDisplaySource,
     outputHostGenerationLooksActive,
-} from './lifecycle.js?rmv=1.68.4';
+} from './lifecycle.js?rmv=1.68.8';
 
 export const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
 
@@ -705,6 +706,8 @@ function diagnosticInferReason(root, inputs, targets, state = null) {
         return `新交互仍有未接通项：缺控件或目标 ${behavior.incomplete} 组，滑杆未找到明确联动目标 ${behavior.unmappedRanges} 个；维修兔不会猜测目标或补写后续内容。`;
     }
     if (routes.nativePopover && !behavior.declared) return '旧版浏览器的本地弹窗显隐与关闭已接线；当前未实际点击验证，不代表浮层显示已验收。';
+    const dialectProblem = behavior.declared ? describeBehaviorDialect(inspectBehaviorDialect(root)) : '';
+    if (dialectProblem) return `插件写法有对不上的地方：${dialectProblem}；维修兔不会猜内容，这类写法需要加进方言表。`;
     if (behavior.declared) {
         return `新交互驱动 ${behavior.wired}/${behavior.declared} 组已接线；本次未操作这些真实控件，不能据此认定交互结果已实测通过。`;
     }
@@ -2127,6 +2130,13 @@ function buildInteractionDiagnosticText(root, state, phase = 'capture complete')
         `结构化静态分段 candidates=${structuredStaticDisclosureCandidateCount} entries=${routes.structuredStaticDisclosure} listener=${routes.structuredStaticDisclosure ? 'true' : 'false'}`,
         `填空候选恢复 candidates=${fillInChoiceCandidateCount} entries=${routes.fillInChoice} listener=${routes.fillInChoice ? 'true' : 'false'}`,
         `新交互驱动 declared=${behavior.declared} 已接线=${behavior.wired} recovered=${behavior.recovered} 可恢复=${behavior.candidates} 缺控件或目标=${behavior.incomplete} 滑杆未映射=${behavior.unmappedRanges} types=${behavior.types.join(',') || '(无)'}` ,
+        ...(() => {
+            const dialect = inspectBehaviorDialect(root);
+            return [
+                `插件写法未对上 ${describeBehaviorDialect(dialect) || '(无)'}`,
+                `方言表已认出 ${dialectLabels(dialect.dialects).join('／') || '(无)'}`,
+            ];
+        })(),
         '新交互状态仅为结构与监听器检查，不能据此认定交互结果已实测通过。',
         `本地弹窗 原生=${popup.native} 已接线=${popup.wired} 待接线=${popup.unwired} 缺失或重复目标=${popup.missingTargets}（未自动点击真实控件）`,
         `iOS 3D翻面兼容 patches=${routes.webkit3dFlip} evidence=${formatWebKit3DFlipEvidence(root)}`,
