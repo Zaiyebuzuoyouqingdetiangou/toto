@@ -1,8 +1,8 @@
 import {
     buildFavoriteAtlas, deleteFavoriteAtlas, favoriteAtlasProgress, parseAtlasSlots,
     listFavoriteAtlases, saveFavoriteAtlas, setAtlasSelection,
-} from './favoriteAtlases.js?rmv=1.67.91';
-import { createFavoriteAtlasDraftGenerator } from './favoriteAtlasGeneration.js?rmv=1.67.91';
+} from './favoriteAtlases.js?rmv=1.67.93';
+import { createFavoriteAtlasDraftGenerator } from './favoriteAtlasGeneration.js?rmv=1.67.93';
 
 const STYLE = `
 [data-rm-favorite-atlases]{margin-top:16px;font-size:14px;line-height:1.6;min-width:0;max-width:100%;overflow-wrap:anywhere}
@@ -18,7 +18,9 @@ const STYLE = `
 [data-rm-favorite-atlases] button.rm-atlas-tertiary{border-color:transparent;text-decoration:underline;text-underline-offset:3px}
 [data-rm-favorite-atlases] :is(button,input,textarea,summary):focus-visible{outline:2px solid var(--rh-primary,#ce729c);outline-offset:2px}
 .rm-atlas-head,.rm-atlas-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.rm-atlas-head strong{flex:1;min-width:0;font-size:15px}
+.rm-atlas-head strong{flex:1;min-width:0;font-size:12px;font-weight:600;opacity:.8}
+[data-rm-favorite-atlases] .rm-atlas-head button{min-height:32px;padding:4px 10px;font-size:12px;border-radius:8px}
+[data-rm-favorite-atlases]>.rm-atlas-hint{margin:4px 0;font-size:11px;opacity:.62}
 .rm-atlas-box{margin:10px 0;padding:8px 10px;border:1px solid color-mix(in srgb,currentColor 12%,transparent);border-radius:10px}
 .rm-atlas-box>summary{cursor:pointer;display:list-item;align-content:center;font-weight:600}
 .rm-atlas-bar{height:6px;margin:8px 0;border-radius:999px;background:color-mix(in srgb,currentColor 12%,transparent);overflow:hidden}
@@ -53,6 +55,15 @@ const STYLE = `
 .rm-atlas-choice button{flex:0 0 auto}
 .rm-atlas-confirm{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 .rm-atlas-confirm p{flex-basis:100%}
+/* 图鉴本身和「二十四节气收集」用同一种小巧半透明的排版：默认收起，小格子，未收集的格子淡淡的。 */
+[data-rm-favorite-atlases] .rm-atlas-box{margin:14px 0 0;padding:8px 10px;border:1px solid color-mix(in srgb,currentColor 12%,transparent);border-radius:10px;opacity:.9;font-size:12px;line-height:1.5}
+[data-rm-favorite-atlases] .rm-atlas-box>summary{min-height:0;font-size:11px;font-weight:600;opacity:.8}
+[data-rm-favorite-atlases] .rm-atlas-box .rm-atlas-grid{margin:0}
+[data-rm-favorite-atlases] .rm-atlas-box .rm-atlas-grid:not(.rm-atlas-links) button{display:flex;align-items:center;justify-content:center;min-height:32px;padding:0 4px;border-radius:8px;font-size:12px;font-weight:400;border-color:color-mix(in srgb,currentColor 14%,transparent);background:transparent;opacity:.42}
+[data-rm-favorite-atlases] .rm-atlas-box .rm-atlas-grid:not(.rm-atlas-links) button[data-collected="true"]{border-color:currentColor;background:color-mix(in srgb,currentColor 12%,transparent);font-weight:800;opacity:1}
+[data-rm-favorite-atlases] .rm-atlas-box .rm-atlas-hint{margin:8px 0 0;font-size:11px;line-height:1.45;opacity:.62}
+[data-rm-favorite-atlases] .rm-atlas-box :is(.rm-atlas-actions button,details>summary,.rm-atlas-links button,.rm-atlas-confirm button){min-height:32px;padding:4px 10px;font-size:12px;border-radius:8px}
+[data-rm-favorite-atlases] .rm-atlas-box details>summary{opacity:.75;margin-top:6px}
 @media(max-width:380px){.rm-atlas-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:540px){.rm-atlas-slot-edit{grid-template-columns:minmax(0,1fr) auto}.rm-atlas-slot-edit>label:nth-child(2){grid-column:1 / -1;grid-row:2}.rm-atlas-slot-edit>button{grid-column:2;grid-row:1}}
 `;
@@ -348,7 +359,7 @@ export function createFavoriteAtlasPanel({ favorites, openFavorite, displayTitle
             fill.style.width = `${progress.count / progress.total * 100}%`;
             bar.append(fill);
             const grid = node('div', '', 'rm-atlas-grid');
-            const linkGrid = node('div', '', 'rm-atlas-grid');
+            const linkGrid = node('div', '', 'rm-atlas-grid rm-atlas-links');
             const associations = node('div');
             for (const slot of progress.slots) {
                 const cell = button(slot.label, () => {
@@ -376,7 +387,7 @@ export function createFavoriteAtlasPanel({ favorites, openFavorite, displayTitle
                     });
                 }), button('取消', () => confirm.replaceChildren()));
             }));
-            box.append(summary, bar, grid, node('p', '点亮的格子可打开收藏；关联多面时先打开最新一面，其余可在「关联与纠正」中查看。', 'rm-atlas-hint'), manage, associations, tools, confirm);
+            box.append(summary, bar, grid, node('p', '按收藏的标题和正文识别，标题不必写格子名。点亮的格子可以直接打开那一面；关联多面时先打开最新一面，其余在「关联与纠正」里看。', 'rm-atlas-hint'), manage, associations, tools, confirm);
             list.append(box);
         }
     }

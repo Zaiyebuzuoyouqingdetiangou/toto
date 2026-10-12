@@ -1,8 +1,8 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.67.91';
-import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.67.91';
-import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.67.91';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.67.93';
+import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.67.93';
+import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.67.93';
 
 export function buildRabbitMirrorSettingsDialogHtml() {
     return `
@@ -216,7 +216,7 @@ export function buildRabbitMirrorSettingsDialogHtml() {
           <option value="20">最近 20 楼</option>
           <option value="all">全部助手回复</option>
         </select>
-        <p class="rabbit-mirror-subnote">网络中断或闪退后，范围内缺外壳的助手回复下面会挂失败卡，不会自动再发请求。正在看的楼层即使不在范围内也会补卡。</p>
+        <p class="rabbit-mirror-subnote">网络中断或闪退后，生成过兔子镜的楼层缺了外壳会自动补卡，不会自动再发请求。想给以前没生成过的楼层补兔子镜：选好范围，点「重新检查缺壳楼层」，范围内没有兔子镜的回复下面都会挂上卡，点卡就能生成。</p>
         <div id="rh_missing_shell_report" role="status">打开设置后检查当前聊天。</div>
         <button id="rh_missing_shell_rescan" class="menu_button" type="button">重新检查缺壳楼层</button>
       </div>
