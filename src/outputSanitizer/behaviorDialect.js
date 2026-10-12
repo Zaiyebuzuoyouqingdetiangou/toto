@@ -1,5 +1,5 @@
-import { behaviorShowTokens, ownBehaviorShows } from './behaviorResults.js?rmv=1.68.14';
-import { behaviorStyleText } from './behaviorStateMirror.js?rmv=1.68.14';
+import { behaviorShowTokens, ownBehaviorShows } from './behaviorResults.js?rmv=1.68.15';
+import { behaviorStyleText } from './behaviorStateMirror.js?rmv=1.68.15';
 
 // 插件写法「方言表」：模型写的插件交互，意思对、写法和标准不一样的那些情况，集中在这里认。
 // 每一条只做三件事：怎么认出来、按什么标准写法去理解、诊断里怎么说。不新增内容、不猜目标。
@@ -11,6 +11,7 @@ export const BEHAVIOR_DIALECTS = Object.freeze([
     { id: 'motion-numeric', label: '动画区域没写真正的动画', note: '部件只用 --pos、left 这类数值摆好了位置：滑杆按比例前进后退，播放钮从起点放一遍。' },
     { id: 'named-single-toggle', label: '唯一的开关起了名字，内容却写 on／!on', note: '这个开关开着就算 on。' },
     { id: 'turn-prefixed-stops', label: '旋钮档位写成 item0、stop1 这种「名字＋号码」', note: '同一名字的号码对上当前档位；号码从 1 起、最大正好是档位数时按第几档算。' },
+    { id: 'motion-equalizer', label: '动画区域里是一排音轨波形细条、没写动画', note: '给细条补一段可暂停的上下起伏：播放钮开始和暂停，进度滑杆拨到对应位置。只动细条的纵向缩放，不改内容。' },
     { id: 'effect-any-show', label: '一次性效果区域的显示条件写成 effect、fired、stamp 这类词', note: '效果区域只有「按过」和「没按过」两种状态：按过以后，写什么词的内容都显示，「!词」的内容藏起来。' },
     { id: 'range-as-cover', label: '揭示区域把遮罩标识写在滑杆自己身上', note: '滑杆不当遮罩裁掉，拖到底照常显示揭开后的内容。' },
     { id: 'author-css-show', label: '显示条件认不出，但模型自己写了 CSS 按状态管显隐', note: '驱动不再强行藏这些内容，交给模型的 CSS 按 data-rm-index、data-rm-on 这些状态显示。' },
@@ -79,6 +80,36 @@ export function motionNumericProperties(part) {
         if (/^(-?\d*\.?\d+)(%|px)?$/.test(String(inline.getPropertyValue(property)).trim())) found.push(property);
     }
     return found;
+}
+
+// —— motion-equalizer ——
+// 部件里至少 3 个并排的细条（宽不超过 14px、比宽高）且都没有自己的动画：给每根补一段循环的 scaleY 起伏，先暂停在开头。
+// 起伏高度按条的序号错开（不随机），刷新后一样；动画挂在细条上，驱动当作模型写的动画来暂停、播放和拨进度。
+const equalized = new WeakSet();
+export function motionEqualizerAnimations(group, parts) {
+    if (!group || equalized.has(group)) return 0;
+    equalized.add(group);
+    let count = 0;
+    for (const part of parts || []) {
+        const bars = [...part.children].filter(child => {
+            const rect = child.getBoundingClientRect?.();
+            return rect && rect.width > 0 && rect.width <= 14 && rect.height >= rect.width && !child.getAnimations?.().length;
+        });
+        if (bars.length < 3 || bars.length !== part.children.length || typeof bars[0].animate !== 'function') continue;
+        bars.forEach((bar, index) => {
+            const lift = 0.35 + ((index * 37) % 60) / 100;
+            // 来回往复（alternate）：拨到进度最右时停在最低处，不会和开头一模一样。
+            const animation = bar.animate([
+                { transform: 'scaleY(1)' }, { transform: `scaleY(${(1 + lift).toFixed(2)})` }, { transform: `scaleY(${(1 - lift / 2).toFixed(2)})` },
+            ], { duration: 900 + (index % 4) * 150, iterations: Infinity, direction: 'alternate', easing: 'ease-in-out' });
+            bar.style.setProperty('transform-origin', 'bottom');
+            animation.pause();
+            animation.currentTime = 0;
+            count += 1;
+        });
+    }
+    if (count) group.setAttribute('data-rm-motion-equalizer', 'true');
+    return count;
 }
 
 // 同一前缀的号码：{ item: [0,1,2] }
@@ -268,6 +299,7 @@ export function inspectBehaviorDialect(root) {
         if (type === 'motion') {
             const adopted = motionOutsideControls(group);
             if (adopted.buttons.length || adopted.ranges.length) used.add('remote-motion');
+            if (group.getAttribute('data-rm-motion-equalizer') === 'true') used.add('motion-equalizer');
             if (motionCanMove(root, group) === false) result.staticMotion += 1;
             else if (own(group, '[data-rm-part]').some(part => motionNumericProperties(part).length)) {
                 try { if (!authoredAnimations(group).length) used.add('motion-numeric'); } catch {}

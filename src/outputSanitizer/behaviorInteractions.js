@@ -1,9 +1,9 @@
-import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.68.14';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.68.14';
-import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.68.14';
-import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.68.14';
-import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.68.14';
-import { addDialectStateKeys, authorManagedShows, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup } from './behaviorDialect.js?rmv=1.68.14';
+import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.68.15';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.68.15';
+import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.68.15';
+import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.68.15';
+import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.68.15';
+import { addDialectStateKeys, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup } from './behaviorDialect.js?rmv=1.68.15';
 
 export { behaviorToggleKey, motionOutsideControls };
 
@@ -371,6 +371,13 @@ function beginVerify(state, control, replay = false) {
 const isTransition = animation => typeof animation?.transitionProperty === 'string'
     || (typeof CSSTransition !== 'undefined' && animation instanceof CSSTransition);
 function animations(state) {
+    // 动画区域里没写真正的动画、也没有可挪的位置数值，部件里是一排细条（音轨波形）：给细条补一段可暂停的起伏（方言表 motion-equalizer）。
+    if (state.type === 'motion' && !state.equalizerChecked) {
+        state.equalizerChecked = true;
+        if (!motionTargets(state).length) {
+            try { motionEqualizerAnimations(state.group, own(state.group, '[data-rm-part]')); } catch { /* 补不上就照旧 */ }
+        }
+    }
     const found = own(state.group, '[data-rm-part]').flatMap(part => part.getAnimations?.({ subtree: true }) || []);
     for (const animation of found) {
         // 过渡（transition）不是模型写的动画，只是位置改变时的补间；当成动画去拨时间会把画面卡在半路。
@@ -662,6 +669,8 @@ function prepare(binding, group) {
     for (const control of own(group, `${CONTROL_SELECTOR}, [data-rm-hold]`)) enableControl(control);
     if (type === 'view') style(state, group, 'overflow', 'auto');
     if (type === 'effect') for (const animation of animations(state)) { animation.pause(); animation.currentTime = 0; }
+    // 音轨波形补动画要在接线时就补上（暂停在开头），维修兔和诊断才看得到它能动。
+    if (type === 'motion') animations(state);
     if (type === 'accumulate') countSteps(state);
     if (STATEFUL.has(type)) prepareStateful(state);
     if (['adjust', 'view', 'reveal'].includes(type)) {
@@ -701,6 +710,8 @@ function motionTargets(state) {
             const saved = state.styles.get(part)?.get(property);
             const raw = String(saved ? saved[0] : inline.getPropertyValue(property)).trim();
             const match = raw.match(/^(-?\d*\.?\d+)(%|px)?$/);
+            // 宽高只认百分比（进度条那种）；写死像素的宽高是部件本身的尺寸，按比例放大只会把它撑变形（波形条、唱片）。
+            if (match && (property === 'width' || property === 'height') && match[2] !== '%') continue;
             if (match) targets.push({ node: part, property, base: Number(match[1]), unit: match[2] || '' });
         }
     }
@@ -1662,7 +1673,7 @@ function scheduleOnDemandRelay(root, target) {
 function relayGroupLater(root, group, control = null) {
     const run = () => {
         if (!group.isConnected || !root.isConnected) return;
-        void import('./behaviorRelay.js?rmv=1.68.14').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
+        void import('./behaviorRelay.js?rmv=1.68.15').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
     };
     const idle = globalThis.requestIdleCallback;
     if (typeof idle === 'function') idle(run, { timeout: 800 }); else setTimeout(run, 120);

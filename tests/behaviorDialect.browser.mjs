@@ -72,6 +72,11 @@ const SAMPLES = {
         <div data-rm-ui="reveal"><input type="range" min="0" max="100" value="0" data-rm-cover="1" style="clip-path: inset(0px 0px 0px 82%);"><div data-rm-show="done">朱批</div></div>
         <div data-rm-ui="effect"><button data-rm-fire="1">盖章</button><div data-rm-part="1" data-rm-show="effect">印</div><div data-rm-show="!effect">未盖</div></div>
         </details>`,
+    // 音轨回放：动画区域里只有一排静态波形细条，部件高度写死像素。
+    equalizer: `<details open><summary>音轨波形</summary>
+        <div data-rm-ui="motion"><button data-rm-play>播放／暂停</button><input type="range" min="0" max="100" value="35">
+        <div data-rm-part style="display:flex;gap:6px;align-items:flex-end;height:36px;">${[14, 28, 20, 32, 16].map(h => `<span style="display:inline-block;width:4px;height:${h}px;background:#cb2;"></span>`).join('')}</div></div>
+        </details>`,
     // 方言表也认不出的写法：诊断要点名，驱动不猜。
     unknownWriting: `<details open><summary>认不出的写法</summary>
         <div data-rm-ui="turn" data-rm-stops="2"><button data-rm-knob>扭</button><div data-rm-show="left">左</div><div data-rm-show="right">右</div></div>
@@ -193,6 +198,21 @@ try {
     diag = await report();
     assert.deepEqual(diag.unmatched, []); assert.ok(diag.dialects.includes('effect-any-show') && diag.dialects.includes('range-as-cover')); checks++;
 
+    // 3e. 音轨波形：部件高度不被放大；播放让细条起伏，滑杆拨到对应位置
+    await mount(SAMPLES.equalizer);
+    const bar = () => page.evaluate(() => ({ height: document.querySelector('[data-rm-part]').style.height, tf: getComputedStyle(document.querySelectorAll('[data-rm-part] span')[3]).transform }));
+    assert.equal((await bar()).tf, 'matrix(1, 0, 0, 1, 0, 0)');
+    await page.locator('input[type=range]').fill('100');
+    let now = await bar();
+    assert.equal(now.height, '36px', '写死像素的部件高度不被按比例撑大'); checks++;
+    assert.notEqual(now.tf, 'matrix(1, 0, 0, 1, 0, 0)', '拨到最右，细条停在起伏的另一端'); checks++;
+    await page.locator('input[type=range]').fill('0');
+    await page.locator('[data-rm-play]').click();
+    await page.waitForTimeout(300);
+    assert.notEqual((await bar()).tf, 'matrix(1, 0, 0, 1, 0, 0)', '按播放细条开始起伏'); checks++;
+    diag = await report();
+    assert.ok(diag.dialects.includes('motion-equalizer') && diag.staticMotion === 0); checks++;
+
     // 4. 认不出的写法：诊断点名
     await mount(SAMPLES.unknownWriting);
     diag = await report();
@@ -212,6 +232,10 @@ try {
     assert.ok(probed && probed.tested >= 2, JSON.stringify(probed));
     assert.ok(probed.feedbackOnly.some(name => /扭/.test(name)), `旋钮只转了自己：${JSON.stringify(probed)}`); checks++;
     assert.match(await page.evaluate(() => probe.describeGenericProbe(JSON.parse(document.querySelector('details').getAttribute('data-rabbit-mirror-generic-probe')))), /只有按钮自己变了/); checks++;
+    // 滑杆只裁了自己（遮罩写在滑杆上的老毛病）不算画面有反应
+    await page.evaluate(html => { document.body.innerHTML = html; }, `<details open><summary>x</summary><div data-rm-ui="adjust"><input type="range" min="0" max="1" step="0.1" value="0" oninput="this.style.clipPath='inset(0 0 0 '+(this.value*100)+'%)'"></div><p>正文</p></details>`);
+    probed = await page.evaluate(() => probe.runMaintenanceGenericProbe(document.querySelector('details')));
+    assert.deepEqual(probed.dead, ['滑杆'], `只动了滑杆自己：${JSON.stringify(probed)}`); checks++;
     // 写对了的扭蛋机：内容有变化，不点名
     await page.evaluate(html => { document.body.innerHTML = html; behavior.installBehaviorInteractions(document.querySelector('details')); }, SAMPLES.turnPrefixed);
     probed = await page.evaluate(() => probe.runMaintenanceGenericProbe(document.querySelector('details')));
