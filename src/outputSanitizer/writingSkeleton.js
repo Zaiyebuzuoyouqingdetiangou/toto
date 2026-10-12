@@ -6,7 +6,6 @@
 const CONTENT_ATTRS = new Set(['alt', 'title', 'aria-label', 'aria-description', 'aria-roledescription', 'placeholder', 'srcset', 'poster', 'srcdoc']);
 const CONTENT_ATTR_RE = /^(?:data-rm-vs|data-rm-draw-|data-rm-image|data-rabbit-mirror-(?:external-owner|owner-|labeled-checked-last)|data-rm-key$|data-rm-avatar)/;
 const URL_ATTRS = new Set(['href', 'src', 'action', 'formaction', 'cite', 'data', 'xlink:href']);
-const FIXED_KEYS = /^(?:[\w.-]+)$/;
 // 插件自己挂在镜面里的工具（维修兔、反馈猫、工具栏、诊断面板）不是写法的一部分，骨架里去掉。
 const TOOL_UI = '[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-diagnostic-panel], .rabbit-mirror-maintenance-menu, [data-rm-face-swipe-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rm-image-region], [data-rm-image-portal]';
 
@@ -33,35 +32,82 @@ function scrubUrl(value) {
     return scheme ? `${scheme[1]}…` : '…';
 }
 
-function scrubCss(text) {
-    return String(text || '')
-        .replace(/url\(\s*(['"]?)[^)]*\1\s*\)/gi, 'url()')
-        .replace(/(content\s*:\s*)(['"])(?:\\.|(?!\2)[^\\])*\2/gi, (match, lead, quote) => `${lead}${quote}${quote}`)
-        .replace(/(@import\s+)(['"])[^'"]*\2/gi, '$1$2$2');
+// CSS 里能带文字的地方清掉：注释、url()、声明值里的引号字符串（content、--label、字体名）。
+// 选择器里的引号是键（[data-rm-show="甲"]），和属性里的键换成同一个代号，规则还能对上。
+function scrubCss(text, keys = new Map()) {
+    const source = String(text || '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/url\(\s*(['"]?)[^)]*\1\s*\)/gi, 'url()');
+    let out = '';
+    let depth = 0;
+    let inValue = false; // 进了声明块、见过冒号、还没到分号
+    for (let index = 0; index < source.length; index += 1) {
+        const char = source[index];
+        if (char === '"' || char === "'") {
+            let end = index + 1;
+            while (end < source.length && source[end] !== char) end += source[end] === '\\' ? 2 : 1;
+            const inner = source.slice(index + 1, end);
+            if (inValue) out += `${char}${char}`;
+            else out += `${char}${PLAIN_KEY.test(inner) ? inner : maskKeys(inner, keys)}${char}`;
+            index = end;
+            continue;
+        }
+        if (char === '{') { depth += 1; inValue = false; }
+        else if (char === '}') { depth = Math.max(0, depth - 1); inValue = false; }
+        else if (char === ':' && depth > 0) inValue = true;
+        else if (char === ';') inValue = false;
+        out += char;
+    }
+    return out;
 }
 
 function scrubStyleAttribute(value) {
-    return scrubCss(value);
+    // 内联样式没有选择器，整段按声明值处理。
+    return scrubCss(`{${value}}`).slice(1, -1);
 }
 
-function scrubAttribute(element, name, value) {
+// 写法里的「键」：data-rm-show="甲" 和 data-rm-pick="甲" 要对得上，所以同一个键在整面里换成同一个代号（k1、k2…）。
+// 只换带中文或空格、长得像一句话的键；on、done、item0 这类英文短键照旧。
+const KEY_ATTRS = new Set(['data-rm-show', 'data-rm-pick', 'data-rm-picked', 'data-rm-on', 'data-rm-toggle', 'data-rm-page', 'data-rm-goto', 'data-rm-item', 'data-rm-slot', 'data-rm-end', 'data-rm-code', 'data-rm-answer', 'data-rm-seq', 'data-rm-part', 'data-rm-step', 'data-rm-when', 'data-rm-cover', 'data-rm-state', 'data-rm-target']);
+const PLAIN_KEY = /^!?[\w.-]{1,24}$/;
+const STRUCTURAL_ATTRS = new Set(['id', 'class', 'for', 'name', 'type', 'min', 'max', 'step', 'open', 'hidden', 'checked', 'disabled', 'role', 'tabindex', 'aria-pressed', 'aria-expanded', 'aria-hidden', 'aria-controls', 'aria-live', 'aria-checked', 'aria-selected', 'lang', 'dir', 'width', 'height', 'viewbox', 'preserveaspectratio', 'd', 'points', 'cx', 'cy', 'r', 'rx', 'ry', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'fill', 'stroke', 'stroke-width', 'opacity', 'transform', 'colspan', 'rowspan', 'loop', 'autoplay', 'muted', 'controls', 'popover', 'popovertarget', 'inert', 'draggable', 'contenteditable', 'inputmode', 'maxlength', 'readonly', 'required', 'multiple', 'selected', 'start', 'reversed', 'scope', 'headers', 'datetime', 'dirname']);
+
+function maskKeys(value, keys) {
+    return String(value || '').split(/([\s,，、]+)/).map(token => {
+        if (!token || /^[\s,，、]+$/.test(token)) return token;
+        const negated = token.startsWith('!');
+        const key = negated ? token.slice(1) : token;
+        if (PLAIN_KEY.test(token)) return token;
+        if (!keys.has(key)) keys.set(key, `k${keys.size + 1}`);
+        return `${negated ? '!' : ''}${keys.get(key)}`;
+    }).join('');
+}
+
+function scrubAttribute(element, name, value, keys) {
     const lower = name.toLowerCase();
     if (lower === 'style') return scrubStyleAttribute(value);
     if (URL_ATTRS.has(lower)) return scrubUrl(value);
     if (CONTENT_ATTRS.has(lower) || CONTENT_ATTR_RE.test(lower)) return value ? maskFaceText(value) : value;
     if (/^on[a-z]+$/i.test(lower)) return '';
-    // 写法标识（data-rm-*、id、class、for、name、value）照原样留；别的长值只留个长度。
-    if (lower.startsWith('data-rm-') || lower.startsWith('data-rabbit-mirror-') || ['id', 'class', 'for', 'name', 'type', 'value', 'min', 'max', 'step', 'open', 'hidden', 'checked', 'disabled', 'role', 'tabindex', 'aria-pressed', 'aria-expanded', 'aria-hidden', 'aria-controls', 'aria-live', 'aria-checked', 'aria-selected', 'lang', 'dir', 'width', 'height', 'viewbox', 'preserveaspectratio', 'd', 'points', 'cx', 'cy', 'r', 'rx', 'ry', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'fill', 'stroke', 'stroke-width', 'opacity', 'transform', 'colspan', 'rowspan', 'loop', 'autoplay', 'muted', 'controls', 'popover', 'popovertarget', 'inert'].includes(lower)) return value;
-    if (value.length > 40 && !FIXED_KEYS.test(value)) return maskFaceText(value);
-    return value;
+    if (KEY_ATTRS.has(lower)) return maskKeys(value, keys);
+    if (lower === 'value') {
+        // 滑杆、单选的 value 是数值或短键，留着；文本框、下拉项的 value 可能是正文，只留长度。
+        const tag = element.tagName.toLowerCase();
+        const kind = String(element.getAttribute('type') || '').toLowerCase();
+        const textual = tag === 'option' || tag === 'button' || (tag === 'input' && !['range', 'checkbox', 'radio', 'number', 'hidden'].includes(kind));
+        return textual && !PLAIN_KEY.test(value) ? maskFaceText(value) : value;
+    }
+    if (lower.startsWith('data-rm-') || lower.startsWith('data-rabbit-mirror-') || STRUCTURAL_ATTRS.has(lower)) {
+        return /[^\x20-\x7e]/.test(value) && !lower.startsWith('data-rabbit-mirror-') ? maskKeys(value, keys) : value;
+    }
+    // 别的属性（data-text、data-tip 这类）：短英文标记留着，其余只留长度。
+    return PLAIN_KEY.test(value) ? value : maskFaceText(value);
 }
 
-function walk(node) {
-    for (const child of [...node.childNodes]) {
+function walk(node, keys) {
+    for (const child of [...(node.content ? node.content.childNodes : node.childNodes)]) {
         if (child.nodeType === 3) {
             const parent = child.parentElement;
             const tag = parent?.tagName?.toLowerCase();
-            if (tag === 'style') child.nodeValue = scrubCss(child.nodeValue);
+            if (tag === 'style') child.nodeValue = scrubCss(child.nodeValue, keys);
             else if (tag === 'script') child.nodeValue = '';
             else child.nodeValue = placeholderFor(child.nodeValue);
             continue;
@@ -80,12 +126,12 @@ function walk(node) {
         for (const attribute of [...element.attributes]) {
             // 模型在双引号属性里又写双引号时，后半截文字会被解析成一个个属性名，这些整个去掉。
             if (!/^[a-z][\w:.-]*$/i.test(attribute.name)) { element.removeAttribute(attribute.name); continue; }
-            const next = scrubAttribute(element, attribute.name, attribute.value);
+            const next = scrubAttribute(element, attribute.name, attribute.value, keys);
             if (next === '' && /^on[a-z]+$/i.test(attribute.name)) element.removeAttribute(attribute.name);
             else if (next !== attribute.value) element.setAttribute(attribute.name, next);
         }
         if (tag === 'textarea' || tag === 'option') element.textContent = placeholderFor(element.textContent);
-        else walk(element);
+        else walk(element, keys);
     }
 }
 
@@ -102,7 +148,7 @@ export function skeletonizeRabbitMirrorHtml(input) {
         template.content.append(input.cloneNode(true));
         container = template.content;
     } else return '';
-    walk(container);
+    walk(container, new Map());
     const wrapper = document.createElement('div');
     wrapper.append(container);
     return wrapper.innerHTML;

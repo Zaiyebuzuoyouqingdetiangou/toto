@@ -1,5 +1,5 @@
-import { behaviorShowTokens, ownBehaviorShows } from './behaviorResults.js?rmv=1.68.11';
-import { behaviorStyleText } from './behaviorStateMirror.js?rmv=1.68.11';
+import { behaviorShowTokens, ownBehaviorShows } from './behaviorResults.js?rmv=1.68.12';
+import { behaviorStyleText } from './behaviorStateMirror.js?rmv=1.68.12';
 
 // 插件写法「方言表」：模型写的插件交互，意思对、写法和标准不一样的那些情况，集中在这里认。
 // 每一条只做三件事：怎么认出来、按什么标准写法去理解、诊断里怎么说。不新增内容、不猜目标。
@@ -124,10 +124,13 @@ export function addDialectStateKeys(state, keys) {
 // 驱动写到容器上的状态属性；模型的 CSS 只要按其中任意一个来写显隐，状态一变 CSS 就能跟上。
 const STATE_ATTR_NEEDLES = ['data-rm-index', 'data-rm-on', 'data-rm-picked', 'data-rm-active', 'data-rm-done', 'data-rm-match', 'data-rm-angle', 'data-rm-seq', '--rm-'];
 const DISPLAY_RULE = /\b(?:display|visibility|opacity|max-height|height|clip-path|transform)\s*:/i;
+const STATE_IN_SELECTOR = /data-rm-(?:index|on|picked|active|done|match|angle|seq|armed|turned)|--rm-/;
+// 这条规则的选择器里必须带着驱动写的状态属性（[data-rm-index="1"] … [data-rm-show="x"]），
+// 否则只是给这个节点上色，不能说明模型的 CSS 在管它什么时候显示。
 function cssShowsToken(text, token) {
     const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const pattern = new RegExp(`\\[data-rm-show\\s*=\\s*(?:"${escaped}"|'${escaped}'|${escaped})\\s*\\][^{}]*\\{([^}]*)\\}`, 'g');
-    for (const match of text.matchAll(pattern)) if (DISPLAY_RULE.test(match[1])) return true;
+    const pattern = new RegExp(`([^{}]*\\[data-rm-show\\s*=\\s*(?:"${escaped}"|'${escaped}'|${escaped})\\s*\\][^{}]*)\\{([^}]*)\\}`, 'g');
+    for (const match of text.matchAll(pattern)) if (STATE_IN_SELECTOR.test(match[1]) && DISPLAY_RULE.test(match[2])) return true;
     return false;
 }
 // 这个容器里：显示条件全都对不上、但模型的 CSS 按状态管着它显隐的那些节点。
@@ -199,10 +202,11 @@ export function reachableBehaviorKeys(group) {
     return keys;
 }
 
+// 诊断里只写部件标识和文字长度，不带按钮上的字。
 function controlName(node) {
     const attr = CONTROL_ATTRS.find(name => node.hasAttribute(`data-rm-${name}`));
-    const text = String(node.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 12);
-    return `${attr ? `data-rm-${attr}` : node.tagName.toLowerCase()}${text ? `「${text}」` : ''}`;
+    const length = String(node.textContent || '').replace(/\s+/g, ' ').trim().length;
+    return `${attr ? `data-rm-${attr}` : node.tagName.toLowerCase()}${length ? `「字×${length}」` : ''}`;
 }
 
 // 模型写的动画（不算位置改变时浏览器自动补的过渡）。
@@ -210,11 +214,15 @@ function authoredAnimations(group) {
     return (group.getAnimations?.({ subtree: true }) || []).filter(animation => typeof animation?.transitionProperty !== 'string');
 }
 
-function motionCanMove(group) {
+// 返回 null 表示现在量不到（区域藏着：折叠的 details、没翻到的那一页），不下结论。
+function motionCanMove(root, group) {
     try {
         if (typeof group.getAnimations === 'function' && authoredAnimations(group).length) return true;
     } catch { /* 量不到时按下面的数值判断 */ }
-    return own(group, '[data-rm-part]').some(part => motionNumericProperties(part).length);
+    if (own(group, '[data-rm-part]').some(part => motionNumericProperties(part).length)) return true;
+    try { if (!group.getClientRects().length) return null; } catch { return null; }
+    // 没在跑的动画 getAnimations 看不到（比如 paused、或等按钮才加的类）：样式表里有关键帧就不算静态。
+    return /@keyframes|animation(?:-name)?\s*:/i.test(behaviorStyleText(root));
 }
 
 // 返回：
@@ -249,7 +257,7 @@ export function inspectBehaviorDialect(root) {
         if (type === 'motion') {
             const adopted = motionOutsideControls(group);
             if (adopted.buttons.length || adopted.ranges.length) used.add('remote-motion');
-            if (!motionCanMove(group)) result.staticMotion += 1;
+            if (motionCanMove(root, group) === false) result.staticMotion += 1;
             else if (own(group, '[data-rm-part]').some(part => motionNumericProperties(part).length)) {
                 try { if (!authoredAnimations(group).length) used.add('motion-numeric'); } catch {}
             }

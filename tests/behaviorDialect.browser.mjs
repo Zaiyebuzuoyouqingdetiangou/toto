@@ -217,11 +217,16 @@ try {
         <style>.a{content:"秘密";background:url(https://example.com/x.png)} .b[data-rm-show="on"]{display:block}</style>
         <div data-rm-ui="toggle"><button data-rm-toggle="turn" title="按一下">按下去看</button><img src="https://example.com/pic.png" alt="两个人">
         <p data-rm-show="on">这是正文内容，很长很长。</p><p data-rm-draw-prompt="1" hidden>画面提示词</p><a href="#top">回到顶部</a></div>
+        <style>[data-rm-picked="某人"] [data-rm-show="某人"]{display:block} .x{--label:"秘密标签"}</style>
+        <div data-rm-ui="pick"><button data-rm-pick="某人">选他</button><div data-rm-show="某人 !另一人">内容</div><input type="text" value="她说的话"><input type="range" value="40"></div>
+        <template><p>模板里的正文</p></template>
         <div data-rabbit-mirror-tool-entry-host="true" style="padding:1px">维修兔</div></details>`));
     assert.ok(!/[\u4e00-\u9fff]/.test(skeleton.replace(/字/g, '')), `骨架里不能有占位以外的文字：${skeleton}`); checks++;
     assert.ok(/data-rm-toggle="turn"/.test(skeleton) && /data-rm-show="on"/.test(skeleton) && /\.b\[data-rm-show="on"\]\{display:block\}/.test(skeleton), '写法标识和 CSS 规则留着'); checks++;
     assert.ok(/data-rm-vs="字×\d+"/.test(skeleton) && /src="https:…"/.test(skeleton) && /href="#top"/.test(skeleton) && /content:""/.test(skeleton) && /url\(\)/.test(skeleton), `地址与记录已去掉：${skeleton}`); checks++;
     assert.ok(!/tool-entry-host/.test(skeleton), '插件工具不进骨架'); checks++;
+    assert.ok(/data-rm-pick="k1"/.test(skeleton) && /data-rm-show="k1 !k2"/.test(skeleton) && /\[data-rm-picked="k1"\] \[data-rm-show="k1"\]\{display:block\}/.test(skeleton), `中文键换成统一代号：${skeleton}`); checks++;
+    assert.ok(/--label:""/.test(skeleton) && /type="text" value="字×4"/.test(skeleton) && /type="range" value="40"/.test(skeleton), `声明值字符串和文本框的值清掉，滑杆的值留着：${skeleton}`); checks++;
 
     // 7. 双引号里再写双引号的 data-rm-vs：解析前转义回去能读到记录；已解析的 DOM 里零碎属性名要去掉
     const broken = `<toto data-rabbit-mirror="true"><details open data-rm-vs="{"c":[["方案一的剧情",0.5],["方案二",0.3],["方案三",0.2]],"m":[["点按","切换"],["按住","翻面"],["拖动","点亮"]],"pick":1}"><summary>【兔子镜：测试】</summary><p>字</p></details></toto>`;
