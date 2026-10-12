@@ -106,30 +106,49 @@ const FLIP_DRIVERS = new Set(['toggle', 'pick', 'pager']);
 // 近期一排按钮切换内容（标签页、分页按钮）用得多时，多选一和翻页这两种先不提供。
 const TAB_DRIVERS = new Set(['pick', 'pager']);
 
-// usages：这一面抽到的真实用法。用法里认得出的动作先配上对应写法（滑杆／拖动一族仍只占一个位置），
-// 其余位置随机补齐、避开上一面给过的；related 是这个媒介大类的全部用法，补位优先挑其中用得上的写法。
+// 交互大分类：同一类本质上是同一种操作，只是写法不同。每面给的 3 种写法各来自不同大类，
+// 一类最多出一种；随机补位按大类抽（每类机会相同），抽中了再从类里挑一种写法。
+export const DRIVER_FAMILIES = Object.freeze({
+    drag: { label: '拖动', drivers: ['adjust', 'reveal', 'motion', 'turn', 'drag', 'view', 'follow', 'draw'] },
+    page: { label: '翻页切换', drivers: ['pager', 'pick', 'reorder'] },
+    fold: { label: '折叠开合', drivers: ['toggle'] },
+    popup: { label: '弹窗', drivers: ['popup'] },
+    hold: { label: '按住', drivers: ['hold'] },
+    tap: { label: '点按触发', drivers: ['effect', 'accumulate', 'sequence', 'roll', 'connect', 'input'] },
+});
+export function driverFamilyOf(key) {
+    return Object.keys(DRIVER_FAMILIES).find(family => DRIVER_FAMILIES[family].drivers.includes(key)) || key;
+}
+
+// usages：这一面抽到的真实用法（展现形式自己的玩法优先）。用法里认得出的动作先配上对应写法，一个大类只配一种；
+// 其余位置按大类随机补齐、避开上一面给过的；related 是这个媒介大类的全部用法，同一大类里优先挑其中用得上的写法。
 export function drawDriverOffer({ avoidSlide = false, avoidFlip = false, avoidTabs = false, usages = [], related = [] } = {}) {
     let recent = [];
     try { recent = JSON.parse(globalThis.localStorage?.getItem(RECENT_KEY) || '[]'); } catch { recent = []; }
     const all = Object.keys(DRIVER_METHODS).filter(key => (!avoidSlide || !SLIDE_DRIVERS.has(key)) && (!avoidFlip || !FLIP_DRIVERS.has(key))
         && (!avoidTabs || !TAB_DRIVERS.has(key)));
     const matched = [];
+    const taken = new Set();
     for (const [key] of matchDriversToUsages(usages, all)) {
-        if (SLIDE_DRIVERS.has(key) && matched.some(item => SLIDE_DRIVERS.has(item))) continue;
+        const family = driverFamilyOf(key);
+        if (taken.has(family)) continue;
+        taken.add(family);
         matched.push(key);
         if (matched.length >= OFFER_SIZE) break;
     }
-    // 滑杆／拖动这一族只在展现形式的用法里真写了「拖、刮、转、调」时才给；随机补位不补这一族。
-    // 这类写法要拖的东西和要变的内容分开写、模型最容易写歪，不是形式要的就不拿来凑数。
-    const allRest = all.filter(key => !matched.includes(key) && !SLIDE_DRIVERS.has(key));
-    // 补位先从这个媒介常用动作对应的写法里挑（够数时），不够再放开到全部。
-    const near = new Set(related.flatMap(usage => driversForUsage(usage).slice(0, 1)));
-    const nearRest = allRest.filter(key => near.has(key));
-    const rest = nearRest.length >= OFFER_SIZE - matched.length ? nearRest : allRest;
-    const fresh = rest.filter(key => !recent.includes(key));
     const need = OFFER_SIZE - matched.length;
-    const pool = fresh.length >= need ? fresh : rest;
-    const offer = [...matched, ...shuffled(pool).slice(0, need)];
+    const near = new Set(related.flatMap(usage => driversForUsage(usage).slice(0, 1)));
+    // 还没占的大类，每类先挑出候选写法：优先这个媒介常用、上一面没给过的。
+    const families = Object.keys(DRIVER_FAMILIES).filter(family => !taken.has(family)).map(family => {
+        const members = DRIVER_FAMILIES[family].drivers.filter(key => all.includes(key));
+        const prefer = list => list.filter(key => !recent.includes(key));
+        const nearMembers = members.filter(key => near.has(key));
+        const pick = prefer(nearMembers).length ? prefer(nearMembers) : nearMembers.length ? nearMembers : prefer(members).length ? prefer(members) : members;
+        return { family, pick, fresh: members.some(key => !recent.includes(key)) };
+    }).filter(item => item.pick.length);
+    const freshFamilies = families.filter(item => item.fresh);
+    const pool = freshFamilies.length >= need ? freshFamilies : families;
+    const offer = [...matched, ...shuffled(pool).slice(0, need).map(item => shuffled(item.pick)[0])];
     try { globalThis.localStorage?.setItem(RECENT_KEY, JSON.stringify(offer)); } catch { /* best effort */ }
     return Object.freeze(offer);
 }
