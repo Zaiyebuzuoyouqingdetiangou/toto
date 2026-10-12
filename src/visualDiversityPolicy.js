@@ -1,4 +1,4 @@
-import { classifyPaletteSamples } from './paletteObservation.js?rmv=1.68.1';
+import { classifyPaletteSamples } from './paletteObservation.js?rmv=1.68.4';
 
 const HUE_FAMILY_LABELS = Object.freeze({
     red: '红色族', orange: '橙色族', yellow: '黄色族', green: '绿色族', cyan: '青色族',
@@ -22,11 +22,18 @@ export function recentPaletteHueFamilies(recent = []) {
             ? palette.contentSurfaceColors.slice(0, 1).filter(validColor) : [];
         return [...new Set([...main, ...surfaces])].map(hex => {
             const [r, g, b] = hex.slice(1).match(/../g).map(value => parseInt(value, 16));
+            // 近白、近黑几乎没有颜色（如 #FDFBF7、#F7F9FC、#12141C），按黑白灰处理：
+            // 分类器会把它们判成橙、蓝，用过一次白底下一轮就被禁掉橙色或蓝色。米黄等真有颜色的照常计入。
+            if (Math.max(r, g, b) - Math.min(r, g, b) < 16) return '';
             const observed = classifyPaletteSamples([{ color: { r, g, b, a: 1 }, weight: 1 }], palette.source || 'raw', true);
             // 黑白灰不进色族禁令：白纸、黑底等是很多媒介的固有材质，近白浅底另有提醒负责。
             return observed?.hueFamily === 'neutral' || !HUE_FAMILY_LABELS[observed?.hueFamily] ? '' : observed.hueFamily;
         }).filter(Boolean);
     }))];
+}
+
+export function describeHueFamilies(keys = []) {
+    return [...new Set(keys)].map(key => HUE_FAMILY_LABELS[key]).filter(Boolean);
 }
 
 export function recentPaletteExecutionReminder(recent = [], settings = {}) {
@@ -172,14 +179,17 @@ export function drawSoftToneExamples({ avoidFamilies = [], faceCount = 1 } = {})
 }
 
 // 柔和浅色模式：与深色模式对称，只在选了这一档时发送。
-export function softLightVisualGenerationRule(settings, { avoidFamilies = [], faceCount = 1 } = {}) {
+export function softLightVisualGenerationRule(settings, { avoidFamilies = [], faceCount = 1, faceNumbers = [] } = {}) {
     if (settings?.visualToneMode !== 'soft' || settings?.darkVisualMode === true) return '';
     const { style, desc, examples, mains = [] } = drawSoftToneExamples({ avoidFamilies, faceCount });
     const yellowNote = mains.some(item => item.family === 'yellow') ? '黄色族用淡柠黄、浅迎春黄这类清亮的浅黄，不是米黄、奶油黄。' : '';
+    // faceNumbers：批次里 HTML 面的真实序号（跳过文本面）；单面请求为空，照旧写「本面」。
+    const numbered = Array.isArray(faceNumbers) && faceNumbers.length === mains.length;
+    const faceLabel = index => `第 ${numbered ? faceNumbers[index] : index + 1} 面`;
     const mainLine = !mains.length ? ''
-        : mains.length === 1
+        : mains.length === 1 && !numbered
             ? `\n  - 本面主色族：${SOFT_FAMILY_LABELS[mains[0].family]}色族${mains[0].color ? `（如${mains[0].color}）` : ''}。背景和主承载在这一色族里取柔和的浅色，深浅自定；别的颜色只作点缀。${yellowNote}不要默认落到雾绿、雾紫、雾蓝。形式自带的标志色优先。`
-            : `\n  - 各面主色族：${mains.map((item, index) => `第 ${index + 1} 面${SOFT_FAMILY_LABELS[item.family]}色族${item.color ? `（如${item.color}）` : ''}`).join('，')}。背景和主承载在各自色族里取柔和的浅色，深浅自定；别的颜色只作点缀。${yellowNote}不要默认落到雾绿、雾紫、雾蓝。形式自带的标志色优先。`;
+            : `\n  - ${mains.length === 1 ? '主色族' : '各面主色族'}：${mains.map((item, index) => `${faceLabel(index)}${SOFT_FAMILY_LABELS[item.family]}色族${item.color ? `（如${item.color}）` : ''}`).join('，')}。背景和主承载在${mains.length === 1 ? '这一' : '各自'}色族里取柔和的浅色，深浅自定；别的颜色只作点缀。${yellowNote}不要默认落到雾绿、雾紫、雾蓝。形式自带的标志色优先。`;
     return `柔和浅色模式【本次所有新生成镜面，包括长文本】：
   - 本轮风格：${style}——${desc}。例如${examples.join('、')}，只是举例，按本面题材在这种风格里自己定色。${mainLine}
   - 背景与主要承载面用柔和的浅色；米黄、米白、奶油色、羊皮纸黄这类暖黄纸色不作主背景和主承载，信纸、日记、旧书这类纸张也换成其他柔和的颜色表现纸感；不用纯白，也不用高饱和的大面积色块或深色铺底；主体部件可用中等明度的颜色。
@@ -187,7 +197,7 @@ export function softLightVisualGenerationRule(settings, { avoidFamilies = [], fa
   - 仍须强避重：在柔和浅色范围内换色族与冷暖，不改艳也不改暗；形式自带的标志色保留，调柔后使用。长文本只做阅读配色，不添加交互或动画。`;
 }
 
-export function visualDiversityExecutionLock(_settings, { textRevealRotation = false, flipRotation = false, slideRotation = false, tabRotation = false, noButtonRow = false, paleBan = false, softTone = false, paletteReminder = '' } = {}) {
+export function visualDiversityExecutionLock(_settings, { textRevealRotation = false, flipRotation = false, slideRotation = false, tabRotation = false, noButtonRow = false, paleBan = false, softTone = false, paletteReminder = '', paletteLock = '', previousVersion = '' } = {}) {
     // The shared ledger is sent once; only active, concrete reminders are repeated here, closest to output.
     return [
         noButtonRow ? '本面媒介本身没有成排按钮：主交互不用一排同款按钮或标签切换内容，交互落在媒介自己的部件上。' : '',
@@ -199,5 +209,7 @@ export function visualDiversityExecutionLock(_settings, { textRevealRotation = f
         paleBan && softTone ? '本轮浅底换一种明显带色相的浅（近三轮已两次接近纯白），不用接近纯白的底，仍保持柔和浅色。' : '',
         paleBan && !softTone ? '本轮主背景与主承载不用米白、米黄或其他近白浅底（近三轮已出现两次），媒介本身是白纸白底时用纸张以外的部分拉开颜色。' : '',
         paletteReminder,
+        paletteLock ? `配色短锁：${paletteLock}。` : '',
+        previousVersion,
     ].filter(Boolean).join('\n');
 }

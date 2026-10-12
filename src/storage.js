@@ -1,10 +1,10 @@
-import { generationPaletteFields } from './paletteRecipes.js?rmv=1.68.1';
-import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.68.1';
-import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords, observedOperationFamiliesFor } from './compositionFingerprint.js?rmv=1.68.1';
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.68.1';
-import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.68.1';
-import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.68.1';
-import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.68.1';
+import { generationPaletteFields } from './paletteRecipes.js?rmv=1.68.4';
+import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.68.4';
+import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords, observedOperationFamiliesFor } from './compositionFingerprint.js?rmv=1.68.4';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.68.4';
+import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.68.4';
+import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.68.4';
+import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.68.4';
 
 const STORAGE_KEY = 'rabbit_mirror_theater:last_combo:v11';
 const PENDING_KEY = 'rabbit_mirror_theater:pending_combo:v11';
@@ -602,9 +602,11 @@ export function getRecentPaletteCooldown(window = 3) {
     const span = Math.max(1, Number(window) || 3);
     const rounds = new Map();
     return getRecentDiversityHistory(span).slice().reverse().map((item, index) => {
-        const round = item?.batchId || `legacy:${index}`;
+        const round = item?.diversityRound || item?.batchId || `legacy:${index}`;
         if (!rounds.has(round)) rounds.set(round, rounds.size);
         const roundsAgo = rounds.get(round), fingerprint = item?.paletteFingerprint;
+        // 长文本面只是阅读配色，不进 HTML 面的配色避重。
+        if (item?.presentationMode === 'text' || item?.pureOrder) return null;
         if (!fingerprint || Number(fingerprint.confidence || 0) < 0.35) return null;
         return { fingerprint, key: paletteFamilyKey(fingerprint), label: describePaletteFamily(fingerprint),
             roundsAgo, strength: Math.max(1, span - roundsAgo) };
@@ -755,7 +757,8 @@ export function getActivePaletteCooldown(rounds = 5) {
         const record = history[index];
         const key = record?.diversityRound || record?.batchId || `legacy:${index}`;
         if (!completedRounds.has(key)) completedRounds.set(key, null);
-        if (!completedRounds.get(key) && isDarkPaletteTrigger(record?.paletteFingerprint)) {
+        // 长文本面的深色阅读底不算：它不该让后面的 HTML 面进入深色冷却。
+        if (!completedRounds.get(key) && record?.presentationMode !== 'text' && isDarkPaletteTrigger(record?.paletteFingerprint)) {
             completedRounds.set(key, record.paletteFingerprint);
         }
     }
@@ -799,7 +802,7 @@ export function getRecentInteractionFamilies(limit = 5, { preserveEmpty = false 
             ? null : observed || null;
         // Round identity is transient prompt accounting; stored interaction data
         // and owner identities retain their existing shape.
-        const diversityRound = item?.batchId || `legacy:${index}`;
+        const diversityRound = item?.diversityRound || item?.batchId || `legacy:${index}`;
         return value ? { ...value, diversityRound } : preserveEmpty ? { diversityRound } : null;
     });
     return recent.filter(Boolean);
@@ -1079,8 +1082,12 @@ function readActiveBatchRegistry() {
             if (!Array.isArray(parsed) || parsed.length > ACTIVE_BATCH_REGISTRY_MAX) return null;
             for (const value of parsed) {
                 const record = normalizeActiveBatchRecord(value, key);
-                if (!record) return null;
-                records.push(record);
+                if (record) { records.push(record); continue; }
+                // 读不懂的记录：刚写的（可能是另一个标签页、新版本写的）照旧整表拒绝，绝不覆盖；
+                // 已经放了 30 分钟以上的（例如旧版本留下的格式）跳过，下一次写表时自然清掉。
+                // 以前一条这样的旧记录会让多面一直"预约表无法读取"，永远不会自己好。
+                const createdAt = Number(value?.createdAt);
+                if (!(Number.isFinite(createdAt) && createdAt > 0 && Date.now() - createdAt > FOREIGN_BATCH_RESERVATION_MS)) return null;
             }
         }
         return { raw: rawByKey[ACTIVE_BATCH_REGISTRY_KEY], rawByKey, records };
@@ -1121,6 +1128,16 @@ export function findPendingComboBatchPlan(identity) {
 // temporary draw reservations/accounting, never rendered or repaired results.
 function expiredTransactionTime(at, now) {
     return Number.isFinite(at) && at > 0 && now - at > PENDING_MAX_AGE_MS;
+}
+
+// 别的页面会话（已刷新、已关闭的页面或另一个标签页）留下的多面预约：30 分钟后可回收。
+// 独立请求最长 20 分钟；正常进行中的生成不会超过这个时间。本页自己的预约仍按 12 小时。
+// 以前一律留 12 小时，手机上被杀后台几次，预约表就满了，跟随模式多面会一直不出兔子镜。
+const FOREIGN_BATCH_RESERVATION_MS = 30 * 60 * 1000;
+function reclaimableBatchReservation(record, now) {
+    if (expiredTransactionTime(record?.createdAt, now)) return true;
+    return record?.registrySession !== PENDING_SESSION_TOKEN
+        && Number.isFinite(record?.createdAt) && now - record.createdAt > FOREIGN_BATCH_RESERVATION_MS;
 }
 
 function compactExpiredTransactionRaw(key, raw, now) {
@@ -1354,7 +1371,7 @@ export function markPendingBatchAttempt(planInput = null, options = {}) {
     // avoids both permanent capacity loss after crashes and cross-tab eviction of
     // a live paid request; cleanup happens only inside this explicit dispatch CAS.
     const liveRecords = transient ? [...transientBatchRegistry.values()].map(plan => ({ plan }))
-        : registry.records.filter(record => !expiredTransactionTime(record.createdAt, now));
+        : registry.records.filter(record => !reclaimableBatchReservation(record, now));
     const existing = liveRecords.find(record => record.plan.batchId === plan.batchId);
     if (existing) return JSON.stringify(existing.plan) === JSON.stringify(plan) || reject('BATCH_ID_CONFLICT');
     if (liveRecords.length >= ACTIVE_BATCH_REGISTRY_MAX) return reject('BATCH_REGISTRY_CAPACITY');
@@ -1425,6 +1442,30 @@ function applyChosenAtmosphereTickets(plan, chosenTickets) {
     });
 }
 
+// 按正文挑签：抽签时还不知道模型会选哪张，按聊天的冷却先记的是第 1 张签。
+// 提交成功时把这条记录改成模型实际选中的签，不再冷却一张没用过的签。
+function attemptTicketPayload(beforeRaw, chatKey, rows) {
+    const key = String(chatKey || '').trim();
+    if (!key || !rows.length || beforeRaw === null) return beforeRaw;
+    let store;
+    try {
+        const parsed = JSON.parse(beforeRaw);
+        store = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
+    } catch { return beforeRaw; }
+    if (!store || !Array.isArray(store[key])) return beforeRaw;
+    let changed = false;
+    const next = store[key].map(item => {
+        const row = rows.find(candidate => candidate.attemptId === item?.attemptId);
+        if (!row) return item;
+        const updated = { ...item,
+            themeIds: compactIdList(row.combo.themeIds), formatIds: compactIdList(row.combo.formatIds),
+            themeGroups: compactIdList(row.combo.themeGroups), formatGroups: compactIdList(row.combo.formatGroups) };
+        if (JSON.stringify(updated) !== JSON.stringify(item)) changed = true;
+        return updated;
+    });
+    return changed ? JSON.stringify({ ...store, [key]: next }) : beforeRaw;
+}
+
 function batchHistoryPayload(plan, scans, beforeRaw) {
     let history;
     try {
@@ -1480,9 +1521,11 @@ export function commitPendingComboBatch(faceScans = [], expected = null) {
     if (!scans.some(Boolean) || scans.some((scan, index) => !scan && !(allowPartial && faceScans[index] === null))) return false;
     let historyBefore;
     let pityBefore;
+    let attemptBefore = null;
     try {
         historyBefore = localStorage.getItem(STORAGE_KEY);
         pityBefore = localStorage.getItem(FORMAT_ELIGIBLE_MISS_STORAGE_KEY);
+        attemptBefore = localStorage.getItem(ATTEMPT_STORAGE_KEY);
     } catch { return false; }
     const historyAfter = batchHistoryPayload(plan, scans, historyBefore);
     const pityAfter = batchPityCommittedPayload(plan, pityBefore, scans);
@@ -1492,6 +1535,10 @@ export function commitPendingComboBatch(faceScans = [], expected = null) {
     catch { return false; }
     if (historyAfter !== historyBefore) changes.push({ key: STORAGE_KEY, before: historyBefore, after: historyAfter });
     if (pityAfter !== (pityBefore || '{}')) changes.push({ key: FORMAT_ELIGIBLE_MISS_STORAGE_KEY, before: pityBefore, after: pityAfter });
+    const ticketRows = plan.faces.filter(face => scans[face.faceIndex] && face.combo?.atmosphereResolved === true)
+        .map(face => ({ attemptId: `${plan.batchId}:${face.faceIndex}`, combo: face.combo }));
+    const attemptAfter = attemptTicketPayload(attemptBefore, plan.identity?.chatKey, ticketRows);
+    if (typeof attemptAfter === 'string' && attemptAfter !== attemptBefore) changes.push({ key: ATTEMPT_STORAGE_KEY, before: attemptBefore, after: attemptAfter });
     if (record) changes.push({ key: record.storageKey, before: registry.rawByKey[record.storageKey], after: registryWithoutRecord(registry, record) });
     // Release the completed reservation before growing history, so a fitting
     // final state does not require room for both. Owned rollback restores it.
@@ -1727,6 +1774,13 @@ export function resolveVisualHistorySelection(selection, choice) {
 export function commitVisualHistorySelection(selection, scan = {}) {
     if (!selection?.historyId || (selection.atmosphereMenu?.length > 1 && selection.atmosphereResolved !== true)) return false;
     const committed = commitComboToHistory(compactHistoryCombo(selection), normalizeFaceScan(scan, scan?.faceIndex) || {}, { historyId: selection.historyId });
+    if (committed && selection.atmosphereResolved === true && selection.pendingScopeKey && selection.pendingChatKey) {
+        try {
+            const before = localStorage.getItem(ATTEMPT_STORAGE_KEY);
+            const after = attemptTicketPayload(before, selection.pendingChatKey, [{ attemptId: String(selection.pendingScopeKey), combo: selection }]);
+            if (typeof after === 'string' && after !== before && localStorage.getItem(ATTEMPT_STORAGE_KEY) === before) localStorage.setItem(ATTEMPT_STORAGE_KEY, after);
+        } catch { /* 只是把冷却改准，失败时保留原记录 */ }
+    }
     if (committed && selection.pendingScopeKey) {
         try {
             const raw = localStorage.getItem(PENDING_KEY), pending = JSON.parse(raw || 'null');
@@ -1764,6 +1818,34 @@ export function commitFollowVisualHistory(message, chat, source, scan) {
         if (localStorage.getItem(PENDING_KEY) === raw) localStorage.removeItem(PENDING_KEY);
         return { historyId: resolved.historyId };
     } catch { return null; }
+}
+
+// 单面续篇：抽签时记下的是抽到的形式，提示词实际用的是收藏原作的形式。
+// 把这次生成的按聊天冷却记录和待提交记录改成实际形式（只改同一次生成的那一条）。
+export function retargetSingleAttemptFormat(scopeKey = '', combo = null) {
+    const id = String(scopeKey || '').trim();
+    if (!id || !combo || !Array.isArray(combo.formatIds) || !combo.formatIds.length) return false;
+    const formatIds = compactIdList(combo.formatIds), formatGroups = compactIdList(combo.formatGroups || []);
+    let changed = false;
+    try {
+        const chatKey = getCurrentChatKey();
+        const before = localStorage.getItem(ATTEMPT_STORAGE_KEY);
+        const store = JSON.parse(before || '{}');
+        const items = store && typeof store === 'object' && !Array.isArray(store) && Array.isArray(store[chatKey]) ? store[chatKey] : null;
+        if (items?.some(item => item?.attemptId === id)) {
+            store[chatKey] = items.map(item => item?.attemptId === id ? { ...item, formatIds, formatGroups } : item);
+            if (localStorage.getItem(ATTEMPT_STORAGE_KEY) === before) { localStorage.setItem(ATTEMPT_STORAGE_KEY, JSON.stringify(store)); changed = true; }
+        }
+    } catch { /* 冷却记录保持原样 */ }
+    try {
+        const raw = localStorage.getItem(PENDING_KEY), pending = JSON.parse(raw || 'null');
+        if (pending && pending.pendingScopeKey === id && pending.pendingSession === PENDING_SESSION_TOKEN) {
+            const next = { ...pending, formatIds, formatGroups };
+            next.signature = signatureOf(next);
+            if (localStorage.getItem(PENDING_KEY) === raw) { localStorage.setItem(PENDING_KEY, JSON.stringify(next)); changed = true; }
+        }
+    } catch { /* 待提交记录保持原样 */ }
+    return changed;
 }
 
 export function setPendingCombo(combo, scopeKey = '') {
@@ -1877,6 +1959,31 @@ function commitComboToHistory(combo, visual = {}, options = {}) {
         console.warn('[RabbitMirror] Failed to write combo history:', error);
         return false;
     }
+}
+
+// 跟随模式补发／重试补回来的面：原批次早已按"缺这几面"提交过，这里把补回的面单独记进避重。
+// 同一条回复补回的面共用一个轮次键（diversityRound），按"轮次键:面序号"去重，重复调用不会多记。
+const RETRIED_FACE_HISTORY_FIELDS = ['themeIds', 'formatIds', 'themeGroups', 'formatGroups', 'samplingMode', 'pureOrder', 'forcedVisualScenery'];
+export function commitRetriedFaceHistory(combo, scan = {}, { roundKey = '', faceIndex = 0, batchId = '' } = {}) {
+    // batchId：知道原批次时直接记成原批次的那一面（和先出的面同一轮，按「批次:面」去重）。
+    const batch = String(batchId || '').trim();
+    const round = batch || String(roundKey || '').trim().slice(0, 240);
+    if (!round || batch.length > 256 || !combo || typeof combo !== 'object' || !Number.isSafeInteger(faceIndex) || faceIndex < 0 || faceIndex > 4) return false;
+    const record = { ...(batch ? {} : { diversityRound: round }), ...presentationModeFields(combo) };
+    for (const key of RETRIED_FACE_HISTORY_FIELDS) {
+        const value = combo[key];
+        if (Array.isArray(value)) record[key] = value.filter(item => typeof item === 'string' && item).slice(0, 12);
+        else if (value !== undefined && value !== null && typeof value !== 'object') record[key] = value;
+    }
+    if (!record.themeIds?.length && !record.formatIds?.length && !record.pureOrder) return false;
+    const value = scan && typeof scan === 'object' ? scan : {};
+    return commitComboToHistory(record, {
+        visualSignature: String(value.visualSignature ?? value.signature ?? ''),
+        visualSkeleton: String(value.visualSkeleton ?? value.skeleton ?? ''),
+        riskFlags: Array.isArray(value.riskFlags) ? value.riskFlags.map(String) : [],
+        paletteFingerprint: value.paletteFingerprint && typeof value.paletteFingerprint === 'object' ? value.paletteFingerprint : null,
+        interactionFamily: value.interactionFamily || null,
+    }, batch ? { batchId: batch, faceIndex } : { historyId: `${round}:${faceIndex}` });
 }
 
 export function commitPendingCombo(visualSignature = '', visualSkeleton = '', riskFlags = [], paletteFingerprint = null, interactionFamily = null) {

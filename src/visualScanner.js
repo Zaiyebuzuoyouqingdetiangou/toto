@@ -1,12 +1,12 @@
-import { clamp, luminanceFromRgb, classifyPaletteSamples } from './paletteObservation.js?rmv=1.68.1';
-import { activeRoleColorHtml, bindRolePaletteCode } from './roleColorVariants.js?rmv=1.68.1';
-import { detectCompositionFingerprint, VISUAL_SKELETON_MAX_CHARS } from './compositionFingerprint.js?rmv=1.68.1';
-import { visualSceneryEnabled } from './presentationMode.js?rmv=1.68.1';
-import { presentationModeFields } from './presentationMode.js?rmv=1.68.1';
-import { getCurrentChatKey, commitFollowVisualHistory, bindVisualHistoryTarget } from './storage.js?rmv=1.68.1';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.68.1';
-import { getSettings } from './settings.js?rmv=1.68.1';
-import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.68.1';
+import { clamp, luminanceFromRgb, classifyPaletteSamples } from './paletteObservation.js?rmv=1.68.4';
+import { activeRoleColorHtml, bindRolePaletteCode } from './roleColorVariants.js?rmv=1.68.4';
+import { detectCompositionFingerprint, VISUAL_SKELETON_MAX_CHARS } from './compositionFingerprint.js?rmv=1.68.4';
+import { visualSceneryEnabled } from './presentationMode.js?rmv=1.68.4';
+import { presentationModeFields } from './presentationMode.js?rmv=1.68.4';
+import { getCurrentChatKey, commitFollowVisualHistory, bindVisualHistoryTarget } from './storage.js?rmv=1.68.4';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.68.4';
+import { getSettings } from './settings.js?rmv=1.68.4';
+import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.68.4';
 import {
     commitRabbitMirrorFollowBatch,
     captureRabbitMirrorGenerationSnapshots,
@@ -16,16 +16,16 @@ import {
     inspectRabbitMirrorGenerationSource,
     releaseRabbitMirrorFollowBatch,
     releaseRabbitMirrorFollowBatchAtMessage,
-} from './generationGuard.js?rmv=1.68.1';
+} from './generationGuard.js?rmv=1.68.4';
 import {
     clearSanitizedRabbitMirrorFaceProof,
     getSanitizedRabbitMirrorFaceProof,
     markSanitizedRabbitMirrorFace,
-    rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.68.1';
-import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.68.1';
-import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.68.1';
-import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.68.1';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.68.1';
+    rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.68.4';
+import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.68.4';
+import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.68.4';
+import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.68.4';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.68.4';
 
 export const FOLLOW_MULTIFACE_COMMITTED_EVENT = 'rabbit-mirror:follow-multiface-committed';
 export const FOLLOW_MULTIFACE_REJECTED_EVENT = 'rabbit-mirror:follow-multiface-rejected';
@@ -1758,7 +1758,7 @@ function templateSingleFollowRoot(template) {
 
 function loadFollowBatchSanitizer() {
     if (!followBatchSanitizerModulePromise) {
-        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.68.1').catch(error => {
+        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.68.4').catch(error => {
             followBatchSanitizerModulePromise = null;
             console.debug('[RabbitMirror] follow multiface sanitizer unavailable:', error);
             return null;
@@ -1905,7 +1905,7 @@ function sanitizeAndMountFollowFaces(scope, set, sanitizer, preparedFaces = null
         if(failedFaces.length&&set.owner){
             const persistedFaces=prepared.map(item=>item.failure?createMultifaceFailureSlot(item.faceIndex,item.failure.code):item.persistedHtml);
             const html=persistedFaces.join('\n');
-            if(!saveFollowPartialResult(set.owner.chat,set.owner.messageIndex,set.owner,html,failedFaces,getSettings()?.rabbitMirrorBannedWords||[])){
+            if(!saveFollowPartialResult(set.owner.chat,set.owner.messageIndex,set.owner,html,failedFaces,getSettings()?.rabbitMirrorBannedWords||[],String(set.batchId||''))){
                 const error=new Error('follow partial result persistence failed');
                 error.code='follow-partial-storage-failed';
                 throw error;

@@ -1,7 +1,7 @@
-import { readLocalExternalImportFile, readPlainTextWorldBook } from './fileReader.js?rmv=1.68.1';
-import { getSettings, updateSettings } from '../settings.js?rmv=1.68.1';
-import { listHostWorldBooks, readHostWorldBook } from './hostReader.js?rmv=1.68.1';
-import { searchNormalizedWorldBookEntries } from './normalize.js?rmv=1.68.1';
+import { readLocalExternalImportFile, readPlainTextWorldBook } from './fileReader.js?rmv=1.68.4';
+import { getSettings, updateSettings } from '../settings.js?rmv=1.68.4';
+import { listHostWorldBooks, readHostWorldBook } from './hostReader.js?rmv=1.68.4';
+import { searchNormalizedWorldBookEntries } from './normalize.js?rmv=1.68.4';
 import {
     EXTERNAL_WORLD_BOOK_SELECTION_MODE,
     createEmptySelection,
@@ -9,14 +9,14 @@ import {
     createWholeBookSelection,
     entryIdentity,
     toggleEntrySelection,
-} from './selectionState.js?rmv=1.68.1';
+} from './selectionState.js?rmv=1.68.4';
 import {
     EXTERNAL_WORLD_BOOK_CLASSIFICATION,
     applyExternalWorldBookBulkClassification,
     createExternalWorldBookClassificationDraft,
     externalWorldBookClassificationCounts,
     updateExternalWorldBookDraftItem,
-} from './classifier.js?rmv=1.68.1';
+} from './classifier.js?rmv=1.68.4';
 import {
     deleteExternalLibrary,
     listExternalLibraries,
@@ -28,11 +28,11 @@ import {
     hydrateExternalPoolMetadata,
     getExternalPoolHydrationStatus,
     rebuildExternalPoolMetadata,
-} from './store.js?rmv=1.68.1';
-import { applyAppearanceTheme } from '../appearanceTheme.js?rmv=1.68.1';
-import { getExternalPoolSnapshot } from './externalPool.js?rmv=1.68.1';
-import { externalCandidateCounts } from './candidateCounts.js?rmv=1.68.1';
-import { openExternalReclassificationPanel } from './reclassificationPanel.js?rmv=1.68.1';
+} from './store.js?rmv=1.68.4';
+import { applyAppearanceTheme } from '../appearanceTheme.js?rmv=1.68.4';
+import { getExternalPoolSnapshot } from './externalPool.js?rmv=1.68.4';
+import { externalCandidateCounts } from './candidateCounts.js?rmv=1.68.4';
+import { openExternalReclassificationPanel } from './reclassificationPanel.js?rmv=1.68.4';
 
 const MODAL_ID = 'rh_external_worldbook_import_modal';
 const PAGE_SIZE = 50;
@@ -456,6 +456,24 @@ async function renderSavedLibraries() {
     state.savedLibrariesPanel.style.display = '';
     if (!libraries.length) {
         state.savedLibrariesList.append(el('div', { text: '还没有保存的外部世界书。', style: { opacity: '.65', fontSize: '11px', padding: '8px 2px' } }));
+        // 本机是空的、酒馆里有备份：多半是本机数据被清掉了，给一个一键恢复。
+        void import('./serverBackup.js?rmv=1.68.4').then(module => module.findRestorableMotherLibraryBackup()).then(found => {
+            if (!found || state !== owner || !owner.overlay.isConnected || renderSequence !== owner.savedLibrariesSequence) return;
+            const box = el('div', { style: { padding: '8px 2px', fontSize: '12px', lineHeight: '1.6', overflowWrap: 'anywhere' } });
+            const names = found.names.length ? `（${found.names.join('、')}${found.libraryCount > found.names.length ? ' 等' : ''}）` : '';
+            box.append(el('div', { text: `酒馆里有一份母本库备份：${found.libraryCount} 本、${found.entryCount} 条${names}，存于 ${backupTimeText(found.exportedAt)}。本机数据可能被清掉了。` }));
+            const restore = button('一键恢复', async () => {
+                restore.disabled = true;
+                try {
+                    const module = await import('./serverBackup.js?rmv=1.68.4');
+                    const result = await module.restoreMotherLibrariesFromServerBackup();
+                    setStatus(`已从酒馆备份恢复 ${result.importedLibraries} 本、${result.importedEntries} 条。抽签总开关没有改。`);
+                    await renderSavedLibraries();
+                } catch (error) { setStatus(String(error?.message || error), 'error'); restore.disabled = false; }
+            }, { minHeight: '44px', marginTop: '6px' });
+            box.append(restore);
+            state.savedLibrariesList.append(box);
+        }).catch(() => {});
         return;
     }
     const poolSnapshot = getExternalPoolSnapshot();
@@ -650,7 +668,7 @@ function createExternalRandomControls() {
 function createLibraryTransferControls() {
     const panel = el('section', { id: 'rh_external_transfer_panel', style: { margin: '12px 0 14px', minWidth: '0' } });
     panel.append(el('h3', { text: '换设备：把已导入的母本库一起带走', style: { margin: '0 0 8px', fontSize: '16px' } }));
-    panel.append(el('p', { text: '旧设备导出一个文件 → 把文件发到新设备 → 在新设备导入。不用逐本重导，也不会自动上传到服务器。', style: { fontSize: '14px', lineHeight: '1.6', margin: '4px 0 12px', overflowWrap: 'anywhere' } }));
+    panel.append(el('p', { text: '旧设备导出一个文件 → 把文件发到新设备 → 在新设备导入。不用逐本重导。另外兔子镜会在你自己的酒馆数据里自动存一份备份，见下方「酒馆备份」。', style: { fontSize: '14px', lineHeight: '1.6', margin: '4px 0 12px', overflowWrap: 'anywhere' } }));
     const message = el('div', { id: 'rh_external_transfer_status', attrs: { role: 'status', 'aria-live': 'polite', tabindex: '-1' }, style: { fontSize: '12px', lineHeight: '1.5', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', marginTop: '8px' } });
     const file = el('input', { id: 'rh_external_transfer_file', type: 'file', className: 'text_pole', attrs: { accept: '.json,application/json', 'aria-describedby': message.id }, style: { width: '100%' } });
     let pending = null, busy = false, sequence = 0;
@@ -671,7 +689,7 @@ function createLibraryTransferControls() {
         if (busy) return;
         const owner = state; lock(true); feedback('正在读取本设备已导入的库并生成迁移文件……');
         try {
-            const module = await import('./backup.js?rmv=1.68.1');
+            const module = await import('./backup.js?rmv=1.68.4');
             if (!current(owner)) return;
             const result = await module.exportExternalLibraryBackup();
             if (!current(owner)) return;
@@ -688,7 +706,7 @@ function createLibraryTransferControls() {
         if (!globalThis.confirm('导入这份备份里的外部库？目标已有同编号库会保留并跳过，其余库保留备份的分类和启用状态。不删除或覆盖旧库，不改变抽签总开关。')) return;
         const owner = state, backup = pending; lock(true); feedback('正在原子保存迁移数据；请暂时保留此页面……');
         try {
-            const module = await import('./backup.js?rmv=1.68.1');
+            const module = await import('./backup.js?rmv=1.68.4');
             if (!current(owner)) return;
             const result = await module.importExternalLibraryBackup(backup);
             if (!current(owner)) return;
@@ -706,7 +724,7 @@ function createLibraryTransferControls() {
         const selected = file.files?.[0]; if (!selected) return;
         const owner = state, ownSequence = ++sequence; lock(true); feedback('正在校验迁移文件，尚未写入……');
         try {
-            const module = await import('./backup.js?rmv=1.68.1');
+            const module = await import('./backup.js?rmv=1.68.4');
             if (!current(owner)) return;
             const backup = await module.readExternalLibraryBackupFile(selected);
             if (!current(owner) || sequence !== ownSequence) return;
@@ -718,8 +736,60 @@ function createLibraryTransferControls() {
     panel.append(el('h4', { text: '① 旧设备：导出整库', style: { margin: '12px 0 8px', fontSize: '14px' } }), exportButton,
         el('h4', { text: '② 新设备：导入刚才的文件', style: { margin: '16px 0 8px', fontSize: '14px' } }),
         el('label', { text: '选择 RabbitMirror-external-libraries 开头的 JSON 文件', attrs: { for: file.id }, style: { display: 'block', margin: '8px 0', fontSize: '13px', overflowWrap: 'anywhere' } }), file, importButton, message);
+    panel.append(createServerBackupSection(() => current(state), renderSavedLibraries));
     panel.append(el('p', { text: '文件包含母本原文、分类和启用状态，请妥善保管；不含聊天、API Key 或酒馆设置。已有同编号库会保留并跳过，不删除或覆盖；抽签总开关不变。最多 32 MiB、1000 本、25000 条。', style: { fontSize: '12px', lineHeight: '1.6', margin: '12px 0 0', overflowWrap: 'anywhere' } }));
     return { panel, prepareBackup, clearPending, isBusy: () => busy, dispose: () => { sequence++; pending = null; file.value = ''; } };
+}
+
+// 酒馆备份：导入、启用、改分类、删除以后自动存进酒馆用户文件夹；本机数据被清掉时从这里恢复。
+function backupTimeText(at) {
+    const date = new Date(Number(at) || 0);
+    if (!Number(at) || Number.isNaN(date.getTime())) return '';
+    const pad = value => String(value).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+function createServerBackupSection(isCurrent, afterRestore) {
+    const section = el('section', { id: 'rh_external_server_backup', style: { marginTop: '16px', minWidth: '0' } });
+    section.append(el('h4', { text: '酒馆备份（自动）', style: { margin: '0 0 6px', fontSize: '14px' } }));
+    section.append(el('p', { text: '每次导入、启用、改分类或删除母本库后，会自动在酒馆的用户文件夹里存一份整库备份。宿主更新或清理把本机数据清掉时，可以从这里恢复。只补本机没有的库，本机已有的不动。', style: { fontSize: '12px', lineHeight: '1.6', margin: '0 0 8px', overflowWrap: 'anywhere' } }));
+    const line = el('div', { attrs: { role: 'status', 'aria-live': 'polite' }, style: { fontSize: '12px', lineHeight: '1.5', margin: '0 0 8px', overflowWrap: 'anywhere' } });
+    let busy = false;
+    const describe = status => {
+        if (!status) return '本机还没有往酒馆里存过备份。';
+        if (status.ok) return `上次存进酒馆：${backupTimeText(status.savedAt)}，共 ${status.libraryCount} 本、${status.entryCount} 条${status.keptFromServer ? `（含 ${status.keptFromServer} 本本机没有、备份里原有的库）` : ''}。`;
+        return `最近一次没有存上：${status.message || '原因不明'}${status.savedAt ? `。上一次成功：${backupTimeText(status.savedAt)}` : ''}`;
+    };
+    const refresh = async () => {
+        const module = await import('./serverBackup.js?rmv=1.68.4');
+        if (section.isConnected) line.textContent = describe(module.getMotherLibraryServerBackupStatus());
+    };
+    const lock = value => { busy = value; saveButton.disabled = value; restoreButton.disabled = value; };
+    const saveButton = button('现在存一份进酒馆', async () => {
+        if (busy) return;
+        lock(true); line.textContent = '正在存进酒馆……';
+        try {
+            const module = await import('./serverBackup.js?rmv=1.68.4');
+            const status = await module.saveMotherLibraryServerBackup();
+            if (section.isConnected) line.textContent = describe(status);
+        } catch (error) { if (section.isConnected) line.textContent = `没有存上：${String(error?.message || error)}`; }
+        finally { if (section.isConnected) lock(false); }
+    }, { minHeight: '44px', width: '100%', marginBottom: '8px' });
+    const restoreButton = button('从酒馆备份恢复', async () => {
+        if (busy) return;
+        lock(true); line.textContent = '正在读取酒馆里的备份……';
+        try {
+            const module = await import('./serverBackup.js?rmv=1.68.4');
+            const result = await module.restoreMotherLibrariesFromServerBackup();
+            if (!section.isConnected) return;
+            line.textContent = result.empty ? '酒馆里还没有母本库备份。'
+                : `恢复完成：补回 ${result.importedLibraries} 本、${result.importedEntries} 条；本机已有的 ${result.skippedLibraries} 本保持不动。抽签总开关没有改。`;
+            if (isCurrent()) await afterRestore?.();
+        } catch (error) { if (section.isConnected) line.textContent = `没有恢复：${String(error?.message || error)}；本机现有的库没有改动。`; }
+        finally { if (section.isConnected) lock(false); }
+    }, { minHeight: '44px', width: '100%' });
+    section.append(line, saveButton, restoreButton);
+    void refresh().catch(() => {});
+    return section;
 }
 
 function bindImportViewport(overlay) {

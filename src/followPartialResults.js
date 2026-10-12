@@ -1,7 +1,7 @@
-import { getCurrentChatKey } from './storage.js?rmv=1.68.1';
-import { parseMultifaceOutput, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR } from './multifaceProtocol.js?rmv=1.68.1';
-import { rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.68.1';
-import { createRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=1.68.1';
+import { getCurrentChatKey } from './storage.js?rmv=1.68.4';
+import { parseMultifaceOutput, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR } from './multifaceProtocol.js?rmv=1.68.4';
+import { rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.68.4';
+import { createRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=1.68.4';
 
 const KEY = 'rabbit_mirror_follow_partial_results_v1';
 const MAX_CHARS = 768 * 1024;
@@ -65,10 +65,16 @@ export function readFollowPartialResult(chat, index) {
 }
 // Only the sanitizer/quality caller writes accepted faces. On recovery they are
 // sanitized and quality checked again; this cache itself is never DOM proof.
-export function saveFollowPartialResult(chat, index, expectedOwner, html, failedFaces, appliedRules) {
+// historyRound：这批面在避重记录里的轮次（原批次编号）。补发／重试补回的面按它记，和先出的面算同一轮。
+function boundedHistoryRound(value) {
+    const text = typeof value === 'string' ? value.trim() : '';
+    return text && text.length <= 256 ? text : '';
+}
+export function saveFollowPartialResult(chat, index, expectedOwner, html, failedFaces, appliedRules, historyRound = '') {
     const identity = owner(chat, index);
     if (!sameOwner(identity, expectedOwner) || chat[index] !== expectedOwner?.message) return false;
     const record = {...identity, html, failedFaces, ts:Date.now()};
+    if (boundedHistoryRound(historyRound)) record.historyRound = boundedHistoryRound(historyRound);
     if (!valid(record)) return false;
     // An explicit appliedRules argument attests the sanitizer caller actually
     // filtered accepted faces. Missing arguments never mint a receipt. Local
@@ -127,6 +133,7 @@ export function replaceFollowPartialResultFace(chat, index, expectedOwner, {expe
     if(!parseMultifaceOutput(merged,{expectedCount:old.faces.length}).ok) return null;
     const failedFaces=current.failedFaces.filter(failure=>failure.faceIndex!==faceIndex);
     const record={...identity,html:merged,failedFaces,completedAfterRetry:failedFaces.length===0,ts:Date.now()};
+    if(boundedHistoryRound(current.historyRound)) record.historyRound=boundedHistoryRound(current.historyRound);
     // A retry may use changed rules. Untouched siblings keep their own receipt;
     // only the newly filtered target is associated with the current rules.
     record.textReplacementReceipts=old.faces.map(face=>face.index===faceIndex
@@ -141,6 +148,7 @@ export function saveFollowCompletedRetryResult(chat, index, expectedOwner, html,
     if(!sameOwner(identity,expectedOwner)||chat[index]!==expectedOwner?.message) return null;
     const parsed=parseMultifaceOutput(String(html||''));
     if(!parsed.ok || String(html||'').includes(MULTIFACE_FAILURE_ATTR)) return null;
+    const previousRound=boundedHistoryRound(readFollowPartialResult(chat,index)?.historyRound);
     const record={
         ...identity,
         html:String(html||''),
@@ -150,6 +158,7 @@ export function saveFollowCompletedRetryResult(chat, index, expectedOwner, html,
         textReplacementReceipts:parsed.faces.map(face=>Array.isArray(appliedRules)
             ? createRabbitMirrorTextReplacementReceipt(face.html,appliedRules,followPartialResultFaceOwnerKey(identity,face.index))
             : null),
+        ...(previousRound?{historyRound:previousRound}:{}),
     };
     if(!valid(record)||!persistRecord(record)) return null;
     return readFollowPartialResult(chat,index);
