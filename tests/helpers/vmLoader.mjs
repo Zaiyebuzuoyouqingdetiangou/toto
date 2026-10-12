@@ -59,8 +59,15 @@ export function createRuntime(root, { store = createStore(), fetch } = {}) {
                     this.setExport('extension_settings', {});
                 }, { context, identifier: file });
             } else if (name === 'script.js') {
-                module = new vm.SyntheticModule(['saveSettingsDebounced'], function () {
+                module = new vm.SyntheticModule(['saveSettingsDebounced', 'eventSource', 'event_types'], function () {
                     this.setExport('saveSettingsDebounced', () => {});
+                    const listeners = new Map();
+                    this.setExport('eventSource', {
+                        on(name, fn) { if (!listeners.has(name)) listeners.set(name, []); listeners.get(name).push(fn); },
+                        removeListener(name, fn) { listeners.set(name, (listeners.get(name) || []).filter(item => item !== fn)); },
+                        async emit(name, data) { for (const fn of listeners.get(name) || []) await fn(data); },
+                    });
+                    this.setExport('event_types', { CHAT_COMPLETION_PROMPT_READY: 'chat_completion_prompt_ready', GENERATE_AFTER_COMBINE_PROMPTS: 'generate_after_combine_prompts', CHAT_CHANGED: 'chat_id_changed' });
                 }, { context, identifier: file });
             } else throw new Error(`Unexpected host dependency: ${file}`);
         } else {

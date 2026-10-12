@@ -1,11 +1,11 @@
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.68.4';
-import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.68.4';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.68.5';
+import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.68.5';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.68.4';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.68.4';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.68.4';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.68.4';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.68.5';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.68.5';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.68.5';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.68.5';
 
 export const MODULE_NAME = 'rabbit_mirror_theater';
 
@@ -230,6 +230,10 @@ export const defaultSettings = Object.freeze({
     postGenerationRecolor: false, // Retired trial compatibility key; never generates variants.
     visualDesignMode: 'guided1553', // Compatibility key; old choices converge on the retained enhanced rules.
     cooldownRounds: 10,
+    // 发送前去掉聊天记录里的旧兔子镜（插件自带，等同「不发送兔子镜」正则）。
+    stripOldMirrorsBeforeSend: true,
+    // 首次启动时已经替用户把「不发送兔子镜」正则配进酒馆（之后用户删掉也不再自动加回）。
+    noSendRegexAutoConfigured: false,
     blacklistEnabled: true,
     blacklistedThemeIds: [],
     blacklistedFormatIds: [],
@@ -452,6 +456,8 @@ export function getSettings() {
         settings.maintenanceRabbitAutoSafeConsent = false;
     }
     settings.feedbackCatEnabled = settings.feedbackCatEnabled !== false;
+    settings.stripOldMirrorsBeforeSend = settings.stripOldMirrorsBeforeSend !== false;
+    settings.noSendRegexAutoConfigured = settings.noSendRegexAutoConfigured === true;
     settings.rabbitMirrorBannedWords = normalizeRabbitMirrorBannedWords(settings.rabbitMirrorBannedWords);
     settings.externalWorldBookRandomEnabled = settings.externalWorldBookRandomEnabled === true;
     settings.externalWorldBookMixMode = ['builtin-only','builtin-preferred','balanced','external-preferred','external-only'].includes(settings.externalWorldBookMixMode)
