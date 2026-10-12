@@ -1,8 +1,8 @@
-import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.68.6';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.68.6';
-import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.68.6';
-import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.68.6';
-import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.68.6';
+import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.68.7';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.68.7';
+import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.68.7';
+import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.68.7';
+import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.68.7';
 
 // Declarative, face-local behaviors. No generated code, global targets or timers.
 const roots = new WeakMap();
@@ -63,6 +63,12 @@ function stateKeys(state) {
     if (state.changed) keys.add('changed');
     for (const name of ['active', 'match', 'done', 'miss']) if (group.getAttribute(`data-rm-${name}`) === 'true') keys.add(name);
     for (const key of state.on || []) { keys.add(key); if (key === 'on') keys.add('true'); }
+    // 开关只有一个、却起了名字（data-rm-toggle="turn"），显示条件写的是 on／!on：这个开关开着就算 on。
+    if (state.type === 'toggle' && state.on?.size && !keys.has('on')) {
+        const named = new Set([...own(group, '[data-rm-toggle]'), ...(state.remotes || [])]
+            .map(control => behaviorToggleKey(control.getAttribute('data-rm-toggle'))));
+        if (named.size === 1 && !named.has('on') && state.on.has([...named][0])) { keys.add('on'); keys.add('true'); }
+    }
     // 拖放：已经放进对应槽的物件，它的键就是当前状态（data-rm-show="键" 放进去才显示）；放进任意一件时还有 placed。
     for (const node of state.placed || []) {
         if (!group.contains(node)) continue;
@@ -76,7 +82,23 @@ function stateKeys(state) {
         const name = String(state.pages[state.index - 1]?.getAttribute('data-rm-page') || '').trim();
         if (name) keys.add(name);
     }
-    if (state.type === 'turn' && state.stops) keys.add(String(state.stopIndex));
+    if (state.type === 'turn' && state.stops) {
+        keys.add(String(state.stopIndex));
+        // 显示条件写成 item0／item1、stop1／stop2 这种「前缀＋档位号」：按同一前缀的号码对上当前档位。
+        // 号码从 1 起、最大正好是档位数时按第几档算（1 开头），否则按 0 开头。
+        const numbered = new Map();
+        for (const node of ownBehaviorShows(group)) for (const token of behaviorShowTokens(node)) {
+            const match = /^!?([a-z_-]*[a-z_-])(\d{1,2})$/i.exec(token);
+            if (!match) continue;
+            const list = numbered.get(match[1]) || [];
+            list.push(Number(match[2]));
+            numbered.set(match[1], list);
+        }
+        for (const [prefix, numbers] of numbered) {
+            const oneBased = Math.min(...numbers) === 1 && Math.max(...numbers) === state.stops;
+            keys.add(`${prefix}${state.stopIndex + (oneBased ? 1 : 0)}`);
+        }
+    }
     // 揭示：揭到底（九成以上）时，「揭开后才显示」的内容出来。模型常写 data-rm-show="reveal"／"revealed"／"done"，都认。
     if (state.type === 'reveal' && (state.progress || 0) >= 0.9) for (const key of ['reveal', 'revealed', 'done', 'full', 'open']) keys.add(key);
     for (const key of state.entered || []) keys.add(key);
@@ -1657,7 +1679,7 @@ function scheduleOnDemandRelay(root, target) {
 function relayGroupLater(root, group, control = null) {
     const run = () => {
         if (!group.isConnected || !root.isConnected) return;
-        void import('./behaviorRelay.js?rmv=1.68.6').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
+        void import('./behaviorRelay.js?rmv=1.68.7').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
     };
     const idle = globalThis.requestIdleCallback;
     if (typeof idle === 'function') idle(run, { timeout: 800 }); else setTimeout(run, 120);

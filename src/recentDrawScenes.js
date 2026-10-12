@@ -1,4 +1,4 @@
-import { getCurrentChatKey } from './storage.js?rmv=1.68.6';
+import { getCurrentChatKey } from './storage.js?rmv=1.68.7';
 
 // 内置生图：记下这个聊天最近几张真正去画的图画了什么动作（只记一小段英文短标签），
 // 下次出镜面时提醒模型换个动作和构图。只在真的发出生图请求时记，读存档、重挂载不记。
