@@ -1,9 +1,9 @@
 // Split from outputSanitizer.js — scriptedInteractionRescue.
 
-import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.67.95';
-import { nativePopoverFallbackCount } from './nativePopoverFallback.js?rmv=1.67.95';
-import { getSettings } from '../settings.js?rmv=1.67.95';
-import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue } from '../bannedWords.js?rmv=1.67.95';
+import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.68';
+import { nativePopoverFallbackCount } from './nativePopoverFallback.js?rmv=1.68';
+import { getSettings } from '../settings.js?rmv=1.68';
+import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue } from '../bannedWords.js?rmv=1.68';
 import {
     FEEDBACK_CAT_ATTR,
     MAINTENANCE_RABBIT_ATTR,
@@ -20,7 +20,7 @@ import {
     getRabbitMirrorLocalStyleElements,
     getRenderedRabbitMirrorInteractionRoots,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.67.95';
+} from './runtime.js?rmv=1.68';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     DETACHED_CHECKED_HAS_RULE_COUNT_ATTR,
@@ -57,7 +57,7 @@ import {
     reversibleStyleBaselineStates,
     reversibleTextBaselineStates,
     syncCrossParentCheckedRuleFallback,
-} from './checkedStateRescue.js?rmv=1.67.95';
+} from './checkedStateRescue.js?rmv=1.68';
 import {
     EXISTING_INTERACTIVE_SELECTOR,
     PSEUDO_INTERACTION_HINT_RE,
@@ -79,8 +79,8 @@ import {
     resolveCheckedRelativeElementExpression,
     resolveScopedPseudoId,
     sanitizeRecoveredInteractionStyleAssignments,
-} from './renderedStateRescue.js?rmv=1.67.95';
-import { cancelLabeledCheckedTransitionVerification, setRescuedCheckedState } from './fallbackRescue.js?rmv=1.67.95';
+} from './renderedStateRescue.js?rmv=1.68';
+import { cancelLabeledCheckedTransitionVerification, setRescuedCheckedState } from './fallbackRescue.js?rmv=1.68';
 import {
     DISABLED_ONLY_CHOICE_RESCUE_ATTR,
     FILL_IN_CHOICE_COUNT_ATTR,
@@ -91,7 +91,7 @@ import {
     SELECTION_ONLY_FALLBACK_ATTR,
     STATIC_CHOICE_SELECTION_COUNT_ATTR,
     STRUCTURED_STATIC_DISCLOSURE_COUNT_ATTR,
-} from './diagnostics.js?rmv=1.67.95';
+} from './diagnostics.js?rmv=1.68';
 import {
     checkedDeclarationCreatesContentReveal,
     getRenderedMessageElement,
@@ -99,15 +99,15 @@ import {
     isIndependentMaintenanceRoot,
     maintenanceMessageSourceCandidates,
     normalizeMaintenanceSummaryText,
-} from './maintenanceInspect.js?rmv=1.67.95';
+} from './maintenanceInspect.js?rmv=1.68';
 import {
     decodeHtmlEntities,
     normalizeMirrorAttribute,
     rescueDamagedDataUriRabbitMirrorOutput,
     validateRabbitMirrorMarkupLexicalBudget,
     RABBIT_MIRROR_MAX_TEMPLATE_SOURCE_CHARS,
-} from './markup.js?rmv=1.67.95';
-import { getMessageIndexFromMirrorNode, hostScriptModule, messageUsesDistinctDisplaySource } from './lifecycle.js?rmv=1.67.95';
+} from './markup.js?rmv=1.68';
+import { getMessageIndexFromMirrorNode, hostScriptModule, messageUsesDistinctDisplaySource } from './lifecycle.js?rmv=1.68';
 
 export const RAW_RADIO_RESET_RESCUE_ATTR = 'data-rabbit-mirror-radio-reset-rescue';
 
@@ -346,6 +346,8 @@ function bindPseudoToggle(trigger, state) {
 
     trigger.addEventListener('click', event => {
         if (shouldIgnorePseudoToggleEvent(event, trigger)) return;
+        // 悬停显示的卡片：鼠标移进去已经显示了，再点一下不该把它关掉（只有触屏靠点击切换）。
+        if (state.hoverDriven && state.lastPointerType === 'mouse') return;
         setPseudoInteractionState(state, !state.active);
     }, false);
 
@@ -1299,6 +1301,8 @@ export function installRawMessageHoverPseudoRescue(root) {
 
         pseudoInteractionStates.set(renderedTrigger, state);
         bindPseudoToggle(renderedTrigger, state);
+        state.hoverDriven = true;
+        renderedTrigger.addEventListener('pointerdown', event => { state.lastPointerType = String(event.pointerType || ''); }, false);
         renderedTrigger.addEventListener('pointerenter', event => {
             if (event.pointerType === 'mouse') setPseudoInteractionState(state, true);
         }, false);
@@ -2620,6 +2624,8 @@ function installInlineEventPseudoInteractionRescue(root) {
 
         // 桌面鼠标继续保留原本的进入/离开语义；触屏则通过点击切换。
         if (hoverOn.length) {
+            state.hoverDriven = true;
+            trigger.addEventListener('pointerdown', event => { state.lastPointerType = String(event.pointerType || ''); }, false);
             trigger.addEventListener('pointerenter', event => {
                 if (event.pointerType === 'mouse') setPseudoInteractionState(state, true);
             }, false);

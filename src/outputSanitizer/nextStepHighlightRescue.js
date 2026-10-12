@@ -2,8 +2,8 @@
 // 选中第 2 项时点亮第 3 个……于是按下去的那个按钮不亮，旁边的亮了，看起来像点错、点了没反应。
 // 只在一组单选里每一项都恰好点亮另一项、没有任何一项点亮自己时，把高亮改回“按下的那个按钮自己”。
 // 只改本面样式里这几条选择器的目标，不改颜色、不改内容。
-import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.67.95';
-import { splitCssSelectorList } from './markup.js?rmv=1.67.95';
+import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.68';
+import { splitCssSelectorList } from './markup.js?rmv=1.68';
 
 const RESCUE_ATTR = 'data-rabbit-mirror-next-step-highlight-rescue';
 const PAIR_RE = /(?:#([\w-]+)|\[\s*id\s*=\s*["']?([\w-]+)["']?\s*\])\s*:checked\s*~\s*([^{}]*?)label\[\s*for\s*=\s*["']?([\w-]+)["']?\s*\]\s*$/;
@@ -56,6 +56,10 @@ export function installNextStepHighlightRescue(root) {
     // 先收集每组的“选中谁 → 点亮谁”，并记下是否已经有“点亮自己”的规则。
     const mapping = new Map();
     const selfLit = new Set();
+    // 「选中 1 时让 2 显示出来」是翻页卡／二选一开关的正常写法（显示下一个按钮），不是高亮点错：
+    // 这一组只要有一条规则改的是显示、透明度、尺寸这类，就不当成高亮，不改。
+    const layoutGroups = new Set();
+    const LAYOUT_DECLARATION = /(?:^|;)\s*(?:display|visibility|opacity|pointer-events|position|width|height|max-width|max-height|min-width|min-height|transform|translate|content|z-index|clip|clip-path|overflow)\s*:/i;
     const blockRe = /([^{}]+)\{([^{}]*)\}/g;
     for (const style of styles) {
         const css = String(style.textContent || '');
@@ -65,6 +69,7 @@ export function installNextStepHighlightRescue(root) {
                 const pair = parsePair(selector);
                 if (!pair || !memberGroup.has(pair.from) || memberGroup.get(pair.to) !== memberGroup.get(pair.from)) continue;
                 if (pair.from === pair.to) { selfLit.add(memberGroup.get(pair.from)); continue; }
+                if (LAYOUT_DECLARATION.test(String(match[2] || ''))) layoutGroups.add(memberGroup.get(pair.from));
                 const targets = mapping.get(pair.from) || new Set();
                 targets.add(pair.to);
                 mapping.set(pair.from, targets);
@@ -73,7 +78,7 @@ export function installNextStepHighlightRescue(root) {
     }
     const shifted = new Set();
     for (const [name, ids] of groups) {
-        if (ids.length < 2 || ids.length > 6 || selfLit.has(name)) continue;
+        if (ids.length < 2 || ids.length > 6 || selfLit.has(name) || layoutGroups.has(name)) continue;
         if (!ids.every(id => mapping.get(id)?.size === 1)) continue;
         const targets = ids.map(id => [...mapping.get(id)][0]);
         // 每一项点亮另一项，且被点亮的正好是这一组的每一项各一次（一个轮转），才算“提示下一步”的写法。

@@ -1,16 +1,16 @@
 // Split from independentApi.js — faceSwipe.
 
-import { getSettings } from '../settings.js?rmv=1.67.95';
-import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.67.95';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.67.95';
-import { configuredAutomaticRerollMax } from '../automaticReroll.js?rmv=1.67.95';
-import { seedSwipeState, appendSuccessfulSwipe, faceSwipeStorageSlot, readFaceSwipe, mutateFaceSwipe, restoreFaceSwipeSnapshot } from '../swipeVersions.js?rmv=1.67.95';
-import { EPHEMERAL_FAILURE_ATTR, EPHEMERAL_FAILURE_BODY_ATTR, RUNTIME_VERSION } from './runtime.js?rmv=1.67.95';
-import { independentRecordWithinBudget, readStore, requestSafeChatSave, writePersistedOwner, writeStore } from './persistence.js?rmv=1.67.95';
-import { chatKey, saveRecordForSlot, savedIndependentRecordForOwner, swipeId } from './connection.js?rmv=1.67.95';
-import { hasMultifaceMarkup, wrapIndependentFace } from './request.js?rmv=1.67.95';
-import { attachIndependentUnsavedNotices, externalFaceDetails, passiveObservedIdentity, showIndependentUnsavedOutput } from './mount.js?rmv=1.67.95';
-import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.67.95';
+import { getSettings } from '../settings.js?rmv=1.68';
+import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.68';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.68';
+import { configuredAutomaticRerollMax } from '../automaticReroll.js?rmv=1.68';
+import { seedSwipeState, appendSuccessfulSwipe, faceSwipeStorageSlot, readFaceSwipe, mutateFaceSwipe, restoreFaceSwipeSnapshot } from '../swipeVersions.js?rmv=1.68';
+import { EPHEMERAL_FAILURE_ATTR, EPHEMERAL_FAILURE_BODY_ATTR, RUNTIME_VERSION } from './runtime.js?rmv=1.68';
+import { independentRecordWithinBudget, readStore, requestSafeChatSave, writePersistedOwner, writeStore } from './persistence.js?rmv=1.68';
+import { chatKey, saveRecordForSlot, savedIndependentRecordForOwner, swipeId } from './connection.js?rmv=1.68';
+import { hasMultifaceMarkup, wrapIndependentFace } from './request.js?rmv=1.68';
+import { attachIndependentUnsavedNotices, externalFaceDetails, passiveObservedIdentity, showIndependentUnsavedOutput } from './mount.js?rmv=1.68';
+import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.68';
 
 export function independentRerollMax(){ return configuredAutomaticRerollMax(getSettings()); }
 
@@ -34,7 +34,7 @@ export function scrubSwipeDetailsHtml(html){
  const details=template.content.querySelector?.('details');
  if(!details) return source;
  preserveIndependentFaceStyles(details);
- details.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay], [data-rm-ephemeral-failure-body], [data-rm-face-swipe-host], [data-rm-face-swipe-bar], [data-rm-face-swipe-delete], [data-rm-face-favorite-star]')?.forEach(node=>node.remove());
+ details.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay], [data-rm-ephemeral-failure-body], [data-rm-face-swipe-host], [data-rm-face-swipe-bar], [data-rm-face-swipe-delete], [data-rm-face-favorite-star], [data-rabbit-mirror-source-truncation-notice]')?.forEach(node=>node.remove());
  details.querySelectorAll?.('[data-rm-ephemeral-failure-hidden]')?.forEach(node=>{ node.removeAttribute('data-rm-ephemeral-failure-hidden'); node.hidden=false; });
  details.removeAttribute?.(EPHEMERAL_FAILURE_ATTR);
  return String(details.outerHTML||source).trim();

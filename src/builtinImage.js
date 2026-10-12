@@ -1,10 +1,10 @@
-import { getSettings } from './settings.js?rmv=1.67.95';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.67.95';
-import { loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.67.95';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.67.95';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.95';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.67.95';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.67.95';
+import { getSettings } from './settings.js?rmv=1.68';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.68';
+import { findBuiltinImageKeyFromOtherChat, loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.68';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.68';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.68';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.68';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.68';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -97,6 +97,16 @@ function storageKey(root, frame, prompt) {
 function readSaved(key) {
     try { return { record: loadMirrorImage(key) }; }
     catch { return { broken: true }; }
+}
+
+// 当前聊天名下没有这张图时，看看是不是聊天开了分支／改了名，图还存在旧名字下。
+function readSavedAnyChat(key) {
+    const saved = readSaved(key);
+    if (saved.broken || saved.record) return saved;
+    const other = findBuiltinImageKeyFromOtherChat(key);
+    if (!other) return saved;
+    const moved = readSaved(other);
+    return moved.record ? moved : saved;
 }
 
 function frameImageSize(frame) {
@@ -384,7 +394,7 @@ async function fillFrame(root, frame) {
     const prompt = readPrompt(frame);
     if (!prompt) return;
     const key = storageKey(root, frame, prompt);
-    const saved = readSaved(key);
+    const saved = readSavedAnyChat(key);
     if (saved.broken) {
         note(frame, '这一面的画面存档读不出来，没有重新生图。', root);
         return;
@@ -472,7 +482,7 @@ export function restoreSavedBuiltinImages(root) {
         if (frame.querySelector?.('img[data-rm-draw-result][src]')) continue;
         const prompt = readPrompt(frame);
         if (!prompt) continue;
-        let saved = readSaved(storageKey(root, frame, prompt));
+        let saved = readSavedAnyChat(storageKey(root, frame, prompt));
         // 收藏的是多面里的某一面时，图框在原来那条消息里的序号可能和收藏里不同：同一段提示词按序号挨个找。
         if (!saved.record && frame.closest?.('details')?.dataset?.rmImageOwnerChat) {
             const base = storageKey(root, frame, prompt).split(':');

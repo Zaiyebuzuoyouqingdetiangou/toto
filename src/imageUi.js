@@ -1,9 +1,9 @@
-import { getSettings } from './settings.js?rmv=1.67.95';
-import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=1.67.95';
-import { loadMirrorImage, saveMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft } from './imageStore.js?rmv=1.67.95';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.67.95';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.67.95';
-import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.67.95';
+import { getSettings } from './settings.js?rmv=1.68';
+import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=1.68';
+import { loadMirrorImage, saveMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft } from './imageStore.js?rmv=1.68';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.68';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.68';
+import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.68';
 
 // The lock lives beyond a panel's lifetime. Closing, reopening or aborting a UI
 // cannot release a provider reservation before its Promise actually settles.
@@ -65,6 +65,16 @@ function stored(key) {
     try { return { record: loadMirrorImage(key), draft: sessionDrafts.get(key) || loadMirrorImageDraft(key) }; }
     catch { return { record: null, draft: null, error: '此设备的图片存档暂时无法读取；不会覆盖原存档。' }; }
 }
+// 本面的插图：先按当前内容找；找不到时（比如维修兔修过，内容变了）再按最初那一版找。只读，不搬存档。
+function storedForTarget(target) {
+    const primary = stored(target.key);
+    if (primary.record || primary.error) return primary;
+    for (const key of Array.isArray(target.altKeys) ? target.altKeys : []) {
+        const alt = stored(key);
+        if (alt.record) return { ...primary, record: alt.record };
+    }
+    return primary;
+}
 function rememberDraft(key, draft) {
     const value = { ...draft, updatedAt: Date.now() };
     sessionDrafts.set(key, value);
@@ -100,7 +110,7 @@ export function mountMirrorImage(root) {
     const previous = regions.get(root);
     if (!target) { previous?.remove(); regions.delete(root); return; }
     mountedRoots.set(root, anchor.parentElement);
-    const state = stored(target.key);
+    const state = storedForTarget(target);
     const record = pendingImage(target.key, state.record);
     if (!record) return;
     // Remove only our sibling region. Never alter generated mirror HTML.
@@ -141,7 +151,7 @@ export function openMirrorImagePanel(root, { opener = null, onClose = null } = {
     closePanel();
     const doc = root.ownerDocument;
     const target = targetFor(root);
-    const state = target ? stored(target.key) : {};
+    const state = target ? storedForTarget(target) : {};
     const host = el(doc, 'dialog', '', { 'data-rm-image-portal': '', 'data-rm-tool-ui': 'true', 'aria-label': '兔子镜生图' });
     host.style.cssText = 'position:fixed;inset:0;margin:0;border:0;max-width:none;max-height:none;min-width:0;min-height:0;z-index:2147483646;background:#0007;display:flex;align-items:center;justify-content:center;padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));box-sizing:border-box;overflow:hidden;';
     applyAppearanceTheme(host);

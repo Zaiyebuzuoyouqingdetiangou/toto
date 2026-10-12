@@ -1,11 +1,11 @@
 // Split from independentApi.js — geometry.
-import { restoreRuntimeAnimationClone, ANIMATION_SUSPENDED_ATTR } from '../runtimeAnimationState.js?rmv=1.67.95';
+import { restoreRuntimeAnimationClone, ANIMATION_SUSPENDED_ATTR } from '../runtimeAnimationState.js?rmv=1.68';
 
-import { bindVisualHistoryTarget } from '../storage.js?rmv=1.67.95';
-import { presentationModeFields } from '../presentationMode.js?rmv=1.67.95';
-import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.67.95';
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorExternalPlacementParent } from '../hostCompatibility.js?rmv=1.67.95';
-import { getSettings } from '../settings.js?rmv=1.67.95';
+import { bindVisualHistoryTarget } from '../storage.js?rmv=1.68';
+import { presentationModeFields } from '../presentationMode.js?rmv=1.68';
+import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.68';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorExternalPlacementParent } from '../hostCompatibility.js?rmv=1.68';
+import { getSettings } from '../settings.js?rmv=1.68';
 import {
     cleanRabbitMirrorOutput,
     compactTotoBlock,
@@ -19,14 +19,14 @@ import {
     clearRabbitMirrorHorizontalClipArtifacts,
     sanitizeRabbitMirrorUntrustedTemplate,
     validateRabbitMirrorRecoveredStyleAssignments,
-} from '../outputSanitizer.js?rmv=1.67.95';
-import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.67.95';
-import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.67.95';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.67.95';
-import { repairDesignCandidateAttributeQuotes } from '../interactionSampling.js?rmv=1.67.95';
-import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.67.95';
-import { MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE, INDEPENDENT_HISTORY_READ_ERROR_MESSAGE } from './missingRetryShell.js?rmv=1.67.95';
-import { markSanitizedRabbitMirrorFace } from '../multifaceProof.js?rmv=1.67.95';
+} from '../outputSanitizer.js?rmv=1.68';
+import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.68';
+import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.68';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.68';
+import { repairDesignCandidateAttributeQuotes } from '../interactionSampling.js?rmv=1.68';
+import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.68';
+import { MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE, INDEPENDENT_HISTORY_READ_ERROR_MESSAGE } from './missingRetryShell.js?rmv=1.68';
+import { markSanitizedRabbitMirrorFace } from '../multifaceProof.js?rmv=1.68';
 import {
     EXTERNAL_SHELL_ATTR,
     FOLLOW_EXTERNAL_ANCHOR_ATTR,
@@ -41,8 +41,8 @@ import {
     getContext,
     hashText,
     independentMaintenanceLiveRepairLocked,
-} from './runtime.js?rmv=1.67.95';
-import { automaticDispatchAlreadyConsumed, automaticFailureStops, generationPolls, operationEpochForBase } from './flights.js?rmv=1.67.95';
+} from './runtime.js?rmv=1.68';
+import { automaticDispatchAlreadyConsumed, automaticFailureStops, generationPolls, operationEpochForBase } from './flights.js?rmv=1.68';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INTERACTION_STATE_MIGRATION_KEY,
@@ -51,7 +51,7 @@ import {
     persistedOwnerForMessage,
     readStore,
     writeStore,
-} from './persistence.js?rmv=1.67.95';
+} from './persistence.js?rmv=1.68';
 import {
     chatKey,
     copyIndependentOwnerLineage,
@@ -68,7 +68,7 @@ import {
     savedRecordMatchesObserved,
     slotSearchKeys,
     swipeId,
-} from './connection.js?rmv=1.67.95';
+} from './connection.js?rmv=1.68';
 import {
     EXTERNAL_GEOMETRY_SETTLE_STEPS_MS,
     allExternalHosts,
@@ -102,7 +102,7 @@ import {
     wrapIndependentFace,
     wrapPreparedIndependentFace,
     writeGeometryDataset,
-} from './request.js?rmv=1.67.95';
+} from './request.js?rmv=1.68';
 import {
     activeIndependentFlightForBase,
     automaticCutoverVersionToken,
@@ -126,20 +126,20 @@ import {
     serializeExternalFaceDetails,
     showMultifaceFace,
     stripIndependentTransientLayoutArtifacts,
-} from './mount.js?rmv=1.67.95';
+} from './mount.js?rmv=1.68';
 import {
     automaticHostGenerationRenderMatches,
     hasExistingFollowRabbitMirror,
     queueMessageSync,
     suppressesAutomaticGeneration,
-} from './earlyBody.js?rmv=1.67.95';
+} from './earlyBody.js?rmv=1.68';
 import {
     automaticGenerationCutovers,
     persistedInteractionMigrationHandle,
     persistedInteractionMigrationIdle,
     writePersistedInteractionMigrationHandle,
     writePersistedInteractionMigrationIdle,
-} from './lifecycle.js?rmv=1.67.95';
+} from './lifecycle.js?rmv=1.68';
 
 let externalGeometryFrame = 0;
 
@@ -182,7 +182,7 @@ const PERSISTED_STATE_STYLE_ATTRS = [...RUNTIME_STATE_STYLE_ATTRS, ...MAINTENANC
 
 const PERSISTED_STATE_ARIA_ATTRS = ['aria-pressed','aria-selected','aria-expanded','aria-current','aria-checked'];
 
-const PERSISTED_RUNTIME_UI_SELECTOR = '[data-rabbit-mirror-tool-entry-host], [data-rm-face-swipe-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay], [data-rabbit-mirror-interaction-home], [data-rabbit-mirror-interaction-diagnostic], [data-rabbit-mirror-reference-note], [data-rm-ephemeral-failure-body], [data-rm-face-swipe-bar], [data-rm-face-swipe-delete], [data-rm-face-favorite-star]';
+const PERSISTED_RUNTIME_UI_SELECTOR = '[data-rabbit-mirror-tool-entry-host], [data-rm-face-swipe-host], [data-rm-image-region], [data-rm-image-portal], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay], [data-rabbit-mirror-interaction-home], [data-rabbit-mirror-interaction-diagnostic], [data-rabbit-mirror-reference-note], [data-rm-ephemeral-failure-body], [data-rm-face-swipe-bar], [data-rm-face-swipe-delete], [data-rm-face-favorite-star], [data-rabbit-mirror-source-truncation-notice]';
 
 const PERSISTED_STATE_ATTR_RE = /^(?:data-rm-(?:.*(?:active|selected|open|used|filled|touch-hover|pseudo-active|target-active)|checked-pseudo-rule-target|labeled-checked-verify-target|external-flow-root|reversible-style-baseline|reversible-text-baseline|click-to-restore)|data-rabbit-mirror-(?:labeled-checked(?:-last|-verify|-verify-count)?|checked-text-rule-rescue|expanded-opacity-rescue|inert-action-active|radio-reset-last|stale-checked-inline-cleanup|deferred-interaction-rescue))$/i;
 
@@ -2038,7 +2038,7 @@ export function renderExternalErrorBody(details,text=''){
   // second retry intent after the first click has entered loading or READY.
   const host=details.closest?.(`[${SOURCE_ATTR}="true"]`);
   if(retry.disabled || !retry.isConnected || !details.contains?.(retry) || host?.dataset?.rmState!=='error') return;
-  void import('../outputSanitizer/toolsChrome.js?rmv=1.67.95').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+  void import('../outputSanitizer/toolsChrome.js?rmv=1.68').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
  },true);
  recover.addEventListener('click',async event=>{
   event.preventDefault(); event.stopPropagation();

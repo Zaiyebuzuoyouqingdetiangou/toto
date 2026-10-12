@@ -1,10 +1,10 @@
-import { generationPaletteFields } from './paletteRecipes.js?rmv=1.67.95';
-import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.67.95';
-import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords, observedOperationFamiliesFor } from './compositionFingerprint.js?rmv=1.67.95';
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.67.95';
-import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.67.95';
-import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.67.95';
-import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.67.95';
+import { generationPaletteFields } from './paletteRecipes.js?rmv=1.68';
+import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.68';
+import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords, observedOperationFamiliesFor } from './compositionFingerprint.js?rmv=1.68';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.68';
+import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.68';
+import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.68';
+import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.68';
 
 const STORAGE_KEY = 'rabbit_mirror_theater:last_combo:v11';
 const PENDING_KEY = 'rabbit_mirror_theater:pending_combo:v11';
@@ -1190,23 +1190,14 @@ function reclaimExpiredTransactionsForQuota(changes) {
     } catch { return null; }
 }
 
-// 本机镜面缓存只是聊天文件里持久化记录的副本；按「当前聊天优先、再按时间」保留 keep 条。
+// 本机镜面缓存腾地方：只删已经确认进了聊天数据的那些（判断在 persistence.js 里），
+// 还没确认存进聊天文件的一条都不删——以前为了记一笔抽签账，会把它们也删掉，可能丢掉刚出的兔子镜。
+// currentChatOnly 保留参数位置不用：当前聊天里没确认的本来就不删。
 function compactIndependentOutputsForQuota(keep = 40, currentChatOnly = false) {
-    const key = 'rabbit_mirror_independent_outputs_v1';
-    try {
-        const parsed = JSON.parse(localStorage.getItem(key) || '{}');
-        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return false;
-        let chatKey = '';
-        try { chatKey = getCurrentChatKey() || ''; } catch {}
-        const inChat = slot => !!chatKey && String(slot).startsWith(`${chatKey}:`);
-        const entries = Object.entries(parsed)
-            .filter(([slot]) => !currentChatOnly || inChat(slot))
-            .sort((a, b) => Number(inChat(b[0])) - Number(inChat(a[0])) || Number(b[1]?.ts || 0) - Number(a[1]?.ts || 0));
-        if (entries.length >= Object.keys(parsed).length && entries.length <= keep) return false;
-        localStorage.setItem(key, JSON.stringify(Object.fromEntries(entries.slice(0, keep))));
-        return true;
-    } catch {}
-    return false;
+    void currentChatOnly;
+    const compact = globalThis.__rabbitMirrorCompactCoveredOutputsForQuota;
+    if (typeof compact !== 'function') return false;
+    try { return compact(keep) === true; } catch { return false; }
 }
 
 // 空间不足时逐级释放兔子镜自己的本机缓存，每一级之后都重试一次同一份写入。

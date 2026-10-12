@@ -94,8 +94,27 @@ function prepare(root, binding, target) {
     return state;
 }
 
+// 在不支持弹窗的旧手机上收藏、存下的面，带着兜底留下的「隐藏」和定位样式；换到支持弹窗的浏览器打开时，
+// 兜底不再接管，这些痕迹却会让原生弹窗打开了也看不见。只撤掉兜底自己写的那几项。
+function undoFallbackForNativePopover(root) {
+    for (const target of root.querySelectorAll(`[${TARGET_ATTR}]`)) {
+        if (typeof target.showPopover !== 'function' || roots.get(root)?.targets?.has(target)) continue;
+        target.hidden = false;
+        target.removeAttribute('aria-hidden');
+        for (const property of ['display', 'position', 'inset', 'margin', 'width', 'max-width', 'max-height', 'overflow']) {
+            if (target.style.getPropertyPriority(property) === 'important') target.style.removeProperty(property);
+        }
+        if (target.style.getPropertyValue('box-sizing') === 'border-box') target.style.removeProperty('box-sizing');
+        if (target.style.getPropertyValue('z-index') === '50') target.style.removeProperty('z-index');
+        target.querySelectorAll('[data-rm-popover-close]').forEach(node => node.remove());
+        target.removeAttribute(TARGET_ATTR);
+        target.removeAttribute('data-rm-popover-display');
+    }
+}
+
 export function installNativePopoverFallback(root) {
     if (!root?.querySelectorAll) return 0;
+    try { undoFallbackForNativePopover(root); } catch { /* 撤不掉就照旧 */ }
     let binding = roots.get(root);
     if (!binding) {
         if (![...root.querySelectorAll(BUTTON_SELECTOR)].some(button => targetFor(root, button) && actionFor(button))) return 0;

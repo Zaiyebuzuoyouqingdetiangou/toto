@@ -2,7 +2,7 @@
 // 用 `:has(input[value="2"]:checked)` 之类的规则去切换。滑杆没有 checked 状态，这种规则永远不生效，
 // 拖动滑杆什么也不变。这里只在“编号段落与滑杆取值一一对应、且这些段落默认是隐藏的”时接上：
 // 滑到几就显示第几段，其余段落收起。不写任何新内容，不执行模型脚本。
-import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.67.95';
+import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.68';
 const RESCUE_ATTR = 'data-rabbit-mirror-range-stage-rescue';
 const STAGE_ATTR = 'data-rm-range-stage';
 const states = new WeakMap();
@@ -49,10 +49,27 @@ function findStages(input) {
     return null;
 }
 
+// 每一段本来该用的显示方式（flex、grid……）：先拿掉我们写过的内联 display 量一下；
+// 默认隐藏的段落用其他已显示段落的方式，都量不到才用 block。以前一律写 block，横排、网格都会塌成竖排。
+function naturalStageDisplays(stages) {
+    const measured = new Map();
+    for (const stage of stages.values()) {
+        const inlineValue = stage.style.getPropertyValue('display');
+        const inlinePriority = stage.style.getPropertyPriority('display');
+        stage.style.removeProperty('display');
+        let display = '';
+        try { display = getComputedStyle(stage).display; } catch { display = ''; }
+        if (inlineValue) stage.style.setProperty('display', inlineValue, inlinePriority);
+        measured.set(stage, display && display !== 'none' ? display : '');
+    }
+    const fallback = [...measured.values()].find(Boolean) || 'block';
+    return new Map([...measured].map(([stage, display]) => [stage, display || fallback]));
+}
+
 function apply(state) {
     const value = Math.round(Number(state.input.value));
     for (const [number, stage] of state.stages) {
-        if (number === value) stage.style.setProperty('display', 'block', 'important');
+        if (number === value) stage.style.setProperty('display', state.shown?.get(stage) || 'block', 'important');
         else stage.style.setProperty('display', 'none', 'important');
         stage.setAttribute(STAGE_ATTR, number === value ? 'active' : 'idle');
     }
@@ -66,7 +83,7 @@ export function installRangeStageRescue(root) {
         if (input.hasAttribute('oninput') || input.hasAttribute('onchange')) continue;
         const stages = findStages(input);
         if (!stages) continue;
-        const state = { input, stages };
+        const state = { input, stages, shown: naturalStageDisplays(stages) };
         states.set(input, state);
         const update = () => apply(state);
         input.addEventListener('input', update);

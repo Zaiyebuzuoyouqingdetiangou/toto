@@ -1,8 +1,8 @@
-import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.67.95';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.67.95';
-import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.67.95';
-import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.67.95';
-import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.67.95';
+import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.68';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.68';
+import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.68';
+import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.68';
+import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.68';
 
 // Declarative, face-local behaviors. No generated code, global targets or timers.
 const roots = new WeakMap();
@@ -598,6 +598,13 @@ function prepare(binding, group) {
     binding.groups.set(group, state);
     owners.set(group, binding);
     const items = own(group, '[data-rm-item]');
+    // 收藏、复制或重新接线的面带着上一次拖动、排序、画画留下的样子，状态却是新的：
+    // 放回、复位都认不出这些痕迹，点了没反应。和「已投入」一样，重新接线时从头开始。
+    // 隐藏副本（只用来试点）里不动：副本要和眼前这一面一模一样。
+    const sandbox = Boolean(group.closest('[data-rm-quiet-feedback]'));
+    if (!sandbox && type === 'drag') for (const item of items) clearStaleDragPosition(item);
+    if (!sandbox && type === 'reorder') restoreStaleOrder(items);
+    if (!sandbox && type === 'draw') for (const path of group.querySelectorAll('svg[data-rm-canvas] path')) if (isStaleStroke(path)) path.remove();
     if (type === 'drag' || type === 'reorder') for (const item of items) {
         item.style.setProperty('touch-action', 'none');
         if (type === 'reorder' && !state.orders.has(item.parentElement)) state.orders.set(item.parentElement, [...item.parentElement.children]);
@@ -606,6 +613,12 @@ function prepare(binding, group) {
     if (type === 'follow' || type === 'hold' || (type === 'reveal' && !first(group, 'input[type="range"]'))) {
         const surface = first(group, type === 'hold' ? '[data-rm-hold]' : '[data-rm-surface]') || group;
         surface.style.setProperty('touch-action', 'none');
+        // 手机长按约半秒会弹出选字或存图菜单，浏览器随之取消这次按住，内容就自己收回去了。
+        if (type === 'hold') for (const node of own(group, '[data-rm-hold]')) {
+            node.style.setProperty('user-select', 'none');
+            node.style.setProperty('-webkit-user-select', 'none');
+            node.style.setProperty('-webkit-touch-callout', 'none');
+        }
     }
     clearStaleFeedback(group);
     for (const control of own(group, `${CONTROL_SELECTOR}, [data-rm-hold]`)) enableControl(control);
@@ -669,6 +682,7 @@ function reset(state) {
     state.styles.clear();
     state.overrides?.clear();
     state.positions.clear();
+    for (const node of own(state.group, `[${MOVED_ATTR}]`)) node.removeAttribute(MOVED_ATTR);
     for (const [parent, order] of state.orders) {
         // Restore the original layout slots, retaining new children and all nodes/listeners.
         const present = [...parent.children].filter(node => order.includes(node));
@@ -1148,6 +1162,41 @@ function localPoint(surface, event) {
     return { x: clamp(event.clientX - rect.left, 0, rect.width) * sx, y: clamp(event.clientY - rect.top, 0, rect.height) * sy, width: rect.width * sx, sx, sy };
 }
 
+const MOVED_ATTR = 'data-rm-moved';
+const STROKE_ATTR = 'data-rm-stroke';
+const ORDER_ATTR = 'data-rm-order-index';
+
+function clearStaleDragPosition(item) {
+    const value = item.style.getPropertyValue('translate');
+    if (item.hasAttribute(MOVED_ATTR) || /^calc\([^)]*px\)\s+calc\([^)]*px\)$/i.test(value.trim())) item.style.removeProperty('translate');
+    item.removeAttribute(MOVED_ATTR);
+}
+
+// 插件自己画的笔画（带标记的，或旧版本留下的同款：无填充、currentColor、2 像素、圆头、不接点击）。
+function isStaleStroke(path) {
+    if (path.hasAttribute(STROKE_ATTR)) return true;
+    return path.getAttribute('fill') === 'none' && path.getAttribute('stroke') === 'currentColor'
+        && path.getAttribute('stroke-width') === '2' && path.getAttribute('stroke-linecap') === 'round'
+        && path.getAttribute('pointer-events') === 'none';
+}
+
+// 排序：第一次接线时给每一项记下原来的位置；以后重新接线时先按记下的位置摆回去。
+function restoreStaleOrder(items) {
+    for (const parent of new Set(items.map(item => item.parentElement).filter(Boolean))) {
+        const children = [...parent.children];
+        const marked = children.filter(node => node.hasAttribute(ORDER_ATTR));
+        if (!marked.length) {
+            children.forEach((node, index) => node.setAttribute(ORDER_ATTR, String(index)));
+            continue;
+        }
+        const sorted = [...marked].sort((a, b) => Number(a.getAttribute(ORDER_ATTR)) - Number(b.getAttribute(ORDER_ATTR)));
+        if (sorted.every((node, index) => node === marked[index])) continue;
+        const slots = marked.map(() => parent.ownerDocument.createComment('rm-order'));
+        for (let i = 0; i < marked.length; i++) parent.insertBefore(slots[i], marked[i]);
+        for (let i = 0; i < sorted.length; i++) slots[i].replaceWith(sorted[i]);
+    }
+}
+
 function moveItem(state, item, x, y) {
     let position = state.positions.get(item);
     if (!position) {
@@ -1158,6 +1207,7 @@ function moveItem(state, item, x, y) {
     }
     position.x = x; position.y = y;
     style(state, item, 'translate', `calc(${position.base[0]} + ${x}px) calc(${position.base[1]} + ${y}px)`);
+    item.setAttribute(MOVED_ATTR, 'true');
 }
 
 function matchingSlot(state, item) {
@@ -1174,6 +1224,7 @@ function slotShowsOwnResult(slot, item) {
 }
 
 function restoreItemStyle(state, item, property) {
+    if (property === 'translate') item.removeAttribute(MOVED_ATTR);
     const saved = state.styles.get(item)?.get(property);
     if (!saved) return;
     if (saved[0]) item.style.setProperty(property, saved[0], saved[1] || '');
@@ -1374,6 +1425,7 @@ function pointerDown(binding, event) {
         session.path = surface.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'path');
         session.path.setAttribute('fill', 'none'); session.path.setAttribute('stroke', 'currentColor'); session.path.setAttribute('stroke-width', '2');
         session.path.setAttribute('stroke-linecap', 'round'); session.path.setAttribute('pointer-events', 'none');
+        session.path.setAttribute(STROKE_ATTR, 'true');
         session.points = 0; session.pathData = ''; state.strokes.add(session.path); surface.appendChild(session.path);
     }
     if (type === 'turn') {
@@ -1468,12 +1520,15 @@ function looksLikeControl(target) {
 function scheduleOnDemandRelay(root, target) {
     const state = stateFor(root, target);
     if (!state || !looksLikeControl(target)) return;
+    // 拖动／排序的物件由拖动本身处理，拖完那一下“点击”不该再把整面复制一份去后台实测（手机上会卡一下）。
+    if ((state.type === 'drag' || state.type === 'reorder') && target.closest?.('[data-rm-item]')
+        && !target.closest?.('button, [role="button"]')) return;
     relayGroupLater(root, state.group, target.closest?.('button, [role="button"]') || null);
 }
 function relayGroupLater(root, group, control = null) {
     const run = () => {
         if (!group.isConnected || !root.isConnected) return;
-        void import('./behaviorRelay.js?rmv=1.67.95').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
+        void import('./behaviorRelay.js?rmv=1.68').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
     };
     const idle = globalThis.requestIdleCallback;
     if (typeof idle === 'function') idle(run, { timeout: 800 }); else setTimeout(run, 120);
@@ -1497,6 +1552,10 @@ export function installBehaviorInteractions(root) {
     root.addEventListener('input', event => { const state = stateFor(root, event.target); if (state) inputChange(state, event.target, true); });
     root.addEventListener('click', event => {
         const button = event.target.closest?.('button, input[type="button"]');
+        // 手机上补的滑杆 −／＋、横滑 ←／→ 按钮由它们自己的模块处理；只有放入／放回／挪动这些带驱动标记的
+        // 才交给这里。以前一律交过来，按钮在开关区域里时会顺带把整块翻过去。
+        if (button && hasMobileInteractionControl(root, button)
+            && !button.matches('[data-rm-place], [data-rm-return], [data-rm-move], [data-rm-prev], [data-rm-next]')) return;
         if (hasBehaviorInteractionControl(root, button)) {
             const state = stateFor(root, button);
             if (state && button.hasAttribute('data-rm-reset') && binding.pointer?.state === state) finishPointer(binding, {}, true);
@@ -1518,6 +1577,10 @@ export function installBehaviorInteractions(root) {
         scheduleOnDemandRelay(root, event.target);
     });
     root.addEventListener('pointerdown', event => pointerDown(binding, event));
+    root.addEventListener('contextmenu', event => {
+        const hold = event.target?.closest?.('[data-rm-hold]');
+        if (hold && stateFor(root, hold)?.type === 'hold') event.preventDefault();
+    });
     root.addEventListener('pointermove', event => pointerMove(binding, event));
     root.addEventListener('pointerup', event => { finishPointer(binding, event); finishSwipe(binding, event); });
     root.addEventListener('pointercancel', event => { finishPointer(binding, event, true); finishSwipe(binding, event, true); });
