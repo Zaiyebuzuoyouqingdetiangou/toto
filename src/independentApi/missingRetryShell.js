@@ -55,8 +55,8 @@ export function formatMissingShellReport({ range, floors } = {}) {
     const items = Array.isArray(floors) ? floors : [];
     const labels = items.map(item => formatMissingShellFloorLabel(item?.index ?? item)).filter(Boolean);
     const scope = normalized === MISSING_SHELL_SCAN_RANGE_ALL ? '全部助手回复' : `最近 ${normalized} 条助手回复`;
-    if (!labels.length) return `${scope}里没有缺外壳的楼层。`;
-    return `${scope}里缺外壳：${labels.join('、')}`;
+    if (!labels.length) return `${scope}里每一层都有兔子镜。`;
+    return `${scope}里还没有兔子镜：${labels.join('、')}（点「重新检查缺壳楼层」挂上卡，点卡就能生成）`;
 }
 
 export function shouldRestoreMissingIndependentRetryShell({

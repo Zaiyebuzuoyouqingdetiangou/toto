@@ -99,16 +99,29 @@ function favoriteEvidence(favorite) {
         headings.push(plainText(heading[2]));
     }
     const text = html.replace(/<\/?(?:div|p|section|article|li|dt|dd|td|th|tr|br)\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi, '\n');
-    const labels = plainText(text).split('\n').map(line => key(line).replace(/^[\p{P}\p{S}]+|[\p{P}\p{S}]+$/gu, '').trim());
-    const evidence = { title, source, headings, labels: new Set(labels) };
+    const plain = plainText(text);
+    const labels = plain.split('\n').map(line => key(line).replace(/^[\p{P}\p{S}]+|[\p{P}\p{S}]+$/gu, '').trim());
+    // 整面正文（去掉换行）：标题不按格式写时，按小剧场里写到的字来认。
+    const body = key(plain.replace(/\s+/g, ' '));
+    const evidence = { title, source, headings, labels: new Set(labels), body };
     if (favorite && typeof favorite === 'object') evidenceCache.set(favorite, evidence);
     return evidence;
+}
+
+// 正文里也找：两个字以上的中文词在正文任何地方出现都算；单个汉字太常见（猫、月），只看标题和整行。
+// 英文等至少三个字母，并且前后不能连着别的字母数字（sun 不会匹配到 sunday）。
+function keywordInBody(body, keyword) {
+    const needle = key(keyword);
+    if (!needle || !body) return false;
+    if (/[\u3400-\u9fff]/u.test(needle)) return [...needle].length >= 2 && body.includes(needle);
+    return [...needle].length >= 3 && keywordInLabel(body, keyword);
 }
 
 export function atlasSlotMatchesFavorite(slot, favorite) {
     const keywords = unique([slot.label, ...(slot.keywords || [])].map(clean).filter(Boolean));
     const evidence = favoriteEvidence(favorite);
-    return keywords.some(word => evidence.labels.has(key(word)) || evidence.headings.some(heading => keywordInLabel(heading, word)));
+    return keywords.some(word => evidence.labels.has(key(word)) || evidence.headings.some(heading => keywordInLabel(heading, word))
+        || keywordInBody(evidence.body, word));
 }
 
 export function favoriteAtlasProgress(atlas, favorites) {

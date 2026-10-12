@@ -1,4 +1,4 @@
-import { classifyPaletteSamples } from './paletteObservation.js?rmv=1.67.81';
+import { classifyPaletteSamples } from './paletteObservation.js?rmv=1.67.93';
 
 const HUE_FAMILY_LABELS = Object.freeze({
     red: '红色族', orange: '橙色族', yellow: '黄色族', green: '绿色族', cyan: '青色族',
@@ -116,7 +116,38 @@ function readRecentList(key) {
     } catch { return []; }
 }
 
-export function drawSoftToneExamples({ avoidFamilies = [] } = {}) {
+// 「柔和」时模型自己挑色，几乎总落在雾绿、雾紫、雾蓝这几个上。由插件给每面指定一个主色族：
+// 避开近三轮实际用过的色族和近几次指定过的色族；连续两次都是冷色（绿、青、蓝、紫）时下一次只从暖色（红、橙、黄、粉）里挑。
+const SOFT_TONE_FAMILY_RECENT_KEY = 'rabbitMirrorSoftToneFamilyRecent';
+const SOFT_TONE_FAMILY_MEMORY = 5;
+const COOL_FAMILIES = new Set(['green', 'cyan', 'blue', 'purple']);
+const WARM_FAMILIES = new Set(['red', 'orange', 'yellow', 'pink']);
+export const SOFT_FAMILY_LABELS = Object.freeze({ red: '红', orange: '橙', yellow: '黄', green: '绿', cyan: '青', blue: '蓝', purple: '紫', pink: '粉' });
+function assignSoftFamilies(style, count, avoidFamilies) {
+    const available = [...new Set(style.colors.map(([, family]) => family))].filter(family => SOFT_FAMILY_LABELS[family]);
+    const history = readRecentList(SOFT_TONE_FAMILY_RECENT_KEY);
+    const assigned = [];
+    for (let index = 0; index < count; index += 1) {
+        const recent = [...history, ...assigned];
+        const lastTwo = recent.slice(-2);
+        const needWarm = lastTwo.length === 2 && lastTwo.every(family => COOL_FAMILIES.has(family));
+        const tiers = [
+            family => !assigned.includes(family) && !avoidFamilies.includes(family) && !recent.slice(-SOFT_TONE_FAMILY_MEMORY).includes(family) && (!needWarm || WARM_FAMILIES.has(family)),
+            family => !assigned.includes(family) && !avoidFamilies.includes(family) && (!needWarm || WARM_FAMILIES.has(family)),
+            family => !assigned.includes(family) && !recent.slice(-2).includes(family),
+            family => !assigned.includes(family),
+            () => true,
+        ];
+        let pool = [];
+        for (const test of tiers) { pool = available.filter(test); if (pool.length) break; }
+        if (!pool.length) break;
+        assigned.push(softShuffled(pool)[0]);
+    }
+    try { globalThis.localStorage?.setItem(SOFT_TONE_FAMILY_RECENT_KEY, JSON.stringify([...history, ...assigned].slice(-12))); } catch { /* best effort */ }
+    return assigned;
+}
+
+export function drawSoftToneExamples({ avoidFamilies = [], faceCount = 1 } = {}) {
     const recentStyles = readRecentList(SOFT_TONE_STYLE_RECENT_KEY);
     const freshStyles = SOFT_TONE_STYLES.filter(style => !recentStyles.includes(style.id));
     const style = softShuffled(freshStyles.length ? freshStyles : SOFT_TONE_STYLES)[0];
@@ -127,6 +158,9 @@ export function drawSoftToneExamples({ avoidFamilies = [] } = {}) {
         const current = byFamily.get(family);
         if (!current || (recent.includes(current) && !recent.includes(name))) byFamily.set(family, name);
     }
+    const mainFamilies = assignSoftFamilies(style, Math.max(1, Math.min(5, Number(faceCount) || 1)), avoidFamilies);
+    // 每个指定的主色族先给一个本风格里的颜色当例子。
+    const mains = mainFamilies.map(family => ({ family, color: softShuffled(style.colors.filter(([, item]) => item === family))[0]?.[0] || '' }));
     const families = softShuffled([...byFamily.keys()]);
     const ordered = [...families.filter(key => !avoidFamilies.includes(key)), ...families.filter(key => avoidFamilies.includes(key))];
     const picks = ordered.slice(0, SOFT_TONE_EXAMPLE_COUNT).map(key => byFamily.get(key));
@@ -134,25 +168,31 @@ export function drawSoftToneExamples({ avoidFamilies = [] } = {}) {
         globalThis.localStorage?.setItem(SOFT_TONE_RECENT_KEY, JSON.stringify([...recent.filter(color => !picks.includes(color)), ...picks].slice(-24)));
         globalThis.localStorage?.setItem(SOFT_TONE_STYLE_RECENT_KEY, JSON.stringify([...recentStyles.filter(id => id !== style.id), style.id].slice(-2)));
     } catch { /* best effort */ }
-    return { style: style.name, desc: style.desc, examples: picks };
+    return { style: style.name, desc: style.desc, examples: picks, mains };
 }
 
 // 柔和浅色模式：与深色模式对称，只在选了这一档时发送。
-export function softLightVisualGenerationRule(settings, { avoidFamilies = [] } = {}) {
+export function softLightVisualGenerationRule(settings, { avoidFamilies = [], faceCount = 1 } = {}) {
     if (settings?.visualToneMode !== 'soft' || settings?.darkVisualMode === true) return '';
-    const { style, desc, examples } = drawSoftToneExamples({ avoidFamilies });
+    const { style, desc, examples, mains = [] } = drawSoftToneExamples({ avoidFamilies, faceCount });
+    const yellowNote = mains.some(item => item.family === 'yellow') ? '黄色族用淡柠黄、浅迎春黄这类清亮的浅黄，不是米黄、奶油黄。' : '';
+    const mainLine = !mains.length ? ''
+        : mains.length === 1
+            ? `\n  - 本面主色族：${SOFT_FAMILY_LABELS[mains[0].family]}色族${mains[0].color ? `（如${mains[0].color}）` : ''}。背景和主承载在这一色族里取柔和的浅色，深浅自定；别的颜色只作点缀。${yellowNote}不要默认落到雾绿、雾紫、雾蓝。形式自带的标志色优先。`
+            : `\n  - 各面主色族：${mains.map((item, index) => `第 ${index + 1} 面${SOFT_FAMILY_LABELS[item.family]}色族${item.color ? `（如${item.color}）` : ''}`).join('，')}。背景和主承载在各自色族里取柔和的浅色，深浅自定；别的颜色只作点缀。${yellowNote}不要默认落到雾绿、雾紫、雾蓝。形式自带的标志色优先。`;
     return `柔和浅色模式【本次所有新生成镜面，包括长文本】：
-  - 本轮风格：${style}——${desc}。例如${examples.join('、')}，只是举例，按本面题材在这种风格里自己定色。
+  - 本轮风格：${style}——${desc}。例如${examples.join('、')}，只是举例，按本面题材在这种风格里自己定色。${mainLine}
   - 背景与主要承载面用柔和的浅色；米黄、米白、奶油色、羊皮纸黄这类暖黄纸色不作主背景和主承载，信纸、日记、旧书这类纸张也换成其他柔和的颜色表现纸感；不用纯白，也不用高饱和的大面积色块或深色铺底；主体部件可用中等明度的颜色。
   - 主次靠明暗与冷暖拉开，不靠鲜艳；正文用同色相的深灰或深褐，对比清楚；可操作的部件用一处稍深或稍暖的同调强调色，一眼看出能点。
   - 仍须强避重：在柔和浅色范围内换色族与冷暖，不改艳也不改暗；形式自带的标志色保留，调柔后使用。长文本只做阅读配色，不添加交互或动画。`;
 }
 
-export function visualDiversityExecutionLock(_settings, { textRevealRotation = false, flipRotation = false, slideRotation = false, noButtonRow = false, paleBan = false, softTone = false, paletteReminder = '' } = {}) {
+export function visualDiversityExecutionLock(_settings, { textRevealRotation = false, flipRotation = false, slideRotation = false, tabRotation = false, noButtonRow = false, paleBan = false, softTone = false, paletteReminder = '' } = {}) {
     // The shared ledger is sent once; only active, concrete reminders are repeated here, closest to output.
     return [
         noButtonRow ? '本面媒介本身没有成排按钮：主交互不用一排同款按钮或标签切换内容，交互落在媒介自己的部件上。' : '',
         flipRotation ? '近三面的交互多是翻面、展开或切页：本面主交互换成会直接改变画面的操作（按住、刮开、累积点亮、重排、描画、拖动、滑杆等，可用提供的插件写法），翻面和展开最多作辅助。' : '',
+        tabRotation ? '近三面多次用了一排按钮切换不同内容（标签页、分页按钮）：本面不用成排按钮或标签切换内容，换成直接作用在物件上的操作。' : '',
         slideRotation ? '近三面的主交互多是滑杆或拖动：本面主交互不用滑杆、进度条和拖动，换成点按、按住、刮开、累积点亮、重排、描画或整体切换状态等，滑杆和拖动最多作辅助。' : '',
         textRevealRotation ? '本轮换口味：整面交互作用在同一个主体上（可以分几步），不让每个条目各配一个开关。' : '',
         softTone ? '柔和浅色：主背景与主承载不用米黄、米白、奶油色、羊皮纸这类暖黄纸色，纸张类媒介也换成其他柔和的颜色。' : '',

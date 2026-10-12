@@ -1,13 +1,13 @@
 // Split from independentApi.js — earlyBody.
-import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.67.81';
+import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.67.93';
 
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.67.81';
-import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.67.81';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.67.81';
-import { getSettings } from '../settings.js?rmv=1.67.81';
-import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.67.81';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=1.67.81';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.67.81';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.67.93';
+import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.67.93';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.67.93';
+import { getSettings } from '../settings.js?rmv=1.67.93';
+import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.67.93';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=1.67.93';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.67.93';
 import {
     MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE,
     INDEPENDENT_HISTORY_READ_ERROR_MESSAGE,
@@ -17,7 +17,7 @@ import {
     isMissingShellTargetFloor,
     normalizeMissingShellScanRange,
     shouldRestoreMissingIndependentRetryShell,
-} from './missingRetryShell.js?rmv=1.67.81';
+} from './missingRetryShell.js?rmv=1.67.93';
 import {
     INDEPENDENT_GENERATION_INTENTS_KEY,
     INDEPENDENT_GENERATION_INTENT_TYPES,
@@ -27,7 +27,7 @@ import {
     currentRuntime,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.67.81';
+} from './runtime.js?rmv=1.67.93';
 import {
     ACTIVE_GENERATION_WAIT_MS,
     FINAL_RENDER_POLL_INTERVAL_MS,
@@ -43,7 +43,7 @@ import {
     markAutomaticFailureStop,
     operationEpochForBase,
     pending,
-} from './flights.js?rmv=1.67.81';
+} from './flights.js?rmv=1.67.93';
 import {
     appendHistoryEntry,
     chatPersistenceSlot,
@@ -61,7 +61,7 @@ import {
     reconcileIndependentChatOwners,
     rememberChatMessageOrder,
     checkOwnerRemapEpoch,
-} from './persistence.js?rmv=1.67.81';
+} from './persistence.js?rmv=1.67.93';
 import {
     activeGlobalWorldInfoCapture,
     assistantMessages,
@@ -111,7 +111,7 @@ import {
     withOwnerLockStoreBatch,
     writeActiveGlobalWorldInfoCapture,
     writeHostModule,
-} from './connection.js?rmv=1.67.81';
+} from './connection.js?rmv=1.67.93';
 import {
     allExternalHosts,
     externalHosts,
@@ -119,7 +119,7 @@ import {
     removeEmptyFollowExternalAnchors,
     removeEmptyInlineAnchors,
     withExternalHostSyncIndex,
-} from './request.js?rmv=1.67.81';
+} from './request.js?rmv=1.67.93';
 import {
     beginHostWorkTiming,
     clearExternalHostFreshSourceState,
@@ -152,7 +152,7 @@ import {
     setPlaceholderSummary,
     usableReadyDetails,
     withRestorableHtmlCacheBatch,
-} from './geometry.js?rmv=1.67.81';
+} from './geometry.js?rmv=1.67.93';
 import {
     INDEPENDENT_INTENT_OWNER,
     abortFlight,
@@ -206,7 +206,7 @@ import {
     serializeExternalFaceDetails,
     stampAutomaticAuthorizationEpoch,
     withHistoricalRestoreLightPass,
-} from './mount.js?rmv=1.67.81';
+} from './mount.js?rmv=1.67.93';
 import {
     automaticGenerationCutovers,
     hostGenerationHintStartedAt,
@@ -231,7 +231,7 @@ import {
     writeStartupHistoryFallbackRoot,
     writeSyncRunning,
     writeSyncTimer,
-} from './lifecycle.js?rmv=1.67.81';
+} from './lifecycle.js?rmv=1.67.93';
 
 let earlyBodyParserPromise=null;
 
@@ -360,7 +360,7 @@ function settleEarlyBodyAtFinal(ctx,index){
 
 async function probeIndependentEarlyBody(packet,sequence){
  if(!earlyBodyPacketCurrent(packet)) return;
- if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.67.81')
+ if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.67.93')
   .then(module=>{earlyBodyParser=module;return module;}).catch(()=>{earlyBodyParserPromise=null;return null;});
  const parser=await earlyBodyParserPromise;
  if(!parser || sequence!==earlyBodyProbeSequence || !earlyBodyPacketCurrent(packet)) return;
@@ -1176,7 +1176,14 @@ function missingIndependentHistoryMessage(ctx,index,msg){
 
 // 缺外壳卡只挂在“这层应当有兔子镜”的楼层：这个聊天里已经有兔子镜痕迹、且这层不早于最早那层；
 // 旧存档读不出来时没法判断，照旧挂卡。从没生成过兔子镜的聊天不挂。
+// 设置里点「重新检查缺壳楼层」（或改扫描范围）是用户自己要补楼层：这次查到的楼层不看以前有没有生成过，照样挂卡，
+// 点卡就能生成。只记在本次打开期间、只认当前这条聊天；不点就照旧只在生成过兔子镜的楼层之后挂卡。
+const manualFillFloors=new Map();
+function manualFillAllowed(ctx,index){
+ try{ return !!manualFillFloors.get(chatKey(ctx))?.has(Number(index)); }catch{ return false; }
+}
 function missingShellHasEvidence(ctx,index,msg,evidenceFloor){
+ if(manualFillAllowed(ctx,index)) return true;
  if(evidenceFloor>=0 && Number(index)>=evidenceFloor) return true;
  return independentHistoryReadState(ctx,index,msg)==='error';
 }
@@ -1730,7 +1737,7 @@ function restoreMissingIndependentRetryOnElement(el,index){
  return host;
 }
 
-export function listMissingIndependentRetryFloors(){
+export function listMissingIndependentRetryFloors({manual=false}={}){
  const ctx=getContext();
  const st=getSettings();
  const range=normalizeMissingShellScanRange(st.missingShellScanRange);
@@ -1740,7 +1747,7 @@ export function listMissingIndependentRetryFloors(){
  const evidenceFloor=earliestMirrorEvidenceFloor(ctx,store);
  for(const {m,i} of assistantRowsInScanRange(assistantMessages(ctx),range)){
   if(!hasUsableAssistantBody(m) || hasExistingFollowRabbitMirror(ctx,i,m)) continue;
-  if(!missingShellHasEvidence(ctx,i,m,evidenceFloor)) continue;
+  if(!manual && !missingShellHasEvidence(ctx,i,m,evidenceFloor)) continue;
   const persisted=persistedOwnerForMessage(ctx,i,m);
   if(persisted?.deleted) continue;
   const observed=passiveObservedIdentity(ctx,i,m);
@@ -1755,7 +1762,15 @@ export function listMissingIndependentRetryFloors(){
 }
 
 export function resyncMissingIndependentRetryShells(){
- const listed=listMissingIndependentRetryFloors();
+ const listed=listMissingIndependentRetryFloors({manual:true});
+ try{
+  const ctx=getContext(); const key=chatKey(ctx);
+  // 只留当前聊天的记录，换聊天后旧的作废。
+  for(const other of [...manualFillFloors.keys()]) if(other!==key) manualFillFloors.delete(other);
+  const floors=manualFillFloors.get(key)||new Set();
+  for(const item of listed.floors) floors.add(Number(item.index));
+  manualFillFloors.set(key,floors);
+ }catch{}
  const ids=new Set(listed.floors.map(item=>Number(item.index)).filter(index=>Number.isInteger(index)&&index>=0&&messageElement(index)));
  if(isRabbitMirrorManagedChatSurface()){
   for(const context of getRabbitMirrorMountedMessages()){
