@@ -24,17 +24,18 @@ const SYNONYMS = Object.freeze({
     slider: 'adjust', range: 'adjust', scratch: 'reveal', press: 'hold', 'long-press': 'hold', longpress: 'hold', counter: 'accumulate', collect: 'accumulate',
     sort: 'reorder', 'drag-drop': 'drag', dnd: 'drag', paint: 'draw', sketch: 'draw', spotlight: 'follow', flashlight: 'follow', zoom: 'view', animate: 'effect', trigger: 'effect',
     swiper: 'slide', scroller: 'slide', marquee: 'slide', 横滑: 'slide', 滚动: 'slide',
-    countdown: 'timer', clock: 'timer', wait: 'timer', delay: 'timer', 倒计时: 'timer', 计时: 'timer',
-    tinder: 'swipe', fling: 'swipe', cards: 'swipe', 甩卡: 'swipe', 滑动: 'swipe',
-    qte: 'rhythm', combo: 'rhythm', charge: 'rhythm', mash: 'rhythm', 连击: 'rhythm', 蓄力: 'rhythm',
+    // timer／sense 不挑部件（什么都算接得上），同义词只收明确的，免得 clock、media 这种把旋钮、动画块抢走。
+    countdown: 'timer', 倒计时: 'timer', 计时: 'timer',
+    tinder: 'swipe', fling: 'swipe', 甩卡: 'swipe', 滑动: 'swipe',
+    qte: 'rhythm', charge: 'rhythm', mash: 'rhythm', 连击: 'rhythm', 蓄力: 'rhythm',
     hover: 'peek', tooltip: 'peek', tip: 'peek', 悬停: 'peek', 窥视: 'peek',
     blackout: 'spoiler', redact: 'spoiler', censor: 'spoiler', 剧透: 'spoiler', 涂黑: 'spoiler',
-    env: 'sense', media: 'sense', environment: 'sense', 环境: 'sense',
+    environment: 'sense', 环境: 'sense',
 });
 
 // 模型常漏掉 rm 前缀的部件名。只在声明了驱动的容器里补，原属性保留。
 const ALIASES = ['item', 'slot', 'reset', 'fire', 'part', 'step', 'hold', 'surface', 'cover', 'canvas', 'play', 'reverse', 'prev', 'next', 'answer',
-    'toggle', 'pick', 'picked', 'page', 'goto', 'roll', 'end', 'knob', 'stops', 'code', 'show', 'loop', 'card', 'left', 'right', 'tap', 'charge', 'qte', 'peek', 'spoiler', 'at', 'clock', 'duration', 'memory', 'recall'];
+    'toggle', 'pick', 'picked', 'page', 'goto', 'roll', 'end', 'knob', 'stops', 'code', 'show', 'loop', 'tap', 'charge', 'qte', 'peek', 'spoiler', 'clock', 'duration', 'memory', 'recall'];
 
 const own = (group, selector) => [...group.querySelectorAll(selector)].filter(node => node.closest(GROUP) === group);
 

@@ -42,9 +42,13 @@ export function extraTypeFits(group, type) {
 }
 
 // ——— 准备 ———
+// 已接线的扩展区域；每次新接线顺手把已经不在页面上的（消息重绘、翻 swipe 后的旧面）清掉，matchMedia 监听不积累。
+const LIVE = new Set();
 export function prepareExtra(state) {
     const { group, type } = state;
+    for (const old of LIVE) if (!old.group.isConnected) { LIVE.delete(old); destroyExtra(old); }
     state.extra = { timers: new Set(), medias: [] };
+    LIVE.add(state);
     if (type === 'slide') prepareSlide(state);
     if (type === 'timer') prepareTimer(state);
     if (type === 'swipe') prepareSwipe(state);
@@ -56,6 +60,8 @@ export function prepareExtra(state) {
 }
 
 export function destroyExtra(state) {
+    LIVE.delete(state);
+    state.destroyed = true; state.running = false; state.charging = false;
     for (const stop of state.extra?.timers || []) { try { stop(); } catch { /* 已停 */ } }
     for (const [media, listener] of state.extra?.medias || []) { try { media.removeEventListener('change', listener); } catch { /* 已移除 */ } }
     state.extra = null;
@@ -63,6 +69,7 @@ export function destroyExtra(state) {
 
 // 容器还在页面上才继续；不在了就停掉所有计时。
 function alive(state) {
+    if (state.destroyed) return false;
     if (state.group.isConnected) return true;
     destroyExtra(state);
     return false;
@@ -81,7 +88,21 @@ function prepareSlide(state) {
     state.vertical = vertical;
     const track = slideTrack(state);
     state.track = track;
-    // 模型只写了一排项目没写滚动时补上：横向一屏一项、按项停靠。模型写了的不动。
+    slideLayout(state);
+    state.seen = new Set();
+    state.index = 1;
+    const onScroll = () => { if (alive(state)) { measureSlide(state); H.refreshResults(state); } };
+    track.addEventListener('scroll', onScroll, { passive: true });
+    state.extra.timers.add(() => track.removeEventListener('scroll', onScroll));
+    // 跨面继承恢复到上次滑到的那张。
+    const restored = Number(group.getAttribute('data-rm-index'));
+    if (group.hasAttribute('data-rm-recalled') && Number.isInteger(restored) && restored > 1) slideTo(state, restored - 1, false);
+    measureSlide(state);
+}
+// 模型只写了一排项目没写滚动时补上：横向一屏一项、按项停靠。模型写了的不动。复位会把样式还原，所以复位后要再补一次。
+function slideLayout(state) {
+    const { group, vertical } = state;
+    const track = state.track || slideTrack(state);
     const view = group.ownerDocument.defaultView;
     const computed = view?.getComputedStyle?.(track);
     const overflow = vertical ? computed?.overflowY : computed?.overflowX;
@@ -94,12 +115,6 @@ function prepareSlide(state) {
         if (!item.style.getPropertyValue('scroll-snap-align') && !String(view?.getComputedStyle?.(item)?.scrollSnapAlign || 'none').replace('none', '')) H.style(state, item, 'scroll-snap-align', 'start');
         if (!vertical && !item.style.getPropertyValue('flex-shrink')) H.style(state, item, 'flex-shrink', '0');
     }
-    state.seen = new Set();
-    state.index = 1;
-    const onScroll = () => { if (alive(state)) { measureSlide(state); H.refreshResults(state); } };
-    track.addEventListener('scroll', onScroll, { passive: true });
-    state.extra.timers.add(() => track.removeEventListener('scroll', onScroll));
-    measureSlide(state);
 }
 function measureSlide(state) {
     const track = state.track || slideTrack(state);
@@ -124,13 +139,14 @@ function measureSlide(state) {
     const position = state.vertical ? track.scrollTop : track.scrollLeft;
     state.progress = total > 0 ? H.clamp(position / total, 0, 1) : 0;
 }
-function slideTo(state, index) {
+function slideTo(state, index, smooth = true) {
     const items = slideItems(state);
     const target = items[H.clamp(index, 0, items.length - 1)];
     if (!target) return false;
     const track = state.track || slideTrack(state);
-    const left = target.offsetLeft - track.offsetLeft, top = target.offsetTop - track.offsetTop;
-    try { track.scrollTo({ left: state.vertical ? track.scrollLeft : left, top: state.vertical ? top : track.scrollTop, behavior: 'smooth' }); }
+    const box = track.getBoundingClientRect(), rect = target.getBoundingClientRect();
+    const left = rect.left - box.left + track.scrollLeft, top = rect.top - box.top + track.scrollTop;
+    try { track.scrollTo({ left: state.vertical ? track.scrollLeft : left, top: state.vertical ? top : track.scrollTop, behavior: smooth ? 'smooth' : 'instant' }); }
     catch { if (state.vertical) track.scrollTop = top; else track.scrollLeft = left; }
     state.index = items.indexOf(target) + 1;
     return true;
@@ -179,8 +195,11 @@ function startTimer(state) {
         if (!alive(state) || !state.running) return;
         state.elapsed = Math.min(state.duration, state.elapsed + Math.max(0, now - state.lastTick) / 1000);
         state.lastTick = now;
-        H.refreshResults(state);
-        if (state.elapsed >= state.duration) { state.running = false; return; }
+        // 每帧只更新进度变量；整套结果刷新每 0.1 秒一次，到点再刷一次。
+        const done = state.elapsed >= state.duration;
+        if (done || now - (state.lastRefresh || 0) >= 100) { state.lastRefresh = now; H.refreshResults(state); }
+        else H.style(state, state.group, '--rm-p', (state.duration > 0 ? H.clamp(state.elapsed / state.duration, 0, 1) : 1).toFixed(4));
+        if (done) { state.running = false; return; }
         frame(state.group, tick);
     };
     frame(state.group, tick);
@@ -197,6 +216,7 @@ function timerSync(state) {
     const { group } = state;
     const p = state.duration > 0 ? H.clamp(state.elapsed / state.duration, 0, 1) : 1;
     const remaining = Math.max(0, Math.ceil(state.duration - state.elapsed));
+    state.progress = p;
     H.style(state, group, '--rm-p', p.toFixed(4));
     H.style(state, group, '--rm-seconds', String(remaining));
     H.style(state, group, '--rm-count', String(Math.floor(state.elapsed)));
@@ -217,7 +237,7 @@ function timerKeys(state, keys) {
     }
     if (state.running) keys.add('running');
 }
-function timerReset(state) { state.elapsed = 0; state.running = false; if (!state.group.hasAttribute('data-rm-manual') && !inSandbox(state.group)) startTimer(state); }
+function timerReset(state) { state.elapsed = 0; state.running = false; if (!state.destroyed && !state.group.hasAttribute('data-rm-manual') && !inSandbox(state.group)) startTimer(state); }
 
 // ——— swipe：左右一甩决定去留 ———
 function cards(state) { return H.own(state.group, '[data-rm-card]'); }
@@ -251,7 +271,8 @@ export function extraPointerDown(state, event, session) {
     session.card = card;
     session.cardTransform = card.style.getPropertyValue('transform');
     session.cardTransition = card.style.getPropertyValue('transition');
-    card.style.setProperty('transition', 'none');
+    // 经 H.style 写，驱动记下的原值才是作者写的（复位时按原值还原），不是拖到一半的。
+    H.style(state, card, 'transition', 'none');
     return true;
 }
 export function extraPointerMove(state, event, session) {
@@ -263,7 +284,7 @@ export function extraPointerMove(state, event, session) {
     if (!session.horizontal && Math.abs(dy) > Math.abs(dx) * 1.2) { session.vertical = true; return; }
     if (session.vertical) return;
     session.horizontal = true;
-    session.card.style.setProperty('transform', `translateX(${dx}px) rotate(${(dx / 18).toFixed(1)}deg)`);
+    H.style(state, session.card, 'transform', `translateX(${dx}px) rotate(${(dx / 18).toFixed(1)}deg)`);
     if (event.cancelable) event.preventDefault();
 }
 export function extraPointerUp(state, event, session, cancelled) {
@@ -272,14 +293,14 @@ export function extraPointerUp(state, event, session, cancelled) {
     const dx = session.dx || 0;
     const far = session.horizontal && !cancelled && Math.abs(dx) >= Math.max(64, card.getBoundingClientRect().width * 0.3);
     if (far) {
-        card.style.setProperty('transition', 'transform .35s ease, opacity .35s ease');
+        H.style(state, card, 'transition', 'transform .35s ease, opacity .35s ease');
         swipeCard(state, card, dx < 0 ? 'left' : 'right');
         return true;
     }
     // 不够远：弹回去。
-    card.style.setProperty('transition', 'transform .25s ease');
-    if (session.cardTransform) card.style.setProperty('transform', session.cardTransform); else card.style.removeProperty('transform');
-    setTimeout(() => { if (session.cardTransition) card.style.setProperty('transition', session.cardTransition); else card.style.removeProperty('transition'); }, 260);
+    H.style(state, card, 'transition', 'transform .25s ease');
+    if (session.cardTransform) H.style(state, card, 'transform', session.cardTransform); else H.style(state, card, 'transform', '');
+    setTimeout(() => { if (session.cardTransition) H.style(state, card, 'transition', session.cardTransition); else H.style(state, card, 'transition', ''); }, 260);
     return false;
 }
 function swipeSync(state) {
@@ -408,6 +429,7 @@ function rhythmSync(state) {
     const hasTap = H.own(group, '[data-rm-tap]').length > 0;
     const hasQte = H.own(group, '[data-rm-qte]').length > 0;
     if (hasCharge) {
+        state.progress = state.charge;
         H.style(state, group, '--rm-p', state.charge.toFixed(4));
         H.setFlag(group, 'data-rm-active', Boolean(state.charging));
         for (const node of H.own(group, '[data-rm-charge]')) H.setFlag(node, 'data-rm-active', Boolean(state.charging));
@@ -566,7 +588,9 @@ export function extraKeys(state, keys) {
 }
 export function extraReset(state) {
     switch (state.type) {
-        case 'slide': state.seen = new Set(); slideTo(state, 0); break;
+        case 'slide':
+            if (state.destroyed) break; // 退还：不再补排版
+            slideLayout(state); state.seen = new Set(); slideTo(state, 0, false); measureSlide(state); break; // 直接跳回去（平滑滚过去会把路过的都算看过），第一张立刻算看过
         case 'timer': timerReset(state); break;
         case 'swipe': swipeReset(state); break;
         case 'rhythm': rhythmReset(state); break;
@@ -587,6 +611,7 @@ function carryChat() {
     try { const key = chatKeyReader?.(); if (key) return String(key); } catch { /* 读不到就用默认 */ }
     return 'default';
 }
+const CARRY_SIGNATURES = new Map();
 function carryRead() {
     try { const value = JSON.parse(globalThis.localStorage?.getItem(CARRY_KEY) || '{}'); return value && typeof value === 'object' ? value : {}; } catch { return {}; }
 }
@@ -632,8 +657,13 @@ export function saveCarriedState(state) {
     else return;
     if (group.getAttribute('data-rm-done') === 'true') record.keys = [...record.keys, 'done'];
     if (group.getAttribute('data-rm-match') === 'true') record.keys = [...record.keys, 'match'];
-    const all = carryRead();
+    // 状态没变就不写（滚动、拖动时 refreshResults 很频繁）。
+    const signature = JSON.stringify({ ...record, ts: 0 });
     const chat = carryChat();
+    const signatureKey = `${chat}\u0000${name}`;
+    if (CARRY_SIGNATURES.get(signatureKey) === signature) return; // 按聊天＋记忆名记，两面同名区域互相改写也不会漏存
+    CARRY_SIGNATURES.set(signatureKey, signature);
+    const all = carryRead();
     all[chat] = { ...(all[chat] || {}), [name]: record, ts: Date.now() };
     carryWrite(all);
 }

@@ -176,7 +176,7 @@ function horizontalCandidate(node) {
     try { computed = view?.getComputedStyle?.(node); } catch { /* A detached host may have no computed style. */ }
     const inline = node.style.getPropertyValue('overflow-x') || node.style.getPropertyValue('overflow').split(/\s+/)[0];
     const overflow = computed?.overflowX || inline;
-    return /^(auto|scroll)$/.test(overflow) || node.getAttribute('data-rm-ui') === 'scroll' || node.getAttribute('data-rm-ui') === 'slide';
+    return /^(auto|scroll)$/.test(overflow) || node.getAttribute('data-rm-ui') === 'scroll';
 }
 
 // An authored snap gallery can contain an apparent pager made only of empty

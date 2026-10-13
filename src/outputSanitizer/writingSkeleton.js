@@ -76,6 +76,13 @@ function maskKeys(value, keys) {
         const negated = token.startsWith('!');
         const key = negated ? token.slice(1) : token;
         if (PLAIN_KEY.test(token)) return token;
+        // 甲:left、甲:seen 这类带后缀的键：只换前半，后缀照留，和 data-rm-card="甲" 换出的代号对得上。
+        const colon = key.indexOf(':');
+        if (colon > 0 && PLAIN_KEY.test(key.slice(colon + 1))) {
+            const head = key.slice(0, colon);
+            if (!PLAIN_KEY.test(head) && !keys.has(head)) keys.set(head, `k${keys.size + 1}`);
+            return `${negated ? '!' : ''}${keys.get(head) || head}${key.slice(colon)}`;
+        }
         if (!keys.has(key)) keys.set(key, `k${keys.size + 1}`);
         return `${negated ? '!' : ''}${keys.get(key)}`;
     }).join('');
