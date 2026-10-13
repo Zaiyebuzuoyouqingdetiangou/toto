@@ -25,7 +25,7 @@ const origin = `http://127.0.0.1:${server.address().port}`;
 const SAMPLES = {
     slide: `<details open><summary>横滑</summary>
         <div data-rm-ui="slide"><div data-rm-track style="width:300px;"><div data-rm-item="a" style="width:300px;height:80px;">甲</div><div data-rm-item="b" style="width:300px;height:80px;">乙</div><div data-rm-item="c" style="width:300px;height:80px;">丙</div></div>
-        <button data-rm-next>下一张</button><p data-rm-show="b">第二张的说明</p><p data-rm-show="done">看完了</p></div></details>`,
+        <button data-rm-next>下一张</button><button data-rm-reset>复位</button><p data-rm-show="b">第二张的说明</p><p data-rm-show="done">看完了</p></div></details>`,
     timer: `<details open><summary>倒计时</summary>
         <div data-rm-ui="timer" data-rm-duration="0.6"><span data-rm-clock>0:00</span><p data-rm-at="0.2" data-rm-show="half">半路出现</p><p data-rm-show="done">到点</p></div></details>`,
     swipe: `<details open><summary>甩卡</summary>
@@ -34,7 +34,7 @@ const SAMPLES = {
             <div data-rm-card="x" style="position:absolute;inset:0;background:#dde;">甲卡</div>
             <div data-rm-card="y" style="position:absolute;inset:0;background:#edd;">乙卡</div>
           </div>
-          <button data-rm-left>不要</button><button data-rm-right>喜欢</button>
+          <button data-rm-left>不要</button><button data-rm-right>喜欢</button><button data-rm-reset>复位</button>
           <p data-rm-show="y:right">乙被喜欢</p><p data-rm-show="x:left">甲被丢掉</p><p data-rm-show="done">全部甩完</p></div></details>`,
     rhythm: `<details open><summary>节奏</summary>
         <div data-rm-ui="rhythm" data-rm-count="3" data-rm-window="5"><button data-rm-tap>点</button><p data-rm-show="done">点够了</p></div>
@@ -83,6 +83,10 @@ try {
     await page.locator('button[data-rm-next]').click();
     await page.waitForTimeout(600);
     assert.ok((await shown()).includes('done'), '三张都看过'); checks++;
+    await page.locator('button[data-rm-reset]').click();
+    await page.waitForTimeout(600);
+    assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('[data-rm-track]')).overflowX), 'auto', '复位后横滑排版还在'); checks++;
+    assert.deepEqual(await shown(), [], '复位后回到第一张'); checks++;
     await healthy();
 
     // 2. 倒计时
@@ -109,6 +113,10 @@ try {
     await page.waitForTimeout(100);
     const after = await shown();
     assert.ok(after.includes('y:right') && after.includes('done'), `乙卡右划甩出去：${after}`); checks++;
+    await page.locator('button[data-rm-reset]').click();
+    await page.waitForTimeout(50);
+    assert.equal(await page.evaluate(() => document.querySelector('[data-rm-card="y"]').style.transform), '', '复位后手势甩出的卡回到作者原样'); checks++;
+    assert.deepEqual(await shown(), []); checks++;
     await healthy();
 
     // 4. 节奏：连点与充能
