@@ -5,7 +5,7 @@ import { pickMovedIndependentRecord } from '../src/independentApi/movedRecord.js
 const opts = (chatHashes, wanted = 'H5') => ({
     index: 5,
     matches: record => record.sourceHash === wanted || record.bodyHash === wanted,
-    ownHash: floor => chatHashes[floor] || '',
+    ownHashes: floor => [chatHashes[floor] || ''],
 });
 
 test('finds a mirror saved under a shifted floor number by body fingerprint', () => {

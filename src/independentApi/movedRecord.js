@@ -1,7 +1,7 @@
 // 找回旧兔子镜：在整个聊天的存档里，按这条回复的正文指纹挑出挪了楼层号的那一份。纯函数，不读写任何存储。
 // candidates: [{record, from:{index, swipe}}]；matches(record) 判断正文对得上这条回复；
-// ownHash(index) 给出那一层现在正文的指纹（那一层自己正文也对得上时，这份存档属于那一层，不拿）。
-export function pickMovedIndependentRecord(candidates, { index, matches, ownHash, restorable = () => true }) {
+// ownHashes(index) 给出那一层现在正文的指纹（含旧版算法的指纹；那一层自己正文也对得上时，这份存档属于那一层，不拿）。
+export function pickMovedIndependentRecord(candidates, { index, matches, ownHashes, restorable = () => true }) {
     const target = Number(index);
     const found = [];
     for (const candidate of Array.isArray(candidates) ? candidates : []) {
@@ -10,8 +10,8 @@ export function pickMovedIndependentRecord(candidates, { index, matches, ownHash
         if (!record?.html || record.deleted || !from || (from.index !== null && (!Number.isInteger(from.index) || from.index < 0))) continue;
         if (!restorable(record.html) || !matches(record)) continue;
         if (from.index !== null && from.index !== target) {
-            const hash = String(ownHash(from.index) || '');
-            if (hash && (String(record.sourceHash || '') === hash || String(record.bodyHash || '') === hash)) continue;
+            const own = new Set((ownHashes(from.index) || []).map(String).filter(Boolean));
+            if (own.has(String(record.sourceHash || '')) || own.has(String(record.bodyHash || ''))) continue;
         }
         found.push(candidate);
     }
