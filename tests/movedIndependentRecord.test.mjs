@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { pickMovedIndependentRecord } from '../src/independentApi/movedRecord.js';
+import { pickMovedIndependentRecord, pickOwnStaleRecord } from '../src/independentApi/movedRecord.js';
 
 const opts = (chatHashes, wanted = 'H5') => ({
     index: 5,
@@ -53,4 +53,20 @@ test('a mirror set aside by an earlier recovery (no floor) can be picked by its 
     ], opts({ 5: 'H5', 7: 'H7' }));
     assert.equal(picked.record.html, '<toto>aside</toto>');
     assert.equal(picked.from.moved, 'H5');
+});
+
+test('own-floor record with an edited body is picked when its hash belongs to no other floor', () => {
+    const picked = pickOwnStaleRecord([
+        { record: { html: '<toto>mine</toto>', sourceHash: 'OLD5', ts: 2 }, from: { index: 5, swipe: 0 } },
+        { record: { html: '<toto>older</toto>', sourceHash: 'OLDER5', ts: 1 }, from: { index: 5, swipe: 0 } },
+        { record: { html: '<toto>other</toto>', sourceHash: 'H7', ts: 9 }, from: { index: 7, swipe: 0 } },
+    ], { index: 5, otherHashes: ['H6', 'H7'] });
+    assert.equal(picked.record.html, '<toto>mine</toto>');
+});
+
+test('own-floor record whose hash matches another floor is a shifted record, not an edited one', () => {
+    const picked = pickOwnStaleRecord([
+        { record: { html: '<toto>shifted</toto>', sourceHash: 'H6', ts: 2 }, from: { index: 5, swipe: 0 } },
+    ], { index: 5, otherHashes: ['H6'] });
+    assert.equal(picked, null);
 });
