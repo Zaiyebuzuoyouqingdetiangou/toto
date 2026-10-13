@@ -1,10 +1,10 @@
-import { generationPaletteFields } from './paletteRecipes.js?rmv=1.68.34';
-import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.68.34';
-import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords, observedOperationFamiliesFor } from './compositionFingerprint.js?rmv=1.68.34';
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.68.34';
-import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.68.34';
-import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.68.34';
-import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.68.34';
+import { generationPaletteFields } from './paletteRecipes.js?rmv=1.68.35';
+import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.68.35';
+import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords, observedOperationFamiliesFor } from './compositionFingerprint.js?rmv=1.68.35';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.68.35';
+import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.68.35';
+import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.68.35';
+import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.68.35';
 
 const STORAGE_KEY = 'rabbit_mirror_theater:last_combo:v11';
 const PENDING_KEY = 'rabbit_mirror_theater:pending_combo:v11';
@@ -1220,6 +1220,8 @@ function compactIndependentOutputsForQuota(keep = 40, currentChatOnly = false) {
 // 空间不足时逐级释放兔子镜自己的本机缓存，每一级之后都重试一次同一份写入。
 // 旧版只要缓存压到 40 条能写回就停止，常常仍然腾不出空间，于是每次都报额度不足。
 const QUOTA_RECOVERY_STEPS = [
+    // 待修样本箱只是给作者攒的样本，空间不够时最先让路。
+    () => { try { localStorage.removeItem('rabbit_mirror_repair_samples:v1'); } catch { /* ignore */ } },
     () => compactFaceSwipeStoreForQuota([40]),
     () => compactIndependentOutputsForQuota(40),
     () => { compactFaceSwipeStoreForQuota([20]); compactIndependentOutputsForQuota(20); },

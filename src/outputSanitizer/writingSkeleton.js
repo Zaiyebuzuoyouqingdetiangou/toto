@@ -4,7 +4,7 @@
 // 模型写的方案记录和画面提示词、聊天归属标记、CSS 里的 content 字符串和 url()。
 // 留下的：标签、id、class、data-rm-* 这些写法标识、style 里的样式、<style> 里的规则。
 const CONTENT_ATTRS = new Set(['alt', 'title', 'aria-label', 'aria-description', 'aria-roledescription', 'placeholder', 'srcset', 'poster', 'srcdoc']);
-const CONTENT_ATTR_RE = /^(?:data-rm-vs|data-rm-draw-|data-rm-image|data-rabbit-mirror-(?:external-owner|owner-|labeled-checked-last)|data-rm-key$|data-rm-avatar)/;
+const CONTENT_ATTR_RE = /^(?:data-rm-vs|data-rm-draw-|data-rm-image|data-rabbit-mirror-(?:external-owner|owner-|labeled-checked-last|generic-probe)|data-rm-key$|data-rm-avatar)/;
 const URL_ATTRS = new Set(['href', 'src', 'action', 'formaction', 'cite', 'data', 'xlink:href']);
 // 插件自己挂在镜面里的工具（维修兔、反馈猫、工具栏、诊断面板）不是写法的一部分，骨架里去掉。
 const TOOL_UI = '[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-diagnostic-panel], .rabbit-mirror-maintenance-menu, [data-rm-face-swipe-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rm-image-region], [data-rm-image-portal]';
