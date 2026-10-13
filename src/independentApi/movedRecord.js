@@ -18,3 +18,21 @@ export function pickMovedIndependentRecord(candidates, { index, matches, ownHash
     found.sort((a, b) => Number(b.record.ts || 0) - Number(a.record.ts || 0));
     return found[0] || null;
 }
+
+// 这一层自己名下的存档，正文指纹却对不上（回复后来被编辑或被正则改写）：按用户明确点的「找回」放回去。
+// 条件：这份存档的指纹不属于别的任何一层（否则它是错位过来的，归上面的流程），取最新的一份。
+export function pickOwnStaleRecord(candidates, { index, otherHashes, restorable = () => true }) {
+    const target = Number(index);
+    const taken = new Set((otherHashes || []).map(String).filter(Boolean));
+    const found = [];
+    for (const candidate of Array.isArray(candidates) ? candidates : []) {
+        const record = candidate?.record, from = candidate?.from;
+        if (!record?.html || record.deleted || from?.index !== target) continue;
+        if (!restorable(record.html)) continue;
+        const hashes = [record.sourceHash, record.bodyHash].map(value => String(value || '')).filter(Boolean);
+        if (!hashes.length || hashes.some(hash => taken.has(hash))) continue;
+        found.push(candidate);
+    }
+    found.sort((a, b) => Number(b.record.ts || 0) - Number(a.record.ts || 0));
+    return found[0] || null;
+}
