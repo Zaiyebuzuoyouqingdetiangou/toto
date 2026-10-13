@@ -103,7 +103,7 @@ test('real maintenance menu routes narrow-width to dedicated action, not generic
     });
     vm.runInContext(menuSource,context);
     assert.equal(context.showMaintenanceRabbitMenu(root,button),true);
-    assert.match(panel.innerHTML,/data-rm-maintenance-action="narrow-width">⚡ 强效电击：恢复窄面/);
+    assert.match(panel.innerHTML,/data-rm-maintenance-action="narrow-width">⚡ 整面被压窄：强效电击/);
     handler({target:{closest:()=>({getAttribute:()=> 'narrow-width'})},preventDefault(){},stopPropagation(){}});
     assert.equal(dedicated,1); assert.equal(generic,0);
 });

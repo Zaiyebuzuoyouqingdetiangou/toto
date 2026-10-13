@@ -1,8 +1,8 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.68.33';
-import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.68.33';
-import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.68.33';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.68.34';
+import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.68.34';
+import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.68.34';
 
 export function buildRabbitMirrorSettingsDialogHtml() {
     return `
@@ -221,6 +221,11 @@ export function buildRabbitMirrorSettingsDialogHtml() {
         <button id="rh_missing_shell_rescan" class="menu_button" type="button">重新检查缺壳楼层</button>
         <button id="rh_archive_inventory" class="menu_button" type="button">导出存档清单</button>
         <p class="rabbit-mirror-subnote">「找回旧兔子镜」找不到时用：导出当前聊天在三处存档里各记着什么（楼层号、指纹、时间），不含聊天正文和兔子镜内容。</p>
+        <div class="rabbit-mirror-actions" style="margin-top:8px;">
+          <button id="rh_repair_samples_export" class="menu_button" type="button">导出待修样本箱</button>
+          <button id="rh_repair_samples_clear" class="menu_button" type="button">清空样本箱</button>
+        </div>
+        <p id="rh_repair_samples_note" class="rabbit-mirror-subnote">维修兔认不出写法、或修了还是没反应的那几面，会自动把写法骨架记在这里（文字全是占位，不含聊天内容）。攒几面导出发给作者，一批加进维修库。</p>
       </div>
 
       <details class="rabbit-mirror-section rabbit-mirror-tools">
