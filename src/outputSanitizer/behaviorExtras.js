@@ -146,7 +146,7 @@ function slideTo(state, index, smooth = true) {
     const track = state.track || slideTrack(state);
     const box = track.getBoundingClientRect(), rect = target.getBoundingClientRect();
     const left = rect.left - box.left + track.scrollLeft, top = rect.top - box.top + track.scrollTop;
-    try { track.scrollTo({ left: state.vertical ? track.scrollLeft : left, top: state.vertical ? top : track.scrollTop, behavior: smooth ? 'smooth' : 'auto' }); }
+    try { track.scrollTo({ left: state.vertical ? track.scrollLeft : left, top: state.vertical ? top : track.scrollTop, behavior: smooth ? 'smooth' : 'instant' }); }
     catch { if (state.vertical) track.scrollTop = top; else track.scrollLeft = left; }
     state.index = items.indexOf(target) + 1;
     return true;
@@ -237,7 +237,7 @@ function timerKeys(state, keys) {
     }
     if (state.running) keys.add('running');
 }
-function timerReset(state) { state.elapsed = 0; state.running = false; if (!state.group.hasAttribute('data-rm-manual') && !inSandbox(state.group)) startTimer(state); }
+function timerReset(state) { state.elapsed = 0; state.running = false; if (!state.destroyed && !state.group.hasAttribute('data-rm-manual') && !inSandbox(state.group)) startTimer(state); }
 
 // ——— swipe：左右一甩决定去留 ———
 function cards(state) { return H.own(state.group, '[data-rm-card]'); }
@@ -588,7 +588,9 @@ export function extraKeys(state, keys) {
 }
 export function extraReset(state) {
     switch (state.type) {
-        case 'slide': slideLayout(state); slideTo(state, 0, false); state.seen = new Set(); break; // 复位直接跳回去，平滑滚过去会把路过的都算看过
+        case 'slide':
+            if (state.destroyed) break; // 退还：不再补排版
+            slideLayout(state); state.seen = new Set(); slideTo(state, 0, false); measureSlide(state); break; // 直接跳回去（平滑滚过去会把路过的都算看过），第一张立刻算看过
         case 'timer': timerReset(state); break;
         case 'swipe': swipeReset(state); break;
         case 'rhythm': rhythmReset(state); break;
@@ -609,6 +611,7 @@ function carryChat() {
     try { const key = chatKeyReader?.(); if (key) return String(key); } catch { /* 读不到就用默认 */ }
     return 'default';
 }
+const CARRY_SIGNATURES = new Map();
 function carryRead() {
     try { const value = JSON.parse(globalThis.localStorage?.getItem(CARRY_KEY) || '{}'); return value && typeof value === 'object' ? value : {}; } catch { return {}; }
 }
@@ -656,10 +659,11 @@ export function saveCarriedState(state) {
     if (group.getAttribute('data-rm-match') === 'true') record.keys = [...record.keys, 'match'];
     // 状态没变就不写（滚动、拖动时 refreshResults 很频繁）。
     const signature = JSON.stringify({ ...record, ts: 0 });
-    if (state.carrySignature === signature) return;
-    state.carrySignature = signature;
-    const all = carryRead();
     const chat = carryChat();
+    const signatureKey = `${chat}\u0000${name}`;
+    if (CARRY_SIGNATURES.get(signatureKey) === signature) return; // 按聊天＋记忆名记，两面同名区域互相改写也不会漏存
+    CARRY_SIGNATURES.set(signatureKey, signature);
+    const all = carryRead();
     all[chat] = { ...(all[chat] || {}), [name]: record, ts: Date.now() };
     carryWrite(all);
 }

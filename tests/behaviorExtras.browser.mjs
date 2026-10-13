@@ -87,7 +87,10 @@ try {
     await page.waitForTimeout(600);
     assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('[data-rm-track]')).overflowX), 'auto', '复位后横滑排版还在'); checks++;
     assert.deepEqual(await shown(), [], '复位后回到第一张'); checks++;
-    await healthy();
+    assert.equal(await page.evaluate(() => document.querySelector('[data-rm-item="a"]').getAttribute('data-rm-seen')), 'true', '复位后第一张立刻算看过'); checks++;
+    // 退还：插件补的排版要撤干净
+    await page.evaluate(() => behavior.releaseBehaviorGroup(document.querySelector('details'), document.querySelector('[data-rm-ui=slide], [data-rm-released]')));
+    assert.equal(await page.evaluate(() => document.querySelector('[data-rm-track]').style.getPropertyValue('overflow-x')), '', '退还后内联排版撤掉'); checks++;
 
     // 2. 倒计时
     await mount(SAMPLES.timer);
