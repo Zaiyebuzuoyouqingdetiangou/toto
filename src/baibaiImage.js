@@ -1,8 +1,8 @@
-import { chatu8Status, generateViaChatu8, persistImage } from './chatu8Image.js?rmv=1.68.31';
-import { getSettings } from './settings.js?rmv=1.68.31';
-import { getContext } from './independentApi/runtime.js?rmv=1.68.31';
-import { getChatu8ImageCharacters } from './imageCharacterPresets.js?rmv=1.68.31';
-import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.68.31';
+import { chatu8Status, generateViaChatu8 } from './chatu8Image.js?rmv=1.68.32';
+import { getSettings } from './settings.js?rmv=1.68.32';
+import { getContext } from './independentApi/runtime.js?rmv=1.68.32';
+import { getChatu8ImageCharacters } from './imageCharacterPresets.js?rmv=1.68.32';
+import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.68.32';
 function failure(code, message) { return Object.assign(new Error(message), { code }); }
 
 function imageApi() {
@@ -70,13 +70,10 @@ export async function generateMirrorImage(plan, { signal, onProgress, character,
     let path = typeof result?.path === 'string' && result.path ? result.path : null;
     let dataUrl = typeof result?.dataUrl === 'string' ? result.dataUrl : '';
     if (!path && !dataUrl) throw failure('invalid_result', '柏宝绘没有返回图片；不会自动再次请求。');
-    // 返回的是别处的网址（临时链接）或 blob: 时，先存进酒馆，免得链接失效图就没了。
-    if (path && /^(?:blob:|https?:)/i.test(path)) {
-        const stored = await persistImage(path, { label: '柏宝绘' });
-        if (stored.path) path = stored.path;
-        if (stored.dataUrl) dataUrl = stored.dataUrl;
-        if (!stored.path && !stored.dataUrl && !dataUrl) throw failure('invalid_result', '柏宝绘返回的图片读不出来；不会自动再次请求。');
-        if (!stored.path && !stored.dataUrl) path = null;
+    // 柏宝绘自己会把图存进它的图库，这里只记它给的地址，不再另存一份（不重复占空间）。
+    // 同站的完整网址只记路径部分，换了访问地址（局域网／手机／外网）也读得到。
+    if (path && /^https?:/i.test(path)) {
+        try { const url = new URL(path, document.baseURI); if (url.origin === new URL(document.baseURI).origin) path = `${url.pathname}${url.search}`; } catch { /* 保持原样 */ }
     }
     return {
         url: path || dataUrl, path, dataUrl, prompt: request.prompt, provider: 'baibai-image',
