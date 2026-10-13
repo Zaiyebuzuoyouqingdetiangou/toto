@@ -1,10 +1,10 @@
-import { getSettings } from './settings.js?rmv=1.68.30';
-import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=1.68.30';
-import { loadMirrorImage, saveMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft } from './imageStore.js?rmv=1.68.30';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.68.30';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.68.30';
-import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.68.30';
-import { listBuiltinImageFrames, rerollBuiltinImage, showBuiltinImageVersion, builtinImageReady } from './builtinImage.js?rmv=1.68.30';
+import { getSettings } from './settings.js?rmv=1.68.31';
+import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=1.68.31';
+import { loadMirrorImage, saveMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft } from './imageStore.js?rmv=1.68.31';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.68.31';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.68.31';
+import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.68.31';
+import { listBuiltinImageFrames, rerollBuiltinImage, showBuiltinImageVersion, builtinImageReady, builtinImageReusable } from './builtinImage.js?rmv=1.68.31';
 
 // The lock lives beyond a panel's lifetime. Closing, reopening or aborting a UI
 // cannot release a provider reservation before its Promise actually settles.
@@ -451,11 +451,15 @@ function buildBuiltinSection(doc, root, initial) {
     const provider = () => getSettings().imageBackend === 'chatu8' ? '智绘姬' : '柏宝绘';
     const currentFrame = () => frames[Math.min(selected, frames.length - 1)];
     const refresh = () => { frames = listBuiltinImageFrames(root); if (!frames.length) frames = initial; };
+    // 关掉面板再打开：正在画的那张还在画，新面板接着看进度、画完也刷新。
+    const mine = { onText: text => { if (section.isConnected) statusLine.textContent = text; }, done: () => { if (section.isConnected) { refresh(); render(); } } };
     function render() {
         if (!section.isConnected && section.parentNode) return;
         const item = currentFrame();
         const job = builtinJobs.get(item.key);
+        if (job) job.listeners.add(mine);
         const ready = builtinImageReady();
+        const firstDraw = item.busy && !job; // 这一面自己的首画还在跑
         headNote.textContent = `内置生图 · 共 ${frames.length} 张`;
         tabs.replaceChildren();
         tabs.hidden = frames.length < 2;
@@ -475,40 +479,43 @@ function buildBuiltinSection(doc, root, initial) {
         } else view.append(el(doc, 'span', item.broken ? '这张图的存档读不出来。' : '这张图还没画。'));
         const total = item.versions.length;
         counter.textContent = total ? `${item.current + 1} / ${total}` : '0 / 0';
-        prev.disabled = !!job || item.current <= 0;
-        next.disabled = !!job || item.current >= total - 1;
+        prev.disabled = !!job || firstDraw || item.current <= 0;
+        next.disabled = !!job || firstDraw || item.current >= total - 1;
         nav.hidden = total < 2;
         roll.hidden = !!job; cancel.hidden = !job;
-        roll.disabled = !ready; edit.disabled = !ready || !!job; editGo.disabled = !ready || !!job;
+        roll.disabled = !ready || firstDraw || item.broken; edit.disabled = !ready || !!job || firstDraw || item.broken; editGo.disabled = !ready || !!job || firstDraw || item.broken;
         editor.hidden = !editing;
         if (editing && !editBox.dataset.forKey) { editBox.value = item.prompt; editBox.dataset.forKey = item.key; }
-        hint.textContent = ready
-            ? `同一段提示词，换随机种子再画一次，花一次${provider()}额度，不调用语言模型。最多留 5 张。`
-            : '内置生图没有开启：在兔子镜设置里打开后才能重画；已经画好的图照样能翻看、切换。';
-        statusLine.textContent = job ? (job.text || `正在画第 ${Math.min(5, total + 1)} 张…`) : message;
+        const reusable = builtinImageReusable(shown);
+        hint.textContent = !ready
+            ? '内置生图没有开启：在兔子镜设置里打开后才能重画；已经画好的图照样能翻看、切换。'
+            : item.broken ? '这张图的存档读不出来，重画的结果会存不进去，所以先不让画。'
+            : reusable ? `同一段提示词，换随机种子再画一次，花一次${provider()}额度，不调用语言模型。最多留 5 张。`
+            : `这张是旧版本画的，没留下当时的提示词：再画会按这一面写的画面重新准备一次提示词${imageLlmConfigured(getSettings()) ? '（会调用一次生图 LLM）' : ''}，再花一次${provider()}额度。`;
+        statusLine.textContent = job ? (job.text || `正在画第 ${Math.min(5, total + 1)} 张…`) : firstDraw ? '这一面自己的那张正在画，画完再重画。' : message;
     }
     async function start(edited) {
         const item = currentFrame();
         if (builtinJobs.has(item.key)) return;
         const controller = new AbortController();
-        const job = { controller, text: '' };
+        const job = { controller, text: '', listeners: new Set([mine]) };
         builtinJobs.set(item.key, job);
         message = ''; render();
         try {
-            await rerollBuiltinImage(root, item.frame, { prompt: edited, signal: controller.signal,
-                onText: text => { job.text = text; if (section.isConnected) statusLine.textContent = text; } });
-            message = '画好了，镜面上已经换成新画的这张。';
+            const { painted } = await rerollBuiltinImage(root, item.frame, { prompt: edited, signal: controller.signal,
+                onText: text => { job.text = text; for (const listener of job.listeners) { try { listener.onText?.(text); } catch { /* 面板已关 */ } } } });
+            message = painted ? '画好了，镜面上已经换成新画的这张。' : '画好了、已经存档；这一面刚重新加载过，刷新这一面后显示。';
         } catch (error) {
             message = controller.signal.aborted ? '已取消，原来的图没动。'
                 : `这次没画成，原来的图没动。${String(error?.message || '').slice(0, 120)}`;
         } finally {
             builtinJobs.delete(item.key);
             refresh();
-            if (section.isConnected) render();
+            for (const listener of job.listeners) { try { listener.done?.(); } catch { /* 面板已关 */ } }
         }
     }
     roll.addEventListener('click', () => start(''));
-    cancel.addEventListener('click', () => { builtinJobs.get(currentFrame().key)?.controller.abort(); statusLine.textContent = '已请求取消，等这次调用结束；不会自动重试。'; });
+    cancel.addEventListener('click', () => { const job = builtinJobs.get(currentFrame().key); if (!job) { refresh(); render(); return; } job.controller.abort(); statusLine.textContent = '已请求取消，等这次调用结束；不会自动重试。'; });
     edit.addEventListener('click', () => { editing = !editing; editBox.dataset.forKey = ''; render(); });
     editGo.addEventListener('click', () => { const text = editBox.value.trim(); if (text.length < 4) { statusLine.textContent = '提示词太短了。'; return; } start(text); });
     const step = delta => {

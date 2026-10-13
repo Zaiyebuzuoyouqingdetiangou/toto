@@ -1,10 +1,10 @@
-import { getSettings } from './settings.js?rmv=1.68.30';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.68.30';
-import { findBuiltinImageKeyFromOtherChat, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.68.30';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.68.30';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.68.30';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.68.30';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.68.30';
+import { getSettings } from './settings.js?rmv=1.68.31';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.68.31';
+import { findBuiltinImageKeyFromOtherChat, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.68.31';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.68.31';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.68.31';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.68.31';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.68.31';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -368,7 +368,7 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
             flatPrompt: String(planned.flatPrompt || ''),
             nl: String(planned.nl || ''),
             characters: Array.isArray(planned.characters) ? planned.characters : [],
-            promptFormat: settings.imagePromptFormat,
+            promptFormat: planned.promptFormat || settings.imagePromptFormat,
         } : await (async () => {
             // 没有生图 LLM：按提示词格式分开填，标签写法不再把同一句话当成自然语言再发一次。
             const tagsOnly = settings.imagePromptFormat === 'nai45-tags';
@@ -581,29 +581,61 @@ export function listBuiltinImageFrames(root) {
 
 export function builtinImageReady() { return getSettings().builtinImageEnabled === true; }
 
+// 聊天开了分支／改了名以后，图可能存在旧聊天名的键下：先把那份搬到当前键，之后翻历史、重画都对着当前键。
+function adoptSavedKey(key) {
+    const own = readSaved(key);
+    if (own.broken || own.record) return;
+    const other = findBuiltinImageKeyFromOtherChat(key);
+    if (!other) return;
+    const moved = readSaved(other).record;
+    if (!moved) return;
+    const { history = [], ...current } = moved;
+    try { replaceMirrorImageVersions(key, current, history); } catch { /* 存不下就照旧对着旧键 */ }
+}
+
+// 沿用上次的提示词：有完整的构思记录就用它；只记了实际发出去的那段（智绘姬）就整段当提示词。
+function reusablePlan(saved) {
+    const meta = saved?.promptMetadata;
+    if (meta && String(meta.prompt || meta.flatPrompt || meta.nl || '').trim()) {
+        const sent = String(saved.prompt || '').trim();
+        const characters = Array.isArray(meta.characters) ? meta.characters : null;
+        return {
+            prompt: String(meta.prompt || ''), nl: String(meta.nl || ''),
+            flatPrompt: String(meta.flatPrompt || '') || (!characters && sent ? sent : ''),
+            characters: characters || [], promptFormat: meta.promptFormat,
+        };
+    }
+    const sent = String(saved?.prompt || '').trim();
+    return sent ? { prompt: sent, flatPrompt: sent, nl: '', characters: [], promptFormat: saved?.promptMetadata?.promptFormat } : null;
+}
+export function builtinImageReusable(record) { return !!reusablePlan(record); }
+
 export async function rerollBuiltinImage(root, frame, { prompt: edited = '', signal = null, onText = null } = {}) {
     if (!builtinImageReady()) throw Object.assign(new Error('内置生图没有开启，在兔子镜设置里打开后才能重画。'), { code: 'disabled' });
     const isCurrent = imageRequestOwner();
     const original = readPrompt(frame);
     if (!original) throw Object.assign(new Error('这个图框里没有提示词，没法重画。'), { code: 'no_prompt' });
     const key = storageKey(root, frame, original);
-    const saved = readSavedAnyChat(key).record;
+    if (inflight.get(key)?.isCurrent?.()) throw Object.assign(new Error('这张正在画，等它画完再重画。'), { code: 'busy' });
+    adoptSavedKey(key);
+    const savedState = readSaved(key);
+    if (savedState.broken) throw Object.assign(new Error('这张图的存档读不出来，重画的结果会存不进去，先没有画。'), { code: 'broken' });
+    const saved = savedState.record;
     const text = String(edited || '').replace(/\s+/g, ' ').trim();
-    const meta = saved?.promptMetadata;
-    const reuse = !text && meta && String(meta.prompt || meta.flatPrompt || meta.nl || '').trim() ? {
-        prompt: String(meta.prompt || ''), flatPrompt: String(meta.flatPrompt || ''), nl: String(meta.nl || ''),
-        characters: Array.isArray(meta.characters) ? meta.characters : [], promptFormat: meta.promptFormat,
-    } : null;
+    const reuse = !text ? reusablePlan(saved) : null;
     failed.delete(key); unreadable.delete(key);
     let nodes = waiters.get(key);
     if (!nodes) { nodes = new Set(); waiters.set(key, nodes); }
     const waiter = { frame, isCurrent, quiet: true, onText };
     nodes.add(waiter);
     try {
-        await startJob(key, text || original, frame, isCurrent, { reuse, direct: !!text, signal });
-        const record = loadMirrorImage(key);
-        if (record && frame.isConnected && isCurrent()) { ensureFrameBox(frame); paint(frame, record, root, key); }
-        return record;
+        const generated = await startJob(key, text || original, frame, isCurrent, { reuse, direct: !!text, signal });
+        let record = null;
+        try { record = loadMirrorImage(key); } catch { record = null; }
+        if (!record) record = generated;
+        const painted = !!(record && frame.isConnected && isCurrent());
+        if (painted) { ensureFrameBox(frame); paint(frame, record, root, key); }
+        return { record, painted };
     } finally {
         nodes.delete(waiter);
         if (!nodes.size && waiters.get(key) === nodes) waiters.delete(key);
@@ -615,6 +647,7 @@ export function showBuiltinImageVersion(root, frame, index) {
     const prompt = readPrompt(frame);
     if (!prompt) return null;
     const key = storageKey(root, frame, prompt);
+    adoptSavedKey(key);
     const record = loadMirrorImage(key);
     const { list, current } = versionsOf(record);
     const chosen = list[index];

@@ -1,10 +1,10 @@
 // 存档清单：当前聊天的兔子镜在三处存档里各记着什么（本机缓存、聊天文件、版本存档），
 // 外加每一层现在正文的指纹。只有键、指纹、时间、长度这类数字和代号，不含任何聊天正文和兔子镜内容。
 // 给「找回旧兔子镜」找不到时排查用：拿清单对一下，就知道存档是在别的楼层名下、还是真的没了。
-import { getContext, RUNTIME_VERSION } from './runtime.js?rmv=1.68.30';
-import { chatKey, legacyChatKey, swipeId, messageSourceFingerprint, legacyMessageSourceFingerprints } from './connection.js?rmv=1.68.30';
-import { readStore, chatPersistedOwnerEntries, chatMovedOwners, persistedOwnerForMessage } from './persistence.js?rmv=1.68.30';
-import { loadFaceSwipeArchiveRows } from '../swipeVersions.js?rmv=1.68.30';
+import { getContext, RUNTIME_VERSION } from './runtime.js?rmv=1.68.31';
+import { chatKey, legacyChatKey, swipeId, messageSourceFingerprint, legacyMessageSourceFingerprints } from './connection.js?rmv=1.68.31';
+import { readStore, chatPersistedOwnerEntries, chatMovedOwners, persistedOwnerForMessage } from './persistence.js?rmv=1.68.31';
+import { loadFaceSwipeArchiveRows } from '../swipeVersions.js?rmv=1.68.31';
 
 const pad = (value, width) => String(value ?? '').padEnd(width);
 function describe(record) {
