@@ -1,6 +1,6 @@
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.68.25';
-import { updateLatestVisualSignature, visualHistoryTarget } from './storage.js?rmv=1.68.25';
-import { restoreRabbitMirrorAvatarClone } from './chatAvatars.js?rmv=1.68.25';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=1.68.26';
+import { updateLatestVisualSignature, visualHistoryTarget } from './storage.js?rmv=1.68.26';
+import { restoreRabbitMirrorAvatarClone } from './chatAvatars.js?rmv=1.68.26';
 
 const VERSION = '1.5.53';
 const HOST = '[data-rabbit-mirror-external-source]';
