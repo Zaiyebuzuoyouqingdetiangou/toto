@@ -1,8 +1,8 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.68.25';
-import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.68.25';
-import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.68.25';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.68.26';
+import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.68.26';
+import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.68.26';
 
 export function buildRabbitMirrorSettingsDialogHtml() {
     return `
@@ -219,6 +219,8 @@ export function buildRabbitMirrorSettingsDialogHtml() {
         <p class="rabbit-mirror-subnote">网络中断或闪退后，生成过兔子镜的楼层缺了外壳会自动补卡，不会自动再发请求。想给以前没生成过的楼层补兔子镜：选好范围，点「重新检查缺壳楼层」，范围内没有兔子镜的回复下面都会挂上卡，点卡就能生成。</p>
         <div id="rh_missing_shell_report" role="status">打开设置后检查当前聊天。</div>
         <button id="rh_missing_shell_rescan" class="menu_button" type="button">重新检查缺壳楼层</button>
+        <button id="rh_archive_inventory" class="menu_button" type="button">导出存档清单</button>
+        <p class="rabbit-mirror-subnote">「找回旧兔子镜」找不到时用：导出当前聊天在三处存档里各记着什么（楼层号、指纹、时间），不含聊天正文和兔子镜内容。</p>
       </div>
 
       <details class="rabbit-mirror-section rabbit-mirror-tools">
