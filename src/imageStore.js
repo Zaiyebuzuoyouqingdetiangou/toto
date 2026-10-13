@@ -69,6 +69,13 @@ export function findBuiltinImageKeyFromOtherChat(key) {
     return '';
 }
 
+// 换成历史里的另一张显示：选中的那张当当前，其余按原来的先后留在历史里。不发请求。
+export function replaceMirrorImageVersions(key, current, history) {
+    const value = { version: 1, current: storedRecord(current), history: (Array.isArray(history) ? history : []).filter(entry => entry && typeof entry === 'object').map(entry => ({ ...entry })) };
+    write(key, 'images', value);
+    return { ...value.current, history: value.history };
+}
+
 export function loadMirrorImageDraft(key) { return read(key, 'draft'); }
 
 export function saveMirrorImageDraft(key, draft) {

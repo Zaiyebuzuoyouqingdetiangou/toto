@@ -1,9 +1,10 @@
-import { getSettings } from './settings.js?rmv=1.68.29';
-import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=1.68.29';
-import { loadMirrorImage, saveMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft } from './imageStore.js?rmv=1.68.29';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.68.29';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.68.29';
-import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.68.29';
+import { getSettings } from './settings.js?rmv=1.68.31';
+import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=1.68.31';
+import { loadMirrorImage, saveMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft } from './imageStore.js?rmv=1.68.31';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.68.31';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.68.31';
+import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.68.31';
+import { listBuiltinImageFrames, rerollBuiltinImage, showBuiltinImageVersion, builtinImageReady, builtinImageReusable } from './builtinImage.js?rmv=1.68.31';
 
 // The lock lives beyond a panel's lifetime. Closing, reopening or aborting a UI
 // cannot release a provider reservation before its Promise actually settles.
@@ -198,7 +199,20 @@ export function openMirrorImagePanel(root, { opener = null, onClose = null } = {
     }
     const scroll = el(doc, 'div', '', { 'data-rm-image-scroll': '' });
     scroll.style.cssText = 'min-height:0;min-width:0;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;display:flex;flex-direction:column;gap:12px;';
-    scroll.append(status, notice, actions, preview, fields, send);
+    // 这一面有内置生图的图框时，最上面放「这一面的插图」（重画、翻历史）；原来的手动生图收进下面的折叠区。
+    const builtinFrames = listBuiltinImageFrames(root);
+    const builtin = builtinFrames.length ? buildBuiltinSection(doc, root, builtinFrames) : null;
+    if (builtin) {
+        const manual = el(doc, 'details', '', { 'data-rm-image-manual': '' });
+        const manualSummary = el(doc, 'summary', '整面配图（手动生图）');
+        manualSummary.style.cssText = 'cursor:pointer;min-height:36px;display:flex;align-items:center;';
+        manual.style.cssText = 'border-top:1px solid var(--SmartThemeBorderColor,#cfdae5);padding-top:8px;';
+        const manualBody = el(doc, 'div'); manualBody.style.cssText = 'display:flex;flex-direction:column;gap:12px;margin-top:8px;';
+        manualBody.append(status, notice, actions, preview, fields, send);
+        manual.append(manualSummary, manualBody);
+        if (getSettings().imageEnabled !== true) manual.hidden = true;
+        scroll.append(builtin.section, manual);
+    } else scroll.append(status, notice, actions, preview, fields, send);
     box.append(heading, scroll); host.append(box); doc.body.append(host);
     let backend = null;
     let characterInputs = [];
@@ -368,6 +382,7 @@ export function openMirrorImagePanel(root, { opener = null, onClose = null } = {
     host.addEventListener('click', event => { if (event.target === host) closePanel(); event.stopPropagation(); });
     panel = { host, target, opener, onClose, renderState, receive: (record, draft) => { localRecord = record; fillDraft(draft); showRecord(record); }, cleanup: () => {
         doc.defaultView.removeEventListener('resize', fit); doc.defaultView.visualViewport?.removeEventListener('resize', fit); doc.defaultView.visualViewport?.removeEventListener('scroll', fit);
+        builtin?.cleanup();
     } };
     const pending = target && pendingSaves.get(target.key);
     if (pending) localRecord = pendingImage(target.key, localRecord);
@@ -390,4 +405,130 @@ export function openMirrorImagePanel(root, { opener = null, onClose = null } = {
     }
     fit(); close.focus();
     Promise.resolve().then(() => getImageBackendStatus()).then(value => { backend = value; if (host.isConnected) { updatePreview(); renderState(); } }).catch(() => {});
+}
+
+
+// 「这一面的插图」：一面里每个内置图框各自的历史，选哪张就在镜面上显示哪张；「再画一张」只发一次生图请求。
+// 关面板不会取消正在画的那张（画完照样存进去）；要停就点「取消这次」。
+const builtinJobs = new Map();
+function buildBuiltinSection(doc, root, initial) {
+    let frames = initial;
+    let selected = 0;
+    let editing = false;
+    let message = '';
+    const section = el(doc, 'section', '', { 'data-rm-builtin-image-panel': '' });
+    section.style.cssText = 'display:flex;flex-direction:column;gap:10px;';
+    const head = el(doc, 'div'); head.style.cssText = 'display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;';
+    const headTitle = el(doc, 'strong', '这一面的插图');
+    const headNote = el(doc, 'span'); headNote.style.cssText = 'font-size:12px;opacity:.75;';
+    head.append(headTitle, headNote);
+    const tabs = el(doc, 'div', '', { role: 'tablist', 'aria-label': '选择是哪一张图' }); tabs.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;';
+    const view = el(doc, 'div'); view.style.cssText = 'position:relative;border-radius:12px;overflow:hidden;background:rgba(0,0,0,.06);min-height:120px;display:flex;align-items:center;justify-content:center;';
+    const nav = el(doc, 'div'); nav.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;';
+    const prev = el(doc, 'button', '‹', { type: 'button', 'aria-label': '上一张' });
+    const counter = el(doc, 'span'); counter.style.cssText = 'min-width:56px;text-align:center;font-variant-numeric:tabular-nums;';
+    const next = el(doc, 'button', '›', { type: 'button', 'aria-label': '下一张' });
+    const navNote = el(doc, 'span', '镜面上显示这一张'); navNote.style.cssText = 'font-size:12px;opacity:.75;';
+    for (const b of [prev, next]) b.style.cssText = 'min-width:44px;min-height:40px;font:inherit;font-size:18px;';
+    nav.append(prev, counter, next, navNote);
+    const statusLine = el(doc, 'p', '', { role: 'status' }); statusLine.style.cssText = 'margin:0;font-size:13px;';
+    const row = el(doc, 'div'); row.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
+    const roll = el(doc, 'button', '↻ 再画一张', { type: 'button', 'data-rm-builtin-action': 'reroll' });
+    const cancel = el(doc, 'button', '取消这次', { type: 'button', 'data-rm-builtin-action': 'cancel' });
+    const edit = el(doc, 'button', '改提示词再画', { type: 'button', 'data-rm-builtin-action': 'edit' });
+    for (const b of [roll, cancel, edit]) b.style.cssText = 'min-height:44px;padding:8px 14px;font:inherit;white-space:normal;';
+    roll.style.flex = '1 1 160px'; cancel.style.flex = '1 1 160px';
+    row.append(roll, cancel, edit);
+    const hint = el(doc, 'p', ''); hint.style.cssText = 'margin:0;font-size:12px;opacity:.75;';
+    const editor = el(doc, 'div'); editor.style.cssText = 'display:grid;gap:6px;';
+    const editLabel = el(doc, 'label', '这张图的提示词（这一面生成时写好的；改了只影响这次重画）'); editLabel.style.cssText = 'display:grid;gap:6px;font-size:13px;';
+    const editBox = el(doc, 'textarea', '', { rows: '4' }); editBox.style.cssText = 'width:100%;min-width:0;box-sizing:border-box;font:inherit;padding:8px;resize:vertical;';
+    const editGo = el(doc, 'button', '按改过的提示词画', { type: 'button', 'data-rm-builtin-action': 'reroll-edited' });
+    editGo.style.cssText = 'min-height:44px;padding:8px 14px;font:inherit;';
+    editLabel.append(editBox); editor.append(editLabel, editGo);
+    section.append(head, tabs, view, nav, statusLine, row, hint, editor);
+
+    const provider = () => getSettings().imageBackend === 'chatu8' ? '智绘姬' : '柏宝绘';
+    const currentFrame = () => frames[Math.min(selected, frames.length - 1)];
+    const refresh = () => { frames = listBuiltinImageFrames(root); if (!frames.length) frames = initial; };
+    // 关掉面板再打开：正在画的那张还在画，新面板接着看进度、画完也刷新。
+    const mine = { onText: text => { if (section.isConnected) statusLine.textContent = text; }, done: () => { if (section.isConnected) { refresh(); render(); } } };
+    function render() {
+        if (!section.isConnected && section.parentNode) return;
+        const item = currentFrame();
+        const job = builtinJobs.get(item.key);
+        if (job) job.listeners.add(mine);
+        const ready = builtinImageReady();
+        const firstDraw = item.busy && !job; // 这一面自己的首画还在跑
+        headNote.textContent = `内置生图 · 共 ${frames.length} 张`;
+        tabs.replaceChildren();
+        tabs.hidden = frames.length < 2;
+        frames.forEach((entry, index) => {
+            const tab = el(doc, 'button', `图 ${index + 1}`, { type: 'button', role: 'tab', 'aria-selected': String(index === selected) });
+            tab.style.cssText = `min-height:40px;padding:0 14px;border-radius:999px;font:inherit;font-size:13px;${index === selected ? 'font-weight:700;outline:2px solid currentColor;' : ''}`;
+            tab.addEventListener('click', () => { selected = index; editing = false; message = ''; render(); });
+            tabs.append(tab);
+        });
+        view.replaceChildren();
+        const shown = item.versions[item.current];
+        if (shown) {
+            const image = makeImage(doc, shown);
+            image.style.opacity = job ? '.55' : '1';
+            image.addEventListener('error', () => { image.remove(); if (!view.firstChild) view.append(el(doc, 'span', '这张图读不到了，可以再画一张。')); }, { once: true });
+            view.append(image);
+        } else view.append(el(doc, 'span', item.broken ? '这张图的存档读不出来。' : '这张图还没画。'));
+        const total = item.versions.length;
+        counter.textContent = total ? `${item.current + 1} / ${total}` : '0 / 0';
+        prev.disabled = !!job || firstDraw || item.current <= 0;
+        next.disabled = !!job || firstDraw || item.current >= total - 1;
+        nav.hidden = total < 2;
+        roll.hidden = !!job; cancel.hidden = !job;
+        roll.disabled = !ready || firstDraw || item.broken; edit.disabled = !ready || !!job || firstDraw || item.broken; editGo.disabled = !ready || !!job || firstDraw || item.broken;
+        editor.hidden = !editing;
+        if (editing && !editBox.dataset.forKey) { editBox.value = item.prompt; editBox.dataset.forKey = item.key; }
+        const reusable = builtinImageReusable(shown);
+        hint.textContent = !ready
+            ? '内置生图没有开启：在兔子镜设置里打开后才能重画；已经画好的图照样能翻看、切换。'
+            : item.broken ? '这张图的存档读不出来，重画的结果会存不进去，所以先不让画。'
+            : reusable ? `同一段提示词，换随机种子再画一次，花一次${provider()}额度，不调用语言模型。最多留 5 张。`
+            : `这张是旧版本画的，没留下当时的提示词：再画会按这一面写的画面重新准备一次提示词${imageLlmConfigured(getSettings()) ? '（会调用一次生图 LLM）' : ''}，再花一次${provider()}额度。`;
+        statusLine.textContent = job ? (job.text || `正在画第 ${Math.min(5, total + 1)} 张…`) : firstDraw ? '这一面自己的那张正在画，画完再重画。' : message;
+    }
+    async function start(edited) {
+        const item = currentFrame();
+        if (builtinJobs.has(item.key)) return;
+        const controller = new AbortController();
+        const job = { controller, text: '', listeners: new Set([mine]) };
+        builtinJobs.set(item.key, job);
+        message = ''; render();
+        try {
+            const { painted } = await rerollBuiltinImage(root, item.frame, { prompt: edited, signal: controller.signal,
+                onText: text => { job.text = text; for (const listener of job.listeners) { try { listener.onText?.(text); } catch { /* 面板已关 */ } } } });
+            message = painted ? '画好了，镜面上已经换成新画的这张。' : '画好了、已经存档；这一面刚重新加载过，刷新这一面后显示。';
+        } catch (error) {
+            message = controller.signal.aborted ? '已取消，原来的图没动。'
+                : `这次没画成，原来的图没动。${String(error?.message || '').slice(0, 120)}`;
+        } finally {
+            builtinJobs.delete(item.key);
+            refresh();
+            for (const listener of job.listeners) { try { listener.done?.(); } catch { /* 面板已关 */ } }
+        }
+    }
+    roll.addEventListener('click', () => start(''));
+    cancel.addEventListener('click', () => { const job = builtinJobs.get(currentFrame().key); if (!job) { refresh(); render(); return; } job.controller.abort(); statusLine.textContent = '已请求取消，等这次调用结束；不会自动重试。'; });
+    edit.addEventListener('click', () => { editing = !editing; editBox.dataset.forKey = ''; render(); });
+    editGo.addEventListener('click', () => { const text = editBox.value.trim(); if (text.length < 4) { statusLine.textContent = '提示词太短了。'; return; } start(text); });
+    const step = delta => {
+        const item = currentFrame();
+        const target = item.current + delta;
+        if (target < 0 || target >= item.versions.length) return;
+        try { showBuiltinImageVersion(root, item.frame, target); message = ''; }
+        catch { message = '没能切换（本机存储写不进去），镜面上的图没变。'; }
+        refresh();
+        render();
+    };
+    prev.addEventListener('click', () => step(-1));
+    next.addEventListener('click', () => step(1));
+    render();
+    return { section, cleanup: () => {} };
 }
