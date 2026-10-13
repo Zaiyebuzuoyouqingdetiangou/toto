@@ -1,8 +1,8 @@
 // 智绘姬（st-chatu8）生图渠道：通过酒馆事件把提示词交给智绘姬，按请求编号接回图片。
 // 直接沿用智绘姬里已经配好的模型、接口和出图设置；不改它的全局设置，不加数量限制，不截短提示词，
 // 结果不明时不自动重发。只取消兔子镜自己的等待，不影响智绘姬里的其他任务。
-import { getContext } from './independentApi/runtime.js?rmv=1.68.28';
-import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.68.28';
+import { getContext } from './independentApi/runtime.js?rmv=1.68.29';
+import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.68.29';
 
 const SUPPORTED_MODES = new Set(['sd', 'novelai', 'comfyui', 'banana', 'runninghub']);
 
@@ -77,13 +77,39 @@ async function blobUrlToDataUrl(url) {
     });
 }
 
-async function persistImage(image) {
+// 生图服务给的是别处的网址（常见于它们自己服务器上的临时链接，过一阵就失效）时，图不在酒馆里，
+// 以前原样存网址，链接一过期图就「自己」没了。现在先把图下载下来存进酒馆；下载不了（跨域不让读）才只能存网址。
+function isForeignImageUrl(image) {
+    try {
+        const url = new URL(image, document.baseURI);
+        if (!['http:', 'https:'].includes(url.protocol)) return false;
+        const here = new URL(document.baseURI);
+        return url.origin !== here.origin;
+    } catch { return false; }
+}
+export async function persistImage(image, { label = '智绘姬' } = {}) {
     // blob: 地址只在本次页面里有效，先转成图片数据再保存。
     if (/^blob:/i.test(image)) {
-        try { image = await blobUrlToDataUrl(image); } catch (error) { console.warn('[RabbitMirror] 智绘姬返回的临时图片读不出来', error); }
+        try { image = await blobUrlToDataUrl(image); } catch (error) {
+            console.warn(`[RabbitMirror] ${label}返回的临时图片读不出来`, error);
+            return { path: null, dataUrl: '', saveFailed: true };
+        }
+    }
+    let foreignUrl = '';
+    if (isForeignImageUrl(image)) {
+        foreignUrl = image;
+        try { image = await blobUrlToDataUrl(image); } catch (error) {
+            console.warn(`[RabbitMirror] ${label}返回的是别处的图片网址，下载不下来，只能存网址（链接失效后图会读不到）`, error);
+            try { globalThis.toastr?.warning?.(`${label}给的是别处的图片链接，没能存进酒馆；链接失效后这张图会读不到。`, '兔子镜'); } catch { /* ignore */ }
+            return { path: image, dataUrl: '', remote: true };
+        }
     }
     const match = /^data:image\/([a-z0-9.+-]+);base64,(.+)$/i.exec(image);
-    if (!match) return { path: image, dataUrl: '' };
+    if (!match) {
+        // 同站的地址：去掉主机部分只存路径，换了访问地址（局域网／外网／手机）也照样读得到。
+        try { const url = new URL(image, document.baseURI); if (['http:', 'https:'].includes(url.protocol)) return { path: `${url.pathname}${url.search}`, dataUrl: '' }; } catch { /* 不是网址 */ }
+        return { path: image, dataUrl: '' };
+    }
     const format = match[1].toLowerCase() === 'jpeg' ? 'jpg' : match[1].toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
     const ctx = getContext();
     const headers = typeof ctx?.getRequestHeaders === 'function' ? ctx.getRequestHeaders() : { 'Content-Type': 'application/json' };
@@ -99,9 +125,10 @@ async function persistImage(image) {
         return { path: String(result.path), dataUrl: '' };
     } catch (error) {
         // 生成成功但保存失败：保留这次的图片数据用于显示，并明确告诉用户，避免误以为没生成而重复出图。
-        try { globalThis.toastr?.warning?.('智绘姬已经画好，但图片保存失败；这张图刷新后可能不在。', '兔子镜'); } catch { /* ignore */ }
-        console.warn('[RabbitMirror] 智绘姬图片保存失败', error);
-        return { path: null, dataUrl: image, saveFailed: true };
+        try { globalThis.toastr?.warning?.(`${label}已经画好，但图片保存失败；这张图刷新后可能不在。`, '兔子镜'); } catch { /* ignore */ }
+        console.warn(`[RabbitMirror] ${label}图片保存失败`, error);
+        // 下载到了别处的图却存不进酒馆：先留网址能看，图片数据也留着当备份。
+        return { path: foreignUrl || null, dataUrl: image, saveFailed: true };
     }
 }
 

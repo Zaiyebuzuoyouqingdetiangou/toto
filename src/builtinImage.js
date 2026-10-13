@@ -1,10 +1,10 @@
-import { getSettings } from './settings.js?rmv=1.68.28';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.68.28';
-import { findBuiltinImageKeyFromOtherChat, loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.68.28';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.68.28';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.68.28';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.68.28';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.68.28';
+import { getSettings } from './settings.js?rmv=1.68.29';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.68.29';
+import { findBuiltinImageKeyFromOtherChat, loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.68.29';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.68.29';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.68.29';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.68.29';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.68.29';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -163,20 +163,30 @@ function fitFrameImage(image, record) {
 // 存档里的图片文件在酒馆服务器上已经没有了（换了设备、图片目录被清理）：以前坏图标一直挂着。
 // 现在先换历史版本里还能读的那张；都读不到就说明情况，留「重新生图」，再画要花一次额度。
 const unreadable = new Set();
+// 以前存档里存过带主机的完整网址（比如在家用局域网地址画的）：换个地址打开酒馆（手机、外网）时主机对不上，
+// 但文件还在这台酒馆上，所以同一路径再按当前地址试一次。
+function sameHostAlternative(url) {
+    try {
+        const parsed = new URL(url), here = new URL(document.baseURI);
+        if (!['http:', 'https:'].includes(parsed.protocol) || parsed.origin === here.origin || !/^\/user\//.test(parsed.pathname)) return '';
+        return `${here.origin}${parsed.pathname}${parsed.search}`;
+    } catch { return ''; }
+}
 function paintCandidates(record) {
     const list = [record, ...(Array.isArray(record?.history) ? [...record.history].reverse() : [])];
     const seen = new Set();
-    return list.flatMap(entry => [entry?.url || entry?.path, entry?.dataUrl]).map(safeImageUrl).filter(url => url && !seen.has(url) && seen.add(url));
+    return list.flatMap(entry => [entry?.url || entry?.path, entry?.dataUrl]).map(safeImageUrl).flatMap(url => [sameHostAlternative(url), url]) // 先试当前地址：别的主机常常要等很久才报错.filter(url => url && !seen.has(url) && seen.add(url));
 }
 function watchImageLoad(frame, image, record, root, key) {
     const candidates = paintCandidates(record);
-    let index = Math.max(0, candidates.indexOf(image.src));
+    let index = 0;
+    image.src = candidates[0];
     image.onerror = () => {
         index += 1;
         if (index < candidates.length) { image.src = candidates[index]; return; }
         image.remove();
         if (key) unreadable.add(key);
-        note(frame, '这一面画好的图读不到了（图片文件不在这台酒馆上，可能换了设备或图片目录被清理）。点「重新生图」会再画一次，要花一次额度。', root);
+        note(frame, '这一面画好的图读不到了：生图服务给的是临时链接、已经失效，或者图片文件不在这台酒馆上。点「重新生图」会再画一次，要花一次额度；新画的图会存进酒馆，以后不会再丢。', root);
     };
 }
 
@@ -198,7 +208,6 @@ function paint(frame, record, root = null, key = '') {
     }
     fitFrameImage(image, record);
     watchImageLoad(frame, image, record, root, key);
-    image.src = url;
     return true;
 }
 

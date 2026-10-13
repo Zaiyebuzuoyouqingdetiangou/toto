@@ -1,8 +1,8 @@
-import { chatu8Status, generateViaChatu8 } from './chatu8Image.js?rmv=1.68.28';
-import { getSettings } from './settings.js?rmv=1.68.28';
-import { getContext } from './independentApi/runtime.js?rmv=1.68.28';
-import { getChatu8ImageCharacters } from './imageCharacterPresets.js?rmv=1.68.28';
-import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.68.28';
+import { chatu8Status, generateViaChatu8, persistImage } from './chatu8Image.js?rmv=1.68.29';
+import { getSettings } from './settings.js?rmv=1.68.29';
+import { getContext } from './independentApi/runtime.js?rmv=1.68.29';
+import { getChatu8ImageCharacters } from './imageCharacterPresets.js?rmv=1.68.29';
+import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.68.29';
 function failure(code, message) { return Object.assign(new Error(message), { code }); }
 
 function imageApi() {
@@ -67,9 +67,17 @@ export async function generateMirrorImage(plan, { signal, onProgress, character,
     if (typeof assertCurrent !== 'function' || assertCurrent() === false) throw failure('stale_owner', '聊天或镜面已经变化，未发送生图请求。');
     // Exactly one public call. Provider-internal queue and retries remain its responsibility.
     const result = await api.generate(request, { signal, onProgress });
-    const path = typeof result?.path === 'string' && result.path ? result.path : null;
-    const dataUrl = typeof result?.dataUrl === 'string' ? result.dataUrl : '';
+    let path = typeof result?.path === 'string' && result.path ? result.path : null;
+    let dataUrl = typeof result?.dataUrl === 'string' ? result.dataUrl : '';
     if (!path && !dataUrl) throw failure('invalid_result', '柏宝绘没有返回图片；不会自动再次请求。');
+    // 返回的是别处的网址（临时链接）或 blob: 时，先存进酒馆，免得链接失效图就没了。
+    if (path && /^(?:blob:|https?:)/i.test(path)) {
+        const stored = await persistImage(path, { label: '柏宝绘' });
+        if (stored.path) path = stored.path;
+        if (stored.dataUrl) dataUrl = stored.dataUrl;
+        if (!stored.path && !stored.dataUrl && !dataUrl) throw failure('invalid_result', '柏宝绘返回的图片读不出来；不会自动再次请求。');
+        if (!stored.path && !stored.dataUrl) path = null;
+    }
     return {
         url: path || dataUrl, path, dataUrl, prompt: request.prompt, provider: 'baibai-image',
         generatedAt: new Date().toISOString(),
