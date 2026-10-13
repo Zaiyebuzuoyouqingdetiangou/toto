@@ -6,7 +6,7 @@ import {
     escapeRegExp,
     getRabbitMirrorLocalStyleElements,
     hashInteractionSignature,
-} from './runtime.js?rmv=1.68.23';
+} from './runtime.js?rmv=1.68.24';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     DIRECT_ID_CLASS_STATE_RESCUE_ATTR,
@@ -22,26 +22,26 @@ import {
     repairMalformedNestedInteractiveLabels,
     repairRabbitMirrorSelectorPanelGridSpan,
     restoreInteractionInlineOverrides,
-} from './checkedStateRescue.js?rmv=1.68.23';
+} from './checkedStateRescue.js?rmv=1.68.24';
 import {
     RAW_SELF_MUTATION_RESCUE_ATTR,
     chooseMatchingRawRabbitMirrorRoot,
     getRawAssistantMessageForRenderedRoot,
-} from './scriptedInteractionRescue.js?rmv=1.68.23';
+} from './scriptedInteractionRescue.js?rmv=1.68.24';
 import {
     applyCheckedVisualFallback,
     inputHasMeaningfulCheckedSiblingRule,
     installIntelligentInteractionRescue,
-} from './fallbackRescue.js?rmv=1.68.23';
-import { INERT_ACTION_BUTTON_RESCUE_ATTR, INERT_ACTION_STATUS_ATTR } from './diagnostics.js?rmv=1.68.23';
-import { rehydrateRabbitMirrorMaintenanceRepairs } from './choiceRescue.js?rmv=1.68.23';
-import { maintenanceRepairRootBudget } from './maintenanceInspect.js?rmv=1.68.23';
-import { recoverBehaviorInteractions } from './behaviorRecovery.js?rmv=1.68.23';
-import { installDisabledRangeProgressRescue, installOrphanRangeLayerRescue, installRangeStageRescue, installRangeValueAttributeMirror } from './rangeStageRescue.js?rmv=1.68.23';
-import { installMobileInteractionControls } from './mobileInteractionControls.js?rmv=1.68.23';
-import { installNextStepHighlightRescue } from './nextStepHighlightRescue.js?rmv=1.68.23';
-import { installNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.68.23';
-import { installBehaviorInteractions } from './behaviorInteractions.js?rmv=1.68.23';
+} from './fallbackRescue.js?rmv=1.68.24';
+import { INERT_ACTION_BUTTON_RESCUE_ATTR, INERT_ACTION_STATUS_ATTR } from './diagnostics.js?rmv=1.68.24';
+import { rehydrateRabbitMirrorMaintenanceRepairs } from './choiceRescue.js?rmv=1.68.24';
+import { maintenanceRepairRootBudget } from './maintenanceInspect.js?rmv=1.68.24';
+import { recoverBehaviorInteractions } from './behaviorRecovery.js?rmv=1.68.24';
+import { installDisabledRangeProgressRescue, installOrphanRangeLayerRescue, installRangeStageRescue, installRangeValueAttributeMirror } from './rangeStageRescue.js?rmv=1.68.24';
+import { installMobileInteractionControls } from './mobileInteractionControls.js?rmv=1.68.24';
+import { installNextStepHighlightRescue } from './nextStepHighlightRescue.js?rmv=1.68.24';
+import { installNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.68.24';
+import { installBehaviorInteractions } from './behaviorInteractions.js?rmv=1.68.24';
 
 let interactionScopeCounter = 0;
 
