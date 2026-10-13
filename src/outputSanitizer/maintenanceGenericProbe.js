@@ -2,11 +2,11 @@
 // （点 label／按钮、拖滑杆、开合内层 details），比较操作前后的画面快照；没有任何变化的就是“点了没反应”。
 // 副本里会重新接上和真实页面一样的修复，所以修好的控件在副本里也能动。
 // 真实页面上的控件一个不碰；结果只写回一个属性，供维修兔的结论和诊断引用。
-import { createMaintenanceLabeledCheckedProbeSandbox, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.68.18';
-import { rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.68.18';
-import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.68.18';
-import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=1.68.18';
-import { remoteMotionGroup, remoteToggleGroup } from './behaviorDialect.js?rmv=1.68.18';
+import { createMaintenanceLabeledCheckedProbeSandbox, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.68.19';
+import { rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.68.19';
+import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.68.19';
+import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=1.68.19';
+import { remoteMotionGroup, remoteToggleGroup } from './behaviorDialect.js?rmv=1.68.19';
 
 export const GENERIC_PROBE_RESULT_ATTR = 'data-rabbit-mirror-generic-probe';
 const TOOL_SELECTOR = '[data-rabbit-mirror-tool-entry-host],[data-rabbit-mirror-diagnostic-panel],.rabbit-mirror-maintenance-menu,[data-rm-face-swipe-host],[data-rm-image-region],[data-rm-mobile-controls],[data-rabbit-mirror-maintenance-rabbit],[data-rabbit-mirror-feedback-cat]';
@@ -58,9 +58,9 @@ function snapshot(details, ignore = null) {
 // ——— 插件区域的「内容」快照：只看区域里的内容，不看按钮本身 ———
 // 旋钮转了、按钮变色了，可道具卡一张都没出来——整面快照会说「有变化」，其实内容没变。
 // 对插件区域再量一次：去掉所有控件（按钮、滑杆、label 这些和它们里面的东西）之后剩下的部分有没有变。
-const PROBE_CONTROL = 'button, [role="button"], input, select, textarea, label, summary, [data-rm-knob], [data-rm-hold], [data-rm-toggle], [data-rm-pick], [data-rm-fire], [data-rm-play], [data-rm-reverse], [data-rm-step], [data-rm-roll], [data-rm-end], [data-rm-code], [data-rm-goto], [data-rm-prev], [data-rm-next]';
+const PROBE_CONTROL = 'button, [role="button"], input, select, textarea, label, summary, [data-rm-knob], [data-rm-hold], [data-rm-toggle], [data-rm-pick], [data-rm-fire], [data-rm-play], [data-rm-reverse], [data-rm-step], [data-rm-roll], [data-rm-end], [data-rm-code], [data-rm-goto], [data-rm-prev], [data-rm-next], [data-rm-left], [data-rm-right], [data-rm-tap], [data-rm-charge], [data-rm-qte], [data-rm-peek], [data-rm-spoiler]';
 // 区域里驱动「能改」的内容：有这些才有资格说「内容没变化」；一个都没有的区域（只有按钮）不下这个结论。
-const PROBE_CONTENT = '[data-rm-show], [data-rm-result], [data-rm-part], [data-rm-page], [data-rm-cover], [data-rm-item], [data-rm-canvas], [data-rm-surface], output';
+const PROBE_CONTENT = '[data-rm-show], [data-rm-result], [data-rm-part], [data-rm-page], [data-rm-cover], [data-rm-item], [data-rm-canvas], [data-rm-surface], [data-rm-card], [data-rm-at], [data-rm-clock], output';
 function probeGroupOf(details, element) {
     const group = element.closest?.('[data-rm-ui]');
     if (group) return group.getAttribute('data-rm-ui') === 'scroll' ? null : group;

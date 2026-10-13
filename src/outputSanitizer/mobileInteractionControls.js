@@ -2,6 +2,8 @@
 // no document listeners or polling.
 const bindings = new WeakMap();
 const controlOwners = new WeakMap();
+// 手指会横着动的插件类型：面里出现任何一个，整面的触摸事件都不再冒泡给酒馆。
+const GESTURE_TYPES = new Set(['pager', 'swipe', 'slide', 'drag', 'reorder', 'turn', 'draw', 'follow', 'reveal']);
 const GROUP = '[data-rm-ui]';
 const BAR = 'data-rm-mobile-controls';
 const ACTION = 'data-rm-mobile-action';
@@ -174,7 +176,7 @@ function horizontalCandidate(node) {
     try { computed = view?.getComputedStyle?.(node); } catch { /* A detached host may have no computed style. */ }
     const inline = node.style.getPropertyValue('overflow-x') || node.style.getPropertyValue('overflow').split(/\s+/)[0];
     const overflow = computed?.overflowX || inline;
-    return /^(auto|scroll)$/.test(overflow) || node.getAttribute('data-rm-ui') === 'scroll';
+    return /^(auto|scroll)$/.test(overflow) || node.getAttribute('data-rm-ui') === 'scroll' || node.getAttribute('data-rm-ui') === 'slide';
 }
 
 // An authored snap gallery can contain an apparent pager made only of empty
@@ -405,7 +407,12 @@ export function installMobileInteractionControls(root) {
             if (!entry || !root.contains(entry.target) || button.disabled || !entry.action) return;
             event.preventDefault(); entry.action(); sync(binding);
         });
+        // 这一面里有要横向动手指的插件区域时整面拦截：模型把手势写在没登记的地方也不会漏给酒馆。
+        // 代价是这种面上不能在镜面上左右滑切换回复；镜面上方的正文和下面的切换按钮照常。
         const isolateGesture = event => {
+            if (binding.isolateAll && event.target !== root && root.contains(event.target) && !event.target.closest?.('[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-diagnostic-panel]')) {
+                event.stopPropagation(); return;
+            }
             for (let node = event.target; node && node !== root; node = node.parentElement) if (binding.surfaces.has(node)) {
                 event.stopPropagation(); return;
             }
@@ -438,8 +445,9 @@ export function installMobileInteractionControls(root) {
         for (const surface of own(group, '[data-rm-surface], [data-rm-hold], svg[data-rm-canvas], [data-rm-knob]')) binding.surfaces.add(surface);
         // 翻页区横划翻页、整块当刮擦面的揭示区：手势不能再冒泡给酒馆，否则酒馆会同时把这条回复左右滑切换（最后一条还会重新生成）。
         const type = String(group.getAttribute('data-rm-ui') || '').trim().toLowerCase();
-        if (type === 'pager') binding.surfaces.add(group);
+        if (type === 'pager' || type === 'swipe' || type === 'slide') binding.surfaces.add(group);
         if (type === 'reveal' && !own(group, '[data-rm-surface]').length && !group.querySelector('input[type="range"]')) binding.surfaces.add(group);
+        if (GESTURE_TYPES.has(type)) binding.isolateAll = true;
     }
     sync(binding);
     return added;

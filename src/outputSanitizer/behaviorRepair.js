@@ -10,7 +10,7 @@ const RECOVERED = 'data-rm-behavior-recovered';
 const UI = '[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-diagnostic-panel], [data-rm-mobile-controls], [data-rm-released]';
 
 export const BEHAVIOR_DRIVER_TYPES = Object.freeze(['effect', 'drag', 'adjust', 'reveal', 'view', 'input', 'draw', 'motion', 'hold', 'follow', 'reorder', 'accumulate',
-    'toggle', 'pick', 'pager', 'roll', 'connect', 'turn', 'sequence']);
+    'toggle', 'pick', 'pager', 'roll', 'connect', 'turn', 'sequence', 'slide', 'timer', 'swipe', 'rhythm', 'peek', 'spoiler', 'sense']);
 const KNOWN = new Set([...BEHAVIOR_DRIVER_TYPES, 'scroll']);
 
 const SYNONYMS = Object.freeze({
@@ -23,11 +23,18 @@ const SYNONYMS = Object.freeze({
     combo: 'sequence', lock: 'sequence', code: 'sequence', password: 'sequence', order: 'sequence', 密码: 'sequence', 顺序: 'sequence',
     slider: 'adjust', range: 'adjust', scratch: 'reveal', press: 'hold', 'long-press': 'hold', longpress: 'hold', counter: 'accumulate', collect: 'accumulate',
     sort: 'reorder', 'drag-drop': 'drag', dnd: 'drag', paint: 'draw', sketch: 'draw', spotlight: 'follow', flashlight: 'follow', zoom: 'view', animate: 'effect', trigger: 'effect',
+    swiper: 'slide', scroller: 'slide', marquee: 'slide', 横滑: 'slide', 滚动: 'slide',
+    countdown: 'timer', clock: 'timer', wait: 'timer', delay: 'timer', 倒计时: 'timer', 计时: 'timer',
+    tinder: 'swipe', fling: 'swipe', cards: 'swipe', 甩卡: 'swipe', 滑动: 'swipe',
+    qte: 'rhythm', combo: 'rhythm', charge: 'rhythm', mash: 'rhythm', 连击: 'rhythm', 蓄力: 'rhythm',
+    hover: 'peek', tooltip: 'peek', tip: 'peek', 悬停: 'peek', 窥视: 'peek',
+    blackout: 'spoiler', redact: 'spoiler', censor: 'spoiler', 剧透: 'spoiler', 涂黑: 'spoiler',
+    env: 'sense', media: 'sense', environment: 'sense', 环境: 'sense',
 });
 
 // 模型常漏掉 rm 前缀的部件名。只在声明了驱动的容器里补，原属性保留。
 const ALIASES = ['item', 'slot', 'reset', 'fire', 'part', 'step', 'hold', 'surface', 'cover', 'canvas', 'play', 'reverse', 'prev', 'next', 'answer',
-    'toggle', 'pick', 'picked', 'page', 'goto', 'roll', 'end', 'knob', 'stops', 'code', 'show', 'loop'];
+    'toggle', 'pick', 'picked', 'page', 'goto', 'roll', 'end', 'knob', 'stops', 'code', 'show', 'loop', 'card', 'left', 'right', 'tap', 'charge', 'qte', 'peek', 'spoiler', 'at', 'clock', 'duration', 'memory', 'recall'];
 
 const own = (group, selector) => [...group.querySelectorAll(selector)].filter(node => node.closest(GROUP) === group);
 
@@ -54,12 +61,18 @@ export function behaviorTypeFits(group, type) {
         case 'connect': return count(group, '[data-rm-end]') > 1;
         case 'turn': return count(group, '[data-rm-knob]') > 0;
         case 'sequence': return count(group, '[data-rm-code]') > 0;
+        case 'slide': return count(group, '[data-rm-item]') > 1;
+        case 'timer': case 'sense': return true;
+        case 'swipe': return count(group, '[data-rm-card]') > 0;
+        case 'rhythm': return count(group, '[data-rm-tap], [data-rm-charge], [data-rm-qte]') > 0;
+        case 'peek': return count(group, '[data-rm-peek]') > 0;
+        case 'spoiler': return count(group, '[data-rm-spoiler]') > 0;
         default: return false;
     }
 }
 
 // 按部件认类型：越专门的部件越先认。
-const INFER_ORDER = ['turn', 'connect', 'roll', 'sequence', 'pager', 'pick', 'toggle', 'hold', 'accumulate', 'draw', 'reveal', 'follow'];
+const INFER_ORDER = ['turn', 'connect', 'roll', 'sequence', 'swipe', 'rhythm', 'peek', 'spoiler', 'pager', 'pick', 'toggle', 'hold', 'accumulate', 'draw', 'reveal', 'follow'];
 export function inferBehaviorType(group) {
     for (const type of INFER_ORDER) if (behaviorTypeFits(group, type)) return type;
     if (count(group, '[data-rm-part]') && count(group, '[data-rm-fire]')) return 'effect';

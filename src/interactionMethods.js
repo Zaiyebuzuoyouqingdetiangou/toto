@@ -24,6 +24,14 @@ export const DRIVER_METHODS = Object.freeze({
     follow: { names: ['跟随反馈'], how: 'data-rm-ui="follow" 内 data-rm-surface 为触摸区，CSS 用 --rm-x/--rm-y 定位光斑或线端' },
     reorder: { names: ['动态重排'], how: 'data-rm-ui="reorder"，同父层各项 data-rm-item，项内 button data-rm-prev/data-rm-next，data-rm-reset 复原' },
     accumulate: { names: ['累积改变'], how: 'data-rm-ui="accumulate" 内每项 button data-rm-step 切换 [data-rm-done="true"]，--rm-count 计数，data-rm-reset 撤回' },
+    slide: { names: ['横滑浏览', '滚动推进'], how: 'data-rm-ui="slide" 容器里放一排 data-rm-item="键"（包在一个 data-rm-track 里横向滚动；纵向写 data-rm-axis="y"），说明文字放排外面；滑到哪张容器带 [data-rm-index="序号"]，看过的带 [data-rm-seen]，全看过容器带 [data-rm-done]；data-rm-prev／data-rm-next 可选' },
+    timer: { names: ['倒计时', '延时显现', '等待'], how: 'data-rm-ui="timer" data-rm-duration="秒数" 一出现就开始走，--rm-p(0～1)、--rm-seconds 剩余秒，到点容器带 [data-rm-done]；里面写 data-rm-at="秒" 的元素到时带 [data-rm-done]，data-rm-clock 元素显示剩余时间，button data-rm-play 暂停继续，写 data-rm-manual 则按了才开始' },
+    swipe: { names: ['左右一甩', '划走抉择'], how: 'data-rm-ui="swipe" 内叠放几张 data-rm-card="键"（CSS 绝对定位叠起来），最上面那张左划或右划甩出去并带 [data-rm-swiped="left|right"]，容器记 data-rm-swiped-left／data-rm-swiped-right="键…"，全甩完带 [data-rm-done]；button data-rm-left／data-rm-right 代替手势；data-rm-show="键:left"／"键:right" 显示对应结果' },
+    rhythm: { names: ['按住充能', '连点冲刺', '限时反应'], how: 'data-rm-ui="rhythm" 三选一：button data-rm-charge 按住充能（data-rm-duration="秒" 充满，--rm-p 进度，充满带 [data-rm-done]）；button data-rm-tap 连点（data-rm-count="次数" data-rm-window="秒" 窗口内点够带 [data-rm-done]，--rm-count 当前次数）；button data-rm-qte 限时反应（--rm-qte 在 0～1 来回摆，按在 data-rm-zone="0.4-0.6" 区间带 [data-rm-match]，否则短暂 [data-rm-miss]）' },
+    peek: { names: ['悬停窥视', '凑近细看'], how: 'data-rm-ui="peek" 内 data-rm-peek="键" 的元素，鼠标悬停时显示、手机点按钉住，对应内容 data-rm-show="键"，容器带 [data-rm-peeking="键"]' },
+    spoiler: { names: ['剧透遮蔽', '涂黑揭字'], how: 'data-rm-ui="spoiler" 内 span data-rm-spoiler 默认涂成同色黑条，点一下显出来并带 [data-rm-revealed="true"]，全部揭开容器带 [data-rm-done]；data-rm-spoiler="键" 可配 data-rm-show="键"' },
+    sense: { names: ['环境感应', '横屏彩蛋'], how: 'data-rm-ui="sense" 容器自动带 [data-rm-orientation="landscape|portrait"] [data-rm-scheme="dark|light"] [data-rm-width="narrow|wide"] [data-rm-pointer="touch|mouse"]，CSS 据此变，或 data-rm-show="landscape"／"dark" 等只在那种环境显示' },
+    carry: { names: ['跨面继承', '记住选择'], how: '任一开关／选择／翻页／横滑／累积容器加 data-rm-memory="名"，这个聊天里它的状态会记下来，后面的面同名容器打开时恢复（甩卡、遮蔽的容器只记结果、不恢复画面）；别的容器写 data-rm-recall="名" 后，可用 data-rm-show="那边的键" 或 "remembered" 显示另一面记下的结果' },
 });
 
 // 真实用法 → 插件写法：按用法里的动作认它最贴近的那类写法。先认越专门的动作，一条用法只配一种写法。
@@ -32,6 +40,14 @@ const USAGE_DRIVER_RULES = Object.freeze([
     ['roll', /抽(?!出|屉|走)|掷|摇签|求签|洗牌|切牌|扭蛋|盲盒|十连|骰|投掷硬币|转盘|占卜|卦|随机/],
     ['connect', /连线|连起|连成|红线|配对|配成|牵线|穿针|串起|对照(?!.*(范围|金额|日期))|比对/],
     ['sequence', /密码|拨号|开锁|解锁屏幕|按顺序按|按\s?[A-Z]\s?键|按方向键|按重拨|按回车|口令|暗号|念咒|按下机关/],
+    ['swipe', /左[划滑](不要|淘汰|拒绝|丢|跳过)|右[划滑](喜欢|收下|通过|留)|划走|甩(出|走|掉|开)|扔掉|丢掉|划到一边|滑走|甩卡|左右一甩/],
+    ['rhythm', /连点|连按|快速点|狂点|蓄力|充能|按住.*秒|按准|时机|节拍|按下的瞬间|QTE|接住|按停/i],
+    ['timer', /倒计时|等.*秒|过一会|慢慢显|等它.*(来|亮|开)|沙漏|计时|到点|等待|等天亮|等潮水|定时/],
+    ['peek', /悬停|移上去|鼠标停|瞄一眼|窥|停在上面|hover/i],
+    ['spoiler', /剧透|涂黑|黑条|遮住的字|划选|选中文字|揭字|遮蔽|马赛克/],
+    ['sense', /横屏|竖屏|转过手机|转个方向|深色模式下|夜间模式下|浅色模式下|跟着系统|放大窗口|窄屏|宽屏/],
+    ['carry', /记住(我|这个|上次)|沿用上次|继承|上一面|带到下一面|存下来|下一面|延续到|记在心里/],
+    ['slide', /横滑|横向滑|左右滑|滑动浏览|滚动|划到下一|往下滑|往下滚|滚到|一屏一屏|轮播/],
     ['turn', /旋钮|拧(?!干)|拨动|转动|扭(?!蛋)|调到|表冠|调频|上弦|上发条|调焦|调时间|对时|星盘|转经/],
     ['adjust', /推动(时间|季节)|昼夜|推移|调(温度|音量|亮|字号|整颜色|整数量|零|高|弹幕)|调整(字号|光线)|改变光线|让它长大|拉近|晃杯|拖动(推进|.*刻度|让|色带|倾斜|字号|看|加速|秒针|时间轴|选|织|滚动|翻转)/],
     ['hold', /长按|按住|捂住|遮住|屏住|对着光|透光|凑近|透视|探头/],
@@ -100,7 +116,7 @@ export function normalizeDriverOffer(value) {
 
 // 这几种驱动都靠滑杆或拖动来操作。一次最多给一种，免得写法清单里一半都是滑杆；
 // 近期滑杆、拖动用得多时一种也不给。
-const SLIDE_DRIVERS = new Set(['adjust', 'drag', 'reveal', 'view', 'motion', 'turn']);
+const SLIDE_DRIVERS = new Set(['adjust', 'drag', 'reveal', 'view', 'motion', 'turn', 'swipe', 'slide']);
 // 近期翻面、展开、切页用得多时，这几种（翻面、多选一、翻页）先不提供。
 const FLIP_DRIVERS = new Set(['toggle', 'pick', 'pager']);
 // 近期一排按钮切换内容（标签页、分页按钮）用得多时，多选一和翻页这两种先不提供。
@@ -110,6 +126,14 @@ const TAB_DRIVERS = new Set(['pick', 'pager']);
 // 一类最多出一种；随机补位按大类抽（每类机会相同），抽中了再从类里挑一种写法。
 export const DRIVER_FAMILIES = Object.freeze({
     drag: { label: '拖动', drivers: ['adjust', 'reveal', 'motion', 'turn', 'drag', 'view', 'follow', 'draw', 'reorder'] },
+    scroll: { label: '滚动', drivers: ['slide'] },
+    time: { label: '时间', drivers: ['timer'] },
+    swipe: { label: '滑动手势', drivers: ['swipe'] },
+    rhythm: { label: '节奏连击', drivers: ['rhythm'] },
+    peek: { label: '悬停窥视', drivers: ['peek'] },
+    spoiler: { label: '文字遮蔽', drivers: ['spoiler'] },
+    sense: { label: '环境感应', drivers: ['sense'] },
+    carry: { label: '跨面继承', drivers: ['carry'] },
     page: { label: '翻页', drivers: ['pager'] },
     choose: { label: '选择切换', drivers: ['pick'] },
     fold: { label: '折叠开合', drivers: ['toggle'] },
@@ -163,7 +187,7 @@ export function interactionMethodNames(offer) {
     return shuffled([...new Set([...CSS_METHODS, ...keys.flatMap(key => DRIVER_METHODS[key].names)])]);
 }
 
-const SHOW_DRIVERS = new Set(['toggle', 'pick', 'roll', 'hold', 'pager', 'connect', 'turn', 'sequence']);
+const SHOW_DRIVERS = new Set(['toggle', 'pick', 'roll', 'hold', 'pager', 'connect', 'turn', 'sequence', 'slide', 'timer', 'swipe', 'peek', 'spoiler', 'sense', 'carry']);
 
 // usages 给出时，配上了用法的写法注明“用于「某用法」”，模型写到这个用法就照这个写法写。
 export function driverContractLines(offer, usages = []) {

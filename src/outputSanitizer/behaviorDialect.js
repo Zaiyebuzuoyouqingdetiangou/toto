@@ -1,5 +1,5 @@
-import { behaviorShowTokens, ownBehaviorShows } from './behaviorResults.js?rmv=1.68.18';
-import { behaviorStyleText } from './behaviorStateMirror.js?rmv=1.68.18';
+import { behaviorShowTokens, ownBehaviorShows } from './behaviorResults.js?rmv=1.68.19';
+import { behaviorStyleText } from './behaviorStateMirror.js?rmv=1.68.19';
 
 // 插件写法「方言表」：模型写的插件交互，意思对、写法和标准不一样的那些情况，集中在这里认。
 // 每一条只做三件事：怎么认出来、按什么标准写法去理解、诊断里怎么说。不新增内容、不猜目标。
@@ -193,9 +193,10 @@ export function authorManagedShows(root, group) {
 // ——— 诊断：哪些写法对不上（静态检查，不点真实控件）———
 
 const COMMON_KEYS = ['changed', 'active', 'match', 'done', 'miss', 'placed'];
-const CONTROL_ATTRS = ['reset', 'fire', 'play', 'reverse', 'prev', 'next', 'step', 'place', 'return', 'move', 'toggle', 'pick', 'goto', 'roll', 'end', 'code', 'knob'];
+const CONTROL_ATTRS = ['reset', 'fire', 'play', 'reverse', 'prev', 'next', 'step', 'place', 'return', 'move', 'toggle', 'pick', 'goto', 'roll', 'end', 'code', 'knob', 'left', 'right', 'tap', 'charge', 'qte', 'peek', 'spoiler'];
 const KNOWN_PART_ATTRS = new Set([...CONTROL_ATTRS, 'ui', 'part', 'show', 'item', 'slot', 'page', 'cover', 'canvas', 'surface', 'hold', 'result', 'when',
-    'answer', 'stops', 'index', 'on', 'picked', 'active', 'done', 'match', 'miss', 'feedback', 'seq', 'armed', 'face', 'key', 'value', 'target']);
+    'answer', 'stops', 'index', 'on', 'picked', 'active', 'done', 'match', 'miss', 'feedback', 'seq', 'armed', 'face', 'key', 'value', 'target',
+    'card', 'at', 'clock', 'duration', 'memory', 'recall', 'axis', 'manual', 'window', 'count', 'zone', 'period', 'keep', 'sticky', 'swiped', 'swiped-left', 'swiped-right', 'seen', 'revealed', 'seconds']);
 const RUNTIME_ATTR = /^data-rm-(?:[a-z-]*-(?:wired|active|done|verified|patched|rescued)$|orphan|mobile|result|draw|title|body|behavior|labeled|reveal|vs|angle|knob-base|released|image|avatar|face-|stage|hydrated|pseudo|touch|external|reversible|click|checked|exclusive)/;
 
 const values = (group, attr) => own(group, `[${attr}]`).map(node => String(node.getAttribute(attr) || '').trim()).filter(Boolean);
@@ -204,6 +205,7 @@ const values = (group, attr) => own(group, `[${attr}]`).map(node => String(node.
 export function reachableBehaviorKeys(group) {
     const type = group?.getAttribute?.('data-rm-ui');
     const keys = new Set(COMMON_KEYS);
+    if (group?.hasAttribute?.('data-rm-recall')) return null; // 另一面记下的键也算，静态看不出有哪些
     switch (type) {
         case 'roll': return null; // 掷骰子从显示内容里挑键，所有键都可能出现
         case 'toggle': {
@@ -233,6 +235,17 @@ export function reachableBehaviorKeys(group) {
             break;
         }
         case 'reveal': ['reveal', 'revealed', 'full', 'open'].forEach(key => keys.add(key)); break;
+        case 'slide': {
+            const items = own(group, '[data-rm-item]');
+            items.forEach((item, index) => { keys.add(String(index + 1)); const name = String(item.getAttribute('data-rm-item') || '').trim(); if (name) { keys.add(name); keys.add(`${name}:seen`); } });
+            break;
+        }
+        case 'timer': own(group, '[data-rm-at][data-rm-show]').forEach(node => behaviorShowTokens(node).forEach(token => keys.add(token.replace(/^!/, '')))); keys.add('running'); break;
+        case 'swipe': ['left', 'right'].forEach(key => keys.add(key)); values(group, 'data-rm-card').forEach(key => { keys.add(key); keys.add(`${key}:left`); keys.add(`${key}:right`); keys.add(`${key}:top`); }); break;
+        case 'peek': keys.add('peek'); values(group, 'data-rm-peek').forEach(key => keys.add(key)); break;
+        case 'spoiler': keys.add('revealed'); values(group, 'data-rm-spoiler').forEach(key => keys.add(key)); break;
+        case 'sense': ['landscape', 'portrait', 'dark', 'light', 'narrow', 'wide', 'touch', 'mouse'].forEach(key => keys.add(key)); break;
+        case 'rhythm': break;
         case 'effect': for (const node of ownBehaviorShows(group)) for (const token of behaviorShowTokens(node)) keys.add(token.replace(/^!/, '')); break;
         case 'sequence': values(group, 'data-rm-code').forEach(key => keys.add(key)); break;
         case 'connect': values(group, 'data-rm-end').forEach(key => keys.add(key)); break;

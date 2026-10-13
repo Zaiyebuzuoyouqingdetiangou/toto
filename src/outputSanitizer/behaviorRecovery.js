@@ -1,8 +1,8 @@
 // Recover only a source-authored, unambiguous local control/cover relationship.
 // Never invent a target, result text, generated script or page-global listener.
-import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.68.18';
-import { motionOutsideControls } from './behaviorDialect.js?rmv=1.68.18';
-import { behaviorTypeFits } from './behaviorRepair.js?rmv=1.68.18';
+import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.68.19';
+import { motionOutsideControls } from './behaviorDialect.js?rmv=1.68.19';
+import { behaviorTypeFits } from './behaviorRepair.js?rmv=1.68.19';
 
 const GROUP = '[data-rm-ui]';
 const RECOVERED = 'data-rm-behavior-recovered';
@@ -124,6 +124,8 @@ export function inspectBehaviorRecovery(root) {
         hold: ['[data-rm-hold]'], follow: ['[data-rm-surface]'], reorder: ['[data-rm-item]'], accumulate: ['[data-rm-step]'],
         toggle: [], pick: ['[data-rm-pick]'], pager: ['[data-rm-page]'], roll: ['[data-rm-roll]', '[data-rm-show]'],
         connect: ['[data-rm-end]'], turn: ['[data-rm-knob]'], sequence: ['[data-rm-code]'],
+        slide: ['[data-rm-item]'], timer: [], swipe: ['[data-rm-card]'], rhythm: ['[data-rm-tap], [data-rm-charge], [data-rm-qte]'],
+        peek: ['[data-rm-peek]'], spoiler: ['[data-rm-spoiler]'], sense: [],
     };
     const adoptedRanges = new Set();
     for (const group of groups(root)) {
