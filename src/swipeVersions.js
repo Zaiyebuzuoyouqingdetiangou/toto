@@ -406,6 +406,21 @@ function archiveTransaction(mode, work, { readStatus = false, timeoutMs = 2500 }
     });
 }
 
+// 只读：这个聊天在版本存档里的全部行（找回旧兔子镜时按正文找挪了楼层的那份用）。
+// 读不出来返回 null（和「真的没有」分开）；先等手头的楼层搬家做完再读。
+export function loadFaceSwipeArchiveRows(prefix) {
+    const text = String(prefix || '');
+    if (!text || !globalThis.indexedDB || typeof IDBKeyRange === 'undefined') return Promise.resolve([]);
+    return archiveRemapGate.then(() => archiveTransaction('readonly', (store, done) => {
+        const request = store.getAll(IDBKeyRange.bound(`${text}:`, `${text}:\uffff`));
+        request.onsuccess = () => done(Array.isArray(request.result) ? request.result : []);
+    }, { readStatus: true, timeoutMs: 10000 }))
+        .then(result => result?.ok && Array.isArray(result.value)
+            ? result.value.filter(row => row && row.schema === 1 && typeof row.slot === 'string' && row.record && typeof row.record === 'object')
+            : null)
+        .catch(() => null);
+}
+
 export function faceSwipeArchiveLoaded(slot) {
     const state = faceSwipeArchiveReadState(slot);
     return state === 'ready' || state === 'error';

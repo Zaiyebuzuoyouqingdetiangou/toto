@@ -1,8 +1,8 @@
 // Split from independentApi.js — persistence.
 
-import { presentationModeFields } from '../presentationMode.js?rmv=1.68.23';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.68.23';
-import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.68.23';
+import { presentationModeFields } from '../presentationMode.js?rmv=1.68.25';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.68.25';
+import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.68.25';
 import {
     FACE_SWIPE_FULL_MESSAGE,
     FACE_SWIPE_MAX,
@@ -17,9 +17,9 @@ import {
     snapshotFaceSwipes, compactSwipeState, restoreFaceSwipeSnapshot,
     faceSwipeSnapshotStored, loadFaceSwipeArchive, saveFaceSwipeArchive, faceSwipeArchiveReadState,
     remapFaceSwipeSlots, remapFaceSwipeArchive, faceSwipeArchiveRemapSettled,
-} from '../swipeVersions.js?rmv=1.68.23';
-import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=1.68.23';
-import { remapMirrorImageSlots } from '../imageStore.js?rmv=1.68.23';
+} from '../swipeVersions.js?rmv=1.68.25';
+import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=1.68.25';
+import { remapMirrorImageSlots } from '../imageStore.js?rmv=1.68.25';
 import {
     clearEphemeralFaceFailure,
     hasEphemeralFaceFailure,
@@ -29,7 +29,7 @@ import {
     independentSwipeSlot,
     seedIndependentFaceSwipesFromIdentity,
     writeIndependentOwnerHtml,
-} from './faceSwipe.js?rmv=1.68.23';
+} from './faceSwipe.js?rmv=1.68.25';
 import {
     API_PROFILE_STORE_KEY,
     assistantMessages,
@@ -49,8 +49,8 @@ import {
     remapOwnerLockSlots,
     hostGenerationLooksActive,
     legacyChatKey,
-} from './connection.js?rmv=1.68.23';
-import { stampExternalDetailsOwnership, restampExternalHostsAfterMessageDeletion } from './request.js?rmv=1.68.23';
+} from './connection.js?rmv=1.68.25';
+import { stampExternalDetailsOwnership, restampExternalHostsAfterMessageDeletion } from './request.js?rmv=1.68.25';
 import {
     copyIndependentReplacementReceipt,
     ensureExternalTools,
@@ -61,8 +61,8 @@ import {
     normalizeSavedInteractionRecord,
     recoverSavedRecord,
     replaceExternalMultifaceFace,
-} from './geometry.js?rmv=1.68.23';
-import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=1.68.23';
+} from './geometry.js?rmv=1.68.25';
+import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=1.68.25';
 
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 
@@ -498,6 +498,7 @@ export function hasIndependentSwipeInitial(root){
 }
 
 function emptyChatOutputMetadata(){ return {version:CHAT_OUTPUT_METADATA_SCHEMA,owners:{}}; }
+const MOVED_OWNER_LIMIT=40;
 
 function chatMetadataObject(ctx=getContext()){
  const value=ctx?.chatMetadata || globalThis.chat_metadata;
@@ -558,6 +559,12 @@ function normalizeChatOutputMetadata(value){
   if(raw.deleted===true){ next.owners[key]={deleted:true,ts:Number(raw.ts||0),runtime:String(raw.runtime||RUNTIME_VERSION),sourceHash:String(raw.sourceHash||'')}; continue; }
   const record=compactChatPersistedRecord(raw); if(record) next.owners[key]=record;
  }
+ // 找回旧兔子镜时，被挪走楼层的那份（原本错占着别的楼层号）按正文指纹另存在这里，等它自己那层来找回。
+ const moved=value&&typeof value==='object'&&value.moved&&typeof value.moved==='object'?value.moved:{};
+ const keep=Object.entries(moved).filter(([hash,raw])=>/^[0-9a-z]{1,64}$/i.test(hash)&&raw&&typeof raw==='object'&&raw.deleted!==true)
+  .map(([hash,raw])=>[hash,compactChatPersistedRecord(raw)]).filter(([,record])=>record?.html)
+  .sort((a,b)=>Number(b[1].ts||0)-Number(a[1].ts||0)).slice(0,MOVED_OWNER_LIMIT);
+ if(keep.length) next.moved=Object.fromEntries(keep);
  // 删楼层后对号的次数：聊天文件和本机各记一份，对不上时说明本机缓存的楼层号已过时（见 checkOwnerRemapEpoch）。
  const epoch=Math.floor(Number(value?.remapEpoch)||0);
  if(epoch>0) next.remapEpoch=epoch;
@@ -652,6 +659,49 @@ export function persistedOwnerForMessage(ctx,index,msg){
   || (Number(session.ts||0)===Number(raw.ts||0)
    && Number(session.ownerLineage?.observedAt||0)>=Number(raw.ownerLineage?.observedAt||0)))?session:raw;
  return newest&&typeof newest==='object'?compactChatPersistedRecord(newest):null;
+}
+
+// 找回时挪出来的兔子镜：[{hash, record}]。只读。
+export function chatMovedOwners(ctx){
+ const moved=readChatOutputMetadata(ctx)?.moved||{};
+ return Object.entries(moved).map(([hash,record])=>({hash,record})).filter(entry=>entry.record?.html);
+}
+
+// 另存一份挪出来的兔子镜（按它自己的正文指纹）。聊天文件不可用时返回 false，调用方不要继续覆盖。
+export function saveMovedOwner(ctx,record){
+ const metadata=chatMetadataObject(ctx); if(!metadata) return false;
+ const hash=String(record?.sourceHash||record?.bodyHash||'').trim();
+ const compact=compactChatPersistedRecord(record);
+ if(!/^[0-9a-z]{1,64}$/i.test(hash) || !compact?.html) return false;
+ let state=metadata[CHAT_OUTPUT_METADATA_KEY];
+ if(!state||typeof state!=='object'||!state.owners||typeof state.owners!=='object') state=emptyChatOutputMetadata();
+ const moved={...(state.moved&&typeof state.moved==='object'?state.moved:{}),[hash]:compact};
+ state.moved=Object.fromEntries(Object.entries(moved).sort((a,b)=>Number(b[1]?.ts||0)-Number(a[1]?.ts||0)).slice(0,MOVED_OWNER_LIMIT));
+ if(!state.moved[hash]) return false;
+ state.version=CHAT_OUTPUT_METADATA_SCHEMA; metadata[CHAT_OUTPUT_METADATA_KEY]=state; saveChatOutputMetadata(ctx);
+ return true;
+}
+
+// 挪出来的那份被它自己那层找回以后，这里的副本去掉（它已经记在那一层名下）。
+export function dropMovedOwner(ctx,hash){
+ const metadata=chatMetadataObject(ctx); const state=metadata?.[CHAT_OUTPUT_METADATA_KEY];
+ if(!state?.moved?.[hash]) return false;
+ delete state.moved[hash]; saveChatOutputMetadata(ctx); return true;
+}
+
+// 聊天文件（和本次会话）里记着的每一层兔子镜：{index, swipe, record}。删过的不列。只读。
+export function chatPersistedOwnerEntries(ctx){
+ const keys=new Set([
+  ...Object.keys(chatMetadataObject(ctx)?.[CHAT_OUTPUT_METADATA_KEY]?.owners||{}),
+  ...Object.keys(sessionOwners(ctx)||{}),
+ ]);
+ const entries=[];
+ for(const key of keys){
+  const parsed=parseChatOwnerKey(key); if(!parsed) continue;
+  const record=persistedOwnerForMessage(ctx,parsed.index,{swipe_id:parsed.swipe});
+  if(record && !record.deleted && record.html) entries.push({...parsed,record});
+ }
+ return entries;
 }
 
 // 这个聊天里最早留下兔子镜痕迹的楼层：消息上的归属标记、聊天里存的兔子镜（含删过的）、本机存档里这个聊天的记录。
