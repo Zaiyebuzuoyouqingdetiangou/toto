@@ -1,9 +1,10 @@
-import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.68.18';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.68.18';
-import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.68.18';
-import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.68.18';
-import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.68.18';
-import { addDialectStateKeys, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup } from './behaviorDialect.js?rmv=1.68.18';
+import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.68.21';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.68.21';
+import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.68.21';
+import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.68.21';
+import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.68.21';
+import { addDialectStateKeys, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup } from './behaviorDialect.js?rmv=1.68.21';
+import { EXTRA_TYPES, EXTRA_CONTROLS, EXTRA_CONTROL_ATTRS, configureBehaviorExtras, configureCarryChatKey, extraTypeFits, prepareExtra, destroyExtra, extraAction, extraSync, extraKeys, extraReset, extraPointerDown, extraPointerMove, extraPointerUp, extraHoldStart, extraHoldEnd, applyCarriedState, saveCarriedState, recalledKeys, carryMemoryName } from './behaviorExtras.js?rmv=1.68.21';
 
 export { behaviorToggleKey, motionOutsideControls };
 
@@ -12,15 +13,17 @@ const roots = new WeakMap();
 const owners = new WeakMap();
 const GROUP = '[data-rm-ui]';
 const TYPES = new Set(['effect', 'drag', 'adjust', 'reveal', 'view', 'input', 'draw', 'motion', 'hold', 'follow', 'reorder', 'accumulate',
-    'toggle', 'pick', 'pager', 'roll', 'connect', 'turn', 'sequence']);
+    'toggle', 'pick', 'pager', 'roll', 'connect', 'turn', 'sequence', ...EXTRA_TYPES]);
+// 扩展类型（滚动、时间、滑动手势、节奏、窥视、遮蔽、环境感应）由 behaviorExtras.js 实现。
+const EXTRA = new Set(EXTRA_TYPES);
 // 这几类的状态由驱动统一同步到容器、被操作的部件和 data-rm-show 内容上。
 const STATEFUL = new Set(['toggle', 'pick', 'pager', 'roll', 'connect', 'turn', 'sequence']);
 // 可以点的部件：不限于 button，div、span、svg 元素写上这些标识也能用（补上 role 与键盘操作）。
-const CONTROL_ATTRS = ['reset', 'fire', 'play', 'reverse', 'prev', 'next', 'step', 'place', 'return', 'move', 'toggle', 'pick', 'goto', 'roll', 'end', 'code', 'knob'];
+const CONTROL_ATTRS = ['reset', 'fire', 'play', 'reverse', 'prev', 'next', 'step', 'place', 'return', 'move', 'toggle', 'pick', 'goto', 'roll', 'end', 'code', 'knob', ...EXTRA_CONTROL_ATTRS];
 const CONTROL_SELECTOR = CONTROL_ATTRS.map(name => `[data-rm-${name}]`).join(', ');
 // 每类驱动认哪些部件；不属于本类的标识（比如拖动区里碰巧写了 data-key）不接管它的点击。
 const TYPE_CONTROLS = Object.freeze({ drag: ['place', 'return', 'move'], effect: ['fire'], motion: ['play', 'reverse'], hold: ['hold'], reorder: ['prev', 'next'], accumulate: ['step'],
-    toggle: ['toggle'], pick: ['pick'], pager: ['prev', 'next', 'goto'], roll: ['roll'], connect: ['end'], turn: ['knob'], sequence: ['code'] });
+    toggle: ['toggle'], pick: ['pick'], pager: ['prev', 'next', 'goto'], roll: ['roll'], connect: ['end'], turn: ['knob'], sequence: ['code'], ...EXTRA_CONTROLS });
 const RESERVED_KEYS = new Set(['changed', 'active', 'match', 'done', 'miss', 'on']);
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const finite = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
@@ -36,6 +39,8 @@ const words = value => String(value || '').split(/[\s,，、]+/).map(word => wor
 
 function refreshResults(state) {
     if (STATEFUL.has(state.type)) syncState(state);
+    if (EXTRA.has(state.type)) { try { extraSync(state); } catch (error) { console.debug('[RabbitMirror] extra behavior sync failed:', error); } }
+    if (state.changed && carryMemoryName(state.group)) { try { saveCarriedState(state); } catch { /* 存不下就算了 */ } }
     const range = state.type === 'motion' ? motionRange(state) : first(state.group, 'input[type="range"]');
     updateBehaviorResults(state.group, {
         changed: Boolean(state.changed), p: range ? rangeValue(range).p : (state.progress || 0),
@@ -85,6 +90,9 @@ function stateKeys(state) {
     if (state.type === 'reveal' && (state.progress || 0) >= 0.9) for (const key of ['reveal', 'revealed', 'done', 'full', 'open']) keys.add(key);
     for (const key of state.entered || []) keys.add(key);
     for (const [, , key] of state.pairs || []) keys.add(key);
+    if (EXTRA.has(state.type)) extraKeys(state, keys);
+    // 跨面继承：data-rm-recall="名" 的区域，另一面记下的键也算这里的状态。
+    if (group.hasAttribute('data-rm-recall')) recalledKeys(group, keys);
     // 意思对、写法不标准的显示条件（见 behaviorDialect.js 的方言表）。
     return addDialectStateKeys(state, keys);
 }
@@ -555,7 +563,7 @@ function inputChange(state, input, userAction = false) {
 
 function validGroup(group, type) {
     // 写了 toggle 却没标开关部件时，整个容器就是开关。
-    return TYPES.has(type) && (type === 'toggle' || behaviorTypeFits(group, type));
+    return TYPES.has(type) && (type === 'toggle' || (EXTRA.has(type) ? extraTypeFits(group, type) : behaviorTypeFits(group, type)));
 }
 
 // 非 button 的部件补上按钮语义：能聚焦、读屏认得、鼠标是手形。只补缺的，不改模型写好的。
@@ -639,6 +647,8 @@ function prepare(binding, group) {
     if (binding.groups.has(group)) return binding.groups.get(group);
     const type = group.getAttribute('data-rm-ui');
     if (!validGroup(group, type)) return null;
+    // 跨面继承：这一面写了 data-rm-memory，先把这个聊天里记下的状态写回属性，下面按属性初始化。
+    if (carryMemoryName(group)) { try { applyCarriedState(group); } catch { /* 读不到就按原样 */ } }
     const state = { group, type, root: binding.root, styles: new Map(), positions: new Map(), orders: new Map(), animations: new Set(), strokes: new Set(), placed: new Set(), changed: false, progress: 0 };
     binding.groups.set(group, state);
     owners.set(group, binding);
@@ -673,6 +683,7 @@ function prepare(binding, group) {
     if (type === 'motion') animations(state);
     if (type === 'accumulate') countSteps(state);
     if (STATEFUL.has(type)) prepareStateful(state);
+    if (EXTRA.has(type)) { try { prepareExtra(state); } catch (error) { console.debug('[RabbitMirror] extra behavior prepare failed:', error); } }
     if (['adjust', 'view', 'reveal'].includes(type)) {
         const range = first(group, 'input[type="range"]');
         // 揭示用的滑杆一打开就停在最右（已经揭到底），往右拖不动，揭开后的内容也没机会出来：从最左开始。
@@ -857,6 +868,7 @@ function reset(state) {
         if (range) inputChange(state, range);
     }
     if (STATEFUL.has(state.type)) resetStateful(state);
+    if (EXTRA.has(state.type)) { try { extraReset(state); } catch { /* 复位失败不影响别的 */ } }
     refreshResults(state);
 }
 
@@ -912,6 +924,8 @@ function action(state, button) {
         button.focus?.({ preventScroll: true });
     } else if (STATEFUL.has(state.type)) {
         if (statefulAction(state, button)) state.changed = true;
+    } else if (EXTRA.has(state.type)) {
+        if (extraAction(state, button)) state.changed = true;
     }
     refreshResults(state);
     verify?.();
@@ -1456,7 +1470,8 @@ function pointerMove(binding, event) {
     } else if (state.type === 'follow') {
         const point = localPoint(surface, event);
         style(state, state.group, '--rm-x', `${point.x}px`); style(state, state.group, '--rm-y', `${point.y}px`); state.changed = true;
-    } else if (state.type === 'turn') {
+    } else if (state.type === 'swipe') { extraPointerMove(state, event, session); if (session.horizontal) state.changed = true; }
+    else if (state.type === 'turn') {
         const angle = pointerAngle(session, event);
         const delta = mod(angle - session.last + 180, 360) - 180;
         session.last = angle;
@@ -1476,6 +1491,8 @@ function finishPointer(binding, event, cancelled = false) {
     binding.pointer = null;
     const { state, item, surface } = session;
     if (state.type === 'hold') { setHoldActive(state, null, false); binding.holds.delete(state); }
+    if (state.type === 'rhythm') extraHoldEnd(state);
+    if (state.type === 'swipe') { if (extraPointerUp(state, event, session, cancelled)) state.changed = true; }
     if (state.type === 'turn') {
         if (cancelled) state.angle = session.angleBefore;
         else if (session.turned > 3) {
@@ -1547,6 +1564,8 @@ function pointerDown(binding, event) {
     let item, surface;
     if (type === 'hold') surface = event.target.closest('[data-rm-hold]');
     else if (type === 'turn') surface = event.target.closest('[data-rm-knob]');
+    else if (type === 'rhythm') surface = event.target.closest('[data-rm-charge]');
+    else if (type === 'swipe') surface = event.target.closest('[data-rm-card]');
     else {
         if (event.target.closest('button, input, textarea, select, a')) return;
         if (type === 'pager') {
@@ -1562,10 +1581,12 @@ function pointerDown(binding, event) {
         else if (type === 'follow') surface = event.target.closest('[data-rm-surface]');
         else if (type === 'reveal' && !first(group, 'input[type="range"]')) surface = first(group, '[data-rm-surface]') || group;
     }
-    if (!surface || surface.closest(GROUP) !== group || ((type === 'hold' || type === 'turn') && !isControl(surface))) return;
+    if (!surface || surface.closest(GROUP) !== group || ((type === 'hold' || type === 'turn' || type === 'rhythm') && !isControl(surface))) return;
     const point = localPoint(group, event), position = state.positions.get(item);
     const session = { state, surface, item, changedBefore: state.changed, wasPlaced: state.placed.has(item), id: event.pointerId, startX: event.clientX, startY: event.clientY, x: position?.x || 0, y: position?.y || 0, sx: point.sx, sy: point.sy, box: item?.getBoundingClientRect() };
     binding.pointer = session;
+    if (type === 'swipe' && !extraPointerDown(state, event, session)) { binding.pointer = null; return; }
+    if (type === 'rhythm') { extraHoldStart(state, surface); state.changed = true; refreshResults(state); }
     if (type === 'draw') {
         session.path = surface.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'path');
         session.path.setAttribute('fill', 'none'); session.path.setAttribute('stroke', 'currentColor'); session.path.setAttribute('stroke-width', '2');
@@ -1600,6 +1621,7 @@ export function releaseBehaviorGroup(root, group) {
         if (binding.pointer?.state === state) finishPointer(binding, {}, true);
         binding.holds.delete(state); binding.connects.delete(state);
         try { reset(state); } catch (error) { console.debug('[RabbitMirror] release reset failed:', error); }
+        if (EXTRA.has(state.type)) destroyExtra(state);
         binding.groups.delete(group);
     }
     owners.delete(group);
@@ -1673,7 +1695,7 @@ function scheduleOnDemandRelay(root, target) {
 function relayGroupLater(root, group, control = null) {
     const run = () => {
         if (!group.isConnected || !root.isConnected) return;
-        void import('./behaviorRelay.js?rmv=1.68.18').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
+        void import('./behaviorRelay.js?rmv=1.68.21').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
     };
     const idle = globalThis.requestIdleCallback;
     if (typeof idle === 'function') idle(run, { timeout: 800 }); else setTimeout(run, 120);
@@ -1768,3 +1790,10 @@ export function installBehaviorInteractions(root) {
     }, true);
     return count;
 }
+
+// 扩展类型要用的主驱动工具。
+configureBehaviorExtras({ own, first, style, setFlag, enableControl, refreshResults, finite, clamp, words });
+// 跨面继承按聊天分开记：聊天键从存储模块拿，拿不到时所有面共用一份。
+let carryChatKeyReader = null;
+configureCarryChatKey(() => carryChatKeyReader?.() || '');
+import('../storage.js?rmv=1.68.21').then(module => { carryChatKeyReader = () => module.getCurrentChatKey?.() || ''; }).catch(() => {});
