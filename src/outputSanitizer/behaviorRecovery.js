@@ -1,8 +1,8 @@
 // Recover only a source-authored, unambiguous local control/cover relationship.
 // Never invent a target, result text, generated script or page-global listener.
-import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.68.27';
-import { motionOutsideControls } from './behaviorDialect.js?rmv=1.68.27';
-import { behaviorTypeFits } from './behaviorRepair.js?rmv=1.68.27';
+import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.68.28';
+import { motionOutsideControls } from './behaviorDialect.js?rmv=1.68.28';
+import { behaviorTypeFits } from './behaviorRepair.js?rmv=1.68.28';
 
 const GROUP = '[data-rm-ui]';
 const RECOVERED = 'data-rm-behavior-recovered';
