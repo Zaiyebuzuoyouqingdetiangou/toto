@@ -3,12 +3,12 @@
 // 就在另一份副本里把这一块整块“退还”（撤掉插件接线、标识原样保留），让老修复器整套去修，再测一次。
 // 退还后：原来能用的控件仍然能用，而且没反应的变少了（不算只加了“已点击”提示的那种），才在真实页面上照做；
 // 否则保持插件接线不动。真实页面上的控件在确认之前一个不碰。
-import { collectGenericProbeControls, openGenericProbeSandbox, probeGenericControls } from './maintenanceGenericProbe.js?rmv=1.68.19';
-import { releaseBehaviorGroup } from './behaviorInteractions.js?rmv=1.68.19';
-import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.68.19';
-import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=1.68.19';
-import { INERT_ACTION_BUTTON_RESCUE_ATTR } from './diagnostics.js?rmv=1.68.19';
-import { behaviorRelayFaceKey, behaviorRelayGroupIndex, rememberBehaviorRelay } from './behaviorRelayMemory.js?rmv=1.68.19';
+import { collectGenericProbeControls, openGenericProbeSandbox, probeGenericControls } from './maintenanceGenericProbe.js?rmv=1.68.20';
+import { releaseBehaviorGroup } from './behaviorInteractions.js?rmv=1.68.20';
+import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.68.20';
+import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=1.68.20';
+import { INERT_ACTION_BUTTON_RESCUE_ATTR } from './diagnostics.js?rmv=1.68.20';
+import { behaviorRelayFaceKey, behaviorRelayGroupIndex, rememberBehaviorRelay } from './behaviorRelayMemory.js?rmv=1.68.20';
 
 export const BEHAVIOR_RELAY_ATTR = 'data-rabbit-mirror-behavior-relayed';
 const GROUP_TAG = 'data-rm-relay-group';
