@@ -1,10 +1,10 @@
-import { getSettings } from './settings.js?rmv=1.68.27';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.68.27';
-import { findBuiltinImageKeyFromOtherChat, loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.68.27';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.68.27';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.68.27';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.68.27';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.68.27';
+import { getSettings } from './settings.js?rmv=1.68.28';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.68.28';
+import { findBuiltinImageKeyFromOtherChat, loadMirrorImage, saveMirrorImage } from './imageStore.js?rmv=1.68.28';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.68.28';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.68.28';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.68.28';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.68.28';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -160,7 +160,27 @@ function fitFrameImage(image, record) {
     image.addEventListener('load', check, { once: true });
 }
 
-function paint(frame, record) {
+// 存档里的图片文件在酒馆服务器上已经没有了（换了设备、图片目录被清理）：以前坏图标一直挂着。
+// 现在先换历史版本里还能读的那张；都读不到就说明情况，留「重新生图」，再画要花一次额度。
+const unreadable = new Set();
+function paintCandidates(record) {
+    const list = [record, ...(Array.isArray(record?.history) ? [...record.history].reverse() : [])];
+    const seen = new Set();
+    return list.flatMap(entry => [entry?.url || entry?.path, entry?.dataUrl]).map(safeImageUrl).filter(url => url && !seen.has(url) && seen.add(url));
+}
+function watchImageLoad(frame, image, record, root, key) {
+    const candidates = paintCandidates(record);
+    let index = Math.max(0, candidates.indexOf(image.src));
+    image.onerror = () => {
+        index += 1;
+        if (index < candidates.length) { image.src = candidates[index]; return; }
+        image.remove();
+        if (key) unreadable.add(key);
+        note(frame, '这一面画好的图读不到了（图片文件不在这台酒馆上，可能换了设备或图片目录被清理）。点「重新生图」会再画一次，要花一次额度。', root);
+    };
+}
+
+function paint(frame, record, root = null, key = '') {
     if (isRabbitMirrorLinkedAvatarFrame(frame)) return false;
     const url = safeImageUrl(record?.url || record?.path || record?.dataUrl);
     if (!url) return false;
@@ -177,6 +197,7 @@ function paint(frame, record) {
         frame.prepend(image);
     }
     fitFrameImage(image, record);
+    watchImageLoad(frame, image, record, root, key);
     image.src = url;
     return true;
 }
@@ -399,7 +420,8 @@ async function fillFrame(root, frame) {
         note(frame, '这一面的画面存档读不出来，没有重新生图。', root);
         return;
     }
-    if (saved.record && paint(frame, saved.record)) return;
+    // 读不到的那张不再反复拿出来：按「重新生图」后直接发请求。
+    if (saved.record && !unreadable.has(key) && paint(frame, saved.record, root, key)) return;
     if (failed.has(key)) {
         note(frame, failed.get(key), root);
         return;
@@ -411,7 +433,8 @@ async function fillFrame(root, frame) {
     if (progress.has(key)) note(frame, progress.get(key));
     try {
         const record = await startJob(key, prompt, frame, isCurrent);
-        if (isCurrent() && frame.isConnected) paint(frame, record);
+        unreadable.delete(key);
+        if (isCurrent() && frame.isConnected) paint(frame, record, root, key);
     } catch (error) {
         const code = error?.code;
         if (code === 'stale_owner' || !isCurrent()) {
@@ -497,7 +520,7 @@ export function restoreSavedBuiltinImages(root) {
             continue;
         }
         ensureFrameBox(frame);
-        if (paint(frame, saved.record)) restored += 1;
+        if (paint(frame, saved.record, root, storageKey(root, frame, prompt))) restored += 1;
     }
     return restored;
 }
