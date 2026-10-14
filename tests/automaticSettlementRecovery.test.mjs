@@ -14,8 +14,9 @@ function install(context,file,name,optional=false){
 function harness(){
  let now=10000,id=0,dispatched=0,weak=false,strong=false,dom=false,chatId='chat',epoch=1;
  const timers=new Map(),polls=new Map(),stops=[],requests=[],ownerSymbol=Symbol('owner');
- const msg={mes:'finished body',swipe_id:0};const ctx={chat:[{is_user:true,mes:'question'},msg]};
- const owner={chat:chatId,chatRef:ctx.chat,type:'normal',phase:0,startedAt:9000,startChatLength:1,startTailIndex:0,startTailRole:'user',phaseBaselineIndex:-1,phaseBaselineToken:'',terminalSeen:true,terminalReason:'GENERATION_ENDED',terminalAt:now,toolCapable:false,tentativeRender:{index:1,token:'0:finished body',phase:0,at:now,chat:ctx.chat,message:msg,swipe:0,proof:'exact-render'},settleTimer:0,settleStartedAt:0};
+ // 安全阀把不足 30 字的正文当「过短」拦掉自动生成，夹具正文要够长。
+ const msg={mes:'finished body: a full reply long enough for the valve',swipe_id:0};const ctx={chat:[{is_user:true,mes:'question'},msg]};
+ const owner={chat:chatId,chatRef:ctx.chat,type:'normal',phase:0,startedAt:9000,startChatLength:1,startTailIndex:0,startTailRole:'user',phaseBaselineIndex:-1,phaseBaselineToken:'',terminalSeen:true,terminalReason:'GENERATION_ENDED',terminalAt:now,toolCapable:false,tentativeRender:{index:1,token:'0:finished body: a full reply long enough for the valve',phase:0,at:now,chat:ctx.chat,message:msg,swipe:0,proof:'exact-render'},settleTimer:0,settleStartedAt:0};
  const cutover={activeHostGeneration:owner,authorized:new Map()};const cutovers=new Map([[chatId,cutover]]);
  const identity=index=>{const message=ctx.chat[index];return message&&!message.is_user?{ctx,msg:message,baseSlot:`${chatId}:${index}:${message.swipe_id}`,slot:`${chatId}:${index}:${message.swipe_id}:${message.mes}`,sourceHash:message.mes,revision:1}:null;};
  const sandbox={console,Set,Map,Date:{now:()=>now},setTimeout(fn,delay){const key=++id;timers.set(key,{fn,at:now+delay});return key;},clearTimeout:key=>timers.delete(key),
@@ -88,7 +89,7 @@ test('next normal start transfers the old proof but waits while the new host gen
  h.advance(2000);assert.equal(h.dispatches(),0);assert.equal(h.polls.size,1);
  h.ctx.chat.push({mes:'second reply',swipe_id:0});
  h.strong(false);h.advance(2500);assert.equal(h.dispatches(),1);
- assert.equal(h.requests[0].index,1);assert.equal(h.requests[0].message,h.msg);assert.equal(h.requests[0].body,'finished body');
+ assert.equal(h.requests[0].index,1);assert.equal(h.requests[0].message,h.msg);assert.equal(h.requests[0].body,'finished body: a full reply long enough for the valve');
 });
 test('old body postprocessing waits for the next lifecycle to finish before refreshing its own authorization',()=>{
  const h=harness();h.start();h.advance(100);h.ctx.chat.push({is_user:true,mes:'next question'});h.strong(true);h.newStart();
@@ -97,7 +98,7 @@ test('old body postprocessing waits for the next lifecycle to finish before refr
  h.strong(false);h.advance(1000);assert.equal(h.dispatches(),0,'active newer lifecycle retains ownership');
  h.cutover.activeHostGeneration=null;h.advance(3000);
  assert.equal(h.dispatches(),1);assert.equal(h.requests[0].index,1);assert.equal(h.requests[0].message,h.msg);
- assert.equal(h.requests[0].body,'finished body postprocessed');
+ assert.equal(h.requests[0].body,'finished body: a full reply long enough for the valve postprocessed');
 });
 test('new swipe, regenerate or continue cannot inherit prior completion',()=>{
  for(const type of ['swipe','regenerate','continue']){const h=harness();h.start();h.advance(100);h.newStart(type);h.advance(2500);assert.equal(h.dispatches(),0);assert.equal(h.polls.size,0);}

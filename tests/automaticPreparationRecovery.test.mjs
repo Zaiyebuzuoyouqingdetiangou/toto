@@ -83,7 +83,8 @@ function harness() {
         ensureExternalUi: paint,
         ensureReplyGenerationPlaceholder: (el, key, sourceHash) => paint(el, key, 'waiting', 'loading', 'independent', sourceHash),
         syncRunning: false, writeSyncRunning: value => { sandbox.syncRunning = value; },
-        readStore: () => ({}), writeStore() {}, consumeIndependentDisplayModeChange: () => false,
+        // 1.67.80 起缺壳卡只挂在这个聊天里已经生成过兔子镜的楼层之后：本机存档里给这一层留一条记录当作证据。
+        readStore: () => ({ 'chat:0:0:evidence': {} }), writeStore() {}, consumeIndependentDisplayModeChange: () => false,
         assistantMessages: () => [{ m: ctx.chat[0], i: 0 }], assistantRowsInScanRange: rows => rows,
         normalizeMissingShellScanRange: () => 10, restoreFollowMirrorFromMessageSource() {},
         externalHosts: () => host ? [host] : [], updateIndependentRecordContinuity: () => false,
