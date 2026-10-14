@@ -1,6 +1,6 @@
-import { recordTtSurface, ttSurfaceNow } from './ttSurfaceDiagnostics.js?rmv=1.68.40';
+import { recordTtSurface, ttSurfaceNow } from './ttSurfaceDiagnostics.js?rmv=1.68.41';
 // Reserve scrollable space, not a decorative frame. No chat text, polling or model calls.
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.68.40';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.68.41';
 let active = null;
 export function composerOverlap(chat, composer, viewportBottom) {
     if (!chat || !composer || composer.width <= 0 || composer.height <= 0
