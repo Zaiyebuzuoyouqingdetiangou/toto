@@ -2,8 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFileSync} from 'node:fs';
+import {mainReplyAbnormalReason} from '../src/mainReplySafetyValve.js';
 
-const source=Object.fromEntries(['earlyBody','mount','connection'].map(name=>[name,readFileSync(new URL(`../src/independentApi/${name}.js`,import.meta.url),'utf8')]));
+const source=Object.fromEntries(['earlyBody','mount','connection','flights'].map(name=>[name,readFileSync(new URL(`../src/independentApi/${name}.js`,import.meta.url),'utf8')]));
 function install(context,file,name,optional=false){
  const match=source[file].match(new RegExp(`^(?:export )?function ${name}\\([^\\r\\n]*}\\r?$`,'m'))
   ||source[file].match(new RegExp(`^(?:export )?function ${name}\\([^]*?^}\\r?$`,'m'));
@@ -38,10 +39,16 @@ function harness(){
   cancelSupersededFlightsForBase(){},cancelFlightsForSlot(){},revokeIndependentRecordContinuity(){},generateFor(index,message){dispatched++;requests.push({index,message,body:message.mes});},
   renderGenerationGateTimeout:(_i,reason)=>stops.push(reason),
   hostGenerationActivity:()=>({strong:strong||dom,weak,active:strong||dom||weak}),
+  // earlyBody module state for noteHostGenerationEnd: no host generation has ended yet in this session.
+  recentHostGenerationEnds:new Map(),
+  // holdAbnormalAutomaticReply leaves: real safety-valve judgement; valve notification is UI only; no early-body owner exists here.
+  mainReplyAbnormalReason,notifySafetyValve(){},cancelEarlyBodyOwner(){},
+  // flights: the missing-shell stop code that blockingAutomaticFailureStopFor filters out.
+  MISSING_SHELL_STOP_CODE:'missing-external-shell',
  };
  Object.defineProperty(ctx,'isGenerating',{get:()=>weak});
  const context=vm.createContext(sandbox);
- for(const [file,names]of Object.entries({earlyBody:['clearAutomaticHostGenerationSettlement','automaticHostGenerationPhaseBaseline','beginAutomaticHostGeneration','unlockAutomaticGenerationCutover','automaticHostGenerationRenderMatches','automaticHostRenderProof','refreshAutomaticHostGenerationEvidence','automaticHostGenerationSettlementCandidate','settleAutomaticHostGeneration','suppressesAutomaticGeneration','activateAuthorizedAutomaticGeneration','finalizeAutomaticHostGeneration','scheduleAutomaticHostGenerationSettlement'],mount:['automaticAuthorizationLineage','stampAutomaticAuthorizationEpoch','generationPollKey','generationWaitPollDelay','confirmFinalRenderedGeneration','refreshUnpaidAutomaticAuthorization','scheduleMessageGeneration'],connection:['externalHostGenerationActivity']}))for(const name of names)install(context,file,name);
+ for(const [file,names]of Object.entries({earlyBody:['clearAutomaticHostGenerationSettlement','automaticHostGenerationPhaseBaseline','beginAutomaticHostGeneration','unlockAutomaticGenerationCutover','automaticHostGenerationRenderMatches','automaticHostRenderProof','refreshAutomaticHostGenerationEvidence','automaticHostGenerationSettlementCandidate','settleAutomaticHostGeneration','suppressesAutomaticGeneration','activateAuthorizedAutomaticGeneration','finalizeAutomaticHostGeneration','scheduleAutomaticHostGenerationSettlement','noteHostGenerationEnd','holdAbnormalAutomaticReply'],mount:['automaticAuthorizationLineage','stampAutomaticAuthorizationEpoch','generationPollKey','generationWaitPollDelay','confirmFinalRenderedGeneration','refreshUnpaidAutomaticAuthorization','scheduleMessageGeneration'],connection:['externalHostGenerationActivity'],flights:['isMissingShellStop','blockingAutomaticFailureStopFor']}))for(const name of names)install(context,file,name);
  for(const name of ['automaticHostSettlementActivity','preserveCompletedAutomaticHostGeneration'])install(context,'earlyBody',name,true);
  return {ctx,msg,owner,cutover,context,stops,polls,requests,dispatches:()=>dispatched,
   weak(value){weak=value;},strong(value){strong=value;},dom(value){dom=value;},start(){context.scheduleAutomaticHostGenerationSettlement();},

@@ -40,7 +40,8 @@ function fixture(provider, max = 2) {
     vm.createContext(sandbox);
     const connection = read('independentApi/connection.js');
     vm.runInContext(read('automaticReroll.js').replace(/^export /gm, '') + '\n' +
-        ['independentContextExcludedTagSet', 'liveVisibleIndependentMessageText', 'canonicalVisibleMessageText', 'createIndependentVisibleTextReader']
+        ['independentContextExcludedTagSet', 'liveVisibleIndependentMessageText', 'canonicalVisibleMessageText', 'createIndependentVisibleTextReader',
+            'explainEmptyIndependentVisibleBody']
             .map(name => fn(connection, name)).join('\n') + '\n' +
         between(request, 'export async function callIndependentApi(', '\nexport function externalOwnerMesid(')
             .replace('export ', '').replace('async function callIndependentApi', 'async function actualRequest'), sandbox);
@@ -50,6 +51,8 @@ function fixture(provider, max = 2) {
         return provider({ call: calls, dispatch: () => { posts++; }, actualRequest: () => sandbox.actualRequest(...args) });
     };
     vm.runInContext(between(mount, 'function releaseIndependentFlightBatches(', '\nexport function abortFlight(') + '\n' +
+        // Real derivation of manualResay from mount.js (reads the sandbox's force/manualBodyOwner).
+        between(mount, ' const manualResay=force', '\n') + '\n' +
         between(mount, ' const dispatchAttempt=()=>{', ' const settleSuccessfulIndependentResult=') + '\n' +
         between(mount, ' const independentDiagnostic=', ' const task=(async()=>{') + '\n' +
         between(mount, ' const task=(async()=>{', '\n flight.task=task;') + '\nglobalThis.done=task;', sandbox);

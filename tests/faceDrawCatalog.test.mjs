@@ -13,6 +13,9 @@ const filterRandomThemePool = (items, settings) => items.filter(item => settings
 const filterRandomFormatPool = (items, settings) => items.filter(item => settings.blacklistEnabled === false || !(settings.blacklistedFormatIds || []).includes(item.id));
 const listExternalLibraries = () => { throw new Error('unexpected real storage access'); };
 const listExternalLibraryEntryChoices = () => { throw new Error('unexpected real storage access'); };
+// Default title-index read (src/externalWorldBook/store.js) opens IndexedDB; like the two
+// stubs above it models the storage boundary and throws unless a test injects listTitleIndex.
+const listExternalLibraryTitleIndex = () => { throw new Error('unexpected real storage access'); };
 `;
 const mod = await import(`data:text/javascript;base64,${Buffer.from(fixtureDependencies + file.replace(/^import .*;\r?$/gm, '')).toString('base64')}`);
 const { loadFaceDrawCatalog, faceCategorySelection, toggleFaceCategory, toggleFaceItem } = mod;

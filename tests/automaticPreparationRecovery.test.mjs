@@ -4,7 +4,7 @@ import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { mainReplyAbnormalReason } from '../src/mainReplySafetyValve.js';
 
-const sources = Object.fromEntries(['earlyBody', 'mount', 'geometry', 'flights', 'missingRetryShell'].map(name =>
+const sources = Object.fromEntries(['earlyBody', 'mount', 'geometry', 'flights', 'missingRetryShell', 'persistence'].map(name =>
     [name, readFileSync(new URL(`../src/independentApi/${name}.js`, import.meta.url), 'utf8')]));
 function install(context, file, name, optional = false) {
     const match = sources[file].match(new RegExp(`^(?:export )?function ${name}\\([^\\r\\n]*}\\r?$`, 'm'))
@@ -96,14 +96,22 @@ function harness() {
         independentStoredHtmlRestorable: () => false, placeExternalHost() {}, refreshExistingExternalDetails() {},
         removeIndependentInlineDuplicates() {}, independentGenerationTiming: () => 'auto',
         MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE: 'missing-external-shell',
+        // earlyBody module state: no host generation has ended yet in this session; no "recheck missing floors" request.
+        MISSING_SHELL_SETTLE_GRACE_MS: 45000, HOST_GENERATION_HOLD_MAX_MS: 180000, recentHostGenerationEnds: new Map(), manualFillFloors: new Map(),
+        // flights: the missing-shell stop code (same value the harness already uses for the shell message).
+        MISSING_SHELL_STOP_CODE: 'missing-external-shell',
+        // persistence: no chat metadata and no session owner records (no mirror evidence in this chat).
+        CHAT_OUTPUT_METADATA_KEY: 'rabbit_mirror_independent_outputs_v2', chatMetadataObject: () => null, sessionOwners: () => null,
     };
     const context = vm.createContext(sandbox);
     for (const [file, names] of Object.entries({
-        earlyBody: ['suppressesAutomaticGeneration', 'automaticHostGenerationRenderMatches', 'waitForIndependentHistory', 'missingIndependentHistoryMessage', 'syncMessagesCore', 'restoreMissingIndependentRetryOnElement'],
+        earlyBody: ['suppressesAutomaticGeneration', 'automaticHostGenerationRenderMatches', 'waitForIndependentHistory', 'missingIndependentHistoryMessage', 'syncMessagesCore', 'restoreMissingIndependentRetryOnElement',
+            'noteHostGenerationEnd', 'automaticPipelineHoldsFloor', 'manualFillAllowed', 'missingShellHasEvidence'],
         mount: ['generationPollKey', 'generationWaitPollDelay', 'refreshUnpaidAutomaticAuthorization', 'scheduleMessageGeneration'],
         geometry: ['quickWaitingCandidate'],
-        flights: ['automaticFailureKey', 'automaticFailureStopFor', 'markAutomaticFailureStop'],
+        flights: ['automaticFailureKey', 'automaticFailureStopFor', 'markAutomaticFailureStop', 'isMissingShellStop', 'blockingAutomaticFailureStopFor'],
         missingRetryShell: ['shouldRestoreMissingIndependentRetryShell', 'hasUsableAssistantBody', 'isMissingShellTargetFloor'],
+        persistence: ['parseChatOwnerKey', 'earliestMirrorEvidenceFloor', 'floorMirrorEvidence'],
     })) for (const name of names) install(context, file, name);
     install(context, 'earlyBody', 'hasScheduledIndependentGeneration', true);
     install(context, 'earlyBody', 'hasPendingIndependentHostSettlement', true);

@@ -57,6 +57,7 @@ async function fixture({ count = 3, retry = 0, beforeTransport, afterTransport, 
         generationEvidenceFor: () => null, assertIndependentMarkupComplexityWithDiagnostic() {}, designSamplingChecksFromHtml: () => [],
         extractMirrorInner: raw => raw.replace(/^<toto[^>]*>/, '').replace(/<\/toto>$/, ''), independentMirrorBodyEvidence: value => value.includes('<p>'),
         prepareIndependentReadyHtml: value => value, bindRolePaletteCode: value => value, rememberApiProfile() {}, scanRabbitMirrorHtml: scanFace || (() => ({})),
+        cacheIndependentRejectedFacePreview: () => '', // no rejected-face preview cache: failure slots render without a preview toggle
         async requestIndependentCompletion(st, system, user, options) {
             await beforeTransport?.(h, options);
             assert.equal(options.dispatchLease.consume(), true, 'only the owned request may consume the lease');
@@ -71,6 +72,8 @@ async function fixture({ count = 3, retry = 0, beforeTransport, afterTransport, 
     };
     vm.createContext(sandbox);
     vm.runInContext(between(request, 'function independentRequestProfiles(', '\nfunction nextCompatibilityProfileName('), sandbox);
+    // Real failure-slot markup (independentRejectedFaceReason + createIndependentMultifaceFailureSlot) used by the serial merge.
+    vm.runInContext(between(request, 'function independentRejectedFaceReason(', '\n// 旧版本'), sandbox);
     vm.runInContext(between(request, 'function independentPromptOwnerPreflightError()', '\nexport function externalOwnerMesid('), sandbox);
     h.call = (options = {}) => sandbox.callIndependentApi(ctx, 0, ctx.chat[0], controller.signal, {
         dispatchLease: lease, isPromptOwnerCurrent: () => true, currentBatchPlan: () => activeBatch,

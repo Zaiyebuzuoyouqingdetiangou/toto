@@ -36,6 +36,8 @@ function extractFunction(source, name) {
 }
 
 const BODY = extractFunction(SOURCE, 'resayIndependentMirror');
+// 真实的 displayedFaceRecipe（原选题模式读取正在看的这一版 details 上盖的选题记录）。
+const RECIPE_READER = extractFunction(SOURCE, 'displayedFaceRecipe');
 
 // generateFor(index, msg, force, sourceAware, multifaceResay, earlyBodyOwner, manualBodyOwner, singlePresentationResay, quickStartOwner)
 const MULTIFACE_ARG = 4;
@@ -55,10 +57,12 @@ function runResay({ diagnostic, faceIndex = -1, mountedCount = 0, options, gener
         MULTIFACE_FAILURE_ATTR: 'data-rm-face-failure',
         hasEphemeralFaceFailure: () => false,
         isBlankLongTextSelection: () => false,
+        FACE_RECIPE_ATTR: 'data-rm-face-recipe',
+        compactFaceRecipe: recipe => recipe, // 替身：本夹具的 details 不带盖章选题，displayedFaceRecipe 不会走到这里
         generateFor: (...args) => { calls.push(args); },
     };
     const names = Object.keys(deps);
-    const fn = new Function(...names, `${BODY}\nreturn resayIndependentMirror;`)(...names.map(n => deps[n]));
+    const fn = new Function(...names, `${BODY}\n${RECIPE_READER}\nreturn resayIndependentMirror;`)(...names.map(n => deps[n]));
     const saved = globalThis.toastr;
     globalThis.toastr = { info: m => toasts.push(m), error: m => toasts.push(m), warning: m => toasts.push(m) };
     try { fn({}, {}, options); } finally { globalThis.toastr = saved; }

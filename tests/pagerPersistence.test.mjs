@@ -7,6 +7,14 @@ import vm from 'node:vm';
 // host-dependent tests. This verifies serialization, not browser layout.
 const geometry = readFileSync(new URL('../src/independentApi/geometry.js', import.meta.url), 'utf8');
 const diagnostics = readFileSync(new URL('../src/outputSanitizer/diagnostics.js', import.meta.url), 'utf8');
+const runtimeAnimation = readFileSync(new URL('../src/runtimeAnimationState.js', import.meta.url), 'utf8');
+// Shared clone-restoration boundary: the real restoreRuntimeAnimationClone from
+// src/runtimeAnimationState.js plus the module-level leaf state it reads.
+const runtimeAnimationGlobals = () => ({
+    ANIMATION_SUSPENDED_ATTR: 'data-rm-animation-suspended', // exported constant of runtimeAnimationState.js
+    authoredAnimationStyles: new WeakMap(), // models: no runtime animation override was remembered
+    restoreRabbitMirrorAvatarClone: (source, clone) => clone, // models: no chat-avatar runtime active (src/chatAvatars.js)
+});
 function functionSource(source, name) {
     const match = source.match(new RegExp(`(?:export )?function ${name}\\([^]*?\\r?\\n\\}`));
     assert.ok(match, `${name} source exists`);
@@ -14,9 +22,11 @@ function functionSource(source, name) {
 }
 class Element {
     constructor(tag, text = '', attrs = {}) {
-        this.tagName = tag.toUpperCase(); this.text = text;
+        this.tagName = tag.toUpperCase(); this.text = text; this.nodeType = 1;
         this.attrs = { ...attrs }; this.children = []; this.isConnected = true;
     }
+    get childNodes() { return this.children; } // element-only fixture: no text nodes
+    get attributes() { return Object.entries(this.attrs).map(([name, value]) => ({ name, value })); }
     append(...nodes) { for (const node of nodes) { node.parentElement = this; this.children.push(node); } }
     appendChild(node) { this.append(node); return node; }
     remove() { this.parentElement.children = this.parentElement.children.filter(node => node !== this); }
@@ -65,8 +75,11 @@ function fixture(withFooter = true) {
     return details;
 }
 function load(source, names, globals) {
-    const context = vm.createContext(globals);
-    vm.runInContext(names.map(name => functionSource(source, name)).join('\n'), context);
+    const context = vm.createContext({ ...runtimeAnimationGlobals(), ...globals });
+    vm.runInContext([
+        functionSource(runtimeAnimation, 'restoreRuntimeAnimationClone'),
+        ...names.map(name => functionSource(source, name)),
+    ].join('\n'), context);
     return context;
 }
 test('moving pager to the bottom cannot change the content fingerprint', () => {
@@ -95,15 +108,21 @@ test('copy/download keeps authored content but excludes bottom paging chrome', (
         isRabbitMirrorDetails: () => true, validateRabbitMirrorTemplateStructuralBudget: () => true,
         cloneRabbitMirrorFilteredNode: node => node.cloneNode(true), sanitizeRabbitMirrorUntrustedTemplate: () => true,
         RABBIT_MIRROR_MAX_TEMPLATE_SOURCE_CHARS: 100000,
+        // Module constants read by the real exportRasterImageSource (src/outputSanitizer/diagnostics.js).
+        EXPORT_RASTER_IMAGE_RE: /^data:image\/(?:png|jpe?g|webp|gif);base64,[a-z\d+/=\s]+$/i,
+        EXPORT_RASTER_IMAGE_MAX_CHARS: 16 * 1024 * 1024,
         document: { createElement() {
             const content = new Element('fragment');
             return { content, get innerHTML() { return content.children.map(node => node.outerHTML).join(''); } };
+        }, createComment(text) {
+            // Export placeholder for omitted tool chrome; removed again before serialization.
+            return { nodeType: 8, text, remove() { this.parentElement.children = this.parentElement.children.filter(node => node !== this); } };
         } },
     };
     for (const constant of functionSource(diagnostics, 'buildRabbitMirrorCurrentFaceHtml').matchAll(/\b[A-Z][A-Z_]{3,}\b/g)) {
         if (!(constant[0] in globals)) globals[constant[0]] = constant[0] === 'TOOL_ENTRY_HOST_ATTR' ? 'data-rabbit-mirror-tool-entry-host' : `test-${constant[0]}`;
     }
-    const { buildRabbitMirrorCurrentFaceHtml } = load(diagnostics, ['buildRabbitMirrorCurrentFaceHtml'], globals);
+    const { buildRabbitMirrorCurrentFaceHtml } = load(diagnostics, ['exportRasterImageSource', 'buildRabbitMirrorCurrentFaceHtml'], globals);
     const original = fixture(); const before = original.outerHTML;
     const html = buildRabbitMirrorCurrentFaceHtml(original);
     assert.doesNotMatch(html, /face-swipe|2\/5|顶部控件/);

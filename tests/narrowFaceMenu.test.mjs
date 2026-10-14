@@ -12,8 +12,17 @@ function extractFunction(source, signature) {
     const block = next < 0 ? source.slice(start) : source.slice(start, start + signature.length + next);
     return block.replace(/^export /gm, '');
 }
+const rescueSource = readFileSync(new URL('../src/outputSanitizer/layoutRescue.js', import.meta.url), 'utf8');
 const actionSource = extractFunction(inspectSource, 'async function runMaintenanceNarrowFaceRepair(');
-const menuSource = extractFunction(chromeSource, 'function showMaintenanceRabbitMenu(');
+// The menu's "恢复到初始" availability check and the real ownership helpers it
+// reads (maintenanceInspect.js -> layoutRescue.js); snapshot storage stays a fake.
+const menuSource = [
+    extractFunction(rescueSource, 'function independentMaintenanceHost('),
+    extractFunction(inspectSource, 'function isIndependentMaintenanceRoot('),
+    extractFunction(inspectSource, 'function hasMaintenancePreRepairSnapshot('),
+    extractFunction(chromeSource, 'function keepMaintenanceResultPanel('),
+    extractFunction(chromeSource, 'function showMaintenanceRabbitMenu('),
+].join('\n');
 function fixture(options = {}) {
     const states = [], calls = [];
     const details = { isConnected: true, open: true, querySelector: () => ({}) };

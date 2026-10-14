@@ -7,7 +7,7 @@ import vm from 'node:vm';
 // boundary. No network, host chat save, or user data is used.
 function sourceFunction(file, name) {
     const source = readFileSync(new URL(`../src/independentApi/${file}.js`, import.meta.url), 'utf8');
-    const match = source.match(new RegExp(`^(?:export )?function ${name}\\([^]*?^}`, 'm'));
+    const match = source.match(new RegExp(`^(?:export )?function ${name}\\([^]*?^}\\r?$`, 'm'));
     assert.ok(match, `${name} exists`);
     return match[0].replace(/^export /, '');
 }
@@ -17,7 +17,8 @@ function harness({ local, metadata, flight = null } = {}) {
     const message = { mes: 'unchanged main reply', swipe_id: 0 };
     const ctx = { chat: [message] };
     const store = local ? { [observed.slot]: local } : {};
-    const host = { dataset: { rmState: 'ready', rmSourceHash: 'body' }, querySelector: () => ({}) };
+    // A mounted independent ready host: sync now checks rmSource/isConnected before its fallback missing-shell card.
+    const host = { isConnected: true, dataset: { rmSource: 'independent', rmState: 'ready', rmSourceHash: 'body' }, querySelector: () => ({}) };
     const paints = [];
     const sandbox = {
         console, Set, Map, Date, Number, String,
@@ -64,11 +65,32 @@ function harness({ local, metadata, flight = null } = {}) {
         rebuildCollapsedReadyHost() {},
         clearExternalHostFreshSourceState: () => { delete host.dataset.rmPending; },
         removeIndependentInlineDuplicates() {},
+        // Mirror-evidence floor (persistence): the chat key behind the fixed 'chat:0:0' slots; no chat metadata and no session owner records.
+        chatKey: () => 'chat', CHAT_OUTPUT_METADATA_KEY: 'rabbit_mirror_independent_outputs_v2', chatMetadataObject: () => null, sessionOwners: () => null,
+        // Automatic pipeline hold (earlyBody): empty settings resolve to automatic timing; no automatic cutover registered and no host generation has ended in this session.
+        automaticIndependentTiming: () => true, lastAssistantMessage: () => ({ i: 0, m: message }), automaticGenerationCutovers: new Map(),
+        recentHostGenerationEnds: new Map(), MISSING_SHELL_SETTLE_GRACE_MS: 45000, HOST_GENERATION_HOLD_MAX_MS: 180000,
+        // Missing-shell evidence leaves: no "recheck missing floors" request; independent timing read from settings; history already read from disk.
+        manualFillFloors: new Map(), independentGenerationTiming: settings => settings?.independentGenerationTiming || 'auto',
+        independentHistoryLoaded: () => true, independentHistoryReadState: () => 'ready',
+        // Automatic settlement state: no pending host settlement for this floor; no automatic failure stop recorded for this slot.
+        hasPendingIndependentHostSettlement: () => false, automaticFailureStopFor: () => null, markAutomaticFailureStop() {}, placeExternalHost() {}, operationEpochForBase: () => 1,
+        MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE: 'missing-external-shell', INDEPENDENT_HISTORY_READ_ERROR_MESSAGE: 'history-read-error',
     };
     const context = vm.createContext(sandbox);
     for (const [file, name] of [
         ['connection', 'savedRecordMatchesObserved'],
         ['connection', 'savedIndependentRecordForOwner'],
+        ['persistence', 'parseChatOwnerKey'],
+        ['persistence', 'earliestMirrorEvidenceFloor'],
+        ['persistence', 'floorMirrorEvidence'],
+        ['earlyBody', 'automaticPipelineHoldsFloor'],
+        ['earlyBody', 'manualFillAllowed'],
+        ['earlyBody', 'missingShellHasEvidence'],
+        ['earlyBody', 'waitForIndependentHistory'],
+        ['earlyBody', 'missingIndependentHistoryMessage'],
+        ['missingRetryShell', 'hasUsableAssistantBody'],
+        ['missingRetryShell', 'shouldRestoreMissingIndependentRetryShell'],
         ['earlyBody', 'syncMessagesCore'],
     ]) vm.runInContext(sourceFunction(file, name), context);
     return { context, observed, ctx, message, store, host, paints, metadata: () => metadata };
@@ -151,7 +173,10 @@ test('resay settlement clears busy UI without changing neighboring faces; generi
         liveHost: host, settledSourceHash: 'body', completed: {}, settledKey: 'owner', html: 'merged',
         markMountedFaceProofs() {}, scheduleExternalShellTint() {}, ensureExternalTools() {},
         scheduleIndependentReadyPostprocess() {},
+        // No unsaved independent outputs are pending, so attachIndependentUnsavedNotices has nothing to place.
+        unsavedIndependentOutputs: new Map(),
     });
+    vm.runInContext(sourceFunction('mount', 'attachIndependentUnsavedNotices'), context);
     vm.runInContext(settledReplacement[1], context);
     assert.equal(host.dataset.rmPending, undefined);
     assert.equal(host.busy, false);

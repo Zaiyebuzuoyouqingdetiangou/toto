@@ -12,6 +12,12 @@ function stripModuleSyntax(source) {
 function loadMarkup() {
     const runtime = stripModuleSyntax(readFileSync(new URL('../src/outputSanitizer/runtime.js', import.meta.url), 'utf8'));
     const markup = stripModuleSyntax(readFileSync(new URL('../src/outputSanitizer/markup.js', import.meta.url), 'utf8'));
+    // markup.js now recolours through src/roleColorVariants.js (compileRoleColorVariants /
+    // originalRoleColorHtml) gated by visualDesign.postGenerationRecolorEnabled. Load the
+    // real modules; the palette index is pure data and the only load-time dependency.
+    const paletteIndex = stripModuleSyntax(readFileSync(new URL('../data/structured/generationPaletteIndex.js', import.meta.url), 'utf8'));
+    const visualDesign = stripModuleSyntax(readFileSync(new URL('../src/visualDesign.js', import.meta.url), 'utf8'));
+    const roleColorVariants = stripModuleSyntax(readFileSync(new URL('../src/roleColorVariants.js', import.meta.url), 'utf8'));
     const context = vm.createContext({
         console,
         URL,
@@ -23,7 +29,7 @@ function loadMarkup() {
         getSettings: () => ({}),
         applyRabbitMirrorBannedWordsToDom() {},
     });
-    vm.runInContext(`${runtime}\n${markup}`, context);
+    vm.runInContext(`${paletteIndex}\n${visualDesign}\n${roleColorVariants}\n${runtime}\n${markup}`, context);
     return context;
 }
 
