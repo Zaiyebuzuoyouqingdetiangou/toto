@@ -2828,6 +2828,10 @@ function installUnifiedMirrorTools(root) {
         }); })
             .catch(() => globalThis.toastr?.warning?.('生图面板未能打开，请重新打开后再试。'));
     } });
+    actions.push({ id: 'theater-snapshot', label: '快拍', run: () => {
+        void import('../theaterSnapshot.js?rmv=1.68.43').then(module => module.openTheaterSnapshot())
+            .catch(error => globalThis.toastr?.warning?.(String(error?.message || '快拍无法打开。')));
+    } });
     actions.push({ id: 'theater-favorite-library', label: '📖 打开收藏夹', run: () => {
         void import('../independentApi.js?rmv=1.68.44').then(module =>
             openTheaterFavoriteLibrary((container, record) => module.hydrateIndependentFavoriteHtml(container, record)))
