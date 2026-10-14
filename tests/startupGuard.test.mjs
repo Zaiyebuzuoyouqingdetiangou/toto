@@ -85,6 +85,32 @@ test('boot mark attribute and the CSS no-boot fallback agree', async () => {
     assert.match(source, /documentElement\?\.setAttribute\?\.\(BOOT_MARK_ATTRIBUTE/);
 });
 
+test('/兔子镜 registers on each parser map and unregister leaves foreign commands', async () => {
+    const { registerCommandOnParser, unregisterRabbitMirrorOpenCommand } = await import('../src/openCommand.js');
+    const SlashCommand = { fromProps: props => ({ ...props }) };
+    const first = {};
+    const second = {};
+    const parserA = { commands: first, addCommandObject(command) { first[command.name] = command; for (const alias of command.aliases) first[alias] = command; } };
+    const parserB = { commands: second, addCommandObject(command) { second[command.name] = command; for (const alias of command.aliases) second[alias] = command; } };
+    let opened = 0;
+    const open = () => { opened += 1; };
+    assert.equal(registerCommandOnParser(parserA, SlashCommand, open), true);
+    assert.equal(registerCommandOnParser(parserB, SlashCommand, open), true);
+    assert.equal(typeof first['兔子镜'].callback, 'function');
+    assert.equal(typeof second['兔子镜'].callback, 'function');
+    assert.notEqual(first['兔子镜'], second['兔子镜']);
+    first['兔子镜'].callback();
+    second.rabbitmirror.callback();
+    assert.equal(opened, 2);
+    const foreign = { name: 'rabbitmirror' };
+    second.rabbitmirror = foreign;
+    unregisterRabbitMirrorOpenCommand();
+    assert.equal(first['兔子镜'], undefined);
+    assert.equal(first.rabbitmirror, undefined);
+    assert.equal(second['兔子镜'], undefined);
+    assert.equal(second.rabbitmirror, foreign);
+});
+
 test('/兔子镜 registration reports false when the host kept a different command under the name', async () => {
     const { registerRabbitMirrorOpenCommand } = await import('../src/openCommand.js');
     const commands = {};
