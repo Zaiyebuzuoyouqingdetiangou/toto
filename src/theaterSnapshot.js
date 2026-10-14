@@ -226,11 +226,11 @@ function paintStar(button, on) {
 
 export async function openTheaterSnapshot() {
     const [{ applyAppearanceTheme }, api, favorites, persistence, runtime] = await Promise.all([
-        import('./appearanceTheme.js?rmv=1.68.43'),
-        import('./independentApi.js?rmv=1.68.43'),
-        import('./theaterFavorites.js?rmv=1.68.43'),
-        import('./independentApi/persistence.js?rmv=1.68.43'),
-        import('./independentApi/runtime.js?rmv=1.68.43'),
+        import('./appearanceTheme.js?rmv=1.68.44'),
+        import('./independentApi.js?rmv=1.68.44'),
+        import('./theaterFavorites.js?rmv=1.68.44'),
+        import('./independentApi/persistence.js?rmv=1.68.44'),
+        import('./independentApi/runtime.js?rmv=1.68.44'),
     ]);
     const ctx = runtime.getContext?.() || {};
     const chat = Array.isArray(ctx.chat) ? ctx.chat : [];
@@ -243,8 +243,8 @@ export async function openTheaterSnapshot() {
     const domErrors = readDomSnapshotErrors();
     let sessionErrors = [];
     try {
-        const flights = await import('./independentApi/flights.js?rmv=1.68.43');
-        const connection = await import('./independentApi/connection.js?rmv=1.68.43');
+        const flights = await import('./independentApi/flights.js?rmv=1.68.44');
+        const connection = await import('./independentApi/connection.js?rmv=1.68.44');
         const key = connection.chatKey(ctx);
         const seen = new Set(domErrors.map(row => row.mesid));
         for (const failure of flights.automaticFailureStops?.values?.() || []) {
