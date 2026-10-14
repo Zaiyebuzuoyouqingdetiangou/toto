@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { createRuntime } from './helpers/vmLoader.mjs';
+// 现行重说有两种：「重新抽一张」（默认，重抽这一面）和「原选题重写」（preserveSelection:true，按原记录还原）。这里测的是后者。
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const oldId = 'ext:filter-fixture:text:original';
@@ -35,7 +36,7 @@ test('filtered original resay gives an actionable fixed reason and never silentl
     f.enable([remainingId]);
     const before = [...f.runtime.store.values];
     assert.throws(() => f.prompt.planRabbitMirrorPromptDetails(f.settings, 'independent', null, 'filtered-resay', {
-        multifaceResay: { faceIndex: 0, faces: [f.face] },
+        multifaceResay: { faceIndex: 0, faces: [f.face], preserveSelection: true },
     }), error => {
         assert.equal(error.code, 'MULTIFACE_PLAN_UNAVAILABLE');
         assert.equal(error.reasonCode, 'BATCH_RESAY_ENTRY_UNAVAILABLE');
@@ -56,7 +57,7 @@ test('one enabled text entry can create one fresh face; original re-enable permi
     assert.deepEqual(clone(fresh.selectedExternalIds), [remainingId]);
     assert.equal(fresh.selections.length, 1);
     f.enable([oldId, remainingId]);
-    const resay = f.picker.pickCombinationForMultifaceResay(f.settings, { faceIndex: 0, faces: [f.face] });
+    const resay = f.picker.pickCombinationForMultifaceResay(f.settings, { faceIndex: 0, faces: [f.face], preserveSelection: true });
     assert.deepEqual(clone(resay.combo.textIds), [oldId]);
 });
 
@@ -84,7 +85,7 @@ test('missing original recipe and custom requests have distinct fixed diagnoses'
         [{ faceIndex: 0, faces: [{ ...f.face, customRequestCount: 1 }] }, 'BATCH_RESAY_CUSTOM_RECIPE'],
         [{ faceIndex: 0, faces: [{ themeIds: [], formatIds: [], textIds: [] }] }, 'BATCH_RESAY_RECIPE_INCOMPLETE'],
     ]) {
-        assert.throws(() => f.picker.pickCombinationForMultifaceResay(f.settings, resay), error => {
+        assert.throws(() => f.picker.pickCombinationForMultifaceResay(f.settings, { ...resay, preserveSelection: true }), error => {
             assert.equal(error.reasonCode, reason);
             assert.equal(f.errors.describeExternalWorldBookPreflightFailure(error).reasonCode, reason);
             return true;

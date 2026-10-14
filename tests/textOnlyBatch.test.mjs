@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { createRuntime } from './helpers/vmLoader.mjs';
+// 现行重说有两种：「重新抽一张」（默认，重抽这一面）和「原选题重写」（preserveSelection:true，按原记录还原）。这里测的是后者。
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 async function fixture(mode, source, textCount = 3) {
@@ -49,7 +50,7 @@ for (const [mode, source] of [['auto', 'blank'], ['text', 'blank'], ['longtext',
         assert.equal(f.storage.markPendingBatchAttempt(batch.batchPlan), true);
         const saved = f.storage.findPendingComboBatchPlan(batch.batchPlan.identity);
         assert.equal(saved.faces.length, 3);
-        const resay = f.picker.pickCombinationForMultifaceResay(f.settings, { faceIndex: 1, faces: saved.faces.map(face => face.combo) });
+        const resay = f.picker.pickCombinationForMultifaceResay(f.settings, { faceIndex: 1, faces: saved.faces.map(face => face.combo), preserveSelection: true });
         assert.deepEqual([...resay.combo.textIds], [...batch[1].combo.textIds]);
     });
 }

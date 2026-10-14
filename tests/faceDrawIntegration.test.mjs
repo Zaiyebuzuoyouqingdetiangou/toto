@@ -105,7 +105,8 @@ test('configured HTML with text materials includes the selected raw material and
     assert.equal(result.metadata.faces?.[0]?.faceDrawConfigured ?? result.metadata.faceDrawConfigured, true);
 });
 
-test('rotation state survives prompt metadata, recipe persistence, per-face lookup and displayed version stamp', async () => {
+// 「顺序轮播」已取消：旧的 sequence 规则按随机处理，提示词元数据和保存的配方都不再带轮播进度；原面配方字段照常往返。
+test('retired sequence rules plan as random and recipes round-trip without rotation state', async () => {
     const rt = await runtime();
     const { THEMATIC_CATEGORIES } = await rt.load('data/structured/thematicIndex.js');
     const { PRESENTATION_FORMATS } = await rt.load('data/structured/presentationIndex.js');
@@ -116,25 +117,27 @@ test('rotation state survives prompt metadata, recipe persistence, per-face look
     const formatId = PRESENTATION_FORMATS[0].id;
     const rule = schema.normalizeFaceDrawRule({ enabled: true,
         theme: { mode: 'sequence', scope: 'selected', itemIds: themeIds }, format: { requiredIds: [formatId] } });
+    assert.equal(rule.theme.mode, 'random');
     const plan = builder.planRabbitMirrorPromptDetails({ ...rt.settings, rabbitMirrorFaceCount: 2,
         rabbitMirrorFaceDrawRules: [rule, rule] }, 'independent', null, 'generation:metadata-state',
         { batchIdentity: { mesid: 2, swipeId: 0, sourceHash: 'metadata-test' } });
     const metadata = builder.renderRabbitMirrorPromptPlan(plan).metadata;
     assert.equal(metadata.faces.length, 2);
+    for (const face of metadata.faces) {
+        assert.equal(face.faceDrawConfigured, true);
+        assert.equal(face.faceDrawState, undefined);
+        assert.ok(themeIds.includes(face.themeIds[0]));
+        assert.deepEqual(copy(face.formatIds), [formatId]);
+    }
     const message = { mes: 'unchanged story body', swipe_id: 0 };
     assert.equal(recipes.recordRabbitMirrorRecipe({ chatKey: 'fixture', messageIndex: 2, message, metadata }), true);
-    const source = readFileSync(new URL('../src/independentApi/mount.js', import.meta.url), 'utf8');
-    const keys = source.slice(source.indexOf('const FACE_RECIPE_KEYS='), source.indexOf('function stampFaceRecipe('));
-    const stamp = vm.runInNewContext(`${keys}\ncompactFaceRecipe`, { faceDrawMetadataFields: schema.faceDrawMetadataFields });
     for (const index of [0, 1]) {
         const recipe = recipes.getRabbitMirrorRecipe({ chatKey: 'fixture', messageIndex: 2, swipeId: 0, message, faceIndex: index, includeExternalOnly: true });
-        assert.deepEqual(copy(recipe.faceDrawState), copy(plan.selections[index].combo.faceDrawState));
-        assert.deepEqual(copy(stamp(recipe).faceDrawState), copy(recipe.faceDrawState));
-        assert.equal(recipe.faceDrawState.steps[0].faceIndex, index);
+        assert.deepEqual(copy(recipe.themeIds), copy(metadata.faces[index].themeIds));
+        assert.equal(recipe.faceDrawState, undefined);
     }
-    const restored = stamp({ ...metadata.faces[0], themeIds: Array.from({length:16},(_,i)=>`external-${i}`) });
-    assert.equal(restored.themeIds.length, 16);
-    const malformed = schema.faceDrawMetadataFields({faceDrawConfigured:true,faceDrawState:{version:1,steps:[{kind:'theme',cursor:-1}]}});
-    assert.equal(malformed.faceDrawConfigured,true);
-    assert.equal(malformed.faceDrawState,undefined);
+    // 旧存档里格式不对的轮播进度字段被丢弃，faceDrawConfigured 保留。
+    const malformed = schema.faceDrawMetadataFields({ faceDrawConfigured: true, faceDrawState: { version: 1, steps: [{ kind: 'theme', cursor: -1 }] } });
+    assert.equal(malformed.faceDrawConfigured, true);
+    assert.equal(malformed.faceDrawState, undefined);
 });

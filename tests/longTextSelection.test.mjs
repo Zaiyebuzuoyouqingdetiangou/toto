@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { createRuntime } from './helpers/vmLoader.mjs';
+// 现行重说有两种：「重新抽一张」（默认，重抽这一面）和「原选题重写」（preserveSelection:true，按原记录还原）。这里测的是后者。
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const clone = value => JSON.parse(JSON.stringify(value));
@@ -43,7 +44,7 @@ test('longtext does not invent a blank recipe when nothing can be drawn', async 
 
 test('blank longtext exact resay needs the complete marker and does not become a custom directive', async () => {
     const f = await fixture({ longTextSource: 'mixed' });
-    const result = f.picker.pickCombinationForMultifaceResay(f.settings, { faceIndex: 0, faces: [blankRecipe()] });
+    const result = f.picker.pickCombinationForMultifaceResay(f.settings, { faceIndex: 0, faces: [blankRecipe()], preserveSelection: true });
     assert.equal(result.combo.blankLongText, true);
     assert.deepEqual(clone(result.combo.formatIds), []);
     for (const invalid of [
@@ -53,7 +54,7 @@ test('blank longtext exact resay needs the complete marker and does not become a
         { ...blankRecipe(), customDirective: true },
         { ...blankRecipe(), themeIds: undefined },
     ]) {
-        assert.throws(() => f.picker.pickCombinationForMultifaceResay(f.settings, { faceIndex: 0, faces: [invalid] }));
+        assert.throws(() => f.picker.pickCombinationForMultifaceResay(f.settings, { faceIndex: 0, faces: [invalid], preserveSelection: true }));
         assert.equal(f.storage.createPendingComboBatchPlan([invalid, blankRecipe()], {
             chatKey: 'chat:test', generationScopeKey: 'scope', mesid: 2, swipeId: 0, sourceHash: 'body', settingsKey: 'key',
         }), null);

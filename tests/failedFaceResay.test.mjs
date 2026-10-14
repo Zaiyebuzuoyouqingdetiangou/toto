@@ -173,7 +173,8 @@ test('explicit missing-recipe failed-face retry plans one fresh filtered selecti
         multifaceResay: { faceIndex: 1, faces: [null, disabledRecipe], retryFailedFace: true },
     });
     assert.deepEqual(Array.from(retryPlan.selectedExternalIds), [id], 'manual failed retry respects the remaining enabled pool');
+    // 「原选题重写」（preserveSelection）碰到原条目已停用：必须拒绝，不能悄悄换成别的条目。
     assert.throws(() => prompt.planRabbitMirrorPromptDetails(settings, 'independent', null, 'ordinary-resay', {
-        multifaceResay: { faceIndex: 1, faces: [null, disabledRecipe] },
+        multifaceResay: { faceIndex: 1, faces: [null, disabledRecipe], preserveSelection: true },
     }), error => error.reasonCode === 'BATCH_RESAY_ENTRY_UNAVAILABLE');
 });

@@ -6,6 +6,7 @@ import vm from 'node:vm';
 import { createRuntime } from './helpers/vmLoader.mjs';
 const root = fileURLToPath(new URL('..', import.meta.url));
 const clone = value => JSON.parse(JSON.stringify(value));
+// 现行重说有两种：「重新抽一张」（默认，重抽这一面）和「原选题重写」（preserveSelection:true，按原记录还原）。这里测的是后者。
 
 async function fixture(overrides = {}) {
     const runtime = createRuntime(root);
@@ -141,6 +142,6 @@ test('single saved longtext preserves the empty trusted recipe after chat-metada
     vm.runInContext('globalThis.saved=compactChatPersistedRecord(value);', context);
     assert.equal(context.saved.apiRequest.customRequestCount, 1);
     const picker = await f.runtime.load('src/picker.js');
-    assert.throws(() => picker.pickCombinationForMultifaceResay(f.settings, { faceIndex: 0, faces: [context.saved.apiRequest] }),
+    assert.throws(() => picker.pickCombinationForMultifaceResay(f.settings, { faceIndex: 0, faces: [context.saved.apiRequest], preserveSelection: true }),
         error => error.reasonCode === 'BATCH_RESAY_CUSTOM_RECIPE');
 });

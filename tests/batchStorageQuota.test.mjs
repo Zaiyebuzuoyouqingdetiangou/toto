@@ -115,6 +115,9 @@ function legacyRecord(plan) {
 test('plan creation keeps full built-in material and does not write storage', async () => {
     const storage = useStorage();
     const api = await freshStorageModule();
+    // 模块加载时会一次性清掉已取消的「顺序轮播」进度键；那是加载行为，不是建计划的写入。
+    assert.deepEqual(storage.operations, [{ key: 'rabbit_mirror_theater:face_draw_cursors:v1', operation: 'remove' }]);
+    storage.operations = [];
     const combos = builtinCombos();
     const plan = makePlan(api, combos);
     assert.deepEqual(plan.faces.map(face => face.combo), combos);
@@ -230,6 +233,7 @@ test('chat, final body, message, swipe and batch identity mismatches cannot comm
 test('duplicate selected IDs, sparse plans and preview operations cannot reserve dispatch', async () => {
     const store = useStorage();
     const api = await freshStorageModule();
+    store.operations = []; // 同上：忽略加载时清理轮播进度键
     const combos = builtinCombos();
     combos[0].themeIds.push(combos[0].themeIds[0]);
     const codes = [];

@@ -139,67 +139,6 @@ test('required blacklist conflict and empty selected pool report preflight witho
     assert.throws(() => h.picker.pickCombination(h.settings([empty]), 'empty'), error => error.reasonCode === 'FACE_DRAW_POOL_EXHAUSTED');
 });
 
-test('sequence advances only after success, preserves frozen retries, wraps and remains chat-local', async () => {
-    const h = await harness();
-    const st = h.settings([h.rule({}, { mode: 'sequence', scope: 'selected', itemIds: h.formats.slice(0, 2).map(item => item.id), min: 1, max: 1 })]);
-    const first = h.picker.pickCombination(st, 'sequence:first');
-    assert.equal(first.combo.formatIds[0], h.formats[0].id);
-    assert.equal(h.storage.readFaceDrawCursor(first.combo.faceDrawState.steps[0]), 0);
-    assert.equal(h.picker.pickCombination(st, 'sequence:first'), first);
-    const { selected, ok } = h.commit(first.combo); assert.equal(ok, true);
-    assert.equal(h.storage.commitVisualHistorySelection(selected, {}), true);
-    assert.equal(h.storage.readFaceDrawCursor(first.combo.faceDrawState.steps[0]), 1);
-    const second = h.picker.pickCombination(st, 'sequence:second');
-    assert.equal(second.combo.formatIds[0], h.formats[1].id);
-    assert.equal(h.commit(second.combo).ok, true);
-    assert.equal(h.picker.pickCombination(st, 'sequence:third').combo.formatIds[0], h.formats[0].id);
-    h.host.chatId = 'other-chat';
-    assert.equal(h.picker.pickCombination(st, 'sequence:other').combo.formatIds[0], h.formats[0].id);
-});
-
-test('sequence advances by actual additions and lasts beyond rolling history retention', async () => {
-    const h = await harness();
-    const st = h.settings([h.rule({}, { mode: 'sequence', scope: 'selected', itemIds: h.formats.map(item => item.id), min: 2, max: 2 })]);
-    let identity;
-    for (let i = 0; i < 30; i += 1) {
-        const { combo } = h.picker.pickCombination(st, `many:${i}`);
-        identity = combo.faceDrawState.steps[0];
-        assert.deepEqual(plain(combo.formatIds), i % 2 ? h.formats.slice(2).map(item => item.id) : h.formats.slice(0, 2).map(item => item.id));
-        assert.equal(h.commit(combo).ok, true);
-    }
-    assert.equal(h.storage.getComboHistory(100).length, 25);
-    assert.equal(h.storage.readFaceDrawCursor(identity), 60);
-});
-
-test('failed cursor storage write rolls history back and the identical result can be committed later', async () => {
-    const h = await harness();
-    const st = h.settings([h.rule({}, { mode: 'sequence', scope: 'selected', itemIds: h.formats.map(item => item.id), min: 1, max: 1 })]);
-    const { combo } = h.picker.pickCombination(st, 'quota');
-    const selected = h.storage.createVisualHistorySelection(combo);
-    h.localStorage.fail = 'face_draw_cursors';
-    assert.equal(h.storage.commitVisualHistorySelection(selected, {}), false);
-    assert.equal(h.storage.getComboHistory(100).length, 0);
-    assert.equal(h.storage.readFaceDrawCursor(combo.faceDrawState.steps[0]), 0);
-    h.localStorage.fail = '';
-    assert.equal(h.storage.commitVisualHistorySelection(selected, {}), true);
-    assert.equal(h.storage.readFaceDrawCursor(combo.faceDrawState.steps[0]), 1);
-});
-
-test('partial batch advances successful faces only and replayed selection does not advance again', async () => {
-    const h = await harness();
-    const r = h.rule({}, { mode: 'sequence', scope: 'selected', itemIds: h.formats.map(item => item.id), min: 1, max: 1 });
-    const st = h.settings([r, r]);
-    const faces = h.batch(st, 'independent:partial'), plan = faces.batchPlan;
-    assert.equal(h.storage.markPendingBatchAttempt(plan, { transient: true }), true);
-    assert.equal(h.storage.commitPendingComboBatch([{}, null], { batchId: plan.batchId, identity: plan.identity, partial: true }), true);
-    assert.equal(h.storage.readFaceDrawCursor(faces[0].combo.faceDrawState.steps[0]), 1);
-    assert.equal(h.storage.readFaceDrawCursor(faces[1].combo.faceDrawState.steps[0]), 0);
-    const restored = h.picker.pickCombinationForMultifaceResay(st, { faceIndex: 0, faces: faces.map(face => face.combo), preserveSelection: true });
-    assert.deepEqual(plain(restored.combo.faceDrawState), plain(faces[0].combo.faceDrawState));
-    assert.equal(h.commit(restored.combo).ok, true);
-    assert.equal(h.storage.readFaceDrawCursor(faces[0].combo.faceDrawState.steps[0]), 1);
-});
-
 test('legacy batch path supports identical resident items and serial frozen selections', async () => {
     const h = await harness();
     const r = h.rule({ requiredIds: [h.themes[0].id] }, { requiredIds: [h.formats[0].id] });
@@ -221,21 +160,21 @@ test('unconfigured settings do not read or write draw cursors and explicit direc
     assert.equal(result.disabled, true);
 });
 
-test('redrawing original face 2 uses its own rule and cursor with collapsed presentation settings', async () => {
+test('redrawing original face 2 uses its own rule with collapsed presentation settings', async () => {
     const h = await harness();
+    const face2Ids = h.formats.slice(1, 3).map(item => item.id);
     const st = h.settings([h.rule({}, { requiredIds: [h.formats[0].id] }),
-        h.rule({}, { mode: 'sequence', scope: 'selected', itemIds: h.formats.slice(1, 3).map(item => item.id), min: 1, max: 1 })]);
+        h.rule({}, { mode: 'random', scope: 'selected', itemIds: face2Ids, min: 1, max: 1 })]);
     const before = h.batch(st, 'independent:old');
     const collapsed = { ...st, rabbitMirrorFaceCount: 1, rabbitMirrorPresentationModes: ['longtext'] };
     const redrawn = h.picker.pickCombinationForMultifaceResay(collapsed,
         { faceIndex: 1, faces: before.map(face => face.combo) }, 'redraw:face2');
-    assert.equal(redrawn.combo.formatIds[0], h.formats[1].id);
+    assert.ok(face2Ids.includes(redrawn.combo.formatIds[0]), 'face 2 redraws from its own selected range, not face 1 resident');
     assert.equal(redrawn.combo.presentationMode, 'text');
-    assert.equal(redrawn.combo.faceDrawState.steps[0].faceIndex, 1);
+    assert.equal(redrawn.combo.faceDrawConfigured, true);
     assert.equal(h.commit(redrawn.combo).ok, true);
     const next = h.picker.pickCombination(collapsed, 'serial:face2', { serialFaceIndex: 1 });
-    assert.equal(next.combo.formatIds[0], h.formats[2].id);
-    assert.equal(next.combo.faceDrawState.steps[0].faceIndex, 1);
+    assert.ok(face2Ids.includes(next.combo.formatIds[0]));
 });
 
 test('text-only configured faces work in HTML and longtext without unrelated theme/format availability', async () => {
@@ -250,76 +189,37 @@ test('text-only configured faces work in HTML and longtext without unrelated the
     assert.deepEqual(plain(faces.map(face => face.combo.presentationMode)), ['html', 'text']);
 });
 
-test('successful restored selection stays idempotent and old epoch cannot overwrite changed settings', async () => {
-    const h = await harness();
-    const lane = ids => ({ mode: 'sequence', scope: 'selected', itemIds: ids, min: 1, max: 1 });
-    const st = h.settings([h.rule({}, lane(h.formats.slice(0, 2).map(item => item.id)))]);
-    const first = h.picker.pickCombination(st, 'epoch:first').combo;
-    assert.equal(h.commit(first).ok, true);
-    const changed = h.settings([h.rule({}, lane(h.formats.slice(2, 4).map(item => item.id)))]);
-    const newer = h.picker.pickCombination(changed, 'epoch:newer').combo;
-    assert.equal(h.commit(newer).ok, true);
-    const restored = h.picker.pickCombinationForMultifaceResay(st, { faceIndex: 0, faces: [first], preserveSelection: true });
-    assert.equal(h.commit(restored.combo).ok, true);
-    assert.equal(h.storage.readFaceDrawCursor(newer.faceDrawState.steps[0]), 1);
-    assert.equal(h.picker.pickCombination(changed, 'epoch:next').combo.formatIds[0], h.formats[3].id);
-    const rows = [...h.localStorage.rows.entries()].filter(([key]) => key.includes('face_draw_cursors'));
-    assert.equal(Object.keys(JSON.parse(rows[0][1]).cursors).length, 1, 'one slot per chat/face/lane, not every edited signature');
-});
-
-test('failed face exact continuation advances once when it eventually succeeds', async () => {
-    const h = await harness();
-    const r = h.rule({}, { mode: 'sequence', scope: 'selected', itemIds: h.formats.slice(0, 2).map(item => item.id), min: 1, max: 1 });
-    const st = h.settings([r, r]), faces = h.batch(st, 'independent:continuation'), plan = faces.batchPlan;
-    assert.equal(h.storage.markPendingBatchAttempt(plan, { transient: true }), true);
-    assert.equal(h.storage.commitPendingComboBatch([{}, null], { batchId: plan.batchId, identity: plan.identity, partial: true }), true);
-    const restored = h.picker.pickCombinationForMultifaceResay(st, { faceIndex: 1, faces: faces.map(face => face.combo), preserveVariation: true });
-    assert.equal(h.storage.readFaceDrawCursor(restored.combo.faceDrawState.steps[0]), 0);
-    assert.equal(h.commit(restored.combo).ok, true);
-    assert.equal(h.commit(restored.combo).ok, true);
-    assert.equal(h.storage.readFaceDrawCursor(restored.combo.faceDrawState.steps[0]), 1);
-});
-
-test('batch transaction failure rolls back all cursor and history updates', async () => {
-    const h = await harness();
-    const r = h.rule({}, { mode: 'sequence', scope: 'selected', itemIds: h.formats.map(item => item.id), min: 1, max: 1 });
-    const faces = h.batch(h.settings([r, r]), 'independent:rollback'), plan = faces.batchPlan;
-    assert.equal(h.storage.markPendingBatchAttempt(plan, { transient: true }), true);
-    h.localStorage.fail = 'last_combo';
-    const expected = { batchId: plan.batchId, identity: plan.identity };
-    assert.equal(h.storage.commitPendingComboBatch([{}, {}], expected), false);
-    assert.equal(h.storage.getComboHistory(100).length, 0);
-    assert.deepEqual(plain(faces.map(face => h.storage.readFaceDrawCursor(face.combo.faceDrawState.steps[0]))), [0, 0]);
-    h.localStorage.fail = '';
-    assert.equal(h.storage.commitPendingComboBatch([{}, {}], expected), true);
-    assert.deepEqual(plain(faces.map(face => h.storage.readFaceDrawCursor(face.combo.faceDrawState.steps[0]))), [1, 1]);
-});
-
-test('concurrent frozen draws from same cursor advance by max once, never rewind newer commits', async () => {
-    const h = await harness();
-    const st = h.settings([h.rule({}, { mode: 'sequence', scope: 'selected', itemIds: h.formats.map(item => item.id), min: 1, max: 1 })]);
-    const first = h.picker.pickCombination(st, 'concurrent:one').combo;
-    const second = h.picker.pickCombination(st, 'concurrent:two').combo;
-    assert.deepEqual(plain(first.faceDrawState), plain(second.faceDrawState));
-    assert.equal(h.commit(first).ok, true);
-    const third = h.picker.pickCombination(st, 'concurrent:three').combo;
-    assert.equal(h.commit(third).ok, true);
-    assert.equal(h.commit(second).ok, true);
-    assert.equal(h.storage.readFaceDrawCursor(first.faceDrawState.steps[0]), 2);
-});
-
-test('external ordering remains stable when library metadata load order changes and blacklisted text is unavailable', async () => {
+test('external text draws stay inside the enabled libraries whatever their load order, and blacklisted text is unavailable', async () => {
     const h = await harness(), a = 'ext:a:text:one', b = 'ext:b:text:one';
     const entries = { a: [{ externalId: a, classification: 'text', enabled: true, userConfirmed: true }],
         b: [{ externalId: b, classification: 'text', enabled: true, userConfirmed: true }] };
-    h.pool.setExternalPoolSnapshot([{ libraryId: 'b', enabled: true }, { libraryId: 'a', enabled: true }], entries);
-    const st = h.settings([h.rule({}, {}, { mode: 'sequence', scope: 'all', min: 1, max: 1 })]);
-    const first = h.picker.pickCombination(st, 'external:one').combo;
-    assert.equal(first.textIds[0], a); assert.equal(h.commit(first).ok, true);
-    h.pool.setExternalPoolSnapshot([{ libraryId: 'a', enabled: true }, { libraryId: 'b', enabled: true }], entries);
-    assert.equal(h.picker.pickCombination(st, 'external:two').combo.textIds[0], b);
+    const st = h.settings([h.rule({}, {}, { mode: 'random', scope: 'all', min: 1, max: 1 })]);
+    for (const order of [['b', 'a'], ['a', 'b']]) {
+        h.pool.setExternalPoolSnapshot(order.map(libraryId => ({ libraryId, enabled: true })), entries);
+        const combo = h.picker.pickCombination(st, `external:${order.join('')}`).combo;
+        assert.ok([a, b].includes(combo.textIds[0]));
+        assert.equal(combo.textIds.length, 1);
+        assert.equal(h.commit(combo).ok, true);
+    }
     const blocked = h.settings([h.rule({}, {}, { requiredIds: [a] })], { blacklistEnabled: true, blacklistedFormatIds: [a] });
     assert.throws(() => h.picker.pickCombination(blocked, 'external:blocked'), error => error.reasonCode === 'FACE_DRAW_REQUIRED_UNAVAILABLE');
+});
+
+// 「顺序轮播」已取消（README：逐面抽取只留随机抽取）。旧设置里的 sequence 一律按随机处理，范围不变，不再产生轮播进度。
+test('retired sequence mode normalizes to random: draws stay inside the selected range and leave no draw cursors', async () => {
+    const h = await harness();
+    const selected = h.formats.slice(0, 2).map(item => item.id);
+    const lane = h.schema.normalizeFaceDrawLane({ mode: 'sequence', scope: 'selected', itemIds: selected, min: 1, max: 1 });
+    assert.equal(lane.mode, 'random');
+    assert.deepEqual(plain(lane.itemIds), selected);
+    const st = h.settings([h.rule({}, { mode: 'sequence', scope: 'selected', itemIds: selected, min: 1, max: 1 })]);
+    for (let round = 0; round < 4; round += 1) {
+        const combo = h.picker.pickCombination(st, `retired-sequence:${round}`).combo;
+        assert.ok(selected.includes(combo.formatIds[0]));
+        assert.equal(combo.faceDrawState, undefined, 'no rotation cursor is produced');
+        assert.equal(h.commit(combo).ok, true);
+    }
+    assert.ok(![...h.localStorage.rows.keys()].some(key => key.includes('face_draw_cursors')));
 });
 
 test('empty configured longtext is allowed; random optional additions never repeat resident IDs', async () => {

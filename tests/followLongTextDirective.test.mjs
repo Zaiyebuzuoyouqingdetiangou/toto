@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { createRuntime, createStore } from './helpers/vmLoader.mjs';
 const root = fileURLToPath(new URL('..', import.meta.url));
 const blank = { themeIds: [], formatIds: [], textIds: [], requestedPresentationMode: 'longtext', presentationMode: 'text', blankLongText: true };
+// 现行重说有两种：「重新抽一张」（默认，重抽这一面）和「原选题重写」（preserveSelection:true，按原记录还原）。这里测的是后者。
 
 test('follow generation snapshot and saved recipe retain custom counts and block silent blank resay', async () => {
     const runtime = createRuntime(root);
@@ -27,7 +28,7 @@ test('follow generation snapshot and saved recipe retain custom counts and block
         assert.equal(value.customFormatCount, 1);
         assert.equal(value.customRequestCount, 1);
         assert.equal(value.rawDirective, undefined);
-        assert.throws(() => picker.pickCombinationForMultifaceResay(defaultSettings, { faceIndex: 0, faces: [value] }), error => error.reasonCode === 'BATCH_RESAY_CUSTOM_RECIPE');
+        assert.throws(() => picker.pickCombinationForMultifaceResay(defaultSettings, { faceIndex: 0, faces: [value], preserveSelection: true }), error => error.reasonCode === 'BATCH_RESAY_CUSTOM_RECIPE');
     }
 });
 
