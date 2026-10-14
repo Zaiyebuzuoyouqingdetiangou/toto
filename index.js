@@ -1,14 +1,14 @@
 // 启动自检必须是第一个 import：后面任何启动文件加载时抛错，它都已经在听了。
-import { markRabbitMirrorBootstrapEvaluated, runRabbitMirrorStartupStep, reportRabbitMirrorStartupFailure, setRabbitMirrorStartupOpener, setRabbitMirrorOpenCommandAvailable, checkRabbitMirrorEntryVisibility, checkRabbitMirrorDuplicateInstall, disposeRabbitMirrorStartupGuard } from './src/startupGuard.js?rmv=1.68.48';
-import { unregisterRabbitMirrorOpenCommand, watchRabbitMirrorOpenCommand } from './src/openCommand.js?rmv=1.68.48';
-import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt, destroyIndependentGenerationIntentBridge, initIndependentGenerationIntentBridge, prewarmRabbitMirrorGenerationRuntime } from './src/injector.js?rmv=1.68.48';
-import { clearLastCombo } from './src/storage.js?rmv=1.68.48';
-import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.68.48';
-import { initPromptHistoryStrip, destroyPromptHistoryStrip } from './src/promptHistoryStrip.js?rmv=1.68.48';
-import { getSettings, updateSettings } from './src/settings.js?rmv=1.68.48';
-import { installRabbitMirrorPublicAPI } from './src/publicApi.js?rmv=1.68.48';
-import { initRabbitMirrorIndependentSecurityGuard, destroyRabbitMirrorIndependentSecurityGuard } from './src/independentSecurityGuard.js?rmv=1.68.48';
-import { initRabbitMirrorHostCompatibility, isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface, getRabbitMirrorEarlyBootstrap, getRabbitMirrorHostCompatibilityStatus } from './src/hostCompatibility.js?rmv=1.68.48';
+import { markRabbitMirrorBootstrapEvaluated, runRabbitMirrorStartupStep, reportRabbitMirrorStartupFailure, setRabbitMirrorStartupOpener, setRabbitMirrorOpenCommandAvailable, checkRabbitMirrorEntryVisibility, checkRabbitMirrorDuplicateInstall, disposeRabbitMirrorStartupGuard } from './src/startupGuard.js?rmv=1.68.49';
+import { unregisterRabbitMirrorOpenCommand, watchRabbitMirrorOpenCommand } from './src/openCommand.js?rmv=1.68.49';
+import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt, destroyIndependentGenerationIntentBridge, initIndependentGenerationIntentBridge, prewarmRabbitMirrorGenerationRuntime } from './src/injector.js?rmv=1.68.49';
+import { clearLastCombo } from './src/storage.js?rmv=1.68.49';
+import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.68.49';
+import { initPromptHistoryStrip, destroyPromptHistoryStrip } from './src/promptHistoryStrip.js?rmv=1.68.49';
+import { getSettings, updateSettings } from './src/settings.js?rmv=1.68.49';
+import { installRabbitMirrorPublicAPI } from './src/publicApi.js?rmv=1.68.49';
+import { initRabbitMirrorIndependentSecurityGuard, destroyRabbitMirrorIndependentSecurityGuard } from './src/independentSecurityGuard.js?rmv=1.68.49';
+import { initRabbitMirrorHostCompatibility, isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface, getRabbitMirrorEarlyBootstrap, getRabbitMirrorHostCompatibilityStatus } from './src/hostCompatibility.js?rmv=1.68.49';
 
 // TT requires ownership registration before its first projection, not after the
 // deferred DOM runtime loads. This bridge has no network, timers or heavy imports.
@@ -17,8 +17,8 @@ runRabbitMirrorStartupStep('接入宿主聊天', () => initRabbitMirrorHostCompa
 // SecurityFix2 leaves only the prompt interceptor and request guard in the parser-critical
 // graph. The 1.8 MiB UI/sanitizer/independent runtime graph is imported after the host has
 // received a paint/idle opportunity, or immediately after explicit RabbitMirror intent.
-const GOLDEN_MERGE_VERSION = '1.68.48';
-const RABBIT_MIRROR_RUNTIME_VERSION = '1.68.48';
+const GOLDEN_MERGE_VERSION = '1.68.49';
+const RABBIT_MIRROR_RUNTIME_VERSION = '1.68.49';
 const earlyBootstrap = getRabbitMirrorEarlyBootstrap();
 let runtimeCancelled = earlyBootstrap?.cancelled === true || (!!globalThis.__rabbitMirrorTtBootstrap && !earlyBootstrap);
 let runtimeClaimed = !runtimeCancelled;
@@ -128,13 +128,13 @@ async function ensureDeferredCoreRuntime(reason = 'scheduled-idle') {
     if (deferredRuntimeModules) return deferredRuntimeModules;
     if (deferredRuntimePromise) return deferredRuntimePromise;
     deferredRuntimePromise = Promise.all([
-        import('./src/outputSanitizer.js?rmv=1.68.48'),
-        import('./src/visualScanner.js?rmv=1.68.48'),
-        import('./src/independentApi.js?rmv=1.68.48'),
-        import('./src/touchTheater.js?rmv=1.68.48'),
-        import('./src/ui.js?rmv=1.68.48'),
-        import('./src/composerClearance.js?rmv=1.68.48'),
-        import('./src/chatAvatars.js?rmv=1.68.48'),
+        import('./src/outputSanitizer.js?rmv=1.68.49'),
+        import('./src/visualScanner.js?rmv=1.68.49'),
+        import('./src/independentApi.js?rmv=1.68.49'),
+        import('./src/touchTheater.js?rmv=1.68.49'),
+        import('./src/ui.js?rmv=1.68.49'),
+        import('./src/composerClearance.js?rmv=1.68.49'),
+        import('./src/chatAvatars.js?rmv=1.68.49'),
     ]).then(async ([output, visual, independent, touch, ui, clearance, avatars]) => {
         if (!runtimeIsActive()) return null;
         const modules = { output, visual, independent, touch, ui, clearance, avatars };
@@ -383,15 +383,22 @@ function loadOptional(name, specifier, init) {
     return promise;
 }
 
+let renderedVisualFeedbackStarted = false;
+
 function loadMirrorVisualCompat() {
     // A normal details/label/radio click must never bootstrap the whole heavy graph.
     // Compatibility helpers may join only after the runtime was already loaded at a
     // stable idle boundary or by an explicit RabbitMirror settings/maintenance action.
     if (!deferredRuntimeModules) return Promise.resolve(null);
-    return Promise.all([
-        loadOptional('checkedSelectorRepair', './src/checkedSelectorRepair.js?rmv=1.68.48', mod => mod.initRabbitMirrorCheckedSelectorRepair?.()),
-        loadOptional('renderedVisualFeedback', './src/renderedVisualFeedbackHotfix.js?rmv=1.68.48', mod => mod.initRabbitMirrorRenderedVisualFeedbackHotfix?.()),
-    ]);
+    if (!renderedVisualFeedbackStarted) {
+        renderedVisualFeedbackStarted = true;
+        try { deferredRuntimeModules.visual.initRenderedVisualFeedback?.(); }
+        catch (error) {
+            renderedVisualFeedbackStarted = false;
+            console.warn('[RabbitMirror] rendered visual feedback init failed:', error);
+        }
+    }
+    return loadOptional('checkedSelectorRepair', './src/checkedSelectorRepair.js?rmv=1.68.49', mod => mod.initRabbitMirrorCheckedSelectorRepair?.());
 }
 
 function loadMaintenanceCompat() {
@@ -542,7 +549,7 @@ async function ensureExternalDiagnostics() {
     if (externalDiagnosticsApi) return externalDiagnosticsApi;
     if (externalDiagnosticsPromise) return externalDiagnosticsPromise;
     const revision = ++externalDiagnosticsOperationRevision;
-    const loadPromise = import('./src/externalDiagnostics.js?rmv=1.68.48').then(mod => {
+    const loadPromise = import('./src/externalDiagnostics.js?rmv=1.68.49').then(mod => {
         if (!runtimeIsActive() || !externalDiagnosticsDesiredEnabled || revision !== externalDiagnosticsOperationRevision) return null;
         externalDiagnosticsModule = mod;
         externalDiagnosticsApi = mod.initRabbitMirrorExternalDiagnostics?.() || null;
@@ -564,7 +571,7 @@ function disableExternalDiagnostics() {
 }
 
 function clearDeferredGenerationSnapshots() {
-    void import('./src/generationGuard.js?rmv=1.68.48')
+    void import('./src/generationGuard.js?rmv=1.68.49')
         .then(mod => {
             // Disable may await this import while a newer installation takes
             // ownership. Do not clear that owner's shared snapshot/attempt keys.
@@ -583,7 +590,6 @@ function destroyOptionalCompat() {
     for (const [name, mod] of optionalModules) {
         try {
             if (name === 'checkedSelectorRepair') mod.destroyRabbitMirrorCheckedSelectorRepair?.();
-            else if (name === 'renderedVisualFeedback') mod.destroyRabbitMirrorRenderedVisualFeedbackHotfix?.();
         } catch {}
     }
     optionalModules.clear();
@@ -651,6 +657,7 @@ export function onDisable() {
     unregisterRabbitMirrorOpenCommand();
     disposeRabbitMirrorStartupGuard();
     removeOnDemandCompatTriggers();
+    renderedVisualFeedbackStarted = false;
     destroyOptionalCompat();
     destroyFeedbackCatPromptSync();
     destroyPromptHistoryStrip();
