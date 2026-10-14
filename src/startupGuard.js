@@ -59,10 +59,11 @@ function shortPath(text) {
 
 // 报错信息里引号中的片段可能是被解析的原文（比如 JSON.parse 会带一小段），一律遮掉。
 function maskQuoted(text) {
-    return String(text || '').replace(/"[^"\n]{0,400}"/g, '"…"').replace(/'[^'\n]{9,400}'/g, "'…'").slice(0, 400);
+    // 双引号从这一行第一个遮到最后一个（V8 的 JSON 报错里原文自己也带引号）。
+    return String(text || '').replace(/"[^\n]*"/g, '"…"').replace(/'[^'\n]{9,400}'/g, "'…'").slice(0, 400);
 }
 function errorText(error) {
-    if (error instanceof Error) return maskQuoted(`${error.name || 'Error'}: ${error.message || ''}`.trim());
+    if (error instanceof Error) return maskQuoted(`${error.name || 'Error'}: ${error.message || ''}`.trim().replace(/\s*\n\s*/g, ' '));
     if (error && typeof error === 'object' && 'message' in error) return maskQuoted(String(error.message));
     return maskQuoted(String(error ?? '未知错误'));
 }
@@ -70,7 +71,8 @@ function errorText(error) {
 function errorStack(error) {
     const stack = error instanceof Error ? String(error.stack || '') : '';
     // 第一行是报错信息本身，同样遮掉引号里的片段；后面是调用位置。
-    return stack.split('\n').slice(0, 14).map((line, index) => (index === 0 ? maskQuoted(line) : line)).join('\n');
+    // 调用位置那几行（at …/…@）原样留着；其余是报错信息本身（可能有好几行），遮掉引号里的片段。
+    return stack.split('\n').slice(0, 14).map(line => (/^\s*at\s|@\S+:\d+/.test(line) ? line : maskQuoted(line))).join('\n');
 }
 
 function readMuted() {
@@ -150,7 +152,7 @@ function hostLabel() {
 export function buildRabbitMirrorStartupDiagnostic(extra = '') {
     const lines = [];
     lines.push(`兔子镜启动自检 ${RUNTIME_VERSION} ${new Date().toISOString()}`);
-    lines.push(`宿主=${hostLabel()} 安装文件夹=${SELF_FOLDER || BASE_URL || '-'}`);
+    lines.push(`宿主=${hostLabel()} 安装文件夹=${SELF_FOLDER || shortPath(BASE_URL) || '-'}`);
     try { lines.push(`浏览器=${navigator.userAgent}`); } catch {}
     try { lines.push(`窗口=${innerWidth}x${innerHeight} 触屏=${matchMedia('(pointer: coarse)').matches ? '是' : '否'}`); } catch {}
     lines.push('（不含聊天内容和设置内容）');
@@ -169,15 +171,17 @@ export function buildRabbitMirrorStartupDiagnostic(extra = '') {
     return lines.join('\n');
 }
 
-async function copyText(text) {
-    try { await navigator.clipboard.writeText(text); return true; } catch {}
+// host：放临时文本框的地方。放在提示框里面，兔子镜设置弹窗开着时也不会被挡住。
+async function copyText(text, host = document.body) {
+    try { if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(text); return true; } } catch {}
     try {
         const area = document.createElement('textarea');
         area.value = text;
-        area.setAttribute('readonly', '');
-        area.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
-        document.body.append(area);
+        area.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;font-size:16px';
+        (host || document.body).append(area);
+        area.focus({ preventScroll: true });
         area.select();
+        area.setSelectionRange(0, text.length);   // iOS 只认这个
         const ok = document.execCommand('copy');
         area.remove();
         return ok;
@@ -273,8 +277,21 @@ const copyAction = (extra = '') => ({
     id: 'copy',
     label: '复制诊断',
     run: async ({ status }) => {
-        const ok = await copyText(buildRabbitMirrorStartupDiagnostic(extra));
-        status.textContent = ok ? '已复制，发给作者就行。' : '复制没成功：这台设备不让网页写剪贴板。';
+        const text = buildRabbitMirrorStartupDiagnostic(extra);
+        const ok = await copyText(text, status.parentElement);
+        if (ok) { status.textContent = '已复制，发给作者就行。'; return true; }
+        // 复制不了就把诊断摆出来，让用户长按全选自己复制。
+        status.textContent = '这台设备不让网页直接复制。长按下面的框全选，再复制：';
+        let box = status.parentElement?.querySelector('textarea[data-rm-startup-diagnostic]');
+        if (!box) {
+            box = document.createElement('textarea');
+            box.dataset.rmStartupDiagnostic = 'true';
+            box.readOnly = true;
+            box.rows = 6;
+            box.style.cssText = 'display:block;width:100%;box-sizing:border-box;margin-top:4px;font:12px/1.4 monospace;color:inherit;background:rgba(0,0,0,.25);border:1px solid currentColor;border-radius:6px';
+            status.after(box);
+        }
+        box.value = text;
         return true;
     },
 });
@@ -315,8 +332,11 @@ export function runRabbitMirrorStartupStep(label, fn) {
     }
 }
 
+const LOAD_FAILURE_RE = /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|Failed to load module script|NetworkError when attempting to fetch/i;
+
 // canOpen=false：坏的就是设置界面/主体本身，这时「打开设置」和 /兔子镜 也打不开，提示里就不提它们。
-export function reportRabbitMirrorStartupFailure(label, error, { quiet = false, canOpen = evaluated } = {}) {
+// opening=true：用户点入口/打命令时打不开（不是启动时），标题和措辞换成「打不开」。
+export function reportRabbitMirrorStartupFailure(label, error, { quiet = false, canOpen = evaluated, opening = false } = {}) {
     const message = errorText(error);
     const stack = errorStack(error);
     console.warn(`[RabbitMirror] 启动自检：${label} 没成功`, error);
@@ -329,13 +349,17 @@ export function reportRabbitMirrorStartupFailure(label, error, { quiet = false, 
     const stepNumber = steps.findIndex(step => step.label === label && !step.ok) + 1;
     const foreign = foreignExtensionsInStack(`${stack}\n${error?.fileName || ''}`);
     void Promise.all(foreign.slice(0, 3).map(displayNameOf)).then(names => {
-        const culprit = names.length
+        const culprit = LOAD_FAILURE_RE.test(message)
+            ? '是兔子镜的文件没下载下来（网络不稳，或者更新后还没刷新）。刷新网页再试；一直这样就重新更新一次兔子镜。'
+            : names.length
             ? `报错经过了「${names.join('」「')}」的代码，可能和${names.length > 1 ? '它们' : '它'}冲突。可以先在「管理扩展」里暂时关掉${names.length > 1 ? '它们' : '它'}，刷新网页再看兔子镜。`
-            : '报错只出现在兔子镜自己的代码里，点「复制诊断」发给作者就行。';
+            : stack ? '报错里没看到别的插件的代码，点「复制诊断」发给作者就行。'
+            : '看不出是哪里出的错，点「复制诊断」发给作者就行。';
         const hint = canOpen && commandAvailable ? '魔法棒里找不到兔子镜时，可以在聊天输入框打 /兔子镜 回车。' : '';
+        const what = shortPath(message).slice(0, 160);
         showNotice({
-            title: '兔子镜启动出错',
-            lines: [`第 ${stepNumber} 步「${label}」没成功：${shortPath(message).slice(0, 160)}`, culprit, hint],
+            title: opening ? '兔子镜打不开' : '兔子镜启动出错',
+            lines: [opening ? `${label}没成功：${what}` : `第 ${stepNumber} 步「${label}」没成功：${what}`, culprit, hint],
             actions: [copyAction(`报错位置：\n${stack || message}`), canOpen ? openAction() : null, closeAction].filter(Boolean),
         });
     });
@@ -428,6 +452,8 @@ export function findHidingStylesheet(node, prop) {
                 folder: folderOf(href),
                 own: isOwnUrl(href),
                 source: href ? shortPath(href).replace(/\?.*$/, '') : `页面里的 <style${owner?.id ? ` id="${owner.id}"` : ''}>`,
+                // 酒馆「用户设置 → 自定义 CSS」和美化主题都写在 <style id="custom-style"> 里。
+                userCss: !href && owner?.id === 'custom-style',
                 selector: String(rule.selectorText).slice(0, 160),
             });
         }
@@ -463,10 +489,11 @@ export async function checkRabbitMirrorEntryVisibility({ menuOpen = false } = {}
     if (!hit) return { ok: true };
     const sheets = hit.prop === 'display' || hit.prop === 'visibility' || hit.prop === 'opacity' ? findHidingStylesheet(hit.node, hit.prop) : [];
     const folders = [...new Set(sheets.map(item => item.folder).filter(folder => folder.startsWith('third-party/') && folder !== SELF_FOLDER))];
+    const userCss = !folders.length && sheets.some(item => item.userCss);
     const detail = sheets.length
         ? sheets.slice(0, 4).map(item => `${item.source} → ${item.selector}`).join('\n')
         : `${hit.inline ? '节点上直接写了隐藏（脚本改的）' : '看不出来源'}：${hit.prop}`;
-    return notifyHidden({ kind: sheets.length ? 'stylesheet' : 'script', culprits: folders, detail, styleSources: sheets.map(item => item.source) });
+    return notifyHidden({ kind: userCss ? 'user-css' : sheets.length ? 'stylesheet' : 'script', culprits: folders, detail, styleSources: sheets.map(item => item.source) });
 }
 
 async function notifyHidden({ kind, culprits, detail, styleSources = [] }) {
@@ -477,6 +504,7 @@ async function notifyHidden({ kind, culprits, detail, styleSources = [] }) {
     const names = await Promise.all(culprits.slice(0, 3).map(displayNameOf));
     const cause = names.length
         ? `是「${names.join('」「')}」的样式把它藏了。`
+        : kind === 'user-css' ? '是「用户设置 → 自定义 CSS」或美化主题里的样式把它藏了。'
         : kind === 'stylesheet' ? `是一段页面样式把它藏了（${styleSources[0] || '来源不明'}），看不出是哪个插件加的。`
         : kind === 'removed' ? '入口被别的插件从页面上拿掉了，看不出是哪个。'
         : '是别的插件用脚本藏的，看不出是哪个。';
@@ -485,9 +513,9 @@ async function notifyHidden({ kind, culprits, detail, styleSources = [] }) {
         lines: [
             '魔法棒里的兔子镜入口被藏起来了。',
             cause,
-            `如果是你自己在那个插件里关掉的，点「不再提醒」。${commandAvailable ? COMMAND_HINT : ''}`,
+            `${kind === 'user-css' ? '如果是你故意写的' : '如果是你自己在那个插件里关掉的'}，点「不再提醒」。${commandAvailable ? COMMAND_HINT : ''}`,
         ],
-        actions: [openAction(), copyAction(`入口检测：${detail}`), muteAction(signature)].filter(Boolean),
+        actions: [openAction(), copyAction(`入口检测：${detail}`), muteAction(signature), closeAction].filter(Boolean),
     });
     return result;
 }
@@ -502,8 +530,11 @@ export async function checkRabbitMirrorDuplicateInstall() {
     const others = candidates.filter((_, index) => manifests[index]?.generate_interceptor === 'rabbitMirrorGenerateInterceptor');
     if (disposed || !others.length) return { ok: true };
     const signature = `duplicate:${[SELF_FOLDER, ...others].sort().join(',')}`;
-    if (isMuted(signature) || reportedFailures.has(signature)) return { ok: false, others };
+    // 两份兔子镜都会查到对方；用页面级记号保证只弹一条。
+    const shown = (globalThis.__rabbitMirrorStartupNoticesShown ??= new Set());
+    if (isMuted(signature) || reportedFailures.has(signature) || shown.has(signature)) return { ok: false, others };
     reportedFailures.add(signature);
+    shown.add(signature);
     const folders = [SELF_FOLDER, ...others].filter(Boolean).map(item => { const name = item.replace(/^third-party\//, ''); try { return decodeURIComponent(name); } catch { return name; } });
     showNotice({
         title: '兔子镜',
@@ -511,7 +542,7 @@ export async function checkRabbitMirrorDuplicateInstall() {
             `检测到同时开着 ${folders.length} 份兔子镜（文件夹：${folders.join('、')}）。`,
             '两份一起开会互相抢着处理同一层，常见表现是重复、闪烁或者不显示。请在「管理扩展」里只留一份勾着，刷新网页。',
         ],
-        actions: [copyAction(`重复安装：${folders.join('、')}`), muteAction(signature)],
+        actions: [copyAction(`重复安装：${folders.join('、')}`), muteAction(signature), closeAction],
     });
     return { ok: false, others };
 }
@@ -526,6 +557,9 @@ export function disposeRabbitMirrorStartupGuard() {
 }
 
 export const startupGuardForTests = {
+    shortPath,
+    errorText,
+    errorStack,
     steps,
     reset() { steps.length = 0; reportedFailures.clear(); evaluated = false; disposed = false; closeAllToasts(); },
     get selfFolder() { return SELF_FOLDER; },

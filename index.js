@@ -434,7 +434,7 @@ async function openRabbitMirrorSettings(reason = 'open-intent') {
 
 function openRabbitMirrorSettingsFromCommand() {
     return openRabbitMirrorSettings('slash-command').catch(error => {
-        if (runtimeIsActive()) reportRabbitMirrorStartupFailure('用 /兔子镜 打开设置', error, { canOpen: false });
+        if (runtimeIsActive()) reportRabbitMirrorStartupFailure('用 /兔子镜 打开设置', error, { canOpen: false, opening: true });
         return false;
     });
 }
@@ -478,7 +478,7 @@ function installSettingsWandEntry() {
         } catch (error) {
             if (entry.isConnected && runtimeIsActive() && label) label.textContent = '打开失败，点击重试兔子镜';
             console.debug('[RabbitMirror] settings entry could not open:', error);
-            if (runtimeIsActive()) reportRabbitMirrorStartupFailure('从魔法棒打开设置', error, { canOpen: false });
+            if (runtimeIsActive()) reportRabbitMirrorStartupFailure('从魔法棒打开设置', error, { canOpen: false, opening: true });
         } finally { if (entry.isConnected) { entry.disabled = false; entry.removeAttribute('aria-disabled'); } }
     });
     menu.append(entry);

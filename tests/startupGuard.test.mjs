@@ -26,3 +26,47 @@ test('startup step runner keeps going after a failing step', () => {
     assert.equal(failed, undefined);
     assert.deepEqual(guard.startupGuardForTests.steps.map(step => [step.label, step.ok]), [['ok-step', true], ['bad-step', false]]);
 });
+
+test('diagnostic text drops hosts and quoted snippets', () => {
+    const { shortPath, errorText, errorStack } = guard.startupGuardForTests;
+    assert.equal(shortPath('at x (http://192.168.1.5:8000/scripts/extensions/third-party/foo/a.js:1:1)'), 'at x (extensions/third-party/foo/a.js:1:1)');
+    assert.equal(shortPath('at y (https://my.host.example/script.js:2:2)'), 'at y (/script.js:2:2)');
+    const err = new SyntaxError('Unexpected token \'o\', "{"secret chat text"}" is not valid JSON');
+    assert.ok(!errorText(err).includes('secret'));
+    const multi = new Error('first line\n"second line secret"');
+    assert.ok(!errorText(multi).includes('secret'));
+    assert.ok(!errorStack(multi).includes('secret'));
+    assert.match(errorStack(multi), /at /);
+});
+
+test('index.js imports the startup guard first and marks evaluation', async () => {
+    const { readFile } = await import('node:fs/promises');
+    const source = await readFile(new URL('../index.js', import.meta.url), 'utf8');
+    const firstImport = source.split('\n').find(line => line.startsWith('import '));
+    assert.match(firstImport, /from '\.\/src\/startupGuard\.js\?rmv=/);
+    assert.match(source, /^markRabbitMirrorBootstrapEvaluated\(\);$/m);
+});
+
+test('/兔子镜 command registers with alias and only removes its own entries', async () => {
+    const { registerRabbitMirrorOpenCommand, unregisterRabbitMirrorOpenCommand } = await import('../src/openCommand.js');
+    const commands = {};
+    const parser = { commands, addCommandObject(command) { commands[command.name] = command; for (const alias of command.aliases) commands[alias] = command; } };
+    const previous = globalThis.SillyTavern;
+    let opened = 0;
+    globalThis.SillyTavern = { getContext: () => ({ SlashCommandParser: parser, SlashCommand: { fromProps: props => ({ ...props }) } }) };
+    try {
+        assert.equal(registerRabbitMirrorOpenCommand(() => { opened += 1; }), true);
+        assert.equal(commands['兔子镜'], commands.rabbitmirror);
+        assert.equal(commands['兔子镜'].callback(), '');
+        assert.equal(opened, 1);
+        const other = { name: 'rabbitmirror' };
+        commands.rabbitmirror = other;
+        unregisterRabbitMirrorOpenCommand();
+        assert.equal(commands['兔子镜'], undefined);
+        assert.equal(commands.rabbitmirror, other);
+        globalThis.SillyTavern = { getContext: () => ({}) };
+        assert.equal(registerRabbitMirrorOpenCommand(() => {}), false);
+    } finally {
+        globalThis.SillyTavern = previous;
+    }
+});
