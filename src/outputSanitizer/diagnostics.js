@@ -1,18 +1,18 @@
 // Split from outputSanitizer.js — diagnostics.
-import { interactionSamplingDiagnostic, designSamplingChecksDiagnostic } from '../interactionSampling.js?rmv=1.68.47';
-import { maskFaceText, skeletonizeRabbitMirrorHtml } from './writingSkeleton.js?rmv=1.68.47';
-import { RADIO_BRANCH_COUNT_ATTR } from './radioBranchRepair.js?rmv=1.68.47';
-import { findUnmappedNavigationButtons } from './choiceRescue.js?rmv=1.68.47';
-import { nativePopoverFallbackCount, inspectNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.68.47';
-import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.68.47';
-import { describeBehaviorDialect, dialectLabels, inspectBehaviorDialect } from './behaviorDialect.js?rmv=1.68.47';
-import { restoreRuntimeAnimationClone } from '../runtimeAnimationState.js?rmv=1.68.47';
-import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.68.47';
+import { interactionSamplingDiagnostic, designSamplingChecksDiagnostic } from '../interactionSampling.js?rmv=1.68.48';
+import { maskFaceText, skeletonizeRabbitMirrorHtml } from './writingSkeleton.js?rmv=1.68.48';
+import { RADIO_BRANCH_COUNT_ATTR } from './radioBranchRepair.js?rmv=1.68.48';
+import { findUnmappedNavigationButtons } from './choiceRescue.js?rmv=1.68.48';
+import { nativePopoverFallbackCount, inspectNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.68.48';
+import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.68.48';
+import { describeBehaviorDialect, dialectLabels, inspectBehaviorDialect } from './behaviorDialect.js?rmv=1.68.48';
+import { restoreRuntimeAnimationClone } from '../runtimeAnimationState.js?rmv=1.68.48';
+import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.68.48';
 
-import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.68.47';
-import { collectBoundedElementDescendants } from '../presentationQuality.js?rmv=1.68.47';
-import { collectRevealedClipHosts, shouldRelaxRevealedClipPanel, REVEALED_CLIP_RESCUE_ATTR } from '../revealedClipRepair.js?rmv=1.68.47';
-import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.68.47';
+import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.68.48';
+import { collectBoundedElementDescendants } from '../presentationQuality.js?rmv=1.68.48';
+import { collectRevealedClipHosts, shouldRelaxRevealedClipPanel, REVEALED_CLIP_RESCUE_ATTR } from '../revealedClipRepair.js?rmv=1.68.48';
+import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.68.48';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -31,7 +31,7 @@ import {
     isInsideChatMessage,
     isMaintenanceRabbitEnabled,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.68.47';
+} from './runtime.js?rmv=1.68.48';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     CHANNEL_DIAL_CYCLE_COUNT_ATTR,
@@ -64,7 +64,7 @@ import {
     WEBKIT_3D_FLIP_RESCUE_ATTR,
     passportDocumentRescueStates,
     unlabeledCheckedHostRescueStates,
-} from './checkedStateRescue.js?rmv=1.68.47';
+} from './checkedStateRescue.js?rmv=1.68.48';
 import {
     RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR,
     RENDERED_BUTTON_ADJACENT_HIDDEN_ITEM_ATTR,
@@ -91,7 +91,7 @@ import {
     renderedListDetailRescueStates,
     renderedMaskRevealRescueStates,
     renderedStateLayerRescueStates,
-} from './renderedStateRescue.js?rmv=1.68.47';
+} from './renderedStateRescue.js?rmv=1.68.48';
 import {
     RAW_RADIO_RESET_LAST_ATTR,
     RAW_RADIO_RESET_ROOT_ATTR,
@@ -102,7 +102,7 @@ import {
     getRabbitMirrorSummaryText,
     getRawAssistantMessageForRenderedRoot,
     rawSelfMutationRescueStates,
-} from './scriptedInteractionRescue.js?rmv=1.68.47';
+} from './scriptedInteractionRescue.js?rmv=1.68.48';
 import {
     REVERSIBLE_RADIO_LAST_ATTR,
     REVERSIBLE_RADIO_ROOT_ATTR,
@@ -113,13 +113,13 @@ import {
     findNestedDetailsPopupClippingCandidates,
     formatWebKit3DFlipEvidence,
     repairNestedDetailsPopupClipping,
-} from './fallbackRescue.js?rmv=1.68.47';
-import { RADIO_GROUP_RESCUE_ATTR, RADIO_GROUP_ROOT_ATTR } from './idsAndRearm.js?rmv=1.68.47';
+} from './fallbackRescue.js?rmv=1.68.48';
+import { RADIO_GROUP_RESCUE_ATTR, RADIO_GROUP_ROOT_ATTR } from './idsAndRearm.js?rmv=1.68.48';
 import {
     findFillInChoiceCandidates,
     findStaticChoiceSelectionCandidates,
     findStructuredStaticDisclosureCandidates,
-} from './choiceRescue.js?rmv=1.68.47';
+} from './choiceRescue.js?rmv=1.68.48';
 import {
     CODE_SHELL_SELECTOR,
     MAINTENANCE_QUARANTINED_SCRIPT_ATTR,
@@ -137,7 +137,7 @@ import {
     needsSanitize,
     normalizeMaintenanceSummaryText,
     parseTotoFragment,
-} from './maintenanceInspect.js?rmv=1.68.47';
+} from './maintenanceInspect.js?rmv=1.68.48';
 import {
     RABBIT_MIRROR_MAX_TEMPLATE_SOURCE_CHARS,
     RABBIT_MIRROR_SANITIZER_IMPORT_STRIPPED_ATTR,
@@ -150,7 +150,7 @@ import {
     sanitizeRabbitMirrorUntrustedTemplate,
     stripCssComments,
     validateRabbitMirrorTemplateStructuralBudget,
-} from './markup.js?rmv=1.68.47';
+} from './markup.js?rmv=1.68.48';
 import {
     HCLIP_REPORT_ATTR,
     VIEWPORT_LAYOUT_COUNT_ATTR,
@@ -158,14 +158,14 @@ import {
     inspectMaintenanceMobileLayout,
     inspectMaintenanceViewportLayout,
     maintenanceMobileLayoutIsPassportManaged,
-} from './layoutRescue.js?rmv=1.68.47';
-import { normalizeRabbitMirrorToolButton, rabbitMirrorTextPresentation, updateMaintenanceRabbitMenuState } from './toolsChrome.js?rmv=1.68.47';
+} from './layoutRescue.js?rmv=1.68.48';
+import { normalizeRabbitMirrorToolButton, rabbitMirrorTextPresentation, updateMaintenanceRabbitMenuState } from './toolsChrome.js?rmv=1.68.48';
 import {
     getMessageIndexFromMirrorNode,
     hostScriptModule,
     messageUsesDistinctDisplaySource,
     outputHostGenerationLooksActive,
-} from './lifecycle.js?rmv=1.68.47';
+} from './lifecycle.js?rmv=1.68.48';
 
 export const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
 

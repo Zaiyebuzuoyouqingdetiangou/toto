@@ -451,11 +451,11 @@ function updateThumbScale(grid) {
 
 export async function openTheaterSnapshot() {
     const [{ applyAppearanceTheme }, api, favorites, persistence, runtime] = await Promise.all([
-        import('./appearanceTheme.js?rmv=1.68.47'),
-        import('./independentApi.js?rmv=1.68.47'),
-        import('./theaterFavorites.js?rmv=1.68.47'),
-        import('./independentApi/persistence.js?rmv=1.68.47'),
-        import('./independentApi/runtime.js?rmv=1.68.47'),
+        import('./appearanceTheme.js?rmv=1.68.48'),
+        import('./independentApi.js?rmv=1.68.48'),
+        import('./theaterFavorites.js?rmv=1.68.48'),
+        import('./independentApi/persistence.js?rmv=1.68.48'),
+        import('./independentApi/runtime.js?rmv=1.68.48'),
     ]);
     const ctx = runtime.getContext?.() || {};
     const chat = Array.isArray(ctx.chat) ? ctx.chat : [];
@@ -468,8 +468,8 @@ export async function openTheaterSnapshot() {
     const domErrors = readDomSnapshotErrors();
     let sessionErrors = [];
     try {
-        const flights = await import('./independentApi/flights.js?rmv=1.68.47');
-        const connection = await import('./independentApi/connection.js?rmv=1.68.47');
+        const flights = await import('./independentApi/flights.js?rmv=1.68.48');
+        const connection = await import('./independentApi/connection.js?rmv=1.68.48');
         const key = connection.chatKey(ctx);
         const seen = new Set(domErrors.map(row => row.mesid));
         for (const failure of flights.automaticFailureStops?.values?.() || []) {
@@ -490,7 +490,7 @@ export async function openTheaterSnapshot() {
     const items = collectTheaterSnapshots(chat, { persisted, domErrors: [...domErrors, ...sessionErrors] });
     let expandBlocks = value => String(value || '');
     try {
-        const markup = await import('./outputSanitizer/markup.js?rmv=1.68.47');
+        const markup = await import('./outputSanitizer/markup.js?rmv=1.68.48');
         if (typeof markup.expandHtmlDocumentCodeBlocks === 'function') expandBlocks = markup.expandHtmlDocumentCodeBlocks;
     } catch { /* 缩略图用原文 */ }
     closeTheaterSnapshot();

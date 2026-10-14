@@ -1,39 +1,159 @@
-import { SETTINGS_UI_VERSION, RUNTIME_VERSION, escapeHtml, isCurrentRuntime } from './ui/runtime.js?rmv=1.68.47';
-import { reportRabbitMirrorStartupFailure } from './startupGuard.js?rmv=1.68.47';
-import { chatu8Status } from './chatu8Image.js?rmv=1.68.47';
-import { fetchImageLlmModels, imageLlmStatusText, importCurrentConnectionForImageLlm, listImageLlmProfiles, selectImageLlmProfile } from './imageLlm.js?rmv=1.68.47';
-import { buildRabbitMirrorSettingsDialogHtml, buildWorldInfoPromptModalHtml, buildTagFilterModalHtml } from './ui/settingsTemplate.js?rmv=1.68.47';
-import { attachIndependentApiDiagnosticListener, attachTokenMeterListener, renderIndependentApiDiagnostic, renderTokenMeter } from './ui/tokenMeter.js?rmv=1.68.47';
-import { attachWorldInfoBooksListener, clearCollapsedAllWorldInfoBookRows, clearPulledWorldInfoBooks, installWorldInfoBookVisibilityObserver, pullAllWorldInfoBooks, renderWorldInfoBookSettings, resetWorldInfoBookUiState } from './ui/worldInfoBooks.js?rmv=1.68.47';
-import { mountGenerationEvidenceUi, destroyGenerationEvidenceUi } from './ui/generationEvidence.js?rmv=1.68.47';
-import { installTtDiagnosticEntry } from './ui/ttDiagnostics.js?rmv=1.68.47';
+import { SETTINGS_UI_VERSION, RUNTIME_VERSION, escapeHtml, isCurrentRuntime } from './ui/runtime.js?rmv=1.68.48';
+import { reportRabbitMirrorStartupFailure } from './startupGuard.js?rmv=1.68.48';
+import { chatu8Status } from './chatu8Image.js?rmv=1.68.48';
+import { fetchImageLlmModels, imageLlmStatusText, importCurrentConnectionForImageLlm, listImageLlmProfiles, selectImageLlmProfile } from './imageLlm.js?rmv=1.68.48';
+import { buildRabbitMirrorSettingsDialogHtml, buildWorldInfoPromptModalHtml, buildTagFilterModalHtml } from './ui/settingsTemplate.js?rmv=1.68.48';
+import { attachIndependentApiDiagnosticListener, attachTokenMeterListener, renderIndependentApiDiagnostic, renderTokenMeter } from './ui/tokenMeter.js?rmv=1.68.48';
+import { attachWorldInfoBooksListener, clearCollapsedAllWorldInfoBookRows, clearPulledWorldInfoBooks, installWorldInfoBookVisibilityObserver, pullAllWorldInfoBooks, renderWorldInfoBookSettings, resetWorldInfoBookUiState } from './ui/worldInfoBooks.js?rmv=1.68.48';
+import { mountGenerationEvidenceUi, destroyGenerationEvidenceUi } from './ui/generationEvidence.js?rmv=1.68.48';
+import { installTtDiagnosticEntry } from './ui/ttDiagnostics.js?rmv=1.68.48';
 
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.68.47';
-import { renderFaceDrawSettings } from './faceDrawUi.js?rmv=1.68.47';
-import { listHostWorldBooks, readHostWorldBook } from './externalWorldBook/hostReader.js?rmv=1.68.47';
-import { refreshFacePagerPositions } from './facePagerPlacement.js?rmv=1.68.47';
-import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, RABBIT_MIRROR_BANNED_WORD_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, normalizeRabbitMirrorBannedWords, updateSettings, resetSettings, resetSettingsAndSaveNow } from './settings.js?rmv=1.68.47';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS } from './independentRequestBudget.js?rmv=1.68.47';
-import { clearLastCombo, getCurrentChatKey } from './storage.js?rmv=1.68.47';
-import { normalizeEarlyBodyTags } from './earlyBodyTags.js?rmv=1.68.47';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.68.47';
-import { applyRabbitMirrorHostSurface } from './hostCompatibility.js?rmv=1.68.47';
-import { DEFAULT_BEHAVIOR_RULE_TEXT, resolveBehaviorRuleText } from './behaviorRules.js?rmv=1.68.47';
-import { clearRecentIndependentTransportDiagnostics } from './transportDiagnostics.js?rmv=1.68.47';
-import { parseIndependentAdvancedOptions } from './advancedRequestOptions.js?rmv=1.68.47';
-import { parseRabbitMirrorReplacementLines, formatRabbitMirrorReplacementLines } from './bannedWords.js?rmv=1.68.47';
-import { clearRabbitMirrorPrompt, startManualEntryDiagnostic, stopManualEntryDiagnostic, getManualEntryDiagnosticState } from './injector.js?rmv=1.68.47';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.68.47';
-import { configureMaintenanceAutoSafeMode, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.68.47';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.68.47';
-import { fetchIndependentModels, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentModelListDiagnostic, hydrateIndependentFavoriteHtml, importCurrentSillyTavernConnection, listMissingIndependentRetryFloors, refreshRabbitMirrorGenerationMode, resyncMissingIndependentRetryShells, buildRabbitMirrorArchiveInventory, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.68.47';
-import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.68.47';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.68.47';
-import { THEATER_FAVORITES_CHANGED_EVENT, deleteTheaterFavorite, groupTheaterFavoritesByCharacter, listTheaterFavorites, openTheaterFavoriteLibrary, openTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.68.47';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.68.48';
+import { renderFaceDrawSettings } from './faceDrawUi.js?rmv=1.68.48';
+import { listHostWorldBooks, readHostWorldBook } from './externalWorldBook/hostReader.js?rmv=1.68.48';
+import { refreshFacePagerPositions } from './facePagerPlacement.js?rmv=1.68.48';
+import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, RABBIT_MIRROR_BANNED_WORD_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, normalizeRabbitMirrorBannedWords, updateSettings, resetSettings, resetSettingsAndSaveNow } from './settings.js?rmv=1.68.48';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS } from './independentRequestBudget.js?rmv=1.68.48';
+import { clearLastCombo, getCurrentChatKey } from './storage.js?rmv=1.68.48';
+import { normalizeEarlyBodyTags } from './earlyBodyTags.js?rmv=1.68.48';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.68.48';
+import { applyRabbitMirrorHostSurface } from './hostCompatibility.js?rmv=1.68.48';
+import { DEFAULT_BEHAVIOR_RULE_TEXT, resolveBehaviorRuleText } from './behaviorRules.js?rmv=1.68.48';
+import { clearRecentIndependentTransportDiagnostics } from './transportDiagnostics.js?rmv=1.68.48';
+import { parseIndependentAdvancedOptions } from './advancedRequestOptions.js?rmv=1.68.48';
+import { parseRabbitMirrorReplacementLines, formatRabbitMirrorReplacementLines } from './bannedWords.js?rmv=1.68.48';
+import { clearRabbitMirrorPrompt, startManualEntryDiagnostic, stopManualEntryDiagnostic, getManualEntryDiagnosticState } from './injector.js?rmv=1.68.48';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.68.48';
+import { configureMaintenanceAutoSafeMode, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.68.48';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.68.48';
+import { fetchIndependentModels, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentModelListDiagnostic, hydrateIndependentFavoriteHtml, importCurrentSillyTavernConnection, listMissingIndependentRetryFloors, refreshRabbitMirrorGenerationMode, resyncMissingIndependentRetryShells, buildRabbitMirrorArchiveInventory, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.68.48';
+import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.68.48';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.68.48';
+import { THEATER_FAVORITES_CHANGED_EVENT, deleteTheaterFavorite, groupTheaterFavoritesByCharacter, listTheaterFavorites, openTheaterFavoriteLibrary, openTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.68.48';
 
-import { mountSettingsAppearance, destroySettingsAppearance } from './settingsAppearance.js?rmv=1.68.47';
+import { mountSettingsAppearance, destroySettingsAppearance } from './settingsAppearance.js?rmv=1.68.48';
 
 const LOTTERY_ENTRY_LIMIT = 80;
+const MOBILE_MODAL_IDS = ['rh_advanced_modal', 'rh_world_info_prompt_modal', 'rh_independent_tag_filter_modal'];
+let mobileModalRootObserver = null;
+const mobileModalObservers = new Map();
+
+function rabbitMirrorMobileLike() {
+    try { return globalThis.matchMedia?.('(max-width: 900px), (pointer: coarse)')?.matches === true; }
+    catch { return false; }
+}
+
+function closeThroughExistingControl(dialog) {
+    const closeId = dialog.id === 'rh_advanced_modal'
+        ? 'rh_advanced_close'
+        : (dialog.id === 'rh_independent_tag_filter_modal' ? 'rh_independent_tag_filter_close' : 'rh_world_info_prompt_close');
+    const closeButton = dialog.querySelector(`#${closeId}`);
+    if (closeButton) {
+        closeButton.click();
+        return;
+    }
+    if (dialog.getAttribute('aria-hidden') !== 'true') dialog.setAttribute('aria-hidden', 'true');
+    if (dialog.style.display !== 'none') dialog.style.display = 'none';
+    try { if (dialog.open && typeof dialog.close === 'function') dialog.close(); } catch {}
+}
+
+function syncDialogTopLayer(dialog) {
+    if (!(dialog instanceof HTMLElement)) return;
+    const wantsOpen = dialog.getAttribute('aria-hidden') === 'false'
+        || dialog.style.display === 'flex'
+        || dialog.style.display === 'grid'
+        || dialog.style.display === 'block';
+
+    if (wantsOpen) {
+        if (dialog.getAttribute('aria-hidden') !== 'false') dialog.setAttribute('aria-hidden', 'false');
+        if (dialog.style.display !== 'flex') dialog.style.display = 'flex';
+        if (!dialog.hasAttribute('open')) {
+            try {
+                if (typeof dialog.showModal === 'function') dialog.showModal();
+                else dialog.setAttribute('open', '');
+            } catch {
+                dialog.setAttribute('open', '');
+            }
+        }
+        return;
+    }
+
+    if (dialog.getAttribute('aria-hidden') !== 'true') dialog.setAttribute('aria-hidden', 'true');
+    if (dialog.hasAttribute('open')) {
+        try {
+            if (typeof dialog.close === 'function') dialog.close();
+            else dialog.removeAttribute('open');
+        } catch {
+            dialog.removeAttribute('open');
+        }
+    }
+    if (dialog.style.display !== 'none') dialog.style.display = 'none';
+}
+
+function bindPromotedDialog(dialog) {
+    const existing = mobileModalObservers.get(dialog.id);
+    if (existing?.node === dialog && dialog.dataset.rabbitMirrorTopLayerBound === 'true') {
+        syncDialogTopLayer(dialog);
+        return;
+    }
+    if (existing?.observer) {
+        try { existing.observer.disconnect(); } catch {}
+    }
+    dialog.dataset.rabbitMirrorTopLayerBound = 'true';
+
+    dialog.addEventListener('cancel', event => {
+        event.preventDefault();
+        closeThroughExistingControl(dialog);
+    });
+    dialog.addEventListener('click', event => {
+        if (event.target === dialog) closeThroughExistingControl(dialog);
+    });
+
+    const observer = new MutationObserver(() => syncDialogTopLayer(dialog));
+    observer.observe(dialog, { attributes: true, attributeFilter: ['aria-hidden', 'style'] });
+    mobileModalObservers.set(dialog.id, { node: dialog, observer });
+    syncDialogTopLayer(dialog);
+}
+
+function promoteModal(id) {
+    let modal = document.getElementById(id);
+    if (!modal) return null;
+
+    if (modal.tagName !== 'DIALOG') {
+        const dialog = document.createElement('dialog');
+        for (const attr of Array.from(modal.attributes)) {
+            dialog.setAttribute(attr.name, attr.value);
+        }
+        while (modal.firstChild) dialog.appendChild(modal.firstChild);
+        modal.replaceWith(dialog);
+        modal = dialog;
+    }
+
+    modal.classList.add('rabbit-mirror-top-layer-modal');
+    bindPromotedDialog(modal);
+    return modal;
+}
+
+function destroyRabbitMirrorMobileModals() {
+    try { mobileModalRootObserver?.disconnect?.(); } catch {}
+    mobileModalRootObserver = null;
+    for (const entry of mobileModalObservers.values()) {
+        try { entry?.observer?.disconnect?.(); } catch {}
+    }
+    mobileModalObservers.clear();
+}
+
+function installRabbitMirrorMobileModals() {
+    destroyRabbitMirrorMobileModals();
+    if (!rabbitMirrorMobileLike() || typeof document === 'undefined') return;
+    for (const id of MOBILE_MODAL_IDS) promoteModal(id);
+    if (typeof MutationObserver !== 'function') return;
+    // 弹窗会挪到 body 下。只看 body 的直接子节点，避免聊天楼层每次改 DOM 都扫一遍。
+    mobileModalRootObserver = new MutationObserver(() => {
+        for (const id of MOBILE_MODAL_IDS) promoteModal(id);
+    });
+    mobileModalRootObserver.observe(document.body, { childList: true, subtree: false });
+}
 let uiMountRetryTimer = 0;
 let uiMountRetryCount = 0;
 let retainedExternalDiagnosticReport = '';
@@ -307,7 +427,7 @@ async function refreshMemoryWorldBookDirectory() {
     memoryWorldBookDirectoryBusy = true;
     renderMemoryWorldBookBinding();
     try {
-        const { listMemoryWorldBooks, normalizeMemoryWorldBookId } = await import('./memoryWorldBook.js?rmv=1.68.47');
+        const { listMemoryWorldBooks, normalizeMemoryWorldBookId } = await import('./memoryWorldBook.js?rmv=1.68.48');
         if (!isAlive()) return;
         const books = await listMemoryWorldBooks();
         if (!isAlive()) return;
@@ -348,7 +468,7 @@ export function initRabbitMirrorUI() {
     // 页面上的「当前兔子镜版本」被改成别的了（另一份兔子镜、改名的副本）：不能悄悄不挂，要说出是谁。
     if (!isCurrentRuntime()) throw new Error(`页面上登记的兔子镜运行版本是「${String(globalThis.__rabbitMirrorRuntimeVersion ?? '')||'空'}」，这一份是 ${RUNTIME_VERSION}，设置界面没有挂。多半是装了两份兔子镜（或改过名的副本），请只保留一份后刷新。`);
     // 扩展面板里更新后，磁盘 manifest 变新就刷新酒馆，避免还停在旧页面。
-    void import('./extensionUpdater.js?rmv=1.68.47')
+    void import('./extensionUpdater.js?rmv=1.68.48')
         .then(updater => updater.setupRabbitMirrorExtensionReloadWatch())
         .catch(error => console.warn('[RabbitMirror] 更新后自动刷新没有挂上', error));
     const finishUiInit = globalThis.__rabbitMirrorPerfDiag?.begin?.('ui.initCall', { retry: uiMountRetryCount }, 0);
@@ -407,6 +527,8 @@ export function initRabbitMirrorUI() {
         applyRabbitMirrorHostSurface(modal, 'backdrop');
         applyRabbitMirrorHostSurface(modal?.firstElementChild, 'fullscreen-window');
     }
+    // 手机尺寸先换成 dialog，后面的点击和关闭都绑在新节点上。电脑尺寸保持原来的 div。
+    installRabbitMirrorMobileModals();
     attachTokenMeterListener();
     renderTokenMeter();
 
@@ -749,7 +871,7 @@ export function initRabbitMirrorUI() {
         if (!revision) return;
         const sequence = appearanceFileSequence;
         try {
-            const module = await import('./appearanceReference.js?rmv=1.68.47');
+            const module = await import('./appearanceReference.js?rmv=1.68.48');
             if (!appearanceOwnerIsCurrent() || !appearanceUIOwner.open || sequence !== appearanceFileSequence || appearanceSaving) return;
             await module.loadAppearanceReferenceMaterial(revision);
             if (!appearanceOwnerIsCurrent() || !appearanceUIOwner.open || sequence !== appearanceFileSequence || appearanceSaving || getSettings().appearanceReferenceRevision !== revision) return;
@@ -800,7 +922,7 @@ export function initRabbitMirrorUI() {
         const retainRevision = String(getSettings().appearanceReferenceRevision || '');
         let raw = String($('#rh_appearance_reference_input').val() || '');
         try {
-            const module = await import('./appearanceReference.js?rmv=1.68.47');
+            const module = await import('./appearanceReference.js?rmv=1.68.48');
             if (!appearanceOwnerIsCurrent()) return;
             if (String(getSettings().appearanceReferenceRevision || '') !== retainRevision) {
                 appearanceStatus('参考关联已改变，本次保存已停止；未写入摘要，也未覆盖当前设置。请核对当前关联后再保存。');
@@ -884,7 +1006,7 @@ export function initRabbitMirrorUI() {
         if (!quickStart.open || guideLoading || guideCleanup || guideDisposed) return;
         guideLoading = true;
         try {
-            const module = await import('./quickStart.js?rmv=1.68.47');
+            const module = await import('./quickStart.js?rmv=1.68.48');
             if (guideDisposed || !quickStart.isConnected || !isCurrentRuntime()) return;
             guideCleanup = module.mountRabbitMirrorQuickStart({
                 root: document.getElementById('rabbit_mirror_theater_settings'),
@@ -1052,7 +1174,7 @@ export function initRabbitMirrorUI() {
     const repairSamplesNote = () => {
         const note = document.getElementById('rh_repair_samples_note');
         const button = document.getElementById('rh_repair_samples_export');
-        void import('./outputSanitizer/repairSamples.js?rmv=1.68.47').then(module => {
+        void import('./outputSanitizer/repairSamples.js?rmv=1.68.48').then(module => {
             const count = module.countRepairSamples();
             if (button) { button.textContent = count ? `导出待修样本箱（${count} 面）` : '导出待修样本箱（空）'; button.disabled = !count; }
             const clear = document.getElementById('rh_repair_samples_clear'); if (clear) clear.disabled = !count;
@@ -1066,7 +1188,7 @@ export function initRabbitMirrorUI() {
     globalThis.__rabbitMirrorRepairSamplesUiCleanup = () => globalThis.removeEventListener?.('rabbitmirror:repair-samples', repairSamplesNote);
     $('#rh_repair_samples_export').on('click', async () => {
         try {
-            const module = await import('./outputSanitizer/repairSamples.js?rmv=1.68.47');
+            const module = await import('./outputSanitizer/repairSamples.js?rmv=1.68.48');
             if (!module.countRepairSamples()) { toastr?.info?.('样本箱是空的。'); return; }
             const text = module.buildRepairSamplesExport();
             const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
@@ -1079,7 +1201,7 @@ export function initRabbitMirrorUI() {
     });
     $('#rh_repair_samples_clear').on('click', async () => {
         if (!globalThis.confirm?.('清空待修样本箱？只删本机记的这些写法骨架，不影响任何兔子镜。')) return;
-        try { const module = await import('./outputSanitizer/repairSamples.js?rmv=1.68.47'); module.clearRepairSamples(); repairSamplesNote(); }
+        try { const module = await import('./outputSanitizer/repairSamples.js?rmv=1.68.48'); module.clearRepairSamples(); repairSamplesNote(); }
         catch { /* ignore */ }
     });
     $('#rh_missing_shell_rescan').on('click', () => {
@@ -1963,7 +2085,7 @@ export function initRabbitMirrorUI() {
     $('#rh_image_status_refresh').on('click', async () => {
         const output = document.getElementById('rh_image_provider_status');
         try {
-            const { getImageBackendStatus } = await import('./baibaiImage.js?rmv=1.68.47');
+            const { getImageBackendStatus } = await import('./baibaiImage.js?rmv=1.68.48');
             const status = await getImageBackendStatus();
             output.textContent = status.configured ? `柏宝绘已连接 · ${status.backend || ''} ${status.model || ''}` : (status.reason || '柏宝绘尚未配置，请先安装并配置柏宝绘。');
         } catch { output.textContent = '无法读取柏宝绘连接，请检查插件是否已加载并完成配置。'; }
@@ -2059,7 +2181,7 @@ export function initRabbitMirrorUI() {
             for (const key of Object.keys(libraryEntryViews)) document.getElementById(key).disabled = true;
             button.textContent = '正在加载…';
             try {
-                const module = await import('./externalWorldBook/importWizard.js?rmv=1.68.47');
+                const module = await import('./externalWorldBook/importWizard.js?rmv=1.68.48');
                 if (!isCurrentRuntime() || !button.isConnected) return;
                 module.openExternalWorldBookImportWizard?.({ initialView });
             } catch (error) {
@@ -2310,7 +2432,7 @@ export function initRabbitMirrorUI() {
             if (page === 'early') { try { globalThis.__rabbitMirrorRenderEarlyBodySettings?.(); } catch {} }
             if (page === 'preferences') { renderBlacklistSettings(); renderFavoriteSettings(); void renderTheaterFavoriteSettings(); }
             if (page === 'library') {
-                void import('./externalWorldBook/importWizard.js?rmv=1.68.47').then(module => {
+                void import('./externalWorldBook/importWizard.js?rmv=1.68.48').then(module => {
                     module.mountMotherLibraryManager?.(document.getElementById('rh_external_inline_manage'));
                 });
             }
@@ -2330,7 +2452,7 @@ export function initRabbitMirrorUI() {
     // 开着母本库抽签时，启动后稍等一会儿看一次：本机母本库空了、酒馆里有备份，就提示去恢复。
     if (settings.externalWorldBookRandomEnabled === true) {
         setTimeout(() => {
-            void import('./externalWorldBook/serverBackup.js?rmv=1.68.47').then(module => module.checkMotherLibraryServerBackupOnStartup({
+            void import('./externalWorldBook/serverBackup.js?rmv=1.68.48').then(module => module.checkMotherLibraryServerBackupOnStartup({
                 open: () => {
                     const workbench = document.getElementById('rabbit_mirror_theater_settings')?.__rabbitMirrorWorkbench;
                     workbench?.open?.();
@@ -2343,6 +2465,7 @@ export function initRabbitMirrorUI() {
 }
 
 export function destroyRabbitMirrorUI() {
+    destroyRabbitMirrorMobileModals();
     destroyGenerationEvidenceUi();
     destroySettingsAppearance(document.getElementById('rabbit_mirror_theater_settings'));
     memoryWorldBookDirectorySequence += 1;
