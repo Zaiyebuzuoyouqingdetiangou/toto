@@ -1,13 +1,13 @@
 // Split from independentApi.js — earlyBody.
-import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.68.43';
+import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.68.45';
 
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.68.43';
-import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.68.43';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.68.43';
-import { getSettings } from '../settings.js?rmv=1.68.43';
-import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.68.43';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=1.68.43';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.68.43';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.68.45';
+import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.68.45';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.68.45';
+import { getSettings } from '../settings.js?rmv=1.68.45';
+import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.68.45';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=1.68.45';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.68.45';
 import {
     MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE,
     INDEPENDENT_HISTORY_READ_ERROR_MESSAGE,
@@ -17,7 +17,7 @@ import {
     isMissingShellTargetFloor,
     normalizeMissingShellScanRange,
     shouldRestoreMissingIndependentRetryShell,
-} from './missingRetryShell.js?rmv=1.68.43';
+} from './missingRetryShell.js?rmv=1.68.45';
 import {
     INDEPENDENT_GENERATION_INTENTS_KEY,
     INDEPENDENT_GENERATION_INTENT_TYPES,
@@ -27,7 +27,7 @@ import {
     currentRuntime,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.68.43';
+} from './runtime.js?rmv=1.68.45';
 import {
     ACTIVE_GENERATION_WAIT_MS,
     FINAL_RENDER_POLL_INTERVAL_MS,
@@ -43,7 +43,7 @@ import {
     markAutomaticFailureStop,
     operationEpochForBase,
     pending,
-} from './flights.js?rmv=1.68.43';
+} from './flights.js?rmv=1.68.45';
 import {
     appendHistoryEntry,
     chatPersistenceSlot,
@@ -61,7 +61,7 @@ import {
     reconcileIndependentChatOwners,
     rememberChatMessageOrder,
     checkOwnerRemapEpoch,
-} from './persistence.js?rmv=1.68.43';
+} from './persistence.js?rmv=1.68.45';
 import {
     activeGlobalWorldInfoCapture,
     assistantMessages,
@@ -111,7 +111,7 @@ import {
     withOwnerLockStoreBatch,
     writeActiveGlobalWorldInfoCapture,
     writeHostModule,
-} from './connection.js?rmv=1.68.43';
+} from './connection.js?rmv=1.68.45';
 import {
     allExternalHosts,
     externalHosts,
@@ -119,7 +119,7 @@ import {
     removeEmptyFollowExternalAnchors,
     removeEmptyInlineAnchors,
     withExternalHostSyncIndex,
-} from './request.js?rmv=1.68.43';
+} from './request.js?rmv=1.68.45';
 import {
     beginHostWorkTiming,
     clearExternalHostFreshSourceState,
@@ -152,7 +152,7 @@ import {
     setPlaceholderSummary,
     usableReadyDetails,
     withRestorableHtmlCacheBatch,
-} from './geometry.js?rmv=1.68.43';
+} from './geometry.js?rmv=1.68.45';
 import {
     INDEPENDENT_INTENT_OWNER,
     abortFlight,
@@ -206,7 +206,7 @@ import {
     serializeExternalFaceDetails,
     stampAutomaticAuthorizationEpoch,
     withHistoricalRestoreLightPass,
-} from './mount.js?rmv=1.68.43';
+} from './mount.js?rmv=1.68.45';
 import {
     automaticGenerationCutovers,
     hostGenerationHintStartedAt,
@@ -231,7 +231,7 @@ import {
     writeStartupHistoryFallbackRoot,
     writeSyncRunning,
     writeSyncTimer,
-} from './lifecycle.js?rmv=1.68.43';
+} from './lifecycle.js?rmv=1.68.45';
 
 let earlyBodyParserPromise=null;
 
@@ -360,7 +360,7 @@ function settleEarlyBodyAtFinal(ctx,index){
 
 async function probeIndependentEarlyBody(packet,sequence){
  if(!earlyBodyPacketCurrent(packet)) return;
- if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.68.43')
+ if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.68.45')
   .then(module=>{earlyBodyParser=module;return module;}).catch(()=>{earlyBodyParserPromise=null;return null;});
  const parser=await earlyBodyParserPromise;
  if(!parser || sequence!==earlyBodyProbeSequence || !earlyBodyPacketCurrent(packet)) return;
@@ -684,12 +684,20 @@ function noteHostGenerationEnd(chat){ if(chat) recentHostGenerationEnds.set(Stri
 // 宿主生成的登记偶尔会因为中途停止、报错没收尾而一直留着；只在宿主确实还在生成、或登记不久时才算“还在进行”，
 // 免得最后一条回复永远既没有兔子镜、也没有重试卡。
 const HOST_GENERATION_HOLD_MAX_MS=180000;
+// 这次宿主生成已经落在这一层的另一个版本上（你划到了别的版本）：你看的这一版不该跟着等它，缺壳卡照常挂。
+function hostGenerationBoundToAnotherSwipe(ctx,index,owner){
+ const msg=ctx?.chat?.[Number(index)]; if(!msg) return false;
+ const swipe=swipeId(msg);
+ return [owner.received,owner.tentativeRender,owner.intermediateRender].some(bound=>
+  bound?.message && bound.index===Number(index) && bound.phase===Number(owner.phase||0) && bound.swipe!==swipe);
+}
 export function automaticPipelineHoldsFloor(ctx,index){
  if(!automaticIndependentTiming()) return false;
  const last=lastAssistantMessage(ctx); if(!last || last.i!==Number(index)) return false;
  const key=chatKey(ctx);
  const owner=automaticGenerationCutovers.get(key)?.activeHostGeneration;
- if(owner && (hostGenerationLooksActive() || Date.now()-Number(owner.startedAt||0)<HOST_GENERATION_HOLD_MAX_MS)) return true;
+ if(owner && (hostGenerationLooksActive() || Date.now()-Number(owner.startedAt||0)<HOST_GENERATION_HOLD_MAX_MS)
+  && !hostGenerationBoundToAnotherSwipe(ctx,index,owner)) return true;
  const endedAt=Number(recentHostGenerationEnds.get(key)||0);
  return endedAt>0 && Date.now()-endedAt<MISSING_SHELL_SETTLE_GRACE_MS;
 }

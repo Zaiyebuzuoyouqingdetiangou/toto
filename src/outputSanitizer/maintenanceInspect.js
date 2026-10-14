@@ -1,21 +1,21 @@
 // Split from outputSanitizer.js — maintenanceInspect.
-import { RADIO_BRANCH_COUNT_ATTR, findRadioBranchCandidates } from './radioBranchRepair.js?rmv=1.68.43';
-import { runMaintenanceGenericProbe, describeGenericProbe } from './maintenanceGenericProbe.js?rmv=1.68.43';
-import { recordRepairSample } from './repairSamples.js?rmv=1.68.43';
-import { cancelLabeledCheckedTransitionVerification, invalidateMaintenanceLabeledCheckedProbe } from './fallbackRescue.js?rmv=1.68.43';
-import { LABELED_CHECKED_VERIFY_LAST_ATTR } from './checkedStateRescue.js?rmv=1.68.43';
-import { findUnmappedNavigationButtons } from './choiceRescue.js?rmv=1.68.43';
+import { RADIO_BRANCH_COUNT_ATTR, findRadioBranchCandidates } from './radioBranchRepair.js?rmv=1.68.45';
+import { runMaintenanceGenericProbe, describeGenericProbe } from './maintenanceGenericProbe.js?rmv=1.68.45';
+import { recordRepairSample } from './repairSamples.js?rmv=1.68.45';
+import { cancelLabeledCheckedTransitionVerification, invalidateMaintenanceLabeledCheckedProbe } from './fallbackRescue.js?rmv=1.68.45';
+import { LABELED_CHECKED_VERIFY_LAST_ATTR } from './checkedStateRescue.js?rmv=1.68.45';
+import { findUnmappedNavigationButtons } from './choiceRescue.js?rmv=1.68.45';
 
-import { nativePopoverFallbackCount, inspectNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.68.43';
-import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.68.43';
-import { BEHAVIOR_RELAY_ATTR, relayDeadBehaviorGroups } from './behaviorRelay.js?rmv=1.68.43';
-import { BEHAVIOR_REVERSE_ATTR, reverseRelayDeadHandwrittenControls } from './behaviorReverseRelay.js?rmv=1.68.43';
-import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.68.43';
-import { getCurrentChatKey } from '../storage.js?rmv=1.68.43';
-import { bindRabbitMirrorAvatarRoot, restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.68.43';
-import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.68.43';
-import { getRabbitMirrorGenerationSnapshot } from '../generationGuard.js?rmv=1.68.43';
-import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules } from '../presentationQuality.js?rmv=1.68.43';
+import { nativePopoverFallbackCount, inspectNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.68.45';
+import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.68.45';
+import { BEHAVIOR_RELAY_ATTR, relayDeadBehaviorGroups } from './behaviorRelay.js?rmv=1.68.45';
+import { BEHAVIOR_REVERSE_ATTR, reverseRelayDeadHandwrittenControls } from './behaviorReverseRelay.js?rmv=1.68.45';
+import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.68.45';
+import { getCurrentChatKey } from '../storage.js?rmv=1.68.45';
+import { bindRabbitMirrorAvatarRoot, restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.68.45';
+import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.68.45';
+import { getRabbitMirrorGenerationSnapshot } from '../generationGuard.js?rmv=1.68.45';
+import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules } from '../presentationQuality.js?rmv=1.68.45';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -29,7 +29,7 @@ import {
     hashInteractionSignature,
     isInsideChatMessage,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.68.43';
+} from './runtime.js?rmv=1.68.45';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     CHANNEL_DIAL_CYCLE_COUNT_ATTR,
@@ -65,8 +65,8 @@ import {
     parseMissingCheckedSubjectClassRules,
     resolveTargetsForCheckedRule,
     restoreIndependentNativeCheckedInteraction,
-} from './checkedStateRescue.js?rmv=1.68.43';
-import { getClassTokens, isCollapsedDimensionValue, normalizeStylePropertyName } from './renderedStateRescue.js?rmv=1.68.43';
+} from './checkedStateRescue.js?rmv=1.68.45';
+import { getClassTokens, isCollapsedDimensionValue, normalizeStylePropertyName } from './renderedStateRescue.js?rmv=1.68.45';
 import {
     RAW_RADIO_RESET_RESCUE_ATTR,
     RAW_SELF_MUTATION_RESCUE_ATTR,
@@ -80,7 +80,7 @@ import {
     getRawAssistantMessageForRenderedRoot,
     installRawMessageRadioResetProgramRescue,
     normalizeInteractionMatchText,
-} from './scriptedInteractionRescue.js?rmv=1.68.43';
+} from './scriptedInteractionRescue.js?rmv=1.68.45';
 import {
     REVERSIBLE_RADIO_ROOT_ATTR,
     TOUCH_HOVER_ATTR,
@@ -98,14 +98,14 @@ import {
     repairMarkdownCorruptedCssComments,
     repairNestedDetailsPopupClipping,
     scheduleMaintenanceLabeledCheckedProbe,
-} from './fallbackRescue.js?rmv=1.68.43';
+} from './fallbackRescue.js?rmv=1.68.45';
 import {
     RADIO_GROUP_ROOT_ATTR,
     activateRabbitMirrorInteractionRescue,
     inspectSanitizedRadioGroupLoss,
     rearmRabbitMirrorSerializedInteractionRoot,
     scopeRabbitMirrorInteractionIds,
-} from './idsAndRearm.js?rmv=1.68.43';
+} from './idsAndRearm.js?rmv=1.68.45';
 import {
     DISABLED_ONLY_CHOICE_RESCUE_ATTR,
     FEEDBACK_CAT_MENU_ATTR,
@@ -168,7 +168,7 @@ import {
     MAINTENANCE_STATE_ATTR,
     MAINTENANCE_REASON_ATTR,
     buildRabbitMirrorSkeletonPair,
-} from './diagnostics.js?rmv=1.68.43';
+} from './diagnostics.js?rmv=1.68.45';
 import {
     findDisabledOnlyChoiceGroupCandidates,
     findFillInChoiceCandidates,
@@ -183,7 +183,7 @@ import {
     installStaticChoiceSelectionFallback,
     installStructuredStaticDisclosureFallback,
     rehydrateRabbitMirrorMaintenanceRepairs,
-} from './choiceRescue.js?rmv=1.68.43';
+} from './choiceRescue.js?rmv=1.68.45';
 import {
     FENCED_BLOCK_RE,
     RABBIT_MIRROR_SANITIZER_STYLE_DROP_ATTR,
@@ -202,7 +202,7 @@ import {
     validateRabbitMirrorMarkupLexicalBudget,
     wrapNakedHtmlAsToto,
     wrapTrailingNakedHtml,
-} from './markup.js?rmv=1.68.43';
+} from './markup.js?rmv=1.68.45';
 import {
     getRabbitMirrorFacePosition,
     independentMaintenanceHost,
@@ -217,13 +217,13 @@ import {
     maintenanceMobileLayoutRect,
     maintenanceMobileLayoutTextLength,
     shouldRunMaintenanceMobileLayoutRescue,
-} from './layoutRescue.js?rmv=1.68.43';
+} from './layoutRescue.js?rmv=1.68.45';
 import {
     containRabbitMirrorTitleToolFloat,
     installMaintenanceRabbitForRoot,
     rabbitMirrorTextPresentation,
     refreshRabbitMirrorToolsInScope,
-} from './toolsChrome.js?rmv=1.68.43';
+} from './toolsChrome.js?rmv=1.68.45';
 import {
     TRANSIENT_RERENDER_REASONING_ENVELOPE_RE,
     followMaintenanceRepairRecipes,
@@ -235,7 +235,7 @@ import {
     maintenanceRepairTimers,
     messageContainsReasoningEnvelope,
     messageUsesDistinctDisplaySource,
-} from './lifecycle.js?rmv=1.68.43';
+} from './lifecycle.js?rmv=1.68.45';
 
 let rabbitMirrorInteractionResetInstanceCounter = 0;
 
@@ -4194,7 +4194,7 @@ export async function runMaintenanceNarrowFaceRepair(root, button) {
         if (rejectOversizedMaintenanceRepair(root, button, '窄面电击')) return false;
         if (!maintenanceRepairRunIsCurrent(repairRun)) return false;
         setMaintenanceRabbitState(button, MAINTENANCE_STATES.checking, '⚡ 正在重新测量并恢复这面兔子镜的宽度');
-        const adapter = await import('../independentApi.js?rmv=1.68.43');
+        const adapter = await import('../independentApi.js?rmv=1.68.45');
         // Loading the adapter is the sole async boundary. Never apply a delayed
         // click to a new chat, Swipe, source revision, face or replacement node.
         if (!root.isConnected || !details.isConnected || !button.isConnected

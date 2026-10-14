@@ -1,9 +1,9 @@
-import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.68.43';
+import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.68.45';
 // Split from outputSanitizer.js — markup.
 
-import { getSettings } from '../settings.js?rmv=1.68.43';
-import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.68.43';
-import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.68.43';
+import { getSettings } from '../settings.js?rmv=1.68.45';
+import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.68.45';
+import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.68.45';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     INTERACTION_HOME_ATTR,
@@ -15,7 +15,7 @@ import {
     clearMirrorTitleDisplayArtifacts,
     escapeRegExp,
     hashInteractionSignature,
-} from './runtime.js?rmv=1.68.43';
+} from './runtime.js?rmv=1.68.45';
 
 const TOTO_BLOCK_RE = /<toto\b[\s\S]*?<\/toto>/gi;
 
@@ -340,7 +340,9 @@ export function cssDeclarationBlockContainsUnsafeOverlayGeometry(value = '', { a
     if (position === 'fixed') return fullInset || (viewportWidth && viewportHeight);
     if (position === 'sticky') return viewportWidth && viewportHeight;
     // 镜面作者在自身内容里建立了定位上下文时，absolute 层（事件层、3D 翻页卡、全屏详情页）
-    // 的包含块就在镜面内部，再高的 z-index 也盖不出镜面，这里不清理；fixed/sticky 永远按上面的旧规则清理。
+    // 的包含块就在镜面内部，再高的 z-index 也盖不出镜面，这里不清理。
+    // sticky 永远按上面的旧规则清理；fixed 在声明块清理时已先改写成 absolute（只在镜面范围里叠放），
+    // 所以这里看到的 fixed 只会来自没经过改写的原始 CSS 检查。
     if (allowContainedAbsoluteStack) return false;
     return (viewportWidth && viewportHeight) || (fullInset && highZ);
 }
@@ -700,8 +702,8 @@ export function sanitizeRabbitMirrorUntrustedTemplate(template) {
     // 镜面内容内部的叠放层（事件层、3D 翻页卡、全屏详情面板）靠 width/height:100% 的
     // absolute 贴住作者自建的定位容器；其包含块是镜内最近的定位祖先。只有同一模板
     // 确实存在作者写入的定位上下文（非 static 定位规则或内联定位）时，才把这类
-    // absolute 几何视为“作者有意叠放”放行。fixed/sticky 以及“四边全贴 + 超高
-    // z-index”的覆盖广告形态不受此豁免影响，仍按原规则清理。
+    // absolute 几何视为“作者有意叠放”放行。sticky 全屏层不受此豁免影响仍清理；
+    // fixed 一律先改写成 absolute，随后按 absolute 的规则处理。
     const overlayGeometryOptions = {
         allowContainedAbsoluteStack: rabbitMirrorTemplateHasAuthoredPositioningContext(template),
     };
