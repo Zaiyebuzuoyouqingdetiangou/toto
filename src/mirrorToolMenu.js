@@ -1,5 +1,5 @@
 // Tool controls stay attached to their owning face; only their menu is portalled.
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.68.53';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.68.54';
 
 // 镜面工具面板（挨打猫、维修兔、重说、抽签记录等）跟随设置里的「主题与外观」。
 // 选「跟随酒馆主题」时不改动任何颜色。
@@ -146,7 +146,7 @@ export function installMirrorToolMenu(root, host, actions, beforeOpen) {
             panel.setAttribute('aria-label', '兔子镜工具');
             panel.style.cssText = 'padding:14px;border:1px solid var(--SmartThemeBorderColor,#bbb);border-radius:15px;background-color:#243044;background-image:linear-gradient(var(--SmartThemeBlurTintColor,#243044),var(--SmartThemeBlurTintColor,#243044));color:var(--SmartThemeBodyColor,#34495d);box-shadow:0 8px 30px #0004;font:14px/1.5 sans-serif;';
             const title = document.createElement('strong'); title.textContent = '这面兔子镜的工具'; panel.append(title);
-            const items = [...state.actions, { id: 'close', label: '关闭', run: () => button.focus() }];
+            const items = [...state.actions, { id: 'close', label: '✖️ 关闭', run: () => button.focus() }];
             for (const action of items) {
                 const item = document.createElement('button'); item.type = 'button';
                 item.setAttribute('data-rm-tool-choice', action.id); item.textContent = action.label;

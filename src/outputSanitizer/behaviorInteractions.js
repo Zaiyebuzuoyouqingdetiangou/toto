@@ -1,10 +1,10 @@
-import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.68.53';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.68.53';
-import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.68.53';
-import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.68.53';
-import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.68.53';
-import { addDialectStateKeys, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup } from './behaviorDialect.js?rmv=1.68.53';
-import { EXTRA_TYPES, EXTRA_CONTROLS, EXTRA_CONTROL_ATTRS, configureBehaviorExtras, configureCarryChatKey, extraTypeFits, prepareExtra, destroyExtra, extraAction, extraSync, extraKeys, extraReset, extraPointerDown, extraPointerMove, extraPointerUp, extraHoldStart, extraHoldEnd, applyCarriedState, saveCarriedState, recalledKeys, carryMemoryName } from './behaviorExtras.js?rmv=1.68.53';
+import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.68.54';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.68.54';
+import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.68.54';
+import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState } from './behaviorStateMirror.js?rmv=1.68.54';
+import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.68.54';
+import { addDialectStateKeys, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup } from './behaviorDialect.js?rmv=1.68.54';
+import { EXTRA_TYPES, EXTRA_CONTROLS, EXTRA_CONTROL_ATTRS, configureBehaviorExtras, configureCarryChatKey, extraTypeFits, prepareExtra, destroyExtra, extraAction, extraSync, extraKeys, extraReset, extraPointerDown, extraPointerMove, extraPointerUp, extraHoldStart, extraHoldEnd, applyCarriedState, saveCarriedState, recalledKeys, carryMemoryName } from './behaviorExtras.js?rmv=1.68.54';
 
 export { behaviorToggleKey, motionOutsideControls };
 
@@ -512,6 +512,9 @@ function countSteps(state) {
     const steps = own(state.group, '[data-rm-step]');
     const completed = steps.filter(node => node.getAttribute('data-rm-done') === 'true').length;
     style(state, state.group, '--rm-count', String(completed));
+    // 模型常把阶段写成 [data-rm-ui="accumulate"][data-rm-count="2"] .stage{display:flex}：
+    // 只有 --rm-count 变量时这些规则一条都对不上，所有阶段一直藏着。计数同时写成属性。
+    state.group.setAttribute('data-rm-count', String(completed));
     // A leaf group's result may be a sibling of its buttons. Mirror completion
     // onto their common group so authored descendant CSS can reveal that result.
     // Containers with nested behaviors retain button/count state only: marking
@@ -1699,7 +1702,7 @@ function scheduleOnDemandRelay(root, target) {
 function relayGroupLater(root, group, control = null) {
     const run = () => {
         if (!group.isConnected || !root.isConnected) return;
-        void import('./behaviorRelay.js?rmv=1.68.53').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
+        void import('./behaviorRelay.js?rmv=1.68.54').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
     };
     const idle = globalThis.requestIdleCallback;
     if (typeof idle === 'function') idle(run, { timeout: 800 }); else setTimeout(run, 120);
@@ -1800,4 +1803,4 @@ configureBehaviorExtras({ own, first, style, setFlag, enableControl, refreshResu
 // 跨面继承按聊天分开记：聊天键从存储模块拿，拿不到时所有面共用一份。
 let carryChatKeyReader = null;
 configureCarryChatKey(() => carryChatKeyReader?.() || '');
-import('../storage.js?rmv=1.68.53').then(module => { carryChatKeyReader = () => module.getCurrentChatKey?.() || ''; }).catch(() => {});
+import('../storage.js?rmv=1.68.54').then(module => { carryChatKeyReader = () => module.getCurrentChatKey?.() || ''; }).catch(() => {});

@@ -1,6 +1,6 @@
-import { paletteRecipeFor } from './paletteRecipes.js?rmv=1.68.53';
-import { COLOR_FAMILIES } from '../data/structured/generationPaletteIndex.js?rmv=1.68.53';
-import { COLOR_SCALES } from '../data/structured/generationColorScales.js?rmv=1.68.53';
+import { paletteRecipeFor } from './paletteRecipes.js?rmv=1.68.54';
+import { COLOR_FAMILIES } from '../data/structured/generationPaletteIndex.js?rmv=1.68.54';
+import { COLOR_SCALES } from '../data/structured/generationColorScales.js?rmv=1.68.54';
 
 const BY_ID = new Map(COLOR_FAMILIES.map(item => [item.id, item]));
 
@@ -27,11 +27,9 @@ export function composeGenerationPalette(familyId, companionId, brightness = 'li
     // neutral grey or near-black sheet; the reading surface stays a separate,
     // quieter layer of the surface family. Dark tiers use a mid-dark step so
     // the hue survives instead of collapsing into step-1 black.
-    // 浅调三层要一眼分得开：以前背景取第 3 档、承载面取第 2 档，两者都接近白色，
-    // 主体只到第 6 档，柔和浅色的面就成了「一大片浅底」。现在背景放到第 5 档，
-    // 承载面用承载色系（多半是同色调的灰）最浅的纸面色，主体取主色系第 7 档，比背景深一截。
-    // 陪衬色是撞色，只留给按钮、点缀这类小面积，不拿来铺主体。
-    const background = mode === 'light' ? scale[4] : scale[3];
+    // 浅调保留原来的浅背景（第 3 档）。层次靠另外两层拉开：承载面用最浅的纸面色，
+    // 主体取主色系第 7 档，比原来的第 6 档深一截。陪衬色是撞色，只留给按钮、点缀这类小面积。
+    const background = mode === 'light' ? scale[2] : scale[3];
     const readingSurfaces = mode === 'light' ? [surface[0], surface[2], surface[3]] : [surface[1], surface[2], surface[3]];
     // These are reference-token pairings, not a scanner or an acceptance gate on model output.
     const text = readableInk([readingSurfaces[0], background], [surface[11], '#111111', '#FFFFFF']);
@@ -78,7 +76,7 @@ export function buildGenerationPaletteRule(palettes, faceContexts) {
         && (face.atmosphereFaces || [face]).some(candidate => candidate.visualSceneryMode) ? [index + 1] : []);
     const sceneNote = sceneFaces.length ? `\n动态视觉（第 ${sceneFaces.join('、')} 面）：色阶用于实际绘制的画面本体及其动画，形体、明暗与层次都由它画出；不直接铺成界面底色和卡片。` : '';
     return `生成配色参考【仅 HTML 第 ${numbers.join('、')} 面；深浅色阶组合，不是固定皮肤】：
-${assignments}。配色仅随上述选中签执行，未列出的面／签使用其配色兜底。先按展现形式分清场地、媒介材质、主体部件、内容区域和操作状态，再依正文氛围映射色彩，不把各种媒介套成同一背景卡片。以下依次为背景／承载面／正文／次要文字／主体色面＋配字／强调底＋配字／陪衬底＋配字；背景带本组色相，承载面与之分层，不把整面压成同一块灰或近黑。浅调时背景、承载面、主体色面三层已按深浅拉开：背景不要改回近白，主体不要和背景同深浅，三层要一眼分得开；陪衬色只做小面积点缀，不铺满主体或背景。主体色面用于该形式可辨认的主要物件或结构；纸面、照片等固有内容保持其材质。文字配对仅适用于对应实色底；改色、透明叠加或纹理后仍须保持普通文字对比至少 4.5:1，可在已抽色阶内延伸。
+${assignments}。配色仅随上述选中签执行，未列出的面／签使用其配色兜底。先按展现形式分清场地、媒介材质、主体部件、内容区域和操作状态，再依正文氛围映射色彩，不把各种媒介套成同一背景卡片。以下依次为背景／承载面／正文／次要文字／主体色面＋配字／强调底＋配字／陪衬底＋配字；背景带本组色相，承载面与之分层，不把整面压成同一块灰或近黑。浅调时承载面最浅、主体色面比背景深一截，靠这几层的深浅分出层次；陪衬色只做小面积点缀，不铺满主体或背景。主体色面用于该形式可辨认的主要物件或结构；纸面、照片等固有内容保持其材质。文字配对仅适用于对应实色底；改色、透明叠加或纹理后仍须保持普通文字对比至少 4.5:1，可在已抽色阶内延伸。
 ${palettes.map(item => { const p = item.roles; return `${item.code}「${item.title}」${item.brightness === 'dark' ? '深调' : '浅调'}·${item.mood}：${p.background}／${p.surface}／${p.text}／${p.muted}／${p.objectSurface}+${p.onObject}／${p.accent}+${p.onAccent}／${p.companion}+${p.onCompanion}`; }).join('\n')}${sceneNote}`;
 }
 

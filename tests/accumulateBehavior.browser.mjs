@@ -58,6 +58,8 @@ try {
         assert.equal(await done(), null); checks++;
         await press('button[data-rm-reset]');
         assert.equal(await page.locator('[data-rm-ui]').evaluate(node => node.style.getPropertyValue('--rm-count')), '0'); checks++;
+        // 计数也写成属性：[data-rm-count="2"] 这类阶段规则才对得上。
+        assert.equal(await page.locator('[data-rm-ui]').getAttribute('data-rm-count'), '0'); checks++;
         assert.equal(await page.locator('button[data-rm-done="true"]').count(), 0); checks++;
         // Native keyboard activation follows the same local behavior path.
         await page.locator('button[data-rm-step]').first().focus(); await page.keyboard.press('Enter');
