@@ -401,11 +401,12 @@ function snapshotPlateColor(html) {
     return hex;
 }
 
-function snapshotThumbDocument(html, expand) {
+function snapshotThumbDocument(html, expand, prepare) {
     let body = expand(String(html || ''));
     try {
         const template = document.createElement('template');
         template.innerHTML = body;
+        prepare?.(template);
         const details = template.content.querySelector('details');
         if (details) details.setAttribute('open', '');
         body = template.innerHTML;
@@ -423,8 +424,9 @@ function snapshotThumbDocument(html, expand) {
 function loadThumb(frame, expand) {
     if (!frame || frame.dataset.loaded === 'true') return;
     frame.dataset.loaded = 'true';
-    frame.srcdoc = snapshotThumbDocument(frame.__rmSnapshotHtml, expand);
+    frame.srcdoc = snapshotThumbDocument(frame.__rmSnapshotHtml, expand, frame.__rmSnapshotPrepare);
     frame.__rmSnapshotHtml = null;
+    frame.__rmSnapshotPrepare = null;
 }
 
 function observeThumb(frame, scrollRoot, expand) {
@@ -451,11 +453,11 @@ function updateThumbScale(grid) {
 
 export async function openTheaterSnapshot() {
     const [{ applyAppearanceTheme }, api, favorites, persistence, runtime] = await Promise.all([
-        import('./appearanceTheme.js?rmv=1.68.50'),
-        import('./independentApi.js?rmv=1.68.50'),
-        import('./theaterFavorites.js?rmv=1.68.50'),
-        import('./independentApi/persistence.js?rmv=1.68.50'),
-        import('./independentApi/runtime.js?rmv=1.68.50'),
+        import('./appearanceTheme.js?rmv=1.68.51'),
+        import('./independentApi.js?rmv=1.68.51'),
+        import('./theaterFavorites.js?rmv=1.68.51'),
+        import('./independentApi/persistence.js?rmv=1.68.51'),
+        import('./independentApi/runtime.js?rmv=1.68.51'),
     ]);
     const ctx = runtime.getContext?.() || {};
     const chat = Array.isArray(ctx.chat) ? ctx.chat : [];
@@ -466,11 +468,20 @@ export async function openTheaterSnapshot() {
             .filter(entry => entry.html);
     } catch { persisted = []; }
     const domErrors = readDomSnapshotErrors();
+    let imageChatKey = '';
+    let restoreBuiltinImages = () => 0;
+    try {
+        const connection = await import('./independentApi/connection.js?rmv=1.68.51');
+        imageChatKey = String(connection.chatKey(ctx) || '');
+    } catch { imageChatKey = ''; }
+    try {
+        const images = await import('./builtinImage.js?rmv=1.68.51');
+        if (typeof images.restoreSavedBuiltinImages === 'function') restoreBuiltinImages = images.restoreSavedBuiltinImages;
+    } catch { /* 没有生图模块时图框保持原样 */ }
     let sessionErrors = [];
     try {
-        const flights = await import('./independentApi/flights.js?rmv=1.68.50');
-        const connection = await import('./independentApi/connection.js?rmv=1.68.50');
-        const key = connection.chatKey(ctx);
+        const flights = await import('./independentApi/flights.js?rmv=1.68.51');
+        const key = imageChatKey;
         const seen = new Set(domErrors.map(row => row.mesid));
         for (const failure of flights.automaticFailureStops?.values?.() || []) {
             if (!failure || flights.isMissingShellStop?.(failure)) continue;
@@ -490,7 +501,7 @@ export async function openTheaterSnapshot() {
     const items = collectTheaterSnapshots(chat, { persisted, domErrors: [...domErrors, ...sessionErrors] });
     let expandBlocks = value => String(value || '');
     try {
-        const markup = await import('./outputSanitizer/markup.js?rmv=1.68.50');
+        const markup = await import('./outputSanitizer/markup.js?rmv=1.68.51');
         if (typeof markup.expandHtmlDocumentCodeBlocks === 'function') expandBlocks = markup.expandHtmlDocumentCodeBlocks;
     } catch { /* 缩略图用原文 */ }
     closeTheaterSnapshot();
@@ -614,6 +625,17 @@ export async function openTheaterSnapshot() {
         });
     };
 
+    const prepareSnapshotImages = (template, item) => {
+        const roots = [...template.content.querySelectorAll('details')];
+        if (!roots.length) roots.push(template.content);
+        for (const details of roots) {
+            if (!details?.dataset) continue;
+            if (imageChatKey) details.dataset.rmImageOwnerChat = imageChatKey;
+            details.dataset.rmImageOwnerMesid = String(item.mesid);
+            details.dataset.rmImageOwnerSwipe = String(item.swipe);
+            if (details.querySelector?.('[data-rm-draw-frame]')) restoreBuiltinImages(details);
+        }
+    };
     const mountStage = (stage, item) => {
         const host = api.hydrateIndependentFavoriteHtml(stage, {
             html: item.html,
@@ -621,6 +643,7 @@ export async function openTheaterSnapshot() {
             title: item.title,
             mesid: item.mesid,
             swipe: item.swipe,
+            chatKey: imageChatKey,
         });
         if (!host) stage.textContent = '这一面暂时挂不上。可以跳回原楼查看。';
         else host.querySelectorAll?.('details')?.forEach(details => { details.open = true; });
@@ -740,6 +763,7 @@ export async function openTheaterSnapshot() {
                     thumb.setAttribute('tabindex', '-1');
                     thumb.setAttribute('title', '');
                     thumb.__rmSnapshotHtml = item.html;
+                    thumb.__rmSnapshotPrepare = template => prepareSnapshotImages(template, item);
                     plate.append(thumb);
                 } else {
                     const copy = document.createElement('span');
