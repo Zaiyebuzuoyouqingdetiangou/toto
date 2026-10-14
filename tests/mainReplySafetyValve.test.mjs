@@ -41,15 +41,26 @@ for (const [name, mes, reason] of [
     ['unfinished content', `<content>${story}`, /<content>/],
     ['unfinished details', `<details><summary>往事</summary>${story}`, /<details>/],
     ['unfinished nested details', `<content><details>${story}<details>第二段</details></content>`, /<details>/],
-    ['a closing example cannot close the actual content', `<content>${story}<script>const example = '</content>';</script>`, /<content>/],
     ['a closing comment cannot close the actual content', `<content>${story}<!-- </content> -->`, /<content>/],
     ['a preceding closing tag cannot close a later opening', `</content><content>${story}`, /<content>/],
     ['unfinished backtick block', `${story}\n\`\`\`html\n<div>还未写完`, /代码块/],
     ['wrong fence length', `${story}\n\`\`\`\`html\n<div>\n\`\`\``, /代码块/],
-    ['unfinished tilde block', `${story}\n~~~html\n<div>还未写完`, /代码块/],
 ]) test(`${name} stops automatic generation without changing the reply`, () => {
     const message = { mes };
     assert.match(mainReplyAbnormalReason(message), reason);
+    assert.equal(message.mes, mes);
+});
+
+// 安全阀有意放过的两种写法（见 mainReplySafetyValve.js 里的注释）：
+// 1）剧情里常用 ~~~ 当分隔线，没配对的波浪线按普通文字处理，不算截断；
+// 2）正文用 <content> 包着并写到了最后一个 </content>，只检查到这里为止——哪怕那个 </content> 出现在 script 字符串里，
+//    也当作正文已写完，免得状态栏、小总结写得不规范时拦住兔子镜。
+for (const [name, mes] of [
+    ['a closing example inside a script string counts as the end of the content', `<content>${story}<script>const example = '</content>';</script>`],
+    ['unfinished tilde block', `${story}\n~~~html\n<div>还未写完`],
+]) test(`${name} is tolerated and does not stop automatic generation`, () => {
+    const message = { mes };
+    assert.equal(mainReplyAbnormalReason(message), '');
     assert.equal(message.mes, mes);
 });
 

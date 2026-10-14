@@ -55,20 +55,23 @@ test('without the exemption the same rule loses position:absolute (historical bu
     assert.ok(overlayRule.includes('width:100%'), 'geometry declarations themselves were kept');
 });
 
-test('fixed viewport covers, sticky covers and full-inset high-z ad layers stay stripped under the exemption', () => {
+// 1.68 起 position:fixed 一律改写成 absolute（fixed 相对酒馆窗口定位，能盖住酒馆界面；absolute 只在兔子镜范围里叠放）。
+// 作者自建定位上下文（豁免开启）时，镜内的 absolute 全尺寸层是有意的叠放，放行；sticky 全屏层仍然清理。
+// 没有豁免（严格模式）时，全尺寸 / 四边全贴加超高 z-index 的 absolute 层照旧清理。
+test('fixed covers become contained absolute layers; sticky covers stay stripped; the exemption only affects absolute', () => {
     const { sanitizeGeneratedStyleSheet } = loadMarkup();
-    const options = { allowContainedAbsoluteStack: true };
-    for (const hostile of [
-        '.ad{position:fixed;inset:0;background:#000;}',
-        '.ad{position:fixed;top:0;left:0;width:100%;height:100%;}',
-        '.ad{position:sticky;top:0;width:100%;height:100%;}',
-        '.ad{position:absolute;top:0;right:0;bottom:0;left:0;z-index:9999;background:#000;}',
-        '.ad{position:absolute;inset:0;z-index:1000;}',
-    ]) {
-        const cleaned = sanitizeGeneratedStyleSheet(hostile, options);
-        const ruleBody = cleaned.match(/\.ad\{([^}]*)\}/)?.[1] || '';
-        assert.ok(!/position\s*:/.test(ruleBody), `still stripped: ${hostile}`);
+    const exempt = { allowContainedAbsoluteStack: true };
+    const body = (css, options) => sanitizeGeneratedStyleSheet(css, options).match(/\.ad\{([^}]*)\}/)?.[1] || '';
+    for (const fixedCover of ['.ad{position:fixed;inset:0;background:#000;}', '.ad{position:fixed;top:0;left:0;width:100%;height:100%;}']) {
+        assert.ok(!/position\s*:\s*fixed/.test(body(fixedCover, exempt)), `fixed never survives: ${fixedCover}`);
+        assert.ok(/position\s*:\s*absolute/.test(body(fixedCover, exempt)), `rewritten to a contained absolute layer under the exemption: ${fixedCover}`);
     }
+    assert.ok(!/position\s*:/.test(body('.ad{position:sticky;top:0;width:100%;height:100%;}', exempt)), 'sticky cover stripped under the exemption');
+    for (const stacked of ['.ad{position:absolute;top:0;right:0;bottom:0;left:0;z-index:9999;background:#000;}', '.ad{position:absolute;inset:0;z-index:1000;}']) {
+        assert.ok(/position\s*:\s*absolute/.test(body(stacked, exempt)), `authored absolute stack kept under the exemption: ${stacked}`);
+        assert.ok(!/position\s*:/.test(body(stacked, {})), `strict mode still strips it: ${stacked}`);
+    }
+    assert.ok(!/position\s*:/.test(body('.ad{position:fixed;top:0;left:0;width:100%;height:100%;}', {})), 'strict mode strips the rewritten viewport cover too');
 });
 
 test('inline tab-state snapshots and inline stacked layers follow the same narrow rule', () => {

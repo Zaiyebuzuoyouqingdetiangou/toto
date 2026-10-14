@@ -16,6 +16,7 @@ async function runRequest(overrides = {}, { stale = false, unavailable = false, 
     const presentation = await runtime.load('src/presentationMode.js');
     const prompt = await runtime.load('src/promptBuilder.js');
     const storage = await runtime.load('src/storage.js');
+    const faceDraw = await runtime.load('src/faceDrawRules.js');
     const registryKey = 'rabbit_mirror_theater:pending_batch_registry:v3';
     if (fullRegistry) {
         for (let index = 0; index < 8; index++) {
@@ -40,6 +41,8 @@ async function runRequest(overrides = {}, { stale = false, unavailable = false, 
         createIndependentVisibleTextReader: () => message => ({ text: message.mes }), isRabbitMirrorEligibleAssistantMessage: () => true,
         captureIndependentPromptOwner: () => ({}), assertIndependentPromptOwner() {}, bindIndependentPromptBatch() {},
         getExternalPoolHydrationStatus: () => metadata,
+        // 头像提示：本机没有头像桥，什么都不准备。
+        rabbitMirrorAvatarPromptIdentity: () => null, prepareRabbitMirrorAvatarPrompt: () => null,
         async hydrateExternalPoolMetadata() {
             counters.hydrate++;
             if (unavailable) throw Object.assign(new Error('database unavailable'), { code: 'WORLD_BOOK_STORAGE_UNAVAILABLE' });
@@ -58,6 +61,8 @@ async function runRequest(overrides = {}, { stale = false, unavailable = false, 
         contextBundle: () => ({ text: ctx.chat[0].mes, targetVisibleChars: 20 }), recordRabbitMirrorIndependentPrompt() {}, promptSectionBreakdown: () => [], resolveBehaviorRuleText: () => '',
         hashText: value => String(value), chatKey: () => 'chat:quota-parity', messageBaseSlotKey: () => 'slot', operationEpochForBase: () => 1,
         markPendingBatchAttempt: storage.markPendingBatchAttempt, releasePendingComboBatch: storage.releasePendingComboBatch,
+        createVisualHistorySelection: storage.createVisualHistorySelection, commitVisualHistorySelection: storage.commitVisualHistorySelection,
+        faceDrawNeedsExternal: faceDraw.faceDrawNeedsExternal, // 真实判断：这些设置没有配逐面外置规则
         independentBatchPlanPreflightError: code => Object.assign(new Error(code), { code }),
         async requestIndependentCompletion(st, systemPrompt, userPrompt, options) {
             assert.equal(options.dispatchLease.consume(), true);
@@ -121,8 +126,10 @@ test('retired text mode follows longtext and does not force a mother-library rea
 });
 
 test('exact external resay still hydrates its original recipe when current settings select blank longtext', async () => {
+    // 「原选题重写」（preserveSelection）才按原记录还原；默认重说是重新抽一张。
     const result = await runRequest({ externalWorldBookRandomEnabled: false }, { requestOptions: { multifaceResay: {
         faceIndex: 0, faces: [{ themeIds: [], formatIds: [], textIds: [externalId], requestedPresentationMode: 'text', presentationMode: 'text' }],
+        preserveSelection: true,
     } } });
     assert.equal(result.error?.code, 'TEST_DISPATCH_CAPTURED');
     assert.equal(result.hydrate, 1);
