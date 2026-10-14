@@ -1,8 +1,8 @@
 // Split from ui.js — worldbook list rendering and visibility.
 
-import { getSettings } from '../settings.js?rmv=1.68.59';
-import { WORLD_INFO_BOOKS_CHANGED_EVENT, fetchWorldInfoBooks, getObservedWorldInfoBooks } from '../independentApi.js?rmv=1.68.59';
-import { escapeHtml, isCurrentRuntime } from './runtime.js?rmv=1.68.59';
+import { getSettings } from '../settings.js?rmv=1.68.60';
+import { WORLD_INFO_BOOKS_CHANGED_EVENT, fetchWorldInfoBooks, getObservedWorldInfoBooks } from '../independentApi.js?rmv=1.68.60';
+import { escapeHtml, isCurrentRuntime } from './runtime.js?rmv=1.68.60';
 
 let pulledWorldInfoBooks = [];
 let worldInfoBookRenderTimer = 0;
