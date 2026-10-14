@@ -1,18 +1,18 @@
 // Split from outputSanitizer.js — diagnostics.
-import { interactionSamplingDiagnostic, designSamplingChecksDiagnostic } from '../interactionSampling.js?rmv=1.68.45';
-import { maskFaceText, skeletonizeRabbitMirrorHtml } from './writingSkeleton.js?rmv=1.68.45';
-import { RADIO_BRANCH_COUNT_ATTR } from './radioBranchRepair.js?rmv=1.68.45';
-import { findUnmappedNavigationButtons } from './choiceRescue.js?rmv=1.68.45';
-import { nativePopoverFallbackCount, inspectNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.68.45';
-import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.68.45';
-import { describeBehaviorDialect, dialectLabels, inspectBehaviorDialect } from './behaviorDialect.js?rmv=1.68.45';
-import { restoreRuntimeAnimationClone } from '../runtimeAnimationState.js?rmv=1.68.45';
-import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.68.45';
+import { interactionSamplingDiagnostic, designSamplingChecksDiagnostic } from '../interactionSampling.js?rmv=1.68.46';
+import { maskFaceText, skeletonizeRabbitMirrorHtml } from './writingSkeleton.js?rmv=1.68.46';
+import { RADIO_BRANCH_COUNT_ATTR } from './radioBranchRepair.js?rmv=1.68.46';
+import { findUnmappedNavigationButtons } from './choiceRescue.js?rmv=1.68.46';
+import { nativePopoverFallbackCount, inspectNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.68.46';
+import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.68.46';
+import { describeBehaviorDialect, dialectLabels, inspectBehaviorDialect } from './behaviorDialect.js?rmv=1.68.46';
+import { restoreRuntimeAnimationClone } from '../runtimeAnimationState.js?rmv=1.68.46';
+import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.68.46';
 
-import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.68.45';
-import { collectBoundedElementDescendants } from '../presentationQuality.js?rmv=1.68.45';
-import { collectRevealedClipHosts, shouldRelaxRevealedClipPanel, REVEALED_CLIP_RESCUE_ATTR } from '../revealedClipRepair.js?rmv=1.68.45';
-import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.68.45';
+import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.68.46';
+import { collectBoundedElementDescendants } from '../presentationQuality.js?rmv=1.68.46';
+import { collectRevealedClipHosts, shouldRelaxRevealedClipPanel, REVEALED_CLIP_RESCUE_ATTR } from '../revealedClipRepair.js?rmv=1.68.46';
+import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.68.46';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -31,7 +31,7 @@ import {
     isInsideChatMessage,
     isMaintenanceRabbitEnabled,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.68.45';
+} from './runtime.js?rmv=1.68.46';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     CHANNEL_DIAL_CYCLE_COUNT_ATTR,
@@ -64,7 +64,7 @@ import {
     WEBKIT_3D_FLIP_RESCUE_ATTR,
     passportDocumentRescueStates,
     unlabeledCheckedHostRescueStates,
-} from './checkedStateRescue.js?rmv=1.68.45';
+} from './checkedStateRescue.js?rmv=1.68.46';
 import {
     RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR,
     RENDERED_BUTTON_ADJACENT_HIDDEN_ITEM_ATTR,
@@ -91,7 +91,7 @@ import {
     renderedListDetailRescueStates,
     renderedMaskRevealRescueStates,
     renderedStateLayerRescueStates,
-} from './renderedStateRescue.js?rmv=1.68.45';
+} from './renderedStateRescue.js?rmv=1.68.46';
 import {
     RAW_RADIO_RESET_LAST_ATTR,
     RAW_RADIO_RESET_ROOT_ATTR,
@@ -102,7 +102,7 @@ import {
     getRabbitMirrorSummaryText,
     getRawAssistantMessageForRenderedRoot,
     rawSelfMutationRescueStates,
-} from './scriptedInteractionRescue.js?rmv=1.68.45';
+} from './scriptedInteractionRescue.js?rmv=1.68.46';
 import {
     REVERSIBLE_RADIO_LAST_ATTR,
     REVERSIBLE_RADIO_ROOT_ATTR,
@@ -113,13 +113,13 @@ import {
     findNestedDetailsPopupClippingCandidates,
     formatWebKit3DFlipEvidence,
     repairNestedDetailsPopupClipping,
-} from './fallbackRescue.js?rmv=1.68.45';
-import { RADIO_GROUP_RESCUE_ATTR, RADIO_GROUP_ROOT_ATTR } from './idsAndRearm.js?rmv=1.68.45';
+} from './fallbackRescue.js?rmv=1.68.46';
+import { RADIO_GROUP_RESCUE_ATTR, RADIO_GROUP_ROOT_ATTR } from './idsAndRearm.js?rmv=1.68.46';
 import {
     findFillInChoiceCandidates,
     findStaticChoiceSelectionCandidates,
     findStructuredStaticDisclosureCandidates,
-} from './choiceRescue.js?rmv=1.68.45';
+} from './choiceRescue.js?rmv=1.68.46';
 import {
     CODE_SHELL_SELECTOR,
     MAINTENANCE_QUARANTINED_SCRIPT_ATTR,
@@ -137,7 +137,7 @@ import {
     needsSanitize,
     normalizeMaintenanceSummaryText,
     parseTotoFragment,
-} from './maintenanceInspect.js?rmv=1.68.45';
+} from './maintenanceInspect.js?rmv=1.68.46';
 import {
     RABBIT_MIRROR_MAX_TEMPLATE_SOURCE_CHARS,
     RABBIT_MIRROR_SANITIZER_IMPORT_STRIPPED_ATTR,
@@ -150,7 +150,7 @@ import {
     sanitizeRabbitMirrorUntrustedTemplate,
     stripCssComments,
     validateRabbitMirrorTemplateStructuralBudget,
-} from './markup.js?rmv=1.68.45';
+} from './markup.js?rmv=1.68.46';
 import {
     HCLIP_REPORT_ATTR,
     VIEWPORT_LAYOUT_COUNT_ATTR,
@@ -158,14 +158,14 @@ import {
     inspectMaintenanceMobileLayout,
     inspectMaintenanceViewportLayout,
     maintenanceMobileLayoutIsPassportManaged,
-} from './layoutRescue.js?rmv=1.68.45';
-import { normalizeRabbitMirrorToolButton, rabbitMirrorTextPresentation, updateMaintenanceRabbitMenuState } from './toolsChrome.js?rmv=1.68.45';
+} from './layoutRescue.js?rmv=1.68.46';
+import { normalizeRabbitMirrorToolButton, rabbitMirrorTextPresentation, updateMaintenanceRabbitMenuState } from './toolsChrome.js?rmv=1.68.46';
 import {
     getMessageIndexFromMirrorNode,
     hostScriptModule,
     messageUsesDistinctDisplaySource,
     outputHostGenerationLooksActive,
-} from './lifecycle.js?rmv=1.68.45';
+} from './lifecycle.js?rmv=1.68.46';
 
 export const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
 
@@ -2749,14 +2749,59 @@ export function stripMaintenanceRabbitGlyphs(text = '') {
 }
 
 
+// 维修兔推荐原先靠全页悬停监听补写。状态只有这一处写入，打开菜单时再拼一次。
+const ROUTES = Object.freeze([
+    { id: 'source', label: '📄 空白或显示代码、纯文字', pattern: /(?:源码|空白|显示代码|纯文字|代码块|转义标签|toto\s*标签|原始源|source\s*truncation)/i },
+    { id: 'style', label: '🎨 样子不对', pattern: /(?:结构／样式|结构\/样式|样式|CSS|data\s*URI|3D\s*翻面|WebKit|兼容)/i },
+    { id: 'text', label: '📱 排版不适配／内容显示不全', pattern: /(?:显示：|排版|内容显示不全|手机端|窄屏|裁切|溢出|overflow|低对比|文字可能被裁切|横向|压窄)/i },
+    { id: 'interaction', label: '🖱️ 点了没有反应', pattern: /(?:交互：|交互|checked|checkbox|radio|label|点击|触发器|第二层|Hover|Active|focus|控件)/i },
+]);
+
+function baseTitle(value = '') {
+    return String(value || '').replace(/；?推荐使用：[^：\n]*(?: → [^：\n]*)*$/u, '').trim();
+}
+
+export function getRabbitMirrorMaintenanceRecommendation(stateValue = '', reasonValue = '') {
+    const state = String(stateValue || '');
+    const reason = String(reasonValue || '').trim();
+    if (!reason || state === 'idle' || state === 'healthy' || state === 'checking') return '';
+    const labels = [];
+    for (const route of ROUTES) {
+        if (!route.pattern.test(reason) || labels.includes(route.label)) continue;
+        labels.push(route.label);
+    }
+    if (labels.length) return `推荐使用：${labels.join(' → ')}`;
+    if (state === 'unknown' && !/独立\s*API\s*生成失败|兔子镜正在生成中/i.test(reason)) {
+        return '推荐使用：📋 生成全链路诊断';
+    }
+    return '';
+}
+
+export function mergeMaintenanceProblemAndRecommendation(problemText = '', recommendation = '') {
+    const problem = String(problemText || '').trim();
+    const suggestion = String(recommendation || '').trim();
+    if (!suggestion) return problem;
+    if (!problem) return suggestion;
+    if (problem.split(/\r?\n/u).some(line => line.trim() === suggestion)) return problem;
+    return `${problem}\n${suggestion}`;
+}
+
+function applyMaintenanceRabbitRecommendation(button, state, reason, title) {
+    const recommendation = getRabbitMirrorMaintenanceRecommendation(state, reason);
+    const base = baseTitle(title);
+    button.title = recommendation ? `${base}；${recommendation}` : base;
+    button.setAttribute('aria-label', button.title);
+    if (recommendation) button.setAttribute('data-rabbit-mirror-maintenance-recommendation', recommendation);
+    else button.removeAttribute('data-rabbit-mirror-maintenance-recommendation');
+}
+
 export function setMaintenanceRabbitState(button, state, reason = '') {
     if (!button) return;
     const decoratedReason = decorateMaintenanceRabbitReason(state, reason);
     button.setAttribute(MAINTENANCE_STATE_ATTR, state);
     button.setAttribute(MAINTENANCE_REASON_ATTR, decoratedReason);
     button.textContent = maintenanceRabbitGlyph(state, decoratedReason);
-    button.title = maintenanceRabbitTitle(state, decoratedReason);
-    button.setAttribute('aria-label', button.title);
+    applyMaintenanceRabbitRecommendation(button, state, decoratedReason, maintenanceRabbitTitle(state, decoratedReason));
     normalizeRabbitMirrorToolButton(button);
     try { updateMaintenanceRabbitMenuState(button, state, decoratedReason); }
     catch (error) { console.debug('[RabbitMirror] maintenance result display skipped:', error); }
