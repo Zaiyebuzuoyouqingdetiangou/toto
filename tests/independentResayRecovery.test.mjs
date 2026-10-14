@@ -84,7 +84,7 @@ function harness({ local, metadata, flight = null } = {}) {
         ['persistence', 'parseChatOwnerKey'],
         ['persistence', 'earliestMirrorEvidenceFloor'],
         ['persistence', 'floorMirrorEvidence'],
-        ['earlyBody', 'automaticPipelineHoldsFloor'],
+        ['earlyBody', 'hostGenerationBoundToAnotherSwipe'], ['earlyBody', 'automaticPipelineHoldsFloor'],
         ['earlyBody', 'manualFillAllowed'],
         ['earlyBody', 'missingShellHasEvidence'],
         ['earlyBody', 'waitForIndependentHistory'],

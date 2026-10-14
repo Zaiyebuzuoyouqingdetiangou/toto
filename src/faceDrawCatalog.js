@@ -1,7 +1,7 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.68.43';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.68.43';
-import { filterRandomThemePool, filterRandomFormatPool } from './blacklist.js?rmv=1.68.43';
-import { listExternalLibraries, listExternalLibraryEntryChoices, listExternalLibraryTitleIndex } from './externalWorldBook/store.js?rmv=1.68.43';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.68.44';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.68.44';
+import { filterRandomThemePool, filterRandomFormatPool } from './blacklist.js?rmv=1.68.44';
+import { listExternalLibraries, listExternalLibraryEntryChoices, listExternalLibraryTitleIndex } from './externalWorldBook/store.js?rmv=1.68.44';
 
 const GROUPS = {
     theme: { A: '色情与感官', B: '心理 / 情感暗流', C: '温馨 / 日常', D: '世界观 / 侧写', E: '荒诞 / 超现实', F: '幽默 / 搞笑', G: '平行时空 / IF 线', H: '悬疑 / 怪谈', I: '本世界观 / 当前篇章' },
@@ -25,7 +25,8 @@ export async function loadFaceDrawCatalog(settings, dependencies = {}) {
         catalog[kind] = [...groups.values()];
     }
     // 默认走轻量标题索引：一次读出所有已启用库的编号和标题，不再按页反复从头读整库。
-    if (!dependencies.listChoices) {
+    // 调用方传了 listLibraries 或 listChoices 任一个，就按页读（缺的那个用默认实现）。
+    if (!dependencies.listChoices && !dependencies.listLibraries) {
         try {
             const compare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
             const index = await (dependencies.listTitleIndex || listExternalLibraryTitleIndex)();
