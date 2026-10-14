@@ -121,6 +121,24 @@
     display: block;
     margin-top: 8px;
 }
+/* 勾选框和文字放同一行：酒馆把 checkbox 设成 display:grid（块级），上面的 display:block 会把文字挤到下一行。 */
+.rabbit-mirror-settings label.checkbox_label {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 8px;
+    min-width: 0;
+}
+.rabbit-mirror-settings label.checkbox_label > input[type="checkbox"],
+.rabbit-mirror-settings label.checkbox_label > input[type="radio"] {
+    flex: 0 0 auto;
+    margin-top: 0.2em;
+}
+.rabbit-mirror-settings label:not(.checkbox_label) > input[type="checkbox"],
+.rabbit-mirror-settings label:not(.checkbox_label) > input[type="radio"] {
+    display: inline-grid;
+    vertical-align: middle;
+}
 .rabbit-mirror-settings .rh-num {
     width: 64px;
     min-width: 64px;
