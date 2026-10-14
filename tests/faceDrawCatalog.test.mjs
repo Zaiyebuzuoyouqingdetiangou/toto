@@ -92,10 +92,14 @@ test('catalog keeps only metadata, pages enabled libraries, and ignores disabled
     assert.equal(JSON.stringify(catalog).includes('must not retain'), false);
 });
 
+// 1.68 起目录默认走「编号 + 标题」轻量索引（listTitleIndex），不再按页读整库；listLibraries 只在显式按页读取（传了 listChoices）时才用。
 test('unreadable external storage leaves builtins available and reports the failure', async () => {
-    const catalog = await loadFaceDrawCatalog({}, { listLibraries: async () => { throw new Error('offline IDB'); } });
+    const catalog = await loadFaceDrawCatalog({}, { listTitleIndex: async () => { throw new Error('offline IDB'); } });
     assert.ok(catalog.theme[0].items.length > 0);
     assert.match(catalog.warnings[0], /offline IDB/);
+    const paged = await loadFaceDrawCatalog({}, { listLibraries: async () => { throw new Error('offline IDB'); }, listChoices: async () => ({ offset: 0, hasNext: false, choices: [] }) });
+    assert.ok(paged.theme[0].items.length > 0);
+    assert.match(paged.warnings[0], /offline IDB/);
 });
 
 test('a repeated storage page ends safely instead of spinning or accepting an incomplete library', async () => {

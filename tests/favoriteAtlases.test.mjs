@@ -31,11 +31,12 @@ test('title, named headings, standalone labels and aliases count as collection e
     assert.equal(atlasSlotMatchesFavorite(fool, favorite('f', '信件', '<h2>0号愚者牌的故事</h2>')), true);
 });
 
-test('ordinary body mentions, partial words, attributes, scripts and styles do not falsely light cells', () => {
+test('body mentions of two-character words light cells (1.67.93); partial words, attributes, scripts and styles do not', () => {
     const [fool] = makeAtlas().slots;
     const cat = parseAtlasSlots('猫 | cat')[0];
+    // 1.67.93 起：小剧场正文里写到格子名也算（两个字以上的词在正文任何地方出现就收录）。
+    assert.equal(atlasSlotMatchesFavorite(fool, favorite('a', '新来信', '<p>我今天想起了愚者，然后离开了。</p>')), true);
     for (const row of [
-        favorite('a', '新来信', '<p>我今天想起了愚者，然后离开了。</p>'),
         favorite('b', '新来信', '<style>/*愚者*/</style><script>"愚者"</script><template>愚者</template>'),
         favorite('c', '新来信', '<!-- <h1>愚者</h1> --><p title="愚者">普通故事</p>'),
         favorite('d', 'The Foolish story'),

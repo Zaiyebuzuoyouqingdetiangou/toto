@@ -209,7 +209,9 @@ test('multiface pager uses face count instead of per-face versions', () => {
     assert.deepEqual(faceSwipeBarIntent({ ...view, currentIndex: 2, canNext: false }, 'next'), { type: 'resay' });
 });
 
-test('quota compact keeps the newest swipe stacks', () => {
+// 额度不足时只缩掉已经存进版本存档（IndexedDB）的栈；这里没有存档，所以一个都不能丢：
+// 宁可报「缩不动」，也不能把还没备份的旧版本删掉。
+test('quota compact refuses to drop stacks that are not backed up to the version archive', () => {
     let armed = false;
     const data = mockLocalStorage((_key, value, store) => {
         if (armed && String(value).length > 280) throw new Error('quota');
@@ -217,16 +219,14 @@ test('quota compact keeps the newest swipe stacks', () => {
     });
     const faces = {};
     for (let i = 0; i < 8; i += 1) {
-        faces[`chat:${i}:0\u00000`] = {
-            ...stack(`<details>${'x'.repeat(24)}${i}</details>`),
-            touched: i + 1,
-        };
+        faces[`chat:${i}:0\u00000`] = { ...stack(`<details>${'x'.repeat(24)}${i}</details>`), touched: i + 1 };
     }
     data.rabbit_mirror_face_swipes_v1 = JSON.stringify({ schema: 1, faces });
     resetFaceSwipeStoreForTests();
     armed = true;
-    assert.equal(compactFaceSwipeStoreForQuota(), true);
+    assert.equal(compactFaceSwipeStoreForQuota(), false);
     const raw = JSON.parse(data.rabbit_mirror_face_swipes_v1);
-    assert.ok(Object.keys(raw.faces).length < 8);
-    assert.ok(raw.faces['chat:7:0\u00000']);
+    assert.equal(Object.keys(raw.faces).length, 8, 'nothing is dropped without a durable copy');
+    for (let i = 0; i < 8; i += 1) assert.ok(raw.faces[`chat:${i}:0\u00000`]);
 });
+
