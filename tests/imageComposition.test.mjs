@@ -96,3 +96,14 @@ test('all compositions retain appearance fidelity, character filtering and the o
     assert.equal(noPeople.flatPrompt, noPeople.prompt);
     assert.throws(() => buildImagePlanningPrompt({ faceText: ' ', compositionMode: 'auto' }), /没有可供构思的内容/);
 });
+
+test('other faces already planned in the same reply are passed on so poses do not repeat', () => {
+    const scenes = ['他把她横抱在怀里走进回廊', '  ', '两人相拥站在窗前'];
+    const prompt = buildImagePlanningPrompt({ faceText, focus: '他抱着她进门', otherScenes: scenes });
+    assert.deepEqual(sourceRow(prompt).otherScenes, ['他把她横抱在怀里走进回廊', '两人相拥站在窗前']);
+    assert.match(prompt.systemPrompt, /otherScenes 是同一条回复里其他面已经定下的画面/);
+    assert.match(prompt.systemPrompt, /动作改成这一面内容里另一个有依据的时刻/);
+    const alone = buildImagePlanningPrompt({ faceText });
+    assert.equal(sourceRow(alone).otherScenes, undefined);
+    assert.doesNotMatch(alone.systemPrompt, /otherScenes/);
+});
