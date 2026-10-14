@@ -1,7 +1,7 @@
-import { EXTERNAL_WORLD_BOOK_CLASSIFICATION } from './classifier.js?rmv=1.68.36';
-import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.68.36';
-import { entryIdentity } from './selectionState.js?rmv=1.68.36';
-import { EXTERNAL_POOL_METADATA_VERSION, externalPoolMetadataForLibrary, getExternalPoolRevision, getExternalPoolSnapshot, removeExternalPoolLibrary, setExternalPoolMetadataSnapshot, upsertExternalPoolLibrary, validExternalPoolMetadata } from './externalPool.js?rmv=1.68.36';
+import { EXTERNAL_WORLD_BOOK_CLASSIFICATION } from './classifier.js?rmv=1.68.39';
+import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.68.39';
+import { entryIdentity } from './selectionState.js?rmv=1.68.39';
+import { EXTERNAL_POOL_METADATA_VERSION, externalPoolMetadataForLibrary, getExternalPoolRevision, getExternalPoolSnapshot, removeExternalPoolLibrary, setExternalPoolMetadataSnapshot, upsertExternalPoolLibrary, validExternalPoolMetadata } from './externalPool.js?rmv=1.68.39';
 
 export const EXTERNAL_WORLD_BOOK_DB_NAME = 'rabbitmirror_external_worldbooks';
 export const EXTERNAL_WORLD_BOOK_DB_VERSION = 2;
@@ -23,7 +23,7 @@ export function getExternalPoolHydrationStatus() { return hydrationStatus; }
 // 测试或自定义数据库（options.indexedDBFactory）不触发。
 function noteLibraryChanged(options = {}, detail = {}) {
     if (options?.indexedDBFactory || options?.skipServerBackup === true) return;
-    void import('./serverBackup.js?rmv=1.68.36')
+    void import('./serverBackup.js?rmv=1.68.39')
         .then(module => module.scheduleMotherLibraryServerBackup(detail))
         .catch(() => {});
 }

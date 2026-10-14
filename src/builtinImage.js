@@ -1,10 +1,10 @@
-import { getSettings } from './settings.js?rmv=1.68.36';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.68.36';
-import { findBuiltinImageKeyFromOtherChat, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.68.36';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.68.36';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.68.36';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.68.36';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.68.36';
+import { getSettings } from './settings.js?rmv=1.68.39';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.68.39';
+import { findBuiltinImageKeyFromOtherChat, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.68.39';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.68.39';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.68.39';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.68.39';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.68.39';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -47,6 +47,35 @@ function readPrompt(frame) {
 }
 
 // NAI 5（自然语言＋标签）：图框里另写的一行英文短标签，进标签栏；自然语言画面进自然语言栏，两栏不再塞同一段话。
+// 图框在这一面里紧挨着的文字（前后各一两段，往外最多找三层）：标题、说明、时间点。
+// 生图 LLM 照这个画「这张图在这一面里代表的东西」，不去画正文最新那段情节。
+function frameCaption(frame) {
+    const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
+    const textOf = node => {
+        if (!node) return '';
+        if (node.nodeType === 3) return clean(node.textContent);
+        if (node.nodeType !== 1 || node.hidden || node.matches?.('script,style,template,[hidden],[data-rm-draw-frame],[aria-hidden="true"]')) return '';
+        if (node.querySelector?.('[data-rm-draw-frame]')) return '';
+        return clean(typeof node.innerText === 'string' ? node.innerText : node.textContent);
+    };
+    const before = [];
+    const after = [];
+    let node = frame;
+    for (let level = 0; level < 3 && node && !node.matches?.('details'); level += 1) {
+        for (let prev = node.previousSibling, count = 0; prev && count < 2; prev = prev.previousSibling) {
+            const text = textOf(prev);
+            if (text) { before.unshift(text.slice(-160)); count += 1; }
+        }
+        for (let next = node.nextSibling, count = 0; next && count < 2; next = next.nextSibling) {
+            const text = textOf(next);
+            if (text) { after.push(text.slice(0, 160)); count += 1; }
+        }
+        if ((before.join('') + after.join('')).length >= 120) break;
+        node = node.parentElement;
+    }
+    return [before.length ? `前：${before.join(' / ')}` : '', after.length ? `后：${after.join(' / ')}` : ''].filter(Boolean).join('；').slice(0, 300);
+}
+
 function readTags(frame) {
     const node = frame.querySelector?.('[data-rm-draw-tags]');
     return String(node ? node.textContent : '').replace(/\s+/g, ' ').trim().slice(0, 600);
@@ -323,8 +352,35 @@ function planningFailure() {
     return Object.assign(new Error('生图 LLM 未完成画面规划，本次未调用生图。请检查生图 LLM 设置后点“重新生图”。'), { code: 'image_plan_failed' });
 }
 
+// 同一条回复里几面的生图 LLM 规划按顺序进行：后面的面能看到前面已经定下的画面，
+// 不会几张图都画成同一个动作（各面同时规划时互相看不见）。只排规划，出图照样并行。
+const planQueues = new Map();
+function planGroupOf(key) { return String(key).split(':').slice(0, -2).join(':'); }
+function planInOrder(key, run) {
+    const group = planGroupOf(key);
+    let queue = planQueues.get(group);
+    if (!queue) {
+        queue = { tail: Promise.resolve(), scenes: [], touched: 0 };
+        planQueues.set(group, queue);
+        if (planQueues.size > 30) {
+            const oldest = [...planQueues.entries()].sort((a, b) => a[1].touched - b[1].touched)[0];
+            if (oldest && oldest[0] !== group) planQueues.delete(oldest[0]);
+        }
+    }
+    queue.touched = Date.now();
+    const turn = queue.tail.catch(() => {}).then(async () => {
+        const plan = await run(queue.scenes.slice(-4));
+        const scene = String(plan?.nl || plan?.flatPrompt || plan?.prompt || '').replace(/\s+/g, ' ').trim().slice(0, 240);
+        if (scene) queue.scenes.push(scene);
+        if (queue.scenes.length > 8) queue.scenes.splice(0, queue.scenes.length - 8);
+        return plan;
+    });
+    queue.tail = turn;
+    return turn;
+}
+
 // 简短线索不是完整提示词，规划失败时保留图框，不继续花费绘图额度。
-async function planWithImageLlm(frame, onProgress, promptFormat, isCurrent) {
+async function planWithImageLlm(frame, onProgress, promptFormat, isCurrent, otherScenes = []) {
     try {
         const details = frame?.closest?.('details');
         const bridge = globalThis.__rabbitMirrorIndependentActionsV1;
@@ -334,7 +390,7 @@ async function planWithImageLlm(frame, onProgress, promptFormat, isCurrent) {
         const publicCharacters = await imageCharacters(target.floor);
         if (!isCurrent()) throw staleImageRequest();
         // 图框里模型写好的出场人物外貌和当时衣着一并单独给生图 LLM，不让它从别处另找衣着、场景。
-        const plan = await target.plan({ focus, sceneCharacters: readCharacters(frame), publicCharacters, promptFormat }, { builtin: true, onProgress });
+        const plan = await target.plan({ focus, frameCaption: frameCaption(frame), sceneCharacters: readCharacters(frame), publicCharacters, promptFormat, otherScenes }, { builtin: true, onProgress });
         if (!plan || !String(plan.prompt || plan.flatPrompt || plan.nl || '').trim()) throw planningFailure();
         return plan;
     } catch (error) {
@@ -354,12 +410,16 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
         const settings = { ...getSettings() };
         // 重画：沿用上次构思好的提示词只换随机种子（不再调用生图 LLM）；改了提示词时直接按改过的画。
         const withLlm = imageLlmConfigured(settings) && !options.reuse && !options.direct;
-        if (withLlm) reportProgress(key, '生图 LLM 正在构思画面提示词…');
-        const planned = options.reuse || (withLlm ? await planWithImageLlm(frame, phase => {
-            if (isCurrent() && (phase === 'response-chunk' || phase === 'connection-manager-frame')) {
-                reportProgress(key, '生图 LLM 正在返回画面提示词…');
-            }
-        }, settings.imagePromptFormat, isCurrent) : null);
+        if (withLlm) reportProgress(key, '等前面几面定好画面，再构思这一面…');
+        const planned = options.reuse || (withLlm ? await planInOrder(key, otherScenes => {
+            if (!isCurrent()) throw staleImageRequest();
+            reportProgress(key, '生图 LLM 正在构思画面提示词…');
+            return planWithImageLlm(frame, phase => {
+                if (isCurrent() && (phase === 'response-chunk' || phase === 'connection-manager-frame')) {
+                    reportProgress(key, '生图 LLM 正在返回画面提示词…');
+                }
+            }, settings.imagePromptFormat, isCurrent, otherScenes);
+        }) : null);
         if (!isCurrent()) throw staleImageRequest();
         const provider = settings.imageBackend === 'chatu8' ? '智绘姬' : '柏宝绘';
         reportProgress(key, `${withLlm ? '提示词已完成，' : ''}正在交给${provider}生图…`);
