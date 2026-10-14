@@ -1,6 +1,6 @@
-import { paletteRecipeFor } from './paletteRecipes.js?rmv=1.68.54';
-import { COLOR_FAMILIES } from '../data/structured/generationPaletteIndex.js?rmv=1.68.54';
-import { COLOR_SCALES } from '../data/structured/generationColorScales.js?rmv=1.68.54';
+import { paletteRecipeFor } from './paletteRecipes.js?rmv=1.68.55';
+import { COLOR_FAMILIES } from '../data/structured/generationPaletteIndex.js?rmv=1.68.55';
+import { COLOR_SCALES } from '../data/structured/generationColorScales.js?rmv=1.68.55';
 
 const BY_ID = new Map(COLOR_FAMILIES.map(item => [item.id, item]));
 
@@ -18,6 +18,32 @@ function readableInk(backgrounds, candidates) {
     return (contrasts.find(item => item.ratio >= 4.5) || contrasts.sort((a, b) => b.ratio - a.ratio)[0]).ink;
 }
 
+function mixHex(a, b, t) {
+    const pa = a.slice(1).match(/../g).map(v => parseInt(v, 16)), pb = b.slice(1).match(/../g).map(v => parseInt(v, 16));
+    return '#' + pa.map((v, i) => Math.round(v + (pb[i] - v) * t).toString(16).padStart(2, '0')).join('').toUpperCase();
+}
+
+// 浅调走莫兰迪：每个色系都配了一个同色调的灰（粉配紫雾灰、蓝配蓝石灰、绿配青灰……），
+// 把背景、主体、强调和陪衬都往这道灰里压，得到灰调、低饱和的浅色。层次靠深浅：
+// 背景是灰调浅色，卡片是近白纸面，主体是更深一截的灰调色，强调色只比主体再深一点。
+function morandiLightRoles(family, scale, support, surface) {
+    const grey = COLOR_SCALES[family.neutral || 'gray']?.light || COLOR_SCALES.gray.light;
+    const background = mixHex(scale[3], grey[4], .6);
+    const card = mixHex(surface[1], grey[1], .5), hover = mixHex(surface[2], grey[2], .5), selected = mixHex(surface[3], grey[3], .5);
+    const object = mixHex(scale[6], grey[7], .5), objectHover = mixHex(scale[7], grey[8], .5);
+    const accent = mixHex(scale[8], grey[10], .5), accentHover = mixHex(scale[9], grey[10], .5);
+    const companion = mixHex(support[8], grey[9], .55);
+    const ink = [grey[11], surface[11], '#111111'];
+    const text = readableInk([card, background], ink);
+    return { background, surface: card, hover, selected, text, muted: readableInk([card], [grey[10], text]),
+        border: grey[6], accent, accentHover,
+        objectSurface: object, onObject: readableInk([object], [grey[11], '#FFFFFF', '#111111']),
+        objectHover, onObjectHover: readableInk([objectHover], [grey[11], '#FFFFFF', '#111111']),
+        onAccent: readableInk([accent], ['#FFFFFF', '#111111', '#000000']),
+        onAccentHover: readableInk([accentHover], ['#FFFFFF', '#111111', '#000000']),
+        companion, onCompanion: readableInk([companion], ['#FFFFFF', '#111111', '#000000']) };
+}
+
 export function composeGenerationPalette(familyId, companionId, brightness = 'light', surfaceId = familyId) {
     const family = BY_ID.get(familyId), companion = BY_ID.get(companionId), surfaceFamily = BY_ID.get(surfaceId);
     if (!family || !companion || !surfaceFamily) return null;
@@ -27,14 +53,13 @@ export function composeGenerationPalette(familyId, companionId, brightness = 'li
     // neutral grey or near-black sheet; the reading surface stays a separate,
     // quieter layer of the surface family. Dark tiers use a mid-dark step so
     // the hue survives instead of collapsing into step-1 black.
-    // 浅调保留原来的浅背景（第 3 档）。层次靠另外两层拉开：承载面用最浅的纸面色，
-    // 主体取主色系第 7 档，比原来的第 6 档深一截。陪衬色是撞色，只留给按钮、点缀这类小面积。
+    // 浅调另走 morandiLightRoles；下面这组只给深调用。
     const background = mode === 'light' ? scale[2] : scale[3];
     const readingSurfaces = mode === 'light' ? [surface[0], surface[2], surface[3]] : [surface[1], surface[2], surface[3]];
     // These are reference-token pairings, not a scanner or an acceptance gate on model output.
     const text = readableInk([readingSurfaces[0], background], [surface[11], '#111111', '#FFFFFF']);
     const muted = readableInk([readingSurfaces[0]], [surface[10], text]);
-    const roles = Object.freeze({ background, surface: readingSurfaces[0], hover: readingSurfaces[1], selected: readingSurfaces[2],
+    const roles = Object.freeze(mode === 'light' ? morandiLightRoles(family, scale, support, surface) : { background, surface: readingSurfaces[0], hover: readingSurfaces[1], selected: readingSurfaces[2],
         text, muted, border: surface[6], accent: scale[8], accentHover: scale[9],
         objectSurface: scale[6], onObject: readableInk([scale[6]], [scale[11], '#111111', '#FFFFFF']),
         objectHover: scale[7], onObjectHover: readableInk([scale[7]], [scale[11], '#111111', '#FFFFFF']),
@@ -45,7 +70,7 @@ export function composeGenerationPalette(familyId, companionId, brightness = 'li
     return Object.freeze({ id: `radix-${familyId}-${surfaceId}-${companionId}-${mode}`, family: familyId,
         surfaceFamily: surfaceId, companionFamily: companionId, brightness: mode,
         title: `${family.title}·${surfaceFamily.title}底·${companion.title}点色`, mood: family.mood,
-        roles, scale, colors: Object.freeze([roles.background, roles.surface, text, roles.accent, roles.companion]),
+        roles, scale, colors: Object.freeze([roles.background, roles.surface, roles.text, roles.accent, roles.companion]),
     });
 }
 
@@ -76,7 +101,7 @@ export function buildGenerationPaletteRule(palettes, faceContexts) {
         && (face.atmosphereFaces || [face]).some(candidate => candidate.visualSceneryMode) ? [index + 1] : []);
     const sceneNote = sceneFaces.length ? `\n动态视觉（第 ${sceneFaces.join('、')} 面）：色阶用于实际绘制的画面本体及其动画，形体、明暗与层次都由它画出；不直接铺成界面底色和卡片。` : '';
     return `生成配色参考【仅 HTML 第 ${numbers.join('、')} 面；深浅色阶组合，不是固定皮肤】：
-${assignments}。配色仅随上述选中签执行，未列出的面／签使用其配色兜底。先按展现形式分清场地、媒介材质、主体部件、内容区域和操作状态，再依正文氛围映射色彩，不把各种媒介套成同一背景卡片。以下依次为背景／承载面／正文／次要文字／主体色面＋配字／强调底＋配字／陪衬底＋配字；背景带本组色相，承载面与之分层，不把整面压成同一块灰或近黑。浅调时承载面最浅、主体色面比背景深一截，靠这几层的深浅分出层次；陪衬色只做小面积点缀，不铺满主体或背景。主体色面用于该形式可辨认的主要物件或结构；纸面、照片等固有内容保持其材质。文字配对仅适用于对应实色底；改色、透明叠加或纹理后仍须保持普通文字对比至少 4.5:1，可在已抽色阶内延伸。
+${assignments}。配色仅随上述选中签执行，未列出的面／签使用其配色兜底。先按展现形式分清场地、媒介材质、主体部件、内容区域和操作状态，再依正文氛围映射色彩，不把各种媒介套成同一背景卡片。以下依次为背景／承载面／正文／次要文字／主体色面＋配字／强调底＋配字／陪衬底＋配字；背景带本组色相，承载面与之分层，不把整面压成同一块灰或近黑。浅调是莫兰迪灰调：背景、主体、强调和陪衬都带一点灰，不要再提亮提纯成鲜艳粉彩；承载面是近白纸面，主体色面比背景深一截，靠深浅分出层次；陪衬色只做小面积点缀。主体色面用于该形式可辨认的主要物件或结构；纸面、照片等固有内容保持其材质。文字配对仅适用于对应实色底；改色、透明叠加或纹理后仍须保持普通文字对比至少 4.5:1，可在已抽色阶内延伸。
 ${palettes.map(item => { const p = item.roles; return `${item.code}「${item.title}」${item.brightness === 'dark' ? '深调' : '浅调'}·${item.mood}：${p.background}／${p.surface}／${p.text}／${p.muted}／${p.objectSurface}+${p.onObject}／${p.accent}+${p.onAccent}／${p.companion}+${p.onCompanion}`; }).join('\n')}${sceneNote}`;
 }
 
