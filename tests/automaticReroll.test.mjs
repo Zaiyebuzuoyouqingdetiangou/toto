@@ -19,13 +19,16 @@ import {
     isLocalPreflightFailure,
 } from '../src/automaticReroll.js';
 
-test('default extra posts stay two and have no upper cap', () => {
+// 自动重抽的额外次数封顶 10 次（作者定的，防止失败时一直付费重发）。
+test('default extra posts stay two and are capped at ten', () => {
     assert.equal(AUTOMATIC_REROLL_DEFAULT, 2);
     assert.equal(shouldAutomaticReroll({ failedPosts: 1 }), true);
     assert.equal(shouldAutomaticReroll({ failedPosts: 2 }), true);
     assert.equal(shouldAutomaticReroll({ failedPosts: 3 }), false);
-    assert.equal(normalizeAutomaticRerollMax(99), 99);
-    assert.equal(configuredAutomaticRerollMax({ independentAutomaticRerollMax: 20 }), 20);
+    assert.equal(normalizeAutomaticRerollMax(99), 10);
+    assert.equal(normalizeAutomaticRerollMax(7), 7);
+    assert.equal(configuredAutomaticRerollMax({ independentAutomaticRerollMax: 20 }), 10);
+    assert.equal(configuredAutomaticRerollMax({ independentAutomaticRerollMax: 4 }), 4);
 });
 
 test('manual resay and leftover ready faces still reroll until complete', () => {
