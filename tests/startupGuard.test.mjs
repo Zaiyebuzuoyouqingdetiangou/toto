@@ -70,3 +70,28 @@ test('/兔子镜 command registers with alias and only removes its own entries',
         globalThis.SillyTavern = previous;
     }
 });
+
+// 1.68.43：启动文件组在运行前就作废（缺导出、语法错）时谁都不提示，靠 style.css 里的兜底规则。
+test('boot mark attribute and the CSS no-boot fallback agree', async () => {
+    const fs = await import('node:fs');
+    assert.equal(guard.BOOT_MARK_ATTRIBUTE, 'data-rabbit-mirror-boot');
+    const css = fs.readFileSync(new URL('../style.css', import.meta.url), 'utf8');
+    assert.match(css, /html:not\(\[data-rabbit-mirror-boot\]\) #extensionsMenu::after/);
+    assert.match(css, /html:not\(\[data-rabbit-mirror-boot\]\) #extensions_settings::before/);
+    assert.match(css, /content:\s*"兔子镜没有启动/);
+    // 标记在 startupGuard 顶层就打上，且在任何 import 之前（这个文件本身没有 import）。
+    const source = fs.readFileSync(new URL('../src/startupGuard.js', import.meta.url), 'utf8');
+    assert.ok(!/^\s*import\s/m.test(source));
+    assert.match(source, /documentElement\?\.setAttribute\?\.\(BOOT_MARK_ATTRIBUTE/);
+});
+
+test('/兔子镜 registration reports false when the host kept a different command under the name', async () => {
+    const { registerRabbitMirrorOpenCommand } = await import('../src/openCommand.js');
+    const commands = {};
+    globalThis.SillyTavern = { getContext: () => ({
+        SlashCommandParser: { commands, addCommandObject(command) { commands[command.name] = { other: true }; } },
+        SlashCommand: { fromProps: props => ({ ...props }) },
+    }) };
+    assert.equal(registerRabbitMirrorOpenCommand(() => {}), false);
+    delete globalThis.SillyTavern;
+});

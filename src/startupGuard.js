@@ -1,7 +1,10 @@
 // 启动自检：兔子镜启动时哪一步出错、魔法棒入口有没有被别的插件藏起来、是不是装了两份兔子镜。
 // 只在查出问题时弹提示；不读聊天，不改别的插件。index.js 第一个 import 的就是这个文件，
-// 所以后面的启动文件在「运行」时抛错，这里已经在听了。文件缺失、语法错误、缺导出这类
-// 在任何代码运行前就失败的情况，酒馆自己会记下来，显示在「管理扩展」顶上。
+// 所以后面的启动文件在「运行」时抛错，这里已经在听了。
+// 文件缺失：酒馆会记下来，显示在「管理扩展」顶上。语法错误、缺导出（新旧版本文件混在一起）：
+// 整个启动文件组在任何代码运行前就作废，酒馆当它加载成功，这里也跑不起来——谁都不会提示。
+// 所以这个文件一跑就在 <html> 上打个标记，style.css 里有一条规则：没这个标记时在魔法棒
+// 菜单和扩展面板里显示「兔子镜没有启动」。样式是酒馆单独加载的，和脚本成不成功无关。
 // 这个文件本身不 import 任何东西。
 
 const MUTE_KEY = 'rabbit_mirror_startup_guard_mute:v1';
@@ -394,6 +397,10 @@ function removeEvalListeners() {
     if (evaluated) { clearTimeout(evalErrorTimer); evalErrorTimer = 0; pendingEvalError = null; }
 }
 
+// 脚本跑起来了的标记（见文件头）。一直留着：另一份兔子镜接管时它也是「有一份在跑」。
+export const BOOT_MARK_ATTRIBUTE = 'data-rabbit-mirror-boot';
+try { document?.documentElement?.setAttribute?.(BOOT_MARK_ATTRIBUTE, RUNTIME_VERSION || '1'); } catch {}
+
 if (typeof globalThis.addEventListener === 'function' && typeof document !== 'undefined') {
     globalThis.addEventListener('error', onWindowError);
     // 启动文件要么几秒内跑完，要么已经报过错；之后不再听全局报错。
@@ -476,11 +483,8 @@ export async function checkRabbitMirrorEntryVisibility({ menuOpen = false } = {}
     if (!menu) return null;
     if (menuOpen && !visibleNow(menu)) return null;
     const entry = wandEntry();
-    // 兔子镜的完整入口由设置界面挂；界面还没挂上时没有入口是正常的。
-    if (!entry) {
-        if (!document.getElementById('rabbit_mirror_theater_settings')?.__rabbitMirrorWorkbench) return null;
-        return notifyHidden({ kind: 'removed', culprits: [], detail: '入口不在页面上' });
-    }
+    // 轻量入口在启动时就装进菜单了（设置界面挂不挂都一样），菜单在而入口不在，就是被拿掉了。
+    if (!entry) return notifyHidden({ kind: 'removed', culprits: [], detail: '入口不在页面上' });
     if (!entry.isConnected) return notifyHidden({ kind: 'removed', culprits: [], detail: '入口不在页面上' });
     // 被整理菜单的插件挪进自己的分组/子菜单：入口还在，只是换了地方，不算藏起来。
     if (!menu.contains(entry)) return { ok: true, moved: true };

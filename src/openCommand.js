@@ -20,6 +20,8 @@ export function registerRabbitMirrorOpenCommand(open) {
         },
     });
     parser.addCommandObject(command);
+    // 酒馆同名命令后注册的覆盖先注册的；没登记上就如实返回 false，提示里就不教用户打它。
+    if (parser.commands && parser.commands[NAME] !== command) return false;
     registered = { parser, command };
     return true;
 }

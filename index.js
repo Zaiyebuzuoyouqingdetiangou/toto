@@ -1,14 +1,14 @@
 // 启动自检必须是第一个 import：后面任何启动文件加载时抛错，它都已经在听了。
-import { markRabbitMirrorBootstrapEvaluated, runRabbitMirrorStartupStep, reportRabbitMirrorStartupFailure, setRabbitMirrorStartupOpener, setRabbitMirrorOpenCommandAvailable, checkRabbitMirrorEntryVisibility, checkRabbitMirrorDuplicateInstall, disposeRabbitMirrorStartupGuard } from './src/startupGuard.js?rmv=1.68.42';
-import { registerRabbitMirrorOpenCommand, unregisterRabbitMirrorOpenCommand } from './src/openCommand.js?rmv=1.68.42';
-import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt, destroyIndependentGenerationIntentBridge, initIndependentGenerationIntentBridge, prewarmRabbitMirrorGenerationRuntime } from './src/injector.js?rmv=1.68.42';
-import { clearLastCombo } from './src/storage.js?rmv=1.68.42';
-import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.68.42';
-import { initPromptHistoryStrip, destroyPromptHistoryStrip } from './src/promptHistoryStrip.js?rmv=1.68.42';
-import { getSettings, updateSettings } from './src/settings.js?rmv=1.68.42';
-import { installRabbitMirrorPublicAPI } from './src/publicApi.js?rmv=1.68.42';
-import { initRabbitMirrorIndependentSecurityGuard, destroyRabbitMirrorIndependentSecurityGuard } from './src/independentSecurityGuard.js?rmv=1.68.42';
-import { initRabbitMirrorHostCompatibility, isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface, getRabbitMirrorEarlyBootstrap, getRabbitMirrorHostCompatibilityStatus } from './src/hostCompatibility.js?rmv=1.68.42';
+import { markRabbitMirrorBootstrapEvaluated, runRabbitMirrorStartupStep, reportRabbitMirrorStartupFailure, setRabbitMirrorStartupOpener, setRabbitMirrorOpenCommandAvailable, checkRabbitMirrorEntryVisibility, checkRabbitMirrorDuplicateInstall, disposeRabbitMirrorStartupGuard } from './src/startupGuard.js?rmv=1.68.43';
+import { registerRabbitMirrorOpenCommand, unregisterRabbitMirrorOpenCommand } from './src/openCommand.js?rmv=1.68.43';
+import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt, destroyIndependentGenerationIntentBridge, initIndependentGenerationIntentBridge, prewarmRabbitMirrorGenerationRuntime } from './src/injector.js?rmv=1.68.43';
+import { clearLastCombo } from './src/storage.js?rmv=1.68.43';
+import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.68.43';
+import { initPromptHistoryStrip, destroyPromptHistoryStrip } from './src/promptHistoryStrip.js?rmv=1.68.43';
+import { getSettings, updateSettings } from './src/settings.js?rmv=1.68.43';
+import { installRabbitMirrorPublicAPI } from './src/publicApi.js?rmv=1.68.43';
+import { initRabbitMirrorIndependentSecurityGuard, destroyRabbitMirrorIndependentSecurityGuard } from './src/independentSecurityGuard.js?rmv=1.68.43';
+import { initRabbitMirrorHostCompatibility, isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface, getRabbitMirrorEarlyBootstrap, getRabbitMirrorHostCompatibilityStatus } from './src/hostCompatibility.js?rmv=1.68.43';
 
 // TT requires ownership registration before its first projection, not after the
 // deferred DOM runtime loads. This bridge has no network, timers or heavy imports.
@@ -17,8 +17,8 @@ runRabbitMirrorStartupStep('接入宿主聊天', () => initRabbitMirrorHostCompa
 // SecurityFix2 leaves only the prompt interceptor and request guard in the parser-critical
 // graph. The 1.8 MiB UI/sanitizer/independent runtime graph is imported after the host has
 // received a paint/idle opportunity, or immediately after explicit RabbitMirror intent.
-const GOLDEN_MERGE_VERSION = '1.68.42';
-const RABBIT_MIRROR_RUNTIME_VERSION = '1.68.42';
+const GOLDEN_MERGE_VERSION = '1.68.43';
+const RABBIT_MIRROR_RUNTIME_VERSION = '1.68.43';
 const earlyBootstrap = getRabbitMirrorEarlyBootstrap();
 let runtimeCancelled = earlyBootstrap?.cancelled === true || (!!globalThis.__rabbitMirrorTtBootstrap && !earlyBootstrap);
 let runtimeClaimed = !runtimeCancelled;
@@ -26,6 +26,13 @@ const runtimeIsActive = () => !runtimeCancelled && (earlyBootstrap
     ? globalThis.__rabbitMirrorTtBootstrap === earlyBootstrap && !earlyBootstrap.cancelled
     : !globalThis.__rabbitMirrorTtBootstrap);
 const disposePublicAPI = runtimeIsActive() ? installRabbitMirrorPublicAPI(runtimeIsActive) : null;
+// 页面里已经有别处的兔子镜启动桩（别的文件夹、别的版本）：这一份让位，但要说出来，不能什么都不显示。
+function standDownError() {
+    const error = new Error('页面里已有另一份兔子镜先启动（启动桩来自别的文件夹或别的版本），这一份不启动。请只保留一份兔子镜：到「管理扩展」删掉另一份，然后刷新网页。');
+    error.stack = '';
+    return error;
+}
+if (runtimeCancelled) reportRabbitMirrorStartupFailure('接管运行', standDownError(), { canOpen: false });
 let deferredRuntimePromise = null;
 let deferredRuntimeModules = null;
 let deferredStartingModules = null;
@@ -121,13 +128,13 @@ async function ensureDeferredCoreRuntime(reason = 'scheduled-idle') {
     if (deferredRuntimeModules) return deferredRuntimeModules;
     if (deferredRuntimePromise) return deferredRuntimePromise;
     deferredRuntimePromise = Promise.all([
-        import('./src/outputSanitizer.js?rmv=1.68.42'),
-        import('./src/visualScanner.js?rmv=1.68.42'),
-        import('./src/independentApi.js?rmv=1.68.42'),
-        import('./src/touchTheater.js?rmv=1.68.42'),
-        import('./src/ui.js?rmv=1.68.42'),
-        import('./src/composerClearance.js?rmv=1.68.42'),
-        import('./src/chatAvatars.js?rmv=1.68.42'),
+        import('./src/outputSanitizer.js?rmv=1.68.43'),
+        import('./src/visualScanner.js?rmv=1.68.43'),
+        import('./src/independentApi.js?rmv=1.68.43'),
+        import('./src/touchTheater.js?rmv=1.68.43'),
+        import('./src/ui.js?rmv=1.68.43'),
+        import('./src/composerClearance.js?rmv=1.68.43'),
+        import('./src/chatAvatars.js?rmv=1.68.43'),
     ]).then(async ([output, visual, independent, touch, ui, clearance, avatars]) => {
         if (!runtimeIsActive()) return null;
         const modules = { output, visual, independent, touch, ui, clearance, avatars };
@@ -377,7 +384,7 @@ function loadOptional(name, specifier, init) {
 }
 
 function loadProfileSelector() {
-    return ensureDeferredCoreRuntime('settings-intent').then(modules => loadOptional('profileSelector', './src/independentProfileSelectorHotfix.js?rmv=1.68.42', mod => {
+    return ensureDeferredCoreRuntime('settings-intent').then(modules => loadOptional('profileSelector', './src/independentProfileSelectorHotfix.js?rmv=1.68.43', mod => {
         mod.initRabbitMirrorIndependentProfileSelectorHotfix?.({
             getSettings,
             updateSettings,
@@ -393,13 +400,13 @@ function loadMirrorVisualCompat() {
     // stable idle boundary or by an explicit RabbitMirror settings/maintenance action.
     if (!deferredRuntimeModules) return Promise.resolve(null);
     return Promise.all([
-        loadOptional('checkedSelectorRepair', './src/checkedSelectorRepair.js?rmv=1.68.42', mod => mod.initRabbitMirrorCheckedSelectorRepair?.()),
-        loadOptional('renderedVisualFeedback', './src/renderedVisualFeedbackHotfix.js?rmv=1.68.42', mod => mod.initRabbitMirrorRenderedVisualFeedbackHotfix?.()),
+        loadOptional('checkedSelectorRepair', './src/checkedSelectorRepair.js?rmv=1.68.43', mod => mod.initRabbitMirrorCheckedSelectorRepair?.()),
+        loadOptional('renderedVisualFeedback', './src/renderedVisualFeedbackHotfix.js?rmv=1.68.43', mod => mod.initRabbitMirrorRenderedVisualFeedbackHotfix?.()),
     ]);
 }
 
 function loadMaintenanceCompat() {
-    return ensureDeferredCoreRuntime('maintenance-intent').then(() => loadOptional('maintenanceRecommendation', './src/maintenanceRecommendationHotfix.js?rmv=1.68.42', mod => mod.initRabbitMirrorMaintenanceRecommendationHotfix?.()));
+    return ensureDeferredCoreRuntime('maintenance-intent').then(() => loadOptional('maintenanceRecommendation', './src/maintenanceRecommendationHotfix.js?rmv=1.68.43', mod => mod.initRabbitMirrorMaintenanceRecommendationHotfix?.()));
 }
 
 function mobileLike() {
@@ -409,7 +416,7 @@ function mobileLike() {
 
 function loadMobileModalCompat() {
     if (!mobileLike()) return Promise.resolve(null);
-    return ensureDeferredCoreRuntime('mobile-settings-intent').then(() => loadOptional('mobileModal', './src/mobileModalHotfix.js?rmv=1.68.42', mod => mod.initRabbitMirrorMobileModalHotfix?.()));
+    return ensureDeferredCoreRuntime('mobile-settings-intent').then(() => loadOptional('mobileModal', './src/mobileModalHotfix.js?rmv=1.68.43', mod => mod.initRabbitMirrorMobileModalHotfix?.()));
 }
 
 function isRabbitMirrorSurface(target) {
@@ -422,9 +429,10 @@ function isRabbitMirrorSettingsSurface(target) {
 
 // 魔法棒入口、/兔子镜 命令、自检提示里的按钮都走这里打开设置。
 async function openRabbitMirrorSettings(reason = 'open-intent') {
-    if (!runtimeIsActive()) return false;
+    // 启动后才被别处的兔子镜接管：入口还在菜单里，点了要说明，不能没反应。
+    if (!runtimeIsActive()) { if (runtimeClaimed) throw standDownError(); return false; }
     const modules = await ensureDeferredCoreRuntime(reason);
-    if (!runtimeIsActive()) return false;
+    if (!runtimeIsActive()) { if (runtimeClaimed) throw standDownError(); return false; }
     const workbench = document.getElementById('rabbit_mirror_theater_settings')?.__rabbitMirrorWorkbench;
     // 主体加载失败时抛回原来那个错误：自检按错误去重，不会再弹一个说不清原因的提示。
     if (!workbench) throw (!modules && lastCoreLoadError) || new Error(modules ? '设置界面没有挂上' : '兔子镜主体没有加载成功');
@@ -434,7 +442,7 @@ async function openRabbitMirrorSettings(reason = 'open-intent') {
 
 function openRabbitMirrorSettingsFromCommand() {
     return openRabbitMirrorSettings('slash-command').catch(error => {
-        if (runtimeIsActive()) reportRabbitMirrorStartupFailure('用 /兔子镜 打开设置', error, { canOpen: false, opening: true });
+        if (runtimeClaimed) reportRabbitMirrorStartupFailure('用 /兔子镜 打开设置', error, { canOpen: false, opening: true });
         return false;
     });
 }
@@ -450,10 +458,26 @@ function scheduleEntryVisibilityCheck(delay = 5000, options = {}) {
     }, delay);
 }
 
+// 魔法棒菜单（#extensionsMenu）还没出现就先等；等了 20 秒还没有，说出来，别让人以为没装上。
+let wandMenuWaitTimer = 0;
+let wandMenuWaitCount = 0;
+function waitForWandMenu() {
+    if (wandMenuWaitTimer || !runtimeIsActive()) return;
+    if (wandMenuWaitCount >= 40) {
+        wandMenuWaitCount = 0;
+        reportRabbitMirrorStartupFailure('魔法棒入口', new Error('页面上一直没有魔法棒菜单（#extensionsMenu），兔子镜的入口没地方放。可能是美化或别的插件把魔法棒换掉了。'));
+        return;
+    }
+    wandMenuWaitCount += 1;
+    wandMenuWaitTimer = setTimeout(() => { wandMenuWaitTimer = 0; installSettingsWandEntry(); }, 500);
+}
+
 function installSettingsWandEntry() {
     if (!runtimeIsActive() || document.getElementById('rabbit_mirror_wand_entry')) return;
     const menu = document.getElementById('extensionsMenu');
-    if (!menu || document.getElementById('rabbit_mirror_wand_bootstrap')) return;
+    if (!menu) { waitForWandMenu(); return; }
+    wandMenuWaitCount = 0;
+    if (document.getElementById('rabbit_mirror_wand_bootstrap')) return;
     const entry = document.createElement('div');
     entry.id = 'rabbit_mirror_wand_bootstrap';
     entry.setAttribute('role', 'button');
@@ -468,7 +492,7 @@ function installSettingsWandEntry() {
         if (!event.repeat) entry.click();
     });
     entry.addEventListener('click', async () => {
-        if (entry.disabled || !runtimeIsActive()) return;
+        if (entry.disabled || !runtimeClaimed) return;
         entry.disabled = true;
         entry.setAttribute('aria-disabled', 'true');
         const label = entry.querySelector('span:last-child');
@@ -476,9 +500,9 @@ function installSettingsWandEntry() {
         try {
             await openRabbitMirrorSettings('wand-settings-intent');
         } catch (error) {
-            if (entry.isConnected && runtimeIsActive() && label) label.textContent = '打开失败，点击重试兔子镜';
+            if (entry.isConnected && runtimeClaimed && label) label.textContent = '打开失败，点击重试兔子镜';
             console.debug('[RabbitMirror] settings entry could not open:', error);
-            if (runtimeIsActive()) reportRabbitMirrorStartupFailure('从魔法棒打开设置', error, { canOpen: false, opening: true });
+            if (runtimeClaimed) reportRabbitMirrorStartupFailure('从魔法棒打开设置', error, { canOpen: false, opening: true });
         } finally { if (entry.isConnected) { entry.disabled = false; entry.removeAttribute('aria-disabled'); } }
     });
     menu.append(entry);
@@ -543,7 +567,7 @@ async function ensureExternalDiagnostics() {
     if (externalDiagnosticsApi) return externalDiagnosticsApi;
     if (externalDiagnosticsPromise) return externalDiagnosticsPromise;
     const revision = ++externalDiagnosticsOperationRevision;
-    const loadPromise = import('./src/externalDiagnostics.js?rmv=1.68.42').then(mod => {
+    const loadPromise = import('./src/externalDiagnostics.js?rmv=1.68.43').then(mod => {
         if (!runtimeIsActive() || !externalDiagnosticsDesiredEnabled || revision !== externalDiagnosticsOperationRevision) return null;
         externalDiagnosticsModule = mod;
         externalDiagnosticsApi = mod.initRabbitMirrorExternalDiagnostics?.() || null;
@@ -565,7 +589,7 @@ function disableExternalDiagnostics() {
 }
 
 function clearDeferredGenerationSnapshots() {
-    void import('./src/generationGuard.js?rmv=1.68.42')
+    void import('./src/generationGuard.js?rmv=1.68.43')
         .then(mod => {
             // Disable may await this import while a newer installation takes
             // ownership. Do not clear that owner's shared snapshot/attempt keys.
@@ -642,6 +666,9 @@ export function onDisable() {
     generationPrewarmStarted = false;
     generationPrewarmDone = false;
     document.getElementById('rabbit_mirror_wand_bootstrap')?.remove();
+    if (wandMenuWaitTimer) clearTimeout(wandMenuWaitTimer);
+    wandMenuWaitTimer = 0;
+    wandMenuWaitCount = 0;
     if (entryCheckTimer) clearTimeout(entryCheckTimer);
     entryCheckTimer = 0;
     unregisterRabbitMirrorOpenCommand();
