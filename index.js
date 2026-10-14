@@ -1,21 +1,24 @@
-import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt, destroyIndependentGenerationIntentBridge, initIndependentGenerationIntentBridge, prewarmRabbitMirrorGenerationRuntime } from './src/injector.js?rmv=1.68.35';
-import { clearLastCombo } from './src/storage.js?rmv=1.68.35';
-import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.68.35';
-import { initPromptHistoryStrip, destroyPromptHistoryStrip } from './src/promptHistoryStrip.js?rmv=1.68.35';
-import { getSettings, updateSettings } from './src/settings.js?rmv=1.68.35';
-import { installRabbitMirrorPublicAPI } from './src/publicApi.js?rmv=1.68.35';
-import { initRabbitMirrorIndependentSecurityGuard, destroyRabbitMirrorIndependentSecurityGuard } from './src/independentSecurityGuard.js?rmv=1.68.35';
-import { initRabbitMirrorHostCompatibility, isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface, getRabbitMirrorEarlyBootstrap, getRabbitMirrorHostCompatibilityStatus } from './src/hostCompatibility.js?rmv=1.68.35';
+// 启动自检必须是第一个 import：后面任何启动文件加载时抛错，它都已经在听了。
+import { markRabbitMirrorBootstrapEvaluated, runRabbitMirrorStartupStep, reportRabbitMirrorStartupFailure, setRabbitMirrorStartupOpener, setRabbitMirrorOpenCommandAvailable, checkRabbitMirrorEntryVisibility, checkRabbitMirrorDuplicateInstall, disposeRabbitMirrorStartupGuard } from './src/startupGuard.js?rmv=1.68.36';
+import { registerRabbitMirrorOpenCommand, unregisterRabbitMirrorOpenCommand } from './src/openCommand.js?rmv=1.68.36';
+import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt, destroyIndependentGenerationIntentBridge, initIndependentGenerationIntentBridge, prewarmRabbitMirrorGenerationRuntime } from './src/injector.js?rmv=1.68.36';
+import { clearLastCombo } from './src/storage.js?rmv=1.68.36';
+import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.68.36';
+import { initPromptHistoryStrip, destroyPromptHistoryStrip } from './src/promptHistoryStrip.js?rmv=1.68.36';
+import { getSettings, updateSettings } from './src/settings.js?rmv=1.68.36';
+import { installRabbitMirrorPublicAPI } from './src/publicApi.js?rmv=1.68.36';
+import { initRabbitMirrorIndependentSecurityGuard, destroyRabbitMirrorIndependentSecurityGuard } from './src/independentSecurityGuard.js?rmv=1.68.36';
+import { initRabbitMirrorHostCompatibility, isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface, getRabbitMirrorEarlyBootstrap, getRabbitMirrorHostCompatibilityStatus } from './src/hostCompatibility.js?rmv=1.68.36';
 
 // TT requires ownership registration before its first projection, not after the
 // deferred DOM runtime loads. This bridge has no network, timers or heavy imports.
-initRabbitMirrorHostCompatibility();
+runRabbitMirrorStartupStep('接入宿主聊天', () => initRabbitMirrorHostCompatibility());
 
 // SecurityFix2 leaves only the prompt interceptor and request guard in the parser-critical
 // graph. The 1.8 MiB UI/sanitizer/independent runtime graph is imported after the host has
 // received a paint/idle opportunity, or immediately after explicit RabbitMirror intent.
-const GOLDEN_MERGE_VERSION = '1.68.35';
-const RABBIT_MIRROR_RUNTIME_VERSION = '1.68.35';
+const GOLDEN_MERGE_VERSION = '1.68.36';
+const RABBIT_MIRROR_RUNTIME_VERSION = '1.68.36';
 const earlyBootstrap = getRabbitMirrorEarlyBootstrap();
 let runtimeCancelled = earlyBootstrap?.cancelled === true || (!!globalThis.__rabbitMirrorTtBootstrap && !earlyBootstrap);
 let runtimeClaimed = !runtimeCancelled;
@@ -83,6 +86,11 @@ function canCleanDeferredModule() {
         : !globalThis.__rabbitMirrorTtBootstrap);
 }
 
+const DEFERRED_MODULE_LABELS = {
+    output: '美化与维修', visual: '画面检查', independent: '独立 API', touch: '触摸小剧场',
+    ui: '设置界面', clearance: '输入框避让', avatars: '聊天头像',
+};
+
 function initializeDeferredModule(name, module, initialize, destroy) {
     if (deferredModuleInitializations.has(name)) return deferredModuleInitializations.get(name);
     const cleanup = () => {
@@ -97,6 +105,7 @@ function initializeDeferredModule(name, module, initialize, destroy) {
             if (!runtimeIsActive()) cleanup();
         } catch (error) {
             cleanup();
+            try { if (error && typeof error === 'object') error.rabbitMirrorStartupStep ??= name; } catch {}
             throw error;
         }
     }).catch(error => {
@@ -112,13 +121,13 @@ async function ensureDeferredCoreRuntime(reason = 'scheduled-idle') {
     if (deferredRuntimeModules) return deferredRuntimeModules;
     if (deferredRuntimePromise) return deferredRuntimePromise;
     deferredRuntimePromise = Promise.all([
-        import('./src/outputSanitizer.js?rmv=1.68.35'),
-        import('./src/visualScanner.js?rmv=1.68.35'),
-        import('./src/independentApi.js?rmv=1.68.35'),
-        import('./src/touchTheater.js?rmv=1.68.35'),
-        import('./src/ui.js?rmv=1.68.35'),
-        import('./src/composerClearance.js?rmv=1.68.35'),
-        import('./src/chatAvatars.js?rmv=1.68.35'),
+        import('./src/outputSanitizer.js?rmv=1.68.36'),
+        import('./src/visualScanner.js?rmv=1.68.36'),
+        import('./src/independentApi.js?rmv=1.68.36'),
+        import('./src/touchTheater.js?rmv=1.68.36'),
+        import('./src/ui.js?rmv=1.68.36'),
+        import('./src/composerClearance.js?rmv=1.68.36'),
+        import('./src/chatAvatars.js?rmv=1.68.36'),
     ]).then(async ([output, visual, independent, touch, ui, clearance, avatars]) => {
         if (!runtimeIsActive()) return null;
         const modules = { output, visual, independent, touch, ui, clearance, avatars };
@@ -141,11 +150,16 @@ async function ensureDeferredCoreRuntime(reason = 'scheduled-idle') {
         if (!runtimeIsActive()) return null;
         deferredRuntimeModules = modules;
         deferredStartingModules = null;
+        lastCoreLoadError = null;
         console.log(`[RabbitMirror] deferred core ready (${reason}) via ${GOLDEN_MERGE_VERSION}`);
+        scheduleEntryVisibilityCheck();
         return deferredRuntimeModules;
     }).catch(error => {
         deferredRuntimePromise = null;
         console.error('[RabbitMirror] deferred core failed to load:', error);
+        const step = DEFERRED_MODULE_LABELS[error?.rabbitMirrorStartupStep];
+        lastCoreLoadError = error;
+        if (runtimeIsActive()) reportRabbitMirrorStartupFailure(step ? `启动${step}` : '加载兔子镜主体', error, { canOpen: false });
         return null;
     });
     return deferredRuntimePromise;
@@ -363,7 +377,7 @@ function loadOptional(name, specifier, init) {
 }
 
 function loadProfileSelector() {
-    return ensureDeferredCoreRuntime('settings-intent').then(modules => loadOptional('profileSelector', './src/independentProfileSelectorHotfix.js?rmv=1.68.35', mod => {
+    return ensureDeferredCoreRuntime('settings-intent').then(modules => loadOptional('profileSelector', './src/independentProfileSelectorHotfix.js?rmv=1.68.36', mod => {
         mod.initRabbitMirrorIndependentProfileSelectorHotfix?.({
             getSettings,
             updateSettings,
@@ -379,13 +393,13 @@ function loadMirrorVisualCompat() {
     // stable idle boundary or by an explicit RabbitMirror settings/maintenance action.
     if (!deferredRuntimeModules) return Promise.resolve(null);
     return Promise.all([
-        loadOptional('checkedSelectorRepair', './src/checkedSelectorRepair.js?rmv=1.68.35', mod => mod.initRabbitMirrorCheckedSelectorRepair?.()),
-        loadOptional('renderedVisualFeedback', './src/renderedVisualFeedbackHotfix.js?rmv=1.68.35', mod => mod.initRabbitMirrorRenderedVisualFeedbackHotfix?.()),
+        loadOptional('checkedSelectorRepair', './src/checkedSelectorRepair.js?rmv=1.68.36', mod => mod.initRabbitMirrorCheckedSelectorRepair?.()),
+        loadOptional('renderedVisualFeedback', './src/renderedVisualFeedbackHotfix.js?rmv=1.68.36', mod => mod.initRabbitMirrorRenderedVisualFeedbackHotfix?.()),
     ]);
 }
 
 function loadMaintenanceCompat() {
-    return ensureDeferredCoreRuntime('maintenance-intent').then(() => loadOptional('maintenanceRecommendation', './src/maintenanceRecommendationHotfix.js?rmv=1.68.35', mod => mod.initRabbitMirrorMaintenanceRecommendationHotfix?.()));
+    return ensureDeferredCoreRuntime('maintenance-intent').then(() => loadOptional('maintenanceRecommendation', './src/maintenanceRecommendationHotfix.js?rmv=1.68.36', mod => mod.initRabbitMirrorMaintenanceRecommendationHotfix?.()));
 }
 
 function mobileLike() {
@@ -395,7 +409,7 @@ function mobileLike() {
 
 function loadMobileModalCompat() {
     if (!mobileLike()) return Promise.resolve(null);
-    return ensureDeferredCoreRuntime('mobile-settings-intent').then(() => loadOptional('mobileModal', './src/mobileModalHotfix.js?rmv=1.68.35', mod => mod.initRabbitMirrorMobileModalHotfix?.()));
+    return ensureDeferredCoreRuntime('mobile-settings-intent').then(() => loadOptional('mobileModal', './src/mobileModalHotfix.js?rmv=1.68.36', mod => mod.initRabbitMirrorMobileModalHotfix?.()));
 }
 
 function isRabbitMirrorSurface(target) {
@@ -404,6 +418,36 @@ function isRabbitMirrorSurface(target) {
 
 function isRabbitMirrorSettingsSurface(target) {
     return !!target?.closest?.('#rabbit_mirror_theater_settings, #rh_independent_api_fields, #rh_generation_independent, [data-extension-name="兔子镜"]');
+}
+
+// 魔法棒入口、/兔子镜 命令、自检提示里的按钮都走这里打开设置。
+async function openRabbitMirrorSettings(reason = 'open-intent') {
+    if (!runtimeIsActive()) return false;
+    const modules = await ensureDeferredCoreRuntime(reason);
+    if (!runtimeIsActive()) return false;
+    const workbench = document.getElementById('rabbit_mirror_theater_settings')?.__rabbitMirrorWorkbench;
+    // 主体加载失败时抛回原来那个错误：自检按错误去重，不会再弹一个说不清原因的提示。
+    if (!workbench) throw (!modules && lastCoreLoadError) || new Error(modules ? '设置界面没有挂上' : '兔子镜主体没有加载成功');
+    workbench.open();
+    return true;
+}
+
+function openRabbitMirrorSettingsFromCommand() {
+    return openRabbitMirrorSettings('slash-command').catch(error => {
+        if (runtimeIsActive()) reportRabbitMirrorStartupFailure('用 /兔子镜 打开设置', error, { canOpen: false });
+        return false;
+    });
+}
+
+let entryCheckTimer = 0;
+let lastCoreLoadError = null;
+function scheduleEntryVisibilityCheck(delay = 5000, options = {}) {
+    if (entryCheckTimer) clearTimeout(entryCheckTimer);
+    entryCheckTimer = setTimeout(() => {
+        entryCheckTimer = 0;
+        if (!runtimeIsActive()) return;
+        void checkRabbitMirrorEntryVisibility(options).catch(error => console.debug('[RabbitMirror] entry check skipped:', error));
+    }, delay);
 }
 
 function installSettingsWandEntry() {
@@ -430,14 +474,11 @@ function installSettingsWandEntry() {
         const label = entry.querySelector('span:last-child');
         if (label) label.textContent = '正在打开兔子镜…';
         try {
-            await ensureDeferredCoreRuntime('wand-settings-intent');
-            if (!runtimeIsActive()) return;
-            const workbench = document.getElementById('rabbit_mirror_theater_settings')?.__rabbitMirrorWorkbench;
-            if (!workbench) throw new Error('RabbitMirror settings did not mount');
-            workbench.open();
+            await openRabbitMirrorSettings('wand-settings-intent');
         } catch (error) {
             if (entry.isConnected && runtimeIsActive() && label) label.textContent = '打开失败，点击重试兔子镜';
             console.debug('[RabbitMirror] settings entry could not open:', error);
+            if (runtimeIsActive()) reportRabbitMirrorStartupFailure('从魔法棒打开设置', error, { canOpen: false });
         } finally { if (entry.isConnected) { entry.disabled = false; entry.removeAttribute('aria-disabled'); } }
     });
     menu.append(entry);
@@ -467,7 +508,11 @@ function installOnDemandCompatTriggers() {
     };
     lazyClickHandler = event => {
         const target = event?.target;
-        if (target?.closest?.('#extensionsMenuButton')) installSettingsWandEntry();
+        if (target?.closest?.('#extensionsMenuButton')) {
+            installSettingsWandEntry();
+            // 菜单刚打开时看一眼兔子镜入口是不是真的显示出来了。
+            scheduleEntryVisibilityCheck(450, { menuOpen: true });
+        }
         if (!target?.closest || event?.isTrusted === false || !isRabbitMirrorSurface(target)) return;
         // Native details/label/radio interaction completes first. If the heavy runtime
         // is not already ready, this click stays entirely native and performs no import.
@@ -498,7 +543,7 @@ async function ensureExternalDiagnostics() {
     if (externalDiagnosticsApi) return externalDiagnosticsApi;
     if (externalDiagnosticsPromise) return externalDiagnosticsPromise;
     const revision = ++externalDiagnosticsOperationRevision;
-    const loadPromise = import('./src/externalDiagnostics.js?rmv=1.68.35').then(mod => {
+    const loadPromise = import('./src/externalDiagnostics.js?rmv=1.68.36').then(mod => {
         if (!runtimeIsActive() || !externalDiagnosticsDesiredEnabled || revision !== externalDiagnosticsOperationRevision) return null;
         externalDiagnosticsModule = mod;
         externalDiagnosticsApi = mod.initRabbitMirrorExternalDiagnostics?.() || null;
@@ -520,7 +565,7 @@ function disableExternalDiagnostics() {
 }
 
 function clearDeferredGenerationSnapshots() {
-    void import('./src/generationGuard.js?rmv=1.68.35')
+    void import('./src/generationGuard.js?rmv=1.68.36')
         .then(mod => {
             // Disable may await this import while a newer installation takes
             // ownership. Do not clear that owner's shared snapshot/attempt keys.
@@ -549,18 +594,27 @@ function destroyOptionalCompat() {
     optionalPromises.clear();
 }
 
+markRabbitMirrorBootstrapEvaluated();
+
 jQuery(() => {
     if (!runtimeIsActive()) return;
+    // 每一步单独包起来：一步出错只弹提示，后面的入口照样装上。
+    const step = runRabbitMirrorStartupStep;
+    setRabbitMirrorStartupOpener(reason => openRabbitMirrorSettings(reason));
     captureDeferredBootBoundary();
-    initFeedbackCatPromptSync(() => getSettings().feedbackCatEnabled !== false);
-    globalThis.__rabbitMirrorFeedbackCatSyncCleanup = destroyFeedbackCatPromptSync;
+    step('反馈猫提示同步', () => {
+        initFeedbackCatPromptSync(() => getSettings().feedbackCatEnabled !== false);
+        globalThis.__rabbitMirrorFeedbackCatSyncCleanup = destroyFeedbackCatPromptSync;
+    });
     // 发送前去掉聊天记录里的旧兔子镜（不用再靠用户配正则）；本轮注入说明原样保留。
-    initPromptHistoryStrip(() => getSettings().stripOldMirrorsBeforeSend !== false);
-    initIndependentGenerationIntentBridge();
-    initRabbitMirrorIndependentSecurityGuard({ getSettings, updateSettings });
-    installOnDemandCompatTriggers();
-    installSettingsWandEntry();
-    if (!bootTtLateProjectionRuntime()) scheduleDeferredCoreRuntime();
+    step('发送前清理旧兔子镜', () => initPromptHistoryStrip(() => getSettings().stripOldMirrorsBeforeSend !== false));
+    step('独立 API 生成衔接', () => initIndependentGenerationIntentBridge());
+    step('独立 API 安全防护', () => initRabbitMirrorIndependentSecurityGuard({ getSettings, updateSettings }));
+    step('按需加载触发', () => installOnDemandCompatTriggers());
+    step('魔法棒入口', () => installSettingsWandEntry());
+    step('/兔子镜 命令', () => setRabbitMirrorOpenCommandAvailable(registerRabbitMirrorOpenCommand(openRabbitMirrorSettingsFromCommand)));
+    step('安排加载兔子镜主体', () => { if (!bootTtLateProjectionRuntime()) scheduleDeferredCoreRuntime(); });
+    setTimeout(() => { if (runtimeIsActive()) void checkRabbitMirrorDuplicateInstall().catch(() => {}); }, 4000);
     console.log(`[RabbitMirror] lightweight bootstrap ${RABBIT_MIRROR_RUNTIME_VERSION} ready; heavy runtime deferred`);
 });
 
@@ -588,6 +642,10 @@ export function onDisable() {
     generationPrewarmStarted = false;
     generationPrewarmDone = false;
     document.getElementById('rabbit_mirror_wand_bootstrap')?.remove();
+    if (entryCheckTimer) clearTimeout(entryCheckTimer);
+    entryCheckTimer = 0;
+    unregisterRabbitMirrorOpenCommand();
+    disposeRabbitMirrorStartupGuard();
     removeOnDemandCompatTriggers();
     destroyOptionalCompat();
     destroyFeedbackCatPromptSync();
