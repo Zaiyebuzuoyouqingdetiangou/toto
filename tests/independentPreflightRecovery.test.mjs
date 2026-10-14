@@ -63,7 +63,7 @@ test('real visible-reader preflight stops once when the host has no rendered bod
     const h = fixture(x => x.actualRequest()); await h.done;
     assert.equal(h.calls(), 1); assert.equal(h.posts(), 0);
     assert.equal(h.errors.length, 1); assert.equal(h.errors[0].requestCount, 0);
-    assert.match(h.errors[0].message, /标签过滤后为空/);
+    assert.match(h.errors[0].message, /正文读出来是空的/); // 1.68.40 起按原因分类说明，不再是「标签过滤后为空」
 });
 
 test('an unclassified local exception cannot enter a paid retry loop', async () => {

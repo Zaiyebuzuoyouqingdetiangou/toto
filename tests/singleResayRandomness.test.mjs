@@ -93,7 +93,8 @@ test('multiface per-face resay keeps its exact-restore semantics unchanged', () 
     const { calls } = runResay({ diagnostic: { faces }, faceIndex: 1, mountedCount: 2 });
     assert.equal(calls.length, 1);
     assert.equal(calls[0][MULTIFACE_ARG].faceIndex, 1);
-    assert.equal(calls[0][MULTIFACE_ARG].faces, faces, '多面重说这一面仍须携带原逐面记录');
+    // 重说前会先复制一份逐面记录（mount.js resayIndependentMirror：diagnostic.faces.slice()），比内容不比引用。
+    assert.deepEqual(calls[0][MULTIFACE_ARG].faces, faces, '多面重说这一面仍须携带原逐面记录');
     assert.equal(calls[0][MULTIFACE_ARG].freshSelection, false);
     assert.equal(calls[0][SINGLE_PRESENTATION_ARG], null);
 });
@@ -123,7 +124,7 @@ test('multiface fresh resay redraws the selected face and keeps the other record
     const faces = [{ themeIds: ['A.1'], formatIds: ['1.1'] }, { themeIds: ['B.2'], formatIds: ['2.2'] }];
     const { calls } = runResay({ diagnostic: { faces }, faceIndex: 1, mountedCount: 2, options: { mode: 'fresh' } });
     assert.equal(calls[0][MULTIFACE_ARG].faceIndex, 1);
-    assert.equal(calls[0][MULTIFACE_ARG].faces, faces);
+    assert.deepEqual(calls[0][MULTIFACE_ARG].faces, faces);
     assert.equal(calls[0][MULTIFACE_ARG].freshSelection, true);
     assert.equal(calls[0][MULTIFACE_ARG].retryFailedFace, true);
     assert.equal(calls[0][SINGLE_PRESENTATION_ARG], null);

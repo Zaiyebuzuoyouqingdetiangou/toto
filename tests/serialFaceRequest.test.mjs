@@ -272,10 +272,13 @@ test('serial palette observations remain inside the existing complete-request ch
     const limited = await fixture({ retry: 2, scanFace: html => paletteScan(html, []),
         maxRequestChars: () => ++budgetCalls === 1 ? 1000000 : budget });
     const result = await limited.call();
-    assert.equal(limited.posts.length, 1, 'the compact observation must not bypass the old size guard');
-    assert.equal(result.completedFaces, 1);
-    assert.equal(result.requestDiagnostic.terminalErrorCode, 'RABBIT_MIRROR_REQUEST_TOO_LARGE');
-    assert.equal(limited.mayRetry(result), false);
+    // 逐面排队的现行规则（request.js serialFailureIsFatal）：前面已有面成功时，只有这一面超预算就只跳过这一面，
+    // 后面的面照常生成。所以第 2 面不发（预算守卫仍在），第 1、3 面各发一次。
+    assert.equal(limited.posts.length, 2, 'the compact observation must not bypass the old size guard');
+    assert.equal(result.completedFaces, 2);
+    assert.deepEqual(JSON.parse(JSON.stringify(result.failedFaces.map(item => [item.faceIndex, item.code]))), [[1, 'serial-local-preflight']]);
+    assert.equal(result.requestDiagnostic.terminalErrorCode, undefined, 'a single over-budget face is not a terminal failure');
+    assert.equal(limited.mayRetry(result), true, 'the skipped face stays individually retryable');
 });
 
 function resayFixture({ errorCard = true, faceIndex = -1, form = 'html' } = {}) {

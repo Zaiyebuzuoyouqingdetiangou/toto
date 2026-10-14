@@ -28,7 +28,8 @@ test('accepts collection members derived from one related format, including an e
     const draft = parseAtlasDraftResponse('```json\n' + response(slots) + '\n```', catalog);
     assert.equal(draft.slots.length, 78);
     assert.deepEqual(draft.slots[0], { label: '牌 1', keywords: ['牌 1', 'Card 1'] });
-    assert.deepEqual(draft.relatedEntries, [{ id: '6.1', title: '塔罗抽卡', kind: 'format' }]);
+    // 目录条目现在带一个给模型用的短代号 short（f1/t1…），其余字段不变。
+    assert.deepEqual(draft.relatedEntries, [{ id: '6.1', title: '塔罗抽卡', kind: 'format', short: 'f1' }]);
 });
 
 test('rejects incomplete, unrelated, duplicate and delimiter-corrupted drafts without partial application', () => {

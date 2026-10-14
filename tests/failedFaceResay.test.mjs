@@ -59,7 +59,7 @@ test('retry with known face recipe still targets that exact original face', () =
     h.click();
     assert.equal(h.calls.length, 1);
     assert.equal(h.calls[0][4].faceIndex, 1);
-    assert.equal(h.calls[0][4].faces, faces);
+    assert.deepEqual(h.calls[0][4].faces, faces); // 记录先被复制一份再传下去，比内容
     assert.equal(h.calls[0][4].freshSelection, false);
 });
 

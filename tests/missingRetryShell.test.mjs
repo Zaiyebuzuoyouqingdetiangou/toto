@@ -29,7 +29,7 @@ test('scan range defaults to ten assistant floors and can cover the whole chat',
     assert.deepEqual(assistantRowsInScanRange(rows, 10).map(row => row.i), [2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
     assert.equal(assistantRowsInScanRange(rows, 'all').length, 12);
     assert.match(formatMissingShellReport({ range: 10, floors: [{ index: 8 }, { index: 11 }] }), /#8、#11/);
-    assert.match(formatMissingShellReport({ range: 'all', floors: [] }), /没有缺外壳/);
+    assert.match(formatMissingShellReport({ range: 'all', floors: [] }), /每一层都有兔子镜/);
 });
 
 test('recent assistant window uses the selected scan rows', () => {
@@ -75,5 +75,5 @@ test('only the current target floor with usable body gets a card, placed under t
     assert.equal(hasUsableAssistantBody({ mes: '<div>日历</div>' }), true);
     assert.equal(hasUsableAssistantBody({ mes: '   ', extra: { display_text: '正文' } }), true);
     assert.equal(hasUsableAssistantBody({ mes: '   ' }), false);
-    assert.match(MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE, /不会自动再发请求/);
+    assert.match(MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE, /不会调用模型/);
 });

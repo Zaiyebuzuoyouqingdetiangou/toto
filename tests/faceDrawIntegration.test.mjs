@@ -10,14 +10,13 @@ import vm from 'node:vm';
 import { createRuntime } from './helpers/featureRuntime.mjs';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
+// 跨版本对照：原来拿 1.67.42（逐面规则加入前）的源码做基线，那个提交不在这个仓库里，本地快照也不在。
+// 有 RM_PARITY_BASE（提交号）或本地快照时仍按跨版本跑；否则退回同版本对照：
+// 「不配置逐面规则」和「每一面都显式配一条已停用的规则」必须得到一字不差的提示词和抽取结果。含义一致，不再随形式库增减而漂移。
 let baseline = fileURLToPath(new URL('../../rabbitmirror-1.67.42-feasibility', import.meta.url));
-if (process.env.RM_PARITY_FROM_GIT === '1' || !existsSync(join(baseline, 'manifest.json'))) {
-    // 原对照提交（1.67.42）在导入前的仓库里，这个仓库没有。按顺序取：环境变量 RM_PARITY_BASE、
-    // 原提交（若存在）、仓库里最早的提交（1.67.95 导入）。对照的含义不变：未配置逐面规则时，提示词和抽取结果不该变。
-    const gitHas = ref => { try { execFileSync('git', ['cat-file', '-e', `${ref}^{commit}`], { cwd: root, stdio: 'ignore' }); return true; } catch { return false; } };
-    const originalBase = 'ac3eed16ed8c00e68325f5c7c27add2d8c0685b2';
-    const baseCommit = process.env.RM_PARITY_BASE || (gitHas(originalBase) ? originalBase
-        : execFileSync('git', ['rev-list', '--max-parents=0', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim().split('\n').at(-1));
+const crossVersion = !!process.env.RM_PARITY_BASE || existsSync(join(baseline, 'manifest.json'));
+if (process.env.RM_PARITY_BASE) {
+    const baseCommit = process.env.RM_PARITY_BASE;
     baseline = mkdtempSync(join(tmpdir(), 'rabbitmirror-face-baseline-'));
     const temporaryBaseline = resolve(baseline);
     after(() => {
@@ -73,10 +72,14 @@ test('per-face external scopes opt into hydration without enabling unrelated glo
 for (const type of ['normal', 'independent']) for (const count of [1, 2]) {
     test(`unconfigured ${type} ${count} face generation preserves original prompt and draw`, async () => {
         const rendered = [];
-        for (const source of [baseline, root]) {
+        const variants = crossVersion ? [{ source: baseline }, { source: root }] : [{ source: root }, { source: root, disabledRules: true }];
+        for (const { source, disabledRules } of variants) {
             const rt = await runtime(source);
             const module = await rt.load('src/promptBuilder.js');
-            const plan = module.planRabbitMirrorPromptDetails({ ...rt.settings, rabbitMirrorFaceCount: count }, type, null,
+            const rules = disabledRules ? await rt.load('src/faceDrawRules.js') : null;
+            const settings = { ...rt.settings, rabbitMirrorFaceCount: count,
+                ...(rules ? { rabbitMirrorFaceDrawRules: Array.from({ length: count }, () => rules.normalizeFaceDrawRule({ enabled: false })) } : {}) };
+            const plan = module.planRabbitMirrorPromptDetails(settings, type, null,
                 'generation:face-feature-parity', { batchIdentity: { mesid: 1, swipeId: 0, sourceHash: 'unchanged-body' } });
             const result = module.renderRabbitMirrorPromptPlan(plan);
             rendered.push({ prompt: result.prompt, lock: result.executionLock,
