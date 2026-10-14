@@ -97,13 +97,16 @@ test('all compositions retain appearance fidelity, character filtering and the o
     assert.throws(() => buildImagePlanningPrompt({ faceText: ' ', compositionMode: 'auto' }), /没有可供构思的内容/);
 });
 
-test('other faces already planned in the same reply are passed on so poses do not repeat', () => {
+test('the frame caption and other faces of the same reply reach the planner', () => {
     const scenes = ['他把她横抱在怀里走进回廊', '  ', '两人相拥站在窗前'];
-    const prompt = buildImagePlanningPrompt({ faceText, focus: '他抱着她进门', otherScenes: scenes });
-    assert.deepEqual(sourceRow(prompt).otherScenes, ['他把她横抱在怀里走进回廊', '两人相拥站在窗前']);
+    const prompt = buildImagePlanningPrompt({ faceText, focus: '他抱着她进门', frameCaption: '前：建元四年【初植金桂】', otherScenes: scenes });
+    const row = sourceRow(prompt);
+    assert.deepEqual(row.otherScenes, ['他把她横抱在怀里走进回廊', '两人相拥站在窗前']);
+    assert.equal(row.frameCaption, '前：建元四年【初植金桂】');
+    assert.match(prompt.systemPrompt, /frameCaption 是图框在这一面里紧挨着的文字/);
     assert.match(prompt.systemPrompt, /otherScenes 是同一条回复里其他面已经定下的画面/);
-    assert.match(prompt.systemPrompt, /动作改成这一面内容里另一个有依据的时刻/);
     const alone = buildImagePlanningPrompt({ faceText });
     assert.equal(sourceRow(alone).otherScenes, undefined);
-    assert.doesNotMatch(alone.systemPrompt, /otherScenes/);
+    assert.equal(sourceRow(alone).frameCaption, undefined);
+    assert.doesNotMatch(alone.systemPrompt, /otherScenes|frameCaption/);
 });
