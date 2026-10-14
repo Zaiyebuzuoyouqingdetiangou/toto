@@ -1,25 +1,25 @@
 // Split from independentApi.js — connection.
 
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages } from '../hostCompatibility.js?rmv=1.68.39';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages } from '../hostCompatibility.js?rmv=1.68.40';
 import {
     WORLD_INFO_BOOK_NAME_MAX_CHARS,
     getSettings,
     normalizeIndependentContextExcludedTags,
     updateSettings,
-} from '../settings.js?rmv=1.68.39';
-import { fetchRabbitMirrorIndependentCompletion } from '../independentSecurityGuard.js?rmv=1.68.39';
-import { buildIndependentAdvancedCarrier, applyIndependentAdvancedExclusions } from '../advancedRequestOptions.js?rmv=1.68.39';
-import { describeBatchPlanFailure } from '../externalWorldBook/errors.js?rmv=1.68.39';
-import { describeRabbitMirrorStorageUsage, getCurrentChatKey } from '../storage.js?rmv=1.68.39';
-import { rememberIndependentTransportDiagnostic } from '../transportDiagnostics.js?rmv=1.68.39';
+} from '../settings.js?rmv=1.68.40';
+import { fetchRabbitMirrorIndependentCompletion } from '../independentSecurityGuard.js?rmv=1.68.40';
+import { buildIndependentAdvancedCarrier, applyIndependentAdvancedExclusions } from '../advancedRequestOptions.js?rmv=1.68.40';
+import { describeBatchPlanFailure } from '../externalWorldBook/errors.js?rmv=1.68.40';
+import { describeRabbitMirrorStorageUsage, getCurrentChatKey } from '../storage.js?rmv=1.68.40';
+import { rememberIndependentTransportDiagnostic } from '../transportDiagnostics.js?rmv=1.68.40';
 import {
     CONTEXT_TOTAL_BUDGET,
     CONTEXT_TRANSCRIPT_BUDGET,
     RUNTIME_VERSION,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.68.39';
-import { HOST_GENERATION_EVENT_HINT_MS, operationEpochForBase } from './flights.js?rmv=1.68.39';
+} from './runtime.js?rmv=1.68.40';
+import { HOST_GENERATION_EVENT_HINT_MS, operationEpochForBase } from './flights.js?rmv=1.68.40';
 import {
     OWNER_LOCK_STORE_KEY,
     apiProfileKey,
@@ -31,12 +31,12 @@ import {
     writeApiProfileStore,
     writePersistedOwner,
     writeStore,
-} from './persistence.js?rmv=1.68.39';
+} from './persistence.js?rmv=1.68.40';
 import {
     hasExplicitSourceReplacementEvidence,
     independentStoredHtmlLightRestorable,
     independentStoredHtmlRestorable,
-} from './geometry.js?rmv=1.68.39';
+} from './geometry.js?rmv=1.68.40';
 import {
     activeIndependentFlightForBase,
     messageSourceRevisions,
@@ -44,13 +44,13 @@ import {
     passiveObservedIdentity,
     runtimeMode,
     showIndependentUnsavedOutput,
-} from './mount.js?rmv=1.68.39';
+} from './mount.js?rmv=1.68.40';
 import {
     hostGenerationHintStartedAt,
     hostGenerationInProgress,
     writeHostGenerationHintStartedAt,
     writeHostGenerationInProgress,
-} from './lifecycle.js?rmv=1.68.39';
+} from './lifecycle.js?rmv=1.68.40';
 
 export const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 
@@ -1602,7 +1602,9 @@ export function liveVisibleIndependentMessageText(index,excludedTags=new Set()){
  try{
   const body=document.querySelector(`#chat .mes[mesid="${Number(index)}"] .mes_text, #chat [mesid="${Number(index)}"].mes .mes_text`);
   if(!body) return {available:false,text:''};
-  const parts=[]; const stack=[{node:body,depth:0}]; const filteredExcludedTags=new Set(); let examined=0; let chars=0; let filteredExcludedTagChars=0;
+  const parts=[]; const stack=[{node:body,depth:0}]; const filteredExcludedTags=new Set(); let examined=0; let chars=0; let filteredExcludedTagChars=0; let hiddenChars=0;
+  // 被样式藏起来的字数：正文读出来为空时，用来告诉用户是「美化把字藏了」而不是标签过滤。
+  const countHidden=node=>{ if(hiddenChars<100000) hiddenChars+=String(node?.textContent||'').trim().length; };
   const blockedSelector='toto, [data-rabbit-mirror-external-source], [data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], script, style, template, noscript, [hidden], [inert], [aria-hidden="true"], [aria-hidden="1"], .displayNone, .display-none, .hidden, .invisible, .sr-only, [class*="display-none"], [class*="display_none"]';
   const blockTags=new Set(['BR','P','DIV','LI','SECTION','ARTICLE','BLOCKQUOTE','H1','H2','H3','H4','H5','H6','TR']);
   for(let ancestor=body,depth=0;ancestor && depth<5;ancestor=ancestor.parentElement,depth+=1){
@@ -1631,13 +1633,13 @@ export function liveVisibleIndependentMessageText(index,excludedTags=new Set()){
     continue;
    }
    const inline=String(node.getAttribute?.('style')||'');
-   if(/(?:^|;)\s*(?:display\s*:\s*none|visibility\s*:\s*hidden|content-visibility\s*:\s*hidden|opacity\s*:\s*0(?:\D|$))\b/i.test(inline)) continue;
+   if(/(?:^|;)\s*(?:display\s*:\s*none|visibility\s*:\s*hidden|content-visibility\s*:\s*hidden|opacity\s*:\s*0(?:\D|$))\b/i.test(inline)){ countHidden(node); continue; }
    if(typeof globalThis.getComputedStyle==='function'){
     const computed=styleOf(node);
     if(['none'].includes(String(computed?.display||'').toLowerCase())
      || ['hidden','collapse'].includes(String(computed?.visibility||'').toLowerCase())
      || String(computed?.contentVisibility||'').toLowerCase()==='hidden'
-     || Number.parseFloat(String(computed?.opacity||'1'))===0) continue;
+     || Number.parseFloat(String(computed?.opacity||'1'))===0){ countHidden(node); continue; }
    }
    if(node.tagName==='BR'){ parts.push('\n'); continue; }
    let children=[...(node.childNodes||[])];
@@ -1661,8 +1663,40 @@ export function liveVisibleIndependentMessageText(index,excludedTags=new Set()){
   }
   if(!stack.length) break;
   }
-  return {available:true,text:parts.join('').replace(/[ \t]+\n/g,'\n').replace(/\n[ \t]+/g,'\n').replace(/[ \t]{2,}/g,' ').replace(/\n{3,}/g,'\n\n').trim(),filteredExcludedTagChars,filteredExcludedTags:[...filteredExcludedTags]};
- }catch{return {available:true,text:''};}
+  return {available:true,text:parts.join('').replace(/[ \t]+\n/g,'\n').replace(/\n[ \t]+/g,'\n').replace(/[ \t]{2,}/g,' ').replace(/\n{3,}/g,'\n\n').trim(),filteredExcludedTagChars,filteredExcludedTags:[...filteredExcludedTags],hiddenChars};
+ }catch(error){return {available:true,text:'',readError:String(error?.message||error||'').slice(0,120)};}
+}
+
+// 正文读出来是空的时候说清楚为什么，而不是只说「为空」：
+// 是标签把整段正文包住了（常见是预设输出的标签没闭合、或开闭标签拼写不一样）、
+// 是美化把字藏了（逐字显示还没放完、先透明再淡入），还是这一层根本没显示在页面上。
+export function explainEmptyIndependentVisibleBody(message,index,settings=getSettings()){
+ const excludedTags=independentContextExcludedTagSet(settings);
+ const base='当前正文读出来是空的，本次没有发送副 API 请求。';
+ const live=liveVisibleIndependentMessageText(index,excludedTags);
+ if(!live.available) return `${base}这一层的正文现在没显示在页面上（被收起、还没滚到，或被别的插件换掉了）。滚到这一层、等它显示完再重说。`;
+ if(live.readError) return `${base}读这一层正文时出错了（${live.readError}），可能是别的插件改了页面。刷新网页后再重说。`;
+ const swallowed=live.filteredExcludedTags||[];
+ if(swallowed.length){
+  const unfiltered=liveVisibleIndependentMessageText(index,new Set());
+  if(unfiltered.text){
+   const source=`${String(message?.mes||'')}
+${String(message?.extra?.display_text||'')}`;
+   const unclosed=swallowed.filter(name=>{
+    const open=new RegExp(`<${name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}(?=[\\s>/])`,'i');
+    const close=new RegExp(`</${name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\s*>`,'i');
+    return open.test(source)&&!close.test(source);
+   });
+   const names=swallowed.map(name=>`<${name}>`).join('、');
+   const why=unclosed.length
+    ?`这一层里的 ${unclosed.map(name=>`<${name}>`).join('、')} 没有对应的结束标签（可能是预设漏写了，或开闭标签拼写不一样），后面的正文都被算进了这个标签里，一起被跳过了。`
+    :`整段正文都在 ${names} 标签里面，被一起跳过了。`;
+   return `${base}${why}到 设置 → 跳过指定标签，先取消勾选 ${names} 再重说${unclosed.length?'；或者把预设里这个标签改成成对的开闭标签':'（这个标签包着的就是正文，不该跳过）'}。`;
+  }
+ }
+ if(Number(live.hiddenChars||0)>0) return `${base}这一层的正文文字目前是隐藏的（美化让字先透明或藏起来，比如逐字显示、淡入动画还没放完）。等文字全部显示出来再重说；一直这样的话，是美化的样式把正文设成了不可见。`;
+ if(String(message?.mes||'').trim()) return `${base}页面上这一层没有看得见的文字，正文可能被美化画进了读不到的内嵌页面或图片里。`;
+ return `${base}这一层的正文本身是空的。`;
 }
 
 export function normalizedIndependentVisibleComparison(value=''){

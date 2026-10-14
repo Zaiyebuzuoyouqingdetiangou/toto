@@ -1,29 +1,29 @@
-import { bindRolePaletteCode } from '../roleColorVariants.js?rmv=1.68.39';
-import { faceDrawNeedsExternal } from '../faceDrawRules.js?rmv=1.68.39';
-import { designSamplingChecksFromHtml } from '../interactionSampling.js?rmv=1.68.39';
+import { bindRolePaletteCode } from '../roleColorVariants.js?rmv=1.68.40';
+import { faceDrawNeedsExternal } from '../faceDrawRules.js?rmv=1.68.40';
+import { designSamplingChecksFromHtml } from '../interactionSampling.js?rmv=1.68.40';
 // Split from independentApi.js — request.
 
-import { claimGenerationEvidence, associateGenerationEvidence, generationEvidenceFor } from '../generationEvidence.js?rmv=1.68.39';
-import { createGenerationTimer } from '../generationTiming.js?rmv=1.68.39';
-import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.68.39';
+import { claimGenerationEvidence, associateGenerationEvidence, generationEvidenceFor } from '../generationEvidence.js?rmv=1.68.40';
+import { createGenerationTimer } from '../generationTiming.js?rmv=1.68.40';
+import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.68.40';
 
-import { resolveBehaviorRuleText } from '../behaviorRules.js?rmv=1.68.39';
-import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.68.39';
-import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.68.39';
-import { getSettings } from '../settings.js?rmv=1.68.39';
-import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.68.39';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=1.68.39';
-import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from '../chatAvatarPromptReady.js?rmv=1.68.39';
+import { resolveBehaviorRuleText } from '../behaviorRules.js?rmv=1.68.40';
+import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.68.40';
+import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.68.40';
+import { getSettings } from '../settings.js?rmv=1.68.40';
+import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.68.40';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=1.68.40';
+import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from '../chatAvatarPromptReady.js?rmv=1.68.40';
 import {
     assertRabbitMirrorIndependentResponseBytes,
     assertRabbitMirrorIndependentResponseText,
     authorizeRabbitMirrorIndependentServiceRequest,
-} from '../independentSecurityGuard.js?rmv=1.68.39';
+} from '../independentSecurityGuard.js?rmv=1.68.40';
 import {
     parseIndependentAdvancedOptions,
     buildIndependentAdvancedCarrier,
     applyIndependentAdvancedExclusions,
-} from '../advancedRequestOptions.js?rmv=1.68.39';
+} from '../advancedRequestOptions.js?rmv=1.68.40';
 import {
     buildRabbitMirrorPromptDetails,
     planRabbitMirrorPromptDetails,
@@ -32,15 +32,15 @@ import {
     prepareSelectedMemoryForPrompt,
     memoryRequestSettingsKey,
     assertMemoryRequestSettings,
-} from '../promptBuilder.js?rmv=1.68.39';
-import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.68.39';
-import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.68.39';
-import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.68.39';
-import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText, createMultifaceFailureSlot } from '../multifaceProtocol.js?rmv=1.68.39';
-import { applyAtmosphereFields, atmosphereNotesFromHtml, stripAtmosphereChoiceMarkup } from '../atmosphereChoice.js?rmv=1.68.39';
-import { isLocalPreflightFailure, isQuotaInsufficientFailure, configuredAutomaticRerollMax, automaticRerollEnabled } from '../automaticReroll.js?rmv=1.68.39';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.68.39';
-import { serialPaletteExecutionReminder } from '../serialPaletteContext.js?rmv=1.68.39';
+} from '../promptBuilder.js?rmv=1.68.40';
+import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.68.40';
+import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.68.40';
+import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.68.40';
+import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText, createMultifaceFailureSlot } from '../multifaceProtocol.js?rmv=1.68.40';
+import { applyAtmosphereFields, atmosphereNotesFromHtml, stripAtmosphereChoiceMarkup } from '../atmosphereChoice.js?rmv=1.68.40';
+import { isLocalPreflightFailure, isQuotaInsufficientFailure, configuredAutomaticRerollMax, automaticRerollEnabled } from '../automaticReroll.js?rmv=1.68.40';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.68.40';
+import { serialPaletteExecutionReminder } from '../serialPaletteContext.js?rmv=1.68.40';
 import {
     createVisualHistorySelection,
     resolveVisualHistorySelection,
@@ -49,9 +49,9 @@ import {
     markPendingBatchAttempt,
     findPendingComboBatchPlan,
     releasePendingComboBatch,
-} from '../storage.js?rmv=1.68.39';
-import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.68.39';
-import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.68.39';
+} from '../storage.js?rmv=1.68.40';
+import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.68.40';
+import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.68.40';
 import {
     RUNTIME_VERSION,
     EXTERNAL_SHELL_ATTR,
@@ -62,8 +62,8 @@ import {
     byteLength,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.68.39';
-import { operationEpochForBase } from './flights.js?rmv=1.68.39';
+} from './runtime.js?rmv=1.68.40';
+import { operationEpochForBase } from './flights.js?rmv=1.68.40';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INDEPENDENT_MAX_APPROX_DEPTH,
@@ -78,12 +78,13 @@ import {
     normalizedConfiguredTemperature,
     readHistoryStore,
     readStore,
-} from './persistence.js?rmv=1.68.39';
+} from './persistence.js?rmv=1.68.40';
 import {
     API_PROFILE_ORDER,
     chatKey,
     contextBundle,
     createIndependentVisibleTextReader,
+    explainEmptyIndependentVisibleBody,
     endpoint,
     fetchIndependentUrl,
     forgetRememberedApiProfileIfMatches,
@@ -112,7 +113,7 @@ import {
     stageNextApiProfile,
     swipeId,
     validatedIndependentConnectionProfile,
-} from './connection.js?rmv=1.68.39';
+} from './connection.js?rmv=1.68.40';
 import {
     externalGeometryCycleSequence,
     externalGeometryLifecycleEpoch,
@@ -123,7 +124,7 @@ import {
     writeExternalGeometryCycleSequence,
     writeExternalGeometryLifecycleEpoch,
     writeExternalGeometryLifecycleReason,
-} from './geometry.js?rmv=1.68.39';
+} from './geometry.js?rmv=1.68.40';
 import {
     INDEPENDENT_REJECTED_PREVIEW_MAX_CHARS,
     INDEPENDENT_REJECTED_PREVIEW_MAX_ENTRIES,
@@ -138,8 +139,8 @@ import {
     writeExternalHostSyncIndex,
     writeIndependentRejectedPreviewChars,
     writeIndependentRejectedPreviewSequence,
-} from './mount.js?rmv=1.68.39';
-import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.68.39';
+} from './mount.js?rmv=1.68.40';
+import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.68.40';
 
 const NON_STREAM_PROFILE_BY_STREAM_PROFILE={
  chat_system_user_full:'chat_system_user_full_nostream',
@@ -1667,7 +1668,7 @@ export function wireIndependentRejectedFaceControls(host){
    independentRejectedFaceControlsWired.add(resay);
    resay.addEventListener('click',event=>{
     event.preventDefault(); event.stopPropagation();
-    void import('../outputSanitizer/toolsChrome.js?rmv=1.68.39').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+    void import('../outputSanitizer/toolsChrome.js?rmv=1.68.40').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
    },true);
   }
  }
@@ -1866,7 +1867,7 @@ async function loadIndependentAppearanceReference(owner){
  let module;
  assertIndependentPromptOwner(owner);
  try{
-  try{module=await import('../appearanceReference.js?rmv=1.68.39');}
+  try{module=await import('../appearanceReference.js?rmv=1.68.40');}
   catch{
    const error=new Error('外观参考模块未能加载；本轮未发送请求，请刷新后重试或关闭外观参考。');
    error.code='RABBIT_MIRROR_APPEARANCE_MODULE_UNAVAILABLE';error.requestCount=0;throw error;
@@ -2168,7 +2169,7 @@ export async function callIndependentApi(ctx,index,msg,signal=null,requestOption
  const feedbackPrompt='';
  const feedbackFinalCheck='';
  const targetVisibleAtStart=readVisible(msg,index);
- if(!targetVisibleAtStart.text) throw Object.assign(new Error('当前正文在可见性检查和标签过滤后为空；本次未发送副 API 请求。请调整过滤标签或确认正文已完成渲染。'),{code:'RABBIT_MIRROR_VISIBLE_BODY_EMPTY',requestCount:0});
+ if(!targetVisibleAtStart.text) throw Object.assign(new Error(explainEmptyIndependentVisibleBody(msg,index,st)),{code:'RABBIT_MIRROR_VISIBLE_BODY_EMPTY',requestCount:0});
  const directiveStart=Math.max(0,index-3);
  const boundedDirectiveChat=Array.isArray(ctx.chat)?ctx.chat.slice(directiveStart,index+1)
   .map((message,offset)=>({message,realIndex:directiveStart+offset}))
@@ -2335,7 +2336,7 @@ ${independentSystemRules}`;
  const globalWorldInfoSnapshot=globalWorldInfoSnapshotFor(ctx,index,msg);
  const globalWorldInfoView=globalWorldInfoContextView(globalWorldInfoSnapshot);
  const contextResult=contextBundle(ctx,index,globalWorldInfoSnapshot,globalWorldInfoView,availableContextChars,readVisible);
- if(!contextResult.targetVisibleChars) throw Object.assign(new Error('当前正文在可见性检查和标签过滤后为空；本次未发送副 API 请求。请调整过滤标签或确认正文已完成渲染。'),{code:'RABBIT_MIRROR_VISIBLE_BODY_EMPTY',requestCount:0});
+ if(!contextResult.targetVisibleChars) throw Object.assign(new Error(explainEmptyIndependentVisibleBody(msg,index,st)),{code:'RABBIT_MIRROR_VISIBLE_BODY_EMPTY',requestCount:0});
  const contextText=contextResult.text+characterWorldBookBlock;
  const userPrompt=`${independentUserLead}
 
