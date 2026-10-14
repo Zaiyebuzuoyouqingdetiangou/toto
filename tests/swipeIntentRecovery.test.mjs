@@ -44,6 +44,8 @@ async function harness({ chat, settings: overrides = {} } = {}) {
         'script.js': { eventSource, event_types: eventTypes, setExtensionPrompt: noop,
             extension_prompt_types: { IN_CHAT: 0 }, extension_prompt_roles: { SYSTEM: 0 } },
         'settings.js': { MODULE_NAME: 'RabbitMirror', getSettings: () => settings },
+        // injector.js 现在直接读宿主的 extension_settings（取本插件那一格）。
+        'extensions.js': { extension_settings: { RabbitMirror: settings } },
         'faceDrawRules.js': { faceDrawNeedsExternal: () => false },
         'feedbackCat.js': { buildFeedbackCatFinalCheck: noop, buildFeedbackCatPrompt: noop,
             clearFeedbackCatExtensionPrompt: noop, getActiveFeedbackForCurrentChat: noop, markFeedbackCatInjected: noop },

@@ -3,7 +3,12 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 
-const source = readFileSync(new URL('../src/mirrorToolMenu.js', import.meta.url), 'utf8').replaceAll('export ', '');
+// mirrorToolMenu.js 现在 import appearanceTheme.js；两者都当普通脚本装进沙盒。
+const stripModuleSyntax = text => text.replace(/^import\s+[\s\S]*?from\s+['"][^'"]+['"];\s*/gm, '').replaceAll('export ', '');
+const source = [
+    stripModuleSyntax(readFileSync(new URL('../src/appearanceTheme.js', import.meta.url), 'utf8')),
+    stripModuleSyntax(readFileSync(new URL('../src/mirrorToolMenu.js', import.meta.url), 'utf8')),
+].join('\n');
 function fixture({ top = 0, height = 700, composerTop = 620, composerHeight = 80, focused = false } = {}) {
     const events = new Map(), viewEvents = new Map(), panelEvents = new Map(), styles = new Map();
     let disconnected = 0;

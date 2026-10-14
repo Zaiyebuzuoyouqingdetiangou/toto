@@ -12,7 +12,12 @@ import { createRuntime } from './helpers/featureRuntime.mjs';
 const root = fileURLToPath(new URL('..', import.meta.url));
 let baseline = fileURLToPath(new URL('../../rabbitmirror-1.67.42-feasibility', import.meta.url));
 if (process.env.RM_PARITY_FROM_GIT === '1' || !existsSync(join(baseline, 'manifest.json'))) {
-    const baseCommit = 'ac3eed16ed8c00e68325f5c7c27add2d8c0685b2';
+    // 原对照提交（1.67.42）在导入前的仓库里，这个仓库没有。按顺序取：环境变量 RM_PARITY_BASE、
+    // 原提交（若存在）、仓库里最早的提交（1.67.95 导入）。对照的含义不变：未配置逐面规则时，提示词和抽取结果不该变。
+    const gitHas = ref => { try { execFileSync('git', ['cat-file', '-e', `${ref}^{commit}`], { cwd: root, stdio: 'ignore' }); return true; } catch { return false; } };
+    const originalBase = 'ac3eed16ed8c00e68325f5c7c27add2d8c0685b2';
+    const baseCommit = process.env.RM_PARITY_BASE || (gitHas(originalBase) ? originalBase
+        : execFileSync('git', ['rev-list', '--max-parents=0', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim().split('\n').at(-1));
     baseline = mkdtempSync(join(tmpdir(), 'rabbitmirror-face-baseline-'));
     const temporaryBaseline = resolve(baseline);
     after(() => {

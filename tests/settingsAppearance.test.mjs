@@ -3,10 +3,18 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
-function loadAppearance() {
-    const source = readFileSync(new URL('../src/settingsAppearance.js', import.meta.url), 'utf8')
+// 主题常量和函数已拆到 appearanceTheme.js，先装它再装 settingsAppearance.js（两者都当普通脚本跑）。
+function stripModuleSyntax(source) {
+    return source
+        .replace(/^(?:import|export)\s+\{[^}]*\}\s+from\s+['"][^'"]+['"];\s*/gm, '')
         .replace(/^import\s+[\s\S]*?from\s+['"][^'"]+['"];\s*/gm, '')
         .replace(/^export /gm, '');
+}
+function loadAppearance() {
+    const source = [
+        stripModuleSyntax(readFileSync(new URL('../src/appearanceTheme.js', import.meta.url), 'utf8')),
+        stripModuleSyntax(readFileSync(new URL('../src/settingsAppearance.js', import.meta.url), 'utf8')),
+    ].join('\n');
     const context = vm.createContext({
         console,
         Object,

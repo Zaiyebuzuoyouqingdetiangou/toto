@@ -4,7 +4,12 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
 const geometry = readFileSync(new URL('../src/independentApi/geometry.js', import.meta.url), 'utf8');
-const menu = readFileSync(new URL('../src/mirrorToolMenu.js', import.meta.url), 'utf8');
+// mirrorToolMenu.js 现在 import appearanceTheme.js；两者都当普通脚本装进沙盒。
+const stripImports = text => text.replace(/^import\s+[\s\S]*?from\s+['"][^'"]+['"];\s*/gm, '');
+const menu = [
+    stripImports(readFileSync(new URL('../src/appearanceTheme.js', import.meta.url), 'utf8')),
+    stripImports(readFileSync(new URL('../src/mirrorToolMenu.js', import.meta.url), 'utf8')),
+].join('\n');
 function sourceFunction(name) {
     const match = geometry.match(new RegExp(`(?:export )?function ${name}\\([^]*?\\r?\\n\\}`));
     assert.ok(match, `${name} source found`);

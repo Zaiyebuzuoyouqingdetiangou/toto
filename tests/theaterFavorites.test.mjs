@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { captureTheaterFavoriteFromRoot, groupTheaterFavoritesByCharacter, theaterFavoriteToggleId, UNCATEGORIZED_CHARACTER_NAME } from '../src/theaterFavorites.js';
+// theaterFavorites.js 的 import 链现在经 settings.js 走到宿主的 extensions.js，直接 import 会找不到文件；
+// 用仓库的 vm 加载器跑，宿主那两个模块由它打桩。
+import { fileURLToPath } from 'node:url';
+import { createRuntime } from './helpers/vmLoader.mjs';
+const favoritesRuntime = createRuntime(fileURLToPath(new URL('..', import.meta.url)));
+// 模块顶层会排一个定时器去刷新续写候选；测试里不跑它。
+Object.assign(favoritesRuntime.context, { setTimeout: () => 0, clearTimeout: () => {} });
+const { captureTheaterFavoriteFromRoot, groupTheaterFavoritesByCharacter, theaterFavoriteToggleId, UNCATEGORIZED_CHARACTER_NAME } = await favoritesRuntime.load('src/theaterFavorites.js');
 import { collectRevealedClipHosts, shouldRelaxRevealedClipPanel } from '../src/revealedClipRepair.js';
 
 test('favorite capture keeps the live face markup and skips placeholders', () => {
@@ -13,6 +20,8 @@ test('favorite capture keeps the live face markup and skips placeholders', () =>
             outerHTML: '<details><summary>星空剧场</summary><p>可交互</p></details>',
             dataset: { rabbitMirrorOwnerChat: 'chat-a', rabbitMirrorOwnerMesid: '4', rabbitMirrorOwnerSwipe: '0' },
             getAttribute() { return 'html'; },
+            // 捕获现在先克隆再还原动画状态；假节点没有子节点和样式，克隆就是自己。
+            cloneNode() { return this; },
         };
         const captured = captureTheaterFavoriteFromRoot(fake, { sourceHash: 'abc', characterId: 'char.png', characterName: '幸村' });
         assert.equal(captured.title, '星空剧场');
@@ -41,6 +50,7 @@ test('favorite capture from a placeholder walks to the ready face on the same fl
             outerHTML: '<details><summary>星空剧场</summary><p>可交互</p></details>',
             dataset: { rabbitMirrorOwnerChat: 'chat-a', rabbitMirrorOwnerMesid: '4', rabbitMirrorOwnerSwipe: '0' },
             getAttribute() { return 'html'; },
+            cloneNode() { return this; },
         };
         const placeholder = {
             matches(selector) { return selector === 'details'; },

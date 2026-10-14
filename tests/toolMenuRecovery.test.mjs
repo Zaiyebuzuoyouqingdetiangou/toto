@@ -3,7 +3,12 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 
-const menuSource = readFileSync(new URL('../src/mirrorToolMenu.js', import.meta.url), 'utf8').replace(/^export /gm, '');
+// mirrorToolMenu.js 现在 import appearanceTheme.js；两者都当普通脚本装进沙盒。
+const stripModuleSyntax = text => text.replace(/^import\s+[\s\S]*?from\s+['"][^'"]+['"];\s*/gm, '').replace(/^export /gm, '');
+const menuSource = [
+    stripModuleSyntax(readFileSync(new URL('../src/appearanceTheme.js', import.meta.url), 'utf8')),
+    stripModuleSyntax(readFileSync(new URL('../src/mirrorToolMenu.js', import.meta.url), 'utf8')),
+].join('\n');
 class Element {
     constructor(tag) { this.tagName = tag; this.children = []; this.attrs = new Map(); this.events = new Map(); this.style = { setProperty() {} }; this.offsetHeight = 300; }
     get isConnected() { return this.tagName === 'body' || !!this.parentElement?.isConnected; }
