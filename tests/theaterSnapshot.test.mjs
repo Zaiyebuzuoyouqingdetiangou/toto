@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { collectTheaterSnapshots, theaterSnapshotPage, THEATER_SNAPSHOT_PAGE_SIZE, snapshotTitleFromHtml } from '../src/theaterSnapshot.js';
+import { collectTheaterSnapshots, theaterSnapshotPage, THEATER_SNAPSHOT_PAGE_SIZE, snapshotTitleFromHtml, snapshotUsesVirtualChat } from '../src/theaterSnapshot.js';
 
 const mirror = (title, body = '正文') => `<toto data-rabbit-mirror="true"><details><summary>【兔子镜：${title}】</summary><p>${body}</p></details></toto>`;
 
@@ -13,6 +13,13 @@ function chatOf(count) {
     }
     return chat;
 }
+
+test('virtual chat is handed to the host jump instead of scrolling the list', () => {
+    assert.equal(snapshotUsesVirtualChat({ chatLength: 100, mountedCount: 20, hasShowMore: false }), true);
+    assert.equal(snapshotUsesVirtualChat({ chatLength: 100, mountedCount: 20, hasShowMore: true }), false);
+    assert.equal(snapshotUsesVirtualChat({ chatLength: 20, mountedCount: 20, hasShowMore: false }), false);
+    assert.equal(snapshotUsesVirtualChat({ chatLength: 0, mountedCount: 0, hasShowMore: false }), false);
+});
 
 test('snapshot keeps assistant mirrors newest first and pages by ten', () => {
     const items = collectTheaterSnapshots(chatOf(50));
