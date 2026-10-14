@@ -1,25 +1,25 @@
 // Split from independentApi.js — connection.
 
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages } from '../hostCompatibility.js?rmv=1.68.40';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages } from '../hostCompatibility.js?rmv=1.68.41';
 import {
     WORLD_INFO_BOOK_NAME_MAX_CHARS,
     getSettings,
     normalizeIndependentContextExcludedTags,
     updateSettings,
-} from '../settings.js?rmv=1.68.40';
-import { fetchRabbitMirrorIndependentCompletion } from '../independentSecurityGuard.js?rmv=1.68.40';
-import { buildIndependentAdvancedCarrier, applyIndependentAdvancedExclusions } from '../advancedRequestOptions.js?rmv=1.68.40';
-import { describeBatchPlanFailure } from '../externalWorldBook/errors.js?rmv=1.68.40';
-import { describeRabbitMirrorStorageUsage, getCurrentChatKey } from '../storage.js?rmv=1.68.40';
-import { rememberIndependentTransportDiagnostic } from '../transportDiagnostics.js?rmv=1.68.40';
+} from '../settings.js?rmv=1.68.41';
+import { fetchRabbitMirrorIndependentCompletion } from '../independentSecurityGuard.js?rmv=1.68.41';
+import { buildIndependentAdvancedCarrier, applyIndependentAdvancedExclusions } from '../advancedRequestOptions.js?rmv=1.68.41';
+import { describeBatchPlanFailure } from '../externalWorldBook/errors.js?rmv=1.68.41';
+import { describeRabbitMirrorStorageUsage, getCurrentChatKey } from '../storage.js?rmv=1.68.41';
+import { rememberIndependentTransportDiagnostic } from '../transportDiagnostics.js?rmv=1.68.41';
 import {
     CONTEXT_TOTAL_BUDGET,
     CONTEXT_TRANSCRIPT_BUDGET,
     RUNTIME_VERSION,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.68.40';
-import { HOST_GENERATION_EVENT_HINT_MS, operationEpochForBase } from './flights.js?rmv=1.68.40';
+} from './runtime.js?rmv=1.68.41';
+import { HOST_GENERATION_EVENT_HINT_MS, operationEpochForBase } from './flights.js?rmv=1.68.41';
 import {
     OWNER_LOCK_STORE_KEY,
     apiProfileKey,
@@ -31,12 +31,12 @@ import {
     writeApiProfileStore,
     writePersistedOwner,
     writeStore,
-} from './persistence.js?rmv=1.68.40';
+} from './persistence.js?rmv=1.68.41';
 import {
     hasExplicitSourceReplacementEvidence,
     independentStoredHtmlLightRestorable,
     independentStoredHtmlRestorable,
-} from './geometry.js?rmv=1.68.40';
+} from './geometry.js?rmv=1.68.41';
 import {
     activeIndependentFlightForBase,
     messageSourceRevisions,
@@ -44,13 +44,13 @@ import {
     passiveObservedIdentity,
     runtimeMode,
     showIndependentUnsavedOutput,
-} from './mount.js?rmv=1.68.40';
+} from './mount.js?rmv=1.68.41';
 import {
     hostGenerationHintStartedAt,
     hostGenerationInProgress,
     writeHostGenerationHintStartedAt,
     writeHostGenerationInProgress,
-} from './lifecycle.js?rmv=1.68.40';
+} from './lifecycle.js?rmv=1.68.41';
 
 export const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 
@@ -1602,7 +1602,7 @@ export function liveVisibleIndependentMessageText(index,excludedTags=new Set()){
  try{
   const body=document.querySelector(`#chat .mes[mesid="${Number(index)}"] .mes_text, #chat [mesid="${Number(index)}"].mes .mes_text`);
   if(!body) return {available:false,text:''};
-  const parts=[]; const stack=[{node:body,depth:0}]; const filteredExcludedTags=new Set(); let examined=0; let chars=0; let filteredExcludedTagChars=0; let hiddenChars=0;
+  const parts=[]; const stack=[{node:body,depth:0}]; const filteredExcludedTags=new Set(); let examined=0; let chars=0; let filteredExcludedTagChars=0; let hiddenChars=0; let frameCount=0; let unreadableFrames=0;
   // 被样式藏起来的字数：正文读出来为空时，用来告诉用户是「美化把字藏了」而不是标签过滤。
   const countHidden=node=>{ if(hiddenChars<100000) hiddenChars+=String(node?.textContent||'').trim().length; };
   const blockedSelector='toto, [data-rabbit-mirror-external-source], [data-rabbit-mirror-tool-entry-host], [data-rm-image-region], [data-rm-image-portal], script, style, template, noscript, [hidden], [inert], [aria-hidden="true"], [aria-hidden="1"], .displayNone, .display-none, .hidden, .invisible, .sr-only, [class*="display-none"], [class*="display_none"]';
@@ -1658,12 +1658,13 @@ export function liveVisibleIndependentMessageText(index,excludedTags=new Set()){
    const frameStyle=styleOf(frame);
    if(String(frameStyle?.display||'').toLowerCase()==='none' || ['hidden','collapse'].includes(String(frameStyle?.visibility||'').toLowerCase())) continue;
    let inner=null;
+   frameCount+=1;
    try{ inner=frame.contentDocument?.body||null; }catch{ inner=null; }
-   if(inner) stack.push({node:inner,depth:1});
+   if(inner) stack.push({node:inner,depth:1}); else unreadableFrames+=1;
   }
   if(!stack.length) break;
   }
-  return {available:true,text:parts.join('').replace(/[ \t]+\n/g,'\n').replace(/\n[ \t]+/g,'\n').replace(/[ \t]{2,}/g,' ').replace(/\n{3,}/g,'\n\n').trim(),filteredExcludedTagChars,filteredExcludedTags:[...filteredExcludedTags],hiddenChars};
+  return {available:true,text:parts.join('').replace(/[ \t]+\n/g,'\n').replace(/\n[ \t]+/g,'\n').replace(/[ \t]{2,}/g,' ').replace(/\n{3,}/g,'\n\n').trim(),filteredExcludedTagChars,filteredExcludedTags:[...filteredExcludedTags],hiddenChars,frameCount,unreadableFrames};
  }catch(error){return {available:true,text:'',readError:String(error?.message||error||'').slice(0,120)};}
 }
 
@@ -1694,6 +1695,8 @@ ${String(message?.extra?.display_text||'')}`;
    return `${base}${why}到 设置 → 跳过指定标签，先取消勾选 ${names} 再重说${unclosed.length?'；或者把预设里这个标签改成成对的开闭标签':'（这个标签包着的就是正文，不该跳过）'}。`;
   }
  }
+ // 正文被美化改画进内嵌页面（前端卡、酒馆助手界面）而那个页面不让外面读：说清楚是读不到，不是没写完。
+ if(Number(live.unreadableFrames||0)>0) return `${base}这一层的正文被美化改画进了内嵌页面（前端卡、酒馆助手界面这类），这个内嵌页面不让外面读字，兔子镜读不到正文。换回能直接显示正文的美化，或者在美化里保留一份正常显示的正文。`;
  if(Number(live.hiddenChars||0)>0) return `${base}这一层的正文文字目前是隐藏的（美化让字先透明或藏起来，比如逐字显示、淡入动画还没放完）。等文字全部显示出来再重说；一直这样的话，是美化的样式把正文设成了不可见。`;
  if(String(message?.mes||'').trim()) return `${base}页面上这一层没有看得见的文字，正文可能被美化画进了读不到的内嵌页面或图片里。`;
  return `${base}这一层的正文本身是空的。`;
