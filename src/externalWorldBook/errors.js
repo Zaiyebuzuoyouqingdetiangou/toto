@@ -44,6 +44,12 @@ const BATCH_PLAN_MESSAGES = Object.freeze({
     BATCH_SETTINGS_TOO_LARGE: '抽取设置记录过长，无法建立本轮计划。',
     BATCH_CANDIDATE_POOL_EXHAUSTED: '当前可抽取的不同主题或展现形式不足以组成所选面数。',
     BATCH_SELECTION_INCOMPLETE: '某一面没有抽到完整的主题或展现形式。',
+    LOTTERY_WORLD_BOOK_EMPTY: '世界书抽签还没有选中任何条目。请在抽取设置里选中条目，或改回抽兔子镜已有条目。',
+    FACE_DRAW_EMPTY: '「每一面怎么呈现」里这一面没有选中任何常驻或追加条目。请至少选一项，或改用空白长文本。',
+    FACE_DRAW_REQUIRED_UNAVAILABLE: '「每一面怎么呈现」里这一面的常驻条目有已禁用、拉黑或重新分类的。请到该面设置里处理。',
+    FACE_DRAW_SELECTION_TOO_LARGE: '「每一面怎么呈现」里这一面的常驻条目超过 16 项。请减少同时使用的条目。',
+    FACE_DRAW_POOL_EXHAUSTED: '「每一面怎么呈现」里这一面可追加的条目不够要求的数量。请放宽范围、减少追加数量或解除黑名单。',
+    FACE_DRAW_CURSOR_UNAVAILABLE: '本机的逐面轮播进度无法读取。请检查浏览器本地存储权限；不会重置进度。',
     BATCH_RESAY_FACE_MISSING: '未找到要重说的原面记录。请回到目标兔子镜后重试。',
     BATCH_RESAY_RECIPE_INCOMPLETE: '原面的抽取记录不完整，无法按原选题重说；请重新抽取生成。',
     BATCH_RESAY_CUSTOM_RECIPE: '原面包含未入库的自定义点菜，无法仅凭抽取记录还原；请重新提供点菜并生成。',
@@ -92,8 +98,10 @@ export function describeExternalWorldBookPreflightFailure(error) {
     const code = Object.hasOwn(PREFLIGHT_MESSAGES, candidate) ? candidate : 'RABBIT_MIRROR_EXTERNAL_PREFLIGHT_UNKNOWN';
     if (code === 'MULTIFACE_PLAN_UNAVAILABLE' && typeof error?.reasonCode === 'string') {
         const reason = describeBatchPlanFailure(error.reasonCode);
+        // 只带面号，不带条目名或正文。
+        const face = Number.isSafeInteger(error?.faceIndex) && error.faceIndex >= 0 && error.faceIndex < 5 ? `第 ${error.faceIndex + 1} 面：` : '';
         return Object.freeze({ code, reasonCode: reason.code,
-            message: `本轮多面抽取计划无法建立：${reason.message} 诊断原因：${reason.code}。这不表示已保存的外部库损坏。` });
+            message: `本轮多面抽取计划无法建立：${face}${reason.message} 诊断原因：${reason.code}。这不表示已保存的外部库损坏。` });
     }
     return Object.freeze({ code, message: PREFLIGHT_MESSAGES[code] || '外部母本准备失败，原因尚未确认。请保留诊断码，不要删除已导入的库。' });
 }

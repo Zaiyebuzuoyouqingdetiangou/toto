@@ -89,6 +89,22 @@
 .rabbit-mirror-settings .inline-drawer-content {
     padding: 10px;
 }
+/* 兔子镜没启动时的兜底提示。脚本文件不全、新旧版本混装、语法错时，整组启动文件在运行前就作废，
+   酒馆当它加载成功，脚本里的自检也跑不起来，谁都不提示。这张样式表是酒馆单独加载的：
+   启动文件一跑就在 <html> 上打 data-rabbit-mirror-boot，没这个标记就在魔法棒菜单和扩展面板里留一句话。 */
+html:not([data-rabbit-mirror-boot]) #extensionsMenu::after,
+html:not([data-rabbit-mirror-boot]) #extensions_settings::before {
+    content: "兔子镜没有启动：安装文件不完整，或新旧版本的文件混在一起。到「管理扩展」里更新或重新安装一次兔子镜，再刷新网页；还不行就把浏览器控制台里的红字截图发给作者。";
+    display: block;
+    padding: 8px 12px;
+    font-size: 0.85em;
+    line-height: 1.5;
+    white-space: normal;
+    word-break: break-word;
+    opacity: 0.9;
+    color: inherit;
+}
+
 
 /* 1.3.69: settings drawer owns a stable scroll area instead of relying on the host pane.
    The blacklist made this drawer taller and exposed cases where the host scrollbar did not

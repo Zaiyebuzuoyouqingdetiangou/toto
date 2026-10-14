@@ -1,5 +1,5 @@
-import { FACE_DRAW_KINDS, FACE_DRAW_LABELS, faceDrawCategoryId } from './faceDrawRules.js?rmv=1.68.41';
-import { externalPoolItem } from './externalWorldBook/externalPool.js?rmv=1.68.41';
+import { FACE_DRAW_KINDS, FACE_DRAW_LABELS, faceDrawCategoryId } from './faceDrawRules.js?rmv=1.68.43';
+import { externalPoolItem } from './externalWorldBook/externalPool.js?rmv=1.68.43';
 
 // Compact, synchronous identity of ID-only settings/catalogs. Four independent
 // 32-bit accumulators avoid storing large imported names in every frozen plan.
@@ -18,6 +18,7 @@ function failure(faceIndex, kind, message, reasonCode) {
     const error = new Error(`第 ${faceIndex + 1} 面的${FACE_DRAW_LABELS[kind] || '抽取设置'}：${message} 本次尚未发送请求。`);
     error.code = 'MULTIFACE_PLAN_UNAVAILABLE';
     error.reasonCode = reasonCode;
+    error.faceIndex = faceIndex;
     error.requestCount = 0;
     throw error;
 }
