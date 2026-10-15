@@ -1,9 +1,9 @@
-import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.68.71';
+import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.68.72';
 // Split from outputSanitizer.js — markup.
 
-import { getSettings } from '../settings.js?rmv=1.68.71';
-import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.68.71';
-import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.68.71';
+import { getSettings } from '../settings.js?rmv=1.68.72';
+import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.68.72';
+import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.68.72';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     INTERACTION_HOME_ATTR,
@@ -15,7 +15,7 @@ import {
     clearMirrorTitleDisplayArtifacts,
     escapeRegExp,
     hashInteractionSignature,
-} from './runtime.js?rmv=1.68.71';
+} from './runtime.js?rmv=1.68.72';
 
 const TOTO_BLOCK_RE = /<toto\b[\s\S]*?<\/toto>/gi;
 
@@ -58,6 +58,7 @@ const RABBIT_MIRROR_INTERNAL_MODEL_ATTRS = new Set([
     'data-rm-press',
     'data-rm-pressing',
     'data-rm-press-release',
+    'data-rm-press-own-transition',
     REVERSIBLE_STYLE_BASELINE_ATTR,
     REVERSIBLE_TEXT_BASELINE_ATTR,
     RAW_SELF_MUTATION_HTML_BASELINE_ATTR,

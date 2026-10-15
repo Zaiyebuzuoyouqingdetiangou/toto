@@ -29,6 +29,21 @@ try {
         for (const [id, [expected]] of Object.entries(cases)) assert.equal(result[id], expected, `${width}px ${id}`);
         const panelStyle = await page.evaluate(() => { const el = document.querySelector('#transparentWrapper details > div'); const s = getComputedStyle(el); return [s.backgroundImage, s.paddingTop, s.boxShadow]; });
         assert.deepEqual(panelStyle, ['none', '0px', 'none']);
+        // 收着的一面：量不出高度，先不动；打开后再看一次就去掉。
+        const collapsed = await page.evaluate(() => {
+            const holder = document.createElement('section');
+            holder.innerHTML = document.querySelector('#transparentWrapper').innerHTML.replace(/<details open(="")?/, '<details');
+            document.body.append(holder);
+            const details = holder.querySelector('details');
+            details.querySelector('[data-rm-unwrapped-frame]')?.removeAttribute('data-rm-unwrapped-frame');
+            details.querySelector(':scope > div').setAttribute('style', 'background:linear-gradient(#f9f1f4,#f4e8ee);padding:20px 16px');
+            unwrapDecorativeFrame(holder);
+            const before = !!holder.querySelector('[data-rm-unwrapped-frame]');
+            details.open = true;
+            return new Promise(resolve => setTimeout(() => resolve([before, !!holder.querySelector('[data-rm-unwrapped-frame]')]), 50));
+        });
+        // Chromium 收着时也量得出高度，会直接去掉；老的 iPhone 浏览器量不出时，靠打开后再看一次。两种都要最后去掉。
+        assert.equal(collapsed[1], true);
         assert.deepEqual(errors, []);
         await page.close();
     }

@@ -133,8 +133,8 @@ export function pressKindFor(el, face) {
     const ownFilter = style.filter && style.filter !== 'none';
     // 本身带 transform（旋转、偏移）的不再位移，免得把模型摆好的角度冲掉；也自带滤镜时就不加了。
     if (style.transform && style.transform !== 'none') return ownFilter ? '' : 'tint';
-    // 很大的一块（整张卡片当按钮）只暗一下，不整块下沉。
-    if (rect.height > viewportHeight * 0.45 || rect.height > 320) return ownFilter ? '' : 'tint';
+    // 很大的一块（有时模型把整面都包进一个 label）：按哪里整面都会变暗，不加。
+    if (rect.height > viewportHeight * 0.45 || rect.height > 320) return '';
     if (ownFilter) return '';
     if (outer) return 'raised';
     const radius = parseFloat(style.borderTopLeftRadius) || 0;
@@ -164,9 +164,20 @@ function findPressable(target, face) {
     return node;
 }
 
+function hasOwnTransition(el) {
+    try {
+        const durations = String((el.ownerDocument.defaultView || globalThis).getComputedStyle(el).transitionDuration || '0s');
+        return durations.split(',').some(value => parseFloat(value) > 0);
+    } catch { return false; }
+}
+
 function press(el, face) {
     const kind = pressKindFor(el, face);
     if (!kind) return null;
+    // 要在套上按下样式之前看（先撤掉上一次还没结束的回弹），按下时的过渡是兔子镜自己的。
+    el.removeAttribute(RELEASING_ATTR);
+    if (hasOwnTransition(el)) el.setAttribute('data-rm-press-own-transition', 'true');
+    else el.removeAttribute('data-rm-press-own-transition');
     el.setAttribute(KIND_ATTR, kind);
     if (kind === 'raised') {
         let shadow = '';
@@ -183,11 +194,14 @@ function press(el, face) {
 function release(el) {
     if (!el?.hasAttribute?.(PRESSING_ATTR)) return;
     el.removeAttribute(PRESSING_ATTR);
-    el.setAttribute(RELEASING_ATTR, 'true');
+    // 松手后紧接着就是点击：模型常让被点的东西自己翻面、展开，写了自己的过渡时间（比如翻牌 0.6 秒）。
+    // 这时不能再套回弹的过渡，否则会把模型的翻面压成 0.16 秒；只在模型没写过渡时才加回弹。
+    if (!el.hasAttribute('data-rm-press-own-transition')) el.setAttribute(RELEASING_ATTR, 'true');
     const view = el.ownerDocument?.defaultView || globalThis;
     view.setTimeout(() => {
         if (el.hasAttribute(PRESSING_ATTR)) return;
         el.removeAttribute(RELEASING_ATTR);
+        el.removeAttribute('data-rm-press-own-transition');
         el.style.removeProperty(SHADOW_VAR);
         el.style.removeProperty(SINK_VAR);
         if (!el.getAttribute('style')?.trim()) el.removeAttribute('style');
@@ -212,11 +226,15 @@ export function installPressFeedback(root) {
         startX = event.clientX; startY = event.clientY;
     }, true);
     face.addEventListener('pointermove', event => {
-        // 手指一滑就是在滚动，不算按。
-        if (current && Math.hypot(event.clientX - startX, event.clientY - startY) > 10) end();
+        // 手指一滑就是在滚动，不算按（鼠标按住移动不是滚动，移出那个元素时才松开）。
+        if (current && event.pointerType !== 'mouse' && Math.hypot(event.clientX - startX, event.clientY - startY) > 10) end();
     }, true);
-    // 在这一面外松手时，离开这一面就会收到 pointerleave，一样松开。
-    for (const type of ['pointerup', 'pointercancel', 'pointerleave', 'lostpointercapture']) face.addEventListener(type, end, true);
+    for (const type of ['pointerup', 'pointercancel']) face.addEventListener(type, end, true);
+    // 手指或鼠标移出这一面就松开。pointerleave 在捕获阶段也会收到「按钮里的小字」这类子元素的离开，
+    // 那时手还按着，不能松；只认这一面自己的离开，以及离开被按的那个元素本身。
+    face.addEventListener('pointerleave', event => {
+        if (event.target === face || event.target === current) end();
+    }, true);
     // 键盘：回车、空格按住时也有同样的手感。
     face.addEventListener('keydown', event => {
         if ((event.key !== 'Enter' && event.key !== ' ') || event.repeat) return;
