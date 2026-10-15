@@ -1,4 +1,4 @@
-import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.68.83';
+import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.68.84';
 
 export function getWorldInfoNamesFromContext(context = globalThis.SillyTavern?.getContext?.()) {
     try {

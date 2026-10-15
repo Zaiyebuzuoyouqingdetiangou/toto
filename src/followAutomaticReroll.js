@@ -1,14 +1,14 @@
-import { getSettings } from './settings.js?rmv=1.68.83';
-import { getCurrentChatKey } from './storage.js?rmv=1.68.83';
-import { getRabbitMirrorRecipe } from './blacklist.js?rmv=1.68.83';
-import { readFollowPartialResult, saveFollowCompletedRetryResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=1.68.83';
-import { markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.68.83';
-import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.68.83';
-import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.68.83';
-import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=1.68.83';
-import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.68.83';
-import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=1.68.83';
-import { presentationModeFields } from './presentationMode.js?rmv=1.68.83';
+import { getSettings } from './settings.js?rmv=1.68.84';
+import { getCurrentChatKey } from './storage.js?rmv=1.68.84';
+import { getRabbitMirrorRecipe } from './blacklist.js?rmv=1.68.84';
+import { readFollowPartialResult, saveFollowCompletedRetryResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=1.68.84';
+import { markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.68.84';
+import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.68.84';
+import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=1.68.84';
+import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=1.68.84';
+import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=1.68.84';
+import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=1.68.84';
+import { presentationModeFields } from './presentationMode.js?rmv=1.68.84';
 import {
     automaticRerollEnabled,
     automaticRerollStatusText,
@@ -20,11 +20,11 @@ import {
     isLocalPreflightFailure,
     shouldAutomaticReroll,
     stallTimeoutError,
-} from './automaticReroll.js?rmv=1.68.83';
-import { mergeMissingIndependentFaces, missingIndexesFromIndependentResult, recipesCoverMissing } from './missingFaceMerge.js?rmv=1.68.83';
-import { inspectRabbitMirrorGenerationSource, getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.68.83';
-import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.68.83';
-import { followRetryCombo, recordFollowRetriedFaces } from './followRetryHistory.js?rmv=1.68.83';
+} from './automaticReroll.js?rmv=1.68.84';
+import { mergeMissingIndependentFaces, missingIndexesFromIndependentResult, recipesCoverMissing } from './missingFaceMerge.js?rmv=1.68.84';
+import { inspectRabbitMirrorGenerationSource, getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=1.68.84';
+import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.68.84';
+import { followRetryCombo, recordFollowRetriedFaces } from './followRetryHistory.js?rmv=1.68.84';
 
 const inFlight = new Set();
 const consumeCounts = new Map();
@@ -153,7 +153,7 @@ async function requestFollowMissingFaces(ctx, index, missingIndexes, faces, deps
     try {
         if (plan.selectedExternalIds.length) { materials = await getSelectedExternalEntries(plan.selectedExternalIds); assertCurrent(); }
         if (plan.appearanceReference.enabled) {
-            const appearance = await import('./appearanceReference.js?rmv=1.68.83');
+            const appearance = await import('./appearanceReference.js?rmv=1.68.84');
             assertCurrent();
             appearanceMaterial = await appearance.loadAppearanceReferenceMaterial(plan.appearanceReference.revision);
             assertCurrent();

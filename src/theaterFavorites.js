@@ -1,8 +1,8 @@
-import { expandHtmlDocumentCodeBlocks } from './outputSanitizer/markup.js?rmv=1.68.83';
-import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.68.83';
-import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=1.68.83';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.68.83';
-import { createFavoriteAtlasPanel } from './favoriteAtlasesUi.js?rmv=1.68.83';
+import { expandHtmlDocumentCodeBlocks } from './outputSanitizer/markup.js?rmv=1.68.84';
+import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.68.84';
+import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=1.68.84';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.68.84';
+import { createFavoriteAtlasPanel } from './favoriteAtlasesUi.js?rmv=1.68.84';
 const DB_NAME = 'rabbit_mirror_theater_favorites_v1';
 const STORE = 'favorites';
 const DB_VERSION = 1;
@@ -540,7 +540,7 @@ export async function removeDuplicateTheaterFavorites() {
     if (!remap.size) return 0;
     // 先把图鉴里指向要删那几份的格子改指向留下的那份，改成功了再删收藏；
     // 以前先删后改，图鉴改失败（比如另一个页面占着）时，那些格子就默默变空了。
-    const atlases = await import('./favoriteAtlases.js?rmv=1.68.83');
+    const atlases = await import('./favoriteAtlases.js?rmv=1.68.84');
     for (const atlas of await atlases.listFavoriteAtlases()) {
         let changed = false;
         const selections = {};
