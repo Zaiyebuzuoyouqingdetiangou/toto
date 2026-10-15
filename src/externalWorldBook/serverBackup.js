@@ -2,19 +2,36 @@
 // 本地数据库被清掉（例如宿主更新时清了网页数据）以后，可以从这份备份一键恢复。
 // 只在导入、启用、改分类、删除等用户操作之后才写；启动时不打开本地库，除非用户开着母本库抽签。
 // 不经过模型，不发到酒馆以外的地方。
-import { getHostRequestHeaders } from './capabilities.js?rmv=1.68.72';
-import { exportExternalLibraryBackup, importExternalLibraryBackup, parseExternalLibraryBackup, validateExternalLibraryBackup, EXTERNAL_BACKUP_FORMAT, EXTERNAL_BACKUP_VERSION, EXTERNAL_BACKUP_MAX_BYTES } from './backup.js?rmv=1.68.72';
-import { listExternalLibraries } from './store.js?rmv=1.68.72';
+import { getHostRequestHeaders } from './capabilities.js?rmv=1.68.73';
+import { exportExternalLibraryBackup, importExternalLibraryBackup, parseExternalLibraryBackup, validateExternalLibraryBackup, EXTERNAL_BACKUP_FORMAT, EXTERNAL_BACKUP_VERSION, EXTERNAL_BACKUP_MAX_BYTES } from './backup.js?rmv=1.68.73';
+import { listExternalLibraries } from './store.js?rmv=1.68.73';
 
 export const MOTHER_LIBRARY_SERVER_BACKUP_NAME = 'rabbitmirror-mother-libraries.json';
 const SAVE_DELAY_MS = 2500;
 const STATUS_KEY = 'rabbit_mirror_mother_library_server_backup:v1';
-// 在本机删了库、但还没存进酒馆备份时留一个记号：这时不自动恢复，免得把刚删的库又补回来。
+// 在本机删了、但还没存进酒馆备份的库编号，记在本机：刷新页面也不丢。
+// 下次保存时把它们从酒馆备份里一起去掉；没存上之前不自动恢复，恢复时也跳过它们，免得把刚删的库又补回来。
 const PENDING_DELETE_KEY = 'rabbit_mirror_mother_library_pending_delete:v1';
+
+function readPendingDeletes() {
+    try {
+        const raw = globalThis.localStorage?.getItem(PENDING_DELETE_KEY);
+        if (!raw) return { ids: [], unknown: false };
+        const value = JSON.parse(raw);
+        // 旧版只记了一个时间：知道删过、不知道删了哪本。
+        return Array.isArray(value) ? { ids: value.map(String), unknown: false } : { ids: [], unknown: true };
+    } catch { return { ids: [], unknown: true }; }
+}
+function writePendingDeletes(ids) {
+    try {
+        if (ids.length) globalThis.localStorage?.setItem(PENDING_DELETE_KEY, JSON.stringify([...new Set(ids)]));
+        else globalThis.localStorage?.removeItem(PENDING_DELETE_KEY);
+    } catch { /* ignore */ }
+}
 
 let timer = 0;
 let saving = null;
-let pendingDeleted = new Set();
+let pendingDeleted = new Set(readPendingDeletes().ids);
 let lastStatus = null;
 
 function readStatus() {
@@ -80,8 +97,10 @@ export async function saveMotherLibraryServerBackup({ deletedLibraryIds = [], fe
         libraries: [...local.libraries, ...kept] });
     await uploadBackup(merged, { fetchImpl, headerProvider });
     for (const id of deleted) pendingDeleted.delete(id);
-    if (!pendingDeleted.size) { try { globalThis.localStorage?.removeItem(PENDING_DELETE_KEY); } catch { /* ignore */ } }
-    const status = { ok: true, savedAt: merged.exportedAt, libraryCount: merged.libraries.length,
+    // 这次已经从备份里去掉的不再记；保存期间又删的留着下次。
+    writePendingDeletes(readPendingDeletes().ids.filter(id => !deleted.has(id) || pendingDeleted.has(id)));
+    // localCount：存的时候本机有几本。之后本机变空时，靠它分辨「被宿主清掉了」还是「自己删光的」。
+    const status = { ok: true, savedAt: merged.exportedAt, libraryCount: merged.libraries.length, localCount: local.libraries.length,
         entryCount: merged.libraries.reduce((sum, item) => sum + item.entries.length, 0), keptFromServer: kept.length };
     writeStatus(status);
     return status;
@@ -90,7 +109,7 @@ export async function saveMotherLibraryServerBackup({ deletedLibraryIds = [], fe
 /** 本地库发生用户操作后调用：稍等一会儿合并成一次保存，失败只记状态，不打扰正在做的事。 */
 export function scheduleMotherLibraryServerBackup({ deletedLibraryIds = [] } = {}) {
     for (const id of deletedLibraryIds) pendingDeleted.add(String(id));
-    if (deletedLibraryIds.length) { try { globalThis.localStorage?.setItem(PENDING_DELETE_KEY, String(Date.now())); } catch { /* ignore */ } }
+    if (deletedLibraryIds.length) writePendingDeletes([...readPendingDeletes().ids, ...deletedLibraryIds.map(String)]);
     if (typeof document === 'undefined' || typeof globalThis.fetch !== 'function') return;
     if (timer) clearTimeout(timer);
     timer = setTimeout(() => {
@@ -108,7 +127,10 @@ export function scheduleMotherLibraryServerBackup({ deletedLibraryIds = [] } = {
 
 /** 从酒馆备份恢复：只补本机没有的库，本机已有的保留不动（和导入迁移文件一样）。 */
 export async function restoreMotherLibrariesFromServerBackup({ fetchImpl } = {}) {
-    const backup = await readMotherLibraryServerBackup({ fetchImpl });
+    const read = await readMotherLibraryServerBackup({ fetchImpl });
+    // 本机刚删、还没从备份里去掉的库，不补回来。
+    const skip = new Set([...pendingDeleted, ...readPendingDeletes().ids]);
+    const backup = read ? { ...read, libraries: read.libraries.filter(item => !skip.has(String(item.library.libraryId))) } : null;
     if (!backup || !backup.libraries.length) return { importedLibraries: 0, importedEntries: 0, skippedLibraries: 0, empty: true };
     return importExternalLibraryBackup(backup, { skipServerBackup: true });
 }
@@ -127,10 +149,17 @@ export async function findRestorableMotherLibraryBackup({ fetchImpl } = {}) {
 let startupChecked = false;
 
 /** 能不能不问就自动恢复：上次存备份失败过、或者本机刚删过库还没存进备份，都改成先问。 */
+/**
+ * 能不能不问就自动恢复。本机的记录也一起没了（宿主清掉了网页数据、或是新设备）时自动；
+ * 记录还在时，只有「上次存备份时本机明明有库」才算被清掉了，自动补回。
+ * 上次存备份失败、刚删过库还没存上、上次存的时候本机就是空的（自己删光的，或别的设备的库）都改成先问。
+ */
 export function canAutoRestoreMotherLibraries() {
-    if (readStatus()?.ok === false) return false;
-    try { if (globalThis.localStorage?.getItem(PENDING_DELETE_KEY)) return false; } catch { /* ignore */ }
-    return true;
+    const pending = readPendingDeletes();
+    if (pending.unknown || pending.ids.length || pendingDeleted.size) return false;
+    const status = readStatus();
+    if (!status) return true;
+    return status.ok === true && Number(status.localCount) > 0;
 }
 
 function startupToast(kind, text, buttons = []) {
@@ -181,7 +210,7 @@ export async function checkMotherLibraryServerBackupOnStartup({ open, fetchImpl 
                 if (result.empty || !result.importedLibraries) return;
                 announceRestored(result);
                 const { toast, buttons: [look] } = startupToast('success',
-                    `本机的母本库被清空了，已自动从酒馆备份恢复：${restoredText(result)}`, ['去母本库看看']);
+                    `本机的母本库没有了（多半是宿主清掉了网页数据），已自动从酒馆备份恢复：${restoredText(result)}`, ['去母本库看看']);
                 look?.addEventListener('click', event => { event.stopPropagation(); try { globalThis.toastr?.clear?.(toast); } catch { /* ignore */ } openLibrary(); });
                 return { auto: true, result };
             } catch (error) {

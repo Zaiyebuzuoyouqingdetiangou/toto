@@ -29,6 +29,11 @@ const face = `<details open><summary id="title" style="cursor:pointer">标题</s
 <button id="nested" style="background:#cde;border:0;padding:14px 30px"><span id="nestedText" style="padding:2px">里面有小字</span></button>
 <button id="flip" style="background:#fdd;border:0;padding:10px;transition:transform .6s ease">会翻面的牌</button>
 <label id="huge" style="display:block;height:600px;background:#eef">整面都包进一个 label</label>
+<label id="inlineHuge"><div style="height:700px;background:#f7f7ff">默认 inline 的 label 包住整面</div></label>
+<button id="edgeRaised" style="background:#e9b;border:0;padding:10px 16px;box-shadow:0 5px 0 #a35">点最上边</button>
+<button id="edgeKnob" style="width:40px;height:40px;border-radius:50%;background:#bbb;border:0"></button>
+<button id="hideOnClick" style="background:#cde;border:0;padding:10px" data-hide>点了就藏起来</button>
+<button id="oklch" style="background:#eee;border:0;padding:10px;box-shadow:0 4px 8px oklch(40% .1 300 / .4)">oklch 阴影</button>
 </div></details>`;
 let browser, checks = 0;
 try {
@@ -46,6 +51,7 @@ try {
         const state = id => page.evaluate(id => { const el = document.getElementById(id); const s = getComputedStyle(el);
             return { kind: el.getAttribute('data-rm-press'), pressing: el.hasAttribute('data-rm-pressing'), transform: s.transform, shadow: s.boxShadow, filter: s.filter, opacity: s.opacity }; }, id);
         async function hold(id) {
+            await page.locator('#' + id).scrollIntoViewIfNeeded();
             const box = await page.locator('#' + id).boundingBox();
             await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
             await page.mouse.down(); await page.waitForTimeout(140);
@@ -96,6 +102,32 @@ try {
         });
         assert.deepEqual(touchReleased, [true, false]); checks++;
         await page.waitForTimeout(260);
+        // 点在按钮最边上：按下后它沉了、缩了，松手照样算点到它。
+        const clicks = await page.evaluate(() => { window.__clicks = []; for (const id of ['edgeRaised', 'edgeKnob']) document.getElementById(id).addEventListener('click', () => window.__clicks.push(id)); });
+        await page.locator('#edgeKnob').scrollIntoViewIfNeeded();
+        const er = await page.locator('#edgeRaised').boundingBox();
+        await page.mouse.move(er.x + er.width / 2, er.y + 1); await page.mouse.down(); await page.waitForTimeout(120); await page.mouse.up(); await page.waitForTimeout(250);
+        const ek = await page.locator('#edgeKnob').boundingBox();
+        await page.mouse.move(ek.x + 1, ek.y + ek.height / 2); await page.mouse.down(); await page.waitForTimeout(120); await page.mouse.up(); await page.waitForTimeout(250);
+        // 按下后把鼠标拖出去再松手：和平常一样不算点击。
+        await page.mouse.move(er.x + er.width / 2, er.y + er.height / 2); await page.mouse.down(); await page.waitForTimeout(80);
+        await page.mouse.move(er.x + er.width / 2, er.y + er.height + 60, { steps: 3 });
+        assert.equal((await state('edgeRaised')).pressing, false); await page.mouse.up(); await page.waitForTimeout(250);
+        assert.deepEqual(await page.evaluate(() => window.__clicks), ['edgeRaised', 'edgeKnob'], 'edge presses still click; dragging out does not'); checks += 2;
+        // 默认 inline 的 label 包住整面：不加（以前会被当成纯文字，整面变淡）。
+        r = await hold('inlineHuge'); assert.equal(r.during.kind, null); checks++;
+        // 键盘按回车、点击把按钮藏起来：焦点离开就松开，按钮再出现时不是按下的样子。
+        const stuck = await page.evaluate(async () => {
+            const el = document.getElementById('hideOnClick');
+            el.addEventListener('click', () => { el.style.display = 'none'; });
+            el.focus();
+            return true;
+        });
+        await page.keyboard.down('Enter'); await page.waitForTimeout(80); await page.keyboard.up('Enter');
+        const stuckAttr = await page.evaluate(() => { const el = document.getElementById('hideOnClick'); el.style.display = ''; return el.hasAttribute('data-rm-pressing'); });
+        assert.equal(stuck && stuckAttr, false, 'keyboard press does not stay stuck'); checks++;
+        // oklch 写的阴影读不准：改用平按钮的手感，不画出奇怪的描边。
+        r = await hold('oklch'); assert.equal(r.during.kind, 'flat'); checks++;
         // 整面包进一个 label 的：不加。
         r = await hold('huge'); assert.equal(r.during.kind, null, 'whole-face label gets no press'); checks++;
         // 模型自己写的 data-rm-pressing 不会被当成兔子镜的状态（清洗器会去掉，这里只确认样式只认兔子镜加的属性组合）。

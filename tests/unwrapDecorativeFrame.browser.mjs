@@ -15,6 +15,12 @@ const cases = {
     letterPaper: [false, panel('<p>第一段信</p><p>第二段信</p>')],
     paperWithText: [false, panel(`<div><p>信的抬头</p><p>${'很长的正文'.repeat(60)}</p></div>`)],
     twoCards: [false, panel('<div><div style="background:#fff;height:120px">卡一</div><div style="background:#fff;height:120px">卡二</div></div>')],
+    // 本体自己的外壳：手机黑边框、木相框里隔着透明包装是屏幕、画——外壳和里面差得远，不能去。
+    phoneMockup: [false, '<details open><summary>标题</summary><div style="background:#111;padding:14px;border-radius:36px"><div style="max-width:300px;margin:auto"><div style="background:#fff;height:400px;border-radius:24px">屏幕</div></div></div></details>'],
+    pictureFrame: [false, '<details open><summary>标题</summary><div style="background:linear-gradient(#7a4a2a,#5a3418);padding:18px"><div style="max-width:320px;margin:auto"><div style="background:#f3ead8;height:240px">画</div></div></div></details>'],
+    // 深色底上的玻璃卡：卡片是半透明的，靠外面的深底才看得清字。
+    glassOnDark: [false, '<details open><summary>标题</summary><div style="background:#1b1d2b;padding:18px;color:#fff"><div><div style="background:rgba(255,255,255,.06);height:240px;border:1px solid rgba(255,255,255,.2)">玻璃卡</div></div></div></details>'],
+    glassDirect: [false, '<details open><summary>标题</summary><div style="background:#1b1d2b;padding:18px;color:#fff"><div style="background:rgba(255,255,255,.06);height:240px">玻璃卡</div></div></details>'],
     scenery: [false, '<details open><summary>标题</summary><div data-rm-visual-scenery="true" style="background:#fde;padding:20px"><div style="background:#fff;height:200px">景</div></div></details>'],
 };
 const html = '<!doctype html><meta charset="utf-8"><body>' + Object.entries(cases).map(([id, [, face]]) => `<section id="${id}">${face}</section>`).join('')

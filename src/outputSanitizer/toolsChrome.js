@@ -1,27 +1,27 @@
-import { paletteRecipeFor } from '../paletteRecipes.js?rmv=1.68.72';
-import { recordInteractionMethods } from '../interactionMethodLedger.js?rmv=1.68.72';
-import { roleColorFaces, setRoleColorVariant, inspectRoleColorReadability } from '../roleColorVariants.js?rmv=1.68.72';
-import { interactionRecipesFor } from '../interactionRecipes.js?rmv=1.68.72';
+import { paletteRecipeFor } from '../paletteRecipes.js?rmv=1.68.73';
+import { recordInteractionMethods } from '../interactionMethodLedger.js?rmv=1.68.73';
+import { roleColorFaces, setRoleColorVariant, inspectRoleColorReadability } from '../roleColorVariants.js?rmv=1.68.73';
+import { interactionRecipesFor } from '../interactionRecipes.js?rmv=1.68.73';
 // Split from outputSanitizer.js — toolsChrome.
-import { trackMirrorAnimations, pruneMirrorAnimationVisibility } from '../animationVisibility.js?rmv=1.68.72';
-import { installPressFeedback } from './pressFeedback.js?rmv=1.68.72';
+import { trackMirrorAnimations, pruneMirrorAnimationVisibility } from '../animationVisibility.js?rmv=1.68.73';
+import { installPressFeedback } from './pressFeedback.js?rmv=1.68.73';
 
-import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.68.72';
-import { installMirrorUpdateMenuHook } from '../mirrorUpdateMenu.js?rmv=1.68.72';
-import { placeFacePager, facePagerDetails, removeFacePager, cleanupFacePagers } from '../facePagerPlacement.js?rmv=1.68.72';
-import { isTextPresentation } from '../presentationMode.js?rmv=1.68.72';
-import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.68.72';
-import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=1.68.72';
-import { getCurrentChatKey } from '../storage.js?rmv=1.68.72';
-import { getSanitizedRabbitMirrorFaceProof } from '../multifaceProof.js?rmv=1.68.72';
-import { bindRabbitMirrorAvatarRoot } from '../chatAvatars.js?rmv=1.68.72';
+import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.68.73';
+import { installMirrorUpdateMenuHook } from '../mirrorUpdateMenu.js?rmv=1.68.73';
+import { placeFacePager, facePagerDetails, removeFacePager, cleanupFacePagers } from '../facePagerPlacement.js?rmv=1.68.73';
+import { isTextPresentation } from '../presentationMode.js?rmv=1.68.73';
+import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.68.73';
+import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=1.68.73';
+import { getCurrentChatKey } from '../storage.js?rmv=1.68.73';
+import { getSanitizedRabbitMirrorFaceProof } from '../multifaceProof.js?rmv=1.68.73';
+import { bindRabbitMirrorAvatarRoot } from '../chatAvatars.js?rmv=1.68.73';
 import {
     captureTheaterFavoriteFromRoot,
     openTheaterFavoriteLibrary,
     toggleTheaterFavorite,
     isTheaterFavoriteHtml,
-} from '../theaterFavorites.js?rmv=1.68.72';
-import { FACE_SWIPE_FULL_MESSAGE, faceSwipeBarIntent, fallbackFaceSwipeView, multifaceFacePagerView } from '../swipeVersions.js?rmv=1.68.72';
+} from '../theaterFavorites.js?rmv=1.68.73';
+import { FACE_SWIPE_FULL_MESSAGE, faceSwipeBarIntent, fallbackFaceSwipeView, multifaceFacePagerView } from '../swipeVersions.js?rmv=1.68.73';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -30,8 +30,8 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from '../feedbackCat.js?rmv=1.68.72';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.68.72';
+} from '../feedbackCat.js?rmv=1.68.73';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.68.73';
 import {
     FAVORITE_MULTIPLIER_MAX,
     FAVORITE_MULTIPLIER_MIN,
@@ -53,7 +53,7 @@ import {
     setFavoriteMultiplier,
     toggleBlacklistItem,
     toggleFavoriteItem,
-} from '../blacklist.js?rmv=1.68.72';
+} from '../blacklist.js?rmv=1.68.73';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -77,11 +77,11 @@ import {
     isInsideChatMessage,
     isMaintenanceRabbitEnabled,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.68.72';
-import { getAvailableHostChat } from './scriptedInteractionRescue.js?rmv=1.68.72';
-import { ORPHAN_STATE_ATTR, attachOrphanStateToggle, isOrphanStateWired, rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.68.72';
-import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.68.72';
-import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=1.68.72';
+} from './runtime.js?rmv=1.68.73';
+import { getAvailableHostChat } from './scriptedInteractionRescue.js?rmv=1.68.73';
+import { ORPHAN_STATE_ATTR, attachOrphanStateToggle, isOrphanStateWired, rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.68.73';
+import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.68.73';
+import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=1.68.73';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     FEEDBACK_HISTORY_EVENT,
@@ -104,8 +104,8 @@ import {
     rabbitMirrorLanguageBalance,
     scheduleCurrentHighConfidenceTextRepair,
     setMaintenanceRabbitState,
-} from './diagnostics.js?rmv=1.68.72';
-import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=1.68.72';
+} from './diagnostics.js?rmv=1.68.73';
+import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=1.68.73';
 import {
     MAINTENANCE_FINDING_STAGE_LABELS,
     beginMaintenanceRepairRun,
@@ -125,19 +125,19 @@ import {
     runMaintenanceRevealClipRepair,
     runMaintenanceUserRepair,
     triggerDiagnosticForMaintenanceRoot,
-} from './maintenanceInspect.js?rmv=1.68.72';
+} from './maintenanceInspect.js?rmv=1.68.73';
 import {
     getRabbitMirrorFacePosition,
     installMaintenanceHorizontalClipOpenRescue,
     repairLegacyMaintenanceMobileStateRows,
-} from './layoutRescue.js?rmv=1.68.72';
+} from './layoutRescue.js?rmv=1.68.73';
 import {
     getMessageIndexFromMirrorNode,
     installMaintenanceAutoSafeOpenPatrol,
     installManagedRabbitMirrorTools,
     pruneMaintenanceAutoSafeOpenBindings,
     scheduleMaintenanceAutoSafeForRoot,
-} from './lifecycle.js?rmv=1.68.72';
+} from './lifecycle.js?rmv=1.68.73';
 
 installMirrorUpdateMenuHook();
 
@@ -680,7 +680,7 @@ function rabbitMirrorExternalGenerationNotice(root, kind = 'maintenance') {
 const RESAY_CHOOSER_ATTR = 'data-rm-resay-chooser';
 
 const RESAY_PICK_MAX = Object.freeze({ theme: 3, format: 2 });
-const EXTERNAL_STORE_MODULE = '../externalWorldBook/store.js?rmv=1.68.72';
+const EXTERNAL_STORE_MODULE = '../externalWorldBook/store.js?rmv=1.68.73';
 
 // 纯点菜里的题库点选。默认只显示已选项；点「浏览」才展开列表。
 // 来源可切换：内置题库（按大组浏览 / 搜索）或已导入并启用的母本库。
@@ -2479,7 +2479,7 @@ function beginHostWorkTiming(name){
 }
 
 function loadMirrorImageModule() {
-    if (!mirrorImageModule) mirrorImageModule = import('../imageUi.js?rmv=1.68.72').catch(error => { mirrorImageModule = null; throw error; });
+    if (!mirrorImageModule) mirrorImageModule = import('../imageUi.js?rmv=1.68.73').catch(error => { mirrorImageModule = null; throw error; });
     return mirrorImageModule;
 }
 
@@ -2788,16 +2788,16 @@ function installUnifiedMirrorTools(root) {
     if (!summary) return;
     if (isTheaterFavoriteSurface(root)) {
         stripTheaterFavoriteTitleChrome(root);
-        void import('../materialTexture.js?rmv=1.68.72').then(module => { if (root.isConnected) module.applyMaterialTextures(root); }).catch(() => {});
+        void import('../materialTexture.js?rmv=1.68.73').then(module => { if (root.isConnected) module.applyMaterialTextures(root); }).catch(() => {});
         void loadMirrorImageModule().then(module => { if (root.isConnected) return module.mountMirrorImage(root); }).catch(() => {});
         // 收藏里只把当时画好、存在本机的内置生图放回去，从不发生图请求。
         if (root.querySelector?.('[data-rm-draw-frame]')) {
-            void import('../builtinImage.js?rmv=1.68.72').then(module => { if (root.isConnected) module.restoreSavedBuiltinImages(root); }).catch(() => {});
+            void import('../builtinImage.js?rmv=1.68.73').then(module => { if (root.isConnected) module.restoreSavedBuiltinImages(root); }).catch(() => {});
         }
         return;
     }
     // 材质纹理（实验性）：开着就把模型写了描述的地方铺上；关着就撤掉。
-    void import('../materialTexture.js?rmv=1.68.72').then(module => { if (root.isConnected) module.applyMaterialTextures(root); }).catch(() => {});
+    void import('../materialTexture.js?rmv=1.68.73').then(module => { if (root.isConnected) module.applyMaterialTextures(root); }).catch(() => {});
     const host = ensureRabbitMirrorToolHost(summary);
     const actions = [];
     if (roleColorFaces(root).length) {
@@ -2816,7 +2816,7 @@ function installUnifiedMirrorTools(root) {
     actions.push({ id: 'resay', label: '🔄 重说', run: (_event, opener) => openRabbitMirrorResayChooser(root, opener) });
     if (mirrorFaceCanContinue(root)) {
         actions.push({ id: 'continue', label: '✍️ 续写', run: () => {
-            void import('../independentApi/mount.js?rmv=1.68.72').then(module => module.continueIndependentLongText(root))
+            void import('../independentApi/mount.js?rmv=1.68.73').then(module => module.continueIndependentLongText(root))
                 .catch(() => globalThis.toastr?.error?.('续写没有写上，原来的正文还在。'));
         } });
     }
@@ -2839,11 +2839,11 @@ function installUnifiedMirrorTools(root) {
             .catch(() => globalThis.toastr?.warning?.('生图面板未能打开，请重新打开后再试。'));
     } });
     actions.push({ id: 'theater-snapshot', label: '📷 快拍', run: () => {
-        void import('../theaterSnapshot.js?rmv=1.68.72').then(module => module.openTheaterSnapshot())
+        void import('../theaterSnapshot.js?rmv=1.68.73').then(module => module.openTheaterSnapshot())
             .catch(error => globalThis.toastr?.warning?.(String(error?.message || '快拍无法打开。')));
     } });
     actions.push({ id: 'theater-favorite-library', label: '📖 收藏夹', run: () => {
-        void import('../independentApi.js?rmv=1.68.72').then(module =>
+        void import('../independentApi.js?rmv=1.68.73').then(module =>
             openTheaterFavoriteLibrary((container, record) => module.hydrateIndependentFavoriteHtml(container, record)))
             .catch(error => globalThis.toastr?.warning?.(String(error?.message || '无法打开收藏夹。')));
     } });
@@ -2858,7 +2858,7 @@ function installUnifiedMirrorTools(root) {
     if (root.querySelector?.('[data-rm-draw-frame]')) {
         // 开着内置生图：补画缺的图；关着：只把本机已存的图放回去，不请求生图。
         const drawNew = getSettings().builtinImageEnabled === true;
-        void import('../builtinImage.js?rmv=1.68.72').then(module => {
+        void import('../builtinImage.js?rmv=1.68.73').then(module => {
             if (!root.isConnected) return;
             if (drawNew) module.fillBuiltinImageFrames(root);
             else module.restoreSavedBuiltinImages(root);
@@ -3149,26 +3149,60 @@ function isOpaqueBackground(style) {
     return (image && image !== 'none') || !/rgba\(\s*0,\s*0,\s*0,\s*0\s*\)|transparent/i.test(color);
 }
 
-// 框里装的那一件是不是真正的本体：它自己有底色就是；
+// 读出一个元素底色里的颜色（纯色和渐变里的每一站），只认 rgb/rgba；读不出返回空数组。
+function backgroundColors(style) {
+    const text = `${style.backgroundImage || ''} ${style.backgroundColor || ''}`;
+    return [...text.matchAll(/rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:\s*[,/]\s*([\d.]+%?))?\s*\)/g)].map(match => {
+        const alphaText = match[4];
+        const alpha = alphaText === undefined ? 1 : alphaText.endsWith('%') ? parseFloat(alphaText) / 100 : parseFloat(alphaText);
+        return { r: +match[1], g: +match[2], b: +match[3], a: alpha };
+    }).filter(color => color.a > 0);
+}
+
+function relativeLuminance({ r, g, b }) {
+    const channel = value => { const v = value / 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+    return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+}
+
+// 本体要是「实心」的：半透明的玻璃卡、蒙层靠外面那层深底才看得清，外层不能去。
+function solidBody(style) {
+    const image = String(style.backgroundImage || 'none');
+    if (image && image !== 'none' && !/gradient/i.test(image)) return true;
+    const colors = backgroundColors(style);
+    if (!colors.length) return isOpaqueBackground(style) && !/rgba|\/|oklch|color\(/i.test(String(style.backgroundColor || ''));
+    return colors.some(color => color.a >= 0.85);
+}
+
+// 框里装的那一件是不是真正的本体，是的话返回它和隔了几层：它自己有实心底色就是；
 // 它是一层透明的包装（常见：限宽居中的 div）时，往里再看最多两层——里面有一件有底色的、
-// 占了这层高度的大部分，其余只是隐藏的开关或一两行说明，也算。看不出来就不动。
+// 占了这层高度的大部分，其余只是隐藏的开关或一两行说明，也算。看不出来就返回 null。
 function framedBodyInside(node, depth = 0) {
     let style;
-    try { style = getComputedStyle(node); } catch { return false; }
-    if (isOpaqueBackground(style)) return true;
-    if (depth >= 2) return false;
+    try { style = getComputedStyle(node); } catch { return null; }
+    if (isOpaqueBackground(style)) return solidBody(style) ? { body: node, depth, style } : null;
+    if (depth >= 2) return null;
     const visible = [...node.children].filter(child => {
         if (/^(STYLE|SCRIPT|TEMPLATE)$/.test(child.tagName)) return false;
         try { return getComputedStyle(child).display !== 'none'; } catch { return false; }
     });
-    if (!visible.length) return false;
+    if (!visible.length) return null;
     const height = node.getBoundingClientRect?.().height || 0;
-    if (height <= 0) return false;
+    if (height <= 0) return null;
     const sized = visible.map(child => ({ child, height: child.getBoundingClientRect?.().height || 0 }))
         .sort((a, b) => b.height - a.height);
     const main = sized[0];
-    if (main.height < height * 0.7) return false;
+    if (main.height < height * 0.7) return null;
     return framedBodyInside(main.child, depth + 1);
+}
+
+// 隔着透明包装找到的本体，外层只有在「和本体同一色调、只是深浅差一点」时才算垫底面板。
+// 手机的黑边框、相框的木框和里面的屏幕、画差得很远，那是本体自己的外壳，不能去。
+function sameToneBacking(outerStyle, bodyStyle) {
+    const outer = backgroundColors(outerStyle), body = backgroundColors(bodyStyle);
+    if (!outer.length || !body.length) return false;
+    const average = colors => colors.reduce((sum, color) => sum + relativeLuminance(color), 0) / colors.length;
+    const [light, dark] = [average(outer), average(body)].sort((x, y) => y - x);
+    return (light + 0.05) / (dark + 0.05) < 1.6;
 }
 
 function unwrapDecorativeFrame(root) {
@@ -3186,7 +3220,9 @@ function unwrapDecorativeFrame(root) {
     const padding = ['paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft'].map(key => parseFloat(outer[key]) || 0);
     if (padding.filter(value => value >= 8).length < 2) return;
     if (!isOpaqueBackground(outer)) return;
-    if (!framedBodyInside(kids[0])) {
+    const found = framedBodyInside(kids[0]);
+    if (found && found.depth > 0 && !sameToneBacking(outer, found.style)) return;
+    if (!found) {
         // 透过透明包装找本体要量高度；这一面还收着（量不出高度）时，等它打开再看一次。
         if (!details.open && !wrapper.getBoundingClientRect().height && !UNWRAP_RETRY.has(details)) {
             UNWRAP_RETRY.add(details);

@@ -65,7 +65,9 @@ export function pressedShadow(computedShadow) {
     if (text && text !== 'none') {
         for (const part of splitTopLevel(text)) {
             if (/\binset\b/.test(part)) { out.push(part); continue; }
-            const color = (part.match(/(rgba?\([^)]*\)|#[0-9a-f]{3,8}|\b[a-z]+\b(?=\s|$))/i) || [''])[0];
+            // 只认 rgb/rgba 写的颜色（浏览器读出来多半是这种）；oklch、color() 之类读不准，交给调用方改用「平按钮」手感。
+            const color = (part.match(/rgba?\([^)]*\)/i) || [''])[0];
+            if (!color) return null;
             const numbers = part.replace(color, ' ').match(/-?\d*\.?\d+px|\b0\b/g) || [];
             const [x = 0, y = 0, blur = 0, spread = 0] = numbers.map(value => parseFloat(value) || 0);
             // 只有不模糊的实心阴影才是「按键的厚度」，决定沉多少；柔和的环境阴影只跟着收短。
@@ -126,6 +128,8 @@ export function pressKindFor(el, face) {
     const rect = el.getBoundingClientRect();
     if (!rect.width || !rect.height) return '';
     const viewportHeight = view.innerHeight || 800;
+    // 很大的一块（有时模型把整面都包进一个 label）：按哪里整面都会变，不加。要在判断「纯文字」之前看。
+    if (rect.height > viewportHeight * 0.45 || rect.height > 320) return '';
     const filled = !transparentColor(style.backgroundColor) || (style.backgroundImage && style.backgroundImage !== 'none');
     const bordered = ['Top', 'Right', 'Bottom', 'Left'].some(side => parseFloat(style[`border${side}Width`]) > 0 && !transparentColor(style[`border${side}Color`]));
     const outer = hasOuterShadow(style.boxShadow);
@@ -133,8 +137,6 @@ export function pressKindFor(el, face) {
     const ownFilter = style.filter && style.filter !== 'none';
     // 本身带 transform（旋转、偏移）的不再位移，免得把模型摆好的角度冲掉；也自带滤镜时就不加了。
     if (style.transform && style.transform !== 'none') return ownFilter ? '' : 'tint';
-    // 很大的一块（有时模型把整面都包进一个 label）：按哪里整面都会变暗，不加。
-    if (rect.height > viewportHeight * 0.45 || rect.height > 320) return '';
     if (ownFilter) return '';
     if (outer) return 'raised';
     const radius = parseFloat(style.borderTopLeftRadius) || 0;
@@ -183,8 +185,10 @@ function press(el, face) {
         let shadow = '';
         try { shadow = (el.ownerDocument.defaultView || globalThis).getComputedStyle(el).boxShadow; } catch { shadow = ''; }
         const pressed = pressedShadow(shadow);
-        el.style.setProperty(SHADOW_VAR, pressed.shadow);
-        el.style.setProperty(SINK_VAR, pressed.sink);
+        if (pressed) {
+            el.style.setProperty(SHADOW_VAR, pressed.shadow);
+            el.style.setProperty(SINK_VAR, pressed.sink);
+        } else el.setAttribute(KIND_ATTR, 'flat');
     }
     el.removeAttribute(RELEASING_ATTR);
     el.setAttribute(PRESSING_ATTR, 'true');
@@ -215,25 +219,45 @@ export function installPressFeedback(root) {
     BOUND.add(face);
     const doc = face.ownerDocument;
     ensureStyle(doc);
-    let current = null, startX = 0, startY = 0;
-    const end = () => { if (current) release(current); current = null; };
+    let current = null, startX = 0, startY = 0, box = null, captured = null;
+    const end = () => {
+        if (captured) { try { captured.el.releasePointerCapture(captured.id); } catch { /* 已经松开 */ } captured = null; }
+        if (current) release(current);
+        current = null; box = null;
+    };
     face.addEventListener('pointerdown', event => {
         if (event.button > 0) return;
         end();
         const el = findPressable(event.target, face);
         if (!el) return;
+        // 记下按下前的位置：按下后元素会沉一点、缩一点，点在最边上时指针可能已经不在它身上了，
+        // 松手就点不到它。按住期间用鼠标「抓住」它，只要还在原来的范围里松手，点击照样算它的。
+        box = el.getBoundingClientRect();
         current = press(el, face);
+        if (!current) { box = null; return; }
         startX = event.clientX; startY = event.clientY;
+        if (event.pointerType === 'mouse') {
+            try { el.setPointerCapture(event.pointerId); captured = { el, id: event.pointerId }; } catch { captured = null; }
+        }
     }, true);
     face.addEventListener('pointermove', event => {
-        // 手指一滑就是在滚动，不算按（鼠标按住移动不是滚动，移出那个元素时才松开）。
-        if (current && event.pointerType !== 'mouse' && Math.hypot(event.clientX - startX, event.clientY - startY) > 10) end();
+        if (!current) return;
+        // 手指一滑就是在滚动，不算按。
+        if (event.pointerType !== 'mouse') {
+            if (Math.hypot(event.clientX - startX, event.clientY - startY) > 10) end();
+            return;
+        }
+        // 鼠标移出按下前的范围：松开，也放开抓住，在外面松手就和平常一样不算点击。
+        if (box && (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom)) end();
     }, true);
+    // 键盘按住时点击处理把焦点移走了（比如按钮被藏起来），收不到松键：焦点一离开就松开。
+    // 只看被按的那个元素自己失去焦点；点新按钮时旧按钮失焦不算（那时新按钮正按着）。
+    face.addEventListener('focusout', event => { if (current && event.target === current) end(); }, true);
     for (const type of ['pointerup', 'pointercancel']) face.addEventListener(type, end, true);
     // 手指或鼠标移出这一面就松开。pointerleave 在捕获阶段也会收到「按钮里的小字」这类子元素的离开，
     // 那时手还按着，不能松；只认这一面自己的离开，以及离开被按的那个元素本身。
     face.addEventListener('pointerleave', event => {
-        if (event.target === face || event.target === current) end();
+        if (event.target === face || (event.target === current && !captured)) end();
     }, true);
     // 键盘：回车、空格按住时也有同样的手感。
     face.addEventListener('keydown', event => {

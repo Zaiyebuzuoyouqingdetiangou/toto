@@ -10,6 +10,7 @@ function getSettings() {
 
 export const TEXTURE_ATTR = 'data-rm-texture';
 const ON_ATTR = 'data-rm-texture-on';
+const POS_ATTR = 'data-rm-texture-pos';
 const STYLE_ID = 'rabbit-mirror-material-texture-style';
 const RECENT_KEY = 'rabbitMirrorMaterialTextureRecent';
 const RECENT_LIMIT = 6;
@@ -112,7 +113,13 @@ export function applyMaterialTextures(root, settings = getSettings()) {
     const scope = root?.querySelectorAll ? root : null;
     if (!scope) return 0;
     if (!materialTextureEnabled(settings)) {
-        for (const el of scope.querySelectorAll(`[${ON_ATTR}]`)) el.removeAttribute(ON_ATTR);
+        // 关掉开关：撤掉纹理，也撤掉当时为它加的定位和变量，回到模型原来的样子。
+        for (const el of scope.querySelectorAll(`[${ON_ATTR}]`)) {
+            el.removeAttribute(ON_ATTR);
+            el.style.removeProperty('--rm-texture-image');
+            el.style.removeProperty('--rm-texture-size');
+            if (el.hasAttribute(POS_ATTR)) { el.style.removeProperty('position'); el.removeAttribute(POS_ATTR); }
+        }
         return 0;
     }
     const nodes = [...scope.querySelectorAll(`[${TEXTURE_ATTR}]`)];
@@ -131,7 +138,7 @@ export function applyMaterialTextures(root, settings = getSettings()) {
         const view = doc.defaultView || globalThis;
         let position = '';
         try { position = view.getComputedStyle(el).position; } catch { position = ''; }
-        if (!position || position === 'static') el.style.position = 'relative';
+        if (!position || position === 'static') { el.style.position = 'relative'; el.setAttribute(POS_ATTR, 'true'); }
         el.style.setProperty('--rm-texture-image', image);
         el.style.setProperty('--rm-texture-size', size);
         el.setAttribute(ON_ATTR, which);
