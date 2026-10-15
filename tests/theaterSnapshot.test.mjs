@@ -93,3 +93,16 @@ test('ordinary replies that merely mention 生成失败 or 面未完成 are not 
     assert.deepEqual(items.map(item => item.mesid), [5]);
     assert.equal(items[0].failed, true);
 });
+
+test('resaid floors list every stored version right after the current one', async () => {
+    const { expandSnapshotVersions } = await import('../src/theaterSnapshot.js');
+    const face = title => `<details><summary>【兔子镜：${title}】</summary><p>x</p></details>`;
+    const items = [
+        { mesid: 9, swipe: 0, kind: 'ready', html: face('当前'), title: '当前', failed: false },
+        { mesid: 7, swipe: 0, kind: 'ready', html: face('单版'), title: '单版', failed: false },
+    ];
+    const versions = new Map([['9:0', { 0: { currentIndex: 1, versions: [{ html: face('第一版') }, { html: face('当前') }, { html: face('第三版') }] } }]]);
+    const out = expandSnapshotVersions(items, versions);
+    assert.deepEqual(out.map(item => [item.mesid, item.title, item.versionLabel || '']),
+        [[9, '当前', '第 2/3 版'], [9, '【兔子镜：第一版】', '第 1/3 版'], [9, '【兔子镜：第三版】', '第 3/3 版'], [7, '单版', '']]);
+});
