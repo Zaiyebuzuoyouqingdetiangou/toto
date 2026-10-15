@@ -1820,3 +1820,126 @@ dialog[data-rm-theater-favorite-library] {
 
 /* 1.68.33：表情包功能已移除；之前生成的小剧场里留下的空表情图不显示。 */
 toto img[data-rm-sticker]:not([src]), [data-rabbit-mirror-external-source] img[data-rm-sticker]:not([src]) { display: none !important; }
+
+/* 手机或触屏时由 ui.js 把三个设置弹窗换成 <dialog>；电脑宽屏不换，仍是原来的 div。
+   样式只看是不是已经换成了 dialog，不再看当前窗口宽度：窄窗口打开后再拉宽，样式不会掉。 */
+dialog.rabbit-mirror-top-layer-modal {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  width: 100dvw !important;
+  min-width: 100vw !important;
+  min-width: 100dvw !important;
+  max-width: none !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  min-height: 100vh !important;
+  min-height: 100dvh !important;
+  max-height: none !important;
+  margin: 0 !important;
+  border: 0 !important;
+  padding-top: max(24px, calc(env(safe-area-inset-top) + 14px)) !important;
+  padding-right: max(12px, calc(env(safe-area-inset-right) + 8px)) !important;
+  padding-bottom: max(24px, calc(env(safe-area-inset-bottom) + 14px)) !important;
+  padding-left: max(12px, calc(env(safe-area-inset-left) + 8px)) !important;
+  box-sizing: border-box !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+  background: rgba(8, 10, 14, .62) !important;
+  color: var(--SmartThemeBodyColor, #ddd) !important;
+  pointer-events: auto !important;
+  transform: none !important;
+  contain: none !important;
+  touch-action: none !important;
+}
+dialog.rabbit-mirror-top-layer-modal::backdrop {
+  background: transparent !important;
+}
+dialog.rabbit-mirror-top-layer-modal[open] {
+  display: flex !important;
+}
+dialog.rabbit-mirror-top-layer-modal:not([open]) {
+  display: none !important;
+}
+dialog.rabbit-mirror-top-layer-modal .menu_button {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  height: auto !important;
+  aspect-ratio: auto !important;
+  writing-mode: horizontal-tb !important;
+  text-orientation: mixed !important;
+  white-space: nowrap !important;
+  word-break: keep-all !important;
+  overflow-wrap: normal !important;
+  line-height: 1.35 !important;
+}
+dialog.rabbit-mirror-top-layer-modal#rh_advanced_modal #rh_advanced_modal_card,
+dialog.rabbit-mirror-top-layer-modal#rh_world_info_prompt_modal > div,
+dialog.rabbit-mirror-top-layer-modal#rh_independent_tag_filter_modal > div {
+  background: var(--SmartThemeBlurTintColor, #202226) !important;
+  color: var(--SmartThemeBodyColor, #ddd) !important;
+}
+dialog.rabbit-mirror-top-layer-modal#rh_advanced_modal #rh_advanced_modal_card {
+  width: min(760px, calc(100dvw - 24px)) !important;
+  max-width: 100% !important;
+  max-height: calc(100dvh - 76px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+dialog.rabbit-mirror-top-layer-modal#rh_advanced_modal .rh-advanced-choice {
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  min-height: 66px !important;
+  height: auto !important;
+  aspect-ratio: auto !important;
+  padding: 11px 12px !important;
+  text-align: left !important;
+  writing-mode: horizontal-tb !important;
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: anywhere !important;
+}
+dialog.rabbit-mirror-top-layer-modal#rh_advanced_modal .rh-advanced-choice > span {
+  display: block !important;
+  width: auto !important;
+  min-width: 0 !important;
+  writing-mode: horizontal-tb !important;
+  text-orientation: mixed !important;
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: anywhere !important;
+}
+dialog.rabbit-mirror-top-layer-modal #rh_advanced_scroll {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior: contain !important;
+  touch-action: pan-y !important;
+}
+dialog.rabbit-mirror-top-layer-modal #rh_advanced_menu {
+  width: 100% !important;
+  min-width: 0 !important;
+  grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr)) !important;
+}
+@media (max-width: 520px) {
+  dialog.rabbit-mirror-top-layer-modal #rh_advanced_menu {
+    grid-template-columns: 1fr !important;
+  }
+  dialog.rabbit-mirror-top-layer-modal #rh_advanced_modal_header {
+    grid-template-columns: auto minmax(0, 1fr) 38px !important;
+  }
+}
+
+/* 快拍「跳回原楼」的闪烁：快拍关掉后楼层还在闪，所以样式放在这里而不是快拍自己的样式里。 */
+@keyframes rm-snapshot-flash{0%{outline:3px solid var(--rh-primary,#ce729c)}100%{outline:3px solid transparent}}
+#chat [data-rm-snapshot-flash="true"]{animation:rm-snapshot-flash 1.4s ease;outline-offset:4px}

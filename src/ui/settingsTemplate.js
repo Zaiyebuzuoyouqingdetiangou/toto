@@ -1,8 +1,8 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.68.45';
-import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.68.45';
-import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.68.45';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.68.62';
+import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.68.62';
+import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.68.62';
 
 export function buildRabbitMirrorSettingsDialogHtml() {
     return `
@@ -118,6 +118,12 @@ export function buildRabbitMirrorSettingsDialogHtml() {
               </div>
               <div style="opacity:.78;font-size:11px;line-height:1.45;margin-top:5px;">仅“酒馆 Connection Profile 一键配置”需要 SillyTavern 1.18.0 及以上版本；旧版仍可使用兔子镜及下方“手动 OpenAI 兼容接口”。</div>
               <button id="rh_independent_models" class="menu_button" type="button" style="margin-top:8px;">从此酒馆连接拉取模型</button>
+              <div id="rh_independent_profile_selector_hotfix" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;margin-top:8px;align-items:center;">
+                <label for="rh_independent_profile_select" style="grid-column:1/-1;font-size:11px;font-weight:700;opacity:.78;">连接配置</label>
+                <select id="rh_independent_profile_select" class="text_pole" style="min-width:0;width:100%;" aria-label="兔子镜独立 API Connection Manager 配置"></select>
+                <button id="rh_independent_profile_refresh" class="menu_button" type="button" style="min-width:38px;padding:4px 8px;">↻</button>
+                <div style="grid-column:1/-1;opacity:.62;font-size:10px;line-height:1.4;">可直接指定任意可复用的 Chat Completion 配置；切换后只保存 profile ID / 模型，不复制酒馆 Secrets。</div>
+              </div>
             </div>
             <div class="flex-container" style="gap:7px;flex-wrap:wrap;">
               <button id="rh_independent_test" class="menu_button" type="button">测试连接</button>

@@ -1,4 +1,4 @@
-import { classifyPaletteSamples } from './paletteObservation.js?rmv=1.68.45';
+import { classifyPaletteSamples } from './paletteObservation.js?rmv=1.68.62';
 
 const HUE_FAMILY_LABELS = Object.freeze({
     red: '红色族', orange: '橙色族', yellow: '黄色族', green: '绿色族', cyan: '青色族',
@@ -188,12 +188,13 @@ export function softLightVisualGenerationRule(settings, { avoidFamilies = [], fa
     const faceLabel = index => `第 ${numbered ? faceNumbers[index] : index + 1} 面`;
     const mainLine = !mains.length ? ''
         : mains.length === 1 && !numbered
-            ? `\n  - 本面主色族：${SOFT_FAMILY_LABELS[mains[0].family]}色族${mains[0].color ? `（如${mains[0].color}）` : ''}。背景和主承载在这一色族里取柔和的浅色，深浅自定；别的颜色只作点缀。${yellowNote}不要默认落到雾绿、雾紫、雾蓝。形式自带的标志色优先。`
-            : `\n  - ${mains.length === 1 ? '主色族' : '各面主色族'}：${mains.map((item, index) => `${faceLabel(index)}${SOFT_FAMILY_LABELS[item.family]}色族${item.color ? `（如${item.color}）` : ''}`).join('，')}。背景和主承载在${mains.length === 1 ? '这一' : '各自'}色族里取柔和的浅色，深浅自定；别的颜色只作点缀。${yellowNote}不要默认落到雾绿、雾紫、雾蓝。形式自带的标志色优先。`;
+            ? `\n  - 本面主色族：${SOFT_FAMILY_LABELS[mains[0].family]}色族${mains[0].color ? `（如${mains[0].color}）` : ''}。背景、承载面和主体都在这一色族里取，按下面的三层深浅拉开；别的颜色只作点缀。${yellowNote}不要默认落到雾绿、雾紫、雾蓝。形式自带的标志色优先。`
+            : `\n  - ${mains.length === 1 ? '主色族' : '各面主色族'}：${mains.map((item, index) => `${faceLabel(index)}${SOFT_FAMILY_LABELS[item.family]}色族${item.color ? `（如${item.color}）` : ''}`).join('，')}。背景、承载面和主体都在${mains.length === 1 ? '这一' : '各自'}色族里取，按下面的三层深浅拉开；别的颜色只作点缀。${yellowNote}不要默认落到雾绿、雾紫、雾蓝。形式自带的标志色优先。`;
     return `柔和浅色模式【本次所有新生成镜面，包括长文本】：
   - 本轮风格：${style}——${desc}。例如${examples.join('、')}，只是举例，按本面题材在这种风格里自己定色。${mainLine}
-  - 背景与主要承载面用柔和的浅色；米黄、米白、奶油色、羊皮纸黄这类暖黄纸色不作主背景和主承载，信纸、日记、旧书这类纸张也换成其他柔和的颜色表现纸感；不用纯白，也不用高饱和的大面积色块或深色铺底；主体部件可用中等明度的颜色。
-  - 主次靠明暗与冷暖拉开，不靠鲜艳；正文用同色相的深灰或深褐，对比清楚；可操作的部件用一处稍深或稍暖的同调强调色，一眼看出能点。
+  - 三层深浅必须拉开，不让背景和承载面浅成同一片：背景取本风格颜色里中等偏浅的一档，不接近白色；承载面（纸、卡片、屏幕等放内容的那一层）比背景浅，接近同色调的白，从背景里浮出来；主体物件和可操作部件比背景深一到两档，仍在同一色调里，一眼能分出来。
+  - 米黄、米白、奶油色、羊皮纸黄这类暖黄纸色不作背景和承载面，信纸、日记、旧书这类纸张也换成其他柔和的颜色表现纸感；不用纯白，也不用高饱和的大面积色块或深色铺底。
+  - 层次靠深浅与冷暖，不靠鲜艳；正文用同色相的深灰或深褐，对比清楚；可操作的部件用一处稍深或稍暖的同调强调色，一眼看出能点。
   - 仍须强避重：在柔和浅色范围内换色族与冷暖，不改艳也不改暗；形式自带的标志色保留，调柔后使用。长文本只做阅读配色，不添加交互或动画。`;
 }
 
