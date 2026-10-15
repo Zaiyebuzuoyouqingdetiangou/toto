@@ -1,9 +1,9 @@
-import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.68.70';
+import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.68.71';
 // Split from outputSanitizer.js — markup.
 
-import { getSettings } from '../settings.js?rmv=1.68.70';
-import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.68.70';
-import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.68.70';
+import { getSettings } from '../settings.js?rmv=1.68.71';
+import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.68.71';
+import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.68.71';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     INTERACTION_HOME_ATTR,
@@ -15,7 +15,7 @@ import {
     clearMirrorTitleDisplayArtifacts,
     escapeRegExp,
     hashInteractionSignature,
-} from './runtime.js?rmv=1.68.70';
+} from './runtime.js?rmv=1.68.71';
 
 const TOTO_BLOCK_RE = /<toto\b[\s\S]*?<\/toto>/gi;
 
@@ -55,6 +55,9 @@ const RABBIT_MIRROR_INTERNAL_MODEL_ATTRS = new Set([
     'data-rm-avatar-rendered',
     // 材质纹理是否已铺上由兔子镜自己标；模型只写 data-rm-texture 描述。
     'data-rm-texture-on',
+    'data-rm-press',
+    'data-rm-pressing',
+    'data-rm-press-release',
     REVERSIBLE_STYLE_BASELINE_ATTR,
     REVERSIBLE_TEXT_BASELINE_ATTR,
     RAW_SELF_MUTATION_HTML_BASELINE_ATTR,
