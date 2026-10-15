@@ -473,11 +473,11 @@ function updateThumbScale(grid) {
 
 export async function openTheaterSnapshot() {
     const [{ applyAppearanceTheme }, api, favorites, persistence, runtime] = await Promise.all([
-        import('./appearanceTheme.js?rmv=1.68.61'),
-        import('./independentApi.js?rmv=1.68.61'),
-        import('./theaterFavorites.js?rmv=1.68.61'),
-        import('./independentApi/persistence.js?rmv=1.68.61'),
-        import('./independentApi/runtime.js?rmv=1.68.61'),
+        import('./appearanceTheme.js?rmv=1.68.62'),
+        import('./independentApi.js?rmv=1.68.62'),
+        import('./theaterFavorites.js?rmv=1.68.62'),
+        import('./independentApi/persistence.js?rmv=1.68.62'),
+        import('./independentApi/runtime.js?rmv=1.68.62'),
     ]);
     const ctx = runtime.getContext?.() || {};
     const chat = Array.isArray(ctx.chat) ? ctx.chat : [];
@@ -491,16 +491,16 @@ export async function openTheaterSnapshot() {
     let imageChatKey = '';
     let restoreBuiltinImages = () => 0;
     try {
-        const connection = await import('./independentApi/connection.js?rmv=1.68.61');
+        const connection = await import('./independentApi/connection.js?rmv=1.68.62');
         imageChatKey = String(connection.chatKey(ctx) || '');
     } catch { imageChatKey = ''; }
     try {
-        const images = await import('./builtinImage.js?rmv=1.68.61');
+        const images = await import('./builtinImage.js?rmv=1.68.62');
         if (typeof images.restoreSavedBuiltinImages === 'function') restoreBuiltinImages = images.restoreSavedBuiltinImages;
     } catch { /* 没有生图模块时图框保持原样 */ }
     let sessionErrors = [];
     try {
-        const flights = await import('./independentApi/flights.js?rmv=1.68.61');
+        const flights = await import('./independentApi/flights.js?rmv=1.68.62');
         const key = imageChatKey;
         const seen = new Set(domErrors.map(row => row.mesid));
         for (const failure of flights.automaticFailureStops?.values?.() || []) {
@@ -521,7 +521,7 @@ export async function openTheaterSnapshot() {
     const items = collectTheaterSnapshots(chat, { persisted, domErrors: [...domErrors, ...sessionErrors] });
     let expandBlocks = value => String(value || '');
     try {
-        const markup = await import('./outputSanitizer/markup.js?rmv=1.68.61');
+        const markup = await import('./outputSanitizer/markup.js?rmv=1.68.62');
         if (typeof markup.expandHtmlDocumentCodeBlocks === 'function') expandBlocks = markup.expandHtmlDocumentCodeBlocks;
     } catch { /* 缩略图用原文 */ }
     closeTheaterSnapshot();
