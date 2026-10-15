@@ -16,6 +16,6 @@ test('material texture rule reaches the built prompt only when the switch is on'
     const on = build({ materialTextureEnabled: true }, 'on');
     const off = build({ materialTextureEnabled: false }, 'off');
     if (!/<toto/.test(on)) return; // 这次抽签没有 HTML 面时不判
-    assert.match(on, /data-rm-texture="粗细 方向 形状 浓淡"/);
+    assert.match(on, /data-rm-texture="材料 粗细 方向 形状 浓淡"/);
     assert.doesNotMatch(off, /data-rm-texture/);
 });

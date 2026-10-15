@@ -1,5 +1,5 @@
 // 材质纹理（实验性，默认关闭）。
-// 模型在某个元素上写 data-rm-texture="粗细 方向 形状 浓淡"，兔子镜按描述现场生成一层很淡的明暗纹理，
+// 模型在某个元素上写 data-rm-texture="材料 粗细 方向 形状 浓淡"，兔子镜按描述现场生成一层很淡的明暗纹理，
 // 叠在它自己的底色上、文字下面。不放任何图片：纹理是浏览器按几个数字算出来的，颜色仍是模型写的底色。
 // 关着时什么都不做；打开后也只在模型自己写了描述的地方出现。
 // 不直接引入 settings.js（它依赖酒馆宿主模块）：开关直接读兔子镜存在酒馆里的那份设置。
@@ -26,11 +26,14 @@ export function materialTextureEnabled(settings = getSettings()) {
     return settings?.materialTextureEnabled === true;
 }
 
-/** 「细 横 条纹 淡」→ { grain, direction, shape, strength }；认不出的词用默认值，顺序不限。 */
+/** 「旧宣纸 细 横 条纹 淡」→ { material, grain, direction, shape, strength }；认不出的词用默认值，顺序不限。
+ *  材料是模型自己写的词（这东西在现实里是什么做的），不查表、不参与画纹理，只用来记「近几面用过什么」。 */
 export function parseTextureDescriptor(text) {
     const words = String(text || '').split(/[\s,，、;；/|]+/).map(word => word.trim()).filter(Boolean);
     const pick = (list, fallback) => words.find(word => list.includes(word)) || fallback;
+    const known = new Set([...Object.keys(GRAIN), ...DIRECTIONS, ...SHAPES, ...Object.keys(RELIEF)]);
     return {
+        material: words.filter(word => !known.has(word)).join('').slice(0, 12),
         grain: pick(Object.keys(GRAIN), '中'),
         direction: pick(DIRECTIONS, '无'),
         shape: pick(SHAPES, '点'),
@@ -40,7 +43,13 @@ export function parseTextureDescriptor(text) {
 
 export function textureDescriptorText(descriptor) {
     const value = descriptor || {};
-    return [value.grain, value.direction, value.shape, value.strength].filter(Boolean).join(' ');
+    return [value.material, value.grain, value.direction, value.shape, value.strength].filter(Boolean).join(' ');
+}
+
+/** 「近几面用过」只提材料名；没写材料名的旧记录退回提整条描述。 */
+function materialName(descriptorText) {
+    const value = parseTextureDescriptor(descriptorText);
+    return value.material || [value.grain, value.direction, value.shape, value.strength].join(' ');
 }
 
 function hashSeed(text) {
@@ -50,7 +59,8 @@ function hashSeed(text) {
 }
 
 // 起伏高度（surfaceScale）和整层叠加强度。按设计资料：纸约 2，粗墙约 20；这里只做物件表面，取得很低。
-const RELIEF = { 很淡: [1.0, 0.45], 淡: [1.6, 0.62], 明显: [2.6, 0.8] };
+// 叠加强度以前压得太轻（0.45／0.62／0.8，浅底再乘 0.38），用户的反馈是「看不见」；现在提到能看见的程度。
+const RELIEF = { 很淡: [1.0, 0.65], 淡: [1.6, 0.85], 明显: [2.6, 1.0] };
 // 先把高度图揉软一点再打光：纤维（毛毡、绒布）最软，斑块（皮面、石面）次之，点和条纹只去掉锯齿。
 const SOFTEN = { 纤维: 0.9, 斑块: 0.6, 点: 0.25, 条纹: 0.3 };
 
@@ -114,7 +124,10 @@ function ensureStyle(doc) {
         // soft-light：中灰不改底色，亮处提亮、暗处压暗。边缘一圈很淡的暗影（东西有厚度、转角背光），
         // 左上边缘一点亮（光从左上来）；大小按元素尺寸算，小按钮不会整块变暗。
         + 'mix-blend-mode:var(--rm-texture-blend,soft-light);opacity:var(--rm-texture-opacity,.6);'
-        + 'box-shadow:inset 0 0 var(--rm-texture-ao,16px) rgba(0,0,0,.32),inset 1px 1px calc(var(--rm-texture-ao,16px) / 3) rgba(255,255,255,.28)}';
+        // 再描一道亮边、一道暗边表示厚度：颜色和粗细从元素自己算（--rm-texture-edge-*），没算出来时退回原来那道很淡的白边。
+        + 'box-shadow:inset 0 0 var(--rm-texture-ao,16px) rgba(0,0,0,.32),inset 1px 1px calc(var(--rm-texture-ao,16px) / 3) rgba(255,255,255,.28),'
+        + 'inset var(--rm-texture-edge-size,0px) var(--rm-texture-edge-size,0px) 0 var(--rm-texture-edge-light,transparent),'
+        + 'inset calc(var(--rm-texture-edge-size,0px) * -1) calc(var(--rm-texture-edge-size,0px) * -1) 0 var(--rm-texture-edge-shade,transparent)}';
     doc.head.append(style);
 }
 
@@ -137,7 +150,7 @@ function remember(descriptorText, faceKey) {
 export function recentMaterialTextures() {
     try {
         const list = JSON.parse(globalThis.localStorage?.getItem(RECENT_KEY) || '[]');
-        return Array.isArray(list) ? [...new Set(list.map(row => String(row?.d || '')).filter(Boolean))].slice(-3) : [];
+        return Array.isArray(list) ? [...new Set(list.map(row => materialName(String(row?.d || ''))).filter(Boolean))].slice(-3) : [];
     } catch { return []; }
 }
 
@@ -157,8 +170,9 @@ function alphaOf(match) {
 function baseTone(el, view) {
     let style = null;
     try { style = (view || globalThis).getComputedStyle(el); } catch { return { opaque: false, luminance: 0 }; }
+    const rgbOf = match => [Number(match[1]), Number(match[2]), Number(match[3])];
     const solid = [...String(style?.backgroundColor || '').matchAll(RGB)][0];
-    if (solid && alphaOf(solid) >= 0.5) return { opaque: alphaOf(solid) >= 0.85, luminance: luminanceOf(solid) };
+    if (solid && alphaOf(solid) >= 0.5) return { opaque: alphaOf(solid) >= 0.85, luminance: luminanceOf(solid), rgb: rgbOf(solid) };
     const image = String(style?.backgroundImage || '');
     if (!/gradient\(/i.test(image) || /url\(/i.test(image)) return { opaque: false, luminance: 0 };
     const stops = [...image.matchAll(RGB)];
@@ -166,12 +180,31 @@ function baseTone(el, view) {
     const opaque = stops.every(stop => alphaOf(stop) >= 0.85);
     const visible = stops.filter(stop => alphaOf(stop) >= 0.5);
     if (!visible.length) return { opaque: false, luminance: 0 };
-    return { opaque, luminance: visible.reduce((sum, stop) => sum + luminanceOf(stop), 0) / visible.length };
+    const rgb = [0, 1, 2].map(i => Math.round(visible.reduce((sum, stop) => sum + rgbOf(stop)[i], 0) / visible.length));
+    return { opaque, luminance: visible.reduce((sum, stop) => sum + luminanceOf(stop), 0) / visible.length, rgb };
+}
+
+// 厚度：用它自己的颜色描一道亮边（左上，受光）和一道暗边（右下，背光），粗细按它的大小。
+// 不用固定的白和黑，两块底色不同的东西描出来就不一样。模型自己写了 inset 亮暗边的，让开不碰。
+function edgeVars(el, view, tone) {
+    let style;
+    try { style = view.getComputedStyle(el); } catch { return null; }
+    if (!tone?.rgb || /inset/.test(style.boxShadow || '')) return null;
+    const rect = el.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+    const mix = (color, target, amount) => color.map((value, i) => Math.round(value + (target[i] - value) * amount));
+    const light = tone.luminance > 0.6;
+    const bright = mix(tone.rgb, [255, 255, 255], light ? 0.7 : 0.45);
+    const dark = mix(tone.rgb, [0, 0, 0], light ? 0.18 : 0.35);
+    return {
+        size: `${Math.max(1, Math.min(3, Math.round(Math.min(rect.width, rect.height) * 0.008)))}px`,
+        light: `rgba(${bright.join(',')},.55)`,
+        shade: `rgba(${dark.join(',')},.45)`,
+    };
 }
 
 function lightBase(el, view) {
-    const tone = baseTone(el, view);
-    return tone.luminance > 0.72;
+    return baseTone(el, view).luminance > 0.72;
 }
 
 // 写了纹理的那块，大半被里面自己有底色的板子盖住时（比如整面底板上压着几块卡片），
@@ -225,7 +258,8 @@ function safeToLayer(el, view) {
 // 在一个元素自己的 ::before/::after 里铺纹理（排在内容下面）。铺上了返回 true。
 function layTexture(el, descriptor, seedText, view, { spread = false } = {}) {
     // 底色很浅（接近白）时叠加看不出来：改成只压暗面的正片叠底。
-    const shadowOnly = lightBase(el, view);
+    const tone = baseTone(el, view);
+    const shadowOnly = tone.luminance > 0.72;
     const { image, size, opacity } = textureImage(descriptor, seedText, { shadowOnly });
     const which = pseudoFree(el, 'before') ? 'before' : pseudoFree(el, 'after') ? 'after' : '';
     if (!which) return false; // 模型自己两个伪元素都用了：不抢，宁可不铺。
@@ -238,12 +272,14 @@ function layTexture(el, descriptor, seedText, view, { spread = false } = {}) {
     }
     el.style.setProperty('--rm-texture-image', image);
     el.style.setProperty('--rm-texture-size', size);
-    // 正片叠底比柔光重得多：浅底上只用三成左右的力度。
-    el.style.setProperty('--rm-texture-opacity', shadowOnly ? String(Math.round(Number(opacity) * 0.38 * 100) / 100) : opacity);
+    // 正片叠底比柔光重：浅底上用六成左右的力度。
+    el.style.setProperty('--rm-texture-opacity', shadowOnly ? String(Math.round(Number(opacity) * 0.6 * 100) / 100) : opacity);
     if (shadowOnly) el.style.setProperty('--rm-texture-blend', 'multiply'); else el.style.removeProperty('--rm-texture-blend');
     let ao = 16;
     try { const rect = el.getBoundingClientRect(); if (rect.width && rect.height) ao = Math.max(5, Math.min(22, Math.round(Math.min(rect.width, rect.height) * 0.14))); } catch { /* 用默认 */ }
     el.style.setProperty('--rm-texture-ao', `${ao}px`);
+    const edge = edgeVars(el, view, tone);
+    for (const [key, value] of Object.entries(edge || {})) el.style.setProperty(`--rm-texture-edge-${key}`, value);
     el.setAttribute(ON_ATTR, which);
     if (spread) el.setAttribute(SPREAD_ATTR, 'true');
     return true;
@@ -287,6 +323,7 @@ export function applyMaterialTextures(root, settings = getSettings()) {
             el.style.removeProperty('--rm-texture-opacity');
             el.style.removeProperty('--rm-texture-ao');
             el.style.removeProperty('--rm-texture-blend');
+            for (const key of ['size', 'light', 'shade']) el.style.removeProperty(`--rm-texture-edge-${key}`);
             if (el.hasAttribute(POS_ATTR)) { el.style.removeProperty('position'); el.removeAttribute(POS_ATTR); }
             el.removeAttribute(SPREAD_ATTR);
         }
@@ -322,5 +359,6 @@ export function materialTextureRule(settings = getSettings()) {
     const recent = recentMaterialTextures();
     // 开关是用户主动打开的：每个 HTML 面都写一处，不给「不加」的退路（以前写「可选」，模型几乎都跳过）。
     // 防模板化靠两点：质感从这一面的实物推出来；近几面用过的提醒换一种。不列举材质名，免得模型只在列出的几种里挑。
-    return `材质纹理（已开启）：每个 HTML 面都在一个元素上写 ${TEXTURE_ATTR}="粗细 方向 形状 浓淡"，兔子镜会按描述叠一层很淡的纹理：粗细写细／中／粗，方向写无／横／竖／斜，形状写点／纤维／条纹／斑块，浓淡写很淡／淡／明显。写在这一面最像实物的主体或承载面上，质感从它在现实里是什么做的推出来；一面只写一处，不写在整面最外层背景上；底色、边缘、光泽和厚度仍由你写。${recent.length ? `近几面用过：${recent.join('；')}，这一面换一种。` : ''}`;
+    // 第一个词是材料名：先决定这东西是什么做的，再填粗细方向，免得只填表、不想材料。
+    return `材质纹理（已开启）：每个 HTML 面都在一个元素上写 ${TEXTURE_ATTR}="材料 粗细 方向 形状 浓淡"，兔子镜会按描述叠一层纹理：材料写它在现实里是什么做的（一两个词，你自己定），粗细写细／中／粗，方向写无／横／竖／斜，形状写点／纤维／条纹／斑块，浓淡写很淡／淡／明显。写在这一面最像实物的主体或承载面上；一面只写一处，不写在整面最外层背景上；底色、边缘、光泽和厚度仍由你写。${recent.length ? `近几面用过：${recent.join('；')}，这一面换一种材料。` : ''}`;
 }

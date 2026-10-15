@@ -2,7 +2,7 @@
 // 1. 单选组加了镜面前缀后，样式里的 input[name="hair"] 也跟着改名，「选哪项就变样子」能生效；
 //    别的控件还在用同一个原名时不改；^= 这类部分匹配不动；重复处理不会套两层前缀。
 // 2. 写了纹理的底板大半被自己有底色的板子盖住时，同一种纹理也铺到这些板子上；
-//    渐变浅底也按浅底处理；板子里有伸出去的弹出物、或这一面还收着时不乱铺；关掉开关全部撤掉。
+//    厚度亮暗边从各自底色算，模型自己写了 inset 边的让开；渐变浅底也按浅底处理；板子里有伸出去的弹出物、或这一面还收着时不乱铺；关掉开关全部撤掉。
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { readFile } from 'node:fs/promises';
@@ -94,7 +94,7 @@ async function texture(html, { toggle = false } = {}) {
         const n = mt.applyMaterialTextures(d, { materialTextureEnabled: true });
         if (toggle) { d.open = true; await new Promise(r => setTimeout(r, 250)); }
         const base = d.querySelector('[data-rm-texture]');
-        const sections = [...d.querySelectorAll('section')].map(s => ({ on: s.getAttribute('data-rm-texture-on'), blend: s.style.getPropertyValue('--rm-texture-blend'), pos: s.style.position }));
+        const sections = [...d.querySelectorAll('section')].map(s => ({ on: s.getAttribute('data-rm-texture-on'), blend: s.style.getPropertyValue('--rm-texture-blend'), pos: s.style.position, edge: s.style.getPropertyValue('--rm-texture-edge-light'), edgeSize: s.style.getPropertyValue('--rm-texture-edge-size') }));
         return { n, baseBlend: base.style.getPropertyValue('--rm-texture-blend'), done: base.getAttribute('data-rm-texture-spread-done'), sections };
     }, { html, toggle });
 }
@@ -104,6 +104,14 @@ assert.equal(t.n, 1, 'only the authored element counts as written'); checks++;
 assert.deepEqual(t.sections.map(s => s.on), ['before', 'before'], 'covering panels get the same texture'); checks++;
 assert.deepEqual(t.sections.map(s => s.blend), ['multiply', ''], 'light panel uses shadow-only, mid-tone panel soft-light'); checks++;
 assert.equal(t.done, '2'); checks++;
+// 厚度的亮边从各自的底色算：两块颜色不同的板子，亮边颜色不同；粗细按大小算出来。
+assert.ok(t.sections[0].edge && t.sections[1].edge && t.sections[0].edge !== t.sections[1].edge, 'edge light derives from each panel\'s own color'); checks++;
+assert.match(t.sections[0].edgeSize, /^[123]px$/); checks++;
+// 模型自己写了 inset 亮暗边的板子：兔子镜不再描边（让开），纹理照铺。
+t = await texture(textureFace(panel('#eef4fa', 'box-shadow:inset 2px 2px 0 #fff,inset -2px -2px 0 #889') + panel('#eef4fa')));
+assert.deepEqual(t.sections.map(s => s.on), ['before', 'before']); checks++;
+assert.equal(t.sections[0].edge, '', 'panel with its own inset bevel keeps it'); checks++;
+assert.notEqual(t.sections[1].edge, ''); checks++;
 // 浅色渐变底（没有纯色底）也按浅底处理。
 t = await page.evaluate(() => {
     document.body.innerHTML = '<details open><summary>x</summary><div data-rm-texture="细 无 点 淡" style="height:120px;background:linear-gradient(#fbfcff,#eef2f8)">字</div></details>';
@@ -134,7 +142,7 @@ const off = await page.evaluate(() => {
     const d = document.querySelector('details');
     mt.applyMaterialTextures(d, { materialTextureEnabled: false });
     return d.querySelectorAll('[data-rm-texture-on], [data-rm-texture-spread], [data-rm-texture-spread-done], [data-rm-texture-pos]').length
-        + [...d.querySelectorAll('*')].filter(el => el.style.getPropertyValue('--rm-texture-image')).length;
+        + [...d.querySelectorAll('*')].filter(el => el.style.getPropertyValue('--rm-texture-image') || el.style.getPropertyValue('--rm-texture-edge-light')).length;
 });
 assert.equal(off, 0, 'switching off removes spread textures too'); checks++;
 

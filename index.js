@@ -1,14 +1,14 @@
 // 启动自检必须是第一个 import：后面任何启动文件加载时抛错，它都已经在听了。
-import { markRabbitMirrorBootstrapEvaluated, runRabbitMirrorStartupStep, reportRabbitMirrorStartupFailure, setRabbitMirrorStartupOpener, setRabbitMirrorOpenCommandAvailable, checkRabbitMirrorEntryVisibility, checkRabbitMirrorDuplicateInstall, disposeRabbitMirrorStartupGuard } from './src/startupGuard.js?rmv=1.68.80';
-import { unregisterRabbitMirrorOpenCommand, watchRabbitMirrorOpenCommand } from './src/openCommand.js?rmv=1.68.80';
-import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt, destroyIndependentGenerationIntentBridge, initIndependentGenerationIntentBridge, prewarmRabbitMirrorGenerationRuntime } from './src/injector.js?rmv=1.68.80';
-import { clearLastCombo } from './src/storage.js?rmv=1.68.80';
-import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.68.80';
-import { initPromptHistoryStrip, destroyPromptHistoryStrip } from './src/promptHistoryStrip.js?rmv=1.68.80';
-import { getSettings, updateSettings } from './src/settings.js?rmv=1.68.80';
-import { installRabbitMirrorPublicAPI } from './src/publicApi.js?rmv=1.68.80';
-import { initRabbitMirrorIndependentSecurityGuard, destroyRabbitMirrorIndependentSecurityGuard } from './src/independentSecurityGuard.js?rmv=1.68.80';
-import { initRabbitMirrorHostCompatibility, isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface, getRabbitMirrorEarlyBootstrap, getRabbitMirrorHostCompatibilityStatus } from './src/hostCompatibility.js?rmv=1.68.80';
+import { markRabbitMirrorBootstrapEvaluated, runRabbitMirrorStartupStep, reportRabbitMirrorStartupFailure, setRabbitMirrorStartupOpener, setRabbitMirrorOpenCommandAvailable, checkRabbitMirrorEntryVisibility, checkRabbitMirrorDuplicateInstall, disposeRabbitMirrorStartupGuard } from './src/startupGuard.js?rmv=1.68.81';
+import { unregisterRabbitMirrorOpenCommand, watchRabbitMirrorOpenCommand } from './src/openCommand.js?rmv=1.68.81';
+import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt, destroyIndependentGenerationIntentBridge, initIndependentGenerationIntentBridge, prewarmRabbitMirrorGenerationRuntime } from './src/injector.js?rmv=1.68.81';
+import { clearLastCombo } from './src/storage.js?rmv=1.68.81';
+import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.68.81';
+import { initPromptHistoryStrip, destroyPromptHistoryStrip } from './src/promptHistoryStrip.js?rmv=1.68.81';
+import { getSettings, updateSettings } from './src/settings.js?rmv=1.68.81';
+import { installRabbitMirrorPublicAPI } from './src/publicApi.js?rmv=1.68.81';
+import { initRabbitMirrorIndependentSecurityGuard, destroyRabbitMirrorIndependentSecurityGuard } from './src/independentSecurityGuard.js?rmv=1.68.81';
+import { initRabbitMirrorHostCompatibility, isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface, getRabbitMirrorEarlyBootstrap, getRabbitMirrorHostCompatibilityStatus } from './src/hostCompatibility.js?rmv=1.68.81';
 
 // TT requires ownership registration before its first projection, not after the
 // deferred DOM runtime loads. This bridge has no network, timers or heavy imports.
@@ -17,8 +17,8 @@ runRabbitMirrorStartupStep('接入宿主聊天', () => initRabbitMirrorHostCompa
 // SecurityFix2 leaves only the prompt interceptor and request guard in the parser-critical
 // graph. The 1.8 MiB UI/sanitizer/independent runtime graph is imported after the host has
 // received a paint/idle opportunity, or immediately after explicit RabbitMirror intent.
-const GOLDEN_MERGE_VERSION = '1.68.80';
-const RABBIT_MIRROR_RUNTIME_VERSION = '1.68.80';
+const GOLDEN_MERGE_VERSION = '1.68.81';
+const RABBIT_MIRROR_RUNTIME_VERSION = '1.68.81';
 const earlyBootstrap = getRabbitMirrorEarlyBootstrap();
 let runtimeCancelled = earlyBootstrap?.cancelled === true || (!!globalThis.__rabbitMirrorTtBootstrap && !earlyBootstrap);
 let runtimeClaimed = !runtimeCancelled;
@@ -126,13 +126,13 @@ async function ensureDeferredCoreRuntime(reason = 'scheduled-idle') {
     if (deferredRuntimeModules) return deferredRuntimeModules;
     if (deferredRuntimePromise) return deferredRuntimePromise;
     deferredRuntimePromise = Promise.all([
-        import('./src/outputSanitizer.js?rmv=1.68.80'),
-        import('./src/visualScanner.js?rmv=1.68.80'),
-        import('./src/independentApi.js?rmv=1.68.80'),
-        import('./src/touchTheater.js?rmv=1.68.80'),
-        import('./src/ui.js?rmv=1.68.80'),
-        import('./src/composerClearance.js?rmv=1.68.80'),
-        import('./src/chatAvatars.js?rmv=1.68.80'),
+        import('./src/outputSanitizer.js?rmv=1.68.81'),
+        import('./src/visualScanner.js?rmv=1.68.81'),
+        import('./src/independentApi.js?rmv=1.68.81'),
+        import('./src/touchTheater.js?rmv=1.68.81'),
+        import('./src/ui.js?rmv=1.68.81'),
+        import('./src/composerClearance.js?rmv=1.68.81'),
+        import('./src/chatAvatars.js?rmv=1.68.81'),
     ]).then(async ([output, visual, independent, touch, ui, clearance, avatars]) => {
         if (!runtimeIsActive()) return null;
         const modules = { output, visual, independent, touch, ui, clearance, avatars };
@@ -537,7 +537,7 @@ async function ensureExternalDiagnostics() {
     if (externalDiagnosticsApi) return externalDiagnosticsApi;
     if (externalDiagnosticsPromise) return externalDiagnosticsPromise;
     const revision = ++externalDiagnosticsOperationRevision;
-    const loadPromise = import('./src/externalDiagnostics.js?rmv=1.68.80').then(mod => {
+    const loadPromise = import('./src/externalDiagnostics.js?rmv=1.68.81').then(mod => {
         if (!runtimeIsActive() || !externalDiagnosticsDesiredEnabled || revision !== externalDiagnosticsOperationRevision) return null;
         externalDiagnosticsModule = mod;
         externalDiagnosticsApi = mod.initRabbitMirrorExternalDiagnostics?.() || null;
@@ -559,7 +559,7 @@ function disableExternalDiagnostics() {
 }
 
 function clearDeferredGenerationSnapshots() {
-    void import('./src/generationGuard.js?rmv=1.68.80')
+    void import('./src/generationGuard.js?rmv=1.68.81')
         .then(mod => {
             // Disable may await this import while a newer installation takes
             // ownership. Do not clear that owner's shared snapshot/attempt keys.
