@@ -137,6 +137,33 @@ assert.deepEqual(t.sections.map(s => s.on), [null, 'before'], 'static panel with
 // 这一面还收着：先不铺板子，展开后补上。
 t = await texture(textureFace(panel('#eef4fa') + panel('#eef4fa'), false), { toggle: true });
 assert.deepEqual(t.sections.map(s => s.on), ['before', 'before'], 'spread happens after the face is opened'); checks++;
+// 光泽：写了半光／亮面才画高光，颜色从自己的底色算，深色上比浅色上强；哑光不画；高光会压到浅色字时减弱。
+const glossy = await page.evaluate(() => {
+    const make = (bg, color, descriptor, extra = '') => `<section style="background:${bg};color:${color};height:140px;padding:16px;border-radius:10px;${extra}">字</section>`;
+    document.body.innerHTML = `<details open data-rabbit-mirror-css-scope="t2"><summary>x</summary><div style="padding:8px">
+        ${make('#8a3b2e', '#2a1410', '')}${make('#8a3b2e', '#2a1410', '')}${make('#eef2f8', '#223', '')}${make('#8a3b2e', '#fff', '')}${make('#8a3b2e', '#c9a39e', '')}${make('#d8c8dc', '#333', '', 'overflow:hidden')}${make('#d8c8dc', '#333', '')}</div></details>`;
+    const sections = [...document.querySelectorAll('section')];
+    const want = ['漆 细 无 点 淡 亮面', '漆 细 无 点 淡 半光', '漆 细 无 点 淡 亮面', '漆 细 无 点 淡 哑光', '漆 细 无 点 淡 亮面', '毡 中 无 纤维 淡 哑光', '毡 中 无 纤维 淡 哑光'];
+    sections.forEach((el, i) => el.setAttribute('data-rm-texture', want[i]));
+    mt.applyMaterialTextures(document.querySelector('details'), { materialTextureEnabled: true });
+    const alpha = text => Math.max(...[...String(text).matchAll(/rgba\([^)]*,\s*([\d.]+)\)/g)].map(m => Number(m[1])), 0);
+    return sections.map(el => ({ sheen: el.getAttribute('data-rm-texture-sheen'), top: alpha(el.style.getPropertyValue('--rm-texture-sheen')), fuzz: el.getAttribute('data-rm-texture-fuzz'), fuzzColor: el.style.getPropertyValue('--rm-texture-fuzz-color') }));
+});
+assert.equal(glossy[0].sheen, 'after', 'glossy dark panel gets a highlight'); checks++;
+assert.equal(glossy[1].sheen, 'after', 'semi-gloss gets a highlight'); checks++;
+assert.ok(glossy[0].top > glossy[1].top, 'glossy highlight is sharper/stronger than semi-gloss'); checks++;
+assert.ok(glossy[2].sheen === 'after' && glossy[2].top < glossy[0].top, 'highlight on a light base is weaker than on a dark base'); checks++;
+assert.equal(glossy[3].sheen, null, 'matte gets no highlight'); checks++;
+assert.equal(glossy[4].sheen, null, 'text the color of the lit surface: highlight would eat the text, so none'); checks++;
+assert.equal(glossy[5].fuzz, null, 'clipped panel cannot show a soft edge'); checks++;
+assert.equal(glossy[6].fuzz, 'after', 'matte fibre panel gets a soft edge'); checks++;
+assert.equal(glossy[6].fuzzColor, 'rgb(216,200,220)', 'soft edge uses the panel\'s own color'); checks++;
+assert.equal(glossy[6].sheen, null); checks++;
+const offAll = await page.evaluate(() => { const d = document.querySelector('details'); mt.applyMaterialTextures(d, { materialTextureEnabled: false }); return d.querySelectorAll('[data-rm-texture-sheen],[data-rm-texture-fuzz]').length + [...d.querySelectorAll('*')].filter(el => el.style.getPropertyValue('--rm-texture-sheen') || el.style.getPropertyValue('--rm-texture-fuzz')).length; });
+assert.equal(offAll, 0, 'switching off removes highlights and soft edges'); checks++;
+// 底板上的纹理照旧（下面的关掉测试要用）。
+t = await texture(textureFace(panel('#eef4fa') + panel('#eef4fa'), false), { toggle: true });
+
 // 关掉开关：底板和板子上的纹理、定位、记号全撤掉。
 const off = await page.evaluate(() => {
     const d = document.querySelector('details');

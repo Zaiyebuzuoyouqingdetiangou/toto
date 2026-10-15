@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import { parseTextureDescriptor, textureImage, materialTextureRule } from '../src/materialTexture.js';
 
 test('descriptor words are read in any order and fall back to defaults', () => {
-    assert.deepEqual(parseTextureDescriptor('淡 条纹 横 细'), { material: '', grain: '细', direction: '横', shape: '条纹', strength: '淡' });
+    assert.deepEqual(parseTextureDescriptor('淡 条纹 横 细'), { material: '', grain: '细', direction: '横', shape: '条纹', strength: '淡', gloss: '哑光' });
     // 认不出的词就是材料名（模型自己写的）；画纹理不看它，只用来记「近几面用过什么」。
-    assert.deepEqual(parseTextureDescriptor('旧宣纸 细 横 条纹 淡'), { material: '旧宣纸', grain: '细', direction: '横', shape: '条纹', strength: '淡' });
-    assert.deepEqual(parseTextureDescriptor('看不懂的词'), { material: '看不懂的词', grain: '中', direction: '无', shape: '点', strength: '淡' });
+    assert.deepEqual(parseTextureDescriptor('旧宣纸 细 横 条纹 淡'), { material: '旧宣纸', grain: '细', direction: '横', shape: '条纹', strength: '淡', gloss: '哑光' });
+    assert.deepEqual(parseTextureDescriptor('看不懂的词'), { material: '看不懂的词', grain: '中', direction: '无', shape: '点', strength: '淡', gloss: '哑光' });
 });
 
 test('textures are generated, small, and vary with the seed', () => {
@@ -27,8 +27,8 @@ test('the prompt rule is only sent when the switch is on', () => {
     assert.equal(materialTextureRule({ materialTextureEnabled: false }), '');
     assert.equal(materialTextureRule({}), '');
     const rule = materialTextureRule({ materialTextureEnabled: true });
-    assert.match(rule, /data-rm-texture="材料 粗细 方向 形状 浓淡"/);
-    assert.ok(rule.length < 340, `rule is ${rule.length} chars`);
+    assert.match(rule, /data-rm-texture="材料 粗细 方向 形状 浓淡 光泽"/);
+    assert.ok(rule.length < 360, `rule is ${rule.length} chars`);
     // 开关打开就每面写一处，不再给「不加」的退路。
     assert.match(rule, /每个 HTML 面/);
     assert.doesNotMatch(rule, /可选|不加/);

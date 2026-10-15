@@ -1,5 +1,5 @@
 // 材质纹理（实验性，默认关闭）。
-// 模型在某个元素上写 data-rm-texture="材料 粗细 方向 形状 浓淡"，兔子镜按描述现场生成一层很淡的明暗纹理，
+// 模型在某个元素上写 data-rm-texture="材料 粗细 方向 形状 浓淡 光泽"，兔子镜按描述现场生成一层很淡的明暗纹理，
 // 叠在它自己的底色上、文字下面。不放任何图片：纹理是浏览器按几个数字算出来的，颜色仍是模型写的底色。
 // 关着时什么都不做；打开后也只在模型自己写了描述的地方出现。
 // 不直接引入 settings.js（它依赖酒馆宿主模块）：开关直接读兔子镜存在酒馆里的那份设置。
@@ -21,6 +21,10 @@ const GRAIN = { 细: 0.9, 中: 0.5, 粗: 0.2 };
 const TILE = { 细: 140, 中: 170, 粗: 230 };
 const DIRECTIONS = ['无', '横', '竖', '斜'];
 const SHAPES = ['点', '纤维', '条纹', '斑块'];
+// 光泽：哑光没有高光；半光一片柔的亮区；亮面一条边缘清楚的亮带。人认材料主要靠高光，颗粒是次要的。
+const GLOSS = ['哑光', '半光', '亮面'];
+const SHEEN_ATTR = 'data-rm-texture-sheen';
+const FUZZ_ATTR = 'data-rm-texture-fuzz';
 
 export function materialTextureEnabled(settings = getSettings()) {
     return settings?.materialTextureEnabled === true;
@@ -31,25 +35,26 @@ export function materialTextureEnabled(settings = getSettings()) {
 export function parseTextureDescriptor(text) {
     const words = String(text || '').split(/[\s,，、;；/|]+/).map(word => word.trim()).filter(Boolean);
     const pick = (list, fallback) => words.find(word => list.includes(word)) || fallback;
-    const known = new Set([...Object.keys(GRAIN), ...DIRECTIONS, ...SHAPES, ...Object.keys(RELIEF)]);
+    const known = new Set([...Object.keys(GRAIN), ...DIRECTIONS, ...SHAPES, ...Object.keys(RELIEF), ...GLOSS]);
     return {
         material: words.filter(word => !known.has(word)).join('').slice(0, 12),
         grain: pick(Object.keys(GRAIN), '中'),
         direction: pick(DIRECTIONS, '无'),
         shape: pick(SHAPES, '点'),
         strength: pick(Object.keys(RELIEF), '淡'),
+        gloss: pick(GLOSS, '哑光'),
     };
 }
 
 export function textureDescriptorText(descriptor) {
     const value = descriptor || {};
-    return [value.material, value.grain, value.direction, value.shape, value.strength].filter(Boolean).join(' ');
+    return [value.material, value.grain, value.direction, value.shape, value.strength, value.gloss].filter(Boolean).join(' ');
 }
 
 /** 「近几面用过」只提材料名；没写材料名的旧记录退回提整条描述。 */
 function materialName(descriptorText) {
     const value = parseTextureDescriptor(descriptorText);
-    return value.material || [value.grain, value.direction, value.shape, value.strength].join(' ');
+    return value.material || [value.grain, value.direction, value.shape, value.strength, value.gloss].join(' ');
 }
 
 function hashSeed(text) {
@@ -62,7 +67,7 @@ function hashSeed(text) {
 // 叠加强度以前压得太轻（0.45／0.62／0.8，浅底再乘 0.38），用户的反馈是「看不见」；现在提到能看见的程度。
 const RELIEF = { 很淡: [1.0, 0.65], 淡: [1.6, 0.85], 明显: [2.6, 1.0] };
 // 先把高度图揉软一点再打光：纤维（毛毡、绒布）最软，斑块（皮面、石面）次之，点和条纹只去掉锯齿。
-const SOFTEN = { 纤维: 0.9, 斑块: 0.6, 点: 0.25, 条纹: 0.3 };
+const SOFTEN = { 纤维: 1.2, 斑块: 0.6, 点: 0.25, 条纹: 0.3 };
 
 function tileSvg({ size, fx, fy, octaves, seed, scale, blur, alpha = 1, shadowOnly = false }) {
     // 无缝：在一块里生成可平铺的噪点，用 feTile 在四周铺一圈再揉软、打光，只露出中间那块；
@@ -92,10 +97,12 @@ export function textureImage(descriptor, seedText = '', { shadowOnly = false } =
     const value = { ...parseTextureDescriptor(''), ...(descriptor || {}) };
     const base = GRAIN[value.grain] || GRAIN.中;
     const size = TILE[value.grain] || TILE.中;
-    const [scale, opacity] = RELIEF[value.strength] || RELIEF.淡;
+    const [relief, opacity] = RELIEF[value.strength] || RELIEF.淡;
+    const scale = value.shape === '纤维' ? relief * 1.3 : relief;
     // 形状：点＝少层颗粒；纤维＝多层细碎；条纹＝一个方向拉得很长；斑块＝低频成团。
     let fx = base, fy = base, octaves = 3;
-    if (value.shape === '纤维') octaves = 5;
+    // 纤维：一簇簇的，比点大、比斑块小，再揉得更软，起伏稍大（软的东西）。
+    if (value.shape === '纤维') { fx = fy = base * 0.55; octaves = 5; }
     if (value.shape === '斑块') { fx = fy = base * 0.08; octaves = 4; }
     const stretch = value.shape === '条纹' ? 0.03 : value.shape === '纤维' ? 0.5 : 1;
     // 斜：打了光的纹理不能旋转（会出接缝，光的方向也会跟着转），按横向处理。
@@ -127,7 +134,12 @@ function ensureStyle(doc) {
         // 再描一道亮边、一道暗边表示厚度：颜色和粗细从元素自己算（--rm-texture-edge-*），没算出来时退回原来那道很淡的白边。
         + 'box-shadow:inset 0 0 var(--rm-texture-ao,16px) rgba(0,0,0,.32),inset 1px 1px calc(var(--rm-texture-ao,16px) / 3) rgba(255,255,255,.28),'
         + 'inset var(--rm-texture-edge-size,0px) var(--rm-texture-edge-size,0px) 0 var(--rm-texture-edge-light,transparent),'
-        + 'inset calc(var(--rm-texture-edge-size,0px) * -1) calc(var(--rm-texture-edge-size,0px) * -1) 0 var(--rm-texture-edge-shade,transparent)}';
+        + 'inset calc(var(--rm-texture-edge-size,0px) * -1) calc(var(--rm-texture-edge-size,0px) * -1) 0 var(--rm-texture-edge-shade,transparent)}'
+        // 光泽：高光放在另一个伪元素里，叠在纹理之上、内容之下；样子（--rm-texture-sheen）从元素自己算。
+        + `[${SHEEN_ATTR}="after"]::after,[${SHEEN_ATTR}="before"]::before{content:"";position:absolute;inset:0;border-radius:inherit;background:var(--rm-texture-sheen);pointer-events:none;z-index:-1}`
+        // 纤维＋哑光：边缘起一圈毛（用它自己的底色描一圈，再把这圈的边搅乱），东西看起来是软的、有绒的。
+        + `[${FUZZ_ATTR}="after"]::after,[${FUZZ_ATTR}="before"]::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-2;`
+        + 'box-shadow:0 0 0 var(--rm-texture-fuzz,3px) var(--rm-texture-fuzz-color,transparent);filter:url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'f\' x=\'-10%25\' y=\'-10%25\' width=\'120%25\' height=\'120%25\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'2\' seed=\'7\'/%3E%3CfeDisplacementMap in=\'SourceGraphic\' scale=\'8\' xChannelSelector=\'R\' yChannelSelector=\'G\'/%3E%3C/filter%3E%3C/svg%3E#f")}';
     doc.head.append(style);
 }
 
@@ -255,6 +267,57 @@ function safeToLayer(el, view) {
     });
 }
 
+// 高光的样子从这块东西自己算：颜色是它的底色调亮；深色上高光更明显（研究结论：同样的高光放在深色上更显亮）；
+// 亮带的角度、起点、宽窄按它的大小和这一面的种子变，两块东西不一样；光仍从左上来。
+// 高光会压到浅色文字时减弱，压不下去就不画。
+function sheenVars(el, view, tone, descriptor, seedText) {
+    if (descriptor.gloss !== '半光' && descriptor.gloss !== '亮面') return null;
+    if (!tone?.rgb) return null;
+    let style;
+    try { style = view.getComputedStyle(el); } catch { return null; }
+    const rect = el.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+    const mix = (color, target, amount) => color.map((value, i) => Math.round(value + (target[i] - value) * amount));
+    const L = tone.luminance;
+    const hi = mix(tone.rgb, [255, 255, 255], L > 0.6 ? 0.85 : 0.65);
+    const lo = mix(tone.rgb, [0, 0, 0], 0.3);
+    let strength = L > 0.6 ? 0.5 : L > 0.3 ? 0.8 : 1;
+    // 文字：高光照亮的那片底色和元素自己的文字颜色拉不开时，字会被高光吃掉：拉不开一点就减半，拉不开太多就不画。
+    const text = [...String(style.color || '').matchAll(RGB)][0];
+    if (text) {
+        const lit = mix(tone.rgb, hi, 0.7 * strength);
+        const lt = luminanceOf(text), ll = luminanceOf([null, ...lit]);
+        const contrast = (Math.max(lt, ll) + 0.05) / (Math.min(lt, ll) + 0.05);
+        if (contrast < 1.6) return null;
+        if (contrast < 2.5) strength *= 0.5;
+    }
+    const seed = hashSeed(`${seedText}|sheen`);
+    const angle = 150 + (seed % 26);
+    const a = (value) => `rgba(${hi.join(',')},${Math.round(value * strength * 100) / 100})`;
+    const d = (value) => `rgba(${lo.join(',')},${Math.round(value * strength * 100) / 100})`;
+    if (descriptor.gloss === '半光') {
+        const x = 16 + (seed >> 2) % 16;
+        return `radial-gradient(120% 90% at ${x}% 0%, ${a(0.5)} 0%, ${a(0.16)} 40%, ${a(0)} 65%), linear-gradient(${angle}deg, ${d(0)} 55%, ${d(0.2)} 100%)`;
+    }
+    const longest = Math.max(rect.width, rect.height);
+    const width = Math.max(10, Math.min(28, Math.round(1800 / longest)));
+    const start = 5 + (seed >> 4) % 12;
+    return `linear-gradient(${angle}deg, ${a(0)} ${start}%, ${a(0.7)} ${start + 1}%, ${a(0.5)} ${start + width}%, ${a(0)} ${start + width + 1.5}%), `
+        + `radial-gradient(60% 40% at 18% 8%, rgba(255,255,255,${Math.round(0.45 * strength * 100) / 100}), rgba(255,255,255,0) 70%), `
+        + `linear-gradient(${angle}deg, ${d(0)} 50%, ${d(0.32)} 100%)`;
+}
+
+// 纤维＋哑光：软的东西边缘不是一条硬线。用它自己的底色在外面描一圈、搅乱边缘；被裁掉的（overflow hidden）不做。
+function fuzzVars(el, view, tone, descriptor) {
+    if (descriptor.shape !== '纤维' || descriptor.gloss !== '哑光' || !tone?.rgb) return null;
+    let style;
+    try { style = view.getComputedStyle(el); } catch { return null; }
+    if (/hidden|clip|scroll|auto/.test(`${style.overflowX} ${style.overflowY}`)) return null;
+    const rect = el.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+    return { size: `${Math.max(3, Math.min(6, Math.round(Math.min(rect.width, rect.height) * 0.015)))}px`, color: `rgb(${tone.rgb.join(',')})` };
+}
+
 // 在一个元素自己的 ::before/::after 里铺纹理（排在内容下面）。铺上了返回 true。
 function layTexture(el, descriptor, seedText, view, { spread = false } = {}) {
     // 底色很浅（接近白）时叠加看不出来：改成只压暗面的正片叠底。
@@ -272,14 +335,21 @@ function layTexture(el, descriptor, seedText, view, { spread = false } = {}) {
     }
     el.style.setProperty('--rm-texture-image', image);
     el.style.setProperty('--rm-texture-size', size);
-    // 正片叠底比柔光重：浅底上用六成左右的力度。
-    el.style.setProperty('--rm-texture-opacity', shadowOnly ? String(Math.round(Number(opacity) * 0.6 * 100) / 100) : opacity);
+    // 正片叠底比柔光重：浅底上只用四成左右的力度；长条纹在浅底上像划痕，再轻一些。
+    const lightFactor = descriptor.shape === '条纹' ? 0.3 : 0.42;
+    el.style.setProperty('--rm-texture-opacity', shadowOnly ? String(Math.round(Number(opacity) * lightFactor * 100) / 100) : opacity);
     if (shadowOnly) el.style.setProperty('--rm-texture-blend', 'multiply'); else el.style.removeProperty('--rm-texture-blend');
     let ao = 16;
     try { const rect = el.getBoundingClientRect(); if (rect.width && rect.height) ao = Math.max(5, Math.min(22, Math.round(Math.min(rect.width, rect.height) * 0.14))); } catch { /* 用默认 */ }
     el.style.setProperty('--rm-texture-ao', `${ao}px`);
     const edge = edgeVars(el, view, tone);
     for (const [key, value] of Object.entries(edge || {})) el.style.setProperty(`--rm-texture-edge-${key}`, value);
+    // 光泽和起毛用另一个伪元素；纹理占了 before、after 还空着才做（哑光不做光泽，所以两者不会同时要）。
+    const other = which === 'before' && pseudoFree(el, 'after') ? 'after' : '';
+    const sheen = other ? sheenVars(el, view, tone, descriptor, seedText) : null;
+    if (sheen) { el.style.setProperty('--rm-texture-sheen', sheen); el.setAttribute(SHEEN_ATTR, other); }
+    const fuzz = other && !sheen ? fuzzVars(el, view, tone, descriptor) : null;
+    if (fuzz) { el.style.setProperty('--rm-texture-fuzz', fuzz.size); el.style.setProperty('--rm-texture-fuzz-color', fuzz.color); el.setAttribute(FUZZ_ATTR, other); }
     el.setAttribute(ON_ATTR, which);
     if (spread) el.setAttribute(SPREAD_ATTR, 'true');
     return true;
@@ -324,6 +394,8 @@ export function applyMaterialTextures(root, settings = getSettings()) {
             el.style.removeProperty('--rm-texture-ao');
             el.style.removeProperty('--rm-texture-blend');
             for (const key of ['size', 'light', 'shade']) el.style.removeProperty(`--rm-texture-edge-${key}`);
+            for (const key of ['--rm-texture-sheen', '--rm-texture-fuzz', '--rm-texture-fuzz-color']) el.style.removeProperty(key);
+            el.removeAttribute(SHEEN_ATTR); el.removeAttribute(FUZZ_ATTR);
             if (el.hasAttribute(POS_ATTR)) { el.style.removeProperty('position'); el.removeAttribute(POS_ATTR); }
             el.removeAttribute(SPREAD_ATTR);
         }
@@ -360,5 +432,5 @@ export function materialTextureRule(settings = getSettings()) {
     // 开关是用户主动打开的：每个 HTML 面都写一处，不给「不加」的退路（以前写「可选」，模型几乎都跳过）。
     // 防模板化靠两点：质感从这一面的实物推出来；近几面用过的提醒换一种。不列举材质名，免得模型只在列出的几种里挑。
     // 第一个词是材料名：先决定这东西是什么做的，再填粗细方向，免得只填表、不想材料。
-    return `材质纹理（已开启）：每个 HTML 面都在一个元素上写 ${TEXTURE_ATTR}="材料 粗细 方向 形状 浓淡"，兔子镜会按描述叠一层纹理：材料写它在现实里是什么做的（一两个词，你自己定），粗细写细／中／粗，方向写无／横／竖／斜，形状写点／纤维／条纹／斑块，浓淡写很淡／淡／明显。写在这一面最像实物的主体或承载面上；一面只写一处，不写在整面最外层背景上；底色、边缘、光泽和厚度仍由你写。${recent.length ? `近几面用过：${recent.join('；')}，这一面换一种材料。` : ''}`;
+    return `材质纹理（已开启）：每个 HTML 面都在一个元素上写 ${TEXTURE_ATTR}="材料 粗细 方向 形状 浓淡 光泽"，兔子镜会按描述叠一层纹理和光：材料写它在现实里是什么做的（一两个词，你自己定），粗细写细／中／粗，方向写无／横／竖／斜，形状写点／纤维／条纹／斑块，浓淡写很淡／淡／明显，光泽写哑光／半光／亮面。写在这一面最像实物的主体或承载面上；一面只写一处，不写在整面最外层背景上；底色、边缘、光泽和厚度仍由你写。${recent.length ? `近几面用过：${recent.join('；')}，这一面换一种材料。` : ''}`;
 }
