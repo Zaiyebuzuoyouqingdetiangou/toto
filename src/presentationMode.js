@@ -1,5 +1,5 @@
-import { generationPaletteFields } from './paletteRecipes.js?rmv=1.68.74';
-import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.68.74';
+import { generationPaletteFields } from './paletteRecipes.js?rmv=1.68.75';
+import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.68.75';
 
 // Local selection metadata only. Never derive presentation from model HTML.
 export function normalizePresentationModes(value) {
