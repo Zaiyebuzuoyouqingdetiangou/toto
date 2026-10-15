@@ -6,7 +6,7 @@ import {
     escapeRegExp,
     getRabbitMirrorLocalStyleElements,
     hashInteractionSignature,
-} from './runtime.js?rmv=1.68.79';
+} from './runtime.js?rmv=1.68.80';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     DIRECT_ID_CLASS_STATE_RESCUE_ATTR,
@@ -22,26 +22,26 @@ import {
     repairMalformedNestedInteractiveLabels,
     repairRabbitMirrorSelectorPanelGridSpan,
     restoreInteractionInlineOverrides,
-} from './checkedStateRescue.js?rmv=1.68.79';
+} from './checkedStateRescue.js?rmv=1.68.80';
 import {
     RAW_SELF_MUTATION_RESCUE_ATTR,
     chooseMatchingRawRabbitMirrorRoot,
     getRawAssistantMessageForRenderedRoot,
-} from './scriptedInteractionRescue.js?rmv=1.68.79';
+} from './scriptedInteractionRescue.js?rmv=1.68.80';
 import {
     applyCheckedVisualFallback,
     inputHasMeaningfulCheckedSiblingRule,
     installIntelligentInteractionRescue,
-} from './fallbackRescue.js?rmv=1.68.79';
-import { INERT_ACTION_BUTTON_RESCUE_ATTR, INERT_ACTION_STATUS_ATTR } from './diagnostics.js?rmv=1.68.79';
-import { rehydrateRabbitMirrorMaintenanceRepairs } from './choiceRescue.js?rmv=1.68.79';
-import { maintenanceRepairRootBudget } from './maintenanceInspect.js?rmv=1.68.79';
-import { recoverBehaviorInteractions } from './behaviorRecovery.js?rmv=1.68.79';
-import { installDisabledRangeProgressRescue, installOrphanRangeLayerRescue, installRangeStageRescue, installRangeValueAttributeMirror } from './rangeStageRescue.js?rmv=1.68.79';
-import { installMobileInteractionControls } from './mobileInteractionControls.js?rmv=1.68.79';
-import { installNextStepHighlightRescue } from './nextStepHighlightRescue.js?rmv=1.68.79';
-import { installNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.68.79';
-import { installBehaviorInteractions } from './behaviorInteractions.js?rmv=1.68.79';
+} from './fallbackRescue.js?rmv=1.68.80';
+import { INERT_ACTION_BUTTON_RESCUE_ATTR, INERT_ACTION_STATUS_ATTR } from './diagnostics.js?rmv=1.68.80';
+import { rehydrateRabbitMirrorMaintenanceRepairs } from './choiceRescue.js?rmv=1.68.80';
+import { maintenanceRepairRootBudget } from './maintenanceInspect.js?rmv=1.68.80';
+import { recoverBehaviorInteractions } from './behaviorRecovery.js?rmv=1.68.80';
+import { installDisabledRangeProgressRescue, installOrphanRangeLayerRescue, installRangeStageRescue, installRangeValueAttributeMirror } from './rangeStageRescue.js?rmv=1.68.80';
+import { installMobileInteractionControls } from './mobileInteractionControls.js?rmv=1.68.80';
+import { installNextStepHighlightRescue } from './nextStepHighlightRescue.js?rmv=1.68.80';
+import { installNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.68.80';
+import { installBehaviorInteractions } from './behaviorInteractions.js?rmv=1.68.80';
 
 let interactionScopeCounter = 0;
 
@@ -153,6 +153,43 @@ function rewriteCssIdReferences(cssText, idMap) {
         }
     }
     return css;
+}
+
+
+// 单选组加了镜面前缀以后，样式里写的 input[name="hair"] 也要跟着改成新名字，
+// 否则「选了哪一项就变样子」的规则永远对不上（比如捏脸选发型、换颜色都没反应）。
+// 只改等号精确匹配的 [name=…]，^= *= 这类部分匹配不动。
+function rewriteCssNameReferences(cssText, nameMap) {
+    let css = String(cssText || '');
+    if (!nameMap?.size || !css.includes('name')) return css;
+    for (const [rawName, scopedName] of nameMap.entries()) {
+        const escaped = escapeRegExp(rawName);
+        css = css.replace(
+            new RegExp(`\\[\\s*name\\s*=\\s*(?:(["'])${escaped}\\1|${escaped}(?![\\w-]))(\\s+[is])?\\s*\\]`, 'g'),
+            (_match, _quote, flag = '') => `[name="${scopedName}"${flag || ''}]`,
+        );
+    }
+    return css;
+}
+
+
+function synchronizeRadioNameReferences(toto, prefix) {
+    if (!prefix || !toto?.querySelectorAll) return 0;
+    const nameMap = new Map();
+    toto.querySelectorAll('input[type="radio"][name]').forEach(input => {
+        const name = String(input.getAttribute('name') || '');
+        if (name.length > prefix.length && name.startsWith(prefix)) nameMap.set(name.slice(prefix.length), name);
+    });
+    // 别的控件（复选框、文本框）还在用原名的，样式里的 [name=原名] 可能是写给它们的，不动。
+    toto.querySelectorAll('[name]').forEach(el => nameMap.delete(String(el.getAttribute('name') || '')));
+    if (!nameMap.size) return 0;
+    let changed = 0;
+    getRabbitMirrorLocalStyleElements(toto).forEach(styleEl => {
+        const currentText = String(styleEl.textContent || '');
+        const rewrittenText = rewriteCssNameReferences(currentText, nameMap);
+        if (rewrittenText !== currentText) { styleEl.textContent = rewrittenText; changed += 1; }
+    });
+    return changed;
 }
 
 
@@ -651,6 +688,7 @@ export function scopeRabbitMirrorInteractionIds(toto, { installRescue = true } =
     // 在正式同步前建立唯一、高置信别名；只改引用，不改控件本身。
     const aliasMap = augmentInteractionReferenceAliases(toto, state.idMap);
     synchronizeInteractionReferences(toto, state.idMap, aliasMap);
+    synchronizeRadioNameReferences(toto, state.prefix);
     if (installRescue) {
         installNextStepHighlightRescue(toto);
         recoverBehaviorInteractions(toto);

@@ -1,10 +1,10 @@
-import { generationPaletteFields } from './paletteRecipes.js?rmv=1.68.79';
-import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.68.79';
-import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords, observedOperationFamiliesFor } from './compositionFingerprint.js?rmv=1.68.79';
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.68.79';
-import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.68.79';
-import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.68.79';
-import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.68.79';
+import { generationPaletteFields } from './paletteRecipes.js?rmv=1.68.80';
+import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.68.80';
+import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords, observedOperationFamiliesFor } from './compositionFingerprint.js?rmv=1.68.80';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.68.80';
+import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.68.80';
+import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.68.80';
+import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.68.80';
 
 const STORAGE_KEY = 'rabbit_mirror_theater:last_combo:v11';
 const PENDING_KEY = 'rabbit_mirror_theater:pending_combo:v11';

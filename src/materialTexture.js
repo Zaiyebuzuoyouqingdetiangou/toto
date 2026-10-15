@@ -11,6 +11,8 @@ function getSettings() {
 export const TEXTURE_ATTR = 'data-rm-texture';
 const ON_ATTR = 'data-rm-texture-on';
 const POS_ATTR = 'data-rm-texture-pos';
+const SPREAD_ATTR = 'data-rm-texture-spread';
+const SPREAD_DONE_ATTR = 'data-rm-texture-spread-done';
 const STYLE_ID = 'rabbit-mirror-material-texture-style';
 const RECENT_KEY = 'rabbitMirrorMaterialTextureRecent';
 const RECENT_LIMIT = 6;
@@ -139,13 +141,137 @@ export function recentMaterialTextures() {
     } catch { return []; }
 }
 
-function lightBase(el, view) {
-    let color = '';
-    try { color = (view || globalThis).getComputedStyle(el).backgroundColor || ''; } catch { return false; }
-    const match = /rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:\s*[,/]\s*([\d.]+))?/.exec(color);
-    if (!match || (match[4] !== undefined && Number(match[4]) < 0.5)) return false;
+function luminanceOf(match) {
     const channel = value => { const v = Number(value) / 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
-    return 0.2126 * channel(match[1]) + 0.7152 * channel(match[2]) + 0.0722 * channel(match[3]) > 0.72;
+    return 0.2126 * channel(match[1]) + 0.7152 * channel(match[2]) + 0.0722 * channel(match[3]);
+}
+
+const RGB = /rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:\s*[,/]\s*([\d.]+%?))?\s*\)/g;
+function alphaOf(match) {
+    if (match[4] === undefined) return 1;
+    return match[4].endsWith('%') ? Number.parseFloat(match[4]) / 100 : Number(match[4]);
+}
+
+// 这块东西自己的底色：先看纯色；纯色是透明的，就看渐变里的几个颜色（取平均）。
+// 返回 { opaque, luminance }；看不出来（图片底、没有底色）时 opaque=false。
+function baseTone(el, view) {
+    let style = null;
+    try { style = (view || globalThis).getComputedStyle(el); } catch { return { opaque: false, luminance: 0 }; }
+    const solid = [...String(style?.backgroundColor || '').matchAll(RGB)][0];
+    if (solid && alphaOf(solid) >= 0.5) return { opaque: alphaOf(solid) >= 0.85, luminance: luminanceOf(solid) };
+    const image = String(style?.backgroundImage || '');
+    if (!/gradient\(/i.test(image) || /url\(/i.test(image)) return { opaque: false, luminance: 0 };
+    const stops = [...image.matchAll(RGB)];
+    if (!stops.length) return { opaque: false, luminance: 0 };
+    const opaque = stops.every(stop => alphaOf(stop) >= 0.85);
+    const visible = stops.filter(stop => alphaOf(stop) >= 0.5);
+    if (!visible.length) return { opaque: false, luminance: 0 };
+    return { opaque, luminance: visible.reduce((sum, stop) => sum + luminanceOf(stop), 0) / visible.length };
+}
+
+function lightBase(el, view) {
+    const tone = baseTone(el, view);
+    return tone.luminance > 0.72;
+}
+
+// 写了纹理的那块，大半被里面自己有底色的板子盖住时（比如整面底板上压着几块卡片），
+// 纹理只能从缝里露出来，几乎看不到。这时把同一种纹理也铺到这几块大板子上（各自铺在自己的内容下面），
+// 小按钮、图片、画出来的图都不铺。量不出大小（这一面还收着）就先不铺，等展开再说。
+const SKIP_SPREAD = 'svg, img, canvas, video, picture, iframe, button, input, select, textarea, summary, '
+    + '[data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-recipe], [data-rabbit-mirror-tool-entry-host], [data-rm-image-region]';
+function coveringPanels(el, view) {
+    let box;
+    try { box = el.getBoundingClientRect(); } catch { return null; }
+    const area = box.width * box.height;
+    if (!area) return null;
+    const panels = [];
+    let covered = 0;
+    let layer = [...el.children];
+    for (let depth = 0; depth < 3 && layer.length; depth += 1) {
+        const next = [];
+        for (const child of layer) {
+            if (child.matches?.(SKIP_SPREAD) || /^(STYLE|SCRIPT|TEMPLATE)$/i.test(child.tagName)) continue;
+            const rect = child.getBoundingClientRect();
+            const width = Math.max(0, Math.min(rect.right, box.right) - Math.max(rect.left, box.left));
+            const height = Math.max(0, Math.min(rect.bottom, box.bottom) - Math.max(rect.top, box.top));
+            if (!width || !height) continue;
+            if (baseTone(child, view).opaque) { covered += width * height; panels.push({ child, share: (width * height) / area }); }
+            else next.push(...child.children);
+        }
+        layer = next;
+    }
+    if (covered / area < 0.5) return [];
+    return panels.filter(item => item.share >= 0.12).sort((a, b) => b.share - a.share).slice(0, 6).map(item => item.child);
+}
+
+// 铺到盖住它的板子上时更小心：板子里有绝对定位的东西（弹出的小框、角标），
+// 板子原来没定位的，加了定位它们会换参照；板子单独成层后，伸出板子外的弹出物会被旁边的板子压住。
+// 所以：没定位的板子里有这类东西就不铺；有定位的板子，这类东西都看得见、都在板子里面（或板子本来就裁掉外面）才铺。
+function safeToLayer(el, view) {
+    let style;
+    try { style = view.getComputedStyle(el); } catch { return false; }
+    const floating = [...el.querySelectorAll('*')].filter(child => { try { return /absolute|fixed|sticky/.test(view.getComputedStyle(child).position); } catch { return true; } });
+    if (!floating.length) return true;
+    if (style.position === 'static') return false;
+    if (/hidden|clip/.test(`${style.overflowX} ${style.overflowY}`)) return true;
+    const box = el.getBoundingClientRect();
+    return floating.every(child => {
+        const rect = child.getBoundingClientRect();
+        if (!rect.width && !rect.height) return false; // 现在收着的弹出物：量不出会伸到哪
+        return rect.left >= box.left - 1 && rect.top >= box.top - 1 && rect.right <= box.right + 1 && rect.bottom <= box.bottom + 1;
+    });
+}
+
+// 在一个元素自己的 ::before/::after 里铺纹理（排在内容下面）。铺上了返回 true。
+function layTexture(el, descriptor, seedText, view, { spread = false } = {}) {
+    // 底色很浅（接近白）时叠加看不出来：改成只压暗面的正片叠底。
+    const shadowOnly = lightBase(el, view);
+    const { image, size, opacity } = textureImage(descriptor, seedText, { shadowOnly });
+    const which = pseudoFree(el, 'before') ? 'before' : pseudoFree(el, 'after') ? 'after' : '';
+    if (!which) return false; // 模型自己两个伪元素都用了：不抢，宁可不铺。
+    let position = '';
+    try { position = view.getComputedStyle(el).position; } catch { position = ''; }
+    if (spread && !safeToLayer(el, view)) return false;
+    if (!position || position === 'static') {
+        el.style.position = 'relative';
+        el.setAttribute(POS_ATTR, 'true');
+    }
+    el.style.setProperty('--rm-texture-image', image);
+    el.style.setProperty('--rm-texture-size', size);
+    // 正片叠底比柔光重得多：浅底上只用三成左右的力度。
+    el.style.setProperty('--rm-texture-opacity', shadowOnly ? String(Math.round(Number(opacity) * 0.38 * 100) / 100) : opacity);
+    if (shadowOnly) el.style.setProperty('--rm-texture-blend', 'multiply'); else el.style.removeProperty('--rm-texture-blend');
+    let ao = 16;
+    try { const rect = el.getBoundingClientRect(); if (rect.width && rect.height) ao = Math.max(5, Math.min(22, Math.round(Math.min(rect.width, rect.height) * 0.14))); } catch { /* 用默认 */ }
+    el.style.setProperty('--rm-texture-ao', `${ao}px`);
+    el.setAttribute(ON_ATTR, which);
+    if (spread) el.setAttribute(SPREAD_ATTR, 'true');
+    return true;
+}
+
+function spreadTexture(el, descriptor, seedText, view) {
+    if (el.hasAttribute(SPREAD_DONE_ATTR)) return true;
+    const panels = coveringPanels(el, view);
+    if (panels === null) return false; // 量不出大小
+    el.setAttribute(SPREAD_DONE_ATTR, String(panels.length));
+    panels.forEach(panel => {
+        if (panel.hasAttribute(ON_ATTR) || panel.querySelector(`[${TEXTURE_ATTR}]`)) return;
+        layTexture(panel, descriptor, seedText, view, { spread: true });
+    });
+    return true;
+}
+
+const WAITING = new WeakSet();
+function spreadWhenVisible(el, descriptor, seedText, view) {
+    if (spreadTexture(el, descriptor, seedText, view)) return;
+    const face = el.closest?.('details');
+    if (!face || WAITING.has(el)) return;
+    WAITING.add(el);
+    const retry = () => {
+        if (!el.isConnected || !el.hasAttribute(ON_ATTR)) { face.removeEventListener('toggle', retry); WAITING.delete(el); return; }
+        view.setTimeout(() => { if (spreadTexture(el, descriptor, seedText, view)) { face.removeEventListener('toggle', retry); WAITING.delete(el); } }, 60);
+    };
+    face.addEventListener('toggle', retry);
 }
 
 /** 给一面（或一个文档）里写了描述的元素铺上纹理。关着时把以前铺过的撤掉。返回铺上的个数。 */
@@ -162,7 +288,9 @@ export function applyMaterialTextures(root, settings = getSettings()) {
             el.style.removeProperty('--rm-texture-ao');
             el.style.removeProperty('--rm-texture-blend');
             if (el.hasAttribute(POS_ATTR)) { el.style.removeProperty('position'); el.removeAttribute(POS_ATTR); }
+            el.removeAttribute(SPREAD_ATTR);
         }
+        for (const el of scope.querySelectorAll(`[${SPREAD_DONE_ATTR}]`)) el.removeAttribute(SPREAD_DONE_ATTR);
         return 0;
     }
     const nodes = [...scope.querySelectorAll(`[${TEXTURE_ATTR}]`)];
@@ -171,30 +299,19 @@ export function applyMaterialTextures(root, settings = getSettings()) {
     const doc = scope.ownerDocument || scope;
     ensureStyle(doc);
     let applied = 0;
+    const view = doc.defaultView || globalThis;
     nodes.forEach((el, index) => {
-        if (el.hasAttribute(ON_ATTR)) { applied += 1; return; }
         const descriptor = parseTextureDescriptor(el.getAttribute(TEXTURE_ATTR));
         const faceKey = el.closest?.('details')?.getAttribute?.('data-rabbit-mirror-css-scope') || '';
-        // 底色很浅（接近白）时叠加看不出来：改成只压暗面的正片叠底。
-        const shadowOnly = lightBase(el, doc.defaultView || globalThis);
-        const { image, size, opacity } = textureImage(descriptor, `${faceKey}|${index}`, { shadowOnly });
-        const which = pseudoFree(el, 'before') ? 'before' : pseudoFree(el, 'after') ? 'after' : '';
-        if (!which) return; // 模型自己两个伪元素都用了：不抢，宁可不铺。
-        const view = doc.defaultView || globalThis;
-        let position = '';
-        try { position = view.getComputedStyle(el).position; } catch { position = ''; }
-        if (!position || position === 'static') { el.style.position = 'relative'; el.setAttribute(POS_ATTR, 'true'); }
-        el.style.setProperty('--rm-texture-image', image);
-        el.style.setProperty('--rm-texture-size', size);
-        // 正片叠底比柔光重得多：浅底上只用三成左右的力度。
-        el.style.setProperty('--rm-texture-opacity', shadowOnly ? String(Math.round(Number(opacity) * 0.38 * 100) / 100) : opacity);
-        if (shadowOnly) el.style.setProperty('--rm-texture-blend', 'multiply'); else el.style.removeProperty('--rm-texture-blend');
-        let ao = 16;
-        try { const rect = el.getBoundingClientRect(); if (rect.width && rect.height) ao = Math.max(5, Math.min(22, Math.round(Math.min(rect.width, rect.height) * 0.14))); } catch { /* 用默认 */ }
-        el.style.setProperty('--rm-texture-ao', `${ao}px`);
-        el.setAttribute(ON_ATTR, which);
+        if (el.hasAttribute(ON_ATTR)) {
+            applied += 1;
+            if (!el.hasAttribute(SPREAD_DONE_ATTR)) spreadWhenVisible(el, descriptor, `${faceKey}|${index}`, view);
+            return;
+        }
+        if (!layTexture(el, descriptor, `${faceKey}|${index}`, view)) return;
         applied += 1;
         if (faceKey) remember(textureDescriptorText(descriptor), `${faceKey}|${index}`);
+        spreadWhenVisible(el, descriptor, `${faceKey}|${index}`, view);
     });
     return applied;
 }
