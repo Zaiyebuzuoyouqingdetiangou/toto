@@ -2,13 +2,15 @@
 // 本地数据库被清掉（例如宿主更新时清了网页数据）以后，可以从这份备份一键恢复。
 // 只在导入、启用、改分类、删除等用户操作之后才写；启动时不打开本地库，除非用户开着母本库抽签。
 // 不经过模型，不发到酒馆以外的地方。
-import { getHostRequestHeaders } from './capabilities.js?rmv=1.68.65';
-import { exportExternalLibraryBackup, importExternalLibraryBackup, parseExternalLibraryBackup, validateExternalLibraryBackup, EXTERNAL_BACKUP_FORMAT, EXTERNAL_BACKUP_VERSION, EXTERNAL_BACKUP_MAX_BYTES } from './backup.js?rmv=1.68.65';
-import { listExternalLibraries } from './store.js?rmv=1.68.65';
+import { getHostRequestHeaders } from './capabilities.js?rmv=1.68.66';
+import { exportExternalLibraryBackup, importExternalLibraryBackup, parseExternalLibraryBackup, validateExternalLibraryBackup, EXTERNAL_BACKUP_FORMAT, EXTERNAL_BACKUP_VERSION, EXTERNAL_BACKUP_MAX_BYTES } from './backup.js?rmv=1.68.66';
+import { listExternalLibraries } from './store.js?rmv=1.68.66';
 
 export const MOTHER_LIBRARY_SERVER_BACKUP_NAME = 'rabbitmirror-mother-libraries.json';
 const SAVE_DELAY_MS = 2500;
 const STATUS_KEY = 'rabbit_mirror_mother_library_server_backup:v1';
+// 在本机删了库、但还没存进酒馆备份时留一个记号：这时不自动恢复，免得把刚删的库又补回来。
+const PENDING_DELETE_KEY = 'rabbit_mirror_mother_library_pending_delete:v1';
 
 let timer = 0;
 let saving = null;
@@ -78,6 +80,7 @@ export async function saveMotherLibraryServerBackup({ deletedLibraryIds = [], fe
         libraries: [...local.libraries, ...kept] });
     await uploadBackup(merged, { fetchImpl, headerProvider });
     for (const id of deleted) pendingDeleted.delete(id);
+    if (!pendingDeleted.size) { try { globalThis.localStorage?.removeItem(PENDING_DELETE_KEY); } catch { /* ignore */ } }
     const status = { ok: true, savedAt: merged.exportedAt, libraryCount: merged.libraries.length,
         entryCount: merged.libraries.reduce((sum, item) => sum + item.entries.length, 0), keptFromServer: kept.length };
     writeStatus(status);
@@ -87,6 +90,7 @@ export async function saveMotherLibraryServerBackup({ deletedLibraryIds = [], fe
 /** 本地库发生用户操作后调用：稍等一会儿合并成一次保存，失败只记状态，不打扰正在做的事。 */
 export function scheduleMotherLibraryServerBackup({ deletedLibraryIds = [] } = {}) {
     for (const id of deletedLibraryIds) pendingDeleted.add(String(id));
+    if (deletedLibraryIds.length) { try { globalThis.localStorage?.setItem(PENDING_DELETE_KEY, String(Date.now())); } catch { /* ignore */ } }
     if (typeof document === 'undefined' || typeof globalThis.fetch !== 'function') return;
     if (timer) clearTimeout(timer);
     timer = setTimeout(() => {
@@ -121,51 +125,92 @@ export async function findRestorableMotherLibraryBackup({ fetchImpl } = {}) {
 }
 
 let startupChecked = false;
-/** 启动后（只在开着母本库抽签时）看一次：本机母本库空了、酒馆里有备份，就提示去恢复。 */
-export async function checkMotherLibraryServerBackupOnStartup({ open } = {}) {
+
+/** 能不能不问就自动恢复：上次存备份失败过、或者本机刚删过库还没存进备份，都改成先问。 */
+export function canAutoRestoreMotherLibraries() {
+    if (readStatus()?.ok === false) return false;
+    try { if (globalThis.localStorage?.getItem(PENDING_DELETE_KEY)) return false; } catch { /* ignore */ }
+    return true;
+}
+
+function startupToast(kind, text, buttons = []) {
+    const toast = globalThis.toastr?.[kind]?.(text, '兔子镜母本库', buttons.length
+        ? { timeOut: 0, extendedTimeOut: 0, closeButton: true, tapToDismiss: false }
+        : { timeOut: 8000, closeButton: true });
+    const node = toast?.[0] || toast;
+    const body = node?.querySelector?.('.toast-message') || node;
+    if (!body?.append || !buttons.length) return { toast, body: null, buttons: [] };
+    const doc = body.ownerDocument;
+    const row = doc.createElement('div');
+    row.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;';
+    const made = buttons.map(label => {
+        const button = doc.createElement('button');
+        button.type = 'button';
+        button.textContent = label;
+        button.style.cssText = 'min-height:36px;padding:4px 12px;border-radius:8px;border:1px solid currentColor;background:transparent;color:inherit;font:inherit;cursor:pointer;';
+        row.append(button);
+        return button;
+    });
+    body.append(row);
+    return { toast, body, buttons: made };
+}
+
+function restoredText(result) {
+    return `已恢复 ${result.importedLibraries} 本、${result.importedEntries} 条${result.skippedLibraries ? `；本机已有的 ${result.skippedLibraries} 本没动` : ''}。抽签总开关没有改。`;
+}
+
+function announceRestored(result) {
+    try { globalThis.dispatchEvent?.(new CustomEvent('rabbitmirror:mother-library-restored', { detail: result })); } catch { /* ignore */ }
+}
+
+/**
+ * 启动后（只在开着母本库抽签时）看一次：本机母本库空了、酒馆里有备份——
+ * 平常直接自动补回来（只补本机没有的库），弹一句告诉用户；
+ * 上次存备份失败过或刚删过库时，改成弹提示让用户自己点「恢复」。
+ */
+export async function checkMotherLibraryServerBackupOnStartup({ open, fetchImpl } = {}) {
     if (startupChecked) return;
     startupChecked = true;
     try {
-        const found = await findRestorableMotherLibraryBackup();
+        const found = await findRestorableMotherLibraryBackup({ fetchImpl });
         if (!found) return;
+        const openLibrary = () => { try { open?.(); } catch { /* ignore */ } };
+        if (canAutoRestoreMotherLibraries()) {
+            try {
+                const result = await restoreMotherLibrariesFromServerBackup({ fetchImpl });
+                if (result.empty || !result.importedLibraries) return;
+                announceRestored(result);
+                const { toast, buttons: [look] } = startupToast('success',
+                    `本机的母本库被清空了，已自动从酒馆备份恢复：${restoredText(result)}`, ['去母本库看看']);
+                look?.addEventListener('click', event => { event.stopPropagation(); try { globalThis.toastr?.clear?.(toast); } catch { /* ignore */ } openLibrary(); });
+                return { auto: true, result };
+            } catch (error) {
+                console.warn('[RabbitMirror] 母本库自动恢复没有成功，改成提示手动恢复', error);
+            }
+        }
         const text = `本机的母本库是空的，但酒馆里有一份备份（${found.libraryCount} 本、${found.entryCount} 条）。`;
         // 提示里直接放「恢复」：点了才恢复（只补本机没有的库，已有的不动），不用再去设置里找。
-        const toast = globalThis.toastr?.info?.(text, '兔子镜母本库', { timeOut: 0, extendedTimeOut: 0, closeButton: true, tapToDismiss: false });
-        const node = toast?.[0] || toast;
-        const body = node?.querySelector?.('.toast-message') || node;
-        if (!body?.append) return;
-        const doc = body.ownerDocument;
-        const row = doc.createElement('div');
-        row.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;';
-        const make = (label) => {
-            const button = doc.createElement('button');
-            button.type = 'button';
-            button.textContent = label;
-            button.style.cssText = 'min-height:36px;padding:4px 12px;border-radius:8px;border:1px solid currentColor;background:transparent;color:inherit;font:inherit;cursor:pointer;';
-            row.append(button);
-            return button;
-        };
-        const restore = make('恢复');
-        const look = make('去母本库看看');
-        const line = doc.createElement('div');
+        const { toast, body, buttons: [restore, look] } = startupToast('info', text, ['恢复', '去母本库看看']);
+        if (!body) return;
+        const line = body.ownerDocument.createElement('div');
         line.style.cssText = 'margin-top:6px;';
-        body.append(row, line);
+        body.append(line);
         const close = () => { try { globalThis.toastr?.clear?.(toast); } catch { /* ignore */ } };
-        look.addEventListener('click', event => { event.stopPropagation(); close(); try { open?.(); } catch { /* ignore */ } });
+        look.addEventListener('click', event => { event.stopPropagation(); close(); openLibrary(); });
         restore.addEventListener('click', async event => {
             event.stopPropagation();
             restore.disabled = true; look.disabled = true;
             line.textContent = '正在从酒馆备份恢复……';
             try {
-                const result = await restoreMotherLibrariesFromServerBackup();
-                line.textContent = result.empty ? '酒馆里的备份是空的，没有可恢复的库。'
-                    : `已恢复 ${result.importedLibraries} 本、${result.importedEntries} 条${result.skippedLibraries ? `；本机已有的 ${result.skippedLibraries} 本没动` : ''}。抽签总开关没有改。`;
+                const result = await restoreMotherLibrariesFromServerBackup({ fetchImpl });
+                line.textContent = result.empty ? '酒馆里的备份是空的，没有可恢复的库。' : restoredText(result);
                 restore.remove(); look.disabled = false;
-                try { globalThis.dispatchEvent?.(new CustomEvent('rabbitmirror:mother-library-restored', { detail: result })); } catch { /* ignore */ }
+                announceRestored(result);
             } catch (error) {
                 line.textContent = `没有恢复：${String(error?.message || error || '原因不明')}。本机现有的库没有改动，可以再点一次。`;
                 restore.disabled = false; look.disabled = false;
             }
         });
+        return { auto: false };
     } catch (error) { console.debug('[RabbitMirror] mother library backup startup check skipped', error); }
 }
