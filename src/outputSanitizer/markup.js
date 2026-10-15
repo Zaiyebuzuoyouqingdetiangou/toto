@@ -1,9 +1,9 @@
-import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.68.64';
+import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.68.65';
 // Split from outputSanitizer.js — markup.
 
-import { getSettings } from '../settings.js?rmv=1.68.64';
-import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.68.64';
-import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.68.64';
+import { getSettings } from '../settings.js?rmv=1.68.65';
+import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.68.65';
+import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.68.65';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     INTERACTION_HOME_ATTR,
@@ -15,7 +15,7 @@ import {
     clearMirrorTitleDisplayArtifacts,
     escapeRegExp,
     hashInteractionSignature,
-} from './runtime.js?rmv=1.68.64';
+} from './runtime.js?rmv=1.68.65';
 
 const TOTO_BLOCK_RE = /<toto\b[\s\S]*?<\/toto>/gi;
 
@@ -53,6 +53,8 @@ const RABBIT_MIRROR_NETWORK_URL_ATTRS = new Set(['href', 'src', 'xlink:href', 'p
 
 const RABBIT_MIRROR_INTERNAL_MODEL_ATTRS = new Set([
     'data-rm-avatar-rendered',
+    // 材质纹理是否已铺上由兔子镜自己标；模型只写 data-rm-texture 描述。
+    'data-rm-texture-on',
     REVERSIBLE_STYLE_BASELINE_ATTR,
     REVERSIBLE_TEXT_BASELINE_ATTR,
     RAW_SELF_MUTATION_HTML_BASELINE_ATTR,

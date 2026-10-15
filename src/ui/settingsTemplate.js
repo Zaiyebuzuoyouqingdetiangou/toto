@@ -1,8 +1,8 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.68.64';
-import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.68.64';
-import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.68.64';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.68.65';
+import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.68.65';
+import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.68.65';
 
 export function buildRabbitMirrorSettingsDialogHtml() {
     return `
@@ -506,6 +506,8 @@ export function buildRabbitMirrorSettingsDialogHtml() {
             </div>
             <div id="rh_visual_scenery_mode_help" class="rabbit-mirror-subnote">三选一，仅影响 HTML 面；文本面不受影响。主体绘制、材质与光影已纳入通用美化规则。</div>
             <div id="rh_visual_tone_row">
+              <label class="checkbox_label"><input id="rh_material_texture" type="checkbox"> 材质纹理（实验性）</label>
+              <div class="rabbit-mirror-subnote" style="margin:-2px 0 8px 26px;">默认关闭。打开后，画面里的纸、布、毛绒、木头这类实物，模型可以给它加一层很淡的纹理，由兔子镜现场生成，不放图片。每次请求多大约 150 字；觉得像模板就关掉，已生成的画面也会一起恢复原样。</div>
               <label for="rh_visual_tone_mode">色调模式</label>
               <select id="rh_visual_tone_mode" class="text_pole" style="min-height:44px;max-width:100%;" aria-describedby="rh_visual_tone_mode_help"><option value="normal">普通</option><option value="soft">柔和浅色</option><option value="dark">深色</option></select>
               <div id="rh_visual_tone_mode_help" class="rabbit-mirror-subnote">三选一，选中即保存，从下一次生成起生效；已有作品不变。普通：颜色不限，照常强避重。柔和浅色：低饱和、带一点灰的浅色系，在浅色范围里换色避重。深色：适合夜间阅读的深色背景，在深色范围里换色避重。</div>

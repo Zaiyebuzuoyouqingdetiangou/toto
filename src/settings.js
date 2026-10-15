@@ -1,11 +1,11 @@
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.68.64';
-import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.68.64';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.68.65';
+import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.68.65';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.68.64';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.68.64';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.68.64';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.68.64';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.68.65';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.68.65';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.68.65';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.68.65';
 
 export const MODULE_NAME = 'rabbit_mirror_theater';
 
@@ -286,6 +286,7 @@ export const defaultSettings = Object.freeze({
     visualSceneryCombination: false,
     imageEnabled: false,
     builtinImageEnabled: false,
+    materialTextureEnabled: false, // 材质纹理（实验性）：默认关闭。
     imagePromptFormat: 'nai5-natural',
     imageCompositionMode: 'scene',
     imageBackend: 'baibai',
@@ -471,6 +472,7 @@ export function getSettings() {
     settings.imageLlmTemperature = Number.isFinite(Number(settings.imageLlmTemperature)) ? Math.min(2, Math.max(0, Number(settings.imageLlmTemperature))) : 0.8;
     settings.imageLlmMaxTokens = Number(settings.imageLlmMaxTokens) > 0 ? Math.min(64000, Math.round(Number(settings.imageLlmMaxTokens))) : 4096;
     settings.builtinImageEnabled = settings.builtinImageEnabled === true;
+    settings.materialTextureEnabled = settings.materialTextureEnabled === true;
     settings.imagePromptFormat = settings.imagePromptFormat === 'nai45-tags' ? 'nai45-tags' : 'nai5-natural';
     settings.visualPromptEditingEnabled = !!settings.visualPromptEditingEnabled;
     settings.appearanceReferenceEnabled = settings.appearanceReferenceEnabled === true;
@@ -582,6 +584,7 @@ export function updateSettings(patch) {
     }
     if (Object.prototype.hasOwnProperty.call(safePatch, 'imageEnabled')) safePatch.imageEnabled = safePatch.imageEnabled === true;
     if (Object.prototype.hasOwnProperty.call(safePatch, 'builtinImageEnabled')) safePatch.builtinImageEnabled = safePatch.builtinImageEnabled === true;
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'materialTextureEnabled')) safePatch.materialTextureEnabled = safePatch.materialTextureEnabled === true;
     if (Object.prototype.hasOwnProperty.call(safePatch, 'longTextSource')) safePatch.longTextSource = ['blank', 'text', 'mixed'].includes(safePatch.longTextSource) ? safePatch.longTextSource : 'blank';
     if (Object.prototype.hasOwnProperty.call(safePatch, 'autoLongTextPercent')) {
         const autoPercent = Number(safePatch.autoLongTextPercent);
