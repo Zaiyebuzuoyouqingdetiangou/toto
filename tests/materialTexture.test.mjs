@@ -25,4 +25,6 @@ test('the prompt rule is only sent when the switch is on', () => {
     // 开关打开就每面写一处，不再给「不加」的退路。
     assert.match(rule, /每个 HTML 面/);
     assert.doesNotMatch(rule, /可选|不加/);
+    // 不列举材质名（纸、布、木……），免得模型只在这几种里挑。
+    assert.doesNotMatch(rule, /纸|布|木|毛绒|金属/);
 });
