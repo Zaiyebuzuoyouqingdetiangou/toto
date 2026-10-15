@@ -66,12 +66,19 @@ function publish(parser, command) {
 export function registerCommandOnParser(parser, SlashCommand, open) {
     const target = commandClassOf(parser);
     if (!target || typeof SlashCommand?.fromProps !== 'function' || typeof open !== 'function') return false;
+    // 酒馆的 addCommandObject 会直接覆盖同名命令，所以要在登记之前看：名字被别的插件占着就不登记。
+    const existing = target.commands?.[NAME] || parser?.commands?.[NAME];
+    if (existing && !isOurCommand(existing)) return false;
     const command = makeCommand(SlashCommand, open);
+    // 别名同理：被别的插件占着的别名，登记后改回去。
+    const takenAliases = ALIASES.filter(alias => { const held = target.commands?.[alias]; return held && !isOurCommand(held); })
+        .map(alias => [alias, target.commands[alias]]);
     try { target.addCommandObject(command); }
     catch (error) {
         console.warn('[RabbitMirror] /兔子镜 没登记上', error);
         return false;
     }
+    for (const [alias, held] of takenAliases) { try { target.commands[alias] = held; } catch { /* ignore */ } }
     if (!publish(target, command) || !publish(parser, command)) return false;
     remember(target, command);
     if (parser !== target) remember(parser, command);
@@ -162,7 +169,8 @@ export function unregisterRabbitMirrorOpenCommand() {
         const map = parser?.commands;
         if (!map) continue;
         for (const name of [NAME, ...ALIASES]) {
-            try { if (map[name] === command || isOurCommand(map[name])) delete map[name]; } catch {}
+            // 只删自己登记的那一个对象：另一份兔子镜（新装的、热更新的）登记的不动。
+            try { if (map[name] === command) delete map[name]; } catch {}
         }
     }
 }

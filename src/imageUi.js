@@ -1,10 +1,10 @@
-import { getSettings } from './settings.js?rmv=1.68.60';
-import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=1.68.60';
-import { loadMirrorImage, saveMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft } from './imageStore.js?rmv=1.68.60';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.68.60';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.68.60';
-import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.68.60';
-import { listBuiltinImageFrames, rerollBuiltinImage, showBuiltinImageVersion, builtinImageReady, builtinImageReusable } from './builtinImage.js?rmv=1.68.60';
+import { getSettings } from './settings.js?rmv=1.68.61';
+import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=1.68.61';
+import { loadMirrorImage, saveMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft } from './imageStore.js?rmv=1.68.61';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.68.61';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.68.61';
+import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.68.61';
+import { listBuiltinImageFrames, rerollBuiltinImage, showBuiltinImageVersion, builtinImageReady, builtinImageReusable } from './builtinImage.js?rmv=1.68.61';
 
 // The lock lives beyond a panel's lifetime. Closing, reopening or aborting a UI
 // cannot release a provider reservation before its Promise actually settles.

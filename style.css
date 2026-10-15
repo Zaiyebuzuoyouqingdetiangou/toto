@@ -1940,3 +1940,6 @@ toto img[data-rm-sticker]:not([src]), [data-rabbit-mirror-external-source] img[d
     }
   }
 }
+/* 快拍「跳回原楼」的闪烁：快拍关掉后楼层还在闪，所以样式放在这里而不是快拍自己的样式里。 */
+@keyframes rm-snapshot-flash{0%{outline:3px solid var(--rh-primary,#ce729c)}100%{outline:3px solid transparent}}
+#chat [data-rm-snapshot-flash="true"]{animation:rm-snapshot-flash 1.4s ease;outline-offset:4px}

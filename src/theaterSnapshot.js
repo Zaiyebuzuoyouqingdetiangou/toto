@@ -5,7 +5,10 @@
 export const THEATER_SNAPSHOT_PAGE_SIZE = 10;
 
 const GENERATING_PLACEHOLDER = /正在生成中|等待正文完成|等待手动生成/;
-const FAILURE_MARK = /data-rabbit-mirror-face-failure|data-rabbit-mirror-follow-failure|兔子镜本批生成失败|【兔子镜：生成失败】|【兔子镜：第\s*\d+\s*面未完成】|面未完成|生成失败/;
+// 正文里只认兔子镜自己写下的失败标记；普通回复里出现「生成失败」「面未完成」这几个字不算。
+const FAILURE_MARK = /data-rabbit-mirror-face-failure|data-rabbit-mirror-follow-failure|兔子镜本批生成失败|【兔子镜：生成失败】|【兔子镜：第\s*\d+\s*面未完成】/;
+// 兔子镜自己挂在楼层上的错误提示，措辞不固定，宽一点认。
+const NOTICE_FAILURE_MARK = /面未完成|生成失败|没有生成成功/;
 const MIRROR_MARK = /兔子镜|data-rabbit-mirror|data-rabbit-hole|face-failure/;
 
 export function currentSwipeId(message) {
@@ -57,6 +60,9 @@ function isGeneratingPlaceholder(html) {
 function isMirrorFailure(text) {
     return FAILURE_MARK.test(String(text || ''));
 }
+function isMirrorFailureNotice(text) {
+    return FAILURE_MARK.test(String(text || '')) || NOTICE_FAILURE_MARK.test(String(text || ''));
+}
 
 function classifyFloor({ index, swipe, text, saved, errorText }) {
     const fromText = extractMirrorHtml(text);
@@ -70,7 +76,7 @@ function classifyFloor({ index, swipe, text, saved, errorText }) {
             kind: 'ready',
             html,
             title: snapshotTitleFromHtml(html),
-            failed: isMirrorFailure(html) || isMirrorFailure(text) || isMirrorFailure(errorText),
+            failed: isMirrorFailure(html) || isMirrorFailure(text) || isMirrorFailureNotice(errorText),
             errorText: '',
         };
     }
@@ -182,6 +188,8 @@ const SNAPSHOT_VIEW_KEY = 'rabbitMirrorSnapshotView';
 const THUMB_WIDTH = 420;
 let snapshot = null;
 let thumbObserver = null;
+// 兔子镜停用或热更新时，index.js 用它把开着的快拍一并关掉（只有打开过快拍才会加载这个模块）。
+globalThis.__rabbitMirrorCloseSnapshot = () => closeTheaterSnapshot();
 
 function resetThumbs() {
     thumbObserver?.disconnect?.();
@@ -195,10 +203,15 @@ function overlayParent() {
 }
 
 export function closeTheaterSnapshot() {
+    closeSnapshotNow();
+}
+
+function closeSnapshotNow() {
     if (!snapshot) return;
     resetThumbs();
-    const { overlay, keydown, onFavoritesChanged } = snapshot;
+    const { overlay, keydown, onFavoritesChanged, onResize } = snapshot;
     document.removeEventListener('keydown', keydown, true);
+    if (onResize) globalThis.removeEventListener?.('resize', onResize);
     if (onFavoritesChanged) document.removeEventListener(snapshot.favoritesEvent, onFavoritesChanged);
     try { if (overlay?.open && typeof overlay.close === 'function') overlay.close(); } catch { /* 已经关了 */ }
     overlay?.remove?.();
@@ -304,8 +317,9 @@ async function loadOlder() {
         const button = win.document.getElementById('show_more_messages');
         if (!button) continue;
         const jq = win.jQuery || win.$;
-        if (typeof jq === 'function') jq(button).trigger('mouseup');
-        else button.dispatchEvent(new win.MouseEvent('mouseup', { bubbles: true }));
+        // 酒馆在 document 上监听的是 click（script.js 的 #show_more_messages）。
+        if (typeof jq === 'function') jq(button).trigger('click');
+        else button.dispatchEvent(new win.MouseEvent('click', { bubbles: true }));
         return true;
     }
     return false;
@@ -353,6 +367,9 @@ async function jumpBySlash(id) {
 }
 
 async function jumpToFloor(id, chatLength) {
+    // 往前加载要等一会儿；这期间用户重新打开的快拍不能被这次跳转关掉。
+    const owner = snapshot;
+    const closeTheaterSnapshot = () => { if (snapshot && snapshot === owner) closeSnapshotNow(); };
     const virtual = snapshotUsesVirtualChat({
         chatLength,
         mountedCount: mountedChatCount(),
@@ -376,7 +393,10 @@ async function jumpToFloor(id, chatLength) {
 
 function flashFloor(node) {
     node.setAttribute('data-rm-snapshot-flash', 'true');
-    node.addEventListener?.('animationend', () => node.removeAttribute('data-rm-snapshot-flash'), { once: true });
+    const clear = () => node.removeAttribute('data-rm-snapshot-flash');
+    node.addEventListener?.('animationend', clear, { once: true });
+    // 闪烁样式放在 style.css 里（快拍关掉后仍在）；万一动画没跑，也按时把标记拿掉，下次打开不会再闪。
+    setTimeout(clear, 1800);
 }
 
 function paintStar(button, on) {
@@ -453,11 +473,11 @@ function updateThumbScale(grid) {
 
 export async function openTheaterSnapshot() {
     const [{ applyAppearanceTheme }, api, favorites, persistence, runtime] = await Promise.all([
-        import('./appearanceTheme.js?rmv=1.68.60'),
-        import('./independentApi.js?rmv=1.68.60'),
-        import('./theaterFavorites.js?rmv=1.68.60'),
-        import('./independentApi/persistence.js?rmv=1.68.60'),
-        import('./independentApi/runtime.js?rmv=1.68.60'),
+        import('./appearanceTheme.js?rmv=1.68.61'),
+        import('./independentApi.js?rmv=1.68.61'),
+        import('./theaterFavorites.js?rmv=1.68.61'),
+        import('./independentApi/persistence.js?rmv=1.68.61'),
+        import('./independentApi/runtime.js?rmv=1.68.61'),
     ]);
     const ctx = runtime.getContext?.() || {};
     const chat = Array.isArray(ctx.chat) ? ctx.chat : [];
@@ -471,16 +491,16 @@ export async function openTheaterSnapshot() {
     let imageChatKey = '';
     let restoreBuiltinImages = () => 0;
     try {
-        const connection = await import('./independentApi/connection.js?rmv=1.68.60');
+        const connection = await import('./independentApi/connection.js?rmv=1.68.61');
         imageChatKey = String(connection.chatKey(ctx) || '');
     } catch { imageChatKey = ''; }
     try {
-        const images = await import('./builtinImage.js?rmv=1.68.60');
+        const images = await import('./builtinImage.js?rmv=1.68.61');
         if (typeof images.restoreSavedBuiltinImages === 'function') restoreBuiltinImages = images.restoreSavedBuiltinImages;
     } catch { /* 没有生图模块时图框保持原样 */ }
     let sessionErrors = [];
     try {
-        const flights = await import('./independentApi/flights.js?rmv=1.68.60');
+        const flights = await import('./independentApi/flights.js?rmv=1.68.61');
         const key = imageChatKey;
         const seen = new Set(domErrors.map(row => row.mesid));
         for (const failure of flights.automaticFailureStops?.values?.() || []) {
@@ -501,7 +521,7 @@ export async function openTheaterSnapshot() {
     const items = collectTheaterSnapshots(chat, { persisted, domErrors: [...domErrors, ...sessionErrors] });
     let expandBlocks = value => String(value || '');
     try {
-        const markup = await import('./outputSanitizer/markup.js?rmv=1.68.60');
+        const markup = await import('./outputSanitizer/markup.js?rmv=1.68.61');
         if (typeof markup.expandHtmlDocumentCodeBlocks === 'function') expandBlocks = markup.expandHtmlDocumentCodeBlocks;
     } catch { /* 缩略图用原文 */ }
     closeTheaterSnapshot();
@@ -887,12 +907,23 @@ export async function openTheaterSnapshot() {
         else closeTheaterSnapshot();
     };
     const onFavoritesChanged = () => { if (snapshot?.overlay === overlay) refreshStars(); };
+    // 转屏或改窗口宽度后，镜片缩略图按新宽度重算比例，不被裁掉也不留空。
+    let resizeFrame = 0;
+    const onResize = () => {
+        if (resizeFrame) return;
+        resizeFrame = requestAnimationFrame(() => {
+            resizeFrame = 0;
+            for (const grid of overlay.querySelectorAll('.rm-snap-grid')) updateThumbScale(grid);
+        });
+    };
     document.addEventListener('keydown', keydown, true);
     document.addEventListener(favorites.THEATER_FAVORITES_CHANGED_EVENT, onFavoritesChanged);
+    globalThis.addEventListener?.('resize', onResize);
     overlayParent().append(overlay);
     snapshot = {
         overlay,
         keydown,
+        onResize,
         onFavoritesChanged,
         favoritesEvent: favorites.THEATER_FAVORITES_CHANGED_EVENT,
     };

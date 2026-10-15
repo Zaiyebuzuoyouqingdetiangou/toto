@@ -79,3 +79,17 @@ test('snapshot shows a face-failure mirror and the saved independent html for th
     assert.equal(items[1].title, '【兔子镜：当前存档】');
     assert.equal(items[1].swipe, 1);
 });
+
+test('ordinary replies that merely mention 生成失败 or 面未完成 are not listed as failed mirrors', () => {
+    const chat = [
+        { is_user: true, mes: '用户' },
+        { is_user: false, mes: '图片生成失败了，再试一次吧。' },
+        { is_user: true, mes: '用户' },
+        { is_user: false, mes: '第二面未完成的稿子还压在桌上。' },
+        { is_user: true, mes: '用户' },
+        { is_user: false, mes: '<toto data-rabbit-mirror="true"><details><summary>【兔子镜：生成失败】</summary><p>原因</p></details></toto>' },
+    ];
+    const items = collectTheaterSnapshots(chat);
+    assert.deepEqual(items.map(item => item.mesid), [5]);
+    assert.equal(items[0].failed, true);
+});
