@@ -1,9 +1,9 @@
-import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.68.75';
+import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.68.76';
 // Split from outputSanitizer.js — markup.
 
-import { getSettings } from '../settings.js?rmv=1.68.75';
-import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.68.75';
-import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.68.75';
+import { getSettings } from '../settings.js?rmv=1.68.76';
+import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.68.76';
+import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.68.76';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     INTERACTION_HOME_ATTR,
@@ -15,7 +15,7 @@ import {
     clearMirrorTitleDisplayArtifacts,
     escapeRegExp,
     hashInteractionSignature,
-} from './runtime.js?rmv=1.68.75';
+} from './runtime.js?rmv=1.68.76';
 
 const TOTO_BLOCK_RE = /<toto\b[\s\S]*?<\/toto>/gi;
 
@@ -57,6 +57,12 @@ const RABBIT_MIRROR_INTERNAL_MODEL_ATTRS = new Set([
     'data-rm-texture-on',
     'data-rm-texture-pos',
     'data-rm-hold-class',
+    'data-rm-polish',
+    'data-rm-polish-font',
+    'data-rm-polish-line',
+    'data-rm-polish-pad',
+    'data-rm-polish-tap',
+    'data-rm-polish-pos',
     'data-rm-press',
     'data-rm-pressing',
     'data-rm-press-release',

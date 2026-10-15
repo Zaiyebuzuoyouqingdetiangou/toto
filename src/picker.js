@@ -1,9 +1,9 @@
-import { usesModelOriginalColors } from './visualDesign.js?rmv=1.68.75';
-import { faceDrawRule, hasFaceDrawRules, normalizeFaceDrawRules } from './faceDrawRules.js?rmv=1.68.75';
-import { drawFaceRule, faceDrawFingerprint } from './faceDrawEngine.js?rmv=1.68.75';
-import { attachPaletteRecipes } from './paletteRecipes.js?rmv=1.68.75';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.68.75';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.68.75';
+import { usesModelOriginalColors } from './visualDesign.js?rmv=1.68.76';
+import { faceDrawRule, hasFaceDrawRules, normalizeFaceDrawRules } from './faceDrawRules.js?rmv=1.68.76';
+import { drawFaceRule, faceDrawFingerprint } from './faceDrawEngine.js?rmv=1.68.76';
+import { attachPaletteRecipes } from './paletteRecipes.js?rmv=1.68.76';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.68.76';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.68.76';
 import {
     getCurrentChatKey,
     getDirectiveScopedPick,
@@ -24,11 +24,11 @@ import {
     createPendingComboBatchPlan,
     findPendingComboBatchPlan,
     readFaceDrawCursorState,
-} from './storage.js?rmv=1.68.75';
-import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.68.75';
-import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.68.75';
-import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, visualSceneryEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.68.75';
-import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.68.75';
+} from './storage.js?rmv=1.68.76';
+import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.68.76';
+import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.68.76';
+import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, visualSceneryEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.68.76';
+import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.68.76';
 import {
     chooseExternalSource,
     externalPoolActive,
@@ -38,7 +38,7 @@ import {
     getExternalPoolSnapshot,
     pickExternalItems,
     sourceMixModeIsExternalOnly,
-} from './externalWorldBook/externalPool.js?rmv=1.68.75';
+} from './externalWorldBook/externalPool.js?rmv=1.68.76';
 
 function randomUnit() {
     try {
