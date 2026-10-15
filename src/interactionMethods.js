@@ -151,11 +151,13 @@ export function driverFamilyOf(key) {
 
 // usages：这一面抽到的真实用法（展现形式自己的玩法优先）。用法里认得出的动作先配上对应写法，一个大类只配一种；
 // 其余位置按大类随机补齐、避开上一面给过的；related 是这个媒介大类的全部用法，同一大类里优先挑其中用得上的写法。
-export function drawDriverOffer({ avoidSlide = false, avoidFlip = false, avoidTabs = false, usages = [], related = [] } = {}) {
+// 「开关切换＋弹窗」是最省事的一对，模型拿到就凑成「一个切换按钮＋几个点开的小框」。
+const SWITCH_POPUP_DRIVERS = new Set(['toggle', 'popup']);
+export function drawDriverOffer({ avoidSlide = false, avoidFlip = false, avoidTabs = false, avoidSwitchPopup = false, usages = [], related = [] } = {}) {
     let recent = [];
     try { recent = JSON.parse(globalThis.localStorage?.getItem(RECENT_KEY) || '[]'); } catch { recent = []; }
     const all = Object.keys(DRIVER_METHODS).filter(key => (!avoidSlide || !SLIDE_DRIVERS.has(key)) && (!avoidFlip || !FLIP_DRIVERS.has(key))
-        && (!avoidTabs || !TAB_DRIVERS.has(key)));
+        && (!avoidTabs || !TAB_DRIVERS.has(key)) && (!avoidSwitchPopup || !SWITCH_POPUP_DRIVERS.has(key)));
     const matched = [];
     const taken = new Set();
     for (const [key] of matchDriversToUsages(usages, all)) {
@@ -177,7 +179,14 @@ export function drawDriverOffer({ avoidSlide = false, avoidFlip = false, avoidTa
     }).filter(item => item.pick.length);
     const freshFamilies = families.filter(item => item.fresh);
     const pool = freshFamilies.length >= need ? freshFamilies : families;
-    const offer = [...matched, ...shuffled(pool).slice(0, need).map(item => shuffled(item.pick)[0])];
+    let offer = [...matched, ...shuffled(pool).slice(0, need).map(item => shuffled(item.pick)[0])];
+    // 一份清单里不同时给「开关切换」和「弹窗」：留先排上的那个（多半是配了用法的），另一个换成别的大类。
+    if (offer.includes('toggle') && offer.includes('popup')) {
+        const drop = offer.indexOf('toggle') < offer.indexOf('popup') ? 'popup' : 'toggle';
+        const used = new Set(offer.map(driverFamilyOf));
+        const spare = shuffled(families.filter(item => !used.has(item.family) && !item.pick.some(key => SWITCH_POPUP_DRIVERS.has(key))))[0];
+        offer = spare ? offer.map(key => key === drop ? shuffled(spare.pick)[0] : key) : offer.filter(key => key !== drop);
+    }
     try { globalThis.localStorage?.setItem(RECENT_KEY, JSON.stringify(offer)); } catch { /* best effort */ }
     return Object.freeze(offer);
 }
