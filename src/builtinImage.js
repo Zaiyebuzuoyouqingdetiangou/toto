@@ -1,10 +1,10 @@
-import { getSettings } from './settings.js?rmv=1.68.63';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.68.63';
-import { findBuiltinImageKeyFromOtherChat, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.68.63';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.68.63';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.68.63';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.68.63';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.68.63';
+import { getSettings } from './settings.js?rmv=1.68.64';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.68.64';
+import { findBuiltinImageKeyFromOtherChat, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.68.64';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.68.64';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.68.64';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.68.64';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.68.64';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -204,7 +204,9 @@ function sameHostAlternative(url) {
 function paintCandidates(record) {
     const list = [record, ...(Array.isArray(record?.history) ? [...record.history].reverse() : [])];
     const seen = new Set();
-    return list.flatMap(entry => [entry?.url || entry?.path, entry?.dataUrl]).map(safeImageUrl).flatMap(url => [sameHostAlternative(url), url]) // 先试当前地址：别的主机常常要等很久才报错.filter(url => url && !seen.has(url) && seen.add(url));
+    // 先试当前地址：别的主机常常要等很久才报错。
+    return list.flatMap(entry => [entry?.url || entry?.path, entry?.dataUrl]).map(safeImageUrl).flatMap(url => [sameHostAlternative(url), url])
+        .filter(url => url && !seen.has(url) && seen.add(url));
 }
 function watchImageLoad(frame, image, record, root, key) {
     const candidates = paintCandidates(record);

@@ -2,6 +2,8 @@
 // 收藏仍走原来的收藏夹；这里只负责翻看、点开镜面里的交互、收藏/取消收藏，以及跳回原楼。
 // 生成失败、没有成品的楼也留下，方便跳回去重试。正在生成的占位不收进来。
 
+import { RUNTIME_VERSION } from './ui/runtime.js?rmv=1.68.64';
+
 export const THEATER_SNAPSHOT_PAGE_SIZE = 10;
 
 const GENERATING_PLACEHOLDER = /正在生成中|等待正文完成|等待手动生成/;
@@ -218,8 +220,13 @@ const SNAPSHOT_VIEW_KEY = 'rabbitMirrorSnapshotView';
 const THUMB_WIDTH = 420;
 let snapshot = null;
 let thumbObserver = null;
+// 每次「关掉快拍」都让还在读数据、没打开出来的那一次作废，免得停用之后它又自己弹出来。
+let openGeneration = 0;
 // 兔子镜停用或热更新时，index.js 用它把开着的快拍一并关掉（只有打开过快拍才会加载这个模块）。
-globalThis.__rabbitMirrorCloseSnapshot = () => closeTheaterSnapshot();
+// 记下是哪一份兔子镜的，旧的一份停用时不会去关新装那份打开的快拍。
+const closeFromRuntime = () => closeTheaterSnapshot();
+closeFromRuntime.runtime = RUNTIME_VERSION;
+globalThis.__rabbitMirrorCloseSnapshot = closeFromRuntime;
 
 function resetThumbs() {
     thumbObserver?.disconnect?.();
@@ -233,6 +240,7 @@ function overlayParent() {
 }
 
 export function closeTheaterSnapshot() {
+    openGeneration += 1;
     closeSnapshotNow();
 }
 
@@ -507,12 +515,13 @@ function updateThumbScale(grid) {
 }
 
 export async function openTheaterSnapshot() {
+    const generation = ++openGeneration;
     const [{ applyAppearanceTheme }, api, favorites, persistence, runtime] = await Promise.all([
-        import('./appearanceTheme.js?rmv=1.68.63'),
-        import('./independentApi.js?rmv=1.68.63'),
-        import('./theaterFavorites.js?rmv=1.68.63'),
-        import('./independentApi/persistence.js?rmv=1.68.63'),
-        import('./independentApi/runtime.js?rmv=1.68.63'),
+        import('./appearanceTheme.js?rmv=1.68.64'),
+        import('./independentApi.js?rmv=1.68.64'),
+        import('./theaterFavorites.js?rmv=1.68.64'),
+        import('./independentApi/persistence.js?rmv=1.68.64'),
+        import('./independentApi/runtime.js?rmv=1.68.64'),
     ]);
     const ctx = runtime.getContext?.() || {};
     const chat = Array.isArray(ctx.chat) ? ctx.chat : [];
@@ -529,16 +538,16 @@ export async function openTheaterSnapshot() {
     let imageChatKey = '';
     let restoreBuiltinImages = () => 0;
     try {
-        const connection = await import('./independentApi/connection.js?rmv=1.68.63');
+        const connection = await import('./independentApi/connection.js?rmv=1.68.64');
         imageChatKey = String(connection.chatKey(ctx) || '');
     } catch { imageChatKey = ''; }
     try {
-        const images = await import('./builtinImage.js?rmv=1.68.63');
+        const images = await import('./builtinImage.js?rmv=1.68.64');
         if (typeof images.restoreSavedBuiltinImages === 'function') restoreBuiltinImages = images.restoreSavedBuiltinImages;
     } catch { /* 没有生图模块时图框保持原样 */ }
     let sessionErrors = [];
     try {
-        const flights = await import('./independentApi/flights.js?rmv=1.68.63');
+        const flights = await import('./independentApi/flights.js?rmv=1.68.64');
         const key = imageChatKey;
         const seen = new Set(domErrors.map(row => row.mesid));
         for (const failure of flights.automaticFailureStops?.values?.() || []) {
@@ -560,8 +569,8 @@ export async function openTheaterSnapshot() {
     // 重说的其它版本：本机记录优先，没有就用聊天文件里随楼存的、再没有就用版本存档。只读，不改任何记录。
     try {
         const [swipes, faceSwipe] = await Promise.all([
-            import('./swipeVersions.js?rmv=1.68.63'),
-            import('./independentApi/faceSwipe.js?rmv=1.68.63'),
+            import('./swipeVersions.js?rmv=1.68.64'),
+            import('./independentApi/faceSwipe.js?rmv=1.68.64'),
         ]);
         let archive = new Map();
         if (imageChatKey && typeof swipes.loadFaceSwipeArchiveRows === 'function') {
@@ -576,7 +585,9 @@ export async function openTheaterSnapshot() {
             const states = {};
             for (let face = 0; face < 5; face += 1) {
                 const candidates = [swipes.readFaceSwipe(base, face), recordFaceSwipes.get(key)?.[face], archive.get(base)?.[face]];
-                const state = candidates.map(value => swipes.normalizeSwipeState(value)).find(value => value.versions.length > 1);
+                // 三处记录可能不一致（换过设备时）：取最后改动过的那一份，和挂楼时的取法一样。
+                const state = candidates.map(value => swipes.normalizeSwipeState(value)).filter(value => value.versions.length > 1)
+                    .sort((a, b) => Number(b.touched || 0) - Number(a.touched || 0))[0];
                 if (state) states[face] = state;
             }
             if (Object.keys(states).length) versionsByKey.set(key, states);
@@ -585,10 +596,11 @@ export async function openTheaterSnapshot() {
     } catch { /* 读不到版本就只列当前这一版 */ }
     let expandBlocks = value => String(value || '');
     try {
-        const markup = await import('./outputSanitizer/markup.js?rmv=1.68.63');
+        const markup = await import('./outputSanitizer/markup.js?rmv=1.68.64');
         if (typeof markup.expandHtmlDocumentCodeBlocks === 'function') expandBlocks = markup.expandHtmlDocumentCodeBlocks;
     } catch { /* 缩略图用原文 */ }
-    closeTheaterSnapshot();
+    if (generation !== openGeneration) return [];
+    closeSnapshotNow();
 
     const narrow = (globalThis.innerWidth || 1024) < 640;
     const overlay = document.createElement('dialog');
