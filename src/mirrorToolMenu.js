@@ -1,10 +1,12 @@
 // Tool controls stay attached to their owning face; only their menu is portalled.
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.68.85';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.68.86';
 
 // 镜面工具面板（挨打猫、维修兔、重说、抽签记录等）跟随设置里的「主题与外观」。
 // 选「跟随酒馆主题」时不改动任何颜色。
 export function themeMirrorToolPanel(panel) {
     if (!panel?.style) return;
+    // 用户美化认这个名字（见 userSkin.js），不随主题变。
+    panel.setAttribute?.('data-rm-skin', 'panel');
     try {
         // Read the saved palette even before the full settings workbench loads.
         applyAppearanceTheme(panel);

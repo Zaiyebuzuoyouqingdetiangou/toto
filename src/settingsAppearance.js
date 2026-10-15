@@ -1,8 +1,9 @@
 // UI palettes from the user-provided Hearttrace source, by Toto.
 // Presentation only: no generation settings, Prompt, content storage, or network.
-import { closeTheaterFavoriteLibrary, closeTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.68.85';
-import { UI_THEMES, APPEARANCE_STORAGE_KEY, paletteKeys, normalizeAppearance, applyAppearanceTheme } from './appearanceTheme.js?rmv=1.68.85';
-export { UI_THEMES, APPEARANCE_STORAGE_KEY, normalizeAppearance, applyAppearanceTheme } from './appearanceTheme.js?rmv=1.68.85';
+import { closeTheaterFavoriteLibrary, closeTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.68.86';
+import { UI_THEMES, APPEARANCE_STORAGE_KEY, paletteKeys, normalizeAppearance, applyAppearanceTheme } from './appearanceTheme.js?rmv=1.68.86';
+import { mountUserSkinControls } from './userSkin.js?rmv=1.68.86';
+export { UI_THEMES, APPEARANCE_STORAGE_KEY, normalizeAppearance, applyAppearanceTheme } from './appearanceTheme.js?rmv=1.68.86';
 const colorLabels = ['背景', '卡片底色', '正文', '辅助文字', '主色', '辅助色', '边框'];
 const mounts = new WeakMap();
 // Keep the existing public theme hook for older consumers.
@@ -51,7 +52,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     const subtitle = head.querySelector('small');
     subtitle.replaceWith(versionRow);
     versionRow.append(subtitle);
-    void import('./mirrorUpdateMenu.js?rmv=1.68.85').then(mod => {
+    void import('./mirrorUpdateMenu.js?rmv=1.68.86').then(mod => {
         if (versionRow.isConnected) mod.mountSettingsUpdateChrome(versionRow);
     }).catch(error => console.warn('[RabbitMirror] 设置标题的更新检测没有挂上', error));
     const searchbar = make('div', 'rh-ui-searchbar');
@@ -202,6 +203,8 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     let state;
     try{state=normalizeAppearance(JSON.parse(globalThis.localStorage.getItem(APPEARANCE_STORAGE_KEY)||'null'));}catch{state=normalizeAppearance(null);}
     const appearance=html('div','rh-ui-appearance',`<label for="rh_ui_theme">界面主题</label><select id="rh_ui_theme" class="text_pole"><option value="host">跟随酒馆主题</option>${UI_THEMES.map(t=>`<option value="${t.id}">${t.label}</option>`).join('')}<option value="custom">自定义配色</option></select><p data-rh-theme-label></p><div id="rh_ui_custom" class="rh-ui-custom-grid" hidden>${paletteKeys.map((key,i)=>`<label>${colorLabels[i]}<input type="color" data-rh-color="${key}" aria-label="${colorLabels[i]}"><span data-rh-color-value="${key}"></span></label>`).join('')}</div><div class="rh-ui-save-status" role="status" aria-live="polite"></div>`);body('appearance').append(appearance);
+    // 用户美化：一段 CSS 改设置界面、工具弹窗和外置框，放在配色下面。
+    mountUserSkinControls(body('appearance'),{listen});
     const themeSelect=get('rh_ui_theme'),status=appearance.querySelector('.rh-ui-save-status');
     const modalIds=['rh_advanced_modal','rh_world_info_prompt_modal','rh_independent_tag_filter_modal'];
     function applyTheme(save=false){
@@ -310,7 +313,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
             if(typeof root.showModal==='function'){if(!root.open)root.showModal();}
             else root.setAttribute('open','');
             trackViewport();applyTheme();paint();close.focus({preventScroll:true});
-            void import('./mirrorUpdateMenu.js?rmv=1.68.85').then(mod => mod.refreshRabbitMirrorUpdateOnOpen()).catch(error => console.warn('[RabbitMirror] 打开设置时没能检测更新', error));
+            void import('./mirrorUpdateMenu.js?rmv=1.68.86').then(mod => mod.refreshRabbitMirrorUpdateOnOpen()).catch(error => console.warn('[RabbitMirror] 打开设置时没能检测更新', error));
         }else{
             closeTheaterFavoriteViewer();
             closeTheaterFavoriteLibrary();
