@@ -1,13 +1,13 @@
-import { clamp, luminanceFromRgb, classifyPaletteSamples } from './paletteObservation.js?rmv=1.68.81';
-import { activeRoleColorHtml, bindRolePaletteCode } from './roleColorVariants.js?rmv=1.68.81';
-import { detectCompositionFingerprint, VISUAL_SKELETON_MAX_CHARS } from './compositionFingerprint.js?rmv=1.68.81';
-import { visualSceneryEnabled } from './presentationMode.js?rmv=1.68.81';
-import { presentationModeFields } from './presentationMode.js?rmv=1.68.81';
-import { getCurrentChatKey, commitFollowVisualHistory, bindVisualHistoryTarget, updateLatestVisualSignature, visualHistoryTarget } from './storage.js?rmv=1.68.81';
-import { restoreRabbitMirrorAvatarClone } from './chatAvatars.js?rmv=1.68.81';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.68.81';
-import { getSettings } from './settings.js?rmv=1.68.81';
-import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.68.81';
+import { clamp, luminanceFromRgb, classifyPaletteSamples } from './paletteObservation.js?rmv=1.68.82';
+import { activeRoleColorHtml, bindRolePaletteCode } from './roleColorVariants.js?rmv=1.68.82';
+import { detectCompositionFingerprint, VISUAL_SKELETON_MAX_CHARS } from './compositionFingerprint.js?rmv=1.68.82';
+import { visualSceneryEnabled } from './presentationMode.js?rmv=1.68.82';
+import { presentationModeFields } from './presentationMode.js?rmv=1.68.82';
+import { getCurrentChatKey, commitFollowVisualHistory, bindVisualHistoryTarget, updateLatestVisualSignature, visualHistoryTarget } from './storage.js?rmv=1.68.82';
+import { restoreRabbitMirrorAvatarClone } from './chatAvatars.js?rmv=1.68.82';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.68.82';
+import { getSettings } from './settings.js?rmv=1.68.82';
+import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.68.82';
 import {
     commitRabbitMirrorFollowBatch,
     captureRabbitMirrorGenerationSnapshots,
@@ -17,16 +17,16 @@ import {
     inspectRabbitMirrorGenerationSource,
     releaseRabbitMirrorFollowBatch,
     releaseRabbitMirrorFollowBatchAtMessage,
-} from './generationGuard.js?rmv=1.68.81';
+} from './generationGuard.js?rmv=1.68.82';
 import {
     clearSanitizedRabbitMirrorFaceProof,
     getSanitizedRabbitMirrorFaceProof,
     markSanitizedRabbitMirrorFace,
-    rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.68.81';
-import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.68.81';
-import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.68.81';
-import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.68.81';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.68.81';
+    rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.68.82';
+import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.68.82';
+import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.68.82';
+import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.68.82';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.68.82';
 
 export const FOLLOW_MULTIFACE_COMMITTED_EVENT = 'rabbit-mirror:follow-multiface-committed';
 export const FOLLOW_MULTIFACE_REJECTED_EVENT = 'rabbit-mirror:follow-multiface-rejected';
@@ -1759,7 +1759,7 @@ function templateSingleFollowRoot(template) {
 
 function loadFollowBatchSanitizer() {
     if (!followBatchSanitizerModulePromise) {
-        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.68.81').catch(error => {
+        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.68.82').catch(error => {
             followBatchSanitizerModulePromise = null;
             console.debug('[RabbitMirror] follow multiface sanitizer unavailable:', error);
             return null;

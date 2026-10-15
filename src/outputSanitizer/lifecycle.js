@@ -1,13 +1,13 @@
 // Split from outputSanitizer.js — lifecycle.
-import { untrackMirrorAnimations, pruneMirrorAnimationVisibility, destroyMirrorAnimationVisibility } from '../animationVisibility.js?rmv=1.68.81';
+import { untrackMirrorAnimations, pruneMirrorAnimationVisibility, destroyMirrorAnimationVisibility } from '../animationVisibility.js?rmv=1.68.82';
 
-import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.68.81';
-import { isRabbitMirrorManagedChatSurface, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.68.81';
-import { recordTtSurface, ttSurfaceNow, nextTtSurfaceClickSeq } from '../ttSurfaceDiagnostics.js?rmv=1.68.81';
-import { getSettings } from '../settings.js?rmv=1.68.81';
-import { getCurrentChatKey } from '../storage.js?rmv=1.68.81';
-import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.68.81';
-import { RECIPE_RECORDED_EVENT } from '../blacklist.js?rmv=1.68.81';
+import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.68.82';
+import { isRabbitMirrorManagedChatSurface, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.68.82';
+import { recordTtSurface, ttSurfaceNow, nextTtSurfaceClickSeq } from '../ttSurfaceDiagnostics.js?rmv=1.68.82';
+import { getSettings } from '../settings.js?rmv=1.68.82';
+import { getCurrentChatKey } from '../storage.js?rmv=1.68.82';
+import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.68.82';
+import { RECIPE_RECORDED_EVENT } from '../blacklist.js?rmv=1.68.82';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -22,14 +22,14 @@ import {
     hashInteractionSignature,
     isCurrentRuntime,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.68.81';
+} from './runtime.js?rmv=1.68.82';
 import {
     getAvailableHostChat,
     getExternalOwnerMessageIndex,
     getRabbitMirrorSummaryText,
     getRawAssistantMessageForRenderedRoot,
-} from './scriptedInteractionRescue.js?rmv=1.68.81';
-import { firstUseInteractionBindings } from './idsAndRearm.js?rmv=1.68.81';
+} from './scriptedInteractionRescue.js?rmv=1.68.82';
+import { firstUseInteractionBindings } from './idsAndRearm.js?rmv=1.68.82';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     MAINTENANCE_AUTO_SAFE_ATTR,
@@ -47,8 +47,8 @@ import {
     removeAllInteractionDiagnosticPanels,
     scheduleCurrentHighConfidenceTextRepair,
     stripMaintenanceRabbitGlyphs,
-} from './diagnostics.js?rmv=1.68.81';
-import { destroyRabbitMirrorCheckedSelectorRepair } from './checkedStateRescue.js?rmv=1.68.81';
+} from './diagnostics.js?rmv=1.68.82';
+import { destroyRabbitMirrorCheckedSelectorRepair } from './checkedStateRescue.js?rmv=1.68.82';
 import {
     cancelMaintenanceRepairRun,
     cancelMaintenanceRepairRuns,
@@ -58,9 +58,9 @@ import {
     rabbitMirrorInteractionRootFromTarget,
     rejectOversizedMaintenanceRepair,
     runMaintenanceSafeAutomaticRepairs,
-} from './maintenanceInspect.js?rmv=1.68.81';
-import { decodeHtmlEntities } from './markup.js?rmv=1.68.81';
-import { getRabbitMirrorFacePosition } from './layoutRescue.js?rmv=1.68.81';
+} from './maintenanceInspect.js?rmv=1.68.82';
+import { decodeHtmlEntities } from './markup.js?rmv=1.68.82';
+import { getRabbitMirrorFacePosition } from './layoutRescue.js?rmv=1.68.82';
 import {
     cancelStartupMaintenanceHistoryInstall,
     closeFeedbackCatMenu,
@@ -75,7 +75,7 @@ import {
     removeFeedbackCatsInChatDom,
     removeMaintenanceRabbitsInChatDom,
     toolOutsideCloseOwners,
-} from './toolsChrome.js?rmv=1.68.81';
+} from './toolsChrome.js?rmv=1.68.82';
 
 export let hostScriptModule = null;
 
