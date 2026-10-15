@@ -1,10 +1,10 @@
-import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.68.76';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.68.76';
-import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.68.76';
-import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState, holdAncestorStateClass } from './behaviorStateMirror.js?rmv=1.68.76';
-import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.68.76';
-import { addDialectStateKeys, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup } from './behaviorDialect.js?rmv=1.68.76';
-import { EXTRA_TYPES, EXTRA_CONTROLS, EXTRA_CONTROL_ATTRS, configureBehaviorExtras, configureCarryChatKey, extraTypeFits, prepareExtra, destroyExtra, extraAction, extraSync, extraKeys, extraReset, extraPointerDown, extraPointerMove, extraPointerUp, extraHoldStart, extraHoldEnd, applyCarriedState, saveCarriedState, recalledKeys, carryMemoryName } from './behaviorExtras.js?rmv=1.68.76';
+import { behaviorShowTokens, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.68.77';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.68.77';
+import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.68.77';
+import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState, holdAncestorStateClass } from './behaviorStateMirror.js?rmv=1.68.77';
+import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.68.77';
+import { addDialectStateKeys, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup } from './behaviorDialect.js?rmv=1.68.77';
+import { EXTRA_TYPES, EXTRA_CONTROLS, EXTRA_CONTROL_ATTRS, configureBehaviorExtras, configureCarryChatKey, extraTypeFits, prepareExtra, destroyExtra, extraAction, extraSync, extraKeys, extraReset, extraPointerDown, extraPointerMove, extraPointerUp, extraHoldStart, extraHoldEnd, applyCarriedState, saveCarriedState, recalledKeys, carryMemoryName } from './behaviorExtras.js?rmv=1.68.77';
 
 export { behaviorToggleKey, motionOutsideControls };
 
@@ -195,9 +195,11 @@ function stateRules(state) {
     const found = [];
     for (const rule of localRules(state.root)) {
         const text = rule.selectorText;
-        if (!text || text.includes('(') || text.includes('::')) continue;
+        // 「不在某状态时」写成 :not([data-rm-on~="on"])，这种括号也认；别的带括号的选择器照旧不碰。
+        const withoutStateNot = String(text || '').replace(/:not\(\s*(\[[^\]]*\])\s*\)/g, (match, attr) => STATE_ATTR_NEEDLE.test(attr) ? attr : match);
+        if (!text || withoutStateNot.includes('(') || text.includes('::')) continue;
         let mine = false;
-        for (const selector of text.split(',')) for (const compound of compoundsOf(selector.trim())) {
+        for (const selector of withoutStateNot.split(',')) for (const compound of compoundsOf(selector.trim())) {
             const hasAttr = STATE_ATTR_NEEDLE.test(compound);
             const classes = [...compound.matchAll(/\.([A-Za-z_][\w-]*)/g)].map(match => match[1]).filter(isBehaviorStateClass);
             if (!hasAttr && !classes.length) continue;
@@ -245,7 +247,23 @@ function applyStateOverrides(state) {
     }
     for (const rule of rules) {
         const baseline = state.ruleBaseline.get(rule);
-        for (const node of matched(rule)) {
+        const now = new Set(matched(rule));
+        // 反过来：一开始让它隐藏（或变样）的这条规则现在不生效了，可模型又在它身上写死了同样的内联值
+        // （典型：两个场景一个内联 display:block、一个内联 display:none，原本靠脚本切换）。
+        // 内联值和规则写的一样，说明它只是规则的「抄本」：规则不生效时把这份抄本暂时拿掉，规则回来时再放回。
+        for (const node of baseline || []) {
+            if (now.has(node) || !node.isConnected || !node.style || node.hasAttribute('data-rm-show') || node.hasAttribute('data-rm-result-active')) continue;
+            for (let index = 0; index < rule.style.length; index += 1) {
+                const property = rule.style[index];
+                if (OVERRIDE_SKIP_PROPERTY.test(property) || rule.style.getPropertyPriority(property) === 'important') continue;
+                const saved = state.styles.get(node)?.get(property);
+                const inline = saved ? saved[0] : node.style.getPropertyValue(property);
+                const priority = saved ? saved[1] : node.style.getPropertyPriority(property);
+                if (!inline || priority === 'important') continue;
+                if (inline.trim().toLowerCase() === String(rule.style.getPropertyValue(property)).trim().toLowerCase()) want(node, property, '');
+            }
+        }
+        for (const node of now) {
             if (baseline?.has(node) || !node.style || node.hasAttribute('data-rm-show') || node.hasAttribute('data-rm-result-active')) continue;
             for (let index = 0; index < rule.style.length; index += 1) {
                 const property = rule.style[index];
@@ -267,7 +285,10 @@ function applyStateOverrides(state) {
     for (const [node, properties] of wanted) {
         if (!state.overrides.has(node)) state.overrides.set(node, new Set());
         for (const [property, [value, priority]] of properties) {
-            if (node.style.getPropertyValue(property) !== value || node.style.getPropertyPriority(property) !== priority) {
+            if (value === '') {
+                // 拿掉抄本：先记下原值，规则回来、不再需要时由 unstyle 放回。
+                if (node.style.getPropertyValue(property)) { saveStyle(state, node, property); node.style.removeProperty(property); }
+            } else if (node.style.getPropertyValue(property) !== value || node.style.getPropertyPriority(property) !== priority) {
                 saveStyle(state, node, property);
                 node.style.setProperty(property, value, priority);
             }
@@ -1713,7 +1734,7 @@ function scheduleOnDemandRelay(root, target) {
 function relayGroupLater(root, group, control = null) {
     const run = () => {
         if (!group.isConnected || !root.isConnected) return;
-        void import('./behaviorRelay.js?rmv=1.68.76').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
+        void import('./behaviorRelay.js?rmv=1.68.77').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
     };
     const idle = globalThis.requestIdleCallback;
     if (typeof idle === 'function') idle(run, { timeout: 800 }); else setTimeout(run, 120);
@@ -1814,4 +1835,4 @@ configureBehaviorExtras({ own, first, style, setFlag, enableControl, refreshResu
 // 跨面继承按聊天分开记：聊天键从存储模块拿，拿不到时所有面共用一份。
 let carryChatKeyReader = null;
 configureCarryChatKey(() => carryChatKeyReader?.() || '');
-import('../storage.js?rmv=1.68.76').then(module => { carryChatKeyReader = () => module.getCurrentChatKey?.() || ''; }).catch(() => {});
+import('../storage.js?rmv=1.68.77').then(module => { carryChatKeyReader = () => module.getCurrentChatKey?.() || ''; }).catch(() => {});

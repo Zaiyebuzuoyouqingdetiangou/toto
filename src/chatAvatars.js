@@ -1,9 +1,9 @@
 // Optional, local-only avatar consumer. Model markers describe a role, never an
 // image URL, an owner, or permission to replace arbitrary artwork.
-import { getSettings } from './settings.js?rmv=1.68.76';
-import { getCurrentChatKey } from './storage.js?rmv=1.68.76';
-import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.68.76';
-import { subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.68.76';
+import { getSettings } from './settings.js?rmv=1.68.77';
+import { getCurrentChatKey } from './storage.js?rmv=1.68.77';
+import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.68.77';
+import { subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.68.77';
 
 const MARKERS = '[data-rm-avatar="char"], [data-rm-avatar="user"]';
 const FACES = 'toto, details[data-rabbit-mirror-external-details]';

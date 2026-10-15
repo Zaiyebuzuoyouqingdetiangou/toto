@@ -41,6 +41,21 @@ try {
     await page.mouse.up(); await page.waitForTimeout(350);
     assert.equal(await lips(), '1', 'release removes it');
     assert.equal(await page.evaluate(() => document.querySelector('.vanity').className), 'vanity');
+    // 两个场景各写死内联显示（一个 block、一个 none），CSS 用 [data-rm-on] 和 :not([data-rm-on]) 切换：
+    // 切到「开」时第二个场景要出来，不能两个都藏起来；切回来恢复。
+    await page.evaluate(async () => {
+        document.body.innerHTML = `<toto data-rabbit-mirror="true" style="display:block"><details open><summary>切换</summary><style>
+.box[data-rm-on~="on"] .a{display:none}.box:not([data-rm-on~="on"]) .b{display:none}</style>
+<div class="box" data-rm-ui="toggle"><button data-rm-toggle>切换</button><div class="a" style="display:block">骤雨</div><div class="b" style="display:none">凝滞</div></div></details></toto>`;
+        (await import('/src/outputSanitizer/behaviorInteractions.js')).installBehaviorInteractions(document.querySelector('details'));
+    });
+    const shown = () => page.evaluate(() => ['.a', '.b'].map(sel => getComputedStyle(document.querySelector(sel)).display !== 'none'));
+    assert.deepEqual(await shown(), [true, false]);
+    await page.click('button[data-rm-toggle]'); await page.waitForTimeout(200);
+    assert.deepEqual(await shown(), [false, true], 'the second scene appears instead of both disappearing');
+    await page.click('button[data-rm-toggle]'); await page.waitForTimeout(200);
+    assert.deepEqual(await shown(), [true, false]);
+    assert.equal(await page.evaluate(() => document.querySelector('.b').style.display), 'none', "model's inline style comes back");
     assert.deepEqual(errors, []);
-    console.log(JSON.stringify({ hold: 'ok' }));
+    console.log(JSON.stringify({ hold: 'ok', toggleScenes: 'ok' }));
 } finally { await browser?.close(); await new Promise(resolve => server.close(resolve)); }

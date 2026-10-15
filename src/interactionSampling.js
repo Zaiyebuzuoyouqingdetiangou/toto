@@ -26,19 +26,22 @@ export function designCandidatePick(value) {
 }
 
 // slots=2 只在方案 1、2（单一主体／整体切换）之间抽，用于近期连续出现并列入口时换口味。
-export function drawDesignCandidate({ slots = 3 } = {}) {
+export function drawDesignCandidate({ slots = 3, avoid = [] } = {}) {
     if (slots === 1) return 1;
     const count = slots === 2 ? 2 : 3;
+    // 避开最近用过的方案（比如「整幕切换」连着出现）；全被避开时照常从全部里抽。
+    const allowed = Array.from({ length: count }, (_, index) => index + 1).filter(pick => !avoid.includes(pick));
+    const pool = allowed.length ? allowed : Array.from({ length: count }, (_, index) => index + 1);
+    if (pool.length === 1) return pool[0];
     try {
         const random = new Uint32Array(1);
-        // 2^32 - 1 is divisible by three; 2^32 is divisible by two. Reject the one excess value for three.
+        const limit = Math.floor(0x100000000 / pool.length) * pool.length;
         for (let i = 0; i < 8; i++) {
             globalThis.crypto.getRandomValues(random);
-            if (count === 2) return random[0] % 2 + 1;
-            if (random[0] < 0xffffffff) return random[0] % 3 + 1;
+            if (random[0] < limit) return pool[random[0] % pool.length];
         }
     } catch { /* legacy hosts still receive one ordinary local draw */ }
-    return Math.floor(Math.random() * count) + 1;
+    return pool[Math.floor(Math.random() * pool.length)];
 }
 
 function readSamplingRecord(root) {

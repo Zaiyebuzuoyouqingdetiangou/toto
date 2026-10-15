@@ -33,3 +33,10 @@ test('the prompt rule is only sent when the switch is on', () => {
     // 不列举材质名（纸、布、木……），免得模型只在这几种里挑。
     assert.doesNotMatch(rule, /纸|布|木|毛绒|金属/);
 });
+
+test('very light bases get a shadow-only texture', () => {
+    const normal = textureImage(parseTextureDescriptor('中 无 纤维 淡'), 'x');
+    const light = textureImage(parseTextureDescriptor('中 无 纤维 淡'), 'x', { shadowOnly: true });
+    assert.doesNotMatch(normal.image, /feComponentTransfer/);
+    assert.match(light.image, /feComponentTransfer/);
+});
