@@ -139,9 +139,11 @@ export function applyMaterialTextures(root, settings = getSettings()) {
     return applied;
 }
 
-/** 给模型的一小段规则；只在开关打开时发。 */
+/** 给模型的一小段规则；只在开关打开时发，打开时每面都要写一处。 */
 export function materialTextureRule(settings = getSettings()) {
     if (!materialTextureEnabled(settings)) return '';
     const recent = recentMaterialTextures();
-    return `材质纹理（可选）：本面的主体物件或承载面在现实里有明显质感时，可以在那一个元素上写 ${TEXTURE_ATTR}="粗细 方向 形状 浓淡"，兔子镜会按描述叠一层很淡的纹理：粗细写细／中／粗，方向写无／横／竖／斜，形状写点／纤维／条纹／斑块，浓淡写很淡／淡／明显。质感从这一面的形式本身推出来；一面最多一处，不用在整面背景、屏幕和界面上；底色、边缘、光泽和厚度仍由你写。${recent.length ? `近几面用过：${recent.join('；')}，这一面换一种或不加。` : ''}`;
+    // 开关是用户主动打开的：每个 HTML 面都写一处，不给「不加」的退路（以前写「可选」，模型几乎都跳过）。
+    // 防模板化靠两点：质感从这一面的实物推出来；近几面用过的提醒换一种。
+    return `材质纹理（已开启）：每个 HTML 面都在一个元素上写 ${TEXTURE_ATTR}="粗细 方向 形状 浓淡"，兔子镜会按描述叠一层很淡的纹理：粗细写细／中／粗，方向写无／横／竖／斜，形状写点／纤维／条纹／斑块，浓淡写很淡／淡／明显。写在这一面最像实物的主体或承载面上（纸、布、木、毛绒、石、金属、屏幕玻璃都算），质感从它在现实里是什么做的推出来；一面只写一处，不写在整面最外层背景上；底色、边缘、光泽和厚度仍由你写。${recent.length ? `近几面用过：${recent.join('；')}，这一面换一种。` : ''}`;
 }

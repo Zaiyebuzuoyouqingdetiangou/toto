@@ -22,4 +22,7 @@ test('the prompt rule is only sent when the switch is on', () => {
     const rule = materialTextureRule({ materialTextureEnabled: true });
     assert.match(rule, /data-rm-texture="粗细 方向 形状 浓淡"/);
     assert.ok(rule.length < 320, `rule is ${rule.length} chars`);
+    // 开关打开就每面写一处，不再给「不加」的退路。
+    assert.match(rule, /每个 HTML 面/);
+    assert.doesNotMatch(rule, /可选|不加/);
 });
