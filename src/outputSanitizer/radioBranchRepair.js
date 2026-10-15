@@ -1,8 +1,8 @@
 // Recover only a complete, keyed duplicate radio group with existing CSS panels.
 // No content, button meaning, or branch order is inferred from prose.
-import { clearUncheckedRadioCheckedInlineArtifacts, parseCheckedRulesFromText, resolveTargetsForCheckedRule, restoreInteractionInlineOverrides } from './checkedStateRescue.js?rmv=1.68.73';
-import { applyCheckedVisualFallback, inputHasAssociatedLabel } from './fallbackRescue.js?rmv=1.68.73';
-import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.68.73';
+import { clearUncheckedRadioCheckedInlineArtifacts, parseCheckedRulesFromText, resolveTargetsForCheckedRule, restoreInteractionInlineOverrides } from './checkedStateRescue.js?rmv=1.68.74';
+import { applyCheckedVisualFallback, inputHasAssociatedLabel } from './fallbackRescue.js?rmv=1.68.74';
+import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.68.74';
 
 export const RADIO_BRANCH_COUNT_ATTR = 'data-rabbit-mirror-radio-branch-count';
 export const RADIO_BRANCH_CONTROL_ATTR = 'data-rm-radio-branch-control';

@@ -15,11 +15,8 @@ const STYLE_ID = 'rabbit-mirror-material-texture-style';
 const RECENT_KEY = 'rabbitMirrorMaterialTextureRecent';
 const RECENT_LIMIT = 6;
 
-const GRAIN = { 细: 1.1, 中: 0.6, 粗: 0.22 };
+const GRAIN = { 细: 0.9, 中: 0.5, 粗: 0.2 };
 const TILE = { 细: 140, 中: 170, 粗: 230 };
-// 浓淡按设计资料的经验值调过：大面积噪点超过约 10% 就像脏了。纹理只铺在一件东西上，可以比整面背景稍重，
-// 但「明显」以前偏重（皮革一类发脏），整体收到原来的六成左右。
-const STRENGTH = { 很淡: [0.17, 0.06], 淡: [0.27, 0.1], 明显: [0.38, 0.16] };
 const DIRECTIONS = ['无', '横', '竖', '斜'];
 const SHAPES = ['点', '纤维', '条纹', '斑块'];
 
@@ -35,7 +32,7 @@ export function parseTextureDescriptor(text) {
         grain: pick(Object.keys(GRAIN), '中'),
         direction: pick(DIRECTIONS, '无'),
         shape: pick(SHAPES, '点'),
-        strength: pick(Object.keys(STRENGTH), '淡'),
+        strength: pick(Object.keys(RELIEF), '淡'),
     };
 }
 
@@ -50,28 +47,56 @@ function hashSeed(text) {
     return (hash >>> 0) % 997 + 1;
 }
 
-/** 生成一块可平铺的纹理：浅色和深色两层灰度颗粒，叠在任何底色上都只改变明暗、不改颜色。 */
+// 起伏高度（surfaceScale）和整层叠加强度。按设计资料：纸约 2，粗墙约 20；这里只做物件表面，取得很低。
+const RELIEF = { 很淡: [1.0, 0.45], 淡: [1.6, 0.62], 明显: [2.6, 0.8] };
+// 先把高度图揉软一点再打光：纤维（毛毡、绒布）最软，斑块（皮面、石面）次之，点和条纹只去掉锯齿。
+const SOFTEN = { 纤维: 0.9, 斑块: 0.6, 点: 0.25, 条纹: 0.3 };
+
+function tileSvg({ size, fx, fy, octaves, seed, scale, blur, alpha = 1 }) {
+    // 无缝：在一块里生成可平铺的噪点，用 feTile 在四周铺一圈再揉软、打光，只露出中间那块；
+    // 边上的光照也「看得到隔壁」，拼起来没有接缝。光从左上来（azimuth 225），和规则里的光源方向一致。
+    return `<svg xmlns='http://www.w3.org/2000/svg' width='${size}' height='${size}'>`
+        + `<filter id='f' filterUnits='userSpaceOnUse' x='-${size}' y='-${size}' width='${size * 3}' height='${size * 3}' color-interpolation-filters='sRGB'>`
+        + `<feTurbulence x='0' y='0' width='${size}' height='${size}' type='fractalNoise' baseFrequency='${fx.toFixed(3)} ${fy.toFixed(3)}' numOctaves='${octaves}' seed='${seed}' stitchTiles='stitch' result='n0'/>`
+        + `<feTile in='n0' result='n'/>`
+        + `<feColorMatrix in='n' type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0' result='h0'/>`
+        + (blur ? `<feGaussianBlur in='h0' stdDeviation='${blur}' result='h'/>` : `<feOffset in='h0' result='h'/>`)
+        + `<feDiffuseLighting in='h' surfaceScale='${scale}' diffuseConstant='0.68' lighting-color='white'><feDistantLight azimuth='225' elevation='48'/></feDiffuseLighting>`
+        + `</filter><rect width='${size}' height='${size}' filter='url(%23f)'${alpha < 1 ? ` opacity='${alpha}'` : ''}/></svg>`;
+}
+
+function svgUrl(svg) {
+    return `url("data:image/svg+xml,${svg.replace(/</g, '%3C').replace(/>/g, '%3E')}")`;
+}
+
+/**
+ * 生成可平铺的材质纹理：把噪点当成表面的高低起伏，从左上打光，得到真的凹凸明暗（纸的起伏、皮面颗粒、木纹）。
+ * 用 soft-light 叠在元素自己的底色上：平的地方是中灰，不改颜色，只改明暗。
+ * 两层大小不同的纹理叠在一起，重复的位置错开，大面积时也看不出是一块块拼的。
+ */
 export function textureImage(descriptor, seedText = '') {
     const value = { ...parseTextureDescriptor(''), ...(descriptor || {}) };
     const base = GRAIN[value.grain] || GRAIN.中;
     const size = TILE[value.grain] || TILE.中;
-    const [light, dark] = STRENGTH[value.strength] || STRENGTH.淡;
+    const [scale, opacity] = RELIEF[value.strength] || RELIEF.淡;
     // 形状：点＝少层颗粒；纤维＝多层细碎；条纹＝一个方向拉得很长；斑块＝低频成团。
-    let fx = base, fy = base, octaves = 2, kind = 'fractalNoise';
-    if (value.shape === '纤维') octaves = 4;
-    if (value.shape === '斑块') { fx = fy = base * 0.06; octaves = 4; }
-    if (value.shape === '条纹') { octaves = 2; }
-    const stretch = value.shape === '条纹' ? 0.02 : value.shape === '纤维' ? 0.55 : 1;
+    let fx = base, fy = base, octaves = 3;
+    if (value.shape === '纤维') octaves = 5;
+    if (value.shape === '斑块') { fx = fy = base * 0.08; octaves = 4; }
+    const stretch = value.shape === '条纹' ? 0.03 : value.shape === '纤维' ? 0.5 : 1;
+    // 斜：打了光的纹理不能旋转（会出接缝，光的方向也会跟着转），按横向处理。
     if (value.direction === '横' || value.direction === '斜') fx *= stretch;
     if (value.direction === '竖') fy *= stretch;
     // 拉得太长时一块纹理里连一个完整起伏都没有，平铺就会出现接缝：每块至少留一个半起伏。
     const minimum = 1.5 / size;
     fx = Math.max(fx, minimum); fy = Math.max(fy, minimum);
     const seed = hashSeed(`${textureDescriptorText(value)}|${seedText}`);
-    const rotate = value.direction === '斜' ? ` transform='rotate(35 ${size / 2} ${size / 2})'` : '';
-    const layer = (fill, alpha, offset, id) => `<filter id='${id}' x='0' y='0' width='100%' height='100%'><feTurbulence type='${kind}' baseFrequency='${fx.toFixed(3)} ${fy.toFixed(3)}' numOctaves='${octaves}' seed='${seed + offset}' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='table' tableValues='${alpha}'/></feComponentTransfer></filter><rect ${rotate ? "x='-50%' y='-50%' width='200%' height='200%'" : "width='100%' height='100%'"} fill='${fill}' filter='url(%23${id})'${rotate}/>`;
-    const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${size}' height='${size}'>${layer('%23fff', `0 0 ${light}`, 0, 'l')}${layer('%23000', `0 ${dark} 0`, 11, 'd')}</svg>`;
-    return { image: `url("data:image/svg+xml,${svg.replace(/</g, '%3C').replace(/>/g, '%3E')}")`, size: `${size}px` };
+    const blur = SOFTEN[value.shape] || 0;
+    const second = Math.round(size * 1.37);
+    const minimum2 = 1.5 / second;
+    const main = tileSvg({ size, fx, fy, octaves, seed, scale, blur });
+    const extra = tileSvg({ size: second, fx: Math.max(fx, minimum2), fy: Math.max(fy, minimum2), octaves, seed: (seed * 7 + 13) % 997 + 1, scale, blur, alpha: 0.5 });
+    return { image: `${svgUrl(extra)}, ${svgUrl(main)}`, size: `${second}px, ${size}px`, opacity: String(opacity) };
 }
 
 function ensureStyle(doc) {
@@ -81,7 +106,11 @@ function ensureStyle(doc) {
     // 纹理放在元素自己的 ::before（或 ::after）里，排在底色之上、内容之下；不改模型写的背景。
     style.textContent = `[${ON_ATTR}]{isolation:isolate}`
         + `[${ON_ATTR}="before"]::before,[${ON_ATTR}="after"]::after{content:"";position:absolute;inset:0;border-radius:inherit;`
-        + 'background-image:var(--rm-texture-image);background-size:var(--rm-texture-size);background-repeat:repeat;pointer-events:none;z-index:-1}';
+        + 'background-image:var(--rm-texture-image);background-size:var(--rm-texture-size);background-repeat:repeat;pointer-events:none;z-index:-1;'
+        // soft-light：中灰不改底色，亮处提亮、暗处压暗。边缘一圈很淡的暗影（东西有厚度、转角背光），
+        // 左上边缘一点亮（光从左上来）；大小按元素尺寸算，小按钮不会整块变暗。
+        + 'mix-blend-mode:soft-light;opacity:var(--rm-texture-opacity,.6);'
+        + 'box-shadow:inset 0 0 var(--rm-texture-ao,16px) rgba(0,0,0,.32),inset 1px 1px calc(var(--rm-texture-ao,16px) / 3) rgba(255,255,255,.28)}';
     doc.head.append(style);
 }
 
@@ -118,6 +147,8 @@ export function applyMaterialTextures(root, settings = getSettings()) {
             el.removeAttribute(ON_ATTR);
             el.style.removeProperty('--rm-texture-image');
             el.style.removeProperty('--rm-texture-size');
+            el.style.removeProperty('--rm-texture-opacity');
+            el.style.removeProperty('--rm-texture-ao');
             if (el.hasAttribute(POS_ATTR)) { el.style.removeProperty('position'); el.removeAttribute(POS_ATTR); }
         }
         return 0;
@@ -132,7 +163,7 @@ export function applyMaterialTextures(root, settings = getSettings()) {
         if (el.hasAttribute(ON_ATTR)) { applied += 1; return; }
         const descriptor = parseTextureDescriptor(el.getAttribute(TEXTURE_ATTR));
         const faceKey = el.closest?.('details')?.getAttribute?.('data-rabbit-mirror-css-scope') || '';
-        const { image, size } = textureImage(descriptor, `${faceKey}|${index}`);
+        const { image, size, opacity } = textureImage(descriptor, `${faceKey}|${index}`);
         const which = pseudoFree(el, 'before') ? 'before' : pseudoFree(el, 'after') ? 'after' : '';
         if (!which) return; // 模型自己两个伪元素都用了：不抢，宁可不铺。
         const view = doc.defaultView || globalThis;
@@ -141,6 +172,10 @@ export function applyMaterialTextures(root, settings = getSettings()) {
         if (!position || position === 'static') { el.style.position = 'relative'; el.setAttribute(POS_ATTR, 'true'); }
         el.style.setProperty('--rm-texture-image', image);
         el.style.setProperty('--rm-texture-size', size);
+        el.style.setProperty('--rm-texture-opacity', opacity);
+        let ao = 16;
+        try { const rect = el.getBoundingClientRect(); if (rect.width && rect.height) ao = Math.max(5, Math.min(22, Math.round(Math.min(rect.width, rect.height) * 0.14))); } catch { /* 用默认 */ }
+        el.style.setProperty('--rm-texture-ao', `${ao}px`);
         el.setAttribute(ON_ATTR, which);
         applied += 1;
         if (faceKey) remember(textureDescriptorText(descriptor), `${faceKey}|${index}`);

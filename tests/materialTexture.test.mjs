@@ -11,9 +11,14 @@ test('textures are generated, small, and vary with the seed', () => {
     const a = textureImage(parseTextureDescriptor('中 无 纤维 淡'), 'face-a');
     const b = textureImage(parseTextureDescriptor('中 无 纤维 淡'), 'face-b');
     assert.match(a.image, /^url\("data:image\/svg\+xml,/);
-    assert.ok(a.image.length < 1400, `texture is ${a.image.length} chars`);
+    assert.ok(a.image.length < 4000, `texture is ${a.image.length} chars`);
     assert.notEqual(a.image, b.image);
-    assert.equal(a.size, '170px');
+    // 两层大小不同的纹理叠在一起，重复的位置错开。
+    assert.equal(a.size, '233px, 170px');
+    // 打光：光从左上来，和规则里写的方向一致；不旋转（旋转会出接缝）。
+    assert.match(a.image, /feDiffuseLighting/);
+    assert.match(a.image, /azimuth='225'/);
+    assert.doesNotMatch(textureImage(parseTextureDescriptor('中 斜 条纹 淡'), 'x').image, /rotate/);
 });
 
 test('the prompt rule is only sent when the switch is on', () => {
