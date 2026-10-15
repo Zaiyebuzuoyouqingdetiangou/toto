@@ -2,6 +2,8 @@
 // 收藏仍走原来的收藏夹；这里只负责翻看、点开镜面里的交互、收藏/取消收藏，以及跳回原楼。
 // 生成失败、没有成品的楼也留下，方便跳回去重试。正在生成的占位不收进来。
 
+import { RUNTIME_VERSION } from './ui/runtime.js?rmv=1.68.64';
+
 export const THEATER_SNAPSHOT_PAGE_SIZE = 10;
 
 const GENERATING_PLACEHOLDER = /正在生成中|等待正文完成|等待手动生成/;
@@ -126,6 +128,35 @@ export function collectTheaterSnapshots(chat, sources = {}) {
     return items;
 }
 
+// 重说过的楼：每一面最多存 5 版。快拍把同一层的其它版本也列出来，紧跟在当前那一版后面。
+// versionsByKey: Map(`${mesid}:${swipe}` → { 面序号: { versions:[{html}], currentIndex } })；merge(整楼html, 面序号, 这一面的html) 拼回整楼。
+export function expandSnapshotVersions(items, versionsByKey, merge = (_html, _face, faceHtml) => faceHtml) {
+    const out = [];
+    for (const item of Array.isArray(items) ? items : []) {
+        const states = item?.kind === 'ready' ? versionsByKey?.get?.(`${item.mesid}:${item.swipe}`) : null;
+        const faces = Object.entries(states || {})
+            .map(([face, state]) => ({ face: Number(face), versions: Array.isArray(state?.versions) ? state.versions.filter(entry => entry?.html) : [], current: Math.max(0, Number(state?.currentIndex) || 0) }))
+            .filter(entry => Number.isInteger(entry.face) && entry.face >= 0 && entry.versions.length > 1)
+            .sort((a, b) => a.face - b.face);
+        if (!faces.length) { out.push(item); continue; }
+        const multi = faces.length > 1 || faces[0].face > 0;
+        const label = (face, index, total) => `${multi ? `第 ${face + 1} 面 · ` : ''}第 ${index + 1}/${total} 版`;
+        const main = { ...item, versionLabel: faces.map(entry => label(entry.face, Math.min(entry.current, entry.versions.length - 1), entry.versions.length)).join('，') };
+        out.push(main);
+        for (const entry of faces) {
+            entry.versions.forEach((version, index) => {
+                if (index === Math.min(entry.current, entry.versions.length - 1)) return;
+                let html = '';
+                try { html = String(merge(item.html, entry.face, version.html) || ''); } catch { html = ''; }
+                if (!html) html = String(version.html || '');
+                out.push({ ...item, html, title: snapshotTitleFromHtml(html) || item.title, failed: isMirrorFailure(html),
+                    versionLabel: label(entry.face, index, entry.versions.length), versionOf: { face: entry.face, index } });
+            });
+        }
+    }
+    return out;
+}
+
 export function theaterSnapshotPage(items, page = 0) {
     const list = Array.isArray(items) ? items : [];
     const pages = Math.max(1, Math.ceil(list.length / THEATER_SNAPSHOT_PAGE_SIZE) || 1);
@@ -156,7 +187,8 @@ const SNAPSHOT_STYLE = `
 .rm-snap-view button[aria-pressed="true"]{background:color-mix(in srgb,var(--rh-primary,#ce729c) 16%,transparent);color:var(--rh-primary,#ce729c);font-weight:700}
 .rm-snap-pager{display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:2;padding:2px 0 8px;background:var(--rh-bg,var(--SmartThemeBlurTintColor,#f5f4fb))}
 .rm-snap-pager button{flex:0 0 auto;min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--rh-border,rgba(127,127,127,.35));background:transparent}
-.rm-snap-range{flex:1;min-width:0;text-align:center;font-size:12px;font-weight:700;color:var(--rh-muted,inherit)}
+.rm-snap-range{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 8px;text-align:center;font-size:12px;font-weight:700;color:var(--rh-muted,inherit)}
+.rm-snap-page-select{min-height:36px;max-width:100%;padding:0 8px;border-radius:999px;border:1px solid var(--rh-border,rgba(127,127,127,.35));background:var(--rh-field,var(--rh-bg,#fff));color:inherit;font:inherit;font-size:13px}
 .rm-snap-list{display:flex;flex-direction:column;gap:14px}
 .rm-snap-card{display:flex;flex-direction:column;gap:8px;min-width:0;padding:12px;border:1px solid var(--rh-border,rgba(127,127,127,.28));border-radius:16px;background:color-mix(in srgb,var(--rh-field,var(--rh-bg,#fff)) 88%,transparent)}
 .rm-snap-card[data-failed="true"]{border-color:color-mix(in srgb,#c0504d 45%,var(--rh-border,transparent))}
@@ -188,8 +220,13 @@ const SNAPSHOT_VIEW_KEY = 'rabbitMirrorSnapshotView';
 const THUMB_WIDTH = 420;
 let snapshot = null;
 let thumbObserver = null;
+// 每次「关掉快拍」都让还在读数据、没打开出来的那一次作废，免得停用之后它又自己弹出来。
+let openGeneration = 0;
 // 兔子镜停用或热更新时，index.js 用它把开着的快拍一并关掉（只有打开过快拍才会加载这个模块）。
-globalThis.__rabbitMirrorCloseSnapshot = () => closeTheaterSnapshot();
+// 记下是哪一份兔子镜的，旧的一份停用时不会去关新装那份打开的快拍。
+const closeFromRuntime = () => closeTheaterSnapshot();
+closeFromRuntime.runtime = RUNTIME_VERSION;
+globalThis.__rabbitMirrorCloseSnapshot = closeFromRuntime;
 
 function resetThumbs() {
     thumbObserver?.disconnect?.();
@@ -203,6 +240,7 @@ function overlayParent() {
 }
 
 export function closeTheaterSnapshot() {
+    openGeneration += 1;
     closeSnapshotNow();
 }
 
@@ -444,9 +482,14 @@ function snapshotThumbDocument(html, expand, prepare) {
 function loadThumb(frame, expand) {
     if (!frame || frame.dataset.loaded === 'true') return;
     frame.dataset.loaded = 'true';
+    const afterLoad = frame.__rmSnapshotAfterLoad;
+    if (typeof afterLoad === 'function') {
+        frame.addEventListener('load', () => { try { afterLoad(frame.contentDocument); } catch { /* 读不到就保持原样 */ } }, { once: true });
+    }
     frame.srcdoc = snapshotThumbDocument(frame.__rmSnapshotHtml, expand, frame.__rmSnapshotPrepare);
     frame.__rmSnapshotHtml = null;
     frame.__rmSnapshotPrepare = null;
+    frame.__rmSnapshotAfterLoad = null;
 }
 
 function observeThumb(frame, scrollRoot, expand) {
@@ -472,18 +515,22 @@ function updateThumbScale(grid) {
 }
 
 export async function openTheaterSnapshot() {
+    const generation = ++openGeneration;
     const [{ applyAppearanceTheme }, api, favorites, persistence, runtime] = await Promise.all([
-        import('./appearanceTheme.js?rmv=1.68.62'),
-        import('./independentApi.js?rmv=1.68.62'),
-        import('./theaterFavorites.js?rmv=1.68.62'),
-        import('./independentApi/persistence.js?rmv=1.68.62'),
-        import('./independentApi/runtime.js?rmv=1.68.62'),
+        import('./appearanceTheme.js?rmv=1.68.64'),
+        import('./independentApi.js?rmv=1.68.64'),
+        import('./theaterFavorites.js?rmv=1.68.64'),
+        import('./independentApi/persistence.js?rmv=1.68.64'),
+        import('./independentApi/runtime.js?rmv=1.68.64'),
     ]);
     const ctx = runtime.getContext?.() || {};
     const chat = Array.isArray(ctx.chat) ? ctx.chat : [];
     let persisted = [];
+    const recordFaceSwipes = new Map();
     try {
-        persisted = persistence.chatPersistedOwnerEntries(ctx)
+        const entries = persistence.chatPersistedOwnerEntries(ctx);
+        for (const entry of entries) if (entry.record?.faceSwipes) recordFaceSwipes.set(`${entry.index}:${entry.swipe}`, entry.record.faceSwipes);
+        persisted = entries
             .map(entry => ({ index: entry.index, swipe: entry.swipe, html: entry.record?.html || '' }))
             .filter(entry => entry.html);
     } catch { persisted = []; }
@@ -491,16 +538,16 @@ export async function openTheaterSnapshot() {
     let imageChatKey = '';
     let restoreBuiltinImages = () => 0;
     try {
-        const connection = await import('./independentApi/connection.js?rmv=1.68.62');
+        const connection = await import('./independentApi/connection.js?rmv=1.68.64');
         imageChatKey = String(connection.chatKey(ctx) || '');
     } catch { imageChatKey = ''; }
     try {
-        const images = await import('./builtinImage.js?rmv=1.68.62');
+        const images = await import('./builtinImage.js?rmv=1.68.64');
         if (typeof images.restoreSavedBuiltinImages === 'function') restoreBuiltinImages = images.restoreSavedBuiltinImages;
     } catch { /* 没有生图模块时图框保持原样 */ }
     let sessionErrors = [];
     try {
-        const flights = await import('./independentApi/flights.js?rmv=1.68.62');
+        const flights = await import('./independentApi/flights.js?rmv=1.68.64');
         const key = imageChatKey;
         const seen = new Set(domErrors.map(row => row.mesid));
         for (const failure of flights.automaticFailureStops?.values?.() || []) {
@@ -518,13 +565,42 @@ export async function openTheaterSnapshot() {
             sessionErrors.push({ mesid, text });
         }
     } catch { sessionErrors = []; }
-    const items = collectTheaterSnapshots(chat, { persisted, domErrors: [...domErrors, ...sessionErrors] });
+    let items = collectTheaterSnapshots(chat, { persisted, domErrors: [...domErrors, ...sessionErrors] });
+    // 重说的其它版本：本机记录优先，没有就用聊天文件里随楼存的、再没有就用版本存档。只读，不改任何记录。
+    try {
+        const [swipes, faceSwipe] = await Promise.all([
+            import('./swipeVersions.js?rmv=1.68.64'),
+            import('./independentApi/faceSwipe.js?rmv=1.68.64'),
+        ]);
+        let archive = new Map();
+        if (imageChatKey && typeof swipes.loadFaceSwipeArchiveRows === 'function') {
+            const rows = await swipes.loadFaceSwipeArchiveRows(imageChatKey).catch(() => null);
+            archive = new Map((rows || []).map(row => [String(row.slot), row.states || {}]));
+        }
+        const versionsByKey = new Map();
+        for (const item of items) {
+            if (item.kind !== 'ready' || !imageChatKey) continue;
+            const key = `${item.mesid}:${item.swipe}`;
+            const base = `${imageChatKey}:${key}`;
+            const states = {};
+            for (let face = 0; face < 5; face += 1) {
+                const candidates = [swipes.readFaceSwipe(base, face), recordFaceSwipes.get(key)?.[face], archive.get(base)?.[face]];
+                // 三处记录可能不一致（换过设备时）：取最后改动过的那一份，和挂楼时的取法一样。
+                const state = candidates.map(value => swipes.normalizeSwipeState(value)).filter(value => value.versions.length > 1)
+                    .sort((a, b) => Number(b.touched || 0) - Number(a.touched || 0))[0];
+                if (state) states[face] = state;
+            }
+            if (Object.keys(states).length) versionsByKey.set(key, states);
+        }
+        items = expandSnapshotVersions(items, versionsByKey, faceSwipe.mergeFaceDetailsIntoHtml);
+    } catch { /* 读不到版本就只列当前这一版 */ }
     let expandBlocks = value => String(value || '');
     try {
-        const markup = await import('./outputSanitizer/markup.js?rmv=1.68.62');
+        const markup = await import('./outputSanitizer/markup.js?rmv=1.68.64');
         if (typeof markup.expandHtmlDocumentCodeBlocks === 'function') expandBlocks = markup.expandHtmlDocumentCodeBlocks;
     } catch { /* 缩略图用原文 */ }
-    closeTheaterSnapshot();
+    if (generation !== openGeneration) return [];
+    closeSnapshotNow();
 
     const narrow = (globalThis.innerWidth || 1024) < 640;
     const overlay = document.createElement('dialog');
@@ -555,7 +631,7 @@ export async function openTheaterSnapshot() {
     title.append(count);
     const note = document.createElement('p');
     note.className = 'rm-snap-note';
-    note.textContent = '最新 10 条在最前。整页直接看，镜片一排两个、点进去再看。收藏仍进原来的收藏夹。';
+    note.textContent = '最新 10 条在最前，重说过的楼会把每一版都列出来。整页直接看，镜片一排两个、点进去再看。收藏仍进原来的收藏夹。';
     const heading = document.createElement('div');
     heading.style.cssText = 'flex:1;min-width:0;';
     heading.append(title, note);
@@ -600,6 +676,13 @@ export async function openTheaterSnapshot() {
     older.textContent = '更早';
     const range = document.createElement('div');
     range.className = 'rm-snap-range';
+    // 页码：直接跳到任意一页，不用一页页点「更早」。
+    const pageSelect = document.createElement('select');
+    pageSelect.className = 'rm-snap-page-select';
+    pageSelect.setAttribute('aria-label', '跳到第几页');
+    pageSelect.addEventListener('change', () => { page = Number(pageSelect.value) || 0; render(); card.scrollTop = 0; });
+    const rangeText = document.createElement('span');
+    range.append(pageSelect, rangeText);
     const newer = document.createElement('button');
     newer.type = 'button';
     newer.textContent = '更新';
@@ -645,6 +728,7 @@ export async function openTheaterSnapshot() {
         });
     };
 
+    // 缩略图里先只记下这一面属于哪个聊天、哪一层；图等小窗口加载好以后在里面放，读不到时还能换地址再试。
     const prepareSnapshotImages = (template, item) => {
         const roots = [...template.content.querySelectorAll('details')];
         if (!roots.length) roots.push(template.content);
@@ -653,13 +737,17 @@ export async function openTheaterSnapshot() {
             if (imageChatKey) details.dataset.rmImageOwnerChat = imageChatKey;
             details.dataset.rmImageOwnerMesid = String(item.mesid);
             details.dataset.rmImageOwnerSwipe = String(item.swipe);
+        }
+    };
+    const paintThumbImages = doc => {
+        for (const details of doc?.querySelectorAll?.('details') || []) {
             if (details.querySelector?.('[data-rm-draw-frame]')) restoreBuiltinImages(details);
         }
     };
     const mountStage = (stage, item) => {
         const host = api.hydrateIndependentFavoriteHtml(stage, {
             html: item.html,
-            id: `snapshot:${item.mesid}:${item.swipe}`,
+            id: `snapshot:${item.mesid}:${item.swipe}${item.versionOf ? `:v${item.versionOf.face}.${item.versionOf.index}` : ''}`,
             title: item.title,
             mesid: item.mesid,
             swipe: item.swipe,
@@ -691,7 +779,7 @@ export async function openTheaterSnapshot() {
         floor.addEventListener('click', () => jump(item.mesid));
         const name = document.createElement('p');
         name.className = 'rm-snap-name';
-        name.textContent = item.title;
+        name.textContent = item.versionLabel ? `${item.title} · ${item.versionLabel}` : item.title;
         bar.append(floor, name);
         if (item.failed) {
             const chip = document.createElement('span');
@@ -750,10 +838,20 @@ export async function openTheaterSnapshot() {
         older.hidden = !view.total;
         newer.hidden = !view.total;
         range.hidden = !view.total;
-        if (!view.total) range.textContent = '';
+        pageSelect.replaceChildren();
+        if (!view.total) rangeText.textContent = '';
         else {
-            const end = Math.min(view.total, view.start + view.items.length);
-            range.textContent = `第 ${view.start + 1}–${end} 条，共 ${view.total} 条`;
+            for (let index = 0; index < view.pages; index += 1) {
+                const option = document.createElement('option');
+                const from = index * THEATER_SNAPSHOT_PAGE_SIZE + 1;
+                const to = Math.min(view.total, from + THEATER_SNAPSHOT_PAGE_SIZE - 1);
+                option.value = String(index);
+                option.textContent = `第 ${index + 1} 页（${from}–${to}）`;
+                pageSelect.append(option);
+            }
+            pageSelect.value = String(view.page);
+            pageSelect.hidden = view.pages < 2;
+            rangeText.textContent = view.pages < 2 ? `共 ${view.total} 条` : `共 ${view.pages} 页 · ${view.total} 条`;
         }
         list.className = viewMode === 'grid' ? 'rm-snap-grid' : 'rm-snap-list';
         list.replaceChildren();
@@ -778,12 +876,14 @@ export async function openTheaterSnapshot() {
                 if (item.html) {
                     const thumb = document.createElement('iframe');
                     thumb.className = 'rm-snap-thumb';
-                    thumb.setAttribute('sandbox', '');
+                    // 同源但不跑脚本：这样读图时带上酒馆的登录信息（开了用户账户的酒馆，图片要登录才能读）。
+                    thumb.setAttribute('sandbox', 'allow-same-origin');
                     thumb.setAttribute('aria-hidden', 'true');
                     thumb.setAttribute('tabindex', '-1');
                     thumb.setAttribute('title', '');
                     thumb.__rmSnapshotHtml = item.html;
                     thumb.__rmSnapshotPrepare = template => prepareSnapshotImages(template, item);
+                    thumb.__rmSnapshotAfterLoad = paintThumbImages;
                     plate.append(thumb);
                 } else {
                     const copy = document.createElement('span');
@@ -813,7 +913,7 @@ export async function openTheaterSnapshot() {
                 });
                 const name = document.createElement('p');
                 name.className = 'rm-snap-tile-name';
-                name.textContent = item.failed ? `${item.title} · 未完成` : item.title;
+                name.textContent = `${item.title}${item.versionLabel ? ` · ${item.versionLabel}` : ''}${item.failed ? ' · 未完成' : ''}`;
                 tile.append(plate, name);
                 list.append(tile);
             }
@@ -839,7 +939,7 @@ export async function openTheaterSnapshot() {
             floor.addEventListener('click', () => jump(item.mesid));
             const name = document.createElement('p');
             name.className = 'rm-snap-name';
-            name.textContent = item.title;
+            name.textContent = item.versionLabel ? `${item.title} · ${item.versionLabel}` : item.title;
             bar.append(floor, name);
             if (item.failed) {
                 const chip = document.createElement('span');
