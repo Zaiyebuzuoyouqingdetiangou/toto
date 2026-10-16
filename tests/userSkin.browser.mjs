@@ -141,7 +141,7 @@ assert.equal((await state()).before, '"✦"', 'skin comes back from the extensio
 assert.ok(await page.evaluate(() => !!localStorage.getItem('rabbit_mirror_user_skin_v1')), 'local copy restored'); checks++;
 // 老版本只存在本机的美化：开页时补一份到酒馆设置里，之后本机被清也能找回。
 await page.evaluate(() => { localStorage.setItem('rabbit_mirror_user_skin_v1', JSON.stringify({ enabled: true, css: '.rabbit-mirror-external-shell[data-rm-placement="external"]::before{content:"✧" !important}', name: '' })); });
-await page.evaluate(async () => { const set = await import('/src/settings.js?rmv=1.68.95'); set.updateSettings({ userSkin: null }); });
+await page.evaluate(async () => { const set = await import('/src/settings.js?rmv=1.68.96'); set.updateSettings({ userSkin: null }); });
 await page.waitForTimeout(300);
 await reopen();
 await page.waitForTimeout(300);
