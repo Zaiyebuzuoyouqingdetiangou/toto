@@ -57,6 +57,18 @@ function remember(node) {
     return saved;
 }
 
+// 模型常这样写分页：.页{display:none} .页[data-rm-active]{display:block}，再用驱动按 data-rm-show 切换。
+// 驱动只撤掉自己加的隐藏，模型那条默认隐藏还在，切到哪一页都是空的。
+// 该显示的那块还被模型的样式藏着时：先照模型自己的写法挂上 data-rm-active；还藏着就直接显示出来。
+const FORCED_ACTIVE = 'data-rm-result-forced-active';
+function revealAuthorHidden(node) {
+    const view = node.ownerDocument?.defaultView;
+    if (!view?.getComputedStyle || !node.isConnected) return;
+    if (view.getComputedStyle(node).display !== 'none') return;
+    if (!node.hasAttribute('data-rm-active')) { node.setAttribute('data-rm-active', 'true'); node.setAttribute(FORCED_ACTIVE, 'true'); }
+    if (view.getComputedStyle(node).display === 'none') node.style.setProperty('display', 'block', 'important');
+}
+
 function visibility(node, saved, active) {
     const value = String(active);
     if (node.getAttribute('data-rm-result-active') !== value) node.setAttribute('data-rm-result-active', value);
@@ -67,7 +79,9 @@ function visibility(node, saved, active) {
                 node.style.setProperty('display', saved.display, saved.priority);
             }
         } else if (node.style.getPropertyValue('display')) node.style.removeProperty('display');
+        revealAuthorHidden(node);
     } else {
+        if (node.getAttribute(FORCED_ACTIVE) === 'true') { node.removeAttribute('data-rm-active'); node.removeAttribute(FORCED_ACTIVE); }
         if (!node.hasAttribute('hidden')) node.setAttribute('hidden', '');
         if (node.style.getPropertyValue('display') !== 'none' || node.style.getPropertyPriority('display') !== 'important') {
             node.style.setProperty('display', 'none', 'important');
