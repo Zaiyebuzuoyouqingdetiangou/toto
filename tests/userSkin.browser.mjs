@@ -17,7 +17,7 @@ const server = createServer(async (req, res) => {
     // 假的酒馆：扩展设置存在这个「服务器」里，跟浏览器本地存储分开（用来试本地存储被清掉后能不能找回）。
     if (p === '/save') { let body = ''; for await (const c of req) body += c; savedSettings = body; return res.end('ok'); }
     if (p === '/extensions.js') { res.setHeader('Content-Type', 'text/javascript'); return res.end(`export const extension_settings = ${savedSettings};`); }
-    if (p === '/script.js') { res.setHeader('Content-Type', 'text/javascript'); return res.end(`import { extension_settings } from '/extensions.js'; export function saveSettingsDebounced() { fetch('/save', { method: 'POST', body: JSON.stringify(extension_settings), keepalive: true }); }`); }
+    if (p === '/script.js') { res.setHeader('Content-Type', 'text/javascript'); return res.end(`import { extension_settings } from '/extensions.js'; export function saveSettingsDebounced() { fetch('/save', { method: 'POST', body: JSON.stringify(extension_settings) }); }`); }
     res.setHeader('Content-Type', p.endsWith('.css') ? 'text/css' : 'text/javascript');
     try { res.end(await readFile(path.join(root, decodeURIComponent(p)))); } catch { res.statusCode = 404; res.end(); }
 });
