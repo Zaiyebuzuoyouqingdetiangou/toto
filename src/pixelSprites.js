@@ -125,6 +125,9 @@ function renderSprite(el, doc) {
     if (size) {
         // 在像素场景里：宽度和位置按场景的格子算，背景放大缩小时一起跟着变。
         el.setAttribute(SCENE_SPRITE_ATTR, '');
+        // 模型常把 data-rm-at 的格数又照抄成 style="left:22px;top:32px"：那是格子数不是像素，会把小人挤到角落、上下错位。
+        // 有 data-rm-at 时，写在元素自己身上的 left/top 以格子为准拿掉（用 class 写的换位置照样生效）。
+        if (at) for (const name of ['left', 'top']) el.style.removeProperty(name);
         // 百分比按场景的内边距盒算：场景自己有内边距时，扣掉它再按格子分，和背景图对齐。
         const sceneStyle = doc.defaultView?.getComputedStyle?.(scene);
         const pad = side => Math.max(0, parseFloat(sceneStyle?.[`padding${side}`]) || 0);

@@ -39,7 +39,7 @@ export const RAW_PRESENTATION_FORMATS = String.raw`
 * **10.2.31 情绪天气预报**：用天气预报的样子播报一个人的心情。
 * **10.2.32 像素小屋**：横版像素游戏画面：一间屋子或一处场景，两人、家具和小动物都是像素画。
   【场景】外层容器写 data-rm-pixel-scene="120x68"（宽 x 高的格数，可改）；容器里只放背景 SVG 和像素小人，对白、按钮和文字放在容器外面；容器本身不加内边距和边框（留白、边框加在外面一层）。背景 SVG 写 viewBox="0 0 120 68"、shape-rendering="crispEdges"、style="display:block;width:100%"，画墙、地板、窗外和大件家具，同一种颜色的方块合成一条 path。
-  【小人】人物、小动物和小物件用字母像素画，直接放在场景容器里、SVG 外面，不再包一层定位的外壳：<i data-rm-sprite="..hhhh../.hhhhhh./.hseesh./..ssss../.rrrrrr." data-rm-palette="h #3a2622 s #f6d2bb e #2a1a1a r #e06a86" data-rm-at="66,40"></i>。一个字母一格，点是透明，斜杠换行；data-rm-palette 写每个字母的颜色（# 加六位色号）；data-rm-at 是左上角在第几格。兔子镜会把它画成像素方块，放到那一格。人物约 10～14 格宽、14～20 格高，画出发型、眼睛、衣服和手里的东西。
+  【小人】人物、小动物和小物件用字母像素画，直接放在场景容器里、SVG 外面，不再包一层定位的外壳。写法（这里拿一颗小心心举例）：<i data-rm-sprite=".r.r./rrrrr/.rrr./..r.." data-rm-palette="r #e06a86" data-rm-at="60,20"></i>。一个字母一格，点是透明，斜杠换行；data-rm-palette 写每个字母的颜色（# 加六位色号）；data-rm-at 是左上角在第几格，位置只写在这里，不再另写 left、top。兔子镜会把它画成像素方块，放到那一格。人物画全身：头发、脸和眼睛、身体和衣服、手、腿和鞋，约 10～14 格宽、16～22 行高，每个人按自己的发型、衣服和手里的东西画，不照抄别人的；小动物也画出耳朵、身体、尾巴。
   【动起来】走动、跳动、闪烁用 transform 和 steps() 一格一格地动；点了才出现的照常用 CSS 改显示；换位置改 left，或用 transform: translate() 挪，不改 top。
 
 #### 📱 1. 数字生活

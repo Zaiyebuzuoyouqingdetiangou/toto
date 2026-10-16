@@ -167,6 +167,17 @@ const resets = await page.evaluate(() => {
 // 400px 内容宽 / 40 格 = 一格 10px；第 10 格在内容区 100px，加 20px 内边距 = 120；第 5 行 50 + 20 = 70；2 格宽 20px。
 assert.deepEqual(resets, { top: 285, left: 120, y: 70, width: 20 }); checks++;
 
+// 模型把格数又照抄成 style="left:22px;top:32px"（实际遇到过）：以 data-rm-at 为准，那两项拿掉；没写 data-rm-at 的不动。
+const copied = await page.evaluate(() => {
+    document.body.insertAdjacentHTML('beforeend', '<div id="s4" data-rm-pixel-scene="120x68" style="width:360px"><svg viewBox="0 0 120 68" style="display:block;width:100%"></svg><i data-rm-sprite="aa/aa" data-rm-palette="a #123456" data-rm-at="22,32" style="left:22px;top:32px"></i><i id="free" data-rm-sprite="aa/aa" data-rm-palette="a #123456" style="left:40px;top:10px"></i></div>');
+    window.px.applyPixelSprites(document.getElementById('s4'));
+    const scene = document.getElementById('s4').getBoundingClientRect();
+    const r = document.querySelector('#s4 i').getBoundingClientRect();
+    return { left: Math.round(r.left - scene.left), top: Math.round(r.top - scene.top), freeLeft: document.getElementById('free').style.left };
+});
+// 360px / 120 格 = 一格 3px：第 22 格 66px，第 32 行 96px。
+assert.deepEqual(copied, { left: 66, top: 96, freeLeft: '40px' }); checks++;
+
 // 写坏的：没有颜色、没有字母时保持原样，不报错。
 const broken = await page.evaluate(() => {
     document.body.insertAdjacentHTML('beforeend', '<i id="b1" data-rm-sprite="aa/aa" data-rm-palette=""></i><i id="b2" data-rm-sprite="" data-rm-palette="a #fff"></i>');
