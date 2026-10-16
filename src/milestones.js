@@ -61,7 +61,7 @@ function showMilestoneCard(count, firstAt) {
     row.append(
         button('打开收藏夹', () => {
             card.remove();
-            void Promise.all([import('./theaterFavorites.js?rmv=1.68.89'), import('./independentApi.js?rmv=1.68.89')])
+            void Promise.all([import('./theaterFavorites.js?rmv=1.68.90'), import('./independentApi.js?rmv=1.68.90')])
                 .then(([favorites, api]) => favorites.openTheaterFavoriteLibrary((container, record) => api.hydrateIndependentFavoriteHtml(container, record)))
                 .catch(() => globalThis.toastr?.warning?.('收藏夹暂时打不开，可以从工具菜单里进入。'));
         }),
