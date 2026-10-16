@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.68.87';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.68.87';
-import { findBuiltinImageKeyFromOtherChat, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.68.87';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.68.87';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.68.87';
-import { tidyImagePayload } from './imageTagTidy.js?rmv=1.68.87';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.68.87';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.68.87';
+import { getSettings } from './settings.js?rmv=1.68.88';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.68.88';
+import { findBuiltinImageKeyFromOtherChat, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.68.88';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.68.88';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.68.88';
+import { tidyImagePayload } from './imageTagTidy.js?rmv=1.68.88';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.68.88';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.68.88';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -464,7 +464,12 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
         })();
         if (planned) {
             const plannedTagsOnly = (planned.promptFormat || settings.imagePromptFormat) === 'nai45-tags';
-            tidy = { promptIsTags: !!String(planned.prompt || '').trim(), flatTagLines: plannedTagsOnly ? 'all' : 'none' };
+            const promptText = String(planned.prompt || '').trim();
+            // 重画沿用旧记录时：没写标签行的那种，记录里的 prompt 就是自然语言画面（和 nl 一样），不能当标签理。
+            const promptIsTags = plannedTagsOnly ? !!promptText
+                : options.reuse ? !!promptText && !!String(planned.nl || '').trim() && promptText !== String(planned.nl || '').trim()
+                    : !!promptText;
+            tidy = { promptIsTags, flatTagLines: plannedTagsOnly ? 'all' : 'none' };
         } else {
             const directTagsOnly = settings.imagePromptFormat === 'nai45-tags';
             const hasTags = !directTagsOnly && !!readTags(frame);

@@ -185,6 +185,41 @@ assert.equal(nested.sheen, 'after', 'its own gloss is applied'); checks++;
 // 「近几面用过」带上样子，不只是名字（只给名字时模型只换名字、样子照抄）。
 assert.ok(nested.recent.some(item => item.startsWith('丝绸（细 无 点 淡 亮面）')), JSON.stringify(nested.recent)); checks++;
 
+// 整面开着、写了纹理的那块在模型自己写的小折叠里（收着）：小折叠展开后补铺（toggle 不冒泡，靠整面上的捕获）。
+// 新版 Chromium 能量出收着的内容，这里模拟老内核：收着的内容没有大小。
+const innerFold = await page.evaluate(async () => {
+    const style = document.createElement('style'); style.id = 'old-engine';
+    style.textContent = 'details:not([open])::details-content{display:none}';
+    document.head.append(style);
+    const panel = '<section style="background:#eef4fa;padding:20px;min-height:140px">板</section>';
+    document.body.innerHTML = `<details open data-rabbit-mirror-css-scope="t4"><summary>x</summary><details id="inner"><summary>小折叠</summary>
+        <div data-rm-texture="纸 中 无 点 淡" style="padding:12px;display:flex;flex-direction:column;gap:10px;background:#c8d7e6">${panel}${panel}</div></details></details>`;
+    // 等整面自己「打开」的那次 toggle 过去，免得它碰巧替小折叠触发了补铺。
+    await new Promise(r => setTimeout(r, 150));
+    mt.applyMaterialTextures(document.querySelector('details'), { materialTextureEnabled: true });
+    await new Promise(r => setTimeout(r, 150));
+    const before = [...document.querySelectorAll('section')].map(s => s.getAttribute('data-rm-texture-on'));
+    document.getElementById('inner').open = true;
+    await new Promise(r => setTimeout(r, 300));
+    const after = [...document.querySelectorAll('section')].map(s => s.getAttribute('data-rm-texture-on'));
+    style.remove();
+    return { before, after };
+});
+assert.deepEqual(innerFold.before, [null, null]); checks++;
+assert.deepEqual(innerFold.after, ['before', 'before'], 'opening the model\'s own inner fold triggers the spread'); checks++;
+
+// 存档、收藏从页面上抄回来的纹理变量，重新净化时去掉；模型自己的内联样式不动；data-rm-skin 不能由模型写。
+const stored = await page.evaluate(async () => {
+    const markup = await import('/src/outputSanitizer/markup.js');
+    const tpl = document.createElement('template');
+    tpl.innerHTML = `<toto data-rabbit-mirror="true"><details><summary>x</summary><div data-rm-skin="panel" style="background:#abc;--rm-texture-image:url(&quot;data:image/svg+xml,%3Csvg%3E%3Crect filter='url(%23f)'/%3E%3C/svg%3E&quot;);--rm-texture-opacity:.5;color:red">y</div></details></toto>`;
+    markup.sanitizeRabbitMirrorUntrustedTemplate(tpl);
+    const div = tpl.content.querySelector('div');
+    return { style: div.getAttribute('style'), skin: div.getAttribute('data-rm-skin') };
+});
+assert.ok(!/--rm-texture/.test(stored.style) && /background/.test(stored.style) && /color:\s*red/.test(stored.style), stored.style); checks++;
+assert.equal(stored.skin, null); checks++;
+
 // 关掉开关：底板和板子上的纹理、定位、记号全撤掉。
 const off = await page.evaluate(() => {
     const d = document.querySelector('details');

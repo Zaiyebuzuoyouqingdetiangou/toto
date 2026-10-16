@@ -1,9 +1,9 @@
 // Split from independentApi.js — flights.
 
-import { getSettings } from '../settings.js?rmv=1.68.87';
-import { configuredAutomaticRerollIdleMs, configuredAutomaticRerollMax, stallTimeoutError } from '../automaticReroll.js?rmv=1.68.87';
-import { baseSlotOf } from './connection.js?rmv=1.68.87';
-import { automaticGenerationCutovers } from './lifecycle.js?rmv=1.68.87';
+import { getSettings } from '../settings.js?rmv=1.68.88';
+import { configuredAutomaticRerollIdleMs, configuredAutomaticRerollMax, stallTimeoutError } from '../automaticReroll.js?rmv=1.68.88';
+import { baseSlotOf } from './connection.js?rmv=1.68.88';
+import { automaticGenerationCutovers } from './lifecycle.js?rmv=1.68.88';
 
 export const pending = new Map();
 // A failed automatic generation owns its exact chat+mesid+swipe+sourceHash until

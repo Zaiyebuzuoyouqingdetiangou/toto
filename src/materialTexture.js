@@ -258,7 +258,10 @@ function coveringPanels(el, view) {
 function safeToLayer(el, view) {
     let style;
     try { style = view.getComputedStyle(el); } catch { return false; }
-    const floating = [...el.querySelectorAll('*')].filter(child => { try { return /absolute|fixed|sticky/.test(view.getComputedStyle(child).position); } catch { return true; } });
+    // 里面东西太多就不一个个量了（太慢），不铺这一块。
+    const descendants = el.querySelectorAll('*');
+    if (descendants.length > 400) return false;
+    const floating = [...descendants].filter(child => { try { return /absolute|fixed|sticky/.test(view.getComputedStyle(child).position); } catch { return true; } });
     if (!floating.length) return true;
     if (style.position === 'static') return false;
     if (/hidden|clip/.test(`${style.overflowX} ${style.overflowY}`)) return true;
@@ -380,14 +383,15 @@ function spreadWhenVisible(el, descriptor, seedText, view) {
     if (!face || WAITING.has(el)) return;
     WAITING.add(el);
     const retry = () => {
-        if (!el.isConnected || !el.hasAttribute(ON_ATTR)) { face.removeEventListener('toggle', retry); WAITING.delete(el); return; }
-        view.setTimeout(() => { if (spreadTexture(el, descriptor, seedText, view)) { face.removeEventListener('toggle', retry); WAITING.delete(el); } }, 60);
+        if (!el.isConnected || !el.hasAttribute(ON_ATTR)) { face.removeEventListener('toggle', retry, true); WAITING.delete(el); return; }
+        view.setTimeout(() => { if (spreadTexture(el, descriptor, seedText, view)) { face.removeEventListener('toggle', retry, true); WAITING.delete(el); } }, 60);
     };
-    face.addEventListener('toggle', retry);
+    // toggle 不冒泡：在整面上用捕获，里面模型自己写的小折叠展开时也能收到。
+    face.addEventListener('toggle', retry, true);
 }
 
 /** 给一面（或一个文档）里写了描述的元素铺上纹理。关着时把以前铺过的撤掉。返回铺上的个数。 */
-export function applyMaterialTextures(root, settings = getSettings()) {
+export function applyMaterialTextures(root, settings = getSettings(), { record = true } = {}) {
     const scope = root?.querySelectorAll ? root : null;
     if (!scope) return 0;
     if (!materialTextureEnabled(settings)) {
@@ -415,9 +419,12 @@ export function applyMaterialTextures(root, settings = getSettings()) {
     ensureStyle(doc);
     let applied = 0;
     const view = doc.defaultView || globalThis;
-    nodes.forEach((el, index) => {
+    nodes.forEach(el => {
         const descriptor = parseTextureDescriptor(el.getAttribute(TEXTURE_ATTR));
-        const faceKey = el.closest?.('details')?.getAttribute?.('data-rabbit-mirror-css-scope') || '';
+        // 种子和记录按「这一面里第几处」算：不管是单独铺一面还是整个聊天一起铺，同一处的纹理都一样，也不重复记。
+        const faceRoot = el.closest?.('[data-rabbit-mirror-css-scope]') || el.closest?.('details');
+        const faceKey = faceRoot?.getAttribute?.('data-rabbit-mirror-css-scope') || '';
+        const index = faceRoot ? [...faceRoot.querySelectorAll(`[${TEXTURE_ATTR}]`)].indexOf(el) : 0;
         if (el.hasAttribute(ON_ATTR)) {
             applied += 1;
             if (!el.hasAttribute(SPREAD_DONE_ATTR)) spreadWhenVisible(el, descriptor, `${faceKey}|${index}`, view);
@@ -425,7 +432,7 @@ export function applyMaterialTextures(root, settings = getSettings()) {
         }
         if (!layTexture(el, descriptor, `${faceKey}|${index}`, view)) return;
         applied += 1;
-        if (faceKey) remember(textureDescriptorText(descriptor), `${faceKey}|${index}`);
+        if (faceKey && record) remember(textureDescriptorText(descriptor), `${faceKey}|${index}`);
         spreadWhenVisible(el, descriptor, `${faceKey}|${index}`, view);
     });
     return applied;

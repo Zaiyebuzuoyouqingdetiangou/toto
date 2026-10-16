@@ -29,6 +29,8 @@ test('weights, natural language and look-alikes are left alone', () => {
     assert.equal(tidyImageTags("1 girl's hand, close-up"), "1 girl's hand, close-up");
     assert.equal(tidyImageTags('1.2::red hair, 1 girl, smile::, park'), '1.2::red hair, 1 girl, smile::, park');
     assert.equal(tidyImageTags('park, 1boy 1girl piggyback'), '1boy, 1girl, park, piggyback');
+    // 单提示词里的人物行：名字留在最前面。
+    assert.equal(tidyImageTags('Alice: long hair, 1 girl, smile'), 'Alice: 1girl, long hair, smile');
 });
 
 test('payload: tag fields tidied, natural-language fields untouched', () => {

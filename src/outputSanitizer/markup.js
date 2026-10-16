@@ -1,9 +1,9 @@
-import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.68.87';
+import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.68.88';
 // Split from outputSanitizer.js — markup.
 
-import { getSettings } from '../settings.js?rmv=1.68.87';
-import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.68.87';
-import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.68.87';
+import { getSettings } from '../settings.js?rmv=1.68.88';
+import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.68.88';
+import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.68.88';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     INTERACTION_HOME_ATTR,
@@ -15,7 +15,7 @@ import {
     clearMirrorTitleDisplayArtifacts,
     escapeRegExp,
     hashInteractionSignature,
-} from './runtime.js?rmv=1.68.87';
+} from './runtime.js?rmv=1.68.88';
 
 const TOTO_BLOCK_RE = /<toto\b[\s\S]*?<\/toto>/gi;
 
@@ -60,6 +60,8 @@ const RABBIT_MIRROR_INTERNAL_MODEL_ATTRS = new Set([
     'data-rm-texture-spread-done',
     'data-rm-texture-sheen',
     'data-rm-texture-fuzz',
+    // 用户美化认的工具弹窗名字：模型写的画面不能冒充。
+    'data-rm-skin',
     'data-rm-hold-class',
     'data-rm-polish',
     'data-rm-polish-font',
@@ -751,6 +753,13 @@ export function sanitizeRabbitMirrorUntrustedTemplate(template) {
         if (element.matches?.('input[type="password"], input[type="file"]')) {
             element.remove();
             continue;
+        }
+        // 兔子镜铺纹理时写在元素上的变量（纹理图很长）。存档、收藏从页面上抄回来的会带着，
+        // 这里去掉，按文字剪，不重写模型自己的内联样式；显示时开关开着会重新铺。
+        const inlineStyle = element.getAttribute('style');
+        if (inlineStyle && inlineStyle.includes('--rm-texture-')) {
+            const cleaned = inlineStyle.replace(/--rm-texture-[\w-]+\s*:(?:\s*url\(\s*(?:"[^"]*"|'[^']*'|[^)]*)\s*\)|"[^"]*"|'[^']*'|[^;"'])*;?/g, '').trim();
+            if (cleaned) element.setAttribute('style', cleaned); else element.removeAttribute('style');
         }
         for (const attribute of [...element.attributes]) {
             const name = String(attribute.name || '').toLowerCase();

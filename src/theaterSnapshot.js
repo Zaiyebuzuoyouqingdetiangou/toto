@@ -2,7 +2,7 @@
 // 收藏仍走原来的收藏夹；这里只负责翻看、点开镜面里的交互、收藏/取消收藏，以及跳回原楼。
 // 生成失败、没有成品的楼也留下，方便跳回去重试。正在生成的占位不收进来。
 
-import { RUNTIME_VERSION } from './ui/runtime.js?rmv=1.68.87';
+import { RUNTIME_VERSION } from './ui/runtime.js?rmv=1.68.88';
 
 export const THEATER_SNAPSHOT_PAGE_SIZE = 10;
 
@@ -517,11 +517,11 @@ function updateThumbScale(grid) {
 export async function openTheaterSnapshot() {
     const generation = ++openGeneration;
     const [{ applyAppearanceTheme }, api, favorites, persistence, runtime] = await Promise.all([
-        import('./appearanceTheme.js?rmv=1.68.87'),
-        import('./independentApi.js?rmv=1.68.87'),
-        import('./theaterFavorites.js?rmv=1.68.87'),
-        import('./independentApi/persistence.js?rmv=1.68.87'),
-        import('./independentApi/runtime.js?rmv=1.68.87'),
+        import('./appearanceTheme.js?rmv=1.68.88'),
+        import('./independentApi.js?rmv=1.68.88'),
+        import('./theaterFavorites.js?rmv=1.68.88'),
+        import('./independentApi/persistence.js?rmv=1.68.88'),
+        import('./independentApi/runtime.js?rmv=1.68.88'),
     ]);
     const ctx = runtime.getContext?.() || {};
     const chat = Array.isArray(ctx.chat) ? ctx.chat : [];
@@ -539,20 +539,20 @@ export async function openTheaterSnapshot() {
     let restoreBuiltinImages = () => 0;
     let applyTextures = () => 0;
     try {
-        const textures = await import('./materialTexture.js?rmv=1.68.87');
-        applyTextures = root => textures.applyMaterialTextures(root);
+        const textures = await import('./materialTexture.js?rmv=1.68.88');
+        applyTextures = root => textures.applyMaterialTextures(root, undefined, { record: false });
     } catch { /* 没有材质模块时缩略图保持原样 */ }
     try {
-        const connection = await import('./independentApi/connection.js?rmv=1.68.87');
+        const connection = await import('./independentApi/connection.js?rmv=1.68.88');
         imageChatKey = String(connection.chatKey(ctx) || '');
     } catch { imageChatKey = ''; }
     try {
-        const images = await import('./builtinImage.js?rmv=1.68.87');
+        const images = await import('./builtinImage.js?rmv=1.68.88');
         if (typeof images.restoreSavedBuiltinImages === 'function') restoreBuiltinImages = images.restoreSavedBuiltinImages;
     } catch { /* 没有生图模块时图框保持原样 */ }
     let sessionErrors = [];
     try {
-        const flights = await import('./independentApi/flights.js?rmv=1.68.87');
+        const flights = await import('./independentApi/flights.js?rmv=1.68.88');
         const key = imageChatKey;
         const seen = new Set(domErrors.map(row => row.mesid));
         for (const failure of flights.automaticFailureStops?.values?.() || []) {
@@ -574,8 +574,8 @@ export async function openTheaterSnapshot() {
     // 重说的其它版本：本机记录优先，没有就用聊天文件里随楼存的、再没有就用版本存档。只读，不改任何记录。
     try {
         const [swipes, faceSwipe] = await Promise.all([
-            import('./swipeVersions.js?rmv=1.68.87'),
-            import('./independentApi/faceSwipe.js?rmv=1.68.87'),
+            import('./swipeVersions.js?rmv=1.68.88'),
+            import('./independentApi/faceSwipe.js?rmv=1.68.88'),
         ]);
         let archive = new Map();
         if (imageChatKey && typeof swipes.loadFaceSwipeArchiveRows === 'function') {
@@ -601,7 +601,7 @@ export async function openTheaterSnapshot() {
     } catch { /* 读不到版本就只列当前这一版 */ }
     let expandBlocks = value => String(value || '');
     try {
-        const markup = await import('./outputSanitizer/markup.js?rmv=1.68.87');
+        const markup = await import('./outputSanitizer/markup.js?rmv=1.68.88');
         if (typeof markup.expandHtmlDocumentCodeBlocks === 'function') expandBlocks = markup.expandHtmlDocumentCodeBlocks;
     } catch { /* 缩略图用原文 */ }
     if (generation !== openGeneration) return [];

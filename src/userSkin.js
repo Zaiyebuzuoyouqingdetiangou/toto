@@ -55,10 +55,17 @@ export function applyUserSkin(doc = globalThis.document, skin = readUserSkin()) 
 // 写在元素 style 属性里的 !important 仍然最大（比如标题旁兔子按钮自己的样式）。@import、@charset 只能放最前面，单独提出来。
 // 网址里常有分号（字体链接的 wght@400;700），整个 url(...) 或引号里的地址当成一块，不在里面断开；
 // 注释里的 @import 是用户关掉的，不提出来（注释先去掉再找）。@namespace 也只能放最前面。
-const HOISTED = /@(?:import|charset|namespace)\s+(?:[\w-]+\s+)?(?:url\(\s*(?:"[^"]*"|'[^']*'|[^)]*)\)|"[^"]*"|'[^']*')[^;{}]*;/gi;
+const HOISTED = /@(?:import|charset|namespace)(?=[\s"'u])\s*(?:[\w-]+\s+)?(?:url\(\s*(?:"[^"]*"|'[^']*'|[^)]*)\)|"[^"]*"|'[^']*')[^;{}]*;/gi;
 export function layeredSkin(css) {
+    const source = String(css || '');
+    // 找要提出来的规则时把注释换成同样长的空白（位置不变），在原文里按位置剪；原文的注释和字符串都不动，
+    // 这样 content:"/*" 这种写法不会把后面的规则吃掉。
+    const blanked = source.replace(/\/\*[\s\S]*?\*\//g, comment => comment.replace(/[^\n]/g, ' '));
     const head = [];
-    const body = String(css || '').replace(/\/\*[\s\S]*?\*\//g, '').replace(HOISTED, rule => { head.push(rule); return ''; });
+    const cuts = [];
+    for (const match of blanked.matchAll(HOISTED)) { head.push(source.slice(match.index, match.index + match[0].length)); cuts.push([match.index, match.index + match[0].length]); }
+    let body = source;
+    for (const [start, end] of cuts.reverse()) body = body.slice(0, start) + body.slice(end);
     return `${head.join('\n')}${head.length ? '\n' : ''}${body}\n@layer rabbit-mirror-user-skin {\n${body}\n}`;
 }
 

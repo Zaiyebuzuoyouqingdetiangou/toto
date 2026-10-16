@@ -31,6 +31,7 @@ const CSS = `.rabbit-mirror-external-shell[data-rm-placement="external"]::before
 [data-rm-skin="panel"]{border-top:3px solid rgb(7, 8, 9) !important}
 @import url("data:text/css;charset=utf-8,.panel{outline-color:rgb(10, 11, 12)}");
 /* 关掉的：@import url("data:text/css,.panel{word-spacing:9px}"); */
+.panel::after{content:"/*"} .panel{text-indent:4px} .panel::before{content:"*/"}
 .panel{letter-spacing:3px}`;
 const state = () => page.evaluate(() => {
     const shell = document.querySelector('.rabbit-mirror-external-shell');
@@ -43,6 +44,7 @@ const state = () => page.evaluate(() => {
         spacing: getComputedStyle(document.querySelector('.panel')).letterSpacing,
         imported: getComputedStyle(document.querySelector('.panel')).outlineColor,
         commented: getComputedStyle(document.querySelector('.panel')).wordSpacing,
+        indent: getComputedStyle(document.querySelector('.panel')).textIndent,
     };
 });
 await page.evaluate(async () => {
@@ -68,6 +70,7 @@ assert.equal(s.panel, 'rgb(7, 8, 9)', 'tool panel'); checks++;
 assert.equal(s.spacing, '3px', 'plain declarations without !important still apply'); checks++;
 assert.equal(s.imported, 'rgb(10, 11, 12)', '@import with a semicolon inside the URL is hoisted whole and still works'); checks++;
 assert.equal(s.commented, '0px', 'an @import inside a comment stays off'); checks++;
+assert.equal(s.indent, '4px', 'a "/*" inside a string does not swallow the following rules'); checks++;
 // 关掉：拿掉样式，内容还在。
 await page.click('#rh_user_skin_enabled');
 s = await state();
