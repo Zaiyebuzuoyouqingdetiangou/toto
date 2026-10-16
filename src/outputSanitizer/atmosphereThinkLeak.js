@@ -7,7 +7,16 @@ const THINK = /<rm-think(?:\s[^>]*)?>([\s\S]*?)<\/rm-think\s*>/gi;
 const TICKET = /<rm-ticket(?:\s[^>]*)?>\s*(\d+)\s*<\/rm-ticket\s*>/gi;
 const INLINE = /^(EM|STRONG|B|I|SPAN|Q|CODE|SMALL|U|MARK|FONT|RM-THINK|RM-TICKET)$/;
 
-const squash = text => String(text || '').replace(/<[^>]+>/g, '').replace(/&[a-z]+;|&#\d+;/gi, '').replace(/[\s ​"'“”‘’「」『』]/g, '');
+// 比较前两边都压成「只剩字」：去掉标签、空白、引号，以及宿主排版时会吃掉的 Markdown 记号（* _ ~ ` #）。
+// 原文里的 &amp; 这类先还原成字，和页面上显示的对得上。
+function decodeEntities(text) {
+    const value = String(text || '');
+    if (!/&[#a-z0-9]+;/i.test(value) || typeof document === 'undefined') return value;
+    const box = document.createElement('textarea');
+    box.innerHTML = value;
+    return box.value;
+}
+const squash = text => decodeEntities(String(text || '').replace(/<[^>]+>/g, '')).replace(/[\s\u00a0\u200b"'\u201c\u201d\u2018\u2019\u300c\u300d\u300e\u300f*_~`#]/g, '');
 
 export function leakedAtmosphereTexts(raw) {
     const source = String(raw || '');
@@ -45,9 +54,16 @@ export function hideLeakedAtmosphereThink(root, raw) {
             break;
         }
         const squashed = squash(text);
-        if (!squashed || !candidates.has(squashed)) continue;
-        run.forEach(node => node.remove());
-        removed += 1;
+        if (squashed && candidates.has(squashed)) {
+            run.forEach(node => node.remove());
+            removed += 1;
+            continue;
+        }
+        // 宿主把这段包成了一个段落（理由前后有空行时）：标题后第一个段落整段对得上才删。
+        if (!squashed) {
+            const first = summary.nextElementSibling;
+            if (first?.tagName === 'P' && candidates.has(squash(first.textContent))) { first.remove(); removed += 1; }
+        }
     }
     return removed;
 }

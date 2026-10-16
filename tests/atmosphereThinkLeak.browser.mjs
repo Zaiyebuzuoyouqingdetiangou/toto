@@ -45,8 +45,19 @@ const out = await page.evaluate(async think => {
     // 5. 原始消息里没有挑签：什么都不做。
     document.body.innerHTML = `<details open><summary>标题</summary>1<div>名片正文</div></details>`;
     results.noRaw = mod.hideLeakedAtmosphereThink(document.body, '<toto><details><summary>标题</summary>1<div>名片正文</div></details></toto>');
+    // 6. 原文里有 &amp; 和 Markdown 强调，宿主显示成「&」和斜体；理由被包成一个段落：照样认得出。
+    const raw2 = '<toto><details><summary>标题</summary><rm-think>贺老板 &amp; 林若昭，*初见*反差。</rm-think><rm-ticket>2</rm-ticket><div>名片正文</div></details></toto>';
+    document.body.innerHTML = `<details open><summary>标题</summary><p>贺老板 &amp; 林若昭，<em>初见</em>反差。2</p><div>名片正文</div></details>`;
+    results.paragraphRemoved = mod.hideLeakedAtmosphereThink(document.body, raw2);
+    results.afterParagraph = document.querySelector('details').textContent;
+    // 7. 标题后第一个段落是模型自己的正文：不动。
+    document.body.innerHTML = `<details open><summary>标题</summary><p>名片正文第一段</p><div>名片正文</div></details>`;
+    results.paragraphKept = mod.hideLeakedAtmosphereThink(document.body, raw2);
     return results;
 }, think);
+assert.equal(out.paragraphRemoved, 1);
+assert.equal(out.afterParagraph, '标题名片正文');
+assert.equal(out.paragraphKept, 0);
 assert.equal(out.leakRemoved, 1);
 assert.equal(out.afterLeak.replace(/\s/g, ''), '【兔子镜：午夜算盘】.a{}名片正文');
 assert.equal(out.inlineRemoved, 1);
