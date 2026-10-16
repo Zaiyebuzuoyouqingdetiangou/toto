@@ -1,8 +1,8 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.68.94';
-import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.68.94';
-import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.68.94';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.68.95';
+import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.68.95';
+import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.68.95';
 
 export function buildRabbitMirrorSettingsDialogHtml() {
     return `
@@ -224,9 +224,26 @@ export function buildRabbitMirrorSettingsDialogHtml() {
           <option value="20">最近 20 楼</option>
           <option value="all">全部助手回复</option>
         </select>
-        <p class="rabbit-mirror-subnote">网络中断或闪退后，生成过兔子镜的楼层缺了外壳会自动补卡，不会自动再发请求。想给以前没生成过的楼层补兔子镜：选好范围，点「重新检查缺壳楼层」，范围内没有兔子镜的回复下面都会挂上卡，点卡就能生成。</p>
+        <p class="rabbit-mirror-subnote">网络中断或闪退后，生成过兔子镜的楼层缺了外壳会自动补卡，不会自动再发请求。想给以前没生成过的楼层补兔子镜：选好范围，点「重新检查缺壳楼层」，范围内没有兔子镜的回复下面都会挂上卡，点卡就能生成。楼层多的话点「一键补上」，会从最早那层开始一层一层排队生成。</p>
         <div id="rh_missing_shell_report" role="status">打开设置后检查当前聊天。</div>
         <button id="rh_missing_shell_rescan" class="menu_button" type="button">重新检查缺壳楼层</button>
+        <div id="rh_backfill" class="rabbit-mirror-backfill" style="margin:6px 0 8px;">
+          <button data-rh-backfill="start" class="menu_button" type="button">一键补上没有兔子镜的楼层</button>
+          <div data-rh-backfill="confirm" hidden style="margin:6px 0;padding:8px 10px;border:1px solid rgba(127,127,127,.4);border-radius:8px;">
+            <p data-rh-backfill="confirm-text" style="margin:0 0 6px;font-size:12px;line-height:1.55;"></p>
+            <div class="rabbit-mirror-actions">
+              <button data-rh-backfill="go" class="menu_button" type="button">确定，开始补</button>
+              <button data-rh-backfill="cancel" class="menu_button" type="button">取消</button>
+            </div>
+          </div>
+          <div data-rh-backfill="status" role="status" hidden style="white-space:pre-line;font-size:12px;line-height:1.55;margin:6px 0;"></div>
+          <div class="rabbit-mirror-actions">
+            <button data-rh-backfill="pause" class="menu_button" type="button" hidden>暂停</button>
+            <button data-rh-backfill="resume" class="menu_button" type="button" hidden>继续</button>
+            <button data-rh-backfill="stop" class="menu_button" type="button" hidden>停止</button>
+            <button data-rh-backfill="clear" class="menu_button" type="button" hidden>清掉这次的记录</button>
+          </div>
+        </div>
         <button id="rh_archive_inventory" class="menu_button" type="button">导出存档清单</button>
         <p class="rabbit-mirror-subnote">「找回旧兔子镜」找不到时用：导出当前聊天在三处存档里各记着什么（楼层号、指纹、时间），不含聊天正文和兔子镜内容。</p>
         <div class="rabbit-mirror-actions" style="margin-top:8px;">
