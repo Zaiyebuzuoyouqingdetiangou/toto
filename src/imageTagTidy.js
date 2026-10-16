@@ -5,7 +5,7 @@
 //   4. 重复的去掉（大小写不同也算重复）。
 // 带权重的写法（1.2::tag::、{tag}、[tag]）原样保留，不拆。
 
-const COUNT = /^(\d{1,2}\+?)\s*(boys?|girls?|others?)(?![\w-])\s*(.*)$/i;
+const COUNT = /^(\d{1,2}\+?)\s*(boys?|girls?|others?)(?![\w'’-])\s*(.*)$/i;
 
 function countTag(number, noun) {
     const word = noun.toLowerCase();
@@ -20,6 +20,8 @@ export function tidyImageTags(text) {
     if (!source.includes(',') && source.length > 60) return source;
     // 自然语言画面描述（中文，或英文长句用逗号连起来）不当标签理。
     if (/[\u3400-\u9fff]/.test(source)) return source;
+    // 跨逗号的权重组（1.2::red hair, 1 girl::）拆开会把标签挪出组：整行不动。
+    if (/::/.test(source)) return source;
     const parts = source.split(',').map(item => item.trim()).filter(Boolean);
     const longParts = parts.filter(item => item.split(/\s+/).length > 4).length;
     if (longParts > parts.length / 3) return source;
@@ -28,13 +30,16 @@ export function tidyImageTags(text) {
     for (const raw of source.split(',')) {
         const item = raw.trim();
         if (!item) continue;
-        const match = /[:{}[\]]/.test(item) ? null : COUNT.exec(item);
-        if (match) {
+        if (/[:{}[\]]/.test(item)) { rest.push(item); continue; }
+        // 「1boy 1girl piggyback」：开头连着几个人数标签都拆出来。
+        let remainder = item;
+        let match = COUNT.exec(remainder);
+        while (match) {
             counts.push(countTag(match[1], match[2]));
-            if (match[3].trim()) rest.push(match[3].trim());
-        } else {
-            rest.push(item);
+            remainder = match[3].trim();
+            match = remainder ? COUNT.exec(remainder) : null;
         }
+        if (remainder) rest.push(remainder);
     }
     const seen = new Set();
     return [...counts, ...rest].filter(item => {
@@ -45,16 +50,21 @@ export function tidyImageTags(text) {
     }).join(', ');
 }
 
-/** 一整份生图请求：标签写法时 prompt、flatPrompt 都是标签；NAI 5 时只有 prompt（标签栏）是标签，flatPrompt 只理第一行（标签行）。人物标签栏都理。 */
-export function tidyImagePayload(payload, { tagsOnly = false } = {}) {
+/**
+ * 一整份生图请求。哪些字段是标签由调用方说清楚，不靠猜：
+ *   promptIsTags：prompt 是标签栏（不是退回来的自然语言画面）。
+ *   flatTagLines：flatPrompt 里哪些行是标签——'all' 每一行各理各的（人物行不和别人去重）、'first' 只理第一行、'none' 不动。
+ * 人物标签栏都理。
+ */
+export function tidyImagePayload(payload, { promptIsTags = true, flatTagLines = 'none' } = {}) {
     if (!payload || typeof payload !== 'object') return payload;
     const flat = String(payload.flatPrompt || '');
     const lines = flat.split('\n');
-    const flatPrompt = tagsOnly ? tidyImageTags(flat)
-        : lines.length > 1 && lines[0].includes(',') ? [tidyImageTags(lines[0]), ...lines.slice(1)].join('\n') : flat;
+    const flatPrompt = flatTagLines === 'all' ? lines.map(line => tidyImageTags(line)).join('\n')
+        : flatTagLines === 'first' ? [tidyImageTags(lines[0]), ...lines.slice(1)].join('\n') : flat;
     return {
         ...payload,
-        prompt: tidyImageTags(payload.prompt),
+        prompt: promptIsTags ? tidyImageTags(payload.prompt) : payload.prompt,
         flatPrompt,
         characters: Array.isArray(payload.characters)
             ? payload.characters.map(person => person && typeof person === 'object' ? { ...person, tag: tidyImageTags(person.tag) } : person)

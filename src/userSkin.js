@@ -53,10 +53,18 @@ export function applyUserSkin(doc = globalThis.document, skin = readUserSkin()) 
 // 所以美化放两份：一份照常（不加 !important 的写法照常按先后和精确程度生效）；
 // 一份放进单独的层（@layer）里——层里的 !important 盖过所有不在层里的 !important，美化写了 !important 就一定生效。
 // 写在元素 style 属性里的 !important 仍然最大（比如标题旁兔子按钮自己的样式）。@import、@charset 只能放最前面，单独提出来。
+// 网址里常有分号（字体链接的 wght@400;700），整个 url(...) 或引号里的地址当成一块，不在里面断开；
+// 注释里的 @import 是用户关掉的，不提出来（注释先去掉再找）。@namespace 也只能放最前面。
+const HOISTED = /@(?:import|charset|namespace)\s+(?:[\w-]+\s+)?(?:url\(\s*(?:"[^"]*"|'[^']*'|[^)]*)\)|"[^"]*"|'[^']*')[^;{}]*;/gi;
 export function layeredSkin(css) {
     const head = [];
-    const body = String(css || '').replace(/@(?:import|charset)\s[^;]*;/gi, rule => { head.push(rule); return ''; });
+    const body = String(css || '').replace(/\/\*[\s\S]*?\*\//g, '').replace(HOISTED, rule => { head.push(rule); return ''; });
     return `${head.join('\n')}${head.length ? '\n' : ''}${body}\n@layer rabbit-mirror-user-skin {\n${body}\n}`;
+}
+
+/** 停用兔子镜时拿掉美化（不删保存的内容）。 */
+export function removeUserSkin(doc = globalThis.document) {
+    doc?.getElementById?.(STYLE_ID)?.remove();
 }
 
 function skeleton() {

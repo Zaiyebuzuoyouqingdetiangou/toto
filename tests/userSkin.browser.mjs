@@ -29,7 +29,8 @@ const CSS = `.rabbit-mirror-external-shell[data-rm-placement="external"]::before
 .rabbit-mirror-external-shell[data-rm-placement="external"]{background:rgb(1, 2, 3) !important}
 .rabbit-mirror-external-shell[data-rm-placement="external"] summary[data-rm-title-chrome]{color:rgb(4, 5, 6) !important}
 [data-rm-skin="panel"]{border-top:3px solid rgb(7, 8, 9) !important}
-@import url("data:text/css,.panel{outline-color:rgb(10, 11, 12)}");
+@import url("data:text/css;charset=utf-8,.panel{outline-color:rgb(10, 11, 12)}");
+/* 关掉的：@import url("data:text/css,.panel{word-spacing:9px}"); */
 .panel{letter-spacing:3px}`;
 const state = () => page.evaluate(() => {
     const shell = document.querySelector('.rabbit-mirror-external-shell');
@@ -41,6 +42,7 @@ const state = () => page.evaluate(() => {
         panel: getComputedStyle(document.querySelector('.panel')).borderTopColor,
         spacing: getComputedStyle(document.querySelector('.panel')).letterSpacing,
         imported: getComputedStyle(document.querySelector('.panel')).outlineColor,
+        commented: getComputedStyle(document.querySelector('.panel')).wordSpacing,
     };
 });
 await page.evaluate(async () => {
@@ -64,7 +66,8 @@ assert.equal(s.bg, 'rgb(1, 2, 3)', 'short documented selector + !important beats
 assert.equal(s.title, 'rgb(4, 5, 6)', 'external title bar, over the inline color'); checks++;
 assert.equal(s.panel, 'rgb(7, 8, 9)', 'tool panel'); checks++;
 assert.equal(s.spacing, '3px', 'plain declarations without !important still apply'); checks++;
-assert.equal(s.imported, 'rgb(10, 11, 12)', '@import is hoisted to the top and still works'); checks++;
+assert.equal(s.imported, 'rgb(10, 11, 12)', '@import with a semicolon inside the URL is hoisted whole and still works'); checks++;
+assert.equal(s.commented, '0px', 'an @import inside a comment stays off'); checks++;
 // 关掉：拿掉样式，内容还在。
 await page.click('#rh_user_skin_enabled');
 s = await state();

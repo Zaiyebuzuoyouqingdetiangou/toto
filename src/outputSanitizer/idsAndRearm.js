@@ -6,7 +6,7 @@ import {
     escapeRegExp,
     getRabbitMirrorLocalStyleElements,
     hashInteractionSignature,
-} from './runtime.js?rmv=1.68.86';
+} from './runtime.js?rmv=1.68.87';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     DIRECT_ID_CLASS_STATE_RESCUE_ATTR,
@@ -22,26 +22,26 @@ import {
     repairMalformedNestedInteractiveLabels,
     repairRabbitMirrorSelectorPanelGridSpan,
     restoreInteractionInlineOverrides,
-} from './checkedStateRescue.js?rmv=1.68.86';
+} from './checkedStateRescue.js?rmv=1.68.87';
 import {
     RAW_SELF_MUTATION_RESCUE_ATTR,
     chooseMatchingRawRabbitMirrorRoot,
     getRawAssistantMessageForRenderedRoot,
-} from './scriptedInteractionRescue.js?rmv=1.68.86';
+} from './scriptedInteractionRescue.js?rmv=1.68.87';
 import {
     applyCheckedVisualFallback,
     inputHasMeaningfulCheckedSiblingRule,
     installIntelligentInteractionRescue,
-} from './fallbackRescue.js?rmv=1.68.86';
-import { INERT_ACTION_BUTTON_RESCUE_ATTR, INERT_ACTION_STATUS_ATTR } from './diagnostics.js?rmv=1.68.86';
-import { rehydrateRabbitMirrorMaintenanceRepairs } from './choiceRescue.js?rmv=1.68.86';
-import { maintenanceRepairRootBudget } from './maintenanceInspect.js?rmv=1.68.86';
-import { recoverBehaviorInteractions } from './behaviorRecovery.js?rmv=1.68.86';
-import { installDisabledRangeProgressRescue, installOrphanRangeLayerRescue, installRangeStageRescue, installRangeValueAttributeMirror } from './rangeStageRescue.js?rmv=1.68.86';
-import { installMobileInteractionControls } from './mobileInteractionControls.js?rmv=1.68.86';
-import { installNextStepHighlightRescue } from './nextStepHighlightRescue.js?rmv=1.68.86';
-import { installNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.68.86';
-import { installBehaviorInteractions } from './behaviorInteractions.js?rmv=1.68.86';
+} from './fallbackRescue.js?rmv=1.68.87';
+import { INERT_ACTION_BUTTON_RESCUE_ATTR, INERT_ACTION_STATUS_ATTR } from './diagnostics.js?rmv=1.68.87';
+import { rehydrateRabbitMirrorMaintenanceRepairs } from './choiceRescue.js?rmv=1.68.87';
+import { maintenanceRepairRootBudget } from './maintenanceInspect.js?rmv=1.68.87';
+import { recoverBehaviorInteractions } from './behaviorRecovery.js?rmv=1.68.87';
+import { installDisabledRangeProgressRescue, installOrphanRangeLayerRescue, installRangeStageRescue, installRangeValueAttributeMirror } from './rangeStageRescue.js?rmv=1.68.87';
+import { installMobileInteractionControls } from './mobileInteractionControls.js?rmv=1.68.87';
+import { installNextStepHighlightRescue } from './nextStepHighlightRescue.js?rmv=1.68.87';
+import { installNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.68.87';
+import { installBehaviorInteractions } from './behaviorInteractions.js?rmv=1.68.87';
 
 let interactionScopeCounter = 0;
 
@@ -161,12 +161,14 @@ function rewriteCssIdReferences(cssText, idMap) {
 // 只改等号精确匹配的 [name=…]，^= *= 这类部分匹配不动。
 function rewriteCssNameReferences(cssText, nameMap) {
     let css = String(cssText || '');
-    if (!nameMap?.size || !css.includes('name')) return css;
+    if (!nameMap?.size || !/name/i.test(css)) return css;
     for (const [rawName, scopedName] of nameMap.entries()) {
         const escaped = escapeRegExp(rawName);
+        // 属性名大小写都认（NAME=）；i／s 标记前可以没有空格（"hair"i）；名字里有引号、反斜杠时转义。
+        const quoted = String(scopedName).replace(/["\\]/g, '\\$&');
         css = css.replace(
-            new RegExp(`\\[\\s*name\\s*=\\s*(?:(["'])${escaped}\\1|${escaped}(?![\\w-]))(\\s+[is])?\\s*\\]`, 'g'),
-            (_match, _quote, flag = '') => `[name="${scopedName}"${flag || ''}]`,
+            new RegExp(`\\[\\s*[nN][aA][mM][eE]\\s*=\\s*(?:(["'])${escaped}\\1|${escaped}(?![\\w-]))\\s*([iIsS])?\\s*\\]`, 'g'),
+            (_match, _quote, flag = '') => `[name="${quoted}"${flag ? ` ${flag}` : ''}]`,
         );
     }
     return css;

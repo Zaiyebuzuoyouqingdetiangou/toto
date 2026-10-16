@@ -41,6 +41,13 @@ test('switching the generation source swaps the remembered switch set', async ()
     // 文字框两边共用：不在记的名单里。
     assert.ok(!sm.SOURCE_PROFILE_KEYS.includes('visualPrompt'));
     assert.ok(!sm.SOURCE_PROFILE_KEYS.includes('writingStyle'));
+    // 关掉再打开：两边都从现在的开关起步，不翻出以前记的那一套。
+    sm.updateSettings({ sourceProfilesEnabled: false });
+    assert.equal(sm.getSettings().sourceProfiles, null);
+    sm.updateSettings({ sourceProfilesEnabled: true });
+    sm.updateSettings({ generationSource: 'independent' });
+    assert.equal(sm.getSettings().rabbitMirrorFaceCount, 1, 'fresh start, not the old independent set');
+    sm.updateSettings({ generationSource: 'follow' });
     // 关掉：以现在这一套为准，切换不再换。
     sm.updateSettings({ sourceProfilesEnabled: false });
     sm.updateSettings({ generationSource: 'independent' });

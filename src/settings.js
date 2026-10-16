@@ -1,11 +1,11 @@
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.68.86';
-import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.68.86';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.68.87';
+import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.68.87';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.68.86';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.68.86';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.68.86';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.68.86';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.68.87';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.68.87';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.68.87';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.68.87';
 
 export const MODULE_NAME = 'rabbit_mirror_theater';
 
@@ -549,14 +549,11 @@ export function updateSettings(patch) {
     const safePatch = patch && typeof patch === 'object' ? { ...patch } : {};
     if (Object.prototype.hasOwnProperty.call(safePatch, 'sourceProfilesEnabled')) {
         safePatch.sourceProfilesEnabled = safePatch.sourceProfilesEnabled === true;
-        // 打开时两边都从现在的开关起步；以前记过的那一边保留。
-        if (safePatch.sourceProfilesEnabled) {
-            const existing = settings.sourceProfiles && typeof settings.sourceProfiles === 'object' ? settings.sourceProfiles : {};
-            const current = settings.generationSource === 'independent' ? 'independent' : 'follow';
-            safePatch.sourceProfiles = {
-                follow: current === 'follow' || !existing.follow ? sourceProfileSnapshot(settings) : existing.follow,
-                independent: current === 'independent' || !existing.independent ? sourceProfileSnapshot(settings) : existing.independent,
-            };
+        // 打开时两边都从现在的开关起步（不翻出很久以前记的那一套）；关掉时清掉记录。
+        if (safePatch.sourceProfilesEnabled && settings.sourceProfilesEnabled !== true) {
+            safePatch.sourceProfiles = { follow: sourceProfileSnapshot(settings), independent: sourceProfileSnapshot(settings) };
+        } else if (!safePatch.sourceProfilesEnabled) {
+            safePatch.sourceProfiles = null;
         }
     }
     const sourceChange = Object.prototype.hasOwnProperty.call(safePatch, 'generationSource')

@@ -51,10 +51,12 @@ export function textureDescriptorText(descriptor) {
     return [value.material, value.grain, value.direction, value.shape, value.strength, value.gloss].filter(Boolean).join(' ');
 }
 
-/** 「近几面用过」只提材料名；没写材料名的旧记录退回提整条描述。 */
+/** 「近几面用过」：材料名带上画出来的样子（粗细、方向、形状、浓淡、光泽）。
+ *  只提材料名时，模型会只换名字、样子照抄，画出来每面都一样（兔子镜画纹理只看样子）。 */
 function materialName(descriptorText) {
     const value = parseTextureDescriptor(descriptorText);
-    return value.material || [value.grain, value.direction, value.shape, value.strength, value.gloss].join(' ');
+    const look = [value.grain, value.direction, value.shape, value.strength, value.gloss].join(' ');
+    return value.material ? `${value.material}（${look}）` : look;
 }
 
 function hashSeed(text) {
@@ -98,12 +100,13 @@ export function textureImage(descriptor, seedText = '', { shadowOnly = false } =
     const base = GRAIN[value.grain] || GRAIN.中;
     const size = TILE[value.grain] || TILE.中;
     const [relief, opacity] = RELIEF[value.strength] || RELIEF.淡;
-    const scale = value.shape === '纤维' ? relief * 1.3 : relief;
+    const scale = value.shape === '纤维' ? relief * 1.3 : value.shape === '斑块' ? relief * 1.8 : relief;
     // 形状：点＝少层颗粒；纤维＝多层细碎；条纹＝一个方向拉得很长；斑块＝低频成团。
     let fx = base, fy = base, octaves = 3;
     // 纤维：一簇簇的，比点大、比斑块小，再揉得更软，起伏稍大（软的东西）。
     if (value.shape === '纤维') { fx = fy = base * 0.55; octaves = 5; }
-    if (value.shape === '斑块') { fx = fy = base * 0.08; octaves = 4; }
+    // 斑块：低频成团。粗的太低频时一块纹理里起伏太少、几乎看不见：频率有下限，起伏也加高一点。
+    if (value.shape === '斑块') { fx = fy = Math.max(base * 0.08, 0.03); octaves = 4; }
     const stretch = value.shape === '条纹' ? 0.03 : value.shape === '纤维' ? 0.5 : 1;
     // 斜：打了光的纹理不能旋转（会出接缝，光的方向也会跟着转），按横向处理。
     if (value.direction === '横' || value.direction === '斜') fx *= stretch;
@@ -361,7 +364,8 @@ function spreadTexture(el, descriptor, seedText, view) {
     if (panels === null) return false; // 量不出大小
     el.setAttribute(SPREAD_DONE_ATTR, String(panels.length));
     panels.forEach(panel => {
-        if (panel.hasAttribute(ON_ATTR) || panel.querySelector(`[${TEXTURE_ATTR}]`)) return;
+        // 板子自己写了纹理（模型给它另定了材质），或里面有写了纹理的：留给它自己，不铺外面那种。
+        if (panel.hasAttribute(ON_ATTR) || panel.hasAttribute(TEXTURE_ATTR) || panel.querySelector(`[${TEXTURE_ATTR}]`)) return;
         layTexture(panel, descriptor, seedText, view, { spread: true });
     });
     return true;
@@ -370,7 +374,9 @@ function spreadTexture(el, descriptor, seedText, view) {
 const WAITING = new WeakSet();
 function spreadWhenVisible(el, descriptor, seedText, view) {
     if (spreadTexture(el, descriptor, seedText, view)) return;
-    const face = el.closest?.('details');
+    // 收着的是整面（最外层的 details），不是模型自己写在里面的小折叠。
+    let face = el.closest?.('details');
+    while (face?.parentElement?.closest?.('details')) face = face.parentElement.closest('details');
     if (!face || WAITING.has(el)) return;
     WAITING.add(el);
     const retry = () => {
@@ -432,5 +438,5 @@ export function materialTextureRule(settings = getSettings()) {
     // 开关是用户主动打开的：每个 HTML 面都写一处，不给「不加」的退路（以前写「可选」，模型几乎都跳过）。
     // 防模板化靠两点：质感从这一面的实物推出来；近几面用过的提醒换一种。不列举材质名，免得模型只在列出的几种里挑。
     // 第一个词是材料名：先决定这东西是什么做的，再填粗细方向，免得只填表、不想材料。
-    return `材质纹理（已开启）：每个 HTML 面都在一个元素上写 ${TEXTURE_ATTR}="材料 粗细 方向 形状 浓淡 光泽"，兔子镜会按描述叠一层纹理和光：材料写它在现实里是什么做的（一两个词，你自己定），粗细写细／中／粗，方向写无／横／竖／斜，形状写点／纤维／条纹／斑块，浓淡写很淡／淡／明显，光泽写哑光／半光／亮面。写在这一面最像实物的主体或承载面上；一面只写一处，不写在整面最外层背景上；底色、边缘、光泽和厚度仍由你写。${recent.length ? `近几面用过：${recent.join('；')}，这一面换一种材料。` : ''}`;
+    return `材质纹理（已开启）：每个 HTML 面都在一个元素上写 ${TEXTURE_ATTR}="材料 粗细 方向 形状 浓淡 光泽"，兔子镜会按描述叠一层纹理和光：材料写它在现实里是什么做的（一两个词，你自己定），粗细写细／中／粗，方向写无／横／竖／斜，形状写点／纤维／条纹／斑块，浓淡写很淡／淡／明显，光泽写哑光／半光／亮面。写在这一面最像实物的主体或承载面上；一面只写一处，不写在整面最外层背景上；底色、边缘、光泽和厚度仍由你写。${recent.length ? `近几面用过：${recent.join('；')}，这一面换一种材料，粗细、形状、光泽也跟着换。` : ''}`;
 }

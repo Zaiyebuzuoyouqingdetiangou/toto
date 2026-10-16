@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.68.86';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.68.86';
-import { findBuiltinImageKeyFromOtherChat, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.68.86';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.68.86';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.68.86';
-import { tidyImagePayload } from './imageTagTidy.js?rmv=1.68.86';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.68.86';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.68.86';
+import { getSettings } from './settings.js?rmv=1.68.87';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.68.87';
+import { findBuiltinImageKeyFromOtherChat, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.68.87';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.68.87';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.68.87';
+import { tidyImagePayload } from './imageTagTidy.js?rmv=1.68.87';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.68.87';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.68.87';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -427,7 +427,10 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
         const provider = settings.imageBackend === 'chatu8' ? '智绘姬' : '柏宝绘';
         reportProgress(key, `${withLlm ? '提示词已完成，' : ''}正在交给${provider}生图…`);
         // 交给生图前把标签理一遍：人数和性别放最前、粘在一起的拆开、重复的去掉（见 imageTagTidy.js）。
-        const generated = await generateMirrorImage(tidyImagePayload(planned ? {
+        // 只理真正是标签的字段：生图 LLM 的 prompt 是标签，它的 flatPrompt 在 NAI 5 下是自然语言；
+        // 没有生图 LLM 时，这一面没写标签行，prompt 退回的是自然语言画面，也不理。
+        let tidy = { promptIsTags: true, flatTagLines: 'none' };
+        const payload = planned ? {
             prompt: String(planned.prompt || planned.flatPrompt || planned.nl || ''),
             flatPrompt: String(planned.flatPrompt || ''),
             nl: String(planned.nl || ''),
@@ -458,7 +461,16 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
                 characters: people.map(person => ({ name: person.name, tag: tagsOnly ? person.text : tagOf(person), nl: tagsOnly ? '' : person.text })),
                 promptFormat: settings.imagePromptFormat,
             };
-        })(), { tagsOnly: (planned?.promptFormat || settings.imagePromptFormat) === 'nai45-tags' }), {
+        })();
+        if (planned) {
+            const plannedTagsOnly = (planned.promptFormat || settings.imagePromptFormat) === 'nai45-tags';
+            tidy = { promptIsTags: !!String(planned.prompt || '').trim(), flatTagLines: plannedTagsOnly ? 'all' : 'none' };
+        } else {
+            const directTagsOnly = settings.imagePromptFormat === 'nai45-tags';
+            const hasTags = !directTagsOnly && !!readTags(frame);
+            tidy = { promptIsTags: directTagsOnly || hasTags, flatTagLines: directTagsOnly ? 'all' : hasTags ? 'first' : 'none' };
+        }
+        const generated = await generateMirrorImage(tidyImagePayload(payload, tidy), {
             character: characterGroup(),
             size,
             ...(options.signal ? { signal: options.signal } : {}),

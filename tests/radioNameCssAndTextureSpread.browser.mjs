@@ -43,6 +43,9 @@ const radioFace = `<details open><summary>捏脸</summary>
 .gen:has(input[name=mark][value="on"]:checked) .tip{display:block}
 .tip{display:none}
 .gen [name^="hair"]{outline:0}
+.gen:has(input[NAME="mark"][value="on"]:checked) .tip2{display:block}
+.gen:has(input[name="mark"i][value="on"]:checked) .tip3{display:block}
+.tip2,.tip3{display:none}
 .note[name="memo"]{color:rgb(1,2,3)}
 </style>
 <div class="gen">
@@ -52,7 +55,7 @@ const radioFace = `<details open><summary>捏脸</summary>
 <label><input type="radio" name="mark" value="off" checked style="display:none">无</label>
 <label><input type="radio" name="mark" value="on" style="display:none">有</label>
 <input type="radio" name="memo" value="a"><input type="radio" name="memo" value="b"><textarea name="memo"></textarea>
-<p class="tip">印记显现</p>
+<p class="tip">印记显现</p><p class="tip2">二</p><p class="tip3">三</p>
 </div></details>`;
 const radio = await page.evaluate(async html => {
     document.body.innerHTML = html;
@@ -66,6 +69,8 @@ const radio = await page.evaluate(async html => {
     pick('long'); await new Promise(r => setTimeout(r, 200)); out.long = hair();
     pick('snow'); await new Promise(r => setTimeout(r, 200)); out.snow = hair();
     pick('on'); await new Promise(r => setTimeout(r, 200)); out.tip = tipShown();
+    out.tip2 = getComputedStyle(d.querySelector('.tip2')).display !== 'none';
+    out.tip3 = getComputedStyle(d.querySelector('.tip3')).display !== 'none';
     // 再处理一遍（比如重新渲染时）：不会给样式里的名字再套一层前缀
     san.isolateRabbitMirrorInteractionIds(d);
     out.css = d.querySelector('style').textContent;
@@ -77,6 +82,8 @@ assert.equal(radio.start, '#111');
 assert.equal(radio.long, '#c00', 'double-quoted [name] selector follows the scoped name'); checks++;
 assert.equal(radio.snow, '#eee', 'single-quoted [name] selector follows the scoped name'); checks++;
 assert.equal(radio.tip, true, 'unquoted [name] selector follows the scoped name'); checks++;
+assert.equal(radio.tip2, true, 'upper-case NAME attribute selector follows'); checks++;
+assert.equal(radio.tip3, true, 'flag written without a space ("mark"i) follows'); checks++;
 assert.ok(radio.css.includes('[name^="hair"]'), 'partial-match selectors stay as written'); checks++;
 assert.ok(radio.css.includes('.note[name="memo"]'), 'a name still used by another control is left alone'); checks++;
 assert.equal(radio.css.split(hairName).length - 1, 2, 'no double prefix after a second pass'); checks++;
@@ -163,6 +170,20 @@ const offAll = await page.evaluate(() => { const d = document.querySelector('det
 assert.equal(offAll, 0, 'switching off removes highlights and soft edges'); checks++;
 // 底板上的纹理照旧（下面的关掉测试要用）。
 t = await texture(textureFace(panel('#eef4fa') + panel('#eef4fa'), false), { toggle: true });
+
+// 外面那块铺过来时，里面自己写了纹理的板子保留自己的（形状、光泽），不被外面的盖掉。
+const nested = await page.evaluate(() => {
+    document.body.innerHTML = `<details open data-rabbit-mirror-css-scope="t3"><summary>x</summary><div data-rm-texture="木头 粗 横 条纹 明显 哑光" style="padding:10px;background:#8a6a4a">
+        <section data-rm-texture="丝绸 细 无 点 淡 亮面" style="background:#5a2030;color:#1a0a0a;height:200px;border-radius:8px">里</section></div></details>`;
+    mt.applyMaterialTextures(document.querySelector('details'), { materialTextureEnabled: true });
+    const inner = document.querySelector('section');
+    return { spread: inner.getAttribute('data-rm-texture-spread'), sheen: inner.getAttribute('data-rm-texture-sheen'), on: inner.getAttribute('data-rm-texture-on'), recent: mt.recentMaterialTextures() };
+});
+assert.equal(nested.spread, null, 'inner element with its own descriptor is not overwritten by the outer one'); checks++;
+assert.equal(nested.on, 'before'); checks++;
+assert.equal(nested.sheen, 'after', 'its own gloss is applied'); checks++;
+// 「近几面用过」带上样子，不只是名字（只给名字时模型只换名字、样子照抄）。
+assert.ok(nested.recent.some(item => item.startsWith('丝绸（细 无 点 淡 亮面）')), JSON.stringify(nested.recent)); checks++;
 
 // 关掉开关：底板和板子上的纹理、定位、记号全撤掉。
 const off = await page.evaluate(() => {
