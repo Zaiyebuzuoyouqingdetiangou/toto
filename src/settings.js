@@ -1,11 +1,11 @@
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.68.93';
-import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.68.93';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.68.94';
+import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.68.94';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.68.93';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.68.93';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.68.93';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.68.93';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.68.94';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.68.94';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.68.94';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.68.94';
 
 export const MODULE_NAME = 'rabbit_mirror_theater';
 
@@ -301,6 +301,8 @@ export const defaultSettings = Object.freeze({
     // 跟随主 API 和独立 API 各记一套开关：开着时，切换生成方式会把下面这些开关换成那一边记住的值。
     sourceProfilesEnabled: false,
     sourceProfiles: null,
+    // 用户美化在酒馆设置里留的一份（本机那份被清掉时用）。见 userSkin.js。
+    userSkin: null,
     memoryWorldBookEnabled: false,
     memoryWorldBookId: '',
     memoryProviderIds: [],

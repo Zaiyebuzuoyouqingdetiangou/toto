@@ -9,10 +9,15 @@ import { fileURLToPath } from 'node:url';
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
+let savedSettings = '{}';
 const server = createServer(async (req, res) => {
     const p = new URL(req.url, 'http://x').pathname;
     // 带上兔子镜真正的 style.css：美化要盖得过它那些很长的 !important 选择器。
     if (p === '/') { res.setHeader('Content-Type', 'text/html'); return res.end('<!doctype html><meta charset=utf-8><link rel="stylesheet" href="/style.css"><body><div id="chat"></div>'); }
+    // 假的酒馆：扩展设置存在这个「服务器」里，跟浏览器本地存储分开（用来试本地存储被清掉后能不能找回）。
+    if (p === '/save') { let body = ''; for await (const c of req) body += c; savedSettings = body; return res.end('ok'); }
+    if (p === '/extensions.js') { res.setHeader('Content-Type', 'text/javascript'); return res.end(`export const extension_settings = ${savedSettings};`); }
+    if (p === '/script.js') { res.setHeader('Content-Type', 'text/javascript'); return res.end(`import { extension_settings } from '/extensions.js'; export function saveSettingsDebounced() { fetch('/save', { method: 'POST', body: JSON.stringify(extension_settings), keepalive: true }); }`); }
     res.setHeader('Content-Type', p.endsWith('.css') ? 'text/css' : 'text/javascript');
     try { res.end(await readFile(path.join(root, decodeURIComponent(p)))); } catch { res.statusCode = 404; res.end(); }
 });
@@ -103,6 +108,46 @@ assert.equal(await page.evaluate(() => window.skin.readUserSkin().name), '春日
 await page.click('[data-rh-skin="clear"]');
 assert.equal((await state()).present, false); checks++;
 assert.equal(await page.evaluate(() => window.skin.readUserSkin().css), ''); checks++;
+// 只在框里打字、不点保存，过一会儿就自动存好；刷新后还在（开着时还顺手换上）。
+const reopen = async () => {
+    page = await ctx.newPage(); page.on('pageerror', e => errors.push(e.message));
+    await page.goto(origin);
+    await page.evaluate(async () => {
+        document.getElementById('chat').innerHTML = `<div class="rabbit-mirror-external-shell" data-rm-placement="external"><details open><summary data-rm-title-chrome="true">标题</summary></details></div><div class="panel"></div><section id="appearance"></section>`;
+        window.skin = await import('/src/userSkin.js');
+        window.skin.applyUserSkin();
+        window.skin.mountUserSkinControls(document.getElementById('appearance'));
+    });
+};
+const BEFORE = (c) => `.rabbit-mirror-external-shell[data-rm-placement="external"]::before{content:"${c}" !important}`;
+await page.check('#rh_user_skin_enabled');
+await page.fill('#rh_user_skin_css', BEFORE('☘'));
+await page.waitForFunction(() => getComputedStyle(document.querySelector('.rabbit-mirror-external-shell'), '::before').content === '"☘"');
+await reopen();
+assert.equal(await page.inputValue('#rh_user_skin_css'), BEFORE('☘'), 'typed text is kept without pressing save'); checks++;
+assert.equal((await state()).before, '"☘"', 'and is applied after reload'); checks++;
+// 打完字马上点导出：导出那一下也存。
+await page.fill('#rh_user_skin_css', BEFORE('✦'));
+const dl = page.waitForEvent('download');
+await page.click('[data-rh-skin="export"]');
+await dl;
+await reopen();
+assert.equal(await page.inputValue('#rh_user_skin_css'), BEFORE('✦'), 'export also saves'); checks++;
+// 本地存储被清掉（宿主清网页数据）：从酒馆设置里那份找回，并补回本地。
+await page.waitForTimeout(300);
+await page.evaluate(() => localStorage.clear());
+await reopen();
+assert.equal((await state()).before, '"✦"', 'skin comes back from the extension settings copy when local storage was wiped'); checks++;
+assert.ok(await page.evaluate(() => !!localStorage.getItem('rabbit_mirror_user_skin_v1')), 'local copy restored'); checks++;
+// 老版本只存在本机的美化：开页时补一份到酒馆设置里，之后本机被清也能找回。
+await page.evaluate(() => { localStorage.setItem('rabbit_mirror_user_skin_v1', JSON.stringify({ enabled: true, css: '.rabbit-mirror-external-shell[data-rm-placement="external"]::before{content:"✧" !important}', name: '' })); });
+await page.evaluate(async () => { const set = await import('/src/settings.js?rmv=1.68.94'); set.updateSettings({ userSkin: null }); });
+await page.waitForTimeout(300);
+await reopen();
+await page.waitForTimeout(300);
+await page.evaluate(() => localStorage.clear());
+await reopen();
+assert.equal((await state()).before, '"✧"', 'a local-only skin from older versions gets backed up on load'); checks++;
 assert.deepEqual(errors, []);
 console.log(JSON.stringify({ checks }));
 await browser.close(); server.close();
