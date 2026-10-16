@@ -1,9 +1,9 @@
-import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.68.96';
+import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.68.97';
 // Split from outputSanitizer.js — markup.
 
-import { getSettings } from '../settings.js?rmv=1.68.96';
-import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.68.96';
-import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.68.96';
+import { getSettings } from '../settings.js?rmv=1.68.97';
+import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.68.97';
+import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.68.97';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     INTERACTION_HOME_ATTR,
@@ -15,7 +15,7 @@ import {
     clearMirrorTitleDisplayArtifacts,
     escapeRegExp,
     hashInteractionSignature,
-} from './runtime.js?rmv=1.68.96';
+} from './runtime.js?rmv=1.68.97';
 
 const TOTO_BLOCK_RE = /<toto\b[\s\S]*?<\/toto>/gi;
 
@@ -60,6 +60,9 @@ const RABBIT_MIRROR_INTERNAL_MODEL_ATTRS = new Set([
     'data-rm-texture-spread-done',
     'data-rm-texture-sheen',
     'data-rm-texture-fuzz',
+    // 字母像素画画没画好由兔子镜自己标；模型只写 data-rm-sprite 字母图。
+    'data-rm-sprite-done',
+    'data-rm-scene-sprite',
     // 用户美化认的工具弹窗名字：模型写的画面不能冒充。
     'data-rm-skin',
     'data-rm-hold-class',
