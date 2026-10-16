@@ -57,7 +57,26 @@ function remember(node) {
     return saved;
 }
 
-function visibility(node, saved, active) {
+// 模型常这样写分页：.页{display:none} .页[data-rm-active]{display:block}，再用驱动按 data-rm-show 切换。
+// 驱动只撤掉自己加的隐藏，模型那条默认隐藏还在，切到哪一页都是空的。
+// 该显示的那块还被模型的样式藏着时，照模型自己的写法挂上 data-rm-active（只挂记号，不写内联样式：
+// 表格行、列表项、窄屏故意藏起来的都按模型自己的样式来）。切走或交还时只撤自己挂的那个。
+const FORCED_ACTIVE = 'data-rm-result-forced-active';
+function revealAuthorHidden(node) {
+    const view = node.ownerDocument?.defaultView;
+    if (!view?.getComputedStyle || !node.isConnected) return;
+    if (node.hasAttribute('data-rm-active') || view.getComputedStyle(node).display !== 'none') return;
+    node.setAttribute('data-rm-active', 'true');
+    node.setAttribute(FORCED_ACTIVE, 'true');
+}
+
+export function clearForcedActive(node) {
+    if (node?.getAttribute?.(FORCED_ACTIVE) !== 'true') return;
+    if (node.getAttribute('data-rm-active') === 'true') node.removeAttribute('data-rm-active');
+    node.removeAttribute(FORCED_ACTIVE);
+}
+
+function visibility(node, saved, active, reveal = false) {
     const value = String(active);
     if (node.getAttribute('data-rm-result-active') !== value) node.setAttribute('data-rm-result-active', value);
     if (active) {
@@ -67,7 +86,9 @@ function visibility(node, saved, active) {
                 node.style.setProperty('display', saved.display, saved.priority);
             }
         } else if (node.style.getPropertyValue('display')) node.style.removeProperty('display');
+        if (reveal) revealAuthorHidden(node);
     } else {
+        clearForcedActive(node);
         if (!node.hasAttribute('hidden')) node.setAttribute('hidden', '');
         if (node.style.getPropertyValue('display') !== 'none' || node.style.getPropertyPriority('display') !== 'important') {
             node.style.setProperty('display', 'none', 'important');
@@ -110,6 +131,7 @@ export function releaseBehaviorShow(node) {
         visibility(node, saved, true);
         node.removeAttribute('data-rm-result-active');
     }
+    clearForcedActive(node);
     node.setAttribute('data-rm-show-author', 'true');
     return touched;
 }
@@ -125,7 +147,7 @@ export function updateBehaviorShows(group, keys = new Set(), onChange = null, re
         const active = (!positive.length || positive.some(token => keys.has(token))) && negative.every(token => !keys.has(token));
         const saved = results.get(node) || remember(node);
         const before = node.getAttribute('data-rm-result-active');
-        visibility(node, saved, active);
+        visibility(node, saved, active, true);
         if (onChange && before !== String(active)) onChange(node, active);
         count++;
     }
