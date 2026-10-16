@@ -101,11 +101,22 @@ try {
             ['nodes', '<i>authored</i>'.repeat(4300)],
             ['depth', '<div>'.repeat(74) + 'deep' + '</div>'.repeat(74)],
             ['css', '<style>' + '.safe{color:#345}'.repeat(1500) + '</style>'],
-            ['data-uri', '<img src="data:image/png;base64,' + 'a'.repeat(193000) + '">'],
+            // 栅格图片（内置生图画进图框的 base64）导出时原样带上，见下面单独的检查；写在样式里的超长 data: 照样拒绝。
+            ['data-uri', '<i style="background:url(data:image/png;base64,' + 'a'.repeat(193000) + ')"></i>'],
             ['source-chars', '<p>' + 'x'.repeat(786433) + '</p>'],
         ]) await check(`${width} genuine authored ${name} overflow still fails closed`, async () => {
             const result = await page.evaluate(runExport, { html: base.replace('</details>', content + '</details>') });
             assert.equal(result.output, '', 'oversized authored content must not be silently truncated or exported');
+            assert.equal(result.unchanged, true);
+        });
+    }
+    for (const width of [375, 1280]) {
+        await page.setViewportSize({ width, height: 900 });
+        await check(`${width} large drawn raster image exports whole`, async () => {
+            const image = 'data:image/png;base64,' + 'a'.repeat(193000);
+            const result = await page.evaluate(runExport, { html: base.replace('</details>', `<img alt="drawn" src="${image}"></details>`) });
+            assert.ok(result.output.includes(`src="${image}"`), 'drawn image must be exported complete, not truncated or dropped');
+            assert.equal(result.output.includes('data-rm-export-image'), false);
             assert.equal(result.unchanged, true);
         });
     }
