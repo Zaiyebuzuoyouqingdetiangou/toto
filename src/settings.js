@@ -1,11 +1,11 @@
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.68.64';
-import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.68.64';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.68.93';
+import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.68.93';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.68.64';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.68.64';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.68.64';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.68.64';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.68.93';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.68.93';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.68.93';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.68.93';
 
 export const MODULE_NAME = 'rabbit_mirror_theater';
 
@@ -286,6 +286,7 @@ export const defaultSettings = Object.freeze({
     visualSceneryCombination: false,
     imageEnabled: false,
     builtinImageEnabled: false,
+    materialTextureEnabled: false, // 材质纹理（实验性）：默认关闭。
     imagePromptFormat: 'nai5-natural',
     imageCompositionMode: 'scene',
     imageBackend: 'baibai',
@@ -297,6 +298,9 @@ export const defaultSettings = Object.freeze({
     imageLlmTemperature: 0.8,
     imageLlmMaxTokens: 4096,
     memoryScanEnabled: false,
+    // 跟随主 API 和独立 API 各记一套开关：开着时，切换生成方式会把下面这些开关换成那一边记住的值。
+    sourceProfilesEnabled: false,
+    sourceProfiles: null,
     memoryWorldBookEnabled: false,
     memoryWorldBookId: '',
     memoryProviderIds: [],
@@ -471,6 +475,7 @@ export function getSettings() {
     settings.imageLlmTemperature = Number.isFinite(Number(settings.imageLlmTemperature)) ? Math.min(2, Math.max(0, Number(settings.imageLlmTemperature))) : 0.8;
     settings.imageLlmMaxTokens = Number(settings.imageLlmMaxTokens) > 0 ? Math.min(64000, Math.round(Number(settings.imageLlmMaxTokens))) : 4096;
     settings.builtinImageEnabled = settings.builtinImageEnabled === true;
+    settings.materialTextureEnabled = settings.materialTextureEnabled === true;
     settings.imagePromptFormat = settings.imagePromptFormat === 'nai45-tags' ? 'nai45-tags' : 'nai5-natural';
     settings.visualPromptEditingEnabled = !!settings.visualPromptEditingEnabled;
     settings.appearanceReferenceEnabled = settings.appearanceReferenceEnabled === true;
@@ -520,9 +525,52 @@ export function syncExternalReferenceVisibility(settings) {
     }
 }
 
+// 两套开关各记哪些：只记影响注入内容、又有开关可点的那些；文字框（视觉提示词、文风）两边共用。
+export const SOURCE_PROFILE_KEYS = Object.freeze([
+    'rabbitMirrorFaceCount', 'rabbitMirrorPresentationModes', 'samplingMode', 'rawPolicy', 'creativeExpansionMode',
+    'forceVisualScenery', 'visualSceneryCombination', 'darkVisualMode', 'visualToneMode', 'userDirectivePriority', 'presentationWorldviewLock',
+    'visualPromptEditingEnabled', 'builtinImageEnabled', 'imagePromptFormat', 'materialTextureEnabled', 'memoryScanEnabled',
+]);
+
+function sourceProfileSnapshot(settings) {
+    const snapshot = {};
+    for (const key of SOURCE_PROFILE_KEYS) {
+        try { snapshot[key] = JSON.parse(JSON.stringify(settings?.[key] ?? null)); } catch { snapshot[key] = null; }
+    }
+    return snapshot;
+}
+
+export function sourceProfileLabel(source) {
+    return source === 'independent' ? '独立 API' : '跟随主 API';
+}
+
 export function updateSettings(patch) {
     const settings = getSettings();
     const safePatch = patch && typeof patch === 'object' ? { ...patch } : {};
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'sourceProfilesEnabled')) {
+        safePatch.sourceProfilesEnabled = safePatch.sourceProfilesEnabled === true;
+        // 打开时两边都从现在的开关起步（不翻出很久以前记的那一套）；关掉时清掉记录。
+        if (safePatch.sourceProfilesEnabled && settings.sourceProfilesEnabled !== true) {
+            safePatch.sourceProfiles = { follow: sourceProfileSnapshot(settings), independent: sourceProfileSnapshot(settings) };
+        } else if (!safePatch.sourceProfilesEnabled) {
+            safePatch.sourceProfiles = null;
+        }
+    }
+    const sourceChange = Object.prototype.hasOwnProperty.call(safePatch, 'generationSource')
+        && (safePatch.generationSource === 'independent' ? 'independent' : 'follow') !== (settings.generationSource === 'independent' ? 'independent' : 'follow');
+    if (sourceChange && (safePatch.sourceProfilesEnabled ?? settings.sourceProfilesEnabled) === true) {
+        const from = settings.generationSource === 'independent' ? 'independent' : 'follow';
+        const to = from === 'follow' ? 'independent' : 'follow';
+        const profiles = { ...(settings.sourceProfiles && typeof settings.sourceProfiles === 'object' ? settings.sourceProfiles : {}) };
+        profiles[from] = sourceProfileSnapshot(settings);
+        const target = profiles[to] && typeof profiles[to] === 'object' ? profiles[to] : null;
+        if (target) {
+            for (const key of SOURCE_PROFILE_KEYS) {
+                if (!Object.prototype.hasOwnProperty.call(safePatch, key) && Object.prototype.hasOwnProperty.call(target, key)) safePatch[key] = target[key];
+            }
+        }
+        safePatch.sourceProfiles = profiles;
+    }
     if (Object.prototype.hasOwnProperty.call(safePatch, 'visualDesignMode')) safePatch.visualDesignMode = 'guided1553';
     // 色调模式与旧深色开关保持一致：新写法以 visualToneMode 为准，旧调用只改深色开关时跟着换算。
     if (Object.prototype.hasOwnProperty.call(safePatch, 'visualToneMode')) {
@@ -582,6 +630,7 @@ export function updateSettings(patch) {
     }
     if (Object.prototype.hasOwnProperty.call(safePatch, 'imageEnabled')) safePatch.imageEnabled = safePatch.imageEnabled === true;
     if (Object.prototype.hasOwnProperty.call(safePatch, 'builtinImageEnabled')) safePatch.builtinImageEnabled = safePatch.builtinImageEnabled === true;
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'materialTextureEnabled')) safePatch.materialTextureEnabled = safePatch.materialTextureEnabled === true;
     if (Object.prototype.hasOwnProperty.call(safePatch, 'longTextSource')) safePatch.longTextSource = ['blank', 'text', 'mixed'].includes(safePatch.longTextSource) ? safePatch.longTextSource : 'blank';
     if (Object.prototype.hasOwnProperty.call(safePatch, 'autoLongTextPercent')) {
         const autoPercent = Number(safePatch.autoLongTextPercent);

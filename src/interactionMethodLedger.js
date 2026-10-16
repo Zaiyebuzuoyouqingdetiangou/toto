@@ -43,11 +43,17 @@ export function recordInteractionMethods(details) {
     const key = details.getAttribute('data-rabbit-mirror-owner-key') || `vs:${raw.length}:${raw.slice(0, 80)}`;
     const ledger = readLedger();
     if (ledger.some(item => item.key === key)) return;
-    ledger.push({ key, methods, at: Date.now() });
+    // 也记下这一面实现的是第几个方案，出题时用来避免连着指定同一种整体设计。
+    ledger.push({ key, methods, at: Date.now(), ...(Number.isInteger(record.pick) ? { pick: record.pick } : {}) });
     writeLedger(ledger);
 }
 
 export function recentInteractionMethods(faces = 3) {
     const recent = readLedger().slice(-faces);
     return [...new Set(recent.flatMap(item => item.methods))];
+}
+
+// 最近几面实际实现的方案号（读不到的面不算）。
+export function recentDesignPicks(faces = 2) {
+    return readLedger().slice(-faces).map(item => item.pick).filter(pick => Number.isInteger(pick));
 }

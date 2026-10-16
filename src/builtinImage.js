@@ -1,10 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.68.64';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.68.64';
-import { findBuiltinImageKeyFromOtherChat, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.68.64';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.68.64';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.68.64';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.68.64';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.68.64';
+import { getSettings } from './settings.js?rmv=1.68.93';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.68.93';
+import { findBuiltinImageKeyFromOtherChat, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.68.93';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.68.93';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.68.93';
+import { tidyImagePayload } from './imageTagTidy.js?rmv=1.68.93';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.68.93';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.68.93';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -425,7 +426,11 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
         if (!isCurrent()) throw staleImageRequest();
         const provider = settings.imageBackend === 'chatu8' ? '智绘姬' : '柏宝绘';
         reportProgress(key, `${withLlm ? '提示词已完成，' : ''}正在交给${provider}生图…`);
-        const generated = await generateMirrorImage(planned ? {
+        // 交给生图前把标签理一遍：人数和性别放最前、粘在一起的拆开、重复的去掉（见 imageTagTidy.js）。
+        // 只理真正是标签的字段：生图 LLM 的 prompt 是标签，它的 flatPrompt 在 NAI 5 下是自然语言；
+        // 没有生图 LLM 时，这一面没写标签行，prompt 退回的是自然语言画面，也不理。
+        let tidy = { promptIsTags: true, flatTagLines: 'none' };
+        const payload = planned ? {
             prompt: String(planned.prompt || planned.flatPrompt || planned.nl || ''),
             flatPrompt: String(planned.flatPrompt || ''),
             nl: String(planned.nl || ''),
@@ -456,7 +461,21 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
                 characters: people.map(person => ({ name: person.name, tag: tagsOnly ? person.text : tagOf(person), nl: tagsOnly ? '' : person.text })),
                 promptFormat: settings.imagePromptFormat,
             };
-        })(), {
+        })();
+        if (planned) {
+            const plannedTagsOnly = (planned.promptFormat || settings.imagePromptFormat) === 'nai45-tags';
+            const promptText = String(planned.prompt || '').trim();
+            // 重画沿用旧记录时：没写标签行的那种，记录里的 prompt 就是自然语言画面（和 nl 一样），不能当标签理。
+            const promptIsTags = plannedTagsOnly ? !!promptText
+                : options.reuse ? !!promptText && !!String(planned.nl || '').trim() && promptText !== String(planned.nl || '').trim()
+                    : !!promptText;
+            tidy = { promptIsTags, flatTagLines: plannedTagsOnly ? 'all' : 'none' };
+        } else {
+            const directTagsOnly = settings.imagePromptFormat === 'nai45-tags';
+            const hasTags = !directTagsOnly && !!readTags(frame);
+            tidy = { promptIsTags: directTagsOnly || hasTags, flatTagLines: directTagsOnly ? 'all' : hasTags ? 'first' : 'none' };
+        }
+        const generated = await generateMirrorImage(tidyImagePayload(payload, tidy), {
             character: characterGroup(),
             size,
             ...(options.signal ? { signal: options.signal } : {}),

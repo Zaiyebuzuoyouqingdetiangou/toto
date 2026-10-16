@@ -1,9 +1,9 @@
-import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.68.64';
+import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.68.93';
 // Split from outputSanitizer.js — markup.
 
-import { getSettings } from '../settings.js?rmv=1.68.64';
-import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.68.64';
-import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.68.64';
+import { getSettings } from '../settings.js?rmv=1.68.93';
+import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.68.93';
+import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.68.93';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     INTERACTION_HOME_ATTR,
@@ -15,7 +15,7 @@ import {
     clearMirrorTitleDisplayArtifacts,
     escapeRegExp,
     hashInteractionSignature,
-} from './runtime.js?rmv=1.68.64';
+} from './runtime.js?rmv=1.68.93';
 
 const TOTO_BLOCK_RE = /<toto\b[\s\S]*?<\/toto>/gi;
 
@@ -53,6 +53,26 @@ const RABBIT_MIRROR_NETWORK_URL_ATTRS = new Set(['href', 'src', 'xlink:href', 'p
 
 const RABBIT_MIRROR_INTERNAL_MODEL_ATTRS = new Set([
     'data-rm-avatar-rendered',
+    // 材质纹理是否已铺上由兔子镜自己标；模型只写 data-rm-texture 描述。
+    'data-rm-texture-on',
+    'data-rm-texture-pos',
+    'data-rm-texture-spread',
+    'data-rm-texture-spread-done',
+    'data-rm-texture-sheen',
+    'data-rm-texture-fuzz',
+    // 用户美化认的工具弹窗名字：模型写的画面不能冒充。
+    'data-rm-skin',
+    'data-rm-hold-class',
+    'data-rm-polish',
+    'data-rm-polish-font',
+    'data-rm-polish-line',
+    'data-rm-polish-pad',
+    'data-rm-polish-tap',
+    'data-rm-polish-pos',
+    'data-rm-press',
+    'data-rm-pressing',
+    'data-rm-press-release',
+    'data-rm-press-own-transition',
     REVERSIBLE_STYLE_BASELINE_ATTR,
     REVERSIBLE_TEXT_BASELINE_ATTR,
     RAW_SELF_MUTATION_HTML_BASELINE_ATTR,
@@ -733,6 +753,13 @@ export function sanitizeRabbitMirrorUntrustedTemplate(template) {
         if (element.matches?.('input[type="password"], input[type="file"]')) {
             element.remove();
             continue;
+        }
+        // 兔子镜铺纹理时写在元素上的变量（纹理图很长）。存档、收藏从页面上抄回来的会带着，
+        // 这里去掉，按文字剪，不重写模型自己的内联样式；显示时开关开着会重新铺。
+        const inlineStyle = element.getAttribute('style');
+        if (inlineStyle && inlineStyle.includes('--rm-texture-')) {
+            const cleaned = inlineStyle.replace(/--rm-texture-[\w-]+\s*:(?:\s*url\(\s*(?:"[^"]*"|'[^']*'|[^)]*)\s*\)|"[^"]*"|'[^']*'|[^;"'])*;?/g, '').trim();
+            if (cleaned) element.setAttribute('style', cleaned); else element.removeAttribute('style');
         }
         for (const attribute of [...element.attributes]) {
             const name = String(attribute.name || '').toLowerCase();

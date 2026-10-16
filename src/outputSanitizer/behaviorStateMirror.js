@@ -91,3 +91,30 @@ export function mirrorBehaviorState(root, node, on) {
 export function resetBehaviorStateIndex(root) {
     if (root) indexes.delete(root);
 }
+
+// 「按住」的另一种常见写法：模型用一个外层状态类控制里面的东西（.bare .lips{opacity:0}），
+// 原本靠脚本在按住时给外层加上这个类，脚本被拿掉后按住就没反应。
+// 找出这样的类：CSS 里只当作「外层」出现（后面还跟着里面的元素），页面上没有任何元素带着它，
+// 而且它管的那些元素就在这个按住区域里。只有唯一一个时才认，按住时把它加到按住区域上，松开撤掉。
+export function holdAncestorStateClass(root, group) {
+    if (!root?.querySelector || !group?.querySelector) return '';
+    const text = styleText(root);
+    const found = new Set();
+    for (const match of text.matchAll(/([^{}@;]+)\{/g)) {
+        for (const selector of match[1].split(',')) {
+            const parts = selector.replace(/\[[^\]]*\]/g, ' ').trim().split(/\s+/).filter(Boolean);
+            for (let index = 0; index < parts.length - 1; index += 1) {
+                const single = /^\.([A-Za-z_][\w-]*)$/.exec(parts[index]);
+                if (!single) continue;
+                const name = single[1];
+                const inner = parts.slice(index + 1).join(' ');
+                let present = true, governs = false;
+                try { present = !!root.querySelector(`.${CSS.escape(name)}`); } catch { present = true; }
+                if (present) continue;
+                try { governs = !!group.querySelector(inner.replace(/::?[a-z-]+(\([^)]*\))?/gi, '') || '*'); } catch { governs = false; }
+                if (governs) found.add(name);
+            }
+        }
+    }
+    return found.size === 1 ? [...found][0] : '';
+}
