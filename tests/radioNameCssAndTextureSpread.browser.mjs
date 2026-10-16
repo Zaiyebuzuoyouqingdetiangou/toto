@@ -208,6 +208,37 @@ const innerFold = await page.evaluate(async () => {
 assert.deepEqual(innerFold.before, [null, null]); checks++;
 assert.deepEqual(innerFold.after, ['before', 'before'], 'opening the model\'s own inner fold triggers the spread'); checks++;
 
+// SVG 里画的东西：写在那一组上，用滤镜起毛、加颗粒；模型自己的滤镜接在后面；收着时展开后再铺；关掉开关撤掉。
+const svgCase = await page.evaluate(async () => {
+    const bear = '<circle cx="100" cy="80" r="48" fill="#c99a6b"/><ellipse cx="100" cy="160" rx="58" ry="50" fill="#c99a6b"/>';
+    document.body.innerHTML = `<details open data-rabbit-mirror-css-scope="t5"><summary>x</summary>
+        <svg viewBox="0 0 200 220" width="200" height="220"><g id="a" data-rm-texture="毛绒 中 无 纤维 淡 哑光">${bear}</g></svg>
+        <svg viewBox="0 0 200 220" width="200" height="220"><g id="b" data-rm-texture="陶瓷 细 无 点 淡 亮面" style="filter:drop-shadow(0 2px 2px rgb(0,0,0))">${bear}</g></svg></details>
+        <details data-rabbit-mirror-css-scope="t6"><summary>收着</summary><svg viewBox="0 0 200 220" width="200" height="220"><g id="c" data-rm-texture="毛绒 粗 无 纤维 明显 哑光">${bear}</g></svg></details>`;
+    await new Promise(r => setTimeout(r, 150));
+    const style = document.createElement('style'); style.textContent = 'details:not([open])::details-content{display:none}'; document.head.append(style);
+    for (const d of document.querySelectorAll('body > details')) mt.applyMaterialTextures(d, { materialTextureEnabled: true });
+    const f = id => getComputedStyle(document.getElementById(id)).filter;
+    const out = { a: document.getElementById('a').getAttribute('data-rm-texture-on'), aFilter: f('a'), bFilter: f('b'), cBefore: document.getElementById('c').getAttribute('data-rm-texture-on') };
+    out.aFur = /feDisplacementMap/.test(decodeURIComponent(out.aFilter));
+    out.bFur = /feDisplacementMap/.test(decodeURIComponent(out.bFilter));
+    document.querySelectorAll('body > details')[1].open = true;
+    await new Promise(r => setTimeout(r, 300));
+    out.cAfter = document.getElementById('c').getAttribute('data-rm-texture-on');
+    style.remove();
+    for (const d of document.querySelectorAll('body > details')) mt.applyMaterialTextures(d, { materialTextureEnabled: false });
+    out.offFilter = f('a');
+    out.offB = f('b');
+    return out;
+});
+assert.equal(svgCase.a, 'svg'); checks++;
+assert.ok(/^url\("data:image\/svg\+xml/.test(svgCase.aFilter) && svgCase.aFur, 'svg group gets a fur filter'); checks++;
+assert.ok(!svgCase.bFur && /drop-shadow/.test(svgCase.bFilter) && /^url/.test(svgCase.bFilter), 'non-fibre: grain only, the model\'s own filter kept after it'); checks++;
+assert.equal(svgCase.cBefore, null); checks++;
+assert.equal(svgCase.cAfter, 'svg', 'collapsed face: applied once opened'); checks++;
+assert.equal(svgCase.offFilter, 'none', 'switching off removes the svg filter'); checks++;
+assert.ok(/drop-shadow/.test(svgCase.offB) && !/url/.test(svgCase.offB), 'switching off leaves the model\'s own filter'); checks++;
+
 // 存档、收藏从页面上抄回来的纹理变量，重新净化时去掉；模型自己的内联样式不动；data-rm-skin 不能由模型写。
 const stored = await page.evaluate(async () => {
     const markup = await import('/src/outputSanitizer/markup.js');

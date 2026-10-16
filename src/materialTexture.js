@@ -128,7 +128,7 @@ function ensureStyle(doc) {
     const style = doc.createElement('style');
     style.id = STYLE_ID;
     // 纹理放在元素自己的 ::before（或 ::after）里，排在底色之上、内容之下；不改模型写的背景。
-    style.textContent = `[${ON_ATTR}]{isolation:isolate}`
+    style.textContent = `[${ON_ATTR}]:not([${ON_ATTR}="svg"]){isolation:isolate}[${ON_ATTR}="svg"]{filter:var(--rm-texture-svg-filter)!important}`
         + `[${ON_ATTR}="before"]::before,[${ON_ATTR}="after"]::after{content:"";position:absolute;inset:0;border-radius:inherit;`
         + 'background-image:var(--rm-texture-image);background-size:var(--rm-texture-size);background-repeat:repeat;pointer-events:none;z-index:-1;'
         // soft-light：中灰不改底色，亮处提亮、暗处压暗。边缘一圈很淡的暗影（东西有厚度、转角背光），
@@ -324,6 +324,88 @@ function fuzzVars(el, view, tone, descriptor) {
     return { size: `${Math.max(3, Math.min(6, Math.round(Math.min(rect.width, rect.height) * 0.015)))}px`, color: `rgb(${tone.rgb.join(',')})` };
 }
 
+const SVG_NS = 'http://www.w3.org/2000/svg';
+function isSvgElement(el) { return el?.namespaceURI === SVG_NS; }
+
+// SVG 图形的纹理：一个滤镜，按这一组图形自己的大小算参数（SVG 的坐标单位和屏幕像素不一定一样大，先换算）。
+//   纤维＋哑光：边缘起毛（把轮廓搅乱一点再柔一下）。毛的长短看粗细：细是短绒、粗是长一点的毛；按图形大小封顶，小东西不会糊掉。
+//   表面颗粒：和 HTML 那边同一套（形状、方向、粗细、浓淡），光从左上来，用柔光叠在图形自己的颜色上，只在图形里面。
+//   纤维＋很淡：只起毛边，不加颗粒。
+const FUR = { 细: [4, 1.1], 中: [6.5, 0.8], 粗: [10, 0.6] };
+export function svgTextureFilter(descriptor, seedText = '', { ratio = 1, minSide = 200 } = {}) {
+    const value = { ...parseTextureDescriptor(''), ...(descriptor || {}) };
+    const seed = hashSeed(`${textureDescriptorText(value)}|${seedText}|svg`);
+    const unit = Math.max(0.05, Number(ratio) || 1); // 1 个 SVG 单位 = 多少屏幕像素
+    const user = px => Math.round(px / unit * 100) / 100;
+    const freq = perPx => Math.round(perPx * unit * 10000) / 10000;
+    const steps = [];
+    let source = 'SourceGraphic';
+    if (value.shape === '纤维' && value.gloss === '哑光') {
+        const [length, edgeFreq] = FUR[value.grain] || FUR.中;
+        const fur = Math.max(2, Math.min(length, minSide * 0.08));
+        steps.push(`<feTurbulence type='fractalNoise' baseFrequency='${freq(edgeFreq)}' numOctaves='2' seed='${seed}' result='n'/>`,
+            `<feDisplacementMap in='SourceGraphic' in2='n' scale='${user(fur)}' xChannelSelector='R' yChannelSelector='G' result='d0'/>`,
+            `<feGaussianBlur in='d0' stdDeviation='${user(0.7)}' result='d'/>`);
+        source = 'd';
+    }
+    const grainy = !(value.shape === '纤维' && value.strength === '很淡');
+    if (grainy) {
+        const base = GRAIN[value.grain] || GRAIN.中;
+        let fx = base, fy = base, octaves = 3;
+        if (value.shape === '纤维') { fx = fy = base * 0.55; octaves = 5; }
+        if (value.shape === '斑块') { fx = fy = Math.max(base * 0.08, 0.03); octaves = 4; }
+        const stretch = value.shape === '条纹' ? 0.03 : value.shape === '纤维' ? 0.5 : 1;
+        if (value.direction === '横' || value.direction === '斜') fx *= stretch;
+        if (value.direction === '竖') fy *= stretch;
+        const [relief] = RELIEF[value.strength] || RELIEF.淡;
+        const surface = value.shape === '纤维' ? relief * 1.3 : value.shape === '斑块' ? relief * 1.8 : relief;
+        const blur = SOFTEN[value.shape] || 0;
+        steps.push(`<feTurbulence type='fractalNoise' baseFrequency='${freq(fx)} ${freq(fy)}' numOctaves='${octaves}' seed='${(seed * 7 + 13) % 997 + 1}' result='g'/>`,
+            `<feColorMatrix in='g' type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0' result='h0'/>`,
+            blur ? `<feGaussianBlur in='h0' stdDeviation='${user(blur)}' result='h'/>` : `<feOffset in='h0' result='h'/>`,
+            // 打光按相邻两点的高低差算法线：坐标单位比像素小时，同样的起伏被摊薄，起伏要按比例加高。
+            `<feDiffuseLighting in='h' surfaceScale='${Math.round(surface / Math.min(1, unit) * 100) / 100}' diffuseConstant='0.7' lighting-color='white' result='light'><feDistantLight azimuth='225' elevation='48'/></feDiffuseLighting>`,
+            `<feBlend in='light' in2='${source}' mode='soft-light' result='lit'/>`,
+            `<feComposite in='lit' in2='${source}' operator='in'/>`);
+    } else if (source !== 'SourceGraphic') {
+        steps.push(`<feMerge><feMergeNode in='${source}'/></feMerge>`);
+    }
+    if (!steps.length) return '';
+    const svg = `<svg xmlns='http://www.w3.org/2000/svg'><filter id='f' x='-15%' y='-15%' width='130%' height='130%' color-interpolation-filters='sRGB'>${steps.join('')}</filter></svg>`;
+    return `url("data:image/svg+xml,${svg.replace(/%/g, '%25').replace(/#/g, '%23').replace(/</g, '%3C').replace(/>/g, '%3E')}#f")`;
+}
+
+function laySvgTexture(el, descriptor, seedText, view) {
+    let box = null;
+    try { box = el.getBBox?.(); } catch { box = null; }
+    const rect = el.getBoundingClientRect?.();
+    if (!box?.width || !box?.height || !rect?.width || !rect?.height) return false; // 还量不出大小（这一面收着）
+    const ratio = Math.max(rect.width / box.width, rect.height / box.height);
+    const filter = svgTextureFilter(descriptor, seedText, { ratio, minSide: Math.min(rect.width, rect.height) });
+    if (!filter) return false;
+    let existing = '';
+    try { existing = view.getComputedStyle(el).filter; } catch { existing = ''; }
+    // 模型自己给这一组写了滤镜（比如投影，常写在 style 里）：接在后面一起生效（样式表那条带 !important 才盖得过 style 里的）。
+    el.style.setProperty('--rm-texture-svg-filter', existing && existing !== 'none' ? `${filter} ${existing}` : filter);
+    el.setAttribute(ON_ATTR, 'svg');
+    return true;
+}
+
+const SVG_WAITING = new WeakSet();
+function laySvgTextureWhenVisible(el, descriptor, seedText, view) {
+    if (laySvgTexture(el, descriptor, seedText, view)) return true;
+    let face = el.closest?.('details');
+    while (face?.parentElement?.closest?.('details')) face = face.parentElement.closest('details');
+    if (!face || SVG_WAITING.has(el)) return false;
+    SVG_WAITING.add(el);
+    const retry = () => view.setTimeout(() => {
+        if (!el.isConnected || el.hasAttribute(ON_ATTR) || !el.hasAttribute(TEXTURE_ATTR)) { face.removeEventListener('toggle', retry, true); SVG_WAITING.delete(el); return; }
+        if (laySvgTexture(el, descriptor, seedText, view)) { face.removeEventListener('toggle', retry, true); SVG_WAITING.delete(el); }
+    }, 60);
+    face.addEventListener('toggle', retry, true);
+    return false;
+}
+
 // 在一个元素自己的 ::before/::after 里铺纹理（排在内容下面）。铺上了返回 true。
 function layTexture(el, descriptor, seedText, view, { spread = false } = {}) {
     // 底色很浅（接近白）时叠加看不出来：改成只压暗面的正片叠底。
@@ -404,7 +486,7 @@ export function applyMaterialTextures(root, settings = getSettings(), { record =
             el.style.removeProperty('--rm-texture-ao');
             el.style.removeProperty('--rm-texture-blend');
             for (const key of ['size', 'light', 'shade']) el.style.removeProperty(`--rm-texture-edge-${key}`);
-            for (const key of ['--rm-texture-sheen', '--rm-texture-fuzz', '--rm-texture-fuzz-color']) el.style.removeProperty(key);
+            for (const key of ['--rm-texture-sheen', '--rm-texture-fuzz', '--rm-texture-fuzz-color', '--rm-texture-svg-filter']) el.style.removeProperty(key);
             el.removeAttribute(SHEEN_ATTR); el.removeAttribute(FUZZ_ATTR);
             if (el.hasAttribute(POS_ATTR)) { el.style.removeProperty('position'); el.removeAttribute(POS_ATTR); }
             el.removeAttribute(SPREAD_ATTR);
@@ -430,6 +512,13 @@ export function applyMaterialTextures(root, settings = getSettings(), { record =
             if (!el.hasAttribute(SPREAD_DONE_ATTR)) spreadWhenVisible(el, descriptor, `${faceKey}|${index}`, view);
             return;
         }
+        // SVG 里画的东西（玩偶、动物、物件）：没有前后两层装饰可用，改用滤镜直接作用在这一组图形上。
+        if (isSvgElement(el)) {
+            if (!laySvgTextureWhenVisible(el, descriptor, `${faceKey}|${index}`, view)) return;
+            applied += 1;
+            if (faceKey && record) remember(textureDescriptorText(descriptor), `${faceKey}|${index}`);
+            return;
+        }
         if (!layTexture(el, descriptor, `${faceKey}|${index}`, view)) return;
         applied += 1;
         if (faceKey && record) remember(textureDescriptorText(descriptor), `${faceKey}|${index}`);
@@ -445,5 +534,5 @@ export function materialTextureRule(settings = getSettings()) {
     // 开关是用户主动打开的：每个 HTML 面都写一处，不给「不加」的退路（以前写「可选」，模型几乎都跳过）。
     // 防模板化靠两点：质感从这一面的实物推出来；近几面用过的提醒换一种。不列举材质名，免得模型只在列出的几种里挑。
     // 第一个词是材料名：先决定这东西是什么做的，再填粗细方向，免得只填表、不想材料。
-    return `材质纹理（已开启）：每个 HTML 面都在一个元素上写 ${TEXTURE_ATTR}="材料 粗细 方向 形状 浓淡 光泽"，兔子镜会按描述叠一层纹理和光：材料写它在现实里是什么做的（一两个词，你自己定），粗细写细／中／粗，方向写无／横／竖／斜，形状写点／纤维／条纹／斑块，浓淡写很淡／淡／明显，光泽写哑光／半光／亮面。写在这一面最像实物的主体或承载面上；一面只写一处，不写在整面最外层背景上；底色、边缘、光泽和厚度仍由你写。${recent.length ? `近几面用过：${recent.join('；')}，这一面换一种材料，粗细、形状、光泽也跟着换。` : ''}`;
+    return `材质纹理（已开启）：每个 HTML 面都在一个元素上写 ${TEXTURE_ATTR}="材料 粗细 方向 形状 浓淡 光泽"，兔子镜会按描述叠一层纹理和光：材料写它在现实里是什么做的（一两个词，你自己定），粗细写细／中／粗，方向写无／横／竖／斜，形状写点／纤维／条纹／斑块，浓淡写很淡／淡／明显，光泽写哑光／半光／亮面。写在这一面最像实物的主体或承载面上（SVG 里画的东西写在它那一组上也行）；一面只写一处，不写在整面最外层背景上；底色、边缘、光泽和厚度仍由你写。${recent.length ? `近几面用过：${recent.join('；')}，这一面换一种材料，粗细、形状、光泽也跟着换。` : ''}`;
 }
