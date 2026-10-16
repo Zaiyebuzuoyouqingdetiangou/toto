@@ -1,41 +1,42 @@
 // Split from independentApi.js — mount.
-import { describeLocalStorageUsage } from '../storageUsage.js?rmv=1.68.93';
-import { pickMovedIndependentRecord, pickOwnStaleRecord } from './movedRecord.js?rmv=1.68.93';
-import { expandHtmlDocumentCodeBlocks } from '../outputSanitizer/markup.js?rmv=1.68.93';
-import { restoreRuntimeAnimationClone } from '../runtimeAnimationState.js?rmv=1.68.93';
-import { faceDrawMetadataFields } from '../faceDrawRules.js?rmv=1.68.93';
+import { describeLocalStorageUsage } from '../storageUsage.js?rmv=1.68.95';
+import { hasUsableAssistantBody } from './missingRetryShell.js?rmv=1.68.95';
+import { pickMovedIndependentRecord, pickOwnStaleRecord } from './movedRecord.js?rmv=1.68.95';
+import { expandHtmlDocumentCodeBlocks } from '../outputSanitizer/markup.js?rmv=1.68.95';
+import { restoreRuntimeAnimationClone } from '../runtimeAnimationState.js?rmv=1.68.95';
+import { faceDrawMetadataFields } from '../faceDrawRules.js?rmv=1.68.95';
 
-import { presentationModeFields, isBlankLongTextSelection } from '../presentationMode.js?rmv=1.68.93';
-import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.68.93';
-import { getSettings } from '../settings.js?rmv=1.68.93';
-import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.68.93';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=1.68.93';
-import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.68.93';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.68.93';
+import { presentationModeFields, isBlankLongTextSelection } from '../presentationMode.js?rmv=1.68.95';
+import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.68.95';
+import { getSettings } from '../settings.js?rmv=1.68.95';
+import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.68.95';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=1.68.95';
+import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.68.95';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.68.95';
 import {
     cleanRabbitMirrorOutput,
     refreshRabbitMirrorToolsInScope,
     isolateRabbitMirrorInteractionIds,
     rearmRabbitMirrorSerializedInteractionRoot,
     armRabbitMirrorFirstUseInteraction,
-} from '../outputSanitizer.js?rmv=1.68.93';
-import { matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.68.93';
-import { parseMultifaceOutput, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from '../multifaceProtocol.js?rmv=1.68.93';
-import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from '../multifaceProof.js?rmv=1.68.93';
+} from '../outputSanitizer.js?rmv=1.68.95';
+import { matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.68.95';
+import { parseMultifaceOutput, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from '../multifaceProtocol.js?rmv=1.68.95';
+import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from '../multifaceProof.js?rmv=1.68.95';
 import {
     FOLLOW_MULTIFACE_COMMITTED_EVENT,
     FOLLOW_MULTIFACE_REJECTED_EVENT,
     FOLLOW_GENERATION_SETTLED_EVENT,
     getRabbitMirrorFollowBatchFailure,
-} from '../visualScanner.js?rmv=1.68.93';
-import { commitVisualHistorySelection, commitPendingComboBatch, releasePendingComboBatch } from '../storage.js?rmv=1.68.93';
+} from '../visualScanner.js?rmv=1.68.95';
+import { commitVisualHistorySelection, commitPendingComboBatch, releasePendingComboBatch } from '../storage.js?rmv=1.68.95';
 import {
     consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror,
     getActiveFeedbackForCurrentChat,
     markFeedbackCatInjected,
-} from '../feedbackCat.js?rmv=1.68.93';
-import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from '../blacklist.js?rmv=1.68.93';
-import { readFollowPartialResult, followPartialResultFaceOwnerKey } from '../followPartialResults.js?rmv=1.68.93';
+} from '../feedbackCat.js?rmv=1.68.95';
+import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from '../blacklist.js?rmv=1.68.95';
+import { readFollowPartialResult, followPartialResultFaceOwnerKey } from '../followPartialResults.js?rmv=1.68.95';
 import {
     shouldAutomaticReroll,
     automaticRerollStatusText,
@@ -46,13 +47,13 @@ import {
     isNonRetryableRequestFailure,
     isLocalPreflightFailure,
     configuredAutomaticRerollIdleMs,
-} from '../automaticReroll.js?rmv=1.68.93';
+} from '../automaticReroll.js?rmv=1.68.95';
 import {
     mergeMissingIndependentFaces,
     mergeRetrySelectionDiagnostic,
     missingIndexesFromIndependentResult,
     recipesCoverMissing,
-} from '../missingFaceMerge.js?rmv=1.68.93';
+} from '../missingFaceMerge.js?rmv=1.68.95';
 import {
     FACE_SWIPE_FULL_MESSAGE,
     canAppendSwipe,
@@ -67,7 +68,7 @@ import {
     emptySwipeState,
     restoreFaceSwipeSnapshot,
     snapshotFaceSwipes,
-} from '../swipeVersions.js?rmv=1.68.93';
+} from '../swipeVersions.js?rmv=1.68.95';
 import {
     ACTION_BRIDGE_KEY,
     CONTEXT_TOTAL_BUDGET,
@@ -87,7 +88,7 @@ import {
     getContext,
     hashText,
     independentMaintenanceLiveRepairLocked,
-} from './runtime.js?rmv=1.68.93';
+} from './runtime.js?rmv=1.68.95';
 import {
     ACTIVE_GENERATION_WAIT_MS,
     FINAL_RENDER_CONFIRMATION_TTL_MS,
@@ -116,7 +117,7 @@ import {
     operationEpochForBase,
     pending,
     reserveAutomaticDispatchLease,
-} from './flights.js?rmv=1.68.93';
+} from './flights.js?rmv=1.68.95';
 import {
     HISTORY_PANEL_ATTR,
     INDEPENDENT_RECORD_BUDGET_BYTES,
@@ -142,7 +143,7 @@ import {
     chatMovedOwners,
     saveMovedOwner,
     dropMovedOwner,
-} from './persistence.js?rmv=1.68.93';
+} from './persistence.js?rmv=1.68.95';
 import {
     appendIndependentFaceSwipe,
     faceDetailsListFromHtml,
@@ -154,7 +155,7 @@ import {
     seedIndependentFaceSwipes,
     seedNeighborIndependentFaceSwipes,
     showEphemeralFaceFailure,
-} from './faceSwipe.js?rmv=1.68.93';
+} from './faceSwipe.js?rmv=1.68.95';
 import {
     INDEPENDENT_OWNER_OBSERVATION,
     assistantMessages,
@@ -194,7 +195,7 @@ import {
     setOwnerLockForBase,
     slotSearchKeys,
     swipeId,
-} from './connection.js?rmv=1.68.93';
+} from './connection.js?rmv=1.68.95';
 import {
     allExternalHosts,
     assertIndependentMarkupComplexityWithDiagnostic,
@@ -219,7 +220,7 @@ import {
     wrapIndependentFace,
     wrapPreparedIndependentFace,
     wrappedIndependentMirrorHtml,
-} from './request.js?rmv=1.68.93';
+} from './request.js?rmv=1.68.95';
 import {
     DEFERRED_INTERACTION_RESCUE_ATTR,
     INDEPENDENT_CONTENT_WIDTH_BASELINE_ATTR,
@@ -280,7 +281,7 @@ import {
     showIndependentResayStatus,
     transferExternalTools,
     usableReadyDetails,
-} from './geometry.js?rmv=1.68.93';
+} from './geometry.js?rmv=1.68.95';
 import {
     assertEarlyBodyOwner,
     automaticHostGenerationMayUseTools,
@@ -294,7 +295,7 @@ import {
     scheduleStartupHistorySync,
     suppressesAutomaticGeneration,
     unlockAutomaticGenerationCutover,
-} from './earlyBody.js?rmv=1.68.93';
+} from './earlyBody.js?rmv=1.68.95';
 import {
     automaticGenerationCutovers,
     backgroundLifecycleListenersInstalled,
@@ -316,7 +317,7 @@ import {
     writeHostGenerationInProgress,
     writeIndependentActionBridge,
     writeLastAppliedIndependentTiming,
-} from './lifecycle.js?rmv=1.68.93';
+} from './lifecycle.js?rmv=1.68.95';
 
 let generationSequence = 0;
 
@@ -1960,7 +1961,7 @@ export async function generateFor(index,msg,force=false,sourceAware=true,multifa
    if(!independentRecordWithinBudget(completed)) throw independentMarkupLimitError('record-bytes',byteLength(completed.html),INDEPENDENT_RECORD_BUDGET_BYTES);
    bindIndependentRecordContinuity(settledCtx,index,settledMsg,completed,null,{completed:true});
    recordRabbitMirrorRecipe({ chat:settledCtx.chat, chatKey:chatKey(settledCtx), messageIndex:index, swipeId:swipeId(settledMsg), message:settledMsg, metadata:result?.requestDiagnostic||null, source:'independent' });
-   void import('../milestones.js?rmv=1.68.93').then(module=>module.recordMirrorMilestone(`${settledSlot}:${completed.ts}`)).catch(()=>{});
+   void import('../milestones.js?rmv=1.68.95').then(module=>module.recordMirrorMilestone(`${settledSlot}:${completed.ts}`)).catch(()=>{});
    const recipeDiagnostic=result?.requestDiagnostic||null;
    if(force && multifaceResay){
     const resayFaceIndex=Number.isInteger(multifaceResay?.faceIndex)?multifaceResay.faceIndex:0;
@@ -2123,7 +2124,7 @@ export async function generateFor(index,msg,force=false,sourceAware=true,multifa
      const faceIndex=Number.isInteger(multifaceResay?.faceIndex)?multifaceResay.faceIndex:0;
      const overlayRoot=externalFaceDetails(currentHost)[currentHost && externalFaceDetails(currentHost).length>1?faceIndex:0]||currentHost;
      showEphemeralFaceFailure(currentHost,faceIndex,failureMessage,
-      ()=>{ void import('../outputSanitizer/toolsChrome.js?rmv=1.68.93').then(module=>module.openRabbitMirrorResayChooser(overlayRoot)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。')); },
+      ()=>{ void import('../outputSanitizer/toolsChrome.js?rmv=1.68.95').then(module=>module.openRabbitMirrorResayChooser(overlayRoot)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。')); },
       ()=>{ applyIndependentFaceSwipe(overlayRoot,readFaceSwipe(independentSwipeSlot(failedIdentity),faceIndex).currentIndex); }
      );
     }else{
@@ -2700,7 +2701,7 @@ export function resayIndependentMirror(root,owner={},options={}){
    globalThis.toastr?.warning?.('跟随正文只能按这一面原来的选题重试失败面，不能在这里重新抽一张。');
    return true;
   }
-  void import('../followFaceRetry.js?rmv=1.68.93').then(({retryFollowFace})=>retryFollowFace(root,owner,{
+  void import('../followFaceRetry.js?rmv=1.68.95').then(({retryFollowFace})=>retryFollowFace(root,owner,{
    getContext,hostBusy:hostGenerationLooksActive,maxRequestChars:configuredIndependentMaxRequestChars(getSettings()),resayNote:note,presentationOverride:form,
    resolveOwner:target=>{
     const host=target?.closest?.('[data-rabbit-mirror-external-source="true"][data-rm-source="follow"]');
@@ -3223,12 +3224,12 @@ async function requestMirrorImagePlan(target,input={},options={}){
  target.assertCurrent();
  const current=getSettings();
  if(current.imageEnabled!==true && !(options.builtin===true && current.builtinImageEnabled===true)) throw new Error('请先在兔子镜设置中开启手动生图。');
- const {imageLlmSettings}=await import('../imageLlm.js?rmv=1.68.93');
+ const {imageLlmSettings}=await import('../imageLlm.js?rmv=1.68.95');
  // 配置了生图 LLM 时，画面规划改由它来写；否则沿用副 API。
  const st=imageLlmSettings({...current,independentExcludedParams:Array.isArray(current.independentExcludedParams)?[...current.independentExcludedParams]:current.independentExcludedParams});
  if((!st.independentConnectionProfileId&&!st.independentApiBaseUrl)||!st.independentApiModel)
   throw new Error('请先完成兔子镜副 API（或生图 LLM）连接和模型设置；尚未发送请求。');
- const {buildImagePlanningPrompt,parseImagePlan}=await import('../imagePlan.js?rmv=1.68.93');
+ const {buildImagePlanningPrompt,parseImagePlan}=await import('../imagePlan.js?rmv=1.68.95');
  target.assertCurrent();
  const focus=String(input.focus||'').trim();
  const promptFormat=(input.promptFormat||st.imagePromptFormat)==='nai45-tags'?'nai45-tags':'nai5-natural';
@@ -3258,6 +3259,67 @@ async function requestMirrorImagePlan(target,input={},options={}){
  return {...parseImagePlan(result.result?.text||''),promptFormat};
 }
 
+
+// 一层回复的身份：开始补时记下，补之前对一下。中途删了楼层、楼层号挪到别的回复上时就不补它。
+export function independentBackfillFloorToken(index){
+ try{
+  const m=getContext().chat?.[Number(index)];
+  if(!m) return '';
+  const text=String(m.mes||'');
+  return `${String(m.send_date||'')}|${text.length}|${text.slice(0,32)}`;
+ }catch{ return ''; }
+}
+
+// 一键补楼层：给一层还没有兔子镜的回复生成一次。和缺壳卡上「重新生成 → 重新抽一张」走同一条路（按当前设置抽签），
+// 只是不用一层层打开重说面板。
+// 生成要读页面上显示的正文：还没加载到页面上的老楼层读不到，跳过并说明（往上翻加载出来再补）。
+// chat：开始补的时候那个聊天；换了聊天就整队停下，不往别的聊天里补。token：开始时记下的这一层身份。
+export async function backfillIndependentFloor(index,{chat='',token=''}={}){
+ const ctx=getContext();
+ const st=getSettings();
+ if(st.enabled===false || st.autoRabbitMirrorInjection===false || independentGenerationTiming(st)==='off')
+  return {status:'stopped',message:'兔子镜生成已关闭'};
+ if(!currentRuntime() || runtimeMode()!=='independent') return {status:'stopped',message:'现在不是独立 API 模式'};
+ if(chat && chatKey(ctx)!==chat) return {status:'stopped',message:'聊天已经换了'};
+ const id=Number(index);
+ const msg=ctx.chat?.[id];
+ if(!Number.isInteger(id) || !isRabbitMirrorEligibleAssistantMessage(msg) || !hasUsableAssistantBody(msg)) return {status:'skipped',message:'不是能补的回复'};
+ if(token && independentBackfillFloorToken(id)!==token) return {status:'skipped',message:'楼层变了（中途删过或改过楼层）'};
+ // 正文太短、像是出错的回复（安全阀会拦下的那种）：一键补的时候不替用户做主，要补就单独点卡。
+ // 原因照实写出来：缺兔子镜的楼层常常就是当初被安全阀拦下的，被误判时用户要看得出是哪一条。
+ try{ const odd=mainReplyAbnormalReason(msg); if(odd) return {status:'skipped',message:`${String(odd).slice(0,80)}，要补请单独点卡`}; }catch{}
+ if(!messageElement(id)) return {status:'skipped',message:'还没加载到页面上（在聊天里往上翻把它加载出来再补）'};
+ const has=()=>{
+  const live=getContext(); const m=live.chat?.[id];
+  if(!m) return false;
+  if(hasExistingFollowRabbitMirror(live,id,m)) return true;
+  const saved=savedIndependentRecordForOwner(live,id,m,readStore());
+  return !!(saved?.html && independentStoredHtmlRestorable(saved.html));
+ };
+ if(has()) return {status:'skipped',message:'已经有兔子镜了'};
+ try{ await generateFor(id,msg,true,true,null,null,null,null,null,''); }
+ catch(error){ return {status:'failed',message:String(error?.message||error||'生成失败')}; }
+ const live=getContext();
+ if(chat && chatKey(live)!==chat) return {status:'stopped',message:'聊天已经换了'};
+ if(has()) return {status:'done'};
+ let message='没有生成出兔子镜（具体原因看那一层下面的卡）';
+ try{
+  const m=live.chat?.[id];
+  const observed=m?passiveObservedIdentity(live,id,m):null;
+  const stop=observed?automaticFailureStopFor(observed.slot,observed.sourceHash):null;
+  // 缺壳卡自己的说明（扫描时挂上的）不是这次失败的原因，不拿来说。
+  if(stop?.message && !isMissingShellStop(stop)) message=String(stop.message).slice(0,200);
+ }catch{}
+ return {status:'failed',message};
+}
+
+export function independentBackfillChatKey(){ try{ return String(chatKey(getContext())||''); }catch{ return ''; } }
+
+// 酒馆正在生成正文、或已经有兔子镜请求在跑时，一键补楼层先等着，不跟它们抢。
+export function independentBackfillBusy(){
+ try{ if(hostGenerationLooksActive()) return true; }catch{}
+ try{ return globalFlights().size>0; }catch{ return false; }
+}
 
 export function installIndependentActionBridge(){
  writeIndependentActionBridge({
@@ -3355,7 +3417,7 @@ function handleFollowMultifaceRejected(event){
  const failure=getRabbitMirrorFollowBatchFailure(ctx?.chat,index);
  if(!failure || failure.batchId!==event?.detail?.batchId) return false;
  queueMessageSync([index]);
- void import('../followAutomaticReroll.js?rmv=1.68.93').then(({maybeAutomaticFollowReroll})=>maybeAutomaticFollowReroll(index,followAutomaticRerollDeps()));
+ void import('../followAutomaticReroll.js?rmv=1.68.95').then(({maybeAutomaticFollowReroll})=>maybeAutomaticFollowReroll(index,followAutomaticRerollDeps()));
  return true;
 }
 
@@ -3363,12 +3425,12 @@ function handleFollowGenerationSettled(event){
  const index=Number(event?.detail?.messageIndex);
  if(!Number.isInteger(index)||index<0) return false;
  if(event?.detail?.cancelled===true){
-  void import('../followAutomaticReroll.js?rmv=1.68.93').then(({markFollowAutomaticRerollCancelled})=>{
+  void import('../followAutomaticReroll.js?rmv=1.68.95').then(({markFollowAutomaticRerollCancelled})=>{
    markFollowAutomaticRerollCancelled(getContext(),index);
   });
   return true;
  }
- void import('../followAutomaticReroll.js?rmv=1.68.93').then(({maybeAutomaticFollowReroll})=>maybeAutomaticFollowReroll(index,followAutomaticRerollDeps()));
+ void import('../followAutomaticReroll.js?rmv=1.68.95').then(({maybeAutomaticFollowReroll})=>maybeAutomaticFollowReroll(index,followAutomaticRerollDeps()));
  return true;
 }
 
@@ -4307,7 +4369,7 @@ export function hydrateIndependentFavoriteHtml(container,record){
  ensureExternalTools(host);
  containFavoriteHostLayout(host);
  if(host.querySelector('[data-rm-draw-frame]')){
-  void import('../builtinImage.js?rmv=1.68.93').then(module=>{
+  void import('../builtinImage.js?rmv=1.68.95').then(module=>{
    if(!host.isConnected) return;
    for(const details of host.querySelectorAll('details')) if(details.querySelector('[data-rm-draw-frame]')) module.restoreSavedBuiltinImages(details);
   }).catch(()=>{});

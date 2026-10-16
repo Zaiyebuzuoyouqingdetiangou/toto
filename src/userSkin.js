@@ -2,7 +2,12 @@
 // 只是一段样式，不跑脚本、不进提示词、不改模型写的画面；保存在这台设备上（和「主题与外观」的配色一样）。
 // 兔子镜承诺下面 SKIN_HOOKS 里这些名字以后不改，美化照着写，更新了也不会失效。
 
+import { getSettings, updateSettings } from './settings.js?rmv=1.68.95';
+
 export const USER_SKIN_STORAGE_KEY = 'rabbit_mirror_user_skin_v1';
+// 另存一份在酒馆的扩展设置里（存在酒馆服务器上）：浏览器或宿主清掉网页数据、重启后本机那份没了，也能找回。
+// 太大的（带很多内嵌图片的）只存本机，不往设置里塞，免得每次保存设置都很慢。
+const SERVER_COPY_MAX = 300_000;
 const STYLE_ID = 'rabbit-mirror-user-skin';
 const MAX_CHARS = 1_500_000;
 
@@ -22,18 +27,46 @@ export const SKIN_HOOKS = Object.freeze([
 
 export const SKIN_TOKENS = Object.freeze(['--rh-bg', '--rh-card', '--rh-text', '--rh-muted', '--rh-primary', '--rh-secondary', '--rh-border']);
 
+function normalizeSkin(value) {
+    return { enabled: value?.enabled === true, css: typeof value?.css === 'string' ? value.css.slice(0, MAX_CHARS) : '', name: typeof value?.name === 'string' ? value.name.slice(0, 80) : '' };
+}
+
+function serverCopy() {
+    try { const value = getSettings()?.userSkin; return value && typeof value === 'object' ? value : null; } catch { return null; }
+}
+
 export function readUserSkin() {
-    try {
-        const value = JSON.parse(globalThis.localStorage?.getItem(USER_SKIN_STORAGE_KEY) || 'null');
-        return { enabled: value?.enabled === true, css: typeof value?.css === 'string' ? value.css.slice(0, MAX_CHARS) : '', name: typeof value?.name === 'string' ? value.name.slice(0, 80) : '' };
-    } catch { return { enabled: false, css: '', name: '' }; }
+    let local = null;
+    try { local = JSON.parse(globalThis.localStorage?.getItem(USER_SKIN_STORAGE_KEY) || 'null'); } catch { local = null; }
+    if (local && typeof local === 'object') {
+        const value = normalizeSkin(local);
+        // 以前只存在本机的美化：补一份到酒馆设置里（只补一次）。
+        if (value.css && value.css.length <= SERVER_COPY_MAX && !serverCopy()) {
+            try { updateSettings({ userSkin: value }); } catch { /* 补不上下次再说 */ }
+        }
+        return value;
+    }
+    // 本机那份没了（被清掉）：用酒馆设置里那份，并补回本机。
+    const remote = serverCopy();
+    if (!remote) return normalizeSkin(null);
+    const value = normalizeSkin(remote);
+    try { globalThis.localStorage?.setItem(USER_SKIN_STORAGE_KEY, JSON.stringify(value)); } catch { /* 补不回也照样能用 */ }
+    return value;
 }
 
 /** 保存；存不下（太大、隐私模式）返回 false，但当前页面照样换上。 */
 export function saveUserSkin(skin) {
     const value = { enabled: skin?.enabled === true, css: String(skin?.css || '').slice(0, MAX_CHARS), name: String(skin?.name || '').slice(0, 80) };
     applyUserSkin(globalThis.document, value);
-    try { globalThis.localStorage.setItem(USER_SKIN_STORAGE_KEY, JSON.stringify(value)); return true; } catch { return false; }
+    let server = false;
+    try {
+        const fits = value.css.length <= SERVER_COPY_MAX;
+        updateSettings({ userSkin: fits ? value : { ...value, css: '', tooLarge: true } });
+        server = fits;
+    } catch { server = false; }
+    let local = false;
+    try { globalThis.localStorage.setItem(USER_SKIN_STORAGE_KEY, JSON.stringify(value)); local = true; } catch { local = false; }
+    return local || server;
 }
 
 /** 把美化放进页面：一个 <style>，排在 head 最后，盖过兔子镜自己的样式；关着或为空就拿掉。 */
@@ -98,7 +131,7 @@ export function mountUserSkinControls(container, { listen = (node, event, fn) =>
     const box = doc.createElement('div');
     box.className = 'rh-ui-user-skin';
     box.innerHTML = `<h3 style="margin:18px 0 6px;font-size:15px;">导入美化</h3>
-<p class="rh-ui-user-skin-note" style="margin:0 0 8px;font-size:12px;line-height:1.55;opacity:.8;">用一段 CSS 改兔子镜的设置界面、工具弹窗和外置框（包括外置标题框）。不改兔子镜画面里面的内容，只保存在这台设备上。只导入你信任的美化。</p>
+<p class="rh-ui-user-skin-note" style="margin:0 0 8px;font-size:12px;line-height:1.55;opacity:.8;">用一段 CSS 改兔子镜的设置界面、工具弹窗和外置框（包括外置标题框）。不改兔子镜画面里面的内容，保存在这台设备上，也在酒馆设置里留一份。只导入你信任的美化。</p>
 <label class="checkbox_label"><input id="rh_user_skin_enabled" type="checkbox"> 启用美化</label>
 <textarea id="rh_user_skin_css" class="text_pole" rows="8" spellcheck="false" placeholder="把美化 CSS 粘贴在这里，或点「从文件导入」" style="width:100%;min-height:150px;font-family:ui-monospace,Consolas,monospace;font-size:12px;margin-top:6px;box-sizing:border-box;"></textarea>
 <div class="flex-container" style="gap:7px;flex-wrap:wrap;margin-top:6px;">
@@ -119,17 +152,25 @@ export function mountUserSkinControls(container, { listen = (node, event, fn) =>
     let current = readUserSkin();
     enabled.checked = current.enabled;
     area.value = current.css;
+    let typing = 0;
     const commit = (message) => {
+        (doc.defaultView || globalThis).clearTimeout(typing);
         current = { enabled: enabled.checked, css: area.value, name: current.name };
         const saved = saveUserSkin(current);
         status.textContent = saved ? message : '美化已换上，但这台设备没能保存（可能太大或浏览器不让存），刷新后会恢复原样。';
     };
     listen(enabled, 'change', () => commit(enabled.checked ? '美化已启用。' : '美化已关闭，内容还留着。'));
+    // 改文本框就自动存（停手一会儿后），不点「保存」直接关掉、导出或刷新也不会丢。开着美化时顺便换上，边写边看。
+    listen(area, 'input', () => {
+        const view = doc.defaultView || globalThis;
+        view.clearTimeout(typing);
+        typing = view.setTimeout(() => commit(enabled.checked ? '已自动保存并换上。' : '已自动保存（美化还没启用）。'), 700);
+    });
     listen(box, 'click', event => {
         const action = event.target?.closest?.('[data-rh-skin]')?.dataset.rhSkin;
         if (action === 'save') { if (!enabled.checked && area.value.trim()) enabled.checked = true; commit('美化已保存并应用。'); }
         if (action === 'import') file.click();
-        if (action === 'export') download(doc, `${current.name || '兔子镜美化'}.css`, area.value);
+        if (action === 'export') { commit('已保存，并导出成文件。'); download(doc, `${current.name || '兔子镜美化'}.css`, area.value); }
         if (action === 'skeleton') { area.value = `${area.value.trim() ? `${area.value.trimEnd()}\n\n` : ''}${skeleton()}`; status.textContent = '已插入可用的名字，写好后点「保存并应用」。'; }
         if (action === 'clear') { area.value = ''; commit('美化已清空。'); }
     });
