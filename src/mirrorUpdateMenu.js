@@ -1,7 +1,7 @@
 // 版本更新放在镜面工具菜单底部，不再单独开设置页。
 // 有新版本时点「有更新」才去读仓库 README；更新成功后的刷新和预设备忘录一样。
 
-import { paintToolMenuUpdateIcon, themeMirrorToolPanel } from './mirrorToolMenu.js?rmv=1.70.2';
+import { paintToolMenuUpdateIcon, themeMirrorToolPanel } from './mirrorToolMenu.js?rmv=1.70.3';
 import {
     applyRabbitMirrorUpdateAndReload,
     checkRabbitMirrorUpdate,
@@ -11,7 +11,7 @@ import {
     runningRabbitMirrorVersion,
     setupRabbitMirrorExtensionReloadWatch,
     subscribeRabbitMirrorUpdate,
-} from './extensionUpdater.js?rmv=1.70.2';
+} from './extensionUpdater.js?rmv=1.70.3';
 
 const buttonStyle = 'display:block;width:100%;min-height:44px;margin-top:8px;padding:10px 12px;text-align:left;white-space:normal;border:1px solid var(--SmartThemeBorderColor,#bbb);border-radius:10px;background-color:#243044;background-image:linear-gradient(var(--SmartThemeBlurTintColor,#243044),var(--SmartThemeBlurTintColor,#243044));color:inherit;font:inherit;cursor:pointer;box-sizing:border-box;';
 let sheet = null;
@@ -153,6 +153,8 @@ function ensureSheet() {
     apply.addEventListener('click', event => {
         event.preventDefault();
         event.stopPropagation();
+        // 更新公告还没显示出来、或者刚弹出来（手机上点「有更新」那一下可能落到这个按钮上）：不算，先让人看公告。
+        if (apply.dataset.rmReadyAt === undefined || Date.now() < Number(apply.dataset.rmReadyAt)) return;
         void runApply(apply, close, body);
     });
     document.body.append(overlay);
@@ -214,9 +216,14 @@ async function openRabbitMirrorChangelog({ mode = 'view' } = {}) {
         ? (snap.remoteVersion ? `发现新版本 ${snap.remoteVersion}` : '发现新版本')
         : '更新日志';
     body.textContent = '正在读取 README…';
+    // 「确认更新」等更新公告显示出来、再过一小会儿才能点。
+    delete apply.dataset.rmReadyAt;
+    if (!applying) apply.disabled = true;
     const readme = await loadRabbitMirrorReadme({ remoteUrl: snap.remoteUrl, remoteBranch: snap.remoteBranch });
     if (!overlay.isConnected) return;
     fillReadme(body, readme, { full: !updateMode });
+    apply.dataset.rmReadyAt = String(Date.now() + 600);
+    if (!applying) setTimeout(() => { if (apply.isConnected && !applying) apply.disabled = false; }, 600);
 }
 
 const scrollIcon = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M7 4h8a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3z"/><path d="M7 4v13a3 3 0 0 0 3 3"/><path d="M10 8h5M10 12h5"/></svg>';
