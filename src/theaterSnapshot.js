@@ -2,7 +2,7 @@
 // 收藏仍走原来的收藏夹；这里只负责翻看、点开镜面里的交互、收藏/取消收藏，以及跳回原楼。
 // 生成失败、没有成品的楼也留下，方便跳回去重试。正在生成的占位不收进来。
 
-import { RUNTIME_VERSION } from './ui/runtime.js?rmv=1.70.1';
+import { RUNTIME_VERSION } from './ui/runtime.js?rmv=1.70.2';
 
 export const THEATER_SNAPSHOT_PAGE_SIZE = 10;
 
@@ -66,7 +66,7 @@ function isMirrorFailureNotice(text) {
     return FAILURE_MARK.test(String(text || '')) || NOTICE_FAILURE_MARK.test(String(text || ''));
 }
 
-function classifyFloor({ index, swipe, text, saved, errorText }) {
+function classifyFloor({ index, swipe, text, saved, savedStale = false, errorText }) {
     const fromText = extractMirrorHtml(text);
     const savedHtml = String(saved || '').trim();
     const fromSaved = extractMirrorHtml(savedHtml);
@@ -79,6 +79,8 @@ function classifyFloor({ index, swipe, text, saved, errorText }) {
             html,
             title: snapshotTitleFromHtml(html),
             failed: isMirrorFailure(html) || isMirrorFailure(text) || isMirrorFailureNotice(errorText),
+            // 存档里的这面是对着另一段正文生成的（换过存档、正文改过）：聊天里那一层不会挂出它。
+            stale: !!(savedStale && html === fromSaved && html !== fromText),
             errorText: '',
         };
     }
@@ -95,15 +97,17 @@ function classifyFloor({ index, swipe, text, saved, errorText }) {
     };
 }
 
-// persisted: [{ index, swipe, html }]，只认当前 swipe。domErrors: [{ mesid, text }]。
+// persisted: [{ index, swipe, html, stale }]，只认当前 swipe；stale：这面是对着另一段正文生成的，聊天里不会挂出来。domErrors: [{ mesid, text }]。
 // 结果从新到旧。用户楼、没有兔子镜也没有报错的楼、还在生成的占位都不进入列表。
 export function collectTheaterSnapshots(chat, sources = {}) {
     const list = Array.isArray(chat) ? chat : [];
     const savedByKey = new Map();
+    const staleKeys = new Set();
     for (const row of sources.persisted || []) {
         if (!row || !Number.isInteger(row.index) || row.index < 0) continue;
         const swipe = Number.isInteger(row.swipe) && row.swipe > 0 ? row.swipe : 0;
         savedByKey.set(`${row.index}:${swipe}`, String(row.html || ''));
+        if (row.stale) staleKeys.add(`${row.index}:${swipe}`);
     }
     const errors = new Map();
     for (const row of sources.domErrors || []) {
@@ -121,6 +125,7 @@ export function collectTheaterSnapshots(chat, sources = {}) {
             swipe,
             text: messageSwipeText(message),
             saved: savedByKey.get(`${index}:${swipe}`) || '',
+            savedStale: staleKeys.has(`${index}:${swipe}`),
             errorText: errors.get(index) || '',
         });
         if (item) items.push(item);
@@ -524,12 +529,14 @@ function updateThumbScale(grid) {
 
 export async function openTheaterSnapshot() {
     const generation = ++openGeneration;
-    const [{ applyAppearanceTheme }, api, favorites, persistence, runtime] = await Promise.all([
-        import('./appearanceTheme.js?rmv=1.70.1'),
-        import('./independentApi.js?rmv=1.70.1'),
-        import('./theaterFavorites.js?rmv=1.70.1'),
-        import('./independentApi/persistence.js?rmv=1.70.1'),
-        import('./independentApi/runtime.js?rmv=1.70.1'),
+    const [{ applyAppearanceTheme }, api, favorites, persistence, runtime, connection, mount] = await Promise.all([
+        import('./appearanceTheme.js?rmv=1.70.2'),
+        import('./independentApi.js?rmv=1.70.2'),
+        import('./theaterFavorites.js?rmv=1.70.2'),
+        import('./independentApi/persistence.js?rmv=1.70.2'),
+        import('./independentApi/runtime.js?rmv=1.70.2'),
+        import('./independentApi/connection.js?rmv=1.70.2'),
+        import('./independentApi/mount.js?rmv=1.70.2'),
     ]);
     const ctx = runtime.getContext?.() || {};
     const chat = Array.isArray(ctx.chat) ? ctx.chat : [];
@@ -538,8 +545,17 @@ export async function openTheaterSnapshot() {
     try {
         const entries = persistence.chatPersistedOwnerEntries(ctx);
         for (const entry of entries) if (entry.record?.faceSwipes) recordFaceSwipes.set(`${entry.index}:${entry.swipe}`, entry.record.faceSwipes);
+        // 和聊天里挂兔子镜用同一个判断：这面存档是不是对着这一层现在的正文生成的。
+        // 对不上（换回以前的存档、正文改过）时聊天里不会挂它，快拍照样列出来，但标上「正文已变」，点进去时说清楚。
+        const matchesFloor = entry => {
+            try {
+                const msg = chat[entry.index];
+                if (!msg) return false;
+                return !!connection.savedRecordMatchesObserved(entry.record, mount.passiveObservedIdentity(ctx, entry.index, msg));
+            } catch { return true; }
+        };
         persisted = entries
-            .map(entry => ({ index: entry.index, swipe: entry.swipe, html: entry.record?.html || '' }))
+            .map(entry => ({ index: entry.index, swipe: entry.swipe, html: entry.record?.html || '', stale: !matchesFloor(entry) }))
             .filter(entry => entry.html);
     } catch { persisted = []; }
     const domErrors = readDomSnapshotErrors();
@@ -548,24 +564,24 @@ export async function openTheaterSnapshot() {
     let applyTextures = () => 0;
     let applySprites = () => 0;
     try {
-        const textures = await import('./materialTexture.js?rmv=1.70.1');
+        const textures = await import('./materialTexture.js?rmv=1.70.2');
         applyTextures = root => textures.applyMaterialTextures(root, undefined, { record: false });
     } catch { /* 没有材质模块时缩略图保持原样 */ }
     try {
-        const sprites = await import('./pixelSprites.js?rmv=1.70.1');
+        const sprites = await import('./pixelSprites.js?rmv=1.70.2');
         applySprites = root => sprites.applyPixelSprites(root);
     } catch { /* 没有像素画模块时缩略图保持原样 */ }
     try {
-        const connection = await import('./independentApi/connection.js?rmv=1.70.1');
+        const connection = await import('./independentApi/connection.js?rmv=1.70.2');
         imageChatKey = String(connection.chatKey(ctx) || '');
     } catch { imageChatKey = ''; }
     try {
-        const images = await import('./builtinImage.js?rmv=1.70.1');
+        const images = await import('./builtinImage.js?rmv=1.70.2');
         if (typeof images.restoreSavedBuiltinImages === 'function') restoreBuiltinImages = images.restoreSavedBuiltinImages;
     } catch { /* 没有生图模块时图框保持原样 */ }
     let sessionErrors = [];
     try {
-        const flights = await import('./independentApi/flights.js?rmv=1.70.1');
+        const flights = await import('./independentApi/flights.js?rmv=1.70.2');
         const key = imageChatKey;
         const seen = new Set(domErrors.map(row => row.mesid));
         for (const failure of flights.automaticFailureStops?.values?.() || []) {
@@ -587,8 +603,8 @@ export async function openTheaterSnapshot() {
     // 重说的其它版本：本机记录优先，没有就用聊天文件里随楼存的、再没有就用版本存档。只读，不改任何记录。
     try {
         const [swipes, faceSwipe] = await Promise.all([
-            import('./swipeVersions.js?rmv=1.70.1'),
-            import('./independentApi/faceSwipe.js?rmv=1.70.1'),
+            import('./swipeVersions.js?rmv=1.70.2'),
+            import('./independentApi/faceSwipe.js?rmv=1.70.2'),
         ]);
         let archive = new Map();
         if (imageChatKey && typeof swipes.loadFaceSwipeArchiveRows === 'function') {
@@ -614,7 +630,7 @@ export async function openTheaterSnapshot() {
     } catch { /* 读不到版本就只列当前这一版 */ }
     let expandBlocks = value => String(value || '');
     try {
-        const markup = await import('./outputSanitizer/markup.js?rmv=1.70.1');
+        const markup = await import('./outputSanitizer/markup.js?rmv=1.70.2');
         if (typeof markup.expandHtmlDocumentCodeBlocks === 'function') expandBlocks = markup.expandHtmlDocumentCodeBlocks;
     } catch { /* 缩略图用原文 */ }
     if (generation !== openGeneration) return [];
@@ -714,7 +730,11 @@ export async function openTheaterSnapshot() {
     let renderToken = 0;
     const stars = [];
 
-    const jump = mesid => { void jumpToFloor(mesid, chat.length); };
+    const jump = (mesid, stale = false) => {
+        void jumpToFloor(mesid, chat.length).then(() => {
+            if (stale) globalThis.toastr?.info?.(`#${mesid} 现在的正文和生成这面兔子镜时不一样（换过存档或改过正文），所以聊天里那一层没挂这面。想挂回去，可以在那一层的兔子镜卡上点「找回旧兔子镜」试试。`, '兔子镜');
+        });
+    };
 
     const refreshStars = () => {
         for (const entry of stars) {
@@ -795,11 +815,18 @@ export async function openTheaterSnapshot() {
         floor.className = 'rm-snap-floor';
         floor.textContent = `#${item.mesid}`;
         floor.setAttribute('aria-label', `跳到第 ${item.mesid} 层`);
-        floor.addEventListener('click', () => jump(item.mesid));
+        floor.addEventListener('click', () => jump(item.mesid, item.stale));
         const name = document.createElement('p');
         name.className = 'rm-snap-name';
         name.textContent = item.versionLabel ? `${item.title} · ${item.versionLabel}` : item.title;
         bar.append(floor, name);
+        if (item.stale) {
+            const chip = document.createElement('span');
+            chip.className = 'rm-snap-chip';
+            chip.textContent = '正文已变';
+            chip.title = '这一层现在的正文和生成这面时不一样，聊天里没挂这面';
+            bar.append(chip);
+        }
         if (item.failed) {
             const chip = document.createElement('span');
             chip.className = 'rm-snap-chip';
@@ -810,7 +837,7 @@ export async function openTheaterSnapshot() {
         jumpButton.type = 'button';
         jumpButton.className = 'rm-snap-jump';
         jumpButton.textContent = '跳转';
-        jumpButton.addEventListener('click', () => jump(item.mesid));
+        jumpButton.addEventListener('click', () => jump(item.mesid, item.stale));
         bar.append(jumpButton);
         const closer = document.createElement('button');
         closer.type = 'button';
@@ -918,7 +945,7 @@ export async function openTheaterSnapshot() {
                 floor.addEventListener('click', event => {
                     event.preventDefault();
                     event.stopPropagation();
-                    jump(item.mesid);
+                    jump(item.mesid, item.stale);
                 });
                 plate.append(floor);
                 plate.addEventListener('click', event => {
@@ -932,7 +959,7 @@ export async function openTheaterSnapshot() {
                 });
                 const name = document.createElement('p');
                 name.className = 'rm-snap-tile-name';
-                name.textContent = `${item.title}${item.versionLabel ? ` · ${item.versionLabel}` : ''}${item.failed ? ' · 未完成' : ''}`;
+                name.textContent = `${item.title}${item.versionLabel ? ` · ${item.versionLabel}` : ''}${item.stale ? ' · 正文已变' : ''}${item.failed ? ' · 未完成' : ''}`;
                 tile.append(plate, name);
                 list.append(tile);
             }
@@ -955,11 +982,18 @@ export async function openTheaterSnapshot() {
             floor.textContent = `#${item.mesid}`;
             floor.title = `跳到 #${item.mesid}`;
             floor.setAttribute('aria-label', `跳到第 ${item.mesid} 层`);
-            floor.addEventListener('click', () => jump(item.mesid));
+            floor.addEventListener('click', () => jump(item.mesid, item.stale));
             const name = document.createElement('p');
             name.className = 'rm-snap-name';
             name.textContent = item.versionLabel ? `${item.title} · ${item.versionLabel}` : item.title;
             bar.append(floor, name);
+            if (item.stale) {
+                const chip = document.createElement('span');
+                chip.className = 'rm-snap-chip';
+                chip.textContent = '正文已变';
+                chip.title = '这一层现在的正文和生成这面时不一样，聊天里没挂这面';
+                bar.append(chip);
+            }
             if (item.failed) {
                 const chip = document.createElement('span');
                 chip.className = 'rm-snap-chip';
@@ -970,7 +1004,7 @@ export async function openTheaterSnapshot() {
             jumpButton.type = 'button';
             jumpButton.className = 'rm-snap-jump';
             jumpButton.textContent = '跳转';
-            jumpButton.addEventListener('click', () => jump(item.mesid));
+            jumpButton.addEventListener('click', () => jump(item.mesid, item.stale));
             bar.append(jumpButton);
             const stage = document.createElement('div');
             stage.className = 'rm-snap-stage';
