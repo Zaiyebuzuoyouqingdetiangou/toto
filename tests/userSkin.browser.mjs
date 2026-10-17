@@ -160,9 +160,9 @@ for (const c of ['1', '2', '3']) { await page.fill('#rh_user_skin_css', BEFORE(c
 await flush();
 assert.equal(uploads - before, 1, 'quick edits are uploaded once'); checks++;
 assert.equal(JSON.parse(files.get('rabbitmirror-user-skin.json')).css, BEFORE('3')); checks++;
-// 1.68.94～1.69.0 的旧备份：整份 CSS 在设置里、没有文件。本机被清后照样找回，并挪进文件、从设置里去掉。
+// 1.68.94～1.70.0 的旧备份：整份 CSS 在设置里、没有文件。本机被清后照样找回，并挪进文件、从设置里去掉。
 files.clear();
-await page.evaluate(async css => { const set = await import('/src/settings.js?rmv=1.69.0'); set.updateSettings({ userSkin: { enabled: true, css, name: '' } }); localStorage.clear(); }, BEFORE('✧'));
+await page.evaluate(async css => { const set = await import('/src/settings.js?rmv=1.70.0'); set.updateSettings({ userSkin: { enabled: true, css, name: '' } }); localStorage.clear(); }, BEFORE('✧'));
 await page.waitForTimeout(300);
 await reopen();
 assert.equal((await state()).before, '"✧"', 'old in-settings backup still restores'); checks++;
@@ -173,7 +173,7 @@ assert.ok(serverSkin()?.file && !('css' in serverSkin()), 'and the CSS is remove
 // 老版本只存在本机的美化：开页时补一份进酒馆文件，之后本机被清也能找回。
 files.clear();
 await page.evaluate(() => { localStorage.setItem('rabbit_mirror_user_skin_v1', JSON.stringify({ enabled: true, css: '.rabbit-mirror-external-shell[data-rm-placement="external"]::before{content:"✩" !important}', name: '' })); });
-await page.evaluate(async () => { const set = await import('/src/settings.js?rmv=1.69.0'); set.updateSettings({ userSkin: null }); });
+await page.evaluate(async () => { const set = await import('/src/settings.js?rmv=1.70.0'); set.updateSettings({ userSkin: null }); });
 await page.waitForTimeout(300);
 await reopen();
 await flush();
@@ -182,15 +182,34 @@ await page.evaluate(() => localStorage.clear());
 await reopen();
 await page.waitForFunction(() => getComputedStyle(document.querySelector('.rabbit-mirror-external-shell'), '::before').content === '"✩"');
 assert.ok(true, 'a local-only skin from older versions gets backed up on load'); checks++;
-// 宿主不让存文件：退回老办法，放进设置里。
-await page.evaluate(() => { window.fetchBackup = window.fetch; window.fetch = (url, init) => String(url).includes('/api/files/upload') ? Promise.resolve(new Response('no', { status: 403 })) : window.fetchBackup(url, init); });
+// 这次没传上（服务器一时出错）、但酒馆里已经有文件记号：记号不动（免得盖掉别的设备的），本机留着改动，下次开页再传。
+await page.evaluate(() => { window.fetchBackup = window.fetch; window.fetch = (url, init) => String(url).includes('/api/files/upload') ? Promise.resolve(new Response('no', { status: 503 })) : window.fetchBackup(url, init); });
 await page.fill('#rh_user_skin_css', BEFORE('✪'));
 await page.waitForTimeout(800);
 await flush();
 await page.waitForTimeout(300);
-assert.equal(serverSkin()?.css, BEFORE('✪'), 'falls back to keeping the CSS in settings when files cannot be saved'); checks++;
-// ── 几台设备共用酒馆里那一份（复查补的）──
+assert.ok(serverSkin()?.file && !('css' in serverSkin()), 'a failed upload does not replace the shared file marker'); checks++;
+assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('rabbit_mirror_user_skin_v1')).dirty), true, 'the edit stays marked unsent'); checks++;
 await page.evaluate(() => { window.fetch = window.fetchBackup; });
+await page.close(); page = await ctx.newPage(); page.on('pageerror', e => errors.push(e.message));
+await page.goto(origin);
+await page.evaluate(async () => { window.skin = await import('/src/userSkin.js'); window.skin.readUserSkin(); await window.skin.flushUserSkinBackup(); });
+assert.equal(JSON.parse(files.get('rabbitmirror-user-skin.json')).css, BEFORE('✪'), 'the unsent edit is uploaded on the next load'); checks++;
+// 宿主根本不让存文件（没有文件记号）：退回老办法，放进设置里。
+await page.evaluate(async () => { const set = await import('/src/settings.js?rmv=1.70.0'); set.updateSettings({ userSkin: null }); });
+await reopen();
+await page.evaluate(() => { window.fetchBackup = window.fetch; window.fetch = (url, init) => String(url).includes('/api/files/upload') ? Promise.resolve(new Response('no', { status: 403 })) : window.fetchBackup(url, init); });
+await page.fill('#rh_user_skin_css', BEFORE('✫'));
+await page.waitForTimeout(800);
+await flush();
+await page.waitForTimeout(300);
+assert.equal(serverSkin()?.css, BEFORE('✫'), 'falls back to keeping the CSS in settings when files cannot be saved at all'); checks++;
+await page.evaluate(() => { window.fetch = window.fetchBackup; });
+await page.evaluate(() => window.skin.saveUserSkin({ enabled: true, css: document.querySelector('#rh_user_skin_css').value, name: '' }));
+await flush();
+await page.waitForTimeout(300);
+
+// ── 几台设备共用酒馆里那一份（复查补的）──
 const openOn = async (context, { failRead = false } = {}) => {
     const p = await context.newPage(); p.on('pageerror', e => errors.push(e.message));
     if (failRead) await p.route('**/user/files/**', route => route.fulfill({ status: 500, body: 'boom' }));
@@ -258,6 +277,66 @@ assert.equal(JSON.parse(files.get('rabbitmirror-user-skin.json')).css, BEFORE('B
 await b.close(); b = await openOn(phone);
 await b.waitForFunction(() => getComputedStyle(document.querySelector('.rabbit-mirror-external-shell'), '::before').content === '"B1"');
 assert.ok(true, 'restored once the file can be read again'); checks++;
+// 第二轮复查补的：
+// ① 设置里的记号晚一步（别的页面写回了旧记号）、文件已经是新版：本机被清后照样以文件为准找回。
+await page.evaluate(async () => { const set = await import('/src/settings.js?rmv=1.70.0'); set.updateSettings({ userSkin: { ...set.getSettings().userSkin, fingerprint: 'stale' } }); });
+await page.waitForTimeout(300);
+await b.evaluate(() => localStorage.clear());
+await b.close(); b = await openOn(phone);
+await b.waitForFunction(() => getComputedStyle(document.querySelector('.rabbit-mirror-external-shell'), '::before').content === '"B1"');
+assert.ok(true, 'a stale marker does not stop restoring from the file'); checks++;
+// 读回来的不是 JSON（宿主返回首页）：当读失败，点清空不往酒馆传。
+await b.evaluate(() => localStorage.clear());
+await b.close();
+b = await phone.newPage(); b.on('pageerror', e => errors.push(e.message));
+await b.route('**/user/files/**', route => route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>home</title>' }));
+await b.goto(origin);
+await b.evaluate(async () => { document.getElementById('chat').innerHTML = `<div class="rabbit-mirror-external-shell" data-rm-placement="external"><details open><summary>标题</summary></details></div><section id="appearance"></section>`; window.skin = await import('/src/userSkin.js'); window.skin.applyUserSkin(); window.skin.mountUserSkinControls(document.getElementById('appearance')); });
+await b.waitForTimeout(300);
+uploadsBefore = uploads;
+await b.click('[data-rh-skin="clear"]');
+await b.waitForTimeout(800);
+await b.evaluate(() => window.skin.flushUserSkinBackup());
+assert.equal(uploads, uploadsBefore, 'a non-JSON answer counts as a failed read, so clearing is not uploaded'); checks++;
+await b.close(); b = await openOn(phone);
+await b.waitForFunction(() => getComputedStyle(document.querySelector('.rabbit-mirror-external-shell'), '::before').content === '"B1"');
+// ② B 上有一份很早以前没传上去的改动；A 后来存了新的：B 打开时换上 A 的，不拿旧改动盖掉。
+await b.evaluate(css => { const r = JSON.parse(localStorage.getItem('rabbit_mirror_user_skin_v1')); localStorage.setItem('rabbit_mirror_user_skin_v1', JSON.stringify({ ...r, css, dirty: true, editedAt: 1000 })); }, BEFORE('stale-edit'));
+await page.fill('#rh_user_skin_css', BEFORE('A3'));
+await page.waitForTimeout(800);
+await flush();
+await page.waitForTimeout(300);
+uploadsBefore = uploads;
+await b.close(); b = await openOn(phone);
+await b.waitForFunction(() => getComputedStyle(document.querySelector('.rabbit-mirror-external-shell'), '::before').content === '"A3"');
+await b.evaluate(() => window.skin.flushUserSkinBackup());
+assert.equal(uploads, uploadsBefore, 'an old unsent edit does not overwrite a newer save from another device'); checks++;
+assert.equal(JSON.parse(files.get('rabbitmirror-user-skin.json')).css, BEFORE('A3')); checks++;
+// ③ 本机存满了：本机那份旧记录删掉，不会刷新后拿旧的去盖酒馆里的新版。
+await b.evaluate(() => { const real = Storage.prototype.setItem; window.realSetItem = real; Storage.prototype.setItem = function (k, v) { if (String(v).includes('BIG')) throw new DOMException('full', 'QuotaExceededError'); return real.call(this, k, v); }; });
+await b.fill('#rh_user_skin_css', BEFORE('BIG'));
+await b.waitForTimeout(800);
+await b.evaluate(() => window.skin.flushUserSkinBackup());
+assert.equal(await b.evaluate(() => localStorage.getItem('rabbit_mirror_user_skin_v1')), null, 'the old local record is removed when the new one does not fit'); checks++;
+assert.equal(JSON.parse(files.get('rabbitmirror-user-skin.json')).css, BEFORE('BIG')); checks++;
+await b.close(); b = await openOn(phone);
+await b.waitForFunction(() => getComputedStyle(document.querySelector('.rabbit-mirror-external-shell'), '::before').content === '"BIG"');
+await b.evaluate(() => window.skin.flushUserSkinBackup());
+assert.equal(JSON.parse(files.get('rabbitmirror-user-skin.json')).css, BEFORE('BIG'), 'after reload the bigger skin is still the tavern copy'); checks++;
+// ④ 1.70 以前本机独有的美化：别的设备以后再存，这台也不被换掉；在这台上存一次后才正常同步。
+await b.evaluate(css => localStorage.setItem('rabbit_mirror_user_skin_v1', JSON.stringify({ enabled: true, css, name: '' })), BEFORE('mine'));
+await b.close(); b = await openOn(phone);
+await page.fill('#rh_user_skin_css', BEFORE('A4'));
+await page.waitForTimeout(800);
+await flush();
+await page.waitForTimeout(300);
+await b.close(); b = await openOn(phone);
+await b.evaluate(() => window.skin.flushUserSkinBackup());
+assert.equal(await before$(b), '"mine"', 'a pre-1.70 local-only skin is kept on that device even after other devices save'); checks++;
+await b.fill('#rh_user_skin_css', BEFORE('mine2'));
+await b.waitForTimeout(800);
+await b.evaluate(() => window.skin.flushUserSkinBackup());
+assert.equal(JSON.parse(files.get('rabbitmirror-user-skin.json')).css, BEFORE('mine2'), 'saving on that device rejoins syncing'); checks++;
 await phone.close();
 assert.deepEqual(errors, []);
 console.log(JSON.stringify({ checks }));

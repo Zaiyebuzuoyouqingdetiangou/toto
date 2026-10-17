@@ -1,10 +1,10 @@
 // 待修样本箱：维修兔「认不出写法」或「修了还是没反应」的那一面，把写法骨架存一份在本机，设置里一键导出。
 // 骨架里没有聊天正文（文字全是占位），只有结构、标识和 CSS。只存在本机，不会自动发出去。
 // 容量：最多 40 面、总共约 2 MB，超了先挤掉最早的；同一面（骨架相同）只记一份，更新原因和次数。
-import { hashText } from '../independentApi/runtime.js?rmv=1.69.0';
-import { RUNTIME_VERSION } from './runtime.js?rmv=1.69.0';
-import { maskFaceText } from './writingSkeleton.js?rmv=1.69.0';
-import { inspectBehaviorDialect } from './behaviorDialect.js?rmv=1.69.0';
+import { hashText } from '../independentApi/runtime.js?rmv=1.70.0';
+import { RUNTIME_VERSION } from './runtime.js?rmv=1.70.0';
+import { maskFaceText } from './writingSkeleton.js?rmv=1.70.0';
+import { inspectBehaviorDialect } from './behaviorDialect.js?rmv=1.70.0';
 
 export const REPAIR_SAMPLES_KEY = 'rabbit_mirror_repair_samples:v1';
 export const REPAIR_SAMPLES_EVENT = 'rabbitmirror:repair-samples';
