@@ -4,6 +4,8 @@
 //   3. 中文段落行距太挤：一段较长的中文行距低于 1.45 倍，放到 1.6 倍。
 //   4. 字贴着边：有底色的块里文字左右几乎没留白，补一点内边距。
 //   5. 按钮太小：小于 28px 的按钮、可点的小圆点，只把「能按到的范围」扩大，样子不变。
+//   6. 角标、字幕条盖住了字：贴着上下边的绝对定位小条（台标、底部字幕）有不透明底色，又正好压在正文的字上，
+//      就给它所在的框在那一边补出空位，字往里让，条子还在原处。只压着图片、没压着字的不动；每次点按后重新量。
 // 每一项改完都量一遍：改了以后撑破了原来的框（多出滚动、被裁掉），就撤回这一项，不硬改。
 // 改动都靠属性加一条样式规则，撤掉属性就回到模型原来的样子；不碰模型写的内联样式。
 
@@ -12,6 +14,8 @@ const FONT_ATTR = 'data-rm-polish-font';
 const LINE_ATTR = 'data-rm-polish-line';
 const PAD_ATTR = 'data-rm-polish-pad';
 const TAP_ATTR = 'data-rm-polish-tap';
+const ROOM_TOP_ATTR = 'data-rm-polish-room-top';
+const ROOM_BOTTOM_ATTR = 'data-rm-polish-room-bottom';
 const STYLE_ID = 'rabbit-mirror-readability-polish-style';
 const SEEN = new WeakSet();
 const BOUND = new WeakSet();
@@ -32,6 +36,8 @@ function ensureStyle(doc) {
         `[${LINE_ATTR}]{line-height:1.6!important}`,
         `[${PAD_ATTR}]{padding-left:8px!important;padding-right:8px!important}`,
         // 只扩大能按到的范围：一层看不见的透明区域盖在按钮四周。
+        `[${ROOM_TOP_ATTR}]{padding-top:var(--rm-room-top)!important}`,
+        `[${ROOM_BOTTOM_ATTR}]{padding-bottom:var(--rm-room-bottom)!important}`,
         `[${TAP_ATTR}]::after{content:"";position:absolute;inset:calc(var(--rm-tap-grow,6px) * -1);pointer-events:auto}`,
     ].join('');
     doc.head.append(style);
@@ -123,6 +129,88 @@ function polishTap(node) {
     node.setAttribute(TAP_ATTR, 'true');
 }
 
+// 6. 角标、字幕条盖住了字。
+const NOT_A_STRIP = 'label, button, input, select, textarea, a[href], [role="button"], [data-rm-cover], [data-rm-ui], [data-rm-card], [data-rm-spoiler], [data-rm-peek], figure, img, svg, canvas, video';
+
+function opaque(style) {
+    if (style.backgroundImage && style.backgroundImage !== 'none') return true;
+    const match = String(style.backgroundColor || '').match(/rgba?\(([^)]+)\)/);
+    if (!match) return false;
+    const parts = match[1].split(',').map(part => parseFloat(part));
+    return parts.length < 4 || parts[3] >= 0.5;
+}
+
+function overlaps(a, b) {
+    return Math.min(a.right, b.right) - Math.max(a.left, b.left) >= 4 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) >= 2;
+}
+
+// 框里正常排布的字（不算条子自己、不算别的绝对定位层里的字）有没有被条子压住。
+function coversFlowText(strip, box) {
+    const doc = box.ownerDocument;
+    const area = strip.getBoundingClientRect();
+    const walker = doc.createTreeWalker(box, 4);
+    const range = doc.createRange();
+    for (let text = walker.nextNode(); text; text = walker.nextNode()) {
+        if (!text.textContent.trim() || strip.contains(text)) continue;
+        let floating = false;
+        for (let el = text.parentElement; el && el !== box; el = el.parentElement) {
+            if (/absolute|fixed/.test(css(el)?.position || '')) { floating = true; break; }
+        }
+        if (floating) continue;
+        range.selectNodeContents(text);
+        for (const rect of range.getClientRects()) if (overlaps(rect, area)) return true;
+    }
+    return false;
+}
+
+function reserveRoomForStrips(face) {
+    for (const node of face.querySelectorAll(`[${ROOM_TOP_ATTR}], [${ROOM_BOTTOM_ATTR}]`)) {
+        node.removeAttribute(ROOM_TOP_ATTR);
+        node.removeAttribute(ROOM_BOTTOM_ATTR);
+    }
+    const needs = new Map();
+    for (const strip of face.querySelectorAll('*')) {
+        if (strip.closest(TOTO_CHROME) || strip.closest('svg') || strip.matches(NOT_A_STRIP) || strip.querySelector(NOT_A_STRIP)) continue;
+        const style = css(strip);
+        if (style?.position !== 'absolute' || style.display === 'none' || style.visibility === 'hidden' || parseFloat(style.opacity) < 0.5) continue;
+        if (strip.textContent.replace(/\s+/g, '').length < 2 || !opaque(style)) continue;
+        const box = strip.offsetParent;
+        if (!box || box === face || !face.contains(box) || box.closest(TOTO_CHROME)) continue;
+        const rect = strip.getBoundingClientRect();
+        const outer = box.getBoundingClientRect();
+        if (!rect.height || !outer.height || rect.height > outer.height * 0.4) continue;
+        const boxStyle = css(box);
+        const inner = { top: outer.top + (parseFloat(boxStyle.borderTopWidth) || 0), bottom: outer.bottom - (parseFloat(boxStyle.borderBottomWidth) || 0) };
+        const top = rect.top + rect.height / 2 < inner.top + (inner.bottom - inner.top) / 2;
+        if (top ? rect.top - inner.top > 40 : inner.bottom - rect.bottom > 40) continue;
+        if (!coversFlowText(strip, box)) continue;
+        const room = Math.ceil(top ? rect.bottom - inner.top + 6 : inner.bottom - rect.top + 6);
+        const entry = needs.get(box) || { top: 0, bottom: 0 };
+        if (top) entry.top = Math.max(entry.top, room); else entry.bottom = Math.max(entry.bottom, room);
+        needs.set(box, entry);
+    }
+    let count = 0;
+    for (const [box, room] of needs) {
+        const style = css(box);
+        const clips = /(hidden|clip)/.test(`${style.overflowX} ${style.overflowY}`);
+        const before = box.scrollHeight - box.clientHeight;
+        for (const [side, attr] of [['top', ROOM_TOP_ATTR], ['bottom', ROOM_BOTTOM_ATTR]]) {
+            const current = parseFloat(side === 'top' ? style.paddingTop : style.paddingBottom) || 0;
+            if (room[side] <= current) continue;
+            box.style.setProperty(`--rm-room-${side}`, `${room[side]}px`);
+            box.setAttribute(attr, 'true');
+        }
+        // 框是定高的，补了空位反而把字挤出去裁掉：撤回。
+        if (clips && box.scrollHeight - box.clientHeight > Math.max(1, before + 1)) {
+            box.removeAttribute(ROOM_TOP_ATTR);
+            box.removeAttribute(ROOM_BOTTOM_ATTR);
+            continue;
+        }
+        if (box.hasAttribute(ROOM_TOP_ATTR) || box.hasAttribute(ROOM_BOTTOM_ATTR)) count++;
+    }
+    return count;
+}
+
 /** 量一遍这一面里还没看过的元素（新打开的内容也会补上）。 */
 export function polishReadability(root) {
     const face = root?.matches?.('details') ? root : root?.querySelector?.('details');
@@ -143,6 +231,7 @@ export function polishReadability(root) {
             if (node.matches(TAPPABLE)) polishTap(node);
         } catch { /* 量不了就跳过这一个 */ }
     }
+    try { reserveRoomForStrips(face); } catch { /* 量不了就不动 */ }
     return count;
 }
 
