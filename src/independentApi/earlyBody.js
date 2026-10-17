@@ -1,13 +1,13 @@
 // Split from independentApi.js — earlyBody.
-import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.70.0';
+import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.70.1';
 
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.70.0';
-import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.70.0';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.70.0';
-import { getSettings } from '../settings.js?rmv=1.70.0';
-import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.70.0';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=1.70.0';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.70.0';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.70.1';
+import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.70.1';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.70.1';
+import { getSettings } from '../settings.js?rmv=1.70.1';
+import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.70.1';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=1.70.1';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.70.1';
 import {
     MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE,
     INDEPENDENT_HISTORY_READ_ERROR_MESSAGE,
@@ -17,7 +17,7 @@ import {
     isMissingShellTargetFloor,
     normalizeMissingShellScanRange,
     shouldRestoreMissingIndependentRetryShell,
-} from './missingRetryShell.js?rmv=1.70.0';
+} from './missingRetryShell.js?rmv=1.70.1';
 import {
     INDEPENDENT_GENERATION_INTENTS_KEY,
     INDEPENDENT_GENERATION_INTENT_TYPES,
@@ -27,7 +27,7 @@ import {
     currentRuntime,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.70.0';
+} from './runtime.js?rmv=1.70.1';
 import {
     ACTIVE_GENERATION_WAIT_MS,
     FINAL_RENDER_POLL_INTERVAL_MS,
@@ -43,7 +43,7 @@ import {
     markAutomaticFailureStop,
     operationEpochForBase,
     pending,
-} from './flights.js?rmv=1.70.0';
+} from './flights.js?rmv=1.70.1';
 import {
     appendHistoryEntry,
     chatPersistenceSlot,
@@ -61,7 +61,7 @@ import {
     reconcileIndependentChatOwners,
     rememberChatMessageOrder,
     checkOwnerRemapEpoch,
-} from './persistence.js?rmv=1.70.0';
+} from './persistence.js?rmv=1.70.1';
 import {
     activeGlobalWorldInfoCapture,
     assistantMessages,
@@ -111,7 +111,7 @@ import {
     withOwnerLockStoreBatch,
     writeActiveGlobalWorldInfoCapture,
     writeHostModule,
-} from './connection.js?rmv=1.70.0';
+} from './connection.js?rmv=1.70.1';
 import {
     allExternalHosts,
     externalHosts,
@@ -119,7 +119,7 @@ import {
     removeEmptyFollowExternalAnchors,
     removeEmptyInlineAnchors,
     withExternalHostSyncIndex,
-} from './request.js?rmv=1.70.0';
+} from './request.js?rmv=1.70.1';
 import {
     beginHostWorkTiming,
     clearExternalHostFreshSourceState,
@@ -132,6 +132,7 @@ import {
     historyRecoveryForObserved,
     independentStoredHtmlRestorable,
     markExternalHostsAwaitingOwner,
+    pruneOrphanIndependentPlaceholderHosts,
     mountedIndependentReadyHostMatchesObserved,
     mountedIndependentReadyHostSharesStableOwner,
     passiveIndependentFailureForIdentity,
@@ -152,7 +153,7 @@ import {
     setPlaceholderSummary,
     usableReadyDetails,
     withRestorableHtmlCacheBatch,
-} from './geometry.js?rmv=1.70.0';
+} from './geometry.js?rmv=1.70.1';
 import {
     INDEPENDENT_INTENT_OWNER,
     abortFlight,
@@ -206,7 +207,7 @@ import {
     serializeExternalFaceDetails,
     stampAutomaticAuthorizationEpoch,
     withHistoricalRestoreLightPass,
-} from './mount.js?rmv=1.70.0';
+} from './mount.js?rmv=1.70.1';
 import {
     automaticGenerationCutovers,
     hostGenerationHintStartedAt,
@@ -231,7 +232,7 @@ import {
     writeStartupHistoryFallbackRoot,
     writeSyncRunning,
     writeSyncTimer,
-} from './lifecycle.js?rmv=1.70.0';
+} from './lifecycle.js?rmv=1.70.1';
 
 let earlyBodyParserPromise=null;
 
@@ -360,7 +361,7 @@ function settleEarlyBodyAtFinal(ctx,index){
 
 async function probeIndependentEarlyBody(packet,sequence){
  if(!earlyBodyPacketCurrent(packet)) return;
- if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.70.0')
+ if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.70.1')
   .then(module=>{earlyBodyParser=module;return module;}).catch(()=>{earlyBodyParserPromise=null;return null;});
  const parser=await earlyBodyParserPromise;
  if(!parser || sequence!==earlyBodyProbeSequence || !earlyBodyPacketCurrent(packet)) return;
@@ -2107,7 +2108,11 @@ export async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSe
      void Promise.resolve(result.settled).then(()=>{ if(sequence===runtimeConfigSequence&&currentRuntime()) scheduleStartupHistorySync(sequence); });
     };
     if(et.MESSAGE_DELETED){
-     const handler=()=>afterOwnerReconcile(reconcileIndependentChatOwners(getContext(),{kind:'message'}),runtimeConfigSequence);
+     const handler=()=>{
+      afterOwnerReconcile(reconcileIndependentChatOwners(getContext(),{kind:'message'}),runtimeConfigSequence);
+      // 被删回复留下的没画好的卡（生成失败、旧镜面待恢复）拿掉；改号认不出的那种也靠它清。
+      try{ pruneOrphanIndependentPlaceholderHosts(); }catch{}
+     };
      es?.on?.(et.MESSAGE_DELETED,handler); hostSubscriptions.push({es,event:et.MESSAGE_DELETED,handler});
     }
     if(et.MESSAGE_SWIPE_DELETED){
@@ -2178,6 +2183,9 @@ export async function installHostEventsIfNeeded(expectedSequence=runtimeConfigSe
     for(const event of new Set(generationFinishedEvents)){
       const handler=payload=>{
         const finishedContext=getContext();
+        // 正文生成失败时酒馆会把没写完的那条回复删掉：它留下的没画好的兔子镜卡跟着拿掉，不往下一条上叠。
+        // 酒馆删完才发结束事件，稍等一下再清，赶上删除和改号。
+        globalThis.setTimeout?.(()=>{ try{ pruneOrphanIndependentPlaceholderHosts(); }catch{} },300);
         queueManualGenerationTerminalSync();
         if(runtimeMode()==='follow-external'){
           const id=resolveHostEventMessageIndex(payload,finishedContext,{fallbackLastAssistant:true});
