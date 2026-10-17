@@ -123,6 +123,63 @@ try {
             assert.deepEqual(result, { active: 1, correct: true }); checks++;
         }
     }
+    // 同名的两套单选（茶摊铜镜换影仪）：上面带 id 的隐藏单选给 CSS 用，胶囊里各放一个同名、没 id 的单选。
+    // 点胶囊要真的换到上面那个状态（发色、对白跟着变），胶囊自己也高亮；再点别的照样换。
+    const twin = `<details open><summary>同名两套单选</summary>
+        <style>.talk{display:none}.pill{background:#fff}
+        input[type="radio"]:checked + .pill{background:rgb(191, 107, 40)}
+        #hair-black:checked ~ * .hair{fill:rgb(30, 27, 24)}
+        #hair-frost:checked ~ * .hair{fill:rgb(230, 236, 242)}
+        #hair-chestnut:checked ~ * .hair{fill:rgb(84, 51, 36)}
+        #hair-black:checked ~ * #talk-black{display:block}
+        #hair-frost:checked ~ * #talk-frost{display:block}
+        #hair-chestnut:checked ~ * #talk-chestnut{display:block}
+        #eye-pink:checked ~ * .iris{fill:rgb(237, 163, 181)}
+        #eye-ice:checked ~ * .iris{fill:rgb(151, 191, 212)}</style>
+        <input type="radio" name="hair" id="hair-black" style="display:none;" checked>
+        <input type="radio" name="hair" id="hair-frost" style="display:none;">
+        <input type="radio" name="hair" id="hair-chestnut" style="display:none;">
+        <input type="radio" name="eye" id="eye-pink" style="display:none;" checked>
+        <input type="radio" name="eye" id="eye-ice" style="display:none;">
+        <div class="wrap">
+          <svg viewBox="0 0 10 10" width="40"><rect class="hair" width="10" height="5"></rect><circle class="iris" cx="5" cy="8" r="2"></circle></svg>
+          <div id="talk-black" class="talk">黑发台词</div><div id="talk-frost" class="talk">白发台词</div><div id="talk-chestnut" class="talk">栗发台词</div>
+          <div class="opts">
+            <label><input type="radio" name="hair" style="display:none;"><span class="pill">黑</span></label>
+            <label><input type="radio" name="hair" style="display:none;"><span class="pill">白</span></label>
+            <label><input type="radio" name="hair" style="display:none;"><span class="pill">栗</span></label>
+            <label><input type="radio" name="eye" style="display:none;"><span class="pill">粉</span></label>
+            <label><input type="radio" name="eye" style="display:none;"><span class="pill">冰</span></label>
+          </div>
+        </div></details>`;
+    await page.evaluate(html => { document.body.innerHTML = html; rescue.installIntelligentInteractionRescue(document.querySelector('details')); }, twin);
+    await page.waitForTimeout(200);
+    const look = () => page.evaluate(() => ({
+        hair: getComputedStyle(document.querySelector('.hair')).fill,
+        iris: getComputedStyle(document.querySelector('.iris')).fill,
+        talk: [...document.querySelectorAll('.talk')].filter(n => getComputedStyle(n).display !== 'none').map(n => n.textContent),
+        pills: [...document.querySelectorAll('.pill')].map(n => getComputedStyle(n).backgroundColor === 'rgb(191, 107, 40)'),
+    }));
+    let seen = await look();
+    assert.equal(seen.hair, 'rgb(30, 27, 24)', 'starts on the authored default'); checks++;
+    assert.deepEqual(seen.talk, ['黑发台词']); checks++;
+    assert.deepEqual(seen.pills, [true, false, false, true, false], 'the default pills are highlighted'); checks++;
+    await page.locator('label').filter({ hasText: '白' }).click();
+    await page.waitForTimeout(300);
+    seen = await look();
+    assert.equal(seen.hair, 'rgb(230, 236, 242)', 'tapping a pill really switches the state the CSS uses'); checks++;
+    assert.deepEqual(seen.talk, ['白发台词']); checks++;
+    assert.deepEqual(seen.pills, [false, true, false, true, false]); checks++;
+    await page.locator('label').filter({ hasText: '冰' }).click();
+    await page.waitForTimeout(300);
+    seen = await look();
+    assert.equal(seen.iris, 'rgb(151, 191, 212)'); checks++;
+    assert.equal(seen.hair, 'rgb(230, 236, 242)', 'other groups keep their choice'); checks++;
+    await page.locator('label').filter({ hasText: '栗' }).click();
+    await page.waitForTimeout(300);
+    seen = await look();
+    assert.equal(seen.hair, 'rgb(84, 51, 36)'); checks++;
+    assert.deepEqual(seen.talk, ['栗发台词']); checks++;
     assert.deepEqual(pageErrors, []);
     console.log(JSON.stringify({ checks, browser: browser.version(), network: 'loopback only', result: 'passed' }));
 } finally { await browser?.close(); await new Promise(resolve => server.close(resolve)); }

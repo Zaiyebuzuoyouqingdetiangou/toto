@@ -1,8 +1,8 @@
 // Recover only a complete, keyed duplicate radio group with existing CSS panels.
 // No content, button meaning, or branch order is inferred from prose.
-import { clearUncheckedRadioCheckedInlineArtifacts, parseCheckedRulesFromText, resolveTargetsForCheckedRule, restoreInteractionInlineOverrides } from './checkedStateRescue.js?rmv=1.70.4';
-import { applyCheckedVisualFallback, inputHasAssociatedLabel } from './fallbackRescue.js?rmv=1.70.4';
-import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.70.4';
+import { clearUncheckedRadioCheckedInlineArtifacts, parseCheckedRulesFromText, resolveTargetsForCheckedRule, restoreInteractionInlineOverrides } from './checkedStateRescue.js?rmv=1.70.5';
+import { applyCheckedVisualFallback, inputHasAssociatedLabel } from './fallbackRescue.js?rmv=1.70.5';
+import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.70.5';
 
 export const RADIO_BRANCH_COUNT_ATTR = 'data-rabbit-mirror-radio-branch-count';
 export const RADIO_BRANCH_CONTROL_ATTR = 'data-rm-radio-branch-control';
@@ -180,6 +180,28 @@ export function findRadioProxyCandidates(root) {
             proposals.push({ sources, targets });
         }
     }
+    // 同名的两套单选（茶摊铜镜换影仪）：最上面一排带 id 的隐藏单选给 CSS 用（#hair-frost:checked ~ * …），
+    // 下面每个选项胶囊里又各放了一个同名、没 id 的单选。两套同名就是同一组，点胶囊会把上面那个对应的取消掉，
+    // 胶囊变色了，画面、对白都不动。模型本意是胶囊指向上面那个（label for）。
+    // 只在一组正好分成「带 id、隐藏、不在 label 里、CSS 按 id:checked 写」和「各自单独在一个 label 里、没被 CSS 按 id 管」两半、
+    // 两半一样多、同在一面里时才接；按出现顺序一一对应。接之前把胶囊那一半改成自己的组名，两半不再互相取消。
+    for (const [name, group] of groups) {
+        if (group.length < 4 || group.length > 16) continue;
+        const targets = group.filter(input => input.id && !input.closest('label') && !inputHasAssociatedLabel(root, input)
+            && proxyHidden(input) && !hasOwnedRoute(input) && radios.filter(other => other.id === input.id).length === 1
+            && proxyCheckedIdRule(css, input.id));
+        const sources = group.filter(input => {
+            const label = input.closest('label');
+            return label && label.querySelectorAll('input,button,select,textarea').length === 1
+                && (!label.getAttribute('for') || label.getAttribute('for') === input.id)
+                && !hasOwnedRoute(input) && !(input.id && proxyCheckedIdRule(css, input.id));
+        });
+        if (targets.length < 2 || targets.length !== sources.length || targets.length + sources.length !== group.length) continue;
+        const owner = targets[0].closest('details,toto');
+        if ([...targets, ...sources].some(input => input.closest('details,toto') !== owner)) continue;
+        if (targets.filter(input => input.checked).length > 1 || sources.filter(input => input.checked).length > 1) continue;
+        proposals.push({ sources, targets, sharedName: name });
+    }
     // 一组只能连另一组；有歧义就不接。
     return proposals.filter(item => proposals.filter(other => other.sources === item.sources || other.targets === item.targets).length === 1);
 }
@@ -269,6 +291,16 @@ export function installRadioProxyRepair(root) {
     if (!state.entries.length) { root.removeAttribute(RADIO_PROXY_COUNT_ATTR); return 0; }
     root.addEventListener('change', state.listener, false);
     for (const entry of state.entries) {
+        // 同名的两套：先给胶囊那一半起自己的组名，选胶囊不再把上面的隐藏单选取消掉。
+        if (entry.sharedName) {
+            // 上面隐藏的那一半里，原来写了 checked 的那个（初始状态）先找回来：同名时它可能已经被后面的胶囊顶掉了。
+            const initial = entry.targets.findIndex(input => input.hasAttribute('checked'));
+            const picked = entry.sources.findIndex(input => input.checked);
+            const proxyName = `${entry.sharedName}-rm-proxy`;
+            for (const input of entry.sources) input.name = proxyName;
+            if (picked >= 0) entry.sources[picked].checked = true;
+            if (!entry.targets.some(input => input.checked) && picked < 0 && initial >= 0) entry.targets[initial].checked = true;
+        }
         entry.targets.forEach(input => input.setAttribute(RADIO_PROXY_TARGET_ATTR, 'true'));
         // 初始以画面为准：可见按钮的高亮跟着当前真正显示的那一页走，不擅自换页。
         let index = entry.targets.findIndex(input => input.checked);
