@@ -136,6 +136,12 @@ test('prepare loads an older floor onto the page; generating still skips a floor
         await skip.prepare();
         assert.deepEqual(skip.reveals, [], `not loaded: ${JSON.stringify(options)}`);
     }
+    // 楼层身份变了（中途删过楼层）：不先加载。
+    const movedFloor = fixture({ rendered: false });
+    const oldToken = movedFloor.token(0);
+    movedFloor.message.mes = '删楼后挪上来的另一条回复';
+    await movedFloor.prepare(0, { chat: 'A', token: oldToken });
+    assert.deepEqual(movedFloor.reveals, []);
     // 已经有兔子镜的老楼层：生成那一步说「已经有兔子镜了」，不是「没能加载」。
     const hasOne = fixture({ rendered: false, savedBefore: true });
     assert.match((await hasOne.run()).message, /已经有兔子镜了/);

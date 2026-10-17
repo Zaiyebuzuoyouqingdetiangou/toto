@@ -743,7 +743,7 @@ export function initRabbitMirrorUI() {
             const target = document.getElementById('rh_missing_shell_report');
             if (target && listed?.text) target.textContent = listed.text;
         },
-        prepare: (floor, chat, opts) => prepareIndependentBackfillFloor(floor, { chat, keepGoing: opts?.keepGoing }),
+        prepare: (floor, chat, opts) => prepareIndependentBackfillFloor(floor, { chat, token: opts?.token, keepGoing: opts?.keepGoing }),
         generate: (floor, chat, token) => backfillIndependentFloor(floor, { chat, token }),
         floorToken: floor => independentBackfillFloorToken(floor),
         busy: () => independentBackfillBusy(),

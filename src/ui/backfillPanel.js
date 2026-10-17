@@ -78,7 +78,7 @@ function ensureQueue() {
 export function mountBackfillControls(options) {
     deps = {
         run: floor => options.generate(floor, backfillChat, backfillTokens.get(floor) || ''),
-        prepare: (floor, opts) => options.prepare?.(floor, backfillChat, opts),
+        prepare: (floor, opts) => options.prepare?.(floor, backfillChat, { ...opts, token: backfillTokens.get(floor) || '' }),
         busy: () => options.busy(),
     };
     const q = ensureQueue();

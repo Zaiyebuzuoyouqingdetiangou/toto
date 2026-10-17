@@ -3277,7 +3277,7 @@ export function independentBackfillFloorToken(index){
 // 一键补楼层每层开头：把还没加载到页面上的那一层加载出来（和点「显示更多消息」一样，快拍跳楼层用的也是它）。
 // 正文和前文都按页面上显示的读（正则替换、隐藏标签、美化都算数），所以要它真的显示出来，不拿聊天记录里的原文顶替。
 // 加载可能要一阵子：队列等它加载完，再看暂停／停止、等酒馆空下来，最后才交给 backfillIndependentFloor（那里所有检查都重新做一遍）。
-export async function prepareIndependentBackfillFloor(index,{chat='',keepGoing=null}={}){
+export async function prepareIndependentBackfillFloor(index,{chat='',token='',keepGoing=null}={}){
  const id=Number(index);
  if(!Number.isInteger(id) || messageElement(id)) return;
  const ctx=getContext();
@@ -3288,6 +3288,8 @@ export async function prepareIndependentBackfillFloor(index,{chat='',keepGoing=n
  if(!currentRuntime() || runtimeMode()!=='independent') return;
  const msg=ctx.chat?.[id];
  if(!isRabbitMirrorEligibleAssistantMessage(msg) || !hasUsableAssistantBody(msg)) return;
+ // 中途删过楼层、这一层已经不是当初数的那条：生成那一步会以「楼层变了」跳过，不用先加载。
+ if(token && independentBackfillFloorToken(id)!==token) return;
  try{ if(mainReplyAbnormalReason(msg)) return; }catch{}
  try{
   if(hasExistingFollowRabbitMirror(ctx,id,msg)) return;
