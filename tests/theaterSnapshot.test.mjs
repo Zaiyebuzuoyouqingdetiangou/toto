@@ -106,3 +106,17 @@ test('resaid floors list every stored version right after the current one', asyn
     assert.deepEqual(out.map(item => [item.mesid, item.title, item.versionLabel || '']),
         [[9, '当前', '第 2/3 版'], [9, '【兔子镜：第一版】', '第 1/3 版'], [9, '【兔子镜：第三版】', '第 3/3 版'], [7, '单版', '']]);
 });
+
+test('a saved face made for a different 正文 (old save, edited reply) is marked stale; a matching one is not', () => {
+    const chat = [{ is_user: true, mes: '用户' }, { is_user: false, mes: '现在的正文' }, { is_user: true, mes: '用户' }, { is_user: false, mes: '也是现在的正文' }];
+    const items = collectTheaterSnapshots(chat, { persisted: [
+        { index: 1, swipe: 0, html: mirror('换存档前那面'), stale: true },
+        { index: 3, swipe: 0, html: mirror('对得上的那面'), stale: false },
+    ] });
+    const byFloor = Object.fromEntries(items.map(item => [item.mesid, item]));
+    assert.equal(byFloor[1].stale, true, 'chat will not mount it, so the snapshot says so');
+    assert.equal(byFloor[3].stale, false);
+    // 正文里自带的兔子镜（跟随生成）永远对得上，不标。
+    const inline = collectTheaterSnapshots([{ is_user: false, mes: `正文\n${mirror('随正文')}` }], { persisted: [{ index: 0, swipe: 0, html: mirror('存档'), stale: true }] });
+    assert.equal(inline[0].stale, false);
+});
