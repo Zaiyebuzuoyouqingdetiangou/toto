@@ -445,6 +445,38 @@ await b.evaluate(() => localStorage.setItem('rabbit_mirror_user_skin_v1', JSON.s
 await b.close(); b = await openOn(phone);
 await b.waitForFunction(() => getComputedStyle(document.querySelector('.rabbit-mirror-external-shell'), '::before').content === '"offline2"');
 assert.ok(true, 'an empty pre-1.70 record takes the tavern copy'); checks++;
+// 第五轮（专项复核）补的：
+// ① 「换回这台设备改的那版」对账期间也锁着。
+await b.evaluate(css => localStorage.setItem('rabbit_mirror_user_skin_v1_unsent', JSON.stringify({ enabled: true, css, name: '' })), BEFORE('stash'));
+await b.close();
+b = await phone.newPage(); b.on('pageerror', e => errors.push(e.message));
+let release3;
+await b.route('**/user/files/**', async route => { await new Promise(r => { release3 = r; }); await route.continue(); });
+await b.goto(origin);
+await b.evaluate(async () => { document.getElementById('chat').innerHTML = `<div class="rabbit-mirror-external-shell" data-rm-placement="external"><details open><summary>标题</summary></details></div><section id="appearance"></section>`; window.skin = await import('/src/userSkin.js'); window.skin.applyUserSkin(); window.skin.mountUserSkinControls(document.getElementById('appearance')); });
+await b.waitForFunction(() => document.querySelector('#rh_user_skin_enabled').disabled);
+assert.equal(await b.evaluate(() => document.querySelector('[data-rh-skin="unsent"]').disabled), true, 'the bring-back button is locked while reconciling'); checks++;
+release3();
+await b.waitForFunction(() => !document.querySelector('[data-rh-skin="unsent"]').disabled);
+await b.evaluate(() => localStorage.removeItem('rabbit_mirror_user_skin_v1_unsent'));
+// ② 冲突时本机放不下另外那份：不换成酒馆的、也不传，留着这台的；「改用酒馆那份」能换过去。
+await b.evaluate(css => { const r = JSON.parse(localStorage.getItem('rabbit_mirror_user_skin_v1')); localStorage.setItem('rabbit_mirror_user_skin_v1', JSON.stringify({ ...r, css, dirty: true, editedAt: Date.now(), synced: 'some-old-base' })); }, BEFORE('kept'));
+await b.close();
+b = await phone.newPage(); b.on('pageerror', e => errors.push(e.message));
+await b.addInitScript(() => { const real = Storage.prototype.setItem; Storage.prototype.setItem = function (k, v) { if (String(k).endsWith('_unsent')) throw new DOMException('full', 'QuotaExceededError'); return real.call(this, k, v); }; });
+await b.goto(origin);
+await b.evaluate(async () => { document.getElementById('chat').innerHTML = `<div class="rabbit-mirror-external-shell" data-rm-placement="external"><details open><summary>标题</summary></details></div><section id="appearance"></section>`; window.skin = await import('/src/userSkin.js'); window.skin.applyUserSkin(); window.skin.mountUserSkinControls(document.getElementById('appearance')); });
+uploadsBefore = uploads;
+const tavernBefore = tavernNow();
+await b.evaluate(() => window.skin.flushUserSkinBackup());
+await b.waitForFunction(() => !document.querySelector('[data-rh-skin-kept]').hidden);
+assert.equal(await before$(b), '"kept"', 'the local edit is kept when it cannot be stashed'); checks++;
+assert.equal(uploads, uploadsBefore, 'and nothing is uploaded'); checks++;
+assert.equal(tavernNow(), tavernBefore); checks++;
+await b.click('[data-rh-skin="take-tavern"]');
+await b.waitForFunction(css => document.querySelector('#rh_user_skin_css').value === css, tavernBefore);
+assert.equal(await b.evaluate(() => JSON.parse(localStorage.getItem('rabbit_mirror_user_skin_v1')).css), tavernBefore, '"use the tavern copy" switches over'); checks++;
+assert.equal(await b.evaluate(() => document.querySelector('[data-rh-skin-kept]').hidden), true); checks++;
 await phone.close();
 // 宿主对不存在的文件回首页网页、设置里也没有记号（从没存过美化的设备）：当成没有，记一笔，不会每次打开都去问。
 const fresh = await browser.newContext();

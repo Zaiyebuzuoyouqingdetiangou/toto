@@ -110,10 +110,15 @@ let backupChain = null;
 let backupValue = null;
 // 本机存不下（隐私模式、存满了）时，这次打开页面用的那份。
 let restoredValue = null;
+// 本机存不下时这次页面上改的那份，是在哪一版上改的（和本机记录里的 synced 一个意思）；null 表示这次页面上没改过。
+let pageEditBase = null;
 // 本机是空的、还没确认酒馆里有没有：这时存一份空美化不存、不传，免得把酒馆那份清掉。
 let restorePending = false;
 // 和酒馆对账：idle 还没开始，syncing 正在读，failed 读失败（下次打开设置或刷新再试），done 对完了。
 let syncState = 'idle';
+// 这次对账遇到的冲突：'' 没有；stashed 换上了酒馆那份、本机那版另外留着；kept-local / kept-page 本机那份留着没传（留不下另一份）。
+let lastConflict = '';
+export function userSkinConflict() { return lastConflict; }
 let syncing = null;
 
 function setSyncState(state, detail = {}) {
@@ -190,6 +195,7 @@ export async function flushUserSkinBackup() {
 }
 
 function adopt(doc, file) {
+    pageEditBase = null;
     const fingerprint = userSkinFingerprint(file);
     if (!writeLocalRecord(file, { dirty: false, synced: fingerprint, editedAt: Number(file.editedAt) || 0 })) dropLocalRecord();
     const value = normalizeSkin(file);
@@ -227,8 +233,8 @@ function syncWithTavern(doc) {
                 // 1.70 以前留下的、或者没传上去的：酒馆里还没有，就传本机这份。
                 if ((now.dirty || !('synced' in now)) && value.css) uploadLocal(now, value);
                 else if (!('synced' in now)) writeLocalRecord(now, { dirty: false, synced: '' });
-            } else if (restoredValue) {
-                // 本机存不下时这次页面上存的那份。
+            } else if (restoredValue && pageEditBase !== null) {
+                // 本机存不下时这次页面上改的那份：酒馆里没有文件，传上去。
                 uploadLocal(null, restoredValue);
             } else {
                 // 本机是空的、酒馆里没有文件：设置里还有 1.69 以前整份存的旧备份就用它，并挪进文件。
@@ -245,8 +251,11 @@ function syncWithTavern(doc) {
             const server = serverCopy();
             if (server && !server.file) { try { updateSettings({ userSkin: { file: USER_SKIN_FILE_NAME, fingerprint: fileFingerprint, enabled: file.enabled, name: file.name, length: file.css.length, editedAt: file.editedAt } }); } catch { /* 下次再说 */ } }
             if (!now) {
-                if (restoredValue) uploadLocal(null, restoredValue); // 本机存不下时这次页面上存的：用户刚存的，传上去。
-                else adopt(doc, file);
+                if (restoredValue && pageEditBase !== null) {
+                    // 本机存不下时这次页面上改的那份：酒馆那份还是改的时候的底版才传；被别的设备换过就不传，留在页面上，设置里说清楚。
+                    if (pageEditBase === fileFingerprint) uploadLocal(null, restoredValue);
+                    else conflict = 'kept-page';
+                } else adopt(doc, file);
             } else {
                 const value = normalizeSkin(now);
                 const localFingerprint = userSkinFingerprint(value);
@@ -255,20 +264,34 @@ function syncWithTavern(doc) {
                 else if (!('synced' in now)) {
                     if (value.css.trim()) writeLocalRecord(now, { dirty: false, synced: fileFingerprint, pinned: true });
                     else adopt(doc, file);
-                } else if (now.dirty && (now.force || String(now.synced) === fileFingerprint)) uploadLocal(now, value);
-                else {
-                    if (now.dirty && value.css.trim()) {
-                        // 本机有没传上去的改动，可酒馆那份在那之后被别的设备换过：换上酒馆的，本机这版留着，设置里能换回来。
-                        try { globalThis.localStorage?.setItem(UNSENT_KEY, JSON.stringify(value)); conflict = true; } catch { /* 留不下就算了 */ }
-                    }
-                    adopt(doc, file);
-                }
+                } else if (now.dirty && String(now.synced) === fileFingerprint) uploadLocal(now, value);
+                else if (now.dirty && value.css.trim()) {
+                    // 本机有没传上去的改动，可酒馆那份在那之后被别的设备换过：换上酒馆的，本机这版另外留一份，设置里能换回来。
+                    // 留不下（本机存满了）：不换，先保留这台设备的、也不传，设置里说清楚，由用户决定。
+                    let stashed = false;
+                    try { globalThis.localStorage?.setItem(UNSENT_KEY, JSON.stringify(value)); stashed = true; } catch { /* 留不下 */ }
+                    if (stashed) { conflict = 'stashed'; adopt(doc, file); }
+                    else conflict = 'kept-local';
+                } else adopt(doc, file);
             }
         }
+        lastConflict = conflict || '';
         setSyncState('done', { conflict });
     };
     syncing = run().finally(() => { syncing = null; });
     return syncing;
+}
+
+/** 冲突时用户选「改用酒馆那份」：读酒馆文件换上，本机这份不要了。成功返回 true。 */
+export async function useTavernUserSkin(doc = globalThis.document) {
+    let file = null;
+    try { file = await readUserSkinFile(); } catch { return false; }
+    if (!file) return false;
+    adopt(doc, file);
+    restorePending = false;
+    lastConflict = '';
+    setSyncState('done', { conflict: '' });
+    return true;
 }
 
 export function readUserSkin() {
@@ -284,26 +307,26 @@ export function readUserSkin() {
  * 保存。返回 'saved' 存好了（对完账的会传进酒馆）；'local' 只存在这台设备上（还没能和酒馆对账，读到时再对）；
  * 'page-only' 这台设备存不下，只在这个页面生效；'pending' 本机是空的、酒馆那份还没读到，这次的空美化不存。
  */
-export function saveUserSkin(skin, { force = false } = {}) {
+export function saveUserSkin(skin) {
     const value = { enabled: skin?.enabled === true, css: String(skin?.css || '').slice(0, MAX_CHARS), name: String(skin?.name || '').slice(0, 80) };
     applyUserSkin(globalThis.document, value);
     if (restorePending && !value.css.trim()) return 'pending';
     restorePending = false;
     const editedAt = Date.now();
     const before = readLocalRecord();
-    // 底版：这次改动是在哪一版上改的。pinned 的设备（1.70 以前留下、自己用自己的）存一次就是要传上去。
-    const meta = { dirty: true, editedAt, synced: String(before?.synced ?? '') };
-    if (force || before?.pinned) meta.force = true;
-    const local = writeLocalRecord(value, meta);
-    if (local) restoredValue = null;
+    // 底版：这次改动是在哪一版上改的。对账时酒馆那份还是这一版才传，被别的设备换过就按冲突处理，不会悄悄盖掉。
+    const base = before ? String(before.synced ?? '') : (pageEditBase ?? '');
+    const local = writeLocalRecord(value, { dirty: true, editedAt, synced: base });
+    if (local) { restoredValue = null; pageEditBase = null; }
     else {
+        pageEditBase = base;
         // 本机存不下（存满了、隐私模式）：本机的旧记录删掉（不然刷新后会拿旧的去盖酒馆里的新版），这次页面上照样用。
         dropLocalRecord();
         restoredValue = value;
         writeServerCopy(value);
     }
     // 对完账的才传；读失败时先只存本机（不在这里重试：重试会把正在打字的设置界面锁一下），下次打开设置或刷新时再对。
-    if (syncState === 'done') scheduleUserSkinBackup({ ...value, editedAt });
+    if (syncState === 'done') { lastConflict = ''; scheduleUserSkinBackup({ ...value, editedAt }); }
     if (!local) return 'page-only';
     return syncState === 'done' ? 'saved' : 'local';
 }
@@ -382,6 +405,7 @@ export function mountUserSkinControls(container, { listen = (node, event, fn) =>
 </div>
 <input type="file" accept=".css,.txt,text/css,text/plain" hidden data-rh-skin-file>
 <div class="rh-ui-user-skin-status" role="status" aria-live="polite" style="font-size:12px;margin-top:6px;opacity:.85;"></div>
+<div data-rh-skin-kept hidden style="font-size:12px;margin-top:6px;line-height:1.55;">别的设备在酒馆里存了新版，可这台设备改的这版还没传上去，本机又放不下另一份，所以先留着这台的、没有传。<div class="flex-container" style="gap:7px;flex-wrap:wrap;margin-top:4px;"><button type="button" class="menu_button" data-rh-skin="save">用这台的（传进酒馆）</button><button type="button" class="menu_button" data-rh-skin="take-tavern">改用酒馆那份</button></div></div>
 <div data-rh-skin-unsent hidden style="font-size:12px;margin-top:6px;line-height:1.55;">这台设备上次改的美化没传进酒馆，后来别的设备又改过，现在用的是酒馆里那份。<button type="button" class="menu_button" data-rh-skin="unsent" style="margin-top:4px;">换回这台设备改的那版</button></div>
 <details style="margin-top:8px;"><summary style="cursor:pointer;">美化能用的名字</summary><div style="font-size:12px;line-height:1.6;margin-top:6px;">${SKIN_HOOKS.map(([label, selector]) => `<div style="margin-bottom:6px;"><div>${label}</div><code style="overflow-wrap:anywhere;user-select:all;">${selector.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</code></div>`).join('')}<div>颜色变量：<code style="overflow-wrap:anywhere;">${SKIN_TOKENS.join(' ')}</code></div><div style="opacity:.8;margin-top:4px;">外置框还在生成时，兔子镜会临时用它的 ::before / ::after 显示进度。</div></div></details>`;
     container.append(box);
@@ -390,7 +414,9 @@ export function mountUserSkinControls(container, { listen = (node, event, fn) =>
     const file = box.querySelector('[data-rh-skin-file]');
     const status = box.querySelector('.rh-ui-user-skin-status');
     const unsent = box.querySelector('[data-rh-skin-unsent]');
-    const controls = [enabled, area, ...box.querySelectorAll('[data-rh-skin]:not([data-rh-skin="unsent"])')];
+    const keptBox = box.querySelector('[data-rh-skin-kept]');
+    // 「换回这台设备改的那版」也一起锁：对账没完时换回，会拿它去盖还没看到的新版。
+    const controls = [enabled, area, ...box.querySelectorAll('[data-rh-skin]')];
     const view = doc.defaultView || globalThis;
     let current = readUserSkin();
     let typing = 0;
@@ -403,6 +429,8 @@ export function mountUserSkinControls(container, { listen = (node, event, fn) =>
         if (locked) status.textContent = '正在和酒馆里存的美化对一下……';
         else if (state === 'failed') status.textContent = '没能读到酒馆里存的美化（网络或服务器问题）。现在改的先只存在这台设备上，下次打开设置或刷新时再和酒馆对。';
         unsent.hidden = !readUnsentUserSkin();
+        const kept = userSkinConflict();
+        keptBox.hidden = locked || !(kept === 'kept-local' || kept === 'kept-page');
     };
     fill(current);
     showSync(userSkinSyncState());
@@ -440,16 +468,26 @@ export function mountUserSkinControls(container, { listen = (node, event, fn) =>
         if (action === 'export') { commit('已保存，并导出成文件。'); download(doc, `${current.name || '兔子镜美化'}.css`, area.value); }
         if (action === 'skeleton') { area.value = `${area.value.trim() ? `${area.value.trimEnd()}\n\n` : ''}${skeleton()}`; status.textContent = '已插入可用的名字，写好后点「保存并应用」。'; }
         if (action === 'clear') { area.value = ''; commit('美化已清空。'); }
+        if (action === 'take-tavern') {
+            for (const node of controls) node.disabled = true;
+            void useTavernUserSkin(doc).then(ok => {
+                if (ok) { fill(readUserSkin()); status.textContent = '已改用酒馆里存的那份。'; }
+                else status.textContent = '没能读到酒馆里存的美化，这次没换。';
+                edited = false;
+                showSync(userSkinSyncState());
+            });
+        }
+        if (action === 'save') keptBox.hidden = true;
         if (action === 'unsent') {
             const mine = readUnsentUserSkin();
             if (!mine) { unsent.hidden = true; return; }
             fill(mine);
             view.clearTimeout(typing); typing = 0;
-            const result = saveUserSkin(mine, { force: true });
+            const result = saveUserSkin(mine);
             edited = true;
             dropUnsentUserSkin();
             unsent.hidden = true;
-            status.textContent = result === 'page-only' ? '已换回，但这台设备存不下。' : '已换回这台设备改的那版，并存进酒馆。';
+            status.textContent = result === 'saved' ? '已换回这台设备改的那版，并存进酒馆。' : result === 'local' ? '已换回这台设备改的那版（先存在这台设备上，能读到酒馆那份时再传进去）。' : '已换回，但这台设备存不下。';
         }
     });
     listen(file, 'change', async () => {
