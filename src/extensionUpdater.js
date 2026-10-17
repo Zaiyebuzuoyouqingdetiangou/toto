@@ -409,8 +409,17 @@ export async function checkRabbitMirrorManifestBump({ silent = false, fetchImpl,
         if (globalThis.sessionStorage?.getItem(RELOAD_GUARD_KEY) === guard) return false;
         globalThis.sessionStorage?.setItem(RELOAD_GUARD_KEY, guard);
     } catch {}
-    if (!silent) globalThis.toastr?.info?.('兔子镜已更新，正在刷新页面…', '兔子镜');
-    reloadTavernPage();
+    // 酒馆里的文件已经是新版（别的设备点过更新、或者酒馆自己自动更新了），这个页面还在跑旧代码。
+    // 以前直接刷新页面：用户正在看东西、正想点开更新公告时页面突然刷了。现在只提示，点了才刷新。
+    if (!silent) {
+        const toastr = globalThis.toastr;
+        if (toastr?.info) {
+            toastr.info(`兔子镜已经更新到 ${installed}，这个页面还是旧版。点这里刷新页面换上新版。`, '兔子镜', {
+                timeOut: 0, extendedTimeOut: 0, closeButton: true, tapToDismiss: false,
+                onclick: () => reloadTavernPage(0),
+            });
+        }
+    }
     return true;
 }
 
