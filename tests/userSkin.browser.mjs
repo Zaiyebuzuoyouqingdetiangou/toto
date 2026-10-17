@@ -10,14 +10,19 @@ const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
 let savedSettings = '{}';
+// 假的酒馆用户文件夹（user/files）。
+const files = new Map();
+let uploads = 0;
 const server = createServer(async (req, res) => {
     const p = new URL(req.url, 'http://x').pathname;
     // 带上兔子镜真正的 style.css：美化要盖得过它那些很长的 !important 选择器。
     if (p === '/') { res.setHeader('Content-Type', 'text/html'); return res.end('<!doctype html><meta charset=utf-8><link rel="stylesheet" href="/style.css"><body><div id="chat"></div>'); }
     // 假的酒馆：扩展设置存在这个「服务器」里，跟浏览器本地存储分开（用来试本地存储被清掉后能不能找回）。
     if (p === '/save') { let body = ''; for await (const c of req) body += c; savedSettings = body; return res.end('ok'); }
+    if (p === '/api/files/upload') { let body = ''; for await (const c of req) body += c; const { name, data } = JSON.parse(body); files.set(name, Buffer.from(data, 'base64').toString('utf8')); uploads++; res.setHeader('Content-Type', 'application/json'); return res.end(JSON.stringify({ path: `/user/files/${name}` })); }
+    if (p.startsWith('/user/files/')) { const text = files.get(decodeURIComponent(p.slice('/user/files/'.length))); if (text == null) { res.statusCode = 404; return res.end(); } res.setHeader('Content-Type', 'application/json'); return res.end(text); }
     if (p === '/extensions.js') { res.setHeader('Content-Type', 'text/javascript'); return res.end(`export const extension_settings = ${savedSettings};`); }
-    if (p === '/script.js') { res.setHeader('Content-Type', 'text/javascript'); return res.end(`import { extension_settings } from '/extensions.js'; export function saveSettingsDebounced() { fetch('/save', { method: 'POST', body: JSON.stringify(extension_settings) }); }`); }
+    if (p === '/script.js') { res.setHeader('Content-Type', 'text/javascript'); return res.end(`import { extension_settings } from '/extensions.js'; export function saveSettingsDebounced() { fetch('/save', { method: 'POST', body: JSON.stringify(extension_settings) }); } export function getRequestHeaders() { return { 'X-CSRF-Token': 'test' }; }`); }
     res.setHeader('Content-Type', p.endsWith('.css') ? 'text/css' : 'text/javascript');
     try { res.end(await readFile(path.join(root, decodeURIComponent(p)))); } catch { res.statusCode = 404; res.end(); }
 });
@@ -88,6 +93,7 @@ await page.click('[data-rh-skin="skeleton"]');
 const text = await page.inputValue('#rh_user_skin_css');
 assert.ok(text.startsWith(CSS) && text.includes('[data-rm-skin="panel"] {') && text.includes('summary[data-rm-title-chrome] {')); checks++;
 // 刷新页面：开页时（initRabbitMirrorUI 里那一句）照样换上。
+await page.close();
 page = await ctx.newPage(); page.on('pageerror', e => errors.push(e.message));
 await page.goto(origin);
 await page.evaluate(async () => {
@@ -110,6 +116,8 @@ assert.equal((await state()).present, false); checks++;
 assert.equal(await page.evaluate(() => window.skin.readUserSkin().css), ''); checks++;
 // 只在框里打字、不点保存，过一会儿就自动存好；刷新后还在（开着时还顺手换上）。
 const reopen = async () => {
+    // 像刷新一样：旧页面关掉（它还没来得及传的那次就丢了，新页面开页时会补）。
+    await page.close();
     page = await ctx.newPage(); page.on('pageerror', e => errors.push(e.message));
     await page.goto(origin);
     await page.evaluate(async () => {
@@ -133,21 +141,54 @@ await page.click('[data-rh-skin="export"]');
 await dl;
 await reopen();
 assert.equal(await page.inputValue('#rh_user_skin_css'), BEFORE('✦'), 'export also saves'); checks++;
-// 本地存储被清掉（宿主清网页数据）：从酒馆设置里那份找回，并补回本地。
+// 本地存储被清掉（宿主清网页数据）：从酒馆里存的那份文件找回，并补回本地。
+const flush = () => page.evaluate(() => window.skin.flushUserSkinBackup());
+const serverSkin = () => JSON.parse(savedSettings || '{}')?.rabbit_mirror_theater?.userSkin ?? Object.values(JSON.parse(savedSettings || '{}')).find(v => v && typeof v === 'object' && 'userSkin' in v)?.userSkin;
+await flush();
 await page.waitForTimeout(300);
+assert.ok(JSON.parse(files.get('rabbitmirror-user-skin.json') || '{}').css === BEFORE('✦'), 'skin is saved as a file in the tavern'); checks++;
+assert.ok(serverSkin()?.file && !('css' in serverSkin()), 'tavern settings keep only a small marker, not the whole CSS'); checks++;
 await page.evaluate(() => localStorage.clear());
 await reopen();
-assert.equal((await state()).before, '"✦"', 'skin comes back from the extension settings copy when local storage was wiped'); checks++;
+await page.waitForFunction(() => getComputedStyle(document.querySelector('.rabbit-mirror-external-shell'), '::before').content === '"✦"');
+assert.equal((await state()).before, '"✦"', 'skin comes back from the tavern file when local storage was wiped'); checks++;
 assert.ok(await page.evaluate(() => !!localStorage.getItem('rabbit_mirror_user_skin_v1')), 'local copy restored'); checks++;
-// 老版本只存在本机的美化：开页时补一份到酒馆设置里，之后本机被清也能找回。
-await page.evaluate(() => { localStorage.setItem('rabbit_mirror_user_skin_v1', JSON.stringify({ enabled: true, css: '.rabbit-mirror-external-shell[data-rm-placement="external"]::before{content:"✧" !important}', name: '' })); });
+assert.equal(await page.inputValue('#rh_user_skin_css'), BEFORE('✦'), 'open settings panel is filled in once the file arrives'); checks++;
+// 打字时不是每停一下就传一次：连着改几次，只传最后一版。
+const before = uploads;
+for (const c of ['1', '2', '3']) { await page.fill('#rh_user_skin_css', BEFORE(c)); await page.waitForTimeout(800); }
+await flush();
+assert.equal(uploads - before, 1, 'quick edits are uploaded once'); checks++;
+assert.equal(JSON.parse(files.get('rabbitmirror-user-skin.json')).css, BEFORE('3')); checks++;
+// 1.68.94～1.69.0 的旧备份：整份 CSS 在设置里、没有文件。本机被清后照样找回，并挪进文件、从设置里去掉。
+files.clear();
+await page.evaluate(async css => { const set = await import('/src/settings.js?rmv=1.69.0'); set.updateSettings({ userSkin: { enabled: true, css, name: '' } }); localStorage.clear(); }, BEFORE('✧'));
+await page.waitForTimeout(300);
+await reopen();
+assert.equal((await state()).before, '"✧"', 'old in-settings backup still restores'); checks++;
+await flush();
+await page.waitForTimeout(300);
+assert.equal(JSON.parse(files.get('rabbitmirror-user-skin.json') || '{}').css, BEFORE('✧'), 'old backup is moved into the file'); checks++;
+assert.ok(serverSkin()?.file && !('css' in serverSkin()), 'and the CSS is removed from the settings'); checks++;
+// 老版本只存在本机的美化：开页时补一份进酒馆文件，之后本机被清也能找回。
+files.clear();
+await page.evaluate(() => { localStorage.setItem('rabbit_mirror_user_skin_v1', JSON.stringify({ enabled: true, css: '.rabbit-mirror-external-shell[data-rm-placement="external"]::before{content:"✩" !important}', name: '' })); });
 await page.evaluate(async () => { const set = await import('/src/settings.js?rmv=1.69.0'); set.updateSettings({ userSkin: null }); });
 await page.waitForTimeout(300);
 await reopen();
+await flush();
 await page.waitForTimeout(300);
 await page.evaluate(() => localStorage.clear());
 await reopen();
-assert.equal((await state()).before, '"✧"', 'a local-only skin from older versions gets backed up on load'); checks++;
+await page.waitForFunction(() => getComputedStyle(document.querySelector('.rabbit-mirror-external-shell'), '::before').content === '"✩"');
+assert.ok(true, 'a local-only skin from older versions gets backed up on load'); checks++;
+// 宿主不让存文件：退回老办法，放进设置里。
+await page.evaluate(() => { window.fetchBackup = window.fetch; window.fetch = (url, init) => String(url).includes('/api/files/upload') ? Promise.resolve(new Response('no', { status: 403 })) : window.fetchBackup(url, init); });
+await page.fill('#rh_user_skin_css', BEFORE('✪'));
+await page.waitForTimeout(800);
+await flush();
+await page.waitForTimeout(300);
+assert.equal(serverSkin()?.css, BEFORE('✪'), 'falls back to keeping the CSS in settings when files cannot be saved'); checks++;
 assert.deepEqual(errors, []);
 console.log(JSON.stringify({ checks }));
 await browser.close(); server.close();

@@ -363,6 +363,9 @@ async function loadOlder() {
     return false;
 }
 
+/** 把还没加载到页面上的那一层加载出来（和点「显示更多消息」一样）；加载不出来返回 null。一键补楼层也用它。 */
+export async function revealChatFloor(id) { return revealMes(id); }
+
 async function revealMes(id) {
     let node = findMes(id);
     if (node) return node;

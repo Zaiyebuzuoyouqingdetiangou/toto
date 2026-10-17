@@ -23,7 +23,8 @@ await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const origin = `http://127.0.0.1:${server.address().port}`;
 let browser;
 try {
-    browser = await chromium.launch({ headless: true, channel: 'msedge' });
+    // 有 Edge 用 Edge，没装就用 Playwright 自带的 Chromium。
+    browser = await chromium.launch({ headless: true, channel: process.env.RM_BROWSER_CHANNEL || 'msedge' }).catch(() => chromium.launch({ headless: true }));
     const page = await browser.newPage();
     const pageErrors = [];
     page.on('pageerror', error => pageErrors.push(error.message));
@@ -123,5 +124,5 @@ try {
         }
     }
     assert.deepEqual(pageErrors, []);
-    console.log(JSON.stringify({ checks, browser: 'Edge', network: 'loopback only', result: 'passed' }));
+    console.log(JSON.stringify({ checks, browser: browser.version(), network: 'loopback only', result: 'passed' }));
 } finally { await browser?.close(); await new Promise(resolve => server.close(resolve)); }

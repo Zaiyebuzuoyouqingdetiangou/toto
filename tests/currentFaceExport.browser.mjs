@@ -25,7 +25,8 @@ const query = JSON.parse(await readFile(path.join(rootDir, 'manifest.json'), 'ut
 let browser, checks = 0;
 const failures = [];
 try {
-    browser = await chromium.launch({ headless: true, channel: 'msedge' });
+    // 有 Edge 用 Edge，没装就用 Playwright 自带的 Chromium。
+    browser = await chromium.launch({ headless: true, channel: process.env.RM_BROWSER_CHANNEL || 'msedge' }).catch(() => chromium.launch({ headless: true }));
     const page = await browser.newPage();
     const pageErrors = [];
     page.on('pageerror', error => pageErrors.push(error.message));

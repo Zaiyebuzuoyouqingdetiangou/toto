@@ -99,15 +99,33 @@ function readCharacters(frame) {
     }).filter(person => person.name && (person.text.length >= 2 || person.modelTag));
 }
 
-// 逗号标签合并：前面的优先，大小写不同的同一标签只留一个。
+// 长相里不会因为这一幕变的几类：发色、瞳色、头发长短。
+// 第一串（角色库）写了这一类，后面（模型写的）同一类说法不同的就不要，免得 silver hair 和 white hair 一起交给生图、发色画乱。
+// 发型（马尾、披发）、衣着会随这一幕变，不算在里面；同一串里自己写的几种（比如挑染）都留着。
+const TAG_COLOR = '(?:black|white|silver|grey|gray|blonde?|brown|red|pink|blue|green|purple|violet|orange|yellow|aqua|teal|golden|gold|crimson|amber|azure|platinum|light\\s+\\w+|dark\\s+\\w+|pale\\s+\\w+|deep\\s+\\w+)';
+const TAG_TRAITS = [
+    ['hair-color', new RegExp(`^${TAG_COLOR}\\s+hair$`)],
+    ['eye-color', new RegExp(`^(?:${TAG_COLOR}\\s+eyes|heterochromia)$`)],
+    ['hair-length', /^(?:very\s+|absurdly\s+)?(?:long|short|medium)\s+hair$/],
+];
+
+function tagTrait(part) {
+    // 去掉权重写法再认：{silver hair}、[silver hair]、(silver hair:1.2)、1.2::silver hair::
+    const bare = part.toLowerCase().replace(/^-?\d+(?:\.\d+)?::|::$/g, '').replace(/[{}[\]()]/g, '').replace(/:\s*-?\d+(?:\.\d+)?$/, '').replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+    return TAG_TRAITS.find(([, re]) => re.test(bare))?.[0] || '';
+}
+
+// 逗号标签合并：前面的优先，大小写不同的同一标签只留一个；第一串写过的长相类，后面的同类不要。
 function mergeTagLists(...lists) {
     const seen = new Set();
-    return lists.flatMap(list => String(list || '').split(',')).map(part => part.trim()).filter(part => {
+    const claimed = new Set(String(lists[0] || '').split(',').map(part => tagTrait(part.trim())).filter(Boolean));
+    return lists.flatMap((list, index) => String(list || '').split(',').map(part => [part.trim(), index])).filter(([part, index]) => {
         const key = part.toLowerCase();
         if (!part || seen.has(key)) return false;
+        if (index > 0 && claimed.has(tagTrait(part))) return false;
         seen.add(key);
         return true;
-    }).join(', ');
+    }).map(([part]) => part).join(', ');
 }
 
 function storageKey(root, frame, prompt) {

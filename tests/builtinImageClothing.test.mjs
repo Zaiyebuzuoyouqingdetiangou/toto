@@ -26,7 +26,7 @@ test('person lines ask for clothing in both prompt formats', () => {
 
 test('library tags no longer drop the model-written clothing tags', () => {
     const src = readFileSync(new URL('../src/builtinImage.js', import.meta.url), 'utf8');
-    const merge = src.match(/function mergeTagLists\([^]*?\r?\n}/)?.[0];
+    const merge = src.match(/const TAG_COLOR = [^]*?function mergeTagLists\([^]*?\r?\n}/)?.[0];
     const appearance = src.match(/function mergeAppearance\([^]*?\r?\n}/)?.[0];
     const ctx = vm.createContext({});
     vm.runInContext(`${merge}\n${appearance}\nglobalThis.merge = mergeTagLists; globalThis.appearance = mergeAppearance;`, ctx);
@@ -36,4 +36,22 @@ test('library tags no longer drop the model-written clothing tags', () => {
     // NAI 5 人物标签栏同样合并。
     assert.equal(ctx.merge('1boy, black hair', '1boy, black and red robe'), '1boy, black hair, black and red robe');
     assert.match(src, /const tagOf = person => mergeTagLists\(person\.libraryTag, person\.modelTag\);/);
+});
+
+test('library hair and eye colour win over a different model-written colour', () => {
+    const src = readFileSync(new URL('../src/builtinImage.js', import.meta.url), 'utf8');
+    const merge = src.match(/const TAG_COLOR = [^]*?function mergeTagLists\([^]*?\r?\n}/)?.[0];
+    const ctx = vm.createContext({});
+    vm.runInContext(`${merge}\nglobalThis.merge = mergeTagLists;`, ctx);
+    // 发色、瞳色、长短：角色库写了，模型写的不同说法不要；衣着、发型、表情照留。
+    assert.equal(ctx.merge('1girl, silver hair, long hair, red eyes', '1girl, white hair, short hair, blue eyes, ponytail, school uniform, smile'),
+        '1girl, silver hair, long hair, red eyes, ponytail, school uniform, smile');
+    // 权重写法、下划线也认得出是同一类。
+    assert.equal(ctx.merge('black hair', '{white_hair}, 1.2::light blue eyes::, red scarf'), 'black hair, 1.2::light blue eyes::, red scarf');
+    // 角色库没写瞳色：模型写的瞳色留着。
+    assert.equal(ctx.merge('black hair', 'grey hair, green eyes'), 'black hair, green eyes');
+    // 角色库自己写的几种发色（挑染）都留着；挑染这种细节标签不算发色。
+    assert.equal(ctx.merge('black hair, white hair, two-tone hair', 'red inner hair, closed eyes'), 'black hair, white hair, two-tone hair, red inner hair, closed eyes');
+    // 没有角色库：模型写的全留。
+    assert.equal(ctx.merge('', 'white hair, blue eyes'), 'white hair, blue eyes');
 });

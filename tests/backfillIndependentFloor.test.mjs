@@ -10,11 +10,13 @@ const source = [/export function independentBackfillFloorToken\([^]*?\r?\n}/, /e
     .map(pattern => mountSource.match(pattern)?.[0]).join('\n');
 
 function fixture({ chat = 'A', settings = {}, mode = 'independent', eligible = true, body = true, savedBefore = false, savedAfter = true,
-    follow = false, generate = null, stop = null, switchChatDuringGenerate = false, rendered = true, abnormal = '', text = '这是一段足够长的正文' } = {}) {
+    follow = false, generate = null, stop = null, switchChatDuringGenerate = false, rendered = true, revealable = true, revealSwitchesChat = false, abnormal = '', text = '这是一段足够长的正文' } = {}) {
     assert.ok(source);
     const calls = [];
     let currentChat = chat;
     let saved = savedBefore;
+    let shown = rendered;
+    const reveals = [];
     const message = { is_user: false, mes: body ? text : '', send_date: 'd1' };
     const ctx = () => ({ key: currentChat, chat: [message] });
     const sandbox = {
@@ -33,7 +35,8 @@ function fixture({ chat = 'A', settings = {}, mode = 'independent', eligible = t
         passiveObservedIdentity: () => ({ slot: 's', sourceHash: 'h' }),
         automaticFailureStopFor: () => stop,
         isMissingShellStop: s => s?.code === 'missing-external-shell',
-        messageElement: () => (rendered ? {} : null),
+        messageElement: () => (shown ? {} : null),
+        revealBackfillFloor: async id => { reveals.push(id); if (revealSwitchesChat) currentChat = 'B'; if (revealable) shown = true; },
         mainReplyAbnormalReason: () => abnormal,
         generateFor: async (...args) => {
             calls.push(args);
@@ -44,7 +47,7 @@ function fixture({ chat = 'A', settings = {}, mode = 'independent', eligible = t
     };
     const context = vm.createContext(sandbox);
     vm.runInContext(source.replaceAll('export ', ''), context);
-    return { run: (index = 0, options = { chat: 'A' }) => context.backfillIndependentFloor(index, options), token: index => context.independentBackfillFloorToken(index), message, calls };
+    return { run: (index = 0, options = { chat: 'A' }) => context.backfillIndependentFloor(index, options), token: index => context.independentBackfillFloorToken(index), message, calls, reveals };
 }
 
 test('generates like the card retry: forced, fresh selection, no resay recipe, empty note', async () => {
@@ -107,10 +110,21 @@ test('nothing saved after generating → failed with that floor\'s own failure r
     assert.deepEqual({ ...(await thrown.run()) }, { status: 'failed', message: '网络断了' });
 });
 
-test('floors not loaded on the page, odd short replies and moved floors are skipped with a reason, no request', async () => {
-    const unloaded = fixture({ rendered: false });
-    const r1 = await unloaded.run();
-    assert.equal(r1.status, 'skipped'); assert.match(r1.message, /还没加载到页面上/);
+test('older floors not on the page are loaded first, then generated; if they cannot be loaded they are skipped', async () => {
+    const loads = fixture({ rendered: false });
+    assert.deepEqual({ ...(await loads.run()) }, { status: 'done' });
+    assert.deepEqual(loads.reveals, [0]); assert.equal(loads.calls.length, 1);
+    const onPage = fixture();
+    await onPage.run();
+    assert.deepEqual(onPage.reveals, [], 'floors already on the page are not reloaded');
+    const stuck = fixture({ rendered: false, revealable: false });
+    const r0 = await stuck.run();
+    assert.equal(r0.status, 'skipped'); assert.match(r0.message, /没能把这一层加载到页面上/); assert.equal(stuck.calls.length, 0);
+    const switched = fixture({ rendered: false, revealSwitchesChat: true });
+    assert.equal((await switched.run()).status, 'stopped'); assert.equal(switched.calls.length, 0);
+});
+
+test('odd short replies and moved floors are skipped with a reason, no request', async () => {
     const odd = fixture({ abnormal: 'too-short' });
     const r2 = await odd.run();
     assert.equal(r2.status, 'skipped'); assert.equal(r2.message, 'too-short，要补请单独点卡');
@@ -120,7 +134,7 @@ test('floors not loaded on the page, odd short replies and moved floors are skip
     moved.message.mes = '删楼后挪上来的另一条回复';
     const r3 = await moved.run(0, { chat: 'A', token });
     assert.equal(r3.status, 'skipped'); assert.match(r3.message, /楼层变了/);
-    for (const h of [unloaded, odd, moved]) assert.equal(h.calls.length, 0);
+    for (const h of [odd, moved]) assert.equal(h.calls.length, 0);
     // 身份没变：照常补。
     const same = fixture();
     assert.equal((await same.run(0, { chat: 'A', token: same.token(0) })).status, 'done');

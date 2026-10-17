@@ -70,17 +70,19 @@ await page.evaluate(() => { window.mode = { ok: true }; });
 await page.evaluate(() => { window.floors = []; });
 await press(B('start'));
 assert.match(await text(B('status')), /没有要补的/); checks++;
+// 只有还没加载到页面上的老楼层：照样排进来，补到时先加载。
 await page.evaluate(() => { window.floors = [{ index: 1, mounted: false }, { index: 2, mounted: false }]; });
 await press(B('start'));
-assert.match(await text(B('status')), /没有兔子镜的 2 层回复都还没加载到页面上/); checks++;
-assert.equal(await visible(B('confirm')), false); checks++;
+assert.equal(await visible(B('confirm')), true); checks++;
+assert.match(await text(B('confirm-text')), /要给 2 层回复.*其中 2 层是更早的回复，还没加载到页面上，补到时会先在聊天里把它们加载出来/); checks++;
+await press(B('cancel'));
 await page.evaluate(() => { window.floors = [{ index: 12, mounted: true }, { index: 4, mounted: true }, { index: 30, mounted: true }, { index: 1, mounted: false }]; });
 
 // 先问一句：几层、每层几面、花钱提醒。取消就什么都不发。
 await press(B('start'));
 assert.equal(await visible(B('confirm')), true); checks++;
-assert.match(await text(B('confirm-text')), /要给 3 层回复各生成一次兔子镜（每层 2 面）.*至少 3 次独立 API 请求/); checks++;
-assert.match(await text(B('confirm-text')), /另外还有 1 层更早的回复没加载到页面上/, 'unloaded floors are not queued, and the user is told'); checks++;
+assert.match(await text(B('confirm-text')), /要给 4 层回复各生成一次兔子镜（每层 2 面）.*至少 4 次独立 API 请求/); checks++;
+assert.match(await text(B('confirm-text')), /其中 1 层是更早的回复，还没加载到页面上，补到时会先在聊天里把它们加载出来/, 'unloaded floors are queued too, and the user is told'); checks++;
 assert.ok(await page.evaluate(() => window.listedReports) >= 1, 'scan also hangs the cards / refreshes the report'); checks++;
 await press(B('cancel'));
 assert.equal(await visible(B('confirm')), false); checks++;
@@ -98,11 +100,11 @@ await page.evaluate(() => { window.chat = 'chat-A'; });
 await press(B('start'));
 await press(B('go'));
 await page.waitForFunction(() => window.calls.length === 1);
-assert.deepEqual(await page.evaluate(() => window.calls), [[4, 'chat-A', 't4']]); checks++;
+assert.deepEqual(await page.evaluate(() => window.calls), [[1, 'chat-A', 't1']]); checks++;
 assert.equal(await visible(B('start')), false, 'start hidden while running'); checks++;
 assert.equal(await visible(B('pause')), true); checks++;
 assert.equal(await visible(B('stop')), true); checks++;
-assert.match(await text(B('status')), /正在补第 1\/3 层（#4）/); checks++;
+assert.match(await text(B('status')), /正在补第 1\/4 层（#1）/); checks++;
 
 // 设置界面重画（换了一份 DOM）：进度接着显示，按钮照样能用。
 await page.evaluate(async () => {
@@ -110,28 +112,28 @@ await page.evaluate(async () => {
     document.getElementById('host').innerHTML = template.buildRabbitMirrorSettingsDialogHtml();
     window.mount();
 });
-assert.match(await text(B('status')), /正在补第 1\/3 层（#4）/, 'progress survives a settings re-render'); checks++;
+assert.match(await text(B('status')), /正在补第 1\/4 层（#1）/, 'progress survives a settings re-render'); checks++;
 assert.equal(await visible(B('pause')), true); checks++;
 
 // 暂停：这一层照常收尾，下一层不发。
 await press(B('pause'));
 assert.equal(await visible(B('resume')), true); checks++;
 await page.evaluate(() => window.releases[0]({ status: 'done' }));
-await page.waitForFunction(() => /进度 1\/3/.test(document.querySelector('[data-rh-backfill="status"]').textContent));
+await page.waitForFunction(() => /进度 1\/4/.test(document.querySelector('[data-rh-backfill="status"]').textContent));
 await page.waitForTimeout(100);
 assert.equal(await page.evaluate(() => window.calls.length), 1, 'paused: next floor not sent'); checks++;
 
 // 继续：隔一会儿发下一层（这里是真的间隔，约 3 秒）。
 await press(B('resume'));
 await page.waitForFunction(() => window.calls.length === 2, null, { timeout: 8000 });
-assert.deepEqual(await page.evaluate(() => window.calls[1]), [12, 'chat-A', 't12']); checks++;
+assert.deepEqual(await page.evaluate(() => window.calls[1]), [4, 'chat-A', 't4']); checks++;
 
 // 停止：这一层收尾后不再发；显示结果和「清掉这次的记录」。
 await press(B('stop'));
 assert.match(await text(B('status')), /正在停下/); checks++;
 await page.evaluate(() => window.releases[1]({ status: 'failed', message: '429' }));
 await page.waitForFunction(() => /已停止/.test(document.querySelector('[data-rh-backfill="status"]').textContent));
-assert.match(await text(B('status')), /已停止：补了 2\/3 层，成功 1 层，没成 1 层：#12/); checks++;
+assert.match(await text(B('status')), /已停止：补了 2\/4 层，成功 1 层，没成 1 层：#4/); checks++;
 assert.equal(await page.evaluate(() => window.calls.length), 2); checks++;
 assert.equal(await visible(B('clear')), true); checks++;
 assert.equal(await visible(B('start')), true); checks++;

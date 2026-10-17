@@ -28,7 +28,8 @@ input{display:none}.panel{display:none}label{display:inline-block;padding:16px;m
 <nav><label for="second">选择二</label><label for="third">选择三</label><label for="first">重置</label></nav></details>`;
 let browser, checks = 0;
 try {
-    browser = await chromium.launch({ headless: true, channel: 'msedge' });
+    // 有 Edge 用 Edge，没装就用 Playwright 自带的 Chromium。
+    browser = await chromium.launch({ headless: true, channel: process.env.RM_BROWSER_CHANNEL || 'msedge' }).catch(() => chromium.launch({ headless: true }));
     for (const width of [375, 1280]) {
         const context = await browser.newContext({ viewport: { width, height: 900 }, isMobile: width < 500, hasTouch: width < 500 });
         const page = await context.newPage(), errors = [];
