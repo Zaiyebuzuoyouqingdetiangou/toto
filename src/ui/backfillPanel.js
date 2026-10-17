@@ -1,7 +1,7 @@
 // 设置 →「缺壳扫描」下面的「一键补上」：把扫描范围里没有兔子镜的回复排好队，一层一层生成。
 // 队列只有一份，挂在这个模块上；设置界面关掉、重画都不影响正在补的队伍，重新打开时接着显示进度。
 
-import { createBackfillQueue, describeBackfill } from '../backfillQueue.js?rmv=1.69.0';
+import { createBackfillQueue, describeBackfill } from '../backfillQueue.js?rmv=1.70.1';
 
 let queue = null;
 let deps = null;
@@ -55,6 +55,7 @@ function ensureQueue() {
     if (queue) return queue;
     queue = createBackfillQueue({
         run: floor => deps.run(floor),
+        prepare: (floor, opts) => deps.prepare(floor, opts),
         busy: () => deps.busy(),
         onChange: view => { render(view); toastFor(view); },
     });
@@ -65,6 +66,7 @@ function ensureQueue() {
  * 把按钮接到设置界面上。每次设置界面重画后调用一次即可。
  * options:
  *   list()     → { floors:[{index, mounted}], range } 现在扫描范围里没有兔子镜的楼层（mounted：已经加载到页面上）
+ *   prepare(floor, chat, { keepGoing }) → Promise 每层开头先把还没加载到页面上的那一层加载出来；keepGoing() 变假（暂停、停止）就别再加载
  *   generate(floor, chat, token) → Promise<{status,message}>
  *   floorToken(floor) → 这一层回复的身份
  *   busy()     → 酒馆或别的兔子镜请求正在跑
@@ -76,6 +78,7 @@ function ensureQueue() {
 export function mountBackfillControls(options) {
     deps = {
         run: floor => options.generate(floor, backfillChat, backfillTokens.get(floor) || ''),
+        prepare: (floor, opts) => options.prepare?.(floor, backfillChat, { ...opts, token: backfillTokens.get(floor) || '' }),
         busy: () => options.busy(),
     };
     const q = ensureQueue();
@@ -94,18 +97,16 @@ export function mountBackfillControls(options) {
         try { options.afterList?.(listed); } catch { /* 报告刷新失败不挡 */ }
         pendingChat = String(options.chatKey?.() || '');
         const all = (listed?.floors || []).filter(item => Number.isInteger(Number(item?.index ?? item)) && Number(item?.index ?? item) >= 0);
-        // 生成要读页面上显示的正文：还没加载到页面上的老楼层这次不排，告诉用户先往上翻加载出来。
+        // 还没加载到页面上的老楼层也排进来：补到那一层时先自动加载出来（和点「显示更多消息」一样）。
         const unloaded = all.filter(item => item && typeof item === 'object' && item.mounted === false).length;
-        pending = all.filter(item => !(item && typeof item === 'object' && item.mounted === false)).map(item => Number(item?.index ?? item));
+        pending = all.map(item => Number(item?.index ?? item));
         // 楼层身份在数的时候就记下：问完到点确定之间删了楼层，挪过来的那层也认得出来。
         pendingTokens = new Map(pending.map(floor => [floor, String(options.floorToken?.(floor) || '')]));
-        const unloadedNote = unloaded ? `另外还有 ${unloaded} 层更早的回复没加载到页面上，这次补不了：在聊天里往上翻、把它们加载出来后再点一次「一键补上」。` : '';
+        const unloadedNote = unloaded ? `其中 ${unloaded} 层是更早的回复，还没加载到页面上，补到时会先在聊天里把它们加载出来（楼层很多时，手机上可能会卡一会儿）。` : '';
         if (!pending.length) {
             parts.confirm.hidden = true;
             parts.status.hidden = false;
-            parts.status.textContent = unloaded
-                ? `扫描范围里没有兔子镜的 ${unloaded} 层回复都还没加载到页面上，补不了：在聊天里往上翻、把它们加载出来后再点一次。`
-                : '扫描范围里每一层都有兔子镜，没有要补的。想补更早的楼层，把「缺壳扫描范围」改成「全部助手回复」再点。';
+            parts.status.textContent = '扫描范围里每一层都有兔子镜，没有要补的。想补更早的楼层，把「缺壳扫描范围」改成「全部助手回复」再点。';
             return;
         }
         const faces = Math.max(1, Number(options.faceCount?.()) || 1);

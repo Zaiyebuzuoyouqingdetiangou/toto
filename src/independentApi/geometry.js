@@ -1,11 +1,11 @@
 // Split from independentApi.js — geometry.
-import { restoreRuntimeAnimationClone, ANIMATION_SUSPENDED_ATTR } from '../runtimeAnimationState.js?rmv=1.69.0';
+import { restoreRuntimeAnimationClone, ANIMATION_SUSPENDED_ATTR } from '../runtimeAnimationState.js?rmv=1.70.1';
 
-import { bindVisualHistoryTarget } from '../storage.js?rmv=1.69.0';
-import { presentationModeFields } from '../presentationMode.js?rmv=1.69.0';
-import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.69.0';
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorExternalPlacementParent } from '../hostCompatibility.js?rmv=1.69.0';
-import { getSettings } from '../settings.js?rmv=1.69.0';
+import { bindVisualHistoryTarget } from '../storage.js?rmv=1.70.1';
+import { presentationModeFields } from '../presentationMode.js?rmv=1.70.1';
+import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.70.1';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorExternalPlacementParent } from '../hostCompatibility.js?rmv=1.70.1';
+import { getSettings } from '../settings.js?rmv=1.70.1';
 import {
     cleanRabbitMirrorOutput,
     compactTotoBlock,
@@ -19,14 +19,14 @@ import {
     clearRabbitMirrorHorizontalClipArtifacts,
     sanitizeRabbitMirrorUntrustedTemplate,
     validateRabbitMirrorRecoveredStyleAssignments,
-} from '../outputSanitizer.js?rmv=1.69.0';
-import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.69.0';
-import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.69.0';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.69.0';
-import { repairDesignCandidateAttributeQuotes } from '../interactionSampling.js?rmv=1.69.0';
-import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.69.0';
-import { MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE, INDEPENDENT_HISTORY_READ_ERROR_MESSAGE } from './missingRetryShell.js?rmv=1.69.0';
-import { markSanitizedRabbitMirrorFace } from '../multifaceProof.js?rmv=1.69.0';
+} from '../outputSanitizer.js?rmv=1.70.1';
+import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.70.1';
+import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.70.1';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.70.1';
+import { repairDesignCandidateAttributeQuotes } from '../interactionSampling.js?rmv=1.70.1';
+import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.70.1';
+import { MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE, INDEPENDENT_HISTORY_READ_ERROR_MESSAGE } from './missingRetryShell.js?rmv=1.70.1';
+import { markSanitizedRabbitMirrorFace } from '../multifaceProof.js?rmv=1.70.1';
 import {
     EXTERNAL_SHELL_ATTR,
     FOLLOW_EXTERNAL_ANCHOR_ATTR,
@@ -41,8 +41,8 @@ import {
     getContext,
     hashText,
     independentMaintenanceLiveRepairLocked,
-} from './runtime.js?rmv=1.69.0';
-import { automaticDispatchAlreadyConsumed, automaticFailureStops, generationPolls, operationEpochForBase } from './flights.js?rmv=1.69.0';
+} from './runtime.js?rmv=1.70.1';
+import { automaticDispatchAlreadyConsumed, automaticFailureStops, generationPolls, operationEpochForBase } from './flights.js?rmv=1.70.1';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INTERACTION_STATE_MIGRATION_KEY,
@@ -51,7 +51,7 @@ import {
     persistedOwnerForMessage,
     readStore,
     writeStore,
-} from './persistence.js?rmv=1.69.0';
+} from './persistence.js?rmv=1.70.1';
 import {
     chatKey,
     copyIndependentOwnerLineage,
@@ -68,7 +68,7 @@ import {
     savedRecordMatchesObserved,
     slotSearchKeys,
     swipeId,
-} from './connection.js?rmv=1.69.0';
+} from './connection.js?rmv=1.70.1';
 import {
     EXTERNAL_GEOMETRY_SETTLE_STEPS_MS,
     allExternalHosts,
@@ -102,7 +102,7 @@ import {
     wrapIndependentFace,
     wrapPreparedIndependentFace,
     writeGeometryDataset,
-} from './request.js?rmv=1.69.0';
+} from './request.js?rmv=1.70.1';
 import {
     activeIndependentFlightForBase,
     automaticCutoverVersionToken,
@@ -126,20 +126,20 @@ import {
     serializeExternalFaceDetails,
     showMultifaceFace,
     stripIndependentTransientLayoutArtifacts,
-} from './mount.js?rmv=1.69.0';
+} from './mount.js?rmv=1.70.1';
 import {
     automaticHostGenerationRenderMatches,
     hasExistingFollowRabbitMirror,
     queueMessageSync,
     suppressesAutomaticGeneration,
-} from './earlyBody.js?rmv=1.69.0';
+} from './earlyBody.js?rmv=1.70.1';
 import {
     automaticGenerationCutovers,
     persistedInteractionMigrationHandle,
     persistedInteractionMigrationIdle,
     writePersistedInteractionMigrationHandle,
     writePersistedInteractionMigrationIdle,
-} from './lifecycle.js?rmv=1.69.0';
+} from './lifecycle.js?rmv=1.70.1';
 
 let externalGeometryFrame = 0;
 
@@ -587,6 +587,51 @@ export function externalHostsOwnedByMesid(mesid=''){
  });
 }
 
+// 没画好的兔子镜外壳（生成失败、旧镜面待恢复、正在生成……）的主人已经不在了，就拿掉：
+//   聊天里已经没有这一层（正文生成失败后酒馆把那条回复删了、删了楼层），
+//   或者这一层现在是另一条回复（重新生成后楼层号一样、内容不一样）。
+// 以前只看页面上还有没有这一层：TT 会短暂把楼层移出页面，失败卡为了不丢「重新生成」入口一直留着；
+// 可真删掉的回复留下的失败卡也就一直留着，下一条回复落在同一个楼层号时又被挂回来，失败几次就叠几张。
+// 现在看聊天记录：这条回复还在（只是暂时不在页面上）照旧留着；不在了才拿掉。画好的兔子镜不动（删楼层有自己的一套）。
+// 同一层只留一张没画好的卡（留和这条回复对得上的、最后挂上的那张）。
+export function pruneOrphanIndependentPlaceholderHosts(){
+ let ctx; try{ ctx=getContext(); }catch{ return 0; }
+ const chat=Array.isArray(ctx?.chat)?ctx.chat:null;
+ if(!chat) return 0;
+ let currentChat=''; try{ currentChat=chatKey(ctx); }catch{ return 0; }
+ if(!currentChat) return 0;
+ let removed=0;
+ const keptByOwner=new Map();
+ const hosts=[...(allExternalHosts()||[])].filter(host=>host?.dataset?.rmSource==='independent' && String(host.dataset.rmOwnerChat||'')===currentChat);
+ for(const host of hosts){
+  if(readyDetailsFromHost(host)) continue;
+  const ownerText=String(host.dataset.rmOwnerMesid ?? host.dataset.rmExternalOwnerMessage ?? '');
+  const owner=Number(ownerText);
+  if(!ownerText || !Number.isInteger(owner) || owner<0) continue;
+  const msg=chat[owner];
+  let gone=!msg || !isRabbitMirrorEligibleAssistantMessage(msg);
+  let current=false;
+  if(!gone){
+   const key=String(host.dataset.rmKey||'');
+   let liveKey=''; try{ liveKey=recordKey(ctx,owner,msg); }catch{ liveKey=''; }
+   current=!key || !liveKey || key===liveKey;
+   // 这一层现在是另一条回复：旧回复留下的没画好的卡不要了（新回复要卡会自己挂）。
+   if(!current && String(host.dataset.rmState||'')!=='loading') gone=true;
+  }
+  if(gone){ host.remove(); removed+=1; continue; }
+  const list=keptByOwner.get(owner)||[];
+  list.push({host,current});
+  keptByOwner.set(owner,list);
+ }
+ for(const list of keptByOwner.values()){
+  if(list.length<2) continue;
+  const matching=list.filter(item=>item.current);
+  const keep=(matching.length?matching:list).at(-1).host;
+  for(const {host} of list){ if(host!==keep){ host.remove(); removed+=1; } }
+ }
+ return removed;
+}
+
 export function markExternalHostsAwaitingOwner(mesid=''){
  const id=String(mesid||'');
  if(!id || messageElement(Number(id))) return;
@@ -603,6 +648,8 @@ export function markExternalHostsAwaitingOwner(mesid=''){
     queueMessageSync([Number(id)]);
     return;
    }
+   // 主人已经不在聊天里的没画好的卡先拿掉（见 pruneOrphanIndependentPlaceholderHosts）；下面留的只剩回复还在、暂时不在页面上的。
+   pruneOrphanIndependentPlaceholderHosts();
    for(const host of externalHostsOwnedByMesid(id)){
     // Error cards are the only retry surface after a crash. TT may briefly
     // detach the owner .mes; do not throw the card away during that gap.
@@ -2038,7 +2085,7 @@ export function renderExternalErrorBody(details,text=''){
   // second retry intent after the first click has entered loading or READY.
   const host=details.closest?.(`[${SOURCE_ATTR}="true"]`);
   if(retry.disabled || !retry.isConnected || !details.contains?.(retry) || host?.dataset?.rmState!=='error') return;
-  void import('../outputSanitizer/toolsChrome.js?rmv=1.69.0').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+  void import('../outputSanitizer/toolsChrome.js?rmv=1.70.1').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
  },true);
  recover.addEventListener('click',async event=>{
   event.preventDefault(); event.stopPropagation();

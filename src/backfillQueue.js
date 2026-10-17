@@ -7,6 +7,8 @@
 //   failed  生成失败（记下来，最后告诉用户哪几层没成）
 //   stopped 整个队列都该停了（比如换了聊天）
 // busy() 为真时（酒馆正在生成正文、或别的兔子镜请求还在跑）先等着，不插队。
+// prepare(floor) 在每层开头先跑（比如把还没加载到页面上的老楼层加载出来，可能要一阵子）；
+// 跑完以后才看暂停/停止、等酒馆空下来、再交给 run()，所以准备期间点了暂停，这一层不会发请求。
 
 export const BACKFILL_GAP_MS = 3000;
 export const BACKFILL_BUSY_POLL_MS = 1500;
@@ -17,6 +19,7 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 export function createBackfillQueue({
     run,
+    prepare = null,
     busy = () => false,
     onChange = () => {},
     gapMs = BACKFILL_GAP_MS,
@@ -30,13 +33,14 @@ export function createBackfillQueue({
     let loop = null;
 
     function blank() {
-        return { status: 'idle', floors: [], position: 0, current: null, done: [], skipped: [], failed: [], note: '', streak: 0, waiting: false, waitingSince: 0 };
+        return { status: 'idle', floors: [], position: 0, current: null, preparing: false, done: [], skipped: [], failed: [], note: '', streak: 0, waiting: false, waitingSince: 0 };
     }
     const snapshot = () => ({
         status: state.status,
         total: state.floors.length,
         position: state.position,
         current: state.current,
+        preparing: state.preparing,
         done: [...state.done],
         skipped: state.skipped.map(item => ({ ...item })),
         failed: state.failed.map(item => ({ ...item })),
@@ -60,15 +64,23 @@ export function createBackfillQueue({
             // 暂停时只等「继续 / 停止」叫醒，不靠计时器空转。
             while (state.status === 'paused') await new Promise(resolve => { wake = resolve; });
             if (stopping()) break;
-            if (!stopping() && state.status === 'running' && safeBusy()) {
-                state.waiting = true; state.waitingSince = now(); changed();
-                // 每轮都刷新一下界面：等太久时的提示（多少秒以后）要能显示出来。
-                while (!stopping() && state.status === 'running' && safeBusy()) { await pause(busyPollMs); changed(); }
-                state.waiting = false; changed();
-            }
+            const floor = state.floors[state.position];
+            // 酒馆正在生成时先等着（加载老楼层也不跟它抢）。
+            await waitWhileBusy();
             if (stopping()) break;
             if (state.status === 'paused') continue;
-            const floor = state.floors[state.position];
+            if (typeof prepare === 'function') {
+                state.current = floor; state.preparing = true; changed();
+                // 加载途中点了暂停、停止（或停用兔子镜）：keepGoing 变假，加载就停下。
+                try { await prepare(floor, { keepGoing: () => state.status === 'running' }); } catch { /* 准备不成，交给 run() 自己判断 */ }
+                state.preparing = false;
+                if (stopping()) break;
+                // 准备期间点了暂停：这一层还没发请求，继续时从这一层重新来。
+                if (state.status === 'paused') { state.current = null; changed(); continue; }
+                await waitWhileBusy();
+            }
+            if (stopping()) break;
+            if (state.status === 'paused') { state.current = null; changed(); continue; }
             state.current = floor;
             changed();
             let result;
@@ -97,6 +109,14 @@ export function createBackfillQueue({
     }
 
     function safeBusy() { try { return !!busy(); } catch { return false; } }
+
+    async function waitWhileBusy() {
+        if (state.status !== 'running' || !safeBusy()) return;
+        state.waiting = true; state.waitingSince = now(); changed();
+        // 每轮都刷新一下界面：等太久时的提示（多少秒以后）要能显示出来。
+        while (!stopping() && state.status === 'running' && safeBusy()) { await pause(busyPollMs); changed(); }
+        state.waiting = false; changed();
+    }
 
     return {
         start(floors) {
@@ -158,6 +178,7 @@ export function describeBackfill(view) {
                 const long = (s.waitedMs || 0) > 90_000 ? '\n已经等了一阵子。如果酒馆其实没在生成，可以点「停止」，刷新页面后再补。' : '';
                 return `酒馆正在生成，或者别的兔子镜还在生成，等它结束再接着补（已补 ${s.position}/${s.total} 层）。${tally()}。${long}`;
             }
+            if (s.preparing && s.current != null) return `正在把第 ${step}/${s.total} 层（${label(s.current)}）加载到页面上（更早的回复要先加载出来）……${tally()}。`;
             return s.current != null
                 ? `正在补第 ${step}/${s.total} 层（${label(s.current)}）……${tally()}。`
                 : `已补到 ${s.position}/${s.total} 层，稍等一下再发下一层……${tally()}。`;

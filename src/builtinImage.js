@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.69.0';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.69.0';
-import { findBuiltinImageKeyFromOtherChat, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.69.0';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.69.0';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.69.0';
-import { tidyImagePayload } from './imageTagTidy.js?rmv=1.69.0';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.69.0';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.69.0';
+import { getSettings } from './settings.js?rmv=1.70.1';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.70.1';
+import { findBuiltinImageKeyFromOtherChat, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.70.1';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.70.1';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.70.1';
+import { tidyImagePayload } from './imageTagTidy.js?rmv=1.70.1';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.70.1';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.70.1';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -99,15 +99,45 @@ function readCharacters(frame) {
     }).filter(person => person.name && (person.text.length >= 2 || person.modelTag));
 }
 
-// 逗号标签合并：前面的优先，大小写不同的同一标签只留一个。
+// 长相里不会因为这一幕变的几类：发色、瞳色、头发长短。
+// 第一串（角色库）写了这一类，后面（模型写的）同一类说法不同的就不要，免得 silver hair 和 white hair 一起交给生图、发色画乱。
+// 发型（马尾、披发）、衣着会随这一幕变，不算在里面；同一串里自己写的几种（比如挑染）都留着。
+const TAG_HUE = '(?:black|white|silver|grey|gray|blonde?|brown|red|pink|blue|green|purple|violet|orange|yellow|aqua|teal|cyan|magenta|lavender|golden|gold|crimson|amber|azure|platinum|beige|cream|ash|navy|rainbow)';
+// 「dark hair」「light blue eyes」「dark-blue hair」都算；multicolored、two-tone、渐变、挑染也是发色。
+// 两个颜色词连写的（platinum blonde、ash blonde、silver-white、pinkish white）也算。
+const TAG_COLOR = `(?:(?:(?:light|dark|pale|deep|bright)[-\\s]+)?${TAG_HUE}(?:ish)?(?:[-\\s]+${TAG_HUE})?|light|dark|pale|multicolou?red|two[-\\s]?tone|gradient|streaked)`;
+const TAG_TRAITS = [
+    ['hair-color', new RegExp(`^${TAG_COLOR}\\s+hair$`)],
+    ['eye-color', new RegExp(`^(?:${TAG_COLOR}\\s+eyes|heterochromia)$`)],
+    ['hair-length', /^(?:(?:very\s+)+|absurdly\s+)?(?:long|short|medium|shoulder[-\s]?length)\s+hair$/],
+];
+
+// 权重括号或 :: 没配对：这一段是跨逗号的权重组拆出来的半截，去掉它会让括号配不上，权重漏到后面所有标签上。这种不动。
+function unbalancedGroup(part) {
+    const count = (re) => (part.match(re) || []).length;
+    return count(/\{/g) !== count(/\}/g) || count(/\[/g) !== count(/\]/g) || count(/\(/g) !== count(/\)/g) || count(/::/g) % 2 === 1;
+}
+
+// loose：认角色库那一串写了哪几类时用。角色库自己的跨逗号权重组（{silver hair, long hair}）拆开的半截也算它写过；
+// 要去掉的（模型写的）才要求括号配对。
+function tagTrait(part, loose = false) {
+    if (!loose && unbalancedGroup(part)) return '';
+    // 去掉权重写法再认：{silver hair}、[silver hair]、(silver hair:1.2)、1.2::silver hair::
+    const bare = part.toLowerCase().replace(/^-?\d+(?:\.\d+)?::|::$/g, '').replace(/[{}[\]()]/g, '').replace(/:\s*-?\d+(?:\.\d+)?$/, '').replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+    return TAG_TRAITS.find(([, re]) => re.test(bare))?.[0] || '';
+}
+
+// 逗号标签合并：前面的优先，大小写不同的同一标签只留一个；第一串写过的长相类，后面的同类不要。
 function mergeTagLists(...lists) {
     const seen = new Set();
-    return lists.flatMap(list => String(list || '').split(',')).map(part => part.trim()).filter(part => {
+    const claimed = new Set(String(lists[0] || '').split(',').map(part => tagTrait(part.trim(), true)).filter(Boolean));
+    return lists.flatMap((list, index) => String(list || '').split(',').map(part => [part.trim(), index])).filter(([part, index]) => {
         const key = part.toLowerCase();
         if (!part || seen.has(key)) return false;
+        if (index > 0 && claimed.has(tagTrait(part))) return false;
         seen.add(key);
         return true;
-    }).join(', ');
+    }).map(([part]) => part).join(', ');
 }
 
 function storageKey(root, frame, prompt) {
