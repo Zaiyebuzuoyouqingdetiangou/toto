@@ -116,9 +116,20 @@ export function setBehaviorNodeVisible(node, active) {
     return before !== String(Boolean(active));
 }
 
+// 模型把内容写在驱动容器外面（转盘在上、各格的说明在下面另一个框里），data-rm-show 不归任何容器管，永远不动。
+// 这一面里只有一个驱动容器时，外面这些无主的内容归它管。
+function orphanShows(group) {
+    const face = group.closest?.('[data-rabbit-mirror-css-scope]') || group.closest?.('details');
+    if (!face || face === group || group.parentElement?.closest?.('[data-rm-ui]')) return [];
+    const groups = [...face.querySelectorAll('[data-rm-ui]')].filter(node => !node.parentElement?.closest?.('[data-rm-ui]'));
+    if (groups.length !== 1 || groups[0] !== group) return [];
+    return [...face.querySelectorAll('[data-rm-show]')].filter(node => !showOwner(node) && !node.matches('[data-rm-ui]') && node.style);
+}
+
 export function ownBehaviorShows(group) {
     if (!group?.querySelectorAll) return [];
-    return [...group.querySelectorAll('[data-rm-show]')].filter(node => showOwner(node) === group && node.style);
+    const own = [...group.querySelectorAll('[data-rm-show]')].filter(node => showOwner(node) === group && node.style);
+    return own.concat(orphanShows(group));
 }
 
 // 交还给模型自己的 CSS 管的显示节点：撤掉驱动加的隐藏（恢复原 display、去掉 hidden），以后不再管它。
