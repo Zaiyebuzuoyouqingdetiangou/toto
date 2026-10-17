@@ -25,6 +25,22 @@ const origin = `http://127.0.0.1:${server.address().port}`;
 
 // —— 样本（结构照原面，文字占位）——
 const SAMPLES = {
+    // 冥婚岁甲封囊（1.70.1 实测）：铜筒整块是开关，开关名写成了选择器 .rk-seal-trigger，CSS 却按 [data-rm-on~="unsealed"] 打开托盘；
+    // 托盘里三个查看按钮各自是开关、名字留空，却在显示条件里写 !item1…，CSS 按外层 [data-rm-on~="item1"] 显示对应详情。
+    cssStateWord: `<details open><summary>开关名和模型 CSS 对不上</summary>
+        <style>.tray{max-height:0;opacity:0;overflow:hidden}
+        [data-rm-on~="unsealed"] .tray{max-height:650px;opacity:1}
+        [data-rm-on~="unsealed"] .seal-status::after{content:"已破"}
+        .inspect{display:none}
+        [data-rm-on~="item1"] .item1-detail{display:block}
+        [data-rm-on~="item2"] .item2-detail{display:block}</style>
+        <div class="cap"><div class="brass" data-rm-ui="toggle" data-rm-toggle=".rk-seal-trigger" role="button" tabindex="0">
+          <div class="seal rk-seal-trigger seal-status">按破封印</div>
+          <div class="tray">
+            <div class="row"><button type="button" class="tab" data-rm-ui="toggle" data-rm-toggle="" data-rm-show="!item1">看一</button><button type="button" class="tab" data-rm-ui="toggle" data-rm-toggle="" data-rm-show="!item2">看二</button></div>
+            <div class="inspect item1-detail">详情一</div><div class="inspect item2-detail">详情二</div>
+          </div>
+        </div></div></details>`,
     // 赛马直播盘：动画区域只包住跑道，播放钮和滑杆写在下面一排；马只靠 --pos 摆位置，没有动画。
     motionOutside: `<details open><summary>动画区域外的控件</summary>
         <style>.track{position:relative;height:60px}.runner{position:absolute;left:calc(10% + var(--pos,0%));transition:left .4s}</style>
@@ -120,6 +136,28 @@ try {
         .map(node => node.getAttribute('data-rm-show')));
     const report = () => page.evaluate(() => dialect.inspectBehaviorDialect(document.querySelector('details')));
     const pos = () => page.evaluate(() => [...document.querySelectorAll('[data-rm-part]')].map(node => parseFloat(node.style.getPropertyValue('--pos'))));
+
+    // 0. 开关写的状态名和模型自己的 CSS 对不上（css-state-word）
+    await mount(SAMPLES.cssStateWord);
+    const opened = () => page.evaluate(() => getComputedStyle(document.querySelector('.tray')).opacity === '1');
+    const detail = n => page.evaluate(n => getComputedStyle(document.querySelector(`.item${n}-detail`)).display !== 'none', n);
+    assert.equal(await opened(), false); checks++;
+    await page.click('.seal');
+    assert.equal(await opened(), true, 'the seal opens the tray via the CSS word unsealed'); checks++;
+    await page.click('.tab >> nth=0');
+    assert.equal(await detail(1), true, 'tab 1 shows its detail via item1 on the shared container'); checks++;
+    assert.equal(await detail(2), false); checks++;
+    assert.equal(await opened(), true, 'tapping a tab inside does not close the tray'); checks++;
+    await page.click('.tab >> nth=1');
+    assert.equal(await detail(2), true); checks++;
+    await page.click('.tab >> nth=0');
+    assert.equal(await detail(1), false, 'tap again hides it'); checks++;
+    assert.equal(await page.evaluate(() => [...document.querySelectorAll('.tab')].every(node => getComputedStyle(node).display !== 'none')), true, 'the tab buttons stay visible'); checks++;
+    const cssReport = await report();
+    assert.deepEqual(cssReport.unmatched, [], 'no longer reported as unmatched'); checks++;
+    assert.ok(cssReport.dialects.includes('css-state-word')); checks++;
+    await page.click('.seal');
+    assert.equal(await opened(), false, 'tap the seal again closes the tray'); checks++;
 
     // 1. 动画区域外的播放钮、滑杆
     await mount(SAMPLES.motionOutside);
