@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
 const mountSource = readFileSync(new URL('../src/independentApi/mount.js', import.meta.url), 'utf8');
-const source = [/export function independentBackfillFloorToken\([^]*?\r?\n}/, /export async function backfillIndependentFloor\([^]*?\r?\n}/]
+const source = [/export function independentBackfillFloorToken\([^]*?\r?\n}/, /export async function prepareIndependentBackfillFloor\([^]*?\r?\n}/, /export async function backfillIndependentFloor\([^]*?\r?\n}/]
     .map(pattern => mountSource.match(pattern)?.[0]).join('\n');
 
 function fixture({ chat = 'A', settings = {}, mode = 'independent', eligible = true, body = true, savedBefore = false, savedAfter = true,
@@ -36,7 +36,7 @@ function fixture({ chat = 'A', settings = {}, mode = 'independent', eligible = t
         automaticFailureStopFor: () => stop,
         isMissingShellStop: s => s?.code === 'missing-external-shell',
         messageElement: () => (shown ? {} : null),
-        revealBackfillFloor: async id => { reveals.push(id); if (revealSwitchesChat) currentChat = 'B'; if (revealable) shown = true; },
+
         mainReplyAbnormalReason: () => abnormal,
         generateFor: async (...args) => {
             calls.push(args);
@@ -46,8 +46,17 @@ function fixture({ chat = 'A', settings = {}, mode = 'independent', eligible = t
         },
     };
     const context = vm.createContext(sandbox);
-    vm.runInContext(source.replaceAll('export ', ''), context);
-    return { run: (index = 0, options = { chat: 'A' }) => context.backfillIndependentFloor(index, options), token: index => context.independentBackfillFloorToken(index), message, calls, reveals };
+    // 准备那一步动态加载快拍模块的「加载更早的楼层」：测试里换成假的，记下调用。
+    const runnable = source.replaceAll('export ', '').replace(/const snapshot=await import\([^)]*\);/, 'const snapshot=globalThis.snapshot;');
+    context.snapshot = { revealChatFloor: async (id, { keepGoing } = {}) => {
+        reveals.push(id);
+        if (revealSwitchesChat) currentChat = 'B';
+        if (keepGoing && !keepGoing()) return null;
+        if (revealable) shown = true;
+        return shown ? {} : null;
+    } };
+    vm.runInContext(runnable, context);
+    return { run: (index = 0, options = { chat: 'A' }) => context.backfillIndependentFloor(index, options), prepare: (index = 0, options = { chat: 'A' }) => context.prepareIndependentBackfillFloor(index, options), token: index => context.independentBackfillFloorToken(index), message, calls, reveals };
 }
 
 test('generates like the card retry: forced, fresh selection, no resay recipe, empty note', async () => {
@@ -110,17 +119,24 @@ test('nothing saved after generating → failed with that floor\'s own failure r
     assert.deepEqual({ ...(await thrown.run()) }, { status: 'failed', message: '网络断了' });
 });
 
-test('older floors not on the page are loaded first, then generated; if they cannot be loaded they are skipped', async () => {
+test('prepare loads an older floor onto the page; generating still skips a floor that could not be loaded', async () => {
     const loads = fixture({ rendered: false });
+    await loads.prepare();
+    assert.deepEqual(loads.reveals, [0]);
     assert.deepEqual({ ...(await loads.run()) }, { status: 'done' });
-    assert.deepEqual(loads.reveals, [0]); assert.equal(loads.calls.length, 1);
     const onPage = fixture();
-    await onPage.run();
+    await onPage.prepare();
     assert.deepEqual(onPage.reveals, [], 'floors already on the page are not reloaded');
+    const otherChat = fixture({ rendered: false });
+    await otherChat.prepare(0, { chat: 'B' });
+    assert.deepEqual(otherChat.reveals, [], 'nothing is loaded in a different chat');
     const stuck = fixture({ rendered: false, revealable: false });
+    await stuck.prepare();
     const r0 = await stuck.run();
     assert.equal(r0.status, 'skipped'); assert.match(r0.message, /没能把这一层加载到页面上/); assert.equal(stuck.calls.length, 0);
+    // 加载途中换了聊天：不再往上加载；生成那一步发现换了聊天，整队停，不发请求。
     const switched = fixture({ rendered: false, revealSwitchesChat: true });
+    await switched.prepare();
     assert.equal((await switched.run()).status, 'stopped'); assert.equal(switched.calls.length, 0);
 });
 

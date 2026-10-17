@@ -26,7 +26,7 @@ test('person lines ask for clothing in both prompt formats', () => {
 
 test('library tags no longer drop the model-written clothing tags', () => {
     const src = readFileSync(new URL('../src/builtinImage.js', import.meta.url), 'utf8');
-    const merge = src.match(/const TAG_COLOR = [^]*?function mergeTagLists\([^]*?\r?\n}/)?.[0];
+    const merge = src.match(/const TAG_HUE = [^]*?function mergeTagLists\([^]*?\r?\n}/)?.[0];
     const appearance = src.match(/function mergeAppearance\([^]*?\r?\n}/)?.[0];
     const ctx = vm.createContext({});
     vm.runInContext(`${merge}\n${appearance}\nglobalThis.merge = mergeTagLists; globalThis.appearance = mergeAppearance;`, ctx);
@@ -40,7 +40,7 @@ test('library tags no longer drop the model-written clothing tags', () => {
 
 test('library hair and eye colour win over a different model-written colour', () => {
     const src = readFileSync(new URL('../src/builtinImage.js', import.meta.url), 'utf8');
-    const merge = src.match(/const TAG_COLOR = [^]*?function mergeTagLists\([^]*?\r?\n}/)?.[0];
+    const merge = src.match(/const TAG_HUE = [^]*?function mergeTagLists\([^]*?\r?\n}/)?.[0];
     const ctx = vm.createContext({});
     vm.runInContext(`${merge}\nglobalThis.merge = mergeTagLists;`, ctx);
     // 发色、瞳色、长短：角色库写了，模型写的不同说法不要；衣着、发型、表情照留。
@@ -52,6 +52,11 @@ test('library hair and eye colour win over a different model-written colour', ()
     assert.equal(ctx.merge('black hair', 'grey hair, green eyes'), 'black hair, green eyes');
     // 角色库自己写的几种发色（挑染）都留着；挑染这种细节标签不算发色。
     assert.equal(ctx.merge('black hair, white hair, two-tone hair', 'red inner hair, closed eyes'), 'black hair, white hair, two-tone hair, red inner hair, closed eyes');
+    // 复查补的：dark hair、连字符、多色、渐变、肩长也认得出。
+    assert.equal(ctx.merge('black hair, long hair', 'dark hair, dark-blue hair, multicolored hair, gradient hair, shoulder-length hair, very very long hair, red hair ribbon'), 'black hair, long hair, red hair ribbon');
+    assert.equal(ctx.merge('red eyes', 'dark eyes, light-blue eyes, closed eyes, glowing eyes, blue eyeshadow, hair over eyes'), 'red eyes, closed eyes, glowing eyes, blue eyeshadow, hair over eyes');
+    // 跨逗号的权重组：拆出来的半截不去掉，免得括号配不上。
+    assert.equal(ctx.merge('silver hair', '{white hair, long dress}, 1.2::white hair, smile::'), 'silver hair, {white hair, long dress}, 1.2::white hair, smile::');
     // 没有角色库：模型写的全留。
     assert.equal(ctx.merge('', 'white hair, blue eyes'), 'white hair, blue eyes');
 });

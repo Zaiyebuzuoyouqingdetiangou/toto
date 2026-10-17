@@ -40,6 +40,7 @@ await page.evaluate(async () => {
     window.mount = () => window.panel.mountBackfillControls({
         list: () => ({ floors: window.floors, text: `还没有兔子镜：${window.floors.map(f => '#' + f.index).join('、')}` }),
         afterList: () => { window.listedReports++; },
+        prepare: (floor, chat) => { (window.prepared ||= []).push([floor, chat]); },
         generate: (floor, chat, token) => new Promise(resolve => { window.calls.push([floor, chat, token]); window.releases.push(resolve); }),
         floorToken: floor => `t${floor}`,
         busy: () => false,
@@ -101,6 +102,7 @@ await press(B('start'));
 await press(B('go'));
 await page.waitForFunction(() => window.calls.length === 1);
 assert.deepEqual(await page.evaluate(() => window.calls), [[1, 'chat-A', 't1']]); checks++;
+assert.deepEqual(await page.evaluate(() => window.prepared), [[1, 'chat-A']], 'each floor is loaded onto the page first, in the chat it started in'); checks++;
 assert.equal(await visible(B('start')), false, 'start hidden while running'); checks++;
 assert.equal(await visible(B('pause')), true); checks++;
 assert.equal(await visible(B('stop')), true); checks++;

@@ -3274,9 +3274,15 @@ export function independentBackfillFloorToken(index){
 // 只是不用一层层打开重说面板。
 // 生成要读页面上显示的正文：还没加载到页面上的老楼层读不到，跳过并说明（往上翻加载出来再补）。
 // chat：开始补的时候那个聊天；换了聊天就整队停下，不往别的聊天里补。token：开始时记下的这一层身份。
-// 一键补楼层：把还没加载到页面上的那一层加载出来（和点「显示更多消息」一样，快拍跳楼层用的也是它）。
-async function revealBackfillFloor(id){
- try{ const snapshot=await import('../theaterSnapshot.js?rmv=1.69.0'); await snapshot.revealChatFloor(id); }catch{}
+// 一键补楼层每层开头：把还没加载到页面上的那一层加载出来（和点「显示更多消息」一样，快拍跳楼层用的也是它）。
+// 正文和前文都按页面上显示的读（正则替换、隐藏标签、美化都算数），所以要它真的显示出来，不拿聊天记录里的原文顶替。
+// 加载可能要一阵子：队列等它加载完，再看暂停／停止、等酒馆空下来，最后才交给 backfillIndependentFloor（那里所有检查都重新做一遍）。
+export async function prepareIndependentBackfillFloor(index,{chat=''}={}){
+ const id=Number(index);
+ if(!Number.isInteger(id) || messageElement(id)) return;
+ const sameChat=()=>!chat || chatKey(getContext())===chat;
+ if(!sameChat()) return;
+ try{ const snapshot=await import('../theaterSnapshot.js?rmv=1.69.0'); await snapshot.revealChatFloor(id,{keepGoing:sameChat}); }catch{}
 }
 
 export async function backfillIndependentFloor(index,{chat='',token=''}={}){
@@ -3293,14 +3299,7 @@ export async function backfillIndependentFloor(index,{chat='',token=''}={}){
  // 正文太短、像是出错的回复（安全阀会拦下的那种）：一键补的时候不替用户做主，要补就单独点卡。
  // 原因照实写出来：缺兔子镜的楼层常常就是当初被安全阀拦下的，被误判时用户要看得出是哪一条。
  try{ const odd=mainReplyAbnormalReason(msg); if(odd) return {status:'skipped',message:`${String(odd).slice(0,80)}，要补请单独点卡`}; }catch{}
- if(!messageElement(id)){
-  // 更早的回复还没加载到页面上：先像点「显示更多消息」那样加载出来。
-  // 正文和前文都按页面上显示的读（正则替换、隐藏标签、美化都算数），所以要它真的显示出来，不拿聊天记录里的原文顶替。
-  await revealBackfillFloor(id);
-  if(chat && chatKey(getContext())!==chat) return {status:'stopped',message:'聊天已经换了'};
-  if(getContext().chat?.[id]!==msg) return {status:'skipped',message:'楼层变了（中途删过或改过楼层）'};
-  if(!messageElement(id)) return {status:'skipped',message:'没能把这一层加载到页面上（在聊天里往上翻把它加载出来再补）'};
- }
+ if(!messageElement(id)) return {status:'skipped',message:'没能把这一层加载到页面上（在聊天里往上翻把它加载出来再补）'};
  const has=()=>{
   const live=getContext(); const m=live.chat?.[id];
   if(!m) return false;

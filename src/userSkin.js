@@ -77,11 +77,12 @@ async function uploadSkinFile(value) {
     if (!response.ok) throw new Error(`美化存进酒馆失败（${response.status}）。`);
 }
 
-/** 读酒馆里存的那份美化；没有返回 null。 */
+/** 读酒馆里存的那份美化；确定没有返回 null，读失败（网络、服务器出错）抛错。 */
 export async function readUserSkinFile() {
-    if (typeof globalThis.fetch !== 'function') return null;
+    if (typeof globalThis.fetch !== 'function') throw new Error('当前环境不能读酒馆文件。');
     const response = await globalThis.fetch(`/user/files/${USER_SKIN_FILE_NAME}?t=${Date.now()}`, { cache: 'no-store', credentials: 'same-origin' });
-    if (!response.ok) return null;
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error(`读酒馆里的美化失败（${response.status}）。`);
     const text = await response.text();
     // 有的宿主对不存在的文件返回首页 HTML：不是 JSON 就当没有。
     if (!/^\s*\{/.test(text)) return null;
@@ -90,28 +91,54 @@ export async function readUserSkinFile() {
     return data?.format === USER_SKIN_FILE_FORMAT ? normalizeSkin(data) : null;
 }
 
+// 同步规则（几台设备共用酒馆里那一份）：
+// 本机记下「上次和酒馆对上的是哪一版」（synced）和「有没有还没传上去的改动」（dirty）。
+//   本机有没传上去的改动 → 传上去（最后保存的那台设备说了算）。
+//   本机没改过、酒馆里那份已经换了（别的设备存了新的）→ 拿酒馆那份换上。
+//   1.70 以前留下的本机美化（没有这两个记号）→ 只记下现在酒馆是哪一版，两边都不覆盖。
+// 只是打开页面不会把本机的旧美化传上去盖掉别的设备存的。
 let backupTimer = 0;
 let backupChain = null;
 let backupValue = null;
 let scheduledFingerprint = '';
 // 本机存不下（隐私模式）时，从文件找回的这份留在这里，这次打开页面照样用。
 let restoredValue = null;
+// 这次打开页面后用户自己存过：从酒馆找回来的旧版本不能再盖掉它（隐私模式下本机存不下时也算数）。
+let savedSinceLoad = false;
+// 本机是空的、酒馆里有一份、还没读回来（或读失败了）：这时存一份空美化不往酒馆传，免得把酒馆那份清掉。
+let restorePending = false;
+
+function readLocalRecord() {
+    try { const value = JSON.parse(globalThis.localStorage?.getItem(USER_SKIN_STORAGE_KEY) || 'null'); return value && typeof value === 'object' ? value : null; } catch { return null; }
+}
+function writeLocalRecord(value, meta) {
+    try { globalThis.localStorage.setItem(USER_SKIN_STORAGE_KEY, JSON.stringify({ ...normalizeSkin(value), ...meta })); return true; } catch { return false; }
+}
 
 function writeServerCopy(value) {
-    // 存不进文件：老办法，不太大的整份放进设置里，太大的只记一声。
+    // 存不进文件：老办法，不太大的整份放进设置里。太大的放不下：以前已经存成文件的，记号留着（还能从那份旧文件找回），不然只记一声。
+    const server = serverCopy();
+    if (value.css.length > SERVER_COPY_MAX && server?.file) return;
     try { updateSettings({ userSkin: value.css.length <= SERVER_COPY_MAX ? value : { ...value, css: '', tooLarge: true } }); } catch { /* 下次再说 */ }
 }
 
 async function runBackup() {
-    const current = backupValue;
+    const job = backupValue;
     backupValue = null;
-    if (!current) return;
+    if (!job) return;
+    const { value, fromServer } = job;
+    const fingerprint = userSkinFingerprint(value);
     try {
-        await uploadSkinFile(current);
-        updateSettings({ userSkin: { file: USER_SKIN_FILE_NAME, fingerprint: userSkinFingerprint(current), enabled: current.enabled, name: current.name, length: current.css.length, savedAt: Date.now() } });
+        await uploadSkinFile(value);
+        updateSettings({ userSkin: { file: USER_SKIN_FILE_NAME, fingerprint, enabled: value.enabled, name: value.name, length: value.css.length, savedAt: Date.now() } });
+        // 本机这份就是刚传上去的（中途没再改）：记下已经对上了。
+        const local = readLocalRecord();
+        if (local && userSkinFingerprint(normalizeSkin(local)) === fingerprint) writeLocalRecord(local, { dirty: false, synced: fingerprint });
+        else if (local && fromServer && !('synced' in local)) writeLocalRecord(local, { dirty: !!local.dirty, synced: fingerprint });
     } catch (error) {
-        writeServerCopy(current);
-        console.warn('[RabbitMirror] 美化没能存成酒馆文件，改存在设置里', error);
+        // 挪旧备份时传不上：设置里那份原样留着，下次再挪。
+        if (!fromServer) writeServerCopy(value);
+        console.warn('[RabbitMirror] 美化没能存成酒馆文件', error);
     }
 }
 
@@ -123,9 +150,10 @@ function startBackup() {
 }
 
 /** 稍等一会儿把美化存进酒馆文件（打字时不会每停一下就传一次）；存好后设置里只留记号。 */
-function scheduleUserSkinBackup(value) {
-    backupValue = normalizeSkin(value);
-    scheduledFingerprint = userSkinFingerprint(backupValue);
+function scheduleUserSkinBackup(value, { fromServer = false } = {}) {
+    const normalized = normalizeSkin(value);
+    backupValue = { value: normalized, fromServer };
+    scheduledFingerprint = userSkinFingerprint(normalized);
     if (backupTimer) globalThis.clearTimeout(backupTimer);
     backupTimer = globalThis.setTimeout(() => { backupTimer = 0; startBackup(); }, FILE_SAVE_DELAY_MS);
 }
@@ -134,54 +162,77 @@ function scheduleUserSkinBackup(value) {
 export async function flushUserSkinBackup() {
     if (backupTimer) { globalThis.clearTimeout(backupTimer); backupTimer = 0; startBackup(); }
     while (backupChain) await backupChain;
-}
-
-// 本机这份和酒馆里记的不是同一版（关掉页面前没来得及存、老版本只存在本机或整份放在设置里）：补存一次。
-function backupIfStale(value) {
-    const server = serverCopy();
-    if (!value.css && !server) return;
-    const fingerprint = userSkinFingerprint(value);
-    const serverFingerprint = server?.file ? server.fingerprint : '';
-    if (fingerprint === serverFingerprint || fingerprint === scheduledFingerprint) return;
-    scheduleUserSkinBackup(value);
+    if (restoring) await restoring;
 }
 
 let restoring = null;
-function restoreFromFile(doc) {
+// 把酒馆里那份读回来换上。expected：设置里记的那一版的指纹，读到的对不上就不换（文件还没传完或是旧的）。
+function restoreFromFile(doc, expected = '') {
     if (restoring) return restoring;
+    const before = readLocalRecord();
+    const beforeFingerprint = before ? userSkinFingerprint(normalizeSkin(before)) : '';
     restoring = readUserSkinFile().then(value => {
+        restorePending = false;
         if (!value) return null;
-        // 读文件的这一会儿用户已经写了新的：不盖掉。
-        try { if (globalThis.localStorage?.getItem(USER_SKIN_STORAGE_KEY)) return null; } catch { /* 读不了就照常补 */ }
-        try { globalThis.localStorage?.setItem(USER_SKIN_STORAGE_KEY, JSON.stringify(value)); } catch { /* 补不回也照样能用 */ }
+        const fingerprint = userSkinFingerprint(value);
+        if (expected && fingerprint !== expected) return null;
+        // 读文件的这一会儿用户已经存了新的：不盖掉。
+        if (savedSinceLoad) return null;
+        const now = readLocalRecord();
+        if (now?.dirty || (now ? userSkinFingerprint(normalizeSkin(now)) : '') !== beforeFingerprint) return null;
+        writeLocalRecord(value, { dirty: false, synced: fingerprint });
         restoredValue = value;
         applyUserSkin(doc, value);
         try { globalThis.dispatchEvent?.(new CustomEvent('rabbitmirror:user-skin-restored', { detail: value })); } catch { /* 只是通知设置界面 */ }
         return value;
-    }).catch(() => null);
+    }, () => {
+        // 读失败（网络、服务器出错）：这次不换，下次打开设置或刷新页面再试；期间存空美化照样不往酒馆传。
+        restoring = null;
+        return null;
+    });
     return restoring;
 }
 
 export function readUserSkin() {
-    let local = null;
-    try { local = JSON.parse(globalThis.localStorage?.getItem(USER_SKIN_STORAGE_KEY) || 'null'); } catch { local = null; }
-    if (local && typeof local === 'object') {
+    const local = readLocalRecord();
+    const remote = serverCopy();
+    if (local) {
         const value = normalizeSkin(local);
-        backupIfStale(value);
+        const fingerprint = userSkinFingerprint(value);
+        if (local.dirty) {
+            // 上次改了还没传上去（关得太快、传失败）：补传。
+            if (fingerprint !== scheduledFingerprint) scheduleUserSkinBackup(value);
+        } else if (!('synced' in local)) {
+            // 1.70 以前留下的：记下现在酒馆是哪一版，两边都不覆盖。旧备份（整份在设置里）挪进文件；酒馆里什么都没有就传本机这份。
+            if (remote?.file) writeLocalRecord(local, { dirty: false, synced: String(remote.fingerprint || '') });
+            else if (typeof remote?.css === 'string' && remote.css) {
+                const old = normalizeSkin(remote);
+                if (userSkinFingerprint(old) !== scheduledFingerprint) scheduleUserSkinBackup(old, { fromServer: true });
+            } else if (value.css && fingerprint !== scheduledFingerprint) {
+                writeLocalRecord(local, { dirty: true });
+                scheduleUserSkinBackup(value);
+            }
+        } else if (remote?.file && remote.fingerprint && remote.fingerprint !== local.synced) {
+            // 别的设备存了新的：拿过来换上（读回来之前先照本机的显示）。
+            void restoreFromFile(globalThis.document, String(remote.fingerprint));
+        }
         return value;
     }
     if (restoredValue) return restoredValue;
-    const remote = serverCopy();
     if (!remote) return normalizeSkin(null);
-    // 1.68.94～1.69.0 的旧备份：整份 CSS 在设置里。找回、补回本机，再挪进文件。
+    // 旧备份（整份 CSS 在设置里），或存文件失败时退回的那份：找回、补回本机，没有文件的再挪进文件。
     if (typeof remote.css === 'string' && remote.css) {
         const value = normalizeSkin(remote);
-        try { globalThis.localStorage?.setItem(USER_SKIN_STORAGE_KEY, JSON.stringify(value)); } catch { /* 补不回也照样能用 */ }
-        backupIfStale(value);
+        const fingerprint = userSkinFingerprint(value);
+        writeLocalRecord(value, { dirty: false, synced: fingerprint });
+        if (!remote.file && fingerprint !== scheduledFingerprint) scheduleUserSkinBackup(value, { fromServer: true });
         return value;
     }
     // 现在的备份在酒馆文件里：读文件要等一会儿，读到了再换上（开页那一下先不显示美化）。
-    if (remote.file) void restoreFromFile(globalThis.document);
+    if (remote.file) {
+        restorePending = true;
+        void restoreFromFile(globalThis.document, String(remote.fingerprint || ''));
+    }
     return normalizeSkin(null);
 }
 
@@ -189,12 +240,18 @@ export function readUserSkin() {
 export function saveUserSkin(skin) {
     const value = { enabled: skin?.enabled === true, css: String(skin?.css || '').slice(0, MAX_CHARS), name: String(skin?.name || '').slice(0, 80) };
     applyUserSkin(globalThis.document, value);
+    // 酒馆里那份还没读回来（或读失败了），而这次存的是空的：多半是用户以为美化丢了在点开关、点清空。
+    // 只在这个页面上生效，不存、不往酒馆传，免得把酒馆里那份清掉；读回来后照样换上。
+    if (restorePending && !value.css.trim()) return true;
+    savedSinceLoad = true;
+    restorePending = false;
     restoredValue = null;
-    let local = false;
-    try { globalThis.localStorage.setItem(USER_SKIN_STORAGE_KEY, JSON.stringify(value)); local = true; } catch { local = false; }
+    const before = readLocalRecord();
+    const local = writeLocalRecord(value, { dirty: true, synced: before?.synced ?? String(serverCopy()?.fingerprint || '') });
     scheduleUserSkinBackup(value);
     if (local) return true;
     // 本机存不下：等不及文件，先按老办法放进设置里，刷新后靠它找回。
+    restoredValue = value;
     writeServerCopy(value);
     return value.css.length <= SERVER_COPY_MAX;
 }
@@ -283,18 +340,20 @@ export function mountUserSkinControls(container, { listen = (node, event, fn) =>
     enabled.checked = current.enabled;
     area.value = current.css;
     let typing = 0;
-    // 本机那份被清掉、正从酒馆文件里找回：找回来时设置界面已经开着，就把内容填进来（用户已经动过的不盖）。
+    // 从酒馆里读回来一份（本机被清掉了，或别的设备存了新的）：设置界面开着时把内容换进来；打开以后已经动过的不盖。
     const view = doc.defaultView || globalThis;
+    let edited = false;
     const onRestored = event => {
         if (!box.isConnected) { view.removeEventListener?.('rabbitmirror:user-skin-restored', onRestored); return; }
-        if (area.value.trim() || typing) return;
+        if (edited || typing) return;
         current = normalizeSkin(event.detail);
         enabled.checked = current.enabled;
         area.value = current.css;
-        status.textContent = '已从酒馆里存的那份找回美化。';
+        status.textContent = '已换上酒馆里存的那份美化。';
     };
     view.addEventListener?.('rabbitmirror:user-skin-restored', onRestored);
     const commit = (message) => {
+        edited = true;
         (doc.defaultView || globalThis).clearTimeout(typing);
         current = { enabled: enabled.checked, css: area.value, name: current.name };
         const saved = saveUserSkin(current);
@@ -303,6 +362,7 @@ export function mountUserSkinControls(container, { listen = (node, event, fn) =>
     listen(enabled, 'change', () => commit(enabled.checked ? '美化已启用。' : '美化已关闭，内容还留着。'));
     // 改文本框就自动存（停手一会儿后），不点「保存」直接关掉、导出或刷新也不会丢。开着美化时顺便换上，边写边看。
     listen(area, 'input', () => {
+        edited = true;
         const view = doc.defaultView || globalThis;
         view.clearTimeout(typing);
         typing = view.setTimeout(() => commit(enabled.checked ? '已自动保存并换上。' : '已自动保存（美化还没启用）。'), 700);

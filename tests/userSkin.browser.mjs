@@ -189,6 +189,76 @@ await page.waitForTimeout(800);
 await flush();
 await page.waitForTimeout(300);
 assert.equal(serverSkin()?.css, BEFORE('✪'), 'falls back to keeping the CSS in settings when files cannot be saved'); checks++;
+// ── 几台设备共用酒馆里那一份（复查补的）──
+await page.evaluate(() => { window.fetch = window.fetchBackup; });
+const openOn = async (context, { failRead = false } = {}) => {
+    const p = await context.newPage(); p.on('pageerror', e => errors.push(e.message));
+    if (failRead) await p.route('**/user/files/**', route => route.fulfill({ status: 500, body: 'boom' }));
+    await p.goto(origin);
+    await p.evaluate(async () => {
+        document.getElementById('chat').innerHTML = `<div class="rabbit-mirror-external-shell" data-rm-placement="external"><details open><summary data-rm-title-chrome="true">标题</summary></details></div><div class="panel"></div><section id="appearance"></section>`;
+        window.skin = await import('/src/userSkin.js');
+        window.skin.applyUserSkin();
+        window.skin.mountUserSkinControls(document.getElementById('appearance'));
+    });
+    return p;
+};
+const before$ = p => p.evaluate(() => getComputedStyle(document.querySelector('.rabbit-mirror-external-shell'), '::before').content);
+// 电脑 A 存了 X。
+await page.close();
+page = await openOn(ctx);
+await page.check('#rh_user_skin_enabled');
+await page.fill('#rh_user_skin_css', BEFORE('A1'));
+await page.waitForTimeout(800);
+await flush();
+await page.waitForTimeout(300);
+// 手机 B（另一份本机存储）第一次打开：从酒馆拿到 X。
+const phone = await browser.newContext();
+let b = await openOn(phone);
+await b.waitForFunction(() => getComputedStyle(document.querySelector('.rabbit-mirror-external-shell'), '::before').content === '"A1"');
+assert.equal(await b.inputValue('#rh_user_skin_css'), BEFORE('A1'), 'second device gets the skin'); checks++;
+// A 又存了新的 X2；B 只是刷新，不改：B 换成 X2，而且不往酒馆传。
+await page.fill('#rh_user_skin_css', BEFORE('A2'));
+await page.waitForTimeout(800);
+await flush();
+await page.waitForTimeout(300);
+let uploadsBefore = uploads;
+await b.close(); b = await openOn(phone);
+await b.waitForFunction(() => getComputedStyle(document.querySelector('.rabbit-mirror-external-shell'), '::before').content === '"A2"');
+await b.evaluate(() => window.skin.flushUserSkinBackup());
+assert.equal(uploads, uploadsBefore, 'just opening a page on another device never uploads'); checks++;
+assert.equal(JSON.parse(files.get('rabbitmirror-user-skin.json')).css, BEFORE('A2')); checks++;
+// B 上改了 → 传上去；A 刷新后换成 B 的。
+await b.fill('#rh_user_skin_css', BEFORE('B1'));
+await b.waitForTimeout(800);
+await b.evaluate(() => window.skin.flushUserSkinBackup());
+await b.waitForTimeout(300);
+await page.close(); page = await openOn(ctx);
+await page.waitForFunction(() => getComputedStyle(document.querySelector('.rabbit-mirror-external-shell'), '::before').content === '"B1"');
+assert.equal(await before$(page), '"B1"', 'the device that saved last wins'); checks++;
+// 1.70 以前留在本机的旧美化（没有同步记号）：打开页面不传、不覆盖酒馆那份，本机照旧显示自己的。
+await b.evaluate(css => localStorage.setItem('rabbit_mirror_user_skin_v1', JSON.stringify({ enabled: true, css, name: '' })), BEFORE('old'));
+uploadsBefore = uploads;
+await b.close(); b = await openOn(phone);
+await b.evaluate(() => window.skin.flushUserSkinBackup());
+assert.equal(await before$(b), '"old"'); checks++;
+assert.equal(uploads, uploadsBefore, 'a pre-1.70 local skin does not overwrite the tavern copy'); checks++;
+assert.equal(JSON.parse(files.get('rabbitmirror-user-skin.json')).css, BEFORE('B1')); checks++;
+// 本机被清、读酒馆文件失败：用户点「清空」或开关，不会把酒馆那份清掉；网好了再打开照样找回。
+await b.evaluate(() => localStorage.clear());
+await b.close(); b = await openOn(phone, { failRead: true });
+await b.waitForTimeout(300);
+uploadsBefore = uploads;
+await b.click('[data-rh-skin="clear"]');
+await b.click('#rh_user_skin_enabled');
+await b.waitForTimeout(800);
+await b.evaluate(() => window.skin.flushUserSkinBackup());
+assert.equal(uploads, uploadsBefore, 'an empty save while the tavern copy could not be read is not uploaded'); checks++;
+assert.equal(JSON.parse(files.get('rabbitmirror-user-skin.json')).css, BEFORE('B1')); checks++;
+await b.close(); b = await openOn(phone);
+await b.waitForFunction(() => getComputedStyle(document.querySelector('.rabbit-mirror-external-shell'), '::before').content === '"B1"');
+assert.ok(true, 'restored once the file can be read again'); checks++;
+await phone.close();
 assert.deepEqual(errors, []);
 console.log(JSON.stringify({ checks }));
 await browser.close(); server.close();

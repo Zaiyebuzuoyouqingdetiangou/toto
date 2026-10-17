@@ -364,15 +364,19 @@ async function loadOlder() {
 }
 
 /** 把还没加载到页面上的那一层加载出来（和点「显示更多消息」一样）；加载不出来返回 null。一键补楼层也用它。 */
-export async function revealChatFloor(id) { return revealMes(id); }
+// keepGoing() 返回假时不再往上加载（比如一键补楼层途中换了聊天）。
+export async function revealChatFloor(id, { keepGoing } = {}) { return revealMes(id, keepGoing); }
 
-async function revealMes(id) {
+async function revealMes(id, keepGoing = () => true) {
     let node = findMes(id);
     if (node) return node;
     for (let round = 0; round < 80; round += 1) {
+        if (!keepGoing()) break;
         const before = firstMesId();
+        // 先开始等「加载好了」的事件再去加载：酒馆加载完马上就发这个事件，晚一步听就收不到，每轮都要白等到超时。
+        const waiting = waitMore(1200);
         if (!(await loadOlder())) break;
-        const loaded = await waitMore(1200);
+        const loaded = await waiting;
         await new Promise(resolve => requestAnimationFrame(resolve));
         node = findMes(id);
         if (node) return node;

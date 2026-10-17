@@ -26,7 +26,7 @@ import { clearRabbitMirrorPrompt, startManualEntryDiagnostic, stopManualEntryDia
 import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=1.69.0';
 import { configureMaintenanceAutoSafeMode, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=1.69.0';
 import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=1.69.0';
-import { fetchIndependentModels, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentModelListDiagnostic, hydrateIndependentFavoriteHtml, backfillIndependentFloor, independentBackfillBusy, independentBackfillChatKey, independentBackfillFloorToken, importCurrentSillyTavernConnection, listMissingIndependentRetryFloors, refreshRabbitMirrorGenerationMode, resyncMissingIndependentRetryShells, buildRabbitMirrorArchiveInventory, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.69.0';
+import { fetchIndependentModels, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentModelListDiagnostic, hydrateIndependentFavoriteHtml, backfillIndependentFloor, prepareIndependentBackfillFloor, independentBackfillBusy, independentBackfillChatKey, independentBackfillFloorToken, importCurrentSillyTavernConnection, listMissingIndependentRetryFloors, refreshRabbitMirrorGenerationMode, resyncMissingIndependentRetryShells, buildRabbitMirrorArchiveInventory, scanCurrentChatIndependentContextTags, testIndependentConnection } from './independentApi.js?rmv=1.69.0';
 import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=1.69.0';
 import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=1.69.0';
 import { THEATER_FAVORITES_CHANGED_EVENT, deleteTheaterFavorite, groupTheaterFavoritesByCharacter, listTheaterFavorites, openTheaterFavoriteLibrary, openTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.69.0';
@@ -743,6 +743,7 @@ export function initRabbitMirrorUI() {
             const target = document.getElementById('rh_missing_shell_report');
             if (target && listed?.text) target.textContent = listed.text;
         },
+        prepare: (floor, chat) => prepareIndependentBackfillFloor(floor, { chat }),
         generate: (floor, chat, token) => backfillIndependentFloor(floor, { chat, token }),
         floorToken: floor => independentBackfillFloorToken(floor),
         busy: () => independentBackfillBusy(),

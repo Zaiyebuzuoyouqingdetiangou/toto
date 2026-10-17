@@ -186,3 +186,47 @@ test('an empty list does not start', () => {
     assert.equal(q.snapshot().status, 'idle');
     assert.equal(describeBackfill(q.snapshot()), '');
 });
+
+test('prepare runs first; pausing while a floor is being loaded sends nothing for it until resume', async () => {
+    const calls = [];
+    const prepared = [];
+    let finishPrepare;
+    let busyChecks = 0;
+    const q = createBackfillQueue({
+        prepare: floor => { prepared.push(floor); return floor === 1 && prepared.length === 1 ? new Promise(resolve => { finishPrepare = resolve; }) : undefined; },
+        run: async floor => { calls.push(floor); return { status: 'done' }; },
+        busy: () => { busyChecks++; return false; },
+        wait: () => Promise.resolve(),
+    });
+    q.start([1, 2]);
+    await until(() => prepared.length === 1, 'preparing first floor');
+    assert.equal(q.snapshot().preparing, true);
+    assert.match(describeBackfill(q.snapshot()), /正在把第 1\/2 层（#1）加载到页面上/);
+    assert.equal(busyChecks, 0, 'busy is checked after loading, right before sending');
+    q.pause();
+    finishPrepare();
+    await tick(); await tick();
+    assert.deepEqual(calls, [], 'paused during loading: this floor is not sent');
+    assert.equal(q.snapshot().position, 0);
+    q.resume();
+    await q.finished();
+    assert.deepEqual(calls, [1, 2]);
+    assert.deepEqual(prepared, [1, 1, 2], 'the paused floor is prepared again on resume');
+});
+
+test('stop while a floor is being loaded ends the queue without sending', async () => {
+    const calls = [];
+    let finishPrepare;
+    const q = createBackfillQueue({
+        prepare: () => new Promise(resolve => { finishPrepare = resolve; }),
+        run: async floor => { calls.push(floor); return { status: 'done' }; },
+        wait: () => Promise.resolve(),
+    });
+    q.start([1, 2]);
+    await until(() => typeof finishPrepare === 'function', 'preparing');
+    q.stop();
+    finishPrepare();
+    await q.finished();
+    assert.deepEqual(calls, []);
+    assert.equal(q.snapshot().status, 'stopped');
+});

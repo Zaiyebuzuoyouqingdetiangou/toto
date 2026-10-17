@@ -102,14 +102,23 @@ function readCharacters(frame) {
 // 长相里不会因为这一幕变的几类：发色、瞳色、头发长短。
 // 第一串（角色库）写了这一类，后面（模型写的）同一类说法不同的就不要，免得 silver hair 和 white hair 一起交给生图、发色画乱。
 // 发型（马尾、披发）、衣着会随这一幕变，不算在里面；同一串里自己写的几种（比如挑染）都留着。
-const TAG_COLOR = '(?:black|white|silver|grey|gray|blonde?|brown|red|pink|blue|green|purple|violet|orange|yellow|aqua|teal|golden|gold|crimson|amber|azure|platinum|light\\s+\\w+|dark\\s+\\w+|pale\\s+\\w+|deep\\s+\\w+)';
+const TAG_HUE = '(?:black|white|silver|grey|gray|blonde?|brown|red|pink|blue|green|purple|violet|orange|yellow|aqua|teal|cyan|magenta|lavender|golden|gold|crimson|amber|azure|platinum|beige|cream|ash|navy|rainbow)';
+// 「dark hair」「light blue eyes」「dark-blue hair」都算；multicolored、two-tone、渐变、挑染也是发色。
+const TAG_COLOR = `(?:(?:(?:light|dark|pale|deep|bright)[-\\s]+)?${TAG_HUE}|light|dark|pale|multicolou?red|two[-\\s]?tone|gradient|streaked)`;
 const TAG_TRAITS = [
     ['hair-color', new RegExp(`^${TAG_COLOR}\\s+hair$`)],
     ['eye-color', new RegExp(`^(?:${TAG_COLOR}\\s+eyes|heterochromia)$`)],
-    ['hair-length', /^(?:very\s+|absurdly\s+)?(?:long|short|medium)\s+hair$/],
+    ['hair-length', /^(?:(?:very\s+)+|absurdly\s+)?(?:long|short|medium|shoulder[-\s]?length)\s+hair$/],
 ];
 
+// 权重括号或 :: 没配对：这一段是跨逗号的权重组拆出来的半截，去掉它会让括号配不上，权重漏到后面所有标签上。这种不动。
+function unbalancedGroup(part) {
+    const count = (re) => (part.match(re) || []).length;
+    return count(/\{/g) !== count(/\}/g) || count(/\[/g) !== count(/\]/g) || count(/\(/g) !== count(/\)/g) || count(/::/g) % 2 === 1;
+}
+
 function tagTrait(part) {
+    if (unbalancedGroup(part)) return '';
     // 去掉权重写法再认：{silver hair}、[silver hair]、(silver hair:1.2)、1.2::silver hair::
     const bare = part.toLowerCase().replace(/^-?\d+(?:\.\d+)?::|::$/g, '').replace(/[{}[\]()]/g, '').replace(/:\s*-?\d+(?:\.\d+)?$/, '').replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
     return TAG_TRAITS.find(([, re]) => re.test(bare))?.[0] || '';

@@ -55,6 +55,7 @@ function ensureQueue() {
     if (queue) return queue;
     queue = createBackfillQueue({
         run: floor => deps.run(floor),
+        prepare: floor => deps.prepare(floor),
         busy: () => deps.busy(),
         onChange: view => { render(view); toastFor(view); },
     });
@@ -65,6 +66,7 @@ function ensureQueue() {
  * 把按钮接到设置界面上。每次设置界面重画后调用一次即可。
  * options:
  *   list()     → { floors:[{index, mounted}], range } 现在扫描范围里没有兔子镜的楼层（mounted：已经加载到页面上）
+ *   prepare(floor, chat) → Promise 每层开头先把还没加载到页面上的那一层加载出来
  *   generate(floor, chat, token) → Promise<{status,message}>
  *   floorToken(floor) → 这一层回复的身份
  *   busy()     → 酒馆或别的兔子镜请求正在跑
@@ -76,6 +78,7 @@ function ensureQueue() {
 export function mountBackfillControls(options) {
     deps = {
         run: floor => options.generate(floor, backfillChat, backfillTokens.get(floor) || ''),
+        prepare: floor => options.prepare?.(floor, backfillChat),
         busy: () => options.busy(),
     };
     const q = ensureQueue();
@@ -99,7 +102,7 @@ export function mountBackfillControls(options) {
         pending = all.map(item => Number(item?.index ?? item));
         // 楼层身份在数的时候就记下：问完到点确定之间删了楼层，挪过来的那层也认得出来。
         pendingTokens = new Map(pending.map(floor => [floor, String(options.floorToken?.(floor) || '')]));
-        const unloadedNote = unloaded ? `其中 ${unloaded} 层是更早的回复，还没加载到页面上，补到时会先在聊天里把它们加载出来。` : '';
+        const unloadedNote = unloaded ? `其中 ${unloaded} 层是更早的回复，还没加载到页面上，补到时会先在聊天里把它们加载出来（楼层很多时，手机上可能会卡一会儿）。` : '';
         if (!pending.length) {
             parts.confirm.hidden = true;
             parts.status.hidden = false;
