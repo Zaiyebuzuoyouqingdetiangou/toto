@@ -202,7 +202,7 @@ test('prepare runs first; pausing while a floor is being loaded sends nothing fo
     await until(() => prepared.length === 1, 'preparing first floor');
     assert.equal(q.snapshot().preparing, true);
     assert.match(describeBackfill(q.snapshot()), /正在把第 1\/2 层（#1）加载到页面上/);
-    assert.equal(busyChecks, 0, 'busy is checked after loading, right before sending');
+    assert.equal(busyChecks, 1, 'busy is checked before loading (loading does not compete with the tavern)');
     q.pause();
     finishPrepare();
     await tick(); await tick();
@@ -212,6 +212,7 @@ test('prepare runs first; pausing while a floor is being loaded sends nothing fo
     await q.finished();
     assert.deepEqual(calls, [1, 2]);
     assert.deepEqual(prepared, [1, 1, 2], 'the paused floor is prepared again on resume');
+    assert.ok(busyChecks >= 5, 'and checked again after loading, right before sending');
 });
 
 test('stop while a floor is being loaded ends the queue without sending', async () => {
@@ -229,4 +230,20 @@ test('stop while a floor is being loaded ends the queue without sending', async 
     await q.finished();
     assert.deepEqual(calls, []);
     assert.equal(q.snapshot().status, 'stopped');
+});
+
+test('prepare gets a keepGoing() that turns false on pause or stop', async () => {
+    const seen = [];
+    let release;
+    const q = createBackfillQueue({
+        prepare: (floor, { keepGoing }) => new Promise(resolve => { seen.push(keepGoing()); release = () => { seen.push(keepGoing()); resolve(); }; }),
+        run: async () => ({ status: 'done' }),
+        wait: () => Promise.resolve(),
+    });
+    q.start([1]);
+    await until(() => seen.length === 1, 'preparing');
+    q.stop();
+    release();
+    await q.finished();
+    assert.deepEqual(seen, [true, false]);
 });

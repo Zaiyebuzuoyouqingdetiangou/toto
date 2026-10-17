@@ -337,6 +337,53 @@ await b.fill('#rh_user_skin_css', BEFORE('mine2'));
 await b.waitForTimeout(800);
 await b.evaluate(() => window.skin.flushUserSkinBackup());
 assert.equal(JSON.parse(files.get('rabbitmirror-user-skin.json')).css, BEFORE('mine2'), 'saving on that device rejoins syncing'); checks++;
+// 第三轮复核补的：
+// ① 网慢、文件还没读回来时点了开关（空的，不存）；读回来后设置界面填上酒馆那份，再点开关也不会把酒馆那份清掉。
+await b.evaluate(() => localStorage.clear());
+await b.close();
+b = await phone.newPage(); b.on('pageerror', e => errors.push(e.message));
+let releaseRead;
+await b.route('**/user/files/**', async route => { await new Promise(r => { releaseRead = r; }); await route.continue(); });
+await b.goto(origin);
+await b.evaluate(async () => { document.getElementById('chat').innerHTML = `<div class="rabbit-mirror-external-shell" data-rm-placement="external"><details open><summary>标题</summary></details></div><section id="appearance"></section>`; window.skin = await import('/src/userSkin.js'); window.skin.applyUserSkin(); window.skin.mountUserSkinControls(document.getElementById('appearance')); });
+await b.waitForFunction(() => true);
+await b.click('#rh_user_skin_enabled');
+assert.match(await b.textContent('.rh-ui-user-skin-status'), /正在从酒馆找回美化/); checks++;
+const tavernCss = JSON.parse(files.get('rabbitmirror-user-skin.json')).css;
+releaseRead();
+await b.waitForFunction(css => document.querySelector('#rh_user_skin_css').value === css, tavernCss);
+uploadsBefore = uploads;
+await b.click('#rh_user_skin_enabled');
+await b.waitForTimeout(300);
+await b.evaluate(() => window.skin.flushUserSkinBackup());
+assert.equal(JSON.parse(files.get('rabbitmirror-user-skin.json')).css, tavernCss, 'toggling after the restore keeps the tavern CSS'); checks++;
+// ② 别的页面把设置里的记号写回旧的：本机照样以酒馆文件为准，换上新版；很早没传上去的旧改动也不会盖掉新版。
+await b.evaluate(() => { const r = JSON.parse(localStorage.getItem('rabbit_mirror_user_skin_v1')); localStorage.setItem('rabbit_mirror_user_skin_v1', JSON.stringify({ ...r, css: '.stale{}', dirty: true, editedAt: 5 })); });
+const staleFp = await b.evaluate(() => { const r = JSON.parse(localStorage.getItem('rabbit_mirror_user_skin_v1')); return window.skin.userSkinFingerprint(r); });
+await page.fill('#rh_user_skin_css', BEFORE('A5'));
+await page.waitForTimeout(800);
+await flush();
+await page.waitForTimeout(300);
+await page.evaluate(async fp => { const set = await import('/src/settings.js?rmv=1.70.0'); set.updateSettings({ userSkin: { ...set.getSettings().userSkin, fingerprint: fp } }); }, staleFp);
+await page.waitForTimeout(300);
+uploadsBefore = uploads;
+await b.close(); b = await openOn(phone);
+await b.waitForFunction(() => getComputedStyle(document.querySelector('.rabbit-mirror-external-shell'), '::before').content === '"A5"');
+await b.evaluate(() => window.skin.flushUserSkinBackup());
+assert.equal(uploads, uploadsBefore, 'a stale marker plus an old unsent edit does not overwrite the newer file'); checks++;
+assert.equal(JSON.parse(files.get('rabbitmirror-user-skin.json')).css, BEFORE('A5')); checks++;
+// ③ 还开着的 1.69 旧页面把整份旧 CSS 写回设置：酒馆已经有文件，就不拿旧 CSS 去盖文件。
+await page.evaluate(async css => { const set = await import('/src/settings.js?rmv=1.70.0'); set.updateSettings({ userSkin: { enabled: true, css, name: '' } }); }, BEFORE('v169'));
+await page.waitForTimeout(300);
+await b.evaluate(() => localStorage.clear());
+uploadsBefore = uploads;
+await b.close(); b = await openOn(phone);
+await b.waitForFunction(() => getComputedStyle(document.querySelector('.rabbit-mirror-external-shell'), '::before').content === '"A5"');
+await b.evaluate(() => window.skin.flushUserSkinBackup());
+assert.equal(uploads, uploadsBefore, 'old full CSS in settings is not migrated over an existing file'); checks++;
+assert.equal(JSON.parse(files.get('rabbitmirror-user-skin.json')).css, BEFORE('A5')); checks++;
+await b.waitForTimeout(300);
+assert.ok(serverSkin()?.file && !('css' in serverSkin()), 'and the settings are shrunk back to the marker'); checks++;
 await phone.close();
 // 宿主对不存在的文件回首页网页、设置里也没有记号（从没存过美化的设备）：当成没有，记一笔，不会每次打开都去问。
 const fresh = await browser.newContext();

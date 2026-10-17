@@ -55,7 +55,7 @@ function ensureQueue() {
     if (queue) return queue;
     queue = createBackfillQueue({
         run: floor => deps.run(floor),
-        prepare: floor => deps.prepare(floor),
+        prepare: (floor, opts) => deps.prepare(floor, opts),
         busy: () => deps.busy(),
         onChange: view => { render(view); toastFor(view); },
     });
@@ -66,7 +66,7 @@ function ensureQueue() {
  * 把按钮接到设置界面上。每次设置界面重画后调用一次即可。
  * options:
  *   list()     → { floors:[{index, mounted}], range } 现在扫描范围里没有兔子镜的楼层（mounted：已经加载到页面上）
- *   prepare(floor, chat) → Promise 每层开头先把还没加载到页面上的那一层加载出来
+ *   prepare(floor, chat, { keepGoing }) → Promise 每层开头先把还没加载到页面上的那一层加载出来；keepGoing() 变假（暂停、停止）就别再加载
  *   generate(floor, chat, token) → Promise<{status,message}>
  *   floorToken(floor) → 这一层回复的身份
  *   busy()     → 酒馆或别的兔子镜请求正在跑
@@ -78,7 +78,7 @@ function ensureQueue() {
 export function mountBackfillControls(options) {
     deps = {
         run: floor => options.generate(floor, backfillChat, backfillTokens.get(floor) || ''),
-        prepare: floor => options.prepare?.(floor, backfillChat),
+        prepare: (floor, opts) => options.prepare?.(floor, backfillChat, opts),
         busy: () => options.busy(),
     };
     const q = ensureQueue();

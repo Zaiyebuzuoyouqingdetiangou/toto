@@ -377,7 +377,8 @@ async function revealMes(id, keepGoing = () => true) {
         const waiting = waitMore(1200);
         if (!(await loadOlder())) break;
         const loaded = await waiting;
-        await new Promise(resolve => requestAnimationFrame(resolve));
+        // 等页面画一帧再找；页面在后台时不会画（一键补楼层切到后台也要接着走），最多等 100ms。
+        await new Promise(resolve => { const timer = setTimeout(resolve, 100); requestAnimationFrame(() => { clearTimeout(timer); resolve(); }); });
         node = findMes(id);
         if (node) return node;
         const after = firstMesId();

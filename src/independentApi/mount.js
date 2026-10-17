@@ -3277,12 +3277,25 @@ export function independentBackfillFloorToken(index){
 // 一键补楼层每层开头：把还没加载到页面上的那一层加载出来（和点「显示更多消息」一样，快拍跳楼层用的也是它）。
 // 正文和前文都按页面上显示的读（正则替换、隐藏标签、美化都算数），所以要它真的显示出来，不拿聊天记录里的原文顶替。
 // 加载可能要一阵子：队列等它加载完，再看暂停／停止、等酒馆空下来，最后才交给 backfillIndependentFloor（那里所有检查都重新做一遍）。
-export async function prepareIndependentBackfillFloor(index,{chat=''}={}){
+export async function prepareIndependentBackfillFloor(index,{chat='',keepGoing=null}={}){
  const id=Number(index);
  if(!Number.isInteger(id) || messageElement(id)) return;
- const sameChat=()=>!chat || chatKey(getContext())===chat;
- if(!sameChat()) return;
- try{ const snapshot=await import('../theaterSnapshot.js?rmv=1.70.0'); await snapshot.revealChatFloor(id,{keepGoing:sameChat}); }catch{}
+ const ctx=getContext();
+ if(chat && chatKey(ctx)!==chat) return;
+ // 生成那一步反正会跳过的楼层不用先加载（加载老楼层手机上会卡一阵）：生成关了、不是独立 API、不是能补的回复、正文像出错的、已经有兔子镜的。
+ const st=getSettings();
+ if(st.enabled===false || st.autoRabbitMirrorInjection===false || independentGenerationTiming(st)==='off') return;
+ if(!currentRuntime() || runtimeMode()!=='independent') return;
+ const msg=ctx.chat?.[id];
+ if(!isRabbitMirrorEligibleAssistantMessage(msg) || !hasUsableAssistantBody(msg)) return;
+ try{ if(mainReplyAbnormalReason(msg)) return; }catch{}
+ try{
+  if(hasExistingFollowRabbitMirror(ctx,id,msg)) return;
+  const saved=savedIndependentRecordForOwner(ctx,id,msg,readStore());
+  if(saved?.html && independentStoredHtmlRestorable(saved.html)) return;
+ }catch{}
+ const go=()=>(!chat || chatKey(getContext())===chat) && (typeof keepGoing!=='function' || keepGoing()!==false);
+ try{ const snapshot=await import('../theaterSnapshot.js?rmv=1.70.0'); await snapshot.revealChatFloor(id,{keepGoing:go}); }catch{}
 }
 
 export async function backfillIndependentFloor(index,{chat='',token=''}={}){
@@ -3299,7 +3312,6 @@ export async function backfillIndependentFloor(index,{chat='',token=''}={}){
  // 正文太短、像是出错的回复（安全阀会拦下的那种）：一键补的时候不替用户做主，要补就单独点卡。
  // 原因照实写出来：缺兔子镜的楼层常常就是当初被安全阀拦下的，被误判时用户要看得出是哪一条。
  try{ const odd=mainReplyAbnormalReason(msg); if(odd) return {status:'skipped',message:`${String(odd).slice(0,80)}，要补请单独点卡`}; }catch{}
- if(!messageElement(id)) return {status:'skipped',message:'没能把这一层加载到页面上（在聊天里往上翻把它加载出来再补）'};
  const has=()=>{
   const live=getContext(); const m=live.chat?.[id];
   if(!m) return false;
@@ -3308,6 +3320,7 @@ export async function backfillIndependentFloor(index,{chat='',token=''}={}){
   return !!(saved?.html && independentStoredHtmlRestorable(saved.html));
  };
  if(has()) return {status:'skipped',message:'已经有兔子镜了'};
+ if(!messageElement(id)) return {status:'skipped',message:'没能把这一层加载到页面上（在聊天里往上翻把它加载出来再补）'};
  try{ await generateFor(id,msg,true,true,null,null,null,null,null,''); }
  catch(error){ return {status:'failed',message:String(error?.message||error||'生成失败')}; }
  const live=getContext();

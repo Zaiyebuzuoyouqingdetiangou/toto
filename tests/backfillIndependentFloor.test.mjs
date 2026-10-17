@@ -56,7 +56,7 @@ function fixture({ chat = 'A', settings = {}, mode = 'independent', eligible = t
         return shown ? {} : null;
     } };
     vm.runInContext(runnable, context);
-    return { run: (index = 0, options = { chat: 'A' }) => context.backfillIndependentFloor(index, options), prepare: (index = 0, options = { chat: 'A' }) => context.prepareIndependentBackfillFloor(index, options), token: index => context.independentBackfillFloorToken(index), message, calls, reveals };
+    return { run: (index = 0, options = { chat: 'A' }) => context.backfillIndependentFloor(index, options), prepare: (index = 0, options = { chat: 'A' }) => context.prepareIndependentBackfillFloor(index, options), setSaved: value => { saved = value; }, token: index => context.independentBackfillFloorToken(index), message, calls, reveals };
 }
 
 test('generates like the card retry: forced, fresh selection, no resay recipe, empty note', async () => {
@@ -130,6 +130,22 @@ test('prepare loads an older floor onto the page; generating still skips a floor
     const otherChat = fixture({ rendered: false });
     await otherChat.prepare(0, { chat: 'B' });
     assert.deepEqual(otherChat.reveals, [], 'nothing is loaded in a different chat');
+    // 生成那一步反正会跳过的楼层不先加载：已经有兔子镜、正文像出错的、生成关了。
+    for (const options of [{ savedBefore: true }, { abnormal: 'too-short' }, { settings: { timing: 'off' } }, { mode: 'follow' }]) {
+        const skip = fixture({ rendered: false, ...options });
+        await skip.prepare();
+        assert.deepEqual(skip.reveals, [], `not loaded: ${JSON.stringify(options)}`);
+    }
+    // 已经有兔子镜的老楼层：生成那一步说「已经有兔子镜了」，不是「没能加载」。
+    const hasOne = fixture({ rendered: false, savedBefore: true });
+    assert.match((await hasOne.run()).message, /已经有兔子镜了/);
+    // 暂停、停止：keepGoing 变假，不再往上加载。
+    const paused = fixture({ rendered: false });
+    let asked = 0;
+    const original = paused.prepare;
+    await original(0, { chat: 'A', keepGoing: () => { asked++; return false; } });
+    assert.ok(asked >= 1);
+    assert.equal(await paused.run().then(r => r.status), 'skipped', 'not loaded because the queue was paused');
     const stuck = fixture({ rendered: false, revealable: false });
     await stuck.prepare();
     const r0 = await stuck.run();

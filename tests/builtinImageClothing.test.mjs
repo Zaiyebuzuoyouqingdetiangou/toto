@@ -57,6 +57,9 @@ test('library hair and eye colour win over a different model-written colour', ()
     assert.equal(ctx.merge('red eyes', 'dark eyes, light-blue eyes, closed eyes, glowing eyes, blue eyeshadow, hair over eyes'), 'red eyes, closed eyes, glowing eyes, blue eyeshadow, hair over eyes');
     // 跨逗号的权重组：拆出来的半截不去掉，免得括号配不上。
     assert.equal(ctx.merge('silver hair', '{white hair, long dress}, 1.2::white hair, smile::'), 'silver hair, {white hair, long dress}, 1.2::white hair, smile::');
+    // 第三轮：两个颜色词连写；角色库自己的跨逗号权重组也算写过。
+    assert.equal(ctx.merge('silver hair', 'platinum blonde hair, ash blonde hair, silver-white hair, pinkish white hair, maid dress'), 'silver hair, maid dress');
+    assert.equal(ctx.merge('{silver hair, long hair}, red eyes', 'white hair, short hair, smile'), '{silver hair, long hair}, red eyes, smile');
     // 没有角色库：模型写的全留。
     assert.equal(ctx.merge('', 'white hair, blue eyes'), 'white hair, blue eyes');
 });

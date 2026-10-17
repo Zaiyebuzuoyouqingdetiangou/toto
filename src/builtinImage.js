@@ -104,7 +104,8 @@ function readCharacters(frame) {
 // 发型（马尾、披发）、衣着会随这一幕变，不算在里面；同一串里自己写的几种（比如挑染）都留着。
 const TAG_HUE = '(?:black|white|silver|grey|gray|blonde?|brown|red|pink|blue|green|purple|violet|orange|yellow|aqua|teal|cyan|magenta|lavender|golden|gold|crimson|amber|azure|platinum|beige|cream|ash|navy|rainbow)';
 // 「dark hair」「light blue eyes」「dark-blue hair」都算；multicolored、two-tone、渐变、挑染也是发色。
-const TAG_COLOR = `(?:(?:(?:light|dark|pale|deep|bright)[-\\s]+)?${TAG_HUE}|light|dark|pale|multicolou?red|two[-\\s]?tone|gradient|streaked)`;
+// 两个颜色词连写的（platinum blonde、ash blonde、silver-white、pinkish white）也算。
+const TAG_COLOR = `(?:(?:(?:light|dark|pale|deep|bright)[-\\s]+)?${TAG_HUE}(?:ish)?(?:[-\\s]+${TAG_HUE})?|light|dark|pale|multicolou?red|two[-\\s]?tone|gradient|streaked)`;
 const TAG_TRAITS = [
     ['hair-color', new RegExp(`^${TAG_COLOR}\\s+hair$`)],
     ['eye-color', new RegExp(`^(?:${TAG_COLOR}\\s+eyes|heterochromia)$`)],
@@ -117,8 +118,10 @@ function unbalancedGroup(part) {
     return count(/\{/g) !== count(/\}/g) || count(/\[/g) !== count(/\]/g) || count(/\(/g) !== count(/\)/g) || count(/::/g) % 2 === 1;
 }
 
-function tagTrait(part) {
-    if (unbalancedGroup(part)) return '';
+// loose：认角色库那一串写了哪几类时用。角色库自己的跨逗号权重组（{silver hair, long hair}）拆开的半截也算它写过；
+// 要去掉的（模型写的）才要求括号配对。
+function tagTrait(part, loose = false) {
+    if (!loose && unbalancedGroup(part)) return '';
     // 去掉权重写法再认：{silver hair}、[silver hair]、(silver hair:1.2)、1.2::silver hair::
     const bare = part.toLowerCase().replace(/^-?\d+(?:\.\d+)?::|::$/g, '').replace(/[{}[\]()]/g, '').replace(/:\s*-?\d+(?:\.\d+)?$/, '').replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
     return TAG_TRAITS.find(([, re]) => re.test(bare))?.[0] || '';
@@ -127,7 +130,7 @@ function tagTrait(part) {
 // 逗号标签合并：前面的优先，大小写不同的同一标签只留一个；第一串写过的长相类，后面的同类不要。
 function mergeTagLists(...lists) {
     const seen = new Set();
-    const claimed = new Set(String(lists[0] || '').split(',').map(part => tagTrait(part.trim())).filter(Boolean));
+    const claimed = new Set(String(lists[0] || '').split(',').map(part => tagTrait(part.trim(), true)).filter(Boolean));
     return lists.flatMap((list, index) => String(list || '').split(',').map(part => [part.trim(), index])).filter(([part, index]) => {
         const key = part.toLowerCase();
         if (!part || seen.has(key)) return false;

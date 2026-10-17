@@ -65,19 +65,19 @@ export function createBackfillQueue({
             while (state.status === 'paused') await new Promise(resolve => { wake = resolve; });
             if (stopping()) break;
             const floor = state.floors[state.position];
+            // 酒馆正在生成时先等着（加载老楼层也不跟它抢）。
+            await waitWhileBusy();
+            if (stopping()) break;
+            if (state.status === 'paused') continue;
             if (typeof prepare === 'function') {
                 state.current = floor; state.preparing = true; changed();
-                try { await prepare(floor); } catch { /* 准备不成，交给 run() 自己判断 */ }
+                // 加载途中点了暂停、停止（或停用兔子镜）：keepGoing 变假，加载就停下。
+                try { await prepare(floor, { keepGoing: () => state.status === 'running' }); } catch { /* 准备不成，交给 run() 自己判断 */ }
                 state.preparing = false;
                 if (stopping()) break;
                 // 准备期间点了暂停：这一层还没发请求，继续时从这一层重新来。
                 if (state.status === 'paused') { state.current = null; changed(); continue; }
-            }
-            if (state.status === 'running' && safeBusy()) {
-                state.waiting = true; state.waitingSince = now(); changed();
-                // 每轮都刷新一下界面：等太久时的提示（多少秒以后）要能显示出来。
-                while (!stopping() && state.status === 'running' && safeBusy()) { await pause(busyPollMs); changed(); }
-                state.waiting = false; changed();
+                await waitWhileBusy();
             }
             if (stopping()) break;
             if (state.status === 'paused') { state.current = null; changed(); continue; }
@@ -109,6 +109,14 @@ export function createBackfillQueue({
     }
 
     function safeBusy() { try { return !!busy(); } catch { return false; } }
+
+    async function waitWhileBusy() {
+        if (state.status !== 'running' || !safeBusy()) return;
+        state.waiting = true; state.waitingSince = now(); changed();
+        // 每轮都刷新一下界面：等太久时的提示（多少秒以后）要能显示出来。
+        while (!stopping() && state.status === 'running' && safeBusy()) { await pause(busyPollMs); changed(); }
+        state.waiting = false; changed();
+    }
 
     return {
         start(floors) {
