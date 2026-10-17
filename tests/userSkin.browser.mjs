@@ -160,7 +160,7 @@ for (const c of ['1', '2', '3']) { await page.fill('#rh_user_skin_css', BEFORE(c
 await flush();
 assert.equal(uploads - before, 1, 'quick edits are uploaded once'); checks++;
 assert.equal(JSON.parse(files.get('rabbitmirror-user-skin.json')).css, BEFORE('3')); checks++;
-// 1.68.94～1.70.0 的旧备份：整份 CSS 在设置里、没有文件。本机被清后照样找回，并挪进文件、从设置里去掉。
+// 1.68.94～1.69.0 的旧备份：整份 CSS 在设置里、没有文件。本机被清后照样找回，并挪进文件、从设置里去掉。
 files.clear();
 await page.evaluate(async css => { const set = await import('/src/settings.js?rmv=1.70.0'); set.updateSettings({ userSkin: { enabled: true, css, name: '' } }); localStorage.clear(); }, BEFORE('✧'));
 await page.waitForTimeout(300);
@@ -338,6 +338,18 @@ await b.waitForTimeout(800);
 await b.evaluate(() => window.skin.flushUserSkinBackup());
 assert.equal(JSON.parse(files.get('rabbitmirror-user-skin.json')).css, BEFORE('mine2'), 'saving on that device rejoins syncing'); checks++;
 await phone.close();
+// 宿主对不存在的文件回首页网页、设置里也没有记号（从没存过美化的设备）：当成没有，记一笔，不会每次打开都去问。
+const fresh = await browser.newContext();
+await page.evaluate(async () => { const set = await import('/src/settings.js?rmv=1.70.0'); set.updateSettings({ userSkin: null }); });
+await page.waitForTimeout(300);
+let reads = 0;
+let f = await fresh.newPage(); f.on('pageerror', e => errors.push(e.message));
+await f.route('**/user/files/**', route => { reads++; route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>home</title>' }); });
+await f.goto(origin);
+await f.evaluate(async () => { window.skin = await import('/src/userSkin.js'); window.skin.readUserSkin(); await window.skin.flushUserSkinBackup(); window.skin.readUserSkin(); await window.skin.flushUserSkinBackup(); });
+assert.equal(reads, 1, 'a device that never had a skin asks the tavern only once'); checks++;
+assert.ok(await f.evaluate(() => !!localStorage.getItem('rabbit_mirror_user_skin_v1')), 'and remembers there is nothing to restore'); checks++;
+await fresh.close();
 assert.deepEqual(errors, []);
 console.log(JSON.stringify({ checks }));
 await browser.close(); server.close();

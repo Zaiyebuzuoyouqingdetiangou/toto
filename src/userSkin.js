@@ -7,7 +7,7 @@ import { getSettings, updateSettings } from './settings.js?rmv=1.70.0';
 export const USER_SKIN_STORAGE_KEY = 'rabbit_mirror_user_skin_v1';
 // 另存一份在酒馆的用户文件夹里（user/files，存在酒馆服务器上）：浏览器或宿主清掉网页数据、重启后本机那份没了，也能找回。
 // 酒馆设置里只记一个小记号（文件名、指纹），不放整份 CSS：酒馆每次保存设置都整份上传，美化放在里面会拖慢每一次保存。
-// 1.68.94～1.70.0 把整份 CSS 放在设置里；读到这种旧备份照样能找回，并顺手挪进文件、从设置里去掉。
+// 1.68.94～1.69.0 把整份 CSS 放在设置里；读到这种旧备份照样能找回，并顺手挪进文件、从设置里去掉。
 export const USER_SKIN_FILE_NAME = 'rabbitmirror-user-skin.json';
 const USER_SKIN_FILE_FORMAT = 'rabbitmirror-user-skin';
 // 存不进文件时（宿主不让存文件）退回老办法：不太大的放进设置里。
@@ -85,9 +85,10 @@ export async function readUserSkinFile() {
     if (!response.ok) throw new Error(`读酒馆里的美化失败（${response.status}）。`);
     const text = await response.text();
     // 不是这份美化文件（有的宿主对不存在的文件返回首页 HTML）：说不准有没有，当读失败处理，不当成「酒馆里没有」。
+    const notSkinFile = () => Object.assign(new Error('读回来的不是兔子镜美化文件。'), { notSkinFile: true });
     let data = null;
-    try { data = JSON.parse(text); } catch { throw new Error('读回来的不是兔子镜美化文件。'); }
-    if (data?.format !== USER_SKIN_FILE_FORMAT) throw new Error('读回来的不是兔子镜美化文件。');
+    try { data = JSON.parse(text); } catch { throw notSkinFile(); }
+    if (data?.format !== USER_SKIN_FILE_FORMAT) throw notSkinFile();
     return { ...normalizeSkin(data), editedAt: Number(data.editedAt) || 0 };
 }
 
@@ -198,8 +199,14 @@ function restoreFromFile(doc) {
         applyUserSkin(doc, value);
         try { globalThis.dispatchEvent?.(new CustomEvent('rabbitmirror:user-skin-restored', { detail: value })); } catch { /* 只是通知设置界面 */ }
         return value;
-    }, () => {
-        // 读失败（网络、服务器出错、读回来的不是这个文件）：这次不换，下次打开设置或刷新页面再试；期间存空美化照样不存不传。
+    }, error => {
+        // 设置里根本没有记号（从没存过美化）、宿主对不存在的文件回了一个网页：就当酒馆里没有，记一笔，下次不再问。
+        if (error?.notSkinFile && !serverCopy()?.file) {
+            restorePending = false;
+            if (!readLocalRecord() && !savedSinceLoad) writeLocalRecord(normalizeSkin(null), { dirty: false, synced: '', editedAt: 0 });
+            return null;
+        }
+        // 读失败（网络、服务器出错、有记号却读回来不是这个文件）：这次不换，下次打开设置或刷新页面再试；期间存空美化照样不存不传。
         restoring = null;
         return null;
     });
