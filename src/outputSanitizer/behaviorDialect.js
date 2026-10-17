@@ -1,5 +1,5 @@
-import { behaviorShowTokens, ownBehaviorShows } from './behaviorResults.js?rmv=1.70.3';
-import { behaviorStyleText } from './behaviorStateMirror.js?rmv=1.70.3';
+import { behaviorShowTokens, ownBehaviorShows } from './behaviorResults.js?rmv=1.70.4';
+import { behaviorStyleText } from './behaviorStateMirror.js?rmv=1.70.4';
 
 // 插件写法「方言表」：模型写的插件交互，意思对、写法和标准不一样的那些情况，集中在这里认。
 // 每一条只做三件事：怎么认出来、按什么标准写法去理解、诊断里怎么说。不新增内容、不猜目标。
@@ -15,6 +15,7 @@ export const BEHAVIOR_DIALECTS = Object.freeze([
     { id: 'effect-any-show', label: '一次性效果区域的显示条件写成 effect、fired、stamp 这类词', note: '效果区域只有「按过」和「没按过」两种状态：按过以后，写什么词的内容都显示，「!词」的内容藏起来。' },
     { id: 'range-as-cover', label: '揭示区域把遮罩标识写在滑杆自己身上', note: '滑杆不当遮罩裁掉，拖到底照常显示揭开后的内容。' },
     { id: 'author-css-show', label: '显示条件认不出，但模型自己写了 CSS 按状态管显隐', note: '驱动不再强行藏这些内容，交给模型的 CSS 按 data-rm-index、data-rm-on 这些状态显示。' },
+    { id: 'css-state-word', label: '开关写的状态名和模型自己的 CSS 对不上', note: '模型的 CSS 写了 [data-rm-on~="词"] 管哪些内容：开关写了 CSS 里没有的名字（比如写成选择器），而区域里只有一个没被别的开关认领的 CSS 状态词，就按这个词；开关在显示条件里点了某个 CSS 状态词、它管的内容却在开关外面，就把这个词写到同时包着开关和内容的那一层上。' },
 ]);
 
 const GROUP = '[data-rm-ui]';
@@ -190,6 +191,99 @@ export function authorManagedShows(root, group) {
     return managed;
 }
 
+// —— css-state-word ——
+// 模型的 CSS 里写的 [data-rm-on~="词"] 后代选择器：词 → 它管的那些后代选择器。
+const ON_RULE = /\[data-rm-on\s*[~*|^$]?=\s*(?:"([^"]*)"|'([^']*)'|([^\]\s]+))\s*\]([^,{]*)/g;
+const onWordCache = new WeakMap();
+function cssOnWords(root) {
+    const text = behaviorStyleText(root);
+    const cached = onWordCache.get(root);
+    if (cached?.text === text) return cached.words;
+    const words = new Map();
+    for (const match of text.matchAll(ON_RULE)) {
+        const word = String(match[1] ?? match[2] ?? match[3] ?? '').trim();
+        const rest = String(match[4] || '');
+        // 只认「状态写在外层、管里面的东西」：[data-rm-on~="x"] .child、[data-rm-on~="x"] > .child。
+        // 紧贴着写的（[data-rm-on~="x"].self）是给开关自己换样子，兄弟选择器（+ ~）管的不在里面，都不算。
+        if (!word || /\s/.test(word) || !/^\s*>?\s*[.#\[a-z*]/i.test(rest) || !/^\s/.test(rest) && !rest.startsWith('>')) continue;
+        const selector = rest.replace(/::?[a-z-]+(?:\([^)]*\))?/gi, '').replace(/^\s*>?\s*/, '').trim();
+        if (!selector || /^[+~]/.test(selector)) continue;
+        if (!words.has(word)) words.set(word, new Set());
+        words.get(word).add(selector);
+    }
+    onWordCache.set(root, { text, words });
+    return words;
+}
+function cssWordTargets(root, selectors) {
+    const out = [];
+    for (const selector of selectors || []) {
+        try { out.push(...root.querySelectorAll(selector)); } catch { /* 选择器写坏了就不算 */ }
+    }
+    return out;
+}
+// 这个开关写哪些键：自己身上写的 data-rm-toggle、里面开关部件写的；都没有就是默认的 on。
+function toggleKeysOf(group, remotes = []) {
+    const keys = toggleNames(group, remotes);
+    if (group.hasAttribute('data-rm-toggle')) keys.add(behaviorToggleKey(group.getAttribute('data-rm-toggle')));
+    if (!keys.size) keys.add('on');
+    return keys;
+}
+// 这个开关自己「点名」的词：写在它自己的显示条件里的、它写的键。
+function wordsNamedBy(group) {
+    const named = new Set(behaviorShowTokens(group).map(token => token.replace(/^!/, '')).filter(Boolean));
+    for (const key of toggleKeysOf(group)) named.add(key);
+    return named;
+}
+// 返回 null（写法本来就对、或认不出来），或 { aliases: 开着时一并写到开关上的词, outside: [{ node, word }] 开着时写到外层的词 }。
+export function toggleCssBridges(state) {
+    if (state.cssBridges !== undefined) return state.cssBridges;
+    state.cssBridges = null;
+    const { group, root } = state;
+    if (group?.getAttribute?.('data-rm-ui') !== 'toggle' || !root?.querySelectorAll) return null;
+    const words = cssOnWords(root);
+    if (!words.size) return null;
+    const keys = toggleKeysOf(group, state.remotes || []);
+    if ([...keys].some(key => words.has(key))) return null; // 开关写的就是 CSS 里的词：标准写法，不用管
+    const scope = faceScopeOf(group) || root;
+    const others = [...scope.querySelectorAll('[data-rm-ui="toggle"]')].filter(node => node !== group && root.contains(node));
+    const claimed = new Set();
+    for (const other of others) for (const word of wordsNamedBy(other)) if (words.has(word)) claimed.add(word);
+    const result = { aliases: new Set(), outside: [] };
+    // 开关在显示条件里点了 CSS 里的某个词：它管的内容在开关里面就直接写在开关上，在外面就写到同时包着两者的那一层。
+    for (const word of wordsNamedBy(group)) {
+        if (!words.has(word)) continue;
+        const targets = cssWordTargets(root, words.get(word)).filter(node => node !== group);
+        if (!targets.length) continue;
+        if (targets.some(node => group.contains(node))) { result.aliases.add(word); continue; }
+        let holder = group.parentElement;
+        while (holder && holder !== root && !targets.every(node => holder.contains(node))) holder = holder.parentElement;
+        // 那一层本身是别的交互区域时，它的状态由驱动管，写上去会被盖掉：不写。
+        if (!holder || !targets.every(node => holder.contains(node)) || holder.hasAttribute('data-rm-ui')) continue;
+        result.outside.push({ node: holder, word });
+    }
+    // 开关写了 CSS 里没有的名字（比如写成选择器 .rk-seal-trigger）：区域里只有一个没被别的开关认领的 CSS 词，就是它。
+    if (!result.aliases.size && !result.outside.length) {
+        const inside = [...words.keys()].filter(word => !claimed.has(word)
+            && cssWordTargets(root, words.get(word)).some(node => node !== group && group.contains(node)));
+        if (inside.length === 1) result.aliases.add(inside[0]);
+    }
+    state.cssBridges = result.aliases.size || result.outside.length ? result : null;
+    return state.cssBridges;
+}
+// 开着时把词写到外层；几个开关写同一层时各记各的，关掉只撤自己那个。模型原来写在那一层上的状态保留。
+const bridgeBase = new WeakMap();
+const bridgeOwners = new WeakMap();
+export function setBridgedCssWord(node, owner, word, on) {
+    if (!node?.setAttribute) return;
+    if (!bridgeBase.has(node)) bridgeBase.set(node, String(node.getAttribute('data-rm-on') || ''));
+    const owners = bridgeOwners.get(node) || new Map();
+    bridgeOwners.set(node, owners);
+    if (on) owners.set(owner, word); else owners.delete(owner);
+    const tokens = new Set(bridgeBase.get(node).split(/\s+/).filter(Boolean));
+    for (const value of owners.values()) tokens.add(value);
+    if (tokens.size) node.setAttribute('data-rm-on', [...tokens].join(' ')); else node.removeAttribute('data-rm-on');
+}
+
 // ——— 诊断：哪些写法对不上（静态检查，不点真实控件）———
 
 const COMMON_KEYS = ['changed', 'active', 'match', 'done', 'miss', 'placed'];
@@ -289,6 +383,17 @@ export function inspectBehaviorDialect(root) {
     if (!root?.querySelectorAll) return result;
     const used = new Set();
     const groups = [...root.querySelectorAll(GROUP)].filter(group => !group.closest(FACE_TOOL_UI));
+    // 方言表按模型自己的 CSS 接上的词：这些显示条件不算对不上。
+    const bridged = new Set();
+    for (const group of groups) {
+        if (group.getAttribute('data-rm-ui') !== 'toggle') continue;
+        const bridges = toggleCssBridges({ group, root, remotes: remoteTogglesOf(group) });
+        if (!bridges) continue;
+        used.add('css-state-word');
+        for (const word of wordsNamedBy(group)) bridged.add(word);
+        for (const word of bridges.aliases) bridged.add(word);
+        for (const { word } of bridges.outside) bridged.add(word);
+    }
     for (const group of groups) {
         const type = group.getAttribute('data-rm-ui');
         const reachable = reachableBehaviorKeys(group);
@@ -297,7 +402,7 @@ export function inspectBehaviorDialect(root) {
         if (reachable) {
             for (const node of ownBehaviorShows(group)) for (const token of managed.has(node) ? [] : behaviorShowTokens(node)) {
                 const key = token.startsWith('!') ? token.slice(1) : token;
-                if (key && !reachable.has(key) && !result.unmatched.some(item => item.type === type && item.token === token)) result.unmatched.push({ type, token });
+                if (key && !reachable.has(key) && !bridged.has(key) && !result.unmatched.some(item => item.type === type && item.token === token)) result.unmatched.push({ type, token });
             }
         }
         if (type === 'toggle') {
