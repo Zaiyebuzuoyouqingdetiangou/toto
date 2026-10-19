@@ -123,6 +123,13 @@ assert.equal(await vis('span[data-rm-match]'), '.'); checks++;
 await page.locator('input[type=text]').fill('想你'); await wait();
 assert.equal(await vis('span[data-rm-match]'), 'V'); checks++;
 
+// 9 天空色谱：整数档滑杆 + 样式里的 [data-stage="N"] 祖先条件
+await mount(`<details open data-rabbit-mirror-css-scope="s9"><summary>t</summary><style>[data-rabbit-mirror-css-scope="s9"] .card{display:none}[data-rabbit-mirror-css-scope="s9"] [data-stage="0"] .c0,[data-rabbit-mirror-css-scope="s9"] [data-stage="1"] .c1,[data-rabbit-mirror-css-scope="s9"] [data-stage="2"] .c2{display:block}</style>
+  <div data-rm-ui="adjust"><input type="range" min="0" max="2" step="1" value="1"><div class="win"><div class="card c0">卯正鱼肚灰</div><div class="card c1">辰时天光亮</div><div class="card c2">午后日头高</div></div></div></details>`);
+assert.equal(await vis('.card'), '.V.'); checks++;
+await page.locator('input[type=range]').evaluate(el => { el.value = '2'; el.dispatchEvent(new Event('input', { bubbles: true })); }); await wait();
+assert.equal(await vis('.card'), '..V'); checks++;
+
 assert.deepEqual(errors, []);
 console.log(JSON.stringify({ checks }));
 await browser.close(); server.close();

@@ -1,10 +1,10 @@
-import { behaviorShowTokens, clearForcedActive, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.70.9';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.70.9';
-import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.70.9';
-import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState, holdAncestorStateClass } from './behaviorStateMirror.js?rmv=1.70.9';
-import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.70.9';
-import { addDialectStateKeys, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup, toggleCssBridges, setBridgedCssWord } from './behaviorDialect.js?rmv=1.70.9';
-import { EXTRA_TYPES, EXTRA_CONTROLS, EXTRA_CONTROL_ATTRS, configureBehaviorExtras, configureCarryChatKey, extraTypeFits, prepareExtra, destroyExtra, extraAction, extraSync, extraKeys, extraReset, extraPointerDown, extraPointerMove, extraPointerUp, extraHoldStart, extraHoldEnd, applyCarriedState, saveCarriedState, recalledKeys, carryMemoryName } from './behaviorExtras.js?rmv=1.70.9';
+import { behaviorShowTokens, clearForcedActive, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.70.10';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.70.10';
+import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.70.10';
+import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState, holdAncestorStateClass } from './behaviorStateMirror.js?rmv=1.70.10';
+import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.70.10';
+import { addDialectStateKeys, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup, toggleCssBridges, setBridgedCssWord } from './behaviorDialect.js?rmv=1.70.10';
+import { EXTRA_TYPES, EXTRA_CONTROLS, EXTRA_CONTROL_ATTRS, configureBehaviorExtras, configureCarryChatKey, extraTypeFits, prepareExtra, destroyExtra, extraAction, extraSync, extraKeys, extraReset, extraPointerDown, extraPointerMove, extraPointerUp, extraHoldStart, extraHoldEnd, applyCarriedState, saveCarriedState, recalledKeys, carryMemoryName } from './behaviorExtras.js?rmv=1.70.10';
 
 export { behaviorToggleKey, motionOutsideControls };
 
@@ -502,6 +502,48 @@ function prepareKeyedParts(state) {
     for (const parts of state.keyedParts.values()) for (const part of parts) if (!state.firedParts.has(part)) setBehaviorNodeVisible(part, false);
 }
 
+// 天空色谱：滑杆是整数档（0…4），样式却写 [data-stage="2"] .卡片{display:block}，没有谁把档位写到 data-stage 上，
+// 卡片永远藏着。样式里出现一个非插件的 data-xxx="整数" 当祖先条件、整数又都落在滑杆范围里，就把滑杆的档位同步写过去。
+// 写在滑杆区域往外第一个包得住这些目标的祖先上（区域自己包得住就写区域上）。
+function prepareStageAttr(state) {
+    state.stageAttr = null;
+    const range = first(state.group, 'input[type="range"]');
+    if (!range) return;
+    const min = range.min === '' ? 0 : finite(range.min), max = range.max === '' ? 100 : finite(range.max, 100);
+    const step = range.step === '' ? 1 : finite(range.step, 1);
+    if (!(step > 0) || Math.abs(step - Math.round(step)) > 1e-9 || max - min > 40) return;
+    const found = new Map();
+    for (const rule of localRules(state.root)) for (const piece of rule.selectorText.split(',')) {
+        const match = piece.match(/\[(data-(?!rm-|rabbit-)[\w-]+)\s*=\s*["']?(-?\d+)["']?\s*\]\s+(.+)$/);
+        if (!match) continue;
+        const value = Number(match[2]);
+        if (value < min || value > max) continue;
+        if (!found.has(match[1])) found.set(match[1], { values: new Set(), targets: new Set() });
+        found.get(match[1]).values.add(value);
+        found.get(match[1]).targets.add(match[3].trim());
+    }
+    let best = null;
+    for (const [name, info] of found) if (info.values.size >= 2 && (!best || info.values.size > best[1].values.size)) best = [name, info];
+    if (!best) return;
+    const [name, info] = best;
+    const targets = [];
+    for (const selector of info.targets) { try { targets.push(...state.root.querySelectorAll(selector)); } catch { /* 选择器浏览器不认 */ } }
+    if (!targets.length) return;
+    // 从区域往外找第一个包得住目标的祖先。
+    let host = null;
+    for (let node = state.group; node && node !== state.root.parentElement; node = node.parentElement) {
+        if (targets.some(target => node.contains(target))) { host = node; break; }
+    }
+    if (!host) return;
+    state.stageAttr = name;
+    state.stageHost = host;
+}
+
+function syncStageAttr(state, value) {
+    if (!state.stageAttr || !Number.isFinite(value)) return;
+    state.stageHost.setAttribute(state.stageAttr, String(Math.round(value)));
+}
+
 function fireKeyedParts(state, button) {
     const parts = state.keyedParts?.get(String(button.getAttribute('data-rm-fire') || '').trim());
     if (!parts?.length) return false;
@@ -636,6 +678,7 @@ function inputChange(state, input, userAction = false) {
     if (type === 'adjust') {
         style(state, group, '--rm-p', String(p));
         style(state, group, '--rm-value', String(value));
+        syncStageAttr(state, value);
     } else if (type === 'reveal') reveal(state, p);
     else if (type === 'view') {
         for (const part of own(group, '[data-rm-part]')) {
@@ -777,6 +820,7 @@ function prepare(binding, group) {
     if (type === 'view') style(state, group, 'overflow', 'auto');
     if (type === 'effect') for (const animation of animations(state)) { animation.pause(); animation.currentTime = 0; }
     if (type === 'effect') prepareKeyedParts(state);
+    if (type === 'adjust') prepareStageAttr(state);
     // 「答对了才出现」写成子元素上一个空的 data-rm-match（小徽章自带 display:none）：当成 data-rm-show="match"。
     if (group.hasAttribute('data-rm-answer')) for (const node of own(group, '[data-rm-match]')) {
         if (node !== group && !node.hasAttribute('data-rm-show') && !String(node.getAttribute('data-rm-match') || '').trim()) node.setAttribute('data-rm-show', 'match');
@@ -1819,7 +1863,7 @@ function scheduleOnDemandRelay(root, target) {
 function relayGroupLater(root, group, control = null) {
     const run = () => {
         if (!group.isConnected || !root.isConnected) return;
-        void import('./behaviorRelay.js?rmv=1.70.9').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
+        void import('./behaviorRelay.js?rmv=1.70.10').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
     };
     const idle = globalThis.requestIdleCallback;
     if (typeof idle === 'function') idle(run, { timeout: 800 }); else setTimeout(run, 120);
@@ -1922,4 +1966,4 @@ configureBehaviorExtras({ own, first, style, setFlag, enableControl, refreshResu
 // 跨面继承按聊天分开记：聊天键从存储模块拿，拿不到时所有面共用一份。
 let carryChatKeyReader = null;
 configureCarryChatKey(() => carryChatKeyReader?.() || '');
-import('../storage.js?rmv=1.70.9').then(module => { carryChatKeyReader = () => module.getCurrentChatKey?.() || ''; }).catch(() => {});
+import('../storage.js?rmv=1.70.10').then(module => { carryChatKeyReader = () => module.getCurrentChatKey?.() || ''; }).catch(() => {});
