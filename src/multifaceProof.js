@@ -1,4 +1,4 @@
-import { presentationModeFields } from './presentationMode.js?rmv=1.71.1';
+import { presentationModeFields } from './presentationMode.js?rmv=1.71.2';
 const sanitizedFaceProofs = new WeakMap();
 
 export function rabbitMirrorMultifaceSourceHash(text = '') {

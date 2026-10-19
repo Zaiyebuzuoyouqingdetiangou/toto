@@ -1,6 +1,6 @@
-import { ExternalWorldBookError } from './errors.js?rmv=1.71.1';
-import { externalEntryId, externalEntryStableIdentity, externalLibraryIdForBook, openExternalLibraryDatabase } from './store.js?rmv=1.71.1';
-import { EXTERNAL_POOL_METADATA_VERSION, externalPoolMetadataForLibrary, upsertExternalPoolLibraries } from './externalPool.js?rmv=1.71.1';
+import { ExternalWorldBookError } from './errors.js?rmv=1.71.2';
+import { externalEntryId, externalEntryStableIdentity, externalLibraryIdForBook, openExternalLibraryDatabase } from './store.js?rmv=1.71.2';
+import { EXTERNAL_POOL_METADATA_VERSION, externalPoolMetadataForLibrary, upsertExternalPoolLibraries } from './externalPool.js?rmv=1.71.2';
 
 export const EXTERNAL_BACKUP_FORMAT = 'RabbitMirror.ExternalLibraries';
 export const EXTERNAL_BACKUP_VERSION = 1;
@@ -184,7 +184,7 @@ export async function importExternalLibraryBackup(raw, options = {}) {
         upsertExternalPoolLibraries(imported);
         // 从文件迁移进来的库也存一份进酒馆备份（从酒馆备份恢复时 skipServerBackup，不再写回）。
         if (imported.length && !options.indexedDBFactory && options.skipServerBackup !== true) {
-            void import('./serverBackup.js?rmv=1.71.1').then(module => module.scheduleMotherLibraryServerBackup()).catch(() => {});
+            void import('./serverBackup.js?rmv=1.71.2').then(module => module.scheduleMotherLibraryServerBackup()).catch(() => {});
         }
         return { importedLibraries: imported.length, importedEntries: imported.reduce((sum, item) => sum + item.entries.length, 0), skippedLibraries: skipped.length };
     } catch (error) {

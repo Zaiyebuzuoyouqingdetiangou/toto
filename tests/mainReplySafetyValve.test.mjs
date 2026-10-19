@@ -146,3 +146,22 @@ test('next-normal handoff waits for existing stability checks before evaluating 
     assert.equal(context.finalizeAutomaticHostGeneration(ctx, 0, 'host-generation-finished', true), false);
     assert.equal(activated.length, 2, 'a stable incomplete reply never becomes a generation task');
 });
+
+test('the "正文已出，立即生成" click passes the valve while the status bar is still streaming', async () => {
+    const from = mount.indexOf('export async function generateFor('), to = mount.indexOf(' if(!independentHistoryLoaded(', from);
+    // 正文写完了，状态栏的 <details> 还在流式输出：整条消息里有没闭合的标签。
+    const message = { mes: `${story}\n<details><summary>状态栏</summary>心情：`, extra: {} }, ctx = { chat: [message] }, notices = [];
+    const owner = { index: 0 };
+    const context = vm.createContext({ mainReplyAbnormalReason, getContext: () => ctx,
+        isRabbitMirrorEligibleAssistantMessage: () => true, observeMessageSourceRevision: () => ({}), recordKey: () => 'message',
+        getSettings: () => ({ generationSource: 'independent' }), messageBaseSlotKey: () => 'base', runtimeMode: () => 'independent',
+        independentGenerationTiming: () => 'auto', automaticIndependentTiming: () => true, notifySafetyValve: (_msg, reason) => notices.push(reason),
+        quickStartOwners: new Set([owner]), quickActionOwnerCurrent: () => true, assertEarlyBodyOwner() {} });
+    vm.runInContext(mount.slice(from, to).replace(/^export /, '') + '\nreturn "past-content-gate";\n}', context);
+    // 自动生成照旧等：没写完的标签算疑似截断。
+    assert.equal(await context.generateFor(0, message, false), undefined);
+    assert.equal(notices.length, 1);
+    // 用户点了「立即生成」：不拦。
+    assert.equal(await context.generateFor(0, message, false, true, null, null, null, null, owner), 'past-content-gate');
+    assert.equal(notices.length, 1);
+});
