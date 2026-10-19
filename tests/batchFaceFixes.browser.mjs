@@ -145,6 +145,44 @@ assert.equal(await vis('[data-rm-show="changed"]'), '.'); checks++;
 await page.locator('[data-rm-fire]').click(); await wait();
 assert.equal(await vis('[data-rm-show="changed"]'), 'V'); checks++;
 
+// 11 按钮类名带号码 + 外层 [data-scale="N"] 的样式：点哪个写哪个号码
+await mount(`<details open data-rabbit-mirror-css-scope="s11"><summary>t</summary><style>[data-rabbit-mirror-css-scope="s11"] .tier{display:none}[data-rabbit-mirror-css-scope="s11"] .sheet[data-scale="1"] .tier-1,[data-rabbit-mirror-css-scope="s11"] .sheet[data-scale="2"] .tier-2,[data-rabbit-mirror-css-scope="s11"] .sheet[data-scale="3"] .tier-3{display:block}</style>
+  <div class="sheet" data-scale="1"><div class="track"><button type="button" class="stage-btn stage-1">① 日常</button><button type="button" class="stage-btn stage-2">② 试探</button><button type="button" class="stage-btn stage-3">③ 拷问</button></div>
+  <div class="tier tier-1">第一层问答</div><div class="tier tier-2">第二层问答</div><div class="tier tier-3">第三层问答</div></div></details>`);
+assert.equal(await vis('.tier'), 'V..'); checks++;
+await page.locator('.stage-3').click(); await wait();
+assert.equal(await vis('.tier'), '..V'); checks++;
+await page.locator('.stage-2').click(); await wait();
+assert.equal(await vis('.tier'), '.V.'); checks++;
+
+// 12 遮蔽文字的内联 color 和 background 同色：刮开后要看得见，盖回去恢复
+await mount(`<details open data-rabbit-mirror-css-scope="s12"><summary>t</summary><style>[data-rabbit-mirror-css-scope="s12"] [data-rm-spoiler]:not([data-rm-revealed="true"]){background:currentColor;color:transparent}</style>
+  <div data-rm-ui="spoiler" style="color:#333"><span data-rm-spoiler style="background:#523138;color:#523138;">暗记：今夜无虞</span></div></details>`);
+const spoilerColors = () => page.evaluate(() => { const s = getComputedStyle(document.querySelector('[data-rm-spoiler]')); return `${s.color}|${s.backgroundColor}`; });
+assert.equal(await spoilerColors(), 'rgb(82, 49, 56)|rgb(82, 49, 56)'); checks++;
+await page.locator('[data-rm-spoiler]').click(); await wait();
+assert.equal(await spoilerColors(), 'rgb(51, 51, 51)|rgba(0, 0, 0, 0)'); checks++;
+await page.locator('[data-rm-spoiler]').click(); await wait();
+assert.equal(await spoilerColors(), 'rgb(82, 49, 56)|rgb(82, 49, 56)'); checks++;
+
+// 13 存档带回来的 data-rm-on 里有上次补写的 CSS 词：点一下要能关上
+await mount(`<details open data-rabbit-mirror-css-scope="s13"><summary>t</summary><style>[data-rabbit-mirror-css-scope="s13"] .tray{display:none}[data-rabbit-mirror-css-scope="s13"] [data-rm-on~="unsealed"] .tray{display:block}</style>
+  <div data-rm-ui="toggle" data-rm-toggle="seal" data-rm-on="seal unsealed" role="button" tabindex="0"><div class="seal">封印</div><div class="tray">筒内物证</div></div></details>`);
+assert.equal(await vis('.tray'), 'V'); checks++;
+await page.locator('[data-rm-ui="toggle"]').click(); await wait();
+assert.equal(await vis('.tray'), '.'); checks++;
+assert.equal(await page.evaluate(() => document.querySelector('[data-rm-ui="toggle"]').getAttribute('data-rm-on')), null); checks++;
+
+// 14 存档带回来的属性程序（开着时写上的 data-rm-state="reverse"，带 data-rm-program 记号）：关掉要能撤
+await mount(`<details open data-rabbit-mirror-css-scope="s14"><summary>t</summary><style>[data-rabbit-mirror-css-scope="s14"] [data-rm-state="reverse"] .inner{transform:rotate(180deg)}</style>
+  <div class="card" data-rm-ui="toggle" role="button" tabindex="0" data-rm-on="on" data-rm-state="reverse" data-rm-program="data-rm-state=reverse"><div class="inner">牌面</div></div></details>`);
+const innerTransform = () => page.evaluate(() => getComputedStyle(document.querySelector('.inner')).transform);
+assert.equal(await innerTransform(), 'matrix(-1, 0, 0, -1, 0, 0)'); checks++;
+await page.locator('.card').click(); await wait();
+assert.equal(await innerTransform(), 'none'); checks++;
+await page.locator('.card').click(); await wait();
+assert.equal(await innerTransform(), 'matrix(-1, 0, 0, -1, 0, 0)'); checks++;
+
 assert.deepEqual(errors, []);
 console.log(JSON.stringify({ checks }));
 await browser.close(); server.close();

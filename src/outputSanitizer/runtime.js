@@ -1,8 +1,8 @@
 // Split from outputSanitizer.js — runtime.
 
-import { getSettings } from '../settings.js?rmv=1.70.11';
+import { getSettings } from '../settings.js?rmv=1.71.0';
 
-export const RUNTIME_VERSION = '1.70.11';
+export const RUNTIME_VERSION = '1.71.0';
 
 export const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
@@ -224,6 +224,16 @@ export function isFeedbackCatEnabled() {
         return getSettings().feedbackCatEnabled !== false;
     } catch {
         return true;
+    }
+}
+
+
+export function isMaintenanceAutoPatrolEnabled() {
+    try {
+        const settings = getSettings();
+        return settings.maintenanceRabbitEnabled !== false && settings.maintenanceRabbitAutoSafeEnabled === true && settings.maintenanceRabbitAutoSafeConsent === true;
+    } catch {
+        return false;
     }
 }
 

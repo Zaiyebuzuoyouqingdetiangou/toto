@@ -1,10 +1,10 @@
 // 待修样本箱：维修兔「认不出写法」或「修了还是没反应」的那一面，把写法骨架存一份在本机，设置里一键导出。
 // 骨架里没有聊天正文（文字全是占位），只有结构、标识和 CSS。只存在本机，不会自动发出去。
 // 容量：最多 40 面、总共约 2 MB，超了先挤掉最早的；同一面（骨架相同）只记一份，更新原因和次数。
-import { hashText } from '../independentApi/runtime.js?rmv=1.70.11';
-import { RUNTIME_VERSION } from './runtime.js?rmv=1.70.11';
-import { maskFaceText } from './writingSkeleton.js?rmv=1.70.11';
-import { inspectBehaviorDialect } from './behaviorDialect.js?rmv=1.70.11';
+import { hashText } from '../independentApi/runtime.js?rmv=1.71.0';
+import { RUNTIME_VERSION } from './runtime.js?rmv=1.71.0';
+import { maskFaceText } from './writingSkeleton.js?rmv=1.71.0';
+import { inspectBehaviorDialect } from './behaviorDialect.js?rmv=1.71.0';
 
 export const REPAIR_SAMPLES_KEY = 'rabbit_mirror_repair_samples:v1';
 export const REPAIR_SAMPLES_EVENT = 'rabbitmirror:repair-samples';
@@ -36,7 +36,7 @@ export function countRepairSamples() { return read().entries.length; }
 export function clearRepairSamples() { try { globalThis.localStorage?.removeItem(REPAIR_SAMPLES_KEY); } catch { /* ignore */ } try { globalThis.dispatchEvent?.(new CustomEvent(REPAIR_SAMPLES_EVENT, { detail: { count: 0 } })); } catch { /* ignore */ } }
 
 /**
- * 记一份样本。trigger：patrol（巡逻实测有控件没反应）/ interaction（点了没反应维修后仍没好）。
+ * 记一份样本。trigger：patrol（巡逻实测有控件没反应）/ auto（自动巡逻实测有控件没反应）/ interaction（点了没反应维修后仍没好）。
  * controls：没反应的控件名（会打码只留长度）；reason：维修兔给出的结论原文（会打码控件名）。
  * skeleton：{ source, rendered }，由调用方用 buildRabbitMirrorSkeletonPair 生成。
  */
@@ -82,7 +82,7 @@ export function buildRepairSamplesExport() {
     ];
     const body = entries.map((entry, index) => [
         `==================== 样本 ${index + 1} / ${entries.length} ====================`,
-        `编号=${entry.id} 时间=${stamp(entry.at)} 版本=${entry.version} 触发=${entry.trigger === 'interaction' ? '点了没反应维修后仍没好' : '巡逻实测有控件没反应'} 次数=${entry.hits}`,
+        `编号=${entry.id} 时间=${stamp(entry.at)} 版本=${entry.version} 触发=${{ interaction: '点了没反应维修后仍没好', auto: '自动巡逻实测有控件没反应' }[entry.trigger] || '巡逻实测有控件没反应'} 次数=${entry.hits}`,
         `结论：${entry.reason || '-'}`,
         entry.controls?.length ? `没反应的控件：${entry.controls.join('、')}` : '',
         entry.dialect ? `方言：${entry.dialect.declared ? (entry.dialect.dialects.join(',') || '标准写法') : '没有插件写法'}${entry.dialect.unmatched?.length ? `；认不出：${entry.dialect.unmatched.map(String).join('、')}` : ''}` : '',

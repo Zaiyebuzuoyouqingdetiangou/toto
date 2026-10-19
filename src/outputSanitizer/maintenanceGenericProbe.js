@@ -2,11 +2,11 @@
 // （点 label／按钮、拖滑杆、开合内层 details），比较操作前后的画面快照；没有任何变化的就是“点了没反应”。
 // 副本里会重新接上和真实页面一样的修复，所以修好的控件在副本里也能动。
 // 真实页面上的控件一个不碰；结果只写回一个属性，供维修兔的结论和诊断引用。
-import { createMaintenanceLabeledCheckedProbeSandbox, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.70.11';
-import { rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.70.11';
-import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.70.11';
-import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=1.70.11';
-import { remoteMotionGroup, remoteToggleGroup } from './behaviorDialect.js?rmv=1.70.11';
+import { createMaintenanceLabeledCheckedProbeSandbox, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.71.0';
+import { rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.71.0';
+import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.71.0';
+import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=1.71.0';
+import { remoteMotionGroup, remoteToggleGroup } from './behaviorDialect.js?rmv=1.71.0';
 
 export const GENERIC_PROBE_RESULT_ATTR = 'data-rabbit-mirror-generic-probe';
 const TOOL_SELECTOR = '[data-rabbit-mirror-tool-entry-host],[data-rabbit-mirror-diagnostic-panel],.rabbit-mirror-maintenance-menu,[data-rm-face-swipe-host],[data-rm-image-region],[data-rm-mobile-controls],[data-rabbit-mirror-maintenance-rabbit],[data-rabbit-mirror-feedback-cat]';
@@ -133,12 +133,19 @@ function fire(element, type, init = {}) {
     } catch { /* 副本里派发失败就当没动 */ }
 }
 
+// 平台自带的装饰按钮（赞同、评论、收藏…）：界面的一部分，本来就不该有反应（和 choiceRescue 里的判断一致）。
+const DECORATION_TEXT = /(?:赞|评论|收藏|分享|转发|关注|喜欢|投币|弹幕|回复|举报|更多|[▲▼💬⭐↗❤👍])/u;
 function activate(details, control) {
     const { element, kind } = control;
+    // 前面的操作把它藏起来了（切了场景、收了折页）：藏着的控件按了本来就看不出变化，不算「没反应」。
+    if (!visible(element)) return 'skip';
     if (kind === 'label') {
         const input = labelInput(details, element);
         if (input?.type === 'radio' && input.checked) return 'skip';
         if (input?.disabled) return 'skip';
+        // 滑杆、文字框的说明文字：点 label 只是聚焦，本来就不改画面。
+        if (input && !/^(?:checkbox|radio)$/.test(input.type)) return 'skip';
+        if (!input && !element.querySelector('input[type="checkbox"], input[type="radio"]')) return 'skip';
         fire(element, 'pointerdown'); fire(element, 'pointerup');
         try { element.click(); } catch { fire(element, 'click'); }
         return 'done';
@@ -166,6 +173,13 @@ function activate(details, control) {
     if (element.matches?.('[data-rm-pick][data-rm-active="true"], [data-rm-goto][data-rm-active="true"]')) return 'skip';
     // 插件的复位按钮：初始状态下本来就没东西可复位，按了不变不能算“没反应”。
     if (element.matches?.('[data-rm-ui] [data-rm-reset]')) return 'skip';
+    // 同排分页里当前这一页的按钮：再点一次本来就不变。
+    if (element.matches?.('[data-rm-sibling-tab="active"]')) return 'skip';
+    // 维修兔已经认定「没写结果」的按钮（旁边补了一条说明）：不是写法问题，样本里不用再记。
+    if (/rm-inert-action-status/.test(String(element.getAttribute?.('aria-describedby') || ''))) return 'skip';
+    // 没有任何插件标识的装饰按钮（赞同、评论、收藏…）。
+    if (!element.matches?.('[data-rm-ui] *') && ![...element.attributes || []].some(attribute => attribute.name.startsWith('data-rm-') && !/^data-rm-(?:polish|press|mobile|texture|feedback)/.test(attribute.name))
+        && DECORATION_TEXT.test(String(element.textContent || '').trim())) return 'skip';
     // 「按住」类按钮：按下时才有变化、松手就复原。先按下，看完画面再松开（见下面的 hold 处理）。
     if (element.matches?.('[data-rm-hold]')) { fire(element, 'pointerdown', { button: 0, isPrimary: true, pointerId: 1 }); return 'hold'; }
     fire(element, 'pointerdown'); fire(element, 'pointerup');
@@ -257,13 +271,13 @@ export function probeGenericControls(details, controls, started = Date.now(), bu
 export { controlName as genericProbeControlName };
 
 // 返回 { tested, dead: [名称…], skipped, truncated }；无法建立副本时返回 null。
-export function runMaintenanceGenericProbe(root) {
+export function runMaintenanceGenericProbe(root, { budget = TIME_BUDGET_MS } = {}) {
     const started = Date.now();
     const opened = openGenericProbeSandbox(root);
     if (!opened) return null;
     try {
         const controls = collectGenericProbeControls(opened);
-        const { outcomes, truncated, feedbackOnly } = probeGenericControls(opened.details, controls, started);
+        const { outcomes, truncated, feedbackOnly } = probeGenericControls(opened.details, controls, started, budget);
         const dead = [];
         const contentStill = [];
         let tested = 0, skipped = 0, uncertain = 0;

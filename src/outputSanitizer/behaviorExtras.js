@@ -518,7 +518,25 @@ function spoilerAction(state, control) {
 function spoilerSync(state) {
     const { group } = state;
     const spans = H.own(group, '[data-rm-spoiler]');
-    for (const span of spans) { H.setFlag(span, 'data-rm-revealed', state.revealed.has(span)); span.setAttribute('aria-pressed', String(state.revealed.has(span))); }
+    for (const span of spans) {
+        const revealed = state.revealed.has(span);
+        H.setFlag(span, 'data-rm-revealed', revealed); span.setAttribute('aria-pressed', String(revealed));
+        // 模型把「涂黑」直接写成内联 color 和 background 同色（style="background:#523138;color:#523138"），
+        // 刮开后 CSS 规则不再管它、内联却还在，字永远看不见：刮开时把这两项让开，盖回去时恢复原样。
+        try {
+            // 只看内联写的那两项（样式表里模型自己写的揭开样子不碰，有 transition 时算出来的颜色也靠不住）。
+            const inlineColor = span.style.getPropertyValue('color'), inlineBackground = span.style.getPropertyValue('background-color');
+            const clash = Boolean(inlineColor) && inlineColor === inlineBackground;
+            if (revealed && clash) { H.style(state, span, 'background-color', 'transparent'); H.style(state, span, 'color', 'inherit'); }
+            else if (!revealed) {
+                H.unstyle?.(state, span, ['background-color', 'color']);
+                // 存档带回来的是刮开时让开过的那份（color:inherit + background:transparent）：盖回去时拿掉，让遮蔽规则生效。
+                if (span.style.getPropertyValue('color') === 'inherit' && span.style.getPropertyValue('background-color') === 'transparent') {
+                    span.style.removeProperty('color'); span.style.removeProperty('background-color');
+                }
+            }
+        } catch { /* 量不了就不动 */ }
+    }
     H.style(state, group, '--rm-count', String(state.revealed.size));
     H.setFlag(group, 'data-rm-done', spans.length > 0 && spans.every(span => state.revealed.has(span)));
 }

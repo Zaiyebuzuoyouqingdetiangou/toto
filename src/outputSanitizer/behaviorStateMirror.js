@@ -13,6 +13,14 @@ export function behaviorStyleText(root) {
     return styleText(root);
 }
 
+// 样式的廉价指纹（几个 style、总共多少字）：每次状态变化都要比一下有没有变，拼完整文本太贵。
+export function behaviorStyleStamp(root) {
+    const scope = root?.closest?.('toto') || root;
+    let count = 0, length = 0;
+    for (const node of scope?.querySelectorAll?.('style') || []) { count += 1; length += (node.textContent || '').length; }
+    return `${count}:${length}`;
+}
+
 function styleText(root) {
     const scope = root?.closest?.('toto') || root;
     return [...(scope?.querySelectorAll?.('style') || [])].map(node => String(node.textContent || '')).join('\n').replace(/\/\*[\s\S]*?\*\//g, '');

@@ -1,21 +1,21 @@
 // Split from outputSanitizer.js — maintenanceInspect.
-import { RADIO_BRANCH_COUNT_ATTR, findRadioBranchCandidates } from './radioBranchRepair.js?rmv=1.70.11';
-import { runMaintenanceGenericProbe, describeGenericProbe } from './maintenanceGenericProbe.js?rmv=1.70.11';
-import { recordRepairSample } from './repairSamples.js?rmv=1.70.11';
-import { cancelLabeledCheckedTransitionVerification, invalidateMaintenanceLabeledCheckedProbe } from './fallbackRescue.js?rmv=1.70.11';
-import { LABELED_CHECKED_VERIFY_LAST_ATTR } from './checkedStateRescue.js?rmv=1.70.11';
-import { findUnmappedNavigationButtons } from './choiceRescue.js?rmv=1.70.11';
+import { RADIO_BRANCH_COUNT_ATTR, findRadioBranchCandidates } from './radioBranchRepair.js?rmv=1.71.0';
+import { runMaintenanceGenericProbe, describeGenericProbe } from './maintenanceGenericProbe.js?rmv=1.71.0';
+import { recordRepairSample } from './repairSamples.js?rmv=1.71.0';
+import { cancelLabeledCheckedTransitionVerification, invalidateMaintenanceLabeledCheckedProbe } from './fallbackRescue.js?rmv=1.71.0';
+import { LABELED_CHECKED_VERIFY_LAST_ATTR } from './checkedStateRescue.js?rmv=1.71.0';
+import { findUnmappedNavigationButtons } from './choiceRescue.js?rmv=1.71.0';
 
-import { nativePopoverFallbackCount, inspectNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.70.11';
-import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.70.11';
-import { BEHAVIOR_RELAY_ATTR, relayDeadBehaviorGroups } from './behaviorRelay.js?rmv=1.70.11';
-import { BEHAVIOR_REVERSE_ATTR, reverseRelayDeadHandwrittenControls } from './behaviorReverseRelay.js?rmv=1.70.11';
-import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.70.11';
-import { getCurrentChatKey } from '../storage.js?rmv=1.70.11';
-import { bindRabbitMirrorAvatarRoot, restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.70.11';
-import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.70.11';
-import { getRabbitMirrorGenerationSnapshot } from '../generationGuard.js?rmv=1.70.11';
-import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules } from '../presentationQuality.js?rmv=1.70.11';
+import { nativePopoverFallbackCount, inspectNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.71.0';
+import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.71.0';
+import { BEHAVIOR_RELAY_ATTR, relayDeadBehaviorGroups } from './behaviorRelay.js?rmv=1.71.0';
+import { BEHAVIOR_REVERSE_ATTR, reverseRelayDeadHandwrittenControls } from './behaviorReverseRelay.js?rmv=1.71.0';
+import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.71.0';
+import { getCurrentChatKey } from '../storage.js?rmv=1.71.0';
+import { bindRabbitMirrorAvatarRoot, restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.71.0';
+import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.71.0';
+import { getRabbitMirrorGenerationSnapshot } from '../generationGuard.js?rmv=1.71.0';
+import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules } from '../presentationQuality.js?rmv=1.71.0';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -29,7 +29,8 @@ import {
     hashInteractionSignature,
     isInsideChatMessage,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.70.11';
+    isMaintenanceAutoPatrolEnabled,
+} from './runtime.js?rmv=1.71.0';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     CHANNEL_DIAL_CYCLE_COUNT_ATTR,
@@ -65,8 +66,8 @@ import {
     parseMissingCheckedSubjectClassRules,
     resolveTargetsForCheckedRule,
     restoreIndependentNativeCheckedInteraction,
-} from './checkedStateRescue.js?rmv=1.70.11';
-import { getClassTokens, isCollapsedDimensionValue, normalizeStylePropertyName } from './renderedStateRescue.js?rmv=1.70.11';
+} from './checkedStateRescue.js?rmv=1.71.0';
+import { getClassTokens, isCollapsedDimensionValue, normalizeStylePropertyName } from './renderedStateRescue.js?rmv=1.71.0';
 import {
     RAW_RADIO_RESET_RESCUE_ATTR,
     RAW_SELF_MUTATION_RESCUE_ATTR,
@@ -80,7 +81,7 @@ import {
     getRawAssistantMessageForRenderedRoot,
     installRawMessageRadioResetProgramRescue,
     normalizeInteractionMatchText,
-} from './scriptedInteractionRescue.js?rmv=1.70.11';
+} from './scriptedInteractionRescue.js?rmv=1.71.0';
 import {
     REVERSIBLE_RADIO_ROOT_ATTR,
     TOUCH_HOVER_ATTR,
@@ -98,14 +99,14 @@ import {
     repairMarkdownCorruptedCssComments,
     repairNestedDetailsPopupClipping,
     scheduleMaintenanceLabeledCheckedProbe,
-} from './fallbackRescue.js?rmv=1.70.11';
+} from './fallbackRescue.js?rmv=1.71.0';
 import {
     RADIO_GROUP_ROOT_ATTR,
     activateRabbitMirrorInteractionRescue,
     inspectSanitizedRadioGroupLoss,
     rearmRabbitMirrorSerializedInteractionRoot,
     scopeRabbitMirrorInteractionIds,
-} from './idsAndRearm.js?rmv=1.70.11';
+} from './idsAndRearm.js?rmv=1.71.0';
 import {
     DISABLED_ONLY_CHOICE_RESCUE_ATTR,
     FEEDBACK_CAT_MENU_ATTR,
@@ -168,7 +169,7 @@ import {
     MAINTENANCE_STATE_ATTR,
     MAINTENANCE_REASON_ATTR,
     buildRabbitMirrorSkeletonPair,
-} from './diagnostics.js?rmv=1.70.11';
+} from './diagnostics.js?rmv=1.71.0';
 import {
     findDisabledOnlyChoiceGroupCandidates,
     findFillInChoiceCandidates,
@@ -183,7 +184,7 @@ import {
     installStaticChoiceSelectionFallback,
     installStructuredStaticDisclosureFallback,
     rehydrateRabbitMirrorMaintenanceRepairs,
-} from './choiceRescue.js?rmv=1.70.11';
+} from './choiceRescue.js?rmv=1.71.0';
 import {
     FENCED_BLOCK_RE,
     RABBIT_MIRROR_SANITIZER_STYLE_DROP_ATTR,
@@ -202,7 +203,7 @@ import {
     validateRabbitMirrorMarkupLexicalBudget,
     wrapNakedHtmlAsToto,
     wrapTrailingNakedHtml,
-} from './markup.js?rmv=1.70.11';
+} from './markup.js?rmv=1.71.0';
 import {
     getRabbitMirrorFacePosition,
     independentMaintenanceHost,
@@ -217,13 +218,13 @@ import {
     maintenanceMobileLayoutRect,
     maintenanceMobileLayoutTextLength,
     shouldRunMaintenanceMobileLayoutRescue,
-} from './layoutRescue.js?rmv=1.70.11';
+} from './layoutRescue.js?rmv=1.71.0';
 import {
     containRabbitMirrorTitleToolFloat,
     installMaintenanceRabbitForRoot,
     rabbitMirrorTextPresentation,
     refreshRabbitMirrorToolsInScope,
-} from './toolsChrome.js?rmv=1.70.11';
+} from './toolsChrome.js?rmv=1.71.0';
 import {
     TRANSIENT_RERENDER_REASONING_ENVELOPE_RE,
     followMaintenanceRepairRecipes,
@@ -235,7 +236,7 @@ import {
     maintenanceRepairTimers,
     messageContainsReasoningEnvelope,
     messageUsesDistinctDisplaySource,
-} from './lifecycle.js?rmv=1.70.11';
+} from './lifecycle.js?rmv=1.71.0';
 
 let rabbitMirrorInteractionResetInstanceCounter = 0;
 
@@ -4007,10 +4008,60 @@ export function runMaintenanceSafeAutomaticRepairs(root, button) {
         setMaintenanceRabbitState(button, inspection.state, inspection.reason || '自动巡逻未发现需要安全修复的问题');
     }
     if (repaired > 0 && !failedModules.length) notifyIndependentRepairPersistence(root);
+    // 安全修复做完，再在隐藏副本里把每个控件试一遍：按了画面没变化的，自动记进待修样本箱（不碰真实控件）。
+    scheduleMaintenanceAutoProbe(root, button);
     return { repaired, modules, failedModules, inspection };
     } finally {
         finishMaintenanceRepairRun(repairRun);
     }
+}
+
+// 自动巡逻的通用实测：等页面空闲再跑（副本克隆、逐个操作、比较快照要几百毫秒，别卡在渲染这一拍里）。
+// 一面只跑一次；有控件没反应就记样本、把结论写到兔子按钮上，第一次记到时提醒一句。
+const AUTO_PROBE_ATTR = 'data-rabbit-mirror-auto-probe';
+let autoProbeNoticeShown = false;
+// 正文还在流式输出（Swipe 触发了新一轮生成）时不测：半截的面会记成假样本。
+function hostLooksStreaming(root) {
+    try {
+        const message = root.closest?.('.mes');
+        if (message?.matches?.('.streaming, [data-is-streaming="true"], [is_generating="true"], [data-generating="true"]')) return true;
+        return !!document.querySelector('#chat .mes.streaming, #chat .mes[data-is-streaming="true"], #chat .mes[is_generating="true"], #chat .mes[data-generating="true"]');
+    } catch { return false; }
+}
+const AUTO_PROBE_BUDGET_MS = 500;
+function scheduleMaintenanceAutoProbe(root, button, attempt = 0) {
+    if (!root?.isConnected || !button?.isConnected || (attempt === 0 && root.hasAttribute(AUTO_PROBE_ATTR))) return false;
+    root.setAttribute(AUTO_PROBE_ATTR, 'pending');
+    const origin = captureMaintenanceRepairOrigin(root);
+    // 这一面不在聊天消息里（没有楼层号也没有独立 API 的主人）时没什么可比的，不按楼层核对。
+    const originStillCurrent = () => (origin.index < 0 && !origin.ownerKey) || maintenanceRepairOriginIsCurrent(origin);
+    const run = () => {
+        if (!root.isConnected || !button.isConnected || !isMaintenanceAutoPatrolEnabled()) { root.removeAttribute(AUTO_PROBE_ATTR); return; }
+        // 期间切了聊天、Swipe 或正文变了：这一面已经不是原来那面，不测也不写结论。
+        if (!originStillCurrent()) { root.removeAttribute(AUTO_PROBE_ATTR); return; }
+        if (hostLooksStreaming(root)) {
+            if (attempt < 3) setTimeout(() => scheduleMaintenanceAutoProbe(root, button, attempt + 1), 1500);
+            else root.removeAttribute(AUTO_PROBE_ATTR);
+            return;
+        }
+        let probe = null;
+        try { probe = runMaintenanceGenericProbe(root, { budget: AUTO_PROBE_BUDGET_MS }); } catch (error) { console.debug('[RabbitMirror] auto probe failed:', error); }
+        root.setAttribute(AUTO_PROBE_ATTR, probe ? 'done' : 'failed');
+        if (!probe || !originStillCurrent()) return;
+        const dead = [...(probe.dead || []), ...(probe.feedbackOnly || [])];
+        if (!dead.length) return;
+        const line = describeGenericProbe(probe);
+        const recorded = rememberRepairSample(root, 'auto', line, dead);
+        setMaintenanceRabbitState(button, MAINTENANCE_STATES.unknown,
+            `自动巡逻 ${line}。这些控件维修兔还认不出写法；${recorded ? '已记进待修样本箱（设置 → 工具 里导出发给作者）' : '样本箱没存下（本机存满了）'}`);
+        if (recorded && !autoProbeNoticeShown) {
+            autoProbeNoticeShown = true;
+            try { globalThis.toastr?.info?.('维修兔自动巡逻记下了一面认不出写法的兔子镜（只存写法骨架，不含聊天内容）。攒几面后到 设置 → 工具 导出待修样本箱发给作者。'); } catch { /* 提示不了就算了 */ }
+        }
+    };
+    const idle = globalThis.requestIdleCallback;
+    if (typeof idle === 'function') idle(() => run(), { timeout: 3000 }); else setTimeout(run, 500);
+    return true;
 }
 
 
@@ -4194,7 +4245,7 @@ export async function runMaintenanceNarrowFaceRepair(root, button) {
         if (rejectOversizedMaintenanceRepair(root, button, '窄面电击')) return false;
         if (!maintenanceRepairRunIsCurrent(repairRun)) return false;
         setMaintenanceRabbitState(button, MAINTENANCE_STATES.checking, '⚡ 正在重新测量并恢复这面兔子镜的宽度');
-        const adapter = await import('../independentApi.js?rmv=1.70.11');
+        const adapter = await import('../independentApi.js?rmv=1.71.0');
         // Loading the adapter is the sole async boundary. Never apply a delayed
         // click to a new chat, Swipe, source revision, face or replacement node.
         if (!root.isConnected || !details.isConnected || !button.isConnected
