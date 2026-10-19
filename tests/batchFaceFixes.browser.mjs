@@ -130,6 +130,21 @@ assert.equal(await vis('.card'), '.V.'); checks++;
 await page.locator('input[type=range]').evaluate(el => { el.value = '2'; el.dispatchEvent(new Event('input', { bubbles: true })); }); await wait();
 assert.equal(await vis('.card'), '..V'); checks++;
 
+// 10 捏脸：[data-rm-ui="hold"] [data-rm-active="true"] .层 —— 状态要写在区域里面那一层；效果区只有按钮和「按下后显示」
+await mount(`<details open data-rabbit-mirror-css-scope="s10"><summary>t</summary><style>[data-rabbit-mirror-css-scope="s10"] [data-rm-ui="hold"] [data-rm-active="true"] .orig{opacity:1;visibility:visible}[data-rabbit-mirror-css-scope="s10"] .orig{opacity:0;visibility:hidden}</style>
+  <div data-rm-ui="hold"><svg width="80" height="40"><g class="orig"><rect width="80" height="40"></rect></g></svg><div><button type="button" data-rm-hold>按住看原貌</button></div></div>
+  <div data-rm-ui="effect"><button type="button" data-rm-fire>许愿</button><div data-rm-show="changed">柳枝已系上红绳</div></div></details>`);
+const orig = () => page.evaluate(() => getComputedStyle(document.querySelector('.orig')).visibility);
+assert.equal(await orig(), 'hidden'); checks++;
+const holdBox = await page.locator('[data-rm-hold]').boundingBox();
+await page.mouse.move(holdBox.x + 5, holdBox.y + 5); await page.mouse.down(); await wait();
+assert.equal(await orig(), 'visible'); checks++;
+await page.mouse.up(); await wait();
+assert.equal(await orig(), 'hidden'); checks++;
+assert.equal(await vis('[data-rm-show="changed"]'), '.'); checks++;
+await page.locator('[data-rm-fire]').click(); await wait();
+assert.equal(await vis('[data-rm-show="changed"]'), 'V'); checks++;
+
 assert.deepEqual(errors, []);
 console.log(JSON.stringify({ checks }));
 await browser.close(); server.close();

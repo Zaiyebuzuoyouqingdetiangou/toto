@@ -1,10 +1,10 @@
-import { behaviorShowTokens, clearForcedActive, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.70.10';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.70.10';
-import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.70.10';
-import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState, holdAncestorStateClass } from './behaviorStateMirror.js?rmv=1.70.10';
-import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.70.10';
-import { addDialectStateKeys, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup, toggleCssBridges, setBridgedCssWord } from './behaviorDialect.js?rmv=1.70.10';
-import { EXTRA_TYPES, EXTRA_CONTROLS, EXTRA_CONTROL_ATTRS, configureBehaviorExtras, configureCarryChatKey, extraTypeFits, prepareExtra, destroyExtra, extraAction, extraSync, extraKeys, extraReset, extraPointerDown, extraPointerMove, extraPointerUp, extraHoldStart, extraHoldEnd, applyCarriedState, saveCarriedState, recalledKeys, carryMemoryName } from './behaviorExtras.js?rmv=1.70.10';
+import { behaviorShowTokens, clearForcedActive, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.70.11';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.70.11';
+import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.70.11';
+import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState, holdAncestorStateClass } from './behaviorStateMirror.js?rmv=1.70.11';
+import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.70.11';
+import { addDialectStateKeys, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup, toggleCssBridges, setBridgedCssWord } from './behaviorDialect.js?rmv=1.70.11';
+import { EXTRA_TYPES, EXTRA_CONTROLS, EXTRA_CONTROL_ATTRS, configureBehaviorExtras, configureCarryChatKey, extraTypeFits, prepareExtra, destroyExtra, extraAction, extraSync, extraKeys, extraReset, extraPointerDown, extraPointerMove, extraPointerUp, extraHoldStart, extraHoldEnd, applyCarriedState, saveCarriedState, recalledKeys, carryMemoryName } from './behaviorExtras.js?rmv=1.70.11';
 
 export { behaviorToggleKey, motionOutsideControls };
 
@@ -1693,11 +1693,35 @@ function finishPointer(binding, event, cancelled = false) {
 // 按住时，外层 data-rm-ui="hold" 容器和按下的那个按钮都带 data-rm-active="true"：
 // 模型写 [data-rm-ui="hold"][data-rm-active] … 或 button[data-rm-hold][data-rm-active] ~ … 都能生效；松开时两处一起撤掉。
 const HOLD_CLASS_ATTR = 'data-rm-hold-class';
+// 捏脸：样式写 [data-rm-ui="hold"] [data-rm-active="true"] .原图层——「按住」状态要在按住区域「里面」的某一层上，
+// 驱动却只写在区域自己和按钮上；原图层又不在按钮里，永远对不上。按住时把状态也写到区域里包着这些目标的那一层（区域的直接子元素）。
+function holdInnerCarriers(state) {
+    if (state.innerCarriers) return state.innerCarriers;
+    state.innerCarriers = new Set();
+    for (const rule of localRules(state.root)) for (const piece of rule.selectorText.split(',')) {
+        const match = piece.match(/\[data-rm-ui\s*=\s*["']?hold["']?\s*\][^\[]*?\s+(?:[^\s>+~]*)\[data-rm-active(?:\s*=\s*["']?true["']?)?\s*\]\s+(.+)$/);
+        if (!match) continue;
+        let targets = [];
+        try { targets = [...state.group.querySelectorAll(match[1].replace(/::?[a-z-]+(?:\([^)]*\))?/gi, '').trim())]; } catch { continue; }
+        for (const target of targets) {
+            if (target.closest('[data-rm-hold]')) continue; // 在按钮里的，按钮身上本来就写着
+            let carrier = target;
+            while (carrier.parentElement && carrier.parentElement !== state.group) carrier = carrier.parentElement;
+            // 目标自己就是区域的直接子元素时，外面没有能写的那一层：不补。
+            if (carrier.parentElement === state.group && carrier !== target) state.innerCarriers.add(carrier);
+        }
+    }
+    return state.innerCarriers;
+}
+
 function setHoldActive(state, button, on) {
     const needles = ['data-rm-active', 'data-rm-show'];
     if (state.ancestorClass === undefined) {
         try { state.ancestorClass = holdAncestorStateClass(state.root, state.group); } catch { state.ancestorClass = ''; }
     }
+    let carriers = [];
+    try { carriers = [...holdInnerCarriers(state)]; } catch { /* 量不了就不补 */ }
+    for (const carrier of carriers) { if (on) carrier.setAttribute('data-rm-active', 'true'); else carrier.removeAttribute('data-rm-active'); }
     if (on) {
         state.group.setAttribute('data-rm-active', 'true');
         mirrorBehaviorState(state.root, state.group, true);
@@ -1863,7 +1887,7 @@ function scheduleOnDemandRelay(root, target) {
 function relayGroupLater(root, group, control = null) {
     const run = () => {
         if (!group.isConnected || !root.isConnected) return;
-        void import('./behaviorRelay.js?rmv=1.70.10').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
+        void import('./behaviorRelay.js?rmv=1.70.11').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
     };
     const idle = globalThis.requestIdleCallback;
     if (typeof idle === 'function') idle(run, { timeout: 800 }); else setTimeout(run, 120);
@@ -1966,4 +1990,4 @@ configureBehaviorExtras({ own, first, style, setFlag, enableControl, refreshResu
 // 跨面继承按聊天分开记：聊天键从存储模块拿，拿不到时所有面共用一份。
 let carryChatKeyReader = null;
 configureCarryChatKey(() => carryChatKeyReader?.() || '');
-import('../storage.js?rmv=1.70.10').then(module => { carryChatKeyReader = () => module.getCurrentChatKey?.() || ''; }).catch(() => {});
+import('../storage.js?rmv=1.70.11').then(module => { carryChatKeyReader = () => module.getCurrentChatKey?.() || ''; }).catch(() => {});

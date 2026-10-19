@@ -46,7 +46,9 @@ function count(group, selector) {
 // 各类型“这一类写法成立”的最低部件。
 export function behaviorTypeFits(group, type) {
     switch (type) {
-        case 'effect': case 'view': case 'motion': return count(group, '[data-rm-part]') > 0;
+        // 效果区只写了「按下按钮 → 显示一段」（没有部件）：按下本身就是变化，也算。
+        case 'effect': return count(group, '[data-rm-part]') > 0 || (count(group, '[data-rm-fire]') > 0 && count(group, '[data-rm-show]') > 0);
+        case 'view': case 'motion': return count(group, '[data-rm-part]') > 0;
         case 'drag': case 'reorder': return count(group, '[data-rm-item]') > 0;
         case 'adjust': return count(group, 'input[type="range"]') > 0;
         case 'reveal': return count(group, '[data-rm-cover]') > 0;
