@@ -69,6 +69,48 @@ export function findBuiltinImageKeyFromOtherChat(key) {
     return '';
 }
 
+// 内置生图的键：builtin:聊天:楼层:swipe:图框序号:提示词哈希。聊天名里可能带冒号，从后往前拆。
+export function parseBuiltinImageKey(key) {
+    const parts = String(key || '').split(':');
+    if (parts[0] !== 'builtin' || parts.length < 6) return null;
+    return { chat: parts.slice(1, -4).join(':'), mes: parts[parts.length - 4], swipe: parts[parts.length - 3], index: parts[parts.length - 2], hash: parts[parts.length - 1] };
+}
+
+// 两个键指的是不是同一张图：同一聊天、同一图框、同一段提示词；楼层和 swipe 一样，或其中一边当时还没记上（空）。
+// 多面镜子在归属写上之前就开始画，画好的图存在「楼层空」的键下，写上归属后再找就对不上，于是又画一遍。
+// 聊天名有两种写法：写上归属的那一面记的是「chat:聊天名」，没写上的直接用酒馆给的聊天名，指的是同一个聊天。
+const sameChat = (a, b) => String(a).replace(/^chat:/, '') === String(b).replace(/^chat:/, '');
+export function builtinImageKeysCompatible(a, b) {
+    const x = parseBuiltinImageKey(a), y = parseBuiltinImageKey(b);
+    if (!x || !y || !sameChat(x.chat, y.chat) || x.index !== y.index || x.hash !== y.hash || !x.hash) return false;
+    const same = (u, v) => u === v || u === '' || v === '';
+    return same(x.mes, y.mes) && same(x.swipe, y.swipe);
+}
+
+// 同一张图存在另一个兼容的键下（见上）：优先楼层、swipe 都对得上的，再退到当时没记楼层的。只读。
+export function findCompatibleBuiltinImageKey(key) {
+    const storage = globalThis.localStorage;
+    const wanted = parseBuiltinImageKey(key);
+    if (!storage || !wanted || !wanted.hash) return '';
+    const imagesPrefix = `${PREFIX}images:`;
+    const head = `${imagesPrefix}builtin:`;
+    const suffix = `:${wanted.index}:${wanted.hash}`;
+    const own = storageKey(key, 'images');
+    let best = '', bestScore = -1;
+    try {
+        for (let i = 0; i < storage.length; i += 1) {
+            const name = storage.key(i);
+            if (!name || name === own || !name.startsWith(head) || !name.endsWith(suffix)) continue;
+            const candidate = name.slice(imagesPrefix.length);
+            if (!builtinImageKeysCompatible(key, candidate)) continue;
+            const other = parseBuiltinImageKey(candidate);
+            const score = (other.mes === wanted.mes ? 4 : 0) + (other.swipe === wanted.swipe ? 2 : 0) + (other.chat === wanted.chat ? 1 : 0);
+            if (score > bestScore) { best = candidate; bestScore = score; }
+        }
+    } catch { /* 读不到就当没有 */ }
+    return best;
+}
+
 // 换成历史里的另一张显示：选中的那张当当前，其余按原来的先后留在历史里。不发请求。
 export function replaceMirrorImageVersions(key, current, history) {
     const value = { version: 1, current: storedRecord(current), history: (Array.isArray(history) ? history : []).filter(entry => entry && typeof entry === 'object').map(entry => ({ ...entry })) };

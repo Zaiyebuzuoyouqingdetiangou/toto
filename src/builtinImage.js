@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.71.0';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.71.0';
-import { findBuiltinImageKeyFromOtherChat, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.71.0';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.71.0';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.71.0';
-import { tidyImagePayload } from './imageTagTidy.js?rmv=1.71.0';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.71.0';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.71.0';
+import { getSettings } from './settings.js?rmv=1.71.1';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.71.1';
+import { builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.71.1';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.71.1';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.71.1';
+import { tidyImagePayload } from './imageTagTidy.js?rmv=1.71.1';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.71.1';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.71.1';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -145,10 +145,14 @@ function storageKey(root, frame, prompt) {
     const ctx = getContext();
     // 收藏夹里打开的那一面不属于当前聊天：用收藏时记下的聊天、楼层和 swipe 找回当时画好的图。
     const image = details?.dataset || {};
-    const chat = image.rmImageOwnerChat || details?.dataset?.rabbitMirrorOwnerChat
+    // 独立 API 的多面镜子：每一面的归属（楼层、swipe）要等外壳挂好后才写到这一面上，可画图在那之前就开始了。
+    // 这一面还没写上时，直接读外壳上的归属，免得同一张图前后用了两个键（先存在「楼层空」下，之后找不到又画一遍）。
+    const shell = details?.parentElement?.matches?.('[data-rabbit-mirror-external-source="true"]') ? details.parentElement.dataset : {};
+    const pick = (...values) => { for (const value of values) if (value !== undefined && value !== null && String(value) !== '') return String(value); return ''; };
+    const chat = pick(image.rmImageOwnerChat, details?.dataset?.rabbitMirrorOwnerChat, shell.rmOwnerChat)
         || String(ctx.getCurrentChatId?.() ?? ctx.chatId ?? '');
-    const mes = image.rmImageOwnerMesid ?? details?.dataset?.rabbitMirrorOwnerMesid ?? '';
-    const swipe = image.rmImageOwnerSwipe ?? details?.dataset?.rabbitMirrorOwnerSwipe ?? '';
+    const mes = image.rmImageOwnerMesid ?? pick(details?.dataset?.rabbitMirrorOwnerMesid, shell.rmOwnerMesid, shell.rmExternalOwnerMessage);
+    const swipe = image.rmImageOwnerSwipe ?? pick(details?.dataset?.rabbitMirrorOwnerSwipe, shell.rmOwnerSwipe);
     const frames = [...(root.querySelectorAll?.('[data-rm-draw-frame]') || [])];
     const index = Math.max(0, frames.indexOf(frame));
     return `builtin:${chat}:${mes}:${swipe}:${index}:${hashText(prompt)}`;
@@ -159,14 +163,25 @@ function readSaved(key) {
     catch { return { broken: true }; }
 }
 
-// 当前聊天名下没有这张图时，看看是不是聊天开了分支／改了名，图还存在旧名字下。
+// 当前键下没有这张图时：先找同一聊天里兼容的键（当时还没记上楼层），再看是不是聊天开了分支／改了名，图还存在旧名字下。
+function savedKeyFor(key) {
+    const own = readSaved(key);
+    if (own.broken || own.record) return key;
+    for (const other of [findCompatibleBuiltinImageKey(key), findBuiltinImageKeyFromOtherChat(key)]) {
+        if (other && readSaved(other).record) return other;
+    }
+    return key;
+}
 function readSavedAnyChat(key) {
-    const saved = readSaved(key);
-    if (saved.broken || saved.record) return saved;
-    const other = findBuiltinImageKeyFromOtherChat(key);
-    if (!other) return saved;
-    const moved = readSaved(other);
-    return moved.record ? moved : saved;
+    const where = savedKeyFor(key);
+    return where === key ? readSaved(key) : readSaved(where);
+}
+
+// 同一张图正在画（键可能是还没记上楼层的那个）：跟着那一次，不再另发一次请求。
+function inflightKeyFor(key) {
+    if (inflight.get(key)?.isCurrent?.()) return key;
+    for (const [other, entry] of inflight) if (other !== key && entry?.isCurrent?.() && builtinImageKeysCompatible(key, other)) return other;
+    return key;
 }
 
 function frameImageSize(frame) {
@@ -553,6 +568,8 @@ async function fillFrame(root, frame) {
         note(frame, failed.get(key), root);
         return;
     }
+    const joined = inflightKeyFor(key);
+    if (joined !== key) return void joinInflight(root, frame, joined, isCurrent);
     let nodes = waiters.get(key);
     if (!nodes) { nodes = new Set(); waiters.set(key, nodes); }
     const waiter = { frame, isCurrent };
@@ -578,6 +595,26 @@ async function fillFrame(root, frame) {
     } finally {
         nodes.delete(waiter);
         if (!nodes.size) waiters.delete(key);
+    }
+}
+
+// 跟着另一个键下正在画的那一次：画好就放进这个图框；画不成的提示交给那一次的调用方，这里只留「重新生图」。
+async function joinInflight(root, frame, key, isCurrent) {
+    const entry = inflight.get(key);
+    if (!entry?.job) return;
+    let nodes = waiters.get(key);
+    if (!nodes) { nodes = new Set(); waiters.set(key, nodes); }
+    const waiter = { frame, isCurrent };
+    nodes.add(waiter);
+    if (progress.has(key)) note(frame, progress.get(key));
+    try {
+        const record = await entry.job;
+        if (isCurrent() && frame.isConnected) paint(frame, record, root, key);
+    } catch {
+        if (frame.isConnected && !frame.querySelector?.('img[data-rm-draw-result][src]')) note(frame, '这一面的画面这次没有画成。', root);
+    } finally {
+        nodes.delete(waiter);
+        if (!nodes.size && waiters.get(key) === nodes) waiters.delete(key);
     }
 }
 
@@ -686,7 +723,7 @@ export function listBuiltinImageFrames(root) {
         const saved = readSavedAnyChat(key);
         const { list: versions, current } = saved.broken ? { list: [], current: -1 } : versionsOf(saved.record);
         list.push({ frame, key, prompt, versions, current, broken: !!saved.broken,
-            busy: !!inflight.get(key)?.isCurrent?.() });
+            busy: !!inflight.get(inflightKeyFor(key))?.isCurrent?.() });
     }
     return list;
 }
@@ -697,8 +734,8 @@ export function builtinImageReady() { return getSettings().builtinImageEnabled =
 function adoptSavedKey(key) {
     const own = readSaved(key);
     if (own.broken || own.record) return;
-    const other = findBuiltinImageKeyFromOtherChat(key);
-    if (!other) return;
+    const other = savedKeyFor(key);
+    if (!other || other === key) return;
     const moved = readSaved(other).record;
     if (!moved) return;
     const { history = [], ...current } = moved;
@@ -728,7 +765,7 @@ export async function rerollBuiltinImage(root, frame, { prompt: edited = '', sig
     const original = readPrompt(frame);
     if (!original) throw Object.assign(new Error('这个图框里没有提示词，没法重画。'), { code: 'no_prompt' });
     const key = storageKey(root, frame, original);
-    if (inflight.get(key)?.isCurrent?.()) throw Object.assign(new Error('这张正在画，等它画完再重画。'), { code: 'busy' });
+    if (inflight.get(inflightKeyFor(key))?.isCurrent?.()) throw Object.assign(new Error('这张正在画，等它画完再重画。'), { code: 'busy' });
     adoptSavedKey(key);
     const savedState = readSaved(key);
     if (savedState.broken) throw Object.assign(new Error('这张图的存档读不出来，重画的结果会存不进去，先没有画。'), { code: 'broken' });
