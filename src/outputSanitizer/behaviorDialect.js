@@ -1,5 +1,5 @@
-import { behaviorShowTokens, ownBehaviorShows } from './behaviorResults.js?rmv=1.70.8';
-import { behaviorStyleText } from './behaviorStateMirror.js?rmv=1.70.8';
+import { behaviorShowTokens, ownBehaviorShows } from './behaviorResults.js?rmv=1.70.9';
+import { behaviorStyleText } from './behaviorStateMirror.js?rmv=1.70.9';
 
 // 插件写法「方言表」：模型写的插件交互，意思对、写法和标准不一样的那些情况，集中在这里认。
 // 每一条只做三件事：怎么认出来、按什么标准写法去理解、诊断里怎么说。不新增内容、不猜目标。
@@ -291,7 +291,7 @@ const CONTROL_ATTRS = ['reset', 'fire', 'play', 'reverse', 'prev', 'next', 'step
 const KNOWN_PART_ATTRS = new Set([...CONTROL_ATTRS, 'ui', 'part', 'show', 'item', 'slot', 'page', 'cover', 'canvas', 'surface', 'hold', 'result', 'when',
     'answer', 'stops', 'index', 'on', 'picked', 'active', 'done', 'match', 'miss', 'feedback', 'seq', 'armed', 'face', 'key', 'value', 'target',
     'card', 'at', 'clock', 'duration', 'memory', 'recall', 'axis', 'manual', 'window', 'count', 'zone', 'period', 'keep', 'sticky', 'swiped', 'swiped-left', 'swiped-right', 'seen', 'revealed', 'seconds']);
-const RUNTIME_ATTR = /^data-rm-(?:[a-z-]*-(?:wired|active|done|verified|patched|rescued)$|orphan|mobile|result|draw|title|body|behavior|labeled|reveal|vs|angle|knob-base|released|image|avatar|face-|stage|hydrated|pseudo|touch|external|reversible|click|checked|exclusive)/;
+const RUNTIME_ATTR = /^data-rm-(?:[a-z-]*-(?:wired|active|done|verified|patched|rescued)$|orphan|mobile|result|draw|title|body|behavior|labeled|reveal|vs|angle|knob-base|released|image|avatar|face-|stage|hydrated|pseudo|touch|external|reversible|click|checked|exclusive|polish|press|texture|bingo)/;
 
 const values = (group, attr) => own(group, `[${attr}]`).map(node => String(node.getAttribute(attr) || '').trim()).filter(Boolean);
 
@@ -342,6 +342,7 @@ export function reachableBehaviorKeys(group) {
         case 'rhythm': break;
         case 'effect': for (const node of ownBehaviorShows(group)) for (const token of behaviorShowTokens(node)) keys.add(token.replace(/^!/, '')); break;
         case 'sequence': values(group, 'data-rm-code').forEach(key => keys.add(key)); break;
+        case 'accumulate': values(group, 'data-rm-step').forEach(key => keys.add(key)); break;
         case 'connect': values(group, 'data-rm-end').forEach(key => keys.add(key)); break;
         case 'drag': case 'reorder': values(group, 'data-rm-item').forEach(key => keys.add(key)); break;
         default: break;
