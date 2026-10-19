@@ -1,10 +1,11 @@
-import { behaviorShowTokens, clearForcedActive, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.70.8';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.70.8';
-import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.70.8';
-import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState, holdAncestorStateClass } from './behaviorStateMirror.js?rmv=1.70.8';
-import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.70.8';
-import { addDialectStateKeys, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup, toggleCssBridges, setBridgedCssWord } from './behaviorDialect.js?rmv=1.70.8';
-import { EXTRA_TYPES, EXTRA_CONTROLS, EXTRA_CONTROL_ATTRS, configureBehaviorExtras, configureCarryChatKey, extraTypeFits, prepareExtra, destroyExtra, extraAction, extraSync, extraKeys, extraReset, extraPointerDown, extraPointerMove, extraPointerUp, extraHoldStart, extraHoldEnd, applyCarriedState, saveCarriedState, recalledKeys, carryMemoryName } from './behaviorExtras.js?rmv=1.70.8';
+import { behaviorShowTokens, clearForcedActive, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.71.0';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.71.0';
+import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.71.0';
+import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState, holdAncestorStateClass } from './behaviorStateMirror.js?rmv=1.71.0';
+import { syncStateCarriers, releaseStateCarriers, unwindStaleBridges } from './behaviorStateBridge.js?rmv=1.71.0';
+import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.71.0';
+import { addDialectStateKeys, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup, toggleCssBridges, setBridgedCssWord } from './behaviorDialect.js?rmv=1.71.0';
+import { EXTRA_TYPES, EXTRA_CONTROLS, EXTRA_CONTROL_ATTRS, configureBehaviorExtras, configureCarryChatKey, extraTypeFits, prepareExtra, destroyExtra, extraAction, extraSync, extraKeys, extraReset, extraPointerDown, extraPointerMove, extraPointerUp, extraHoldStart, extraHoldEnd, applyCarriedState, saveCarriedState, recalledKeys, carryMemoryName } from './behaviorExtras.js?rmv=1.71.0';
 
 export { behaviorToggleKey, motionOutsideControls };
 
@@ -62,6 +63,9 @@ function refreshResults(state) {
         const active = state.type === 'hold' ? state.group.getAttribute('data-rm-active') === 'true' : (state.on?.size || 0) > 0;
         setBehaviorNodeVisible(adopted, active);
     }
+    // 状态桥：模型的 CSS 把状态条件写在区域之外、之内的别处时，把区域上的状态同步到那一层（开关写到外层的词另有 css-state-word 管）。
+    try { syncStateCarriers(state.root, state.group); }
+    catch (error) { console.debug('[RabbitMirror] state bridge sync failed:', error); }
     applyStateOverrides(state);
 }
 
@@ -86,6 +90,11 @@ function stateKeys(state) {
         if (name) keys.add(name);
     }
     if (state.type === 'turn' && state.stops) keys.add(String(state.stopIndex));
+    // 累积：按过的那几项，它的键（data-rm-step="p1"）也算状态，data-rm-show="p1" 按过 p1 才显示。
+    if (state.type === 'accumulate') for (const node of own(group, '[data-rm-step]')) {
+        const key = String(node.getAttribute('data-rm-step') || '').trim();
+        if (key && node.getAttribute('data-rm-done') === 'true') keys.add(key);
+    }
     // 揭示：揭到底（九成以上）时，「揭开后才显示」的内容出来。模型常写 data-rm-show="reveal"／"revealed"／"done"，都认。
     if (state.type === 'reveal' && (state.progress || 0) >= 0.9) for (const key of ['reveal', 'revealed', 'done', 'full', 'open']) keys.add(key);
     for (const key of state.entered || []) keys.add(key);
@@ -223,7 +232,17 @@ function applyStateOverrides(state) {
         // 起始样子在第一次同步时记下（区域外的目标也在这时记下“一开始是否已处于这个状态”）。
         state.ruleBaseline = new Map(rules.map(rule => [rule, new Set(matched(rule))]));
         outsideStateLinks(state);
-        return;
+        // 开关：另一种状态下这条规则会管到的元素也记下。模型（或存档带回来的旧维修）在它们身上写死了和规则一样的
+        // 内联值（两个场景都写了内联 display:none，靠状态规则藏起其中一个），那份内联只是抄本，
+        // 规则不管它的时候就该拿掉，不然这一面开着、关着都是空的。
+        state.ruleCopies = new Map();
+        if (state.type === 'toggle') {
+            const before = state.group.getAttribute('data-rm-on');
+            if (before && before.trim()) state.group.removeAttribute('data-rm-on'); else state.group.setAttribute('data-rm-on', 'on');
+            try { for (const rule of rules) state.ruleCopies.set(rule, new Set(matched(rule))); } finally {
+                if (before === null) state.group.removeAttribute('data-rm-on'); else state.group.setAttribute('data-rm-on', before);
+            }
+        }
     }
     const wanted = new Map();
     const want = (node, property, value, priority = '') => {
@@ -251,7 +270,8 @@ function applyStateOverrides(state) {
         // 反过来：一开始让它隐藏（或变样）的这条规则现在不生效了，可模型又在它身上写死了同样的内联值
         // （典型：两个场景一个内联 display:block、一个内联 display:none，原本靠脚本切换）。
         // 内联值和规则写的一样，说明它只是规则的「抄本」：规则不生效时把这份抄本暂时拿掉，规则回来时再放回。
-        for (const node of baseline || []) {
+        const copies = state.ruleCopies?.get(rule);
+        for (const node of new Set([...(baseline || []), ...(copies || [])])) {
             if (now.has(node) || !node.isConnected || !node.style || node.hasAttribute('data-rm-show') || node.hasAttribute('data-rm-result-active')) continue;
             for (let index = 0; index < rule.style.length; index += 1) {
                 const property = rule.style[index];
@@ -466,6 +486,105 @@ function fireParts(state) {
     }
     return changed;
 }
+// 按钮 data-rm-fire="窗帘" 对着一块 data-rm-part="窗帘" 的文字（拉开窗帘才出现的那段话），部件没有动画、也没先藏起来：
+// 模型想要的是「按哪个出哪段」，结果几段话一打开就全摆着，按了也不变。键对得上、是一段字、没有动画的部件，
+// 先收起来，按到哪个键只放出那一段；复位时再收起。
+function prepareKeyedParts(state) {
+    state.keyedParts = new Map();
+    const keys = new Set(own(state.group, '[data-rm-fire]').map(node => String(node.getAttribute('data-rm-fire') || '').trim()).filter(Boolean));
+    if (!keys.size) return;
+    // 样式里自己写了部件按下后的样子（[data-rm-part…][data-rm-active]），说明部件平时怎么显示模型自己管着，不动。
+    if (localRules(state.root).some(rule => /data-rm-part/.test(rule.selectorText) && /data-rm-active/.test(rule.selectorText))) return;
+    for (const part of own(state.group, '[data-rm-part]')) {
+        const key = String(part.getAttribute('data-rm-part') || '').trim();
+        if (!keys.has(key) || !part.style || String(part.textContent || '').trim().length < 4) continue;
+        if (part.getAnimations?.().length || (getComputedStyle(part).animationName || 'none') !== 'none') continue;
+        if (!state.keyedParts.has(key)) state.keyedParts.set(key, []);
+        state.keyedParts.get(key).push(part);
+    }
+    state.firedParts ||= new Set();
+    for (const parts of state.keyedParts.values()) for (const part of parts) if (!state.firedParts.has(part)) setBehaviorNodeVisible(part, false);
+}
+
+// 天空色谱：滑杆是整数档（0…4），样式却写 [data-stage="2"] .卡片{display:block}，没有谁把档位写到 data-stage 上，
+// 卡片永远藏着。样式里出现一个非插件的 data-xxx="整数" 当祖先条件、整数又都落在滑杆范围里，就把滑杆的档位同步写过去。
+// 写在滑杆区域往外第一个包得住这些目标的祖先上（区域自己包得住就写区域上）。
+function prepareStageAttr(state) {
+    state.stageAttr = null;
+    const range = first(state.group, 'input[type="range"]');
+    if (!range) return;
+    const min = range.min === '' ? 0 : finite(range.min), max = range.max === '' ? 100 : finite(range.max, 100);
+    const step = range.step === '' ? 1 : finite(range.step, 1);
+    if (!(step > 0) || Math.abs(step - Math.round(step)) > 1e-9 || max - min > 40) return;
+    const found = new Map();
+    for (const rule of localRules(state.root)) for (const piece of rule.selectorText.split(',')) {
+        const match = piece.match(/\[(data-(?!rm-|rabbit-)[\w-]+)\s*=\s*["']?(-?\d+)["']?\s*\]\s+(.+)$/);
+        if (!match) continue;
+        const value = Number(match[2]);
+        if (value < min || value > max) continue;
+        if (!found.has(match[1])) found.set(match[1], { values: new Set(), targets: new Set() });
+        found.get(match[1]).values.add(value);
+        found.get(match[1]).targets.add(match[3].trim());
+    }
+    let best = null;
+    for (const [name, info] of found) if (info.values.size >= 2 && (!best || info.values.size > best[1].values.size)) best = [name, info];
+    if (!best) return;
+    const [name, info] = best;
+    const targets = [];
+    for (const selector of info.targets) { try { targets.push(...state.root.querySelectorAll(selector)); } catch { /* 选择器浏览器不认 */ } }
+    if (!targets.length) return;
+    // 从区域往外找第一个包得住目标的祖先。
+    let host = null;
+    for (let node = state.group; node && node !== state.root.parentElement; node = node.parentElement) {
+        if (targets.some(target => node.contains(target))) { host = node; break; }
+    }
+    if (!host) return;
+    state.stageAttr = name;
+    state.stageHost = host;
+}
+
+function syncStageAttr(state, value) {
+    if (!state.stageAttr || !Number.isFinite(value)) return;
+    state.stageHost.setAttribute(state.stageAttr, String(Math.round(value)));
+}
+
+function fireKeyedParts(state, button) {
+    const parts = state.keyedParts?.get(String(button.getAttribute('data-rm-fire') || '').trim());
+    if (!parts?.length) return false;
+    state.firedParts ||= new Set();
+    for (const part of parts) { setBehaviorNodeVisible(part, true); state.firedParts.add(part); }
+    return true;
+}
+
+// data-rm-fire="spinning" 不是哪个部件的键，样式里却写着 [data-rm-part="指南针"].xx-spinning{animation:…}：
+// 模型想要的是「按一下给部件挂上这个类、播一遍动画」。照样挂上（先摘再挂，每次从头播），播完摘掉。
+function fireClassParts(state, button) {
+    const key = String(button.getAttribute('data-rm-fire') || '').trim();
+    if (!/^[\w-]+$/.test(key) || state.keyedParts?.has(key)) return false;
+    let changed = false;
+    for (const rule of localRules(state.root)) {
+        for (const part of String(rule.selectorText || '').split(',')) {
+            if (!part.includes('data-rm-part')) continue;
+            const compound = compoundsOf(part.trim()).find(item => item.includes('data-rm-part'));
+            const name = (compound?.match(/\.([\w-]+)/g) || []).map(item => item.slice(1)).find(item => item === key || item.endsWith(`-${key}`));
+            if (!name) continue;
+            const bare = compound.replace(/\.[\w-]+/g, '').trim() || '[data-rm-part]';
+            let targets = [];
+            try { targets = own(state.group, '[data-rm-part]').filter(node => node.matches(bare)); } catch { targets = []; }
+            for (const node of targets) {
+                node.classList.remove(name);
+                void node.getBoundingClientRect();
+                node.classList.add(name);
+                const done = () => node.classList.remove(name);
+                node.addEventListener('animationend', done, { once: true });
+                setTimeout(done, 4000);
+                changed = true;
+            }
+        }
+    }
+    return changed;
+}
+
 function resetFiredParts(state) {
     for (const part of own(state.group, '[data-rm-part][data-rm-active]')) part.removeAttribute('data-rm-active');
     for (const part of state.firedParts || []) if (part.isConnected) setBehaviorNodeVisible(part, false);
@@ -563,6 +682,7 @@ function inputChange(state, input, userAction = false) {
     if (type === 'adjust') {
         style(state, group, '--rm-p', String(p));
         style(state, group, '--rm-value', String(value));
+        syncStageAttr(state, value);
     } else if (type === 'reveal') reveal(state, p);
     else if (type === 'view') {
         for (const part of own(group, '[data-rm-part]')) {
@@ -599,6 +719,7 @@ function enableControl(node) {
 }
 
 // 开关的“属性程序”：本面样式里有 [属性="值"] 后代选择器，后代落在这个开关区域里，而页面上没有任何元素带这个属性值。
+const PROGRAM_ATTR = 'data-rm-program';
 const PROGRAM_SKIP = /^(?:data-rabbit-mirror|data-rm-(?:ui|on|active|picked|index|match|miss|done|seq|show|result|when|toggle|pick|hold|item|slot|part|page|released|feedback|mirrored))/;
 function compoundsOf(selector) {
     const parts = []; let depth = 0, current = '';
@@ -610,6 +731,15 @@ function compoundsOf(selector) {
     }
     if (current) parts.push(current);
     return parts;
+}
+// 存档带回来的属性程序记号（开着时写上的 data-rm-state="reverse" + data-rm-program）：还是自己写的值就撤掉。
+function clearProgramMark(group) {
+    const mark = String(group?.getAttribute?.(PROGRAM_ATTR) || '');
+    const at = mark.indexOf('=');
+    if (at <= 0) { group?.removeAttribute?.(PROGRAM_ATTR); return; }
+    const attr = mark.slice(0, at), value = mark.slice(at + 1);
+    if (/^[\w-]+$/.test(attr) && group.getAttribute(attr) === value) group.removeAttribute(attr);
+    group.removeAttribute(PROGRAM_ATTR);
 }
 function toggleAttributeProgram(state) {
     if (state.attrProgram !== undefined) return state.attrProgram;
@@ -630,16 +760,22 @@ function toggleAttributeProgram(state) {
                 if (rest.replace(/([.#])([A-Za-z_][\w-]*)/g, '').trim()) continue;
                 if (tokens.some(([, kind, name]) => kind === '.' ? !group.classList.contains(name) : group.id !== name)) continue;
                 const value = attr[2].trim();
-                try { if (scope.querySelector(`[${attr[1]}="${CSS.escape(value)}"]`)) continue; } catch { continue; }
+                // 页面上已经有元素带这个属性值就不算程序——除非那只是上次开着时自己写在区域上的（存档带回来，有 data-rm-program 记号）。
+                let carried = [];
+                try { carried = [...scope.querySelectorAll(`[${attr[1]}="${CSS.escape(value)}"]`)]; } catch { continue; }
+                const ownMark = group.getAttribute(PROGRAM_ATTR) === `${attr[1]}=${value}`;
+                if (carried.some(node => node !== group || !ownMark)) continue;
                 const tail = compounds.slice(index + 1).join(' ');
                 let inside = false;
                 try { inside = !!group.querySelector(tail); } catch { inside = false; }
                 if (!inside) continue;
-                state.attrProgram = { attr: attr[1], value, original: group.getAttribute(attr[1]) };
+                state.attrProgram = { attr: attr[1], value, original: ownMark ? null : group.getAttribute(attr[1]) };
                 return state.attrProgram;
             }
         }
     }
+    // 认不出程序、区域上却带着上次的记号（样式变了、或存档带回来）：把那份撤掉，别一直翻着。
+    if (group.hasAttribute(PROGRAM_ATTR)) clearProgramMark(group);
     return null;
 }
 
@@ -703,6 +839,12 @@ function prepare(binding, group) {
     for (const control of own(group, `${CONTROL_SELECTOR}, [data-rm-hold]`)) enableControl(control);
     if (type === 'view') style(state, group, 'overflow', 'auto');
     if (type === 'effect') for (const animation of animations(state)) { animation.pause(); animation.currentTime = 0; }
+    if (type === 'effect') prepareKeyedParts(state);
+    if (type === 'adjust') prepareStageAttr(state);
+    // 「答对了才出现」写成子元素上一个空的 data-rm-match（小徽章自带 display:none）：当成 data-rm-show="match"。
+    if (group.hasAttribute('data-rm-answer')) for (const node of own(group, '[data-rm-match]')) {
+        if (node !== group && !node.hasAttribute('data-rm-show') && !String(node.getAttribute('data-rm-match') || '').trim()) node.setAttribute('data-rm-show', 'match');
+    }
     // 音轨波形补动画要在接线时就补上（暂停在开头），维修兔和诊断才看得到它能动。
     if (type === 'motion') animations(state);
     if (type === 'accumulate') countSteps(state);
@@ -909,6 +1051,8 @@ function action(state, button) {
         const list = animations(state);
         for (const animation of list) { animation.currentTime = 0; animation.play(); }
         if (list.length) state.changed = true;
+        if (fireKeyedParts(state, button)) state.changed = true;
+        if (fireClassParts(state, button)) state.changed = true;
         if (fireParts(state)) state.changed = true;
         // 区域里写了「按下后显示」的内容时，按下本身就是状态变化（见方言表 effect-any-show）。
         if (ownBehaviorShows(state.group).length) state.changed = true;
@@ -1037,6 +1181,14 @@ function prepareStateful(state) {
     const { group, type } = state;
     if (type === 'toggle') {
         state.on = new Set(words(group.getAttribute('data-rm-on')).map(behaviorToggleKey));
+        // 存档带回来的 data-rm-on 里可能有上次按方言表补写的 CSS 词（unsealed）：它不是开关的键，当成键会关不掉。
+        try {
+            const aliases = toggleCssBridges(state)?.aliases;
+            if (aliases?.size) {
+                const keys = new Set([...own(group, '[data-rm-toggle]'), group].filter(node => node.hasAttribute('data-rm-toggle')).map(node => behaviorToggleKey(node.getAttribute('data-rm-toggle'))));
+                for (const alias of aliases) if (!keys.has(alias)) state.on.delete(alias);
+            }
+        } catch { /* 认不出就按原样 */ }
         if (!own(group, '[data-rm-toggle]').length) {
             enableControl(group);
             if (!group.hasAttribute('aria-pressed') && group.getAttribute('role') === 'button') group.setAttribute('aria-pressed', 'false');
@@ -1224,9 +1376,14 @@ function syncState(state) {
         // 样式按某个属性值翻转（如 [data-rm-state="reverse"] .card-inner），却没东西去改这个属性：开着时把它写到区域上。
         const program = toggleAttributeProgram(state);
         if (program) {
-            if (tokens.length > 0) { if (group.getAttribute(program.attr) !== program.value) group.setAttribute(program.attr, program.value); }
-            else if (program.original === null) group.removeAttribute(program.attr);
-            else if (group.getAttribute(program.attr) !== program.original) group.setAttribute(program.attr, program.original);
+            if (tokens.length > 0) {
+                if (group.getAttribute(program.attr) !== program.value) group.setAttribute(program.attr, program.value);
+                group.setAttribute(PROGRAM_ATTR, `${program.attr}=${program.value}`); // 记号：这是开着时自己写的，存档带回来也认得
+            } else {
+                if (program.original === null) group.removeAttribute(program.attr);
+                else if (group.getAttribute(program.attr) !== program.original) group.setAttribute(program.attr, program.original);
+                group.removeAttribute(PROGRAM_ATTR);
+            }
         }
         // 只有一个开关时，CSS 里写成 .inner.flipped 之类的子元素也跟着变。
         if (single.size <= 1) for (const node of own(group, '[class]').slice(0, 40)) {
@@ -1641,6 +1798,7 @@ function pointerDown(binding, event) {
     if (type === 'hold') {
         const verify = beginVerify(state, surface);
         setHoldActive(state, surface, true); binding.holds.add(state); state.changed = true;
+        refreshResults(state);
         verify?.();
     }
     try { surface.setPointerCapture?.(event.pointerId); } catch { /* Synthetic or no active pointer. */ }
@@ -1652,6 +1810,23 @@ function pointerDown(binding, event) {
 const RELEASED_ATTR = 'data-rm-released';
 const STATE_ATTRS = ['data-rm-on', 'data-rm-picked', 'data-rm-index', 'data-rm-active', 'data-rm-match', 'data-rm-miss', 'data-rm-done', 'data-rm-seq', 'data-rm-angle-turned',
     'data-rm-seconds', 'data-rm-swiped-left', 'data-rm-swiped-right', 'data-rm-peeking', 'data-rm-orientation', 'data-rm-scheme', 'data-rm-width', 'data-rm-pointer', 'data-rm-recalled'];
+// 维修兔隐藏副本用：驱动改写过的内联样式（藏起的结果、刮开的遮蔽…），原值只记在各区域的 state.styles 里，克隆带不过去；
+// 副本里重新接线时会把改写后的值当成模型原写，一退回就错。把原值交给副本。
+export function behaviorInlineBaselines(root) {
+    const records = [];
+    if (!root?.querySelectorAll) return records;
+    const groups = [root, ...root.querySelectorAll(GROUP)].filter(node => node.matches?.(GROUP));
+    for (const group of groups) {
+        const state = owners.get(group)?.groups?.get(group);
+        if (!state?.styles) continue;
+        for (const [element, saved] of state.styles) {
+            if (!element?.isConnected || !root.contains(element)) continue;
+            for (const [property, [value, priority]] of saved) records.push({ element, property, value, priority });
+        }
+    }
+    return records;
+}
+
 export function releaseBehaviorGroup(root, group) {
     if (!group?.matches?.(GROUP)) return false;
     const type = group.getAttribute('data-rm-ui');
@@ -1685,6 +1860,8 @@ export function releaseBehaviorGroup(root, group) {
         node.style.setProperty('display', 'none');
     }
     if (state) restoreStateUp(state);
+    try { releaseStateCarriers(state?.root || root, group); } catch { /* 撤不掉就留着 */ }
+    if (group.hasAttribute(PROGRAM_ATTR)) clearProgramMark(group);
     if (state?.attrProgram) {
         if (state.attrProgram.original === null) group.removeAttribute(state.attrProgram.attr);
         else group.setAttribute(state.attrProgram.attr, state.attrProgram.original);
@@ -1739,7 +1916,7 @@ function scheduleOnDemandRelay(root, target) {
 function relayGroupLater(root, group, control = null) {
     const run = () => {
         if (!group.isConnected || !root.isConnected) return;
-        void import('./behaviorRelay.js?rmv=1.70.8').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
+        void import('./behaviorRelay.js?rmv=1.71.0').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
     };
     const idle = globalThis.requestIdleCallback;
     if (typeof idle === 'function') idle(run, { timeout: 800 }); else setTimeout(run, 120);
@@ -1759,6 +1936,9 @@ export function installBehaviorInteractions(root) {
     if (root.matches?.(GROUP)) groups.unshift(root);
     const count = groups.filter(group => !binding.groups.has(group) && prepare(binding, group)).length;
     for (const group of groups) { const state = binding.groups.get(group); if (state?.type === 'connect') binding.connects.add(state); }
+    // 存档带回来的桥记号、属性程序记号，主人这次没接上线（退还给老修复器、或认不出类型）：按记号撤掉，别卡在上次的状态里。
+    try { unwindStaleBridges(root); } catch { /* 撤不掉就留着 */ }
+    for (const group of groups) if (!binding.groups.has(group) && group.hasAttribute(PROGRAM_ATTR)) clearProgramMark(group);
     if (existing) return count;
     root.addEventListener('input', event => { const state = stateFor(root, event.target); if (state) inputChange(state, event.target, true); });
     root.addEventListener('click', event => {
@@ -1770,7 +1950,9 @@ export function installBehaviorInteractions(root) {
         if (hasBehaviorInteractionControl(root, button)) {
             const state = stateFor(root, button);
             if (state && button.hasAttribute('data-rm-reset') && binding.pointer?.state === state) finishPointer(binding, {}, true);
-            event.preventDefault(); action(state, button);
+            // 同一个按钮还写了 popovertarget（点一下既记一笔、又弹出说明）：不拦浏览器自己的弹窗。
+            if (!button.hasAttribute('popovertarget')) event.preventDefault();
+            action(state, button);
             return;
         }
         if (button) { scheduleOnDemandRelay(root, button); return; }
@@ -1836,8 +2018,8 @@ export function installBehaviorInteractions(root) {
 }
 
 // 扩展类型要用的主驱动工具。
-configureBehaviorExtras({ own, first, style, setFlag, enableControl, refreshResults, finite, clamp, words });
+configureBehaviorExtras({ own, first, style, unstyle, setFlag, enableControl, refreshResults, finite, clamp, words });
 // 跨面继承按聊天分开记：聊天键从存储模块拿，拿不到时所有面共用一份。
 let carryChatKeyReader = null;
 configureCarryChatKey(() => carryChatKeyReader?.() || '');
-import('../storage.js?rmv=1.70.8').then(module => { carryChatKeyReader = () => module.getCurrentChatKey?.() || ''; }).catch(() => {});
+import('../storage.js?rmv=1.71.0').then(module => { carryChatKeyReader = () => module.getCurrentChatKey?.() || ''; }).catch(() => {});

@@ -1,8 +1,8 @@
 // Recover only a source-authored, unambiguous local control/cover relationship.
 // Never invent a target, result text, generated script or page-global listener.
-import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.70.8';
-import { motionOutsideControls } from './behaviorDialect.js?rmv=1.70.8';
-import { behaviorTypeFits } from './behaviorRepair.js?rmv=1.70.8';
+import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.71.0';
+import { motionOutsideControls } from './behaviorDialect.js?rmv=1.71.0';
+import { behaviorTypeFits } from './behaviorRepair.js?rmv=1.71.0';
 
 const GROUP = '[data-rm-ui]';
 const RECOVERED = 'data-rm-behavior-recovered';
@@ -117,7 +117,7 @@ export function inspectBehaviorRecovery(root) {
     const result = { declared: 0, wired: 0, recovered: 0, classRepaired: 0, candidates: 0, incomplete: 0, unwired: 0, unmappedRanges: 0, types: [] };
     if (!root?.querySelectorAll) return result;
     const requirements = {
-        effect: ['[data-rm-part]', 'button[data-rm-fire]'], drag: ['[data-rm-item]'],
+        effect: ['[data-rm-part], [data-rm-show]', 'button[data-rm-fire]'], drag: ['[data-rm-item]'],
         adjust: ['input[type="range"]'], reveal: ['[data-rm-cover]'], view: ['[data-rm-part]', 'input[type="range"]'],
         input: ['input:not([type]), input[type="text"], input[type="password"], textarea', 'output'],
         draw: ['svg[data-rm-canvas]'], motion: ['[data-rm-part]', 'button[data-rm-play], button[data-rm-reverse], input[type="range"]'],

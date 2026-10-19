@@ -1,8 +1,9 @@
 // Split from outputSanitizer.js — fallbackRescue.
-import { RADIO_BRANCH_CONTROL_ATTR, installRadioBranchRepair, applyRadioBranchState, applyRadioProxyState, radioBranchVerificationTargets } from './radioBranchRepair.js?rmv=1.70.8';
+import { RADIO_BRANCH_CONTROL_ATTR, installRadioBranchRepair, applyRadioBranchState, applyRadioProxyState, radioBranchVerificationTargets } from './radioBranchRepair.js?rmv=1.71.0';
 
-import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.70.8';
-import { installBingoLineRescue } from './bingoLineRescue.js?rmv=1.70.8';
+import { isBehaviorInteractionOwned, behaviorInlineBaselines } from './behaviorInteractions.js?rmv=1.71.0';
+import { installBingoLineRescue } from './bingoLineRescue.js?rmv=1.71.0';
+import { installSiblingTabRescue, installNumberedStageRescue } from './siblingTabRescue.js?rmv=1.71.0';
 
 import {
     FEEDBACK_CAT_ATTR,
@@ -10,7 +11,7 @@ import {
     TOOL_ENTRY_HOST_ATTR,
     escapeRegExp,
     getRabbitMirrorLocalStyleElements,
-} from './runtime.js?rmv=1.70.8';
+} from './runtime.js?rmv=1.71.0';
 import {
     CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR,
     CROSS_PARENT_CHECKED_VERIFIED_ATTR,
@@ -95,7 +96,7 @@ import {
     webKit3DFlipInlineStates,
     webKit3DFlipRescueStates,
     webKit3DFlipStyleStates,
-} from './checkedStateRescue.js?rmv=1.70.8';
+} from './checkedStateRescue.js?rmv=1.71.0';
 import {
     EXISTING_INTERACTIVE_SELECTOR,
     RENDERED_BUTTON_ADJACENT_HIDDEN_RESCUE_ATTR,
@@ -122,7 +123,7 @@ import {
     isCollapsedDimensionValue,
     normalizeStylePropertyName,
     parseCssStateSiblingAssignments,
-} from './renderedStateRescue.js?rmv=1.70.8';
+} from './renderedStateRescue.js?rmv=1.71.0';
 import {
     chooseMatchingRawRabbitMirrorRoot,
     detectInteractionCapabilities,
@@ -138,7 +139,7 @@ import {
     installRawMessageSelfMutationRescue,
     preparePseudoTrigger,
     shouldIgnorePseudoToggleEvent,
-} from './scriptedInteractionRescue.js?rmv=1.70.8';
+} from './scriptedInteractionRescue.js?rmv=1.71.0';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     FILL_IN_CHOICE_BLANK_ATTR,
@@ -150,15 +151,15 @@ import {
     diagnosticFindClippingAncestor,
     maintenanceSafeComputedStyle,
     mobileInlineAnnotationRescueStates,
-} from './diagnostics.js?rmv=1.70.8';
-import { installStaticChoiceSelectionFallback } from './choiceRescue.js?rmv=1.70.8';
+} from './diagnostics.js?rmv=1.71.0';
+import { installStaticChoiceSelectionFallback } from './choiceRescue.js?rmv=1.71.0';
 import {
     checkedDeclarationCreatesContentReveal,
     checkedTargetCarriesResultContent,
     pseudoStateTargetSelector,
-} from './maintenanceInspect.js?rmv=1.70.8';
-import { splitCssSelectorList } from './markup.js?rmv=1.70.8';
-import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutResolveCheckedTargets } from './layoutRescue.js?rmv=1.70.8';
+} from './maintenanceInspect.js?rmv=1.71.0';
+import { splitCssSelectorList } from './markup.js?rmv=1.71.0';
+import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutResolveCheckedTargets } from './layoutRescue.js?rmv=1.71.0';
 
 const NESTED_DETAILS_FALLBACK_HANDLER_PROP = '__rabbitMirrorNestedDetailsFallbackHandler';
 
@@ -2210,6 +2211,9 @@ export function installIntelligentInteractionRescue(root) {
     // 可安全补成互斥且可撤回的选择状态；只确认用户选中了哪张卡，不生成缺失的剧情结果。
     installStaticChoiceSelectionFallback(root);
     // Bingo 卡只写了「点一格盖章」、没写连成一线的反应：连线的格子描红，新连上一条时盖一枚「连成一线」。
+    // 一排没写动作的按钮 + 后面同样多块、只显示第一块的内容：按顺序接成分页。
+    try { installSiblingTabRescue(root); } catch (error) { console.debug('[RabbitMirror] sibling tab rescue failed:', error); }
+    try { installNumberedStageRescue(root); } catch (error) { console.debug('[RabbitMirror] numbered stage rescue failed:', error); }
     try { installBingoLineRescue(root); } catch (error) { console.debug('[RabbitMirror] bingo line rescue failed:', error); }
 }
 
@@ -2747,7 +2751,9 @@ export function createMaintenanceLabeledCheckedProbeSandbox(root) {
     if (!rootPath) return null;
 
     const cloneShell = shell.cloneNode(true);
-    for (const record of interactionInlineOverrideBaselines(root)) {
+    let driverBaselines = [];
+    try { driverBaselines = behaviorInlineBaselines(root); } catch { driverBaselines = []; }
+    for (const record of [...interactionInlineOverrideBaselines(root), ...driverBaselines]) {
         const path = maintenanceProbeElementPath(shell, record.element);
         const twin = path ? maintenanceProbeElementAtPath(cloneShell, path) : null;
         if (!twin?.style) continue;

@@ -104,7 +104,12 @@ function showOwner(node) {
 }
 
 export function behaviorShowTokens(node) {
-    return String(node?.getAttribute?.('data-rm-show') || '').split(/[\s,，、]+/).map(token => token.trim()).filter(Boolean);
+    const raw = String(node?.getAttribute?.('data-rm-show') || '').trim();
+    // 顺序口令：模型把整串答案原样写进显示条件（data-rm-answer="甲,乙,丙" 配 data-rm-show="甲,乙,丙"／"!甲,乙,丙"），
+    // 意思是「按对了／还没按对」，不是三个键各算各的。
+    const answer = String(showOwner(node)?.getAttribute?.('data-rm-answer') || '').replace(/\s+/g, '');
+    if (answer && /[,，、]/.test(answer) && raw.replace(/^!/, '').replace(/\s+/g, '') === answer) return [raw.startsWith('!') ? '!match' : 'match'];
+    return raw.split(/[\s,，、]+/).map(token => token.trim()).filter(Boolean);
 }
 
 // 翻页等驱动直接显隐某个节点，沿用同一套“记住原 display、隐藏时 display:none !important”的做法。

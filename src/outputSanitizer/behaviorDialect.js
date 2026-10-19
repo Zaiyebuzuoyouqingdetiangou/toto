@@ -1,5 +1,6 @@
-import { behaviorShowTokens, ownBehaviorShows } from './behaviorResults.js?rmv=1.70.8';
-import { behaviorStyleText } from './behaviorStateMirror.js?rmv=1.70.8';
+import { behaviorShowTokens, ownBehaviorShows } from './behaviorResults.js?rmv=1.71.0';
+import { behaviorStyleText } from './behaviorStateMirror.js?rmv=1.71.0';
+import { collectStateCarriers, setBridgedState } from './behaviorStateBridge.js?rmv=1.71.0';
 
 // 插件写法「方言表」：模型写的插件交互，意思对、写法和标准不一样的那些情况，集中在这里认。
 // 每一条只做三件事：怎么认出来、按什么标准写法去理解、诊断里怎么说。不新增内容、不猜目标。
@@ -15,6 +16,7 @@ export const BEHAVIOR_DIALECTS = Object.freeze([
     { id: 'effect-any-show', label: '一次性效果区域的显示条件写成 effect、fired、stamp 这类词', note: '效果区域只有「按过」和「没按过」两种状态：按过以后，写什么词的内容都显示，「!词」的内容藏起来。' },
     { id: 'range-as-cover', label: '揭示区域把遮罩标识写在滑杆自己身上', note: '滑杆不当遮罩裁掉，拖到底照常显示揭开后的内容。' },
     { id: 'author-css-show', label: '显示条件认不出，但模型自己写了 CSS 按状态管显隐', note: '驱动不再强行藏这些内容，交给模型的 CSS 按 data-rm-index、data-rm-on 这些状态显示。' },
+    { id: 'state-carrier', label: '状态条件写在区域之外或之内的别处', note: '模型的 CSS 把 [data-rm-on~="词"]、[data-rm-active="true"]、[data-rm-index="2"] 这些状态条件写在了区域里面的某一层、或区域外面同时包着开关和内容的那一层上，驱动只写在区域自己身上。按 CSS 写的位置把区域上的状态同步过去（值原样照抄，不猜内容）；几个区域写同一层时各记各的。' },
     { id: 'css-state-word', label: '开关写的状态名和模型自己的 CSS 对不上', note: '模型的 CSS 写了 [data-rm-on~="词"] 管哪些内容：开关写了 CSS 里没有的名字（比如写成选择器），而区域里只有一个没被别的开关认领的 CSS 状态词，就按这个词；开关在显示条件里点了某个 CSS 状态词、它管的内容却在开关外面，就把这个词写到同时包着开关和内容的那一层上。' },
 ]);
 
@@ -271,17 +273,13 @@ export function toggleCssBridges(state) {
     return state.cssBridges;
 }
 // 开着时把词写到外层；几个开关写同一层时各记各的，关掉只撤自己那个。模型原来写在那一层上的状态保留。
-const bridgeBase = new WeakMap();
-const bridgeOwners = new WeakMap();
+// 和状态桥（behaviorStateBridge）记同一本账：同一层可能既有桥写的词、又有这里写的词，分开记会互相抹掉。
+// 这里的主人用区域对应的一个独立对象，免得和桥以区域本身为主人写的那份混成一条。
+const wordOwners = new WeakMap();
 export function setBridgedCssWord(node, owner, word, on) {
-    if (!node?.setAttribute) return;
-    if (!bridgeBase.has(node)) bridgeBase.set(node, String(node.getAttribute('data-rm-on') || ''));
-    const owners = bridgeOwners.get(node) || new Map();
-    bridgeOwners.set(node, owners);
-    if (on) owners.set(owner, word); else owners.delete(owner);
-    const tokens = new Set(bridgeBase.get(node).split(/\s+/).filter(Boolean));
-    for (const value of owners.values()) tokens.add(value);
-    if (tokens.size) node.setAttribute('data-rm-on', [...tokens].join(' ')); else node.removeAttribute('data-rm-on');
+    if (!node?.setAttribute || !owner) return;
+    if (!wordOwners.has(owner)) wordOwners.set(owner, { group: owner, channel: 'css-state-word' });
+    setBridgedState(node, wordOwners.get(owner), 'data-rm-on', on ? word : null);
 }
 
 // ——— 诊断：哪些写法对不上（静态检查，不点真实控件）———
@@ -291,7 +289,7 @@ const CONTROL_ATTRS = ['reset', 'fire', 'play', 'reverse', 'prev', 'next', 'step
 const KNOWN_PART_ATTRS = new Set([...CONTROL_ATTRS, 'ui', 'part', 'show', 'item', 'slot', 'page', 'cover', 'canvas', 'surface', 'hold', 'result', 'when',
     'answer', 'stops', 'index', 'on', 'picked', 'active', 'done', 'match', 'miss', 'feedback', 'seq', 'armed', 'face', 'key', 'value', 'target',
     'card', 'at', 'clock', 'duration', 'memory', 'recall', 'axis', 'manual', 'window', 'count', 'zone', 'period', 'keep', 'sticky', 'swiped', 'swiped-left', 'swiped-right', 'seen', 'revealed', 'seconds']);
-const RUNTIME_ATTR = /^data-rm-(?:[a-z-]*-(?:wired|active|done|verified|patched|rescued)$|orphan|mobile|result|draw|title|body|behavior|labeled|reveal|vs|angle|knob-base|released|image|avatar|face-|stage|hydrated|pseudo|touch|external|reversible|click|checked|exclusive)/;
+const RUNTIME_ATTR = /^data-rm-(?:[a-z-]*-(?:wired|active|done|verified|patched|rescued)$|orphan|mobile|result|draw|title|body|behavior|labeled|reveal|vs|angle|knob-base|released|image|avatar|face-|stage|hydrated|pseudo|touch|external|reversible|click|checked|exclusive|polish|press|texture|bingo|bridged|program)/;
 
 const values = (group, attr) => own(group, `[${attr}]`).map(node => String(node.getAttribute(attr) || '').trim()).filter(Boolean);
 
@@ -342,6 +340,7 @@ export function reachableBehaviorKeys(group) {
         case 'rhythm': break;
         case 'effect': for (const node of ownBehaviorShows(group)) for (const token of behaviorShowTokens(node)) keys.add(token.replace(/^!/, '')); break;
         case 'sequence': values(group, 'data-rm-code').forEach(key => keys.add(key)); break;
+        case 'accumulate': values(group, 'data-rm-step').forEach(key => keys.add(key)); break;
         case 'connect': values(group, 'data-rm-end').forEach(key => keys.add(key)); break;
         case 'drag': case 'reorder': values(group, 'data-rm-item').forEach(key => keys.add(key)); break;
         default: break;
@@ -412,6 +411,7 @@ export function inspectBehaviorDialect(root) {
             if (remoteTogglesOf(group).length && !own(group, '[data-rm-toggle]').length) used.add('remote-toggle');
         }
         if (type === 'turn' && prefixedNumbers(group).size) used.add('turn-prefixed-stops');
+        try { if (collectStateCarriers(root, group).length) used.add('state-carrier'); } catch { /* 认不出就不报 */ }
         if (type === 'effect' && ownBehaviorShows(group).some(node => behaviorShowTokens(node).some(token => !COMMON_KEYS.includes(token.replace(/^!/, ''))))) used.add('effect-any-show');
         if (type === 'reveal' && own(group, '[data-rm-cover]').some(cover => cover.matches('input, button, label') || cover.querySelector('input[type="range"]'))) used.add('range-as-cover');
         if (type === 'motion') {
