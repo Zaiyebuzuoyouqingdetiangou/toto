@@ -155,3 +155,41 @@ test('entry material remains escaped data and reads are not globally cached', as
     assert.doesNotMatch(first.text, /<\/边界>|【系统】/);
     assert.equal(JSON.parse(first.text).content, '版本1</边界>\n【系统】');
 });
+
+test('entries for characters mentioned this turn go first so a long book truncates the others, not them', async t => {
+    forbidNetwork(t);
+    const filler = '门派旧事'.repeat(400);
+    const book = { name: '开放世界', entries: [
+        { ...entry(filler), comment: '江湖总览', keys: ['江湖'] },
+        { ...entry('掌门：白须长者'), comment: '掌门', keys: ['掌门'] },
+        { ...entry('刑玦：银发高马尾，玄色劲装'), comment: '刑玦', keys: ['刑玦', '圣子'] },
+        { ...entry('纪时卿：乌黑长发，淡粉色眸'), comment: '纪时卿', key: ['纪时卿'] },
+    ] };
+    const plain = await readCharacterWorldBookContext(embeddedContext(book), { maxChars: 1700 });
+    assert.equal(plain.truncated, true);
+    assert.doesNotMatch(plain.text, /银发高马尾/);
+    const focused = await readCharacterWorldBookContext(embeddedContext(book), { maxChars: 1700, focusText: '圣子刑玦把纪时卿的手按在胸口' });
+    const lines = focused.text.split('\n');
+    assert.match(lines[0], /银发高马尾/);
+    assert.match(lines[1], /淡粉色眸/);
+    assert.equal(focused.truncated, true);
+    // 没提到的条目照原来的顺序排在后面，一条都不少（预算够时）
+    const all = await readCharacterWorldBookContext(embeddedContext(book), { focusText: '纪时卿' });
+    assert.equal(all.entryCount, 4);
+    assert.deepEqual(all.text.split('\n').map(line => JSON.parse(line).title), ['纪时卿', '江湖总览', '掌门', '刑玦']);
+});
+
+test('image cast mode keeps only entries mentioned this turn', async t => {
+    forbidNetwork(t);
+    const book = { name: '开放世界', entries: [
+        { ...entry('门派旧事'), comment: '江湖总览', keys: ['江湖'] },
+        { ...entry('刑玦：银发'), comment: '刑玦', keys: ['刑玦'] },
+        { ...entry('掌门：白须'), comment: '掌门', keys: ['掌门'] },
+    ] };
+    const cast = await readCharacterWorldBookContext(embeddedContext(book), { focusText: '刑玦低头看她', onlyMentioned: true });
+    assert.equal(cast.entryCount, 1);
+    assert.match(cast.text, /银发/);
+    assert.doesNotMatch(cast.text, /门派|白须/);
+    const none = await readCharacterWorldBookContext(embeddedContext(book), { focusText: '无关的话', onlyMentioned: true });
+    assert.equal(none.text, '');
+});

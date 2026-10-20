@@ -1,25 +1,25 @@
 // Split from independentApi.js — connection.
 
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages } from '../hostCompatibility.js?rmv=1.72.5';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages } from '../hostCompatibility.js?rmv=1.72.7';
 import {
     WORLD_INFO_BOOK_NAME_MAX_CHARS,
     getSettings,
     normalizeIndependentContextExcludedTags,
     updateSettings,
-} from '../settings.js?rmv=1.72.5';
-import { fetchRabbitMirrorIndependentCompletion } from '../independentSecurityGuard.js?rmv=1.72.5';
-import { buildIndependentAdvancedCarrier, applyIndependentAdvancedExclusions } from '../advancedRequestOptions.js?rmv=1.72.5';
-import { describeBatchPlanFailure } from '../externalWorldBook/errors.js?rmv=1.72.5';
-import { describeRabbitMirrorStorageUsage, getCurrentChatKey } from '../storage.js?rmv=1.72.5';
-import { rememberIndependentTransportDiagnostic } from '../transportDiagnostics.js?rmv=1.72.5';
+} from '../settings.js?rmv=1.72.7';
+import { fetchRabbitMirrorIndependentCompletion } from '../independentSecurityGuard.js?rmv=1.72.7';
+import { buildIndependentAdvancedCarrier, applyIndependentAdvancedExclusions } from '../advancedRequestOptions.js?rmv=1.72.7';
+import { describeBatchPlanFailure } from '../externalWorldBook/errors.js?rmv=1.72.7';
+import { describeRabbitMirrorStorageUsage, getCurrentChatKey } from '../storage.js?rmv=1.72.7';
+import { rememberIndependentTransportDiagnostic } from '../transportDiagnostics.js?rmv=1.72.7';
 import {
     CONTEXT_TOTAL_BUDGET,
     CONTEXT_TRANSCRIPT_BUDGET,
     RUNTIME_VERSION,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.72.5';
-import { HOST_GENERATION_EVENT_HINT_MS, operationEpochForBase } from './flights.js?rmv=1.72.5';
+} from './runtime.js?rmv=1.72.7';
+import { HOST_GENERATION_EVENT_HINT_MS, operationEpochForBase } from './flights.js?rmv=1.72.7';
 import {
     OWNER_LOCK_STORE_KEY,
     apiProfileKey,
@@ -31,12 +31,12 @@ import {
     writeApiProfileStore,
     writePersistedOwner,
     writeStore,
-} from './persistence.js?rmv=1.72.5';
+} from './persistence.js?rmv=1.72.7';
 import {
     hasExplicitSourceReplacementEvidence,
     independentStoredHtmlLightRestorable,
     independentStoredHtmlRestorable,
-} from './geometry.js?rmv=1.72.5';
+} from './geometry.js?rmv=1.72.7';
 import {
     activeIndependentFlightForBase,
     messageSourceRevisions,
@@ -44,13 +44,13 @@ import {
     passiveObservedIdentity,
     runtimeMode,
     showIndependentUnsavedOutput,
-} from './mount.js?rmv=1.72.5';
+} from './mount.js?rmv=1.72.7';
 import {
     hostGenerationHintStartedAt,
     hostGenerationInProgress,
     writeHostGenerationHintStartedAt,
     writeHostGenerationInProgress,
-} from './lifecycle.js?rmv=1.72.5';
+} from './lifecycle.js?rmv=1.72.7';
 
 export const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 
@@ -457,6 +457,70 @@ function rawIndependentConnectionProfile(profileId,ctx=getContext()){
  return manager.profiles.find(item=>String(item?.id||'')===String(profileId||''))||null;
 }
 
+// 连接配置保存时没勾「Secret」（或是在 key 管理出现以前存的），配置里就没有 secret-id。这时酒馆后台会用「当前正在用」的那把 key：
+// 正文切到别的配置后，兔子镜按这个配置发的请求就带上了别的配置的 key（中转站报 Invalid token）。
+// 所以这个配置在酒馆里被切到时，记下当时正在用的 key 的编号（只记编号，不读 key 本身），之后按这个配置发请求时带上它。
+async function hostSecretsModule(){
+ try{ return await import('../../../../../secrets.js'); }catch{ return null; }
+}
+
+async function secretKeyForSource(source){
+ const secrets=await hostSecretsModule(); if(!secrets?.SECRET_KEYS) return null;
+ try{
+  hostOpenAiModule=hostOpenAiModule || await import('../../../../../openai.js');
+  const sources=hostOpenAiModule?.chat_completion_sources||{};
+  const name=Object.entries(sources).find(([,value])=>value===source)?.[0];
+  return name && secrets.SECRET_KEYS[name] ? {secrets,key:secrets.SECRET_KEYS[name]} : null;
+ }catch{ return null; }
+}
+
+export async function rememberActiveConnectionProfileSecret(ctx=getContext()){
+ let manager=null; try{ manager=independentConnectionManagerSettings(ctx); }catch{ return ''; }
+ const activeId=normalizeIndependentConnectionText(manager.selectedProfile,160);
+ const profile=activeId?manager.profiles.find(item=>String(item?.id||'')===activeId):null;
+ if(!profile || normalizeIndependentConnectionText(profile['secret-id'],240)) return '';
+ const secretId=await readCurrentIndependentSlashSetting('secret-id',ctx);
+ if(!secretId || /^(?:none|null|undefined)$/i.test(secretId)) return '';
+ const memo={...(getSettings()?.independentConnectionSecretMemo||{})};
+ if(memo[activeId]===secretId) return secretId;
+ delete memo[activeId]; memo[activeId]=secretId;
+ updateSettings({independentConnectionSecretMemo:memo});
+ return secretId;
+}
+
+// 这个配置要用哪把 key：配置自己存的优先；没存的用记下的编号，但那把 key 已经删掉了就不用（交给酒馆按原样处理）。
+async function rememberedConnectionProfileSecret(profileId,profile,source){
+ if(normalizeIndependentConnectionText(profile?.['secret-id'],240)) return '';
+ const remembered=normalizeIndependentConnectionText(getSettings()?.independentConnectionSecretMemo?.[profileId],240);
+ if(!remembered) return '';
+ const found=await secretKeyForSource(source);
+ if(found){
+  const list=found.secrets.secret_state?.[found.key];
+  if(Array.isArray(list) && !list.some(item=>String(item?.id||'')===remembered)) return '';
+ }
+ return remembered;
+}
+
+// 报错说明用：这个配置有没有自己的 key（saved：配置里存了；remembered：兔子镜记下了；unknown：都没有，酒馆用当前正在用的）。
+export function connectionProfileSecretState(profileId,ctx=getContext()){
+ const id=normalizeIndependentConnectionText(profileId,160); if(!id) return '';
+ let profile=null; try{ profile=rawIndependentConnectionProfile(id,ctx); }catch{ return ''; }
+ if(!profile) return '';
+ if(normalizeIndependentConnectionText(profile['secret-id'],240)) return 'saved';
+ return normalizeIndependentConnectionText(getSettings()?.independentConnectionSecretMemo?.[id],240) ? 'remembered' : 'unknown';
+}
+
+let profileSecretWatchInstalled=false;
+export function installConnectionProfileSecretWatch(ctx=getContext()){
+ if(profileSecretWatchInstalled) return;
+ const source=ctx?.eventSource; const types=ctx?.eventTypes||ctx?.event_types;
+ if(!source?.on || !types) return;
+ profileSecretWatchInstalled=true;
+ const remember=()=>{ setTimeout(()=>{ void rememberActiveConnectionProfileSecret().catch(()=>{}); },300); };
+ for(const name of ['CONNECTION_PROFILE_LOADED','CONNECTION_PROFILE_UPDATED','SECRET_ROTATED','SECRET_WRITTEN']) if(types[name]) source.on(types[name],remember);
+ remember();
+}
+
 export async function validatedIndependentConnectionProfile(profileId,ctx=getContext()){
  const id=normalizeIndependentConnectionText(profileId,160);
  if(!id) return null;
@@ -477,7 +541,10 @@ export async function validatedIndependentConnectionProfile(profileId,ctx=getCon
  // RabbitMirror's existing independent request body is Chat Completions shaped.
  // Do not silently convert it to Text Completion or another request family here.
  if(apiMap?.selected!=='openai' || !apiMap?.source) throw independentConnectionProfilePreflightError('当前酒馆连接不是兔子镜现有副 API 可复用的 Chat Completion 类型。请切换到 Chat Completion 连接后再一键配置。','profile-not-chat-completion');
- return {id,profile,apiMap,ctx};
+ installConnectionProfileSecretWatch(ctx);
+ try{ await rememberActiveConnectionProfileSecret(ctx); }catch{}
+ const fallbackSecretId=await rememberedConnectionProfileSecret(id,profile,apiMap.source).catch(()=>'');
+ return {id,profile,apiMap,ctx,fallbackSecretId};
 }
 
 function independentConnectionFingerprint(profile){
@@ -603,7 +670,7 @@ function independentConnectionPayload(runtime,proxyPresets=[]){
  if(!runtime) return null;
  const {profile,apiMap}=runtime;
  const apiUrl=normalizeIndependentConnectionText(profile?.['api-url'],2000);
- const payload={chat_completion_source:apiMap.source,secret_id:normalizeIndependentConnectionText(profile?.['secret-id'],240)||undefined};
+ const payload={chat_completion_source:apiMap.source,secret_id:normalizeIndependentConnectionText(profile?.['secret-id'],240)||runtime.fallbackSecretId||undefined};
  // Build the non-generating /status request from Profile B only. Never read
  // any globally active正文 transport state here.
  if(apiUrl){

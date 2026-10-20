@@ -1,9 +1,9 @@
 // Split from independentApi.js — lifecycle.
 
-import { getSettings } from '../settings.js?rmv=1.72.5';
-import { SOURCE_ATTR, currentRuntime, getContext } from './runtime.js?rmv=1.72.5';
-import { LEGACY_GLOBAL_FLIGHT_KEYS, clearAutomaticFailureStops, pending } from './flights.js?rmv=1.72.5';
-import { migrateLegacyDeletedRecords } from './persistence.js?rmv=1.72.5';
+import { getSettings } from '../settings.js?rmv=1.72.7';
+import { SOURCE_ATTR, currentRuntime, getContext } from './runtime.js?rmv=1.72.7';
+import { LEGACY_GLOBAL_FLIGHT_KEYS, clearAutomaticFailureStops, pending } from './flights.js?rmv=1.72.7';
+import { migrateLegacyDeletedRecords } from './persistence.js?rmv=1.72.7';
 import {
     activeGlobalWorldInfoCapture,
     activeOwnerLockBatch,
@@ -13,8 +13,9 @@ import {
     writeActiveGlobalWorldInfoCapture,
     writeActiveOwnerLockBatch,
     writeActiveOwnerLockBatchDirty,
-} from './connection.js?rmv=1.72.5';
-import { isTheaterFavoriteHost, removeEmptyFollowExternalAnchors, removeEmptyInlineAnchors } from './request.js?rmv=1.72.5';
+    installConnectionProfileSecretWatch,
+} from './connection.js?rmv=1.72.7';
+import { isTheaterFavoriteHost, removeEmptyFollowExternalAnchors, removeEmptyInlineAnchors } from './request.js?rmv=1.72.7';
 import {
     activeRestorableHtmlCache,
     installExternalGeometryListeners,
@@ -23,7 +24,7 @@ import {
     refreshExternalPlaceholderThemes,
     removeExternalGeometryListeners,
     writeActiveRestorableHtmlCache,
-} from './geometry.js?rmv=1.72.5';
+} from './geometry.js?rmv=1.72.7';
 import {
     abortFlight,
     automaticIndependentTiming,
@@ -51,7 +52,7 @@ import {
     restoreFollowInline,
     restoreMountedFollowSnapshots,
     runtimeMode,
-} from './mount.js?rmv=1.72.5';
+} from './mount.js?rmv=1.72.7';
 import {
     cancelEarlyBodyProbes,
     captureMountedIndependentPlaceholderIndices,
@@ -71,7 +72,7 @@ import {
     scheduleStartupHistorySync,
     settleMountedIndependentPlaceholders,
     unsubscribeHostEvents,
-} from './earlyBody.js?rmv=1.72.5';
+} from './earlyBody.js?rmv=1.72.7';
 
 export let observer = null;
 
@@ -233,6 +234,8 @@ export async function initIndependentRabbitMirror({isActive=()=>true}={}){
  globalThis.__rabbitMirrorIndependentCleanup=destroyIndependentRabbitMirror;
  migrateLegacyDeletedRecords();
  installIndependentActionBridge();
+ // 记下各个酒馆连接配置被切到时用的 key 编号（配置没存 Secret 时兔子镜按这个配置发请求要用）。
+ try{ installConnectionProfileSecretWatch(); }catch{}
  handleIndependentManualBridge.diagnosticSnapshot=()=>{const frames=[...document.querySelectorAll('.rabbit-mirror-external-host[data-rm-state="manual"]')];return {runtimeVersion:'1.5.53-manualdiag1',runtimeCurrent:currentRuntime(),timingManual:manualIndependentTiming(),pendingFrames:frames.length,visiblePendingFrames:frames.filter(el=>!el.hidden&&getComputedStyle(el).visibility!=='hidden'&&el.getClientRects().length>0).length,readyFrames:document.querySelectorAll('.rabbit-mirror-external-host[data-rm-state="ready"]').length};};
  globalThis.__rabbitMirrorIndependentManualBridge=handleIndependentManualBridge;
  try{globalThis.__rabbitMirrorManualEntryDiagnosticRecord?.('runtime-start',{runtimeVersion:'1.5.53-manualdiag1',runtimeCurrent:currentRuntime()});}catch{}
