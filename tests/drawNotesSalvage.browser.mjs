@@ -77,6 +77,16 @@ assert.equal((await detail(HEAD + NOTE1 + '</deta')).droppedFrames, 0); checks++
 assert.equal((await detail(HEAD.replace(/<figure[^>]*><\/figure>/g, '') + NOTE1 + '<div data-rm-draw-notes="2" hidden><p data-rm-draw-prompt="2">没写')).droppedFrames, 0); checks++;
 assert.equal((await detail(HEAD + NOTE1 + '<div data-rm-draw-notes="2" hidden><p data-rm-draw-prompt="2">没写')).droppedFrames, 1); checks++;
 
+// 8 画面说明只是漏了 </div>、后面写了 </details>：图框留着、不算丢图
+let d8 = await detail(HEAD + '<div data-rm-draw-notes="1" hidden><p data-rm-draw-prompt="1">案台上的红色账册，暖光</p></details>');
+assert.equal(d8.droppedFrames, 0); checks++;
+assert.match(d8.html, /data-rm-draw-frame="1"[\s\S]*data-rm-draw-notes="1"[\s\S]*<\/div><\/details>/); checks++;
+// 9 截在画面描述中间，但已经写了 20 字以上：补齐留着，图照画
+d8 = await detail(HEAD + NOTE1 + '<div data-rm-draw-notes="2" hidden><p data-rm-draw-prompt="2">昏暗的地牢石壁边，一个蒙着眼的白衣少女蜷坐在稻草堆上，银发少年单膝蹲在她面前用镰刀背轻');
+assert.equal(d8.droppedFrames, 0); checks++;
+assert.match(d8.html, /data-rm-draw-frame="2"/); checks++;
+assert.match(d8.html, /镰刀背轻<\/p><\/div><\/details><\/toto>$/); checks++;
+
 assert.deepEqual(pageErrors, []);
 console.log(JSON.stringify({ checks }));
 await browser.close(); server.close();
