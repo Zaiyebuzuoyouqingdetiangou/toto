@@ -6,7 +6,7 @@
 // 以前这类写法一种认一次，碰到新变种又要改代码。这里统一处理：读本面 CSS，找出每条「状态条件」写在哪个位置、
 // 管着哪些元素，算出 CSS 期望状态落在哪个元素（载体）上；驱动没写在那里的，状态一变就同步过去。
 // 只同步驱动写在区域上的那几个状态属性，值原样照抄，不猜内容；载体上模型原本写的值保留，自己写的记在 data-rm-bridged 上，撤时只撤自己的。
-import { behaviorStyleText, behaviorStyleStamp } from './behaviorStateMirror.js?rmv=1.73.0';
+import { behaviorStyleText, behaviorStyleStamp } from './behaviorStateMirror.js?rmv=1.73.1';
 
 const GROUP = '[data-rm-ui]';
 const CONTROLS = '[data-rm-step], [data-rm-pick], [data-rm-toggle], [data-rm-goto], [data-rm-item], [data-rm-card], [data-rm-end], [data-rm-code], [data-rm-fire], [data-rm-hold]';

@@ -1,8 +1,8 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.73.0';
-import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.73.0';
-import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.73.0';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.73.1';
+import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.73.1';
+import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.73.1';
 
 export function buildRabbitMirrorSettingsDialogHtml() {
     return `
@@ -111,13 +111,15 @@ export function buildRabbitMirrorSettingsDialogHtml() {
               <label><input name="rh_independent_display" type="radio" value="external_then_inline"> ② 外置后内嵌</label>
             </div>
               <div style="opacity:.66;font-size:11px;line-height:1.45;margin-top:6px;">只决定副 API 成品显示在哪里，不改变提示词、美化规则或模型。</div>
-              <div style="font-weight:700;font-size:12px;margin:10px 0 6px;">外置兔子镜挂在消息的哪一层</div>
+              <div id="rh_independent_anchor_block">
+              <div data-rh-anchor-title style="font-weight:700;font-size:12px;margin:10px 0 6px;">外置兔子镜挂在消息的哪一层</div>
               <div id="rh_independent_anchor_row" class="flex-container" style="gap:14px;flex-wrap:wrap;align-items:center;">
                 <label><input name="rh_independent_anchor" type="radio" value="auto"> 自动（推荐）</label>
                 <label><input name="rh_independent_anchor" type="radio" value="body"> 一律放进正文气泡里</label>
                 <label><input name="rh_independent_anchor" type="radio" value="outside"> 放到整条消息外面</label>
               </div>
-              <div style="opacity:.66;font-size:11px;line-height:1.45;margin-top:6px;">自动：美化把气泡画在正文上，兔子镜就跟着进气泡；否则放在正文下面、还在这条消息里，美化把整条消息画成卡片时也在卡片里。兔子镜掉到气泡外面了选「放进正文气泡里」；不想被美化的卡片包住选「整条消息外面」（1.73.0 以前的位置）。</div>
+              <div data-rh-anchor-note style="opacity:.66;font-size:11px;line-height:1.45;margin-top:6px;">自动：美化把气泡画在正文上，兔子镜就跟着进气泡；否则放在正文下面、还在这条消息里，美化把整条消息画成卡片时也在卡片里。兔子镜掉到气泡外面了选「放进正文气泡里」；不想被美化的卡片包住选「整条消息外面」（1.73.0 以前的位置）。</div>
+              </div>
             </div>
             <div style="padding:9px 10px;border:1px solid color-mix(in srgb, currentColor 16%, transparent);border-radius:9px;">
               <div style="font-weight:700;font-size:12px;margin-bottom:7px;">连接与模型</div>
