@@ -10,6 +10,103 @@ const LEGACY_PROVIDER_ALIASES = new Map([
     ['baibai-book', 'global:STBaiBaiBook'],
 ]);
 const MAX_READABLE_RESULTS = 12;
+
+// ——— 千千结（ST-MyriadKnots）长期记忆：版本化只读桥 globalThis.qqj_v3_public_bridge_v1 ———
+// 不走 getInjectedHistory：同步读 getPromptSnapshot()（千千结最近一次为正文准备好的召回与前情，
+// 正文生成结束后照样保留），没有材料时再异步读 readMemory()。只读当前聊天，核对聊天身份，不写、不触发整理。
+// 它的快照本来就是给正文生成之后读的，所以副 API（独立生成、重说、补楼）也可以读，不同于别的插件接口。
+const QQJ_KEY = 'qqj_v3_public_bridge_v1';
+export const QQJ_PROVIDER_ID = `global:${QQJ_KEY}`;
+const QQJ_NAME = '千千结（长期记忆）';
+const QQJ_ASYNC_TIMEOUT_MS = 6000;
+
+function qqjBridge() {
+    const api = safeGlobalValue(QQJ_KEY);
+    return api && typeof api === 'object' && typeof api.getStatus === 'function' ? api : null;
+}
+
+function currentHostChatId() {
+    try {
+        const ctx = globalThis.SillyTavern?.getContext?.() || {};
+        return String(ctx.getCurrentChatId?.() ?? ctx.chatId ?? '');
+    } catch { return ''; }
+}
+
+function qqjStatus(api) {
+    let status;
+    try { status = api.getStatus(); } catch (error) { return { ok: false, message: `千千结状态读取失败：${error?.message || error}` }; }
+    const state = String(status?.status || '');
+    if (state === 'disabled') return { ok: false, message: '千千结当前已关闭' };
+    if (state !== 'ready') return { ok: false, message: '千千结还没准备好当前聊天（切换聊天后稍等再试）' };
+    const hostChatId = String(status?.identity?.hostChatId ?? '');
+    const current = currentHostChatId();
+    if (hostChatId && current && hostChatId !== current) return { ok: false, message: '千千结读到的不是当前聊天，本次不用' };
+    return { ok: true, identity: status.identity || null };
+}
+
+function sameChat(identity) {
+    const hostChatId = String(identity?.hostChatId ?? '');
+    const current = currentHostChatId();
+    return !hostChatId || !current || hostChatId === current;
+}
+
+function qqjSnapshotText(snapshot) {
+    if (!snapshot || snapshot.status !== 'ready' || !sameChat(snapshot.identity)) return '';
+    const prequel = safeText(snapshot.prequel?.text);
+    const recall = safeText(snapshot.recall?.text);
+    return [prequel && `［前情］\n${prequel}`, recall && `［相关记忆］\n${recall}`].filter(Boolean).join('\n\n');
+}
+
+function readQqjProvider() {
+    const api = qqjBridge();
+    if (!api) throw new Error('千千结的公开读取接口当前不可用（没装、没启用或还在加载）');
+    const gate = qqjStatus(api);
+    if (!gate.ok) throw new Error(gate.message);
+    let snapshot = null;
+    try { snapshot = typeof api.getPromptSnapshot === 'function' ? api.getPromptSnapshot() : null; } catch { snapshot = null; }
+    return {
+        providerId: QQJ_PROVIDER_ID,
+        providerName: QQJ_NAME,
+        text: qqjSnapshotText(snapshot),
+        coverage: null,
+        chat: { id: String(gate.identity?.hostChatId || ''), characterName: '' },
+        revision: null,
+        snapshotStatus: String(snapshot?.status || ''),
+    };
+}
+
+// 同步快照是空的（这一轮千千结没准备召回材料，比如刚打开聊天）：异步读一次整份记忆文本，限时，读不到就算了。
+async function readQqjMemoryText() {
+    const api = qqjBridge();
+    if (!api || typeof api.readMemory !== 'function' || !qqjStatus(api).ok) return '';
+    let timer = null;
+    try {
+        const result = await Promise.race([
+            Promise.resolve().then(() => api.readMemory()),
+            new Promise(resolve => { timer = setTimeout(() => resolve(null), QQJ_ASYNC_TIMEOUT_MS); }),
+        ]);
+        if (!result || result.status !== 'ready' || !sameChat(result.identity)) return '';
+        return safeText(result.text);
+    } catch { return ''; } finally { if (timer) clearTimeout(timer); }
+}
+
+function detectQqj(traces) {
+    const api = qqjBridge();
+    if (!api) return null;
+    const gate = qqjStatus(api);
+    const trace = traces.find(item => /myriadknots|qqj|千千结/i.test(`${item.token} ${item.details.join(' ')}`)) || null;
+    return {
+        id: QQJ_PROVIDER_ID,
+        name: QQJ_NAME,
+        kind: 'public-api',
+        readable: true,
+        selectedAllowed: true,
+        status: gate.ok ? '可读取' : gate.message,
+        source: `globalThis.${QQJ_KEY}`,
+        details: `公开接口：getPromptSnapshot / readMemory · 读这一轮千千结为正文准备的前情与相关记忆${gate.ok ? '' : ` · 当前：${gate.message}`}`,
+        matchedTraceId: trace?.id || '',
+    };
+}
 const MAX_PENDING_RESULTS = 20;
 
 function safeGlobalValue(key) {
@@ -196,6 +293,8 @@ function dedupeScanResults(results) {
 export function scanMemoryPlugins() {
     const traces = collectExtensionTraces();
     const readable = detectReadablePublicApis(traces);
+    const qqj = detectQqj(traces);
+    if (qqj) readable.unshift(qqj);
     const matchedTraceIds = new Set(readable.map(item => item.matchedTraceId).filter(Boolean));
     const readableNames = readable.map(item => normalizedToken(`${item.name} ${item.source}`));
 
@@ -294,6 +393,7 @@ function readGlobalProvider(providerId) {
 
 export function readMemoryProvider(providerId) {
     const resolvedId = resolveProviderId(providerId);
+    if (resolvedId === QQJ_PROVIDER_ID) return readQqjProvider();
     if (resolvedId.startsWith('global:')) return readGlobalProvider(resolvedId);
     throw new Error('当前来源只有扫描记录，尚无可用读取接口');
 }
@@ -316,6 +416,8 @@ export function testMemoryProvider(providerId) {
             missingFloors: Array.isArray(result.coverage?.missingAiFloors) ? result.coverage.missingAiFloors.length : 0,
             revision: result.revision,
             elapsed,
+            ...(result.providerId === QQJ_PROVIDER_ID && !text ? { note: result.snapshotStatus === 'empty'
+                ? '这一轮千千结还没为正文准备召回材料；正式生成时会改读它的整份记忆' : '' } : {}),
         };
     } catch (error) {
         return {
@@ -363,7 +465,7 @@ export function readSelectedMemoryForPrompt(settings, maxChars = 2200, additiona
             errors.push(`${providerId}: ${error?.message || error}`);
         }
     }
-    for (const result of additionalMaterials.slice(0, 1)) append(result, result?.providerId || '已绑定世界书');
+    for (const result of additionalMaterials.slice(0, 2)) append(result, result?.providerId || '已绑定世界书');
 
     if (!chunks.length) return errors.length ? { text: '', sources: [], errors } : null;
     return {
@@ -382,7 +484,7 @@ export async function prepareSelectedMemoryForPrompt(settings, options = {}) {
     let worldBookError = '';
     if (settings.memoryWorldBookEnabled === true && typeof settings.memoryWorldBookId === 'string' && settings.memoryWorldBookId.trim()) {
         try {
-            const { readBoundMemoryWorldBook } = await import('./memoryWorldBook.js?rmv=1.71.3');
+            const { readBoundMemoryWorldBook } = await import('./memoryWorldBook.js?rmv=1.72.0');
             const result = await readBoundMemoryWorldBook(settings, maxChars, options.worldBookOptions);
             if (result) additional.push(result);
         } catch (error) {
@@ -391,7 +493,18 @@ export async function prepareSelectedMemoryForPrompt(settings, options = {}) {
     }
     // The new, explicitly bound worldbook is available in both generation modes.
     // Do not silently broaden the pre-existing plugin API access of independent mode.
-    const materialSettings = independent ? { ...settings, memoryProviderIds: [] } : settings;
+    // 千千结例外：它的快照就是给正文生成之后读的。
+    const selectedIds = Array.isArray(settings.memoryProviderIds) ? settings.memoryProviderIds : [];
+    const materialSettings = independent ? { ...settings, memoryProviderIds: selectedIds.filter(id => id === QQJ_PROVIDER_ID) } : settings;
+    // 千千结这一轮没有准备好的快照：异步补读一次整份记忆，放进附加材料里（同步读到的是空的，不会重复）。
+    if (materialSettings.memoryProviderIds?.includes(QQJ_PROVIDER_ID)) {
+        let snapshotText = '';
+        try { snapshotText = readQqjProvider().text; } catch { snapshotText = ''; }
+        if (!snapshotText) {
+            const text = await readQqjMemoryText();
+            if (text) additional.unshift({ providerId: QQJ_PROVIDER_ID, providerName: QQJ_NAME, text });
+        }
+    }
     const material = readSelectedMemoryForPrompt(materialSettings, maxChars, additional);
     if (!worldBookError) return material;
     return {
@@ -406,7 +519,7 @@ export function memoryRequestSettingsKey(settings, generationType = 'normal') {
         settings?.memoryWorldBookEnabled === true,
         String(settings?.memoryWorldBookId || ''),
         Number(settings?.memoryMaxChars) || 2200,
-        generationType === 'independent' ? [] : (Array.isArray(settings?.memoryProviderIds) ? settings.memoryProviderIds : []),
+        (Array.isArray(settings?.memoryProviderIds) ? settings.memoryProviderIds : []).filter(id => generationType !== 'independent' || id === QQJ_PROVIDER_ID),
         settings?.enabled !== false, settings?.autoRabbitMirrorInjection !== false,
         String(settings?.generationSource || 'follow'), String(settings?.mode || ''),
     ]);
