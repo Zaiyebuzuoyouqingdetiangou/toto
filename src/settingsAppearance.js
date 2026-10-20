@@ -1,9 +1,9 @@
 // UI palettes from the user-provided Hearttrace source, by Toto.
 // Presentation only: no generation settings, Prompt, content storage, or network.
-import { closeTheaterFavoriteLibrary, closeTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.73.0';
-import { UI_THEMES, APPEARANCE_STORAGE_KEY, paletteKeys, normalizeAppearance, applyAppearanceTheme } from './appearanceTheme.js?rmv=1.73.0';
-import { mountUserSkinControls } from './userSkin.js?rmv=1.73.0';
-export { UI_THEMES, APPEARANCE_STORAGE_KEY, normalizeAppearance, applyAppearanceTheme } from './appearanceTheme.js?rmv=1.73.0';
+import { closeTheaterFavoriteLibrary, closeTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.73.1';
+import { UI_THEMES, APPEARANCE_STORAGE_KEY, paletteKeys, normalizeAppearance, applyAppearanceTheme } from './appearanceTheme.js?rmv=1.73.1';
+import { mountUserSkinControls } from './userSkin.js?rmv=1.73.1';
+export { UI_THEMES, APPEARANCE_STORAGE_KEY, normalizeAppearance, applyAppearanceTheme } from './appearanceTheme.js?rmv=1.73.1';
 const colorLabels = ['背景', '卡片底色', '正文', '辅助文字', '主色', '辅助色', '边框'];
 const mounts = new WeakMap();
 // Keep the existing public theme hook for older consumers.
@@ -52,7 +52,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     const subtitle = head.querySelector('small');
     subtitle.replaceWith(versionRow);
     versionRow.append(subtitle);
-    void import('./mirrorUpdateMenu.js?rmv=1.73.0').then(mod => {
+    void import('./mirrorUpdateMenu.js?rmv=1.73.1').then(mod => {
         if (versionRow.isConnected) mod.mountSettingsUpdateChrome(versionRow);
     }).catch(error => console.warn('[RabbitMirror] 设置标题的更新检测没有挂上', error));
     const searchbar = make('div', 'rh-ui-searchbar');
@@ -164,6 +164,16 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     for(const input of followDisplay.querySelectorAll('input'))choice(input,input.value==='inline'?'放在正文下方':'外置展示',input.value==='inline'?'翻到这条回复，就能看到对应的小剧场。':outer);
     for(const input of indDisplay.querySelectorAll('input'))choice(input,input.value==='external'?'外置展示':'跟随正文内嵌',input.value==='external'?outer:inner);
     for(const node of [followDisplay,indDisplay]){node.removeAttribute('style');node.className='rh-ui-display-options';}
+    // 外置兔子镜挂在消息的哪一层：放在显示模式页里，样式和上面两组一样。
+    const anchorBlock=move('rh_independent_anchor_block','display');
+    if(anchorBlock){
+        const anchorRow=get('rh_independent_anchor_row');
+        const anchorText={auto:['自动（推荐）','美化把气泡画在正文上，兔子镜就跟着进气泡；否则放在正文下面、还在这条消息里。'],body:['一律放进正文气泡里','兔子镜掉到美化的气泡外面时选这个。'],outside:['放到整条消息外面','不想被美化的卡片包住时选这个（1.73.0 以前的位置）。']};
+        for(const input of anchorRow.querySelectorAll('input'))choice(input,...anchorText[input.value]);
+        anchorRow.removeAttribute('style');anchorRow.className='rh-ui-display-options';
+        const title=anchorBlock.querySelector('[data-rh-anchor-title]');if(title){title.className='rh-ui-field-title';title.style.cssText='font-weight:700;font-size:15px;margin:22px 0 12px;';title.textContent='外置兔子镜挂在消息的哪一层（副 API）';}
+        anchorBlock.querySelector('[data-rh-anchor-note]')?.remove();
+    }
     move('rh_face_pager_settings','display');
     move('rh_independent_manual_legacy','manual');
     move('rh_automatic_reroll_block','reroll');
@@ -313,7 +323,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
             if(typeof root.showModal==='function'){if(!root.open)root.showModal();}
             else root.setAttribute('open','');
             trackViewport();applyTheme();paint();close.focus({preventScroll:true});
-            void import('./mirrorUpdateMenu.js?rmv=1.73.0').then(mod => mod.refreshRabbitMirrorUpdateOnOpen()).catch(error => console.warn('[RabbitMirror] 打开设置时没能检测更新', error));
+            void import('./mirrorUpdateMenu.js?rmv=1.73.1').then(mod => mod.refreshRabbitMirrorUpdateOnOpen()).catch(error => console.warn('[RabbitMirror] 打开设置时没能检测更新', error));
         }else{
             closeTheaterFavoriteViewer();
             closeTheaterFavoriteLibrary();
