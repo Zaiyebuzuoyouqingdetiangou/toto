@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.73.3';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.73.3';
-import { builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.73.3';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.73.3';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.73.3';
-import { tidyImagePayload } from './imageTagTidy.js?rmv=1.73.3';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.73.3';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.73.3';
+import { getSettings } from './settings.js?rmv=1.73.4';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.73.4';
+import { builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.73.4';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.73.4';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.73.4';
+import { tidyImagePayload } from './imageTagTidy.js?rmv=1.73.4';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.73.4';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.73.4';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -63,7 +63,13 @@ function readPrompt(frame) {
         if (attr && attr !== '1') text = attr;
     }
     text = String(text || '').replace(/\s+/g, ' ').trim();
-    if (text.length < 4) return '';
+    // 图框在、画面描述却没写（模型漏写，或写到这里被截断了）：用这一面的标题和图框旁边写的字当画面，照样画。
+    if (text.length < 4) {
+        const title = String(frame.closest?.('details')?.querySelector?.(':scope > summary')?.textContent || '').replace(/\s+/g, ' ').replace(/^【?兔子镜[:：]\s*/, '').replace(/】$/, '').trim();
+        const caption = frameCaption(frame).replace(/^前：|；后：|^后：/g, ' ').replace(/\s*\/\s*/g, '，').trim();
+        const fallback = [title, caption].filter(Boolean).join('：').replace(/\s+/g, ' ').trim();
+        return fallback.length >= 8 ? fallback.slice(0, 400) : '';
+    }
     return text.slice(0, 800);
 }
 

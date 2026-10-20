@@ -37,11 +37,11 @@ const HEAD = '<toto data-rabbit-mirror="true"><details open><summary>【兔子�
 const NOTE1 = '<div data-rm-draw-notes="1" hidden><p data-rm-draw-prompt="1">案台上的红色账册，暖光</p><p data-rm-draw-char="刑玦">黑发高马尾</p></div>';
 const salvage = text => page.evaluate(text => req.salvageCutDrawNotes(text), text);
 
-// 1 截在第二块画面说明里：第一张图保留，第二个图框去掉，正文都在
+// 1 截在第二块画面说明里、画面描述几乎没写：两个图框都留着（第二个由插件按标题和旁边的字补画面），正文都在
 let out = await salvage(HEAD + NOTE1 + '<div data-rm-draw-notes="2" hidden><p data-rm-draw-prompt="2">少女雪白广袖，肌肤白如');
 assert.match(out, /七色证言一/); checks++;
 assert.match(out, /data-rm-draw-frame="1"/); checks++;
-assert.doesNotMatch(out, /data-rm-draw-frame="2"/); checks++;
+assert.match(out, /data-rm-draw-frame="2"/); checks++;
 assert.match(out, /data-rm-draw-notes="1"/); checks++;
 assert.doesNotMatch(out, /data-rm-draw-notes="2"/); checks++;
 assert.match(out, /<\/details><\/toto>$/); checks++;
@@ -69,7 +69,7 @@ assert.equal(adopted.prompt, '案台上的红色账册，暖光'); checks++;
 assert.equal(adopted.hidden, true); checks++;
 assert.equal(adopted.order, 'pc'); checks++;
 assert.equal(adopted.notesLeft, 0); checks++;
-assert.equal(adopted.frames, 1); checks++;
+assert.equal(adopted.frames, 2); checks++; // 第二个图框没写画面描述，也按标题和旁边的字照样列出来
 
 // 7 只少了结尾标签、或写了说明却没放图框：救回来，但不算丢图（不弹「先不配图」）
 const detail = text => page.evaluate(text => req.salvageCutDrawNotesDetail(text), text);
@@ -86,6 +86,14 @@ d8 = await detail(HEAD + NOTE1 + '<div data-rm-draw-notes="2" hidden><p data-rm-
 assert.equal(d8.droppedFrames, 0); checks++;
 assert.match(d8.html, /data-rm-draw-frame="2"/); checks++;
 assert.match(d8.html, /镰刀背轻<\/p><\/div><\/details><\/toto>$/); checks++;
+
+// 10 图框里没有画面描述：用这一面的标题和图框旁边的字当画面
+const fallback = await page.evaluate(() => {
+    document.body.innerHTML = '<details open><summary>【兔子镜：地牢收音台导演音轨】</summary><div><p>片段二：骨镰挑颌，守牢老者的八卦脑补</p><figure data-rm-draw-frame="1"></figure><p>导演音轨 · 镜头调度趣事</p></div></details>';
+    return img.listBuiltinImageFrames(document.body).map(item => item.prompt);
+});
+assert.equal(fallback.length, 1); checks++;
+assert.match(fallback[0], /地牢收音台导演音轨：.*骨镰挑颌/); checks++;
 
 assert.deepEqual(pageErrors, []);
 console.log(JSON.stringify({ checks }));
