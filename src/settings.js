@@ -1,11 +1,11 @@
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.72.5';
-import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.72.5';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.72.6';
+import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.72.6';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.72.5';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.72.5';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.72.5';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.72.5';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.72.6';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.72.6';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.72.6';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.72.6';
 
 export const MODULE_NAME = 'rabbit_mirror_theater';
 
@@ -187,6 +187,8 @@ export const defaultSettings = Object.freeze({
     independentGenerationTiming: 'auto',
     followDisplayMode: 'inline',
     independentConnectionProfileId: '',
+    // 连接配置没存 Secret 时，它在酒馆里被切到时用的是哪把 key（只记 key 的编号，不记 key 本身）。
+    independentConnectionSecretMemo: {},
     independentApiBaseUrl: '',
     independentApiKey: '',
     independentApiModel: '',
@@ -357,6 +359,12 @@ export function getSettings() {
     settings.missingShellScanRange = normalizeMissingShellScanRange(settings.missingShellScanRange);
     settings.independentReadGlobalWorldInfo = settings.independentReadGlobalWorldInfo === true;
     settings.independentConnectionProfileId = String(settings.independentConnectionProfileId || '').trim().slice(0, 160);
+    {
+        const memo = settings.independentConnectionSecretMemo && typeof settings.independentConnectionSecretMemo === 'object' && !Array.isArray(settings.independentConnectionSecretMemo) ? settings.independentConnectionSecretMemo : {};
+        settings.independentConnectionSecretMemo = Object.fromEntries(Object.entries(memo)
+            .map(([id, secret]) => [String(id || '').trim().slice(0, 160), String(secret || '').trim().slice(0, 240)])
+            .filter(([id, secret]) => id && secret).slice(-40));
+    }
     settings.independentWorldInfoDisabledBooks = [...new Set((Array.isArray(settings.independentWorldInfoDisabledBooks) ? settings.independentWorldInfoDisabledBooks : [])
         .map(value => String(value || '').trim())
         .filter(value => value && value.length <= WORLD_INFO_BOOK_NAME_MAX_CHARS))];

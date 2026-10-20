@@ -1,29 +1,29 @@
-import { bindRolePaletteCode } from '../roleColorVariants.js?rmv=1.72.5';
-import { faceDrawNeedsExternal } from '../faceDrawRules.js?rmv=1.72.5';
-import { designSamplingChecksFromHtml } from '../interactionSampling.js?rmv=1.72.5';
+import { bindRolePaletteCode } from '../roleColorVariants.js?rmv=1.72.6';
+import { faceDrawNeedsExternal } from '../faceDrawRules.js?rmv=1.72.6';
+import { designSamplingChecksFromHtml } from '../interactionSampling.js?rmv=1.72.6';
 // Split from independentApi.js — request.
 
-import { claimGenerationEvidence, associateGenerationEvidence, generationEvidenceFor } from '../generationEvidence.js?rmv=1.72.5';
-import { createGenerationTimer } from '../generationTiming.js?rmv=1.72.5';
-import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.72.5';
+import { claimGenerationEvidence, associateGenerationEvidence, generationEvidenceFor } from '../generationEvidence.js?rmv=1.72.6';
+import { createGenerationTimer } from '../generationTiming.js?rmv=1.72.6';
+import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.72.6';
 
-import { resolveBehaviorRuleText } from '../behaviorRules.js?rmv=1.72.5';
-import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.72.5';
-import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.72.5';
-import { getSettings } from '../settings.js?rmv=1.72.5';
-import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.72.5';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=1.72.5';
-import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from '../chatAvatarPromptReady.js?rmv=1.72.5';
+import { resolveBehaviorRuleText } from '../behaviorRules.js?rmv=1.72.6';
+import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.72.6';
+import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.72.6';
+import { getSettings } from '../settings.js?rmv=1.72.6';
+import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.72.6';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=1.72.6';
+import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from '../chatAvatarPromptReady.js?rmv=1.72.6';
 import {
     assertRabbitMirrorIndependentResponseBytes,
     assertRabbitMirrorIndependentResponseText,
     authorizeRabbitMirrorIndependentServiceRequest,
-} from '../independentSecurityGuard.js?rmv=1.72.5';
+} from '../independentSecurityGuard.js?rmv=1.72.6';
 import {
     parseIndependentAdvancedOptions,
     buildIndependentAdvancedCarrier,
     applyIndependentAdvancedExclusions,
-} from '../advancedRequestOptions.js?rmv=1.72.5';
+} from '../advancedRequestOptions.js?rmv=1.72.6';
 import {
     buildRabbitMirrorPromptDetails,
     planRabbitMirrorPromptDetails,
@@ -32,15 +32,15 @@ import {
     prepareSelectedMemoryForPrompt,
     memoryRequestSettingsKey,
     assertMemoryRequestSettings,
-} from '../promptBuilder.js?rmv=1.72.5';
-import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.72.5';
-import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.72.5';
-import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.72.5';
-import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText, createMultifaceFailureSlot } from '../multifaceProtocol.js?rmv=1.72.5';
-import { applyAtmosphereFields, atmosphereNotesFromHtml, stripAtmosphereChoiceMarkup } from '../atmosphereChoice.js?rmv=1.72.5';
-import { isLocalPreflightFailure, isQuotaInsufficientFailure, configuredAutomaticRerollMax, automaticRerollEnabled } from '../automaticReroll.js?rmv=1.72.5';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.72.5';
-import { serialPaletteExecutionReminder } from '../serialPaletteContext.js?rmv=1.72.5';
+} from '../promptBuilder.js?rmv=1.72.6';
+import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.72.6';
+import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.72.6';
+import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.72.6';
+import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText, createMultifaceFailureSlot } from '../multifaceProtocol.js?rmv=1.72.6';
+import { applyAtmosphereFields, atmosphereNotesFromHtml, stripAtmosphereChoiceMarkup } from '../atmosphereChoice.js?rmv=1.72.6';
+import { isLocalPreflightFailure, isQuotaInsufficientFailure, configuredAutomaticRerollMax, automaticRerollEnabled } from '../automaticReroll.js?rmv=1.72.6';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.72.6';
+import { serialPaletteExecutionReminder } from '../serialPaletteContext.js?rmv=1.72.6';
 import {
     createVisualHistorySelection,
     resolveVisualHistorySelection,
@@ -49,9 +49,9 @@ import {
     markPendingBatchAttempt,
     findPendingComboBatchPlan,
     releasePendingComboBatch,
-} from '../storage.js?rmv=1.72.5';
-import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.72.5';
-import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.72.5';
+} from '../storage.js?rmv=1.72.6';
+import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.72.6';
+import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.72.6';
 import {
     RUNTIME_VERSION,
     EXTERNAL_SHELL_ATTR,
@@ -62,8 +62,8 @@ import {
     byteLength,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.72.5';
-import { operationEpochForBase } from './flights.js?rmv=1.72.5';
+} from './runtime.js?rmv=1.72.6';
+import { operationEpochForBase } from './flights.js?rmv=1.72.6';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INDEPENDENT_MAX_APPROX_DEPTH,
@@ -78,7 +78,7 @@ import {
     normalizedConfiguredTemperature,
     readHistoryStore,
     readStore,
-} from './persistence.js?rmv=1.72.5';
+} from './persistence.js?rmv=1.72.6';
 import {
     API_PROFILE_ORDER,
     chatKey,
@@ -113,7 +113,8 @@ import {
     stageNextApiProfile,
     swipeId,
     validatedIndependentConnectionProfile,
-} from './connection.js?rmv=1.72.5';
+    connectionProfileSecretState,
+} from './connection.js?rmv=1.72.6';
 import {
     externalGeometryCycleSequence,
     externalGeometryLifecycleEpoch,
@@ -124,7 +125,7 @@ import {
     writeExternalGeometryCycleSequence,
     writeExternalGeometryLifecycleEpoch,
     writeExternalGeometryLifecycleReason,
-} from './geometry.js?rmv=1.72.5';
+} from './geometry.js?rmv=1.72.6';
 import {
     INDEPENDENT_REJECTED_PREVIEW_MAX_CHARS,
     INDEPENDENT_REJECTED_PREVIEW_MAX_ENTRIES,
@@ -139,8 +140,8 @@ import {
     writeExternalHostSyncIndex,
     writeIndependentRejectedPreviewChars,
     writeIndependentRejectedPreviewSequence,
-} from './mount.js?rmv=1.72.5';
-import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.72.5';
+} from './mount.js?rmv=1.72.6';
+import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.72.6';
 
 const NON_STREAM_PROFILE_BY_STREAM_PROFILE={
  chat_system_user_full:'chat_system_user_full_nostream',
@@ -795,7 +796,7 @@ async function requestIndependentConnectionProfileCompletion(runtime,profile,opt
  // secret-id. During early overlap this can silently use the main connection's
  // key for a different Profile. Check only saved identity metadata, never keys.
  const activeProfileId=normalizeIndependentConnectionText(runtime?.ctx?.extensionSettings?.connectionManager?.selectedProfile,160);
- const savedSecretId=normalizeIndependentConnectionText(runtime?.profile?.['secret-id'],240);
+ const savedSecretId=normalizeIndependentConnectionText(runtime?.profile?.['secret-id'],240)||normalizeIndependentConnectionText(runtime?.fallbackSecretId,240);
  const proxyName=normalizeIndependentConnectionText(runtime?.profile?.proxy,240);
  if(options.earlyBodyOwner && activeProfileId && activeProfileId!==profileId && !savedSecretId){
   // A stale proxy name is not a credential boundary. Match the host's saved
@@ -843,6 +844,8 @@ async function requestIndependentConnectionProfileCompletion(runtime,profile,opt
  };
  if(Object.prototype.hasOwnProperty.call(body,'max_completion_tokens')) overrides.max_completion_tokens=body.max_completion_tokens;
  if(Object.prototype.hasOwnProperty.call(body,'temperature')) overrides.temperature=body.temperature;
+ // 配置没存 Secret、兔子镜记下了它被切到时用的 key：带上，免得酒馆拿当前正文配置的 key 去请求。
+ if(!normalizeIndependentConnectionText(runtime?.profile?.['secret-id'],240) && runtime?.fallbackSecretId) overrides.secret_id=runtime.fallbackSecretId;
  if(advancedCarrier&&Object.prototype.hasOwnProperty.call(advancedCarrier,'custom_include_body')) overrides.custom_include_body=body.custom_include_body;
  if(advancedCarrier&&Object.prototype.hasOwnProperty.call(advancedCarrier,'custom_exclude_body')) overrides.custom_exclude_body=body.custom_exclude_body;
  let serviceResult;
@@ -1132,7 +1135,8 @@ export async function requestIndependentCompletion(st,systemPrompt,userPrompt,op
   const rawDetail=safeIndependentErrorDetail(error?.message||error||'网络连接失败');
   const detail=connectionInterrupted&&!hostApiError?'连接在响应完成前中断（未收到完整响应）':rawDetail;
   // Merely mentioning "secret" / "API key" is not authentication evidence.
-  const profileAuthFailure=!!connectionId && ([401,403].includes(reportedHttpStatus)||/(?:\bunauthori[sz]ed\b|\bforbidden\b|\b(?:invalid|missing|incorrect|expired|revoked)[ _-]+(?:api[ _-]?key|access[ _-]?token|secret)\b|\b(?:api[ _-]?key|access[ _-]?token|secret)\b[^\n\r]{0,32}\b(?:invalid|missing|incorrect|expired|revoked|not\s+(?:set|found))\b)/i.test(classification));
+  let connectionSecretUnknown=false; try{ connectionSecretUnknown=!!connectionId && connectionProfileSecretState(connectionId)==='unknown'; }catch{}
+  const profileAuthFailure=!!connectionId && ([401,403].includes(reportedHttpStatus)||/(?:\bunauthori[sz]ed\b|\bforbidden\b|\b(?:invalid|missing|incorrect|expired|revoked)[ _-]+(?:api[ _-]?key|access[ _-]?token|token|secret)\b|\b(?:api[ _-]?key|access[ _-]?token|secret)\b[^\n\r]{0,32}\b(?:invalid|missing|incorrect|expired|revoked|not\s+(?:set|found))\b)/i.test(classification));
   const rateLimited=reportedHttpStatus===429||/\brate[_ -]?limit(?:ed|ing)?\b|too many requests/i.test(classification);
   const concurrencyFailure=/\b(?:concurrent|concurrency|parallel)\b[^\n\r]{0,60}\b(?:limit|exceeded|not allowed|not supported)\b|already (?:generating|processing a request)|generation (?:already )?in progress/i.test(classification);
   const responseBoundaryFailure=/RABBIT_MIRROR_RESPONSE_TOO_(?:LARGE|COMPLEX)/.test(classification);
@@ -1161,7 +1165,9 @@ export async function requestIndependentCompletion(st,systemPrompt,userPrompt,op
    ? `；本次传输尝试发送了 1 次生成请求。点击“重新生成兔子镜”时可做一次诊断性尝试：只把 stream 改为 false，尝试：${next}`
    : '；本次传输尝试发送了 1 次生成请求。';
   const profileHint=profileAuthFailure
-   ? '；宿主报告认证／访问被拒绝，请检查所选 Profile 的凭据引用和服务端权限；这不能仅凭错误认定 Secret 未保存。兔子镜不会读取或复制密钥'
+   ? (connectionSecretUnknown
+    ? '；中转站不认这把 key。兔子镜选的这个酒馆连接配置没有保存自己的 key（Secret），酒馆就用了当前正文配置正在用的 key。解决：在酒馆里切到这个配置、在 key 管理里选中它该用的那把 key（兔子镜会记住），再切回正文配置；或者重新保存这个配置时勾上 Secret'
+    : '；宿主报告认证／访问被拒绝，请检查所选 Profile 的凭据引用和服务端权限；这不能仅凭错误认定 Secret 未保存。兔子镜不会读取或复制密钥')
    : rateLimited?'；上游报告频率／额度限制，可能包含并发限制；不会用关闭流式重试来规避限制'
     : concurrencyFailure?'；宿主或上游明确报告并发限制；提前生成会与正文同时请求，可关闭提前生成后在正文结束时使用'
      : hostApiError?'；宿主返回错误，未取得可用成品':connectionId?'；宿主未公开可确认的失败原因，不能据此判断为 Secret 问题；请查看外部诊断的最近传输记录':'';
@@ -1699,7 +1705,7 @@ export function wireIndependentRejectedFaceControls(host){
    independentRejectedFaceControlsWired.add(resay);
    resay.addEventListener('click',event=>{
     event.preventDefault(); event.stopPropagation();
-    void import('../outputSanitizer/toolsChrome.js?rmv=1.72.5').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+    void import('../outputSanitizer/toolsChrome.js?rmv=1.72.6').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
    },true);
   }
  }
@@ -1898,7 +1904,7 @@ async function loadIndependentAppearanceReference(owner){
  let module;
  assertIndependentPromptOwner(owner);
  try{
-  try{module=await import('../appearanceReference.js?rmv=1.72.5');}
+  try{module=await import('../appearanceReference.js?rmv=1.72.6');}
   catch{
    const error=new Error('外观参考模块未能加载；本轮未发送请求，请刷新后重试或关闭外观参考。');
    error.code='RABBIT_MIRROR_APPEARANCE_MODULE_UNAVAILABLE';error.requestCount=0;throw error;
