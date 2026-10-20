@@ -1,4 +1,4 @@
-import { ANIMATION_SUSPENDED_ATTR } from './runtimeAnimationState.js?rmv=1.73.2';
+import { ANIMATION_SUSPENDED_ATTR } from './runtimeAnimationState.js?rmv=1.73.3';
 
 // One observer, no scroll handler, per-frame scan or polling. CSS supplies the
 // temporary pause; releasing it restores authored/checked/reduced-motion rules.
