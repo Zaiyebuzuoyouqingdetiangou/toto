@@ -1,8 +1,8 @@
-import { expandHtmlDocumentCodeBlocks } from './outputSanitizer/markup.js?rmv=1.72.7';
-import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.72.7';
-import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=1.72.7';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.72.7';
-import { createFavoriteAtlasPanel } from './favoriteAtlasesUi.js?rmv=1.72.7';
+import { expandHtmlDocumentCodeBlocks } from './outputSanitizer/markup.js?rmv=1.72.8';
+import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.72.8';
+import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=1.72.8';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.72.8';
+import { createFavoriteAtlasPanel } from './favoriteAtlasesUi.js?rmv=1.72.8';
 const DB_NAME = 'rabbit_mirror_theater_favorites_v1';
 const STORE = 'favorites';
 const DB_VERSION = 1;
@@ -364,7 +364,11 @@ const FAVORITE_CONTENT_NOISE_SELECTOR = [
     'span[role="group"][aria-label="左右浏览"]',
     'span[role="group"][aria-label="点按操作"]',
     'style', 'script', 'template', 'noscript',
+    // 内置生图：图框里的「正在画／读不到了／重新生图」提示随时机不同；画面说明藏在图框或面末尾，位置随版本不同。
+    '[data-rm-draw-status]', '[data-rm-draw-prompt]', '[data-rm-draw-tags]', '[data-rm-draw-char]', '[data-rm-draw-char-tags]', '[data-rm-draw-notes]',
 ].join(', ');
+// 指纹算法的版本：算法改过后，旧收藏存着的旧指纹不再拿来比，按新算法重算。
+const CONTENT_KEY_VERSION = 'k2';
 const contentKeyMemo = new Map();
 export function theaterFavoriteContentKey(html) {
     const source = String(html || '').trim();
@@ -376,7 +380,7 @@ export function theaterFavoriteContentKey(html) {
     stripTheaterFavoriteRuntimeUi(template.content);
     template.content.querySelectorAll(FAVORITE_CONTENT_NOISE_SELECTOR).forEach(node => node.remove());
     const text = String(template.content.textContent || '').replace(/\s+/g, '');
-    let key = `c_${hashFavoriteHtml(text)}_${text.length}`;
+    let key = `${CONTENT_KEY_VERSION}_${hashFavoriteHtml(text)}_${text.length}`;
     if (text.length < 40) {
         const shape = [...template.content.querySelectorAll('*')].map(node => {
             const src = node.getAttribute?.('src') || node.getAttribute?.('href') || '';
@@ -391,7 +395,29 @@ export function theaterFavoriteContentKey(html) {
 
 function recordContentKey(row) {
     if (!row?.html) return '';
-    return String(row.contentKey || '') || theaterFavoriteContentKey(row.html);
+    const stored = String(row.contentKey || '');
+    return stored.startsWith(`${CONTENT_KEY_VERSION}_`) ? stored : theaterFavoriteContentKey(row.html);
+}
+
+// 去重的第二道：同一个角色、同一个标题，正文文字几乎一样（点过开关、拨过转轮、数到第几步这类状态让几个字不同）也算同一面。
+function favoriteComparableText(html) {
+    if (typeof document === 'undefined') return '';
+    const template = document.createElement('template');
+    template.innerHTML = String(html || '');
+    stripTheaterFavoriteRuntimeUi(template.content);
+    template.content.querySelectorAll(FAVORITE_CONTENT_NOISE_SELECTOR).forEach(node => node.remove());
+    return String(template.content.textContent || '').replace(/\s+/g, '');
+}
+
+function textSimilarity(a, b) {
+    if (!a || !b) return 0;
+    if (a === b) return 1;
+    const grams = text => { const map = new Map(); for (let i = 0; i < text.length - 1; i += 1) { const g = text.slice(i, i + 2); map.set(g, (map.get(g) || 0) + 1); } return map; };
+    const left = grams(a), right = grams(b);
+    let shared = 0;
+    for (const [gram, count] of left) shared += Math.min(count, right.get(gram) || 0);
+    const total = Math.max(1, a.length - 1 + b.length - 1);
+    return (2 * shared) / total;
 }
 
 // 内容指纹 → 收藏编号列表。收藏变动时作废；星标亮不亮、收藏前查重都用它，不必每颗星都把整库解析一遍。
@@ -532,6 +558,26 @@ export async function findDuplicateTheaterFavorites(rows) {
         group.sort((a, b) => Number(a.createdAt) - Number(b.createdAt));
         for (const extra of group.slice(1)) remap.set(extra.id, group[0].id);
     }
+    // 第二道：同角色同标题、文字相似度 ≥ 0.95 的，也算重复，留最早那份。
+    const byTitle = new Map();
+    for (const row of list) {
+        if (remap.has(row.id) || !row?.html) continue;
+        const key = `${row.characterId || row.characterName}\u0000${row.title}`;
+        if (!byTitle.has(key)) byTitle.set(key, []);
+        byTitle.get(key).push(row);
+    }
+    for (const group of byTitle.values()) {
+        if (group.length < 2) continue;
+        group.sort((a, b) => Number(a.createdAt) - Number(b.createdAt));
+        const texts = new Map(group.map(row => [row.id, favoriteComparableText(row.html)]));
+        const kept = [];
+        for (const row of group) {
+            const text = texts.get(row.id);
+            const same = text.length >= 20 && kept.find(other => textSimilarity(texts.get(other.id), text) >= 0.95);
+            if (same) remap.set(row.id, remap.get(same.id) || same.id);
+            else kept.push(row);
+        }
+    }
     return remap;
 }
 
@@ -540,7 +586,7 @@ export async function removeDuplicateTheaterFavorites() {
     if (!remap.size) return 0;
     // 先把图鉴里指向要删那几份的格子改指向留下的那份，改成功了再删收藏；
     // 以前先删后改，图鉴改失败（比如另一个页面占着）时，那些格子就默默变空了。
-    const atlases = await import('./favoriteAtlases.js?rmv=1.72.7');
+    const atlases = await import('./favoriteAtlases.js?rmv=1.72.8');
     for (const atlas of await atlases.listFavoriteAtlases()) {
         let changed = false;
         const selections = {};
@@ -1017,13 +1063,16 @@ export async function openTheaterFavoriteLibrary(hydrate) {
             if (library?.overlay && library.overlay !== overlay) return;
             dedupeArmed = false;
             dedupeBar.hidden = !remap.size;
-            dedupeText.textContent = remap.size ? `有 ${remap.size} 份是重复收藏（和另一份内容完全相同）。` : '';
+            dedupeText.textContent = remap.size ? `有 ${remap.size} 份是重复收藏（和另一份是同一面）。` : '';
             dedupeButton.textContent = '去掉重复';
         }).catch(() => { dedupeBar.hidden = true; });
     };
     dedupeButton.addEventListener('click', () => {
         if (!dedupeArmed) { dedupeArmed = true; dedupeButton.textContent = '再点一次确认（每组留最早那份）'; return; }
         dedupeButton.disabled = true;
+        // 删完先收起确认状态：以前还停在「再点一次确认」，紧接着多点一下就又跑一遍、报「没有重复」。
+        dedupeArmed = false;
+        dedupeButton.textContent = '去掉重复';
         void removeDuplicateTheaterFavorites().then(removed => {
             globalThis.toastr?.success?.(removed ? `已去掉 ${removed} 份重复收藏。` : '没有重复的收藏。');
         }).catch(error => globalThis.toastr?.warning?.(String(error?.message || '去重失败，收藏没有改变。')))
