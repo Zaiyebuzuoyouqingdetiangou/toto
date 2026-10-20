@@ -1,11 +1,11 @@
-import { behaviorShowTokens, clearForcedActive, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.72.8';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.72.8';
-import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.72.8';
-import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState, holdAncestorStateClass } from './behaviorStateMirror.js?rmv=1.72.8';
-import { syncStateCarriers, releaseStateCarriers, unwindStaleBridges } from './behaviorStateBridge.js?rmv=1.72.8';
-import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.72.8';
-import { addDialectStateKeys, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup, toggleCssBridges, setBridgedCssWord } from './behaviorDialect.js?rmv=1.72.8';
-import { EXTRA_TYPES, EXTRA_CONTROLS, EXTRA_CONTROL_ATTRS, configureBehaviorExtras, configureCarryChatKey, extraTypeFits, prepareExtra, destroyExtra, extraAction, extraSync, extraKeys, extraReset, extraPointerDown, extraPointerMove, extraPointerUp, extraHoldStart, extraHoldEnd, applyCarriedState, saveCarriedState, recalledKeys, carryMemoryName } from './behaviorExtras.js?rmv=1.72.8';
+import { behaviorShowTokens, clearForcedActive, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.72.9';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.72.9';
+import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.72.9';
+import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState, holdAncestorStateClass } from './behaviorStateMirror.js?rmv=1.72.9';
+import { syncStateCarriers, releaseStateCarriers, unwindStaleBridges } from './behaviorStateBridge.js?rmv=1.72.9';
+import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.72.9';
+import { addDialectStateKeys, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup, toggleCssBridges, setBridgedCssWord } from './behaviorDialect.js?rmv=1.72.9';
+import { EXTRA_TYPES, EXTRA_CONTROLS, EXTRA_CONTROL_ATTRS, configureBehaviorExtras, configureCarryChatKey, extraTypeFits, prepareExtra, destroyExtra, extraAction, extraSync, extraKeys, extraReset, extraPointerDown, extraPointerMove, extraPointerUp, extraHoldStart, extraHoldEnd, applyCarriedState, saveCarriedState, recalledKeys, carryMemoryName } from './behaviorExtras.js?rmv=1.72.9';
 
 export { behaviorToggleKey, motionOutsideControls };
 
@@ -20,10 +20,10 @@ const EXTRA = new Set(EXTRA_TYPES);
 // 这几类的状态由驱动统一同步到容器、被操作的部件和 data-rm-show 内容上。
 const STATEFUL = new Set(['toggle', 'pick', 'pager', 'roll', 'connect', 'turn', 'sequence']);
 // 可以点的部件：不限于 button，div、span、svg 元素写上这些标识也能用（补上 role 与键盘操作）。
-const CONTROL_ATTRS = ['reset', 'fire', 'play', 'reverse', 'prev', 'next', 'step', 'place', 'return', 'move', 'toggle', 'pick', 'goto', 'roll', 'end', 'code', 'knob', ...EXTRA_CONTROL_ATTRS];
+const CONTROL_ATTRS = ['reset', 'fire', 'play', 'reverse', 'seek', 'prev', 'next', 'step', 'place', 'return', 'move', 'toggle', 'pick', 'goto', 'roll', 'end', 'code', 'knob', ...EXTRA_CONTROL_ATTRS];
 const CONTROL_SELECTOR = CONTROL_ATTRS.map(name => `[data-rm-${name}]`).join(', ');
 // 每类驱动认哪些部件；不属于本类的标识（比如拖动区里碰巧写了 data-key）不接管它的点击。
-const TYPE_CONTROLS = Object.freeze({ drag: ['place', 'return', 'move'], effect: ['fire'], motion: ['play', 'reverse'], hold: ['hold'], reorder: ['prev', 'next'], accumulate: ['step'],
+const TYPE_CONTROLS = Object.freeze({ drag: ['place', 'return', 'move'], effect: ['fire'], motion: ['play', 'reverse', 'seek'], hold: ['hold'], reorder: ['prev', 'next'], accumulate: ['step'],
     toggle: ['toggle'], pick: ['pick'], pager: ['prev', 'next', 'goto'], roll: ['roll'], connect: ['end'], turn: ['knob'], sequence: ['code'], ...EXTRA_CONTROLS });
 const RESERVED_KEYS = new Set(['changed', 'active', 'match', 'done', 'miss', 'on']);
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -961,7 +961,7 @@ function prepare(binding, group) {
         if (node !== group && !node.hasAttribute('data-rm-show') && !String(node.getAttribute('data-rm-match') || '').trim()) node.setAttribute('data-rm-show', 'match');
     }
     // 音轨波形补动画要在接线时就补上（暂停在开头），维修兔和诊断才看得到它能动。
-    if (type === 'motion') animations(state);
+    if (type === 'motion') { animations(state); prepareMotionSeek(state); }
     if (type === 'accumulate') countSteps(state);
     if (STATEFUL.has(type)) prepareStateful(state);
     if (EXTRA.has(type)) { try { prepareExtra(state); } catch (error) { console.debug('[RabbitMirror] extra behavior prepare failed:', error); } }
@@ -1040,6 +1040,70 @@ function motionPositions(state, p, range = null) {
 function motionRange(state) {
     return first(state.group, 'input[type="range"]') || motionOutsideControls(state.group).ranges[0] || null;
 }
+// 有声书、音乐播放器：动画区域里只有一根进度条和一个播放键，没写任何会动的部件（data-rm-part 是空的）。
+// 按播放就让进度条自己往前走（约 30 秒走完全程），再按暂停；走到头停下。
+function motionProgress(state, button) {
+    if (!button.hasAttribute('data-rm-play') || motionTargets(state).length) return false;
+    const range = motionRange(state);
+    if (!range) return false;
+    if (state.motionProgress) {
+        state.motionProgress.stop = true;
+        state.motionProgress = null;
+        button.setAttribute('aria-pressed', 'false');
+        return true;
+    }
+    const min = range.min === '' ? 0 : finite(range.min);
+    const max = Math.max(min, range.max === '' ? 100 : finite(range.max, 100));
+    if (finite(range.value, min) >= max) range.value = String(min);
+    const run = { stop: false };
+    state.motionProgress = run;
+    button.setAttribute('aria-pressed', 'true');
+    const view = state.group.ownerDocument?.defaultView || globalThis;
+    const frame = typeof view.requestAnimationFrame === 'function' ? view.requestAnimationFrame.bind(view) : callback => setTimeout(() => callback(Date.now()), 16);
+    const perMs = (max - min) / 30000;
+    let last = null;
+    let value = finite(range.value, min);
+    const tick = now => {
+        if (run.stop || !state.group.isConnected) return;
+        if (last !== null) value = Math.min(max, value + (now - last) * perMs);
+        last = now;
+        range.value = String(value);
+        inputChange(state, range);
+        if (value < max) frame(tick);
+        else { if (state.motionProgress === run) state.motionProgress = null; button.setAttribute('aria-pressed', 'false'); }
+    };
+    frame(tick);
+    return true;
+}
+
+// 播放键两边没写任何动作的按钮（上一段／下一段、快退／快进）：按位置认，播放键前面的往回、后面的往前，各跳十分之一。
+function prepareMotionSeek(state) {
+    const range = motionRange(state);
+    if (!range) return;
+    for (const play of own(state.group, '[data-rm-play]')) {
+        const row = play.parentElement;
+        if (!row) continue;
+        const buttons = [...row.children].filter(node => node.matches?.('button') && node !== play);
+        for (const button of buttons) {
+            if ([...button.attributes].some(attr => /^data-rm-(?!press|polish)/.test(attr.name) || attr.name === 'popovertarget' || attr.name === 'commandfor')) continue;
+            if (button.closest('[data-rm-mobile-controls]')) continue;
+            const before = Boolean(button.compareDocumentPosition(play) & Node.DOCUMENT_POSITION_FOLLOWING);
+            button.setAttribute('data-rm-seek', before ? '-1' : '1');
+        }
+    }
+}
+
+function motionSeek(state, button) {
+    const range = motionRange(state);
+    if (!range) return false;
+    const min = range.min === '' ? 0 : finite(range.min);
+    const max = Math.max(min, range.max === '' ? 100 : finite(range.max, 100));
+    const direction = finite(button.getAttribute('data-rm-seek'), 1) < 0 ? -1 : 1;
+    range.value = String(clamp(finite(range.value, min) + direction * (max - min) / 10, min, max));
+    inputChange(state, range);
+    return true;
+}
+
 function motionReplay(state, button) {
     if (!motionTargets(state).length) return false;
     const range = motionRange(state);
@@ -1128,6 +1192,7 @@ function reset(state) {
     if (state.type === 'motion') {
         // 数值回放正在走的先停下，区域外收编的滑杆和播放钮也一起复位。
         if (state.motionReplay) { state.motionReplay.stop = true; state.motionReplay = null; }
+        if (state.motionProgress) { state.motionProgress.stop = true; state.motionProgress = null; }
         const remote = motionRange(state);
         if (remote && !state.group.contains(remote)) remote.value = remote.defaultValue || (remote.min === '' ? '0' : remote.min);
         for (const button of [...own(state.group, '[data-rm-play], [data-rm-reverse]'), ...motionOutsideControls(state.group).buttons]) button.setAttribute('aria-pressed', 'false');
@@ -1174,7 +1239,8 @@ function action(state, button) {
     } else if (state.type === 'motion') {
         const list = animations(state);
         if (list.length) state.changed = true;
-        else if (motionReplay(state, button)) { state.changed = true; refreshResults(state); verify?.(); return; }
+        else if (button.hasAttribute('data-rm-seek')) { if (motionSeek(state, button)) state.changed = true; refreshResults(state); verify?.(); return; }
+        else if (motionReplay(state, button) || motionProgress(state, button)) { state.changed = true; refreshResults(state); verify?.(); return; }
         if (button.hasAttribute('data-rm-play')) {
             const pause = list.some(animation => animation.playState === 'running');
             for (const animation of list) animation[pause ? 'pause' : 'play']();
@@ -2036,7 +2102,7 @@ function scheduleOnDemandRelay(root, target) {
 function relayGroupLater(root, group, control = null) {
     const run = () => {
         if (!group.isConnected || !root.isConnected) return;
-        void import('./behaviorRelay.js?rmv=1.72.8').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
+        void import('./behaviorRelay.js?rmv=1.72.9').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
     };
     const idle = globalThis.requestIdleCallback;
     if (typeof idle === 'function') idle(run, { timeout: 800 }); else setTimeout(run, 120);
@@ -2142,4 +2208,4 @@ configureBehaviorExtras({ own, first, style, unstyle, setFlag, enableControl, re
 // 跨面继承按聊天分开记：聊天键从存储模块拿，拿不到时所有面共用一份。
 let carryChatKeyReader = null;
 configureCarryChatKey(() => carryChatKeyReader?.() || '');
-import('../storage.js?rmv=1.72.8').then(module => { carryChatKeyReader = () => module.getCurrentChatKey?.() || ''; }).catch(() => {});
+import('../storage.js?rmv=1.72.9').then(module => { carryChatKeyReader = () => module.getCurrentChatKey?.() || ''; }).catch(() => {});

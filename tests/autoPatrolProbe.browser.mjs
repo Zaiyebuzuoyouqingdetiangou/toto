@@ -87,6 +87,12 @@ for (let i = 0; i < 40; i += 1) {
 assert.equal(await page.evaluate(() => document.querySelector('details').getAttribute('data-rabbit-mirror-auto-probe')), null); checks++;
 assert.equal(await page.evaluate(() => samples.countRepairSamples()), 0); checks++;
 
+// 4 插件自己的「生成失败」占位面：不巡逻、不记样本
+await page.evaluate(async () => { const ext = await import('/extensions.js'); ext.extension_settings.rabbit_mirror_theater.maintenanceRabbitAutoSafeEnabled = true; samples.clearRepairSamples(); });
+await mount(`<details open class="rabbit-mirror-external-placeholder"><summary>t</summary><div class="rabbit-mirror-external-placeholder-body"><div class="rabbit-mirror-external-error-actions"><button type="button">找回旧兔子镜</button><button type="button">重新生成</button></div></div></details>`);
+await page.waitForTimeout(800);
+assert.equal(await page.evaluate(() => samples.countRepairSamples()), 0); checks++;
+
 assert.deepEqual(pageErrors, []);
 console.log(JSON.stringify({ checks }));
 await browser.close(); server.close();

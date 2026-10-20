@@ -1,8 +1,8 @@
 import {
     buildFavoriteAtlas, deleteFavoriteAtlas, favoriteAtlasProgress, parseAtlasSlots,
     listFavoriteAtlases, saveFavoriteAtlas, setAtlasSelection,
-} from './favoriteAtlases.js?rmv=1.72.8';
-import { createFavoriteAtlasDraftGenerator } from './favoriteAtlasGeneration.js?rmv=1.72.8';
+} from './favoriteAtlases.js?rmv=1.72.9';
+import { createFavoriteAtlasDraftGenerator } from './favoriteAtlasGeneration.js?rmv=1.72.9';
 
 const STYLE = `
 [data-rm-favorite-atlases]{margin-top:16px;font-size:14px;line-height:1.6;min-width:0;max-width:100%;overflow-wrap:anywhere}
