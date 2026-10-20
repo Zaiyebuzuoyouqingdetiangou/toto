@@ -71,6 +71,12 @@ assert.equal(adopted.order, 'pc'); checks++;
 assert.equal(adopted.notesLeft, 0); checks++;
 assert.equal(adopted.frames, 1); checks++;
 
+// 7 只少了结尾标签、或写了说明却没放图框：救回来，但不算丢图（不弹「先不配图」）
+const detail = text => page.evaluate(text => req.salvageCutDrawNotesDetail(text), text);
+assert.equal((await detail(HEAD + NOTE1 + '</deta')).droppedFrames, 0); checks++;
+assert.equal((await detail(HEAD.replace(/<figure[^>]*><\/figure>/g, '') + NOTE1 + '<div data-rm-draw-notes="2" hidden><p data-rm-draw-prompt="2">没写')).droppedFrames, 0); checks++;
+assert.equal((await detail(HEAD + NOTE1 + '<div data-rm-draw-notes="2" hidden><p data-rm-draw-prompt="2">没写')).droppedFrames, 1); checks++;
+
 assert.deepEqual(pageErrors, []);
 console.log(JSON.stringify({ checks }));
 await browser.close(); server.close();

@@ -146,6 +146,26 @@ assert.ok(await val() > 40); checks++;
 await page.click('[data-rm-play]'); const paused = await val(); await page.waitForTimeout(400);
 assert.equal(await val(), paused); checks++;
 
+// 7 状态词：滑杆按档位写 data-rm-mode="dim|candle"，「拨换昼夜」按钮轮着换；页签没写选中样子时描一圈
+await mount(`<details open><summary>t</summary><style>.art{filter:none}[data-rm-mode="dim"] .art{filter:brightness(0.5)}[data-rm-mode="candle"] .art{filter:sepia(1)}</style>
+ <div class="canvas"><div class="art">画</div>
+ <div data-rm-ui="adjust"><input type="range" min="0" max="100" value="20"></div>
+ <button type="button" id="tassel">拉动锦绦（拨换昼夜室光）</button></div></details>`);
+const mode = () => page.evaluate(() => document.querySelector('.canvas').getAttribute('data-rm-mode'));
+assert.equal(await mode(), 'dim'); checks++;
+await page.click('#tassel'); assert.equal(await mode(), 'candle'); checks++;
+await page.click('#tassel'); assert.equal(await mode(), 'dim'); checks++;
+await page.fill('input[type=range]', '80'); await page.dispatchEvent('input[type=range]', 'input');
+assert.equal(await mode(), 'candle'); checks++;
+// 模型自己写了这个属性：不碰
+await mount(`<details open><summary>t</summary><style>[data-rm-mode="dim"] .art{opacity:.5}[data-rm-mode="candle"] .art{opacity:1}</style>
+ <div class="canvas" data-rm-mode="dim"><div class="art">画</div><button type="button" id="tassel">切换模式</button></div></details>`);
+await page.click('#tassel'); assert.equal(await mode(), 'dim'); checks++;
+await mount(`<details open><summary>t</summary><div class="tabs"><label><input type="radio" name="s" checked style="display:none"><span>春</span></label><label><input type="radio" name="s" style="display:none"><span>夏</span></label></div></details>`);
+assert.equal(await page.evaluate(() => [...document.querySelectorAll('label')].map(l => l.getAttribute('data-rm-tab-on')).join()), 'true,false'); checks++;
+await page.click('label:nth-of-type(2)'); await page.waitForTimeout(50);
+assert.equal(await page.evaluate(() => [...document.querySelectorAll('label')].map(l => l.getAttribute('data-rm-tab-on')).join()), 'false,true'); checks++;
+
 assert.deepEqual(pageErrors, []);
 console.log(JSON.stringify({ checks }));
 await browser.close(); server.close();
