@@ -162,7 +162,7 @@ assert.equal(uploads - before, 1, 'quick edits are uploaded once'); checks++;
 assert.equal(JSON.parse(files.get('rabbitmirror-user-skin.json')).css, BEFORE('3')); checks++;
 // 1.68.94～1.69.0 的旧备份：整份 CSS 在设置里、没有文件。本机被清后照样找回，并挪进文件、从设置里去掉。
 files.clear();
-await page.evaluate(async css => { const set = await import('/src/settings.js?rmv=1.72.7'); set.updateSettings({ userSkin: { enabled: true, css, name: '' } }); localStorage.clear(); }, BEFORE('✧'));
+await page.evaluate(async css => { const set = await import('/src/settings.js?rmv=1.72.8'); set.updateSettings({ userSkin: { enabled: true, css, name: '' } }); localStorage.clear(); }, BEFORE('✧'));
 await page.waitForTimeout(300);
 await reopen();
 await page.waitForFunction(() => getComputedStyle(document.querySelector('.rabbit-mirror-external-shell'), '::before').content === '"✧"');
@@ -174,7 +174,7 @@ assert.ok(serverSkin()?.file && !('css' in serverSkin()), 'and the CSS is remove
 // 老版本只存在本机的美化：开页时补一份进酒馆文件，之后本机被清也能找回。
 files.clear();
 await page.evaluate(() => { localStorage.setItem('rabbit_mirror_user_skin_v1', JSON.stringify({ enabled: true, css: '.rabbit-mirror-external-shell[data-rm-placement="external"]::before{content:"✩" !important}', name: '' })); });
-await page.evaluate(async () => { const set = await import('/src/settings.js?rmv=1.72.7'); set.updateSettings({ userSkin: null }); });
+await page.evaluate(async () => { const set = await import('/src/settings.js?rmv=1.72.8'); set.updateSettings({ userSkin: null }); });
 await page.waitForTimeout(300);
 await reopen();
 await flush();
@@ -197,7 +197,7 @@ await page.goto(origin);
 await page.evaluate(async () => { window.skin = await import('/src/userSkin.js'); window.skin.readUserSkin(); await window.skin.flushUserSkinBackup(); });
 assert.equal(JSON.parse(files.get('rabbitmirror-user-skin.json')).css, BEFORE('✪'), 'the unsent edit is uploaded on the next load'); checks++;
 // 宿主根本不让存文件（没有文件记号）：退回老办法，放进设置里。
-await page.evaluate(async () => { const set = await import('/src/settings.js?rmv=1.72.7'); set.updateSettings({ userSkin: null }); });
+await page.evaluate(async () => { const set = await import('/src/settings.js?rmv=1.72.8'); set.updateSettings({ userSkin: null }); });
 await reopen();
 await page.evaluate(() => { window.fetchBackup = window.fetch; window.fetch = (url, init) => String(url).includes('/api/files/upload') ? Promise.resolve(new Response('no', { status: 403 })) : window.fetchBackup(url, init); });
 await page.fill('#rh_user_skin_css', BEFORE('✫'));
@@ -280,7 +280,7 @@ await b.waitForFunction(() => getComputedStyle(document.querySelector('.rabbit-m
 assert.ok(true, 'restored once the file can be read again'); checks++;
 // 第二轮复查补的：
 // ① 设置里的记号晚一步（别的页面写回了旧记号）、文件已经是新版：本机被清后照样以文件为准找回。
-await page.evaluate(async () => { const set = await import('/src/settings.js?rmv=1.72.7'); set.updateSettings({ userSkin: { ...set.getSettings().userSkin, fingerprint: 'stale' } }); });
+await page.evaluate(async () => { const set = await import('/src/settings.js?rmv=1.72.8'); set.updateSettings({ userSkin: { ...set.getSettings().userSkin, fingerprint: 'stale' } }); });
 await page.waitForTimeout(300);
 await b.evaluate(() => localStorage.clear());
 await b.close(); b = await openOn(phone);
@@ -365,7 +365,7 @@ await page.fill('#rh_user_skin_css', BEFORE('A5'));
 await page.waitForTimeout(800);
 await flush();
 await page.waitForTimeout(300);
-await page.evaluate(async fp => { const set = await import('/src/settings.js?rmv=1.72.7'); set.updateSettings({ userSkin: { ...set.getSettings().userSkin, fingerprint: fp } }); }, staleFp);
+await page.evaluate(async fp => { const set = await import('/src/settings.js?rmv=1.72.8'); set.updateSettings({ userSkin: { ...set.getSettings().userSkin, fingerprint: fp } }); }, staleFp);
 await page.waitForTimeout(300);
 uploadsBefore = uploads;
 await b.close(); b = await openOn(phone);
@@ -374,7 +374,7 @@ await b.evaluate(() => window.skin.flushUserSkinBackup());
 assert.equal(uploads, uploadsBefore, 'a stale marker plus an old unsent edit does not overwrite the newer file'); checks++;
 assert.equal(JSON.parse(files.get('rabbitmirror-user-skin.json')).css, BEFORE('A5')); checks++;
 // ③ 还开着的 1.69 旧页面把整份旧 CSS 写回设置：酒馆已经有文件，就不拿旧 CSS 去盖文件。
-await page.evaluate(async css => { const set = await import('/src/settings.js?rmv=1.72.7'); set.updateSettings({ userSkin: { enabled: true, css, name: '' } }); }, BEFORE('v169'));
+await page.evaluate(async css => { const set = await import('/src/settings.js?rmv=1.72.8'); set.updateSettings({ userSkin: { enabled: true, css, name: '' } }); }, BEFORE('v169'));
 await page.waitForTimeout(300);
 await b.evaluate(() => localStorage.clear());
 uploadsBefore = uploads;
@@ -480,7 +480,7 @@ assert.equal(await b.evaluate(() => document.querySelector('[data-rh-skin-kept]'
 await phone.close();
 // 宿主对不存在的文件回首页网页、设置里也没有记号（从没存过美化的设备）：当成没有，记一笔，不会每次打开都去问。
 const fresh = await browser.newContext();
-await page.evaluate(async () => { const set = await import('/src/settings.js?rmv=1.72.7'); set.updateSettings({ userSkin: null }); });
+await page.evaluate(async () => { const set = await import('/src/settings.js?rmv=1.72.8'); set.updateSettings({ userSkin: null }); });
 await page.waitForTimeout(300);
 let reads = 0;
 let f = await fresh.newPage(); f.on('pageerror', e => errors.push(e.message));
