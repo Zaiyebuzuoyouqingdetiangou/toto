@@ -41,7 +41,7 @@ function fixture(provider, max = 2) {
     const connection = read('independentApi/connection.js');
     vm.runInContext(read('automaticReroll.js').replace(/^export /gm, '') + '\n' +
         ['independentContextExcludedTagSet', 'liveVisibleIndependentMessageText', 'canonicalVisibleMessageText', 'createIndependentVisibleTextReader',
-            'explainEmptyIndependentVisibleBody']
+            'explainEmptyIndependentVisibleBody', 'sourceFallbackVisibleText']
             .map(name => fn(connection, name)).join('\n') + '\n' +
         between(request, 'export async function callIndependentApi(', '\nexport function externalOwnerMesid(')
             .replace('export ', '').replace('async function callIndependentApi', 'async function actualRequest'), sandbox);
