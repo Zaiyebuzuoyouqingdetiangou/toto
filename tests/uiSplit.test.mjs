@@ -1,0 +1,99 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import test from 'node:test';
+import vm from 'node:vm';
+const CURRENT_RUNTIME_STAMP = (() => { try { return readFileSync(new URL('../index.js', import.meta.url), 'utf8').match(/const RABBIT_MIRROR_RUNTIME_VERSION = '([^']+)'/)?.[1]; } catch { return undefined; } })();
+
+function readUi(name) {
+    return readFileSync(new URL(`../src/ui/${name}`, import.meta.url), 'utf8');
+}
+
+function loadRuntime() {
+    const source = readUi('runtime.js').replace(/^export /gm, '');
+    const context = vm.createContext({});
+    context.globalThis = context;
+    vm.runInContext(`${source}\nObject.assign(globalThis, { SETTINGS_UI_VERSION, RUNTIME_VERSION, isCurrentRuntime, escapeHtml });`, context);
+    return context;
+}
+
+test('ui runtime loads without settings, independentApi, or the ui barrel', () => {
+    const loaded = loadRuntime();
+    assert.equal(loaded.RUNTIME_VERSION, CURRENT_RUNTIME_STAMP);
+    assert.equal(typeof loaded.SETTINGS_UI_VERSION, 'string');
+    assert.ok(loaded.SETTINGS_UI_VERSION.length > 0);
+    assert.equal(loaded.escapeHtml('<a "b">'), '&lt;a &quot;b&quot;&gt;');
+    loaded.__rabbitMirrorRuntimeVersion = CURRENT_RUNTIME_STAMP;
+    assert.equal(loaded.isCurrentRuntime(), true);
+    loaded.__rabbitMirrorRuntimeVersion = 'other';
+    assert.equal(loaded.isCurrentRuntime(), false);
+    assert.equal(typeof loaded.initRabbitMirrorUI, 'undefined');
+    assert.equal(typeof loaded.buildRabbitMirrorSettingsDialogHtml, 'undefined');
+});
+
+test('settings template keeps mount ids and does not own event bindings', () => {
+    const source = readUi('settingsTemplate.js');
+    assert.match(source, /id="rh_enabled"/);
+    assert.match(source, /id="rh_token_meter"/);
+    assert.match(source, /id="rh_tt_diag_start"/);
+    assert.match(source, /id="rh_world_info_book_filters"/);
+    assert.match(source, /id="rh_visual_avoid_prompt"/);
+    assert.match(source, /id="rh_world_info_prompt_modal"/);
+    assert.match(source, /id="rh_independent_tag_filter_modal"/);
+    assert.match(source, /id="rh_independent_max_request_chars"/);
+    assert.match(source, /class="rh-independent-generation-params"/);
+    assert.match(source, /id="rh_missing_shell_panel"/);
+    assert.match(source, /id="rh_missing_shell_rescan"/);
+    assert.doesNotMatch(source, /export function initRabbitMirrorUI/);
+    assert.doesNotMatch(source, /\$\('#rh_enabled'\)\.on\(/);
+});
+
+test('token meter module owns prompt estimate and latest-request rendering', () => {
+    const source = readUi('tokenMeter.js');
+    assert.match(source, /function renderTokenMeter\(/);
+    assert.match(source, /function renderIndependentApiDiagnostic\(/);
+    assert.match(source, /export function attachIndependentApiDiagnosticListener\(/);
+    assert.doesNotMatch(source, /export function initRabbitMirrorUI/);
+    assert.doesNotMatch(source, /function installTtDiagnosticEntry\(/);
+});
+
+test('world info module owns list rendering and visibility observer', () => {
+    const source = readUi('worldInfoBooks.js');
+    assert.match(source, /function renderWorldInfoBookSettings\(/);
+    assert.match(source, /new IntersectionObserver/);
+    assert.match(source, /export async function pullAllWorldInfoBooks\(/);
+    assert.doesNotMatch(source, /export function initRabbitMirrorUI/);
+    assert.doesNotMatch(source, /function installTtDiagnosticEntry\(/);
+});
+
+test('TT diagnostics stay out of the settings template and barrel bindings', () => {
+    const source = readUi('ttDiagnostics.js');
+    assert.match(source, /function installTtDiagnosticEntry\(/);
+    assert.match(source, /function bindTtDiagnosticTap\(/);
+    assert.doesNotMatch(source, /export function initRabbitMirrorUI/);
+    assert.doesNotMatch(source, /function renderTokenMeter\(/);
+});
+
+test('ui.js keeps mount/destroy and no longer embeds the settings dialog HTML', () => {
+    const source = readFileSync(new URL('../src/ui.js', import.meta.url), 'utf8');
+    assert.match(source, /export function initRabbitMirrorUI\(/);
+    assert.match(source, /export function destroyRabbitMirrorUI\(/);
+    assert.match(source, /const html = buildRabbitMirrorSettingsDialogHtml\(\);/);
+    assert.doesNotMatch(source, /id="rh_visual_avoid_prompt"/);
+    assert.doesNotMatch(source, /id="rh_tt_diag_start"/);
+    assert.match(source, /from '\.\/ui\/runtime\.js\?rmv=[^']+'/);
+});
+
+test('index runtime stamp matches ui, independentApi, and sanitizer', () => {
+    const indexSource = readFileSync(new URL('../index.js', import.meta.url), 'utf8');
+    const golden = indexSource.match(/const GOLDEN_MERGE_VERSION = '([^']+)'/)?.[1];
+    const stamped = indexSource.match(/const RABBIT_MIRROR_RUNTIME_VERSION = '([^']+)'/)?.[1];
+    const ui = readFileSync(new URL('../src/ui/runtime.js', import.meta.url), 'utf8').match(/export const RUNTIME_VERSION = '([^']+)'/)?.[1];
+    const independent = readFileSync(new URL('../src/independentApi/runtime.js', import.meta.url), 'utf8').match(/export const RUNTIME_VERSION = '([^']+)'/)?.[1];
+    const sanitizer = readFileSync(new URL('../src/outputSanitizer/runtime.js', import.meta.url), 'utf8').match(/export const RUNTIME_VERSION = '([^']+)'/)?.[1];
+    // Release stamps change per version; they must agree, not equal a literal.
+    assert.ok(golden);
+    assert.equal(stamped, golden);
+    assert.equal(ui, stamped);
+    assert.equal(independent, stamped);
+    assert.equal(sanitizer, stamped);
+});

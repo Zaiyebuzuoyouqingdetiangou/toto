@@ -1,0 +1,232 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {
+    FACE_SWIPE_MAX,
+    FACE_SWIPE_FULL_MESSAGE,
+    emptySwipeState,
+    canAppendSwipe,
+    seedSwipeState,
+    appendSuccessfulSwipe,
+    selectSwipeIndex,
+    deleteCurrentSwipe,
+    updateCurrentSwipeHtml,
+    restoreCurrentSwipeInitial,
+    faceSwipeBarIntent,
+    fallbackFaceSwipeView,
+    multifaceFacePagerView,
+    compactFaceSwipeStoreForQuota,
+    faceSwipeStorageSlot,
+    readFaceSwipe,
+    writeFaceSwipe,
+    mutateFaceSwipe,
+    resetFaceSwipeStoreForTests,
+} from '../src/swipeVersions.js';
+
+function mockLocalStorage(setItem) {
+    const data = {};
+    globalThis.localStorage = {
+        getItem(key) { return Object.hasOwn(data, key) ? data[key] : null; },
+        setItem(key, value) {
+            if (typeof setItem === 'function') setItem(key, value, data);
+            else data[key] = String(value);
+        },
+        removeItem(key) { delete data[key]; },
+    };
+    resetFaceSwipeStoreForTests();
+    return data;
+}
+
+function stack(...htmls) {
+    let state = emptySwipeState();
+    for (const html of htmls) {
+        const result = appendSuccessfulSwipe(state, { html, initialHtml: html });
+        assert.equal(result.ok, true);
+        state = result.state;
+    }
+    return state;
+}
+
+test('first successful face occupies version 1', () => {
+    const seeded = seedSwipeState(emptySwipeState(), { html: '<details>a</details>' });
+    assert.equal(seeded.ok, true);
+    assert.equal(seeded.seeded, true);
+    assert.equal(seeded.state.versions.length, 1);
+    assert.equal(seeded.state.currentIndex, 0);
+});
+
+test('seed does not overwrite an existing stack', () => {
+    const first = seedSwipeState(emptySwipeState(), { html: '<details>a</details>' });
+    const again = seedSwipeState(first.state, { html: '<details>b</details>' });
+    assert.equal(again.seeded, false);
+    assert.equal(again.state.versions[0].html, '<details>a</details>');
+});
+
+test('resay appends to the right and becomes current', () => {
+    const state = stack('<details>1</details>', '<details>2</details>');
+    assert.equal(state.versions.length, 2);
+    assert.equal(state.currentIndex, 1);
+    assert.equal(state.versions[1].html, '<details>2</details>');
+});
+
+test('fifth resay is allowed, sixth is blocked until delete', () => {
+    const htmls = Array.from({ length: FACE_SWIPE_MAX }, (_, i) => `<details>${i + 1}</details>`);
+    const state = stack(...htmls);
+    assert.equal(canAppendSwipe(state), false);
+    const blocked = appendSuccessfulSwipe(state, { html: '<details>6</details>' });
+    assert.equal(blocked.ok, false);
+    assert.equal(blocked.reason, 'full');
+    assert.equal(blocked.message, FACE_SWIPE_FULL_MESSAGE);
+    assert.equal(blocked.state.versions.length, 5);
+});
+
+test('delete current lands on the older neighbor and renumbers', () => {
+    const five = stack('<details>1</details>', '<details>2</details>', '<details>3</details>', '<details>4</details>', '<details>5</details>');
+    const atThree = selectSwipeIndex(five, 2);
+    const deleted = deleteCurrentSwipe(atThree.state);
+    assert.equal(deleted.ok, true);
+    assert.equal(deleted.state.versions.map(item => item.html).join(','), '<details>1</details>,<details>2</details>,<details>4</details>,<details>5</details>');
+    assert.equal(deleted.state.currentIndex, 1);
+    assert.equal(deleted.state.versions[1].html, '<details>2</details>');
+});
+
+test('delete newest lands on the previous version', () => {
+    const five = stack('<details>1</details>', '<details>2</details>', '<details>3</details>', '<details>4</details>', '<details>5</details>');
+    const deleted = deleteCurrentSwipe(five);
+    assert.equal(deleted.state.currentIndex, 3);
+    assert.equal(deleted.state.versions[3].html, '<details>4</details>');
+    assert.equal(deleted.state.versions.length, 4);
+});
+
+test('delete oldest lands on the original second version', () => {
+    const three = selectSwipeIndex(stack('<details>1</details>', '<details>2</details>', '<details>3</details>'), 0);
+    const deleted = deleteCurrentSwipe(three.state);
+    assert.equal(deleted.ok, true);
+    assert.equal(deleted.state.currentIndex, 0);
+    assert.equal(deleted.state.versions[0].html, '<details>2</details>');
+    assert.equal(deleted.state.versions.length, 2);
+});
+
+test('cannot delete the last remaining version', () => {
+    const one = stack('<details>only</details>');
+    const deleted = deleteCurrentSwipe(one);
+    assert.equal(deleted.ok, false);
+    assert.equal(deleted.reason, 'last');
+    assert.equal(deleted.state.versions.length, 1);
+});
+
+test('repair updates current html and restore returns birth html', () => {
+    const state = stack('<details>birth</details>');
+    const repaired = updateCurrentSwipeHtml(state, '<details>repaired</details>');
+    assert.equal(repaired.ok, true);
+    assert.equal(repaired.state.versions[0].html, '<details>repaired</details>');
+    assert.equal(repaired.state.versions[0].initialHtml, '<details>birth</details>');
+    const restored = restoreCurrentSwipeInitial(repaired.state);
+    assert.equal(restored.state.versions[0].html, '<details>birth</details>');
+    assert.equal(restored.state.versions.length, 1);
+});
+
+test('title arrows resay at the ends and switch in the middle', () => {
+    const first = { currentIndex: 0, canNext: false, canDelete: false, canResay: true, overlay: false };
+    assert.deepEqual(faceSwipeBarIntent(first, 'next'), { type: 'resay' });
+    assert.deepEqual(faceSwipeBarIntent(first, 'prev'), { type: 'resay' });
+    const mid = { currentIndex: 1, canNext: true, canDelete: true, canResay: true, overlay: false };
+    assert.deepEqual(faceSwipeBarIntent(mid, 'prev'), { type: 'select', index: 0 });
+    assert.deepEqual(faceSwipeBarIntent(mid, 'next'), { type: 'select', index: 2 });
+    const lastFull = { currentIndex: 4, canNext: false, canDelete: true, canResay: false, overlay: false };
+    assert.deepEqual(faceSwipeBarIntent(lastFull, 'next'), { type: 'noop' });
+    assert.deepEqual(faceSwipeBarIntent(lastFull, 'prev'), { type: 'select', index: 3 });
+    const overlay = { currentIndex: 0, canNext: false, canDelete: false, canResay: true, overlay: true };
+    assert.deepEqual(faceSwipeBarIntent(overlay, 'prev'), { type: 'select', index: 0 });
+    assert.deepEqual(faceSwipeBarIntent(overlay, 'next'), { type: 'resay' });
+    const fallback = fallbackFaceSwipeView();
+    assert.equal(fallback.label, '1/1');
+    assert.deepEqual(faceSwipeBarIntent(fallback, 'next'), { type: 'resay' });
+    assert.deepEqual(faceSwipeBarIntent(fallback, 'prev'), { type: 'resay' });
+});
+
+test('storage slot ignores source hash so remounted resays share one stack', () => {
+    assert.equal(faceSwipeStorageSlot('room:5:0:deadbeef12'), 'room:5:0');
+    assert.equal(faceSwipeStorageSlot('room:5:0'), 'room:5:0');
+    assert.equal(faceSwipeStorageSlot('group:chat:3:1:abcdefabcdef'), 'group:chat:3:1');
+});
+
+test('hashed and settled slots append onto the same face stack', () => {
+    mockLocalStorage();
+    const first = mutateFaceSwipe('chat:3:0:aaaabbbb', 0, state => seedSwipeState(state, { html: '<details>old</details>' }));
+    assert.equal(first.ok, true);
+    assert.equal(first.seeded, true);
+    const second = mutateFaceSwipe('chat:3:0:ccccdddd', 0, state => {
+        const seeded = seedSwipeState(state, { html: '<details>new</details>' });
+        if (seeded.seeded) return seeded;
+        return appendSuccessfulSwipe(seeded.state, { html: '<details>new</details>' });
+    });
+    assert.equal(second.ok, true);
+    assert.equal(second.seeded, undefined);
+    const view = readFaceSwipe('chat:3:0:eeeeffff', 0);
+    assert.equal(view.versions.length, 2);
+    assert.equal(view.currentIndex, 1);
+    assert.equal(view.versions[0].html, '<details>old</details>');
+    assert.equal(view.versions[1].html, '<details>new</details>');
+});
+
+test('in-memory swipe store keeps the append when localStorage write fails', () => {
+    mockLocalStorage((_key, value) => {
+        if (String(value).length > 120) throw new Error('quota');
+    });
+    mutateFaceSwipe('chat:1:0', 0, state => seedSwipeState(state, { html: '<details>aaaaaaaaaaaaaaaaaaaa</details>' }));
+    mutateFaceSwipe('chat:1:0', 0, state => appendSuccessfulSwipe(state, { html: '<details>bbbbbbbbbbbbbbbbbbbb</details>' }));
+    const view = readFaceSwipe('chat:1:0', 0);
+    assert.equal(view.versions.length, 2);
+    assert.equal(view.currentIndex, 1);
+});
+
+test('read still finds a legacy hashed store key after remount', () => {
+    const data = mockLocalStorage();
+    data.rabbit_mirror_face_swipes_v1 = JSON.stringify({
+        schema: 1,
+        faces: {
+            ['chat:2:0:ffffeeee\u00000']: stack('<details>keep</details>', '<details>two</details>'),
+        },
+    });
+    resetFaceSwipeStoreForTests();
+    const found = readFaceSwipe('chat:2:0:11112222', 0);
+    assert.equal(found.versions.length, 2);
+    assert.equal(found.versions[1].html, '<details>two</details>');
+    writeFaceSwipe('chat:2:0:11112222', 0, found);
+    const raw = JSON.parse(data.rabbit_mirror_face_swipes_v1);
+    const keys = Object.keys(raw.faces);
+    assert.equal(keys.length, 1);
+    assert.equal(keys[0], 'chat:2:0\u00000');
+});
+
+test('multiface pager uses face count instead of per-face versions', () => {
+    const view = multifaceFacePagerView(3, 1);
+    assert.equal(view.label, '2/3');
+    assert.equal(view.canPrev, true);
+    assert.equal(view.canNext, true);
+    assert.equal(view.canDelete, false);
+    assert.deepEqual(faceSwipeBarIntent(view, 'next'), { type: 'select', index: 2 });
+    assert.deepEqual(faceSwipeBarIntent({ ...view, currentIndex: 2, canNext: false }, 'next'), { type: 'resay' });
+});
+
+// 额度不足时只缩掉已经存进版本存档（IndexedDB）的栈；这里没有存档，所以一个都不能丢：
+// 宁可报「缩不动」，也不能把还没备份的旧版本删掉。
+test('quota compact refuses to drop stacks that are not backed up to the version archive', () => {
+    let armed = false;
+    const data = mockLocalStorage((_key, value, store) => {
+        if (armed && String(value).length > 280) throw new Error('quota');
+        store[_key] = String(value);
+    });
+    const faces = {};
+    for (let i = 0; i < 8; i += 1) {
+        faces[`chat:${i}:0\u00000`] = { ...stack(`<details>${'x'.repeat(24)}${i}</details>`), touched: i + 1 };
+    }
+    data.rabbit_mirror_face_swipes_v1 = JSON.stringify({ schema: 1, faces });
+    resetFaceSwipeStoreForTests();
+    armed = true;
+    assert.equal(compactFaceSwipeStoreForQuota(), false);
+    const raw = JSON.parse(data.rabbit_mirror_face_swipes_v1);
+    assert.equal(Object.keys(raw.faces).length, 8, 'nothing is dropped without a durable copy');
+    for (let i = 0; i < 8; i += 1) assert.ok(raw.faces[`chat:${i}:0\u00000`]);
+});
+

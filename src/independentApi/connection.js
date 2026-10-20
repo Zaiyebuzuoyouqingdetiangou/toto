@@ -1,25 +1,25 @@
 // Split from independentApi.js — connection.
 
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages } from '../hostCompatibility.js?rmv=1.72.1';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages } from '../hostCompatibility.js?rmv=1.72.4';
 import {
     WORLD_INFO_BOOK_NAME_MAX_CHARS,
     getSettings,
     normalizeIndependentContextExcludedTags,
     updateSettings,
-} from '../settings.js?rmv=1.72.1';
-import { fetchRabbitMirrorIndependentCompletion } from '../independentSecurityGuard.js?rmv=1.72.1';
-import { buildIndependentAdvancedCarrier, applyIndependentAdvancedExclusions } from '../advancedRequestOptions.js?rmv=1.72.1';
-import { describeBatchPlanFailure } from '../externalWorldBook/errors.js?rmv=1.72.1';
-import { describeRabbitMirrorStorageUsage, getCurrentChatKey } from '../storage.js?rmv=1.72.1';
-import { rememberIndependentTransportDiagnostic } from '../transportDiagnostics.js?rmv=1.72.1';
+} from '../settings.js?rmv=1.72.4';
+import { fetchRabbitMirrorIndependentCompletion } from '../independentSecurityGuard.js?rmv=1.72.4';
+import { buildIndependentAdvancedCarrier, applyIndependentAdvancedExclusions } from '../advancedRequestOptions.js?rmv=1.72.4';
+import { describeBatchPlanFailure } from '../externalWorldBook/errors.js?rmv=1.72.4';
+import { describeRabbitMirrorStorageUsage, getCurrentChatKey } from '../storage.js?rmv=1.72.4';
+import { rememberIndependentTransportDiagnostic } from '../transportDiagnostics.js?rmv=1.72.4';
 import {
     CONTEXT_TOTAL_BUDGET,
     CONTEXT_TRANSCRIPT_BUDGET,
     RUNTIME_VERSION,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.72.1';
-import { HOST_GENERATION_EVENT_HINT_MS, operationEpochForBase } from './flights.js?rmv=1.72.1';
+} from './runtime.js?rmv=1.72.4';
+import { HOST_GENERATION_EVENT_HINT_MS, operationEpochForBase } from './flights.js?rmv=1.72.4';
 import {
     OWNER_LOCK_STORE_KEY,
     apiProfileKey,
@@ -31,12 +31,12 @@ import {
     writeApiProfileStore,
     writePersistedOwner,
     writeStore,
-} from './persistence.js?rmv=1.72.1';
+} from './persistence.js?rmv=1.72.4';
 import {
     hasExplicitSourceReplacementEvidence,
     independentStoredHtmlLightRestorable,
     independentStoredHtmlRestorable,
-} from './geometry.js?rmv=1.72.1';
+} from './geometry.js?rmv=1.72.4';
 import {
     activeIndependentFlightForBase,
     messageSourceRevisions,
@@ -44,13 +44,13 @@ import {
     passiveObservedIdentity,
     runtimeMode,
     showIndependentUnsavedOutput,
-} from './mount.js?rmv=1.72.1';
+} from './mount.js?rmv=1.72.4';
 import {
     hostGenerationHintStartedAt,
     hostGenerationInProgress,
     writeHostGenerationHintStartedAt,
     writeHostGenerationInProgress,
-} from './lifecycle.js?rmv=1.72.1';
+} from './lifecycle.js?rmv=1.72.4';
 
 export const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 
@@ -1832,8 +1832,26 @@ function verifiedUnicodeTagFilteringForLiveText(message,liveText='',excludedTags
  return null;
 }
 
+// 这一层显示在页面上，却一个看得见的字也读不到（美化把整段正文画进了内嵌页面、画布、图片，或把正文藏起来另画了一份），
+// 而且不是「跳过指定标签」把整段吞掉的：改读消息原文，照样去掉看不见的部分和要跳过的标签。
+function sourceFallbackVisibleText(message,live,excludedTags){
+ if(live.readError || (live.filteredExcludedTags||[]).length || Number(live.filteredExcludedTagChars||0)>0) return null;
+ const hasDisplay=typeof message?.extra?.display_text==='string' && String(message.extra.display_text).trim().length>0;
+ const source=hasDisplay ? message.extra.display_text : String(message?.mes||'');
+ if(!source.trim()) return null;
+ const filtered=stripHistoricalRabbitMirrorBlocks(source);
+ const visible=stripInvisibleIndependentContextMarkup(filtered.text,excludedTags);
+ const text=String(visible.text||'').replace(/\s+/g,' ').trim();
+ if(!text) return null;
+ return {text,filteredRabbitMirrorChars:filtered.filteredRabbitMirrorChars,filteredExcludedTagChars:visible.filteredExcludedTagChars,filteredExcludedTags:visible.filteredExcludedTags,source:hasDisplay?'source-fallback-display':'source-fallback-mes'};
+}
+
 export function canonicalVisibleMessageText(message,index,excludedTags=independentContextExcludedTagSet()){
  const live=liveVisibleIndependentMessageText(index,excludedTags);
+ if(live.available && !String(live.text||'').trim()){
+  const fallback=sourceFallbackVisibleText(message,live,excludedTags);
+  if(fallback) return fallback;
+ }
  if(live.available){
   if(excludedTags.size && [...excludedTags].some(name=>!/^[a-z]/i.test(name))){
    const unfiltered=(live.filteredExcludedTags||[]).length?liveVisibleIndependentMessageText(index,new Set()):live;

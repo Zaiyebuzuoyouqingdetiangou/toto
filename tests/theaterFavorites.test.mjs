@@ -1,0 +1,161 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+// theaterFavorites.js 的 import 链现在经 settings.js 走到宿主的 extensions.js，直接 import 会找不到文件；
+// 用仓库的 vm 加载器跑，宿主那两个模块由它打桩。
+import { fileURLToPath } from 'node:url';
+import { createRuntime } from './helpers/vmLoader.mjs';
+const favoritesRuntime = createRuntime(fileURLToPath(new URL('..', import.meta.url)));
+// 模块顶层会排一个定时器去刷新续写候选；测试里不跑它。
+Object.assign(favoritesRuntime.context, { setTimeout: () => 0, clearTimeout: () => {} });
+const { captureTheaterFavoriteFromRoot, groupTheaterFavoritesByCharacter, theaterFavoriteToggleId, UNCATEGORIZED_CHARACTER_NAME } = await favoritesRuntime.load('src/theaterFavorites.js');
+import { collectRevealedClipHosts, shouldRelaxRevealedClipPanel } from '../src/revealedClipRepair.js';
+
+test('favorite capture keeps the live face markup and skips placeholders', () => {
+    const details = globalThis.document?.createElement?.('details');
+    if (!details) {
+        const fake = {
+            matches(selector) { return selector === 'details'; },
+            classList: { contains: () => false },
+            querySelector() { return { textContent: '  星空剧场  ' }; },
+            outerHTML: '<details><summary>星空剧场</summary><p>可交互</p></details>',
+            dataset: { rabbitMirrorOwnerChat: 'chat-a', rabbitMirrorOwnerMesid: '4', rabbitMirrorOwnerSwipe: '0' },
+            getAttribute() { return 'html'; },
+            // 捕获现在先克隆再还原动画状态；假节点没有子节点和样式，克隆就是自己。
+            cloneNode() { return this; },
+        };
+        const captured = captureTheaterFavoriteFromRoot(fake, { sourceHash: 'abc', characterId: 'char.png', characterName: '幸村' });
+        assert.equal(captured.title, '星空剧场');
+        assert.equal(captured.mode, 'html');
+        assert.match(captured.html, /<details>/);
+        assert.equal(captured.sourceHash, 'abc');
+        assert.equal(captured.characterName, '幸村');
+        return;
+    }
+    details.innerHTML = '<summary> 星空剧场 </summary><p>可交互</p>';
+    const captured = captureTheaterFavoriteFromRoot(details, { chatKey: 'chat-a', mesid: 4, swipe: 0, sourceHash: 'abc', characterName: '幸村', characterId: 'char.png' });
+    assert.equal(captured.title, '星空剧场');
+    assert.match(captured.html, /可交互/);
+    assert.equal(captured.mesid, 4);
+    assert.equal(captured.characterName, '幸村');
+});
+
+test('favorite capture from a placeholder walks to the ready face on the same floor', () => {
+    const details = globalThis.document?.createElement?.('details');
+    if (!details) {
+        const ready = {
+            matches(selector) { return selector === 'details'; },
+            classList: { contains: () => false },
+            hasAttribute() { return false; },
+            querySelector() { return { textContent: '  星空剧场  ' }; },
+            outerHTML: '<details><summary>星空剧场</summary><p>可交互</p></details>',
+            dataset: { rabbitMirrorOwnerChat: 'chat-a', rabbitMirrorOwnerMesid: '4', rabbitMirrorOwnerSwipe: '0' },
+            getAttribute() { return 'html'; },
+            cloneNode() { return this; },
+        };
+        const placeholder = {
+            matches(selector) { return selector === 'details'; },
+            classList: { contains: name => name === 'rabbit-mirror-external-placeholder' },
+            hasAttribute() { return false; },
+            closest(selector) {
+                if (selector.includes('rabbit-mirror-external-host') || selector.includes('external-source')) return host;
+                if (selector.includes('.mes')) return message;
+                return null;
+            },
+            querySelector() { return { textContent: '【兔子镜：正在生成中……】' }; },
+            outerHTML: '<details class="rabbit-mirror-external-placeholder"><summary>【兔子镜：正在生成中……】</summary></details>',
+        };
+        const host = {
+            children: [ready],
+            closest(selector) { return selector.includes('.mes') ? message : null; },
+        };
+        const message = {
+            closest() { return message; },
+            querySelectorAll() { return [host]; },
+        };
+        ready.closest = selector => (selector.includes('external') ? host : message);
+        const captured = captureTheaterFavoriteFromRoot(placeholder, { sourceHash: 'abc', characterId: 'char.png', characterName: '幸村' });
+        assert.equal(captured.title, '星空剧场');
+        assert.match(captured.html, /可交互/);
+        return;
+    }
+    const message = document.createElement('div');
+    message.className = 'mes';
+    message.setAttribute('mesid', '4');
+    const host = document.createElement('div');
+    host.className = 'rabbit-mirror-external-host';
+    host.setAttribute('data-rabbit-mirror-external-source', 'true');
+    const placeholder = document.createElement('details');
+    placeholder.className = 'rabbit-mirror-external-placeholder';
+    placeholder.innerHTML = '<summary>【兔子镜：正在生成中……】</summary>';
+    const ready = document.createElement('details');
+    ready.innerHTML = '<summary> 星空剧场 </summary><p>可交互</p>';
+    host.append(ready);
+    message.append(placeholder, host);
+    const captured = captureTheaterFavoriteFromRoot(placeholder, { chatKey: 'chat-a', mesid: 4, swipe: 0, sourceHash: 'abc', characterName: '幸村', characterId: 'char.png' });
+    assert.equal(captured.title, '星空剧场');
+    assert.match(captured.html, /可交互/);
+    assert.equal(captured.mesid, 4);
+});
+
+test('favorite toggle id ignores open state and title chrome wrappers', () => {
+    if (!globalThis.document?.createElement) return;
+    const plain = theaterFavoriteToggleId('<details><summary>星空剧场</summary><p>可交互</p></details>');
+    const chrome = theaterFavoriteToggleId('<details open data-rm-title-chrome="true"><summary><span data-rm-title-label="true">星空剧场</span></summary><p>可交互</p></details>');
+    assert.equal(plain, chrome);
+    assert.match(plain, /^toggle_/);
+});
+
+test('favorites group by character and keep uncategorized last', () => {
+    const groups = groupTheaterFavoritesByCharacter([
+        { id: 'a', title: '旧面', characterId: '', characterName: '' },
+        { id: 'b', title: '立海', characterId: 'yukimura.png', characterName: '幸村精市' },
+        { id: 'c', title: '另一面', characterId: 'yukimura.png', characterName: '幸村精市' },
+        { id: 'd', title: '青学', characterId: 'fuji.png', characterName: '不二周助' },
+    ]);
+    assert.equal(groups.length, 3);
+    assert.equal(groups.at(-1).characterName, UNCATEGORIZED_CHARACTER_NAME);
+    assert.equal(groups.find(group => group.characterName === '幸村精市').items.length, 2);
+});
+
+test('revealed clip only relaxes overflowed open panels', () => {
+    assert.equal(shouldRelaxRevealedClipPanel({ maxHeightPx: 320, scrollHeight: 900, clientHeight: 320, overflowY: 'hidden' }), true);
+    assert.equal(shouldRelaxRevealedClipPanel({ maxHeightPx: 0, heightPx: 0, overflowY: 'visible', scrollHeight: 40, clientHeight: 40 }), false);
+    assert.equal(shouldRelaxRevealedClipPanel({ overflowY: 'hidden', scrollHeight: 900, clientHeight: 200, protectedSurface: true }), false);
+});
+
+test('collectRevealedClipHosts prefers open inner details and checked siblings', () => {
+    const inner = { tagName: 'DIV', children: [], open: false };
+    const details = {
+        tagName: 'DETAILS',
+        open: true,
+        children: [{ tagName: 'SUMMARY' }, inner],
+        closest() { return null; },
+        matches(selector) { return selector === 'details'; },
+        parentElement: null,
+    };
+    inner.parentElement = details;
+    const checked = {
+        tagName: 'INPUT',
+        parentElement: { children: [{ tagName: 'INPUT' }, { tagName: 'DIV', children: [] }] },
+        closest() { return null; },
+        matches() { return false; },
+    };
+    checked.parentElement.children[0] = checked;
+    const panel = checked.parentElement.children[1];
+    panel.parentElement = checked.parentElement;
+    const root = {
+        querySelectorAll(selector) {
+            if (selector === 'details[open]') return [details];
+            return [checked];
+        },
+        contains() { return true; },
+    };
+    const hosts = collectRevealedClipHosts(root, {
+        isInternal: () => false,
+        isOuterDetails: () => false,
+        isVisible: () => true,
+    });
+    assert.ok(hosts.includes(details));
+    assert.ok(hosts.includes(inner));
+    assert.ok(hosts.includes(panel));
+});

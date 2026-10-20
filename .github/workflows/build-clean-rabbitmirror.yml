@@ -1,0 +1,116 @@
+name: Build clean RabbitMirror ZIP
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: "要打包的分支，例如 main 或 from-nancy-test"
+        required: true
+        default: "main"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build-clean-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout selected source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_ref }}
+
+      - name: Validate RabbitMirror
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+
+          required = [
+              Path("manifest.json"),
+              Path("index.js"),
+              Path("src"),
+          ]
+
+          missing = [str(p) for p in required if not p.exists()]
+          if missing:
+              raise SystemExit(
+                  "RabbitMirror 文件不完整，缺少: "
+                  + ", ".join(missing)
+              )
+
+          manifest = json.loads(
+              Path("manifest.json").read_text(encoding="utf-8-sig")
+          )
+
+          if manifest.get("display_name") != "兔子镜小剧场":
+              raise SystemExit("manifest.json 不是兔子镜。")
+
+      - name: Build clean package
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          rm -rf dist
+          mkdir -p dist/package
+
+          # 必须保留
+          cp index.js manifest.json dist/package/
+
+          # 存在则保留
+          for file in style.css settings-ui.css LICENSE; do
+            if [ -f "$file" ]; then
+              cp "$file" dist/package/
+            fi
+          done
+
+          # 运行目录
+          for dir in src data; do
+            if [ -d "$dir" ]; then
+              cp -a "$dir" dist/package/
+            fi
+          done
+
+          echo "最终包含："
+          find dist/package -type f -printf '%P\n' | sort
+
+          echo
+          echo "最终大小："
+          du -sh dist/package
+
+      - name: Read version
+        id: meta
+        shell: python
+        run: |
+          import json
+          import os
+          from pathlib import Path
+
+          manifest = json.loads(
+              Path("manifest.json").read_text(encoding="utf-8-sig")
+          )
+
+          version = str(manifest.get("version") or "unknown")
+          safe = "".join(
+              c if c.isalnum() or c in ".-_" else "-"
+              for c in version
+          )
+
+          with open(
+              os.environ["GITHUB_OUTPUT"],
+              "a",
+              encoding="utf-8"
+          ) as f:
+              f.write(f"version={safe}\n")
+
+      - name: Upload clean ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: RabbitMirror-clean-${{ steps.meta.outputs.version }}
+          path: dist/package/
+          if-no-files-found: error
+          compression-level: 9
+          retention-days: 14

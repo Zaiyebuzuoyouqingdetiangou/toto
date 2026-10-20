@@ -1,55 +1,64 @@
-# Install on main. Select "Use workflow from: main" when running this action.
-# Keep README.md; preserve main workflows and Git controls.
-# Nothing is released automatically after ZIP import.
-# This file does not replace import-rabbitmirror-zip.yml.
-name: "RabbitMirror 2 - 过滤发布到 main"
-run-name: "RabbitMirror 正式发布（from-nancy-test → main）"
+# Install/replace this file on from-nancy-test; push events work there directly.
+# Upload toto1.6.zip OR rabbitmirror-upload.zip at the repository root, not both.
+# Changing this workflow also checks for a ZIP that was uploaded before the workflow.
+# Optional: copy to main ONLY to expose the manual Run workflow button.
+# Even when run manually from main, only from-nancy-test is updated.
+# This replaces the old import-rabbitmirror-zip.yml, not the clean publishing file.
+name: "RabbitMirror 1 - 上传解压到 from-nancy-test"
+run-name: "RabbitMirror 上传解压（只更新 from-nancy-test）"
 
 'on':
+  push:
+    branches: [from-nancy-test]
+    paths:
+      - toto1.6.zip
+      - rabbitmirror-upload.zip
+      - .github/workflows/import-rabbitmirror-zip.yml
   workflow_dispatch:
-    inputs:
-      confirm_main:
-        description: "测试通过后输入 main，确认用 from-nancy-test 的运行源码更新正式版"
-        type: string
-        required: true
-        default: ""
 
 permissions:
   contents: write
 
+# Shared with publishing so the two operations cannot overlap.
 concurrency:
   group: rabbitmirror-from-nancy-test-main-write
   cancel-in-progress: false
 
 jobs:
-  publish:
-    if: github.repository == 'Zaiyebuzuoyouqingdetiangou/toto' && github.ref == 'refs/heads/main'
+  import-zip:
+    if: >-
+      github.repository == 'Zaiyebuzuoyouqingdetiangou/toto' &&
+      (github.event_name == 'workflow_dispatch' ||
+       github.ref == 'refs/heads/from-nancy-test')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Checkout latest main
+      - name: Checkout from-nancy-test snapshot
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6, pinned
         with:
-          ref: refs/heads/main
+          ref: ${{ github.event_name == 'push' && github.sha || 'refs/heads/from-nancy-test' }}
           fetch-depth: 1
           persist-credentials: true
-      - name: Validate snapshot, filter, and push main
+      - name: Validate, unpack, and push only from-nancy-test
         shell: python
-        env:
-          CONFIRM_MAIN: ${{ inputs.confirm_main }}
         run: |
+          import hashlib
           import json
           import os
           import posixpath
           import re
+          import stat
+          import struct
+          import zlib
           import subprocess
           import unicodedata
+          import zipfile
           from pathlib import Path
 
           REPOSITORY = 'Zaiyebuzuoyouqingdetiangou/toto'
           HOMEPAGE = 'https://github.com/' + REPOSITORY
           TEST_BRANCH = 'from-nancy-test'
-          UPLOAD_PATTERN = re.compile(r'(?:rabbitmirror-upload|toto[0-9][0-9A-Za-z._+\-]*)(?: ?\(\d+\))?\.zip', re.I)
+          UPLOAD_NAMES = ('toto1.6.zip', 'rabbitmirror-upload.zip')
           RUNTIME_DIRS = {'src', 'data'}
           RUNTIME_FILES = {'index.js', 'manifest.json', 'style.css', 'settings-ui.css', 'LICENSE'}
           # These controls belong to the destination branch, never to an uploaded ZIP.
@@ -95,6 +104,31 @@ jobs:
               return parts
 
 
+          def zip_name(info):
+              # Honor Windows ZIP Unicode path records using their CRC, not guessed encodings.
+              # Necessary for the same filenames on Python 3.12 and Python 3.13 runners.
+              original = info.orig_filename
+              require('\x00' not in original, 'NUL character in ZIP path.')
+              safe_name(original.rstrip('/') if info.is_dir() else original)
+              raw = original.encode('utf-8' if info.flag_bits & 0x800 else 'cp437')
+              name = original
+              extra = info.extra
+              while len(extra) >= 4:
+                  tag, size = struct.unpack('<HH', extra[:4])
+                  require(size + 4 <= len(extra), 'Malformed ZIP extra field.')
+                  body = extra[4:4 + size]
+                  if tag == 0x7075:
+                      require(len(body) >= 5, 'Malformed Unicode path field.')
+                      version, checksum = struct.unpack('<BI', body[:5])
+                      if version == 1 and checksum == (zlib.crc32(raw) & 0xffffffff):
+                          candidate = body[5:].decode('utf-8')
+                          require(bool(candidate) and '\x00' not in candidate, 'Invalid Unicode ZIP path.')
+                          name = candidate
+                  extra = extra[4 + size:]
+              safe_name(name.rstrip('/') if info.is_dir() else name)
+              return name
+
+
           def protected(name):
               return name.split('/')[0] == '.github' or name in CONTROL_FILES
 
@@ -117,7 +151,7 @@ jobs:
 
 
           def runtime_file(name):
-              return (name.split('/')[0] in RUNTIME_DIRS or name in RUNTIME_FILES) and not junk(name)
+              return name.split('/')[0] in RUNTIME_DIRS or name in RUNTIME_FILES
 
 
           def unique_paths(names):
@@ -207,15 +241,6 @@ jobs:
               return result
 
 
-          def blob(entry, name):
-              mode, kind, oid = entry
-              require(kind == 'blob' and mode in {'100644', '100755'},
-                      'Only regular files are accepted: ' + repr(name))
-              content = git('cat-file', 'blob', oid)
-              require(len(content) <= MAX_FILE, 'File exceeds size limit: ' + repr(name))
-              return content
-
-
           def remote_tip(branch):
               ref = 'refs/heads/' + branch
               rows = text_git('ls-remote', '--exit-code', 'origin', ref).splitlines()
@@ -256,22 +281,13 @@ jobs:
               staged = [n.decode('utf-8') for n in git('diff', '--cached', '--name-only', '-z').split(b'\0') if n]
               require(not any(protected(name) for name in staged), 'Workflow/control files changed unexpectedly.')
               require(set(staged) <= (set(payload) | set(removals)), 'Unexpected staged files; refusing to push.')
-              # Verify Git did not silently rewrite bytes through attributes/filters.
-              staged_tree = tree_entries(text_git('write-tree'))
-              for name, content in payload.items():
-                  expected = git('hash-object', '--stdin', data=content).decode('ascii').strip()
-                  require(staged_tree.get(name, (None, None, None))[2] == expected,
-                          'Staged file bytes differ from the selected source: ' + name)
-              require(not set(removals) & set(staged_tree), 'Some excluded files remain staged.')
               return staged
 
 
-          def commit_and_push(target, old_sha, message, source_sha=None):
+          def commit_and_push(target, old_sha, message):
+              require(target == TEST_BRANCH, 'This importer may ONLY push from-nancy-test.')
               require(remote_tip(target) == old_sha,
                       target + ' changed during this run. Nothing pushed; run again.')
-              if source_sha is not None:
-                  require(remote_tip(TEST_BRANCH) == source_sha,
-                          'from-nancy-test changed during this run. Nothing pushed; retest and run again.')
               git('-c', 'user.name=github-actions[bot]',
                   '-c', 'user.email=41898282+github-actions[bot]@users.noreply.github.com',
                   '-c', 'commit.gpgsign=false', 'commit', '-m', message)
@@ -285,68 +301,95 @@ jobs:
 
 
           require(os.environ.get('GITHUB_REPOSITORY') == REPOSITORY, 'Wrong GitHub repository.')
-          require(os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch',
-                  'This publishing workflow must be started manually.')
+          require(os.environ.get('GITHUB_EVENT_NAME') in {'push', 'workflow_dispatch'},
+                  'Unsupported workflow event.')
+          require(os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch' or
+                  os.environ.get('GITHUB_REF') == 'refs/heads/' + TEST_BRANCH,
+                  'Automatic imports are allowed only on from-nancy-test.')
           require(not text_git('status', '--porcelain'), 'Checkout is not clean; refusing to continue.')
           OLD_SHA = text_git('rev-parse', 'HEAD')
 
-          require(os.environ.get('CONFIRM_MAIN') == 'main',
-                  'Enter main in confirm_main only after testing from-nancy-test. No files changed.')
-          require(os.environ.get('GITHUB_REF') == 'refs/heads/main',
-                  'Run this workflow using Use workflow from: main.')
-          require(remote_tip('main') == OLD_SHA, 'main moved. Run again from main.')
-          # Fetch a tree without checking out or executing any code from the test branch.
-          git('fetch', '--no-tags', '--depth=1', '--refmap=', 'origin', 'refs/heads/from-nancy-test')
-          source_sha = text_git('rev-parse', 'FETCH_HEAD')
-          source_tree = tree_entries(source_sha)
-          pending_uploads = sorted(name for name in source_tree
-                                   if '/' not in name and UPLOAD_PATTERN.fullmatch(name))
-          require(not pending_uploads,
-                  'Unprocessed upload ZIP(s) remain on from-nancy-test: ' + ', '.join(pending_uploads)
-                  + '. Finish ZIP import successfully before publishing.')
-          selected_names = [name for name in source_tree if runtime_file(name) or name == 'README.md']
-          unique_paths(selected_names)
-          payload = {name: blob(source_tree[name], name) for name in selected_names}
-          require(sum(map(len, payload.values())) <= MAX_UNPACKED, 'Runtime exceeds 100 MiB.')
+          # This workflow writes ONLY to from-nancy-test, even when dispatched from main.
+          require(remote_tip(TEST_BRANCH) == OLD_SHA,
+                  'from-nancy-test changed after this run started. Run again on the latest branch.')
+          # No guessing when more than one delivery is present.
+          candidates = []
+          for candidate in UPLOAD_NAMES:
+              candidate_path = local_safe(candidate)
+              if candidate_path.is_file():
+                  candidates.append(candidate)
+          if not candidates:
+              summary('未发现 toto1.6.zip 或 rabbitmirror-upload.zip；没有修改源码。')
+              raise SystemExit(0)
+          require(len(candidates) == 1,
+                  '发现两个待导入 ZIP。请只保留本次要导入的一个，再运行，避免导入旧代码。')
+          UPLOAD = candidates[0]
+          archive = local_safe(UPLOAD)
+          require(archive.stat().st_size <= 25 * 1024 * 1024, 'ZIP exceeds 25 MiB.')
+          archive_hash = hashlib.sha256(archive.read_bytes()).hexdigest()
+          payload = {}
+          skipped = []
+          with zipfile.ZipFile(archive) as z:
+              entries = z.infolist()
+              require(0 < len(entries) <= 10000, 'ZIP is empty or has too many entries.')
+              require(sum(i.file_size for i in entries) <= MAX_UNPACKED, 'ZIP expands beyond 100 MiB.')
+              files = []
+              for info in entries:
+                  require('\x00' not in info.orig_filename, 'NUL character in ZIP path.')
+                  resolved_name = zip_name(info)
+                  raw_name = resolved_name.rstrip('/') if info.is_dir() else resolved_name
+                  safe_name(raw_name)
+                  if info.is_dir():
+                      continue
+                  # Ignore OS wrappers when detecting a single plugin root.
+                  parts = raw_name.split('/')
+                  if '__MACOSX' in parts or parts[-1] == '.DS_Store' or parts[-1].startswith('._'):
+                      skipped.append(raw_name)
+                      continue
+                  files.append((info, resolved_name))
+              require(len(files) <= 5000, 'ZIP contains too many files.')
+              names = {name for info, name in files}
+              if 'manifest.json' in names:
+                  prefix = ''
+              else:
+                  top = {name.split('/')[0] for name in names}
+                  require(len(top) == 1, 'ZIP must have plugin files at root or inside one outer folder.')
+                  prefix = next(iter(top)) + '/'
+                  require(prefix + 'manifest.json' in names, 'manifest.json was not found at plugin root.')
+              for info, resolved_name in files:
+                  require(not prefix or resolved_name.startswith(prefix), 'File outside plugin root.')
+                  name = resolved_name[len(prefix):]
+                  safe_name(name)
+                  if junk(name):
+                      skipped.append(name)
+                      continue
+                  require(not (info.flag_bits & 1), 'Encrypted ZIP entries are not supported.')
+                  mode = stat.S_IFMT(info.external_attr >> 16)
+                  require(mode in {0, stat.S_IFREG}, 'ZIP symlink/special file rejected: ' + repr(name))
+                  require(info.file_size <= MAX_FILE, 'ZIP file exceeds 12 MiB: ' + repr(name))
+                  require(name not in payload, 'Duplicate ZIP entry: ' + repr(name))
+                  payload[name] = z.read(info)
+          unique_paths(payload)
           manifest, corrected = normalize_manifest(payload)
           links = validate_runtime(payload)
-          # Keep documentation readable from main without copying its development folders.
-          readme_relinks = 0
-          if 'README.md' in payload:
-              readme = payload['README.md'].decode('utf-8-sig')
-              pattern = re.compile(r'(?P<lead>\]\()(?:\./)?(?P<path>(?:docs|scripts|tests|tools)/[^)\s]+|CHANGELOG\.md(?:#[^)\s]*)?)(?P<end>\))')
-              base = HOMEPAGE + '/blob/' + source_sha + '/'
-              readme, readme_relinks = pattern.subn(lambda m: m['lead'] + base + m['path'] + m['end'], readme)
-              if readme_relinks:
-                  payload['README.md'] = readme.encode('utf-8')
           old_tree = tree_entries(OLD_SHA)
-          # Preserve automation and Git controls from MAIN, never import test workflows.
-          # Preserve the existing main README if a runtime-only upload did not include one.
-          kept_main = {name for name in old_tree if protected(name)}
-          if 'README.md' not in payload and 'README.md' in old_tree:
-              kept_main.add('README.md')
-          removals = set(old_tree) - set(payload) - kept_main
+          # Runtime directories are synchronized exactly, removing obsolete code after refactors.
+          # Other developer files absent from the ZIP are preserved.
+          removals = {name for name in old_tree if runtime_file(name) and name not in payload}
+          removals.add(UPLOAD)
           staged = apply_changes(payload, removals)
-          summary('## Clean publish from-nancy-test → main\n'
-                  '- Source snapshot (test manually before publishing): `' + source_sha + '`\n'
-                  '- Previous main: `' + OLD_SHA + '`\n'
+          summary('## RabbitMirror import → from-nancy-test\n'
                   '- Version: `' + manifest['version'] + '`\n'
-                  '- Runtime/public files: ' + str(len(payload)) + '\n'
+                  '- Imported ZIP: `' + UPLOAD + '`\n'
+                  '- ZIP SHA-256: `' + archive_hash + '`\n'
+                  '- Imported files: ' + str(len(payload)) + '\n'
                   '- Literal runtime links checked: ' + str(links) + '\n'
-                  '- Files removed from main: ' + str(len(removals)) + '\n'
-                  '- README development links redirected: ' + str(readme_relinks) + '\n'
-                  '- Main .github and Git control files are preserved.\n'
-                  '- from-nancy-test is NOT modified. This is a snapshot publication, NOT a branch merge.\n'
-                  '- No plugin code/tests were executed; this does not certify in-app behavior.')
-          if removals:
-              summary('Removed paths (main only):\n```\n' + '\n'.join(sorted(removals)) + '\n```')
-          if not staged:
-              summary('main already has this clean content. No commit or push needed.')
-              raise SystemExit(0)
-          commit_and_push('main', OLD_SHA,
-                          'Publish RabbitMirror ' + manifest['version'] + ' (from-nancy-test → main)\n\nSource-commit: ' + source_sha,
-                          source_sha=source_sha)
-
-# GitHub workflow documentation:
-# https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow
-# https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
+                  '- Excluded Git/control/cache entries: ' + str(len(skipped)) + '\n'
+                  '- Homepage metadata corrected: ' + str(corrected) + '\n'
+                  '- docs/scripts/tests/tools from the ZIP are retained.\n'
+                  '- Obsolete src/data files are removed; .github is preserved.\n'
+                  '- main is NOT modified. No plugin code or uploaded script was executed.\n'
+                  '- The imported transport ZIP is removed in the same commit.')
+          require(bool(staged), 'No import changes staged; refusing an empty commit.')
+          commit_and_push(TEST_BRANCH, OLD_SHA,
+                          'Import RabbitMirror ' + manifest['version'] + ' into from-nancy-test\n\nZIP-SHA256: ' + archive_hash)
