@@ -79,6 +79,60 @@ await page.click('[data-rm-reset]');
 assert.equal(await shown('.p0'), true); checks++;
 assert.equal(await shown('.card'), false); checks++;
 
+// 3 密码锁的几种写法
+// 3a 写成类、密码连写、按钮是 ▲▼
+await mount(`<details open><summary>t</summary><style>.drawer{display:none}.box.is-unlocked .drawer{display:block}</style>
+<div class="box"><div class="col"><button type="button">▲</button><span id="x1">0</span><button type="button">▼</button></div>
+<div class="col"><button type="button">▲</button><span id="x2">0</span><button type="button">▼</button></div>
+<p>密码：92</p><div class="drawer">里面的东西</div></div></details>`);
+await page.click('.col:nth-of-type(1) button:last-of-type');
+await page.click('.col:nth-of-type(2) button:first-of-type'); await page.click('.col:nth-of-type(2) button:first-of-type');
+assert.equal(await page.evaluate(() => document.getElementById('x1').textContent + document.getElementById('x2').textContent), '92'); checks++;
+assert.equal(await shown('.drawer'), true); checks++;
+// 3b 样式没写解锁状态，后面只有一块内联藏起来的内容；要按「开锁」
+await mount(`<details open><summary>t</summary><div class="box"><div class="cols">
+<div><button type="button">拨动</button><b id="y1">0</b></div><div><button type="button">拨动</button><b id="y2">0</b></div></div>
+<p>提示：一、一</p><button type="button" id="go">开锁</button><div class="note" style="display:none">藏在暗格里的一封旧信。</div></div></details>`);
+assert.match(await page.evaluate(() => document.querySelector('details').getAttribute('data-rm-dial-lock')), /lock:confirm/); checks++;
+await page.click('.cols > div:nth-child(1) button');
+await page.click('#go');
+assert.equal(await shown('.note'), false); checks++;
+await page.click('.cols > div:nth-child(2) button');
+assert.equal(await shown('.note'), false); checks++;
+await page.click('#go');
+assert.equal(await shown('.note'), true); checks++;
+
+// 4 同一类的数字状态：翻页写到兄弟上、按顺序输入、类名写法、模型拿来当编号的属性不碰
+await mount(`<details open><summary>t</summary><style>.end{display:none}[data-pg="3"] ~ .end{display:block}</style>
+ <div data-rm-ui="pager"><div class="pages" data-pg="1"><section data-rm-page>一</section><section data-rm-page>二</section><section data-rm-page>三</section></div>
+ <button type="button" data-rm-next>下一页</button><p class="end">读完了</p></div></details>`);
+assert.equal(await shown('.end'), false); checks++;
+await page.click('[data-rm-next]'); await page.click('[data-rm-next]');
+assert.equal(await shown('.end'), true); checks++;
+await mount(`<details open><summary>t</summary><style>.lamp{display:none}.panel.lit-2 .lamp{display:block}</style>
+ <div class="panel" data-rm-ui="sequence" data-rm-answer="a b"><button type="button" data-rm-code="a">甲</button><button type="button" data-rm-code="b">乙</button><i class="lamp">灯亮了</i><p data-rm-show="match">对了</p></div></details>`);
+await page.click('[data-rm-code="a"]');
+assert.equal(await shown('.lamp'), false); checks++;
+await page.click('[data-rm-code="b"]');
+assert.equal(await shown('.lamp'), true); checks++;
+await mount(`<details open><summary>t</summary><style>[data-n="1"] .t{color:red}</style>
+ <div data-rm-ui="accumulate"><div data-n="1"><span class="t">一</span></div><button type="button" data-rm-step="1">做</button></div></details>`);
+await page.click('[data-rm-step="1"]');
+assert.equal(await page.evaluate(() => document.querySelector('[data-rm-ui]').hasAttribute('data-n')), false); checks++;
+
+// 5 误伤检查：数量加减（没有密码）不接；面上别处的 .menu.open 不当锁；开过的锁重新接管不会去开别的
+await mount(`<details open><summary>t</summary><div><button type="button">−</button><span>1</span><button type="button">+</button></div>
+ <div><button type="button">−</button><span>2</span><button type="button">+</button></div></details>`);
+assert.equal(await page.evaluate(() => document.querySelector('details').hasAttribute('data-rm-dial-lock')), false); checks++;
+await mount(`<details open><summary>t</summary><style>.menu .item{display:none}.menu.open .item{display:block}.box.unlocked .gift{display:block}.gift{display:none}</style>
+ <nav class="menu"><p class="item">菜单项</p></nav>
+ <div class="box"><div class="c"><button type="button">拨</button><i>0</i></div><div class="c"><button type="button">拨</button><i>0</i></div><p>提示：1 1</p><p class="gift">礼物</p></div></details>`);
+await page.click('.c:nth-of-type(1) button'); await page.click('.c:nth-of-type(2) button');
+assert.equal(await shown('.gift'), true); checks++;
+assert.equal(await shown('.item'), false); checks++;
+await page.evaluate(() => rescue.installIntelligentInteractionRescue(document.querySelector('details')));
+assert.equal(await shown('.item'), false); checks++;
+
 assert.deepEqual(pageErrors, []);
 console.log(JSON.stringify({ checks }));
 await browser.close(); server.close();

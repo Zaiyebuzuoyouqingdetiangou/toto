@@ -1,11 +1,11 @@
-import { behaviorShowTokens, clearForcedActive, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.72.2';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.72.2';
-import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.72.2';
-import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState, holdAncestorStateClass } from './behaviorStateMirror.js?rmv=1.72.2';
-import { syncStateCarriers, releaseStateCarriers, unwindStaleBridges } from './behaviorStateBridge.js?rmv=1.72.2';
-import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.72.2';
-import { addDialectStateKeys, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup, toggleCssBridges, setBridgedCssWord } from './behaviorDialect.js?rmv=1.72.2';
-import { EXTRA_TYPES, EXTRA_CONTROLS, EXTRA_CONTROL_ATTRS, configureBehaviorExtras, configureCarryChatKey, extraTypeFits, prepareExtra, destroyExtra, extraAction, extraSync, extraKeys, extraReset, extraPointerDown, extraPointerMove, extraPointerUp, extraHoldStart, extraHoldEnd, applyCarriedState, saveCarriedState, recalledKeys, carryMemoryName } from './behaviorExtras.js?rmv=1.72.2';
+import { behaviorShowTokens, clearForcedActive, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.72.3';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.72.3';
+import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.72.3';
+import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState, holdAncestorStateClass } from './behaviorStateMirror.js?rmv=1.72.3';
+import { syncStateCarriers, releaseStateCarriers, unwindStaleBridges } from './behaviorStateBridge.js?rmv=1.72.3';
+import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.72.3';
+import { addDialectStateKeys, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup, toggleCssBridges, setBridgedCssWord } from './behaviorDialect.js?rmv=1.72.3';
+import { EXTRA_TYPES, EXTRA_CONTROLS, EXTRA_CONTROL_ATTRS, configureBehaviorExtras, configureCarryChatKey, extraTypeFits, prepareExtra, destroyExtra, extraAction, extraSync, extraKeys, extraReset, extraPointerDown, extraPointerMove, extraPointerUp, extraHoldStart, extraHoldEnd, applyCarriedState, saveCarriedState, recalledKeys, carryMemoryName } from './behaviorExtras.js?rmv=1.72.3';
 
 export { behaviorToggleKey, motionOutsideControls };
 
@@ -549,57 +549,116 @@ function syncStageAttr(state, value) {
 }
 
 // 种花小院：累积区域，样式却写 [data-rm-step-val="2"] .第二株{display:flex}、[data-rm-step-val="3"] ~ .揭晓卡{display:block}，
-// 驱动只写 data-rm-count，没人写 data-rm-step-val，花和卡片永远藏着。样式里有个驱动不写的 data-xxx="整数"
-// 当前置条件、整数又落在 0…步数里，就把完成的步数同步写过去：后代规则写在区域上，「~」「+」规则写在目标前面的兄弟上。
-const STEP_VALUE_SKIP = /^data-rm-(?:count|done|step|ui|on|active|index|value|picked|match|seq|miss|swiped|peeking|show|part|fire|reset)$/;
-function prepareStepValue(state) {
-    state.stepValue = null;
-    const total = own(state.group, '[data-rm-step]').length;
-    if (!total) return;
-    const found = new Map();
-    for (const rule of localRules(state.root)) for (const piece of rule.selectorText.split(',')) {
-        const match = piece.match(/\[(data-(?!rabbit-)[\w-]+)\s*=\s*["']?(\d+)["']?\s*\]\s*([~+>]?)\s*([^~+>\s][^]*)$/);
-        if (!match || STEP_VALUE_SKIP.test(match[1])) continue;
-        const value = Number(match[2]);
-        if (value > total) continue;
-        if (!found.has(match[1])) found.set(match[1], { values: new Set(), rules: [] });
-        found.get(match[1]).values.add(value);
-        found.get(match[1]).rules.push({ combinator: match[3] || ' ', target: match[4].trim() });
+// 驱动只写 data-rm-count，没人写 data-rm-step-val，花和卡片永远藏着。同类的还有翻页（第几页）、按顺序输入（输了几位）、
+// 带档位的转钮（第几档）、连线（连了几对）、滑杆（第几档）。
+// 样式里有驱动不写的 data-xxx="整数"（或 .xxx-整数 类）当前置条件、所有整数都落在这一类的取值范围里，就把当前的数同步写过去：
+// 后代规则写在区域上，「~」「+」规则写在目标前面的兄弟上（驱动自己写的 data-rm-count／data-rm-index 也补到兄弟上）。
+// 只动区域里面的元素；属性已经被模型拿来给别的元素当编号的不碰。
+const NUMBER_DRIVER_ATTRS = { accumulate: 'data-rm-count', pager: 'data-rm-index', turn: 'data-rm-index' };
+const NUMBER_SKIP = /^data-rm-(?:done|step|ui|on|active|value|picked|match|seq|miss|swiped|peeking|show|part|fire|reset|goto|stops|answer|code|end|pick|knob|angle-turned|current)$/;
+function numberRange(state) {
+    const { group, type } = state;
+    if (type === 'accumulate') return { min: 0, max: own(group, '[data-rm-step]').length };
+    if (type === 'pager') return { min: 1, max: state.pages?.length || 0 };
+    if (type === 'sequence') return { min: 0, max: Math.max(state.answer?.length || 0, own(group, '[data-rm-code]').length) };
+    if (type === 'connect') return { min: 0, max: Math.floor(own(group, '[data-rm-end]').length / 2) };
+    if (type === 'turn') return state.stops ? { min: 0, max: state.stops - 1 } : null;
+    if (type === 'adjust') {
+        const range = first(group, 'input[type="range"]');
+        if (!range) return null;
+        const step = range.step === '' ? 1 : finite(range.step, 1);
+        if (!(step > 0) || Math.abs(step - Math.round(step)) > 1e-9) return null;
+        const min = range.min === '' ? 0 : finite(range.min), max = range.max === '' ? 100 : finite(range.max, 100);
+        return max - min <= 40 ? { min, max } : null;
     }
-    let best = null;
-    for (const [name, info] of found) if (!best || info.values.size > best[1].values.size) best = [name, info];
-    if (!best) return;
-    const [name, info] = best;
-    const hosts = new Set();
-    for (const { combinator, target } of info.rules) {
-        let targets = [];
-        try { targets = [...state.root.querySelectorAll(target)]; } catch { targets = []; }
-        for (const node of targets) {
-            if (combinator === '~' || combinator === '+') {
-                for (let sib = node.previousElementSibling; sib; sib = combinator === '+' ? null : sib.previousElementSibling) {
-                    if (state.group.contains(sib) && sib !== state.group) hosts.add(sib);
-                }
-            } else if (state.group.contains(node) && node !== state.group) hosts.add(combinator === '>' ? node.parentElement : state.group);
-            // 区域外的目标不碰：那多半是别的机关自己的档位。
+    return null;
+}
+
+function numberTargets(state, selector) {
+    try { return [...state.group.querySelectorAll(selector)]; } catch { return []; }
+}
+
+function prepareNumberMirror(state) {
+    state.numberMirror = [];
+    const bounds = numberRange(state);
+    if (!bounds || !(bounds.max > bounds.min)) return;
+    const driverAttr = NUMBER_DRIVER_ATTRS[state.type];
+    const attrs = new Map(), classes = new Map();
+    const note = (map, key, value, entry) => {
+        if (!map.has(key)) map.set(key, { values: new Set(), rules: [] });
+        map.get(key).values.add(value);
+        map.get(key).rules.push(entry);
+    };
+    for (const rule of localRules(state.root)) for (const piece of rule.selectorText.split(',')) {
+        const attr = piece.match(/\[(data-(?!rabbit-)[\w-]+)\s*=\s*["']?(-?\d+)["']?\s*\]\s*([~+>]?)\s*([^~+>\s][^]*)$/);
+        if (attr && attr[1] !== state.stageAttr && !NUMBER_SKIP.test(attr[1])) {
+            note(attrs, attr[1], Number(attr[2]), { combinator: attr[3] || ' ', target: attr[4].trim() });
+        }
+        // .stage-2 .plant：前面那段（去掉这个类）对得上区域本身时，类挂在区域上。
+        const cls = piece.match(/^(.*?)((?:^|[\s>+~])[^\s>+~]*?)\.([A-Za-z][\w-]*?[-_])(\d+)(?![\w-])([^\s>+~]*)\s*([~+>]?)\s*([^~+>\s][^]*)$/);
+        if (cls) {
+            const compound = (cls[2].replace(/^[\s>+~]+/, '') + cls[5]).replace(/:[\w-]+(?:\([^()]*\))?/g, '');
+            let fits = false;
+            try { fits = !compound || state.group.matches(compound); } catch { fits = false; }
+            if (fits && (cls[6] || ' ') === ' ') note(classes, cls[3], Number(cls[4]), { combinator: ' ', target: cls[7].trim() });
         }
     }
-    hosts.delete(null);
-    if (!hosts.size) return;
-    state.stepValue = { name, hosts: new Map([...hosts].map(node => [node, node.getAttribute(name)])) };
-}
-
-function syncStepValue(state, completed) {
-    if (!state.stepValue) return;
-    for (const node of state.stepValue.hosts.keys()) if (node.isConnected) node.setAttribute(state.stepValue.name, String(completed));
-}
-
-function restoreStepValue(state) {
-    if (!state?.stepValue) return;
-    for (const [node, original] of state.stepValue.hosts) {
-        if (original === null) node.removeAttribute(state.stepValue.name);
-        else node.setAttribute(state.stepValue.name, original);
+    const inRange = info => [...info.values].every(value => value >= bounds.min && value <= bounds.max) && info.values.size >= 1;
+    for (const [name, info] of attrs) {
+        if (!inRange(info)) continue;
+        const hosts = new Set();
+        for (const { combinator, target } of info.rules) for (const node of numberTargets(state, target)) {
+            if (combinator === '~' || combinator === '+') {
+                // 嵌套的别的区域不写，免得和它自己的状态打架。
+                for (let sib = node.previousElementSibling; sib; sib = combinator === '+' ? null : sib.previousElementSibling) if (!sib.matches(GROUP) && !sib.querySelector(GROUP)) hosts.add(sib);
+            } else if (name !== driverAttr) hosts.add(combinator === '>' ? node.parentElement : state.group);
+        }
+        hosts.delete(null);
+        if (name === driverAttr) hosts.delete(state.group);
+        if (!hosts.size) continue;
+        // 模型自己给区域里别的元素写了这个属性（多半是编号）：不是给我们同步的。
+        const others = [...state.root.querySelectorAll(`[${name}]`)].filter(node => !hosts.has(node) && node !== state.group);
+        if (others.length) continue;
+        state.numberMirror.push({ kind: 'attr', name, hosts: new Map([...hosts].map(node => [node, node.getAttribute(name)])) });
     }
-    state.stepValue = null;
+    for (const [prefix, info] of classes) {
+        if (!inRange(info) || !info.rules.some(rule => numberTargets(state, rule.target).length)) continue;
+        // 面上别处已经在用这个「前缀＋数字」的类（.theme-2、.mt-2 这类）：不是给区域计数用的。
+        const used = [...state.root.querySelectorAll(`[class*="${CSS.escape(prefix)}"]`)].some(node => node !== state.group
+            && [...node.classList].some(name => name.startsWith(prefix) && /^\d+$/.test(name.slice(prefix.length))));
+        if (used) continue;
+        state.numberMirror.push({ kind: 'class', prefix, original: [...state.group.classList].filter(name => name.startsWith(prefix) && /^\d+$/.test(name.slice(prefix.length))) });
+    }
+}
+
+function syncNumberMirror(state, value) {
+    if (state.numberMirror === undefined) prepareNumberMirror(state);
+    if (!state.numberMirror.length || !Number.isFinite(value)) return;
+    const text = String(Math.round(value));
+    for (const mirror of state.numberMirror) {
+        if (mirror.kind === 'attr') {
+            for (const node of mirror.hosts.keys()) if (node.isConnected && node.getAttribute(mirror.name) !== text) node.setAttribute(mirror.name, text);
+        } else {
+            for (const name of [...state.group.classList]) if (name.startsWith(mirror.prefix) && /^\d+$/.test(name.slice(mirror.prefix.length))) state.group.classList.remove(name);
+            state.group.classList.add(mirror.prefix + text);
+        }
+    }
+}
+
+function restoreNumberMirror(state) {
+    if (!state?.numberMirror) return;
+    for (const mirror of state.numberMirror) {
+        if (mirror.kind === 'attr') {
+            for (const [node, original] of mirror.hosts) {
+                if (original === null) node.removeAttribute(mirror.name);
+                else node.setAttribute(mirror.name, original);
+            }
+        } else {
+            for (const name of [...state.group.classList]) if (name.startsWith(mirror.prefix) && /^\d+$/.test(name.slice(mirror.prefix.length))) state.group.classList.remove(name);
+            for (const name of mirror.original) state.group.classList.add(name);
+        }
+    }
+    state.numberMirror = undefined;
 }
 
 function fireKeyedParts(state, button) {
@@ -709,7 +768,7 @@ function countSteps(state) {
     // 模型常把阶段写成 [data-rm-ui="accumulate"][data-rm-count="2"] .stage{display:flex}：
     // 只有 --rm-count 变量时这些规则一条都对不上，所有阶段一直藏着。计数同时写成属性。
     state.group.setAttribute('data-rm-count', String(completed));
-    syncStepValue(state, completed);
+    syncNumberMirror(state, completed);
     // A leaf group's result may be a sibling of its buttons. Mirror completion
     // onto their common group so authored descendant CSS can reveal that result.
     // Containers with nested behaviors retain button/count state only: marking
@@ -738,6 +797,7 @@ function inputChange(state, input, userAction = false) {
         style(state, group, '--rm-p', String(p));
         style(state, group, '--rm-value', String(value));
         syncStageAttr(state, value);
+        syncNumberMirror(state, value);
     } else if (type === 'reveal') reveal(state, p);
     else if (type === 'view') {
         for (const part of own(group, '[data-rm-part]')) {
@@ -896,7 +956,6 @@ function prepare(binding, group) {
     if (type === 'effect') for (const animation of animations(state)) { animation.pause(); animation.currentTime = 0; }
     if (type === 'effect') prepareKeyedParts(state);
     if (type === 'adjust') prepareStageAttr(state);
-    if (type === 'accumulate') prepareStepValue(state);
     // 「答对了才出现」写成子元素上一个空的 data-rm-match（小徽章自带 display:none）：当成 data-rm-show="match"。
     if (group.hasAttribute('data-rm-answer')) for (const node of own(group, '[data-rm-match]')) {
         if (node !== group && !node.hasAttribute('data-rm-show') && !String(node.getAttribute('data-rm-match') || '').trim()) node.setAttribute('data-rm-show', 'match');
@@ -1470,6 +1529,7 @@ function syncState(state) {
         group.setAttribute('data-rm-index', String(state.index));
         style(state, group, '--rm-index', String(state.index));
         style(state, group, '--rm-pages', String(total));
+        syncNumberMirror(state, state.index);
         state.pages.forEach((page, offset) => {
             const current = offset + 1 === state.index;
             setBehaviorNodeVisible(page, current);
@@ -1506,6 +1566,7 @@ function syncState(state) {
         }
         const needed = [...counts.values()].filter(value => value > 1).reduce((sum, value) => sum + Math.floor(value / 2), 0);
         style(state, group, '--rm-count', String(state.pairs.length));
+        syncNumberMirror(state, state.pairs.length);
         setFlag(group, 'data-rm-done', needed > 0 && state.pairs.length >= needed);
         drawLines(state);
     } else if (type === 'turn') {
@@ -1517,12 +1578,14 @@ function syncState(state) {
         style(state, group, '--rm-p', String((angle / 360).toFixed(4)));
         state.progress = angle / 360;
         if (state.stops) group.setAttribute('data-rm-index', String(state.stopIndex)); else group.removeAttribute('data-rm-index');
+        if (state.stops) syncNumberMirror(state, state.stopIndex);
         const answer = String(group.getAttribute('data-rm-answer') || '').trim();
         if (answer !== '' && state.stops) setFlag(group, 'data-rm-match', Number(answer) === state.stopIndex);
     } else if (type === 'sequence') {
         const keys = own(group, '[data-rm-code]');
         if (state.entered.length) group.setAttribute('data-rm-seq', state.entered.join(' ')); else group.removeAttribute('data-rm-seq');
         style(state, group, '--rm-count', String(state.entered.length));
+        syncNumberMirror(state, state.entered.length);
         if (state.answer.length) setFlag(group, 'data-rm-match', state.entered.length === state.answer.length && state.entered.every((item, index) => state.answer[index] === item));
         else setFlag(group, 'data-rm-done', keys.length > 0 && keys.every(key => state.pressed.has(key)));
         for (const key of keys) {
@@ -1916,7 +1979,7 @@ export function releaseBehaviorGroup(root, group) {
         node.style.setProperty('display', 'none');
     }
     if (state) restoreStateUp(state);
-    restoreStepValue(state);
+    restoreNumberMirror(state);
     try { releaseStateCarriers(state?.root || root, group); } catch { /* 撤不掉就留着 */ }
     if (group.hasAttribute(PROGRAM_ATTR)) clearProgramMark(group);
     if (state?.attrProgram) {
@@ -1973,7 +2036,7 @@ function scheduleOnDemandRelay(root, target) {
 function relayGroupLater(root, group, control = null) {
     const run = () => {
         if (!group.isConnected || !root.isConnected) return;
-        void import('./behaviorRelay.js?rmv=1.72.2').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
+        void import('./behaviorRelay.js?rmv=1.72.3').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
     };
     const idle = globalThis.requestIdleCallback;
     if (typeof idle === 'function') idle(run, { timeout: 800 }); else setTimeout(run, 120);
@@ -2079,4 +2142,4 @@ configureBehaviorExtras({ own, first, style, unstyle, setFlag, enableControl, re
 // 跨面继承按聊天分开记：聊天键从存储模块拿，拿不到时所有面共用一份。
 let carryChatKeyReader = null;
 configureCarryChatKey(() => carryChatKeyReader?.() || '');
-import('../storage.js?rmv=1.72.2').then(module => { carryChatKeyReader = () => module.getCurrentChatKey?.() || ''; }).catch(() => {});
+import('../storage.js?rmv=1.72.3').then(module => { carryChatKeyReader = () => module.getCurrentChatKey?.() || ''; }).catch(() => {});
