@@ -1,29 +1,29 @@
-import { paletteRecipeFor } from '../paletteRecipes.js?rmv=1.72.4';
-import { recordInteractionMethods } from '../interactionMethodLedger.js?rmv=1.72.4';
-import { roleColorFaces, setRoleColorVariant, inspectRoleColorReadability } from '../roleColorVariants.js?rmv=1.72.4';
-import { interactionRecipesFor } from '../interactionRecipes.js?rmv=1.72.4';
+import { paletteRecipeFor } from '../paletteRecipes.js?rmv=1.72.5';
+import { recordInteractionMethods } from '../interactionMethodLedger.js?rmv=1.72.5';
+import { roleColorFaces, setRoleColorVariant, inspectRoleColorReadability } from '../roleColorVariants.js?rmv=1.72.5';
+import { interactionRecipesFor } from '../interactionRecipes.js?rmv=1.72.5';
 // Split from outputSanitizer.js — toolsChrome.
-import { trackMirrorAnimations, pruneMirrorAnimationVisibility } from '../animationVisibility.js?rmv=1.72.4';
-import { installPressFeedback } from './pressFeedback.js?rmv=1.72.4';
-import { installReadabilityPolish } from './readabilityPolish.js?rmv=1.72.4';
-import { hideLeakedAtmosphereThink } from './atmosphereThinkLeak.js?rmv=1.72.4';
+import { trackMirrorAnimations, pruneMirrorAnimationVisibility } from '../animationVisibility.js?rmv=1.72.5';
+import { installPressFeedback } from './pressFeedback.js?rmv=1.72.5';
+import { installReadabilityPolish } from './readabilityPolish.js?rmv=1.72.5';
+import { hideLeakedAtmosphereThink } from './atmosphereThinkLeak.js?rmv=1.72.5';
 
-import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.72.4';
-import { installMirrorUpdateMenuHook } from '../mirrorUpdateMenu.js?rmv=1.72.4';
-import { placeFacePager, facePagerDetails, removeFacePager, cleanupFacePagers } from '../facePagerPlacement.js?rmv=1.72.4';
-import { isTextPresentation } from '../presentationMode.js?rmv=1.72.4';
-import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.72.4';
-import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=1.72.4';
-import { getCurrentChatKey } from '../storage.js?rmv=1.72.4';
-import { getSanitizedRabbitMirrorFaceProof } from '../multifaceProof.js?rmv=1.72.4';
-import { bindRabbitMirrorAvatarRoot } from '../chatAvatars.js?rmv=1.72.4';
+import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.72.5';
+import { installMirrorUpdateMenuHook } from '../mirrorUpdateMenu.js?rmv=1.72.5';
+import { placeFacePager, facePagerDetails, removeFacePager, cleanupFacePagers } from '../facePagerPlacement.js?rmv=1.72.5';
+import { isTextPresentation } from '../presentationMode.js?rmv=1.72.5';
+import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.72.5';
+import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=1.72.5';
+import { getCurrentChatKey } from '../storage.js?rmv=1.72.5';
+import { getSanitizedRabbitMirrorFaceProof } from '../multifaceProof.js?rmv=1.72.5';
+import { bindRabbitMirrorAvatarRoot } from '../chatAvatars.js?rmv=1.72.5';
 import {
     captureTheaterFavoriteFromRoot,
     openTheaterFavoriteLibrary,
     toggleTheaterFavorite,
     isTheaterFavoriteHtml,
-} from '../theaterFavorites.js?rmv=1.72.4';
-import { FACE_SWIPE_FULL_MESSAGE, faceSwipeBarIntent, fallbackFaceSwipeView, multifaceFacePagerView } from '../swipeVersions.js?rmv=1.72.4';
+} from '../theaterFavorites.js?rmv=1.72.5';
+import { FACE_SWIPE_FULL_MESSAGE, faceSwipeBarIntent, fallbackFaceSwipeView, multifaceFacePagerView } from '../swipeVersions.js?rmv=1.72.5';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -32,8 +32,8 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from '../feedbackCat.js?rmv=1.72.4';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.72.4';
+} from '../feedbackCat.js?rmv=1.72.5';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.72.5';
 import {
     FAVORITE_MULTIPLIER_MAX,
     FAVORITE_MULTIPLIER_MIN,
@@ -55,7 +55,7 @@ import {
     setFavoriteMultiplier,
     toggleBlacklistItem,
     toggleFavoriteItem,
-} from '../blacklist.js?rmv=1.72.4';
+} from '../blacklist.js?rmv=1.72.5';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -79,11 +79,11 @@ import {
     isInsideChatMessage,
     isMaintenanceRabbitEnabled,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.72.4';
-import { getAvailableHostChat, getRawAssistantMessageForRenderedRoot } from './scriptedInteractionRescue.js?rmv=1.72.4';
-import { ORPHAN_STATE_ATTR, attachOrphanStateToggle, isOrphanStateWired, rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.72.4';
-import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.72.4';
-import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=1.72.4';
+} from './runtime.js?rmv=1.72.5';
+import { getAvailableHostChat, getRawAssistantMessageForRenderedRoot } from './scriptedInteractionRescue.js?rmv=1.72.5';
+import { ORPHAN_STATE_ATTR, attachOrphanStateToggle, isOrphanStateWired, rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.72.5';
+import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.72.5';
+import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=1.72.5';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     FEEDBACK_HISTORY_EVENT,
@@ -106,8 +106,8 @@ import {
     rabbitMirrorLanguageBalance,
     scheduleCurrentHighConfidenceTextRepair,
     setMaintenanceRabbitState,
-} from './diagnostics.js?rmv=1.72.4';
-import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=1.72.4';
+} from './diagnostics.js?rmv=1.72.5';
+import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=1.72.5';
 import {
     MAINTENANCE_FINDING_STAGE_LABELS,
     beginMaintenanceRepairRun,
@@ -127,19 +127,19 @@ import {
     runMaintenanceRevealClipRepair,
     runMaintenanceUserRepair,
     triggerDiagnosticForMaintenanceRoot,
-} from './maintenanceInspect.js?rmv=1.72.4';
+} from './maintenanceInspect.js?rmv=1.72.5';
 import {
     getRabbitMirrorFacePosition,
     installMaintenanceHorizontalClipOpenRescue,
     repairLegacyMaintenanceMobileStateRows,
-} from './layoutRescue.js?rmv=1.72.4';
+} from './layoutRescue.js?rmv=1.72.5';
 import {
     getMessageIndexFromMirrorNode,
     installMaintenanceAutoSafeOpenPatrol,
     installManagedRabbitMirrorTools,
     pruneMaintenanceAutoSafeOpenBindings,
     scheduleMaintenanceAutoSafeForRoot,
-} from './lifecycle.js?rmv=1.72.4';
+} from './lifecycle.js?rmv=1.72.5';
 
 installMirrorUpdateMenuHook();
 
@@ -682,7 +682,7 @@ function rabbitMirrorExternalGenerationNotice(root, kind = 'maintenance') {
 const RESAY_CHOOSER_ATTR = 'data-rm-resay-chooser';
 
 const RESAY_PICK_MAX = Object.freeze({ theme: 3, format: 2 });
-const EXTERNAL_STORE_MODULE = '../externalWorldBook/store.js?rmv=1.72.4';
+const EXTERNAL_STORE_MODULE = '../externalWorldBook/store.js?rmv=1.72.5';
 
 // 纯点菜里的题库点选。默认只显示已选项；点「浏览」才展开列表。
 // 来源可切换：内置题库（按大组浏览 / 搜索）或已导入并启用的母本库。
@@ -2481,7 +2481,7 @@ function beginHostWorkTiming(name){
 }
 
 function loadMirrorImageModule() {
-    if (!mirrorImageModule) mirrorImageModule = import('../imageUi.js?rmv=1.72.4').catch(error => { mirrorImageModule = null; throw error; });
+    if (!mirrorImageModule) mirrorImageModule = import('../imageUi.js?rmv=1.72.5').catch(error => { mirrorImageModule = null; throw error; });
     return mirrorImageModule;
 }
 
@@ -2790,19 +2790,19 @@ function installUnifiedMirrorTools(root) {
     if (!summary) return;
     if (isTheaterFavoriteSurface(root)) {
         stripTheaterFavoriteTitleChrome(root);
-        void import('../materialTexture.js?rmv=1.72.4').then(module => { if (root.isConnected) module.applyMaterialTextures(root); }).catch(() => {});
-        void import('../pixelSprites.js?rmv=1.72.4').then(module => { if (root.isConnected) module.applyPixelSprites(root); }).catch(() => {});
+        void import('../materialTexture.js?rmv=1.72.5').then(module => { if (root.isConnected) module.applyMaterialTextures(root); }).catch(() => {});
+        void import('../pixelSprites.js?rmv=1.72.5').then(module => { if (root.isConnected) module.applyPixelSprites(root); }).catch(() => {});
         void loadMirrorImageModule().then(module => { if (root.isConnected) return module.mountMirrorImage(root); }).catch(() => {});
         // 收藏里只把当时画好、存在本机的内置生图放回去，从不发生图请求。
         if (root.querySelector?.('[data-rm-draw-frame]')) {
-            void import('../builtinImage.js?rmv=1.72.4').then(module => { if (root.isConnected) module.restoreSavedBuiltinImages(root); }).catch(() => {});
+            void import('../builtinImage.js?rmv=1.72.5').then(module => { if (root.isConnected) module.restoreSavedBuiltinImages(root); }).catch(() => {});
         }
         return;
     }
     // 材质纹理（实验性）：开着就把模型写了描述的地方铺上；关着就撤掉。
-    void import('../materialTexture.js?rmv=1.72.4').then(module => { if (root.isConnected) module.applyMaterialTextures(root); }).catch(() => {});
+    void import('../materialTexture.js?rmv=1.72.5').then(module => { if (root.isConnected) module.applyMaterialTextures(root); }).catch(() => {});
     // 字母像素画：模型用字母写的小人、小猫，画成像素方块。
-    void import('../pixelSprites.js?rmv=1.72.4').then(module => { if (root.isConnected) module.applyPixelSprites(root); }).catch(() => {});
+    void import('../pixelSprites.js?rmv=1.72.5').then(module => { if (root.isConnected) module.applyPixelSprites(root); }).catch(() => {});
     const host = ensureRabbitMirrorToolHost(summary);
     const actions = [];
     if (roleColorFaces(root).length) {
@@ -2821,7 +2821,7 @@ function installUnifiedMirrorTools(root) {
     actions.push({ id: 'resay', label: '🔄 重说', run: (_event, opener) => openRabbitMirrorResayChooser(root, opener) });
     if (mirrorFaceCanContinue(root)) {
         actions.push({ id: 'continue', label: '✍️ 续写', run: () => {
-            void import('../independentApi/mount.js?rmv=1.72.4').then(module => module.continueIndependentLongText(root))
+            void import('../independentApi/mount.js?rmv=1.72.5').then(module => module.continueIndependentLongText(root))
                 .catch(() => globalThis.toastr?.error?.('续写没有写上，原来的正文还在。'));
         } });
     }
@@ -2844,11 +2844,11 @@ function installUnifiedMirrorTools(root) {
             .catch(() => globalThis.toastr?.warning?.('生图面板未能打开，请重新打开后再试。'));
     } });
     actions.push({ id: 'theater-snapshot', label: '📷 快拍', run: () => {
-        void import('../theaterSnapshot.js?rmv=1.72.4').then(module => module.openTheaterSnapshot())
+        void import('../theaterSnapshot.js?rmv=1.72.5').then(module => module.openTheaterSnapshot())
             .catch(error => globalThis.toastr?.warning?.(String(error?.message || '快拍无法打开。')));
     } });
     actions.push({ id: 'theater-favorite-library', label: '📖 收藏夹', run: () => {
-        void import('../independentApi.js?rmv=1.72.4').then(module =>
+        void import('../independentApi.js?rmv=1.72.5').then(module =>
             openTheaterFavoriteLibrary((container, record) => module.hydrateIndependentFavoriteHtml(container, record)))
             .catch(error => globalThis.toastr?.warning?.(String(error?.message || '无法打开收藏夹。')));
     } });
@@ -2863,7 +2863,7 @@ function installUnifiedMirrorTools(root) {
     if (root.querySelector?.('[data-rm-draw-frame]')) {
         // 开着内置生图：补画缺的图；关着：只把本机已存的图放回去，不请求生图。
         const drawNew = getSettings().builtinImageEnabled === true;
-        void import('../builtinImage.js?rmv=1.72.4').then(module => {
+        void import('../builtinImage.js?rmv=1.72.5').then(module => {
             if (!root.isConnected) return;
             if (drawNew) module.fillBuiltinImageFrames(root);
             else module.restoreSavedBuiltinImages(root);

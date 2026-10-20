@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.72.4';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.72.4';
-import { builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.72.4';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.72.4';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.72.4';
-import { tidyImagePayload } from './imageTagTidy.js?rmv=1.72.4';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.72.4';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.72.4';
+import { getSettings } from './settings.js?rmv=1.72.5';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.72.5';
+import { builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.72.5';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.72.5';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.72.5';
+import { tidyImagePayload } from './imageTagTidy.js?rmv=1.72.5';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.72.5';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.72.5';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -33,6 +33,26 @@ function characterGroup() {
     const ctx = getContext();
     const person = ctx.characters?.[ctx.characterId] || ctx.character || {};
     return String(person.name || ctx.name2 || '').trim() || '兔子镜';
+}
+
+// 画面说明写在这一面最后的 <div data-rm-draw-notes="N" hidden> 里（被服务商审核截断时只丢图、不丢正文）：
+// 按编号搬回同一面里的图框 N，后面读提示词、人物外貌的地方都照旧从图框里读。图框里已经写了提示词的不动。
+export function adoptDrawNotes(root) {
+    if (!root?.querySelectorAll) return 0;
+    let moved = 0;
+    for (const notes of [...root.querySelectorAll('[data-rm-draw-notes]')]) {
+        const number = String(notes.getAttribute('data-rm-draw-notes') || '1').trim() || '1';
+        const scope = notes.closest?.('details') || root;
+        const frame = [...scope.querySelectorAll('[data-rm-draw-frame]')].find(node => String(node.getAttribute('data-rm-draw-frame') || '1').trim() === number);
+        if (frame && !frame.querySelector('[data-rm-draw-prompt]')) {
+            const parts = [...notes.children].filter(node => node.matches?.('[data-rm-draw-prompt],[data-rm-draw-tags],[data-rm-draw-char],[data-rm-draw-char-tags]'));
+            for (const part of parts) part.hidden = true;
+            frame.prepend(...parts);
+            if (parts.length) moved += 1;
+        }
+        notes.remove();
+    }
+    return moved;
 }
 
 function readPrompt(frame) {
@@ -663,6 +683,7 @@ function ensureFrameBox(frame) {
 // 关掉内置生图只是不再画新图：已经画好、存在本机的图照样放回图框，不发任何请求。
 export function restoreSavedBuiltinImages(root) {
     if (!root?.querySelectorAll) return 0;
+    adoptDrawNotes(root);
     let restored = 0;
     for (const frame of root.querySelectorAll('[data-rm-draw-frame]')) {
         if (isRabbitMirrorLinkedAvatarFrame(frame)) continue;
@@ -691,6 +712,7 @@ export function restoreSavedBuiltinImages(root) {
 
 export function fillBuiltinImageFrames(root) {
     if (getSettings().builtinImageEnabled !== true || !root?.querySelectorAll) return;
+    adoptDrawNotes(root);
     // 一面里有几个图框就画几张（比如分镜每格一张），每个图框各自存档、各自重试。
     for (const frame of root.querySelectorAll('[data-rm-draw-frame]')) {
         if (isRabbitMirrorLinkedAvatarFrame(frame)) continue;
@@ -714,6 +736,7 @@ function versionsOf(record) {
 
 export function listBuiltinImageFrames(root) {
     if (!root?.querySelectorAll) return [];
+    adoptDrawNotes(root);
     const list = [];
     for (const frame of root.querySelectorAll('[data-rm-draw-frame]')) {
         if (isRabbitMirrorLinkedAvatarFrame(frame)) continue;
