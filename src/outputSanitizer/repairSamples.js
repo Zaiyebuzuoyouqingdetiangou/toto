@@ -1,10 +1,10 @@
 // 待修样本箱：维修兔「认不出写法」或「修了还是没反应」的那一面，把写法骨架存一份在本机，设置里一键导出。
 // 骨架里没有聊天正文（文字全是占位），只有结构、标识和 CSS。只存在本机，不会自动发出去。
 // 容量：最多 40 面、总共约 2 MB，超了先挤掉最早的；同一面（骨架相同）只记一份，更新原因和次数。
-import { hashText } from '../independentApi/runtime.js?rmv=1.72.8';
-import { RUNTIME_VERSION } from './runtime.js?rmv=1.72.8';
-import { maskFaceText } from './writingSkeleton.js?rmv=1.72.8';
-import { inspectBehaviorDialect } from './behaviorDialect.js?rmv=1.72.8';
+import { hashText } from '../independentApi/runtime.js?rmv=1.72.9';
+import { RUNTIME_VERSION } from './runtime.js?rmv=1.72.9';
+import { maskFaceText } from './writingSkeleton.js?rmv=1.72.9';
+import { inspectBehaviorDialect } from './behaviorDialect.js?rmv=1.72.9';
 
 export const REPAIR_SAMPLES_KEY = 'rabbit_mirror_repair_samples:v1';
 export const REPAIR_SAMPLES_EVENT = 'rabbitmirror:repair-samples';
@@ -12,10 +12,13 @@ const MAX_ENTRIES = 40;
 const MAX_BYTES = 2 * 1024 * 1024;
 const MAX_SKELETON_CHARS = 120000;
 
+// 插件自己的占位面（生成失败那张卡，按钮是找回旧兔子镜／重新生成／挨打猫）不是模型写的：旧版本误记的也不再列出、不导出。
+const PLUGIN_PLACEHOLDER = /rabbit-mirror-external-placeholder|rabbit-mirror-external-error-actions/;
 function read() {
     try {
         const value = JSON.parse(globalThis.localStorage?.getItem(REPAIR_SAMPLES_KEY) || 'null');
-        return value && typeof value === 'object' && Array.isArray(value.entries) ? value : { version: 1, entries: [] };
+        if (!value || typeof value !== 'object' || !Array.isArray(value.entries)) return { version: 1, entries: [] };
+        return { ...value, entries: value.entries.filter(entry => !PLUGIN_PLACEHOLDER.test(String(entry?.rendered || ''))) };
     } catch { return { version: 1, entries: [] }; }
 }
 function write(box) {
@@ -42,6 +45,7 @@ export function clearRepairSamples() { try { globalThis.localStorage?.removeItem
  */
 export function recordRepairSample(root, { trigger = 'patrol', reason = '', controls = [], skeleton = null } = {}) {
     if (!skeleton || (!skeleton.source && !skeleton.rendered)) return null;
+    if (PLUGIN_PLACEHOLDER.test(String(skeleton.rendered || ''))) return null;
     const source = String(skeleton.source || '').slice(0, MAX_SKELETON_CHARS);
     const rendered = String(skeleton.rendered || '').slice(0, MAX_SKELETON_CHARS);
     const id = hashText(`${source}\u0000${rendered}`);

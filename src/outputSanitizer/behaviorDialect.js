@@ -1,6 +1,6 @@
-import { behaviorShowTokens, ownBehaviorShows } from './behaviorResults.js?rmv=1.72.8';
-import { behaviorStyleText } from './behaviorStateMirror.js?rmv=1.72.8';
-import { collectStateCarriers, setBridgedState } from './behaviorStateBridge.js?rmv=1.72.8';
+import { behaviorShowTokens, ownBehaviorShows } from './behaviorResults.js?rmv=1.72.9';
+import { behaviorStyleText } from './behaviorStateMirror.js?rmv=1.72.9';
+import { collectStateCarriers, setBridgedState } from './behaviorStateBridge.js?rmv=1.72.9';
 
 // 插件写法「方言表」：模型写的插件交互，意思对、写法和标准不一样的那些情况，集中在这里认。
 // 每一条只做三件事：怎么认出来、按什么标准写法去理解、诊断里怎么说。不新增内容、不猜目标。
@@ -9,6 +9,7 @@ import { collectStateCarriers, setBridgedState } from './behaviorStateBridge.js?
 export const BEHAVIOR_DIALECTS = Object.freeze([
     { id: 'remote-toggle', label: '开关按钮写在开关区域外', note: '这一面只有一个开关区域时，区域外的开关按钮归它管。' },
     { id: 'remote-motion', label: '播放钮、进度滑杆写在动画区域外', note: '这一面只有一个动画区域、区域里没写这类控件时，区域外的归它管；滑杆只认唯一的一个。' },
+    { id: 'motion-progress', label: '播放器只有进度条和播放键', note: '动画区域里没写会动的部件：播放让进度条自己往前走、再按暂停；播放键两边没写动作的按钮按位置当快退／快进。' },
     { id: 'motion-numeric', label: '动画区域没写真正的动画', note: '部件只用 --pos、left 这类数值摆好了位置：滑杆按比例前进后退，播放钮从起点放一遍。' },
     { id: 'named-single-toggle', label: '唯一的开关起了名字，内容却写 on／!on', note: '这个开关开着就算 on。' },
     { id: 'turn-prefixed-stops', label: '旋钮档位写成 item0、stop1 这种「名字＋号码」', note: '同一名字的号码对上当前档位；号码从 1 起、最大正好是档位数时按第几档算。' },
@@ -285,7 +286,7 @@ export function setBridgedCssWord(node, owner, word, on) {
 // ——— 诊断：哪些写法对不上（静态检查，不点真实控件）———
 
 const COMMON_KEYS = ['changed', 'active', 'match', 'done', 'miss', 'placed'];
-const CONTROL_ATTRS = ['reset', 'fire', 'play', 'reverse', 'prev', 'next', 'step', 'place', 'return', 'move', 'toggle', 'pick', 'goto', 'roll', 'end', 'code', 'knob', 'left', 'right', 'tap', 'charge', 'qte', 'peek', 'spoiler'];
+const CONTROL_ATTRS = ['reset', 'fire', 'play', 'reverse', 'prev', 'next', 'step', 'place', 'return', 'move', 'toggle', 'pick', 'goto', 'roll', 'end', 'code', 'knob', 'seek', 'left', 'right', 'tap', 'charge', 'qte', 'peek', 'spoiler'];
 const KNOWN_PART_ATTRS = new Set([...CONTROL_ATTRS, 'ui', 'part', 'show', 'item', 'slot', 'page', 'cover', 'canvas', 'surface', 'hold', 'result', 'when',
     'answer', 'stops', 'index', 'on', 'picked', 'active', 'done', 'match', 'miss', 'feedback', 'seq', 'armed', 'face', 'key', 'value', 'target',
     'card', 'at', 'clock', 'duration', 'memory', 'recall', 'axis', 'manual', 'window', 'count', 'zone', 'period', 'keep', 'sticky', 'swiped', 'swiped-left', 'swiped-right', 'seen', 'revealed', 'seconds']);
@@ -418,7 +419,9 @@ export function inspectBehaviorDialect(root) {
             const adopted = motionOutsideControls(group);
             if (adopted.buttons.length || adopted.ranges.length) used.add('remote-motion');
             if (group.getAttribute('data-rm-motion-equalizer') === 'true') used.add('motion-equalizer');
-            if (motionCanMove(root, group) === false) result.staticMotion += 1;
+            const canMove = motionCanMove(root, group);
+            if (canMove === false && own(group, '[data-rm-play]').length && group.querySelector('input[type="range"]')) used.add('motion-progress');
+            else if (canMove === false) result.staticMotion += 1;
             else if (own(group, '[data-rm-part]').some(part => motionNumericProperties(part).length)) {
                 try { if (!authoredAnimations(group).length) used.add('motion-numeric'); } catch {}
             }

@@ -133,6 +133,19 @@ assert.equal(await shown('.item'), false); checks++;
 await page.evaluate(() => rescue.installIntelligentInteractionRescue(document.querySelector('details')));
 assert.equal(await shown('.item'), false); checks++;
 
+// 6 有声书：动画区域只有进度条和播放键，两边两个没写动作的按钮
+await mount(`<details open><summary>t</summary><div data-rm-ui="motion"><input type="range" min="0" max="100" value="50">
+ <div class="bar"><button type="button" id="back">⏮</button><button type="button" data-rm-play>▶</button><button type="button" id="fwd">⏭</button></div>
+ <div data-rm-part style="display:none"></div></div></details>`);
+const val = () => page.evaluate(() => Number(document.querySelector('input[type=range]').value));
+assert.equal(await page.evaluate(() => document.getElementById('back').getAttribute('data-rm-seek') + document.getElementById('fwd').getAttribute('data-rm-seek')), '-11'); checks++;
+await page.click('#fwd'); assert.equal(await val(), 60); checks++;
+await page.click('#back'); await page.click('#back'); assert.equal(await val(), 40); checks++;
+await page.click('[data-rm-play]'); await page.waitForTimeout(900);
+assert.ok(await val() > 40); checks++;
+await page.click('[data-rm-play]'); const paused = await val(); await page.waitForTimeout(400);
+assert.equal(await val(), paused); checks++;
+
 assert.deepEqual(pageErrors, []);
 console.log(JSON.stringify({ checks }));
 await browser.close(); server.close();
