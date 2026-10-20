@@ -1,11 +1,12 @@
-import { behaviorShowTokens, clearForcedActive, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.73.1';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.73.1';
-import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.73.1';
-import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState, holdAncestorStateClass } from './behaviorStateMirror.js?rmv=1.73.1';
-import { syncStateCarriers, releaseStateCarriers, unwindStaleBridges } from './behaviorStateBridge.js?rmv=1.73.1';
-import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.73.1';
-import { addDialectStateKeys, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup, toggleCssBridges, setBridgedCssWord } from './behaviorDialect.js?rmv=1.73.1';
-import { EXTRA_TYPES, EXTRA_CONTROLS, EXTRA_CONTROL_ATTRS, configureBehaviorExtras, configureCarryChatKey, extraTypeFits, prepareExtra, destroyExtra, extraAction, extraSync, extraKeys, extraReset, extraPointerDown, extraPointerMove, extraPointerUp, extraHoldStart, extraHoldEnd, applyCarriedState, saveCarriedState, recalledKeys, carryMemoryName } from './behaviorExtras.js?rmv=1.73.1';
+import { behaviorShowTokens, clearForcedActive, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.73.2';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.73.2';
+import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.73.2';
+import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState, holdAncestorStateClass } from './behaviorStateMirror.js?rmv=1.73.2';
+import { syncStateCarriers, releaseStateCarriers, unwindStaleBridges } from './behaviorStateBridge.js?rmv=1.73.2';
+import { findUnwrittenWordStates, wordStateHost, setWordState } from './wordStateAttr.js?rmv=1.73.2';
+import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.73.2';
+import { addDialectStateKeys, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup, toggleCssBridges, setBridgedCssWord } from './behaviorDialect.js?rmv=1.73.2';
+import { EXTRA_TYPES, EXTRA_CONTROLS, EXTRA_CONTROL_ATTRS, configureBehaviorExtras, configureCarryChatKey, extraTypeFits, prepareExtra, destroyExtra, extraAction, extraSync, extraKeys, extraReset, extraPointerDown, extraPointerMove, extraPointerUp, extraHoldStart, extraHoldEnd, applyCarriedState, saveCarriedState, recalledKeys, carryMemoryName } from './behaviorExtras.js?rmv=1.73.2';
 
 export { behaviorToggleKey, motionOutsideControls };
 
@@ -543,6 +544,26 @@ function prepareStageAttr(state) {
     state.stageHost = host;
 }
 
+// 青铜烛盏：滑杆 0–100，样式却写 [data-rm-mode="dim"] .画、[data-rm-mode="candle"] .画（词不是数），没人写这个属性。
+// 按滑杆位置把这几个词平分：拖到哪一段就写哪个词，写在同时包住滑杆区域和这些画的那一层上。
+function prepareWordStage(state) {
+    state.wordStage = null;
+    if (!first(state.group, 'input[type="range"]')) return;
+    for (const [name, info] of findUnwrittenWordStates(state.root)) {
+        const host = wordStateHost(state.root, state.group, info.targets);
+        if (!host) continue;
+        state.wordStage = { name, values: info.values, host };
+        return;
+    }
+}
+
+function syncWordStage(state, p) {
+    const stage = state.wordStage;
+    if (!stage?.host?.isConnected || !Number.isFinite(p)) return;
+    const index = Math.min(stage.values.length - 1, Math.max(0, Math.floor(p * stage.values.length)));
+    setWordState(stage.host, stage.name, stage.values[index]);
+}
+
 function syncStageAttr(state, value) {
     if (!state.stageAttr || !Number.isFinite(value)) return;
     state.stageHost.setAttribute(state.stageAttr, String(Math.round(value)));
@@ -797,6 +818,7 @@ function inputChange(state, input, userAction = false) {
         style(state, group, '--rm-p', String(p));
         style(state, group, '--rm-value', String(value));
         syncStageAttr(state, value);
+        syncWordStage(state, p);
         syncNumberMirror(state, value);
     } else if (type === 'reveal') reveal(state, p);
     else if (type === 'view') {
@@ -955,7 +977,7 @@ function prepare(binding, group) {
     if (type === 'view') style(state, group, 'overflow', 'auto');
     if (type === 'effect') for (const animation of animations(state)) { animation.pause(); animation.currentTime = 0; }
     if (type === 'effect') prepareKeyedParts(state);
-    if (type === 'adjust') prepareStageAttr(state);
+    if (type === 'adjust') { prepareStageAttr(state); prepareWordStage(state); }
     // 「答对了才出现」写成子元素上一个空的 data-rm-match（小徽章自带 display:none）：当成 data-rm-show="match"。
     if (group.hasAttribute('data-rm-answer')) for (const node of own(group, '[data-rm-match]')) {
         if (node !== group && !node.hasAttribute('data-rm-show') && !String(node.getAttribute('data-rm-match') || '').trim()) node.setAttribute('data-rm-show', 'match');
@@ -2102,7 +2124,7 @@ function scheduleOnDemandRelay(root, target) {
 function relayGroupLater(root, group, control = null) {
     const run = () => {
         if (!group.isConnected || !root.isConnected) return;
-        void import('./behaviorRelay.js?rmv=1.73.1').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
+        void import('./behaviorRelay.js?rmv=1.73.2').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
     };
     const idle = globalThis.requestIdleCallback;
     if (typeof idle === 'function') idle(run, { timeout: 800 }); else setTimeout(run, 120);
@@ -2208,4 +2230,4 @@ configureBehaviorExtras({ own, first, style, unstyle, setFlag, enableControl, re
 // 跨面继承按聊天分开记：聊天键从存储模块拿，拿不到时所有面共用一份。
 let carryChatKeyReader = null;
 configureCarryChatKey(() => carryChatKeyReader?.() || '');
-import('../storage.js?rmv=1.73.1').then(module => { carryChatKeyReader = () => module.getCurrentChatKey?.() || ''; }).catch(() => {});
+import('../storage.js?rmv=1.73.2').then(module => { carryChatKeyReader = () => module.getCurrentChatKey?.() || ''; }).catch(() => {});

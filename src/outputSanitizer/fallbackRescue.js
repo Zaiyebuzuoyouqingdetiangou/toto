@@ -1,10 +1,12 @@
 // Split from outputSanitizer.js — fallbackRescue.
-import { RADIO_BRANCH_CONTROL_ATTR, installRadioBranchRepair, applyRadioBranchState, applyRadioProxyState, radioBranchVerificationTargets } from './radioBranchRepair.js?rmv=1.73.1';
+import { RADIO_BRANCH_CONTROL_ATTR, installRadioBranchRepair, applyRadioBranchState, applyRadioProxyState, radioBranchVerificationTargets } from './radioBranchRepair.js?rmv=1.73.2';
 
-import { isBehaviorInteractionOwned, behaviorInlineBaselines } from './behaviorInteractions.js?rmv=1.73.1';
-import { installBingoLineRescue } from './bingoLineRescue.js?rmv=1.73.1';
-import { installSiblingTabRescue, installNumberedStageRescue } from './siblingTabRescue.js?rmv=1.73.1';
-import { installDialLockRescue } from './dialLockRescue.js?rmv=1.73.1';
+import { isBehaviorInteractionOwned, behaviorInlineBaselines } from './behaviorInteractions.js?rmv=1.73.2';
+import { installBingoLineRescue } from './bingoLineRescue.js?rmv=1.73.2';
+import { installSiblingTabRescue, installNumberedStageRescue } from './siblingTabRescue.js?rmv=1.73.2';
+import { installDialLockRescue } from './dialLockRescue.js?rmv=1.73.2';
+import { installWordCycleRescue } from './wordCycleRescue.js?rmv=1.73.2';
+import { installRadioTabMark } from './radioTabMark.js?rmv=1.73.2';
 
 import {
     FEEDBACK_CAT_ATTR,
@@ -12,7 +14,7 @@ import {
     TOOL_ENTRY_HOST_ATTR,
     escapeRegExp,
     getRabbitMirrorLocalStyleElements,
-} from './runtime.js?rmv=1.73.1';
+} from './runtime.js?rmv=1.73.2';
 import {
     CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR,
     CROSS_PARENT_CHECKED_VERIFIED_ATTR,
@@ -97,7 +99,7 @@ import {
     webKit3DFlipInlineStates,
     webKit3DFlipRescueStates,
     webKit3DFlipStyleStates,
-} from './checkedStateRescue.js?rmv=1.73.1';
+} from './checkedStateRescue.js?rmv=1.73.2';
 import {
     EXISTING_INTERACTIVE_SELECTOR,
     RENDERED_BUTTON_ADJACENT_HIDDEN_RESCUE_ATTR,
@@ -124,7 +126,7 @@ import {
     isCollapsedDimensionValue,
     normalizeStylePropertyName,
     parseCssStateSiblingAssignments,
-} from './renderedStateRescue.js?rmv=1.73.1';
+} from './renderedStateRescue.js?rmv=1.73.2';
 import {
     chooseMatchingRawRabbitMirrorRoot,
     detectInteractionCapabilities,
@@ -140,7 +142,7 @@ import {
     installRawMessageSelfMutationRescue,
     preparePseudoTrigger,
     shouldIgnorePseudoToggleEvent,
-} from './scriptedInteractionRescue.js?rmv=1.73.1';
+} from './scriptedInteractionRescue.js?rmv=1.73.2';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     FILL_IN_CHOICE_BLANK_ATTR,
@@ -152,15 +154,15 @@ import {
     diagnosticFindClippingAncestor,
     maintenanceSafeComputedStyle,
     mobileInlineAnnotationRescueStates,
-} from './diagnostics.js?rmv=1.73.1';
-import { installStaticChoiceSelectionFallback } from './choiceRescue.js?rmv=1.73.1';
+} from './diagnostics.js?rmv=1.73.2';
+import { installStaticChoiceSelectionFallback } from './choiceRescue.js?rmv=1.73.2';
 import {
     checkedDeclarationCreatesContentReveal,
     checkedTargetCarriesResultContent,
     pseudoStateTargetSelector,
-} from './maintenanceInspect.js?rmv=1.73.1';
-import { splitCssSelectorList } from './markup.js?rmv=1.73.1';
-import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutResolveCheckedTargets } from './layoutRescue.js?rmv=1.73.1';
+} from './maintenanceInspect.js?rmv=1.73.2';
+import { splitCssSelectorList } from './markup.js?rmv=1.73.2';
+import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutResolveCheckedTargets } from './layoutRescue.js?rmv=1.73.2';
 
 const NESTED_DETAILS_FALLBACK_HANDLER_PROP = '__rabbitMirrorNestedDetailsFallbackHandler';
 
@@ -2216,6 +2218,10 @@ export function installIntelligentInteractionRescue(root) {
     try { installSiblingTabRescue(root); } catch (error) { console.debug('[RabbitMirror] sibling tab rescue failed:', error); }
     try { installNumberedStageRescue(root); } catch (error) { console.debug('[RabbitMirror] numbered stage rescue failed:', error); }
     // 几列「拨动」+ 一位数字的转轮 + 一串密码提示：接成能转的密码锁，对上了就把样式里写的解锁状态打开。
+    // 「拉动锦绦（拨换昼夜室光）」这类没写动作的切换按钮：样式里写好了 [data-xxx="词"] 的几种状态，按一下轮着换。
+    // 一排藏起来的单选页签、样式里没写选中样子：给当前那个描一圈。
+    try { installRadioTabMark(root); } catch (error) { console.debug('[RabbitMirror] radio tab mark failed:', error); }
+    try { installWordCycleRescue(root); } catch (error) { console.debug('[RabbitMirror] word cycle rescue failed:', error); }
     try { installDialLockRescue(root); } catch (error) { console.debug('[RabbitMirror] dial lock rescue failed:', error); }
     try { installBingoLineRescue(root); } catch (error) { console.debug('[RabbitMirror] bingo line rescue failed:', error); }
 }
