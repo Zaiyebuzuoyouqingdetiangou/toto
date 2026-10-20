@@ -1433,6 +1433,13 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar :
   color:inherit !important;
   -webkit-text-fill-color:currentColor !important;
 }
+/* 深色的面：切页条跟着换成深色（按面的底色判断，见 facePagerPlacement.js）。 */
+details + [data-rm-face-swipe-position="bottom"][data-rm-pager-tone="dark"] .rabbit-mirror-face-swipe-bar{
+  background:#24262b !important;
+  color:#e8e6e1 !important;
+  border-color:#5d626b !important;
+  box-shadow:0 2px 8px rgba(0,0,0,.45) !important;
+}
 
 /* Placeholder chrome has no authored scene to sample. Pair its surface and
  * text explicitly; never apply these defaults to completed mirrors. */

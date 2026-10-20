@@ -63,6 +63,39 @@ export function placeFacePager(details, titleHost, position = 'top') {
     footersByFace.set(details, footer);
     facesByFooter.set(footer, details);
     footers.filter(node => node !== footer).forEach(node => node.remove());
+    // 底部切页条跟着这一面的深浅走：深色的面用深色条，不然在深色画面下面挂一块大白条很扎眼。
+    let tone = '';
+    try { tone = faceTone(details); } catch { tone = ''; }
+    if (tone) footer.setAttribute('data-rm-pager-tone', tone); else footer.removeAttribute?.('data-rm-pager-tone');
+}
+
+function parseColor(value) {
+    const match = /rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,\s/]+([\d.]+%?))?\s*\)/.exec(String(value || ''));
+    if (!match) return null;
+    let alpha = match[4] === undefined ? 1 : parseFloat(match[4]) / (String(match[4]).endsWith('%') ? 100 : 1);
+    if (!(alpha > 0.5)) return null;
+    return [Number(match[1]), Number(match[2]), Number(match[3])];
+}
+
+function luminance([r, g, b]) {
+    const channel = value => { const c = value / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+    return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+}
+
+// 这一面的底色：面本身、标题栏、面里第一层铺了底色的块，依次找第一个不透明的；都找不到就不定（用默认浅色条）。
+function faceTone(details) {
+    const view = details?.ownerDocument?.defaultView;
+    if (!view?.getComputedStyle) return '';
+    const candidates = [details, details.querySelector(':scope > summary'),
+        ...[...details.children].filter(node => node.tagName !== 'SUMMARY' && node.tagName !== 'STYLE').slice(0, 3),
+        ...[...details.children].filter(node => node.tagName !== 'SUMMARY' && node.tagName !== 'STYLE').slice(0, 2).flatMap(node => [...node.children].slice(0, 2))];
+    for (const node of candidates) {
+        if (!node) continue;
+        let color = null;
+        try { color = parseColor(view.getComputedStyle(node).backgroundColor); } catch { color = null; }
+        if (color) return luminance(color) < 0.2 ? 'dark' : 'light';
+    }
+    return '';
 }
 
 export function refreshFacePagerPositions(scope, position) {
