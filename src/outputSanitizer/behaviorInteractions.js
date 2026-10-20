@@ -1,11 +1,11 @@
-import { behaviorShowTokens, clearForcedActive, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.72.1';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.72.1';
-import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.72.1';
-import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState, holdAncestorStateClass } from './behaviorStateMirror.js?rmv=1.72.1';
-import { syncStateCarriers, releaseStateCarriers, unwindStaleBridges } from './behaviorStateBridge.js?rmv=1.72.1';
-import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.72.1';
-import { addDialectStateKeys, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup, toggleCssBridges, setBridgedCssWord } from './behaviorDialect.js?rmv=1.72.1';
-import { EXTRA_TYPES, EXTRA_CONTROLS, EXTRA_CONTROL_ATTRS, configureBehaviorExtras, configureCarryChatKey, extraTypeFits, prepareExtra, destroyExtra, extraAction, extraSync, extraKeys, extraReset, extraPointerDown, extraPointerMove, extraPointerUp, extraHoldStart, extraHoldEnd, applyCarriedState, saveCarriedState, recalledKeys, carryMemoryName } from './behaviorExtras.js?rmv=1.72.1';
+import { behaviorShowTokens, clearForcedActive, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.72.2';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.72.2';
+import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.72.2';
+import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState, holdAncestorStateClass } from './behaviorStateMirror.js?rmv=1.72.2';
+import { syncStateCarriers, releaseStateCarriers, unwindStaleBridges } from './behaviorStateBridge.js?rmv=1.72.2';
+import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.72.2';
+import { addDialectStateKeys, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup, toggleCssBridges, setBridgedCssWord } from './behaviorDialect.js?rmv=1.72.2';
+import { EXTRA_TYPES, EXTRA_CONTROLS, EXTRA_CONTROL_ATTRS, configureBehaviorExtras, configureCarryChatKey, extraTypeFits, prepareExtra, destroyExtra, extraAction, extraSync, extraKeys, extraReset, extraPointerDown, extraPointerMove, extraPointerUp, extraHoldStart, extraHoldEnd, applyCarriedState, saveCarriedState, recalledKeys, carryMemoryName } from './behaviorExtras.js?rmv=1.72.2';
 
 export { behaviorToggleKey, motionOutsideControls };
 
@@ -548,6 +548,60 @@ function syncStageAttr(state, value) {
     state.stageHost.setAttribute(state.stageAttr, String(Math.round(value)));
 }
 
+// 种花小院：累积区域，样式却写 [data-rm-step-val="2"] .第二株{display:flex}、[data-rm-step-val="3"] ~ .揭晓卡{display:block}，
+// 驱动只写 data-rm-count，没人写 data-rm-step-val，花和卡片永远藏着。样式里有个驱动不写的 data-xxx="整数"
+// 当前置条件、整数又落在 0…步数里，就把完成的步数同步写过去：后代规则写在区域上，「~」「+」规则写在目标前面的兄弟上。
+const STEP_VALUE_SKIP = /^data-rm-(?:count|done|step|ui|on|active|index|value|picked|match|seq|miss|swiped|peeking|show|part|fire|reset)$/;
+function prepareStepValue(state) {
+    state.stepValue = null;
+    const total = own(state.group, '[data-rm-step]').length;
+    if (!total) return;
+    const found = new Map();
+    for (const rule of localRules(state.root)) for (const piece of rule.selectorText.split(',')) {
+        const match = piece.match(/\[(data-(?!rabbit-)[\w-]+)\s*=\s*["']?(\d+)["']?\s*\]\s*([~+>]?)\s*([^~+>\s][^]*)$/);
+        if (!match || STEP_VALUE_SKIP.test(match[1])) continue;
+        const value = Number(match[2]);
+        if (value > total) continue;
+        if (!found.has(match[1])) found.set(match[1], { values: new Set(), rules: [] });
+        found.get(match[1]).values.add(value);
+        found.get(match[1]).rules.push({ combinator: match[3] || ' ', target: match[4].trim() });
+    }
+    let best = null;
+    for (const [name, info] of found) if (!best || info.values.size > best[1].values.size) best = [name, info];
+    if (!best) return;
+    const [name, info] = best;
+    const hosts = new Set();
+    for (const { combinator, target } of info.rules) {
+        let targets = [];
+        try { targets = [...state.root.querySelectorAll(target)]; } catch { targets = []; }
+        for (const node of targets) {
+            if (combinator === '~' || combinator === '+') {
+                for (let sib = node.previousElementSibling; sib; sib = combinator === '+' ? null : sib.previousElementSibling) {
+                    if (state.group.contains(sib) && sib !== state.group) hosts.add(sib);
+                }
+            } else if (state.group.contains(node) && node !== state.group) hosts.add(combinator === '>' ? node.parentElement : state.group);
+            // 区域外的目标不碰：那多半是别的机关自己的档位。
+        }
+    }
+    hosts.delete(null);
+    if (!hosts.size) return;
+    state.stepValue = { name, hosts: new Map([...hosts].map(node => [node, node.getAttribute(name)])) };
+}
+
+function syncStepValue(state, completed) {
+    if (!state.stepValue) return;
+    for (const node of state.stepValue.hosts.keys()) if (node.isConnected) node.setAttribute(state.stepValue.name, String(completed));
+}
+
+function restoreStepValue(state) {
+    if (!state?.stepValue) return;
+    for (const [node, original] of state.stepValue.hosts) {
+        if (original === null) node.removeAttribute(state.stepValue.name);
+        else node.setAttribute(state.stepValue.name, original);
+    }
+    state.stepValue = null;
+}
+
 function fireKeyedParts(state, button) {
     const parts = state.keyedParts?.get(String(button.getAttribute('data-rm-fire') || '').trim());
     if (!parts?.length) return false;
@@ -655,6 +709,7 @@ function countSteps(state) {
     // 模型常把阶段写成 [data-rm-ui="accumulate"][data-rm-count="2"] .stage{display:flex}：
     // 只有 --rm-count 变量时这些规则一条都对不上，所有阶段一直藏着。计数同时写成属性。
     state.group.setAttribute('data-rm-count', String(completed));
+    syncStepValue(state, completed);
     // A leaf group's result may be a sibling of its buttons. Mirror completion
     // onto their common group so authored descendant CSS can reveal that result.
     // Containers with nested behaviors retain button/count state only: marking
@@ -841,6 +896,7 @@ function prepare(binding, group) {
     if (type === 'effect') for (const animation of animations(state)) { animation.pause(); animation.currentTime = 0; }
     if (type === 'effect') prepareKeyedParts(state);
     if (type === 'adjust') prepareStageAttr(state);
+    if (type === 'accumulate') prepareStepValue(state);
     // 「答对了才出现」写成子元素上一个空的 data-rm-match（小徽章自带 display:none）：当成 data-rm-show="match"。
     if (group.hasAttribute('data-rm-answer')) for (const node of own(group, '[data-rm-match]')) {
         if (node !== group && !node.hasAttribute('data-rm-show') && !String(node.getAttribute('data-rm-match') || '').trim()) node.setAttribute('data-rm-show', 'match');
@@ -1860,6 +1916,7 @@ export function releaseBehaviorGroup(root, group) {
         node.style.setProperty('display', 'none');
     }
     if (state) restoreStateUp(state);
+    restoreStepValue(state);
     try { releaseStateCarriers(state?.root || root, group); } catch { /* 撤不掉就留着 */ }
     if (group.hasAttribute(PROGRAM_ATTR)) clearProgramMark(group);
     if (state?.attrProgram) {
@@ -1916,7 +1973,7 @@ function scheduleOnDemandRelay(root, target) {
 function relayGroupLater(root, group, control = null) {
     const run = () => {
         if (!group.isConnected || !root.isConnected) return;
-        void import('./behaviorRelay.js?rmv=1.72.1').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
+        void import('./behaviorRelay.js?rmv=1.72.2').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
     };
     const idle = globalThis.requestIdleCallback;
     if (typeof idle === 'function') idle(run, { timeout: 800 }); else setTimeout(run, 120);
@@ -2022,4 +2079,4 @@ configureBehaviorExtras({ own, first, style, unstyle, setFlag, enableControl, re
 // 跨面继承按聊天分开记：聊天键从存储模块拿，拿不到时所有面共用一份。
 let carryChatKeyReader = null;
 configureCarryChatKey(() => carryChatKeyReader?.() || '');
-import('../storage.js?rmv=1.72.1').then(module => { carryChatKeyReader = () => module.getCurrentChatKey?.() || ''; }).catch(() => {});
+import('../storage.js?rmv=1.72.2').then(module => { carryChatKeyReader = () => module.getCurrentChatKey?.() || ''; }).catch(() => {});

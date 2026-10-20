@@ -1,9 +1,10 @@
 // Split from outputSanitizer.js — fallbackRescue.
-import { RADIO_BRANCH_CONTROL_ATTR, installRadioBranchRepair, applyRadioBranchState, applyRadioProxyState, radioBranchVerificationTargets } from './radioBranchRepair.js?rmv=1.72.1';
+import { RADIO_BRANCH_CONTROL_ATTR, installRadioBranchRepair, applyRadioBranchState, applyRadioProxyState, radioBranchVerificationTargets } from './radioBranchRepair.js?rmv=1.72.2';
 
-import { isBehaviorInteractionOwned, behaviorInlineBaselines } from './behaviorInteractions.js?rmv=1.72.1';
-import { installBingoLineRescue } from './bingoLineRescue.js?rmv=1.72.1';
-import { installSiblingTabRescue, installNumberedStageRescue } from './siblingTabRescue.js?rmv=1.72.1';
+import { isBehaviorInteractionOwned, behaviorInlineBaselines } from './behaviorInteractions.js?rmv=1.72.2';
+import { installBingoLineRescue } from './bingoLineRescue.js?rmv=1.72.2';
+import { installSiblingTabRescue, installNumberedStageRescue } from './siblingTabRescue.js?rmv=1.72.2';
+import { installDialLockRescue } from './dialLockRescue.js?rmv=1.72.2';
 
 import {
     FEEDBACK_CAT_ATTR,
@@ -11,7 +12,7 @@ import {
     TOOL_ENTRY_HOST_ATTR,
     escapeRegExp,
     getRabbitMirrorLocalStyleElements,
-} from './runtime.js?rmv=1.72.1';
+} from './runtime.js?rmv=1.72.2';
 import {
     CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR,
     CROSS_PARENT_CHECKED_VERIFIED_ATTR,
@@ -96,7 +97,7 @@ import {
     webKit3DFlipInlineStates,
     webKit3DFlipRescueStates,
     webKit3DFlipStyleStates,
-} from './checkedStateRescue.js?rmv=1.72.1';
+} from './checkedStateRescue.js?rmv=1.72.2';
 import {
     EXISTING_INTERACTIVE_SELECTOR,
     RENDERED_BUTTON_ADJACENT_HIDDEN_RESCUE_ATTR,
@@ -123,7 +124,7 @@ import {
     isCollapsedDimensionValue,
     normalizeStylePropertyName,
     parseCssStateSiblingAssignments,
-} from './renderedStateRescue.js?rmv=1.72.1';
+} from './renderedStateRescue.js?rmv=1.72.2';
 import {
     chooseMatchingRawRabbitMirrorRoot,
     detectInteractionCapabilities,
@@ -139,7 +140,7 @@ import {
     installRawMessageSelfMutationRescue,
     preparePseudoTrigger,
     shouldIgnorePseudoToggleEvent,
-} from './scriptedInteractionRescue.js?rmv=1.72.1';
+} from './scriptedInteractionRescue.js?rmv=1.72.2';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     FILL_IN_CHOICE_BLANK_ATTR,
@@ -151,15 +152,15 @@ import {
     diagnosticFindClippingAncestor,
     maintenanceSafeComputedStyle,
     mobileInlineAnnotationRescueStates,
-} from './diagnostics.js?rmv=1.72.1';
-import { installStaticChoiceSelectionFallback } from './choiceRescue.js?rmv=1.72.1';
+} from './diagnostics.js?rmv=1.72.2';
+import { installStaticChoiceSelectionFallback } from './choiceRescue.js?rmv=1.72.2';
 import {
     checkedDeclarationCreatesContentReveal,
     checkedTargetCarriesResultContent,
     pseudoStateTargetSelector,
-} from './maintenanceInspect.js?rmv=1.72.1';
-import { splitCssSelectorList } from './markup.js?rmv=1.72.1';
-import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutResolveCheckedTargets } from './layoutRescue.js?rmv=1.72.1';
+} from './maintenanceInspect.js?rmv=1.72.2';
+import { splitCssSelectorList } from './markup.js?rmv=1.72.2';
+import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutResolveCheckedTargets } from './layoutRescue.js?rmv=1.72.2';
 
 const NESTED_DETAILS_FALLBACK_HANDLER_PROP = '__rabbitMirrorNestedDetailsFallbackHandler';
 
@@ -2214,6 +2215,8 @@ export function installIntelligentInteractionRescue(root) {
     // 一排没写动作的按钮 + 后面同样多块、只显示第一块的内容：按顺序接成分页。
     try { installSiblingTabRescue(root); } catch (error) { console.debug('[RabbitMirror] sibling tab rescue failed:', error); }
     try { installNumberedStageRescue(root); } catch (error) { console.debug('[RabbitMirror] numbered stage rescue failed:', error); }
+    // 几列「拨动」+ 一位数字的转轮 + 一串密码提示：接成能转的密码锁，对上了就把样式里写的解锁状态打开。
+    try { installDialLockRescue(root); } catch (error) { console.debug('[RabbitMirror] dial lock rescue failed:', error); }
     try { installBingoLineRescue(root); } catch (error) { console.debug('[RabbitMirror] bingo line rescue failed:', error); }
 }
 
