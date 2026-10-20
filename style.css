@@ -1255,6 +1255,27 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
     max-width:none !important;
   }
 }
+/* 1.73.0: 外置壳挂在消息里面（正文最后、或正文下面）时就是正文那一栏的一部分：
+ * 宽度直接铺满这一栏，不再量 .mes_text 的位置；电脑端收窄成画面宽度的规则照旧。 */
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"][data-rm-external-anchor="body"],
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"][data-rm-external-anchor="message"],
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"][data-rm-external-anchor="body"][data-rm-independent-external-compact-shell="true"],
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"][data-rm-external-anchor="message"][data-rm-independent-external-compact-shell="true"]{
+  width:100% !important;
+  max-width:100% !important;
+  margin-left:0 !important;
+  margin-right:auto !important;
+}
+@media (min-width:900px){
+  #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"][data-rm-external-anchor="body"][data-rm-independent-external-compact-shell="true"],
+  #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"][data-rm-external-anchor="message"][data-rm-independent-external-compact-shell="true"]{
+    width:var(--rm-external-compact-width, 100%) !important;
+  }
+}
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"][data-rm-external-anchor="body"]{
+  margin-top:10px !important;
+  margin-bottom:4px !important;
+}
 @media (max-width:420px){
   #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"] > summary{
     border-radius:13px !important;

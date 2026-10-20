@@ -175,6 +175,11 @@ function fixture({ placement = 'external', authoredStyle = 'padding: 12px;', bod
         messageBody: element => element?.querySelector('.mes_text') || element,
         getRabbitMirrorExternalPlacementParent: () => projected ? state.projectedParent : null,
         isRabbitMirrorManagedChatSurface: () => projected,
+        // 这组测试检查的是「整条消息外面」这种挂法的量宽；默认的自动挂法另有 externalAnchor.browser.mjs。
+        getSettings: () => ({ independentExternalAnchor: 'outside' }),
+        resolveExternalAnchor: (element, body, setting) => setting === 'outside' ? 'outside' : 'message',
+        hostGenerationLooksActive: () => false,
+        clearDeferredExternalReanchor() {}, scheduleDeferredExternalReanchor() {},
         externalHostAppearsBeforeOwner: () => state.hostBeforeOwner,
         externalFaceDetails: element => element.children.filter(child => child.tagName === 'DETAILS'),
         clearIndependentExternalCompactShellWidth(element) { element.style.removeProperty('--rm-external-compact-width'); },

@@ -1,11 +1,11 @@
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.72.9';
-import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.72.9';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.73.0';
+import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.73.0';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.72.9';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.72.9';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.72.9';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.72.9';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.73.0';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.73.0';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.73.0';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.73.0';
 
 export const MODULE_NAME = 'rabbit_mirror_theater';
 
@@ -187,6 +187,8 @@ export const defaultSettings = Object.freeze({
     independentGenerationTiming: 'auto',
     followDisplayMode: 'inline',
     independentConnectionProfileId: '',
+    // 独立 API 外置兔子镜挂在消息的哪一层：auto（正文画了气泡就进正文，否则正文下面）/ body（一律进正文）/ outside（整条消息外面，老位置）
+    independentExternalAnchor: 'auto',
     // 连接配置没存 Secret 时，它在酒馆里被切到时用的是哪把 key（只记 key 的编号，不记 key 本身）。
     independentConnectionSecretMemo: {},
     independentApiBaseUrl: '',
@@ -356,6 +358,7 @@ export function getSettings() {
     if (!['follow', 'independent'].includes(settings.generationSource)) settings.generationSource = 'follow';
     if (!['inline', 'external'].includes(settings.followDisplayMode)) settings.followDisplayMode = 'inline';
     if (!['external', 'external_then_inline'].includes(settings.independentDisplayMode)) settings.independentDisplayMode = 'external';
+    if (!['auto', 'body', 'outside'].includes(settings.independentExternalAnchor)) settings.independentExternalAnchor = 'auto';
     settings.missingShellScanRange = normalizeMissingShellScanRange(settings.missingShellScanRange);
     settings.independentReadGlobalWorldInfo = settings.independentReadGlobalWorldInfo === true;
     settings.independentConnectionProfileId = String(settings.independentConnectionProfileId || '').trim().slice(0, 160);
