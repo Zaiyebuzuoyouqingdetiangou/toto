@@ -1,11 +1,12 @@
 // Split from independentApi.js — geometry.
-import { restoreRuntimeAnimationClone, ANIMATION_SUSPENDED_ATTR } from '../runtimeAnimationState.js?rmv=1.72.9';
+import { restoreRuntimeAnimationClone, ANIMATION_SUSPENDED_ATTR } from '../runtimeAnimationState.js?rmv=1.73.0';
 
-import { bindVisualHistoryTarget } from '../storage.js?rmv=1.72.9';
-import { presentationModeFields } from '../presentationMode.js?rmv=1.72.9';
-import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.72.9';
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorExternalPlacementParent } from '../hostCompatibility.js?rmv=1.72.9';
-import { getSettings } from '../settings.js?rmv=1.72.9';
+import { bindVisualHistoryTarget } from '../storage.js?rmv=1.73.0';
+import { presentationModeFields } from '../presentationMode.js?rmv=1.73.0';
+import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.73.0';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorExternalPlacementParent } from '../hostCompatibility.js?rmv=1.73.0';
+import { getSettings } from '../settings.js?rmv=1.73.0';
+import { resolveExternalAnchor } from './externalAnchor.js?rmv=1.73.0';
 import {
     cleanRabbitMirrorOutput,
     compactTotoBlock,
@@ -19,14 +20,14 @@ import {
     clearRabbitMirrorHorizontalClipArtifacts,
     sanitizeRabbitMirrorUntrustedTemplate,
     validateRabbitMirrorRecoveredStyleAssignments,
-} from '../outputSanitizer.js?rmv=1.72.9';
-import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.72.9';
-import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.72.9';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.72.9';
-import { repairDesignCandidateAttributeQuotes } from '../interactionSampling.js?rmv=1.72.9';
-import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.72.9';
-import { MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE, INDEPENDENT_HISTORY_READ_ERROR_MESSAGE } from './missingRetryShell.js?rmv=1.72.9';
-import { markSanitizedRabbitMirrorFace } from '../multifaceProof.js?rmv=1.72.9';
+} from '../outputSanitizer.js?rmv=1.73.0';
+import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.73.0';
+import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.73.0';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.73.0';
+import { repairDesignCandidateAttributeQuotes } from '../interactionSampling.js?rmv=1.73.0';
+import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.73.0';
+import { MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE, INDEPENDENT_HISTORY_READ_ERROR_MESSAGE } from './missingRetryShell.js?rmv=1.73.0';
+import { markSanitizedRabbitMirrorFace } from '../multifaceProof.js?rmv=1.73.0';
 import {
     EXTERNAL_SHELL_ATTR,
     FOLLOW_EXTERNAL_ANCHOR_ATTR,
@@ -41,8 +42,8 @@ import {
     getContext,
     hashText,
     independentMaintenanceLiveRepairLocked,
-} from './runtime.js?rmv=1.72.9';
-import { automaticDispatchAlreadyConsumed, automaticFailureStops, generationPolls, operationEpochForBase } from './flights.js?rmv=1.72.9';
+} from './runtime.js?rmv=1.73.0';
+import { automaticDispatchAlreadyConsumed, automaticFailureStops, generationPolls, operationEpochForBase } from './flights.js?rmv=1.73.0';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INTERACTION_STATE_MIGRATION_KEY,
@@ -51,12 +52,13 @@ import {
     persistedOwnerForMessage,
     readStore,
     writeStore,
-} from './persistence.js?rmv=1.72.9';
+} from './persistence.js?rmv=1.73.0';
 import {
     chatKey,
     copyIndependentOwnerLineage,
     findSavedRecord,
     independentLineageOriginSlot,
+    hostGenerationActivity,
     isRabbitMirrorEligibleAssistantMessage,
     messageBaseSlotKey,
     messageBody,
@@ -68,7 +70,7 @@ import {
     savedRecordMatchesObserved,
     slotSearchKeys,
     swipeId,
-} from './connection.js?rmv=1.72.9';
+} from './connection.js?rmv=1.73.0';
 import {
     EXTERNAL_GEOMETRY_SETTLE_STEPS_MS,
     allExternalHosts,
@@ -102,7 +104,7 @@ import {
     wrapIndependentFace,
     wrapPreparedIndependentFace,
     writeGeometryDataset,
-} from './request.js?rmv=1.72.9';
+} from './request.js?rmv=1.73.0';
 import {
     activeIndependentFlightForBase,
     automaticCutoverVersionToken,
@@ -126,20 +128,20 @@ import {
     serializeExternalFaceDetails,
     showMultifaceFace,
     stripIndependentTransientLayoutArtifacts,
-} from './mount.js?rmv=1.72.9';
+} from './mount.js?rmv=1.73.0';
 import {
     automaticHostGenerationRenderMatches,
     hasExistingFollowRabbitMirror,
     queueMessageSync,
     suppressesAutomaticGeneration,
-} from './earlyBody.js?rmv=1.72.9';
+} from './earlyBody.js?rmv=1.73.0';
 import {
     automaticGenerationCutovers,
     persistedInteractionMigrationHandle,
     persistedInteractionMigrationIdle,
     writePersistedInteractionMigrationHandle,
     writePersistedInteractionMigrationIdle,
-} from './lifecycle.js?rmv=1.72.9';
+} from './lifecycle.js?rmv=1.73.0';
 
 let externalGeometryFrame = 0;
 
@@ -284,6 +286,8 @@ function applyMobileExternalHostGeometryPlan(host,plan,context={}){
 function applyExternalHostGeometryPlan(host,plan,context={}){
  if(!host || !plan || plan.skip) return {changed:false};
  if(plan.clear){
+  // 挂在消息里、手机宽度下：桌面量出来的收窄宽度不能留着，否则缩窗／横竖屏切换后壳还卡在桌面的像素宽。
+  if(plan.mode==='inside-message' && independentExternalEffectiveViewportWidth()<900) clearIndependentExternalCompactShellWidth(host);
   const hadWidth=!!host.style.getPropertyValue('--rm-external-lane-width');
   const hadLeft=!!host.style.getPropertyValue('--rm-external-lane-left');
   clearExternalHostGeometryTokens(host);
@@ -468,20 +472,65 @@ function externalHostAppearsBeforeOwner(el,host){
  }
 }
 
+// 流式输出、编辑期间先放在正文下面的壳：等正文写完（最多等一分钟）再按设置挪进正文。
+const deferredExternalReanchors=new WeakMap();
+const deferredExternalAttempts=new WeakMap();
+function clearDeferredExternalReanchor(host){
+ const timer=deferredExternalReanchors.get(host);
+ if(timer){ clearTimeout(timer); deferredExternalReanchors.delete(host); }
+ deferredExternalAttempts.delete(host);
+}
+function scheduleDeferredExternalReanchor(el,host,key,source){
+ const timer=deferredExternalReanchors.get(host);
+ if(timer) clearTimeout(timer);
+ // 次数跨同步累计：同步再多次也不会把等待无限续下去。
+ const attempt=Number(deferredExternalAttempts.get(host)||0);
+ if(attempt>=90){ deferredExternalReanchors.delete(host); return; }
+ deferredExternalAttempts.set(host,attempt+1);
+ deferredExternalReanchors.set(host,setTimeout(()=>{
+  deferredExternalReanchors.delete(host);
+  if(!host?.isConnected || !el?.isConnected || String(host.dataset.rmPlacement||'')!=='external') return;
+  const {deferred}=tauriSafeExternalParent(el);
+  if(deferred){ scheduleDeferredExternalReanchor(el,host,key,source); return; }
+  try{ placeExternalHost(el,host,key,source); }catch(error){ console.debug('[RabbitMirror] deferred external reanchor failed:',error); }
+ },700));
+}
+
 function tauriSafeExternalParent(el){
  const managedParent=getRabbitMirrorExternalPlacementParent(el);
- if(managedParent) return {parent:managedParent,insideMessage:true};
+ // 托管聊天界面（TT）自己管位置：不记挂法，样式和量宽都照旧。
+ if(managedParent) return {parent:managedParent,insideMessage:true,anchor:''};
  // Managed ChatSurface owns placement. Without its projected parent there is no
  // safe slot yet: report none instead of falling back to a sibling of .mes.
- if(el && isRabbitMirrorManagedChatSurface()) return {parent:null,insideMessage:true};
- // TT ChatSurface only allows #chat > .mes. Before the ABI latches `managed`,
- // still park 外置 inside the floor — never as a sibling that stops virtualization.
- if(!el || !globalThis.__TAURITAVERN__) return {parent:el?.parentElement||null,insideMessage:false};
+ if(el && isRabbitMirrorManagedChatSurface()) return {parent:null,insideMessage:true,anchor:''};
+ if(!el) return {parent:null,insideMessage:false,anchor:''};
+ // 普通酒馆：按设置（默认自动）挂进这条消息里；美化把气泡画在正文上就进正文，整条消息画成卡片也在卡片里。
+ // 选了「整条消息外面」的照旧挂在 .mes 后面，宽度另量。
+ if(!globalThis.__TAURITAVERN__){
+  const body=messageBody(el);
+  // 正在流式输出的那一层、正在编辑的那一层：酒馆每来一段字就整个重写正文，挂在正文里会被反复冲掉，先放正文下面，写完再挪进去。
+  let busy=false;
+  // 生成中只认确凿的信号（事件、流式标记、生成模块），别的插件卡住的弱标志不算，免得一直等不到进正文。
+  try{
+   const activity=el.classList?.contains?.('last_mes') ? hostGenerationActivity() : null;
+   busy=!!(body && body!==el && body.querySelector?.('#curEditTextarea, textarea.edit_textarea')) || !!(activity && activity.active && (activity.strong || activity.eventHint));
+  }catch{ busy=false; }
+  const setting=getSettings()?.independentExternalAnchor;
+  const anchor=resolveExternalAnchor(el,body!==el?body:null,setting,{busy});
+  // 忙完以后本该进正文的：先记一笔，写完／编辑完再挪进去。
+  const deferred=busy && anchor==='message' && resolveExternalAnchor(el,body!==el?body:null,setting,{busy:false})==='body';
+  if(anchor==='outside') return {parent:el.parentElement||null,insideMessage:false,anchor};
+  if(anchor==='body' && body && body!==el) return {parent:body,insideMessage:true,anchor};
+  if(body?.parentElement && body!==el && el.contains(body.parentElement)) return {parent:body.parentElement,insideMessage:true,anchor:'message',deferred};
+  const block=el.querySelector?.('.mes_block');
+  if(block && el.contains(block)) return {parent:block,insideMessage:true,anchor:'message',deferred};
+  return {parent:el,insideMessage:true,anchor:'message',deferred};
+ }
  const body=messageBody(el);
- if(body?.parentElement && el.contains(body.parentElement)) return {parent:body.parentElement,insideMessage:true};
+ if(body?.parentElement && el.contains(body.parentElement)) return {parent:body.parentElement,insideMessage:true,anchor:''};
  const block=el.querySelector?.('.mes_block');
- if(block && el.contains(block)) return {parent:block,insideMessage:true};
- return {parent:el,insideMessage:true};
+ if(block && el.contains(block)) return {parent:block,insideMessage:true,anchor:''};
+ return {parent:el,insideMessage:true,anchor:''};
 }
 
 export function placeExternalHost(el,host,key='',source='independent'){
@@ -527,20 +576,23 @@ export function placeExternalHost(el,host,key='',source='independent'){
   if(previousParent?.hasAttribute?.(INLINE_ANCHOR_ATTR) && previousParent!==anchor && !previousParent.querySelector?.(`[${SOURCE_ATTR}]`)) previousParent.remove();
   return true;
  }
- const {parent,insideMessage}=tauriSafeExternalParent(el);
+ const {parent,insideMessage,anchor,deferred}=tauriSafeExternalParent(el);
  if(!parent) return false;
+ if(deferred) scheduleDeferredExternalReanchor(el,host,key,source); else clearDeferredExternalReanchor(host);
  const managedBody=insideMessage ? messageBody(el) : null;
  const managedMisplaced=!!(insideMessage && (
   host.parentElement!==parent
   || (managedBody && parent===managedBody.parentElement && host.previousElementSibling!==managedBody)
  ));
+ const anchorChanged=String(host.dataset.rmExternalAnchor||'')!==String(anchor||'');
+ if(anchorChanged){ if(anchor) host.dataset.rmExternalAnchor=String(anchor); else delete host.dataset.rmExternalAnchor; }
  const needsReanchor = insideMessage
   ? managedMisplaced
   : (host.parentElement!==parent
    || el.contains(host)
    || externalHostAppearsBeforeOwner(el,host)
    || host.dataset.rmExternalPlacementEstablished!=='true');
- const placementChanged=previousPlacement!=='external';
+ const placementChanged=previousPlacement!=='external' || anchorChanged;
  host.dataset.rmPlacement='external';
  if(source==='independent' && (needsReanchor || placementChanged)) clearExternalShellIntegration(host);
  if(needsReanchor){
@@ -2085,7 +2137,7 @@ export function renderExternalErrorBody(details,text=''){
   // second retry intent after the first click has entered loading or READY.
   const host=details.closest?.(`[${SOURCE_ATTR}="true"]`);
   if(retry.disabled || !retry.isConnected || !details.contains?.(retry) || host?.dataset?.rmState!=='error') return;
-  void import('../outputSanitizer/toolsChrome.js?rmv=1.72.9').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+  void import('../outputSanitizer/toolsChrome.js?rmv=1.73.0').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
  },true);
  recover.addEventListener('click',async event=>{
   event.preventDefault(); event.stopPropagation();

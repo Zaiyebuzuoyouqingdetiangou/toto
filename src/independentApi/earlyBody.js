@@ -1,13 +1,13 @@
 // Split from independentApi.js — earlyBody.
-import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.72.9';
+import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.73.0';
 
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.72.9';
-import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.72.9';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.72.9';
-import { getSettings } from '../settings.js?rmv=1.72.9';
-import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.72.9';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=1.72.9';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.72.9';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.73.0';
+import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.73.0';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.73.0';
+import { getSettings } from '../settings.js?rmv=1.73.0';
+import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.73.0';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=1.73.0';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.73.0';
 import {
     MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE,
     INDEPENDENT_HISTORY_READ_ERROR_MESSAGE,
@@ -17,7 +17,7 @@ import {
     isMissingShellTargetFloor,
     normalizeMissingShellScanRange,
     shouldRestoreMissingIndependentRetryShell,
-} from './missingRetryShell.js?rmv=1.72.9';
+} from './missingRetryShell.js?rmv=1.73.0';
 import {
     INDEPENDENT_GENERATION_INTENTS_KEY,
     INDEPENDENT_GENERATION_INTENT_TYPES,
@@ -27,7 +27,7 @@ import {
     currentRuntime,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.72.9';
+} from './runtime.js?rmv=1.73.0';
 import {
     ACTIVE_GENERATION_WAIT_MS,
     FINAL_RENDER_POLL_INTERVAL_MS,
@@ -43,7 +43,7 @@ import {
     markAutomaticFailureStop,
     operationEpochForBase,
     pending,
-} from './flights.js?rmv=1.72.9';
+} from './flights.js?rmv=1.73.0';
 import {
     appendHistoryEntry,
     chatPersistenceSlot,
@@ -61,7 +61,7 @@ import {
     reconcileIndependentChatOwners,
     rememberChatMessageOrder,
     checkOwnerRemapEpoch,
-} from './persistence.js?rmv=1.72.9';
+} from './persistence.js?rmv=1.73.0';
 import {
     activeGlobalWorldInfoCapture,
     assistantMessages,
@@ -111,7 +111,7 @@ import {
     withOwnerLockStoreBatch,
     writeActiveGlobalWorldInfoCapture,
     writeHostModule,
-} from './connection.js?rmv=1.72.9';
+} from './connection.js?rmv=1.73.0';
 import {
     allExternalHosts,
     externalHosts,
@@ -119,7 +119,8 @@ import {
     removeEmptyFollowExternalAnchors,
     removeEmptyInlineAnchors,
     withExternalHostSyncIndex,
-} from './request.js?rmv=1.72.9';
+    isTheaterFavoriteHost,
+} from './request.js?rmv=1.73.0';
 import {
     beginHostWorkTiming,
     clearExternalHostFreshSourceState,
@@ -153,7 +154,7 @@ import {
     setPlaceholderSummary,
     usableReadyDetails,
     withRestorableHtmlCacheBatch,
-} from './geometry.js?rmv=1.72.9';
+} from './geometry.js?rmv=1.73.0';
 import {
     INDEPENDENT_INTENT_OWNER,
     abortFlight,
@@ -207,7 +208,7 @@ import {
     serializeExternalFaceDetails,
     stampAutomaticAuthorizationEpoch,
     withHistoricalRestoreLightPass,
-} from './mount.js?rmv=1.72.9';
+} from './mount.js?rmv=1.73.0';
 import {
     automaticGenerationCutovers,
     hostGenerationHintStartedAt,
@@ -232,7 +233,7 @@ import {
     writeStartupHistoryFallbackRoot,
     writeSyncRunning,
     writeSyncTimer,
-} from './lifecycle.js?rmv=1.72.9';
+} from './lifecycle.js?rmv=1.73.0';
 
 let earlyBodyParserPromise=null;
 
@@ -361,7 +362,7 @@ function settleEarlyBodyAtFinal(ctx,index){
 
 async function probeIndependentEarlyBody(packet,sequence){
  if(!earlyBodyPacketCurrent(packet)) return;
- if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.72.9')
+ if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.73.0')
   .then(module=>{earlyBodyParser=module;return module;}).catch(()=>{earlyBodyParserPromise=null;return null;});
  const parser=await earlyBodyParserPromise;
  if(!parser || sequence!==earlyBodyProbeSequence || !earlyBodyPacketCurrent(packet)) return;
@@ -1810,6 +1811,29 @@ function nodeMessageIndex(node){
  return Number.isInteger(id)&&id>=0?id:null;
 }
 
+// 酒馆重写正文（swipe、编辑、翻译、正则重渲染、兔子镜自己的重绘）会把挂在正文里的外壳连同原正文一起扔掉。
+// 这种整段换掉的记录里，被移除的不只外壳一个：把外壳原样挂回去（位置按现在的状态重算：编辑中先放正文下面），
+// 镜面里点过的状态、画好的图都还在，后面的同步照旧认它是这一层的旧壳。插件自己拿掉外壳（只移除它一个）不挂回。
+export function readoptDetachedExternalHosts(records){
+ let readopted=0;
+ for(const rec of records){
+  const target=rec.target?.nodeType===1?rec.target:null;
+  if(!target?.isConnected || !target.matches?.('.mes_text')) continue;
+  const removed=[...(rec.removedNodes||[])];
+  const hosts=removed.filter(node=>node?.nodeType===1 && node.matches?.(`[${SOURCE_ATTR}]`) && node.dataset?.rmSource==='independent' && node.dataset?.rmExternalAnchor==='body');
+  if(!hosts.length || removed.length===hosts.length) continue;
+  const el=target.closest('.mes');
+  if(!el?.isConnected) continue;
+  for(const host of hosts){
+   if(host.isConnected || isTheaterFavoriteHost(host)) continue;
+   if(String(host.dataset.rmOwnerMesid||host.dataset.rmExternalOwnerMessage||'')!==String(el.getAttribute('mesid')||'')) continue;
+   try{ placeExternalHost(el,host,host.dataset.rmKey||'','independent'); readopted+=1; }
+   catch(error){ console.debug('[RabbitMirror] external host readopt failed:',error); }
+  }
+ }
+ return readopted;
+}
+
 function removedMutationIndices(records,{structuralOnly=false}={}){
  const found=new Set();
  for(const rec of records){
@@ -2024,6 +2048,7 @@ export function installObserverIfNeeded({skipHistoricalProbe=false}={}){
    // Streaming mutations are finalized by GENERATION_ENDED/STOPPED. Scanning the
    // current message on every token used to turn a long reply into repeated full
    // source/DOM passes even though no paid request may start before completion.
+    try{ readoptDetachedExternalHosts(records); }catch{}
     if(hostGenerationLooksActive()){
      if(manualIndependentTiming()) handleIndependentManualBridge({kind:'changed'});
      // Do not scan streaming additions. Removals are different: SillyTavern may
