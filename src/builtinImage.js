@@ -340,8 +340,12 @@ function frameSlot(key, frame) {
     const face = details?.parentElement ? [...details.parentElement.children].filter(node => node.matches?.('details')).indexOf(details) : 0;
     const frames = details ? [...details.querySelectorAll('[data-rm-draw-frame]')] : [];
     const own = Math.max(0, frames.indexOf(frame));
-    const place = parts.length >= 6 ? `${parts.slice(1, -4).join(':').replace(/^chat:/, '')}:${parts.slice(-4, -2).join(':')}` : String(key);
-    return `${place}:${face}:${own}`;
+    // 融合在回复里的镜面键里没记楼层：从所在的那条消息取；还取不到就把提示词指纹算进位置，免得各楼层挤在一个位置上互相拦。
+    let mes = parts.length >= 6 ? parts[parts.length - 4] : '';
+    if (!mes) mes = String(frame?.closest?.('.mes[mesid]')?.getAttribute('mesid') || '');
+    const swipe = parts.length >= 6 ? parts[parts.length - 3] : '';
+    const chat = parts.length >= 6 ? parts.slice(1, -4).join(':').replace(/^chat:/, '') : String(key);
+    return `${chat}:${mes || `#${parts[parts.length - 1] || ''}`}:${swipe}:${face}:${own}`;
 }
 function recentAutoDraws(slot) {
     const now = Date.now();
@@ -790,7 +794,11 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
         });
         const record = { ...generated, builtinImageFit: 'cover', ...(looksSources ? { looksSources } : {}) };
         if (inflight.get(key) === entry) {
-            sessionRecords.set(key, record);
+            // 只记看图要的那份（有文件路径时不留整张图的 data:），最多记 200 张。
+            const { dataUrl, ...light } = record;
+            sessionRecords.delete(key);
+            sessionRecords.set(key, record.path ? light : record);
+            if (sessionRecords.size > 200) sessionRecords.delete(sessionRecords.keys().next().value);
             try { saveMirrorImage(key, record); }
             catch (error) {
                 // 存不下整份：只存看图要的（地址、时间、种子），刷新后至少图还在、不会再画一遍。
@@ -835,10 +843,11 @@ async function fillFrame(root, frame, { manual = false } = {}) {
         return;
     }
     // 读不到的那张不再反复拿出来：按「重新生图」后直接发请求。
-    if (saved.record && !unreadable.has(key) && paint(frame, saved.record, root, key)) return;
-    // 本机没存进去、但这次打开页面里画过：放回去，不再画。
+    // 这次打开页面里画过、比存档里的新（重画了却没存进去）：放这张，不再画。
     const remembered = !manual && !unreadable.has(key) ? sessionRecordFor(key) : null;
-    if (remembered && paint(frame, remembered, root, key)) return;
+    const newer = remembered && (!saved.record || Date.parse(remembered.generatedAt || '') > Date.parse(saved.record.generatedAt || ''));
+    if (newer && paint(frame, remembered, root, key)) return;
+    if (saved.record && !unreadable.has(key) && paint(frame, saved.record, root, key)) return;
     if (failed.has(key)) {
         note(frame, failed.get(key), root);
         return;
@@ -847,7 +856,7 @@ async function fillFrame(root, frame, { manual = false } = {}) {
     if (joined !== key) return void joinInflight(root, frame, joined, isCurrent);
     const slot = frameSlot(key, frame);
     if (!manual && !liveEntry(inflight.get(key)) && recentAutoDraws(slot).length >= AUTO_DRAW_LIMIT) {
-        note(frame, '这个图框刚才已经自动画过两次，还是没能存下来（多半是本机存储满了），先不再自动画，免得一直花额度。画好的图在柏宝绘图库里。要再画一张就点「重新生图」。', root);
+        note(frame, '这个图框 10 分钟内已经自动画过两次，为免重复花额度，先不再自动画（画好的图在柏宝绘图库里）。要再画一张就点「重新生图」。', root);
         return;
     }
     let nodes = waiters.get(key);

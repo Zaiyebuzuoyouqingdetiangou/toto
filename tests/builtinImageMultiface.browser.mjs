@@ -225,6 +225,17 @@ assert.equal(await calls(), base + 1); checks++;
 assert.equal(await page.evaluate(() => Object.keys(localStorage).filter(key => key.includes(':builtin:chat:c:41:0:0:')).map(key => JSON.parse(localStorage.getItem(key)).current.path).join(',')), `/user/images/p${base + 1}.png`); checks++;
 await page.evaluate(() => { Storage.prototype.setItem = window.__realSetItem; window.__imageQuota = ''; });
 
+// 12 融合在回复里的镜面（键里没记楼层）：不同楼层各自自动画，不会挤在一个位置上被拦
+base = await calls();
+await page.evaluate(() => {
+    document.body.innerHTML = [3, 5, 7].map(n => `<div class="mes" mesid="${n}"><details open><summary>第${n}层</summary>
+      <figure data-rm-draw-frame="1"><p data-rm-draw-prompt="1" hidden>第${n}层的画面：渡口的船夫撑篙离岸</p></figure></details></div>`).join('');
+    for (const details of document.querySelectorAll('details')) images.fillBuiltinImageFrames(details);
+});
+await page.waitForTimeout(150);
+assert.equal(await calls(), base + 3); checks++;
+await release();
+
 assert.deepEqual(pageErrors, []);
 console.log(JSON.stringify({ checks }));
 await browser.close(); server.close();
