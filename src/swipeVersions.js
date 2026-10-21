@@ -374,7 +374,7 @@ const archiveLoads = new Map();
 const archiveWrites = new Map();
 const archiveSaved = new Map();
 
-function archiveTransaction(mode, work, { readStatus = false, timeoutMs = 2500 } = {}) {
+function archiveTransaction(mode, work, { readStatus = false, timeoutMs = 8000 } = {}) {
     if (!globalThis.indexedDB) return Promise.resolve(readStatus ? { ok: true, value: null } : null);
     return new Promise(resolve => {
         let db, tx, finished = false, value = null;
@@ -488,6 +488,9 @@ export function saveFaceSwipeArchive(slot, record) {
             archiveSaved.set(base, row);
             for (const [index, state] of Object.entries(row.states)) durableStacks.set(faceSwipeKey(base, Number(index)), stackSignature(state));
             try { pruneFaceSwipeArchive(archiveChatPrefix(base)); } catch {}
+        } else if (archiveWrites.get(base)?.promise === promise) {
+            // 没写成（超时、事务失败）：忘掉这次，下次同样内容再来时重新写，不再一直复用这个失败结果。
+            archiveWrites.delete(base);
         }
         return { saved, row };
     });

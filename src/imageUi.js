@@ -1,11 +1,11 @@
-import { describeLocalStorageUsage } from './storageUsage.js?rmv=1.73.26';
-import { getSettings } from './settings.js?rmv=1.73.26';
-import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=1.73.26';
-import { loadMirrorImage, saveMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft } from './imageStore.js?rmv=1.73.26';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.73.26';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.73.26';
-import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.73.26';
-import { listBuiltinImageFrames, rerollBuiltinImage, showBuiltinImageVersion, builtinImageReady, builtinImageReusable } from './builtinImage.js?rmv=1.73.26';
+import { describeLocalStorageUsage } from './storageUsage.js?rmv=1.73.27';
+import { getSettings } from './settings.js?rmv=1.73.27';
+import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=1.73.27';
+import { loadMirrorImage, saveMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft } from './imageStore.js?rmv=1.73.27';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.73.27';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.73.27';
+import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.73.27';
+import { listBuiltinImageFrames, rerollBuiltinImage, showBuiltinImageVersion, builtinImageReady, builtinImageReusable } from './builtinImage.js?rmv=1.73.27';
 
 // The lock lives beyond a panel's lifetime. Closing, reopening or aborting a UI
 // cannot release a provider reservation before its Promise actually settles.
@@ -80,7 +80,8 @@ function storedForTarget(target) {
 function rememberDraft(key, draft) {
     const value = { ...draft, updatedAt: Date.now() };
     sessionDrafts.set(key, value);
-    saveMirrorImageDraft(key, value);
+    // 本机存储满了草稿写不进去：这次打开页面里还记着，不让面板报错。
+    try { saveMirrorImageDraft(key, value); } catch (error) { console.warn('[RabbitMirror] 提示词草稿没能存进本机', error); }
 }
 function pendingImage(key, saved) {
     const records = pendingSaves.get(key)?.records;
@@ -387,7 +388,7 @@ export function openMirrorImagePanel(root, { opener = null, onClose = null } = {
     } };
     const pending = target && pendingSaves.get(target.key);
     if (pending) localRecord = pendingImage(target.key, localRecord);
-    const latestDraft = state.draft && (!localRecord || Number(state.draft.updatedAt || 0) >= Date.parse(localRecord.generatedAt || ''))
+    const latestDraft = state.draft && (!localRecord || Number(state.draft.updatedAt || 0) >= (Date.parse(localRecord.generatedAt || '') || 0))
         ? state.draft : localRecord?.promptMetadata || localRecord || state.draft || {};
     fillDraft(latestDraft); showRecord(localRecord); renderState();
     let modalOpened = false;
@@ -511,7 +512,7 @@ function buildBuiltinSection(doc, root, initial) {
             const { painted, saveError } = await rerollBuiltinImage(root, item.frame, { prompt: edited, signal: controller.signal,
                 onText: text => { job.text = text; for (const listener of job.listeners) { try { listener.onText?.(text); } catch { /* 面板已关 */ } } } });
             message = saveError
-                ? `画好了${painted ? '、镜面上先换成了新画的这张' : ''}，但没能存进本机存档（${/quota/i.test(String(saveError?.name || saveError?.message || '')) ? '本机存储满了' : String(saveError?.message || '写入失败').slice(0, 60)}；${describeLocalStorageUsage()}），所以这里还是旧的几张、翻不到新图，刷新后也会变回旧图。柏宝绘图库里有这张。`
+                ? `画好了${painted ? '、镜面上先换成了新画的这张' : ''}，但没能存进本机存档（${/quota/i.test(String(saveError?.name || saveError?.message || '')) ? '本机存储满了' : String(saveError?.message || '写入失败').slice(0, 60)}；${describeLocalStorageUsage()}），所以这里还是旧的几张、翻不到新图，刷新后也会变回旧图。${provider() === '柏宝绘' ? '柏宝绘图库里有这张。' : '这张图没能存下来。'}`
                 : painted ? '画好了，镜面上已经换成新画的这张。' : '画好了、已经存档；这一面刚重新加载过，刷新这一面后显示。';
         } catch (error) {
             message = controller.signal.aborted ? '已取消，原来的图没动。'

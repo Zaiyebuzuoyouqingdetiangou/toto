@@ -1,25 +1,25 @@
 // Split from independentApi.js — connection.
 
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages } from '../hostCompatibility.js?rmv=1.73.26';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages } from '../hostCompatibility.js?rmv=1.73.27';
 import {
     WORLD_INFO_BOOK_NAME_MAX_CHARS,
     getSettings,
     normalizeIndependentContextExcludedTags,
     updateSettings,
-} from '../settings.js?rmv=1.73.26';
-import { fetchRabbitMirrorIndependentCompletion } from '../independentSecurityGuard.js?rmv=1.73.26';
-import { buildIndependentAdvancedCarrier, applyIndependentAdvancedExclusions } from '../advancedRequestOptions.js?rmv=1.73.26';
-import { describeBatchPlanFailure } from '../externalWorldBook/errors.js?rmv=1.73.26';
-import { describeRabbitMirrorStorageUsage, getCurrentChatKey } from '../storage.js?rmv=1.73.26';
-import { rememberIndependentTransportDiagnostic } from '../transportDiagnostics.js?rmv=1.73.26';
+} from '../settings.js?rmv=1.73.27';
+import { fetchRabbitMirrorIndependentCompletion } from '../independentSecurityGuard.js?rmv=1.73.27';
+import { buildIndependentAdvancedCarrier, applyIndependentAdvancedExclusions } from '../advancedRequestOptions.js?rmv=1.73.27';
+import { describeBatchPlanFailure } from '../externalWorldBook/errors.js?rmv=1.73.27';
+import { describeRabbitMirrorStorageUsage, getCurrentChatKey } from '../storage.js?rmv=1.73.27';
+import { rememberIndependentTransportDiagnostic } from '../transportDiagnostics.js?rmv=1.73.27';
 import {
     CONTEXT_TOTAL_BUDGET,
     CONTEXT_TRANSCRIPT_BUDGET,
     RUNTIME_VERSION,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.73.26';
-import { HOST_GENERATION_EVENT_HINT_MS, operationEpochForBase } from './flights.js?rmv=1.73.26';
+} from './runtime.js?rmv=1.73.27';
+import { HOST_GENERATION_EVENT_HINT_MS, operationEpochForBase } from './flights.js?rmv=1.73.27';
 import {
     OWNER_LOCK_STORE_KEY,
     apiProfileKey,
@@ -31,12 +31,12 @@ import {
     writeApiProfileStore,
     writePersistedOwner,
     writeStore,
-} from './persistence.js?rmv=1.73.26';
+} from './persistence.js?rmv=1.73.27';
 import {
     hasExplicitSourceReplacementEvidence,
     independentStoredHtmlLightRestorable,
     independentStoredHtmlRestorable,
-} from './geometry.js?rmv=1.73.26';
+} from './geometry.js?rmv=1.73.27';
 import {
     activeIndependentFlightForBase,
     messageSourceRevisions,
@@ -44,13 +44,13 @@ import {
     passiveObservedIdentity,
     runtimeMode,
     showIndependentUnsavedOutput,
-} from './mount.js?rmv=1.73.26';
+} from './mount.js?rmv=1.73.27';
 import {
     hostGenerationHintStartedAt,
     hostGenerationInProgress,
     writeHostGenerationHintStartedAt,
     writeHostGenerationInProgress,
-} from './lifecycle.js?rmv=1.73.26';
+} from './lifecycle.js?rmv=1.73.27';
 
 export const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 
@@ -353,8 +353,13 @@ export function lockedIndependentRecordForBase(baseSlot,store=readStore(),{light
  return null;
 }
 
+// 这次打开页面里最后一次请求的记录：本机存储满了写不进去时，「最近请求」面板照样显示这一次的，不显示上一次成功写进去的那次。
+let lastPublishedDiagnostic=null;
 export function readLastIndependentApiRequestDiagnostic(){
- try{ const value=JSON.parse(localStorage.getItem(API_REQUEST_DIAGNOSTIC_STORE_KEY)||'null'); return value&&typeof value==='object'?value:null; }catch{return null;}
+ let stored=null;
+ try{ const value=JSON.parse(localStorage.getItem(API_REQUEST_DIAGNOSTIC_STORE_KEY)||'null'); stored=value&&typeof value==='object'?value:null; }catch{ stored=null; }
+ if(lastPublishedDiagnostic && (!stored || Number(lastPublishedDiagnostic.ts||0)>=Number(stored.ts||0))) return lastPublishedDiagnostic;
+ return stored;
 }
 
 export function publishIndependentApiRequestDiagnostic(value){
@@ -362,6 +367,7 @@ export function publishIndependentApiRequestDiagnostic(value){
  if(diagnostic.transport){
   diagnostic.transportRequestStamp=rememberIndependentTransportDiagnostic(diagnostic);
  }
+ lastPublishedDiagnostic=diagnostic;
  try{ localStorage.setItem(API_REQUEST_DIAGNOSTIC_STORE_KEY,JSON.stringify(diagnostic)); }catch{}
  try{ globalThis.dispatchEvent?.(new CustomEvent(API_REQUEST_DIAGNOSTIC_EVENT,{detail:diagnostic})); }catch{}
  return diagnostic;

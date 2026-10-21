@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.73.26';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.73.26';
-import { imagePromptFingerprint, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.73.26';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.73.26';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.73.26';
-import { tidyImagePayload } from './imageTagTidy.js?rmv=1.73.26';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.73.26';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.73.26';
+import { getSettings } from './settings.js?rmv=1.73.27';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.73.27';
+import { imagePromptFingerprint, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.73.27';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.73.27';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.73.27';
+import { tidyImagePayload } from './imageTagTidy.js?rmv=1.73.27';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.73.27';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.73.27';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -17,7 +17,7 @@ const failed = new Map();
 function safeImageUrl(value) {
     const text = String(value || '');
     if (!text) return '';
-    if (/^data:image\/(?:png|jpeg|webp|gif);base64,[a-z\d+/=\s]+$/i.test(text)) return text;
+    if (/^data:image\/[a-z\d.+-]+;base64,[a-z\d+/=\s]+$/i.test(text)) return text;
     try {
         const url = new URL(text, document.baseURI);
         if (['http:', 'https:'].includes(url.protocol)) return url.href;
@@ -40,17 +40,24 @@ function characterGroup() {
 export function adoptDrawNotes(root) {
     if (!root?.querySelectorAll) return 0;
     let moved = 0;
+    const PART = '[data-rm-draw-prompt],[data-rm-draw-tags],[data-rm-draw-char],[data-rm-draw-char-tags]';
     for (const notes of [...root.querySelectorAll('[data-rm-draw-notes]')]) {
         const number = String(notes.getAttribute('data-rm-draw-notes') || '1').trim() || '1';
         const scope = notes.closest?.('details') || root;
-        const frame = [...scope.querySelectorAll('[data-rm-draw-frame]')].find(node => String(node.getAttribute('data-rm-draw-frame') || '1').trim() === number);
-        if (frame && !frame.querySelector('[data-rm-draw-prompt]')) {
-            const parts = [...notes.children].filter(node => node.matches?.('[data-rm-draw-prompt],[data-rm-draw-tags],[data-rm-draw-char],[data-rm-draw-char-tags]'));
+        const frames = [...scope.querySelectorAll('[data-rm-draw-frame]')];
+        const empty = node => !node.querySelector('[data-rm-draw-prompt]');
+        // 按编号找；模型把模板的 "1" 原样复制给了几个图框、编号对不上时，按先后给还没拿到说明的图框。
+        let frame = frames.find(node => String(node.getAttribute('data-rm-draw-frame') || '1').trim() === number && empty(node));
+        if (!frame) frame = frames.filter(empty)[Math.max(0, Number(number) - 1)] || frames.find(empty) || null;
+        // 说明段落有时被模型多包了一层：找后代，不只找直接子节点。
+        const parts = [...notes.querySelectorAll(PART)].filter(node => !node.parentElement?.closest?.(PART) || node.parentElement === notes);
+        if (frame && parts.length) {
             for (const part of parts) part.hidden = true;
             frame.prepend(...parts);
-            if (parts.length) moved += 1;
-        }
-        notes.remove();
+            moved += 1;
+            notes.remove();
+        } else if (!parts.length) notes.remove();
+        else notes.hidden = true;
     }
     return moved;
 }
@@ -111,7 +118,8 @@ function frameCaption(frame) {
         if (node.nodeType === 3) return clean(node.textContent);
         if (node.nodeType !== 1 || node.hidden || node.matches?.('script,style,template,[hidden],[data-rm-draw-frame],[aria-hidden="true"]')) return '';
         if (node.querySelector?.('[data-rm-draw-frame]')) return '';
-        return clean(typeof node.innerText === 'string' ? node.innerText : node.textContent);
+        // 一律用 textContent：innerText 在这一面藏着（多面非当前面、收起）和显示着时结果不同，键会跟着变。
+        return clean(node.textContent);
     };
     const before = [];
     const after = [];
@@ -146,17 +154,24 @@ function readCharacters(frame) {
         const text = clean(node.textContent).slice(0, 300);
         if (name && text && !tags.has(name)) tags.set(name, text);
     }
-    const nodes = [...(frame.querySelectorAll?.('[data-rm-draw-char]') || [])].slice(0, 4);
+    const nodes = [...(frame.querySelectorAll?.('[data-rm-draw-char]') || [])];
+    const seen = new Set();
     return nodes.map(node => {
         const name = clean(node.getAttribute('data-rm-draw-char')).slice(0, 40);
-        return { name, text: clean(node.textContent), modelTag: tags.get(name) || '' };
-    }).filter(person => person.name && (person.text.length >= 2 || person.modelTag));
+        return { name, text: clean(node.textContent).slice(0, 400), modelTag: tags.get(name) || '' };
+    }).filter(person => {
+        // 同一个人写了两条（几个图框共用一块说明时常见）：只留第一条。
+        if (!person.name || seen.has(person.name) || !(person.text.length >= 2 || person.modelTag)) return false;
+        seen.add(person.name);
+        return true;
+    }).slice(0, 4);
 }
 
 // 长相里不会因为这一幕变的几类：发色、瞳色、头发长短。
 // 第一串（角色库）写了这一类，后面（模型写的）同一类说法不同的就不要，免得 silver hair 和 white hair 一起交给生图、发色画乱。
 // 发型（马尾、披发）、衣着会随这一幕变，不算在里面；同一串里自己写的几种（比如挑染）都留着。
-const TAG_HUE = '(?:black|white|silver|grey|gray|blonde?|brown|red|pink|blue|green|purple|violet|orange|yellow|aqua|teal|cyan|magenta|lavender|golden|gold|crimson|amber|azure|platinum|beige|cream|ash|navy|rainbow)';
+const TAG_HUE = '(?:black|white|silver|grey|gray|blonde?|brown|red|pink|blue|green|purple|violet|orange|yellow|aqua|teal|cyan|magenta|lavender|golden|gold|crimson|amber|azure|platinum|beige|cream|ash|navy|rainbow'
+    + '|auburn|hazel|chestnut|ginger|copper|scarlet|emerald|ruby|sapphire|turquoise|indigo|lilac|maroon|olive|burgundy|peach|coral|mint|ivory|jet|raven|honey|caramel|rose|wine|plum|cerulean|cobalt|periwinkle|mauve|tan|bronze|rust|vermilion|viridian|aquamarine|lime|khaki|sand|snow|pearl|smoke|charcoal|ebony|flaxen|strawberry|lavender|orchid|fuchsia|salmon|apricot|mocha|hazelnut|ochre|umber|sepia|tangerine|lemon|sky|ice|midnight|moss|jade|sage|slate|steel|gunmetal|pewter|ultramarine|cherry|garnet|brick|rosy|pinkish|bluish|greenish|reddish|purplish|yellowish|brownish|greyish|grayish|whitish|blackish)';
 // 「dark hair」「light blue eyes」「dark-blue hair」都算；multicolored、two-tone、渐变、挑染也是发色。
 // 两个颜色词连写的（platinum blonde、ash blonde、silver-white、pinkish white）也算。
 const TAG_COLOR = `(?:(?:(?:light|dark|pale|deep|bright)[-\\s]+)?${TAG_HUE}(?:ish)?(?:[-\\s]+${TAG_HUE})?|light|dark|pale|multicolou?red|two[-\\s]?tone|gradient|streaked)`;
@@ -166,7 +181,7 @@ const TAG_STYLE = /\b(?:very|absurdly|long|short|medium|shoulder[-\s]?length|wav
 const TAG_LENGTH = /\b(?:long|short|medium|shoulder[-\s]?length)\b/;
 const TAG_TRAITS = [
     ['hair-color', bare => /\bhair$/.test(bare) && new RegExp(`^${TAG_COLOR}\\s+hair$`).test(bare.replace(TAG_STYLE, ' ').replace(/\s+/g, ' ').trim())],
-    ['eye-color', bare => bare === 'heterochromia' || (/\beyes$/.test(bare) && new RegExp(`^${TAG_COLOR}\\s+eyes$`).test(bare.replace(TAG_STYLE, ' ').replace(/\s+/g, ' ').trim()))],
+    ['eye-color', bare => bare === 'heterochromia' || (/\b(?:eyes|pupils|irises)$/.test(bare) && new RegExp(`^${TAG_COLOR}\\s+(?:eyes|pupils|irises)$`).test(bare.replace(TAG_STYLE, ' ').replace(/\s+/g, ' ').trim()))],
     ['hair-length', bare => /\bhair$/.test(bare) && TAG_LENGTH.test(bare)],
 ];
 
@@ -256,7 +271,8 @@ function readSavedAnyChat(key, claimed = null) {
 const SENT_WAIT_MS = 10 * 60 * 1000;
 function liveEntry(entry) {
     if (!entry) return false;
-    if (entry.sent === true && Date.now() - (entry.sentAt || 0) < SENT_WAIT_MS) return true;
+    // 发出去以后 10 分钟一点回音都没有：当它卡死了（渠道那边没回调），同一聊天里也不再等它、不再挡着重画。
+    if (entry.sent === true) return Date.now() - (entry.sentAt || 0) < SENT_WAIT_MS;
     return entry.isCurrent?.() === true;
 }
 // claimed：这一面里别的图框自己的键（或算出它的函数），序号挪了去认正在画的那一次时不认别人的。
@@ -396,6 +412,7 @@ function paint(frame, record, root = null, key = '') {
     const promptNode = frame.querySelector?.('[data-rm-draw-prompt]');
     if (promptNode) promptNode.hidden = true;
     hideFrameExtraMedia(frame);
+    hideSiblingSubstituteImages(frame);
     frame.querySelector?.('[data-rm-draw-status]')?.remove();
     let image = frame.querySelector?.('img[data-rm-draw-result]');
     if (!image) {
@@ -490,7 +507,8 @@ function uniqueLibrary(list) {
 
 function mergeAppearance(library, modelText, tagsOnly) {
     // NAI 5：角色库的英文标签另放进标签栏，这里只合并自然语言外貌；角色库只有标签时，标签栏照样用上。
-    const base = tagsOnly ? String(library?.tag || library?.nl || '') : String(library?.nl || '');
+    // 标签写法只用建档的英文标签；建档只有中文自然语言时不塞进标签栏。
+    const base = tagsOnly ? String(library?.tag || '') : String(library?.nl || '');
     if (!base.trim()) return modelText;
     if (!modelText) return base.trim();
     // 标签写法：角色库的标签在前，模型写的接在后面（去掉一模一样的）。
@@ -503,11 +521,11 @@ function mergeAppearance(library, modelText, tagsOnly) {
 // 世界书写的长相放在前面；它写了发色就去掉模型写的发色词，写了瞳色就去掉模型写的瞳色词（只去这几个词，衣着、动作照留），
 // 英文标签里的发色、瞳色标签同样处理。角色库里配了这个人外貌的，以角色库为准，不再补。
 // NAI 4.5 标签写法只收英文标签，中文的世界书原文用不上，不补。
-const COLOR = '(?:乌|淡|浅|深|暗|亮|雪)?(?:[黑白银金红棕灰紫蓝粉绿褐赤青墨碧]{1,2}|琥珀|深|浅)色?';
+const COLOR = '(?:乌|淡|浅|深|暗|亮|雪|酒|玫瑰|天|湖|海|宝|靛|藏|藕|杏|米|奶|珍珠|象牙|烟|银灰|铁|钴|翠|松|墨|绯|朱|丹|胭脂|樱|桃|橘|柠檬)?(?:[黑白银金红棕灰紫蓝粉绿褐赤青墨碧黄橙茶栗紫靛绯朱丹翠]{1,2}|琥珀|亚麻|焦糖|蜂蜜|栗子|玫瑰|葡萄|薰衣草|祖母绿|宝石蓝|天蓝|湖蓝|海蓝|冰蓝|深|浅)色?';
 // 发色：「黑发」「乌黑长发」「黑色的头发」「一头银发」「发色偏深」；不算「发带、发夹、白发苍苍」。
-const HAIR = `(?:一头)?${COLOR}的?(?:长|短|卷|直|微卷|及腰|齐肩)*(?:头)?发(?![带簪饰绳夹冠圈卡苍])|发色(?:为|是|呈|偏)?(?:${COLOR})?`;
+const HAIR = `(?:一头|一头乌黑的?)?${COLOR}的?(?:长|短|卷|直|微卷|及腰|齐肩)*(?:头)?发(?![带簪饰绳夹冠圈卡苍型际胶蜡])|${COLOR}长直|发色(?:为|是|呈|偏)?(?:${COLOR})?`;
 // 瞳色：「碧眼」「蓝色的眼睛」「深色瞳孔」「眼睛是蓝色的」；不算「眼镜」。
-const EYE = `${COLOR}的?(?:瞳孔?|眸子?|眼睛|眼眸|眼瞳|眼(?![镜罩神角皮]))|(?:眼睛|眼眸|瞳孔)(?:是|为|呈)${COLOR}的?|[瞳眸]色(?:为|是|呈)?(?:${COLOR})?`;
+const EYE = `${COLOR}的?(?:瞳孔?|眸子?|眼睛|眼眸|眼瞳|眼(?![镜罩神角皮影圈线袋妆泪眶]))|(?:眼睛|眼眸|瞳孔)(?:是|为|呈)${COLOR}的?|[瞳眸]色(?:为|是|呈)?(?:${COLOR})?`;
 const HAIR_WORDS = new RegExp(HAIR, 'g');
 const EYE_WORDS = new RegExp(EYE, 'g');
 const HAS_HAIR = new RegExp(HAIR);
@@ -563,7 +581,7 @@ async function withCardAppearance(people, frame, tagsOnly) {
         cast = rows.map(row => JSON.stringify(row)).join('\n');
     } catch { cast = ''; }
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.73.26');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.73.27');
     const merged = people.map(person => ({ ...person }));
     // 角色卡里提到 Persona、Persona 里提到角色：摘到对方的名字就停，不把对方的长相算进来。
     const others = [...new Set([...names, charName, personaName].filter(Boolean))];
@@ -589,7 +607,7 @@ function readWorldCast(names) {
     const key = JSON.stringify([ctx?.characterId ?? '', character?.avatar || character?.name || '', character?.data?.extensions?.world || '', disabled, [...names].sort()]);
     const hit = worldCastCache.get(key);
     if (hit && Date.now() - hit.at < 60000) return hit.promise;
-    const promise = import('./characterWorldBook.js?rmv=1.73.26').then(module => module.readCharacterWorldBookContext(ctx, {
+    const promise = import('./characterWorldBook.js?rmv=1.73.27').then(module => module.readCharacterWorldBookContext(ctx, {
         disabledBooks: disabled, focusText: names.join('\n'), onlyMentioned: true, maxChars: 4000,
     })).then(result => String(result?.text || '')).catch(() => { worldCastCache.delete(key); return ''; });
     worldCastCache.set(key, { at: Date.now(), promise });
@@ -603,12 +621,15 @@ async function withWorldBookAppearance(people, frame, tagsOnly, signal = null) {
     const cast = await readWorldCast(names);
     if (signal?.aborted) throw Object.assign(new Error('生图已取消。'), { name: 'AbortError', code: 'aborted' });
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.73.26');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.73.27');
     const merged = people.map(person => ({ ...person }));
+    // 世界书里没出场的第三人（角色卡主角、Persona）也算「别人」，他们的长相不会被算到这个人头上。
+    let others = names;
+    try { const ctx = getContext(); others = [...new Set([...names, String(ctx?.name2 || '').trim(), String(ctx?.name1 || globalThis.name1 || '').trim()].filter(Boolean))]; } catch { /* 照旧 */ }
     for (const name of names) {
         const person = merged.find(item => item.name === name);
         if (person?.looksSource) continue;
-        const looks = appearanceFromCast(cast, name, names);
+        const looks = appearanceFromCast(cast, name, others);
         if (!looks) continue;
         if (!person) { if (merged.length < 4) merged.push({ name, text: looks, modelTag: '', looksSource: '世界书' }); continue; }
         stripModelLooks(person, { hair: HAS_HAIR.test(looks), eye: HAS_EYE.test(looks) });
@@ -628,8 +649,13 @@ async function withLibraryAppearance(people, prompt, frame, tagsOnly) {
     })).filter(person => person.name && (person.tag || person.nl)));
     if (!library.size) return people;
     // 建档角色排第一：它写了发色／瞳色的，模型写的同类词去掉，不让两种发色一起发给生图。
+    // 模型给名字加了后缀（「甲（少女）」）时，按建档里唯一包含／被包含的那个名字认。
+    const entryFor = name => library.get(name) || (() => {
+        const hits = [...library.keys()].filter(key => key.length >= 2 && name.length >= 2 && (name.includes(key) || key.includes(name)));
+        return hits.length === 1 ? library.get(hits[0]) : null;
+    })();
     const merged = people.map(person => {
-        const entry = library.get(person.name);
+        const entry = entryFor(person.name);
         if (!entry) return { ...person };
         const next = { ...person };
         const looks = tagHasLooks(entry.tag);
@@ -640,7 +666,8 @@ async function withLibraryAppearance(people, prompt, frame, tagsOnly) {
     const ctx = getContext();
     const owners = [characterGroup(), String(ctx?.name1 || globalThis.name1 || '').trim()].filter(Boolean);
     for (const name of owners) {
-        if (merged.length >= 4 || merged.some(person => person.name === name)) continue;
+        // 这个人已经在了（含模型加了后缀的写法）就不再补一条，免得同一个人发成两条。
+        if (merged.length >= 4 || merged.some(person => person.name === name || (name.length >= 2 && (person.name.includes(name) || name.includes(person.name))))) continue;
         if (!library.has(name) || !String(prompt || '').includes(name)) continue;
         merged.push({ name, text: mergeAppearance(library.get(name), '', tagsOnly), libraryTag: String(library.get(name)?.tag || ''), fromLibrary: true, looksSource: '建档' });
     }
@@ -759,7 +786,8 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
                 // 只收一段提示词的渠道：NAI 5 先放场景标签，再放自然语言画面，最后逐人外貌。
                 flatPrompt: [tags, prompt, appearance].filter(Boolean).join('\n'),
                 nl: tagsOnly ? '' : prompt,
-                characters: people.map(person => ({ name: person.name, tag: tagsOnly ? person.text : tagOf(person), nl: tagsOnly ? '' : person.text })),
+                // 标签写法：这一面是按 NAI 5 写的（外貌是中文）、又另写了英文 char-tags 时，标签栏用英文标签，不塞中文。
+                characters: people.map(person => ({ name: person.name, tag: tagsOnly ? (/[\u3400-\u9fff]/.test(person.text) && tagOf(person) ? tagOf(person) : person.text) : tagOf(person), nl: tagsOnly ? '' : person.text })),
                 promptFormat: settings.imagePromptFormat,
             };
         })();
@@ -794,7 +822,7 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
                 if (phase && (isCurrent() || entry.sent)) reportProgress(key, `${provider}：${phase}…`);
             },
         });
-        const record = { ...generated, builtinImageFit: 'cover', ...(looksSources ? { looksSources } : {}) };
+        const record = { ...generated, builtinImageFit: 'cover', ...(looksSources ? { looksSources } : {}), ...(options.direct ? { editedPrompt: true } : {}) };
         if (inflight.get(key) === entry) {
             // 只记看图要的那份（有文件路径时不留整张图的 data:），最多记 200 张。
             const { dataUrl, ...light } = record;
@@ -820,6 +848,7 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
         return record;
     })();
     entry.job = job;
+    if (inflight.get(key) !== entry) progress.delete(key);
     inflight.set(key, entry);
     const cleanup = () => {
         if (inflight.get(key) === entry) { inflight.delete(key); progress.delete(key); }
@@ -851,6 +880,16 @@ async function fillFrame(root, frame, { manual = false } = {}) {
     const newer = remembered && (!saved.record || unsavedKeys.has(key));
     if (newer && paint(frame, remembered, root, key)) return;
     if (saved.record && !unreadable.has(key) && paint(frame, saved.record, root, key)) return;
+    if (!manual && unreadable.has(key)) {
+        // 读不到的那张：只留「重新生图」按钮，不自动再画（同一页面里重挂多少次都不画）。
+        note(frame, '这一面画好的图读不到了（链接失效，或图片文件不在这台酒馆上）。点「重新生图」会再画一次，要花一次额度。', root);
+        return;
+    }
+    if (saved.record && !manual) {
+        // 存档在、地址却是这台设备认不出的（别的壳里的本地地址、少见的图片格式）：不当成没画过去自动画。
+        note(frame, '这一面有画好的图，但它的地址在这台设备上打不开。点「重新生图」会再画一次，要花一次额度。', root);
+        return;
+    }
     if (failed.has(key)) {
         note(frame, failed.get(key), root);
         return;
@@ -882,7 +921,8 @@ async function fillFrame(root, frame, { manual = false } = {}) {
             ? `${String(error?.message || '生图渠道还没连好')}这一面先留着提示词。`
             : '这一面的画面这次没有画成。';
         if (['not_configured', 'unsupported_api', 'invalid_args', 'invalid_result', 'image_plan_failed'].includes(code)) failed.set(key, message);
-        if (frame.isConnected) note(frame, message, root);
+        // 框里已经有图（跟上的是面板里的重画、被取消了）：旧图照留，不在下面追加失败提示。
+        if (frame.isConnected && !frame.querySelector?.('img[data-rm-draw-result][src]')) note(frame, message, root);
         console.warn('[RabbitMirror] 内置生图没有填进图框', error);
     } finally {
         nodes.delete(waiter);
@@ -928,7 +968,10 @@ function hideFrameExtraMedia(frame) {
         style.setProperty('display', 'block');
         frame.setAttribute('data-rm-draw-unhidden', 'true');
     }
-    // 和图框并排、直接放在同一层的外链图片，是顶替画面的那张，不显示。
+}
+// 和图框并排、直接放在同一层的外链图片，是顶替画面的那张：画好的图放进去以后才不显示它。
+// 画之前不动，画不成（渠道没连好、失败）时模型放的那张照样能看。
+function hideSiblingSubstituteImages(frame) {
     for (const node of frame.parentElement?.children || []) {
         if (node === frame || !node.matches?.('img') || node.hasAttribute('data-rm-draw-result')) continue;
         if (!/^https?:/i.test(String(node.getAttribute('src') || '').trim())) continue;
@@ -977,7 +1020,9 @@ export function restoreSavedBuiltinImages(root) {
             continue;
         }
         ensureFrameBox(frame);
-        if (paint(frame, saved.record, root, storageKey(root, frame, prompt))) restored += 1;
+        // 「重新生图」按钮只在真能画的地方给：内置生图开着、又不是收藏夹里的面（收藏里从不发生图请求）。
+        const interactive = getSettings().builtinImageEnabled === true && !frame.closest?.('details')?.dataset?.rmImageOwnerChat;
+        if (paint(frame, saved.record, interactive ? root : null, storageKey(root, frame, prompt))) restored += 1;
     }
     return restored;
 }
@@ -1034,7 +1079,8 @@ function adoptSavedKey(key, claimed = null) {
     const moved = readSaved(other).record;
     if (!moved) return;
     const { history = [], ...current } = moved;
-    try { replaceMirrorImageVersions(key, current, history); } catch { /* 存不下就照旧对着旧键 */ }
+    // 搬过来以后旧键下那份删掉：同一组图不在本机存两份（含整张图的 data: 存档会直接翻倍）。
+    try { replaceMirrorImageVersions(key, current, history); removeMirrorImage(other); } catch { /* 存不下就照旧对着旧键 */ }
 }
 
 // 沿用上次的提示词：有完整的构思记录就用它；只记了实际发出去的那段（智绘姬）就整段当提示词。
@@ -1102,12 +1148,15 @@ export function showBuiltinImageVersion(root, frame, index) {
     // 只在那张当时用的提示词和换下来这张一样（指纹对得上）时才借；改过提示词画的、从没记过提示词的都不借，
     // 重画时再构思一次，不会画成别的内容。
     const fingerprint = imagePromptFingerprint(chosen);
-    const picked = chosen?.slimmed === true && shown && fingerprint && fingerprint === imagePromptFingerprint(shown) ? {
+    const shownHasPrompt = !!String(shown?.promptMetadata?.prompt || shown?.promptMetadata?.nl || shown?.promptMetadata?.flatPrompt || shown?.prompt || '').trim();
+    const picked = chosen?.slimmed === true && shown && shownHasPrompt && fingerprint && fingerprint === imagePromptFingerprint(shown) ? {
         ...chosen, slimmed: undefined, promptHash: undefined, prompt: shown.prompt,
         promptMetadata: { ...(shown.promptMetadata || {}), seed: chosen.promptMetadata?.seed ?? shown.promptMetadata?.seed },
         ...(shown.looksSources && !chosen.looksSources ? { looksSources: shown.looksSources } : {}),
     } : chosen;
-    const next = replaceMirrorImageVersions(key, picked, list.filter((_, i) => i !== index));
+    let next;
+    try { next = replaceMirrorImageVersions(key, picked, list.filter((_, i) => i !== index)); }
+    catch (error) { throw Object.assign(new Error('本机存储写不进去（多半是满了），没能换成这张。'), { code: 'quota', cause: error }); }
     // 用户自己选了这张：这次画的那张不再盖过它。
     sessionRecords.delete(key); unsavedKeys.delete(key);
     unreadable.delete(key);

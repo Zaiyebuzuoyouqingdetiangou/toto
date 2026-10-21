@@ -254,6 +254,55 @@ await page.waitForTimeout(150);
 assert.equal(await calls(), base + 3); checks++;
 await release();
 
+// 13 存档里的图读不到（链接失效）：只留「重新生图」按钮，同一页面里再怎么重挂都不自动画；点按钮才画
+base = await calls();
+const deadFace = `<details open data-rabbit-mirror-owner-chat="chat:c" data-rabbit-mirror-owner-mesid="50" data-rabbit-mirror-owner-swipe="0"><summary>失效</summary>
+  <figure data-rm-draw-frame="1"><p data-rm-draw-prompt="1" hidden>荒原上的烽火台在暮色里冒烟</p></figure></details>`;
+await page.evaluate(async ([html, query]) => {
+    localStorage.clear();
+    document.body.innerHTML = html;
+    const root = document.querySelector('details');
+    const key = images.listBuiltinImageFrames(root)[0].key;
+    const store = await import('/src/imageStore.js?' + query);
+    store.saveMirrorImage(key, { path: '/missing/gone.png', generatedAt: '2026-10-21T00:00:00Z' });
+}, [deadFace, query]);
+for (let round = 0; round < 3; round += 1) { await mountFace(deadFace); await page.waitForTimeout(250); }
+assert.equal(await calls(), base); checks++;
+assert.match(await page.evaluate(() => document.querySelector('[data-rm-draw-status]')?.textContent || ''), /读不到了/); checks++;
+await page.evaluate(() => [...document.querySelectorAll('[data-rm-draw-status] button')].find(button => button.textContent === '重新生图').click());
+await page.waitForTimeout(100);
+assert.equal(await calls(), base + 1); checks++;
+await release();
+
+// 14 存档在、地址却是这台设备认不出的：不当成没画过去自动画
+base = await calls();
+const oddFace = `<details open data-rabbit-mirror-owner-chat="chat:c" data-rabbit-mirror-owner-mesid="51" data-rabbit-mirror-owner-swipe="0"><summary>别的壳</summary>
+  <figure data-rm-draw-frame="1"><p data-rm-draw-prompt="1" hidden>井台边的老槐树下落了一地槐花</p></figure></details>`;
+await page.evaluate(async ([html, query]) => {
+    document.body.innerHTML = html;
+    const root = document.querySelector('details');
+    const key = images.listBuiltinImageFrames(root)[0].key;
+    const store = await import('/src/imageStore.js?' + query);
+    store.saveMirrorImage(key, { url: 'tauri://localhost/user/images/x.png', generatedAt: '2026-10-21T00:00:00Z' });
+}, [oddFace, query]);
+await mountFace(oddFace);
+await page.waitForTimeout(200);
+assert.equal(await calls(), base); checks++;
+assert.match(await page.evaluate(() => document.querySelector('[data-rm-draw-status]')?.textContent || ''), /打不开/); checks++;
+
+// 15 画面说明编号对不上（模型把模板的 "1" 复制给了两个图框）、段落被多包了一层：按先后配给图框，不丢
+const notesFace = `<details open data-rabbit-mirror-owner-chat="chat:c" data-rabbit-mirror-owner-mesid="52" data-rabbit-mirror-owner-swipe="0"><summary>两格</summary>
+  <figure data-rm-draw-frame="1"></figure><figure data-rm-draw-frame="1"></figure>
+  <div data-rm-draw-notes="1" hidden><p data-rm-draw-prompt="1">第一格：渡口清晨</p></div>
+  <div data-rm-draw-notes="2" hidden><div><p data-rm-draw-prompt="1">第二格：渡口黄昏</p><p data-rm-draw-char="阿雪">红衣</p></div></div></details>`;
+const adopted = await page.evaluate(html => {
+    document.body.innerHTML = html;
+    const root = document.querySelector('details');
+    images.adoptDrawNotes(root);
+    return [...root.querySelectorAll('[data-rm-draw-frame]')].map(frame => (frame.querySelector('[data-rm-draw-prompt]')?.textContent || '-') + '|' + (frame.querySelector('[data-rm-draw-char]')?.textContent || '-')).join(' ');
+}, notesFace);
+assert.equal(adopted, '第一格：渡口清晨|- 第二格：渡口黄昏|红衣'); checks++;
+
 assert.deepEqual(pageErrors, []);
 console.log(JSON.stringify({ checks }));
 await browser.close(); server.close();

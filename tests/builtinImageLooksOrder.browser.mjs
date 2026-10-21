@@ -53,7 +53,9 @@ await page.evaluate(async query => {
 let checks = 0;
 const draw = chars => page.evaluate(async chars => {
     window.__sent.length = 0;
-    document.body.innerHTML = `<div data-rabbit-mirror-external-source="true" data-rm-source="independent" data-rm-owner-chat="chat:c" data-rm-owner-mesid="12" data-rm-owner-swipe="0"><details open data-rabbit-mirror-owner-chat="chat:c" data-rabbit-mirror-owner-mesid="12" data-rabbit-mirror-owner-swipe="0"><summary>一面</summary><figure data-rm-draw-frame="1"><p data-rm-draw-prompt="1" hidden>石殿里三个人围着炭盆说话，暖光。</p>${chars}</figure></details></div>`;
+    // 每次画一个新楼层：同一位置 10 分钟内只自动画两次（见 AUTO_DRAW_LIMIT）
+    const mes = 12 + (window.__drawSeq || 0);
+    document.body.innerHTML = `<div data-rabbit-mirror-external-source="true" data-rm-source="independent" data-rm-owner-chat="chat:c" data-rm-owner-mesid="${mes}" data-rm-owner-swipe="0"><details open data-rabbit-mirror-owner-chat="chat:c" data-rabbit-mirror-owner-mesid="${mes}" data-rabbit-mirror-owner-swipe="0"><summary>一面</summary><figure data-rm-draw-frame="1"><p data-rm-draw-prompt="1" hidden>石殿里三个人围着炭盆说话，暖光。（${window.__drawSeq = (window.__drawSeq || 0) + 1}）</p>${chars}</figure></details></div>`;
     localStorage.clear();
     images.fillBuiltinImageFrames(document.querySelector('details'));
     for (let i = 0; i < 40 && !window.__sent.length; i += 1) await new Promise(r => setTimeout(r, 50));
@@ -84,6 +86,31 @@ assert.match(person('阿竹').nl, /金发碧眼/); checks++;
 assert.doesNotMatch(person('阿竹').nl, /红色长发|蓝眼睛|\{\{/); checks++;
 assert.match(person('阿竹').nl, /绿裙/); checks++;
 assert.deepEqual(r.sources, { 阿岩: '建档', 阿雪: '人设', 阿竹: '人设' }); checks++;
+
+// 色表外的颜色（auburn／hazel、亚麻色／茶色）也算发色瞳色：模型写的黑发金瞳照样去掉，不两种发色一起发
+await page.evaluate(() => { window.STBaiBaiImage.getCharacters = () => ({ characters: [{ name: '阿岩', tag: '1boy, auburn hair, hazel eyes', nl: '' }, { name: '阿松', tag: '', nl: '亚麻色的长发，茶色眼睛' }] }); });
+const c = await draw(`<p data-rm-draw-char="阿岩" hidden>黑发青年</p><p data-rm-draw-char-tags="阿岩" hidden>1boy, black hair, golden eyes, dark robe</p><p data-rm-draw-char="阿松" hidden>黑色短发的少女，蓝眼睛，穿白裙</p>`);
+const who = name => (c.request.characters || []).find(item => item.name === name) || {};
+assert.match(who('阿岩').tag, /auburn hair, hazel eyes/); checks++;
+assert.doesNotMatch(who('阿岩').tag, /black hair|golden eyes/); checks++;
+assert.match(who('阿松').nl, /亚麻色的长发，茶色眼睛/); checks++;
+assert.doesNotMatch(who('阿松').nl, /黑色短发|蓝眼睛/); checks++;
+assert.match(who('阿松').nl, /白裙/); checks++;
+
+// 模型给名字加了后缀、同一个人写了两条：按建档认出是同一个人，只发一条
+const d = await draw(`<p data-rm-draw-char="阿岩（青年）" hidden>穿玄色劲装</p><p data-rm-draw-char="阿岩（青年）" hidden>又写了一遍</p>`);
+assert.equal((d.request.characters || []).filter(item => /阿岩/.test(item.name)).length, 1, '不重复'); checks++;
+assert.match((d.request.characters || [])[0].tag, /auburn hair/); checks++;
+
+// 角色卡第一处写长相的句子是在讲别人（关系栏）：接着往后找，这个人自己的长相照样摘到
+await page.evaluate(() => {
+    const card = '{{char}}是山门的大师姐。\n【关系】阿竹：{{char}}的师妹，红色长发。\n【外貌】{{char}}：黑色长直发，绿色眼睛。';
+    const ctx = window.SillyTavern.getContext();
+    ctx.characters = [{ name: '阿雪', description: card, data: { description: card, extensions: {} } }];
+});
+const e = await draw(`<p data-rm-draw-char="阿雪" hidden>棕色短发的少女</p>`);
+assert.match((e.request.characters || [])[0].nl, /黑色长直发/); checks++;
+assert.doesNotMatch((e.request.characters || [])[0].nl, /红色长发|棕色短发/); checks++;
 
 assert.deepEqual(pageErrors, []);
 console.log(JSON.stringify({ checks }));
