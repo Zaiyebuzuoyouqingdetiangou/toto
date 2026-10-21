@@ -475,7 +475,7 @@ export function stripEphemeralFailureArtifacts(details){
  // 内置生图的运行时痕迹（「正在交给柏宝绘生图…」进度条、画好的那张 img）不是正文：存进去以后，
  // 下次打开图框里会先露出一行「生成中」，画好的图也该由插件按存档放回，不该写死在正文里。
  // 只有 data: 的那张（智绘姬存文件失败时）留着：本机插图存档里可能没有它，收藏打开时还要靠它显示。
- details.querySelectorAll('[data-rm-draw-status]').forEach(node=>node.remove());
+ details.querySelectorAll('[data-rm-draw-status], style[data-rm-sibling-bridge]').forEach(node=>node.remove());
  details.querySelectorAll('img[data-rm-draw-result]').forEach(node=>{ if(!/^data:/i.test(String(node.getAttribute('src')||'').trim())) node.remove(); });
  return details;
 }

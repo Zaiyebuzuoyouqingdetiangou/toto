@@ -33,3 +33,10 @@ test('normal faces and earlier complete faces are untouched', () => {
     const twoFaces = `${ok}\n<toto><details><summary>乙</summary><style>.a{}.x[data-<toto><details><summary>丙</summary><style>.z{}</style></details></toto>`;
     assert.equal(cut(twoFaces), `${ok}\n<toto><details><summary>丙</summary><style>.z{}</style></details></toto>`);
 });
+
+test('a <toto>/<details> inside a CSS string or comment, or after a complete rule, is not a restart', () => {
+    const inString = '<toto><details><summary>A</summary><style>.a::before{content:"<toto>"}</style><p>keep</p></details></toto>';
+    assert.equal(cut(inString), inString);
+    const inComment = '<toto><details><summary>A</summary><style>/* see <details> */ .a{}</style><p>keep</p></details></toto>';
+    assert.equal(cut(inComment), inComment);
+});

@@ -1823,6 +1823,30 @@ function needsPlainTextCssRescue(text) {
 // 认法只有一条：一个 <style> 里面出现了 <toto 或 <details 标签——CSS 里不会有这种东西。
 // 处理：丢掉没写完的第一遍（从它的 <toto>／<details> 开头到重来的地方），留下后面重写的那一遍。
 const RESTART_TAG_RE = /<(toto|details)\b[^<>]*>/i;
+// 只认真正的「重来」：标签不在 CSS 注释或引号字符串里（content:"<toto>"、/* <details> */ 不算），
+// 而且第一遍到这里确实是写断的——括号没配平，或者最后停在半条规则上（不是以 } 收尾）。
+function restartTagOutsideCss(body) {
+    let quote = '', comment = false;
+    const stack = [];
+    for (let i = 0; i < body.length; i += 1) {
+        const ch = body[i];
+        if (comment) { if (ch === '*' && body[i + 1] === '/') { comment = false; i += 1; } continue; }
+        if (quote) { if (ch === '\\') i += 1; else if (ch === quote) quote = ''; continue; }
+        if (ch === '/' && body[i + 1] === '*') { comment = true; i += 1; continue; }
+        if (ch === '"' || ch === "'") { quote = ch; continue; }
+        if ('{[('.includes(ch)) stack.push(ch);
+        else if ('}])'.includes(ch)) stack.pop();
+        else if (ch === '<') {
+            const match = RESTART_TAG_RE.exec(body.slice(i));
+            if (!match || match.index !== 0) continue;
+            const tail = body.slice(0, i).trimEnd();
+            if (!stack.length && (!tail || tail.endsWith('}'))) continue;
+            return { index: i, 1: match[1] };
+        }
+    }
+    return null;
+}
+
 export function cutRestartedMirrorAttempts(htmlText = '') {
     let html = String(htmlText || '');
     for (let guard = 0; guard < 8; guard += 1) {
@@ -1832,7 +1856,7 @@ export function cutRestartedMirrorAttempts(htmlText = '') {
             const bodyStart = match.index + match[0].length;
             const close = html.slice(bodyStart).search(/<\/style\s*>/i);
             const body = close < 0 ? html.slice(bodyStart) : html.slice(bodyStart, bodyStart + close);
-            const restart = RESTART_TAG_RE.exec(body);
+            const restart = restartTagOutsideCss(body);
             if (!restart) continue;
             const restartAt = bodyStart + restart.index;
             const before = html.slice(0, match.index);
