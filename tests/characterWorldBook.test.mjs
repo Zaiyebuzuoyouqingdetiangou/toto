@@ -162,16 +162,16 @@ test('entries for characters mentioned this turn go first so a long book truncat
     const book = { name: '开放世界', entries: [
         { ...entry(filler), comment: '江湖总览', keys: ['江湖'] },
         { ...entry('掌门：白须长者'), comment: '掌门', keys: ['掌门'] },
-        { ...entry('阿岩：银发高马尾，玄色劲装'), comment: '阿岩', keys: ['阿岩', '少主'] },
-        { ...entry('阿雪：乌黑长发，淡粉色眸'), comment: '阿雪', key: ['阿雪'] },
+        { ...entry('阿岩：棕色短发，玄色劲装'), comment: '阿岩', keys: ['阿岩', '少主'] },
+        { ...entry('阿雪：黑色长发，绿色眼睛'), comment: '阿雪', key: ['阿雪'] },
     ] };
     const plain = await readCharacterWorldBookContext(embeddedContext(book), { maxChars: 1700 });
     assert.equal(plain.truncated, true);
-    assert.doesNotMatch(plain.text, /银发高马尾/);
+    assert.doesNotMatch(plain.text, /棕色短发/);
     const focused = await readCharacterWorldBookContext(embeddedContext(book), { maxChars: 1700, focusText: '少主阿岩把阿雪的手按在胸口' });
     const lines = focused.text.split('\n');
-    assert.match(lines[0], /银发高马尾/);
-    assert.match(lines[1], /淡粉色眸/);
+    assert.match(lines[0], /棕色短发/);
+    assert.match(lines[1], /绿色眼睛/);
     assert.equal(focused.truncated, true);
     // 没提到的条目照原来的顺序排在后面，一条都不少（预算够时）
     const all = await readCharacterWorldBookContext(embeddedContext(book), { focusText: '阿雪' });
@@ -196,16 +196,16 @@ test('image cast mode keeps only entries mentioned this turn', async t => {
 
 test('image cast: entries without keys match by the name in their title; long entries share the budget', async t => {
     forbidNetwork(t);
-    const long = '阿雪：乌黑长直发，淡粉色琉璃瞳眸，右眼下朱砂泪痣。' + '生平往事'.repeat(1200);
+    const long = '阿雪：黑色长直发，绿色眼睛，左耳戴耳钉。' + '生平往事'.repeat(1200);
     const book = { name: '开放世界', entries: [
         { ...entry(long), comment: '【人物】阿雪', keys: [] },
-        { ...entry('阿岩：银发高马尾，赤金竖瞳。' + '旧事'.repeat(800)), comment: '阿岩·外貌', keys: [] },
+        { ...entry('阿岩：棕色短发，灰色眼睛。' + '旧事'.repeat(800)), comment: '阿岩·外貌', keys: [] },
         { ...entry('世界观'), comment: '【设定】人物关系', keys: [] },
     ] };
     const cast = await readCharacterWorldBookContext(embeddedContext(book), { focusText: '少主阿岩把阿雪的脚踝扣住，人物关系紧张', onlyMentioned: true, maxChars: 3000 });
     assert.deepEqual(cast.titles, ['【人物】阿雪', '阿岩·外貌']);
-    assert.match(cast.text, /淡粉色琉璃瞳眸/);
-    assert.match(cast.text, /银发高马尾/, '排在后面的人物也留着开头的长相');
+    assert.match(cast.text, /绿色眼睛/);
+    assert.match(cast.text, /棕色短发/, '排在后面的人物也留着开头的长相');
     assert.ok(cast.text.length <= 3000);
     assert.equal(cast.text.split('\n').filter(Boolean).every(line => { try { JSON.parse(line); return true; } catch { return false; } }), true);
 });
@@ -230,33 +230,33 @@ test('image cast: escaped rows still fit the budget, rows stay valid JSON, place
 
 test('image cast: a character buried in a long faction entry keeps his looks, not the faction preamble', async t => {
     forbidNetwork(t);
-    const faction = '教中规矩与历史。'.repeat(300) + '\n【阿岩】少主，银发狼尾，赤金竖瞳，身形高大，常穿玄色劲装。\n' + '其余教众。'.repeat(300);
+    const faction = '教中规矩与历史。'.repeat(300) + '\n【阿岩】少主，棕色短发，灰色眼睛，身形高大，常穿玄色劲装。\n' + '其余教众。'.repeat(300);
     const filler = title => ({ ...entry(`${title}的风貌与规矩。`.repeat(200)), comment: title, keys: [title] });
     const book = { name: '开放世界', entries: [
         filler('知名玩家档案'),
         { ...entry(faction), comment: '某教势力与npc', keys: ['某教', '阿岩'] },
         filler('江湖势力'), filler('神都风貌'), filler('皇家成员'),
-        { ...entry('阿雪：乌黑长直发，淡粉色眸。' + '往事'.repeat(500)), comment: '【人物】阿雪', keys: [] },
+        { ...entry('阿雪：黑色长直发，绿色眼睛。' + '往事'.repeat(500)), comment: '【人物】阿雪', keys: [] },
     ] };
     const cast = await readCharacterWorldBookContext(embeddedContext(book), {
         focusText: '知名玩家档案 江湖势力 神都风貌 皇家成员 某教少主阿岩托着阿雪的下颌', onlyMentioned: true, maxChars: 3000,
     });
     assert.ok(cast.text.length <= 3000);
-    assert.match(cast.text, /银发狼尾/);
-    assert.match(cast.text, /乌黑长直发/);
+    assert.match(cast.text, /棕色短发/);
+    assert.match(cast.text, /黑色长直发/);
     assert.deepEqual(cast.titles.slice(0, 2).sort(), ['【人物】阿雪', '某教势力与npc'].sort(), '写了长相的条目排前面');
 });
 
 test('image cast: a place name from another entry does not push the character excerpt out', async t => {
     forbidNetwork(t);
-    const faction = '神都的人多是黑发黑瞳。'.repeat(4) + '教中规矩。'.repeat(300) + '\n【阿岩】少主，银发狼尾，赤金竖瞳。\n' + '其余教众。'.repeat(300);
+    const faction = '神都的人多是黑发黑瞳。'.repeat(4) + '教中规矩。'.repeat(300) + '\n【阿岩】少主，棕色短发，灰色眼睛。\n' + '其余教众。'.repeat(300);
     const book = { name: '开放世界', entries: [
         { ...entry('神都风貌。'.repeat(400)), comment: '神都风貌', keys: ['神都'] },
         { ...entry(faction), comment: '某教势力与npc', keys: ['某教', '阿岩'] },
-        { ...entry('阿雪：乌黑长直发。' + '往事'.repeat(800)), comment: '【人物】阿雪', keys: [] },
+        { ...entry('阿雪：黑色长直发。' + '往事'.repeat(800)), comment: '【人物】阿雪', keys: [] },
     ] };
     const cast = await readCharacterWorldBookContext(embeddedContext(book), { focusText: '神都里某教少主阿岩看着阿雪', onlyMentioned: true, maxChars: 3000 });
-    assert.match(cast.text, /银发狼尾/);
-    assert.match(cast.text, /乌黑长直发/);
+    assert.match(cast.text, /棕色短发/);
+    assert.match(cast.text, /黑色长直发/);
     assert.ok(cast.text.length <= 3000);
 });

@@ -37,7 +37,7 @@ test('payload: tag fields tidied, natural-language fields untouched', () => {
     const nl = '日间，气派的古代商会大堂柜台前，少年背着一位女子。';
     const out = tidyImagePayload({
         prompt: '1boy, 1girl piggyback, market', nl,
-        flatPrompt: `1boy, 1girl piggyback, market\n${nl}\n方祁洛: 1boy, black hair`,
+        flatPrompt: `1boy, 1girl piggyback, market\n${nl}\n阿岩: 1boy, black hair`,
         characters: [{ name: '阿雪', tag: '1 girl, long black hair', nl: '冷白肤色' }],
     }, { promptIsTags: true, flatTagLines: 'first' });
     assert.equal(out.prompt, '1boy, 1girl, piggyback, market');

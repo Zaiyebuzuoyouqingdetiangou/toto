@@ -30,11 +30,11 @@ await page.goto(origin);
 const query = JSON.parse(await readFile(path.join(rootDir, 'manifest.json'), 'utf8')).js.split('?')[1];
 await page.evaluate(async query => { window.fav = await import('/src/theaterFavorites.js?' + query); }, query);
 let checks = 0;
-const face = (extra = '', state = '0') => `<details open><summary>【兔子镜：少主寝殿门牌与内务单】</summary><div class="door"><p>拜月内坛 · 昭月殿 请勿打扰。内设玄铁三重锁，闭阁静修，金创药散止步，内有狼护。</p><p>司务总阁 · 侍候呈单：北境雪狼皮覆褥与止血清膏，点验 ${state} 次。</p><figure data-rm-draw-frame="1">${extra}</figure></div></details>`;
-const row = (id, html, createdAt, title = '少主寝殿门牌与内务单') => ({ id, html, createdAt, title, characterName: '碎影江湖', characterId: 'c1' });
+const face = (extra = '', state = '0') => `<details open><summary>【兔子镜：少主寝殿门牌与内务单】</summary><div class="door"><p>某宗内坛 · 东殿 请勿打扰。内设玄铁三重锁，闭阁静修，金创药散止步，内有狼护。</p><p>司务总阁 · 侍候呈单：北境雪狼皮覆褥与止血清膏，点验 ${state} 次。</p><figure data-rm-draw-frame="1">${extra}</figure></div></details>`;
+const row = (id, html, createdAt, title = '少主寝殿门牌与内务单') => ({ id, html, createdAt, title, characterName: '示例角色卡', characterId: 'c1' });
 const result = await page.evaluate(async rows => [...(await fav.findDuplicateTheaterFavorites(rows)).entries()], [
-    row('a', face('<p data-rm-draw-prompt="1" hidden>银发少年</p>'), 1),
-    row('b', face('<div data-rm-draw-status="1"><p>正在画……</p></div>') + '<div data-rm-draw-notes="1" hidden><p data-rm-draw-prompt="1">银发少年</p></div>', 2),
+    row('a', face('<p data-rm-draw-prompt="1" hidden>少年</p>'), 1),
+    row('b', face('<div data-rm-draw-status="1"><p>正在画……</p></div>') + '<div data-rm-draw-notes="1" hidden><p data-rm-draw-prompt="1">少年</p></div>', 2),
     row('c', face('', '1'), 3),
     row('d', face().replace('请勿打扰', '欢迎光临').replace('北境雪狼皮', '南疆蛇皮').replace('玄铁三重锁', '竹篱一道'), 4, '少主寝殿门牌与内务单'),
     row('e', face(), 5, '别的标题'),
