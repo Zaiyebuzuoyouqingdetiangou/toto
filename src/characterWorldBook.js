@@ -206,3 +206,50 @@ export async function readCharacterWorldBookContext(ctx, {
     }
     return { text: prefix + marker, bookNames: [name], entryCount, titles: titles.slice(0, entryCount).filter(Boolean), truncated: true };
 }
+
+/**
+ * 从世界书人物条目（readCharacterWorldBookContext 返回的 text，每行一条 JSON）里摘出某个人的长相那几句。
+ * 先找标题就是这个人的条目（标题按符号拆开后有一段正好是这个名字），从正文开头摘；
+ * 再在别的条目里找这个名字（名字后面紧跟标点、空白或结尾才算，「阿岩岩」「阿岩的妹妹」不算），往后摘写着长相的句子，
+ * 摘到下一段（空行、下一个【小标题】）或同一画面里另一个人的名字为止。最多三句、两百字；找不到返回空串。
+ */
+export function appearanceFromCast(castText, name, otherNames = []) {
+    const who = text(name).trim();
+    if (!who || who.length < 2) return '';
+    const others = (Array.isArray(otherNames) ? otherNames : []).map(value => text(value).trim()).filter(value => value && value !== who && !who.includes(value));
+    const rows = [];
+    for (const line of text(castText).split('\n')) {
+        try { const row = JSON.parse(line); if (row && typeof row.content === 'string') rows.push(row); } catch { /* 截断标记之类 */ }
+    }
+    const titleIsWho = row => text(row.title).split(/[\s【】\[\]()（）<>《》「」『』:：·・|｜/\\,，、\-—_+=#*]+/).some(piece => piece.trim() === who);
+    const pick = window => {
+        const sentences = window.split(/(?<=[。；;！!？?\n])/).map(part => part.trim()).filter(Boolean);
+        return sentences.filter(part => APPEARANCE_WORDS.test(part)).slice(0, 3).join('').slice(0, 200);
+    };
+    const cutAtOthers = window => {
+        let end = window.length;
+        for (const other of others) { const at = window.indexOf(other, 1); if (at > 0) end = Math.min(end, at); }
+        return window.slice(0, end);
+    };
+    const ownRows = rows.filter(titleIsWho);
+    for (const row of ownRows) {
+        const found = pick(cutAtOthers(row.content.slice(0, 360)));
+        if (found) return found;
+    }
+    // 名字后面紧跟标点、空白，或者「身穿、有一头、是、长着、戴着」这类直接接长相的字才算（「阿岩的妹妹」「阿岩岩」不算）。
+    const boundary = /^(?:$|[\s：:，,、。；;】)）」』\-—·（(]|身|有|是|长|生|戴|穿|一头|头)/;
+    for (const row of rows) {
+        if (ownRows.includes(row)) continue;
+        const content = row.content;
+        let tries = 0;
+        for (let at = content.indexOf(who); at >= 0 && tries < 6; at = content.indexOf(who, at + who.length)) {
+            if (!boundary.test(content.slice(at + who.length, at + who.length + 1))) continue;
+            tries += 1;
+            let window = content.slice(at, at + 360);
+            window = window.slice(0, 1) + window.slice(1).split(/\n\s*\n|\n\s*【/)[0];
+            const found = pick(cutAtOthers(window));
+            if (found) return found;
+        }
+    }
+    return '';
+}

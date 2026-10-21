@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.73.14';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.73.14';
-import { builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.73.14';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.73.14';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.73.14';
-import { tidyImagePayload } from './imageTagTidy.js?rmv=1.73.14';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.73.14';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.73.14';
+import { getSettings } from './settings.js?rmv=1.73.15';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.73.15';
+import { builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.73.15';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.73.15';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.73.15';
+import { tidyImagePayload } from './imageTagTidy.js?rmv=1.73.15';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.73.15';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.73.15';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -403,6 +403,71 @@ function mergeAppearance(library, modelText, tagsOnly) {
     return modelText.includes(base.trim()) ? modelText : `${base.trim()}; ${modelText}`;
 }
 
+// 这一面没写、或写空了某个人的外貌（只写了「黑发」这种和设定对不上的）：从这张卡绑定的世界书里按名字摘出长相那几句补上。
+// 世界书写的长相放在前面；它写了发色就去掉模型写的发色词，写了瞳色就去掉模型写的瞳色词（只去这几个词，衣着、动作照留），
+// 英文标签里的发色、瞳色标签同样处理。角色库里配了这个人外貌的，以角色库为准，不再补。
+// NAI 4.5 标签写法只收英文标签，中文的世界书原文用不上，不补。
+const COLOR = '(?:乌|淡|浅|深|暗|亮|雪)?(?:[黑白银金红棕灰紫蓝粉绿褐赤青墨碧]{1,2}|琥珀|深|浅)色?';
+// 发色：「黑发」「乌黑长发」「黑色的头发」「一头银发」「发色偏深」；不算「发带、发夹、白发苍苍」。
+const HAIR = `(?:一头)?${COLOR}的?(?:长|短|卷|直|微卷|及腰|齐肩)*(?:头)?发(?![带簪饰绳夹冠圈卡苍])|发色(?:为|是|呈|偏)?(?:${COLOR})?`;
+// 瞳色：「碧眼」「蓝色的眼睛」「深色瞳孔」「眼睛是蓝色的」；不算「眼镜」。
+const EYE = `${COLOR}的?(?:瞳孔?|眸子?|眼睛|眼眸|眼瞳|眼(?![镜罩神角皮]))|(?:眼睛|眼眸|瞳孔)(?:是|为|呈)${COLOR}的?|[瞳眸]色(?:为|是|呈)?(?:${COLOR})?`;
+const HAIR_WORDS = new RegExp(HAIR, 'g');
+const EYE_WORDS = new RegExp(EYE, 'g');
+const HAS_HAIR = new RegExp(HAIR);
+const HAS_EYE = new RegExp(EYE);
+const worldCastCache = new Map();
+// 同一张卡、同一批人名 60 秒内共用一次读取（几张图同时画时不重复读）。读取不跟某一张图的取消走，免得取消一张连累别的图；
+// 每张图自己的取消在 withWorldBookAppearance 里单独看。
+function readWorldCast(names) {
+    const ctx = getContext();
+    const character = ctx?.characters?.[ctx?.characterId];
+    const disabled = getSettings().independentWorldInfoDisabledBooks || [];
+    const key = JSON.stringify([ctx?.characterId ?? '', character?.avatar || character?.name || '', character?.data?.extensions?.world || '', disabled, [...names].sort()]);
+    const hit = worldCastCache.get(key);
+    if (hit && Date.now() - hit.at < 60000) return hit.promise;
+    const promise = import('./characterWorldBook.js?rmv=1.73.15').then(module => module.readCharacterWorldBookContext(ctx, {
+        disabledBooks: disabled, focusText: names.join('\n'), onlyMentioned: true, maxChars: 4000,
+    })).then(result => String(result?.text || '')).catch(() => { worldCastCache.delete(key); return ''; });
+    worldCastCache.set(key, { at: Date.now(), promise });
+    if (worldCastCache.size > 20) worldCastCache.delete(worldCastCache.keys().next().value);
+    return promise;
+}
+async function withWorldBookAppearance(people, frame, tagsOnly, signal = null) {
+    if (tagsOnly) return people;
+    const names = [...new Set([...(frame.querySelectorAll?.('[data-rm-draw-char]') || [])]
+        .map(node => String(node.getAttribute('data-rm-draw-char') || '').replace(/\s+/g, ' ').trim().slice(0, 40)).filter(Boolean))].slice(0, 4);
+    if (!names.length) return people;
+    const cast = await readWorldCast(names);
+    if (signal?.aborted) throw Object.assign(new Error('生图已取消。'), { name: 'AbortError', code: 'aborted' });
+    if (!cast) return people;
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.73.15');
+    const merged = people.map(person => ({ ...person }));
+    for (const name of names) {
+        const person = merged.find(item => item.name === name);
+        if (person?.fromLibrary) continue;
+        const looks = appearanceFromCast(cast, name, names);
+        if (!looks) continue;
+        if (!person) { if (merged.length < 4) merged.push({ name, text: looks, modelTag: '' }); continue; }
+        const hair = HAS_HAIR.test(looks), eye = HAS_EYE.test(looks);
+        let rest = String(person.text || '');
+        if (hair) rest = rest.replace(HAIR_WORDS, '');
+        if (eye) rest = rest.replace(EYE_WORDS, '');
+        rest = rest.replace(/(^|[，,、。；;])\s*的/g, '$1').replace(/([，,、])\s*(?=[，,、。；;]|$)/g, '').replace(/^[，,、。；;\s]+/, '').trim();
+        person.text = [looks, rest].filter(Boolean).join(' ');
+        // 英文标签：只去「颜色＋hair／eyes」这种（hair ornament、closed eyes 不动）；带权重括号的不拆，原样留。
+        const tags = String(person.modelTag || '');
+        if (tags && (hair || eye) && !/[{}()[\]]/.test(tags)) {
+            const color = new RegExp(`^${TAG_COLOR}\\s+(hair|eyes)$`, 'i');
+            person.modelTag = tags.split(',').map(tag => tag.trim()).filter(tag => {
+                const match = tag.match(color);
+                return !(match && ((match[1].toLowerCase() === 'hair' && hair) || (match[1].toLowerCase() === 'eyes' && eye)));
+            }).join(', ');
+        }
+    }
+    return merged;
+}
+
 async function withLibraryAppearance(people, prompt, frame, tagsOnly) {
     const details = frame?.closest?.('details');
     const floorValue = Number(details?.dataset?.rabbitMirrorOwnerMesid);
@@ -412,13 +477,13 @@ async function withLibraryAppearance(people, prompt, frame, tagsOnly) {
         name: String(person?.name || '').trim(), tag: String(person?.tag || '').trim(), nl: String(person?.nl || '').trim(),
     })).filter(person => person.name && (person.tag || person.nl)));
     if (!library.size) return people;
-    const merged = people.map(person => ({ ...person, text: mergeAppearance(library.get(person.name), person.text, tagsOnly), libraryTag: String(library.get(person.name)?.tag || '') }));
+    const merged = people.map(person => ({ ...person, text: mergeAppearance(library.get(person.name), person.text, tagsOnly), libraryTag: String(library.get(person.name)?.tag || ''), fromLibrary: library.has(person.name) }));
     const ctx = getContext();
     const owners = [characterGroup(), String(ctx?.name1 || globalThis.name1 || '').trim()].filter(Boolean);
     for (const name of owners) {
         if (merged.length >= 4 || merged.some(person => person.name === name)) continue;
         if (!library.has(name) || !String(prompt || '').includes(name)) continue;
-        merged.push({ name, text: mergeAppearance(library.get(name), '', tagsOnly), libraryTag: String(library.get(name)?.tag || '') });
+        merged.push({ name, text: mergeAppearance(library.get(name), '', tagsOnly), libraryTag: String(library.get(name)?.tag || ''), fromLibrary: true });
     }
     return merged.filter(person => person.text || person.libraryTag || person.modelTag);
 }
@@ -515,7 +580,7 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
             // 以前角色库配了就整串不用模型写的，这一幕的衣着也跟着丢了。
             const tagOf = person => mergeTagLists(person.libraryTag, person.modelTag);
             // 每个人至少要有这种写法用得上的外貌：标签写法看标签，NAI 5 看自然语言或标签，空的人不发。
-            const people = (await withLibraryAppearance(readCharacters(frame), prompt, frame, tagsOnly))
+            const people = (await withWorldBookAppearance(await withLibraryAppearance(readCharacters(frame), prompt, frame, tagsOnly), frame, tagsOnly, options.signal || null))
                 .filter(person => tagsOnly ? String(person.text || '').trim() : String(person.text || '').trim() || tagOf(person));
             if (!isCurrent()) throw staleImageRequest();
             // 角色库外貌在前、模型写的在后，两边都保留；单提示词也逐人具名，不匿名混拼。

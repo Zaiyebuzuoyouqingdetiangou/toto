@@ -1,8 +1,8 @@
 // Pure, bounded generation preferences. These are not output gates, candidate
 // filters or a menu of interaction components. Unknown/native mechanisms remain
 // free to be designed by the model; no mother-library text is inspected here.
-import { INTERACTION_FAMILY_LABELS as FAMILY_LABELS, recentInteractionCooldowns } from './interactionCooldown.js?rmv=1.73.14';
-import { recentDiversityRecords } from './compositionFingerprint.js?rmv=1.73.14';
+import { INTERACTION_FAMILY_LABELS as FAMILY_LABELS, recentInteractionCooldowns } from './interactionCooldown.js?rmv=1.73.15';
+import { recentDiversityRecords } from './compositionFingerprint.js?rmv=1.73.15';
 
 // 近五轮里至少两轮用过的交互家族（同一轮多面只算一轮）。
 // 以前取的是近五轮出现过的全部家族，多面模式下几乎全被列进去，等于没有区分。

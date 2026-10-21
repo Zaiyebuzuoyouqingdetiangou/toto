@@ -1,17 +1,17 @@
 // Split from independentApi.js — faceSwipe.
 
-import { clearFaceFrame } from './faceFrame.js?rmv=1.73.14';
-import { getSettings } from '../settings.js?rmv=1.73.14';
-import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.73.14';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.73.14';
-import { configuredAutomaticRerollMax } from '../automaticReroll.js?rmv=1.73.14';
-import { seedSwipeState, appendSuccessfulSwipe, faceSwipeStorageSlot, readFaceSwipe, mutateFaceSwipe, restoreFaceSwipeSnapshot } from '../swipeVersions.js?rmv=1.73.14';
-import { EPHEMERAL_FAILURE_ATTR, EPHEMERAL_FAILURE_BODY_ATTR, RUNTIME_VERSION } from './runtime.js?rmv=1.73.14';
-import { independentRecordWithinBudget, readStore, requestSafeChatSave, writePersistedOwner, writeStore } from './persistence.js?rmv=1.73.14';
-import { chatKey, saveRecordForSlot, savedIndependentRecordForOwner, swipeId } from './connection.js?rmv=1.73.14';
-import { hasMultifaceMarkup, wrapIndependentFace } from './request.js?rmv=1.73.14';
-import { attachIndependentUnsavedNotices, externalFaceDetails, passiveObservedIdentity, showIndependentUnsavedOutput } from './mount.js?rmv=1.73.14';
-import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.73.14';
+import { clearFaceFrame } from './faceFrame.js?rmv=1.73.15';
+import { getSettings } from '../settings.js?rmv=1.73.15';
+import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.73.15';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.73.15';
+import { configuredAutomaticRerollMax } from '../automaticReroll.js?rmv=1.73.15';
+import { seedSwipeState, appendSuccessfulSwipe, faceSwipeStorageSlot, readFaceSwipe, mutateFaceSwipe, restoreFaceSwipeSnapshot } from '../swipeVersions.js?rmv=1.73.15';
+import { EPHEMERAL_FAILURE_ATTR, EPHEMERAL_FAILURE_BODY_ATTR, RUNTIME_VERSION } from './runtime.js?rmv=1.73.15';
+import { independentRecordWithinBudget, readStore, requestSafeChatSave, writePersistedOwner, writeStore } from './persistence.js?rmv=1.73.15';
+import { chatKey, saveRecordForSlot, savedIndependentRecordForOwner, swipeId } from './connection.js?rmv=1.73.15';
+import { hasMultifaceMarkup, wrapIndependentFace } from './request.js?rmv=1.73.15';
+import { attachIndependentUnsavedNotices, externalFaceDetails, passiveObservedIdentity, showIndependentUnsavedOutput } from './mount.js?rmv=1.73.15';
+import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.73.15';
 
 export function independentRerollMax(){ return configuredAutomaticRerollMax(getSettings()); }
 

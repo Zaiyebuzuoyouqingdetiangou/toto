@@ -260,3 +260,26 @@ test('image cast: a place name from another entry does not push the character ex
     assert.match(cast.text, /黑色长直发/);
     assert.ok(cast.text.length <= 3000);
 });
+
+test('appearanceFromCast picks the looks sentences for one person, not the next one', async () => {
+    const { appearanceFromCast } = await import('../src/characterWorldBook.js');
+    const cast = [
+        JSON.stringify({ book: 'b', title: '某教势力与npc', content: '教中规矩很多。\n【阿岩】少主，棕色短发，灰色眼睛。常穿玄色劲装。\n\n【阿竹】护法，金发碧眼。' }),
+        JSON.stringify({ book: 'b', title: '【人物】阿雪', content: '黑色长直发，绿色眼睛。性格温和。' }),
+    ].join('\n');
+    assert.match(appearanceFromCast(cast, '阿岩'), /棕色短发/);
+    assert.doesNotMatch(appearanceFromCast(cast, '阿岩'), /金发/);
+    assert.match(appearanceFromCast(cast, '阿雪'), /黑色长直发/);
+    assert.equal(appearanceFromCast(cast, '路人'), '');
+    const tricky = [
+        JSON.stringify({ book: 'b', title: '阿竹', content: '阿岩的妹妹，金发碧眼。' }),
+        JSON.stringify({ book: 'b', title: '阿岩岩', content: '银发紫瞳。' }),
+        JSON.stringify({ book: 'b', title: '阿岩与阿竹', content: '阿岩：棕色短发，灰色眼睛。\n阿竹：金发碧眼。' }),
+        JSON.stringify({ book: 'b', title: '同一段', content: '阿岩，黑色短发。阿竹，红色长发。' }),
+    ].join('\n');
+    // 「阿岩的妹妹」「阿岩岩」都不是阿岩；标题写了两个人时各摘各的；同一段里摘到另一个人为止
+    assert.match(appearanceFromCast(tricky, '阿岩', ['阿岩', '阿竹']), /棕色短发/);
+    assert.doesNotMatch(appearanceFromCast(tricky, '阿岩', ['阿岩', '阿竹']), /金发|银发|红色长发/);
+    assert.match(appearanceFromCast(tricky, '阿竹', ['阿岩', '阿竹']), /金发碧眼/);
+    assert.doesNotMatch(appearanceFromCast(tricky, '阿竹', ['阿岩', '阿竹']), /棕色短发/);
+});

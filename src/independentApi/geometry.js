@@ -1,13 +1,13 @@
 // Split from independentApi.js — geometry.
-import { carryExternalFaceFrames } from './faceFrame.js?rmv=1.73.14';
-import { restoreRuntimeAnimationClone, ANIMATION_SUSPENDED_ATTR } from '../runtimeAnimationState.js?rmv=1.73.14';
+import { carryExternalFaceFrames } from './faceFrame.js?rmv=1.73.15';
+import { restoreRuntimeAnimationClone, ANIMATION_SUSPENDED_ATTR } from '../runtimeAnimationState.js?rmv=1.73.15';
 
-import { bindVisualHistoryTarget } from '../storage.js?rmv=1.73.14';
-import { presentationModeFields } from '../presentationMode.js?rmv=1.73.14';
-import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.73.14';
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorExternalPlacementParent } from '../hostCompatibility.js?rmv=1.73.14';
-import { getSettings } from '../settings.js?rmv=1.73.14';
-import { resolveExternalAnchor } from './externalAnchor.js?rmv=1.73.14';
+import { bindVisualHistoryTarget } from '../storage.js?rmv=1.73.15';
+import { presentationModeFields } from '../presentationMode.js?rmv=1.73.15';
+import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.73.15';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorExternalPlacementParent } from '../hostCompatibility.js?rmv=1.73.15';
+import { getSettings } from '../settings.js?rmv=1.73.15';
+import { resolveExternalAnchor } from './externalAnchor.js?rmv=1.73.15';
 import {
     cleanRabbitMirrorOutput,
     compactTotoBlock,
@@ -21,14 +21,14 @@ import {
     clearRabbitMirrorHorizontalClipArtifacts,
     sanitizeRabbitMirrorUntrustedTemplate,
     validateRabbitMirrorRecoveredStyleAssignments,
-} from '../outputSanitizer.js?rmv=1.73.14';
-import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.73.14';
-import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.73.14';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.73.14';
-import { repairDesignCandidateAttributeQuotes } from '../interactionSampling.js?rmv=1.73.14';
-import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.73.14';
-import { MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE, INDEPENDENT_HISTORY_READ_ERROR_MESSAGE } from './missingRetryShell.js?rmv=1.73.14';
-import { markSanitizedRabbitMirrorFace } from '../multifaceProof.js?rmv=1.73.14';
+} from '../outputSanitizer.js?rmv=1.73.15';
+import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.73.15';
+import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.73.15';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.73.15';
+import { repairDesignCandidateAttributeQuotes } from '../interactionSampling.js?rmv=1.73.15';
+import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.73.15';
+import { MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE, INDEPENDENT_HISTORY_READ_ERROR_MESSAGE } from './missingRetryShell.js?rmv=1.73.15';
+import { markSanitizedRabbitMirrorFace } from '../multifaceProof.js?rmv=1.73.15';
 import {
     EXTERNAL_SHELL_ATTR,
     FOLLOW_EXTERNAL_ANCHOR_ATTR,
@@ -43,8 +43,8 @@ import {
     getContext,
     hashText,
     independentMaintenanceLiveRepairLocked,
-} from './runtime.js?rmv=1.73.14';
-import { automaticDispatchAlreadyConsumed, automaticFailureStops, generationPolls, operationEpochForBase } from './flights.js?rmv=1.73.14';
+} from './runtime.js?rmv=1.73.15';
+import { automaticDispatchAlreadyConsumed, automaticFailureStops, generationPolls, operationEpochForBase } from './flights.js?rmv=1.73.15';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INTERACTION_STATE_MIGRATION_KEY,
@@ -53,7 +53,7 @@ import {
     persistedOwnerForMessage,
     readStore,
     writeStore,
-} from './persistence.js?rmv=1.73.14';
+} from './persistence.js?rmv=1.73.15';
 import {
     chatKey,
     copyIndependentOwnerLineage,
@@ -71,7 +71,7 @@ import {
     savedRecordMatchesObserved,
     slotSearchKeys,
     swipeId,
-} from './connection.js?rmv=1.73.14';
+} from './connection.js?rmv=1.73.15';
 import {
     EXTERNAL_GEOMETRY_SETTLE_STEPS_MS,
     allExternalHosts,
@@ -105,7 +105,7 @@ import {
     wrapIndependentFace,
     wrapPreparedIndependentFace,
     writeGeometryDataset,
-} from './request.js?rmv=1.73.14';
+} from './request.js?rmv=1.73.15';
 import {
     activeIndependentFlightForBase,
     automaticCutoverVersionToken,
@@ -129,20 +129,20 @@ import {
     serializeExternalFaceDetails,
     showMultifaceFace,
     stripIndependentTransientLayoutArtifacts,
-} from './mount.js?rmv=1.73.14';
+} from './mount.js?rmv=1.73.15';
 import {
     automaticHostGenerationRenderMatches,
     hasExistingFollowRabbitMirror,
     queueMessageSync,
     suppressesAutomaticGeneration,
-} from './earlyBody.js?rmv=1.73.14';
+} from './earlyBody.js?rmv=1.73.15';
 import {
     automaticGenerationCutovers,
     persistedInteractionMigrationHandle,
     persistedInteractionMigrationIdle,
     writePersistedInteractionMigrationHandle,
     writePersistedInteractionMigrationIdle,
-} from './lifecycle.js?rmv=1.73.14';
+} from './lifecycle.js?rmv=1.73.15';
 
 let externalGeometryFrame = 0;
 
@@ -2141,7 +2141,7 @@ export function renderExternalErrorBody(details,text=''){
   // second retry intent after the first click has entered loading or READY.
   const host=details.closest?.(`[${SOURCE_ATTR}="true"]`);
   if(retry.disabled || !retry.isConnected || !details.contains?.(retry) || host?.dataset?.rmState!=='error') return;
-  void import('../outputSanitizer/toolsChrome.js?rmv=1.73.14').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+  void import('../outputSanitizer/toolsChrome.js?rmv=1.73.15').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
  },true);
  recover.addEventListener('click',async event=>{
   event.preventDefault(); event.stopPropagation();
