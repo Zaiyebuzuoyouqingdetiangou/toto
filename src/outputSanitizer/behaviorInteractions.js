@@ -1,12 +1,12 @@
-import { behaviorShowTokens, clearForcedActive, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.73.10';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.73.10';
-import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.73.10';
-import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState, holdAncestorStateClass } from './behaviorStateMirror.js?rmv=1.73.10';
-import { syncStateCarriers, releaseStateCarriers, unwindStaleBridges } from './behaviorStateBridge.js?rmv=1.73.10';
-import { findUnwrittenWordStates, wordStateHost, setWordState } from './wordStateAttr.js?rmv=1.73.10';
-import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.73.10';
-import { addDialectStateKeys, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup, toggleCssBridges, setBridgedCssWord } from './behaviorDialect.js?rmv=1.73.10';
-import { EXTRA_TYPES, EXTRA_CONTROLS, EXTRA_CONTROL_ATTRS, configureBehaviorExtras, configureCarryChatKey, extraTypeFits, prepareExtra, destroyExtra, extraAction, extraSync, extraKeys, extraReset, extraPointerDown, extraPointerMove, extraPointerUp, extraHoldStart, extraHoldEnd, applyCarriedState, saveCarriedState, recalledKeys, carryMemoryName } from './behaviorExtras.js?rmv=1.73.10';
+import { behaviorShowTokens, clearForcedActive, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.73.11';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.73.11';
+import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.73.11';
+import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState, holdAncestorStateClass } from './behaviorStateMirror.js?rmv=1.73.11';
+import { syncStateCarriers, releaseStateCarriers, unwindStaleBridges } from './behaviorStateBridge.js?rmv=1.73.11';
+import { findUnwrittenWordStates, wordStateHost, setWordState } from './wordStateAttr.js?rmv=1.73.11';
+import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.73.11';
+import { addDialectStateKeys, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup, toggleCssBridges, setBridgedCssWord } from './behaviorDialect.js?rmv=1.73.11';
+import { EXTRA_TYPES, EXTRA_CONTROLS, EXTRA_CONTROL_ATTRS, configureBehaviorExtras, configureCarryChatKey, extraTypeFits, prepareExtra, destroyExtra, extraAction, extraSync, extraKeys, extraReset, extraPointerDown, extraPointerMove, extraPointerUp, extraHoldStart, extraHoldEnd, applyCarriedState, saveCarriedState, recalledKeys, carryMemoryName } from './behaviorExtras.js?rmv=1.73.11';
 
 export { behaviorToggleKey, motionOutsideControls };
 
@@ -132,6 +132,29 @@ function style(state, node, property, value) {
 // ——— 插件写法和模型手写样式之间的“桥”：插件把状态改对了、画面却没跟上时，自己去找结果 ———
 
 // 本面自己的样式规则（浏览器解析好的，含 @media 里的）。
+// 模型的 CSS 按 data-rm-index 从 0 数还是从 1 数（翻页、横滑共用）：规则里出现了 0、又没出现最后一个（total），
+// 而且这条规则的目标确实落在这个区域里，就按 0 数。认不出时按驱动自己的 1 数。
+function cssIndexBase(state, total) {
+    const seen = new Set();
+    for (const rule of localRules(state.root)) for (const raw of rule.selectorText.split(',')) {
+        const piece = raw.replace(/^\s*\[data-rabbit-mirror-css-scope=[^\]]*\]\s*/, '');
+        const match = piece.match(/\[\s*data-rm-index\s*=\s*["']?(\d+)["']?\s*\]\s*([~+>]?)\s*([^]*)$/);
+        if (!match) continue;
+        const target = match[3].trim();
+        // 带页码的那一层（[data-rm-index] 所在的那一节，比如 .dial[data-rm-index="0"]）得是这个区域自己或它外面的一层，
+        // 目标得落在这个区域里：别的转盘、别的翻页的规则不算。
+        const head = piece.slice(0, match.index);
+        const compound = (head.match(/[^\s>+~]*$/)?.[0] || '').trim();
+        if (!target) continue;
+        try {
+            if (compound && !state.group.matches(compound) && !state.group.parentElement?.closest(compound)) continue;
+            if (!own(state.group, target).length) continue;
+        } catch { continue; }
+        seen.add(Number(match[1]));
+    }
+    return seen.has(0) && !seen.has(total) ? 0 : 1;
+}
+
 function localRules(root) {
     const scope = root?.closest?.('toto') || root;
     const rules = [];
@@ -945,6 +968,11 @@ function prepare(binding, group) {
     const type = group.getAttribute('data-rm-ui');
     if (!validGroup(group, type)) return null;
     // 跨面继承：这一面写了 data-rm-memory，先把这个聊天里记下的状态写回属性，下面按属性初始化。
+    // 翻页、横滑：先认出模型的页码从 0 还是从 1 数，跨面继承写回页码时才换算得对。
+    if ((type === 'pager' || type === 'slide') && !group.hasAttribute('data-rm-index-base')) {
+        const total = type === 'pager' ? ownPages(group).length : own(group, '[data-rm-item]').length;
+        if (cssIndexBase({ group, root: binding.root }, total) === 0) group.setAttribute('data-rm-index-base', '0');
+    }
     if (carryMemoryName(group)) { try { applyCarriedState(group); } catch { /* 读不到就按原样 */ } }
     const state = { group, type, root: binding.root, styles: new Map(), positions: new Map(), orders: new Map(), animations: new Set(), strokes: new Set(), placed: new Set(), changed: false, progress: 0 };
     binding.groups.set(group, state);
@@ -1401,6 +1429,7 @@ function prepareStateful(state) {
     } else if (type === 'pager') {
         state.pages = ownPages(group);
         // 模型的页码从 0 数（data-rm-index-base="0"，见 behaviorRepair 的翻页认页）：读写都按它的数法。
+        if (!group.hasAttribute('data-rm-index-base') && cssIndexBase(state, state.pages.length) === 0) group.setAttribute('data-rm-index-base', '0');
         state.indexBase = group.getAttribute('data-rm-index-base') === '0' ? 0 : 1;
         state.index = Math.min(Math.max(1, Math.round(finite(group.getAttribute('data-rm-index'), state.indexBase)) + 1 - state.indexBase), state.pages.length);
         state.loop = group.hasAttribute('data-rm-loop');
@@ -2126,7 +2155,7 @@ function scheduleOnDemandRelay(root, target) {
 function relayGroupLater(root, group, control = null) {
     const run = () => {
         if (!group.isConnected || !root.isConnected) return;
-        void import('./behaviorRelay.js?rmv=1.73.10').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
+        void import('./behaviorRelay.js?rmv=1.73.11').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
     };
     const idle = globalThis.requestIdleCallback;
     if (typeof idle === 'function') idle(run, { timeout: 800 }); else setTimeout(run, 120);
@@ -2228,8 +2257,8 @@ export function installBehaviorInteractions(root) {
 }
 
 // 扩展类型要用的主驱动工具。
-configureBehaviorExtras({ own, first, style, unstyle, setFlag, enableControl, refreshResults, finite, clamp, words });
+configureBehaviorExtras({ own, first, style, unstyle, setFlag, enableControl, refreshResults, finite, clamp, words, cssIndexBase });
 // 跨面继承按聊天分开记：聊天键从存储模块拿，拿不到时所有面共用一份。
 let carryChatKeyReader = null;
 configureCarryChatKey(() => carryChatKeyReader?.() || '');
-import('../storage.js?rmv=1.73.10').then(module => { carryChatKeyReader = () => module.getCurrentChatKey?.() || ''; }).catch(() => {});
+import('../storage.js?rmv=1.73.11').then(module => { carryChatKeyReader = () => module.getCurrentChatKey?.() || ''; }).catch(() => {});
