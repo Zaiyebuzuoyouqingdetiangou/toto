@@ -221,7 +221,7 @@ export function appearanceFromCast(castText, name, otherNames = []) {
     for (const line of text(castText).split('\n')) {
         try { const row = JSON.parse(line); if (row && typeof row.content === 'string') rows.push(row); } catch { /* 截断标记之类 */ }
     }
-    const titleIsWho = row => text(row.title).split(/[\s【】\[\]()（）<>《》「」『』:：·・|｜/\\,，、\-—_+=#*]+/).some(piece => piece.trim() === who);
+    const titleIsWho = row => text(row.title).trim() === who || text(row.title).split(/[\s【】\[\]()（）<>《》「」『』:：·・|｜/\\,，、\-—_+=#*]+/).some(piece => piece.trim() === who);
     const pick = window => {
         const sentences = window.split(/(?<=[。；;！!？?\n])/).map(part => part.trim()).filter(Boolean);
         return sentences.filter(part => APPEARANCE_WORDS.test(part)).slice(0, 3).join('').slice(0, 200);
@@ -233,7 +233,13 @@ export function appearanceFromCast(castText, name, otherNames = []) {
     };
     const ownRows = rows.filter(titleIsWho);
     for (const row of ownRows) {
-        const found = pick(cutAtOthers(row.content.slice(0, 360)));
+        // 标题就是这个人的条目（角色卡、Persona 也走这里）：长相常写在几百字的身份、背景后面，
+        // 从第一句写长相的地方往后摘，不只看开头。
+        const content = row.content;
+        const at = content.search(APPEARANCE_WORDS);
+        if (at < 0) continue;
+        const start = Math.max(0, content.lastIndexOf('\n', at), Math.max(content.lastIndexOf('。', at), content.lastIndexOf('；', at)) + 1);
+        const found = pick(cutAtOthers(content.slice(start, start + 360)));
         if (found) return found;
     }
     // 名字后面紧跟标点、空白，或者「身穿、有一头、是、长着、戴着」这类直接接长相的字才算（「阿岩的妹妹」「阿岩岩」不算）。

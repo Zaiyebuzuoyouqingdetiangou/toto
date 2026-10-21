@@ -13,8 +13,8 @@ test('direct image prompts ask for every person by name and a close, small cast'
     assert.equal((builder.match(/画面里有几个人就加几条，一个都不能少.*?每人一条（用正文里的名字，不写成「女子」「少年」）/g) || []).length, 2, 'both prompt formats');
     // 完整长相逐人写（配给各自的人物栏）；自然语言画面里写到每个人时，最显眼的长相紧跟在这个人后面，不并成一串；
     // 标签画面里不写长相（标签分不清是谁的）。生图 LLM 模式也要逐人写外貌。
-    assert.equal((builder.match(/完整长相逐人写在下面/g) || []).length, 2, 'both prompt formats');
-    assert.match(builder, /把最显眼的长相紧跟在这个人后面/);
+    assert.equal((builder.match(/长相（发色发型、瞳色、辨识特征）只写在下面逐人那一条里，画面那一段不写/g) || []).length, 2, 'both prompt formats');
+    assert.doesNotMatch(builder, /把最显眼的长相紧跟在这个人后面/);
     assert.match(builder, /长相标签写在下面逐人那一条，这里不写/);
     assert.match(builder, /正式提示词由生图 LLM 另写；出场人物的外貌照样逐人写：' \+ directCharacters/);
     assert.equal((builder.match(/两人以内、近景或中景为主/g) || []).length, 2, 'both prompt formats');

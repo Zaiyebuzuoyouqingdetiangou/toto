@@ -1,11 +1,11 @@
-import { describeLocalStorageUsage } from './storageUsage.js?rmv=1.73.16';
-import { getSettings } from './settings.js?rmv=1.73.16';
-import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=1.73.16';
-import { loadMirrorImage, saveMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft } from './imageStore.js?rmv=1.73.16';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.73.16';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.73.16';
-import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.73.16';
-import { listBuiltinImageFrames, rerollBuiltinImage, showBuiltinImageVersion, builtinImageReady, builtinImageReusable } from './builtinImage.js?rmv=1.73.16';
+import { describeLocalStorageUsage } from './storageUsage.js?rmv=1.73.19';
+import { getSettings } from './settings.js?rmv=1.73.19';
+import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=1.73.19';
+import { loadMirrorImage, saveMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft } from './imageStore.js?rmv=1.73.19';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.73.19';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.73.19';
+import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.73.19';
+import { listBuiltinImageFrames, rerollBuiltinImage, showBuiltinImageVersion, builtinImageReady, builtinImageReusable } from './builtinImage.js?rmv=1.73.19';
 
 // The lock lives beyond a panel's lifetime. Closing, reopening or aborting a UI
 // cannot release a provider reservation before its Promise actually settles.
@@ -441,13 +441,14 @@ function buildBuiltinSection(doc, root, initial) {
     roll.style.flex = '1 1 160px'; cancel.style.flex = '1 1 160px';
     row.append(roll, cancel, edit);
     const hint = el(doc, 'p', ''); hint.style.cssText = 'margin:0;font-size:12px;opacity:.75;';
+    const sourceLine = el(doc, 'p', ''); sourceLine.style.cssText = 'margin:0;font-size:12px;opacity:.75;'; sourceLine.hidden = true;
     const editor = el(doc, 'div'); editor.style.cssText = 'display:grid;gap:6px;';
     const editLabel = el(doc, 'label', '这张图的提示词（这一面生成时写好的；改了只影响这次重画）'); editLabel.style.cssText = 'display:grid;gap:6px;font-size:13px;';
     const editBox = el(doc, 'textarea', '', { rows: '4' }); editBox.style.cssText = 'width:100%;min-width:0;box-sizing:border-box;font:inherit;padding:8px;resize:vertical;';
     const editGo = el(doc, 'button', '按改过的提示词画', { type: 'button', 'data-rm-builtin-action': 'reroll-edited' });
     editGo.style.cssText = 'min-height:44px;padding:8px 14px;font:inherit;';
     editLabel.append(editBox); editor.append(editLabel, editGo);
-    section.append(head, tabs, view, nav, statusLine, row, hint, editor);
+    section.append(head, tabs, view, nav, statusLine, row, hint, sourceLine, editor);
 
     const provider = () => getSettings().imageBackend === 'chatu8' ? '智绘姬' : '柏宝绘';
     const currentFrame = () => frames[Math.min(selected, frames.length - 1)];
@@ -486,8 +487,12 @@ function buildBuiltinSection(doc, root, initial) {
         roll.hidden = !!job; cancel.hidden = !job;
         roll.disabled = !ready || firstDraw || item.broken; edit.disabled = !ready || !!job || firstDraw || item.broken; editGo.disabled = !ready || !!job || firstDraw || item.broken;
         editor.hidden = !editing;
-        if (editing && !editBox.dataset.forKey) { editBox.value = item.prompt; editBox.dataset.forKey = item.key; }
+        if (editing && !editBox.dataset.forKey) { editBox.value = item.editPrompt || item.prompt; editBox.dataset.forKey = item.key; }
         const reusable = builtinImageReusable(shown);
+        // 这张图每个人的长相是从哪来的（建档角色／人设／世界书／模型写的），画得不像时一眼看出哪一步没对上。
+        const sources = shown?.looksSources && typeof shown.looksSources === 'object' ? Object.entries(shown.looksSources).map(([name, source]) => `${name}=${source}`).join(' ') : '';
+        sourceLine.textContent = sources ? `长相来源：${sources}` : '';
+        sourceLine.hidden = !sources;
         hint.textContent = !ready
             ? '内置生图没有开启：在兔子镜设置里打开后才能重画；已经画好的图照样能翻看、切换。'
             : item.broken ? '这张图的存档读不出来，重画的结果会存不进去，所以先不让画。'
