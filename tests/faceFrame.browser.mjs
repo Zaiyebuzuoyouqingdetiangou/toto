@@ -86,6 +86,35 @@ assert.equal(r.mark, null); checks++;
 r = await run('<details data-rabbit-mirror-external-details="true" open><summary>t</summary><div>正文</div></details>');
 assert.equal(r.carried, 0); checks++;
 
+// 8 正文在原外框里缩进一圈（margin:16px）：去掉左右缩进，和标题一样宽；宽屏居中的窄面（左右很宽）不动
+const flush = await page.evaluate(() => {
+    const chat = document.getElementById('chat');
+    chat.style.width = '400px';
+    const make = margin => `<div class="rabbit-mirror-external-shell" data-rm-source="independent" data-rm-placement="external"><details data-rabbit-mirror-external-details="true" open style="background:#cde;border-radius:20px"><summary>标题</summary><div class="b" style="margin:${margin};background:#eef">正文</div></details></div>`;
+    const out = {};
+    for (const [key, margin] of [['inset', '16px'], ['center', '0 120px'], ['oneSide', '0 0 0 16px'], ['fixedCard', '0 auto;width:360px']]) {
+        chat.innerHTML = make(margin);
+        const host = chat.firstElementChild;
+        ff.carryExternalFaceFrames(host);
+        const body = host.querySelector('.b'), summary = host.querySelector('summary');
+        out[key] = { flush: body.getAttribute('data-rm-face-flush'), same: Math.abs(body.getBoundingClientRect().width - summary.getBoundingClientRect().width) < 1, top: getComputedStyle(body).marginTop };
+    }
+    // 收起着挂上去：先不量，展开时量
+    chat.innerHTML = make('16px').replace(' open ', ' ');
+    const host = chat.firstElementChild;
+    ff.carryExternalFaceFrames(host);
+    const body = host.querySelector('.b');
+    out.collapsed = body.getAttribute('data-rm-face-flush');
+    host.querySelector('details').open = true;
+    return new Promise(resolve => setTimeout(() => { out.opened = body.getAttribute('data-rm-face-flush'); resolve(out); }, 50));
+});
+
+assert.equal(flush.opened, 'true', '展开时再量'); checks++;
+assert.deepEqual(flush.inset, { flush: 'true', same: true, top: '16px' }, '左右缩进去掉、上下不动'); checks++;
+assert.equal(flush.center.flush, null); checks++;
+assert.equal(flush.oneSide.flush, null); checks++;
+assert.equal(flush.fixedCard.flush, null, '写死宽度、margin:auto 居中的卡片不挤到左边'); checks++;
+
 assert.deepEqual(pageErrors, []); checks++;
 await browser.close(); server.close();
 console.log(`faceFrame: ${checks} checks passed`);

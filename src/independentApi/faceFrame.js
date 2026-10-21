@@ -65,17 +65,65 @@ export function clearFaceFrame(details) {
     details.removeAttribute(FACE_FRAME_ATTR);
     for (const name of FACE_FRAME_VARS) details.style?.removeProperty?.(name);
     for (const node of details.querySelectorAll?.(`[${FACE_FRAME_BODY_ATTR}]`) || []) node.removeAttribute(FACE_FRAME_BODY_ATTR);
+    for (const node of details.querySelectorAll?.(`[${FACE_FLUSH_ATTR}]`) || []) node.removeAttribute(FACE_FLUSH_ATTR);
+    details.removeAttribute('data-rm-face-flush-checked');
+    for (const node of details.querySelectorAll?.('[data-rm-face-flush-checked]') || []) node.removeAttribute('data-rm-face-flush-checked');
+}
+
+// 模型常把正文那一块写成「外框里缩进一圈」（margin:16px），外框是 details 自己画的。外置时外框被清掉，
+// 正文就比上面的标题条左右各窄一截。这里把这种左右对称、不大的缩进去掉（只去左右，上下不动），正文和标题一样宽。
+// 只认「宽度跟着容器走」的块：试着去掉左右外边距，它跟着变宽才算缩进；写死宽度、靠 margin:auto 居中的卡片
+// 去掉外边距也不会变宽，不动（不然会被挤到左边）。左右很宽的（窄面在宽屏上居中）也不动。
+// 这样量出来的结论和屏幕多宽无关；只在这一面真的显示着时量（收起、切到别的面时量不准，等显示出来再量）。
+export const FACE_FLUSH_ATTR = 'data-rm-face-flush';
+const FLUSH_CHECKED_ATTR = 'data-rm-face-flush-checked';
+const MAX_INSET = 40;
+export function flushFaceBlocks(details) {
+    const view = details?.ownerDocument?.defaultView;
+    if (!details?.isConnected || typeof view?.getComputedStyle !== 'function') return 0;
+    if (details.hasAttribute(FLUSH_CHECKED_ATTR)) return 0;
+    // 收起、藏着的面先不量（便宜的判断在前，不为它强制排版）；展开和切面时会再叫到这里。
+    if (!details.open || details.hidden || details.style.display === 'none' || details.hasAttribute('data-rm-ephemeral-failure')) return 0;
+    const blocks = [...details.children].filter(node => !SKIP_TAGS.has(node.tagName)
+        && !node.matches('[data-collapse-btn], .details-collapse-btn, [data-rm-mobile-controls], [popover]'));
+    // 没显示出来（收起、多面里不是当前这一面）：现在量不准，先不量。
+    if (!blocks.length || !blocks.some(node => node.getClientRects().length)) return 0;
+    let count = 0;
+    for (const node of blocks) {
+        if (!node.getClientRects().length) continue;
+        let style;
+        try { style = view.getComputedStyle(node); } catch { continue; }
+        if (style.position === 'absolute' || style.position === 'fixed' || style.display.startsWith('inline')) continue;
+        const left = Number.parseFloat(style.marginLeft) || 0, right = Number.parseFloat(style.marginRight) || 0;
+        if (left <= 0 || right <= 0 || left > MAX_INSET || right > MAX_INSET || Math.abs(left - right) > 2) continue;
+        const before = node.getBoundingClientRect().width;
+        node.setAttribute(FACE_FLUSH_ATTR, 'true');
+        const after = node.getBoundingClientRect().width;
+        if (after - before < (left + right) - 2) { node.removeAttribute(FACE_FLUSH_ATTR); continue; }
+        count += 1;
+    }
+    details.setAttribute(FLUSH_CHECKED_ATTR, 'true');
+    return count;
 }
 
 /** 把一面（details）模型写的外框挪到它的正文那一块上。返回是否挪了。 */
 export function carryFaceFrame(details) {
     const view = details?.ownerDocument?.defaultView;
     if (!details?.isConnected || typeof view?.getComputedStyle !== 'function') return false;
-    if (details.getAttribute(FACE_FRAME_ATTR) === 'true') return true;
+    // 量过了（挪了是 true，没什么可挪是 none）：不再量，ensureExternalTools 常被调到。
+    if (details.hasAttribute(FACE_FRAME_ATTR)) {
+        // 记号还在、正文却换了（维修兔修复是换一份克隆上去）：重新量。
+        if (details.getAttribute(FACE_FRAME_ATTR) !== 'true' || details.querySelector(':scope > [data-rm-face-frame-body]')) return details.getAttribute(FACE_FRAME_ATTR) === 'true';
+        clearFaceFrame(details);
+    }
+    // 「这一版失败」遮罩挂着时正文不是真正的正文：不量、不记。
+    if (details.hasAttribute('data-rm-ephemeral-failure')) return false;
     const body = faceBody(details);
-    if (!body) return false;
+    const none = () => { details.setAttribute(FACE_FRAME_ATTR, 'none'); return false; };
+    if (!body) return none();
     const frame = authoredFrame(details, view);
-    if (!frame || (!frame.bg && !frame.bgImage && !frame.border && !frame.shadow)) return false;
+    if (!frame) return false;
+    if (!frame.bg && !frame.bgImage && !frame.border && !frame.shadow) return none();
     let own;
     try { own = view.getComputedStyle(body); } catch { return false; }
     const ownBackground = alphaOf(own.backgroundColor) > 0.02 || (own.backgroundImage && own.backgroundImage !== 'none');
@@ -86,7 +134,7 @@ export function carryFaceFrame(details) {
         '--rm-face-frame-radius': (Number.parseFloat(own.borderTopLeftRadius) || 0) ? '' : frame.radius,
         '--rm-face-frame-shadow': own.boxShadow && own.boxShadow !== 'none' ? '' : frame.shadow,
     };
-    if (!vars['--rm-face-frame-bg'] && !vars['--rm-face-frame-bg-image'] && !vars['--rm-face-frame-border'] && !vars['--rm-face-frame-shadow']) return false;
+    if (!vars['--rm-face-frame-bg'] && !vars['--rm-face-frame-bg-image'] && !vars['--rm-face-frame-border'] && !vars['--rm-face-frame-shadow']) return none();
     // 正文上记下要补哪几项（bg / bgimg / border / radius / shadow）：样式只画这几项，没补的保持正文自己的。
     const parts = { '--rm-face-frame-bg': 'bg', '--rm-face-frame-bg-image': 'bgimg', '--rm-face-frame-border': 'border', '--rm-face-frame-radius': 'radius', '--rm-face-frame-shadow': 'shadow' };
     const tokens = [];
@@ -99,9 +147,16 @@ export function carryFaceFrame(details) {
 }
 
 /** 外置宿主里每一面都挪一遍。 */
+const TOGGLE_BOUND = new WeakSet();
 export function carryExternalFaceFrames(host) {
     let count = 0;
     for (const details of host?.querySelectorAll?.(':scope > details[data-rabbit-mirror-external-details="true"]:not(.rabbit-mirror-external-placeholder)') || []) {
+        // 收起着挂上去的面：展开时再量一次缩进。
+        if (!TOGGLE_BOUND.has(details)) {
+            TOGGLE_BOUND.add(details);
+            details.addEventListener('toggle', () => { if (details.open && details.closest('[data-rm-placement="external"]')) { try { flushFaceBlocks(details); } catch { /* 量不了就照原样 */ } } });
+        }
+        try { flushFaceBlocks(details); } catch { /* 量不了就照原样 */ }
         try { if (carryFaceFrame(details)) count += 1; } catch { /* 一面挪不了不影响别的面 */ }
     }
     return count;
