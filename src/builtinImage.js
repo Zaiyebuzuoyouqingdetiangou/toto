@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.73.19';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.73.19';
-import { builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.73.19';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.73.19';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.73.19';
-import { tidyImagePayload } from './imageTagTidy.js?rmv=1.73.19';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.73.19';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.73.19';
+import { getSettings } from './settings.js?rmv=1.73.20';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.73.20';
+import { builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.73.20';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.73.20';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.73.20';
+import { tidyImagePayload } from './imageTagTidy.js?rmv=1.73.20';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.73.20';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.73.20';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -160,10 +160,14 @@ const TAG_HUE = '(?:black|white|silver|grey|gray|blonde?|brown|red|pink|blue|gre
 // 「dark hair」「light blue eyes」「dark-blue hair」都算；multicolored、two-tone、渐变、挑染也是发色。
 // 两个颜色词连写的（platinum blonde、ash blonde、silver-white、pinkish white）也算。
 const TAG_COLOR = `(?:(?:(?:light|dark|pale|deep|bright)[-\\s]+)?${TAG_HUE}(?:ish)?(?:[-\\s]+${TAG_HUE})?|light|dark|pale|multicolou?red|two[-\\s]?tone|gradient|streaked)`;
+// 「long black hair」「black long hair」「big red eyes」这种长短／样子和颜色写在一起的也算（柏宝绘自动建档就是这么写的）：
+// 先把长短、样子的词去掉，再认颜色。
+const TAG_STYLE = /\b(?:very|absurdly|long|short|medium|shoulder[-\s]?length|wavy|curly|straight|messy|spiky|fluffy|silky|big|large|small|narrow|sharp|droopy|tsurime|tareme)\b/g;
+const TAG_LENGTH = /\b(?:long|short|medium|shoulder[-\s]?length)\b/;
 const TAG_TRAITS = [
-    ['hair-color', new RegExp(`^${TAG_COLOR}\\s+hair$`)],
-    ['eye-color', new RegExp(`^(?:${TAG_COLOR}\\s+eyes|heterochromia)$`)],
-    ['hair-length', /^(?:(?:very\s+)+|absurdly\s+)?(?:long|short|medium|shoulder[-\s]?length)\s+hair$/],
+    ['hair-color', bare => /\bhair$/.test(bare) && new RegExp(`^${TAG_COLOR}\\s+hair$`).test(bare.replace(TAG_STYLE, ' ').replace(/\s+/g, ' ').trim())],
+    ['eye-color', bare => bare === 'heterochromia' || (/\beyes$/.test(bare) && new RegExp(`^${TAG_COLOR}\\s+eyes$`).test(bare.replace(TAG_STYLE, ' ').replace(/\s+/g, ' ').trim()))],
+    ['hair-length', bare => /\bhair$/.test(bare) && TAG_LENGTH.test(bare)],
 ];
 
 // 权重括号或 :: 没配对：这一段是跨逗号的权重组拆出来的半截，去掉它会让括号配不上，权重漏到后面所有标签上。这种不动。
@@ -174,21 +178,22 @@ function unbalancedGroup(part) {
 
 // loose：认角色库那一串写了哪几类时用。角色库自己的跨逗号权重组（{silver hair, long hair}）拆开的半截也算它写过；
 // 要去掉的（模型写的）才要求括号配对。
-function tagTrait(part, loose = false) {
-    if (!loose && unbalancedGroup(part)) return '';
+function tagTraits(part, loose = false) {
+    if (!loose && unbalancedGroup(part)) return [];
     // 去掉权重写法再认：{silver hair}、[silver hair]、(silver hair:1.2)、1.2::silver hair::
     const bare = part.toLowerCase().replace(/^-?\d+(?:\.\d+)?::|::$/g, '').replace(/[{}[\]()]/g, '').replace(/:\s*-?\d+(?:\.\d+)?$/, '').replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
-    return TAG_TRAITS.find(([, re]) => re.test(bare))?.[0] || '';
+    return TAG_TRAITS.filter(([, test]) => test(bare)).map(([name]) => name);
 }
+function tagTrait(part, loose = false) { return tagTraits(part, loose)[0] || ''; }
 
 // 逗号标签合并：前面的优先，大小写不同的同一标签只留一个；第一串写过的长相类，后面的同类不要。
 function mergeTagLists(...lists) {
     const seen = new Set();
-    const claimed = new Set(String(lists[0] || '').split(',').map(part => tagTrait(part.trim(), true)).filter(Boolean));
+    const claimed = new Set(String(lists[0] || '').split(',').flatMap(part => tagTraits(part.trim(), true)));
     return lists.flatMap((list, index) => String(list || '').split(',').map(part => [part.trim(), index])).filter(([part, index]) => {
         const key = part.toLowerCase();
         if (!part || seen.has(key)) return false;
-        if (index > 0 && claimed.has(tagTrait(part))) return false;
+        if (index > 0 && tagTraits(part).some(trait => claimed.has(trait))) return false;
         seen.add(key);
         return true;
     }).map(([part]) => part).join(', ');
@@ -454,17 +459,16 @@ function stripModelLooks(person, { hair, eye }) {
     person.text = rest.replace(/(^|[，,、。；;])\s*的/g, '$1').replace(/([，,、])\s*(?=[，,、。；;]|$)/g, '').replace(/^[，,、。；;\s]+/, '').trim();
     const tags = String(person.modelTag || '');
     if (tags && !/[{}()[\]]/.test(tags)) {
-        const color = new RegExp(`^${TAG_COLOR}\\s+(hair|eyes)$`, 'i');
         person.modelTag = tags.split(',').map(tag => tag.trim()).filter(tag => {
-            const match = tag.match(color);
-            return !(match && ((match[1].toLowerCase() === 'hair' && hair) || (match[1].toLowerCase() === 'eyes' && eye)));
+            const traits = tagTraits(tag, true);
+            return !((hair && traits.includes('hair-color')) || (eye && traits.includes('eye-color')));
         }).join(', ');
     }
 }
 // 英文标签串里写了发色／瞳色没有（建档角色的 tag）。
 function tagHasLooks(tags) {
     const parts = String(tags || '').split(',').map(part => part.trim()).filter(Boolean);
-    return { hair: parts.some(part => tagTrait(part, true) === 'hair-color'), eye: parts.some(part => tagTrait(part, true) === 'eye-color') };
+    return { hair: parts.some(part => tagTraits(part, true).includes('hair-color')), eye: parts.some(part => tagTraits(part, true).includes('eye-color')) };
 }
 
 // 第二来源：角色卡（描述、性格）和 Persona 里写的长相。建档没有这个人、这一面又把长相写错时，从这里摘。
@@ -496,7 +500,7 @@ async function withCardAppearance(people, frame, tagsOnly) {
         cast = rows.map(row => JSON.stringify(row)).join('\n');
     } catch { cast = ''; }
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.73.19');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.73.20');
     const merged = people.map(person => ({ ...person }));
     // 角色卡里提到 Persona、Persona 里提到角色：摘到对方的名字就停，不把对方的长相算进来。
     const others = [...new Set([...names, charName, personaName].filter(Boolean))];
@@ -522,7 +526,7 @@ function readWorldCast(names) {
     const key = JSON.stringify([ctx?.characterId ?? '', character?.avatar || character?.name || '', character?.data?.extensions?.world || '', disabled, [...names].sort()]);
     const hit = worldCastCache.get(key);
     if (hit && Date.now() - hit.at < 60000) return hit.promise;
-    const promise = import('./characterWorldBook.js?rmv=1.73.19').then(module => module.readCharacterWorldBookContext(ctx, {
+    const promise = import('./characterWorldBook.js?rmv=1.73.20').then(module => module.readCharacterWorldBookContext(ctx, {
         disabledBooks: disabled, focusText: names.join('\n'), onlyMentioned: true, maxChars: 4000,
     })).then(result => String(result?.text || '')).catch(() => { worldCastCache.delete(key); return ''; });
     worldCastCache.set(key, { at: Date.now(), promise });
@@ -536,7 +540,7 @@ async function withWorldBookAppearance(people, frame, tagsOnly, signal = null) {
     const cast = await readWorldCast(names);
     if (signal?.aborted) throw Object.assign(new Error('生图已取消。'), { name: 'AbortError', code: 'aborted' });
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.73.19');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.73.20');
     const merged = people.map(person => ({ ...person }));
     for (const name of names) {
         const person = merged.find(item => item.name === name);
