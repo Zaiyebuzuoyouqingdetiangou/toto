@@ -1,9 +1,9 @@
-import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.73.28';
+import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.73.29';
 // Split from outputSanitizer.js — markup.
 
-import { getSettings } from '../settings.js?rmv=1.73.28';
-import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.73.28';
-import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.73.28';
+import { getSettings } from '../settings.js?rmv=1.73.29';
+import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.73.29';
+import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.73.29';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     INTERACTION_HOME_ATTR,
@@ -15,7 +15,7 @@ import {
     clearMirrorTitleDisplayArtifacts,
     escapeRegExp,
     hashInteractionSignature,
-} from './runtime.js?rmv=1.73.28';
+} from './runtime.js?rmv=1.73.29';
 
 const TOTO_BLOCK_RE = /<toto\b[\s\S]*?<\/toto>/gi;
 
@@ -1818,8 +1818,46 @@ function needsPlainTextCssRescue(text) {
 }
 
 
-export function repairMalformedRabbitMirrorMarkup(htmlText = '') {
+// 模型写到一半「重来」：第一遍写到 <style> 中途（常停在半个选择器上，比如 .x[data-），紧接着从 <toto>／<details>
+// 重新写了一整面。浏览器把第二遍整个当成 CSS 文字吞进第一遍的 <style>，结果样式坏掉、控件没反应、还可能露出源码。
+// 认法只有一条：一个 <style> 里面出现了 <toto 或 <details 标签——CSS 里不会有这种东西。
+// 处理：丢掉没写完的第一遍（从它的 <toto>／<details> 开头到重来的地方），留下后面重写的那一遍。
+const RESTART_TAG_RE = /<(toto|details)\b[^<>]*>/i;
+export function cutRestartedMirrorAttempts(htmlText = '') {
     let html = String(htmlText || '');
+    for (let guard = 0; guard < 8; guard += 1) {
+        const styleOpen = /<style\b[^>]*>/gi;
+        let cut = null, match;
+        while ((match = styleOpen.exec(html))) {
+            const bodyStart = match.index + match[0].length;
+            const close = html.slice(bodyStart).search(/<\/style\s*>/i);
+            const body = close < 0 ? html.slice(bodyStart) : html.slice(bodyStart, bodyStart + close);
+            const restart = RESTART_TAG_RE.exec(body);
+            if (!restart) continue;
+            const restartAt = bodyStart + restart.index;
+            const before = html.slice(0, match.index);
+            // 第一遍从哪开始：重来的是 <toto> 时从最近的 <toto> 起；重来的是 <details> 时保留外层 <toto>，从它里面第一个 <details> 起。
+            const totoAt = before.search(/<toto\b(?![\s\S]*<toto\b)/i);
+            const boundary = Math.max(before.lastIndexOf('</toto>'), totoAt);
+            let start = -1;
+            if (restart[1].toLowerCase() === 'toto') start = totoAt;
+            if (start < 0) {
+                const from = Math.max(0, boundary);
+                const detailsAt = before.slice(from).search(/<details\b/i);
+                start = detailsAt < 0 ? -1 : from + detailsAt;
+            }
+            if (start < 0) continue;
+            cut = [start, restartAt];
+            break;
+        }
+        if (!cut) return html;
+        html = html.slice(0, cut[0]) + html.slice(cut[1]);
+    }
+    return html;
+}
+
+export function repairMalformedRabbitMirrorMarkup(htmlText = '') {
+    let html = cutRestartedMirrorAttempts(String(htmlText || ''));
     const duplicateClosing = new RegExp(
         `<\\s*\\/\\s*(${MALFORMED_HTML_TAG_NAMES})(${MALFORMED_HTML_ATTR_NAMES})\\s*=\\s*(?:"[^"]*"|'[^']*'|[^\\s>]+)\\s*>\\s*<\\s*\\/\\s*\\1\\s*>`,
         'gi',

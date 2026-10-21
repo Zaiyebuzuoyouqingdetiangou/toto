@@ -20,6 +20,12 @@ export function configureBehaviorExtras(helpers) { H = helpers; }
 
 const inSandbox = group => Boolean(group.closest?.(SANDBOX));
 const seconds = (group, name, fallback) => { const value = Number(group.getAttribute(name)); return Number.isFinite(value) && value > 0 ? value : fallback; };
+// 节奏类的次数／窗口／时长：模型常写在按钮自己身上（button data-rm-tap data-rm-count="3"），区域上没写时读按钮上的。
+const controlSeconds = (group, control, name, fallback) => {
+    if (group.hasAttribute(name)) return seconds(group, name, fallback);
+    for (const node of H.own(group, control)) if (node.hasAttribute(name)) return seconds(node, name, fallback);
+    return fallback;
+};
 const nowMs = () => (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now());
 function frame(group, callback) {
     const view = group.ownerDocument?.defaultView || globalThis;
@@ -28,7 +34,7 @@ function frame(group, callback) {
 
 // 这一类写法成立的最低部件。
 export function extraTypeFits(group, type) {
-    const count = selector => [...group.querySelectorAll(selector)].filter(node => node.closest(GROUP) === group).length;
+    const count = selector => (H?.own ? H.own(group, selector) : [...group.querySelectorAll(selector)].filter(node => node.closest(GROUP) === group)).length;
     switch (type) {
         case 'slide': return count('[data-rm-item]') > 1;
         case 'timer': return true;
@@ -368,11 +374,11 @@ function rhythmAction(state, control) {
     const { group } = state;
     if (control.hasAttribute('data-rm-tap')) {
         const now = nowMs();
-        const windowMs = seconds(group, 'data-rm-window', 3) * 1000;
+        const windowMs = controlSeconds(group, '[data-rm-tap]', 'data-rm-window', 3) * 1000;
         state.taps = state.taps.filter(time => now - time <= windowMs);
         state.taps.push(now);
         state.tapCount = state.taps.length;
-        if (state.tapCount >= Math.round(seconds(group, 'data-rm-count', 10))) state.tapDone = true;
+        if (state.tapCount >= Math.round(controlSeconds(group, '[data-rm-tap]', 'data-rm-count', 10))) state.tapDone = true;
         if (!state.tapWatch) {
             // 窗口过了没点够就归零（已经点够的不动）。
             const watch = () => { if (!alive(state)) return; const latest = nowMs(); const kept = state.taps.filter(time => latest - time <= windowMs); if (kept.length !== state.taps.length) { state.taps = kept; state.tapCount = state.tapDone ? state.tapCount : kept.length; H.refreshResults(state); } if (state.taps.length && !state.tapDone) setTimeout(watch, 200); else state.tapWatch = false; };
@@ -395,7 +401,7 @@ export function extraHoldStart(state, control) {
     if (state.type !== 'rhythm' || !control?.hasAttribute?.('data-rm-charge')) return false;
     if (state.charging) return true;
     state.charging = true;
-    const duration = seconds(state.group, 'data-rm-duration', 2) * 1000;
+    const duration = controlSeconds(state.group, '[data-rm-charge]', 'data-rm-duration', 2) * 1000;
     let last = nowMs();
     const tick = now => {
         if (!alive(state) || !state.charging) return;
@@ -414,7 +420,7 @@ export function extraHoldEnd(state) {
     // 没充满就松手：慢慢退回去（写了 data-rm-keep 的停在原处）。
     if (!state.chargeDone && !state.group.hasAttribute('data-rm-keep')) {
         let last = nowMs();
-        const duration = seconds(state.group, 'data-rm-duration', 2) * 1000;
+        const duration = controlSeconds(state.group, '[data-rm-charge]', 'data-rm-duration', 2) * 1000;
         const decay = now => {
             if (!alive(state) || state.charging) return;
             state.charge = H.clamp(state.charge - (now - last) / duration * 1.5, 0, 1);
@@ -438,7 +444,7 @@ function rhythmSync(state) {
         for (const node of H.own(group, '[data-rm-charge]')) H.setFlag(node, 'data-rm-active', Boolean(state.charging));
     }
     if (hasTap) {
-        const target = Math.round(seconds(group, 'data-rm-count', 10));
+        const target = Math.round(controlSeconds(group, '[data-rm-tap]', 'data-rm-count', 10));
         H.style(state, group, '--rm-count', String(state.tapCount));
         H.style(state, group, '--rm-p', H.clamp(state.tapCount / Math.max(1, target), 0, 1).toFixed(4));
         group.setAttribute('data-rm-count-now', String(state.tapCount));
@@ -452,6 +458,9 @@ function rhythmSync(state) {
     }
     const done = (hasCharge && state.chargeDone) || (hasTap && state.tapDone);
     if (hasCharge || hasTap) H.setFlag(group, 'data-rm-done', Boolean(done));
+    // 按钮自己也带上完成标记：CSS 常写 按钮[data-rm-done] ~ 结果。
+    if (hasTap) for (const node of H.own(group, '[data-rm-tap]')) H.setFlag(node, 'data-rm-done', Boolean(state.tapDone));
+    if (hasCharge) for (const node of H.own(group, '[data-rm-charge]')) H.setFlag(node, 'data-rm-done', Boolean(state.chargeDone));
 }
 function rhythmReset(state) {
     state.charge = 0; state.charging = false; state.chargeDone = false;
@@ -655,7 +664,7 @@ export function applyCarriedState(group) {
     // 记的是从 1 数的页码；这一区的页码按模型的数法从 0 数时（data-rm-index-base="0"）换算一下。
     if (Number.isInteger(saved.index)) group.setAttribute('data-rm-index', String(group.getAttribute('data-rm-index-base') === '0' ? saved.index - 1 : saved.index));
     if (Array.isArray(saved.done)) {
-        const steps = [...group.querySelectorAll('[data-rm-step]')].filter(node => node.closest(GROUP) === group);
+        const steps = H?.own ? H.own(group, '[data-rm-step]') : [...group.querySelectorAll('[data-rm-step]')].filter(node => node.closest(GROUP) === group);
         steps.forEach((step, index) => { if (saved.done.includes(index)) step.setAttribute('data-rm-done', 'true'); });
     }
     group.setAttribute('data-rm-recalled', 'true');
@@ -671,7 +680,7 @@ export function saveCarriedState(state) {
     else if (type === 'pick' || type === 'roll') { record.picked = state.picked || ''; record.keys = record.picked ? [record.picked] : []; }
     else if (type === 'pager' || type === 'slide') { record.index = state.index; record.keys = [String(state.index)]; }
     else if (type === 'accumulate') {
-        const steps = [...group.querySelectorAll('[data-rm-step]')].filter(node => node.closest(GROUP) === group);
+        const steps = H?.own ? H.own(group, '[data-rm-step]') : [...group.querySelectorAll('[data-rm-step]')].filter(node => node.closest(GROUP) === group);
         record.done = steps.map((step, index) => step.getAttribute('data-rm-done') === 'true' ? index : -1).filter(index => index >= 0);
         record.keys = record.done.length ? ['done'] : [];
     } else if (type === 'swipe') { record.keys = [...(state.swiped || [])].map(([card, direction]) => `${String(card.getAttribute('data-rm-card') || '').trim()}:${direction}`); }

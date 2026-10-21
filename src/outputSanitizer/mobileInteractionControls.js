@@ -1,3 +1,4 @@
+import { ownBehaviorNodes } from './behaviorOwner.js?rmv=1.73.29';
 // Touch-host alternatives and authored gallery dots stay inside the face;
 // no document listeners or polling.
 const bindings = new WeakMap();
@@ -8,7 +9,7 @@ const GROUP = '[data-rm-ui]';
 const BAR = 'data-rm-mobile-controls';
 const ACTION = 'data-rm-mobile-action';
 const numeric = (value, fallback) => value !== '' && Number.isFinite(Number(value)) ? Number(value) : fallback;
-const own = (group, selector) => [...group.querySelectorAll(selector)].filter(node => node.closest(GROUP) === group);
+const own = ownBehaviorNodes;
 
 function touchHost(root) {
     const view = root.ownerDocument?.defaultView, nav = view?.navigator;
