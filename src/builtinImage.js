@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.73.22';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.73.22';
-import { builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.73.22';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.73.22';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.73.22';
-import { tidyImagePayload } from './imageTagTidy.js?rmv=1.73.22';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.73.22';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.73.22';
+import { getSettings } from './settings.js?rmv=1.73.25';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.73.25';
+import { imagePromptFingerprint, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.73.25';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.73.25';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.73.25';
+import { tidyImagePayload } from './imageTagTidy.js?rmv=1.73.25';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.73.25';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.73.25';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -326,6 +326,40 @@ function fitFrameImage(image, record) {
 // 存档里的图片文件在酒馆服务器上已经没有了（换了设备、图片目录被清理）：以前坏图标一直挂着。
 // 现在先换历史版本里还能读的那张；都读不到就说明情况，留「重新生图」，再画要花一次额度。
 const unreadable = new Set();
+// 这次打开页面里画好的图：本机存储满了没存进去时，这一面重新挂上（切面、刷新工具、重新渲染）还能放回去，不再画一遍。
+const sessionRecords = new Map();
+// 同一个图框位置（聊天、楼层、swipe、第几个图框）自动画了几次：10 分钟内自动画满 2 次就不再自动画，
+// 改成留「重新生图」按钮。存不进去、提示词每次读出来不一样这类毛病，最多多花一次，不会一直画下去。
+const AUTO_DRAW_WINDOW_MS = 10 * 60 * 1000;
+const AUTO_DRAW_LIMIT = 2;
+const autoDraws = new Map();
+// 最近一次画好却一点也没存进去的键：重新挂上时放这次画的那张，不放存档里更旧的。换版本、存成功后去掉。
+const unsavedKeys = new Set();
+// 位置不看提示词：聊天、楼层、swipe（取自键），再加这一面在这条消息里是第几面、图框是这一面的第几个。
+function frameSlot(key, frame) {
+    const parts = String(key).split(':');
+    const details = frame?.closest?.('details');
+    const face = details?.parentElement ? [...details.parentElement.children].filter(node => node.matches?.('details')).indexOf(details) : 0;
+    const frames = details ? [...details.querySelectorAll('[data-rm-draw-frame]')] : [];
+    const own = Math.max(0, frames.indexOf(frame));
+    // 融合在回复里的镜面键里没记楼层：从所在的那条消息取；还取不到就把提示词指纹算进位置，免得各楼层挤在一个位置上互相拦。
+    let mes = parts.length >= 6 ? parts[parts.length - 4] : '';
+    if (!mes) mes = String(frame?.closest?.('.mes[mesid]')?.getAttribute('mesid') || '');
+    const swipe = parts.length >= 6 ? parts[parts.length - 3] : '';
+    const chat = parts.length >= 6 ? parts.slice(1, -4).join(':').replace(/^chat:/, '') : String(key);
+    return `${chat}:${mes || `#${parts[parts.length - 1] || ''}`}:${swipe}:${face}:${own}`;
+}
+function recentAutoDraws(slot) {
+    const now = Date.now();
+    const list = (autoDraws.get(slot) || []).filter(at => now - at < AUTO_DRAW_WINDOW_MS);
+    autoDraws.set(slot, list);
+    return list;
+}
+function sessionRecordFor(key) {
+    if (sessionRecords.has(key)) return sessionRecords.get(key);
+    for (const [other, record] of sessionRecords) if (builtinImageKeysCompatible(key, other) || builtinImageKeysShifted(key, other)) return record;
+    return null;
+}
 // 以前存档里存过带主机的完整网址（比如在家用局域网地址画的）：换个地址打开酒馆（手机、外网）时主机对不上，
 // 但文件还在这台酒馆上，所以同一路径再按当前地址试一次。
 function sameHostAlternative(url) {
@@ -399,7 +433,7 @@ function note(frame, text, root = null) {
             node.addEventListener('click', event => { event.preventDefault(); event.stopPropagation(); run(node); });
             return node;
         };
-        row.append(button('重新生图', () => { const prompt = readPrompt(frame); failed.delete(storageKey(root, frame, prompt)); box.remove(); void fillFrame(root, frame); }));
+        row.append(button('重新生图', () => { const prompt = readPrompt(frame); failed.delete(storageKey(root, frame, prompt)); box.remove(); void fillFrame(root, frame, { manual: true }); }));
         box.append(row);
     }
     frame.append(box);
@@ -529,7 +563,7 @@ async function withCardAppearance(people, frame, tagsOnly) {
         cast = rows.map(row => JSON.stringify(row)).join('\n');
     } catch { cast = ''; }
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.73.22');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.73.25');
     const merged = people.map(person => ({ ...person }));
     // 角色卡里提到 Persona、Persona 里提到角色：摘到对方的名字就停，不把对方的长相算进来。
     const others = [...new Set([...names, charName, personaName].filter(Boolean))];
@@ -555,7 +589,7 @@ function readWorldCast(names) {
     const key = JSON.stringify([ctx?.characterId ?? '', character?.avatar || character?.name || '', character?.data?.extensions?.world || '', disabled, [...names].sort()]);
     const hit = worldCastCache.get(key);
     if (hit && Date.now() - hit.at < 60000) return hit.promise;
-    const promise = import('./characterWorldBook.js?rmv=1.73.22').then(module => module.readCharacterWorldBookContext(ctx, {
+    const promise = import('./characterWorldBook.js?rmv=1.73.25').then(module => module.readCharacterWorldBookContext(ctx, {
         disabledBooks: disabled, focusText: names.join('\n'), onlyMentioned: true, maxChars: 4000,
     })).then(result => String(result?.text || '')).catch(() => { worldCastCache.delete(key); return ''; });
     worldCastCache.set(key, { at: Date.now(), promise });
@@ -569,7 +603,7 @@ async function withWorldBookAppearance(people, frame, tagsOnly, signal = null) {
     const cast = await readWorldCast(names);
     if (signal?.aborted) throw Object.assign(new Error('生图已取消。'), { name: 'AbortError', code: 'aborted' });
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.73.22');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.73.25');
     const merged = people.map(person => ({ ...person }));
     for (const name of names) {
         const person = merged.find(item => item.name === name);
@@ -747,7 +781,11 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
             size,
             ...(options.signal ? { signal: options.signal } : {}),
             // 这里通过就是真要发请求了：记下来，之后切走聊天也等它画完、存下，不再另发一次。
-            assertCurrent: () => { const ok = isCurrent() && anyWaiterConnected(key); if (ok) { entry.sent = true; entry.sentAt = Date.now(); } return ok; },
+            assertCurrent: () => {
+                const ok = isCurrent() && anyWaiterConnected(key);
+                if (ok) { entry.sent = true; entry.sentAt = Date.now(); if (options.slot && !options.reuse && !options.direct && !options.manual) recentAutoDraws(options.slot).push(Date.now()); }
+                return ok;
+            },
             onProgress: event => {
                 const phase = { queued: '排队中', generating: '绘制中', 'queued-remote': '远端排队中', retrying: '按渠道规则重试中', saving: '保存中' }[event?.phase];
                 // 切走又切回来时这一次的归属已过期，进度照样报给回来后跟着等的那个图框（各图框自己再看归属）。
@@ -757,11 +795,27 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
             },
         });
         const record = { ...generated, builtinImageFit: 'cover', ...(looksSources ? { looksSources } : {}) };
-        try { if (inflight.get(key) === entry) saveMirrorImage(key, record); }
-        catch (error) {
-            console.warn('[RabbitMirror] 内置生图已画成，但没能写入本机存档', error);
-            // 画好了却没存进去（多半是本机存储满了）：记下原因，重画时如实告诉用户，不再说成「换好了」。
-            Object.defineProperty(record, 'saveError', { value: error, enumerable: false });
+        if (inflight.get(key) === entry) {
+            // 只记看图要的那份（有文件路径时不留整张图的 data:），最多记 200 张。
+            const { dataUrl, ...light } = record;
+            sessionRecords.delete(key);
+            sessionRecords.set(key, record.path ? light : record);
+            if (sessionRecords.size > 200) sessionRecords.delete(sessionRecords.keys().next().value);
+            try { saveMirrorImage(key, record); unsavedKeys.delete(key); }
+            catch (error) {
+                // 存不下整份：只存看图要的（地址、时间、种子），刷新后至少图还在、不会再画一遍。
+                let minimalSaved = false;
+                try {
+                    const meta = record.promptMetadata || {};
+                    saveMirrorImage(key, { url: record.url, path: record.path, ...(record.path ? {} : { dataUrl: record.dataUrl }), generatedAt: record.generatedAt,
+                        provider: record.provider, builtinImageFit: record.builtinImageFit, promptMetadata: { seed: meta.seed, promptFormat: meta.promptFormat, size: meta.size } });
+                    minimalSaved = true;
+                } catch { /* 还是存不下 */ }
+                console.warn('[RabbitMirror] 内置生图已画成，但没能写入本机存档', error);
+                // 画好了却没存进去（多半是本机存储满了）：记下原因，重画时如实告诉用户，不再说成「换好了」。
+                if (minimalSaved) unsavedKeys.delete(key);
+                else { unsavedKeys.add(key); Object.defineProperty(record, 'saveError', { value: error, enumerable: false }); }
+            }
         }
         return record;
     })();
@@ -774,7 +828,7 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
     return job;
 }
 
-async function fillFrame(root, frame) {
+async function fillFrame(root, frame, { manual = false } = {}) {
     const isCurrent = imageRequestOwner();
     // A saved pair may still be hydrating on reload. Resolve that local-only
     // bridge before an avatar placeholder can spend a drawing request.
@@ -792,6 +846,10 @@ async function fillFrame(root, frame) {
         return;
     }
     // 读不到的那张不再反复拿出来：按「重新生图」后直接发请求。
+    // 这次打开页面里画过、比存档里的新（重画了却没存进去）：放这张，不再画。
+    const remembered = !manual && !unreadable.has(key) ? sessionRecordFor(key) : null;
+    const newer = remembered && (!saved.record || unsavedKeys.has(key));
+    if (newer && paint(frame, remembered, root, key)) return;
     if (saved.record && !unreadable.has(key) && paint(frame, saved.record, root, key)) return;
     if (failed.has(key)) {
         note(frame, failed.get(key), root);
@@ -799,13 +857,18 @@ async function fillFrame(root, frame) {
     }
     const joined = inflightKeyFor(key, () => otherFrameKeys(root, frame));
     if (joined !== key) return void joinInflight(root, frame, joined, isCurrent);
+    const slot = frameSlot(key, frame);
+    if (!manual && !liveEntry(inflight.get(key)) && recentAutoDraws(slot).length >= AUTO_DRAW_LIMIT) {
+        note(frame, '这个图框 10 分钟内已经自动画过两次，为免重复花额度，先不再自动画（画好的图在柏宝绘图库里）。要再画一张就点「重新生图」。', root);
+        return;
+    }
     let nodes = waiters.get(key);
     if (!nodes) { nodes = new Set(); waiters.set(key, nodes); }
     const waiter = { frame, isCurrent };
     nodes.add(waiter);
     if (progress.has(key)) note(frame, progress.get(key));
     try {
-        const record = await startJob(key, prompt, frame, isCurrent);
+        const record = await startJob(key, prompt, frame, isCurrent, { manual, slot });
         unreadable.delete(key);
         if (isCurrent() && frame.isConnected) paint(frame, record, root, key);
     } catch (error) {
@@ -1010,7 +1073,7 @@ export async function rerollBuiltinImage(root, frame, { prompt: edited = '', sig
     const waiter = { frame, isCurrent, quiet: true, onText };
     nodes.add(waiter);
     try {
-        const generated = await startJob(key, text || original, frame, isCurrent, { reuse, direct: !!text, signal, ...(reuse && saved?.looksSources ? { looksSources: saved.looksSources } : {}) });
+        const generated = await startJob(key, text || original, frame, isCurrent, { reuse, direct: !!text, manual: true, signal, ...(reuse && saved?.looksSources ? { looksSources: saved.looksSources } : {}) });
         let record = null;
         // 没存进去时本机存档还是旧图：镜面上照样换成新画的这张，只是翻不回来、刷新后会变回旧的。
         if (!generated?.saveError) { try { record = loadMirrorImage(key); } catch { record = null; } }
@@ -1034,7 +1097,19 @@ export function showBuiltinImageVersion(root, frame, index) {
     const { list, current } = versionsOf(record);
     const chosen = list[index];
     if (!chosen || index === current) return record;
-    const next = replaceMirrorImageVersions(key, chosen, list.filter((_, i) => i !== index));
+    // 本机存储满时旧版本被瘦过，没留提示词：同一图框的各版本多半是同一段提示词重画的，沿用换下来那张的，重画时不用再构思。
+    const shown = list[current];
+    // 只在那张当时用的提示词和换下来这张一样（指纹对得上）时才借；改过提示词画的、从没记过提示词的都不借，
+    // 重画时再构思一次，不会画成别的内容。
+    const fingerprint = imagePromptFingerprint(chosen);
+    const picked = chosen?.slimmed === true && shown && fingerprint && fingerprint === imagePromptFingerprint(shown) ? {
+        ...chosen, slimmed: undefined, promptHash: undefined, prompt: shown.prompt,
+        promptMetadata: { ...(shown.promptMetadata || {}), seed: chosen.promptMetadata?.seed ?? shown.promptMetadata?.seed },
+        ...(shown.looksSources && !chosen.looksSources ? { looksSources: shown.looksSources } : {}),
+    } : chosen;
+    const next = replaceMirrorImageVersions(key, picked, list.filter((_, i) => i !== index));
+    // 用户自己选了这张：这次画的那张不再盖过它。
+    sessionRecords.delete(key); unsavedKeys.delete(key);
     unreadable.delete(key);
     if (frame.isConnected) { ensureFrameBox(frame); paint(frame, next, root, key); }
     return next;

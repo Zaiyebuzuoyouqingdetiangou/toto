@@ -12,7 +12,76 @@ function read(key, kind) {
 
 function write(key, kind, value) {
     // A single atomic setItem: a quota/error leaves the entire old record intact.
-    globalThis.localStorage.setItem(storageKey(key, kind), JSON.stringify(value));
+    const name = storageKey(key, kind), text = JSON.stringify(value);
+    try { globalThis.localStorage.setItem(name, text); }
+    catch (error) {
+        // 本机存储满了：先把各张图旧版本里的长提示词瘦下来（图本身一张不删），腾出地方再写一次。
+        if (!slimMirrorImagesForQuota()) throw error;
+        globalThis.localStorage.setItem(name, text);
+    }
+}
+
+// 旧版本（翻回去看的那几张）只留看图要用的：地址、时间、种子、格式；长提示词、人物外貌不留（没有文件路径、
+// 只有 data: 的那张保留图本身）。当前那张不动（重画沿用它的提示词）；翻回旧版本时沿用换下来那张的提示词（builtinImage.js）。
+// 一张图用的那段提示词的指纹：旧版本瘦掉提示词后留着它，翻回去时只在和当前那张一样时才借用。
+export function imagePromptFingerprint(entry) {
+    if (!entry || typeof entry !== 'object') return '';
+    if (entry.slimmed === true) return String(entry.promptHash || '');
+    const meta = entry.promptMetadata && typeof entry.promptMetadata === 'object' ? entry.promptMetadata : {};
+    const text = JSON.stringify([String(meta.prompt || ''), String(meta.nl || ''), String(meta.flatPrompt || ''), String(entry.prompt || ''), meta.promptFormat || '']);
+    if (text === JSON.stringify(['', '', '', '', ''])) return '';
+    let hash = 0x811c9dc5;
+    for (let i = 0; i < text.length; i += 1) { hash ^= text.charCodeAt(i); hash = Math.imul(hash, 0x01000193) >>> 0; }
+    return hash.toString(36);
+}
+
+function slimEntry(entry) {
+    if (!entry || typeof entry !== 'object') return entry;
+    if (entry.slimmed === true) return { ...entry };
+    const promptHash = imagePromptFingerprint(entry);
+    const meta = entry.promptMetadata && typeof entry.promptMetadata === 'object' ? entry.promptMetadata : {};
+    const out = { url: entry.url, path: entry.path, generatedAt: entry.generatedAt, provider: entry.provider, builtinImageFit: entry.builtinImageFit, looksSources: entry.looksSources };
+    if (!entry.path && entry.dataUrl) out.dataUrl = entry.dataUrl;
+    const slimMeta = { seed: meta.seed, promptFormat: meta.promptFormat, size: meta.size };
+    out.promptMetadata = Object.fromEntries(Object.entries(slimMeta).filter(([, value]) => value !== undefined));
+    out.slimmed = true;
+    if (promptHash) out.promptHash = promptHash;
+    return Object.fromEntries(Object.entries(out).filter(([, value]) => value !== undefined && value !== null && value !== ''));
+}
+
+/** 本机存储满了时给插图存档瘦身：只瘦旧版本、去掉已有文件路径的 data: 副本，不删任何一张图。腾出了地方返回 true。 */
+// 以前的旧版本都带着整套提示词：这次打开页面后第一次存图时，把所有存档的旧版本瘦一遍（只一次）。
+let migrated = false;
+function migrateOldImageRecords() {
+    if (migrated) return;
+    migrated = true;
+    try { slimMirrorImagesForQuota(); } catch { /* 瘦不了就照旧 */ }
+}
+
+// 瘦过一遍、之后没再存新图：再瘦也腾不出地方，不再把几百份存档逐条解析一遍。
+let slimmedClean = false;
+export function slimMirrorImagesForQuota() {
+    const storage = globalThis.localStorage;
+    if (!storage || slimmedClean) return false;
+    const head = `${PREFIX}images:`;
+    const names = [];
+    try { for (let i = 0; i < storage.length; i += 1) { const name = storage.key(i); if (name?.startsWith(head)) names.push(name); } } catch { return false; }
+    let freed = false;
+    for (const name of names) {
+        try {
+            const raw = storage.getItem(name);
+            const data = raw ? JSON.parse(raw) : null;
+            if (!data || data.version !== 1 || !data.current || !Array.isArray(data.history)) continue;
+            const current = { ...data.current };
+            if (current.path) delete current.dataUrl;
+            const next = JSON.stringify({ ...data, current, history: data.history.map(slimEntry) });
+            if (next.length >= raw.length) continue;
+            storage.setItem(name, next);
+            freed = true;
+        } catch { /* 这一份瘦不了就跳过 */ }
+    }
+    slimmedClean = true;
+    return freed;
 }
 
 function storedRecord(record) {
@@ -37,6 +106,8 @@ export function saveMirrorImage(key, record) {
     const previous = loadMirrorImage(key);
     const current = storedRecord(record);
     // 旧版本只留最近 4 张；整张图存在本机（data:）的旧版本只留最近一张，免得重画几次就把本机空间占满。
+    // 提示词只给当前那张留一份：旧版本只记图片地址、时间和种子（图本身在柏宝绘图库／酒馆上）。
+    migrateOldImageRecords();
     const history = (previous ? [...previous.history, storedRecord(previous)] : [])
         .slice(-4)
         .filter((entry, index, list) => index === list.length - 1 || !String(entry?.url || '').startsWith('data:'))
@@ -44,8 +115,10 @@ export function saveMirrorImage(key, record) {
             if (index === list.length - 1 || !entry || typeof entry !== 'object') return entry;
             const { dataUrl: ignoredDataUrl, ...rest } = entry;
             return rest;
-        });
+        })
+        .map(slimEntry);
     write(key, 'images', { version: 1, current, history });
+    slimmedClean = false;
     return { ...current, history };
 }
 
@@ -150,8 +223,10 @@ export function findShiftedBuiltinImageKey(key, claimed = null) {
 
 // 换成历史里的另一张显示：选中的那张当当前，其余按原来的先后留在历史里。不发请求。
 export function replaceMirrorImageVersions(key, current, history) {
-    const value = { version: 1, current: storedRecord(current), history: (Array.isArray(history) ? history : []).filter(entry => entry && typeof entry === 'object').map(entry => ({ ...entry })) };
+    migrateOldImageRecords();
+    const value = { version: 1, current: storedRecord(current), history: (Array.isArray(history) ? history : []).filter(entry => entry && typeof entry === 'object').map(slimEntry) };
     write(key, 'images', value);
+    slimmedClean = false;
     return { ...value.current, history: value.history };
 }
 

@@ -1,8 +1,8 @@
 // Split from independentApi.js — persistence.
 
-import { presentationModeFields } from '../presentationMode.js?rmv=1.73.22';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.73.22';
-import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.73.22';
+import { presentationModeFields } from '../presentationMode.js?rmv=1.73.25';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.73.25';
+import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.73.25';
 import {
     FACE_SWIPE_FULL_MESSAGE,
     FACE_SWIPE_MAX,
@@ -17,9 +17,9 @@ import {
     snapshotFaceSwipes, compactSwipeState, restoreFaceSwipeSnapshot,
     faceSwipeSnapshotStored, loadFaceSwipeArchive, saveFaceSwipeArchive, faceSwipeArchiveReadState,
     remapFaceSwipeSlots, remapFaceSwipeArchive, faceSwipeArchiveRemapSettled,
-} from '../swipeVersions.js?rmv=1.73.22';
-import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=1.73.22';
-import { remapMirrorImageSlots } from '../imageStore.js?rmv=1.73.22';
+} from '../swipeVersions.js?rmv=1.73.25';
+import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=1.73.25';
+import { remapMirrorImageSlots, slimMirrorImagesForQuota } from '../imageStore.js?rmv=1.73.25';
 import {
     clearEphemeralFaceFailure,
     hasEphemeralFaceFailure,
@@ -29,7 +29,7 @@ import {
     independentSwipeSlot,
     seedIndependentFaceSwipesFromIdentity,
     writeIndependentOwnerHtml,
-} from './faceSwipe.js?rmv=1.73.22';
+} from './faceSwipe.js?rmv=1.73.25';
 import {
     API_PROFILE_STORE_KEY,
     assistantMessages,
@@ -49,8 +49,8 @@ import {
     remapOwnerLockSlots,
     hostGenerationLooksActive,
     legacyChatKey,
-} from './connection.js?rmv=1.73.22';
-import { stampExternalDetailsOwnership, restampExternalHostsAfterMessageDeletion } from './request.js?rmv=1.73.22';
+} from './connection.js?rmv=1.73.25';
+import { stampExternalDetailsOwnership, restampExternalHostsAfterMessageDeletion } from './request.js?rmv=1.73.25';
 import {
     copyIndependentReplacementReceipt,
     ensureExternalTools,
@@ -61,8 +61,8 @@ import {
     normalizeSavedInteractionRecord,
     recoverSavedRecord,
     replaceExternalMultifaceFace,
-} from './geometry.js?rmv=1.73.22';
-import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=1.73.22';
+} from './geometry.js?rmv=1.73.25';
+import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=1.73.25';
 
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 
@@ -258,6 +258,8 @@ export function writeStore(v){
  const compacted=compactOutputStore(v);
  try { localStorage.setItem(STORE_KEY, JSON.stringify(compacted)); try{ clearSavedIndependentOutputNotices(); }catch{} return true; }
  catch {
+  // 先给插图存档瘦身（只瘦旧版本的长提示词，图不删），再动兔子镜自己的旧备份。
+  try{ if(slimMirrorImagesForQuota()){ localStorage.setItem(STORE_KEY, JSON.stringify(compacted)); try{ clearSavedIndependentOutputNotices(); }catch{} return true; } }catch{}
   if(freeHistoryRoomFor(JSON.stringify(compacted))){ try{ clearSavedIndependentOutputNotices(); }catch{} return true; }
   const entries=Object.entries(compacted).sort((a,b)=>Number(b[1]?.ts||0)-Number(a[1]?.ts||0));
   while(entries.length>1){ entries.pop(); try{ localStorage.setItem(STORE_KEY,JSON.stringify(Object.fromEntries(entries))); try{ clearSavedIndependentOutputNotices(); }catch{} warnStorageTrimmed(); return true; }catch{} }
@@ -820,6 +822,16 @@ export function writePersistedOwner(ctx,index,msg,value,{overwrite=true}={}){
  if(!metadata) return !!session;
  if(state.owners?.[ownerKey] && JSON.stringify(state.owners[ownerKey])===JSON.stringify(next)) return false;
  state.version=CHAT_OUTPUT_METADATA_SCHEMA; state.owners[ownerKey]=next; metadata[CHAT_OUTPUT_METADATA_KEY]=state; saveChatOutputMetadata(ctx); return true;
+}
+
+// 这一版已经写进聊天数据（随聊天文件存盘）：本机缓存满了写不进去时，有这一份就不算没保存。
+// 要能真的存盘（酒馆给了存聊天的接口）才算；sourceHash 给了就连正文指纹一起比。
+export function savedInChatFile(ctx,index,msg,html,sourceHash=''){
+ const key=chatOwnerKey(index,swipeId(msg)); if(!key||!html) return false;
+ if(typeof ctx?.saveMetadataDebounced!=='function') return false;
+ const raw=chatMetadataObject(ctx)?.[CHAT_OUTPUT_METADATA_KEY]?.owners?.[key];
+ if(!raw || raw.deleted===true || String(raw.html||'')!==String(html)) return false;
+ return !sourceHash || String(raw.sourceHash||'')===String(sourceHash);
 }
 
 export function chatPersistenceSlot(ctx,index,swipe,record){
