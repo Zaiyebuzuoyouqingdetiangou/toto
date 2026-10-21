@@ -1,6 +1,7 @@
-import { behaviorShowTokens, ownBehaviorShows } from './behaviorResults.js?rmv=1.73.25';
-import { behaviorStyleText } from './behaviorStateMirror.js?rmv=1.73.25';
-import { collectStateCarriers, setBridgedState } from './behaviorStateBridge.js?rmv=1.73.25';
+import { behaviorShowTokens, ownBehaviorShows } from './behaviorResults.js?rmv=1.73.29';
+import { behaviorStyleText } from './behaviorStateMirror.js?rmv=1.73.29';
+import { collectStateCarriers, setBridgedState } from './behaviorStateBridge.js?rmv=1.73.29';
+import { ownBehaviorNodes } from './behaviorOwner.js?rmv=1.73.29';
 
 // 插件写法「方言表」：模型写的插件交互，意思对、写法和标准不一样的那些情况，集中在这里认。
 // 每一条只做三件事：怎么认出来、按什么标准写法去理解、诊断里怎么说。不新增内容、不猜目标。
@@ -23,7 +24,7 @@ export const BEHAVIOR_DIALECTS = Object.freeze([
 
 const GROUP = '[data-rm-ui]';
 const FACE_TOOL_UI = '[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-diagnostic-panel]';
-const own = (group, selector) => [...group.querySelectorAll(selector)].filter(node => node.closest(GROUP) === group);
+const own = ownBehaviorNodes;
 
 // 开关的键：不写、或写成 true／yes 这类“是否开关”的布尔值时，一律当默认键 on（模型常写 data-rm-toggle="true"）。
 export const behaviorToggleKey = value => {

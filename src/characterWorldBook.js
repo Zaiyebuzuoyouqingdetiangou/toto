@@ -94,7 +94,7 @@ export async function readCharacterWorldBookContext(ctx, {
         hitKeys.forEach(key => anchors.add(key));
         mentioned.hits = [...hitKeys];
         let score = hitKeys.length;
-        if (title && title.length <= 20 && focus.includes(title)) score += 1;
+        if (title && title.length <= 20 && focus.includes(title)) { score += 1; anchors.add(title); }
         // 人物条目常常没写关键词（常驻条目），或标题写成「【人物】阿雪」「阿雪·外貌」：
         // 把标题按符号拆开，拆出来的人名在这一轮出现过也算提到。「人物、设定、外貌」这类分类词不算。
         else if (title && !score) {
@@ -226,21 +226,28 @@ export function appearanceFromCast(castText, name, otherNames = []) {
         const sentences = window.split(/(?<=[。；;！!？?\n])/).map(part => part.trim()).filter(Boolean);
         return sentences.filter(part => APPEARANCE_WORDS.test(part)).slice(0, 3).join('').slice(0, 200);
     };
+    // 别人的名字出现在哪里就截到哪里；窗口一开头就是别人（这一句在讲别人）截成空串，调用方跳过这一句接着找。
     const cutAtOthers = window => {
         let end = window.length;
-        for (const other of others) { const at = window.indexOf(other, 1); if (at > 0) end = Math.min(end, at); }
+        for (const other of others) { const at = window.indexOf(other); if (at >= 0) end = Math.min(end, at); }
         return window.slice(0, end);
     };
     const ownRows = rows.filter(titleIsWho);
     for (const row of ownRows) {
         // 标题就是这个人的条目（角色卡、Persona 也走这里）：长相常写在几百字的身份、背景后面，
-        // 从第一句写长相的地方往后摘，不只看开头。
+        // 从写长相的地方往后摘，不只看开头。第一处写长相的句子是在讲别人（「乙：红发…」）时，接着找下一处。
         const content = row.content;
-        const at = content.search(APPEARANCE_WORDS);
-        if (at < 0) continue;
-        const start = Math.max(0, content.lastIndexOf('\n', at), Math.max(content.lastIndexOf('。', at), content.lastIndexOf('；', at)) + 1);
-        const found = pick(cutAtOthers(content.slice(start, start + 360)));
-        if (found) return found;
+        const words = new RegExp(APPEARANCE_WORDS.source, APPEARANCE_WORDS.flags.includes('g') ? APPEARANCE_WORDS.flags : `${APPEARANCE_WORDS.flags}g`);
+        let match, tries = 0, lastStart = -1;
+        while ((match = words.exec(content)) && tries < 8) {
+            const at = match.index;
+            const start = Math.max(0, content.lastIndexOf('\n', at), Math.max(content.lastIndexOf('。', at), content.lastIndexOf('；', at)) + 1);
+            if (start === lastStart) continue;
+            lastStart = start;
+            tries += 1;
+            const found = pick(cutAtOthers(content.slice(start, start + 360)));
+            if (found) return found;
+        }
     }
     // 名字后面紧跟标点、空白，或者「身穿、有一头、是、长着、戴着」这类直接接长相的字才算（「阿岩的妹妹」「阿岩岩」不算）。
     const boundary = /^(?:$|[\s：:，,、。；;】)）」』\-—·（(]|身|有|是|长|生|戴|穿|一头|头)/;
@@ -250,6 +257,8 @@ export function appearanceFromCast(castText, name, otherNames = []) {
         let tries = 0;
         for (let at = content.indexOf(who); at >= 0 && tries < 6; at = content.indexOf(who, at + who.length)) {
             if (!boundary.test(content.slice(at + who.length, at + who.length + 1))) continue;
+            // 名字前面紧挨着汉字（「小甲」里的「甲」）不算这个人；「和甲」「是甲」「叫甲」这类连词、动词后面的还是这个人。
+            if (at > 0 && /[\u3400-\u9fff]/.test(content[at - 1]) && /[\u3400-\u9fff]/.test(who[0]) && !/[和与及跟同是为给向对把让叫见称作当像似如有了着]/.test(content[at - 1])) continue;
             tries += 1;
             let window = content.slice(at, at + 360);
             window = window.slice(0, 1) + window.slice(1).split(/\n\s*\n|\n\s*【/)[0];

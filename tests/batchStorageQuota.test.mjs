@@ -448,3 +448,20 @@ test('reservation uses reclaimed accounting headroom before writing a new compac
     assert.equal(store.operations.find(op => op.operation === 'set').key, ATTEMPTS);
     assert.equal(JSON.parse(store.getItem(ATTEMPTS))[plan.identity.chatKey].length, 20);
 });
+
+test('independent multiface (transient) still dispatches when storage is full: accounting is best-effort like single-face', async () => {
+    const api = await freshStorageModule();
+    const owner = { ...identity(40), generationScopeKey: 'independent:scope:40' };
+    const plan = makePlan(api, builtinCombos(3), owner);
+    const store = useStorage([['other:data', 'persisted history']]);
+    store.limit = store.used + 1;
+    const before = store.snapshot();
+    const codes = [];
+    assert.equal(api.markPendingBatchAttempt(plan, { transient: true, onRejected: code => codes.push(code) }), true);
+    assert.deepEqual(codes, [], 'no rejection reported');
+    assert.deepEqual(store.snapshot(), before, 'nothing written, nothing deleted');
+    // a plan conflict is still a real rejection
+    const other = makePlan(api, builtinCombos(2), owner);
+    const conflict = { ...other, batchId: plan.batchId };
+    assert.equal(api.markPendingBatchAttempt(conflict, { transient: true, onRejected: code => codes.push(code) }), false);
+});

@@ -38,10 +38,12 @@ export function imagePromptFingerprint(entry) {
 function slimEntry(entry) {
     if (!entry || typeof entry !== 'object') return entry;
     if (entry.slimmed === true) return { ...entry };
+    // 用户自己改过提示词画的那张：提示词留着（只有这一类留，占不了多少），翻回去重画照它的来。
+    if (entry.editedPrompt === true) { const { dataUrl: ignored, ...rest } = entry; return entry.path ? rest : { ...entry }; }
     const promptHash = imagePromptFingerprint(entry);
     const meta = entry.promptMetadata && typeof entry.promptMetadata === 'object' ? entry.promptMetadata : {};
     const out = { url: entry.url, path: entry.path, generatedAt: entry.generatedAt, provider: entry.provider, builtinImageFit: entry.builtinImageFit, looksSources: entry.looksSources };
-    if (!entry.path && entry.dataUrl) out.dataUrl = entry.dataUrl;
+    if (!entry.path && entry.dataUrl && entry.dataUrl !== entry.url) out.dataUrl = entry.dataUrl;
     const slimMeta = { seed: meta.seed, promptFormat: meta.promptFormat, size: meta.size };
     out.promptMetadata = Object.fromEntries(Object.entries(slimMeta).filter(([, value]) => value !== undefined));
     out.slimmed = true;
@@ -92,7 +94,14 @@ function storedRecord(record) {
     copy.url = url;
     // Durable provider files do not require duplicating their large base64 payload.
     if (copy.path) delete copy.dataUrl;
+    // 只有 data: 的图：url 和 dataUrl 是同一串 base64，只存一份（不然一张图占两倍本机空间）。
+    else if (copy.dataUrl && copy.dataUrl === copy.url) delete copy.dataUrl;
     return copy;
+}
+
+/** 删掉一份插图存档（搬到新键以后清旧键用）。不存在也不报错。 */
+export function removeMirrorImage(key) {
+    try { globalThis.localStorage.removeItem(storageKey(key, 'images')); } catch { /* 删不掉就留着 */ }
 }
 
 export function loadMirrorImage(key) {

@@ -181,19 +181,24 @@ export function parseImagePlan(text) {
         value = parseImagePlanCandidates(text);
     }
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('画面构思必须是一个 JSON 对象。');
-    const prompt = string(value.prompt).trim();
+    // 模型偶尔把提示词写成数组、或只填了 flatPrompt：能用的就用，不整次作废（一次构思调用不白花）。只有 nl 的不算（那是自然语言栏）。
+    const field = item => Array.isArray(item) ? item.map(part => string(part).trim()).filter(Boolean).join(', ') : string(item).trim();
+    const prompt = field(value.prompt) || field(value.flatPrompt);
     if (!prompt) throw new TypeError('画面构思缺少生图提示词。');
-    const characters = value.characters == null ? [] : value.characters;
-    if (!Array.isArray(characters)) throw new TypeError('角色提示词必须是数组。');
-    const parsedCharacters = characters.map(person => {
+    // characters 写成对象（{名字: 标签}）也认；缺 tag 的人跳过，不让整次构思作废。
+    const rawCharacters = value.characters == null ? []
+        : Array.isArray(value.characters) ? value.characters
+            : typeof value.characters === 'object' ? Object.entries(value.characters).map(([name, item]) => (item && typeof item === 'object' && !Array.isArray(item) ? { name, ...item } : { name, tag: item })) : null;
+    if (!Array.isArray(rawCharacters)) throw new TypeError('角色提示词必须是数组。');
+    const parsedCharacters = rawCharacters.map(person => {
         const name = string(person?.name).trim();
-        const tag = string(person?.tag).trim();
-        if (!name || !tag) throw new TypeError('每个画面角色都需要原名与外貌提示词。');
-        return { name, tag, nl: string(person.nl).trim() };
-    });
+        const tag = field(person?.tag);
+        if (!name || !tag) return null;
+        return { name, tag, nl: field(person.nl) };
+    }).filter(Boolean);
     return {
-        prompt, nl: string(value.nl).trim(),
-        flatPrompt: string(value.flatPrompt).trim() || (parsedCharacters.length ? '' : prompt),
+        prompt, nl: field(value.nl),
+        flatPrompt: field(value.flatPrompt) || (parsedCharacters.length ? '' : prompt),
         characters: parsedCharacters,
         promptFormat: value.promptFormat === 'nai45-tags' ? 'nai45-tags' : 'nai5-natural',
     };

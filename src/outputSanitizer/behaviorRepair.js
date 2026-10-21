@@ -1,3 +1,4 @@
+import { ownBehaviorNodes } from './behaviorOwner.js?rmv=1.73.29';
 // 插件写法的按类修复：不认某一面、某一条，只认“这一类写法常见的写错方式”。
 // 1. 类型名写成别名（flip、tabs、carousel、dial…）或漏了 rm 前缀 → 换成标准类型名；
 // 2. 声明的类型和里面的部件对不上（写 toggle 却放了 data-rm-pick）→ 按部件认出真正的类型；
@@ -37,7 +38,7 @@ const SYNONYMS = Object.freeze({
 const ALIASES = ['item', 'slot', 'reset', 'fire', 'part', 'step', 'hold', 'surface', 'cover', 'canvas', 'play', 'reverse', 'prev', 'next', 'answer',
     'toggle', 'pick', 'picked', 'page', 'goto', 'roll', 'end', 'knob', 'stops', 'code', 'show', 'loop', 'tap', 'charge', 'qte', 'peek', 'spoiler', 'clock', 'duration', 'memory', 'recall'];
 
-const own = (group, selector) => [...group.querySelectorAll(selector)].filter(node => node.closest(GROUP) === group);
+const own = ownBehaviorNodes;
 
 function count(group, selector) {
     return own(group, selector).length;

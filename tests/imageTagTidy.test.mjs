@@ -60,3 +60,13 @@ test('payload: each person line is tidied on its own, natural language is never 
     assert.equal(kept.prompt, prose);
     assert.equal(kept.flatPrompt, prose);
 });
+
+test('a leading weight group with a space after the colon is not mistaken for a name label', async () => {
+    const { tidyImageTags } = await import('../src/imageTagTidy.js');
+    assert.equal(tidyImageTags('(red hair: 1.2), 1girl, smile'), '1girl, (red hair: 1.2), smile');
+});
+
+test('a name label with a parenthesised suffix is still a name label', async () => {
+    const { tidyImageTags } = await import('../src/imageTagTidy.js');
+    assert.equal(tidyImageTags('Alice (young): long hair, 1girl, red eyes'), 'Alice (young): 1girl, long hair, red eyes');
+});

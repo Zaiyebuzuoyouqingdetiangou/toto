@@ -1,8 +1,8 @@
 // Split from independentApi.js — persistence.
 
-import { presentationModeFields } from '../presentationMode.js?rmv=1.73.25';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.73.25';
-import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.73.25';
+import { presentationModeFields } from '../presentationMode.js?rmv=1.73.29';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.73.29';
+import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.73.29';
 import {
     FACE_SWIPE_FULL_MESSAGE,
     FACE_SWIPE_MAX,
@@ -17,9 +17,9 @@ import {
     snapshotFaceSwipes, compactSwipeState, restoreFaceSwipeSnapshot,
     faceSwipeSnapshotStored, loadFaceSwipeArchive, saveFaceSwipeArchive, faceSwipeArchiveReadState,
     remapFaceSwipeSlots, remapFaceSwipeArchive, faceSwipeArchiveRemapSettled,
-} from '../swipeVersions.js?rmv=1.73.25';
-import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=1.73.25';
-import { remapMirrorImageSlots, slimMirrorImagesForQuota } from '../imageStore.js?rmv=1.73.25';
+} from '../swipeVersions.js?rmv=1.73.29';
+import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=1.73.29';
+import { remapMirrorImageSlots, slimMirrorImagesForQuota } from '../imageStore.js?rmv=1.73.29';
 import {
     clearEphemeralFaceFailure,
     hasEphemeralFaceFailure,
@@ -29,7 +29,7 @@ import {
     independentSwipeSlot,
     seedIndependentFaceSwipesFromIdentity,
     writeIndependentOwnerHtml,
-} from './faceSwipe.js?rmv=1.73.25';
+} from './faceSwipe.js?rmv=1.73.29';
 import {
     API_PROFILE_STORE_KEY,
     assistantMessages,
@@ -49,8 +49,8 @@ import {
     remapOwnerLockSlots,
     hostGenerationLooksActive,
     legacyChatKey,
-} from './connection.js?rmv=1.73.25';
-import { stampExternalDetailsOwnership, restampExternalHostsAfterMessageDeletion } from './request.js?rmv=1.73.25';
+} from './connection.js?rmv=1.73.29';
+import { stampExternalDetailsOwnership, restampExternalHostsAfterMessageDeletion } from './request.js?rmv=1.73.29';
 import {
     copyIndependentReplacementReceipt,
     ensureExternalTools,
@@ -61,8 +61,8 @@ import {
     normalizeSavedInteractionRecord,
     recoverSavedRecord,
     replaceExternalMultifaceFace,
-} from './geometry.js?rmv=1.73.25';
-import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=1.73.25';
+} from './geometry.js?rmv=1.73.29';
+import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=1.73.29';
 
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 
@@ -230,6 +230,25 @@ function compactCoveredOutputsForQuota(keep=40){
 }
 // storage.js 不能直接引用这里（会绕成循环引用），经全局挂一个入口给它用。
 globalThis.__rabbitMirrorCompactCoveredOutputsForQuota=compactCoveredOutputsForQuota;
+
+// 给 storage.js 的空间回收步骤用：兔子镜历史备份里每一层更早的旧版本砍掉一半（只是回退用的）；每一层最新的那份一律留着。
+function trimHistoryForQuota(){
+ let history;
+ try{ history=readHistoryStore(); }catch{ return false; }
+ const older=[]; const keep=emptyHistoryStore();
+ for(const [slot,entries] of Object.entries(history.slots||{})){
+  const list=(Array.isArray(entries)?entries:[]).slice().sort((a,b)=>Number(a?.ts||0)-Number(b?.ts||0));
+  if(!list.length) continue;
+  keep.slots[slot]=[list[list.length-1]];
+  for(const entry of list.slice(0,-1)) older.push({slot,entry});
+ }
+ if(!older.length) return false;
+ older.sort((a,b)=>Number(b.entry?.ts||0)-Number(a.entry?.ts||0));
+ for(const {slot,entry} of older.slice(0,Math.floor(older.length/2))) keep.slots[slot].push(entry);
+ for(const list of Object.values(keep.slots)) list.sort((a,b)=>Number(a?.ts||0)-Number(b?.ts||0));
+ try{ localStorage.setItem(HISTORY_STORE_KEY,JSON.stringify(keep)); warnStorageTrimmed(); return true; }catch{ return false; }
+}
+try{ globalThis.__rabbitMirrorTrimHistoryForQuota=trimHistoryForQuota; }catch{}
 
 // 本机存储满了、当前成品写不进去时，先从兔子镜自己的「旧版本备份」里腾地方：最旧的先删，每轮删四分之一，
 // 删一轮试写一次，写进去就停。旧版本备份只是本机多存的一份，聊天记录里的成品和版本存档都不动。
@@ -605,7 +624,11 @@ function saveChatOutputMetadata(ctx=getContext()){
 // 几秒内的多次请求合成一次。
 const SAFE_SAVE_DELAY_MS=2500;
 const SAFE_SAVE_RETRY_MS=4000;
-const SAFE_SAVE_GIVE_UP_MS=120000;
+// 酒馆一直像在生成（比如上一轮的状态没收起来）时，2 分钟后改成每 10 秒看一次，最多等 30 分钟，
+// 不再到点就悄悄放弃：本机存储满了的时候，聊天文件是这一版唯一能长久存下的地方。
+const SAFE_SAVE_GIVE_UP_MS=30*60*1000;
+const SAFE_SAVE_SLOW_AFTER_MS=120000;
+const SAFE_SAVE_SLOW_RETRY_MS=10000;
 let safeSaveTimer=null;
 let safeSaveRequest=null;
 export function requestSafeChatSave(ctx,index,msg){
@@ -630,7 +653,8 @@ function runSafeChatSave(){
  let generating=true;
  try{ generating=hostGenerationLooksActive(); }catch{ generating=true; }
  if(generating){
-  if(Date.now()-request.since<SAFE_SAVE_GIVE_UP_MS) safeSaveTimer=setTimeout(runSafeChatSave,SAFE_SAVE_RETRY_MS);
+  const waited=Date.now()-request.since;
+  if(waited<SAFE_SAVE_GIVE_UP_MS) safeSaveTimer=setTimeout(runSafeChatSave,waited<SAFE_SAVE_SLOW_AFTER_MS?SAFE_SAVE_RETRY_MS:SAFE_SAVE_SLOW_RETRY_MS);
   else safeSaveRequest=null;
   return;
  }

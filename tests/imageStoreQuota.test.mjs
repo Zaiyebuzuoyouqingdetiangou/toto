@@ -63,3 +63,29 @@ test('nothing to slim: the original error comes back and the old record stays', 
     assert.equal(images.loadMirrorImage('builtin:c:1:0:0:h').path, '/user/images/1.png');
     assert.equal(images.loadMirrorImage('builtin:c:9:0:0:h'), null);
 });
+
+test('a data:-only picture is stored once (url and dataUrl are the same string)', () => {
+    store.clear(); limit = Infinity;
+    const data = 'data:image/png;base64,AAAA';
+    images.saveMirrorImage('builtin:c:7:0:0:h', { url: data, dataUrl: data, path: null, generatedAt: '2026-10-21T00:00:00Z' });
+    const raw = JSON.parse(store.get('rabbitMirror:image:v1:images:builtin:c:7:0:0:h'));
+    assert.equal(raw.current.url, data);
+    assert.equal(raw.current.dataUrl, undefined);
+    assert.equal(images.loadMirrorImage('builtin:c:7:0:0:h').url, data);
+});
+
+test('an edited-prompt version keeps its prompt when it becomes history', () => {
+    store.clear(); limit = Infinity;
+    images.saveMirrorImage('builtin:c:8:0:0:h', { ...record(1), editedPrompt: true });
+    images.saveMirrorImage('builtin:c:8:0:0:h', record(2));
+    const saved = images.loadMirrorImage('builtin:c:8:0:0:h');
+    assert.equal(saved.history[0].promptMetadata.prompt, long);
+    assert.equal(saved.history[0].slimmed, undefined);
+});
+
+test('removeMirrorImage drops a record', () => {
+    store.clear(); limit = Infinity;
+    images.saveMirrorImage('builtin:c:9:0:0:h', record(1));
+    images.removeMirrorImage('builtin:c:9:0:0:h');
+    assert.equal(images.loadMirrorImage('builtin:c:9:0:0:h'), null);
+});

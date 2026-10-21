@@ -1,7 +1,7 @@
 // 设置 →「缺壳扫描」下面的「一键补上」：把扫描范围里没有兔子镜的回复排好队，一层一层生成。
 // 队列只有一份，挂在这个模块上；设置界面关掉、重画都不影响正在补的队伍，重新打开时接着显示进度。
 
-import { createBackfillQueue, describeBackfill } from '../backfillQueue.js?rmv=1.73.25';
+import { createBackfillQueue, describeBackfill } from '../backfillQueue.js?rmv=1.73.29';
 
 let queue = null;
 let deps = null;

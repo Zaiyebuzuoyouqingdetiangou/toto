@@ -1,8 +1,8 @@
 // 智绘姬（st-chatu8）生图渠道：通过酒馆事件把提示词交给智绘姬，按请求编号接回图片。
 // 直接沿用智绘姬里已经配好的模型、接口和出图设置；不改它的全局设置，不加数量限制，不截短提示词，
 // 结果不明时不自动重发。只取消兔子镜自己的等待，不影响智绘姬里的其他任务。
-import { getContext } from './independentApi/runtime.js?rmv=1.73.25';
-import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.73.25';
+import { getContext } from './independentApi/runtime.js?rmv=1.73.29';
+import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.73.29';
 
 const SUPPORTED_MODES = new Set(['sd', 'novelai', 'comfyui', 'banana', 'runninghub']);
 
@@ -32,18 +32,23 @@ function requestId() {
     return `rabbit-mirror-${Date.now().toString(36)}-${random}`;
 }
 
+const CHATU8_WAIT_MS = 15 * 60 * 1000;
 function waitForChatu8Image({ prompt, width, height, signal }) {
     const ctx = getContext();
     const events = ctx.eventSource;
     const id = requestId();
     return new Promise((resolve, reject) => {
         let done = false;
+        let timer = null;
         const cleanup = () => {
             done = true;
+            if (timer) clearTimeout(timer);
             // 只移除本次的监听，不清空其他插件的监听。
             try { (events.removeListener || events.off)?.call(events, 'generate-image-response', onResponse); } catch { /* ignore */ }
             signal?.removeEventListener?.('abort', onAbort);
         };
+        // 智绘姬内部出错没回调、或在它自己界面里取消了不带编号：不能一直等（面板会一直「正在画」、重画也被挡着）。
+        timer = setTimeout(() => { if (done) return; cleanup(); reject(failure('provider_error', '智绘姬 15 分钟没有回音；不会自动再次请求。')); }, CHATU8_WAIT_MS);
         const onResponse = data => {
             if (done || !data || data.id !== id) return;
             cleanup();

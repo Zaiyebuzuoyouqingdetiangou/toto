@@ -112,9 +112,59 @@ function undoFallbackForNativePopover(root) {
     }
 }
 
+// 支持原生弹窗的浏览器里，模型常给弹窗元素的类写 display:none（想着「平时藏起来」）：作者样式压过浏览器
+// 「打开时显示」的默认样式，按了按钮弹窗打开了却看不见。打开时它还算成 display:none 的，补上行内显示，关上撤掉。
+const NATIVE_DISPLAY_ATTR = 'data-rm-popover-native-display';
+const nativeRoots = new WeakSet();
+function clearNativeDisplay(target) {
+    if (!target.hasAttribute(NATIVE_DISPLAY_ATTR)) return;
+    target.removeAttribute(NATIVE_DISPLAY_ATTR);
+    if (target.style.getPropertyPriority('display') === 'important') target.style.removeProperty('display');
+}
+function setNativeDisplay(target) {
+    if (target.hasAttribute(NATIVE_DISPLAY_ATTR)) return;
+    target.setAttribute(NATIVE_DISPLAY_ATTR, 'true');
+    target.style.setProperty('display', 'block', 'important');
+}
+// 打开以后：先撤掉自己补的，看作者样式下它是不是真的还藏着；藏着才补。
+function syncNativePopoverDisplay(target) {
+    if (!target?.hasAttribute?.('popover') || target.hasAttribute(TARGET_ATTR)) return;
+    let open = false;
+    try { open = target.matches(':popover-open'); } catch { return; }
+    clearNativeDisplay(target);
+    if (open && target.ownerDocument?.defaultView?.getComputedStyle?.(target)?.display === 'none') setNativeDisplay(target);
+}
+// 打开之前（beforetoggle）：脚本 click() 之后马上就要量画面，等不到 toggle。用一个不带 popover 的浅副本
+// 量作者样式给的 display；是 none 就先补上，打开后 toggle 再按真实情况核对一次。
+function predictNativePopoverDisplay(target) {
+    if (!target?.hasAttribute?.('popover') || target.hasAttribute(TARGET_ATTR) || !target.parentNode) return;
+    const probe = target.cloneNode(false);
+    probe.removeAttribute('popover'); probe.removeAttribute('id'); probe.removeAttribute(NATIVE_DISPLAY_ATTR);
+    probe.style.removeProperty('display');
+    probe.setAttribute('aria-hidden', 'true');
+    try {
+        target.parentNode.insertBefore(probe, target);
+        if (target.ownerDocument?.defaultView?.getComputedStyle?.(probe)?.display === 'none') setNativeDisplay(target);
+    } finally { probe.remove(); }
+}
+function installNativePopoverDisplay(root) {
+    // 存下的面可能带着上次打开时补的行内显示：先撤掉（弹窗此时是关着的）。
+    for (const target of root.querySelectorAll(`[${NATIVE_DISPLAY_ATTR}]`)) syncNativePopoverDisplay(target);
+    if (nativeRoots.has(root) || ![...root.querySelectorAll('[popover]')].some(node => typeof node.showPopover === 'function')) return;
+    nativeRoots.add(root);
+    // toggle 不冒泡，捕获阶段在 root 上收得到；打开、关上都会来。
+    root.addEventListener('toggle', event => syncNativePopoverDisplay(event.target), true);
+    // 脚本里 click() 打开（维修兔的隐藏副本实测就是这样）：toggle 要等下一轮才来，这里在 click() 返回前就补上。
+    root.addEventListener('beforetoggle', event => {
+        if (event.newState === 'open') predictNativePopoverDisplay(event.target);
+        else if (event.target?.hasAttribute?.(NATIVE_DISPLAY_ATTR)) clearNativeDisplay(event.target);
+    }, true);
+}
+
 export function installNativePopoverFallback(root) {
     if (!root?.querySelectorAll) return 0;
     try { undoFallbackForNativePopover(root); } catch { /* 撤不掉就照旧 */ }
+    try { installNativePopoverDisplay(root); } catch { /* 补不上就照旧 */ }
     let binding = roots.get(root);
     if (!binding) {
         if (![...root.querySelectorAll(BUTTON_SELECTOR)].some(button => targetFor(root, button) && actionFor(button))) return 0;

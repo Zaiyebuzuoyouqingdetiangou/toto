@@ -1,11 +1,11 @@
-import { generationPaletteFields } from './paletteRecipes.js?rmv=1.73.25';
-import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.73.25';
-import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords, observedOperationFamiliesFor } from './compositionFingerprint.js?rmv=1.73.25';
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.73.25';
-import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.73.25';
-import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.73.25';
-import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.73.25';
-import { slimMirrorImagesForQuota } from './imageStore.js?rmv=1.73.25';
+import { generationPaletteFields } from './paletteRecipes.js?rmv=1.73.29';
+import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.73.29';
+import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords, observedOperationFamiliesFor } from './compositionFingerprint.js?rmv=1.73.29';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.73.29';
+import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.73.29';
+import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.73.29';
+import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.73.29';
+import { slimMirrorImagesForQuota } from './imageStore.js?rmv=1.73.29';
 
 const STORAGE_KEY = 'rabbit_mirror_theater:last_combo:v11';
 const PENDING_KEY = 'rabbit_mirror_theater:pending_combo:v11';
@@ -1227,6 +1227,9 @@ const QUOTA_RECOVERY_STEPS = [
     () => slimMirrorImagesForQuota(),
     () => compactFaceSwipeStoreForQuota([40]),
     () => compactIndependentOutputsForQuota(40),
+    // 兔子镜历史备份（重说前的旧版本，最多约 1.75MB）：只是回退用的。先删已确认存进聊天的缓存（不丢东西），还不够再砍它更早的那一半；
+    // 每一层最新的那份留着。
+    () => { try { const trim = globalThis.__rabbitMirrorTrimHistoryForQuota; if (typeof trim === 'function') trim(); } catch { /* ignore */ } },
     () => { compactFaceSwipeStoreForQuota([20]); compactIndependentOutputsForQuota(20); },
     () => { compactFaceSwipeStoreForQuota([10]); compactIndependentOutputsForQuota(10); },
     () => { compactFaceSwipeStoreForQuota([5]); compactIndependentOutputsForQuota(10, true); },
@@ -1412,9 +1415,22 @@ export function markPendingBatchAttempt(planInput = null, options = {}) {
     // state does not need unnecessary temporary headroom. Owned rollback still
     // runs in reverse order, removing our growth before restoring larger values.
     const shrinks = change => typeof change.before === 'string' && change.after.length < change.before.length;
-    const written = writeOwnedTransaction([...changes.filter(shrinks), ...changes.filter(change => !shrinks(change))], options, true);
-    if (written && transient) transientBatchRegistry.set(plan.batchId, plan);
-    return written;
+    if (transient) {
+        // 独立 API 多面：这两份只是避重的记账（形式公平计数、抽签尝试），单面那边写不进去也照常生成。
+        // 本机存储满了写不进去时照样登记、照样发请求，不再整批拒发（以前每一层都「多面请求未登记」）。
+        let failure = '';
+        const quiet = { ...options, onRejected: code => { failure = code; } };
+        // 只是记账：写不进去就算了，不为它去删用户的旧版本备份、压缩多版本切换（空间回收留给真正要存的东西）。
+        const written = writeOwnedTransaction([...changes.filter(shrinks), ...changes.filter(change => !shrinks(change))], quiet, false);
+        if (!written && !['BATCH_STORAGE_QUOTA_EXCEEDED', 'BATCH_STORAGE_WRITE_FAILED', 'BATCH_STORAGE_READBACK_MISMATCH'].includes(failure)) {
+            reportBatchRejection(options, failure || 'BATCH_STORAGE_WRITE_FAILED');
+            return false;
+        }
+        if (!written) console.warn('[RabbitMirror] 多面避重记账没能写进本机存储（多半是满了），这一批照常生成：', failure);
+        transientBatchRegistry.set(plan.batchId, plan);
+        return true;
+    }
+    return writeOwnedTransaction([...changes.filter(shrinks), ...changes.filter(change => !shrinks(change))], options, true);
 }
 
 function normalizeFaceScan(value, faceIndex) {

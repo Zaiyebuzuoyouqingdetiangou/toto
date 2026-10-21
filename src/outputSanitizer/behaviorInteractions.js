@@ -1,12 +1,14 @@
-import { behaviorShowTokens, clearForcedActive, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.73.25';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.73.25';
-import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.73.25';
-import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState, holdAncestorStateClass } from './behaviorStateMirror.js?rmv=1.73.25';
-import { syncStateCarriers, releaseStateCarriers, unwindStaleBridges } from './behaviorStateBridge.js?rmv=1.73.25';
-import { findUnwrittenWordStates, wordStateHost, setWordState } from './wordStateAttr.js?rmv=1.73.25';
-import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.73.25';
-import { addDialectStateKeys, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup, toggleCssBridges, setBridgedCssWord } from './behaviorDialect.js?rmv=1.73.25';
-import { EXTRA_TYPES, EXTRA_CONTROLS, EXTRA_CONTROL_ATTRS, configureBehaviorExtras, configureCarryChatKey, extraTypeFits, prepareExtra, destroyExtra, extraAction, extraSync, extraKeys, extraReset, extraPointerDown, extraPointerMove, extraPointerUp, extraHoldStart, extraHoldEnd, applyCarriedState, saveCarriedState, recalledKeys, carryMemoryName } from './behaviorExtras.js?rmv=1.73.25';
+import { behaviorShowTokens, clearForcedActive, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.73.29';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.73.29';
+import { installSiblingStateBridge } from './behaviorSiblingBridge.js?rmv=1.73.29';
+import { TYPE_CONTROLS, behaviorOwnerGroup, ownBehaviorNodes } from './behaviorOwner.js?rmv=1.73.29';
+import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.73.29';
+import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState, holdAncestorStateClass } from './behaviorStateMirror.js?rmv=1.73.29';
+import { syncStateCarriers, releaseStateCarriers, unwindStaleBridges } from './behaviorStateBridge.js?rmv=1.73.29';
+import { findUnwrittenWordStates, wordStateHost, setWordState } from './wordStateAttr.js?rmv=1.73.29';
+import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.73.29';
+import { addDialectStateKeys, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup, toggleCssBridges, setBridgedCssWord } from './behaviorDialect.js?rmv=1.73.29';
+import { EXTRA_TYPES, EXTRA_CONTROLS, EXTRA_CONTROL_ATTRS, configureBehaviorExtras, configureCarryChatKey, extraTypeFits, prepareExtra, destroyExtra, extraAction, extraSync, extraKeys, extraReset, extraPointerDown, extraPointerMove, extraPointerUp, extraHoldStart, extraHoldEnd, applyCarriedState, saveCarriedState, recalledKeys, carryMemoryName } from './behaviorExtras.js?rmv=1.73.29';
 
 export { behaviorToggleKey, motionOutsideControls };
 
@@ -23,14 +25,12 @@ const STATEFUL = new Set(['toggle', 'pick', 'pager', 'roll', 'connect', 'turn', 
 // 可以点的部件：不限于 button，div、span、svg 元素写上这些标识也能用（补上 role 与键盘操作）。
 const CONTROL_ATTRS = ['reset', 'fire', 'play', 'reverse', 'seek', 'prev', 'next', 'step', 'place', 'return', 'move', 'toggle', 'pick', 'goto', 'roll', 'end', 'code', 'knob', ...EXTRA_CONTROL_ATTRS];
 const CONTROL_SELECTOR = CONTROL_ATTRS.map(name => `[data-rm-${name}]`).join(', ');
-// 每类驱动认哪些部件；不属于本类的标识（比如拖动区里碰巧写了 data-key）不接管它的点击。
-const TYPE_CONTROLS = Object.freeze({ drag: ['place', 'return', 'move'], effect: ['fire'], motion: ['play', 'reverse', 'seek'], hold: ['hold'], reorder: ['prev', 'next'], accumulate: ['step'],
-    toggle: ['toggle'], pick: ['pick'], pager: ['prev', 'next', 'goto'], roll: ['roll'], connect: ['end'], turn: ['knob'], sequence: ['code'], ...EXTRA_CONTROLS });
 const RESERVED_KEYS = new Set(['changed', 'active', 'match', 'done', 'miss', 'on']);
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const finite = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-const own = (group, selector) => [...group.querySelectorAll(selector)].filter(node => node.closest(GROUP) === group);
+const ownerGroup = behaviorOwnerGroup;
+const own = ownBehaviorNodes;
 const first = (group, selector) => own(group, selector)[0];
 const isButton = node => node?.matches?.('button, input[type="button"]') && !node.disabled;
 const isNative = node => Boolean(node?.matches?.('button, input, textarea, select, a[href], summary, label'));
@@ -789,7 +789,7 @@ function mirrorStateUp(state, control, attr, controls) {
         if (!state.upMirrors.has(holder)) state.upMirrors.set(holder, new Map());
         const saved = state.upMirrors.get(holder);
         if (!saved.has(attr)) saved.set(attr, holder.getAttribute(attr));
-        const on = [...holder.querySelectorAll(controls)].some(node => node.closest(GROUP) === state.group && node.getAttribute(attr) === 'true');
+        const on = [...holder.querySelectorAll(controls)].some(node => ownerGroup(node) === state.group && node.getAttribute(attr) === 'true');
         if (on) { if (holder.getAttribute(attr) !== value) holder.setAttribute(attr, value); }
         else {
             const original = saved.get(attr);
@@ -1031,7 +1031,8 @@ function prepare(binding, group) {
 
 function stateFor(root, target) {
     const binding = roots.get(root);
-    const group = target?.closest?.(GROUP) || remoteToggleGroup(root, target) || remoteMotionGroup(root, target);
+    const control = target?.closest?.(`${CONTROL_SELECTOR}, [data-rm-hold]`);
+    const group = (control && ownerGroup(control)) || target?.closest?.(GROUP) || remoteToggleGroup(root, target) || remoteMotionGroup(root, target);
     return binding && group && root.contains(group) ? prepare(binding, group) : null;
 }
 
@@ -2015,7 +2016,7 @@ function pointerDown(binding, event) {
         else if (type === 'follow') surface = event.target.closest('[data-rm-surface]');
         else if (type === 'reveal' && !first(group, 'input[type="range"]')) surface = first(group, '[data-rm-surface]') || group;
     }
-    if (!surface || surface.closest(GROUP) !== group || ((type === 'hold' || type === 'turn' || type === 'rhythm') && !isControl(surface))) return;
+    if (!surface || ownerGroup(surface) !== group || ((type === 'hold' || type === 'turn' || type === 'rhythm') && !isControl(surface))) return;
     const point = localPoint(group, event), position = state.positions.get(item);
     const session = { state, surface, item, changedBefore: state.changed, wasPlaced: state.placed.has(item), id: event.pointerId, startX: event.clientX, startY: event.clientY, x: position?.x || 0, y: position?.y || 0, sx: point.sx, sy: point.sy, box: item?.getBoundingClientRect() };
     binding.pointer = session;
@@ -2117,7 +2118,7 @@ function genericControl(root, target) {
     const control = target?.closest?.(CONTROL_SELECTOR);
     if (!control || !isControl(control)) return null;
     const state = stateFor(root, control);
-    if (!state || control.closest(GROUP) !== state.group) return null;
+    if (!state || ownerGroup(control) !== state.group) return null;
     if (!control.hasAttribute('data-rm-reset') && !(TYPE_CONTROLS[state.type] || []).some(name => control.hasAttribute(`data-rm-${name}`))) return null;
     return { state, control };
 }
@@ -2155,7 +2156,7 @@ function scheduleOnDemandRelay(root, target) {
 function relayGroupLater(root, group, control = null) {
     const run = () => {
         if (!group.isConnected || !root.isConnected) return;
-        void import('./behaviorRelay.js?rmv=1.73.25').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
+        void import('./behaviorRelay.js?rmv=1.73.29').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
     };
     const idle = globalThis.requestIdleCallback;
     if (typeof idle === 'function') idle(run, { timeout: 800 }); else setTimeout(run, 120);
@@ -2168,6 +2169,8 @@ export function installBehaviorInteractions(root) {
     // 维修兔以前确认过“插件修不好、老修复器能修”的块，打开时直接交给老修复器。
     try { applyRememberedBehaviorRelay(root); } catch { /* 记忆读不到就照常接插件 */ }
     if (!root?.addEventListener) return 0;
+    // 「按钮[状态] ~ 结果」而按钮外面多包了一层：补上外壳替身规则（见 behaviorSiblingBridge.js）。
+    try { installSiblingStateBridge(root); } catch { /* 补不上就照原样 */ }
     const existing = roots.get(root);
     const binding = existing || { root, groups: new WeakMap(), pointer: null, swipe: null, holds: new Set(), connects: new Set() };
     roots.set(root, binding);
@@ -2261,4 +2264,4 @@ configureBehaviorExtras({ own, first, style, unstyle, setFlag, enableControl, re
 // 跨面继承按聊天分开记：聊天键从存储模块拿，拿不到时所有面共用一份。
 let carryChatKeyReader = null;
 configureCarryChatKey(() => carryChatKeyReader?.() || '');
-import('../storage.js?rmv=1.73.25').then(module => { carryChatKeyReader = () => module.getCurrentChatKey?.() || ''; }).catch(() => {});
+import('../storage.js?rmv=1.73.29').then(module => { carryChatKeyReader = () => module.getCurrentChatKey?.() || ''; }).catch(() => {});
