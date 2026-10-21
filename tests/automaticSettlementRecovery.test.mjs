@@ -49,7 +49,7 @@ function harness(){
  };
  Object.defineProperty(ctx,'isGenerating',{get:()=>weak});
  const context=vm.createContext(sandbox);
- for(const [file,names]of Object.entries({earlyBody:['clearAutomaticHostGenerationSettlement','automaticHostGenerationPhaseBaseline','beginAutomaticHostGeneration','unlockAutomaticGenerationCutover','automaticHostGenerationRenderMatches','automaticHostRenderProof','refreshAutomaticHostGenerationEvidence','automaticHostGenerationSettlementCandidate','settleAutomaticHostGeneration','suppressesAutomaticGeneration','activateAuthorizedAutomaticGeneration','finalizeAutomaticHostGeneration','scheduleAutomaticHostGenerationSettlement','noteHostGenerationEnd','holdAbnormalAutomaticReply'],mount:['automaticAuthorizationLineage','stampAutomaticAuthorizationEpoch','generationPollKey','generationWaitPollDelay','confirmFinalRenderedGeneration','refreshUnpaidAutomaticAuthorization','scheduleMessageGeneration'],connection:['externalHostGenerationActivity'],flights:['isMissingShellStop','blockingAutomaticFailureStopFor']}))for(const name of names)install(context,file,name);
+ for(const [file,names]of Object.entries({earlyBody:['automaticHostStreamInterrupted','clearAutomaticHostGenerationSettlement','automaticHostGenerationPhaseBaseline','beginAutomaticHostGeneration','unlockAutomaticGenerationCutover','automaticHostGenerationRenderMatches','automaticHostRenderProof','refreshAutomaticHostGenerationEvidence','automaticHostGenerationSettlementCandidate','settleAutomaticHostGeneration','suppressesAutomaticGeneration','activateAuthorizedAutomaticGeneration','finalizeAutomaticHostGeneration','scheduleAutomaticHostGenerationSettlement','noteHostGenerationEnd','holdAbnormalAutomaticReply'],mount:['automaticAuthorizationLineage','stampAutomaticAuthorizationEpoch','generationPollKey','generationWaitPollDelay','confirmFinalRenderedGeneration','refreshUnpaidAutomaticAuthorization','scheduleMessageGeneration'],connection:['externalHostGenerationActivity'],flights:['isMissingShellStop','blockingAutomaticFailureStopFor']}))for(const name of names)install(context,file,name);
  for(const name of ['automaticHostSettlementActivity','preserveCompletedAutomaticHostGeneration'])install(context,'earlyBody',name,true);
  return {ctx,msg,owner,cutover,context,stops,polls,requests,dispatches:()=>dispatched,
   weak(value){weak=value;},strong(value){strong=value;},dom(value){dom=value;},start(){context.scheduleAutomaticHostGenerationSettlement();},
@@ -110,4 +110,19 @@ test('changed chat, message identity, swipe, body or intermediate phase cannot t
 });
 test('a preserved owner is still cancelled by a later source replacement before dispatch',()=>{
  const h=harness();h.start();h.advance(100);h.newStart();h.ctx.chat[1]={mes:'replacement',swipe_id:1};h.advance(2500);assert.equal(h.dispatches(),0);assert.equal(h.polls.size,0);
+});
+// 正文流式输出到一半被接口报错打断（如 429）：酒馆照样发 MESSAGE_RECEIVED/CHARACTER_MESSAGE_RENDERED/GENERATION_ENDED，
+// 只把 streamingProcessor 标成 isStopped、没有 isFinished。这条残缺正文不能自动生成兔子镜（无论宿主忙碌标志在不在）。
+test('a stream interrupted by an API error never authorizes automatic generation',()=>{
+ for(const processor of [{messageId:1,isStopped:true,isFinished:false},{messageId:1,isFinished:false,abortController:{signal:{aborted:true}}}]){
+  for(const weak of [false,true]){
+   const h=harness();h.ctx.streamingProcessor=processor;h.weak(weak);h.start();h.advance(5000);
+   assert.equal(h.dispatches(),0);
+   h.weak(false);h.advance(5000);assert.equal(h.dispatches(),0);
+  }
+ }
+});
+test('a stopped processor of another message does not block this finished reply',()=>{
+ const h=harness();h.ctx.streamingProcessor={messageId:0,isStopped:true,isFinished:false};h.start();h.advance(2500);
+ assert.equal(h.dispatches(),1);
 });

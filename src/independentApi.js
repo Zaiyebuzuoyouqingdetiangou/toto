@@ -12,9 +12,9 @@ export {
     getLastIndependentModelListDiagnostic,
     fetchIndependentModels,
     testIndependentConnection,
-} from './independentApi/connection.js?rmv=1.73.29';
-export { remeasureRabbitMirrorFaceGeometry, undoRabbitMirrorFaceAutoWidth, repairRabbitMirrorFaceAutoWidth } from './independentApi/geometry.js?rmv=1.73.29';
-export { hydrateIndependentFavoriteHtml, backfillIndependentFloor, prepareIndependentBackfillFloor, independentBackfillBusy, independentBackfillChatKey, independentBackfillFloorToken } from './independentApi/mount.js?rmv=1.73.29';
-export { listMissingIndependentRetryFloors, resyncMissingIndependentRetryShells } from './independentApi/earlyBody.js?rmv=1.73.29';
-export { buildRabbitMirrorArchiveInventory } from './independentApi/archiveInventory.js?rmv=1.73.29';
-export { refreshRabbitMirrorGenerationMode, initIndependentRabbitMirror, destroyIndependentRabbitMirror } from './independentApi/lifecycle.js?rmv=1.73.29';
+} from './independentApi/connection.js?rmv=1.73.30';
+export { remeasureRabbitMirrorFaceGeometry, undoRabbitMirrorFaceAutoWidth, repairRabbitMirrorFaceAutoWidth } from './independentApi/geometry.js?rmv=1.73.30';
+export { hydrateIndependentFavoriteHtml, backfillIndependentFloor, prepareIndependentBackfillFloor, independentBackfillBusy, independentBackfillChatKey, independentBackfillFloorToken } from './independentApi/mount.js?rmv=1.73.30';
+export { listMissingIndependentRetryFloors, resyncMissingIndependentRetryShells } from './independentApi/earlyBody.js?rmv=1.73.30';
+export { buildRabbitMirrorArchiveInventory } from './independentApi/archiveInventory.js?rmv=1.73.30';
+export { refreshRabbitMirrorGenerationMode, initIndependentRabbitMirror, destroyIndependentRabbitMirror } from './independentApi/lifecycle.js?rmv=1.73.30';

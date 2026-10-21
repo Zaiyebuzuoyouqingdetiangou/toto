@@ -5,11 +5,27 @@
 const NOTIFIED = new WeakMap();
 const STATUS_CODE = /\b(?:400|401|403|408|413|429|500|502|503|504|520|521|522|523|524|529)\b/;
 const ERROR_EN = /(?:\berror\b|too many requests|rate.?limit|quota|resource.?exhausted|service unavailable|bad gateway|gateway time-?out|timed? ?out|upstream|internal server error|overloaded|unauthorized|forbidden|cloudflare)/i;
-const ERROR_CN = /(?:请求失败|请求过多|请求过于频繁|请求太频繁|频率限制|限流|服务繁忙|负载过高|余额不足|额度不足|配额|无可用渠道|上游|接口错误|服务器错误|状态码|错误码)/;
-const ERROR_START = /^(?:error|错误|报错|请求失败|api ?error|\{\s*"error"|\{\s*"code"|\[error\])/i;
+const ERROR_CN = /(?:请求失败|请求过多|请求过于频繁|请求太频繁|频率限制|速率限制|限流|服务繁忙|负载过高|负载已饱和|余额不足|额度不足|额度已用尽|令牌额度|配额|无可用渠道|上游|接口错误|服务器错误|状态码|错误码)/;
+// 只会出现在接口/中转报错里的固定说法：开头一段里出现就够了，不看整段长度（长报错页、带一长串说明的限流提示）。
+const API_ERROR_PHRASE = /(?:too many requests|rate[ _-]?limit(?:ed|[ _-]exceeded|[ _-]error| reached)|resource[ _-]?(?:has been )?exhausted|insufficient[ _-]quota|exceeded your current quota|please (?:retry|try again) (?:after|in) \d|request id: ?[\w-]{6,}|当前分组|令牌额度|额度已用尽|负载已饱和|已达到速率限制|请求过于频繁|无可用渠道)/i;
+const ERROR_START = /^(?:error|错误|报错|请求失败|api ?error|\{\s*"error"|\{\s*"code"|\{\s*"type"\s*:\s*"error"|\[error\])/i;
 const EMPTY_HINT = /(?:未返回|无内容|没有内容|内容为空|空回复|空响应|no content|empty response|^null$|^undefined$)/i;
 const REFUSAL_START = /^(?:抱歉|对不起|很抱歉|非常抱歉|我很抱歉|sorry|i'?m sorry|i am sorry|i apologi[sz]e|i can'?t|i cannot|i'?m unable|i am unable|as an ai|作为(?:一个)?(?:ai|人工智能|语言模型))/i;
 const REFUSAL_WORDS = /(?:无法|不能|不可以|不便|拒绝|政策|规定|准则|安全|can'?t|cannot|unable|not able|won'?t|policy|guidelines|content)/i;
+
+// 整条正文就是一个接口报错 JSON（OpenAI / Claude / Gemini / new-api 等）：有 error 字段，或 type 为 error，
+// 或带 4xx/5xx 的 code/status 与 message。剧情正文不会整段是这种对象。
+function jsonApiError(raw) {
+    const trimmed = String(raw || '').trim();
+    const start = trimmed.indexOf('{');
+    if (start < 0 || start > 80 || !trimmed.endsWith('}')) return false;
+    let data;
+    try { data = JSON.parse(trimmed.slice(start)); } catch { return false; }
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return false;
+    if (data.error || data.type === 'error') return true;
+    const code = Number(data.code ?? data.status ?? data.status_code ?? data.statusCode);
+    return code >= 400 && code < 600 && typeof (data.message ?? data.msg ?? data.detail) === 'string';
+}
 
 function plainText(raw) {
     return String(raw || '').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -136,6 +152,9 @@ export function mainReplyAbnormalReason(message, { partial = false } = {}) {
     // 提前生成阶段正文还在写，短不代表异常；只在正文完成后判断“过短”。
     if (!partial && (text.length < 30 || (text.length < 80 && EMPTY_HINT.test(text)))) return '正文未返回内容或过短';
     const signals = [STATUS_CODE, ERROR_EN, ERROR_CN].filter(pattern => pattern.test(text)).length;
+    const head = text.slice(0, 400);
+    const headSignals = [STATUS_CODE, ERROR_EN, ERROR_CN].filter(pattern => pattern.test(head)).length;
+    if (jsonApiError(raw) || (API_ERROR_PHRASE.test(head) && (text.length < 600 || headSignals >= 2))) return '正文像是接口报错（如 429/524）';
     if (ERROR_START.test(text.slice(0, 40)) || ERROR_START.test(raw.trim().slice(0, 40)) || htmlApiErrorHeader(raw)
         || (text.length < 1500 && signals >= 2) || (text.length < 150 && signals >= 1)) return '正文像是接口报错（如 429/524）';
     if (text.length < 400 && REFUSAL_START.test(text) && REFUSAL_WORDS.test(text)) return '正文是模型拒答或道歉';

@@ -1,13 +1,13 @@
 // Split from independentApi.js — earlyBody.
-import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.73.29';
+import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.73.30';
 
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.73.29';
-import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.73.29';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.73.29';
-import { getSettings } from '../settings.js?rmv=1.73.29';
-import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.73.29';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=1.73.29';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.73.29';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.73.30';
+import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.73.30';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.73.30';
+import { getSettings } from '../settings.js?rmv=1.73.30';
+import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.73.30';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=1.73.30';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.73.30';
 import {
     MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE,
     INDEPENDENT_HISTORY_READ_ERROR_MESSAGE,
@@ -17,7 +17,7 @@ import {
     isMissingShellTargetFloor,
     normalizeMissingShellScanRange,
     shouldRestoreMissingIndependentRetryShell,
-} from './missingRetryShell.js?rmv=1.73.29';
+} from './missingRetryShell.js?rmv=1.73.30';
 import {
     INDEPENDENT_GENERATION_INTENTS_KEY,
     INDEPENDENT_GENERATION_INTENT_TYPES,
@@ -27,7 +27,7 @@ import {
     currentRuntime,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.73.29';
+} from './runtime.js?rmv=1.73.30';
 import {
     ACTIVE_GENERATION_WAIT_MS,
     FINAL_RENDER_POLL_INTERVAL_MS,
@@ -43,7 +43,7 @@ import {
     markAutomaticFailureStop,
     operationEpochForBase,
     pending,
-} from './flights.js?rmv=1.73.29';
+} from './flights.js?rmv=1.73.30';
 import {
     appendHistoryEntry,
     chatPersistenceSlot,
@@ -61,7 +61,7 @@ import {
     reconcileIndependentChatOwners,
     rememberChatMessageOrder,
     checkOwnerRemapEpoch,
-} from './persistence.js?rmv=1.73.29';
+} from './persistence.js?rmv=1.73.30';
 import {
     activeGlobalWorldInfoCapture,
     assistantMessages,
@@ -111,7 +111,7 @@ import {
     withOwnerLockStoreBatch,
     writeActiveGlobalWorldInfoCapture,
     writeHostModule,
-} from './connection.js?rmv=1.73.29';
+} from './connection.js?rmv=1.73.30';
 import {
     allExternalHosts,
     externalHosts,
@@ -120,7 +120,7 @@ import {
     removeEmptyInlineAnchors,
     withExternalHostSyncIndex,
     isTheaterFavoriteHost,
-} from './request.js?rmv=1.73.29';
+} from './request.js?rmv=1.73.30';
 import {
     beginHostWorkTiming,
     clearExternalHostFreshSourceState,
@@ -154,7 +154,7 @@ import {
     setPlaceholderSummary,
     usableReadyDetails,
     withRestorableHtmlCacheBatch,
-} from './geometry.js?rmv=1.73.29';
+} from './geometry.js?rmv=1.73.30';
 import {
     INDEPENDENT_INTENT_OWNER,
     abortFlight,
@@ -208,7 +208,7 @@ import {
     serializeExternalFaceDetails,
     stampAutomaticAuthorizationEpoch,
     withHistoricalRestoreLightPass,
-} from './mount.js?rmv=1.73.29';
+} from './mount.js?rmv=1.73.30';
 import {
     automaticGenerationCutovers,
     hostGenerationHintStartedAt,
@@ -233,7 +233,7 @@ import {
     writeStartupHistoryFallbackRoot,
     writeSyncRunning,
     writeSyncTimer,
-} from './lifecycle.js?rmv=1.73.29';
+} from './lifecycle.js?rmv=1.73.30';
 
 let earlyBodyParserPromise=null;
 
@@ -362,7 +362,7 @@ function settleEarlyBodyAtFinal(ctx,index){
 
 async function probeIndependentEarlyBody(packet,sequence){
  if(!earlyBodyPacketCurrent(packet)) return;
- if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.73.29')
+ if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.73.30')
   .then(module=>{earlyBodyParser=module;return module;}).catch(()=>{earlyBodyParserPromise=null;return null;});
  const parser=await earlyBodyParserPromise;
  if(!parser || sequence!==earlyBodyProbeSequence || !earlyBodyPacketCurrent(packet)) return;
@@ -460,6 +460,15 @@ export function automaticHostRenderProof(index){
    : 'stream-final';
  }
  return 'exact-render';
+}
+
+// 正文流式输出途中接口报错（如 429 限流）：酒馆照样发收到/渲染/结束事件，只把这条的
+// streamingProcessor 标成 isStopped 而没有 isFinished（手动点停止则是 isFinished）。
+// 这条残缺正文不算“正文完成”，自动生成一律不接手；需要时仍可手动生成。
+export function automaticHostStreamInterrupted(ctx,index){
+ const processor=hostModule?.streamingProcessor || ctx?.streamingProcessor;
+ if(!processor || Number(processor.messageId)!==Number(index) || processor.isFinished===true) return false;
+ return processor.isStopped===true || processor.abortController?.signal?.aborted===true;
 }
 
 function beginAutomaticHostGeneration(ctx,type='',nested=false,dryRun=false){
@@ -666,6 +675,10 @@ function automaticHostGenerationSettlementCandidate(ctx,{externalActive=false}={
  if(!owner || !rendered || owner.auxiliaryTerminalPending || owner.intermediateRender
   || externalActive===true || Number(rendered.phase)!==Number(owner.phase||0)) return null;
  if(!automaticHostGenerationRenderMatches(ctx,rendered.index,owner)) return null;
+ if(automaticHostStreamInterrupted(ctx,rendered.index)){
+  notifySafetyValve(ctx.chat?.[rendered.index],'正文生成中途被接口报错打断');
+  return null;
+ }
  const msg=ctx?.chat?.[rendered.index]; const token=automaticCutoverVersionToken(msg);
  if(rendered.message && (rendered.message!==msg || rendered.chat!==ctx.chat || rendered.swipe!==swipeId(msg))) return null;
  if(token!==String(rendered.token||'')) return null;
@@ -728,6 +741,7 @@ export function suppressesAutomaticGeneration(ctx,index){
  if(!Number.isInteger(normalized) || normalized<0) return true;
  const msg=ctx?.chat?.[normalized]; const authorization=cutover.authorized.get(normalized);
  if(!isRabbitMirrorEligibleAssistantMessage(msg) || !authorization) return true;
+ if(automaticHostStreamInterrupted(ctx,normalized)) return true;
  const proof=authorization[INDEPENDENT_INTENT_OWNER];
  if(proof && (proof.chat!==ctx.chat || proof.message!==msg || proof.swipe!==swipeId(msg))) return true;
  return String(authorization.token||'')!==automaticCutoverVersionToken(msg);
