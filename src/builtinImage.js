@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.73.17';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.73.17';
-import { builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.73.17';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.73.17';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.73.17';
-import { tidyImagePayload } from './imageTagTidy.js?rmv=1.73.17';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.73.17';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.73.17';
+import { getSettings } from './settings.js?rmv=1.73.18';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.73.18';
+import { builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.73.18';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.73.18';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.73.18';
+import { tidyImagePayload } from './imageTagTidy.js?rmv=1.73.18';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.73.18';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.73.18';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -78,7 +78,12 @@ function hasModelPrompt(frame) {
     return String(text || '').replace(/\s+/g, ' ').trim().length >= 4;
 }
 
-function readPrompt(frame) {
+// cleanTitle：凑提示词时标题只取标题字。存图的位置（键）仍按以前的取法算，免得已经画好的图找不到、又花一次额度重画；
+// 真正发给生图的那段用干净的标题。
+function legacyTitle(frame) {
+    return String(frame.closest?.('details')?.querySelector?.(':scope > summary')?.textContent || '').replace(/\s+/g, ' ').replace(/^【?兔子镜[:：]\s*/, '').replace(/】$/, '').trim();
+}
+function readPrompt(frame, { cleanTitle = false } = {}) {
     const node = frame.querySelector?.('[data-rm-draw-prompt]');
     let text = node ? node.textContent : '';
     if (!String(text).trim()) {
@@ -88,7 +93,7 @@ function readPrompt(frame) {
     text = String(text || '').replace(/\s+/g, ' ').trim();
     // 图框在、画面描述却没写（模型漏写，或写到这里被截断了）：用这一面的标题和图框旁边写的字当画面，照样画。
     if (text.length < 4) {
-        const title = fallbackTitle(frame);
+        const title = cleanTitle ? fallbackTitle(frame) : legacyTitle(frame);
         const caption = frameCaption(frame).replace(/^前：|；后：|^后：/g, ' ').replace(/\s*\/\s*/g, '，').trim();
         const fallback = [title, caption].filter(Boolean).join('：').replace(/\s+/g, ' ').trim();
         return fallback.length >= 8 ? fallback.slice(0, 400) : '';
@@ -449,7 +454,7 @@ function readWorldCast(names) {
     const key = JSON.stringify([ctx?.characterId ?? '', character?.avatar || character?.name || '', character?.data?.extensions?.world || '', disabled, [...names].sort()]);
     const hit = worldCastCache.get(key);
     if (hit && Date.now() - hit.at < 60000) return hit.promise;
-    const promise = import('./characterWorldBook.js?rmv=1.73.17').then(module => module.readCharacterWorldBookContext(ctx, {
+    const promise = import('./characterWorldBook.js?rmv=1.73.18').then(module => module.readCharacterWorldBookContext(ctx, {
         disabledBooks: disabled, focusText: names.join('\n'), onlyMentioned: true, maxChars: 4000,
     })).then(result => String(result?.text || '')).catch(() => { worldCastCache.delete(key); return ''; });
     worldCastCache.set(key, { at: Date.now(), promise });
@@ -464,7 +469,7 @@ async function withWorldBookAppearance(people, frame, tagsOnly, signal = null) {
     const cast = await readWorldCast(names);
     if (signal?.aborted) throw Object.assign(new Error('生图已取消。'), { name: 'AbortError', code: 'aborted' });
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.73.17');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.73.18');
     const merged = people.map(person => ({ ...person }));
     for (const name of names) {
         const person = merged.find(item => item.name === name);
@@ -543,14 +548,13 @@ function planInOrder(key, run) {
 }
 
 // 简短线索不是完整提示词，规划失败时保留图框，不继续花费绘图额度。
-async function planWithImageLlm(frame, onProgress, promptFormat, isCurrent, otherScenes = [], { focus: focusOverride = null } = {}) {
+async function planWithImageLlm(frame, onProgress, promptFormat, isCurrent, otherScenes = []) {
     try {
         const details = frame?.closest?.('details');
         const bridge = globalThis.__rabbitMirrorIndependentActionsV1;
         const target = details && typeof bridge?.prepareImageTarget === 'function' ? bridge.prepareImageTarget(details) : null;
         if (!target?.plan) throw planningFailure();
-        // 模型没写画面时不拿凑出来的那段当焦点，让规划照整面内容和图框旁边的字来写。
-        const focus = focusOverride === null ? readPrompt(frame) : String(focusOverride || '');
+        const focus = readPrompt(frame, { cleanTitle: true });
         const publicCharacters = await imageCharacters(target.floor);
         if (!isCurrent()) throw staleImageRequest();
         // 图框里模型写好的出场人物外貌和当时衣着一并单独给生图 LLM，不让它从别处另找衣着、场景。
@@ -570,33 +574,25 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
     const entry = { job: null, isCurrent };
     const job = (async () => {
         if (!isCurrent()) throw staleImageRequest();
+        // 模型没写画面、插件拿标题和旁边的字凑的：发给生图的那段用干净的标题（不带标题条上的按钮字）。
+        if (!options.direct && !hasModelPrompt(frame)) prompt = readPrompt(frame, { cleanTitle: true }) || prompt;
         const size = frameImageSize(frame);
         const settings = { ...getSettings() };
         // 重画：沿用上次构思好的提示词只换随机种子（不再调用生图 LLM）；改了提示词时直接按改过的画。
-        // 模型放了图框却没写画面：标题加旁边的字凑出来的不是能画的画面。没开生图 LLM 时也让副 API 照这一面另写一份画面
-        // （和生图 LLM 同一套规划：画面、各人长相、世界书里的人物条目）；写不成再退回凑的那段，照样出图。
-        const missingPrompt = !options.reuse && !options.direct && !hasModelPrompt(frame);
-        const withLlm = (imageLlmConfigured(settings) || missingPrompt) && !options.reuse && !options.direct;
+        const withLlm = imageLlmConfigured(settings) && !options.reuse && !options.direct;
         if (withLlm) reportProgress(key, '等前面几面定好画面，再构思这一面…');
-        let planned = options.reuse || null;
-        if (withLlm) {
-            const plan = () => planInOrder(key, otherScenes => {
-                if (!isCurrent()) throw staleImageRequest();
-                reportProgress(key, missingPrompt && !imageLlmConfigured(settings) ? '这一面没写画面，副 API 正在照这一面写画面…' : '生图 LLM 正在构思画面提示词…');
-                return planWithImageLlm(frame, phase => {
-                    if (isCurrent() && (phase === 'response-chunk' || phase === 'connection-manager-frame')) {
-                        reportProgress(key, '画面提示词正在返回…');
-                    }
-                }, settings.imagePromptFormat, isCurrent, otherScenes, { focus: missingPrompt ? '' : null });
-            });
-            if (missingPrompt) {
-                try { planned = await plan(); }
-                catch (error) { if (error?.code === 'stale_owner') throw error; planned = null; }
-            } else planned = await plan();
-        }
+        const planned = options.reuse || (withLlm ? await planInOrder(key, otherScenes => {
+            if (!isCurrent()) throw staleImageRequest();
+            reportProgress(key, '生图 LLM 正在构思画面提示词…');
+            return planWithImageLlm(frame, phase => {
+                if (isCurrent() && (phase === 'response-chunk' || phase === 'connection-manager-frame')) {
+                    reportProgress(key, '生图 LLM 正在返回画面提示词…');
+                }
+            }, settings.imagePromptFormat, isCurrent, otherScenes);
+        }) : null);
         if (!isCurrent()) throw staleImageRequest();
         const provider = settings.imageBackend === 'chatu8' ? '智绘姬' : '柏宝绘';
-        reportProgress(key, `${planned && withLlm ? '提示词已完成，' : ''}正在交给${provider}生图…`);
+        reportProgress(key, `${withLlm ? '提示词已完成，' : ''}正在交给${provider}生图…`);
         // 交给生图前把标签理一遍：人数和性别放最前、粘在一起的拆开、重复的去掉（见 imageTagTidy.js）。
         // 只理真正是标签的字段：生图 LLM 的 prompt 是标签，它的 flatPrompt 在 NAI 5 下是自然语言；
         // 没有生图 LLM 时，这一面没写标签行，prompt 退回的是自然语言画面，也不理。

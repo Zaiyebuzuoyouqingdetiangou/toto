@@ -1,8 +1,8 @@
-import { getCurrentChatKey, commitRetriedFaceHistory } from './storage.js?rmv=1.73.17';
-import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.73.17';
-import { recipeFromSelectionMetadata } from './blacklist.js?rmv=1.73.17';
-import { readFollowPartialResult } from './followPartialResults.js?rmv=1.73.17';
-import { rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.73.17';
+import { getCurrentChatKey, commitRetriedFaceHistory } from './storage.js?rmv=1.73.18';
+import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.73.18';
+import { recipeFromSelectionMetadata } from './blacklist.js?rmv=1.73.18';
+import { readFollowPartialResult } from './followPartialResults.js?rmv=1.73.18';
+import { rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.73.18';
 
 // 跟随模式自动补发、手动重试单面补回来的面，以前不进避重记录：配色、布局、交互都没记，
 // 下一轮可能撞色撞交互。这里在补回的面保存好之后，按实际发出去的抽签记录逐面补记。
@@ -23,7 +23,7 @@ export async function recordFollowRetriedFaces({ chat, index, message, html, com
         if (!parsed.faces?.length) return 0;
         // 扫描器按需加载（它连着宿主模块），记账失败也不影响补回的面。
         let scan = typeof scanHtml === 'function' ? scanHtml : null;
-        if (!scan) { try { scan = (await import('./visualScanner.js?rmv=1.73.17')).scanRabbitMirrorHtml; } catch { scan = null; } }
+        if (!scan) { try { scan = (await import('./visualScanner.js?rmv=1.73.18')).scanRabbitMirrorHtml; } catch { scan = null; } }
         const chatKey = getCurrentChatKey(chat);
         const swipeId = Number.isInteger(message?.swipe_id) ? message.swipe_id : -1;
         if (!chatKey || !Number.isInteger(index) || index < 0) return 0;
