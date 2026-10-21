@@ -95,6 +95,22 @@ const fallback = await page.evaluate(() => {
 assert.equal(fallback.length, 1); checks++;
 assert.match(fallback[0], /地牢收音台导演音轨：.*骨镰挑颌/); checks++;
 
+// 11 多面：最后一面截在画面说明里，补齐后两面都能解析出来；前一面不动
+const multi = await page.evaluate(async () => {
+    const proto = await import('/src/multifaceProtocol.js?' + new URL(document.querySelector('script[type=module]')?.src || location.href).search.slice(1));
+    const face = (n, tail) => `<toto data-rabbit-mirror="true" data-rm-face="${n}" style="display:block;"><details><summary>【兔子镜：第${n}面的标题】</summary><div><p>第${n}面的正文，写得足够长一些。</p><figure data-rm-draw-frame="1"></figure></div>${tail}`;
+    const raw = face(1, '<div data-rm-draw-notes="1" hidden><p data-rm-draw-prompt="1">第一面的画面</p></div></details></toto>\n')
+        + face(2, '<div data-rm-draw-notes="1" hidden><p data-rm-draw-prompt="1">第二面画到一半被截');
+    const fixed = req.repairMultifaceDrawNotesTail(raw);
+    const parsed = proto.parseMultifaceOutput(fixed, { expectedCount: 2 });
+    const untouched = req.repairMultifaceDrawNotesTail(raw.replace('被截', '被截</p></div></details></toto>'));
+    return { faces: parsed.faces.length, ok: parsed.ok, firstSame: fixed.startsWith(face(1, '')), frame2: /data-rm-face="2"[\s\S]*data-rm-draw-frame="1"/.test(fixed), untouched: untouched === raw.replace('被截', '被截</p></div></details></toto>') };
+});
+assert.equal(multi.faces, 2, JSON.stringify(multi)); checks++;
+assert.equal(multi.firstSame, true); checks++;
+assert.equal(multi.frame2, true); checks++;
+assert.equal(multi.untouched, true); checks++;
+
 assert.deepEqual(pageErrors, []);
 console.log(JSON.stringify({ checks }));
 await browser.close(); server.close();

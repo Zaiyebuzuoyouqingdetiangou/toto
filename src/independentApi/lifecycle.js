@@ -1,9 +1,9 @@
 // Split from independentApi.js — lifecycle.
 
-import { getSettings } from '../settings.js?rmv=1.73.4';
-import { SOURCE_ATTR, currentRuntime, getContext } from './runtime.js?rmv=1.73.4';
-import { LEGACY_GLOBAL_FLIGHT_KEYS, clearAutomaticFailureStops, pending } from './flights.js?rmv=1.73.4';
-import { migrateLegacyDeletedRecords } from './persistence.js?rmv=1.73.4';
+import { getSettings } from '../settings.js?rmv=1.73.5';
+import { SOURCE_ATTR, currentRuntime, getContext } from './runtime.js?rmv=1.73.5';
+import { LEGACY_GLOBAL_FLIGHT_KEYS, clearAutomaticFailureStops, pending } from './flights.js?rmv=1.73.5';
+import { migrateLegacyDeletedRecords } from './persistence.js?rmv=1.73.5';
 import {
     activeGlobalWorldInfoCapture,
     activeOwnerLockBatch,
@@ -14,8 +14,8 @@ import {
     writeActiveOwnerLockBatch,
     writeActiveOwnerLockBatchDirty,
     installConnectionProfileSecretWatch,
-} from './connection.js?rmv=1.73.4';
-import { isTheaterFavoriteHost, removeEmptyFollowExternalAnchors, removeEmptyInlineAnchors } from './request.js?rmv=1.73.4';
+} from './connection.js?rmv=1.73.5';
+import { isTheaterFavoriteHost, removeEmptyFollowExternalAnchors, removeEmptyInlineAnchors } from './request.js?rmv=1.73.5';
 import {
     activeRestorableHtmlCache,
     installExternalGeometryListeners,
@@ -24,7 +24,7 @@ import {
     refreshExternalPlaceholderThemes,
     removeExternalGeometryListeners,
     writeActiveRestorableHtmlCache,
-} from './geometry.js?rmv=1.73.4';
+} from './geometry.js?rmv=1.73.5';
 import {
     abortFlight,
     automaticIndependentTiming,
@@ -52,7 +52,7 @@ import {
     restoreFollowInline,
     restoreMountedFollowSnapshots,
     runtimeMode,
-} from './mount.js?rmv=1.73.4';
+} from './mount.js?rmv=1.73.5';
 import {
     cancelEarlyBodyProbes,
     captureMountedIndependentPlaceholderIndices,
@@ -72,7 +72,7 @@ import {
     scheduleStartupHistorySync,
     settleMountedIndependentPlaceholders,
     unsubscribeHostEvents,
-} from './earlyBody.js?rmv=1.73.4';
+} from './earlyBody.js?rmv=1.73.5';
 
 export let observer = null;
 

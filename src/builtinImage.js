@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.73.4';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.73.4';
-import { builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.73.4';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.73.4';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.73.4';
-import { tidyImagePayload } from './imageTagTidy.js?rmv=1.73.4';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.73.4';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.73.4';
+import { getSettings } from './settings.js?rmv=1.73.5';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.73.5';
+import { builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.73.5';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.73.5';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.73.5';
+import { tidyImagePayload } from './imageTagTidy.js?rmv=1.73.5';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.73.5';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.73.5';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
