@@ -1,18 +1,18 @@
 // Split from outputSanitizer.js — diagnostics.
-import { interactionSamplingDiagnostic, designSamplingChecksDiagnostic } from '../interactionSampling.js?rmv=1.73.4';
-import { maskFaceText, skeletonizeRabbitMirrorHtml } from './writingSkeleton.js?rmv=1.73.4';
-import { RADIO_BRANCH_COUNT_ATTR } from './radioBranchRepair.js?rmv=1.73.4';
-import { findUnmappedNavigationButtons } from './choiceRescue.js?rmv=1.73.4';
-import { nativePopoverFallbackCount, inspectNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.73.4';
-import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.73.4';
-import { describeBehaviorDialect, dialectLabels, inspectBehaviorDialect } from './behaviorDialect.js?rmv=1.73.4';
-import { restoreRuntimeAnimationClone } from '../runtimeAnimationState.js?rmv=1.73.4';
-import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.73.4';
+import { interactionSamplingDiagnostic, designSamplingChecksDiagnostic } from '../interactionSampling.js?rmv=1.73.5';
+import { maskFaceText, skeletonizeRabbitMirrorHtml } from './writingSkeleton.js?rmv=1.73.5';
+import { RADIO_BRANCH_COUNT_ATTR } from './radioBranchRepair.js?rmv=1.73.5';
+import { findUnmappedNavigationButtons } from './choiceRescue.js?rmv=1.73.5';
+import { nativePopoverFallbackCount, inspectNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.73.5';
+import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.73.5';
+import { describeBehaviorDialect, dialectLabels, inspectBehaviorDialect } from './behaviorDialect.js?rmv=1.73.5';
+import { restoreRuntimeAnimationClone } from '../runtimeAnimationState.js?rmv=1.73.5';
+import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.73.5';
 
-import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.73.4';
-import { collectBoundedElementDescendants } from '../presentationQuality.js?rmv=1.73.4';
-import { collectRevealedClipHosts, shouldRelaxRevealedClipPanel, REVEALED_CLIP_RESCUE_ATTR } from '../revealedClipRepair.js?rmv=1.73.4';
-import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.73.4';
+import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.73.5';
+import { collectBoundedElementDescendants } from '../presentationQuality.js?rmv=1.73.5';
+import { collectRevealedClipHosts, shouldRelaxRevealedClipPanel, REVEALED_CLIP_RESCUE_ATTR } from '../revealedClipRepair.js?rmv=1.73.5';
+import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.73.5';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -32,7 +32,7 @@ import {
     isMaintenanceRabbitEnabled,
     isMaintenanceAutoPatrolEnabled,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.73.4';
+} from './runtime.js?rmv=1.73.5';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     CHANNEL_DIAL_CYCLE_COUNT_ATTR,
@@ -65,7 +65,7 @@ import {
     WEBKIT_3D_FLIP_RESCUE_ATTR,
     passportDocumentRescueStates,
     unlabeledCheckedHostRescueStates,
-} from './checkedStateRescue.js?rmv=1.73.4';
+} from './checkedStateRescue.js?rmv=1.73.5';
 import {
     RENDERED_ADJACENT_HIDDEN_GROUP_RESCUE_ATTR,
     RENDERED_BUTTON_ADJACENT_HIDDEN_ITEM_ATTR,
@@ -92,7 +92,7 @@ import {
     renderedListDetailRescueStates,
     renderedMaskRevealRescueStates,
     renderedStateLayerRescueStates,
-} from './renderedStateRescue.js?rmv=1.73.4';
+} from './renderedStateRescue.js?rmv=1.73.5';
 import {
     RAW_RADIO_RESET_LAST_ATTR,
     RAW_RADIO_RESET_ROOT_ATTR,
@@ -103,7 +103,7 @@ import {
     getRabbitMirrorSummaryText,
     getRawAssistantMessageForRenderedRoot,
     rawSelfMutationRescueStates,
-} from './scriptedInteractionRescue.js?rmv=1.73.4';
+} from './scriptedInteractionRescue.js?rmv=1.73.5';
 import {
     REVERSIBLE_RADIO_LAST_ATTR,
     REVERSIBLE_RADIO_ROOT_ATTR,
@@ -114,13 +114,13 @@ import {
     findNestedDetailsPopupClippingCandidates,
     formatWebKit3DFlipEvidence,
     repairNestedDetailsPopupClipping,
-} from './fallbackRescue.js?rmv=1.73.4';
-import { RADIO_GROUP_RESCUE_ATTR, RADIO_GROUP_ROOT_ATTR } from './idsAndRearm.js?rmv=1.73.4';
+} from './fallbackRescue.js?rmv=1.73.5';
+import { RADIO_GROUP_RESCUE_ATTR, RADIO_GROUP_ROOT_ATTR } from './idsAndRearm.js?rmv=1.73.5';
 import {
     findFillInChoiceCandidates,
     findStaticChoiceSelectionCandidates,
     findStructuredStaticDisclosureCandidates,
-} from './choiceRescue.js?rmv=1.73.4';
+} from './choiceRescue.js?rmv=1.73.5';
 import {
     CODE_SHELL_SELECTOR,
     MAINTENANCE_QUARANTINED_SCRIPT_ATTR,
@@ -138,7 +138,7 @@ import {
     needsSanitize,
     normalizeMaintenanceSummaryText,
     parseTotoFragment,
-} from './maintenanceInspect.js?rmv=1.73.4';
+} from './maintenanceInspect.js?rmv=1.73.5';
 import {
     RABBIT_MIRROR_MAX_TEMPLATE_SOURCE_CHARS,
     RABBIT_MIRROR_SANITIZER_IMPORT_STRIPPED_ATTR,
@@ -151,7 +151,7 @@ import {
     sanitizeRabbitMirrorUntrustedTemplate,
     stripCssComments,
     validateRabbitMirrorTemplateStructuralBudget,
-} from './markup.js?rmv=1.73.4';
+} from './markup.js?rmv=1.73.5';
 import {
     HCLIP_REPORT_ATTR,
     VIEWPORT_LAYOUT_COUNT_ATTR,
@@ -159,15 +159,15 @@ import {
     inspectMaintenanceMobileLayout,
     inspectMaintenanceViewportLayout,
     maintenanceMobileLayoutIsPassportManaged,
-} from './layoutRescue.js?rmv=1.73.4';
-import { normalizeRabbitMirrorToolButton, rabbitMirrorTextPresentation, updateMaintenanceRabbitMenuState } from './toolsChrome.js?rmv=1.73.4';
-import { TEXTURE_ATTR, materialTextureEnabled } from '../materialTexture.js?rmv=1.73.4';
+} from './layoutRescue.js?rmv=1.73.5';
+import { normalizeRabbitMirrorToolButton, rabbitMirrorTextPresentation, updateMaintenanceRabbitMenuState } from './toolsChrome.js?rmv=1.73.5';
+import { TEXTURE_ATTR, materialTextureEnabled } from '../materialTexture.js?rmv=1.73.5';
 import {
     getMessageIndexFromMirrorNode,
     hostScriptModule,
     messageUsesDistinctDisplaySource,
     outputHostGenerationLooksActive,
-} from './lifecycle.js?rmv=1.73.4';
+} from './lifecycle.js?rmv=1.73.5';
 
 export const INTERACTION_DIAGNOSTIC_PANEL_ATTR = 'data-rabbit-mirror-interaction-diagnostic';
 
@@ -1957,6 +1957,24 @@ export function diagnosticLayoutEvidence(root) {
             lines.push(`外置挂法：anchor=${shell.dataset.rmExternalAnchor || '(未记)'} 父层=${parentName} 在消息里=${inMes ? 'yes' : 'no'} widthMode=${shell.dataset.rmExternalWidthMode || '-'}`);
         }
     } catch { /* 诊断不因挂法读不到而中断 */ }
+    // 内置生图：每个图框的画面描述是模型写的，还是模型没写、插件用标题和图框旁边的字补的。
+    try {
+        const frames = [...root.querySelectorAll('[data-rm-draw-frame]')];
+        if (frames.length) {
+            const items = frames.map((frame, index) => {
+                // 和生图读描述的顺序一样：图框里的描述 → 图框上写的属性 → 还没收进图框的同号画面说明。
+                const id = frame.getAttribute('data-rm-draw-frame');
+                const attr = frame.getAttribute('data-rm-draw-prompt');
+                let text = frame.querySelector('[data-rm-draw-prompt]')?.textContent || '';
+                if (!text.trim() && attr && attr !== '1') text = attr;
+                if (!text.trim() && id) { try { text = root.querySelector(`[data-rm-draw-notes="${CSS.escape(id)}"] [data-rm-draw-prompt]`)?.textContent || ''; } catch { /* 编号认不出 */ } }
+                const prompt = String(text).replace(/\s+/g, '').length;
+                const painted = !!frame.querySelector('img[data-rm-draw-result][src]');
+                return `第${index + 1}个=${prompt >= 4 ? `模型写的(${prompt}字)` : '插件补的(标题+旁边的字)'}${painted ? '·已出图' : '·未出图'}`;
+            });
+            lines.push(`生图描述来源：${items.join(' ')}`);
+        }
+    } catch { /* 诊断不因图框读不到而中断 */ }
     const traversal = collectBoundedElementDescendants(root, 160);
     if (traversal.exceeded) return [...lines, '布局现场：本次节点采样超出范围，子项尺寸未采集；完整源码仍见下方。'];
     let count = 0;
