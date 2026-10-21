@@ -1413,18 +1413,18 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
   box-shadow:none !important;
   padding:0 !important;
 }
-/* 1.73.20: 量模型给整面写的外框时不要过渡（否则量到过渡起点的透明）。 */
+/* 1.73.21: 量模型给整面写的外框时不要过渡（否则量到过渡起点的透明）。 */
 #chat details[data-rm-frame-probe]{ transition:none !important; }
-/* 1.73.20: 模型给整面写的外框被上面清掉了，挪到标题下面的正文那一块（faceFrame.js 记下要补哪几项）。
+/* 1.73.21: 模型给整面写的外框被上面清掉了，挪到标题下面的正文那一块（faceFrame.js 记下要补哪几项）。
  * 只在外置壳里生效：存档、收藏、内嵌模式里不画，免得框套框；插件别处用 !important 写在正文上的照样压得住。 */
 #chat .rabbit-mirror-external-shell[data-rm-placement="external"] > details[data-rm-face-frame="true"] > [data-rm-face-frame-body~="bg"]{ background-color:var(--rm-face-frame-bg); }
 #chat .rabbit-mirror-external-shell[data-rm-placement="external"] > details[data-rm-face-frame="true"] > [data-rm-face-frame-body~="bgimg"]{ background-image:var(--rm-face-frame-bg-image); }
 #chat .rabbit-mirror-external-shell[data-rm-placement="external"] > details[data-rm-face-frame="true"] > [data-rm-face-frame-body~="border"]{ border:var(--rm-face-frame-border); }
 #chat .rabbit-mirror-external-shell[data-rm-placement="external"] > details[data-rm-face-frame="true"] > [data-rm-face-frame-body~="radius"]{ border-radius:var(--rm-face-frame-radius); }
 #chat .rabbit-mirror-external-shell[data-rm-placement="external"] > details[data-rm-face-frame="true"] > [data-rm-face-frame-body~="shadow"]{ box-shadow:var(--rm-face-frame-shadow); }
-/* 1.73.20: 挂上去以后标题被这条消息的美化（装饰图）盖住：往上提一层。 */
+/* 1.73.21: 挂上去以后标题被这条消息的美化（装饰图）盖住：往上提一层。 */
 #chat .rabbit-mirror-external-shell[data-rm-placement="external"][data-rm-external-raised="true"]{ position:relative !important; z-index:60 !important; }
-/* 1.73.20: 正文在原外框里缩进一圈（左右对称、不超过 40px）：外框清掉后去掉左右缩进，和标题条一样宽。 */
+/* 1.73.21: 正文在原外框里缩进一圈（左右对称、不超过 40px）：外框清掉后去掉左右缩进，和标题条一样宽。 */
 #chat .rabbit-mirror-external-shell[data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"] > [data-rm-face-flush="true"]{ margin-left:0 !important; margin-right:0 !important; }
 #chat .rabbit-mirror-external-shell[data-rm-source][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"]:not(.rabbit-mirror-external-placeholder):not([data-rm-frame-probe]){
   background:transparent !important;
