@@ -1,6 +1,6 @@
-import { detectWorldBookCapabilities, getHostRequestHeaders, requireHostHeaders } from './capabilities.js?rmv=1.73.31';
-import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.73.31';
-import { normalizeHostWorldBook } from './normalize.js?rmv=1.73.31';
+import { detectWorldBookCapabilities, getHostRequestHeaders, requireHostHeaders } from './capabilities.js?rmv=1.73.32';
+import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.73.32';
+import { normalizeHostWorldBook } from './normalize.js?rmv=1.73.32';
 
 const DEFAULT_TIMEOUT_MS = 10000;
 

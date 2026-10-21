@@ -1,6 +1,6 @@
 import { armGenerationEvidence, cancelGenerationEvidenceArm, clearGenerationEvidence,
-    exportGenerationEvidence, getGenerationEvidenceState, subscribeGenerationEvidence } from '../generationEvidence.js?rmv=1.73.31';
-import { formatGenerationElapsed } from '../generationTiming.js?rmv=1.73.31';
+    exportGenerationEvidence, getGenerationEvidenceState, subscribeGenerationEvidence } from '../generationEvidence.js?rmv=1.73.32';
+import { formatGenerationElapsed } from '../generationTiming.js?rmv=1.73.32';
 
 let cleanup = null;
 
