@@ -161,12 +161,20 @@ const shownPrompt = await page.evaluate(async query => {
     const root = document.querySelector('details');
     const key = images.listBuiltinImageFrames(root)[0].key;
     const store = await import('/src/imageStore.js?' + query);
-    store.replaceMirrorImageVersions(key, { path: '/user/images/new.png', generatedAt: '2026-10-21T02:00:00Z', prompt: 'p', promptMetadata: { prompt: 'windmill', nl: '风车', seed: 2 }, looksSources: { 阿雪: '建档' } },
-        [{ path: '/user/images/old.png', generatedAt: '2026-10-21T01:00:00Z', promptMetadata: { seed: 1 }, slimmed: true }]);
-    const next = images.showBuiltinImageVersion(root, root.querySelector('[data-rm-draw-frame]'), 0);
-    return [next.path, next.promptMetadata.prompt, next.promptMetadata.seed, next.looksSources?.阿雪, next.history[0].path].join('|');
+    const frame = root.querySelector('[data-rm-draw-frame]');
+    const same = { path: '/user/images/old.png', generatedAt: '2026-10-21T01:00:00Z', prompt: 'p', promptMetadata: { prompt: 'windmill', nl: '风车', seed: 1 } };
+    const edited = { path: '/user/images/edited.png', generatedAt: '2026-10-21T01:30:00Z', prompt: 'q', promptMetadata: { prompt: 'castle', nl: '城堡', seed: 3 } };
+    // 两个旧版本存进去时会被瘦掉提示词，只留指纹
+    store.replaceMirrorImageVersions(key, { path: '/user/images/new.png', generatedAt: '2026-10-21T02:00:00Z', prompt: 'p', promptMetadata: { prompt: 'windmill', nl: '风车', seed: 2 }, looksSources: { 阿雪: '建档' } }, [same, edited]);
+    const slim = store.loadMirrorImage(key).history;
+    const a = images.showBuiltinImageVersion(root, frame, 0);
+    const first = [a.path, a.promptMetadata.prompt, a.promptMetadata.seed, a.looksSources?.阿雪, slim.every(entry => entry.slimmed && !entry.prompt)].join('|');
+    // 改过提示词画的那张：指纹对不上，不借当前那张的
+    const list = images.listBuiltinImageFrames(root)[0];
+    const b = images.showBuiltinImageVersion(root, frame, list.versions.findIndex(entry => entry.path === '/user/images/edited.png'));
+    return `${first}#${[b.path, b.promptMetadata?.prompt ?? '', b.prompt ?? ''].join('|')}`;
 }, query);
-assert.equal(shownPrompt, '/user/images/old.png|windmill|1|建档|/user/images/new.png'); checks++;
+assert.equal(shownPrompt, '/user/images/old.png|windmill|1|建档|true#/user/images/edited.png||'); checks++;
 
 assert.deepEqual(pageErrors, []);
 console.log(JSON.stringify({ checks }));

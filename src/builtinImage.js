@@ -1,6 +1,6 @@
 import { getSettings } from './settings.js?rmv=1.73.24';
 import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.73.24';
-import { builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.73.24';
+import { imagePromptFingerprint, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.73.24';
 import { getContext, hashText } from './independentApi/runtime.js?rmv=1.73.24';
 import { imageLlmConfigured } from './imageLlm.js?rmv=1.73.24';
 import { tidyImagePayload } from './imageTagTidy.js?rmv=1.73.24';
@@ -1036,10 +1036,12 @@ export function showBuiltinImageVersion(root, frame, index) {
     if (!chosen || index === current) return record;
     // 本机存储满时旧版本被瘦过，没留提示词：同一图框的各版本多半是同一段提示词重画的，沿用换下来那张的，重画时不用再构思。
     const shown = list[current];
-    // 只认瘦身时打了记号的；从来没记过提示词的老版本不借，免得借到别的（比如改过提示词画的那张）。
-    const picked = chosen?.slimmed === true && shown ? {
-        ...chosen, slimmed: undefined, prompt: shown.prompt,
-        promptMetadata: { ...(shown.promptMetadata || {}), ...(chosen.promptMetadata || {}) },
+    // 只在那张当时用的提示词和换下来这张一样（指纹对得上）时才借；改过提示词画的、从没记过提示词的都不借，
+    // 重画时再构思一次，不会画成别的内容。
+    const fingerprint = imagePromptFingerprint(chosen);
+    const picked = chosen?.slimmed === true && shown && fingerprint && fingerprint === imagePromptFingerprint(shown) ? {
+        ...chosen, slimmed: undefined, promptHash: undefined, prompt: shown.prompt,
+        promptMetadata: { ...(shown.promptMetadata || {}), seed: chosen.promptMetadata?.seed ?? shown.promptMetadata?.seed },
         ...(shown.looksSources && !chosen.looksSources ? { looksSources: shown.looksSources } : {}),
     } : chosen;
     const next = replaceMirrorImageVersions(key, picked, list.filter((_, i) => i !== index));

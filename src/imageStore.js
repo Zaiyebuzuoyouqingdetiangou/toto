@@ -23,14 +23,29 @@ function write(key, kind, value) {
 
 // 旧版本（翻回去看的那几张）只留看图要用的：地址、时间、种子、格式；长提示词、人物外貌不留（没有文件路径、
 // 只有 data: 的那张保留图本身）。当前那张不动（重画沿用它的提示词）；翻回旧版本时沿用换下来那张的提示词（builtinImage.js）。
+// 一张图用的那段提示词的指纹：旧版本瘦掉提示词后留着它，翻回去时只在和当前那张一样时才借用。
+export function imagePromptFingerprint(entry) {
+    if (!entry || typeof entry !== 'object') return '';
+    if (entry.slimmed === true) return String(entry.promptHash || '');
+    const meta = entry.promptMetadata && typeof entry.promptMetadata === 'object' ? entry.promptMetadata : {};
+    const text = JSON.stringify([String(meta.prompt || ''), String(meta.nl || ''), String(meta.flatPrompt || ''), String(entry.prompt || ''), meta.promptFormat || '']);
+    if (text === JSON.stringify(['', '', '', '', ''])) return '';
+    let hash = 0x811c9dc5;
+    for (let i = 0; i < text.length; i += 1) { hash ^= text.charCodeAt(i); hash = Math.imul(hash, 0x01000193) >>> 0; }
+    return hash.toString(36);
+}
+
 function slimEntry(entry) {
     if (!entry || typeof entry !== 'object') return entry;
+    if (entry.slimmed === true) return { ...entry };
+    const promptHash = imagePromptFingerprint(entry);
     const meta = entry.promptMetadata && typeof entry.promptMetadata === 'object' ? entry.promptMetadata : {};
     const out = { url: entry.url, path: entry.path, generatedAt: entry.generatedAt, provider: entry.provider, builtinImageFit: entry.builtinImageFit, looksSources: entry.looksSources };
     if (!entry.path && entry.dataUrl) out.dataUrl = entry.dataUrl;
     const slimMeta = { seed: meta.seed, promptFormat: meta.promptFormat, size: meta.size };
     out.promptMetadata = Object.fromEntries(Object.entries(slimMeta).filter(([, value]) => value !== undefined));
     out.slimmed = true;
+    if (promptHash) out.promptHash = promptHash;
     return Object.fromEntries(Object.entries(out).filter(([, value]) => value !== undefined && value !== null && value !== ''));
 }
 
