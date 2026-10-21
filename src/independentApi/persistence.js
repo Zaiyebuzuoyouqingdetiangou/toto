@@ -825,10 +825,13 @@ export function writePersistedOwner(ctx,index,msg,value,{overwrite=true}={}){
 }
 
 // 这一版已经写进聊天数据（随聊天文件存盘）：本机缓存满了写不进去时，有这一份就不算没保存。
-export function savedInChatFile(ctx,index,msg,html){
+// 要能真的存盘（酒馆给了存聊天的接口）才算；sourceHash 给了就连正文指纹一起比。
+export function savedInChatFile(ctx,index,msg,html,sourceHash=''){
  const key=chatOwnerKey(index,swipeId(msg)); if(!key||!html) return false;
+ if(typeof ctx?.saveMetadataDebounced!=='function') return false;
  const raw=chatMetadataObject(ctx)?.[CHAT_OUTPUT_METADATA_KEY]?.owners?.[key];
- return !!raw && raw.deleted!==true && String(raw.html||'')===String(html);
+ if(!raw || raw.deleted===true || String(raw.html||'')!==String(html)) return false;
+ return !sourceHash || String(raw.sourceHash||'')===String(sourceHash);
 }
 
 export function chatPersistenceSlot(ctx,index,swipe,record){

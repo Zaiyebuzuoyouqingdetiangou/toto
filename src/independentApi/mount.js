@@ -2442,7 +2442,7 @@ function adoptEditedIndependentMirror(identity){
  // 先写聊天数据（随聊天文件存盘），再写本机缓存：本机满了写不进去，聊天数据里有就照样算接上了。
  writePersistedOwner(ctx,index,msg,record,{overwrite:true});
  requestSafeChatSave(ctx,index,msg);
- if(!writeStore(store) && !savedInChatFile(ctx,index,msg,record.html)) return false;
+ if(!writeStore(store) && !savedInChatFile(ctx,index,msg,record.html,sourceHash)) return false;
  setOwnerLockForBase(identity.baseSlot,slot,sourceHash);
  host.dataset.rmKey=slot;
  host.dataset.rmSourceHash=sourceHash;
@@ -3073,14 +3073,16 @@ function persistIndependentRepairFromEvent(event) {
  // 本机缓存只是缓存：写不进去（多半是满了）时，修好的这一版已经写进聊天数据、随聊天文件存盘，照样算保存了。
  // 聊天数据里也没有，才当没保存。
  const localSaved=writeStore(store) && String(findSavedRecord(readStore(),identity.slot,identity.legacySlots||[])?.html||'')===html;
- if(!localSaved && !savedInChatFile(identity.ctx,identity.index,identity.msg,html)){
+ const chatSaved=()=>savedInChatFile(identity.ctx,identity.index,identity.msg,html,identity.sourceHash);
+ if(!localSaved && !chatSaved()){
   showIndependentUnsavedOutput(repaired,identity.slot);
   return abort(`本机存储写不进去，多半是满了，聊天数据里也没写上。${describeLocalStorageUsage()}`);
  }
  if(localSaved){
   setOwnerLockForBase(identity.baseSlot,identity.slot,identity.sourceHash);
   const savedOwnerLock=ownerLockForBase(identity.baseSlot);
-  if(String(savedOwnerLock?.slot||'')!==identity.slot || String(savedOwnerLock?.sourceHash||'')!==identity.sourceHash) return abort('owner lock read-back mismatch');
+  // 本机快满时缓存刚好写进去、锁没写上：聊天数据里有这一版就照样算保存了（挂载时先看聊天数据）。
+  if((String(savedOwnerLock?.slot||'')!==identity.slot || String(savedOwnerLock?.sourceHash||'')!==identity.sourceHash) && !chatSaved()) return abort('owner lock read-back mismatch');
  }
  bindIndependentRecordContinuity(identity.ctx,identity.index,identity.msg,repaired,null,{completed:true});
  writePersistedOwner(identity.ctx,identity.index,identity.msg,repaired,{overwrite:true});

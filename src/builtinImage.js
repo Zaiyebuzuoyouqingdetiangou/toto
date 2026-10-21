@@ -1034,7 +1034,15 @@ export function showBuiltinImageVersion(root, frame, index) {
     const { list, current } = versionsOf(record);
     const chosen = list[index];
     if (!chosen || index === current) return record;
-    const next = replaceMirrorImageVersions(key, chosen, list.filter((_, i) => i !== index));
+    // 本机存储满时旧版本被瘦过，没留提示词：同一图框的各版本多半是同一段提示词重画的，沿用换下来那张的，重画时不用再构思。
+    const shown = list[current];
+    const slimmed = !String(chosen?.promptMetadata?.prompt || chosen?.promptMetadata?.nl || chosen?.promptMetadata?.flatPrompt || chosen?.prompt || '').trim();
+    const picked = slimmed && shown ? {
+        ...chosen, prompt: shown.prompt,
+        promptMetadata: { ...(shown.promptMetadata || {}), ...(chosen.promptMetadata || {}) },
+        ...(shown.looksSources && !chosen.looksSources ? { looksSources: shown.looksSources } : {}),
+    } : chosen;
+    const next = replaceMirrorImageVersions(key, picked, list.filter((_, i) => i !== index));
     unreadable.delete(key);
     if (frame.isConnected) { ensureFrameBox(frame); paint(frame, next, root, key); }
     return next;
