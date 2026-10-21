@@ -768,6 +768,8 @@ export async function openTheaterSnapshot() {
 
     // 缩略图里先只记下这一面属于哪个聊天、哪一层；图等小窗口加载好以后在里面放，读不到时还能换地址再试。
     const prepareSnapshotImages = (template, item) => {
+        // 1.73.26 以前存进兔子镜正文的生图进度条（「正在交给柏宝绘生图…」）：缩略图里不显示。
+        template.content.querySelectorAll('[data-rm-draw-status]').forEach(node => node.remove());
         const roots = [...template.content.querySelectorAll('details')];
         if (!roots.length) roots.push(template.content);
         for (const details of roots) {
