@@ -34,7 +34,7 @@ await page.evaluate(async query => {
 }, query);
 let checks = 0;
 const HEAD = '<toto data-rabbit-mirror="true"><details open><summary>【兔子镜：七彩】</summary><div class="body"><figure data-rm-draw-frame="1" style="aspect-ratio:4/3"></figure><p>七色证言一：红色的那一页写着昨夜的账。</p><figure data-rm-draw-frame="2"></figure><p>结尾的话。</p></div>';
-const NOTE1 = '<div data-rm-draw-notes="1" hidden><p data-rm-draw-prompt="1">案台上的红色账册，暖光</p><p data-rm-draw-char="刑玦">黑发高马尾</p></div>';
+const NOTE1 = '<div data-rm-draw-notes="1" hidden><p data-rm-draw-prompt="1">案台上的红色账册，暖光</p><p data-rm-draw-char="阿岩">黑发高马尾</p></div>';
 const salvage = text => page.evaluate(text => req.salvageCutDrawNotes(text), text);
 
 // 1 截在第二块画面说明里、画面描述几乎没写：两个图框都留着（第二个由插件按标题和旁边的字补画面），正文都在

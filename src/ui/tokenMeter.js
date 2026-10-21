@@ -1,10 +1,10 @@
 // Split from ui.js — Prompt meter and latest independent request diagnostic.
 
-import { getSettings } from '../settings.js?rmv=1.73.5';
-import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from '../tokenMeter.js?rmv=1.73.5';
-import { API_REQUEST_DIAGNOSTIC_EVENT, getLastIndependentApiRequestDiagnostic } from '../independentApi.js?rmv=1.73.5';
-import { escapeHtml } from './runtime.js?rmv=1.73.5';
-import { formatGenerationElapsed } from '../generationTiming.js?rmv=1.73.5';
+import { getSettings } from '../settings.js?rmv=1.73.8';
+import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from '../tokenMeter.js?rmv=1.73.8';
+import { API_REQUEST_DIAGNOSTIC_EVENT, getLastIndependentApiRequestDiagnostic } from '../independentApi.js?rmv=1.73.8';
+import { escapeHtml } from './runtime.js?rmv=1.73.8';
+import { formatGenerationElapsed } from '../generationTiming.js?rmv=1.73.8';
 
 function independentApiProfileLabel(diagnostic) {
     if (!diagnostic?.profile) return '暂无记录';
@@ -66,7 +66,11 @@ function renderIndependentApiDiagnostic(diagnostic = getLastIndependentApiReques
     const worldInfo = diagnostic?.globalWorldInfoEnabled
         ? `<br><b>世界书：</b>${diagnostic.globalWorldInfoCaptured ? `已带入 ${formatMeterNumber(diagnostic.globalWorldInfoEntries)}／${formatMeterNumber(diagnostic.globalWorldInfoTotalEntries || diagnostic.globalWorldInfoEntries)} 条，${formatMeterNumber(diagnostic.globalWorldInfoChars)} 字符${diagnostic.globalWorldInfoTruncated ? '（已按独立预算裁剪）' : ''}` : '本轮无可用条目'}`
         : '<br><b>世界书：</b>关闭';
-    target.html(`<b>最近请求：</b>${escapeHtml(text)}${escapeHtml(attempts)}${elapsed}${model}${selection}${worldInfo}`);
+    // 内置生图写人物外貌时带了角色世界书里哪几条；没带的写明原因。
+    const cast = diagnostic?.imageCastEnabled
+        ? `<br><b>生图人物资料：</b>${diagnostic.imageCastEntries ? `带了 ${formatMeterNumber(diagnostic.imageCastEntries)} 条（${escapeHtml((diagnostic.imageCastTitles || []).join('、') || '无标题')}）` : `没带——${escapeHtml(diagnostic.imageCastReason || '原因未知')}`}`
+        : '';
+    target.html(`<b>最近请求：</b>${escapeHtml(text)}${escapeHtml(attempts)}${elapsed}${model}${selection}${worldInfo}${cast}`);
 }
 
 

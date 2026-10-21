@@ -1,5 +1,10 @@
 function text(value) { return typeof value === 'string' ? value : ''; }
 
+// 世界书条目标题里的分类词：不当人名用。
+const TITLE_NOISE = /^(?:角色|人物|人设|设定|主角|配角|男主|女主|NPC|npc|外貌|外观|长相|形象|资料|档案|简介|介绍|背景|世界观|关系|性格|服装|衣着|条目|常驻|蓝灯|绿灯|其他|补充|详细|基础|基本|地点|地图|规则|组织|势力|剧情|物品|道具|时间|事件)+$/;
+// 写了长相的条目才是人物外貌资料。
+const APPEARANCE_WORDS = /发色|头发|长发|短发|卷发|马尾|[黑白银金红棕灰紫蓝粉]发|瞳|眸|身高|外貌|长相|容貌|五官|肤色|hair|eyes/i;
+
 function currentCharacter(ctx) {
     return ctx?.characters?.[ctx.characterId] || ctx?.character || null;
 }
@@ -40,14 +45,14 @@ export async function readCharacterWorldBookContext(ctx, {
         if (signal?.aborted) throw abortError();
     };
     check();
-    const empty = () => ({ text: '', bookNames: [], entryCount: 0, truncated: false });
-    if (!character || (!linkedName && !embedded)) return empty();
+    const empty = (reason = '') => ({ text: '', bookNames: [], entryCount: 0, titles: [], truncated: false, reason });
+    if (!character || (!linkedName && !embedded)) return empty('这张卡没有绑定世界书');
     const name = linkedName || text(embedded?.name).trim() || `${text(character.name).trim() || '当前角色'}的内嵌世界书`;
     const disabled = new Set((Array.isArray(disabledBooks) ? disabledBooks : [])
         .map(value => text(value).trim()).filter(Boolean));
     // A linked book is the live source; never fall back to its embedded stale
     // copy after a disable or read failure.
-    if (disabled.has(name)) return empty();
+    if (disabled.has(name)) return empty(`世界书「${name}」在兔子镜设置里被关掉了`);
     let book = embedded;
     if (linkedName) {
         let getHeaders = ctx?.getRequestHeaders;
@@ -84,6 +89,18 @@ export async function readCharacterWorldBookContext(ctx, {
         const title = (text(entry.comment) || text(entry.name) || text(entry.title)).trim();
         let score = keys.filter(key => focus.includes(key)).length;
         if (title && title.length <= 20 && focus.includes(title)) score += 1;
+        // 人物条目常常没写关键词（常驻条目），或标题写成「【人物】阿雪」「阿雪·外貌」：
+        // 把标题按符号拆开，拆出来的人名在这一轮出现过也算提到。「人物、设定、外貌」这类分类词不算。
+        else if (title && !score) {
+            const pieces = title.split(/[\s【】\[\]()（）<>《》「」『』:：·・|｜/\\,，、\-—_+=#*]+/)
+                .map(piece => piece.trim()).filter(piece => piece.length >= 2 && piece.length <= 8 && !TITLE_NOISE.test(piece));
+            // 只认写了长相的条目（地点、规则这类标题碰巧和正文重字的不算），英文片段要整词对上。
+            const looksLikePerson = APPEARANCE_WORDS.test(text(entry.content));
+            const hit = piece => /^[A-Za-z0-9 ]+$/.test(piece)
+                ? piece.length >= 3 && new RegExp(`(?:^|[^A-Za-z0-9])${piece.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:$|[^A-Za-z0-9])`, 'i').test(focus)
+                : focus.includes(piece);
+            if (looksLikePerson && pieces.some(hit)) score += 1;
+        }
         return score;
     };
     for (const entry of Object.values(entries)) {
@@ -93,15 +110,38 @@ export async function readCharacterWorldBookContext(ctx, {
         if (entry.enabled === false || entry.disable === true) continue;
         if (typeof entry.content !== 'string') throw new TypeError(`角色世界书“${name}”条目内容不是文本。`);
         if (!entry.content.trim()) continue;
-        rows.push({ row: sourceRow({ book: name, title: text(entry.comment) || text(entry.name) || text(entry.title), content: entry.content }), score: mentioned(entry), order: rows.length });
+        const title = text(entry.comment) || text(entry.name) || text(entry.title);
+        rows.push({ row: sourceRow({ book: name, title, content: entry.content }), title, content: entry.content, score: mentioned(entry), order: rows.length });
     }
     // 只要这一轮提到的条目（内置生图写人物外貌用）：没提到的一条不带。
     if (onlyMentioned) rows.splice(0, rows.length, ...rows.filter(item => item.score > 0));
     rows.sort((a, b) => (b.score > 0) - (a.score > 0) || (a.score > 0 && b.score > 0 ? b.score - a.score : 0) || a.order - b.order);
+    // 只要提到的条目、又超出预算时：每条都留开头一段（长相一般写在前面），不让排在后面的人物整条被截掉。
+    // 按转义后的实际长度截；条目太多、每条连 200 字都分不到时，只留前面几条。
+    if (onlyMentioned && rows.length > 1 && rows.reduce((sum, item) => sum + item.row.length + 1, 0) > maxChars) {
+        const keep = Math.max(1, Math.min(rows.length, Math.floor(maxChars / 220)));
+        rows.splice(keep);
+        const share = Math.floor(maxChars / rows.length) - 1;
+        for (const item of rows) {
+            if (item.row.length <= share) continue;
+            let cut = Math.min(item.content.length, share);
+            let row = '';
+            while (cut > 0) {
+                let content = item.content.slice(0, cut);
+                if (/[\uD800-\uDBFF]$/.test(content)) content = content.slice(0, -1);
+                row = sourceRow({ book: name, title: item.title, content: `${content}…（后略）` });
+                if (row.length <= share) break;
+                cut -= Math.max(1, Math.ceil((row.length - share) / 2));
+            }
+            if (cut > 0) item.row = row;
+        }
+        rows.splice(0, rows.length, ...rows.filter(item => item.row.length <= share));
+    }
+    const titles = rows.map(item => item.title);
     rows.splice(0, rows.length, ...rows.map(item => item.row));
     check();
     const fullText = rows.join('\n');
-    if (fullText.length <= maxChars) return { text: fullText, bookNames: [name], entryCount: rows.length, truncated: false };
+    if (fullText.length <= maxChars) return { text: fullText, bookNames: [name], entryCount: rows.length, titles: titles.filter(Boolean), truncated: false };
     const note = maxChars >= 15 ? '\n【角色世界书已按预算截断】' : '【已截断】';
     const marker = note.slice(0, maxChars);
     const contentBudget = Math.max(0, maxChars - marker.length);
@@ -115,5 +155,5 @@ export async function readCharacterWorldBookContext(ctx, {
         entryCount += 1;
         used += row.length + 1;
     }
-    return { text: prefix + marker, bookNames: [name], entryCount, truncated: true };
+    return { text: prefix + marker, bookNames: [name], entryCount, titles: titles.slice(0, entryCount).filter(Boolean), truncated: true };
 }

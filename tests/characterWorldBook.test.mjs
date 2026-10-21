@@ -15,7 +15,7 @@ test('no character-bound book does not enumerate or read any global, chat, perso
     for (const ctx of [{}, { characterId: 0, characters: [{ name: '甲' }],
         worldInfo: ['global'], chatMetadata: { world_info: 'chat' }, persona: { world: 'persona' },
         externalWorldBookIds: ['random-library'], getWorldInfoNames() { throw new Error('Directory forbidden'); } }]) {
-        assert.deepEqual(await readCharacterWorldBookContext(ctx), { text: '', bookNames: [], entryCount: 0, truncated: false });
+        assert.deepEqual(await readCharacterWorldBookContext(ctx), { text: '', bookNames: [], entryCount: 0, titles: [], truncated: false, reason: '这张卡没有绑定世界书' });
     }
 });
 
@@ -67,7 +67,7 @@ test('manual book disable prevents a read and cannot fall back to the embedded s
     linked.characters[0].data.character_book = { name: '旧书', entries: [entry('不应读入')] };
     for (const [ctx, name] of [[linked, '甲的主世界书'], [embeddedContext({ name: '内嵌', entries: [entry('不应读入')] }), '内嵌']]) {
         assert.deepEqual(await readCharacterWorldBookContext(ctx, { disabledBooks: [name] }),
-            { text: '', bookNames: [], entryCount: 0, truncated: false });
+            { text: '', bookNames: [], entryCount: 0, titles: [], truncated: false, reason: `世界书「${name}」在兔子镜设置里被关掉了` });
     }
 });
 
@@ -162,34 +162,68 @@ test('entries for characters mentioned this turn go first so a long book truncat
     const book = { name: '开放世界', entries: [
         { ...entry(filler), comment: '江湖总览', keys: ['江湖'] },
         { ...entry('掌门：白须长者'), comment: '掌门', keys: ['掌门'] },
-        { ...entry('刑玦：银发高马尾，玄色劲装'), comment: '刑玦', keys: ['刑玦', '圣子'] },
-        { ...entry('纪时卿：乌黑长发，淡粉色眸'), comment: '纪时卿', key: ['纪时卿'] },
+        { ...entry('阿岩：银发高马尾，玄色劲装'), comment: '阿岩', keys: ['阿岩', '少主'] },
+        { ...entry('阿雪：乌黑长发，淡粉色眸'), comment: '阿雪', key: ['阿雪'] },
     ] };
     const plain = await readCharacterWorldBookContext(embeddedContext(book), { maxChars: 1700 });
     assert.equal(plain.truncated, true);
     assert.doesNotMatch(plain.text, /银发高马尾/);
-    const focused = await readCharacterWorldBookContext(embeddedContext(book), { maxChars: 1700, focusText: '圣子刑玦把纪时卿的手按在胸口' });
+    const focused = await readCharacterWorldBookContext(embeddedContext(book), { maxChars: 1700, focusText: '少主阿岩把阿雪的手按在胸口' });
     const lines = focused.text.split('\n');
     assert.match(lines[0], /银发高马尾/);
     assert.match(lines[1], /淡粉色眸/);
     assert.equal(focused.truncated, true);
     // 没提到的条目照原来的顺序排在后面，一条都不少（预算够时）
-    const all = await readCharacterWorldBookContext(embeddedContext(book), { focusText: '纪时卿' });
+    const all = await readCharacterWorldBookContext(embeddedContext(book), { focusText: '阿雪' });
     assert.equal(all.entryCount, 4);
-    assert.deepEqual(all.text.split('\n').map(line => JSON.parse(line).title), ['纪时卿', '江湖总览', '掌门', '刑玦']);
+    assert.deepEqual(all.text.split('\n').map(line => JSON.parse(line).title), ['阿雪', '江湖总览', '掌门', '阿岩']);
 });
 
 test('image cast mode keeps only entries mentioned this turn', async t => {
     forbidNetwork(t);
     const book = { name: '开放世界', entries: [
         { ...entry('门派旧事'), comment: '江湖总览', keys: ['江湖'] },
-        { ...entry('刑玦：银发'), comment: '刑玦', keys: ['刑玦'] },
+        { ...entry('阿岩：银发'), comment: '阿岩', keys: ['阿岩'] },
         { ...entry('掌门：白须'), comment: '掌门', keys: ['掌门'] },
     ] };
-    const cast = await readCharacterWorldBookContext(embeddedContext(book), { focusText: '刑玦低头看她', onlyMentioned: true });
+    const cast = await readCharacterWorldBookContext(embeddedContext(book), { focusText: '阿岩低头看她', onlyMentioned: true });
     assert.equal(cast.entryCount, 1);
     assert.match(cast.text, /银发/);
     assert.doesNotMatch(cast.text, /门派|白须/);
     const none = await readCharacterWorldBookContext(embeddedContext(book), { focusText: '无关的话', onlyMentioned: true });
     assert.equal(none.text, '');
+});
+
+test('image cast: entries without keys match by the name in their title; long entries share the budget', async t => {
+    forbidNetwork(t);
+    const long = '阿雪：乌黑长直发，淡粉色琉璃瞳眸，右眼下朱砂泪痣。' + '生平往事'.repeat(1200);
+    const book = { name: '开放世界', entries: [
+        { ...entry(long), comment: '【人物】阿雪', keys: [] },
+        { ...entry('阿岩：银发高马尾，赤金竖瞳。' + '旧事'.repeat(800)), comment: '阿岩·外貌', keys: [] },
+        { ...entry('世界观'), comment: '【设定】人物关系', keys: [] },
+    ] };
+    const cast = await readCharacterWorldBookContext(embeddedContext(book), { focusText: '少主阿岩把阿雪的脚踝扣住，人物关系紧张', onlyMentioned: true, maxChars: 3000 });
+    assert.deepEqual(cast.titles, ['【人物】阿雪', '阿岩·外貌']);
+    assert.match(cast.text, /淡粉色琉璃瞳眸/);
+    assert.match(cast.text, /银发高马尾/, '排在后面的人物也留着开头的长相');
+    assert.ok(cast.text.length <= 3000);
+    assert.equal(cast.text.split('\n').filter(Boolean).every(line => { try { JSON.parse(line); return true; } catch { return false; } }), true);
+});
+
+test('image cast: escaped rows still fit the budget, rows stay valid JSON, places do not match by title', async t => {
+    forbidNetwork(t);
+    const fmt = name => `【外貌】\n- 发色：黑\n- 瞳色：红\n<身高>180\n"${name}"\n`.repeat(80);
+    const book = { name: '开放世界', entries: [
+        { ...entry(fmt('甲')), comment: '【人物】阿雪', keys: [] },
+        { ...entry(fmt('乙')), comment: '【人物】阿岩', keys: [] },
+        { ...entry(fmt('丙')), comment: '【人物】阿竹', keys: [] },
+        { ...entry('学校在城东'), comment: '【地点】学校', keys: [] },
+        { ...entry('rules'), comment: 'Rules in game', keys: [] },
+    ] };
+    const cast = await readCharacterWorldBookContext(embeddedContext(book), { focusText: '阿雪、阿岩和阿竹放学后在学校门口 thinking', onlyMentioned: true, maxChars: 3000 });
+    assert.ok(cast.text.length <= 3000, String(cast.text.length));
+    assert.equal(cast.truncated, false);
+    const lines = cast.text.split('\n');
+    assert.deepEqual(lines.map(line => JSON.parse(line).title), ['【人物】阿雪', '【人物】阿岩', '【人物】阿竹']);
+    assert.deepEqual(cast.titles, ['【人物】阿雪', '【人物】阿岩', '【人物】阿竹']);
 });
