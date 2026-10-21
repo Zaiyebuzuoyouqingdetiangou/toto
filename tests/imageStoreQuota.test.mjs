@@ -36,6 +36,8 @@ test('a full storage slims old versions and the write goes through; no picture i
     assert.equal(first.history[0].promptMetadata.seed, 1);
     assert.equal(first.history[0].promptMetadata.flatPrompt, undefined);
     assert.equal(first.history[0].prompt, undefined);
+    assert.equal(first.history[0].slimmed, true);
+    assert.equal(first.slimmed, undefined);
 });
 
 test('nothing to slim: the original error comes back and the old record stays', () => {

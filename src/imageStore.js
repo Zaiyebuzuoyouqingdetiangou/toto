@@ -30,6 +30,7 @@ function slimEntry(entry) {
     if (!entry.path && entry.dataUrl) out.dataUrl = entry.dataUrl;
     const slimMeta = { seed: meta.seed, promptFormat: meta.promptFormat, size: meta.size };
     out.promptMetadata = Object.fromEntries(Object.entries(slimMeta).filter(([, value]) => value !== undefined));
+    out.slimmed = true;
     return Object.fromEntries(Object.entries(out).filter(([, value]) => value !== undefined && value !== null && value !== ''));
 }
 

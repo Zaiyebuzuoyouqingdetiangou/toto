@@ -162,7 +162,7 @@ const shownPrompt = await page.evaluate(async query => {
     const key = images.listBuiltinImageFrames(root)[0].key;
     const store = await import('/src/imageStore.js?' + query);
     store.replaceMirrorImageVersions(key, { path: '/user/images/new.png', generatedAt: '2026-10-21T02:00:00Z', prompt: 'p', promptMetadata: { prompt: 'windmill', nl: '风车', seed: 2 }, looksSources: { 阿雪: '建档' } },
-        [{ path: '/user/images/old.png', generatedAt: '2026-10-21T01:00:00Z', promptMetadata: { seed: 1 } }]);
+        [{ path: '/user/images/old.png', generatedAt: '2026-10-21T01:00:00Z', promptMetadata: { seed: 1 }, slimmed: true }]);
     const next = images.showBuiltinImageVersion(root, root.querySelector('[data-rm-draw-frame]'), 0);
     return [next.path, next.promptMetadata.prompt, next.promptMetadata.seed, next.looksSources?.阿雪, next.history[0].path].join('|');
 }, query);
