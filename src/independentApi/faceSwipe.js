@@ -1,17 +1,17 @@
 // Split from independentApi.js — faceSwipe.
 
-import { clearFaceFrame } from './faceFrame.js?rmv=1.73.22';
-import { getSettings } from '../settings.js?rmv=1.73.22';
-import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.73.22';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.73.22';
-import { configuredAutomaticRerollMax } from '../automaticReroll.js?rmv=1.73.22';
-import { seedSwipeState, appendSuccessfulSwipe, faceSwipeStorageSlot, readFaceSwipe, mutateFaceSwipe, restoreFaceSwipeSnapshot } from '../swipeVersions.js?rmv=1.73.22';
-import { EPHEMERAL_FAILURE_ATTR, EPHEMERAL_FAILURE_BODY_ATTR, RUNTIME_VERSION } from './runtime.js?rmv=1.73.22';
-import { independentRecordWithinBudget, readStore, requestSafeChatSave, writePersistedOwner, writeStore } from './persistence.js?rmv=1.73.22';
-import { chatKey, saveRecordForSlot, savedIndependentRecordForOwner, swipeId } from './connection.js?rmv=1.73.22';
-import { hasMultifaceMarkup, wrapIndependentFace } from './request.js?rmv=1.73.22';
-import { attachIndependentUnsavedNotices, externalFaceDetails, passiveObservedIdentity, showIndependentUnsavedOutput } from './mount.js?rmv=1.73.22';
-import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.73.22';
+import { clearFaceFrame } from './faceFrame.js?rmv=1.73.23';
+import { getSettings } from '../settings.js?rmv=1.73.23';
+import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.73.23';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.73.23';
+import { configuredAutomaticRerollMax } from '../automaticReroll.js?rmv=1.73.23';
+import { seedSwipeState, appendSuccessfulSwipe, faceSwipeStorageSlot, readFaceSwipe, mutateFaceSwipe, restoreFaceSwipeSnapshot } from '../swipeVersions.js?rmv=1.73.23';
+import { EPHEMERAL_FAILURE_ATTR, EPHEMERAL_FAILURE_BODY_ATTR, RUNTIME_VERSION } from './runtime.js?rmv=1.73.23';
+import { independentRecordWithinBudget, readStore, requestSafeChatSave, savedInChatFile, writePersistedOwner, writeStore } from './persistence.js?rmv=1.73.23';
+import { chatKey, saveRecordForSlot, savedIndependentRecordForOwner, swipeId } from './connection.js?rmv=1.73.23';
+import { hasMultifaceMarkup, wrapIndependentFace } from './request.js?rmv=1.73.23';
+import { attachIndependentUnsavedNotices, externalFaceDetails, passiveObservedIdentity, showIndependentUnsavedOutput } from './mount.js?rmv=1.73.23';
+import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.73.23';
 
 export function independentRerollMax(){ return configuredAutomaticRerollMax(getSettings()); }
 
@@ -187,7 +187,8 @@ export function writeIndependentOwnerHtml(identity,html){
   identity.host.__rabbitMirrorIndependentSource=html;
   identity.host.dataset.rmSourceHash=String(identity.host.dataset.rmSourceHash||existing.sourceHash||'');
  }
- if(!writeStore(store) || String(readStore()?.[identity.slot]?.html||'')!==html) showIndependentUnsavedOutput(next,identity.slot);
+ // 本机缓存写不进去（多半是满了）但聊天数据里已经有这一版：随聊天文件存盘，不算没保存。
+ if((!writeStore(store) || String(readStore()?.[identity.slot]?.html||'')!==html) && !savedInChatFile(identity.ctx,identity.index,identity.msg,html)) showIndependentUnsavedOutput(next,identity.slot);
  if(identity.host) attachIndependentUnsavedNotices(identity.host,identity.slot,next);
  return true;
 }

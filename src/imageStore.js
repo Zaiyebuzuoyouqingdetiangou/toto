@@ -12,7 +12,49 @@ function read(key, kind) {
 
 function write(key, kind, value) {
     // A single atomic setItem: a quota/error leaves the entire old record intact.
-    globalThis.localStorage.setItem(storageKey(key, kind), JSON.stringify(value));
+    const name = storageKey(key, kind), text = JSON.stringify(value);
+    try { globalThis.localStorage.setItem(name, text); }
+    catch (error) {
+        // 本机存储满了：先把各张图旧版本里的长提示词瘦下来（图本身一张不删），腾出地方再写一次。
+        if (!slimMirrorImagesForQuota()) throw error;
+        globalThis.localStorage.setItem(name, text);
+    }
+}
+
+// 旧版本（翻回去看的那几张）只留看图要用的：地址、时间、种子、格式；长提示词、人物外貌、整张图的 data: 不留。
+// 当前那张不动（重画沿用它的提示词）。
+function slimEntry(entry) {
+    if (!entry || typeof entry !== 'object') return entry;
+    const meta = entry.promptMetadata && typeof entry.promptMetadata === 'object' ? entry.promptMetadata : {};
+    const out = { url: entry.url, path: entry.path, generatedAt: entry.generatedAt, provider: entry.provider, builtinImageFit: entry.builtinImageFit };
+    if (!entry.path && entry.dataUrl) out.dataUrl = entry.dataUrl;
+    const slimMeta = { seed: meta.seed, promptFormat: meta.promptFormat, size: meta.size };
+    out.promptMetadata = Object.fromEntries(Object.entries(slimMeta).filter(([, value]) => value !== undefined));
+    return Object.fromEntries(Object.entries(out).filter(([, value]) => value !== undefined && value !== null && value !== ''));
+}
+
+/** 本机存储满了时给插图存档瘦身：只瘦旧版本、去掉已有文件路径的 data: 副本，不删任何一张图。腾出了地方返回 true。 */
+export function slimMirrorImagesForQuota() {
+    const storage = globalThis.localStorage;
+    if (!storage) return false;
+    const head = `${PREFIX}images:`;
+    const names = [];
+    try { for (let i = 0; i < storage.length; i += 1) { const name = storage.key(i); if (name?.startsWith(head)) names.push(name); } } catch { return false; }
+    let freed = false;
+    for (const name of names) {
+        try {
+            const raw = storage.getItem(name);
+            const data = raw ? JSON.parse(raw) : null;
+            if (!data || data.version !== 1 || !data.current || !Array.isArray(data.history)) continue;
+            const current = { ...data.current };
+            if (current.path) delete current.dataUrl;
+            const next = JSON.stringify({ ...data, current, history: data.history.map(slimEntry) });
+            if (next.length >= raw.length) continue;
+            storage.setItem(name, next);
+            freed = true;
+        } catch { /* 这一份瘦不了就跳过 */ }
+    }
+    return freed;
 }
 
 function storedRecord(record) {
