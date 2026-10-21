@@ -1,9 +1,9 @@
-import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.73.30';
+import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=1.73.31';
 // Split from outputSanitizer.js — markup.
 
-import { getSettings } from '../settings.js?rmv=1.73.30';
-import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.73.30';
-import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.73.30';
+import { getSettings } from '../settings.js?rmv=1.73.31';
+import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=1.73.31';
+import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=1.73.31';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     INTERACTION_HOME_ATTR,
@@ -15,7 +15,7 @@ import {
     clearMirrorTitleDisplayArtifacts,
     escapeRegExp,
     hashInteractionSignature,
-} from './runtime.js?rmv=1.73.30';
+} from './runtime.js?rmv=1.73.31';
 
 const TOTO_BLOCK_RE = /<toto\b[\s\S]*?<\/toto>/gi;
 

@@ -1,6 +1,6 @@
-import { parseMultifaceOutput, createMultifaceFailureSlot } from './multifaceProtocol.js?rmv=1.73.30';
-import { compactFormatDescriptors } from './selectionImageMetadata.js?rmv=1.73.30';
-import { isBlankLongTextSelection } from './presentationMode.js?rmv=1.73.30';
+import { parseMultifaceOutput, createMultifaceFailureSlot } from './multifaceProtocol.js?rmv=1.73.31';
+import { compactFormatDescriptors } from './selectionImageMetadata.js?rmv=1.73.31';
+import { isBlankLongTextSelection } from './presentationMode.js?rmv=1.73.31';
 
 function wrapIndependentFaceForMerge(inner, index) {
     return `<toto data-rabbit-mirror="true" data-rm-face="${index + 1}">${String(inner || '')}</toto>`;
