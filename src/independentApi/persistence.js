@@ -1,8 +1,8 @@
 // Split from independentApi.js — persistence.
 
-import { presentationModeFields } from '../presentationMode.js?rmv=1.73.25';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.73.25';
-import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.73.25';
+import { presentationModeFields } from '../presentationMode.js?rmv=1.73.26';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.73.26';
+import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.73.26';
 import {
     FACE_SWIPE_FULL_MESSAGE,
     FACE_SWIPE_MAX,
@@ -17,9 +17,9 @@ import {
     snapshotFaceSwipes, compactSwipeState, restoreFaceSwipeSnapshot,
     faceSwipeSnapshotStored, loadFaceSwipeArchive, saveFaceSwipeArchive, faceSwipeArchiveReadState,
     remapFaceSwipeSlots, remapFaceSwipeArchive, faceSwipeArchiveRemapSettled,
-} from '../swipeVersions.js?rmv=1.73.25';
-import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=1.73.25';
-import { remapMirrorImageSlots, slimMirrorImagesForQuota } from '../imageStore.js?rmv=1.73.25';
+} from '../swipeVersions.js?rmv=1.73.26';
+import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=1.73.26';
+import { remapMirrorImageSlots, slimMirrorImagesForQuota } from '../imageStore.js?rmv=1.73.26';
 import {
     clearEphemeralFaceFailure,
     hasEphemeralFaceFailure,
@@ -29,7 +29,7 @@ import {
     independentSwipeSlot,
     seedIndependentFaceSwipesFromIdentity,
     writeIndependentOwnerHtml,
-} from './faceSwipe.js?rmv=1.73.25';
+} from './faceSwipe.js?rmv=1.73.26';
 import {
     API_PROFILE_STORE_KEY,
     assistantMessages,
@@ -49,8 +49,8 @@ import {
     remapOwnerLockSlots,
     hostGenerationLooksActive,
     legacyChatKey,
-} from './connection.js?rmv=1.73.25';
-import { stampExternalDetailsOwnership, restampExternalHostsAfterMessageDeletion } from './request.js?rmv=1.73.25';
+} from './connection.js?rmv=1.73.26';
+import { stampExternalDetailsOwnership, restampExternalHostsAfterMessageDeletion } from './request.js?rmv=1.73.26';
 import {
     copyIndependentReplacementReceipt,
     ensureExternalTools,
@@ -61,8 +61,8 @@ import {
     normalizeSavedInteractionRecord,
     recoverSavedRecord,
     replaceExternalMultifaceFace,
-} from './geometry.js?rmv=1.73.25';
-import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=1.73.25';
+} from './geometry.js?rmv=1.73.26';
+import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=1.73.26';
 
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 
@@ -605,7 +605,11 @@ function saveChatOutputMetadata(ctx=getContext()){
 // 几秒内的多次请求合成一次。
 const SAFE_SAVE_DELAY_MS=2500;
 const SAFE_SAVE_RETRY_MS=4000;
-const SAFE_SAVE_GIVE_UP_MS=120000;
+// 酒馆一直像在生成（比如上一轮的状态没收起来）时，2 分钟后改成每 10 秒看一次，最多等 30 分钟，
+// 不再到点就悄悄放弃：本机存储满了的时候，聊天文件是这一版唯一能长久存下的地方。
+const SAFE_SAVE_GIVE_UP_MS=30*60*1000;
+const SAFE_SAVE_SLOW_AFTER_MS=120000;
+const SAFE_SAVE_SLOW_RETRY_MS=10000;
 let safeSaveTimer=null;
 let safeSaveRequest=null;
 export function requestSafeChatSave(ctx,index,msg){
@@ -630,7 +634,8 @@ function runSafeChatSave(){
  let generating=true;
  try{ generating=hostGenerationLooksActive(); }catch{ generating=true; }
  if(generating){
-  if(Date.now()-request.since<SAFE_SAVE_GIVE_UP_MS) safeSaveTimer=setTimeout(runSafeChatSave,SAFE_SAVE_RETRY_MS);
+  const waited=Date.now()-request.since;
+  if(waited<SAFE_SAVE_GIVE_UP_MS) safeSaveTimer=setTimeout(runSafeChatSave,waited<SAFE_SAVE_SLOW_AFTER_MS?SAFE_SAVE_RETRY_MS:SAFE_SAVE_SLOW_RETRY_MS);
   else safeSaveRequest=null;
   return;
  }
