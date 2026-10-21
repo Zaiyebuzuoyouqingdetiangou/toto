@@ -1852,7 +1852,7 @@ export function renderRabbitMirrorPromptPlan(plan, externalRawMap = null, appear
     const stamped = faceContexts.map(face => String(face.combo?.hueFamily || ''));
     const hueFamilies = stamped.some(Boolean) ? stamped : htmlFacesPresent && assignmentAllowed(settings)
         ? assignFaceHueFamilies(faceContexts.map(face => ({ html: !face.textPresentation && !face.combo?.pureOrder })), recentHueFamilies) : [];
-    const hueAssigned = hueFamilies.some(Boolean);
+    const hueAssigned = hueFamilies.some(key => key && HUE_FAMILY_NAMES[key]);
     const faceNumber = index => Number.isInteger(serialFaceIndex) && serialFaceCount > 1 ? serialFaceIndex + 1 : index + 1;
     const paletteLock = htmlFacesPresent && generationType === 'independent'
         ? [hueAssigned ? `主色族已逐面点名（${hueFamilies.map((key, index) => key && HUE_FAMILY_NAMES[key] ? `第${faceNumber(index)}面${HUE_FAMILY_NAMES[key].split('（')[0]}` : '').filter(Boolean).join('、')}），照点名的来` : '',

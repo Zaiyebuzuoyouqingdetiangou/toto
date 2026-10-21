@@ -1226,9 +1226,10 @@ const QUOTA_RECOVERY_STEPS = [
     // 插图旧版本里的长提示词：瘦下来，图一张不删。
     () => slimMirrorImagesForQuota(),
     () => compactFaceSwipeStoreForQuota([40]),
-    // 兔子镜历史备份（重说前的旧版本，最多约 1.75MB）：只是回退用的，空间不够时先砍掉一半。
-    () => { try { const trim = globalThis.__rabbitMirrorTrimHistoryForQuota; if (typeof trim === 'function') trim(); } catch { /* ignore */ } },
     () => compactIndependentOutputsForQuota(40),
+    // 兔子镜历史备份（重说前的旧版本，最多约 1.75MB）：只是回退用的。先删已确认存进聊天的缓存（不丢东西），还不够再砍它更早的那一半；
+    // 每一层最新的那份留着。
+    () => { try { const trim = globalThis.__rabbitMirrorTrimHistoryForQuota; if (typeof trim === 'function') trim(); } catch { /* ignore */ } },
     () => { compactFaceSwipeStoreForQuota([20]); compactIndependentOutputsForQuota(20); },
     () => { compactFaceSwipeStoreForQuota([10]); compactIndependentOutputsForQuota(10); },
     () => { compactFaceSwipeStoreForQuota([5]); compactIndependentOutputsForQuota(10, true); },
@@ -1419,7 +1420,8 @@ export function markPendingBatchAttempt(planInput = null, options = {}) {
         // 本机存储满了写不进去时照样登记、照样发请求，不再整批拒发（以前每一层都「多面请求未登记」）。
         let failure = '';
         const quiet = { ...options, onRejected: code => { failure = code; } };
-        const written = writeOwnedTransaction([...changes.filter(shrinks), ...changes.filter(change => !shrinks(change))], quiet, true);
+        // 只是记账：写不进去就算了，不为它去删用户的旧版本备份、压缩多版本切换（空间回收留给真正要存的东西）。
+        const written = writeOwnedTransaction([...changes.filter(shrinks), ...changes.filter(change => !shrinks(change))], quiet, false);
         if (!written && !['BATCH_STORAGE_QUOTA_EXCEEDED', 'BATCH_STORAGE_WRITE_FAILED', 'BATCH_STORAGE_READBACK_MISMATCH'].includes(failure)) {
             reportBatchRejection(options, failure || 'BATCH_STORAGE_WRITE_FAILED');
             return false;

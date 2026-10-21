@@ -221,11 +221,14 @@ function validateStyle(source, start, end, stats) {
         if ('{(['.includes(char)) {
             brackets.push(char);
             if (brackets.length > MULTIFACE_PROTOCOL_LIMITS.depth) return protocolError('css-depth', cursor, '样式嵌套超过原有深度上限。');
-        } else if ('})]'.includes(char) && brackets.pop() !== ({ '}': '{', ')': '(', ']': '[' })[char]) {
-            if (!stats.lenientStyle) return protocolError('unbalanced-style', cursor, '样式括号不匹配。');
+        } else if ('})]'.includes(char)) {
+            // 存档宽松：只容忍多出来的一个右花括号（浏览器丢掉那条规则，安全）。
+            // 漏写右括号的不放过：作用域改写给不了最后那条规则加前缀，浏览器补上括号后它会作用到整个酒馆页面。
+            if (stats.lenientStyle && char === '}' && !brackets.length) continue;
+            if (brackets.pop() !== ({ '}': '{', ')': '(', ']': '[' })[char]) return protocolError('unbalanced-style', cursor, '样式括号不匹配。');
         }
     }
-    if ((quote || comment || brackets.length) && !stats.lenientStyle) return protocolError('unclosed-style', end, '样式的字符串、注释或括号未闭合。');
+    if (quote || comment || brackets.length) return protocolError('unclosed-style', end, '样式的字符串、注释或括号未闭合。');
     return null;
 }
 

@@ -6,12 +6,13 @@ import { parseMultifaceOutput } from '../src/multifaceProtocol.js';
 
 const face = (n, css) => `<toto data-rabbit-mirror="true" data-rm-face="${n}"><details><summary>第${n}面</summary><style>${css}</style><p>正文${n}</p></details></toto>`;
 
-test('stored display tolerates an unbalanced brace inside a face style', () => {
-    const html = [face(1, '.a{color:red}'), face(2, '@keyframes k{from{opacity:0} to{opacity:1}')].join('\n');
-    assert.equal(parseMultifaceOutput(html, { expectedCount: 2 }).ok, false, 'fresh output stays strict');
-    assert.equal(parseMultifaceOutput(html, { expectedCount: 2, storedDisplay: true }).ok, true);
+test('stored display tolerates only an extra closing brace, never a missing one', () => {
     const extra = [face(1, '.a{color:red}}'), face(2, '.b{}')].join('\n');
+    assert.equal(parseMultifaceOutput(extra, { expectedCount: 2 }).ok, false, 'fresh output stays strict');
     assert.equal(parseMultifaceOutput(extra, { expectedCount: 2, storedDisplay: true }).ok, true);
+    // 漏写右括号：最后那条规则会作用到整个页面，存档里也不放过
+    const missing = [face(1, '.a{color:red}'), face(2, '.b{} body{outline:7px solid red')].join('\n');
+    assert.equal(parseMultifaceOutput(missing, { expectedCount: 2, storedDisplay: true }).ok, false);
 });
 
 test('stored display still rejects face markup leaking into a style', () => {

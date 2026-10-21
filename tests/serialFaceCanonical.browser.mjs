@@ -42,10 +42,15 @@ const result = await page.evaluate(async query => {
         outsideStyle: ok(request.canonicalSerialFace(`<style>.x{color:red}</style>${details(4)}`, 3)),
         nested: ok(request.canonicalSerialFace(`<details><summary>五</summary><toto><p>里层</p></toto></details>`, 4)),
         nothing: request.canonicalSerialFace('<p>没有 details</p>', 0),
+        // 外面多包的那层带着样式作用域、外面还有 svg 滤镜定义：作用域搬到 details 上，svg 跟着挪进去
+        scopedWrap: (() => {
+            const html = request.canonicalSerialFace(`<div data-rabbit-mirror-css-scope="s1"><svg width="0" height="0"><filter id="f1"></filter></svg>${details(6)}</div>`, 1);
+            return ok(html) && /<details[^>]*data-rabbit-mirror-css-scope="s1"/.test(html) && /<details[^>]*>[\s\S]*<svg[\s\S]*id="f1"/.test(html);
+        })(),
     };
 }, query);
 let checks = 0;
-for (const name of ['plain', 'outsideText', 'wrapped', 'outsideStyle', 'nested']) { assert.equal(result[name], true, name); checks++; }
+for (const name of ['plain', 'outsideText', 'wrapped', 'outsideStyle', 'nested', 'scopedWrap']) { assert.equal(result[name], true, name); checks++; }
 assert.equal(result.nothing, ''); checks++;
 assert.deepEqual(pageErrors, []);
 console.log(JSON.stringify({ checks }));

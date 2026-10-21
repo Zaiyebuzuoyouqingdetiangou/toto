@@ -2013,8 +2013,15 @@ export function canonicalSerialFace(html, faceIndex) {
  const details = template.content.querySelector('details');
  if (!details) return '';
  const summary = details.querySelector(':scope > summary');
- for (const style of [...template.content.querySelectorAll('style')].filter(node => !details.contains(node)).reverse()) {
-  details.insertBefore(style, summary ? summary.nextSibling : details.firstChild);
+ // 外面那一层带着这一面的样式作用域标记：搬到 details 上，不然样式全失效。
+ const scoped = details.parentElement?.closest?.('[data-rabbit-mirror-css-scope]');
+ if (scoped && !details.hasAttribute('data-rabbit-mirror-css-scope')) details.setAttribute('data-rabbit-mirror-css-scope', scoped.getAttribute('data-rabbit-mirror-css-scope'));
+ // details 外面的样式、svg 定义（滤镜、渐变引用它）、隐藏的状态控件：挪进 details，跟在标题后面，按原来的先后。
+ const carried = [...template.content.querySelectorAll('style, svg, input')].filter(node => !details.contains(node) && !node.parentElement?.closest?.('svg'));
+ let anchor = summary || null;
+ for (const node of carried) {
+  details.insertBefore(node, anchor ? anchor.nextSibling : details.firstChild);
+  anchor = node;
  }
  // details 里又套了 toto：去掉里层的 toto 外壳，只留内容。
  for (const nested of [...details.querySelectorAll('toto')]) nested.replaceWith(...nested.childNodes);
@@ -2222,7 +2229,9 @@ async function runIndependentSerialFaces({ ctx, index, msg, signal, requestOptio
   try { assertIndependentMarkupComplexity(html); } catch (error) { if (String(error?.code || '') === 'RABBIT_MIRROR_MARKUP_TOO_COMPLEX') return false; }
   return parseMultifaceOutput(html, { expectedCount: faceCount, storedDisplay: true }).ok;
  };
+ let budgetDemoted = false;
  while (!fits() && htmlByFace.filter(Boolean).length > 1) {
+  budgetDemoted = true;
   let largest = -1;
   htmlByFace.forEach((html, faceIndex) => { if (html && (largest < 0 || html.length > htmlByFace[largest].length)) largest = faceIndex; });
   htmlByFace[largest] = '';
@@ -2235,7 +2244,8 @@ async function runIndependentSerialFaces({ ctx, index, msg, signal, requestOptio
   html: selections.map((_, faceIndex) => htmlByFace[faceIndex] || createIndependentMultifaceFailureSlot(faceIndex, failedFaces.find(item => item.faceIndex === faceIndex))).join('\n'),
   faceScans,
   failedFaces, completedFaces: faceCount - failed.size, batchPlan: details.batchPlan || null, chosenTickets: choices,
-  requestDiagnostic: { visualHistoryBatchId: details.batchPlan?.batchId || '', faceCount, serialDispatch: true, partial: failed.size > 0, failedFaces, completedFaces: faceCount - failed.size, faces: details.metadata?.faces || [], ...stoppedDiagnostic, ...(designSelectionChecks.length ? { designSelectionChecks } : {}) },
+  // 因为整批放不下降了面：再补发一面大概率还是放不下，不自动补发（白花钱）。
+  requestDiagnostic: { visualHistoryBatchId: details.batchPlan?.batchId || '', faceCount, serialDispatch: true, partial: failed.size > 0, failedFaces, completedFaces: faceCount - failed.size, faces: details.metadata?.faces || [], ...stoppedDiagnostic, ...(budgetDemoted ? { serialStopped: true } : {}), ...(designSelectionChecks.length ? { designSelectionChecks } : {}) },
   executionLockChars: String(details.executionLock || '').length,
  };
 }

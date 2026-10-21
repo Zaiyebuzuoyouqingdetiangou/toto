@@ -231,24 +231,27 @@ function compactCoveredOutputsForQuota(keep=40){
 // storage.js 不能直接引用这里（会绕成循环引用），经全局挂一个入口给它用。
 globalThis.__rabbitMirrorCompactCoveredOutputsForQuota=compactCoveredOutputsForQuota;
 
-// 本机存储满了、当前成品写不进去时，先从兔子镜自己的「旧版本备份」里腾地方：最旧的先删，每轮删四分之一，
-// 删一轮试写一次，写进去就停。旧版本备份只是本机多存的一份，聊天记录里的成品和版本存档都不动。
-// 给 storage.js 的空间回收步骤用：把兔子镜历史备份按时间砍掉最旧的一半（只是回退用的旧版本）。
+// 给 storage.js 的空间回收步骤用：兔子镜历史备份里每一层更早的旧版本砍掉一半（只是回退用的）；每一层最新的那份一律留着。
 function trimHistoryForQuota(){
  let history;
  try{ history=readHistoryStore(); }catch{ return false; }
- const flattened=[];
- for(const [slot,entries] of Object.entries(history.slots||{})) for(const entry of (Array.isArray(entries)?entries:[])) flattened.push({slot,entry});
- if(!flattened.length) return false;
- flattened.sort((a,b)=>Number(b.entry?.ts||0)-Number(a.entry?.ts||0));
- flattened.splice(Math.floor(flattened.length/2));
- const retry=emptyHistoryStore();
- for(const {slot,entry} of flattened) (retry.slots[slot]||(retry.slots[slot]=[])).push(entry);
- for(const list of Object.values(retry.slots)) list.sort((a,b)=>Number(a?.ts||0)-Number(b?.ts||0));
- try{ if(flattened.length) localStorage.setItem(HISTORY_STORE_KEY,JSON.stringify(retry)); else localStorage.removeItem(HISTORY_STORE_KEY); warnStorageTrimmed(); return true; }catch{ try{ localStorage.removeItem(HISTORY_STORE_KEY); return true; }catch{ return false; } }
+ const older=[]; const keep=emptyHistoryStore();
+ for(const [slot,entries] of Object.entries(history.slots||{})){
+  const list=(Array.isArray(entries)?entries:[]).slice().sort((a,b)=>Number(a?.ts||0)-Number(b?.ts||0));
+  if(!list.length) continue;
+  keep.slots[slot]=[list[list.length-1]];
+  for(const entry of list.slice(0,-1)) older.push({slot,entry});
+ }
+ if(!older.length) return false;
+ older.sort((a,b)=>Number(b.entry?.ts||0)-Number(a.entry?.ts||0));
+ for(const {slot,entry} of older.slice(0,Math.floor(older.length/2))) keep.slots[slot].push(entry);
+ for(const list of Object.values(keep.slots)) list.sort((a,b)=>Number(a?.ts||0)-Number(b?.ts||0));
+ try{ localStorage.setItem(HISTORY_STORE_KEY,JSON.stringify(keep)); warnStorageTrimmed(); return true; }catch{ return false; }
 }
 try{ globalThis.__rabbitMirrorTrimHistoryForQuota=trimHistoryForQuota; }catch{}
 
+// 本机存储满了、当前成品写不进去时，先从兔子镜自己的「旧版本备份」里腾地方：最旧的先删，每轮删四分之一，
+// 删一轮试写一次，写进去就停。旧版本备份只是本机多存的一份，聊天记录里的成品和版本存档都不动。
 function freeHistoryRoomFor(serialized){
  let history;
  try{ history=readHistoryStore(); }catch{ return false; }

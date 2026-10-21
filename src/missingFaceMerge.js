@@ -117,7 +117,8 @@ export function missingIndexesFromIndependentResult(result, expectedCount = 1, p
         if (/<details\b/i.test(html) && !isFailureFaceHtml(html)) return [];
         return [0];
     }
-    const parsed = parseMultifaceOutput(html, { expectedCount: expected });
+    // 已经净化、整理过的多面成品：按存档的规则查（多出一个右花括号不算坏），不因为这个把已付费的面全当失败。
+    const parsed = parseMultifaceOutput(html, { expectedCount: expected, storedDisplay: true });
     if (!parsed.ok) {
         return previousMissing.length
             ? [...previousMissing]
@@ -138,7 +139,7 @@ export function mergeMissingIndependentFaces(previousHtml, expectedCount, missin
     const missing = [...new Set((Array.isArray(missingIndexes) ? missingIndexes : [])
         .filter(index => Number.isInteger(index) && index >= 0 && index < expected))]
         .sort((left, right) => left - right);
-    const previous = parseMultifaceOutput(String(previousHtml || ''), { expectedCount: expected });
+    const previous = parseMultifaceOutput(String(previousHtml || ''), { expectedCount: expected, storedDisplay: true });
     const previousFaces = previous.ok ? previous.faces : [];
     const incomingHtml = String(incoming?.html || '');
     const incomingFaces = retryFaces(incomingHtml, missing.length);
