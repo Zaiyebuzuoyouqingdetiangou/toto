@@ -1855,7 +1855,7 @@ export function renderRabbitMirrorPromptPlan(plan, externalRawMap = null, appear
     const hueAssigned = hueFamilies.some(Boolean);
     const faceNumber = index => Number.isInteger(serialFaceIndex) && serialFaceCount > 1 ? serialFaceIndex + 1 : index + 1;
     const paletteLock = htmlFacesPresent && generationType === 'independent'
-        ? [hueAssigned ? `主色族已逐面点名（${hueFamilies.map((key, index) => key ? `第${faceNumber(index)}面${HUE_FAMILY_NAMES[key].split('（')[0]}` : '').filter(Boolean).join('、')}），照点名的来` : '',
+        ? [hueAssigned ? `主色族已逐面点名（${hueFamilies.map((key, index) => key && HUE_FAMILY_NAMES[key] ? `第${faceNumber(index)}面${HUE_FAMILY_NAMES[key].split('（')[0]}` : '').filter(Boolean).join('、')}），照点名的来` : '',
             buildPaletteCooldownExecutionLock(settings, { skipHueFamilies: hueAssigned ? Object.keys(HUE_FAMILY_NAMES) : recentHueFamilies })].filter(Boolean).join('；') : '';
     const driverOfferUnion = [...new Set(faceContexts.flatMap(face => face.driverOffer || []))];
     const usageUnion = [...new Set(faceContexts.flatMap(face => face.usageOffer?.usages || []))];

@@ -1166,7 +1166,8 @@ export function generationWaitPollDelay(startedAt=0){
 }
 
 export function hasGenerationWorkFor(index,slot='',sourceHash=''){
- if(hasAutomaticFailureStop(slot,sourceHash)) return true;
+ // 「缺壳卡」不算这一层已经有生成在办（它只是没找到存档），不能挡住随后正常授权的自动生成。
+ if(blockingAutomaticFailureStopFor(slot,sourceHash)) return true;
  const live=currentGenerationIdentity(index);
  if(live && automaticDispatchAlreadyConsumed(live.baseSlot)) return true;
  if(generationPolls.has(generationPollKey(index))) return true;
