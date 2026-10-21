@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.73.20';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.73.20';
-import { builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.73.20';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.73.20';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.73.20';
-import { tidyImagePayload } from './imageTagTidy.js?rmv=1.73.20';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.73.20';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.73.20';
+import { getSettings } from './settings.js?rmv=1.73.22';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.73.22';
+import { builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.73.22';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.73.22';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.73.22';
+import { tidyImagePayload } from './imageTagTidy.js?rmv=1.73.22';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.73.22';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.73.22';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -217,29 +217,58 @@ function storageKey(root, frame, prompt) {
     return `builtin:${chat}:${mes}:${swipe}:${index}:${hashText(prompt)}`;
 }
 
+// 这一面里别的图框各自的键：序号挪了去找旧图时，不拿别的图框自己的那张。
+function otherFrameKeys(root, frame) {
+    const keys = new Set();
+    for (const other of root?.querySelectorAll?.('[data-rm-draw-frame]') || []) {
+        if (other === frame) continue;
+        const text = readPrompt(other);
+        if (text) keys.add(storageKey(root, other, text));
+    }
+    return keys;
+}
+
 function readSaved(key) {
     try { return { record: loadMirrorImage(key) }; }
     catch { return { broken: true }; }
 }
 
 // 当前键下没有这张图时：先找同一聊天里兼容的键（当时还没记上楼层），再看是不是聊天开了分支／改了名，图还存在旧名字下。
-function savedKeyFor(key) {
+// 还找不到时：同一聊天、同一楼层、同一 swipe、同一段提示词，只是图框序号变了（重新进聊天时这一面的结构被整理过、
+// 前面多了或少了一个图框）——也是那一张。claimed 是这一面里别的图框自己的键，被它们占着的不拿。
+function savedKeyFor(key, claimed = null) {
     const own = readSaved(key);
     if (own.broken || own.record) return key;
-    for (const other of [findCompatibleBuiltinImageKey(key), findBuiltinImageKeyFromOtherChat(key)]) {
+    for (const other of [findCompatibleBuiltinImageKey(key), findBuiltinImageKeyFromOtherChat(key), findShiftedBuiltinImageKey(key, claimed)]) {
         if (other && readSaved(other).record) return other;
     }
     return key;
 }
-function readSavedAnyChat(key) {
-    const where = savedKeyFor(key);
+function readSavedAnyChat(key, claimed = null) {
+    const where = savedKeyFor(key, claimed);
     return where === key ? readSaved(key) : readSaved(where);
 }
 
 // 同一张图正在画（键可能是还没记上楼层的那个）：跟着那一次，不再另发一次请求。
-function inflightKeyFor(key) {
-    if (inflight.get(key)?.isCurrent?.()) return key;
-    for (const [other, entry] of inflight) if (other !== key && entry?.isCurrent?.() && builtinImageKeysCompatible(key, other)) return other;
+// 已经发出去的生图请求（钱已经花了）也算「正在画」：中途切走聊天再切回来，聊天对象换了一个，
+// 以前这一次就被当成过期的，回来又发一次，先前那张画好了也不存。现在回来就跟着那一次等结果。
+// 发出去超过 10 分钟还没回音的，当它卡死了：不再跟着等，也不再挡着重画。
+const SENT_WAIT_MS = 10 * 60 * 1000;
+function liveEntry(entry) {
+    if (!entry) return false;
+    if (entry.sent === true && Date.now() - (entry.sentAt || 0) < SENT_WAIT_MS) return true;
+    return entry.isCurrent?.() === true;
+}
+// claimed：这一面里别的图框自己的键（或算出它的函数），序号挪了去认正在画的那一次时不认别人的。
+function inflightKeyFor(key, claimed = null) {
+    if (liveEntry(inflight.get(key))) return key;
+    for (const [other, entry] of inflight) if (other !== key && liveEntry(entry) && builtinImageKeysCompatible(key, other)) return other;
+    let taken = null;
+    for (const [other, entry] of inflight) {
+        if (other === key || !liveEntry(entry) || !builtinImageKeysShifted(key, other)) continue;
+        taken ||= (typeof claimed === 'function' ? claimed() : claimed) || new Set();
+        if (!taken.has(other)) return other;
+    }
     return key;
 }
 
@@ -500,7 +529,7 @@ async function withCardAppearance(people, frame, tagsOnly) {
         cast = rows.map(row => JSON.stringify(row)).join('\n');
     } catch { cast = ''; }
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.73.20');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.73.22');
     const merged = people.map(person => ({ ...person }));
     // 角色卡里提到 Persona、Persona 里提到角色：摘到对方的名字就停，不把对方的长相算进来。
     const others = [...new Set([...names, charName, personaName].filter(Boolean))];
@@ -526,7 +555,7 @@ function readWorldCast(names) {
     const key = JSON.stringify([ctx?.characterId ?? '', character?.avatar || character?.name || '', character?.data?.extensions?.world || '', disabled, [...names].sort()]);
     const hit = worldCastCache.get(key);
     if (hit && Date.now() - hit.at < 60000) return hit.promise;
-    const promise = import('./characterWorldBook.js?rmv=1.73.20').then(module => module.readCharacterWorldBookContext(ctx, {
+    const promise = import('./characterWorldBook.js?rmv=1.73.22').then(module => module.readCharacterWorldBookContext(ctx, {
         disabledBooks: disabled, focusText: names.join('\n'), onlyMentioned: true, maxChars: 4000,
     })).then(result => String(result?.text || '')).catch(() => { worldCastCache.delete(key); return ''; });
     worldCastCache.set(key, { at: Date.now(), promise });
@@ -540,7 +569,7 @@ async function withWorldBookAppearance(people, frame, tagsOnly, signal = null) {
     const cast = await readWorldCast(names);
     if (signal?.aborted) throw Object.assign(new Error('生图已取消。'), { name: 'AbortError', code: 'aborted' });
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.73.20');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.73.22');
     const merged = people.map(person => ({ ...person }));
     for (const name of names) {
         const person = merged.find(item => item.name === name);
@@ -638,8 +667,8 @@ async function planWithImageLlm(frame, onProgress, promptFormat, isCurrent, othe
 
 function startJob(key, prompt, frame, isCurrent, options = {}) {
     const existing = inflight.get(key);
-    if (existing?.isCurrent()) return existing.job;
-    const entry = { job: null, isCurrent };
+    if (liveEntry(existing)) return existing.job;
+    const entry = { job: null, isCurrent, sent: false };
     const job = (async () => {
         if (!isCurrent()) throw staleImageRequest();
         // 模型没写画面、插件拿标题和旁边的字凑的：发给生图的那段用干净的标题（不带标题条上的按钮字）。
@@ -717,10 +746,14 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
             character: characterGroup(),
             size,
             ...(options.signal ? { signal: options.signal } : {}),
-            assertCurrent: () => isCurrent() && anyWaiterConnected(key),
+            // 这里通过就是真要发请求了：记下来，之后切走聊天也等它画完、存下，不再另发一次。
+            assertCurrent: () => { const ok = isCurrent() && anyWaiterConnected(key); if (ok) { entry.sent = true; entry.sentAt = Date.now(); } return ok; },
             onProgress: event => {
                 const phase = { queued: '排队中', generating: '绘制中', 'queued-remote': '远端排队中', retrying: '按渠道规则重试中', saving: '保存中' }[event?.phase];
-                if (phase && isCurrent()) reportProgress(key, `${provider}：${phase}…`);
+                // 切走又切回来时这一次的归属已过期，进度照样报给回来后跟着等的那个图框（各图框自己再看归属）。
+                // 还在报进度（排队、绘制中）就不算卡住：重新计那 10 分钟。
+                if (entry.sent) entry.sentAt = Date.now();
+                if (phase && (isCurrent() || entry.sent)) reportProgress(key, `${provider}：${phase}…`);
             },
         });
         const record = { ...generated, builtinImageFit: 'cover', ...(looksSources ? { looksSources } : {}) };
@@ -753,7 +786,7 @@ async function fillFrame(root, frame) {
     const prompt = readPrompt(frame);
     if (!prompt) return;
     const key = storageKey(root, frame, prompt);
-    const saved = readSavedAnyChat(key);
+    const saved = readSavedAnyChat(key, () => otherFrameKeys(root, frame));
     if (saved.broken) {
         note(frame, '这一面的画面存档读不出来，没有重新生图。', root);
         return;
@@ -764,7 +797,7 @@ async function fillFrame(root, frame) {
         note(frame, failed.get(key), root);
         return;
     }
-    const joined = inflightKeyFor(key);
+    const joined = inflightKeyFor(key, () => otherFrameKeys(root, frame));
     if (joined !== key) return void joinInflight(root, frame, joined, isCurrent);
     let nodes = waiters.get(key);
     if (!nodes) { nodes = new Set(); waiters.set(key, nodes); }
@@ -866,7 +899,7 @@ export function restoreSavedBuiltinImages(root) {
         if (frame.querySelector?.('img[data-rm-draw-result][src]')) continue;
         const prompt = readPrompt(frame);
         if (!prompt) continue;
-        let saved = readSavedAnyChat(storageKey(root, frame, prompt));
+        let saved = readSavedAnyChat(storageKey(root, frame, prompt), () => otherFrameKeys(root, frame));
         // 收藏的是多面里的某一面时，图框在原来那条消息里的序号可能和收藏里不同：同一段提示词按序号挨个找。
         if (!saved.record && frame.closest?.('details')?.dataset?.rmImageOwnerChat) {
             const base = storageKey(root, frame, prompt).split(':');
@@ -919,10 +952,10 @@ export function listBuiltinImageFrames(root) {
         const prompt = readPrompt(frame);
         if (!prompt) continue;
         const key = storageKey(root, frame, prompt);
-        const saved = readSavedAnyChat(key);
+        const saved = readSavedAnyChat(key, () => otherFrameKeys(root, frame));
         const { list: versions, current } = saved.broken ? { list: [], current: -1 } : versionsOf(saved.record);
         list.push({ frame, key, prompt, editPrompt: hasModelPrompt(frame) ? prompt : (readPrompt(frame, { cleanTitle: true }) || prompt), versions, current, broken: !!saved.broken,
-            busy: !!inflight.get(inflightKeyFor(key))?.isCurrent?.() });
+            busy: liveEntry(inflight.get(inflightKeyFor(key, () => otherFrameKeys(root, frame)))) });
     }
     return list;
 }
@@ -930,10 +963,10 @@ export function listBuiltinImageFrames(root) {
 export function builtinImageReady() { return getSettings().builtinImageEnabled === true; }
 
 // 聊天开了分支／改了名以后，图可能存在旧聊天名的键下：先把那份搬到当前键，之后翻历史、重画都对着当前键。
-function adoptSavedKey(key) {
+function adoptSavedKey(key, claimed = null) {
     const own = readSaved(key);
     if (own.broken || own.record) return;
-    const other = savedKeyFor(key);
+    const other = savedKeyFor(key, claimed);
     if (!other || other === key) return;
     const moved = readSaved(other).record;
     if (!moved) return;
@@ -964,8 +997,8 @@ export async function rerollBuiltinImage(root, frame, { prompt: edited = '', sig
     const original = readPrompt(frame);
     if (!original) throw Object.assign(new Error('这个图框里没有提示词，没法重画。'), { code: 'no_prompt' });
     const key = storageKey(root, frame, original);
-    if (inflight.get(inflightKeyFor(key))?.isCurrent?.()) throw Object.assign(new Error('这张正在画，等它画完再重画。'), { code: 'busy' });
-    adoptSavedKey(key);
+    if (liveEntry(inflight.get(inflightKeyFor(key, () => otherFrameKeys(root, frame))))) throw Object.assign(new Error('这张正在画，等它画完再重画。'), { code: 'busy' });
+    adoptSavedKey(key, () => otherFrameKeys(root, frame));
     const savedState = readSaved(key);
     if (savedState.broken) throw Object.assign(new Error('这张图的存档读不出来，重画的结果会存不进去，先没有画。'), { code: 'broken' });
     const saved = savedState.record;
@@ -996,7 +1029,7 @@ export function showBuiltinImageVersion(root, frame, index) {
     const prompt = readPrompt(frame);
     if (!prompt) return null;
     const key = storageKey(root, frame, prompt);
-    adoptSavedKey(key);
+    adoptSavedKey(key, () => otherFrameKeys(root, frame));
     const record = loadMirrorImage(key);
     const { list, current } = versionsOf(record);
     const chosen = list[index];

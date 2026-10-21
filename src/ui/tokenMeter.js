@@ -1,10 +1,10 @@
 // Split from ui.js — Prompt meter and latest independent request diagnostic.
 
-import { getSettings } from '../settings.js?rmv=1.73.20';
-import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from '../tokenMeter.js?rmv=1.73.20';
-import { API_REQUEST_DIAGNOSTIC_EVENT, getLastIndependentApiRequestDiagnostic } from '../independentApi.js?rmv=1.73.20';
-import { escapeHtml } from './runtime.js?rmv=1.73.20';
-import { formatGenerationElapsed } from '../generationTiming.js?rmv=1.73.20';
+import { getSettings } from '../settings.js?rmv=1.73.22';
+import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from '../tokenMeter.js?rmv=1.73.22';
+import { API_REQUEST_DIAGNOSTIC_EVENT, getLastIndependentApiRequestDiagnostic } from '../independentApi.js?rmv=1.73.22';
+import { escapeHtml } from './runtime.js?rmv=1.73.22';
+import { formatGenerationElapsed } from '../generationTiming.js?rmv=1.73.22';
 
 function independentApiProfileLabel(diagnostic) {
     if (!diagnostic?.profile) return '暂无记录';
@@ -39,6 +39,7 @@ function shortDiagnosticSelectionLabels(labels, ids, fallback) {
     }).join('＋');
 }
 
+const HUE_LABELS = { red: '红', orange: '橙', yellow: '黄', green: '绿', cyan: '青', blue: '蓝', purple: '紫', pink: '粉' };
 function renderDiagnosticSelection(diagnostic) {
     const faces = Array.isArray(diagnostic?.faces) ? diagnostic.faces.slice(0, 5) : [];
     const requested = Number(diagnostic?.faceCount);
@@ -49,7 +50,9 @@ function renderDiagnosticSelection(diagnostic) {
         const face = faces[index] || (index === 0 && !faces.length ? diagnostic : null);
         const themes = shortDiagnosticSelectionLabels(face?.themeLabels, face?.themeIds, face ? '仅当前语境' : '名称未记录');
         const formats = shortDiagnosticSelectionLabels(face?.formatLabels, face?.formatIds, '名称未记录');
-        return `<div data-rm-diagnostic-face="${index + 1}" style="min-width:0;overflow-wrap:anywhere;margin-top:4px;"><b>第 ${index + 1} 面：</b>题材：${escapeHtml(themes)}｜展现：${escapeHtml(formats)}</div>`;
+        const hue = Array.isArray(diagnostic?.hueFamilies) ? String(diagnostic.hueFamilies[index] || '') : '';
+        const hueText = hue ? `｜主色族：${escapeHtml(HUE_LABELS[hue] || hue)}` : '';
+        return `<div data-rm-diagnostic-face="${index + 1}" style="min-width:0;overflow-wrap:anywhere;margin-top:4px;"><b>第 ${index + 1} 面：</b>题材：${escapeHtml(themes)}｜展现：${escapeHtml(formats)}${hueText}</div>`;
     }).join('');
     return `<br><b>抽到：</b>${rows}`;
 }
