@@ -222,10 +222,10 @@ function validateStyle(source, start, end, stats) {
             brackets.push(char);
             if (brackets.length > MULTIFACE_PROTOCOL_LIMITS.depth) return protocolError('css-depth', cursor, '样式嵌套超过原有深度上限。');
         } else if ('})]'.includes(char) && brackets.pop() !== ({ '}': '{', ')': '(', ']': '[' })[char]) {
-            return protocolError('unbalanced-style', cursor, '样式括号不匹配。');
+            if (!stats.lenientStyle) return protocolError('unbalanced-style', cursor, '样式括号不匹配。');
         }
     }
-    if (quote || comment || brackets.length) return protocolError('unclosed-style', end, '样式的字符串、注释或括号未闭合。');
+    if ((quote || comment || brackets.length) && !stats.lenientStyle) return protocolError('unclosed-style', end, '样式的字符串、注释或括号未闭合。');
     return null;
 }
 
@@ -257,7 +257,9 @@ function preflight(source, stats) {
 // Stored display may reuse a title/content; structural framing and every safety
 // budget still apply. Fresh generation callers keep the strict default.
 export function parseMultifaceOutput(raw, { expectedCount, allowProse = false, storedDisplay = false } = {}) {
-    const stats = { chars: typeof raw === 'string' ? raw.length : 0, bytes: 0, tags: 0, attributes: 0, maxDepth: 0, cssChars: 0, cssRules: 0, dataUriChars: 0 };
+    // storedDisplay：已经净化、由浏览器重新输出过的存档。样式里括号配不配对和分面安全无关（浏览器照样显示），
+    // 不再因为模型写漏一个右括号就判整批存档不可恢复；越界标签和各项上限照查。
+    const stats = { chars: typeof raw === 'string' ? raw.length : 0, bytes: 0, tags: 0, attributes: 0, maxDepth: 0, cssChars: 0, cssRules: 0, dataUriChars: 0, lenientStyle: storedDisplay === true };
     const faces = [];
     const errors = [];
     const stack = [];
