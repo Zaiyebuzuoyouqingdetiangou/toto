@@ -468,7 +468,13 @@ export function automaticHostRenderProof(index){
 export function automaticHostStreamInterrupted(ctx,index){
  const processor=hostModule?.streamingProcessor || ctx?.streamingProcessor;
  if(!processor || Number(processor.messageId)!==Number(index) || processor.isFinished===true) return false;
- return processor.isStopped===true || processor.abortController?.signal?.aborted===true;
+ if(!(processor.isStopped===true || processor.abortController?.signal?.aborted===true)) return false;
+ // 报错后留下来的旧处理器：之后这一楼又用非流式正常写完了（重新生成、换 swipe、删楼后新回复落在同一楼），
+ // 正文已经不是那次写断的了，不算被打断。按处理器写出的那段和现在的正文对一下。
+ const written=String(processor.result||'').trim();
+ const current=String(ctx?.chat?.[Number(index)]?.mes||'').trim();
+ if(written && current && !current.includes(written.slice(0,Math.min(40,written.length))) && !written.includes(current.slice(0,Math.min(40,current.length)))) return false;
+ return true;
 }
 
 function beginAutomaticHostGeneration(ctx,type='',nested=false,dryRun=false){

@@ -186,3 +186,12 @@ for (const mes of [
 ]) test('story text mentioning error-like words stays normal', () => {
     assert.equal(mainReplyAbnormalReason({ mes }), '');
 });
+
+test('relay phrases in ordinary short story text are not mistaken for API errors', async () => {
+    const { mainReplyAbnormalReason } = await import('../src/mainReplySafetyValve.js');
+    for (const mes of [
+        '公告栏上写着：当前分组为 A 组，请于周五前报到。他看了一眼就走开了，心里盘算着周五要带的东西，还有那个总是迟到的室友。',
+        '游戏系统面板弹了出来：令牌额度 3/5，今日剩余挑战次数 2。她撇撇嘴，把面板划走，继续往森林深处走去。',
+    ]) assert.equal(mainReplyAbnormalReason({ mes }), '', mes);
+    assert.match(mainReplyAbnormalReason({ mes: '当前分组上游负载已饱和，请稍后再试 (request id: abcdef123456)' }), /接口报错/);
+});
