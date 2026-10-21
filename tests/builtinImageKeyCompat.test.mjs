@@ -40,3 +40,25 @@ test('finds the saved picture under a compatible key, preferring the exact floor
     assert.equal(images.findCompatibleBuiltinImageKey('builtin:c:12:0:0:h'), 'builtin:c:12::0:h');
     assert.equal(images.findCompatibleBuiltinImageKey('builtin:c:12:0:0:zz'), '');
 });
+
+test('a picture whose frame index moved is found again on the same floor, nearest first, never another frame\'s own', () => {
+    store.clear();
+    assert.equal(images.builtinImageKeysShifted('builtin:chat:c:12:0:2:h', 'builtin:c:12:0:0:h'), true);
+    assert.equal(images.builtinImageKeysShifted('builtin:c:12:0:2:h', 'builtin:c:12:0:2:h'), false);
+    assert.equal(images.builtinImageKeysShifted('builtin:c:12:0:2:h', 'builtin:c:13:0:0:h'), false);
+    assert.equal(images.builtinImageKeysShifted('builtin:c:12:0:2:h', 'builtin:c:12:1:0:h'), false);
+    assert.equal(images.builtinImageKeysShifted('builtin:c:::2:h', 'builtin:c:::0:h'), false);
+    assert.equal(images.builtinImageKeysShifted('builtin:c:12:0:2:h', 'builtin:c:12:0:0:g'), false);
+    images.saveMirrorImage('builtin:c:12:0:0:h', { url: '/user/images/a.png' });
+    images.saveMirrorImage('builtin:c:12:0:5:h', { url: '/user/images/b.png' });
+    images.saveMirrorImage('builtin:c:13:0:1:h', { url: '/user/images/other-floor.png' });
+    assert.equal(images.findShiftedBuiltinImageKey('builtin:chat:c:12:0:1:h'), 'builtin:c:12:0:0:h');
+    assert.equal(images.findShiftedBuiltinImageKey('builtin:c:12:0:4:h'), 'builtin:c:12:0:5:h');
+    assert.equal(images.findShiftedBuiltinImageKey('builtin:c:12:0:1:h', new Set(['builtin:c:12:0:0:h'])), 'builtin:c:12:0:5:h');
+    let asked = 0;
+    assert.equal(images.findShiftedBuiltinImageKey('builtin:c:12:0:1:h', () => { asked += 1; return new Set(['builtin:c:12:0:0:h', 'builtin:c:12:0:5:h']); }), '');
+    assert.equal(asked, 1);
+    assert.equal(images.findShiftedBuiltinImageKey('builtin:c:12:0:1:zz', () => { asked += 1; return new Set(); }), '');
+    assert.equal(asked, 1);
+    assert.equal(images.findShiftedBuiltinImageKey('builtin:c:::1:h'), '');
+});

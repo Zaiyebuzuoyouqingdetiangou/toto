@@ -111,6 +111,43 @@ export function findCompatibleBuiltinImageKey(key) {
     return best;
 }
 
+// 两个键是不是「同一张图、只是图框序号挪了」：同一聊天、同一楼层、同一 swipe（都记上了）、同一段提示词，序号不同。
+export function builtinImageKeysShifted(a, b) {
+    const x = parseBuiltinImageKey(a), y = parseBuiltinImageKey(b);
+    if (!x || !y || !x.hash || x.hash !== y.hash || x.index === y.index) return false;
+    if (x.mes === '' || x.swipe === '' || x.mes !== y.mes || x.swipe !== y.swipe) return false;
+    return sameChat(x.chat, y.chat);
+}
+
+// 同一聊天、同一楼层、同一 swipe、同一段提示词，图框序号却不同：这一面重新挂上时结构被整理过，序号挪了，图还是那一张。
+// 楼层和 swipe 都得是记上了的（空的不算，免得认到别的楼层去）；claimed 里的键（这一面别的图框自己的）不拿；
+// 有好几个时取序号最近的。只读。
+export function findShiftedBuiltinImageKey(key, claimed = null) {
+    const storage = globalThis.localStorage;
+    const wanted = parseBuiltinImageKey(key);
+    if (!storage || !wanted || !wanted.hash || wanted.mes === '' || wanted.swipe === '') return '';
+    const imagesPrefix = `${PREFIX}images:`;
+    const head = `${imagesPrefix}builtin:`;
+    const suffix = `:${wanted.mes}:${wanted.swipe}:`;
+    let best = '', bestDistance = Infinity;
+    // claimed 可以是一个集合，也可以是算出集合的函数（真找到候选时才算，平常命中自己的键时不花这份工夫）。
+    let claimedSet = null;
+    const taken = () => claimedSet || (claimedSet = (typeof claimed === 'function' ? claimed() : claimed) || new Set());
+    try {
+        for (let i = 0; i < storage.length; i += 1) {
+            const name = storage.key(i);
+            if (!name || !name.startsWith(head) || !name.endsWith(`:${wanted.hash}`) || !name.includes(suffix)) continue;
+            const candidate = name.slice(imagesPrefix.length);
+            const other = parseBuiltinImageKey(candidate);
+            if (!other || !builtinImageKeysShifted(key, candidate)) continue;
+            if (taken().has(candidate)) continue;
+            const distance = Math.abs(Number(other.index) - Number(wanted.index));
+            if (Number.isFinite(distance) && distance < bestDistance) { best = candidate; bestDistance = distance; }
+        }
+    } catch { /* 读不到就当没有 */ }
+    return best;
+}
+
 // 换成历史里的另一张显示：选中的那张当当前，其余按原来的先后留在历史里。不发请求。
 export function replaceMirrorImageVersions(key, current, history) {
     const value = { version: 1, current: storedRecord(current), history: (Array.isArray(history) ? history : []).filter(entry => entry && typeof entry === 'object').map(entry => ({ ...entry })) };

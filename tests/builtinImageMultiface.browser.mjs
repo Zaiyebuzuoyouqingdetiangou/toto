@@ -98,6 +98,61 @@ assert.equal(await calls(), 4); checks++;
 await release();
 assert.equal(await painted(), '/user/images/p4.png'); checks++;
 
+// 5 已经发出去的请求还没画完时切走聊天、再切回来（酒馆换了一份聊天数组）：跟着那一次等结果、存下，不另发一次
+await page.evaluate(() => localStorage.clear());
+await mountHost(true);
+await page.waitForTimeout(100);
+assert.equal(await calls(), 7); checks++;
+await page.evaluate(async () => {
+    document.body.innerHTML = '';
+    window.SillyTavern.getContext().chat = [];
+    const ext = await import('/extensions.js'); ext.getContext().chat = [];
+});
+await mountHost(true);
+await page.waitForTimeout(150);
+assert.equal(await calls(), 7); checks++;
+await release();
+assert.equal(await painted(), '/user/images/p5.png /user/images/p6.png /user/images/p7.png'); checks++;
+await mountHost(true);
+await page.waitForTimeout(150);
+assert.equal(await calls(), 7); checks++;
+
+// 6 重新进聊天时这一面前面少了一个图框，序号挪了：同一楼层、同一段提示词的图照样找回，不重画
+await page.evaluate(() => localStorage.clear());
+const twoFrames = withFirst => `<details open data-rabbit-mirror-owner-chat="chat:c" data-rabbit-mirror-owner-mesid="20" data-rabbit-mirror-owner-swipe="0"><summary>两格</summary>
+  ${withFirst ? '<figure data-rm-draw-frame="1"><p data-rm-draw-prompt="1" hidden>第一格：清晨的码头上海鸥落在缆桩</p></figure>' : ''}
+  <figure data-rm-draw-frame="2"><p data-rm-draw-prompt="1" hidden>第二格：傍晚的码头上渔船靠岸卸货</p></figure></details>`;
+const mountFace = html => page.evaluate(html => { document.body.innerHTML = html; images.fillBuiltinImageFrames(document.querySelector('details')); }, html);
+await mountFace(twoFrames(true));
+await page.waitForTimeout(100);
+assert.equal(await calls(), 9); checks++;
+await release();
+await mountFace(twoFrames(false));
+await page.waitForTimeout(150);
+assert.equal(await calls(), 9); checks++;
+assert.equal(await painted(), '/user/images/p9.png'); checks++;
+// 前面那一格回来了：两格各找回自己的那张，不重画
+await mountFace(twoFrames(true));
+await page.waitForTimeout(150);
+assert.equal(await calls(), 9); checks++;
+assert.equal(await painted(), '/user/images/p8.png /user/images/p9.png'); checks++;
+
+// 7 第二格的请求已经发出去、还没画完时切走聊天；回来时前面那一格不见了（序号挪了）：跟着那一次等，不另发
+await page.evaluate(() => localStorage.clear());
+await mountFace(twoFrames(true));
+await page.waitForTimeout(100);
+assert.equal(await calls(), 11); checks++;
+await page.evaluate(async () => {
+    document.body.innerHTML = '';
+    window.SillyTavern.getContext().chat = [];
+    const ext = await import('/extensions.js'); ext.getContext().chat = [];
+});
+await mountFace(twoFrames(false));
+await page.waitForTimeout(150);
+assert.equal(await calls(), 11); checks++;
+await release();
+assert.equal(await painted(), '/user/images/p11.png'); checks++;
+
 assert.deepEqual(pageErrors, []);
 console.log(JSON.stringify({ checks }));
 await browser.close(); server.close();
