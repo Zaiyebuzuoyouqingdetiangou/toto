@@ -850,7 +850,7 @@ export function listBuiltinImageFrames(root) {
         const key = storageKey(root, frame, prompt);
         const saved = readSavedAnyChat(key);
         const { list: versions, current } = saved.broken ? { list: [], current: -1 } : versionsOf(saved.record);
-        list.push({ frame, key, prompt, versions, current, broken: !!saved.broken,
+        list.push({ frame, key, prompt, editPrompt: hasModelPrompt(frame) ? prompt : (readPrompt(frame, { cleanTitle: true }) || prompt), versions, current, broken: !!saved.broken,
             busy: !!inflight.get(inflightKeyFor(key))?.isCurrent?.() });
     }
     return list;

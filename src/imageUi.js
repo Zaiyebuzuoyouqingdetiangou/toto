@@ -486,7 +486,7 @@ function buildBuiltinSection(doc, root, initial) {
         roll.hidden = !!job; cancel.hidden = !job;
         roll.disabled = !ready || firstDraw || item.broken; edit.disabled = !ready || !!job || firstDraw || item.broken; editGo.disabled = !ready || !!job || firstDraw || item.broken;
         editor.hidden = !editing;
-        if (editing && !editBox.dataset.forKey) { editBox.value = item.prompt; editBox.dataset.forKey = item.key; }
+        if (editing && !editBox.dataset.forKey) { editBox.value = item.editPrompt || item.prompt; editBox.dataset.forKey = item.key; }
         const reusable = builtinImageReusable(shown);
         hint.textContent = !ready
             ? '内置生图没有开启：在兔子镜设置里打开后才能重画；已经画好的图照样能翻看、切换。'
