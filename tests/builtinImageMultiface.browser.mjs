@@ -43,12 +43,12 @@ await page.evaluate(async query => {
     window.images = await import('/src/builtinImage.js?' + query);
 }, query);
 
-const face = (n, stamped) => `<details open${stamped ? ' data-rabbit-mirror-owner-chat="chat:c" data-rabbit-mirror-owner-mesid="12" data-rabbit-mirror-owner-swipe="0"' : ''}><summary>第${n}面</summary>
+const face = (n, stamped, mes = 12) => `<details open${stamped ? ` data-rabbit-mirror-owner-chat="chat:c" data-rabbit-mirror-owner-mesid="${mes}" data-rabbit-mirror-owner-swipe="0"` : ''}><summary>第${n}面</summary>
   <figure data-rm-draw-frame="1"><p data-rm-draw-prompt="1" hidden>第${n}面的画面：雨夜里撑伞的少年站在石桥上</p></figure></details>`;
-const mountHost = stamped => page.evaluate(html => {
-    document.body.innerHTML = `<div data-rabbit-mirror-external-source="true" data-rm-source="independent" data-rm-owner-chat="chat:c" data-rm-owner-mesid="12" data-rm-owner-swipe="0">${html}</div>`;
+const mountHost = (stamped, mes = 12) => page.evaluate(([html, mes]) => {
+    document.body.innerHTML = `<div data-rabbit-mirror-external-source="true" data-rm-source="independent" data-rm-owner-chat="chat:c" data-rm-owner-mesid="${mes}" data-rm-owner-swipe="0">${html}</div>`;
     for (const details of document.querySelectorAll('details')) images.fillBuiltinImageFrames(details);
-}, [1, 2, 3].map(n => face(n, stamped)).join(''));
+}, [[1, 2, 3].map(n => face(n, stamped, mes)).join(''), mes]);
 const release = () => page.evaluate(async () => { for (const run of window.__release.splice(0)) run(); await new Promise(resolve => setTimeout(resolve, 50)); });
 const painted = () => page.evaluate(() => [...document.querySelectorAll('[data-rm-draw-frame]')].map(frame => (frame.querySelector('img[data-rm-draw-result]')?.getAttribute('src') || '-').replace(location.origin, '')).join(' '));
 const calls = () => page.evaluate(() => window.__calls);
@@ -100,7 +100,7 @@ assert.equal(await painted(), '/user/images/p4.png'); checks++;
 
 // 5 已经发出去的请求还没画完时切走聊天、再切回来（酒馆换了一份聊天数组）：跟着那一次等结果、存下，不另发一次
 await page.evaluate(() => localStorage.clear());
-await mountHost(true);
+await mountHost(true, 13);
 await page.waitForTimeout(100);
 assert.equal(await calls(), 7); checks++;
 await page.evaluate(async () => {
@@ -108,18 +108,18 @@ await page.evaluate(async () => {
     window.SillyTavern.getContext().chat = [];
     const ext = await import('/extensions.js'); ext.getContext().chat = [];
 });
-await mountHost(true);
+await mountHost(true, 13);
 await page.waitForTimeout(150);
 assert.equal(await calls(), 7); checks++;
 await release();
 assert.equal(await painted(), '/user/images/p5.png /user/images/p6.png /user/images/p7.png'); checks++;
-await mountHost(true);
+await mountHost(true, 13);
 await page.waitForTimeout(150);
 assert.equal(await calls(), 7); checks++;
 
 // 6 重新进聊天时这一面前面少了一个图框，序号挪了：同一楼层、同一段提示词的图照样找回，不重画
 await page.evaluate(() => localStorage.clear());
-const twoFrames = withFirst => `<details open data-rabbit-mirror-owner-chat="chat:c" data-rabbit-mirror-owner-mesid="20" data-rabbit-mirror-owner-swipe="0"><summary>两格</summary>
+const twoFrames = (withFirst, mes = 20) => `<details open data-rabbit-mirror-owner-chat="chat:c" data-rabbit-mirror-owner-mesid="${mes}" data-rabbit-mirror-owner-swipe="0"><summary>两格</summary>
   ${withFirst ? '<figure data-rm-draw-frame="1"><p data-rm-draw-prompt="1" hidden>第一格：清晨的码头上海鸥落在缆桩</p></figure>' : ''}
   <figure data-rm-draw-frame="2"><p data-rm-draw-prompt="1" hidden>第二格：傍晚的码头上渔船靠岸卸货</p></figure></details>`;
 const mountFace = html => page.evaluate(html => { document.body.innerHTML = html; images.fillBuiltinImageFrames(document.querySelector('details')); }, html);
@@ -139,7 +139,7 @@ assert.equal(await painted(), '/user/images/p8.png /user/images/p9.png'); checks
 
 // 7 第二格的请求已经发出去、还没画完时切走聊天；回来时前面那一格不见了（序号挪了）：跟着那一次等，不另发
 await page.evaluate(() => localStorage.clear());
-await mountFace(twoFrames(true));
+await mountFace(twoFrames(true, 21));
 await page.waitForTimeout(100);
 assert.equal(await calls(), 11); checks++;
 await page.evaluate(async () => {
@@ -147,7 +147,7 @@ await page.evaluate(async () => {
     window.SillyTavern.getContext().chat = [];
     const ext = await import('/extensions.js'); ext.getContext().chat = [];
 });
-await mountFace(twoFrames(false));
+await mountFace(twoFrames(false, 21));
 await page.waitForTimeout(150);
 assert.equal(await calls(), 11); checks++;
 await release();
@@ -175,6 +175,55 @@ const shownPrompt = await page.evaluate(async query => {
     return `${first}#${[b.path, b.promptMetadata?.prompt ?? '', b.prompt ?? ''].join('|')}`;
 }, query);
 assert.equal(shownPrompt, '/user/images/old.png|windmill|1|建档|true#/user/images/edited.png||'); checks++;
+
+// 9 本机存储满了、插图存档一份也写不进去：画好的图这次打开页面里还放得回去，重新挂上不再画
+await page.evaluate(() => {
+    localStorage.clear();
+    window.__realSetItem = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key, value) {
+        if (String(key).startsWith('rabbitMirror:image:') && window.__imageQuota === 'none') throw Object.assign(new Error('full'), { name: 'QuotaExceededError' });
+        if (String(key).startsWith('rabbitMirror:image:') && window.__imageQuota === 'small' && String(value).length > 400) throw Object.assign(new Error('full'), { name: 'QuotaExceededError' });
+        return window.__realSetItem.call(this, key, value);
+    };
+    window.__imageQuota = 'none';
+});
+const fullFace = text => `<details open data-rabbit-mirror-owner-chat="chat:c" data-rabbit-mirror-owner-mesid="40" data-rabbit-mirror-owner-swipe="0"><summary>满</summary>
+  <figure data-rm-draw-frame="1"><p data-rm-draw-prompt="1" hidden>${text}</p></figure></details>`;
+let base = await calls();
+await mountFace(fullFace('长廊尽头一盏灯笼在风里摇晃，地上落着红绸'));
+await page.waitForTimeout(100);
+await release();
+assert.equal(await calls(), base + 1); checks++;
+await mountFace(fullFace('长廊尽头一盏灯笼在风里摇晃，地上落着红绸'));
+await page.waitForTimeout(150);
+assert.equal(await calls(), base + 1); checks++;
+assert.equal(await painted(), `/user/images/p${base + 1}.png`); checks++;
+
+// 10 提示词每次读出来都不一样又存不下：同一个图框 10 分钟内最多自动画两次，第三次留按钮，点了才画
+await mountFace(fullFace('长廊尽头一盏灯笼在风里摇晃，地上落着红绸（二）'));
+await page.waitForTimeout(100);
+await release();
+assert.equal(await calls(), base + 2); checks++;
+await mountFace(fullFace('长廊尽头一盏灯笼在风里摇晃，地上落着红绸（三）'));
+await page.waitForTimeout(150);
+assert.equal(await calls(), base + 2); checks++;
+assert.match(await page.evaluate(() => document.querySelector('[data-rm-draw-status]')?.textContent || ''), /已经自动画过两次/); checks++;
+await page.evaluate(() => [...document.querySelectorAll('[data-rm-draw-status] button')].find(button => button.textContent === '重新生图').click());
+await page.waitForTimeout(100);
+assert.equal(await calls(), base + 3); checks++;
+await release();
+
+// 11 整份存不下、只存地址存得下：刷新后图还在
+await page.evaluate(() => { window.__imageQuota = 'small'; });
+const smallFace = `<details open data-rabbit-mirror-owner-chat="chat:c" data-rabbit-mirror-owner-mesid="41" data-rabbit-mirror-owner-swipe="0"><summary>小</summary>
+  <figure data-rm-draw-frame="1"><p data-rm-draw-prompt="1" hidden>${'雪夜里的山门前两行脚印延伸到石阶尽头'.repeat(12)}</p></figure></details>`;
+base = await calls();
+await mountFace(smallFace);
+await page.waitForTimeout(100);
+await release();
+assert.equal(await calls(), base + 1); checks++;
+assert.equal(await page.evaluate(() => Object.keys(localStorage).filter(key => key.includes(':builtin:chat:c:41:0:0:')).map(key => JSON.parse(localStorage.getItem(key)).current.path).join(',')), `/user/images/p${base + 1}.png`); checks++;
+await page.evaluate(() => { Storage.prototype.setItem = window.__realSetItem; window.__imageQuota = ''; });
 
 assert.deepEqual(pageErrors, []);
 console.log(JSON.stringify({ checks }));
