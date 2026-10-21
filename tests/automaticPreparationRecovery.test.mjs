@@ -106,7 +106,7 @@ function harness() {
     };
     const context = vm.createContext(sandbox);
     for (const [file, names] of Object.entries({
-        earlyBody: ['suppressesAutomaticGeneration', 'automaticHostGenerationRenderMatches', 'waitForIndependentHistory', 'missingIndependentHistoryMessage', 'syncMessagesCore', 'restoreMissingIndependentRetryOnElement',
+        earlyBody: ['automaticHostStreamInterrupted', 'suppressesAutomaticGeneration', 'automaticHostGenerationRenderMatches', 'waitForIndependentHistory', 'missingIndependentHistoryMessage', 'syncMessagesCore', 'restoreMissingIndependentRetryOnElement',
             'noteHostGenerationEnd', 'hostGenerationBoundToAnotherSwipe', 'automaticPipelineHoldsFloor', 'manualFillAllowed', 'missingShellHasEvidence'],
         mount: ['generationPollKey', 'generationWaitPollDelay', 'refreshUnpaidAutomaticAuthorization', 'scheduleMessageGeneration'],
         geometry: ['quickWaitingCandidate'],

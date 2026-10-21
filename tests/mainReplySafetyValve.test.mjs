@@ -165,3 +165,33 @@ test('the "正文已出，立即生成" click passes the valve while the status 
     assert.equal(await context.generateFor(0, message, false, true, null, null, null, null, owner), 'past-content-gate');
     assert.equal(notices.length, 1);
 });
+
+// 中转/官方接口把限流等报错当正文返回的常见样子：较长的报错 JSON、带重试说明的长提示、中转站中文提示。
+for (const [name, mes] of [
+    ['Claude-style error JSON', JSON.stringify({ type: 'error', error: { type: 'rate_limit_error', message: 'Number of request tokens has exceeded your per-minute rate limit; see the response headers for current usage. Please reduce the prompt length or the maximum tokens requested, or try again later. You may also contact sales to discuss your options for a rate limit increase. '.repeat(2) } })],
+    ['Gemini-style error JSON', JSON.stringify({ error: { code: 429, message: 'Resource has been exhausted (e.g. check quota).', status: 'RESOURCE_EXHAUSTED' } })],
+    ['bare status JSON', JSON.stringify({ code: 503, message: 'model overloaded, please try later', data: null })],
+    ['long rate-limit hint', 'Too Many Requests: rate limit exceeded for model example-model, please retry after 20s. Your current quota allows 2 requests per minute on the free tier. Upgrade your plan to continue.'],
+    ['relay token quota', '该令牌额度已用尽 TokenStatusExhausted[sk-abc***xyz]'],
+    ['relay saturated group', '当前分组上游负载已饱和，请稍后再试 (request id: 20261022123456789abcdef)'],
+    ['long proxy error', `[PROXY] 上游返回错误：HTTP 429 Too Many Requests。${'详细信息：Rate limit exceeded. '.repeat(60)}`],
+]) test(`API error returned as reply text is abnormal: ${name}`, () => {
+    assert.match(mainReplyAbnormalReason({ mes }), /接口报错/);
+});
+
+for (const mes of [
+    `${story}他把手机扔到一边，屏幕上还亮着“请求过多”的提示。${story}`,
+    `${story}{他想起那天的约定}`,
+    `${story.repeat(3)}系统提示：当前分组已满，请换个时间再来报名。`,
+]) test('story text mentioning error-like words stays normal', () => {
+    assert.equal(mainReplyAbnormalReason({ mes }), '');
+});
+
+test('relay phrases in ordinary short story text are not mistaken for API errors', async () => {
+    const { mainReplyAbnormalReason } = await import('../src/mainReplySafetyValve.js');
+    for (const mes of [
+        '公告栏上写着：当前分组为 A 组，请于周五前报到。他看了一眼就走开了，心里盘算着周五要带的东西，还有那个总是迟到的室友。',
+        '游戏系统面板弹了出来：令牌额度 3/5，今日剩余挑战次数 2。她撇撇嘴，把面板划走，继续往森林深处走去。',
+    ]) assert.equal(mainReplyAbnormalReason({ mes }), '', mes);
+    assert.match(mainReplyAbnormalReason({ mes: '当前分组上游负载已饱和，请稍后再试 (request id: abcdef123456)' }), /接口报错/);
+});
