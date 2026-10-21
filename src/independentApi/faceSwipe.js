@@ -1,16 +1,17 @@
 // Split from independentApi.js — faceSwipe.
 
-import { getSettings } from '../settings.js?rmv=1.73.9';
-import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.73.9';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.73.9';
-import { configuredAutomaticRerollMax } from '../automaticReroll.js?rmv=1.73.9';
-import { seedSwipeState, appendSuccessfulSwipe, faceSwipeStorageSlot, readFaceSwipe, mutateFaceSwipe, restoreFaceSwipeSnapshot } from '../swipeVersions.js?rmv=1.73.9';
-import { EPHEMERAL_FAILURE_ATTR, EPHEMERAL_FAILURE_BODY_ATTR, RUNTIME_VERSION } from './runtime.js?rmv=1.73.9';
-import { independentRecordWithinBudget, readStore, requestSafeChatSave, writePersistedOwner, writeStore } from './persistence.js?rmv=1.73.9';
-import { chatKey, saveRecordForSlot, savedIndependentRecordForOwner, swipeId } from './connection.js?rmv=1.73.9';
-import { hasMultifaceMarkup, wrapIndependentFace } from './request.js?rmv=1.73.9';
-import { attachIndependentUnsavedNotices, externalFaceDetails, passiveObservedIdentity, showIndependentUnsavedOutput } from './mount.js?rmv=1.73.9';
-import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.73.9';
+import { clearFaceFrame } from './faceFrame.js?rmv=1.73.16';
+import { getSettings } from '../settings.js?rmv=1.73.16';
+import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.73.16';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.73.16';
+import { configuredAutomaticRerollMax } from '../automaticReroll.js?rmv=1.73.16';
+import { seedSwipeState, appendSuccessfulSwipe, faceSwipeStorageSlot, readFaceSwipe, mutateFaceSwipe, restoreFaceSwipeSnapshot } from '../swipeVersions.js?rmv=1.73.16';
+import { EPHEMERAL_FAILURE_ATTR, EPHEMERAL_FAILURE_BODY_ATTR, RUNTIME_VERSION } from './runtime.js?rmv=1.73.16';
+import { independentRecordWithinBudget, readStore, requestSafeChatSave, writePersistedOwner, writeStore } from './persistence.js?rmv=1.73.16';
+import { chatKey, saveRecordForSlot, savedIndependentRecordForOwner, swipeId } from './connection.js?rmv=1.73.16';
+import { hasMultifaceMarkup, wrapIndependentFace } from './request.js?rmv=1.73.16';
+import { attachIndependentUnsavedNotices, externalFaceDetails, passiveObservedIdentity, showIndependentUnsavedOutput } from './mount.js?rmv=1.73.16';
+import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.73.16';
 
 export function independentRerollMax(){ return configuredAutomaticRerollMax(getSettings()); }
 
@@ -136,6 +137,8 @@ export function clearEphemeralFaceFailure(details){
   node.removeAttribute('data-rm-ephemeral-failure-hidden');
   node.hidden=false;
  });
+ // 遮罩期间量的外框、缩进不作数：撤掉，下次按真正的正文重量。
+ try{ clearFaceFrame(details); }catch{}
 }
 
 export function hasEphemeralFaceFailure(details){ return details?.getAttribute?.(EPHEMERAL_FAILURE_ATTR)==='true'; }

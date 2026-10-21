@@ -1,12 +1,13 @@
 // Split from independentApi.js — geometry.
-import { restoreRuntimeAnimationClone, ANIMATION_SUSPENDED_ATTR } from '../runtimeAnimationState.js?rmv=1.73.9';
+import { carryExternalFaceFrames } from './faceFrame.js?rmv=1.73.16';
+import { restoreRuntimeAnimationClone, ANIMATION_SUSPENDED_ATTR } from '../runtimeAnimationState.js?rmv=1.73.16';
 
-import { bindVisualHistoryTarget } from '../storage.js?rmv=1.73.9';
-import { presentationModeFields } from '../presentationMode.js?rmv=1.73.9';
-import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.73.9';
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorExternalPlacementParent } from '../hostCompatibility.js?rmv=1.73.9';
-import { getSettings } from '../settings.js?rmv=1.73.9';
-import { resolveExternalAnchor } from './externalAnchor.js?rmv=1.73.9';
+import { bindVisualHistoryTarget } from '../storage.js?rmv=1.73.16';
+import { presentationModeFields } from '../presentationMode.js?rmv=1.73.16';
+import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.73.16';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorExternalPlacementParent } from '../hostCompatibility.js?rmv=1.73.16';
+import { getSettings } from '../settings.js?rmv=1.73.16';
+import { resolveExternalAnchor, normalizeExternalAnchor } from './externalAnchor.js?rmv=1.73.16';
 import {
     cleanRabbitMirrorOutput,
     compactTotoBlock,
@@ -20,14 +21,14 @@ import {
     clearRabbitMirrorHorizontalClipArtifacts,
     sanitizeRabbitMirrorUntrustedTemplate,
     validateRabbitMirrorRecoveredStyleAssignments,
-} from '../outputSanitizer.js?rmv=1.73.9';
-import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.73.9';
-import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.73.9';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.73.9';
-import { repairDesignCandidateAttributeQuotes } from '../interactionSampling.js?rmv=1.73.9';
-import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.73.9';
-import { MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE, INDEPENDENT_HISTORY_READ_ERROR_MESSAGE } from './missingRetryShell.js?rmv=1.73.9';
-import { markSanitizedRabbitMirrorFace } from '../multifaceProof.js?rmv=1.73.9';
+} from '../outputSanitizer.js?rmv=1.73.16';
+import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.73.16';
+import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.73.16';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.73.16';
+import { repairDesignCandidateAttributeQuotes } from '../interactionSampling.js?rmv=1.73.16';
+import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.73.16';
+import { MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE, INDEPENDENT_HISTORY_READ_ERROR_MESSAGE } from './missingRetryShell.js?rmv=1.73.16';
+import { markSanitizedRabbitMirrorFace } from '../multifaceProof.js?rmv=1.73.16';
 import {
     EXTERNAL_SHELL_ATTR,
     FOLLOW_EXTERNAL_ANCHOR_ATTR,
@@ -42,8 +43,8 @@ import {
     getContext,
     hashText,
     independentMaintenanceLiveRepairLocked,
-} from './runtime.js?rmv=1.73.9';
-import { automaticDispatchAlreadyConsumed, automaticFailureStops, generationPolls, operationEpochForBase } from './flights.js?rmv=1.73.9';
+} from './runtime.js?rmv=1.73.16';
+import { automaticDispatchAlreadyConsumed, automaticFailureStops, generationPolls, operationEpochForBase } from './flights.js?rmv=1.73.16';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INTERACTION_STATE_MIGRATION_KEY,
@@ -52,7 +53,7 @@ import {
     persistedOwnerForMessage,
     readStore,
     writeStore,
-} from './persistence.js?rmv=1.73.9';
+} from './persistence.js?rmv=1.73.16';
 import {
     chatKey,
     copyIndependentOwnerLineage,
@@ -70,7 +71,7 @@ import {
     savedRecordMatchesObserved,
     slotSearchKeys,
     swipeId,
-} from './connection.js?rmv=1.73.9';
+} from './connection.js?rmv=1.73.16';
 import {
     EXTERNAL_GEOMETRY_SETTLE_STEPS_MS,
     allExternalHosts,
@@ -104,7 +105,7 @@ import {
     wrapIndependentFace,
     wrapPreparedIndependentFace,
     writeGeometryDataset,
-} from './request.js?rmv=1.73.9';
+} from './request.js?rmv=1.73.16';
 import {
     activeIndependentFlightForBase,
     automaticCutoverVersionToken,
@@ -128,20 +129,20 @@ import {
     serializeExternalFaceDetails,
     showMultifaceFace,
     stripIndependentTransientLayoutArtifacts,
-} from './mount.js?rmv=1.73.9';
+} from './mount.js?rmv=1.73.16';
 import {
     automaticHostGenerationRenderMatches,
     hasExistingFollowRabbitMirror,
     queueMessageSync,
     suppressesAutomaticGeneration,
-} from './earlyBody.js?rmv=1.73.9';
+} from './earlyBody.js?rmv=1.73.16';
 import {
     automaticGenerationCutovers,
     persistedInteractionMigrationHandle,
     persistedInteractionMigrationIdle,
     writePersistedInteractionMigrationHandle,
     writePersistedInteractionMigrationIdle,
-} from './lifecycle.js?rmv=1.73.9';
+} from './lifecycle.js?rmv=1.73.16';
 
 let externalGeometryFrame = 0;
 
@@ -403,7 +404,7 @@ export function remeasureRabbitMirrorFaceGeometry(root){
  const placement=String(host.dataset.rmPlacement||'external');
  if(placement==='inline') return result(el.contains?.(host)?'inline':'stale');
  if(placement!=='external') return result('unavailable');
- const {parent:placementParent,insideMessage}=tauriSafeExternalParent(el);
+ const {parent:placementParent,insideMessage}=tauriSafeExternalParent(el,host);
  if((isRabbitMirrorManagedChatSurface() || globalThis.__TAURITAVERN__) && !placementParent) return result('unavailable');
  if(host.parentElement!==placementParent || (!insideMessage && el.contains?.(host))) return result('stale');
  if(!insideMessage && externalHostAppearsBeforeOwner(el,host)) return result('stale');
@@ -490,13 +491,13 @@ function scheduleDeferredExternalReanchor(el,host,key,source){
  deferredExternalReanchors.set(host,setTimeout(()=>{
   deferredExternalReanchors.delete(host);
   if(!host?.isConnected || !el?.isConnected || String(host.dataset.rmPlacement||'')!=='external') return;
-  const {deferred}=tauriSafeExternalParent(el);
+  const {deferred}=tauriSafeExternalParent(el,host);
   if(deferred){ scheduleDeferredExternalReanchor(el,host,key,source); return; }
   try{ placeExternalHost(el,host,key,source); }catch(error){ console.debug('[RabbitMirror] deferred external reanchor failed:',error); }
  },700));
 }
 
-function tauriSafeExternalParent(el){
+function tauriSafeExternalParent(el,host=null){
  const managedParent=getRabbitMirrorExternalPlacementParent(el);
  // 托管聊天界面（TT）自己管位置：不记挂法，样式和量宽都照旧。
  if(managedParent) return {parent:managedParent,insideMessage:true,anchor:''};
@@ -516,7 +517,11 @@ function tauriSafeExternalParent(el){
    busy=!!(body && body!==el && body.querySelector?.('#curEditTextarea, textarea.edit_textarea')) || !!(activity && activity.active && (activity.strong || activity.eventHint));
   }catch{ busy=false; }
   const setting=getSettings()?.independentExternalAnchor;
-  const anchor=resolveExternalAnchor(el,body!==el?body:null,setting,{busy});
+  let anchor=resolveExternalAnchor(el,body!==el?body:null,setting,{busy});
+  // 自动挂法挂上去以后被美化盖住、或被挤出消息的边（见 verifyExternalPlacement）：往外挪过一层，就一直按挪过的那层。
+  const fallback=String(host?.dataset?.rmExternalAnchorFallback||'');
+  const LEVEL={body:0,message:1,outside:2};
+  if(normalizeExternalAnchor(setting)==='auto' && LEVEL[fallback]>LEVEL[anchor]) anchor=fallback;
   // 忙完以后本该进正文的：先记一笔，写完／编辑完再挪进去。
   const deferred=busy && anchor==='message' && resolveExternalAnchor(el,body!==el?body:null,setting,{busy:false})==='body';
   if(anchor==='outside') return {parent:el.parentElement||null,insideMessage:false,anchor};
@@ -555,6 +560,7 @@ export function placeExternalHost(el,host,key='',source='independent'){
   registerExternalHostInSyncIndex(host);
   syncExternalHostGeometry(el,host);
   if(moved || previousPlacement!=='external') host.__rabbitMirrorIndependentPlacementDirty=true;
+  if(!globalThis.__TAURITAVERN__ && !isRabbitMirrorManagedChatSurface()) watchExternalPlacement(el,host,key,source);
   if(previousParent?.hasAttribute?.(FOLLOW_EXTERNAL_ANCHOR_ATTR) && previousParent!==anchor && !previousParent.querySelector?.(`[${SOURCE_ATTR}][data-rm-source="follow"]`)) previousParent.remove();
   if(previousParent?.hasAttribute?.(INLINE_ANCHOR_ATTR) && !previousParent.querySelector?.(`[${SOURCE_ATTR}]`)) previousParent.remove();
   return true;
@@ -576,7 +582,8 @@ export function placeExternalHost(el,host,key='',source='independent'){
   if(previousParent?.hasAttribute?.(INLINE_ANCHOR_ATTR) && previousParent!==anchor && !previousParent.querySelector?.(`[${SOURCE_ATTR}]`)) previousParent.remove();
   return true;
  }
- const {parent,insideMessage,anchor,deferred}=tauriSafeExternalParent(el);
+ resetPlacementCheckIfStale(el,host);
+ const {parent,insideMessage,anchor,deferred}=tauriSafeExternalParent(el,host);
  if(!parent) return false;
  if(deferred) scheduleDeferredExternalReanchor(el,host,key,source); else clearDeferredExternalReanchor(host);
  const managedBody=insideMessage ? messageBody(el) : null;
@@ -617,7 +624,139 @@ export function placeExternalHost(el,host,key='',source='independent'){
   scheduleExternalHostGeometry(el,host);
  }
  if(previousParent?.hasAttribute?.(INLINE_ANCHOR_ATTR) && !previousParent.querySelector?.(`[${SOURCE_ATTR}]`)) previousParent.remove();
+ if(!globalThis.__TAURITAVERN__ && !isRabbitMirrorManagedChatSurface()) watchExternalPlacement(el,host,key,source);
  return true;
+}
+
+// ——— 挂好以后自己看一眼：被这条消息的美化盖住了没有、有没有被挤出消息的边 ———
+// 拿不到美化的文件，也不猜它怎么写：只看结果。标题条上取几个点，点到的是这条消息里别的东西（美化的装饰图），就是被盖住了；
+// 先把兔子镜往上提一层（z-index），还盖着就往外挪一层（正文里 → 正文下面 → 整条消息外面）。
+// 挂在正文里、正文下面时整块左右超出了这条消息的边（美化把正文挤偏），也往外挪。只有「自动」挂法会挪，手动选的只往上提。
+const placementWatchers=new WeakMap();
+// 这一面换了（Swipe、重说、换了楼层、挂法设置改了）：上一面量出来的「往上提」「往外挪」不作数，重新量。
+// 用这一面的身份（rmKey：哪个聊天、哪条、哪一版）和挂法设置判断；不用楼层号（删了上面的楼层会重排）
+// 也不用来源指纹（正文流式输出时占位卡的指纹一直在变，会被当成每次都换了一面）。
+function resetPlacementCheckIfStale(el,host){
+ const signature=[String(host.dataset.rmKey||''),normalizeExternalAnchor(getSettings()?.independentExternalAnchor)].join('|');
+ if(host.dataset.rmExternalCheckFor===signature) return false;
+ const hadFallback=!!host.dataset.rmExternalAnchorFallback;
+ host.dataset.rmExternalCheckFor=signature;
+ delete host.dataset.rmExternalAnchorFallback;
+ delete host.dataset.rmExternalRaised;
+ const record=placementWatchers.get(host);
+ if(record) record.actions=0;
+ return hadFallback;
+}
+function watchExternalPlacement(el,host,key,source){
+ if(typeof IntersectionObserver!=='function') return;
+ let record=placementWatchers.get(host);
+ if(!record){
+  record={el,key,source,actions:0,timer:0,observer:null};
+  record.observer=new IntersectionObserver(entries=>{
+   if(!host.isConnected){ record.observer.disconnect(); clearTimeout(record.timer); placementWatchers.delete(host); return; }
+   if(entries.some(entry=>entry.isIntersecting)) scheduleExternalPlacementCheck(host);
+  },{threshold:0.3});
+  placementWatchers.set(host,record);
+  record.observer.observe(host);
+ }
+ // 每次重新挂都记下最新的消息，并且（已经在屏幕里时）重新量一次：一直在屏幕里的重挂，观察器不会再通知。
+ Object.assign(record,{el,key,source});
+ scheduleExternalPlacementCheck(host);
+}
+// 等位置稳下来再量：Swipe 的滑动动画、图片晚加载时，隔一小会儿量两次位置，一样了才量遮挡和出界。
+function scheduleExternalPlacementCheck(host,tries=0){
+ const record=placementWatchers.get(host);
+ if(!record) return;
+ clearTimeout(record.timer);
+ record.timer=setTimeout(()=>{
+  if(!host.isConnected) return;
+  const view=host.ownerDocument?.defaultView||globalThis;
+  let first;
+  try{ first=host.getBoundingClientRect(); }catch{ return; }
+  if(first.bottom<0 || first.top>view.innerHeight) return; // 不在屏幕里：等滑进来时观察器再叫
+  record.timer=setTimeout(()=>{
+   if(!host.isConnected) return;
+   let second;
+   try{ second=host.getBoundingClientRect(); }catch{ return; }
+   if(Math.abs(second.left-first.left)>1 || Math.abs(second.top-first.top)>1 || Math.abs(second.width-first.width)>1){
+    if(tries<6) scheduleExternalPlacementCheck(host,tries+1);
+    return;
+   }
+   const el=messageElementForExternalHost(host)||record.el;
+   verifyExternalPlacement(el,host,record.key,record.source);
+  },160);
+ },tries?200:350);
+}
+
+function externalTitleCovered(el,host){
+ const title=host.querySelector?.(':scope > details > summary')||host;
+ let rect;
+ try{ rect=title.getBoundingClientRect(); }catch{ return false; }
+ if(!rect || rect.width<40 || rect.height<10) return false;
+ const view=host.ownerDocument?.defaultView||globalThis;
+ const y=rect.top+Math.min(rect.height/2,20);
+ if(y<0 || y>view.innerHeight) return false;
+ let covered=0,tested=0;
+ // 美化的装饰图常写 pointer-events:none，点击测试会穿过去、看不见它：量的这一下让这条消息里的东西都能被点到，量完马上撤掉。
+ const probe=host.ownerDocument.createElement('style');
+ const mark=`rm-cover-probe-${Math.random().toString(36).slice(2,8)}`;
+ el.setAttribute('data-rm-cover-probe',mark);
+ probe.textContent=`[data-rm-cover-probe="${mark}"] *,[data-rm-cover-probe="${mark}"] *::before,[data-rm-cover-probe="${mark}"] *::after{pointer-events:auto !important;}`;
+ (host.ownerDocument.head||host.ownerDocument.documentElement).append(probe);
+ try{
+  for(const ratio of [0.12,0.5,0.88]){
+   const x=rect.left+rect.width*ratio;
+   if(x<0 || x>view.innerWidth) continue;
+   const hit=host.ownerDocument.elementFromPoint(x,y);
+   if(!hit) continue;
+   tested+=1;
+   // 点到兔子镜自己（含工具按钮）不算；点到这条消息以外的东西（酒馆自己的浮层、输入框）也不算，那不是美化。
+   if(host.contains(hit) || !el.contains(hit)) continue;
+   // 酒馆自己放在消息里的东西（翻页箭头、消息按钮、头像、名字栏）不是美化，不算挡住。
+   if(hit.closest?.('.swipe_left, .swipe_right, .swipes-counter, .mes_buttons, .extraMesButtons, .mes_edit_buttons, .mesAvatarWrapper, .avatar, .ch_name, .mes_reasoning_details')) continue;
+   covered+=1;
+  }
+ }finally{ probe.remove(); el.removeAttribute('data-rm-cover-probe'); }
+ return tested>0 && covered*2>=tested;
+}
+
+function externalOutOfBounds(el,host){
+ if(String(host.dataset.rmExternalAnchor||'')==='outside') return false;
+ try{
+  const box=el.getBoundingClientRect(), own=host.getBoundingClientRect();
+  if(!own.width || !box.width) return false;
+  return own.left<box.left-4 || own.right>box.right+4;
+ }catch{ return false; }
+}
+
+export function verifyExternalPlacement(el,host,key='',source='independent'){
+ if(!el?.isConnected || !host?.isConnected || String(host.dataset.rmPlacement||'')!=='external') return 'skip';
+ // 还没生成好（等待中、正文流式输出时的占位卡）不量：那时的位置和内容都还会变。
+ if(host.dataset.rmState!=='ready' || host.dataset.rmReplyGenerationPlaceholder) return 'skip';
+ // 换了一面：上一面挪过的位置先挪回来，再按这一面重新量（重挂后会再排一次检查）。
+ if(resetPlacementCheckIfStale(el,host)){ try{ placeExternalHost(el,host,key,source); }catch{} return 'reset'; }
+ const record=placementWatchers.get(host)||{actions:0};
+ // 一面最多动四次（往上提、往外挪都算），不会和美化互相推来推去；没问题的那几次不算。
+ if(Number(record.actions||0)>=4) return 'limit';
+ // 跟随正文的外置兔子镜挂法是固定的：只往上提，不挪。
+ const auto=source==='independent' && normalizeExternalAnchor(getSettings()?.independentExternalAnchor)==='auto';
+ const outOfBounds=auto && externalOutOfBounds(el,host);
+ const covered=externalTitleCovered(el,host);
+ if(!covered && !outOfBounds) return 'ok';
+ if(covered && host.dataset.rmExternalRaised!=='true'){
+  record.actions=Number(record.actions||0)+1;
+  host.dataset.rmExternalRaised='true';
+  if(placementWatchers.has(host)) scheduleExternalPlacementCheck(host);
+  return 'raised';
+ }
+ if(!auto) return 'manual';
+ const current=String(host.dataset.rmExternalAnchor||'message');
+ const next=current==='body'?'message':current==='message'?'outside':'';
+ if(!next) return 'outermost';
+ record.actions=Number(record.actions||0)+1;
+ host.dataset.rmExternalAnchorFallback=next;
+ try{ placeExternalHost(el,host,key,source); }catch(error){ console.debug('[RabbitMirror] external placement fallback failed:',error); return 'failed'; }
+ return `moved:${next}`;
 }
 
 
@@ -1744,6 +1883,9 @@ export function ensureExternalTools(host){
  }else{
   try{ refreshRabbitMirrorToolsInScope(host,{historyRestoreLight}); }catch(error){ console.debug('[RabbitMirror] external tool preparation skipped:',error); }
  }
+ // 外置时整面外框被清掉、标题单独一条：模型写的外框挪到正文上，正文在外框里的左右缩进去掉，和标题一样宽。
+ // 副 API、跟随正文、单面多面、恢复出来的都走这里；每一面只量一次（量过有记号），收起的等展开再量。
+ if(host.dataset?.rmState==='ready' && host.dataset?.rmPlacement==='external'){ try{ carryExternalFaceFrames(host); }catch{} }
  removeIndependentResayButtons(host);
 }
 
@@ -2137,7 +2279,7 @@ export function renderExternalErrorBody(details,text=''){
   // second retry intent after the first click has entered loading or READY.
   const host=details.closest?.(`[${SOURCE_ATTR}="true"]`);
   if(retry.disabled || !retry.isConnected || !details.contains?.(retry) || host?.dataset?.rmState!=='error') return;
-  void import('../outputSanitizer/toolsChrome.js?rmv=1.73.9').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+  void import('../outputSanitizer/toolsChrome.js?rmv=1.73.16').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
  },true);
  recover.addEventListener('click',async event=>{
   event.preventDefault(); event.stopPropagation();

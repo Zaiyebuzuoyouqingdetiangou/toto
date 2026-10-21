@@ -1,8 +1,8 @@
-import { expandHtmlDocumentCodeBlocks } from './outputSanitizer/markup.js?rmv=1.73.9';
-import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.73.9';
-import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=1.73.9';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.73.9';
-import { createFavoriteAtlasPanel } from './favoriteAtlasesUi.js?rmv=1.73.9';
+import { expandHtmlDocumentCodeBlocks } from './outputSanitizer/markup.js?rmv=1.73.16';
+import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.73.16';
+import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=1.73.16';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.73.16';
+import { createFavoriteAtlasPanel } from './favoriteAtlasesUi.js?rmv=1.73.16';
 const DB_NAME = 'rabbit_mirror_theater_favorites_v1';
 const STORE = 'favorites';
 const DB_VERSION = 1;
@@ -299,6 +299,12 @@ function unwrapTheaterFavoriteTitleChrome(scope) {
 export function stripTheaterFavoriteRuntimeUi(scope) {
     if (!scope?.querySelectorAll) return;
     scope.querySelectorAll(FAVORITE_RUNTIME_UI_SELECTOR).forEach(node => node.remove());
+    // 外置时挪外框、去缩进的记号（只在外置壳里生效）不进收藏。
+    for (const node of [scope, ...scope.querySelectorAll('[data-rm-face-frame], [data-rm-face-frame-body], [data-rm-face-flush], [data-rm-face-flush-checked]')]) {
+        if (!node?.removeAttribute) continue;
+        for (const name of ['data-rm-face-frame', 'data-rm-face-frame-body', 'data-rm-face-flush', 'data-rm-face-flush-checked']) node.removeAttribute(name);
+        for (const name of ['--rm-face-frame-bg', '--rm-face-frame-bg-image', '--rm-face-frame-border', '--rm-face-frame-radius', '--rm-face-frame-shadow']) node.style?.removeProperty?.(name);
+    }
     // 「这一版失败」遮罩藏起来的正文要放回来，不然收藏里这一面是空的。
     scope.querySelectorAll('[data-rm-ephemeral-failure-hidden]').forEach(node => {
         node.removeAttribute('data-rm-ephemeral-failure-hidden');
@@ -586,7 +592,7 @@ export async function removeDuplicateTheaterFavorites() {
     if (!remap.size) return 0;
     // 先把图鉴里指向要删那几份的格子改指向留下的那份，改成功了再删收藏；
     // 以前先删后改，图鉴改失败（比如另一个页面占着）时，那些格子就默默变空了。
-    const atlases = await import('./favoriteAtlases.js?rmv=1.73.9');
+    const atlases = await import('./favoriteAtlases.js?rmv=1.73.16');
     for (const atlas of await atlases.listFavoriteAtlases()) {
         let changed = false;
         const selections = {};

@@ -95,7 +95,10 @@ function prepareSlide(state) {
     track.addEventListener('scroll', onScroll, { passive: true });
     state.extra.timers.add(() => track.removeEventListener('scroll', onScroll));
     // 跨面继承恢复到上次滑到的那张。
-    const restored = Number(group.getAttribute('data-rm-index'));
+    // 模型的 CSS 按 data-rm-index 从 0 数时，写和读都照它的数法（data-rm-index-base="0"）。
+    if (!group.hasAttribute('data-rm-index-base') && H.cssIndexBase?.(state, slideItems(state).length) === 0) group.setAttribute('data-rm-index-base', '0');
+    state.indexBase = group.getAttribute('data-rm-index-base') === '0' ? 0 : 1;
+    const restored = Number(group.getAttribute('data-rm-index')) + 1 - state.indexBase;
     if (group.hasAttribute('data-rm-recalled') && Number.isInteger(restored) && restored > 1) slideTo(state, restored - 1, false);
     measureSlide(state);
 }
@@ -160,7 +163,7 @@ function slideAction(state, control) {
 function slideSync(state) {
     const { group } = state;
     const items = slideItems(state);
-    group.setAttribute('data-rm-index', String(state.index));
+    group.setAttribute('data-rm-index', String(state.index - 1 + (state.indexBase ?? 1)));
     H.style(state, group, '--rm-index', String(state.index));
     H.style(state, group, '--rm-p', String(Number(state.progress || 0).toFixed(4)));
     for (const item of items) {
@@ -649,7 +652,8 @@ export function applyCarriedState(group) {
     if (!saved || typeof saved !== 'object') return false;
     if (Array.isArray(saved.on)) group.setAttribute('data-rm-on', saved.on.join(' '));
     if (typeof saved.picked === 'string' && saved.picked) group.setAttribute('data-rm-picked', saved.picked);
-    if (Number.isInteger(saved.index)) group.setAttribute('data-rm-index', String(saved.index));
+    // 记的是从 1 数的页码；这一区的页码按模型的数法从 0 数时（data-rm-index-base="0"）换算一下。
+    if (Number.isInteger(saved.index)) group.setAttribute('data-rm-index', String(group.getAttribute('data-rm-index-base') === '0' ? saved.index - 1 : saved.index));
     if (Array.isArray(saved.done)) {
         const steps = [...group.querySelectorAll('[data-rm-step]')].filter(node => node.closest(GROUP) === group);
         steps.forEach((step, index) => { if (saved.done.includes(index)) step.setAttribute('data-rm-done', 'true'); });
