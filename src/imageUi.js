@@ -1,10 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.73.8';
-import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=1.73.8';
-import { loadMirrorImage, saveMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft } from './imageStore.js?rmv=1.73.8';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.73.8';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.73.8';
-import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.73.8';
-import { listBuiltinImageFrames, rerollBuiltinImage, showBuiltinImageVersion, builtinImageReady, builtinImageReusable } from './builtinImage.js?rmv=1.73.8';
+import { describeLocalStorageUsage } from './storageUsage.js?rmv=1.73.9';
+import { getSettings } from './settings.js?rmv=1.73.9';
+import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=1.73.9';
+import { loadMirrorImage, saveMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft } from './imageStore.js?rmv=1.73.9';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.73.9';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.73.9';
+import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.73.9';
+import { listBuiltinImageFrames, rerollBuiltinImage, showBuiltinImageVersion, builtinImageReady, builtinImageReusable } from './builtinImage.js?rmv=1.73.9';
 
 // The lock lives beyond a panel's lifetime. Closing, reopening or aborting a UI
 // cannot release a provider reservation before its Promise actually settles.
@@ -502,9 +503,11 @@ function buildBuiltinSection(doc, root, initial) {
         builtinJobs.set(item.key, job);
         message = ''; render();
         try {
-            const { painted } = await rerollBuiltinImage(root, item.frame, { prompt: edited, signal: controller.signal,
+            const { painted, saveError } = await rerollBuiltinImage(root, item.frame, { prompt: edited, signal: controller.signal,
                 onText: text => { job.text = text; for (const listener of job.listeners) { try { listener.onText?.(text); } catch { /* 面板已关 */ } } } });
-            message = painted ? '画好了，镜面上已经换成新画的这张。' : '画好了、已经存档；这一面刚重新加载过，刷新这一面后显示。';
+            message = saveError
+                ? `画好了${painted ? '、镜面上先换成了新画的这张' : ''}，但没能存进本机存档（${/quota/i.test(String(saveError?.name || saveError?.message || '')) ? '本机存储满了' : String(saveError?.message || '写入失败').slice(0, 60)}；${describeLocalStorageUsage()}），所以这里还是旧的几张、翻不到新图，刷新后也会变回旧图。柏宝绘图库里有这张。`
+                : painted ? '画好了，镜面上已经换成新画的这张。' : '画好了、已经存档；这一面刚重新加载过，刷新这一面后显示。';
         } catch (error) {
             message = controller.signal.aborted ? '已取消，原来的图没动。'
                 : `这次没画成，原来的图没动。${String(error?.message || '').slice(0, 120)}`;

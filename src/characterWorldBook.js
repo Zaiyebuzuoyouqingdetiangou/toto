@@ -3,7 +3,7 @@ function text(value) { return typeof value === 'string' ? value : ''; }
 // 世界书条目标题里的分类词：不当人名用。
 const TITLE_NOISE = /^(?:角色|人物|人设|设定|主角|配角|男主|女主|NPC|npc|外貌|外观|长相|形象|资料|档案|简介|介绍|背景|世界观|关系|性格|服装|衣着|条目|常驻|蓝灯|绿灯|其他|补充|详细|基础|基本|地点|地图|规则|组织|势力|剧情|物品|道具|时间|事件)+$/;
 // 写了长相的条目才是人物外貌资料。
-const APPEARANCE_WORDS = /发色|头发|长发|短发|卷发|马尾|[黑白银金红棕灰紫蓝粉]发|瞳|眸|身高|外貌|长相|容貌|五官|肤色|hair|eyes/i;
+const APPEARANCE_WORDS = /发色|头发|[长短直卷]发|发型|发丝|马尾|[黑白银金红棕灰紫蓝粉]发|瞳|眸|身高|外貌|长相|容貌|五官|肤色|hair|eyes/i;
 
 function currentCharacter(ctx) {
     return ctx?.characters?.[ctx.characterId] || ctx?.character || null;
@@ -80,14 +80,20 @@ export async function readCharacterWorldBookContext(ctx, {
     if (!entries || typeof entries !== 'object') throw new TypeError(`角色世界书“${name}”缺少有效 entries。`);
     const rows = [];
     const focus = text(focusText);
+    // 这一轮正文里出现过的名字（任一条目的关键词、标题里的人名）：大条目里按它们找人物那一段。
+    const anchors = new Set();
     // 多人卡、开放世界卡：人物长相都写在世界书里，整本书往往比预算长，按书里的顺序截断时，
     // 这一轮出场的人物条目常被截掉。只调顺序、不筛条目：关键词或标题在这一轮正文里出现过的条目排在前面，其余照原顺序。
     const mentioned = entry => {
+        mentioned.hits = [];
         if (!focus) return 0;
         const keys = [...(Array.isArray(entry.key) ? entry.key : []), ...(Array.isArray(entry.keys) ? entry.keys : [])]
             .map(value => text(value).trim()).filter(value => value && value.length <= 40 && !/^\/.*\/[a-z]*$/i.test(value));
         const title = (text(entry.comment) || text(entry.name) || text(entry.title)).trim();
-        let score = keys.filter(key => focus.includes(key)).length;
+        const hitKeys = keys.filter(key => focus.includes(key));
+        hitKeys.forEach(key => anchors.add(key));
+        mentioned.hits = [...hitKeys];
+        let score = hitKeys.length;
         if (title && title.length <= 20 && focus.includes(title)) score += 1;
         // 人物条目常常没写关键词（常驻条目），或标题写成「【人物】阿雪」「阿雪·外貌」：
         // 把标题按符号拆开，拆出来的人名在这一轮出现过也算提到。「人物、设定、外貌」这类分类词不算。
@@ -99,7 +105,10 @@ export async function readCharacterWorldBookContext(ctx, {
             const hit = piece => /^[A-Za-z0-9 ]+$/.test(piece)
                 ? piece.length >= 3 && new RegExp(`(?:^|[^A-Za-z0-9])${piece.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:$|[^A-Za-z0-9])`, 'i').test(focus)
                 : focus.includes(piece);
-            if (looksLikePerson && pieces.some(hit)) score += 1;
+            const hits = looksLikePerson ? pieces.filter(hit) : [];
+            hits.forEach(piece => anchors.add(piece));
+            mentioned.hits.push(...hits);
+            if (hits.length) score += 1;
         }
         return score;
     };
@@ -111,12 +120,52 @@ export async function readCharacterWorldBookContext(ctx, {
         if (typeof entry.content !== 'string') throw new TypeError(`角色世界书“${name}”条目内容不是文本。`);
         if (!entry.content.trim()) continue;
         const title = text(entry.comment) || text(entry.name) || text(entry.title);
-        rows.push({ row: sourceRow({ book: name, title, content: entry.content }), title, content: entry.content, score: mentioned(entry), order: rows.length });
+        const score = mentioned(entry);
+        rows.push({ row: sourceRow({ book: name, title, content: entry.content }), title, content: entry.content, score, hits: mentioned.hits || [], order: rows.length });
     }
     // 只要这一轮提到的条目（内置生图写人物外貌用）：没提到的一条不带。
     if (onlyMentioned) rows.splice(0, rows.length, ...rows.filter(item => item.score > 0));
     rows.sort((a, b) => (b.score > 0) - (a.score > 0) || (a.score > 0 && b.score > 0 ? b.score - a.score : 0) || a.order - b.order);
-    // 只要提到的条目、又超出预算时：每条都留开头一段（长相一般写在前面），不让排在后面的人物整条被截掉。
+    // 只要提到的条目、又超出预算时：先在每条里找「这一轮出现过的名字＋后面写着长相」的那几段
+    // （一个势力条目里写了十几个 NPC，长相不在开头），找到的条目排前面，只留这几段；找不到的留开头。
+    if (onlyMentioned && rows.reduce((sum, item) => sum + item.row.length + 1, 0) > maxChars) {
+        const names = [...anchors].filter(value => value.length >= 2);
+        // 段落的先后：这一条自己命中的名字在前（别的条目命中的「神都」这类地名排后面），名字后面越快写到长相越靠前。
+        // 后面按额度截的时候从末尾截，最像这个人长相的那段留得住。
+        const safe = (content, at) => (at > 0 && at < content.length && /[\uDC00-\uDFFF]/.test(content[at]) ? at - 1 : at);
+        for (const item of rows) {
+            const own = new Set(item.hits.filter(value => value.length >= 2));
+            const spans = [];
+            for (const anchor of [...own, ...names.filter(value => !own.has(value))]) {
+                let from = 0;
+                for (let found = 0; found < (own.has(anchor) ? 6 : 1); found += 1) {
+                    const at = item.content.indexOf(anchor, from);
+                    if (at < 0) break;
+                    from = at + anchor.length;
+                    const start = safe(item.content, Math.max(0, at - 10));
+                    const end = safe(item.content, Math.min(item.content.length, at + 420));
+                    const look = item.content.slice(at, end).search(APPEARANCE_WORDS);
+                    if (look >= 0) spans.push({ start, end, rank: (own.has(anchor) ? 0 : 10000) + look });
+                }
+            }
+            if (!spans.length) continue;
+            spans.sort((a, b) => a.rank - b.rank);
+            const merged = [];
+            for (const span of spans) {
+                const overlap = merged.find(other => span.start < other.end && span.end > other.start);
+                if (overlap) { overlap.start = Math.min(overlap.start, span.start); overlap.end = Math.max(overlap.end, span.end); }
+                else merged.push({ ...span });
+            }
+            const excerpt = merged.map(({ start, end }) => item.content.slice(start, end)).join('\n…\n');
+            if (excerpt.length < item.content.length) {
+                item.content = excerpt;
+                item.row = sourceRow({ book: name, title: item.title, content: excerpt });
+            }
+            item.appearance = true;
+        }
+        rows.sort((a, b) => (b.appearance === true) - (a.appearance === true));
+    }
+    // 还超出预算时：每条都留开头一段，不让排在后面的人物整条被截掉。
     // 按转义后的实际长度截；条目太多、每条连 200 字都分不到时，只留前面几条。
     if (onlyMentioned && rows.length > 1 && rows.reduce((sum, item) => sum + item.row.length + 1, 0) > maxChars) {
         const keep = Math.max(1, Math.min(rows.length, Math.floor(maxChars / 220)));
