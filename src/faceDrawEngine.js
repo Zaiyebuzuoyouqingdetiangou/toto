@@ -1,5 +1,5 @@
-import { FACE_DRAW_KINDS, FACE_DRAW_LABELS, faceDrawCategoryId } from './faceDrawRules.js?rmv=1.73.11';
-import { externalPoolItem } from './externalWorldBook/externalPool.js?rmv=1.73.11';
+import { FACE_DRAW_KINDS, FACE_DRAW_LABELS, faceDrawCategoryId } from './faceDrawRules.js?rmv=1.73.12';
+import { externalPoolItem } from './externalWorldBook/externalPool.js?rmv=1.73.12';
 
 // Compact, synchronous identity of ID-only settings/catalogs. Four independent
 // 32-bit accumulators avoid storing large imported names in every frozen plan.

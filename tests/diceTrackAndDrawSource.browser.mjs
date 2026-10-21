@@ -109,9 +109,9 @@ const lines = await page.evaluate(() => {
 });
 const source = lines.find(line => line.startsWith('生图描述来源：'));
 assert.ok(source, lines.join('\n')); checks++;
-assert.match(source, /第1个=模型写的\(\d+字\)·已出图/); checks++;
-assert.match(source, /第2个=插件补的\(标题\+旁边的字\)·未出图/); checks++;
-assert.match(source, /第3个=模型写的\(\d+字\)·未出图/, '还没收进图框的同号画面说明也算模型写的'); checks++;
+assert.match(source, /第1个=模型写的\(\d+字\)·人物外貌没写·已出图/); checks++;
+assert.match(source, /第2个=插件补的\(标题\+旁边的字\)·人物外貌没写·未出图/); checks++;
+assert.match(source, /第3个=模型写的\(\d+字\)·人物外貌没写·未出图/, '还没收进图框的同号画面说明也算模型写的'); checks++;
 
 assert.deepEqual(pageErrors, []); checks++;
 await browser.close(); server.close();
