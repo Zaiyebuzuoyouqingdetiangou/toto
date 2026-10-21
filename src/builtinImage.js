@@ -333,6 +333,8 @@ const sessionRecords = new Map();
 const AUTO_DRAW_WINDOW_MS = 10 * 60 * 1000;
 const AUTO_DRAW_LIMIT = 2;
 const autoDraws = new Map();
+// 最近一次画好却一点也没存进去的键：重新挂上时放这次画的那张，不放存档里更旧的。换版本、存成功后去掉。
+const unsavedKeys = new Set();
 // 位置不看提示词：聊天、楼层、swipe（取自键），再加这一面在这条消息里是第几面、图框是这一面的第几个。
 function frameSlot(key, frame) {
     const parts = String(key).split(':');
@@ -799,7 +801,7 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
             sessionRecords.delete(key);
             sessionRecords.set(key, record.path ? light : record);
             if (sessionRecords.size > 200) sessionRecords.delete(sessionRecords.keys().next().value);
-            try { saveMirrorImage(key, record); }
+            try { saveMirrorImage(key, record); unsavedKeys.delete(key); }
             catch (error) {
                 // 存不下整份：只存看图要的（地址、时间、种子），刷新后至少图还在、不会再画一遍。
                 let minimalSaved = false;
@@ -811,7 +813,8 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
                 } catch { /* 还是存不下 */ }
                 console.warn('[RabbitMirror] 内置生图已画成，但没能写入本机存档', error);
                 // 画好了却没存进去（多半是本机存储满了）：记下原因，重画时如实告诉用户，不再说成「换好了」。
-                if (!minimalSaved) Object.defineProperty(record, 'saveError', { value: error, enumerable: false });
+                if (minimalSaved) unsavedKeys.delete(key);
+                else { unsavedKeys.add(key); Object.defineProperty(record, 'saveError', { value: error, enumerable: false }); }
             }
         }
         return record;
@@ -845,7 +848,7 @@ async function fillFrame(root, frame, { manual = false } = {}) {
     // 读不到的那张不再反复拿出来：按「重新生图」后直接发请求。
     // 这次打开页面里画过、比存档里的新（重画了却没存进去）：放这张，不再画。
     const remembered = !manual && !unreadable.has(key) ? sessionRecordFor(key) : null;
-    const newer = remembered && (!saved.record || Date.parse(remembered.generatedAt || '') > Date.parse(saved.record.generatedAt || ''));
+    const newer = remembered && (!saved.record || unsavedKeys.has(key));
     if (newer && paint(frame, remembered, root, key)) return;
     if (saved.record && !unreadable.has(key) && paint(frame, saved.record, root, key)) return;
     if (failed.has(key)) {
@@ -1105,6 +1108,8 @@ export function showBuiltinImageVersion(root, frame, index) {
         ...(shown.looksSources && !chosen.looksSources ? { looksSources: shown.looksSources } : {}),
     } : chosen;
     const next = replaceMirrorImageVersions(key, picked, list.filter((_, i) => i !== index));
+    // 用户自己选了这张：这次画的那张不再盖过它。
+    sessionRecords.delete(key); unsavedKeys.delete(key);
     unreadable.delete(key);
     if (frame.isConnected) { ensureFrameBox(frame); paint(frame, next, root, key); }
     return next;

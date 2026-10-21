@@ -225,6 +225,24 @@ assert.equal(await calls(), base + 1); checks++;
 assert.equal(await page.evaluate(() => Object.keys(localStorage).filter(key => key.includes(':builtin:chat:c:41:0:0:')).map(key => JSON.parse(localStorage.getItem(key)).current.path).join(',')), `/user/images/p${base + 1}.png`); checks++;
 await page.evaluate(() => { Storage.prototype.setItem = window.__realSetItem; window.__imageQuota = ''; });
 
+// 11b 这次画过的一面，用户在面板里换回更早的一张：重新挂上时放用户选的那张
+const pickedBack = await page.evaluate(async () => {
+    const html = `<details open data-rabbit-mirror-owner-chat="chat:c" data-rabbit-mirror-owner-mesid="41" data-rabbit-mirror-owner-swipe="0"><summary>小</summary>
+      <figure data-rm-draw-frame="1"><p data-rm-draw-prompt="1" hidden>${'雪夜里的山门前两行脚印延伸到石阶尽头'.repeat(12)}</p></figure></details>`;
+    document.body.innerHTML = html;
+    const root = document.querySelector('details');
+    const key = images.listBuiltinImageFrames(root)[0].key;
+    const store = await import('/src/imageStore.js?' + location.search.slice(1));
+    const now = store.loadMirrorImage(key);
+    store.replaceMirrorImageVersions(key, now, [{ path: '/user/images/older.png', generatedAt: '2026-01-01T00:00:00Z' }]);
+    images.showBuiltinImageVersion(root, root.querySelector('[data-rm-draw-frame]'), 0);
+    document.body.innerHTML = html;
+    images.fillBuiltinImageFrames(document.querySelector('details'));
+    await new Promise(resolve => setTimeout(resolve, 100));
+    return document.querySelector('img[data-rm-draw-result]')?.getAttribute('src') || '';
+});
+assert.equal(pickedBack.replace(origin, ''), '/user/images/older.png'); checks++;
+
 // 12 融合在回复里的镜面（键里没记楼层）：不同楼层各自自动画，不会挤在一个位置上被拦
 base = await calls();
 await page.evaluate(() => {
