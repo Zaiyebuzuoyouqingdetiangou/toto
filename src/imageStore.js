@@ -21,8 +21,8 @@ function write(key, kind, value) {
     }
 }
 
-// 旧版本（翻回去看的那几张）只留看图要用的：地址、时间、种子、格式；长提示词、人物外貌、整张图的 data: 不留。
-// 当前那张不动（重画沿用它的提示词）；翻回瘦过的旧版本时，沿用换下来那张的提示词（builtinImage.js）。
+// 旧版本（翻回去看的那几张）只留看图要用的：地址、时间、种子、格式；长提示词、人物外貌不留（没有文件路径、
+// 只有 data: 的那张保留图本身）。当前那张不动（重画沿用它的提示词）；翻回旧版本时沿用换下来那张的提示词（builtinImage.js）。
 function slimEntry(entry) {
     if (!entry || typeof entry !== 'object') return entry;
     const meta = entry.promptMetadata && typeof entry.promptMetadata === 'object' ? entry.promptMetadata : {};
@@ -35,6 +35,14 @@ function slimEntry(entry) {
 }
 
 /** 本机存储满了时给插图存档瘦身：只瘦旧版本、去掉已有文件路径的 data: 副本，不删任何一张图。腾出了地方返回 true。 */
+// 以前的旧版本都带着整套提示词：这次打开页面后第一次存图时，把所有存档的旧版本瘦一遍（只一次）。
+let migrated = false;
+function migrateOldImageRecords() {
+    if (migrated) return;
+    migrated = true;
+    try { slimMirrorImagesForQuota(); } catch { /* 瘦不了就照旧 */ }
+}
+
 // 瘦过一遍、之后没再存新图：再瘦也腾不出地方，不再把几百份存档逐条解析一遍。
 let slimmedClean = false;
 export function slimMirrorImagesForQuota() {
@@ -83,6 +91,8 @@ export function saveMirrorImage(key, record) {
     const previous = loadMirrorImage(key);
     const current = storedRecord(record);
     // 旧版本只留最近 4 张；整张图存在本机（data:）的旧版本只留最近一张，免得重画几次就把本机空间占满。
+    // 提示词只给当前那张留一份：旧版本只记图片地址、时间和种子（图本身在柏宝绘图库／酒馆上）。
+    migrateOldImageRecords();
     const history = (previous ? [...previous.history, storedRecord(previous)] : [])
         .slice(-4)
         .filter((entry, index, list) => index === list.length - 1 || !String(entry?.url || '').startsWith('data:'))
@@ -90,7 +100,8 @@ export function saveMirrorImage(key, record) {
             if (index === list.length - 1 || !entry || typeof entry !== 'object') return entry;
             const { dataUrl: ignoredDataUrl, ...rest } = entry;
             return rest;
-        });
+        })
+        .map(slimEntry);
     write(key, 'images', { version: 1, current, history });
     slimmedClean = false;
     return { ...current, history };
@@ -197,7 +208,8 @@ export function findShiftedBuiltinImageKey(key, claimed = null) {
 
 // 换成历史里的另一张显示：选中的那张当当前，其余按原来的先后留在历史里。不发请求。
 export function replaceMirrorImageVersions(key, current, history) {
-    const value = { version: 1, current: storedRecord(current), history: (Array.isArray(history) ? history : []).filter(entry => entry && typeof entry === 'object').map(entry => ({ ...entry })) };
+    migrateOldImageRecords();
+    const value = { version: 1, current: storedRecord(current), history: (Array.isArray(history) ? history : []).filter(entry => entry && typeof entry === 'object').map(slimEntry) };
     write(key, 'images', value);
     slimmedClean = false;
     return { ...value.current, history: value.history };
