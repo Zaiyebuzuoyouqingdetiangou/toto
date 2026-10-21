@@ -1,5 +1,5 @@
-import { entryIdentity } from './selectionState.js?rmv=1.73.30';
-import { buildExternalEntrySummary } from './summary.js?rmv=1.73.30';
+import { entryIdentity } from './selectionState.js?rmv=1.73.31';
+import { buildExternalEntrySummary } from './summary.js?rmv=1.73.31';
 
 export const EXTERNAL_WORLD_BOOK_CLASSIFICATION = Object.freeze({
     THEME: 'theme',

@@ -1,4 +1,4 @@
-import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.73.30';
+import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.73.31';
 
 export const EXTERNAL_WORLD_BOOK_SCHEMA_VERSION = 1;
 export const EXTERNAL_WORLD_BOOK_MAX_FILE_BYTES = 8 * 1024 * 1024;
