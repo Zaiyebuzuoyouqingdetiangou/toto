@@ -85,17 +85,19 @@ test('only eight actually active reservations in this page count toward capacity
     assert.equal(h.store.getItem(REGISTRY), null);
 });
 
-test('failed accounting write rolls back and never creates an in-memory reservation', async () => {
+// 1.73.28：独立 API 多面的记账（形式公平计数、抽签尝试）写不进本机时照样登记、照样发请求，和单面一样只是尽力而为。
+// 写了一半的照旧回滚，本机不留半份记账；内存里的登记照常建立，后面提交、释放都能找到这一批。
+test('failed accounting write rolls back the partial write but still registers in memory (best-effort accounting)', async () => {
     const h = await page(), plan = h.plan(), original = h.store.setItem;
     h.store.setItem = function (key, value) { if (key === ATTEMPTS) throw new Error('storage denied'); return original.call(this, key, value); };
     const reasons = [];
-    assert.equal(register(h.api, plan, { onRejected: code => reasons.push(code) }), false);
-    assert.equal(h.api.findPendingComboBatchPlan(plan.identity), null);
+    assert.equal(register(h.api, plan, { onRejected: code => reasons.push(code) }), true);
+    assert.deepEqual(h.api.findPendingComboBatchPlan(plan.identity), plan);
     assert.equal(h.store.getItem(FAIRNESS), null);
     assert.equal(h.store.getItem(REGISTRY), null);
-    assert.deepEqual(reasons, ['BATCH_STORAGE_WRITE_FAILED']);
+    assert.deepEqual(reasons, []);
     h.store.setItem = original;
-    assert.equal(register(h.api, plan), true);
+    assert.equal(register(h.api, plan), true, 'same plan again is idempotent');
 });
 
 test('commit failure retains its reservation; success and release cannot replay the paid attempt', async () => {
