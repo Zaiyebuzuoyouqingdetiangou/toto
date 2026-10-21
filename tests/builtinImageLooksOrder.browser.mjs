@@ -39,7 +39,7 @@ await page.evaluate(async query => {
     window.STBaiBaiImage = {
         apiVersion: 1, capabilities: { globalApi: true, generate: true, characterLibrary: true },
         getBackendStatus: () => ({ configured: true, supportsCharacters: true, backend: 'test' }),
-        getCharacters: () => ({ characters: [{ name: '阿岩', tag: '1boy, silver hair, red eyes', nl: '' }] }),
+        getCharacters: () => ({ characters: [{ name: '阿岩', tag: '1boy, long silver hair, big red eyes', nl: '' }] }),
         generate: request => { window.__calls += 1; const n = window.__calls; window.__sent.push(request); return Promise.resolve({ path: `/user/images/p${n}.png` }); },
     };
     ctx.characterId = 0; ctx.name2 = '阿雪'; ctx.name1 = '阿竹';
@@ -63,14 +63,15 @@ const draw = chars => page.evaluate(async chars => {
     return { request: window.__sent[0] || null, sources: record?.current?.looksSources || null };
 }, chars);
 
-const r = await draw(`<p data-rm-draw-char="阿岩" hidden>黑发青年，穿玄色劲装，神情冷峻</p><p data-rm-draw-char-tags="阿岩" hidden>1boy, black hair, dark robe</p>
+const r = await draw(`<p data-rm-draw-char="阿岩" hidden>黑发青年，穿玄色劲装，神情冷峻</p><p data-rm-draw-char-tags="阿岩" hidden>1boy, short black hair, golden eyes, hair ornament, dark robe</p>
 <p data-rm-draw-char="阿雪" hidden>棕色短发的少女，裹着狐裘</p><p data-rm-draw-char="阿竹" hidden>红色长发，蓝眼睛，穿绿裙</p>`);
 assert.ok(r.request, '发出了生图请求'); checks++;
 const person = name => (r.request.characters || []).find(item => item.name === name) || {};
 // 建档角色：silver hair 为准，模型写的「黑发」「black hair」去掉，衣着留着
-assert.match(person('阿岩').tag, /silver hair/); checks++;
-assert.doesNotMatch(person('阿岩').tag, /black hair/); checks++;
+assert.match(person('阿岩').tag, /long silver hair/); checks++;
+assert.doesNotMatch(person('阿岩').tag, /black hair|golden eyes/, '建档写了 long silver hair、big red eyes 这种带长短的写法，模型写的发色瞳色照样去掉'); checks++;
 assert.match(person('阿岩').tag, /dark robe/); checks++;
+assert.match(person('阿岩').tag, /hair ornament/, '发饰不是发色，留着'); checks++;
 assert.doesNotMatch(person('阿岩').nl, /黑发/); checks++;
 assert.match(person('阿岩').nl, /玄色劲装/); checks++;
 // 角色卡：单人卡的长相写在角色卡里，模型写的「棕色短发」换成卡里的「黑色长直发」
