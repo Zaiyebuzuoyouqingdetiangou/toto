@@ -544,11 +544,14 @@ function stripEchoedStatusBar(html){
 // 模型漏写了外层 <details><summary>【兔子镜：标题】</summary>…</details>，直接把本体写在 <toto> 里：
 // 本体有真内容就补上这层外壳，标题取本体里最像标题的那行字。只补「完全没有 details」的，写了一半的 details 不碰。
 function wrapMissingMirrorShell(inner,openTag=''){
- const source=stripEchoedStatusBar(inner).trim();
- if(!source || /<details\b/i.test(source)) return source;
+ const original=String(inner||'').trim();
+ if(!original || /<details\b/i.test(original)) return original;
+ const source=stripEchoedStatusBar(original).trim();
  const body=source.replace(/<style\b[\s\S]*?<\/style>/gi,'').replace(/<script\b[\s\S]*?<\/script>/gi,'');
  const text=body.replace(/<[^>]+>/g,' ').replace(/&nbsp;/gi,' ').replace(/\s+/g,' ').trim();
- if(text.length<20 && !/<(?:img|svg|canvas|button|input|table|figure)\b/i.test(body)) return source;
+ // 只补「做出来的作品」：要有样式或带 class 的版面元素。纯文字、纯 <p>（续写正文、思考、拒答）不补，照旧判失败重试。
+ const designed=/<style\b/i.test(source) || /<(?:div|section|article|figure|ul|ol|table|svg|button)\b[^>]*\bclass\s*=/i.test(body);
+ if(!designed || (text.length<20 && !/<(?:img|svg|canvas|button|input|table|figure)\b/i.test(body))) return original;
  const plain=value=>String(value||'').replace(/<[^>]+>/g,' ').replace(/&[a-z#0-9]+;/gi,' ').replace(/[【】\[\]]/g,'').replace(/\s+/g,' ').trim();
  const titled=body.match(/<(h[1-4])\b[^>]*>([\s\S]*?)<\/\1>/i)?.[2]
   || body.match(/<([a-z0-9]+)\b[^>]*\bclass\s*=\s*["'][^"']*title[^"']*["'][^>]*>([\s\S]*?)<\/\1>/i)?.[2]
@@ -567,10 +570,16 @@ export function extractMirrorInner(raw){
  // shell diagnostic when no usable closed wrapper exists. This is selection,
  // not acceptance: the caller still applies the normal budgets and sanitizer.
  let firstInner=null;
- for(const toto of cleaned.matchAll(/<toto\b[^>]*>([\s\S]*?)<\/toto>/gi)){
-  const inner=wrapMissingMirrorShell(toto[1],toto[0].match(/^<toto\b[^>]*>/i)?.[0]||'');
+ const totos=[...cleaned.matchAll(/<toto\b[^>]*>([\s\S]*?)<\/toto>/gi)];
+ for(const toto of totos){
+  const inner=toto[1].trim();
   if(firstInner===null) firstInner=inner;
   if(independentMirrorBodyEvidence(inner)) return inner;
+ }
+ // 没有一个写完整的，再看是不是只漏了外层折叠头：补上外壳兜底。
+ for(const toto of totos){
+  const inner=wrapMissingMirrorShell(toto[1],toto[0].match(/^<toto\b[^>]*>/i)?.[0]||'');
+  if(inner!==toto[1].trim() && independentMirrorBodyEvidence(inner)) return inner;
  }
  if(firstInner!==null) return firstInner;
  const details=cleaned.match(/<details\b[\s\S]*?<\/details>/i);

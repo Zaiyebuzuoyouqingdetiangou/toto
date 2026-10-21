@@ -41,8 +41,12 @@ const result = await page.evaluate(async query => {
         scopeMoved: /^<details[^>]*data-rabbit-mirror-css-scope="/.test(bare),
         noStatus: !/status|某日/.test(bare),
         kept: /阿雪/.test(bare) && /阿岩/.test(bare),
-        h2Title: request.extractMirrorInner('<toto><h2>阿竹的一天</h2><p>字字字字字字字字字字字字字字字字字字字字字</p></toto>').includes('【兔子镜：阿竹的一天】'),
+        h2Title: request.extractMirrorInner('<toto><div class="pg"><h2>阿竹的一天</h2></div><p>字字字字字字字字字字字字字字字字字字字字字</p></toto>').includes('【兔子镜：阿竹的一天】'),
         normal: (html => (html.match(/<details/g) || []).length === 1 && /^<details[^>]*><summary>【兔子镜：某教】<\/summary><p>正文<\/p><\/details>$/.test(html))(request.extractMirrorInner('<toto><details><summary>【兔子镜：某教】</summary><p>正文</p></details></toto>')),
+        prose: !/<details/.test(request.extractMirrorInner('<toto><p>字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字</p></toto>')),
+        completeWins: /【兔子镜：某教】/.test(request.extractMirrorInner(`<toto>${body}</toto><toto><details><summary>【兔子镜：某教】</summary><p>正文</p></details></toto>`)),
+        fullKeepsStatus: /status-bar/.test(request.extractMirrorInner('<toto><details><summary>【兔子镜：某教】</summary><div class="phone"><status-bar>字字</status-bar><p>正文</p></div></details></toto>')),
+        movedScope: /^<details data-rabbit-mirror-css-scope="sx1">/.test(request.extractMirrorInner(`<toto data-rabbit-mirror-css-scope="sx1">${body}</toto>`)),
         tiny: !/<details/.test(request.extractMirrorInner('<toto><p>字</p></toto>')),
     };
 }, query);
@@ -56,4 +60,8 @@ assert.equal(result.kept, true);
 assert.equal(result.h2Title, true);
 assert.equal(result.normal, true);
 assert.equal(result.tiny, true);
+assert.equal(result.prose, true);
+assert.equal(result.completeWins, true);
+assert.equal(result.fullKeepsStatus, true);
+assert.equal(result.movedScope, true);
 console.log('missingMirrorShell ok');
