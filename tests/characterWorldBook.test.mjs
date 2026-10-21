@@ -227,3 +227,36 @@ test('image cast: escaped rows still fit the budget, rows stay valid JSON, place
     assert.deepEqual(lines.map(line => JSON.parse(line).title), ['【人物】阿雪', '【人物】阿岩', '【人物】阿竹']);
     assert.deepEqual(cast.titles, ['【人物】阿雪', '【人物】阿岩', '【人物】阿竹']);
 });
+
+test('image cast: a character buried in a long faction entry keeps his looks, not the faction preamble', async t => {
+    forbidNetwork(t);
+    const faction = '教中规矩与历史。'.repeat(300) + '\n【阿岩】少主，银发狼尾，赤金竖瞳，身形高大，常穿玄色劲装。\n' + '其余教众。'.repeat(300);
+    const filler = title => ({ ...entry(`${title}的风貌与规矩。`.repeat(200)), comment: title, keys: [title] });
+    const book = { name: '开放世界', entries: [
+        filler('知名玩家档案'),
+        { ...entry(faction), comment: '某教势力与npc', keys: ['某教', '阿岩'] },
+        filler('江湖势力'), filler('神都风貌'), filler('皇家成员'),
+        { ...entry('阿雪：乌黑长直发，淡粉色眸。' + '往事'.repeat(500)), comment: '【人物】阿雪', keys: [] },
+    ] };
+    const cast = await readCharacterWorldBookContext(embeddedContext(book), {
+        focusText: '知名玩家档案 江湖势力 神都风貌 皇家成员 某教少主阿岩托着阿雪的下颌', onlyMentioned: true, maxChars: 3000,
+    });
+    assert.ok(cast.text.length <= 3000);
+    assert.match(cast.text, /银发狼尾/);
+    assert.match(cast.text, /乌黑长直发/);
+    assert.deepEqual(cast.titles.slice(0, 2).sort(), ['【人物】阿雪', '某教势力与npc'].sort(), '写了长相的条目排前面');
+});
+
+test('image cast: a place name from another entry does not push the character excerpt out', async t => {
+    forbidNetwork(t);
+    const faction = '神都的人多是黑发黑瞳。'.repeat(4) + '教中规矩。'.repeat(300) + '\n【阿岩】少主，银发狼尾，赤金竖瞳。\n' + '其余教众。'.repeat(300);
+    const book = { name: '开放世界', entries: [
+        { ...entry('神都风貌。'.repeat(400)), comment: '神都风貌', keys: ['神都'] },
+        { ...entry(faction), comment: '某教势力与npc', keys: ['某教', '阿岩'] },
+        { ...entry('阿雪：乌黑长直发。' + '往事'.repeat(800)), comment: '【人物】阿雪', keys: [] },
+    ] };
+    const cast = await readCharacterWorldBookContext(embeddedContext(book), { focusText: '神都里某教少主阿岩看着阿雪', onlyMentioned: true, maxChars: 3000 });
+    assert.match(cast.text, /银发狼尾/);
+    assert.match(cast.text, /乌黑长直发/);
+    assert.ok(cast.text.length <= 3000);
+});

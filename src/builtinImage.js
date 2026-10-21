@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.73.8';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.73.8';
-import { builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.73.8';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.73.8';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.73.8';
-import { tidyImagePayload } from './imageTagTidy.js?rmv=1.73.8';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.73.8';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.73.8';
+import { getSettings } from './settings.js?rmv=1.73.9';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.73.9';
+import { builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.73.9';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.73.9';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.73.9';
+import { tidyImagePayload } from './imageTagTidy.js?rmv=1.73.9';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.73.9';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.73.9';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -559,7 +559,11 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
         });
         const record = { ...generated, builtinImageFit: 'cover' };
         try { if (inflight.get(key) === entry) saveMirrorImage(key, record); }
-        catch (error) { console.warn('[RabbitMirror] 内置生图已画成，但没能写入本机存档', error); }
+        catch (error) {
+            console.warn('[RabbitMirror] 内置生图已画成，但没能写入本机存档', error);
+            // 画好了却没存进去（多半是本机存储满了）：记下原因，重画时如实告诉用户，不再说成「换好了」。
+            Object.defineProperty(record, 'saveError', { value: error, enumerable: false });
+        }
         return record;
     })();
     entry.job = job;
@@ -809,11 +813,12 @@ export async function rerollBuiltinImage(root, frame, { prompt: edited = '', sig
     try {
         const generated = await startJob(key, text || original, frame, isCurrent, { reuse, direct: !!text, signal });
         let record = null;
-        try { record = loadMirrorImage(key); } catch { record = null; }
+        // 没存进去时本机存档还是旧图：镜面上照样换成新画的这张，只是翻不回来、刷新后会变回旧的。
+        if (!generated?.saveError) { try { record = loadMirrorImage(key); } catch { record = null; } }
         if (!record) record = generated;
         const painted = !!(record && frame.isConnected && isCurrent());
         if (painted) { ensureFrameBox(frame); paint(frame, record, root, key); }
-        return { record, painted };
+        return { record, painted, saveError: generated?.saveError || null };
     } finally {
         nodes.delete(waiter);
         if (!nodes.size && waiters.get(key) === nodes) waiters.delete(key);
