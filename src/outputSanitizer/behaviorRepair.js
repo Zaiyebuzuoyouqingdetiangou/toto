@@ -200,6 +200,48 @@ function adoptOrphans(root) {
     return made;
 }
 
+// 翻页区没标 data-rm-page，页是靠模型自己的 CSS 显示的：[data-rm-index="0"] .第一页、[data-rm-index="1"] .第二页……
+// 按这几条规则把页认出来（每个编号在这个区域里正好对上一个元素、编号连着），补上 data-rm-page。
+// 编号从 0 开始时记下 data-rm-index-base="0"，驱动写页码时照模型的数法写，模型的 CSS 照样对得上。
+function inferPagerPages(root, group) {
+    if (count(group, '[data-rm-page]')) return false;
+    const scope = root?.closest?.('toto') || root;
+    const found = new Map();
+    const walk = list => {
+        for (const rule of list || []) {
+            if (rule.cssRules && typeof rule.selectorText !== 'string') { if (walk(rule.cssRules) === null) return null; continue; }
+            if (typeof rule.selectorText !== 'string') continue;
+            for (const raw of rule.selectorText.split(',')) {
+                const piece = raw.replace(/^\s*\[data-rabbit-mirror-css-scope=[^\]]*\]\s*/, '');
+                const match = piece.match(/\[\s*data-rm-index\s*=\s*["']?(\d+)["']?\s*\]\s+([^\s>+~][^>+~]*)$/);
+                if (!match) continue;
+                let nodes = [];
+                try { nodes = own(group, match[2].trim()); } catch { continue; }
+                if (nodes.length !== 1) continue;
+                const n = Number(match[1]);
+                if (found.has(n) && found.get(n) !== nodes[0]) return null;
+                found.set(n, nodes[0]);
+            }
+        }
+        return true;
+    };
+    for (const node of [...(scope?.querySelectorAll?.('style') || [])]) {
+        let ok = true;
+        try { ok = walk(node.sheet?.cssRules); } catch { /* 未解析 */ }
+        if (ok === null) return false;
+    }
+    const keys = [...found.keys()].sort((a, b) => a - b);
+    if (keys.length < 2 || keys[0] > 1 || keys.some((key, i) => key !== keys[0] + i)) return false;
+    const pages = keys.map(key => found.get(key));
+    if (new Set(pages).size !== pages.length) return false;
+    // 只点亮指示点的规则（空的小圆点）不是页：每一页都得有内容。
+    if (pages.some(page => !page.textContent.trim() && !page.querySelector('img, svg, figure, canvas, video'))) return false;
+    if (own(group, '[data-rm-pick], [data-rm-toggle], [data-rm-roll], [data-rm-step], [data-rm-item], [data-rm-end], [data-rm-knob], [data-rm-code]').length) return false;
+    pages.forEach(page => { page.setAttribute('data-rm-page', ''); page.setAttribute('data-rm-page-inferred', 'true'); });
+    if (keys[0] === 0) group.setAttribute('data-rm-index-base', '0');
+    return true;
+}
+
 export function repairBehaviorDeclarations(root) {
     if (!root?.querySelectorAll) return 0;
     let repaired = 0;
@@ -220,6 +262,8 @@ export function repairBehaviorDeclarations(root) {
             continue;
         }
         const inferred = inferBehaviorType(group);
+        // 认不出别的类型、里面也没有别的驱动部件时，才按 CSS 认翻页的页。
+        if (!inferred && type === 'pager' && inferPagerPages(root, group)) { if (type !== written) mark(group, type, 'type'); repaired++; continue; }
         if (inferred) { mark(group, inferred, 'type'); repaired++; continue; }
         if (expandDeclared(root, group)) { repaired++; continue; }
         // 写了 toggle 却没标开关：整个容器就是开关。

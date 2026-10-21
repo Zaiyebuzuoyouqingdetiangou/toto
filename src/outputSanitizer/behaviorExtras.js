@@ -649,7 +649,8 @@ export function applyCarriedState(group) {
     if (!saved || typeof saved !== 'object') return false;
     if (Array.isArray(saved.on)) group.setAttribute('data-rm-on', saved.on.join(' '));
     if (typeof saved.picked === 'string' && saved.picked) group.setAttribute('data-rm-picked', saved.picked);
-    if (Number.isInteger(saved.index)) group.setAttribute('data-rm-index', String(saved.index));
+    // 记的是从 1 数的页码；这一区的页码按模型的数法从 0 数时（data-rm-index-base="0"）换算一下。
+    if (Number.isInteger(saved.index)) group.setAttribute('data-rm-index', String(group.getAttribute('data-rm-index-base') === '0' ? saved.index - 1 : saved.index));
     if (Array.isArray(saved.done)) {
         const steps = [...group.querySelectorAll('[data-rm-step]')].filter(node => node.closest(GROUP) === group);
         steps.forEach((step, index) => { if (saved.done.includes(index)) step.setAttribute('data-rm-done', 'true'); });
