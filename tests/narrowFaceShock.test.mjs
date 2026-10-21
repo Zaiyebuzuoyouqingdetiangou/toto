@@ -178,6 +178,7 @@ function fixture({ placement = 'external', authoredStyle = 'padding: 12px;', bod
         // 这组测试检查的是「整条消息外面」这种挂法的量宽；默认的自动挂法另有 externalAnchor.browser.mjs。
         getSettings: () => ({ independentExternalAnchor: 'outside' }),
         resolveExternalAnchor: (element, body, setting) => setting === 'outside' ? 'outside' : 'message',
+        normalizeExternalAnchor: value => ['auto', 'body', 'outside'].includes(String(value || '')) ? String(value) : 'auto',
         hostGenerationLooksActive: () => false,
         clearDeferredExternalReanchor() {}, scheduleDeferredExternalReanchor() {},
         externalHostAppearsBeforeOwner: () => state.hostBeforeOwner,

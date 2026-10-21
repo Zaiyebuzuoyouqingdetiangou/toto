@@ -160,6 +160,52 @@ const own = await page.evaluate(() => {
 });
 assert.deepEqual(own, { count: 0, total: 0 }); checks++;
 
+// 挂上去以后自己看一眼：被美化的装饰图盖住就往上提；被美化挤出消息的边就往外挪一层（只有「自动」）
+const verify = (css, setting, decor = '') => page.evaluate(async ({ css, setting, decor, FACE }) => {
+    document.getElementById('beauty')?.remove();
+    const style = document.createElement('style'); style.id = 'beauty'; style.textContent = css; document.head.append(style);
+    const chat = document.getElementById('chat');
+    chat.innerHTML = `<div class="mes last_mes" mesid="1" style="display:flex;padding:10px"><div class="avatar" style="width:40px"></div><div class="mes_block" style="flex:1;min-width:0"><div class="ch_name">名字</div><div class="mes_text"><p>第二条正文。这一段也写长一点，让它有宽度可以量。</p>${decor}</div></div></div>`;
+    settings.updateSettings({ independentExternalAnchor: setting, generationSource: 'independent', independentDisplayMode: 'external' });
+    const el = chat.querySelector('.mes');
+    const host = document.createElement('div');
+    host.className = 'rabbit-mirror-external-host rabbit-mirror-external-shell';
+    host.setAttribute('data-rabbit-mirror-external-source', 'true');
+    host.dataset.rmSource = 'independent'; host.dataset.rmState = 'ready'; host.dataset.rmKey = 'k1';
+    host.innerHTML = FACE;
+    geo.placeExternalHost(el, host, 'k1', 'independent');
+    const frames = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const steps = [];
+    for (let i = 0; i < 4; i += 1) { steps.push(geo.verifyExternalPlacement(el, host, 'k1', 'independent')); await frames(); await frames(); }
+    return { steps, raised: host.dataset.rmExternalRaised || '', anchor: host.dataset.rmExternalAnchor, fallback: host.dataset.rmExternalAnchorFallback || '' };
+}, { css, setting, decor, FACE });
+const DECOR = '<div class="decor" style="position:absolute;left:0;right:0;top:40px;bottom:0;background:#7a9;z-index:5;pointer-events:none"></div>';
+let v = await verify('.mes_text{background:#fff;border-radius:12px;padding:12px;position:relative}', 'auto', DECOR);
+assert.equal(v.raised, 'true', JSON.stringify(v)); checks++;
+assert.equal(v.anchor, 'body', '提上来就不挡了，不用挪'); checks++;
+v = await verify('.mes_text{background:#fff;border-radius:12px;padding:12px;margin-left:-80px}', 'auto');
+assert.equal(v.fallback, 'message', JSON.stringify(v)); checks++;
+assert.equal(v.anchor, 'message'); checks++;
+// 手动选了「进正文」：只往上提，不挪
+v = await verify('.mes_text{background:#fff;border-radius:12px;padding:12px;margin-left:-80px}', 'body');
+assert.equal(v.fallback, ''); checks++;
+assert.equal(v.anchor, 'body'); checks++;
+// 装饰图写成伪元素（::after）、点不到：照样量得到
+v = await verify('.mes_text{background:#fff;border-radius:12px;padding:12px;position:relative}.mes_text::after{content:"";position:absolute;left:0;right:0;top:40px;bottom:0;background:#7a9;z-index:5;pointer-events:none}', 'auto');
+assert.equal(v.raised, 'true', JSON.stringify(v)); checks++;
+// 同一个外壳换成这条消息的另一版（Swipe／重说）：上一版量出来的「往外挪」「往上提」不作数
+const reset = await page.evaluate(() => {
+    const host = document.querySelector('[data-rabbit-mirror-external-source]');
+    host.dataset.rmExternalAnchorFallback = 'outside'; host.dataset.rmExternalRaised = 'true';
+    host.dataset.rmKey = 'k1-swipe2';
+    geo.placeExternalHost(document.querySelector('.mes'), host, 'k1-swipe2', 'independent');
+    return { fallback: host.dataset.rmExternalAnchorFallback || '', raised: host.dataset.rmExternalRaised || '' };
+});
+assert.deepEqual(reset, { fallback: '', raised: '' }); checks++;
+// 什么都没挡：不提也不挪
+v = await verify('.mes_text{background:#fff;border-radius:12px;padding:12px}', 'auto');
+assert.deepEqual([v.raised, v.fallback, v.steps[0]], ['', '', 'ok']); checks++;
+
 assert.deepEqual(pageErrors, []);
 console.log(JSON.stringify({ checks }));
 await browser.close(); server.close();
